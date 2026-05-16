@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: Build & Test (${{ matrix.config }})
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [Debug, Release]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Cache build outputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/obj
+            build/bin
+          key: ${{ runner.os }}-build-${{ matrix.config }}-${{ hashFiles('premake5.lua', '**/premake5.lua') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ matrix.config }}-
+
+      - name: Build (${{ matrix.config }})
+        shell: cmd
+        run: tools\@build.cmd ${{ matrix.config }}
+
+      - name: Run tests
+        if: matrix.config == 'Debug'
+        shell: cmd
+        run: tools\@run_tests.cmd ${{ matrix.config }}
+
+      - name: Upload Release artifacts
+        if: matrix.config == 'Release' && success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ns-engine-release-${{ github.sha }}
+          path: build/bin/Release-windows-x86_64/
+          retention-days: 14
+          if-no-files-found: warn
+
+  lint:
+    name: Lint (clang-tidy)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Generate compile_commands.json
+        shell: cmd
+        run: tools\@gen_compile_commands.cmd
+
+      - name: Detect changed C++ files
+        id: changed
+        shell: pwsh
+        run: |
+          $base = if ($env:GITHUB_BASE_REF) { "origin/$env:GITHUB_BASE_REF" } else {
+            $parent = git rev-parse HEAD~1 2>$null
+            if ($LASTEXITCODE -eq 0) { "HEAD~1" } else { $null }
+          }
+          if (-not $base) {
+            Write-Host "No diff base available, skipping lint."
+            "has_changes=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            exit 0
+          }
+          $files = git diff --name-only "$base...HEAD" |
+            Where-Object { $_ -match '\.(cpp|hpp|h|cc|cxx|inl)$' } |
+            Where-Object { $_ -notmatch '^(build|tools|third_party|external|vendor)/' } |
+            Where-Object { Test-Path $_ }
+          if ($files) {
+            $files | Out-File -FilePath changed.txt -Encoding utf8
+            "has_changes=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            Write-Host "Changed files:"
+            $files | ForEach-Object { Write-Host "  $_" }
+          } else {
+            "has_changes=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            Write-Host "No C++ files changed."
+          }
+
+      - name: Run clang-tidy on changed files
+        if: steps.changed.outputs.has_changes == 'true'
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $files = Get-Content changed.txt
+          $failed = 0
+          foreach ($f in $files) {
+            Write-Host "::group::clang-tidy $f"
+            clang-tidy -p build $f
+            if ($LASTEXITCODE -ne 0) { $failed++ }
+            Write-Host "::endgroup::"
+          }
+          if ($failed -gt 0) {
+            Write-Warning "clang-tidy reported issues in $failed file(s)"
+          }

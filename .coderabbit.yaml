@@ -1,0 +1,4 @@
+reviews:
+  path_instructions:
+    - path: "source/engine/**"
+      instructions: "エンジン層のコード。パフォーマンスとメモリ管理に注意。"

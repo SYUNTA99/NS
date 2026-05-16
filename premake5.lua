@@ -1,0 +1,324 @@
+--============================================================================
+-- premake5.lua
+-- NS-ENGINE プロジェクト構成
+--============================================================================
+
+-- compile_commands.json生成モジュール
+require "premake/modules/export-compile-commands/export-compile-commands"
+
+--============================================================================
+-- ワークスペース
+--============================================================================
+workspace "NS-ENGINE"
+    configurations { "Debug", "Development", "GameDebug", "GameRelease" }
+    platforms { "x64" }
+    location "build"
+
+    language "C++"
+    cppdialect "C++20"
+    characterset "Unicode"
+
+    -- 全プロジェクト共通 include root = "Source/"
+    includedirs { "Source" }
+
+    -- Windows共通定義（全プロジェクト共通）
+    defines {
+        "_WIN32_WINNT=0x0A00",
+        "WIN32_LEAN_AND_MEAN",
+        "NOMINMAX",
+        "UNICODE",
+        "_UNICODE"
+    }
+
+    --------------------------------------------------------------------------
+    -- 構成別設定 
+    --   - ns.lib 列の最適化を構成デフォルトとし、Game.exe 固有調整は
+    --     Game プロジェクト側で filter override する
+    --------------------------------------------------------------------------
+    filter "configurations:Debug"
+        defines {
+            "NS_BUILD_DEBUG",
+            "NS_LOG_LEVEL=0",          -- Trace+
+            "NS_ENABLE_ASSERT=1",
+            "_ITERATOR_DEBUG_LEVEL=2", -- フルチェック
+            "DEBUG", "_DEBUG"
+        }
+        symbols "On"
+        optimize "Off"
+        runtime "Debug"
+
+    filter "configurations:Development"
+        defines {
+            "NS_BUILD_DEV",
+            "NS_LOG_LEVEL=1",          -- Debug+
+            "NS_ENABLE_ASSERT=1",
+            "_ITERATOR_DEBUG_LEVEL=0",
+            "NDEBUG"
+        }
+        symbols "On"
+        optimize "On"
+        runtime "Release"
+
+    filter "configurations:GameDebug"
+        -- ns.lib は -O2、Game.exe は -O0（Game プロジェクト側で上書き）
+        defines {
+            "NS_BUILD_GAMEDEBUG",
+            "NS_LOG_LEVEL=1",
+            "NS_ENABLE_ASSERT=1",
+            "_ITERATOR_DEBUG_LEVEL=1", -- 境界チェックのみ
+            "NDEBUG"
+        }
+        symbols "On"
+        optimize "On"
+        runtime "Release"
+
+    filter "configurations:GameRelease"
+        defines {
+            "NS_BUILD_RELEASE",
+            "NS_LOG_LEVEL=4",          -- Error/Fatal のみ
+            "NS_ENABLE_ASSERT=0",
+            "_ITERATOR_DEBUG_LEVEL=0",
+            "NDEBUG", "NS_SHIPPING"
+        }
+        symbols "Off"
+        optimize "Full"
+        runtime "Release"
+        flags { "LinkTimeOptimization", "MultiProcessorCompile" }
+
+    filter "platforms:x64"
+        architecture "x64"
+
+    filter {}
+
+--============================================================================
+-- 共通変数
+--============================================================================
+outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
+bindir = "build/bin/" .. outputdir
+objdir_base = "build/obj/" .. outputdir
+
+-- 共通 build options (全 ns_* / Game / Tests project で使用)
+local function applyCommonBuildOptions()
+    warnings "Extra"
+    -- flags { "FatalWarnings" }  -- T1.0.8 build 安定後に有効化
+    buildoptions { "/utf-8", "/permissive-", "/FS" }
+    linkoptions { "/ignore:4006" }
+end
+
+--============================================================================
+-- ns_core モジュール (StaticLib)
+--   Logger / Math / StringUtils / Clock / FileSystem
+--============================================================================
+project "ns_core"
+    kind "StaticLib"
+    location "build/ns_core"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/ns/core/**.h",
+        "Source/ns/core/**.cpp"
+    }
+
+    -- DirectXMath / SimpleMath ヘッダ参照
+    -- spdlog (header-only) は ns::core::Logger 実装で使用
+    includedirs {
+        "external/DirectXTK/Inc",
+        "external/spdlog/include"
+    }
+
+    defines {
+        "SPDLOG_COMPILED_LIB=0",          -- header-only モード
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",   -- wide string 入力サポート
+        "SPDLOG_NO_EXCEPTIONS"            -- 例外無効（NS-ENGINE 方針）
+    }
+
+    applyCommonBuildOptions()
+
+--============================================================================
+-- ns_platform モジュール (StaticLib)
+--   Window / Input / Keyboard / Mouse / Gamepad
+--============================================================================
+project "ns_platform"
+    kind "StaticLib"
+    location "build/ns_platform"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/ns/platform/**.h",
+        "Source/ns/platform/**.cpp"
+    }
+
+    links { "ns_core" }
+
+    -- XInput リンク
+    filter "system:windows"
+        links { "Xinput" }
+    filter {}
+
+    applyCommonBuildOptions()
+
+--============================================================================
+-- ns_graphics モジュール (StaticLib)
+--   Renderer / RenderTarget / CommonStates / Buffer / Texture / Shader /
+--   Mesh / Camera / Material
+--============================================================================
+project "ns_graphics"
+    kind "StaticLib"
+    location "build/ns_graphics"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/ns/graphics/**.h",
+        "Source/ns/graphics/**.cpp"
+    }
+
+    includedirs {
+        "external/DirectXTK/Inc",
+        "external/DirectXTex/DirectXTex"
+    }
+
+    links {
+        "ns_core",
+        "ns_platform",
+        -- D3D11 system libs
+        "d3d11",
+        "dxgi",
+        "dxguid",
+        "d3dcompiler"
+    }
+
+    applyCommonBuildOptions()
+
+--============================================================================
+-- ns_app モジュール (StaticLib)
+--   Application / Scene / WinMain
+--============================================================================
+project "ns_app"
+    kind "StaticLib"
+    location "build/ns_app"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/ns/app/**.h",
+        "Source/ns/app/**.cpp"
+    }
+
+    links {
+        "ns_core",
+        "ns_platform",
+        "ns_graphics"
+    }
+
+    applyCommonBuildOptions()
+
+--============================================================================
+-- Game 実行ファイル (WindowedApp)
+--   Phase1CubeScene + CreateApplication / CreateInitialScene
+--============================================================================
+project "Game"
+    kind "WindowedApp"
+    location "build/Game"
+
+    targetdir (bindir)        -- exe は build/bin/<Config>/ 直下
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/Game/**.h",
+        "Source/Game/**.cpp"
+    }
+
+    links {
+        "ns_core",
+        "ns_platform",
+        "ns_graphics",
+        "ns_app"
+    }
+
+    -- GameDebug: Game.exe のみ -O0 + symbols フル
+    filter "configurations:GameDebug"
+        optimize "Off"
+
+    filter {}
+
+    applyCommonBuildOptions()
+
+--============================================================================
+-- テスト関連（ソリューションフォルダで非表示）
+--============================================================================
+group "_Tests"
+
+--============================================================================
+-- Google Test ライブラリ（external/ source drop）
+--============================================================================
+project "googletest"
+    kind "StaticLib"
+    location "build/googletest"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "external/googletest/googletest/src/gtest-all.cc",
+        "external/googletest/googlemock/src/gmock-all.cc"
+    }
+
+    includedirs {
+        "external/googletest/googletest/include",
+        "external/googletest/googletest",
+        "external/googletest/googlemock/include",
+        "external/googletest/googlemock"
+    }
+
+    -- Google Testの警告を無視
+    warnings "Off"
+    buildoptions { "/utf-8", "/FS" }
+
+--============================================================================
+-- Tests 実行ファイル (ConsoleApp)
+--   GoogleTest ベース、ns_* リンクして個別モジュールをテスト
+--============================================================================
+project "Tests"
+    kind "ConsoleApp"
+    location "build/Tests"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/Tests/**.h",
+        "Source/Tests/**.cpp"
+    }
+
+    includedirs {
+        "external/googletest/googletest/include",
+        "external/googletest/googlemock/include",
+        "external/DirectXTK/Inc",
+        "external/spdlog/include"
+    }
+
+    defines {
+        "SPDLOG_COMPILED_LIB=0",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_NO_EXCEPTIONS"
+    }
+
+    links {
+        "googletest",
+        "ns_core",
+        "ns_platform",
+        "ns_graphics",
+        "ns_app"
+    }
+
+    debugdir "."
+    disablewarnings { "4244", "4834" }  -- テスト用: 暗黙変換、[[nodiscard]]無視
+
+    applyCommonBuildOptions()
