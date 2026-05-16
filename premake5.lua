@@ -122,14 +122,15 @@ project "ns_core"
     }
 
     -- DirectXMath / SimpleMath ヘッダ参照
-    -- spdlog (header-only) は ns::core::Logger 実装で使用
+    -- spdlog / magic_enum は ns::core::Logger で使用
     includedirs {
         "Source/third_party/DirectXTK/Inc",
         "Source/third_party/spdlog/include",
+        "Source/third_party/magic_enum/include",
     }
 
     defines {
-        "SPDLOG_COMPILED_LIB=0",             -- header-only モード
+        "SPDLOG_HEADER_ONLY",             -- header-only モード
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
@@ -302,10 +303,11 @@ project "Tests"
         "Source/third_party/googletest/googlemock/include",
         "Source/third_party/DirectXTK/Inc",
         "Source/third_party/spdlog/include",
+        "Source/third_party/magic_enum/include",
     }
 
     defines {
-        "SPDLOG_COMPILED_LIB=0",
+        "SPDLOG_HEADER_ONLY",
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
