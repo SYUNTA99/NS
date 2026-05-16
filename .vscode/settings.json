@@ -81,5 +81,5 @@
         "xtree": "cpp",
         "xutility": "cpp"
     },
-    "cmake.sourceDirectory": "${workspaceFolder}/external/DirectXTex"
+    "cmake.sourceDirectory": "${workspaceFolder}/Source/third_party/DirectXTex"
 }
