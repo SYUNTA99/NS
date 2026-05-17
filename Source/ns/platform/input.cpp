@@ -40,7 +40,8 @@ namespace ns::platform
         /// XInput の SHORT スティック生値を -1.0〜1.0 に正規化し、軸別デッドゾーンを適用。
         /// 負値は /32768、正値は /32767 で対称的にマップする。
         /// ラジアルではなく軸別デッドゾーン (Mario 系の縦横独立操作向け)。
-        [[nodiscard]] Stick NormalizeStick(short rawX, short rawY, short deadzone) noexcept
+        /// deadzone は符号なし: 負値で「全入力が deadzone 越え」と誤判定されるのを防ぐ。
+        [[nodiscard]] Stick NormalizeStick(short rawX, short rawY, unsigned short deadzone) noexcept
         {
             const float fx = (rawX < 0) ? static_cast<float>(rawX) / 32768.0f : static_cast<float>(rawX) / 32767.0f;
             const float fy = (rawY < 0) ? static_cast<float>(rawY) / 32768.0f : static_cast<float>(rawY) / 32767.0f;
@@ -79,6 +80,8 @@ namespace ns::platform
             XINPUT_GAMEPAD_DPAD_LEFT,
             XINPUT_GAMEPAD_DPAD_RIGHT,
         };
+        static_assert(kButtonBits.size() == static_cast<std::size_t>(GamepadButton::kCount),
+                      "kButtonBits は GamepadButton 全要素に対応する必要があります");
     } // namespace
 
     bool Keyboard::IsPressed(Key k) const noexcept
