@@ -25,7 +25,7 @@ set SKIP_BUILD=0
 if "%1"=="--skip-build" set SKIP_BUILD=1
 
 echo ============================================
-echo  NS-ENGINE リリースパッケージ作成
+echo  NS リリースパッケージ作成
 echo ============================================
 echo.
 

@@ -18,7 +18,7 @@ echo 現在のディレクトリ: %CD%
 echo.
 
 :: ソリューションが無ければ生成
-if not exist "build\NS-ENGINE.sln" (
+if not exist "build\NS.sln" (
     echo プロジェクト生成中...
     call "%~dp0_common.cmd" :generate_project
     if errorlevel 1 (
@@ -26,7 +26,7 @@ if not exist "build\NS-ENGINE.sln" (
         exit /b 1
     )
 ) else (
-    echo [OK] build\NS-ENGINE.sln 確認済み
+    echo [OK] build\NS.sln 確認済み
 )
 
 :: tests.exeが存在すればビルドをスキップ
@@ -40,7 +40,7 @@ if errorlevel 1 (
     exit /b 1
 )
 echo 使用: %MSBUILD_PATH%
-"%MSBUILD_PATH%" build\NS-ENGINE.sln -p:Configuration=Debug -p:Platform=x64 -m -v:minimal
+"%MSBUILD_PATH%" build\NS.sln -p:Configuration=Debug -p:Platform=x64 -m -v:minimal
 if errorlevel 1 (
     echo [ERROR] ビルド失敗
     pause
@@ -56,4 +56,4 @@ echo [OK] tests.exe 確認済み
 
 echo.
 echo Visual Studio を起動中...
-start "" "build\NS-ENGINE.sln"
+start "" "build\NS.sln"
