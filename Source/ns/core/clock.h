@@ -15,6 +15,8 @@
 
 #include <chrono>
 #include <cstdint>
+#include <string>
+#include <utility>
 
 namespace ns::core
 {
@@ -78,8 +80,14 @@ namespace ns::core
         [[nodiscard]] double TotalSeconds() const noexcept { return m_total; }
         [[nodiscard]] std::uint64_t FrameNumber() const noexcept { return m_frame; }
 
-        /// 固定タイムステップを設定 (default 1/60 秒)
-        void SetFixedDelta(float fixed) noexcept { m_fixedDelta = fixed; }
+        /// 固定タイムステップを設定 (default 1/60 秒)。ゼロ / 負値は無視 (Tick/Alpha のゼロ除算 UB 防止)
+        void SetFixedDelta(float fixed) noexcept
+        {
+            if (fixed > 0.0f)
+            {
+                m_fixedDelta = fixed;
+            }
+        }
         [[nodiscard]] float FixedDelta() const noexcept { return m_fixedDelta; }
         /// 今回の Tick で OnFixedUpdate を何回呼ぶべきか
         [[nodiscard]] int FixedStepsThisFrame() const noexcept { return m_fixedSteps; }
@@ -100,8 +108,9 @@ namespace ns::core
     class ScopedTimer
     {
     public:
-        ScopedTimer(LogCat category, const char* label)
-            : m_category(category), m_label(label), m_start(std::chrono::steady_clock::now())
+        /// `label` は内部で std::string コピー保持するため、一時 std::string の c_str() を渡しても安全
+        ScopedTimer(LogCat category, std::string label)
+            : m_category(category), m_label(std::move(label)), m_start(std::chrono::steady_clock::now())
         {}
 
         ~ScopedTimer()
@@ -116,7 +125,7 @@ namespace ns::core
 
     private:
         LogCat m_category;
-        const char* m_label;
+        std::string m_label;
         std::chrono::steady_clock::time_point m_start;
     };
 
