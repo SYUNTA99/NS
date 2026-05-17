@@ -3,6 +3,8 @@
 #include <ns/core/log_categories.h>
 #include <ns/core/logger.h>
 
+#include <limits>
+
 #include <windows.h>
 
 namespace ns::core
@@ -12,6 +14,12 @@ namespace ns::core
     {
         if (utf8.empty())
         {
+            return {};
+        }
+
+        if (utf8.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+        {
+            NS_LOG_ERROR(LogCat::Core, "StringUtils::WideFromUtf8 input exceeds INT_MAX ({} bytes)", utf8.size());
             return {};
         }
 
@@ -26,9 +34,12 @@ namespace ns::core
         std::wstring result(static_cast<std::size_t>(dstLen), L'\0');
         const int written =
             ::MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, utf8.data(), srcLen, result.data(), dstLen);
-        if (written <= 0)
+        if (written != dstLen)
         {
-            NS_LOG_ERROR(LogCat::Core, "StringUtils::WideFromUtf8 conversion failed");
+            NS_LOG_ERROR(LogCat::Core,
+                         "StringUtils::WideFromUtf8 conversion incomplete (written={}, expected={})",
+                         written,
+                         dstLen);
             return {};
         }
         return result;
@@ -38,6 +49,12 @@ namespace ns::core
     {
         if (wide.empty())
         {
+            return {};
+        }
+
+        if (wide.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+        {
+            NS_LOG_ERROR(LogCat::Core, "StringUtils::Utf8FromWide input exceeds INT_MAX ({} chars)", wide.size());
             return {};
         }
 
@@ -53,9 +70,12 @@ namespace ns::core
         std::string result(static_cast<std::size_t>(dstLen), '\0');
         const int written = ::WideCharToMultiByte(
             CP_UTF8, WC_ERR_INVALID_CHARS, wide.data(), srcLen, result.data(), dstLen, nullptr, nullptr);
-        if (written <= 0)
+        if (written != dstLen)
         {
-            NS_LOG_ERROR(LogCat::Core, "StringUtils::Utf8FromWide conversion failed");
+            NS_LOG_ERROR(LogCat::Core,
+                         "StringUtils::Utf8FromWide conversion incomplete (written={}, expected={})",
+                         written,
+                         dstLen);
             return {};
         }
         return result;
