@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <ns/platform/detail/input_win32.h>
+#include <ns/platform/gamepad.h>
 #include <ns/platform/input.h>
 #include <ns/platform/keyboard.h>
 #include <ns/platform/mouse.h>
@@ -9,6 +10,8 @@
 
 namespace
 {
+    using ns::platform::Gamepad;
+    using ns::platform::GamepadButton;
     using ns::platform::Input;
     using ns::platform::Key;
     using ns::platform::Keyboard;
@@ -210,4 +213,76 @@ TEST(NsPlatformInput, UpdatePropagatesToMouse)
     EXPECT_FALSE(input.Mouse().IsPressed(MouseButton::Left));
     EXPECT_TRUE(input.Mouse().IsHeld(MouseButton::Left));
     EXPECT_EQ(input.Mouse().WheelDelta(), 0);
+}
+
+TEST(NsPlatformGamepad, DefaultIsNotConnected)
+{
+    Gamepad pad;
+    EXPECT_FALSE(pad.IsConnected());
+}
+
+TEST(NsPlatformGamepad, DefaultAllButtonsReleased)
+{
+    Gamepad pad;
+    EXPECT_FALSE(pad.IsHeld(GamepadButton::A));
+    EXPECT_FALSE(pad.IsHeld(GamepadButton::B));
+    EXPECT_FALSE(pad.IsHeld(GamepadButton::Start));
+    EXPECT_FALSE(pad.IsHeld(GamepadButton::DPadUp));
+    EXPECT_FALSE(pad.IsPressed(GamepadButton::A));
+    EXPECT_FALSE(pad.IsReleased(GamepadButton::A));
+}
+
+TEST(NsPlatformGamepad, DefaultStickAndTriggerZero)
+{
+    Gamepad pad;
+    EXPECT_FLOAT_EQ(pad.LeftStick().x, 0.0f);
+    EXPECT_FLOAT_EQ(pad.LeftStick().y, 0.0f);
+    EXPECT_FLOAT_EQ(pad.RightStick().x, 0.0f);
+    EXPECT_FLOAT_EQ(pad.RightStick().y, 0.0f);
+    EXPECT_FLOAT_EQ(pad.LeftTrigger(), 0.0f);
+    EXPECT_FLOAT_EQ(pad.RightTrigger(), 0.0f);
+}
+
+TEST(NsPlatformGamepad, OutOfRangeButtonIsNoop)
+{
+    Gamepad pad;
+    const auto negative = static_cast<GamepadButton>(-1);
+    const auto overflow = static_cast<GamepadButton>(static_cast<int>(GamepadButton::kCount) + 10);
+
+    EXPECT_FALSE(pad.IsHeld(negative));
+    EXPECT_FALSE(pad.IsHeld(overflow));
+    EXPECT_FALSE(pad.IsPressed(negative));
+    EXPECT_FALSE(pad.IsReleased(overflow));
+}
+
+TEST(NsPlatformGamepad, UpdateIsSafeToCall)
+{
+    Gamepad pad{0};
+    pad.Update();
+    pad.Update();
+    EXPECT_FALSE(pad.IsHeld(static_cast<GamepadButton>(-1)));
+}
+
+TEST(NsPlatformInput, GamepadAccessorReturnsSameInstance)
+{
+    Input input;
+    Gamepad* p1 = &input.Gamepad(0);
+    Gamepad* p2 = &input.Gamepad(0);
+    EXPECT_EQ(p1, p2);
+}
+
+TEST(NsPlatformInput, OutOfRangeGamepadIndexFallsBackToSlotZero)
+{
+    Input input;
+    const Gamepad* slotZero = &input.Gamepad(0);
+    EXPECT_EQ(&input.Gamepad(-1), slotZero);
+    EXPECT_EQ(&input.Gamepad(99), slotZero);
+}
+
+TEST(NsPlatformInput, UpdateIsSafeToCallTwice)
+{
+    Input input;
+    input.Update();
+    input.Update();
+    EXPECT_FALSE(input.Gamepad(0).IsHeld(static_cast<GamepadButton>(-1)));
 }
