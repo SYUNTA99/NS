@@ -43,7 +43,8 @@ namespace ns::platform
         /// Update() で 0 リセット。
         [[nodiscard]] int WheelDelta() const noexcept { return m_wheel; }
 
-        /// previous = current のコピー + wheel = 0 リセット。フレーム頭で 1 回。
+        /// previous = current のコピー (ボタン状態 + 位置 x/y) + wheel = 0 リセット。
+        /// フレーム頭で 1 回呼ぶ。次フレームでの差分判定 (Pressed/Released/Delta*) の基準を更新する。
         void Update() noexcept;
 
         /// WndProc から呼ばれる内部 API。

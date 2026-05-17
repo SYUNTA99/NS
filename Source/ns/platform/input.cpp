@@ -272,13 +272,27 @@ namespace ns::platform
         case WM_XBUTTONDOWN:
         {
             const auto xb = GET_XBUTTON_WPARAM(wparam);
-            input.Mouse().OnButtonDown(xb == XBUTTON1 ? MouseButton::X1 : MouseButton::X2);
+            if (xb == XBUTTON1)
+            {
+                input.Mouse().OnButtonDown(MouseButton::X1);
+            }
+            else if (xb == XBUTTON2)
+            {
+                input.Mouse().OnButtonDown(MouseButton::X2);
+            }
             break;
         }
         case WM_XBUTTONUP:
         {
             const auto xb = GET_XBUTTON_WPARAM(wparam);
-            input.Mouse().OnButtonUp(xb == XBUTTON1 ? MouseButton::X1 : MouseButton::X2);
+            if (xb == XBUTTON1)
+            {
+                input.Mouse().OnButtonUp(MouseButton::X1);
+            }
+            else if (xb == XBUTTON2)
+            {
+                input.Mouse().OnButtonUp(MouseButton::X2);
+            }
             break;
         }
         case WM_MOUSEWHEEL:
