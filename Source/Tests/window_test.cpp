@@ -63,3 +63,12 @@ TEST_F(WindowLoggerTest, NativeHandleNotNull)
     ns::platform::Window window(desc);
     EXPECT_NE(window.NativeHandle(), nullptr);
 }
+
+TEST_F(WindowLoggerTest, IsValidAfterSuccessfulConstruction)
+{
+    ns::platform::WindowDesc desc{};
+    desc.title = "ns_test_is_valid";
+
+    ns::platform::Window window(desc);
+    EXPECT_TRUE(window.IsValid());
+}

@@ -141,6 +141,11 @@ namespace ns::platform
         s_instance = nullptr;
     }
 
+    bool Window::IsValid() const noexcept
+    {
+        return m_pImpl->hwnd != nullptr;
+    }
+
     void Window::PollMessages()
     {
         MSG msg{};

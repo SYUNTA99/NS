@@ -34,6 +34,10 @@ namespace ns::platform
         Window(Window&&) = delete;
         Window& operator=(Window&&) = delete;
 
+        /// 構築成功判定。RegisterClassExW / CreateWindowExW が失敗した時は false を返す。
+        /// 失敗時は NS_LOG_ERROR にも詳細が出ているが、呼び出し側は API 経路で検知できるようこれを参照する。
+        [[nodiscard]] bool IsValid() const noexcept;
+
         /// 1 フレーム頭で呼ぶ。PeekMessageW(PM_REMOVE) で非ブロッキング処理。
         /// WM_QUIT を受信したら ShouldClose() が true になる。
         void PollMessages();
