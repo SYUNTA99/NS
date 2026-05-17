@@ -25,6 +25,8 @@ namespace ns::platform
 
         std::function<void(int, int)> onResize;
         std::function<void()> onClose;
+
+        Input* input = nullptr;
     };
 
 } // namespace ns::platform
