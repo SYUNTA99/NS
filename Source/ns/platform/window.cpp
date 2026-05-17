@@ -61,6 +61,16 @@ namespace ns::platform
             case WM_SYSKEYDOWN:
             case WM_SYSKEYUP:
             case WM_KILLFOCUS:
+            case WM_MOUSEMOVE:
+            case WM_LBUTTONDOWN:
+            case WM_LBUTTONUP:
+            case WM_RBUTTONDOWN:
+            case WM_RBUTTONUP:
+            case WM_MBUTTONDOWN:
+            case WM_MBUTTONUP:
+            case WM_XBUTTONDOWN:
+            case WM_XBUTTONUP:
+            case WM_MOUSEWHEEL:
             {
                 if (impl->input != nullptr)
                 {

@@ -17,6 +17,14 @@ namespace ns::platform
             const auto i = static_cast<std::size_t>(k);
             return i > static_cast<std::size_t>(Key::Unknown) && i < static_cast<std::size_t>(Key::kCount);
         }
+
+        /// MouseButton 用の境界チェック。Key と同じ理由で必要。
+        /// MouseButton::Left = 0 始まりなので i >= 0 && i < kCount で判定。
+        [[nodiscard]] constexpr bool IsValidButton(MouseButton b) noexcept
+        {
+            const auto i = static_cast<std::size_t>(b);
+            return i < static_cast<std::size_t>(MouseButton::kCount);
+        }
     } // namespace
 
     bool Keyboard::IsPressed(Key k) const noexcept
@@ -76,9 +84,82 @@ namespace ns::platform
         m_current.fill(false);
     }
 
+    bool Mouse::IsPressed(MouseButton b) const noexcept
+    {
+        if (!IsValidButton(b))
+        {
+            return false;
+        }
+        const auto i = static_cast<std::size_t>(b);
+        return !m_previous[i] && m_current[i];
+    }
+
+    bool Mouse::IsHeld(MouseButton b) const noexcept
+    {
+        if (!IsValidButton(b))
+        {
+            return false;
+        }
+        return m_current[static_cast<std::size_t>(b)];
+    }
+
+    bool Mouse::IsReleased(MouseButton b) const noexcept
+    {
+        if (!IsValidButton(b))
+        {
+            return false;
+        }
+        const auto i = static_cast<std::size_t>(b);
+        return m_previous[i] && !m_current[i];
+    }
+
+    void Mouse::Update() noexcept
+    {
+        m_previous = m_current;
+        m_prevX = m_x;
+        m_prevY = m_y;
+        m_wheel = 0;
+    }
+
+    void Mouse::OnMove(int x, int y) noexcept
+    {
+        m_x = x;
+        m_y = y;
+    }
+
+    void Mouse::OnButtonDown(MouseButton b) noexcept
+    {
+        if (!IsValidButton(b))
+        {
+            return;
+        }
+        m_current[static_cast<std::size_t>(b)] = true;
+    }
+
+    void Mouse::OnButtonUp(MouseButton b) noexcept
+    {
+        if (!IsValidButton(b))
+        {
+            return;
+        }
+        m_current[static_cast<std::size_t>(b)] = false;
+    }
+
+    void Mouse::OnWheel(int delta) noexcept
+    {
+        m_wheel += delta;
+    }
+
+    void Mouse::ClearState() noexcept
+    {
+        m_current.fill(false);
+        m_wheel = 0;
+    }
+
     void Input::Update() noexcept
     {
         m_keyboard.Update();
+        m_mouse.Update();
     }
 
     Key MapVkToKey(unsigned int vk) noexcept
@@ -140,13 +221,12 @@ namespace ns::platform
                                      std::uintptr_t wparam,
                                      std::intptr_t lparam) noexcept
     {
-        // lparam: scan code / repeat flag (bit 30) / extended key —  では未使用
-        (void)lparam;
         switch (msg)
         {
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:
         {
+            // lparam: scan code / repeat flag (bit 30) / extended key —  では未使用
             const Key k = MapVkToKey(static_cast<unsigned int>(wparam));
             input.Keyboard().OnKeyDown(k);
             break;
@@ -161,6 +241,64 @@ namespace ns::platform
         case WM_KILLFOCUS:
         {
             input.Keyboard().ClearState();
+            input.Mouse().ClearState();
+            break;
+        }
+        case WM_MOUSEMOVE:
+        {
+            const int x = static_cast<int>(static_cast<short>(LOWORD(lparam)));
+            const int y = static_cast<int>(static_cast<short>(HIWORD(lparam)));
+            input.Mouse().OnMove(x, y);
+            break;
+        }
+        case WM_LBUTTONDOWN:
+            input.Mouse().OnButtonDown(MouseButton::Left);
+            break;
+        case WM_LBUTTONUP:
+            input.Mouse().OnButtonUp(MouseButton::Left);
+            break;
+        case WM_RBUTTONDOWN:
+            input.Mouse().OnButtonDown(MouseButton::Right);
+            break;
+        case WM_RBUTTONUP:
+            input.Mouse().OnButtonUp(MouseButton::Right);
+            break;
+        case WM_MBUTTONDOWN:
+            input.Mouse().OnButtonDown(MouseButton::Middle);
+            break;
+        case WM_MBUTTONUP:
+            input.Mouse().OnButtonUp(MouseButton::Middle);
+            break;
+        case WM_XBUTTONDOWN:
+        {
+            const auto xb = GET_XBUTTON_WPARAM(wparam);
+            if (xb == XBUTTON1)
+            {
+                input.Mouse().OnButtonDown(MouseButton::X1);
+            }
+            else if (xb == XBUTTON2)
+            {
+                input.Mouse().OnButtonDown(MouseButton::X2);
+            }
+            break;
+        }
+        case WM_XBUTTONUP:
+        {
+            const auto xb = GET_XBUTTON_WPARAM(wparam);
+            if (xb == XBUTTON1)
+            {
+                input.Mouse().OnButtonUp(MouseButton::X1);
+            }
+            else if (xb == XBUTTON2)
+            {
+                input.Mouse().OnButtonUp(MouseButton::X2);
+            }
+            break;
+        }
+        case WM_MOUSEWHEEL:
+        {
+            const int delta = GET_WHEEL_DELTA_WPARAM(wparam);
+            input.Mouse().OnWheel(delta);
             break;
         }
         default:
