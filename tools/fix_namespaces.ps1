@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$root = "C:/Users/nanat/Desktop/NS-ENGINE/source"
+$root = "C:/Users/nanat/Desktop/NS/source"
 $files = Get-ChildItem -Path $root -Recurse -Include *.h, *.cpp | Where-Object {
     (Get-Content $_.FullName -Raw) -match 'namespace NS::'
 }

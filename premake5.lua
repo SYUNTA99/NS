@@ -1,6 +1,6 @@
 --============================================================================
 -- premake5.lua
--- NS-ENGINE プロジェクト構成
+-- NS プロジェクト構成
 --============================================================================
 
 -- compile_commands.json生成モジュール
@@ -9,7 +9,7 @@ require "premake/modules/export-compile-commands/export-compile-commands"
 --============================================================================
 -- ワークスペース
 --============================================================================
-workspace "NS-ENGINE"
+workspace "NS"
     configurations { "Debug", "Development", "GameDebug", "GameRelease" }
     platforms { "x64" }
     location "build"

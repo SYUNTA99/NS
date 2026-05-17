@@ -32,8 +32,8 @@ if ($result -ne 0) {
 
 Write-Host "$Config ビルド..."
 
-$buildCommand = "call `"$commonCmd`" :init && call `"$commonCmd`" :setup_msbuild && msbuild build\NS-ENGINE.sln /p:Configuration=$Config /p:Platform=x64 /m /v:minimal"
-$retryBuildCommand = "call `"$commonCmd`" :init && call `"$commonCmd`" :setup_msbuild && msbuild build\NS-ENGINE.sln /p:Configuration=$Config /p:Platform=x64 /m:1 /v:minimal"
+$buildCommand = "call `"$commonCmd`" :init && call `"$commonCmd`" :setup_msbuild && msbuild build\NS.sln /p:Configuration=$Config /p:Platform=x64 /m /v:minimal"
+$retryBuildCommand = "call `"$commonCmd`" :init && call `"$commonCmd`" :setup_msbuild && msbuild build\NS.sln /p:Configuration=$Config /p:Platform=x64 /m:1 /v:minimal"
 
 $result = Invoke-CmdCommand $buildCommand
 if ($result -ne 0) {
