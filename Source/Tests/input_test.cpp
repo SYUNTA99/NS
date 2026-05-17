@@ -67,6 +67,23 @@ TEST(NsPlatformKeyboard, UnknownKeyIsNoop)
     EXPECT_FALSE(kb.IsPressed(Key::Unknown));
 }
 
+TEST(NsPlatformKeyboard, OutOfRangeKeyIsNoop)
+{
+    Keyboard kb;
+    const auto negativeKey = static_cast<Key>(-1);
+    const auto overflowKey = static_cast<Key>(static_cast<int>(Key::kCount) + 10);
+
+    kb.OnKeyDown(negativeKey);
+    kb.OnKeyDown(overflowKey);
+
+    EXPECT_FALSE(kb.IsHeld(negativeKey));
+    EXPECT_FALSE(kb.IsHeld(overflowKey));
+    EXPECT_FALSE(kb.IsPressed(negativeKey));
+    EXPECT_FALSE(kb.IsPressed(overflowKey));
+    EXPECT_FALSE(kb.IsReleased(negativeKey));
+    EXPECT_FALSE(kb.IsReleased(overflowKey));
+}
+
 TEST(NsPlatformInput, UpdatePropagatesToKeyboard)
 {
     Input input;

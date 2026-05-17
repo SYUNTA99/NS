@@ -7,9 +7,21 @@
 namespace ns::platform
 {
 
+    namespace
+    {
+        /// 配列インデックスとして安全な Key 値か判定する。
+        /// `enum class : int` の整数キャスト経由で不正値 (Unknown 以下 / kCount 以上 / 負値)
+        /// が来ても m_current/m_previous の境界外アクセスを防ぐ。
+        [[nodiscard]] constexpr bool IsValidKey(Key k) noexcept
+        {
+            const auto i = static_cast<std::size_t>(k);
+            return i > static_cast<std::size_t>(Key::Unknown) && i < static_cast<std::size_t>(Key::kCount);
+        }
+    } // namespace
+
     bool Keyboard::IsPressed(Key k) const noexcept
     {
-        if (k == Key::Unknown || k == Key::kCount)
+        if (!IsValidKey(k))
         {
             return false;
         }
@@ -19,7 +31,7 @@ namespace ns::platform
 
     bool Keyboard::IsHeld(Key k) const noexcept
     {
-        if (k == Key::Unknown || k == Key::kCount)
+        if (!IsValidKey(k))
         {
             return false;
         }
@@ -28,7 +40,7 @@ namespace ns::platform
 
     bool Keyboard::IsReleased(Key k) const noexcept
     {
-        if (k == Key::Unknown || k == Key::kCount)
+        if (!IsValidKey(k))
         {
             return false;
         }
@@ -43,7 +55,7 @@ namespace ns::platform
 
     void Keyboard::OnKeyDown(Key k) noexcept
     {
-        if (k == Key::Unknown || k == Key::kCount)
+        if (!IsValidKey(k))
         {
             return;
         }
@@ -52,7 +64,7 @@ namespace ns::platform
 
     void Keyboard::OnKeyUp(Key k) noexcept
     {
-        if (k == Key::Unknown || k == Key::kCount)
+        if (!IsValidKey(k))
         {
             return;
         }
