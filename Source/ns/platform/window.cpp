@@ -15,11 +15,49 @@ namespace ns::platform
         /// シングルトン前提。ctor で 2 重生成検知に使い、WndProc から this を引く。
         Window::Impl* s_instance = nullptr;
 
+        /// Input に転送する Win32 メッセージ判定。WndProc switch の case ラベル列を集約。
+        [[nodiscard]] constexpr bool IsInputMessage(UINT msg) noexcept
+        {
+            switch (msg)
+            {
+            case WM_KEYDOWN:
+            case WM_KEYUP:
+            case WM_SYSKEYDOWN:
+            case WM_SYSKEYUP:
+            case WM_KILLFOCUS:
+            case WM_MOUSEMOVE:
+            case WM_LBUTTONDOWN:
+            case WM_LBUTTONUP:
+            case WM_RBUTTONDOWN:
+            case WM_RBUTTONUP:
+            case WM_MBUTTONDOWN:
+            case WM_MBUTTONUP:
+            case WM_XBUTTONDOWN:
+            case WM_XBUTTONUP:
+            case WM_MOUSEWHEEL:
+                return true;
+            default:
+                return false;
+            }
+        }
+
         LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
         {
             Window::Impl* impl = s_instance;
             if (impl == nullptr)
             {
+                return ::DefWindowProcW(hwnd, msg, wparam, lparam);
+            }
+
+            if (IsInputMessage(msg))
+            {
+                if (impl->input != nullptr)
+                {
+                    DispatchWin32MessageToInput(*impl->input,
+                                                static_cast<unsigned int>(msg),
+                                                static_cast<std::uintptr_t>(wparam),
+                                                static_cast<std::intptr_t>(lparam));
+                }
                 return ::DefWindowProcW(hwnd, msg, wparam, lparam);
             }
 
@@ -55,31 +93,6 @@ namespace ns::platform
             {
                 ::PostQuitMessage(0);
                 return 0;
-            }
-            case WM_KEYDOWN:
-            case WM_KEYUP:
-            case WM_SYSKEYDOWN:
-            case WM_SYSKEYUP:
-            case WM_KILLFOCUS:
-            case WM_MOUSEMOVE:
-            case WM_LBUTTONDOWN:
-            case WM_LBUTTONUP:
-            case WM_RBUTTONDOWN:
-            case WM_RBUTTONUP:
-            case WM_MBUTTONDOWN:
-            case WM_MBUTTONUP:
-            case WM_XBUTTONDOWN:
-            case WM_XBUTTONUP:
-            case WM_MOUSEWHEEL:
-            {
-                if (impl->input != nullptr)
-                {
-                    DispatchWin32MessageToInput(*impl->input,
-                                                static_cast<unsigned int>(msg),
-                                                static_cast<std::uintptr_t>(wparam),
-                                                static_cast<std::intptr_t>(lparam));
-                }
-                break;
             }
             default:
                 break;

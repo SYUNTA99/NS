@@ -4,6 +4,11 @@
 
 #include <windows.h>
 
+#include <Xinput.h>
+
+#include <cmath>
+#include <cstdint>
+
 namespace ns::platform
 {
 
@@ -25,6 +30,58 @@ namespace ns::platform
             const auto i = static_cast<std::size_t>(b);
             return i < static_cast<std::size_t>(MouseButton::kCount);
         }
+
+        [[nodiscard]] constexpr bool IsValidGamepadButton(GamepadButton b) noexcept
+        {
+            const auto i = static_cast<std::size_t>(b);
+            return i < static_cast<std::size_t>(GamepadButton::kCount);
+        }
+
+        /// XInput の SHORT スティック生値を -1.0〜1.0 に正規化し、軸別デッドゾーンを適用。
+        /// 負値は /32768、正値は /32767 で対称的にマップする。
+        /// ラジアルではなく軸別デッドゾーン (Mario 系の縦横独立操作向け)。
+        /// deadzone は符号なし: 負値で「全入力が deadzone 越え」と誤判定されるのを防ぐ。
+        [[nodiscard]] Stick NormalizeStick(short rawX, short rawY, unsigned short deadzone) noexcept
+        {
+            const float fx = (rawX < 0) ? static_cast<float>(rawX) / 32768.0f : static_cast<float>(rawX) / 32767.0f;
+            const float fy = (rawY < 0) ? static_cast<float>(rawY) / 32768.0f : static_cast<float>(rawY) / 32767.0f;
+            const float dz = static_cast<float>(deadzone) / 32767.0f;
+            return Stick{
+                std::fabs(fx) < dz ? 0.0f : fx,
+                std::fabs(fy) < dz ? 0.0f : fy,
+            };
+        }
+
+        /// 0〜255 の BYTE トリガー生値を 0.0〜1.0 に正規化、スレッショルド未満は 0.0。
+        [[nodiscard]] float NormalizeTrigger(std::uint8_t raw) noexcept
+        {
+            if (raw < XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
+            {
+                return 0.0f;
+            }
+            return static_cast<float>(raw) / 255.0f;
+        }
+
+        /// XINPUT_GAMEPAD::wButtons のビットマスクと GamepadButton enum の対応表。
+        /// 添字順は GamepadButton 宣言順と一致させる。
+        constexpr std::array<unsigned short, static_cast<std::size_t>(GamepadButton::kCount)> kButtonBits{
+            XINPUT_GAMEPAD_A,
+            XINPUT_GAMEPAD_B,
+            XINPUT_GAMEPAD_X,
+            XINPUT_GAMEPAD_Y,
+            XINPUT_GAMEPAD_LEFT_SHOULDER,
+            XINPUT_GAMEPAD_RIGHT_SHOULDER,
+            XINPUT_GAMEPAD_BACK,
+            XINPUT_GAMEPAD_START,
+            XINPUT_GAMEPAD_LEFT_THUMB,
+            XINPUT_GAMEPAD_RIGHT_THUMB,
+            XINPUT_GAMEPAD_DPAD_UP,
+            XINPUT_GAMEPAD_DPAD_DOWN,
+            XINPUT_GAMEPAD_DPAD_LEFT,
+            XINPUT_GAMEPAD_DPAD_RIGHT,
+        };
+        static_assert(kButtonBits.size() == static_cast<std::size_t>(GamepadButton::kCount),
+                      "kButtonBits は GamepadButton 全要素に対応する必要があります");
     } // namespace
 
     bool Keyboard::IsPressed(Key k) const noexcept
@@ -156,10 +213,126 @@ namespace ns::platform
         m_wheel = 0;
     }
 
+    Gamepad::Gamepad(int userIndex) noexcept : m_userIndex(userIndex) {}
+
+    bool Gamepad::IsConnected() const noexcept
+    {
+        return m_connected;
+    }
+
+    bool Gamepad::IsPressed(GamepadButton b) const noexcept
+    {
+        if (!IsValidGamepadButton(b))
+        {
+            return false;
+        }
+        const auto i = static_cast<std::size_t>(b);
+        return !m_previous[i] && m_current[i];
+    }
+
+    bool Gamepad::IsHeld(GamepadButton b) const noexcept
+    {
+        if (!IsValidGamepadButton(b))
+        {
+            return false;
+        }
+        return m_current[static_cast<std::size_t>(b)];
+    }
+
+    bool Gamepad::IsReleased(GamepadButton b) const noexcept
+    {
+        if (!IsValidGamepadButton(b))
+        {
+            return false;
+        }
+        const auto i = static_cast<std::size_t>(b);
+        return m_previous[i] && !m_current[i];
+    }
+
+    Stick Gamepad::LeftStick() const noexcept
+    {
+        return m_leftStick;
+    }
+
+    Stick Gamepad::RightStick() const noexcept
+    {
+        return m_rightStick;
+    }
+
+    float Gamepad::LeftTrigger() const noexcept
+    {
+        return m_leftTrigger;
+    }
+
+    float Gamepad::RightTrigger() const noexcept
+    {
+        return m_rightTrigger;
+    }
+
+    void Gamepad::Update() noexcept
+    {
+        m_previous = m_current;
+
+        XINPUT_STATE state{};
+        const DWORD result = ::XInputGetState(static_cast<DWORD>(m_userIndex), &state);
+        if (result != ERROR_SUCCESS)
+        {
+            m_connected = false;
+            m_current.fill(false);
+            m_leftStick = Stick{};
+            m_rightStick = Stick{};
+            m_leftTrigger = 0.0f;
+            m_rightTrigger = 0.0f;
+            return;
+        }
+
+        m_connected = true;
+        for (std::size_t i = 0; i < kButtonBits.size(); ++i)
+        {
+            m_current[i] = (state.Gamepad.wButtons & kButtonBits[i]) != 0;
+        }
+        m_leftStick =
+            NormalizeStick(state.Gamepad.sThumbLX, state.Gamepad.sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+        m_rightStick =
+            NormalizeStick(state.Gamepad.sThumbRX, state.Gamepad.sThumbRY, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+        m_leftTrigger = NormalizeTrigger(state.Gamepad.bLeftTrigger);
+        m_rightTrigger = NormalizeTrigger(state.Gamepad.bRightTrigger);
+    }
+
+    Input::Input()
+    {
+        for (std::size_t i = 0; i < m_gamepads.size(); ++i)
+        {
+            m_gamepads[i] = ::ns::platform::Gamepad{static_cast<int>(i)};
+        }
+    }
+
+    Gamepad& Input::Gamepad(int index) noexcept
+    {
+        if (index < 0 || static_cast<std::size_t>(index) >= m_gamepads.size())
+        {
+            return m_gamepads[0];
+        }
+        return m_gamepads[static_cast<std::size_t>(index)];
+    }
+
+    const Gamepad& Input::Gamepad(int index) const noexcept
+    {
+        if (index < 0 || static_cast<std::size_t>(index) >= m_gamepads.size())
+        {
+            return m_gamepads[0];
+        }
+        return m_gamepads[static_cast<std::size_t>(index)];
+    }
+
     void Input::Update() noexcept
     {
         m_keyboard.Update();
         m_mouse.Update();
+        for (auto& pad : m_gamepads)
+        {
+            pad.Update();
+        }
     }
 
     Key MapVkToKey(unsigned int vk) noexcept
