@@ -42,17 +42,28 @@ namespace ns::core
         }
         stream.seekg(0, std::ios::beg);
 
-        std::vector<std::byte> buffer(static_cast<std::size_t>(end));
-        if (end > 0)
+        try
         {
-            stream.read(reinterpret_cast<char*>(buffer.data()), end);
-            if (!stream)
+            std::vector<std::byte> buffer(static_cast<std::size_t>(end));
+            if (end > 0)
             {
-                NS_LOG_ERROR(LogCat::Core, "FileSystem::ReadAllBytes read failed: {}", path.string());
-                return std::nullopt;
+                stream.read(reinterpret_cast<char*>(buffer.data()), end);
+                if (!stream)
+                {
+                    NS_LOG_ERROR(LogCat::Core, "FileSystem::ReadAllBytes read failed: {}", path.string());
+                    return std::nullopt;
+                }
             }
+            return buffer;
         }
-        return buffer;
+        catch (const std::bad_alloc&)
+        {
+            NS_LOG_ERROR(LogCat::Core,
+                         "FileSystem::ReadAllBytes allocation failed: {} ({} bytes)",
+                         path.string(),
+                         static_cast<std::size_t>(end));
+            return std::nullopt;
+        }
     }
 
     std::optional<std::string> FileSystem::ReadAllText(const std::filesystem::path& path)

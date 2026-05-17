@@ -35,10 +35,11 @@ TEST(NsCoreFileSystem, ExistsReturnsFalseForMissingFile)
 
 TEST(NsCoreFileSystem, CreateDirectoryThenExistsReturnsTrue)
 {
-    const auto dir = MakeTempPath("dir") / "nested" / "deep";
+    const auto root = MakeTempPath("dir");
+    const auto dir = root / "nested" / "deep";
     ASSERT_TRUE(ns::core::FileSystem::CreateDirectories(dir));
     EXPECT_TRUE(ns::core::FileSystem::Exists(dir));
-    std::filesystem::remove_all(MakeTempPath("dir"));
+    std::filesystem::remove_all(root);
 }
 
 TEST(NsCoreFileSystem, WriteAndReadAllBytesRoundTrip)
