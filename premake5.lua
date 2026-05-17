@@ -219,7 +219,15 @@ project "ns_graphics"
 
     includedirs {
         "Source/third_party/DirectXTK/Inc",
-        "Source/third_party/DirectXTex/DirectXTex"
+        "Source/third_party/DirectXTex/DirectXTex",
+        "Source/third_party/spdlog/include",
+        "Source/third_party/magic_enum/include"
+    }
+
+    defines {
+        "SPDLOG_HEADER_ONLY",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_NO_EXCEPTIONS"
     }
 
     links {
