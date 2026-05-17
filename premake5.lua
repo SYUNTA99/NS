@@ -106,6 +106,31 @@ local function applyCommonBuildOptions()
 end
 
 --============================================================================
+-- DirectXTK SimpleMath サブセット (StaticLib)
+--   `Vector3::Zero` / `Matrix::Identity` 等の静的定数 TU を提供する。
+--   pch.h が Windows.h まで巻き込むため、本体に汚染を持ち込まないように
+--   隔離した独立プロジェクトとしてビルドする。
+--============================================================================
+project "directxtk_simplemath"
+    kind "StaticLib"
+    location "build/directxtk_simplemath"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/third_party/DirectXTK/Src/SimpleMath.cpp"
+    }
+
+    includedirs {
+        "Source/third_party/DirectXTK/Inc",
+        "Source/third_party/DirectXTK/Src"   -- SimpleMath.cpp 内の "pch.h" 解決用
+    }
+
+    warnings "Off"
+    buildoptions { "/utf-8", "/FS" }
+
+--============================================================================
 -- ns_core モジュール (StaticLib)
 --   Logger / Math / StringUtils / Clock / FileSystem
 --============================================================================
@@ -121,13 +146,15 @@ project "ns_core"
         "Source/ns/core/**.cpp"
     }
 
-    -- DirectXMath / SimpleMath ヘッダ参照
-    -- spdlog / magic_enum は ns::core::Logger で使用
+    -- ns::core::Math は SimpleMath の using-alias、Logger は spdlog/magic_enum を使用
     includedirs {
         "Source/third_party/DirectXTK/Inc",
         "Source/third_party/spdlog/include",
         "Source/third_party/magic_enum/include",
     }
+
+    -- SimpleMath の静的定数 TU をリンク伝播させる (Math モジュール用)
+    links { "directxtk_simplemath" }
 
     defines {
         "SPDLOG_HEADER_ONLY",             -- header-only モード
