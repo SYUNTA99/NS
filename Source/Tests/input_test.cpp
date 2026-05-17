@@ -3,6 +3,7 @@
 #include <ns/platform/detail/input_win32.h>
 #include <ns/platform/input.h>
 #include <ns/platform/keyboard.h>
+#include <ns/platform/mouse.h>
 
 #include <windows.h>
 
@@ -11,6 +12,8 @@ namespace
     using ns::platform::Input;
     using ns::platform::Key;
     using ns::platform::Keyboard;
+    using ns::platform::Mouse;
+    using ns::platform::MouseButton;
 } // namespace
 
 TEST(NsPlatformKeyboard, IsHeldAfterKeyDown)
@@ -107,4 +110,104 @@ TEST(NsPlatformInputDetail, MapVkToKeyBasicAlpha)
 
     EXPECT_EQ(ns::platform::MapVkToKey(0xFFFF), Key::Unknown);
     EXPECT_EQ(ns::platform::MapVkToKey(0x00), Key::Unknown);
+}
+
+TEST(NsPlatformMouse, IsHeldAfterButtonDown)
+{
+    Mouse m;
+    m.OnButtonDown(MouseButton::Left);
+    EXPECT_TRUE(m.IsHeld(MouseButton::Left));
+}
+
+TEST(NsPlatformMouse, PressedOnlyOneFrame)
+{
+    Mouse m;
+    m.OnButtonDown(MouseButton::Right);
+    EXPECT_TRUE(m.IsPressed(MouseButton::Right));
+    EXPECT_TRUE(m.IsHeld(MouseButton::Right));
+
+    m.Update();
+    EXPECT_FALSE(m.IsPressed(MouseButton::Right));
+    EXPECT_TRUE(m.IsHeld(MouseButton::Right));
+}
+
+TEST(NsPlatformMouse, ReleasedAfterButtonUp)
+{
+    Mouse m;
+    m.OnButtonDown(MouseButton::Middle);
+    m.Update();
+    m.OnButtonUp(MouseButton::Middle);
+
+    EXPECT_FALSE(m.IsHeld(MouseButton::Middle));
+    EXPECT_TRUE(m.IsReleased(MouseButton::Middle));
+    EXPECT_FALSE(m.IsPressed(MouseButton::Middle));
+}
+
+TEST(NsPlatformMouse, OutOfRangeButtonIsNoop)
+{
+    Mouse m;
+    const auto negativeButton = static_cast<MouseButton>(-1);
+    const auto overflowButton = static_cast<MouseButton>(static_cast<int>(MouseButton::kCount) + 10);
+
+    m.OnButtonDown(negativeButton);
+    m.OnButtonDown(overflowButton);
+
+    EXPECT_FALSE(m.IsHeld(negativeButton));
+    EXPECT_FALSE(m.IsHeld(overflowButton));
+    EXPECT_FALSE(m.IsPressed(negativeButton));
+    EXPECT_FALSE(m.IsReleased(overflowButton));
+}
+
+TEST(NsPlatformMouse, PositionAndDelta)
+{
+    Mouse m;
+    m.OnMove(10, 20);
+    EXPECT_EQ(m.X(), 10);
+    EXPECT_EQ(m.Y(), 20);
+
+    m.Update();
+    m.OnMove(15, 30);
+    EXPECT_EQ(m.X(), 15);
+    EXPECT_EQ(m.Y(), 30);
+    EXPECT_EQ(m.DeltaX(), 5);
+    EXPECT_EQ(m.DeltaY(), 10);
+}
+
+TEST(NsPlatformMouse, WheelAccumulatesAndResetsOnUpdate)
+{
+    Mouse m;
+    m.OnWheel(120);
+    m.OnWheel(120);
+    EXPECT_EQ(m.WheelDelta(), 240);
+
+    m.Update();
+    EXPECT_EQ(m.WheelDelta(), 0);
+}
+
+TEST(NsPlatformMouse, ClearStateResetsButtonsAndWheel)
+{
+    Mouse m;
+    m.OnButtonDown(MouseButton::Left);
+    m.OnButtonDown(MouseButton::Right);
+    m.OnWheel(120);
+
+    m.ClearState();
+
+    EXPECT_FALSE(m.IsHeld(MouseButton::Left));
+    EXPECT_FALSE(m.IsHeld(MouseButton::Right));
+    EXPECT_EQ(m.WheelDelta(), 0);
+}
+
+TEST(NsPlatformInput, UpdatePropagatesToMouse)
+{
+    Input input;
+    input.Mouse().OnButtonDown(MouseButton::Left);
+    input.Mouse().OnWheel(120);
+    EXPECT_TRUE(input.Mouse().IsPressed(MouseButton::Left));
+    EXPECT_EQ(input.Mouse().WheelDelta(), 120);
+
+    input.Update();
+    EXPECT_FALSE(input.Mouse().IsPressed(MouseButton::Left));
+    EXPECT_TRUE(input.Mouse().IsHeld(MouseButton::Left));
+    EXPECT_EQ(input.Mouse().WheelDelta(), 0);
 }
