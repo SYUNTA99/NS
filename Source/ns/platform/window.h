@@ -53,7 +53,9 @@ namespace ns::platform
         /// UTF-8 入力でタイトル変更。
         void SetTitle(std::string_view utf8Title);
 
-        /// PostQuitMessage 経由で次回 PollMessages 後に ShouldClose() を true にする。
+        /// 自身に WM_CLOSE を投げて閉じ要求を出す (× ボタンと同じ経路)。
+        /// SetCloseCallback が登録されていればそこに通知、未設定なら PostQuitMessage に落ちて
+        /// 次回 PollMessages 後に ShouldClose() が true になる。
         void RequestClose() noexcept;
 
         /// リサイズ通知 (WM_SIZE)。最小化中は呼ばれない。

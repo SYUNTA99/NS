@@ -193,7 +193,10 @@ namespace ns::platform
 
     void Window::RequestClose() noexcept
     {
-        ::PostQuitMessage(0);
+        if (m_pImpl->hwnd != nullptr)
+        {
+            ::PostMessageW(m_pImpl->hwnd, WM_CLOSE, 0, 0);
+        }
     }
 
     void Window::SetResizeCallback(std::function<void(int, int)> cb)

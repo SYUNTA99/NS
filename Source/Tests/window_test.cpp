@@ -19,6 +19,7 @@ TEST_F(WindowLoggerTest, ConstructsAndDestructsCleanly)
 
     {
         ns::platform::Window window(desc);
+        ASSERT_TRUE(window.IsValid());
         SUCCEED();
     }
 }
@@ -31,6 +32,7 @@ TEST_F(WindowLoggerTest, WidthHeightMatchesDesc)
     desc.height = 480;
 
     ns::platform::Window window(desc);
+    ASSERT_TRUE(window.IsValid());
     EXPECT_EQ(window.Width(), 640);
     EXPECT_EQ(window.Height(), 480);
 }
@@ -41,6 +43,7 @@ TEST_F(WindowLoggerTest, ShouldCloseIsFalseInitially)
     desc.title = "ns_test_should_close";
 
     ns::platform::Window window(desc);
+    ASSERT_TRUE(window.IsValid());
     EXPECT_FALSE(window.ShouldClose());
 }
 
@@ -50,6 +53,7 @@ TEST_F(WindowLoggerTest, RequestCloseSetsShouldClose)
     desc.title = "ns_test_request_close";
 
     ns::platform::Window window(desc);
+    ASSERT_TRUE(window.IsValid());
     window.RequestClose();
     window.PollMessages();
     EXPECT_TRUE(window.ShouldClose());
@@ -61,6 +65,7 @@ TEST_F(WindowLoggerTest, NativeHandleNotNull)
     desc.title = "ns_test_handle";
 
     ns::platform::Window window(desc);
+    ASSERT_TRUE(window.IsValid());
     EXPECT_NE(window.NativeHandle(), nullptr);
 }
 
