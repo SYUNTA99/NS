@@ -122,16 +122,17 @@ project "ns_core"
     }
 
     -- DirectXMath / SimpleMath ヘッダ参照
-    -- spdlog (header-only) は ns::core::Logger 実装で使用
+    -- spdlog / magic_enum は ns::core::Logger で使用
     includedirs {
-        "external/DirectXTK/Inc",
-        "external/spdlog/include"
+        "Source/third_party/DirectXTK/Inc",
+        "Source/third_party/spdlog/include",
+        "Source/third_party/magic_enum/include",
     }
 
     defines {
-        "SPDLOG_COMPILED_LIB=0",          -- header-only モード
-        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",   -- wide string 入力サポート
-        "SPDLOG_NO_EXCEPTIONS"            -- 例外無効（NS-ENGINE 方針）
+        "SPDLOG_HEADER_ONLY",             -- header-only モード
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_NO_EXCEPTIONS"
     }
 
     applyCommonBuildOptions()
@@ -179,8 +180,8 @@ project "ns_graphics"
     }
 
     includedirs {
-        "external/DirectXTK/Inc",
-        "external/DirectXTex/DirectXTex"
+        "Source/third_party/DirectXTK/Inc",
+        "Source/third_party/DirectXTex/DirectXTex"
     }
 
     links {
@@ -256,7 +257,7 @@ project "Game"
 group "_Tests"
 
 --============================================================================
--- Google Test ライブラリ（external/ source drop）
+-- Google Test ライブラリ（Source/third_party/ source drop）
 --============================================================================
 project "googletest"
     kind "StaticLib"
@@ -266,15 +267,15 @@ project "googletest"
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "external/googletest/googletest/src/gtest-all.cc",
-        "external/googletest/googlemock/src/gmock-all.cc"
+        "Source/third_party/googletest/googletest/src/gtest-all.cc",
+        "Source/third_party/googletest/googlemock/src/gmock-all.cc"
     }
 
     includedirs {
-        "external/googletest/googletest/include",
-        "external/googletest/googletest",
-        "external/googletest/googlemock/include",
-        "external/googletest/googlemock"
+        "Source/third_party/googletest/googletest/include",
+        "Source/third_party/googletest/googletest",
+        "Source/third_party/googletest/googlemock/include",
+        "Source/third_party/googletest/googlemock"
     }
 
     -- Google Testの警告を無視
@@ -298,14 +299,15 @@ project "Tests"
     }
 
     includedirs {
-        "external/googletest/googletest/include",
-        "external/googletest/googlemock/include",
-        "external/DirectXTK/Inc",
-        "external/spdlog/include"
+        "Source/third_party/googletest/googletest/include",
+        "Source/third_party/googletest/googlemock/include",
+        "Source/third_party/DirectXTK/Inc",
+        "Source/third_party/spdlog/include",
+        "Source/third_party/magic_enum/include",
     }
 
     defines {
-        "SPDLOG_COMPILED_LIB=0",
+        "SPDLOG_HEADER_ONLY",
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
