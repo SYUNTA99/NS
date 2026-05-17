@@ -6,12 +6,10 @@
 #include <spdlog/spdlog.h>
 
 #include <atomic>
+#include <cassert>
 #include <chrono>
 #include <cstdlib>
-
-#if defined(_WIN32)
-#include <process.h>
-#endif
+#include <filesystem>
 
 namespace ns::core
 {
@@ -43,6 +41,8 @@ namespace ns::core
             case LogLevel::Fatal:
                 return spdlog::level::critical;
             }
+            // LogLevel に値が追加された場合の silent fallthrough を防ぐ
+            assert(false && "Unknown LogLevel");
             return spdlog::level::info;
         }
 
@@ -89,6 +89,10 @@ namespace ns::core
             return;
         }
 
+        // 新環境でも初回起動でファイル sink が失敗しないように logs/ を作成しておく
+        std::error_code ec;
+        std::filesystem::create_directories("logs", ec);
+
         auto sinks = BuildSinks();
         auto logger = std::make_shared<spdlog::logger>(kLoggerName, sinks.begin(), sinks.end());
 
@@ -99,13 +103,7 @@ namespace ns::core
         spdlog::set_default_logger(logger);
         spdlog::flush_every(std::chrono::seconds(3));
 
-        logger->info("===== Session start: PID={} =====",
-#if defined(_WIN32)
-                     static_cast<long long>(::_getpid())
-#else
-                     static_cast<long long>(::getpid())
-#endif
-        );
+        logger->info("===== セッション開始 =====");
     }
 
     void Logger::Shutdown()

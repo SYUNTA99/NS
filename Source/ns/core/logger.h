@@ -30,9 +30,11 @@ namespace ns::core
         Logger() = delete;
 
         /// 全シンク（コンソール / ファイル / msvc debug）を構築する。多重呼び出しは無視。
+        /// @warning シングルスレッド前提。複数スレッドからの同時呼び出しは未定義動作。
         static void Init();
 
         /// 全シンクを flush して破棄する。
+        /// @warning シングルスレッド前提。Init() と並行・競合させないこと。
         static void Shutdown();
 
         /// マクロ内部用。直接呼ばないこと。
