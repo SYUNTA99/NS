@@ -42,6 +42,7 @@ TEST(NsPlatformKeyboard, IsReleasedAfterKeyUp)
 
     EXPECT_FALSE(kb.IsHeld(Key::Escape));
     EXPECT_TRUE(kb.IsReleased(Key::Escape));
+    EXPECT_FALSE(kb.IsPressed(Key::Escape));
 }
 
 TEST(NsPlatformKeyboard, ClearStateResetsCurrent)

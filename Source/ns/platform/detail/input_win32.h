@@ -9,8 +9,8 @@ namespace ns::platform
 
     class Input;
 
-    /// Win32 VK コード (0〜255) を Key enum に変換する。未マップは Key::Unknown。
-    /// <windows.h> 依存を避けるため引数は unsigned int で受ける (VK は WPARAM サイズ)。
+    /// Win32 VK コード (有効範囲 1〜254) を Key enum に変換する。未マップ / 範囲外は Key::Unknown。
+    /// <windows.h> 依存を避けるため引数は unsigned int で受ける (実体は WPARAM 互換)。
     [[nodiscard]] Key MapVkToKey(unsigned int vk) noexcept;
 
     /// Window WndProc から呼ばれる Win32 メッセージディスパッチ。

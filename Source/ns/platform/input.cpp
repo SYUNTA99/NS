@@ -7,21 +7,13 @@
 namespace ns::platform
 {
 
-    namespace
-    {
-        [[nodiscard]] std::size_t KeyIndex(Key k) noexcept
-        {
-            return static_cast<std::size_t>(k);
-        }
-    } // namespace
-
     bool Keyboard::IsPressed(Key k) const noexcept
     {
         if (k == Key::Unknown || k == Key::kCount)
         {
             return false;
         }
-        const std::size_t i = KeyIndex(k);
+        const auto i = static_cast<std::size_t>(k);
         return !m_previous[i] && m_current[i];
     }
 
@@ -31,7 +23,7 @@ namespace ns::platform
         {
             return false;
         }
-        return m_current[KeyIndex(k)];
+        return m_current[static_cast<std::size_t>(k)];
     }
 
     bool Keyboard::IsReleased(Key k) const noexcept
@@ -40,7 +32,7 @@ namespace ns::platform
         {
             return false;
         }
-        const std::size_t i = KeyIndex(k);
+        const auto i = static_cast<std::size_t>(k);
         return m_previous[i] && !m_current[i];
     }
 
@@ -55,7 +47,7 @@ namespace ns::platform
         {
             return;
         }
-        m_current[KeyIndex(k)] = true;
+        m_current[static_cast<std::size_t>(k)] = true;
     }
 
     void Keyboard::OnKeyUp(Key k) noexcept
@@ -64,7 +56,7 @@ namespace ns::platform
         {
             return;
         }
-        m_current[KeyIndex(k)] = false;
+        m_current[static_cast<std::size_t>(k)] = false;
     }
 
     void Keyboard::ClearState() noexcept
@@ -136,6 +128,7 @@ namespace ns::platform
                                      std::uintptr_t wparam,
                                      std::intptr_t lparam) noexcept
     {
+        // lparam: scan code / repeat flag (bit 30) / extended key —  では未使用
         (void)lparam;
         switch (msg)
         {
