@@ -8,6 +8,8 @@
 namespace ns::platform
 {
 
+    class Input;
+
     /// Window 構築パラメータ。タイトルは UTF-8 で渡す (内部で wide 変換)。
     struct WindowDesc
     {
@@ -64,6 +66,11 @@ namespace ns::platform
         /// ×ボタン等で閉じる要求 (WM_CLOSE) を受け取った時に呼ばれる。
         /// callback 内で RequestClose() を呼ばないと閉じない (拒否可能)。
         void SetCloseCallback(std::function<void()> cb);
+
+        /// 入力ターゲットを設定する。WndProc が WM_KEYDOWN / WM_KEYUP / WM_KILLFOCUS を
+        /// 受信した時にこの Input へ転送する。非所有ポインタ (Application が所有)。
+        /// nullptr 解除可。
+        void AttachInput(Input* input) noexcept;
 
     private:
         std::unique_ptr<Impl> m_pImpl;

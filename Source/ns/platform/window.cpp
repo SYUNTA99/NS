@@ -3,7 +3,9 @@
 #include <ns/core/log_categories.h>
 #include <ns/core/logger.h>
 #include <ns/core/string_utils.h>
+#include <ns/platform/detail/input_win32.h>
 #include <ns/platform/detail/win32_window.h>
+#include <ns/platform/input.h>
 
 namespace ns::platform
 {
@@ -53,6 +55,21 @@ namespace ns::platform
             {
                 ::PostQuitMessage(0);
                 return 0;
+            }
+            case WM_KEYDOWN:
+            case WM_KEYUP:
+            case WM_SYSKEYDOWN:
+            case WM_SYSKEYUP:
+            case WM_KILLFOCUS:
+            {
+                if (impl->input != nullptr)
+                {
+                    DispatchWin32MessageToInput(*impl->input,
+                                                static_cast<unsigned int>(msg),
+                                                static_cast<std::uintptr_t>(wparam),
+                                                static_cast<std::intptr_t>(lparam));
+                }
+                break;
             }
             default:
                 break;
@@ -207,6 +224,11 @@ namespace ns::platform
     void Window::SetCloseCallback(std::function<void()> cb)
     {
         m_pImpl->onClose = std::move(cb);
+    }
+
+    void Window::AttachInput(Input* input) noexcept
+    {
+        m_pImpl->input = input;
     }
 
 } // namespace ns::platform
