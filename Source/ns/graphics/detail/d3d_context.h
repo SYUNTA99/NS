@@ -24,7 +24,7 @@ namespace ns::graphics
     {
         template <typename T> using ComPtr = Microsoft::WRL::ComPtr<T>;
 
-        /// Renderer が所有する D3D11 Device を取得 ( typed friend accessor)。
+        /// Renderer が所有する D3D11 Device を取得 (typed friend accessor)。
         /// Buffer / Texture / Shader が Device を必要とするときに呼ぶ。
         [[nodiscard]] ID3D11Device* GetDevice(Renderer& renderer) noexcept;
 
@@ -35,3 +35,6 @@ namespace ns::graphics
         [[nodiscard]] IDXGISwapChain* GetSwapChain(Renderer& renderer) noexcept;
     } // namespace detail
 } // namespace ns::graphics
+
+// Buffer 系の detail::GetNative は buffer.h で宣言されている。
+// 利用側は #include "ns/graphics/buffer.h" を別途行うこと。
