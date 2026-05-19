@@ -56,7 +56,8 @@ namespace ns::graphics
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
         /// SRV を指定スロット + 対象ステージにバインド。デフォルトは Pixel ステージ。
-        void Bind(unsigned slot, ShaderStage stages = ShaderStage::Pixel) noexcept;
+        /// 内部 SRV ポインタを D3D11 コンテキストに渡すだけで Texture 状態は不変なので const。
+        void Bind(unsigned slot, ShaderStage stages = ShaderStage::Pixel) const noexcept;
 
     private:
         std::unique_ptr<Impl> m_pImpl;

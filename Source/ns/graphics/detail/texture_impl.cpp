@@ -254,7 +254,7 @@ namespace ns::graphics
         return m_pImpl && m_pImpl->fallback;
     }
 
-    void Texture::Bind(unsigned slot, ShaderStage stages) noexcept
+    void Texture::Bind(unsigned slot, ShaderStage stages) const noexcept
     {
         if (!IsValid() || !m_pImpl->context)
         {
