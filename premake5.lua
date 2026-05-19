@@ -258,6 +258,18 @@ project "ns_app"
         "Source/ns/app/**.cpp"
     }
 
+    -- ns::core::Logger を include するため spdlog / magic_enum の参照が必要
+    includedirs {
+        "Source/third_party/spdlog/include",
+        "Source/third_party/magic_enum/include",
+    }
+
+    defines {
+        "SPDLOG_HEADER_ONLY",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_NO_EXCEPTIONS"
+    }
+
     links {
         "ns_core",
         "ns_platform",
