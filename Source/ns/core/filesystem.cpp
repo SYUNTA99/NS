@@ -1,0 +1,111 @@
+#include <ns/core/filesystem.h>
+
+#include <ns/core/log_categories.h>
+#include <ns/core/logger.h>
+
+#include <array>
+#include <fstream>
+#include <sstream>
+#include <system_error>
+
+#include <windows.h>
+
+namespace ns::core
+{
+
+    bool FileSystem::Exists(const std::filesystem::path& path)
+    {
+        std::error_code ec;
+        const bool result = std::filesystem::exists(path, ec);
+        if (ec)
+        {
+            NS_LOG_ERROR(LogCat::Core, "FileSystem::Exists failed: {} ({})", path.string(), ec.message());
+            return false;
+        }
+        return result;
+    }
+
+    std::optional<std::vector<std::byte>> FileSystem::ReadAllBytes(const std::filesystem::path& path)
+    {
+        std::ifstream stream(path, std::ios::binary | std::ios::ate);
+        if (!stream)
+        {
+            NS_LOG_ERROR(LogCat::Core, "FileSystem::ReadAllBytes failed to open: {}", path.string());
+            return std::nullopt;
+        }
+
+        const auto end = stream.tellg();
+        if (end < 0)
+        {
+            NS_LOG_ERROR(LogCat::Core, "FileSystem::ReadAllBytes failed to query size: {}", path.string());
+            return std::nullopt;
+        }
+        stream.seekg(0, std::ios::beg);
+
+        try
+        {
+            std::vector<std::byte> buffer(static_cast<std::size_t>(end));
+            if (end > 0)
+            {
+                stream.read(reinterpret_cast<char*>(buffer.data()), end);
+                if (!stream)
+                {
+                    NS_LOG_ERROR(LogCat::Core, "FileSystem::ReadAllBytes read failed: {}", path.string());
+                    return std::nullopt;
+                }
+            }
+            return buffer;
+        }
+        catch (const std::bad_alloc&)
+        {
+            NS_LOG_ERROR(LogCat::Core,
+                         "FileSystem::ReadAllBytes allocation failed: {} ({} bytes)",
+                         path.string(),
+                         static_cast<std::size_t>(end));
+            return std::nullopt;
+        }
+    }
+
+    std::optional<std::string> FileSystem::ReadAllText(const std::filesystem::path& path)
+    {
+        std::ifstream stream(path);
+        if (!stream)
+        {
+            NS_LOG_ERROR(LogCat::Core, "FileSystem::ReadAllText failed to open: {}", path.string());
+            return std::nullopt;
+        }
+        std::ostringstream oss;
+        oss << stream.rdbuf();
+        if (stream.bad())
+        {
+            NS_LOG_ERROR(LogCat::Core, "FileSystem::ReadAllText read failed: {}", path.string());
+            return std::nullopt;
+        }
+        return oss.str();
+    }
+
+    bool FileSystem::CreateDirectories(const std::filesystem::path& path)
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(path, ec);
+        if (ec)
+        {
+            NS_LOG_ERROR(LogCat::Core, "FileSystem::CreateDirectories failed: {} ({})", path.string(), ec.message());
+            return false;
+        }
+        return true;
+    }
+
+    std::filesystem::path FileSystem::GetExeDirectory()
+    {
+        std::array<wchar_t, MAX_PATH> buffer{};
+        const DWORD len = ::GetModuleFileNameW(nullptr, buffer.data(), static_cast<DWORD>(buffer.size()));
+        if (len == 0 || len == buffer.size())
+        {
+            NS_LOG_ERROR(LogCat::Core, "FileSystem::GetExeDirectory failed (GetLastError={})", ::GetLastError());
+            return {};
+        }
+        return std::filesystem::path(std::wstring(buffer.data(), len)).parent_path();
+    }
+
+} // namespace ns::core

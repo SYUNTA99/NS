@@ -1,6 +1,6 @@
 --============================================================================
 -- premake5.lua
--- NS-ENGINE プロジェクト構成
+-- NS プロジェクト構成
 --============================================================================
 
 -- compile_commands.json生成モジュール
@@ -9,7 +9,7 @@ require "premake/modules/export-compile-commands/export-compile-commands"
 --============================================================================
 -- ワークスペース
 --============================================================================
-workspace "NS-ENGINE"
+workspace "NS"
     configurations { "Debug", "Development", "GameDebug", "GameRelease" }
     platforms { "x64" }
     location "build"
@@ -106,6 +106,31 @@ local function applyCommonBuildOptions()
 end
 
 --============================================================================
+-- DirectXTK SimpleMath サブセット (StaticLib)
+--   `Vector3::Zero` / `Matrix::Identity` 等の静的定数 TU を提供する。
+--   pch.h が Windows.h まで巻き込むため、本体に汚染を持ち込まないように
+--   隔離した独立プロジェクトとしてビルドする。
+--============================================================================
+project "directxtk_simplemath"
+    kind "StaticLib"
+    location "build/directxtk_simplemath"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/third_party/DirectXTK/Src/SimpleMath.cpp"
+    }
+
+    includedirs {
+        "Source/third_party/DirectXTK/Inc",
+        "Source/third_party/DirectXTK/Src"   -- SimpleMath.cpp 内の "pch.h" 解決用
+    }
+
+    warnings "Off"
+    buildoptions { "/utf-8", "/FS" }
+
+--============================================================================
 -- ns_core モジュール (StaticLib)
 --   Logger / Math / StringUtils / Clock / FileSystem
 --============================================================================
@@ -121,17 +146,20 @@ project "ns_core"
         "Source/ns/core/**.cpp"
     }
 
-    -- DirectXMath / SimpleMath ヘッダ参照
-    -- spdlog (header-only) は ns::core::Logger 実装で使用
+    -- ns::core::Math は SimpleMath の using-alias、Logger は spdlog/magic_enum を使用
     includedirs {
-        "external/DirectXTK/Inc",
-        "external/spdlog/include"
+        "Source/third_party/DirectXTK/Inc",
+        "Source/third_party/spdlog/include",
+        "Source/third_party/magic_enum/include",
     }
 
+    -- SimpleMath の静的定数 TU をリンク伝播させる (Math モジュール用)
+    links { "directxtk_simplemath" }
+
     defines {
-        "SPDLOG_COMPILED_LIB=0",          -- header-only モード
-        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",   -- wide string 入力サポート
-        "SPDLOG_NO_EXCEPTIONS"            -- 例外無効（NS-ENGINE 方針）
+        "SPDLOG_HEADER_ONLY",             -- header-only モード
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_NO_EXCEPTIONS"
     }
 
     applyCommonBuildOptions()
@@ -150,6 +178,17 @@ project "ns_platform"
     files {
         "Source/ns/platform/**.h",
         "Source/ns/platform/**.cpp"
+    }
+
+    includedirs {
+        "Source/third_party/spdlog/include",
+        "Source/third_party/magic_enum/include",
+    }
+
+    defines {
+        "SPDLOG_HEADER_ONLY",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_NO_EXCEPTIONS"
     }
 
     links { "ns_core" }
@@ -179,8 +218,16 @@ project "ns_graphics"
     }
 
     includedirs {
-        "external/DirectXTK/Inc",
-        "external/DirectXTex/DirectXTex"
+        "Source/third_party/DirectXTK/Inc",
+        "Source/third_party/DirectXTex/DirectXTex",
+        "Source/third_party/spdlog/include",
+        "Source/third_party/magic_enum/include"
+    }
+
+    defines {
+        "SPDLOG_HEADER_ONLY",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_NO_EXCEPTIONS"
     }
 
     links {
@@ -256,7 +303,7 @@ project "Game"
 group "_Tests"
 
 --============================================================================
--- Google Test ライブラリ（external/ source drop）
+-- Google Test ライブラリ（Source/third_party/ source drop）
 --============================================================================
 project "googletest"
     kind "StaticLib"
@@ -266,15 +313,15 @@ project "googletest"
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "external/googletest/googletest/src/gtest-all.cc",
-        "external/googletest/googlemock/src/gmock-all.cc"
+        "Source/third_party/googletest/googletest/src/gtest-all.cc",
+        "Source/third_party/googletest/googlemock/src/gmock-all.cc"
     }
 
     includedirs {
-        "external/googletest/googletest/include",
-        "external/googletest/googletest",
-        "external/googletest/googlemock/include",
-        "external/googletest/googlemock"
+        "Source/third_party/googletest/googletest/include",
+        "Source/third_party/googletest/googletest",
+        "Source/third_party/googletest/googlemock/include",
+        "Source/third_party/googletest/googlemock"
     }
 
     -- Google Testの警告を無視
@@ -298,14 +345,15 @@ project "Tests"
     }
 
     includedirs {
-        "external/googletest/googletest/include",
-        "external/googletest/googlemock/include",
-        "external/DirectXTK/Inc",
-        "external/spdlog/include"
+        "Source/third_party/googletest/googletest/include",
+        "Source/third_party/googletest/googlemock/include",
+        "Source/third_party/DirectXTK/Inc",
+        "Source/third_party/spdlog/include",
+        "Source/third_party/magic_enum/include",
     }
 
     defines {
-        "SPDLOG_COMPILED_LIB=0",
+        "SPDLOG_HEADER_ONLY",
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }

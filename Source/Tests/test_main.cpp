@@ -1,10 +1,5 @@
 #include <gtest/gtest.h>
 
-TEST(Placeholder, ItRuns)
-{
-    EXPECT_EQ(1 + 1, 2);
-}
-
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);

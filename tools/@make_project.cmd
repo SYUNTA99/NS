@@ -11,7 +11,7 @@
 ::   5. MSBuildでDebugビルド実行
 ::
 :: 出力:
-::   - build/NS-ENGINE.sln (Visual Studioソリューション)
+::   - build/NS.sln (Visual Studioソリューション)
 ::   - build/bin/Debug-windows-x86_64/tests/tests.exe (テスト実行ファイル)
 ::============================================================================
 call "%~dp0_common.cmd" :init
@@ -31,7 +31,7 @@ echo Debug ビルド中...
 call "%~dp0_common.cmd" :setup_msbuild
 if errorlevel 1 exit /b 1
 
-msbuild build\NS-ENGINE.sln -p:Configuration=Debug -p:Platform=x64 -m -v:minimal
+msbuild build\NS.sln -p:Configuration=Debug -p:Platform=x64 -m -v:minimal
 if errorlevel 1 (
     echo [ERROR] ビルド失敗
     exit /b 1

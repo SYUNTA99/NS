@@ -6,7 +6,7 @@
 ::
 :: Functions:
 ::   :init             - Set codepage, cd to repo root
-::   :check_project    - Check build/NS-ENGINE.sln exists
+::   :check_project    - Check build/NS.sln exists
 ::   :setup_msbuild    - Run VsDevCmd.bat for MSBuild
 ::   :find_msbuild_exe - Set MSBUILD_PATH
 ::   :generate_project - Generate VS2022 solution via Premake5
@@ -26,7 +26,7 @@ goto %~1
 :: :check_project
 ::----------------------------------------------------------------------------
 :check_project
-    if not exist "build\NS-ENGINE.sln" (
+    if not exist "build\NS.sln" (
         echo [ERROR] Project not found. Run tools\@make_project.cmd first.
         exit /b 1
     )
@@ -85,5 +85,5 @@ goto %~1
         echo [ERROR] Project generation failed.
         exit /b 1
     )
-    echo [OK] Generated build\NS-ENGINE.sln
+    echo [OK] Generated build\NS.sln
     exit /b 0

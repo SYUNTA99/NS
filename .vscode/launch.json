@@ -5,7 +5,7 @@
             "name": "Game (Debug)",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/bin/Debug/NS-ENGINE.exe",
+            "program": "${workspaceFolder}/build/bin/Debug/NS.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
