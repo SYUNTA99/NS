@@ -72,6 +72,15 @@ namespace
         {{0.5f, -0.5f, -0.5f}, {1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}},
     }};
 
+    /// Width/Height のいずれかが 0 (最小化 / 不正サイズ) のとき aspect が 0 や inf に
+    /// 落ちないよう既定の 16:9 にフォールバックする。
+    [[nodiscard]] float ComputeAspectRatio(int width, int height) noexcept
+    {
+        if (width <= 0 || height <= 0)
+            return 16.0f / 9.0f;
+        return static_cast<float>(width) / static_cast<float>(height);
+    }
+
     constexpr std::array<std::uint16_t, 36> kCubeIndices = {{
         0,  1,  2,  0,  2,  3,  // +X
         4,  5,  6,  4,  6,  7,  // -X
@@ -138,8 +147,7 @@ void CubeScene::OnStart()
     m_camera.SetTarget({0.0f, 0.0f, 0.0f});
     m_camera.SetUp({0.0f, 1.0f, 0.0f});
     m_camera.SetFovY(ns::core::Deg2Rad(60.0f));
-    m_camera.SetAspectRatio(static_cast<float>(renderer.Width()) /
-                            static_cast<float>(renderer.Height() > 0 ? renderer.Height() : 1));
+    m_camera.SetAspectRatio(ComputeAspectRatio(renderer.Width(), renderer.Height()));
     m_camera.SetNearPlane(0.1f);
     m_camera.SetFarPlane(100.0f);
 }
@@ -169,9 +177,7 @@ void CubeScene::OnRender()
         return;
 
     auto& renderer = app->Renderer();
-    const float aspect =
-        static_cast<float>(renderer.Width()) / static_cast<float>(renderer.Height() > 0 ? renderer.Height() : 1);
-    m_camera.SetAspectRatio(aspect);
+    m_camera.SetAspectRatio(ComputeAspectRatio(renderer.Width(), renderer.Height()));
 
     FrameCB cb{};
     ns::core::Matrix world;
