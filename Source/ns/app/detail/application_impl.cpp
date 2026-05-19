@@ -85,11 +85,11 @@ namespace ns::app
         m_pImpl->window->SetResizeCallback([rendererPtr](int w, int h) { rendererPtr->Resize(w, h); });
 
         auto* impl = m_pImpl.get();
-        m_pImpl->window->SetCloseCallback([impl]() {
-            impl->quitRequested = true;
-            if (impl->window)
-                impl->window->RequestClose();
-        });
+        // RequestClose は PostMessage(hwnd, WM_CLOSE) で WM_CLOSE を再投擲するため、
+        // この callback が呼ばれた直後に PollMessages の while ループが新しい WM_CLOSE
+        // を見つけ続けて永久に抜けなくなる。flag を立てるだけにし、PollMessages を
+        // キュー空で抜けさせて MainLoop の while 条件で正常終了させる。
+        m_pImpl->window->SetCloseCallback([impl]() { impl->quitRequested = true; });
 
         m_pImpl->valid = true;
     }
