@@ -8,7 +8,7 @@ namespace ns::graphics
     class Renderer;
 
     /// DirectXTK CommonStates のラッパ (//)。
-    ///  公開セット = 10 getter (Blend 2 / Depth 2 / Rasterizer 2 / Sampler 4)。
+    /// 公開セット = 10 getter (Blend 2 / Depth 2 / Rasterizer 2 / Sampler 4)。
     /// 戻り値は void* で D3D11 型を公開ヘッダに漏らさない。
     /// 利用側 (Buffer/Texture/Material) は detail/d3d_context.h 経由で
     /// reinterpret_cast<ID3D11BlendState*> 等に戻す。

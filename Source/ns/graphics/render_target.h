@@ -9,20 +9,20 @@ struct IDXGISwapChain;
 namespace ns::graphics
 {
 
-    /// RenderTarget 構築パラメータ。 は Backbuffer 専用なので外部は触らない。
-    /// 将来 offscreen RT を追加した時 (+) に公開される予定。
+    /// RenderTarget 構築パラメータ。現状は Backbuffer 専用なので外部は触らない。
+    /// 将来 offscreen RT を追加した時に公開される予定。
     struct RenderTargetDesc
     {
         int width = 0;
         int height = 0;
-        /// false なら Color のみ (UI / post-process 用、 未使用)。
+        /// false なら Color のみ (UI / post-process 用、現状未使用)。
         bool createDepth = true;
     };
 
     class Renderer;
 
     /// レンダーターゲット (Color + 任意で Depth) のラッパ。
-    ///  は Renderer が所有する Backbuffer 専用、ctor は private。
+    /// 現状は Renderer が所有する Backbuffer 専用、ctor は private。
     /// Clear / Bind / Resize は自己完結、OOP らしく自分の RTV/DSV を扱う (/)。
     class RenderTarget
     {

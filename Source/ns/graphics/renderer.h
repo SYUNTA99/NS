@@ -11,7 +11,7 @@ struct IDXGISwapChain;
 namespace ns::graphics
 {
 
-    /// Renderer 構築パラメータ。 は最小フィールドのみ。
+    /// Renderer 構築パラメータ。現状は最小フィールドのみ。
     /// MSAA / HDR / FEATURE_LEVEL 切替は将来追加予定。
     struct RendererDesc
     {

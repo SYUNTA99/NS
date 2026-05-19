@@ -280,7 +280,7 @@ project "ns_app"
 
 --============================================================================
 -- Game 実行ファイル (WindowedApp)
---   Phase1CubeScene + CreateApplication / CreateInitialScene
+--   CubeScene + CreateApplication / CreateInitialScene
 --============================================================================
 project "Game"
     kind "WindowedApp"
@@ -294,11 +294,34 @@ project "Game"
         "Source/Game/**.cpp"
     }
 
+    -- CubeScene 経由で ns/core/math.h → SimpleMath.h、Material::SetParams で
+    -- DirectXMath.h が必要になる。spdlog/magic_enum は将来 Game 側でも使う想定で同居。
+    includedirs {
+        "Source/third_party/DirectXTK/Inc",
+        "Source/third_party/spdlog/include",
+        "Source/third_party/magic_enum/include",
+    }
+
+    defines {
+        "SPDLOG_HEADER_ONLY",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_NO_EXCEPTIONS"
+    }
+
     links {
         "ns_core",
         "ns_platform",
         "ns_graphics",
         "ns_app"
+    }
+
+    -- HLSL / Texture は exe 隣の Shaders/ Assets/ にコピーし、FileSystem::GetExeDirectory()
+    -- 相対で実行時に読込む。premake トークン {COPYDIR}/{MKDIR} はクロスシェル安全。
+    postbuildcommands {
+        '{MKDIR} "%{cfg.buildtarget.directory}/Shaders"',
+        '{COPYDIR} "%{wks.location}/../Source/Shaders" "%{cfg.buildtarget.directory}/Shaders"',
+        '{MKDIR} "%{cfg.buildtarget.directory}/Assets"',
+        '{COPYDIR} "%{wks.location}/../Assets" "%{cfg.buildtarget.directory}/Assets"',
     }
 
     -- GameDebug: Game.exe のみ -O0 + symbols フル

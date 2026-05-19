@@ -61,6 +61,9 @@ nul
 # ====================================================================
 Engine/
 assets/
+# ルートの Assets/ (cube テクスチャ等のゲームアセット) は追跡する。
+# Windows 上では case-insensitive で大文字フォルダも `assets/` にマッチしてしまうので個別に否定する。
+!/Assets/
 packages/
 openspec/
 docs/
