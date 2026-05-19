@@ -3,6 +3,19 @@
 #include <ns/core/logger.h>
 #include <ns/platform/window.h>
 
+namespace
+{
+    ns::platform::WindowDesc MakeDesc(const char* title, int width = 320, int height = 240)
+    {
+        ns::platform::WindowDesc d{};
+        d.title = title;
+        d.width = width;
+        d.height = height;
+        d.visible = false;
+        return d;
+    }
+} // namespace
+
 class WindowLoggerTest : public ::testing::Test
 {
 protected:
@@ -12,13 +25,8 @@ protected:
 
 TEST_F(WindowLoggerTest, ConstructsAndDestructsCleanly)
 {
-    ns::platform::WindowDesc desc{};
-    desc.title = "ns_test_construct";
-    desc.width = 320;
-    desc.height = 240;
-
     {
-        ns::platform::Window window(desc);
+        ns::platform::Window window(MakeDesc("ns_test_construct"));
         ASSERT_TRUE(window.IsValid());
         SUCCEED();
     }
@@ -26,12 +34,7 @@ TEST_F(WindowLoggerTest, ConstructsAndDestructsCleanly)
 
 TEST_F(WindowLoggerTest, WidthHeightMatchesDesc)
 {
-    ns::platform::WindowDesc desc{};
-    desc.title = "ns_test_size";
-    desc.width = 640;
-    desc.height = 480;
-
-    ns::platform::Window window(desc);
+    ns::platform::Window window(MakeDesc("ns_test_size", 640, 480));
     ASSERT_TRUE(window.IsValid());
     EXPECT_EQ(window.Width(), 640);
     EXPECT_EQ(window.Height(), 480);
@@ -39,20 +42,14 @@ TEST_F(WindowLoggerTest, WidthHeightMatchesDesc)
 
 TEST_F(WindowLoggerTest, ShouldCloseIsFalseInitially)
 {
-    ns::platform::WindowDesc desc{};
-    desc.title = "ns_test_should_close";
-
-    ns::platform::Window window(desc);
+    ns::platform::Window window(MakeDesc("ns_test_should_close"));
     ASSERT_TRUE(window.IsValid());
     EXPECT_FALSE(window.ShouldClose());
 }
 
 TEST_F(WindowLoggerTest, RequestCloseSetsShouldClose)
 {
-    ns::platform::WindowDesc desc{};
-    desc.title = "ns_test_request_close";
-
-    ns::platform::Window window(desc);
+    ns::platform::Window window(MakeDesc("ns_test_request_close"));
     ASSERT_TRUE(window.IsValid());
     window.RequestClose();
     window.PollMessages();
@@ -61,19 +58,13 @@ TEST_F(WindowLoggerTest, RequestCloseSetsShouldClose)
 
 TEST_F(WindowLoggerTest, NativeHandleNotNull)
 {
-    ns::platform::WindowDesc desc{};
-    desc.title = "ns_test_handle";
-
-    ns::platform::Window window(desc);
+    ns::platform::Window window(MakeDesc("ns_test_handle"));
     ASSERT_TRUE(window.IsValid());
     EXPECT_NE(window.NativeHandle(), nullptr);
 }
 
 TEST_F(WindowLoggerTest, IsValidAfterSuccessfulConstruction)
 {
-    ns::platform::WindowDesc desc{};
-    desc.title = "ns_test_is_valid";
-
-    ns::platform::Window window(desc);
+    ns::platform::Window window(MakeDesc("ns_test_is_valid"));
     EXPECT_TRUE(window.IsValid());
 }

@@ -24,6 +24,7 @@ TEST_F(CommonStatesLoggerTest, AllGettersAreNonNull)
 {
     WindowDesc wd{};
     wd.title = "ns_common_states";
+    wd.visible = false;
     Window window(wd);
     ASSERT_TRUE(window.IsValid());
 
@@ -49,6 +50,7 @@ TEST_F(CommonStatesLoggerTest, RepeatedGettersReturnSameInstance)
 {
     WindowDesc wd{};
     wd.title = "ns_common_states_cache";
+    wd.visible = false;
     Window window(wd);
     ASSERT_TRUE(window.IsValid());
 

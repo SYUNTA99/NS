@@ -63,6 +63,13 @@ namespace ns::platform
 
             switch (msg)
             {
+            case WM_ERASEBKGND:
+            {
+                // D3D が毎フレーム全クライアント領域を Present するため GDI 背景消去は不要。
+                // DefWindowProc に流すと WNDCLASSEX::hbrBackground が走り、初回 Present 前の
+                // 一瞬で白フラッシュが見える事象が発生する。明示的に処理済を返して抑止する。
+                return 1;
+            }
             case WM_SIZE:
             {
                 if (wparam == SIZE_MINIMIZED)
@@ -122,7 +129,9 @@ namespace ns::platform
         wc.lpfnWndProc = WndProc;
         wc.hInstance = m_pImpl->hInstance;
         wc.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
-        wc.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+        // hbrBackground=nullptr + WM_ERASEBKGND を握り潰して、D3D の初回 Present 前に
+        // GDI 背景が走るのを完全に塞ぐ。両方揃って初めて白フラッシュが消える。
+        wc.hbrBackground = nullptr;
         wc.lpszClassName = m_pImpl->className.c_str();
 
         m_pImpl->classAtom = ::RegisterClassExW(&wc);
@@ -162,7 +171,7 @@ namespace ns::platform
             return;
         }
 
-        ::ShowWindow(m_pImpl->hwnd, SW_SHOW);
+        ::ShowWindow(m_pImpl->hwnd, desc.visible ? SW_SHOW : SW_HIDE);
         ::UpdateWindow(m_pImpl->hwnd);
     }
 

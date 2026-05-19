@@ -26,6 +26,7 @@ TEST_F(RenderTargetLoggerTest, MainRTHasDepth)
     wd.title = "ns_rt_depth";
     wd.width = 256;
     wd.height = 256;
+    wd.visible = false;
     Window window(wd);
     ASSERT_TRUE(window.IsValid());
 
@@ -42,6 +43,7 @@ TEST_F(RenderTargetLoggerTest, ClearIsSafe)
 {
     WindowDesc wd{};
     wd.title = "ns_rt_clear";
+    wd.visible = false;
     Window window(wd);
     ASSERT_TRUE(window.IsValid());
 
@@ -60,6 +62,7 @@ TEST_F(RenderTargetLoggerTest, BindIsSafe)
 {
     WindowDesc wd{};
     wd.title = "ns_rt_bind";
+    wd.visible = false;
     Window window(wd);
     ASSERT_TRUE(window.IsValid());
 
@@ -79,6 +82,7 @@ TEST_F(RenderTargetLoggerTest, ResizeUpdatesSize)
     wd.title = "ns_rt_resize";
     wd.width = 320;
     wd.height = 240;
+    wd.visible = false;
     Window window(wd);
     ASSERT_TRUE(window.IsValid());
 

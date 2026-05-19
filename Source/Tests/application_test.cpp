@@ -22,6 +22,7 @@ namespace
         d.window.title = title;
         d.window.width = width;
         d.window.height = height;
+        d.window.visible = false;
 #ifdef NS_BUILD_DEBUG
         d.renderer.enableDebugLayer = true;
 #else

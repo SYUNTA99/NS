@@ -29,6 +29,7 @@ namespace
         d.title = title;
         d.width = 320;
         d.height = 240;
+        d.visible = false;
         return d;
     }
 

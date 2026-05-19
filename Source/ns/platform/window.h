@@ -16,6 +16,8 @@ namespace ns::platform
         std::string title = "NS";
         int width = 1280;
         int height = 720;
+        /// false で構築時に非表示 (SW_HIDE) 起動。Render テスト用に Window を見せないとき使う。
+        bool visible = true;
     };
 
     /// Win32 ウィンドウのラッパ。
