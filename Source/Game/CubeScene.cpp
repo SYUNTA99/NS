@@ -81,11 +81,13 @@ namespace
         return static_cast<float>(width) / static_cast<float>(height);
     }
 
+    // DX11 デフォルト rasterizer は CullBack + FrontCounterClockwise=FALSE で、外側から見て
+    // CW を front とする。各面で cross product が外向き normal を指す並びにそろえる。
     constexpr std::array<std::uint16_t, 36> kCubeIndices = {{
-        0,  1,  2,  0,  2,  3,  // +X
-        4,  5,  6,  4,  6,  7,  // -X
-        8,  9,  10, 8,  10, 11, // +Y
-        12, 13, 14, 12, 14, 15, // -Y
+        0,  2,  1,  0,  3,  2,  // +X
+        4,  6,  5,  4,  7,  6,  // -X
+        8,  10, 9,  8,  11, 10, // +Y
+        12, 14, 13, 12, 15, 14, // -Y
         16, 17, 18, 16, 18, 19, // +Z
         20, 21, 22, 20, 22, 23, // -Z
     }};
@@ -143,7 +145,7 @@ void CubeScene::OnStart()
     m_material = std::make_unique<ns::graphics::Material>(renderer, matDesc);
     m_material->SetTexture(0, m_texture.get());
 
-    m_camera.SetPosition({0.0f, 1.5f, -3.5f});
+    m_camera.SetPosition({2.5f, 2.0f, -4.0f});
     m_camera.SetTarget({0.0f, 0.0f, 0.0f});
     m_camera.SetUp({0.0f, 1.0f, 0.0f});
     m_camera.SetFovY(ns::core::Deg2Rad(60.0f));

@@ -85,11 +85,9 @@ namespace ns::app
         m_pImpl->window->SetResizeCallback([rendererPtr](int w, int h) { rendererPtr->Resize(w, h); });
 
         auto* impl = m_pImpl.get();
-        m_pImpl->window->SetCloseCallback([impl]() {
-            impl->quitRequested = true;
-            if (impl->window)
-                impl->window->RequestClose();
-        });
+        // callback 内で RequestClose を呼ぶと PostMessage が WM_CLOSE を再投擲し、
+        // PollMessages が永久に抜けなくなる。
+        m_pImpl->window->SetCloseCallback([impl]() { impl->quitRequested = true; });
 
         m_pImpl->valid = true;
     }
@@ -218,8 +216,6 @@ namespace ns::app
         if (s_instance == nullptr || !s_instance->m_pImpl)
             return;
         s_instance->m_pImpl->quitRequested = true;
-        if (s_instance->m_pImpl->window)
-            s_instance->m_pImpl->window->RequestClose();
     }
 
     float Application::DeltaTime() noexcept
