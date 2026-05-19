@@ -96,8 +96,12 @@ namespace ns::app
 
     Application::~Application()
     {
-        if (m_pImpl && m_pImpl->window)
-            m_pImpl->window->AttachInput(nullptr);
+        // Run() が呼ばれず Shutdown() を経由しないケース (構築失敗 / IsValid チェック
+        // のみのテスト等) でも、Window 破壊前に callback を nullptr 化し
+        // Renderer / Input を先に破棄して dangling キャプチャを防ぐ。
+        // Shutdown() は冪等のため Run() 経由ケースでは no-op になる。
+        if (m_pImpl)
+            Shutdown();
         if (s_instance == this)
             s_instance = nullptr;
     }
