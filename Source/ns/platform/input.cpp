@@ -399,7 +399,7 @@ namespace ns::platform
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:
         {
-            // lparam: scan code / repeat flag (bit 30) / extended key —  では未使用
+            // lparam: scan code / repeat flag (bit 30) / extended key — 現状未使用
             const Key k = MapVkToKey(static_cast<unsigned int>(wparam));
             input.Keyboard().OnKeyDown(k);
             break;

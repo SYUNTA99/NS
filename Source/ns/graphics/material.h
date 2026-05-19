@@ -29,7 +29,7 @@ namespace ns::graphics
 
     /// Generic 単一クラス Material。
     /// ShaderProgram* (非所有) + Texture スロット (unsigned 番号) + 内蔵 ConstantBuffer。
-    /// Sampler は s0 LinearWrap 固定 ( /  補足)、複数 sampler は + で拡張。
+    /// Sampler は s0 LinearWrap 固定 ( /  補足)、複数 sampler は将来拡張。
     /// 依存: Renderer の DeviceContext を内部で保持するため、Renderer より先に破棄すること。
     class Material
     {

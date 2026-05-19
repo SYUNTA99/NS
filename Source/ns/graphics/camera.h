@@ -7,7 +7,7 @@ namespace ns::graphics
 
     /// View + Projection 行列を提供する Plain Class。
     /// GPU リソース所有なし、Renderer/Scene 依存なし。
-    ///  で CameraComponent から内包される予定。
+    /// CameraComponent から将来内包される予定。
     /// 座標系は LH 一本 (/)、Up = (0,1,0) 既定、Perspective のみ。
     /// setter で内部の dirty フラグが立ち、Getter で初めて行列再計算するレイジー方式。
     class Camera

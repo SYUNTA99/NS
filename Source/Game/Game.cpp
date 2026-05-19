@@ -1,10 +1,9 @@
+#include "Game/CubeScene.h"
+
 #include "ns/app/application.h"
 #include "ns/app/scene.h"
 
 #include <memory>
-
-//  で Phase1CubeScene + 本実装 Application desc に置換予定。
-// 現状は ns::app の WinMain がリンクできるよう最小 stub を提供する。
 
 namespace ns::app
 {
@@ -25,7 +24,7 @@ namespace ns::app
 
     std::unique_ptr<Scene> CreateInitialScene()
     {
-        return std::make_unique<Scene>();
+        return std::make_unique<CubeScene>();
     }
 
 } // namespace ns::app

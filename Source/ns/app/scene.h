@@ -7,7 +7,7 @@ namespace ns::app
     /// Application が unique_ptr で所有し、Run() 開始時に OnStart、フレーム毎に
     /// OnUpdate(dt) と OnRender を呼び出し、終了時に OnShutdown を呼ぶ。
     /// 派生クラス側で必要なものだけ override する想定 (defaulted noop)。
-    ///  で SceneManager (push/pop/replace) 拡張予定。
+    /// SceneManager (push/pop/replace) は将来拡張予定。
     class Scene
     {
     public:

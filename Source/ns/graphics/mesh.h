@@ -25,8 +25,8 @@ namespace ns::graphics
     } // namespace detail
 
     /// 固定頂点フォーマット (32 byte 固定)。
-    ///  (cube) と  (glTF static) の共通形式。
-    /// ボーン重み付きの SkinnedMeshVertex は + で別型として追加される。
+    /// cube と glTF static の共通形式。
+    /// ボーン重み付きの SkinnedMeshVertex は将来別型として追加される。
     struct MeshVertex
     {
         ns::core::Vector3 position;
@@ -38,7 +38,7 @@ namespace ns::graphics
                   "MeshVertex は offsetof 使用のため標準レイアウト必須 (StandardInputLayout)");
 
     /// Mesh 構築パラメータ。Static Buffer 前提で initialData は ctor 内でコピーされる。
-    /// Index は uint16_t 固定。65535 vertex 超は  で UInt32 検討。
+    /// Index は uint16_t 固定。65535 vertex 超は将来 UInt32 検討。
     struct MeshDesc
     {
         const MeshVertex* vertices = nullptr;
@@ -48,7 +48,7 @@ namespace ns::graphics
     };
 
     /// VB + IB + indexCount を単一バンドルにまとめた最小 Mesh。
-    /// Submesh / 複数 Material 切替は  (glTF) で拡張、 では cube が単一マテリアル相当。
+    /// Submesh / 複数 Material 切替は glTF 対応時に拡張、cube は単一マテリアル相当。
     /// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること。
     class Mesh
     {
