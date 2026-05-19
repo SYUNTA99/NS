@@ -218,8 +218,6 @@ namespace ns::app
         if (s_instance == nullptr || !s_instance->m_pImpl)
             return;
         s_instance->m_pImpl->quitRequested = true;
-        if (s_instance->m_pImpl->window)
-            s_instance->m_pImpl->window->RequestClose();
     }
 
     float Application::DeltaTime() noexcept
