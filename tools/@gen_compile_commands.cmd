@@ -30,14 +30,13 @@ if %PREMAKE_RESULT% neq 0 (
     exit /b 1
 )
 
-:: Debug構成のJSONをプロジェクトルートにコピーし、パスを置換
-if exist "%JUNCTION_PATH%\build\compile_commands\debug_x64.json" (
-    :: パスをジャンクションから実際のパスに置換
-    powershell -Command "(Get-Content '%JUNCTION_PATH%\build\compile_commands\debug_x64.json' -Raw) -replace [regex]::Escape('%JUNCTION_PATH%'.Replace('\','/')),'%CD:\=/%' | Set-Content 'compile_commands.json' -NoNewline"
+:: 生成された compile_commands.json をプロジェクトルートにコピーし、ジャンクションパスを実パスに置換
+if exist "%JUNCTION_PATH%\build\premake\compile_commands.json" (
+    powershell -Command "(Get-Content '%JUNCTION_PATH%\build\premake\compile_commands.json' -Raw) -replace [regex]::Escape('%JUNCTION_PATH%'.Replace('\','/')),'%CD:\=/%' | Set-Content 'compile_commands.json' -NoNewline"
     echo [OK] compile_commands.json を生成しました
 ) else (
     rmdir "%JUNCTION_PATH%"
-    echo [ERROR] build\compile_commands\debug_x64.json が見つかりません
+    echo [ERROR] build\premake\compile_commands.json が見つかりません
     exit /b 1
 )
 
