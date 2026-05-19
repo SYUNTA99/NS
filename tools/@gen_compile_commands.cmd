@@ -31,13 +31,18 @@ if %PREMAKE_RESULT% neq 0 (
 )
 
 :: 生成された compile_commands.json をプロジェクトルートにコピーし、ジャンクションパスを実パスに置換
-if exist "%JUNCTION_PATH%\build\premake\compile_commands.json" (
-    powershell -Command "(Get-Content '%JUNCTION_PATH%\build\premake\compile_commands.json' -Raw) -replace [regex]::Escape('%JUNCTION_PATH%'.Replace('\','/')),'%CD:\=/%' | Set-Content 'compile_commands.json' -NoNewline"
-    echo [OK] compile_commands.json を生成しました
-) else (
+if not exist "%JUNCTION_PATH%\build\premake\compile_commands.json" (
     rmdir "%JUNCTION_PATH%"
     echo [ERROR] build\premake\compile_commands.json が見つかりません
     exit /b 1
 )
+
+powershell -Command "(Get-Content '%JUNCTION_PATH%\build\premake\compile_commands.json' -Raw) -replace [regex]::Escape('%JUNCTION_PATH%'.Replace('\','/')),'%CD:\=/%' | Set-Content 'compile_commands.json' -NoNewline"
+if %errorlevel% neq 0 (
+    rmdir "%JUNCTION_PATH%"
+    echo [ERROR] compile_commands.json の書き出しに失敗しました
+    exit /b 1
+)
+echo [OK] compile_commands.json を生成しました
 
 rmdir "%JUNCTION_PATH%"
