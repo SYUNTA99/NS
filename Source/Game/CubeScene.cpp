@@ -83,8 +83,6 @@ namespace
 
     // DX11 デフォルト rasterizer は CullBack + FrontCounterClockwise=FALSE で、外側から見て
     // CW を front とする。各面で cross product が外向き normal を指す並びにそろえる。
-    // 頂点宣言上、X/Y 軸面は外から見て CCW (cross 内向き) だったため 2 番目と 3 番目を
-    // 入れ替えて反転、Z 軸面は元から CW (cross 外向き) なのでそのまま残す。
     constexpr std::array<std::uint16_t, 36> kCubeIndices = {{
         0,  2,  1,  0,  3,  2,  // +X
         4,  6,  5,  4,  7,  6,  // -X
