@@ -19,10 +19,14 @@
 
 #include <vector>
 
+namespace ns::app
+{
+    class Scene;
+}
+
 namespace ns::scene
 {
     class Component;
-    class Scene;
 
     /// 全 GameObject 派生の基底。
     class GameObject
@@ -54,9 +58,9 @@ namespace ns::scene
         [[nodiscard]] const std::vector<Component*>& Components() const noexcept { return m_components; }
 
         /// 所有 Scene。Scene attach 前 / 破棄後は nullptr。
-        [[nodiscard]] Scene* OwningScene() const noexcept { return m_scene; }
+        [[nodiscard]] ns::app::Scene* OwningScene() const noexcept { return m_scene; }
         /// Scene 側が attach 時に呼ぶ。GameObject 派生から手動で呼ばない。
-        void AttachScene(Scene* scene) noexcept { m_scene = scene; }
+        void AttachScene(ns::app::Scene* scene) noexcept { m_scene = scene; }
 
         /// 配下 Component の OnStart を伝播。派生クラスは override で固有処理を足す前後に
         /// `GameObject::OnStart()` を呼ぶこと。
@@ -75,7 +79,7 @@ namespace ns::scene
         std::vector<Component*> m_components;
         std::vector<GameObject*> m_children;
         GameObject* m_parent = nullptr;
-        Scene* m_scene = nullptr;
+        ns::app::Scene* m_scene = nullptr;
         bool m_alive = true;
 
         void DetachFromParent() noexcept;

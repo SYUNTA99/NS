@@ -1,5 +1,6 @@
 #include "ns/scene/components/mesh_component.h"
 
+#include "ns/app/scene.h"
 #include "ns/graphics/material.h"
 #include "ns/graphics/mesh.h"
 #include "ns/scene/game_object.h"
@@ -11,6 +12,28 @@ namespace ns::scene
     MeshComponent::MeshComponent(ns::graphics::Mesh* mesh, ns::graphics::Material* material) noexcept
         : m_mesh(mesh), m_material(material)
     {}
+
+    void MeshComponent::OnStart()
+    {
+        GameObject* owner = Owner();
+        if (owner == nullptr)
+            return;
+        ns::app::Scene* scene = owner->OwningScene();
+        if (scene == nullptr)
+            return;
+        scene->RegisterRenderable(this);
+    }
+
+    void MeshComponent::OnEndPlay()
+    {
+        GameObject* owner = Owner();
+        if (owner == nullptr)
+            return;
+        ns::app::Scene* scene = owner->OwningScene();
+        if (scene == nullptr)
+            return;
+        scene->UnregisterRenderable(this);
+    }
 
     void MeshComponent::Draw(const RenderContext& context)
     {

@@ -1,5 +1,10 @@
 #pragma once
 
+namespace ns::scene
+{
+    class IRenderable;
+}
+
 namespace ns::app
 {
 
@@ -31,6 +36,13 @@ namespace ns::app
 
         /// MainLoop 終了後に 1 回呼ばれる。Window/Renderer はまだ有効、Shutdown 後に解放。
         virtual void OnShutdown() {}
+
+        /// IRenderable Component の自己登録。MeshComponent 等が OnStart で呼ぶ。
+        /// 基底 default は no-op。MainScene などが override で RenderRegistry に追加する。
+        virtual void RegisterRenderable(ns::scene::IRenderable* renderable) { (void)renderable; }
+        /// IRenderable Component の自己解除。MeshComponent 等が OnEndPlay で呼ぶ。
+        /// 基底 default は no-op。MainScene などが override で RenderRegistry から削除する。
+        virtual void UnregisterRenderable(ns::scene::IRenderable* renderable) { (void)renderable; }
     };
 
 } // namespace ns::app
