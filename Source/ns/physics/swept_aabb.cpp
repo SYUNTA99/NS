@@ -120,8 +120,23 @@ namespace ns::physics
     {
         // Capsule の中心軸線分の 2 endpoint をそれぞれ sphere swept する近似実装。
         // Mario 系プラットフォーマー用途では Cylinder 部分の側面接触精度は要求されない。
-        const ns::core::Vector3 top = capsule.center + capsule.axis * capsule.halfHeight;
-        const ns::core::Vector3 bottom = capsule.center - capsule.axis * capsule.halfHeight;
+        // 公開 Capsule 型は axis 単位長を強制しないため、ここで正規化する (非単位入力で TOI が歪む防止)。
+        ns::core::Vector3 axis = capsule.axis;
+        const float axisLenSq = axis.x * axis.x + axis.y * axis.y + axis.z * axis.z;
+        if (axisLenSq > 1e-12f)
+        {
+            const float invLen = 1.0f / std::sqrt(axisLenSq);
+            axis.x *= invLen;
+            axis.y *= invLen;
+            axis.z *= invLen;
+        }
+        else
+        {
+            axis = ns::core::Vector3{0.0f, 1.0f, 0.0f};
+        }
+
+        const ns::core::Vector3 top = capsule.center + axis * capsule.halfHeight;
+        const ns::core::Vector3 bottom = capsule.center - axis * capsule.halfHeight;
 
         float toiTop = 1.0f;
         float toiBottom = 1.0f;

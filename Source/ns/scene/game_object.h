@@ -29,7 +29,7 @@ namespace ns::scene
     {
     public:
         GameObject() noexcept = default;
-        virtual ~GameObject() noexcept = default;
+        virtual ~GameObject() noexcept;
 
         GameObject(const GameObject&) = delete;
         GameObject& operator=(const GameObject&) = delete;

@@ -50,7 +50,7 @@ namespace ns::scene
 
         /// Local 行列 (Scale * Rotate * Translate)。
         [[nodiscard]] ns::core::Matrix LocalMatrix() const noexcept;
-        /// World 行列 (parent.World * Local)。親が無ければ Local と同値。
+        /// World 行列 (Local * parent.World、row-major LH)。親が無ければ Local と同値。
         [[nodiscard]] ns::core::Matrix WorldMatrix() const noexcept;
         /// Alpha 補間付き Local 行列。alpha=1 で現在 PRS、alpha=0 で previous PRS。
         [[nodiscard]] ns::core::Matrix InterpolatedLocalMatrix(float alpha) const noexcept;

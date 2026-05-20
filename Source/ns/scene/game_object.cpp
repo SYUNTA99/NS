@@ -7,17 +7,35 @@
 namespace ns::scene
 {
 
+    GameObject::~GameObject() noexcept
+    {
+        DetachFromParent();
+        for (GameObject* child : m_children)
+        {
+            if (child == nullptr)
+                continue;
+            child->m_parent = nullptr;
+            child->m_root.SetParent(nullptr);
+        }
+    }
+
     void GameObject::SetParent(GameObject* parent) noexcept
     {
-        if (parent == m_parent)
+        if (parent == this || parent == m_parent)
             return;
+
+        // 循環防止: parent の祖先に this がいたら拒否
+        for (GameObject* p = parent; p != nullptr; p = p->m_parent)
+        {
+            if (p == this)
+                return;
+        }
 
         DetachFromParent();
         m_parent = parent;
         if (m_parent != nullptr)
             m_parent->m_children.push_back(this);
 
-        // Transform 階層も同期。null で root 化。
         m_root.SetParent(parent != nullptr ? &parent->m_root : nullptr);
     }
 
@@ -40,9 +58,10 @@ namespace ns::scene
 
     void GameObject::OnStart()
     {
+        // 後で SetActive(true) されても初期化済になるよう、IsActive に依らず全件呼出。
         for (Component* comp : m_components)
         {
-            if (comp != nullptr && comp->IsActive())
+            if (comp != nullptr)
                 comp->OnStart();
         }
     }

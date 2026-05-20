@@ -25,7 +25,8 @@ namespace ns::physics
         result.grounded = false;
         result.contactNormal = ns::core::Vector3{0.0f, 0.0f, 0.0f};
 
-        if (input.dt <= 0.0f)
+        if (!std::isfinite(input.dt) || input.dt <= 0.0f || !std::isfinite(input.capsuleRadius) ||
+            input.capsuleRadius < 0.0f || !std::isfinite(input.capsuleHalfHeight) || input.capsuleHalfHeight < 0.0f)
             return result;
 
         const float subDt = input.dt / static_cast<float>(kMaxSubSteps);
@@ -78,6 +79,11 @@ namespace ns::physics
                 // 上向き法線 (床、slope ≤ 45°) なら grounded、下方向 velocity をクリップ済
                 if (hitNormal.y > 0.7071f)
                     result.grounded = true;
+
+                // 残時間を slide 後の velocity で消費 (壁で完全停止しない / slope で減速しない)
+                const float remaining = std::max(0.0f, 1.0f - safeToi);
+                if (remaining > 0.0f)
+                    result.position = result.position + (result.velocity * subDt) * remaining;
             }
             else
             {
