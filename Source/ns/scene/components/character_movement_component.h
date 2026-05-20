@@ -13,6 +13,7 @@
 #include "ns/scene/component.h"
 
 #include <span>
+#include <vector>
 
 namespace ns::scene
 {
@@ -27,14 +28,16 @@ namespace ns::scene
         void SetJumpPressed() noexcept;
         void SetJumpHeld(bool held) noexcept;
 
-        void SetCollisionWorld(std::span<const ns::core::AABB> world) noexcept;
+        /// span を受け取って内部で owning std::vector にコピーする。呼出側 vector の lifetime に
+        /// 依存させない (元 vector の reallocation / 破棄で dangling になる事故を防ぐ)。
+        void SetCollisionWorld(std::span<const ns::core::AABB> world);
 
         [[nodiscard]] ns::core::Vector3 Velocity() const noexcept { return m_velocity; }
         [[nodiscard]] bool IsGrounded() const noexcept { return m_isGrounded; }
         [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; }
 
-        void SetCapsuleRadius(float r) noexcept { m_capsuleRadius = r; }
-        void SetCapsuleHalfHeight(float h) noexcept { m_capsuleHalfHeight = h; }
+        void SetCapsuleRadius(float r) noexcept { m_capsuleRadius = (r < 0.001f) ? 0.001f : r; }
+        void SetCapsuleHalfHeight(float h) noexcept { m_capsuleHalfHeight = (h < 0.001f) ? 0.001f : h; }
         [[nodiscard]] float CapsuleRadius() const noexcept { return m_capsuleRadius; }
         [[nodiscard]] float CapsuleHalfHeight() const noexcept { return m_capsuleHalfHeight; }
 
@@ -77,7 +80,7 @@ namespace ns::scene
 
         bool m_debugDraw = true;
 
-        std::span<const ns::core::AABB> m_collisionWorld;
+        std::vector<ns::core::AABB> m_collisionWorld;
         ns::physics::CharacterController m_controller;
     };
 } // namespace ns::scene

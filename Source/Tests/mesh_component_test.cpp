@@ -41,11 +41,11 @@ TEST(MeshComponentTest, DrawIsNoOpWhenMeshOrMaterialIsNull)
     SUCCEED();
 }
 
-TEST(MeshComponentTest, SetLightDirectionAndBaseColorPersist)
+TEST(MeshComponentTest, SetLightDirectionAndBaseColorDoNotCrash)
 {
     MeshComponent mc(nullptr, nullptr);
     mc.SetLightDirection({1.0f, 0.0f, 0.0f});
     mc.SetBaseColor({0.5f, 0.5f, 0.5f});
-    // getter は提供していないため、ここでは set 呼出が crash しないことのみ確認
-    SUCCEED();
+    // getter は提供していない。setter 呼出が crash せず IsActive を破壊しないことのみ verify。
+    EXPECT_TRUE(mc.IsActive());
 }

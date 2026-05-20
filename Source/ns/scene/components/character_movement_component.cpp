@@ -51,9 +51,9 @@ namespace ns::scene
         m_jumpHeld = held;
     }
 
-    void CharacterMovementComponent::SetCollisionWorld(std::span<const ns::core::AABB> world) noexcept
+    void CharacterMovementComponent::SetCollisionWorld(std::span<const ns::core::AABB> world)
     {
-        m_collisionWorld = world;
+        m_collisionWorld.assign(world.begin(), world.end());
     }
 
     void CharacterMovementComponent::OnUpdate(float dt)
@@ -115,7 +115,7 @@ namespace ns::scene
         in.dt = dt;
         in.capsuleRadius = m_capsuleRadius;
         in.capsuleHalfHeight = m_capsuleHalfHeight;
-        in.world = m_collisionWorld;
+        in.world = std::span<const ns::core::AABB>(m_collisionWorld);
         const ns::physics::CharacterControllerResult out = m_controller.Update(in);
 
         RootTransform().SetPosition(out.position);

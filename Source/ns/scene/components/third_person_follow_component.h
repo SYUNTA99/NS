@@ -50,8 +50,11 @@ namespace ns::scene
         [[nodiscard]] bool IsInvertY() const noexcept { return m_invertY; }
 
         /// 距離の手動オーバーライド (test / cinematic 用)。default は dynamic zoom。
+        /// 一度呼出すと dynamic zoom を無効化し、`ClearManualDistance()` で再有効化する。
         void SetDistance(float distance) noexcept;
+        void ClearManualDistance() noexcept;
         [[nodiscard]] float Distance() const noexcept { return m_distance; }
+        [[nodiscard]] bool IsManualDistance() const noexcept { return m_manualDistance; }
 
         [[nodiscard]] float Yaw() const noexcept { return m_yaw; }
         [[nodiscard]] float Pitch() const noexcept { return m_pitch; }
@@ -70,6 +73,7 @@ namespace ns::scene
         float m_distance = 6.0f;
         float m_desiredDistance = 6.0f;
         float m_springOmega = 6.0f;
+        bool m_manualDistance = false;
 
         float m_headHeight = 1.2f;
 

@@ -75,6 +75,12 @@ namespace ns::scene
     {
         m_distance = distance;
         m_desiredDistance = distance;
+        m_manualDistance = true;
+    }
+
+    void ThirdPersonFollowComponent::ClearManualDistance() noexcept
+    {
+        m_manualDistance = false;
     }
 
     void ThirdPersonFollowComponent::OnUpdate(float dt)
@@ -98,21 +104,24 @@ namespace ns::scene
 
         m_pitch = ns::core::Clamp(m_pitch, m_pitchMin, m_pitchMax);
 
-        float desired = kIdleDistance;
-        if (m_movement != nullptr)
+        if (!m_manualDistance)
         {
-            if (!m_movement->IsGrounded())
+            float desired = kIdleDistance;
+            if (m_movement != nullptr)
             {
-                desired = kJumpDistance;
+                if (!m_movement->IsGrounded())
+                {
+                    desired = kJumpDistance;
+                }
+                else
+                {
+                    const auto v = m_movement->Velocity();
+                    const float horiz = std::sqrt(v.x * v.x + v.z * v.z);
+                    desired = (horiz > kRunSpeedThreshold) ? kRunDistance : kIdleDistance;
+                }
             }
-            else
-            {
-                const auto v = m_movement->Velocity();
-                const float horiz = std::sqrt(v.x * v.x + v.z * v.z);
-                desired = (horiz > kRunSpeedThreshold) ? kRunDistance : kIdleDistance;
-            }
+            m_desiredDistance = desired;
         }
-        m_desiredDistance = desired;
         m_distance = SpringApproach(m_distance, m_desiredDistance, m_springOmega, dt);
 
         const float cy = std::cos(m_yaw);

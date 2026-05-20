@@ -14,14 +14,18 @@ namespace ns::scene
 
     void MeshComponent::Draw(const RenderContext& context)
     {
-        if (!IsActive() || m_mesh == nullptr || m_material == nullptr)
+        GameObject* owner = Owner();
+        if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
             return;
 
         FrameCB cb{};
-        cb.world = Owner()->Root().InterpolatedWorldMatrix(context.alpha);
+        cb.world = owner->Root().InterpolatedWorldMatrix(context.alpha);
         cb.viewProj = context.viewProjection;
         cb.lightDir = m_lightDir;
-        cb.lightDir.Normalize();
+        if (cb.lightDir.LengthSquared() > 0.0f)
+            cb.lightDir.Normalize();
+        else
+            cb.lightDir = ns::core::Vector3{-0.3f, -1.0f, -0.2f};
         cb.baseColor = m_baseColor;
 
         m_material->SetParams(cb);

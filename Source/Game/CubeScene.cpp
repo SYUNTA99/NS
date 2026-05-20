@@ -103,15 +103,15 @@ void CubeScene::OnUpdate(float dt)
         return;
     }
 
+    // Glenn Fiedler accumulator: mutation 前に previous へ退避し、Lerp(prev, current, alpha) を成立させる。
+    m_cubeActor.Root().Snapshot();
+
     m_rotationY += dt;
     ns::core::Quaternion rot;
     DirectX::XMStoreFloat4(&rot, DirectX::XMQuaternionRotationRollPitchYaw(0.0f, m_rotationY, 0.0f));
     m_cubeActor.Root().SetRotation(rot);
 
     m_cubeActor.OnUpdate(dt);
-
-    // Glenn Fiedler accumulator パターン: fixed step 完了直後に previous 退避 ()
-    m_cubeActor.Root().Snapshot();
 }
 
 void CubeScene::OnRender()
@@ -136,6 +136,12 @@ void CubeScene::OnRender()
 
 void CubeScene::OnShutdown()
 {
+    // m_cubeActor.m_components は raw pointer 保持。Component 破棄前に OnEndPlay 伝播 + Unregister
+    // を実行し、その後 unique_ptr を破棄することで dangling pointer を残さない。
+    m_cubeActor.OnEndPlay();
+    if (m_meshComponent)
+        m_cubeActor.UnregisterComponent(m_meshComponent.get());
+
     m_meshComponent.reset();
     m_material.reset();
     m_shader.reset();

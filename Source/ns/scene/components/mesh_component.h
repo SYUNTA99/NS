@@ -30,7 +30,8 @@ namespace ns::scene
         ns::core::Vector3 baseColor{1.0f, 1.0f, 1.0f};
         float pad1 = 0.0f;
     };
-    static_assert(sizeof(FrameCB) % 16 == 0, "FrameCB は 16 byte 倍数 ()");
+    static_assert(sizeof(FrameCB) == 160, "FrameCB size は HLSL standard と完全一致 (160 byte)");
+    static_assert(alignof(FrameCB) == 16, "FrameCB は 16 byte alignment ()");
 
     class MeshComponent : public Component, public IRenderable
     {

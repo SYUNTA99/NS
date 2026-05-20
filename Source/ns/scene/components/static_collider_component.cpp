@@ -5,13 +5,25 @@
 
 namespace ns::scene
 {
+    namespace
+    {
+        [[nodiscard]] ns::core::Vector3 ClampNonNegative(const ns::core::Vector3& v) noexcept
+        {
+            return ns::core::Vector3{
+                v.x < 0.0f ? 0.0f : v.x,
+                v.y < 0.0f ? 0.0f : v.y,
+                v.z < 0.0f ? 0.0f : v.z,
+            };
+        }
+    } // namespace
+
     StaticColliderComponent::StaticColliderComponent(const ns::core::Vector3& halfExtents) noexcept
-        : m_halfExtents(halfExtents)
+        : m_halfExtents(ClampNonNegative(halfExtents))
     {}
 
     void StaticColliderComponent::SetHalfExtents(const ns::core::Vector3& halfExtents) noexcept
     {
-        m_halfExtents = halfExtents;
+        m_halfExtents = ClampNonNegative(halfExtents);
     }
 
     ns::core::Vector3 StaticColliderComponent::HalfExtents() const noexcept

@@ -23,8 +23,9 @@ namespace ns::graphics
     };
 
     /// 立方体プリミティブ。per-face normal で 24 vertex + 36 index、CW = front。
-    [[nodiscard]] MeshGeometry MakeCube(const ns::core::Vector3& extents) noexcept;
+    /// vector 確保で std::bad_alloc が伝搬する可能性があるため noexcept は付けない。
+    [[nodiscard]] MeshGeometry MakeCube(const ns::core::Vector3& extents);
 
     /// XZ 平面 (Y=0 上向き)、4 vertex + 6 index、normal=+Y。
-    [[nodiscard]] MeshGeometry MakePlane(const ns::core::Vector2& extents) noexcept;
+    [[nodiscard]] MeshGeometry MakePlane(const ns::core::Vector2& extents);
 } // namespace ns::graphics

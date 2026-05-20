@@ -3,6 +3,7 @@
 #include <ns/core/math.h>
 #include <ns/graphics/mesh_primitives.h>
 
+#include <algorithm>
 #include <cmath>
 
 namespace

@@ -2,7 +2,7 @@
 
 namespace ns::graphics
 {
-    MeshGeometry MakeCube(const ns::core::Vector3& extents) noexcept
+    MeshGeometry MakeCube(const ns::core::Vector3& extents)
     {
         const float ex = extents.x;
         const float ey = extents.y;
@@ -54,7 +54,7 @@ namespace ns::graphics
         return geom;
     }
 
-    MeshGeometry MakePlane(const ns::core::Vector2& extents) noexcept
+    MeshGeometry MakePlane(const ns::core::Vector2& extents)
     {
         const float ex = extents.x;
         const float ez = extents.y;
