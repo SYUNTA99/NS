@@ -11,8 +11,12 @@
 namespace
 {
     constexpr int kMaxSubSteps = 4;
-    constexpr float kSkin = 0.001f;
-    constexpr float kGroundProbeDistance = 0.1f;
+    // 壁との安全マージン。小さすぎると毎フレーム toi=0 で hit が連続して進まなくなる (stuck)。
+    // 1cm 離れて stop することで次フレームの slide motion が確実に進む。
+    constexpr float kSkin = 0.01f;
+    // 着地直後の player.y bounce で grounded flicker するのを抑える許容距離。
+    // Unity の CharacterController.isGrounded の有名な flicker bug 対策と同じ raycast 補助。
+    constexpr float kGroundProbeDistance = 0.2f;
 } // namespace
 
 namespace ns::physics
@@ -33,39 +37,53 @@ namespace ns::physics
 
         for (int step = 0; step < kMaxSubSteps; ++step)
         {
-            ns::core::Vector3 motion = result.velocity * subDt;
+            // substep 内で hit -> slide -> 残り motion で再 swept を最大 kMaxSlideIters 回チェイン。
+            // これで床に接触したまま壁に走った時にも壁 hit が無視されず stop する。
+            constexpr int kMaxSlideIters = 4;
+            float remainingTime = 1.0f; // この substep のうち未消費の比率 (0..1)
 
-            Capsule cap;
-            cap.center = result.position;
-            cap.axis = ns::core::Vector3{0.0f, 1.0f, 0.0f};
-            cap.halfHeight = input.capsuleHalfHeight;
-            cap.radius = input.capsuleRadius;
-
-            float earliestToi = 1.0f;
-            ns::core::Vector3 hitNormal{0.0f, 0.0f, 0.0f};
-            bool anyHit = false;
-
-            for (const ns::core::AABB& box : input.world)
+            for (int slideIter = 0; slideIter < kMaxSlideIters && remainingTime > 0.0f; ++slideIter)
             {
-                float toi = 1.0f;
-                ns::core::Vector3 n{};
-                if (SweptCapsuleVsAABB(cap, motion, box, toi, n))
+                ns::core::Vector3 motion = result.velocity * (subDt * remainingTime);
+
+                if (std::abs(motion.x) < 1e-9f && std::abs(motion.y) < 1e-9f && std::abs(motion.z) < 1e-9f)
+                    break;
+
+                Capsule cap;
+                cap.center = result.position;
+                cap.axis = ns::core::Vector3{0.0f, 1.0f, 0.0f};
+                cap.halfHeight = input.capsuleHalfHeight;
+                cap.radius = input.capsuleRadius;
+
+                float earliestToi = 1.0f;
+                ns::core::Vector3 hitNormal{0.0f, 0.0f, 0.0f};
+                bool anyHit = false;
+
+                for (const ns::core::AABB& box : input.world)
                 {
-                    if (toi < earliestToi)
+                    float toi = 1.0f;
+                    ns::core::Vector3 n{};
+                    if (SweptCapsuleVsAABB(cap, motion, box, toi, n))
                     {
-                        earliestToi = toi;
-                        hitNormal = n;
-                        anyHit = true;
+                        if (toi < earliestToi)
+                        {
+                            earliestToi = toi;
+                            hitNormal = n;
+                            anyHit = true;
+                        }
                     }
                 }
-            }
 
-            if (anyHit)
-            {
+                if (!anyHit)
+                {
+                    result.position = result.position + motion;
+                    remainingTime = 0.0f;
+                    break;
+                }
+
                 const float safeToi = std::max(0.0f, earliestToi - kSkin);
                 result.position = result.position + motion * safeToi;
 
-                // 法線方向の velocity 成分を除去 (slide)
                 const float vDotN =
                     result.velocity.x * hitNormal.x + result.velocity.y * hitNormal.y + result.velocity.z * hitNormal.z;
                 if (vDotN < 0.0f)
@@ -76,18 +94,10 @@ namespace ns::physics
                 }
                 result.contactNormal = hitNormal;
 
-                // 上向き法線 (床、slope ≤ 45°) なら grounded、下方向 velocity をクリップ済
                 if (hitNormal.y > 0.7071f)
                     result.grounded = true;
 
-                // 残時間を slide 後の velocity で消費 (壁で完全停止しない / slope で減速しない)
-                const float remaining = std::max(0.0f, 1.0f - safeToi);
-                if (remaining > 0.0f)
-                    result.position = result.position + (result.velocity * subDt) * remaining;
-            }
-            else
-            {
-                result.position = result.position + motion;
+                remainingTime *= std::max(0.0f, 1.0f - earliestToi);
             }
         }
 
