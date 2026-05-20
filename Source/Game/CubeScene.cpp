@@ -7,90 +7,27 @@
 #include "ns/core/math.h"
 #include "ns/graphics/material.h"
 #include "ns/graphics/mesh.h"
+#include "ns/graphics/mesh_primitives.h"
 #include "ns/graphics/renderer.h"
 #include "ns/graphics/shader_program.h"
 #include "ns/graphics/texture.h"
 #include "ns/platform/input.h"
 #include "ns/platform/keyboard.h"
 #include "ns/platform/window.h"
+#include "ns/scene/components/mesh_component.h"
+#include "ns/scene/render_context.h"
 
 #include <DirectXMath.h>
 
-#include <array>
-#include <cstddef>
-#include <cstdint>
-
 namespace
 {
-    /// HLSL FrameCB と完全一致 (sizeof=160、16 byte 倍数)。
-    /// SimpleMath::Matrix が row-major のため HLSL 側も row_major で揃え、転置せず転送する。
-    struct alignas(16) FrameCB
-    {
-        ns::core::Matrix world;
-        ns::core::Matrix viewProj;
-        ns::core::Vector3 lightDir;
-        float pad0;
-        ns::core::Vector3 baseColor;
-        float pad1;
-    };
-    static_assert(sizeof(FrameCB) % 16 == 0, "FrameCB は 16 byte 倍数 ()");
-
-    using ns::core::Vector2;
-    using ns::core::Vector3;
-    using ns::graphics::MeshVertex;
-
-    constexpr std::array<MeshVertex, 24> kCubeVertices = {{
-        // +X (right)
-        {{0.5f, -0.5f, 0.5f}, {0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, 0.5f, 0.5f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, 0.5f, -0.5f}, {1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, -0.5f, -0.5f}, {1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
-        // -X (left)
-        {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}},
-        {{-0.5f, 0.5f, -0.5f}, {0.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}},
-        {{-0.5f, 0.5f, 0.5f}, {1.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}},
-        {{-0.5f, -0.5f, 0.5f}, {1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}},
-        // +Y (top)
-        {{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-        {{-0.5f, 0.5f, -0.5f}, {0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-        {{0.5f, 0.5f, -0.5f}, {1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-        {{0.5f, 0.5f, 0.5f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-        // -Y (bottom)
-        {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}, {0.0f, -1.0f, 0.0f}},
-        {{-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}},
-        {{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}},
-        {{0.5f, -0.5f, -0.5f}, {1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}},
-        // +Z (front in LH)
-        {{0.5f, -0.5f, 0.5f}, {0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
-        {{0.5f, 0.5f, 0.5f}, {0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-        {{-0.5f, 0.5f, 0.5f}, {1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-        {{-0.5f, -0.5f, 0.5f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
-        // -Z (back in LH)
-        {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}, {0.0f, 0.0f, -1.0f}},
-        {{-0.5f, 0.5f, -0.5f}, {0.0f, 0.0f}, {0.0f, 0.0f, -1.0f}},
-        {{0.5f, 0.5f, -0.5f}, {1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}},
-        {{0.5f, -0.5f, -0.5f}, {1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}},
-    }};
-
-    /// Width/Height のいずれかが 0 (最小化 / 不正サイズ) のとき aspect が 0 や inf に
-    /// 落ちないよう既定の 16:9 にフォールバックする。
+    /// Width/Height が 0 (最小化 / 不正サイズ) のとき aspect 0/inf 回避で 16:9 にフォールバック。
     [[nodiscard]] float ComputeAspectRatio(int width, int height) noexcept
     {
         if (width <= 0 || height <= 0)
             return 16.0f / 9.0f;
         return static_cast<float>(width) / static_cast<float>(height);
     }
-
-    // DX11 デフォルト rasterizer は CullBack + FrontCounterClockwise=FALSE で、外側から見て
-    // CW を front とする。各面で cross product が外向き normal を指す並びにそろえる。
-    constexpr std::array<std::uint16_t, 36> kCubeIndices = {{
-        0,  2,  1,  0,  3,  2,  // +X
-        4,  6,  5,  4,  7,  6,  // -X
-        8,  10, 9,  8,  11, 10, // +Y
-        12, 14, 13, 12, 15, 14, // -Y
-        16, 17, 18, 16, 18, 19, // +Z
-        20, 21, 22, 20, 22, 23, // -Z
-    }};
 } // namespace
 
 CubeScene::CubeScene() = default;
@@ -108,11 +45,12 @@ void CubeScene::OnStart()
     auto& renderer = app->Renderer();
     const auto exeDir = ns::core::FileSystem::GetExeDirectory();
 
+    auto cubeGeom = ns::graphics::MakeCube({0.5f, 0.5f, 0.5f});
     ns::graphics::MeshDesc meshDesc{};
-    meshDesc.vertices = kCubeVertices.data();
-    meshDesc.vertexCount = kCubeVertices.size();
-    meshDesc.indices = kCubeIndices.data();
-    meshDesc.indexCount = kCubeIndices.size();
+    meshDesc.vertices = cubeGeom.vertices.data();
+    meshDesc.vertexCount = cubeGeom.vertices.size();
+    meshDesc.indices = cubeGeom.indices.data();
+    meshDesc.indexCount = cubeGeom.indices.size();
     m_mesh = std::make_unique<ns::graphics::Mesh>(renderer, meshDesc);
 
     ns::graphics::TextureDesc texDesc{};
@@ -121,9 +59,7 @@ void CubeScene::OnStart()
     texDesc.sRGB = false;
     m_texture = std::make_unique<ns::graphics::Texture>(renderer, texDesc);
     if (m_texture->IsUsingFallback())
-    {
         NS_LOG_WARN(::ns::core::LogCat::Game, "CubeScene: cube_test.png 読込失敗、magenta fallback で続行");
-    }
 
     ns::graphics::ShaderProgramDesc shaderDesc{};
     shaderDesc.vertexShaderPath = exeDir / "Shaders" / "standard.vs.hlsl";
@@ -133,17 +69,18 @@ void CubeScene::OnStart()
     shaderDesc.inputLayout = ns::graphics::Mesh::StandardInputLayout();
     m_shader = std::make_unique<ns::graphics::ShaderProgram>(renderer, shaderDesc);
     if (m_shader->IsUsingFallback())
-    {
         NS_LOG_WARN(::ns::core::LogCat::Game, "CubeScene: standard HLSL 読込/コンパイル失敗、magenta fallback で続行");
-    }
 
     ns::graphics::MaterialDesc matDesc{};
     matDesc.shader = m_shader.get();
-    matDesc.constantBufferSize = sizeof(FrameCB);
+    matDesc.constantBufferSize = sizeof(ns::scene::FrameCB);
     matDesc.cbSlot = 0;
     matDesc.cbStages = ns::graphics::ShaderStage::Vertex | ns::graphics::ShaderStage::Pixel;
     m_material = std::make_unique<ns::graphics::Material>(renderer, matDesc);
     m_material->SetTexture(0, m_texture.get());
+
+    m_meshComponent = std::make_unique<ns::scene::MeshComponent>(m_mesh.get(), m_material.get());
+    m_cubeActor.RegisterComponent(m_meshComponent.get());
 
     m_camera.SetPosition({2.5f, 2.0f, -4.0f});
     m_camera.SetTarget({0.0f, 0.0f, 0.0f});
@@ -167,11 +104,19 @@ void CubeScene::OnUpdate(float dt)
     }
 
     m_rotationY += dt;
+    ns::core::Quaternion rot;
+    DirectX::XMStoreFloat4(&rot, DirectX::XMQuaternionRotationRollPitchYaw(0.0f, m_rotationY, 0.0f));
+    m_cubeActor.Root().SetRotation(rot);
+
+    m_cubeActor.OnUpdate(dt);
+
+    // Glenn Fiedler accumulator パターン: fixed step 完了直後に previous 退避 ()
+    m_cubeActor.Root().Snapshot();
 }
 
 void CubeScene::OnRender()
 {
-    if (!m_mesh || !m_material)
+    if (!m_meshComponent)
         return;
 
     auto* app = ns::app::Application::Get();
@@ -181,22 +126,17 @@ void CubeScene::OnRender()
     auto& renderer = app->Renderer();
     m_camera.SetAspectRatio(ComputeAspectRatio(renderer.Width(), renderer.Height()));
 
-    FrameCB cb{};
-    ns::core::Matrix world;
-    DirectX::XMStoreFloat4x4(&world, DirectX::XMMatrixRotationY(m_rotationY));
-    cb.world = world;
-    cb.viewProj = m_camera.ViewProjection();
-    cb.lightDir = ns::core::Vector3(-0.3f, -1.0f, -0.2f);
-    cb.lightDir.Normalize();
-    cb.baseColor = ns::core::Vector3(1.0f, 1.0f, 1.0f);
+    ns::scene::RenderContext ctx{};
+    ctx.renderer = &renderer;
+    ctx.viewProjection = m_camera.ViewProjection();
+    ctx.alpha = ns::app::Application::Alpha();
 
-    m_material->SetParams(cb);
-    m_material->Bind();
-    m_mesh->Draw();
+    m_meshComponent->Draw(ctx);
 }
 
 void CubeScene::OnShutdown()
 {
+    m_meshComponent.reset();
     m_material.reset();
     m_shader.reset();
     m_texture.reset();
