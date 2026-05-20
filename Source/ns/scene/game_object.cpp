@@ -56,6 +56,17 @@ namespace ns::scene
         m_components.push_back(comp);
     }
 
+    void GameObject::UnregisterComponent(Component* comp) noexcept
+    {
+        if (comp == nullptr)
+            return;
+        auto it = std::remove(m_components.begin(), m_components.end(), comp);
+        if (it == m_components.end())
+            return;
+        m_components.erase(it, m_components.end());
+        comp->AttachOwner(nullptr);
+    }
+
     void GameObject::OnStart()
     {
         // 後で SetActive(true) されても初期化済になるよう、IsActive に依らず全件呼出。
