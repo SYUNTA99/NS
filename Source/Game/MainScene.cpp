@@ -101,6 +101,9 @@ void MainScene::OnStart()
     m_player = std::make_unique<Player>(m_cubeMesh.get(), m_playerMaterial.get(), &app->Input());
     m_player->AttachScene(this);
     m_player->Root().SetPosition({0.0f, 1.0f, -4.0f});
+    // cube mesh の半サイズは 0.5 だが capsule collider は radius=0.4 / halfHeight=0.5
+    // (= AABB 半サイズ 0.4, 0.9, 0.4)。両者が一致するよう scale で mesh を縮める。
+    m_player->Root().SetScale({0.8f, 1.8f, 0.8f});
     m_player->MeshComp().SetBaseColor(kPlayerColor);
 
     m_collisionWorld.clear();
@@ -119,10 +122,10 @@ void MainScene::OnStart()
     }
     m_player->Movement().SetCollisionWorld(m_collisionWorld);
 
-    m_cameraActor = std::make_unique<ns::scene::GameObject>();
-    m_cameraActor->AttachScene(this);
-    m_cameraActor->RegisterComponent(&m_camera);
-    m_cameraActor->RegisterComponent(&m_follow);
+    m_cameraRig = std::make_unique<ns::scene::GameObject>();
+    m_cameraRig->AttachScene(this);
+    m_cameraRig->RegisterComponent(&m_camera);
+    m_cameraRig->RegisterComponent(&m_follow);
     m_follow.SetTarget(&m_player->Root());
     m_follow.SetCamera(&m_camera);
     m_follow.SetInput(&app->Input());
@@ -137,7 +140,7 @@ void MainScene::OnStart()
     m_player->OnStart();
     for (auto& block : m_blocks)
         block->OnStart();
-    m_cameraActor->OnStart();
+    m_cameraRig->OnStart();
 
     app->Window().SetResizeCallback([this](int w, int h) {
         if (w <= 0 || h <= 0)
@@ -161,19 +164,26 @@ void MainScene::OnUpdate(float dt)
     if (m_player)
         m_player->InputComp().SetCameraForward(m_camera.ForwardHorizontal());
 
+    // 奈落落ち復活: 床のエッジを抜けて y が一定以下に達したら初期位置に戻す。
+    if (m_player && m_player->Root().Position().y < -10.0f)
+    {
+        m_player->Root().SetPosition({0.0f, 1.0f, -4.0f});
+        m_player->Movement().ResetState();
+    }
+
     if (m_player)
         m_player->Root().Snapshot();
     for (auto& block : m_blocks)
         block->Root().Snapshot();
-    if (m_cameraActor)
-        m_cameraActor->Root().Snapshot();
+    if (m_cameraRig)
+        m_cameraRig->Root().Snapshot();
 
     if (m_player)
         m_player->OnUpdate(dt);
     for (auto& block : m_blocks)
         block->OnUpdate(dt);
-    if (m_cameraActor)
-        m_cameraActor->OnUpdate(dt);
+    if (m_cameraRig)
+        m_cameraRig->OnUpdate(dt);
 }
 
 void MainScene::OnRender()
@@ -195,8 +205,8 @@ void MainScene::OnRender()
 
 void MainScene::OnShutdown()
 {
-    if (m_cameraActor)
-        m_cameraActor->OnEndPlay();
+    if (m_cameraRig)
+        m_cameraRig->OnEndPlay();
     for (auto it = m_blocks.rbegin(); it != m_blocks.rend(); ++it)
         (*it)->OnEndPlay();
     if (m_player)
@@ -207,7 +217,7 @@ void MainScene::OnShutdown()
     if (auto* app = ns::app::Application::Get())
         app->Window().SetResizeCallback({});
 
-    m_cameraActor.reset();
+    m_cameraRig.reset();
     m_player.reset();
     m_blocks.clear();
 

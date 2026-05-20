@@ -58,7 +58,7 @@ private:
     std::unique_ptr<Player> m_player;
     std::vector<std::unique_ptr<Block>> m_blocks;
 
-    std::unique_ptr<ns::scene::GameObject> m_cameraActor;
+    std::unique_ptr<ns::scene::GameObject> m_cameraRig;
     ns::scene::CameraComponent m_camera;
     ns::scene::ThirdPersonFollowComponent m_follow;
 
