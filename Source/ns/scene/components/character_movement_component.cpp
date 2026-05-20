@@ -56,6 +56,21 @@ namespace ns::scene
         m_collisionWorld.assign(world.begin(), world.end());
     }
 
+    void CharacterMovementComponent::ResetState() noexcept
+    {
+        m_velocity = ns::core::Vector3{0.0f, 0.0f, 0.0f};
+        m_desiredDir = ns::core::Vector3{0.0f, 0.0f, 0.0f};
+        m_desiredSpeedScale = 0.0f;
+        m_jumpHeld = false;
+        m_prevJumpHeld = false;
+        m_jumpPressedThisFrame = false;
+        m_jumpsRemaining = 1;
+        m_coyoteTimer = 0.0f;
+        m_bufferTimer = 0.0f;
+        m_wasGrounded = false;
+        m_isGrounded = false;
+    }
+
     void CharacterMovementComponent::OnUpdate(float dt)
     {
         if (!IsActive() || dt <= 0.0f)
@@ -124,7 +139,7 @@ namespace ns::scene
         m_isGrounded = out.grounded;
 
         if (!m_wasGrounded && m_isGrounded)
-            m_jumpsRemaining = 2;
+            m_jumpsRemaining = 1;
 
         if (m_isGrounded)
             m_coyoteTimer = m_coyoteTime;
