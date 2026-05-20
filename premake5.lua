@@ -243,6 +243,79 @@ project "ns_graphics"
     applyCommonBuildOptions()
 
 --============================================================================
+-- ns_physics モジュール (StaticLib)
+--   Capsule / SweptAABB / CharacterController / Ray / Plane
+--   Mario 系プラットフォーマー特化 Custom AABB 物理、graphics 非依存
+--============================================================================
+project "ns_physics"
+    kind "StaticLib"
+    location "build/ns_physics"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/ns/physics/**.h",
+        "Source/ns/physics/**.cpp"
+    }
+
+    -- ns::core::Vector3 / BoundingBox / Ray (SimpleMath) を使う
+    includedirs {
+        "Source/third_party/DirectXTK/Inc",
+        "Source/third_party/spdlog/include",
+        "Source/third_party/magic_enum/include",
+    }
+
+    defines {
+        "SPDLOG_HEADER_ONLY",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_NO_EXCEPTIONS"
+    }
+
+    links { "ns_core" }
+
+    applyCommonBuildOptions()
+
+--============================================================================
+-- ns_scene モジュール (StaticLib)
+--   GameObject / Component / Transform / IRenderable / RenderContext +
+--   components/* (MeshComponent / CharacterMovement / Camera / 他)
+--   UE5 風 OOP の合成主体。engine = Library として 7 層目に配置。
+--============================================================================
+project "ns_scene"
+    kind "StaticLib"
+    location "build/ns_scene"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/ns/scene/**.h",
+        "Source/ns/scene/**.cpp"
+    }
+
+    includedirs {
+        "Source/third_party/DirectXTK/Inc",
+        "Source/third_party/spdlog/include",
+        "Source/third_party/magic_enum/include",
+    }
+
+    defines {
+        "SPDLOG_HEADER_ONLY",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_NO_EXCEPTIONS"
+    }
+
+    links {
+        "ns_core",
+        "ns_platform",
+        "ns_graphics",
+        "ns_physics"
+    }
+
+    applyCommonBuildOptions()
+
+--============================================================================
 -- ns_app モジュール (StaticLib)
 --   Application / Scene / WinMain
 --============================================================================
@@ -312,6 +385,8 @@ project "Game"
         "ns_core",
         "ns_platform",
         "ns_graphics",
+        "ns_physics",
+        "ns_scene",
         "ns_app"
     }
 
@@ -398,6 +473,8 @@ project "Tests"
         "ns_core",
         "ns_platform",
         "ns_graphics",
+        "ns_physics",
+        "ns_scene",
         "ns_app"
     }
 
