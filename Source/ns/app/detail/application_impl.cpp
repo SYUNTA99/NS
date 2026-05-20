@@ -166,7 +166,6 @@ namespace ns::app
             if (window.ShouldClose() || m_pImpl->quitRequested)
                 break;
 
-            input.Update();
             timer.Tick();
 
             const int steps = timer.FixedStepsThisFrame();
@@ -174,6 +173,10 @@ namespace ns::app
             for (int i = 0; i < steps; ++i)
             {
                 scene.OnUpdate(fixedDt);
+                // fixed step ごとに input.Update を呼ぶことで、1 frame に複数 step
+                // 走った時に同じ edge が複数回検出されるのを防ぐ。
+                // 参考: https://jakubtomsu.github.io/posts/input_in_fixed_timestep/
+                input.Update();
                 if (m_pImpl->quitRequested)
                     break;
             }
