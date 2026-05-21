@@ -30,6 +30,15 @@ workspace "NS"
         "_UNICODE"
     }
 
+    -- Profile build opt-in: 環境変数 NS_ENABLE_PROFILING=1 で有効化。
+    -- NS_SCOPED_TIMER が clock.h で no-op から ScopedTimer 展開に切替わる。
+    -- 通常 build では未定義 = profiling マクロは ((void)0) で 0 overhead。
+    -- tools\@build_profile.cmd 経由で 1 cmd 実行可能。
+    if os.getenv("NS_ENABLE_PROFILING") == "1" then
+        defines { "NS_ENABLE_PROFILING" }
+        print("[premake5] NS_ENABLE_PROFILING enabled — profile build")
+    end
+
     --------------------------------------------------------------------------
     -- 構成別設定 
     --   - ns.lib 列の最適化を構成デフォルトとし、Game.exe 固有調整は

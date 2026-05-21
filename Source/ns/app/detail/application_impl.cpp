@@ -8,6 +8,7 @@
 
 #include <Windows.h>
 
+#include <chrono>
 #include <utility>
 
 namespace
@@ -42,6 +43,7 @@ namespace ns::app
         std::unique_ptr<Scene> scene;
         bool valid = false;
         bool quitRequested = false;
+        std::chrono::steady_clock::time_point lastStutterWarnAt{};
     };
 
     Application::Application(const ApplicationDesc& desc) : m_pImpl(std::make_unique<Impl>())
@@ -170,15 +172,31 @@ namespace ns::app
 
             const int steps = timer.FixedStepsThisFrame();
             const float fixedDt = timer.FixedDelta();
-            for (int i = 0; i < steps; ++i)
+
+            if (steps >= 2)
             {
-                scene.OnUpdate(fixedDt);
-                // fixed step ごとに input.Update を呼ぶことで、1 frame に複数 step
-                // 走った時に同じ edge が複数回検出されるのを防ぐ。
-                // 参考: https://jakubtomsu.github.io/posts/input_in_fixed_timestep/
-                input.Update();
-                if (m_pImpl->quitRequested)
-                    break;
+                const auto now = std::chrono::steady_clock::now();
+                const auto since =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(now - m_pImpl->lastStutterWarnAt).count();
+                if (since >= 1000)
+                {
+                    NS_LOG_WARN(::ns::core::LogCat::App, "Frame drop indicator: {} fixed steps in single frame", steps);
+                    m_pImpl->lastStutterWarnAt = now;
+                }
+            }
+
+            {
+                NS_SCOPED_TIMER(::ns::core::LogCat::App, "Application::FixedStepLoop");
+                for (int i = 0; i < steps; ++i)
+                {
+                    scene.OnUpdate(fixedDt);
+                    // fixed step ごとに input.Update を呼ぶことで、1 frame に複数 step
+                    // 走った時に同じ edge が複数回検出されるのを防ぐ。
+                    // 参考: https://jakubtomsu.github.io/posts/input_in_fixed_timestep/
+                    input.Update();
+                    if (m_pImpl->quitRequested)
+                        break;
+                }
             }
             if (m_pImpl->quitRequested)
                 break;
