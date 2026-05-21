@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file character_movement_component.h
-/// @brief Capsule + double jump + coyote/buffer + asymmetric gravity + apex hang を保有する
+/// @brief Capsule + シングルジャンプ + coyote/buffer + asymmetric gravity + apex hang を保有する
 ///        Player 移動 Component (, )。`ns::physics::CharacterController` を value
 ///        member として内包し、毎 OnUpdate で desired velocity と dt を渡して結果を Root に適用する。
 ///

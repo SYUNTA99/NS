@@ -232,6 +232,9 @@ void MainScene::RegisterRenderable(ns::scene::IRenderable* renderable)
 {
     if (renderable == nullptr)
         return;
+    // 二重登録を防ぐ。Component 側で OnStart が誤って 2 回呼ばれても二重描画にならない。
+    if (std::find(m_renderList.begin(), m_renderList.end(), renderable) != m_renderList.end())
+        return;
     m_renderList.push_back(renderable);
 }
 
@@ -239,7 +242,6 @@ void MainScene::UnregisterRenderable(ns::scene::IRenderable* renderable)
 {
     if (renderable == nullptr)
         return;
-    auto it = std::find(m_renderList.begin(), m_renderList.end(), renderable);
-    if (it != m_renderList.end())
-        m_renderList.erase(it);
+    // erase-remove で全要素を消し、不変式 (一意性) と防御的削除を両立する。
+    m_renderList.erase(std::remove(m_renderList.begin(), m_renderList.end(), renderable), m_renderList.end());
 }
