@@ -134,6 +134,12 @@ namespace ns::core
 #define NS_CLOCK_PASTE_IMPL(a, b) a##b
 #define NS_CLOCK_PASTE(a, b) NS_CLOCK_PASTE_IMPL(a, b)
 
-/// 計測対象のスコープに置く。dtor で `[category] label: X.XXXms` を Debug ログ出力
+/// 計測対象のスコープに置く。dtor で `[category] label: X.XXXms` を Debug ログ出力。
+/// NS_ENABLE_PROFILING define 時のみ有効、 通常 build では no-op (Logger spam 回避)。
+/// Profile build は `tools\@build_profile.cmd` で作成する。
+#if defined(NS_ENABLE_PROFILING)
 #define NS_SCOPED_TIMER(cat, label)                                                                                    \
     ::ns::core::ScopedTimer NS_CLOCK_PASTE(ns_scoped_timer_, __COUNTER__)((cat), (label))
+#else
+#define NS_SCOPED_TIMER(cat, label) ((void)0)
+#endif

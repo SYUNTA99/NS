@@ -1,5 +1,7 @@
 #include "ns/scene/components/character_movement_component.h"
 
+#include "ns/core/clock.h"
+#include "ns/core/log_categories.h"
 #include "ns/graphics/debug_draw.h"
 #include "ns/scene/game_object.h"
 #include "ns/scene/transform.h"
@@ -73,6 +75,8 @@ namespace ns::scene
 
     void CharacterMovementComponent::OnUpdate(float dt)
     {
+        NS_SCOPED_TIMER(::ns::core::LogCat::Game, "CharacterMovement::OnUpdate");
+
         if (!IsActive() || dt <= 0.0f)
         {
             m_jumpPressedThisFrame = false;

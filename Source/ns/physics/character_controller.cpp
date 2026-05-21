@@ -1,5 +1,7 @@
 #include "ns/physics/character_controller.h"
 
+#include "ns/core/clock.h"
+#include "ns/core/log_categories.h"
 #include "ns/physics/capsule.h"
 #include "ns/physics/swept_aabb.h"
 
@@ -23,6 +25,8 @@ namespace ns::physics
 {
     CharacterControllerResult CharacterController::Update(const CharacterControllerInput& input) noexcept
     {
+        NS_SCOPED_TIMER(::ns::core::LogCat::Game, "CharacterController::Update");
+
         CharacterControllerResult result;
         result.position = input.position;
         result.velocity = input.velocity;

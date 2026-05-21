@@ -59,6 +59,10 @@ TEST(ThirdPersonFollowTest, UpdatesCameraPositionBehindTarget)
     for (int i = 0; i < 60; ++i)
         follow.OnUpdate(kDt);
 
+    // OnUpdate は state mutation のみ (yaw/pitch/distance)、 camera position は
+    // ApplyCameraTransform で render frame ごとに反映する設計 (jitter 回避)。
+    follow.ApplyCameraTransform(1.0f);
+
     const auto pos = cc.Position();
     EXPECT_NEAR(pos.x, 0.0f, 0.1f);
     EXPECT_GT(pos.y, 1.0f);

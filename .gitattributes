@@ -1,0 +1,9 @@
+# Windows batch files must always use CRLF line endings (cmd parser requirement)
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# PowerShell scripts: prefer CRLF on Windows-only project
+*.ps1 text eol=crlf
+
+# Default text handling
+* text=auto
