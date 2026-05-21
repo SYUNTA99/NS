@@ -1,28 +1,28 @@
 #include <gtest/gtest.h>
 
-#include <ns/core/logger.h>
-#include <ns/graphics/buffer.h>
-#include <ns/graphics/renderer.h>
-#include <ns/platform/window.h>
+#include <Framework/Core/Logger.h>
+#include <Framework/Graphics/Buffer.h>
+#include <Framework/Graphics/Renderer.h>
+#include <Framework/Platform/Window.h>
 
 #include <array>
 #include <cstdint>
 
 namespace
 {
-    using ns::graphics::BufferUsage;
-    using ns::graphics::ConstantBuffer;
-    using ns::graphics::HasStage;
-    using ns::graphics::IndexBuffer;
-    using ns::graphics::IndexBufferDesc;
-    using ns::graphics::IndexFormat;
-    using ns::graphics::Renderer;
-    using ns::graphics::RendererDesc;
-    using ns::graphics::ShaderStage;
-    using ns::graphics::VertexBuffer;
-    using ns::graphics::VertexBufferDesc;
-    using ns::platform::Window;
-    using ns::platform::WindowDesc;
+    using NS::Graphics::BufferUsage;
+    using NS::Graphics::ConstantBuffer;
+    using NS::Graphics::HasStage;
+    using NS::Graphics::IndexBuffer;
+    using NS::Graphics::IndexBufferDesc;
+    using NS::Graphics::IndexFormat;
+    using NS::Graphics::Renderer;
+    using NS::Graphics::RendererDesc;
+    using NS::Graphics::ShaderStage;
+    using NS::Graphics::VertexBuffer;
+    using NS::Graphics::VertexBufferDesc;
+    using NS::Platform::Window;
+    using NS::Platform::WindowDesc;
 
     struct alignas(16) TestCB
     {
@@ -58,8 +58,8 @@ namespace
 class BufferLoggerTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { ns::core::Logger::Init(); }
-    void TearDown() override { ns::core::Logger::Shutdown(); }
+    void SetUp() override { NS::Core::Logger::Init(); }
+    void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
 TEST(NsGraphicsShaderStage, BitflagOperators)

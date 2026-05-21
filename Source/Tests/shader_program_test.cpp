@@ -1,20 +1,20 @@
 #include <gtest/gtest.h>
 
-#include <ns/core/logger.h>
-#include <ns/graphics/renderer.h>
-#include <ns/graphics/shader_program.h>
-#include <ns/platform/window.h>
+#include <Framework/Core/Logger.h>
+#include <Framework/Graphics/Renderer.h>
+#include <Framework/Graphics/ShaderProgram.h>
+#include <Framework/Platform/Window.h>
 
 namespace
 {
-    using ns::graphics::InputElement;
-    using ns::graphics::InputElementFormat;
-    using ns::graphics::Renderer;
-    using ns::graphics::RendererDesc;
-    using ns::graphics::ShaderProgram;
-    using ns::graphics::ShaderProgramDesc;
-    using ns::platform::Window;
-    using ns::platform::WindowDesc;
+    using NS::Graphics::InputElement;
+    using NS::Graphics::InputElementFormat;
+    using NS::Graphics::Renderer;
+    using NS::Graphics::RendererDesc;
+    using NS::Graphics::ShaderProgram;
+    using NS::Graphics::ShaderProgramDesc;
+    using NS::Platform::Window;
+    using NS::Platform::WindowDesc;
 
     WindowDesc MakeWindowDesc(const char* title)
     {
@@ -44,8 +44,8 @@ namespace
 class ShaderProgramLoggerTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { ns::core::Logger::Init(); }
-    void TearDown() override { ns::core::Logger::Shutdown(); }
+    void SetUp() override { NS::Core::Logger::Init(); }
+    void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
 TEST_F(ShaderProgramLoggerTest, MissingVsPathFallsBack)
@@ -124,7 +124,7 @@ TEST_F(ShaderProgramLoggerTest, FallbackAccessorsNonNull)
     ShaderProgram sp(renderer, desc);
     ASSERT_TRUE(sp.IsValid());
 
-    EXPECT_NE(ns::graphics::detail::GetVertexShader(sp), nullptr);
-    EXPECT_NE(ns::graphics::detail::GetPixelShader(sp), nullptr);
-    EXPECT_NE(ns::graphics::detail::GetInputLayout(sp), nullptr);
+    EXPECT_NE(NS::Graphics::detail::GetVertexShader(sp), nullptr);
+    EXPECT_NE(NS::Graphics::detail::GetPixelShader(sp), nullptr);
+    EXPECT_NE(NS::Graphics::detail::GetInputLayout(sp), nullptr);
 }

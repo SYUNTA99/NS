@@ -1,16 +1,16 @@
 #include <gtest/gtest.h>
 
-#include <ns/core/math.h>
-#include <ns/scene/transform.h>
+#include <Framework/Core/Math.h>
+#include <Framework/Scene/Transform.h>
 
 #include <cmath>
 
 namespace
 {
-    using ns::core::Matrix;
-    using ns::core::Quaternion;
-    using ns::core::Vector3;
-    using ns::scene::Transform;
+    using NS::Core::Matrix;
+    using NS::Core::Quaternion;
+    using NS::Core::Vector3;
+    using NS::Scene::Transform;
 
     bool MatricesNear(const Matrix& a, const Matrix& b, float eps = 1e-4f)
     {

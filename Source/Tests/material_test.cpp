@@ -1,27 +1,27 @@
 #include <gtest/gtest.h>
 
-#include <ns/core/logger.h>
-#include <ns/graphics/material.h>
-#include <ns/graphics/renderer.h>
-#include <ns/graphics/shader_program.h>
-#include <ns/graphics/texture.h>
-#include <ns/platform/window.h>
+#include <Framework/Core/Logger.h>
+#include <Framework/Graphics/Material.h>
+#include <Framework/Graphics/Renderer.h>
+#include <Framework/Graphics/ShaderProgram.h>
+#include <Framework/Graphics/Texture.h>
+#include <Framework/Platform/Window.h>
 
 namespace
 {
-    using ns::graphics::InputElement;
-    using ns::graphics::InputElementFormat;
-    using ns::graphics::Material;
-    using ns::graphics::MaterialDesc;
-    using ns::graphics::Renderer;
-    using ns::graphics::RendererDesc;
-    using ns::graphics::ShaderProgram;
-    using ns::graphics::ShaderProgramDesc;
-    using ns::graphics::ShaderStage;
-    using ns::graphics::Texture;
-    using ns::graphics::TextureDesc;
-    using ns::platform::Window;
-    using ns::platform::WindowDesc;
+    using NS::Graphics::InputElement;
+    using NS::Graphics::InputElementFormat;
+    using NS::Graphics::Material;
+    using NS::Graphics::MaterialDesc;
+    using NS::Graphics::Renderer;
+    using NS::Graphics::RendererDesc;
+    using NS::Graphics::ShaderProgram;
+    using NS::Graphics::ShaderProgramDesc;
+    using NS::Graphics::ShaderStage;
+    using NS::Graphics::Texture;
+    using NS::Graphics::TextureDesc;
+    using NS::Platform::Window;
+    using NS::Platform::WindowDesc;
 
     WindowDesc MakeWindowDesc(const char* title)
     {
@@ -58,8 +58,8 @@ namespace
 class MaterialLoggerTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { ns::core::Logger::Init(); }
-    void TearDown() override { ns::core::Logger::Shutdown(); }
+    void SetUp() override { NS::Core::Logger::Init(); }
+    void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
 TEST_F(MaterialLoggerTest, ConstructWithShaderIsValid)

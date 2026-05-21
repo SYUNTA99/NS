@@ -1,15 +1,15 @@
 #include <gtest/gtest.h>
 
-#include <ns/scene/component.h>
-#include <ns/scene/game_object.h>
-#include <ns/scene/transform.h>
+#include <Framework/Scene/Component.h>
+#include <Framework/Scene/GameObject.h>
+#include <Framework/Scene/Transform.h>
 
 #include <vector>
 
 namespace
 {
-    using ns::scene::Component;
-    using ns::scene::GameObject;
+    using NS::Scene::Component;
+    using NS::Scene::GameObject;
 
     class MockComponent : public Component
     {

@@ -4,5 +4,5 @@ reviews:
     base_branches:
       - develop
   path_instructions:
-    - path: "Source/ns/**"
-      instructions: "エンジン側ライブラリコード。パフォーマンスとメモリ管理に注意。"
+    - path: "Source/Framework/**"
+      instructions: "Framework 層ライブラリコード。 パフォーマンスとメモリ管理に注意。"

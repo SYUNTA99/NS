@@ -1,26 +1,26 @@
 #pragma once
 
-#include "ns/app/scene.h"
-#include "ns/core/math.h"
-#include "ns/scene/components/camera_component.h"
-#include "ns/scene/components/third_person_follow_component.h"
-#include "ns/scene/game_object.h"
+#include "Framework/App/Scene.h"
+#include "Framework/Core/Math.h"
+#include "Framework/Scene/CameraComponent.h"
+#include "Framework/Scene/ThirdPersonFollowComponent.h"
+#include "Framework/Scene/GameObject.h"
 
 #include <memory>
 #include <vector>
 
-namespace ns::graphics
+namespace NS::Graphics
 {
     class Material;
     class Mesh;
     class ShaderProgram;
     class Texture;
-} // namespace ns::graphics
+} // namespace NS::Graphics
 
-namespace ns::scene
+namespace NS::Scene
 {
     class IRenderable;
-} // namespace ns::scene
+} // namespace NS::Scene
 
 class Block;
 class Player;
@@ -29,7 +29,7 @@ class Player;
 /// 床 + 壁 + ジャンプ台のブロック群と、追従カメラ付き Player を配置する。
 ///  (push 型 RenderRegistry) /  (Snapshot 一括) /  (resize callback) /
 ///  (baseColor 色分け) /  (BeginFrame は Application 内部) を実装する。
-class MainScene : public ns::app::Scene
+class MainScene : public NS::App::Scene
 {
 public:
     MainScene();
@@ -45,23 +45,23 @@ public:
     void OnRender() override;
     void OnShutdown() override;
 
-    void RegisterRenderable(ns::scene::IRenderable* renderable) override;
-    void UnregisterRenderable(ns::scene::IRenderable* renderable) override;
+    void RegisterRenderable(NS::Scene::IRenderable* renderable) override;
+    void UnregisterRenderable(NS::Scene::IRenderable* renderable) override;
 
 private:
-    std::unique_ptr<ns::graphics::Mesh> m_cubeMesh;
-    std::unique_ptr<ns::graphics::Texture> m_texture;
-    std::unique_ptr<ns::graphics::ShaderProgram> m_shader;
-    std::unique_ptr<ns::graphics::Material> m_playerMaterial;
-    std::unique_ptr<ns::graphics::Material> m_blockMaterial;
+    std::unique_ptr<NS::Graphics::Mesh> m_cubeMesh;
+    std::unique_ptr<NS::Graphics::Texture> m_texture;
+    std::unique_ptr<NS::Graphics::ShaderProgram> m_shader;
+    std::unique_ptr<NS::Graphics::Material> m_playerMaterial;
+    std::unique_ptr<NS::Graphics::Material> m_blockMaterial;
 
     std::unique_ptr<Player> m_player;
     std::vector<std::unique_ptr<Block>> m_blocks;
 
-    std::unique_ptr<ns::scene::GameObject> m_cameraRig;
-    ns::scene::CameraComponent m_camera;
-    ns::scene::ThirdPersonFollowComponent m_follow;
+    std::unique_ptr<NS::Scene::GameObject> m_cameraRig;
+    NS::Scene::CameraComponent m_camera;
+    NS::Scene::ThirdPersonFollowComponent m_follow;
 
-    std::vector<ns::scene::IRenderable*> m_renderList;
-    std::vector<ns::core::AABB> m_collisionWorld;
+    std::vector<NS::Scene::IRenderable*> m_renderList;
+    std::vector<NS::Core::AABB> m_collisionWorld;
 };

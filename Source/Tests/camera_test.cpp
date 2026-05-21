@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include <ns/core/math.h>
-#include <ns/graphics/camera.h>
+#include <Framework/Core/Math.h>
+#include <Framework/Graphics/Camera.h>
 
 #include <DirectXMath.h>
 
@@ -9,10 +9,10 @@
 
 namespace
 {
-    using ns::core::Deg2Rad;
-    using ns::core::Matrix;
-    using ns::core::Vector3;
-    using ns::graphics::Camera;
+    using NS::Core::Deg2Rad;
+    using NS::Core::Matrix;
+    using NS::Core::Vector3;
+    using NS::Graphics::Camera;
 
     bool MatricesNear(const Matrix& a, const Matrix& b, float eps = 1e-4f)
     {

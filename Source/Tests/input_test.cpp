@@ -1,22 +1,22 @@
 #include <gtest/gtest.h>
 
-#include <ns/platform/detail/input_win32.h>
-#include <ns/platform/gamepad.h>
-#include <ns/platform/input.h>
-#include <ns/platform/keyboard.h>
-#include <ns/platform/mouse.h>
+#include <Framework/Platform/detail/input_win32.h>
+#include <Framework/Platform/Gamepad.h>
+#include <Framework/Platform/Input.h>
+#include <Framework/Platform/Keyboard.h>
+#include <Framework/Platform/Mouse.h>
 
-#include <windows.h>
+#include "Framework/Framework.h"
 
 namespace
 {
-    using ns::platform::Gamepad;
-    using ns::platform::GamepadButton;
-    using ns::platform::Input;
-    using ns::platform::Key;
-    using ns::platform::Keyboard;
-    using ns::platform::Mouse;
-    using ns::platform::MouseButton;
+    using NS::Platform::Gamepad;
+    using NS::Platform::GamepadButton;
+    using NS::Platform::Input;
+    using NS::Platform::Key;
+    using NS::Platform::Keyboard;
+    using NS::Platform::Mouse;
+    using NS::Platform::MouseButton;
 } // namespace
 
 TEST(NsPlatformKeyboard, IsHeldAfterKeyDown)
@@ -103,16 +103,16 @@ TEST(NsPlatformInput, UpdatePropagatesToKeyboard)
 
 TEST(NsPlatformInputDetail, MapVkToKeyBasicAlpha)
 {
-    EXPECT_EQ(ns::platform::MapVkToKey('A'), Key::A);
-    EXPECT_EQ(ns::platform::MapVkToKey('Z'), Key::Z);
-    EXPECT_EQ(ns::platform::MapVkToKey('0'), Key::Num0);
-    EXPECT_EQ(ns::platform::MapVkToKey('9'), Key::Num9);
-    EXPECT_EQ(ns::platform::MapVkToKey(VK_SPACE), Key::Space);
-    EXPECT_EQ(ns::platform::MapVkToKey(VK_ESCAPE), Key::Escape);
-    EXPECT_EQ(ns::platform::MapVkToKey(VK_F1), Key::F1);
+    EXPECT_EQ(NS::Platform::MapVkToKey('A'), Key::A);
+    EXPECT_EQ(NS::Platform::MapVkToKey('Z'), Key::Z);
+    EXPECT_EQ(NS::Platform::MapVkToKey('0'), Key::Num0);
+    EXPECT_EQ(NS::Platform::MapVkToKey('9'), Key::Num9);
+    EXPECT_EQ(NS::Platform::MapVkToKey(VK_SPACE), Key::Space);
+    EXPECT_EQ(NS::Platform::MapVkToKey(VK_ESCAPE), Key::Escape);
+    EXPECT_EQ(NS::Platform::MapVkToKey(VK_F1), Key::F1);
 
-    EXPECT_EQ(ns::platform::MapVkToKey(0xFFFF), Key::Unknown);
-    EXPECT_EQ(ns::platform::MapVkToKey(0x00), Key::Unknown);
+    EXPECT_EQ(NS::Platform::MapVkToKey(0xFFFF), Key::Unknown);
+    EXPECT_EQ(NS::Platform::MapVkToKey(0x00), Key::Unknown);
 }
 
 TEST(NsPlatformMouse, IsHeldAfterButtonDown)

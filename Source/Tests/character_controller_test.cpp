@@ -1,17 +1,17 @@
 #include <gtest/gtest.h>
 
-#include <ns/core/math.h>
-#include <ns/physics/character_controller.h>
+#include <Framework/Core/Math.h>
+#include <Framework/Physics/CharacterController.h>
 
 #include <array>
 
 namespace
 {
-    using ns::core::AABB;
-    using ns::core::Vector3;
-    using ns::physics::CharacterController;
-    using ns::physics::CharacterControllerInput;
-    using ns::physics::CharacterControllerResult;
+    using NS::Core::AABB;
+    using NS::Core::Vector3;
+    using NS::Physics::CharacterController;
+    using NS::Physics::CharacterControllerInput;
+    using NS::Physics::CharacterControllerResult;
 
     AABB MakeAABB(const Vector3& center, const Vector3& extents)
     {

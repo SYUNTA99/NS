@@ -1,12 +1,12 @@
 #include <gtest/gtest.h>
 
-#include <ns/scene/component.h>
-#include <ns/scene/game_object.h>
+#include <Framework/Scene/Component.h>
+#include <Framework/Scene/GameObject.h>
 
 namespace
 {
-    using ns::scene::Component;
-    using ns::scene::GameObject;
+    using NS::Scene::Component;
+    using NS::Scene::GameObject;
 
     class CountingComponent : public Component
     {

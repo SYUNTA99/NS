@@ -1,17 +1,17 @@
 #include <gtest/gtest.h>
 
-#include <ns/scene/components/camera_component.h>
-#include <ns/scene/components/third_person_follow_component.h>
-#include <ns/scene/game_object.h>
-#include <ns/scene/transform.h>
+#include <Framework/Scene/CameraComponent.h>
+#include <Framework/Scene/ThirdPersonFollowComponent.h>
+#include <Framework/Scene/GameObject.h>
+#include <Framework/Scene/Transform.h>
 
 #include <cmath>
 
 namespace
 {
-    using ns::scene::CameraComponent;
-    using ns::scene::GameObject;
-    using ns::scene::ThirdPersonFollowComponent;
+    using NS::Scene::CameraComponent;
+    using NS::Scene::GameObject;
+    using NS::Scene::ThirdPersonFollowComponent;
 
     constexpr float kDt = 1.0f / 60.0f;
 } // namespace

@@ -1,15 +1,15 @@
 #include <gtest/gtest.h>
 
-#include <ns/core/math.h>
-#include <ns/physics/capsule.h>
-#include <ns/physics/swept_aabb.h>
+#include <Framework/Core/Math.h>
+#include <Framework/Physics/Capsule.h>
+#include <Framework/Physics/SweptAABB.h>
 
 namespace
 {
-    using ns::core::AABB;
-    using ns::core::Vector3;
-    using ns::physics::Capsule;
-    using ns::physics::SweptCapsuleVsAABB;
+    using NS::Core::AABB;
+    using NS::Core::Vector3;
+    using NS::Physics::Capsule;
+    using NS::Physics::SweptCapsuleVsAABB;
 
     Capsule MakeCapsule(const Vector3& center, float radius = 0.4f, float halfHeight = 0.5f)
     {

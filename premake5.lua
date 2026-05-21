@@ -21,7 +21,9 @@ workspace "NS"
     -- 全プロジェクト共通 include root = "Source/"
     includedirs { "Source" }
 
-    -- Windows共通定義（全プロジェクト共通）
+    -- Windows 共通定義 (全プロジェクト共通)
+    --   third_party (spdlog 等) からの transitive <windows.h> でも NOMINMAX が確実に効くよう
+    --   コマンドライン /D で global 伝搬させる (header 経由では取りこぼし発生)
     defines {
         "_WIN32_WINNT=0x0A00",
         "WIN32_LEAN_AND_MEAN",
@@ -40,8 +42,8 @@ workspace "NS"
     end
 
     --------------------------------------------------------------------------
-    -- 構成別設定 
-    --   - ns.lib 列の最適化を構成デフォルトとし、Game.exe 固有調整は
+    -- 構成別設定
+    --   - Framework 層列の最適化を構成デフォルトとし、Game.exe 固有調整は
     --     Game プロジェクト側で filter override する
     --------------------------------------------------------------------------
     filter "configurations:Debug"
@@ -106,12 +108,18 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 bindir = "build/bin/" .. outputdir
 objdir_base = "build/obj/" .. outputdir
 
--- 共通 build options (全 ns_* / Game / Tests project で使用)
+-- 共通 build options (全 Framework 層 / Game / Tests project で使用)
 local function applyCommonBuildOptions()
     warnings "Extra"
-    -- flags { "FatalWarnings" }  -- T1.0.8 build 安定後に有効化
+    -- flags { "FatalWarnings" }  -- build 安定後に有効化
     buildoptions { "/utf-8", "/permissive-", "/FS" }
     linkoptions { "/ignore:4006" }
+end
+
+-- Framework 層共通定義 ( 時点では空、 PCH は今後再導入予定)
+local function applyFrameworkLayerDefaults(layerName)
+    -- placeholder: layer 名引数は将来 PCH 再導入時に利用
+    _ = layerName
 end
 
 --============================================================================
@@ -140,22 +148,22 @@ project "directxtk_simplemath"
     buildoptions { "/utf-8", "/FS" }
 
 --============================================================================
--- ns_core モジュール (StaticLib)
---   Logger / Math / StringUtils / Clock / FileSystem
+-- Core 層 (StaticLib)
+--   Logger / Math / StringUtils / Clock / Filesystem
 --============================================================================
-project "ns_core"
+project "Core"
     kind "StaticLib"
-    location "build/ns_core"
+    location "build/Core"
 
     targetdir (bindir .. "/%{prj.name}")
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/ns/core/**.h",
-        "Source/ns/core/**.cpp"
+        "Source/Framework/Core/**.h",
+        "Source/Framework/Core/**.cpp"
     }
 
-    -- ns::core::Math は SimpleMath の using-alias、Logger は spdlog/magic_enum を使用
+    -- NS::Core::Math は SimpleMath の using-alias、Logger は spdlog/magic_enum を使用
     includedirs {
         "Source/third_party/DirectXTK/Inc",
         "Source/third_party/spdlog/include",
@@ -171,22 +179,23 @@ project "ns_core"
         "SPDLOG_NO_EXCEPTIONS"
     }
 
+    applyFrameworkLayerDefaults("Core")
     applyCommonBuildOptions()
 
 --============================================================================
--- ns_platform モジュール (StaticLib)
+-- Platform 層 (StaticLib)
 --   Window / Input / Keyboard / Mouse / Gamepad
 --============================================================================
-project "ns_platform"
+project "Platform"
     kind "StaticLib"
-    location "build/ns_platform"
+    location "build/Platform"
 
     targetdir (bindir .. "/%{prj.name}")
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/ns/platform/**.h",
-        "Source/ns/platform/**.cpp"
+        "Source/Framework/Platform/**.h",
+        "Source/Framework/Platform/**.cpp"
     }
 
     includedirs {
@@ -200,30 +209,31 @@ project "ns_platform"
         "SPDLOG_NO_EXCEPTIONS"
     }
 
-    links { "ns_core" }
+    links { "Core" }
 
     -- XInput リンク
     filter "system:windows"
         links { "Xinput" }
     filter {}
 
+    applyFrameworkLayerDefaults("Platform")
     applyCommonBuildOptions()
 
 --============================================================================
--- ns_graphics モジュール (StaticLib)
+-- Graphics 層 (StaticLib)
 --   Renderer / RenderTarget / CommonStates / Buffer / Texture / Shader /
 --   Mesh / Camera / Material
 --============================================================================
-project "ns_graphics"
+project "Graphics"
     kind "StaticLib"
-    location "build/ns_graphics"
+    location "build/Graphics"
 
     targetdir (bindir .. "/%{prj.name}")
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/ns/graphics/**.h",
-        "Source/ns/graphics/**.cpp"
+        "Source/Framework/Graphics/**.h",
+        "Source/Framework/Graphics/**.cpp"
     }
 
     includedirs {
@@ -240,8 +250,8 @@ project "ns_graphics"
     }
 
     links {
-        "ns_core",
-        "ns_platform",
+        "Core",
+        "Platform",
         -- D3D11 system libs
         "d3d11",
         "dxgi",
@@ -249,26 +259,27 @@ project "ns_graphics"
         "d3dcompiler"
     }
 
+    applyFrameworkLayerDefaults("Graphics")
     applyCommonBuildOptions()
 
 --============================================================================
--- ns_physics モジュール (StaticLib)
+-- Physics 層 (StaticLib)
 --   Capsule / SweptAABB / CharacterController / Ray / Plane
 --   Mario 系プラットフォーマー特化 Custom AABB 物理、graphics 非依存
 --============================================================================
-project "ns_physics"
+project "Physics"
     kind "StaticLib"
-    location "build/ns_physics"
+    location "build/Physics"
 
     targetdir (bindir .. "/%{prj.name}")
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/ns/physics/**.h",
-        "Source/ns/physics/**.cpp"
+        "Source/Framework/Physics/**.h",
+        "Source/Framework/Physics/**.cpp"
     }
 
-    -- ns::core::Vector3 / BoundingBox / Ray (SimpleMath) を使う
+    -- NS::Core::Vector3 / BoundingBox / Ray (SimpleMath) を使う
     includedirs {
         "Source/third_party/DirectXTK/Inc",
         "Source/third_party/spdlog/include",
@@ -281,26 +292,60 @@ project "ns_physics"
         "SPDLOG_NO_EXCEPTIONS"
     }
 
-    links { "ns_core" }
+    links { "Core" }
 
+    applyFrameworkLayerDefaults("Physics")
     applyCommonBuildOptions()
 
 --============================================================================
--- ns_scene モジュール (StaticLib)
+-- Audio 層 (StaticLib、 placeholder)
+--    で空フォルダ + Audio.h placeholder のみ。  以降に
+--   XAudio2 + DirectXTK::Audio で BGM/SE 実装予定。
+--============================================================================
+project "Audio"
+    kind "StaticLib"
+    location "build/Audio"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/Framework/Audio/**.h",
+        "Source/Framework/Audio/**.cpp"
+    }
+
+    includedirs {
+        "Source/third_party/spdlog/include",
+        "Source/third_party/magic_enum/include",
+    }
+
+    defines {
+        "SPDLOG_HEADER_ONLY",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_NO_EXCEPTIONS"
+    }
+
+    links { "Core" }
+
+    applyFrameworkLayerDefaults("Audio")
+    applyCommonBuildOptions()
+
+--============================================================================
+-- Scene 層 (StaticLib)
 --   GameObject / Component / Transform / IRenderable / RenderContext +
---   components/* (MeshComponent / CharacterMovement / Camera / 他)
---   UE5 風 OOP の合成主体。engine = Library として 7 層目に配置。
+--   各種 Component (MeshComponent / CharacterMovement / Camera / 他)
+--   UE5 風 OOP の合成主体。 Framework Library として 7 層目に配置。
 --============================================================================
-project "ns_scene"
+project "Scene"
     kind "StaticLib"
-    location "build/ns_scene"
+    location "build/Scene"
 
     targetdir (bindir .. "/%{prj.name}")
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/ns/scene/**.h",
-        "Source/ns/scene/**.cpp"
+        "Source/Framework/Scene/**.h",
+        "Source/Framework/Scene/**.cpp"
     }
 
     includedirs {
@@ -316,31 +361,34 @@ project "ns_scene"
     }
 
     links {
-        "ns_core",
-        "ns_platform",
-        "ns_graphics",
-        "ns_physics"
+        "Core",
+        "Platform",
+        "Graphics",
+        "Physics",
+        "Audio"
     }
 
+    applyFrameworkLayerDefaults("Scene")
     applyCommonBuildOptions()
 
 --============================================================================
--- ns_app モジュール (StaticLib)
+-- App 層 (StaticLib)
 --   Application / Scene / WinMain
+--   DD7: フォルダ・ namespace ・ premake project 全て短縮命名 `App` で統一
 --============================================================================
-project "ns_app"
+project "App"
     kind "StaticLib"
-    location "build/ns_app"
+    location "build/App"
 
     targetdir (bindir .. "/%{prj.name}")
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/ns/app/**.h",
-        "Source/ns/app/**.cpp"
+        "Source/Framework/App/**.h",
+        "Source/Framework/App/**.cpp"
     }
 
-    -- ns::core::Logger を include するため spdlog / magic_enum の参照が必要
+    -- NS::Core::Logger を include するため spdlog / magic_enum の参照が必要
     includedirs {
         "Source/third_party/spdlog/include",
         "Source/third_party/magic_enum/include",
@@ -353,11 +401,15 @@ project "ns_app"
     }
 
     links {
-        "ns_core",
-        "ns_platform",
-        "ns_graphics"
+        "Core",
+        "Platform",
+        "Physics",
+        "Graphics",
+        "Audio",
+        "Scene"
     }
 
+    applyFrameworkLayerDefaults("App")
     applyCommonBuildOptions()
 
 --============================================================================
@@ -376,7 +428,7 @@ project "Game"
         "Source/Game/**.cpp"
     }
 
-    -- CubeScene 経由で ns/core/math.h → SimpleMath.h、Material::SetParams で
+    -- Framework/Core/Math.h → SimpleMath.h、Material::SetParams で
     -- DirectXMath.h が必要になる。spdlog/magic_enum は将来 Game 側でも使う想定で同居。
     includedirs {
         "Source/third_party/DirectXTK/Inc",
@@ -391,12 +443,13 @@ project "Game"
     }
 
     links {
-        "ns_core",
-        "ns_platform",
-        "ns_graphics",
-        "ns_physics",
-        "ns_scene",
-        "ns_app"
+        "Core",
+        "Platform",
+        "Physics",
+        "Graphics",
+        "Audio",
+        "Scene",
+        "App"
     }
 
     -- HLSL / Texture は exe 隣の Shaders/ Assets/ にコピーし、FileSystem::GetExeDirectory()
@@ -449,7 +502,7 @@ project "googletest"
 
 --============================================================================
 -- Tests 実行ファイル (ConsoleApp)
---   GoogleTest ベース、ns_* リンクして個別モジュールをテスト
+--   GoogleTest ベース、 Framework 各層をリンクして個別モジュールをテスト
 --============================================================================
 project "Tests"
     kind "ConsoleApp"
@@ -484,12 +537,13 @@ project "Tests"
 
     links {
         "googletest",
-        "ns_core",
-        "ns_platform",
-        "ns_graphics",
-        "ns_physics",
-        "ns_scene",
-        "ns_app"
+        "Core",
+        "Platform",
+        "Physics",
+        "Graphics",
+        "Audio",
+        "Scene",
+        "App"
     }
 
     debugdir "."

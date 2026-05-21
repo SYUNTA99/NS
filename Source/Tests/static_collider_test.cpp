@@ -1,13 +1,13 @@
 #include <gtest/gtest.h>
 
-#include <ns/scene/components/static_collider_component.h>
-#include <ns/scene/game_object.h>
-#include <ns/scene/transform.h>
+#include <Framework/Scene/StaticColliderComponent.h>
+#include <Framework/Scene/GameObject.h>
+#include <Framework/Scene/Transform.h>
 
 namespace
 {
-    using ns::scene::GameObject;
-    using ns::scene::StaticColliderComponent;
+    using NS::Scene::GameObject;
+    using NS::Scene::StaticColliderComponent;
 } // namespace
 
 TEST(StaticColliderTest, DefaultHalfExtentsAreHalfMeterCube)
@@ -36,7 +36,7 @@ TEST(StaticColliderTest, WorldAABBReflectsOwnerPosition)
     obj.RegisterComponent(&sc);
     obj.Root().SetPosition({10.0f, 3.0f, -5.0f});
 
-    const ns::core::AABB box = sc.WorldAABB();
+    const NS::Core::AABB box = sc.WorldAABB();
     EXPECT_FLOAT_EQ(box.Center.x, 10.0f);
     EXPECT_FLOAT_EQ(box.Center.y, 3.0f);
     EXPECT_FLOAT_EQ(box.Center.z, -5.0f);
@@ -48,7 +48,7 @@ TEST(StaticColliderTest, WorldAABBReflectsOwnerPosition)
 TEST(StaticColliderTest, WorldAABBWithoutOwnerIsOriginCentered)
 {
     StaticColliderComponent sc{{1.0f, 1.0f, 1.0f}};
-    const ns::core::AABB box = sc.WorldAABB();
+    const NS::Core::AABB box = sc.WorldAABB();
     EXPECT_FLOAT_EQ(box.Center.x, 0.0f);
     EXPECT_FLOAT_EQ(box.Center.y, 0.0f);
     EXPECT_FLOAT_EQ(box.Center.z, 0.0f);
