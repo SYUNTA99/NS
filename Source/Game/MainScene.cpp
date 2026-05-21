@@ -194,8 +194,13 @@ void MainScene::OnRender()
 
     ns::scene::RenderContext ctx{};
     ctx.renderer = &app->Renderer();
-    ctx.viewProjection = m_camera.ViewProjection();
     ctx.alpha = ns::app::Application::Alpha();
+
+    // Player Mesh の補間と camera を同位相にする。 OnUpdate (fixed step) で
+    // SetPosition すると相対位置が discrete に動いて jitter として見える。
+    m_follow.ApplyCameraTransform(ctx.alpha);
+
+    ctx.viewProjection = m_camera.ViewProjection();
     for (ns::scene::IRenderable* r : m_renderList)
     {
         if (r != nullptr)

@@ -123,6 +123,12 @@ namespace ns::scene
             m_desiredDistance = desired;
         }
         m_distance = SpringApproach(m_distance, m_desiredDistance, m_springOmega, dt);
+    }
+
+    void ThirdPersonFollowComponent::ApplyCameraTransform(float alpha) noexcept
+    {
+        if (!IsActive() || m_camera == nullptr || m_target == nullptr)
+            return;
 
         const float cy = std::cos(m_yaw);
         const float sy = std::sin(m_yaw);
@@ -130,7 +136,9 @@ namespace ns::scene
         const float sp = std::sin(m_pitch);
         const ns::core::Vector3 forward{sy * cp, sp, cy * cp};
 
-        const ns::core::Vector3 tgtPos = m_target->WorldMatrix().Translation();
+        // target は補間位置を使うことで Player Mesh の補間と一致させ、
+        // 相対位置に jitter が乗らないようにする ( 整合)。
+        const ns::core::Vector3 tgtPos = m_target->InterpolatedWorldMatrix(alpha).Translation();
         const ns::core::Vector3 headPos{tgtPos.x, tgtPos.y + m_headHeight, tgtPos.z};
         const ns::core::Vector3 camPos{
             headPos.x - forward.x * m_distance,

@@ -59,7 +59,16 @@ namespace ns::scene
         [[nodiscard]] float Yaw() const noexcept { return m_yaw; }
         [[nodiscard]] float Pitch() const noexcept { return m_pitch; }
 
+        /// fixed step での state mutation (input → yaw/pitch、 distance spring)。
+        /// Camera position の SetPosition / SetTarget はここでは呼ばず、
+        /// `ApplyCameraTransform(alpha)` で render frame ごとに行う (jitter 回避)。
         void OnUpdate(float dt) override;
+
+        /// 可変 frame Render 時に呼出す。 Player の補間 position に追随して
+        /// camera position / target を SetPosition / SetTarget する。 alpha は
+        /// `Application::Alpha()` (= accumulator / fixedDelta) を渡す。
+        /// fixed step state (yaw/pitch/distance) は OnUpdate で更新済の値を使う。
+        void ApplyCameraTransform(float alpha) noexcept;
 
     private:
         Transform* m_target = nullptr;
