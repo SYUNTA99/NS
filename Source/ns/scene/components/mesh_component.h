@@ -48,6 +48,13 @@ namespace ns::scene
         /// IsActive() == false なら no-op。
         void Draw(const RenderContext& context) override;
 
+        /// Owner の OwningScene に self を IRenderable として登録する。
+        /// Owner / OwningScene が null の時は no-op で安全に return する。
+        void OnStart() override;
+        /// Owner の OwningScene から self を解除する。Scene 破棄前に呼ぶことで
+        /// dangling pointer を残さない。Owner / OwningScene が null の時は no-op。
+        void OnEndPlay() override;
+
     private:
         ns::graphics::Mesh* m_mesh = nullptr;
         ns::graphics::Material* m_material = nullptr;

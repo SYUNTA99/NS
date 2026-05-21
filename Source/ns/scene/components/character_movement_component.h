@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file character_movement_component.h
-/// @brief Capsule + double jump + coyote/buffer + asymmetric gravity + apex hang を保有する
+/// @brief Capsule + シングルジャンプ + coyote/buffer + asymmetric gravity + apex hang を保有する
 ///        Player 移動 Component (, )。`ns::physics::CharacterController` を value
 ///        member として内包し、毎 OnUpdate で desired velocity と dt を渡して結果を Root に適用する。
 ///
@@ -45,6 +45,9 @@ namespace ns::scene
         void SetDebugDrawEnabled(bool enabled) noexcept { m_debugDraw = enabled; }
         [[nodiscard]] bool IsDebugDrawEnabled() const noexcept { return m_debugDraw; }
 
+        /// 奈落落ち復活などで状態を初期化する。velocity / grounded / jump 関連 timer を全リセット。
+        void ResetState() noexcept;
+
         void OnUpdate(float dt) override;
 
     private:
@@ -52,10 +55,10 @@ namespace ns::scene
         float m_gravityDown = -35.0f;
         float m_apexHangVy = 1.0f;
         float m_apexHangScale = 0.5f;
-        float m_jumpReleaseScale = 0.4f;
-        float m_jumpImpulse = 9.0f;
-        float m_coyoteTime = 0.10f;
-        float m_jumpBufferTime = 0.10f;
+        float m_jumpReleaseScale = 0.6f;
+        float m_jumpImpulse = 12.0f;
+        float m_coyoteTime = 0.20f;
+        float m_jumpBufferTime = 0.25f;
         float m_maxSpeed = 8.0f;
         float m_walkSpeed = 4.0f;
         float m_stickDeadzone = 0.3f;
@@ -72,7 +75,7 @@ namespace ns::scene
         bool m_jumpHeld = false;
         bool m_prevJumpHeld = false;
         bool m_jumpPressedThisFrame = false;
-        int m_jumpsRemaining = 2;
+        int m_jumpsRemaining = 1;
         float m_coyoteTimer = 0.0f;
         float m_bufferTimer = 0.0f;
         bool m_wasGrounded = false;

@@ -45,10 +45,10 @@ TEST(CharacterMovementTest, JumpPressedAppliesImpulseAndConsumesOneJump)
     mov.SetJumpPressed();
     StepN(mov, 1);
     EXPECT_GT(mov.Velocity().y, 5.0f);
-    EXPECT_EQ(mov.JumpsRemaining(), 1);
+    EXPECT_EQ(mov.JumpsRemaining(), 0);
 }
 
-TEST(CharacterMovementTest, DoubleJumpConsumesSecondJump)
+TEST(CharacterMovementTest, SecondJumpDoesNotFireWithoutLanding)
 {
     GameObject obj;
     CharacterMovementComponent mov;
@@ -56,12 +56,9 @@ TEST(CharacterMovementTest, DoubleJumpConsumesSecondJump)
 
     mov.SetJumpPressed();
     StepN(mov, 1);
-    EXPECT_EQ(mov.JumpsRemaining(), 1);
-
-    mov.SetJumpPressed();
-    StepN(mov, 1);
     EXPECT_EQ(mov.JumpsRemaining(), 0);
 
+    // 着地していないので 2 回目 press は無視される。
     mov.SetJumpPressed();
     StepN(mov, 1);
     EXPECT_EQ(mov.JumpsRemaining(), 0);

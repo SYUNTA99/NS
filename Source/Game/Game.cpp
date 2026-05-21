@@ -1,4 +1,4 @@
-#include "Game/CubeScene.h"
+#include "Game/MainScene.h"
 
 #include "ns/app/application.h"
 #include "ns/app/scene.h"
@@ -24,7 +24,7 @@ namespace ns::app
 
     std::unique_ptr<Scene> CreateInitialScene()
     {
-        return std::make_unique<CubeScene>();
+        return std::make_unique<MainScene>();
     }
 
 } // namespace ns::app
