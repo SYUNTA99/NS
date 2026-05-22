@@ -11,7 +11,7 @@ namespace
 TEST(CameraComponentTest, DefaultsMatchCameraDefaults)
 {
     CameraComponent cc;
-    EXPECT_GT(cc.FovY(), 0.0f);
+    EXPECT_GT(cc.FovY().value, 0.0f);
     EXPECT_GT(cc.Camera().AspectRatio(), 0.0f);
 }
 

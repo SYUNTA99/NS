@@ -49,16 +49,51 @@ namespace NS::Core
     /// 円周率
     inline constexpr float kPi = 3.14159265358979323846f;
 
-    /// 度 → ラジアン変換
+    /// 度 → ラジアン変換 (raw float)。 強い型を使う場合は ToRadians(Degrees) を優先。
     [[nodiscard]] constexpr float Deg2Rad(float deg) noexcept
     {
         return deg * (kPi / 180.0f);
     }
 
-    /// ラジアン → 度変換
+    /// ラジアン → 度変換 (raw float)。 強い型を使う場合は ToDegrees(Radians) を優先。
     [[nodiscard]] constexpr float Rad2Deg(float rad) noexcept
     {
         return rad * (180.0f / kPi);
+    }
+
+    /// 角度を弧度法 (radians) で持つ強い型。 暗黙変換禁止、 raw float の取り違え事故を防ぐ。
+    /// 用途: Camera::SetFovY、 Transform 回転 API 等。 値は `value` メンバ経由で取り出す。
+    struct Radians
+    {
+        float value;
+    };
+
+    /// 角度を度数法 (degrees) で持つ強い型。 ヒューマン向け数値リテラル用。
+    /// 暗黙変換禁止、 ToRadians() 経由で明示変換が必要。
+    struct Degrees
+    {
+        float value;
+    };
+
+    /// Degrees → Radians 明示変換。 sin/cos など radians 期待 API への入口。
+    [[nodiscard]] constexpr Radians ToRadians(Degrees d) noexcept
+    {
+        return Radians{d.value * (kPi / 180.0f)};
+    }
+
+    /// Radians → Degrees 明示変換。 デバッグ表示・ ヒューマン UI 用。
+    [[nodiscard]] constexpr Degrees ToDegrees(Radians r) noexcept
+    {
+        return Degrees{r.value * (180.0f / kPi)};
+    }
+
+    [[nodiscard]] constexpr bool operator==(Radians a, Radians b) noexcept
+    {
+        return a.value == b.value;
+    }
+    [[nodiscard]] constexpr bool operator==(Degrees a, Degrees b) noexcept
+    {
+        return a.value == b.value;
     }
 
     /// `value` を `[lo, hi]` の範囲にクランプする

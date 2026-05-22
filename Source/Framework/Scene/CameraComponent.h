@@ -24,7 +24,7 @@ namespace NS::Scene
         void SetPosition(const NS::Core::Vector3& position) noexcept;
         void SetTarget(const NS::Core::Vector3& target) noexcept;
         void SetUp(const NS::Core::Vector3& up) noexcept;
-        void SetFovY(float radians) noexcept;
+        void SetFovY(NS::Core::Radians fov) noexcept;
         void SetAspectRatio(float aspect) noexcept;
         void SetAspectRatioFromRenderer(const NS::Graphics::Renderer& renderer) noexcept;
         void SetNearPlane(float nearPlane) noexcept;
@@ -33,7 +33,7 @@ namespace NS::Scene
         [[nodiscard]] const NS::Core::Vector3& Position() const noexcept { return m_camera.Position(); }
         [[nodiscard]] const NS::Core::Vector3& Target() const noexcept { return m_camera.Target(); }
         [[nodiscard]] const NS::Core::Vector3& Up() const noexcept { return m_camera.Up(); }
-        [[nodiscard]] float FovY() const noexcept { return m_camera.FovY(); }
+        [[nodiscard]] NS::Core::Radians FovY() const noexcept { return m_camera.FovY(); }
 
         /// 内包 Camera への変更不可参照。MeshComponent::Draw に ViewProjection を渡す用途で使う。
         [[nodiscard]] const NS::Graphics::Camera& Camera() const noexcept { return m_camera; }

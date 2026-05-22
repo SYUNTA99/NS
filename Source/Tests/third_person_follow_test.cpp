@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Scene/CameraComponent.h>
-#include <Framework/Scene/ThirdPersonFollowComponent.h>
 #include <Framework/Scene/GameObject.h>
+#include <Framework/Scene/ThirdPersonFollowComponent.h>
 #include <Framework/Scene/Transform.h>
 
 #include <cmath>
@@ -75,14 +75,14 @@ TEST(ThirdPersonFollowTest, UpdatesCameraPositionBehindTarget)
 TEST(ThirdPersonFollowTest, SetFovYPropagatesToCamera)
 {
     CameraComponent cc;
-    cc.SetFovY(1.0f);
+    cc.SetFovY(NS::Core::Radians{1.0f});
     GameObject obj;
     ThirdPersonFollowComponent follow(&obj.Root());
     follow.SetCamera(&cc);
 
-    follow.SetFovY(0.5f);
-    EXPECT_FLOAT_EQ(follow.FovY(), 0.5f);
-    EXPECT_FLOAT_EQ(cc.FovY(), 0.5f);
+    follow.SetFovY(NS::Core::Radians{0.5f});
+    EXPECT_FLOAT_EQ(follow.FovY().value, 0.5f);
+    EXPECT_FLOAT_EQ(cc.FovY().value, 0.5f);
 }
 
 TEST(ThirdPersonFollowTest, SensitivityAndInvertSettersPersist)

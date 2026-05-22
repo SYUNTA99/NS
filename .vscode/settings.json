@@ -1,5 +1,17 @@
 {
     "editor.formatOnSave": false,
+    "dotnet.defaultSolution": "disable",
+    "files.exclude": {
+        "Source/third_party/DirectXTK/MakeSpriteFont/**": true,
+        "Source/third_party/**/*.csproj": true,
+        "Source/third_party/**/*.sln": true
+    },
+    "search.exclude": {
+        "Source/third_party/DirectXTK/MakeSpriteFont/**": true
+    },
+    "files.watcherExclude": {
+        "**/Source/third_party/**": true
+    },
     "files.associations": {
         "algorithm": "cpp",
         "cmath": "cpp",
@@ -80,6 +92,5 @@
         "xtr1common": "cpp",
         "xtree": "cpp",
         "xutility": "cpp"
-    },
-    "cmake.sourceDirectory": "${workspaceFolder}/Source/third_party/DirectXTex"
+    }
 }
