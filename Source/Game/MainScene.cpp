@@ -141,12 +141,6 @@ void MainScene::OnStart()
     for (auto& block : m_blocks)
         block->OnStart();
     m_cameraRig->OnStart();
-
-    app->Window().SetResizeCallback([this](NS::Core::Size2D s) {
-        if (s.width <= 0 || s.height <= 0)
-            return;
-        m_camera.SetAspectRatio(NS::Core::AspectRatio(s));
-    });
 }
 
 void MainScene::OnUpdate(float dt)
@@ -160,6 +154,10 @@ void MainScene::OnUpdate(float dt)
         NS::App::Application::Quit();
         return;
     }
+
+    // Application が Renderer::Resize を排他で握っているため、 Camera の aspect ratio は
+    // Renderer の現在 Size から毎フレーム pull する (callback 上書きで競合させない)。
+    m_camera.SetAspectRatioFromRenderer(app->Renderer());
 
     if (m_player)
         m_player->InputComp().SetCameraForward(m_camera.ForwardHorizontal());
