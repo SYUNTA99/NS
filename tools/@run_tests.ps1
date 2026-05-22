@@ -61,8 +61,17 @@ if (-not (Test-Path $testExe)) {
     exit 1
 }
 
-& $testExe --gtest_color=yes
-$testResult = $LASTEXITCODE
+# Tests.exe の spdlog 出力は stderr 経由。 scriptBlock.Invoke() (cmd ラッパ経由)
+# だと ErrorActionPreference=Stop が stderr 1 行ごとに発動して中断するため、
+# テスト実行中は EAP を Continue にしてから戻す
+$savedEAP = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+try {
+    & $testExe --gtest_color=yes 2>&1 | Out-Host
+    $testResult = $LASTEXITCODE
+} finally {
+    $ErrorActionPreference = $savedEAP
+}
 
 Write-Host ""
 if ($testResult -eq 0) {
