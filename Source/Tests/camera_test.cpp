@@ -103,7 +103,7 @@ TEST(CameraTest, ViewUsesLeftHanded)
 TEST(CameraTest, ProjectionUsesLeftHanded)
 {
     Camera camera;
-    camera.SetFovY(Deg2Rad(45.0f));
+    camera.SetFovY(NS::Core::ToRadians(NS::Core::Degrees{45.0f}));
     camera.SetAspectRatio(1.6f);
     camera.SetNearPlane(0.5f);
     camera.SetFarPlane(500.0f);
@@ -159,7 +159,7 @@ TEST(CameraTest, AccessorsReturnSetValues)
     camera.SetPosition(Vector3(1.0f, 2.0f, 3.0f));
     camera.SetTarget(Vector3(4.0f, 5.0f, 6.0f));
     camera.SetUp(Vector3(0.0f, 0.0f, 1.0f));
-    camera.SetFovY(0.5f);
+    camera.SetFovY(NS::Core::Radians{0.5f});
     camera.SetAspectRatio(2.0f);
     camera.SetNearPlane(0.25f);
     camera.SetFarPlane(750.0f);
@@ -167,7 +167,7 @@ TEST(CameraTest, AccessorsReturnSetValues)
     EXPECT_FLOAT_EQ(camera.Position().x, 1.0f);
     EXPECT_FLOAT_EQ(camera.Target().y, 5.0f);
     EXPECT_FLOAT_EQ(camera.Up().z, 1.0f);
-    EXPECT_FLOAT_EQ(camera.FovY(), 0.5f);
+    EXPECT_FLOAT_EQ(camera.FovY().value, 0.5f);
     EXPECT_FLOAT_EQ(camera.AspectRatio(), 2.0f);
     EXPECT_FLOAT_EQ(camera.NearPlane(), 0.25f);
     EXPECT_FLOAT_EQ(camera.FarPlane(), 750.0f);

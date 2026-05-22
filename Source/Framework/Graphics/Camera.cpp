@@ -28,7 +28,7 @@ namespace NS::Graphics
 
     Camera::Camera() noexcept
         : m_position(0.0f, 0.0f, -5.0f), m_target(0.0f, 0.0f, 0.0f), m_up(0.0f, 1.0f, 0.0f),
-          m_fovY(NS::Core::Deg2Rad(60.0f)), m_aspect(16.0f / 9.0f), m_near(0.1f), m_far(1000.0f),
+          m_fovY(NS::Core::ToRadians(NS::Core::Degrees{60.0f})), m_aspect(16.0f / 9.0f), m_near(0.1f), m_far(1000.0f),
           m_view(NS::Core::Matrix::Identity), m_projection(NS::Core::Matrix::Identity), m_viewDirty(true),
           m_projDirty(true)
     {}
@@ -49,9 +49,9 @@ namespace NS::Graphics
         m_viewDirty = true;
     }
 
-    void Camera::SetFovY(float radians) noexcept
+    void Camera::SetFovY(NS::Core::Radians fov) noexcept
     {
-        m_fovY = radians;
+        m_fovY = fov;
         m_projDirty = true;
     }
     void Camera::SetAspectRatio(float aspect) noexcept
@@ -82,7 +82,7 @@ namespace NS::Graphics
     {
         return m_up;
     }
-    float Camera::FovY() const noexcept
+    NS::Core::Radians Camera::FovY() const noexcept
     {
         return m_fovY;
     }
@@ -121,7 +121,7 @@ namespace NS::Graphics
     {
         if (m_projDirty)
         {
-            m_projection = MakeProjectionLH(m_fovY, m_aspect, m_near, m_far);
+            m_projection = MakeProjectionLH(m_fovY.value, m_aspect, m_near, m_far);
             m_projDirty = false;
         }
         return m_projection;

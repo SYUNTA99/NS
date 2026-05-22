@@ -21,9 +21,9 @@ namespace NS::Scene
         m_camera.SetUp(up);
     }
 
-    void CameraComponent::SetFovY(float radians) noexcept
+    void CameraComponent::SetFovY(NS::Core::Radians fov) noexcept
     {
-        m_camera.SetFovY(radians);
+        m_camera.SetFovY(fov);
     }
 
     void CameraComponent::SetAspectRatio(float aspect) noexcept

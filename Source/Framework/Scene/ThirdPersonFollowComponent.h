@@ -38,8 +38,8 @@ namespace NS::Scene
         void SetMovement(const CharacterMovementComponent* movement) noexcept;
 
         ///  設定 ( で Settings UI から bridge)。
-        void SetFovY(float radians) noexcept;
-        [[nodiscard]] float FovY() const noexcept { return m_fovY; }
+        void SetFovY(NS::Core::Radians fov) noexcept;
+        [[nodiscard]] NS::Core::Radians FovY() const noexcept { return m_fovY; }
         void SetSensX(float radPerPixel) noexcept;
         [[nodiscard]] float SensX() const noexcept { return m_sensX; }
         void SetSensY(float radPerPixel) noexcept;
@@ -86,7 +86,7 @@ namespace NS::Scene
 
         float m_headHeight = 1.2f;
 
-        float m_fovY = 1.0472f;
+        NS::Core::Radians m_fovY{1.0472f};
         float m_sensX = 0.0030f;
         float m_sensY = 0.0030f;
         float m_stickSensX = 2.0f;

@@ -25,8 +25,8 @@ namespace NS::Graphics
         void SetTarget(const NS::Core::Vector3& target) noexcept;
         void SetUp(const NS::Core::Vector3& up) noexcept;
 
-        /// 垂直 FOV (ラジアン)。
-        void SetFovY(float radians) noexcept;
+        /// 垂直 FOV を強い型 Radians で受ける。 raw float の取り違え事故を防ぐ。
+        void SetFovY(NS::Core::Radians fov) noexcept;
         /// アスペクト比 (width / height)。Window リサイズ時に呼出責任は Game 側。
         void SetAspectRatio(float aspect) noexcept;
         void SetNearPlane(float nearPlane) noexcept;
@@ -36,7 +36,7 @@ namespace NS::Graphics
         [[nodiscard]] const NS::Core::Vector3& Target() const noexcept;
         [[nodiscard]] const NS::Core::Vector3& Up() const noexcept;
 
-        [[nodiscard]] float FovY() const noexcept;
+        [[nodiscard]] NS::Core::Radians FovY() const noexcept;
         [[nodiscard]] float AspectRatio() const noexcept;
         [[nodiscard]] float NearPlane() const noexcept;
         [[nodiscard]] float FarPlane() const noexcept;
@@ -53,7 +53,7 @@ namespace NS::Graphics
         NS::Core::Vector3 m_position;
         NS::Core::Vector3 m_target;
         NS::Core::Vector3 m_up;
-        float m_fovY;
+        NS::Core::Radians m_fovY;
         float m_aspect;
         float m_near;
         float m_far;

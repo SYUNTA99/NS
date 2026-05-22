@@ -47,11 +47,11 @@ namespace NS::Scene
         m_movement = movement;
     }
 
-    void ThirdPersonFollowComponent::SetFovY(float radians) noexcept
+    void ThirdPersonFollowComponent::SetFovY(NS::Core::Radians fov) noexcept
     {
-        m_fovY = radians;
+        m_fovY = fov;
         if (m_camera != nullptr)
-            m_camera->SetFovY(radians);
+            m_camera->SetFovY(fov);
     }
 
     void ThirdPersonFollowComponent::SetSensX(float radPerPixel) noexcept

@@ -22,6 +22,39 @@ TEST(NsCoreMath, Rad2DegInvertsDeg2Rad)
     EXPECT_NEAR(NS::Core::Rad2Deg(NS::Core::Deg2Rad(45.0f)), 45.0f, 1e-3f);
 }
 
+TEST(NsCoreMath, ToRadiansFromDegreesKnownAngles)
+{
+    EXPECT_NEAR(NS::Core::ToRadians(NS::Core::Degrees{0.0f}).value, 0.0f, kEpsilon);
+    EXPECT_NEAR(NS::Core::ToRadians(NS::Core::Degrees{180.0f}).value, NS::Core::kPi, kEpsilon);
+    EXPECT_NEAR(NS::Core::ToRadians(NS::Core::Degrees{90.0f}).value, NS::Core::kPi * 0.5f, kEpsilon);
+}
+
+TEST(NsCoreMath, ToDegreesInvertsToRadians)
+{
+    const auto rt = NS::Core::ToDegrees(NS::Core::ToRadians(NS::Core::Degrees{60.0f}));
+    EXPECT_NEAR(rt.value, 60.0f, 1e-3f);
+}
+
+TEST(NsCoreMath, RadiansEqualityComparesValue)
+{
+    EXPECT_TRUE(NS::Core::Radians{1.0f} == NS::Core::Radians{1.0f});
+    EXPECT_FALSE(NS::Core::Radians{1.0f} == NS::Core::Radians{1.1f});
+    EXPECT_TRUE(NS::Core::Degrees{45.0f} == NS::Core::Degrees{45.0f});
+}
+
+// 暗黙変換禁止 — 以下が compile error にならない場合は型システムが壊れている。
+// 安全のための static_assert で型不一致を assert する。
+static_assert(!std::is_convertible_v<float, NS::Core::Radians>, "float から Radians への暗黙変換は禁止");
+static_assert(!std::is_convertible_v<NS::Core::Degrees, NS::Core::Radians>,
+              "Degrees から Radians への暗黙変換は禁止 (ToRadians 経由のみ)");
+static_assert(!std::is_convertible_v<NS::Core::Radians, NS::Core::Degrees>,
+              "Radians から Degrees への暗黙変換は禁止 (ToDegrees 経由のみ)");
+
+// constexpr で全関数が動くこと
+static_assert(NS::Core::ToRadians(NS::Core::Degrees{0.0f}).value == 0.0f);
+static_assert(NS::Core::ToDegrees(NS::Core::Radians{0.0f}).value == 0.0f);
+static_assert(NS::Core::Radians{1.0f} == NS::Core::Radians{1.0f});
+
 TEST(NsCoreMath, ClampLimitsIntAndFloat)
 {
     EXPECT_EQ(NS::Core::Clamp(5, 0, 10), 5);
