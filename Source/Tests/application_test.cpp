@@ -1,20 +1,20 @@
 #include <gtest/gtest.h>
 
-#include <ns/app/application.h>
-#include <ns/app/scene.h>
-#include <ns/core/logger.h>
-#include <ns/graphics/renderer.h>
-#include <ns/platform/input.h>
-#include <ns/platform/window.h>
+#include <Framework/App/Application.h>
+#include <Framework/App/Scene.h>
+#include <Framework/Core/Logger.h>
+#include <Framework/Graphics/Renderer.h>
+#include <Framework/Platform/Input.h>
+#include <Framework/Platform/Window.h>
 
 #include <memory>
 #include <utility>
 
 namespace
 {
-    using ns::app::Application;
-    using ns::app::ApplicationDesc;
-    using ns::app::Scene;
+    using NS::App::Application;
+    using NS::App::ApplicationDesc;
+    using NS::App::Scene;
 
     ApplicationDesc MakeDesc(const char* title, int width = 320, int height = 240)
     {
@@ -90,8 +90,8 @@ namespace
 class ApplicationLoggerTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { ns::core::Logger::Init(); }
-    void TearDown() override { ns::core::Logger::Shutdown(); }
+    void SetUp() override { NS::Core::Logger::Init(); }
+    void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
 TEST_F(ApplicationLoggerTest, ConstructsAndIsValid)

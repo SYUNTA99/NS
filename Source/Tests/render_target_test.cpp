@@ -1,23 +1,23 @@
 #include <gtest/gtest.h>
 
-#include <ns/core/logger.h>
-#include <ns/graphics/render_target.h>
-#include <ns/graphics/renderer.h>
-#include <ns/platform/window.h>
+#include <Framework/Core/Logger.h>
+#include <Framework/Graphics/RenderTarget.h>
+#include <Framework/Graphics/Renderer.h>
+#include <Framework/Platform/Window.h>
 
 namespace
 {
-    using ns::graphics::Renderer;
-    using ns::graphics::RendererDesc;
-    using ns::platform::Window;
-    using ns::platform::WindowDesc;
+    using NS::Graphics::Renderer;
+    using NS::Graphics::RendererDesc;
+    using NS::Platform::Window;
+    using NS::Platform::WindowDesc;
 } // namespace
 
 class RenderTargetLoggerTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { ns::core::Logger::Init(); }
-    void TearDown() override { ns::core::Logger::Shutdown(); }
+    void SetUp() override { NS::Core::Logger::Init(); }
+    void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
 TEST_F(RenderTargetLoggerTest, MainRTHasDepth)

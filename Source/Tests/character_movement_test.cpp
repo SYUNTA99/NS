@@ -1,22 +1,22 @@
 #include <gtest/gtest.h>
 
-#include <ns/scene/components/character_movement_component.h>
-#include <ns/scene/game_object.h>
-#include <ns/scene/transform.h>
+#include <Framework/Scene/CharacterMovementComponent.h>
+#include <Framework/Scene/GameObject.h>
+#include <Framework/Scene/Transform.h>
 
 #include <span>
 
 namespace
 {
-    using ns::scene::CharacterMovementComponent;
-    using ns::scene::GameObject;
+    using NS::Scene::CharacterMovementComponent;
+    using NS::Scene::GameObject;
 
     constexpr float kFixedDt = 1.0f / 60.0f;
 
     /// 衝突なしの環境で N 回 OnUpdate を呼ぶ。debug draw は false 固定。
     void StepN(CharacterMovementComponent& mov, int n)
     {
-        std::span<const ns::core::AABB> empty;
+        std::span<const NS::Core::AABB> empty;
         mov.SetCollisionWorld(empty);
         mov.SetDebugDrawEnabled(false);
         for (int i = 0; i < n; ++i)
@@ -108,7 +108,7 @@ TEST(CharacterMovementTest, ApexHangScalesGravity)
     CharacterMovementComponent mov;
     obj.RegisterComponent(&mov);
     mov.SetDebugDrawEnabled(false);
-    std::span<const ns::core::AABB> empty;
+    std::span<const NS::Core::AABB> empty;
     mov.SetCollisionWorld(empty);
 
     mov.SetJumpPressed();
@@ -148,7 +148,7 @@ TEST(CharacterMovementTest, OnUpdateNoOpWhenInactive)
     mov.SetDebugDrawEnabled(false);
 
     mov.SetJumpPressed();
-    std::span<const ns::core::AABB> empty;
+    std::span<const NS::Core::AABB> empty;
     mov.SetCollisionWorld(empty);
     mov.OnUpdate(kFixedDt);
 

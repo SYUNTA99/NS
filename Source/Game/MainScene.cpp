@@ -3,22 +3,22 @@
 #include "Game/Block.h"
 #include "Game/Player.h"
 
-#include "ns/app/application.h"
-#include "ns/core/filesystem.h"
-#include "ns/core/log_categories.h"
-#include "ns/core/logger.h"
-#include "ns/graphics/material.h"
-#include "ns/graphics/mesh.h"
-#include "ns/graphics/mesh_primitives.h"
-#include "ns/graphics/renderer.h"
-#include "ns/graphics/shader_program.h"
-#include "ns/graphics/texture.h"
-#include "ns/platform/input.h"
-#include "ns/platform/keyboard.h"
-#include "ns/platform/window.h"
-#include "ns/scene/components/mesh_component.h"
-#include "ns/scene/i_renderable.h"
-#include "ns/scene/render_context.h"
+#include "Framework/App/Application.h"
+#include "Framework/Core/Filesystem.h"
+#include "Framework/Core/LogCategories.h"
+#include "Framework/Core/Logger.h"
+#include "Framework/Graphics/Material.h"
+#include "Framework/Graphics/Mesh.h"
+#include "Framework/Graphics/MeshPrimitives.h"
+#include "Framework/Graphics/Renderer.h"
+#include "Framework/Graphics/ShaderProgram.h"
+#include "Framework/Graphics/Texture.h"
+#include "Framework/Platform/Input.h"
+#include "Framework/Platform/Keyboard.h"
+#include "Framework/Platform/Window.h"
+#include "Framework/Scene/MeshComponent.h"
+#include "Framework/Scene/IRenderable.h"
+#include "Framework/Scene/RenderContext.h"
 
 #include <algorithm>
 #include <iterator>
@@ -27,8 +27,8 @@ namespace
 {
     struct BlockDef
     {
-        ns::core::Vector3 position;
-        ns::core::Vector3 halfExtents;
+        NS::Core::Vector3 position;
+        NS::Core::Vector3 halfExtents;
     };
 
     constexpr BlockDef kInitialLevel[] = {
@@ -42,8 +42,8 @@ namespace
         {{3.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
     };
 
-    constexpr ns::core::Vector3 kPlayerColor{0.85f, 0.20f, 0.20f};
-    constexpr ns::core::Vector3 kBlockColor{0.70f, 0.70f, 0.75f};
+    constexpr NS::Core::Vector3 kPlayerColor{0.85f, 0.20f, 0.20f};
+    constexpr NS::Core::Vector3 kBlockColor{0.70f, 0.70f, 0.75f};
 } // namespace
 
 MainScene::MainScene() : m_camera(), m_follow(nullptr) {}
@@ -52,50 +52,50 @@ MainScene::~MainScene() = default;
 
 void MainScene::OnStart()
 {
-    auto* app = ns::app::Application::Get();
+    auto* app = NS::App::Application::Get();
     if (app == nullptr)
     {
-        NS_LOG_ERROR(::ns::core::LogCat::Game, "MainScene::OnStart: Application::Get()==null");
+        NS_LOG_ERROR(::NS::Core::LogCat::Game, "MainScene::OnStart: Application::Get()==null");
         return;
     }
 
     auto& renderer = app->Renderer();
-    const auto exeDir = ns::core::FileSystem::GetExeDirectory();
+    const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
 
-    auto cubeGeom = ns::graphics::MakeCube({0.5f, 0.5f, 0.5f});
-    ns::graphics::MeshDesc meshDesc{};
+    auto cubeGeom = NS::Graphics::MakeCube({0.5f, 0.5f, 0.5f});
+    NS::Graphics::MeshDesc meshDesc{};
     meshDesc.vertices = cubeGeom.vertices.data();
     meshDesc.vertexCount = cubeGeom.vertices.size();
     meshDesc.indices = cubeGeom.indices.data();
     meshDesc.indexCount = cubeGeom.indices.size();
-    m_cubeMesh = std::make_unique<ns::graphics::Mesh>(renderer, meshDesc);
+    m_cubeMesh = std::make_unique<NS::Graphics::Mesh>(renderer, meshDesc);
 
-    ns::graphics::TextureDesc texDesc{};
+    NS::Graphics::TextureDesc texDesc{};
     texDesc.path = exeDir / "Assets" / "Textures" / "cube_test.png";
     texDesc.generateMipmaps = true;
     texDesc.sRGB = false;
-    m_texture = std::make_unique<ns::graphics::Texture>(renderer, texDesc);
+    m_texture = std::make_unique<NS::Graphics::Texture>(renderer, texDesc);
     if (m_texture->IsUsingFallback())
-        NS_LOG_WARN(::ns::core::LogCat::Game, "MainScene: cube_test.png 読込失敗、magenta fallback で続行");
+        NS_LOG_WARN(::NS::Core::LogCat::Game, "MainScene: cube_test.png 読込失敗、magenta fallback で続行");
 
-    ns::graphics::ShaderProgramDesc shaderDesc{};
+    NS::Graphics::ShaderProgramDesc shaderDesc{};
     shaderDesc.vertexShaderPath = exeDir / "Shaders" / "standard.vs.hlsl";
     shaderDesc.pixelShaderPath = exeDir / "Shaders" / "standard.ps.hlsl";
     shaderDesc.vertexEntryPoint = "VSMain";
     shaderDesc.pixelEntryPoint = "PSMain";
-    shaderDesc.inputLayout = ns::graphics::Mesh::StandardInputLayout();
-    m_shader = std::make_unique<ns::graphics::ShaderProgram>(renderer, shaderDesc);
+    shaderDesc.inputLayout = NS::Graphics::Mesh::StandardInputLayout();
+    m_shader = std::make_unique<NS::Graphics::ShaderProgram>(renderer, shaderDesc);
     if (m_shader->IsUsingFallback())
-        NS_LOG_WARN(::ns::core::LogCat::Game, "MainScene: standard HLSL 読込/コンパイル失敗、magenta fallback で続行");
+        NS_LOG_WARN(::NS::Core::LogCat::Game, "MainScene: standard HLSL 読込/コンパイル失敗、magenta fallback で続行");
 
-    ns::graphics::MaterialDesc matDesc{};
+    NS::Graphics::MaterialDesc matDesc{};
     matDesc.shader = m_shader.get();
-    matDesc.constantBufferSize = sizeof(ns::scene::FrameCB);
+    matDesc.constantBufferSize = sizeof(NS::Scene::FrameCB);
     matDesc.cbSlot = 0;
-    matDesc.cbStages = ns::graphics::ShaderStage::Vertex | ns::graphics::ShaderStage::Pixel;
-    m_playerMaterial = std::make_unique<ns::graphics::Material>(renderer, matDesc);
+    matDesc.cbStages = NS::Graphics::ShaderStage::Vertex | NS::Graphics::ShaderStage::Pixel;
+    m_playerMaterial = std::make_unique<NS::Graphics::Material>(renderer, matDesc);
     m_playerMaterial->SetTexture(0, m_texture.get());
-    m_blockMaterial = std::make_unique<ns::graphics::Material>(renderer, matDesc);
+    m_blockMaterial = std::make_unique<NS::Graphics::Material>(renderer, matDesc);
     m_blockMaterial->SetTexture(0, m_texture.get());
 
     m_player = std::make_unique<Player>(m_cubeMesh.get(), m_playerMaterial.get(), &app->Input());
@@ -122,7 +122,7 @@ void MainScene::OnStart()
     }
     m_player->Movement().SetCollisionWorld(m_collisionWorld);
 
-    m_cameraRig = std::make_unique<ns::scene::GameObject>();
+    m_cameraRig = std::make_unique<NS::Scene::GameObject>();
     m_cameraRig->AttachScene(this);
     m_cameraRig->RegisterComponent(&m_camera);
     m_cameraRig->RegisterComponent(&m_follow);
@@ -151,13 +151,13 @@ void MainScene::OnStart()
 
 void MainScene::OnUpdate(float dt)
 {
-    auto* app = ns::app::Application::Get();
+    auto* app = NS::App::Application::Get();
     if (app == nullptr)
         return;
 
-    if (app->Input().Keyboard().IsPressed(ns::platform::Key::Escape))
+    if (app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
     {
-        ns::app::Application::Quit();
+        NS::App::Application::Quit();
         return;
     }
 
@@ -188,20 +188,20 @@ void MainScene::OnUpdate(float dt)
 
 void MainScene::OnRender()
 {
-    auto* app = ns::app::Application::Get();
+    auto* app = NS::App::Application::Get();
     if (app == nullptr)
         return;
 
-    ns::scene::RenderContext ctx{};
+    NS::Scene::RenderContext ctx{};
     ctx.renderer = &app->Renderer();
-    ctx.alpha = ns::app::Application::Alpha();
+    ctx.alpha = NS::App::Application::Alpha();
 
     // Player Mesh の補間と camera を同位相にする。 OnUpdate (fixed step) で
     // SetPosition すると相対位置が discrete に動いて jitter として見える。
     m_follow.ApplyCameraTransform(ctx.alpha);
 
     ctx.viewProjection = m_camera.ViewProjection();
-    for (ns::scene::IRenderable* r : m_renderList)
+    for (NS::Scene::IRenderable* r : m_renderList)
     {
         if (r != nullptr)
             r->Draw(ctx);
@@ -219,7 +219,7 @@ void MainScene::OnShutdown()
 
     m_renderList.clear();
 
-    if (auto* app = ns::app::Application::Get())
+    if (auto* app = NS::App::Application::Get())
         app->Window().SetResizeCallback({});
 
     m_cameraRig.reset();
@@ -233,7 +233,7 @@ void MainScene::OnShutdown()
     m_cubeMesh.reset();
 }
 
-void MainScene::RegisterRenderable(ns::scene::IRenderable* renderable)
+void MainScene::RegisterRenderable(NS::Scene::IRenderable* renderable)
 {
     if (renderable == nullptr)
         return;
@@ -243,7 +243,7 @@ void MainScene::RegisterRenderable(ns::scene::IRenderable* renderable)
     m_renderList.push_back(renderable);
 }
 
-void MainScene::UnregisterRenderable(ns::scene::IRenderable* renderable)
+void MainScene::UnregisterRenderable(NS::Scene::IRenderable* renderable)
 {
     if (renderable == nullptr)
         return;

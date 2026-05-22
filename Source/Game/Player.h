@@ -1,28 +1,28 @@
 #pragma once
 
-#include "ns/scene/components/character_movement_component.h"
-#include "ns/scene/components/mesh_component.h"
-#include "ns/scene/components/player_input_component.h"
-#include "ns/scene/game_object.h"
+#include "Framework/Scene/CharacterMovementComponent.h"
+#include "Framework/Scene/MeshComponent.h"
+#include "Framework/Scene/PlayerInputComponent.h"
+#include "Framework/Scene/GameObject.h"
 
-namespace ns::graphics
+namespace NS::Graphics
 {
     class Material;
     class Mesh;
-} // namespace ns::graphics
+} // namespace NS::Graphics
 
-namespace ns::platform
+namespace NS::Platform
 {
     class Input;
-} // namespace ns::platform
+} // namespace NS::Platform
 
 /// プレイヤーキャラクタの GameObject ( 固定スロット)。
 /// MeshComponent + CharacterMovementComponent + PlayerInputComponent を named member
 /// として保有する。Mesh / Material / Input は寿命を MainScene が保証。
-class Player : public ns::scene::GameObject
+class Player : public NS::Scene::GameObject
 {
 public:
-    Player(ns::graphics::Mesh* mesh, ns::graphics::Material* material, ns::platform::Input* input) noexcept;
+    Player(NS::Graphics::Mesh* mesh, NS::Graphics::Material* material, NS::Platform::Input* input) noexcept;
     ~Player() override = default;
 
     Player(const Player&) = delete;
@@ -30,12 +30,12 @@ public:
     Player(Player&&) = delete;
     Player& operator=(Player&&) = delete;
 
-    [[nodiscard]] ns::scene::MeshComponent& MeshComp() noexcept { return m_mesh; }
-    [[nodiscard]] ns::scene::CharacterMovementComponent& Movement() noexcept { return m_movement; }
-    [[nodiscard]] ns::scene::PlayerInputComponent& InputComp() noexcept { return m_input; }
+    [[nodiscard]] NS::Scene::MeshComponent& MeshComp() noexcept { return m_mesh; }
+    [[nodiscard]] NS::Scene::CharacterMovementComponent& Movement() noexcept { return m_movement; }
+    [[nodiscard]] NS::Scene::PlayerInputComponent& InputComp() noexcept { return m_input; }
 
 private:
-    ns::scene::MeshComponent m_mesh;
-    ns::scene::CharacterMovementComponent m_movement;
-    ns::scene::PlayerInputComponent m_input;
+    NS::Scene::MeshComponent m_mesh;
+    NS::Scene::CharacterMovementComponent m_movement;
+    NS::Scene::PlayerInputComponent m_input;
 };

@@ -1,14 +1,14 @@
 #include <gtest/gtest.h>
 
-#include <ns/core/math.h>
-#include <ns/graphics/debug_draw.h>
+#include <Framework/Core/Math.h>
+#include <Framework/Graphics/DebugDraw.h>
 
 namespace
 {
-    using ns::core::AABB;
-    using ns::core::Color;
-    using ns::core::Vector3;
-    namespace DD = ns::graphics::DebugDraw;
+    using NS::Core::AABB;
+    using NS::Core::Color;
+    using NS::Core::Vector3;
+    namespace DD = NS::Graphics::DebugDraw;
 
     void Reset() noexcept
     {

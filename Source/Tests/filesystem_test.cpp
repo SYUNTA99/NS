@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include <ns/core/filesystem.h>
-#include <ns/core/logger.h>
+#include <Framework/Core/Filesystem.h>
+#include <Framework/Core/Logger.h>
 
 #include <chrono>
 #include <fstream>
@@ -23,22 +23,22 @@ namespace
 class FileSystemLoggerTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { ns::core::Logger::Init(); }
-    void TearDown() override { ns::core::Logger::Shutdown(); }
+    void SetUp() override { NS::Core::Logger::Init(); }
+    void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
 TEST(NsCoreFileSystem, ExistsReturnsFalseForMissingFile)
 {
     const auto p = MakeTempPath("missing.txt");
-    EXPECT_FALSE(ns::core::FileSystem::Exists(p));
+    EXPECT_FALSE(NS::Core::FileSystem::Exists(p));
 }
 
 TEST(NsCoreFileSystem, CreateDirectoryThenExistsReturnsTrue)
 {
     const auto root = MakeTempPath("dir");
     const auto dir = root / "nested" / "deep";
-    ASSERT_TRUE(ns::core::FileSystem::CreateDirectories(dir));
-    EXPECT_TRUE(ns::core::FileSystem::Exists(dir));
+    ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(dir));
+    EXPECT_TRUE(NS::Core::FileSystem::Exists(dir));
     std::filesystem::remove_all(root);
 }
 
@@ -53,7 +53,7 @@ TEST(NsCoreFileSystem, WriteAndReadAllBytesRoundTrip)
         out.write(reinterpret_cast<const char*>(original.data()), static_cast<std::streamsize>(original.size()));
     }
 
-    const auto read = ns::core::FileSystem::ReadAllBytes(path);
+    const auto read = NS::Core::FileSystem::ReadAllBytes(path);
     ASSERT_TRUE(read.has_value());
     EXPECT_EQ(*read, original);
 
@@ -70,7 +70,7 @@ TEST(NsCoreFileSystem, WriteAndReadAllTextRoundTrip)
         out << original;
     }
 
-    const auto read = ns::core::FileSystem::ReadAllText(path);
+    const auto read = NS::Core::FileSystem::ReadAllText(path);
     ASSERT_TRUE(read.has_value());
     EXPECT_EQ(*read, original);
 
@@ -80,14 +80,14 @@ TEST(NsCoreFileSystem, WriteAndReadAllTextRoundTrip)
 TEST_F(FileSystemLoggerTest, ReadAllBytesReturnsNulloptForMissingFile)
 {
     const auto path = MakeTempPath("nonexistent.bin");
-    const auto result = ns::core::FileSystem::ReadAllBytes(path);
+    const auto result = NS::Core::FileSystem::ReadAllBytes(path);
     EXPECT_FALSE(result.has_value());
 }
 
 TEST(NsCoreFileSystem, GetExeDirectoryReturnsExistingPath)
 {
-    const auto dir = ns::core::FileSystem::GetExeDirectory();
+    const auto dir = NS::Core::FileSystem::GetExeDirectory();
     EXPECT_FALSE(dir.empty());
-    EXPECT_TRUE(ns::core::FileSystem::Exists(dir));
+    EXPECT_TRUE(NS::Core::FileSystem::Exists(dir));
     EXPECT_TRUE(dir.is_absolute());
 }

@@ -1,26 +1,26 @@
 #include <gtest/gtest.h>
 
-#include <ns/core/logger.h>
-#include <ns/graphics/mesh.h>
-#include <ns/graphics/renderer.h>
-#include <ns/platform/window.h>
+#include <Framework/Core/Logger.h>
+#include <Framework/Graphics/Mesh.h>
+#include <Framework/Graphics/Renderer.h>
+#include <Framework/Platform/Window.h>
 
 #include <array>
 #include <cstdint>
 
 namespace
 {
-    using ns::core::Vector2;
-    using ns::core::Vector3;
-    using ns::graphics::InputElement;
-    using ns::graphics::InputElementFormat;
-    using ns::graphics::Mesh;
-    using ns::graphics::MeshDesc;
-    using ns::graphics::MeshVertex;
-    using ns::graphics::Renderer;
-    using ns::graphics::RendererDesc;
-    using ns::platform::Window;
-    using ns::platform::WindowDesc;
+    using NS::Core::Vector2;
+    using NS::Core::Vector3;
+    using NS::Graphics::InputElement;
+    using NS::Graphics::InputElementFormat;
+    using NS::Graphics::Mesh;
+    using NS::Graphics::MeshDesc;
+    using NS::Graphics::MeshVertex;
+    using NS::Graphics::Renderer;
+    using NS::Graphics::RendererDesc;
+    using NS::Platform::Window;
+    using NS::Platform::WindowDesc;
 
     WindowDesc MakeWindowDesc(const char* title)
     {
@@ -67,8 +67,8 @@ namespace
 class MeshLoggerTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { ns::core::Logger::Init(); }
-    void TearDown() override { ns::core::Logger::Shutdown(); }
+    void SetUp() override { NS::Core::Logger::Init(); }
+    void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
 TEST(MeshTypeLayoutTest, MeshVertexSizeIs32)
@@ -217,6 +217,6 @@ TEST_F(MeshLoggerTest, AccessorsNonNull)
     Mesh mesh(renderer, desc);
     ASSERT_TRUE(mesh.IsValid());
 
-    EXPECT_NE(ns::graphics::detail::GetVertexBuffer(mesh), nullptr);
-    EXPECT_NE(ns::graphics::detail::GetIndexBuffer(mesh), nullptr);
+    EXPECT_NE(NS::Graphics::detail::GetVertexBuffer(mesh), nullptr);
+    EXPECT_NE(NS::Graphics::detail::GetIndexBuffer(mesh), nullptr);
 }

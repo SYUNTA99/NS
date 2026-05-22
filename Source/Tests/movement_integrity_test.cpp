@@ -1,19 +1,19 @@
 #include <gtest/gtest.h>
 
-#include <ns/core/math.h>
-#include <ns/scene/components/character_movement_component.h>
-#include <ns/scene/game_object.h>
-#include <ns/scene/transform.h>
+#include <Framework/Core/Math.h>
+#include <Framework/Scene/CharacterMovementComponent.h>
+#include <Framework/Scene/GameObject.h>
+#include <Framework/Scene/Transform.h>
 
 #include <span>
 #include <vector>
 
 namespace
 {
-    using ns::core::AABB;
-    using ns::core::Vector3;
-    using ns::scene::CharacterMovementComponent;
-    using ns::scene::GameObject;
+    using NS::Core::AABB;
+    using NS::Core::Vector3;
+    using NS::Scene::CharacterMovementComponent;
+    using NS::Scene::GameObject;
 
     constexpr float kFixedDt = 1.0f / 60.0f;
     constexpr int kNumSteps = 120;

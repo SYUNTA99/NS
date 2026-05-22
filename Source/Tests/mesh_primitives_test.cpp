@@ -1,17 +1,17 @@
 #include <gtest/gtest.h>
 
-#include <ns/core/math.h>
-#include <ns/graphics/mesh_primitives.h>
+#include <Framework/Core/Math.h>
+#include <Framework/Graphics/MeshPrimitives.h>
 
 #include <algorithm>
 #include <cmath>
 
 namespace
 {
-    using ns::core::Vector2;
-    using ns::core::Vector3;
-    using ns::graphics::MakeCube;
-    using ns::graphics::MakePlane;
+    using NS::Core::Vector2;
+    using NS::Core::Vector3;
+    using NS::Graphics::MakeCube;
+    using NS::Graphics::MakePlane;
 
     bool IsAxisAligned(const Vector3& n) noexcept
     {

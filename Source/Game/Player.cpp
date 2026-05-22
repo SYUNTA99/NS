@@ -1,6 +1,6 @@
 #include "Game/Player.h"
 
-Player::Player(ns::graphics::Mesh* mesh, ns::graphics::Material* material, ns::platform::Input* input) noexcept
+Player::Player(NS::Graphics::Mesh* mesh, NS::Graphics::Material* material, NS::Platform::Input* input) noexcept
     : m_mesh(mesh, material), m_movement(), m_input(&m_movement)
 {
     // input -> movement -> mesh の順に登録することで、

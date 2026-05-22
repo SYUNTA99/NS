@@ -1,19 +1,19 @@
 #include <gtest/gtest.h>
 
-#include <ns/core/logger.h>
-#include <ns/graphics/renderer.h>
-#include <ns/graphics/texture.h>
-#include <ns/platform/window.h>
+#include <Framework/Core/Logger.h>
+#include <Framework/Graphics/Renderer.h>
+#include <Framework/Graphics/Texture.h>
+#include <Framework/Platform/Window.h>
 
 namespace
 {
-    using ns::graphics::Renderer;
-    using ns::graphics::RendererDesc;
-    using ns::graphics::ShaderStage;
-    using ns::graphics::Texture;
-    using ns::graphics::TextureDesc;
-    using ns::platform::Window;
-    using ns::platform::WindowDesc;
+    using NS::Graphics::Renderer;
+    using NS::Graphics::RendererDesc;
+    using NS::Graphics::ShaderStage;
+    using NS::Graphics::Texture;
+    using NS::Graphics::TextureDesc;
+    using NS::Platform::Window;
+    using NS::Platform::WindowDesc;
 
     WindowDesc MakeWindowDesc(const char* title)
     {
@@ -37,8 +37,8 @@ namespace
 class TextureLoggerTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { ns::core::Logger::Init(); }
-    void TearDown() override { ns::core::Logger::Shutdown(); }
+    void SetUp() override { NS::Core::Logger::Init(); }
+    void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
 TEST_F(TextureLoggerTest, MissingFileFallsBackToMagenta)
@@ -113,5 +113,5 @@ TEST_F(TextureLoggerTest, FallbackSrvIsNonNull)
     Texture tex(renderer, desc);
     ASSERT_TRUE(tex.IsValid());
 
-    EXPECT_NE(ns::graphics::detail::GetSrv(tex), nullptr);
+    EXPECT_NE(NS::Graphics::detail::GetSrv(tex), nullptr);
 }

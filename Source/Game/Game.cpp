@@ -1,11 +1,11 @@
 #include "Game/MainScene.h"
 
-#include "ns/app/application.h"
-#include "ns/app/scene.h"
+#include "Framework/App/Application.h"
+#include "Framework/App/Scene.h"
 
 #include <memory>
 
-namespace ns::app
+namespace NS::App
 {
 
     std::unique_ptr<Application> CreateApplication()
@@ -27,4 +27,4 @@ namespace ns::app
         return std::make_unique<MainScene>();
     }
 
-} // namespace ns::app
+} // namespace NS::App
