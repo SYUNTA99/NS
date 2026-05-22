@@ -123,10 +123,13 @@ local function applyFrameworkLayerDefaults(layerName)
 end
 
 --============================================================================
--- DirectXTK SimpleMath サブセット (StaticLib)
---   `Vector3::Zero` / `Matrix::Identity` 等の静的定数 TU を提供する。
---   pch.h が Windows.h まで巻き込むため、本体に汚染を持ち込まないように
+-- DirectXTK 必要サブセット (StaticLib)
+--   NS が使う 4 機能: SimpleMath / CommonStates / DDSTextureLoader /
+--   WICTextureLoader。 Effects / SpriteBatch / GeometricPrimitive 等は精
+--   コンパイル済 HLSL (`.inc`) を要求するため exclude。
+--   pch.h が Windows.h まで巻き込むため、 本体に汚染を持ち込まないように
 --   隔離した独立プロジェクトとしてビルドする。
+--   project 名は consumer の links { } 互換のため `directxtk_simplemath` を維持。
 --============================================================================
 project "directxtk_simplemath"
     kind "StaticLib"
@@ -136,13 +139,28 @@ project "directxtk_simplemath"
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/third_party/DirectXTK/Src/SimpleMath.cpp"
+        -- PCH (DirectXTK 標準パターン、 各 .cpp が冒頭で `#include "pch.h"`)
+        "Source/third_party/DirectXTK/Src/pch.cpp",
+        "Source/third_party/DirectXTK/Src/pch.h",
+        -- NS が利用する最小サブセット
+        "Source/third_party/DirectXTK/Src/SimpleMath.cpp",
+        "Source/third_party/DirectXTK/Src/CommonStates.cpp",
+        "Source/third_party/DirectXTK/Src/DDSTextureLoader.cpp",
+        "Source/third_party/DirectXTK/Src/WICTextureLoader.cpp",
+        -- 上記 .cpp が依存する内部ヘッダ
+        "Source/third_party/DirectXTK/Src/DDS.h",
+        "Source/third_party/DirectXTK/Src/LoaderHelpers.h",
+        "Source/third_party/DirectXTK/Src/PlatformHelpers.h",
     }
 
     includedirs {
         "Source/third_party/DirectXTK/Inc",
-        "Source/third_party/DirectXTK/Src"   -- SimpleMath.cpp 内の "pch.h" 解決用
+        "Source/third_party/DirectXTK/Src"   -- "pch.h" 解決用
     }
+
+    -- DirectXTK 標準の pch.h を PCH 化 (各 .cpp が冒頭で `#include "pch.h"` 済)
+    pchheader "pch.h"
+    pchsource "Source/third_party/DirectXTK/Src/pch.cpp"
 
     warnings "Off"
     buildoptions { "/utf-8", "/FS" }
