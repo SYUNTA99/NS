@@ -17,13 +17,12 @@ namespace NS::Platform
         ATOM classAtom = 0;
         HINSTANCE hInstance = nullptr;
 
-        int width = 0;
-        int height = 0;
+        ::NS::Core::Size2D size{0, 0};
         bool shouldClose = false;
 
         std::wstring className;
 
-        std::function<void(int, int)> onResize;
+        std::function<void(::NS::Core::Size2D)> onResize;
         std::function<void()> onClose;
 
         Input* input = nullptr;

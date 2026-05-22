@@ -20,8 +20,7 @@ namespace
     {
         WindowDesc d{};
         d.title = title;
-        d.width = 320;
-        d.height = 240;
+        d.size = NS::Core::Size2D{320, 240};
         d.visible = false;
         return d;
     }

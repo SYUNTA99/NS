@@ -16,8 +16,8 @@
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
-#include "Framework/Scene/MeshComponent.h"
 #include "Framework/Scene/IRenderable.h"
+#include "Framework/Scene/MeshComponent.h"
 #include "Framework/Scene/RenderContext.h"
 
 #include <algorithm>
@@ -142,10 +142,10 @@ void MainScene::OnStart()
         block->OnStart();
     m_cameraRig->OnStart();
 
-    app->Window().SetResizeCallback([this](int w, int h) {
-        if (w <= 0 || h <= 0)
+    app->Window().SetResizeCallback([this](NS::Core::Size2D s) {
+        if (s.width <= 0 || s.height <= 0)
             return;
-        m_camera.SetAspectRatio(static_cast<float>(w) / static_cast<float>(h));
+        m_camera.SetAspectRatio(NS::Core::AspectRatio(s));
     });
 }
 

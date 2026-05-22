@@ -3,9 +3,9 @@
 #include <Framework/Core/LogCategories.h>
 #include <Framework/Core/Logger.h>
 #include <Framework/Core/StringUtils.h>
+#include <Framework/Platform/Input.h>
 #include <Framework/Platform/detail/input_win32.h>
 #include <Framework/Platform/detail/win32_window.h>
-#include <Framework/Platform/Input.h>
 
 namespace NS::Platform
 {
@@ -76,11 +76,11 @@ namespace NS::Platform
                 {
                     break;
                 }
-                impl->width = LOWORD(lparam);
-                impl->height = HIWORD(lparam);
+                impl->size.width = LOWORD(lparam);
+                impl->size.height = HIWORD(lparam);
                 if (impl->onResize)
                 {
-                    impl->onResize(impl->width, impl->height);
+                    impl->onResize(impl->size);
                 }
                 break;
             }
@@ -119,8 +119,7 @@ namespace NS::Platform
         ::SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
         m_pImpl->hInstance = ::GetModuleHandleW(nullptr);
-        m_pImpl->width = desc.width;
-        m_pImpl->height = desc.height;
+        m_pImpl->size = desc.size;
         m_pImpl->className = L"NS_Window";
 
         WNDCLASSEXW wc{};
@@ -142,7 +141,7 @@ namespace NS::Platform
             return;
         }
 
-        RECT rect{0, 0, desc.width, desc.height};
+        RECT rect{0, 0, desc.size.width, desc.size.height};
         const DWORD style = WS_OVERLAPPEDWINDOW;
         const DWORD exStyle = 0;
         ::AdjustWindowRectEx(&rect, style, FALSE, exStyle);
@@ -215,14 +214,9 @@ namespace NS::Platform
         return m_pImpl->shouldClose;
     }
 
-    int Window::Width() const noexcept
+    ::NS::Core::Size2D Window::Size() const noexcept
     {
-        return m_pImpl->width;
-    }
-
-    int Window::Height() const noexcept
-    {
-        return m_pImpl->height;
+        return m_pImpl->size;
     }
 
     void* Window::NativeHandle() const noexcept
@@ -248,7 +242,7 @@ namespace NS::Platform
         }
     }
 
-    void Window::SetResizeCallback(std::function<void(int, int)> cb)
+    void Window::SetResizeCallback(std::function<void(::NS::Core::Size2D)> cb)
     {
         m_pImpl->onResize = std::move(cb);
     }

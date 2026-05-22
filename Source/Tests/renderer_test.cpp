@@ -17,8 +17,7 @@ namespace
     {
         WindowDesc d{};
         d.title = title;
-        d.width = width;
-        d.height = height;
+        d.size = NS::Core::Size2D{width, height};
         d.visible = false;
         return d;
     }
@@ -52,15 +51,14 @@ TEST_F(RendererLoggerTest, ConstructsAndIsValid)
     EXPECT_TRUE(renderer.IsValid());
 }
 
-TEST_F(RendererLoggerTest, WidthHeightMatchesWindow)
+TEST_F(RendererLoggerTest, SizeMatchesWindow)
 {
     Window window(MakeDesc("ns_renderer_size", 512, 384));
     ASSERT_TRUE(window.IsValid());
 
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
-    EXPECT_EQ(renderer.Width(), 512);
-    EXPECT_EQ(renderer.Height(), 384);
+    EXPECT_EQ(renderer.Size(), (NS::Core::Size2D{512, 384}));
 }
 
 TEST_F(RendererLoggerTest, BeginEndFrameIsSafe)
@@ -86,9 +84,8 @@ TEST_F(RendererLoggerTest, ResizeUpdatesSize)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    renderer.Resize(800, 600);
-    EXPECT_EQ(renderer.Width(), 800);
-    EXPECT_EQ(renderer.Height(), 600);
+    renderer.Resize(NS::Core::Size2D{800, 600});
+    EXPECT_EQ(renderer.Size(), (NS::Core::Size2D{800, 600}));
 }
 
 TEST_F(RendererLoggerTest, ResizeZeroIsNoop)
@@ -99,11 +96,9 @@ TEST_F(RendererLoggerTest, ResizeZeroIsNoop)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const int w = renderer.Width();
-    const int h = renderer.Height();
-    renderer.Resize(0, 0);
-    EXPECT_EQ(renderer.Width(), w);
-    EXPECT_EQ(renderer.Height(), h);
+    const NS::Core::Size2D before = renderer.Size();
+    renderer.Resize(NS::Core::Size2D{0, 0});
+    EXPECT_EQ(renderer.Size(), before);
 }
 
 TEST_F(RendererLoggerTest, MainRenderTargetIsAccessible)
@@ -115,8 +110,7 @@ TEST_F(RendererLoggerTest, MainRenderTargetIsAccessible)
     ASSERT_TRUE(renderer.IsValid());
 
     auto& rt = renderer.MainRenderTarget();
-    EXPECT_EQ(rt.Width(), 400);
-    EXPECT_EQ(rt.Height(), 300);
+    EXPECT_EQ(rt.Size(), (NS::Core::Size2D{400, 300}));
     EXPECT_TRUE(rt.HasDepth());
 }
 

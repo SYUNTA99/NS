@@ -33,9 +33,8 @@ namespace NS::Scene
 
     void CameraComponent::SetAspectRatioFromRenderer(const NS::Graphics::Renderer& renderer) noexcept
     {
-        const int w = renderer.Width();
-        const int h = renderer.Height();
-        const float aspect = (w <= 0 || h <= 0) ? (16.0f / 9.0f) : static_cast<float>(w) / static_cast<float>(h);
+        const NS::Core::Size2D size = renderer.Size();
+        const float aspect = (size.width <= 0 || size.height <= 0) ? (16.0f / 9.0f) : NS::Core::AspectRatio(size);
         m_camera.SetAspectRatio(aspect);
     }
 

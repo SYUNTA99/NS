@@ -9,8 +9,7 @@ namespace
     {
         NS::Platform::WindowDesc d{};
         d.title = title;
-        d.width = width;
-        d.height = height;
+        d.size = NS::Core::Size2D{width, height};
         d.visible = false;
         return d;
     }
@@ -32,12 +31,11 @@ TEST_F(WindowLoggerTest, ConstructsAndDestructsCleanly)
     }
 }
 
-TEST_F(WindowLoggerTest, WidthHeightMatchesDesc)
+TEST_F(WindowLoggerTest, SizeMatchesDesc)
 {
     NS::Platform::Window window(MakeDesc("ns_test_size", 640, 480));
     ASSERT_TRUE(window.IsValid());
-    EXPECT_EQ(window.Width(), 640);
-    EXPECT_EQ(window.Height(), 480);
+    EXPECT_EQ(window.Size(), (NS::Core::Size2D{640, 480}));
 }
 
 TEST_F(WindowLoggerTest, ShouldCloseIsFalseInitially)

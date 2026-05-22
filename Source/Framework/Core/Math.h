@@ -96,6 +96,33 @@ namespace NS::Core
         return a.value == b.value;
     }
 
+    /// 2D ピクセルサイズ (width, height) を表す強い型。
+    /// 用途: Window / Renderer / RenderTarget / Texture の解像度 API。
+    /// 暗黙変換禁止、 width と height を取り違える事故を型システムで防ぐ。
+    /// プラットフォーム API (DX11 / Win32) と整合させるため int 保持、
+    /// 負値は invalid (リソース側は width > 0 && height > 0 を pre-condition とする)。
+    struct Size2D
+    {
+        int width;
+        int height;
+    };
+
+    [[nodiscard]] constexpr bool operator==(Size2D a, Size2D b) noexcept
+    {
+        return a.width == b.width && a.height == b.height;
+    }
+    [[nodiscard]] constexpr bool operator!=(Size2D a, Size2D b) noexcept
+    {
+        return !(a == b);
+    }
+
+    /// アスペクト比 (width / height) を float で返す。
+    /// @pre s.height != 0
+    [[nodiscard]] constexpr float AspectRatio(Size2D s) noexcept
+    {
+        return static_cast<float>(s.width) / static_cast<float>(s.height);
+    }
+
     /// `value` を `[lo, hi]` の範囲にクランプする
     template <typename T> [[nodiscard]] constexpr T Clamp(T value, T lo, T hi) noexcept
     {

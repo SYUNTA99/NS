@@ -55,6 +55,31 @@ static_assert(NS::Core::ToRadians(NS::Core::Degrees{0.0f}).value == 0.0f);
 static_assert(NS::Core::ToDegrees(NS::Core::Radians{0.0f}).value == 0.0f);
 static_assert(NS::Core::Radians{1.0f} == NS::Core::Radians{1.0f});
 
+TEST(NsCoreMath, Size2DEqualityComparesBothDimensions)
+{
+    // brace 内のコンマで EXPECT_TRUE マクロが分裂しないよう extra paren で 1 引数にまとめる。
+    EXPECT_TRUE((NS::Core::Size2D{1280, 720} == NS::Core::Size2D{1280, 720}));
+    EXPECT_TRUE((NS::Core::Size2D{1280, 720} != NS::Core::Size2D{1920, 720}));
+    EXPECT_TRUE((NS::Core::Size2D{1280, 720} != NS::Core::Size2D{1280, 1080}));
+}
+
+TEST(NsCoreMath, Size2DAspectRatioMatches16Over9)
+{
+    const NS::Core::Size2D s{1920, 1080};
+    EXPECT_NEAR(NS::Core::AspectRatio(s), 16.0f / 9.0f, 1e-5f);
+}
+
+TEST(NsCoreMath, Size2DSwappedDimensionsCompareUnequal)
+{
+    EXPECT_TRUE((NS::Core::Size2D{640, 480} != NS::Core::Size2D{480, 640}));
+}
+
+// width/height の取り違え事故を型システムで防止する。
+static_assert(!std::is_convertible_v<int, NS::Core::Size2D>, "int から Size2D への暗黙変換は禁止");
+
+static_assert(NS::Core::Size2D{4, 2} == NS::Core::Size2D{4, 2});
+static_assert(NS::Core::AspectRatio(NS::Core::Size2D{2, 1}) == 2.0f);
+
 TEST(NsCoreMath, ClampLimitsIntAndFloat)
 {
     EXPECT_EQ(NS::Core::Clamp(5, 0, 10), 5);

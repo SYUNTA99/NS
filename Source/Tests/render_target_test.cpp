@@ -24,8 +24,7 @@ TEST_F(RenderTargetLoggerTest, MainRTHasDepth)
 {
     WindowDesc wd{};
     wd.title = "ns_rt_depth";
-    wd.width = 256;
-    wd.height = 256;
+    wd.size = NS::Core::Size2D{256, 256};
     wd.visible = false;
     Window window(wd);
     ASSERT_TRUE(window.IsValid());
@@ -80,8 +79,7 @@ TEST_F(RenderTargetLoggerTest, ResizeUpdatesSize)
 {
     WindowDesc wd{};
     wd.title = "ns_rt_resize";
-    wd.width = 320;
-    wd.height = 240;
+    wd.size = NS::Core::Size2D{320, 240};
     wd.visible = false;
     Window window(wd);
     ASSERT_TRUE(window.IsValid());
@@ -91,8 +89,7 @@ TEST_F(RenderTargetLoggerTest, ResizeUpdatesSize)
     Renderer renderer(rd, window);
     ASSERT_TRUE(renderer.IsValid());
 
-    renderer.Resize(640, 480);
+    renderer.Resize(NS::Core::Size2D{640, 480});
     auto& rt = renderer.MainRenderTarget();
-    EXPECT_EQ(rt.Width(), 640);
-    EXPECT_EQ(rt.Height(), 480);
+    EXPECT_EQ(rt.Size(), (NS::Core::Size2D{640, 480}));
 }

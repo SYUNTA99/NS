@@ -1,8 +1,8 @@
 #include "Framework/Graphics/Renderer.h"
 
 #include "Framework/Graphics/CommonStates.h"
-#include "Framework/Graphics/detail/d3d_context.h"
 #include "Framework/Graphics/RenderTarget.h"
+#include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -126,8 +126,9 @@ namespace NS::Graphics
         }
 
         HWND hwnd = reinterpret_cast<HWND>(window.NativeHandle());
-        const int w = window.Width();
-        const int h = window.Height();
+        const ::NS::Core::Size2D winSize = window.Size();
+        const int w = winSize.width;
+        const int h = winSize.height;
 
         UINT createFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
         if (desc.enableDebugLayer)
@@ -164,7 +165,7 @@ namespace NS::Graphics
 
         m_pImpl->states.reset(new CommonStates(static_cast<void*>(m_pImpl->device.Get())));
 
-        window.SetResizeCallback([this](int rw, int rh) { this->Resize(rw, rh); });
+        window.SetResizeCallback([this](::NS::Core::Size2D rs) { this->Resize(rs); });
 
         m_pImpl->valid = true;
         NS_LOG_INFO(::NS::Core::LogCat::Graphics,
@@ -209,38 +210,29 @@ namespace NS::Graphics
         m_pImpl->swapchain->Present(sync, 0);
     }
 
-    void Renderer::Resize(int width, int height) noexcept
+    void Renderer::Resize(::NS::Core::Size2D size) noexcept
     {
         if (!IsValid())
         {
             return;
         }
-        if (width <= 0 || height <= 0)
+        if (size.width <= 0 || size.height <= 0)
         {
             return;
         }
         if (m_pImpl->mainRT)
         {
-            m_pImpl->mainRT->Resize(width, height);
+            m_pImpl->mainRT->Resize(size);
         }
     }
 
-    int Renderer::Width() const noexcept
+    ::NS::Core::Size2D Renderer::Size() const noexcept
     {
         if (!m_pImpl || !m_pImpl->mainRT)
         {
-            return 0;
+            return ::NS::Core::Size2D{0, 0};
         }
-        return m_pImpl->mainRT->Width();
-    }
-
-    int Renderer::Height() const noexcept
-    {
-        if (!m_pImpl || !m_pImpl->mainRT)
-        {
-            return 0;
-        }
-        return m_pImpl->mainRT->Height();
+        return m_pImpl->mainRT->Size();
     }
 
     RenderTarget& Renderer::MainRenderTarget() noexcept
