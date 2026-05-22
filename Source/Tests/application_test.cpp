@@ -1,11 +1,11 @@
 #include <gtest/gtest.h>
 
 #include <Framework/App/Application.h>
-#include <Framework/App/Scene.h>
 #include <Framework/Core/Logger.h>
 #include <Framework/Graphics/Renderer.h>
 #include <Framework/Platform/Input.h>
 #include <Framework/Platform/Window.h>
+#include <Framework/Scene/RootScene.h>
 
 #include <memory>
 #include <utility>
@@ -14,7 +14,7 @@ namespace
 {
     using NS::App::Application;
     using NS::App::ApplicationDesc;
-    using NS::App::Scene;
+    using NS::Scene::RootScene;
 
     ApplicationDesc MakeDesc(const char* title, int width = 320, int height = 240)
     {
@@ -35,8 +35,8 @@ namespace
         return d;
     }
 
-    /// Scene 寿命は Application::Shutdown() で reset() されるため、
-    /// 検証用カウンタは外部に置いて Scene 破棄後もアクセス可能にする。
+    /// RootScene 寿命は Application::Shutdown() で reset() されるため、
+    /// 検証用カウンタは外部に置いて RootScene 破棄後もアクセス可能にする。
     struct SceneCounters
     {
         int startCount = 0;
@@ -46,8 +46,8 @@ namespace
         float lastAlpha = -1.0f;
     };
 
-    /// 指定回数の OnUpdate 後に Application::Quit() を呼ぶ Scene。
-    class QuittingScene : public Scene
+    /// 指定回数の OnUpdate 後に Application::Quit() を呼ぶ RootScene。
+    class QuittingScene : public RootScene
     {
     public:
         int targetUpdates;
@@ -67,7 +67,7 @@ namespace
     };
 
     /// OnRender 中の Application::Alpha() を記録し、一定回数で Quit。
-    class AlphaCheckScene : public Scene
+    class AlphaCheckScene : public RootScene
     {
     public:
         SceneCounters* counters;

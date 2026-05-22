@@ -9,7 +9,7 @@
 
 namespace NS::Scene
 {
-    /// 軸並行 BoundingBox を World に登録する Component。
+    /// 軸並行 BoundingBox を RootScene に登録する Component。
     /// 回転非対応 (AABB 厳守)。Mesh と分離し、視覚と衝突を独立して調整可能にする。
     class StaticColliderComponent : public Component
     {

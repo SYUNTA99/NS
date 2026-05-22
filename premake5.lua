@@ -116,9 +116,9 @@ local function applyCommonBuildOptions()
     linkoptions { "/ignore:4006" }
 end
 
--- Framework 層共通定義 ( 時点では空、 PCH は今後再導入予定)
+-- Framework 層共通定義 ( 時点では空、 PCH は 2.5b-0 で再導入予定)
 local function applyFrameworkLayerDefaults(layerName)
-    -- placeholder: layer 名引数は将来 PCH 再導入時に利用
+    -- placeholder: layer 名引数は 2.5b-0 で PCH 再導入時に利用
     _ = layerName
 end
 
@@ -391,7 +391,7 @@ project "Scene"
 
 --============================================================================
 -- App 層 (StaticLib)
---   Application / Scene / WinMain
+--   Application / WinMain (RootScene は Scene 層に昇格、 T1 2026-05-23)
 --   DD7: フォルダ・ namespace ・ premake project 全て短縮命名 `App` で統一
 --============================================================================
 project "App"
@@ -432,7 +432,7 @@ project "App"
 
 --============================================================================
 -- Game 実行ファイル (WindowedApp)
---   CubeScene + CreateApplication / CreateInitialScene
+--   MainScene + CreateApplication / CreateInitialWorld
 --============================================================================
 project "Game"
     kind "WindowedApp"

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Scene.h
-/// @brief Scene 層 umbrella header — GameObject + Component + 各種 Component
+/// @brief Scene 層 umbrella header — RootScene + GameObject + Component + 各種 Component
 
 #include "Framework/Scene/CameraComponent.h"
 #include "Framework/Scene/CharacterMovementComponent.h"
@@ -14,3 +14,4 @@
 #include "Framework/Scene/StaticColliderComponent.h"
 #include "Framework/Scene/ThirdPersonFollowComponent.h"
 #include "Framework/Scene/Transform.h"
+#include "Framework/Scene/RootScene.h"
