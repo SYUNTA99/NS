@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 
-#include <Framework/App/Scene.h>
+#include <Framework/Scene/RootScene.h>
 
 namespace
 {
-    class MockScene : public NS::App::Scene
+    class MockScene : public NS::Scene::RootScene
     {
     public:
         int startCount = 0;
@@ -62,7 +62,7 @@ TEST(SceneTest, LifecycleOrderIsIndependent)
 
 TEST(SceneTest, BaseClassDefaultsAreNoop)
 {
-    NS::App::Scene scene;
+    NS::Scene::RootScene scene;
     scene.OnStart();
     scene.OnUpdate(1.0f / 60.0f);
     scene.OnRender();
@@ -73,14 +73,14 @@ TEST(SceneTest, BaseClassDefaultsAreNoop)
 TEST(SceneTest, PolymorphicDeleteCallsDerivedDtor)
 {
     bool dtorCalled = false;
-    struct TrackedScene : public NS::App::Scene
+    struct TrackedScene : public NS::Scene::RootScene
     {
         bool* flag;
         explicit TrackedScene(bool* f) : flag(f) {}
         ~TrackedScene() override { *flag = true; }
     };
     {
-        std::unique_ptr<NS::App::Scene> scene = std::make_unique<TrackedScene>(&dtorCalled);
+        std::unique_ptr<NS::Scene::RootScene> scene = std::make_unique<TrackedScene>(&dtorCalled);
     }
     EXPECT_TRUE(dtorCalled);
 }

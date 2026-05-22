@@ -10,10 +10,13 @@ namespace NS::Platform
     class Input;
 }
 
+namespace NS::Scene
+{
+    class RootScene;
+}
+
 namespace NS::App
 {
-
-    class Scene;
 
     /// Application 構築パラメータ。
     /// Window / Renderer の Desc を内包し、メインループの固定 delta + クリアカラーも持つ。
@@ -53,7 +56,7 @@ namespace NS::App
 
         /// Init → MainLoop → Shutdown を順に呼ぶ Template Method。
         /// initialScene が nullptr または IsValid()==false なら -1 を返して即終了。
-        int Run(std::unique_ptr<Scene> initialScene);
+        int Run(std::unique_ptr<NS::Scene::RootScene> initialScene);
 
         [[nodiscard]] NS::Platform::Window& Window() noexcept;
         [[nodiscard]] NS::Graphics::Renderer& Renderer() noexcept;
@@ -82,6 +85,6 @@ namespace NS::App
     /// Game 側で実装必須。WinMain から呼ばれる。
     /// 戻り値が nullptr なら exit code -1 で WinMain は即終了する。
     [[nodiscard]] std::unique_ptr<Application> CreateApplication();
-    [[nodiscard]] std::unique_ptr<Scene> CreateInitialScene();
+    [[nodiscard]] std::unique_ptr<NS::Scene::RootScene> CreateInitialScene();
 
 } // namespace NS::App

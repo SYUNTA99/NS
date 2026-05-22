@@ -1,7 +1,7 @@
 #include "Framework/App/Application.h"
-#include "Framework/App/Scene.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
+#include "Framework/Scene/RootScene.h"
 
 #include "Framework/Framework.h"
 

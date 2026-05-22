@@ -1,11 +1,11 @@
 #include "Framework/Scene/MeshComponent.h"
 
-#include "Framework/App/Scene.h"
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/Mesh.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/Transform.h"
+#include "Framework/Scene/RootScene.h"
 
 namespace NS::Scene
 {
@@ -18,7 +18,7 @@ namespace NS::Scene
         GameObject* owner = Owner();
         if (owner == nullptr)
             return;
-        NS::App::Scene* scene = owner->OwningScene();
+        RootScene* scene = owner->OwningScene();
         if (scene == nullptr)
             return;
         scene->RegisterRenderable(this);
@@ -29,7 +29,7 @@ namespace NS::Scene
         GameObject* owner = Owner();
         if (owner == nullptr)
             return;
-        NS::App::Scene* scene = owner->OwningScene();
+        RootScene* scene = owner->OwningScene();
         if (scene == nullptr)
             return;
         scene->UnregisterRenderable(this);

@@ -1,10 +1,10 @@
 #include "Framework/App/Application.h"
 
-#include "Framework/App/Scene.h"
 #include "Framework/Core/Clock.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 #include "Framework/Platform/Input.h"
+#include "Framework/Scene/RootScene.h"
 
 #include "Framework/Framework.h"
 
@@ -40,7 +40,7 @@ namespace NS::App
         std::unique_ptr<NS::Graphics::Renderer> renderer;
         std::unique_ptr<NS::Platform::Input> input;
         NS::Core::FrameTimer timer;
-        std::unique_ptr<Scene> scene;
+        std::unique_ptr<NS::Scene::RootScene> scene;
         bool valid = false;
         bool quitRequested = false;
         std::chrono::steady_clock::time_point lastStutterWarnAt{};
@@ -126,7 +126,7 @@ namespace NS::App
         return *m_pImpl->input;
     }
 
-    int Application::Run(std::unique_ptr<Scene> initialScene)
+    int Application::Run(std::unique_ptr<NS::Scene::RootScene> initialScene)
     {
         if (!IsValid())
         {

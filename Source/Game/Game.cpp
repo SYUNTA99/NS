@@ -1,7 +1,7 @@
 #include "Game/MainScene.h"
 
 #include "Framework/App/Application.h"
-#include "Framework/App/Scene.h"
+#include "Framework/Scene/RootScene.h"
 
 #include <memory>
 
@@ -22,7 +22,7 @@ namespace NS::App
         return std::make_unique<Application>(desc);
     }
 
-    std::unique_ptr<Scene> CreateInitialScene()
+    std::unique_ptr<NS::Scene::RootScene> CreateInitialScene()
     {
         return std::make_unique<MainScene>();
     }

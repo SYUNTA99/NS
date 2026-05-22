@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <Framework/App/Scene.h>
+#include <Framework/Scene/RootScene.h>
 #include <Framework/Scene/MeshComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/IRenderable.h>
@@ -13,7 +13,7 @@ namespace
     using NS::Scene::MeshComponent;
     using NS::Scene::GameObject;
 
-    class FakeScene : public NS::App::Scene
+    class FakeScene : public NS::Scene::RootScene
     {
     public:
         void RegisterRenderable(NS::Scene::IRenderable* renderable) override { registered.push_back(renderable); }

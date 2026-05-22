@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Framework/App/Scene.h"
+#include "Framework/Scene/RootScene.h"
 #include "Framework/Core/Math.h"
 #include "Framework/Scene/CameraComponent.h"
 #include "Framework/Scene/ThirdPersonFollowComponent.h"
@@ -29,7 +29,7 @@ class Player;
 /// 床 + 壁 + ジャンプ台のブロック群と、追従カメラ付き Player を配置する。
 ///  (push 型 RenderRegistry) /  (Snapshot 一括) /  (resize callback) /
 ///  (baseColor 色分け) /  (BeginFrame は Application 内部) を実装する。
-class MainScene : public NS::App::Scene
+class MainScene : public NS::Scene::RootScene
 {
 public:
     MainScene();

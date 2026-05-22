@@ -5,8 +5,8 @@
 ///
 /// 描画責務を持つ Component (MeshComponent / DebugDrawComponent 等) は `IRenderable` を
 /// 多重継承して `Draw(const RenderContext&)` を実装する。`OnStart` で
-/// `Owner()->Scene()->RegisterRenderable(this)` を呼んで自己登録し、`OnEndPlay` で
-/// 解除する。Scene 実装が render iteration を握るため、Player.cpp / Block.cpp は
+/// `Owner()->OwningScene()->RegisterRenderable(this)` を呼んで自己登録し、`OnEndPlay` で
+/// 解除する。RootScene 実装が render iteration を握るため、Player.cpp / Block.cpp は
 /// render を 1 行も書かない (UE5/Unity 流儀)。
 
 namespace NS::Scene
@@ -25,7 +25,7 @@ namespace NS::Scene
         IRenderable(IRenderable&&) = delete;
         IRenderable& operator=(IRenderable&&) = delete;
 
-        /// Scene::OnRender から呼ばれる。Alpha 補間後の transform を ctx.alpha 経由で取得。
+        /// RootScene::OnRender から呼ばれる。Alpha 補間後の transform を ctx.alpha 経由で取得。
         virtual void Draw(const RenderContext& context) = 0;
     };
 

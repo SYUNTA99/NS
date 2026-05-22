@@ -26,6 +26,13 @@ jobs:
           PR_HEAD: ${{ github.head_ref }}
           PR_BASE: ${{ github.base_ref }}
         run: |
+          # webhook secret 未設定環境 (forks / 個人 fork / secret 未配備) ではスキップ。
+          # curl が空 URL に POST して exit code 3 で fail するのを防ぐ。
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "DISCORD_WEBHOOK_URL secret が未設定のため通知をスキップします。"
+            exit 0
+          fi
+
           # 環境変数から安全に取得してJSON用にエスケープ
           BODY_ESCAPED=$(printf '%s' "$PR_BODY" | head -c 1800 | sed 's/\\/\\\\/g; s/"/\\"/g' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//')
 
