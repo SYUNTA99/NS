@@ -18,6 +18,18 @@ namespace NS::Scene
     class GameObject;
     class Transform;
 
+    /// Component の OnUpdate 実行順序を制御する priority 帯 (Godot process_priority 流儀)。
+    /// 値が小さいほど先に呼ばれる。 同 priority 内は登録順 (stable_sort)。
+    /// 帯は意味的にグルーピング (Input 系 / Physics 系等)、 中間値で挟み込み可。
+    enum class TickPriority : int
+    {
+        Input = 0,       ///< 入力読取 (PlayerInputComponent 等)
+        AI = 100,        ///< AI / state machine (将来 Enemy 用)
+        Physics = 200,   ///< 物理 / movement (CharacterMovementComponent 等) — Component default
+        Animation = 300, ///< animation / 補間 (将来 SkeletalAnim 用)
+        Camera = 400,    ///< Camera follow / transform (ThirdPersonFollowComponent 等)
+    };
+
     /// 全 Component の基底。pure virtual を持たないため直接 instance も可能だが
     /// 通常は派生して使う。
     class Component
