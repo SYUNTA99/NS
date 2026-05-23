@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file i_renderable.h
+/// @file IRenderable.h
 /// @brief NS::Scene::IRenderable — Component が描画機能を mix-in するための interface。
 ///
 /// 描画責務を持つ Component (MeshComponent / DebugDrawComponent 等) は `IRenderable` を

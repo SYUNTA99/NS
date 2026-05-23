@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file third_person_follow_component.h
+/// @file ThirdPersonFollowComponent.h
 /// @brief Mario 系ジャンプアクションの追従カメラ (〜C5)。
 ///        critically-damped spring で distance を smoothing、 マウス/右スティック手動回転、
 ///         FOV/sensitivity/invert を member 保持、Dynamic zoom (idle 5 / run 6 / jump 7) を

@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file render_context.h
+/// @file RenderContext.h
 /// @brief NS::Scene::RenderContext — IRenderable::Draw に渡る描画コンテキスト。
 ///
 /// Scene::OnRender が 1 回構築し、登録された全 IRenderable に同じ参照を渡す。
