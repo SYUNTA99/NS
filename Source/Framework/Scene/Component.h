@@ -42,7 +42,7 @@ namespace NS::Scene
         /// 通常は `Component(this)` のように派生クラスの ctor から呼ぶ。
         explicit Component(GameObject* owner) noexcept;
 
-        virtual ~Component() noexcept = default;
+        virtual ~Component() noexcept;
 
         Component(const Component&) = delete;
         Component& operator=(const Component&) = delete;
