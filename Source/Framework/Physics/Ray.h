@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file ray.h
+/// @file Ray.h
 /// @brief NS::Physics::Ray — NS::Core::Ray (SimpleMath::Ray) のレイヤエイリアス。
 /// SimpleMath ネイティブの `bool Intersects(BoundingBox, float&)` を直接利用する。
 
