@@ -24,7 +24,7 @@ namespace NS::Core
         FileSystem() = delete;
 
         /// `path` が存在するか
-        [[nodiscard]] static bool Exists(const std::filesystem::path& path);
+        [[nodiscard]] static bool Exists(const std::filesystem::path& path) noexcept;
 
         /// `path` のバイナリ内容を読み込む。失敗時 nullopt + NS_LOG_ERROR。空ファイルは空 vector を返す
         [[nodiscard]] static std::optional<std::vector<std::byte>> ReadAllBytes(const std::filesystem::path& path);
@@ -35,7 +35,7 @@ namespace NS::Core
         /// `path` のディレクトリを (必要なら中間も) 作成する。既存も true。失敗時 false + NS_LOG_ERROR。
         /// Win32 `<windows.h>` の `CreateDirectory` マクロと衝突するため複数形を採用。
         /// 戻り値の確認漏れは sandbox 構築失敗の見落としに直結するため `[[nodiscard]]`。
-        [[nodiscard]] static bool CreateDirectories(const std::filesystem::path& path);
+        [[nodiscard]] static bool CreateDirectories(const std::filesystem::path& path) noexcept;
 
         /// 実行ファイルが置かれているディレクトリの絶対パス
         [[nodiscard]] static std::filesystem::path GetExeDirectory();

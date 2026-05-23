@@ -8,7 +8,9 @@
 #include <atomic>
 #include <cassert>
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
+#include <exception>
 #include <filesystem>
 
 namespace NS::Core
@@ -82,37 +84,58 @@ namespace NS::Core
 
     } // namespace
 
-    void Logger::Init()
+    void Logger::Init() noexcept
     {
         if (g_initialized.exchange(true))
         {
             return;
         }
 
-        // 新環境でも初回起動でファイル sink が失敗しないように logs/ を作成しておく
-        std::error_code ec;
-        std::filesystem::create_directories("logs", ec);
+        try
+        {
+            // 新環境でも初回起動でファイル sink が失敗しないように logs/ を作成しておく
+            std::error_code ec;
+            std::filesystem::create_directories("logs", ec);
 
-        auto sinks = BuildSinks();
-        auto logger = std::make_shared<spdlog::logger>(kLoggerName, sinks.begin(), sinks.end());
+            auto sinks = BuildSinks();
+            auto logger = std::make_shared<spdlog::logger>(kLoggerName, sinks.begin(), sinks.end());
 
-        logger->set_level(spdlog::level::trace);
-        logger->flush_on(spdlog::level::warn);
+            logger->set_level(spdlog::level::trace);
+            logger->flush_on(spdlog::level::warn);
 
-        spdlog::register_logger(logger);
-        spdlog::set_default_logger(logger);
-        spdlog::flush_every(std::chrono::seconds(3));
+            spdlog::register_logger(logger);
+            spdlog::set_default_logger(logger);
+            spdlog::flush_every(std::chrono::seconds(3));
 
-        logger->info("===== セッション開始 =====");
+            logger->info("===== セッション開始 =====");
+        }
+        catch (const std::exception& e)
+        {
+            // spdlog 構築失敗時は logger が未構築なので NS_LOG_ERROR 不可、 stderr に直接出す。
+            std::fprintf(stderr, "Logger::Init failed: %s\n", e.what());
+            g_initialized.store(false);
+        }
+        catch (...)
+        {
+            std::fprintf(stderr, "Logger::Init failed: unknown error\n");
+            g_initialized.store(false);
+        }
     }
 
-    void Logger::Shutdown()
+    void Logger::Shutdown() noexcept
     {
         if (!g_initialized.exchange(false))
         {
             return;
         }
-        spdlog::shutdown();
+        try
+        {
+            spdlog::shutdown();
+        }
+        catch (...)
+        {
+            // shutdown 中の例外は無視 (ログ出口を閉じている最中なので報告先がない)。
+        }
     }
 
     void Logger::LogImpl(
