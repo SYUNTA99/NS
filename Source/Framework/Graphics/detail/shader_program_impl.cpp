@@ -1,7 +1,7 @@
 #include "Framework/Graphics/ShaderProgram.h"
 
-#include "Framework/Graphics/detail/d3d_context.h"
 #include "Framework/Graphics/Renderer.h"
+#include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
@@ -105,6 +105,11 @@ float4 PSMain() : SV_Target
         {
             if (device == nullptr || vsBlob == nullptr || elements.empty())
             {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                             "CreateInputLayoutFromDesc: 引数不正 (device={}, vsBlob={}, elements={})",
+                             static_cast<const void*>(device),
+                             static_cast<const void*>(vsBlob),
+                             elements.size());
                 return false;
             }
             std::vector<D3D11_INPUT_ELEMENT_DESC> descs;

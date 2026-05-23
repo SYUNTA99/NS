@@ -42,12 +42,16 @@ namespace NS::Graphics
         {
             if (resource == nullptr)
             {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "QueryTexture2DSize: resource が null");
                 return false;
             }
             ComPtr<ID3D11Texture2D> tex2d;
             const HRESULT hr = resource->QueryInterface(IID_PPV_ARGS(tex2d.GetAddressOf()));
             if (FAILED(hr) || !tex2d)
             {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                             "QueryTexture2DSize: ID3D11Texture2D への QI 失敗 (hr=0x{:X})",
+                             static_cast<unsigned>(hr));
                 return false;
             }
             D3D11_TEXTURE2D_DESC d{};
