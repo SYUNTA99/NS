@@ -172,3 +172,39 @@ TEST(CameraTest, AccessorsReturnSetValues)
     EXPECT_FLOAT_EQ(camera.NearPlane(), 0.25f);
     EXPECT_FLOAT_EQ(camera.FarPlane(), 750.0f);
 }
+
+TEST(CameraTest, CameraDescCtorAppliesAllFieldsAtomically)
+{
+    const NS::Graphics::CameraDesc desc{
+        .position = Vector3(7.0f, 8.0f, 9.0f),
+        .target = Vector3(1.0f, 2.0f, 3.0f),
+        .up = Vector3(0.0f, 0.0f, 1.0f),
+        .fovY = NS::Core::Radians{0.6f},
+        .aspectRatio = 1.25f,
+        .nearPlane = 0.2f,
+        .farPlane = 500.0f,
+    };
+    const Camera camera(desc);
+
+    EXPECT_FLOAT_EQ(camera.Position().x, 7.0f);
+    EXPECT_FLOAT_EQ(camera.Position().y, 8.0f);
+    EXPECT_FLOAT_EQ(camera.Position().z, 9.0f);
+    EXPECT_FLOAT_EQ(camera.Target().x, 1.0f);
+    EXPECT_FLOAT_EQ(camera.Up().z, 1.0f);
+    EXPECT_FLOAT_EQ(camera.FovY().value, 0.6f);
+    EXPECT_FLOAT_EQ(camera.AspectRatio(), 1.25f);
+    EXPECT_FLOAT_EQ(camera.NearPlane(), 0.2f);
+    EXPECT_FLOAT_EQ(camera.FarPlane(), 500.0f);
+}
+
+TEST(CameraTest, CameraDescDefaultMatchesDefaultCtor)
+{
+    const Camera fromDefault;
+    const Camera fromDesc{NS::Graphics::CameraDesc{}};
+
+    EXPECT_FLOAT_EQ(fromDefault.Position().z, fromDesc.Position().z);
+    EXPECT_FLOAT_EQ(fromDefault.FovY().value, fromDesc.FovY().value);
+    EXPECT_FLOAT_EQ(fromDefault.AspectRatio(), fromDesc.AspectRatio());
+    EXPECT_FLOAT_EQ(fromDefault.NearPlane(), fromDesc.NearPlane());
+    EXPECT_FLOAT_EQ(fromDefault.FarPlane(), fromDesc.FarPlane());
+}
