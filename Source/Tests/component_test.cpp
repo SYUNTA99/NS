@@ -49,3 +49,38 @@ TEST(ComponentTest, RootTransformReturnsOwnerRoot)
     EXPECT_FLOAT_EQ(c.RootTransform().Position().y, 2.0f);
     EXPECT_FLOAT_EQ(c.RootTransform().Position().z, 3.0f);
 }
+
+namespace
+{
+    class AutoRegComponent : public NS::Scene::Component
+    {
+    public:
+        using NS::Scene::Component::Component;
+    };
+} // namespace
+
+TEST(ComponentAutoRegisterTest, CtorWithOwnerAutoRegisters)
+{
+    NS::Scene::GameObject obj;
+    AutoRegComponent c(&obj);
+
+    ASSERT_EQ(obj.Components().size(), std::size_t{1});
+    EXPECT_EQ(obj.Components()[0], &c);
+    EXPECT_EQ(c.Owner(), &obj);
+}
+
+TEST(ComponentAutoRegisterTest, CtorWithNullOwnerDoesNotRegister)
+{
+    AutoRegComponent c(nullptr);
+    EXPECT_EQ(c.Owner(), nullptr);
+}
+
+TEST(ComponentAutoRegisterTest, DtorAutoUnregisters)
+{
+    NS::Scene::GameObject obj;
+    {
+        AutoRegComponent c(&obj);
+        EXPECT_EQ(obj.Components().size(), std::size_t{1});
+    }
+    EXPECT_EQ(obj.Components().size(), std::size_t{0});
+}
