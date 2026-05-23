@@ -1,5 +1,13 @@
 #pragma once
 
+/// @file Window.h
+/// @brief NS::Platform::Window — Win32 ウィンドウのラッパ (単一インスタンス前提)。
+///
+/// @details 公開ヘッダから `<windows.h>` / HWND は露出させない。 Graphics 層は
+/// `NativeHandle()` を `reinterpret_cast<HWND>` で取り出す。 構築失敗時は
+/// `IsValid() == false` を返し例外は投げない (詳細は `NS_LOG_ERROR` に出力)。
+/// 入力転送先 `Input*` は `AttachInput()` で非所有ポインタとして登録する。
+
 #include "Framework/Core/Math.h"
 
 #include <functional>

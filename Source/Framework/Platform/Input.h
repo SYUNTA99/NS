@@ -1,5 +1,12 @@
 #pragma once
 
+/// @file Input.h
+/// @brief NS::Platform::Input — Keyboard / Mouse / Gamepad の集約 facade。
+///
+/// @details Application が所有し、 fixed step ループの頭で `Update()` を 1 回呼ぶ。
+/// 共通基底は持たず、 サブクラスへの参照取得 API のみ提供する ( /  整合)。
+/// 状態更新は WndProc / XInput ポーリング経由で各サブクラスに直接行う。
+
 #include <array>
 
 #include <Framework/Platform/Gamepad.h>
@@ -15,7 +22,7 @@ namespace NS::Platform
     class Input
     {
     public:
-        Input();
+        Input() noexcept;
 
         [[nodiscard]] NS::Platform::Keyboard& Keyboard() noexcept { return m_keyboard; }
         [[nodiscard]] const NS::Platform::Keyboard& Keyboard() const noexcept { return m_keyboard; }

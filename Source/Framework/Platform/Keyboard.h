@@ -1,5 +1,13 @@
 #pragma once
 
+/// @file Keyboard.h
+/// @brief NS::Platform::Keyboard / Key — 物理キー入力の状態保持。
+///
+/// @details `Key` enum は VK コード非依存の独立識別子で公開ヘッダから
+/// `<windows.h>` を排除する間接層。 `OnKeyDown` / `OnKeyUp` は WndProc 経由で
+/// 呼ばれ、 `Update()` は fixed step ループの頭で 1 回呼ぶ (前フレームとの
+/// edge 判定基準を更新)。 マルチスレッドは未サポート (単一スレッド前提)。
+
 #include <array>
 #include <cstddef>
 
