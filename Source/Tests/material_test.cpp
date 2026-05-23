@@ -79,7 +79,6 @@ TEST_F(MaterialLoggerTest, ConstructWithShaderIsValid)
 
     Material mat(renderer, desc);
     EXPECT_TRUE(mat.IsValid());
-    EXPECT_EQ(mat.Shader(), &shader);
 }
 
 TEST_F(MaterialLoggerTest, ConstructWithoutShaderIsInvalid)
@@ -95,7 +94,6 @@ TEST_F(MaterialLoggerTest, ConstructWithoutShaderIsInvalid)
 
     Material mat(renderer, desc);
     EXPECT_FALSE(mat.IsValid());
-    EXPECT_EQ(mat.Shader(), nullptr);
 }
 
 TEST_F(MaterialLoggerTest, ConstructWithZeroCbSizeStillValid)
@@ -116,7 +114,7 @@ TEST_F(MaterialLoggerTest, ConstructWithZeroCbSizeStillValid)
     EXPECT_TRUE(mat.IsValid());
 }
 
-TEST_F(MaterialLoggerTest, SetTextureRetrievableViaGetter)
+TEST_F(MaterialLoggerTest, SetAndClearTextureBindDoesNotCrash)
 {
     Window window(MakeWindowDesc("ns_mat_texture"));
     ASSERT_TRUE(window.IsValid());
@@ -135,12 +133,14 @@ TEST_F(MaterialLoggerTest, SetTextureRetrievableViaGetter)
     Material mat(renderer, desc);
     ASSERT_TRUE(mat.IsValid());
 
+    // SetTexture / ClearTexture / 未割当 slot に ClearTexture の各 call path が crash しないこと。
+    // 内部状態を query する公開 API は意図的に持たない (Deep Module 化、 raw pointer 露出回避)。
     mat.SetTexture(0u, &texture);
-    EXPECT_EQ(mat.GetTexture(0u), &texture);
-    EXPECT_EQ(mat.GetTexture(1u), nullptr);
-
+    mat.Bind();
     mat.ClearTexture(0u);
-    EXPECT_EQ(mat.GetTexture(0u), nullptr);
+    mat.ClearTexture(1u);
+    mat.Bind();
+    SUCCEED();
 }
 
 TEST_F(MaterialLoggerTest, BindDoesNotCrash)
