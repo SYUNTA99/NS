@@ -118,3 +118,54 @@ TEST(GameObjectTest, MarkPendingKillFlipsIsAlive)
     obj.MarkPendingKill();
     EXPECT_FALSE(obj.IsAlive());
 }
+
+namespace
+{
+    class HighPrioComponent : public NS::Scene::Component
+    {
+    public:
+        using NS::Scene::Component::Component;
+        [[nodiscard]] int Priority() const noexcept override
+        {
+            return static_cast<int>(NS::Scene::TickPriority::Input);
+        }
+    };
+
+    class LowPrioComponent : public NS::Scene::Component
+    {
+    public:
+        using NS::Scene::Component::Component;
+        [[nodiscard]] int Priority() const noexcept override
+        {
+            return static_cast<int>(NS::Scene::TickPriority::Camera);
+        }
+    };
+} // namespace
+
+TEST(GameObjectPriorityTest, RegisterComponentSortsByPriority)
+{
+    NS::Scene::GameObject obj;
+    LowPrioComponent low;
+    HighPrioComponent high;
+
+    obj.RegisterComponent(&low);
+    obj.RegisterComponent(&high);
+
+    ASSERT_EQ(obj.Components().size(), std::size_t{2});
+    EXPECT_EQ(obj.Components()[0], &high);
+    EXPECT_EQ(obj.Components()[1], &low);
+}
+
+TEST(GameObjectPriorityTest, SamePriorityPreservesInsertionOrder)
+{
+    NS::Scene::GameObject obj;
+    HighPrioComponent a;
+    HighPrioComponent b;
+
+    obj.RegisterComponent(&a);
+    obj.RegisterComponent(&b);
+
+    ASSERT_EQ(obj.Components().size(), std::size_t{2});
+    EXPECT_EQ(obj.Components()[0], &a);
+    EXPECT_EQ(obj.Components()[1], &b);
+}
