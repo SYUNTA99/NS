@@ -13,7 +13,7 @@
 namespace NS::Core
 {
 
-    bool FileSystem::Exists(const std::filesystem::path& path)
+    bool FileSystem::Exists(const std::filesystem::path& path) noexcept
     {
         std::error_code ec;
         const bool result = std::filesystem::exists(path, ec);
@@ -84,7 +84,7 @@ namespace NS::Core
         return oss.str();
     }
 
-    bool FileSystem::CreateDirectories(const std::filesystem::path& path)
+    bool FileSystem::CreateDirectories(const std::filesystem::path& path) noexcept
     {
         std::error_code ec;
         std::filesystem::create_directories(path, ec);

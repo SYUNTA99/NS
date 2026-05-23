@@ -53,7 +53,7 @@ namespace NS::Platform
 
         /// 1 フレーム頭で呼ぶ。PeekMessageW(PM_REMOVE) で非ブロッキング処理。
         /// WM_QUIT を受信したら ShouldClose() が true になる。
-        void PollMessages();
+        void PollMessages() noexcept;
 
         [[nodiscard]] bool ShouldClose() const noexcept;
 
@@ -63,7 +63,7 @@ namespace NS::Platform
         [[nodiscard]] void* NativeHandle() const noexcept;
 
         /// UTF-8 入力でタイトル変更。
-        void SetTitle(std::string_view utf8Title);
+        void SetTitle(std::string_view utf8Title) noexcept;
 
         /// 自身に WM_CLOSE を投げて閉じ要求を出す (× ボタンと同じ経路)。
         /// SetCloseCallback が登録されていればそこに通知、未設定なら PostQuitMessage に落ちて

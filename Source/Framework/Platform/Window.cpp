@@ -194,7 +194,7 @@ namespace NS::Platform
         return m_pImpl->hwnd != nullptr;
     }
 
-    void Window::PollMessages()
+    void Window::PollMessages() noexcept
     {
         MSG msg{};
         while (::PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
@@ -224,7 +224,7 @@ namespace NS::Platform
         return static_cast<void*>(m_pImpl->hwnd);
     }
 
-    void Window::SetTitle(std::string_view utf8Title)
+    void Window::SetTitle(std::string_view utf8Title) noexcept
     {
         if (m_pImpl->hwnd == nullptr)
         {
