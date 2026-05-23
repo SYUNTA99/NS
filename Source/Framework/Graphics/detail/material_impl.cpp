@@ -2,10 +2,10 @@
 
 #include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/CommonStates.h"
-#include "Framework/Graphics/detail/d3d_context.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/ShaderProgram.h"
 #include "Framework/Graphics/Texture.h"
+#include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -70,6 +70,15 @@ namespace NS::Graphics
     bool Material::IsValid() const noexcept
     {
         return m_pImpl && m_pImpl->valid;
+    }
+
+    bool Material::IsUsingFallback() const noexcept
+    {
+        if (!m_pImpl || m_pImpl->shader == nullptr)
+        {
+            return false;
+        }
+        return m_pImpl->shader->IsUsingFallback();
     }
 
     ShaderProgram* Material::Shader() const noexcept

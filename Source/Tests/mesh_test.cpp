@@ -114,7 +114,7 @@ TEST_F(MeshLoggerTest, ConstructWithCubeDataIsValid)
     EXPECT_EQ(mesh.IndexCount(), kCubeIndexCount);
 }
 
-TEST_F(MeshLoggerTest, EmptyDescBecomesInvalid)
+TEST_F(MeshLoggerTest, EmptyDescFallsBackToCube)
 {
     Window window(MakeWindowDesc("ns_mesh_empty"));
     ASSERT_TRUE(window.IsValid());
@@ -123,12 +123,13 @@ TEST_F(MeshLoggerTest, EmptyDescBecomesInvalid)
 
     MeshDesc desc{};
     Mesh mesh(renderer, desc);
-    EXPECT_FALSE(mesh.IsValid());
-    EXPECT_EQ(mesh.VertexCount(), 0u);
-    EXPECT_EQ(mesh.IndexCount(), 0u);
+    EXPECT_TRUE(mesh.IsValid());
+    EXPECT_TRUE(mesh.IsUsingFallback());
+    EXPECT_GT(mesh.VertexCount(), 0u);
+    EXPECT_GT(mesh.IndexCount(), 0u);
 }
 
-TEST_F(MeshLoggerTest, PartiallyEmptyDescBecomesInvalid)
+TEST_F(MeshLoggerTest, PartiallyEmptyDescFallsBackToCube)
 {
     Window window(MakeWindowDesc("ns_mesh_partial"));
     ASSERT_TRUE(window.IsValid());
@@ -146,7 +147,8 @@ TEST_F(MeshLoggerTest, PartiallyEmptyDescBecomesInvalid)
         desc.indices = nullptr;
         desc.indexCount = indices.size();
         Mesh mesh(renderer, desc);
-        EXPECT_FALSE(mesh.IsValid());
+        EXPECT_TRUE(mesh.IsValid());
+        EXPECT_TRUE(mesh.IsUsingFallback());
     }
 
     // indices あり / vertexCount=0
@@ -157,11 +159,12 @@ TEST_F(MeshLoggerTest, PartiallyEmptyDescBecomesInvalid)
         desc.indices = indices.data();
         desc.indexCount = indices.size();
         Mesh mesh(renderer, desc);
-        EXPECT_FALSE(mesh.IsValid());
+        EXPECT_TRUE(mesh.IsValid());
+        EXPECT_TRUE(mesh.IsUsingFallback());
     }
 }
 
-TEST_F(MeshLoggerTest, InvalidMeshDrawIsNoOp)
+TEST_F(MeshLoggerTest, FallbackMeshDrawDoesNotCrash)
 {
     Window window(MakeWindowDesc("ns_mesh_invalid_draw"));
     ASSERT_TRUE(window.IsValid());
@@ -170,7 +173,8 @@ TEST_F(MeshLoggerTest, InvalidMeshDrawIsNoOp)
 
     MeshDesc desc{};
     Mesh mesh(renderer, desc);
-    ASSERT_FALSE(mesh.IsValid());
+    ASSERT_TRUE(mesh.IsValid());
+    ASSERT_TRUE(mesh.IsUsingFallback());
 
     mesh.Draw();
     SUCCEED();

@@ -71,8 +71,15 @@ namespace NS::Graphics
         Mesh(Mesh&&) = delete;
         Mesh& operator=(Mesh&&) = delete;
 
-        /// VB / IB が生成されていれば true。MeshDesc 不正や Buffer 作成失敗で false。
+        /// VB / IB が生成されていれば true。 MeshDesc 不正や Buffer 作成失敗で fallback Cube に
+        /// 切替わった場合も true (描画は可能、 ただし内容は default Cube)。 Renderer の
+        /// Device / Context が無効な場合のみ false (fallback すら構築できない致命状態)。
         [[nodiscard]] bool IsValid() const noexcept;
+
+        /// MeshDesc 不正 / VB / IB 構築失敗で fallback Cube に切替わっているかを問い合わせる。
+        /// デバッグ時のジオメトリ欠落検知に使用 (ShaderProgram::IsUsingFallback と同じ思想)。
+        [[nodiscard]] bool IsUsingFallback() const noexcept;
+
         [[nodiscard]] std::size_t VertexCount() const noexcept;
         [[nodiscard]] std::size_t IndexCount() const noexcept;
 
