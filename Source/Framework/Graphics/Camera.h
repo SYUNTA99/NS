@@ -13,6 +13,21 @@
 namespace NS::Graphics
 {
 
+    /// Camera 構築パラメータ。 デフォルト値は default ctor と同一 (Z=-5 から原点を見る LH 60deg)。
+    /// C++20 designated initializer で部分指定可: `CameraDesc{ .fovY = ..., .aspect = ... }`。
+    /// 全パラメータを一発で確定できる場面 (initial scene 構築 etc) で setter cascade の代替に使う。
+    /// 動的更新 (ThirdPerson 追従の position / aspect リサイズ等) は引き続き setter を使う。
+    struct CameraDesc
+    {
+        NS::Core::Vector3 position{0.0f, 0.0f, -5.0f};
+        NS::Core::Vector3 target{0.0f, 0.0f, 0.0f};
+        NS::Core::Vector3 up{0.0f, 1.0f, 0.0f};
+        NS::Core::Radians fovY{NS::Core::ToRadians(NS::Core::Degrees{60.0f})};
+        float aspectRatio = 16.0f / 9.0f;
+        float nearPlane = 0.1f;
+        float farPlane = 1000.0f;
+    };
+
     /// View + Projection 行列を提供する Plain Class。
     /// GPU リソース所有なし、Renderer/Scene 依存なし。
     /// CameraComponent から将来内包される予定。
@@ -21,7 +36,11 @@ namespace NS::Graphics
     class Camera
     {
     public:
+        /// CameraDesc::default と同じ値で構築。
         Camera() noexcept;
+
+        /// 全パラメータを一発で確定する。 setter cascade の順序依存 / 設定漏れを防ぐ (NN 流儀)。
+        explicit Camera(const CameraDesc& desc) noexcept;
 
         Camera(const Camera&) = default;
         Camera& operator=(const Camera&) = default;

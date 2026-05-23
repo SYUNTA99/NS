@@ -26,11 +26,12 @@ namespace NS::Graphics
         }
     } // namespace
 
-    Camera::Camera() noexcept
-        : m_position(0.0f, 0.0f, -5.0f), m_target(0.0f, 0.0f, 0.0f), m_up(0.0f, 1.0f, 0.0f),
-          m_fovY(NS::Core::ToRadians(NS::Core::Degrees{60.0f})), m_aspect(16.0f / 9.0f), m_near(0.1f), m_far(1000.0f),
-          m_view(NS::Core::Matrix::Identity), m_projection(NS::Core::Matrix::Identity), m_viewDirty(true),
-          m_projDirty(true)
+    Camera::Camera() noexcept : Camera(CameraDesc{}) {}
+
+    Camera::Camera(const CameraDesc& desc) noexcept
+        : m_position(desc.position), m_target(desc.target), m_up(desc.up), m_fovY(desc.fovY),
+          m_aspect(desc.aspectRatio), m_near(desc.nearPlane), m_far(desc.farPlane), m_view(NS::Core::Matrix::Identity),
+          m_projection(NS::Core::Matrix::Identity), m_viewDirty(true), m_projDirty(true)
     {}
 
     void Camera::SetPosition(const NS::Core::Vector3& position) noexcept
