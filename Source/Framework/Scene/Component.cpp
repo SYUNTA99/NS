@@ -8,6 +8,14 @@
 namespace NS::Scene
 {
 
+    Component::Component(GameObject* owner) noexcept
+    {
+        if (owner != nullptr)
+        {
+            owner->RegisterComponent(this);
+        }
+    }
+
     Transform& Component::RootTransform() noexcept
     {
         assert(m_owner != nullptr && "Component is not registered to any GameObject");
