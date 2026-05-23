@@ -1,5 +1,16 @@
 #pragma once
 
+/// @file Application.h
+/// @brief NS::App::Application — Game のメインループ責務 ( /  / )。
+///
+/// @details Window / Renderer / Input / FrameTimer を RAII 所有し、
+/// `Run(initialScene)` で Init → MainLoop → Shutdown を順に呼ぶ Template Method。
+/// 多重起動禁止 (s_instance 単一保持で assert)。 Game 側で継承不要、
+/// `CreateApplication()` / `CreateInitialScene()` () を実装して WinMain から
+/// 呼ばれる。 構築失敗時は `IsValid() == false` を返し、 `Run` は -1 で即終了。
+/// Static accessor (`Get` / `Quit` / `DeltaTime` / `Time` / `Alpha`) は未構築時に
+/// nullptr / 0 を返す no-throw 設計。
+
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Platform/Window.h"
 
