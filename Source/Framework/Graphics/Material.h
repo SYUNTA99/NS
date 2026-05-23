@@ -54,6 +54,12 @@ namespace NS::Graphics
 
         /// ShaderProgram が非 null で内部リソース構築済なら true。fallback shader でも true。
         [[nodiscard]] bool IsValid() const noexcept;
+
+        /// 共有 ShaderProgram が fallback 描画 (magenta) に切替わっているかを問い合わせる。
+        /// `Shader()->IsUsingFallback()` への薄いラッパ、 Material 単体では独自の fallback 状態は持たない。
+        /// デバッグ時のシェーダ欠落検知に使用。
+        [[nodiscard]] bool IsUsingFallback() const noexcept;
+
         /// 構築時に渡された ShaderProgram (共有参照)。
         [[nodiscard]] ShaderProgram* Shader() const noexcept;
 

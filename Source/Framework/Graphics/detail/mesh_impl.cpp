@@ -1,8 +1,9 @@
 #include "Framework/Graphics/Mesh.h"
 
 #include "Framework/Graphics/Buffer.h"
-#include "Framework/Graphics/detail/d3d_context.h"
+#include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
+#include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -22,7 +23,53 @@ namespace NS::Graphics
         std::size_t vertexCount = 0;
         std::size_t indexCount = 0;
         bool valid = false;
+        bool usingFallback = false;
     };
+
+    namespace
+    {
+        // fallback Cube は 1m 立方 (player と大きさ揃え)、 default Cube として描画
+        constexpr float kFallbackCubeHalfExtent = 0.5f;
+
+        // MeshDesc / Buffer 構築失敗時に default Cube に切替える。 device / context は呼出側で検証済。
+        bool TryBuildFallbackCube(Mesh::Impl& impl, Renderer& renderer)
+        {
+            const MeshGeometry geom =
+                MakeCube(NS::Core::Vector3{kFallbackCubeHalfExtent, kFallbackCubeHalfExtent, kFallbackCubeHalfExtent});
+
+            VertexBufferDesc vbd{};
+            vbd.initialData = geom.vertices.data();
+            vbd.vertexCount = geom.vertices.size();
+            vbd.stride = sizeof(MeshVertex);
+            vbd.usage = BufferUsage::Static;
+            auto vb = std::make_unique<VertexBuffer>(renderer, vbd);
+            if (!vb->IsValid())
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Mesh: fallback Cube VB 構築失敗");
+                return false;
+            }
+
+            IndexBufferDesc ibd{};
+            ibd.initialData = geom.indices.data();
+            ibd.indexCount = geom.indices.size();
+            ibd.format = IndexFormat::UInt16;
+            ibd.usage = BufferUsage::Static;
+            auto ib = std::make_unique<IndexBuffer>(renderer, ibd);
+            if (!ib->IsValid())
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Mesh: fallback Cube IB 構築失敗");
+                return false;
+            }
+
+            impl.vb = std::move(vb);
+            impl.ib = std::move(ib);
+            impl.vertexCount = geom.vertices.size();
+            impl.indexCount = geom.indices.size();
+            impl.valid = true;
+            impl.usingFallback = true;
+            return true;
+        }
+    } // namespace
 
     Mesh::Mesh(Renderer& renderer, const MeshDesc& desc) : m_pImpl(std::make_unique<Impl>())
     {
@@ -30,17 +77,21 @@ namespace NS::Graphics
         auto* context = detail::GetContext(renderer);
         if (device == nullptr || context == nullptr)
         {
+            // device 自体が無いと fallback Cube すら作れない致命状態
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Mesh: Renderer の Device / Context が無効");
             return;
         }
+        m_pImpl->context = context;
+
         if (desc.vertices == nullptr || desc.vertexCount == 0u || desc.indices == nullptr || desc.indexCount == 0u)
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                         "Mesh: MeshDesc 不正 (vertices={}, vCount={}, indices={}, iCount={})",
+                         "Mesh: MeshDesc 不正 — fallback Cube に切替 (vertices={}, vCount={}, indices={}, iCount={})",
                          static_cast<const void*>(desc.vertices),
                          desc.vertexCount,
                          static_cast<const void*>(desc.indices),
                          desc.indexCount);
+            TryBuildFallbackCube(*m_pImpl, renderer);
             return;
         }
 
@@ -52,7 +103,10 @@ namespace NS::Graphics
         auto vb = std::make_unique<VertexBuffer>(renderer, vbd);
         if (!vb->IsValid())
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Mesh: VertexBuffer 構築失敗 (count={})", desc.vertexCount);
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "Mesh: VertexBuffer 構築失敗 — fallback Cube に切替 (count={})",
+                         desc.vertexCount);
+            TryBuildFallbackCube(*m_pImpl, renderer);
             return;
         }
 
@@ -64,13 +118,15 @@ namespace NS::Graphics
         auto ib = std::make_unique<IndexBuffer>(renderer, ibd);
         if (!ib->IsValid())
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Mesh: IndexBuffer 構築失敗 (count={})", desc.indexCount);
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "Mesh: IndexBuffer 構築失敗 — fallback Cube に切替 (count={})",
+                         desc.indexCount);
+            TryBuildFallbackCube(*m_pImpl, renderer);
             return;
         }
 
         m_pImpl->vb = std::move(vb);
         m_pImpl->ib = std::move(ib);
-        m_pImpl->context = context;
         m_pImpl->vertexCount = desc.vertexCount;
         m_pImpl->indexCount = desc.indexCount;
         m_pImpl->valid = true;
@@ -81,6 +137,10 @@ namespace NS::Graphics
     bool Mesh::IsValid() const noexcept
     {
         return m_pImpl && m_pImpl->valid;
+    }
+    bool Mesh::IsUsingFallback() const noexcept
+    {
+        return m_pImpl && m_pImpl->usingFallback;
     }
     std::size_t Mesh::VertexCount() const noexcept
     {
