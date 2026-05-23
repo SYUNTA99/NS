@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file mesh_primitives.h
+/// @file MeshPrimitives.h
 /// @brief 基本プリミティブの頂点/index データ生成 ( cube / plane)。
 ///
 /// 生成された `MeshGeometry` の vector を `MeshDesc` に渡して `Mesh` を構築する。

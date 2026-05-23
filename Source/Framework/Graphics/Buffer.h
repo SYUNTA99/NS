@@ -1,5 +1,14 @@
 #pragma once
 
+/// @file Buffer.h
+/// @brief NS::Graphics::VertexBuffer / IndexBuffer / ConstantBuffer — D3D11 Buffer ラッパ。
+///
+/// @details Static / Dynamic の使い分けは `BufferUsage` で指定。 ConstantBuffer は
+/// 常に Dynamic 固定、 byteSize は内部で 16-byte 境界に切り上げ。 `Update<T>` は
+/// `static_assert` で `sizeof(T) % 16 == 0` をコンパイル時に強制する。 Index 幅は
+/// `IndexFormat` (UInt16 / UInt32)、 公開ヘッダから DXGI_FORMAT を漏らさない。
+/// `ShaderStage` bitflag で ConstantBuffer の Bind 対象ステージを切替える。
+
 #include <cstddef>
 #include <memory>
 

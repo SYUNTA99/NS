@@ -1,5 +1,14 @@
 #pragma once
 
+/// @file Renderer.h
+/// @brief NS::Graphics::Renderer — D3D11 Device / DeviceContext / SwapChain を
+/// 所有する描画ファサード。
+///
+/// @details Window と 1 対 1 で生成し、 Window のリサイズ通知を購読する。
+/// 公開ヘッダから `<d3d11.h>` / `<dxgi.h>` を漏らさないため pImpl 標準形。
+/// 内部 D3D ハンドルは `detail::GetDevice/GetContext/GetSwapChain` で取得する。
+/// 構築失敗時は `IsValid() == false` を返し例外は投げない (`NS_LOG_ERROR` に詳細出力)。
+
 #include <memory>
 
 #include <Framework/Platform/Window.h>

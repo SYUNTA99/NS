@@ -1,5 +1,13 @@
 #pragma once
 
+/// @file Camera.h
+/// @brief NS::Graphics::Camera — View + Projection 行列を提供する Plain Class。
+///
+/// @details GPU リソース所有なし、 Renderer / Scene 依存なし。 CameraComponent から
+/// 将来内包される予定。 座標系は LH 一本 ( / )、 Up = (0,1,0) 既定、
+/// Perspective のみ。 垂直 FOV は強い型 `NS::Core::Radians`、 setter で
+/// 内部の dirty フラグを立て、 Getter で初めて行列再計算するレイジー方式。
+
 #include "Framework/Core/Math.h"
 
 namespace NS::Graphics

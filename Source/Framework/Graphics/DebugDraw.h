@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file debug_draw.h
+/// @file DebugDraw.h
 /// @brief NS::Graphics::DebugDraw — line / AABB / Capsule wireframe 描画。
 ///
 /// 蓄積 → `Flush(renderer, vp)` で 1 描画呼出。 で実装。

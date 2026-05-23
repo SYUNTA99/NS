@@ -1,5 +1,13 @@
 #pragma once
 
+/// @file Material.h
+/// @brief NS::Graphics::Material — ShaderProgram + Texture スロット + 内蔵 CB。
+///
+/// @details ShaderProgram は共有参照 (非所有)、 Material 寿命中 shader が
+/// 有効であること。 Sampler は s0 LinearWrap 固定 ( /  補足)、 複数 sampler
+/// は将来拡張。 `Bind()` は shader / textures / CB / sampler を一括設定する。
+/// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること。
+
 #include "Framework/Graphics/Buffer.h"
 
 #include <cstddef>
