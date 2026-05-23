@@ -1,5 +1,12 @@
 #pragma once
 
+/// @file Filesystem.h
+/// @brief NS::Core::FileSystem — ファイル / ディレクトリ操作の最小ユーティリティ。
+///
+/// @details 全 API が `std::optional` の `nullopt` / `bool false` で失敗を返し、
+/// 例外は外に伝播させない (失敗時は内部で `NS_LOG_ERROR` を出す)。
+/// 戻り値は呼出側が必ず確認することを前提とするため `[[nodiscard]]` 必須。
+
 #include <cstddef>
 #include <filesystem>
 #include <optional>
@@ -25,9 +32,10 @@ namespace NS::Core
         /// `path` のテキスト内容を読み込む (UTF-8 想定)。失敗時 nullopt + NS_LOG_ERROR
         [[nodiscard]] static std::optional<std::string> ReadAllText(const std::filesystem::path& path);
 
-        /// `path` のディレクトリを (必要なら中間も) 作成する。既存も true。失敗時 false + NS_LOG_ERROR
-        /// Win32 `<windows.h>` の `CreateDirectory` マクロと衝突するため複数形を採用
-        static bool CreateDirectories(const std::filesystem::path& path);
+        /// `path` のディレクトリを (必要なら中間も) 作成する。既存も true。失敗時 false + NS_LOG_ERROR。
+        /// Win32 `<windows.h>` の `CreateDirectory` マクロと衝突するため複数形を採用。
+        /// 戻り値の確認漏れは sandbox 構築失敗の見落としに直結するため `[[nodiscard]]`。
+        [[nodiscard]] static bool CreateDirectories(const std::filesystem::path& path);
 
         /// 実行ファイルが置かれているディレクトリの絶対パス
         [[nodiscard]] static std::filesystem::path GetExeDirectory();

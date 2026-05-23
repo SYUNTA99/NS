@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file math.h
+/// @file Math.h
 /// @brief NS::Core 数学型エイリアスとヘルパー。
 ///
 /// SimpleMath の型を using-alias で `NS::Core` に露出する単一ヘッダ。
@@ -91,9 +91,17 @@ namespace NS::Core
     {
         return a.value == b.value;
     }
+    [[nodiscard]] constexpr bool operator!=(Radians a, Radians b) noexcept
+    {
+        return !(a == b);
+    }
     [[nodiscard]] constexpr bool operator==(Degrees a, Degrees b) noexcept
     {
         return a.value == b.value;
+    }
+    [[nodiscard]] constexpr bool operator!=(Degrees a, Degrees b) noexcept
+    {
+        return !(a == b);
     }
 
     /// 2D ピクセルサイズ (width, height) を表す強い型。
