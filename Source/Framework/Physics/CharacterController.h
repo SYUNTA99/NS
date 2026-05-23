@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file character_controller.h
+/// @file CharacterController.h
 /// @brief NS::Physics::CharacterController — Capsule + sub-step swept 物理。
 ///
 /// 入出力は POD struct。gameplay 値 (gravity / jump 等) は保持しない ( 責任分担)。

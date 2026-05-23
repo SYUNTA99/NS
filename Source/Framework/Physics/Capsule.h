@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file capsule.h
+/// @file Capsule.h
 /// @brief NS::Physics::Capsule — Player 衝突形状。
 /// Cylinder 部 + 上下 hemisphere。 で SweptCapsuleVsAABB の入力に使う。
 

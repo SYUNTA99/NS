@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file swept_aabb.h
+/// @file SweptAABB.h
 /// @brief Swept Capsule vs AABB の TOI 計算。 で実装。
 
 #include "Framework/Core/Math.h"

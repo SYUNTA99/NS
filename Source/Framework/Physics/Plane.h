@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file plane.h
+/// @file Plane.h
 /// @brief NS::Physics::Plane — Slope 表現用。 で CharacterController が利用。
 
 #include "Framework/Core/Math.h"
