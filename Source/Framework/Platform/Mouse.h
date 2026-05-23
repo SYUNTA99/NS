@@ -1,5 +1,13 @@
 #pragma once
 
+/// @file Mouse.h
+/// @brief NS::Platform::Mouse / MouseButton — マウス入力の状態保持。
+///
+/// @details 座標はウィンドウのクライアント領域 (左上原点)、 ホイールは
+/// `WHEEL_DELTA` (=120) 単位の縦スクロール。 `OnMove` / `OnButton*` / `OnWheel`
+/// は WndProc 経由で呼ばれる。 `Update()` は fixed step ループの頭で 1 回呼び、
+/// previous 状態の退避とホイールのリセットを行う。 マルチスレッドは未サポート。
+
 #include <array>
 #include <cstddef>
 

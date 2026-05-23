@@ -1,5 +1,14 @@
 #pragma once
 
+/// @file Gamepad.h
+/// @brief NS::Platform::Gamepad / GamepadButton / Stick — XInput 互換ゲームパッド。
+///
+/// @details `Update()` は fixed step ループの頭で 1 回呼び、 内部で
+/// `XInputGetState()` をポーリングする。 `ERROR_DEVICE_NOT_CONNECTED` の場合は
+/// `IsConnected() == false` で復帰し、 ボタン / 軸はリセットされる
+/// (stuck button 防止)。 スティック / トリガーはデッドゾーン適用後の値を返す。
+/// マルチスレッドは未サポート (単一スレッド前提)。
+
 #include <array>
 #include <cstddef>
 

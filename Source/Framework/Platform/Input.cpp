@@ -299,7 +299,7 @@ namespace NS::Platform
         m_rightTrigger = NormalizeTrigger(state.Gamepad.bRightTrigger);
     }
 
-    Input::Input()
+    Input::Input() noexcept
     {
         for (std::size_t i = 0; i < m_gamepads.size(); ++i)
         {
