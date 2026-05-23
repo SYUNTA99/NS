@@ -107,6 +107,11 @@ namespace NS::Graphics
     {
         if (swapchain == nullptr || device == nullptr || context == nullptr)
         {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "RenderTarget::ConfigureAsBackbuffer: 必須引数が null (swapchain={}, device={}, context={})",
+                         static_cast<const void*>(swapchain),
+                         static_cast<const void*>(device),
+                         static_cast<const void*>(context));
             return false;
         }
 

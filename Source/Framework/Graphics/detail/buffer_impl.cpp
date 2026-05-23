@@ -1,7 +1,7 @@
 #include "Framework/Graphics/Buffer.h"
 
-#include "Framework/Graphics/detail/d3d_context.h"
 #include "Framework/Graphics/Renderer.h"
+#include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -42,6 +42,10 @@ namespace NS::Graphics
         {
             if (device == nullptr || byteSize == 0u)
             {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                             "CreateD3DBuffer: 引数不正 (device={}, byteSize={})",
+                             static_cast<const void*>(device),
+                             byteSize);
                 return false;
             }
             if (usage == BufferUsage::Static && initialData == nullptr)
@@ -93,6 +97,12 @@ namespace NS::Graphics
         {
             if (context == nullptr || buffer == nullptr || data == nullptr || bytes == 0u)
             {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                             "Buffer::MapAndCopy: 引数不正 (context={}, buffer={}, data={}, bytes={})",
+                             static_cast<const void*>(context),
+                             static_cast<const void*>(buffer),
+                             data,
+                             bytes);
                 return false;
             }
             D3D11_MAPPED_SUBRESOURCE mapped{};
