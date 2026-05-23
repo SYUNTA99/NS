@@ -1,5 +1,13 @@
 #pragma once
 
+/// @file Mesh.h
+/// @brief NS::Graphics::Mesh — VB + IB + indexCount の最小バンドル。
+///
+/// @details 固定頂点フォーマット `MeshVertex` (32 byte: position/uv/normal) 前提。
+/// Static Buffer 利用、 `MeshDesc::initialData` は ctor 内でコピー。 Submesh /
+/// 複数 Material 切替は glTF 対応時に拡張、 cube は単一マテリアル相当。
+/// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること。
+
 #include "Framework/Core/Math.h"
 #include "Framework/Graphics/ShaderProgram.h"
 

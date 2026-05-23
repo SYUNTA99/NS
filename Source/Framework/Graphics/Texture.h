@@ -1,5 +1,13 @@
 #pragma once
 
+/// @file Texture.h
+/// @brief NS::Graphics::Texture — 2D テクスチャ (DDS / WIC ロード対応)。
+///
+/// @details 拡張子 .dds → DirectXTK DDSTextureLoader、 それ以外 → WICTextureLoader 経由。
+/// File I/O は `NS::Core::FileSystem` 経由なので将来 pak / VFS で透過対応可能。
+/// 読込失敗時は 1x1 マゼンタ fallback SRV が生成され、 `IsUsingFallback()` が true。
+/// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること。
+
 #include <filesystem>
 #include <memory>
 
