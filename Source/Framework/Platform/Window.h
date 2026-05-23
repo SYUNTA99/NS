@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Framework/Core/Math.h"
+
 #include <functional>
 #include <memory>
 #include <string>
@@ -14,8 +16,7 @@ namespace NS::Platform
     struct WindowDesc
     {
         std::string title = "NS";
-        int width = 1280;
-        int height = 720;
+        NS::Core::Size2D size{1280, 720};
         /// false で構築時に非表示 (SW_HIDE) 起動。Render テスト用に Window を見せないとき使う。
         bool visible = true;
     };
@@ -48,8 +49,7 @@ namespace NS::Platform
 
         [[nodiscard]] bool ShouldClose() const noexcept;
 
-        [[nodiscard]] int Width() const noexcept;
-        [[nodiscard]] int Height() const noexcept;
+        [[nodiscard]] NS::Core::Size2D Size() const noexcept;
 
         /// HWND を void* で公開。Graphics 層は reinterpret_cast<HWND> で取り出す。
         [[nodiscard]] void* NativeHandle() const noexcept;
@@ -63,7 +63,7 @@ namespace NS::Platform
         void RequestClose() noexcept;
 
         /// リサイズ通知 (WM_SIZE)。最小化中は呼ばれない。
-        void SetResizeCallback(std::function<void(int width, int height)> cb);
+        void SetResizeCallback(std::function<void(NS::Core::Size2D)> cb);
 
         /// ×ボタン等で閉じる要求 (WM_CLOSE) を受け取った時に呼ばれる。
         /// callback 内で RequestClose() を呼ばないと閉じない (拒否可能)。

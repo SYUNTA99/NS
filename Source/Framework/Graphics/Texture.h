@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <memory>
 
+#include <Framework/Core/Math.h>
 #include <Framework/Graphics/Buffer.h>
 
 struct ID3D11ShaderResourceView;
@@ -48,8 +49,7 @@ namespace NS::Graphics
 
         /// SRV が有効か。fallback でも true (1x1 マゼンタ SRV が必ず生成される)。
         [[nodiscard]] bool IsValid() const noexcept;
-        [[nodiscard]] int Width() const noexcept;
-        [[nodiscard]] int Height() const noexcept;
+        [[nodiscard]] NS::Core::Size2D Size() const noexcept;
 
         /// 読込失敗で fallback (1x1 マゼンタ) になっているかを問い合わせる。
         /// デバッグ時のアセット欠落検知に使用。

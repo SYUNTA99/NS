@@ -19,8 +19,7 @@ namespace NS::Graphics
         ComPtr<ID3D11Texture2D> depthTex;
         ComPtr<ID3D11DepthStencilView> dsv;
 
-        int width = 0;
-        int height = 0;
+        ::NS::Core::Size2D size{0, 0};
         bool hasDepth = false;
     };
 
@@ -122,8 +121,7 @@ namespace NS::Graphics
         {
             return false;
         }
-        m_pImpl->width = w;
-        m_pImpl->height = h;
+        m_pImpl->size = ::NS::Core::Size2D{w, h};
 
         if (createDepth)
         {
@@ -165,16 +163,16 @@ namespace NS::Graphics
         D3D11_VIEWPORT vp{};
         vp.TopLeftX = 0.0f;
         vp.TopLeftY = 0.0f;
-        vp.Width = static_cast<float>(m_pImpl->width);
-        vp.Height = static_cast<float>(m_pImpl->height);
+        vp.Width = static_cast<float>(m_pImpl->size.width);
+        vp.Height = static_cast<float>(m_pImpl->size.height);
         vp.MinDepth = 0.0f;
         vp.MaxDepth = 1.0f;
         m_pImpl->context->RSSetViewports(1, &vp);
     }
 
-    void RenderTarget::Resize(int width, int height) noexcept
+    void RenderTarget::Resize(::NS::Core::Size2D size) noexcept
     {
-        if (width <= 0 || height <= 0)
+        if (size.width <= 0 || size.height <= 0)
         {
             return;
         }
@@ -191,7 +189,7 @@ namespace NS::Graphics
         m_pImpl->context->Flush();
 
         HRESULT hr = m_pImpl->swapchain->ResizeBuffers(
-            0, static_cast<UINT>(width), static_cast<UINT>(height), DXGI_FORMAT_UNKNOWN, 0);
+            0, static_cast<UINT>(size.width), static_cast<UINT>(size.height), DXGI_FORMAT_UNKNOWN, 0);
         if (FAILED(hr))
         {
             NS_LOG_ERROR(
@@ -205,8 +203,7 @@ namespace NS::Graphics
         {
             return;
         }
-        m_pImpl->width = newW;
-        m_pImpl->height = newH;
+        m_pImpl->size = ::NS::Core::Size2D{newW, newH};
 
         if (m_pImpl->hasDepth)
         {
@@ -214,13 +211,9 @@ namespace NS::Graphics
         }
     }
 
-    int RenderTarget::Width() const noexcept
+    ::NS::Core::Size2D RenderTarget::Size() const noexcept
     {
-        return m_pImpl->width;
-    }
-    int RenderTarget::Height() const noexcept
-    {
-        return m_pImpl->height;
+        return m_pImpl->size;
     }
     bool RenderTarget::HasDepth() const noexcept
     {

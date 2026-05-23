@@ -1,7 +1,7 @@
 #include "Framework/Graphics/Texture.h"
 
-#include "Framework/Graphics/detail/d3d_context.h"
 #include "Framework/Graphics/Renderer.h"
+#include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
@@ -23,8 +23,7 @@ namespace NS::Graphics
         ComPtr<ID3D11Resource> resource;
         ComPtr<ID3D11ShaderResourceView> srv;
         ComPtr<ID3D11DeviceContext> context;
-        int width = 0;
-        int height = 0;
+        ::NS::Core::Size2D size{0, 0};
         bool fallback = false;
     };
 
@@ -216,18 +215,20 @@ namespace NS::Graphics
             int h = 0;
             if (QueryTexture2DSize(m_pImpl->resource.Get(), w, h))
             {
-                m_pImpl->width = w;
-                m_pImpl->height = h;
+                m_pImpl->size = ::NS::Core::Size2D{w, h};
             }
             return;
         }
 
-        if (!CreateMagentaFallback(device, m_pImpl->resource, m_pImpl->srv, m_pImpl->width, m_pImpl->height))
+        int fbW = 0;
+        int fbH = 0;
+        if (!CreateMagentaFallback(device, m_pImpl->resource, m_pImpl->srv, fbW, fbH))
         {
             // fallback も失敗したら IsValid()==false、context だけ残らないよう統一クリアする。
             m_pImpl->context.Reset();
             return;
         }
+        m_pImpl->size = ::NS::Core::Size2D{fbW, fbH};
         m_pImpl->fallback = true;
     }
 
@@ -241,13 +242,9 @@ namespace NS::Graphics
     {
         return m_pImpl && m_pImpl->srv;
     }
-    int Texture::Width() const noexcept
+    ::NS::Core::Size2D Texture::Size() const noexcept
     {
-        return m_pImpl ? m_pImpl->width : 0;
-    }
-    int Texture::Height() const noexcept
-    {
-        return m_pImpl ? m_pImpl->height : 0;
+        return m_pImpl ? m_pImpl->size : ::NS::Core::Size2D{0, 0};
     }
     bool Texture::IsUsingFallback() const noexcept
     {

@@ -61,11 +61,10 @@ namespace NS::Graphics
         void EndFrame() noexcept;
 
         /// SwapChain::ResizeBuffers + 主 RT 再構築。Window リサイズで自動呼出される。
-        /// width または height が 0 以下なら no-op (最小化対応)。
-        void Resize(int width, int height) noexcept;
+        /// size.width または size.height が 0 以下なら no-op (最小化対応)。
+        void Resize(NS::Core::Size2D size) noexcept;
 
-        [[nodiscard]] int Width() const noexcept;
-        [[nodiscard]] int Height() const noexcept;
+        [[nodiscard]] NS::Core::Size2D Size() const noexcept;
 
         /// Backbuffer 主 RT。Renderer 寿命と同期、別 Window では使えない。
         [[nodiscard]] RenderTarget& MainRenderTarget() noexcept;

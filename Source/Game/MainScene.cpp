@@ -16,8 +16,8 @@
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
-#include "Framework/Scene/MeshComponent.h"
 #include "Framework/Scene/IRenderable.h"
+#include "Framework/Scene/MeshComponent.h"
 #include "Framework/Scene/RenderContext.h"
 
 #include <algorithm>
@@ -141,12 +141,6 @@ void MainScene::OnStart()
     for (auto& block : m_blocks)
         block->OnStart();
     m_cameraRig->OnStart();
-
-    app->Window().SetResizeCallback([this](int w, int h) {
-        if (w <= 0 || h <= 0)
-            return;
-        m_camera.SetAspectRatio(static_cast<float>(w) / static_cast<float>(h));
-    });
 }
 
 void MainScene::OnUpdate(float dt)
@@ -160,6 +154,10 @@ void MainScene::OnUpdate(float dt)
         NS::App::Application::Quit();
         return;
     }
+
+    // Application が Renderer::Resize を排他で握っているため、 Camera の aspect ratio は
+    // Renderer の現在 Size から毎フレーム pull する (callback 上書きで競合させない)。
+    m_camera.SetAspectRatioFromRenderer(app->Renderer());
 
     if (m_player)
         m_player->InputComp().SetCameraForward(m_camera.ForwardHorizontal());

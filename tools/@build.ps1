@@ -1,8 +1,12 @@
-param(
+﻿param(
     [string]$Config = "Debug"
 )
 
 $ErrorActionPreference = "Stop"
+
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::InputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 $scriptFilePath = $MyInvocation.MyCommand.Path
 if ([string]::IsNullOrEmpty($scriptFilePath) -and (Get-Variable -Name scriptPath -ErrorAction SilentlyContinue)) {

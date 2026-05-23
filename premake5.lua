@@ -216,7 +216,9 @@ project "Platform"
         "Source/Framework/Platform/**.cpp"
     }
 
+    -- WindowDesc 等が NS::Core::Size2D (Math.h 経由で SimpleMath) を保持するため DirectXTK が必要
     includedirs {
+        "Source/third_party/DirectXTK/Inc",
         "Source/third_party/spdlog/include",
         "Source/third_party/magic_enum/include",
     }
@@ -406,8 +408,10 @@ project "App"
         "Source/Framework/App/**.cpp"
     }
 
-    -- NS::Core::Logger を include するため spdlog / magic_enum の参照が必要
+    -- WindowDesc 等が NS::Core::Size2D (Math.h 経由で SimpleMath) を保持するため DirectXTK が必要
+    -- Logger 経由で spdlog / magic_enum も参照
     includedirs {
+        "Source/third_party/DirectXTK/Inc",
         "Source/third_party/spdlog/include",
         "Source/third_party/magic_enum/include",
     }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Framework/Core/Math.h"
+
 #include <memory>
 
 struct ID3D11Device;
@@ -13,8 +15,7 @@ namespace NS::Graphics
     /// 将来 offscreen RT を追加した時に公開される予定。
     struct RenderTargetDesc
     {
-        int width = 0;
-        int height = 0;
+        NS::Core::Size2D size{0, 0};
         /// false なら Color のみ (UI / post-process 用、現状未使用)。
         bool createDepth = true;
     };
@@ -43,11 +44,10 @@ namespace NS::Graphics
         void Bind() noexcept;
 
         /// Backbuffer の場合 SwapChain::ResizeBuffers → RTV/DSV 再構築。
-        /// width/height が 0 以下なら no-op。
-        void Resize(int width, int height) noexcept;
+        /// size.width/size.height が 0 以下なら no-op。
+        void Resize(NS::Core::Size2D size) noexcept;
 
-        [[nodiscard]] int Width() const noexcept;
-        [[nodiscard]] int Height() const noexcept;
+        [[nodiscard]] NS::Core::Size2D Size() const noexcept;
         [[nodiscard]] bool HasDepth() const noexcept;
 
     private:
