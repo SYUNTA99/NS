@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file mesh_component.h
+/// @file MeshComponent.h
 /// @brief MeshComponent — Mesh + Material 描画を担う IRenderable 多重継承 Component (, )。
 ///
 /// 既存 standard.{vs,ps}.hlsl + FrameCB 構造 (160 byte, row_major LH) を流用する。

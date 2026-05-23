@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file transform.h
+/// @file Transform.h
 /// @brief NS::Scene::Transform — 階層構造を持つ位置/回転/スケール。
 ///
 /// 親子関係を `SetParent` で構築し、`WorldMatrix()` で root から再計算した world 変換を返す。

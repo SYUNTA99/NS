@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file camera_component.h
+/// @file CameraComponent.h
 /// @brief `NS::Graphics::Camera` を value member で内包する Component。
 ///        Getter / Setter は基本的に内包 Camera への薄いラッパー。view forward (XZ) は
 ///        PlayerInput が camera 相対移動入力の参照に使う。

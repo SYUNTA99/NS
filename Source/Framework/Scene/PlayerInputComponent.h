@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file player_input_component.h
+/// @file PlayerInputComponent.h
 /// @brief Keyboard / Gamepad の入力を CharacterMovementComponent に橋渡しする Component。
 ///
 /// WASD + Left Stick を camera forward 相対の world direction に変換し、Space / Gamepad A の

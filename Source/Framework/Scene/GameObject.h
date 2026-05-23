@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file game_object.h
+/// @file GameObject.h
 /// @brief NS::Scene::GameObject — Transform を持つ継承可能基底 (, , )。
 ///
 /// UE5 の AActor 相当だが命名は GameObject。Component を named members として固定スロットで

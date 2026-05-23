@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file component.h
+/// @file Component.h
 /// @brief NS::Scene::Component — 振る舞いを表現する再利用ブロック (, )。
 ///
 /// GameObject 派生 (Player/Block/Camera 等) に固定スロット (named members) として
