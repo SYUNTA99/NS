@@ -56,19 +56,14 @@ namespace NS::Graphics
         [[nodiscard]] bool IsValid() const noexcept;
 
         /// 共有 ShaderProgram が fallback 描画 (magenta) に切替わっているかを問い合わせる。
-        /// `Shader()->IsUsingFallback()` への薄いラッパ、 Material 単体では独自の fallback 状態は持たない。
-        /// デバッグ時のシェーダ欠落検知に使用。
+        /// 内部の `ShaderProgram::IsUsingFallback()` への薄いラッパ、 Material 単体では独自の
+        /// fallback 状態は持たない。 デバッグ時のシェーダ欠落検知に使用。
         [[nodiscard]] bool IsUsingFallback() const noexcept;
-
-        /// 構築時に渡された ShaderProgram (共有参照)。
-        [[nodiscard]] ShaderProgram* Shader() const noexcept;
 
         /// 指定スロットにテクスチャを割り当てる。texture=nullptr で割当解除と同義。
         void SetTexture(unsigned slot, const Texture* texture) noexcept;
         /// 指定スロットの割り当てを解除する。
         void ClearTexture(unsigned slot) noexcept;
-        /// 指定スロットの現在のテクスチャ。未割り当て時 nullptr。
-        [[nodiscard]] const Texture* GetTexture(unsigned slot) const noexcept;
 
         /// CB 更新。`alignas(16)` + `sizeof(T) % 16 == 0` 必須。
         /// constantBufferSize=0 で構築された Material では no-op。

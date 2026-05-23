@@ -81,11 +81,6 @@ namespace NS::Graphics
         return m_pImpl->shader->IsUsingFallback();
     }
 
-    ShaderProgram* Material::Shader() const noexcept
-    {
-        return m_pImpl ? m_pImpl->shader : nullptr;
-    }
-
     void Material::SetTexture(unsigned slot, const Texture* texture) noexcept
     {
         if (!m_pImpl)
@@ -107,16 +102,6 @@ namespace NS::Graphics
             return;
         }
         m_pImpl->textures.erase(slot);
-    }
-
-    const Texture* Material::GetTexture(unsigned slot) const noexcept
-    {
-        if (!m_pImpl)
-        {
-            return nullptr;
-        }
-        const auto it = m_pImpl->textures.find(slot);
-        return (it != m_pImpl->textures.end()) ? it->second : nullptr;
     }
 
     void Material::UpdateParamsRaw(const void* data, std::size_t bytes) noexcept
