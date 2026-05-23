@@ -1,5 +1,14 @@
 #pragma once
 
+/// @file Logger.h
+/// @brief NS::Core::Logger — spdlog を完全隠蔽する static ファサード + `NS_LOG_*` マクロ群。
+///
+/// @details Application 開始時に `Logger::Init()`、 終了時に `Logger::Shutdown()` を呼ぶ。
+/// 公開ヘッダから spdlog の型は一切露出しない (実装側で完全隠蔽)。 ログ出力は
+/// `NS_LOG_TRACE/DEBUG/INFO/WARN/ERROR/FATAL` マクロで行い、 `std::format` 構文の
+/// 可変引数を取る。 Fatal は flush 後に `__debugbreak()` (Debug 時) → `std::abort()`。
+/// シングルスレッド前提 — マルチスレッド対応は今後判断する。
+
 #include <Framework/Core/LogCategories.h>
 
 #include <magic_enum/magic_enum.hpp>

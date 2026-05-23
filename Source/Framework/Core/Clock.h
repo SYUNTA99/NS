@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file clock.h
+/// @file Clock.h
 /// @brief NS::Core 時刻関連 3 クラス + RAII 計測マクロを単一ヘッダに集約。
 ///
 /// - Clock: 起動時刻基準の時刻ソース (all-static)
@@ -28,16 +28,19 @@ namespace NS::Core
         Clock() = delete;
 
         /// 単調増加な現在時刻 (steady_clock の time_point)
-        [[nodiscard]] static std::chrono::steady_clock::time_point Now() { return std::chrono::steady_clock::now(); }
+        [[nodiscard]] static std::chrono::steady_clock::time_point Now() noexcept
+        {
+            return std::chrono::steady_clock::now();
+        }
 
         /// プログラム起動からの経過秒。double で長期精度を維持
-        [[nodiscard]] static double ElapsedSeconds()
+        [[nodiscard]] static double ElapsedSeconds() noexcept
         {
             return std::chrono::duration<double>(Now() - StartTime()).count();
         }
 
     private:
-        static const std::chrono::steady_clock::time_point& StartTime()
+        static const std::chrono::steady_clock::time_point& StartTime() noexcept
         {
             static const auto start = std::chrono::steady_clock::now();
             return start;
@@ -48,10 +51,10 @@ namespace NS::Core
     class FrameTimer
     {
     public:
-        FrameTimer() : m_lastTime(std::chrono::steady_clock::now()) {}
+        FrameTimer() noexcept : m_lastTime(std::chrono::steady_clock::now()) {}
 
         /// フレーム冒頭で呼ぶ。delta / total / frame / accumulator を更新する
-        void Tick()
+        void Tick() noexcept
         {
             const auto now = std::chrono::steady_clock::now();
             const float dt = std::chrono::duration<float>(now - m_lastTime).count();
@@ -66,7 +69,7 @@ namespace NS::Core
         }
 
         /// 状態を初期化 (FrameNumber=0、accumulator/total=0)
-        void Reset()
+        void Reset() noexcept
         {
             m_lastTime = std::chrono::steady_clock::now();
             m_delta = 0.0f;
