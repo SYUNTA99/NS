@@ -43,6 +43,11 @@ namespace NS::Scene
         Component(Component&&) = delete;
         Component& operator=(Component&&) = delete;
 
+        /// OnUpdate iteration 順を決める priority 帯。 値小→先呼出、 stable sort で同値保持。
+        /// 既定 `TickPriority::Physics` (200) — 物理 / movement 帯。
+        /// 派生は必要に応じて override (例: Input 系は `TickPriority::Input` 帯)。
+        [[nodiscard]] virtual int Priority() const noexcept { return static_cast<int>(TickPriority::Physics); }
+
         /// 所有 GameObject。Scene attach 後は non-null。
         [[nodiscard]] GameObject* Owner() noexcept { return m_owner; }
         [[nodiscard]] const GameObject* Owner() const noexcept { return m_owner; }
