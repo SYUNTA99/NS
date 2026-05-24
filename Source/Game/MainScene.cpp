@@ -46,7 +46,7 @@ namespace
     constexpr NS::Core::Vector3 kBlockColor{0.70f, 0.70f, 0.75f};
 } // namespace
 
-MainScene::MainScene() : m_camera(), m_follow(nullptr) {}
+MainScene::MainScene() = default;
 
 MainScene::~MainScene() = default;
 
@@ -122,20 +122,15 @@ void MainScene::OnStart()
     }
     m_player->Movement().SetCollisionWorld(m_collisionWorld);
 
-    m_cameraRig = std::make_unique<NS::Scene::GameObject>();
+    m_cameraRig = std::make_unique<CameraRig>(&app->Input(), &m_player->Root(), &m_player->Movement());
     m_cameraRig->AttachScene(this);
-    m_cameraRig->RegisterComponent(&m_camera);
-    m_cameraRig->RegisterComponent(&m_follow);
-    m_follow.SetTarget(&m_player->Root());
-    m_follow.SetCamera(&m_camera);
-    m_follow.SetInput(&app->Input());
-    m_follow.SetMovement(&m_player->Movement());
 
-    m_camera.SetAspectRatioFromRenderer(renderer);
-    m_camera.SetNearPlane(0.1f);
-    m_camera.SetFarPlane(100.0f);
-    m_camera.SetFovY(m_follow.FovY());
-    m_camera.SetUp({0.0f, 1.0f, 0.0f});
+    auto& camera = m_cameraRig->Camera();
+    camera.SetAspectRatioFromRenderer(renderer);
+    camera.SetNearPlane(0.1f);
+    camera.SetFarPlane(100.0f);
+    camera.SetFovY(m_cameraRig->Follow().FovY());
+    camera.SetUp({0.0f, 1.0f, 0.0f});
 
     m_player->OnStart();
     for (auto& block : m_blocks)
@@ -157,10 +152,11 @@ void MainScene::OnUpdate(float dt)
 
     // Application が Renderer::Resize を排他で握っているため、 Camera の aspect ratio は
     // Renderer の現在 Size から毎フレーム pull する (callback 上書きで競合させない)。
-    m_camera.SetAspectRatioFromRenderer(app->Renderer());
+    if (m_cameraRig)
+        m_cameraRig->Camera().SetAspectRatioFromRenderer(app->Renderer());
 
-    if (m_player)
-        m_player->InputComp().SetCameraForward(m_camera.ForwardHorizontal());
+    if (m_player && m_cameraRig)
+        m_player->InputComp().SetCameraForward(m_cameraRig->Camera().ForwardHorizontal());
 
     // 奈落落ち復活: 床のエッジを抜けて y が一定以下に達したら初期位置に戻す。
     if (m_player && m_player->Root().Position().y < -10.0f)
@@ -194,11 +190,14 @@ void MainScene::OnRender()
     ctx.renderer = &app->Renderer();
     ctx.alpha = NS::App::Application::Alpha();
 
+    if (m_cameraRig == nullptr)
+        return;
+
     // Player Mesh の補間と camera を同位相にする。 OnUpdate (fixed step) で
     // SetPosition すると相対位置が discrete に動いて jitter として見える。
-    m_follow.ApplyCameraTransform(ctx.alpha);
+    m_cameraRig->Follow().ApplyCameraTransform(ctx.alpha);
 
-    ctx.viewProjection = m_camera.ViewProjection();
+    ctx.viewProjection = m_cameraRig->Camera().ViewProjection();
     for (NS::Scene::IRenderable* r : m_renderList)
     {
         if (r != nullptr)

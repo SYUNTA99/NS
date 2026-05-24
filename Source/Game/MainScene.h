@@ -1,10 +1,8 @@
 #pragma once
 
-#include "Framework/Scene/RootScene.h"
 #include "Framework/Core/Math.h"
-#include "Framework/Scene/CameraComponent.h"
-#include "Framework/Scene/ThirdPersonFollowComponent.h"
-#include "Framework/Scene/GameObject.h"
+#include "Framework/Scene/RootScene.h"
+#include "Game/CameraRig.h"
 
 #include <memory>
 #include <vector>
@@ -58,9 +56,7 @@ private:
     std::unique_ptr<Player> m_player;
     std::vector<std::unique_ptr<Block>> m_blocks;
 
-    std::unique_ptr<NS::Scene::GameObject> m_cameraRig;
-    NS::Scene::CameraComponent m_camera;
-    NS::Scene::ThirdPersonFollowComponent m_follow;
+    std::unique_ptr<CameraRig> m_cameraRig;
 
     std::vector<NS::Scene::IRenderable*> m_renderList;
     std::vector<NS::Core::AABB> m_collisionWorld;
