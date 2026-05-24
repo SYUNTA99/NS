@@ -24,6 +24,9 @@ namespace NS::Scene
     public:
         explicit PlayerInputComponent(CharacterMovementComponent* movement) noexcept;
 
+        /// GameObject owner と movement を同時に受け取って auto-register する ctor。
+        PlayerInputComponent(NS::Scene::GameObject* owner, CharacterMovementComponent* movement) noexcept;
+
         /// MainScene が active CameraComponent から計算した水平 forward (XZ 平面、Y は 0) を注入する。
         /// 注入前の default は world -Z+ 方向。
         void SetCameraForward(const NS::Core::Vector3& cameraForwardHorizontal) noexcept;
@@ -33,6 +36,12 @@ namespace NS::Scene
         void SetInput(NS::Platform::Input* input) noexcept;
 
         [[nodiscard]] CharacterMovementComponent* Movement() const noexcept { return m_movement; }
+
+        /// OnUpdate 実行順を返す。Input 帯 (0) は同フレーム jump SET → movement 消費を保証するため最先。
+        [[nodiscard]] int Priority() const noexcept override
+        {
+            return static_cast<int>(NS::Scene::TickPriority::Input);
+        }
 
         void OnUpdate(float dt) override;
 
