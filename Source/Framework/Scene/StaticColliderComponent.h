@@ -16,6 +16,10 @@ namespace NS::Scene
     public:
         StaticColliderComponent() noexcept = default;
         explicit StaticColliderComponent(const NS::Core::Vector3& halfExtents) noexcept;
+        /// GameObject owner を受け取って auto-register する ctor。halfExtents は default {0.5,0.5,0.5}。
+        explicit StaticColliderComponent(NS::Scene::GameObject* owner) noexcept;
+        /// owner と halfExtents を同時に渡す ctor。halfExtents は ClampNonNegative で負を 0 にクランプ。
+        StaticColliderComponent(NS::Scene::GameObject* owner, const NS::Core::Vector3& halfExtents) noexcept;
 
         /// 半サイズを設定。
         void SetHalfExtents(const NS::Core::Vector3& halfExtents) noexcept;
