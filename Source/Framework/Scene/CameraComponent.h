@@ -21,6 +21,15 @@ namespace NS::Scene
     public:
         CameraComponent() noexcept = default;
 
+        /// GameObject owner を受け取って auto-register する ctor (Deep Module 化)。
+        explicit CameraComponent(NS::Scene::GameObject* owner) noexcept;
+
+        /// OnUpdate 実行順を返す。Camera 帯 (400) は後処理（follow 用）。
+        [[nodiscard]] int Priority() const noexcept override
+        {
+            return static_cast<int>(NS::Scene::TickPriority::Camera);
+        }
+
         void SetPosition(const NS::Core::Vector3& position) noexcept;
         void SetTarget(const NS::Core::Vector3& target) noexcept;
         void SetUp(const NS::Core::Vector3& up) noexcept;
