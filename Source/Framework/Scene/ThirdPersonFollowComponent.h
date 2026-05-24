@@ -19,11 +19,15 @@ namespace NS::Scene
     class CameraComponent;
     class CharacterMovementComponent;
     class Transform;
+    class GameObject;
 
     class ThirdPersonFollowComponent : public Component
     {
     public:
         explicit ThirdPersonFollowComponent(Transform* target) noexcept;
+
+        /// GameObject owner と target を同時に受け取って auto-register する ctor。
+        ThirdPersonFollowComponent(NS::Scene::GameObject* owner, Transform* target) noexcept;
 
         void SetTarget(Transform* target) noexcept;
         [[nodiscard]] Transform* Target() const noexcept { return m_target; }
@@ -69,6 +73,13 @@ namespace NS::Scene
         /// `Application::Alpha()` (= accumulator / fixedDelta) を渡す。
         /// fixed step state (yaw/pitch/distance) は OnUpdate で更新済の値を使う。
         void ApplyCameraTransform(float alpha) noexcept;
+
+        /// OnUpdate 実行順を返す。Camera 帯 (400) は Input / Physics 帯の後、 Player の
+        /// position 確定後に追従計算を行うため最後寄り。
+        [[nodiscard]] int Priority() const noexcept override
+        {
+            return static_cast<int>(NS::Scene::TickPriority::Camera);
+        }
 
     private:
         Transform* m_target = nullptr;

@@ -5,6 +5,7 @@
 #include "Framework/Platform/Mouse.h"
 #include "Framework/Scene/CameraComponent.h"
 #include "Framework/Scene/CharacterMovementComponent.h"
+#include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 
 #include <cmath>
@@ -28,6 +29,10 @@ namespace
 namespace NS::Scene
 {
     ThirdPersonFollowComponent::ThirdPersonFollowComponent(Transform* target) noexcept : m_target(target) {}
+
+    ThirdPersonFollowComponent::ThirdPersonFollowComponent(NS::Scene::GameObject* owner, Transform* target) noexcept
+        : Component(owner), m_target(target)
+    {}
 
     void ThirdPersonFollowComponent::SetTarget(Transform* target) noexcept
     {
