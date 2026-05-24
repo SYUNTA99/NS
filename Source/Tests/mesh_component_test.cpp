@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 
-#include <Framework/Scene/RootScene.h>
-#include <Framework/Scene/MeshComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/IRenderable.h>
+#include <Framework/Scene/MeshComponent.h>
 #include <Framework/Scene/RenderContext.h>
+#include <Framework/Scene/RootScene.h>
 
 #include <vector>
 
@@ -34,8 +34,7 @@ TEST(MeshComponentTest, ConstructsWithNullPointersWithoutCrashing)
 TEST(MeshComponentTest, DrawIsNoOpWhenInactive)
 {
     GameObject obj;
-    MeshComponent mc(nullptr, nullptr);
-    obj.RegisterComponent(&mc);
+    MeshComponent mc(&obj, nullptr, nullptr);
     mc.SetActive(false);
 
     // ctx を最小限で作って Draw 呼出。null mesh/material でもガード経由で no-op。
@@ -47,8 +46,7 @@ TEST(MeshComponentTest, DrawIsNoOpWhenInactive)
 TEST(MeshComponentTest, DrawIsNoOpWhenMeshOrMaterialIsNull)
 {
     GameObject obj;
-    MeshComponent mc(nullptr, nullptr);
-    obj.RegisterComponent(&mc);
+    MeshComponent mc(&obj, nullptr, nullptr);
 
     NS::Scene::RenderContext ctx{};
     mc.Draw(ctx); // null ガードで no-op
@@ -69,8 +67,7 @@ TEST(MeshComponentTest, OnStartRegistersToOwningScene)
     FakeScene scene;
     GameObject obj;
     obj.AttachScene(&scene);
-    MeshComponent mc(nullptr, nullptr);
-    obj.RegisterComponent(&mc);
+    MeshComponent mc(&obj, nullptr, nullptr);
 
     mc.OnStart();
 
@@ -83,8 +80,7 @@ TEST(MeshComponentTest, OnEndPlayUnregistersFromOwningScene)
     FakeScene scene;
     GameObject obj;
     obj.AttachScene(&scene);
-    MeshComponent mc(nullptr, nullptr);
-    obj.RegisterComponent(&mc);
+    MeshComponent mc(&obj, nullptr, nullptr);
 
     mc.OnStart();
     mc.OnEndPlay();
@@ -96,8 +92,7 @@ TEST(MeshComponentTest, OnEndPlayUnregistersFromOwningScene)
 TEST(MeshComponentTest, OnStartIsNoOpWhenSceneIsNull)
 {
     GameObject obj;
-    MeshComponent mc(nullptr, nullptr);
-    obj.RegisterComponent(&mc);
+    MeshComponent mc(&obj, nullptr, nullptr);
     // OwningScene が nullptr のまま OnStart を呼んでも crash しないこと。
     mc.OnStart();
     SUCCEED();

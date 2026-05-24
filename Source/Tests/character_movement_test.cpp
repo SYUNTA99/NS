@@ -27,8 +27,7 @@ namespace
 TEST(CharacterMovementTest, GravityReducesVerticalVelocityWhenAirborne)
 {
     GameObject obj;
-    CharacterMovementComponent mov;
-    obj.RegisterComponent(&mov);
+    CharacterMovementComponent mov(&obj);
 
     const float vyBefore = mov.Velocity().y;
     StepN(mov, 1);
@@ -39,8 +38,7 @@ TEST(CharacterMovementTest, GravityReducesVerticalVelocityWhenAirborne)
 TEST(CharacterMovementTest, JumpPressedAppliesImpulseAndConsumesOneJump)
 {
     GameObject obj;
-    CharacterMovementComponent mov;
-    obj.RegisterComponent(&mov);
+    CharacterMovementComponent mov(&obj);
 
     mov.SetJumpPressed();
     StepN(mov, 1);
@@ -51,8 +49,7 @@ TEST(CharacterMovementTest, JumpPressedAppliesImpulseAndConsumesOneJump)
 TEST(CharacterMovementTest, SecondJumpDoesNotFireWithoutLanding)
 {
     GameObject obj;
-    CharacterMovementComponent mov;
-    obj.RegisterComponent(&mov);
+    CharacterMovementComponent mov(&obj);
 
     mov.SetJumpPressed();
     StepN(mov, 1);
@@ -67,8 +64,7 @@ TEST(CharacterMovementTest, SecondJumpDoesNotFireWithoutLanding)
 TEST(CharacterMovementTest, JumpReleaseHalvesVerticalVelocity)
 {
     GameObject obj;
-    CharacterMovementComponent mov;
-    obj.RegisterComponent(&mov);
+    CharacterMovementComponent mov(&obj);
 
     mov.SetJumpPressed();
     mov.SetJumpHeld(true);
@@ -86,11 +82,9 @@ TEST(CharacterMovementTest, JumpReleaseHalvesVerticalVelocity)
 TEST(CharacterMovementTest, AsymmetricGravityIsStrongerOnDescent)
 {
     GameObject obj;
-    CharacterMovementComponent movA;
-    CharacterMovementComponent movB;
     GameObject objB;
-    obj.RegisterComponent(&movA);
-    objB.RegisterComponent(&movB);
+    CharacterMovementComponent movA(&obj);
+    CharacterMovementComponent movB(&objB);
 
     movA.SetJumpPressed();
     StepN(movA, 5);
@@ -105,8 +99,7 @@ TEST(CharacterMovementTest, AsymmetricGravityIsStrongerOnDescent)
 TEST(CharacterMovementTest, ApexHangScalesGravity)
 {
     GameObject obj;
-    CharacterMovementComponent mov;
-    obj.RegisterComponent(&mov);
+    CharacterMovementComponent mov(&obj);
     mov.SetDebugDrawEnabled(false);
     std::span<const NS::Core::AABB> empty;
     mov.SetCollisionWorld(empty);
@@ -121,8 +114,7 @@ TEST(CharacterMovementTest, ApexHangScalesGravity)
 TEST(CharacterMovementTest, DesiredMoveAcceleratesHorizontalVelocity)
 {
     GameObject obj;
-    CharacterMovementComponent mov;
-    obj.RegisterComponent(&mov);
+    CharacterMovementComponent mov(&obj);
 
     mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
     StepN(mov, 30);
@@ -142,8 +134,7 @@ TEST(CharacterMovementTest, CapsuleSettersPersist)
 TEST(CharacterMovementTest, OnUpdateNoOpWhenInactive)
 {
     GameObject obj;
-    CharacterMovementComponent mov;
-    obj.RegisterComponent(&mov);
+    CharacterMovementComponent mov(&obj);
     mov.SetActive(false);
     mov.SetDebugDrawEnabled(false);
 

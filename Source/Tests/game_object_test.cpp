@@ -14,6 +14,7 @@ namespace
     class MockComponent : public Component
     {
     public:
+        using Component::Component;
         int startCount = 0;
         int updateCount = 0;
         int endPlayCount = 0;
@@ -25,6 +26,7 @@ namespace
     class OrderedComponent : public Component
     {
     public:
+        using Component::Component;
         std::vector<int>* recorder = nullptr;
         int id = 0;
         void OnEndPlay() override
@@ -38,8 +40,7 @@ namespace
 TEST(GameObjectTest, RegisterComponentAttachesOwnerAndAppendsToList)
 {
     GameObject obj;
-    MockComponent comp;
-    obj.RegisterComponent(&comp);
+    MockComponent comp(&obj);
 
     EXPECT_EQ(comp.Owner(), &obj);
     ASSERT_EQ(obj.Components().size(), std::size_t{1});
@@ -49,10 +50,8 @@ TEST(GameObjectTest, RegisterComponentAttachesOwnerAndAppendsToList)
 TEST(GameObjectTest, OnUpdatePropagatesToActiveComponents)
 {
     GameObject obj;
-    MockComponent c1;
-    MockComponent c2;
-    obj.RegisterComponent(&c1);
-    obj.RegisterComponent(&c2);
+    MockComponent c1(&obj);
+    MockComponent c2(&obj);
 
     obj.OnUpdate(0.016f);
     EXPECT_EQ(c1.updateCount, 1);
@@ -62,8 +61,7 @@ TEST(GameObjectTest, OnUpdatePropagatesToActiveComponents)
 TEST(GameObjectTest, OnUpdateSkipsInactiveComponents)
 {
     GameObject obj;
-    MockComponent comp;
-    obj.RegisterComponent(&comp);
+    MockComponent comp(&obj);
     comp.SetActive(false);
 
     obj.OnUpdate(0.016f);
@@ -75,7 +73,7 @@ TEST(GameObjectTest, OnEndPlayCallsComponentsInReverseRegistrationOrder)
     GameObject obj;
     std::vector<int> callOrder;
 
-    OrderedComponent a, b, c;
+    OrderedComponent a(&obj), b(&obj), c(&obj);
     a.recorder = &callOrder;
     a.id = 1;
     b.recorder = &callOrder;
@@ -83,9 +81,6 @@ TEST(GameObjectTest, OnEndPlayCallsComponentsInReverseRegistrationOrder)
     c.recorder = &callOrder;
     c.id = 3;
 
-    obj.RegisterComponent(&a);
-    obj.RegisterComponent(&b);
-    obj.RegisterComponent(&c);
     obj.OnEndPlay();
 
     ASSERT_EQ(callOrder.size(), std::size_t{3});

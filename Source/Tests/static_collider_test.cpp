@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include <Framework/Scene/StaticColliderComponent.h>
 #include <Framework/Scene/GameObject.h>
+#include <Framework/Scene/StaticColliderComponent.h>
 #include <Framework/Scene/Transform.h>
 
 namespace
@@ -32,8 +32,7 @@ TEST(StaticColliderTest, HalfExtentsSetterPersists)
 TEST(StaticColliderTest, WorldAABBReflectsOwnerPosition)
 {
     GameObject obj;
-    StaticColliderComponent sc{{1.0f, 0.5f, 2.0f}};
-    obj.RegisterComponent(&sc);
+    StaticColliderComponent sc(&obj, {1.0f, 0.5f, 2.0f});
     obj.Root().SetPosition({10.0f, 3.0f, -5.0f});
 
     const NS::Core::AABB box = sc.WorldAABB();

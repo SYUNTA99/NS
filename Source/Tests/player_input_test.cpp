@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Scene/CharacterMovementComponent.h>
-#include <Framework/Scene/PlayerInputComponent.h>
 #include <Framework/Scene/GameObject.h>
+#include <Framework/Scene/PlayerInputComponent.h>
 
 namespace
 {
@@ -21,11 +21,9 @@ TEST(PlayerInputTest, ConstructsWithNullMovementWithoutCrashing)
 TEST(PlayerInputTest, OnUpdateIsNoOpWhenInputIsNull)
 {
     GameObject obj;
-    CharacterMovementComponent mov;
-    obj.RegisterComponent(&mov);
+    CharacterMovementComponent mov(&obj);
 
-    PlayerInputComponent input(&mov);
-    obj.RegisterComponent(&input);
+    PlayerInputComponent input(&obj, &mov);
 
     input.OnUpdate(1.0f / 60.0f);
     EXPECT_FLOAT_EQ(mov.Velocity().x, 0.0f);

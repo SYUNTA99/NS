@@ -11,6 +11,7 @@ namespace
     class CountingComponent : public Component
     {
     public:
+        using Component::Component;
         int updateCount = 0;
         void OnUpdate(float) override { ++updateCount; }
     };
@@ -25,8 +26,7 @@ TEST(ComponentTest, DefaultIsActive)
 TEST(ComponentTest, SetActiveTogglesPropagation)
 {
     GameObject obj;
-    CountingComponent c;
-    obj.RegisterComponent(&c);
+    CountingComponent c(&obj);
 
     c.SetActive(false);
     obj.OnUpdate(0.016f);
@@ -40,8 +40,7 @@ TEST(ComponentTest, SetActiveTogglesPropagation)
 TEST(ComponentTest, RootTransformReturnsOwnerRoot)
 {
     GameObject obj;
-    CountingComponent c;
-    obj.RegisterComponent(&c);
+    CountingComponent c(&obj);
 
     obj.Root().SetPosition({1.0f, 2.0f, 3.0f});
 
