@@ -124,21 +124,13 @@ namespace
     class HighPrioComponent : public NS::Scene::Component
     {
     public:
-        using NS::Scene::Component::Component;
-        [[nodiscard]] int Priority() const noexcept override
-        {
-            return static_cast<int>(NS::Scene::TickPriority::Input);
-        }
+        HighPrioComponent() noexcept : Component(nullptr, static_cast<int>(NS::Scene::TickPriority::Input)) {}
     };
 
     class LowPrioComponent : public NS::Scene::Component
     {
     public:
-        using NS::Scene::Component::Component;
-        [[nodiscard]] int Priority() const noexcept override
-        {
-            return static_cast<int>(NS::Scene::TickPriority::Camera);
-        }
+        LowPrioComponent() noexcept : Component(nullptr, static_cast<int>(NS::Scene::TickPriority::Camera)) {}
     };
 } // namespace
 

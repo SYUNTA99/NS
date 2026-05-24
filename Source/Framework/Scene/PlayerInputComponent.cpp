@@ -27,7 +27,7 @@ namespace NS::Scene
 
     PlayerInputComponent::PlayerInputComponent(NS::Scene::GameObject* owner,
                                                CharacterMovementComponent* movement) noexcept
-        : Component(owner), m_movement(movement)
+        : Component(owner, static_cast<int>(NS::Scene::TickPriority::Input)), m_movement(movement)
     {}
 
     void PlayerInputComponent::SetCameraForward(const NS::Core::Vector3& cameraForwardHorizontal) noexcept

@@ -37,12 +37,6 @@ namespace NS::Scene
 
         [[nodiscard]] CharacterMovementComponent* Movement() const noexcept { return m_movement; }
 
-        /// OnUpdate 実行順を返す。Input 帯 (0) は同フレーム jump SET → movement 消費を保証するため最先。
-        [[nodiscard]] int Priority() const noexcept override
-        {
-            return static_cast<int>(NS::Scene::TickPriority::Input);
-        }
-
         void OnUpdate(float dt) override;
 
     private:

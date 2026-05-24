@@ -8,7 +8,7 @@
 namespace NS::Scene
 {
 
-    Component::Component(GameObject* owner) noexcept
+    Component::Component(GameObject* owner, int priority) noexcept : m_priority(priority)
     {
         if (owner != nullptr)
         {
