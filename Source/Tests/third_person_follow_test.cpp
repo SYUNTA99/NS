@@ -18,7 +18,7 @@ namespace
 
 TEST(ThirdPersonFollowTest, ConstructsWithNullTarget)
 {
-    ThirdPersonFollowComponent follow(nullptr);
+    ThirdPersonFollowComponent follow(nullptr, nullptr);
     EXPECT_EQ(follow.Target(), nullptr);
     EXPECT_TRUE(follow.IsActive());
 }
@@ -26,15 +26,15 @@ TEST(ThirdPersonFollowTest, ConstructsWithNullTarget)
 TEST(ThirdPersonFollowTest, OnUpdateNoOpWhenCameraIsNull)
 {
     GameObject obj;
-    ThirdPersonFollowComponent follow(&obj.Root());
+    ThirdPersonFollowComponent follow(&obj, &obj.Root());
     follow.OnUpdate(kDt);
     SUCCEED();
 }
 
 TEST(ThirdPersonFollowTest, OnUpdateNoOpWhenTargetIsNull)
 {
-    CameraComponent cc;
-    ThirdPersonFollowComponent follow(nullptr);
+    CameraComponent cc(nullptr);
+    ThirdPersonFollowComponent follow(nullptr, nullptr);
     follow.SetCamera(&cc);
 
     const auto posBefore = cc.Position();
@@ -51,8 +51,8 @@ TEST(ThirdPersonFollowTest, UpdatesCameraPositionBehindTarget)
     GameObject obj;
     obj.Root().SetPosition({0.0f, 0.0f, 0.0f});
 
-    CameraComponent cc;
-    ThirdPersonFollowComponent follow(&obj.Root());
+    CameraComponent cc(nullptr);
+    ThirdPersonFollowComponent follow(&obj, &obj.Root());
     follow.SetCamera(&cc);
     follow.SetDistance(5.0f);
 
@@ -74,10 +74,10 @@ TEST(ThirdPersonFollowTest, UpdatesCameraPositionBehindTarget)
 
 TEST(ThirdPersonFollowTest, SetFovYPropagatesToCamera)
 {
-    CameraComponent cc;
+    CameraComponent cc(nullptr);
     cc.SetFovY(NS::Core::Radians{1.0f});
     GameObject obj;
-    ThirdPersonFollowComponent follow(&obj.Root());
+    ThirdPersonFollowComponent follow(&obj, &obj.Root());
     follow.SetCamera(&cc);
 
     follow.SetFovY(NS::Core::Radians{0.5f});
@@ -87,7 +87,7 @@ TEST(ThirdPersonFollowTest, SetFovYPropagatesToCamera)
 
 TEST(ThirdPersonFollowTest, SensitivityAndInvertSettersPersist)
 {
-    ThirdPersonFollowComponent follow(nullptr);
+    ThirdPersonFollowComponent follow(nullptr, nullptr);
     follow.SetSensX(0.01f);
     follow.SetSensY(0.02f);
     follow.SetInvertX(true);
@@ -101,7 +101,7 @@ TEST(ThirdPersonFollowTest, SensitivityAndInvertSettersPersist)
 
 TEST(ThirdPersonFollowTest, SetDistanceSyncsCurrentAndDesired)
 {
-    ThirdPersonFollowComponent follow(nullptr);
+    ThirdPersonFollowComponent follow(nullptr, nullptr);
     follow.SetDistance(8.0f);
     EXPECT_FLOAT_EQ(follow.Distance(), 8.0f);
 }
@@ -109,8 +109,8 @@ TEST(ThirdPersonFollowTest, SetDistanceSyncsCurrentAndDesired)
 TEST(ThirdPersonFollowTest, PitchIsClampedAfterUpdate)
 {
     GameObject obj;
-    CameraComponent cc;
-    ThirdPersonFollowComponent follow(&obj.Root());
+    CameraComponent cc(nullptr);
+    ThirdPersonFollowComponent follow(&obj, &obj.Root());
     follow.SetCamera(&cc);
 
     for (int i = 0; i < 200; ++i)

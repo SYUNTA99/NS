@@ -19,11 +19,13 @@ namespace NS::Scene
     class CameraComponent;
     class CharacterMovementComponent;
     class Transform;
+    class GameObject;
 
     class ThirdPersonFollowComponent : public Component
     {
     public:
-        explicit ThirdPersonFollowComponent(Transform* target) noexcept;
+        /// GameObject owner と target を同時に受け取って auto-register する ctor。
+        ThirdPersonFollowComponent(NS::Scene::GameObject* owner, Transform* target) noexcept;
 
         void SetTarget(Transform* target) noexcept;
         [[nodiscard]] Transform* Target() const noexcept { return m_target; }

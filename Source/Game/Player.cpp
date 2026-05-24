@@ -1,14 +1,13 @@
 #include "Game/Player.h"
 
 Player::Player(NS::Graphics::Mesh* mesh, NS::Graphics::Material* material, NS::Platform::Input* input) noexcept
-    : m_mesh(mesh, material), m_movement(), m_input(&m_movement)
+    : m_mesh(this, mesh, material), m_movement(this), m_input(this, &m_movement)
 {
-    // input -> movement -> mesh の順に登録することで、
-    // 同一 OnUpdate step 内で input.SetJumpPressed -> movement.OnUpdate(消費) が
-    // 連続実行され、ジャンプ押下が次フレームに持ち越されない。逆順だと jump 押下が
-    // 次フレームまで delay し、間に何かが m_jumpPressedThisFrame をリセットすると消失する。
-    RegisterComponent(&m_input);
-    RegisterComponent(&m_movement);
-    RegisterComponent(&m_mesh);
+    // priority 昇順 OnUpdate (data member 化により ctor 内で正しく sort される):
+    //   m_input    (Input,   0)  — jump 押下を SetJumpPressed で立てる
+    //   m_mesh     (Physics, 200) — OnUpdate は no-op (Draw のみ)
+    //   m_movement (Physics, 200) — 同フレームで jump 消費 + 物理更新
+    // 同 priority 内は declaration 順 (Player.h で m_mesh が先) でタイブレーク。
+    // m_mesh は SET と CONSUME の間に挟まるが no-op なので jump feel に影響なし。
     m_input.SetInput(input);
 }

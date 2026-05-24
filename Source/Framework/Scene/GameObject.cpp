@@ -54,6 +54,9 @@ namespace NS::Scene
             return;
         comp->AttachOwner(this);
         m_components.push_back(comp);
+        std::stable_sort(m_components.begin(), m_components.end(), [](const Component* a, const Component* b) noexcept {
+            return a->Priority() < b->Priority();
+        });
     }
 
     void GameObject::UnregisterComponent(Component* comp) noexcept

@@ -45,12 +45,6 @@ namespace NS::Scene
         void SetParent(GameObject* parent) noexcept;
         [[nodiscard]] const std::vector<GameObject*>& Children() const noexcept { return m_children; }
 
-        /// Component を Tick/OnEndPlay 伝播リストに登録、`Component::m_owner` も注入する。
-        /// 所有は派生クラスが行うため、本関数は raw 参照のみを保存する。
-        void RegisterComponent(Component* comp) noexcept;
-        /// Component の破棄前に呼ぶ。`m_components` から該当 raw pointer を除去し、
-        /// `Component::m_owner` を nullptr に戻す。未登録 / null は no-op。
-        void UnregisterComponent(Component* comp) noexcept;
         [[nodiscard]] const std::vector<Component*>& Components() const noexcept { return m_components; }
 
         /// 所有 RootScene。RootScene attach 前 / 破棄後は nullptr。
@@ -71,6 +65,15 @@ namespace NS::Scene
         void MarkPendingKill() noexcept { m_alive = false; }
 
     private:
+        friend class Component;
+
+        /// Component を Tick/OnEndPlay 伝播リストに登録、`Component::m_owner` も注入する。
+        /// 所有は派生クラスが行うため、本関数は raw 参照のみを保存する。
+        void RegisterComponent(Component* comp) noexcept;
+        /// Component の破棄前に呼ぶ。`m_components` から該当 raw pointer を除去し、
+        /// `Component::m_owner` を nullptr に戻す。未登録 / null は no-op。
+        void UnregisterComponent(Component* comp) noexcept;
+
         Transform m_root;
         std::vector<Component*> m_components;
         std::vector<GameObject*> m_children;

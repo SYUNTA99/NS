@@ -35,8 +35,7 @@ namespace
         const AABB floor = MakeFloorOnly();
 
         GameObject owner;
-        CharacterMovementComponent movement;
-        owner.RegisterComponent(&movement);
+        CharacterMovementComponent movement(&owner);
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
 
         movement.SetCollisionWorld(std::span<const AABB>(&floor, 1));
@@ -104,8 +103,7 @@ TEST(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
     const AABB floor = MakeFloorOnly();
 
     GameObject owner;
-    CharacterMovementComponent movement;
-    owner.RegisterComponent(&movement);
+    CharacterMovementComponent movement(&owner);
     owner.Root().SetPosition(Vector3{0.0f, 0.5f, 0.0f}); // 床上に直置きで grounded スタート
 
     movement.SetCollisionWorld(std::span<const AABB>(&floor, 1));

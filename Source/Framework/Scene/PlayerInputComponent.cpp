@@ -4,6 +4,7 @@
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Scene/CharacterMovementComponent.h"
+#include "Framework/Scene/GameObject.h"
 
 #include <cmath>
 
@@ -22,7 +23,10 @@ namespace
 
 namespace NS::Scene
 {
-    PlayerInputComponent::PlayerInputComponent(CharacterMovementComponent* movement) noexcept : m_movement(movement) {}
+    PlayerInputComponent::PlayerInputComponent(NS::Scene::GameObject* owner,
+                                               CharacterMovementComponent* movement) noexcept
+        : Component(owner, static_cast<int>(NS::Scene::TickPriority::Input)), m_movement(movement)
+    {}
 
     void PlayerInputComponent::SetCameraForward(const NS::Core::Vector3& cameraForwardHorizontal) noexcept
     {

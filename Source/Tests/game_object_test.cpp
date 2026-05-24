@@ -14,6 +14,7 @@ namespace
     class MockComponent : public Component
     {
     public:
+        using Component::Component;
         int startCount = 0;
         int updateCount = 0;
         int endPlayCount = 0;
@@ -25,6 +26,7 @@ namespace
     class OrderedComponent : public Component
     {
     public:
+        using Component::Component;
         std::vector<int>* recorder = nullptr;
         int id = 0;
         void OnEndPlay() override
@@ -38,8 +40,7 @@ namespace
 TEST(GameObjectTest, RegisterComponentAttachesOwnerAndAppendsToList)
 {
     GameObject obj;
-    MockComponent comp;
-    obj.RegisterComponent(&comp);
+    MockComponent comp(&obj);
 
     EXPECT_EQ(comp.Owner(), &obj);
     ASSERT_EQ(obj.Components().size(), std::size_t{1});
@@ -49,10 +50,8 @@ TEST(GameObjectTest, RegisterComponentAttachesOwnerAndAppendsToList)
 TEST(GameObjectTest, OnUpdatePropagatesToActiveComponents)
 {
     GameObject obj;
-    MockComponent c1;
-    MockComponent c2;
-    obj.RegisterComponent(&c1);
-    obj.RegisterComponent(&c2);
+    MockComponent c1(&obj);
+    MockComponent c2(&obj);
 
     obj.OnUpdate(0.016f);
     EXPECT_EQ(c1.updateCount, 1);
@@ -62,8 +61,7 @@ TEST(GameObjectTest, OnUpdatePropagatesToActiveComponents)
 TEST(GameObjectTest, OnUpdateSkipsInactiveComponents)
 {
     GameObject obj;
-    MockComponent comp;
-    obj.RegisterComponent(&comp);
+    MockComponent comp(&obj);
     comp.SetActive(false);
 
     obj.OnUpdate(0.016f);
@@ -75,7 +73,7 @@ TEST(GameObjectTest, OnEndPlayCallsComponentsInReverseRegistrationOrder)
     GameObject obj;
     std::vector<int> callOrder;
 
-    OrderedComponent a, b, c;
+    OrderedComponent a(&obj), b(&obj), c(&obj);
     a.recorder = &callOrder;
     a.id = 1;
     b.recorder = &callOrder;
@@ -83,9 +81,6 @@ TEST(GameObjectTest, OnEndPlayCallsComponentsInReverseRegistrationOrder)
     c.recorder = &callOrder;
     c.id = 3;
 
-    obj.RegisterComponent(&a);
-    obj.RegisterComponent(&b);
-    obj.RegisterComponent(&c);
     obj.OnEndPlay();
 
     ASSERT_EQ(callOrder.size(), std::size_t{3});
@@ -117,4 +112,45 @@ TEST(GameObjectTest, MarkPendingKillFlipsIsAlive)
     EXPECT_TRUE(obj.IsAlive());
     obj.MarkPendingKill();
     EXPECT_FALSE(obj.IsAlive());
+}
+
+namespace
+{
+    class HighPrioComponent : public NS::Scene::Component
+    {
+    public:
+        explicit HighPrioComponent(NS::Scene::GameObject* owner) noexcept
+            : Component(owner, static_cast<int>(NS::Scene::TickPriority::Input))
+        {}
+    };
+
+    class LowPrioComponent : public NS::Scene::Component
+    {
+    public:
+        explicit LowPrioComponent(NS::Scene::GameObject* owner) noexcept
+            : Component(owner, static_cast<int>(NS::Scene::TickPriority::Camera))
+        {}
+    };
+} // namespace
+
+TEST(GameObjectPriorityTest, RegisterComponentSortsByPriority)
+{
+    NS::Scene::GameObject obj;
+    LowPrioComponent low(&obj);   // auto-register 先 (Camera, 400)
+    HighPrioComponent high(&obj); // auto-register 後 (Input, 0)
+
+    ASSERT_EQ(obj.Components().size(), std::size_t{2});
+    EXPECT_EQ(obj.Components()[0], &high); // priority 昇順で high 先
+    EXPECT_EQ(obj.Components()[1], &low);
+}
+
+TEST(GameObjectPriorityTest, SamePriorityPreservesInsertionOrder)
+{
+    NS::Scene::GameObject obj;
+    HighPrioComponent a(&obj);
+    HighPrioComponent b(&obj);
+
+    ASSERT_EQ(obj.Components().size(), std::size_t{2});
+    EXPECT_EQ(obj.Components()[0], &a);
+    EXPECT_EQ(obj.Components()[1], &b);
 }

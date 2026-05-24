@@ -18,18 +18,43 @@ namespace NS::Scene
     class GameObject;
     class Transform;
 
+    /// Component の OnUpdate 実行順序を制御する priority 帯 (Godot process_priority 流儀)。
+    /// 値が小さいほど先に呼ばれる。 同 priority 内は登録順 (stable_sort)。
+    /// 帯は意味的にグルーピング (Input 系 / Physics 系等)、 中間値で挟み込み可。
+    enum class TickPriority : int
+    {
+        Input = 0,       ///< 入力読取 (PlayerInputComponent 等)
+        AI = 100,        ///< AI / state machine (将来 Enemy 用)
+        Physics = 200,   ///< 物理 / movement (CharacterMovementComponent 等) — Component default
+        Animation = 300, ///< animation / 補間 (将来 SkeletalAnim 用)
+        Camera = 400,    ///< Camera follow / transform (ThirdPersonFollowComponent 等)
+    };
+
     /// 全 Component の基底。pure virtual を持たないため直接 instance も可能だが
     /// 通常は派生して使う。
     class Component
     {
     public:
-        Component() noexcept = default;
-        virtual ~Component() noexcept = default;
+        /// 所有 GameObject を受け取って auto-register する ctor (Deep Module 化、 NN 流儀)。
+        /// `owner == nullptr` でも null-safe (登録なし、 後で AttachOwner で手動 attach 可)。
+        /// 通常は `Component(this, static_cast<int>(TickPriority::X))` のように派生クラスの
+        /// ctor から呼ぶ。 priority は data として ctor で確定するため、 base ctor 内 sort
+        /// 時の virtual dispatch 問題 (C++ vtable がまだ derived を指していない) を回避する
+        /// (Godot `process_priority` 流儀)。
+        explicit Component(GameObject* owner, int priority = static_cast<int>(TickPriority::Physics)) noexcept;
+
+        virtual ~Component() noexcept;
 
         Component(const Component&) = delete;
         Component& operator=(const Component&) = delete;
         Component(Component&&) = delete;
         Component& operator=(Component&&) = delete;
+
+        /// OnUpdate iteration 順を決める priority 帯。 値小→先呼出、 stable sort で同値保持。
+        /// 既定 `TickPriority::Physics` (200) — 物理 / movement 帯。
+        /// 派生は ctor の base init で `Component(owner, (int)TickPriority::X)` を渡す
+        /// (override ではなく data 注入、 Godot / UE5 / Unity と同流儀)。
+        [[nodiscard]] int Priority() const noexcept { return m_priority; }
 
         /// 所有 GameObject。Scene attach 後は non-null。
         [[nodiscard]] GameObject* Owner() noexcept { return m_owner; }
@@ -52,6 +77,7 @@ namespace NS::Scene
         void AttachOwner(GameObject* owner) noexcept { m_owner = owner; }
 
         GameObject* m_owner = nullptr;
+        int m_priority = static_cast<int>(TickPriority::Physics);
         bool m_active = true;
     };
 

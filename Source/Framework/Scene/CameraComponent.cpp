@@ -1,11 +1,16 @@
 #include "Framework/Scene/CameraComponent.h"
 
 #include "Framework/Graphics/Renderer.h"
+#include "Framework/Scene/GameObject.h"
 
 #include <cmath>
 
 namespace NS::Scene
 {
+    CameraComponent::CameraComponent(NS::Scene::GameObject* owner) noexcept
+        : Component(owner, static_cast<int>(NS::Scene::TickPriority::Camera))
+    {}
+
     void CameraComponent::SetPosition(const NS::Core::Vector3& position) noexcept
     {
         m_camera.SetPosition(position);

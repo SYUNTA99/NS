@@ -22,7 +22,8 @@ namespace NS::Scene
     class PlayerInputComponent : public Component
     {
     public:
-        explicit PlayerInputComponent(CharacterMovementComponent* movement) noexcept;
+        /// GameObject owner と movement を同時に受け取って auto-register する ctor。
+        PlayerInputComponent(NS::Scene::GameObject* owner, CharacterMovementComponent* movement) noexcept;
 
         /// MainScene が active CameraComponent から計算した水平 forward (XZ 平面、Y は 0) を注入する。
         /// 注入前の default は world -Z+ 方向。
