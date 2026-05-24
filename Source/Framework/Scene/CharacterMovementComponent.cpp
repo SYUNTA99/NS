@@ -37,6 +37,8 @@ namespace
 
 namespace NS::Scene
 {
+    CharacterMovementComponent::CharacterMovementComponent(NS::Scene::GameObject* owner) noexcept : Component(owner) {}
+
     void CharacterMovementComponent::SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept
     {
         m_desiredDir = worldDir;
