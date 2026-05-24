@@ -36,9 +36,8 @@ namespace NS::Scene
     class MeshComponent : public Component, public IRenderable
     {
     public:
-        /// Mesh / Material は raw pointer、寿命は呼出側 (通常は Scene or Player) が保証する。
-        MeshComponent(NS::Graphics::Mesh* mesh, NS::Graphics::Material* material) noexcept;
         /// GameObject owner と Mesh / Material を同時に受け取って auto-register する ctor。
+        /// Mesh / Material は raw pointer、寿命は呼出側 (通常は Scene or Player) が保証する。
         MeshComponent(NS::Scene::GameObject* owner,
                       NS::Graphics::Mesh* mesh,
                       NS::Graphics::Material* material) noexcept;

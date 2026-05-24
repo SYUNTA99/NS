@@ -119,38 +119,36 @@ namespace
     class HighPrioComponent : public NS::Scene::Component
     {
     public:
-        HighPrioComponent() noexcept : Component(nullptr, static_cast<int>(NS::Scene::TickPriority::Input)) {}
+        explicit HighPrioComponent(NS::Scene::GameObject* owner) noexcept
+            : Component(owner, static_cast<int>(NS::Scene::TickPriority::Input))
+        {}
     };
 
     class LowPrioComponent : public NS::Scene::Component
     {
     public:
-        LowPrioComponent() noexcept : Component(nullptr, static_cast<int>(NS::Scene::TickPriority::Camera)) {}
+        explicit LowPrioComponent(NS::Scene::GameObject* owner) noexcept
+            : Component(owner, static_cast<int>(NS::Scene::TickPriority::Camera))
+        {}
     };
 } // namespace
 
 TEST(GameObjectPriorityTest, RegisterComponentSortsByPriority)
 {
     NS::Scene::GameObject obj;
-    LowPrioComponent low;
-    HighPrioComponent high;
-
-    obj.RegisterComponent(&low);
-    obj.RegisterComponent(&high);
+    LowPrioComponent low(&obj);   // auto-register 先 (Camera, 400)
+    HighPrioComponent high(&obj); // auto-register 後 (Input, 0)
 
     ASSERT_EQ(obj.Components().size(), std::size_t{2});
-    EXPECT_EQ(obj.Components()[0], &high);
+    EXPECT_EQ(obj.Components()[0], &high); // priority 昇順で high 先
     EXPECT_EQ(obj.Components()[1], &low);
 }
 
 TEST(GameObjectPriorityTest, SamePriorityPreservesInsertionOrder)
 {
     NS::Scene::GameObject obj;
-    HighPrioComponent a;
-    HighPrioComponent b;
-
-    obj.RegisterComponent(&a);
-    obj.RegisterComponent(&b);
+    HighPrioComponent a(&obj);
+    HighPrioComponent b(&obj);
 
     ASSERT_EQ(obj.Components().size(), std::size_t{2});
     EXPECT_EQ(obj.Components()[0], &a);

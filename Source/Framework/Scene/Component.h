@@ -35,8 +35,6 @@ namespace NS::Scene
     class Component
     {
     public:
-        Component() noexcept = default;
-
         /// 所有 GameObject を受け取って auto-register する ctor (Deep Module 化、 NN 流儀)。
         /// `owner == nullptr` でも null-safe (登録なし、 後で AttachOwner で手動 attach 可)。
         /// 通常は `Component(this, static_cast<int>(TickPriority::X))` のように派生クラスの

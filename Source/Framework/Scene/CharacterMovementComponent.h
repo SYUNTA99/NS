@@ -22,8 +22,6 @@ namespace NS::Scene
     class CharacterMovementComponent : public Component
     {
     public:
-        CharacterMovementComponent() noexcept = default;
-
         /// GameObject owner を受け取って auto-register する ctor。
         explicit CharacterMovementComponent(NS::Scene::GameObject* owner) noexcept;
 

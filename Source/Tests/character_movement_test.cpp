@@ -124,7 +124,7 @@ TEST(CharacterMovementTest, DesiredMoveAcceleratesHorizontalVelocity)
 
 TEST(CharacterMovementTest, CapsuleSettersPersist)
 {
-    CharacterMovementComponent mov;
+    CharacterMovementComponent mov(nullptr);
     mov.SetCapsuleRadius(0.6f);
     mov.SetCapsuleHalfHeight(0.8f);
     EXPECT_FLOAT_EQ(mov.CapsuleRadius(), 0.6f);

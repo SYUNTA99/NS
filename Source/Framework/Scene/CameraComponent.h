@@ -19,8 +19,6 @@ namespace NS::Scene
     class CameraComponent : public Component
     {
     public:
-        CameraComponent() noexcept = default;
-
         /// GameObject owner を受け取って auto-register する ctor。priority は Camera 帯 (400) で
         /// base ctor に渡される (follow 系処理を Input / Physics 帯の後に走らせるため)。
         explicit CameraComponent(NS::Scene::GameObject* owner) noexcept;

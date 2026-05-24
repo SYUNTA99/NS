@@ -23,8 +23,6 @@ namespace
 
 namespace NS::Scene
 {
-    PlayerInputComponent::PlayerInputComponent(CharacterMovementComponent* movement) noexcept : m_movement(movement) {}
-
     PlayerInputComponent::PlayerInputComponent(NS::Scene::GameObject* owner,
                                                CharacterMovementComponent* movement) noexcept
         : Component(owner, static_cast<int>(NS::Scene::TickPriority::Input)), m_movement(movement)

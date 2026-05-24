@@ -9,10 +9,6 @@
 
 namespace NS::Scene
 {
-    MeshComponent::MeshComponent(NS::Graphics::Mesh* mesh, NS::Graphics::Material* material) noexcept
-        : m_mesh(mesh), m_material(material)
-    {}
-
     MeshComponent::MeshComponent(NS::Scene::GameObject* owner,
                                  NS::Graphics::Mesh* mesh,
                                  NS::Graphics::Material* material) noexcept

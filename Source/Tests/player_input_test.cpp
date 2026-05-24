@@ -13,7 +13,7 @@ namespace
 
 TEST(PlayerInputTest, ConstructsWithNullMovementWithoutCrashing)
 {
-    PlayerInputComponent input(nullptr);
+    PlayerInputComponent input(nullptr, nullptr);
     EXPECT_EQ(input.Movement(), nullptr);
     EXPECT_TRUE(input.IsActive());
 }
@@ -32,14 +32,14 @@ TEST(PlayerInputTest, OnUpdateIsNoOpWhenInputIsNull)
 
 TEST(PlayerInputTest, OnUpdateIsNoOpWhenMovementIsNull)
 {
-    PlayerInputComponent input(nullptr);
+    PlayerInputComponent input(nullptr, nullptr);
     input.OnUpdate(1.0f / 60.0f);
     SUCCEED();
 }
 
 TEST(PlayerInputTest, CameraForwardSetterPersists)
 {
-    PlayerInputComponent input(nullptr);
+    PlayerInputComponent input(nullptr, nullptr);
     input.SetCameraForward({1.0f, 5.0f, 0.0f});
     SUCCEED();
 }

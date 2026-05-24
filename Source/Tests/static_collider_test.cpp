@@ -12,7 +12,7 @@ namespace
 
 TEST(StaticColliderTest, DefaultHalfExtentsAreHalfMeterCube)
 {
-    StaticColliderComponent sc;
+    StaticColliderComponent sc(nullptr);
     const auto he = sc.HalfExtents();
     EXPECT_FLOAT_EQ(he.x, 0.5f);
     EXPECT_FLOAT_EQ(he.y, 0.5f);
@@ -21,7 +21,7 @@ TEST(StaticColliderTest, DefaultHalfExtentsAreHalfMeterCube)
 
 TEST(StaticColliderTest, HalfExtentsSetterPersists)
 {
-    StaticColliderComponent sc;
+    StaticColliderComponent sc(nullptr);
     sc.SetHalfExtents({2.0f, 0.25f, 4.0f});
     const auto he = sc.HalfExtents();
     EXPECT_FLOAT_EQ(he.x, 2.0f);
@@ -46,7 +46,7 @@ TEST(StaticColliderTest, WorldAABBReflectsOwnerPosition)
 
 TEST(StaticColliderTest, WorldAABBWithoutOwnerIsOriginCentered)
 {
-    StaticColliderComponent sc{{1.0f, 1.0f, 1.0f}};
+    StaticColliderComponent sc(nullptr, NS::Core::Vector3{1.0f, 1.0f, 1.0f});
     const NS::Core::AABB box = sc.WorldAABB();
     EXPECT_FLOAT_EQ(box.Center.x, 0.0f);
     EXPECT_FLOAT_EQ(box.Center.y, 0.0f);

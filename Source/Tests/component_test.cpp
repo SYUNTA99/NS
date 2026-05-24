@@ -19,7 +19,7 @@ namespace
 
 TEST(ComponentTest, DefaultIsActive)
 {
-    CountingComponent c;
+    CountingComponent c(nullptr);
     EXPECT_TRUE(c.IsActive());
 }
 

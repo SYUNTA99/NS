@@ -22,8 +22,6 @@ namespace NS::Scene
     class PlayerInputComponent : public Component
     {
     public:
-        explicit PlayerInputComponent(CharacterMovementComponent* movement) noexcept;
-
         /// GameObject owner と movement を同時に受け取って auto-register する ctor。
         PlayerInputComponent(NS::Scene::GameObject* owner, CharacterMovementComponent* movement) noexcept;
 

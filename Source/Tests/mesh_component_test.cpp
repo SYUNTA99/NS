@@ -27,7 +27,7 @@ namespace
 TEST(MeshComponentTest, ConstructsWithNullPointersWithoutCrashing)
 {
     // Mesh / Material は呼出側保証。null でも構築時 crash しないこと。
-    MeshComponent mc(nullptr, nullptr);
+    MeshComponent mc(nullptr, nullptr, nullptr);
     EXPECT_TRUE(mc.IsActive());
 }
 
@@ -55,7 +55,7 @@ TEST(MeshComponentTest, DrawIsNoOpWhenMeshOrMaterialIsNull)
 
 TEST(MeshComponentTest, SetLightDirectionAndBaseColorDoNotCrash)
 {
-    MeshComponent mc(nullptr, nullptr);
+    MeshComponent mc(nullptr, nullptr, nullptr);
     mc.SetLightDirection({1.0f, 0.0f, 0.0f});
     mc.SetBaseColor({0.5f, 0.5f, 0.5f});
     // getter は提供していない。setter 呼出が crash せず IsActive を破壊しないことのみ verify。
