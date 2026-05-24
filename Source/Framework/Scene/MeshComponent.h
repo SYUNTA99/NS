@@ -38,6 +38,10 @@ namespace NS::Scene
     public:
         /// Mesh / Material は raw pointer、寿命は呼出側 (通常は Scene or Player) が保証する。
         MeshComponent(NS::Graphics::Mesh* mesh, NS::Graphics::Material* material) noexcept;
+        /// GameObject owner と Mesh / Material を同時に受け取って auto-register する ctor。
+        MeshComponent(NS::Scene::GameObject* owner,
+                      NS::Graphics::Mesh* mesh,
+                      NS::Graphics::Material* material) noexcept;
 
         /// 光源方向 (default は CubeScene と同値 (-0.3, -1, -0.2) を normalize 前で渡す)。
         void SetLightDirection(const NS::Core::Vector3& dir) noexcept { m_lightDir = dir; }

@@ -4,13 +4,19 @@
 #include "Framework/Graphics/Mesh.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/RenderContext.h"
-#include "Framework/Scene/Transform.h"
 #include "Framework/Scene/RootScene.h"
+#include "Framework/Scene/Transform.h"
 
 namespace NS::Scene
 {
     MeshComponent::MeshComponent(NS::Graphics::Mesh* mesh, NS::Graphics::Material* material) noexcept
         : m_mesh(mesh), m_material(material)
+    {}
+
+    MeshComponent::MeshComponent(NS::Scene::GameObject* owner,
+                                 NS::Graphics::Mesh* mesh,
+                                 NS::Graphics::Material* material) noexcept
+        : Component(owner), m_mesh(mesh), m_material(material)
     {}
 
     void MeshComponent::OnStart()
