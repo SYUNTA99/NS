@@ -74,6 +74,11 @@ goto %~1
 :: Creates junction to workaround non-ASCII path issues with Premake5
 ::----------------------------------------------------------------------------
 :generate_project
+    if not exist "%~dp0premake5.exe" (
+        echo [ERROR] tools\premake5.exe が見つかりません。
+        echo         初回セットアップは tools\@download_premake.cmd を実行してください。
+        exit /b 1
+    )
     for /f %%a in ('powershell -command "[guid]::NewGuid().ToString()"') do set "GUID=%%a"
     mklink /j "%TEMP%\%GUID%" "%~dp0.." >nul
     pushd "%TEMP%\%GUID%"
