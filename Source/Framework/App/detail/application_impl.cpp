@@ -6,6 +6,7 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 #include "Framework/Platform/Input.h"
+#include "Framework/UI/ImGuiContext.h"
 
 #include "Framework/Framework.h"
 
@@ -40,6 +41,9 @@ namespace NS::App
         std::unique_ptr<NS::Platform::Window> window;
         std::unique_ptr<NS::Graphics::Renderer> renderer;
         std::unique_ptr<NS::Platform::Input> input;
+        /// Debug / Development build のみ実体化される。
+        /// GameDebug / GameRelease では常に nullptr (ImGui 非搭載 shipping を保証)。
+        std::unique_ptr<NS::UI::ImGuiContext> imgui;
         Layers layers;
         bool valid = false;
         bool quitRequested = false;
@@ -90,6 +94,15 @@ namespace NS::App
         // callback 内で RequestClose を呼ぶと PostMessage が WM_CLOSE を再投擲し、
         // PollMessages が永久に抜けなくなる。
         m_pImpl->window->SetCloseCallback([impl]() { impl->quitRequested = true; });
+
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+        m_pImpl->imgui = std::make_unique<NS::UI::ImGuiContext>(*m_pImpl->window, *m_pImpl->renderer);
+        if (!m_pImpl->imgui->IsValid())
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::App, "ImGuiContext 構築失敗、 ImGui 機能は無効");
+        }
+        m_pImpl->window->AttachImGui(m_pImpl->imgui.get());
+#endif
 
         m_pImpl->valid = true;
     }
@@ -218,11 +231,17 @@ namespace NS::App
                 break;
 
             renderer.BeginFrame(desc.clearR, desc.clearG, desc.clearB, desc.clearA);
+            if (m_pImpl->imgui)
+                m_pImpl->imgui->BeginFrame();
+
             for (auto& layer : stack)
             {
                 if (layer->IsActive())
                     layer->OnRender();
             }
+
+            if (m_pImpl->imgui)
+                m_pImpl->imgui->EndFrame();
             renderer.EndFrame();
         }
     }
@@ -241,7 +260,10 @@ namespace NS::App
             m_pImpl->window->SetResizeCallback(nullptr);
             m_pImpl->window->SetCloseCallback(nullptr);
             m_pImpl->window->AttachInput(nullptr);
+            m_pImpl->window->AttachImGui(nullptr);
         }
+        // ImGui_ImplDX11_Shutdown は ID3D11Device を要求するので Renderer より先に破棄。
+        m_pImpl->imgui.reset();
         m_pImpl->renderer.reset();
         m_pImpl->input.reset();
         m_pImpl->window.reset();

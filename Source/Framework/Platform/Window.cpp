@@ -6,6 +6,7 @@
 #include <Framework/Platform/Input.h>
 #include <Framework/Platform/detail/input_win32.h>
 #include <Framework/Platform/detail/win32_window.h>
+#include <Framework/UI/ImGuiContext.h>
 
 namespace NS::Platform
 {
@@ -41,6 +42,34 @@ namespace NS::Platform
             }
         }
 
+        /// キーボード系メッセージ (WantCaptureKeyboard でゲートする対象)。
+        /// WM_KILLFOCUS は ImGui キャプチャに関係なく Input を flush するので除外。
+        [[nodiscard]] constexpr bool IsKeyboardMessage(UINT msg) noexcept
+        {
+            return msg == WM_KEYDOWN || msg == WM_KEYUP || msg == WM_SYSKEYDOWN || msg == WM_SYSKEYUP;
+        }
+
+        /// マウス系メッセージ (WantCaptureMouse でゲートする対象)。
+        [[nodiscard]] constexpr bool IsMouseMessage(UINT msg) noexcept
+        {
+            switch (msg)
+            {
+            case WM_MOUSEMOVE:
+            case WM_LBUTTONDOWN:
+            case WM_LBUTTONUP:
+            case WM_RBUTTONDOWN:
+            case WM_RBUTTONUP:
+            case WM_MBUTTONDOWN:
+            case WM_MBUTTONUP:
+            case WM_XBUTTONDOWN:
+            case WM_XBUTTONUP:
+            case WM_MOUSEWHEEL:
+                return true;
+            default:
+                return false;
+            }
+        }
+
         LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
         {
             Window::Impl* impl = s_instance;
@@ -49,8 +78,30 @@ namespace NS::Platform
                 return ::DefWindowProcW(hwnd, msg, wparam, lparam);
             }
 
+            // ImGui に message を先に forward する。 戻り値は ImGui の内部 IO 更新に
+            // 使われるだけで「常に進める」のが backend の規約。 ゲーム入力との競合は
+            // 下記の WantCaptureMouse / WantCaptureKeyboard で別途ゲートする。
+            if (impl->imgui != nullptr)
+            {
+                (void)impl->imgui->ForwardWndProc(static_cast<void*>(hwnd),
+                                                  static_cast<std::uint32_t>(msg),
+                                                  static_cast<std::uintptr_t>(wparam),
+                                                  static_cast<std::intptr_t>(lparam));
+            }
+
             if (IsInputMessage(msg))
             {
+                // ImGui の widget にフォーカスがある時はゲーム側へイベントを流さない。
+                // テキスト入力中の Tab を PlayMode 切替に消費されないようにする等の対策。
+                if (impl->imgui != nullptr)
+                {
+                    if ((IsKeyboardMessage(msg) && impl->imgui->WantCaptureKeyboard()) ||
+                        (IsMouseMessage(msg) && impl->imgui->WantCaptureMouse()))
+                    {
+                        return ::DefWindowProcW(hwnd, msg, wparam, lparam);
+                    }
+                }
+
                 if (impl->input != nullptr)
                 {
                     DispatchWin32MessageToInput(*impl->input,
@@ -255,6 +306,11 @@ namespace NS::Platform
     void Window::AttachInput(Input* input) noexcept
     {
         m_pImpl->input = input;
+    }
+
+    void Window::AttachImGui(NS::UI::ImGuiContext* imgui) noexcept
+    {
+        m_pImpl->imgui = imgui;
     }
 
 } // namespace NS::Platform

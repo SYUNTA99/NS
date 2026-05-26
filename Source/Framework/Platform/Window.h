@@ -15,6 +15,11 @@
 #include <string>
 #include <string_view>
 
+namespace NS::UI
+{
+    class ImGuiContext;
+}
+
 namespace NS::Platform
 {
 
@@ -81,6 +86,11 @@ namespace NS::Platform
         /// 受信した時にこの Input へ転送する。非所有ポインタ (Application が所有)。
         /// nullptr 解除可。
         void AttachInput(Input* input) noexcept;
+
+        /// ImGui コンテキストを登録する。 WndProc 入口で先に ImGui へ message を
+        /// forward し、 ImGui がキャプチャ中 (WantCaptureMouse / WantCaptureKeyboard)
+        /// なら Input への転送を抑止する。 非所有ポインタ、 nullptr 解除可。
+        void AttachImGui(NS::UI::ImGuiContext* imgui) noexcept;
 
     private:
         std::unique_ptr<Impl> m_pImpl;

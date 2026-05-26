@@ -26,6 +26,7 @@ namespace NS::Platform
         std::function<void()> onClose;
 
         Input* input = nullptr;
+        ::NS::UI::ImGuiContext* imgui = nullptr;
     };
 
 } // namespace NS::Platform
