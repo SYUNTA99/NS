@@ -66,6 +66,42 @@ namespace NS::Core
         }
     }
 
+    bool FileSystem::WriteAllBytes(const std::filesystem::path& path, std::span<const std::byte> bytes)
+    {
+        // 中間ディレクトリを必要なら作成 (parent が空 path なら no-op)。
+        const auto parent = path.parent_path();
+        if (!parent.empty())
+        {
+            std::error_code ec;
+            std::filesystem::create_directories(parent, ec);
+            if (ec)
+            {
+                NS_LOG_ERROR(LogCat::Core,
+                             "FileSystem::WriteAllBytes failed to create directories: {} ({})",
+                             parent.string(),
+                             ec.message());
+                return false;
+            }
+        }
+
+        std::ofstream stream(path, std::ios::binary | std::ios::trunc);
+        if (!stream)
+        {
+            NS_LOG_ERROR(LogCat::Core, "FileSystem::WriteAllBytes failed to open: {}", path.string());
+            return false;
+        }
+        if (!bytes.empty())
+        {
+            stream.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+            if (!stream)
+            {
+                NS_LOG_ERROR(LogCat::Core, "FileSystem::WriteAllBytes write failed: {}", path.string());
+                return false;
+            }
+        }
+        return true;
+    }
+
     std::optional<std::string> FileSystem::ReadAllText(const std::filesystem::path& path)
     {
         std::ifstream stream(path);

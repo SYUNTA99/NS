@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -28,6 +29,10 @@ namespace NS::Core
 
         /// `path` のバイナリ内容を読み込む。失敗時 nullopt + NS_LOG_ERROR。空ファイルは空 vector を返す
         [[nodiscard]] static std::optional<std::vector<std::byte>> ReadAllBytes(const std::filesystem::path& path);
+
+        /// `path` にバイナリ内容を書き込む (既存ファイルは上書き)。 中間ディレクトリは未作成なら作る。
+        /// 失敗時 false + `NS_LOG_ERROR`。 空 vector を渡すと 0 byte ファイルになる。
+        [[nodiscard]] static bool WriteAllBytes(const std::filesystem::path& path, std::span<const std::byte> bytes);
 
         /// `path` のテキスト内容を読み込む (UTF-8 想定)。失敗時 nullopt + NS_LOG_ERROR
         [[nodiscard]] static std::optional<std::string> ReadAllText(const std::filesystem::path& path);

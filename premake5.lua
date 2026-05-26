@@ -632,7 +632,10 @@ project "Tests"
         -- Tests から直接コンパイルしてリンクする。Game.cpp / MainScene.cpp は Application や
         -- Window への依存があるので除外し、unit test で扱える範囲だけ取り込む。
         "Source/Game/Player.cpp",
-        "Source/Game/Block.cpp"
+        "Source/Game/Block.cpp",
+        -- Level data / ChunkIO / CRC32 は Application 非依存の純粋ロジックなので
+        -- Tests project から直接 compile する。
+        "Source/Game/Level/**.cpp"
     }
 
     includedirs {
