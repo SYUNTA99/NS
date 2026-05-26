@@ -497,6 +497,48 @@ project "Game"
 group "_Tests"
 
 --============================================================================
+-- Dear ImGui (docking branch v1.92.6、 Debug/Development 構成のみ build)
+--   NS::UI 内部実装で使用、 GameDebug/GameRelease では link しない ( A2-)
+--============================================================================
+project "imgui"
+    kind "StaticLib"
+    location "build/imgui"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/third_party/imgui/imgui.h",
+        "Source/third_party/imgui/imgui.cpp",
+        "Source/third_party/imgui/imgui_internal.h",
+        "Source/third_party/imgui/imconfig.h",
+        "Source/third_party/imgui/imgui_draw.cpp",
+        "Source/third_party/imgui/imgui_widgets.cpp",
+        "Source/third_party/imgui/imgui_tables.cpp",
+        "Source/third_party/imgui/imgui_demo.cpp",
+        "Source/third_party/imgui/backends/imgui_impl_win32.h",
+        "Source/third_party/imgui/backends/imgui_impl_win32.cpp",
+        "Source/third_party/imgui/backends/imgui_impl_dx11.h",
+        "Source/third_party/imgui/backends/imgui_impl_dx11.cpp",
+        "Source/third_party/imgui/imstb_textedit.h",
+        "Source/third_party/imgui/imstb_truetype.h",
+        "Source/third_party/imgui/imstb_rectpack.h",
+    }
+
+    includedirs {
+        "Source/third_party/imgui",
+        "Source/third_party/imgui/backends",
+    }
+
+    warnings "Off"
+    buildoptions { "/utf-8", "/FS" }
+
+    -- GameDebug / GameRelease では build しない (kind を None にして空 project 化)
+    filter "configurations:GameDebug or GameRelease"
+        kind "None"
+    filter {}
+
+--============================================================================
 -- Google Test ライブラリ（Source/third_party/ source drop）
 --============================================================================
 project "googletest"
