@@ -81,6 +81,14 @@ namespace NS::Graphics
         /// DirectXTK CommonStates ラッパ。Mesh/Material 等が利用。
         [[nodiscard]] CommonStates& States() noexcept;
 
+        /// 内部 ID3D11Device を非 detail 経路で公開。 ImGui_ImplDX11_Init など
+        /// 外部 SDK が D3D11 ハンドルを直接必要とする場合のみ使う。
+        /// 通常の Graphics ロジックは `detail::GetDevice` 経由を推奨。
+        [[nodiscard]] ID3D11Device* NativeDevice() noexcept;
+
+        /// 内部 ID3D11DeviceContext を非 detail 経路で公開。 用途は `NativeDevice()` と同じ。
+        [[nodiscard]] ID3D11DeviceContext* NativeContext() noexcept;
+
     private:
         std::unique_ptr<Impl> m_pImpl;
 

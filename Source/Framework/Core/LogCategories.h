@@ -20,6 +20,7 @@ namespace NS::Core
         Graphics,
         App,
         Game,
+        UI,
     };
 
 } // namespace NS::Core

@@ -392,6 +392,54 @@ project "Scene"
     applyCommonBuildOptions()
 
 --============================================================================
+-- UI 層 (StaticLib、 Framework 8 層目 —  で新設)
+--   ImGui ラッパ (Debug / Development 構成のみ実機能、 GameDebug / GameRelease は stub)。
+--   ImGui 型はヘッダから露出させず detail/ 配下にのみ取り込む (header pollution rule)。
+--============================================================================
+project "UI"
+    kind "StaticLib"
+    location "build/UI"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/Framework/UI/**.h",
+        "Source/Framework/UI/**.cpp"
+    }
+
+    includedirs {
+        "Source/third_party/DirectXTK/Inc",
+        "Source/third_party/spdlog/include",
+        "Source/third_party/magic_enum/include",
+    }
+
+    defines {
+        "SPDLOG_HEADER_ONLY",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_NO_EXCEPTIONS"
+    }
+
+    links {
+        "Core",
+        "Platform",
+        "Graphics"
+    }
+
+    -- Debug / Development のみ imgui を取り込み + link する。
+    -- GameDebug / GameRelease では preprocessor で stub に切替わるので link 不要。
+    filter "configurations:Debug or Development"
+        includedirs {
+            "Source/third_party/imgui",
+            "Source/third_party/imgui/backends",
+        }
+        links { "imgui" }
+    filter {}
+
+    applyFrameworkLayerDefaults("UI")
+    applyCommonBuildOptions()
+
+--============================================================================
 -- App 層 (StaticLib)
 --   Application / WinMain (SceneBase は Scene 層に昇格、 T1 2026-05-23)
 --   DD7: フォルダ・ namespace ・ premake project 全て短縮命名 `App` で統一
@@ -428,7 +476,8 @@ project "App"
         "Physics",
         "Graphics",
         "Audio",
-        "Scene"
+        "Scene",
+        "UI"
     }
 
     applyFrameworkLayerDefaults("App")
@@ -471,6 +520,7 @@ project "Game"
         "Graphics",
         "Audio",
         "Scene",
+        "UI",
         "App"
     }
 
@@ -607,8 +657,19 @@ project "Tests"
         "Graphics",
         "Audio",
         "Scene",
+        "UI",
         "App"
     }
+
+    -- Debug / Development の Tests は ImGui 機能を呼ぶため imgui を link する。
+    -- GameDebug / GameRelease では UI 側が stub なので link 不要。
+    filter "configurations:Debug or Development"
+        links { "imgui" }
+        includedirs {
+            "Source/third_party/imgui",
+            "Source/third_party/imgui/backends",
+        }
+    filter {}
 
     debugdir "."
     disablewarnings { "4244", "4834" }  -- テスト用: 暗黙変換、[[nodiscard]]無視

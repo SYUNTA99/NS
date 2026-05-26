@@ -45,13 +45,14 @@ namespace
         using ::NS::Core::LogCat;
 
         constexpr auto names = magic_enum::enum_names<LogCat>();
-        EXPECT_EQ(names.size(), 5u);
+        EXPECT_EQ(names.size(), 6u);
 
         EXPECT_EQ(magic_enum::enum_name(LogCat::Core), "Core");
         EXPECT_EQ(magic_enum::enum_name(LogCat::Platform), "Platform");
         EXPECT_EQ(magic_enum::enum_name(LogCat::Graphics), "Graphics");
         EXPECT_EQ(magic_enum::enum_name(LogCat::App), "App");
         EXPECT_EQ(magic_enum::enum_name(LogCat::Game), "Game");
+        EXPECT_EQ(magic_enum::enum_name(LogCat::UI), "UI");
     }
 
     TEST(LoggerLevel, EnumValuesMatchSpec)

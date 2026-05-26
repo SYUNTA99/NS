@@ -247,6 +247,16 @@ namespace NS::Graphics
         return *m_pImpl->states;
     }
 
+    ID3D11Device* Renderer::NativeDevice() noexcept
+    {
+        return detail::GetDevice(*this);
+    }
+
+    ID3D11DeviceContext* Renderer::NativeContext() noexcept
+    {
+        return detail::GetContext(*this);
+    }
+
     namespace detail
     {
         ID3D11Device* GetDevice(Renderer& renderer) noexcept
