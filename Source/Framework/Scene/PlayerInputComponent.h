@@ -35,7 +35,7 @@ namespace NS::Scene
 
         [[nodiscard]] CharacterMovementComponent* Movement() const noexcept { return m_movement; }
 
-        void OnUpdate(float dt) override;
+        void OnUpdate() override;
 
     private:
         CharacterMovementComponent* m_movement = nullptr;

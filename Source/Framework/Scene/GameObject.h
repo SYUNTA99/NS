@@ -9,9 +9,10 @@
 /// に保持する。
 ///
 /// Lifecycle ():
-///   - OnStart()       — RootScene attach 直後に 1 回、配下 Component の OnStart を伝播
-///   - OnUpdate(dt)    — fixed step 毎回、IsActive==true の Component に伝播
-///   - OnEndPlay()     — RootScene 破棄前に 1 回、登録逆順で Component::OnEndPlay を呼ぶ
+///   - OnStart()    — RootScene attach 直後に 1 回、配下 Component の OnStart を伝播
+///   - OnUpdate()   — fixed step 毎回、IsActive==true の Component に伝播。
+///                    dt は `NS::Core::FrameTimer::FixedDelta()` で取得
+///   - OnEndPlay()  — RootScene 破棄前に 1 回、登録逆順で Component::OnEndPlay を呼ぶ
 ///
 /// Cross-GameObject アクセスは ctor 経由の明示 raw pointer 注入のみ (GetComponent<T>() なし)。
 
@@ -55,8 +56,8 @@ namespace NS::Scene
         /// 配下 Component の OnStart を伝播。派生クラスは override で固有処理を足す前後に
         /// `GameObject::OnStart()` を呼ぶこと。
         virtual void OnStart();
-        /// IsActive==true の Component にだけ OnUpdate(dt) を伝播。
-        virtual void OnUpdate(float dt);
+        /// IsActive==true の Component にだけ OnUpdate() を伝播。
+        virtual void OnUpdate();
         /// 登録逆順で Component::OnEndPlay を呼ぶ。
         virtual void OnEndPlay();
 

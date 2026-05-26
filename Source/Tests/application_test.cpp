@@ -55,7 +55,7 @@ namespace
         QuittingScene(int target, SceneCounters* c) : targetUpdates(target), counters(c) {}
 
         void OnStart() override { ++counters->startCount; }
-        void OnUpdate(float) override
+        void OnUpdate() override
         {
             ++counters->updateCount;
             if (counters->updateCount >= targetUpdates)
@@ -73,7 +73,7 @@ namespace
 
         explicit AlphaCheckScene(SceneCounters* c) : counters(c) {}
 
-        void OnUpdate(float) override
+        void OnUpdate() override
         {
             if (counters->renderCount >= 2)
                 Application::Quit();

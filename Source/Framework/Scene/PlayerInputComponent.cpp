@@ -38,9 +38,8 @@ namespace NS::Scene
         m_input = input;
     }
 
-    void PlayerInputComponent::OnUpdate(float dt)
+    void PlayerInputComponent::OnUpdate()
     {
-        (void)dt;
         if (!IsActive() || m_movement == nullptr || m_input == nullptr)
             return;
 

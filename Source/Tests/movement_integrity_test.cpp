@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <Framework/Core/Clock.h>
 #include <Framework/Core/Math.h>
 #include <Framework/Scene/CharacterMovementComponent.h>
 #include <Framework/Scene/GameObject.h>
@@ -51,17 +52,23 @@ namespace
                 movement.SetJumpPressed();
             movement.SetJumpHeld(i >= kJumpPressStep && i < kJumpReleaseStep);
 
-            movement.OnUpdate(kFixedDt);
+            movement.OnUpdate();
             trajectory.push_back(owner.Root().Position());
         }
         return trajectory;
     }
 } // namespace
 
+class MovementIntegrity : public ::testing::Test
+{
+protected:
+    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(kFixedDt); }
+};
+
 /// SC5 機械的証明の核: fixed-step 物理が DeltaTime/random 等の non-deterministic
 /// 入力を一切使っていないなら、 同条件 2 run の trajectory は bit-exact 一致する。
 /// std::exp 使用のため EXPECT_NEAR (1e-5) で誤差耐性を持たせる。
-TEST(MovementIntegrity, JumpTrajectoryIsDeterministicAcrossTwoRuns)
+TEST_F(MovementIntegrity, JumpTrajectoryIsDeterministicAcrossTwoRuns)
 {
     const auto traj1 = RunDeterministicSim();
     const auto traj2 = RunDeterministicSim();
@@ -80,7 +87,7 @@ TEST(MovementIntegrity, JumpTrajectoryIsDeterministicAcrossTwoRuns)
 /// 解析的に予想される peak height (jumpImpulse=12, gravity ~25-35) の妥当 range に
 /// 入ることを sanity check。 asymmetric gravity + apex hang + jumpReleaseScale 込みで
 /// 厳密値は出ないため広め range で。
-TEST(MovementIntegrity, JumpReachesExpectedPeakHeightRange)
+TEST_F(MovementIntegrity, JumpReachesExpectedPeakHeightRange)
 {
     const auto trajectory = RunDeterministicSim();
 
@@ -98,7 +105,7 @@ TEST(MovementIntegrity, JumpReachesExpectedPeakHeightRange)
 /// walkTau = 0.10s で 1 秒間 (60 step) 走れば maxSpeed=8 にほぼ到達する。
 /// ただし jump 中は asymmetric gravity / 着地 substep が x velocity を一時変動
 /// させる可能性があるため、 jump 前 (step 9 まで) の Vx 単純比較で sanity check。
-TEST(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
+TEST_F(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
 {
     const AABB floor = MakeFloorOnly();
 
@@ -112,7 +119,7 @@ TEST(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
     for (int i = 0; i < 60; ++i)
     {
         movement.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
-        movement.OnUpdate(kFixedDt);
+        movement.OnUpdate();
     }
 
     const float vx = movement.Velocity().x;

@@ -13,7 +13,7 @@ namespace
     public:
         using Component::Component;
         int updateCount = 0;
-        void OnUpdate(float) override { ++updateCount; }
+        void OnUpdate() override { ++updateCount; }
     };
 } // namespace
 
@@ -29,11 +29,11 @@ TEST(ComponentTest, SetActiveTogglesPropagation)
     CountingComponent c(&obj);
 
     c.SetActive(false);
-    obj.OnUpdate(0.016f);
+    obj.OnUpdate();
     EXPECT_EQ(c.updateCount, 0);
 
     c.SetActive(true);
-    obj.OnUpdate(0.016f);
+    obj.OnUpdate();
     EXPECT_EQ(c.updateCount, 1);
 }
 

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <Framework/Core/Clock.h>
 #include <Framework/Scene/CharacterMovementComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Transform.h>
@@ -20,11 +21,17 @@ namespace
         mov.SetCollisionWorld(empty);
         mov.SetDebugDrawEnabled(false);
         for (int i = 0; i < n; ++i)
-            mov.OnUpdate(kFixedDt);
+            mov.OnUpdate();
     }
 } // namespace
 
-TEST(CharacterMovementTest, GravityReducesVerticalVelocityWhenAirborne)
+class CharacterMovementTest : public ::testing::Test
+{
+protected:
+    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(kFixedDt); }
+};
+
+TEST_F(CharacterMovementTest, GravityReducesVerticalVelocityWhenAirborne)
 {
     GameObject obj;
     CharacterMovementComponent mov(&obj);
@@ -35,7 +42,7 @@ TEST(CharacterMovementTest, GravityReducesVerticalVelocityWhenAirborne)
     EXPECT_LT(vyAfter, vyBefore);
 }
 
-TEST(CharacterMovementTest, JumpPressedAppliesImpulseAndConsumesOneJump)
+TEST_F(CharacterMovementTest, JumpPressedAppliesImpulseAndConsumesOneJump)
 {
     GameObject obj;
     CharacterMovementComponent mov(&obj);
@@ -46,7 +53,7 @@ TEST(CharacterMovementTest, JumpPressedAppliesImpulseAndConsumesOneJump)
     EXPECT_EQ(mov.JumpsRemaining(), 0);
 }
 
-TEST(CharacterMovementTest, SecondJumpDoesNotFireWithoutLanding)
+TEST_F(CharacterMovementTest, SecondJumpDoesNotFireWithoutLanding)
 {
     GameObject obj;
     CharacterMovementComponent mov(&obj);
@@ -61,7 +68,7 @@ TEST(CharacterMovementTest, SecondJumpDoesNotFireWithoutLanding)
     EXPECT_EQ(mov.JumpsRemaining(), 0);
 }
 
-TEST(CharacterMovementTest, JumpReleaseHalvesVerticalVelocity)
+TEST_F(CharacterMovementTest, JumpReleaseHalvesVerticalVelocity)
 {
     GameObject obj;
     CharacterMovementComponent mov(&obj);
@@ -79,7 +86,7 @@ TEST(CharacterMovementTest, JumpReleaseHalvesVerticalVelocity)
     EXPECT_LT(vyReleased, vyHeld * 0.6f);
 }
 
-TEST(CharacterMovementTest, AsymmetricGravityIsStrongerOnDescent)
+TEST_F(CharacterMovementTest, AsymmetricGravityIsStrongerOnDescent)
 {
     GameObject obj;
     GameObject objB;
@@ -96,7 +103,7 @@ TEST(CharacterMovementTest, AsymmetricGravityIsStrongerOnDescent)
     EXPECT_LT(std::abs(vyDescentSmall - 0.0f), std::abs(vyAscending));
 }
 
-TEST(CharacterMovementTest, ApexHangScalesGravity)
+TEST_F(CharacterMovementTest, ApexHangScalesGravity)
 {
     GameObject obj;
     CharacterMovementComponent mov(&obj);
@@ -106,12 +113,12 @@ TEST(CharacterMovementTest, ApexHangScalesGravity)
 
     mov.SetJumpPressed();
     for (int i = 0; i < 10; ++i)
-        mov.OnUpdate(kFixedDt);
+        mov.OnUpdate();
 
     EXPECT_LT(std::abs(mov.Velocity().y), 9.0f);
 }
 
-TEST(CharacterMovementTest, DesiredMoveAcceleratesHorizontalVelocity)
+TEST_F(CharacterMovementTest, DesiredMoveAcceleratesHorizontalVelocity)
 {
     GameObject obj;
     CharacterMovementComponent mov(&obj);
@@ -122,7 +129,7 @@ TEST(CharacterMovementTest, DesiredMoveAcceleratesHorizontalVelocity)
     EXPECT_GT(mov.Velocity().x, 5.0f);
 }
 
-TEST(CharacterMovementTest, CapsuleSettersPersist)
+TEST_F(CharacterMovementTest, CapsuleSettersPersist)
 {
     CharacterMovementComponent mov(nullptr);
     mov.SetCapsuleRadius(0.6f);
@@ -131,7 +138,7 @@ TEST(CharacterMovementTest, CapsuleSettersPersist)
     EXPECT_FLOAT_EQ(mov.CapsuleHalfHeight(), 0.8f);
 }
 
-TEST(CharacterMovementTest, OnUpdateNoOpWhenInactive)
+TEST_F(CharacterMovementTest, OnUpdateNoOpWhenInactive)
 {
     GameObject obj;
     CharacterMovementComponent mov(&obj);
@@ -141,7 +148,7 @@ TEST(CharacterMovementTest, OnUpdateNoOpWhenInactive)
     mov.SetJumpPressed();
     std::span<const NS::Core::AABB> empty;
     mov.SetCollisionWorld(empty);
-    mov.OnUpdate(kFixedDt);
+    mov.OnUpdate();
 
     EXPECT_FLOAT_EQ(mov.Velocity().y, 0.0f);
 }

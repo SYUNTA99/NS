@@ -80,12 +80,12 @@ namespace NS::Scene
         }
     }
 
-    void GameObject::OnUpdate(float dt)
+    void GameObject::OnUpdate()
     {
         for (Component* comp : m_components)
         {
             if (comp != nullptr && comp->IsActive())
-                comp->OnUpdate(dt);
+                comp->OnUpdate();
         }
     }
 

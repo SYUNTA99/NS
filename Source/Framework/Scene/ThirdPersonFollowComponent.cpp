@@ -1,5 +1,6 @@
 #include "Framework/Scene/ThirdPersonFollowComponent.h"
 
+#include "Framework/Core/Clock.h"
 #include "Framework/Platform/Gamepad.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Mouse.h"
@@ -87,8 +88,9 @@ namespace NS::Scene
         m_manualDistance = false;
     }
 
-    void ThirdPersonFollowComponent::OnUpdate(float dt)
+    void ThirdPersonFollowComponent::OnUpdate()
     {
+        const float dt = NS::Core::FrameTimer::FixedDelta();
         if (!IsActive() || m_camera == nullptr || m_target == nullptr || dt <= 0.0f)
             return;
 

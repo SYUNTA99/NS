@@ -39,7 +39,6 @@ namespace NS::App
         std::unique_ptr<NS::Platform::Window> window;
         std::unique_ptr<NS::Graphics::Renderer> renderer;
         std::unique_ptr<NS::Platform::Input> input;
-        NS::Core::FrameTimer timer;
         std::unique_ptr<NS::Scene::RootScene> scene;
         bool valid = false;
         bool quitRequested = false;
@@ -64,7 +63,7 @@ namespace NS::App
                         m_pImpl->desc.fixedDelta);
             m_pImpl->desc.fixedDelta = 1.0f / 60.0f;
         }
-        m_pImpl->timer.SetFixedDelta(m_pImpl->desc.fixedDelta);
+        NS::Core::FrameTimer::SetFixedDelta(m_pImpl->desc.fixedDelta);
 
         m_pImpl->window = std::make_unique<NS::Platform::Window>(desc.window);
         if (!m_pImpl->window->IsValid())
@@ -149,7 +148,7 @@ namespace NS::App
     void Application::Init()
     {
         DrainPendingQuit();
-        m_pImpl->timer.Reset();
+        NS::Core::FrameTimer::Reset();
         m_pImpl->scene->OnStart();
     }
 
@@ -158,7 +157,6 @@ namespace NS::App
         auto& window = *m_pImpl->window;
         auto& renderer = *m_pImpl->renderer;
         auto& input = *m_pImpl->input;
-        auto& timer = m_pImpl->timer;
         auto& scene = *m_pImpl->scene;
         const auto& desc = m_pImpl->desc;
 
@@ -168,10 +166,9 @@ namespace NS::App
             if (window.ShouldClose() || m_pImpl->quitRequested)
                 break;
 
-            timer.Tick();
+            NS::Core::FrameTimer::Tick();
 
-            const int steps = timer.FixedStepsThisFrame();
-            const float fixedDt = timer.FixedDelta();
+            const int steps = NS::Core::FrameTimer::FixedStepsThisFrame();
 
             if (steps >= 2)
             {
@@ -189,7 +186,7 @@ namespace NS::App
                 NS_SCOPED_TIMER(::NS::Core::LogCat::App, "Application::FixedStepLoop");
                 for (int i = 0; i < steps; ++i)
                 {
-                    scene.OnUpdate(fixedDt);
+                    scene.OnUpdate();
                     // fixed step ごとに input.Update を呼ぶことで、1 frame に複数 step
                     // 走った時に同じ edge が複数回検出されるのを防ぐ。
                     // 参考: https://jakubtomsu.github.io/posts/input_in_fixed_timestep/
@@ -241,23 +238,23 @@ namespace NS::App
 
     float Application::DeltaTime() noexcept
     {
-        if (s_instance == nullptr || !s_instance->m_pImpl)
+        if (s_instance == nullptr)
             return 0.0f;
-        return s_instance->m_pImpl->timer.DeltaSeconds();
+        return NS::Core::FrameTimer::DeltaSeconds();
     }
 
     double Application::Time() noexcept
     {
-        if (s_instance == nullptr || !s_instance->m_pImpl)
+        if (s_instance == nullptr)
             return 0.0;
-        return s_instance->m_pImpl->timer.TotalSeconds();
+        return NS::Core::FrameTimer::TotalSeconds();
     }
 
     float Application::Alpha() noexcept
     {
-        if (s_instance == nullptr || !s_instance->m_pImpl)
+        if (s_instance == nullptr)
             return 0.0f;
-        return s_instance->m_pImpl->timer.Alpha();
+        return NS::Core::FrameTimer::Alpha();
     }
 
 } // namespace NS::App

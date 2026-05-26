@@ -39,7 +39,7 @@ public:
     MainScene& operator=(MainScene&&) = delete;
 
     void OnStart() override;
-    void OnUpdate(float dt) override;
+    void OnUpdate() override;
     void OnRender() override;
     void OnShutdown() override;
 

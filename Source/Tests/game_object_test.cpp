@@ -19,7 +19,7 @@ namespace
         int updateCount = 0;
         int endPlayCount = 0;
         void OnStart() override { ++startCount; }
-        void OnUpdate(float) override { ++updateCount; }
+        void OnUpdate() override { ++updateCount; }
         void OnEndPlay() override { ++endPlayCount; }
     };
 
@@ -53,7 +53,7 @@ TEST(GameObjectTest, OnUpdatePropagatesToActiveComponents)
     MockComponent c1(&obj);
     MockComponent c2(&obj);
 
-    obj.OnUpdate(0.016f);
+    obj.OnUpdate();
     EXPECT_EQ(c1.updateCount, 1);
     EXPECT_EQ(c2.updateCount, 1);
 }
@@ -64,7 +64,7 @@ TEST(GameObjectTest, OnUpdateSkipsInactiveComponents)
     MockComponent comp(&obj);
     comp.SetActive(false);
 
-    obj.OnUpdate(0.016f);
+    obj.OnUpdate();
     EXPECT_EQ(comp.updateCount, 0);
 }
 

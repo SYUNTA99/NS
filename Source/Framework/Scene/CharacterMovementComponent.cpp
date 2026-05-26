@@ -75,9 +75,11 @@ namespace NS::Scene
         m_isGrounded = false;
     }
 
-    void CharacterMovementComponent::OnUpdate(float dt)
+    void CharacterMovementComponent::OnUpdate()
     {
         NS_SCOPED_TIMER(::NS::Core::LogCat::Game, "CharacterMovement::OnUpdate");
+
+        const float dt = NS::Core::FrameTimer::FixedDelta();
 
         if (!IsActive() || dt <= 0.0f)
         {

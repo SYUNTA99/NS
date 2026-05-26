@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <Framework/Core/Clock.h>
 #include <Framework/Scene/CameraComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/ThirdPersonFollowComponent.h>
@@ -16,29 +17,35 @@ namespace
     constexpr float kDt = 1.0f / 60.0f;
 } // namespace
 
-TEST(ThirdPersonFollowTest, ConstructsWithNullTarget)
+class ThirdPersonFollowTest : public ::testing::Test
+{
+protected:
+    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(kDt); }
+};
+
+TEST_F(ThirdPersonFollowTest, ConstructsWithNullTarget)
 {
     ThirdPersonFollowComponent follow(nullptr, nullptr);
     EXPECT_EQ(follow.Target(), nullptr);
     EXPECT_TRUE(follow.IsActive());
 }
 
-TEST(ThirdPersonFollowTest, OnUpdateNoOpWhenCameraIsNull)
+TEST_F(ThirdPersonFollowTest, OnUpdateNoOpWhenCameraIsNull)
 {
     GameObject obj;
     ThirdPersonFollowComponent follow(&obj, &obj.Root());
-    follow.OnUpdate(kDt);
+    follow.OnUpdate();
     SUCCEED();
 }
 
-TEST(ThirdPersonFollowTest, OnUpdateNoOpWhenTargetIsNull)
+TEST_F(ThirdPersonFollowTest, OnUpdateNoOpWhenTargetIsNull)
 {
     CameraComponent cc(nullptr);
     ThirdPersonFollowComponent follow(nullptr, nullptr);
     follow.SetCamera(&cc);
 
     const auto posBefore = cc.Position();
-    follow.OnUpdate(kDt);
+    follow.OnUpdate();
     const auto posAfter = cc.Position();
 
     EXPECT_FLOAT_EQ(posBefore.x, posAfter.x);
@@ -46,7 +53,7 @@ TEST(ThirdPersonFollowTest, OnUpdateNoOpWhenTargetIsNull)
     EXPECT_FLOAT_EQ(posBefore.z, posAfter.z);
 }
 
-TEST(ThirdPersonFollowTest, UpdatesCameraPositionBehindTarget)
+TEST_F(ThirdPersonFollowTest, UpdatesCameraPositionBehindTarget)
 {
     GameObject obj;
     obj.Root().SetPosition({0.0f, 0.0f, 0.0f});
@@ -57,7 +64,7 @@ TEST(ThirdPersonFollowTest, UpdatesCameraPositionBehindTarget)
     follow.SetDistance(5.0f);
 
     for (int i = 0; i < 60; ++i)
-        follow.OnUpdate(kDt);
+        follow.OnUpdate();
 
     // OnUpdate は state mutation のみ (yaw/pitch/distance)、 camera position は
     // ApplyCameraTransform で render frame ごとに反映する設計 (jitter 回避)。
@@ -72,7 +79,7 @@ TEST(ThirdPersonFollowTest, UpdatesCameraPositionBehindTarget)
     EXPECT_NEAR(tgt.y, 1.2f, 0.01f);
 }
 
-TEST(ThirdPersonFollowTest, SetFovYPropagatesToCamera)
+TEST_F(ThirdPersonFollowTest, SetFovYPropagatesToCamera)
 {
     CameraComponent cc(nullptr);
     cc.SetFovY(NS::Core::Radians{1.0f});
@@ -85,7 +92,7 @@ TEST(ThirdPersonFollowTest, SetFovYPropagatesToCamera)
     EXPECT_FLOAT_EQ(cc.FovY().value, 0.5f);
 }
 
-TEST(ThirdPersonFollowTest, SensitivityAndInvertSettersPersist)
+TEST_F(ThirdPersonFollowTest, SensitivityAndInvertSettersPersist)
 {
     ThirdPersonFollowComponent follow(nullptr, nullptr);
     follow.SetSensX(0.01f);
@@ -99,14 +106,14 @@ TEST(ThirdPersonFollowTest, SensitivityAndInvertSettersPersist)
     EXPECT_TRUE(follow.IsInvertY());
 }
 
-TEST(ThirdPersonFollowTest, SetDistanceSyncsCurrentAndDesired)
+TEST_F(ThirdPersonFollowTest, SetDistanceSyncsCurrentAndDesired)
 {
     ThirdPersonFollowComponent follow(nullptr, nullptr);
     follow.SetDistance(8.0f);
     EXPECT_FLOAT_EQ(follow.Distance(), 8.0f);
 }
 
-TEST(ThirdPersonFollowTest, PitchIsClampedAfterUpdate)
+TEST_F(ThirdPersonFollowTest, PitchIsClampedAfterUpdate)
 {
     GameObject obj;
     CameraComponent cc(nullptr);
@@ -114,7 +121,7 @@ TEST(ThirdPersonFollowTest, PitchIsClampedAfterUpdate)
     follow.SetCamera(&cc);
 
     for (int i = 0; i < 200; ++i)
-        follow.OnUpdate(kDt);
+        follow.OnUpdate();
 
     EXPECT_GE(follow.Pitch(), -1.4f);
     EXPECT_LE(follow.Pitch(), 0.0f);

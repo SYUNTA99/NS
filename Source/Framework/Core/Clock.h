@@ -48,63 +48,64 @@ namespace NS::Core
     };
 
     /// ゲームループの tick 管理。固定タイムステップ accumulator を内包。
+    /// all-static、 単一 Application 前提で global state を保持する。
     class FrameTimer
     {
     public:
-        FrameTimer() noexcept : m_lastTime(std::chrono::steady_clock::now()) {}
+        FrameTimer() = delete;
 
         /// フレーム冒頭で呼ぶ。delta / total / frame / accumulator を更新する
-        void Tick() noexcept
+        static void Tick() noexcept
         {
             const auto now = std::chrono::steady_clock::now();
-            const float dt = std::chrono::duration<float>(now - m_lastTime).count();
-            m_lastTime = now;
-            m_delta = dt;
-            m_total += static_cast<double>(dt);
-            ++m_frame;
+            const float dt = std::chrono::duration<float>(now - s_lastTime).count();
+            s_lastTime = now;
+            s_delta = dt;
+            s_total += static_cast<double>(dt);
+            ++s_frame;
 
-            m_accumulator += dt;
-            m_fixedSteps = static_cast<int>(m_accumulator / m_fixedDelta);
-            m_accumulator -= static_cast<float>(m_fixedSteps) * m_fixedDelta;
+            s_accumulator += dt;
+            s_fixedSteps = static_cast<int>(s_accumulator / s_fixedDelta);
+            s_accumulator -= static_cast<float>(s_fixedSteps) * s_fixedDelta;
         }
 
-        /// 状態を初期化 (FrameNumber=0、accumulator/total=0)
-        void Reset() noexcept
+        /// 状態を初期化 (FrameNumber=0、accumulator/total=0)。 テスト fixture では SetUp で必ず呼ぶ
+        static void Reset() noexcept
         {
-            m_lastTime = std::chrono::steady_clock::now();
-            m_delta = 0.0f;
-            m_total = 0.0;
-            m_frame = 0;
-            m_accumulator = 0.0f;
-            m_fixedSteps = 0;
+            s_lastTime = std::chrono::steady_clock::now();
+            s_delta = 0.0f;
+            s_total = 0.0;
+            s_frame = 0;
+            s_accumulator = 0.0f;
+            s_fixedSteps = 0;
         }
 
-        [[nodiscard]] float DeltaSeconds() const noexcept { return m_delta; }
-        [[nodiscard]] double TotalSeconds() const noexcept { return m_total; }
-        [[nodiscard]] std::uint64_t FrameNumber() const noexcept { return m_frame; }
+        [[nodiscard]] static float DeltaSeconds() noexcept { return s_delta; }
+        [[nodiscard]] static double TotalSeconds() noexcept { return s_total; }
+        [[nodiscard]] static std::uint64_t FrameNumber() noexcept { return s_frame; }
 
         /// 固定タイムステップを設定 (default 1/60 秒)。ゼロ / 負値は無視 (Tick/Alpha のゼロ除算 UB 防止)
-        void SetFixedDelta(float fixed) noexcept
+        static void SetFixedDelta(float fixed) noexcept
         {
             if (fixed > 0.0f)
             {
-                m_fixedDelta = fixed;
+                s_fixedDelta = fixed;
             }
         }
-        [[nodiscard]] float FixedDelta() const noexcept { return m_fixedDelta; }
+        [[nodiscard]] static float FixedDelta() noexcept { return s_fixedDelta; }
         /// 今回の Tick で OnFixedUpdate を何回呼ぶべきか
-        [[nodiscard]] int FixedStepsThisFrame() const noexcept { return m_fixedSteps; }
+        [[nodiscard]] static int FixedStepsThisFrame() noexcept { return s_fixedSteps; }
         /// 描画補間係数 [0, 1)。fixed update 間の中間状態に使う
-        [[nodiscard]] float Alpha() const noexcept { return m_accumulator / m_fixedDelta; }
+        [[nodiscard]] static float Alpha() noexcept { return s_accumulator / s_fixedDelta; }
 
     private:
-        std::chrono::steady_clock::time_point m_lastTime;
-        float m_delta = 0.0f;
-        double m_total = 0.0;
-        std::uint64_t m_frame = 0;
-        float m_fixedDelta = 1.0f / 60.0f;
-        float m_accumulator = 0.0f;
-        int m_fixedSteps = 0;
+        static inline std::chrono::steady_clock::time_point s_lastTime{std::chrono::steady_clock::now()};
+        static inline float s_delta = 0.0f;
+        static inline double s_total = 0.0;
+        static inline std::uint64_t s_frame = 0;
+        static inline float s_fixedDelta = 1.0f / 60.0f;
+        static inline float s_accumulator = 0.0f;
+        static inline int s_fixedSteps = 0;
     };
 
     /// RAII スコープ計測。dtor で NS_LOG_DEBUG により経過 ms を出力する。

@@ -49,7 +49,7 @@ namespace NS::Scene
         /// 奈落落ち復活などで状態を初期化する。velocity / grounded / jump 関連 timer を全リセット。
         void ResetState() noexcept;
 
-        void OnUpdate(float dt) override;
+        void OnUpdate() override;
 
     private:
         float m_gravityUp = -25.0f;

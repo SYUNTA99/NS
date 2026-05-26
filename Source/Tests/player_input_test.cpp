@@ -25,7 +25,7 @@ TEST(PlayerInputTest, OnUpdateIsNoOpWhenInputIsNull)
 
     PlayerInputComponent input(&obj, &mov);
 
-    input.OnUpdate(1.0f / 60.0f);
+    input.OnUpdate();
     EXPECT_FLOAT_EQ(mov.Velocity().x, 0.0f);
     EXPECT_FLOAT_EQ(mov.Velocity().z, 0.0f);
 }
@@ -33,7 +33,7 @@ TEST(PlayerInputTest, OnUpdateIsNoOpWhenInputIsNull)
 TEST(PlayerInputTest, OnUpdateIsNoOpWhenMovementIsNull)
 {
     PlayerInputComponent input(nullptr, nullptr);
-    input.OnUpdate(1.0f / 60.0f);
+    input.OnUpdate();
     SUCCEED();
 }
 

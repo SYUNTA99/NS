@@ -138,7 +138,7 @@ void MainScene::OnStart()
     m_cameraRig->OnStart();
 }
 
-void MainScene::OnUpdate(float dt)
+void MainScene::OnUpdate()
 {
     auto* app = NS::App::Application::Get();
     if (app == nullptr)
@@ -173,11 +173,11 @@ void MainScene::OnUpdate(float dt)
         m_cameraRig->Root().Snapshot();
 
     if (m_player)
-        m_player->OnUpdate(dt);
+        m_player->OnUpdate();
     for (auto& block : m_blocks)
-        block->OnUpdate(dt);
+        block->OnUpdate();
     if (m_cameraRig)
-        m_cameraRig->OnUpdate(dt);
+        m_cameraRig->OnUpdate();
 }
 
 void MainScene::OnRender()

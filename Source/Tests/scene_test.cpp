@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <Framework/Core/Clock.h>
 #include <Framework/Scene/RootScene.h>
 
 namespace
@@ -14,10 +15,10 @@ namespace
         float dtAccum = 0.0f;
 
         void OnStart() override { ++startCount; }
-        void OnUpdate(float dt) override
+        void OnUpdate() override
         {
             ++updateCount;
-            dtAccum += dt;
+            dtAccum += NS::Core::FrameTimer::FixedDelta();
         }
         void OnRender() override { ++renderCount; }
         void OnShutdown() override { ++shutdownCount; }
@@ -36,11 +37,12 @@ TEST(SceneTest, DefaultCountersAreZero)
 
 TEST(SceneTest, OnUpdateAccumulatesDt)
 {
+    NS::Core::FrameTimer::SetFixedDelta(1.0f / 60.0f);
     MockScene scene;
-    constexpr float dt = 1.0f / 60.0f;
-    scene.OnUpdate(dt);
-    scene.OnUpdate(dt);
-    scene.OnUpdate(dt);
+    const float dt = NS::Core::FrameTimer::FixedDelta();
+    scene.OnUpdate();
+    scene.OnUpdate();
+    scene.OnUpdate();
 
     EXPECT_EQ(scene.updateCount, 3);
     EXPECT_NEAR(scene.dtAccum, dt * 3.0f, 1e-5f);
@@ -50,7 +52,7 @@ TEST(SceneTest, LifecycleOrderIsIndependent)
 {
     MockScene scene;
     scene.OnStart();
-    scene.OnUpdate(1.0f / 60.0f);
+    scene.OnUpdate();
     scene.OnRender();
     scene.OnShutdown();
 
@@ -64,7 +66,7 @@ TEST(SceneTest, BaseClassDefaultsAreNoop)
 {
     NS::Scene::RootScene scene;
     scene.OnStart();
-    scene.OnUpdate(1.0f / 60.0f);
+    scene.OnUpdate();
     scene.OnRender();
     scene.OnShutdown();
     SUCCEED();

@@ -10,7 +10,8 @@
 ///
 /// Lifecycle ():
 ///   - OnStart() — Scene attach 直後に 1 回
-///   - OnUpdate(float dt) — fixed step 内で毎回 (`IsActive()==false` で skip)
+///   - OnUpdate() — fixed step 内で毎回 (`IsActive()==false` で skip)。
+///     dt は `NS::Core::FrameTimer::FixedDelta()` で取得 (all-static、 Application 不要)
 ///   - OnEndPlay() — Scene 破棄 / Component 廃棄前に 1 回
 
 namespace NS::Scene
@@ -69,7 +70,7 @@ namespace NS::Scene
         void SetActive(bool active) noexcept { m_active = active; }
 
         virtual void OnStart() {}
-        virtual void OnUpdate(float dt) { (void)dt; }
+        virtual void OnUpdate() {}
         virtual void OnEndPlay() {}
 
     private:

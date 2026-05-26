@@ -42,9 +42,10 @@ namespace NS::Scene
         /// Application::Run() 開始時に 1 回呼ばれる。Window/Renderer/Input は既に有効。
         virtual void OnStart() {}
 
-        /// 固定タイムステップ Update。dt は ApplicationDesc::fixedDelta 固定 (default 1/60)。
-        /// 物理 / 入力判定はここで行い、Render 側は補間描画のみに留める。
-        virtual void OnUpdate(float dt) { (void)dt; }
+        /// 固定タイムステップ Update。 dt は `NS::Core::FrameTimer::FixedDelta()` で取得
+        /// (ApplicationDesc::fixedDelta 固定、 default 1/60)。 物理 / 入力判定はここで行い、
+        /// Render 側は補間描画のみに留める。
+        virtual void OnUpdate() {}
 
         /// 可変フレーム Render。Application::Alpha() で fixed 補間係数を取得可。
         virtual void OnRender() {}
