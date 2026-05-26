@@ -1,11 +1,11 @@
 #include <gtest/gtest.h>
 
 #include <Framework/App/Application.h>
+#include <Framework/App/Layer.h>
 #include <Framework/Core/Logger.h>
 #include <Framework/Graphics/Renderer.h>
 #include <Framework/Platform/Input.h>
 #include <Framework/Platform/Window.h>
-#include <Framework/Scene/RootScene.h>
 
 #include <memory>
 #include <utility>
@@ -14,7 +14,7 @@ namespace
 {
     using NS::App::Application;
     using NS::App::ApplicationDesc;
-    using NS::Scene::RootScene;
+    using NS::App::Layer;
 
     ApplicationDesc MakeDesc(const char* title, int width = 320, int height = 240)
     {
@@ -34,27 +34,27 @@ namespace
         return d;
     }
 
-    /// RootScene 寿命は Application::Shutdown() で reset() されるため、
-    /// 検証用カウンタは外部に置いて RootScene 破棄後もアクセス可能にする。
-    struct SceneCounters
+    /// Layer 寿命は Application::Shutdown() で reset() されるため、
+    /// 検証用カウンタは外部に置いて Layer 破棄後もアクセス可能にする。
+    struct LayerCounters
     {
-        int startCount = 0;
+        int attachCount = 0;
         int updateCount = 0;
         int renderCount = 0;
-        int shutdownCount = 0;
+        int detachCount = 0;
         float lastAlpha = -1.0f;
     };
 
-    /// 指定回数の OnUpdate 後に Application::Quit() を呼ぶ RootScene。
-    class QuittingScene : public RootScene
+    /// 指定回数の OnUpdate 後に Application::Quit() を呼ぶ Layer。
+    class QuittingLayer : public Layer
     {
     public:
         int targetUpdates;
-        SceneCounters* counters;
+        LayerCounters* counters;
 
-        QuittingScene(int target, SceneCounters* c) : targetUpdates(target), counters(c) {}
+        QuittingLayer(int target, LayerCounters* c) : Layer("QuittingLayer"), targetUpdates(target), counters(c) {}
 
-        void OnStart() override { ++counters->startCount; }
+        void OnAttach() override { ++counters->attachCount; }
         void OnUpdate() override
         {
             ++counters->updateCount;
@@ -62,16 +62,16 @@ namespace
                 Application::Quit();
         }
         void OnRender() override { ++counters->renderCount; }
-        void OnShutdown() override { ++counters->shutdownCount; }
+        void OnDetach() override { ++counters->detachCount; }
     };
 
     /// OnRender 中の Application::Alpha() を記録し、一定回数で Quit。
-    class AlphaCheckScene : public RootScene
+    class AlphaCheckLayer : public Layer
     {
     public:
-        SceneCounters* counters;
+        LayerCounters* counters;
 
-        explicit AlphaCheckScene(SceneCounters* c) : counters(c) {}
+        explicit AlphaCheckLayer(LayerCounters* c) : Layer("AlphaCheckLayer"), counters(c) {}
 
         void OnUpdate() override
         {
@@ -121,11 +121,11 @@ TEST_F(ApplicationLoggerTest, GetIsNullBeforeAndAfterConstruction)
     EXPECT_EQ(Application::Get(), nullptr);
 }
 
-TEST_F(ApplicationLoggerTest, RunWithNullSceneReturnsMinusOne)
+TEST_F(ApplicationLoggerTest, RunWithNoLayersReturnsMinusOne)
 {
-    Application app(MakeDesc("ns_app_null_scene"));
+    Application app(MakeDesc("ns_app_no_layers"));
     ASSERT_TRUE(app.IsValid());
-    EXPECT_EQ(app.Run(nullptr), -1);
+    EXPECT_EQ(app.Run(), -1);
 }
 
 TEST_F(ApplicationLoggerTest, QuitTerminatesMainLoop)
@@ -133,13 +133,13 @@ TEST_F(ApplicationLoggerTest, QuitTerminatesMainLoop)
     Application app(MakeDesc("ns_app_quit"));
     ASSERT_TRUE(app.IsValid());
 
-    SceneCounters counters;
-    auto scene = std::make_unique<QuittingScene>(3, &counters);
-    const int code = app.Run(std::move(scene));
+    LayerCounters counters;
+    app.AddLayer(std::make_unique<QuittingLayer>(3, &counters));
+    const int code = app.Run();
 
     EXPECT_EQ(code, 0);
-    EXPECT_EQ(counters.startCount, 1);
-    EXPECT_EQ(counters.shutdownCount, 1);
+    EXPECT_EQ(counters.attachCount, 1);
+    EXPECT_EQ(counters.detachCount, 1);
     EXPECT_GE(counters.updateCount, 3);
 }
 
@@ -158,9 +158,9 @@ TEST_F(ApplicationLoggerTest, AlphaIsInRangeDuringRender)
     Application app(MakeDesc("ns_app_alpha"));
     ASSERT_TRUE(app.IsValid());
 
-    SceneCounters counters;
-    auto scene = std::make_unique<AlphaCheckScene>(&counters);
-    const int code = app.Run(std::move(scene));
+    LayerCounters counters;
+    app.AddLayer(std::make_unique<AlphaCheckLayer>(&counters));
+    const int code = app.Run();
 
     EXPECT_EQ(code, 0);
     EXPECT_GE(counters.lastAlpha, 0.0f);

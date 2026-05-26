@@ -54,7 +54,7 @@ namespace NS::Scene
         /// Owner の OwningScene に self を IRenderable として登録する。
         /// Owner / OwningScene が null の時は no-op で安全に return する。
         void OnStart() override;
-        /// Owner の OwningScene から self を解除する。RootScene 破棄前に呼ぶことで
+        /// Owner の OwningScene から self を解除する。SceneBase 破棄前に呼ぶことで
         /// dangling pointer を残さない。Owner / OwningScene が null の時は no-op。
         void OnEndPlay() override;
 

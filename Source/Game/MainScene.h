@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Framework/Core/Math.h"
-#include "Framework/Scene/RootScene.h"
+#include "Framework/Scene/SceneBase.h"
 #include "Game/CameraRig.h"
 
 #include <memory>
@@ -27,7 +27,7 @@ class Player;
 /// 床 + 壁 + ジャンプ台のブロック群と、追従カメラ付き Player を配置する。
 ///  (push 型 RenderRegistry) /  (Snapshot 一括) /  (resize callback) /
 ///  (baseColor 色分け) /  (BeginFrame は Application 内部) を実装する。
-class MainScene : public NS::Scene::RootScene
+class MainScene : public NS::Scene::SceneBase
 {
 public:
     MainScene();

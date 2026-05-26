@@ -1,10 +1,11 @@
 #include "Framework/App/Application.h"
 
+#include "Framework/App/Layer.h"
+#include "Framework/App/Layers.h"
 #include "Framework/Core/Clock.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 #include "Framework/Platform/Input.h"
-#include "Framework/Scene/RootScene.h"
 
 #include "Framework/Framework.h"
 
@@ -39,7 +40,7 @@ namespace NS::App
         std::unique_ptr<NS::Platform::Window> window;
         std::unique_ptr<NS::Graphics::Renderer> renderer;
         std::unique_ptr<NS::Platform::Input> input;
-        std::unique_ptr<NS::Scene::RootScene> scene;
+        Layers layers;
         bool valid = false;
         bool quitRequested = false;
         std::chrono::steady_clock::time_point lastStutterWarnAt{};
@@ -125,19 +126,32 @@ namespace NS::App
         return *m_pImpl->input;
     }
 
-    int Application::Run(std::unique_ptr<NS::Scene::RootScene> initialScene)
+    void Application::AddLayer(std::unique_ptr<NS::App::Layer> layer)
+    {
+        if (!m_pImpl)
+            return;
+        m_pImpl->layers.AddLayer(std::move(layer));
+    }
+
+    void Application::AddOverlay(std::unique_ptr<NS::App::Layer> overlay)
+    {
+        if (!m_pImpl)
+            return;
+        m_pImpl->layers.AddOverlay(std::move(overlay));
+    }
+
+    int Application::Run()
     {
         if (!IsValid())
         {
             NS_LOG_ERROR(::NS::Core::LogCat::App, "Application::Run: IsValid()==false で起動拒否");
             return -1;
         }
-        if (!initialScene)
+        if (m_pImpl->layers.Empty())
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::App, "Application::Run: initialScene が nullptr");
+            NS_LOG_ERROR(::NS::Core::LogCat::App, "Application::Run: layer が 1 個も追加されていません");
             return -1;
         }
-        m_pImpl->scene = std::move(initialScene);
 
         Init();
         MainLoop();
@@ -149,7 +163,8 @@ namespace NS::App
     {
         DrainPendingQuit();
         NS::Core::FrameTimer::Reset();
-        m_pImpl->scene->OnStart();
+        for (auto& layer : m_pImpl->layers)
+            layer->OnAttach();
     }
 
     void Application::MainLoop()
@@ -157,7 +172,7 @@ namespace NS::App
         auto& window = *m_pImpl->window;
         auto& renderer = *m_pImpl->renderer;
         auto& input = *m_pImpl->input;
-        auto& scene = *m_pImpl->scene;
+        auto& stack = m_pImpl->layers;
         const auto& desc = m_pImpl->desc;
 
         while (!window.ShouldClose() && !m_pImpl->quitRequested)
@@ -186,7 +201,11 @@ namespace NS::App
                 NS_SCOPED_TIMER(::NS::Core::LogCat::App, "Application::FixedStepLoop");
                 for (int i = 0; i < steps; ++i)
                 {
-                    scene.OnUpdate();
+                    for (auto& layer : stack)
+                    {
+                        if (layer->IsActive())
+                            layer->OnUpdate();
+                    }
                     // fixed step ごとに input.Update を呼ぶことで、1 frame に複数 step
                     // 走った時に同じ edge が複数回検出されるのを防ぐ。
                     // 参考: https://jakubtomsu.github.io/posts/input_in_fixed_timestep/
@@ -199,16 +218,20 @@ namespace NS::App
                 break;
 
             renderer.BeginFrame(desc.clearR, desc.clearG, desc.clearB, desc.clearA);
-            scene.OnRender();
+            for (auto& layer : stack)
+            {
+                if (layer->IsActive())
+                    layer->OnRender();
+            }
             renderer.EndFrame();
         }
     }
 
     void Application::Shutdown()
     {
-        if (m_pImpl->scene)
-            m_pImpl->scene->OnShutdown();
-        m_pImpl->scene.reset();
+        // Layer の OnDetach は逆順 (top → bottom) で呼ぶ
+        for (auto it = m_pImpl->layers.rbegin(); it != m_pImpl->layers.rend(); ++it)
+            (*it)->OnDetach();
 
         // Window が生存中にコールバックが発火すると rendererPtr / impl 生キャプチャが
         // 解放済みになるリスクがあるため、Renderer / Input を破棄する前に Window 側の

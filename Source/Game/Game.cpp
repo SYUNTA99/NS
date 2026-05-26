@@ -1,7 +1,7 @@
-#include "Game/MainScene.h"
+#include "Game/Game.h"
 
 #include "Framework/App/Application.h"
-#include "Framework/Scene/RootScene.h"
+#include "Game/MainScene.h"
 
 #include <memory>
 
@@ -21,9 +21,28 @@ namespace NS::App
         return std::make_unique<Application>(desc);
     }
 
-    std::unique_ptr<NS::Scene::RootScene> CreateInitialScene()
-    {
-        return std::make_unique<MainScene>();
-    }
-
 } // namespace NS::App
+
+Game::Game() : NS::App::Layer("Game") {}
+
+Game::~Game() = default;
+
+void Game::OnAttach()
+{
+    m_scenes.LoadScene(std::make_unique<MainScene>());
+}
+
+void Game::OnDetach()
+{
+    m_scenes.LoadScene(nullptr);
+}
+
+void Game::OnUpdate()
+{
+    m_scenes.Update();
+}
+
+void Game::OnRender()
+{
+    m_scenes.Render();
+}

@@ -1,11 +1,11 @@
 #include "Framework/App/Application.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
-#include "Framework/Scene/RootScene.h"
+#include "Game/Game.h"
 
 #include "Framework/Framework.h"
 
-#include <utility>
+#include <memory>
 
 namespace
 {
@@ -34,13 +34,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         NS_LOG_ERROR(::NS::Core::LogCat::App, "WinMain: CreateApplication が nullptr");
         return -1;
     }
-
-    auto scene = ::NS::App::CreateInitialScene();
-    if (!scene)
+    if (!app->IsValid())
     {
-        NS_LOG_ERROR(::NS::Core::LogCat::App, "WinMain: CreateInitialScene が nullptr");
+        NS_LOG_ERROR(::NS::Core::LogCat::App, "WinMain: Application 構築失敗");
         return -1;
     }
 
-    return app->Run(std::move(scene));
+    app->AddLayer(std::make_unique<Game>());
+
+    return app->Run();
 }

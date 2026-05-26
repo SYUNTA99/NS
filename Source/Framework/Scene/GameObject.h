@@ -9,10 +9,10 @@
 /// に保持する。
 ///
 /// Lifecycle ():
-///   - OnStart()    — RootScene attach 直後に 1 回、配下 Component の OnStart を伝播
+///   - OnStart()    — SceneBase attach 直後に 1 回、配下 Component の OnStart を伝播
 ///   - OnUpdate()   — fixed step 毎回、IsActive==true の Component に伝播。
 ///                    dt は `NS::Core::FrameTimer::FixedDelta()` で取得
-///   - OnEndPlay()  — RootScene 破棄前に 1 回、登録逆順で Component::OnEndPlay を呼ぶ
+///   - OnEndPlay()  — SceneBase 破棄前に 1 回、登録逆順で Component::OnEndPlay を呼ぶ
 ///
 /// Cross-GameObject アクセスは ctor 経由の明示 raw pointer 注入のみ (GetComponent<T>() なし)。
 
@@ -23,7 +23,7 @@
 namespace NS::Scene
 {
     class Component;
-    class RootScene;
+    class SceneBase;
 
     /// 全 GameObject 派生の基底。
     class GameObject
@@ -48,10 +48,10 @@ namespace NS::Scene
 
         [[nodiscard]] const std::vector<Component*>& Components() const noexcept { return m_components; }
 
-        /// 所有 RootScene。RootScene attach 前 / 破棄後は nullptr。
-        [[nodiscard]] RootScene* OwningScene() const noexcept { return m_scene; }
-        /// RootScene 側が attach 時に呼ぶ。GameObject 派生から手動で呼ばない。
-        void AttachScene(RootScene* scene) noexcept { m_scene = scene; }
+        /// 所有 SceneBase。SceneBase attach 前 / 破棄後は nullptr。
+        [[nodiscard]] SceneBase* OwningScene() const noexcept { return m_scene; }
+        /// SceneBase 側が attach 時に呼ぶ。GameObject 派生から手動で呼ばない。
+        void AttachScene(SceneBase* scene) noexcept { m_scene = scene; }
 
         /// 配下 Component の OnStart を伝播。派生クラスは override で固有処理を足す前後に
         /// `GameObject::OnStart()` を呼ぶこと。
@@ -62,7 +62,7 @@ namespace NS::Scene
         virtual void OnEndPlay();
 
         [[nodiscard]] bool IsAlive() const noexcept { return m_alive; }
-        /// 次フレーム以降 RootScene 側で安全に reap される予定の印。
+        /// 次フレーム以降 SceneBase 側で安全に reap される予定の印。
         void MarkPendingKill() noexcept { m_alive = false; }
 
     private:
@@ -79,7 +79,7 @@ namespace NS::Scene
         std::vector<Component*> m_components;
         std::vector<GameObject*> m_children;
         GameObject* m_parent = nullptr;
-        RootScene* m_scene = nullptr;
+        SceneBase* m_scene = nullptr;
         bool m_alive = true;
 
         void DetachFromParent() noexcept;

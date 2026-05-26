@@ -1,14 +1,16 @@
 #pragma once
 
 /// @file Application.h
-/// @brief NS::App::Application — Game のメインループ責務 ( /  / )。
+/// @brief NS::App::Application — Engine layer。 Window/Renderer/Input/Audio + Layers を所有しメインループを駆動。
 ///
-/// @details Window / Renderer / Input / FrameTimer を RAII 所有し、
-/// `Run(initialScene)` で Init → MainLoop → Shutdown を順に呼ぶ Template Method。
-/// 多重起動禁止 (s_instance 単一保持で assert)。 Game 側で継承不要、
-/// `CreateApplication()` / `CreateInitialScene()` () を実装して WinMain から
-/// 呼ばれる。 構築失敗時は `IsValid() == false` を返し、 `Run` は -1 で即終了。
-/// Static accessor (`Get` / `Quit` / `DeltaTime` / `Time` / `Alpha`) は未構築時に
+/// @details Hazel Engine 流の Layered Architecture (Application → Layers → Layer → SceneManager → Scene)
+/// の Application 部。 サブシステム (Window/Renderer/Input、 Audio は placeholder) を RAII 所有し、
+/// `Run()` で Init → MainLoop → Shutdown を Template Method として実行する。 Layer 群は WinMain 段階
+/// で PushLayer / PushOverlay により積み、 Run ループ内では追加/削除しない (iterator 無効化、 動的 Push 対応は別
+/// task)。
+///
+/// 多重起動禁止 (s_instance 単一保持で assert)。 構築失敗時は `IsValid() == false` を返し、
+/// `Run` は -1 で即終了。 Static accessor (`Get` / `Quit` / `DeltaTime` / `Time` / `Alpha`) は未構築時に
 /// nullptr / 0 を返す no-throw 設計。
 
 #include "Framework/Graphics/Renderer.h"
@@ -16,14 +18,14 @@
 
 #include <memory>
 
+namespace NS::App
+{
+    class Layer;
+}
+
 namespace NS::Platform
 {
     class Input;
-}
-
-namespace NS::Scene
-{
-    class RootScene;
 }
 
 namespace NS::App
@@ -44,10 +46,8 @@ namespace NS::App
         float clearA = 1.0f;
     };
 
-    /// Game のメインループ責務を担う Application (/127/130)。
-    /// インスタンス: Window / Renderer / Input / FrameTimer を RAII 所有。
+    /// Engine layer。 Subsystem (Window/Renderer/Input/Audio) を RAII 所有、 Layers で Layer 群を駆動。
     /// Static: Get / Quit / DeltaTime / Time / Alpha でグローバルアクセサ提供。
-    /// Game 側で継承する必要は無い (final 寄り設計)。Game は Scene 派生で書く。
     /// 多重起動禁止 (s_instance 単一保持で assert)。
     class Application
     {
@@ -65,9 +65,17 @@ namespace NS::App
         /// 構築成功判定。Window / Renderer のいずれかが失敗していたら false。
         [[nodiscard]] bool IsValid() const noexcept;
 
+        /// regular layer を追加する (overlay より前)。 Application::Run の前に呼ぶこと。
+        /// Run ループ内からの呼出は iterator 無効化のため禁止。
+        void AddLayer(std::unique_ptr<NS::App::Layer> layer);
+
+        /// overlay layer を追加する (regular より後ろ、 OnRender が最後)。
+        /// Run ループ内からの呼出は iterator 無効化のため禁止。
+        void AddOverlay(std::unique_ptr<NS::App::Layer> overlay);
+
         /// Init → MainLoop → Shutdown を順に呼ぶ Template Method。
-        /// initialScene が nullptr または IsValid()==false なら -1 を返して即終了。
-        int Run(std::unique_ptr<NS::Scene::RootScene> initialScene);
+        /// IsValid()==false / layer が 1 個も追加されてないなら -1 を返して即終了。
+        int Run();
 
         [[nodiscard]] NS::Platform::Window& Window() noexcept;
         [[nodiscard]] NS::Graphics::Renderer& Renderer() noexcept;
@@ -93,9 +101,8 @@ namespace NS::App
         static Application* s_instance;
     };
 
-    /// Game 側で実装必須。WinMain から呼ばれる。
-    /// 戻り値が nullptr なら exit code -1 で WinMain は即終了する。
+    /// Game 側で実装必須。 ApplicationDesc を game 固有設定で組んで Application を構築する。
+    /// CreateInitialScene は廃止 (2026-05-26)、 Layer 構成は WinMain 側で PushLayer して指定する。
     [[nodiscard]] std::unique_ptr<Application> CreateApplication();
-    [[nodiscard]] std::unique_ptr<NS::Scene::RootScene> CreateInitialScene();
 
 } // namespace NS::App

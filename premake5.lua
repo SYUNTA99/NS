@@ -393,7 +393,7 @@ project "Scene"
 
 --============================================================================
 -- App 層 (StaticLib)
---   Application / WinMain (RootScene は Scene 層に昇格、 T1 2026-05-23)
+--   Application / WinMain (SceneBase は Scene 層に昇格、 T1 2026-05-23)
 --   DD7: フォルダ・ namespace ・ premake project 全て短縮命名 `App` で統一
 --============================================================================
 project "App"

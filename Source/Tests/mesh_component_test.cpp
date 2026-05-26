@@ -4,7 +4,7 @@
 #include <Framework/Scene/IRenderable.h>
 #include <Framework/Scene/MeshComponent.h>
 #include <Framework/Scene/RenderContext.h>
-#include <Framework/Scene/RootScene.h>
+#include <Framework/Scene/SceneBase.h>
 
 #include <vector>
 
@@ -13,7 +13,7 @@ namespace
     using NS::Scene::MeshComponent;
     using NS::Scene::GameObject;
 
-    class FakeScene : public NS::Scene::RootScene
+    class FakeScene : public NS::Scene::SceneBase
     {
     public:
         void RegisterRenderable(NS::Scene::IRenderable* renderable) override { registered.push_back(renderable); }

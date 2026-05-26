@@ -1,11 +1,11 @@
 #pragma once
 
-/// @file RootScene.h
-/// @brief NS::Scene::RootScene — レベル / ステージの実行時 root を表す scene-graph 基底クラス。
+/// @file SceneBase.h
+/// @brief NS::Scene::SceneBase — レベル / ステージの実行時 root を表す scene-graph 基底クラス。
 ///
 /// @details
 /// UE5 の `UWorld` / Godot の `SceneTree` root に相当する scene-graph 基底。 命名は
-/// 「Scene 層内の root scene」 を素直に表す `RootScene` を採用 (旧 NS::App::Scene の
+/// 「Scene 層内の root scene」 を素直に表す `SceneBase` を採用 (旧 NS::App::Scene の
 /// stutter `Scene::Scene` を回避しつつ「Scene」 という業界用語を保つ)。
 ///
 /// 責務:
@@ -14,30 +14,30 @@
 /// 2. **IRenderable registry** — MeshComponent 等の自己登録窓口。
 ///    描画 iteration はここが握り、 Player.cpp / Block.cpp は render 0 行 (UE5/Unity 流儀)
 /// 3. **scene-graph root** — GameObject (Player / Block 等) が AttachScene(this) で
-///    この RootScene に bind される ()
+///    この SceneBase に bind される ()
 ///
-/// 寿命: Application が unique_ptr<RootScene> で所有。 Run() 終了時に Shutdown() 後 reset()。
+/// 寿命: Application が unique_ptr<SceneBase> で所有。 Run() 終了時に Shutdown() 後 reset()。
 ///
 /// 派生想定: Game/MainScene 等が継承し OnStart で level 構築、 RegisterRenderable を
 /// override して描画 list を貯める。 default 実装は全 method noop なので不要分は省略可。
 ///
-/// 将来拡張: SceneManager (push/pop/replace) で複数 RootScene の切替対応予定 ( 想定)。
+/// 将来拡張: SceneManager (push/pop/replace) で複数 SceneBase の切替対応予定 ( 想定)。
 
 namespace NS::Scene
 {
 
     class IRenderable;
 
-    class RootScene
+    class SceneBase
     {
     public:
-        RootScene() = default;
-        virtual ~RootScene() = default;
+        SceneBase() = default;
+        virtual ~SceneBase() = default;
 
-        RootScene(const RootScene&) = delete;
-        RootScene& operator=(const RootScene&) = delete;
-        RootScene(RootScene&&) = delete;
-        RootScene& operator=(RootScene&&) = delete;
+        SceneBase(const SceneBase&) = delete;
+        SceneBase& operator=(const SceneBase&) = delete;
+        SceneBase(SceneBase&&) = delete;
+        SceneBase& operator=(SceneBase&&) = delete;
 
         /// Application::Run() 開始時に 1 回呼ばれる。Window/Renderer/Input は既に有効。
         virtual void OnStart() {}
