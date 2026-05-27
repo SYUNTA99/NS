@@ -139,6 +139,11 @@ namespace NS::App
         return *m_pImpl->input;
     }
 
+    NS::UI::ImGuiContext* Application::ImGui() noexcept
+    {
+        return m_pImpl ? m_pImpl->imgui.get() : nullptr;
+    }
+
     void Application::AddLayer(std::unique_ptr<NS::App::Layer> layer)
     {
         if (!m_pImpl)

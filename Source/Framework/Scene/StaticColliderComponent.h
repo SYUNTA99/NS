@@ -2,7 +2,7 @@
 
 /// @file StaticColliderComponent.h
 /// @brief 静的 AABB collider Component。Owner の Root::WorldPosition を center とし、
-///        halfExtents から world AABB を返す。MainScene の collision world 構築に使う。
+///        halfExtents から world AABB を返す。LevelEditorScene の collision world 構築に使う。
 
 #include "Framework/Core/Math.h"
 #include "Framework/Scene/Component.h"

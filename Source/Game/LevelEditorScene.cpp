@@ -1,4 +1,4 @@
-#include "Game/MainScene.h"
+#include "Game/LevelEditorScene.h"
 
 #include "Game/Block.h"
 #include "Game/Player.h"
@@ -46,16 +46,16 @@ namespace
     constexpr NS::Core::Vector3 kBlockColor{0.70f, 0.70f, 0.75f};
 } // namespace
 
-MainScene::MainScene() = default;
+LevelEditorScene::LevelEditorScene() = default;
 
-MainScene::~MainScene() = default;
+LevelEditorScene::~LevelEditorScene() = default;
 
-void MainScene::OnStart()
+void LevelEditorScene::OnStart()
 {
     auto* app = NS::App::Application::Get();
     if (app == nullptr)
     {
-        NS_LOG_ERROR(::NS::Core::LogCat::Game, "MainScene::OnStart: Application::Get()==null");
+        NS_LOG_ERROR(::NS::Core::LogCat::Game, "LevelEditorScene::OnStart: Application::Get()==null");
         return;
     }
 
@@ -76,7 +76,7 @@ void MainScene::OnStart()
     texDesc.sRGB = false;
     m_texture = std::make_unique<NS::Graphics::Texture>(renderer, texDesc);
     if (m_texture->IsUsingFallback())
-        NS_LOG_WARN(::NS::Core::LogCat::Game, "MainScene: cube_test.png 読込失敗、magenta fallback で続行");
+        NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelEditorScene: cube_test.png 読込失敗、magenta fallback で続行");
 
     NS::Graphics::ShaderProgramDesc shaderDesc{};
     shaderDesc.vertexShaderPath = exeDir / "Shaders" / "standard.vs.hlsl";
@@ -86,7 +86,8 @@ void MainScene::OnStart()
     shaderDesc.inputLayout = NS::Graphics::Mesh::StandardInputLayout();
     m_shader = std::make_unique<NS::Graphics::ShaderProgram>(renderer, shaderDesc);
     if (m_shader->IsUsingFallback())
-        NS_LOG_WARN(::NS::Core::LogCat::Game, "MainScene: standard HLSL 読込/コンパイル失敗、magenta fallback で続行");
+        NS_LOG_WARN(::NS::Core::LogCat::Game,
+                    "LevelEditorScene: standard HLSL 読込/コンパイル失敗、magenta fallback で続行");
 
     NS::Graphics::MaterialDesc matDesc{};
     matDesc.shader = m_shader.get();
@@ -138,7 +139,7 @@ void MainScene::OnStart()
     m_cameraRig->OnStart();
 }
 
-void MainScene::OnUpdate()
+void LevelEditorScene::OnUpdate()
 {
     auto* app = NS::App::Application::Get();
     if (app == nullptr)
@@ -180,7 +181,7 @@ void MainScene::OnUpdate()
         m_cameraRig->OnUpdate();
 }
 
-void MainScene::OnRender()
+void LevelEditorScene::OnRender()
 {
     auto* app = NS::App::Application::Get();
     if (app == nullptr)
@@ -205,7 +206,7 @@ void MainScene::OnRender()
     }
 }
 
-void MainScene::OnShutdown()
+void LevelEditorScene::OnShutdown()
 {
     if (m_cameraRig)
         m_cameraRig->OnEndPlay();
@@ -230,7 +231,7 @@ void MainScene::OnShutdown()
     m_cubeMesh.reset();
 }
 
-void MainScene::RegisterRenderable(NS::Scene::IRenderable* renderable)
+void LevelEditorScene::RegisterRenderable(NS::Scene::IRenderable* renderable)
 {
     if (renderable == nullptr)
         return;
@@ -240,7 +241,7 @@ void MainScene::RegisterRenderable(NS::Scene::IRenderable* renderable)
     m_renderList.push_back(renderable);
 }
 
-void MainScene::UnregisterRenderable(NS::Scene::IRenderable* renderable)
+void LevelEditorScene::UnregisterRenderable(NS::Scene::IRenderable* renderable)
 {
     if (renderable == nullptr)
         return;

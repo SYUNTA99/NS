@@ -28,6 +28,11 @@ namespace NS::Platform
     class Input;
 }
 
+namespace NS::UI
+{
+    class ImGuiContext;
+}
+
 namespace NS::App
 {
 
@@ -80,6 +85,11 @@ namespace NS::App
         [[nodiscard]] NS::Platform::Window& Window() noexcept;
         [[nodiscard]] NS::Graphics::Renderer& Renderer() noexcept;
         [[nodiscard]] NS::Platform::Input& Input() noexcept;
+
+        /// Debug / Development build のみ実体を持つ ImGuiContext。
+        /// GameDebug / GameRelease では nullptr (ImGui 非搭載 shipping を保証)。
+        /// Editor 層が WantCaptureMouse / WantCaptureKeyboard で UI 排他制御に使う。
+        [[nodiscard]] NS::UI::ImGuiContext* ImGui() noexcept;
 
         /// 現在の Application インスタンス (/)。未構築時は nullptr。
         [[nodiscard]] static Application* Get() noexcept;

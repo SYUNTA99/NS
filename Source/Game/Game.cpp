@@ -1,7 +1,7 @@
 #include "Game/Game.h"
 
 #include "Framework/App/Application.h"
-#include "Game/MainScene.h"
+#include "Game/LevelEditorScene.h"
 
 #include <memory>
 
@@ -29,7 +29,7 @@ Game::~Game() = default;
 
 void Game::OnAttach()
 {
-    m_scenes.LoadScene(std::make_unique<MainScene>());
+    m_scenes.LoadScene(std::make_unique<LevelEditorScene>());
 }
 
 void Game::OnDetach()

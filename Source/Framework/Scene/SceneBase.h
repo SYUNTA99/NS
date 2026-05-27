@@ -18,7 +18,7 @@
 ///
 /// 寿命: Application が unique_ptr<SceneBase> で所有。 Run() 終了時に Shutdown() 後 reset()。
 ///
-/// 派生想定: Game/MainScene 等が継承し OnStart で level 構築、 RegisterRenderable を
+/// 派生想定: Game/LevelEditorScene 等が継承し OnStart で level 構築、 RegisterRenderable を
 /// override して描画 list を貯める。 default 実装は全 method noop なので不要分は省略可。
 ///
 /// 将来拡張: SceneManager (push/pop/replace) で複数 SceneBase の切替対応予定 ( 想定)。
@@ -54,10 +54,10 @@ namespace NS::Scene
         virtual void OnShutdown() {}
 
         /// IRenderable Component の自己登録。MeshComponent 等が OnStart で呼ぶ。
-        /// 基底 default は no-op。MainScene などが override で RenderRegistry に追加する。
+        /// 基底 default は no-op。LevelEditorScene などが override で RenderRegistry に追加する。
         virtual void RegisterRenderable(IRenderable* renderable) { (void)renderable; }
         /// IRenderable Component の自己解除。MeshComponent 等が OnEndPlay で呼ぶ。
-        /// 基底 default は no-op。MainScene などが override で RenderRegistry から削除する。
+        /// 基底 default は no-op。LevelEditorScene などが override で RenderRegistry から削除する。
         virtual void UnregisterRenderable(IRenderable* renderable) { (void)renderable; }
     };
 

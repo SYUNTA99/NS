@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Framework/Scene/CharacterMovementComponent.h"
+#include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/MeshComponent.h"
 #include "Framework/Scene/PlayerInputComponent.h"
-#include "Framework/Scene/GameObject.h"
 
 namespace NS::Graphics
 {
@@ -18,7 +18,7 @@ namespace NS::Platform
 
 /// プレイヤーキャラクタの GameObject ( 固定スロット)。
 /// MeshComponent + CharacterMovementComponent + PlayerInputComponent を named member
-/// として保有する。Mesh / Material / Input は寿命を MainScene が保証。
+/// として保有する。Mesh / Material / Input は寿命を LevelEditorScene が保証。
 class Player : public NS::Scene::GameObject
 {
 public:

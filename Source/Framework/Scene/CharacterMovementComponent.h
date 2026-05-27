@@ -18,7 +18,7 @@
 namespace NS::Scene
 {
     /// Player の物理状態を管理する Component。Input → desired velocity の橋渡しは
-    /// PlayerInputComponent が担う。collision world は MainScene が毎フレーム span で注入する。
+    /// PlayerInputComponent が担う。collision world は LevelEditorScene が毎フレーム span で注入する。
     class CharacterMovementComponent : public Component
     {
     public:

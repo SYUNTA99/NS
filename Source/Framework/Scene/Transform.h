@@ -43,7 +43,7 @@ namespace NS::Scene
         [[nodiscard]] const NS::Core::Quaternion& PreviousRotation() const noexcept { return m_previousRotation; }
         [[nodiscard]] const NS::Core::Vector3& PreviousScale() const noexcept { return m_previousScale; }
 
-        /// 現在 PRS を previous に退避する。Scene::OnUpdate 末尾で MainScene が
+        /// 現在 PRS を previous に退避する。Scene::OnUpdate 末尾で LevelEditorScene が
         /// 全 Transform に対して一括実行する。Component の OnUpdate 末尾で
         /// 個別実行するのは禁止 (階層 parent-child の世代不一致防止)。
         void Snapshot() noexcept;
