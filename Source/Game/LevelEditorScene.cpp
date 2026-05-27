@@ -137,6 +137,13 @@ void LevelEditorScene::OnStart()
     for (auto& block : m_blocks)
         block->OnStart();
     m_cameraRig->OnStart();
+
+    // EditorMode に依存先を注入する。 mode toggle が入るまでは常時 active。
+    m_editor.SetLevel(&m_level);
+    m_editor.SetInput(&app->Input());
+    m_editor.SetImGui(app->ImGui());
+    m_editor.SetCameraComponent(&m_cameraRig->Camera());
+    m_editor.SetActive(true);
 }
 
 void LevelEditorScene::OnUpdate()
@@ -179,6 +186,9 @@ void LevelEditorScene::OnUpdate()
         block->OnUpdate();
     if (m_cameraRig)
         m_cameraRig->OnUpdate();
+
+    if (m_editor.IsActive())
+        m_editor.Tick();
 }
 
 void LevelEditorScene::OnRender()
@@ -204,6 +214,9 @@ void LevelEditorScene::OnRender()
         if (r != nullptr)
             r->Draw(ctx);
     }
+
+    if (m_editor.IsActive())
+        m_editor.RenderCursorPreview();
 }
 
 void LevelEditorScene::OnShutdown()

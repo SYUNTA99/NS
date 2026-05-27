@@ -3,6 +3,9 @@
 #include "Framework/Core/Math.h"
 #include "Framework/Scene/SceneBase.h"
 #include "Game/CameraRig.h"
+#include "Game/Editor/EditorMode.h"
+#include "Game/Level/LevelData.h"
+#include "Game/Level/PlayState.h"
 
 #include <memory>
 #include <vector>
@@ -23,10 +26,9 @@ namespace NS::Scene
 class Block;
 class Player;
 
-///  のテストレベルを構築する Scene。
-/// 床 + 壁 + ジャンプ台のブロック群と、追従カメラ付き Player を配置する。
-///  (push 型 RenderRegistry) /  (Snapshot 一括) /  (resize callback) /
-///  (baseColor 色分け) /  (BeginFrame は Application 内部) を実装する。
+/// 編集 / プレイ両モードを 1 scene 内で扱う root scene。
+/// LevelData (永続) + PlayState (一時) + EditorMode を value member で保有し、
+/// 今後 mode toggle / PlayMode を同 scene 内に追加する基盤になる。
 class LevelEditorScene : public NS::Scene::SceneBase
 {
 public:
@@ -46,6 +48,11 @@ public:
     void RegisterRenderable(NS::Scene::IRenderable* renderable) override;
     void UnregisterRenderable(NS::Scene::IRenderable* renderable) override;
 
+    [[nodiscard]] NS::Game::Level::LevelData& Level() noexcept { return m_level; }
+    [[nodiscard]] const NS::Game::Level::LevelData& Level() const noexcept { return m_level; }
+    [[nodiscard]] NS::Game::Level::PlayState& Play() noexcept { return m_play; }
+    [[nodiscard]] NS::Game::Editor::EditorMode& Editor() noexcept { return m_editor; }
+
 private:
     std::unique_ptr<NS::Graphics::Mesh> m_cubeMesh;
     std::unique_ptr<NS::Graphics::Texture> m_texture;
@@ -60,4 +67,8 @@ private:
 
     std::vector<NS::Scene::IRenderable*> m_renderList;
     std::vector<NS::Core::AABB> m_collisionWorld;
+
+    NS::Game::Level::LevelData m_level{};
+    NS::Game::Level::PlayState m_play{};
+    NS::Game::Editor::EditorMode m_editor{};
 };
