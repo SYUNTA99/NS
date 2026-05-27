@@ -4,6 +4,7 @@
 #include "Game/Player.h"
 
 #include "Framework/App/Application.h"
+#include "Framework/Core/Clock.h"
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -13,15 +14,18 @@
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/ShaderProgram.h"
 #include "Framework/Graphics/Texture.h"
+#include "Framework/Platform/Gamepad.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/MeshComponent.h"
 #include "Framework/Scene/RenderContext.h"
+#include "Framework/UI/ImGuiContext.h"
 #include "Game/Editor/BlockRegistry.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 
 namespace
@@ -159,6 +163,56 @@ void LevelEditorScene::OnStart()
     m_cameraRig->Follow().SetActive(false);
 }
 
+namespace
+{
+    /// WASD / Left Stick の入力を camera 水平 forward 相対の world dir に変換する。
+    /// Vector の長さが 1 を超える対角入力は normalise して移動速度の偏りを防ぐ。
+    NS::Core::Vector3 BuildPlayDesiredDir(const NS::Platform::Input& input,
+                                          NS::Core::Vector3 cameraForward,
+                                          float& outSpeedScale)
+    {
+        float kbX = 0.0f;
+        float kbZ = 0.0f;
+        const auto& kb = input.Keyboard();
+        if (kb.IsHeld(NS::Platform::Key::W))
+            kbZ += 1.0f;
+        if (kb.IsHeld(NS::Platform::Key::S))
+            kbZ -= 1.0f;
+        if (kb.IsHeld(NS::Platform::Key::A))
+            kbX -= 1.0f;
+        if (kb.IsHeld(NS::Platform::Key::D))
+            kbX += 1.0f;
+
+        const auto stick = input.Gamepad(0).LeftStick();
+        const float ix = kbX + stick.x;
+        const float iz = kbZ + stick.y;
+
+        // 平坦化された forward と、 そこから X 軸右側を導く right を作る。
+        cameraForward.y = 0.0f;
+        const float fLenSq = cameraForward.x * cameraForward.x + cameraForward.z * cameraForward.z;
+        if (fLenSq < 1e-6f)
+            cameraForward = NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+        else
+            cameraForward = cameraForward * (1.0f / std::sqrt(fLenSq));
+        const NS::Core::Vector3 right{cameraForward.z, 0.0f, -cameraForward.x};
+
+        NS::Core::Vector3 dir{cameraForward.x * iz + right.x * ix, 0.0f, cameraForward.z * iz + right.z * ix};
+        const float lenSq = dir.x * dir.x + dir.z * dir.z;
+        if (lenSq > 1.0f)
+        {
+            const float inv = 1.0f / std::sqrt(lenSq);
+            dir.x *= inv;
+            dir.z *= inv;
+            outSpeedScale = 1.0f;
+        }
+        else
+        {
+            outSpeedScale = std::sqrt(lenSq);
+        }
+        return dir;
+    }
+} // namespace
+
 void LevelEditorScene::OnUpdate()
 {
     auto* app = NS::App::Application::Get();
@@ -171,7 +225,7 @@ void LevelEditorScene::OnUpdate()
         return;
     }
 
-    const bool editActive = m_editor.IsActive();
+    const bool editActive = (m_mode == Mode::Edit);
 
     // Application が Renderer::Resize を排他で握っているため、 Camera の aspect ratio は
     // Renderer の現在 Size から毎フレーム pull する (callback 上書きで競合させない)。
@@ -207,29 +261,108 @@ void LevelEditorScene::OnUpdate()
     }
     else
     {
-        // Play モード時の Player / follow camera 駆動 (03-06 で本格 PlayMode 配線)
-        if (m_player && m_cameraRig)
-            m_player->InputComp().SetCameraForward(m_cameraRig->Camera().ForwardHorizontal());
+        const float dt = NS::Core::FrameTimer::FixedDelta();
 
-        if (m_player && m_player->Root().Position().y < -10.0f)
+        // 入力 → PlayMode への希望移動。 ImGui の text field がキーボードを掴んでいる時は無視する。
+        bool wantKb = false;
+        if (auto* imgui = app->ImGui())
+            wantKb = imgui->WantCaptureKeyboard();
+
+        NS::Core::Vector3 camForward{0.0f, 0.0f, 1.0f};
+        if (m_cameraRig)
+            camForward = m_cameraRig->Camera().ForwardHorizontal();
+        float speedScale = 0.0f;
+        const NS::Core::Vector3 desired =
+            wantKb ? NS::Core::Vector3{0.0f, 0.0f, 0.0f} : BuildPlayDesiredDir(app->Input(), camForward, speedScale);
+        m_playMode.SetDesiredMove(desired, wantKb ? 0.0f : speedScale);
+
+        if (!wantKb && app->Input().Keyboard().IsPressed(NS::Platform::Key::Space))
+            m_playMode.SetJumpPressed();
+        if (app->Input().Gamepad(0).IsPressed(NS::Platform::GamepadButton::A))
+            m_playMode.SetJumpPressed();
+
+        m_playMode.Tick(m_level, m_play, dt);
+
+        // PlayState (SSOT) → Player.Transform の一方向同期。 ThirdPersonFollow が Player.Root
+        // を target にしているため、 これで camera も自動追従する。
+        if (m_player)
+            m_player->Root().SetPosition(m_play.playerPosition);
+
+        if (m_play.deathTriggered)
         {
-            m_player->Root().SetPosition({0.0f, 1.0f, -4.0f});
-            m_player->Movement().ResetState();
+            m_play.deathTriggered = false;
+            m_playMode.Enter(m_level, m_play);
+            if (m_player)
+                m_player->Root().SetPosition(m_play.playerPosition);
+        }
+        if (m_play.clearTriggered)
+        {
+            EnterEdit();
         }
 
         if (m_player)
             m_player->Root().Snapshot();
         if (m_cameraRig)
+        {
             m_cameraRig->Root().Snapshot();
-
-        if (m_player)
-            m_player->OnUpdate();
-        if (m_cameraRig)
             m_cameraRig->OnUpdate();
+        }
     }
 
     for (auto& block : m_blocks)
         block->OnUpdate();
+}
+
+void LevelEditorScene::EnterPlay() noexcept
+{
+    if (m_mode == Mode::Play)
+        return;
+    m_mode = Mode::Play;
+    m_playMode.Enter(m_level, m_play);
+    m_playMode.SetActive(true);
+    m_editor.SetActive(false);
+
+    if (m_editorCameraRig)
+        m_editorCameraRig->EditorCam().SetActive(false);
+
+    if (m_player)
+    {
+        m_player->MeshComp().SetActive(true);
+        // Movement / InputComp は PlayMode が物理 / 入力を担うため休止のまま。
+        m_player->Movement().SetActive(false);
+        m_player->InputComp().SetActive(false);
+        m_player->Root().SetPosition(m_play.playerPosition);
+    }
+    if (m_cameraRig)
+    {
+        m_cameraRig->Camera().SetActive(true);
+        m_cameraRig->Follow().SetActive(true);
+    }
+}
+
+void LevelEditorScene::EnterEdit() noexcept
+{
+    if (m_mode == Mode::Edit)
+        return;
+    m_mode = Mode::Edit;
+    m_playMode.Exit(m_play);
+    m_playMode.SetActive(false);
+    m_editor.SetActive(true);
+
+    if (m_editorCameraRig)
+        m_editorCameraRig->EditorCam().SetActive(true);
+
+    if (m_player)
+    {
+        m_player->MeshComp().SetActive(false);
+        m_player->Movement().SetActive(false);
+        m_player->InputComp().SetActive(false);
+    }
+    if (m_cameraRig)
+    {
+        m_cameraRig->Camera().SetActive(false);
+        m_cameraRig->Follow().SetActive(false);
+    }
 }
 
 void LevelEditorScene::OnRender()
@@ -242,7 +375,7 @@ void LevelEditorScene::OnRender()
     ctx.renderer = &app->Renderer();
     ctx.alpha = NS::App::Application::Alpha();
 
-    const bool editActive = m_editor.IsActive();
+    const bool editActive = (m_mode == Mode::Edit);
     if (editActive)
     {
         if (m_editorCameraRig == nullptr)

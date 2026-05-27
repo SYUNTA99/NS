@@ -6,8 +6,10 @@
 #include "Game/Editor/EditorMode.h"
 #include "Game/EditorCameraRig.h"
 #include "Game/Level/LevelData.h"
+#include "Game/Level/PlayMode.h"
 #include "Game/Level/PlayState.h"
 
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -53,6 +55,25 @@ public:
     [[nodiscard]] const NS::Game::Level::LevelData& Level() const noexcept { return m_level; }
     [[nodiscard]] NS::Game::Level::PlayState& Play() noexcept { return m_play; }
     [[nodiscard]] NS::Game::Editor::EditorMode& Editor() noexcept { return m_editor; }
+    [[nodiscard]] NS::Game::Level::PlayMode& PlayModeSub() noexcept { return m_playMode; }
+
+    /// 編集 ↔ プレイのモード状態。 単一 enum で同フレーム instant flip する設計
+    /// (Mario Builder 64 の current/target 2 変数 async と異なり、 NS は遷移アニメを持たない)。
+    enum class Mode : std::uint8_t
+    {
+        Edit,
+        Play
+    };
+
+    [[nodiscard]] Mode CurrentMode() const noexcept { return m_mode; }
+
+    /// Edit → Play。 PlayMode::Enter で spawn 位置に player 再構築、 EditorMode 休止、
+    /// EditorCamera off → ThirdPersonFollow on、 Player 各 Component 再活性化。
+    void EnterPlay() noexcept;
+
+    /// Play → Edit。 PlayMode::Exit で paused/clear/death をリセット、 EditorMode 復帰、
+    /// EditorCamera on → ThirdPersonFollow off、 Player 各 Component 休止。
+    void EnterEdit() noexcept;
 
 private:
     /// `m_level.blocks` を観測駆動で見て、 `m_blocks` (Block オブジェクト群) と
@@ -78,4 +99,6 @@ private:
     NS::Game::Level::LevelData m_level{};
     NS::Game::Level::PlayState m_play{};
     NS::Game::Editor::EditorMode m_editor{};
+    NS::Game::Level::PlayMode m_playMode{};
+    Mode m_mode = Mode::Edit;
 };

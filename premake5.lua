@@ -638,10 +638,16 @@ project "Tests"
         "Source/Tests/**.h",
         "Source/Tests/**.cpp",
         -- Game 側 GameObject 派生 (Player / Block) は Application 依存を持たないので
-        -- Tests から直接コンパイルしてリンクする。Game.cpp / MainScene.cpp は Application や
+        -- Tests から直接コンパイルしてリンクする。Game.cpp は Application や
         -- Window への依存があるので除外し、unit test で扱える範囲だけ取り込む。
         "Source/Game/Player.cpp",
         "Source/Game/Block.cpp",
+        "Source/Game/CameraRig.cpp",
+        "Source/Game/EditorCameraRig.cpp",
+        -- LevelEditorScene は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
+        -- OnStart は Application::Get() を要求するため test では呼ばないが、 ctor / EnterPlay /
+        -- EnterEdit / 値メンバ accessor の symbol が要るので .cpp を Tests に取り込む。
+        "Source/Game/LevelEditorScene.cpp",
         -- Level data / ChunkIO / CRC32 / Undo Command / AutoTile は Application
         -- 非依存の純粋ロジックなので Tests project から直接 compile する。
         "Source/Game/Level/**.cpp",
