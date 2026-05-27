@@ -4,6 +4,7 @@
 #include "Framework/Scene/SceneBase.h"
 #include "Game/CameraRig.h"
 #include "Game/Editor/EditorMode.h"
+#include "Game/EditorCameraRig.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
 
@@ -69,6 +70,7 @@ private:
     std::vector<std::unique_ptr<Block>> m_blocks;
 
     std::unique_ptr<CameraRig> m_cameraRig;
+    std::unique_ptr<EditorCameraRig> m_editorCameraRig;
 
     std::vector<NS::Scene::IRenderable*> m_renderList;
     std::vector<NS::Core::AABB> m_collisionWorld;

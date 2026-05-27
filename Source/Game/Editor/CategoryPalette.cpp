@@ -53,6 +53,15 @@ namespace NS::Game::Editor
     void CategoryPalette::Render() noexcept
     {
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+        // Mario Builder 64 と同じく画面 center-top に default 配置する。
+        // ユーザーは初回ドラッグで自由に移動可能 (ImGuiCond_FirstUseEver)。
+        if (ImGuiViewport* vp = ImGui::GetMainViewport())
+        {
+            ImGui::SetNextWindowPos(
+                ImVec2(vp->Pos.x + vp->Size.x * 0.5f, vp->Pos.y + 20.0f), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.0f));
+            ImGui::SetNextWindowSize(ImVec2(640.0f, 56.0f), ImGuiCond_FirstUseEver);
+        }
+
         NS::UI::Panel panel("Toolbar");
         if (!panel.IsOpen())
             return;

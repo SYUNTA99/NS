@@ -57,8 +57,11 @@ namespace NS::Scene
         void ApplyPan(float panX, float panY) noexcept;
         void ApplyZoom(float zoomDelta) noexcept;
 
-        static constexpr float kMinDistance = 1.0f;
-        static constexpr float kMaxDistance = 100.0f;
+        // 1m grid を一次対象とする vertical slice 想定で範囲を調整。
+        // 近すぎる (< 2m) と FOV 60° で block 内側に入って描画破綻、 遠すぎる (> 30m)
+        // と block が点になるため 2 ~ 30m に絞る。
+        static constexpr float kMinDistance = 2.0f;
+        static constexpr float kMaxDistance = 30.0f;
         static constexpr float kPitchMin = -1.396f;  // -80°
         static constexpr float kPitchMax = -0.0873f; // -5°
 

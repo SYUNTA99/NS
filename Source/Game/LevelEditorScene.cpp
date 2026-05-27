@@ -117,14 +117,46 @@ void LevelEditorScene::OnStart()
     m_player->OnStart();
     m_cameraRig->OnStart();
 
+    // 編集モード専用の free-fly カメラを Player /  follow camera と並列で立ち上げる。
+    // MB64 の freecam に相当 (mouse + gamepad で Orbit / Pan / Zoom)。
+    m_editorCameraRig = std::make_unique<EditorCameraRig>();
+    m_editorCameraRig->AttachScene(this);
+    m_editorCameraRig->EditorCam().SetInput(&app->Input());
+    m_editorCameraRig->EditorCam().SetImGui(app->ImGui());
+
+    auto& editorCam = m_editorCameraRig->Camera();
+    editorCam.SetAspectRatioFromRenderer(renderer);
+    editorCam.SetNearPlane(0.1f);
+    editorCam.SetFarPlane(200.0f);
+    editorCam.SetFovY(NS::Core::ToRadians(NS::Core::Degrees{60.0f}));
+    editorCam.SetUp({0.0f, 1.0f, 0.0f});
+
+    // 初期視点は spawn 位置を中心に少し引いた位置から見下ろす
+    const NS::Core::Vector3 spawnPos{
+        static_cast<float>(m_level.spawnX), static_cast<float>(m_level.spawnY), static_cast<float>(m_level.spawnZ)};
+    m_editorCameraRig->EditorCam().SetCenter(spawnPos);
+    // 起動直後は spawn block を真ん中近めに見せる距離。 1m cube が画面の十数 % を占める。
+    m_editorCameraRig->EditorCam().SetDistance(5.0f);
+
+    m_editorCameraRig->OnStart();
+
     // EditorMode に依存先を注入する。 mode toggle が入るまでは常時 active。
     m_editor.SetLevel(&m_level);
     m_editor.SetInput(&app->Input());
     m_editor.SetImGui(app->ImGui());
-    m_editor.SetCameraComponent(&m_cameraRig->Camera());
+    m_editor.SetCameraComponent(&m_editorCameraRig->Camera());
+    m_editor.SetEditorCamera(&m_editorCameraRig->EditorCam());
     m_editor.SetActive(true);
     // OnStart で手動 rebuild 済なので、 初回 OnUpdate の二重 rebuild を抑制
     m_editor.ClearLevelDirty();
+
+    // 編集モード起動: Player /  follow camera を frozen / invisible に。
+    // 03-06 で Play モード遷移時に SetActive(true) で再活性化する設計。
+    m_player->MeshComp().SetActive(false);
+    m_player->Movement().SetActive(false);
+    m_player->InputComp().SetActive(false);
+    m_cameraRig->Camera().SetActive(false);
+    m_cameraRig->Follow().SetActive(false);
 }
 
 void LevelEditorScene::OnUpdate()
@@ -139,37 +171,33 @@ void LevelEditorScene::OnUpdate()
         return;
     }
 
+    const bool editActive = m_editor.IsActive();
+
     // Application が Renderer::Resize を排他で握っているため、 Camera の aspect ratio は
     // Renderer の現在 Size から毎フレーム pull する (callback 上書きで競合させない)。
-    if (m_cameraRig)
-        m_cameraRig->Camera().SetAspectRatioFromRenderer(app->Renderer());
-
-    if (m_player && m_cameraRig)
-        m_player->InputComp().SetCameraForward(m_cameraRig->Camera().ForwardHorizontal());
-
-    // 奈落落ち復活: 床のエッジを抜けて y が一定以下に達したら初期位置に戻す。
-    if (m_player && m_player->Root().Position().y < -10.0f)
+    if (editActive)
     {
-        m_player->Root().SetPosition({0.0f, 1.0f, -4.0f});
-        m_player->Movement().ResetState();
+        if (m_editorCameraRig)
+            m_editorCameraRig->Camera().SetAspectRatioFromRenderer(app->Renderer());
+    }
+    else if (m_cameraRig)
+    {
+        m_cameraRig->Camera().SetAspectRatioFromRenderer(app->Renderer());
     }
 
-    if (m_player)
-        m_player->Root().Snapshot();
+    // Block の Snapshot は edit / play 共通 (静的 display object なので常時)
     for (auto& block : m_blocks)
         block->Root().Snapshot();
-    if (m_cameraRig)
-        m_cameraRig->Root().Snapshot();
 
-    if (m_player)
-        m_player->OnUpdate();
-    for (auto& block : m_blocks)
-        block->OnUpdate();
-    if (m_cameraRig)
-        m_cameraRig->OnUpdate();
-
-    if (m_editor.IsActive())
+    if (editActive)
     {
+        // free-fly camera を駆動
+        if (m_editorCameraRig)
+        {
+            m_editorCameraRig->Root().Snapshot();
+            m_editorCameraRig->OnUpdate();
+        }
+
         m_editor.Tick();
         if (m_editor.IsLevelDirty())
         {
@@ -177,6 +205,31 @@ void LevelEditorScene::OnUpdate()
             m_editor.ClearLevelDirty();
         }
     }
+    else
+    {
+        // Play モード時の Player / follow camera 駆動 (03-06 で本格 PlayMode 配線)
+        if (m_player && m_cameraRig)
+            m_player->InputComp().SetCameraForward(m_cameraRig->Camera().ForwardHorizontal());
+
+        if (m_player && m_player->Root().Position().y < -10.0f)
+        {
+            m_player->Root().SetPosition({0.0f, 1.0f, -4.0f});
+            m_player->Movement().ResetState();
+        }
+
+        if (m_player)
+            m_player->Root().Snapshot();
+        if (m_cameraRig)
+            m_cameraRig->Root().Snapshot();
+
+        if (m_player)
+            m_player->OnUpdate();
+        if (m_cameraRig)
+            m_cameraRig->OnUpdate();
+    }
+
+    for (auto& block : m_blocks)
+        block->OnUpdate();
 }
 
 void LevelEditorScene::OnRender()
@@ -189,26 +242,41 @@ void LevelEditorScene::OnRender()
     ctx.renderer = &app->Renderer();
     ctx.alpha = NS::App::Application::Alpha();
 
-    if (m_cameraRig == nullptr)
-        return;
+    const bool editActive = m_editor.IsActive();
+    if (editActive)
+    {
+        if (m_editorCameraRig == nullptr)
+            return;
+        ctx.viewProjection = m_editorCameraRig->Camera().ViewProjection();
+    }
+    else
+    {
+        if (m_cameraRig == nullptr)
+            return;
+        // Player Mesh の補間と camera を同位相にする。 OnUpdate (fixed step) で
+        // SetPosition すると相対位置が discrete に動いて jitter として見える。
+        m_cameraRig->Follow().ApplyCameraTransform(ctx.alpha);
+        ctx.viewProjection = m_cameraRig->Camera().ViewProjection();
+    }
 
-    // Player Mesh の補間と camera を同位相にする。 OnUpdate (fixed step) で
-    // SetPosition すると相対位置が discrete に動いて jitter として見える。
-    m_cameraRig->Follow().ApplyCameraTransform(ctx.alpha);
-
-    ctx.viewProjection = m_cameraRig->Camera().ViewProjection();
     for (NS::Scene::IRenderable* r : m_renderList)
     {
         if (r != nullptr)
             r->Draw(ctx);
     }
 
-    if (m_editor.IsActive())
+    if (editActive)
+    {
         m_editor.RenderCursorPreview();
+        // Toolbar UI を ImGui 経由で描画 (Debug / Development build のみ実機能)
+        m_editor.Palette().Render();
+    }
 }
 
 void LevelEditorScene::OnShutdown()
 {
+    if (m_editorCameraRig)
+        m_editorCameraRig->OnEndPlay();
     if (m_cameraRig)
         m_cameraRig->OnEndPlay();
     for (auto it = m_blocks.rbegin(); it != m_blocks.rend(); ++it)
@@ -221,6 +289,7 @@ void LevelEditorScene::OnShutdown()
     if (auto* app = NS::App::Application::Get())
         app->Window().SetResizeCallback({});
 
+    m_editorCameraRig.reset();
     m_cameraRig.reset();
     m_player.reset();
     m_blocks.clear();
