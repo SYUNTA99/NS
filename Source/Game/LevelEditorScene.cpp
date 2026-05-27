@@ -19,31 +19,25 @@
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/MeshComponent.h"
 #include "Framework/Scene/RenderContext.h"
+#include "Game/Editor/BlockRegistry.h"
 
 #include <algorithm>
 #include <iterator>
 
 namespace
 {
-    struct BlockDef
-    {
-        NS::Core::Vector3 position;
-        NS::Core::Vector3 halfExtents;
-    };
-
-    constexpr BlockDef kInitialLevel[] = {
-        {{0.0f, -0.5f, 0.0f}, {8.0f, 0.5f, 8.0f}},
-        {{-4.0f, 1.0f, 6.0f}, {0.5f, 1.5f, 0.5f}},
-        {{-2.0f, 1.0f, 6.0f}, {0.5f, 1.5f, 0.5f}},
-        {{0.0f, 1.0f, 6.0f}, {0.5f, 1.5f, 0.5f}},
-        {{2.0f, 1.0f, 6.0f}, {0.5f, 1.5f, 0.5f}},
-        {{4.0f, 1.0f, 6.0f}, {0.5f, 1.5f, 0.5f}},
-        {{-3.0f, 0.5f, 0.0f}, {1.0f, 0.5f, 1.0f}},
-        {{3.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
-    };
-
     constexpr NS::Core::Vector3 kPlayerColor{0.85f, 0.20f, 0.20f};
-    constexpr NS::Core::Vector3 kBlockColor{0.70f, 0.70f, 0.75f};
+    constexpr NS::Core::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
+
+    /// 編集体験の起点となる最小床。 LevelData に block 1 個 + spawn を仕込んでおく。
+    void SeedInitialLevel(NS::Game::Level::LevelData& level)
+    {
+        level.blocks.clear();
+        level.blocks.push_back({0, 0, 0, NS::Game::Editor::kBlockIdSolid, 0, 0});
+        level.spawnX = 0;
+        level.spawnY = 1;
+        level.spawnZ = 0;
+    }
 } // namespace
 
 LevelEditorScene::LevelEditorScene() = default;
@@ -107,21 +101,8 @@ void LevelEditorScene::OnStart()
     m_player->Root().SetScale({0.8f, 1.8f, 0.8f});
     m_player->MeshComp().SetBaseColor(kPlayerColor);
 
-    m_collisionWorld.clear();
-    m_collisionWorld.reserve(std::size(kInitialLevel));
-    m_blocks.reserve(std::size(kInitialLevel));
-    for (const auto& def : kInitialLevel)
-    {
-        auto block = std::make_unique<Block>(m_cubeMesh.get(), m_blockMaterial.get(), def.halfExtents);
-        block->AttachScene(this);
-        block->Root().SetPosition(def.position);
-        block->Root().SetScale({def.halfExtents.x * 2.0f, def.halfExtents.y * 2.0f, def.halfExtents.z * 2.0f});
-        block->MeshComp().SetBaseColor(kBlockColor);
-
-        m_collisionWorld.push_back(block->Collider().WorldAABB());
-        m_blocks.push_back(std::move(block));
-    }
-    m_player->Movement().SetCollisionWorld(m_collisionWorld);
+    SeedInitialLevel(m_level);
+    RebuildBlocksFromLevelData();
 
     m_cameraRig = std::make_unique<CameraRig>(&app->Input(), &m_player->Root(), &m_player->Movement());
     m_cameraRig->AttachScene(this);
@@ -134,8 +115,6 @@ void LevelEditorScene::OnStart()
     camera.SetUp({0.0f, 1.0f, 0.0f});
 
     m_player->OnStart();
-    for (auto& block : m_blocks)
-        block->OnStart();
     m_cameraRig->OnStart();
 
     // EditorMode に依存先を注入する。 mode toggle が入るまでは常時 active。
@@ -144,6 +123,8 @@ void LevelEditorScene::OnStart()
     m_editor.SetImGui(app->ImGui());
     m_editor.SetCameraComponent(&m_cameraRig->Camera());
     m_editor.SetActive(true);
+    // OnStart で手動 rebuild 済なので、 初回 OnUpdate の二重 rebuild を抑制
+    m_editor.ClearLevelDirty();
 }
 
 void LevelEditorScene::OnUpdate()
@@ -188,7 +169,14 @@ void LevelEditorScene::OnUpdate()
         m_cameraRig->OnUpdate();
 
     if (m_editor.IsActive())
+    {
         m_editor.Tick();
+        if (m_editor.IsLevelDirty())
+        {
+            RebuildBlocksFromLevelData();
+            m_editor.ClearLevelDirty();
+        }
+    }
 }
 
 void LevelEditorScene::OnRender()
@@ -260,4 +248,37 @@ void LevelEditorScene::UnregisterRenderable(NS::Scene::IRenderable* renderable)
         return;
     // erase-remove で全要素を消し、不変式 (一意性) と防御的削除を両立する。
     m_renderList.erase(std::remove(m_renderList.begin(), m_renderList.end(), renderable), m_renderList.end());
+}
+
+void LevelEditorScene::RebuildBlocksFromLevelData()
+{
+    for (auto it = m_blocks.rbegin(); it != m_blocks.rend(); ++it)
+        (*it)->OnEndPlay();
+    m_blocks.clear();
+    m_collisionWorld.clear();
+
+    m_blocks.reserve(m_level.blocks.size());
+    m_collisionWorld.reserve(m_level.blocks.size());
+
+    for (const auto& entry : m_level.blocks)
+    {
+        if (entry.blockId != NS::Game::Editor::kBlockIdSolid)
+            continue;
+
+        auto block = std::make_unique<Block>(m_cubeMesh.get(), m_blockMaterial.get(), kCellHalfExtents);
+        block->AttachScene(this);
+        block->Root().SetPosition(
+            {static_cast<float>(entry.x), static_cast<float>(entry.y), static_cast<float>(entry.z)});
+        block->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
+
+        const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
+        block->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
+        block->OnStart();
+
+        m_collisionWorld.push_back(block->Collider().WorldAABB());
+        m_blocks.push_back(std::move(block));
+    }
+
+    if (m_player)
+        m_player->Movement().SetCollisionWorld(m_collisionWorld);
 }

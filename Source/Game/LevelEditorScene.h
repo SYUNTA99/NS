@@ -54,6 +54,11 @@ public:
     [[nodiscard]] NS::Game::Editor::EditorMode& Editor() noexcept { return m_editor; }
 
 private:
+    /// `m_level.blocks` を観測駆動で見て、 `m_blocks` (Block オブジェクト群) と
+    /// `m_collisionWorld` (AABB 配列) を再構築する。 mutation 発生 frame だけ呼ばれる
+    /// dirty flag 経由の observer pattern (毎 frame の全 alloc churn を回避)。
+    void RebuildBlocksFromLevelData();
+
     std::unique_ptr<NS::Graphics::Mesh> m_cubeMesh;
     std::unique_ptr<NS::Graphics::Texture> m_texture;
     std::unique_ptr<NS::Graphics::ShaderProgram> m_shader;

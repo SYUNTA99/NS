@@ -533,6 +533,15 @@ project "Game"
         '{COPYDIR} "%{wks.location}/../Assets" "%{cfg.buildtarget.directory}/Assets"',
     }
 
+    -- Debug / Development では Editor UI (CategoryPalette 等) が直接 ImGui を呼ぶため
+    -- include path のみ通す (実体 link は UI 経由)。 Shipping 構成では gate により stub。
+    filter "configurations:Debug or Development"
+        includedirs {
+            "Source/third_party/imgui",
+            "Source/third_party/imgui/backends",
+        }
+    filter {}
+
     -- GameDebug: Game.exe のみ -O0 + symbols フル
     filter "configurations:GameDebug"
         optimize "Off"
