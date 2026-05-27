@@ -14,6 +14,10 @@
 #include "Game/Undo/PlaceCommand.h"
 #include "Game/Undo/RotateCommand.h"
 
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#include <imgui.h>
+#endif
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -62,9 +66,81 @@ namespace NS::Game::Editor
         if (!m_active || !m_cursor.valid)
             return;
 
+        // DebugDraw への蓄積は維持 (将来 GPU 描画 path が整ったら自動的に表示される)。
+        // 既存 test (CursorPreview.RendersAABBToDebugDraw) も buffered vertex を assert。
         const NS::Core::AABB placeBox(m_cursor.placementCenter,
                                       NS::Core::Vector3{kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
         NS::Graphics::DebugDraw::AABB(placeBox, m_cursor.placementBlocked ? kCursorBlockedColor : kCursorOkColor);
+
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+        // 即座に画面上で wireframe を確認できるよう、 ImGui の background DrawList に
+        // 8 頂点を view-projection で screen 投影して 12 辺を線描画する。
+        // DebugDraw::Flush の GPU 描画が未配線な間の代替手段。
+        if (m_camera == nullptr)
+            return;
+        auto* app = NS::App::Application::Get();
+        if (app == nullptr)
+            return;
+        const auto viewport = app->Window().Size();
+        if (viewport.width <= 0 || viewport.height <= 0)
+            return;
+
+        const auto vp = m_camera->ViewProjection();
+        const NS::Core::Vector3 c = m_cursor.placementCenter;
+        constexpr float h = kCellHalfExtent;
+        const NS::Core::Vector3 corners[8] = {
+            {c.x - h, c.y - h, c.z - h},
+            {c.x + h, c.y - h, c.z - h},
+            {c.x + h, c.y + h, c.z - h},
+            {c.x - h, c.y + h, c.z - h},
+            {c.x - h, c.y - h, c.z + h},
+            {c.x + h, c.y - h, c.z + h},
+            {c.x + h, c.y + h, c.z + h},
+            {c.x - h, c.y + h, c.z + h},
+        };
+
+        ImVec2 screen[8]{};
+        bool inFront[8]{};
+        for (int i = 0; i < 8; ++i)
+        {
+            const NS::Core::Vector4 worldH{corners[i].x, corners[i].y, corners[i].z, 1.0f};
+            const NS::Core::Vector4 clip = NS::Core::Vector4::Transform(worldH, vp);
+            if (clip.w <= 0.0f)
+            {
+                inFront[i] = false;
+                continue;
+            }
+            const float ndcX = clip.x / clip.w;
+            const float ndcY = clip.y / clip.w;
+            screen[i].x = (ndcX * 0.5f + 0.5f) * static_cast<float>(viewport.width);
+            screen[i].y = (1.0f - (ndcY * 0.5f + 0.5f)) * static_cast<float>(viewport.height);
+            inFront[i] = true;
+        }
+
+        static constexpr int kEdges[12][2] = {
+            {0, 1},
+            {1, 2},
+            {2, 3},
+            {3, 0},
+            {4, 5},
+            {5, 6},
+            {6, 7},
+            {7, 4},
+            {0, 4},
+            {1, 5},
+            {2, 6},
+            {3, 7},
+        };
+        const ImU32 color = m_cursor.placementBlocked ? IM_COL32(255, 64, 64, 255) : IM_COL32(64, 255, 64, 255);
+        if (ImDrawList* dl = ImGui::GetBackgroundDrawList())
+        {
+            for (const auto& e : kEdges)
+            {
+                if (inFront[e[0]] && inFront[e[1]])
+                    dl->AddLine(screen[e[0]], screen[e[1]], color, 2.0f);
+            }
+        }
+#endif
     }
 
     void EditorMode::PlaceUnderCursorProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept
