@@ -3,6 +3,10 @@
 #include "Framework/Core/Logger.h"
 #include "Game/Game.h"
 
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#include "Game/EditorLayer.h"
+#endif
+
 #include "Framework/Framework.h"
 
 #include <memory>
@@ -41,6 +45,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
     }
 
     app->AddLayer(std::make_unique<Game>());
+
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+    app->AddOverlay(std::make_unique<EditorLayer>());
+#endif
 
     return app->Run();
 }

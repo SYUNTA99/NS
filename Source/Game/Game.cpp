@@ -23,9 +23,18 @@ namespace NS::App
 
 } // namespace NS::App
 
-Game::Game() : NS::App::Layer("Game") {}
+Game* Game::s_instance = nullptr;
 
-Game::~Game() = default;
+Game::Game() : NS::App::Layer("Game")
+{
+    s_instance = this;
+}
+
+Game::~Game()
+{
+    if (s_instance == this)
+        s_instance = nullptr;
+}
 
 void Game::OnAttach()
 {
@@ -45,4 +54,11 @@ void Game::OnUpdate()
 void Game::OnRender()
 {
     m_scenes.Render();
+}
+
+LevelEditorScene* Game::CurrentLevelEditorScene() noexcept
+{
+    // 現状 NSGame の active scene は LevelEditorScene 一択。 他種 scene を後段で導入したら
+    // dynamic_cast 化を検討するが、 今は static_cast で十分。
+    return static_cast<LevelEditorScene*>(m_scenes.Current());
 }

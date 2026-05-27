@@ -15,6 +15,8 @@
 #include "Framework/App/Layer.h"
 #include "Framework/Scene/SceneManager.h"
 
+class LevelEditorScene;
+
 class Game : public NS::App::Layer
 {
 public:
@@ -31,6 +33,15 @@ public:
     void OnUpdate() override;
     void OnRender() override;
 
+    /// 現在 active な scene を `LevelEditorScene` として返す。 別 scene 型なら nullptr。
+    [[nodiscard]] LevelEditorScene* CurrentLevelEditorScene() noexcept;
+
+    /// プロセス内 single instance accessor。 EditorLayer 等が type 確定で参照するために使用。
+    /// Application::Get() ではなく Game::Get() を使う理由は、 Application が Layer を
+    /// type 不知で持つため Game 派生型を直接取得するには cast が要るから。
+    [[nodiscard]] static Game* Get() noexcept { return s_instance; }
+
 private:
     NS::Scene::SceneManager m_scenes;
+    static Game* s_instance;
 };
