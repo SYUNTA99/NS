@@ -62,8 +62,11 @@ namespace NS::Scene
         // と block が点になるため 2 ~ 30m に絞る。
         static constexpr float kMinDistance = 2.0f;
         static constexpr float kMaxDistance = 30.0f;
-        static constexpr float kPitchMin = -1.396f;  // -80°
-        static constexpr float kPitchMax = -0.0873f; // -5°
+        // 編集 free-fly camera は真上 (top-down) ~ 真下 (under-view) まで自由に振れる
+        // ようにする。 90° 直前は LookAt の up 軸と forward が平行になり gimbal lock
+        // 寸前で計算が崩れるため ±89° で clamp する。
+        static constexpr float kPitchMin = -1.553f; // -89° (scene の真下から見上げる手前)
+        static constexpr float kPitchMax = +1.553f; // +89° (scene の真上から見下ろす手前)
 
     private:
         CameraComponent* m_camera = nullptr;
@@ -80,7 +83,9 @@ namespace NS::Scene
         // 個人プロジェクト固定値。 今後 Settings UI 経由 tune 想定。
         float m_mouseSensOrbit = 0.003f;
         float m_mouseSensPan = 0.02f;
-        float m_mouseSensZoom = 0.5f;
+        // 1 wheel notch あたりの zoomDelta 倍率。 ApplyZoom が log scale なので
+        // 1.0 で 1 notch = 10% 距離変化、 2.0 で 19%、 0.5 で 5% と直感的に効く。
+        float m_mouseSensZoom = 1.0f;
         float m_padSensOrbit = 2.5f;
         float m_padSensPan = 8.0f;
         float m_padSensZoom = 4.0f;

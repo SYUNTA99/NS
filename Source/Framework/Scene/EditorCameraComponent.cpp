@@ -68,7 +68,13 @@ namespace NS::Scene
 
     void EditorCameraComponent::ApplyZoom(float zoomDelta) noexcept
     {
-        m_desiredDistance = std::clamp(m_desiredDistance + zoomDelta, kMinDistance, kMaxDistance);
+        // 加算式だと近距離で 1 notch が画面の半分を動き、 遠距離では微動にしかならず
+        // 体感の zoom が非対称になる。 距離 N に対して一定比率で動かす log scale で
+        // 対称化する (DCC tool 流)。 zoomDelta = 1 で ×0.9 (近づく)、 -1 で ÷0.9 (離れる)。
+        if (zoomDelta == 0.0f)
+            return;
+        const float factor = std::pow(0.9f, zoomDelta);
+        m_desiredDistance = std::clamp(m_desiredDistance * factor, kMinDistance, kMaxDistance);
     }
 
     NS::Core::Vector3 EditorCameraComponent::ComputeCameraPosition() const noexcept
@@ -106,8 +112,9 @@ namespace NS::Scene
                 ApplyPan(static_cast<float>(mouse.DeltaX()) * m_mouseSensPan,
                          static_cast<float>(mouse.DeltaY()) * m_mouseSensPan);
             }
-            // Wheel notch ×感度を符号反転 (forward push でズームイン)。
-            ApplyZoom(-static_cast<float>(mouse.WheelDelta()) * m_mouseSensZoom);
+            // Wheel: 1 notch (= WHEEL_DELTA 120 単位) を 1 zoomDelta に正規化。
+            // ApplyZoom が log scale なので 1 notch = 10% × m_mouseSensZoom の距離変化。
+            ApplyZoom(static_cast<float>(mouse.WheelDelta()) / 120.0f * m_mouseSensZoom);
         }
 
         // Gamepad は ImGui キャプチャ対象外、 常に入力する。
