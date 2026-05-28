@@ -373,7 +373,7 @@ void LevelEditorScene::OnRender()
 
     NS::Scene::RenderContext ctx{};
     ctx.renderer = &app->Renderer();
-    ctx.alpha = NS::App::Application::Alpha();
+    ctx.alpha = NS::Core::FrameTimer::Alpha();
 
     const bool editActive = (m_mode == Mode::Edit);
     if (editActive)

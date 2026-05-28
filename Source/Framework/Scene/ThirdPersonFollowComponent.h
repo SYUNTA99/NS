@@ -68,7 +68,7 @@ namespace NS::Scene
 
         /// 可変 frame Render 時に呼出す。 Player の補間 position に追随して
         /// camera position / target を SetPosition / SetTarget する。 alpha は
-        /// `Application::Alpha()` (= accumulator / fixedDelta) を渡す。
+        /// `NS::Core::FrameTimer::Alpha()` (= accumulator / fixedDelta) を渡す。
         /// fixed step state (yaw/pitch/distance) は OnUpdate で更新済の値を使う。
         void ApplyCameraTransform(float alpha) noexcept;
 

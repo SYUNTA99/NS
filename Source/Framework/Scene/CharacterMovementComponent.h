@@ -6,7 +6,8 @@
 ///        member として内包し、毎 OnUpdate で desired velocity と dt を渡して結果を Root に適用する。
 ///
 /// gameplay 値 (gravity / jump など) はここに保持し、CharacterController には数値計算のみを任せる
-/// ( 責任分担)。determinism 制約: OnUpdate(dt) で渡される fixed dt のみ使用、`Application::DeltaTime()` 不可。
+/// ( 責任分担)。determinism 制約: OnUpdate(dt) で渡される fixed dt のみ使用、`NS::Core::FrameTimer::DeltaSeconds()`
+/// 不可。
 
 #include "Framework/Core/Math.h"
 #include "Framework/Physics/CharacterController.h"

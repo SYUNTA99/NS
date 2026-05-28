@@ -2,6 +2,7 @@
 
 #include <Framework/App/Application.h>
 #include <Framework/App/Layer.h>
+#include <Framework/Core/Clock.h>
 #include <Framework/Core/Logger.h>
 #include <Framework/Graphics/Renderer.h>
 #include <Framework/Platform/Input.h>
@@ -65,7 +66,7 @@ namespace
         void OnDetach() override { ++counters->detachCount; }
     };
 
-    /// OnRender 中の Application::Alpha() を記録し、一定回数で Quit。
+    /// OnRender 中の Alpha を記録し、一定回数で Quit。
     class AlphaCheckLayer : public Layer
     {
     public:
@@ -80,7 +81,7 @@ namespace
         }
         void OnRender() override
         {
-            counters->lastAlpha = Application::Alpha();
+            counters->lastAlpha = NS::Core::FrameTimer::Alpha();
             ++counters->renderCount;
         }
     };
@@ -143,12 +144,9 @@ TEST_F(ApplicationLoggerTest, QuitTerminatesMainLoop)
     EXPECT_GE(counters.updateCount, 3);
 }
 
-TEST_F(ApplicationLoggerTest, StaticAccessorsAreNullWhenNoInstance)
+TEST_F(ApplicationLoggerTest, StaticAccessorsAreSafeWithoutInstance)
 {
     EXPECT_EQ(Application::Get(), nullptr);
-    EXPECT_FLOAT_EQ(Application::DeltaTime(), 0.0f);
-    EXPECT_DOUBLE_EQ(Application::Time(), 0.0);
-    EXPECT_FLOAT_EQ(Application::Alpha(), 0.0f);
     Application::Quit();
     SUCCEED();
 }

@@ -47,7 +47,7 @@ namespace NS::Scene
         /// Render 側は補間描画のみに留める。
         virtual void OnUpdate() {}
 
-        /// 可変フレーム Render。Application::Alpha() で fixed 補間係数を取得可。
+        /// 可変フレーム Render。NS::Core::FrameTimer::Alpha() で fixed 補間係数を取得可。
         virtual void OnRender() {}
 
         /// MainLoop 終了後に 1 回呼ばれる。Window/Renderer はまだ有効、Shutdown 後に解放。

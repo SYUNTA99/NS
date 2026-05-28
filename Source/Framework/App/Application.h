@@ -10,8 +10,8 @@
 /// task)。
 ///
 /// 多重起動禁止 (s_instance 単一保持で assert)。 構築失敗時は `IsValid() == false` を返し、
-/// `Run` は -1 で即終了。 Static accessor (`Get` / `Quit` / `DeltaTime` / `Time` / `Alpha`) は未構築時に
-/// nullptr / 0 を返す no-throw 設計。
+/// `Run` は -1 で即終了。 Static accessor (`Get` / `Quit`) は未構築時に nullptr を返す no-throw 設計。
+/// 時刻 / dt / alpha が必要なら `NS::Core::FrameTimer::*` を直接呼ぶ。
 
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Platform/Window.h"
@@ -52,7 +52,7 @@ namespace NS::App
     };
 
     /// Engine layer。 Subsystem (Window/Renderer/Input/Audio) を RAII 所有、 Layers で Layer 群を駆動。
-    /// Static: Get / Quit / DeltaTime / Time / Alpha でグローバルアクセサ提供。
+    /// Static: Get / Quit でグローバルアクセサ提供 (時刻系は `NS::Core::FrameTimer::*` を直接呼ぶ)。
     /// 多重起動禁止 (s_instance 単一保持で assert)。
     class Application
     {
@@ -95,12 +95,6 @@ namespace NS::App
         [[nodiscard]] static Application* Get() noexcept;
         /// 次フレームの MainLoop ループ抜け要求。Get() が nullptr の場合は no-op。
         static void Quit() noexcept;
-        /// 直近 frame の variable delta (秒)。未構築時は 0。
-        [[nodiscard]] static float DeltaTime() noexcept;
-        /// 起動からの総経過秒。未構築時は 0。
-        [[nodiscard]] static double Time() noexcept;
-        /// fixed update 間の補間係数 [0, 1)。未構築時は 0。
-        [[nodiscard]] static float Alpha() noexcept;
 
     private:
         void Init();

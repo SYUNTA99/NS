@@ -23,7 +23,7 @@ namespace NS::Scene
         NS::Graphics::Renderer* renderer = nullptr;
         /// active CameraComponent から取り出した VP 行列 (Alpha 補間済を渡す想定)。
         NS::Core::Matrix viewProjection{};
-        /// fixed step 補間係数 [0,1]。Application::Alpha() を Scene が転記。
+        /// fixed step 補間係数 [0,1]。NS::Core::FrameTimer::Alpha() を Scene が転記。
         float alpha = 1.0f;
     };
 

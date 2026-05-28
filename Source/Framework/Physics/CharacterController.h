@@ -37,7 +37,7 @@ namespace NS::Physics
     public:
         CharacterController() noexcept = default;
 
-        /// 1 frame ぶん物理を進めて新状態を返す。`Application::DeltaTime()` 等の variable delta は
+        /// 1 frame ぶん物理を進めて新状態を返す。`NS::Core::FrameTimer::DeltaSeconds()` 等の variable delta は
         /// 使わない ( Determinism 制約、SC5 担保)。
         [[nodiscard]] CharacterControllerResult Update(const CharacterControllerInput& input) noexcept;
     };

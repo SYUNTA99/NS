@@ -294,25 +294,4 @@ namespace NS::App
         s_instance->m_pImpl->quitRequested = true;
     }
 
-    float Application::DeltaTime() noexcept
-    {
-        if (s_instance == nullptr)
-            return 0.0f;
-        return NS::Core::FrameTimer::DeltaSeconds();
-    }
-
-    double Application::Time() noexcept
-    {
-        if (s_instance == nullptr)
-            return 0.0;
-        return NS::Core::FrameTimer::TotalSeconds();
-    }
-
-    float Application::Alpha() noexcept
-    {
-        if (s_instance == nullptr)
-            return 0.0f;
-        return NS::Core::FrameTimer::Alpha();
-    }
-
 } // namespace NS::App

@@ -5,7 +5,7 @@
 ///
 /// 親子関係を `SetParent` で構築し、`WorldMatrix()` で root から再計算した world 変換を返す。
 /// 前フレーム値 (`PreviousPosition` / `PreviousRotation` / `PreviousScale`) を保持し、
-/// `Snapshot()` で現在値を一括退避する。可変フレーム描画側は `Application::Alpha()` で
+/// `Snapshot()` で現在値を一括退避する。可変フレーム描画側は `NS::Core::FrameTimer::Alpha()` で
 /// previous-current を補間して jitter なしの軌道を再現する。
 
 #include "Framework/Core/Math.h"
