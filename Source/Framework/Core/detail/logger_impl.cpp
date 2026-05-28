@@ -20,11 +20,16 @@ namespace NS::Core
     {
 
         constexpr const char* kLoggerName = "ns";
-        constexpr const char* kLogFilePath = "logs/ns.log";
         constexpr std::size_t kRotatingMaxBytes = 5 * 1024 * 1024;
         constexpr std::size_t kRotatingMaxFiles = 3;
 
         std::atomic<bool> g_initialized{false};
+        // SetLogName で上書き可能なログ stem。 Init() 前に書込まれる前提で std::string、
+        // 既定値 "ns" で従来挙動を維持。
+        std::string g_logName{"ns"};
+        // 起動ごとに rotate する (Game.exe 推奨)。 Tests は SetRotateOnOpen(false) して
+        // 1 ファイル蓄積モードに切替える。 既定 false で従来挙動を維持。
+        bool g_rotateOnOpen{false};
 
         spdlog::level::level_enum ToSpdLevel(LogLevel lv)
         {
@@ -56,8 +61,11 @@ namespace NS::Core
             console->set_pattern("%H:%M:%S.%e [%^%l%$] [%n] %v");
             sinks.push_back(console);
 
+            const std::string logFilePath = "logs/" + g_logName + ".log";
+            // rotate_on_open: Game は起動ごと rotate (per-session log)、 Tests は false で
+            // 1 Tests.exe 内の test fixture の Init/Shutdown サイクルを 1 つの tests.log に蓄積。
             auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-                kLogFilePath, kRotatingMaxBytes, kRotatingMaxFiles);
+                logFilePath, kRotatingMaxBytes, kRotatingMaxFiles, g_rotateOnOpen);
             file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread:%t] [%s:%#] %v");
             sinks.push_back(file);
 
@@ -83,6 +91,20 @@ namespace NS::Core
         }
 
     } // namespace
+
+    void Logger::SetLogName(std::string_view name) noexcept
+    {
+        // 空入力は無視 (既定 "ns" のまま)。 Init() 後の呼出は既に開かれた file sink には反映
+        // されないが、 後続の Shutdown → Init の組合せで効くため state は更新しておく。
+        if (name.empty())
+            return;
+        g_logName.assign(name);
+    }
+
+    void Logger::SetRotateOnOpen(bool rotate) noexcept
+    {
+        g_rotateOnOpen = rotate;
+    }
 
     void Logger::Init() noexcept
     {

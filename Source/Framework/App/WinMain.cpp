@@ -18,7 +18,13 @@ namespace
     class LoggerScope
     {
     public:
-        LoggerScope() { ::NS::Core::Logger::Init(); }
+        LoggerScope()
+        {
+            ::NS::Core::Logger::SetLogName("game");
+            // Game は起動ごとに rotate して 1 セッション = 1 ファイル運用にする。
+            ::NS::Core::Logger::SetRotateOnOpen(true);
+            ::NS::Core::Logger::Init();
+        }
         ~LoggerScope() { ::NS::Core::Logger::Shutdown(); }
 
         LoggerScope(const LoggerScope&) = delete;

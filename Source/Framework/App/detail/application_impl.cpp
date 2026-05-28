@@ -47,6 +47,10 @@ namespace NS::App
         Layers layers;
         bool valid = false;
         bool quitRequested = false;
+        // Run() 経由の Shutdown と、 dtor 経由の Shutdown が両方走った時に OnDetach が二重に
+        // 呼ばれるのを防ぐ flag。 Window / Renderer の reset は unique_ptr で冪等だが、 Layer
+        // 側 OnDetach は副作用を持ち得るため、 ここで明示的に guard する。
+        bool shutdownCalled = false;
         std::chrono::steady_clock::time_point lastStutterWarnAt{};
     };
 
@@ -253,6 +257,10 @@ namespace NS::App
 
     void Application::Shutdown()
     {
+        if (m_pImpl->shutdownCalled)
+            return;
+        m_pImpl->shutdownCalled = true;
+
         // Layer の OnDetach は逆順 (top → bottom) で呼ぶ
         for (auto it = m_pImpl->layers.rbegin(); it != m_pImpl->layers.rend(); ++it)
             (*it)->OnDetach();

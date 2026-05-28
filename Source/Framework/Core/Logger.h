@@ -44,6 +44,17 @@ namespace NS::Core
         /// @warning シングルスレッド前提。複数スレッドからの同時呼び出しは未定義動作。
         static void Init() noexcept;
 
+        /// ログファイル名を `logs/<name>.log` 形式で指定する。 必ず `Init()` の **前** に呼ぶこと。
+        /// 後から呼んでも既に開かれた spdlog file sink には影響しない。 Game と Tests でログを
+        /// 物理分離するために使う (Game → "game"、 Tests → "tests")。 未指定なら "ns"。
+        static void SetLogName(std::string_view name) noexcept;
+
+        /// `Init()` で file sink を開く時に既存 `<name>.log` を rotate するかを切替える。
+        /// `true` (default false) で 「起動ごとに 1 ファイル」 運用 (Game 推奨)、
+        /// `false` で 「session 跨ぎ追記」 運用 (Tests 推奨、 test fixture が Init/Shutdown を
+        /// 繰り返しても 1 つの `<name>.log` に蓄積される)。 必ず `Init()` の前に呼ぶこと。
+        static void SetRotateOnOpen(bool rotate) noexcept;
+
         /// 全シンクを flush して破棄する。
         /// @warning シングルスレッド前提。Init() と並行・競合させないこと。
         static void Shutdown() noexcept;
