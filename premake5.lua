@@ -665,7 +665,8 @@ project "Tests"
         -- 非依存の純粋ロジックなので Tests project から直接 compile する。
         "Source/Game/Level/**.cpp",
         "Source/Game/Undo/**.cpp",
-        "Source/Game/Editor/**.cpp"
+        "Source/Game/Editor/**.cpp",
+        "Source/Game/Theme/**.cpp"
     }
 
     includedirs {
