@@ -57,6 +57,8 @@ void EditorLayer::OnRender()
         scene->Editor().RenderFileBrowser();
     else if (scene->Play().paused)
         RenderPauseModal(*scene);
+
+    RenderFpsOverlay();
 }
 
 void EditorLayer::HandleModeToggleInput(LevelEditorScene& scene) noexcept
@@ -103,6 +105,33 @@ void EditorLayer::HandlePauseInput(LevelEditorScene& scene) noexcept
 
     if (pPressed || backPressed)
         scene.Play().paused = !scene.Play().paused;
+}
+
+void EditorLayer::RenderFpsOverlay() noexcept
+{
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+    const auto vp = ImGui::GetMainViewport();
+    if (vp == nullptr)
+        return;
+    // 右上に padding 10px 寄せ。 pivot=(1,0) で width 不確定でも右端固定。
+    constexpr float kPadding = 10.0f;
+    ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x - kPadding, vp->WorkPos.y + kPadding),
+                            ImGuiCond_Always,
+                            ImVec2(1.0f, 0.0f));
+    ImGui::SetNextWindowBgAlpha(0.35f);
+    constexpr ImGuiWindowFlags kFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+                                        ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
+                                        ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoInputs |
+                                        ImGuiWindowFlags_AlwaysAutoResize;
+    if (ImGui::Begin("##FpsOverlay", nullptr, kFlags))
+    {
+        const ImGuiIO& io = ImGui::GetIO();
+        const float fps = io.Framerate;
+        const float ms = (fps > 0.0f) ? (1000.0f / fps) : 0.0f;
+        ImGui::Text("%.1f FPS (%.2f ms)", static_cast<double>(fps), static_cast<double>(ms));
+    }
+    ImGui::End();
+#endif
 }
 
 void EditorLayer::RenderPauseModal(LevelEditorScene& scene) noexcept
