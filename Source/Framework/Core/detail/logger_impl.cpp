@@ -1,5 +1,7 @@
 #include <Framework/Core/Logger.h>
 
+#include "Framework/Framework.h"
+
 #include <spdlog/sinks/msvc_sink.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -21,7 +23,10 @@ namespace NS::Core
 
         constexpr const char* kLoggerName = "ns";
         constexpr std::size_t kRotatingMaxBytes = 5 * 1024 * 1024;
-        constexpr std::size_t kRotatingMaxFiles = 3;
+        // spdlog の max_files は 「rotated backup の本数」 を意味するため、 current の
+        // `<name>.log` 含めて計 (kRotatingMaxFiles + 1) 個になる。 2 指定で 3 ファイル運用
+        // (`<name>.log` + `<name>.1.log` + `<name>.2.log`)。
+        constexpr std::size_t kRotatingMaxFiles = 2;
 
         std::atomic<bool> g_initialized{false};
         // SetLogName で上書き可能なログ stem。 Init() 前に書込まれる前提で std::string、
@@ -30,6 +35,43 @@ namespace NS::Core
         // 起動ごとに rotate する (Game.exe 推奨)。 Tests は SetRotateOnOpen(false) して
         // 1 ファイル蓄積モードに切替える。 既定 false で従来挙動を維持。
         bool g_rotateOnOpen{false};
+
+        /// 実行 exe の絶対ディレクトリを取得する。 取得失敗時は空 path。
+        std::filesystem::path GetExeDirectory() noexcept
+        {
+            wchar_t buffer[MAX_PATH];
+            const DWORD len = ::GetModuleFileNameW(nullptr, buffer, MAX_PATH);
+            if (len == 0 || len >= MAX_PATH)
+            {
+                return std::filesystem::path{};
+            }
+            return std::filesystem::path{buffer}.parent_path();
+        }
+
+        /// ログ出力先を絶対パスで返す。 exe ディレクトリから上位を辿って
+        /// `premake5.lua` か `.git` を見つけたらそこをリポジトリルートとみなし、
+        /// `<root>/logs/` を返す。 build 配下にログが散らばらないようにする狙い。
+        /// shipping 配布 (リポルート無し) では fallback として exe 同階層の `logs/`。
+        std::filesystem::path GetLogsDirectory() noexcept
+        {
+            const auto exeDir = GetExeDirectory();
+            if (exeDir.empty())
+                return std::filesystem::path{};
+
+            for (auto dir = exeDir; !dir.empty();)
+            {
+                std::error_code ec;
+                if (std::filesystem::exists(dir / "premake5.lua", ec) || std::filesystem::exists(dir / ".git", ec))
+                {
+                    return dir / "logs";
+                }
+                auto parent = dir.parent_path();
+                if (parent == dir)
+                    break;
+                dir = parent;
+            }
+            return exeDir / "logs";
+        }
 
         spdlog::level::level_enum ToSpdLevel(LogLevel lv)
         {
@@ -61,7 +103,9 @@ namespace NS::Core
             console->set_pattern("%H:%M:%S.%e [%^%l%$] [%n] %v");
             sinks.push_back(console);
 
-            const std::string logFilePath = "logs/" + g_logName + ".log";
+            const auto logsDir = GetLogsDirectory();
+            const std::string logFilePath =
+                logsDir.empty() ? ("logs/" + g_logName + ".log") : (logsDir / (g_logName + ".log")).string();
             // rotate_on_open: Game は起動ごと rotate (per-session log)、 Tests は false で
             // 1 Tests.exe 内の test fixture の Init/Shutdown サイクルを 1 つの tests.log に蓄積。
             auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
@@ -115,9 +159,12 @@ namespace NS::Core
 
         try
         {
-            // 新環境でも初回起動でファイル sink が失敗しないように logs/ を作成しておく
+            // 新環境でも初回起動でファイル sink が失敗しないように logs/ を作成しておく。
+            // リポジトリルート (premake5.lua / .git アンカー検出) 直下の logs/ を優先、
+            // 検出失敗時は exe 同階層に fallback して CWD 依存の散らばりを防ぐ。
             std::error_code ec;
-            std::filesystem::create_directories("logs", ec);
+            const auto logsDir = GetLogsDirectory();
+            std::filesystem::create_directories(logsDir.empty() ? std::filesystem::path{"logs"} : logsDir, ec);
 
             auto sinks = BuildSinks();
             auto logger = std::make_shared<spdlog::logger>(kLoggerName, sinks.begin(), sinks.end());
