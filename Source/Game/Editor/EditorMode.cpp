@@ -9,6 +9,8 @@
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Editor/AutoTile.h"
 #include "Game/Editor/BlockRegistry.h"
+#include "Game/Editor/LevelFilePaths.h"
+#include "Game/Level/ChunkIO.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Undo/DeleteCommand.h"
 #include "Game/Undo/PlaceCommand.h"
@@ -58,7 +60,78 @@ namespace NS::Game::Editor
         HandleRotationInput();
         HandleSpawnInput();
         HandleUndoRedoInput();
+        HandleSaveLoadInput();
         m_palette.TickInput(m_input, m_imgui);
+    }
+
+    void EditorMode::HandleSaveLoadInput() noexcept
+    {
+        if (m_input == nullptr)
+            return;
+        const bool wantKb = (m_imgui != nullptr) && m_imgui->WantCaptureKeyboard();
+        if (wantKb)
+            return;
+
+        const auto& kb = m_input->Keyboard();
+        if (!kb.IsHeld(NS::Platform::Key::Ctrl))
+            return;
+        if (kb.IsPressed(NS::Platform::Key::S))
+            m_fileBrowser.OpenSaveModal();
+        if (kb.IsPressed(NS::Platform::Key::O))
+            m_fileBrowser.OpenLoadModal();
+    }
+
+    void EditorMode::RenderFileBrowser() noexcept
+    {
+        if (m_level == nullptr)
+            return;
+        const auto result = m_fileBrowser.Render();
+        switch (result.action)
+        {
+        case LevelFileBrowser::Action::RequestSave:
+        {
+            auto path = BuildLevelPath(result.targetName);
+            if (!path)
+            {
+                m_fileBrowser.NotifySaveResult(false, "不正な level name");
+                break;
+            }
+            // 失敗時は SaveLevelToFile 側でも write が失敗して NS_LOG_ERROR が出るので、 ここでは
+            // 結果を保持せず本体の Save を試みる方が message を 1 本にまとめられる。
+            (void)EnsureLevelsDirectoryExists();
+            const bool ok = NS::Game::Level::SaveLevelToFile(*m_level, *path);
+            m_fileBrowser.NotifySaveResult(ok, ok ? "保存成功" : "保存失敗");
+            break;
+        }
+        case LevelFileBrowser::Action::RequestLoad:
+        {
+            auto path = BuildLevelPath(result.targetName);
+            if (!path)
+            {
+                m_fileBrowser.NotifyLoadResult(false, "不正な level name");
+                break;
+            }
+            NS::Game::Level::LevelData fresh;
+            const bool ok = NS::Game::Level::LoadLevelFromFile(fresh, *path);
+            if (ok)
+            {
+                // 新 level open で UndoStack 履歴は破棄 (古い level 用 Command が
+                // 別 LevelData を pointer で持つため、 そのまま undo すると use-after-free 的 mismatch)。
+                *m_level = std::move(fresh);
+                m_undo.Clear();
+                m_levelDirty = true;
+                m_fileBrowser.NotifyLoadResult(true, "読込成功");
+            }
+            else
+            {
+                m_fileBrowser.NotifyLoadResult(false, "読込失敗 (破損 or version 不一致)");
+            }
+            break;
+        }
+        case LevelFileBrowser::Action::None:
+        default:
+            break;
+        }
     }
 
     void EditorMode::RenderCursorPreview() noexcept

@@ -11,6 +11,7 @@
 
 #include "Framework/Core/Math.h"
 #include "Game/Editor/CategoryPalette.h"
+#include "Game/Editor/LevelFileBrowser.h"
 #include "Game/Undo/UndoStack.h"
 
 #include <cstdint>
@@ -101,6 +102,16 @@ namespace NS::Game::Editor
         /// テスト経路で cursor 状態を直接注入する。 Tick を呼ばずに RenderCursorPreview を検証する用途。
         void SetCursorForTest(const CursorState& state) noexcept { m_cursor = state; }
 
+        /// Ctrl+S / Ctrl+O の edge を検出して file browser modal を開く。 Tick 末尾から呼ばれる。
+        /// ImGui がキーボードを掴んでいる時 (テキスト入力 focus 中) は無視する。
+        void HandleSaveLoadInput() noexcept;
+
+        /// EditorLayer::OnRender から呼ぶ。 modal の描画 + OK 押下時の SaveLevelToFile /
+        /// LoadLevelFromFile 実行 + UndoStack の clear (新 level open 時) を担う。
+        void RenderFileBrowser() noexcept;
+
+        [[nodiscard]] LevelFileBrowser& FileBrowser() noexcept { return m_fileBrowser; }
+
     private:
         NS::Game::Level::LevelData* m_level = nullptr;
         NS::Platform::Input* m_input = nullptr;
@@ -114,6 +125,7 @@ namespace NS::Game::Editor
         CursorState m_cursor{};
         CategoryPalette m_palette{};
         NS::Game::Undo::UndoStack m_undo;
+        LevelFileBrowser m_fileBrowser{};
 
         void UpdateCursorFromInput() noexcept;
         void HandlePlaceDeleteInput() noexcept;

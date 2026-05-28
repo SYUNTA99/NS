@@ -53,7 +53,9 @@ void EditorLayer::OnRender()
     if (scene == nullptr)
         return;
 
-    if (scene->CurrentMode() == LevelEditorScene::Mode::Play && scene->Play().paused)
+    if (scene->CurrentMode() == LevelEditorScene::Mode::Edit)
+        scene->Editor().RenderFileBrowser();
+    else if (scene->Play().paused)
         RenderPauseModal(*scene);
 }
 
