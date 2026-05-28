@@ -19,9 +19,10 @@ TEST(PlayMode, EnterInitializesPlayerAtSpawn)
 
     mode.Enter(lv, play);
 
-    EXPECT_NEAR(play.playerPosition.x, 5.5f, 1e-4f);
-    EXPECT_NEAR(play.playerPosition.y, 3.0f, 1e-4f);
-    EXPECT_NEAR(play.playerPosition.z, 3.5f, 1e-4f);
+    EXPECT_NEAR(play.playerPosition.x, 5.0f, 1e-4f);
+    // y は spawn セル底面 + (capsule halfHeight + radius) + 1cm lift = spawnY + 0.41。
+    EXPECT_NEAR(play.playerPosition.y, 2.41f, 1e-3f);
+    EXPECT_NEAR(play.playerPosition.z, 3.0f, 1e-4f);
     EXPECT_EQ(play.coinCount, 0);
     EXPECT_FALSE(play.paused);
     EXPECT_FALSE(play.deathTriggered);
@@ -64,7 +65,8 @@ TEST(PlayMode, CoinContactIncrementsCounter)
     lv.spawnX = 0;
     lv.spawnY = 0;
     lv.spawnZ = 0;
-    lv.blocks.push_back({0, 1, 0, EditorNs::kBlockIdCoin, 0, 0});
+    // player の spawn セル中心と同じ位置に coin を置くと中心距離 0 で必ず pickup。
+    lv.blocks.push_back({0, 0, 0, EditorNs::kBlockIdCoin, 0, 0});
 
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;
@@ -84,7 +86,7 @@ TEST(PlayMode, PowerStarTriggersClear)
     lv.spawnX = 0;
     lv.spawnY = 0;
     lv.spawnZ = 0;
-    lv.blocks.push_back({0, 1, 0, EditorNs::kBlockIdPowerStar, 0, 0});
+    lv.blocks.push_back({0, 0, 0, EditorNs::kBlockIdPowerStar, 0, 0});
 
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;

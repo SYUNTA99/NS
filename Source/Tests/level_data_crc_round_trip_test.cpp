@@ -45,7 +45,7 @@ TEST(PlayModeCrc, RoundTripWithCoinCollectionPreservesLevelData)
     level.spawnX = 0;
     level.spawnY = 0;
     level.spawnZ = 0;
-    level.blocks.push_back({0, 1, 0, EditorNs::kBlockIdCoin, 0, 0});
+    level.blocks.push_back({0, 0, 0, EditorNs::kBlockIdCoin, 0, 0});
     const std::uint32_t before = level.ComputeCrc32();
 
     LevelNs::PlayState play;
@@ -67,7 +67,7 @@ TEST(PlayModeCrc, RoundTripWithStarContactPreservesLevelData)
     level.spawnX = 0;
     level.spawnY = 0;
     level.spawnZ = 0;
-    level.blocks.push_back({0, 1, 0, EditorNs::kBlockIdPowerStar, 0, 0});
+    level.blocks.push_back({0, 0, 0, EditorNs::kBlockIdPowerStar, 0, 0});
     const std::uint32_t before = level.ComputeCrc32();
 
     LevelNs::PlayState play;

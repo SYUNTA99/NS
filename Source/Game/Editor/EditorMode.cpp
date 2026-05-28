@@ -1,6 +1,7 @@
 #include "Game/Editor/EditorMode.h"
 
 #include "Framework/App/Application.h"
+#include "Framework/Core/Clock.h"
 #include "Framework/Graphics/DebugDraw.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Window.h"
@@ -61,6 +62,16 @@ namespace NS::Game::Editor
         HandleUndoRedoInput();
         HandleSaveLoadInput();
         m_palette.TickInput(m_input, m_imgui);
+
+        // 表示用 yaw quaternion を「現在の cursor rotation」 に Slerp で寄せる。
+        // R 押下で m_currentRotation が瞬時に進んでも、 ここで滑らかに追従させて回転方向を視覚化する。
+        constexpr float kQuarterTurn = 1.5707963267948966f;
+        const auto targetQuat = NS::Core::Quaternion::CreateFromAxisAngle(
+            {0.0f, 1.0f, 0.0f}, static_cast<float>(m_currentRotation) * kQuarterTurn);
+        constexpr float kRotationSpringRate = 12.0f;
+        const float dt = NS::Core::FrameTimer::FixedDelta();
+        const float t = std::min(1.0f, kRotationSpringRate * dt);
+        m_displayedYawQuat = NS::Core::Quaternion::Slerp(m_displayedYawQuat, targetQuat, t);
     }
 
     void EditorMode::HandleSaveLoadInput() noexcept
@@ -160,16 +171,27 @@ namespace NS::Game::Editor
         const auto vp = m_camera->ViewProjection();
         const NS::Core::Vector3 c = m_cursor.placementCenter;
         constexpr float h = kCellHalfExtent;
-        const NS::Core::Vector3 corners[8] = {
-            {c.x - h, c.y - h, c.z - h},
-            {c.x + h, c.y - h, c.z - h},
-            {c.x + h, c.y + h, c.z - h},
-            {c.x - h, c.y + h, c.z - h},
-            {c.x - h, c.y - h, c.z + h},
-            {c.x + h, c.y - h, c.z + h},
-            {c.x + h, c.y + h, c.z + h},
-            {c.x - h, c.y + h, c.z + h},
+
+        // 局所 8 頂点を m_displayedYawQuat で回転させて世界座標に持ち上げる。
+        // 1m cube 自体は 90° 対称で形状からは向きが見えないが、 Slerp 結果は内部 yaw データに
+        // 反映され、 将来非対称な block 形状が入った時に自然に見えるようになる。
+        const NS::Core::Vector3 localCorners[8] = {
+            {-h, -h, -h},
+            {+h, -h, -h},
+            {+h, +h, -h},
+            {-h, +h, -h},
+            {-h, -h, +h},
+            {+h, -h, +h},
+            {+h, +h, +h},
+            {-h, +h, +h},
         };
+
+        NS::Core::Vector3 corners[8];
+        for (int i = 0; i < 8; ++i)
+        {
+            const auto rotated = NS::Core::Vector3::Transform(localCorners[i], m_displayedYawQuat);
+            corners[i] = NS::Core::Vector3{c.x + rotated.x, c.y + rotated.y, c.z + rotated.z};
+        }
 
         ImVec2 screen[8]{};
         bool inFront[8]{};
@@ -203,13 +225,13 @@ namespace NS::Game::Editor
             {2, 6},
             {3, 7},
         };
-        const ImU32 color = m_cursor.placementBlocked ? IM_COL32(255, 64, 64, 255) : IM_COL32(64, 255, 64, 255);
+        const ImU32 cubeColor = m_cursor.placementBlocked ? IM_COL32(255, 64, 64, 255) : IM_COL32(64, 255, 64, 255);
         if (ImDrawList* dl = ImGui::GetBackgroundDrawList())
         {
             for (const auto& e : kEdges)
             {
                 if (inFront[e[0]] && inFront[e[1]])
-                    dl->AddLine(screen[e[0]], screen[e[1]], color, 2.0f);
+                    dl->AddLine(screen[e[0]], screen[e[1]], cubeColor, 2.0f);
             }
         }
 #endif
@@ -218,6 +240,12 @@ namespace NS::Game::Editor
     void EditorMode::RenderSpawnMarker() noexcept
     {
         if (!m_active || m_level == nullptr)
+            return;
+
+        // カーソルが spawn セルに乗っている時は cursor preview と完全に重なるので、 描画を譲って
+        // 黄色とそれ以外が滲む (アンチエイリアス境界 + 描画順依存) 問題を避ける。
+        if (m_cursor.valid && m_cursor.placeX == m_level->spawnX && m_cursor.placeY == m_level->spawnY &&
+            m_cursor.placeZ == m_level->spawnZ)
             return;
 
         const NS::Core::Vector3 center{static_cast<float>(m_level->spawnX),
@@ -385,17 +413,27 @@ namespace NS::Game::Editor
 
         if (hit)
         {
-            const auto placeCenter = NS::Scene::EditorGridMath::SnapHitToPlacementCell(hitPoint, hitNormal);
+            // 隣接セルは「hit セル座標 + 整数 normal」 で素直に求める。
+            // SnapHitToPlacementCell 経由だと、 境界座標 (hit.y=0.5 等) を最近接 cell に round
+            // する時に +1 され、 さらに normal*g で +1 されて 2 セル先に飛んでしまう pitfall がある。
+            const std::int16_t normalX = static_cast<std::int16_t>(std::lround(hitNormal.x));
+            const std::int16_t normalY = static_cast<std::int16_t>(std::lround(hitNormal.y));
+            const std::int16_t normalZ = static_cast<std::int16_t>(std::lround(hitNormal.z));
+            const std::int16_t placeX = static_cast<std::int16_t>(hitX + normalX);
+            const std::int16_t placeY = static_cast<std::int16_t>(hitY + normalY);
+            const std::int16_t placeZ = static_cast<std::int16_t>(hitZ + normalZ);
+
             m_cursor.valid = true;
             m_cursor.hitX = hitX;
             m_cursor.hitY = hitY;
             m_cursor.hitZ = hitZ;
             m_cursor.deleteCenter =
                 NS::Core::Vector3{static_cast<float>(hitX), static_cast<float>(hitY), static_cast<float>(hitZ)};
-            m_cursor.placementCenter = placeCenter;
-            m_cursor.placeX = RoundToCell(placeCenter.x);
-            m_cursor.placeY = RoundToCell(placeCenter.y);
-            m_cursor.placeZ = RoundToCell(placeCenter.z);
+            m_cursor.placementCenter =
+                NS::Core::Vector3{static_cast<float>(placeX), static_cast<float>(placeY), static_cast<float>(placeZ)};
+            m_cursor.placeX = placeX;
+            m_cursor.placeY = placeY;
+            m_cursor.placeZ = placeZ;
             m_cursor.hitNormal = hitNormal;
             m_cursor.placementBlocked = HasBlockAtCell(*m_level, m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
             return;

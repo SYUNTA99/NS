@@ -21,10 +21,18 @@ namespace NS::Game::Level
 
     void PlayMode::Enter(const LevelData& level, PlayState& play) noexcept
     {
-        // spawn セル中心の床上に立たせる。 y は cell 1 つ分上に出して block 上面に着地。
-        play.playerPosition = {static_cast<float>(level.spawnX) + 0.5f,
-                               static_cast<float>(level.spawnY) + 1.0f,
-                               static_cast<float>(level.spawnZ) + 0.5f};
+        // capsule 縦総長 = (halfHeight + radius) × 2 = 1.8m で 1m cell より大きい。
+        // cell 中心に置くと直下ブロックに 0.4m 深くめり込み、 controller の swept 衝突が
+        // toi=0 を返し続けて horizontal motion も止まる (= 操作不能) ので、 capsule の底端を
+        // spawn セルの底面 (= 直下にブロックがあればその上面) に乗せる位置に center を置く。
+        //
+        // さらに 1cm 浮かせて、 浮動小数誤差で feet がブロック上面と完全一致した時にも
+        // 1tick 目の gravity が確実に着地させる安全マージンを取る。
+        constexpr float kCellHalfExtent = 0.5f;
+        constexpr float kSpawnLiftEpsilon = 0.01f;
+        const float playerCenterY = static_cast<float>(level.spawnY) - kCellHalfExtent + kPlayerCapsuleHalfHeight +
+                                    kPlayerCapsuleRadius + kSpawnLiftEpsilon;
+        play.playerPosition = {static_cast<float>(level.spawnX), playerCenterY, static_cast<float>(level.spawnZ)};
         play.playerVelocity = {0.0f, 0.0f, 0.0f};
         play.coinCount = 0;
         play.remainingSeconds = static_cast<float>(level.timeLimitSeconds);

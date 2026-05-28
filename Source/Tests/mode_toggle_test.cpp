@@ -90,7 +90,8 @@ TEST(ModeToggle, EnterPlayInitializesPlayStateAtSpawn)
     scene.Level().spawnZ = -4;
     scene.EnterPlay();
 
-    EXPECT_NEAR(scene.Play().playerPosition.x, 7.5f, 1e-4f);
-    EXPECT_NEAR(scene.Play().playerPosition.y, 3.0f, 1e-4f);
-    EXPECT_NEAR(scene.Play().playerPosition.z, -3.5f, 1e-4f);
+    EXPECT_NEAR(scene.Play().playerPosition.x, 7.0f, 1e-4f);
+    // y は spawn セル底面 + (capsule halfHeight + radius) + 1cm lift = spawnY + 0.41。
+    EXPECT_NEAR(scene.Play().playerPosition.y, 2.41f, 1e-3f);
+    EXPECT_NEAR(scene.Play().playerPosition.z, -4.0f, 1e-4f);
 }

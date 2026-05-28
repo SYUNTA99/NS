@@ -131,6 +131,11 @@ namespace NS::Game::Editor
         NS::Game::Undo::UndoStack m_undo;
         LevelFileBrowser m_fileBrowser{};
 
+        /// カーソル preview / 配置プレビューに使う「表示中の回転」 (Y 軸 yaw)。
+        /// R キーで `m_currentRotation` が即時切替わっても、 本値は Slerp で滑らかに追従し
+        /// 回転方向を視覚的に把握できるようにする。 物理 / 配置データには影響しない (表示専用)。
+        NS::Core::Quaternion m_displayedYawQuat{NS::Core::Quaternion::Identity};
+
         void UpdateCursorFromInput() noexcept;
         void HandlePlaceDeleteInput() noexcept;
         void HandleRotationInput() noexcept;
