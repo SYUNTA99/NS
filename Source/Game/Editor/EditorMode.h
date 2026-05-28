@@ -79,6 +79,10 @@ namespace NS::Game::Editor
         /// variable frame で cursor preview の `DebugDraw::AABB` を 1 frame 分蓄積する。
         void RenderCursorPreview() noexcept;
 
+        /// LevelData.spawnX/Y/Z の位置に常時表示する 1m wireframe (黄色)。
+        /// 編集モードで spawn を視覚的に把握できるようにする。 カーソル preview と独立。
+        void RenderSpawnMarker() noexcept;
+
         [[nodiscard]] const NS::Game::Undo::UndoStack& Undo() const noexcept { return m_undo; }
         [[nodiscard]] NS::Game::Undo::UndoStack& Undo() noexcept { return m_undo; }
 
@@ -130,7 +134,6 @@ namespace NS::Game::Editor
         void UpdateCursorFromInput() noexcept;
         void HandlePlaceDeleteInput() noexcept;
         void HandleRotationInput() noexcept;
-        void HandleSpawnInput() noexcept;
         void HandleUndoRedoInput() noexcept;
     };
 } // namespace NS::Game::Editor

@@ -400,6 +400,7 @@ void LevelEditorScene::OnRender()
 
     if (editActive)
     {
+        m_editor.RenderSpawnMarker();
         m_editor.RenderCursorPreview();
         // Toolbar UI を ImGui 経由で描画 (Debug / Development build のみ実機能)
         m_editor.Palette().Render();

@@ -58,7 +58,6 @@ namespace NS::Game::Editor
         UpdateCursorFromInput();
         HandlePlaceDeleteInput();
         HandleRotationInput();
-        HandleSpawnInput();
         HandleUndoRedoInput();
         HandleSaveLoadInput();
         m_palette.TickInput(m_input, m_imgui);
@@ -216,6 +215,85 @@ namespace NS::Game::Editor
 #endif
     }
 
+    void EditorMode::RenderSpawnMarker() noexcept
+    {
+        if (!m_active || m_level == nullptr)
+            return;
+
+        const NS::Core::Vector3 center{static_cast<float>(m_level->spawnX),
+                                       static_cast<float>(m_level->spawnY),
+                                       static_cast<float>(m_level->spawnZ)};
+        const NS::Core::AABB marker(center, NS::Core::Vector3{kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
+        const NS::Core::Color spawnColor{1.0f, 0.85f, 0.10f, 1.0f};
+        NS::Graphics::DebugDraw::AABB(marker, spawnColor);
+
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+        if (m_camera == nullptr)
+            return;
+        auto* app = NS::App::Application::Get();
+        if (app == nullptr)
+            return;
+        const auto viewport = app->Window().Size();
+        if (viewport.width <= 0 || viewport.height <= 0)
+            return;
+
+        const auto vp = m_camera->ViewProjection();
+        constexpr float h = kCellHalfExtent;
+        const NS::Core::Vector3 corners[8] = {
+            {center.x - h, center.y - h, center.z - h},
+            {center.x + h, center.y - h, center.z - h},
+            {center.x + h, center.y + h, center.z - h},
+            {center.x - h, center.y + h, center.z - h},
+            {center.x - h, center.y - h, center.z + h},
+            {center.x + h, center.y - h, center.z + h},
+            {center.x + h, center.y + h, center.z + h},
+            {center.x - h, center.y + h, center.z + h},
+        };
+
+        ImVec2 screen[8]{};
+        bool inFront[8]{};
+        for (int i = 0; i < 8; ++i)
+        {
+            const NS::Core::Vector4 worldH{corners[i].x, corners[i].y, corners[i].z, 1.0f};
+            const NS::Core::Vector4 clip = NS::Core::Vector4::Transform(worldH, vp);
+            if (clip.w <= 0.0f)
+            {
+                inFront[i] = false;
+                continue;
+            }
+            const float ndcX = clip.x / clip.w;
+            const float ndcY = clip.y / clip.w;
+            screen[i].x = (ndcX * 0.5f + 0.5f) * static_cast<float>(viewport.width);
+            screen[i].y = (1.0f - (ndcY * 0.5f + 0.5f)) * static_cast<float>(viewport.height);
+            inFront[i] = true;
+        }
+
+        static constexpr int kEdges[12][2] = {
+            {0, 1},
+            {1, 2},
+            {2, 3},
+            {3, 0},
+            {4, 5},
+            {5, 6},
+            {6, 7},
+            {7, 4},
+            {0, 4},
+            {1, 5},
+            {2, 6},
+            {3, 7},
+        };
+        const ImU32 color = IM_COL32(255, 220, 0, 255);
+        if (ImDrawList* dl = ImGui::GetBackgroundDrawList())
+        {
+            for (const auto& e : kEdges)
+            {
+                if (inFront[e[0]] && inFront[e[1]])
+                    dl->AddLine(screen[e[0]], screen[e[1]], color, 2.0f);
+            }
+        }
+#endif
+    }
+
     void EditorMode::PlaceUnderCursorProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept
     {
         if (m_level == nullptr)
@@ -349,10 +427,23 @@ namespace NS::Game::Editor
         if (m_imgui != nullptr && m_imgui->WantCaptureMouse())
             return;
 
+        const std::uint16_t currentId = m_palette.CurrentBlockId();
+        const bool spawnSlotActive = (currentId == kBlockIdSpawn);
+
         auto& mouse = m_input->Mouse();
-        if (mouse.IsPressed(NS::Platform::MouseButton::Left) && !m_cursor.placementBlocked)
+        if (mouse.IsPressed(NS::Platform::MouseButton::Left))
         {
-            PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
+            if (spawnSlotActive)
+            {
+                // Spawn は世界に 1 点しか持てない marker。 LevelData.spawnX/Y/Z を上書きするだけで
+                // BlockEntry は積まない。 既存ブロックの上でも下でも、 ボタンを押した瞬間の cursor
+                // placement cell を spawn 候補とする。
+                SetSpawnAtProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
+            }
+            else if (!m_cursor.placementBlocked)
+            {
+                PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
+            }
         }
         if (mouse.IsPressed(NS::Platform::MouseButton::Right) &&
             HasBlockAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
@@ -364,8 +455,13 @@ namespace NS::Game::Editor
         if (!gp.IsConnected())
             return;
 
-        if (gp.IsPressed(NS::Platform::GamepadButton::A) && !m_cursor.placementBlocked)
-            PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
+        if (gp.IsPressed(NS::Platform::GamepadButton::A))
+        {
+            if (spawnSlotActive)
+                SetSpawnAtProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
+            else if (!m_cursor.placementBlocked)
+                PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
+        }
         if (gp.IsPressed(NS::Platform::GamepadButton::B) &&
             HasBlockAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
             DeleteAtProgrammatic(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
@@ -394,17 +490,6 @@ namespace NS::Game::Editor
             // 既存 block がなければ「次に置く block の rotation」 を進めるだけ (LevelData は変えない)
             m_currentRotation = static_cast<std::uint8_t>((m_currentRotation + 1) & 0x03);
         }
-    }
-
-    void EditorMode::HandleSpawnInput() noexcept
-    {
-        if (m_input == nullptr || m_level == nullptr || !m_cursor.valid)
-            return;
-        if (m_imgui != nullptr && m_imgui->WantCaptureKeyboard())
-            return;
-
-        if (m_input->Keyboard().IsPressed(NS::Platform::Key::G))
-            SetSpawnAtProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
     }
 
     void EditorMode::HandleUndoRedoInput() noexcept
