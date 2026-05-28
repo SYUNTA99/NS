@@ -19,8 +19,9 @@ namespace NS::Graphics
 
 namespace NS::Scene
 {
-    /// HLSL standard FrameCB と完全一致 (sizeof=160、16 byte 倍数)。
+    /// HLSL standard FrameCB と完全一致 (sizeof=192、 16 byte 倍数)。
     /// Material::SetParams に渡す per-draw constant buffer。
+    /// lightColor / ambientColor は ThemeRegistry::Get(level.themeId) から毎フレーム流し込む。
     struct alignas(16) FrameCB
     {
         NS::Core::Matrix world{};
@@ -29,8 +30,12 @@ namespace NS::Scene
         float pad0 = 0.0f;
         NS::Core::Vector3 baseColor{1.0f, 1.0f, 1.0f};
         float pad1 = 0.0f;
+        NS::Core::Vector3 lightColor{1.0f, 1.0f, 1.0f};
+        float pad2 = 0.0f;
+        NS::Core::Vector3 ambientColor{0.2f, 0.2f, 0.2f};
+        float pad3 = 0.0f;
     };
-    static_assert(sizeof(FrameCB) == 160, "FrameCB size は HLSL standard と完全一致 (160 byte)");
+    static_assert(sizeof(FrameCB) == 192, "FrameCB size は HLSL standard と完全一致 (192 byte)");
     static_assert(alignof(FrameCB) == 16, "FrameCB は 16 byte alignment ()");
 
     class MeshComponent : public Component, public IRenderable
@@ -46,6 +51,10 @@ namespace NS::Scene
         void SetLightDirection(const NS::Core::Vector3& dir) noexcept { m_lightDir = dir; }
         /// Material instance ごとの色味 (Player=赤系 / Block=灰色系の色分け)。
         void SetBaseColor(const NS::Core::Vector3& color) noexcept { m_baseColor = color; }
+        /// テーマ駆動 sun color (ThemeData::lightColor)。 LevelEditorScene が毎フレーム流す。
+        void SetLightColor(const NS::Core::Vector3& color) noexcept { m_lightColor = color; }
+        /// テーマ駆動 ambient color (ThemeData::ambientColor)。 LevelEditorScene が毎フレーム流す。
+        void SetAmbientColor(const NS::Core::Vector3& color) noexcept { m_ambientColor = color; }
 
         /// IRenderable: Alpha 補間後の world matrix を FrameCB に詰めて 1 描画呼出。
         /// IsActive() == false なら no-op。
@@ -63,5 +72,7 @@ namespace NS::Scene
         NS::Graphics::Material* m_material = nullptr;
         NS::Core::Vector3 m_lightDir{-0.3f, -1.0f, -0.2f};
         NS::Core::Vector3 m_baseColor{1.0f, 1.0f, 1.0f};
+        NS::Core::Vector3 m_lightColor{1.0f, 1.0f, 1.0f};
+        NS::Core::Vector3 m_ambientColor{0.2f, 0.2f, 0.2f};
     };
 } // namespace NS::Scene

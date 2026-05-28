@@ -51,6 +51,8 @@ namespace NS::Scene
             cb.lightDir = NS::Core::Vector3{-0.3f, -1.0f, -0.2f};
         cb.lightDir.Normalize();
         cb.baseColor = m_baseColor;
+        cb.lightColor = m_lightColor;
+        cb.ambientColor = m_ambientColor;
 
         m_material->SetParams(cb);
         m_material->Bind();

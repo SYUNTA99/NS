@@ -10,6 +10,7 @@
 #include "Game/Level/PlayState.h"
 
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <vector>
 
@@ -103,4 +104,9 @@ private:
     NS::Game::Editor::EditorMode m_editor{};
     NS::Game::Level::PlayMode m_playMode{};
     Mode m_mode = Mode::Edit;
+
+    /// テーマ swap は同一 frame 内で skybox / block / lighting に同じ ThemeData を反映させる必要がある。
+    /// 同じパスを毎フレーム LoadCubemap し直すと texture I/O が走るので、 最後にロードした絶対パスを
+    /// 記憶しておき、 ThemeRegistry::Get(...).skyboxCubemapPath と差分が出たフレームだけ Reload する。
+    std::filesystem::path m_loadedSkyboxPath{};
 };

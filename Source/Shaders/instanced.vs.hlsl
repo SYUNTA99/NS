@@ -11,6 +11,10 @@ cbuffer FrameCB : register(b0)
     float  pad0;
     float3 baseColor;             // material からの全体色、 per-instance baseColor と乗算する
     float  pad1;
+    float3 g_lightColor;          // テーマ駆動 sun color (PS 側で使う、 VS は素通し)
+    float  pad2;
+    float3 g_ambientColor;        // テーマ駆動 ambient (PS 側で使う、 VS は素通し)
+    float  pad3;
 };
 
 struct VSIn

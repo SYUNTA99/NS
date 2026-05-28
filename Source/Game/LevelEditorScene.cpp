@@ -24,6 +24,7 @@
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Editor/BlockRegistry.h"
+#include "Game/Theme/ThemeRegistry.h"
 
 #include <algorithm>
 #include <cmath>
@@ -409,6 +410,27 @@ void LevelEditorScene::OnRender()
         ctx.viewProjection = m_cameraRig->Camera().ViewProjection();
     }
 
+    // テーマ swap は同一 frame 内で skybox / block / lighting に同じ ThemeData を反映させる必要がある。
+    // 範囲外 themeId は ThemeRegistry::Get 側で Grass にフォールバックされる。
+    const ThemeData& theme = ThemeRegistry::Get(m_level.themeId);
+
+    // 全 IRenderable に同じ theme の sun direction / lightColor / ambientColor を反映する。
+    // Player の赤系 baseColor 等の個体色は MeshComponent::SetBaseColor で別途設定済なので触らない。
+    for (auto& block : m_blocks)
+    {
+        auto& mesh = block->MeshComp();
+        mesh.SetLightDirection(theme.lightDirection);
+        mesh.SetLightColor(theme.lightColor);
+        mesh.SetAmbientColor(theme.ambientColor);
+    }
+    if (m_player)
+    {
+        auto& mesh = m_player->MeshComp();
+        mesh.SetLightDirection(theme.lightDirection);
+        mesh.SetLightColor(theme.lightColor);
+        mesh.SetAmbientColor(theme.ambientColor);
+    }
+
     for (NS::Scene::IRenderable* r : m_renderList)
     {
         if (r != nullptr)
@@ -421,6 +443,28 @@ void LevelEditorScene::OnRender()
     // これで skybox は常に camera 中心に追従し、 player が前進しても同じ星空を見続ける。
     if (m_skybox && m_skybox->IsValid())
     {
+        // テーマが切替わった (or 起動直後) frame だけ cubemap を再ロードする。
+        // 毎フレーム LoadCubemap すると DDS / 6-face PNG の I/O が常時走るので、
+        // 最後にロードしたパスを記憶して差分が出た時だけ呼ぶ。
+        if (!theme.skyboxCubemapPath.empty() && theme.skyboxCubemapPath != m_loadedSkyboxPath)
+        {
+            const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
+            const auto absPath =
+                theme.skyboxCubemapPath.is_absolute() ? theme.skyboxCubemapPath : exeDir / theme.skyboxCubemapPath;
+            if (m_skybox->LoadCubemap(absPath))
+            {
+                m_loadedSkyboxPath = theme.skyboxCubemapPath;
+            }
+            else
+            {
+                NS_LOG_WARN(::NS::Core::LogCat::Game,
+                            "LevelEditorScene: テーマ '{}' の cubemap 読込失敗 ({}), 既存を維持",
+                            theme.displayName,
+                            absPath.string());
+                // 失敗時は m_loadedSkyboxPath は更新しないので次フレームで再試行可能。
+            }
+        }
+
         const auto& cam = editActive ? m_editorCameraRig->Camera().Camera() : m_cameraRig->Camera().Camera();
         NS::Core::Matrix viewNoTranslate = cam.View();
         viewNoTranslate._41 = 0.0f;

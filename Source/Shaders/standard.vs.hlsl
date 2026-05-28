@@ -10,6 +10,10 @@ cbuffer FrameCB : register(b0)
     float  pad0;
     float3 baseColor;
     float  pad1;
+    float3 g_lightColor;
+    float  pad2;
+    float3 g_ambientColor;
+    float  pad3;
 };
 
 struct VSIn
