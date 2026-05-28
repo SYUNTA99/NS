@@ -704,6 +704,15 @@ project "Tests"
         }
     filter {}
 
+    -- Skybox / Texture 等のテストは Shaders / Assets を実行時に exe 隣ディレクトリから
+    -- 読み込むため、 Game.exe と同じ postbuild で出力先にコピーしておく。
+    postbuildcommands {
+        '{MKDIR} "%{cfg.buildtarget.directory}/Shaders"',
+        '{COPYDIR} "%{wks.location}/../Source/Shaders" "%{cfg.buildtarget.directory}/Shaders"',
+        '{MKDIR} "%{cfg.buildtarget.directory}/Assets"',
+        '{COPYDIR} "%{wks.location}/../Assets" "%{cfg.buildtarget.directory}/Assets"',
+    }
+
     debugdir "."
     disablewarnings { "4244", "4834" }  -- テスト用: 暗黙変換、[[nodiscard]]無視
 
