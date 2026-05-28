@@ -13,6 +13,7 @@
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/ShaderProgram.h"
+#include "Framework/Graphics/Skybox.h"
 #include "Framework/Graphics/Texture.h"
 #include "Framework/Platform/Gamepad.h"
 #include "Framework/Platform/Input.h"
@@ -96,6 +97,22 @@ void LevelEditorScene::OnStart()
     m_playerMaterial->SetTexture(0, m_texture.get());
     m_blockMaterial = std::make_unique<NS::Graphics::Material>(renderer, matDesc);
     m_blockMaterial->SetTexture(0, m_texture.get());
+
+    //   placeholder skybox。 kurt 6-face PNG をロードし、 取得できなければ
+    // 1x1 マゼンタ cubemap fallback で続行する (描画は OnRender 末尾)。
+    m_skybox = std::make_unique<NS::Graphics::Skybox>(renderer);
+    if (m_skybox->IsValid())
+    {
+        const auto kurtDir = exeDir / "Assets" / "Skybox" / "kurt";
+        if (!m_skybox->LoadCubemap(kurtDir))
+            NS_LOG_WARN(::NS::Core::LogCat::Game,
+                        "LevelEditorScene: kurt cubemap 読込失敗、 magenta fallback で続行: {}",
+                        kurtDir.string());
+    }
+    else
+    {
+        NS_LOG_ERROR(::NS::Core::LogCat::Game, "LevelEditorScene: Skybox 構築失敗 (Device 不在?)");
+    }
 
     m_player = std::make_unique<Player>(m_cubeMesh.get(), m_playerMaterial.get(), &app->Input());
     m_player->AttachScene(this);
@@ -398,6 +415,21 @@ void LevelEditorScene::OnRender()
             r->Draw(ctx);
     }
 
+    // Skybox は不透明描画後 + 編集オーバーレイ前に挟む (: depth=1 同士の
+    // LESS_EQUAL 比較を成立させるため depth buffer 上の遠景 pixel が確定した直後)。
+    // viewProj から camera 位置を抜くために行列の translation 行 (_41/_42/_43) を 0 化する。
+    // これで skybox は常に camera 中心に追従し、 player が前進しても同じ星空を見続ける。
+    if (m_skybox && m_skybox->IsValid())
+    {
+        const auto& cam = editActive ? m_editorCameraRig->Camera().Camera() : m_cameraRig->Camera().Camera();
+        NS::Core::Matrix viewNoTranslate = cam.View();
+        viewNoTranslate._41 = 0.0f;
+        viewNoTranslate._42 = 0.0f;
+        viewNoTranslate._43 = 0.0f;
+        const NS::Core::Matrix viewProjNoTranslate = viewNoTranslate * cam.Projection();
+        m_skybox->Render(viewProjNoTranslate);
+    }
+
     if (editActive)
     {
         m_editor.RenderSpawnMarker();
@@ -428,6 +460,9 @@ void LevelEditorScene::OnShutdown()
     m_player.reset();
     m_blocks.clear();
 
+    // Skybox は Renderer の DeviceContext を ComPtr で握っているので、
+    // Renderer (Application) より先に破棄する必要がある。 m_cubeMesh と同階層で reset。
+    m_skybox.reset();
     m_playerMaterial.reset();
     m_blockMaterial.reset();
     m_shader.reset();

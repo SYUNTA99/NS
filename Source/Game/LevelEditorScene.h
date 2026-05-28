@@ -18,6 +18,7 @@ namespace NS::Graphics
     class Material;
     class Mesh;
     class ShaderProgram;
+    class Skybox;
     class Texture;
 } // namespace NS::Graphics
 
@@ -86,6 +87,7 @@ private:
     std::unique_ptr<NS::Graphics::ShaderProgram> m_shader;
     std::unique_ptr<NS::Graphics::Material> m_playerMaterial;
     std::unique_ptr<NS::Graphics::Material> m_blockMaterial;
+    std::unique_ptr<NS::Graphics::Skybox> m_skybox;
 
     std::unique_ptr<Player> m_player;
     std::vector<std::unique_ptr<Block>> m_blocks;
