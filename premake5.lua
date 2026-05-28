@@ -166,6 +166,14 @@ project "directxtk_simplemath"
     buildoptions { "/utf-8", "/FS" }
 
 --============================================================================
+-- Framework 層 (Solution Folder)
+--   8 層 (Core / Platform / Physics / Graphics / Audio / Scene / UI / App) を
+--   Visual Studio Solution Explorer 上で 1 つのフォルダにまとめる。
+--   ルート直下は Game / directxtk_simplemath、 Tests / 3rd party は別 group。
+--============================================================================
+group "Framework"
+
+--============================================================================
 -- Core 層 (StaticLib)
 --   Logger / Math / StringUtils / Clock / Filesystem
 --============================================================================
@@ -482,6 +490,11 @@ project "App"
 
     applyFrameworkLayerDefaults("App")
     applyCommonBuildOptions()
+
+--============================================================================
+-- Solution Folder を解除し、 Game 実行ファイルをルート直下に戻す。
+--============================================================================
+group ""
 
 --============================================================================
 -- Game 実行ファイル (WindowedApp)
