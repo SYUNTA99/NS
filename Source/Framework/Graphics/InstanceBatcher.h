@@ -34,14 +34,15 @@ namespace NS::Graphics
     } // namespace detail
 
     /// 1 block 1 instance ぶんの per-instance データ (slot 1 入力)。
-    /// `worldMatrix` 64 byte + `baseColor` 12 byte + `pad` 4 byte = 80 byte 固定。
+    /// `worldMatrix` 64 byte + `baseColor` 12 byte + `textureSlice` 4 byte = 80 byte 固定。
     /// `alignas(16)` で 16 byte 境界に揃え、 HLSL `INSTANCE_WORLD` / `INSTANCE_COLOR` の
     /// AlignedByteOffset (0 / 16 / 32 / 48 / 64) と完全一致させる。
+    /// `textureSlice` は INSTANCE_COLOR.w に乗せ、 VS 経由で PS の Texture2DArray sample index になる。
     struct alignas(16) BlockInstance
     {
         NS::Core::Matrix worldMatrix{};                ///< 64 byte: row_major world 行列
         NS::Core::Vector3 baseColor{1.0f, 1.0f, 1.0f}; ///< 12 byte: 個体色 (theme tint multiplier)
-        float pad = 0.0f;                              ///< 4 byte: 16 byte 境界 padding
+        float textureSlice = 0.0f;                     ///< 4 byte: Texture2DArray slice index (float で VS->PS 補間)
     };
     static_assert(sizeof(BlockInstance) == 80, "BlockInstance stride は 80 byte 固定 (HLSL slot1 layout 整合)");
     static_assert(alignof(BlockInstance) == 16, "BlockInstance は 16 byte align 必須");

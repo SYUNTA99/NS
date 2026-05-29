@@ -8,6 +8,7 @@
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
+#include "Framework/Graphics/InstanceBatcher.h"
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/Mesh.h"
 #include "Framework/Graphics/MeshPrimitives.h"
@@ -15,6 +16,7 @@
 #include "Framework/Graphics/ShaderProgram.h"
 #include "Framework/Graphics/Skybox.h"
 #include "Framework/Graphics/Texture.h"
+#include "Framework/Graphics/TextureArray.h"
 #include "Framework/Platform/Gamepad.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
@@ -22,7 +24,9 @@
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/MeshComponent.h"
 #include "Framework/Scene/RenderContext.h"
+#include "Framework/Scene/Transform.h"
 #include "Framework/UI/ImGuiContext.h"
+#include "Game/Editor/AutoTile.h"
 #include "Game/Editor/BlockRegistry.h"
 #include "Game/Theme/ThemeRegistry.h"
 
@@ -78,26 +82,68 @@ void LevelEditorScene::OnStart()
     if (m_texture->IsUsingFallback())
         NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelEditorScene: cube_test.png 読込失敗、magenta fallback で続行");
 
-    NS::Graphics::ShaderProgramDesc shaderDesc{};
-    shaderDesc.vertexShaderPath = exeDir / "Shaders" / "standard.vs.hlsl";
-    shaderDesc.pixelShaderPath = exeDir / "Shaders" / "standard.ps.hlsl";
-    shaderDesc.vertexEntryPoint = "VSMain";
-    shaderDesc.pixelEntryPoint = "PSMain";
-    shaderDesc.inputLayout = NS::Graphics::Mesh::StandardInputLayout();
-    m_shader = std::make_unique<NS::Graphics::ShaderProgram>(renderer, shaderDesc);
-    if (m_shader->IsUsingFallback())
+    // Player は単一 Texture2D 流派 (player.ps.hlsl) を維持。
+    NS::Graphics::ShaderProgramDesc playerShaderDesc{};
+    playerShaderDesc.vertexShaderPath = exeDir / "Shaders" / "standard.vs.hlsl";
+    playerShaderDesc.pixelShaderPath = exeDir / "Shaders" / "player.ps.hlsl";
+    playerShaderDesc.vertexEntryPoint = "VSMain";
+    playerShaderDesc.pixelEntryPoint = "PSMain";
+    playerShaderDesc.inputLayout = NS::Graphics::Mesh::StandardInputLayout();
+    m_playerShader = std::make_unique<NS::Graphics::ShaderProgram>(renderer, playerShaderDesc);
+    if (m_playerShader->IsUsingFallback())
         NS_LOG_WARN(::NS::Core::LogCat::Game,
-                    "LevelEditorScene: standard HLSL 読込/コンパイル失敗、magenta fallback で続行");
+                    "LevelEditorScene: player 用 HLSL 読込/コンパイル失敗、 magenta fallback で続行");
+
+    // Block 側は instanced.vs.hlsl + standard.ps.hlsl (Texture2DArray) ペアを InstanceBatcher が
+    // 内部で組む。 ここで作る m_blockShader は ConstantBuffer の搬入経路として使うだけで、
+    // 実際の VS/PS は FlushAll 内で上書きされる。
+    NS::Graphics::ShaderProgramDesc blockShaderDesc{};
+    blockShaderDesc.vertexShaderPath = exeDir / "Shaders" / "standard.vs.hlsl";
+    blockShaderDesc.pixelShaderPath = exeDir / "Shaders" / "player.ps.hlsl";
+    blockShaderDesc.vertexEntryPoint = "VSMain";
+    blockShaderDesc.pixelEntryPoint = "PSMain";
+    blockShaderDesc.inputLayout = NS::Graphics::Mesh::StandardInputLayout();
+    m_blockShader = std::make_unique<NS::Graphics::ShaderProgram>(renderer, blockShaderDesc);
 
     NS::Graphics::MaterialDesc matDesc{};
-    matDesc.shader = m_shader.get();
+    matDesc.shader = m_playerShader.get();
     matDesc.constantBufferSize = sizeof(NS::Scene::FrameCB);
     matDesc.cbSlot = 0;
     matDesc.cbStages = NS::Graphics::ShaderStage::Vertex | NS::Graphics::ShaderStage::Pixel;
     m_playerMaterial = std::make_unique<NS::Graphics::Material>(renderer, matDesc);
     m_playerMaterial->SetTexture(0, m_texture.get());
-    m_blockMaterial = std::make_unique<NS::Graphics::Material>(renderer, matDesc);
-    m_blockMaterial->SetTexture(0, m_texture.get());
+
+    NS::Graphics::MaterialDesc blockMatDesc = matDesc;
+    blockMatDesc.shader = m_blockShader.get();
+    m_blockMaterial = std::make_unique<NS::Graphics::Material>(renderer, blockMatDesc);
+    // block の slot 0 は外側で TextureArray を bind するので Material 側には SetTexture しない。
+    // SetTexture すると Material::Bind が slot 0 を上書きしてしまい、 InstanceBatcher 側で
+    // ぶら下げた TextureArray SRV が消える。
+
+    // 全 theme 用 block texture を 1 つの Texture2DArray に集約する。 現状はアセット未取得なので
+    // cube_test.png を代替で 40 slice ぶん詰める (5 theme x 8 variant の枠だけ確保しておく流派)。
+    // Kenney prototype texture が揃ったら slicePaths をテーマ別に差し替える。
+    {
+        NS::Graphics::TextureArrayDesc taDesc{};
+        const auto placeholderSlice = exeDir / "Assets" / "Textures" / "cube_test.png";
+        constexpr std::size_t kPlaceholderSliceCount = 40; // 5 theme x 8 variant
+        taDesc.slicePaths.reserve(kPlaceholderSliceCount);
+        for (std::size_t i = 0; i < kPlaceholderSliceCount; ++i)
+        {
+            taDesc.slicePaths.push_back(placeholderSlice);
+        }
+        taDesc.generateMipmaps = true;
+        taDesc.sRGB = false;
+        m_blockTextures = std::make_unique<NS::Graphics::TextureArray>(renderer, taDesc);
+        if (m_blockTextures->IsUsingFallback())
+            NS_LOG_WARN(::NS::Core::LogCat::Game,
+                        "LevelEditorScene: block 用 TextureArray の slice 読込で失敗あり、 magenta fallback で続行");
+    }
+
+    m_instanceBatcher = std::make_unique<NS::Graphics::InstanceBatcher>(renderer);
+    if (!m_instanceBatcher->IsValid())
+        NS_LOG_WARN(::NS::Core::LogCat::Game,
+                    "LevelEditorScene: InstanceBatcher 構築失敗、 block 描画はスキップされる");
 
     //   placeholder skybox。 kurt 6-face PNG をロードし、 取得できなければ
     // 1x1 マゼンタ cubemap fallback で続行する (描画は OnRender 末尾)。
@@ -414,21 +460,74 @@ void LevelEditorScene::OnRender()
     // 範囲外 themeId は ThemeRegistry::Get 側で Grass にフォールバックされる。
     const ThemeData& theme = ThemeRegistry::Get(m_level.themeId);
 
-    // 全 IRenderable に同じ theme の sun direction / lightColor / ambientColor を反映する。
     // Player の赤系 baseColor 等の個体色は MeshComponent::SetBaseColor で別途設定済なので触らない。
-    for (auto& block : m_blocks)
-    {
-        auto& mesh = block->MeshComp();
-        mesh.SetLightDirection(theme.lightDirection);
-        mesh.SetLightColor(theme.lightColor);
-        mesh.SetAmbientColor(theme.ambientColor);
-    }
     if (m_player)
     {
         auto& mesh = m_player->MeshComp();
         mesh.SetLightDirection(theme.lightDirection);
         mesh.SetLightColor(theme.lightColor);
         mesh.SetAmbientColor(theme.ambientColor);
+    }
+
+    // Block 描画は InstanceBatcher の (mesh, material) bucket 経由に統一する (SC #5)。
+    // block の MeshComponent::IsActive(false) で旧 per-block Draw 経路は短絡されるため、
+    // 描画呼出は本フレームの instance VB 1 回 + bucket 数の DrawIndexedInstanced に集約される。
+    if (m_instanceBatcher && m_instanceBatcher->IsValid())
+    {
+        // theme tint を block 全体の FrameCB に流す。 baseColor は per-instance で個体色を別途乗算する。
+        NS::Scene::FrameCB blockCB{};
+        blockCB.viewProj = ctx.viewProjection;
+        blockCB.lightDir = theme.lightDirection;
+        if (blockCB.lightDir.LengthSquared() <= 1e-6f)
+            blockCB.lightDir = NS::Core::Vector3{-0.3f, -1.0f, -0.2f};
+        blockCB.lightDir.Normalize();
+        blockCB.baseColor = NS::Core::Vector3{1.0f, 1.0f, 1.0f}; // per-instance baseColor と乗算するので 1 に固定
+        blockCB.lightColor = theme.lightColor;
+        blockCB.ambientColor = theme.ambientColor;
+        if (m_blockMaterial)
+            m_blockMaterial->SetParams(blockCB);
+
+        m_instanceBatcher->BeginFrame();
+        for (auto& block : m_blocks)
+        {
+            if (!block)
+                continue;
+            const NS::Game::Level::BlockEntry* entry = nullptr;
+            // Block は親無しなので local Position == world position。 grid cell に丸めて LevelData と照合する。
+            const NS::Core::Vector3 wp = block->Root().Position();
+            const std::int16_t x = static_cast<std::int16_t>(std::lround(wp.x));
+            const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
+            const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
+            // blockId は LevelData 側にしか無いので、 対応 entry を見つける。 SeedInitialLevel /
+            // RebuildBlocksFromLevelData の関係から index 一致は保証されるが、 安全側で線形検索する。
+            for (const auto& e : m_level.blocks)
+            {
+                if (e.x == x && e.y == y && e.z == z)
+                {
+                    entry = &e;
+                    break;
+                }
+            }
+            const std::uint16_t blockId =
+                entry ? entry->blockId : static_cast<std::uint16_t>(NS::Game::Editor::kBlockIdSolid);
+            const std::uint8_t mask = NS::Game::Editor::ComputeNeighborMask(m_level, x, y, z, blockId);
+            const std::uint16_t slice =
+                NS::Game::Editor::LookupTextureSlice(static_cast<ThemeId>(m_level.themeId), mask, blockId);
+
+            NS::Graphics::BlockInstance inst{};
+            inst.worldMatrix = block->Root().InterpolatedWorldMatrix(ctx.alpha);
+            // 個体色は GetBaseColor を流し込んでおく (theme tint は FrameCB の lightColor/ambientColor で行う)。
+            const auto color = NS::Game::Editor::GetBaseColor(blockId);
+            inst.baseColor = NS::Core::Vector3{color.R(), color.G(), color.B()};
+            inst.textureSlice = static_cast<float>(slice);
+            m_instanceBatcher->Submit(m_cubeMesh.get(), m_blockMaterial.get(), inst);
+        }
+
+        // TextureArray を t0 に bind してから FlushAll。 Material::Bind では slot 0 を触っていない
+        // (SetTexture せず構築した) ため、 ここで bind した SRV が bucket 描画まで残る。
+        if (m_blockTextures)
+            m_blockTextures->Bind(0u, NS::Graphics::ShaderStage::Pixel);
+        m_instanceBatcher->FlushAll();
     }
 
     for (NS::Scene::IRenderable* r : m_renderList)
@@ -504,12 +603,15 @@ void LevelEditorScene::OnShutdown()
     m_player.reset();
     m_blocks.clear();
 
-    // Skybox は Renderer の DeviceContext を ComPtr で握っているので、
+    // Skybox / InstanceBatcher / TextureArray は Renderer の DeviceContext を ComPtr で握っているため、
     // Renderer (Application) より先に破棄する必要がある。 m_cubeMesh と同階層で reset。
+    m_instanceBatcher.reset();
     m_skybox.reset();
     m_playerMaterial.reset();
     m_blockMaterial.reset();
-    m_shader.reset();
+    m_blockShader.reset();
+    m_playerShader.reset();
+    m_blockTextures.reset();
     m_texture.reset();
     m_cubeMesh.reset();
 }
@@ -556,6 +658,10 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
         const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
         block->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
         block->OnStart();
+        // block の IRenderable 経路は休止させ、 描画は InstanceBatcher の bucket 集約に任せる。
+        // OnStart 内で MeshComponent が RegisterRenderable しているため、 ここで SetActive(false) すると
+        // Draw(ctx) が no-op になり 1 block = 1 draw call の旧経路が完全に消える。
+        block->MeshComp().SetActive(false);
 
         m_collisionWorld.push_back(block->Collider().WorldAABB());
         m_blocks.push_back(std::move(block));

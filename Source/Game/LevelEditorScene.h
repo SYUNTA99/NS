@@ -16,11 +16,13 @@
 
 namespace NS::Graphics
 {
+    class InstanceBatcher;
     class Material;
     class Mesh;
     class ShaderProgram;
     class Skybox;
     class Texture;
+    class TextureArray;
 } // namespace NS::Graphics
 
 namespace NS::Scene
@@ -85,10 +87,13 @@ private:
 
     std::unique_ptr<NS::Graphics::Mesh> m_cubeMesh;
     std::unique_ptr<NS::Graphics::Texture> m_texture;
-    std::unique_ptr<NS::Graphics::ShaderProgram> m_shader;
+    std::unique_ptr<NS::Graphics::TextureArray> m_blockTextures;
+    std::unique_ptr<NS::Graphics::ShaderProgram> m_playerShader;
+    std::unique_ptr<NS::Graphics::ShaderProgram> m_blockShader;
     std::unique_ptr<NS::Graphics::Material> m_playerMaterial;
     std::unique_ptr<NS::Graphics::Material> m_blockMaterial;
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
+    std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
 
     std::unique_ptr<Player> m_player;
     std::vector<std::unique_ptr<Block>> m_blocks;
