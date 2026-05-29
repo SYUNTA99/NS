@@ -7,12 +7,15 @@
 ///  で実装。
 
 #include "Framework/Core/Math.h"
+#include "Framework/Physics/SweptTriangle.h"
 
 #include <span>
 
 namespace NS::Physics
 {
     /// 1 frame の Update 入力。dt は fixed step ( Determinism)。
+    /// AABB と Triangle の collision world を併せて受ける。 同 substep 内で
+    /// 両方を sweep し、 最小 TOI 側を採用する (-01)。
     struct CharacterControllerInput
     {
         NS::Core::Vector3 position{0.0f, 0.0f, 0.0f};
@@ -21,6 +24,7 @@ namespace NS::Physics
         float capsuleRadius = 0.4f;
         float capsuleHalfHeight = 0.5f;
         std::span<const NS::Core::AABB> world{};
+        std::span<const NS::Physics::Triangle> worldTriangles{};
     };
 
     /// Update の戻り値。新 position / velocity と接触情報。

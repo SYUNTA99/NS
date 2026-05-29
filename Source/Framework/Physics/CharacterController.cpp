@@ -4,6 +4,7 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Physics/Capsule.h"
 #include "Framework/Physics/SweptAABB.h"
+#include "Framework/Physics/SweptTriangle.h"
 
 #include <DirectXMath.h>
 
@@ -19,6 +20,9 @@ namespace
     // 着地直後の player.y bounce で grounded flicker するのを抑える許容距離。
     // Unity の CharacterController.isGrounded の有名な flicker bug 対策と同じ raycast 補助。
     constexpr float kGroundProbeDistance = 0.2f;
+    // 床判定の cosine 閾値 (-01)。 normal.y がこれを超える接触面を walkable floor 扱い、
+    // 以下は wall として slide させる。 cos 45 ≈ 0.707 なので 45 度を含めるべく 0.7 を採用。
+    constexpr float kFloorNormalY = 0.7f;
 } // namespace
 
 namespace NS::Physics
@@ -78,6 +82,24 @@ namespace NS::Physics
                     }
                 }
 
+                // AABB と Triangle 双方を同じ substep 内で sweep し、 最小 TOI 側の接触面で
+                // velocity を slide させる (-01)。 slope と solid block を混在させた場合でも
+                // 一回の解決で済むので jitter を避けられる。
+                for (const Triangle& tri : input.worldTriangles)
+                {
+                    float toi = 1.0f;
+                    NS::Core::Vector3 n{};
+                    if (SweptCapsuleVsTriangle(cap, motion, tri, toi, n))
+                    {
+                        if (toi < earliestToi)
+                        {
+                            earliestToi = toi;
+                            hitNormal = n;
+                            anyHit = true;
+                        }
+                    }
+                }
+
                 if (!anyHit)
                 {
                     result.position = result.position + motion;
@@ -98,7 +120,7 @@ namespace NS::Physics
                 }
                 result.contactNormal = hitNormal;
 
-                if (hitNormal.y > 0.7071f)
+                if (hitNormal.y > kFloorNormalY)
                     result.grounded = true;
 
                 remainingTime *= std::max(0.0f, 1.0f - earliestToi);
