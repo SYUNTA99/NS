@@ -35,11 +35,21 @@ namespace NS::Game::Editor
     inline constexpr std::uint16_t kBlockIdSlope22 = 202;
     inline constexpr std::uint16_t kBlockIdSlope15 = 203;
 
+    /// 掴まり系 ( / )。 210 番台を climb 系に予約する。
+    inline constexpr std::uint16_t kBlockIdPole = 210;
+    inline constexpr std::uint16_t kBlockIdFence = 211;
+
     /// 任意 blockId が 4 種 slope のいずれかかを判定する。
     [[nodiscard]] bool IsSlopeBlock(std::uint16_t blockId) noexcept;
 
     /// slope の blockId に対応する角度 (度数法) を返す。 slope でなければ 0。
     [[nodiscard]] float GetSlopeAngleDegrees(std::uint16_t blockId) noexcept;
+
+    /// 掴まり pole かどうか。
+    [[nodiscard]] bool IsPoleBlock(std::uint16_t blockId) noexcept;
+
+    /// 掴まり fence かどうか。
+    [[nodiscard]] bool IsFenceBlock(std::uint16_t blockId) noexcept;
 
     /// 各 ID に紐づく Toolbar 表示名 (ASCII 固定で ImGui label 直渡し可能)。
     [[nodiscard]] const char* GetDisplayName(std::uint16_t blockId) noexcept;

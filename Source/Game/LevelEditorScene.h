@@ -31,8 +31,16 @@ namespace NS::Scene
     class IRenderable;
 } // namespace NS::Scene
 
+namespace NS::Scene
+{
+    class ClimbableSurfaceComponent;
+    class PoleComponent;
+} // namespace NS::Scene
+
 class Block;
+class FenceBlock;
 class Player;
+class PoleBlock;
 class SlopeBlock;
 
 /// 編集 / プレイ両モードを 1 scene 内で扱う root scene。
@@ -104,9 +112,15 @@ private:
     std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh22;
     std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh15;
 
+    // 掴まり系 mesh: 円柱と薄板を 1 度だけ生成して全 instance で共有する。
+    std::unique_ptr<NS::Graphics::Mesh> m_poleMesh;
+    std::unique_ptr<NS::Graphics::Mesh> m_fenceMesh;
+
     std::unique_ptr<Player> m_player;
     std::vector<std::unique_ptr<Block>> m_blocks;
     std::vector<std::unique_ptr<SlopeBlock>> m_slopes;
+    std::vector<std::unique_ptr<PoleBlock>> m_poles;
+    std::vector<std::unique_ptr<FenceBlock>> m_fences;
 
     std::unique_ptr<CameraRig> m_cameraRig;
     std::unique_ptr<EditorCameraRig> m_editorCameraRig;
@@ -114,6 +128,8 @@ private:
     std::vector<NS::Scene::IRenderable*> m_renderList;
     std::vector<NS::Core::AABB> m_collisionWorld;
     std::vector<NS::Physics::Triangle> m_collisionTriangles;
+    std::vector<NS::Scene::ClimbableSurfaceComponent*> m_fencePtrs;
+    std::vector<NS::Scene::PoleComponent*> m_polePtrs;
 
     NS::Game::Level::LevelData m_level{};
     NS::Game::Level::PlayState m_play{};

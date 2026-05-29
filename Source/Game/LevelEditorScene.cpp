@@ -1,8 +1,13 @@
 #include "Game/LevelEditorScene.h"
 
 #include "Game/Block.h"
+#include "Game/Blocks/FenceBlock.h"
+#include "Game/Blocks/PoleBlock.h"
 #include "Game/Blocks/SlopeBlock.h"
 #include "Game/Player.h"
+
+#include "Framework/Scene/ClimbableSurfaceComponent.h"
+#include "Framework/Scene/PoleComponent.h"
 
 #include "Framework/App/Application.h"
 #include "Framework/Core/Clock.h"
@@ -89,6 +94,25 @@ void LevelEditorScene::OnStart()
     m_wedgeMesh30 = buildWedge(30.0f);
     m_wedgeMesh22 = buildWedge(22.5f);
     m_wedgeMesh15 = buildWedge(15.0f);
+
+    {
+        auto poleGeom = NS::Graphics::MakeCylinder(0.15f, 1.0f, 12);
+        NS::Graphics::MeshDesc poleDesc{};
+        poleDesc.vertices = poleGeom.vertices.data();
+        poleDesc.vertexCount = poleGeom.vertices.size();
+        poleDesc.indices = poleGeom.indices.data();
+        poleDesc.indexCount = poleGeom.indices.size();
+        m_poleMesh = std::make_unique<NS::Graphics::Mesh>(renderer, poleDesc);
+    }
+    {
+        auto fenceGeom = NS::Graphics::MakeFenceQuad({0.5f, 0.5f, 0.05f});
+        NS::Graphics::MeshDesc fenceDesc{};
+        fenceDesc.vertices = fenceGeom.vertices.data();
+        fenceDesc.vertexCount = fenceGeom.vertices.size();
+        fenceDesc.indices = fenceGeom.indices.data();
+        fenceDesc.indexCount = fenceGeom.indices.size();
+        m_fenceMesh = std::make_unique<NS::Graphics::Mesh>(renderer, fenceDesc);
+    }
 
     NS::Graphics::TextureDesc texDesc{};
     texDesc.path = exeDir / "Assets" / "Textures" / "cube_test.png";
@@ -319,11 +343,15 @@ void LevelEditorScene::OnUpdate()
         m_cameraRig->Camera().SetAspectRatioFromRenderer(app->Renderer());
     }
 
-    // Block / SlopeBlock の Snapshot は edit / play 共通 (静的 display object なので常時)
+    // Block / SlopeBlock / PoleBlock / FenceBlock の Snapshot は edit / play 共通 (静的 display object なので常時)
     for (auto& block : m_blocks)
         block->Root().Snapshot();
     for (auto& slope : m_slopes)
         slope->Root().Snapshot();
+    for (auto& pole : m_poles)
+        pole->Root().Snapshot();
+    for (auto& fence : m_fences)
+        fence->Root().Snapshot();
 
     if (editActive)
     {
@@ -395,6 +423,10 @@ void LevelEditorScene::OnUpdate()
         block->OnUpdate();
     for (auto& slope : m_slopes)
         slope->OnUpdate();
+    for (auto& pole : m_poles)
+        pole->OnUpdate();
+    for (auto& fence : m_fences)
+        fence->OnUpdate();
 }
 
 void LevelEditorScene::EnterPlay() noexcept
@@ -612,6 +644,10 @@ void LevelEditorScene::OnShutdown()
         (*it)->OnEndPlay();
     for (auto it = m_slopes.rbegin(); it != m_slopes.rend(); ++it)
         (*it)->OnEndPlay();
+    for (auto it = m_poles.rbegin(); it != m_poles.rend(); ++it)
+        (*it)->OnEndPlay();
+    for (auto it = m_fences.rbegin(); it != m_fences.rend(); ++it)
+        (*it)->OnEndPlay();
     if (m_player)
         m_player->OnEndPlay();
 
@@ -625,6 +661,8 @@ void LevelEditorScene::OnShutdown()
     m_player.reset();
     m_blocks.clear();
     m_slopes.clear();
+    m_poles.clear();
+    m_fences.clear();
 
     // Skybox / InstanceBatcher / TextureArray は Renderer の DeviceContext を ComPtr で握っているため、
     // Renderer (Application) より先に破棄する必要がある。 m_cubeMesh と同階層で reset。
@@ -640,6 +678,8 @@ void LevelEditorScene::OnShutdown()
     m_wedgeMesh30.reset();
     m_wedgeMesh22.reset();
     m_wedgeMesh15.reset();
+    m_poleMesh.reset();
+    m_fenceMesh.reset();
     m_cubeMesh.reset();
 }
 
@@ -667,10 +707,18 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
         (*it)->OnEndPlay();
     for (auto it = m_slopes.rbegin(); it != m_slopes.rend(); ++it)
         (*it)->OnEndPlay();
+    for (auto it = m_poles.rbegin(); it != m_poles.rend(); ++it)
+        (*it)->OnEndPlay();
+    for (auto it = m_fences.rbegin(); it != m_fences.rend(); ++it)
+        (*it)->OnEndPlay();
     m_blocks.clear();
     m_slopes.clear();
+    m_poles.clear();
+    m_fences.clear();
     m_collisionWorld.clear();
     m_collisionTriangles.clear();
+    m_polePtrs.clear();
+    m_fencePtrs.clear();
 
     m_blocks.reserve(m_level.blocks.size());
     m_collisionWorld.reserve(m_level.blocks.size());
@@ -727,11 +775,47 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             m_slopes.push_back(std::move(slope));
             continue;
         }
+
+        if (NS::Game::Editor::IsPoleBlock(entry.blockId))
+        {
+            constexpr float kPoleRadius = 0.15f;
+            constexpr float kPoleHeight = 1.0f;
+            auto pole = std::make_unique<PoleBlock>(m_poleMesh.get(), m_blockMaterial.get(), kPoleRadius, kPoleHeight);
+            pole->AttachScene(this);
+            pole->Root().SetPosition(cellCenter);
+
+            const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
+            pole->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
+            pole->OnStart();
+
+            m_polePtrs.push_back(&pole->Pole());
+            m_poles.push_back(std::move(pole));
+            continue;
+        }
+
+        if (NS::Game::Editor::IsFenceBlock(entry.blockId))
+        {
+            const NS::Core::Vector3 fenceHalf{0.5f, 0.5f, 0.05f};
+            const NS::Core::Vector3 fenceNormal{0.0f, 0.0f, -1.0f};
+            auto fence = std::make_unique<FenceBlock>(m_fenceMesh.get(), m_blockMaterial.get(), fenceHalf, fenceNormal);
+            fence->AttachScene(this);
+            fence->Root().SetPosition(cellCenter);
+
+            const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
+            fence->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
+            fence->OnStart();
+
+            m_fencePtrs.push_back(&fence->Climbable());
+            m_fences.push_back(std::move(fence));
+            continue;
+        }
     }
 
     if (m_player)
     {
         m_player->Movement().SetCollisionWorld(m_collisionWorld);
         m_player->Movement().SetCollisionTriangles(m_collisionTriangles);
+        m_player->Movement().SetClimbables(std::span<NS::Scene::ClimbableSurfaceComponent* const>{m_fencePtrs},
+                                           std::span<NS::Scene::PoleComponent* const>{m_polePtrs});
     }
 }

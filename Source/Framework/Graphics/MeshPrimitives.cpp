@@ -169,4 +169,91 @@ namespace NS::Graphics
 
         return geom;
     }
+
+    MeshGeometry MakeCylinder(float radius, float height, int segments)
+    {
+        if (segments < 3)
+            segments = 3;
+        if (radius < 0.0f)
+            radius = 0.0f;
+        if (height < 0.0f)
+            height = 0.0f;
+
+        constexpr float kTwoPi = 2.0f * 3.14159265358979323846f;
+        const float halfH = height * 0.5f;
+
+        MeshGeometry geom;
+        geom.vertices.reserve(static_cast<std::size_t>(segments) * 4u + 2u);
+        geom.indices.reserve(static_cast<std::size_t>(segments) * 12u);
+
+        // Top / bottom cap の中心。 cap の per-vertex normal は (0, +1, 0) / (0, -1, 0)。
+        const std::uint16_t topCenterIdx = static_cast<std::uint16_t>(geom.vertices.size());
+        geom.vertices.push_back({{0.0f, halfH, 0.0f}, {0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}});
+        const std::uint16_t bottomCenterIdx = static_cast<std::uint16_t>(geom.vertices.size());
+        geom.vertices.push_back({{0.0f, -halfH, 0.0f}, {0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}});
+
+        // 側面の per-segment vertex を 4 個ずつ発行する (segments × 4)。
+        // top cap 用 / bottom cap 用 / 側面の top / 側面の bottom を別 vertex にして per-face normal を許す。
+        const std::size_t sideStartIdx = geom.vertices.size();
+        for (int i = 0; i < segments; ++i)
+        {
+            const float t = static_cast<float>(i) / static_cast<float>(segments);
+            const float angle = t * kTwoPi;
+            const float cx = std::cos(angle);
+            const float cz = std::sin(angle);
+            const float x = cx * radius;
+            const float z = cz * radius;
+            const float u = t;
+
+            // top cap 用 (normal +Y)
+            geom.vertices.push_back({{x, halfH, z}, {0.5f + 0.5f * cx, 0.5f - 0.5f * cz}, {0.0f, 1.0f, 0.0f}});
+            // bottom cap 用 (normal -Y)
+            geom.vertices.push_back({{x, -halfH, z}, {0.5f + 0.5f * cx, 0.5f + 0.5f * cz}, {0.0f, -1.0f, 0.0f}});
+            // 側面 top (radial normal)
+            geom.vertices.push_back({{x, halfH, z}, {u, 0.0f}, {cx, 0.0f, cz}});
+            // 側面 bottom (radial normal)
+            geom.vertices.push_back({{x, -halfH, z}, {u, 1.0f}, {cx, 0.0f, cz}});
+        }
+
+        // Index 構築: top cap (fan)、 bottom cap (fan、 逆 winding)、 side quad (4 vertex/quad)。
+        for (int i = 0; i < segments; ++i)
+        {
+            const int next = (i + 1) % segments;
+            const std::uint16_t topI = static_cast<std::uint16_t>(sideStartIdx + i * 4 + 0);
+            const std::uint16_t topNext = static_cast<std::uint16_t>(sideStartIdx + next * 4 + 0);
+            const std::uint16_t botI = static_cast<std::uint16_t>(sideStartIdx + i * 4 + 1);
+            const std::uint16_t botNext = static_cast<std::uint16_t>(sideStartIdx + next * 4 + 1);
+            const std::uint16_t sideTopI = static_cast<std::uint16_t>(sideStartIdx + i * 4 + 2);
+            const std::uint16_t sideTopNext = static_cast<std::uint16_t>(sideStartIdx + next * 4 + 2);
+            const std::uint16_t sideBotI = static_cast<std::uint16_t>(sideStartIdx + i * 4 + 3);
+            const std::uint16_t sideBotNext = static_cast<std::uint16_t>(sideStartIdx + next * 4 + 3);
+
+            // top cap: 上から見て CW (MakeCube convention 踏襲)。 center → next → curr。
+            geom.indices.push_back(topCenterIdx);
+            geom.indices.push_back(topNext);
+            geom.indices.push_back(topI);
+
+            // bottom cap: 下から見て CW。 center → curr → next。
+            geom.indices.push_back(bottomCenterIdx);
+            geom.indices.push_back(botI);
+            geom.indices.push_back(botNext);
+
+            // 側面 quad: 外側から見て CW。 sideTopI → sideTopNext → sideBotNext → sideBotI。
+            geom.indices.push_back(sideTopI);
+            geom.indices.push_back(sideTopNext);
+            geom.indices.push_back(sideBotNext);
+            geom.indices.push_back(sideTopI);
+            geom.indices.push_back(sideBotNext);
+            geom.indices.push_back(sideBotI);
+        }
+
+        return geom;
+    }
+
+    MeshGeometry MakeFenceQuad(const NS::Core::Vector3& halfExtents)
+    {
+        // 透過テクスチャを貼る薄板。 box 形状 (両面 + 4 側面) で MakeCube と同じ構造、
+        // ただし extents で板厚を XY サイズより小さく出来るのが目的。
+        return MakeCube(halfExtents);
+    }
 } // namespace NS::Graphics
