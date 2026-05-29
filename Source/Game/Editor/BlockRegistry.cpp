@@ -35,4 +35,21 @@ namespace NS::Game::Editor
             return NS::Core::Color{1.0f, 0.0f, 1.0f, 1.0f};
         }
     }
+
+    bool IsSolidBlock(std::uint16_t blockId) noexcept
+    {
+        // 04-05 で kBlockIdSlope45、 04-06 で kBlockIdPole / kBlockIdFence、 04-07 で
+        // kBlockIdHazard / kBlockIdWater / kBlockIdDecoration を追加する想定。
+        // それらは独自 collider component を持つので、 「cube 形状の固形 block」 を判定する本述語の対象外。
+        return blockId == kBlockIdSolid;
+    }
+
+    bool IsCollidable(std::uint16_t blockId) noexcept
+    {
+        //  時点で衝突解決対象は固形ブロックのみ。
+        // 04-05 で slope (固形扱い)、 04-06 で pole / fence (trigger 寄り)、 04-07 で hazard (固形扱い) /
+        // water (非衝突) / decoration (非衝突) を順次追加していく。 ここで独立した述語にしておく事で、
+        // CharacterController と StaticColliderComponent 連携の修正範囲を局所化する。
+        return IsSolidBlock(blockId);
+    }
 } // namespace NS::Game::Editor
