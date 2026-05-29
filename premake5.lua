@@ -655,6 +655,7 @@ project "Tests"
         -- Window への依存があるので除外し、unit test で扱える範囲だけ取り込む。
         "Source/Game/Player.cpp",
         "Source/Game/Block.cpp",
+        "Source/Game/Blocks/**.cpp",
         "Source/Game/CameraRig.cpp",
         "Source/Game/EditorCameraRig.cpp",
         -- LevelEditorScene は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。

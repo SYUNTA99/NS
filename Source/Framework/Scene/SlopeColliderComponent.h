@@ -1,0 +1,44 @@
+#pragma once
+
+/// @file SlopeColliderComponent.h
+/// @brief 楔形 (wedge) スロープの三角形 collider Component (-01)。
+///
+/// @details Owner の root world transform を基準に、 斜面 quad を 2 三角形に分割した
+/// 世界座標版 Triangle 配列を返す。 LevelEditorScene 側でこれを集約して
+/// `CharacterControllerInput::worldTriangles` 経由で physics に渡す。
+/// 角度・半サイズは ctor で確定する data として保持し、 v2 で任意角度に拡張する余地を残す。
+
+#include "Framework/Core/Math.h"
+#include "Framework/Physics/SweptTriangle.h"
+#include "Framework/Scene/Component.h"
+
+#include <array>
+
+namespace NS::Scene
+{
+    /// 1 wedge slope の 2 三角形を世界座標で返す Component。 AABB collider ではないため
+    /// `StaticColliderComponent` とは独立、 wedge 専用のスロープ block に組み込む。
+    class SlopeColliderComponent : public Component
+    {
+    public:
+        /// @param owner            所有 GameObject。 base ctor で auto-register。
+        /// @param angleDegrees     斜面の傾斜角 (-01: 45 / 30 / 22.5 / 15 度のいずれかを想定)。
+        /// @param halfExtents      wedge の半サイズ。 デフォルト値は 1m cell の (0.5, 0.5, 0.5)。
+        SlopeColliderComponent(NS::Scene::GameObject* owner,
+                               float angleDegrees,
+                               const NS::Core::Vector3& halfExtents) noexcept;
+
+        /// 角度 (度数法)。
+        [[nodiscard]] float AngleDegrees() const noexcept { return m_angleDegrees; }
+        /// 半サイズ。
+        [[nodiscard]] NS::Core::Vector3 HalfExtents() const noexcept { return m_halfExtents; }
+
+        /// Owner の root world matrix を適用した世界座標版 slope 三角形 (2 個)。
+        /// Owner が未登録なら local 座標版を返す。
+        [[nodiscard]] std::array<NS::Physics::Triangle, 2> WorldTriangles() const noexcept;
+
+    private:
+        float m_angleDegrees = 45.0f;
+        NS::Core::Vector3 m_halfExtents{0.5f, 0.5f, 0.5f};
+    };
+} // namespace NS::Scene

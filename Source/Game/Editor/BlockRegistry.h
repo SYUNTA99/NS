@@ -29,6 +29,18 @@ namespace NS::Game::Editor
     /// toolbar の表示用識別子。 実体は `LevelData::spawnX/Y/Z` に書く。
     inline constexpr std::uint16_t kBlockIdSpawn = 102;
 
+    /// 楔形 (wedge) スロープ 4 種 (-01)。 200 番台を斜面系に予約する。
+    inline constexpr std::uint16_t kBlockIdSlope45 = 200;
+    inline constexpr std::uint16_t kBlockIdSlope30 = 201;
+    inline constexpr std::uint16_t kBlockIdSlope22 = 202;
+    inline constexpr std::uint16_t kBlockIdSlope15 = 203;
+
+    /// 任意 blockId が 4 種 slope のいずれかかを判定する。
+    [[nodiscard]] bool IsSlopeBlock(std::uint16_t blockId) noexcept;
+
+    /// slope の blockId に対応する角度 (度数法) を返す。 slope でなければ 0。
+    [[nodiscard]] float GetSlopeAngleDegrees(std::uint16_t blockId) noexcept;
+
     /// 各 ID に紐づく Toolbar 表示名 (ASCII 固定で ImGui label 直渡し可能)。
     [[nodiscard]] const char* GetDisplayName(std::uint16_t blockId) noexcept;
 

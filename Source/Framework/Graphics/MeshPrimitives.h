@@ -28,4 +28,12 @@ namespace NS::Graphics
 
     /// XZ 平面 (Y=0 上向き)、4 vertex + 6 index、normal=+Y。
     [[nodiscard]] MeshGeometry MakePlane(const NS::Core::Vector2& extents);
+
+    /// 楔形 (wedge) スロープ mesh。 +Z 方向に上昇する slope を持つ 5 面体。
+    /// `angleDegrees` は slope の傾斜角 (-01 想定値: 45 / 30 / 22.5 / 15 度)。
+    /// `extents.x / extents.z` は底面の半サイズ、 `extents.y` は最大高さ上限
+    /// (実際の高さは `min(extents.y, tan(angle) * extents.z * 2.0)`)。
+    /// 5 face = slope quad + bottom quad + back quad + 左右 triangle 2 個。
+    /// per-face normal で 16 vertex + 24 index 構成。
+    [[nodiscard]] MeshGeometry MakeWedge(float angleDegrees, const NS::Core::Vector3& extents);
 } // namespace NS::Graphics

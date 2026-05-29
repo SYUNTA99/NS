@@ -14,6 +14,14 @@ namespace NS::Game::Editor
             return "Star";
         case kBlockIdSpawn:
             return "Spawn";
+        case kBlockIdSlope45:
+            return "Slope 45";
+        case kBlockIdSlope30:
+            return "Slope 30";
+        case kBlockIdSlope22:
+            return "Slope 22.5";
+        case kBlockIdSlope15:
+            return "Slope 15";
         default:
             return "?";
         }
@@ -31,6 +39,12 @@ namespace NS::Game::Editor
             return NS::Core::Color{1.00f, 0.95f, 0.10f, 1.0f};
         case kBlockIdSpawn:
             return NS::Core::Color{0.30f, 1.00f, 0.30f, 1.0f};
+        case kBlockIdSlope45:
+        case kBlockIdSlope30:
+        case kBlockIdSlope22:
+        case kBlockIdSlope15:
+            // solid と同系色だが少しウォーム寄りで識別できるようにする (placeholder)。
+            return NS::Core::Color{0.78f, 0.65f, 0.50f, 1.0f};
         default:
             return NS::Core::Color{1.0f, 0.0f, 1.0f, 1.0f};
         }
@@ -44,12 +58,34 @@ namespace NS::Game::Editor
         return blockId == kBlockIdSolid;
     }
 
+    bool IsSlopeBlock(std::uint16_t blockId) noexcept
+    {
+        return blockId == kBlockIdSlope45 || blockId == kBlockIdSlope30 || blockId == kBlockIdSlope22 ||
+               blockId == kBlockIdSlope15;
+    }
+
+    float GetSlopeAngleDegrees(std::uint16_t blockId) noexcept
+    {
+        switch (blockId)
+        {
+        case kBlockIdSlope45:
+            return 45.0f;
+        case kBlockIdSlope30:
+            return 30.0f;
+        case kBlockIdSlope22:
+            return 22.5f;
+        case kBlockIdSlope15:
+            return 15.0f;
+        default:
+            return 0.0f;
+        }
+    }
+
     bool IsCollidable(std::uint16_t blockId) noexcept
     {
-        //  時点で衝突解決対象は固形ブロックのみ。
-        // 04-05 で slope (固形扱い)、 04-06 で pole / fence (trigger 寄り)、 04-07 で hazard (固形扱い) /
+        // 04-06 で pole / fence (trigger 寄り)、 04-07 で hazard (固形扱い) /
         // water (非衝突) / decoration (非衝突) を順次追加していく。 ここで独立した述語にしておく事で、
-        // CharacterController と StaticColliderComponent 連携の修正範囲を局所化する。
-        return IsSolidBlock(blockId);
+        // CharacterController と各 collider 連携の修正範囲を局所化する。
+        return IsSolidBlock(blockId) || IsSlopeBlock(blockId);
     }
 } // namespace NS::Game::Editor

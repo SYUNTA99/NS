@@ -11,6 +11,7 @@
 
 #include "Framework/Core/Math.h"
 #include "Framework/Physics/CharacterController.h"
+#include "Framework/Physics/SweptTriangle.h"
 #include "Framework/Scene/Component.h"
 
 #include <span>
@@ -33,6 +34,9 @@ namespace NS::Scene
         /// span を受け取って内部で owning std::vector にコピーする。呼出側 vector の lifetime に
         /// 依存させない (元 vector の reallocation / 破棄で dangling になる事故を防ぐ)。
         void SetCollisionWorld(std::span<const NS::Core::AABB> world);
+
+        /// Slope 用の世界座標 triangle 配列を受け取り、 内部 vector にコピーする (-01)。
+        void SetCollisionTriangles(std::span<const NS::Physics::Triangle> triangles);
 
         [[nodiscard]] NS::Core::Vector3 Velocity() const noexcept { return m_velocity; }
         [[nodiscard]] bool IsGrounded() const noexcept { return m_isGrounded; }
@@ -86,6 +90,7 @@ namespace NS::Scene
         bool m_debugDraw = true;
 
         std::vector<NS::Core::AABB> m_collisionWorld;
+        std::vector<NS::Physics::Triangle> m_collisionTriangles;
         NS::Physics::CharacterController m_controller;
     };
 } // namespace NS::Scene

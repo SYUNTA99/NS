@@ -60,6 +60,11 @@ namespace NS::Scene
         m_collisionWorld.assign(world.begin(), world.end());
     }
 
+    void CharacterMovementComponent::SetCollisionTriangles(std::span<const NS::Physics::Triangle> triangles)
+    {
+        m_collisionTriangles.assign(triangles.begin(), triangles.end());
+    }
+
     void CharacterMovementComponent::ResetState() noexcept
     {
         m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
@@ -139,6 +144,7 @@ namespace NS::Scene
         in.capsuleRadius = m_capsuleRadius;
         in.capsuleHalfHeight = m_capsuleHalfHeight;
         in.world = std::span<const NS::Core::AABB>(m_collisionWorld);
+        in.worldTriangles = std::span<const NS::Physics::Triangle>(m_collisionTriangles);
         const NS::Physics::CharacterControllerResult out = m_controller.Update(in);
 
         RootTransform().SetPosition(out.position);

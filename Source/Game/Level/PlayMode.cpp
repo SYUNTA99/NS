@@ -1,5 +1,6 @@
 #include "Game/Level/PlayMode.h"
 
+#include "Framework/Physics/SweptTriangle.h"
 #include "Game/Editor/BlockRegistry.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
@@ -65,16 +66,38 @@ namespace NS::Game::Level
 
         play.playerVelocity.y += kGravity * dt;
 
-        // Solid block だけ collision world を組む。 coin / power star は通過可能。
+        // Solid block は AABB、 slope block は 2 三角形を per-frame で構築する。 coin / power star は通過可能。
         std::vector<NS::Core::AABB> world;
+        std::vector<NS::Physics::Triangle> triangles;
         world.reserve(level.blocks.size());
+        triangles.reserve(level.blocks.size() * 2);
+        constexpr float kPi = 3.14159265358979323846f;
         for (const auto& entry : level.blocks)
         {
-            if (entry.blockId != NS::Game::Editor::kBlockIdSolid)
-                continue;
             const NS::Core::Vector3 center{
                 static_cast<float>(entry.x), static_cast<float>(entry.y), static_cast<float>(entry.z)};
-            world.emplace_back(center, NS::Core::Vector3{0.5f, 0.5f, 0.5f});
+            if (entry.blockId == NS::Game::Editor::kBlockIdSolid)
+            {
+                world.emplace_back(center, NS::Core::Vector3{0.5f, 0.5f, 0.5f});
+                continue;
+            }
+            if (NS::Game::Editor::IsSlopeBlock(entry.blockId))
+            {
+                const float angle = NS::Game::Editor::GetSlopeAngleDegrees(entry.blockId);
+                const float ex = 0.5f;
+                const float ey = 0.5f;
+                const float ez = 0.5f;
+                const float rawHeight = std::tan(angle * (kPi / 180.0f)) * (2.0f * ez);
+                const float height = (rawHeight > 2.0f * ey) ? 2.0f * ey : rawHeight;
+                const float yBottom = -ey;
+                const float yTop = -ey + height;
+                const NS::Core::Vector3 lowLeft{center.x - ex, center.y + yBottom, center.z - ez};
+                const NS::Core::Vector3 lowRight{center.x + ex, center.y + yBottom, center.z - ez};
+                const NS::Core::Vector3 highLeft{center.x - ex, center.y + yTop, center.z + ez};
+                const NS::Core::Vector3 highRight{center.x + ex, center.y + yTop, center.z + ez};
+                triangles.push_back(NS::Physics::Triangle{lowLeft, highRight, lowRight});
+                triangles.push_back(NS::Physics::Triangle{lowLeft, highLeft, highRight});
+            }
         }
 
         NS::Physics::CharacterControllerInput input{};
@@ -84,6 +107,7 @@ namespace NS::Game::Level
         input.capsuleRadius = kPlayerCapsuleRadius;
         input.capsuleHalfHeight = kPlayerCapsuleHalfHeight;
         input.world = std::span<const NS::Core::AABB>(world);
+        input.worldTriangles = std::span<const NS::Physics::Triangle>(triangles);
         const auto result = m_controller.Update(input);
         play.playerPosition = result.position;
         play.playerVelocity = result.velocity;

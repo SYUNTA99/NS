@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Framework/Core/Math.h"
+#include "Framework/Physics/SweptTriangle.h"
 #include "Framework/Scene/SceneBase.h"
 #include "Game/CameraRig.h"
 #include "Game/Editor/EditorMode.h"
@@ -32,6 +33,7 @@ namespace NS::Scene
 
 class Block;
 class Player;
+class SlopeBlock;
 
 /// 編集 / プレイ両モードを 1 scene 内で扱う root scene。
 /// LevelData (永続) + PlayState (一時) + EditorMode を value member で保有し、
@@ -95,14 +97,23 @@ private:
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
     std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
 
+    // 角度別 wedge mesh を 4 種だけ shared でキャッシュ。 SlopeBlock 1 個ずつに mesh を持たせず、
+    // scene 寿命のあいだ共有して描画コストとメモリを抑える。
+    std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh45;
+    std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh30;
+    std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh22;
+    std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh15;
+
     std::unique_ptr<Player> m_player;
     std::vector<std::unique_ptr<Block>> m_blocks;
+    std::vector<std::unique_ptr<SlopeBlock>> m_slopes;
 
     std::unique_ptr<CameraRig> m_cameraRig;
     std::unique_ptr<EditorCameraRig> m_editorCameraRig;
 
     std::vector<NS::Scene::IRenderable*> m_renderList;
     std::vector<NS::Core::AABB> m_collisionWorld;
+    std::vector<NS::Physics::Triangle> m_collisionTriangles;
 
     NS::Game::Level::LevelData m_level{};
     NS::Game::Level::PlayState m_play{};

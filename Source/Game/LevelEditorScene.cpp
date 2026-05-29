@@ -1,6 +1,7 @@
 #include "Game/LevelEditorScene.h"
 
 #include "Game/Block.h"
+#include "Game/Blocks/SlopeBlock.h"
 #include "Game/Player.h"
 
 #include "Framework/App/Application.h"
@@ -73,6 +74,21 @@ void LevelEditorScene::OnStart()
     meshDesc.indices = cubeGeom.indices.data();
     meshDesc.indexCount = cubeGeom.indices.size();
     m_cubeMesh = std::make_unique<NS::Graphics::Mesh>(renderer, meshDesc);
+
+    // 4 種 wedge mesh を 1 度だけ生成して scene 寿命のあいだ共有する。
+    auto buildWedge = [&renderer](float angleDeg) {
+        auto geom = NS::Graphics::MakeWedge(angleDeg, {0.5f, 0.5f, 0.5f});
+        NS::Graphics::MeshDesc md{};
+        md.vertices = geom.vertices.data();
+        md.vertexCount = geom.vertices.size();
+        md.indices = geom.indices.data();
+        md.indexCount = geom.indices.size();
+        return std::make_unique<NS::Graphics::Mesh>(renderer, md);
+    };
+    m_wedgeMesh45 = buildWedge(45.0f);
+    m_wedgeMesh30 = buildWedge(30.0f);
+    m_wedgeMesh22 = buildWedge(22.5f);
+    m_wedgeMesh15 = buildWedge(15.0f);
 
     NS::Graphics::TextureDesc texDesc{};
     texDesc.path = exeDir / "Assets" / "Textures" / "cube_test.png";
@@ -303,9 +319,11 @@ void LevelEditorScene::OnUpdate()
         m_cameraRig->Camera().SetAspectRatioFromRenderer(app->Renderer());
     }
 
-    // Block の Snapshot は edit / play 共通 (静的 display object なので常時)
+    // Block / SlopeBlock の Snapshot は edit / play 共通 (静的 display object なので常時)
     for (auto& block : m_blocks)
         block->Root().Snapshot();
+    for (auto& slope : m_slopes)
+        slope->Root().Snapshot();
 
     if (editActive)
     {
@@ -375,6 +393,8 @@ void LevelEditorScene::OnUpdate()
 
     for (auto& block : m_blocks)
         block->OnUpdate();
+    for (auto& slope : m_slopes)
+        slope->OnUpdate();
 }
 
 void LevelEditorScene::EnterPlay() noexcept
@@ -590,6 +610,8 @@ void LevelEditorScene::OnShutdown()
         m_cameraRig->OnEndPlay();
     for (auto it = m_blocks.rbegin(); it != m_blocks.rend(); ++it)
         (*it)->OnEndPlay();
+    for (auto it = m_slopes.rbegin(); it != m_slopes.rend(); ++it)
+        (*it)->OnEndPlay();
     if (m_player)
         m_player->OnEndPlay();
 
@@ -602,6 +624,7 @@ void LevelEditorScene::OnShutdown()
     m_cameraRig.reset();
     m_player.reset();
     m_blocks.clear();
+    m_slopes.clear();
 
     // Skybox / InstanceBatcher / TextureArray は Renderer の DeviceContext を ComPtr で握っているため、
     // Renderer (Application) より先に破棄する必要がある。 m_cubeMesh と同階層で reset。
@@ -613,6 +636,10 @@ void LevelEditorScene::OnShutdown()
     m_playerShader.reset();
     m_blockTextures.reset();
     m_texture.reset();
+    m_wedgeMesh45.reset();
+    m_wedgeMesh30.reset();
+    m_wedgeMesh22.reset();
+    m_wedgeMesh15.reset();
     m_cubeMesh.reset();
 }
 
@@ -638,35 +665,73 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
 {
     for (auto it = m_blocks.rbegin(); it != m_blocks.rend(); ++it)
         (*it)->OnEndPlay();
+    for (auto it = m_slopes.rbegin(); it != m_slopes.rend(); ++it)
+        (*it)->OnEndPlay();
     m_blocks.clear();
+    m_slopes.clear();
     m_collisionWorld.clear();
+    m_collisionTriangles.clear();
 
     m_blocks.reserve(m_level.blocks.size());
     m_collisionWorld.reserve(m_level.blocks.size());
 
     for (const auto& entry : m_level.blocks)
     {
-        if (entry.blockId != NS::Game::Editor::kBlockIdSolid)
+        const NS::Core::Vector3 cellCenter{
+            static_cast<float>(entry.x), static_cast<float>(entry.y), static_cast<float>(entry.z)};
+
+        if (entry.blockId == NS::Game::Editor::kBlockIdSolid)
+        {
+            auto block = std::make_unique<Block>(m_cubeMesh.get(), m_blockMaterial.get(), kCellHalfExtents);
+            block->AttachScene(this);
+            block->Root().SetPosition(cellCenter);
+            block->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
+
+            const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
+            block->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
+            block->OnStart();
+            // block の IRenderable 経路は休止させ、 描画は InstanceBatcher の bucket 集約に任せる。
+            // OnStart 内で MeshComponent が RegisterRenderable しているため、 ここで SetActive(false) すると
+            // Draw(ctx) が no-op になり 1 block = 1 draw call の旧経路が完全に消える。
+            block->MeshComp().SetActive(false);
+
+            m_collisionWorld.push_back(block->Collider().WorldAABB());
+            m_blocks.push_back(std::move(block));
             continue;
+        }
 
-        auto block = std::make_unique<Block>(m_cubeMesh.get(), m_blockMaterial.get(), kCellHalfExtents);
-        block->AttachScene(this);
-        block->Root().SetPosition(
-            {static_cast<float>(entry.x), static_cast<float>(entry.y), static_cast<float>(entry.z)});
-        block->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
+        if (NS::Game::Editor::IsSlopeBlock(entry.blockId))
+        {
+            const float angle = NS::Game::Editor::GetSlopeAngleDegrees(entry.blockId);
+            NS::Graphics::Mesh* wedge = nullptr;
+            if (entry.blockId == NS::Game::Editor::kBlockIdSlope45)
+                wedge = m_wedgeMesh45.get();
+            else if (entry.blockId == NS::Game::Editor::kBlockIdSlope30)
+                wedge = m_wedgeMesh30.get();
+            else if (entry.blockId == NS::Game::Editor::kBlockIdSlope22)
+                wedge = m_wedgeMesh22.get();
+            else if (entry.blockId == NS::Game::Editor::kBlockIdSlope15)
+                wedge = m_wedgeMesh15.get();
 
-        const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
-        block->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
-        block->OnStart();
-        // block の IRenderable 経路は休止させ、 描画は InstanceBatcher の bucket 集約に任せる。
-        // OnStart 内で MeshComponent が RegisterRenderable しているため、 ここで SetActive(false) すると
-        // Draw(ctx) が no-op になり 1 block = 1 draw call の旧経路が完全に消える。
-        block->MeshComp().SetActive(false);
+            auto slope = std::make_unique<SlopeBlock>(wedge, m_blockMaterial.get(), angle, kCellHalfExtents);
+            slope->AttachScene(this);
+            slope->Root().SetPosition(cellCenter);
 
-        m_collisionWorld.push_back(block->Collider().WorldAABB());
-        m_blocks.push_back(std::move(block));
+            const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
+            slope->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
+            slope->OnStart();
+
+            const auto tris = slope->Collider().WorldTriangles();
+            m_collisionTriangles.push_back(tris[0]);
+            m_collisionTriangles.push_back(tris[1]);
+            m_slopes.push_back(std::move(slope));
+            continue;
+        }
     }
 
     if (m_player)
+    {
         m_player->Movement().SetCollisionWorld(m_collisionWorld);
+        m_player->Movement().SetCollisionTriangles(m_collisionTriangles);
+    }
 }
