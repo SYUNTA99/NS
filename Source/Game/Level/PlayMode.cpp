@@ -1,25 +1,16 @@
 #include "Game/Level/PlayMode.h"
 
-#include "Framework/Physics/SweptTriangle.h"
-#include "Framework/Physics/WedgeGeometry.h"
 #include "Game/Editor/BlockRegistry.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
 
 #include <algorithm>
-#include <cmath>
 
 namespace NS::Game::Level
 {
 
     PlayMode::PlayMode() noexcept = default;
     PlayMode::~PlayMode() noexcept = default;
-
-    void PlayMode::SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept
-    {
-        m_desiredDir = {worldDir.x, 0.0f, worldDir.z};
-        m_desiredSpeed = std::clamp(speedScale01, 0.0f, 1.0f) * kMoveSpeed;
-    }
 
     void PlayMode::Enter(const LevelData& level, PlayState& play) noexcept
     {
@@ -41,14 +32,10 @@ namespace NS::Game::Level
         play.paused = false;
         play.clearTriggered = false;
         play.deathTriggered = false;
-        //  で HUD / 回復アイテムが入るまで、 Play 開始 / respawn 毎に最大値へ戻す placeholder。
+        // HUD / 回復アイテムが入るまで、 Play 開始 / respawn 毎に最大値へ戻す placeholder。
         play.playerHealth = 8;
 
         m_collectedCoinIndices.clear();
-        m_desiredDir = {0.0f, 0.0f, 0.0f};
-        m_desiredSpeed = 0.0f;
-        m_jumpPressed = false;
-        m_grounded = false;
     }
 
     void PlayMode::Tick(const LevelData& level, PlayState& play, float dt) noexcept
@@ -58,57 +45,8 @@ namespace NS::Game::Level
         if (dt <= 0.0f)
             return;
 
-        // 水平速度は入力で即時セット (Mario 風の直接操作、 加速感は + で再検討)。
-        play.playerVelocity.x = m_desiredDir.x * m_desiredSpeed;
-        play.playerVelocity.z = m_desiredDir.z * m_desiredSpeed;
-
-        // ジャンプ: 接地 frame で edge 入力が来ていたら 1 度だけ初速を与える。
-        if (m_jumpPressed && m_grounded)
-            play.playerVelocity.y = kJumpImpulse;
-        m_jumpPressed = false;
-
-        play.playerVelocity.y += kGravity * dt;
-
-        // Solid block は AABB、 slope block は wedge 8 三角形を per-frame で構築する。 coin / power star は通過可能。
-        std::vector<NS::Core::AABB> world;
-        std::vector<NS::Physics::Triangle> triangles;
-        world.reserve(level.blocks.size());
-        triangles.reserve(level.blocks.size() * 8);
-        for (const auto& entry : level.blocks)
-        {
-            const NS::Core::Vector3 center{
-                static_cast<float>(entry.x), static_cast<float>(entry.y), static_cast<float>(entry.z)};
-            if (entry.blockId == NS::Game::Editor::kBlockIdSolid || NS::Game::Editor::IsHazardBlock(entry.blockId))
-            {
-                // hazard は固形 + 接触ダメージなので AABB 衝突世界に通常 block と並べて入れる。
-                // ダメージ trigger 自体は LevelEditorScene 側で AABB.Contains(playerPosition) を別途行う。
-                world.emplace_back(center, NS::Core::Vector3{0.5f, 0.5f, 0.5f});
-                continue;
-            }
-            if (NS::Game::Editor::IsSlopeBlock(entry.blockId))
-            {
-                const float angle = NS::Game::Editor::GetSlopeAngleDegrees(entry.blockId);
-                // entry.rotation で向きが変わるため、 描画 mesh / collider と同じ共有関数で構築する。
-                const float yaw = NS::Game::Editor::BlockRotationToYaw(entry.rotation);
-                const auto tris = NS::Physics::BuildWedgeTriangles(center, {0.5f, 0.5f, 0.5f}, angle, yaw);
-                for (const auto& tri : tris)
-                    triangles.push_back(tri);
-            }
-        }
-
-        NS::Physics::CharacterControllerInput input{};
-        input.position = play.playerPosition;
-        input.velocity = play.playerVelocity;
-        input.dt = dt;
-        input.capsuleRadius = kPlayerCapsuleRadius;
-        input.capsuleHalfHeight = kPlayerCapsuleHalfHeight;
-        input.world = std::span<const NS::Core::AABB>(world);
-        input.worldTriangles = std::span<const NS::Physics::Triangle>(triangles);
-        const auto result = m_controller.Update(input);
-        play.playerPosition = result.position;
-        play.playerVelocity = result.velocity;
-        m_grounded = result.grounded;
-
+        // 物理 (移動 / 重力 / 衝突) は CharacterMovementComponent が担う。 ここは Transform から
+        // ミラーされた play.playerPosition を読んでゲームルールだけを評価する。
         if (play.playerPosition.y < kFallDeathThreshold)
             play.deathTriggered = true;
 
@@ -152,10 +90,6 @@ namespace NS::Game::Level
         play.clearTriggered = false;
         play.deathTriggered = false;
         m_collectedCoinIndices.clear();
-        m_desiredDir = {0.0f, 0.0f, 0.0f};
-        m_desiredSpeed = 0.0f;
-        m_jumpPressed = false;
-        m_grounded = false;
     }
 
 } // namespace NS::Game::Level

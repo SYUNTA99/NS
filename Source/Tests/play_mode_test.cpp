@@ -29,32 +29,36 @@ TEST(PlayMode, EnterInitializesPlayerAtSpawn)
     EXPECT_FALSE(play.clearTriggered);
 }
 
-TEST(PlayMode, PausedTickDoesNotChangeVelocity)
+TEST(PlayMode, PausedTickDoesNotEvaluateRules)
 {
     LevelNs::LevelData lv;
+    lv.spawnX = 0;
+    lv.spawnY = 0;
+    lv.spawnZ = 0;
+    // spawn セル中心に coin を置くと中心距離が近く、 非 paused なら取得される位置。
+    lv.blocks.push_back({0, 0, 0, EditorNs::kBlockIdCoin, 0, 0});
+
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;
-
     mode.Enter(lv, play);
     play.paused = true;
-    const auto v0 = play.playerVelocity;
-    for (int i = 0; i < 60; ++i)
-        mode.Tick(lv, play, 1.0f / 60.0f);
+    mode.Tick(lv, play, 1.0f / 60.0f);
 
-    EXPECT_FLOAT_EQ(play.playerVelocity.x, v0.x);
-    EXPECT_FLOAT_EQ(play.playerVelocity.y, v0.y);
-    EXPECT_FLOAT_EQ(play.playerVelocity.z, v0.z);
+    // paused 中はルール (coin 取得 / 落下死) を一切評価しない。
+    EXPECT_EQ(play.coinCount, 0);
 }
 
-TEST(PlayMode, FallDeathTriggersAtThreshold)
+TEST(PlayMode, FallDeathTriggersWhenBelowThreshold)
 {
     LevelNs::LevelData lv;
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;
 
     mode.Enter(lv, play);
-    for (int i = 0; i < 500; ++i)
-        mode.Tick(lv, play, 1.0f / 60.0f);
+    // 物理は CMC が担うため、 PlayMode は Transform からミラーされた playerPosition を読むだけ。
+    // 閾値より下へ置いて Tick すると落下死が立つ。
+    play.playerPosition.y = LevelNs::PlayMode::kFallDeathThreshold - 1.0f;
+    mode.Tick(lv, play, 1.0f / 60.0f);
 
     EXPECT_TRUE(play.deathTriggered);
 }

@@ -203,6 +203,8 @@ void LevelEditorScene::OnStart()
     // (= AABB 半サイズ 0.4, 0.9, 0.4)。両者が一致するよう scale で mesh を縮める。
     m_player->Root().SetScale({0.8f, 1.8f, 0.8f});
     m_player->MeshComp().SetBaseColor(kPlayerColor);
+    // Play 中の入力は PlayerInputComponent が担う。 ImGui のテキスト入力中に WASD を取り合わないよう注入。
+    m_player->InputComp().SetImGui(app->ImGui());
 
     SeedInitialLevel(m_level);
     RebuildBlocksFromLevelData();
@@ -261,56 +263,6 @@ void LevelEditorScene::OnStart()
     m_cameraRig->Camera().SetActive(false);
     m_cameraRig->Follow().SetActive(false);
 }
-
-namespace
-{
-    /// WASD / Left Stick の入力を camera 水平 forward 相対の world dir に変換する。
-    /// Vector の長さが 1 を超える対角入力は normalise して移動速度の偏りを防ぐ。
-    NS::Core::Vector3 BuildPlayDesiredDir(const NS::Platform::Input& input,
-                                          NS::Core::Vector3 cameraForward,
-                                          float& outSpeedScale)
-    {
-        float kbX = 0.0f;
-        float kbZ = 0.0f;
-        const auto& kb = input.Keyboard();
-        if (kb.IsHeld(NS::Platform::Key::W))
-            kbZ += 1.0f;
-        if (kb.IsHeld(NS::Platform::Key::S))
-            kbZ -= 1.0f;
-        if (kb.IsHeld(NS::Platform::Key::A))
-            kbX -= 1.0f;
-        if (kb.IsHeld(NS::Platform::Key::D))
-            kbX += 1.0f;
-
-        const auto stick = input.Gamepad(0).LeftStick();
-        const float ix = kbX + stick.x;
-        const float iz = kbZ + stick.y;
-
-        // 平坦化された forward と、 そこから X 軸右側を導く right を作る。
-        cameraForward.y = 0.0f;
-        const float fLenSq = cameraForward.x * cameraForward.x + cameraForward.z * cameraForward.z;
-        if (fLenSq < 1e-6f)
-            cameraForward = NS::Core::Vector3{0.0f, 0.0f, 1.0f};
-        else
-            cameraForward = cameraForward * (1.0f / std::sqrt(fLenSq));
-        const NS::Core::Vector3 right{cameraForward.z, 0.0f, -cameraForward.x};
-
-        NS::Core::Vector3 dir{cameraForward.x * iz + right.x * ix, 0.0f, cameraForward.z * iz + right.z * ix};
-        const float lenSq = dir.x * dir.x + dir.z * dir.z;
-        if (lenSq > 1.0f)
-        {
-            const float inv = 1.0f / std::sqrt(lenSq);
-            dir.x *= inv;
-            dir.z *= inv;
-            outSpeedScale = 1.0f;
-        }
-        else
-        {
-            outSpeedScale = std::sqrt(lenSq);
-        }
-        return dir;
-    }
-} // namespace
 
 void LevelEditorScene::OnUpdate()
 {
@@ -372,56 +324,54 @@ void LevelEditorScene::OnUpdate()
     {
         const float dt = NS::Core::FrameTimer::FixedDelta();
 
-        // 入力 → PlayMode への希望移動。 ImGui の text field がキーボードを掴んでいる時は無視する。
-        bool wantKb = false;
-        if (auto* imgui = app->ImGui())
-            wantKb = imgui->WantCaptureKeyboard();
+        // 入力と物理は Player の Component が担う。 camera 水平 forward を入力 Component に渡してから
+        // Player を tick すると、 PlayerInput → CharacterMovement の順 (priority) で desired move /
+        // 掴まり入力 / jump が反映され、 結果が Player.Root (Transform) に直接書かれる。
+        // SSOT は Transform。 ThirdPersonFollow が Player.Root を target にしているため camera も追従する。
+        if (m_player)
+        {
+            NS::Core::Vector3 camForward{0.0f, 0.0f, 1.0f};
+            if (m_cameraRig)
+                camForward = m_cameraRig->Camera().ForwardHorizontal();
+            m_player->InputComp().SetCameraForward(camForward);
+            m_player->OnUpdate();
 
-        NS::Core::Vector3 camForward{0.0f, 0.0f, 1.0f};
-        if (m_cameraRig)
-            camForward = m_cameraRig->Camera().ForwardHorizontal();
-        float speedScale = 0.0f;
-        const NS::Core::Vector3 desired =
-            wantKb ? NS::Core::Vector3{0.0f, 0.0f, 0.0f} : BuildPlayDesiredDir(app->Input(), camForward, speedScale);
-        m_playMode.SetDesiredMove(desired, wantKb ? 0.0f : speedScale);
+            // 落下死 / coin / star / hazard 判定が読む PlayState.playerPosition に Transform をミラーする。
+            m_play.playerPosition = m_player->Root().Position();
+        }
 
-        if (!wantKb && app->Input().Keyboard().IsPressed(NS::Platform::Key::Space))
-            m_playMode.SetJumpPressed();
-        if (app->Input().Gamepad(0).IsPressed(NS::Platform::GamepadButton::A))
-            m_playMode.SetJumpPressed();
-
+        // Play のゲームルール (落下死 / coin / star)。 物理は持たず player 位置を読むだけ。
         m_playMode.Tick(m_level, m_play, dt);
 
         // ハザード AABB と player capsule の overlap 判定。 接触していれば HazardComponent に
-        // 通知して playerHealth を 1 減算する (per-fixed-step accumulating)。
-        // hazard は solid 衝突世界にも入っており capsule 中心は表面から radius ぶん外に留まるため、
-        // 中心点 in-AABB では永遠に触れない。 capsule 芯線分から AABB の最近距離で判定する。
-        NS::Physics::Capsule playerCapsule{};
-        playerCapsule.center = m_play.playerPosition;
-        playerCapsule.radius = NS::Game::Level::PlayMode::kPlayerCapsuleRadius;
-        playerCapsule.halfHeight = NS::Game::Level::PlayMode::kPlayerCapsuleHalfHeight;
-        for (auto& hazard : m_hazards)
+        // 通知して playerHealth を 1 減算する (per-fixed-step accumulating)。 hazard は solid 衝突世界にも
+        // 入っており capsule 中心は表面から radius ぶん外に留まるため、 capsule 芯線分から AABB の最近距離で判定する。
+        if (m_player)
         {
-            if (!hazard)
-                continue;
-            if (NS::Physics::IntersectsCapsuleAabb(playerCapsule, hazard->Collider().WorldAABB()))
-                hazard->Hazard().OnPlayerOverlap(m_play);
+            NS::Physics::Capsule playerCapsule{};
+            playerCapsule.center = m_player->Root().Position();
+            playerCapsule.radius = m_player->Movement().CapsuleRadius();
+            playerCapsule.halfHeight = m_player->Movement().CapsuleHalfHeight();
+            for (auto& hazard : m_hazards)
+            {
+                if (!hazard)
+                    continue;
+                if (NS::Physics::IntersectsCapsuleAabb(playerCapsule, hazard->Collider().WorldAABB()))
+                    hazard->Hazard().OnPlayerOverlap(m_play);
+            }
         }
 
-        // PlayState (SSOT) → Player.Transform の一方向同期。 ThirdPersonFollow が Player.Root
-        // を target にしているため、 これで camera も自動追従する。
-        if (m_player)
-            m_player->Root().SetPosition(m_play.playerPosition);
-
         // 落下死 (PlayMode が y < kFallDeathThreshold で立てた deathTriggered) は respawn 経路。
-        // ハザード接触の deathTriggered (playerHealth==0) は Game.cpp 側で Application::Quit を呼ぶため
-        // ここでは respawn しない。 playerHealth が残っている場合だけ落下扱いで再 spawn する。
+        // ハザード接触の死 (playerHealth==0) は Game.cpp が Application::Quit を呼ぶためここでは respawn しない。
         if (m_play.deathTriggered && m_play.playerHealth > 0)
         {
             m_play.deathTriggered = false;
             m_playMode.Enter(m_level, m_play);
             if (m_player)
+            {
                 m_player->Root().SetPosition(m_play.playerPosition);
+                m_player->Movement().ResetState();
+            }
         }
         if (m_play.clearTriggered)
         {
@@ -466,10 +416,12 @@ void LevelEditorScene::EnterPlay() noexcept
     if (m_player)
     {
         m_player->MeshComp().SetActive(true);
-        // Movement / InputComp は PlayMode が物理 / 入力を担うため休止のまま。
-        m_player->Movement().SetActive(false);
-        m_player->InputComp().SetActive(false);
+        // 物理と入力は Player の Component (CharacterMovement / PlayerInput) が担う。
+        m_player->Movement().SetActive(true);
+        m_player->InputComp().SetActive(true);
+        // PlayMode.Enter が計算した spawn 位置へ置いてから movement 状態をリセットする。
         m_player->Root().SetPosition(m_play.playerPosition);
+        m_player->Movement().ResetState();
     }
     if (m_cameraRig)
     {
