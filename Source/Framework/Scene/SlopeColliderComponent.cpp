@@ -25,7 +25,7 @@ namespace NS::Scene
             m_halfExtents.z = 0.0f;
     }
 
-    std::array<NS::Physics::Triangle, 2> SlopeColliderComponent::WorldTriangles() const noexcept
+    std::array<NS::Physics::Triangle, 8> SlopeColliderComponent::WorldTriangles() const noexcept
     {
         const float ex = m_halfExtents.x;
         const float ey = m_halfExtents.y;
@@ -37,16 +37,25 @@ namespace NS::Scene
         const float yBottom = -ey;
         const float yTop = -ey + height;
 
-        // Local 座標で 4 つの slope 角を定義する。 +Z 方向に上昇 (test 用 MakeWedgeSlope と同一規約)。
-        const NS::Core::Vector3 lowLeft{-ex, yBottom, -ez};
-        const NS::Core::Vector3 lowRight{ex, yBottom, -ez};
-        const NS::Core::Vector3 highLeft{-ex, yTop, ez};
-        const NS::Core::Vector3 highRight{ex, yTop, ez};
+        // wedge の 6 頂点 (local)。 +Z 側が高い斜面。
+        const NS::Core::Vector3 frontBotL{-ex, yBottom, -ez};
+        const NS::Core::Vector3 frontBotR{ex, yBottom, -ez};
+        const NS::Core::Vector3 backBotL{-ex, yBottom, ez};
+        const NS::Core::Vector3 backBotR{ex, yBottom, ez};
+        const NS::Core::Vector3 backTopL{-ex, yTop, ez};
+        const NS::Core::Vector3 backTopR{ex, yTop, ez};
 
-        // CCW (外側 = +Y, -Z 寄りから見て反時計回り) の 2 triangle 構成。
-        std::array<NS::Physics::Triangle, 2> tris{
-            NS::Physics::Triangle{lowLeft, highRight, lowRight},
-            NS::Physics::Triangle{lowLeft, highLeft, highRight},
+        // SweptCapsuleVsTriangle は CCW 規約 (cross(v1-v0, v2-v0) = 外向き法線)。
+        // 全 5 面 = 8 triangle: 斜面 2 + 底面 2 + 裏壁 2 + 左右側面 1+1。
+        std::array<NS::Physics::Triangle, 8> tris{
+            NS::Physics::Triangle{frontBotL, backTopR, frontBotR}, // 斜面 +Y/-Z
+            NS::Physics::Triangle{frontBotL, backTopL, backTopR},  // 斜面 +Y/-Z
+            NS::Physics::Triangle{frontBotL, frontBotR, backBotR}, // 底 -Y
+            NS::Physics::Triangle{frontBotL, backBotR, backBotL},  // 底 -Y
+            NS::Physics::Triangle{backBotL, backBotR, backTopR},   // 裏壁 +Z
+            NS::Physics::Triangle{backBotL, backTopR, backTopL},   // 裏壁 +Z
+            NS::Physics::Triangle{frontBotL, backBotL, backTopL},  // 左側面 -X
+            NS::Physics::Triangle{frontBotR, backTopR, backBotR},  // 右側面 +X
         };
 
         if (const GameObject* owner = Owner(); owner != nullptr)

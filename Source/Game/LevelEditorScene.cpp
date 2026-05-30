@@ -819,8 +819,8 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             slope->OnStart();
 
             const auto tris = slope->Collider().WorldTriangles();
-            m_collisionTriangles.push_back(tris[0]);
-            m_collisionTriangles.push_back(tris[1]);
+            for (const auto& tri : tris)
+                m_collisionTriangles.push_back(tri);
             m_slopes.push_back(std::move(slope));
             continue;
         }

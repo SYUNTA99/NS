@@ -95,12 +95,22 @@ namespace NS::Game::Level
                 const float height = (rawHeight > 2.0f * ey) ? 2.0f * ey : rawHeight;
                 const float yBottom = -ey;
                 const float yTop = -ey + height;
-                const NS::Core::Vector3 lowLeft{center.x - ex, center.y + yBottom, center.z - ez};
-                const NS::Core::Vector3 lowRight{center.x + ex, center.y + yBottom, center.z - ez};
-                const NS::Core::Vector3 highLeft{center.x - ex, center.y + yTop, center.z + ez};
-                const NS::Core::Vector3 highRight{center.x + ex, center.y + yTop, center.z + ez};
-                triangles.push_back(NS::Physics::Triangle{lowLeft, highRight, lowRight});
-                triangles.push_back(NS::Physics::Triangle{lowLeft, highLeft, highRight});
+                // wedge 6 頂点。 SlopeColliderComponent と同一規約 (+Z 側が高い斜面)。
+                const NS::Core::Vector3 fBL{center.x - ex, center.y + yBottom, center.z - ez};
+                const NS::Core::Vector3 fBR{center.x + ex, center.y + yBottom, center.z - ez};
+                const NS::Core::Vector3 bBL{center.x - ex, center.y + yBottom, center.z + ez};
+                const NS::Core::Vector3 bBR{center.x + ex, center.y + yBottom, center.z + ez};
+                const NS::Core::Vector3 bTL{center.x - ex, center.y + yTop, center.z + ez};
+                const NS::Core::Vector3 bTR{center.x + ex, center.y + yTop, center.z + ez};
+                // 全 5 面 = 8 triangle (CCW、 cross が外向き法線になる winding)。
+                triangles.push_back(NS::Physics::Triangle{fBL, bTR, fBR}); // 斜面
+                triangles.push_back(NS::Physics::Triangle{fBL, bTL, bTR}); // 斜面
+                triangles.push_back(NS::Physics::Triangle{fBL, fBR, bBR}); // 底
+                triangles.push_back(NS::Physics::Triangle{fBL, bBR, bBL}); // 底
+                triangles.push_back(NS::Physics::Triangle{bBL, bBR, bTR}); // 裏壁
+                triangles.push_back(NS::Physics::Triangle{bBL, bTR, bTL}); // 裏壁
+                triangles.push_back(NS::Physics::Triangle{fBL, bBL, bTL}); // 左側面
+                triangles.push_back(NS::Physics::Triangle{fBR, bTR, bBR}); // 右側面
             }
         }
 

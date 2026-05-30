@@ -147,19 +147,19 @@ namespace NS::Graphics
             4,
             6,
             5,
-            // Front (+Z) quad (vertex 8..11): 外向き +Z、 前から見て CW。
+            // Back (+Z) quad (vertex 8..11): 外向き +Z で見える winding。
             // 8=(-ex,yBottom,ez), 9=(-ex,yTop,ez), 10=(ex,yTop,ez), 11=(ex,yBottom,ez)
             8,
+            10,
             9,
-            10,
             8,
-            10,
             11,
-            // Left (-X) triangle (vertex 12..14): 外向き -X、 -X 側から見て CW。
+            10,
+            // Left (-X) triangle (vertex 12..14): 外向き -X で見える winding。
             // 12=(-ex,yBottom,-ez), 13=(-ex,yBottom,ez), 14=(-ex,yTop,ez)
             12,
-            14,
             13,
+            14,
             // Right (+X) triangle (vertex 15..17): 外向き +X、 +X 側から見て CW。
             // 15=(ex,yBottom,-ez), 16=(ex,yTop,ez), 17=(ex,yBottom,ez)
             15,
