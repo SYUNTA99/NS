@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file CategoryPalette.h
-/// @brief Mario Maker 風 9 スロット toolbar。 編集中の block 種別を選ぶ palette。
+/// @brief Mario Maker 風 8 スロット toolbar。 編集中の block 種別を選ぶ palette。
 ///
-/// @details 状態は active slot index と 9 個分の blockId 配列のみ。
+/// @details 状態は active slot index と 8 個分の blockId 配列のみ。
 /// 入力ハンドリング (Gamepad LB/RB、 Keyboard 1-9) は `TickInput`、
 /// ImGui 描画は `Render` で行う。 Render は Debug / Development build 時のみ
 /// 実体があり、 Shipping では no-op。
@@ -24,11 +24,11 @@ namespace NS::UI
 
 namespace NS::Game::Editor
 {
-    /// 9 スロット toolbar の状態保持と入力ハンドラ。
+    /// 8 スロット toolbar の状態保持と入力ハンドラ。
     class CategoryPalette
     {
     public:
-        static constexpr std::size_t kSlotCount = 9;
+        static constexpr std::size_t kSlotCount = 8;
 
         CategoryPalette() noexcept = default;
         ~CategoryPalette() noexcept = default;
@@ -38,7 +38,7 @@ namespace NS::Game::Editor
         CategoryPalette(CategoryPalette&&) = delete;
         CategoryPalette& operator=(CategoryPalette&&) = delete;
 
-        /// Gamepad LB/RB / Keyboard 1-9 で active slot を切替える。
+        /// Gamepad LB/RB / Keyboard 1-8 で active slot を切替える。
         /// `imgui` が `WantCaptureKeyboard` true を返す時は数字キー入力を無視する。
         void TickInput(NS::Platform::Input* input, NS::UI::ImGuiContext* imgui) noexcept;
 
@@ -53,12 +53,12 @@ namespace NS::Game::Editor
         void SetActiveSlot(std::size_t slot) noexcept;
 
         /// active slot が slope なら角度を 1 段階循環させる (45→30→22→15→45)。 slope 以外は no-op。
-        /// 9 スロット固定の toolbar で 4 種の slope 角度を扱うため、 スロット再選択で variant を切替える。
+        /// 固定スロットの toolbar で 4 種の slope 角度を扱うため、 スロット再選択で variant を切替える。
         void CycleActiveVariant() noexcept;
 
     private:
         std::size_t m_activeSlot = 0;
-        // 9 スロット = 固形 / コイン / スター / spawn +  で追加した地形系 5 種。
+        // 8 スロット = 固形 / コイン / スター / spawn + 地形系 4 種 (slope / pole / hazard / water)。
         // slope スロットは再選択で 45→30→22→15° を循環 (CycleActiveVariant)。
         std::uint16_t m_slots[kSlotCount] = {kBlockIdSolid,
                                              kBlockIdCoin,
@@ -66,7 +66,6 @@ namespace NS::Game::Editor
                                              kBlockIdSpawn,
                                              kBlockIdSlope45,
                                              kBlockIdPole,
-                                             kBlockIdFence,
                                              kBlockIdHazard,
                                              kBlockIdWater};
     };

@@ -2,7 +2,6 @@
 
 #include <Framework/Core/Clock.h>
 #include <Framework/Scene/CharacterMovementComponent.h>
-#include <Framework/Scene/ClimbableSurfaceComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/PoleComponent.h>
 #include <Framework/Scene/Transform.h>
@@ -13,7 +12,6 @@
 namespace
 {
     using NS::Scene::CharacterMovementComponent;
-    using NS::Scene::ClimbableSurfaceComponent;
     using NS::Scene::GameObject;
     using NS::Scene::MovementState;
     using NS::Scene::PoleComponent;
@@ -46,8 +44,7 @@ TEST_F(PoleClimbingStateTest, EnterStateWhenOverlapping)
     playerObj.Root().SetPosition({0.0f, 1.0f, 0.0f});
 
     PoleComponent* polePtrs[] = {&pole};
-    std::span<ClimbableSurfaceComponent* const> emptyFences{};
-    mov.SetClimbables(emptyFences, std::span<PoleComponent* const>{polePtrs});
+    mov.SetClimbables(std::span<PoleComponent* const>{polePtrs});
 
     mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
     StepN(mov, 1);
@@ -69,8 +66,7 @@ TEST_F(PoleClimbingStateTest, VerticalInputMovesPlayer)
     playerObj.Root().SetPosition({0.0f, 0.5f, 0.0f});
 
     PoleComponent* polePtrs[] = {&pole};
-    std::span<ClimbableSurfaceComponent* const> emptyFences{};
-    mov.SetClimbables(emptyFences, std::span<PoleComponent* const>{polePtrs});
+    mov.SetClimbables(std::span<PoleComponent* const>{polePtrs});
 
     mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
     StepN(mov, 1);
@@ -78,7 +74,8 @@ TEST_F(PoleClimbingStateTest, VerticalInputMovesPlayer)
 
     const float yBefore = playerObj.Root().Position().y;
 
-    mov.SetDesiredMove({0.0f, 0.0f, 1.0f}, 1.0f);
+    // climb 縦移動は専用チャンネル (生ローカル前後入力) で与える。
+    mov.SetClimbMove(0.0f, 1.0f);
     StepN(mov, 5);
 
     const float yAfter = playerObj.Root().Position().y;
@@ -98,8 +95,7 @@ TEST_F(PoleClimbingStateTest, JumpPressExits)
     playerObj.Root().SetPosition({0.0f, 0.5f, 0.0f});
 
     PoleComponent* polePtrs[] = {&pole};
-    std::span<ClimbableSurfaceComponent* const> emptyFences{};
-    mov.SetClimbables(emptyFences, std::span<PoleComponent* const>{polePtrs});
+    mov.SetClimbables(std::span<PoleComponent* const>{polePtrs});
 
     mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
     StepN(mov, 1);
@@ -125,8 +121,7 @@ TEST_F(PoleClimbingStateTest, CharacterControllerSkippedWhenClimbing)
     playerObj.Root().SetPosition({0.0f, 0.5f, 0.0f});
 
     PoleComponent* polePtrs[] = {&pole};
-    std::span<ClimbableSurfaceComponent* const> emptyFences{};
-    mov.SetClimbables(emptyFences, std::span<PoleComponent* const>{polePtrs});
+    mov.SetClimbables(std::span<PoleComponent* const>{polePtrs});
 
     mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
     StepN(mov, 1);

@@ -2,14 +2,12 @@
 
 #include "Game/Block.h"
 #include "Game/Blocks/DecorationBlock.h"
-#include "Game/Blocks/FenceBlock.h"
 #include "Game/Blocks/HazardBlock.h"
 #include "Game/Blocks/PoleBlock.h"
 #include "Game/Blocks/SlopeBlock.h"
 #include "Game/Blocks/WaterBlock.h"
 #include "Game/Player.h"
 
-#include "Framework/Scene/ClimbableSurfaceComponent.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/HazardComponent.h"
 #include "Framework/Scene/PoleComponent.h"
@@ -109,15 +107,6 @@ void LevelEditorScene::OnStart()
         poleDesc.indices = poleGeom.indices.data();
         poleDesc.indexCount = poleGeom.indices.size();
         m_poleMesh = std::make_unique<NS::Graphics::Mesh>(renderer, poleDesc);
-    }
-    {
-        auto fenceGeom = NS::Graphics::MakeFenceQuad({0.5f, 0.5f, 0.05f});
-        NS::Graphics::MeshDesc fenceDesc{};
-        fenceDesc.vertices = fenceGeom.vertices.data();
-        fenceDesc.vertexCount = fenceGeom.vertices.size();
-        fenceDesc.indices = fenceGeom.indices.data();
-        fenceDesc.indexCount = fenceGeom.indices.size();
-        m_fenceMesh = std::make_unique<NS::Graphics::Mesh>(renderer, fenceDesc);
     }
 
     NS::Graphics::TextureDesc texDesc{};
@@ -356,8 +345,6 @@ void LevelEditorScene::OnUpdate()
         slope->Root().Snapshot();
     for (auto& pole : m_poles)
         pole->Root().Snapshot();
-    for (auto& fence : m_fences)
-        fence->Root().Snapshot();
     for (auto& hazard : m_hazards)
         hazard->Root().Snapshot();
     for (auto& water : m_waters)
@@ -456,8 +443,6 @@ void LevelEditorScene::OnUpdate()
         slope->OnUpdate();
     for (auto& pole : m_poles)
         pole->OnUpdate();
-    for (auto& fence : m_fences)
-        fence->OnUpdate();
     for (auto& hazard : m_hazards)
         hazard->OnUpdate();
     for (auto& water : m_waters)
@@ -683,8 +668,6 @@ void LevelEditorScene::OnShutdown()
         (*it)->OnEndPlay();
     for (auto it = m_poles.rbegin(); it != m_poles.rend(); ++it)
         (*it)->OnEndPlay();
-    for (auto it = m_fences.rbegin(); it != m_fences.rend(); ++it)
-        (*it)->OnEndPlay();
     for (auto it = m_hazards.rbegin(); it != m_hazards.rend(); ++it)
         (*it)->OnEndPlay();
     for (auto it = m_waters.rbegin(); it != m_waters.rend(); ++it)
@@ -705,7 +688,6 @@ void LevelEditorScene::OnShutdown()
     m_blocks.clear();
     m_slopes.clear();
     m_poles.clear();
-    m_fences.clear();
     m_hazards.clear();
     m_waters.clear();
     m_decorations.clear();
@@ -725,7 +707,6 @@ void LevelEditorScene::OnShutdown()
     m_wedgeMesh22.reset();
     m_wedgeMesh15.reset();
     m_poleMesh.reset();
-    m_fenceMesh.reset();
     m_cubeMesh.reset();
 }
 
@@ -755,8 +736,6 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
         (*it)->OnEndPlay();
     for (auto it = m_poles.rbegin(); it != m_poles.rend(); ++it)
         (*it)->OnEndPlay();
-    for (auto it = m_fences.rbegin(); it != m_fences.rend(); ++it)
-        (*it)->OnEndPlay();
     for (auto it = m_hazards.rbegin(); it != m_hazards.rend(); ++it)
         (*it)->OnEndPlay();
     for (auto it = m_waters.rbegin(); it != m_waters.rend(); ++it)
@@ -766,14 +745,12 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
     m_blocks.clear();
     m_slopes.clear();
     m_poles.clear();
-    m_fences.clear();
     m_hazards.clear();
     m_waters.clear();
     m_decorations.clear();
     m_collisionWorld.clear();
     m_collisionTriangles.clear();
     m_polePtrs.clear();
-    m_fencePtrs.clear();
 
     m_blocks.reserve(m_level.blocks.size());
     m_collisionWorld.reserve(m_level.blocks.size());
@@ -856,23 +833,6 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             continue;
         }
 
-        if (NS::Game::Editor::IsFenceBlock(entry.blockId))
-        {
-            const NS::Core::Vector3 fenceHalf{0.5f, 0.5f, 0.05f};
-            const NS::Core::Vector3 fenceNormal{0.0f, 0.0f, -1.0f};
-            auto fence = std::make_unique<FenceBlock>(m_fenceMesh.get(), m_blockMaterial.get(), fenceHalf, fenceNormal);
-            fence->AttachScene(this);
-            placeInCell(*fence);
-
-            const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
-            fence->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
-            fence->OnStart();
-
-            m_fencePtrs.push_back(&fence->Climbable());
-            m_fences.push_back(std::move(fence));
-            continue;
-        }
-
         if (NS::Game::Editor::IsHazardBlock(entry.blockId))
         {
             auto hazard = std::make_unique<HazardBlock>(m_cubeMesh.get(), m_blockMaterial.get(), kCellHalfExtents);
@@ -927,7 +887,6 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
     {
         m_player->Movement().SetCollisionWorld(m_collisionWorld);
         m_player->Movement().SetCollisionTriangles(m_collisionTriangles);
-        m_player->Movement().SetClimbables(std::span<NS::Scene::ClimbableSurfaceComponent* const>{m_fencePtrs},
-                                           std::span<NS::Scene::PoleComponent* const>{m_polePtrs});
+        m_player->Movement().SetClimbables(std::span<NS::Scene::PoleComponent* const>{m_polePtrs});
     }
 }

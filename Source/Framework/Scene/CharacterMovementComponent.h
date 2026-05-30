@@ -19,11 +19,10 @@
 
 namespace NS::Scene
 {
-    class ClimbableSurfaceComponent;
     class PoleComponent;
 
-    /// Player 移動の高レベル state。 climb 中は default CharacterController を bypass し、
-    /// pole の axis / fence の face plane に拘束された専用ロジックで position を直接更新する
+    /// Player 移動の高レベル state。 掴まり中は default CharacterController を bypass し、
+    /// pole の axis に拘束された専用ロジックで position を直接更新する
     /// (Mario-style non-physical controller の locked constraint)。
     enum class MovementState
     {
@@ -31,7 +30,6 @@ namespace NS::Scene
         Jumping,
         Falling,
         ClimbingPole,
-        ClimbingFence,
     };
 
     /// Player の物理状態を管理する Component。Input → desired velocity の橋渡しは
@@ -43,6 +41,12 @@ namespace NS::Scene
         explicit CharacterMovementComponent(NS::Scene::GameObject* owner) noexcept;
 
         void SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept;
+
+        /// 掴まり中の縦横入力。 camera 回転をかける前の生ローカル入力 (前後=縦、 左右=横、 各 -1..1) を
+        /// 受け取る。 通常移動の `SetDesiredMove` (camera 相対 world dir) とは別チャンネルで、
+        /// pole の登りを camera 向きに依らず「前=登る」 にマップするための系統。
+        void SetClimbMove(float localRight, float localForward) noexcept;
+
         void SetJumpPressed() noexcept;
         void SetJumpHeld(bool held) noexcept;
 
@@ -53,16 +57,14 @@ namespace NS::Scene
         /// Slope 用の世界座標 triangle 配列を受け取り、 内部 vector にコピーする (-01)。
         void SetCollisionTriangles(std::span<const NS::Physics::Triangle> triangles);
 
-        /// fence / pole 群を non-owning span として外部から注入する。 span 自体だけ保存し、
+        /// pole 群を non-owning span として外部から注入する。 span 自体だけ保存し、
         /// 要素 (Component pointer) の lifetime は呼出側 (LevelEditorScene) が保証する。
-        ///  の SetCollisionTriangles と同じ「毎フレーム scene 側で配列を組んで注入する」 流儀。
-        void SetClimbables(std::span<ClimbableSurfaceComponent* const> fences,
-                           std::span<PoleComponent* const> poles) noexcept;
+        /// SetCollisionTriangles と同じ「毎フレーム scene 側で配列を組んで注入する」 流儀。
+        void SetClimbables(std::span<PoleComponent* const> poles) noexcept;
 
         [[nodiscard]] MovementState State() const noexcept { return m_state; }
         /// テスト / 強制遷移用の setter。 通常は OnUpdate 内で遷移するため呼出不要。
         void SetState(MovementState s) noexcept { m_state = s; }
-        [[nodiscard]] ClimbableSurfaceComponent* AttachedFence() const noexcept { return m_attachedFence; }
         [[nodiscard]] PoleComponent* AttachedPole() const noexcept { return m_attachedPole; }
 
         [[nodiscard]] NS::Core::Vector3 Velocity() const noexcept { return m_velocity; }
@@ -104,6 +106,8 @@ namespace NS::Scene
         NS::Core::Vector3 m_velocity{0.0f, 0.0f, 0.0f};
         NS::Core::Vector3 m_desiredDir{0.0f, 0.0f, 0.0f};
         float m_desiredSpeedScale = 0.0f;
+        float m_climbRight = 0.0f;
+        float m_climbForward = 0.0f;
 
         bool m_jumpHeld = false;
         bool m_prevJumpHeld = false;
@@ -121,9 +125,7 @@ namespace NS::Scene
         NS::Physics::CharacterController m_controller;
 
         MovementState m_state = MovementState::Walking;
-        std::span<ClimbableSurfaceComponent* const> m_fences{};
         std::span<PoleComponent* const> m_poles{};
-        ClimbableSurfaceComponent* m_attachedFence = nullptr;
         PoleComponent* m_attachedPole = nullptr;
         bool m_skipControllerLastFrame = false;
     };

@@ -42,10 +42,4 @@ namespace NS::Graphics
     /// per-face normal を発行する (smooth 円柱ではなく per-segment flat shading)。
     /// 中心は原点、 axis は Y 方向で上下に `height/2` ずつ伸びる。
     [[nodiscard]] MeshGeometry MakeCylinder(float radius, float height, int segments = 12);
-
-    /// フェンス quad メッシュ (透過テクスチャ対応の薄板)。
-    /// `halfExtents` の X / Y で板サイズ、 Z は厚み (0.05~0.1 m 想定)。
-    /// normal は +Z 方向に固定 (LevelEditorScene が orientation に応じて Y 軸回転を適用)。
-    /// 表裏 2 quad + 4 側面 quad の box 形状で計 24 vertex + 36 index、 per-face normal。
-    [[nodiscard]] MeshGeometry MakeFenceQuad(const NS::Core::Vector3& halfExtents);
 } // namespace NS::Graphics

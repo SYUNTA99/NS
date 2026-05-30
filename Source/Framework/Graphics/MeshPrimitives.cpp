@@ -250,10 +250,4 @@ namespace NS::Graphics
         return geom;
     }
 
-    MeshGeometry MakeFenceQuad(const NS::Core::Vector3& halfExtents)
-    {
-        // 透過テクスチャを貼る薄板。 box 形状 (両面 + 4 側面) で MakeCube と同じ構造、
-        // ただし extents で板厚を XY サイズより小さく出来るのが目的。
-        return MakeCube(halfExtents);
-    }
 } // namespace NS::Graphics

@@ -30,8 +30,6 @@ namespace NS::Game::Editor
             return "Slope 15";
         case kBlockIdPole:
             return "Pole";
-        case kBlockIdFence:
-            return "Fence";
         case kBlockIdHazard:
             return "Hazard";
         case kBlockIdWater:
@@ -62,11 +60,8 @@ namespace NS::Game::Editor
             // solid と同系色だが少しウォーム寄りで識別できるようにする (placeholder)。
             return NS::Core::Color{0.78f, 0.65f, 0.50f, 1.0f};
         case kBlockIdPole:
-            // 木製ポールを意識した茶色系。 fence と区別するため少し明るめ。
+            // 木製ポールを意識した茶色系。
             return NS::Core::Color{0.55f, 0.40f, 0.25f, 1.0f};
-        case kBlockIdFence:
-            // 金網を意識した灰色系。 pole よりはっきり暗く。
-            return NS::Core::Color{0.45f, 0.45f, 0.50f, 1.0f};
         case kBlockIdHazard:
             // ダメージを示す警告色 (赤橙系)。 通常 block と一目で区別する。
             return NS::Core::Color{0.95f, 0.30f, 0.15f, 1.0f};
@@ -84,7 +79,7 @@ namespace NS::Game::Editor
     bool IsSolidBlock(std::uint16_t blockId) noexcept
     {
         // 「cube 形状の固形 block で InstanceBatcher の cube bucket に乗せる対象」 を判定する述語。
-        // slope / pole / fence / hazard / water / decoration は専用の Component や mesh を持つため対象外。
+        // slope / pole / hazard / water / decoration は専用の Component や mesh を持つため対象外。
         return blockId == kBlockIdSolid;
     }
 
@@ -140,11 +135,6 @@ namespace NS::Game::Editor
         return blockId == kBlockIdPole;
     }
 
-    bool IsFenceBlock(std::uint16_t blockId) noexcept
-    {
-        return blockId == kBlockIdFence;
-    }
-
     bool IsHazardBlock(std::uint16_t blockId) noexcept
     {
         return blockId == kBlockIdHazard;
@@ -163,8 +153,7 @@ namespace NS::Game::Editor
     bool IsCollidable(std::uint16_t blockId) noexcept
     {
         // hazard は AABB 固形 + 接触ダメージ。 water / decoration は player を素通しさせるため非衝突。
-        // pole / fence は capsule との衝突解決はせず climb state machine 経由で扱うため、 物理 collidable
-        // ではない。 ここで独立した述語にしておく事で、 CharacterController と各 collider 連携の修正範囲を局所化する。
+        // pole は capsule との衝突解決はせず掴まり state machine 経由で扱うため、 物理 collidable ではない。
         return IsSolidBlock(blockId) || IsSlopeBlock(blockId) || IsHazardBlock(blockId);
     }
 } // namespace NS::Game::Editor

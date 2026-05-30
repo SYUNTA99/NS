@@ -14,7 +14,6 @@ TEST(BlockRegistry, SlopeAndSolidAreRotatable)
 TEST(BlockRegistry, NonOrientableBlocksAreNotRotatable)
 {
     EXPECT_FALSE(EditorNs::IsRotatableBlock(EditorNs::kBlockIdPole));
-    EXPECT_FALSE(EditorNs::IsRotatableBlock(EditorNs::kBlockIdFence));
     EXPECT_FALSE(EditorNs::IsRotatableBlock(EditorNs::kBlockIdWater));
     EXPECT_FALSE(EditorNs::IsRotatableBlock(EditorNs::kBlockIdDecoration));
     EXPECT_FALSE(EditorNs::IsRotatableBlock(EditorNs::kBlockIdCoin));

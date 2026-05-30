@@ -3,6 +3,7 @@
 #include <Framework/Core/Clock.h>
 #include <Framework/Scene/CharacterMovementComponent.h>
 #include <Framework/Scene/GameObject.h>
+#include <Framework/Scene/PoleComponent.h>
 #include <Framework/Scene/Transform.h>
 
 #include <span>
@@ -151,4 +152,33 @@ TEST_F(CharacterMovementTest, OnUpdateNoOpWhenInactive)
     mov.OnUpdate();
 
     EXPECT_FLOAT_EQ(mov.Velocity().y, 0.0f);
+}
+
+TEST_F(CharacterMovementTest, ClimbPoleVerticalUsesClimbChannelNotDesiredDir)
+{
+    GameObject playerObj;
+    CharacterMovementComponent mov(&playerObj);
+    mov.SetDebugDrawEnabled(false);
+    std::span<const NS::Core::AABB> empty;
+    mov.SetCollisionWorld(empty);
+
+    GameObject poleObj; // origin 中心、 半径 0.5 / 高さ 2 (軸 y=-1..+1)
+    NS::Scene::PoleComponent pole(&poleObj, 0.5f, 2.0f);
+    NS::Scene::PoleComponent* polePtr = &pole;
+    mov.SetClimbables(std::span<NS::Scene::PoleComponent* const>(&polePtr, 1));
+
+    // pole に押し込んで掴む (speedScale > deadzone)。
+    mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
+    mov.SetClimbMove(0.0f, 0.0f);
+    mov.OnUpdate();
+    ASSERT_EQ(mov.State(), NS::Scene::MovementState::ClimbingPole);
+
+    const float yAfterGrab = playerObj.Root().Position().y;
+
+    // desiredDir.z=0 でも climbForward=1 で登る → climb 入力が camera 相対 desiredDir 非依存の証明。
+    mov.SetDesiredMove({0.0f, 0.0f, 0.0f}, 0.0f);
+    mov.SetClimbMove(0.0f, 1.0f);
+    mov.OnUpdate();
+
+    EXPECT_GT(playerObj.Root().Position().y, yAfterGrab);
 }

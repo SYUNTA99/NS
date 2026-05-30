@@ -3,7 +3,6 @@
 #include "Framework/Core/Clock.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Graphics/DebugDraw.h"
-#include "Framework/Scene/ClimbableSurfaceComponent.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/PoleComponent.h"
 #include "Framework/Scene/Transform.h"
@@ -36,13 +35,13 @@ namespace
         };
     }
 
-    /// pole / fence 掴まり中の上下移動速度 (m/s)。 入力 1.0 で kClimbSpeed のレート。
+    /// pole 掴まり中の上下移動速度 (m/s)。 入力 1.0 で kClimbSpeed のレート。
     constexpr float kClimbSpeed = 2.0f;
     /// 離脱 jump 時、 接触面の逆方向に与える初速 (m/s)。
     constexpr float kClimbExitOutwardSpeed = 3.0f;
     /// 離脱 jump 時、 上方向に与える初速 (m/s)。
     constexpr float kClimbExitUpwardSpeed = 6.0f;
-    /// auto-mantle 判定の上端余裕 (m)。 fence top または pole top にこの距離まで近づいたら歩行へ。
+    /// auto-mantle 判定の上端余裕 (m)。 pole top にこの距離まで近づいたら歩行へ。
     constexpr float kClimbMantleEpsilon = 0.05f;
 } // namespace
 
@@ -54,6 +53,12 @@ namespace NS::Scene
     {
         m_desiredDir = worldDir;
         m_desiredSpeedScale = NS::Core::Clamp(speedScale01, 0.0f, 1.0f);
+    }
+
+    void CharacterMovementComponent::SetClimbMove(float localRight, float localForward) noexcept
+    {
+        m_climbRight = NS::Core::Clamp(localRight, -1.0f, 1.0f);
+        m_climbForward = NS::Core::Clamp(localForward, -1.0f, 1.0f);
     }
 
     void CharacterMovementComponent::SetJumpPressed() noexcept
@@ -76,10 +81,8 @@ namespace NS::Scene
         m_collisionTriangles.assign(triangles.begin(), triangles.end());
     }
 
-    void CharacterMovementComponent::SetClimbables(std::span<ClimbableSurfaceComponent* const> fences,
-                                                   std::span<PoleComponent* const> poles) noexcept
+    void CharacterMovementComponent::SetClimbables(std::span<PoleComponent* const> poles) noexcept
     {
-        m_fences = fences;
         m_poles = poles;
     }
 
@@ -88,6 +91,8 @@ namespace NS::Scene
         m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         m_desiredDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         m_desiredSpeedScale = 0.0f;
+        m_climbRight = 0.0f;
+        m_climbForward = 0.0f;
         m_jumpHeld = false;
         m_prevJumpHeld = false;
         m_jumpPressedThisFrame = false;
@@ -97,7 +102,6 @@ namespace NS::Scene
         m_wasGrounded = false;
         m_isGrounded = false;
         m_state = MovementState::Walking;
-        m_attachedFence = nullptr;
         m_attachedPole = nullptr;
     }
 
@@ -114,9 +118,8 @@ namespace NS::Scene
             return;
         }
 
-        // ClimbingPole / ClimbingFence では default CharacterController を bypass し、
-        // pole の axis / fence の face plane に拘束された専用 update で position を直接更新する
-        // (Mario-style non-physical controller)。
+        // ClimbingPole では default CharacterController を bypass し、 pole の axis に拘束された
+        // 専用 update で position を直接更新する (Mario-style non-physical controller)。
         if (m_state == MovementState::ClimbingPole)
         {
             // 離脱 jump: pole から outward (XZ 半径方向) + 上方向に飛び離れて Falling へ。
@@ -148,10 +151,10 @@ namespace NS::Scene
             if (m_attachedPole != nullptr)
             {
                 NS::Core::Vector3 pos = RootTransform().Position();
-                // 縦入力は m_desiredDir.z (前進入力) で代用する。
-                // PlayerInputComponent は camera 相対 forward を z に積むので、 climb 中は
-                // forward push = 上昇、 backward = 下降にマップする。
-                const float verticalInput = m_desiredDir.z * m_desiredSpeedScale;
+                // 縦入力は climb 専用チャンネル (生ローカル前後入力) を使う。 camera 相対の
+                // m_desiredDir を使うと camera 向き次第で上昇量が 0 になるため別系統で受ける
+                // (前=上昇、 後=下降、 camera 非依存)。
+                const float verticalInput = m_climbForward;
                 pos.y += verticalInput * kClimbSpeed * dt;
 
                 const NS::Core::Vector3 axisStart = m_attachedPole->AxisStart();
@@ -188,72 +191,7 @@ namespace NS::Scene
             return;
         }
 
-        if (m_state == MovementState::ClimbingFence)
-        {
-            // 離脱 jump: face normal の逆方向 + 上方向に飛び離れて Falling へ。
-            if (m_jumpPressedThisFrame && m_attachedFence != nullptr)
-            {
-                const NS::Core::Vector3 n = m_attachedFence->FaceNormal();
-                m_velocity = NS::Core::Vector3{
-                    n.x * kClimbExitOutwardSpeed, kClimbExitUpwardSpeed, n.z * kClimbExitOutwardSpeed};
-                m_state = MovementState::Falling;
-                m_attachedFence = nullptr;
-                m_isGrounded = false;
-                m_jumpPressedThisFrame = false;
-                m_prevJumpHeld = m_jumpHeld;
-                return;
-            }
-
-            if (m_attachedFence != nullptr)
-            {
-                NS::Core::Vector3 pos = RootTransform().Position();
-                // fence face plane 上の 2D 移動。 face normal n に対し up は world Y、
-                // right は n × up で構築する。 入力 2D は (desiredDir.y, desiredDir.x) を up/right に積む。
-                const NS::Core::Vector3 n = m_attachedFence->FaceNormal();
-                const NS::Core::Vector3 worldUp{0.0f, 1.0f, 0.0f};
-                NS::Core::Vector3 right{n.z, 0.0f, -n.x};
-                const float rightLen = std::sqrt(right.x * right.x + right.z * right.z);
-                if (rightLen > 1e-4f)
-                {
-                    right.x /= rightLen;
-                    right.z /= rightLen;
-                }
-
-                const float vInput = m_desiredDir.y * m_desiredSpeedScale;
-                const float hInput = m_desiredDir.x * m_desiredSpeedScale;
-                pos.y += vInput * kClimbSpeed * dt;
-                pos.x += right.x * hInput * kClimbSpeed * dt;
-                pos.z += right.z * hInput * kClimbSpeed * dt;
-
-                // fence 上端を超えたら mantle で Walking へ。
-                const NS::Core::AABB fenceBox = m_attachedFence->WorldAABB();
-                const float fenceTopY = fenceBox.Center.y + fenceBox.Extents.y;
-                if (pos.y >= fenceTopY - kClimbMantleEpsilon)
-                {
-                    pos.y = fenceTopY;
-                    RootTransform().SetPosition(pos);
-                    m_state = MovementState::Walking;
-                    m_attachedFence = nullptr;
-                    m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-                    m_isGrounded = true;
-                    m_jumpsRemaining = 1;
-                    m_jumpPressedThisFrame = false;
-                    m_prevJumpHeld = m_jumpHeld;
-                    return;
-                }
-
-                RootTransform().SetPosition(pos);
-                m_velocity = NS::Core::Vector3{
-                    right.x * hInput * kClimbSpeed, vInput * kClimbSpeed, right.z * hInput * kClimbSpeed};
-            }
-
-            m_skipControllerLastFrame = true;
-            m_jumpPressedThisFrame = false;
-            m_prevJumpHeld = m_jumpHeld;
-            return;
-        }
-
-        // 通常 (Walking / Jumping / Falling): 既存の物理ロジックを温存。
+        // 通常 (Walking / Jumping / Falling): 既存の物理ロジック。
         m_bufferTimer -= dt;
         if (m_jumpPressedThisFrame)
             m_bufferTimer = m_jumpBufferTime;
@@ -327,7 +265,7 @@ namespace NS::Scene
         else
             m_state = MovementState::Falling;
 
-        // grab intent: 入力が掴まり面に向いていて、 かつ player 中心が trigger 内なら climb 状態へ。
+        // grab intent: 入力が pole に向いていて、 かつ player 中心が trigger 内なら掴まり状態へ。
         if (m_desiredSpeedScale > m_stickDeadzone)
         {
             const NS::Core::Vector3 pos = out.position;
@@ -341,19 +279,6 @@ namespace NS::Scene
                     const NS::Core::Vector3 axisStart = pole->AxisStart();
                     RootTransform().SetPosition(NS::Core::Vector3{axisStart.x, pos.y, axisStart.z});
                     break;
-                }
-            }
-            if (m_state != MovementState::ClimbingPole)
-            {
-                for (ClimbableSurfaceComponent* fence : m_fences)
-                {
-                    if (fence != nullptr && fence->ContainsPoint(pos))
-                    {
-                        m_attachedFence = fence;
-                        m_state = MovementState::ClimbingFence;
-                        m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-                        break;
-                    }
                 }
             }
         }

@@ -33,13 +33,11 @@ namespace NS::Scene
 
 namespace NS::Scene
 {
-    class ClimbableSurfaceComponent;
     class PoleComponent;
 } // namespace NS::Scene
 
 class Block;
 class DecorationBlock;
-class FenceBlock;
 class HazardBlock;
 class Player;
 class PoleBlock;
@@ -115,15 +113,13 @@ private:
     std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh22;
     std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh15;
 
-    // 掴まり系 mesh: 円柱と薄板を 1 度だけ生成して全 instance で共有する。
+    // 掴まり系 mesh: 円柱を 1 度だけ生成して全 instance で共有する。
     std::unique_ptr<NS::Graphics::Mesh> m_poleMesh;
-    std::unique_ptr<NS::Graphics::Mesh> m_fenceMesh;
 
     std::unique_ptr<Player> m_player;
     std::vector<std::unique_ptr<Block>> m_blocks;
     std::vector<std::unique_ptr<SlopeBlock>> m_slopes;
     std::vector<std::unique_ptr<PoleBlock>> m_poles;
-    std::vector<std::unique_ptr<FenceBlock>> m_fences;
     std::vector<std::unique_ptr<HazardBlock>> m_hazards;
     std::vector<std::unique_ptr<WaterBlock>> m_waters;
     std::vector<std::unique_ptr<DecorationBlock>> m_decorations;
@@ -134,7 +130,6 @@ private:
     std::vector<NS::Scene::IRenderable*> m_renderList;
     std::vector<NS::Core::AABB> m_collisionWorld;
     std::vector<NS::Physics::Triangle> m_collisionTriangles;
-    std::vector<NS::Scene::ClimbableSurfaceComponent*> m_fencePtrs;
     std::vector<NS::Scene::PoleComponent*> m_polePtrs;
 
     NS::Game::Level::LevelData m_level{};

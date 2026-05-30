@@ -8,8 +8,8 @@
 /// blockId 値を 8 枚個別に切らずに、 「block kind は 1 つ (kBlockIdSolid) / 描画時に
 /// `AutoTile::LookupTextureSlice(theme, neighborMask, blockId)` で 8 slice から 1 つ選ぶ」
 /// 設計で達成する。 これにより LevelData フォーマット変更ゼロで variation を実現する。
-///  で slope 4 種 (200..203) / pole (210) / fence (211) / hazard (220) / water (221) /
-/// decoration (222) を順次追加済。 今後敵 / ギミック等を 300 番台以降で予約する。
+/// slope 4 種 (200..203) / pole (210) / hazard (220) / water (221) / decoration (222) を扱う。
+/// 今後敵 / ギミック等を 300 番台以降で予約する。
 
 #include "Framework/Core/Math.h"
 
@@ -42,9 +42,8 @@ namespace NS::Game::Editor
     inline constexpr std::uint16_t kBlockIdSlope22 = 202;
     inline constexpr std::uint16_t kBlockIdSlope15 = 203;
 
-    /// 掴まり系 ( / )。 210 番台を climb 系に予約する。
+    /// 掴まり pole。 210 番台を掴まり系に予約する。
     inline constexpr std::uint16_t kBlockIdPole = 210;
-    inline constexpr std::uint16_t kBlockIdFence = 211;
 
     /// 接触ダメージ / 視覚装飾系 ( /  / )。 220 番台を予約する。
     inline constexpr std::uint16_t kBlockIdHazard = 220;
@@ -68,9 +67,6 @@ namespace NS::Game::Editor
     /// 掴まり pole かどうか。
     [[nodiscard]] bool IsPoleBlock(std::uint16_t blockId) noexcept;
 
-    /// 掴まり fence かどうか。
-    [[nodiscard]] bool IsFenceBlock(std::uint16_t blockId) noexcept;
-
     /// 接触ダメージ hazard かどうか。
     [[nodiscard]] bool IsHazardBlock(std::uint16_t blockId) noexcept;
 
@@ -86,13 +82,11 @@ namespace NS::Game::Editor
     /// 各 ID に紐づく base color (RGBA float)。 テクスチャが揃うまでの色分け用。
     [[nodiscard]] NS::Core::Color GetBaseColor(std::uint16_t blockId) noexcept;
 
-    /// 「衝突 cube 1 個分の固形ブロック」 系か否かを返す。
-    ///  時点では `kBlockIdSolid` のみが該当、 今後 slope / pole / fence 等が加わるが、
-    /// それらは独自の collider component で扱うので本判定の対象外。
+    /// 「衝突 cube 1 個分の固形ブロック」 系か否かを返す。 現状 `kBlockIdSolid` のみが該当。
+    /// slope / pole 等は独自の collider component で扱うので本判定の対象外。
     [[nodiscard]] bool IsSolidBlock(std::uint16_t blockId) noexcept;
 
     /// プレイヤーが触ったときに衝突解決を必要とするか。
-    /// 04-05/06/07 で導入予定の slope / pole / fence / hazard は true、 water / decoration は false。
-    ///  時点では IsSolidBlock と一致するが、 将来差分が出るので独立した述語にしておく。
+    /// solid / slope / hazard は true、 water / decoration は false (素通し)。
     [[nodiscard]] bool IsCollidable(std::uint16_t blockId) noexcept;
 } // namespace NS::Game::Editor
