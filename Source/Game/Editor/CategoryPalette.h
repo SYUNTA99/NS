@@ -52,10 +52,14 @@ namespace NS::Game::Editor
         /// 範囲外指定は無視する (no-throw)。
         void SetActiveSlot(std::size_t slot) noexcept;
 
+        /// active slot が slope なら角度を 1 段階循環させる (45→30→22→15→45)。 slope 以外は no-op。
+        /// 9 スロット固定の toolbar で 4 種の slope 角度を扱うため、 スロット再選択で variant を切替える。
+        void CycleActiveVariant() noexcept;
+
     private:
         std::size_t m_activeSlot = 0;
         // 9 スロット = 固形 / コイン / スター / spawn +  で追加した地形系 5 種。
-        // Slope は 45° のみ枠を割り、 残り 3 種は palette 外 (LevelData 直接編集 or 専用 UI 後追加) で扱う。
+        // slope スロットは再選択で 45→30→22→15° を循環 (CycleActiveVariant)。
         std::uint16_t m_slots[kSlotCount] = {kBlockIdSolid,
                                              kBlockIdCoin,
                                              kBlockIdPowerStar,

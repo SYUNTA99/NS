@@ -20,6 +20,20 @@ TEST(BlockRegistry, NonOrientableBlocksAreNotRotatable)
     EXPECT_FALSE(EditorNs::IsRotatableBlock(EditorNs::kBlockIdCoin));
 }
 
+TEST(BlockRegistry, NextSlopeBlockCyclesAngles)
+{
+    EXPECT_EQ(EditorNs::NextSlopeBlock(EditorNs::kBlockIdSlope45), EditorNs::kBlockIdSlope30);
+    EXPECT_EQ(EditorNs::NextSlopeBlock(EditorNs::kBlockIdSlope30), EditorNs::kBlockIdSlope22);
+    EXPECT_EQ(EditorNs::NextSlopeBlock(EditorNs::kBlockIdSlope22), EditorNs::kBlockIdSlope15);
+    EXPECT_EQ(EditorNs::NextSlopeBlock(EditorNs::kBlockIdSlope15), EditorNs::kBlockIdSlope45);
+}
+
+TEST(BlockRegistry, NextSlopeBlockOnNonSlopeIsUnchanged)
+{
+    EXPECT_EQ(EditorNs::NextSlopeBlock(EditorNs::kBlockIdSolid), EditorNs::kBlockIdSolid);
+    EXPECT_EQ(EditorNs::NextSlopeBlock(EditorNs::kBlockIdPole), EditorNs::kBlockIdPole);
+}
+
 TEST(BlockRegistry, RotationToYawIsQuarterTurns)
 {
     // rotation 0/1/2/3 が 0/90/180/270° へ対応することを確認する。

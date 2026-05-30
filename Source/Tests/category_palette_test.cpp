@@ -58,6 +58,29 @@ TEST(CategoryPalette, KeyboardNumSelectsSlot)
     EXPECT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdPowerStar);
 }
 
+TEST(CategoryPalette, SlopeSlotCyclesThroughAngles)
+{
+    EditorNs::CategoryPalette palette;
+    palette.SetActiveSlot(4); // slot 4 = slope (固形/コイン/スター/spawn の次)
+    ASSERT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdSlope45);
+    palette.CycleActiveVariant();
+    EXPECT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdSlope30);
+    palette.CycleActiveVariant();
+    EXPECT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdSlope22);
+    palette.CycleActiveVariant();
+    EXPECT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdSlope15);
+    palette.CycleActiveVariant();
+    EXPECT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdSlope45);
+}
+
+TEST(CategoryPalette, CycleVariantOnNonSlopeIsNoOp)
+{
+    EditorNs::CategoryPalette palette;
+    palette.SetActiveSlot(0); // solid
+    palette.CycleActiveVariant();
+    EXPECT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdSolid);
+}
+
 TEST(CategoryPalette, KeyboardNumNotEdgeNoChange)
 {
     NS::Platform::Input input;

@@ -21,6 +21,13 @@ namespace NS::Game::Editor
         return slot < kSlotCount ? m_slots[slot] : 0;
     }
 
+    void CategoryPalette::CycleActiveVariant() noexcept
+    {
+        const std::uint16_t id = m_slots[m_activeSlot];
+        if (IsSlopeBlock(id))
+            m_slots[m_activeSlot] = NextSlopeBlock(id);
+    }
+
     void CategoryPalette::TickInput(NS::Platform::Input* input, NS::UI::ImGuiContext* imgui) noexcept
     {
         if (input == nullptr)
@@ -46,7 +53,13 @@ namespace NS::Game::Editor
             const auto code =
                 static_cast<NS::Platform::Key>(static_cast<int>(NS::Platform::Key::Num1) + static_cast<int>(i));
             if (kb.IsPressed(code))
-                SetActiveSlot(i);
+            {
+                // 既に選択中の slot を再押し → variant 循環 (slope のみ実効)、 別 slot → 選択切替。
+                if (i == m_activeSlot)
+                    CycleActiveVariant();
+                else
+                    SetActiveSlot(i);
+            }
         }
     }
 
@@ -82,7 +95,13 @@ namespace NS::Game::Editor
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.50f, 0.80f, 1.0f));
 
             if (ImGui::Button(label, ImVec2(64.0f, 32.0f)))
-                SetActiveSlot(i);
+            {
+                // active な slope スロットを再クリック → 角度を循環、 別スロット → 選択切替。
+                if (isActive)
+                    CycleActiveVariant();
+                else
+                    SetActiveSlot(i);
+            }
 
             if (isActive)
                 ImGui::PopStyleColor();

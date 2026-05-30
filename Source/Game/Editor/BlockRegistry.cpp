@@ -111,6 +111,23 @@ namespace NS::Game::Editor
         }
     }
 
+    std::uint16_t NextSlopeBlock(std::uint16_t blockId) noexcept
+    {
+        switch (blockId)
+        {
+        case kBlockIdSlope45:
+            return kBlockIdSlope30;
+        case kBlockIdSlope30:
+            return kBlockIdSlope22;
+        case kBlockIdSlope22:
+            return kBlockIdSlope15;
+        case kBlockIdSlope15:
+            return kBlockIdSlope45;
+        default:
+            return blockId;
+        }
+    }
+
     bool IsRotatableBlock(std::uint16_t blockId) noexcept
     {
         // R で 90° 回す対象。 向きが意味を持つ slope と通常の固形 block。 pole (Y 対称) や

@@ -57,6 +57,10 @@ namespace NS::Game::Editor
     /// slope の blockId に対応する角度 (度数法) を返す。 slope でなければ 0。
     [[nodiscard]] float GetSlopeAngleDegrees(std::uint16_t blockId) noexcept;
 
+    /// slope の角度を 1 段階切り替える (45→30→22→15→45)。 slope 以外はそのまま返す。
+    /// 9 スロット固定の palette で slope スロット再選択時に角度を循環させる用途。
+    [[nodiscard]] std::uint16_t NextSlopeBlock(std::uint16_t blockId) noexcept;
+
     /// 編集中に R で 90° 回転させる対象の block か。 向きが意味を持つ slope と通常の固形 block が true。
     /// pole (Y 対称) / water / decoration は回しても見た目が変わらないので false。
     [[nodiscard]] bool IsRotatableBlock(std::uint16_t blockId) noexcept;
