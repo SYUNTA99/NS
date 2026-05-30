@@ -103,6 +103,10 @@ namespace NS::Scene
         /// 後半前進の 2 段補間で動かし、 完了したら Walking (接地) へ遷移する。 dt は進行用。
         void UpdateLedgeMantle(float dt) noexcept;
 
+        /// 指定したぶら下がり位置に、 現在掴んでいるのと同じ高さの縁が続いているか。 シミー
+        /// (縁沿い左右移動) 先が縁から外れていないか (端で止めるか) を判定する。
+        [[nodiscard]] bool LedgeContinuesAt(const NS::Core::Vector3& hangPos) const noexcept;
+
         float m_gravityUp = -25.0f;
         float m_gravityDown = -35.0f;
         float m_apexHangVy = 1.0f;

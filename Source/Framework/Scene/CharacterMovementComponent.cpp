@@ -62,6 +62,11 @@ namespace
     /// 縁掴み: ぶら下がりから上面へよじ登る mantle モーションの所要時間 (s)。 瞬間移動を避けて
     /// 登りを視認できるようにする。 前半で上昇、 後半で前進の 2 段に割る。
     constexpr float kLedgeMantleDuration = 0.25f;
+    /// 縁掴み: シミー (縁沿い左右移動) の速度 (m/s) と入力デッドゾーン。
+    constexpr float kLedgeShimmySpeed = 2.0f;
+    constexpr float kLedgeShimmyDeadzone = 0.3f;
+    /// 縁掴み: シミー継続判定で「同じ高さの縁」とみなす上端の許容差 (m)。
+    constexpr float kLedgeContinueTopTol = 0.1f;
     /// 縁掴み: drop 時に面法線方向へ離す距離 (m) と初速 (m/s)。
     constexpr float kLedgeDropOutward = 0.2f;
     constexpr float kLedgeDropOutwardSpeed = 2.0f;
@@ -482,8 +487,19 @@ namespace NS::Scene
             return;
         }
 
-        // それ以外: 縁にぶら下がったまま静止保持 (重力無効)。
+        // それ以外: 縁にぶら下がったまま、 左右入力で縁に沿ってシミー移動する (重力無効)。
         pos.y = m_ledgeTopY - m_capsuleHalfHeight;
+        if (std::abs(m_climbRight) > kLedgeShimmyDeadzone)
+        {
+            // 面法線に水平直交する縁方向。 移動しても面からの距離は変わらない。
+            const NS::Core::Vector3 alongDir{-m_ledgeFaceNormal.z, 0.0f, m_ledgeFaceNormal.x};
+            NS::Core::Vector3 shimmied = pos;
+            shimmied.x += alongDir.x * m_climbRight * kLedgeShimmySpeed * dt;
+            shimmied.z += alongDir.z * m_climbRight * kLedgeShimmySpeed * dt;
+            // 移動先にも同じ高さの縁が続いている時だけ動く。 端なら止めて落とさない。
+            if (LedgeContinuesAt(shimmied))
+                pos = shimmied;
+        }
         RootTransform().SetPosition(pos);
         m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
     }
@@ -522,5 +538,49 @@ namespace NS::Scene
             m_coyoteTimer = m_coyoteTime;
             m_ledgeRegrabCooldown = kLedgeRegrabCooldownTime;
         }
+    }
+
+    bool CharacterMovementComponent::LedgeContinuesAt(const NS::Core::Vector3& hangPos) const noexcept
+    {
+        const NS::Core::Vector3 inward{-m_ledgeFaceNormal.x, 0.0f, -m_ledgeFaceNormal.z};
+        const float handY = hangPos.y + m_capsuleHalfHeight;
+        const NS::Core::Vector3 probe{
+            hangPos.x + inward.x * (m_capsuleRadius + kLedgeReach),
+            handY,
+            hangPos.z + inward.z * (m_capsuleRadius + kLedgeReach),
+        };
+
+        for (const NS::Core::AABB& box : m_collisionWorld)
+        {
+            const float top = box.Center.y + box.Extents.y;
+            if (std::abs(top - m_ledgeTopY) > kLedgeContinueTopTol)
+                continue;
+            if (probe.x < box.Center.x - box.Extents.x || probe.x > box.Center.x + box.Extents.x)
+                continue;
+            if (probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z)
+                continue;
+
+            // 乗り上がり先が別 block で塞がっていたら縁とみなさない (オーバーハングの下では掴めない)。
+            const float mantleStep = 2.0f * m_capsuleRadius + kLedgeMantleInset;
+            const NS::Core::Vector3 mantleCheck{
+                hangPos.x - m_ledgeFaceNormal.x * mantleStep,
+                m_ledgeTopY + m_capsuleHalfHeight,
+                hangPos.z - m_ledgeFaceNormal.z * mantleStep,
+            };
+            bool blocked = false;
+            for (const NS::Core::AABB& other : m_collisionWorld)
+            {
+                if (AabbContainsPoint(other, mantleCheck))
+                {
+                    blocked = true;
+                    break;
+                }
+            }
+            if (blocked)
+                continue;
+
+            return true;
+        }
+        return false;
     }
 } // namespace NS::Scene

@@ -5,6 +5,7 @@
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Transform.h>
 
+#include <cmath>
 #include <span>
 
 namespace
@@ -184,4 +185,57 @@ TEST_F(LedgeGrabStateTest, DoesNotGrabWhileAscending)
 
     EXPECT_EQ(mov.State(), MovementState::Jumping);
     EXPECT_NE(mov.State(), MovementState::LedgeHanging);
+}
+
+TEST_F(LedgeGrabStateTest, ShimmyMovesAlongLedge)
+{
+    GameObject playerObj;
+    CharacterMovementComponent mov(&playerObj);
+    mov.SetDebugDrawEnabled(false);
+
+    // -x 面の縁が z 方向に 3 マス続く壁。 左右どちらへでも縁が続く。
+    const NS::Core::AABB world[] = {
+        MakeBlock(0.0f, 0.0f, 0.0f),
+        MakeBlock(0.0f, 0.0f, 1.0f),
+        MakeBlock(0.0f, 0.0f, -1.0f),
+    };
+    mov.SetCollisionWorld(world);
+
+    playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
+    mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
+    StepN(mov, 1);
+    ASSERT_EQ(mov.State(), MovementState::LedgeHanging);
+    const float zStart = playerObj.Root().Position().z;
+
+    // 左右入力で縁に沿ってシミー。 隣のマス側へ明確に動く。
+    mov.SetDesiredMove({0.0f, 0.0f, 0.0f}, 0.0f);
+    mov.SetClimbMove(1.0f, 0.0f);
+    StepN(mov, 20);
+
+    EXPECT_EQ(mov.State(), MovementState::LedgeHanging);
+    EXPECT_GT(std::abs(playerObj.Root().Position().z - zStart), 0.4f);
+}
+
+TEST_F(LedgeGrabStateTest, ShimmyStopsAtLedgeEnd)
+{
+    GameObject playerObj;
+    CharacterMovementComponent mov(&playerObj);
+    mov.SetDebugDrawEnabled(false);
+
+    // 1 マスだけの縁。 端まで来たらそれ以上シミーできず、 落ちもしない。
+    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    mov.SetCollisionWorld(world);
+
+    playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
+    mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
+    StepN(mov, 1);
+    ASSERT_EQ(mov.State(), MovementState::LedgeHanging);
+
+    mov.SetDesiredMove({0.0f, 0.0f, 0.0f}, 0.0f);
+    mov.SetClimbMove(1.0f, 0.0f);
+    StepN(mov, 60);
+
+    // 縁に留まったまま (落ちていない)、 block の z 範囲 (±0.5) を大きく超えない。
+    EXPECT_EQ(mov.State(), MovementState::LedgeHanging);
+    EXPECT_LE(std::abs(playerObj.Root().Position().z), 0.55f);
 }
