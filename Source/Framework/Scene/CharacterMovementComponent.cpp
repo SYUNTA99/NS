@@ -56,6 +56,9 @@ namespace
     constexpr float kLedgeMantleLift = 0.02f;
     /// 縁掴み: mantle / drop を起動する climb 前後入力のしきい値。
     constexpr float kLedgeInputThreshold = 0.5f;
+    /// 縁掴み: つかんだ後、 前入力での自動登りを許すまでの最小ぶら下がり時間 (s)。 壁に向かう
+    /// 入力のまま即登り切ってつかみが見えない問題を防ぐ。 jump / drop はこの待ちを受けない。
+    constexpr float kLedgeMinHangTime = 0.3f;
     /// 縁掴み: drop 時に面法線方向へ離す距離 (m) と初速 (m/s)。
     constexpr float kLedgeDropOutward = 0.2f;
     constexpr float kLedgeDropOutwardSpeed = 2.0f;
@@ -132,6 +135,7 @@ namespace NS::Scene
         m_ledgeTopY = 0.0f;
         m_ledgeFaceNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         m_ledgeRegrabCooldown = 0.0f;
+        m_ledgeHangTimer = 0.0f;
     }
 
     void CharacterMovementComponent::OnUpdate()
@@ -223,7 +227,7 @@ namespace NS::Scene
         // LedgeHanging も controller を bypass し、 縁にぶら下がった専用更新で position を直接動かす。
         if (m_state == MovementState::LedgeHanging)
         {
-            UpdateLedgeHang();
+            UpdateLedgeHang(dt);
             m_skipControllerLastFrame = true;
             m_jumpPressedThisFrame = false;
             m_prevJumpHeld = m_jumpHeld;
@@ -421,18 +425,22 @@ namespace NS::Scene
             m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
             m_ledgeTopY = top;
             m_ledgeFaceNormal = faceNormal;
+            m_ledgeHangTimer = 0.0f;
             m_state = MovementState::LedgeHanging;
             return true;
         }
         return false;
     }
 
-    void CharacterMovementComponent::UpdateLedgeHang() noexcept
+    void CharacterMovementComponent::UpdateLedgeHang(float dt) noexcept
     {
+        m_ledgeHangTimer += dt;
         NS::Core::Vector3 pos = RootTransform().Position();
 
-        // 登る: jump か前入力で mantle。 面の内側へ押し込み block 上面に立たせて Walking へ。
-        if (m_jumpPressedThisFrame || m_climbForward > kLedgeInputThreshold)
+        // 登る: jump は即時、 前入力での自動登りは一瞬ぶら下がりを見せてから (最小ぶら下がり時間)。
+        // 面の内側へ押し込み block 上面に立たせて Walking へ。
+        const bool autoClimb = m_climbForward > kLedgeInputThreshold && m_ledgeHangTimer >= kLedgeMinHangTime;
+        if (m_jumpPressedThisFrame || autoClimb)
         {
             const float mantleStep = 2.0f * m_capsuleRadius + kLedgeMantleInset;
             pos.x -= m_ledgeFaceNormal.x * mantleStep;

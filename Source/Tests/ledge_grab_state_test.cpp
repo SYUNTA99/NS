@@ -68,10 +68,17 @@ TEST_F(LedgeGrabStateTest, ClimbInputMantlesOntoBlockTop)
     StepN(mov, 1);
     ASSERT_EQ(mov.State(), MovementState::LedgeHanging);
 
-    // 前入力 (climb 縦) で mantle。 block 上面 (y=0.5) より上に立つ。
+    // 前入力 (climb 縦) を保持。 最小ぶら下がり時間 (0.3s ≒ 18 frame) を過ぎると自動で mantle。
+    // 乗り上がり後に縁から歩き落ちないよう、 通常移動入力は止めておく。
     mov.SetClimbMove(0.0f, 1.0f);
-    StepN(mov, 1);
+    mov.SetDesiredMove({0.0f, 0.0f, 0.0f}, 0.0f);
 
+    // 待ち時間内 (1 frame) ではまだぶら下がったまま。
+    StepN(mov, 1);
+    EXPECT_EQ(mov.State(), MovementState::LedgeHanging);
+
+    // 待ち時間を過ぎれば block 上面 (y=0.5) より上に立つ。
+    StepN(mov, 25);
     EXPECT_EQ(mov.State(), MovementState::Walking);
     EXPECT_TRUE(mov.IsGrounded());
     EXPECT_GT(playerObj.Root().Position().y, 0.5f);
