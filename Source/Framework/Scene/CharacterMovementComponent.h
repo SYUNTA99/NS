@@ -21,15 +21,17 @@ namespace NS::Scene
 {
     class PoleComponent;
 
-    /// Player 移動の高レベル state。 掴まり中は default CharacterController を bypass し、
-    /// pole の axis に拘束された専用ロジックで position を直接更新する
-    /// (Mario-style non-physical controller の locked constraint)。
+    /// Player 移動の高レベル state。 掴まり中 (ClimbingPole / LedgeHanging) は default
+    /// CharacterController を bypass し、 掴んだ対象に拘束された専用ロジックで position を
+    /// 直接更新する (Mario-style non-physical controller の locked constraint)。
+    /// LedgeHanging は専用パーツを使わず、 通常 block の AABB 縁にぶら下がる状態。
     enum class MovementState
     {
         Walking,
         Jumping,
         Falling,
         ClimbingPole,
+        LedgeHanging,
     };
 
     /// Player の物理状態を管理する Component。Input → desired velocity の橋渡しは
@@ -86,6 +88,14 @@ namespace NS::Scene
         void OnUpdate() override;
 
     private:
+        /// 空中下降中に進行方向の block 縁を検出し、 掴めれば LedgeHanging へ遷移する。
+        /// pos は controller 解決後の現在位置。 掴んだら true を返し、 state / 縁情報を更新する。
+        bool TryGrabLedge(const NS::Core::Vector3& pos) noexcept;
+
+        /// LedgeHanging 中の毎フレーム更新。 前入力 / jump で mantle (block 上へ)、 後入力で drop、
+        /// それ以外は縁にぶら下がったまま静止保持する (重力無効、 controller bypass)。
+        void UpdateLedgeHang() noexcept;
+
         float m_gravityUp = -25.0f;
         float m_gravityDown = -35.0f;
         float m_apexHangVy = 1.0f;
@@ -128,5 +138,9 @@ namespace NS::Scene
         std::span<PoleComponent* const> m_poles{};
         PoleComponent* m_attachedPole = nullptr;
         bool m_skipControllerLastFrame = false;
+
+        float m_ledgeTopY = 0.0f;
+        NS::Core::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f};
+        float m_ledgeRegrabCooldown = 0.0f;
     };
 } // namespace NS::Scene

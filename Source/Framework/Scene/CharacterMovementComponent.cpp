@@ -43,6 +43,32 @@ namespace
     constexpr float kClimbExitUpwardSpeed = 6.0f;
     /// auto-mantle 判定の上端余裕 (m)。 pole top にこの距離まで近づいたら歩行へ。
     constexpr float kClimbMantleEpsilon = 0.05f;
+
+    /// 縁掴み: 手 (capsule 上端) と block 上端の高さ差の許容下幅 / 上幅 (m)。 この帯に
+    /// block 上端が入ると掴める。 GUI playtest で詰める初期値。
+    constexpr float kLedgeGrabBandLow = 0.5f;
+    constexpr float kLedgeGrabBandHigh = 0.5f;
+    /// 縁掴み: capsule 表面から前方へ手を伸ばす追加距離 (m)。
+    constexpr float kLedgeReach = 0.3f;
+    /// 縁掴み: mantle 時に面の内側へ押し込む余白 (m)。 2*radius に上乗せして上面へ確実に乗せる。
+    constexpr float kLedgeMantleInset = 0.1f;
+    /// 縁掴み: mantle 後に block 上面から浮かせる安全マージン (m)。 spawn lift と同趣旨。
+    constexpr float kLedgeMantleLift = 0.02f;
+    /// 縁掴み: mantle / drop を起動する climb 前後入力のしきい値。
+    constexpr float kLedgeInputThreshold = 0.5f;
+    /// 縁掴み: drop 時に面法線方向へ離す距離 (m) と初速 (m/s)。
+    constexpr float kLedgeDropOutward = 0.2f;
+    constexpr float kLedgeDropOutwardSpeed = 2.0f;
+    /// 縁掴み: drop / mantle 直後に再掴みを禁止する時間 (s)。 放しても入力を倒し続けた時の
+    /// 即再掴みを防ぐ。
+    constexpr float kLedgeRegrabCooldownTime = 0.3f;
+
+    [[nodiscard]] bool AabbContainsPoint(const NS::Core::AABB& box, const NS::Core::Vector3& p) noexcept
+    {
+        return p.x >= box.Center.x - box.Extents.x && p.x <= box.Center.x + box.Extents.x &&
+               p.y >= box.Center.y - box.Extents.y && p.y <= box.Center.y + box.Extents.y &&
+               p.z >= box.Center.z - box.Extents.z && p.z <= box.Center.z + box.Extents.z;
+    }
 } // namespace
 
 namespace NS::Scene
@@ -103,6 +129,9 @@ namespace NS::Scene
         m_isGrounded = false;
         m_state = MovementState::Walking;
         m_attachedPole = nullptr;
+        m_ledgeTopY = 0.0f;
+        m_ledgeFaceNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_ledgeRegrabCooldown = 0.0f;
     }
 
     void CharacterMovementComponent::OnUpdate()
@@ -191,7 +220,20 @@ namespace NS::Scene
             return;
         }
 
+        // LedgeHanging も controller を bypass し、 縁にぶら下がった専用更新で position を直接動かす。
+        if (m_state == MovementState::LedgeHanging)
+        {
+            UpdateLedgeHang();
+            m_skipControllerLastFrame = true;
+            m_jumpPressedThisFrame = false;
+            m_prevJumpHeld = m_jumpHeld;
+            return;
+        }
+
         // 通常 (Walking / Jumping / Falling): 既存の物理ロジック。
+        if (m_ledgeRegrabCooldown > 0.0f)
+            m_ledgeRegrabCooldown -= dt;
+
         m_bufferTimer -= dt;
         if (m_jumpPressedThisFrame)
             m_bufferTimer = m_jumpBufferTime;
@@ -283,9 +325,13 @@ namespace NS::Scene
             }
         }
 
+        // pole を掴んでいなければ、 通常 block の縁を掴めるか試す (空中下降中のみ成立)。
+        if (m_state != MovementState::ClimbingPole)
+            TryGrabLedge(out.position);
+
         if (m_debugDraw)
         {
-            const NS::Core::Vector3 center = out.position;
+            const NS::Core::Vector3 center = RootTransform().Position();
             const NS::Core::Vector3 axis{0.0f, m_capsuleHalfHeight, 0.0f};
             const NS::Core::Color color =
                 m_isGrounded ? NS::Core::Color{0.2f, 1.0f, 0.2f, 1.0f} : NS::Core::Color{1.0f, 1.0f, 0.2f, 1.0f};
@@ -295,5 +341,131 @@ namespace NS::Scene
         m_prevJumpHeld = m_jumpHeld;
         m_jumpPressedThisFrame = false;
         m_skipControllerLastFrame = false;
+    }
+
+    bool CharacterMovementComponent::TryGrabLedge(const NS::Core::Vector3& pos) noexcept
+    {
+        // 空中で下降中、 かつ前方入力がある時だけ掴む。 cooldown 中は無効。
+        if (m_ledgeRegrabCooldown > 0.0f || m_isGrounded || m_velocity.y > 0.0f)
+            return false;
+        if (m_desiredSpeedScale <= m_stickDeadzone)
+            return false;
+
+        NS::Core::Vector3 dir{m_desiredDir.x, 0.0f, m_desiredDir.z};
+        const float dirLen = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+        if (dirLen < 1e-4f)
+            return false;
+        dir.x /= dirLen;
+        dir.z /= dirLen;
+
+        // 手の高さ = capsule 上端。 そこから前方へ伸ばした probe 点が block の XZ 内に入り、
+        // かつ block 上端が手の高さの帯に収まれば縁とみなす。
+        const float handY = pos.y + m_capsuleHalfHeight;
+        const NS::Core::Vector3 probe{
+            pos.x + dir.x * (m_capsuleRadius + kLedgeReach),
+            handY,
+            pos.z + dir.z * (m_capsuleRadius + kLedgeReach),
+        };
+
+        for (const NS::Core::AABB& box : m_collisionWorld)
+        {
+            const float top = box.Center.y + box.Extents.y;
+            if (top < handY - kLedgeGrabBandLow || top > handY + kLedgeGrabBandHigh)
+                continue;
+            if (probe.x < box.Center.x - box.Extents.x || probe.x > box.Center.x + box.Extents.x)
+                continue;
+            if (probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z)
+                continue;
+
+            // 接近軸の優勢成分で掴む手前面を決め、 その外側に capsule を寄せた hang 位置を出す。
+            NS::Core::Vector3 faceNormal{0.0f, 0.0f, 0.0f};
+            NS::Core::Vector3 hang = pos;
+            if (std::abs(dir.x) >= std::abs(dir.z))
+            {
+                const float sgn = (dir.x >= 0.0f) ? 1.0f : -1.0f;
+                const float faceX = box.Center.x - sgn * box.Extents.x;
+                faceNormal = NS::Core::Vector3{-sgn, 0.0f, 0.0f};
+                hang.x = faceX - sgn * m_capsuleRadius;
+                hang.z = NS::Core::Clamp(pos.z, box.Center.z - box.Extents.z, box.Center.z + box.Extents.z);
+            }
+            else
+            {
+                const float sgn = (dir.z >= 0.0f) ? 1.0f : -1.0f;
+                const float faceZ = box.Center.z - sgn * box.Extents.z;
+                faceNormal = NS::Core::Vector3{0.0f, 0.0f, -sgn};
+                hang.z = faceZ - sgn * m_capsuleRadius;
+                hang.x = NS::Core::Clamp(pos.x, box.Center.x - box.Extents.x, box.Center.x + box.Extents.x);
+            }
+            hang.y = top - m_capsuleHalfHeight;
+
+            // mantle 先 (上面の手前) が別 block で塞がっているなら縁ではない。 掴まない。
+            const float mantleStep = 2.0f * m_capsuleRadius + kLedgeMantleInset;
+            const NS::Core::Vector3 mantleCheck{
+                hang.x - faceNormal.x * mantleStep,
+                top + m_capsuleHalfHeight,
+                hang.z - faceNormal.z * mantleStep,
+            };
+            bool blocked = false;
+            for (const NS::Core::AABB& other : m_collisionWorld)
+            {
+                if (AabbContainsPoint(other, mantleCheck))
+                {
+                    blocked = true;
+                    break;
+                }
+            }
+            if (blocked)
+                continue;
+
+            RootTransform().SetPosition(hang);
+            m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+            m_ledgeTopY = top;
+            m_ledgeFaceNormal = faceNormal;
+            m_state = MovementState::LedgeHanging;
+            return true;
+        }
+        return false;
+    }
+
+    void CharacterMovementComponent::UpdateLedgeHang() noexcept
+    {
+        NS::Core::Vector3 pos = RootTransform().Position();
+
+        // 登る: jump か前入力で mantle。 面の内側へ押し込み block 上面に立たせて Walking へ。
+        if (m_jumpPressedThisFrame || m_climbForward > kLedgeInputThreshold)
+        {
+            const float mantleStep = 2.0f * m_capsuleRadius + kLedgeMantleInset;
+            pos.x -= m_ledgeFaceNormal.x * mantleStep;
+            pos.z -= m_ledgeFaceNormal.z * mantleStep;
+            pos.y = m_ledgeTopY + m_capsuleHalfHeight + m_capsuleRadius + kLedgeMantleLift;
+            RootTransform().SetPosition(pos);
+            m_state = MovementState::Walking;
+            m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+            m_isGrounded = true;
+            m_wasGrounded = true;
+            m_jumpsRemaining = 1;
+            m_coyoteTimer = m_coyoteTime;
+            m_ledgeRegrabCooldown = kLedgeRegrabCooldownTime;
+            return;
+        }
+
+        // 落ちる: 後入力で手を放す。 面法線方向へ少し離して Falling、 即再掴みを cooldown で抑止。
+        if (m_climbForward < -kLedgeInputThreshold)
+        {
+            pos.x += m_ledgeFaceNormal.x * kLedgeDropOutward;
+            pos.z += m_ledgeFaceNormal.z * kLedgeDropOutward;
+            RootTransform().SetPosition(pos);
+            m_state = MovementState::Falling;
+            m_velocity = NS::Core::Vector3{
+                m_ledgeFaceNormal.x * kLedgeDropOutwardSpeed, 0.0f, m_ledgeFaceNormal.z * kLedgeDropOutwardSpeed};
+            m_isGrounded = false;
+            m_ledgeRegrabCooldown = kLedgeRegrabCooldownTime;
+            return;
+        }
+
+        // それ以外: 縁にぶら下がったまま静止保持 (重力無効)。
+        pos.y = m_ledgeTopY - m_capsuleHalfHeight;
+        RootTransform().SetPosition(pos);
+        m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
     }
 } // namespace NS::Scene
