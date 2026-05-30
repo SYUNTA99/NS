@@ -10,6 +10,7 @@
 #include "Game/Player.h"
 
 #include "Framework/Scene/ClimbableSurfaceComponent.h"
+#include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/HazardComponent.h"
 #include "Framework/Scene/PoleComponent.h"
 
@@ -782,11 +783,19 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
         const NS::Core::Vector3 cellCenter{
             static_cast<float>(entry.x), static_cast<float>(entry.y), static_cast<float>(entry.z)};
 
+        // 全ブロック共通の配置。 entry.rotation (0-255) を Y 軸 yaw として transform に載せる。
+        // slope は SlopeColliderComponent が Owner world matrix を掛けるので collider も自動で回る。
+        const auto placeInCell = [&](NS::Scene::GameObject& obj) {
+            obj.Root().SetPosition(cellCenter);
+            const float yaw = NS::Game::Editor::BlockRotationToYaw(entry.rotation);
+            obj.Root().SetRotation(NS::Core::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f));
+        };
+
         if (entry.blockId == NS::Game::Editor::kBlockIdSolid)
         {
             auto block = std::make_unique<Block>(m_cubeMesh.get(), m_blockMaterial.get(), kCellHalfExtents);
             block->AttachScene(this);
-            block->Root().SetPosition(cellCenter);
+            placeInCell(*block);
             block->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
 
             const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
@@ -817,7 +826,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
 
             auto slope = std::make_unique<SlopeBlock>(wedge, m_blockMaterial.get(), angle, kCellHalfExtents);
             slope->AttachScene(this);
-            slope->Root().SetPosition(cellCenter);
+            placeInCell(*slope);
 
             const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
             slope->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
@@ -836,7 +845,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             constexpr float kPoleHeight = 1.0f;
             auto pole = std::make_unique<PoleBlock>(m_poleMesh.get(), m_blockMaterial.get(), kPoleRadius, kPoleHeight);
             pole->AttachScene(this);
-            pole->Root().SetPosition(cellCenter);
+            placeInCell(*pole);
 
             const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
             pole->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
@@ -853,7 +862,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             const NS::Core::Vector3 fenceNormal{0.0f, 0.0f, -1.0f};
             auto fence = std::make_unique<FenceBlock>(m_fenceMesh.get(), m_blockMaterial.get(), fenceHalf, fenceNormal);
             fence->AttachScene(this);
-            fence->Root().SetPosition(cellCenter);
+            placeInCell(*fence);
 
             const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
             fence->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
@@ -868,7 +877,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
         {
             auto hazard = std::make_unique<HazardBlock>(m_cubeMesh.get(), m_blockMaterial.get(), kCellHalfExtents);
             hazard->AttachScene(this);
-            hazard->Root().SetPosition(cellCenter);
+            placeInCell(*hazard);
             hazard->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
 
             const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
@@ -886,7 +895,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
         {
             auto water = std::make_unique<WaterBlock>(m_cubeMesh.get(), m_blockMaterial.get());
             water->AttachScene(this);
-            water->Root().SetPosition(cellCenter);
+            placeInCell(*water);
             water->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
 
             const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
@@ -902,7 +911,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
         {
             auto deco = std::make_unique<DecorationBlock>(m_cubeMesh.get(), m_blockMaterial.get());
             deco->AttachScene(this);
-            deco->Root().SetPosition(cellCenter);
+            placeInCell(*deco);
             deco->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
 
             const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);

@@ -1,6 +1,7 @@
 #include "Game/Level/PlayMode.h"
 
 #include "Framework/Physics/SweptTriangle.h"
+#include "Framework/Physics/WedgeGeometry.h"
 #include "Game/Editor/BlockRegistry.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
@@ -68,12 +69,11 @@ namespace NS::Game::Level
 
         play.playerVelocity.y += kGravity * dt;
 
-        // Solid block は AABB、 slope block は 2 三角形を per-frame で構築する。 coin / power star は通過可能。
+        // Solid block は AABB、 slope block は wedge 8 三角形を per-frame で構築する。 coin / power star は通過可能。
         std::vector<NS::Core::AABB> world;
         std::vector<NS::Physics::Triangle> triangles;
         world.reserve(level.blocks.size());
-        triangles.reserve(level.blocks.size() * 2);
-        constexpr float kPi = 3.14159265358979323846f;
+        triangles.reserve(level.blocks.size() * 8);
         for (const auto& entry : level.blocks)
         {
             const NS::Core::Vector3 center{
@@ -88,29 +88,11 @@ namespace NS::Game::Level
             if (NS::Game::Editor::IsSlopeBlock(entry.blockId))
             {
                 const float angle = NS::Game::Editor::GetSlopeAngleDegrees(entry.blockId);
-                const float ex = 0.5f;
-                const float ey = 0.5f;
-                const float ez = 0.5f;
-                const float rawHeight = std::tan(angle * (kPi / 180.0f)) * (2.0f * ez);
-                const float height = (rawHeight > 2.0f * ey) ? 2.0f * ey : rawHeight;
-                const float yBottom = -ey;
-                const float yTop = -ey + height;
-                // wedge 6 頂点。 SlopeColliderComponent と同一規約 (+Z 側が高い斜面)。
-                const NS::Core::Vector3 fBL{center.x - ex, center.y + yBottom, center.z - ez};
-                const NS::Core::Vector3 fBR{center.x + ex, center.y + yBottom, center.z - ez};
-                const NS::Core::Vector3 bBL{center.x - ex, center.y + yBottom, center.z + ez};
-                const NS::Core::Vector3 bBR{center.x + ex, center.y + yBottom, center.z + ez};
-                const NS::Core::Vector3 bTL{center.x - ex, center.y + yTop, center.z + ez};
-                const NS::Core::Vector3 bTR{center.x + ex, center.y + yTop, center.z + ez};
-                // 全 5 面 = 8 triangle (CCW、 cross が外向き法線になる winding)。
-                triangles.push_back(NS::Physics::Triangle{fBL, bTR, fBR}); // 斜面
-                triangles.push_back(NS::Physics::Triangle{fBL, bTL, bTR}); // 斜面
-                triangles.push_back(NS::Physics::Triangle{fBL, fBR, bBR}); // 底
-                triangles.push_back(NS::Physics::Triangle{fBL, bBR, bBL}); // 底
-                triangles.push_back(NS::Physics::Triangle{bBL, bBR, bTR}); // 裏壁
-                triangles.push_back(NS::Physics::Triangle{bBL, bTR, bTL}); // 裏壁
-                triangles.push_back(NS::Physics::Triangle{fBL, bBL, bTL}); // 左側面
-                triangles.push_back(NS::Physics::Triangle{fBR, bTR, bBR}); // 右側面
+                // entry.rotation で向きが変わるため、 描画 mesh / collider と同じ共有関数で構築する。
+                const float yaw = NS::Game::Editor::BlockRotationToYaw(entry.rotation);
+                const auto tris = NS::Physics::BuildWedgeTriangles(center, {0.5f, 0.5f, 0.5f}, angle, yaw);
+                for (const auto& tri : tris)
+                    triangles.push_back(tri);
             }
         }
 

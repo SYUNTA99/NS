@@ -126,6 +126,7 @@ namespace NS::Game::Editor
         bool m_active = true;
         bool m_levelDirty = true; // 初期 true。 初回 LevelEditorScene::OnUpdate で seed level の rebuild を走らせる。
         std::uint8_t m_currentRotation = 0;
+
         CursorState m_cursor{};
         CategoryPalette m_palette{};
         NS::Game::Undo::UndoStack m_undo;

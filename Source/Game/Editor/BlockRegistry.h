@@ -17,6 +17,13 @@
 
 namespace NS::Game::Editor
 {
+    /// block の向きを表す `BlockEntry::rotation` の分解能。 0..3 を Y 軸 90° 刻みの 4 方向へ割り当てる。
+    inline constexpr std::uint16_t kBlockRotationSteps = 4;
+
+    /// `BlockEntry::rotation` (0..3) を Y 軸 yaw (ラジアン) に変換する。
+    /// 描画と当たり判定 (BuildWedgeTriangles) が同じ向きになるよう全経路でこれを使う。
+    [[nodiscard]] float BlockRotationToYaw(std::uint8_t rotation) noexcept;
+
     /// 通常の固形ブロック。 描画時のテクスチャは theme + neighborMask で 8 slice から決まる。
     inline constexpr std::uint16_t kBlockIdSolid = 1;
 
@@ -49,6 +56,10 @@ namespace NS::Game::Editor
 
     /// slope の blockId に対応する角度 (度数法) を返す。 slope でなければ 0。
     [[nodiscard]] float GetSlopeAngleDegrees(std::uint16_t blockId) noexcept;
+
+    /// 編集中に R で 90° 回転させる対象の block か。 向きが意味を持つ slope と通常の固形 block が true。
+    /// pole (Y 対称) / water / decoration は回しても見た目が変わらないので false。
+    [[nodiscard]] bool IsRotatableBlock(std::uint16_t blockId) noexcept;
 
     /// 掴まり pole かどうか。
     [[nodiscard]] bool IsPoleBlock(std::uint16_t blockId) noexcept;

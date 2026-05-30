@@ -2,6 +2,12 @@
 
 namespace NS::Game::Editor
 {
+    float BlockRotationToYaw(std::uint8_t rotation) noexcept
+    {
+        constexpr float kTwoPi = 6.2831853071795864769f;
+        return static_cast<float>(rotation) * (kTwoPi / static_cast<float>(kBlockRotationSteps));
+    }
+
     const char* GetDisplayName(std::uint16_t blockId) noexcept
     {
         switch (blockId)
@@ -103,6 +109,13 @@ namespace NS::Game::Editor
         default:
             return 0.0f;
         }
+    }
+
+    bool IsRotatableBlock(std::uint16_t blockId) noexcept
+    {
+        // R で 90° 回す対象。 向きが意味を持つ slope と通常の固形 block。 pole (Y 対称) や
+        // water / decoration は回しても見た目が変わらないので除外する。
+        return IsSlopeBlock(blockId) || IsSolidBlock(blockId);
     }
 
     bool IsPoleBlock(std::uint16_t blockId) noexcept

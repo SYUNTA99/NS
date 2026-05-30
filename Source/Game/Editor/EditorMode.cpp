@@ -63,11 +63,9 @@ namespace NS::Game::Editor
         HandleSaveLoadInput();
         m_palette.TickInput(m_input, m_imgui);
 
-        // 表示用 yaw quaternion を「現在の cursor rotation」 に Slerp で寄せる。
-        // R 押下で m_currentRotation が瞬時に進んでも、 ここで滑らかに追従させて回転方向を視覚化する。
-        constexpr float kQuarterTurn = 1.5707963267948966f;
+        // 表示用 yaw quaternion を「現在の cursor rotation」 に Slerp で寄せて回転方向を視覚化する。
         const auto targetQuat = NS::Core::Quaternion::CreateFromAxisAngle(
-            {0.0f, 1.0f, 0.0f}, static_cast<float>(m_currentRotation) * kQuarterTurn);
+            {0.0f, 1.0f, 0.0f}, NS::Game::Editor::BlockRotationToYaw(m_currentRotation));
         constexpr float kRotationSpringRate = 12.0f;
         const float dt = NS::Core::FrameTimer::FixedDelta();
         const float t = std::min(1.0f, kRotationSpringRate * dt);
@@ -171,47 +169,41 @@ namespace NS::Game::Editor
         const auto vp = m_camera->ViewProjection();
         const NS::Core::Vector3 c = m_cursor.placementCenter;
         constexpr float h = kCellHalfExtent;
+        const float vpW = static_cast<float>(viewport.width);
+        const float vpH = static_cast<float>(viewport.height);
 
-        // 局所 8 頂点を m_displayedYawQuat で回転させて世界座標に持ち上げる。
-        // 1m cube 自体は 90° 対称で形状からは向きが見えないが、 Slerp 結果は内部 yaw データに
-        // 反映され、 将来非対称な block 形状が入った時に自然に見えるようになる。
-        const NS::Core::Vector3 localCorners[8] = {
-            {-h, -h, -h},
-            {+h, -h, -h},
-            {+h, +h, -h},
-            {-h, +h, -h},
-            {-h, -h, +h},
-            {+h, -h, +h},
-            {+h, +h, +h},
-            {-h, +h, +h},
-        };
+        ImDrawList* dl = ImGui::GetBackgroundDrawList();
+        if (dl == nullptr)
+            return;
 
-        NS::Core::Vector3 corners[8];
-        for (int i = 0; i < 8; ++i)
-        {
-            const auto rotated = NS::Core::Vector3::Transform(localCorners[i], m_displayedYawQuat);
-            corners[i] = NS::Core::Vector3{c.x + rotated.x, c.y + rotated.y, c.z + rotated.z};
-        }
-
-        ImVec2 screen[8]{};
-        bool inFront[8]{};
-        for (int i = 0; i < 8; ++i)
-        {
-            const NS::Core::Vector4 worldH{corners[i].x, corners[i].y, corners[i].z, 1.0f};
+        // world -> screen 投影。 clip.w<=0 (カメラ背後) は描画しない。
+        const auto project = [&](const NS::Core::Vector3& world, ImVec2& out) -> bool {
+            const NS::Core::Vector4 worldH{world.x, world.y, world.z, 1.0f};
             const NS::Core::Vector4 clip = NS::Core::Vector4::Transform(worldH, vp);
             if (clip.w <= 0.0f)
-            {
-                inFront[i] = false;
-                continue;
-            }
-            const float ndcX = clip.x / clip.w;
-            const float ndcY = clip.y / clip.w;
-            screen[i].x = (ndcX * 0.5f + 0.5f) * static_cast<float>(viewport.width);
-            screen[i].y = (1.0f - (ndcY * 0.5f + 0.5f)) * static_cast<float>(viewport.height);
-            inFront[i] = true;
-        }
+                return false;
+            out.x = ((clip.x / clip.w) * 0.5f + 0.5f) * vpW;
+            out.y = (1.0f - ((clip.y / clip.w) * 0.5f + 0.5f)) * vpH;
+            return true;
+        };
 
-        static constexpr int kEdges[12][2] = {
+        // セル枠の箱 (■) は軸そろえのまま固定。 向きは中の形状で示すので box 自体は回さない。
+        const NS::Core::Vector3 boxCorners[8] = {
+            {c.x - h, c.y - h, c.z - h},
+            {c.x + h, c.y - h, c.z - h},
+            {c.x + h, c.y + h, c.z - h},
+            {c.x - h, c.y + h, c.z - h},
+            {c.x - h, c.y - h, c.z + h},
+            {c.x + h, c.y - h, c.z + h},
+            {c.x + h, c.y + h, c.z + h},
+            {c.x - h, c.y + h, c.z + h},
+        };
+        ImVec2 boxScreen[8]{};
+        bool boxFront[8]{};
+        for (int i = 0; i < 8; ++i)
+            boxFront[i] = project(boxCorners[i], boxScreen[i]);
+
+        static constexpr int kBoxEdges[12][2] = {
             {0, 1},
             {1, 2},
             {2, 3},
@@ -225,13 +217,59 @@ namespace NS::Game::Editor
             {2, 6},
             {3, 7},
         };
-        const ImU32 cubeColor = m_cursor.placementBlocked ? IM_COL32(255, 64, 64, 255) : IM_COL32(64, 255, 64, 255);
-        if (ImDrawList* dl = ImGui::GetBackgroundDrawList())
+        const ImU32 boxColor = m_cursor.placementBlocked ? IM_COL32(255, 64, 64, 255) : IM_COL32(64, 255, 64, 255);
+        for (const auto& e : kBoxEdges)
         {
-            for (const auto& e : kEdges)
+            if (boxFront[e[0]] && boxFront[e[1]])
+                dl->AddLine(boxScreen[e[0]], boxScreen[e[1]], boxColor, 2.0f);
+        }
+
+        // slope を選択中なら、 セル内に実形状の wedge を薄く描いて向きを可視化する。
+        // 斜面の稜線 (斜め) が m_displayedYawQuat で回るので、 回転が一目で分かる。
+        const std::uint16_t currentId = m_palette.CurrentBlockId();
+        if (NS::Game::Editor::IsSlopeBlock(currentId))
+        {
+            constexpr float kPi = 3.14159265358979323846f;
+            const float angle = NS::Game::Editor::GetSlopeAngleDegrees(currentId);
+            const float rawHeight = std::tan(angle * (kPi / 180.0f)) * (2.0f * h);
+            const float height = (rawHeight > 2.0f * h) ? 2.0f * h : rawHeight;
+            const float yBot = -h;
+            const float yTop = -h + height;
+
+            // 6 頂点 (local、 +Z 側が高い斜面)。 BuildWedgeTriangles と同一規約。
+            const NS::Core::Vector3 wedgeLocal[6] = {
+                {-h, yBot, -h},
+                {+h, yBot, -h},
+                {-h, yBot, +h},
+                {+h, yBot, +h},
+                {-h, yTop, +h},
+                {+h, yTop, +h},
+            };
+            ImVec2 wedgeScreen[6]{};
+            bool wedgeFront[6]{};
+            for (int i = 0; i < 6; ++i)
             {
-                if (inFront[e[0]] && inFront[e[1]])
-                    dl->AddLine(screen[e[0]], screen[e[1]], cubeColor, 2.0f);
+                const auto r = NS::Core::Vector3::Transform(wedgeLocal[i], m_displayedYawQuat);
+                wedgeFront[i] = project(NS::Core::Vector3{c.x + r.x, c.y + r.y, c.z + r.z}, wedgeScreen[i]);
+            }
+
+            // fBL=0 fBR=1 bBL=2 bBR=3 bTL=4 bTR=5。 0-4 / 1-5 が斜面の稜線 (斜め)。
+            static constexpr int kWedgeEdges[9][2] = {
+                {0, 1},
+                {0, 2},
+                {1, 3},
+                {2, 3},
+                {0, 4},
+                {1, 5},
+                {4, 5},
+                {2, 4},
+                {3, 5},
+            };
+            const ImU32 slopeColor = IM_COL32(150, 255, 210, 230);
+            for (const auto& e : kWedgeEdges)
+            {
+                if (wedgeFront[e[0]] && wedgeFront[e[1]])
+                    dl->AddLine(wedgeScreen[e[0]], wedgeScreen[e[1]], slopeColor, 1.0f);
             }
         }
 #endif
@@ -326,9 +364,10 @@ namespace NS::Game::Editor
     {
         if (m_level == nullptr)
             return;
-        m_undo.Push(
-            std::make_unique<NS::Game::Undo::PlaceCommand>(x, y, z, m_palette.CurrentBlockId(), m_currentRotation),
-            *m_level);
+        // 回転対象でない block (pole / water 等) は m_currentRotation が非ゼロでも 0 で焼き込む。
+        const std::uint16_t blockId = m_palette.CurrentBlockId();
+        const std::uint8_t rotation = IsRotatableBlock(blockId) ? m_currentRotation : std::uint8_t{0};
+        m_undo.Push(std::make_unique<NS::Game::Undo::PlaceCommand>(x, y, z, blockId, rotation), *m_level);
         m_levelDirty = true;
     }
 
@@ -507,25 +546,35 @@ namespace NS::Game::Editor
 
     void EditorMode::HandleRotationInput() noexcept
     {
-        if (m_input == nullptr || m_level == nullptr || !m_cursor.valid)
+        if (m_input == nullptr || m_level == nullptr)
             return;
         if (m_imgui != nullptr && m_imgui->WantCaptureKeyboard())
             return;
 
-        const bool keyboardEdge = m_input->Keyboard().IsPressed(NS::Platform::Key::R);
-        const bool gamepadEdge =
-            m_input->Gamepad(0).IsConnected() && m_input->Gamepad(0).IsPressed(NS::Platform::GamepadButton::Y);
-        if (!keyboardEdge && !gamepadEdge)
+        // R を 1 回叩くごとに 90° 回す。 slope も cube も 4 方向スナップ (押しっぱの連続回転はしない)。
+        const bool rotate =
+            m_input->Keyboard().IsPressed(NS::Platform::Key::R) ||
+            (m_input->Gamepad(0).IsConnected() && m_input->Gamepad(0).IsPressed(NS::Platform::GamepadButton::Y));
+        if (!rotate || !m_cursor.valid)
             return;
 
         if (HasBlockAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
         {
-            // cursor 直下の既存 block を 90° 回転 (cell rotation)
-            RotateAtProgrammatic(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
+            // cursor 直下の既存 block を 90° 回す。 回転対象外の block は無視する。
+            const auto it = std::find_if(m_level->blocks.begin(), m_level->blocks.end(), [this](const auto& b) {
+                return b.x == m_cursor.hitX && b.y == m_cursor.hitY && b.z == m_cursor.hitZ;
+            });
+            if (it != m_level->blocks.end() && IsRotatableBlock(it->blockId))
+            {
+                m_undo.Push(std::make_unique<NS::Game::Undo::RotateCommand>(
+                                m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ, std::int8_t{1}),
+                            *m_level);
+                m_levelDirty = true;
+            }
         }
-        else
+        else if (IsRotatableBlock(m_palette.CurrentBlockId()))
         {
-            // 既存 block がなければ「次に置く block の rotation」 を進めるだけ (LevelData は変えない)
+            // 既存 block がなければ次に置く block の向きを 90° 進める (4 方向で循環)。
             m_currentRotation = static_cast<std::uint8_t>((m_currentRotation + 1) & 0x03);
         }
     }
