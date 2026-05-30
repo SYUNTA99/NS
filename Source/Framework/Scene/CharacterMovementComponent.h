@@ -21,10 +21,11 @@ namespace NS::Scene
 {
     class PoleComponent;
 
-    /// Player 移動の高レベル state。 掴まり中 (ClimbingPole / LedgeHanging) は default
-    /// CharacterController を bypass し、 掴んだ対象に拘束された専用ロジックで position を
+    /// Player 移動の高レベル state。 掴まり中 (ClimbingPole / LedgeHanging / LedgeMantling) は
+    /// default CharacterController を bypass し、 掴んだ対象に拘束された専用ロジックで position を
     /// 直接更新する (Mario-style non-physical controller の locked constraint)。
-    /// LedgeHanging は専用パーツを使わず、 通常 block の AABB 縁にぶら下がる状態。
+    /// LedgeHanging は専用パーツを使わず通常 block の AABB 縁にぶら下がる状態、 LedgeMantling は
+    /// そこから上面へよじ登る数フレームのモーション中。
     enum class MovementState
     {
         Walking,
@@ -32,6 +33,7 @@ namespace NS::Scene
         Falling,
         ClimbingPole,
         LedgeHanging,
+        LedgeMantling,
     };
 
     /// Player の物理状態を管理する Component。Input → desired velocity の橋渡しは
@@ -92,10 +94,14 @@ namespace NS::Scene
         /// pos は controller 解決後の現在位置。 掴んだら true を返し、 state / 縁情報を更新する。
         bool TryGrabLedge(const NS::Core::Vector3& pos) noexcept;
 
-        /// LedgeHanging 中の毎フレーム更新。 jump / 後入力は即時 (mantle / drop)、 前入力での
+        /// LedgeHanging 中の毎フレーム更新。 jump / 後入力は即時 (mantle 開始 / drop)、 前入力での
         /// 自動登りは最小ぶら下がり時間 (kLedgeMinHangTime) を過ぎてから。 それ以外は縁に静止保持
         /// する (重力無効、 controller bypass)。 dt はタイマー積算用。
         void UpdateLedgeHang(float dt) noexcept;
+
+        /// LedgeMantling 中の毎フレーム更新。 ぶら下がり位置から上面の立ち位置へ、 前半上昇 /
+        /// 後半前進の 2 段補間で動かし、 完了したら Walking (接地) へ遷移する。 dt は進行用。
+        void UpdateLedgeMantle(float dt) noexcept;
 
         float m_gravityUp = -25.0f;
         float m_gravityDown = -35.0f;
@@ -144,5 +150,9 @@ namespace NS::Scene
         NS::Core::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f};
         float m_ledgeRegrabCooldown = 0.0f;
         float m_ledgeHangTimer = 0.0f;
+
+        NS::Core::Vector3 m_ledgeMantleStart{0.0f, 0.0f, 0.0f};
+        NS::Core::Vector3 m_ledgeMantleEnd{0.0f, 0.0f, 0.0f};
+        float m_ledgeMantleTimer = 0.0f;
     };
 } // namespace NS::Scene

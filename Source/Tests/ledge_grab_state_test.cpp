@@ -77,8 +77,8 @@ TEST_F(LedgeGrabStateTest, ClimbInputMantlesOntoBlockTop)
     StepN(mov, 1);
     EXPECT_EQ(mov.State(), MovementState::LedgeHanging);
 
-    // 待ち時間を過ぎれば block 上面 (y=0.5) より上に立つ。
-    StepN(mov, 25);
+    // 待ち時間 (0.3s) + 乗り上がりモーション (0.25s) を過ぎれば block 上面 (y=0.5) より上に立つ。
+    StepN(mov, 45);
     EXPECT_EQ(mov.State(), MovementState::Walking);
     EXPECT_TRUE(mov.IsGrounded());
     EXPECT_GT(playerObj.Root().Position().y, 0.5f);
@@ -98,12 +98,47 @@ TEST_F(LedgeGrabStateTest, JumpMantlesOntoBlockTop)
     StepN(mov, 1);
     ASSERT_EQ(mov.State(), MovementState::LedgeHanging);
 
+    // ジャンプは待ち時間なしで mantle を開始するが、 即立ちではなくモーションに入る。
     mov.SetJumpPressed();
     StepN(mov, 1);
+    EXPECT_EQ(mov.State(), MovementState::LedgeMantling);
 
+    // 乗り上がり後に縁から歩き落ちないよう移動入力は止める。
+    mov.SetDesiredMove({0.0f, 0.0f, 0.0f}, 0.0f);
+    StepN(mov, 20);
     EXPECT_EQ(mov.State(), MovementState::Walking);
     EXPECT_TRUE(mov.IsGrounded());
     EXPECT_GT(playerObj.Root().Position().y, 0.5f);
+}
+
+TEST_F(LedgeGrabStateTest, MantleRisesGraduallyNotInstant)
+{
+    GameObject playerObj;
+    CharacterMovementComponent mov(&playerObj);
+    mov.SetDebugDrawEnabled(false);
+
+    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    mov.SetCollisionWorld(world);
+
+    playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
+    mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
+    StepN(mov, 1);
+    ASSERT_EQ(mov.State(), MovementState::LedgeHanging);
+    const float yHang = playerObj.Root().Position().y;
+
+    mov.SetJumpPressed();
+    StepN(mov, 1);
+    ASSERT_EQ(mov.State(), MovementState::LedgeMantling);
+
+    // モーション途中: まだ立ち上がりきっておらず、 y は hang から上昇している。
+    mov.SetDesiredMove({0.0f, 0.0f, 0.0f}, 0.0f);
+    StepN(mov, 3);
+    EXPECT_EQ(mov.State(), MovementState::LedgeMantling);
+    EXPECT_GT(playerObj.Root().Position().y, yHang);
+
+    // 完了すれば立つ。
+    StepN(mov, 20);
+    EXPECT_EQ(mov.State(), MovementState::Walking);
 }
 
 TEST_F(LedgeGrabStateTest, BackInputDropsAndDoesNotReGrabImmediately)

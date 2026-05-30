@@ -59,6 +59,9 @@ namespace
     /// 縁掴み: つかんだ後、 前入力での自動登りを許すまでの最小ぶら下がり時間 (s)。 壁に向かう
     /// 入力のまま即登り切ってつかみが見えない問題を防ぐ。 jump / drop はこの待ちを受けない。
     constexpr float kLedgeMinHangTime = 0.3f;
+    /// 縁掴み: ぶら下がりから上面へよじ登る mantle モーションの所要時間 (s)。 瞬間移動を避けて
+    /// 登りを視認できるようにする。 前半で上昇、 後半で前進の 2 段に割る。
+    constexpr float kLedgeMantleDuration = 0.25f;
     /// 縁掴み: drop 時に面法線方向へ離す距離 (m) と初速 (m/s)。
     constexpr float kLedgeDropOutward = 0.2f;
     constexpr float kLedgeDropOutwardSpeed = 2.0f;
@@ -136,6 +139,7 @@ namespace NS::Scene
         m_ledgeFaceNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         m_ledgeRegrabCooldown = 0.0f;
         m_ledgeHangTimer = 0.0f;
+        m_ledgeMantleTimer = 0.0f;
     }
 
     void CharacterMovementComponent::OnUpdate()
@@ -228,6 +232,15 @@ namespace NS::Scene
         if (m_state == MovementState::LedgeHanging)
         {
             UpdateLedgeHang(dt);
+            m_skipControllerLastFrame = true;
+            m_jumpPressedThisFrame = false;
+            m_prevJumpHeld = m_jumpHeld;
+            return;
+        }
+
+        if (m_state == MovementState::LedgeMantling)
+        {
+            UpdateLedgeMantle(dt);
             m_skipControllerLastFrame = true;
             m_jumpPressedThisFrame = false;
             m_prevJumpHeld = m_jumpHeld;
@@ -443,17 +456,15 @@ namespace NS::Scene
         if (m_jumpPressedThisFrame || autoClimb)
         {
             const float mantleStep = 2.0f * m_capsuleRadius + kLedgeMantleInset;
-            pos.x -= m_ledgeFaceNormal.x * mantleStep;
-            pos.z -= m_ledgeFaceNormal.z * mantleStep;
-            pos.y = m_ledgeTopY + m_capsuleHalfHeight + m_capsuleRadius + kLedgeMantleLift;
-            RootTransform().SetPosition(pos);
-            m_state = MovementState::Walking;
+            m_ledgeMantleStart = pos;
+            m_ledgeMantleEnd = NS::Core::Vector3{
+                pos.x - m_ledgeFaceNormal.x * mantleStep,
+                m_ledgeTopY + m_capsuleHalfHeight + m_capsuleRadius + kLedgeMantleLift,
+                pos.z - m_ledgeFaceNormal.z * mantleStep,
+            };
+            m_ledgeMantleTimer = 0.0f;
+            m_state = MovementState::LedgeMantling;
             m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-            m_isGrounded = true;
-            m_wasGrounded = true;
-            m_jumpsRemaining = 1;
-            m_coyoteTimer = m_coyoteTime;
-            m_ledgeRegrabCooldown = kLedgeRegrabCooldownTime;
             return;
         }
 
@@ -475,5 +486,41 @@ namespace NS::Scene
         pos.y = m_ledgeTopY - m_capsuleHalfHeight;
         RootTransform().SetPosition(pos);
         m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    }
+
+    void CharacterMovementComponent::UpdateLedgeMantle(float dt) noexcept
+    {
+        m_ledgeMantleTimer += dt;
+        const float t = NS::Core::Clamp(m_ledgeMantleTimer / kLedgeMantleDuration, 0.0f, 1.0f);
+
+        // 前半で縁の高さまで上昇、 後半で上面へ前進する 2 段モーション。 角への食い込みを避ける。
+        NS::Core::Vector3 pos;
+        if (t < 0.5f)
+        {
+            const float u = t / 0.5f;
+            pos.x = m_ledgeMantleStart.x;
+            pos.z = m_ledgeMantleStart.z;
+            pos.y = m_ledgeMantleStart.y + (m_ledgeMantleEnd.y - m_ledgeMantleStart.y) * u;
+        }
+        else
+        {
+            const float u = (t - 0.5f) / 0.5f;
+            pos.x = m_ledgeMantleStart.x + (m_ledgeMantleEnd.x - m_ledgeMantleStart.x) * u;
+            pos.z = m_ledgeMantleStart.z + (m_ledgeMantleEnd.z - m_ledgeMantleStart.z) * u;
+            pos.y = m_ledgeMantleEnd.y;
+        }
+        RootTransform().SetPosition(pos);
+        m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+
+        if (t >= 1.0f)
+        {
+            RootTransform().SetPosition(m_ledgeMantleEnd);
+            m_state = MovementState::Walking;
+            m_isGrounded = true;
+            m_wasGrounded = true;
+            m_jumpsRemaining = 1;
+            m_coyoteTimer = m_coyoteTime;
+            m_ledgeRegrabCooldown = kLedgeRegrabCooldownTime;
+        }
     }
 } // namespace NS::Scene
