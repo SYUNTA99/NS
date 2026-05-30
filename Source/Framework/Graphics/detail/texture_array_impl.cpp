@@ -64,11 +64,11 @@ namespace NS::Graphics
             const auto& bytes = bytesOpt.value();
             const auto* data = reinterpret_cast<const std::uint8_t*>(bytes.data());
 
-            ComPtr<ID3D11ShaderResourceView> tmpSrv; // SRV は使い捨て、 array へ Copy したら破棄。
+            // STAGING usage は SHADER_RESOURCE bind 不可なので SRV 出力は要求しない (要求すると E_INVALIDARG)。
             if (IsDdsExtension(path))
             {
                 const HRESULT hr = DirectX::CreateDDSTextureFromMemory(
-                    device, context, data, bytes.size(), outResource.GetAddressOf(), tmpSrv.GetAddressOf());
+                    device, context, data, bytes.size(), outResource.GetAddressOf(), nullptr);
                 if (FAILED(hr))
                 {
                     NS_LOG_WARN(::NS::Core::LogCat::Graphics,
@@ -82,7 +82,6 @@ namespace NS::Graphics
             {
                 const DirectX::WIC_LOADER_FLAGS loadFlags =
                     sRGB ? DirectX::WIC_LOADER_FORCE_SRGB : DirectX::WIC_LOADER_IGNORE_SRGB;
-                // 個別 slice は immutable で staging 用途、 mipmap はまとめて GenerateMips で作る。
                 const HRESULT hr = DirectX::CreateWICTextureFromMemoryEx(device,
                                                                          nullptr,
                                                                          data,
@@ -94,7 +93,7 @@ namespace NS::Graphics
                                                                          0u,
                                                                          loadFlags,
                                                                          outResource.GetAddressOf(),
-                                                                         tmpSrv.GetAddressOf());
+                                                                         nullptr);
                 if (FAILED(hr))
                 {
                     NS_LOG_WARN(::NS::Core::LogCat::Graphics,
