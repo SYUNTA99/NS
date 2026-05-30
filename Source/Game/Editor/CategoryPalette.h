@@ -54,7 +54,16 @@ namespace NS::Game::Editor
 
     private:
         std::size_t m_activeSlot = 0;
-        std::uint16_t m_slots[kSlotCount] = {
-            kBlockIdSolid, kBlockIdCoin, kBlockIdPowerStar, kBlockIdSpawn, 0, 0, 0, 0, 0};
+        // 9 スロット = 固形 / コイン / スター / spawn +  で追加した地形系 5 種。
+        // Slope は 45° のみ枠を割り、 残り 3 種は palette 外 (LevelData 直接編集 or 専用 UI 後追加) で扱う。
+        std::uint16_t m_slots[kSlotCount] = {kBlockIdSolid,
+                                             kBlockIdCoin,
+                                             kBlockIdPowerStar,
+                                             kBlockIdSpawn,
+                                             kBlockIdSlope45,
+                                             kBlockIdPole,
+                                             kBlockIdFence,
+                                             kBlockIdHazard,
+                                             kBlockIdWater};
     };
 } // namespace NS::Game::Editor

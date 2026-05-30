@@ -38,10 +38,13 @@ namespace NS::Scene
 } // namespace NS::Scene
 
 class Block;
+class DecorationBlock;
 class FenceBlock;
+class HazardBlock;
 class Player;
 class PoleBlock;
 class SlopeBlock;
+class WaterBlock;
 
 /// 編集 / プレイ両モードを 1 scene 内で扱う root scene。
 /// LevelData (永続) + PlayState (一時) + EditorMode を value member で保有し、
@@ -121,6 +124,9 @@ private:
     std::vector<std::unique_ptr<SlopeBlock>> m_slopes;
     std::vector<std::unique_ptr<PoleBlock>> m_poles;
     std::vector<std::unique_ptr<FenceBlock>> m_fences;
+    std::vector<std::unique_ptr<HazardBlock>> m_hazards;
+    std::vector<std::unique_ptr<WaterBlock>> m_waters;
+    std::vector<std::unique_ptr<DecorationBlock>> m_decorations;
 
     std::unique_ptr<CameraRig> m_cameraRig;
     std::unique_ptr<EditorCameraRig> m_editorCameraRig;

@@ -26,6 +26,12 @@ namespace NS::Game::Editor
             return "Pole";
         case kBlockIdFence:
             return "Fence";
+        case kBlockIdHazard:
+            return "Hazard";
+        case kBlockIdWater:
+            return "Water";
+        case kBlockIdDecoration:
+            return "Decoration";
         default:
             return "?";
         }
@@ -55,6 +61,15 @@ namespace NS::Game::Editor
         case kBlockIdFence:
             // 金網を意識した灰色系。 pole よりはっきり暗く。
             return NS::Core::Color{0.45f, 0.45f, 0.50f, 1.0f};
+        case kBlockIdHazard:
+            // ダメージを示す警告色 (赤橙系)。 通常 block と一目で区別する。
+            return NS::Core::Color{0.95f, 0.30f, 0.15f, 1.0f};
+        case kBlockIdWater:
+            // 水のシアン系。 透過マテリアルが未配線な間も色で識別可能にする。
+            return NS::Core::Color{0.20f, 0.55f, 0.85f, 0.55f};
+        case kBlockIdDecoration:
+            // 装飾の柔らかい緑系 (草 / 茂みを連想)。 衝突しない目印として淡め。
+            return NS::Core::Color{0.50f, 0.75f, 0.40f, 1.0f};
         default:
             return NS::Core::Color{1.0f, 0.0f, 1.0f, 1.0f};
         }
@@ -62,9 +77,8 @@ namespace NS::Game::Editor
 
     bool IsSolidBlock(std::uint16_t blockId) noexcept
     {
-        // 04-05 で kBlockIdSlope45、 04-06 で kBlockIdPole / kBlockIdFence、 04-07 で
-        // kBlockIdHazard / kBlockIdWater / kBlockIdDecoration を追加する想定。
-        // それらは独自 collider component を持つので、 「cube 形状の固形 block」 を判定する本述語の対象外。
+        // 「cube 形状の固形 block で InstanceBatcher の cube bucket に乗せる対象」 を判定する述語。
+        // slope / pole / fence / hazard / water / decoration は専用の Component や mesh を持つため対象外。
         return blockId == kBlockIdSolid;
     }
 
@@ -101,11 +115,26 @@ namespace NS::Game::Editor
         return blockId == kBlockIdFence;
     }
 
+    bool IsHazardBlock(std::uint16_t blockId) noexcept
+    {
+        return blockId == kBlockIdHazard;
+    }
+
+    bool IsWaterBlock(std::uint16_t blockId) noexcept
+    {
+        return blockId == kBlockIdWater;
+    }
+
+    bool IsDecorationBlock(std::uint16_t blockId) noexcept
+    {
+        return blockId == kBlockIdDecoration;
+    }
+
     bool IsCollidable(std::uint16_t blockId) noexcept
     {
-        // 04-07 で hazard (固形扱い) / water (非衝突) / decoration (非衝突) を順次追加していく。
+        // hazard は AABB 固形 + 接触ダメージ。 water / decoration は player を素通しさせるため非衝突。
         // pole / fence は capsule との衝突解決はせず climb state machine 経由で扱うため、 物理 collidable
         // ではない。 ここで独立した述語にしておく事で、 CharacterController と各 collider 連携の修正範囲を局所化する。
-        return IsSolidBlock(blockId) || IsSlopeBlock(blockId);
+        return IsSolidBlock(blockId) || IsSlopeBlock(blockId) || IsHazardBlock(blockId);
     }
 } // namespace NS::Game::Editor

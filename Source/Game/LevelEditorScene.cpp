@@ -1,12 +1,16 @@
 #include "Game/LevelEditorScene.h"
 
 #include "Game/Block.h"
+#include "Game/Blocks/DecorationBlock.h"
 #include "Game/Blocks/FenceBlock.h"
+#include "Game/Blocks/HazardBlock.h"
 #include "Game/Blocks/PoleBlock.h"
 #include "Game/Blocks/SlopeBlock.h"
+#include "Game/Blocks/WaterBlock.h"
 #include "Game/Player.h"
 
 #include "Framework/Scene/ClimbableSurfaceComponent.h"
+#include "Framework/Scene/HazardComponent.h"
 #include "Framework/Scene/PoleComponent.h"
 
 #include "Framework/App/Application.h"
@@ -343,7 +347,7 @@ void LevelEditorScene::OnUpdate()
         m_cameraRig->Camera().SetAspectRatioFromRenderer(app->Renderer());
     }
 
-    // Block / SlopeBlock / PoleBlock / FenceBlock の Snapshot は edit / play 共通 (静的 display object なので常時)
+    // 各ブロック GameObject の Snapshot は edit / play 共通 (静的 display object なので常時)
     for (auto& block : m_blocks)
         block->Root().Snapshot();
     for (auto& slope : m_slopes)
@@ -352,6 +356,12 @@ void LevelEditorScene::OnUpdate()
         pole->Root().Snapshot();
     for (auto& fence : m_fences)
         fence->Root().Snapshot();
+    for (auto& hazard : m_hazards)
+        hazard->Root().Snapshot();
+    for (auto& water : m_waters)
+        water->Root().Snapshot();
+    for (auto& deco : m_decorations)
+        deco->Root().Snapshot();
 
     if (editActive)
     {
@@ -393,12 +403,27 @@ void LevelEditorScene::OnUpdate()
 
         m_playMode.Tick(m_level, m_play, dt);
 
+        // ハザード AABB と player capsule の overlap 判定。 中心点が AABB に含まれていれば
+        // HazardComponent に通知して playerHealth を 1 減算する (per-fixed-step accumulating)。
+        // capsule 全体ではなく中心点で判定するのは、 1 cell 単位の hazard では十分な精度になるため。
+        for (auto& hazard : m_hazards)
+        {
+            if (!hazard)
+                continue;
+            const NS::Core::AABB box = hazard->Collider().WorldAABB();
+            if (box.Contains(m_play.playerPosition) != DirectX::DISJOINT)
+                hazard->Hazard().OnPlayerOverlap(m_play);
+        }
+
         // PlayState (SSOT) → Player.Transform の一方向同期。 ThirdPersonFollow が Player.Root
         // を target にしているため、 これで camera も自動追従する。
         if (m_player)
             m_player->Root().SetPosition(m_play.playerPosition);
 
-        if (m_play.deathTriggered)
+        // 落下死 (PlayMode が y < kFallDeathThreshold で立てた deathTriggered) は respawn 経路。
+        // ハザード接触の deathTriggered (playerHealth==0) は Game.cpp 側で Application::Quit を呼ぶため
+        // ここでは respawn しない。 playerHealth が残っている場合だけ落下扱いで再 spawn する。
+        if (m_play.deathTriggered && m_play.playerHealth > 0)
         {
             m_play.deathTriggered = false;
             m_playMode.Enter(m_level, m_play);
@@ -427,6 +452,12 @@ void LevelEditorScene::OnUpdate()
         pole->OnUpdate();
     for (auto& fence : m_fences)
         fence->OnUpdate();
+    for (auto& hazard : m_hazards)
+        hazard->OnUpdate();
+    for (auto& water : m_waters)
+        water->OnUpdate();
+    for (auto& deco : m_decorations)
+        deco->OnUpdate();
 }
 
 void LevelEditorScene::EnterPlay() noexcept
@@ -648,6 +679,12 @@ void LevelEditorScene::OnShutdown()
         (*it)->OnEndPlay();
     for (auto it = m_fences.rbegin(); it != m_fences.rend(); ++it)
         (*it)->OnEndPlay();
+    for (auto it = m_hazards.rbegin(); it != m_hazards.rend(); ++it)
+        (*it)->OnEndPlay();
+    for (auto it = m_waters.rbegin(); it != m_waters.rend(); ++it)
+        (*it)->OnEndPlay();
+    for (auto it = m_decorations.rbegin(); it != m_decorations.rend(); ++it)
+        (*it)->OnEndPlay();
     if (m_player)
         m_player->OnEndPlay();
 
@@ -663,6 +700,9 @@ void LevelEditorScene::OnShutdown()
     m_slopes.clear();
     m_poles.clear();
     m_fences.clear();
+    m_hazards.clear();
+    m_waters.clear();
+    m_decorations.clear();
 
     // Skybox / InstanceBatcher / TextureArray は Renderer の DeviceContext を ComPtr で握っているため、
     // Renderer (Application) より先に破棄する必要がある。 m_cubeMesh と同階層で reset。
@@ -711,10 +751,19 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
         (*it)->OnEndPlay();
     for (auto it = m_fences.rbegin(); it != m_fences.rend(); ++it)
         (*it)->OnEndPlay();
+    for (auto it = m_hazards.rbegin(); it != m_hazards.rend(); ++it)
+        (*it)->OnEndPlay();
+    for (auto it = m_waters.rbegin(); it != m_waters.rend(); ++it)
+        (*it)->OnEndPlay();
+    for (auto it = m_decorations.rbegin(); it != m_decorations.rend(); ++it)
+        (*it)->OnEndPlay();
     m_blocks.clear();
     m_slopes.clear();
     m_poles.clear();
     m_fences.clear();
+    m_hazards.clear();
+    m_waters.clear();
+    m_decorations.clear();
     m_collisionWorld.clear();
     m_collisionTriangles.clear();
     m_polePtrs.clear();
@@ -807,6 +856,55 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
 
             m_fencePtrs.push_back(&fence->Climbable());
             m_fences.push_back(std::move(fence));
+            continue;
+        }
+
+        if (NS::Game::Editor::IsHazardBlock(entry.blockId))
+        {
+            auto hazard = std::make_unique<HazardBlock>(m_cubeMesh.get(), m_blockMaterial.get(), kCellHalfExtents);
+            hazard->AttachScene(this);
+            hazard->Root().SetPosition(cellCenter);
+            hazard->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
+
+            const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
+            hazard->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
+            hazard->OnStart();
+
+            // 衝突は通常 Block と同じく AABB として登録。 hazard 固有のダメージ trigger は
+            // OnUpdate 内で player.position vs AABB を per-frame check する経路を取る。
+            m_collisionWorld.push_back(hazard->Collider().WorldAABB());
+            m_hazards.push_back(std::move(hazard));
+            continue;
+        }
+
+        if (NS::Game::Editor::IsWaterBlock(entry.blockId))
+        {
+            auto water = std::make_unique<WaterBlock>(m_cubeMesh.get(), m_blockMaterial.get());
+            water->AttachScene(this);
+            water->Root().SetPosition(cellCenter);
+            water->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
+
+            const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
+            water->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
+            water->OnStart();
+
+            // collider なしで m_collisionWorld にも m_collisionTriangles にも入れない ( と同じ理由)。
+            m_waters.push_back(std::move(water));
+            continue;
+        }
+
+        if (NS::Game::Editor::IsDecorationBlock(entry.blockId))
+        {
+            auto deco = std::make_unique<DecorationBlock>(m_cubeMesh.get(), m_blockMaterial.get());
+            deco->AttachScene(this);
+            deco->Root().SetPosition(cellCenter);
+            deco->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
+
+            const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
+            deco->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
+            deco->OnStart();
+
+            m_decorations.push_back(std::move(deco));
             continue;
         }
     }

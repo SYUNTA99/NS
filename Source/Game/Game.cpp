@@ -1,6 +1,7 @@
 #include "Game/Game.h"
 
 #include "Framework/App/Application.h"
+#include "Game/Level/PlayState.h"
 #include "Game/LevelEditorScene.h"
 
 #include <memory>
@@ -49,6 +50,16 @@ void Game::OnDetach()
 void Game::OnUpdate()
 {
     m_scenes.Update();
+
+    // -02 placeholder 死亡パス: ハザード接触で playerHealth が 0 まで落ちたら
+    // Application::Quit を呼ぶ。  で HUD + respawn + death 演出に置換予定。
+    // 落下死は LevelEditorScene 側で respawn 経路に乗るため、 ここでは playerHealth==0 だけを観測する
+    // (deathTriggered は落下死でも立つので両者を区別する必要がある)。
+    if (auto* scene = CurrentLevelEditorScene())
+    {
+        if (scene->Play().playerHealth <= 0)
+            NS::App::Application::Quit();
+    }
 }
 
 void Game::OnRender()

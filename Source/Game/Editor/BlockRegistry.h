@@ -8,8 +8,8 @@
 /// blockId 値を 8 枚個別に切らずに、 「block kind は 1 つ (kBlockIdSolid) / 描画時に
 /// `AutoTile::LookupTextureSlice(theme, neighborMask, blockId)` で 8 slice から 1 つ選ぶ」
 /// 設計で達成する。 これにより LevelData フォーマット変更ゼロで variation を実現する。
-/// 今後 (04-05/06/07) で `kBlockIdSlope45 / kBlockIdPole / kBlockIdFence / kBlockIdHazard
-/// / kBlockIdWater / kBlockIdDecoration` を追加していく。
+///  で slope 4 種 (200..203) / pole (210) / fence (211) / hazard (220) / water (221) /
+/// decoration (222) を順次追加済。 今後敵 / ギミック等を 300 番台以降で予約する。
 
 #include "Framework/Core/Math.h"
 
@@ -39,6 +39,11 @@ namespace NS::Game::Editor
     inline constexpr std::uint16_t kBlockIdPole = 210;
     inline constexpr std::uint16_t kBlockIdFence = 211;
 
+    /// 接触ダメージ / 視覚装飾系 ( /  / )。 220 番台を予約する。
+    inline constexpr std::uint16_t kBlockIdHazard = 220;
+    inline constexpr std::uint16_t kBlockIdWater = 221;
+    inline constexpr std::uint16_t kBlockIdDecoration = 222;
+
     /// 任意 blockId が 4 種 slope のいずれかかを判定する。
     [[nodiscard]] bool IsSlopeBlock(std::uint16_t blockId) noexcept;
 
@@ -50,6 +55,15 @@ namespace NS::Game::Editor
 
     /// 掴まり fence かどうか。
     [[nodiscard]] bool IsFenceBlock(std::uint16_t blockId) noexcept;
+
+    /// 接触ダメージ hazard かどうか。
+    [[nodiscard]] bool IsHazardBlock(std::uint16_t blockId) noexcept;
+
+    /// 視覚のみの水 block かどうか。 非衝突。
+    [[nodiscard]] bool IsWaterBlock(std::uint16_t blockId) noexcept;
+
+    /// 視覚のみの装飾 block かどうか。 非衝突。
+    [[nodiscard]] bool IsDecorationBlock(std::uint16_t blockId) noexcept;
 
     /// 各 ID に紐づく Toolbar 表示名 (ASCII 固定で ImGui label 直渡し可能)。
     [[nodiscard]] const char* GetDisplayName(std::uint16_t blockId) noexcept;

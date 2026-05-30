@@ -40,6 +40,8 @@ namespace NS::Game::Level
         play.paused = false;
         play.clearTriggered = false;
         play.deathTriggered = false;
+        //  で HUD / 回復アイテムが入るまで、 Play 開始 / respawn 毎に最大値へ戻す placeholder。
+        play.playerHealth = 8;
 
         m_collectedCoinIndices.clear();
         m_desiredDir = {0.0f, 0.0f, 0.0f};
@@ -76,8 +78,10 @@ namespace NS::Game::Level
         {
             const NS::Core::Vector3 center{
                 static_cast<float>(entry.x), static_cast<float>(entry.y), static_cast<float>(entry.z)};
-            if (entry.blockId == NS::Game::Editor::kBlockIdSolid)
+            if (entry.blockId == NS::Game::Editor::kBlockIdSolid || NS::Game::Editor::IsHazardBlock(entry.blockId))
             {
+                // hazard は固形 + 接触ダメージなので AABB 衝突世界に通常 block と並べて入れる。
+                // ダメージ trigger 自体は LevelEditorScene 側で AABB.Contains(playerPosition) を別途行う。
                 world.emplace_back(center, NS::Core::Vector3{0.5f, 0.5f, 0.5f});
                 continue;
             }
