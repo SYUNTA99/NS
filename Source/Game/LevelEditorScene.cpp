@@ -27,6 +27,7 @@
 #include "Framework/Graphics/Skybox.h"
 #include "Framework/Graphics/Texture.h"
 #include "Framework/Graphics/TextureArray.h"
+#include "Framework/Physics/Capsule.h"
 #include "Framework/Platform/Gamepad.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
@@ -403,15 +404,19 @@ void LevelEditorScene::OnUpdate()
 
         m_playMode.Tick(m_level, m_play, dt);
 
-        // ハザード AABB と player capsule の overlap 判定。 中心点が AABB に含まれていれば
-        // HazardComponent に通知して playerHealth を 1 減算する (per-fixed-step accumulating)。
-        // capsule 全体ではなく中心点で判定するのは、 1 cell 単位の hazard では十分な精度になるため。
+        // ハザード AABB と player capsule の overlap 判定。 接触していれば HazardComponent に
+        // 通知して playerHealth を 1 減算する (per-fixed-step accumulating)。
+        // hazard は solid 衝突世界にも入っており capsule 中心は表面から radius ぶん外に留まるため、
+        // 中心点 in-AABB では永遠に触れない。 capsule 芯線分から AABB の最近距離で判定する。
+        NS::Physics::Capsule playerCapsule{};
+        playerCapsule.center = m_play.playerPosition;
+        playerCapsule.radius = NS::Game::Level::PlayMode::kPlayerCapsuleRadius;
+        playerCapsule.halfHeight = NS::Game::Level::PlayMode::kPlayerCapsuleHalfHeight;
         for (auto& hazard : m_hazards)
         {
             if (!hazard)
                 continue;
-            const NS::Core::AABB box = hazard->Collider().WorldAABB();
-            if (box.Contains(m_play.playerPosition) != DirectX::DISJOINT)
+            if (NS::Physics::IntersectsCapsuleAabb(playerCapsule, hazard->Collider().WorldAABB()))
                 hazard->Hazard().OnPlayerOverlap(m_play);
         }
 

@@ -16,4 +16,11 @@ namespace NS::Physics
         float halfHeight = 0.5f;
         float radius = 0.4f;
     };
+
+    /// 縦 (Y 軸) capsule と AABB の重なり判定。
+    /// capsule の芯線分 [center ± halfHeight·Y] と box の最近距離が radius 以下なら true。
+    /// @pre capsule.axis は Y 固定前提 (本プロジェクトの Player capsule は常に縦)。
+    /// @details solid 衝突は中心を box 表面から radius ぶん外に保つため、 中心点が box 内かどうかでは
+    /// 接触を検出できない。 芯線分から box までの最近距離で判定することで「触れている」 状態を正しく拾う。
+    [[nodiscard]] bool IntersectsCapsuleAabb(const Capsule& capsule, const NS::Core::AABB& box) noexcept;
 } // namespace NS::Physics
