@@ -1,4 +1,4 @@
-//  で実装。stub: pass-through。
+// stub: pass-through。
 cbuffer DebugCB : register(b0)
 {
     row_major float4x4 viewProj;

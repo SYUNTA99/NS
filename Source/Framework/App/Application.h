@@ -91,7 +91,7 @@ namespace NS::App
         /// Editor 層が WantCaptureMouse / WantCaptureKeyboard で UI 排他制御に使う。
         [[nodiscard]] NS::UI::ImGuiContext* ImGui() noexcept;
 
-        /// 現在の Application インスタンス (/)。未構築時は nullptr。
+        /// 現在の Application インスタンス。未構築時は nullptr。
         [[nodiscard]] static Application* Get() noexcept;
         /// 次フレームの MainLoop ループ抜け要求。Get() が nullptr の場合は no-op。
         static void Quit() noexcept;

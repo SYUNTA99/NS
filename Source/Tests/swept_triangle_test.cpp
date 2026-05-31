@@ -124,7 +124,7 @@ TEST(SweptTriangleTest, NoIntersectReturnsToi1)
 
 TEST(SweptTriangleTest, FloorVsWallClassification)
 {
-    // contactNormal.y > 0.7 を floor、 それ以下を wall とする -01 の境界判定。
+    // contactNormal.y > 0.7 を floor、 それ以下を wall とする境界判定。
     // CharacterController 側の判定なので、 ここでは normal.y の値そのものを assert する。
     {
         const Triangle tri = MakeWedgeSlopeTriangle(45.0f);

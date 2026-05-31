@@ -1,17 +1,17 @@
 #pragma once
 
 /// @file EditorLayer.h
-/// @brief  編集モード UI Layer。 Debug / Development build 限定で active。
+/// @brief 編集モード UI Layer。 Debug / Development build 限定で active。
 ///
 /// @details Application::AddOverlay 経由で push される。 Regular Game Layer より後段で
 /// OnUpdate / OnRender が走るため、 LevelEditorScene の進行を妨げず Editor 専用の入力
 /// ハンドリング (Tab / Start で Edit↔Play flip、 P / Back で paused toggle) と Pause modal
 /// 描画を担う。 Toolbar / palette / cursor preview 等の編集 UI は LevelEditorScene 内で
-/// 描画済 () なので、 本 Layer は overlay 限定機能 (toggle + pause + 将来 HUD) に
+/// 描画済なので、 本 Layer は overlay 限定機能 (toggle + pause + 将来 HUD) に
 /// 責務を絞る。
 ///
 /// GameDebug / GameRelease では WinMain で本 Layer を AddOverlay しないため、 編集 UI が
-/// shipping ビルドに紛れ込まない ( 整合)。
+/// shipping ビルドに紛れ込まない。
 
 #include "Framework/App/Layer.h"
 

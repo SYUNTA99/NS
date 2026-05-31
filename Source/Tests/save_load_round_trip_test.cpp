@@ -92,7 +92,7 @@ TEST(SaveLoadRoundTrip, BuildLevelPathRejectsTraversal)
 
 // 既知 chunk (META/BLKS/SPWN) と CRC3 の間に未知 chunk 'XXXX' を挿入しても、
 // v1 reader が unknown chunk を size 分 skip し、 既知 chunk の値を完全復元できることを検証。
-//  forward-compat の end-to-end 自動検証 (将来 phase で DECO / ENMY 等を導入した
+// forward-compat の end-to-end 自動検証 (将来 DECO / ENMY 等を導入した
 // file を旧 reader に読ませた時の挙動を保証する)。
 TEST(SaveLoadRoundTrip, ForwardCompatibleUnknownChunkSkip)
 {

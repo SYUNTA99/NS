@@ -2,7 +2,7 @@
 
 /// @file Capsule.h
 /// @brief NS::Physics::Capsule — Player 衝突形状。
-/// Cylinder 部 + 上下 hemisphere。 で SweptCapsuleVsAABB の入力に使う。
+/// Cylinder 部 + 上下 hemisphere。SweptCapsuleVsAABB の入力に使う。
 
 #include "Framework/Core/Math.h"
 

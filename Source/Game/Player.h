@@ -16,7 +16,7 @@ namespace NS::Platform
     class Input;
 } // namespace NS::Platform
 
-/// プレイヤーキャラクタの GameObject ( 固定スロット)。
+/// プレイヤーキャラクタの GameObject (固定スロット)。
 /// MeshComponent + CharacterMovementComponent + PlayerInputComponent を named member
 /// として保有する。Mesh / Material / Input は寿命を LevelEditorScene が保証。
 class Player : public NS::Scene::GameObject

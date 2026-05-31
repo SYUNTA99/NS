@@ -19,7 +19,7 @@ namespace NS::Scene
             playState.playerHealth = 0;
             playState.deathTriggered = true;
             NS_LOG_INFO(::NS::Core::LogCat::Game,
-                        "ハザード接触で死亡 (placeholder、  で HUD / 回復 / 演出に置換予定)");
+                        "ハザード接触で死亡 (placeholder、 将来 HUD / 回復 / 演出に置換予定)");
         }
     }
 } // namespace NS::Scene

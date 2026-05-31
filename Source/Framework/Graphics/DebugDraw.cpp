@@ -154,7 +154,7 @@ namespace NS::Graphics::DebugDraw
 
     void Flush(Renderer& /*renderer*/, const NS::Core::Matrix& /*viewProjection*/) noexcept
     {
-        // GPU 描画接続は  (Player Capsule 表示) と並行で実装する。
+        // GPU 描画接続は Player Capsule 表示と並行で実装する。
         // 蓄積側は完成しているので、現状は 1 度だけ警告して clear する。
         if (!FlushWarningShown())
         {

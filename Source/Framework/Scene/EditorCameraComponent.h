@@ -28,7 +28,7 @@ namespace NS::Scene
     class CameraComponent;
     class GameObject;
 
-    /// 編集モード free-fly camera。  ThirdPersonFollowComponent と並列の Component で、
+    /// 編集モード free-fly camera。 ThirdPersonFollowComponent と並列の Component で、
     /// mode 切替時に `SetActive(bool)` で on/off する。
     class EditorCameraComponent : public Component
     {

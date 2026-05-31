@@ -143,7 +143,7 @@ namespace NS::Scene
         const NS::Core::Vector3 forward{sy * cp, sp, cy * cp};
 
         // target は補間位置を使うことで Player Mesh の補間と一致させ、
-        // 相対位置に jitter が乗らないようにする ( 整合)。
+        // 相対位置に jitter が乗らないようにする (補間整合)。
         const NS::Core::Vector3 tgtPos = m_target->InterpolatedWorldMatrix(alpha).Translation();
         const NS::Core::Vector3 headPos{tgtPos.x, tgtPos.y + m_headHeight, tgtPos.z};
         const NS::Core::Vector3 camPos{

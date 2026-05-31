@@ -40,7 +40,7 @@ namespace NS::Graphics
         }
         if (desc.shader == nullptr)
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Material: ShaderProgram が nullptr ( 共有参照必須)");
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Material: ShaderProgram が nullptr (共有参照必須)");
             return;
         }
 

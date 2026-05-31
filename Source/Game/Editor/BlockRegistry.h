@@ -4,12 +4,12 @@
 /// @brief 編集時に扱う block / marker の ID 体系。 ID -> 表示名 / 色 / 種別判定の lookup を提供する。
 ///
 /// @details `LevelData::BlockEntry::blockId` に格納される値。 ID 体系をテクスチャテーブル /
-/// 振る舞いテーブルに流用する。  が要求する「テーマあたり 8 variant 以上」 は
+/// 振る舞いテーブルに流用する。 「テーマあたり 8 variant 以上」 は
 /// blockId 値を 8 枚個別に切らずに、 「block kind は 1 つ (kBlockIdSolid) / 描画時に
 /// `AutoTile::LookupTextureSlice(theme, neighborMask, blockId)` で 8 slice から 1 つ選ぶ」
 /// 設計で達成する。 これにより LevelData フォーマット変更ゼロで variation を実現する。
 /// slope 4 種 (200..203) / pole (210) / hazard (220) / water (221) / decoration (222) を扱う。
-/// 今後敵 / ギミック等を 300 番台以降で予約する。
+/// 将来、 敵 / ギミック等を 300 番台以降で予約する。
 
 #include "Framework/Core/Math.h"
 
@@ -36,7 +36,7 @@ namespace NS::Game::Editor
     /// toolbar の表示用識別子。 実体は `LevelData::spawnX/Y/Z` に書く。
     inline constexpr std::uint16_t kBlockIdSpawn = 102;
 
-    /// 楔形 (wedge) スロープ 4 種 (-01)。 200 番台を斜面系に予約する。
+    /// 楔形 (wedge) スロープ 4 種。 200 番台を斜面系に予約する。
     inline constexpr std::uint16_t kBlockIdSlope45 = 200;
     inline constexpr std::uint16_t kBlockIdSlope30 = 201;
     inline constexpr std::uint16_t kBlockIdSlope22 = 202;
@@ -45,7 +45,7 @@ namespace NS::Game::Editor
     /// 掴まり pole。 210 番台を掴まり系に予約する。
     inline constexpr std::uint16_t kBlockIdPole = 210;
 
-    /// 接触ダメージ / 視覚装飾系 ( /  / )。 220 番台を予約する。
+    /// 接触ダメージ / 視覚装飾系。 220 番台を予約する。
     inline constexpr std::uint16_t kBlockIdHazard = 220;
     inline constexpr std::uint16_t kBlockIdWater = 221;
     inline constexpr std::uint16_t kBlockIdDecoration = 222;

@@ -1,4 +1,4 @@
-//  で実装。stub: 入力 color をそのまま出力。
+// stub: 入力 color をそのまま出力。
 struct PSIn
 {
     float4 pos : SV_POSITION;

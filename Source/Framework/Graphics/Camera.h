@@ -4,7 +4,7 @@
 /// @brief NS::Graphics::Camera — View + Projection 行列を提供する Plain Class。
 ///
 /// @details GPU リソース所有なし、 Renderer / Scene 依存なし。 CameraComponent から
-/// 将来内包される予定。 座標系は LH 一本 ( / )、 Up = (0,1,0) 既定、
+/// 将来内包される予定。 座標系は LH 一本、 Up = (0,1,0) 既定、
 /// Perspective のみ。 垂直 FOV は強い型 `NS::Core::Radians`、 setter で
 /// 内部の dirty フラグを立て、 Getter で初めて行列再計算するレイジー方式。
 
@@ -31,7 +31,7 @@ namespace NS::Graphics
     /// View + Projection 行列を提供する Plain Class。
     /// GPU リソース所有なし、Renderer/Scene 依存なし。
     /// CameraComponent から将来内包される予定。
-    /// 座標系は LH 一本 (/)、Up = (0,1,0) 既定、Perspective のみ。
+    /// 座標系は LH 一本、Up = (0,1,0) 既定、Perspective のみ。
     /// setter で内部の dirty フラグが立ち、Getter で初めて行列再計算するレイジー方式。
     class Camera
     {

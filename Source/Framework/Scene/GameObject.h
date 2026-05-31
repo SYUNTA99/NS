@@ -1,14 +1,14 @@
 #pragma once
 
 /// @file GameObject.h
-/// @brief NS::Scene::GameObject — Transform を持つ継承可能基底 (, , )。
+/// @brief NS::Scene::GameObject — Transform を持つ継承可能基底。
 ///
 /// UE5 の AActor 相当だが命名は GameObject。Component を named members として固定スロットで
 /// 保有する派生クラス (Player / Block / Enemy 等) の共通基底。Component 自体は派生クラス側が
 /// 値型 or unique_ptr で所有し、GameObject は Tick / OnEndPlay 伝播用に raw 参照を `m_components`
 /// に保持する。
 ///
-/// Lifecycle ():
+/// Lifecycle:
 ///   - OnStart()    — SceneBase attach 直後に 1 回、配下 Component の OnStart を伝播
 ///   - OnUpdate()   — fixed step 毎回、IsActive==true の Component に伝播。
 ///                    dt は `NS::Core::FrameTimer::FixedDelta()` で取得

@@ -180,7 +180,7 @@ void LevelEditorScene::OnStart()
         NS_LOG_WARN(::NS::Core::LogCat::Game,
                     "LevelEditorScene: InstanceBatcher 構築失敗、 block 描画はスキップされる");
 
-    //   placeholder skybox。 kurt 6-face PNG をロードし、 取得できなければ
+    // placeholder skybox。 kurt 6-face PNG をロードし、 取得できなければ
     // 1x1 マゼンタ cubemap fallback で続行する (描画は OnRender 末尾)。
     m_skybox = std::make_unique<NS::Graphics::Skybox>(renderer);
     if (m_skybox->IsValid())
@@ -222,7 +222,7 @@ void LevelEditorScene::OnStart()
     m_player->OnStart();
     m_cameraRig->OnStart();
 
-    // 編集モード専用の free-fly カメラを Player /  follow camera と並列で立ち上げる。
+    // 編集モード専用の free-fly カメラを Player / follow camera と並列で立ち上げる。
     // MB64 の freecam に相当 (mouse + gamepad で Orbit / Pan / Zoom)。
     m_editorCameraRig = std::make_unique<EditorCameraRig>();
     m_editorCameraRig->AttachScene(this);
@@ -255,8 +255,8 @@ void LevelEditorScene::OnStart()
     // OnStart で手動 rebuild 済なので、 初回 OnUpdate の二重 rebuild を抑制
     m_editor.ClearLevelDirty();
 
-    // 編集モード起動: Player /  follow camera を frozen / invisible に。
-    // 03-06 で Play モード遷移時に SetActive(true) で再活性化する設計。
+    // 編集モード起動: Player / follow camera を frozen / invisible に。
+    // Play モード遷移時に SetActive(true) で再活性化する設計。
     m_player->MeshComp().SetActive(false);
     m_player->Movement().SetActive(false);
     m_player->InputComp().SetActive(false);
@@ -495,7 +495,7 @@ void LevelEditorScene::OnRender()
         mesh.SetAmbientColor(theme.ambientColor);
     }
 
-    // Block 描画は InstanceBatcher の (mesh, material) bucket 経由に統一する (SC #5)。
+    // Block 描画は InstanceBatcher の (mesh, material) bucket 経由に統一する。
     // block の MeshComponent::IsActive(false) で旧 per-block Draw 経路は短絡されるため、
     // 描画呼出は本フレームの instance VB 1 回 + bucket 数の DrawIndexedInstanced に集約される。
     if (m_instanceBatcher && m_instanceBatcher->IsValid())
@@ -562,7 +562,7 @@ void LevelEditorScene::OnRender()
             r->Draw(ctx);
     }
 
-    // Skybox は不透明描画後 + 編集オーバーレイ前に挟む (: depth=1 同士の
+    // Skybox は不透明描画後 + 編集オーバーレイ前に挟む (depth=1 同士の
     // LESS_EQUAL 比較を成立させるため depth buffer 上の遠景 pixel が確定した直後)。
     // viewProj から camera 位置を抜くために行列の translation 行 (_41/_42/_43) を 0 化する。
     // これで skybox は常に camera 中心に追従し、 player が前進しても同じ星空を見続ける。
@@ -814,7 +814,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             water->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
             water->OnStart();
 
-            // collider なしで m_collisionWorld にも m_collisionTriangles にも入れない ( と同じ理由)。
+            // collider なしで m_collisionWorld にも m_collisionTriangles にも入れない (装飾と同じ理由)。
             m_waters.push_back(std::move(water));
             continue;
         }

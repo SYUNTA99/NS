@@ -1,14 +1,14 @@
 #pragma once
 
 /// @file Component.h
-/// @brief NS::Scene::Component — 振る舞いを表現する再利用ブロック (, )。
+/// @brief NS::Scene::Component — 振る舞いを表現する再利用ブロック。
 ///
 /// GameObject 派生 (Player/Block/Camera 等) に固定スロット (named members) として
 /// 値型 or std::unique_ptr で保有される。Component 自身は所有者 GameObject を raw 参照する。
 /// Component 間 / cross-GameObject アクセスは ctor 経由の明示的 raw pointer 注入のみ許可
 /// (GetComponent<T>() 動的検索 API は提供しない)。
 ///
-/// Lifecycle ():
+/// Lifecycle:
 ///   - OnStart() — Scene attach 直後に 1 回
 ///   - OnUpdate() — fixed step 内で毎回 (`IsActive()==false` で skip)。
 ///     dt は `NS::Core::FrameTimer::FixedDelta()` で取得 (all-static、 Application 不要)

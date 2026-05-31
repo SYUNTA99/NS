@@ -11,7 +11,7 @@
 /// kurt レイアウト (space_rt/lf/up/dn/ft/bk.png) を WICTextureLoader で読み込み
 /// 6-face Texture2D を組み立てる。 失敗時は 1x1 マゼンタ cubemap fallback に切替わり
 /// `IsUsingFallback()` が true、 Render() はそのまま安全に呼び出せる。
-/// 描画順は scene の不透明描画後 + ImGui 直前 (: Z=1 同士の比較対策)。
+/// 描画順は scene の不透明描画後 + ImGui 直前 (Z=1 同士の深度比較対策)。
 /// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること。
 
 #include <filesystem>
@@ -45,7 +45,7 @@ namespace NS::Graphics
 
     /// Cubemap ベースのスカイボックス描画ファサード。
     /// 単位 cube mesh + cubemap SRV + xyww shader + LESS_EQUAL depth + 前面カリングで描画する。
-    /// LoadCubemap は .dds (DirectXTK DDSTextureLoader) と 6-face PNG ディレクトリ (-04)
+    /// LoadCubemap は .dds (DirectXTK DDSTextureLoader) と 6-face PNG ディレクトリ
     /// の両方を受け付け、 拡張子で auto-detect する。
     /// 失敗時は 1x1 マゼンタ cubemap fallback に切替わり IsUsingFallback() が true。
     /// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること。
@@ -62,7 +62,7 @@ namespace NS::Graphics
         Skybox(Skybox&&) = delete;
         Skybox& operator=(Skybox&&) = delete;
 
-        /// 6-face PNG ディレクトリまたは .dds cubemap をロードする (-04)。
+        /// 6-face PNG ディレクトリまたは .dds cubemap をロードする。
         /// path がディレクトリならば内部で kurt レイアウトの `space_rt/lf/up/dn/ft/bk.png` を
         /// 探索し 6-face Texture2D + MISC_TEXTURECUBE flag で組み立てる。
         /// path のファイル拡張子が .dds ならば DirectXTK CreateDDSTextureFromFileEx で TEXTURECUBE
@@ -71,7 +71,7 @@ namespace NS::Graphics
         [[nodiscard]] bool LoadCubemap(const std::filesystem::path& path);
 
         /// 与えられた viewProj (camera の translation 成分を除去済) で skybox を 1 drawcall 描画する。
-        /// シーン不透明描画の後、 ImGui overlay の前で呼ぶこと (: Z=1 重複対策)。
+        /// シーン不透明描画の後、 ImGui overlay の前で呼ぶこと (Z=1 重複対策)。
         /// fallback 状態でもクラッシュせずマゼンタ cubemap を描く。
         void Render(const NS::Core::Matrix& viewProjNoTranslate) noexcept;
 

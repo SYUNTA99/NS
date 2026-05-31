@@ -44,7 +44,7 @@ namespace NS::Graphics
     };
 
     /// 1 つの `ID3D11Texture2D` (ArraySize=N) を保有する Texture2DArray ラッパ。
-    ///  の block 描画専用、 cubemap / 3D volume は対象外。
+    /// block 描画専用、 cubemap / 3D volume は対象外。
     /// 全 slice 同一 width / height / format / mip count が D3D11 仕様で必須。
     /// 依存: Renderer の DeviceContext を内部で保持するため、 Renderer より先に破棄すること。
     class TextureArray
@@ -52,8 +52,8 @@ namespace NS::Graphics
     public:
         struct Impl;
 
-        ///  の slice 予算上限。 5 theme x 8 variant = 40 を確保し、 24 slot を将来拡張用に残す。
-        /// 超過分は ctor 内で捨てて WARN を出す (-style boundary clamp)。
+        /// slice 予算上限。 5 theme x 8 variant = 40 を確保し、 24 slot を将来拡張用に残す。
+        /// 超過分は ctor 内で捨てて WARN を出す (境界 clamp)。
         static constexpr std::uint16_t kTotalSlices = 64;
 
         TextureArray(Renderer& renderer, const TextureArrayDesc& desc);

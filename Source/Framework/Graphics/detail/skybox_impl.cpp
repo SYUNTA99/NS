@@ -35,7 +35,7 @@ namespace NS::Graphics
 
         // kurt placeholder の 6 face レイアウト。 D3D11 cubemap の標準順は +X / -X / +Y / -Y / +Z / -Z。
         // kurt の命名 (rt / lf / up / dn / ft / bk) は左手系 LH カメラから見た方向にマップする。
-        // 視覚的に上下逆や水平反転がある場合は  UAT (04-07) で個別差替え。
+        // 視覚的に上下逆や水平反転がある場合は個別差替え。
         constexpr std::array<const char*, 6> kKurtFaceFileNames = {
             "space_rt.png", // +X (right)
             "space_lf.png", // -X (left)

@@ -114,7 +114,7 @@ TEST_F(InstanceBatcherTest, DrawCallBudgetUnder200)
     batcher.FlushAll();
 
     EXPECT_LE(batcher.LastFrameDrawCallCount(), static_cast<std::size_t>(200))
-        << " : 1000 block / 48 unique (mesh, material) bucket で draw call は 200 以下";
+        << "1000 block / 48 unique (mesh, material) bucket で draw call は 200 以下";
     EXPECT_EQ(batcher.LastFrameDrawCallCount(), kUniqueBuckets)
         << "空でない bucket ごとに 1 回 DrawIndexedInstanced する設計のため 48 一致が期待";
 }

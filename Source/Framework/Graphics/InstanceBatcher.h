@@ -80,7 +80,7 @@ namespace NS::Graphics
         [[nodiscard]] std::size_t BucketCount() const noexcept;
 
         /// 直近 `FlushAll` で発行された `DrawIndexedInstanced` 回数。
-        ///   (1000 block / ≤200 draw call) の監視に使う。
+        /// 1000 block / ≤200 draw call の監視に使う。
         [[nodiscard]] std::size_t LastFrameDrawCallCount() const noexcept;
 
         /// 内部 VB / InputLayout / ShaderProgram が構築済なら true。

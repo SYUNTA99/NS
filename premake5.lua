@@ -116,9 +116,9 @@ local function applyCommonBuildOptions()
     linkoptions { "/ignore:4006" }
 end
 
--- Framework 層共通定義 ( 時点では空、 PCH は 2.5b-0 で再導入予定)
+-- Framework 層共通定義 (現状は空、 PCH 再導入時にここへ pchheader 等を集約予定)
 local function applyFrameworkLayerDefaults(layerName)
-    -- placeholder: layer 名引数は 2.5b-0 で PCH 再導入時に利用
+    -- placeholder: layer 名引数は PCH 再導入時に利用する
     _ = layerName
 end
 
@@ -327,8 +327,8 @@ project "Physics"
 
 --============================================================================
 -- Audio 層 (StaticLib、 placeholder)
---    で空フォルダ + Audio.h placeholder のみ。  以降に
---   XAudio2 + DirectXTK::Audio で BGM/SE 実装予定。
+--   現状は空フォルダ + Audio.h placeholder のみ。 将来 XAudio2 + DirectXTK::Audio で
+--   BGM/SE を実装予定。
 --============================================================================
 project "Audio"
     kind "StaticLib"
@@ -400,7 +400,7 @@ project "Scene"
     applyCommonBuildOptions()
 
 --============================================================================
--- UI 層 (StaticLib、 Framework 8 層目 —  で新設)
+-- UI 層 (StaticLib、 Framework 8 層目)
 --   ImGui ラッパ (Debug / Development 構成のみ実機能、 GameDebug / GameRelease は stub)。
 --   ImGui 型はヘッダから露出させず detail/ 配下にのみ取り込む (header pollution rule)。
 --============================================================================
@@ -570,7 +570,7 @@ group "_Tests"
 
 --============================================================================
 -- Dear ImGui (docking branch v1.92.6、 Debug/Development 構成のみ build)
---   NS::UI 内部実装で使用、 GameDebug/GameRelease では link しない ( A2-)
+--   NS::UI 内部実装で使用、 GameDebug/GameRelease では link しない
 --============================================================================
 project "imgui"
     kind "StaticLib"

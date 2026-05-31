@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file HazardComponent.h
-/// @brief 接触ダメージ Component ( hazard、 -02 +  )。
+/// @brief 接触ダメージ Component。
 ///
 /// @details OnPlayerOverlap で `PlayState::playerHealth` を 1 ずつ減算する。 LevelData は
 /// 一切変更しない (CRC32 round-trip 互換)。 health が 0 に到達した

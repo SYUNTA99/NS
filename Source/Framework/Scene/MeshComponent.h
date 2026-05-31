@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file MeshComponent.h
-/// @brief MeshComponent — Mesh + Material 描画を担う IRenderable 多重継承 Component (, )。
+/// @brief MeshComponent — Mesh + Material 描画を担う IRenderable 多重継承 Component。
 ///
 /// 既存 standard.{vs,ps}.hlsl + FrameCB 構造 (160 byte, row_major LH) を流用する。
 /// `Draw(ctx)` 内で `Transform::InterpolatedWorldMatrix(ctx.alpha)` を使い、
@@ -36,7 +36,7 @@ namespace NS::Scene
         float pad3 = 0.0f;
     };
     static_assert(sizeof(FrameCB) == 192, "FrameCB size は HLSL standard と完全一致 (192 byte)");
-    static_assert(alignof(FrameCB) == 16, "FrameCB は 16 byte alignment ()");
+    static_assert(alignof(FrameCB) == 16, "FrameCB は 16 byte alignment");
 
     class MeshComponent : public Component, public IRenderable
     {

@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file ThirdPersonFollowComponent.h
-/// @brief Mario 系ジャンプアクションの追従カメラ (〜C5)。
-///        critically-damped spring で distance を smoothing、 マウス/右スティック手動回転、
-///         FOV/sensitivity/invert を member 保持、Dynamic zoom (idle 5 / run 6 / jump 7) を
+/// @brief Mario 系ジャンプアクションの追従カメラ。
+///        critically-damped spring で distance を smoothing、マウス/右スティック手動回転、
+///        FOV/sensitivity/invert を member 保持、Dynamic zoom (idle 5 / run 6 / jump 7) を
 ///        movement の grounded / horizontal velocity から自動切替。
 
 #include "Framework/Core/Math.h"
@@ -33,13 +33,13 @@ namespace NS::Scene
         /// 出力先 Camera を注入。null では OnUpdate は no-op。
         void SetCamera(CameraComponent* camera) noexcept;
 
-        ///  右スティック / マウス回転の入力ソース。null では旋回 0。
+        /// 右スティック / マウス回転の入力ソース。null では旋回 0。
         void SetInput(NS::Platform::Input* input) noexcept;
 
         /// Dynamic zoom 判定用 (grounded / horizontal velocity)。null で idle 距離固定。
         void SetMovement(const CharacterMovementComponent* movement) noexcept;
 
-        ///  設定 ( で Settings UI から bridge)。
+        /// 設定 (将来 Settings UI から bridge)。
         void SetFovY(NS::Core::Radians fov) noexcept;
         [[nodiscard]] NS::Core::Radians FovY() const noexcept { return m_fovY; }
         void SetSensX(float radPerPixel) noexcept;

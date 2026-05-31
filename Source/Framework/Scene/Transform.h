@@ -57,7 +57,7 @@ namespace NS::Scene
         /// Alpha 補間付き World 行列。階層全体を補間値で再計算する。
         [[nodiscard]] NS::Core::Matrix InterpolatedWorldMatrix(float alpha) const noexcept;
 
-        /// 親を切替える。null で root 化。サイクル検出は呼出側責任 ( では行わない)。
+        /// 親を切替える。null で root 化。サイクル検出は呼出側責任 (現状では行わない)。
         void SetParent(Transform* parent) noexcept;
         [[nodiscard]] Transform* Parent() const noexcept { return m_parent; }
         [[nodiscard]] const std::vector<Transform*>& Children() const noexcept { return m_children; }

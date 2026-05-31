@@ -3,8 +3,7 @@
 /// @file CharacterController.h
 /// @brief NS::Physics::CharacterController — Capsule + sub-step swept 物理。
 ///
-/// 入出力は POD struct。gameplay 値 (gravity / jump 等) は保持しない ( 責任分担)。
-///  で実装。
+/// 入出力は POD struct。gameplay 値 (gravity / jump 等) は保持しない (責任分担)。
 
 #include "Framework/Core/Math.h"
 #include "Framework/Physics/SweptTriangle.h"
@@ -13,9 +12,9 @@
 
 namespace NS::Physics
 {
-    /// 1 frame の Update 入力。dt は fixed step ( Determinism)。
+    /// 1 frame の Update 入力。dt は fixed step (Determinism)。
     /// AABB と Triangle の collision world を併せて受ける。 同 substep 内で
-    /// 両方を sweep し、 最小 TOI 側を採用する (-01)。
+    /// 両方を sweep し、 最小 TOI 側を採用する。
     struct CharacterControllerInput
     {
         NS::Core::Vector3 position{0.0f, 0.0f, 0.0f};
@@ -42,7 +41,7 @@ namespace NS::Physics
         CharacterController() noexcept = default;
 
         /// 1 frame ぶん物理を進めて新状態を返す。`NS::Core::FrameTimer::DeltaSeconds()` 等の variable delta は
-        /// 使わない ( Determinism 制約、SC5 担保)。
+        /// 使わない (Determinism 制約)。
         [[nodiscard]] CharacterControllerResult Update(const CharacterControllerInput& input) noexcept;
     };
 } // namespace NS::Physics

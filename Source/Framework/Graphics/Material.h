@@ -4,7 +4,7 @@
 /// @brief NS::Graphics::Material — ShaderProgram + Texture スロット + 内蔵 CB。
 ///
 /// @details ShaderProgram は共有参照 (非所有)、 Material 寿命中 shader が
-/// 有効であること。 Sampler は s0 LinearWrap 固定 ( /  補足)、 複数 sampler
+/// 有効であること。 Sampler は s0 LinearWrap 固定、 複数 sampler
 /// は将来拡張。 `Bind()` は shader / textures / CB / sampler を一括設定する。
 /// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること。
 
@@ -37,7 +37,7 @@ namespace NS::Graphics
 
     /// Generic 単一クラス Material。
     /// ShaderProgram* (非所有) + Texture スロット (unsigned 番号) + 内蔵 ConstantBuffer。
-    /// Sampler は s0 LinearWrap 固定 ( /  補足)、複数 sampler は将来拡張。
+    /// Sampler は s0 LinearWrap 固定、複数 sampler は将来拡張。
     /// 依存: Renderer の DeviceContext を内部で保持するため、Renderer より先に破棄すること。
     class Material
     {
@@ -70,14 +70,13 @@ namespace NS::Graphics
         template <typename T> void SetParams(const T& params) noexcept
         {
             static_assert((sizeof(T) % 16) == 0,
-                          "Material::SetParams<T> は sizeof(T) が 16 byte 倍数で alignas(16) 必須 ()");
-            static_assert(alignof(T) >= 16,
-                          "Material::SetParams<T> は struct alignas(16) 必須 ( / Vector3 16-byte 境界)");
+                          "Material::SetParams<T> は sizeof(T) が 16 byte 倍数で alignas(16) 必須");
+            static_assert(alignof(T) >= 16, "Material::SetParams<T> は struct alignas(16) 必須 (Vector3 16-byte 境界)");
             UpdateParamsRaw(&params, sizeof(T));
         }
 
         /// shader->Bind() → 全 Texture::Bind(slot, Pixel) → ConstantBuffer::Bind(cbSlot, cbStages)
-        /// → PSSetSamplers(0, LinearWrap) 一括実行 ( 補足)。Mesh::Draw() の前に呼ぶ。
+        /// → PSSetSamplers(0, LinearWrap) 一括実行。Mesh::Draw() の前に呼ぶ。
         void Bind() noexcept;
 
     private:

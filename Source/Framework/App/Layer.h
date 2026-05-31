@@ -4,7 +4,7 @@
 /// @brief NS::App::Layer — Application::Run が反復駆動する処理単位の基底。
 ///
 /// @details Hazel Engine 流の Layered Architecture (Application → LayerStack → Layer)
-/// の Layer 部。  で Game / Editor / Debug HUD を独立した Layer として並立
+/// の Layer 部。 Game / Editor / Debug HUD を独立した Layer として並立
 /// させる基盤。 Event class 階層は導入せず、 入力は Application::Get()->Input() の
 /// polling で参照する。 active flag は各 Layer の自己判断用 (pause overlay / Edit-Play
 /// toggle 等で SetActive(false) して OnUpdate / OnRender をスキップ)。

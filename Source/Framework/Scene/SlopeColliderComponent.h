@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file SlopeColliderComponent.h
-/// @brief 楔形 (wedge) スロープの三角形 collider Component (-01)。
+/// @brief 楔形 (wedge) スロープの三角形 collider Component。
 ///
 /// @details Owner の root world transform を基準に、 wedge の 5 面 (斜面 quad + 底面 quad +
 /// 裏壁 quad + 左右側面 triangle) を 8 三角形に分割した世界座標版 Triangle 配列を返す。
@@ -24,7 +24,7 @@ namespace NS::Scene
     {
     public:
         /// @param owner            所有 GameObject。 base ctor で auto-register。
-        /// @param angleDegrees     斜面の傾斜角 (-01: 45 / 30 / 22.5 / 15 度のいずれかを想定)。
+        /// @param angleDegrees     斜面の傾斜角 (45 / 30 / 22.5 / 15 度のいずれかを想定)。
         /// @param halfExtents      wedge の半サイズ。 デフォルト値は 1m cell の (0.5, 0.5, 0.5)。
         SlopeColliderComponent(NS::Scene::GameObject* owner,
                                float angleDegrees,

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file RenderTarget.h
-/// @brief NS::Graphics::RenderTarget — Color + 任意 Depth のラッパ ( / )。
+/// @brief NS::Graphics::RenderTarget — Color + 任意 Depth のラッパ。
 ///
 /// @details 現状は `Renderer` が所有する Backbuffer 専用、 ctor は private で
 /// `Renderer` のみが生成する (friend)。 Clear / Bind / Resize は自己完結、 OOP らしく
@@ -32,7 +32,7 @@ namespace NS::Graphics
 
     /// レンダーターゲット (Color + 任意で Depth) のラッパ。
     /// 現状は Renderer が所有する Backbuffer 専用、ctor は private。
-    /// Clear / Bind / Resize は自己完結、OOP らしく自分の RTV/DSV を扱う (/)。
+    /// Clear / Bind / Resize は自己完結、OOP らしく自分の RTV/DSV を扱う。
     class RenderTarget
     {
     public:

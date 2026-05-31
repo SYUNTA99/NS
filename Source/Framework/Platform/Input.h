@@ -4,7 +4,7 @@
 /// @brief NS::Platform::Input — Keyboard / Mouse / Gamepad の集約 facade。
 ///
 /// @details Application が所有し、 fixed step ループの頭で `Update()` を 1 回呼ぶ。
-/// 共通基底は持たず、 サブクラスへの参照取得 API のみ提供する ( /  整合)。
+/// 共通基底は持たず、 サブクラスへの参照取得 API のみ提供する。
 /// 状態更新は WndProc / XInput ポーリング経由で各サブクラスに直接行う。
 
 #include <array>
@@ -18,7 +18,7 @@ namespace NS::Platform
 
     /// 入力デバイスの集約。Application が所有し、毎フレーム頭で Update() を呼ぶ。
     /// Keyboard / Mouse / Gamepad のサブクラスへの参照を提供する。
-    /// 共通基底クラスは持たない ( /  整合)。
+    /// 共通基底クラスは持たない。
     class Input
     {
     public:

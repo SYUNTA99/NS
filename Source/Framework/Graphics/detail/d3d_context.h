@@ -1,6 +1,6 @@
 #pragma once
 
-/// graphics 層内部限定 (detail/ 配下、// 整合)。
+/// graphics 層内部限定 (detail/ 配下)。
 /// <windows.h> / <d3d11.h> / <dxgi.h> / <wrl/client.h> をここに集約し、
 /// 公開ヘッダから D3D11 / Win32 シンボルが漏れないようにする。
 ///
@@ -11,9 +11,9 @@
 /// public header (renderer.h / render_target.h / common_states.h) からは
 /// 絶対に include しないこと (grep 検証対象)。
 
+#include "Framework/Framework.h"
 #include <d3d11.h>
 #include <dxgi.h>
-#include "Framework/Framework.h"
 #include <wrl/client.h>
 
 namespace NS::Graphics

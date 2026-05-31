@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file WedgeGeometry.h
-/// @brief wedge (楔形スロープ) の衝突三角形生成 (-01)。
+/// @brief wedge (楔形スロープ) の衝突三角形生成。
 ///
 /// @details 描画 mesh (Graphics::MakeWedge) と同じ規約の collision 版。 SlopeColliderComponent と
 /// PlayMode の両経路がこの関数を共有し、 wedge geometry の定義を 1 箇所に集約する。

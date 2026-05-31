@@ -25,7 +25,7 @@ namespace NS::Game::Level
         bool paused = false;
         bool clearTriggered = false;
         bool deathTriggered = false;
-        /// Mario-64 風 8 セグメントヘルス (-02)。 HazardComponent が overlap で 1 ずつ減算する。
+        /// Mario-64 風 8 セグメントヘルス。 HazardComponent が overlap で 1 ずつ減算する。
         /// HUD / 回復 / 死亡演出は将来の責任範囲、 ここでは data field と damage 経路のみ。
         std::int8_t playerHealth = 8;
     };

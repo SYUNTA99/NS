@@ -44,7 +44,7 @@ namespace NS::Game::Editor
 
     std::uint16_t LookupTextureSlice(ThemeId theme, std::uint8_t neighborMask, std::uint16_t /*blockId*/) noexcept
     {
-        // theme 範囲外 → Grass ( 互換の入力境界 fallback)。
+        // theme 範囲外 → Grass (入力境界の fallback)。
         if (static_cast<std::size_t>(theme) >= static_cast<std::size_t>(ThemeId::Count))
         {
             theme = ThemeId::Grass;

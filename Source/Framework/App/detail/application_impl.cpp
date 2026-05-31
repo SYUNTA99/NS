@@ -59,8 +59,8 @@ namespace NS::App
         if (s_instance != nullptr)
         {
             // assert は Release で消えるため、本制約は Release ビルドでも fatal で
-            // 落とす ( 単一保持を Shipping でも保証)。
-            NS_LOG_FATAL(::NS::Core::LogCat::App, "Application 多重起動禁止 ()");
+            // 落とす (単一保持を Shipping でも保証)。
+            NS_LOG_FATAL(::NS::Core::LogCat::App, "Application 多重起動禁止");
         }
         s_instance = this;
 

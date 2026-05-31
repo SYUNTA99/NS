@@ -2,11 +2,11 @@
 
 /// @file CharacterMovementComponent.h
 /// @brief Capsule + シングルジャンプ + coyote/buffer + asymmetric gravity + apex hang を保有する
-///        Player 移動 Component (, )。`NS::Physics::CharacterController` を value
+///        Player 移動 Component。`NS::Physics::CharacterController` を value
 ///        member として内包し、毎 OnUpdate で desired velocity と dt を渡して結果を Root に適用する。
 ///
 /// gameplay 値 (gravity / jump など) はここに保持し、CharacterController には数値計算のみを任せる
-/// ( 責任分担)。determinism 制約: OnUpdate(dt) で渡される fixed dt のみ使用、`NS::Core::FrameTimer::DeltaSeconds()`
+/// 責任分担。determinism 制約: OnUpdate(dt) で渡される fixed dt のみ使用、`NS::Core::FrameTimer::DeltaSeconds()`
 /// 不可。
 
 #include "Framework/Core/Math.h"
@@ -58,7 +58,7 @@ namespace NS::Scene
         /// 依存させない (元 vector の reallocation / 破棄で dangling になる事故を防ぐ)。
         void SetCollisionWorld(std::span<const NS::Core::AABB> world);
 
-        /// Slope 用の世界座標 triangle 配列を受け取り、 内部 vector にコピーする (-01)。
+        /// Slope 用の世界座標 triangle 配列を受け取り、 内部 vector にコピーする。
         void SetCollisionTriangles(std::span<const NS::Physics::Triangle> triangles);
 
         /// pole 群を non-owning span として外部から注入する。 span 自体だけ保存し、

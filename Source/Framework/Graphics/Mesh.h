@@ -41,7 +41,7 @@ namespace NS::Graphics
         NS::Core::Vector2 uv;
         NS::Core::Vector3 normal;
     };
-    static_assert(sizeof(MeshVertex) == 32, "MeshVertex は 32 byte 固定 ()");
+    static_assert(sizeof(MeshVertex) == 32, "MeshVertex は 32 byte 固定");
     static_assert(std::is_standard_layout_v<MeshVertex>,
                   "MeshVertex は offsetof 使用のため標準レイアウト必須 (StandardInputLayout)");
 
@@ -84,7 +84,7 @@ namespace NS::Graphics
         [[nodiscard]] std::size_t IndexCount() const noexcept;
 
         /// VB.Bind(0) + IB.Bind() + IASetPrimitiveTopology(TRIANGLELIST) + DrawIndexed(IndexCount, 0, 0) を一括実行
-        ///。 ShaderProgram::Bind() と Material 側の SRV/CB Bind は呼出側責任。
+        /// ShaderProgram::Bind() と Material 側の SRV/CB Bind は呼出側責任。
         void Draw() noexcept;
 
         /// MeshVertex に対応する POSITION / TEXCOORD / NORMAL の InputElement 配列を返す。

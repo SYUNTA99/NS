@@ -27,7 +27,7 @@ namespace NS::Graphics
 
     namespace
     {
-        // 1 bucket あたりの instance 上限。  (1000 instance / 48 bucket) の実線は 20~21 だが、
+        // 1 bucket あたりの instance 上限。 1000 instance / 48 bucket の実線は 20~21 だが、
         // 5x safety で 5000 まで確保しておく。 超えた場合は描画 skip + ERROR ログ。
         constexpr std::size_t kInitialPerBucketCapacity = 5000;
 

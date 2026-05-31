@@ -3,7 +3,7 @@
 /// @file DebugDraw.h
 /// @brief NS::Graphics::DebugDraw — line / AABB / Capsule wireframe 描画。
 ///
-/// 蓄積 → `Flush(renderer, vp)` で 1 描画呼出。 で実装。
+/// 蓄積 → `Flush(renderer, vp)` で 1 描画呼出。
 
 #include "Framework/Core/Math.h"
 
@@ -16,7 +16,7 @@ namespace NS::Graphics
 
 namespace NS::Graphics::DebugDraw
 {
-    /// Line 1 本を蓄積。 で実装。
+    /// Line 1 本を蓄積。
     void Line(const NS::Core::Vector3& a, const NS::Core::Vector3& b, const NS::Core::Color& color) noexcept;
     /// AABB wireframe (12 line) を蓄積。
     void AABB(const NS::Core::AABB& box, const NS::Core::Color& color) noexcept;
