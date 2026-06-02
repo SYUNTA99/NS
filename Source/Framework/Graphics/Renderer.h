@@ -71,9 +71,9 @@ namespace NS::Graphics
 
         /// SwapChain::ResizeBuffers + 主 RT 再構築。Window リサイズで自動呼出される
         /// size.width または size.height が 0 以下なら no-op (最小化対応)
-        void Resize(NS::Core::Size2D size) noexcept;
+        void Resize(NS::Math::Size2D size) noexcept;
 
-        [[nodiscard]] NS::Core::Size2D Size() const noexcept;
+        [[nodiscard]] NS::Math::Size2D Size() const noexcept;
 
         /// Backbuffer 主 RT。Renderer 寿命と同期、別 Window では使えない
         [[nodiscard]] RenderTarget& MainRenderTarget() noexcept;

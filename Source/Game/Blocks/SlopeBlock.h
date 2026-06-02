@@ -25,7 +25,7 @@ public:
     SlopeBlock(NS::Graphics::Mesh* wedgeMesh,
                NS::Graphics::Material* material,
                float angleDegrees,
-               const NS::Core::Vector3& halfExtents) noexcept;
+               const NS::Math::Vector3& halfExtents) noexcept;
     ~SlopeBlock() override = default;
 
     SlopeBlock(const SlopeBlock&) = delete;

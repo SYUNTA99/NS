@@ -17,8 +17,8 @@ namespace NS::Physics
 {
     /// 中心 center、 半サイズ halfExtents、 傾斜 angleDegrees の wedge を 8 三角形で返す
     /// @param yawRadians Y 軸まわりの向き (連続、 ラジアン)。 0 は +Z 側が高い斜面
-    [[nodiscard]] std::array<Triangle, 8> BuildWedgeTriangles(const NS::Core::Vector3& center,
-                                                              const NS::Core::Vector3& halfExtents,
+    [[nodiscard]] std::array<Triangle, 8> BuildWedgeTriangles(const NS::Math::Vector3& center,
+                                                              const NS::Math::Vector3& halfExtents,
                                                               float angleDegrees,
                                                               float yawRadians) noexcept;
 } // namespace NS::Physics

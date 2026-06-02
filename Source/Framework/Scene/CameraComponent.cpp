@@ -11,22 +11,22 @@ namespace NS::Scene
         : Component(owner, static_cast<int>(NS::Scene::TickPriority::Camera))
     {}
 
-    void CameraComponent::SetPosition(const NS::Core::Vector3& position) noexcept
+    void CameraComponent::SetPosition(const NS::Math::Vector3& position) noexcept
     {
         m_camera.SetPosition(position);
     }
 
-    void CameraComponent::SetTarget(const NS::Core::Vector3& target) noexcept
+    void CameraComponent::SetTarget(const NS::Math::Vector3& target) noexcept
     {
         m_camera.SetTarget(target);
     }
 
-    void CameraComponent::SetUp(const NS::Core::Vector3& up) noexcept
+    void CameraComponent::SetUp(const NS::Math::Vector3& up) noexcept
     {
         m_camera.SetUp(up);
     }
 
-    void CameraComponent::SetFovY(NS::Core::Radians fov) noexcept
+    void CameraComponent::SetFovY(NS::Math::Radians fov) noexcept
     {
         m_camera.SetFovY(fov);
     }
@@ -38,8 +38,8 @@ namespace NS::Scene
 
     void CameraComponent::SetAspectRatioFromRenderer(const NS::Graphics::Renderer& renderer) noexcept
     {
-        const NS::Core::Size2D size = renderer.Size();
-        const float aspect = (size.width <= 0 || size.height <= 0) ? (16.0f / 9.0f) : NS::Core::AspectRatio(size);
+        const NS::Math::Size2D size = renderer.Size();
+        const float aspect = (size.width <= 0 || size.height <= 0) ? (16.0f / 9.0f) : NS::Math::AspectRatio(size);
         m_camera.SetAspectRatio(aspect);
     }
 
@@ -53,13 +53,13 @@ namespace NS::Scene
         m_camera.SetFarPlane(farPlane);
     }
 
-    NS::Core::Vector3 CameraComponent::ForwardHorizontal() const noexcept
+    NS::Math::Vector3 CameraComponent::ForwardHorizontal() const noexcept
     {
-        const NS::Core::Vector3 d = m_camera.Target() - m_camera.Position();
+        const NS::Math::Vector3 d = m_camera.Target() - m_camera.Position();
         const float lenSq = d.x * d.x + d.z * d.z;
         if (lenSq < 1e-8f)
-            return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+            return NS::Math::Vector3{0.0f, 0.0f, 1.0f};
         const float invLen = 1.0f / std::sqrt(lenSq);
-        return NS::Core::Vector3{d.x * invLen, 0.0f, d.z * invLen};
+        return NS::Math::Vector3{d.x * invLen, 0.0f, d.z * invLen};
     }
 } // namespace NS::Scene

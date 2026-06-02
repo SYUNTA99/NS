@@ -23,12 +23,12 @@ namespace
         return current + (target - current) * a;
     }
 
-    [[nodiscard]] NS::Core::Vector3 HorizontalSmooth(const NS::Core::Vector3& curr,
-                                                     const NS::Core::Vector3& target,
+    [[nodiscard]] NS::Math::Vector3 HorizontalSmooth(const NS::Math::Vector3& curr,
+                                                     const NS::Math::Vector3& target,
                                                      float tau,
                                                      float dt) noexcept
     {
-        return NS::Core::Vector3{
+        return NS::Math::Vector3{
             SmoothApproach(curr.x, target.x, tau, dt),
             curr.y,
             SmoothApproach(curr.z, target.z, tau, dt),
@@ -74,7 +74,7 @@ namespace
     /// 即再掴みを防ぐ
     constexpr float kLedgeRegrabCooldownTime = 0.3f;
 
-    [[nodiscard]] bool AabbContainsPoint(const NS::Core::AABB& box, const NS::Core::Vector3& p) noexcept
+    [[nodiscard]] bool AabbContainsPoint(const NS::Math::AABB& box, const NS::Math::Vector3& p) noexcept
     {
         return p.x >= box.Center.x - box.Extents.x && p.x <= box.Center.x + box.Extents.x &&
                p.y >= box.Center.y - box.Extents.y && p.y <= box.Center.y + box.Extents.y &&
@@ -86,16 +86,16 @@ namespace NS::Scene
 {
     CharacterMovementComponent::CharacterMovementComponent(NS::Scene::GameObject* owner) noexcept : Component(owner) {}
 
-    void CharacterMovementComponent::SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept
+    void CharacterMovementComponent::SetDesiredMove(const NS::Math::Vector3& worldDir, float speedScale01) noexcept
     {
         m_desiredDir = worldDir;
-        m_desiredSpeedScale = NS::Core::Clamp(speedScale01, 0.0f, 1.0f);
+        m_desiredSpeedScale = NS::Math::Clamp(speedScale01, 0.0f, 1.0f);
     }
 
     void CharacterMovementComponent::SetClimbMove(float localRight, float localForward) noexcept
     {
-        m_climbRight = NS::Core::Clamp(localRight, -1.0f, 1.0f);
-        m_climbForward = NS::Core::Clamp(localForward, -1.0f, 1.0f);
+        m_climbRight = NS::Math::Clamp(localRight, -1.0f, 1.0f);
+        m_climbForward = NS::Math::Clamp(localForward, -1.0f, 1.0f);
     }
 
     void CharacterMovementComponent::SetJumpPressed() noexcept
@@ -108,7 +108,7 @@ namespace NS::Scene
         m_jumpHeld = held;
     }
 
-    void CharacterMovementComponent::SetCollisionWorld(std::span<const NS::Core::AABB> world)
+    void CharacterMovementComponent::SetCollisionWorld(std::span<const NS::Math::AABB> world)
     {
         m_collisionWorld.assign(world.begin(), world.end());
     }
@@ -125,8 +125,8 @@ namespace NS::Scene
 
     void CharacterMovementComponent::ResetState() noexcept
     {
-        m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-        m_desiredDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_velocity = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+        m_desiredDir = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
         m_desiredSpeedScale = 0.0f;
         m_climbRight = 0.0f;
         m_climbForward = 0.0f;
@@ -141,7 +141,7 @@ namespace NS::Scene
         m_state = MovementState::Walking;
         m_attachedPole = nullptr;
         m_ledgeTopY = 0.0f;
-        m_ledgeFaceNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_ledgeFaceNormal = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
         m_ledgeRegrabCooldown = 0.0f;
         m_ledgeHangTimer = 0.0f;
         m_ledgeMantleTimer = 0.0f;
@@ -167,9 +167,9 @@ namespace NS::Scene
             // 離脱 jump: pole から outward (XZ 半径方向) + 上方向に飛び離れて Falling へ
             if (m_jumpPressedThisFrame && m_attachedPole != nullptr)
             {
-                const NS::Core::Vector3 pos = RootTransform().Position();
-                const NS::Core::Vector3 axisStart = m_attachedPole->AxisStart();
-                NS::Core::Vector3 outward{pos.x - axisStart.x, 0.0f, pos.z - axisStart.z};
+                const NS::Math::Vector3 pos = RootTransform().Position();
+                const NS::Math::Vector3 axisStart = m_attachedPole->AxisStart();
+                NS::Math::Vector3 outward{pos.x - axisStart.x, 0.0f, pos.z - axisStart.z};
                 const float len = std::sqrt(outward.x * outward.x + outward.z * outward.z);
                 if (len > 1e-4f)
                 {
@@ -178,9 +178,9 @@ namespace NS::Scene
                 }
                 else
                 {
-                    outward = NS::Core::Vector3{1.0f, 0.0f, 0.0f};
+                    outward = NS::Math::Vector3{1.0f, 0.0f, 0.0f};
                 }
-                m_velocity = NS::Core::Vector3{
+                m_velocity = NS::Math::Vector3{
                     outward.x * kClimbExitOutwardSpeed, kClimbExitUpwardSpeed, outward.z * kClimbExitOutwardSpeed};
                 m_state = MovementState::Falling;
                 m_attachedPole = nullptr;
@@ -192,15 +192,15 @@ namespace NS::Scene
 
             if (m_attachedPole != nullptr)
             {
-                NS::Core::Vector3 pos = RootTransform().Position();
+                NS::Math::Vector3 pos = RootTransform().Position();
                 // 縦入力は climb 専用チャンネル (生ローカル前後入力) を使う。 camera 相対の
                 // m_desiredDir を使うと camera 向き次第で上昇量が 0 になるため別系統で受ける
                 // (前=上昇、 後=下降、 camera 非依存)
                 const float verticalInput = m_climbForward;
                 pos.y += verticalInput * kClimbSpeed * dt;
 
-                const NS::Core::Vector3 axisStart = m_attachedPole->AxisStart();
-                const NS::Core::Vector3 axisEnd = m_attachedPole->AxisEnd();
+                const NS::Math::Vector3 axisStart = m_attachedPole->AxisStart();
+                const NS::Math::Vector3 axisEnd = m_attachedPole->AxisEnd();
                 if (pos.y < axisStart.y)
                     pos.y = axisStart.y;
 
@@ -211,7 +211,7 @@ namespace NS::Scene
                     RootTransform().SetPosition(pos);
                     m_state = MovementState::Walking;
                     m_attachedPole = nullptr;
-                    m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+                    m_velocity = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
                     m_isGrounded = true;
                     m_jumpsRemaining = 1;
                     m_jumpPressedThisFrame = false;
@@ -224,7 +224,7 @@ namespace NS::Scene
                 pos.z = axisStart.z;
                 RootTransform().SetPosition(pos);
                 // velocity は climb logic が完全に支配する (gravity は無効、 controller も bypass)
-                m_velocity = NS::Core::Vector3{0.0f, verticalInput * kClimbSpeed, 0.0f};
+                m_velocity = NS::Math::Vector3{0.0f, verticalInput * kClimbSpeed, 0.0f};
             }
 
             m_skipControllerLastFrame = true;
@@ -270,7 +270,7 @@ namespace NS::Scene
             targetSpeed = (m_desiredSpeedScale < 0.5f) ? m_walkSpeed : (m_maxSpeed * m_desiredSpeedScale);
         }
 
-        NS::Core::Vector3 targetHoriz{m_desiredDir.x * targetSpeed, 0.0f, m_desiredDir.z * targetSpeed};
+        NS::Math::Vector3 targetHoriz{m_desiredDir.x * targetSpeed, 0.0f, m_desiredDir.z * targetSpeed};
 
         const float currHorizMag = std::sqrt(m_velocity.x * m_velocity.x + m_velocity.z * m_velocity.z);
         const float tau = (targetSpeed > currHorizMag + kHorizontalSpeedEpsilon) ? m_accelTau : m_decelTau;
@@ -306,7 +306,7 @@ namespace NS::Scene
         in.dt = dt;
         in.capsuleRadius = m_capsuleRadius;
         in.capsuleHalfHeight = m_capsuleHalfHeight;
-        in.world = std::span<const NS::Core::AABB>(m_collisionWorld);
+        in.world = std::span<const NS::Math::AABB>(m_collisionWorld);
         in.worldTriangles = std::span<const NS::Physics::Triangle>(m_collisionTriangles);
         const NS::Physics::CharacterControllerResult out = m_controller.Update(in);
 
@@ -332,16 +332,16 @@ namespace NS::Scene
         // grab intent: 入力が pole に向いていて、 かつ player 中心が trigger 内なら掴まり状態へ
         if (m_desiredSpeedScale > m_stickDeadzone)
         {
-            const NS::Core::Vector3 pos = out.position;
+            const NS::Math::Vector3 pos = out.position;
             for (PoleComponent* pole : m_poles)
             {
                 if (pole != nullptr && pole->ContainsPoint(pos))
                 {
                     m_attachedPole = pole;
                     m_state = MovementState::ClimbingPole;
-                    m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-                    const NS::Core::Vector3 axisStart = pole->AxisStart();
-                    RootTransform().SetPosition(NS::Core::Vector3{axisStart.x, pos.y, axisStart.z});
+                    m_velocity = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+                    const NS::Math::Vector3 axisStart = pole->AxisStart();
+                    RootTransform().SetPosition(NS::Math::Vector3{axisStart.x, pos.y, axisStart.z});
                     break;
                 }
             }
@@ -353,10 +353,10 @@ namespace NS::Scene
 
         if (m_debugDraw)
         {
-            const NS::Core::Vector3 center = RootTransform().Position();
-            const NS::Core::Vector3 axis{0.0f, m_capsuleHalfHeight, 0.0f};
-            const NS::Core::Color color =
-                m_isGrounded ? NS::Core::Color{0.2f, 1.0f, 0.2f, 1.0f} : NS::Core::Color{1.0f, 1.0f, 0.2f, 1.0f};
+            const NS::Math::Vector3 center = RootTransform().Position();
+            const NS::Math::Vector3 axis{0.0f, m_capsuleHalfHeight, 0.0f};
+            const NS::Math::Color color =
+                m_isGrounded ? NS::Math::Color{0.2f, 1.0f, 0.2f, 1.0f} : NS::Math::Color{1.0f, 1.0f, 0.2f, 1.0f};
             NS::Graphics::DebugDraw::Capsule(center, axis, m_capsuleRadius, color);
         }
 
@@ -365,7 +365,7 @@ namespace NS::Scene
         m_skipControllerLastFrame = false;
     }
 
-    bool CharacterMovementComponent::TryGrabLedge(const NS::Core::Vector3& pos) noexcept
+    bool CharacterMovementComponent::TryGrabLedge(const NS::Math::Vector3& pos) noexcept
     {
         // 空中で下降中、 かつ前方入力がある時だけ掴む。 cooldown 中は無効
         if (m_ledgeRegrabCooldown > 0.0f || m_isGrounded || m_velocity.y > 0.0f)
@@ -373,7 +373,7 @@ namespace NS::Scene
         if (m_desiredSpeedScale <= m_stickDeadzone)
             return false;
 
-        NS::Core::Vector3 dir{m_desiredDir.x, 0.0f, m_desiredDir.z};
+        NS::Math::Vector3 dir{m_desiredDir.x, 0.0f, m_desiredDir.z};
         const float dirLen = std::sqrt(dir.x * dir.x + dir.z * dir.z);
         if (dirLen < 1e-4f)
             return false;
@@ -383,13 +383,13 @@ namespace NS::Scene
         // 手の高さ = capsule 上端。 そこから前方へ伸ばした probe 点が block の XZ 内に入り、
         // かつ block 上端が手の高さの帯に収まれば縁とみなす
         const float handY = pos.y + m_capsuleHalfHeight;
-        const NS::Core::Vector3 probe{
+        const NS::Math::Vector3 probe{
             pos.x + dir.x * (m_capsuleRadius + kLedgeReach),
             handY,
             pos.z + dir.z * (m_capsuleRadius + kLedgeReach),
         };
 
-        for (const NS::Core::AABB& box : m_collisionWorld)
+        for (const NS::Math::AABB& box : m_collisionWorld)
         {
             const float top = box.Center.y + box.Extents.y;
             if (top < handY - kLedgeGrabBandLow || top > handY + kLedgeGrabBandHigh)
@@ -400,35 +400,35 @@ namespace NS::Scene
                 continue;
 
             // 接近軸の優勢成分で掴む手前面を決め、 その外側に capsule を寄せた hang 位置を出す
-            NS::Core::Vector3 faceNormal{0.0f, 0.0f, 0.0f};
-            NS::Core::Vector3 hang = pos;
+            NS::Math::Vector3 faceNormal{0.0f, 0.0f, 0.0f};
+            NS::Math::Vector3 hang = pos;
             if (std::abs(dir.x) >= std::abs(dir.z))
             {
                 const float sgn = (dir.x >= 0.0f) ? 1.0f : -1.0f;
                 const float faceX = box.Center.x - sgn * box.Extents.x;
-                faceNormal = NS::Core::Vector3{-sgn, 0.0f, 0.0f};
+                faceNormal = NS::Math::Vector3{-sgn, 0.0f, 0.0f};
                 hang.x = faceX - sgn * m_capsuleRadius;
-                hang.z = NS::Core::Clamp(pos.z, box.Center.z - box.Extents.z, box.Center.z + box.Extents.z);
+                hang.z = NS::Math::Clamp(pos.z, box.Center.z - box.Extents.z, box.Center.z + box.Extents.z);
             }
             else
             {
                 const float sgn = (dir.z >= 0.0f) ? 1.0f : -1.0f;
                 const float faceZ = box.Center.z - sgn * box.Extents.z;
-                faceNormal = NS::Core::Vector3{0.0f, 0.0f, -sgn};
+                faceNormal = NS::Math::Vector3{0.0f, 0.0f, -sgn};
                 hang.z = faceZ - sgn * m_capsuleRadius;
-                hang.x = NS::Core::Clamp(pos.x, box.Center.x - box.Extents.x, box.Center.x + box.Extents.x);
+                hang.x = NS::Math::Clamp(pos.x, box.Center.x - box.Extents.x, box.Center.x + box.Extents.x);
             }
             hang.y = top - m_capsuleHalfHeight;
 
             // mantle 先 (上面の手前) が別 block で塞がっているなら縁ではない。 掴まない
             const float mantleStep = 2.0f * m_capsuleRadius + kLedgeMantleInset;
-            const NS::Core::Vector3 mantleCheck{
+            const NS::Math::Vector3 mantleCheck{
                 hang.x - faceNormal.x * mantleStep,
                 top + m_capsuleHalfHeight,
                 hang.z - faceNormal.z * mantleStep,
             };
             bool blocked = false;
-            for (const NS::Core::AABB& other : m_collisionWorld)
+            for (const NS::Math::AABB& other : m_collisionWorld)
             {
                 if (AabbContainsPoint(other, mantleCheck))
                 {
@@ -440,7 +440,7 @@ namespace NS::Scene
                 continue;
 
             RootTransform().SetPosition(hang);
-            m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+            m_velocity = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
             m_ledgeTopY = top;
             m_ledgeFaceNormal = faceNormal;
             m_ledgeHangTimer = 0.0f;
@@ -453,7 +453,7 @@ namespace NS::Scene
     void CharacterMovementComponent::UpdateLedgeHang(float dt) noexcept
     {
         m_ledgeHangTimer += dt;
-        NS::Core::Vector3 pos = RootTransform().Position();
+        NS::Math::Vector3 pos = RootTransform().Position();
 
         // 登る: jump は即時、 前入力での自動登りは一瞬ぶら下がりを見せてから (最小ぶら下がり時間)
         // 面の内側へ押し込み block 上面に立たせて Walking へ
@@ -462,14 +462,14 @@ namespace NS::Scene
         {
             const float mantleStep = 2.0f * m_capsuleRadius + kLedgeMantleInset;
             m_ledgeMantleStart = pos;
-            m_ledgeMantleEnd = NS::Core::Vector3{
+            m_ledgeMantleEnd = NS::Math::Vector3{
                 pos.x - m_ledgeFaceNormal.x * mantleStep,
                 m_ledgeTopY + m_capsuleHalfHeight + m_capsuleRadius + kLedgeMantleLift,
                 pos.z - m_ledgeFaceNormal.z * mantleStep,
             };
             m_ledgeMantleTimer = 0.0f;
             m_state = MovementState::LedgeMantling;
-            m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+            m_velocity = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
             return;
         }
 
@@ -480,7 +480,7 @@ namespace NS::Scene
             pos.z += m_ledgeFaceNormal.z * kLedgeDropOutward;
             RootTransform().SetPosition(pos);
             m_state = MovementState::Falling;
-            m_velocity = NS::Core::Vector3{
+            m_velocity = NS::Math::Vector3{
                 m_ledgeFaceNormal.x * kLedgeDropOutwardSpeed, 0.0f, m_ledgeFaceNormal.z * kLedgeDropOutwardSpeed};
             m_isGrounded = false;
             m_ledgeRegrabCooldown = kLedgeRegrabCooldownTime;
@@ -492,8 +492,8 @@ namespace NS::Scene
         if (std::abs(m_climbRight) > kLedgeShimmyDeadzone)
         {
             // 面法線に水平直交する縁方向。 移動しても面からの距離は変わらない
-            const NS::Core::Vector3 alongDir{-m_ledgeFaceNormal.z, 0.0f, m_ledgeFaceNormal.x};
-            NS::Core::Vector3 shimmied = pos;
+            const NS::Math::Vector3 alongDir{-m_ledgeFaceNormal.z, 0.0f, m_ledgeFaceNormal.x};
+            NS::Math::Vector3 shimmied = pos;
             shimmied.x += alongDir.x * m_climbRight * kLedgeShimmySpeed * dt;
             shimmied.z += alongDir.z * m_climbRight * kLedgeShimmySpeed * dt;
             // 移動先にも同じ高さの縁が続いている時だけ動く。 端なら止めて落とさない
@@ -501,16 +501,16 @@ namespace NS::Scene
                 pos = shimmied;
         }
         RootTransform().SetPosition(pos);
-        m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_velocity = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
     }
 
     void CharacterMovementComponent::UpdateLedgeMantle(float dt) noexcept
     {
         m_ledgeMantleTimer += dt;
-        const float t = NS::Core::Clamp(m_ledgeMantleTimer / kLedgeMantleDuration, 0.0f, 1.0f);
+        const float t = NS::Math::Clamp(m_ledgeMantleTimer / kLedgeMantleDuration, 0.0f, 1.0f);
 
         // 前半で縁の高さまで上昇、 後半で上面へ前進する 2 段モーション。 角への食い込みを避ける
-        NS::Core::Vector3 pos;
+        NS::Math::Vector3 pos;
         if (t < 0.5f)
         {
             const float u = t / 0.5f;
@@ -526,7 +526,7 @@ namespace NS::Scene
             pos.y = m_ledgeMantleEnd.y;
         }
         RootTransform().SetPosition(pos);
-        m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_velocity = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
 
         if (t >= 1.0f)
         {
@@ -540,17 +540,17 @@ namespace NS::Scene
         }
     }
 
-    bool CharacterMovementComponent::LedgeContinuesAt(const NS::Core::Vector3& hangPos) const noexcept
+    bool CharacterMovementComponent::LedgeContinuesAt(const NS::Math::Vector3& hangPos) const noexcept
     {
-        const NS::Core::Vector3 inward{-m_ledgeFaceNormal.x, 0.0f, -m_ledgeFaceNormal.z};
+        const NS::Math::Vector3 inward{-m_ledgeFaceNormal.x, 0.0f, -m_ledgeFaceNormal.z};
         const float handY = hangPos.y + m_capsuleHalfHeight;
-        const NS::Core::Vector3 probe{
+        const NS::Math::Vector3 probe{
             hangPos.x + inward.x * (m_capsuleRadius + kLedgeReach),
             handY,
             hangPos.z + inward.z * (m_capsuleRadius + kLedgeReach),
         };
 
-        for (const NS::Core::AABB& box : m_collisionWorld)
+        for (const NS::Math::AABB& box : m_collisionWorld)
         {
             const float top = box.Center.y + box.Extents.y;
             if (std::abs(top - m_ledgeTopY) > kLedgeContinueTopTol)
@@ -562,13 +562,13 @@ namespace NS::Scene
 
             // 乗り上がり先が別 block で塞がっていたら縁とみなさない (オーバーハングの下では掴めない)
             const float mantleStep = 2.0f * m_capsuleRadius + kLedgeMantleInset;
-            const NS::Core::Vector3 mantleCheck{
+            const NS::Math::Vector3 mantleCheck{
                 hangPos.x - m_ledgeFaceNormal.x * mantleStep,
                 m_ledgeTopY + m_capsuleHalfHeight,
                 hangPos.z - m_ledgeFaceNormal.z * mantleStep,
             };
             bool blocked = false;
-            for (const NS::Core::AABB& other : m_collisionWorld)
+            for (const NS::Math::AABB& other : m_collisionWorld)
             {
                 if (AabbContainsPoint(other, mantleCheck))
                 {

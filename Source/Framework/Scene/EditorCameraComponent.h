@@ -43,14 +43,14 @@ namespace NS::Scene
 
         // Programmatic API (test / mode toggle で state save/restore)
         void SetYawPitch(float yaw, float pitch) noexcept;
-        void SetCenter(NS::Core::Vector3 center) noexcept;
+        void SetCenter(NS::Math::Vector3 center) noexcept;
         void SetDistance(float distance) noexcept;
 
         [[nodiscard]] float Yaw() const noexcept { return m_yaw; }
         [[nodiscard]] float Pitch() const noexcept { return m_pitch; }
         [[nodiscard]] float Distance() const noexcept { return m_distance; }
-        [[nodiscard]] NS::Core::Vector3 Center() const noexcept { return m_center; }
-        [[nodiscard]] NS::Core::Vector3 ComputeCameraPosition() const noexcept;
+        [[nodiscard]] NS::Math::Vector3 Center() const noexcept { return m_center; }
+        [[nodiscard]] NS::Math::Vector3 ComputeCameraPosition() const noexcept;
 
         // 直接 input 注入 (test 経路 / OnUpdate に頼らない外部制御)
         void ApplyOrbit(float yawDelta, float pitchDelta) noexcept;
@@ -73,7 +73,7 @@ namespace NS::Scene
         NS::Platform::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
 
-        NS::Core::Vector3 m_center{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 m_center{0.0f, 0.0f, 0.0f};
         float m_yaw = 0.0f;
         float m_pitch = -0.5236f;
         float m_distance = 15.0f;
@@ -100,29 +100,29 @@ namespace NS::Scene
 
         /// マウス screen 座標から world ray を生成する
         /// `viewProjection` は camera の VP matrix、 viewport は backbuffer サイズ
-        [[nodiscard]] NS::Core::Ray ScreenToWorldRay(const NS::Core::Matrix& viewProjection,
-                                                     NS::Core::Size2D viewport,
+        [[nodiscard]] NS::Math::Ray ScreenToWorldRay(const NS::Math::Matrix& viewProjection,
+                                                     NS::Math::Size2D viewport,
                                                      int mouseX,
                                                      int mouseY) noexcept;
 
         /// world 座標を grid 中心に snap (最近接 cell center)
-        [[nodiscard]] NS::Core::Vector3 SnapWorldPointToGrid(NS::Core::Vector3 worldPoint,
+        [[nodiscard]] NS::Math::Vector3 SnapWorldPointToGrid(NS::Math::Vector3 worldPoint,
                                                              float gridSize = kGridSize) noexcept;
 
         /// AABB hit 結果から、 hit 面の法線方向に 1 grid offset した cell 中心を返す
         /// `hitNormal` は ±X / ±Y / ±Z のいずれか
-        [[nodiscard]] NS::Core::Vector3 SnapHitToPlacementCell(NS::Core::Vector3 hitPoint,
-                                                               NS::Core::Vector3 hitNormal,
+        [[nodiscard]] NS::Math::Vector3 SnapHitToPlacementCell(NS::Math::Vector3 hitPoint,
+                                                               NS::Math::Vector3 hitNormal,
                                                                float gridSize = kGridSize) noexcept;
 
         /// ray が ground plane (y = 0) と交わる点を grid snap して返す
         /// 上向き ray / 後方ヒットの場合は false (`outCellCenter` 未変更)
-        [[nodiscard]] bool TryGroundPlaneFallback(const NS::Core::Ray& ray,
-                                                  NS::Core::Vector3& outCellCenter,
+        [[nodiscard]] bool TryGroundPlaneFallback(const NS::Math::Ray& ray,
+                                                  NS::Math::Vector3& outCellCenter,
                                                   float gridSize = kGridSize) noexcept;
 
         /// rotation u8 (0/1/2/3) を Y 軸 90° 単位の quaternion に変換する
-        [[nodiscard]] NS::Core::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept;
+        [[nodiscard]] NS::Math::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept;
     } // namespace EditorGridMath
 
 } // namespace NS::Scene

@@ -16,8 +16,8 @@ namespace NS::Physics
     /// @param outNormal 接触法線 (capsule 表面外向き)、no hit なら zero
     /// @retresult true = 接触あり / false = no hit
     [[nodiscard]] bool SweptCapsuleVsAABB(const Capsule& capsule,
-                                          const NS::Core::Vector3& motion,
-                                          const NS::Core::AABB& box,
+                                          const NS::Math::Vector3& motion,
+                                          const NS::Math::AABB& box,
                                           float& outToi,
-                                          NS::Core::Vector3& outNormal) noexcept;
+                                          NS::Math::Vector3& outNormal) noexcept;
 } // namespace NS::Physics

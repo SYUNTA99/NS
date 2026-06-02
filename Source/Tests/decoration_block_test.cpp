@@ -46,7 +46,7 @@ TEST(DecorationBlockTest, WaterBlockHasNoCollider)
 
 TEST(DecorationBlockTest, HazardBlockHasColliderAndHazardComponent)
 {
-    HazardBlock hazard(nullptr, nullptr, NS::Core::Vector3{0.5f, 0.5f, 0.5f});
+    HazardBlock hazard(nullptr, nullptr, NS::Math::Vector3{0.5f, 0.5f, 0.5f});
     const auto& components = hazard.Components();
 
     bool hasCollider = false;

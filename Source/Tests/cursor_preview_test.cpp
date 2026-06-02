@@ -15,7 +15,7 @@ TEST(CursorPreview, RendersAABBToDebugDrawWhenCursorValid)
 
     EditorNs::EditorMode::CursorState state;
     state.valid = true;
-    state.placementCenter = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    state.placementCenter = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
     state.placementBlocked = false;
     editor.SetCursorForTest(state);
 
@@ -51,7 +51,7 @@ TEST(CursorPreview, DoesNothingWhenInactive)
 
     EditorNs::EditorMode::CursorState state;
     state.valid = true;
-    state.placementCenter = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    state.placementCenter = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
     editor.SetCursorForTest(state);
 
     NS::Graphics::DebugDraw::Clear();

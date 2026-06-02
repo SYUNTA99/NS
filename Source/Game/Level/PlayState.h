@@ -18,8 +18,8 @@ namespace NS::Game::Level
     /// 永続化対象は LevelData に分離してあるためここに置かれた値は CRC32 に影響しない
     struct PlayState
     {
-        NS::Core::Vector3 playerPosition{};
-        NS::Core::Vector3 playerVelocity{};
+        NS::Math::Vector3 playerPosition{};
+        NS::Math::Vector3 playerVelocity{};
         std::int32_t coinCount = 0;
         float remainingSeconds = 0.0f;
         bool paused = false;

@@ -29,7 +29,7 @@ namespace NS::Graphics
         // Skybox VS の SkyboxCB と一致するレイアウト。 row_major float4x4 のみ 64 byte
         struct alignas(16) SkyboxCB
         {
-            NS::Core::Matrix viewProj;
+            NS::Math::Matrix viewProj;
         };
         static_assert(sizeof(SkyboxCB) == 64, "SkyboxCB は HLSL 側 cbuffer (b0) と byte 一致が必要");
 
@@ -469,7 +469,7 @@ namespace NS::Graphics
         return false;
     }
 
-    void Skybox::Render(const NS::Core::Matrix& viewProjNoTranslate) noexcept
+    void Skybox::Render(const NS::Math::Matrix& viewProjNoTranslate) noexcept
     {
         if (!m_pImpl || !m_pImpl->valid || !m_pImpl->context)
             return;

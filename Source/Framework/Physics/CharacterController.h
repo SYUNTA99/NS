@@ -17,21 +17,21 @@ namespace NS::Physics
     /// 両方を sweep し、 最小 TOI 側を採用する
     struct CharacterControllerInput
     {
-        NS::Core::Vector3 position{0.0f, 0.0f, 0.0f};
-        NS::Core::Vector3 velocity{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 position{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 velocity{0.0f, 0.0f, 0.0f};
         float dt = 0.0f;
         float capsuleRadius = 0.4f;
         float capsuleHalfHeight = 0.5f;
-        std::span<const NS::Core::AABB> world{};
+        std::span<const NS::Math::AABB> world{};
         std::span<const NS::Physics::Triangle> worldTriangles{};
     };
 
     /// Update の戻り値。新 position / velocity と接触情報
     struct CharacterControllerResult
     {
-        NS::Core::Vector3 position{0.0f, 0.0f, 0.0f};
-        NS::Core::Vector3 velocity{0.0f, 0.0f, 0.0f};
-        NS::Core::Vector3 contactNormal{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 position{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 velocity{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 contactNormal{0.0f, 0.0f, 0.0f};
         bool grounded = false;
     };
 

@@ -24,15 +24,15 @@ namespace NS::Scene
     /// lightColor / ambientColor は ThemeRegistry::Get(level.themeId) から毎フレーム流し込む
     struct alignas(16) FrameCB
     {
-        NS::Core::Matrix world{};
-        NS::Core::Matrix viewProj{};
-        NS::Core::Vector3 lightDir{-0.3f, -1.0f, -0.2f};
+        NS::Math::Matrix world{};
+        NS::Math::Matrix viewProj{};
+        NS::Math::Vector3 lightDir{-0.3f, -1.0f, -0.2f};
         float pad0 = 0.0f;
-        NS::Core::Vector3 baseColor{1.0f, 1.0f, 1.0f};
+        NS::Math::Vector3 baseColor{1.0f, 1.0f, 1.0f};
         float pad1 = 0.0f;
-        NS::Core::Vector3 lightColor{1.0f, 1.0f, 1.0f};
+        NS::Math::Vector3 lightColor{1.0f, 1.0f, 1.0f};
         float pad2 = 0.0f;
-        NS::Core::Vector3 ambientColor{0.2f, 0.2f, 0.2f};
+        NS::Math::Vector3 ambientColor{0.2f, 0.2f, 0.2f};
         float pad3 = 0.0f;
     };
     static_assert(sizeof(FrameCB) == 192, "FrameCB size は HLSL standard と完全一致 (192 byte)");
@@ -48,13 +48,13 @@ namespace NS::Scene
                       NS::Graphics::Material* material) noexcept;
 
         /// 光源方向 (default は CubeScene と同値 (-0.3, -1, -0.2) を normalize 前で渡す)
-        void SetLightDirection(const NS::Core::Vector3& dir) noexcept { m_lightDir = dir; }
+        void SetLightDirection(const NS::Math::Vector3& dir) noexcept { m_lightDir = dir; }
         /// Material instance ごとの色味 (Player=赤系 / Block=灰色系の色分け)
-        void SetBaseColor(const NS::Core::Vector3& color) noexcept { m_baseColor = color; }
+        void SetBaseColor(const NS::Math::Vector3& color) noexcept { m_baseColor = color; }
         /// テーマ駆動 sun color (ThemeData::lightColor)。 LevelEditorScene が毎フレーム流す
-        void SetLightColor(const NS::Core::Vector3& color) noexcept { m_lightColor = color; }
+        void SetLightColor(const NS::Math::Vector3& color) noexcept { m_lightColor = color; }
         /// テーマ駆動 ambient color (ThemeData::ambientColor)。 LevelEditorScene が毎フレーム流す
-        void SetAmbientColor(const NS::Core::Vector3& color) noexcept { m_ambientColor = color; }
+        void SetAmbientColor(const NS::Math::Vector3& color) noexcept { m_ambientColor = color; }
 
         /// IRenderable: Alpha 補間後の world matrix を FrameCB に詰めて 1 描画呼出
         /// IsActive() == false なら no-op
@@ -70,9 +70,9 @@ namespace NS::Scene
     private:
         NS::Graphics::Mesh* m_mesh = nullptr;
         NS::Graphics::Material* m_material = nullptr;
-        NS::Core::Vector3 m_lightDir{-0.3f, -1.0f, -0.2f};
-        NS::Core::Vector3 m_baseColor{1.0f, 1.0f, 1.0f};
-        NS::Core::Vector3 m_lightColor{1.0f, 1.0f, 1.0f};
-        NS::Core::Vector3 m_ambientColor{0.2f, 0.2f, 0.2f};
+        NS::Math::Vector3 m_lightDir{-0.3f, -1.0f, -0.2f};
+        NS::Math::Vector3 m_baseColor{1.0f, 1.0f, 1.0f};
+        NS::Math::Vector3 m_lightColor{1.0f, 1.0f, 1.0f};
+        NS::Math::Vector3 m_ambientColor{0.2f, 0.2f, 0.2f};
     };
 } // namespace NS::Scene

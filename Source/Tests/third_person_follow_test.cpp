@@ -82,12 +82,12 @@ TEST_F(ThirdPersonFollowTest, UpdatesCameraPositionBehindTarget)
 TEST_F(ThirdPersonFollowTest, SetFovYPropagatesToCamera)
 {
     CameraComponent cc(nullptr);
-    cc.SetFovY(NS::Core::Radians{1.0f});
+    cc.SetFovY(NS::Math::Radians{1.0f});
     GameObject obj;
     ThirdPersonFollowComponent follow(&obj, &obj.Root());
     follow.SetCamera(&cc);
 
-    follow.SetFovY(NS::Core::Radians{0.5f});
+    follow.SetFovY(NS::Math::Radians{0.5f});
     EXPECT_FLOAT_EQ(follow.FovY().value, 0.5f);
     EXPECT_FLOAT_EQ(cc.FovY().value, 0.5f);
 }

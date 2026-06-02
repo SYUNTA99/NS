@@ -37,9 +37,9 @@ namespace NS::Graphics
     /// ボーン重み付きの SkinnedMeshVertex は将来別型として追加される
     struct MeshVertex
     {
-        NS::Core::Vector3 position;
-        NS::Core::Vector2 uv;
-        NS::Core::Vector3 normal;
+        NS::Math::Vector3 position;
+        NS::Math::Vector2 uv;
+        NS::Math::Vector3 normal;
     };
     static_assert(sizeof(MeshVertex) == 32, "MeshVertex は 32 byte 固定");
     static_assert(std::is_standard_layout_v<MeshVertex>,

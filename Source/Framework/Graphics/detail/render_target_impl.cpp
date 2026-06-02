@@ -19,7 +19,7 @@ namespace NS::Graphics
         ComPtr<ID3D11Texture2D> depthTex;
         ComPtr<ID3D11DepthStencilView> dsv;
 
-        ::NS::Core::Size2D size{0, 0};
+        ::NS::Math::Size2D size{0, 0};
         bool hasDepth = false;
     };
 
@@ -126,7 +126,7 @@ namespace NS::Graphics
         {
             return false;
         }
-        m_pImpl->size = ::NS::Core::Size2D{w, h};
+        m_pImpl->size = ::NS::Math::Size2D{w, h};
 
         if (createDepth)
         {
@@ -175,7 +175,7 @@ namespace NS::Graphics
         m_pImpl->context->RSSetViewports(1, &vp);
     }
 
-    void RenderTarget::Resize(::NS::Core::Size2D size) noexcept
+    void RenderTarget::Resize(::NS::Math::Size2D size) noexcept
     {
         if (size.width <= 0 || size.height <= 0)
         {
@@ -208,7 +208,7 @@ namespace NS::Graphics
         {
             return;
         }
-        m_pImpl->size = ::NS::Core::Size2D{newW, newH};
+        m_pImpl->size = ::NS::Math::Size2D{newW, newH};
 
         if (m_pImpl->hasDepth)
         {
@@ -216,7 +216,7 @@ namespace NS::Graphics
         }
     }
 
-    ::NS::Core::Size2D RenderTarget::Size() const noexcept
+    ::NS::Math::Size2D RenderTarget::Size() const noexcept
     {
         return m_pImpl->size;
     }

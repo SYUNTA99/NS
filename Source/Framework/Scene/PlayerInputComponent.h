@@ -32,7 +32,7 @@ namespace NS::Scene
 
         /// LevelEditorScene が active CameraComponent から計算した水平 forward (XZ 平面、Y は 0) を注入する
         /// 注入前の default は world -Z+ 方向
-        void SetCameraForward(const NS::Core::Vector3& cameraForwardHorizontal) noexcept;
+        void SetCameraForward(const NS::Math::Vector3& cameraForwardHorizontal) noexcept;
 
         /// 入力ソースを注入。LevelEditorScene が `Application::Get()->Input()` を渡す
         /// null で no-op
@@ -50,6 +50,6 @@ namespace NS::Scene
         CharacterMovementComponent* m_movement = nullptr;
         NS::Platform::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
-        NS::Core::Vector3 m_cameraForward{0.0f, 0.0f, 1.0f};
+        NS::Math::Vector3 m_cameraForward{0.0f, 0.0f, 1.0f};
     };
 } // namespace NS::Scene

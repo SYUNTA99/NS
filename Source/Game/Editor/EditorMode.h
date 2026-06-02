@@ -44,8 +44,8 @@ namespace NS::Game::Editor
         struct CursorState
         {
             bool valid = false;                  ///< 何かしらヒットあり (block 面 or ground)
-            NS::Core::Vector3 placementCenter{}; ///< 配置先 cell の世界座標 (cell 中心)
-            NS::Core::Vector3 deleteCenter{};    ///< 削除対象 cell の世界座標
+            NS::Math::Vector3 placementCenter{}; ///< 配置先 cell の世界座標 (cell 中心)
+            NS::Math::Vector3 deleteCenter{};    ///< 削除対象 cell の世界座標
             bool placementBlocked = false;       ///< 既に block ある→赤表示
             std::int16_t hitX = 0;
             std::int16_t hitY = 0;
@@ -53,7 +53,7 @@ namespace NS::Game::Editor
             std::int16_t placeX = 0;
             std::int16_t placeY = 0;
             std::int16_t placeZ = 0;
-            NS::Core::Vector3 hitNormal{};
+            NS::Math::Vector3 hitNormal{};
         };
 
         EditorMode() noexcept = default;
@@ -135,7 +135,7 @@ namespace NS::Game::Editor
         /// カーソル preview / 配置プレビューに使う「表示中の回転」 (Y 軸 yaw)
         /// R キーで `m_currentRotation` が即時切替わっても、 本値は Slerp で滑らかに追従し
         /// 回転方向を視覚的に把握できるようにする。 物理 / 配置データには影響しない (表示専用)
-        NS::Core::Quaternion m_displayedYawQuat{NS::Core::Quaternion::Identity};
+        NS::Math::Quaternion m_displayedYawQuat{NS::Math::Quaternion::Identity};
 
         void UpdateCursorFromInput() noexcept;
         void HandlePlaceDeleteInput() noexcept;

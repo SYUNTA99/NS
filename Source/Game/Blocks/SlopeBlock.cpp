@@ -3,6 +3,6 @@
 SlopeBlock::SlopeBlock(NS::Graphics::Mesh* wedgeMesh,
                        NS::Graphics::Material* material,
                        float angleDegrees,
-                       const NS::Core::Vector3& halfExtents) noexcept
+                       const NS::Math::Vector3& halfExtents) noexcept
     : m_mesh(this, wedgeMesh, material), m_collider(this, angleDegrees, halfExtents)
 {}

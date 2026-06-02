@@ -17,7 +17,7 @@ namespace
     {
         WindowDesc d{};
         d.title = title;
-        d.size = NS::Core::Size2D{width, height};
+        d.size = NS::Math::Size2D{width, height};
         d.visible = false;
         return d;
     }
@@ -58,7 +58,7 @@ TEST_F(RendererLoggerTest, SizeMatchesWindow)
 
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
-    EXPECT_EQ(renderer.Size(), (NS::Core::Size2D{512, 384}));
+    EXPECT_EQ(renderer.Size(), (NS::Math::Size2D{512, 384}));
 }
 
 TEST_F(RendererLoggerTest, BeginEndFrameIsSafe)
@@ -84,8 +84,8 @@ TEST_F(RendererLoggerTest, ResizeUpdatesSize)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    renderer.Resize(NS::Core::Size2D{800, 600});
-    EXPECT_EQ(renderer.Size(), (NS::Core::Size2D{800, 600}));
+    renderer.Resize(NS::Math::Size2D{800, 600});
+    EXPECT_EQ(renderer.Size(), (NS::Math::Size2D{800, 600}));
 }
 
 TEST_F(RendererLoggerTest, ResizeZeroIsNoop)
@@ -96,8 +96,8 @@ TEST_F(RendererLoggerTest, ResizeZeroIsNoop)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const NS::Core::Size2D before = renderer.Size();
-    renderer.Resize(NS::Core::Size2D{0, 0});
+    const NS::Math::Size2D before = renderer.Size();
+    renderer.Resize(NS::Math::Size2D{0, 0});
     EXPECT_EQ(renderer.Size(), before);
 }
 
@@ -110,7 +110,7 @@ TEST_F(RendererLoggerTest, MainRenderTargetIsAccessible)
     ASSERT_TRUE(renderer.IsValid());
 
     auto& rt = renderer.MainRenderTarget();
-    EXPECT_EQ(rt.Size(), (NS::Core::Size2D{400, 300}));
+    EXPECT_EQ(rt.Size(), (NS::Math::Size2D{400, 300}));
     EXPECT_TRUE(rt.HasDepth());
 }
 

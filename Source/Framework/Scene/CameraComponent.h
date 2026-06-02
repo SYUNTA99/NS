@@ -23,29 +23,29 @@ namespace NS::Scene
         /// base コンストラクタに渡される (follow 系処理を Input / Physics 帯の後に走らせるため)
         explicit CameraComponent(NS::Scene::GameObject* owner) noexcept;
 
-        void SetPosition(const NS::Core::Vector3& position) noexcept;
-        void SetTarget(const NS::Core::Vector3& target) noexcept;
-        void SetUp(const NS::Core::Vector3& up) noexcept;
-        void SetFovY(NS::Core::Radians fov) noexcept;
+        void SetPosition(const NS::Math::Vector3& position) noexcept;
+        void SetTarget(const NS::Math::Vector3& target) noexcept;
+        void SetUp(const NS::Math::Vector3& up) noexcept;
+        void SetFovY(NS::Math::Radians fov) noexcept;
         void SetAspectRatio(float aspect) noexcept;
         void SetAspectRatioFromRenderer(const NS::Graphics::Renderer& renderer) noexcept;
         void SetNearPlane(float nearPlane) noexcept;
         void SetFarPlane(float farPlane) noexcept;
 
-        [[nodiscard]] const NS::Core::Vector3& Position() const noexcept { return m_camera.Position(); }
-        [[nodiscard]] const NS::Core::Vector3& Target() const noexcept { return m_camera.Target(); }
-        [[nodiscard]] const NS::Core::Vector3& Up() const noexcept { return m_camera.Up(); }
-        [[nodiscard]] NS::Core::Radians FovY() const noexcept { return m_camera.FovY(); }
+        [[nodiscard]] const NS::Math::Vector3& Position() const noexcept { return m_camera.Position(); }
+        [[nodiscard]] const NS::Math::Vector3& Target() const noexcept { return m_camera.Target(); }
+        [[nodiscard]] const NS::Math::Vector3& Up() const noexcept { return m_camera.Up(); }
+        [[nodiscard]] NS::Math::Radians FovY() const noexcept { return m_camera.FovY(); }
 
         /// 内包 Camera への変更不可参照。MeshComponent::Draw に ViewProjection を渡す用途で使う
         [[nodiscard]] const NS::Graphics::Camera& Camera() const noexcept { return m_camera; }
         [[nodiscard]] NS::Graphics::Camera& Camera() noexcept { return m_camera; }
 
-        [[nodiscard]] NS::Core::Matrix ViewProjection() const noexcept { return m_camera.ViewProjection(); }
+        [[nodiscard]] NS::Math::Matrix ViewProjection() const noexcept { return m_camera.ViewProjection(); }
 
         /// target - position を XZ 平面で正規化した forward。距離 0 / Y 方向のみの場合は world +Z
         /// PlayerInput が camera 相対移動の前向きベクトルとして読む
-        [[nodiscard]] NS::Core::Vector3 ForwardHorizontal() const noexcept;
+        [[nodiscard]] NS::Math::Vector3 ForwardHorizontal() const noexcept;
 
     private:
         NS::Graphics::Camera m_camera;

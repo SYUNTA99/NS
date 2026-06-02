@@ -23,7 +23,7 @@ namespace NS::Graphics
         ComPtr<ID3D11Resource> resource;
         ComPtr<ID3D11ShaderResourceView> srv;
         ComPtr<ID3D11DeviceContext> context;
-        ::NS::Core::Size2D size{0, 0};
+        ::NS::Math::Size2D size{0, 0};
         bool fallback = false;
     };
 
@@ -219,7 +219,7 @@ namespace NS::Graphics
             int h = 0;
             if (QueryTexture2DSize(m_pImpl->resource.Get(), w, h))
             {
-                m_pImpl->size = ::NS::Core::Size2D{w, h};
+                m_pImpl->size = ::NS::Math::Size2D{w, h};
             }
             return;
         }
@@ -232,7 +232,7 @@ namespace NS::Graphics
             m_pImpl->context.Reset();
             return;
         }
-        m_pImpl->size = ::NS::Core::Size2D{fbW, fbH};
+        m_pImpl->size = ::NS::Math::Size2D{fbW, fbH};
         m_pImpl->fallback = true;
     }
 
@@ -246,9 +246,9 @@ namespace NS::Graphics
     {
         return m_pImpl && m_pImpl->srv;
     }
-    ::NS::Core::Size2D Texture::Size() const noexcept
+    ::NS::Math::Size2D Texture::Size() const noexcept
     {
-        return m_pImpl ? m_pImpl->size : ::NS::Core::Size2D{0, 0};
+        return m_pImpl ? m_pImpl->size : ::NS::Math::Size2D{0, 0};
     }
     bool Texture::IsUsingFallback() const noexcept
     {

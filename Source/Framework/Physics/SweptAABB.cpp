@@ -5,8 +5,8 @@
 
 namespace
 {
-    using NS::Core::AABB;
-    using NS::Core::Vector3;
+    using NS::Math::AABB;
+    using NS::Math::Vector3;
 
     /// Capsule の片端 (sphere) を motion だけ swept した時に AABB と最初に当たる TOI を返す
     /// AABB を radius で膨張 → 線分 vs 膨張 AABB の slab test
@@ -111,15 +111,15 @@ namespace
 namespace NS::Physics
 {
     bool SweptCapsuleVsAABB(const Capsule& capsule,
-                            const NS::Core::Vector3& motion,
-                            const NS::Core::AABB& box,
+                            const NS::Math::Vector3& motion,
+                            const NS::Math::AABB& box,
                             float& outToi,
-                            NS::Core::Vector3& outNormal) noexcept
+                            NS::Math::Vector3& outNormal) noexcept
     {
         // Capsule の中心軸線分の 2 endpoint をそれぞれ sphere swept する近似実装
         // Mario 系プラットフォーマー用途では Cylinder 部分の側面接触精度は要求されない
         // 公開 Capsule 型は axis 単位長を強制しないため、ここで正規化する (非単位入力で TOI が歪む防止)
-        NS::Core::Vector3 axis = capsule.axis;
+        NS::Math::Vector3 axis = capsule.axis;
         const float axisLenSq = axis.x * axis.x + axis.y * axis.y + axis.z * axis.z;
         if (axisLenSq > 1e-12f)
         {
@@ -130,16 +130,16 @@ namespace NS::Physics
         }
         else
         {
-            axis = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
+            axis = NS::Math::Vector3{0.0f, 1.0f, 0.0f};
         }
 
-        const NS::Core::Vector3 top = capsule.center + axis * capsule.halfHeight;
-        const NS::Core::Vector3 bottom = capsule.center - axis * capsule.halfHeight;
+        const NS::Math::Vector3 top = capsule.center + axis * capsule.halfHeight;
+        const NS::Math::Vector3 bottom = capsule.center - axis * capsule.halfHeight;
 
         float toiTop = 1.0f;
         float toiBottom = 1.0f;
-        NS::Core::Vector3 normalTop{};
-        NS::Core::Vector3 normalBottom{};
+        NS::Math::Vector3 normalTop{};
+        NS::Math::Vector3 normalBottom{};
 
         const bool hitTop = SweptSphereVsAABB(top, motion, box, capsule.radius, toiTop, normalTop);
         const bool hitBottom = SweptSphereVsAABB(bottom, motion, box, capsule.radius, toiBottom, normalBottom);
@@ -147,7 +147,7 @@ namespace NS::Physics
         if (!hitTop && !hitBottom)
         {
             outToi = 1.0f;
-            outNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+            outNormal = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
             return false;
         }
 

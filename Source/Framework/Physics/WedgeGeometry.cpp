@@ -4,8 +4,8 @@
 
 namespace NS::Physics
 {
-    std::array<Triangle, 8> BuildWedgeTriangles(const NS::Core::Vector3& center,
-                                                const NS::Core::Vector3& halfExtents,
+    std::array<Triangle, 8> BuildWedgeTriangles(const NS::Math::Vector3& center,
+                                                const NS::Math::Vector3& halfExtents,
                                                 float angleDegrees,
                                                 float yawRadians) noexcept
     {
@@ -21,19 +21,19 @@ namespace NS::Physics
 
         // SlopeBlock の transform 回転 (CreateFromYawPitchRoll(yaw)) と同じ yaw を使うことで
         // 描画 mesh と collider の向きが一致する
-        const NS::Core::Matrix rot = NS::Core::Matrix::CreateRotationY(yawRadians);
+        const NS::Math::Matrix rot = NS::Math::Matrix::CreateRotationY(yawRadians);
 
         const auto place = [&](float x, float y, float z) {
-            const NS::Core::Vector3 rotated = NS::Core::Vector3::Transform(NS::Core::Vector3{x, y, z}, rot);
-            return NS::Core::Vector3{rotated.x + center.x, rotated.y + center.y, rotated.z + center.z};
+            const NS::Math::Vector3 rotated = NS::Math::Vector3::Transform(NS::Math::Vector3{x, y, z}, rot);
+            return NS::Math::Vector3{rotated.x + center.x, rotated.y + center.y, rotated.z + center.z};
         };
 
-        const NS::Core::Vector3 fBL = place(-ex, yBottom, -ez);
-        const NS::Core::Vector3 fBR = place(ex, yBottom, -ez);
-        const NS::Core::Vector3 bBL = place(-ex, yBottom, ez);
-        const NS::Core::Vector3 bBR = place(ex, yBottom, ez);
-        const NS::Core::Vector3 bTL = place(-ex, yTop, ez);
-        const NS::Core::Vector3 bTR = place(ex, yTop, ez);
+        const NS::Math::Vector3 fBL = place(-ex, yBottom, -ez);
+        const NS::Math::Vector3 fBR = place(ex, yBottom, -ez);
+        const NS::Math::Vector3 bBL = place(-ex, yBottom, ez);
+        const NS::Math::Vector3 bBR = place(ex, yBottom, ez);
+        const NS::Math::Vector3 bTL = place(-ex, yTop, ez);
+        const NS::Math::Vector3 bTR = place(ex, yTop, ez);
 
         return {
             Triangle{fBL, bTR, fBR},

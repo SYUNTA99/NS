@@ -16,9 +16,9 @@ namespace NS::Physics
     /// 1 三角形 (CCW winding 前提)。 normal は `(v1 - v0) × (v2 - v0)` で取得する
     struct Triangle
     {
-        NS::Core::Vector3 v0{0.0f, 0.0f, 0.0f};
-        NS::Core::Vector3 v1{0.0f, 0.0f, 0.0f};
-        NS::Core::Vector3 v2{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 v0{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 v1{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 v2{0.0f, 0.0f, 0.0f};
     };
 
     /// @brief Capsule が motion ベクトルだけ移動した場合の Triangle との最初の接触を返す
@@ -35,8 +35,8 @@ namespace NS::Physics
     /// (barycentric coordinate で判定) なら hit と返す。 2 端点のうち TOI が
     /// 小さい方を採用する。 motion が triangle 表面から離れる方向なら no hit
     [[nodiscard]] bool SweptCapsuleVsTriangle(const Capsule& capsule,
-                                              const NS::Core::Vector3& motion,
+                                              const NS::Math::Vector3& motion,
                                               const Triangle& tri,
                                               float& outToi,
-                                              NS::Core::Vector3& outNormal) noexcept;
+                                              NS::Math::Vector3& outNormal) noexcept;
 } // namespace NS::Physics

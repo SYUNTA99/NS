@@ -5,7 +5,7 @@
 
 namespace NS::Graphics
 {
-    MeshGeometry MakeCube(const NS::Core::Vector3& extents)
+    MeshGeometry MakeCube(const NS::Math::Vector3& extents)
     {
         const float ex = extents.x;
         const float ey = extents.y;
@@ -57,7 +57,7 @@ namespace NS::Graphics
         return geom;
     }
 
-    MeshGeometry MakePlane(const NS::Core::Vector2& extents)
+    MeshGeometry MakePlane(const NS::Math::Vector2& extents)
     {
         const float ex = extents.x;
         const float ez = extents.y;
@@ -74,7 +74,7 @@ namespace NS::Graphics
         return geom;
     }
 
-    MeshGeometry MakeWedge(float angleDegrees, const NS::Core::Vector3& extents)
+    MeshGeometry MakeWedge(float angleDegrees, const NS::Math::Vector3& extents)
     {
         const float ex = extents.x;
         const float ey = extents.y;

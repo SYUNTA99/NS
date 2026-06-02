@@ -44,7 +44,7 @@ namespace NS::Scene
         /// GameObject owner を受け取って auto-register するコンストラクタ
         explicit CharacterMovementComponent(NS::Scene::GameObject* owner) noexcept;
 
-        void SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept;
+        void SetDesiredMove(const NS::Math::Vector3& worldDir, float speedScale01) noexcept;
 
         /// 掴まり中の縦横入力。 camera 回転をかける前の生ローカル入力 (前後=縦、 左右=横、 各 -1..1) を
         /// 受け取る。 通常移動の `SetDesiredMove` (camera 相対 world dir) とは別チャンネルで、
@@ -56,7 +56,7 @@ namespace NS::Scene
 
         /// span を受け取って内部で owning std::vector にコピーする。呼出側 vector の lifetime に
         /// 依存させない (元 vector の reallocation / 破棄で dangling になる事故を防ぐ)
-        void SetCollisionWorld(std::span<const NS::Core::AABB> world);
+        void SetCollisionWorld(std::span<const NS::Math::AABB> world);
 
         /// Slope 用の世界座標 triangle 配列を受け取り、 内部 vector にコピーする
         void SetCollisionTriangles(std::span<const NS::Physics::Triangle> triangles);
@@ -71,7 +71,7 @@ namespace NS::Scene
         void SetState(MovementState s) noexcept { m_state = s; }
         [[nodiscard]] PoleComponent* AttachedPole() const noexcept { return m_attachedPole; }
 
-        [[nodiscard]] NS::Core::Vector3 Velocity() const noexcept { return m_velocity; }
+        [[nodiscard]] NS::Math::Vector3 Velocity() const noexcept { return m_velocity; }
         [[nodiscard]] bool IsGrounded() const noexcept { return m_isGrounded; }
         [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; }
 
@@ -92,7 +92,7 @@ namespace NS::Scene
     private:
         /// 空中下降中に進行方向の block 縁を検出し、 掴めれば LedgeHanging へ遷移する
         /// pos は controller 解決後の現在位置。 掴んだら true を返し、 state / 縁情報を更新する
-        bool TryGrabLedge(const NS::Core::Vector3& pos) noexcept;
+        bool TryGrabLedge(const NS::Math::Vector3& pos) noexcept;
 
         /// LedgeHanging 中の毎フレーム更新。 jump / 後入力は即時 (mantle 開始 / drop)、 前入力での
         /// 自動登りは最小ぶら下がり時間 (kLedgeMinHangTime) を過ぎてから。 それ以外は縁に静止保持
@@ -105,7 +105,7 @@ namespace NS::Scene
 
         /// 指定したぶら下がり位置に、 現在掴んでいるのと同じ高さの縁が続いているか。 シミー
         /// (縁沿い左右移動) 先が縁から外れていないか (端で止めるか) を判定する
-        [[nodiscard]] bool LedgeContinuesAt(const NS::Core::Vector3& hangPos) const noexcept;
+        [[nodiscard]] bool LedgeContinuesAt(const NS::Math::Vector3& hangPos) const noexcept;
 
         float m_gravityUp = -25.0f;
         float m_gravityDown = -35.0f;
@@ -124,8 +124,8 @@ namespace NS::Scene
         float m_capsuleRadius = 0.4f;
         float m_capsuleHalfHeight = 0.5f;
 
-        NS::Core::Vector3 m_velocity{0.0f, 0.0f, 0.0f};
-        NS::Core::Vector3 m_desiredDir{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 m_velocity{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 m_desiredDir{0.0f, 0.0f, 0.0f};
         float m_desiredSpeedScale = 0.0f;
         float m_climbRight = 0.0f;
         float m_climbForward = 0.0f;
@@ -141,7 +141,7 @@ namespace NS::Scene
 
         bool m_debugDraw = true;
 
-        std::vector<NS::Core::AABB> m_collisionWorld;
+        std::vector<NS::Math::AABB> m_collisionWorld;
         std::vector<NS::Physics::Triangle> m_collisionTriangles;
         NS::Physics::CharacterController m_controller;
 
@@ -151,12 +151,12 @@ namespace NS::Scene
         bool m_skipControllerLastFrame = false;
 
         float m_ledgeTopY = 0.0f;
-        NS::Core::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f};
         float m_ledgeRegrabCooldown = 0.0f;
         float m_ledgeHangTimer = 0.0f;
 
-        NS::Core::Vector3 m_ledgeMantleStart{0.0f, 0.0f, 0.0f};
-        NS::Core::Vector3 m_ledgeMantleEnd{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 m_ledgeMantleStart{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 m_ledgeMantleEnd{0.0f, 0.0f, 0.0f};
         float m_ledgeMantleTimer = 0.0f;
     };
 } // namespace NS::Scene

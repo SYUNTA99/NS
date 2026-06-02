@@ -18,7 +18,7 @@ namespace
     /// 衝突なしの環境で N 回 OnUpdate を呼ぶ。debug draw は false 固定
     void StepN(CharacterMovementComponent& mov, int n)
     {
-        std::span<const NS::Core::AABB> empty;
+        std::span<const NS::Math::AABB> empty;
         mov.SetCollisionWorld(empty);
         mov.SetDebugDrawEnabled(false);
         for (int i = 0; i < n; ++i)
@@ -109,7 +109,7 @@ TEST_F(CharacterMovementTest, ApexHangScalesGravity)
     GameObject obj;
     CharacterMovementComponent mov(&obj);
     mov.SetDebugDrawEnabled(false);
-    std::span<const NS::Core::AABB> empty;
+    std::span<const NS::Math::AABB> empty;
     mov.SetCollisionWorld(empty);
 
     mov.SetJumpPressed();
@@ -147,7 +147,7 @@ TEST_F(CharacterMovementTest, OnUpdateNoOpWhenInactive)
     mov.SetDebugDrawEnabled(false);
 
     mov.SetJumpPressed();
-    std::span<const NS::Core::AABB> empty;
+    std::span<const NS::Math::AABB> empty;
     mov.SetCollisionWorld(empty);
     mov.OnUpdate();
 
@@ -159,7 +159,7 @@ TEST_F(CharacterMovementTest, ClimbPoleVerticalUsesClimbChannelNotDesiredDir)
     GameObject playerObj;
     CharacterMovementComponent mov(&playerObj);
     mov.SetDebugDrawEnabled(false);
-    std::span<const NS::Core::AABB> empty;
+    std::span<const NS::Math::AABB> empty;
     mov.SetCollisionWorld(empty);
 
     GameObject poleObj; // origin 中心、 半径 0.5 / 高さ 2 (軸 y=-1..+1)

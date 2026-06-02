@@ -46,8 +46,8 @@
 
 namespace
 {
-    constexpr NS::Core::Vector3 kPlayerColor{0.85f, 0.20f, 0.20f};
-    constexpr NS::Core::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
+    constexpr NS::Math::Vector3 kPlayerColor{0.85f, 0.20f, 0.20f};
+    constexpr NS::Math::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
 
     /// 編集体験の起点となる最小床。 LevelData に block 1 個 + spawn を仕込んでおく
     void SeedInitialLevel(NS::Game::Level::LevelData& level)
@@ -233,11 +233,11 @@ void LevelEditorScene::OnStart()
     editorCam.SetAspectRatioFromRenderer(renderer);
     editorCam.SetNearPlane(0.1f);
     editorCam.SetFarPlane(200.0f);
-    editorCam.SetFovY(NS::Core::ToRadians(NS::Core::Degrees{60.0f}));
+    editorCam.SetFovY(NS::Math::ToRadians(NS::Math::Degrees{60.0f}));
     editorCam.SetUp({0.0f, 1.0f, 0.0f});
 
     // 初期視点は spawn 位置を中心に少し引いた位置から見下ろす
-    const NS::Core::Vector3 spawnPos{
+    const NS::Math::Vector3 spawnPos{
         static_cast<float>(m_level.spawnX), static_cast<float>(m_level.spawnY), static_cast<float>(m_level.spawnZ)};
     m_editorCameraRig->EditorCam().SetCenter(spawnPos);
     // 起動直後は spawn block を真ん中近めに見せる距離。 1m cube が画面の十数 % を占める
@@ -330,7 +330,7 @@ void LevelEditorScene::OnUpdate()
         // SSOT は Transform。 ThirdPersonFollow が Player.Root を target にしているため camera も追従する
         if (m_player)
         {
-            NS::Core::Vector3 camForward{0.0f, 0.0f, 1.0f};
+            NS::Math::Vector3 camForward{0.0f, 0.0f, 1.0f};
             if (m_cameraRig)
                 camForward = m_cameraRig->Camera().ForwardHorizontal();
             m_player->InputComp().SetCameraForward(camForward);
@@ -505,9 +505,9 @@ void LevelEditorScene::OnRender()
         blockCB.viewProj = ctx.viewProjection;
         blockCB.lightDir = theme.lightDirection;
         if (blockCB.lightDir.LengthSquared() <= 1e-6f)
-            blockCB.lightDir = NS::Core::Vector3{-0.3f, -1.0f, -0.2f};
+            blockCB.lightDir = NS::Math::Vector3{-0.3f, -1.0f, -0.2f};
         blockCB.lightDir.Normalize();
-        blockCB.baseColor = NS::Core::Vector3{1.0f, 1.0f, 1.0f}; // per-instance baseColor と乗算するので 1 に固定
+        blockCB.baseColor = NS::Math::Vector3{1.0f, 1.0f, 1.0f}; // per-instance baseColor と乗算するので 1 に固定
         blockCB.lightColor = theme.lightColor;
         blockCB.ambientColor = theme.ambientColor;
         if (m_blockMaterial)
@@ -520,7 +520,7 @@ void LevelEditorScene::OnRender()
                 continue;
             const NS::Game::Level::BlockEntry* entry = nullptr;
             // Block は親無しなので local Position == world position。 grid cell に丸めて LevelData と照合する
-            const NS::Core::Vector3 wp = block->Root().Position();
+            const NS::Math::Vector3 wp = block->Root().Position();
             const std::int16_t x = static_cast<std::int16_t>(std::lround(wp.x));
             const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
             const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
@@ -544,7 +544,7 @@ void LevelEditorScene::OnRender()
             inst.worldMatrix = block->Root().InterpolatedWorldMatrix(ctx.alpha);
             // 個体色は GetBaseColor を流し込んでおく (theme tint は FrameCB の lightColor/ambientColor で行う)
             const auto color = NS::Game::Editor::GetBaseColor(blockId);
-            inst.baseColor = NS::Core::Vector3{color.R(), color.G(), color.B()};
+            inst.baseColor = NS::Math::Vector3{color.R(), color.G(), color.B()};
             inst.textureSlice = static_cast<float>(slice);
             m_instanceBatcher->Submit(m_cubeMesh.get(), m_blockMaterial.get(), inst);
         }
@@ -591,11 +591,11 @@ void LevelEditorScene::OnRender()
         }
 
         const auto& cam = editActive ? m_editorCameraRig->Camera().Camera() : m_cameraRig->Camera().Camera();
-        NS::Core::Matrix viewNoTranslate = cam.View();
+        NS::Math::Matrix viewNoTranslate = cam.View();
         viewNoTranslate._41 = 0.0f;
         viewNoTranslate._42 = 0.0f;
         viewNoTranslate._43 = 0.0f;
-        const NS::Core::Matrix viewProjNoTranslate = viewNoTranslate * cam.Projection();
+        const NS::Math::Matrix viewProjNoTranslate = viewNoTranslate * cam.Projection();
         m_skybox->Render(viewProjNoTranslate);
     }
 
@@ -709,7 +709,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
 
     for (const auto& entry : m_level.blocks)
     {
-        const NS::Core::Vector3 cellCenter{
+        const NS::Math::Vector3 cellCenter{
             static_cast<float>(entry.x), static_cast<float>(entry.y), static_cast<float>(entry.z)};
 
         // 全ブロック共通の配置。 entry.rotation (0-255) を Y 軸 yaw として transform に載せる
@@ -717,7 +717,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
         const auto placeInCell = [&](NS::Scene::GameObject& obj) {
             obj.Root().SetPosition(cellCenter);
             const float yaw = NS::Game::Editor::BlockRotationToYaw(entry.rotation);
-            obj.Root().SetRotation(NS::Core::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f));
+            obj.Root().SetRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f));
         };
 
         if (entry.blockId == NS::Game::Editor::kBlockIdSolid)
@@ -728,7 +728,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             block->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
 
             const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
-            block->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
+            block->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
             block->OnStart();
             // block の IRenderable 経路は休止させ、 描画は InstanceBatcher の bucket 集約に任せる
             // OnStart 内で MeshComponent が RegisterRenderable しているため、 ここで SetActive(false) すると
@@ -758,7 +758,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             placeInCell(*slope);
 
             const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
-            slope->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
+            slope->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
             slope->OnStart();
 
             const auto tris = slope->Collider().WorldTriangles();
@@ -777,7 +777,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             placeInCell(*pole);
 
             const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
-            pole->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
+            pole->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
             pole->OnStart();
 
             m_polePtrs.push_back(&pole->Pole());
@@ -793,7 +793,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             hazard->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
 
             const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
-            hazard->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
+            hazard->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
             hazard->OnStart();
 
             // 衝突は通常 Block と同じく AABB として登録。 hazard 固有のダメージ trigger は
@@ -811,7 +811,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             water->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
 
             const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
-            water->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
+            water->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
             water->OnStart();
 
             // collider なしで m_collisionWorld にも m_collisionTriangles にも入れない (装飾と同じ理由)
@@ -827,7 +827,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             deco->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
 
             const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
-            deco->MeshComp().SetBaseColor(NS::Core::Vector3{color.R(), color.G(), color.B()});
+            deco->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
             deco->OnStart();
 
             m_decorations.push_back(std::move(deco));

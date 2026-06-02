@@ -80,7 +80,7 @@ namespace NS::Game::Editor
     [[nodiscard]] const char* GetDisplayName(std::uint16_t blockId) noexcept;
 
     /// 各 ID に紐づく base color (RGBA float)。 テクスチャが揃うまでの色分け用
-    [[nodiscard]] NS::Core::Color GetBaseColor(std::uint16_t blockId) noexcept;
+    [[nodiscard]] NS::Math::Color GetBaseColor(std::uint16_t blockId) noexcept;
 
     /// 「衝突 cube 1 個分の固形ブロック」 系か否かを返す。 現状 `kBlockIdSolid` のみが該当
     /// slope / pole 等は独自の collider component で扱うので本判定の対象外

@@ -265,7 +265,7 @@ namespace NS::Platform
         return m_pImpl->shouldClose;
     }
 
-    ::NS::Core::Size2D Window::Size() const noexcept
+    ::NS::Math::Size2D Window::Size() const noexcept
     {
         return m_pImpl->size;
     }
@@ -293,7 +293,7 @@ namespace NS::Platform
         }
     }
 
-    void Window::SetResizeCallback(std::function<void(::NS::Core::Size2D)> cb)
+    void Window::SetResizeCallback(std::function<void(::NS::Math::Size2D)> cb)
     {
         m_pImpl->onResize = std::move(cb);
     }

@@ -5,9 +5,9 @@
 
 namespace
 {
-    using NS::Core::AABB;
-    using NS::Core::Color;
-    using NS::Core::Vector3;
+    using NS::Math::AABB;
+    using NS::Math::Color;
+    using NS::Math::Vector3;
     namespace DD = NS::Graphics::DebugDraw;
 
     void Reset() noexcept

@@ -48,7 +48,7 @@ namespace NS::Scene
         cb.viewProj = context.viewProjection;
         cb.lightDir = m_lightDir;
         if (cb.lightDir.LengthSquared() <= 1e-6f)
-            cb.lightDir = NS::Core::Vector3{-0.3f, -1.0f, -0.2f};
+            cb.lightDir = NS::Math::Vector3{-0.3f, -1.0f, -0.2f};
         cb.lightDir.Normalize();
         cb.baseColor = m_baseColor;
         cb.lightColor = m_lightColor;

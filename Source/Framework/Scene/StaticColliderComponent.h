@@ -17,19 +17,19 @@ namespace NS::Scene
         /// GameObject owner を受け取って auto-register するコンストラクタ。halfExtents は default {0.5,0.5,0.5}
         explicit StaticColliderComponent(NS::Scene::GameObject* owner) noexcept;
         /// owner と halfExtents を同時に渡すコンストラクタ。halfExtents は ClampNonNegative で負を 0 にクランプ
-        StaticColliderComponent(NS::Scene::GameObject* owner, const NS::Core::Vector3& halfExtents) noexcept;
+        StaticColliderComponent(NS::Scene::GameObject* owner, const NS::Math::Vector3& halfExtents) noexcept;
 
         /// 半サイズを設定
-        void SetHalfExtents(const NS::Core::Vector3& halfExtents) noexcept;
+        void SetHalfExtents(const NS::Math::Vector3& halfExtents) noexcept;
 
         /// 現在の半サイズ
-        [[nodiscard]] NS::Core::Vector3 HalfExtents() const noexcept;
+        [[nodiscard]] NS::Math::Vector3 HalfExtents() const noexcept;
 
         /// Owner の root world position を center とした AABB を返す
         /// Owner が未登録の場合は origin 中心の AABB を返す (no-throw)
-        [[nodiscard]] NS::Core::AABB WorldAABB() const noexcept;
+        [[nodiscard]] NS::Math::AABB WorldAABB() const noexcept;
 
     private:
-        NS::Core::Vector3 m_halfExtents{0.5f, 0.5f, 0.5f};
+        NS::Math::Vector3 m_halfExtents{0.5f, 0.5f, 0.5f};
     };
 } // namespace NS::Scene

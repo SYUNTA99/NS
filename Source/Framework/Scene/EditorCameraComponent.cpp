@@ -36,7 +36,7 @@ namespace NS::Scene
         m_pitch = std::clamp(pitch, kPitchMin, kPitchMax);
     }
 
-    void EditorCameraComponent::SetCenter(NS::Core::Vector3 center) noexcept
+    void EditorCameraComponent::SetCenter(NS::Math::Vector3 center) noexcept
     {
         m_center = center;
     }
@@ -58,8 +58,8 @@ namespace NS::Scene
         // View space の right / up 軸に沿った平行移動。 感度は distance に比例
         const float sinYaw = std::sin(m_yaw);
         const float cosYaw = std::cos(m_yaw);
-        const NS::Core::Vector3 right{cosYaw, 0.0f, -sinYaw};
-        const NS::Core::Vector3 up{0.0f, 1.0f, 0.0f};
+        const NS::Math::Vector3 right{cosYaw, 0.0f, -sinYaw};
+        const NS::Math::Vector3 up{0.0f, 1.0f, 0.0f};
         const float scale = m_distance * 0.1f;
         m_center.x += (right.x * panX + up.x * panY) * scale;
         m_center.y += (right.y * panX + up.y * panY) * scale;
@@ -77,7 +77,7 @@ namespace NS::Scene
         m_desiredDistance = std::clamp(m_desiredDistance * factor, kMinDistance, kMaxDistance);
     }
 
-    NS::Core::Vector3 EditorCameraComponent::ComputeCameraPosition() const noexcept
+    NS::Math::Vector3 EditorCameraComponent::ComputeCameraPosition() const noexcept
     {
         const float cosPitch = std::cos(m_pitch);
         const float sinPitch = std::sin(m_pitch);
@@ -144,33 +144,33 @@ namespace NS::Scene
     namespace EditorGridMath
     {
 
-        NS::Core::Ray ScreenToWorldRay(const NS::Core::Matrix& viewProjection,
-                                       NS::Core::Size2D viewport,
+        NS::Math::Ray ScreenToWorldRay(const NS::Math::Matrix& viewProjection,
+                                       NS::Math::Size2D viewport,
                                        int mouseX,
                                        int mouseY) noexcept
         {
             const float ndcX = (2.0f * static_cast<float>(mouseX)) / static_cast<float>(viewport.width) - 1.0f;
             const float ndcY = 1.0f - (2.0f * static_cast<float>(mouseY)) / static_cast<float>(viewport.height);
 
-            NS::Core::Matrix inv = viewProjection.Invert();
+            NS::Math::Matrix inv = viewProjection.Invert();
 
-            const NS::Core::Vector4 nearH{ndcX, ndcY, 0.0f, 1.0f};
-            const NS::Core::Vector4 farH{ndcX, ndcY, 1.0f, 1.0f};
+            const NS::Math::Vector4 nearH{ndcX, ndcY, 0.0f, 1.0f};
+            const NS::Math::Vector4 farH{ndcX, ndcY, 1.0f, 1.0f};
 
-            const NS::Core::Vector4 wNearH = NS::Core::Vector4::Transform(nearH, inv);
-            const NS::Core::Vector4 wFarH = NS::Core::Vector4::Transform(farH, inv);
+            const NS::Math::Vector4 wNearH = NS::Math::Vector4::Transform(nearH, inv);
+            const NS::Math::Vector4 wFarH = NS::Math::Vector4::Transform(farH, inv);
 
             const float invWNear = (std::abs(wNearH.w) > 1e-6f) ? (1.0f / wNearH.w) : 0.0f;
             const float invWFar = (std::abs(wFarH.w) > 1e-6f) ? (1.0f / wFarH.w) : 0.0f;
 
-            NS::Core::Vector3 wNear{wNearH.x * invWNear, wNearH.y * invWNear, wNearH.z * invWNear};
-            NS::Core::Vector3 wFar{wFarH.x * invWFar, wFarH.y * invWFar, wFarH.z * invWFar};
-            NS::Core::Vector3 dir = wFar - wNear;
+            NS::Math::Vector3 wNear{wNearH.x * invWNear, wNearH.y * invWNear, wNearH.z * invWNear};
+            NS::Math::Vector3 wFar{wFarH.x * invWFar, wFarH.y * invWFar, wFarH.z * invWFar};
+            NS::Math::Vector3 dir = wFar - wNear;
             dir.Normalize();
-            return NS::Core::Ray{wNear, dir};
+            return NS::Math::Ray{wNear, dir};
         }
 
-        NS::Core::Vector3 SnapWorldPointToGrid(NS::Core::Vector3 p, float g) noexcept
+        NS::Math::Vector3 SnapWorldPointToGrid(NS::Math::Vector3 p, float g) noexcept
         {
             // 最近接 cell center に snap (0.5 を足してから floor で四捨五入相当)
             const float gx = std::floor(p.x / g + 0.5f) * g;
@@ -179,13 +179,13 @@ namespace NS::Scene
             return {gx, gy, gz};
         }
 
-        NS::Core::Vector3 SnapHitToPlacementCell(NS::Core::Vector3 hit, NS::Core::Vector3 normal, float g) noexcept
+        NS::Math::Vector3 SnapHitToPlacementCell(NS::Math::Vector3 hit, NS::Math::Vector3 normal, float g) noexcept
         {
-            const NS::Core::Vector3 base = SnapWorldPointToGrid(hit, g);
+            const NS::Math::Vector3 base = SnapWorldPointToGrid(hit, g);
             return {base.x + normal.x * g, base.y + normal.y * g, base.z + normal.z * g};
         }
 
-        bool TryGroundPlaneFallback(const NS::Core::Ray& ray, NS::Core::Vector3& outCenter, float g) noexcept
+        bool TryGroundPlaneFallback(const NS::Math::Ray& ray, NS::Math::Vector3& outCenter, float g) noexcept
         {
             // 上向き ray / 水平 ray は地面に当たらない
             if (ray.direction.y > -1e-4f)
@@ -193,7 +193,7 @@ namespace NS::Scene
             const float t = -ray.position.y / ray.direction.y;
             if (t < 0.0f)
                 return false;
-            const NS::Core::Vector3 hit{
+            const NS::Math::Vector3 hit{
                 ray.position.x + ray.direction.x * t,
                 0.0f,
                 ray.position.z + ray.direction.z * t,
@@ -203,12 +203,12 @@ namespace NS::Scene
             return true;
         }
 
-        NS::Core::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept
+        NS::Math::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept
         {
             const std::uint8_t r = static_cast<std::uint8_t>(rotation & 0x03);
             constexpr float kQuarter = 1.5707963267948966f;
             const float angle = static_cast<float>(r) * kQuarter;
-            return NS::Core::Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, angle);
+            return NS::Math::Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, angle);
         }
 
     } // namespace EditorGridMath

@@ -22,9 +22,9 @@ struct ThemeData
     /// skybox cubemap のディレクトリ or .dds パス。 Skybox::LoadCubemap に渡す
     std::filesystem::path skyboxCubemapPath{};
     /// directional sun の向き (正規化前で OK、 シェーダ側で normalize する)
-    NS::Core::Vector3 lightDirection{-0.3f, -1.0f, -0.2f};
+    NS::Math::Vector3 lightDirection{-0.3f, -1.0f, -0.2f};
     /// directional sun の色 (HDR 込み、 1.3 等を許容)
-    NS::Core::Vector3 lightColor{1.0f, 1.0f, 1.0f};
+    NS::Math::Vector3 lightColor{1.0f, 1.0f, 1.0f};
     /// ambient (環境光) の色。 N.L = 0 の影側ベース色になる
-    NS::Core::Vector3 ambientColor{0.2f, 0.2f, 0.2f};
+    NS::Math::Vector3 ambientColor{0.2f, 0.2f, 0.2f};
 };

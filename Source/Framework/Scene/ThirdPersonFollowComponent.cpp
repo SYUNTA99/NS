@@ -52,7 +52,7 @@ namespace NS::Scene
         m_movement = movement;
     }
 
-    void ThirdPersonFollowComponent::SetFovY(NS::Core::Radians fov) noexcept
+    void ThirdPersonFollowComponent::SetFovY(NS::Math::Radians fov) noexcept
     {
         m_fovY = fov;
         if (m_camera != nullptr)
@@ -108,7 +108,7 @@ namespace NS::Scene
             m_pitch += rstick.y * m_stickSensY * dt * mySign;
         }
 
-        m_pitch = NS::Core::Clamp(m_pitch, m_pitchMin, m_pitchMax);
+        m_pitch = NS::Math::Clamp(m_pitch, m_pitchMin, m_pitchMax);
 
         if (!m_manualDistance)
         {
@@ -140,13 +140,13 @@ namespace NS::Scene
         const float sy = std::sin(m_yaw);
         const float cp = std::cos(m_pitch);
         const float sp = std::sin(m_pitch);
-        const NS::Core::Vector3 forward{sy * cp, sp, cy * cp};
+        const NS::Math::Vector3 forward{sy * cp, sp, cy * cp};
 
         // target は補間位置を使うことで Player Mesh の補間と一致させ、
         // 相対位置にガタつきが乗らないようにする (補間整合)
-        const NS::Core::Vector3 tgtPos = m_target->InterpolatedWorldMatrix(alpha).Translation();
-        const NS::Core::Vector3 headPos{tgtPos.x, tgtPos.y + m_headHeight, tgtPos.z};
-        const NS::Core::Vector3 camPos{
+        const NS::Math::Vector3 tgtPos = m_target->InterpolatedWorldMatrix(alpha).Translation();
+        const NS::Math::Vector3 headPos{tgtPos.x, tgtPos.y + m_headHeight, tgtPos.z};
+        const NS::Math::Vector3 camPos{
             headPos.x - forward.x * m_distance,
             headPos.y - forward.y * m_distance,
             headPos.z - forward.z * m_distance,

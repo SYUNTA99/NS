@@ -36,8 +36,8 @@ TEST(EditorGridTest, SnapHitToPlacementCellOffsetsByNormalMinusY)
 
 TEST(EditorGridTest, GroundFallbackHitsYZeroPlane)
 {
-    NS::Core::Ray ray{{0.3f, 5.0f, 0.7f}, {0.0f, -1.0f, 0.0f}};
-    NS::Core::Vector3 out;
+    NS::Math::Ray ray{{0.3f, 5.0f, 0.7f}, {0.0f, -1.0f, 0.0f}};
+    NS::Math::Vector3 out;
     ASSERT_TRUE(SceneNs::EditorGridMath::TryGroundPlaneFallback(ray, out, 1.0f));
     EXPECT_FLOAT_EQ(out.y, 0.0f);
     EXPECT_FLOAT_EQ(out.x, 0.0f); // 0.3 → 0
@@ -46,8 +46,8 @@ TEST(EditorGridTest, GroundFallbackHitsYZeroPlane)
 
 TEST(EditorGridTest, GroundFallbackFailsForUpwardRay)
 {
-    NS::Core::Ray ray{{0.0f, 5.0f, 0.0f}, {0.0f, 1.0f, 0.0f}};
-    NS::Core::Vector3 out{99.0f, 99.0f, 99.0f};
+    NS::Math::Ray ray{{0.0f, 5.0f, 0.0f}, {0.0f, 1.0f, 0.0f}};
+    NS::Math::Vector3 out{99.0f, 99.0f, 99.0f};
     EXPECT_FALSE(SceneNs::EditorGridMath::TryGroundPlaneFallback(ray, out, 1.0f));
     // out は未変更
     EXPECT_FLOAT_EQ(out.x, 99.0f);
@@ -78,8 +78,8 @@ TEST(EditorGridTest, RotationU8WrapsAtModulo4)
 
 TEST(EditorGridTest, ScreenToWorldRayDirectionIsUnitLength)
 {
-    NS::Core::Matrix identity = NS::Core::Matrix::Identity;
-    NS::Core::Size2D vp{1280, 720};
+    NS::Math::Matrix identity = NS::Math::Matrix::Identity;
+    NS::Math::Size2D vp{1280, 720};
     auto ray = SceneNs::EditorGridMath::ScreenToWorldRay(identity, vp, 640, 360);
     const float len = std::sqrt(ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y +
                                 ray.direction.z * ray.direction.z);

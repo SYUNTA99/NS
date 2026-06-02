@@ -24,10 +24,10 @@ namespace NS::Graphics
 
     /// 立方体プリミティブ。per-face normal で 24 vertex + 36 index、CW = front
     /// vector 確保で std::bad_alloc が伝搬する可能性があるため noexcept は付けない
-    [[nodiscard]] MeshGeometry MakeCube(const NS::Core::Vector3& extents);
+    [[nodiscard]] MeshGeometry MakeCube(const NS::Math::Vector3& extents);
 
     /// XZ 平面 (Y=0 上向き)、4 vertex + 6 index、normal=+Y
-    [[nodiscard]] MeshGeometry MakePlane(const NS::Core::Vector2& extents);
+    [[nodiscard]] MeshGeometry MakePlane(const NS::Math::Vector2& extents);
 
     /// 楔形 (wedge) スロープ mesh。 +Z 方向に上昇する slope を持つ 5 面体
     /// `angleDegrees` は slope の傾斜角 (想定値: 45 / 30 / 22.5 / 15 度)
@@ -35,7 +35,7 @@ namespace NS::Graphics
     /// (実際の高さは `min(extents.y, tan(angle) * extents.z * 2.0)`)
     /// 5 face = slope quad + bottom quad + back quad + 左右 triangle 2 個
     /// per-face normal で 16 vertex + 24 index 構成
-    [[nodiscard]] MeshGeometry MakeWedge(float angleDegrees, const NS::Core::Vector3& extents);
+    [[nodiscard]] MeshGeometry MakeWedge(float angleDegrees, const NS::Math::Vector3& extents);
 
     /// 円柱メッシュ (ポール用)。 `radius` 半径、 `height` 縦の全長、
     /// `segments` で側面の分割数 (default 12、 推奨 8~16)。 top / bottom cap + side strip の構成で

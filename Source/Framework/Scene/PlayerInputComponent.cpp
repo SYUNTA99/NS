@@ -12,13 +12,13 @@
 namespace
 {
     /// 水平 forward を XZ 平面正規化。長さ 0 の入力は world -Z+ にフォールバック
-    [[nodiscard]] NS::Core::Vector3 NormalizeHorizontal(const NS::Core::Vector3& v) noexcept
+    [[nodiscard]] NS::Math::Vector3 NormalizeHorizontal(const NS::Math::Vector3& v) noexcept
     {
         const float lenSq = v.x * v.x + v.z * v.z;
         if (lenSq < 1e-8f)
-            return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+            return NS::Math::Vector3{0.0f, 0.0f, 1.0f};
         const float invLen = 1.0f / std::sqrt(lenSq);
-        return NS::Core::Vector3{v.x * invLen, 0.0f, v.z * invLen};
+        return NS::Math::Vector3{v.x * invLen, 0.0f, v.z * invLen};
     }
 } // namespace
 
@@ -29,7 +29,7 @@ namespace NS::Scene
         : Component(owner, static_cast<int>(NS::Scene::TickPriority::Input)), m_movement(movement)
     {}
 
-    void PlayerInputComponent::SetCameraForward(const NS::Core::Vector3& cameraForwardHorizontal) noexcept
+    void PlayerInputComponent::SetCameraForward(const NS::Math::Vector3& cameraForwardHorizontal) noexcept
     {
         m_cameraForward = NormalizeHorizontal(cameraForwardHorizontal);
     }
@@ -87,10 +87,10 @@ namespace NS::Scene
             speedScale = localMag;
         }
 
-        const NS::Core::Vector3 fwd = NormalizeHorizontal(m_cameraForward);
-        const NS::Core::Vector3 right{fwd.z, 0.0f, -fwd.x};
+        const NS::Math::Vector3 fwd = NormalizeHorizontal(m_cameraForward);
+        const NS::Math::Vector3 right{fwd.z, 0.0f, -fwd.x};
 
-        const NS::Core::Vector3 worldDir{
+        const NS::Math::Vector3 worldDir{
             right.x * localX + fwd.x * localZ,
             0.0f,
             right.z * localX + fwd.z * localZ,

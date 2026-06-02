@@ -32,8 +32,8 @@ namespace NS::Game::Editor
     {
         constexpr float kCellHalfExtent = 0.5f;
 
-        const NS::Core::Color kCursorOkColor{0.1f, 1.0f, 0.1f, 1.0f};
-        const NS::Core::Color kCursorBlockedColor{1.0f, 0.1f, 0.1f, 1.0f};
+        const NS::Math::Color kCursorOkColor{0.1f, 1.0f, 0.1f, 1.0f};
+        const NS::Math::Color kCursorBlockedColor{1.0f, 0.1f, 0.1f, 1.0f};
 
         [[nodiscard]] bool HasBlockAtCell(const NS::Game::Level::LevelData& level,
                                           std::int16_t x,
@@ -64,12 +64,12 @@ namespace NS::Game::Editor
         m_palette.TickInput(m_input, m_imgui);
 
         // 表示用 yaw quaternion を「現在の cursor rotation」 に Slerp で寄せて回転方向を視覚化する
-        const auto targetQuat = NS::Core::Quaternion::CreateFromAxisAngle(
+        const auto targetQuat = NS::Math::Quaternion::CreateFromAxisAngle(
             {0.0f, 1.0f, 0.0f}, NS::Game::Editor::BlockRotationToYaw(m_currentRotation));
         constexpr float kRotationSpringRate = 12.0f;
         const float dt = NS::Core::FrameTimer::FixedDelta();
         const float t = std::min(1.0f, kRotationSpringRate * dt);
-        m_displayedYawQuat = NS::Core::Quaternion::Slerp(m_displayedYawQuat, targetQuat, t);
+        m_displayedYawQuat = NS::Math::Quaternion::Slerp(m_displayedYawQuat, targetQuat, t);
     }
 
     void EditorMode::HandleSaveLoadInput() noexcept
@@ -149,8 +149,8 @@ namespace NS::Game::Editor
 
         // DebugDraw への蓄積は維持 (将来 GPU 描画 path が整ったら自動的に表示される)
         // 既存 test (CursorPreview.RendersAABBToDebugDraw) も buffered vertex を assert
-        const NS::Core::AABB placeBox(m_cursor.placementCenter,
-                                      NS::Core::Vector3{kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
+        const NS::Math::AABB placeBox(m_cursor.placementCenter,
+                                      NS::Math::Vector3{kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
         NS::Graphics::DebugDraw::AABB(placeBox, m_cursor.placementBlocked ? kCursorBlockedColor : kCursorOkColor);
 
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
@@ -167,7 +167,7 @@ namespace NS::Game::Editor
             return;
 
         const auto vp = m_camera->ViewProjection();
-        const NS::Core::Vector3 c = m_cursor.placementCenter;
+        const NS::Math::Vector3 c = m_cursor.placementCenter;
         constexpr float h = kCellHalfExtent;
         const float vpW = static_cast<float>(viewport.width);
         const float vpH = static_cast<float>(viewport.height);
@@ -177,9 +177,9 @@ namespace NS::Game::Editor
             return;
 
         // world -> screen 投影。 clip.w<=0 (カメラ背後) は描画しない
-        const auto project = [&](const NS::Core::Vector3& world, ImVec2& out) -> bool {
-            const NS::Core::Vector4 worldH{world.x, world.y, world.z, 1.0f};
-            const NS::Core::Vector4 clip = NS::Core::Vector4::Transform(worldH, vp);
+        const auto project = [&](const NS::Math::Vector3& world, ImVec2& out) -> bool {
+            const NS::Math::Vector4 worldH{world.x, world.y, world.z, 1.0f};
+            const NS::Math::Vector4 clip = NS::Math::Vector4::Transform(worldH, vp);
             if (clip.w <= 0.0f)
                 return false;
             out.x = ((clip.x / clip.w) * 0.5f + 0.5f) * vpW;
@@ -188,7 +188,7 @@ namespace NS::Game::Editor
         };
 
         // セル枠の箱 (■) は軸そろえのまま固定。 向きは中の形状で示すので box 自体は回さない
-        const NS::Core::Vector3 boxCorners[8] = {
+        const NS::Math::Vector3 boxCorners[8] = {
             {c.x - h, c.y - h, c.z - h},
             {c.x + h, c.y - h, c.z - h},
             {c.x + h, c.y + h, c.z - h},
@@ -237,7 +237,7 @@ namespace NS::Game::Editor
             const float yTop = -h + height;
 
             // 6 頂点 (local、 +Z 側が高い斜面)。 BuildWedgeTriangles と同一規約
-            const NS::Core::Vector3 wedgeLocal[6] = {
+            const NS::Math::Vector3 wedgeLocal[6] = {
                 {-h, yBot, -h},
                 {+h, yBot, -h},
                 {-h, yBot, +h},
@@ -249,8 +249,8 @@ namespace NS::Game::Editor
             bool wedgeFront[6]{};
             for (int i = 0; i < 6; ++i)
             {
-                const auto r = NS::Core::Vector3::Transform(wedgeLocal[i], m_displayedYawQuat);
-                wedgeFront[i] = project(NS::Core::Vector3{c.x + r.x, c.y + r.y, c.z + r.z}, wedgeScreen[i]);
+                const auto r = NS::Math::Vector3::Transform(wedgeLocal[i], m_displayedYawQuat);
+                wedgeFront[i] = project(NS::Math::Vector3{c.x + r.x, c.y + r.y, c.z + r.z}, wedgeScreen[i]);
             }
 
             // fBL=0 fBR=1 bBL=2 bBR=3 bTL=4 bTR=5。 0-4 / 1-5 が斜面の稜線 (斜め)
@@ -286,11 +286,11 @@ namespace NS::Game::Editor
             m_cursor.placeZ == m_level->spawnZ)
             return;
 
-        const NS::Core::Vector3 center{static_cast<float>(m_level->spawnX),
+        const NS::Math::Vector3 center{static_cast<float>(m_level->spawnX),
                                        static_cast<float>(m_level->spawnY),
                                        static_cast<float>(m_level->spawnZ)};
-        const NS::Core::AABB marker(center, NS::Core::Vector3{kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
-        const NS::Core::Color spawnColor{1.0f, 0.85f, 0.10f, 1.0f};
+        const NS::Math::AABB marker(center, NS::Math::Vector3{kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
+        const NS::Math::Color spawnColor{1.0f, 0.85f, 0.10f, 1.0f};
         NS::Graphics::DebugDraw::AABB(marker, spawnColor);
 
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
@@ -305,7 +305,7 @@ namespace NS::Game::Editor
 
         const auto vp = m_camera->ViewProjection();
         constexpr float h = kCellHalfExtent;
-        const NS::Core::Vector3 corners[8] = {
+        const NS::Math::Vector3 corners[8] = {
             {center.x - h, center.y - h, center.z - h},
             {center.x + h, center.y - h, center.z - h},
             {center.x + h, center.y + h, center.z - h},
@@ -320,8 +320,8 @@ namespace NS::Game::Editor
         bool inFront[8]{};
         for (int i = 0; i < 8; ++i)
         {
-            const NS::Core::Vector4 worldH{corners[i].x, corners[i].y, corners[i].z, 1.0f};
-            const NS::Core::Vector4 clip = NS::Core::Vector4::Transform(worldH, vp);
+            const NS::Math::Vector4 worldH{corners[i].x, corners[i].y, corners[i].z, 1.0f};
+            const NS::Math::Vector4 clip = NS::Math::Vector4::Transform(worldH, vp);
             if (clip.w <= 0.0f)
             {
                 inFront[i] = false;
@@ -409,7 +409,7 @@ namespace NS::Game::Editor
             return;
 
         const auto vp = m_camera->ViewProjection();
-        const NS::Core::Ray ray =
+        const NS::Math::Ray ray =
             NS::Scene::EditorGridMath::ScreenToWorldRay(vp, viewport, m_input->Mouse().X(), m_input->Mouse().Y());
 
         float bestT = std::numeric_limits<float>::max();
@@ -417,13 +417,13 @@ namespace NS::Game::Editor
         std::int16_t hitX = 0;
         std::int16_t hitY = 0;
         std::int16_t hitZ = 0;
-        NS::Core::Vector3 hitPoint{};
-        NS::Core::Vector3 hitNormal{0.0f, 1.0f, 0.0f};
+        NS::Math::Vector3 hitPoint{};
+        NS::Math::Vector3 hitNormal{0.0f, 1.0f, 0.0f};
 
         for (const auto& b : m_level->blocks)
         {
-            const NS::Core::Vector3 center{static_cast<float>(b.x), static_cast<float>(b.y), static_cast<float>(b.z)};
-            const NS::Core::AABB box(center, {kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
+            const NS::Math::Vector3 center{static_cast<float>(b.x), static_cast<float>(b.y), static_cast<float>(b.z)};
+            const NS::Math::AABB box(center, {kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
             float t = 0.0f;
             if (ray.Intersects(box, t) && t < bestT)
             {
@@ -432,21 +432,21 @@ namespace NS::Game::Editor
                 hitX = b.x;
                 hitY = b.y;
                 hitZ = b.z;
-                hitPoint = NS::Core::Vector3(ray.position.x + ray.direction.x * t,
+                hitPoint = NS::Math::Vector3(ray.position.x + ray.direction.x * t,
                                              ray.position.y + ray.direction.y * t,
                                              ray.position.z + ray.direction.z * t);
 
                 // hit 面の法線は hitPoint - center で支配軸を見て決める
-                const NS::Core::Vector3 d = hitPoint - center;
+                const NS::Math::Vector3 d = hitPoint - center;
                 const float ax = std::fabs(d.x);
                 const float ay = std::fabs(d.y);
                 const float az = std::fabs(d.z);
                 if (ax > ay && ax > az)
-                    hitNormal = NS::Core::Vector3{d.x > 0.0f ? 1.0f : -1.0f, 0.0f, 0.0f};
+                    hitNormal = NS::Math::Vector3{d.x > 0.0f ? 1.0f : -1.0f, 0.0f, 0.0f};
                 else if (ay > az)
-                    hitNormal = NS::Core::Vector3{0.0f, d.y > 0.0f ? 1.0f : -1.0f, 0.0f};
+                    hitNormal = NS::Math::Vector3{0.0f, d.y > 0.0f ? 1.0f : -1.0f, 0.0f};
                 else
-                    hitNormal = NS::Core::Vector3{0.0f, 0.0f, d.z > 0.0f ? 1.0f : -1.0f};
+                    hitNormal = NS::Math::Vector3{0.0f, 0.0f, d.z > 0.0f ? 1.0f : -1.0f};
             }
         }
 
@@ -467,9 +467,9 @@ namespace NS::Game::Editor
             m_cursor.hitY = hitY;
             m_cursor.hitZ = hitZ;
             m_cursor.deleteCenter =
-                NS::Core::Vector3{static_cast<float>(hitX), static_cast<float>(hitY), static_cast<float>(hitZ)};
+                NS::Math::Vector3{static_cast<float>(hitX), static_cast<float>(hitY), static_cast<float>(hitZ)};
             m_cursor.placementCenter =
-                NS::Core::Vector3{static_cast<float>(placeX), static_cast<float>(placeY), static_cast<float>(placeZ)};
+                NS::Math::Vector3{static_cast<float>(placeX), static_cast<float>(placeY), static_cast<float>(placeZ)};
             m_cursor.placeX = placeX;
             m_cursor.placeY = placeY;
             m_cursor.placeZ = placeZ;
@@ -478,7 +478,7 @@ namespace NS::Game::Editor
             return;
         }
 
-        NS::Core::Vector3 cellCenter{};
+        NS::Math::Vector3 cellCenter{};
         if (!NS::Scene::EditorGridMath::TryGroundPlaneFallback(ray, cellCenter))
             return;
 
@@ -490,7 +490,7 @@ namespace NS::Game::Editor
         m_cursor.hitX = m_cursor.placeX;
         m_cursor.hitY = m_cursor.placeY;
         m_cursor.hitZ = m_cursor.placeZ;
-        m_cursor.hitNormal = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
+        m_cursor.hitNormal = NS::Math::Vector3{0.0f, 1.0f, 0.0f};
         m_cursor.deleteCenter = cellCenter;
         m_cursor.placementBlocked = HasBlockAtCell(*m_level, m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
     }

@@ -5,7 +5,7 @@
 
 namespace
 {
-    using NS::Core::Vector3;
+    using NS::Math::Vector3;
     using NS::Physics::Triangle;
 
     [[nodiscard]] float Dot(const Vector3& a, const Vector3& b) noexcept
@@ -107,18 +107,18 @@ namespace
 namespace NS::Physics
 {
     bool SweptCapsuleVsTriangle(const Capsule& capsule,
-                                const NS::Core::Vector3& motion,
+                                const NS::Math::Vector3& motion,
                                 const Triangle& tri,
                                 float& outToi,
-                                NS::Core::Vector3& outNormal) noexcept
+                                NS::Math::Vector3& outNormal) noexcept
     {
         outToi = 1.0f;
-        outNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        outNormal = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
 
-        const NS::Core::Vector3 normal = NormalizeSafe(Cross(tri.v1 - tri.v0, tri.v2 - tri.v0));
+        const NS::Math::Vector3 normal = NormalizeSafe(Cross(tri.v1 - tri.v0, tri.v2 - tri.v0));
 
         // 公開 Capsule 型は axis 単位長を強制しないため、 ここで正規化する (非単位入力で TOI が歪む防止)
-        NS::Core::Vector3 axis = capsule.axis;
+        NS::Math::Vector3 axis = capsule.axis;
         const float axisLenSq = axis.x * axis.x + axis.y * axis.y + axis.z * axis.z;
         if (axisLenSq > 1e-12f)
         {
@@ -129,11 +129,11 @@ namespace NS::Physics
         }
         else
         {
-            axis = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
+            axis = NS::Math::Vector3{0.0f, 1.0f, 0.0f};
         }
 
-        const NS::Core::Vector3 top = capsule.center + axis * capsule.halfHeight;
-        const NS::Core::Vector3 bottom = capsule.center - axis * capsule.halfHeight;
+        const NS::Math::Vector3 top = capsule.center + axis * capsule.halfHeight;
+        const NS::Math::Vector3 bottom = capsule.center - axis * capsule.halfHeight;
 
         float toiTop = 1.0f;
         float toiBottom = 1.0f;

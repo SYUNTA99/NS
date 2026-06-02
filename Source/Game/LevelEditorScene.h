@@ -128,7 +128,7 @@ private:
     std::unique_ptr<EditorCameraRig> m_editorCameraRig;
 
     std::vector<NS::Scene::IRenderable*> m_renderList;
-    std::vector<NS::Core::AABB> m_collisionWorld;
+    std::vector<NS::Math::AABB> m_collisionWorld;
     std::vector<NS::Physics::Triangle> m_collisionTriangles;
     std::vector<NS::Scene::PoleComponent*> m_polePtrs;
 

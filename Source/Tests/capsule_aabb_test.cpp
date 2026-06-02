@@ -5,9 +5,9 @@
 namespace
 {
     // 中心 (cx,cy,cz)、 半サイズ 0.5 の 1 cell AABB を作る
-    NS::Core::AABB MakeCellAabb(float cx, float cy, float cz)
+    NS::Math::AABB MakeCellAabb(float cx, float cy, float cz)
     {
-        return NS::Core::AABB{DirectX::XMFLOAT3{cx, cy, cz}, DirectX::XMFLOAT3{0.5f, 0.5f, 0.5f}};
+        return NS::Math::AABB{DirectX::XMFLOAT3{cx, cy, cz}, DirectX::XMFLOAT3{0.5f, 0.5f, 0.5f}};
     }
 
     NS::Physics::Capsule MakePlayerCapsule(float x, float y, float z)

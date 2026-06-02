@@ -8,8 +8,8 @@
 
 namespace
 {
-    using NS::Core::Vector2;
-    using NS::Core::Vector3;
+    using NS::Math::Vector2;
+    using NS::Math::Vector3;
     using NS::Graphics::MakeCube;
     using NS::Graphics::MakePlane;
 

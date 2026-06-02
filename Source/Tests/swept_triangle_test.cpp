@@ -8,7 +8,7 @@
 
 namespace
 {
-    using NS::Core::Vector3;
+    using NS::Math::Vector3;
     using NS::Physics::Capsule;
     using NS::Physics::SweptCapsuleVsTriangle;
     using NS::Physics::Triangle;

@@ -92,7 +92,7 @@ namespace NS::App
         m_pImpl->window->AttachInput(m_pImpl->input.get());
 
         auto* rendererPtr = m_pImpl->renderer.get();
-        m_pImpl->window->SetResizeCallback([rendererPtr](::NS::Core::Size2D s) { rendererPtr->Resize(s); });
+        m_pImpl->window->SetResizeCallback([rendererPtr](::NS::Math::Size2D s) { rendererPtr->Resize(s); });
 
         auto* impl = m_pImpl.get();
         // callback 内で RequestClose を呼ぶと PostMessage が WM_CLOSE を再投擲し、

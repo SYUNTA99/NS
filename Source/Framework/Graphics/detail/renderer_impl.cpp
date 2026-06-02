@@ -126,7 +126,7 @@ namespace NS::Graphics
         }
 
         HWND hwnd = reinterpret_cast<HWND>(window.NativeHandle());
-        const ::NS::Core::Size2D winSize = window.Size();
+        const ::NS::Math::Size2D winSize = window.Size();
         const int w = winSize.width;
         const int h = winSize.height;
 
@@ -165,7 +165,7 @@ namespace NS::Graphics
 
         m_pImpl->states.reset(new CommonStates(static_cast<void*>(m_pImpl->device.Get())));
 
-        window.SetResizeCallback([this](::NS::Core::Size2D rs) { this->Resize(rs); });
+        window.SetResizeCallback([this](::NS::Math::Size2D rs) { this->Resize(rs); });
 
         m_pImpl->valid = true;
         // 構築完了は通常運用では成功が想定 (失敗時のみ別途 ERROR ログ済) なので Debug 段
@@ -212,7 +212,7 @@ namespace NS::Graphics
         m_pImpl->swapchain->Present(sync, 0);
     }
 
-    void Renderer::Resize(::NS::Core::Size2D size) noexcept
+    void Renderer::Resize(::NS::Math::Size2D size) noexcept
     {
         if (!IsValid())
         {
@@ -228,11 +228,11 @@ namespace NS::Graphics
         }
     }
 
-    ::NS::Core::Size2D Renderer::Size() const noexcept
+    ::NS::Math::Size2D Renderer::Size() const noexcept
     {
         if (!m_pImpl || !m_pImpl->mainRT)
         {
-            return ::NS::Core::Size2D{0, 0};
+            return ::NS::Math::Size2D{0, 0};
         }
         return m_pImpl->mainRT->Size();
     }

@@ -35,7 +35,7 @@ TEST(StaticColliderTest, WorldAABBReflectsOwnerPosition)
     StaticColliderComponent sc(&obj, {1.0f, 0.5f, 2.0f});
     obj.Root().SetPosition({10.0f, 3.0f, -5.0f});
 
-    const NS::Core::AABB box = sc.WorldAABB();
+    const NS::Math::AABB box = sc.WorldAABB();
     EXPECT_FLOAT_EQ(box.Center.x, 10.0f);
     EXPECT_FLOAT_EQ(box.Center.y, 3.0f);
     EXPECT_FLOAT_EQ(box.Center.z, -5.0f);
@@ -46,8 +46,8 @@ TEST(StaticColliderTest, WorldAABBReflectsOwnerPosition)
 
 TEST(StaticColliderTest, WorldAABBWithoutOwnerIsOriginCentered)
 {
-    StaticColliderComponent sc(nullptr, NS::Core::Vector3{1.0f, 1.0f, 1.0f});
-    const NS::Core::AABB box = sc.WorldAABB();
+    StaticColliderComponent sc(nullptr, NS::Math::Vector3{1.0f, 1.0f, 1.0f});
+    const NS::Math::AABB box = sc.WorldAABB();
     EXPECT_FLOAT_EQ(box.Center.x, 0.0f);
     EXPECT_FLOAT_EQ(box.Center.y, 0.0f);
     EXPECT_FLOAT_EQ(box.Center.z, 0.0f);

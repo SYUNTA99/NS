@@ -28,20 +28,20 @@ namespace NS::Scene
         Transform& operator=(Transform&&) = delete;
 
         /// Local position (親空間)。Snapshot で previous に退避
-        void SetPosition(const NS::Core::Vector3& position) noexcept;
+        void SetPosition(const NS::Math::Vector3& position) noexcept;
         /// Local rotation (親空間、quaternion)
-        void SetRotation(const NS::Core::Quaternion& rotation) noexcept;
+        void SetRotation(const NS::Math::Quaternion& rotation) noexcept;
         /// Local scale。default は (1,1,1)
-        void SetScale(const NS::Core::Vector3& scale) noexcept;
+        void SetScale(const NS::Math::Vector3& scale) noexcept;
 
-        [[nodiscard]] const NS::Core::Vector3& Position() const noexcept { return m_position; }
-        [[nodiscard]] const NS::Core::Quaternion& Rotation() const noexcept { return m_rotation; }
-        [[nodiscard]] const NS::Core::Vector3& Scale() const noexcept { return m_scale; }
+        [[nodiscard]] const NS::Math::Vector3& Position() const noexcept { return m_position; }
+        [[nodiscard]] const NS::Math::Quaternion& Rotation() const noexcept { return m_rotation; }
+        [[nodiscard]] const NS::Math::Vector3& Scale() const noexcept { return m_scale; }
 
         /// 前フレーム時点の値 (補間用)。Snapshot 前は default 値 or 直近 Snapshot 値
-        [[nodiscard]] const NS::Core::Vector3& PreviousPosition() const noexcept { return m_previousPosition; }
-        [[nodiscard]] const NS::Core::Quaternion& PreviousRotation() const noexcept { return m_previousRotation; }
-        [[nodiscard]] const NS::Core::Vector3& PreviousScale() const noexcept { return m_previousScale; }
+        [[nodiscard]] const NS::Math::Vector3& PreviousPosition() const noexcept { return m_previousPosition; }
+        [[nodiscard]] const NS::Math::Quaternion& PreviousRotation() const noexcept { return m_previousRotation; }
+        [[nodiscard]] const NS::Math::Vector3& PreviousScale() const noexcept { return m_previousScale; }
 
         /// 現在 PRS を previous に退避する。Scene::OnUpdate 末尾で LevelEditorScene が
         /// 全 Transform に対して一括実行する。Component の OnUpdate 末尾で
@@ -49,13 +49,13 @@ namespace NS::Scene
         void Snapshot() noexcept;
 
         /// Local 行列 (Scale * Rotate * Translate)
-        [[nodiscard]] NS::Core::Matrix LocalMatrix() const noexcept;
+        [[nodiscard]] NS::Math::Matrix LocalMatrix() const noexcept;
         /// World 行列 (Local * parent.World、row-major LH)。親が無ければ Local と同値
-        [[nodiscard]] NS::Core::Matrix WorldMatrix() const noexcept;
+        [[nodiscard]] NS::Math::Matrix WorldMatrix() const noexcept;
         /// Alpha 補間付き Local 行列。alpha=1 で現在 PRS、alpha=0 で previous PRS
-        [[nodiscard]] NS::Core::Matrix InterpolatedLocalMatrix(float alpha) const noexcept;
+        [[nodiscard]] NS::Math::Matrix InterpolatedLocalMatrix(float alpha) const noexcept;
         /// Alpha 補間付き World 行列。階層全体を補間値で再計算する
-        [[nodiscard]] NS::Core::Matrix InterpolatedWorldMatrix(float alpha) const noexcept;
+        [[nodiscard]] NS::Math::Matrix InterpolatedWorldMatrix(float alpha) const noexcept;
 
         /// 親を切替える。null で root 化。サイクル検出は呼出側責任 (現状では行わない)
         void SetParent(Transform* parent) noexcept;
@@ -63,13 +63,13 @@ namespace NS::Scene
         [[nodiscard]] const std::vector<Transform*>& Children() const noexcept { return m_children; }
 
     private:
-        NS::Core::Vector3 m_position{0.0f, 0.0f, 0.0f};
-        NS::Core::Quaternion m_rotation{};
-        NS::Core::Vector3 m_scale{1.0f, 1.0f, 1.0f};
+        NS::Math::Vector3 m_position{0.0f, 0.0f, 0.0f};
+        NS::Math::Quaternion m_rotation{};
+        NS::Math::Vector3 m_scale{1.0f, 1.0f, 1.0f};
 
-        NS::Core::Vector3 m_previousPosition{0.0f, 0.0f, 0.0f};
-        NS::Core::Quaternion m_previousRotation{};
-        NS::Core::Vector3 m_previousScale{1.0f, 1.0f, 1.0f};
+        NS::Math::Vector3 m_previousPosition{0.0f, 0.0f, 0.0f};
+        NS::Math::Quaternion m_previousRotation{};
+        NS::Math::Vector3 m_previousScale{1.0f, 1.0f, 1.0f};
 
         Transform* m_parent = nullptr;
         std::vector<Transform*> m_children;

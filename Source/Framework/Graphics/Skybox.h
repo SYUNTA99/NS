@@ -73,7 +73,7 @@ namespace NS::Graphics
         /// 与えられた viewProj (camera の translation 成分を除去済) で skybox を 1 drawcall 描画する
         /// シーン不透明描画の後、 ImGui overlay の前で呼ぶこと (Z=1 重複対策)
         /// fallback 状態でもクラッシュせずマゼンタ cubemap を描く
-        void Render(const NS::Core::Matrix& viewProjNoTranslate) noexcept;
+        void Render(const NS::Math::Matrix& viewProjNoTranslate) noexcept;
 
         /// 構築完了 (cube mesh / shader / states / fallback SRV が揃っている) なら true
         /// LoadCubemap 未呼出でも fallback により true。 致命的な Device 不在のみ false

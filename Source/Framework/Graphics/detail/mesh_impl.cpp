@@ -35,7 +35,7 @@ namespace NS::Graphics
         bool TryBuildFallbackCube(Mesh::Impl& impl, Renderer& renderer)
         {
             const MeshGeometry geom =
-                MakeCube(NS::Core::Vector3{kFallbackCubeHalfExtent, kFallbackCubeHalfExtent, kFallbackCubeHalfExtent});
+                MakeCube(NS::Math::Vector3{kFallbackCubeHalfExtent, kFallbackCubeHalfExtent, kFallbackCubeHalfExtent});
 
             VertexBufferDesc vbd{};
             vbd.initialData = geom.vertices.data();

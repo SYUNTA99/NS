@@ -41,38 +41,38 @@ namespace NS::Game::Editor
         }
     }
 
-    NS::Core::Color GetBaseColor(std::uint16_t blockId) noexcept
+    NS::Math::Color GetBaseColor(std::uint16_t blockId) noexcept
     {
         switch (blockId)
         {
         case kBlockIdSolid:
-            return NS::Core::Color{0.70f, 0.70f, 0.75f, 1.0f};
+            return NS::Math::Color{0.70f, 0.70f, 0.75f, 1.0f};
         case kBlockIdCoin:
-            return NS::Core::Color{1.00f, 0.85f, 0.20f, 1.0f};
+            return NS::Math::Color{1.00f, 0.85f, 0.20f, 1.0f};
         case kBlockIdPowerStar:
-            return NS::Core::Color{1.00f, 0.95f, 0.10f, 1.0f};
+            return NS::Math::Color{1.00f, 0.95f, 0.10f, 1.0f};
         case kBlockIdSpawn:
-            return NS::Core::Color{0.30f, 1.00f, 0.30f, 1.0f};
+            return NS::Math::Color{0.30f, 1.00f, 0.30f, 1.0f};
         case kBlockIdSlope45:
         case kBlockIdSlope30:
         case kBlockIdSlope22:
         case kBlockIdSlope15:
             // solid と同系色だが少しウォーム寄りで識別できるようにする (placeholder)
-            return NS::Core::Color{0.78f, 0.65f, 0.50f, 1.0f};
+            return NS::Math::Color{0.78f, 0.65f, 0.50f, 1.0f};
         case kBlockIdPole:
             // 木製ポールを意識した茶色系
-            return NS::Core::Color{0.55f, 0.40f, 0.25f, 1.0f};
+            return NS::Math::Color{0.55f, 0.40f, 0.25f, 1.0f};
         case kBlockIdHazard:
             // ダメージを示す警告色 (赤橙系)。 通常 block と一目で区別する
-            return NS::Core::Color{0.95f, 0.30f, 0.15f, 1.0f};
+            return NS::Math::Color{0.95f, 0.30f, 0.15f, 1.0f};
         case kBlockIdWater:
             // 水のシアン系。 透過マテリアルが未配線な間も色で識別可能にする
-            return NS::Core::Color{0.20f, 0.55f, 0.85f, 0.55f};
+            return NS::Math::Color{0.20f, 0.55f, 0.85f, 0.55f};
         case kBlockIdDecoration:
             // 装飾の柔らかい緑系 (草 / 茂みを連想)。 衝突しない目印として淡め
-            return NS::Core::Color{0.50f, 0.75f, 0.40f, 1.0f};
+            return NS::Math::Color{0.50f, 0.75f, 0.40f, 1.0f};
         default:
-            return NS::Core::Color{1.0f, 0.0f, 1.0f, 1.0f};
+            return NS::Math::Color{1.0f, 0.0f, 1.0f, 1.0f};
         }
     }
 

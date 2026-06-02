@@ -6,8 +6,8 @@
 
 namespace
 {
-    using NS::Core::AABB;
-    using NS::Core::Vector3;
+    using NS::Math::AABB;
+    using NS::Math::Vector3;
     using NS::Physics::Capsule;
     using NS::Physics::SweptCapsuleVsAABB;
 

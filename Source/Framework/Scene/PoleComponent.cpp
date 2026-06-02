@@ -16,30 +16,30 @@ namespace NS::Scene
             m_height = 0.0f;
     }
 
-    NS::Core::Vector3 PoleComponent::AxisStart() const noexcept
+    NS::Math::Vector3 PoleComponent::AxisStart() const noexcept
     {
-        NS::Core::Vector3 center{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 center{0.0f, 0.0f, 0.0f};
         if (const GameObject* owner = Owner(); owner != nullptr)
         {
             center = owner->Root().WorldMatrix().Translation();
         }
-        return NS::Core::Vector3{center.x, center.y - m_height * 0.5f, center.z};
+        return NS::Math::Vector3{center.x, center.y - m_height * 0.5f, center.z};
     }
 
-    NS::Core::Vector3 PoleComponent::AxisEnd() const noexcept
+    NS::Math::Vector3 PoleComponent::AxisEnd() const noexcept
     {
-        NS::Core::Vector3 center{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 center{0.0f, 0.0f, 0.0f};
         if (const GameObject* owner = Owner(); owner != nullptr)
         {
             center = owner->Root().WorldMatrix().Translation();
         }
-        return NS::Core::Vector3{center.x, center.y + m_height * 0.5f, center.z};
+        return NS::Math::Vector3{center.x, center.y + m_height * 0.5f, center.z};
     }
 
-    bool PoleComponent::ContainsPoint(const NS::Core::Vector3& worldPos) const noexcept
+    bool PoleComponent::ContainsPoint(const NS::Math::Vector3& worldPos) const noexcept
     {
-        const NS::Core::Vector3 axisStart = AxisStart();
-        const NS::Core::Vector3 axisEnd = AxisEnd();
+        const NS::Math::Vector3 axisStart = AxisStart();
+        const NS::Math::Vector3 axisEnd = AxisEnd();
         if (worldPos.y < axisStart.y || worldPos.y > axisEnd.y)
             return false;
 

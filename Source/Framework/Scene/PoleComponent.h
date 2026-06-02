@@ -27,13 +27,13 @@ namespace NS::Scene
         [[nodiscard]] float Height() const noexcept { return m_height; }
 
         /// world 空間でのポール下端 (Y 方向に -height/2 オフセット)
-        [[nodiscard]] NS::Core::Vector3 AxisStart() const noexcept;
+        [[nodiscard]] NS::Math::Vector3 AxisStart() const noexcept;
         /// world 空間でのポール上端 (Y 方向に +height/2 オフセット)
-        [[nodiscard]] NS::Core::Vector3 AxisEnd() const noexcept;
+        [[nodiscard]] NS::Math::Vector3 AxisEnd() const noexcept;
 
         /// `worldPos` がポール表面の cylinder 内側か。 XZ 距離が radius 以下かつ
         /// Y が AxisStart..AxisEnd の範囲内なら true
-        [[nodiscard]] bool ContainsPoint(const NS::Core::Vector3& worldPos) const noexcept;
+        [[nodiscard]] bool ContainsPoint(const NS::Math::Vector3& worldPos) const noexcept;
 
     private:
         float m_radius = 0.15f;

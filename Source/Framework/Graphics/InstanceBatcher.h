@@ -40,8 +40,8 @@ namespace NS::Graphics
     /// `textureSlice` は INSTANCE_COLOR.w に乗せ、 VS 経由で PS の Texture2DArray sample index になる
     struct alignas(16) BlockInstance
     {
-        NS::Core::Matrix worldMatrix{};                ///< 64 byte: row_major world 行列
-        NS::Core::Vector3 baseColor{1.0f, 1.0f, 1.0f}; ///< 12 byte: 個体色 (theme tint multiplier)
+        NS::Math::Matrix worldMatrix{};                ///< 64 byte: row_major world 行列
+        NS::Math::Vector3 baseColor{1.0f, 1.0f, 1.0f}; ///< 12 byte: 個体色 (theme tint multiplier)
         float textureSlice = 0.0f;                     ///< 4 byte: Texture2DArray slice index (float で VS->PS 補間)
     };
     static_assert(sizeof(BlockInstance) == 80, "BlockInstance stride は 80 byte 固定 (HLSL slot1 layout 整合)");

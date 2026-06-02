@@ -28,12 +28,12 @@ namespace NS::Scene
         /// @param halfExtents      wedge の半サイズ。 デフォルト値は 1m cell の (0.5, 0.5, 0.5)
         SlopeColliderComponent(NS::Scene::GameObject* owner,
                                float angleDegrees,
-                               const NS::Core::Vector3& halfExtents) noexcept;
+                               const NS::Math::Vector3& halfExtents) noexcept;
 
         /// 角度 (度数法)
         [[nodiscard]] float AngleDegrees() const noexcept { return m_angleDegrees; }
         /// 半サイズ
-        [[nodiscard]] NS::Core::Vector3 HalfExtents() const noexcept { return m_halfExtents; }
+        [[nodiscard]] NS::Math::Vector3 HalfExtents() const noexcept { return m_halfExtents; }
 
         /// Owner の root world matrix を適用した世界座標版 wedge 三角形 (8 個)
         /// 内訳: 斜面 2 + 底面 2 + 裏壁 2 + 左側面 1 + 右側面 1
@@ -42,6 +42,6 @@ namespace NS::Scene
 
     private:
         float m_angleDegrees = 45.0f;
-        NS::Core::Vector3 m_halfExtents{0.5f, 0.5f, 0.5f};
+        NS::Math::Vector3 m_halfExtents{0.5f, 0.5f, 0.5f};
     };
 } // namespace NS::Scene

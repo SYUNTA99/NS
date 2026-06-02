@@ -10,8 +10,8 @@
 
 namespace
 {
-    using NS::Core::Vector2;
-    using NS::Core::Vector3;
+    using NS::Math::Vector2;
+    using NS::Math::Vector3;
     using NS::Graphics::InputElement;
     using NS::Graphics::InputElementFormat;
     using NS::Graphics::Mesh;
@@ -26,7 +26,7 @@ namespace
     {
         WindowDesc d{};
         d.title = title;
-        d.size = NS::Core::Size2D{320, 240};
+        d.size = NS::Math::Size2D{320, 240};
         d.visible = false;
         return d;
     }

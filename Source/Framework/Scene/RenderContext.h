@@ -22,7 +22,7 @@ namespace NS::Scene
         /// 描画先 Renderer。BeginFrame は Application が、各 Renderable は Bind/Draw のみ行う
         NS::Graphics::Renderer* renderer = nullptr;
         /// active CameraComponent から取り出した VP 行列 (Alpha 補間済を渡す想定)
-        NS::Core::Matrix viewProjection{};
+        NS::Math::Matrix viewProjection{};
         /// fixed step 補間係数 [0,1]。NS::Core::FrameTimer::Alpha() を Scene が転記
         float alpha = 1.0f;
     };

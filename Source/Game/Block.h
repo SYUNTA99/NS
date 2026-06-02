@@ -18,7 +18,7 @@ namespace NS::Graphics
 class Block : public NS::Scene::GameObject
 {
 public:
-    Block(NS::Graphics::Mesh* mesh, NS::Graphics::Material* material, const NS::Core::Vector3& halfExtents) noexcept;
+    Block(NS::Graphics::Mesh* mesh, NS::Graphics::Material* material, const NS::Math::Vector3& halfExtents) noexcept;
     ~Block() override = default;
 
     Block(const Block&) = delete;

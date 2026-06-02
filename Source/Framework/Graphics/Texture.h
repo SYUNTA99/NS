@@ -57,7 +57,7 @@ namespace NS::Graphics
 
         /// SRV が有効か。fallback でも true (1x1 マゼンタ SRV が必ず生成される)
         [[nodiscard]] bool IsValid() const noexcept;
-        [[nodiscard]] NS::Core::Size2D Size() const noexcept;
+        [[nodiscard]] NS::Math::Size2D Size() const noexcept;
 
         /// 読込失敗で fallback (1x1 マゼンタ) になっているかを問い合わせる
         /// デバッグ時のアセット欠落検知に使用

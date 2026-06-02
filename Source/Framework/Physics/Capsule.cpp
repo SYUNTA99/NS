@@ -4,7 +4,7 @@
 
 namespace NS::Physics
 {
-    bool IntersectsCapsuleAabb(const Capsule& capsule, const NS::Core::AABB& box) noexcept
+    bool IntersectsCapsuleAabb(const Capsule& capsule, const NS::Math::AABB& box) noexcept
     {
         const float minX = box.Center.x - box.Extents.x;
         const float maxX = box.Center.x + box.Extents.x;

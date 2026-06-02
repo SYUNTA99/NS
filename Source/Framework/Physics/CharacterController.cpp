@@ -33,7 +33,7 @@ namespace NS::Physics
         result.position = input.position;
         result.velocity = input.velocity;
         result.grounded = false;
-        result.contactNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        result.contactNormal = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
 
         if (!std::isfinite(input.dt) || input.dt <= 0.0f || !std::isfinite(input.capsuleRadius) ||
             input.capsuleRadius < 0.0f || !std::isfinite(input.capsuleHalfHeight) || input.capsuleHalfHeight < 0.0f)
@@ -50,25 +50,25 @@ namespace NS::Physics
 
             for (int slideIter = 0; slideIter < kMaxSlideIters && remainingTime > 0.0f; ++slideIter)
             {
-                NS::Core::Vector3 motion = result.velocity * (subDt * remainingTime);
+                NS::Math::Vector3 motion = result.velocity * (subDt * remainingTime);
 
                 if (std::abs(motion.x) < 1e-9f && std::abs(motion.y) < 1e-9f && std::abs(motion.z) < 1e-9f)
                     break;
 
                 Capsule cap;
                 cap.center = result.position;
-                cap.axis = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
+                cap.axis = NS::Math::Vector3{0.0f, 1.0f, 0.0f};
                 cap.halfHeight = input.capsuleHalfHeight;
                 cap.radius = input.capsuleRadius;
 
                 float earliestToi = 1.0f;
-                NS::Core::Vector3 hitNormal{0.0f, 0.0f, 0.0f};
+                NS::Math::Vector3 hitNormal{0.0f, 0.0f, 0.0f};
                 bool anyHit = false;
 
-                for (const NS::Core::AABB& box : input.world)
+                for (const NS::Math::AABB& box : input.world)
                 {
                     float toi = 1.0f;
-                    NS::Core::Vector3 n{};
+                    NS::Math::Vector3 n{};
                     if (SweptCapsuleVsAABB(cap, motion, box, toi, n))
                     {
                         if (toi < earliestToi)
@@ -86,7 +86,7 @@ namespace NS::Physics
                 for (const Triangle& tri : input.worldTriangles)
                 {
                     float toi = 1.0f;
-                    NS::Core::Vector3 n{};
+                    NS::Math::Vector3 n{};
                     if (SweptCapsuleVsTriangle(cap, motion, tri, toi, n))
                     {
                         if (toi < earliestToi)
@@ -129,10 +129,10 @@ namespace NS::Physics
         // ケースを補足する (slide 後に anyHit が false になり grounded が立たない問題回避)
         if (!result.grounded)
         {
-            const NS::Core::Vector3 bottomCenter{
+            const NS::Math::Vector3 bottomCenter{
                 result.position.x, result.position.y - input.capsuleHalfHeight, result.position.z};
-            const NS::Core::Ray ray(bottomCenter, NS::Core::Vector3{0.0f, -1.0f, 0.0f});
-            for (const NS::Core::AABB& box : input.world)
+            const NS::Math::Ray ray(bottomCenter, NS::Math::Vector3{0.0f, -1.0f, 0.0f});
+            for (const NS::Math::AABB& box : input.world)
             {
                 float dist = 0.0f;
                 if (ray.Intersects(box, dist) && dist <= input.capsuleRadius + kGroundProbeDistance)

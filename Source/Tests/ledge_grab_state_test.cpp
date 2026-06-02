@@ -17,9 +17,9 @@ namespace
     constexpr float kFixedDt = 1.0f / 60.0f;
 
     /// 中心 (cx,cy,cz)・ 1m 立方の固形 block を表す AABB
-    NS::Core::AABB MakeBlock(float cx, float cy, float cz)
+    NS::Math::AABB MakeBlock(float cx, float cy, float cz)
     {
-        return NS::Core::AABB(NS::Core::Vector3{cx, cy, cz}, NS::Core::Vector3{0.5f, 0.5f, 0.5f});
+        return NS::Math::AABB(NS::Math::Vector3{cx, cy, cz}, NS::Math::Vector3{0.5f, 0.5f, 0.5f});
     }
 
     void StepN(CharacterMovementComponent& mov, int n)
@@ -41,7 +41,7 @@ TEST_F(LedgeGrabStateTest, GrabsLedgeWhenDescendingIntoEdge)
     CharacterMovementComponent mov(&playerObj);
     mov.SetDebugDrawEnabled(false);
 
-    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
     mov.SetCollisionWorld(world);
 
     // block (上端 y=0.5) の -x 面手前、 手が上端付近に来る高さに置いて +x へ押す
@@ -61,7 +61,7 @@ TEST_F(LedgeGrabStateTest, ClimbInputMantlesOntoBlockTop)
     CharacterMovementComponent mov(&playerObj);
     mov.SetDebugDrawEnabled(false);
 
-    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
     mov.SetCollisionWorld(world);
 
     playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
@@ -91,7 +91,7 @@ TEST_F(LedgeGrabStateTest, JumpMantlesOntoBlockTop)
     CharacterMovementComponent mov(&playerObj);
     mov.SetDebugDrawEnabled(false);
 
-    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
     mov.SetCollisionWorld(world);
 
     playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
@@ -118,7 +118,7 @@ TEST_F(LedgeGrabStateTest, MantleRisesGraduallyNotInstant)
     CharacterMovementComponent mov(&playerObj);
     mov.SetDebugDrawEnabled(false);
 
-    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
     mov.SetCollisionWorld(world);
 
     playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
@@ -148,7 +148,7 @@ TEST_F(LedgeGrabStateTest, BackInputDropsAndDoesNotReGrabImmediately)
     CharacterMovementComponent mov(&playerObj);
     mov.SetDebugDrawEnabled(false);
 
-    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
     mov.SetCollisionWorld(world);
 
     playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
@@ -174,7 +174,7 @@ TEST_F(LedgeGrabStateTest, DoesNotGrabWhileAscending)
     CharacterMovementComponent mov(&playerObj);
     mov.SetDebugDrawEnabled(false);
 
-    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
     mov.SetCollisionWorld(world);
 
     playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
@@ -194,7 +194,7 @@ TEST_F(LedgeGrabStateTest, ShimmyMovesAlongLedge)
     mov.SetDebugDrawEnabled(false);
 
     // -x 面の縁が z 方向に 3 マス続く壁。 左右どちらへでも縁が続く
-    const NS::Core::AABB world[] = {
+    const NS::Math::AABB world[] = {
         MakeBlock(0.0f, 0.0f, 0.0f),
         MakeBlock(0.0f, 0.0f, 1.0f),
         MakeBlock(0.0f, 0.0f, -1.0f),
@@ -223,7 +223,7 @@ TEST_F(LedgeGrabStateTest, ShimmyStopsAtLedgeEnd)
     mov.SetDebugDrawEnabled(false);
 
     // 1 マスだけの縁。 端まで来たらそれ以上シミーできず、 落ちもしない
-    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
     mov.SetCollisionWorld(world);
 
     playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
