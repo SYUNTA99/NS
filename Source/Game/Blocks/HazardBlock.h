@@ -1,14 +1,14 @@
 #pragma once
 
 /// @file HazardBlock.h
-/// @brief 接触ダメージ付きの固形ブロック GameObject。
+/// @brief 接触ダメージ付きの固形ブロック GameObject
 ///
 /// @details MeshComponent (cube mesh) + StaticColliderComponent (AABB 衝突) +
-/// HazardComponent (ダメージ trigger) を named member として保有する。
+/// HazardComponent (ダメージ trigger) を named member として保有する
 /// 固形挙動は通常 Block と同じだが、 player capsule が AABB と overlap した frame で
-/// HazardComponent::OnPlayerOverlap が呼ばれ PlayState.playerHealth を 1 削る。
-/// Block 派生にせず GameObject を直接派生して 3 つの Component を明示保有する。
-/// 描画は SlopeBlock / PoleBlock と同じく per-block MeshComponent::Draw 経路。
+/// HazardComponent::OnPlayerOverlap が呼ばれ PlayState.playerHealth を 1 削る
+/// Block 派生にせず GameObject を直接派生して 3 つの Component を明示保有する
+/// 描画は SlopeBlock / PoleBlock と同じく per-block MeshComponent::Draw 経路
 
 #include "Framework/Core/Math.h"
 #include "Framework/Scene/GameObject.h"

@@ -12,7 +12,7 @@ namespace NS::Game::Editor
 {
     namespace
     {
-        // ImGui InputText で確保する name buffer の容量。 sanitize 側 max (200) + 余裕。
+        // ImGui InputText で確保する name buffer の容量。 sanitize 側 max (200) + 余裕
         constexpr std::size_t kInputBufferCapacity = 256;
     } // namespace
 
@@ -57,7 +57,7 @@ namespace NS::Game::Editor
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
         if (m_saveModalOpen)
         {
-            // 中央寄せの auto-resize modal。 input + Save / Cancel + 直前結果 message。
+            // 中央寄せの auto-resize modal。 input + Save / Cancel + 直前結果 message
             const auto vp = ImGui::GetMainViewport();
             if (vp != nullptr)
             {

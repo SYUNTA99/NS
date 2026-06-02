@@ -28,7 +28,7 @@ namespace NS::Graphics
     namespace
     {
         // 1 bucket あたりの instance 上限。 1000 instance / 48 bucket の実線は 20~21 だが、
-        // 5x safety で 5000 まで確保しておく。 超えた場合は描画 skip + ERROR ログ。
+        // 5x safety で 5000 まで確保しておく。 超えた場合は描画 skip + ERROR ログ
         constexpr std::size_t kInitialPerBucketCapacity = 5000;
 
         struct BucketKey
@@ -48,7 +48,7 @@ namespace NS::Graphics
             {
                 const auto a = reinterpret_cast<std::uintptr_t>(k.mesh);
                 const auto b = reinterpret_cast<std::uintptr_t>(k.material);
-                // 64bit 領域に address 2 つを xor で混ぜる素朴な hash。 衝突は事実上ゼロ。
+                // 64bit 領域に address 2 つを xor で混ぜる素朴な hash。 衝突は事実上ゼロ
                 return static_cast<std::size_t>(a ^ ((b << 32) | (b >> 32)));
             }
         };
@@ -58,7 +58,7 @@ namespace NS::Graphics
             std::vector<BlockInstance> instances{};
         };
 
-        // .hlsl をオンメモリ compile して bytecode blob を返す。 entryPoint / target は VS / PS 両用。
+        // .hlsl をオンメモリ compile して bytecode blob を返す。 entryPoint / target は VS / PS 両用
         [[nodiscard]] bool CompileHlsl(const std::filesystem::path& path,
                                        const char* entryPoint,
                                        const char* target,
@@ -108,13 +108,13 @@ namespace NS::Graphics
 
         // POSITION + TEXCOORD + NORMAL (slot0) + INSTANCE_WORLD0..3 + INSTANCE_COLOR (slot1) の
         // 8 element input layout を組む。 ShaderProgram の InputElement 抽象は slot 切替や
-        // per-instance step rate を露出していないため、 この impl 内に閉じた生 D3D11 layout で構築する。
+        // per-instance step rate を露出していないため、 この impl 内に閉じた生 D3D11 layout で構築する
         [[nodiscard]] ComPtr<ID3D11InputLayout> CreateInstancedInputLayout(ID3D11Device* device,
                                                                            const void* vsBytecode,
                                                                            std::size_t vsBytecodeSize) noexcept
         {
-            // slot 1 の AlignedByteOffset (0/16/32/48/64) は BlockInstance struct (sizeof==80) と整合。
-            // BlockInstance 側 static_assert で stride 不一致を防いでいる。
+            // slot 1 の AlignedByteOffset (0/16/32/48/64) は BlockInstance struct (sizeof==80) と整合
+            // BlockInstance 側 static_assert で stride 不一致を防いでいる
             const D3D11_INPUT_ELEMENT_DESC layoutDesc[] = {
                 {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
                 {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -148,7 +148,7 @@ namespace NS::Graphics
         ComPtr<ID3D11Device> device;
         ComPtr<ID3D11DeviceContext> context;
 
-        // 動的 instance VB + 自前 compile した VS / PS / input layout。 production 描画パスのみで使う。
+        // 動的 instance VB + 自前 compile した VS / PS / input layout。 production 描画パスのみで使う
         std::unique_ptr<VertexBuffer> instanceVB;
         ComPtr<ID3D11VertexShader> vs;
         ComPtr<ID3D11PixelShader> ps;
@@ -199,9 +199,9 @@ namespace NS::Graphics
         }
         m_pImpl->instanceVbCapacity = kInitialPerBucketCapacity;
 
-        // ShaderProgram の InputElement は slot 0 単 stream 専用なので、 本 batcher は直接 D3D11 で VS+PS を組む。
-        // PS は standard.ps.hlsl を流用する (worldNormal / uv 出力を期待する PS と整合)。
-        // VS_OUT が standard と完全一致しない点 (instColor の有無等) は将来の lighting 拡張で reconcile。
+        // ShaderProgram の InputElement は slot 0 単 stream 専用なので、 本 batcher は直接 D3D11 で VS+PS を組む
+        // PS は standard.ps.hlsl を流用する (worldNormal / uv 出力を期待する PS と整合)
+        // VS_OUT が standard と完全一致しない点 (instColor の有無等) は将来の lighting 拡張で reconcile
         const auto exeDir = ::NS::Core::FileSystem::GetExeDirectory();
         const auto vsPath = exeDir / "Shaders" / "instanced.vs.hlsl";
         const auto psPath = exeDir / "Shaders" / "standard.ps.hlsl";
@@ -304,7 +304,7 @@ namespace NS::Graphics
                 m_pImpl->instanceVB->UpdateRaw(bucket.instances.data(), bytes);
 
                 // material が握っている texture / sampler / CB を bind、 ただし VS / PS / InputLayout は
-                // 直後に instance 用で上書きする。 material 側 shader は使わない。
+                // 直後に instance 用で上書きする。 material 側 shader は使わない
                 key.material->Bind();
 
                 ctx->VSSetShader(m_pImpl->vs.Get(), nullptr, 0);

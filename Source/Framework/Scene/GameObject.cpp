@@ -72,7 +72,7 @@ namespace NS::Scene
 
     void GameObject::OnStart()
     {
-        // 後で SetActive(true) されても初期化済になるよう、IsActive に依らず全件呼出。
+        // 後で SetActive(true) されても初期化済になるよう、IsActive に依らず全件呼出
         for (Component* comp : m_components)
         {
             if (comp != nullptr)

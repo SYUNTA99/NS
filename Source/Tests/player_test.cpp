@@ -5,7 +5,7 @@
 TEST(PlayerTest, ConstructsWithNullDependencies)
 {
     Player player(nullptr, nullptr, nullptr);
-    // 3 つの Component (mesh / movement / input) が auto-register 経由で登録されている。
+    // 3 つの Component (mesh / movement / input) が auto-register 経由で登録されている
     EXPECT_EQ(player.Components().size(), 3u);
 }
 

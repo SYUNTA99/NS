@@ -33,7 +33,7 @@ namespace
         return d;
     }
 
-    /// fallback VS が読む POSITION (float3, offset 0) を含む最小 InputLayout。
+    /// fallback VS が読む POSITION (float3, offset 0) を含む最小 InputLayout
     std::vector<InputElement> MakePositionOnlyLayout()
     {
         return {InputElement{"POSITION", InputElementFormat::Float3, 0u}};
@@ -86,7 +86,7 @@ TEST_F(ShaderProgramLoggerTest, EmptyInputLayoutBecomesInvalid)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    // inputLayout 空のまま fallback ルートへ流れ、CreateInputLayout が失敗して IsValid=false で完全クリアされる契約。
+    // inputLayout 空のまま fallback ルートへ流れ、CreateInputLayout が失敗して IsValid=false で完全クリアされる契約
     ShaderProgramDesc desc{};
     ShaderProgram sp(renderer, desc);
     EXPECT_FALSE(sp.IsValid());

@@ -68,7 +68,7 @@ void EditorLayer::HandleModeToggleInput(LevelEditorScene& scene) noexcept
         return;
     auto& input = app->Input();
 
-    // テキスト入力中の Tab は ImGui に渡し、 mode flip させない。
+    // テキスト入力中の Tab は ImGui に渡し、 mode flip させない
     bool wantKb = false;
     if (auto* imgui = app->ImGui())
         wantKb = imgui->WantCaptureKeyboard();
@@ -113,7 +113,7 @@ void EditorLayer::RenderFpsOverlay() noexcept
     const auto vp = ImGui::GetMainViewport();
     if (vp == nullptr)
         return;
-    // 右上に padding 10px 寄せ。 pivot=(1,0) で width 不確定でも右端固定。
+    // 右上に padding 10px 寄せ。 pivot=(1,0) で width 不確定でも右端固定
     constexpr float kPadding = 10.0f;
     ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x - kPadding, vp->WorkPos.y + kPadding),
                             ImGuiCond_Always,
@@ -137,7 +137,7 @@ void EditorLayer::RenderFpsOverlay() noexcept
 void EditorLayer::RenderPauseModal(LevelEditorScene& scene) noexcept
 {
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
-    // Pause 状態は paused フラグ単独で表現するため、 ここで modal の閉じ X (右上) は不要。
+    // Pause 状態は paused フラグ単独で表現するため、 ここで modal の閉じ X (右上) は不要
     const auto vp = ImGui::GetMainViewport();
     if (vp != nullptr)
     {

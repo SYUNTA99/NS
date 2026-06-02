@@ -6,8 +6,8 @@
 
 namespace
 {
-    /// hidden window + Debug layer 無効化で軽量に Renderer を立ち上げる。
-    /// headless CI でも fail せず GTEST_SKIP に落とせるよう IsValid を後で確認する。
+    /// hidden window + Debug layer 無効化で軽量に Renderer を立ち上げる
+    /// headless CI でも fail せず GTEST_SKIP に落とせるよう IsValid を後で確認する
     NS::Platform::WindowDesc MakeHiddenWindowDesc()
     {
         NS::Platform::WindowDesc desc{};
@@ -37,7 +37,7 @@ TEST(ImGuiContextTest, ValidModeWithRealWindowAndRenderer)
     EXPECT_TRUE(imgui.IsValid());
     EXPECT_FALSE(imgui.IsUsingFallback());
 
-    // BeginFrame / EndFrame ペアが crash しないことを確認。
+    // BeginFrame / EndFrame ペアが crash しないことを確認
     renderer.BeginFrame(0.0f, 0.0f, 0.0f, 1.0f);
     imgui.BeginFrame();
     imgui.EndFrame();
@@ -61,7 +61,7 @@ TEST(ImGuiContextTest, WantCaptureSafeBeforeNewFrame)
     if (!imgui.IsValid())
         GTEST_SKIP();
 
-    // NewFrame 未呼出でも crash しないこと (初期値は false 想定だが ImGui 内部に依存)。
+    // NewFrame 未呼出でも crash しないこと (初期値は false 想定だが ImGui 内部に依存)
     (void)imgui.WantCaptureMouse();
     (void)imgui.WantCaptureKeyboard();
     SUCCEED();

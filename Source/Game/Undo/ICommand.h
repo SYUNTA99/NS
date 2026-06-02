@@ -1,13 +1,13 @@
 #pragma once
 
 /// @file ICommand.h
-/// @brief Undo/Redo Command パターンの抽象基底。
+/// @brief Undo/Redo Command パターンの抽象基底
 ///
-/// @details `Do(level)` で編集操作を実行し、 `Undo(level)` で逆操作する。
+/// @details `Do(level)` で編集操作を実行し、 `Undo(level)` で逆操作する
 /// 派生は座標 + blockId + rotation 等のデータのみを保持し、 描画用 entity
 /// (MeshComponent / Renderer ハンドル等) を抱えない。 描画は EditorMode が
-/// LevelData の変更を観測して再構築する責務 (Command と描画の所有関係分離)。
-/// `EstimatedBytes()` は UndoStack が 50 MB cap を回すための memory accounting。
+/// LevelData の変更を観測して再構築する責務 (Command と描画の所有関係分離)
+/// `EstimatedBytes()` は UndoStack が 50 MB cap を回すための memory accounting
 
 #include <cstddef>
 

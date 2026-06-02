@@ -31,7 +31,7 @@ namespace NS::Graphics
         // fallback Cube は 1m 立方 (player と大きさ揃え)、 default Cube として描画
         constexpr float kFallbackCubeHalfExtent = 0.5f;
 
-        // MeshDesc / Buffer 構築失敗時に default Cube に切替える。 device / context は呼出側で検証済。
+        // MeshDesc / Buffer 構築失敗時に default Cube に切替える。 device / context は呼出側で検証済
         bool TryBuildFallbackCube(Mesh::Impl& impl, Renderer& renderer)
         {
             const MeshGeometry geom =

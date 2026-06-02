@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file Math.h
-/// @brief NS::Core 数学型エイリアスとヘルパー。
+/// @brief NS::Core 数学型エイリアスとヘルパー
 ///
-/// SimpleMath の型を using-alias で `NS::Core` に露出する単一ヘッダ。
-/// 座標系は LH 一本。
+/// SimpleMath の型を using-alias で `NS::Core` に露出する単一ヘッダ
+/// 座標系は LH 一本
 
 #include <SimpleMath.h>
 
@@ -49,39 +49,39 @@ namespace NS::Core
     /// 円周率
     inline constexpr float kPi = 3.14159265358979323846f;
 
-    /// 度 → ラジアン変換 (raw float)。 強い型を使う場合は ToRadians(Degrees) を優先。
+    /// 度 → ラジアン変換 (raw float)。 強い型を使う場合は ToRadians(Degrees) を優先
     [[nodiscard]] constexpr float Deg2Rad(float deg) noexcept
     {
         return deg * (kPi / 180.0f);
     }
 
-    /// ラジアン → 度変換 (raw float)。 強い型を使う場合は ToDegrees(Radians) を優先。
+    /// ラジアン → 度変換 (raw float)。 強い型を使う場合は ToDegrees(Radians) を優先
     [[nodiscard]] constexpr float Rad2Deg(float rad) noexcept
     {
         return rad * (180.0f / kPi);
     }
 
-    /// 角度を弧度法 (radians) で持つ強い型。 暗黙変換禁止、 raw float の取り違え事故を防ぐ。
-    /// 用途: Camera::SetFovY、 Transform 回転 API 等。 値は `value` メンバ経由で取り出す。
+    /// 角度を弧度法 (radians) で持つ強い型。 暗黙変換禁止、 raw float の取り違え事故を防ぐ
+    /// 用途: Camera::SetFovY、 Transform 回転 API 等。 値は `value` メンバ経由で取り出す
     struct Radians
     {
         float value;
     };
 
-    /// 角度を度数法 (degrees) で持つ強い型。 ヒューマン向け数値リテラル用。
-    /// 暗黙変換禁止、 ToRadians() 経由で明示変換が必要。
+    /// 角度を度数法 (degrees) で持つ強い型。 ヒューマン向け数値リテラル用
+    /// 暗黙変換禁止、 ToRadians() 経由で明示変換が必要
     struct Degrees
     {
         float value;
     };
 
-    /// Degrees → Radians 明示変換。 sin/cos など radians 期待 API への入口。
+    /// Degrees → Radians 明示変換。 sin/cos など radians 期待 API への入口
     [[nodiscard]] constexpr Radians ToRadians(Degrees d) noexcept
     {
         return Radians{d.value * (kPi / 180.0f)};
     }
 
-    /// Radians → Degrees 明示変換。 デバッグ表示・ ヒューマン UI 用。
+    /// Radians → Degrees 明示変換。 デバッグ表示・ ヒューマン UI 用
     [[nodiscard]] constexpr Degrees ToDegrees(Radians r) noexcept
     {
         return Degrees{r.value * (180.0f / kPi)};
@@ -104,11 +104,11 @@ namespace NS::Core
         return !(a == b);
     }
 
-    /// 2D ピクセルサイズ (width, height) を表す強い型。
-    /// 用途: Window / Renderer / RenderTarget / Texture の解像度 API。
-    /// 暗黙変換禁止、 width と height を取り違える事故を型システムで防ぐ。
+    /// 2D ピクセルサイズ (width, height) を表す強い型
+    /// 用途: Window / Renderer / RenderTarget / Texture の解像度 API
+    /// 暗黙変換禁止、 width と height を取り違える事故を型システムで防ぐ
     /// プラットフォーム API (DX11 / Win32) と整合させるため int 保持、
-    /// 負値は invalid (リソース側は width > 0 && height > 0 を pre-condition とする)。
+    /// 負値は invalid (リソース側は width > 0 && height > 0 を pre-condition とする)
     struct Size2D
     {
         int width;
@@ -124,7 +124,7 @@ namespace NS::Core
         return !(a == b);
     }
 
-    /// アスペクト比 (width / height) を float で返す。
+    /// アスペクト比 (width / height) を float で返す
     /// @pre s.height != 0
     [[nodiscard]] constexpr float AspectRatio(Size2D s) noexcept
     {

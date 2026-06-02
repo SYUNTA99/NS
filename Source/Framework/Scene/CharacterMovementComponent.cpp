@@ -14,7 +14,7 @@ namespace
 {
     constexpr float kHorizontalSpeedEpsilon = 0.01f;
 
-    /// 一次遅れの離散化。tau = 時定数 (大きいほど鈍い)、dt = step。0 < tau で安定。
+    /// 一次遅れの離散化。tau = 時定数 (大きいほど鈍い)、dt = step。0 < tau で安定
     [[nodiscard]] float SmoothApproach(float current, float target, float tau, float dt) noexcept
     {
         if (tau <= 0.0f)
@@ -35,43 +35,43 @@ namespace
         };
     }
 
-    /// pole 掴まり中の上下移動速度 (m/s)。 入力 1.0 で kClimbSpeed のレート。
+    /// pole 掴まり中の上下移動速度 (m/s)。 入力 1.0 で kClimbSpeed のレート
     constexpr float kClimbSpeed = 2.0f;
-    /// 離脱 jump 時、 接触面の逆方向に与える初速 (m/s)。
+    /// 離脱 jump 時、 接触面の逆方向に与える初速 (m/s)
     constexpr float kClimbExitOutwardSpeed = 3.0f;
-    /// 離脱 jump 時、 上方向に与える初速 (m/s)。
+    /// 離脱 jump 時、 上方向に与える初速 (m/s)
     constexpr float kClimbExitUpwardSpeed = 6.0f;
-    /// auto-mantle 判定の上端余裕 (m)。 pole top にこの距離まで近づいたら歩行へ。
+    /// auto-mantle 判定の上端余裕 (m)。 pole top にこの距離まで近づいたら歩行へ
     constexpr float kClimbMantleEpsilon = 0.05f;
 
     /// 縁掴み: 手 (capsule 上端) と block 上端の高さ差の許容下幅 / 上幅 (m)。 この帯に
-    /// block 上端が入ると掴める。 GUI playtest で詰める初期値。
+    /// block 上端が入ると掴める。 GUI playtest で詰める初期値
     constexpr float kLedgeGrabBandLow = 0.5f;
     constexpr float kLedgeGrabBandHigh = 0.5f;
-    /// 縁掴み: capsule 表面から前方へ手を伸ばす追加距離 (m)。
+    /// 縁掴み: capsule 表面から前方へ手を伸ばす追加距離 (m)
     constexpr float kLedgeReach = 0.3f;
-    /// 縁掴み: mantle 時に面の内側へ押し込む余白 (m)。 2*radius に上乗せして上面へ確実に乗せる。
+    /// 縁掴み: mantle 時に面の内側へ押し込む余白 (m)。 2*radius に上乗せして上面へ確実に乗せる
     constexpr float kLedgeMantleInset = 0.1f;
-    /// 縁掴み: mantle 後に block 上面から浮かせる安全マージン (m)。 spawn lift と同趣旨。
+    /// 縁掴み: mantle 後に block 上面から浮かせる安全マージン (m)。 spawn lift と同趣旨
     constexpr float kLedgeMantleLift = 0.02f;
-    /// 縁掴み: mantle / drop を起動する climb 前後入力のしきい値。
+    /// 縁掴み: mantle / drop を起動する climb 前後入力のしきい値
     constexpr float kLedgeInputThreshold = 0.5f;
     /// 縁掴み: つかんだ後、 前入力での自動登りを許すまでの最小ぶら下がり時間 (s)。 壁に向かう
-    /// 入力のまま即登り切ってつかみが見えない問題を防ぐ。 jump / drop はこの待ちを受けない。
+    /// 入力のまま即登り切ってつかみが見えない問題を防ぐ。 jump / drop はこの待ちを受けない
     constexpr float kLedgeMinHangTime = 0.3f;
     /// 縁掴み: ぶら下がりから上面へよじ登る mantle モーションの所要時間 (s)。 瞬間移動を避けて
-    /// 登りを視認できるようにする。 前半で上昇、 後半で前進の 2 段に割る。
+    /// 登りを視認できるようにする。 前半で上昇、 後半で前進の 2 段に割る
     constexpr float kLedgeMantleDuration = 0.25f;
-    /// 縁掴み: シミー (縁沿い左右移動) の速度 (m/s) と入力デッドゾーン。
+    /// 縁掴み: シミー (縁沿い左右移動) の速度 (m/s) と入力デッドゾーン
     constexpr float kLedgeShimmySpeed = 2.0f;
     constexpr float kLedgeShimmyDeadzone = 0.3f;
-    /// 縁掴み: シミー継続判定で「同じ高さの縁」とみなす上端の許容差 (m)。
+    /// 縁掴み: シミー継続判定で「同じ高さの縁」とみなす上端の許容差 (m)
     constexpr float kLedgeContinueTopTol = 0.1f;
-    /// 縁掴み: drop 時に面法線方向へ離す距離 (m) と初速 (m/s)。
+    /// 縁掴み: drop 時に面法線方向へ離す距離 (m) と初速 (m/s)
     constexpr float kLedgeDropOutward = 0.2f;
     constexpr float kLedgeDropOutwardSpeed = 2.0f;
     /// 縁掴み: drop / mantle 直後に再掴みを禁止する時間 (s)。 放しても入力を倒し続けた時の
-    /// 即再掴みを防ぐ。
+    /// 即再掴みを防ぐ
     constexpr float kLedgeRegrabCooldownTime = 0.3f;
 
     [[nodiscard]] bool AabbContainsPoint(const NS::Core::AABB& box, const NS::Core::Vector3& p) noexcept
@@ -161,10 +161,10 @@ namespace NS::Scene
         }
 
         // ClimbingPole では default CharacterController を bypass し、 pole の axis に拘束された
-        // 専用 update で position を直接更新する (Mario-style non-physical controller)。
+        // 専用 update で position を直接更新する (Mario-style non-physical controller)
         if (m_state == MovementState::ClimbingPole)
         {
-            // 離脱 jump: pole から outward (XZ 半径方向) + 上方向に飛び離れて Falling へ。
+            // 離脱 jump: pole から outward (XZ 半径方向) + 上方向に飛び離れて Falling へ
             if (m_jumpPressedThisFrame && m_attachedPole != nullptr)
             {
                 const NS::Core::Vector3 pos = RootTransform().Position();
@@ -195,7 +195,7 @@ namespace NS::Scene
                 NS::Core::Vector3 pos = RootTransform().Position();
                 // 縦入力は climb 専用チャンネル (生ローカル前後入力) を使う。 camera 相対の
                 // m_desiredDir を使うと camera 向き次第で上昇量が 0 になるため別系統で受ける
-                // (前=上昇、 後=下降、 camera 非依存)。
+                // (前=上昇、 後=下降、 camera 非依存)
                 const float verticalInput = m_climbForward;
                 pos.y += verticalInput * kClimbSpeed * dt;
 
@@ -204,7 +204,7 @@ namespace NS::Scene
                 if (pos.y < axisStart.y)
                     pos.y = axisStart.y;
 
-                // 上端に達したら自動で mantle (Walking) へ遷移。
+                // 上端に達したら自動で mantle (Walking) へ遷移
                 if (pos.y >= axisEnd.y - kClimbMantleEpsilon)
                 {
                     pos.y = axisEnd.y;
@@ -219,11 +219,11 @@ namespace NS::Scene
                     return;
                 }
 
-                // XZ は pole 軸に snap して安定させる。
+                // XZ は pole 軸に snap して安定させる
                 pos.x = axisStart.x;
                 pos.z = axisStart.z;
                 RootTransform().SetPosition(pos);
-                // velocity は climb logic が完全に支配する (gravity は無効、 controller も bypass)。
+                // velocity は climb logic が完全に支配する (gravity は無効、 controller も bypass)
                 m_velocity = NS::Core::Vector3{0.0f, verticalInput * kClimbSpeed, 0.0f};
             }
 
@@ -233,7 +233,7 @@ namespace NS::Scene
             return;
         }
 
-        // LedgeHanging も controller を bypass し、 縁にぶら下がった専用更新で position を直接動かす。
+        // LedgeHanging も controller を bypass し、 縁にぶら下がった専用更新で position を直接動かす
         if (m_state == MovementState::LedgeHanging)
         {
             UpdateLedgeHang(dt);
@@ -252,7 +252,7 @@ namespace NS::Scene
             return;
         }
 
-        // 通常 (Walking / Jumping / Falling): 既存の物理ロジック。
+        // 通常 (Walking / Jumping / Falling): 既存の物理ロジック
         if (m_ledgeRegrabCooldown > 0.0f)
             m_ledgeRegrabCooldown -= dt;
 
@@ -321,7 +321,7 @@ namespace NS::Scene
         if (m_isGrounded)
             m_coyoteTimer = m_coyoteTime;
 
-        // Walking / Jumping / Falling のサブ分類は high-level state の参考にする (controller bypass はしない)。
+        // Walking / Jumping / Falling のサブ分類は high-level state の参考にする (controller bypass はしない)
         if (m_isGrounded)
             m_state = MovementState::Walking;
         else if (m_velocity.y > 0.0f)
@@ -329,7 +329,7 @@ namespace NS::Scene
         else
             m_state = MovementState::Falling;
 
-        // grab intent: 入力が pole に向いていて、 かつ player 中心が trigger 内なら掴まり状態へ。
+        // grab intent: 入力が pole に向いていて、 かつ player 中心が trigger 内なら掴まり状態へ
         if (m_desiredSpeedScale > m_stickDeadzone)
         {
             const NS::Core::Vector3 pos = out.position;
@@ -347,7 +347,7 @@ namespace NS::Scene
             }
         }
 
-        // pole を掴んでいなければ、 通常 block の縁を掴めるか試す (空中下降中のみ成立)。
+        // pole を掴んでいなければ、 通常 block の縁を掴めるか試す (空中下降中のみ成立)
         if (m_state != MovementState::ClimbingPole)
             TryGrabLedge(out.position);
 
@@ -367,7 +367,7 @@ namespace NS::Scene
 
     bool CharacterMovementComponent::TryGrabLedge(const NS::Core::Vector3& pos) noexcept
     {
-        // 空中で下降中、 かつ前方入力がある時だけ掴む。 cooldown 中は無効。
+        // 空中で下降中、 かつ前方入力がある時だけ掴む。 cooldown 中は無効
         if (m_ledgeRegrabCooldown > 0.0f || m_isGrounded || m_velocity.y > 0.0f)
             return false;
         if (m_desiredSpeedScale <= m_stickDeadzone)
@@ -381,7 +381,7 @@ namespace NS::Scene
         dir.z /= dirLen;
 
         // 手の高さ = capsule 上端。 そこから前方へ伸ばした probe 点が block の XZ 内に入り、
-        // かつ block 上端が手の高さの帯に収まれば縁とみなす。
+        // かつ block 上端が手の高さの帯に収まれば縁とみなす
         const float handY = pos.y + m_capsuleHalfHeight;
         const NS::Core::Vector3 probe{
             pos.x + dir.x * (m_capsuleRadius + kLedgeReach),
@@ -399,7 +399,7 @@ namespace NS::Scene
             if (probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z)
                 continue;
 
-            // 接近軸の優勢成分で掴む手前面を決め、 その外側に capsule を寄せた hang 位置を出す。
+            // 接近軸の優勢成分で掴む手前面を決め、 その外側に capsule を寄せた hang 位置を出す
             NS::Core::Vector3 faceNormal{0.0f, 0.0f, 0.0f};
             NS::Core::Vector3 hang = pos;
             if (std::abs(dir.x) >= std::abs(dir.z))
@@ -420,7 +420,7 @@ namespace NS::Scene
             }
             hang.y = top - m_capsuleHalfHeight;
 
-            // mantle 先 (上面の手前) が別 block で塞がっているなら縁ではない。 掴まない。
+            // mantle 先 (上面の手前) が別 block で塞がっているなら縁ではない。 掴まない
             const float mantleStep = 2.0f * m_capsuleRadius + kLedgeMantleInset;
             const NS::Core::Vector3 mantleCheck{
                 hang.x - faceNormal.x * mantleStep,
@@ -455,8 +455,8 @@ namespace NS::Scene
         m_ledgeHangTimer += dt;
         NS::Core::Vector3 pos = RootTransform().Position();
 
-        // 登る: jump は即時、 前入力での自動登りは一瞬ぶら下がりを見せてから (最小ぶら下がり時間)。
-        // 面の内側へ押し込み block 上面に立たせて Walking へ。
+        // 登る: jump は即時、 前入力での自動登りは一瞬ぶら下がりを見せてから (最小ぶら下がり時間)
+        // 面の内側へ押し込み block 上面に立たせて Walking へ
         const bool autoClimb = m_climbForward > kLedgeInputThreshold && m_ledgeHangTimer >= kLedgeMinHangTime;
         if (m_jumpPressedThisFrame || autoClimb)
         {
@@ -473,7 +473,7 @@ namespace NS::Scene
             return;
         }
 
-        // 落ちる: 後入力で手を放す。 面法線方向へ少し離して Falling、 即再掴みを cooldown で抑止。
+        // 落ちる: 後入力で手を放す。 面法線方向へ少し離して Falling、 即再掴みを cooldown で抑止
         if (m_climbForward < -kLedgeInputThreshold)
         {
             pos.x += m_ledgeFaceNormal.x * kLedgeDropOutward;
@@ -487,16 +487,16 @@ namespace NS::Scene
             return;
         }
 
-        // それ以外: 縁にぶら下がったまま、 左右入力で縁に沿ってシミー移動する (重力無効)。
+        // それ以外: 縁にぶら下がったまま、 左右入力で縁に沿ってシミー移動する (重力無効)
         pos.y = m_ledgeTopY - m_capsuleHalfHeight;
         if (std::abs(m_climbRight) > kLedgeShimmyDeadzone)
         {
-            // 面法線に水平直交する縁方向。 移動しても面からの距離は変わらない。
+            // 面法線に水平直交する縁方向。 移動しても面からの距離は変わらない
             const NS::Core::Vector3 alongDir{-m_ledgeFaceNormal.z, 0.0f, m_ledgeFaceNormal.x};
             NS::Core::Vector3 shimmied = pos;
             shimmied.x += alongDir.x * m_climbRight * kLedgeShimmySpeed * dt;
             shimmied.z += alongDir.z * m_climbRight * kLedgeShimmySpeed * dt;
-            // 移動先にも同じ高さの縁が続いている時だけ動く。 端なら止めて落とさない。
+            // 移動先にも同じ高さの縁が続いている時だけ動く。 端なら止めて落とさない
             if (LedgeContinuesAt(shimmied))
                 pos = shimmied;
         }
@@ -509,7 +509,7 @@ namespace NS::Scene
         m_ledgeMantleTimer += dt;
         const float t = NS::Core::Clamp(m_ledgeMantleTimer / kLedgeMantleDuration, 0.0f, 1.0f);
 
-        // 前半で縁の高さまで上昇、 後半で上面へ前進する 2 段モーション。 角への食い込みを避ける。
+        // 前半で縁の高さまで上昇、 後半で上面へ前進する 2 段モーション。 角への食い込みを避ける
         NS::Core::Vector3 pos;
         if (t < 0.5f)
         {
@@ -560,7 +560,7 @@ namespace NS::Scene
             if (probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z)
                 continue;
 
-            // 乗り上がり先が別 block で塞がっていたら縁とみなさない (オーバーハングの下では掴めない)。
+            // 乗り上がり先が別 block で塞がっていたら縁とみなさない (オーバーハングの下では掴めない)
             const float mantleStep = 2.0f * m_capsuleRadius + kLedgeMantleInset;
             const NS::Core::Vector3 mantleCheck{
                 hangPos.x - m_ledgeFaceNormal.x * mantleStep,

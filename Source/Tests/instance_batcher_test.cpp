@@ -38,7 +38,7 @@ namespace
 
     // bucket key を試験するための偽 Mesh* / Material* を生成する。 InstanceBatcher は
     // ポインタ値を bucket key としてしか扱わないため (count-only モードでは dereference もしない)、
-    // 実体を指す必要は無い。 0xDEAD ベースで衝突しない 64bit アドレスを返す。
+    // 実体を指す必要は無い。 0xDEAD ベースで衝突しない 64bit アドレスを返す
     [[nodiscard]] Mesh* FakeMesh(std::uintptr_t index)
     {
         return reinterpret_cast<Mesh*>(static_cast<std::uintptr_t>(0xDEAD'0001ull) + index * 0x10ull);
@@ -79,8 +79,8 @@ TEST_F(InstanceBatcherTest, BucketsByMeshMaterial)
     constexpr std::size_t kUniqueBuckets = 48;
     constexpr std::size_t kTotalInstances = 1000;
 
-    // 48 種の (mesh, material) ペアに 1000 instance を散らす。
-    // 配分: 1000 / 48 ≈ 20.83、 商 20 で全 bucket に振り、 余り 40 を先頭 40 bucket に 1 つずつ足す。
+    // 48 種の (mesh, material) ペアに 1000 instance を散らす
+    // 配分: 1000 / 48 ≈ 20.83、 商 20 で全 bucket に振り、 余り 40 を先頭 40 bucket に 1 つずつ足す
     for (std::size_t i = 0; i < kTotalInstances; ++i)
     {
         const std::uintptr_t bucketIndex = i % kUniqueBuckets;

@@ -1,12 +1,12 @@
 #pragma once
 
 /// @file Material.h
-/// @brief NS::Graphics::Material — ShaderProgram + Texture スロット + 内蔵 CB。
+/// @brief NS::Graphics::Material — ShaderProgram + Texture スロット + 内蔵 CB
 ///
 /// @details ShaderProgram は共有参照 (非所有)、 Material 寿命中 shader が
 /// 有効であること。 Sampler は s0 LinearWrap 固定、 複数 sampler
-/// は将来拡張。 `Bind()` は shader / textures / CB / sampler を一括設定する。
-/// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること。
+/// は将来拡張。 `Bind()` は shader / textures / CB / sampler を一括設定する
+/// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること
 
 #include "Framework/Graphics/Buffer.h"
 
@@ -20,25 +20,25 @@ namespace NS::Graphics
     class ShaderProgram;
     class Texture;
 
-    /// Material 構築パラメータ。
-    /// shader は共有参照、Material は所有しない。Material 寿命中 shader が有効であること。
-    /// constantBufferSize=0 のとき内部 ConstantBuffer は構築されず、SetParams は no-op になる。
+    /// Material 構築パラメータ
+    /// shader は共有参照、Material は所有しない。Material 寿命中 shader が有効であること
+    /// constantBufferSize=0 のとき内部 ConstantBuffer は構築されず、SetParams は no-op になる
     struct MaterialDesc
     {
-        /// 共有 ShaderProgram。nullptr で IsValid()=false。
+        /// 共有 ShaderProgram。nullptr で IsValid()=false
         ShaderProgram* shader = nullptr;
-        /// 内蔵 ConstantBuffer のバイト数 (alignas(16) + sizeof%16==0 必須)。
+        /// 内蔵 ConstantBuffer のバイト数 (alignas(16) + sizeof%16==0 必須)
         std::size_t constantBufferSize = 0;
-        /// ConstantBuffer Bind 先スロット。
+        /// ConstantBuffer Bind 先スロット
         unsigned cbSlot = 1;
-        /// ConstantBuffer Bind 対象ステージ (既定: VS + PS)。
+        /// ConstantBuffer Bind 対象ステージ (既定: VS + PS)
         ShaderStage cbStages = ShaderStage::Vertex | ShaderStage::Pixel;
     };
 
-    /// Generic 単一クラス Material。
-    /// ShaderProgram* (非所有) + Texture スロット (unsigned 番号) + 内蔵 ConstantBuffer。
-    /// Sampler は s0 LinearWrap 固定、複数 sampler は将来拡張。
-    /// 依存: Renderer の DeviceContext を内部で保持するため、Renderer より先に破棄すること。
+    /// Generic 単一クラス Material
+    /// ShaderProgram* (非所有) + Texture スロット (unsigned 番号) + 内蔵 ConstantBuffer
+    /// Sampler は s0 LinearWrap 固定、複数 sampler は将来拡張
+    /// 依存: Renderer の DeviceContext を内部で保持するため、Renderer より先に破棄すること
     class Material
     {
     public:
@@ -52,21 +52,21 @@ namespace NS::Graphics
         Material(Material&&) = delete;
         Material& operator=(Material&&) = delete;
 
-        /// ShaderProgram が非 null で内部リソース構築済なら true。fallback shader でも true。
+        /// ShaderProgram が非 null で内部リソース構築済なら true。fallback shader でも true
         [[nodiscard]] bool IsValid() const noexcept;
 
-        /// 共有 ShaderProgram が fallback 描画 (magenta) に切替わっているかを問い合わせる。
+        /// 共有 ShaderProgram が fallback 描画 (magenta) に切替わっているかを問い合わせる
         /// 内部の `ShaderProgram::IsUsingFallback()` への薄いラッパ、 Material 単体では独自の
-        /// fallback 状態は持たない。 デバッグ時のシェーダ欠落検知に使用。
+        /// fallback 状態は持たない。 デバッグ時のシェーダ欠落検知に使用
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-        /// 指定スロットにテクスチャを割り当てる。texture=nullptr で割当解除と同義。
+        /// 指定スロットにテクスチャを割り当てる。texture=nullptr で割当解除と同義
         void SetTexture(unsigned slot, const Texture* texture) noexcept;
-        /// 指定スロットの割り当てを解除する。
+        /// 指定スロットの割り当てを解除する
         void ClearTexture(unsigned slot) noexcept;
 
-        /// CB 更新。`alignas(16)` + `sizeof(T) % 16 == 0` 必須。
-        /// constantBufferSize=0 で構築された Material では no-op。
+        /// CB 更新。`alignas(16)` + `sizeof(T) % 16 == 0` 必須
+        /// constantBufferSize=0 で構築された Material では no-op
         template <typename T> void SetParams(const T& params) noexcept
         {
             static_assert((sizeof(T) % 16) == 0,
@@ -76,7 +76,7 @@ namespace NS::Graphics
         }
 
         /// shader->Bind() → 全 Texture::Bind(slot, Pixel) → ConstantBuffer::Bind(cbSlot, cbStages)
-        /// → PSSetSamplers(0, LinearWrap) 一括実行。Mesh::Draw() の前に呼ぶ。
+        /// → PSSetSamplers(0, LinearWrap) 一括実行。Mesh::Draw() の前に呼ぶ
         void Bind() noexcept;
 
     private:

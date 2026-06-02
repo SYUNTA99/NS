@@ -67,7 +67,7 @@ TEST_F(ThirdPersonFollowTest, UpdatesCameraPositionBehindTarget)
         follow.OnUpdate();
 
     // OnUpdate は state mutation のみ (yaw/pitch/distance)、 camera position は
-    // ApplyCameraTransform で render frame ごとに反映する設計 (jitter 回避)。
+    // ApplyCameraTransform で render frame ごとに反映する設計 (jitter 回避)
     follow.ApplyCameraTransform(1.0f);
 
     const auto pos = cc.Position();

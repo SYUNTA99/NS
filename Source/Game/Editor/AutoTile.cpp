@@ -11,8 +11,8 @@ namespace NS::Game::Editor
 
     namespace
     {
-        // 6-neighbor bitmask (64 通り) を 8 variant (0..7) に縮約するテーブル。
-        // popcount で「埋まり具合」 を見て大まかな variant に丸める素朴な対応付け。
+        // 6-neighbor bitmask (64 通り) を 8 variant (0..7) に縮約するテーブル
+        // popcount で「埋まり具合」 を見て大まかな variant に丸める素朴な対応付け
         // - 0 neighbor (孤立 cube): variant 0 = isolated
         // - 1-2 neighbor (端 / 角): variant 1-2
         // - 3-4 neighbor (壁 / 床中央): variant 3-4
@@ -20,7 +20,7 @@ namespace NS::Game::Editor
         // - 6 neighbor (完全埋没): variant 7 = interior
         // popcount が同じでも上下軸 (bit 2 / 3) の有無で variant をずらし、 上面が
         // 見えるケースだけは「天井あり」 風の variant に飛ばす。 詳細チューニングは
-        // designer 介入で差し替え可能、 ここでは全 64 mask が valid variant に丸まる事を保証する。
+        // designer 介入で差し替え可能、 ここでは全 64 mask が valid variant に丸まる事を保証する
         constexpr std::uint8_t kBitmaskToVariant[64] = {
             // bit 0..3..5 popcount (mask): variant
             // mask 0 = 000000: 0 (isolated)
@@ -44,12 +44,12 @@ namespace NS::Game::Editor
 
     std::uint16_t LookupTextureSlice(ThemeId theme, std::uint8_t neighborMask, std::uint16_t /*blockId*/) noexcept
     {
-        // theme 範囲外 → Grass (入力境界の fallback)。
+        // theme 範囲外 → Grass (入力境界の fallback)
         if (static_cast<std::size_t>(theme) >= static_cast<std::size_t>(ThemeId::Count))
         {
             theme = ThemeId::Grass;
         }
-        // bitmask 範囲外 (>=64) は base slice (offset 0) にフォールバック。
+        // bitmask 範囲外 (>=64) は base slice (offset 0) にフォールバック
         if (neighborMask >= 64)
         {
             const ThemeData& td0 = ThemeRegistry::Get(theme);
@@ -60,12 +60,12 @@ namespace NS::Game::Editor
         const ThemeData& td = ThemeRegistry::Get(theme);
         const std::uint16_t base = td.blockTextureArrayBaseSlice;
         const std::uint8_t variant = kBitmaskToVariant[neighborMask];
-        // variant が 8 を超えないテーブルを書いてあるが、 念のため clamp する。
+        // variant が 8 を超えないテーブルを書いてあるが、 念のため clamp する
         const std::uint8_t safeVariant = variant < kVariantsPerTheme ? variant : static_cast<std::uint8_t>(0);
         const std::uint32_t slice = static_cast<std::uint32_t>(base) + static_cast<std::uint32_t>(safeVariant);
         if (slice >= NS::Graphics::TextureArray::kTotalSlices)
         {
-            return 0; // 念のため範囲外 clamp。
+            return 0; // 念のため範囲外 clamp
         }
         return static_cast<std::uint16_t>(slice);
     }
@@ -76,7 +76,7 @@ namespace NS::Game::Editor
                                      std::int16_t z,
                                      std::uint16_t blockId) noexcept
     {
-        // bit 0=+X, 1=-X, 2=+Y, 3=-Y, 4=+Z, 5=-Z の順で 6 方向。
+        // bit 0=+X, 1=-X, 2=+Y, 3=-Y, 4=+Z, 5=-Z の順で 6 方向
         static constexpr std::int16_t kOffsets[6][3] = {
             {+1, 0, 0},
             {-1, 0, 0},

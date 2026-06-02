@@ -11,7 +11,7 @@ namespace
     using NS::Scene::SceneBase;
     using NS::Scene::SceneManager;
 
-    /// lifecycle 呼出回数を観測する Scene。
+    /// lifecycle 呼出回数を観測する Scene
     class TrackingScene : public SceneBase
     {
     public:

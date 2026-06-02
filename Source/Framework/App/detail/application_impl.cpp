@@ -16,10 +16,10 @@
 namespace
 {
     /// 前 Application 終了時の Window destruction で PostQuitMessage の thread quit flag
-    /// が残ることがある (Win32 仕様、PeekMessageW の filter range では取れない)。
+    /// が残ることがある (Win32 仕様、PeekMessageW の filter range では取れない)
     /// 同一プロセスで Application を再起動した時に初回 PollMessages で即 ShouldClose=true
     /// になるのを防ぐため、起動時に全メッセージを排出する。前 Application の HWND は
-    /// すでに破棄済みなので Dispatch は呼ばず破棄のみで足りる。
+    /// すでに破棄済みなので Dispatch は呼ばず破棄のみで足りる
     void DrainPendingQuit() noexcept
     {
         MSG msg;
@@ -41,15 +41,15 @@ namespace NS::App
         std::unique_ptr<NS::Platform::Window> window;
         std::unique_ptr<NS::Graphics::Renderer> renderer;
         std::unique_ptr<NS::Platform::Input> input;
-        /// Debug / Development build のみ実体化される。
-        /// GameDebug / GameRelease では常に nullptr (ImGui 非搭載 shipping を保証)。
+        /// Debug / Development build のみ実体化される
+        /// GameDebug / GameRelease では常に nullptr (ImGui 非搭載 shipping を保証)
         std::unique_ptr<NS::UI::ImGuiContext> imgui;
         Layers layers;
         bool valid = false;
         bool quitRequested = false;
-        // Run() 経由の Shutdown と、 dtor 経由の Shutdown が両方走った時に OnDetach が二重に
+        // Run() 経由の Shutdown と、 デストラクタ経由の Shutdown が両方走った時に OnDetach が二重に
         // 呼ばれるのを防ぐ flag。 Window / Renderer の reset は unique_ptr で冪等だが、 Layer
-        // 側 OnDetach は副作用を持ち得るため、 ここで明示的に guard する。
+        // 側 OnDetach は副作用を持ち得るため、 ここで明示的に guard する
         bool shutdownCalled = false;
         std::chrono::steady_clock::time_point lastStutterWarnAt{};
     };
@@ -59,7 +59,7 @@ namespace NS::App
         if (s_instance != nullptr)
         {
             // assert は Release で消えるため、本制約は Release ビルドでも fatal で
-            // 落とす (単一保持を Shipping でも保証)。
+            // 落とす (単一保持を Shipping でも保証)
             NS_LOG_FATAL(::NS::Core::LogCat::App, "Application 多重起動禁止");
         }
         s_instance = this;
@@ -96,7 +96,7 @@ namespace NS::App
 
         auto* impl = m_pImpl.get();
         // callback 内で RequestClose を呼ぶと PostMessage が WM_CLOSE を再投擲し、
-        // PollMessages が永久に抜けなくなる。
+        // PollMessages が永久に抜けなくなる
         m_pImpl->window->SetCloseCallback([impl]() { impl->quitRequested = true; });
 
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
@@ -115,8 +115,8 @@ namespace NS::App
     {
         // Run() が呼ばれず Shutdown() を経由しないケース (構築失敗 / IsValid チェック
         // のみのテスト等) でも、Window 破壊前に callback を nullptr 化し
-        // Renderer / Input を先に破棄して dangling キャプチャを防ぐ。
-        // Shutdown() は冪等のため Run() 経由ケースでは no-op になる。
+        // Renderer / Input を先に破棄して dangling キャプチャを防ぐ
+        // Shutdown() は冪等のため Run() 経由ケースでは no-op になる
         if (m_pImpl)
             Shutdown();
         if (s_instance == this)
@@ -229,7 +229,7 @@ namespace NS::App
                             layer->OnUpdate();
                     }
                     // fixed step ごとに input.Update を呼ぶことで、1 frame に複数 step
-                    // 走った時に同じ edge が複数回検出されるのを防ぐ。
+                    // 走った時に同じ edge が複数回検出されるのを防ぐ
                     // 参考: https://jakubtomsu.github.io/posts/input_in_fixed_timestep/
                     input.Update();
                     if (m_pImpl->quitRequested)
@@ -267,7 +267,7 @@ namespace NS::App
 
         // Window が生存中にコールバックが発火すると rendererPtr / impl 生キャプチャが
         // 解放済みになるリスクがあるため、Renderer / Input を破棄する前に Window 側の
-        // コールバックを全て nullptr に解除する。
+        // コールバックを全て nullptr に解除する
         if (m_pImpl->window)
         {
             m_pImpl->window->SetResizeCallback(nullptr);
@@ -275,7 +275,7 @@ namespace NS::App
             m_pImpl->window->AttachInput(nullptr);
             m_pImpl->window->AttachImGui(nullptr);
         }
-        // ImGui_ImplDX11_Shutdown は ID3D11Device を要求するので Renderer より先に破棄。
+        // ImGui_ImplDX11_Shutdown は ID3D11Device を要求するので Renderer より先に破棄
         m_pImpl->imgui.reset();
         m_pImpl->renderer.reset();
         m_pImpl->input.reset();

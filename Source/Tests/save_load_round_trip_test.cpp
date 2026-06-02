@@ -84,16 +84,16 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
 
 TEST(SaveLoadRoundTrip, BuildLevelPathRejectsTraversal)
 {
-    // path traversal が path 構築層で構造的に止まることを test (T-03-10)。
+    // path traversal が path 構築層で構造的に止まることを test (T-03-10)
     EXPECT_FALSE(EditorNs::BuildLevelPath("../etc/passwd").has_value());
     EXPECT_FALSE(EditorNs::BuildLevelPath("..").has_value());
     EXPECT_FALSE(EditorNs::BuildLevelPath("a/b").has_value());
 }
 
 // 既知 chunk (META/BLKS/SPWN) と CRC3 の間に未知 chunk 'XXXX' を挿入しても、
-// v1 reader が unknown chunk を size 分 skip し、 既知 chunk の値を完全復元できることを検証。
+// v1 reader が unknown chunk を size 分 skip し、 既知 chunk の値を完全復元できることを検証
 // forward-compat の end-to-end 自動検証 (将来 DECO / ENMY 等を導入した
-// file を旧 reader に読ませた時の挙動を保証する)。
+// file を旧 reader に読ませた時の挙動を保証する)
 TEST(SaveLoadRoundTrip, ForwardCompatibleUnknownChunkSkip)
 {
     EditorNs::EnsureLevelsDirectoryExists();

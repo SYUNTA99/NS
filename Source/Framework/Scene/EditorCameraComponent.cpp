@@ -55,7 +55,7 @@ namespace NS::Scene
 
     void EditorCameraComponent::ApplyPan(float panX, float panY) noexcept
     {
-        // View space の right / up 軸に沿った平行移動。 感度は distance に比例。
+        // View space の right / up 軸に沿った平行移動。 感度は distance に比例
         const float sinYaw = std::sin(m_yaw);
         const float cosYaw = std::cos(m_yaw);
         const NS::Core::Vector3 right{cosYaw, 0.0f, -sinYaw};
@@ -70,7 +70,7 @@ namespace NS::Scene
     {
         // 加算式だと近距離で 1 notch が画面の半分を動き、 遠距離では微動にしかならず
         // 体感の zoom が非対称になる。 距離 N に対して一定比率で動かす log scale で
-        // 対称化する (DCC tool 流)。 zoomDelta = 1 で ×0.9 (近づく)、 -1 で ÷0.9 (離れる)。
+        // 対称化する。 zoomDelta = 1 で ×0.9 (近づく)、 -1 で ÷0.9 (離れる)
         if (zoomDelta == 0.0f)
             return;
         const float factor = std::pow(0.9f, zoomDelta);
@@ -97,7 +97,7 @@ namespace NS::Scene
 
         const float dt = NS::Core::FrameTimer::FixedDelta();
 
-        // Mouse 入力。 ImGui がフォーカス中なら無視する。
+        // Mouse 入力。 ImGui がフォーカス中なら無視する
         const bool wantMouse = (m_imgui != nullptr) && m_imgui->WantCaptureMouse();
         if (m_input != nullptr && !wantMouse)
         {
@@ -112,12 +112,12 @@ namespace NS::Scene
                 ApplyPan(static_cast<float>(mouse.DeltaX()) * m_mouseSensPan,
                          static_cast<float>(mouse.DeltaY()) * m_mouseSensPan);
             }
-            // Wheel: 1 notch (= WHEEL_DELTA 120 単位) を 1 zoomDelta に正規化。
-            // ApplyZoom が log scale なので 1 notch = 10% × m_mouseSensZoom の距離変化。
+            // Wheel: 1 notch (= WHEEL_DELTA 120 単位) を 1 zoomDelta に正規化
+            // ApplyZoom が log scale なので 1 notch = 10% × m_mouseSensZoom の距離変化
             ApplyZoom(static_cast<float>(mouse.WheelDelta()) / 120.0f * m_mouseSensZoom);
         }
 
-        // Gamepad は ImGui キャプチャ対象外、 常に入力する。
+        // Gamepad は ImGui キャプチャ対象外、 常に入力する
         if (m_input != nullptr)
         {
             auto& gp = m_input->Gamepad(0);
@@ -131,7 +131,7 @@ namespace NS::Scene
             }
         }
 
-        // distance の critically-damped spring smoothing。
+        // distance の critically-damped spring smoothing
         m_distance += (m_desiredDistance - m_distance) * std::min(1.0f, m_springOmega * dt);
 
         if (m_camera != nullptr)
@@ -172,7 +172,7 @@ namespace NS::Scene
 
         NS::Core::Vector3 SnapWorldPointToGrid(NS::Core::Vector3 p, float g) noexcept
         {
-            // 最近接 cell center に snap (0.5 を足してから floor で四捨五入相当)。
+            // 最近接 cell center に snap (0.5 を足してから floor で四捨五入相当)
             const float gx = std::floor(p.x / g + 0.5f) * g;
             const float gy = std::floor(p.y / g + 0.5f) * g;
             const float gz = std::floor(p.z / g + 0.5f) * g;
@@ -187,7 +187,7 @@ namespace NS::Scene
 
         bool TryGroundPlaneFallback(const NS::Core::Ray& ray, NS::Core::Vector3& outCenter, float g) noexcept
         {
-            // 上向き ray / 水平 ray は地面に当たらない。
+            // 上向き ray / 水平 ray は地面に当たらない
             if (ray.direction.y > -1e-4f)
                 return false;
             const float t = -ray.position.y / ray.direction.y;

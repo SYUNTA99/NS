@@ -1,7 +1,5 @@
 #include "Framework/Physics/SweptAABB.h"
 
-#include <DirectXMath.h>
-
 #include <algorithm>
 #include <cmath>
 
@@ -10,8 +8,8 @@ namespace
     using NS::Core::AABB;
     using NS::Core::Vector3;
 
-    /// Capsule の片端 (sphere) を motion だけ swept した時に AABB と最初に当たる TOI を返す。
-    /// AABB を radius で膨張 → 線分 vs 膨張 AABB の slab test。
+    /// Capsule の片端 (sphere) を motion だけ swept した時に AABB と最初に当たる TOI を返す
+    /// AABB を radius で膨張 → 線分 vs 膨張 AABB の slab test
     bool SweptSphereVsAABB(const Vector3& start,
                            const Vector3& motion,
                            const AABB& box,
@@ -118,9 +116,9 @@ namespace NS::Physics
                             float& outToi,
                             NS::Core::Vector3& outNormal) noexcept
     {
-        // Capsule の中心軸線分の 2 endpoint をそれぞれ sphere swept する近似実装。
-        // Mario 系プラットフォーマー用途では Cylinder 部分の側面接触精度は要求されない。
-        // 公開 Capsule 型は axis 単位長を強制しないため、ここで正規化する (非単位入力で TOI が歪む防止)。
+        // Capsule の中心軸線分の 2 endpoint をそれぞれ sphere swept する近似実装
+        // Mario 系プラットフォーマー用途では Cylinder 部分の側面接触精度は要求されない
+        // 公開 Capsule 型は axis 単位長を強制しないため、ここで正規化する (非単位入力で TOI が歪む防止)
         NS::Core::Vector3 axis = capsule.axis;
         const float axisLenSq = axis.x * axis.x + axis.y * axis.y + axis.z * axis.z;
         if (axisLenSq > 1e-12f)

@@ -12,7 +12,7 @@ namespace EditorNs = NS::Game::Editor;
 
 /// Play 中の LevelData 書込禁止保証。 600 tick (10 秒 @60Hz) を回した後の
 /// CRC32 が Enter 前と一致することで、 PlayMode 経路で LevelData が変更されないことを
-/// runtime にも検証する (compile-time の const& 受取と二段防御)。
+/// runtime にも検証する (compile-time の const& 受取と二段防御)
 TEST(PlayModeCrc, RoundTripPreservesLevelData_PMODE_06)
 {
     LevelNs::LevelData level;

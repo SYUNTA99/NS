@@ -6,22 +6,20 @@
 #include "Framework/Physics/SweptAABB.h"
 #include "Framework/Physics/SweptTriangle.h"
 
-#include <DirectXMath.h>
-
 #include <algorithm>
 #include <cmath>
 
 namespace
 {
     constexpr int kMaxSubSteps = 4;
-    // 壁との安全マージン。小さすぎると毎フレーム toi=0 で hit が連続して進まなくなる (stuck)。
-    // 1cm 離れて stop することで次フレームの slide motion が確実に進む。
+    // 壁との安全マージン。小さすぎると毎フレーム toi=0 で hit が連続して進まなくなる (引っかかり)
+    // 1cm 離れて stop することで次フレームの slide motion が確実に進む
     constexpr float kSkin = 0.01f;
-    // 着地直後の player.y bounce で grounded flicker するのを抑える許容距離。
-    // Unity の CharacterController.isGrounded の有名な flicker bug 対策と同じ raycast 補助。
+    // 着地直後に player.y が跳ねて grounded がちらつくのを抑える許容距離
+    // raycast を少し下まで延ばして接地を拾い続け、grounded 判定の点滅を防ぐ補助
     constexpr float kGroundProbeDistance = 0.2f;
     // 床判定の cosine 閾値。 normal.y がこれを超える接触面を walkable floor 扱い、
-    // 以下は wall として slide させる。 cos 45 ≈ 0.707 なので 45 度を含めるべく 0.7 を採用。
+    // 以下は wall として slide させる。 cos 45 ≈ 0.707 なので 45 度を含めるべく 0.7 を採用
     constexpr float kFloorNormalY = 0.7f;
 } // namespace
 
@@ -45,8 +43,8 @@ namespace NS::Physics
 
         for (int step = 0; step < kMaxSubSteps; ++step)
         {
-            // substep 内で hit -> slide -> 残り motion で再 swept を最大 kMaxSlideIters 回チェイン。
-            // これで床に接触したまま壁に走った時にも壁 hit が無視されず stop する。
+            // substep 内で hit -> slide -> 残り motion で再 swept を最大 kMaxSlideIters 回チェイン
+            // これで床に接触したまま壁に走った時にも壁 hit が無視されず stop する
             constexpr int kMaxSlideIters = 4;
             float remainingTime = 1.0f; // この substep のうち未消費の比率 (0..1)
 
@@ -84,7 +82,7 @@ namespace NS::Physics
 
                 // AABB と Triangle 双方を同じ substep 内で sweep し、 最小 TOI 側の接触面で
                 // velocity を slide させる。 slope と solid block を混在させた場合でも
-                // 一回の解決で済むので jitter を避けられる。
+                // 一回の解決で済むのでガタつきを避けられる
                 for (const Triangle& tri : input.worldTriangles)
                 {
                     float toi = 1.0f;
@@ -128,12 +126,12 @@ namespace NS::Physics
         }
 
         // 補助の grounded probe: Capsule 底端から下方向に short ray。床ギリギリで停止した
-        // ケースを補足する (slide 後に anyHit が false になり grounded が立たない問題回避)。
+        // ケースを補足する (slide 後に anyHit が false になり grounded が立たない問題回避)
         if (!result.grounded)
         {
             const NS::Core::Vector3 bottomCenter{
                 result.position.x, result.position.y - input.capsuleHalfHeight, result.position.z};
-            const DirectX::SimpleMath::Ray ray(bottomCenter, DirectX::SimpleMath::Vector3(0.0f, -1.0f, 0.0f));
+            const NS::Core::Ray ray(bottomCenter, NS::Core::Vector3{0.0f, -1.0f, 0.0f});
             for (const NS::Core::AABB& box : input.world)
             {
                 float dist = 0.0f;

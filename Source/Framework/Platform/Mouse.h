@@ -1,12 +1,12 @@
 #pragma once
 
 /// @file Mouse.h
-/// @brief NS::Platform::Mouse / MouseButton — マウス入力の状態保持。
+/// @brief NS::Platform::Mouse / MouseButton — マウス入力の状態保持
 ///
 /// @details 座標はウィンドウのクライアント領域 (左上原点)、 ホイールは
 /// `WHEEL_DELTA` (=120) 単位の縦スクロール。 `OnMove` / `OnButton*` / `OnWheel`
 /// は WndProc 経由で呼ばれる。 `Update()` は fixed step ループの頭で 1 回呼び、
-/// previous 状態の退避とホイールのリセットを行う。 マルチスレッドは未サポート。
+/// previous 状態の退避とホイールのリセットを行う。 マルチスレッドは未サポート
 
 #include <array>
 #include <cstddef>
@@ -14,8 +14,8 @@
 namespace NS::Platform
 {
 
-    /// マウスボタン識別子。kCount は配列サイズ用番兵。
-    /// X1 / X2 は OS 慣習に従う5 ボタンマウスのサイドボタン。
+    /// マウスボタン識別子。kCount は配列サイズ用番兵
+    /// X1 / X2 は OS 慣習に従う5 ボタンマウスのサイドボタン
     enum class MouseButton : int
     {
         Left = 0,
@@ -27,9 +27,9 @@ namespace NS::Platform
         kCount
     };
 
-    /// マウス入力の現在/前フレーム状態を保持する。
-    /// `Update()` をフレーム頭で 1 回呼び、`OnMove` / `OnButton*` / `OnWheel` は WndProc 経由で呼ばれる。
-    /// 座標はウィンドウのクライアント領域、ホイールは WHEEL_DELTA (=120) 単位の縦スクロール。
+    /// マウス入力の現在/前フレーム状態を保持する
+    /// `Update()` をフレーム頭で 1 回呼び、`OnMove` / `OnButton*` / `OnWheel` は WndProc 経由で呼ばれる
+    /// 座標はウィンドウのクライアント領域、ホイールは WHEEL_DELTA (=120) 単位の縦スクロール
     class Mouse
     {
     public:
@@ -47,21 +47,21 @@ namespace NS::Platform
         [[nodiscard]] int DeltaX() const noexcept { return m_x - m_prevX; }
         [[nodiscard]] int DeltaY() const noexcept { return m_y - m_prevY; }
 
-        /// 縦ホイールデルタ。WHEEL_DELTA (=120) 単位、正=奥/上、負=手前/下。
-        /// Update() で 0 リセット。
+        /// 縦ホイールデルタ。WHEEL_DELTA (=120) 単位、正=奥/上、負=手前/下
+        /// Update() で 0 リセット
         [[nodiscard]] int WheelDelta() const noexcept { return m_wheel; }
 
-        /// previous = current のコピー (ボタン状態 + 位置 x/y) + wheel = 0 リセット。
-        /// フレーム頭で 1 回呼ぶ。次フレームでの差分判定 (Pressed/Released/Delta*) の基準を更新する。
+        /// previous = current のコピー (ボタン状態 + 位置 x/y) + wheel = 0 リセット
+        /// フレーム頭で 1 回呼ぶ。次フレームでの差分判定 (Pressed/Released/Delta*) の基準を更新する
         void Update() noexcept;
 
-        /// WndProc から呼ばれる内部 API。
+        /// WndProc から呼ばれる内部 API
         void OnMove(int x, int y) noexcept;
         void OnButtonDown(MouseButton b) noexcept;
         void OnButtonUp(MouseButton b) noexcept;
         void OnWheel(int delta) noexcept;
 
-        /// フォーカス喪失時に呼ぶ。ボタン状態とホイールをクリア (位置は維持)。
+        /// フォーカス喪失時に呼ぶ。ボタン状態とホイールをクリア (位置は維持)
         void ClearState() noexcept;
 
     private:

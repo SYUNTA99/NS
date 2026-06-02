@@ -45,9 +45,9 @@ TEST(SweptCapsuleTest, NoHitWhenMotionPointsAway)
 
 TEST(SweptCapsuleTest, HitWhenMovingDownOntoFloor)
 {
-    // Capsule (radius=0.4, halfHeight=0.5) center y=3 → 底端 y=2.1。
-    // 床 AABB (center y=0, extents y=0.5) の天面 y=0.5。差分 = 1.6m。
-    // motion y=-3.2 で確実に貫通する。
+    // Capsule (radius=0.4, halfHeight=0.5) center y=3 → 底端 y=2.1
+    // 床 AABB (center y=0, extents y=0.5) の天面 y=0.5。差分 = 1.6m
+    // motion y=-3.2 で確実に貫通する
     Capsule c = MakeCapsule({0.0f, 3.0f, 0.0f});
     AABB floor = MakeAABB({0.0f, 0.0f, 0.0f}, {5.0f, 0.5f, 5.0f});
     Vector3 motion{0.0f, -3.2f, 0.0f};

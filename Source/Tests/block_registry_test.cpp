@@ -35,7 +35,7 @@ TEST(BlockRegistry, NextSlopeBlockOnNonSlopeIsUnchanged)
 
 TEST(BlockRegistry, RotationToYawIsQuarterTurns)
 {
-    // rotation 0/1/2/3 が 0/90/180/270° へ対応することを確認する。
+    // rotation 0/1/2/3 が 0/90/180/270° へ対応することを確認する
     constexpr float kPi = 3.14159265358979323846f;
     EXPECT_NEAR(EditorNs::BlockRotationToYaw(0), 0.0f, 1e-4f);
     EXPECT_NEAR(EditorNs::BlockRotationToYaw(1), kPi * 0.5f, 1e-4f);

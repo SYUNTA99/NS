@@ -54,9 +54,9 @@ TEST_F(SkyboxRenderingTest, DepthStateIsLessEqual)
     NS::Graphics::detail::GetDepthStateDesc(skybox, desc);
 
     EXPECT_TRUE(desc.DepthEnable);
-    // skybox は z=1 の far plane に張り付くので LESS_EQUAL 必須。
+    // skybox は z=1 の far plane に張り付くので LESS_EQUAL 必須
     EXPECT_EQ(desc.DepthFunc, D3D11_COMPARISON_LESS_EQUAL);
-    // depth には書き込まない (後続透過オブジェクトのため)。
+    // depth には書き込まない (後続透過オブジェクトのため)
     EXPECT_EQ(desc.DepthWriteMask, D3D11_DEPTH_WRITE_MASK_ZERO);
 }
 
@@ -74,7 +74,7 @@ TEST_F(SkyboxRenderingTest, RasterFrontCull)
     NS::Graphics::detail::GetRasterStateDesc(skybox, desc);
 
     EXPECT_EQ(desc.FillMode, D3D11_FILL_SOLID);
-    // inside-out cube を視点中心で描くので FRONT or NONE が許容される。
+    // inside-out cube を視点中心で描くので FRONT or NONE が許容される
     const bool cullOk = (desc.CullMode == D3D11_CULL_FRONT) || (desc.CullMode == D3D11_CULL_NONE);
     EXPECT_TRUE(cullOk);
 }
@@ -89,7 +89,7 @@ TEST_F(SkyboxRenderingTest, RenderWithFallbackDoesNotCrash)
     Skybox skybox(renderer);
     ASSERT_TRUE(skybox.IsValid());
 
-    // LoadCubemap を呼ばずに Render() しても fallback が描かれてクラッシュしないこと。
+    // LoadCubemap を呼ばずに Render() しても fallback が描かれてクラッシュしないこと
     NS::Core::Matrix vpNoTranslate = NS::Core::Matrix::Identity;
     skybox.Render(vpNoTranslate);
     SUCCEED();

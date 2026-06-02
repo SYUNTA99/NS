@@ -20,7 +20,7 @@ TEST(PlayMode, EnterInitializesPlayerAtSpawn)
     mode.Enter(lv, play);
 
     EXPECT_NEAR(play.playerPosition.x, 5.0f, 1e-4f);
-    // y は spawn セル底面 + (capsule halfHeight + radius) + 1cm lift = spawnY + 0.41。
+    // y は spawn セル底面 + (capsule halfHeight + radius) + 1cm lift = spawnY + 0.41
     EXPECT_NEAR(play.playerPosition.y, 2.41f, 1e-3f);
     EXPECT_NEAR(play.playerPosition.z, 3.0f, 1e-4f);
     EXPECT_EQ(play.coinCount, 0);
@@ -35,7 +35,7 @@ TEST(PlayMode, PausedTickDoesNotEvaluateRules)
     lv.spawnX = 0;
     lv.spawnY = 0;
     lv.spawnZ = 0;
-    // spawn セル中心に coin を置くと中心距離が近く、 非 paused なら取得される位置。
+    // spawn セル中心に coin を置くと中心距離が近く、 非 paused なら取得される位置
     lv.blocks.push_back({0, 0, 0, EditorNs::kBlockIdCoin, 0, 0});
 
     LevelNs::PlayState play;
@@ -44,7 +44,7 @@ TEST(PlayMode, PausedTickDoesNotEvaluateRules)
     play.paused = true;
     mode.Tick(lv, play, 1.0f / 60.0f);
 
-    // paused 中はルール (coin 取得 / 落下死) を一切評価しない。
+    // paused 中はルール (coin 取得 / 落下死) を一切評価しない
     EXPECT_EQ(play.coinCount, 0);
 }
 
@@ -55,8 +55,8 @@ TEST(PlayMode, FallDeathTriggersWhenBelowThreshold)
     LevelNs::PlayMode mode;
 
     mode.Enter(lv, play);
-    // 物理は CMC が担うため、 PlayMode は Transform からミラーされた playerPosition を読むだけ。
-    // 閾値より下へ置いて Tick すると落下死が立つ。
+    // 物理は CMC が担うため、 PlayMode は Transform からミラーされた playerPosition を読むだけ
+    // 閾値より下へ置いて Tick すると落下死が立つ
     play.playerPosition.y = LevelNs::PlayMode::kFallDeathThreshold - 1.0f;
     mode.Tick(lv, play, 1.0f / 60.0f);
 
@@ -69,7 +69,7 @@ TEST(PlayMode, CoinContactIncrementsCounter)
     lv.spawnX = 0;
     lv.spawnY = 0;
     lv.spawnZ = 0;
-    // player の spawn セル中心と同じ位置に coin を置くと中心距離 0 で必ず pickup。
+    // player の spawn セル中心と同じ位置に coin を置くと中心距離 0 で必ず pickup
     lv.blocks.push_back({0, 0, 0, EditorNs::kBlockIdCoin, 0, 0});
 
     LevelNs::PlayState play;

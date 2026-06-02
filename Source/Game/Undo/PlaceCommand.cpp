@@ -6,7 +6,7 @@ namespace NS::Game::Undo
 {
     namespace
     {
-        /// 同 cell (x, y, z) の BlockEntry を線形検索。 将来 spatial hash に置換予定。
+        /// 同 cell (x, y, z) の BlockEntry を線形検索。 将来 spatial hash に置換予定
         auto FindCell(NS::Game::Level::LevelData& level, std::int16_t x, std::int16_t y, std::int16_t z)
         {
             return std::find_if(level.blocks.begin(), level.blocks.end(), [x, y, z](const auto& b) {

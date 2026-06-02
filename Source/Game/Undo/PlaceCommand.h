@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file PlaceCommand.h
-/// @brief 指定 cell に block を配置する Command。 既存 block があれば置換、 Undo で復元。
+/// @brief 指定 cell に block を配置する Command。 既存 block があれば置換、 Undo で復元
 
 #include "Game/Level/LevelData.h"
 #include "Game/Undo/ICommand.h"

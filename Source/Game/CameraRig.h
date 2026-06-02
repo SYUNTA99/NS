@@ -15,10 +15,10 @@ namespace NS::Scene
     class Transform;
 } // namespace NS::Scene
 
-/// 追従カメラの GameObject (固定スロット)。
+/// 追従カメラの GameObject (固定スロット)
 /// CameraComponent + ThirdPersonFollowComponent を named member として保有し、
-/// ctor 内で follow→camera / follow←input / follow←movement の参照配線を済ませる。
-/// 入力 / 追従対象 Transform / movement の寿命は呼出側 (LevelEditorScene) が保証する。
+/// コンストラクタ内で follow→camera / follow←input / follow←movement の参照配線を済ませる
+/// 入力 / 追従対象 Transform / movement の寿命は呼出側 (LevelEditorScene) が保証する
 class CameraRig : public NS::Scene::GameObject
 {
 public:

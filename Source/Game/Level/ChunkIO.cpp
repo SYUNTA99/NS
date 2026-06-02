@@ -21,11 +21,11 @@ namespace NS::Game::Level
         constexpr char kSpwnFourCc[4] = {'S', 'P', 'W', 'N'};
 
         /// chunk header (FourCC + size) と CRC3 chunk の上限は 16MB に hard cap、
-        /// 巨大 size に対する memory exhaustion を防ぐ (T-03-09)。
+        /// 巨大 size に対する memory exhaustion を防ぐ
         constexpr std::size_t kMaxLevelFileBytes = 16u * 1024u * 1024u;
 
         /// 何個まで block を許容するか。 攻撃的な block_count u32 値で
-        /// 大量 allocation を引き起こさない上限 (T-03-08)。
+        /// 大量 allocation を引き起こさない上限
         constexpr std::uint32_t kMaxBlockCount = 100'000u;
 
         bool FourCcEqual(const char a[4], const char b[4]) noexcept
@@ -111,7 +111,7 @@ namespace NS::Game::Level
             return false;
         }
 
-        // 既存 buffer 全体に対する CRC32 を計算し、 CRC3 chunk として末尾に書き込む。
+        // 既存 buffer 全体に対する CRC32 を計算し、 CRC3 chunk として末尾に書き込む
         const std::uint32_t crc = detail::Crc32(std::span<const std::byte>(m_buffer.data(), m_buffer.size()));
         AppendBytes(m_buffer, kCrcFourCc, 4);
         const std::uint32_t crcSize = sizeof(std::uint32_t);
@@ -187,7 +187,7 @@ namespace NS::Game::Level
             return;
         }
 
-        // CRC3 chunk を末尾から検出。 仕様上は最終 chunk なので 12 byte 巻き戻して読む。
+        // CRC3 chunk を末尾から検出。 仕様上は最終 chunk なので 12 byte 巻き戻して読む
         const std::size_t crcStart = m_buffer.size() - (4 + 4 + 4);
         if (!FourCcEqual(reinterpret_cast<const char*>(m_buffer.data() + crcStart), kCrcFourCc))
         {
@@ -218,7 +218,7 @@ namespace NS::Game::Level
             return;
         }
 
-        // 内部 cursor は Magic + Version 直後 (= 最初の chunk 先頭) に置く。
+        // 内部 cursor は Magic + Version 直後 (= 最初の chunk 先頭) に置く
         m_cursor = 8;
         m_valid = true;
     }
@@ -230,7 +230,7 @@ namespace NS::Game::Level
             return false;
         }
 
-        // CRC3 までを線形走査。 未知 FourCC は size 分 skip。
+        // CRC3 までを線形走査。 未知 FourCC は size 分 skip
         std::size_t pos = 8;
         const std::size_t fileEnd = m_buffer.size();
         while (pos + 8 <= fileEnd)
@@ -251,7 +251,7 @@ namespace NS::Game::Level
 
             if (FourCcEqual(chunkFourCc, kCrcFourCc))
             {
-                // CRC3 まで来たら見つからなかったということ。
+                // CRC3 まで来たら見つからなかったということ
                 return false;
             }
 
@@ -357,7 +357,7 @@ namespace NS::Game::Level
 
         if (reader.SeekChunk(kMetaFourCc, size))
         {
-            // META は厳密 8 byte だが forward-compat のため不足 / 余りは無害化。
+            // META は厳密 8 byte だが forward-compat のため不足 / 余りは無害化
             if (size >= 8)
             {
                 reader.Read(&outLevel.themeId, sizeof(outLevel.themeId));
@@ -385,7 +385,7 @@ namespace NS::Game::Level
                 outLevel = LevelData{};
                 return false;
             }
-            // chunk 残量チェック (truncated reject)。
+            // chunk 残量チェック (truncated reject)
             const std::size_t expectedDataBytes = blockCount * sizeof(BlockEntry);
             if (expectedDataBytes + sizeof(blockCount) > size)
             {

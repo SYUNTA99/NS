@@ -191,8 +191,8 @@ namespace NS::Graphics
                 const auto* data = reinterpret_cast<const std::uint8_t*>(bytes.data());
                 if (IsDdsExtension(desc.path))
                 {
-                    // DDS は内蔵 mipmap を尊重、generateMipmaps フラグは無視。
-                    // mipmap が欲しければ Texconv.exe 等で事前生成した DDS を渡すこと。
+                    // DDS は内蔵 mipmap を尊重、generateMipmaps フラグは無視
+                    // mipmap が欲しければ Texconv.exe 等で事前生成した DDS を渡すこと
                     loaded = TryLoadDds(device, context, data, bytes.size(), m_pImpl->resource, m_pImpl->srv);
                 }
                 else
@@ -228,7 +228,7 @@ namespace NS::Graphics
         int fbH = 0;
         if (!CreateMagentaFallback(device, m_pImpl->resource, m_pImpl->srv, fbW, fbH))
         {
-            // fallback も失敗したら IsValid()==false、context だけ残らないよう統一クリアする。
+            // fallback も失敗したら IsValid()==false、context だけ残らないよう統一クリアする
             m_pImpl->context.Reset();
             return;
         }

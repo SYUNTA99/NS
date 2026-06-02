@@ -142,7 +142,7 @@ float4 PSMain() : SV_Target
             return true;
         }
 
-        /// 全成功時のみ out* に commit するため、部分成功時のリーク扱いが呼出側に漏れない。
+        /// 全成功時のみ out* に commit するため、部分成功時のリーク扱いが呼出側に漏れない
         bool BuildShaderPair(ID3D11Device* device,
                              const void* vsBytes,
                              std::size_t vsSize,

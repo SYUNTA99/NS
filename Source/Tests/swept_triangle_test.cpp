@@ -25,8 +25,8 @@ namespace
         return c;
     }
 
-    /// 角度 `angleDeg` で +Z 方向に上昇する 1×1 wedge slope の slope quad を 1 三角形として返す。
-    /// CCW winding で計算した normal は (0, cos(angle), -sin(angle)) になる。
+    /// 角度 `angleDeg` で +Z 方向に上昇する 1×1 wedge slope の slope quad を 1 三角形として返す
+    /// CCW winding で計算した normal は (0, cos(angle), -sin(angle)) になる
     Triangle MakeWedgeSlopeTriangle(float angleDeg) noexcept
     {
         const float t = std::tan(angleDeg * kPi / 180.0f);
@@ -110,7 +110,7 @@ TEST(SweptTriangleTest, FifteenDegreeAscent)
 TEST(SweptTriangleTest, NoIntersectReturnsToi1)
 {
     const Triangle tri = MakeWedgeSlopeTriangle(45.0f);
-    // motion は slope 表面に沿う方向 (+X 軸方向) — face normal とは直交、 三角形に交わらない。
+    // motion は slope 表面に沿う方向 (+X 軸方向) — face normal とは直交、 三角形に交わらない
     const Capsule c = MakeCapsule({-5.0f, 5.0f, 0.0f});
     const Vector3 motion{2.0f, 0.0f, 0.0f};
 
@@ -124,8 +124,8 @@ TEST(SweptTriangleTest, NoIntersectReturnsToi1)
 
 TEST(SweptTriangleTest, FloorVsWallClassification)
 {
-    // contactNormal.y > 0.7 を floor、 それ以下を wall とする境界判定。
-    // CharacterController 側の判定なので、 ここでは normal.y の値そのものを assert する。
+    // contactNormal.y > 0.7 を floor、 それ以下を wall とする境界判定
+    // CharacterController 側の判定なので、 ここでは normal.y の値そのものを assert する
     {
         const Triangle tri = MakeWedgeSlopeTriangle(45.0f);
         const Capsule c = MakeCapsule({0.0f, 1.0f, -1.0f});
@@ -134,11 +134,11 @@ TEST(SweptTriangleTest, FloorVsWallClassification)
         Vector3 normal{};
         const bool hit = SweptCapsuleVsTriangle(c, motion, tri, toi, normal);
         EXPECT_TRUE(hit);
-        // 45 度は cos(45) ≈ 0.707、 0.7 を超える → walkable floor。
+        // 45 度は cos(45) ≈ 0.707、 0.7 を超える → walkable floor
         EXPECT_GT(normal.y, 0.7f);
     }
     {
-        // 60 度勾配 (cos 60 = 0.5) は 0.7 以下、 wall として扱われる境界の反対側。
+        // 60 度勾配 (cos 60 = 0.5) は 0.7 以下、 wall として扱われる境界の反対側
         const Triangle tri = MakeWedgeSlopeTriangle(60.0f);
         const Capsule c = MakeCapsule({0.0f, 1.5f, -1.0f});
         const Vector3 motion{0.0f, 0.0f, 2.0f};

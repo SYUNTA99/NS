@@ -20,7 +20,7 @@ namespace NS::Physics
         const float yTop = -ey + height;
 
         // SlopeBlock の transform 回転 (CreateFromYawPitchRoll(yaw)) と同じ yaw を使うことで
-        // 描画 mesh と collider の向きが一致する。
+        // 描画 mesh と collider の向きが一致する
         const NS::Core::Matrix rot = NS::Core::Matrix::CreateRotationY(yawRadians);
 
         const auto place = [&](float x, float y, float z) {

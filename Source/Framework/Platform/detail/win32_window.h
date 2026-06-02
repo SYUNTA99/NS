@@ -10,7 +10,7 @@
 namespace NS::Platform
 {
 
-    /// Window の内部状態。win32 依存のシンボルはこのヘッダ以下にのみ存在する。
+    /// Window の内部状態。win32 依存のシンボルはこのヘッダ以下にのみ存在する
     struct Window::Impl
     {
         HWND hwnd = nullptr;

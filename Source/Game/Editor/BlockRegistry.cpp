@@ -57,19 +57,19 @@ namespace NS::Game::Editor
         case kBlockIdSlope30:
         case kBlockIdSlope22:
         case kBlockIdSlope15:
-            // solid と同系色だが少しウォーム寄りで識別できるようにする (placeholder)。
+            // solid と同系色だが少しウォーム寄りで識別できるようにする (placeholder)
             return NS::Core::Color{0.78f, 0.65f, 0.50f, 1.0f};
         case kBlockIdPole:
-            // 木製ポールを意識した茶色系。
+            // 木製ポールを意識した茶色系
             return NS::Core::Color{0.55f, 0.40f, 0.25f, 1.0f};
         case kBlockIdHazard:
-            // ダメージを示す警告色 (赤橙系)。 通常 block と一目で区別する。
+            // ダメージを示す警告色 (赤橙系)。 通常 block と一目で区別する
             return NS::Core::Color{0.95f, 0.30f, 0.15f, 1.0f};
         case kBlockIdWater:
-            // 水のシアン系。 透過マテリアルが未配線な間も色で識別可能にする。
+            // 水のシアン系。 透過マテリアルが未配線な間も色で識別可能にする
             return NS::Core::Color{0.20f, 0.55f, 0.85f, 0.55f};
         case kBlockIdDecoration:
-            // 装飾の柔らかい緑系 (草 / 茂みを連想)。 衝突しない目印として淡め。
+            // 装飾の柔らかい緑系 (草 / 茂みを連想)。 衝突しない目印として淡め
             return NS::Core::Color{0.50f, 0.75f, 0.40f, 1.0f};
         default:
             return NS::Core::Color{1.0f, 0.0f, 1.0f, 1.0f};
@@ -78,8 +78,8 @@ namespace NS::Game::Editor
 
     bool IsSolidBlock(std::uint16_t blockId) noexcept
     {
-        // 「cube 形状の固形 block で InstanceBatcher の cube bucket に乗せる対象」 を判定する述語。
-        // slope / pole / hazard / water / decoration は専用の Component や mesh を持つため対象外。
+        // 「cube 形状の固形 block で InstanceBatcher の cube bucket に乗せる対象」 を判定する述語
+        // slope / pole / hazard / water / decoration は専用の Component や mesh を持つため対象外
         return blockId == kBlockIdSolid;
     }
 
@@ -126,7 +126,7 @@ namespace NS::Game::Editor
     bool IsRotatableBlock(std::uint16_t blockId) noexcept
     {
         // R で 90° 回す対象。 向きが意味を持つ slope と通常の固形 block。 pole (Y 対称) や
-        // water / decoration は回しても見た目が変わらないので除外する。
+        // water / decoration は回しても見た目が変わらないので除外する
         return IsSlopeBlock(blockId) || IsSolidBlock(blockId);
     }
 
@@ -152,8 +152,8 @@ namespace NS::Game::Editor
 
     bool IsCollidable(std::uint16_t blockId) noexcept
     {
-        // hazard は AABB 固形 + 接触ダメージ。 water / decoration は player を素通しさせるため非衝突。
-        // pole は capsule との衝突解決はせず掴まり state machine 経由で扱うため、 物理 collidable ではない。
+        // hazard は AABB 固形 + 接触ダメージ。 water / decoration は player を素通しさせるため非衝突
+        // pole は capsule との衝突解決はせず掴まり state machine 経由で扱うため、 物理 collidable ではない
         return IsSolidBlock(blockId) || IsSlopeBlock(blockId) || IsHazardBlock(blockId);
     }
 } // namespace NS::Game::Editor

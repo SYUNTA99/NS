@@ -73,7 +73,7 @@ TEST_F(CubemapLoaderTest, LoadMissingPathFallsBack)
     const bool ok = skybox.LoadCubemap(missing);
     EXPECT_FALSE(ok);
     EXPECT_TRUE(skybox.IsUsingFallback());
-    // fallback magenta cubemap が常に生成されているので SRV は非 null。
+    // fallback magenta cubemap が常に生成されているので SRV は非 null
     EXPECT_NE(NS::Graphics::detail::GetCubemapSrv(skybox), nullptr);
 }
 
@@ -112,7 +112,7 @@ TEST_F(CubemapLoaderTest, ConstructedSkyboxHasFallbackSrv)
     ASSERT_TRUE(renderer.IsValid());
 
     // LoadCubemap 呼び出し前の初期状態でも fallback magenta SRV が用意されており、
-    // Render() を即時呼んでもクラッシュしないことを保証する。
+    // Render() を即時呼んでもクラッシュしないことを保証する
     Skybox skybox(renderer);
     EXPECT_TRUE(skybox.IsValid());
     EXPECT_TRUE(skybox.IsUsingFallback());

@@ -18,8 +18,8 @@ namespace NS::Physics
         const float cz = capsule.center.z;
         const float hh = capsule.halfHeight;
 
-        // 芯は縦線分なので X / Z は点、 Y だけ [cy-hh, cy+hh] の範囲を持つ。
-        // 各軸で box の外側にはみ出したぶんのギャップを取り、 二乗距離を radius と比較する。
+        // 芯は縦線分なので X / Z は点、 Y だけ [cy-hh, cy+hh] の範囲を持つ
+        // 各軸で box の外側にはみ出したぶんのギャップを取り、 二乗距離を radius と比較する
         const float gapX = std::max({minX - cx, 0.0f, cx - maxX});
         const float gapZ = std::max({minZ - cz, 0.0f, cz - maxZ});
         const float gapY = std::max({minY - (cy + hh), 0.0f, (cy - hh) - maxY});

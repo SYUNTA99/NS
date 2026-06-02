@@ -11,7 +11,7 @@
 
 namespace
 {
-    /// 水平 forward を XZ 平面正規化。長さ 0 の入力は world -Z+ にフォールバック。
+    /// 水平 forward を XZ 平面正規化。長さ 0 の入力は world -Z+ にフォールバック
     [[nodiscard]] NS::Core::Vector3 NormalizeHorizontal(const NS::Core::Vector3& v) noexcept
     {
         const float lenSq = v.x * v.x + v.z * v.z;
@@ -52,7 +52,7 @@ namespace NS::Scene
         const auto& kb = m_input->Keyboard();
         const auto& pad = m_input->Gamepad(0);
 
-        // ImGui のテキスト入力中はキーボード由来の移動 / ジャンプを取り合わない (gamepad は維持)。
+        // ImGui のテキスト入力中はキーボード由来の移動 / ジャンプを取り合わない (gamepad は維持)
         const bool wantKb = (m_imgui != nullptr) && m_imgui->WantCaptureKeyboard();
 
         float kbForward = 0.0f;
@@ -97,7 +97,7 @@ namespace NS::Scene
         };
 
         m_movement->SetDesiredMove(worldDir, speedScale);
-        // climb 中は camera 回転をかける前の生ローカル入力を渡す (前=登る、 右=面に沿って右)。
+        // climb 中は camera 回転をかける前の生ローカル入力を渡す (前=登る、 右=面に沿って右)
         m_movement->SetClimbMove(localX, localZ);
 
         const bool jumpPressed =

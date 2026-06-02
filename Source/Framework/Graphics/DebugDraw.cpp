@@ -29,7 +29,7 @@ namespace
         return s_warned;
     }
 
-    /// 1 frame で 2 vertex 追加。容量超過時は最古の 1 line (2 vertex) を drop。
+    /// 1 frame で 2 vertex 追加。容量超過時は最古の 1 line (2 vertex) を drop
     void PushLine(const NS::Core::Vector3& a, const NS::Core::Vector3& b, const NS::Core::Color& color) noexcept
     {
         auto& v = Storage();
@@ -154,8 +154,8 @@ namespace NS::Graphics::DebugDraw
 
     void Flush(Renderer& /*renderer*/, const NS::Core::Matrix& /*viewProjection*/) noexcept
     {
-        // GPU 描画接続は Player Capsule 表示と並行で実装する。
-        // 蓄積側は完成しているので、現状は 1 度だけ警告して clear する。
+        // GPU 描画接続は Player Capsule 表示と並行で実装する
+        // 蓄積側は完成しているので、現状は 1 度だけ警告して clear する
         if (!FlushWarningShown())
         {
             NS_LOG_WARN(::NS::Core::LogCat::Graphics,

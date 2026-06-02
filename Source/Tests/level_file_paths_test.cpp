@@ -85,7 +85,7 @@ TEST(LevelFilePaths, EnsureDirectoryCreatesAndIsIdempotent)
 
 TEST(LevelFilePaths, EnumerateReturnsSortedSafeNames)
 {
-    // 副作用: 既存 file の列挙のみ確認、 新 file は作らない。
+    // 副作用: 既存 file の列挙のみ確認、 新 file は作らない
     auto names = EditorNs::EnumerateLevelFiles();
     for (std::size_t i = 1; i < names.size(); ++i)
         EXPECT_LE(names[i - 1], names[i]);

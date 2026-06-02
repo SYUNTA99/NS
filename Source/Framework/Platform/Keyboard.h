@@ -1,12 +1,12 @@
 #pragma once
 
 /// @file Keyboard.h
-/// @brief NS::Platform::Keyboard / Key — 物理キー入力の状態保持。
+/// @brief NS::Platform::Keyboard / Key — 物理キー入力の状態保持
 ///
 /// @details `Key` enum は VK コード非依存の独立識別子で公開ヘッダから
 /// `<windows.h>` を排除する間接層。 `OnKeyDown` / `OnKeyUp` は WndProc 経由で
 /// 呼ばれ、 `Update()` は fixed step ループの頭で 1 回呼ぶ (前フレームとの
-/// edge 判定基準を更新)。 マルチスレッドは未サポート (単一スレッド前提)。
+/// edge 判定基準を更新)。 マルチスレッドは未サポート (単一スレッド前提)
 
 #include <array>
 #include <cstddef>
@@ -14,9 +14,9 @@
 namespace NS::Platform
 {
 
-    /// 物理キー識別子。VK コードや特定 OS の値とは独立して定義する。
-    /// 公開ヘッダから <windows.h> を排除するための間接層。
-    /// kCount は配列サイズ用の番兵、Unknown は未マップ VK の戻り値。
+    /// 物理キー識別子。VK コードや特定 OS の値とは独立して定義する
+    /// 公開ヘッダから <windows.h> を排除するための間接層
+    /// kCount は配列サイズ用の番兵、Unknown は未マップ VK の戻り値
     enum class Key : int
     {
         Unknown = 0,
@@ -90,9 +90,9 @@ namespace NS::Platform
         kCount
     };
 
-    /// キーボード入力の現在/前フレーム状態を保持する。
-    /// `Update()` をフレーム頭で 1 回呼び、`OnKeyDown` / `OnKeyUp` は WndProc 経由で呼ばれる。
-    /// マルチスレッドは未サポート (単一スレッド前提)。
+    /// キーボード入力の現在/前フレーム状態を保持する
+    /// `Update()` をフレーム頭で 1 回呼び、`OnKeyDown` / `OnKeyUp` は WndProc 経由で呼ばれる
+    /// マルチスレッドは未サポート (単一スレッド前提)
     class Keyboard
     {
     public:
@@ -107,16 +107,16 @@ namespace NS::Platform
         /// このフレームで離した (前 true → 現 false)
         [[nodiscard]] bool IsReleased(Key k) const noexcept;
 
-        /// previous = current のコピー。次フレーム用の差分判定基準を更新する。
+        /// previous = current のコピー。次フレーム用の差分判定基準を更新する
         void Update() noexcept;
 
-        /// WndProc から呼ばれる内部 API。Key::Unknown は無視する。
+        /// WndProc から呼ばれる内部 API。Key::Unknown は無視する
         void OnKeyDown(Key k) noexcept;
 
-        /// WndProc から呼ばれる内部 API。Key::Unknown は無視する。
+        /// WndProc から呼ばれる内部 API。Key::Unknown は無視する
         void OnKeyUp(Key k) noexcept;
 
-        /// 現在状態を全て false にクリアする (WM_KILLFOCUS で stuck key 防止)。
+        /// 現在状態を全て false にクリアする (WM_KILLFOCUS でキー固着防止)
         void ClearState() noexcept;
 
     private:

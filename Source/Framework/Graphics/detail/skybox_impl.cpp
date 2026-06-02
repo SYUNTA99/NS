@@ -26,16 +26,16 @@ namespace NS::Graphics
 
     namespace
     {
-        // Skybox VS の SkyboxCB と一致するレイアウト。 row_major float4x4 のみ 64 byte。
+        // Skybox VS の SkyboxCB と一致するレイアウト。 row_major float4x4 のみ 64 byte
         struct alignas(16) SkyboxCB
         {
             NS::Core::Matrix viewProj;
         };
         static_assert(sizeof(SkyboxCB) == 64, "SkyboxCB は HLSL 側 cbuffer (b0) と byte 一致が必要");
 
-        // kurt placeholder の 6 face レイアウト。 D3D11 cubemap の標準順は +X / -X / +Y / -Y / +Z / -Z。
-        // kurt の命名 (rt / lf / up / dn / ft / bk) は左手系 LH カメラから見た方向にマップする。
-        // 視覚的に上下逆や水平反転がある場合は個別差替え。
+        // kurt placeholder の 6 face レイアウト。 D3D11 cubemap の標準順は +X / -X / +Y / -Y / +Z / -Z
+        // kurt の命名 (rt / lf / up / dn / ft / bk) は左手系 LH カメラから見た方向にマップする
+        // 視覚的に上下逆や水平反転がある場合は個別差替え
         constexpr std::array<const char*, 6> kKurtFaceFileNames = {
             "space_rt.png", // +X (right)
             "space_lf.png", // -X (left)
@@ -71,7 +71,7 @@ namespace NS::Graphics
         // cubemap SRV (実物 or fallback)
         ComPtr<ID3D11ShaderResourceView> cubemapSrv;
 
-        // テスト / デバッグ用に desc を保持しておく (state object 自体は不透明)。
+        // テスト / デバッグ用に desc を保持しておく (state object 自体は不透明)
         D3D11_DEPTH_STENCIL_DESC depthDesc{};
         D3D11_RASTERIZER_DESC rasterDesc{};
 
@@ -81,7 +81,7 @@ namespace NS::Graphics
 
     namespace
     {
-        // 1x1 マゼンタ cubemap fallback。 ロード未呼出 / 失敗時に使用、 Render の安全保証。
+        // 1x1 マゼンタ cubemap fallback。 ロード未呼出 / 失敗時に使用、 Render の安全保証
         bool CreateMagentaCubemapFallback(ID3D11Device* device, ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
         {
             if (device == nullptr)
@@ -160,9 +160,9 @@ namespace NS::Graphics
             return true;
         }
 
-        // 6 枚 PNG を読み込み、 cubemap として束ねた Texture2D + SRV を作る。
+        // 6 枚 PNG を読み込み、 cubemap として束ねた Texture2D + SRV を作る
         // 各 face は 2D Texture2D として WIC で staging に読み込み、 そこから
-        // ArraySize=6 + MISC_TEXTURECUBE の本体テクスチャに CopySubresourceRegion で転写する。
+        // ArraySize=6 + MISC_TEXTURECUBE の本体テクスチャに CopySubresourceRegion で転写する
         bool LoadSixFacePngCubemap(ID3D11Device* device,
                                    ID3D11DeviceContext* context,
                                    const std::filesystem::path& dir,
@@ -192,8 +192,8 @@ namespace NS::Graphics
 
                 ComPtr<ID3D11Resource> resource;
                 ComPtr<ID3D11ShaderResourceView> tmpSrv;
-                // staging 用に CPU からアクセス可能な形式で読込み、 後で CopySubresourceRegion でコピーする。
-                // WIC はデフォルトで RGBA8 に正規化される。
+                // staging 用に CPU からアクセス可能な形式で読込み、 後で CopySubresourceRegion でコピーする
+                // WIC はデフォルトで RGBA8 に正規化される
                 const HRESULT hr =
                     DirectX::CreateWICTextureFromMemoryEx(device,
                                                           nullptr,
@@ -248,7 +248,7 @@ namespace NS::Graphics
             }
 
             // 6-face cubemap 本体を作る。 mipmap は v1 では生成しない (置物 placeholder、
-            // theme 確定後に texconv で .dds 直接配布に切り替える運用)。
+            // theme 確定後に texconv で .dds 直接配布に切り替える運用)
             D3D11_TEXTURE2D_DESC cubeDesc{};
             cubeDesc.Width = static_cast<UINT>(faceWidth);
             cubeDesc.Height = static_cast<UINT>(faceHeight);
@@ -323,7 +323,7 @@ namespace NS::Graphics
             outDesc = {};
             outDesc.FillMode = D3D11_FILL_SOLID;
             // inside-out cube なので前面を捨てる。 NS の他の不透明描画は CW = front
-            // (Mesh の MakeCube が CW front)。 FrontCCW=FALSE のまま CullMode=FRONT で背面が残る。
+            // (Mesh の MakeCube が CW front)。 FrontCCW=FALSE のまま CullMode=FRONT で背面が残る
             outDesc.CullMode = D3D11_CULL_FRONT;
             outDesc.FrontCounterClockwise = FALSE;
             outDesc.DepthClipEnable = TRUE;
@@ -373,7 +373,7 @@ namespace NS::Graphics
         m_pImpl->device = device;
         m_pImpl->context = context;
 
-        // unit cube mesh。 inside-out 描画なのでサイズは何でも良いが、 1m 立方 (half=0.5) で統一。
+        // unit cube mesh。 inside-out 描画なのでサイズは何でも良いが、 1m 立方 (half=0.5) で統一
         auto geom = MakeCube({0.5f, 0.5f, 0.5f});
         MeshDesc md{};
         md.vertices = geom.vertices.data();
@@ -388,7 +388,7 @@ namespace NS::Graphics
         }
 
         // skybox 専用 shader。 standard と layout (POSITION+TEXCOORD+NORMAL) を共有することで
-        // 既存 input layout を再利用できる。
+        // 既存 input layout を再利用できる
         const auto exeDir = ::NS::Core::FileSystem::GetExeDirectory();
         ShaderProgramDesc sd{};
         sd.vertexShaderPath = exeDir / "Shaders" / "skybox.vs.hlsl";
@@ -403,7 +403,7 @@ namespace NS::Graphics
             return;
         }
 
-        // viewProj を渡す 64 byte の CB。
+        // viewProj を渡す 64 byte の CB
         m_pImpl->cb = std::make_unique<ConstantBuffer>(renderer, sizeof(SkyboxCB));
         if (!m_pImpl->cb->IsValid())
         {
@@ -418,7 +418,7 @@ namespace NS::Graphics
         if (!CreateSkyboxSampler(device, m_pImpl->sampler))
             return;
 
-        // LoadCubemap 未呼出でも Render が安全に動くよう fallback を必ず先に用意する。
+        // LoadCubemap 未呼出でも Render が安全に動くよう fallback を必ず先に用意する
         if (!CreateMagentaCubemapFallback(device, m_pImpl->cubemapSrv))
             return;
 
@@ -442,7 +442,7 @@ namespace NS::Graphics
         }
         else
         {
-            // ディレクトリとして 6 face PNG を試す。 ファイルパスが渡された場合は不存在として fallback へ。
+            // ディレクトリとして 6 face PNG を試す。 ファイルパスが渡された場合は不存在として fallback へ
             std::error_code ec;
             if (std::filesystem::is_directory(path, ec))
             {
@@ -464,7 +464,7 @@ namespace NS::Graphics
             return true;
         }
 
-        // 既存 fallback SRV をそのまま維持し、 呼出側に false を返す。
+        // 既存 fallback SRV をそのまま維持し、 呼出側に false を返す
         m_pImpl->usingFallback = true;
         return false;
     }
@@ -479,7 +479,7 @@ namespace NS::Graphics
         cbData.viewProj = viewProjNoTranslate;
         m_pImpl->cb->Update(cbData);
 
-        // 既存 depth/raster state を退避して draw 後に復元する。
+        // 既存 depth/raster state を退避して draw 後に復元する
         ComPtr<ID3D11DepthStencilState> prevDss;
         UINT prevStencilRef = 0;
         ctx->OMGetDepthStencilState(prevDss.GetAddressOf(), &prevStencilRef);
@@ -499,11 +499,11 @@ namespace NS::Graphics
         ID3D11SamplerState* samplers[1] = {m_pImpl->sampler.Get()};
         ctx->PSSetSamplers(0, 1, samplers);
 
-        // Mesh::Draw は VB / IB / topology / DrawIndexed を一括実行する。
+        // Mesh::Draw は VB / IB / topology / DrawIndexed を一括実行する
         m_pImpl->cubeMesh->Draw();
 
         // バインドした SRV を解除しないと、 後段の通常 Material::Bind が同じ t0 に
-        // Texture2D を再バインドする際に D3D11 ランタイムが警告を出すことがある。
+        // Texture2D を再バインドする際に D3D11 ランタイムが警告を出すことがある
         ID3D11ShaderResourceView* nullSrv[1] = {nullptr};
         ctx->PSSetShaderResources(0, 1, nullSrv);
 

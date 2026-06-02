@@ -133,8 +133,8 @@ TEST_F(MaterialLoggerTest, SetAndClearTextureBindDoesNotCrash)
     Material mat(renderer, desc);
     ASSERT_TRUE(mat.IsValid());
 
-    // SetTexture / ClearTexture / 未割当 slot に ClearTexture の各 call path が crash しないこと。
-    // 内部状態を query する公開 API は意図的に持たない (Deep Module 化、 raw pointer 露出回避)。
+    // SetTexture / ClearTexture / 未割当 slot に ClearTexture の各 call path が crash しないこと
+    // 内部状態を query する公開 API は意図的に持たない (Deep Module 化、 raw pointer 露出回避)
     mat.SetTexture(0u, &texture);
     mat.Bind();
     mat.ClearTexture(0u);

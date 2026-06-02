@@ -1,14 +1,14 @@
 #pragma once
 
 /// @file Clock.h
-/// @brief NS::Core 時刻関連 3 クラス + RAII 計測マクロを単一ヘッダに集約。
+/// @brief NS::Core 時刻関連 3 クラス + RAII 計測マクロを単一ヘッダに集約
 ///
 /// - Clock: 起動時刻基準の時刻ソース (all-static)
 /// - FrameTimer: ゲームループ tick 管理 + 固定タイムステップ accumulator
-/// - ScopedTimer: RAII スコープ計測 (dtor で NS_LOG_DEBUG)
+/// - ScopedTimer: RAII スコープ計測 (デストラクタで NS_LOG_DEBUG)
 /// - NS_SCOPED_TIMER(cat, label): __COUNTER__ ベースの計測マクロ
 ///
-/// 実装は std::chrono::steady_clock 一本、`<windows.h>` 非依存。
+/// 実装は std::chrono::steady_clock 一本、`<windows.h>` 非依存
 
 #include <Framework/Core/LogCategories.h>
 #include <Framework/Core/Logger.h>
@@ -21,7 +21,7 @@
 namespace NS::Core
 {
 
-    /// 起動時刻基準の時刻ソース。最初の呼び出しで起動時刻を保存 (magic static)。
+    /// 起動時刻基準の時刻ソース。最初の呼び出しで起動時刻を保存 (magic static)
     class Clock
     {
     public:
@@ -47,8 +47,8 @@ namespace NS::Core
         }
     };
 
-    /// ゲームループの tick 管理。固定タイムステップ accumulator を内包。
-    /// all-static、 単一 Application 前提で global state を保持する。
+    /// ゲームループの tick 管理。固定タイムステップ accumulator を内包
+    /// all-static、 単一 Application 前提で global state を保持する
     class FrameTimer
     {
     public:
@@ -108,7 +108,7 @@ namespace NS::Core
         static inline int s_fixedSteps = 0;
     };
 
-    /// RAII スコープ計測。dtor で NS_LOG_DEBUG により経過 ms を出力する。
+    /// RAII スコープ計測。デストラクタで NS_LOG_DEBUG により経過 ms を出力する
     class ScopedTimer
     {
     public:
@@ -138,9 +138,9 @@ namespace NS::Core
 #define NS_CLOCK_PASTE_IMPL(a, b) a##b
 #define NS_CLOCK_PASTE(a, b) NS_CLOCK_PASTE_IMPL(a, b)
 
-/// 計測対象のスコープに置く。dtor で `[category] label: X.XXXms` を Debug ログ出力。
-/// NS_ENABLE_PROFILING define 時のみ有効、 通常 build では no-op (Logger spam 回避)。
-/// Profile build は `tools\@build_profile.cmd` で作成する。
+/// 計測対象のスコープに置く。デストラクタで `[category] label: X.XXXms` を Debug ログ出力
+/// NS_ENABLE_PROFILING define 時のみ有効、 通常 build では no-op (ログの乱発を回避)
+/// Profile build は `tools\@build_profile.cmd` で作成する
 #if defined(NS_ENABLE_PROFILING)
 #define NS_SCOPED_TIMER(cat, label)                                                                                    \
     ::NS::Core::ScopedTimer NS_CLOCK_PASTE(ns_scoped_timer_, __COUNTER__)((cat), (label))

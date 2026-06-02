@@ -44,9 +44,9 @@ class PoleBlock;
 class SlopeBlock;
 class WaterBlock;
 
-/// 編集 / プレイ両モードを 1 scene 内で扱う root scene。
+/// 編集 / プレイ両モードを 1 scene 内で扱う root scene
 /// LevelData (永続) + PlayState (一時) + EditorMode を value member で保有し、
-/// 今後 mode toggle / PlayMode を同 scene 内に追加する基盤になる。
+/// 今後 mode toggle / PlayMode を同 scene 内に追加する基盤になる
 class LevelEditorScene : public NS::Scene::SceneBase
 {
 public:
@@ -73,7 +73,7 @@ public:
     [[nodiscard]] NS::Game::Level::PlayMode& PlayModeSub() noexcept { return m_playMode; }
 
     /// 編集 ↔ プレイのモード状態。 単一 enum で同フレーム instant flip する設計
-    /// (Mario Builder 64 の current/target 2 変数 async と異なり、 NS は遷移アニメを持たない)。
+    /// (Mario Builder 64 の current/target 2 変数 async と異なり、 NS は遷移アニメを持たない)
     enum class Mode : std::uint8_t
     {
         Edit,
@@ -83,17 +83,17 @@ public:
     [[nodiscard]] Mode CurrentMode() const noexcept { return m_mode; }
 
     /// Edit → Play。 PlayMode::Enter で spawn 位置に player 再構築、 EditorMode 休止、
-    /// EditorCamera off → ThirdPersonFollow on、 Player 各 Component 再活性化。
+    /// EditorCamera off → ThirdPersonFollow on、 Player 各 Component 再活性化
     void EnterPlay() noexcept;
 
     /// Play → Edit。 PlayMode::Exit で paused/clear/death をリセット、 EditorMode 復帰、
-    /// EditorCamera on → ThirdPersonFollow off、 Player 各 Component 休止。
+    /// EditorCamera on → ThirdPersonFollow off、 Player 各 Component 休止
     void EnterEdit() noexcept;
 
 private:
     /// `m_level.blocks` を観測駆動で見て、 `m_blocks` (Block オブジェクト群) と
     /// `m_collisionWorld` (AABB 配列) を再構築する。 mutation 発生 frame だけ呼ばれる
-    /// dirty flag 経由の observer pattern (毎 frame の全 alloc churn を回避)。
+    /// dirty flag 経由で変更を拾う (毎 frame の全 alloc churn を回避)
     void RebuildBlocksFromLevelData();
 
     std::unique_ptr<NS::Graphics::Mesh> m_cubeMesh;
@@ -107,13 +107,13 @@ private:
     std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
 
     // 角度別 wedge mesh を 4 種だけ shared でキャッシュ。 SlopeBlock 1 個ずつに mesh を持たせず、
-    // scene 寿命のあいだ共有して描画コストとメモリを抑える。
+    // scene 寿命のあいだ共有して描画コストとメモリを抑える
     std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh45;
     std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh30;
     std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh22;
     std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh15;
 
-    // 掴まり系 mesh: 円柱を 1 度だけ生成して全 instance で共有する。
+    // 掴まり系 mesh: 円柱を 1 度だけ生成して全 instance で共有する
     std::unique_ptr<NS::Graphics::Mesh> m_poleMesh;
 
     std::unique_ptr<Player> m_player;
@@ -138,8 +138,8 @@ private:
     NS::Game::Level::PlayMode m_playMode{};
     Mode m_mode = Mode::Edit;
 
-    /// テーマ swap は同一 frame 内で skybox / block / lighting に同じ ThemeData を反映させる必要がある。
+    /// テーマ swap は同一 frame 内で skybox / block / lighting に同じ ThemeData を反映させる必要がある
     /// 同じパスを毎フレーム LoadCubemap し直すと texture I/O が走るので、 最後にロードした絶対パスを
-    /// 記憶しておき、 ThemeRegistry::Get(...).skyboxCubemapPath と差分が出たフレームだけ Reload する。
+    /// 記憶しておき、 ThemeRegistry::Get(...).skyboxCubemapPath と差分が出たフレームだけ Reload する
     std::filesystem::path m_loadedSkyboxPath{};
 };

@@ -15,7 +15,7 @@ namespace
 
     constexpr float kFixedDt = 1.0f / 60.0f;
 
-    /// 衝突なしの環境で N 回 OnUpdate を呼ぶ。debug draw は false 固定。
+    /// 衝突なしの環境で N 回 OnUpdate を呼ぶ。debug draw は false 固定
     void StepN(CharacterMovementComponent& mov, int n)
     {
         std::span<const NS::Core::AABB> empty;
@@ -63,7 +63,7 @@ TEST_F(CharacterMovementTest, SecondJumpDoesNotFireWithoutLanding)
     StepN(mov, 1);
     EXPECT_EQ(mov.JumpsRemaining(), 0);
 
-    // 着地していないので 2 回目 press は無視される。
+    // 着地していないので 2 回目 press は無視される
     mov.SetJumpPressed();
     StepN(mov, 1);
     EXPECT_EQ(mov.JumpsRemaining(), 0);
@@ -167,7 +167,7 @@ TEST_F(CharacterMovementTest, ClimbPoleVerticalUsesClimbChannelNotDesiredDir)
     NS::Scene::PoleComponent* polePtr = &pole;
     mov.SetClimbables(std::span<NS::Scene::PoleComponent* const>(&polePtr, 1));
 
-    // pole に押し込んで掴む (speedScale > deadzone)。
+    // pole に押し込んで掴む (speedScale > deadzone)
     mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
     mov.SetClimbMove(0.0f, 0.0f);
     mov.OnUpdate();
@@ -175,7 +175,7 @@ TEST_F(CharacterMovementTest, ClimbPoleVerticalUsesClimbChannelNotDesiredDir)
 
     const float yAfterGrab = playerObj.Root().Position().y;
 
-    // desiredDir.z=0 でも climbForward=1 で登る → climb 入力が camera 相対 desiredDir 非依存の証明。
+    // desiredDir.z=0 でも climbForward=1 で登る → climb 入力が camera 相対 desiredDir 非依存の証明
     mov.SetDesiredMove({0.0f, 0.0f, 0.0f}, 0.0f);
     mov.SetClimbMove(0.0f, 1.0f);
     mov.OnUpdate();

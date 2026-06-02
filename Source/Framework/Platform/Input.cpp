@@ -14,17 +14,17 @@ namespace NS::Platform
 
     namespace
     {
-        /// 配列インデックスとして安全な Key 値か判定する。
+        /// 配列インデックスとして安全な Key 値か判定する
         /// `enum class : int` の整数キャスト経由で不正値 (Unknown 以下 / kCount 以上 / 負値)
-        /// が来ても m_current/m_previous の境界外アクセスを防ぐ。
+        /// が来ても m_current/m_previous の境界外アクセスを防ぐ
         [[nodiscard]] constexpr bool IsValidKey(Key k) noexcept
         {
             const auto i = static_cast<std::size_t>(k);
             return i > static_cast<std::size_t>(Key::Unknown) && i < static_cast<std::size_t>(Key::kCount);
         }
 
-        /// MouseButton 用の境界チェック。Key と同じ理由で必要。
-        /// MouseButton::Left = 0 始まりなので i >= 0 && i < kCount で判定。
+        /// MouseButton 用の境界チェック。Key と同じ理由で必要
+        /// MouseButton::Left = 0 始まりなので i >= 0 && i < kCount で判定
         [[nodiscard]] constexpr bool IsValidButton(MouseButton b) noexcept
         {
             const auto i = static_cast<std::size_t>(b);
@@ -37,10 +37,10 @@ namespace NS::Platform
             return i < static_cast<std::size_t>(GamepadButton::kCount);
         }
 
-        /// XInput の SHORT スティック生値を -1.0〜1.0 に正規化し、軸別デッドゾーンを適用。
-        /// 負値は /32768、正値は /32767 で対称的にマップする。
-        /// ラジアルではなく軸別デッドゾーン (Mario 系の縦横独立操作向け)。
-        /// deadzone は符号なし: 負値で「全入力が deadzone 越え」と誤判定されるのを防ぐ。
+        /// XInput の SHORT スティック生値を -1.0〜1.0 に正規化し、軸別デッドゾーンを適用
+        /// 負値は /32768、正値は /32767 で対称的にマップする
+        /// ラジアルではなく軸別デッドゾーン (Mario 系の縦横独立操作向け)
+        /// deadzone は符号なし: 負値で「全入力が deadzone 越え」と誤判定されるのを防ぐ
         [[nodiscard]] Stick NormalizeStick(short rawX, short rawY, unsigned short deadzone) noexcept
         {
             const float fx = (rawX < 0) ? static_cast<float>(rawX) / 32768.0f : static_cast<float>(rawX) / 32767.0f;
@@ -52,7 +52,7 @@ namespace NS::Platform
             };
         }
 
-        /// 0〜255 の BYTE トリガー生値を 0.0〜1.0 に正規化、スレッショルド未満は 0.0。
+        /// 0〜255 の BYTE トリガー生値を 0.0〜1.0 に正規化、スレッショルド未満は 0.0
         [[nodiscard]] float NormalizeTrigger(std::uint8_t raw) noexcept
         {
             if (raw < XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
@@ -62,8 +62,8 @@ namespace NS::Platform
             return static_cast<float>(raw) / 255.0f;
         }
 
-        /// XINPUT_GAMEPAD::wButtons のビットマスクと GamepadButton enum の対応表。
-        /// 添字順は GamepadButton 宣言順と一致させる。
+        /// XINPUT_GAMEPAD::wButtons のビットマスクと GamepadButton enum の対応表
+        /// 添字順は GamepadButton 宣言順と一致させる
         constexpr std::array<unsigned short, static_cast<std::size_t>(GamepadButton::kCount)> kButtonBits{
             XINPUT_GAMEPAD_A,
             XINPUT_GAMEPAD_B,

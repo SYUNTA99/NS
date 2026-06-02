@@ -24,7 +24,7 @@ TEST(DecorationBlockTest, NoColliderAttached)
 
     // GameObject::Components() に登録された Component を走査し、
     // StaticColliderComponent 型が混入していないことを保証する。 dynamic_cast を使うのは
-    // 「ヘッダから collider 型が消えていることを runtime でも検証する」 ための明示的な型確認。
+    // 「ヘッダから collider 型が消えていることを runtime でも検証する」 ための明示的な型確認
     const auto& components = deco.Components();
     for (const auto* comp : components)
     {

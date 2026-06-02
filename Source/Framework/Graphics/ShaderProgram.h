@@ -1,14 +1,14 @@
 #pragma once
 
 /// @file ShaderProgram.h
-/// @brief NS::Graphics::ShaderProgram — VS + PS + InputLayout の三位一体バンドル。
+/// @brief NS::Graphics::ShaderProgram — VS + PS + InputLayout の三位一体バンドル
 ///
-/// @details ランタイム `D3DCompile` で `.hlsl` を `vs_5_0` / `ps_5_0` にコンパイル。
+/// @details ランタイム `D3DCompile` で `.hlsl` を `vs_5_0` / `ps_5_0` にコンパイル
 /// VS / PS / InputLayout のいずれかで失敗すると埋込 HLSL の magenta fallback
-/// (PS 出力 RGB=(1,0,1)) に切替え、 `IsUsingFallback()` が true になる。
+/// (PS 出力 RGB=(1,0,1)) に切替え、 `IsUsingFallback()` が true になる
 /// `InputElementFormat` は D3D11 / DXGI を漏らさない独自 enum、 `Mesh::StandardInputLayout()`
 /// から流用する想定。 依存: Renderer の DeviceContext を内部で保持するため Renderer より
-/// 先に破棄すること。
+/// 先に破棄すること
 
 #include <filesystem>
 #include <memory>
@@ -27,13 +27,13 @@ namespace NS::Graphics
 
     namespace detail
     {
-        /// Material 等が直接 D3D11 API に渡すために提供する typed friend accessor。
+        /// Material 等が直接 D3D11 API に渡すために提供する typed friend accessor
         [[nodiscard]] ID3D11VertexShader* GetVertexShader(ShaderProgram& sp) noexcept;
         [[nodiscard]] ID3D11PixelShader* GetPixelShader(ShaderProgram& sp) noexcept;
         [[nodiscard]] ID3D11InputLayout* GetInputLayout(ShaderProgram& sp) noexcept;
     } // namespace detail
 
-    /// 公開 InputElement 用フォーマット。D3D11 / DXGI を漏らさない独自 enum。
+    /// 公開 InputElement 用フォーマット。D3D11 / DXGI を漏らさない独自 enum
     enum class InputElementFormat
     {
         Float2, ///< R32G32_FLOAT
@@ -42,8 +42,8 @@ namespace NS::Graphics
         UInt32, ///< R32_UINT
     };
 
-    /// InputLayout の 1 要素。SemanticIndex は常に 0、InputSlot 0 単一 stream 前提。
-    /// Mesh::StandardInputLayout() から流用する想定 (offsetof(MeshVertex, ...) で byteOffset を埋める)。
+    /// InputLayout の 1 要素。SemanticIndex は常に 0、InputSlot 0 単一 stream 前提
+    /// Mesh::StandardInputLayout() から流用する想定 (offsetof(MeshVertex, ...) で byteOffset を埋める)
     struct InputElement
     {
         std::string semanticName;
@@ -51,9 +51,9 @@ namespace NS::Graphics
         unsigned byteOffset = 0;
     };
 
-    /// ShaderProgram 構築パラメータ。
-    /// path が空 or 読込・コンパイル失敗時は埋込 magenta fallback HLSL に切替わり、IsUsingFallback() が true になる。
-    /// fallback VS は POSITION (float3) を消費するので inputLayout に POSITION が含まれない場合は IsValid() == false。
+    /// ShaderProgram 構築パラメータ
+    /// path が空 or 読込・コンパイル失敗時は埋込 magenta fallback HLSL に切替わり、IsUsingFallback() が true になる
+    /// fallback VS は POSITION (float3) を消費するので inputLayout に POSITION が含まれない場合は IsValid() == false
     struct ShaderProgramDesc
     {
         std::filesystem::path vertexShaderPath;
@@ -63,10 +63,10 @@ namespace NS::Graphics
         std::vector<InputElement> inputLayout;
     };
 
-    /// VS + PS + InputLayout の三位一体バンドル。
-    /// ランタイム D3DCompile で .hlsl を vs_5_0 / ps_5_0 にコンパイル。
-    /// VS/PS/InputLayout のいずれかで失敗すると埋込 HLSL の magenta fallback (PS 出力 RGB=(1,0,1)) に切替える。
-    /// 依存: Renderer の DeviceContext を内部で保持するため、Renderer より先に破棄すること。
+    /// VS + PS + InputLayout の三位一体バンドル
+    /// ランタイム D3DCompile で .hlsl を vs_5_0 / ps_5_0 にコンパイル
+    /// VS/PS/InputLayout のいずれかで失敗すると埋込 HLSL の magenta fallback (PS 出力 RGB=(1,0,1)) に切替える
+    /// 依存: Renderer の DeviceContext を内部で保持するため、Renderer より先に破棄すること
     class ShaderProgram
     {
     public:
@@ -80,14 +80,14 @@ namespace NS::Graphics
         ShaderProgram(ShaderProgram&&) = delete;
         ShaderProgram& operator=(ShaderProgram&&) = delete;
 
-        /// VS / PS / InputLayout が全て生成済みなら true。fallback でも true。
+        /// VS / PS / InputLayout が全て生成済みなら true。fallback でも true
         [[nodiscard]] bool IsValid() const noexcept;
 
-        /// 読込・コンパイル失敗で magenta fallback に切替わっているかを問い合わせる。
-        /// デバッグ時のシェーダ欠落検知に使用。
+        /// 読込・コンパイル失敗で magenta fallback に切替わっているかを問い合わせる
+        /// デバッグ時のシェーダ欠落検知に使用
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-        /// VSSetShader + PSSetShader + IASetInputLayout を一括実行。
+        /// VSSetShader + PSSetShader + IASetInputLayout を一括実行
         void Bind() noexcept;
 
     private:

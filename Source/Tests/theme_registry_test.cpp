@@ -23,7 +23,7 @@ namespace
         const ThemeData& lava = ThemeRegistry::Get(ThemeId::Lava);
         const ThemeData& sky = ThemeRegistry::Get(ThemeId::Sky);
 
-        // 表示名は全て異なる文字列を指していること。
+        // 表示名は全て異なる文字列を指していること
         ASSERT_NE(grass.displayName, nullptr);
         ASSERT_NE(cave.displayName, nullptr);
         ASSERT_NE(snow.displayName, nullptr);
@@ -41,7 +41,7 @@ namespace
         EXPECT_STRNE(snow.displayName, sky.displayName);
         EXPECT_STRNE(lava.displayName, sky.displayName);
 
-        // theme tint (lightColor or ambientColor) が片方でも違えば視覚差異が出る。
+        // theme tint (lightColor or ambientColor) が片方でも違えば視覚差異が出る
         auto distinctTint = [](const ThemeData& a, const ThemeData& b) {
             const bool sameLight = a.lightColor.x == b.lightColor.x && a.lightColor.y == b.lightColor.y &&
                                    a.lightColor.z == b.lightColor.z;

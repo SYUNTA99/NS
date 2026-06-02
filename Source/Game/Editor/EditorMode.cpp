@@ -63,7 +63,7 @@ namespace NS::Game::Editor
         HandleSaveLoadInput();
         m_palette.TickInput(m_input, m_imgui);
 
-        // 表示用 yaw quaternion を「現在の cursor rotation」 に Slerp で寄せて回転方向を視覚化する。
+        // 表示用 yaw quaternion を「現在の cursor rotation」 に Slerp で寄せて回転方向を視覚化する
         const auto targetQuat = NS::Core::Quaternion::CreateFromAxisAngle(
             {0.0f, 1.0f, 0.0f}, NS::Game::Editor::BlockRotationToYaw(m_currentRotation));
         constexpr float kRotationSpringRate = 12.0f;
@@ -105,7 +105,7 @@ namespace NS::Game::Editor
                 break;
             }
             // 失敗時は SaveLevelToFile 側でも write が失敗して NS_LOG_ERROR が出るので、 ここでは
-            // 結果を保持せず本体の Save を試みる方が message を 1 本にまとめられる。
+            // 結果を保持せず本体の Save を試みる方が message を 1 本にまとめられる
             (void)EnsureLevelsDirectoryExists();
             const bool ok = NS::Game::Level::SaveLevelToFile(*m_level, *path);
             m_fileBrowser.NotifySaveResult(ok, ok ? "保存成功" : "保存失敗");
@@ -124,7 +124,7 @@ namespace NS::Game::Editor
             if (ok)
             {
                 // 新 level open で UndoStack 履歴は破棄 (古い level 用 Command が
-                // 別 LevelData を pointer で持つため、 そのまま undo すると use-after-free 的 mismatch)。
+                // 別 LevelData を pointer で持つため、 そのまま undo すると use-after-free 的 mismatch)
                 *m_level = std::move(fresh);
                 m_undo.Clear();
                 m_levelDirty = true;
@@ -147,16 +147,16 @@ namespace NS::Game::Editor
         if (!m_active || !m_cursor.valid)
             return;
 
-        // DebugDraw への蓄積は維持 (将来 GPU 描画 path が整ったら自動的に表示される)。
-        // 既存 test (CursorPreview.RendersAABBToDebugDraw) も buffered vertex を assert。
+        // DebugDraw への蓄積は維持 (将来 GPU 描画 path が整ったら自動的に表示される)
+        // 既存 test (CursorPreview.RendersAABBToDebugDraw) も buffered vertex を assert
         const NS::Core::AABB placeBox(m_cursor.placementCenter,
                                       NS::Core::Vector3{kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
         NS::Graphics::DebugDraw::AABB(placeBox, m_cursor.placementBlocked ? kCursorBlockedColor : kCursorOkColor);
 
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
         // 即座に画面上で wireframe を確認できるよう、 ImGui の background DrawList に
-        // 8 頂点を view-projection で screen 投影して 12 辺を線描画する。
-        // DebugDraw::Flush の GPU 描画が未配線な間の代替手段。
+        // 8 頂点を view-projection で screen 投影して 12 辺を線描画する
+        // DebugDraw::Flush の GPU 描画が未配線な間の代替手段
         if (m_camera == nullptr)
             return;
         auto* app = NS::App::Application::Get();
@@ -176,7 +176,7 @@ namespace NS::Game::Editor
         if (dl == nullptr)
             return;
 
-        // world -> screen 投影。 clip.w<=0 (カメラ背後) は描画しない。
+        // world -> screen 投影。 clip.w<=0 (カメラ背後) は描画しない
         const auto project = [&](const NS::Core::Vector3& world, ImVec2& out) -> bool {
             const NS::Core::Vector4 worldH{world.x, world.y, world.z, 1.0f};
             const NS::Core::Vector4 clip = NS::Core::Vector4::Transform(worldH, vp);
@@ -187,7 +187,7 @@ namespace NS::Game::Editor
             return true;
         };
 
-        // セル枠の箱 (■) は軸そろえのまま固定。 向きは中の形状で示すので box 自体は回さない。
+        // セル枠の箱 (■) は軸そろえのまま固定。 向きは中の形状で示すので box 自体は回さない
         const NS::Core::Vector3 boxCorners[8] = {
             {c.x - h, c.y - h, c.z - h},
             {c.x + h, c.y - h, c.z - h},
@@ -224,8 +224,8 @@ namespace NS::Game::Editor
                 dl->AddLine(boxScreen[e[0]], boxScreen[e[1]], boxColor, 2.0f);
         }
 
-        // slope を選択中なら、 セル内に実形状の wedge を薄く描いて向きを可視化する。
-        // 斜面の稜線 (斜め) が m_displayedYawQuat で回るので、 回転が一目で分かる。
+        // slope を選択中なら、 セル内に実形状の wedge を薄く描いて向きを可視化する
+        // 斜面の稜線 (斜め) が m_displayedYawQuat で回るので、 回転が一目で分かる
         const std::uint16_t currentId = m_palette.CurrentBlockId();
         if (NS::Game::Editor::IsSlopeBlock(currentId))
         {
@@ -236,7 +236,7 @@ namespace NS::Game::Editor
             const float yBot = -h;
             const float yTop = -h + height;
 
-            // 6 頂点 (local、 +Z 側が高い斜面)。 BuildWedgeTriangles と同一規約。
+            // 6 頂点 (local、 +Z 側が高い斜面)。 BuildWedgeTriangles と同一規約
             const NS::Core::Vector3 wedgeLocal[6] = {
                 {-h, yBot, -h},
                 {+h, yBot, -h},
@@ -253,7 +253,7 @@ namespace NS::Game::Editor
                 wedgeFront[i] = project(NS::Core::Vector3{c.x + r.x, c.y + r.y, c.z + r.z}, wedgeScreen[i]);
             }
 
-            // fBL=0 fBR=1 bBL=2 bBR=3 bTL=4 bTR=5。 0-4 / 1-5 が斜面の稜線 (斜め)。
+            // fBL=0 fBR=1 bBL=2 bBR=3 bTL=4 bTR=5。 0-4 / 1-5 が斜面の稜線 (斜め)
             static constexpr int kWedgeEdges[9][2] = {
                 {0, 1},
                 {0, 2},
@@ -281,7 +281,7 @@ namespace NS::Game::Editor
             return;
 
         // カーソルが spawn セルに乗っている時は cursor preview と完全に重なるので、 描画を譲って
-        // 黄色とそれ以外が滲む (アンチエイリアス境界 + 描画順依存) 問題を避ける。
+        // 黄色とそれ以外が滲む (アンチエイリアス境界 + 描画順依存) 問題を避ける
         if (m_cursor.valid && m_cursor.placeX == m_level->spawnX && m_cursor.placeY == m_level->spawnY &&
             m_cursor.placeZ == m_level->spawnZ)
             return;
@@ -364,7 +364,7 @@ namespace NS::Game::Editor
     {
         if (m_level == nullptr)
             return;
-        // 回転対象でない block (pole / water 等) は m_currentRotation が非ゼロでも 0 で焼き込む。
+        // 回転対象でない block (pole / water 等) は m_currentRotation が非ゼロでも 0 で焼き込む
         const std::uint16_t blockId = m_palette.CurrentBlockId();
         const std::uint8_t rotation = IsRotatableBlock(blockId) ? m_currentRotation : std::uint8_t{0};
         m_undo.Push(std::make_unique<NS::Game::Undo::PlaceCommand>(x, y, z, blockId, rotation), *m_level);
@@ -452,9 +452,9 @@ namespace NS::Game::Editor
 
         if (hit)
         {
-            // 隣接セルは「hit セル座標 + 整数 normal」 で素直に求める。
+            // 隣接セルは「hit セル座標 + 整数 normal」 で素直に求める
             // SnapHitToPlacementCell 経由だと、 境界座標 (hit.y=0.5 等) を最近接 cell に round
-            // する時に +1 され、 さらに normal*g で +1 されて 2 セル先に飛んでしまう pitfall がある。
+            // する時に +1 され、 さらに normal*g で +1 されて 2 セル先に飛んでしまう pitfall がある
             const std::int16_t normalX = static_cast<std::int16_t>(std::lround(hitNormal.x));
             const std::int16_t normalY = static_cast<std::int16_t>(std::lround(hitNormal.y));
             const std::int16_t normalZ = static_cast<std::int16_t>(std::lround(hitNormal.z));
@@ -514,7 +514,7 @@ namespace NS::Game::Editor
             {
                 // Spawn は世界に 1 点しか持てない marker。 LevelData.spawnX/Y/Z を上書きするだけで
                 // BlockEntry は積まない。 既存ブロックの上でも下でも、 ボタンを押した瞬間の cursor
-                // placement cell を spawn 候補とする。
+                // placement cell を spawn 候補とする
                 SetSpawnAtProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
             }
             else if (!m_cursor.placementBlocked)
@@ -551,7 +551,7 @@ namespace NS::Game::Editor
         if (m_imgui != nullptr && m_imgui->WantCaptureKeyboard())
             return;
 
-        // R を 1 回叩くごとに 90° 回す。 slope も cube も 4 方向スナップ (押しっぱの連続回転はしない)。
+        // R を 1 回叩くごとに 90° 回す。 slope も cube も 4 方向スナップ (押しっぱの連続回転はしない)
         const bool rotate =
             m_input->Keyboard().IsPressed(NS::Platform::Key::R) ||
             (m_input->Gamepad(0).IsConnected() && m_input->Gamepad(0).IsPressed(NS::Platform::GamepadButton::Y));
@@ -560,7 +560,7 @@ namespace NS::Game::Editor
 
         if (HasBlockAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
         {
-            // cursor 直下の既存 block を 90° 回す。 回転対象外の block は無視する。
+            // cursor 直下の既存 block を 90° 回す。 回転対象外の block は無視する
             const auto it = std::find_if(m_level->blocks.begin(), m_level->blocks.end(), [this](const auto& b) {
                 return b.x == m_cursor.hitX && b.y == m_cursor.hitY && b.z == m_cursor.hitZ;
             });
@@ -574,7 +574,7 @@ namespace NS::Game::Editor
         }
         else if (IsRotatableBlock(m_palette.CurrentBlockId()))
         {
-            // 既存 block がなければ次に置く block の向きを 90° 進める (4 方向で循環)。
+            // 既存 block がなければ次に置く block の向きを 90° 進める (4 方向で循環)
             m_currentRotation = static_cast<std::uint8_t>((m_currentRotation + 1) & 0x03);
         }
     }
@@ -590,7 +590,7 @@ namespace NS::Game::Editor
         const bool ctrl = kb.IsHeld(NS::Platform::Key::Ctrl);
         const bool shift = kb.IsHeld(NS::Platform::Key::Shift);
 
-        // Ctrl+Shift+Z = Redo (Adobe / VS Code 流儀)、 Ctrl+Z = Undo、 Ctrl+Y = Redo
+        // Ctrl+Shift+Z = Redo、 Ctrl+Z = Undo、 Ctrl+Y = Redo
         if (ctrl && shift && kb.IsPressed(NS::Platform::Key::Z))
         {
             if (m_undo.Redo(*m_level))

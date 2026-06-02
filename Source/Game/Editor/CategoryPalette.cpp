@@ -54,7 +54,7 @@ namespace NS::Game::Editor
                 static_cast<NS::Platform::Key>(static_cast<int>(NS::Platform::Key::Num1) + static_cast<int>(i));
             if (kb.IsPressed(code))
             {
-                // 既に選択中の slot を再押し → variant 循環 (slope のみ実効)、 別 slot → 選択切替。
+                // 既に選択中の slot を再押し → variant 循環 (slope のみ実効)、 別 slot → 選択切替
                 if (i == m_activeSlot)
                     CycleActiveVariant();
                 else
@@ -66,8 +66,8 @@ namespace NS::Game::Editor
     void CategoryPalette::Render() noexcept
     {
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
-        // Mario Builder 64 と同じく画面 center-top に default 配置する。
-        // ユーザーは初回ドラッグで自由に移動可能 (ImGuiCond_FirstUseEver)。
+        // Mario Builder 64 と同じく画面 center-top に default 配置する
+        // ユーザーは初回ドラッグで自由に移動可能 (ImGuiCond_FirstUseEver)
         if (ImGuiViewport* vp = ImGui::GetMainViewport())
         {
             ImGui::SetNextWindowPos(
@@ -96,7 +96,7 @@ namespace NS::Game::Editor
 
             if (ImGui::Button(label, ImVec2(64.0f, 32.0f)))
             {
-                // active な slope スロットを再クリック → 角度を循環、 別スロット → 選択切替。
+                // active な slope スロットを再クリック → 角度を循環、 別スロット → 選択切替
                 if (isActive)
                     CycleActiveVariant();
                 else

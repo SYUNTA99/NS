@@ -1,12 +1,12 @@
 #pragma once
 
 /// @file EditorCameraRig.h
-/// @brief 編集モード用の自由視点カメラ GameObject。
+/// @brief 編集モード用の自由視点カメラ GameObject
 ///
 /// @details `CameraComponent` (描画 source) と `EditorCameraComponent`
-/// (Mouse / Gamepad 操作で Orbit / Pan / Zoom を駆動) を named member として保有する。
+/// (Mouse / Gamepad 操作で Orbit / Pan / Zoom を駆動) を named member として保有する
 /// `CameraRig` (Player 追従) と並列に LevelEditorScene が unique_ptr で保有し、
-/// mode toggle で active な側を切替える。 構造は CameraRig と同じ流儀。
+/// mode toggle で active な側を切替える。 構造は CameraRig と同じ
 
 #include "Framework/Scene/CameraComponent.h"
 #include "Framework/Scene/EditorCameraComponent.h"

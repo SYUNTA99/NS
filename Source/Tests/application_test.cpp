@@ -30,13 +30,13 @@ namespace
 #endif
         d.renderer.vsync = false;
         // テスト時間内で確実に複数 fixed step が発生するよう極小化 (default 1/60 だと
-        // Debug layer ON の重い 1 frame 内に 1 step も入らないケースがある)。
+        // Debug layer ON の重い 1 frame 内に 1 step も入らないケースがある)
         d.fixedDelta = 0.0005f;
         return d;
     }
 
     /// Layer 寿命は Application::Shutdown() で reset() されるため、
-    /// 検証用カウンタは外部に置いて Layer 破棄後もアクセス可能にする。
+    /// 検証用カウンタは外部に置いて Layer 破棄後もアクセス可能にする
     struct LayerCounters
     {
         int attachCount = 0;
@@ -46,7 +46,7 @@ namespace
         float lastAlpha = -1.0f;
     };
 
-    /// 指定回数の OnUpdate 後に Application::Quit() を呼ぶ Layer。
+    /// 指定回数の OnUpdate 後に Application::Quit() を呼ぶ Layer
     class QuittingLayer : public Layer
     {
     public:
@@ -66,7 +66,7 @@ namespace
         void OnDetach() override { ++counters->detachCount; }
     };
 
-    /// OnRender 中の Alpha を記録し、一定回数で Quit。
+    /// OnRender 中の Alpha を記録し、一定回数で Quit
     class AlphaCheckLayer : public Layer
     {
     public:

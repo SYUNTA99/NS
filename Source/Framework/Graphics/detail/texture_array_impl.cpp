@@ -43,8 +43,8 @@ namespace NS::Graphics
         }
 
         // 1 slice ぶん (1 枚の 2D texture) を WIC / DDS で staging texture として読み、
-        // ArraySize=1 / mip=1 / R8G8B8A8 のサイズと src の bytes をホスト側に持ち帰る。
-        // 失敗時は false で抜けて呼出側に slice skip を選ばせる。
+        // ArraySize=1 / mip=1 / R8G8B8A8 のサイズとコピー元の bytes をホスト側に持ち帰る
+        // 失敗時は false で抜けて呼出側に slice skip を選ばせる
         [[nodiscard]] bool TryLoadSliceResource(ID3D11Device* device,
                                                 ID3D11DeviceContext* context,
                                                 const std::filesystem::path& path,
@@ -64,7 +64,7 @@ namespace NS::Graphics
             const auto& bytes = bytesOpt.value();
             const auto* data = reinterpret_cast<const std::uint8_t*>(bytes.data());
 
-            // STAGING usage は SHADER_RESOURCE bind 不可なので SRV 出力は要求しない (要求すると E_INVALIDARG)。
+            // STAGING usage は SHADER_RESOURCE bind 不可なので SRV 出力は要求しない (要求すると E_INVALIDARG)
             if (IsDdsExtension(path))
             {
                 const HRESULT hr = DirectX::CreateDDSTextureFromMemory(
@@ -106,8 +106,8 @@ namespace NS::Graphics
             return true;
         }
 
-        // 1x1 magenta の単一 slice fallback texture array を構築する。
-        // slicePaths が空 or 全 slice 失敗時に呼ばれ、 IsUsingFallback() == true を立てる。
+        // 1x1 magenta の単一 slice fallback texture array を構築する
+        // slicePaths が空 or 全 slice 失敗時に呼ばれ、 IsUsingFallback() == true を立てる
         [[nodiscard]] bool CreateMagentaFallbackArray(ID3D11Device* device,
                                                       ComPtr<ID3D11Texture2D>& outTexture,
                                                       ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
@@ -167,7 +167,7 @@ namespace NS::Graphics
         m_pImpl->device = device;
         m_pImpl->context = context;
 
-        // slice 数を上限 (kTotalSlices) で clamp。 超過分は WARN を出して捨てる。
+        // slice 数を上限 (kTotalSlices) で clamp。 超過分は WARN を出して捨てる
         std::vector<std::filesystem::path> paths = desc.slicePaths;
         if (paths.size() > static_cast<std::size_t>(kTotalSlices))
         {
@@ -178,7 +178,7 @@ namespace NS::Graphics
             paths.resize(kTotalSlices);
         }
 
-        // 1 枚目を読んで size / format を確定させる。 失敗 or 0 枚なら fallback array に切替。
+        // 1 枚目を読んで size / format を確定させる。 失敗 or 0 枚なら fallback array に切替
         ComPtr<ID3D11Resource> firstResource;
         bool firstLoaded = false;
         std::size_t firstLoadedIndex = 0;
@@ -231,8 +231,8 @@ namespace NS::Graphics
         const UINT sliceHeight = firstDesc.Height;
         const DXGI_FORMAT sliceFormat = firstDesc.Format;
 
-        // mipmap を GenerateMips で作るには RENDER_TARGET + GENERATE_MIPS が要る。
-        // 1024x1024 の log2 = 10 + 1 = 11 levels。 0 を渡すと自動算出。
+        // mipmap を GenerateMips で作るには RENDER_TARGET + GENERATE_MIPS が要る
+        // 1024x1024 の log2 = 10 + 1 = 11 levels。 0 を渡すと自動算出
         const UINT mipLevels = desc.generateMipmaps ? 0u : 1u;
 
         D3D11_TEXTURE2D_DESC arrayDesc{};
@@ -270,9 +270,9 @@ namespace NS::Graphics
             return;
         }
 
-        // 各 slice 用 staging texture を順に読み、 CopySubresourceRegion で array へ転写する。
+        // 各 slice 用 staging texture を順に読み、 CopySubresourceRegion で array へ転写する
         // 失敗 slice は magenta で埋める運用にせず、 後段の GenerateMips に渡る前にスキップして
-        // 「失敗 1 枚以上 → fallback フラグ true、 ただし array 自体は機能継続」 とする。
+        // 「失敗 1 枚以上 → fallback フラグ true、 ただし array 自体は機能継続」 とする
         bool anySliceFailed = false;
         for (std::size_t i = 0; i < paths.size(); ++i)
         {
@@ -311,8 +311,8 @@ namespace NS::Graphics
                 continue;
             }
 
-            // 配列 slice = mip 0 のサブリソース番号 = arraySlice * MipLevelsActual + mip。
-            // GenerateMips 待ちの状態では実 MipLevels は arrayDesc.MipLevels と一致する。
+            // 配列 slice = mip 0 のサブリソース番号 = arraySlice * MipLevelsActual + mip
+            // GenerateMips 待ちの状態では実 MipLevels は arrayDesc.MipLevels と一致する
             ComPtr<ID3D11Texture2D> arrayTex2d = arrayTexture;
             D3D11_TEXTURE2D_DESC actualArrayDesc{};
             arrayTex2d->GetDesc(&actualArrayDesc);
@@ -321,7 +321,7 @@ namespace NS::Graphics
             context->CopySubresourceRegion(arrayTexture.Get(), dstSub, 0, 0, 0, sliceTex2d.Get(), 0, nullptr);
         }
 
-        // SRV を Texture2DArray 視点で生成。 mip auto-gen の場合 MipLevels=-1 で全 level を露出する。
+        // SRV を Texture2DArray 視点で生成。 mip auto-gen の場合 MipLevels=-1 で全 level を露出する
         D3D11_SHADER_RESOURCE_VIEW_DESC svd{};
         svd.Format = sliceFormat;
         svd.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;

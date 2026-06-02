@@ -14,7 +14,7 @@ namespace
 {
     std::filesystem::path UniqueTempPath(const char* name)
     {
-        // 並列 test 実行や前回残骸との衝突を避けるため pid + random suffix を追加。
+        // 並列 test 実行や前回残骸との衝突を避けるため pid + random suffix を追加
         static std::mt19937_64 rng{std::random_device{}()};
         const auto suffix = rng();
         return std::filesystem::temp_directory_path() /
@@ -115,7 +115,7 @@ TEST(ChunkIOTest, RejectCrcMismatch)
 
     auto bytes = NS::Core::FileSystem::ReadAllBytes(path);
     ASSERT_TRUE(bytes.has_value());
-    // 末尾の CRC32 値を 1 bit flip。
+    // 末尾の CRC32 値を 1 bit flip
     const std::size_t last = bytes->size() - 1;
     (*bytes)[last] = static_cast<std::byte>(static_cast<std::uint8_t>((*bytes)[last]) ^ 0x01);
     ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(path, *bytes));
@@ -151,7 +151,7 @@ TEST(ChunkIOTest, RejectMajorVersionMismatch)
 
     auto bytes = NS::Core::FileSystem::ReadAllBytes(path);
     ASSERT_TRUE(bytes.has_value());
-    // version major (offset +4, u16 LE) を 2 に書換 (CRC も合わせて壊れるが major reject が先に走るはず)。
+    // version major (offset +4, u16 LE) を 2 に書換 (CRC も合わせて壊れるが major reject が先に走るはず)
     (*bytes)[4] = std::byte{2};
     (*bytes)[5] = std::byte{0};
     ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(path, *bytes));

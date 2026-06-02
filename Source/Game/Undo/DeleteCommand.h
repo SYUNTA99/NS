@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file DeleteCommand.h
-/// @brief 指定 cell の block を削除する Command。 削除前 entry を保存し Undo で push_back 復元。
+/// @brief 指定 cell の block を削除する Command。 削除前 entry を保存し Undo で push_back 復元
 
 #include "Game/Level/LevelData.h"
 #include "Game/Undo/ICommand.h"

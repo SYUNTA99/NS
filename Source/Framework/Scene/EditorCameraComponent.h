@@ -1,13 +1,13 @@
 #pragma once
 
 /// @file EditorCameraComponent.h
-/// @brief NS::Scene::EditorCameraComponent — 編集モード用 free-fly カメラ Component。
+/// @brief NS::Scene::EditorCameraComponent — 編集モード用 free-fly カメラ Component
 ///
-/// @details Spherical 座標 (yaw, pitch, distance) + center pivot 表現。
-/// Mouse 右ドラッグ = Orbit、 中ドラッグ = Pan、 Wheel = Zoom。
-/// Gamepad 右スティック = Orbit、 左スティック = Pan、 LT-RT = Zoom。
-/// ImGui の `WantCaptureMouse() == true` の時は Mouse 入力を無視 (UI 操作優先)。
-/// pitch / distance は clamp で有限範囲に強制、 NaN / 巨大値での render crash を防ぐ。
+/// @details Spherical 座標 (yaw, pitch, distance) + center pivot 表現
+/// Mouse 右ドラッグ = Orbit、 中ドラッグ = Pan、 Wheel = Zoom
+/// Gamepad 右スティック = Orbit、 左スティック = Pan、 LT-RT = Zoom
+/// ImGui の `WantCaptureMouse() == true` の時は Mouse 入力を無視 (UI 操作優先)
+/// pitch / distance は clamp で有限範囲に強制、 NaN / 巨大値での render crash を防ぐ
 
 #include "Framework/Core/Math.h"
 #include "Framework/Scene/Component.h"
@@ -29,7 +29,7 @@ namespace NS::Scene
     class GameObject;
 
     /// 編集モード free-fly camera。 ThirdPersonFollowComponent と並列の Component で、
-    /// mode 切替時に `SetActive(bool)` で on/off する。
+    /// mode 切替時に `SetActive(bool)` で on/off する
     class EditorCameraComponent : public Component
     {
     public:
@@ -57,14 +57,14 @@ namespace NS::Scene
         void ApplyPan(float panX, float panY) noexcept;
         void ApplyZoom(float zoomDelta) noexcept;
 
-        // 1m grid を一次対象とする vertical slice 想定で範囲を調整。
+        // 1m grid を一次対象とする vertical slice 想定で範囲を調整
         // 近すぎる (< 2m) と FOV 60° で block 内側に入って描画破綻、 遠すぎる (> 30m)
-        // と block が点になるため 2 ~ 30m に絞る。
+        // と block が点になるため 2 ~ 30m に絞る
         static constexpr float kMinDistance = 2.0f;
         static constexpr float kMaxDistance = 30.0f;
         // 編集 free-fly camera は真上 (top-down) ~ 真下 (under-view) まで自由に振れる
         // ようにする。 90° 直前は LookAt の up 軸と forward が平行になり gimbal lock
-        // 寸前で計算が崩れるため ±89° で clamp する。
+        // 寸前で計算が崩れるため ±89° で clamp する
         static constexpr float kPitchMin = -1.553f; // -89° (scene の真下から見上げる手前)
         static constexpr float kPitchMax = +1.553f; // +89° (scene の真上から見下ろす手前)
 
@@ -80,11 +80,11 @@ namespace NS::Scene
         float m_desiredDistance = 15.0f;
         float m_springOmega = 6.0f;
 
-        // 個人プロジェクト固定値。 今後 Settings UI 経由 tune 想定。
+        // 個人プロジェクト固定値。 今後 Settings UI 経由 tune 想定
         float m_mouseSensOrbit = 0.003f;
         float m_mouseSensPan = 0.02f;
         // 1 wheel notch あたりの zoomDelta 倍率。 ApplyZoom が log scale なので
-        // 1.0 で 1 notch = 10% 距離変化、 2.0 で 19%、 0.5 で 5% と直感的に効く。
+        // 1.0 で 1 notch = 10% 距離変化、 2.0 で 19%、 0.5 で 5% と直感的に効く
         float m_mouseSensZoom = 1.0f;
         float m_padSensOrbit = 2.5f;
         float m_padSensPan = 8.0f;
@@ -92,36 +92,36 @@ namespace NS::Scene
     };
 
     /// 編集モード用 grid 数学 helper。 Component ではなく自由関数として配置し、
-    /// EditorMode や Place / Delete / Rotate Command から再利用する。
+    /// EditorMode や Place / Delete / Rotate Command から再利用する
     namespace EditorGridMath
     {
-        /// 1 grid サイズ (世界座標 1.0 m)。
+        /// 1 grid サイズ (世界座標 1.0 m)
         constexpr float kGridSize = 1.0f;
 
-        /// マウス screen 座標から world ray を生成する。
-        /// `viewProjection` は camera の VP matrix、 viewport は backbuffer サイズ。
+        /// マウス screen 座標から world ray を生成する
+        /// `viewProjection` は camera の VP matrix、 viewport は backbuffer サイズ
         [[nodiscard]] NS::Core::Ray ScreenToWorldRay(const NS::Core::Matrix& viewProjection,
                                                      NS::Core::Size2D viewport,
                                                      int mouseX,
                                                      int mouseY) noexcept;
 
-        /// world 座標を grid 中心に snap (最近接 cell center)。
+        /// world 座標を grid 中心に snap (最近接 cell center)
         [[nodiscard]] NS::Core::Vector3 SnapWorldPointToGrid(NS::Core::Vector3 worldPoint,
                                                              float gridSize = kGridSize) noexcept;
 
-        /// AABB hit 結果から、 hit 面の法線方向に 1 grid offset した cell 中心を返す。
-        /// `hitNormal` は ±X / ±Y / ±Z のいずれか。
+        /// AABB hit 結果から、 hit 面の法線方向に 1 grid offset した cell 中心を返す
+        /// `hitNormal` は ±X / ±Y / ±Z のいずれか
         [[nodiscard]] NS::Core::Vector3 SnapHitToPlacementCell(NS::Core::Vector3 hitPoint,
                                                                NS::Core::Vector3 hitNormal,
                                                                float gridSize = kGridSize) noexcept;
 
-        /// ray が ground plane (y = 0) と交わる点を grid snap して返す。
-        /// 上向き ray / 後方ヒットの場合は false (`outCellCenter` 未変更)。
+        /// ray が ground plane (y = 0) と交わる点を grid snap して返す
+        /// 上向き ray / 後方ヒットの場合は false (`outCellCenter` 未変更)
         [[nodiscard]] bool TryGroundPlaneFallback(const NS::Core::Ray& ray,
                                                   NS::Core::Vector3& outCellCenter,
                                                   float gridSize = kGridSize) noexcept;
 
-        /// rotation u8 (0/1/2/3) を Y 軸 90° 単位の quaternion に変換する。
+        /// rotation u8 (0/1/2/3) を Y 軸 90° 単位の quaternion に変換する
         [[nodiscard]] NS::Core::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept;
     } // namespace EditorGridMath
 

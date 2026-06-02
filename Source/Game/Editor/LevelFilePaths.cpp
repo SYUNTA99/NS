@@ -16,7 +16,7 @@ namespace NS::Game::Editor
         constexpr std::size_t kMaxNameLen = 200;
 
         // CON / PRN / AUX / NUL / COM1-9 / LPT1-9。 拡張子付きでも reject される (CON.txt 等)
-        // のが Windows API の振る舞いに準じた安全側設定。
+        // のが Windows API の振る舞いに準じた安全側設定
         constexpr std::array<std::string_view, 22> kReservedNames = {
             "CON",  "PRN",  "AUX",  "NUL",  "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
             "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"};

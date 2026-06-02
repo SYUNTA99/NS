@@ -11,10 +11,10 @@ namespace NS::Graphics
     class Mesh;
 } // namespace NS::Graphics
 
-/// 静的ブロックの GameObject (固定スロット)。
-/// MeshComponent + StaticColliderComponent を named member として保有する。
+/// 静的ブロックの GameObject (固定スロット)
+/// MeshComponent + StaticColliderComponent を named member として保有する
 /// Mesh / Material は LevelEditorScene が共有し、見た目サイズは Root::SetScale で、
-/// 衝突サイズは StaticColliderComponent::SetHalfExtents で同期管理する。
+/// 衝突サイズは StaticColliderComponent::SetHalfExtents で同期管理する
 class Block : public NS::Scene::GameObject
 {
 public:

@@ -15,15 +15,15 @@ namespace NS::UI
     Panel::Panel(std::string_view title, bool* isOpen) noexcept
     {
 #if NS_UI_IMGUI_ENABLED
-        // ImGuiContext が未構築 / NewFrame 未呼出だと GetCurrentContext は nullptr。
-        // この状態で ImGui::Begin を呼ぶと assert で死ぬので runtime check で守る。
+        // ImGuiContext が未構築 / NewFrame 未呼出だと GetCurrentContext は nullptr
+        // この状態で ImGui::Begin を呼ぶと assert で死ぬので runtime check で守る
         if (::ImGui::GetCurrentContext() == nullptr)
         {
             (void)title;
             (void)isOpen;
             return;
         }
-        // ImGui::Begin は null-terminated 必須なので一旦 std::string で copy する。
+        // ImGui::Begin は null-terminated 必須なので一旦 std::string で copy する
         const std::string label(title);
         m_isOpen = ::ImGui::Begin(label.c_str(), isOpen);
         m_began = true;

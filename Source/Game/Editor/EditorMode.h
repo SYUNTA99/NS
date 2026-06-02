@@ -1,13 +1,13 @@
 #pragma once
 
 /// @file EditorMode.h
-/// @brief 編集モード sub-system — cursor / palette / UndoStack を集約する。
+/// @brief 編集モード sub-system — cursor / palette / UndoStack を集約する
 ///
 /// @details `LevelEditorScene` の value member として保有され、
-/// SetActive(false) で Tick / Render が no-op になる (mode toggle 用)。
+/// SetActive(false) で Tick / Render が no-op になる (mode toggle 用)
 /// LevelData への変更は **全て** `UndoStack::Push` 経由で発火し、
 /// PlayMode 側との変更経路衝突を防ぐ。 spawn marker のみ単一値の上書きなので
-/// Command を介さない直接 setter (`SetSpawnMarker`) を呼ぶ。
+/// Command を介さない直接 setter (`SetSpawnMarker`) を呼ぶ
 
 #include "Framework/Core/Math.h"
 #include "Game/Editor/CategoryPalette.h"
@@ -36,11 +36,11 @@ namespace NS::Game::Level
 
 namespace NS::Game::Editor
 {
-    /// 編集モード本体。 入力 / cursor / palette / UndoStack を 1 か所に集約する。
+    /// 編集モード本体。 入力 / cursor / palette / UndoStack を 1 か所に集約する
     class EditorMode
     {
     public:
-        /// 編集中の cursor 状態。 raycast 結果と placement 候補 cell を保持する。
+        /// 編集中の cursor 状態。 raycast 結果と placement 候補 cell を保持する
         struct CursorState
         {
             bool valid = false;                  ///< 何かしらヒットあり (block 面 or ground)
@@ -73,28 +73,28 @@ namespace NS::Game::Editor
         void SetActive(bool active) noexcept { m_active = active; }
         [[nodiscard]] bool IsActive() const noexcept { return m_active; }
 
-        /// fixed step での Tick。 cursor 更新 + 入力 → Place / Delete / Rotate / Spawn / Undo / Redo を発火。
+        /// fixed step での Tick。 cursor 更新 + 入力 → Place / Delete / Rotate / Spawn / Undo / Redo を発火
         void Tick() noexcept;
 
-        /// variable frame で cursor preview の `DebugDraw::AABB` を 1 frame 分蓄積する。
+        /// variable frame で cursor preview の `DebugDraw::AABB` を 1 frame 分蓄積する
         void RenderCursorPreview() noexcept;
 
-        /// LevelData.spawnX/Y/Z の位置に常時表示する 1m wireframe (黄色)。
-        /// 編集モードで spawn を視覚的に把握できるようにする。 カーソル preview と独立。
+        /// LevelData.spawnX/Y/Z の位置に常時表示する 1m wireframe (黄色)
+        /// 編集モードで spawn を視覚的に把握できるようにする。 カーソル preview と独立
         void RenderSpawnMarker() noexcept;
 
         [[nodiscard]] const NS::Game::Undo::UndoStack& Undo() const noexcept { return m_undo; }
         [[nodiscard]] NS::Game::Undo::UndoStack& Undo() noexcept { return m_undo; }
 
-        /// programmatic API: Tick 経路を介さずに同等の変更を発火する (テスト / 一括処理用)。
+        /// programmatic API: Tick 経路を介さずに同等の変更を発火する (テスト / 一括処理用)
         void PlaceUnderCursorProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
         void DeleteAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
         void RotateAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
         void SetSpawnAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
 
-        /// LevelData の変更通知用 dirty flag (observer pattern)。
-        /// 全 LevelData mutation で内部的に true、 LevelEditorScene::OnUpdate でチェック → rebuild。
-        /// 毎 frame rebuild の alloc churn (60fps × 100 block = 6000 alloc/sec) を回避する。
+        /// LevelData の変更通知用 dirty flag
+        /// 全 LevelData mutation で内部的に true、 LevelEditorScene::OnUpdate でチェック → rebuild
+        /// 毎 frame rebuild の alloc churn (60fps × 100 block = 6000 alloc/sec) を回避する
         [[nodiscard]] bool IsLevelDirty() const noexcept { return m_levelDirty; }
         void ClearLevelDirty() noexcept { m_levelDirty = false; }
 
@@ -103,15 +103,15 @@ namespace NS::Game::Editor
         [[nodiscard]] std::uint16_t CurrentBlockId() const noexcept { return m_palette.CurrentBlockId(); }
         [[nodiscard]] std::uint8_t CurrentRotation() const noexcept { return m_currentRotation; }
 
-        /// テスト経路で cursor 状態を直接注入する。 Tick を呼ばずに RenderCursorPreview を検証する用途。
+        /// テスト経路で cursor 状態を直接注入する。 Tick を呼ばずに RenderCursorPreview を検証する用途
         void SetCursorForTest(const CursorState& state) noexcept { m_cursor = state; }
 
-        /// Ctrl+S / Ctrl+O の edge を検出して file browser modal を開く。 Tick 末尾から呼ばれる。
-        /// ImGui がキーボードを掴んでいる時 (テキスト入力 focus 中) は無視する。
+        /// Ctrl+S / Ctrl+O の edge を検出して file browser modal を開く。 Tick 末尾から呼ばれる
+        /// ImGui がキーボードを掴んでいる時 (テキスト入力 focus 中) は無視する
         void HandleSaveLoadInput() noexcept;
 
         /// EditorLayer::OnRender から呼ぶ。 modal の描画 + OK 押下時の SaveLevelToFile /
-        /// LoadLevelFromFile 実行 + UndoStack の clear (新 level open 時) を担う。
+        /// LoadLevelFromFile 実行 + UndoStack の clear (新 level open 時) を担う
         void RenderFileBrowser() noexcept;
 
         [[nodiscard]] LevelFileBrowser& FileBrowser() noexcept { return m_fileBrowser; }
@@ -124,7 +124,7 @@ namespace NS::Game::Editor
         NS::Scene::EditorCameraComponent* m_editorCamera = nullptr;
 
         bool m_active = true;
-        bool m_levelDirty = true; // 初期 true。 初回 LevelEditorScene::OnUpdate で seed level の rebuild を走らせる。
+        bool m_levelDirty = true; // 初期 true。 初回 LevelEditorScene::OnUpdate で seed level の rebuild を走らせる
         std::uint8_t m_currentRotation = 0;
 
         CursorState m_cursor{};
@@ -132,9 +132,9 @@ namespace NS::Game::Editor
         NS::Game::Undo::UndoStack m_undo;
         LevelFileBrowser m_fileBrowser{};
 
-        /// カーソル preview / 配置プレビューに使う「表示中の回転」 (Y 軸 yaw)。
+        /// カーソル preview / 配置プレビューに使う「表示中の回転」 (Y 軸 yaw)
         /// R キーで `m_currentRotation` が即時切替わっても、 本値は Slerp で滑らかに追従し
-        /// 回転方向を視覚的に把握できるようにする。 物理 / 配置データには影響しない (表示専用)。
+        /// 回転方向を視覚的に把握できるようにする。 物理 / 配置データには影響しない (表示専用)
         NS::Core::Quaternion m_displayedYawQuat{NS::Core::Quaternion::Identity};
 
         void UpdateCursorFromInput() noexcept;

@@ -8,7 +8,7 @@ namespace NS::Game::Level
 {
     namespace
     {
-        /// POD 値を std::byte span として view し CRC32 に流す helper。
+        /// POD 値を std::byte span として view し CRC32 に流す helper
         template <typename T> std::uint32_t UpdateWith(std::uint32_t crc, const T& value) noexcept
         {
             static_assert(std::is_trivially_copyable_v<T>, "UpdateWith expects trivially copyable type");
@@ -21,7 +21,7 @@ namespace NS::Game::Level
     {
         std::uint32_t crc = detail::kCrc32Init;
 
-        // blocks の論理 size を先に hash しておくと「append したら CRC 必ず変わる」 を保証できる。
+        // blocks の論理 size を先に hash しておくと「append したら CRC 必ず変わる」 を保証できる
         const std::uint64_t blockCount = static_cast<std::uint64_t>(blocks.size());
         crc = UpdateWith(crc, blockCount);
 

@@ -7,8 +7,8 @@
 #include <gtest/gtest.h>
 
 /// Application 依存のない default-constructed LevelEditorScene を相手に、
-/// mode toggle の enum / EditorMode / PlayMode の active 切替 / Undo 履歴保持を検証する。
-/// OnStart は Application::Get() を要求するため呼ばない (m_player 等は nullptr のまま)。
+/// mode toggle の enum / EditorMode / PlayMode の active 切替 / Undo 履歴保持を検証する
+/// OnStart は Application::Get() を要求するため呼ばない (m_player 等は nullptr のまま)
 
 TEST(ModeToggle, InitialModeIsEdit)
 {
@@ -91,7 +91,7 @@ TEST(ModeToggle, EnterPlayInitializesPlayStateAtSpawn)
     scene.EnterPlay();
 
     EXPECT_NEAR(scene.Play().playerPosition.x, 7.0f, 1e-4f);
-    // y は spawn セル底面 + (capsule halfHeight + radius) + 1cm lift = spawnY + 0.41。
+    // y は spawn セル底面 + (capsule halfHeight + radius) + 1cm lift = spawnY + 0.41
     EXPECT_NEAR(scene.Play().playerPosition.y, 2.41f, 1e-3f);
     EXPECT_NEAR(scene.Play().playerPosition.z, -4.0f, 1e-4f);
 }

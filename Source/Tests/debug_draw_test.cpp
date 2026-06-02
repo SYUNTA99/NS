@@ -51,7 +51,7 @@ TEST(DebugDrawTest, CapsuleAccumulatesNonZeroVertices)
 TEST(DebugDrawTest, OverflowDropsOldestSilentlyAndCapsAtMaximum)
 {
     Reset();
-    // 4096 vertex 上限。Line 1 本 = 2 vertex なので 2049 本以上を入れて overflow させる。
+    // 4096 vertex 上限。Line 1 本 = 2 vertex なので 2049 本以上を入れて overflow させる
     const Color c{1.0f, 1.0f, 1.0f, 1.0f};
     for (int i = 0; i < 2100; ++i)
         DD::Line({static_cast<float>(i), 0.0f, 0.0f}, {static_cast<float>(i) + 1.0f, 0.0f, 0.0f}, c);

@@ -52,9 +52,9 @@ void Game::OnUpdate()
     m_scenes.Update();
 
     // placeholder 死亡パス: ハザード接触で playerHealth が 0 まで落ちたら
-    // Application::Quit を呼ぶ。 将来 HUD + respawn + death 演出に置換予定。
+    // Application::Quit を呼ぶ。 将来 HUD + respawn + death 演出に置換予定
     // 落下死は LevelEditorScene 側で respawn 経路に乗るため、 ここでは playerHealth==0 だけを観測する
-    // (deathTriggered は落下死でも立つので両者を区別する必要がある)。
+    // (deathTriggered は落下死でも立つので両者を区別する必要がある)
     if (auto* scene = CurrentLevelEditorScene())
     {
         if (scene->Play().playerHealth <= 0)
@@ -70,6 +70,6 @@ void Game::OnRender()
 LevelEditorScene* Game::CurrentLevelEditorScene() noexcept
 {
     // 現状 NSGame の active scene は LevelEditorScene 一択。 他種 scene を後段で導入したら
-    // dynamic_cast 化を検討するが、 今は static_cast で十分。
+    // dynamic_cast 化を検討するが、 今は static_cast で十分
     return static_cast<LevelEditorScene*>(m_scenes.Current());
 }

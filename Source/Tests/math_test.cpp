@@ -42,8 +42,8 @@ TEST(NsCoreMath, RadiansEqualityComparesValue)
     EXPECT_TRUE(NS::Core::Degrees{45.0f} == NS::Core::Degrees{45.0f});
 }
 
-// 暗黙変換禁止 — 以下が compile error にならない場合は型システムが壊れている。
-// 安全のための static_assert で型不一致を assert する。
+// 暗黙変換禁止 — 以下が compile error にならない場合は型システムが壊れている
+// 安全のための static_assert で型不一致を assert する
 static_assert(!std::is_convertible_v<float, NS::Core::Radians>, "float から Radians への暗黙変換は禁止");
 static_assert(!std::is_convertible_v<NS::Core::Degrees, NS::Core::Radians>,
               "Degrees から Radians への暗黙変換は禁止 (ToRadians 経由のみ)");
@@ -57,7 +57,7 @@ static_assert(NS::Core::Radians{1.0f} == NS::Core::Radians{1.0f});
 
 TEST(NsCoreMath, Size2DEqualityComparesBothDimensions)
 {
-    // brace 内のコンマで EXPECT_TRUE マクロが分裂しないよう extra paren で 1 引数にまとめる。
+    // brace 内のコンマで EXPECT_TRUE マクロが分裂しないよう extra paren で 1 引数にまとめる
     EXPECT_TRUE((NS::Core::Size2D{1280, 720} == NS::Core::Size2D{1280, 720}));
     EXPECT_TRUE((NS::Core::Size2D{1280, 720} != NS::Core::Size2D{1920, 720}));
     EXPECT_TRUE((NS::Core::Size2D{1280, 720} != NS::Core::Size2D{1280, 1080}));
@@ -74,7 +74,7 @@ TEST(NsCoreMath, Size2DSwappedDimensionsCompareUnequal)
     EXPECT_TRUE((NS::Core::Size2D{640, 480} != NS::Core::Size2D{480, 640}));
 }
 
-// width/height の取り違え事故を型システムで防止する。
+// width/height の取り違え事故を型システムで防止する
 static_assert(!std::is_convertible_v<int, NS::Core::Size2D>, "int から Size2D への暗黙変換は禁止");
 
 static_assert(NS::Core::Size2D{4, 2} == NS::Core::Size2D{4, 2});

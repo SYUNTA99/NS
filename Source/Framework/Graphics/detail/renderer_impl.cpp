@@ -168,8 +168,8 @@ namespace NS::Graphics
         window.SetResizeCallback([this](::NS::Core::Size2D rs) { this->Resize(rs); });
 
         m_pImpl->valid = true;
-        // 構築完了は通常運用では成功が想定 (失敗時のみ別途 ERROR ログ済) なので Debug 段。
-        // test loop で per-fixture に renderer が立ち上がる時の log 雑音を抑える。
+        // 構築完了は通常運用では成功が想定 (失敗時のみ別途 ERROR ログ済) なので Debug 段
+        // test loop で per-fixture に renderer が立ち上がる時の log 雑音を抑える
         NS_LOG_DEBUG(::NS::Core::LogCat::Graphics,
                      "Renderer 構築完了 ({}x{}, vsync={}, debugLayer={})",
                      w,

@@ -7,7 +7,7 @@
 
 TEST(UIPanelTest, NoOpWhenImGuiNotInitialized)
 {
-    // ImGuiContext を構築せずに Panel を作っても crash せず、 IsOpen は false。
+    // ImGuiContext を構築せずに Panel を作っても crash せず、 IsOpen は false
     NS::UI::Panel panel("test");
     EXPECT_FALSE(panel.IsOpen());
 }
@@ -34,7 +34,7 @@ TEST(UIPanelTest, BeginEndPairInValidContext)
     imgui.BeginFrame();
     {
         NS::UI::Panel panel("test panel");
-        // dtor で End が呼ばれる、 ペアが揃わないと ImGui::EndFrame 内 assert で死ぬ。
+        // dtor で End が呼ばれる、 ペアが揃わないと ImGui::EndFrame 内 assert で死ぬ
     }
     imgui.EndFrame();
     renderer.EndFrame();
