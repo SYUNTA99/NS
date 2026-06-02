@@ -174,6 +174,27 @@ project "directxtk_simplemath"
 group "Framework"
 
 --============================================================================
+-- Math 層 (StaticLib) — 依存ゼロの最下層リーフ
+--   Vector / Matrix / Quaternion / Plane / Ray / AABB / Size2D / 角度型
+--   段1: SimpleMath using-alias。段2: scalar 自作に置換し SimpleMath 排除
+--============================================================================
+project "Math"
+    kind "StaticLib"
+    location "build/Math"
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+    files {
+        "Source/Framework/Math/**.h",
+        "Source/Framework/Math/**.cpp"
+    }
+    includedirs {
+        "Source/third_party/DirectXTK/Inc"
+    }
+    links { "directxtk_simplemath" }
+    applyFrameworkLayerDefaults("Math")
+    applyCommonBuildOptions()
+
+--============================================================================
 -- Core 層 (StaticLib)
 --   Logger / Math / StringUtils / Clock / Filesystem
 --============================================================================
@@ -196,8 +217,8 @@ project "Core"
         "Source/third_party/magic_enum/include",
     }
 
-    -- SimpleMath の静的定数 TU をリンク伝播させる (Math モジュール用)
-    links { "directxtk_simplemath" }
+    -- Math 層経由で SimpleMath の静的定数 TU をリンク伝播させる
+    links { "Math" }
 
     defines {
         "SPDLOG_HEADER_ONLY",             -- header-only モード
@@ -237,7 +258,7 @@ project "Platform"
         "SPDLOG_NO_EXCEPTIONS"
     }
 
-    links { "Core" }
+    links { "Math", "Core" }
 
     -- XInput リンク
     filter "system:windows"
@@ -278,6 +299,7 @@ project "Graphics"
     }
 
     links {
+        "Math",
         "Core",
         "Platform",
         -- D3D11 system libs
@@ -320,7 +342,7 @@ project "Physics"
         "SPDLOG_NO_EXCEPTIONS"
     }
 
-    links { "Core" }
+    links { "Math", "Core" }
 
     applyFrameworkLayerDefaults("Physics")
     applyCommonBuildOptions()
@@ -353,7 +375,7 @@ project "Audio"
         "SPDLOG_NO_EXCEPTIONS"
     }
 
-    links { "Core" }
+    links { "Math", "Core" }
 
     applyFrameworkLayerDefaults("Audio")
     applyCommonBuildOptions()
@@ -389,6 +411,7 @@ project "Scene"
     }
 
     links {
+        "Math",
         "Core",
         "Platform",
         "Graphics",
@@ -429,6 +452,7 @@ project "UI"
     }
 
     links {
+        "Math",
         "Core",
         "Platform",
         "Graphics"
@@ -479,6 +503,7 @@ project "App"
     }
 
     links {
+        "Math",
         "Core",
         "Platform",
         "Physics",
@@ -527,6 +552,7 @@ project "Game"
     }
 
     links {
+        "Math",
         "Core",
         "Platform",
         "Physics",
@@ -686,6 +712,7 @@ project "Tests"
 
     links {
         "googletest",
+        "Math",
         "Core",
         "Platform",
         "Physics",
