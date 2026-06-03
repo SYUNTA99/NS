@@ -10,7 +10,7 @@
 #include <array>
 #include <cstdint>
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Physics/SweptTriangle.h"
 
 namespace NS::Physics

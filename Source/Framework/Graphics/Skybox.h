@@ -17,7 +17,7 @@
 #include <filesystem>
 #include <memory>
 
-#include <Framework/Core/Math.h>
+#include <Framework/Math/Math.h>
 
 struct ID3D11ShaderResourceView;
 struct D3D11_DEPTH_STENCIL_DESC;

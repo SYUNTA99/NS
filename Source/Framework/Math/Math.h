@@ -4,7 +4,7 @@
 /// @brief NS::Math 数学型エイリアスとヘルパー
 ///
 /// SimpleMath の型を using-alias で `NS::Math` に露出する単一ヘッダ
-/// 座標系は LH 一本
+/// 座標系は LH
 
 #include <SimpleMath.h>
 
@@ -13,13 +13,13 @@
 namespace NS::Math
 {
 
-    /// 2D ベクトル (float)
+    /// 2D ベクトル
     using Vector2 = DirectX::SimpleMath::Vector2;
 
-    /// 3D ベクトル (float)。位置・方向・スケール全般に使う
+    /// 3D ベクトル。位置・方向・スケール全般に使う
     using Vector3 = DirectX::SimpleMath::Vector3;
 
-    /// 4D ベクトル (float)。同次座標・カラー前段に使う
+    /// 4D ベクトル。同次座標・カラー前段に使う
     using Vector4 = DirectX::SimpleMath::Vector4;
 
     /// 4x4 行列。行列演算の本体型
@@ -31,16 +31,16 @@ namespace NS::Math
     /// クォータニオン。回転表現の本体型
     using Quaternion = DirectX::SimpleMath::Quaternion;
 
-    /// 平面 (Ax + By + Cz + D = 0)
+    /// 平面
     using Plane = DirectX::SimpleMath::Plane;
 
-    /// レイ (origin + direction)
+    /// レイ
     using Ray = DirectX::SimpleMath::Ray;
 
     /// ビューポート定義
     using Viewport = DirectX::SimpleMath::Viewport;
 
-    /// RGBA カラー (float)
+    /// RGBA カラー
     using Color = DirectX::SimpleMath::Color;
 
     /// 軸並行バウンディングボックス。Center+Extents 表現
@@ -49,26 +49,26 @@ namespace NS::Math
     /// 円周率
     inline constexpr float kPi = 3.14159265358979323846f;
 
-    /// 度 → ラジアン変換 (raw float)。 強い型を使う場合は ToRadians(Degrees) を優先
-    [[nodiscard]] constexpr float Deg2Rad(float deg) noexcept
+    /// 度 → ラジアン変換。 強い型を使う場合は ToRadians(Degrees) を優先
+    [[nodiscard]] constexpr float DegreesToRadians(float deg) noexcept
     {
         return deg * (kPi / 180.0f);
     }
 
-    /// ラジアン → 度変換 (raw float)。 強い型を使う場合は ToDegrees(Radians) を優先
-    [[nodiscard]] constexpr float Rad2Deg(float rad) noexcept
+    /// ラジアン → 度変換。 強い型を使う場合は ToDegrees(Radians) を優先
+    [[nodiscard]] constexpr float RadiansToDegrees(float rad) noexcept
     {
         return rad * (180.0f / kPi);
     }
 
-    /// 角度を弧度法 (radians) で持つ強い型。 暗黙変換禁止、 raw float の取り違え事故を防ぐ
+    /// 角度を弧度法で持つ強い型。 暗黙変換禁止、 raw float の取り違え事故を防ぐ
     /// 用途: Camera::SetFovY、 Transform 回転 API 等。 値は `value` メンバ経由で取り出す
     struct Radians
     {
         float value;
     };
 
-    /// 角度を度数法 (degrees) で持つ強い型。 ヒューマン向け数値リテラル用
+    /// 角度を度数法で持つ強い型。 ヒューマン向け数値リテラル用
     /// 暗黙変換禁止、 ToRadians() 経由で明示変換が必要
     struct Degrees
     {
@@ -81,7 +81,7 @@ namespace NS::Math
         return Radians{d.value * (kPi / 180.0f)};
     }
 
-    /// Radians → Degrees 明示変換。 デバッグ表示・ ヒューマン UI 用
+    /// Radians → Degrees 明示変換。 デバッグ表示
     [[nodiscard]] constexpr Degrees ToDegrees(Radians r) noexcept
     {
         return Degrees{r.value * (180.0f / kPi)};
@@ -108,7 +108,7 @@ namespace NS::Math
     /// 用途: Window / Renderer / RenderTarget / Texture の解像度 API
     /// 暗黙変換禁止、 width と height を取り違える事故を型システムで防ぐ
     /// プラットフォーム API (DX11 / Win32) と整合させるため int 保持、
-    /// 負値は invalid (リソース側は width > 0 && height > 0 を pre-condition とする)
+    /// 負値は無効 (リソース側は width > 0 && height > 0 を事前条件とする)
     struct Size2D
     {
         int width;

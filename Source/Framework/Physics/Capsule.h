@@ -4,7 +4,7 @@
 /// @brief NS::Physics::Capsule — Player 衝突形状
 /// Cylinder 部 + 上下 hemisphere。SweptCapsuleVsAABB の入力に使う
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 
 namespace NS::Physics
 {

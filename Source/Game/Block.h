@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/MeshComponent.h"
 #include "Framework/Scene/StaticColliderComponent.h"

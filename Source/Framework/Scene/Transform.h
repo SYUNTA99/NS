@@ -8,7 +8,7 @@
 /// `Snapshot()` で現在値を一括退避する。可変フレーム描画側は `NS::Core::FrameTimer::Alpha()` で
 /// previous-current を補間してガタつきのない軌道を再現する
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 
 #include <vector>
 

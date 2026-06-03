@@ -8,7 +8,7 @@
 /// (`normal = normalize(cross(v1 - v0, v2 - v0))`)。 floor 判定は呼出側で
 /// `contactNormal.y > 0.7` を確認 (cos 45 ≈ 0.707、 cos 45 以下を walkable 床と定義)
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Physics/Capsule.h"
 
 namespace NS::Physics

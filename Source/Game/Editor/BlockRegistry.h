@@ -11,7 +11,7 @@
 /// slope 4 種 (200..203) / pole (210) / hazard (220) / water (221) / decoration (222) を扱う
 /// 将来、 敵 / ギミック等を 300 番台以降で予約する
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 
 #include <cstdint>
 

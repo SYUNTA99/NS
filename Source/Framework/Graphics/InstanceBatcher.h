@@ -11,7 +11,7 @@
 /// `BucketCount()` / `LastFrameDrawCallCount()` が観測できる薄い実装に保つ
 /// 依存: Renderer の Device / DeviceContext を内部で保持するため Renderer より先に破棄すること
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 
 #include <cstddef>
 #include <cstdint>

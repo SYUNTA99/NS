@@ -1,4 +1,4 @@
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Scene/EditorCameraComponent.h"
 
 #include <gtest/gtest.h>

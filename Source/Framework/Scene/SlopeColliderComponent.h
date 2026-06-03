@@ -10,7 +10,7 @@
 /// 経由で physics に渡す
 /// 角度・半サイズはコンストラクタで確定する data として保持し、 v2 で任意角度に拡張する余地を残す
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Physics/SweptTriangle.h"
 #include "Framework/Scene/Component.h"
 

@@ -6,7 +6,7 @@
 /// @details 現状は `Renderer` が所有する Backbuffer 専用。将来 offscreen RT を追加する際に
 /// `RenderTargetDesc` を公開し、任意サイズの RT も作れるようにする予定
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 
 #include <memory>
 

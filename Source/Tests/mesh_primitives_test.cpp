@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <Framework/Core/Math.h>
+#include <Framework/Math/Math.h>
 #include <Framework/Graphics/MeshPrimitives.h>
 
 #include <algorithm>

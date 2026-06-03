@@ -9,7 +9,7 @@
 /// ImGui の `WantCaptureMouse() == true` の時は Mouse 入力を無視 (UI 操作優先)
 /// pitch / distance は clamp で有限範囲に強制、 NaN / 巨大値での render crash を防ぐ
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Scene/Component.h"
 
 #include <cstdint>

@@ -10,7 +10,7 @@
 /// Block 派生にせず GameObject を直接派生して 3 つの Component を明示保有する
 /// 描画は SlopeBlock / PoleBlock と同じく per-block MeshComponent::Draw 経路
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/HazardComponent.h"
 #include "Framework/Scene/MeshComponent.h"

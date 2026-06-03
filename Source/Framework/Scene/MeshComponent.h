@@ -7,7 +7,7 @@
 /// `Draw(context)` 内で `Transform::InterpolatedWorldMatrix(context.alpha)` を使い、
 /// fixed step 物理結果を可変 frame rate でなめらかに補間描画する
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Scene/Component.h"
 #include "Framework/Scene/IRenderable.h"
 

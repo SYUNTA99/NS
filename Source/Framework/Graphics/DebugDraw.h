@@ -5,7 +5,7 @@
 ///
 /// 蓄積 → `Flush(renderer, vp)` で 1 描画呼出
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 
 #include <cstddef>
 

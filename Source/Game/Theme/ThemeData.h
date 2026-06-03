@@ -11,7 +11,7 @@
 #include <cstdint>
 #include <filesystem>
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 
 struct ThemeData
 {

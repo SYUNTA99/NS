@@ -13,7 +13,7 @@
 /// 落下死: `playerPosition.y < kFallDeathThreshold` で deathTriggered
 /// coin/star 接触: 中心間距離の単純比較 (kPickupRadius)
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 
 #include <cstddef>
 #include <vector>

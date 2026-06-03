@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Core/Clock.h>
-#include <Framework/Core/Math.h>
+#include <Framework/Math/Math.h>
 #include <Framework/Scene/CharacterMovementComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Transform.h>

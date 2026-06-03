@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include <Framework/Core/Math.h>
 #include <Framework/Graphics/Camera.h>
+#include <Framework/Math/Math.h>
 
 #include <DirectXMath.h>
 
@@ -9,7 +9,7 @@
 
 namespace
 {
-    using NS::Math::Deg2Rad;
+    using NS::Math::DegreesToRadians;
     using NS::Math::Matrix;
     using NS::Math::Vector3;
     using NS::Graphics::Camera;
@@ -108,7 +108,7 @@ TEST(CameraTest, ProjectionUsesLeftHanded)
     camera.SetNearPlane(0.5f);
     camera.SetFarPlane(500.0f);
 
-    const Matrix expected = ExpectedProjectionLH(Deg2Rad(45.0f), 1.6f, 0.5f, 500.0f);
+    const Matrix expected = ExpectedProjectionLH(DegreesToRadians(45.0f), 1.6f, 0.5f, 500.0f);
     EXPECT_TRUE(MatricesNear(camera.Projection(), expected));
 }
 

@@ -8,7 +8,7 @@
 /// Perspective のみ。 垂直 FOV は強い型 `NS::Math::Radians`、 setter で
 /// 内部の dirty フラグを立て、 Getter で初めて行列再計算するレイジー方式
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 
 namespace NS::Graphics
 {

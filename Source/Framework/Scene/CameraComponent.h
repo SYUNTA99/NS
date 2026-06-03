@@ -5,7 +5,7 @@
 ///        Getter / Setter は基本的に内包 Camera への薄いラッパー。view forward (XZ) は
 ///        PlayerInput が camera 相対移動入力の参照に使う
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Graphics/Camera.h"
 #include "Framework/Scene/Component.h"
 

@@ -8,7 +8,7 @@
 /// Mesh / Material は外部 (LevelEditorScene) が共有してくれた raw pointer を保持し、
 /// 角度別 wedge mesh は scene 側でキャッシュする想定
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/MeshComponent.h"
 #include "Framework/Scene/SlopeColliderComponent.h"

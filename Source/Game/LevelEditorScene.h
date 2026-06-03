@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Physics/SweptTriangle.h"
 #include "Framework/Scene/SceneBase.h"
 #include "Game/CameraRig.h"

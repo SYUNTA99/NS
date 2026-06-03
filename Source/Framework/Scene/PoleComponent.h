@@ -8,7 +8,7 @@
 /// jump で離脱する。 Player の state machine が AxisStart/AxisEnd の補間と
 /// ContainsPoint の判定を回して default CharacterController を bypass する
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Scene/Component.h"
 
 namespace NS::Scene

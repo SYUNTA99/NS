@@ -6,7 +6,7 @@
 /// Scene::OnRender が 1 回構築し、登録された全 IRenderable に同じ参照を渡す
 /// per-frame で共有される ViewProjection / alpha (補間係数) / Renderer 参照を束ねる
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 
 namespace NS::Graphics
 {

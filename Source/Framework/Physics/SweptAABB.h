@@ -3,7 +3,7 @@
 /// @file SweptAABB.h
 /// @brief Swept Capsule vs AABB の TOI 計算
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Physics/Capsule.h"
 
 namespace NS::Physics

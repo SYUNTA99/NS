@@ -5,7 +5,7 @@
 ///
 /// 入出力は POD struct。gameplay 値 (gravity / jump 等) は保持しない (責任分担)
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Physics/SweptTriangle.h"
 
 #include <span>

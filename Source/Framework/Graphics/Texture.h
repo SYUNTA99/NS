@@ -11,7 +11,7 @@
 #include <filesystem>
 #include <memory>
 
-#include <Framework/Core/Math.h>
+#include <Framework/Math/Math.h>
 #include <Framework/Graphics/Buffer.h>
 
 struct ID3D11ShaderResourceView;

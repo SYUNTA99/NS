@@ -8,7 +8,7 @@
 /// 複数 Material 切替は glTF 対応時に拡張、 cube は単一マテリアル相当
 /// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Graphics/ShaderProgram.h"
 
 #include <cstddef>

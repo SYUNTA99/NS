@@ -7,7 +7,7 @@
 /// MeshGeometry の生存中のみ MeshDesc::vertices/indices は有効。Mesh コンストラクタ内で
 /// GPU upload されるため、コンストラクタ完了後は破棄して良い
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Graphics/Mesh.h"
 
 #include <cstdint>

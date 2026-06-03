@@ -9,7 +9,7 @@
 /// PlayMode 側との変更経路衝突を防ぐ。 spawn marker のみ単一値の上書きなので
 /// Command を介さない直接 setter (`SetSpawnMarker`) を呼ぶ
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Game/Editor/CategoryPalette.h"
 #include "Game/Editor/LevelFileBrowser.h"
 #include "Game/Undo/UndoStack.h"

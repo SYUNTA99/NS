@@ -3,7 +3,7 @@
 /// @file Plane.h
 /// @brief NS::Physics::Plane — Slope 表現用。CharacterController が利用する
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 
 namespace NS::Physics
 {

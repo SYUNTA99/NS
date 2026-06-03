@@ -8,7 +8,7 @@
 /// Mesh / Material は scene 寿命中、 共有 raw pointer として LevelEditorScene が持つ
 /// 描画は per-block MeshComponent::Draw 経路 (SlopeBlock と同じ、 InstanceBatcher は cube 専用)
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/MeshComponent.h"
 #include "Framework/Scene/PoleComponent.h"

@@ -8,7 +8,7 @@
 /// `IsValid() == false` を返し例外は投げない (詳細は `NS_LOG_ERROR` に出力)
 /// 入力転送先 `Input*` は `AttachInput()` で非所有ポインタとして登録する
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 
 #include <functional>
 #include <memory>

@@ -6,7 +6,7 @@
 ///        FOV/sensitivity/invert を member 保持、Dynamic zoom (idle 5 / run 6 / jump 7) を
 ///        movement の grounded / horizontal velocity から自動切替
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Scene/Component.h"
 
 namespace NS::Platform

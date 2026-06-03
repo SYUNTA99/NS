@@ -9,7 +9,7 @@
 /// 責任分担。determinism 制約: OnUpdate(dt) で渡される fixed dt のみ使用、`NS::Core::FrameTimer::DeltaSeconds()`
 /// 不可
 
-#include "Framework/Core/Math.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Physics/CharacterController.h"
 #include "Framework/Physics/SweptTriangle.h"
 #include "Framework/Scene/Component.h"
