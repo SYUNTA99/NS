@@ -187,9 +187,9 @@ namespace NS::Graphics
         geom.indices.reserve(static_cast<std::size_t>(segments) * 12u);
 
         // Top / bottom cap の中心。 cap の per-vertex normal は (0, +1, 0) / (0, -1, 0)
-        const std::uint16_t topCenterIdx = static_cast<std::uint16_t>(geom.vertices.size());
+        const std::uint32_t topCenterIdx = static_cast<std::uint32_t>(geom.vertices.size());
         geom.vertices.push_back({{0.0f, halfH, 0.0f}, {0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}});
-        const std::uint16_t bottomCenterIdx = static_cast<std::uint16_t>(geom.vertices.size());
+        const std::uint32_t bottomCenterIdx = static_cast<std::uint32_t>(geom.vertices.size());
         geom.vertices.push_back({{0.0f, -halfH, 0.0f}, {0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}});
 
         // 側面の per-segment vertex を 4 個ずつ発行する (segments × 4)
@@ -219,14 +219,14 @@ namespace NS::Graphics
         for (int i = 0; i < segments; ++i)
         {
             const int next = (i + 1) % segments;
-            const std::uint16_t topI = static_cast<std::uint16_t>(sideStartIdx + i * 4 + 0);
-            const std::uint16_t topNext = static_cast<std::uint16_t>(sideStartIdx + next * 4 + 0);
-            const std::uint16_t botI = static_cast<std::uint16_t>(sideStartIdx + i * 4 + 1);
-            const std::uint16_t botNext = static_cast<std::uint16_t>(sideStartIdx + next * 4 + 1);
-            const std::uint16_t sideTopI = static_cast<std::uint16_t>(sideStartIdx + i * 4 + 2);
-            const std::uint16_t sideTopNext = static_cast<std::uint16_t>(sideStartIdx + next * 4 + 2);
-            const std::uint16_t sideBotI = static_cast<std::uint16_t>(sideStartIdx + i * 4 + 3);
-            const std::uint16_t sideBotNext = static_cast<std::uint16_t>(sideStartIdx + next * 4 + 3);
+            const std::uint32_t topI = static_cast<std::uint32_t>(sideStartIdx + i * 4 + 0);
+            const std::uint32_t topNext = static_cast<std::uint32_t>(sideStartIdx + next * 4 + 0);
+            const std::uint32_t botI = static_cast<std::uint32_t>(sideStartIdx + i * 4 + 1);
+            const std::uint32_t botNext = static_cast<std::uint32_t>(sideStartIdx + next * 4 + 1);
+            const std::uint32_t sideTopI = static_cast<std::uint32_t>(sideStartIdx + i * 4 + 2);
+            const std::uint32_t sideTopNext = static_cast<std::uint32_t>(sideStartIdx + next * 4 + 2);
+            const std::uint32_t sideBotI = static_cast<std::uint32_t>(sideStartIdx + i * 4 + 3);
+            const std::uint32_t sideBotNext = static_cast<std::uint32_t>(sideStartIdx + next * 4 + 3);
 
             // top cap: 上から見て CW (MakeCube convention 踏襲)。 center → next → current
             geom.indices.push_back(topCenterIdx);

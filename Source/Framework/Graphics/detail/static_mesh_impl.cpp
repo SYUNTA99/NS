@@ -24,7 +24,7 @@ namespace NS::Graphics
         bool BuildBuffers(Renderer& renderer,
                           const MeshVertex* vertices,
                           std::size_t vertexCount,
-                          const std::uint16_t* indices,
+                          const std::uint32_t* indices,
                           std::size_t indexCount,
                           std::unique_ptr<VertexBuffer>& outVb,
                           std::unique_ptr<IndexBuffer>& outIb)
@@ -41,7 +41,7 @@ namespace NS::Graphics
             IndexBufferDesc ibd{};
             ibd.initialData = indices;
             ibd.indexCount = indexCount;
-            ibd.format = IndexFormat::UInt16;
+            ibd.format = IndexFormat::UInt32;
             ibd.usage = BufferUsage::Static;
             auto ib = std::make_unique<IndexBuffer>(renderer, ibd);
             if (!ib->IsValid())

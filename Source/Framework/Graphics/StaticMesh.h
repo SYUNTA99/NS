@@ -35,12 +35,12 @@ namespace NS::Graphics
                   "MeshVertex は offsetof 使用のため標準レイアウト必須 (StandardInputLayout)");
 
     /// Mesh 構築パラメータ。 Static Buffer 前提で initialData はコンストラクタ内でコピーされる
-    /// Index は uint16_t 固定。 65535 vertex 超は将来 UInt32 検討
+    /// Index は uint32_t (大きい glTF モデルの 65535 vertex 超に対応)
     struct MeshDesc
     {
         const MeshVertex* vertices = nullptr;
         std::size_t vertexCount = 0;
-        const std::uint16_t* indices = nullptr;
+        const std::uint32_t* indices = nullptr;
         std::size_t indexCount = 0;
     };
 

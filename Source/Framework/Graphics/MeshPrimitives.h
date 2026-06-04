@@ -19,7 +19,7 @@ namespace NS::Graphics
     struct MeshGeometry
     {
         std::vector<MeshVertex> vertices;
-        std::vector<std::uint16_t> indices;
+        std::vector<std::uint32_t> indices;
     };
 
     /// 立方体プリミティブ。per-face normal で 24 vertex + 36 index、CW = front

@@ -326,7 +326,7 @@ namespace NS::Graphics
                                          static_cast<UINT>(sizeof(BlockInstance))};
                 const UINT offsets[2] = {0, 0};
                 ctx->IASetVertexBuffers(0, 2, vbs, strides, offsets);
-                ctx->IASetIndexBuffer(meshIB, DXGI_FORMAT_R16_UINT, 0);
+                ctx->IASetIndexBuffer(meshIB, DXGI_FORMAT_R32_UINT, 0);
                 ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
                 ctx->DrawIndexedInstanced(
