@@ -37,7 +37,7 @@ namespace NS::Scene
         [[nodiscard]] const NS::Math::Vector3& Up() const noexcept { return m_camera.Up(); }
         [[nodiscard]] NS::Math::Radians FovY() const noexcept { return m_camera.FovY(); }
 
-        /// 内包 Camera への変更不可参照。MeshComponent::Draw に ViewProjection を渡す用途で使う
+        /// 内包 Camera への変更不可参照。MeshRendererComponent::Draw に ViewProjection を渡す用途で使う
         [[nodiscard]] const NS::Graphics::Camera& Camera() const noexcept { return m_camera; }
         [[nodiscard]] NS::Graphics::Camera& Camera() noexcept { return m_camera; }
 

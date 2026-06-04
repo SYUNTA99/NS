@@ -1,4 +1,4 @@
-#include "Framework/Scene/MeshComponent.h"
+#include "Framework/Scene/MeshRendererComponent.h"
 
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/Mesh.h"
@@ -9,13 +9,13 @@
 
 namespace NS::Scene
 {
-    MeshComponent::MeshComponent(NS::Scene::GameObject* owner,
-                                 NS::Graphics::Mesh* mesh,
-                                 NS::Graphics::Material* material) noexcept
+    MeshRendererComponent::MeshRendererComponent(NS::Scene::GameObject* owner,
+                                                 NS::Graphics::Mesh* mesh,
+                                                 NS::Graphics::Material* material) noexcept
         : Component(owner), m_mesh(mesh), m_material(material)
     {}
 
-    void MeshComponent::OnStart()
+    void MeshRendererComponent::OnStart()
     {
         GameObject* owner = Owner();
         if (owner == nullptr)
@@ -26,7 +26,7 @@ namespace NS::Scene
         scene->RegisterRenderable(this);
     }
 
-    void MeshComponent::OnEndPlay()
+    void MeshRendererComponent::OnEndPlay()
     {
         GameObject* owner = Owner();
         if (owner == nullptr)
@@ -37,7 +37,7 @@ namespace NS::Scene
         scene->UnregisterRenderable(this);
     }
 
-    void MeshComponent::Draw(const RenderContext& context)
+    void MeshRendererComponent::Draw(const RenderContext& context)
     {
         GameObject* owner = Owner();
         if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)

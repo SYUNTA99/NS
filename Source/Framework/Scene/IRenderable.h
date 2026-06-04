@@ -3,7 +3,7 @@
 /// @file IRenderable.h
 /// @brief NS::Scene::IRenderable — Component が描画機能を mix-in するための interface
 ///
-/// 描画責務を持つ Component (MeshComponent / DebugDrawComponent 等) は `IRenderable` を
+/// 描画責務を持つ Component (MeshRendererComponent / DebugDrawComponent 等) は `IRenderable` を
 /// 多重継承して `Draw(const RenderContext&)` を実装する。`OnStart` で
 /// `Owner()->OwningScene()->RegisterRenderable(this)` を呼んで自己登録し、`OnEndPlay` で
 /// 解除する。SceneBase 実装が render iteration を握るため、Player.cpp / Block.cpp は

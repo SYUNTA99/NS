@@ -19,7 +19,7 @@ namespace NS::Graphics
 {
     class InstanceBatcher;
     class Material;
-    class Mesh;
+    class StaticMesh;
     class ShaderProgram;
     class Skybox;
     class Texture;
@@ -96,7 +96,7 @@ private:
     /// dirty flag 経由で変更を拾う (毎 frame の全 alloc churn を回避)
     void RebuildBlocksFromLevelData();
 
-    std::unique_ptr<NS::Graphics::Mesh> m_cubeMesh;
+    std::unique_ptr<NS::Graphics::StaticMesh> m_cubeMesh;
     std::unique_ptr<NS::Graphics::Texture> m_texture;
     std::unique_ptr<NS::Graphics::TextureArray> m_blockTextures;
     std::unique_ptr<NS::Graphics::ShaderProgram> m_playerShader;
@@ -108,13 +108,13 @@ private:
 
     // 角度別 wedge mesh を 4 種だけ shared でキャッシュ。 SlopeBlock 1 個ずつに mesh を持たせず、
     // scene 寿命のあいだ共有して描画コストとメモリを抑える
-    std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh45;
-    std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh30;
-    std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh22;
-    std::unique_ptr<NS::Graphics::Mesh> m_wedgeMesh15;
+    std::unique_ptr<NS::Graphics::StaticMesh> m_wedgeMesh45;
+    std::unique_ptr<NS::Graphics::StaticMesh> m_wedgeMesh30;
+    std::unique_ptr<NS::Graphics::StaticMesh> m_wedgeMesh22;
+    std::unique_ptr<NS::Graphics::StaticMesh> m_wedgeMesh15;
 
     // 掴まり系 mesh: 円柱を 1 度だけ生成して全 instance で共有する
-    std::unique_ptr<NS::Graphics::Mesh> m_poleMesh;
+    std::unique_ptr<NS::Graphics::StaticMesh> m_poleMesh;
 
     std::unique_ptr<Player> m_player;
     std::vector<std::unique_ptr<Block>> m_blocks;

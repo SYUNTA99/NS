@@ -1,6 +1,7 @@
 #include "Game/Player.h"
+#include "Framework/Graphics/StaticMesh.h"
 
-Player::Player(NS::Graphics::Mesh* mesh, NS::Graphics::Material* material, NS::Platform::Input* input) noexcept
+Player::Player(NS::Graphics::StaticMesh* mesh, NS::Graphics::Material* material, NS::Platform::Input* input) noexcept
     : m_mesh(this, mesh, material), m_movement(this), m_input(this, &m_movement)
 {
     // priority 昇順 OnUpdate (data member 化によりコンストラクタ内で正しく sort される):

@@ -19,11 +19,11 @@
 #include "Framework/Core/Logger.h"
 #include "Framework/Graphics/InstanceBatcher.h"
 #include "Framework/Graphics/Material.h"
-#include "Framework/Graphics/Mesh.h"
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/ShaderProgram.h"
 #include "Framework/Graphics/Skybox.h"
+#include "Framework/Graphics/StaticMesh.h"
 #include "Framework/Graphics/Texture.h"
 #include "Framework/Graphics/TextureArray.h"
 #include "Framework/Physics/Capsule.h"
@@ -32,7 +32,7 @@
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
 #include "Framework/Scene/IRenderable.h"
-#include "Framework/Scene/MeshComponent.h"
+#include "Framework/Scene/MeshRendererComponent.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/Transform.h"
 #include "Framework/UI/ImGuiContext.h"
@@ -82,7 +82,7 @@ void LevelEditorScene::OnStart()
     meshDesc.vertexCount = cubeGeom.vertices.size();
     meshDesc.indices = cubeGeom.indices.data();
     meshDesc.indexCount = cubeGeom.indices.size();
-    m_cubeMesh = std::make_unique<NS::Graphics::Mesh>(renderer, meshDesc);
+    m_cubeMesh = std::make_unique<NS::Graphics::StaticMesh>(renderer, meshDesc);
 
     // 4 種 wedge mesh を 1 度だけ生成して scene 寿命のあいだ共有する
     auto buildWedge = [&renderer](float angleDeg) {
@@ -92,7 +92,7 @@ void LevelEditorScene::OnStart()
         md.vertexCount = geom.vertices.size();
         md.indices = geom.indices.data();
         md.indexCount = geom.indices.size();
-        return std::make_unique<NS::Graphics::Mesh>(renderer, md);
+        return std::make_unique<NS::Graphics::StaticMesh>(renderer, md);
     };
     m_wedgeMesh45 = buildWedge(45.0f);
     m_wedgeMesh30 = buildWedge(30.0f);
@@ -106,7 +106,7 @@ void LevelEditorScene::OnStart()
         poleDesc.vertexCount = poleGeom.vertices.size();
         poleDesc.indices = poleGeom.indices.data();
         poleDesc.indexCount = poleGeom.indices.size();
-        m_poleMesh = std::make_unique<NS::Graphics::Mesh>(renderer, poleDesc);
+        m_poleMesh = std::make_unique<NS::Graphics::StaticMesh>(renderer, poleDesc);
     }
 
     NS::Graphics::TextureDesc texDesc{};
@@ -123,7 +123,7 @@ void LevelEditorScene::OnStart()
     playerShaderDesc.pixelShaderPath = exeDir / "Shaders" / "player.ps.hlsl";
     playerShaderDesc.vertexEntryPoint = "VSMain";
     playerShaderDesc.pixelEntryPoint = "PSMain";
-    playerShaderDesc.inputLayout = NS::Graphics::Mesh::StandardInputLayout();
+    playerShaderDesc.inputLayout = NS::Graphics::StaticMesh::StandardInputLayout();
     m_playerShader = std::make_unique<NS::Graphics::ShaderProgram>(renderer, playerShaderDesc);
     if (m_playerShader->IsUsingFallback())
         NS_LOG_WARN(::NS::Core::LogCat::Game,
@@ -137,7 +137,7 @@ void LevelEditorScene::OnStart()
     blockShaderDesc.pixelShaderPath = exeDir / "Shaders" / "player.ps.hlsl";
     blockShaderDesc.vertexEntryPoint = "VSMain";
     blockShaderDesc.pixelEntryPoint = "PSMain";
-    blockShaderDesc.inputLayout = NS::Graphics::Mesh::StandardInputLayout();
+    blockShaderDesc.inputLayout = NS::Graphics::StaticMesh::StandardInputLayout();
     m_blockShader = std::make_unique<NS::Graphics::ShaderProgram>(renderer, blockShaderDesc);
 
     NS::Graphics::MaterialDesc matDesc{};
@@ -486,7 +486,7 @@ void LevelEditorScene::OnRender()
     // 範囲外 themeId は ThemeRegistry::Get 側で Grass にフォールバックされる
     const ThemeData& theme = ThemeRegistry::Get(m_level.themeId);
 
-    // Player の赤系 baseColor 等の個体色は MeshComponent::SetBaseColor で別途設定済なので触らない
+    // Player の赤系 baseColor 等の個体色は MeshRendererComponent::SetBaseColor で別途設定済なので触らない
     if (m_player)
     {
         auto& mesh = m_player->MeshComp();
@@ -496,7 +496,7 @@ void LevelEditorScene::OnRender()
     }
 
     // Block 描画は InstanceBatcher の (mesh, material) bucket 経由に統一する
-    // block の MeshComponent::IsActive(false) で旧 per-block Draw 経路は短絡されるため、
+    // block の MeshRendererComponent::IsActive(false) で旧 per-block Draw 経路は短絡されるため、
     // 描画呼出は本フレームの instance VB 1 回 + bucket 数の DrawIndexedInstanced に集約される
     if (m_instanceBatcher && m_instanceBatcher->IsValid())
     {
@@ -731,7 +731,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             block->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
             block->OnStart();
             // block の IRenderable 経路は休止させ、 描画は InstanceBatcher の bucket 集約に任せる
-            // OnStart 内で MeshComponent が RegisterRenderable しているため、 ここで SetActive(false) すると
+            // OnStart 内で MeshRendererComponent が RegisterRenderable しているため、 ここで SetActive(false) すると
             // Draw(context) が no-op になり 1 block = 1 draw call の旧経路が完全に消える
             block->MeshComp().SetActive(false);
 
@@ -743,7 +743,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
         if (NS::Game::Editor::IsSlopeBlock(entry.blockId))
         {
             const float angle = NS::Game::Editor::GetSlopeAngleDegrees(entry.blockId);
-            NS::Graphics::Mesh* wedge = nullptr;
+            NS::Graphics::StaticMesh* wedge = nullptr;
             if (entry.blockId == NS::Game::Editor::kBlockIdSlope45)
                 wedge = m_wedgeMesh45.get();
             else if (entry.blockId == NS::Game::Editor::kBlockIdSlope30)
@@ -834,6 +834,22 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             continue;
         }
     }
+
+    // 生成直後は previous PRS が default(原点/単位回転)のため、ここで Snapshot して previous==current に揃える
+    // これを欠かすと描画の InterpolatedWorldMatrix(alpha) が原点から配置先へ補間し、編集のたびに全ブロックが一瞬振れる
+    // 毎フレームの Snapshot ループは Tick/Rebuild より前に走るので、この step では再構築分を拾えない
+    for (auto& block : m_blocks)
+        block->Root().Snapshot();
+    for (auto& slope : m_slopes)
+        slope->Root().Snapshot();
+    for (auto& pole : m_poles)
+        pole->Root().Snapshot();
+    for (auto& hazard : m_hazards)
+        hazard->Root().Snapshot();
+    for (auto& water : m_waters)
+        water->Root().Snapshot();
+    for (auto& deco : m_decorations)
+        deco->Root().Snapshot();
 
     if (m_player)
     {

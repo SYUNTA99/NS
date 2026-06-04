@@ -20,7 +20,7 @@
 namespace NS::Graphics
 {
 
-    class Mesh;
+    class StaticMesh;
     class Material;
     class Renderer;
     class InstanceBatcher;
@@ -70,7 +70,7 @@ namespace NS::Graphics
         /// 1 block instance を (mesh, material) bucket に追加
         /// mesh / material は非 null 必須 (null 渡し時は no-op + `NS_LOG_ERROR`)
         /// ownership は呼出側、 batcher は raw ポインタを bucket key として保持するのみ
-        void Submit(Mesh* mesh, Material* material, const BlockInstance& instance);
+        void Submit(StaticMesh* mesh, Material* material, const BlockInstance& instance);
 
         /// 全 bucket を順次 `DrawIndexedInstanced` で発行する
         /// 発行後に `LastFrameDrawCallCount()` が更新される

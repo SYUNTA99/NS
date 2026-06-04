@@ -20,7 +20,7 @@ namespace NS::Scene
 {
     /// 触れたプレイヤーに毎フレーム 1 ダメージを与える trigger Component
     /// 自身は world に対して描画も衝突応答も持たない (HazardBlock 側の StaticColliderComponent が
-    /// 衝突応答を、 MeshComponent が描画を別途担う)
+    /// 衝突応答を、 MeshRendererComponent が描画を別途担う)
     class HazardComponent : public Component
     {
     public:

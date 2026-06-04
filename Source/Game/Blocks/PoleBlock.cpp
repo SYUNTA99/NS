@@ -1,6 +1,7 @@
 #include "Game/Blocks/PoleBlock.h"
+#include "Framework/Graphics/StaticMesh.h"
 
-PoleBlock::PoleBlock(NS::Graphics::Mesh* cylinderMesh,
+PoleBlock::PoleBlock(NS::Graphics::StaticMesh* cylinderMesh,
                      NS::Graphics::Material* material,
                      float radius,
                      float height) noexcept

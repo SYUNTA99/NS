@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Core/Logger.h>
-#include <Framework/Graphics/Mesh.h>
 #include <Framework/Graphics/Renderer.h>
+#include <Framework/Graphics/StaticMesh.h>
 #include <Framework/Platform/Window.h>
 
 #include <array>
@@ -14,7 +14,7 @@ namespace
     using NS::Math::Vector3;
     using NS::Graphics::InputElement;
     using NS::Graphics::InputElementFormat;
-    using NS::Graphics::Mesh;
+    using NS::Graphics::StaticMesh;
     using NS::Graphics::MeshDesc;
     using NS::Graphics::MeshVertex;
     using NS::Graphics::Renderer;
@@ -77,7 +77,7 @@ TEST(MeshTypeLayoutTest, MeshVertexSizeIs32)
 
 TEST(MeshTypeLayoutTest, StandardInputLayoutHasExpectedElements)
 {
-    const auto elements = Mesh::StandardInputLayout();
+    const auto elements = StaticMesh::StandardInputLayout();
     ASSERT_EQ(elements.size(), 3u);
 
     EXPECT_EQ(elements[0].semanticName, "POSITION");
@@ -108,7 +108,7 @@ TEST_F(MeshLoggerTest, ConstructWithCubeDataIsValid)
     desc.indices = indices.data();
     desc.indexCount = indices.size();
 
-    Mesh mesh(renderer, desc);
+    StaticMesh mesh(renderer, desc);
     EXPECT_TRUE(mesh.IsValid());
     EXPECT_EQ(mesh.VertexCount(), kCubeVertexCount);
     EXPECT_EQ(mesh.IndexCount(), kCubeIndexCount);
@@ -122,7 +122,7 @@ TEST_F(MeshLoggerTest, EmptyDescFallsBackToCube)
     ASSERT_TRUE(renderer.IsValid());
 
     MeshDesc desc{};
-    Mesh mesh(renderer, desc);
+    StaticMesh mesh(renderer, desc);
     EXPECT_TRUE(mesh.IsValid());
     EXPECT_TRUE(mesh.IsUsingFallback());
     EXPECT_GT(mesh.VertexCount(), 0u);
@@ -146,7 +146,7 @@ TEST_F(MeshLoggerTest, PartiallyEmptyDescFallsBackToCube)
         desc.vertexCount = vertices.size();
         desc.indices = nullptr;
         desc.indexCount = indices.size();
-        Mesh mesh(renderer, desc);
+        StaticMesh mesh(renderer, desc);
         EXPECT_TRUE(mesh.IsValid());
         EXPECT_TRUE(mesh.IsUsingFallback());
     }
@@ -158,7 +158,7 @@ TEST_F(MeshLoggerTest, PartiallyEmptyDescFallsBackToCube)
         desc.vertexCount = 0u;
         desc.indices = indices.data();
         desc.indexCount = indices.size();
-        Mesh mesh(renderer, desc);
+        StaticMesh mesh(renderer, desc);
         EXPECT_TRUE(mesh.IsValid());
         EXPECT_TRUE(mesh.IsUsingFallback());
     }
@@ -172,7 +172,7 @@ TEST_F(MeshLoggerTest, FallbackMeshDrawDoesNotCrash)
     ASSERT_TRUE(renderer.IsValid());
 
     MeshDesc desc{};
-    Mesh mesh(renderer, desc);
+    StaticMesh mesh(renderer, desc);
     ASSERT_TRUE(mesh.IsValid());
     ASSERT_TRUE(mesh.IsUsingFallback());
 
@@ -195,7 +195,7 @@ TEST_F(MeshLoggerTest, DrawDoesNotCrash)
     desc.indices = indices.data();
     desc.indexCount = indices.size();
 
-    Mesh mesh(renderer, desc);
+    StaticMesh mesh(renderer, desc);
     ASSERT_TRUE(mesh.IsValid());
 
     mesh.Draw();
@@ -217,7 +217,7 @@ TEST_F(MeshLoggerTest, AccessorsNonNull)
     desc.indices = indices.data();
     desc.indexCount = indices.size();
 
-    Mesh mesh(renderer, desc);
+    StaticMesh mesh(renderer, desc);
     ASSERT_TRUE(mesh.IsValid());
 
     EXPECT_NE(NS::Graphics::detail::GetVertexBuffer(mesh), nullptr);

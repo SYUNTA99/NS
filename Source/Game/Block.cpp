@@ -1,5 +1,6 @@
 #include "Game/Block.h"
+#include "Framework/Graphics/StaticMesh.h"
 
-Block::Block(NS::Graphics::Mesh* mesh, NS::Graphics::Material* material, const NS::Math::Vector3& halfExtents) noexcept
+Block::Block(NS::Graphics::StaticMesh* mesh, NS::Graphics::Material* material, const NS::Math::Vector3& halfExtents) noexcept
     : m_mesh(this, mesh, material), m_collider(this, halfExtents)
 {}

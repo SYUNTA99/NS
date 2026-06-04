@@ -2,7 +2,7 @@
 
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/IRenderable.h>
-#include <Framework/Scene/MeshComponent.h>
+#include <Framework/Scene/MeshRendererComponent.h>
 #include <Framework/Scene/RenderContext.h>
 #include <Framework/Scene/SceneBase.h>
 
@@ -10,7 +10,7 @@
 
 namespace
 {
-    using NS::Scene::MeshComponent;
+    using NS::Scene::MeshRendererComponent;
     using NS::Scene::GameObject;
 
     class FakeScene : public NS::Scene::SceneBase
@@ -24,17 +24,17 @@ namespace
     };
 } // namespace
 
-TEST(MeshComponentTest, ConstructsWithNullPointersWithoutCrashing)
+TEST(MeshRendererComponentTest, ConstructsWithNullPointersWithoutCrashing)
 {
     // Mesh / Material は呼出側保証。null でも構築時 crash しないこと
-    MeshComponent mc(nullptr, nullptr, nullptr);
+    MeshRendererComponent mc(nullptr, nullptr, nullptr);
     EXPECT_TRUE(mc.IsActive());
 }
 
-TEST(MeshComponentTest, DrawIsNoOpWhenInactive)
+TEST(MeshRendererComponentTest, DrawIsNoOpWhenInactive)
 {
     GameObject obj;
-    MeshComponent mc(&obj, nullptr, nullptr);
+    MeshRendererComponent mc(&obj, nullptr, nullptr);
     mc.SetActive(false);
 
     // ctx を最小限で作って Draw 呼出。null mesh/material でもガード経由で no-op
@@ -43,31 +43,31 @@ TEST(MeshComponentTest, DrawIsNoOpWhenInactive)
     SUCCEED();
 }
 
-TEST(MeshComponentTest, DrawIsNoOpWhenMeshOrMaterialIsNull)
+TEST(MeshRendererComponentTest, DrawIsNoOpWhenMeshOrMaterialIsNull)
 {
     GameObject obj;
-    MeshComponent mc(&obj, nullptr, nullptr);
+    MeshRendererComponent mc(&obj, nullptr, nullptr);
 
     NS::Scene::RenderContext ctx{};
     mc.Draw(ctx); // null ガードで no-op
     SUCCEED();
 }
 
-TEST(MeshComponentTest, SetLightDirectionAndBaseColorDoNotCrash)
+TEST(MeshRendererComponentTest, SetLightDirectionAndBaseColorDoNotCrash)
 {
-    MeshComponent mc(nullptr, nullptr, nullptr);
+    MeshRendererComponent mc(nullptr, nullptr, nullptr);
     mc.SetLightDirection({1.0f, 0.0f, 0.0f});
     mc.SetBaseColor({0.5f, 0.5f, 0.5f});
     // getter は提供していない。setter 呼出が crash せず IsActive を破壊しないことのみ verify
     EXPECT_TRUE(mc.IsActive());
 }
 
-TEST(MeshComponentTest, OnStartRegistersToOwningScene)
+TEST(MeshRendererComponentTest, OnStartRegistersToOwningScene)
 {
     FakeScene scene;
     GameObject obj;
     obj.AttachScene(&scene);
-    MeshComponent mc(&obj, nullptr, nullptr);
+    MeshRendererComponent mc(&obj, nullptr, nullptr);
 
     mc.OnStart();
 
@@ -75,12 +75,12 @@ TEST(MeshComponentTest, OnStartRegistersToOwningScene)
     EXPECT_EQ(scene.registered[0], static_cast<NS::Scene::IRenderable*>(&mc));
 }
 
-TEST(MeshComponentTest, OnEndPlayUnregistersFromOwningScene)
+TEST(MeshRendererComponentTest, OnEndPlayUnregistersFromOwningScene)
 {
     FakeScene scene;
     GameObject obj;
     obj.AttachScene(&scene);
-    MeshComponent mc(&obj, nullptr, nullptr);
+    MeshRendererComponent mc(&obj, nullptr, nullptr);
 
     mc.OnStart();
     mc.OnEndPlay();
@@ -89,10 +89,10 @@ TEST(MeshComponentTest, OnEndPlayUnregistersFromOwningScene)
     EXPECT_EQ(scene.unregistered[0], static_cast<NS::Scene::IRenderable*>(&mc));
 }
 
-TEST(MeshComponentTest, OnStartIsNoOpWhenSceneIsNull)
+TEST(MeshRendererComponentTest, OnStartIsNoOpWhenSceneIsNull)
 {
     GameObject obj;
-    MeshComponent mc(&obj, nullptr, nullptr);
+    MeshRendererComponent mc(&obj, nullptr, nullptr);
     // OwningScene が nullptr のまま OnStart を呼んでも crash しないこと
     mc.OnStart();
     SUCCEED();

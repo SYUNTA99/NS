@@ -2,8 +2,8 @@
 
 #include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/Material.h"
-#include "Framework/Graphics/Mesh.h"
 #include "Framework/Graphics/Renderer.h"
+#include "Framework/Graphics/StaticMesh.h"
 #include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/Filesystem.h"
@@ -33,7 +33,7 @@ namespace NS::Graphics
 
         struct BucketKey
         {
-            Mesh* mesh = nullptr;
+            StaticMesh* mesh = nullptr;
             Material* material = nullptr;
 
             [[nodiscard]] bool operator==(const BucketKey& rhs) const noexcept
@@ -258,7 +258,7 @@ namespace NS::Graphics
         m_pImpl->lastDrawCallCount = 0;
     }
 
-    void InstanceBatcher::Submit(Mesh* mesh, Material* material, const BlockInstance& instance)
+    void InstanceBatcher::Submit(StaticMesh* mesh, Material* material, const BlockInstance& instance)
     {
         if (!m_pImpl)
             return;

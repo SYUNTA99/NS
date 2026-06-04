@@ -1,28 +1,24 @@
 #pragma once
 
 /// @file Mesh.h
-/// @brief NS::Graphics::Mesh — VB + IB + indexCount の最小バンドル
+/// @brief NS::Graphics::Mesh — 描画できるジオメトリの基底 (VB / IB を所有し DrawIndexed を発行する)
 ///
-/// @details 固定頂点フォーマット `MeshVertex` (32 byte: position/uv/normal) 前提
-/// Static Buffer 利用、 `MeshDesc::initialData` はコンストラクタ内でコピー。 Submesh /
-/// 複数 Material 切替は glTF 対応時に拡張、 cube は単一マテリアル相当
-/// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること
-
-#include "Framework/Math/Math.h"
-#include "Framework/Graphics/ShaderProgram.h"
+/// @details StaticMesh / SkeletalMesh の共通実体 = GPU 頂点 / index buffer と描画呼出を持つ
+/// 頂点フォーマットは派生が決める (StaticMesh は MeshVertex、 SkeletalMesh は SkinnedVertex)
+/// 派生は構築した VB / IB を `SetGeometry` で基底に預け、 `Draw` / `IsValid` 等は基底実装を共有する
+/// skinning する派生は `Draw` を override して bone palette CB の bind を足す
+/// @pre Renderer の DeviceContext を内部保持するため Renderer より先に破棄すること
 
 #include <cstddef>
-#include <cstdint>
 #include <memory>
-#include <type_traits>
-#include <vector>
 
 struct ID3D11Buffer;
 
 namespace NS::Graphics
 {
-
     class Renderer;
+    class VertexBuffer;
+    class IndexBuffer;
     class Mesh;
 
     namespace detail
@@ -32,66 +28,48 @@ namespace NS::Graphics
         [[nodiscard]] ID3D11Buffer* GetIndexBuffer(Mesh& mesh) noexcept;
     } // namespace detail
 
-    /// 固定頂点フォーマット (32 byte 固定)
-    /// cube と glTF static の共通形式
-    /// ボーン重み付きの SkinnedMeshVertex は将来別型として追加される
-    struct MeshVertex
-    {
-        NS::Math::Vector3 position;
-        NS::Math::Vector2 uv;
-        NS::Math::Vector3 normal;
-    };
-    static_assert(sizeof(MeshVertex) == 32, "MeshVertex は 32 byte 固定");
-    static_assert(std::is_standard_layout_v<MeshVertex>,
-                  "MeshVertex は offsetof 使用のため標準レイアウト必須 (StandardInputLayout)");
-
-    /// Mesh 構築パラメータ。Static Buffer 前提で initialData はコンストラクタ内でコピーされる
-    /// Index は uint16_t 固定。65535 vertex 超は将来 UInt32 検討
-    struct MeshDesc
-    {
-        const MeshVertex* vertices = nullptr;
-        std::size_t vertexCount = 0;
-        const std::uint16_t* indices = nullptr;
-        std::size_t indexCount = 0;
-    };
-
-    /// VB + IB + indexCount を単一バンドルにまとめた最小 Mesh
-    /// Submesh / 複数 Material 切替は glTF 対応時に拡張、cube は単一マテリアル相当
-    /// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること
+    /// 描画できるジオメトリの基底。 VB / IB を所有し DrawIndexed を 1 回発行する
+    /// 頂点フォーマットと入力レイアウトは派生 (StaticMesh / SkeletalMesh) が持つ
     class Mesh
     {
     public:
-        struct Impl;
-
-        Mesh(Renderer& renderer, const MeshDesc& desc);
-        ~Mesh();
+        virtual ~Mesh();
 
         Mesh(const Mesh&) = delete;
         Mesh& operator=(const Mesh&) = delete;
         Mesh(Mesh&&) = delete;
         Mesh& operator=(Mesh&&) = delete;
 
-        /// VB / IB が生成されていれば true。 MeshDesc 不正や Buffer 作成失敗で fallback Cube に
-        /// 切替わった場合も true (描画は可能、 ただし内容は default Cube)。 Renderer の
-        /// Device / Context が無効な場合のみ false (fallback すら構築できない致命状態)
+        /// VB / IB が構築済なら true。 fallback geometry に切替わった場合も true (描画は可能)
+        /// Device / Context 無効や geometry 未設定なら false
         [[nodiscard]] bool IsValid() const noexcept;
 
-        /// MeshDesc 不正 / VB / IB 構築失敗で fallback Cube に切替わっているかを問い合わせる
-        /// デバッグ時のジオメトリ欠落検知に使用 (ShaderProgram::IsUsingFallback と同じ思想)
+        /// 構築失敗で fallback geometry に切替わっているか。 デバッグ時のジオメトリ欠落検知に使う
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
         [[nodiscard]] std::size_t VertexCount() const noexcept;
         [[nodiscard]] std::size_t IndexCount() const noexcept;
 
-        /// VB.Bind(0) + IB.Bind() + IASetPrimitiveTopology(TRIANGLELIST) + DrawIndexed(IndexCount, 0, 0) を一括実行
-        /// ShaderProgram::Bind() と Material 側の SRV/CB Bind は呼出側責任
-        void Draw() noexcept;
+        /// VB.Bind(0) + IB.Bind() + IASetPrimitiveTopology(TRIANGLELIST) + DrawIndexed を一括発行する
+        /// ShaderProgram / Material 側の Bind は呼出側 (MeshRendererComponent) 責任
+        /// skinning する派生は override して bone palette CB の bind を足す
+        virtual void Draw() noexcept;
 
-        /// MeshVertex に対応する POSITION / TEXCOORD / NORMAL の InputElement 配列を返す
-        /// 戻り値は ShaderProgramDesc::inputLayout にそのまま流用できる
-        [[nodiscard]] static std::vector<InputElement> StandardInputLayout();
+    protected:
+        Mesh();
+
+        /// 派生が構築した VB / IB と頂点 / index 数を基底に預ける
+        /// renderer の DeviceContext を内部保持する。 vb / ib のいずれかが null なら invalid 扱い
+        /// `usingFallback` は fallback geometry に切替えた場合に true を渡す
+        void SetGeometry(Renderer& renderer,
+                         std::unique_ptr<VertexBuffer> vertexBuffer,
+                         std::unique_ptr<IndexBuffer> indexBuffer,
+                         std::size_t vertexCount,
+                         std::size_t indexCount,
+                         bool usingFallback) noexcept;
 
     private:
+        struct Impl;
         std::unique_ptr<Impl> m_pImpl;
 
         friend ID3D11Buffer* detail::GetVertexBuffer(Mesh& mesh) noexcept;

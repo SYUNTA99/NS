@@ -97,6 +97,39 @@ TEST(TransformTest, InterpolatedLocalMatrixAtAlphaOneEqualsCurrent)
     EXPECT_TRUE(MatricesNear(atOne, t.LocalMatrix()));
 }
 
+TEST(TransformTest, FreshTransformWithoutSnapshotInterpolatesFromOrigin)
+{
+    // Snapshot 未実行の新規 Transform は previous が default(原点/単位回転)のまま
+    // この状態で alpha<1 を補間すると配置先ではなく原点へ振れる(編集再構築バグの再現)
+    Transform t;
+    t.SetPosition({10.0f, 20.0f, 30.0f});
+    t.SetRotation(Quaternion::CreateFromYawPitchRoll(1.0f, 0.0f, 0.0f));
+
+    const Matrix atZero = t.InterpolatedWorldMatrix(0.0f);
+    EXPECT_TRUE(MatricesNear(atZero, Matrix::Identity))
+        << "Snapshot 前の previous は default のため alpha=0 で原点行列になるはず";
+
+    const Matrix atHalf = t.InterpolatedWorldMatrix(0.5f);
+    EXPECT_FALSE(MatricesNear(atHalf, t.WorldMatrix()))
+        << "Snapshot を呼ばない限り中間 alpha は配置先と一致せず原点へ振れる";
+}
+
+TEST(TransformTest, SnapshotAfterPlacementStopsOriginSwing)
+{
+    // 生成直後に配置値で Snapshot しておけば previous==current となり
+    // 全 alpha で WorldMatrix と一致して原点へ振れなくなる(修正後の不変条件)
+    Transform t;
+    t.SetPosition({10.0f, 20.0f, 30.0f});
+    t.SetRotation(Quaternion::CreateFromYawPitchRoll(1.0f, 0.0f, 0.0f));
+    t.SetScale({2.0f, 2.0f, 2.0f});
+    t.Snapshot();
+
+    const Matrix world = t.WorldMatrix();
+    EXPECT_TRUE(MatricesNear(t.InterpolatedWorldMatrix(0.0f), world));
+    EXPECT_TRUE(MatricesNear(t.InterpolatedWorldMatrix(0.5f), world));
+    EXPECT_TRUE(MatricesNear(t.InterpolatedWorldMatrix(1.0f), world));
+}
+
 TEST(TransformTest, ChildDestructionDetachesFromParentChildrenList)
 {
     Transform parent;

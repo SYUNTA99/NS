@@ -1,12 +1,8 @@
 #include "Framework/Graphics/Mesh.h"
 
 #include "Framework/Graphics/Buffer.h"
-#include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/detail/d3d_context.h"
-
-#include "Framework/Core/LogCategories.h"
-#include "Framework/Core/Logger.h"
 
 #include <cstddef>
 #include <utility>
@@ -26,113 +22,26 @@ namespace NS::Graphics
         bool usingFallback = false;
     };
 
-    namespace
-    {
-        // fallback Cube は 1m 立方 (player と大きさ揃え)、 default Cube として描画
-        constexpr float kFallbackCubeHalfExtent = 0.5f;
-
-        // MeshDesc / Buffer 構築失敗時に default Cube に切替える。 device / context は呼出側で検証済
-        bool TryBuildFallbackCube(Mesh::Impl& impl, Renderer& renderer)
-        {
-            const MeshGeometry geom =
-                MakeCube(NS::Math::Vector3{kFallbackCubeHalfExtent, kFallbackCubeHalfExtent, kFallbackCubeHalfExtent});
-
-            VertexBufferDesc vbd{};
-            vbd.initialData = geom.vertices.data();
-            vbd.vertexCount = geom.vertices.size();
-            vbd.stride = sizeof(MeshVertex);
-            vbd.usage = BufferUsage::Static;
-            auto vb = std::make_unique<VertexBuffer>(renderer, vbd);
-            if (!vb->IsValid())
-            {
-                NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Mesh: fallback Cube VB 構築失敗");
-                return false;
-            }
-
-            IndexBufferDesc ibd{};
-            ibd.initialData = geom.indices.data();
-            ibd.indexCount = geom.indices.size();
-            ibd.format = IndexFormat::UInt16;
-            ibd.usage = BufferUsage::Static;
-            auto ib = std::make_unique<IndexBuffer>(renderer, ibd);
-            if (!ib->IsValid())
-            {
-                NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Mesh: fallback Cube IB 構築失敗");
-                return false;
-            }
-
-            impl.vb = std::move(vb);
-            impl.ib = std::move(ib);
-            impl.vertexCount = geom.vertices.size();
-            impl.indexCount = geom.indices.size();
-            impl.valid = true;
-            impl.usingFallback = true;
-            return true;
-        }
-    } // namespace
-
-    Mesh::Mesh(Renderer& renderer, const MeshDesc& desc) : m_pImpl(std::make_unique<Impl>())
-    {
-        auto* device = detail::GetDevice(renderer);
-        auto* context = detail::GetContext(renderer);
-        if (device == nullptr || context == nullptr)
-        {
-            // device 自体が無いと fallback Cube すら作れない致命状態
-            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Mesh: Renderer の Device / Context が無効");
-            return;
-        }
-        m_pImpl->context = context;
-
-        if (desc.vertices == nullptr || desc.vertexCount == 0u || desc.indices == nullptr || desc.indexCount == 0u)
-        {
-            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                         "Mesh: MeshDesc 不正 — fallback Cube に切替 (vertices={}, vCount={}, indices={}, iCount={})",
-                         static_cast<const void*>(desc.vertices),
-                         desc.vertexCount,
-                         static_cast<const void*>(desc.indices),
-                         desc.indexCount);
-            TryBuildFallbackCube(*m_pImpl, renderer);
-            return;
-        }
-
-        VertexBufferDesc vbd{};
-        vbd.initialData = desc.vertices;
-        vbd.vertexCount = desc.vertexCount;
-        vbd.stride = sizeof(MeshVertex);
-        vbd.usage = BufferUsage::Static;
-        auto vb = std::make_unique<VertexBuffer>(renderer, vbd);
-        if (!vb->IsValid())
-        {
-            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                         "Mesh: VertexBuffer 構築失敗 — fallback Cube に切替 (count={})",
-                         desc.vertexCount);
-            TryBuildFallbackCube(*m_pImpl, renderer);
-            return;
-        }
-
-        IndexBufferDesc ibd{};
-        ibd.initialData = desc.indices;
-        ibd.indexCount = desc.indexCount;
-        ibd.format = IndexFormat::UInt16;
-        ibd.usage = BufferUsage::Static;
-        auto ib = std::make_unique<IndexBuffer>(renderer, ibd);
-        if (!ib->IsValid())
-        {
-            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                         "Mesh: IndexBuffer 構築失敗 — fallback Cube に切替 (count={})",
-                         desc.indexCount);
-            TryBuildFallbackCube(*m_pImpl, renderer);
-            return;
-        }
-
-        m_pImpl->vb = std::move(vb);
-        m_pImpl->ib = std::move(ib);
-        m_pImpl->vertexCount = desc.vertexCount;
-        m_pImpl->indexCount = desc.indexCount;
-        m_pImpl->valid = true;
-    }
-
+    Mesh::Mesh() : m_pImpl(std::make_unique<Impl>()) {}
     Mesh::~Mesh() = default;
+
+    void Mesh::SetGeometry(Renderer& renderer,
+                           std::unique_ptr<VertexBuffer> vertexBuffer,
+                           std::unique_ptr<IndexBuffer> indexBuffer,
+                           std::size_t vertexCount,
+                           std::size_t indexCount,
+                           bool usingFallback) noexcept
+    {
+        if (!m_pImpl)
+            return;
+        m_pImpl->context = detail::GetContext(renderer);
+        m_pImpl->vb = std::move(vertexBuffer);
+        m_pImpl->ib = std::move(indexBuffer);
+        m_pImpl->vertexCount = vertexCount;
+        m_pImpl->indexCount = indexCount;
+        m_pImpl->usingFallback = usingFallback;
+        m_pImpl->valid = (m_pImpl->vb != nullptr && m_pImpl->ib != nullptr && m_pImpl->context != nullptr);
+    }
 
     bool Mesh::IsValid() const noexcept
     {
@@ -154,23 +63,11 @@ namespace NS::Graphics
     void Mesh::Draw() noexcept
     {
         if (!IsValid())
-        {
             return;
-        }
         m_pImpl->vb->Bind(0);
         m_pImpl->ib->Bind();
         m_pImpl->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
         m_pImpl->context->DrawIndexed(static_cast<UINT>(m_pImpl->indexCount), 0u, 0);
-    }
-
-    std::vector<InputElement> Mesh::StandardInputLayout()
-    {
-        static const std::vector<InputElement> kLayout = {
-            InputElement{"POSITION", InputElementFormat::Float3, static_cast<unsigned>(offsetof(MeshVertex, position))},
-            InputElement{"TEXCOORD", InputElementFormat::Float2, static_cast<unsigned>(offsetof(MeshVertex, uv))},
-            InputElement{"NORMAL", InputElementFormat::Float3, static_cast<unsigned>(offsetof(MeshVertex, normal))},
-        };
-        return kLayout;
     }
 
     namespace detail

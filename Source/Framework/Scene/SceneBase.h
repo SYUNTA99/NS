@@ -11,7 +11,7 @@
 /// 責務:
 /// 1. **ライフサイクル hook** — Application から OnStart / OnUpdate(dt) / OnRender /
 ///    OnShutdown を順序通り呼び戻される (fixed timestep + variable render)
-/// 2. **IRenderable registry** — MeshComponent 等の自己登録窓口
+/// 2. **IRenderable registry** — MeshRendererComponent 等の自己登録窓口
 ///    描画 iteration はここが握り、 Player.cpp / Block.cpp は render 0 行
 /// 3. **scene-graph root** — GameObject (Player / Block 等) が AttachScene(this) で
 ///    この SceneBase に bind される
@@ -53,10 +53,10 @@ namespace NS::Scene
         /// MainLoop 終了後に 1 回呼ばれる。Window/Renderer はまだ有効、Shutdown 後に解放
         virtual void OnShutdown() {}
 
-        /// IRenderable Component の自己登録。MeshComponent 等が OnStart で呼ぶ
+        /// IRenderable Component の自己登録。MeshRendererComponent 等が OnStart で呼ぶ
         /// 基底 default は no-op。LevelEditorScene などが override で RenderRegistry に追加する
         virtual void RegisterRenderable(IRenderable* renderable) { (void)renderable; }
-        /// IRenderable Component の自己解除。MeshComponent 等が OnEndPlay で呼ぶ
+        /// IRenderable Component の自己解除。MeshRendererComponent 等が OnEndPlay で呼ぶ
         /// 基底 default は no-op。LevelEditorScene などが override で RenderRegistry から削除する
         virtual void UnregisterRenderable(IRenderable* renderable) { (void)renderable; }
     };

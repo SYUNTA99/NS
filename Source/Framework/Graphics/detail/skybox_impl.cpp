@@ -1,10 +1,10 @@
 #include "Framework/Graphics/Skybox.h"
 
 #include "Framework/Graphics/Buffer.h"
-#include "Framework/Graphics/Mesh.h"
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/ShaderProgram.h"
+#include "Framework/Graphics/StaticMesh.h"
 #include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/Filesystem.h"
@@ -61,7 +61,7 @@ namespace NS::Graphics
         ComPtr<ID3D11DeviceContext> context;
 
         // cube mesh / shader / sampler / states
-        std::unique_ptr<Mesh> cubeMesh;
+        std::unique_ptr<StaticMesh> cubeMesh;
         std::unique_ptr<ShaderProgram> shader;
         std::unique_ptr<ConstantBuffer> cb;
         ComPtr<ID3D11SamplerState> sampler;
@@ -380,7 +380,7 @@ namespace NS::Graphics
         md.vertexCount = geom.vertices.size();
         md.indices = geom.indices.data();
         md.indexCount = geom.indices.size();
-        m_pImpl->cubeMesh = std::make_unique<Mesh>(renderer, md);
+        m_pImpl->cubeMesh = std::make_unique<StaticMesh>(renderer, md);
         if (!m_pImpl->cubeMesh->IsValid())
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Skybox: cube mesh 構築失敗");
@@ -395,7 +395,7 @@ namespace NS::Graphics
         sd.pixelShaderPath = exeDir / "Shaders" / "skybox.ps.hlsl";
         sd.vertexEntryPoint = "VSMain";
         sd.pixelEntryPoint = "PSMain";
-        sd.inputLayout = Mesh::StandardInputLayout();
+        sd.inputLayout = StaticMesh::StandardInputLayout();
         m_pImpl->shader = std::make_unique<ShaderProgram>(renderer, sd);
         if (!m_pImpl->shader->IsValid())
         {

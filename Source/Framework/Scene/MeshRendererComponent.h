@@ -1,7 +1,7 @@
 #pragma once
 
-/// @file MeshComponent.h
-/// @brief MeshComponent — Mesh + Material 描画を担う IRenderable 多重継承 Component
+/// @file MeshRendererComponent.h
+/// @brief MeshRendererComponent — Mesh + Material 描画を担う IRenderable 多重継承 Component
 ///
 /// 既存 standard.{vs,ps}.hlsl + FrameCB 構造 (160 byte, row_major LH) を流用する
 /// `Draw(context)` 内で `Transform::InterpolatedWorldMatrix(context.alpha)` を使い、
@@ -38,14 +38,14 @@ namespace NS::Scene
     static_assert(sizeof(FrameCB) == 192, "FrameCB size は HLSL standard と完全一致 (192 byte)");
     static_assert(alignof(FrameCB) == 16, "FrameCB は 16 byte alignment");
 
-    class MeshComponent : public Component, public IRenderable
+    class MeshRendererComponent : public Component, public IRenderable
     {
     public:
         /// GameObject owner と Mesh / Material を同時に受け取って auto-register するコンストラクタ
         /// Mesh / Material は raw pointer、寿命は呼出側 (通常は Scene or Player) が保証する
-        MeshComponent(NS::Scene::GameObject* owner,
-                      NS::Graphics::Mesh* mesh,
-                      NS::Graphics::Material* material) noexcept;
+        MeshRendererComponent(NS::Scene::GameObject* owner,
+                              NS::Graphics::Mesh* mesh,
+                              NS::Graphics::Material* material) noexcept;
 
         /// 光源方向 (default は CubeScene と同値 (-0.3, -1, -0.2) を normalize 前で渡す)
         void SetLightDirection(const NS::Math::Vector3& dir) noexcept { m_lightDir = dir; }

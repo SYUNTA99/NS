@@ -13,7 +13,7 @@ namespace
     using NS::Graphics::BlockInstance;
     using NS::Graphics::InstanceBatcher;
     using NS::Graphics::Material;
-    using NS::Graphics::Mesh;
+    using NS::Graphics::StaticMesh;
     using NS::Graphics::Renderer;
     using NS::Graphics::RendererDesc;
     using NS::Platform::Window;
@@ -39,9 +39,9 @@ namespace
     // bucket key を試験するための偽 Mesh* / Material* を生成する。 InstanceBatcher は
     // ポインタ値を bucket key としてしか扱わないため (count-only モードでは dereference もしない)、
     // 実体を指す必要は無い。 0xDEAD ベースで衝突しない 64bit アドレスを返す
-    [[nodiscard]] Mesh* FakeMesh(std::uintptr_t index)
+    [[nodiscard]] StaticMesh* FakeMesh(std::uintptr_t index)
     {
-        return reinterpret_cast<Mesh*>(static_cast<std::uintptr_t>(0xDEAD'0001ull) + index * 0x10ull);
+        return reinterpret_cast<StaticMesh*>(static_cast<std::uintptr_t>(0xDEAD'0001ull) + index * 0x10ull);
     }
 
     [[nodiscard]] Material* FakeMaterial(std::uintptr_t index)
