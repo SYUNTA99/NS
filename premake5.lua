@@ -289,7 +289,8 @@ project "Graphics"
         "Source/third_party/DirectXTK/Inc",
         "Source/third_party/DirectXTex/DirectXTex",
         "Source/third_party/spdlog/include",
-        "Source/third_party/magic_enum/include"
+        "Source/third_party/magic_enum/include",
+        "Source/third_party/cgltf"
     }
 
     defines {
