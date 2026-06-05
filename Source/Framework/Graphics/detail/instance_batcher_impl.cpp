@@ -107,7 +107,7 @@ namespace NS::Graphics
         }
 
         // POSITION + TEXCOORD + NORMAL (slot0) + INSTANCE_WORLD0..3 + INSTANCE_COLOR (slot1) の
-        // 8 element input layout を組む。 ShaderProgram の InputElement 抽象は slot 切替や
+        // 8 element input layout を組む。 Shader の InputElement 抽象は slot 切替や
         // per-instance step rate を露出していないため、 この impl 内に閉じた生 D3D11 layout で構築する
         [[nodiscard]] ComPtr<ID3D11InputLayout> CreateInstancedInputLayout(ID3D11Device* device,
                                                                            const void* vsBytecode,
@@ -199,7 +199,7 @@ namespace NS::Graphics
         }
         m_pImpl->instanceVbCapacity = kInitialPerBucketCapacity;
 
-        // ShaderProgram の InputElement は slot 0 単 stream 専用なので、 本 batcher は直接 D3D11 で VS+PS を組む
+        // Shader の InputElement は slot 0 単 stream 専用なので、 本 batcher は直接 D3D11 で VS+PS を組む
         // PS は standard.ps.hlsl を流用する (worldNormal / uv 出力を期待する PS と整合)
         // VS_OUT が standard と完全一致しない点 (instColor の有無等) は将来の lighting 拡張で reconcile
         const auto exeDir = ::NS::Core::FileSystem::GetExeDirectory();

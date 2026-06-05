@@ -11,7 +11,7 @@
 /// @pre Renderer の DeviceContext を内部保持するため Renderer より先に破棄すること
 
 #include "Framework/Graphics/Mesh.h"
-#include "Framework/Graphics/ShaderProgram.h"
+#include "Framework/Graphics/Shader.h"
 #include "Framework/Math/Math.h"
 
 #include <cstddef>
@@ -77,7 +77,7 @@ namespace NS::Graphics
         void Draw() noexcept override;
 
         /// SkinnedVertex に対応する POSITION/TEXCOORD/NORMAL/BLENDINDICES/BLENDWEIGHT の InputElement 配列を返す
-        /// 戻り値は ShaderProgramDesc::inputLayout にそのまま流用できる
+        /// 戻り値は ShaderDesc::inputLayout にそのまま流用できる
         [[nodiscard]] static std::vector<InputElement> SkinnedInputLayout();
 
         /// desc.boneCount を内部上限でクランプした有効ボーン数

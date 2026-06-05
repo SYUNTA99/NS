@@ -3,7 +3,7 @@
 #include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/CommonStates.h"
 #include "Framework/Graphics/Renderer.h"
-#include "Framework/Graphics/ShaderProgram.h"
+#include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/Texture.h"
 #include "Framework/Graphics/detail/d3d_context.h"
 
@@ -19,7 +19,7 @@ namespace NS::Graphics
 
     struct Material::Impl
     {
-        ShaderProgram* shader = nullptr;
+        Shader* shader = nullptr;
         std::map<unsigned, const Texture*> textures;
         std::unique_ptr<ConstantBuffer> cb;
         ComPtr<ID3D11DeviceContext> context;
@@ -40,7 +40,7 @@ namespace NS::Graphics
         }
         if (desc.shader == nullptr)
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Material: ShaderProgram が nullptr (共有参照必須)");
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Material: Shader が nullptr (共有参照必須)");
             return;
         }
 

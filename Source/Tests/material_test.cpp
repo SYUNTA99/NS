@@ -3,7 +3,7 @@
 #include <Framework/Core/Logger.h>
 #include <Framework/Graphics/Material.h>
 #include <Framework/Graphics/Renderer.h>
-#include <Framework/Graphics/ShaderProgram.h>
+#include <Framework/Graphics/Shader.h>
 #include <Framework/Graphics/Texture.h>
 #include <Framework/Platform/Window.h>
 
@@ -15,8 +15,8 @@ namespace
     using NS::Graphics::MaterialDesc;
     using NS::Graphics::Renderer;
     using NS::Graphics::RendererDesc;
-    using NS::Graphics::ShaderProgram;
-    using NS::Graphics::ShaderProgramDesc;
+    using NS::Graphics::Shader;
+    using NS::Graphics::ShaderDesc;
     using NS::Graphics::ShaderStage;
     using NS::Graphics::Texture;
     using NS::Graphics::TextureDesc;
@@ -40,9 +40,9 @@ namespace
         return d;
     }
 
-    ShaderProgramDesc MakeFallbackShaderDesc()
+    ShaderDesc MakeFallbackShaderDesc()
     {
-        ShaderProgramDesc d{};
+        ShaderDesc d{};
         d.inputLayout = {InputElement{"POSITION", InputElementFormat::Float3, 0u}};
         return d;
     }
@@ -68,7 +68,7 @@ TEST_F(MaterialLoggerTest, ConstructWithShaderIsValid)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ShaderProgram shader(renderer, MakeFallbackShaderDesc());
+    Shader shader(renderer, MakeFallbackShaderDesc());
     ASSERT_TRUE(shader.IsValid());
 
     MaterialDesc desc{};
@@ -103,7 +103,7 @@ TEST_F(MaterialLoggerTest, ConstructWithZeroCbSizeStillValid)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ShaderProgram shader(renderer, MakeFallbackShaderDesc());
+    Shader shader(renderer, MakeFallbackShaderDesc());
     ASSERT_TRUE(shader.IsValid());
 
     MaterialDesc desc{};
@@ -121,7 +121,7 @@ TEST_F(MaterialLoggerTest, SetAndClearTextureBindDoesNotCrash)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ShaderProgram shader(renderer, MakeFallbackShaderDesc());
+    Shader shader(renderer, MakeFallbackShaderDesc());
     ASSERT_TRUE(shader.IsValid());
 
     Texture texture(renderer, TextureDesc{});
@@ -150,7 +150,7 @@ TEST_F(MaterialLoggerTest, BindDoesNotCrash)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ShaderProgram shader(renderer, MakeFallbackShaderDesc());
+    Shader shader(renderer, MakeFallbackShaderDesc());
     ASSERT_TRUE(shader.IsValid());
 
     Texture texture(renderer, TextureDesc{});
@@ -197,7 +197,7 @@ TEST_F(MaterialLoggerTest, SetParamsWithoutCbIsNoOp)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ShaderProgram shader(renderer, MakeFallbackShaderDesc());
+    Shader shader(renderer, MakeFallbackShaderDesc());
     ASSERT_TRUE(shader.IsValid());
 
     MaterialDesc desc{};
@@ -219,7 +219,7 @@ TEST_F(MaterialLoggerTest, SetParamsBeforeBindNoCrash)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ShaderProgram shader(renderer, MakeFallbackShaderDesc());
+    Shader shader(renderer, MakeFallbackShaderDesc());
     ASSERT_TRUE(shader.IsValid());
 
     MaterialDesc desc{};

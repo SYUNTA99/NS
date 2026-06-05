@@ -51,7 +51,7 @@ namespace NS::Graphics
         [[nodiscard]] std::size_t IndexCount() const noexcept;
 
         /// VB.Bind(0) + IB.Bind() + IASetPrimitiveTopology(TRIANGLELIST) + DrawIndexed を一括発行する
-        /// ShaderProgram / Material 側の Bind は呼出側 (MeshRendererComponent) 責任
+        /// Shader / Material 側の Bind は呼出側 (MeshRendererComponent) 責任
         /// skinning する派生は override して bone palette CB の bind を足す
         virtual void Draw() noexcept;
 

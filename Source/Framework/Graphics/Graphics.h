@@ -12,7 +12,7 @@
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/RenderTarget.h"
 #include "Framework/Graphics/Renderer.h"
-#include "Framework/Graphics/ShaderProgram.h"
+#include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/SkeletalMesh.h"
 #include "Framework/Graphics/StaticMesh.h"
 #include "Framework/Graphics/Texture.h"

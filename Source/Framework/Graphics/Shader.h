@@ -1,7 +1,7 @@
 #pragma once
 
-/// @file ShaderProgram.h
-/// @brief NS::Graphics::ShaderProgram — VS + PS + InputLayout の三位一体バンドル
+/// @file Shader.h
+/// @brief NS::Graphics::Shader — VS + PS + InputLayout の三位一体バンドル
 ///
 /// @details ランタイム `D3DCompile` で `.hlsl` を `vs_5_0` / `ps_5_0` にコンパイル
 /// VS / PS / InputLayout のいずれかで失敗すると埋込 HLSL の magenta fallback
@@ -23,14 +23,14 @@ namespace NS::Graphics
 {
 
     class Renderer;
-    class ShaderProgram;
+    class Shader;
 
     namespace detail
     {
         /// Material 等が直接 D3D11 API に渡すために提供する typed friend accessor
-        [[nodiscard]] ID3D11VertexShader* GetVertexShader(ShaderProgram& sp) noexcept;
-        [[nodiscard]] ID3D11PixelShader* GetPixelShader(ShaderProgram& sp) noexcept;
-        [[nodiscard]] ID3D11InputLayout* GetInputLayout(ShaderProgram& sp) noexcept;
+        [[nodiscard]] ID3D11VertexShader* GetVertexShader(Shader& sp) noexcept;
+        [[nodiscard]] ID3D11PixelShader* GetPixelShader(Shader& sp) noexcept;
+        [[nodiscard]] ID3D11InputLayout* GetInputLayout(Shader& sp) noexcept;
     } // namespace detail
 
     /// 公開 InputElement 用フォーマット。D3D11 / DXGI を漏らさない独自 enum
@@ -52,10 +52,10 @@ namespace NS::Graphics
         unsigned byteOffset = 0;
     };
 
-    /// ShaderProgram 構築パラメータ
+    /// Shader 構築パラメータ
     /// path が空 or 読込・コンパイル失敗時は埋込 magenta fallback HLSL に切替わり、IsUsingFallback() が true になる
     /// fallback VS は POSITION (float3) を消費するので inputLayout に POSITION が含まれない場合は IsValid() == false
-    struct ShaderProgramDesc
+    struct ShaderDesc
     {
         std::filesystem::path vertexShaderPath;
         std::filesystem::path pixelShaderPath;
@@ -68,18 +68,18 @@ namespace NS::Graphics
     /// ランタイム D3DCompile で .hlsl を vs_5_0 / ps_5_0 にコンパイル
     /// VS/PS/InputLayout のいずれかで失敗すると埋込 HLSL の magenta fallback (PS 出力 RGB=(1,0,1)) に切替える
     /// 依存: Renderer の DeviceContext を内部で保持するため、Renderer より先に破棄すること
-    class ShaderProgram
+    class Shader
     {
     public:
         struct Impl;
 
-        ShaderProgram(Renderer& renderer, const ShaderProgramDesc& desc);
-        ~ShaderProgram();
+        Shader(Renderer& renderer, const ShaderDesc& desc);
+        ~Shader();
 
-        ShaderProgram(const ShaderProgram&) = delete;
-        ShaderProgram& operator=(const ShaderProgram&) = delete;
-        ShaderProgram(ShaderProgram&&) = delete;
-        ShaderProgram& operator=(ShaderProgram&&) = delete;
+        Shader(const Shader&) = delete;
+        Shader& operator=(const Shader&) = delete;
+        Shader(Shader&&) = delete;
+        Shader& operator=(Shader&&) = delete;
 
         /// VS / PS / InputLayout が全て生成済みなら true。fallback でも true
         [[nodiscard]] bool IsValid() const noexcept;
@@ -94,9 +94,9 @@ namespace NS::Graphics
     private:
         std::unique_ptr<Impl> m_pImpl;
 
-        friend ID3D11VertexShader* detail::GetVertexShader(ShaderProgram& sp) noexcept;
-        friend ID3D11PixelShader* detail::GetPixelShader(ShaderProgram& sp) noexcept;
-        friend ID3D11InputLayout* detail::GetInputLayout(ShaderProgram& sp) noexcept;
+        friend ID3D11VertexShader* detail::GetVertexShader(Shader& sp) noexcept;
+        friend ID3D11PixelShader* detail::GetPixelShader(Shader& sp) noexcept;
+        friend ID3D11InputLayout* detail::GetInputLayout(Shader& sp) noexcept;
     };
 
 } // namespace NS::Graphics

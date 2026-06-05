@@ -83,7 +83,7 @@ namespace NS::Graphics
         /// 1000 block / ≤200 draw call の監視に使う
         [[nodiscard]] std::size_t LastFrameDrawCallCount() const noexcept;
 
-        /// 内部 VB / InputLayout / ShaderProgram が構築済なら true
+        /// 内部 VB / InputLayout / Shader が構築済なら true
         /// device 未提供時 (テスト) は false でも `BucketCount` / `LastFrameDrawCallCount`
         /// は機能する (集約ロジックのみ動かしたい単体テストのため)
         [[nodiscard]] bool IsValid() const noexcept;

@@ -2,7 +2,7 @@
 
 #include <Framework/Core/Logger.h>
 #include <Framework/Graphics/Renderer.h>
-#include <Framework/Graphics/ShaderProgram.h>
+#include <Framework/Graphics/Shader.h>
 #include <Framework/Platform/Window.h>
 
 namespace
@@ -11,8 +11,8 @@ namespace
     using NS::Graphics::InputElementFormat;
     using NS::Graphics::Renderer;
     using NS::Graphics::RendererDesc;
-    using NS::Graphics::ShaderProgram;
-    using NS::Graphics::ShaderProgramDesc;
+    using NS::Graphics::Shader;
+    using NS::Graphics::ShaderDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 
@@ -40,46 +40,46 @@ namespace
     }
 } // namespace
 
-class ShaderProgramLoggerTest : public ::testing::Test
+class ShaderLoggerTest : public ::testing::Test
 {
 protected:
     void SetUp() override { NS::Core::Logger::Init(); }
     void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
-TEST_F(ShaderProgramLoggerTest, MissingVsPathFallsBack)
+TEST_F(ShaderLoggerTest, MissingVsPathFallsBack)
 {
     Window window(MakeWindowDesc("ns_sp_missing_vs"));
     ASSERT_TRUE(window.IsValid());
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ShaderProgramDesc desc{};
+    ShaderDesc desc{};
     desc.vertexShaderPath = "C:/nonexistent/__ns_test_missing_vs__.hlsl";
     desc.pixelShaderPath = "C:/nonexistent/__ns_test_missing_ps__.hlsl";
     desc.inputLayout = MakePositionOnlyLayout();
 
-    ShaderProgram sp(renderer, desc);
+    Shader sp(renderer, desc);
     EXPECT_TRUE(sp.IsValid());
     EXPECT_TRUE(sp.IsUsingFallback());
 }
 
-TEST_F(ShaderProgramLoggerTest, EmptyPathsFallBack)
+TEST_F(ShaderLoggerTest, EmptyPathsFallBack)
 {
     Window window(MakeWindowDesc("ns_sp_empty"));
     ASSERT_TRUE(window.IsValid());
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ShaderProgramDesc desc{};
+    ShaderDesc desc{};
     desc.inputLayout = MakePositionOnlyLayout();
 
-    ShaderProgram sp(renderer, desc);
+    Shader sp(renderer, desc);
     EXPECT_TRUE(sp.IsValid());
     EXPECT_TRUE(sp.IsUsingFallback());
 }
 
-TEST_F(ShaderProgramLoggerTest, EmptyInputLayoutBecomesInvalid)
+TEST_F(ShaderLoggerTest, EmptyInputLayoutBecomesInvalid)
 {
     Window window(MakeWindowDesc("ns_sp_empty_layout"));
     ASSERT_TRUE(window.IsValid());
@@ -87,40 +87,40 @@ TEST_F(ShaderProgramLoggerTest, EmptyInputLayoutBecomesInvalid)
     ASSERT_TRUE(renderer.IsValid());
 
     // inputLayout 空のまま fallback ルートへ流れ、CreateInputLayout が失敗して IsValid=false で完全クリアされる契約
-    ShaderProgramDesc desc{};
-    ShaderProgram sp(renderer, desc);
+    ShaderDesc desc{};
+    Shader sp(renderer, desc);
     EXPECT_FALSE(sp.IsValid());
     EXPECT_FALSE(sp.IsUsingFallback());
 }
 
-TEST_F(ShaderProgramLoggerTest, FallbackBindDoesNotCrash)
+TEST_F(ShaderLoggerTest, FallbackBindDoesNotCrash)
 {
     Window window(MakeWindowDesc("ns_sp_bind"));
     ASSERT_TRUE(window.IsValid());
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ShaderProgramDesc desc{};
+    ShaderDesc desc{};
     desc.inputLayout = MakePositionOnlyLayout();
 
-    ShaderProgram sp(renderer, desc);
+    Shader sp(renderer, desc);
     ASSERT_TRUE(sp.IsValid());
 
     sp.Bind();
     SUCCEED();
 }
 
-TEST_F(ShaderProgramLoggerTest, FallbackAccessorsNonNull)
+TEST_F(ShaderLoggerTest, FallbackAccessorsNonNull)
 {
     Window window(MakeWindowDesc("ns_sp_accessors"));
     ASSERT_TRUE(window.IsValid());
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ShaderProgramDesc desc{};
+    ShaderDesc desc{};
     desc.inputLayout = MakePositionOnlyLayout();
 
-    ShaderProgram sp(renderer, desc);
+    Shader sp(renderer, desc);
     ASSERT_TRUE(sp.IsValid());
 
     EXPECT_NE(NS::Graphics::detail::GetVertexShader(sp), nullptr);

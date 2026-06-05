@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file Material.h
-/// @brief NS::Graphics::Material — ShaderProgram + Texture スロット + 内蔵 CB
+/// @brief NS::Graphics::Material — Shader + Texture スロット + 内蔵 CB
 ///
-/// @details ShaderProgram は共有参照 (非所有)、 Material 寿命中 shader が
+/// @details Shader は共有参照 (非所有)、 Material 寿命中 shader が
 /// 有効であること。 Sampler は s0 LinearWrap 固定、 複数 sampler
 /// は将来拡張。 `Bind()` は shader / textures / CB / sampler を一括設定する
 /// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること
@@ -17,7 +17,7 @@ namespace NS::Graphics
 {
 
     class Renderer;
-    class ShaderProgram;
+    class Shader;
     class Texture;
 
     /// Material 構築パラメータ
@@ -25,8 +25,8 @@ namespace NS::Graphics
     /// constantBufferSize=0 のとき内部 ConstantBuffer は構築されず、SetParams は no-op になる
     struct MaterialDesc
     {
-        /// 共有 ShaderProgram。nullptr で IsValid()=false
-        ShaderProgram* shader = nullptr;
+        /// 共有 Shader。nullptr で IsValid()=false
+        Shader* shader = nullptr;
         /// 内蔵 ConstantBuffer のバイト数 (alignas(16) + sizeof%16==0 必須)
         std::size_t constantBufferSize = 0;
         /// ConstantBuffer Bind 先スロット
@@ -36,7 +36,7 @@ namespace NS::Graphics
     };
 
     /// Generic 単一クラス Material
-    /// ShaderProgram* (非所有) + Texture スロット (unsigned 番号) + 内蔵 ConstantBuffer
+    /// Shader* (非所有) + Texture スロット (unsigned 番号) + 内蔵 ConstantBuffer
     /// Sampler は s0 LinearWrap 固定、複数 sampler は将来拡張
     /// 依存: Renderer の DeviceContext を内部で保持するため、Renderer より先に破棄すること
     class Material
@@ -52,11 +52,11 @@ namespace NS::Graphics
         Material(Material&&) = delete;
         Material& operator=(Material&&) = delete;
 
-        /// ShaderProgram が非 null で内部リソース構築済なら true。fallback shader でも true
+        /// Shader が非 null で内部リソース構築済なら true。fallback shader でも true
         [[nodiscard]] bool IsValid() const noexcept;
 
-        /// 共有 ShaderProgram が fallback 描画 (magenta) に切替わっているかを問い合わせる
-        /// 内部の `ShaderProgram::IsUsingFallback()` への薄いラッパ、 Material 単体では独自の
+        /// 共有 Shader が fallback 描画 (magenta) に切替わっているかを問い合わせる
+        /// 内部の `Shader::IsUsingFallback()` への薄いラッパ、 Material 単体では独自の
         /// fallback 状態は持たない。 デバッグ時のシェーダ欠落検知に使用
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 

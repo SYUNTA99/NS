@@ -3,7 +3,7 @@
 #include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
-#include "Framework/Graphics/ShaderProgram.h"
+#include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/StaticMesh.h"
 #include "Framework/Graphics/detail/d3d_context.h"
 
@@ -62,7 +62,7 @@ namespace NS::Graphics
 
         // cube mesh / shader / sampler / states
         std::unique_ptr<StaticMesh> cubeMesh;
-        std::unique_ptr<ShaderProgram> shader;
+        std::unique_ptr<Shader> shader;
         std::unique_ptr<ConstantBuffer> cb;
         ComPtr<ID3D11SamplerState> sampler;
         ComPtr<ID3D11DepthStencilState> depthState;
@@ -390,13 +390,13 @@ namespace NS::Graphics
         // skybox 専用 shader。 standard と layout (POSITION+TEXCOORD+NORMAL) を共有することで
         // 既存 input layout を再利用できる
         const auto exeDir = ::NS::Core::FileSystem::GetExeDirectory();
-        ShaderProgramDesc sd{};
+        ShaderDesc sd{};
         sd.vertexShaderPath = exeDir / "Shaders" / "skybox.vs.hlsl";
         sd.pixelShaderPath = exeDir / "Shaders" / "skybox.ps.hlsl";
         sd.vertexEntryPoint = "VSMain";
         sd.pixelEntryPoint = "PSMain";
         sd.inputLayout = StaticMesh::StandardInputLayout();
-        m_pImpl->shader = std::make_unique<ShaderProgram>(renderer, sd);
+        m_pImpl->shader = std::make_unique<Shader>(renderer, sd);
         if (!m_pImpl->shader->IsValid())
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Skybox: shader 構築失敗");

@@ -1,4 +1,4 @@
-#include "Framework/Graphics/ShaderProgram.h"
+#include "Framework/Graphics/Shader.h"
 
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/detail/d3d_context.h"
@@ -17,7 +17,7 @@ namespace NS::Graphics
 {
     using detail::ComPtr;
 
-    struct ShaderProgram::Impl
+    struct Shader::Impl
     {
         ComPtr<ID3D11VertexShader> vs;
         ComPtr<ID3D11PixelShader> ps;
@@ -224,13 +224,13 @@ float4 PSMain() : SV_Target
         }
     } // namespace
 
-    ShaderProgram::ShaderProgram(Renderer& renderer, const ShaderProgramDesc& desc) : m_pImpl(std::make_unique<Impl>())
+    Shader::Shader(Renderer& renderer, const ShaderDesc& desc) : m_pImpl(std::make_unique<Impl>())
     {
         auto* device = detail::GetDevice(renderer);
         auto* context = detail::GetContext(renderer);
         if (device == nullptr || context == nullptr)
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "ShaderProgram: Renderer の Device / Context が無効");
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Shader: Renderer の Device / Context が無効");
             return;
         }
         m_pImpl->context = context;
@@ -292,18 +292,18 @@ float4 PSMain() : SV_Target
         m_pImpl->fallback = true;
     }
 
-    ShaderProgram::~ShaderProgram() = default;
+    Shader::~Shader() = default;
 
-    bool ShaderProgram::IsValid() const noexcept
+    bool Shader::IsValid() const noexcept
     {
         return m_pImpl && m_pImpl->vs && m_pImpl->ps && m_pImpl->layout;
     }
-    bool ShaderProgram::IsUsingFallback() const noexcept
+    bool Shader::IsUsingFallback() const noexcept
     {
         return m_pImpl && m_pImpl->fallback;
     }
 
-    void ShaderProgram::Bind() noexcept
+    void Shader::Bind() noexcept
     {
         if (!IsValid() || !m_pImpl->context)
         {
@@ -316,15 +316,15 @@ float4 PSMain() : SV_Target
 
     namespace detail
     {
-        ID3D11VertexShader* GetVertexShader(ShaderProgram& sp) noexcept
+        ID3D11VertexShader* GetVertexShader(Shader& sp) noexcept
         {
             return sp.m_pImpl ? sp.m_pImpl->vs.Get() : nullptr;
         }
-        ID3D11PixelShader* GetPixelShader(ShaderProgram& sp) noexcept
+        ID3D11PixelShader* GetPixelShader(Shader& sp) noexcept
         {
             return sp.m_pImpl ? sp.m_pImpl->ps.Get() : nullptr;
         }
-        ID3D11InputLayout* GetInputLayout(ShaderProgram& sp) noexcept
+        ID3D11InputLayout* GetInputLayout(Shader& sp) noexcept
         {
             return sp.m_pImpl ? sp.m_pImpl->layout.Get() : nullptr;
         }
