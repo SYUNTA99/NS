@@ -149,6 +149,22 @@ TEST(SkeletalAnimationComponentTest, SelectClip)
     EXPECT_FALSE(comp.SelectClip("nope"));
 }
 
+TEST(SkeletalAnimationComponentTest, AddClipsAppendsAndKeepsSelection)
+{
+    SkeletalAnimationComponent comp(nullptr, Skeleton{}, OneClip(10.0f));
+    comp.OnUpdate();
+    const float held = comp.Time();
+    EXPECT_GT(held, 0.0f);
+
+    std::vector<AnimationClip> more;
+    more.push_back(MakeClip("run", 0.5f));
+    comp.AddClips(std::move(more));
+
+    EXPECT_EQ(comp.ClipCount(), 2u);
+    EXPECT_EQ(comp.CurrentClip(), 0u);  // 選択は維持
+    EXPECT_FLOAT_EQ(comp.Time(), held); // 再生位置も維持
+}
+
 class SkeletalAnimationMeshTest : public ::testing::Test
 {
 protected:

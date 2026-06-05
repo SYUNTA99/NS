@@ -13,6 +13,7 @@
 
 #include <cstddef>
 #include <span>
+#include <string>
 #include <vector>
 
 namespace NS::Graphics
@@ -32,6 +33,7 @@ namespace NS::Graphics
         int parentIndex = -1;
         NS::Math::Matrix inverseBind{}; // model→bone (LH, 行ベクトル)。 既定は恒等
         BonePose bindLocal{};           // 既定ポーズ (pose 未指定時に使う)
+        std::string name;               // glTF node 名 (リターゲットの対応づけ鍵)
     };
 
     /// ボーン階層 + inverse bind を保持し、 ポーズ → ボーンパレット行列群を計算する

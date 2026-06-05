@@ -3,6 +3,7 @@
 #include <Framework/Core/Filesystem.h>
 #include <Framework/Graphics/Animation.h>
 #include <Framework/Graphics/GltfLoader.h>
+#include <Framework/Graphics/Retarget.h>
 #include <Framework/Graphics/Skeleton.h>
 #include <Framework/Math/Math.h>
 
@@ -86,4 +87,107 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
     // 立っている = 身長 (Y) が幅 (X) と奥行 (Z) より大きい
     EXPECT_GT(bindExtent.y, bindExtent.x) << "bind ポーズで Y が最長でない (寝ている可能性)";
     EXPECT_GT(bindExtent.y, bindExtent.z) << "bind ポーズで Y が最長でない (寝ている可能性)";
+
+    // 骨に node 名が入っている (リターゲットの対応づけ鍵)
+    std::size_t namedBones = 0;
+    for (const NS::Graphics::Bone& bone : data.skeleton.Bones())
+        if (!bone.name.empty())
+            ++namedBones;
+    std::cout << "[CesiumMan] named bones = " << namedBones << " / " << data.skeleton.BoneCount() << "\n";
+    EXPECT_EQ(namedBones, data.skeleton.BoneCount()) << "全ボーンに node 名が入っていない";
+}
+
+// skin 非依存のソース読込: skin を無視して node 階層＋animation だけから骨格とクリップを取る
+TEST(GltfAnimatedAssetTest, LoadsAnimationSourceSkinIndependent)
+{
+    const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / "Assets" / "Models" / "CesiumMan.glb";
+    if (!std::filesystem::exists(path))
+    {
+        GTEST_SKIP() << "CesiumMan.glb が無い: " << path.string();
+    }
+
+    const auto source = NS::Graphics::LoadGltfAnimationSource(path.string());
+    ASSERT_TRUE(source.IsValid());
+    EXPECT_GT(source.skeleton.BoneCount(), 0u);
+    EXPECT_LE(source.skeleton.BoneCount(), 128u);
+    EXPECT_GT(source.animations.size(), 0u);
+
+    std::size_t namedBones = 0;
+    for (const NS::Graphics::Bone& bone : source.skeleton.Bones())
+        if (!bone.name.empty())
+            ++namedBones;
+    std::cout << "[CesiumMan source] bones=" << source.skeleton.BoneCount() << " named=" << namedBones
+              << " animations=" << source.animations.size() << "\n";
+    EXPECT_GT(namedBones, 0u) << "ソース骨格に骨名が無い";
+
+    // 失敗系: 存在しないファイルは IsValid()==false
+    const auto missing = NS::Graphics::LoadGltfAnimationSource("does_not_exist_xyz.glb");
+    EXPECT_FALSE(missing.IsValid());
+}
+
+// ファサード: 同一リグの別ファイルアニメを target 骨格へ適用 (第1段)
+TEST(GltfAnimatedAssetTest, LoadAnimationsForSkeletonSameRig)
+{
+    const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / "Assets" / "Models" / "CesiumMan.glb";
+    if (!std::filesystem::exists(path))
+    {
+        GTEST_SKIP() << "CesiumMan.glb が無い: " << path.string();
+    }
+
+    const auto skinned = NS::Graphics::LoadGltfSkinnedMesh(path.string());
+    ASSERT_TRUE(skinned.IsValid());
+
+    const auto clips = NS::Graphics::LoadAnimationsForSkeleton(path.string(), skinned.skeleton);
+    ASSERT_FALSE(clips.empty());
+    for (const NS::Graphics::AnimationClip& clip : clips)
+    {
+        EXPECT_TRUE(clip.IsValid());
+        for (const NS::Graphics::BoneTrack& track : clip.tracks)
+        {
+            EXPECT_GE(track.boneIndex, 0);
+            EXPECT_LT(track.boneIndex, static_cast<int>(skinned.skeleton.BoneCount()));
+        }
+    }
+    std::cout << "[CesiumMan] LoadAnimationsForSkeleton clips=" << clips.size() << "\n";
+}
+
+// 恒等性: 同一リグなら facade 適用クリップが直読みクリップと同じポーズを出す (第1段の正しさ)
+TEST(GltfAnimatedAssetTest, SameRigBindMatchesDirectLoad)
+{
+    const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / "Assets" / "Models" / "CesiumMan.glb";
+    if (!std::filesystem::exists(path))
+    {
+        GTEST_SKIP() << "CesiumMan.glb が無い: " << path.string();
+    }
+
+    const auto skinned = NS::Graphics::LoadGltfSkinnedMesh(path.string());
+    ASSERT_TRUE(skinned.IsValid());
+    ASSERT_FALSE(skinned.animations.empty());
+    const auto bound = NS::Graphics::LoadAnimationsForSkeleton(path.string(), skinned.skeleton);
+    ASSERT_FALSE(bound.empty());
+
+    const NS::Graphics::AnimationClip& direct = skinned.animations[0];
+    const NS::Graphics::AnimationClip& rebound = bound[0];
+    const float duration = direct.duration;
+
+    std::vector<NS::Graphics::BonePose> poseDirect;
+    std::vector<NS::Graphics::BonePose> poseRebound;
+    float maxRotErr = 0.0f;
+    float maxPosErr = 0.0f;
+    for (const float frac : {0.0f, 0.25f, 0.5f, 0.75f, 1.0f})
+    {
+        const float t = duration * frac;
+        NS::Graphics::SampleClipPose(direct, skinned.skeleton, t, poseDirect);
+        NS::Graphics::SampleClipPose(rebound, skinned.skeleton, t, poseRebound);
+        ASSERT_EQ(poseDirect.size(), poseRebound.size());
+        for (std::size_t i = 0; i < poseDirect.size(); ++i)
+        {
+            const float dot = std::fabs(poseDirect[i].rotation.Dot(poseRebound[i].rotation));
+            maxRotErr = std::max(maxRotErr, 1.0f - dot);
+            maxPosErr = std::max(maxPosErr, (poseDirect[i].translation - poseRebound[i].translation).Length());
+        }
+    }
+    std::cout << "[CesiumMan] same-rig identity maxRotErr=" << maxRotErr << " maxPosErr=" << maxPosErr << "\n";
+    EXPECT_LT(maxRotErr, 1e-3f) << "同一リグなのに直読みとポーズが一致しない (回転)";
+    EXPECT_LT(maxPosErr, 1e-3f) << "同一リグなのに直読みとポーズが一致しない (並進)";
 }

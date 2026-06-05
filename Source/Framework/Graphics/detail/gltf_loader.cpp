@@ -18,7 +18,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <optional>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -394,7 +398,11 @@ namespace NS::Graphics
                 cgltf_accessor_read_float(skin.inverse_bind_matrices, i, ibm, 16);
                 bone.inverseBind = detail::ConjugateZMatrix(detail::ReadColumnMajorMatrix(ibm));
                 if (jointNode != nullptr)
+                {
                     bone.bindLocal = ReadJointLocalPose(*jointNode);
+                    if (jointNode->name != nullptr)
+                        bone.name = jointNode->name;
+                }
             }
             return true;
         }
@@ -544,9 +552,11 @@ namespace NS::Graphics
 
         // animation channel/sampler を AnimationClip へ変換する。 target は skin joint に限り、
         // joint index を remap で bone index 化する。 値は RH→LH (translation/rotation を mirror)
+        // animation を AnimationClip 群に取り込む。 resolveBone は target node → bone index (-1 = 対象外)
+        // skinned (skin+remap) と source (node→index map) で resolver を差し替えて共用する
+        template <class ResolveBone>
         void ParseAnimations(const cgltf_data& model,
-                             const cgltf_skin& skin,
-                             const std::vector<std::uint32_t>& remap,
+                             ResolveBone resolveBone,
                              const std::string& path,
                              std::vector<AnimationClip>& outClips)
         {
@@ -574,15 +584,14 @@ namespace NS::Graphics
                         continue;
                     if (channel.target_path == cgltf_animation_path_type_weights)
                         continue; // morph target は非対応
-                    const int jointIndex = FindJointIndex(skin, channel.target_node);
-                    if (jointIndex < 0)
+                    const int boneIndex = resolveBone(channel.target_node);
+                    if (boneIndex < 0)
                     {
                         NS_LOG_WARN(::NS::Core::LogCat::Graphics,
-                                    "LoadGltfSkinnedMesh: animation target が skin joint でないため skip (path={})",
+                                    "glTF animation: target が骨に対応しないため skip (path={})",
                                     path);
                         continue;
                     }
-                    const int boneIndex = static_cast<int>(remap[static_cast<std::size_t>(jointIndex)]);
 
                     const cgltf_animation_sampler& sampler = *channel.sampler;
                     if (sampler.input == nullptr || sampler.output == nullptr || sampler.input->count == 0)
@@ -592,7 +601,7 @@ namespace NS::Graphics
                     const bool cubic = (sampler.interpolation == cgltf_interpolation_type_cubic_spline);
                     if (cubic)
                         NS_LOG_WARN(::NS::Core::LogCat::Graphics,
-                                    "LoadGltfSkinnedMesh: CUBICSPLINE は未対応のため線形で代替 (path={})",
+                                    "glTF animation: CUBICSPLINE は未対応のため線形で代替 (path={})",
                                     path);
                     const Interpolation interp = MapInterpolation(sampler.interpolation);
                     const cgltf_size stride = cubic ? 3 : 1;
@@ -648,6 +657,89 @@ namespace NS::Graphics
                 if (clip.IsValid())
                     outClips.push_back(std::move(clip));
             }
+        }
+
+        // animation 対象 node とその祖先から source skeleton を組む (skin / inverseBind 非依存)
+        // bones は親が先の順、 nodeToBone は node→bone index、 outRootXf は skeleton 上位ノード変換 (LH)
+        bool BuildSourceSkeleton(const cgltf_data& model,
+                                 const std::string& path,
+                                 std::vector<Bone>& outBones,
+                                 std::unordered_map<const cgltf_node*, int>& outNodeToBone,
+                                 NS::Math::Matrix& outRootXf)
+        {
+            std::unordered_set<const cgltf_node*> animated;
+            for (cgltf_size a = 0; a < model.animations_count; ++a)
+            {
+                const cgltf_animation& anim = model.animations[a];
+                for (cgltf_size c = 0; c < anim.channels_count; ++c)
+                    if (anim.channels[c].target_node != nullptr)
+                        animated.insert(anim.channels[c].target_node);
+            }
+            if (animated.empty())
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                             "LoadGltfAnimationSource: animation 対象 node が無い (path={})",
+                             path);
+                return false;
+            }
+
+            // 対象 node とその全祖先を骨格に含める (global 計算に階層が要るため)
+            std::unordered_set<const cgltf_node*> included;
+            for (const cgltf_node* node : animated)
+                for (const cgltf_node* p = node; p != nullptr; p = p->parent)
+                    included.insert(p);
+
+            outBones.clear();
+            outNodeToBone.clear();
+            // root (親が included でない) から pre-order で並べると親が必ず子より前になる
+            std::function<void(const cgltf_node*)> visit = [&](const cgltf_node* node) {
+                const int index = static_cast<int>(outBones.size());
+                outNodeToBone.emplace(node, index);
+                Bone bone;
+                const cgltf_node* parent = node->parent;
+                bone.parentIndex = (parent != nullptr && included.count(parent) != 0) ? outNodeToBone.at(parent) : -1;
+                bone.bindLocal = ReadJointLocalPose(*node);
+                if (node->name != nullptr)
+                    bone.name = node->name;
+                outBones.push_back(std::move(bone)); // inverseBind は恒等のまま (source は skinning しない)
+                for (cgltf_size i = 0; i < node->children_count; ++i)
+                    if (included.count(node->children[i]) != 0)
+                        visit(node->children[i]);
+            };
+
+            outRootXf = NS::Math::Matrix::Identity;
+            bool rootXfSet = false;
+            for (cgltf_size n = 0; n < model.nodes_count; ++n)
+            {
+                const cgltf_node* node = &model.nodes[n];
+                if (included.count(node) == 0)
+                    continue;
+                const bool isRoot = (node->parent == nullptr) || (included.count(node->parent) == 0);
+                if (!isRoot)
+                    continue;
+                // 最初の root の親 (アーマチュア) の world を skeleton 上位変換として採る
+                if (!rootXfSet && node->parent != nullptr)
+                {
+                    float world[16];
+                    cgltf_node_transform_world(node->parent, world);
+                    outRootXf = detail::ConjugateZMatrix(detail::ReadColumnMajorMatrix(world));
+                    rootXfSet = true;
+                }
+                visit(node);
+            }
+
+            if (outBones.empty())
+                return false;
+            if (outBones.size() > kMaxBones)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                             "LoadGltfAnimationSource: ボーン数 {} が上限 {} を超過 (path={})",
+                             outBones.size(),
+                             kMaxBones,
+                             path);
+                return false;
+            }
+            return true;
         }
     } // namespace
 
@@ -756,7 +848,69 @@ namespace NS::Graphics
         data.indices = std::move(indices);
         data.skeleton = Skeleton(std::move(bones));
         data.skeleton.SetRootTransform(ComputeSkeletonRootTransform(skin));
-        ParseAnimations(model, skin, remap, path, data.animations);
+        ParseAnimations(
+            model,
+            [&](const cgltf_node* node) -> int {
+                const int joint = FindJointIndex(skin, node);
+                return (joint < 0) ? -1 : static_cast<int>(remap[static_cast<std::size_t>(joint)]);
+            },
+            path,
+            data.animations);
         return data;
+    }
+
+    AnimationSource LoadGltfAnimationSource(const std::string& path)
+    {
+        AnimationSource source;
+
+        const std::optional<std::vector<std::byte>> bytes = NS::Core::FileSystem::ReadAllBytes(path);
+        if (!bytes)
+            return source;
+
+        cgltf_options options{};
+        CgltfGuard guard;
+        cgltf_result result = cgltf_parse(&options, bytes->data(), bytes->size(), &guard.data);
+        if (result != cgltf_result_success)
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "LoadGltfAnimationSource: glTF parse 失敗 (path={}, code={})",
+                         path,
+                         static_cast<int>(result));
+            return source;
+        }
+        result = cgltf_load_buffers(&options, guard.data, path.c_str());
+        if (result != cgltf_result_success)
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "LoadGltfAnimationSource: buffer 読込失敗 (path={}, code={})",
+                         path,
+                         static_cast<int>(result));
+            return source;
+        }
+
+        const cgltf_data& model = *guard.data;
+        if (model.animations_count == 0)
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "LoadGltfAnimationSource: animation が無い (path={})", path);
+            return source;
+        }
+
+        std::vector<Bone> bones;
+        std::unordered_map<const cgltf_node*, int> nodeToBone;
+        NS::Math::Matrix rootXf = NS::Math::Matrix::Identity;
+        if (!BuildSourceSkeleton(model, path, bones, nodeToBone, rootXf))
+            return source;
+
+        source.skeleton = Skeleton(std::move(bones));
+        source.skeleton.SetRootTransform(rootXf);
+        ParseAnimations(
+            model,
+            [&](const cgltf_node* node) -> int {
+                const auto it = nodeToBone.find(node);
+                return (it == nodeToBone.end()) ? -1 : it->second;
+            },
+            path,
+            source.animations);
+        return source;
     }
 } // namespace NS::Graphics

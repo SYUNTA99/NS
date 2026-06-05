@@ -22,6 +22,7 @@
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
+#include "Framework/Graphics/Retarget.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/SkeletalMesh.h"
 #include "Framework/Graphics/Skybox.h"
@@ -131,7 +132,6 @@ void LevelEditorScene::OnStart()
     playerShaderDesc.pixelShaderPath = exeDir / "Shaders" / "player.ps.hlsl";
     playerShaderDesc.vertexEntryPoint = "VSMain";
     playerShaderDesc.pixelEntryPoint = "PSMain";
-    playerShaderDesc.inputLayout = NS::Graphics::StaticMesh::StandardInputLayout();
     m_playerShader = std::make_unique<NS::Graphics::Shader>(renderer, playerShaderDesc);
     if (m_playerShader->IsUsingFallback())
         NS_LOG_WARN(::NS::Core::LogCat::Game,
@@ -145,7 +145,6 @@ void LevelEditorScene::OnStart()
     blockShaderDesc.pixelShaderPath = exeDir / "Shaders" / "player.ps.hlsl";
     blockShaderDesc.vertexEntryPoint = "VSMain";
     blockShaderDesc.pixelEntryPoint = "PSMain";
-    blockShaderDesc.inputLayout = NS::Graphics::StaticMesh::StandardInputLayout();
     m_blockShader = std::make_unique<NS::Graphics::Shader>(renderer, blockShaderDesc);
 
     NS::Graphics::MaterialDesc matDesc{};
@@ -291,7 +290,6 @@ void LevelEditorScene::OnStart()
             skinnedShaderDesc.pixelShaderPath = exeDir / "Shaders" / "player.ps.hlsl";
             skinnedShaderDesc.vertexEntryPoint = "VSMain";
             skinnedShaderDesc.pixelEntryPoint = "PSMain";
-            skinnedShaderDesc.inputLayout = NS::Graphics::SkeletalMesh::SkinnedInputLayout();
             m_skinnedShader = std::make_unique<NS::Graphics::Shader>(renderer, skinnedShaderDesc);
             if (m_skinnedShader->IsUsingFallback())
                 NS_LOG_WARN(::NS::Core::LogCat::Game,
@@ -321,6 +319,25 @@ void LevelEditorScene::OnStart()
                                                 kAnimModelFootAnchor.z - (boundsMin.z + boundsMax.z) * 0.5f * fitScale};
 
             const std::size_t boneCount = skinned.skeleton.BoneCount();
+
+            // モデル同梱クリップに Assets/Models/Anims/ の追加アニメ glTF を合体する
+            // Mixamo 等の別ファイルを後から足せる (同一リグは骨名一致で再 index される)
+            std::vector<NS::Graphics::AnimationClip> clips = std::move(skinned.animations);
+            std::error_code dirEc;
+            const auto animDir = exeDir / "Assets" / "Models" / "Anims";
+            if (std::filesystem::is_directory(animDir, dirEc))
+            {
+                for (const auto& entry : std::filesystem::directory_iterator(animDir, dirEc))
+                {
+                    const auto ext = entry.path().extension();
+                    if (ext != ".glb" && ext != ".gltf")
+                        continue;
+                    auto extra = NS::Graphics::LoadAnimationsForSkeleton(entry.path().string(), skinned.skeleton);
+                    for (NS::Graphics::AnimationClip& clip : extra)
+                        clips.push_back(std::move(clip));
+                }
+            }
+
             m_animatedModel = std::make_unique<NS::Scene::GameObject>();
             m_animatedModel->AttachScene(this);
             m_animatedModel->Root().SetPosition(fitPosition);
@@ -328,7 +345,7 @@ void LevelEditorScene::OnStart()
             m_animMesh = m_animatedModel->AddComponent<NS::Scene::MeshRendererComponent>(m_skinnedMesh.get(),
                                                                                          m_skinnedMaterial.get());
             m_animPlayer = m_animatedModel->AddComponent<NS::Scene::SkeletalAnimationComponent>(
-                m_skinnedMesh.get(), std::move(skinned.skeleton), std::move(skinned.animations));
+                m_skinnedMesh.get(), std::move(skinned.skeleton), std::move(clips));
             m_animPlayer->SetSpeed(m_animSpeed);
             m_animatedModel->OnStart();
             m_animatedModel->Root().Snapshot();

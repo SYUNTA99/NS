@@ -36,6 +36,9 @@ namespace NS::Scene
         bool SelectClip(std::size_t index) noexcept;
         bool SelectClip(std::string_view name) noexcept;
 
+        /// クリップを後から追加する (既存の選択・再生位置は維持)。 外部で読んだ別アニメの合体に使う
+        void AddClips(std::vector<NS::Graphics::AnimationClip> clips);
+
         [[nodiscard]] std::size_t ClipCount() const noexcept;
         [[nodiscard]] std::size_t CurrentClip() const noexcept;
         [[nodiscard]] float Time() const noexcept;

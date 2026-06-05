@@ -64,6 +64,13 @@ namespace NS::Scene
         return false;
     }
 
+    void SkeletalAnimationComponent::AddClips(std::vector<NS::Graphics::AnimationClip> clips)
+    {
+        m_clips.reserve(m_clips.size() + clips.size());
+        for (NS::Graphics::AnimationClip& clip : clips)
+            m_clips.push_back(std::move(clip));
+    }
+
     std::size_t SkeletalAnimationComponent::ClipCount() const noexcept
     {
         return m_clips.size();

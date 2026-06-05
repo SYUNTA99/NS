@@ -48,4 +48,20 @@ namespace NS::Graphics
     /// skin 無し / joint index 範囲外 / inverse bind 欠落 / ボーン上限超過 / 非三角形 / Draco は
     /// NS_LOG_ERROR の上 empty を返す (IsValid() == false で検知)
     [[nodiscard]] SkinnedMeshData LoadGltfSkinnedMesh(const std::string& path);
+
+    /// skin 非依存で読んだアニメソース。 リターゲット元の骨格 (rest + 骨名) と clips を保持する
+    /// mesh / skin / inverseBind が無い (アニメのみの) glTF でも読める
+    struct AnimationSource
+    {
+        Skeleton skeleton;                     // rest(bindLocal) + 骨名 + rootTransform。 inverseBind は恒等 (未使用)
+        std::vector<AnimationClip> animations; // tracks は source 骨 index
+
+        /// 骨格と animation が揃っていれば true
+        [[nodiscard]] bool IsValid() const noexcept { return skeleton.BoneCount() > 0 && !animations.empty(); }
+    };
+
+    /// アニメソース glTF を skin 非依存で読み、 AnimationSource を返す
+    /// animation 対象 node とその祖先から source 骨格 (rest + 骨名) を組む
+    /// animation 無し / parse 失敗 / ボーン上限超過は NS_LOG_ERROR の上 IsValid()==false を返す
+    [[nodiscard]] AnimationSource LoadGltfAnimationSource(const std::string& path);
 } // namespace NS::Graphics
