@@ -1,8 +1,10 @@
 #include <gtest/gtest.h>
 
+#include <Framework/Core/Filesystem.h>
 #include <Framework/Core/Logger.h>
 #include <Framework/Graphics/Mesh.h>
 #include <Framework/Graphics/Renderer.h>
+#include <Framework/Graphics/ShaderProgram.h>
 #include <Framework/Graphics/SkeletalMesh.h>
 #include <Framework/Math/Math.h>
 #include <Framework/Platform/Window.h>
@@ -192,4 +194,23 @@ TEST_F(SkeletalMeshLoggerTest, SetBonePaletteAndDrawDoesNotCrash)
     mesh.SetBonePalette(std::span<const Matrix>(palette.data(), palette.size()));
     mesh.Draw();
     SUCCEED();
+}
+
+TEST_F(SkeletalMeshLoggerTest, SkinnedShaderProgramCompiles)
+{
+    Window window(MakeWindowDesc("ns_skinned_shader"));
+    ASSERT_TRUE(window.IsValid());
+    Renderer renderer(MakeRendererDesc(), window);
+    ASSERT_TRUE(renderer.IsValid());
+
+    const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
+    NS::Graphics::ShaderProgramDesc desc{};
+    desc.vertexShaderPath = shaderDir / "skinned.vs.hlsl";
+    desc.pixelShaderPath = shaderDir / "player.ps.hlsl";
+    desc.inputLayout = SkeletalMesh::SkinnedInputLayout();
+
+    // fallback でない = skinned VS / PS のコンパイルと UInt4 入力レイアウト作成が全て成功
+    NS::Graphics::ShaderProgram program(renderer, desc);
+    EXPECT_TRUE(program.IsValid());
+    EXPECT_FALSE(program.IsUsingFallback());
 }
