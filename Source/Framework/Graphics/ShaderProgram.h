@@ -6,7 +6,7 @@
 /// @details ランタイム `D3DCompile` で `.hlsl` を `vs_5_0` / `ps_5_0` にコンパイル
 /// VS / PS / InputLayout のいずれかで失敗すると埋込 HLSL の magenta fallback
 /// (PS 出力 RGB=(1,0,1)) に切替え、 `IsUsingFallback()` が true になる
-/// `InputElementFormat` は D3D11 / DXGI を漏らさない独自 enum、 `Mesh::StandardInputLayout()`
+/// `InputElementFormat` は D3D11 / DXGI を漏らさない独自 enum、 `StaticMesh::StandardInputLayout()`
 /// から流用する想定。 依存: Renderer の DeviceContext を内部で保持するため Renderer より
 /// 先に破棄すること
 
@@ -43,7 +43,7 @@ namespace NS::Graphics
     };
 
     /// InputLayout の 1 要素。SemanticIndex は常に 0、InputSlot 0 単一 stream 前提
-    /// Mesh::StandardInputLayout() から流用する想定 (offsetof(MeshVertex, ...) で byteOffset を埋める)
+    /// StaticMesh::StandardInputLayout() から流用する想定 (offsetof(MeshVertex, ...) で byteOffset を埋める)
     struct InputElement
     {
         std::string semanticName;

@@ -384,7 +384,7 @@ project "Audio"
 --============================================================================
 -- Scene 層 (StaticLib)
 --   GameObject / Component / Transform / IRenderable / RenderContext +
---   各種 Component (MeshComponent / CharacterMovement / Camera / 他)
+--   各種 Component (MeshRendererComponent / CharacterMovement / Camera / 他)
 --   UE5 風 OOP の合成主体。 Framework Library として 7 層目に配置。
 --============================================================================
 project "Scene"

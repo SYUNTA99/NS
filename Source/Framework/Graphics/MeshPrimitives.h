@@ -3,8 +3,8 @@
 /// @file MeshPrimitives.h
 /// @brief 基本プリミティブの頂点/index データ生成 (cube / plane)
 ///
-/// 生成された `MeshGeometry` の vector を `MeshDesc` に渡して `Mesh` を構築する
-/// MeshGeometry の生存中のみ MeshDesc::vertices/indices は有効。Mesh コンストラクタ内で
+/// 生成された `MeshGeometry` の vector を `MeshDesc` に渡して `StaticMesh` を構築する
+/// MeshGeometry の生存中のみ MeshDesc::vertices/indices は有効。StaticMesh コンストラクタ内で
 /// GPU upload されるため、コンストラクタ完了後は破棄して良い
 
 #include "Framework/Graphics/StaticMesh.h"
