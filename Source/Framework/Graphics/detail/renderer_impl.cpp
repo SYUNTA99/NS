@@ -1,7 +1,11 @@
 #include "Framework/Graphics/Renderer.h"
 
+#include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/CommonStates.h"
 #include "Framework/Graphics/RenderTarget.h"
+#include "Framework/Graphics/Shader.h"
+#include "Framework/Graphics/Texture.h"
+#include "Framework/Graphics/TextureArray.h"
 #include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/LogCategories.h"
@@ -257,6 +261,50 @@ namespace NS::Graphics
     ID3D11DeviceContext* Renderer::NativeContext() noexcept
     {
         return detail::GetContext(*this);
+    }
+
+    void Renderer::BindShader(Shader& shader) noexcept
+    {
+        shader.Bind();
+    }
+    void Renderer::BindTexture(Texture& texture, unsigned slot, ShaderStage stages) noexcept
+    {
+        texture.Bind(slot, stages);
+    }
+    void Renderer::BindTextureArray(TextureArray& texture, unsigned slot, ShaderStage stages) noexcept
+    {
+        texture.Bind(slot, stages);
+    }
+    void Renderer::BindVertexBuffer(VertexBuffer& vertexBuffer, unsigned slot) noexcept
+    {
+        vertexBuffer.Bind(slot);
+    }
+    void Renderer::BindIndexBuffer(IndexBuffer& indexBuffer) noexcept
+    {
+        indexBuffer.Bind();
+    }
+    void Renderer::BindConstantBuffer(ConstantBuffer& constantBuffer, unsigned slot, ShaderStage stages) noexcept
+    {
+        constantBuffer.Bind(slot, stages);
+    }
+    void Renderer::SetRenderTarget(RenderTarget& renderTarget) noexcept
+    {
+        renderTarget.Bind();
+    }
+    void Renderer::UpdateBuffer(VertexBuffer& vertexBuffer, const void* data, std::size_t bytes) noexcept
+    {
+        vertexBuffer.UpdateRaw(data, bytes);
+    }
+    void Renderer::UpdateBuffer(ConstantBuffer& constantBuffer, const void* data, std::size_t bytes) noexcept
+    {
+        constantBuffer.UpdateRaw(data, bytes);
+    }
+    void Renderer::DrawIndexed(unsigned indexCount) noexcept
+    {
+        if (m_pImpl && m_pImpl->context)
+        {
+            m_pImpl->context->DrawIndexed(indexCount, 0u, 0);
+        }
     }
 
     namespace detail

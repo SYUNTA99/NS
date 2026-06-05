@@ -9,6 +9,7 @@
 /// 内部 D3D ハンドルは `detail::GetDevice/GetContext/GetSwapChain` で取得する
 /// 構築失敗時は `IsValid() == false` を返し例外は投げない (`NS_LOG_ERROR` に詳細出力)
 
+#include <cstddef>
 #include <memory>
 
 #include <Framework/Platform/Window.h>
@@ -33,6 +34,13 @@ namespace NS::Graphics
     class Renderer;
     class RenderTarget;
     class CommonStates;
+    class Shader;
+    class Texture;
+    class TextureArray;
+    class VertexBuffer;
+    class IndexBuffer;
+    class ConstantBuffer;
+    enum class ShaderStage : unsigned;
 
     namespace detail
     {
@@ -88,6 +96,19 @@ namespace NS::Graphics
 
         /// 内部 ID3D11DeviceContext を非 detail 経路で公開。 用途は `NativeDevice()` と同じ
         [[nodiscard]] ID3D11DeviceContext* NativeContext() noexcept;
+
+        /// 描画コマンド: リソースを context にバインド/更新する
+        /// バインドはここに集約し、リソース側は context を保持しない方針へ寄せていく
+        void BindShader(Shader& shader) noexcept;
+        void BindTexture(Texture& texture, unsigned slot, ShaderStage stages) noexcept;
+        void BindTextureArray(TextureArray& texture, unsigned slot, ShaderStage stages) noexcept;
+        void BindVertexBuffer(VertexBuffer& vertexBuffer, unsigned slot = 0) noexcept;
+        void BindIndexBuffer(IndexBuffer& indexBuffer) noexcept;
+        void BindConstantBuffer(ConstantBuffer& constantBuffer, unsigned slot, ShaderStage stages) noexcept;
+        void SetRenderTarget(RenderTarget& renderTarget) noexcept;
+        void UpdateBuffer(VertexBuffer& vertexBuffer, const void* data, std::size_t bytes) noexcept;
+        void UpdateBuffer(ConstantBuffer& constantBuffer, const void* data, std::size_t bytes) noexcept;
+        void DrawIndexed(unsigned indexCount) noexcept;
 
     private:
         std::unique_ptr<Impl> m_pImpl;
