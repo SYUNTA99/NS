@@ -1,22 +1,30 @@
 #pragma once
 
 /// @file SkeletalMesh.h
-/// @brief NS::Graphics::SkeletalMesh — GPU スキニング対象 mesh の型 (実装は段階的に整備中)
+/// @brief NS::Graphics::SkeletalMesh — GPU スキニング対象 mesh (skinned 頂点 + ボーンパレット)
 ///
-/// @details skinning runtime (Skeleton / ボーンパレット / skinned VS) は後続で実装する
-/// 現段階は skinned 頂点フォーマット (SkinnedVertex) と構築パラメータ (SkinnedMeshDesc) を定義し、
-/// クラス本体は基底 Mesh の派生 slot を確保するためのプレースホルダ
-/// geometry 未設定のため IsValid は false / Draw は no-op となる
+/// @details 基底 Mesh の派生。 SkinnedVertex (64 byte) を VB、 uint32 を IB に持ち、
+/// ボーンパレット定数バッファ (b1, VS) を所有する。 Draw は palette CB を bind してから
+/// 基底 Mesh::Draw を呼ぶ。 SkinnedMeshDesc 不正 / Buffer 失敗時は geometry 未設定のまま
+/// IsValid()==false に落ちる (skinned 用 fallback geometry は持たない)
+/// ボーンパレットは SetBonePalette で外部 (Skeleton 等) から与える。 未設定時は恒等 (bind pose)
+/// @pre Renderer の DeviceContext を内部保持するため Renderer より先に破棄すること
 
 #include "Framework/Graphics/Mesh.h"
+#include "Framework/Graphics/ShaderProgram.h"
 #include "Framework/Math/Math.h"
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <span>
 #include <type_traits>
+#include <vector>
 
 namespace NS::Graphics
 {
+    class Renderer;
+
     /// スキン付き頂点フォーマット (64 byte 固定)
     /// position/uv/normal に加え 1 頂点あたり最大 4 ボーンの影響 (joints=ボーン index, weights=重み) を持つ
     /// joints/weights は GPU 入力レイアウト (BLENDINDICES=uint4 / BLENDWEIGHT=float4) と byte 単位で
@@ -44,17 +52,36 @@ namespace NS::Graphics
         std::size_t boneCount = 0;
     };
 
-    /// GPU スキニング対象 mesh (skinning runtime は後続、 現状はプレースホルダ)
+    /// GPU スキニング対象 mesh。 SkinnedVertex を VB に持ち、 ボーンパレット CB を b1(VS) に bind して
+    /// skinned 頂点シェーダの LBS で変形描画する。 desc 不正 / Buffer 失敗時は IsValid()==false (fallback 無し)
     class SkeletalMesh : public Mesh
     {
     public:
-        SkeletalMesh() = default;
-        ~SkeletalMesh() override = default;
+        SkeletalMesh(Renderer& renderer, const SkinnedMeshDesc& desc);
+        ~SkeletalMesh() override;
 
         SkeletalMesh(const SkeletalMesh&) = delete;
         SkeletalMesh& operator=(const SkeletalMesh&) = delete;
         SkeletalMesh(SkeletalMesh&&) = delete;
         SkeletalMesh& operator=(SkeletalMesh&&) = delete;
+
+        /// ボーンパレット (model 空間 skinning 行列群) を次の描画に反映する
+        /// 上限 (内部 kMaxBones) を超える分は無視し、 不足分は恒等のまま残す
+        void SetBonePalette(std::span<const NS::Math::Matrix> palette) noexcept;
+
+        /// palette CB を b1(VS) に bind してから Mesh::Draw() を呼ぶ。 IsValid()==false なら no-op
+        void Draw() noexcept override;
+
+        /// SkinnedVertex に対応する POSITION/TEXCOORD/NORMAL/BLENDINDICES/BLENDWEIGHT の InputElement 配列を返す
+        /// 戻り値は ShaderProgramDesc::inputLayout にそのまま流用できる
+        [[nodiscard]] static std::vector<InputElement> SkinnedInputLayout();
+
+        /// desc.boneCount を内部上限でクランプした有効ボーン数
+        [[nodiscard]] std::size_t BoneCount() const noexcept;
+
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> m_pImpl;
     };
 
 } // namespace NS::Graphics
