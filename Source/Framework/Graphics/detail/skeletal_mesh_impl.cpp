@@ -16,8 +16,6 @@ namespace NS::Graphics
 {
     namespace
     {
-        // 単一キャラ向けのパレット上限。 128 * 64byte = 8KB で D3D11 CB 上限 (64KB) 内に収まる
-        constexpr std::size_t kMaxBones = 128;
         // skinned.vs.hlsl の cbuffer BonePalette : register(b1) に対応
         constexpr unsigned kBonePaletteSlot = 1;
 

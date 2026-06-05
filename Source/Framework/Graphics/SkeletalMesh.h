@@ -25,6 +25,10 @@ namespace NS::Graphics
 {
     class Renderer;
 
+    /// ボーンパレット (skinning 行列群) の最大数
+    /// 128 * 64byte = 8KB で D3D11 定数バッファ上限 (64KB) 内、 単一キャラに十分
+    inline constexpr std::size_t kMaxBones = 128;
+
     /// スキン付き頂点フォーマット (64 byte 固定)
     /// position/uv/normal に加え 1 頂点あたり最大 4 ボーンの影響 (joints=ボーン index, weights=重み) を持つ
     /// joints/weights は GPU 入力レイアウト (BLENDINDICES=uint4 / BLENDWEIGHT=float4) と byte 単位で

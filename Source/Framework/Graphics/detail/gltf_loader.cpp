@@ -1,5 +1,7 @@
 #include "Framework/Graphics/GltfLoader.h"
 
+#include "Framework/Graphics/detail/gltf_skin_helpers.h"
+
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -301,5 +303,320 @@ namespace NS::Graphics
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "LoadGltfMesh: 有効な三角形ジオメトリが無い (path={})", path);
 
         return geom;
+    }
+
+    namespace
+    {
+        // skin->joints の中で node が何番目かを返す (見つからなければ -1 = root)
+        int FindJointIndex(const cgltf_skin& skin, const cgltf_node* node)
+        {
+            if (node == nullptr)
+                return -1;
+            for (cgltf_size i = 0; i < skin.joints_count; ++i)
+                if (skin.joints[i] == node)
+                    return static_cast<int>(i);
+            return -1;
+        }
+
+        // joint node の local TRS を RH→LH 変換して返す。 has_* フラグで cgltf 既定値への依存を避ける
+        BonePose ReadJointLocalPose(const cgltf_node& node)
+        {
+            BonePose pose;
+            if (node.has_matrix)
+            {
+                NS::Math::Vector3 scale;
+                NS::Math::Quaternion rotation;
+                NS::Math::Vector3 translation;
+                NS::Math::Matrix local = detail::ReadColumnMajorMatrix(node.matrix);
+                local.Decompose(scale, rotation, translation);
+                pose.translation = detail::MirrorZ(translation);
+                pose.rotation = detail::MirrorQuaternionZ(rotation);
+                pose.scale = scale;
+            }
+            else
+            {
+                if (node.has_translation)
+                    pose.translation = NS::Math::Vector3{node.translation[0], node.translation[1], node.translation[2]};
+                if (node.has_rotation)
+                    pose.rotation =
+                        NS::Math::Quaternion{node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]};
+                if (node.has_scale)
+                    pose.scale = NS::Math::Vector3{node.scale[0], node.scale[1], node.scale[2]};
+                pose.translation = detail::MirrorZ(pose.translation);
+                pose.rotation = detail::MirrorQuaternionZ(pose.rotation);
+            }
+            return pose;
+        }
+
+        // skin から Bone 配列を組む。 ボーン 0 / 上限超過 / inverse bind 欠落・数不一致は false
+        bool BuildSkeletonBones(const cgltf_skin& skin, const std::string& path, std::vector<Bone>& outBones)
+        {
+            if (skin.joints_count == 0)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "LoadGltfSkinnedMesh: skin の joint が 0 (path={})", path);
+                return false;
+            }
+            if (skin.joints_count > kMaxBones)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                             "LoadGltfSkinnedMesh: ボーン数 {} が上限 {} を超過 (path={})",
+                             skin.joints_count,
+                             kMaxBones,
+                             path);
+                return false;
+            }
+            if (skin.inverse_bind_matrices == nullptr)
+            {
+                NS_LOG_ERROR(
+                    ::NS::Core::LogCat::Graphics, "LoadGltfSkinnedMesh: inverse bind 行列が欠落 (path={})", path);
+                return false;
+            }
+            if (skin.inverse_bind_matrices->count != skin.joints_count)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                             "LoadGltfSkinnedMesh: inverse bind 数 {} が joint 数 {} と不一致 (path={})",
+                             skin.inverse_bind_matrices->count,
+                             skin.joints_count,
+                             path);
+                return false;
+            }
+
+            outBones.resize(skin.joints_count);
+            for (cgltf_size i = 0; i < skin.joints_count; ++i)
+            {
+                const cgltf_node* jointNode = skin.joints[i];
+                Bone& bone = outBones[i];
+                bone.parentIndex = FindJointIndex(skin, jointNode != nullptr ? jointNode->parent : nullptr);
+                float ibm[16] = {};
+                cgltf_accessor_read_float(skin.inverse_bind_matrices, i, ibm, 16);
+                bone.inverseBind = detail::ConjugateZMatrix(detail::ReadColumnMajorMatrix(ibm));
+                if (jointNode != nullptr)
+                    bone.bindLocal = ReadJointLocalPose(*jointNode);
+            }
+            return true;
+        }
+
+        // 1 skinned primitive を連結する (node 変換は焼き込まない)。 重みのある joint index が範囲外なら false
+        bool AppendSkinnedPrimitive(const cgltf_primitive& prim,
+                                    cgltf_size jointsCount,
+                                    const std::string& path,
+                                    std::vector<SkinnedVertex>& vertices,
+                                    std::vector<std::uint32_t>& indices)
+        {
+            const cgltf_accessor* posAcc = FindAttribute(prim, cgltf_attribute_type_position, 0);
+            if (posAcc == nullptr)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "LoadGltfSkinnedMesh: POSITION が無い (path={})", path);
+                return false;
+            }
+            const cgltf_accessor* uvAcc = FindAttribute(prim, cgltf_attribute_type_texcoord, 0);
+            const cgltf_accessor* normalAcc = FindAttribute(prim, cgltf_attribute_type_normal, 0);
+            const cgltf_accessor* jointsAcc = FindAttribute(prim, cgltf_attribute_type_joints, 0);
+            const cgltf_accessor* weightsAcc = FindAttribute(prim, cgltf_attribute_type_weights, 0);
+            if (jointsAcc == nullptr || weightsAcc == nullptr)
+            {
+                NS_LOG_ERROR(
+                    ::NS::Core::LogCat::Graphics, "LoadGltfSkinnedMesh: JOINTS_0 / WEIGHTS_0 が無い (path={})", path);
+                return false;
+            }
+
+            const std::uint32_t baseVertex = static_cast<std::uint32_t>(vertices.size());
+            const cgltf_size vertexCount = posAcc->count;
+
+            std::vector<std::array<float, 3>> computedNormals;
+            if (normalAcc == nullptr)
+            {
+                NS_LOG_WARN(::NS::Core::LogCat::Graphics,
+                            "LoadGltfSkinnedMesh: NORMAL が無いため面法線から smooth normal を生成 (path={})",
+                            path);
+                computedNormals = ComputeSmoothNormals(prim, *posAcc, vertexCount);
+            }
+
+            vertices.reserve(vertices.size() + vertexCount);
+            for (cgltf_size i = 0; i < vertexCount; ++i)
+            {
+                float p[3] = {0.0f, 0.0f, 0.0f};
+                cgltf_accessor_read_float(posAcc, i, p, 3);
+                SkinnedVertex v{};
+                v.position = detail::MirrorZ(NS::Math::Vector3{p[0], p[1], p[2]});
+
+                float uv[2] = {0.0f, 0.0f};
+                if (uvAcc != nullptr)
+                    cgltf_accessor_read_float(uvAcc, i, uv, 2);
+                v.uv = NS::Math::Vector2{uv[0], uv[1]};
+
+                float n[3] = {0.0f, 0.0f, 1.0f};
+                if (normalAcc != nullptr)
+                    cgltf_accessor_read_float(normalAcc, i, n, 3);
+                else
+                {
+                    n[0] = computedNormals[i][0];
+                    n[1] = computedNormals[i][1];
+                    n[2] = computedNormals[i][2];
+                }
+                NS::Math::Vector3 normal = detail::MirrorZ(NS::Math::Vector3{n[0], n[1], n[2]});
+                normal.Normalize();
+                v.normal = normal;
+
+                cgltf_uint rawJoints[4] = {0u, 0u, 0u, 0u};
+                cgltf_accessor_read_uint(jointsAcc, i, rawJoints, 4);
+                float rawWeights[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+                cgltf_accessor_read_float(weightsAcc, i, rawWeights, 4);
+
+                std::array<std::uint32_t, 4> joints{rawJoints[0], rawJoints[1], rawJoints[2], rawJoints[3]};
+                std::array<float, 4> weights{rawWeights[0], rawWeights[1], rawWeights[2], rawWeights[3]};
+                for (int k = 0; k < 4; ++k)
+                {
+                    // 重み 0 の枠は index を 0 に倒して GPU の範囲外参照を避ける
+                    if (weights[k] == 0.0f)
+                    {
+                        joints[k] = 0u;
+                    }
+                    else if (joints[k] >= jointsCount)
+                    {
+                        NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                                     "LoadGltfSkinnedMesh: joint index {} が joint 数 {} の範囲外 (path={})",
+                                     joints[k],
+                                     jointsCount,
+                                     path);
+                        return false;
+                    }
+                }
+                detail::NormalizeJointWeights(joints, weights);
+                for (int k = 0; k < 4; ++k)
+                {
+                    v.joints[k] = joints[k];
+                    v.weights[k] = weights[k];
+                }
+
+                vertices.push_back(v);
+            }
+
+            const std::size_t indexStart = indices.size();
+            if (prim.indices != nullptr)
+            {
+                const cgltf_size indexCount = prim.indices->count;
+                indices.reserve(indices.size() + indexCount);
+                for (cgltf_size i = 0; i < indexCount; ++i)
+                    indices.push_back(baseVertex +
+                                      static_cast<std::uint32_t>(cgltf_accessor_read_index(prim.indices, i)));
+            }
+            else
+            {
+                indices.reserve(indices.size() + vertexCount);
+                for (cgltf_size i = 0; i < vertexCount; ++i)
+                    indices.push_back(baseVertex + static_cast<std::uint32_t>(i));
+            }
+            for (std::size_t t = indexStart; t + 2 < indices.size(); t += 3)
+                std::swap(indices[t + 1], indices[t + 2]);
+            return true;
+        }
+    } // namespace
+
+    SkinnedMeshData LoadGltfSkinnedMesh(const std::string& path)
+    {
+        SkinnedMeshData data;
+
+        const std::optional<std::vector<std::byte>> bytes = NS::Core::FileSystem::ReadAllBytes(path);
+        if (!bytes)
+            return data;
+
+        cgltf_options options{};
+        CgltfGuard guard;
+        cgltf_result result = cgltf_parse(&options, bytes->data(), bytes->size(), &guard.data);
+        if (result != cgltf_result_success)
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "LoadGltfSkinnedMesh: glTF parse 失敗 (path={}, code={})",
+                         path,
+                         static_cast<int>(result));
+            return data;
+        }
+        result = cgltf_load_buffers(&options, guard.data, path.c_str());
+        if (result != cgltf_result_success)
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "LoadGltfSkinnedMesh: buffer 読込失敗 (path={}, code={})",
+                         path,
+                         static_cast<int>(result));
+            return data;
+        }
+
+        const cgltf_data& model = *guard.data;
+        if (RequiresDraco(model))
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "LoadGltfSkinnedMesh: KHR_draco_mesh_compression は未対応 (path={})",
+                         path);
+            return data;
+        }
+
+        // mesh と skin を両方持つ node (skinned mesh) を最初に 1 つ使う
+        const cgltf_node* skinnedNode = nullptr;
+        for (cgltf_size n = 0; n < model.nodes_count; ++n)
+        {
+            const cgltf_node& node = model.nodes[n];
+            if (node.mesh != nullptr && node.skin != nullptr)
+            {
+                skinnedNode = &node;
+                break;
+            }
+        }
+        if (skinnedNode == nullptr)
+        {
+            NS_LOG_ERROR(
+                ::NS::Core::LogCat::Graphics, "LoadGltfSkinnedMesh: skin 付き mesh node が無い (path={})", path);
+            return data;
+        }
+
+        const cgltf_skin& skin = *skinnedNode->skin;
+        const cgltf_mesh& mesh = *skinnedNode->mesh;
+
+        std::vector<Bone> bones;
+        if (!BuildSkeletonBones(skin, path, bones))
+            return data;
+
+        std::vector<SkinnedVertex> vertices;
+        std::vector<std::uint32_t> indices;
+        for (cgltf_size p = 0; p < mesh.primitives_count; ++p)
+        {
+            const cgltf_primitive& prim = mesh.primitives[p];
+            if (prim.type != cgltf_primitive_type_triangles)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                             "LoadGltfSkinnedMesh: 三角形以外の primitive を skip (path={}, type={})",
+                             path,
+                             static_cast<int>(prim.type));
+                continue;
+            }
+            if (prim.has_draco_mesh_compression)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                             "LoadGltfSkinnedMesh: Draco 圧縮 primitive は未対応のため skip (path={})",
+                             path);
+                continue;
+            }
+            if (!AppendSkinnedPrimitive(prim, skin.joints_count, path, vertices, indices))
+                return data;
+        }
+
+        if (vertices.empty())
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "LoadGltfSkinnedMesh: 有効な skinned 三角形ジオメトリが無い (path={})",
+                         path);
+            return data;
+        }
+
+        // ボーンを親が先の順へ整列し、 頂点 joint index を新 index へ張り替える
+        const std::vector<std::uint32_t> remap = detail::TopologicalSortBones(bones);
+        for (SkinnedVertex& v : vertices)
+            for (int k = 0; k < 4; ++k)
+                v.joints[k] = remap[v.joints[k]];
+
+        data.vertices = std::move(vertices);
+        data.indices = std::move(indices);
+        data.skeleton = Skeleton(std::move(bones));
+        return data;
     }
 } // namespace NS::Graphics
