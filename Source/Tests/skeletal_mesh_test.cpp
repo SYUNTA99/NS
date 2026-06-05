@@ -18,3 +18,23 @@ TEST(SkeletalMeshShellTest, DerivesFromMeshAndIsInvalid)
     sm.Draw();
     SUCCEED();
 }
+
+TEST(SkinnedVertexLayoutTest, SizeIs64)
+{
+    EXPECT_EQ(sizeof(NS::Graphics::SkinnedVertex), 64u);
+}
+
+TEST(SkinnedVertexLayoutTest, IsStandardLayout)
+{
+    EXPECT_TRUE(std::is_standard_layout_v<NS::Graphics::SkinnedVertex>);
+}
+
+TEST(SkinnedVertexLayoutTest, MemberOffsetsMatchGpuStride)
+{
+    using NS::Graphics::SkinnedVertex;
+    EXPECT_EQ(offsetof(SkinnedVertex, position), 0u);
+    EXPECT_EQ(offsetof(SkinnedVertex, uv), 12u);
+    EXPECT_EQ(offsetof(SkinnedVertex, normal), 20u);
+    EXPECT_EQ(offsetof(SkinnedVertex, joints), 32u);
+    EXPECT_EQ(offsetof(SkinnedVertex, weights), 48u);
+}
