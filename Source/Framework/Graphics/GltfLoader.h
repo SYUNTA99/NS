@@ -11,6 +11,7 @@
 /// skinned 取込は JOINTS_0 / WEIGHTS_0 / skin 階層 / inverse bind を加えて SkinnedMeshData を返す
 /// 複数 Material は後続、 cgltf 依存は実装 (.cpp) に閉じるため本ヘッダは公開して良い
 
+#include "Framework/Graphics/Animation.h"
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Skeleton.h"
 
@@ -32,8 +33,9 @@ namespace NS::Graphics
         std::vector<SkinnedVertex> vertices;
         std::vector<std::uint32_t> indices;
         Skeleton skeleton;
+        std::vector<AnimationClip> animations; // 取込めたクリップ (無い glTF では空)
 
-        /// 頂点・index・ボーンが揃っていれば true。 失敗時は空で false
+        /// 頂点・index・ボーンが揃っていれば true。 失敗時は空で false (animations は任意)
         [[nodiscard]] bool IsValid() const noexcept
         {
             return !vertices.empty() && !indices.empty() && skeleton.BoneCount() > 0;

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Core/Filesystem.h>
+#include <Framework/Graphics/Animation.h>
 #include <Framework/Graphics/GltfLoader.h>
 #include <Framework/Graphics/Skeleton.h>
 #include <Framework/Graphics/detail/gltf_skin_helpers.h>
@@ -127,6 +128,50 @@ namespace
         EXPECT_TRUE(ok);
         return path;
     }
+
+    // skinned fixture + 1 ボーン回転アニメ (208 byte: 末尾に anim times 2 + rotation 2 を追加)
+    std::vector<unsigned char> MakeAnimatedSkinnedBufferBin()
+    {
+        std::vector<unsigned char> buf = MakeSkinnedBufferBin(); // 166 byte
+        buf.push_back(0u);
+        buf.push_back(0u);      // 168 へ 4 byte 整列
+        AppendFloat(buf, 0.0f); // anim times
+        AppendFloat(buf, 1.0f);
+        AppendFloat(buf, 0.0f);
+        AppendFloat(buf, 0.0f);
+        AppendFloat(buf, 0.0f);
+        AppendFloat(buf, 1.0f); // identity
+        AppendFloat(buf, 0.0f);
+        AppendFloat(buf, 0.0f);
+        AppendFloat(buf, 0.70710678f);
+        AppendFloat(buf, 0.70710678f); // 90Z
+        return buf;
+    }
+
+    std::string AnimatedSkinnedGltf()
+    {
+        return std::string{R"({"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0,1]}],)"} +
+               R"("nodes":[{"mesh":0,"skin":0},{"translation":[0,0,0]}],)" +
+               R"("meshes":[{"primitives":[{"attributes":{"POSITION":0,"WEIGHTS_0":1,"JOINTS_0":3},"indices":4}]}],)" +
+               R"("skins":[{"joints":[1],"inverseBindMatrices":2}],)" +
+               R"("animations":[{"name":"spin","samplers":[{"input":5,"output":6,"interpolation":"LINEAR"}],)" +
+               R"("channels":[{"sampler":0,"target":{"node":1,"path":"rotation"}}]}],)" +
+               R"("buffers":[{"uri":"ns_skinned_anim_fixture.bin","byteLength":208}],)" + R"("bufferViews":[)" +
+               R"({"buffer":0,"byteOffset":0,"byteLength":36,"target":34962},)" +
+               R"({"buffer":0,"byteOffset":36,"byteLength":48,"target":34962},)" +
+               R"({"buffer":0,"byteOffset":84,"byteLength":64},)" +
+               R"({"buffer":0,"byteOffset":148,"byteLength":12,"target":34962},)" +
+               R"({"buffer":0,"byteOffset":160,"byteLength":6,"target":34963},)" +
+               R"({"buffer":0,"byteOffset":168,"byteLength":8},)" +
+               R"({"buffer":0,"byteOffset":176,"byteLength":32}],)" + R"("accessors":[)" +
+               R"({"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[0,0,0],"max":[1,1,2]},)" +
+               R"({"bufferView":1,"componentType":5126,"count":3,"type":"VEC4"},)" +
+               R"({"bufferView":2,"componentType":5126,"count":1,"type":"MAT4"},)" +
+               R"({"bufferView":3,"componentType":5121,"count":3,"type":"VEC4"},)" +
+               R"({"bufferView":4,"componentType":5123,"count":3,"type":"SCALAR"},)" +
+               R"({"bufferView":5,"componentType":5126,"count":2,"type":"SCALAR","min":[0],"max":[1]},)" +
+               R"({"bufferView":6,"componentType":5126,"count":2,"type":"VEC4"}]})";
+    }
 } // namespace
 
 TEST(GltfSkinHelperTest, NormalizeWeightsSumsToOne)
@@ -251,4 +296,30 @@ TEST(GltfSkinLoadTest, LoadsSkinnedTriangleWithLeftHandedConversion)
     EXPECT_EQ(data.indices[0], 0u);
     EXPECT_EQ(data.indices[1], 2u);
     EXPECT_EQ(data.indices[2], 1u);
+}
+
+TEST(GltfSkinLoadTest, LoadsAnimationClip)
+{
+    WriteBinFixture("ns_skinned_anim_fixture.bin", MakeAnimatedSkinnedBufferBin());
+    const auto gltfPath = WriteTextFixture("ns_skin_anim.gltf", AnimatedSkinnedGltf());
+
+    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltfPath.string());
+    ASSERT_TRUE(data.IsValid());
+    ASSERT_EQ(data.animations.size(), 1u);
+
+    const NS::Graphics::AnimationClip& clip = data.animations[0];
+    EXPECT_EQ(clip.name, "spin");
+    EXPECT_NEAR(clip.duration, 1.0f, kEps);
+    ASSERT_EQ(clip.tracks.size(), 1u);
+    EXPECT_EQ(clip.tracks[0].boneIndex, 0); // 単一ボーン remap[0]=0
+    ASSERT_EQ(clip.tracks[0].rotationValues.size(), 2u);
+
+    // t=1 の末尾キー (90Z) で評価すると (1,0,0) が (0,1,0) へ回る
+    std::vector<NS::Graphics::BonePose> pose;
+    NS::Graphics::SampleClipPose(clip, data.skeleton, 1.0f, pose);
+    ASSERT_EQ(pose.size(), 1u);
+    const Vector3 r = Vector3::Transform(Vector3(1.0f, 0.0f, 0.0f), pose[0].rotation);
+    EXPECT_NEAR(r.x, 0.0f, kEps);
+    EXPECT_NEAR(r.y, 1.0f, kEps);
+    EXPECT_NEAR(r.z, 0.0f, kEps);
 }

@@ -1,10 +1,13 @@
 #include "Framework/Graphics/GltfLoader.h"
 
+#include "Framework/Graphics/Animation.h"
 #include "Framework/Graphics/detail/gltf_skin_helpers.h"
 
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
+
+#include <algorithm>
 
 #define CGLTF_IMPLEMENTATION
 #pragma warning(push, 0)
@@ -511,6 +514,121 @@ namespace NS::Graphics
                 std::swap(indices[t + 1], indices[t + 2]);
             return true;
         }
+
+        Interpolation MapInterpolation(cgltf_interpolation_type type) noexcept
+        {
+            if (type == cgltf_interpolation_type_step)
+                return Interpolation::Step;
+            return Interpolation::Linear; // linear、 cubic_spline は linear で代替
+        }
+
+        // animation channel/sampler を AnimationClip へ変換する。 target は skin joint に限り、
+        // joint index を remap で bone index 化する。 値は RH→LH (translation/rotation を mirror)
+        void ParseAnimations(const cgltf_data& model,
+                             const cgltf_skin& skin,
+                             const std::vector<std::uint32_t>& remap,
+                             const std::string& path,
+                             std::vector<AnimationClip>& outClips)
+        {
+            for (cgltf_size a = 0; a < model.animations_count; ++a)
+            {
+                const cgltf_animation& anim = model.animations[a];
+                AnimationClip clip;
+                clip.name = (anim.name != nullptr) ? anim.name : "";
+                float duration = 0.0f;
+                std::vector<BoneTrack> tracks;
+
+                auto trackForBone = [&tracks](int boneIndex) -> BoneTrack& {
+                    for (BoneTrack& tr : tracks)
+                        if (tr.boneIndex == boneIndex)
+                            return tr;
+                    tracks.push_back(BoneTrack{});
+                    tracks.back().boneIndex = boneIndex;
+                    return tracks.back();
+                };
+
+                for (cgltf_size c = 0; c < anim.channels_count; ++c)
+                {
+                    const cgltf_animation_channel& channel = anim.channels[c];
+                    if (channel.target_node == nullptr || channel.sampler == nullptr)
+                        continue;
+                    if (channel.target_path == cgltf_animation_path_type_weights)
+                        continue; // morph target は非対応
+                    const int jointIndex = FindJointIndex(skin, channel.target_node);
+                    if (jointIndex < 0)
+                    {
+                        NS_LOG_WARN(::NS::Core::LogCat::Graphics,
+                                    "LoadGltfSkinnedMesh: animation target が skin joint でないため skip (path={})",
+                                    path);
+                        continue;
+                    }
+                    const int boneIndex = static_cast<int>(remap[static_cast<std::size_t>(jointIndex)]);
+
+                    const cgltf_animation_sampler& sampler = *channel.sampler;
+                    if (sampler.input == nullptr || sampler.output == nullptr || sampler.input->count == 0)
+                        continue;
+                    const cgltf_size keyCount = sampler.input->count;
+
+                    const bool cubic = (sampler.interpolation == cgltf_interpolation_type_cubic_spline);
+                    if (cubic)
+                        NS_LOG_WARN(::NS::Core::LogCat::Graphics,
+                                    "LoadGltfSkinnedMesh: CUBICSPLINE は未対応のため線形で代替 (path={})",
+                                    path);
+                    const Interpolation interp = MapInterpolation(sampler.interpolation);
+                    const cgltf_size stride = cubic ? 3 : 1;
+                    const cgltf_size valueOffset = cubic ? 1 : 0; // cubic は (inTangent, value, outTangent) の中央
+
+                    std::vector<float> times(keyCount, 0.0f);
+                    for (cgltf_size i = 0; i < keyCount; ++i)
+                        cgltf_accessor_read_float(sampler.input, i, &times[i], 1);
+                    duration = std::max(duration, times.back());
+
+                    BoneTrack& track = trackForBone(boneIndex);
+                    if (channel.target_path == cgltf_animation_path_type_translation)
+                    {
+                        track.positionTimes = times;
+                        track.positionInterp = interp;
+                        track.positionValues.resize(keyCount);
+                        for (cgltf_size i = 0; i < keyCount; ++i)
+                        {
+                            float v[3] = {0.0f, 0.0f, 0.0f};
+                            cgltf_accessor_read_float(sampler.output, i * stride + valueOffset, v, 3);
+                            track.positionValues[i] = detail::MirrorZ(NS::Math::Vector3{v[0], v[1], v[2]});
+                        }
+                    }
+                    else if (channel.target_path == cgltf_animation_path_type_rotation)
+                    {
+                        track.rotationTimes = times;
+                        track.rotationInterp = interp;
+                        track.rotationValues.resize(keyCount);
+                        for (cgltf_size i = 0; i < keyCount; ++i)
+                        {
+                            float q[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+                            cgltf_accessor_read_float(sampler.output, i * stride + valueOffset, q, 4);
+                            track.rotationValues[i] =
+                                detail::MirrorQuaternionZ(NS::Math::Quaternion{q[0], q[1], q[2], q[3]});
+                        }
+                    }
+                    else if (channel.target_path == cgltf_animation_path_type_scale)
+                    {
+                        track.scaleTimes = times;
+                        track.scaleInterp = interp;
+                        track.scaleValues.resize(keyCount);
+                        for (cgltf_size i = 0; i < keyCount; ++i)
+                        {
+                            float v[3] = {1.0f, 1.0f, 1.0f};
+                            cgltf_accessor_read_float(sampler.output, i * stride + valueOffset, v, 3);
+                            track.scaleValues[i] = NS::Math::Vector3{v[0], v[1], v[2]};
+                        }
+                    }
+                }
+
+                clip.duration = duration;
+                clip.tracks = std::move(tracks);
+                if (clip.IsValid())
+                    outClips.push_back(std::move(clip));
+            }
+        }
     } // namespace
 
     SkinnedMeshData LoadGltfSkinnedMesh(const std::string& path)
@@ -617,6 +735,7 @@ namespace NS::Graphics
         data.vertices = std::move(vertices);
         data.indices = std::move(indices);
         data.skeleton = Skeleton(std::move(bones));
+        ParseAnimations(model, skin, remap, path, data.animations);
         return data;
     }
 } // namespace NS::Graphics
