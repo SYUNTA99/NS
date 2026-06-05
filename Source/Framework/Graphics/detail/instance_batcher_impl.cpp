@@ -322,7 +322,7 @@ namespace NS::Graphics
                 }
 
                 ID3D11Buffer* vbs[2] = {meshVB, instanceVB};
-                const UINT strides[2] = {static_cast<UINT>(sizeof(MeshVertex)),
+                const UINT strides[2] = {static_cast<UINT>(sizeof(StaticVertex)),
                                          static_cast<UINT>(sizeof(BlockInstance))};
                 const UINT offsets[2] = {0, 0};
                 ctx->IASetVertexBuffers(0, 2, vbs, strides, offsets);

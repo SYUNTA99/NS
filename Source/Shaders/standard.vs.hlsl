@@ -1,4 +1,4 @@
-// FrameCB は MeshVertex (POSITION + TEXCOORD + NORMAL) + Material::SetParams を前提とする。
+// FrameCB は StaticVertex (POSITION + TEXCOORD + NORMAL) + Material::SetParams を前提とする。
 // DirectXMath/SimpleMath が row-major LH のため、HLSL 側も row_major で揃える。
 // `mul(float4(pos,1), world)` の行ベクトル流派で記述する。
 

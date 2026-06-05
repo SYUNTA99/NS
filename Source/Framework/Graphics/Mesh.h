@@ -4,7 +4,7 @@
 /// @brief NS::Graphics::Mesh — 描画できるジオメトリの基底 (VB / IB を所有し DrawIndexed を発行する)
 ///
 /// @details StaticMesh / SkeletalMesh の共通実体 = GPU 頂点 / index buffer と描画呼出を持つ
-/// 頂点フォーマットは派生が決める (StaticMesh は MeshVertex、 SkeletalMesh は SkinnedVertex)
+/// 頂点フォーマットは派生が決める (StaticMesh は StaticVertex、 SkeletalMesh は SkinnedVertex)
 /// 派生は構築した VB / IB を `SetGeometry` で基底に預け、 `Draw` / `IsValid` 等は基底実装を共有する
 /// skinning する派生は `Draw` を override して bone palette CB の bind を足す
 /// @pre Renderer の DeviceContext を内部保持するため Renderer より先に破棄すること

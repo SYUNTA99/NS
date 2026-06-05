@@ -162,7 +162,7 @@ namespace NS::Graphics
                 const float wy = world[1] * p[0] + world[5] * p[1] + world[9] * p[2] + world[13];
                 const float wz = world[2] * p[0] + world[6] * p[1] + world[10] * p[2] + world[14];
 
-                MeshVertex v{};
+                StaticVertex v{};
                 v.position = NS::Math::Vector3{wx, wy, -wz};
 
                 float uv[2] = {0.0f, 0.0f};

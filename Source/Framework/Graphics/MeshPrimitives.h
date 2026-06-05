@@ -18,7 +18,7 @@ namespace NS::Graphics
     /// CPU 側の頂点/index データ。生存期間が `MeshDesc` の pointer と同じ
     struct MeshGeometry
     {
-        std::vector<MeshVertex> vertices;
+        std::vector<StaticVertex> vertices;
         std::vector<std::uint32_t> indices;
     };
 

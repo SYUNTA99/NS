@@ -43,7 +43,7 @@ namespace NS::Graphics
     };
 
     /// InputLayout の 1 要素。SemanticIndex は常に 0、InputSlot 0 単一 stream 前提
-    /// StaticMesh::StandardInputLayout() から流用する想定 (offsetof(MeshVertex, ...) で byteOffset を埋める)
+    /// StaticMesh::StandardInputLayout() から流用する想定 (offsetof(StaticVertex, ...) で byteOffset を埋める)
     struct InputElement
     {
         std::string semanticName;

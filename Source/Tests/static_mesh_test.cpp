@@ -16,7 +16,7 @@ namespace
     using NS::Graphics::InputElementFormat;
     using NS::Graphics::StaticMesh;
     using NS::Graphics::MeshDesc;
-    using NS::Graphics::MeshVertex;
+    using NS::Graphics::StaticVertex;
     using NS::Graphics::Renderer;
     using NS::Graphics::RendererDesc;
     using NS::Platform::Window;
@@ -42,9 +42,9 @@ namespace
     constexpr std::size_t kCubeVertexCount = 8;
     constexpr std::size_t kCubeIndexCount = 36;
 
-    std::array<MeshVertex, kCubeVertexCount> MakeCubeVertices()
+    std::array<StaticVertex, kCubeVertexCount> MakeCubeVertices()
     {
-        std::array<MeshVertex, kCubeVertexCount> v{};
+        std::array<StaticVertex, kCubeVertexCount> v{};
         v[0] = {Vector3(-1.0f, -1.0f, -1.0f), Vector2(0.0f, 0.0f), Vector3(0.0f, 0.0f, -1.0f)};
         v[1] = {Vector3(1.0f, -1.0f, -1.0f), Vector2(1.0f, 0.0f), Vector3(0.0f, 0.0f, -1.0f)};
         v[2] = {Vector3(1.0f, 1.0f, -1.0f), Vector2(1.0f, 1.0f), Vector3(0.0f, 0.0f, -1.0f)};
@@ -70,9 +70,9 @@ protected:
     void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
-TEST(MeshTypeLayoutTest, MeshVertexSizeIs32)
+TEST(MeshTypeLayoutTest, StaticVertexSizeIs32)
 {
-    EXPECT_EQ(sizeof(MeshVertex), 32u);
+    EXPECT_EQ(sizeof(StaticVertex), 32u);
 }
 
 TEST(MeshTypeLayoutTest, StandardInputLayoutHasExpectedElements)

@@ -1,6 +1,6 @@
 // Skybox VS。 単位 cube の頂点を `pos.xyww` swizzle で far plane (depth=1) に張り付ける。
 // camera の translation 成分を抜いた viewProj が前提なので world matrix は不要 (identity 相当)。
-// 入力レイアウトは MeshVertex (POSITION + TEXCOORD + NORMAL) と共有し、 既存 Mesh::StandardInputLayout
+// 入力レイアウトは StaticVertex (POSITION + TEXCOORD + NORMAL) と共有し、 既存 Mesh::StandardInputLayout
 // をそのまま流用できる構造になっている。 cubemap サンプリング方向はローカル position をそのまま渡す。
 
 cbuffer SkyboxCB : register(b0)

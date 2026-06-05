@@ -22,7 +22,7 @@ namespace NS::Graphics
 
         // raw 頂点 / index から VB + IB を構築。 両方 valid なら true を返し out に move する
         bool BuildBuffers(Renderer& renderer,
-                          const MeshVertex* vertices,
+                          const StaticVertex* vertices,
                           std::size_t vertexCount,
                           const std::uint32_t* indices,
                           std::size_t indexCount,
@@ -32,7 +32,7 @@ namespace NS::Graphics
             VertexBufferDesc vbd{};
             vbd.initialData = vertices;
             vbd.vertexCount = vertexCount;
-            vbd.stride = sizeof(MeshVertex);
+            vbd.stride = sizeof(StaticVertex);
             vbd.usage = BufferUsage::Static;
             auto vb = std::make_unique<VertexBuffer>(renderer, vbd);
             if (!vb->IsValid())
@@ -99,9 +99,10 @@ namespace NS::Graphics
     std::vector<InputElement> StaticMesh::StandardInputLayout()
     {
         static const std::vector<InputElement> kLayout = {
-            InputElement{"POSITION", InputElementFormat::Float3, static_cast<unsigned>(offsetof(MeshVertex, position))},
-            InputElement{"TEXCOORD", InputElementFormat::Float2, static_cast<unsigned>(offsetof(MeshVertex, uv))},
-            InputElement{"NORMAL", InputElementFormat::Float3, static_cast<unsigned>(offsetof(MeshVertex, normal))},
+            InputElement{
+                "POSITION", InputElementFormat::Float3, static_cast<unsigned>(offsetof(StaticVertex, position))},
+            InputElement{"TEXCOORD", InputElementFormat::Float2, static_cast<unsigned>(offsetof(StaticVertex, uv))},
+            InputElement{"NORMAL", InputElementFormat::Float3, static_cast<unsigned>(offsetof(StaticVertex, normal))},
         };
         return kLayout;
     }
