@@ -24,8 +24,8 @@ namespace NS::Scene
     class ThirdPersonFollowComponent : public Component
     {
     public:
-        /// GameObject owner と target を同時に受け取って auto-register するコンストラクタ
-        ThirdPersonFollowComponent(NS::Scene::GameObject* owner, Transform* target) noexcept;
+        /// target を受け取って構築する。 owner は GameObject::AddComponent が注入する
+        explicit ThirdPersonFollowComponent(Transform* target) noexcept;
 
         void SetTarget(Transform* target) noexcept;
         [[nodiscard]] Transform* Target() const noexcept { return m_target; }

@@ -30,8 +30,8 @@ namespace
 namespace NS::Scene
 {
 
-    ThirdPersonFollowComponent::ThirdPersonFollowComponent(NS::Scene::GameObject* owner, Transform* target) noexcept
-        : Component(owner, static_cast<int>(NS::Scene::TickPriority::Camera)), m_target(target)
+    ThirdPersonFollowComponent::ThirdPersonFollowComponent(Transform* target) noexcept
+        : Component(static_cast<int>(NS::Scene::TickPriority::Camera)), m_target(target)
     {}
 
     void ThirdPersonFollowComponent::SetTarget(Transform* target) noexcept

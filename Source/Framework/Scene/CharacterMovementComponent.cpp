@@ -84,7 +84,7 @@ namespace
 
 namespace NS::Scene
 {
-    CharacterMovementComponent::CharacterMovementComponent(NS::Scene::GameObject* owner) noexcept : Component(owner) {}
+    CharacterMovementComponent::CharacterMovementComponent() noexcept {}
 
     void CharacterMovementComponent::SetDesiredMove(const NS::Math::Vector3& worldDir, float speedScale01) noexcept
     {

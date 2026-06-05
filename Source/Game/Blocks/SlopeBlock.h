@@ -3,7 +3,7 @@
 /// @file SlopeBlock.h
 /// @brief 楔形スロープブロック (45 / 30 / 22.5 / 15 度の 4 種)
 ///
-/// @details MeshRendererComponent + SlopeColliderComponent を named member として保有する
+/// @details MeshRendererComponent + SlopeColliderComponent を GameObject が所有し、参照を member キャッシュする
 /// Block (AABB collider 専用) からではなく GameObject を直接派生する
 /// Mesh / Material は外部 (LevelEditorScene) が共有してくれた raw pointer を保持し、
 /// 角度別 wedge mesh は scene 側でキャッシュする想定
@@ -33,10 +33,10 @@ public:
     SlopeBlock(SlopeBlock&&) = delete;
     SlopeBlock& operator=(SlopeBlock&&) = delete;
 
-    [[nodiscard]] NS::Scene::MeshRendererComponent& MeshComp() noexcept { return m_mesh; }
-    [[nodiscard]] NS::Scene::SlopeColliderComponent& Collider() noexcept { return m_collider; }
+    [[nodiscard]] NS::Scene::MeshRendererComponent& MeshComp() noexcept { return *m_mesh; }
+    [[nodiscard]] NS::Scene::SlopeColliderComponent& Collider() noexcept { return *m_collider; }
 
 private:
-    NS::Scene::MeshRendererComponent m_mesh;
-    NS::Scene::SlopeColliderComponent m_collider;
+    NS::Scene::MeshRendererComponent* m_mesh = nullptr;
+    NS::Scene::SlopeColliderComponent* m_collider = nullptr;
 };

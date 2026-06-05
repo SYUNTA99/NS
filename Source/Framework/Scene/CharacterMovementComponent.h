@@ -41,8 +41,7 @@ namespace NS::Scene
     class CharacterMovementComponent : public Component
     {
     public:
-        /// GameObject owner を受け取って auto-register するコンストラクタ
-        explicit CharacterMovementComponent(NS::Scene::GameObject* owner) noexcept;
+        CharacterMovementComponent() noexcept;
 
         void SetDesiredMove(const NS::Math::Vector3& worldDir, float speedScale01) noexcept;
 

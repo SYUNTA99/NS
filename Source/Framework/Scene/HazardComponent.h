@@ -24,7 +24,7 @@ namespace NS::Scene
     class HazardComponent : public Component
     {
     public:
-        explicit HazardComponent(GameObject* owner) noexcept;
+        HazardComponent() noexcept;
 
         /// LevelEditorScene / PlayMode が capsule × hazard AABB の overlap を検出した frame で呼ぶ
         /// `playState.playerHealth` を 1 減算 (下限 0 でクランプ)、 0 到達で `deathTriggered=true`

@@ -18,10 +18,9 @@ namespace NS::Scene
     class PoleComponent : public Component
     {
     public:
-        /// @param owner    所有 GameObject。 base コンストラクタで auto-register
         /// @param radius   ポール半径 (m)。 default 0.15
         /// @param height   ポール全長 (m)。 default 2.0。 owner 中心から上下に半分ずつ伸びる
-        PoleComponent(GameObject* owner, float radius, float height) noexcept;
+        PoleComponent(float radius, float height) noexcept;
 
         [[nodiscard]] float Radius() const noexcept { return m_radius; }
         [[nodiscard]] float Height() const noexcept { return m_height; }

@@ -12,7 +12,7 @@ namespace
 
 TEST(StaticColliderTest, DefaultHalfExtentsAreHalfMeterCube)
 {
-    StaticColliderComponent sc(nullptr);
+    StaticColliderComponent sc;
     const auto he = sc.HalfExtents();
     EXPECT_FLOAT_EQ(he.x, 0.5f);
     EXPECT_FLOAT_EQ(he.y, 0.5f);
@@ -21,7 +21,7 @@ TEST(StaticColliderTest, DefaultHalfExtentsAreHalfMeterCube)
 
 TEST(StaticColliderTest, HalfExtentsSetterPersists)
 {
-    StaticColliderComponent sc(nullptr);
+    StaticColliderComponent sc;
     sc.SetHalfExtents({2.0f, 0.25f, 4.0f});
     const auto he = sc.HalfExtents();
     EXPECT_FLOAT_EQ(he.x, 2.0f);
@@ -32,7 +32,7 @@ TEST(StaticColliderTest, HalfExtentsSetterPersists)
 TEST(StaticColliderTest, WorldAABBReflectsOwnerPosition)
 {
     GameObject obj;
-    StaticColliderComponent sc(&obj, {1.0f, 0.5f, 2.0f});
+    auto& sc = *obj.AddComponent<StaticColliderComponent>(NS::Math::Vector3{1.0f, 0.5f, 2.0f});
     obj.Root().SetPosition({10.0f, 3.0f, -5.0f});
 
     const NS::Math::AABB box = sc.WorldAABB();
@@ -46,7 +46,7 @@ TEST(StaticColliderTest, WorldAABBReflectsOwnerPosition)
 
 TEST(StaticColliderTest, WorldAABBWithoutOwnerIsOriginCentered)
 {
-    StaticColliderComponent sc(nullptr, NS::Math::Vector3{1.0f, 1.0f, 1.0f});
+    StaticColliderComponent sc(NS::Math::Vector3{1.0f, 1.0f, 1.0f});
     const NS::Math::AABB box = sc.WorldAABB();
     EXPECT_FLOAT_EQ(box.Center.x, 0.0f);
     EXPECT_FLOAT_EQ(box.Center.y, 0.0f);

@@ -6,7 +6,7 @@
 
 namespace NS::Scene
 {
-    HazardComponent::HazardComponent(GameObject* owner) noexcept : Component(owner) {}
+    HazardComponent::HazardComponent() noexcept {}
 
     void HazardComponent::OnPlayerOverlap(NS::Game::Level::PlayState& playState) noexcept
     {

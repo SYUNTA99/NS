@@ -38,7 +38,7 @@ protected:
 TEST_F(LedgeGrabStateTest, GrabsLedgeWhenDescendingIntoEdge)
 {
     GameObject playerObj;
-    CharacterMovementComponent mov(&playerObj);
+    auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
     const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
@@ -58,7 +58,7 @@ TEST_F(LedgeGrabStateTest, GrabsLedgeWhenDescendingIntoEdge)
 TEST_F(LedgeGrabStateTest, ClimbInputMantlesOntoBlockTop)
 {
     GameObject playerObj;
-    CharacterMovementComponent mov(&playerObj);
+    auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
     const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
@@ -88,7 +88,7 @@ TEST_F(LedgeGrabStateTest, ClimbInputMantlesOntoBlockTop)
 TEST_F(LedgeGrabStateTest, JumpMantlesOntoBlockTop)
 {
     GameObject playerObj;
-    CharacterMovementComponent mov(&playerObj);
+    auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
     const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
@@ -115,7 +115,7 @@ TEST_F(LedgeGrabStateTest, JumpMantlesOntoBlockTop)
 TEST_F(LedgeGrabStateTest, MantleRisesGraduallyNotInstant)
 {
     GameObject playerObj;
-    CharacterMovementComponent mov(&playerObj);
+    auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
     const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
@@ -145,7 +145,7 @@ TEST_F(LedgeGrabStateTest, MantleRisesGraduallyNotInstant)
 TEST_F(LedgeGrabStateTest, BackInputDropsAndDoesNotReGrabImmediately)
 {
     GameObject playerObj;
-    CharacterMovementComponent mov(&playerObj);
+    auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
     const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
@@ -171,7 +171,7 @@ TEST_F(LedgeGrabStateTest, BackInputDropsAndDoesNotReGrabImmediately)
 TEST_F(LedgeGrabStateTest, DoesNotGrabWhileAscending)
 {
     GameObject playerObj;
-    CharacterMovementComponent mov(&playerObj);
+    auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
     const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
@@ -190,7 +190,7 @@ TEST_F(LedgeGrabStateTest, DoesNotGrabWhileAscending)
 TEST_F(LedgeGrabStateTest, ShimmyMovesAlongLedge)
 {
     GameObject playerObj;
-    CharacterMovementComponent mov(&playerObj);
+    auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
     // -x 面の縁が z 方向に 3 マス続く壁。 左右どちらへでも縁が続く
@@ -219,7 +219,7 @@ TEST_F(LedgeGrabStateTest, ShimmyMovesAlongLedge)
 TEST_F(LedgeGrabStateTest, ShimmyStopsAtLedgeEnd)
 {
     GameObject playerObj;
-    CharacterMovementComponent mov(&playerObj);
+    auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
     // 1 マスだけの縁。 端まで来たらそれ以上シミーできず、 落ちもしない

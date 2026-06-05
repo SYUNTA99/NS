@@ -7,8 +7,7 @@
 
 namespace NS::Scene
 {
-    PoleComponent::PoleComponent(GameObject* owner, float radius, float height) noexcept
-        : Component(owner), m_radius(radius), m_height(height)
+    PoleComponent::PoleComponent(float radius, float height) noexcept : m_radius(radius), m_height(height)
     {
         if (m_radius < 0.0f)
             m_radius = 0.0f;

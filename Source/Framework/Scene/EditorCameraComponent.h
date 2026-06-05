@@ -33,7 +33,7 @@ namespace NS::Scene
     class EditorCameraComponent : public Component
     {
     public:
-        explicit EditorCameraComponent(NS::Scene::GameObject* owner) noexcept;
+        EditorCameraComponent() noexcept;
 
         void SetCamera(CameraComponent* camera) noexcept;
         void SetInput(NS::Platform::Input* input) noexcept;

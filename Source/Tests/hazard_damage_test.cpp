@@ -20,7 +20,7 @@ TEST(HazardDamageTest, PlayStateInitializesHealthTo8)
 TEST(HazardDamageTest, HazardDecrementsHealthOnOverlap)
 {
     GameObject hazardObj;
-    HazardComponent hazard(&hazardObj);
+    auto& hazard = *hazardObj.AddComponent<HazardComponent>();
     NS::Game::Level::PlayState play;
 
     hazard.OnPlayerOverlap(play);
@@ -32,7 +32,7 @@ TEST(HazardDamageTest, HazardDecrementsHealthOnOverlap)
 TEST(HazardDamageTest, HealthClampsAtZero)
 {
     GameObject hazardObj;
-    HazardComponent hazard(&hazardObj);
+    auto& hazard = *hazardObj.AddComponent<HazardComponent>();
     NS::Game::Level::PlayState play;
 
     for (int i = 0; i < 10; ++i)
@@ -53,7 +53,7 @@ TEST(HazardDamageTest, HazardDoesNotModifyLevelData)
     const std::uint32_t crcBefore = level.ComputeCrc32();
 
     GameObject hazardObj;
-    HazardComponent hazard(&hazardObj);
+    auto& hazard = *hazardObj.AddComponent<HazardComponent>();
     NS::Game::Level::PlayState play;
 
     for (int i = 0; i < 5; ++i)
@@ -67,7 +67,7 @@ TEST(HazardDamageTest, HazardDoesNotModifyLevelData)
 TEST(HazardDamageTest, HealthZeroFlagsDeath)
 {
     GameObject hazardObj;
-    HazardComponent hazard(&hazardObj);
+    auto& hazard = *hazardObj.AddComponent<HazardComponent>();
     NS::Game::Level::PlayState play;
 
     for (int i = 0; i < 8; ++i)

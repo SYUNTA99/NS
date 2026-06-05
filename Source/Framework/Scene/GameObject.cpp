@@ -48,26 +48,13 @@ namespace NS::Scene
         m_parent = nullptr;
     }
 
-    void GameObject::RegisterComponent(Component* comp) noexcept
+    void GameObject::AttachOwnedComponent(Component* comp) noexcept
     {
-        if (comp == nullptr)
-            return;
         comp->AttachOwner(this);
         m_components.push_back(comp);
         std::stable_sort(m_components.begin(), m_components.end(), [](const Component* a, const Component* b) noexcept {
             return a->Priority() < b->Priority();
         });
-    }
-
-    void GameObject::UnregisterComponent(Component* comp) noexcept
-    {
-        if (comp == nullptr)
-            return;
-        auto it = std::remove(m_components.begin(), m_components.end(), comp);
-        if (it == m_components.end())
-            return;
-        m_components.erase(it, m_components.end());
-        comp->AttachOwner(nullptr);
     }
 
     void GameObject::OnStart()

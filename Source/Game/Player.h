@@ -16,9 +16,9 @@ namespace NS::Platform
     class Input;
 } // namespace NS::Platform
 
-/// プレイヤーキャラクタの GameObject (固定スロット)
-/// MeshRendererComponent + CharacterMovementComponent + PlayerInputComponent を named member
-/// として保有する。Mesh / Material / Input は寿命を LevelEditorScene が保証
+/// プレイヤーキャラクタの GameObject
+/// MeshRendererComponent + CharacterMovementComponent + PlayerInputComponent を GameObject が所有し、
+/// 参照を member キャッシュする。Mesh / Material / Input は寿命を LevelEditorScene が保証
 class Player : public NS::Scene::GameObject
 {
 public:
@@ -30,12 +30,12 @@ public:
     Player(Player&&) = delete;
     Player& operator=(Player&&) = delete;
 
-    [[nodiscard]] NS::Scene::MeshRendererComponent& MeshComp() noexcept { return m_mesh; }
-    [[nodiscard]] NS::Scene::CharacterMovementComponent& Movement() noexcept { return m_movement; }
-    [[nodiscard]] NS::Scene::PlayerInputComponent& InputComp() noexcept { return m_input; }
+    [[nodiscard]] NS::Scene::MeshRendererComponent& MeshComp() noexcept { return *m_mesh; }
+    [[nodiscard]] NS::Scene::CharacterMovementComponent& Movement() noexcept { return *m_movement; }
+    [[nodiscard]] NS::Scene::PlayerInputComponent& InputComp() noexcept { return *m_input; }
 
 private:
-    NS::Scene::MeshRendererComponent m_mesh;
-    NS::Scene::CharacterMovementComponent m_movement;
-    NS::Scene::PlayerInputComponent m_input;
+    NS::Scene::MeshRendererComponent* m_mesh = nullptr;
+    NS::Scene::CharacterMovementComponent* m_movement = nullptr;
+    NS::Scene::PlayerInputComponent* m_input = nullptr;
 };

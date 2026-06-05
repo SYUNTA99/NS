@@ -27,14 +27,14 @@ namespace
 TEST(MeshRendererComponentTest, ConstructsWithNullPointersWithoutCrashing)
 {
     // Mesh / Material は呼出側保証。null でも構築時 crash しないこと
-    MeshRendererComponent mc(nullptr, nullptr, nullptr);
+    MeshRendererComponent mc(nullptr, nullptr);
     EXPECT_TRUE(mc.IsActive());
 }
 
 TEST(MeshRendererComponentTest, DrawIsNoOpWhenInactive)
 {
     GameObject obj;
-    MeshRendererComponent mc(&obj, nullptr, nullptr);
+    auto& mc = *obj.AddComponent<MeshRendererComponent>(nullptr, nullptr);
     mc.SetActive(false);
 
     // ctx を最小限で作って Draw 呼出。null mesh/material でもガード経由で no-op
@@ -46,7 +46,7 @@ TEST(MeshRendererComponentTest, DrawIsNoOpWhenInactive)
 TEST(MeshRendererComponentTest, DrawIsNoOpWhenMeshOrMaterialIsNull)
 {
     GameObject obj;
-    MeshRendererComponent mc(&obj, nullptr, nullptr);
+    auto& mc = *obj.AddComponent<MeshRendererComponent>(nullptr, nullptr);
 
     NS::Scene::RenderContext ctx{};
     mc.Draw(ctx); // null ガードで no-op
@@ -55,7 +55,7 @@ TEST(MeshRendererComponentTest, DrawIsNoOpWhenMeshOrMaterialIsNull)
 
 TEST(MeshRendererComponentTest, SetLightDirectionAndBaseColorDoNotCrash)
 {
-    MeshRendererComponent mc(nullptr, nullptr, nullptr);
+    MeshRendererComponent mc(nullptr, nullptr);
     mc.SetLightDirection({1.0f, 0.0f, 0.0f});
     mc.SetBaseColor({0.5f, 0.5f, 0.5f});
     // getter は提供していない。setter 呼出が crash せず IsActive を破壊しないことのみ verify
@@ -67,7 +67,7 @@ TEST(MeshRendererComponentTest, OnStartRegistersToOwningScene)
     FakeScene scene;
     GameObject obj;
     obj.AttachScene(&scene);
-    MeshRendererComponent mc(&obj, nullptr, nullptr);
+    auto& mc = *obj.AddComponent<MeshRendererComponent>(nullptr, nullptr);
 
     mc.OnStart();
 
@@ -80,7 +80,7 @@ TEST(MeshRendererComponentTest, OnEndPlayUnregistersFromOwningScene)
     FakeScene scene;
     GameObject obj;
     obj.AttachScene(&scene);
-    MeshRendererComponent mc(&obj, nullptr, nullptr);
+    auto& mc = *obj.AddComponent<MeshRendererComponent>(nullptr, nullptr);
 
     mc.OnStart();
     mc.OnEndPlay();
@@ -92,7 +92,7 @@ TEST(MeshRendererComponentTest, OnEndPlayUnregistersFromOwningScene)
 TEST(MeshRendererComponentTest, OnStartIsNoOpWhenSceneIsNull)
 {
     GameObject obj;
-    MeshRendererComponent mc(&obj, nullptr, nullptr);
+    auto& mc = *obj.AddComponent<MeshRendererComponent>(nullptr, nullptr);
     // OwningScene が nullptr のまま OnStart を呼んでも crash しないこと
     mc.OnStart();
     SUCCEED();

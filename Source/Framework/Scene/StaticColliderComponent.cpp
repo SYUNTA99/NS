@@ -17,11 +17,10 @@ namespace NS::Scene
         }
     } // namespace
 
-    StaticColliderComponent::StaticColliderComponent(NS::Scene::GameObject* owner) noexcept : Component(owner) {}
+    StaticColliderComponent::StaticColliderComponent() noexcept {}
 
-    StaticColliderComponent::StaticColliderComponent(NS::Scene::GameObject* owner,
-                                                     const NS::Math::Vector3& halfExtents) noexcept
-        : Component(owner), m_halfExtents(ClampNonNegative(halfExtents))
+    StaticColliderComponent::StaticColliderComponent(const NS::Math::Vector3& halfExtents) noexcept
+        : m_halfExtents(ClampNonNegative(halfExtents))
     {}
 
     void StaticColliderComponent::SetHalfExtents(const NS::Math::Vector3& halfExtents) noexcept

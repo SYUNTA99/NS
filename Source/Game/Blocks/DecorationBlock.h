@@ -28,8 +28,8 @@ public:
     DecorationBlock(DecorationBlock&&) = delete;
     DecorationBlock& operator=(DecorationBlock&&) = delete;
 
-    [[nodiscard]] NS::Scene::MeshRendererComponent& MeshComp() noexcept { return m_mesh; }
+    [[nodiscard]] NS::Scene::MeshRendererComponent& MeshComp() noexcept { return *m_mesh; }
 
 private:
-    NS::Scene::MeshRendererComponent m_mesh;
+    NS::Scene::MeshRendererComponent* m_mesh = nullptr;
 };

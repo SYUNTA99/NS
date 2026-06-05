@@ -11,9 +11,7 @@
 namespace NS::Scene
 {
 
-    EditorCameraComponent::EditorCameraComponent(GameObject* owner) noexcept
-        : Component(owner, static_cast<int>(TickPriority::Camera))
-    {}
+    EditorCameraComponent::EditorCameraComponent() noexcept : Component(static_cast<int>(TickPriority::Camera)) {}
 
     void EditorCameraComponent::SetCamera(CameraComponent* camera) noexcept
     {

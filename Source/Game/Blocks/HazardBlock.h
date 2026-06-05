@@ -4,7 +4,7 @@
 /// @brief 接触ダメージ付きの固形ブロック GameObject
 ///
 /// @details MeshRendererComponent (cube mesh) + StaticColliderComponent (AABB 衝突) +
-/// HazardComponent (ダメージ trigger) を named member として保有する
+/// HazardComponent (ダメージ trigger) を GameObject が所有し、参照を member キャッシュする
 /// 固形挙動は通常 Block と同じだが、 player capsule が AABB と overlap した frame で
 /// HazardComponent::OnPlayerOverlap が呼ばれ PlayState.playerHealth を 1 削る
 /// Block 派生にせず GameObject を直接派生して 3 つの Component を明示保有する
@@ -35,12 +35,12 @@ public:
     HazardBlock(HazardBlock&&) = delete;
     HazardBlock& operator=(HazardBlock&&) = delete;
 
-    [[nodiscard]] NS::Scene::MeshRendererComponent& MeshComp() noexcept { return m_mesh; }
-    [[nodiscard]] NS::Scene::StaticColliderComponent& Collider() noexcept { return m_collider; }
-    [[nodiscard]] NS::Scene::HazardComponent& Hazard() noexcept { return m_hazard; }
+    [[nodiscard]] NS::Scene::MeshRendererComponent& MeshComp() noexcept { return *m_mesh; }
+    [[nodiscard]] NS::Scene::StaticColliderComponent& Collider() noexcept { return *m_collider; }
+    [[nodiscard]] NS::Scene::HazardComponent& Hazard() noexcept { return *m_hazard; }
 
 private:
-    NS::Scene::MeshRendererComponent m_mesh;
-    NS::Scene::StaticColliderComponent m_collider;
-    NS::Scene::HazardComponent m_hazard;
+    NS::Scene::MeshRendererComponent* m_mesh = nullptr;
+    NS::Scene::StaticColliderComponent* m_collider = nullptr;
+    NS::Scene::HazardComponent* m_hazard = nullptr;
 };

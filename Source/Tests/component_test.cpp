@@ -19,14 +19,14 @@ namespace
 
 TEST(ComponentTest, DefaultIsActive)
 {
-    CountingComponent c(nullptr);
+    CountingComponent c;
     EXPECT_TRUE(c.IsActive());
 }
 
 TEST(ComponentTest, SetActiveTogglesPropagation)
 {
     GameObject obj;
-    CountingComponent c(&obj);
+    auto& c = *obj.AddComponent<CountingComponent>();
 
     c.SetActive(false);
     obj.OnUpdate();
@@ -40,7 +40,7 @@ TEST(ComponentTest, SetActiveTogglesPropagation)
 TEST(ComponentTest, RootTransformReturnsOwnerRoot)
 {
     GameObject obj;
-    CountingComponent c(&obj);
+    auto& c = *obj.AddComponent<CountingComponent>();
 
     obj.Root().SetPosition({1.0f, 2.0f, 3.0f});
 
@@ -51,35 +51,46 @@ TEST(ComponentTest, RootTransformReturnsOwnerRoot)
 
 namespace
 {
-    class AutoRegComponent : public NS::Scene::Component
+    /// 破棄回数を外部カウンタへ記録する Component。 GameObject 所有の寿命検証に使う
+    class LifetimeComponent : public NS::Scene::Component
     {
     public:
-        using NS::Scene::Component::Component;
+        explicit LifetimeComponent(int* destroyCounter) noexcept : m_destroyCounter(destroyCounter) {}
+        ~LifetimeComponent() noexcept override
+        {
+            if (m_destroyCounter != nullptr)
+                ++(*m_destroyCounter);
+        }
+
+    private:
+        int* m_destroyCounter = nullptr;
     };
 } // namespace
 
-TEST(ComponentAutoRegisterTest, CtorWithOwnerAutoRegisters)
+TEST(ComponentOwnershipTest, AddComponentRegistersAndInjectsOwner)
 {
     NS::Scene::GameObject obj;
-    AutoRegComponent c(&obj);
+    auto* c = obj.AddComponent<CountingComponent>();
 
     ASSERT_EQ(obj.Components().size(), std::size_t{1});
-    EXPECT_EQ(obj.Components()[0], &c);
-    EXPECT_EQ(c.Owner(), &obj);
+    EXPECT_EQ(obj.Components()[0], c);
+    EXPECT_EQ(c->Owner(), &obj);
 }
 
-TEST(ComponentAutoRegisterTest, CtorWithNullOwnerDoesNotRegister)
+TEST(ComponentOwnershipTest, DetachedComponentHasNullOwner)
 {
-    AutoRegComponent c(nullptr);
+    CountingComponent c;
     EXPECT_EQ(c.Owner(), nullptr);
 }
 
-TEST(ComponentAutoRegisterTest, DtorAutoUnregisters)
+TEST(ComponentOwnershipTest, GameObjectOwnsComponentLifetime)
 {
-    NS::Scene::GameObject obj;
+    int destroyed = 0;
     {
-        AutoRegComponent c(&obj);
+        NS::Scene::GameObject obj;
+        obj.AddComponent<LifetimeComponent>(&destroyed);
         EXPECT_EQ(obj.Components().size(), std::size_t{1});
+        EXPECT_EQ(destroyed, 0);
     }
-    EXPECT_EQ(obj.Components().size(), std::size_t{0});
+    EXPECT_EQ(destroyed, 1); // GameObject 破棄で所有 Component も破棄される
 }

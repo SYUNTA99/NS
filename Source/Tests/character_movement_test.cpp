@@ -35,7 +35,7 @@ protected:
 TEST_F(CharacterMovementTest, GravityReducesVerticalVelocityWhenAirborne)
 {
     GameObject obj;
-    CharacterMovementComponent mov(&obj);
+    auto& mov = *obj.AddComponent<CharacterMovementComponent>();
 
     const float vyBefore = mov.Velocity().y;
     StepN(mov, 1);
@@ -46,7 +46,7 @@ TEST_F(CharacterMovementTest, GravityReducesVerticalVelocityWhenAirborne)
 TEST_F(CharacterMovementTest, JumpPressedAppliesImpulseAndConsumesOneJump)
 {
     GameObject obj;
-    CharacterMovementComponent mov(&obj);
+    auto& mov = *obj.AddComponent<CharacterMovementComponent>();
 
     mov.SetJumpPressed();
     StepN(mov, 1);
@@ -57,7 +57,7 @@ TEST_F(CharacterMovementTest, JumpPressedAppliesImpulseAndConsumesOneJump)
 TEST_F(CharacterMovementTest, SecondJumpDoesNotFireWithoutLanding)
 {
     GameObject obj;
-    CharacterMovementComponent mov(&obj);
+    auto& mov = *obj.AddComponent<CharacterMovementComponent>();
 
     mov.SetJumpPressed();
     StepN(mov, 1);
@@ -72,7 +72,7 @@ TEST_F(CharacterMovementTest, SecondJumpDoesNotFireWithoutLanding)
 TEST_F(CharacterMovementTest, JumpReleaseHalvesVerticalVelocity)
 {
     GameObject obj;
-    CharacterMovementComponent mov(&obj);
+    auto& mov = *obj.AddComponent<CharacterMovementComponent>();
 
     mov.SetJumpPressed();
     mov.SetJumpHeld(true);
@@ -91,8 +91,8 @@ TEST_F(CharacterMovementTest, AsymmetricGravityIsStrongerOnDescent)
 {
     GameObject obj;
     GameObject objB;
-    CharacterMovementComponent movA(&obj);
-    CharacterMovementComponent movB(&objB);
+    auto& movA = *obj.AddComponent<CharacterMovementComponent>();
+    auto& movB = *objB.AddComponent<CharacterMovementComponent>();
 
     movA.SetJumpPressed();
     StepN(movA, 5);
@@ -107,7 +107,7 @@ TEST_F(CharacterMovementTest, AsymmetricGravityIsStrongerOnDescent)
 TEST_F(CharacterMovementTest, ApexHangScalesGravity)
 {
     GameObject obj;
-    CharacterMovementComponent mov(&obj);
+    auto& mov = *obj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
     std::span<const NS::Math::AABB> empty;
     mov.SetCollisionWorld(empty);
@@ -122,7 +122,7 @@ TEST_F(CharacterMovementTest, ApexHangScalesGravity)
 TEST_F(CharacterMovementTest, DesiredMoveAcceleratesHorizontalVelocity)
 {
     GameObject obj;
-    CharacterMovementComponent mov(&obj);
+    auto& mov = *obj.AddComponent<CharacterMovementComponent>();
 
     mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
     StepN(mov, 30);
@@ -132,7 +132,7 @@ TEST_F(CharacterMovementTest, DesiredMoveAcceleratesHorizontalVelocity)
 
 TEST_F(CharacterMovementTest, CapsuleSettersPersist)
 {
-    CharacterMovementComponent mov(nullptr);
+    CharacterMovementComponent mov;
     mov.SetCapsuleRadius(0.6f);
     mov.SetCapsuleHalfHeight(0.8f);
     EXPECT_FLOAT_EQ(mov.CapsuleRadius(), 0.6f);
@@ -142,7 +142,7 @@ TEST_F(CharacterMovementTest, CapsuleSettersPersist)
 TEST_F(CharacterMovementTest, OnUpdateNoOpWhenInactive)
 {
     GameObject obj;
-    CharacterMovementComponent mov(&obj);
+    auto& mov = *obj.AddComponent<CharacterMovementComponent>();
     mov.SetActive(false);
     mov.SetDebugDrawEnabled(false);
 
@@ -157,13 +157,13 @@ TEST_F(CharacterMovementTest, OnUpdateNoOpWhenInactive)
 TEST_F(CharacterMovementTest, ClimbPoleVerticalUsesClimbChannelNotDesiredDir)
 {
     GameObject playerObj;
-    CharacterMovementComponent mov(&playerObj);
+    auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
     std::span<const NS::Math::AABB> empty;
     mov.SetCollisionWorld(empty);
 
     GameObject poleObj; // origin 中心、 半径 0.5 / 高さ 2 (軸 y=-1..+1)
-    NS::Scene::PoleComponent pole(&poleObj, 0.5f, 2.0f);
+    auto& pole = *poleObj.AddComponent<NS::Scene::PoleComponent>(0.5f, 2.0f);
     NS::Scene::PoleComponent* polePtr = &pole;
     mov.SetClimbables(std::span<NS::Scene::PoleComponent* const>(&polePtr, 1));
 

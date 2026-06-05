@@ -29,8 +29,8 @@ public:
     WaterBlock(WaterBlock&&) = delete;
     WaterBlock& operator=(WaterBlock&&) = delete;
 
-    [[nodiscard]] NS::Scene::MeshRendererComponent& MeshComp() noexcept { return m_mesh; }
+    [[nodiscard]] NS::Scene::MeshRendererComponent& MeshComp() noexcept { return *m_mesh; }
 
 private:
-    NS::Scene::MeshRendererComponent m_mesh;
+    NS::Scene::MeshRendererComponent* m_mesh = nullptr;
 };

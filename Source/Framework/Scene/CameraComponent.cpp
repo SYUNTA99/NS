@@ -7,9 +7,7 @@
 
 namespace NS::Scene
 {
-    CameraComponent::CameraComponent(NS::Scene::GameObject* owner) noexcept
-        : Component(owner, static_cast<int>(NS::Scene::TickPriority::Camera))
-    {}
+    CameraComponent::CameraComponent() noexcept : Component(static_cast<int>(NS::Scene::TickPriority::Camera)) {}
 
     void CameraComponent::SetPosition(const NS::Math::Vector3& position) noexcept
     {

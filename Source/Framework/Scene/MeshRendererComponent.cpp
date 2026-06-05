@@ -9,10 +9,8 @@
 
 namespace NS::Scene
 {
-    MeshRendererComponent::MeshRendererComponent(NS::Scene::GameObject* owner,
-                                                 NS::Graphics::Mesh* mesh,
-                                                 NS::Graphics::Material* material) noexcept
-        : Component(owner), m_mesh(mesh), m_material(material)
+    MeshRendererComponent::MeshRendererComponent(NS::Graphics::Mesh* mesh, NS::Graphics::Material* material) noexcept
+        : m_mesh(mesh), m_material(material)
     {}
 
     void MeshRendererComponent::OnStart()

@@ -34,12 +34,12 @@ protected:
 TEST_F(PoleClimbingStateTest, EnterStateWhenOverlapping)
 {
     GameObject playerObj;
-    CharacterMovementComponent mov(&playerObj);
+    auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
     GameObject poleObj;
     poleObj.Root().SetPosition({0.0f, 1.0f, 0.0f});
-    PoleComponent pole(&poleObj, 0.2f, 2.0f);
+    auto& pole = *poleObj.AddComponent<PoleComponent>(0.2f, 2.0f);
 
     playerObj.Root().SetPosition({0.0f, 1.0f, 0.0f});
 
@@ -56,12 +56,12 @@ TEST_F(PoleClimbingStateTest, EnterStateWhenOverlapping)
 TEST_F(PoleClimbingStateTest, VerticalInputMovesPlayer)
 {
     GameObject playerObj;
-    CharacterMovementComponent mov(&playerObj);
+    auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
     GameObject poleObj;
     poleObj.Root().SetPosition({0.0f, 1.0f, 0.0f});
-    PoleComponent pole(&poleObj, 0.2f, 2.0f);
+    auto& pole = *poleObj.AddComponent<PoleComponent>(0.2f, 2.0f);
 
     playerObj.Root().SetPosition({0.0f, 0.5f, 0.0f});
 
@@ -85,12 +85,12 @@ TEST_F(PoleClimbingStateTest, VerticalInputMovesPlayer)
 TEST_F(PoleClimbingStateTest, JumpPressExits)
 {
     GameObject playerObj;
-    CharacterMovementComponent mov(&playerObj);
+    auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
     GameObject poleObj;
     poleObj.Root().SetPosition({0.0f, 1.0f, 0.0f});
-    PoleComponent pole(&poleObj, 0.2f, 2.0f);
+    auto& pole = *poleObj.AddComponent<PoleComponent>(0.2f, 2.0f);
 
     playerObj.Root().SetPosition({0.0f, 0.5f, 0.0f});
 
@@ -111,12 +111,12 @@ TEST_F(PoleClimbingStateTest, JumpPressExits)
 TEST_F(PoleClimbingStateTest, CharacterControllerSkippedWhenClimbing)
 {
     GameObject playerObj;
-    CharacterMovementComponent mov(&playerObj);
+    auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
     GameObject poleObj;
     poleObj.Root().SetPosition({0.0f, 1.0f, 0.0f});
-    PoleComponent pole(&poleObj, 0.2f, 2.0f);
+    auto& pole = *poleObj.AddComponent<PoleComponent>(0.2f, 2.0f);
 
     playerObj.Root().SetPosition({0.0f, 0.5f, 0.0f});
 

@@ -3,8 +3,8 @@
 /// @file Component.h
 /// @brief NS::Scene::Component — 振る舞いを表現する再利用ブロック
 ///
-/// GameObject 派生 (Player/Block/Camera 等) に固定スロット (named members) として
-/// 値型 or std::unique_ptr で保有される。Component 自身は所有者 GameObject を raw 参照する
+/// GameObject::AddComponent<T>() で生成され、 GameObject が unique_ptr で寿命を所有する
+/// Component 自身は所有者 GameObject を raw 参照する (owner は生成後に GameObject が注入)
 /// Component 間 / cross-GameObject アクセスはコンストラクタ経由の明示的 raw pointer 注入のみ許可
 /// (GetComponent<T>() 動的検索 API は提供しない)
 ///
@@ -36,12 +36,11 @@ namespace NS::Scene
     class Component
     {
     public:
-        /// 所有 GameObject を受け取って auto-register するコンストラクタ
-        /// `owner == nullptr` でも null-safe (登録なし、 後で AttachOwner で手動 attach 可)
-        /// 通常は `Component(this, static_cast<int>(TickPriority::X))` のように派生クラスの
-        /// コンストラクタから呼ぶ。 priority は data としてコンストラクタで確定するため、 base コンストラクタ内 sort
-        /// 時の virtual dispatch 問題 (C++ vtable がまだ derived を指していない) を回避する
-        explicit Component(GameObject* owner, int priority = static_cast<int>(TickPriority::Physics)) noexcept;
+        /// priority を data として受け取るコンストラクタ。 owner は GameObject::AddComponent が
+        /// 生成後に注入する。 派生は `Component(static_cast<int>(TickPriority::X))` を base init で渡す
+        /// priority を ctor 引数で確定するのは、 登録時の priority sort が virtual dispatch
+        /// (vtable がまだ derived を指さない base ctor 内) に依存しないようにするため
+        explicit Component(int priority = static_cast<int>(TickPriority::Physics)) noexcept;
 
         virtual ~Component() noexcept;
 
@@ -52,7 +51,7 @@ namespace NS::Scene
 
         /// OnUpdate iteration 順を決める priority 帯。 値小→先呼出、 stable sort で同値保持
         /// 既定 `TickPriority::Physics` (200) — 物理 / movement 帯
-        /// 派生はコンストラクタの base init で `Component(owner, (int)TickPriority::X)` を渡す
+        /// 派生はコンストラクタの base init で `Component((int)TickPriority::X)` を渡す
         /// (override ではなく data 注入)
         [[nodiscard]] int Priority() const noexcept { return m_priority; }
 
@@ -73,6 +72,8 @@ namespace NS::Scene
         virtual void OnEndPlay() {}
 
     private:
+        // owner 注入は AddComponent 経由でのみ行う一方向 friend。 Component から GameObject の
+        // 非公開にはアクセスしない (GameObject 側は Component を friend にしない)
         friend class GameObject;
         void AttachOwner(GameObject* owner) noexcept { m_owner = owner; }
 

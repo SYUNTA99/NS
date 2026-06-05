@@ -8,21 +8,9 @@
 namespace NS::Scene
 {
 
-    Component::Component(GameObject* owner, int priority) noexcept : m_priority(priority)
-    {
-        if (owner != nullptr)
-        {
-            owner->RegisterComponent(this);
-        }
-    }
+    Component::Component(int priority) noexcept : m_priority(priority) {}
 
-    Component::~Component() noexcept
-    {
-        if (m_owner != nullptr)
-        {
-            m_owner->UnregisterComponent(this);
-        }
-    }
+    Component::~Component() noexcept = default;
 
     Transform& Component::RootTransform() noexcept
     {

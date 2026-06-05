@@ -10,7 +10,7 @@ namespace SceneNs = NS::Scene;
 TEST(EditorCameraTest, InitialStateMatchesDefaults)
 {
     SceneNs::GameObject obj;
-    SceneNs::EditorCameraComponent cam(&obj);
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
 
     EXPECT_FLOAT_EQ(cam.Yaw(), 0.0f);
     EXPECT_NEAR(cam.Pitch(), -0.5236f, 1e-4f);
@@ -20,7 +20,7 @@ TEST(EditorCameraTest, InitialStateMatchesDefaults)
 TEST(EditorCameraTest, OrbitDeltaApplied)
 {
     SceneNs::GameObject obj;
-    SceneNs::EditorCameraComponent cam(&obj);
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
 
     cam.ApplyOrbit(0.5f, 0.3f);
     EXPECT_FLOAT_EQ(cam.Yaw(), 0.5f);
@@ -31,7 +31,7 @@ TEST(EditorCameraTest, OrbitDeltaApplied)
 TEST(EditorCameraTest, PitchClampedToLimits)
 {
     SceneNs::GameObject obj;
-    SceneNs::EditorCameraComponent cam(&obj);
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
 
     cam.ApplyOrbit(0.0f, +10.0f);
     EXPECT_NEAR(cam.Pitch(), SceneNs::EditorCameraComponent::kPitchMax, 1e-4f);
@@ -42,7 +42,7 @@ TEST(EditorCameraTest, PitchClampedToLimits)
 TEST(EditorCameraTest, DistanceClampedViaSetDistance)
 {
     SceneNs::GameObject obj;
-    SceneNs::EditorCameraComponent cam(&obj);
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
 
     cam.SetDistance(1000.0f);
     EXPECT_NEAR(cam.Distance(), SceneNs::EditorCameraComponent::kMaxDistance, 1e-4f);
@@ -53,7 +53,7 @@ TEST(EditorCameraTest, DistanceClampedViaSetDistance)
 TEST(EditorCameraTest, ComputeCameraPositionForYawZeroPlacesCameraOnZAxis)
 {
     SceneNs::GameObject obj;
-    SceneNs::EditorCameraComponent cam(&obj);
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
 
     cam.SetCenter({0.0f, 0.0f, 0.0f});
     cam.SetYawPitch(0.0f, -0.0873f); // pitch ≒ 0 (clamp 上端)
@@ -69,7 +69,7 @@ TEST(EditorCameraTest, ComputeCameraPositionForYawZeroPlacesCameraOnZAxis)
 TEST(EditorCameraTest, ComputeCameraPositionForYaw90PlacesCameraOnXAxis)
 {
     SceneNs::GameObject obj;
-    SceneNs::EditorCameraComponent cam(&obj);
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
 
     cam.SetCenter({0.0f, 0.0f, 0.0f});
     cam.SetYawPitch(1.5707963f, -0.0873f);
@@ -83,7 +83,7 @@ TEST(EditorCameraTest, ComputeCameraPositionForYaw90PlacesCameraOnXAxis)
 TEST(EditorCameraTest, PanShiftsCenter)
 {
     SceneNs::GameObject obj;
-    SceneNs::EditorCameraComponent cam(&obj);
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
 
     const auto before = cam.Center();
     cam.ApplyPan(1.0f, 0.5f);
@@ -97,7 +97,7 @@ TEST(EditorCameraTest, PanShiftsCenter)
 TEST(EditorCameraTest, OnUpdateNoOpWhenInputNullAndCameraNull)
 {
     SceneNs::GameObject obj;
-    SceneNs::EditorCameraComponent cam(&obj);
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
     // crash しないことを確認
     cam.OnUpdate();
     SUCCEED();
@@ -106,7 +106,7 @@ TEST(EditorCameraTest, OnUpdateNoOpWhenInputNullAndCameraNull)
 TEST(EditorCameraTest, OnUpdateSkippedWhenInactive)
 {
     SceneNs::GameObject obj;
-    SceneNs::EditorCameraComponent cam(&obj);
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
     cam.SetActive(false);
     cam.SetYawPitch(1.0f, -0.5f);
     cam.OnUpdate();

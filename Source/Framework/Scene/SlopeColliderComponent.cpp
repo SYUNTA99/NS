@@ -6,10 +6,8 @@
 
 namespace NS::Scene
 {
-    SlopeColliderComponent::SlopeColliderComponent(NS::Scene::GameObject* owner,
-                                                   float angleDegrees,
-                                                   const NS::Math::Vector3& halfExtents) noexcept
-        : Component(owner), m_angleDegrees(angleDegrees), m_halfExtents(halfExtents)
+    SlopeColliderComponent::SlopeColliderComponent(float angleDegrees, const NS::Math::Vector3& halfExtents) noexcept
+        : m_angleDegrees(angleDegrees), m_halfExtents(halfExtents)
     {
         if (m_halfExtents.x < 0.0f)
             m_halfExtents.x = 0.0f;

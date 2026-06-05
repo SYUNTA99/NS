@@ -41,11 +41,9 @@ namespace NS::Scene
     class MeshRendererComponent : public Component, public IRenderable
     {
     public:
-        /// GameObject owner と Mesh / Material を同時に受け取って auto-register するコンストラクタ
         /// Mesh / Material は raw pointer、寿命は呼出側 (通常は Scene or Player) が保証する
-        MeshRendererComponent(NS::Scene::GameObject* owner,
-                              NS::Graphics::Mesh* mesh,
-                              NS::Graphics::Material* material) noexcept;
+        /// owner は GameObject::AddComponent が生成後に注入する
+        MeshRendererComponent(NS::Graphics::Mesh* mesh, NS::Graphics::Material* material) noexcept;
 
         /// 光源方向 (default は CubeScene と同値 (-0.3, -1, -0.2) を normalize 前で渡す)
         void SetLightDirection(const NS::Math::Vector3& dir) noexcept { m_lightDir = dir; }

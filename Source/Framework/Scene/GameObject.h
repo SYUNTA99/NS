@@ -3,10 +3,9 @@
 /// @file GameObject.h
 /// @brief NS::Scene::GameObject — Transform を持つ継承可能基底
 ///
-/// Component を named members として固定スロットで
-/// 保有する派生クラス (Player / Block / Enemy 等) の共通基底。Component 自体は派生クラス側が
-/// 値型 or unique_ptr で所有し、GameObject は Tick / OnEndPlay 伝播用に raw 参照を `m_components`
-/// に保持する
+/// 派生クラス (Player / Block / Enemy 等) の共通基底。 配下 Component は AddComponent<T>() で
+/// 生成し、 GameObject が unique_ptr で寿命を所有する。 Tick / OnEndPlay 伝播用の priority 昇順
+/// 生ポインタ列を `m_components` に併せて保持する
 ///
 /// Lifecycle:
 ///   - OnStart()    — SceneBase attach 直後に 1 回、配下 Component の OnStart を伝播
@@ -18,6 +17,9 @@
 
 #include "Framework/Scene/Transform.h"
 
+#include <memory>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace NS::Scene
@@ -48,6 +50,18 @@ namespace NS::Scene
 
         [[nodiscard]] const std::vector<Component*>& Components() const noexcept { return m_components; }
 
+        /// Component を生成し GameObject が unique_ptr で寿命を所有する。 生成後に owner を注入し
+        /// priority 昇順の tick 列へ登録する。 戻り値は非所有の生ポインタで、 派生が member キャッシュに使う
+        template <class T, class... Args> T* AddComponent(Args&&... args)
+        {
+            static_assert(std::is_base_of_v<Component, T>, "T は Component 派生でなければならない");
+            auto owned = std::make_unique<T>(std::forward<Args>(args)...);
+            T* raw = owned.get();
+            m_ownedComponents.push_back(std::move(owned));
+            AttachOwnedComponent(raw);
+            return raw;
+        }
+
         /// 所有 SceneBase。SceneBase attach 前 / 破棄後は nullptr
         [[nodiscard]] SceneBase* OwningScene() const noexcept { return m_scene; }
         /// SceneBase 側が attach 時に呼ぶ。GameObject 派生から手動で呼ばない
@@ -66,17 +80,13 @@ namespace NS::Scene
         void MarkPendingKill() noexcept { m_alive = false; }
 
     private:
-        friend class Component;
-
-        /// Component を Tick/OnEndPlay 伝播リストに登録、`Component::m_owner` も注入する
-        /// 所有は派生クラスが行うため、本関数は raw 参照のみを保存する
-        void RegisterComponent(Component* comp) noexcept;
-        /// Component の破棄前に呼ぶ。`m_components` から該当 raw pointer を除去し、
-        /// `Component::m_owner` を nullptr に戻す。未登録 / null は no-op
-        void UnregisterComponent(Component* comp) noexcept;
+        /// AddComponent が生成した Component に owner を注入し、 tick 列へ priority 昇順で挿入する
+        void AttachOwnedComponent(Component* comp) noexcept;
 
         Transform m_root;
         std::vector<Component*> m_components;
+        std::vector<std::unique_ptr<Component>>
+            m_ownedComponents; // AddComponent 生成分の寿命を所有 (tick 列は m_components)
         std::vector<GameObject*> m_children;
         GameObject* m_parent = nullptr;
         SceneBase* m_scene = nullptr;

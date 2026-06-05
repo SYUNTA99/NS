@@ -37,10 +37,10 @@ namespace
     };
 } // namespace
 
-TEST(GameObjectTest, RegisterComponentAttachesOwnerAndAppendsToList)
+TEST(GameObjectTest, AddComponentAttachesOwnerAndAppendsToList)
 {
     GameObject obj;
-    MockComponent comp(&obj);
+    auto& comp = *obj.AddComponent<MockComponent>();
 
     EXPECT_EQ(comp.Owner(), &obj);
     ASSERT_EQ(obj.Components().size(), std::size_t{1});
@@ -50,8 +50,8 @@ TEST(GameObjectTest, RegisterComponentAttachesOwnerAndAppendsToList)
 TEST(GameObjectTest, OnUpdatePropagatesToActiveComponents)
 {
     GameObject obj;
-    MockComponent c1(&obj);
-    MockComponent c2(&obj);
+    auto& c1 = *obj.AddComponent<MockComponent>();
+    auto& c2 = *obj.AddComponent<MockComponent>();
 
     obj.OnUpdate();
     EXPECT_EQ(c1.updateCount, 1);
@@ -61,7 +61,7 @@ TEST(GameObjectTest, OnUpdatePropagatesToActiveComponents)
 TEST(GameObjectTest, OnUpdateSkipsInactiveComponents)
 {
     GameObject obj;
-    MockComponent comp(&obj);
+    auto& comp = *obj.AddComponent<MockComponent>();
     comp.SetActive(false);
 
     obj.OnUpdate();
@@ -73,7 +73,9 @@ TEST(GameObjectTest, OnEndPlayCallsComponentsInReverseRegistrationOrder)
     GameObject obj;
     std::vector<int> callOrder;
 
-    OrderedComponent a(&obj), b(&obj), c(&obj);
+    auto& a = *obj.AddComponent<OrderedComponent>();
+    auto& b = *obj.AddComponent<OrderedComponent>();
+    auto& c = *obj.AddComponent<OrderedComponent>();
     a.recorder = &callOrder;
     a.id = 1;
     b.recorder = &callOrder;
@@ -119,25 +121,21 @@ namespace
     class HighPrioComponent : public NS::Scene::Component
     {
     public:
-        explicit HighPrioComponent(NS::Scene::GameObject* owner) noexcept
-            : Component(owner, static_cast<int>(NS::Scene::TickPriority::Input))
-        {}
+        HighPrioComponent() noexcept : Component(static_cast<int>(NS::Scene::TickPriority::Input)) {}
     };
 
     class LowPrioComponent : public NS::Scene::Component
     {
     public:
-        explicit LowPrioComponent(NS::Scene::GameObject* owner) noexcept
-            : Component(owner, static_cast<int>(NS::Scene::TickPriority::Camera))
-        {}
+        LowPrioComponent() noexcept : Component(static_cast<int>(NS::Scene::TickPriority::Camera)) {}
     };
 } // namespace
 
-TEST(GameObjectPriorityTest, RegisterComponentSortsByPriority)
+TEST(GameObjectPriorityTest, AddComponentSortsByPriority)
 {
     NS::Scene::GameObject obj;
-    LowPrioComponent low(&obj);   // auto-register 先 (Camera, 400)
-    HighPrioComponent high(&obj); // auto-register 後 (Input, 0)
+    auto& low = *obj.AddComponent<LowPrioComponent>();   // 先に追加 (Camera, 400)
+    auto& high = *obj.AddComponent<HighPrioComponent>(); // 後に追加 (Input, 0)
 
     ASSERT_EQ(obj.Components().size(), std::size_t{2});
     EXPECT_EQ(obj.Components()[0], &high); // priority 昇順で high 先
@@ -147,10 +145,34 @@ TEST(GameObjectPriorityTest, RegisterComponentSortsByPriority)
 TEST(GameObjectPriorityTest, SamePriorityPreservesInsertionOrder)
 {
     NS::Scene::GameObject obj;
-    HighPrioComponent a(&obj);
-    HighPrioComponent b(&obj);
+    auto& a = *obj.AddComponent<HighPrioComponent>();
+    auto& b = *obj.AddComponent<HighPrioComponent>();
 
     ASSERT_EQ(obj.Components().size(), std::size_t{2});
     EXPECT_EQ(obj.Components()[0], &a);
     EXPECT_EQ(obj.Components()[1], &b);
+}
+
+TEST(GameObjectAddComponentTest, OwnsLifetimeInjectsOwnerAndOrdersByPriority)
+{
+    NS::Scene::GameObject obj;
+    auto* low = obj.AddComponent<LowPrioComponent>();   // Camera 400
+    auto* high = obj.AddComponent<HighPrioComponent>(); // Input 0
+    auto* mock = obj.AddComponent<MockComponent>();     // 既定 Physics 200
+
+    ASSERT_NE(low, nullptr);
+    ASSERT_NE(high, nullptr);
+    ASSERT_NE(mock, nullptr);
+    EXPECT_EQ(low->Owner(), &obj);
+    EXPECT_EQ(high->Owner(), &obj);
+
+    // 寿命は GameObject 所有: stack に持たなくても tick が伝播する
+    obj.OnUpdate();
+    EXPECT_EQ(mock->updateCount, 1);
+
+    // priority 昇順 (Input 0 < Physics 200 < Camera 400)
+    ASSERT_EQ(obj.Components().size(), std::size_t{3});
+    EXPECT_EQ(obj.Components()[0], high);
+    EXPECT_EQ(obj.Components()[1], mock);
+    EXPECT_EQ(obj.Components()[2], low);
 }

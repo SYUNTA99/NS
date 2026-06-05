@@ -23,12 +23,9 @@ namespace NS::Scene
     class SlopeColliderComponent : public Component
     {
     public:
-        /// @param owner            所有 GameObject。 base コンストラクタで auto-register
         /// @param angleDegrees     斜面の傾斜角 (45 / 30 / 22.5 / 15 度のいずれかを想定)
         /// @param halfExtents      wedge の半サイズ。 デフォルト値は 1m cell の (0.5, 0.5, 0.5)
-        SlopeColliderComponent(NS::Scene::GameObject* owner,
-                               float angleDegrees,
-                               const NS::Math::Vector3& halfExtents) noexcept;
+        SlopeColliderComponent(float angleDegrees, const NS::Math::Vector3& halfExtents) noexcept;
 
         /// 角度 (度数法)
         [[nodiscard]] float AngleDegrees() const noexcept { return m_angleDegrees; }

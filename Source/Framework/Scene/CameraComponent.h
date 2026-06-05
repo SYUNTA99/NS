@@ -5,8 +5,8 @@
 ///        Getter / Setter は基本的に内包 Camera への薄いラッパー。view forward (XZ) は
 ///        PlayerInput が camera 相対移動入力の参照に使う
 
-#include "Framework/Math/Math.h"
 #include "Framework/Graphics/Camera.h"
+#include "Framework/Math/Math.h"
 #include "Framework/Scene/Component.h"
 
 namespace NS::Graphics
@@ -19,9 +19,9 @@ namespace NS::Scene
     class CameraComponent : public Component
     {
     public:
-        /// GameObject owner を受け取って auto-register するコンストラクタ。priority は Camera 帯 (400) で
-        /// base コンストラクタに渡される (follow 系処理を Input / Physics 帯の後に走らせるため)
-        explicit CameraComponent(NS::Scene::GameObject* owner) noexcept;
+        /// priority は Camera 帯 (400)。 follow 系処理を Input / Physics 帯の後に走らせる
+        /// owner は GameObject::AddComponent が注入する
+        CameraComponent() noexcept;
 
         void SetPosition(const NS::Math::Vector3& position) noexcept;
         void SetTarget(const NS::Math::Vector3& target) noexcept;
