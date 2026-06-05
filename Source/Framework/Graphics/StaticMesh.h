@@ -10,7 +10,6 @@
 /// @pre Renderer の DeviceContext を内部保持するため Renderer より先に破棄すること
 
 #include "Framework/Graphics/Mesh.h"
-#include "Framework/Graphics/Shader.h"
 #include "Framework/Math/Math.h"
 
 #include <cstddef>
@@ -58,7 +57,7 @@ namespace NS::Graphics
         StaticMesh& operator=(StaticMesh&&) = delete;
 
         /// StaticVertex に対応する POSITION / TEXCOORD / NORMAL の InputElement 配列を返す
-        /// 戻り値は ShaderDesc::inputLayout にそのまま流用できる
+        /// 基底が CreateInputLayout で使う頂点レイアウトと同一
         [[nodiscard]] static std::vector<InputElement> StandardInputLayout();
     };
 

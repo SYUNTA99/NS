@@ -62,7 +62,8 @@ namespace NS::Graphics
 
         // cube mesh / shader / sampler / states
         std::unique_ptr<StaticMesh> cubeMesh;
-        std::unique_ptr<Shader> shader;
+        std::unique_ptr<Shader> vs;
+        std::unique_ptr<Shader> ps;
         std::unique_ptr<ConstantBuffer> cb;
         ComPtr<ID3D11SamplerState> sampler;
         ComPtr<ID3D11DepthStencilState> depthState;
@@ -387,21 +388,19 @@ namespace NS::Graphics
             return;
         }
 
-        // skybox 専用 shader。 standard と layout (POSITION+TEXCOORD+NORMAL) を共有することで
-        // 既存 input layout を再利用できる
+        // skybox 専用 shader。 cube mesh の StandardInputLayout (POSITION+TEXCOORD+NORMAL) と
+        // skybox.vs の入力シグネチャを共有する
         const auto exeDir = ::NS::Core::FileSystem::GetExeDirectory();
-        ShaderDesc sd{};
-        sd.vertexShaderPath = exeDir / "Shaders" / "skybox.vs.hlsl";
-        sd.pixelShaderPath = exeDir / "Shaders" / "skybox.ps.hlsl";
-        sd.vertexEntryPoint = "VSMain";
-        sd.pixelEntryPoint = "PSMain";
-        sd.inputLayout = StaticMesh::StandardInputLayout();
-        m_pImpl->shader = std::make_unique<Shader>(renderer, sd);
-        if (!m_pImpl->shader->IsValid())
+        m_pImpl->vs = std::make_unique<Shader>(renderer, exeDir / "Shaders" / "skybox.vs.hlsl");
+        m_pImpl->ps = std::make_unique<Shader>(renderer, exeDir / "Shaders" / "skybox.ps.hlsl");
+        if (!m_pImpl->vs->IsValid() || !m_pImpl->ps->IsValid())
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Skybox: shader 構築失敗");
             return;
         }
+
+        // skybox は MeshRendererComponent を経由せず直接 Draw するため、 ここで InputLayout を生成する
+        m_pImpl->cubeMesh->CreateInputLayout(*m_pImpl->vs);
 
         // viewProj を渡す 64 byte の CB
         m_pImpl->cb = std::make_unique<ConstantBuffer>(renderer, sizeof(SkyboxCB));
@@ -490,7 +489,8 @@ namespace NS::Graphics
         ctx->OMSetDepthStencilState(m_pImpl->depthState.Get(), 0);
         ctx->RSSetState(m_pImpl->rasterState.Get());
 
-        m_pImpl->shader->Bind();
+        m_pImpl->vs->Bind();
+        m_pImpl->ps->Bind();
         m_pImpl->cb->Bind(0, ShaderStage::Vertex);
 
         ID3D11ShaderResourceView* srvs[1] = {m_pImpl->cubemapSrv.Get()};

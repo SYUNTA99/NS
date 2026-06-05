@@ -41,6 +41,10 @@ namespace NS::Scene
         if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
             return;
 
+        // 直接描画される mesh の InputLayout を初回描画時に生成 (冪等)。 instanced block は
+        // ここを通らない (component が inactive で InstanceBatcher が自前 layout を持つ)
+        m_material->CreateInputLayoutFor(*m_mesh);
+
         FrameCB cb{};
         cb.world = owner->Root().InterpolatedWorldMatrix(context.alpha);
         cb.viewProj = context.viewProjection;

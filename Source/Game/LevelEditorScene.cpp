@@ -126,37 +126,25 @@ void LevelEditorScene::OnStart()
     if (m_texture->IsUsingFallback())
         NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelEditorScene: cube_test.png 読込失敗、magenta fallback で続行");
 
-    // Player は単一 Texture2D 流派 (player.ps.hlsl) を維持
-    NS::Graphics::ShaderDesc playerShaderDesc{};
-    playerShaderDesc.vertexShaderPath = exeDir / "Shaders" / "standard.vs.hlsl";
-    playerShaderDesc.pixelShaderPath = exeDir / "Shaders" / "player.ps.hlsl";
-    playerShaderDesc.vertexEntryPoint = "VSMain";
-    playerShaderDesc.pixelEntryPoint = "PSMain";
-    m_playerShader = std::make_unique<NS::Graphics::Shader>(renderer, playerShaderDesc);
-    if (m_playerShader->IsUsingFallback())
+    // Player は単一 Texture2D 流派 (player.ps.hlsl)。 standard.vs は block と、 player.ps は block / skinned と共有する
+    m_standardVS = std::make_unique<NS::Graphics::Shader>(renderer, exeDir / "Shaders" / "standard.vs.hlsl");
+    m_playerPS = std::make_unique<NS::Graphics::Shader>(renderer, exeDir / "Shaders" / "player.ps.hlsl");
+    if (m_standardVS->IsUsingFallback() || m_playerPS->IsUsingFallback())
         NS_LOG_WARN(::NS::Core::LogCat::Game,
                     "LevelEditorScene: player 用 HLSL 読込/コンパイル失敗、 magenta fallback で続行");
 
-    // Block 側は instanced.vs.hlsl + standard.ps.hlsl (Texture2DArray) ペアを InstanceBatcher が
-    // 内部で組む。 ここで作る m_blockShader は ConstantBuffer の搬入経路として使うだけで、
-    // 実際の VS/PS は FlushAll 内で上書きされる
-    NS::Graphics::ShaderDesc blockShaderDesc{};
-    blockShaderDesc.vertexShaderPath = exeDir / "Shaders" / "standard.vs.hlsl";
-    blockShaderDesc.pixelShaderPath = exeDir / "Shaders" / "player.ps.hlsl";
-    blockShaderDesc.vertexEntryPoint = "VSMain";
-    blockShaderDesc.pixelEntryPoint = "PSMain";
-    m_blockShader = std::make_unique<NS::Graphics::Shader>(renderer, blockShaderDesc);
-
     NS::Graphics::MaterialDesc matDesc{};
-    matDesc.shader = m_playerShader.get();
+    matDesc.vertexShader = m_standardVS.get();
+    matDesc.pixelShader = m_playerPS.get();
     matDesc.constantBufferSize = sizeof(NS::Scene::FrameCB);
     matDesc.cbSlot = 0;
     matDesc.cbStages = NS::Graphics::ShaderStage::Vertex | NS::Graphics::ShaderStage::Pixel;
     m_playerMaterial = std::make_unique<NS::Graphics::Material>(renderer, matDesc);
     m_playerMaterial->SetTexture(0, m_texture.get());
 
+    // Block は player と同じ VS/PS を共有。 実際の VS/PS/Texture は InstanceBatcher が FlushAll で
+    // 上書きするので、 ここの Material は ConstantBuffer 搬入路として使うだけ
     NS::Graphics::MaterialDesc blockMatDesc = matDesc;
-    blockMatDesc.shader = m_blockShader.get();
     m_blockMaterial = std::make_unique<NS::Graphics::Material>(renderer, blockMatDesc);
     // block の slot 0 は外側で TextureArray を bind するので Material 側には SetTexture しない
     // SetTexture すると Material::Bind が slot 0 を上書きしてしまい、 InstanceBatcher 側で
@@ -285,18 +273,14 @@ void LevelEditorScene::OnStart()
             smd.boneCount = skinned.skeleton.BoneCount();
             m_skinnedMesh = std::make_unique<NS::Graphics::SkeletalMesh>(renderer, smd);
 
-            NS::Graphics::ShaderDesc skinnedShaderDesc{};
-            skinnedShaderDesc.vertexShaderPath = exeDir / "Shaders" / "skinned.vs.hlsl";
-            skinnedShaderDesc.pixelShaderPath = exeDir / "Shaders" / "player.ps.hlsl";
-            skinnedShaderDesc.vertexEntryPoint = "VSMain";
-            skinnedShaderDesc.pixelEntryPoint = "PSMain";
-            m_skinnedShader = std::make_unique<NS::Graphics::Shader>(renderer, skinnedShaderDesc);
-            if (m_skinnedShader->IsUsingFallback())
+            m_skinnedVS = std::make_unique<NS::Graphics::Shader>(renderer, exeDir / "Shaders" / "skinned.vs.hlsl");
+            if (m_skinnedVS->IsUsingFallback())
                 NS_LOG_WARN(::NS::Core::LogCat::Game,
                             "LevelEditorScene: skinned 用 HLSL 読込/コンパイル失敗、 magenta fallback で続行");
 
             NS::Graphics::MaterialDesc skinnedMatDesc{};
-            skinnedMatDesc.shader = m_skinnedShader.get();
+            skinnedMatDesc.vertexShader = m_skinnedVS.get();
+            skinnedMatDesc.pixelShader = m_playerPS.get();
             skinnedMatDesc.constantBufferSize = sizeof(NS::Scene::FrameCB);
             skinnedMatDesc.cbSlot = 0;
             skinnedMatDesc.cbStages = NS::Graphics::ShaderStage::Vertex | NS::Graphics::ShaderStage::Pixel;
@@ -763,11 +747,11 @@ void LevelEditorScene::OnShutdown()
     m_instanceBatcher.reset();
     m_skybox.reset();
     m_skinnedMaterial.reset();
-    m_skinnedShader.reset();
     m_playerMaterial.reset();
     m_blockMaterial.reset();
-    m_blockShader.reset();
-    m_playerShader.reset();
+    m_skinnedVS.reset();
+    m_playerPS.reset();
+    m_standardVS.reset();
     m_blockTextures.reset();
     m_texture.reset();
     m_wedgeMesh45.reset();

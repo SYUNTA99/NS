@@ -79,6 +79,8 @@ namespace NS::Graphics
             return;
         }
 
+        SetVertexLayout(SkinnedInputLayout());
+
         const bool descValid =
             (desc.vertices != nullptr && desc.vertexCount != 0u && desc.indices != nullptr && desc.indexCount != 0u);
         if (!descValid)

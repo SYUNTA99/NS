@@ -19,14 +19,17 @@ namespace NS::Graphics
     class Renderer;
     class Shader;
     class Texture;
+    class Mesh;
 
     /// Material 構築パラメータ
-    /// shader は共有参照、Material は所有しない。Material 寿命中 shader が有効であること
+    /// vertexShader / pixelShader は共有参照、Material は所有しない。Material 寿命中 両者が有効であること
     /// constantBufferSize=0 のとき内部 ConstantBuffer は構築されず、SetParams は no-op になる
     struct MaterialDesc
     {
-        /// 共有 Shader。nullptr で IsValid()=false
-        Shader* shader = nullptr;
+        /// 共有 頂点 Shader (.vs)。nullptr で IsValid()=false
+        Shader* vertexShader = nullptr;
+        /// 共有 ピクセル Shader (.ps)。nullptr で IsValid()=false
+        Shader* pixelShader = nullptr;
         /// 内蔵 ConstantBuffer のバイト数 (alignas(16) + sizeof%16==0 必須)
         std::size_t constantBufferSize = 0;
         /// ConstantBuffer Bind 先スロット
@@ -75,9 +78,13 @@ namespace NS::Graphics
             UpdateParamsRaw(&params, sizeof(T));
         }
 
-        /// shader->Bind() → 全 Texture::Bind(slot, Pixel) → ConstantBuffer::Bind(cbSlot, cbStages)
+        /// vs->Bind() + ps->Bind() → 全 Texture::Bind(slot, Pixel) → ConstantBuffer::Bind(cbSlot, cbStages)
         /// → PSSetSamplers(0, LinearWrap) 一括実行。Mesh::Draw() の前に呼ぶ
         void Bind() noexcept;
+
+        /// 自分の Shader の VS バイトコードで mesh の InputLayout を生成する (mesh.CreateInputLayout への薄い委譲)
+        /// 直接描画される mesh に対し描画前に呼ぶ。 冪等なので毎フレーム呼んでも安全
+        void CreateInputLayoutFor(Mesh& mesh) noexcept;
 
     private:
         std::unique_ptr<Impl> m_pImpl;

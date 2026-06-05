@@ -107,8 +107,8 @@ private:
     std::unique_ptr<NS::Graphics::StaticMesh> m_cubeMesh;
     std::unique_ptr<NS::Graphics::Texture> m_texture;
     std::unique_ptr<NS::Graphics::TextureArray> m_blockTextures;
-    std::unique_ptr<NS::Graphics::Shader> m_playerShader;
-    std::unique_ptr<NS::Graphics::Shader> m_blockShader;
+    std::unique_ptr<NS::Graphics::Shader> m_standardVS; // player / block 共有 (standard.vs)
+    std::unique_ptr<NS::Graphics::Shader> m_playerPS;   // player / block / skinned 共有 (player.ps)
     std::unique_ptr<NS::Graphics::Material> m_playerMaterial;
     std::unique_ptr<NS::Graphics::Material> m_blockMaterial;
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
@@ -126,7 +126,7 @@ private:
 
     // 仮 skinned キャラの描画リソース (mesh / shader / material)。 アセット未取得時は全て null
     std::unique_ptr<NS::Graphics::SkeletalMesh> m_skinnedMesh;
-    std::unique_ptr<NS::Graphics::Shader> m_skinnedShader;
+    std::unique_ptr<NS::Graphics::Shader> m_skinnedVS;
     std::unique_ptr<NS::Graphics::Material> m_skinnedMaterial;
 
     std::unique_ptr<Player> m_player;

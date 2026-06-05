@@ -9,25 +9,60 @@
 
 #include <d3dcompiler.h>
 
+#include <cstddef>
+#include <filesystem>
+#include <span>
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace NS::Graphics
 {
     using detail::ComPtr;
 
-    struct Shader::Impl
-    {
-        ComPtr<ID3D11VertexShader> vs;
-        ComPtr<ID3D11PixelShader> ps;
-        ComPtr<ID3D11InputLayout> layout;
-        ComPtr<ID3D11DeviceContext> context;
-        bool fallback = false;
-    };
-
     namespace
     {
+        enum class ShaderType
+        {
+            Vertex,
+            Pixel,
+            Geometry,
+            Hull,
+            Domain,
+            Compute,
+        };
+
+        struct ShaderTypeInfo
+        {
+            const char* infix;  // ファイル名に含まれる識別子
+            const char* entry;  // エントリポイント (全 HLSL でステージ名 + Main に統一)
+            const char* target; // コンパイルターゲットプロファイル
+            ShaderType stage;
+        };
+
+        constexpr ShaderTypeInfo kStageTable[] = {
+            {".vs.", "VSMain", "vs_5_0", ShaderType::Vertex},
+            {".ps.", "PSMain", "ps_5_0", ShaderType::Pixel},
+            {".gs.", "GSMain", "gs_5_0", ShaderType::Geometry},
+            {".hs.", "HSMain", "hs_5_0", ShaderType::Hull},
+            {".ds.", "DSMain", "ds_5_0", ShaderType::Domain},
+            {".cs.", "CSMain", "cs_5_0", ShaderType::Compute},
+        };
+
+        // ファイル名の `.vs.` 等でステージを判定する。 どれも含まなければ nullptr
+        [[nodiscard]] const ShaderTypeInfo* DetectStage(const std::filesystem::path& path) noexcept
+        {
+            const std::string name = path.filename().string();
+            for (const ShaderTypeInfo& info : kStageTable)
+            {
+                if (name.find(info.infix) != std::string::npos)
+                {
+                    return &info;
+                }
+            }
+            return nullptr;
+        }
+
+        // 画面に出る頂点・ピクセルのみ使う magenta fallback。 該当ステージの entry だけコンパイルする
         constexpr const char* kFallbackHlsl = R"HLSL(struct VSInput  { float3 position : POSITION; };
 struct VSOutput { float4 position : SV_Position; };
 VSOutput VSMain(VSInput input)
@@ -40,24 +75,6 @@ float4 PSMain() : SV_Target
 {
     return float4(1.0, 0.0, 1.0, 1.0);
 })HLSL";
-
-        [[nodiscard]] DXGI_FORMAT ToDxgiFormat(InputElementFormat fmt) noexcept
-        {
-            switch (fmt)
-            {
-            case InputElementFormat::Float2:
-                return DXGI_FORMAT_R32G32_FLOAT;
-            case InputElementFormat::Float3:
-                return DXGI_FORMAT_R32G32B32_FLOAT;
-            case InputElementFormat::Float4:
-                return DXGI_FORMAT_R32G32B32A32_FLOAT;
-            case InputElementFormat::UInt32:
-                return DXGI_FORMAT_R32_UINT;
-            case InputElementFormat::UInt4:
-                return DXGI_FORMAT_R32G32B32A32_UINT;
-            }
-            return DXGI_FORMAT_UNKNOWN;
-        }
 
         bool CompileFromMemory(const void* bytes,
                                std::size_t size,
@@ -100,203 +117,166 @@ float4 PSMain() : SV_Target
             return true;
         }
 
-        bool CreateInputLayoutFromDesc(ID3D11Device* device,
-                                       ID3DBlob* vsBlob,
-                                       const std::vector<InputElement>& elements,
-                                       ComPtr<ID3D11InputLayout>& outLayout) noexcept
+        // .hlsl を読んで 1 ステージをコンパイルし blob を返す。 path 空 / 読込失敗 / コンパイル失敗で nullptr
+        [[nodiscard]] ComPtr<ID3DBlob> CompileStage(const std::filesystem::path& path,
+                                                    const char* entryPoint,
+                                                    const char* target) noexcept
         {
-            if (device == nullptr || vsBlob == nullptr || elements.empty())
+            if (path.empty())
             {
-                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                             "CreateInputLayoutFromDesc: 引数不正 (device={}, vsBlob={}, elements={})",
-                             static_cast<const void*>(device),
-                             static_cast<const void*>(vsBlob),
-                             elements.size());
-                return false;
+                return nullptr;
             }
-            std::vector<D3D11_INPUT_ELEMENT_DESC> descs;
-            descs.reserve(elements.size());
-            for (const auto& e : elements)
+            const auto bytes = ::NS::Core::FileSystem::ReadAllBytes(path);
+            if (!bytes.has_value())
             {
-                D3D11_INPUT_ELEMENT_DESC d{};
-                d.SemanticName = e.semanticName.c_str();
-                d.SemanticIndex = 0u;
-                d.Format = ToDxgiFormat(e.format);
-                d.InputSlot = 0u;
-                d.AlignedByteOffset = e.byteOffset;
-                d.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-                d.InstanceDataStepRate = 0u;
-                descs.push_back(d);
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Shader file read failed: {}", path.string());
+                return nullptr;
             }
-            const HRESULT hr = device->CreateInputLayout(descs.data(),
-                                                         static_cast<UINT>(descs.size()),
-                                                         vsBlob->GetBufferPointer(),
-                                                         vsBlob->GetBufferSize(),
-                                                         outLayout.GetAddressOf());
-            if (FAILED(hr))
+            const std::string tag = path.string();
+            ComPtr<ID3DBlob> blob;
+            if (!CompileFromMemory(bytes->data(), bytes->size(), entryPoint, target, tag.c_str(), blob))
             {
-                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                             "CreateInputLayout 失敗 (hr=0x{:X}, elements={})",
-                             static_cast<unsigned>(hr),
-                             elements.size());
-                return false;
+                return nullptr;
             }
-            return true;
+            return blob;
         }
 
-        /// 全成功時のみ out* に commit するため、部分成功時のリーク扱いが呼出側に漏れない
-        bool BuildShaderPair(ID3D11Device* device,
-                             const void* vsBytes,
-                             std::size_t vsSize,
-                             const char* vsEntry,
-                             const char* vsSourceTag,
-                             const void* psBytes,
-                             std::size_t psSize,
-                             const char* psEntry,
-                             const char* psSourceTag,
-                             const std::vector<InputElement>& inputLayout,
-                             ComPtr<ID3D11VertexShader>& outVs,
-                             ComPtr<ID3D11PixelShader>& outPs,
-                             ComPtr<ID3D11InputLayout>& outLayout) noexcept
-        {
-            ComPtr<ID3DBlob> vsBlob;
-            ComPtr<ID3DBlob> psBlob;
-            if (!CompileFromMemory(vsBytes, vsSize, vsEntry, "vs_5_0", vsSourceTag, vsBlob))
-            {
-                return false;
-            }
-            if (!CompileFromMemory(psBytes, psSize, psEntry, "ps_5_0", psSourceTag, psBlob))
-            {
-                return false;
-            }
-
-            ComPtr<ID3D11VertexShader> vs;
-            ComPtr<ID3D11PixelShader> ps;
-            ComPtr<ID3D11InputLayout> layout;
-
-            HRESULT hr = device->CreateVertexShader(
-                vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, vs.GetAddressOf());
-            if (FAILED(hr))
-            {
-                NS_LOG_ERROR(
-                    ::NS::Core::LogCat::Graphics, "CreateVertexShader 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
-                return false;
-            }
-            hr = device->CreatePixelShader(
-                psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, ps.GetAddressOf());
-            if (FAILED(hr))
-            {
-                NS_LOG_ERROR(
-                    ::NS::Core::LogCat::Graphics, "CreatePixelShader 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
-                return false;
-            }
-            if (!CreateInputLayoutFromDesc(device, vsBlob.Get(), inputLayout, layout))
-            {
-                return false;
-            }
-
-            outVs = std::move(vs);
-            outPs = std::move(ps);
-            outLayout = std::move(layout);
-            return true;
-        }
-
-        bool BuildFallback(ID3D11Device* device,
-                           const std::vector<InputElement>& inputLayout,
-                           ComPtr<ID3D11VertexShader>& outVs,
-                           ComPtr<ID3D11PixelShader>& outPs,
-                           ComPtr<ID3D11InputLayout>& outLayout) noexcept
+        // magenta fallback HLSL から 1 ステージをコンパイルする
+        [[nodiscard]] ComPtr<ID3DBlob> CompileFallbackStage(const char* entryPoint, const char* target) noexcept
         {
             constexpr std::string_view kFallback{kFallbackHlsl};
-            return BuildShaderPair(device,
-                                   kFallback.data(),
-                                   kFallback.size(),
-                                   "VSMain",
-                                   "ns_shader_program_fallback",
-                                   kFallback.data(),
-                                   kFallback.size(),
-                                   "PSMain",
-                                   "ns_shader_program_fallback",
-                                   inputLayout,
-                                   outVs,
-                                   outPs,
-                                   outLayout);
+            ComPtr<ID3DBlob> blob;
+            CompileFromMemory(kFallback.data(), kFallback.size(), entryPoint, target, "ns_shader_fallback", blob);
+            return blob;
+        }
+
+        // ステージごとの Create*Shader を呼び、 共通基底 ComPtr に格納する。 失敗で false
+        [[nodiscard]] bool CreateStageObject(ID3D11Device* device,
+                                             ShaderType stage,
+                                             const ComPtr<ID3DBlob>& blob,
+                                             ComPtr<ID3D11DeviceChild>& out) noexcept
+        {
+            const void* code = blob->GetBufferPointer();
+            const SIZE_T size = blob->GetBufferSize();
+            HRESULT hr = E_FAIL;
+            switch (stage)
+            {
+            case ShaderType::Vertex:
+            {
+                ComPtr<ID3D11VertexShader> s;
+                hr = device->CreateVertexShader(code, size, nullptr, s.GetAddressOf());
+                out = s;
+                break;
+            }
+            case ShaderType::Pixel:
+            {
+                ComPtr<ID3D11PixelShader> s;
+                hr = device->CreatePixelShader(code, size, nullptr, s.GetAddressOf());
+                out = s;
+                break;
+            }
+            case ShaderType::Geometry:
+            {
+                ComPtr<ID3D11GeometryShader> s;
+                hr = device->CreateGeometryShader(code, size, nullptr, s.GetAddressOf());
+                out = s;
+                break;
+            }
+            case ShaderType::Hull:
+            {
+                ComPtr<ID3D11HullShader> s;
+                hr = device->CreateHullShader(code, size, nullptr, s.GetAddressOf());
+                out = s;
+                break;
+            }
+            case ShaderType::Domain:
+            {
+                ComPtr<ID3D11DomainShader> s;
+                hr = device->CreateDomainShader(code, size, nullptr, s.GetAddressOf());
+                out = s;
+                break;
+            }
+            case ShaderType::Compute:
+            {
+                ComPtr<ID3D11ComputeShader> s;
+                hr = device->CreateComputeShader(code, size, nullptr, s.GetAddressOf());
+                out = s;
+                break;
+            }
+            }
+            if (FAILED(hr))
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Create*Shader 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                return false;
+            }
+            return true;
         }
     } // namespace
 
-    Shader::Shader(Renderer& renderer, const ShaderDesc& desc) : m_pImpl(std::make_unique<Impl>())
+    struct Shader::Impl
+    {
+        ShaderType stage = ShaderType::Vertex;
+        ComPtr<ID3D11DeviceChild> shader; // 全ステージ共通の保持先 (取得時に static_cast でダウンキャスト)
+        ComPtr<ID3DBlob> vsBytecode;      // 頂点ステージのみ (Mesh の InputLayout 用)
+        ComPtr<ID3D11DeviceContext> context;
+        bool fallback = false;
+    };
+
+    Shader::Shader(Renderer& renderer, const std::filesystem::path& hlslPath) : m_pImpl(std::make_unique<Impl>())
     {
         auto* device = detail::GetDevice(renderer);
-        auto* context = detail::GetContext(renderer);
-        if (device == nullptr || context == nullptr)
+        if (device == nullptr)
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Shader: Renderer の Device / Context が無効");
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Shader: Renderer の Device が無効");
             return;
         }
-        m_pImpl->context = context;
+        m_pImpl->context = detail::GetContext(renderer);
 
-        bool built = false;
-        if (!desc.vertexShaderPath.empty() && !desc.pixelShaderPath.empty())
+        const ShaderTypeInfo* info = DetectStage(hlslPath);
+        if (info == nullptr)
         {
-            auto vsBytes = ::NS::Core::FileSystem::ReadAllBytes(desc.vertexShaderPath);
-            auto psBytes = ::NS::Core::FileSystem::ReadAllBytes(desc.pixelShaderPath);
-            if (vsBytes.has_value() && psBytes.has_value())
-            {
-                const auto& vsBuf = vsBytes.value();
-                const auto& psBuf = psBytes.value();
-                const std::string vsTag = desc.vertexShaderPath.string();
-                const std::string psTag = desc.pixelShaderPath.string();
-                built = BuildShaderPair(device,
-                                        vsBuf.data(),
-                                        vsBuf.size(),
-                                        desc.vertexEntryPoint.c_str(),
-                                        vsTag.c_str(),
-                                        psBuf.data(),
-                                        psBuf.size(),
-                                        desc.pixelEntryPoint.c_str(),
-                                        psTag.c_str(),
-                                        desc.inputLayout,
-                                        m_pImpl->vs,
-                                        m_pImpl->ps,
-                                        m_pImpl->layout);
-                if (!built)
-                {
-                    NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                                 "Shader build failed, falling back to magenta: vs={}, ps={}",
-                                 vsTag,
-                                 psTag);
-                }
-            }
-            else
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "Shader: ファイル名からステージを判定できない (.vs./.ps./.gs./.hs./.ds./.cs. を含まない): {}",
+                         hlslPath.string());
+            return;
+        }
+        m_pImpl->stage = info->stage;
+
+        ComPtr<ID3DBlob> blob = CompileStage(hlslPath, info->entry, info->target);
+        bool fallback = false;
+        if (!blob)
+        {
+            // magenta fallback は画面に出る頂点・ピクセルのみ。 他ステージは代替表示が無いので無効のまま残す
+            if (info->stage == ShaderType::Vertex || info->stage == ShaderType::Pixel)
             {
                 NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                             "Shader file read failed: vs={}, ps={}",
-                             desc.vertexShaderPath.string(),
-                             desc.pixelShaderPath.string());
+                             "Shader build failed, falling back to magenta: {}",
+                             hlslPath.string());
+                blob = CompileFallbackStage(info->entry, info->target);
+                fallback = true;
             }
         }
-
-        if (built)
+        if (!blob)
         {
             return;
         }
 
-        if (!BuildFallback(device, desc.inputLayout, m_pImpl->vs, m_pImpl->ps, m_pImpl->layout))
+        if (!CreateStageObject(device, info->stage, blob, m_pImpl->shader))
         {
-            m_pImpl->vs.Reset();
-            m_pImpl->ps.Reset();
-            m_pImpl->layout.Reset();
-            m_pImpl->context.Reset();
             return;
         }
-        m_pImpl->fallback = true;
+        if (info->stage == ShaderType::Vertex)
+        {
+            m_pImpl->vsBytecode = std::move(blob);
+        }
+        m_pImpl->fallback = fallback;
     }
 
     Shader::~Shader() = default;
 
     bool Shader::IsValid() const noexcept
     {
-        return m_pImpl && m_pImpl->vs && m_pImpl->ps && m_pImpl->layout;
+        return m_pImpl && static_cast<bool>(m_pImpl->shader);
     }
     bool Shader::IsUsingFallback() const noexcept
     {
@@ -305,28 +285,46 @@ float4 PSMain() : SV_Target
 
     void Shader::Bind() noexcept
     {
-        if (!IsValid() || !m_pImpl->context)
+        if (!m_pImpl || !m_pImpl->context || !m_pImpl->shader)
         {
             return;
         }
-        m_pImpl->context->VSSetShader(m_pImpl->vs.Get(), nullptr, 0u);
-        m_pImpl->context->PSSetShader(m_pImpl->ps.Get(), nullptr, 0u);
-        m_pImpl->context->IASetInputLayout(m_pImpl->layout.Get());
+        // 生成時のステージで実型は保証済みなので static_cast 下方変換は well-defined
+        ID3D11DeviceChild* raw = m_pImpl->shader.Get();
+        switch (m_pImpl->stage)
+        {
+        case ShaderType::Vertex:
+            m_pImpl->context->VSSetShader(static_cast<ID3D11VertexShader*>(raw), nullptr, 0u);
+            break;
+        case ShaderType::Pixel:
+            m_pImpl->context->PSSetShader(static_cast<ID3D11PixelShader*>(raw), nullptr, 0u);
+            break;
+        case ShaderType::Geometry:
+            m_pImpl->context->GSSetShader(static_cast<ID3D11GeometryShader*>(raw), nullptr, 0u);
+            break;
+        case ShaderType::Hull:
+            m_pImpl->context->HSSetShader(static_cast<ID3D11HullShader*>(raw), nullptr, 0u);
+            break;
+        case ShaderType::Domain:
+            m_pImpl->context->DSSetShader(static_cast<ID3D11DomainShader*>(raw), nullptr, 0u);
+            break;
+        case ShaderType::Compute:
+            m_pImpl->context->CSSetShader(static_cast<ID3D11ComputeShader*>(raw), nullptr, 0u);
+            break;
+        }
     }
 
     namespace detail
     {
-        ID3D11VertexShader* GetVertexShader(Shader& sp) noexcept
+        std::span<const std::byte> GetVertexShaderBytecode(const Shader& shader) noexcept
         {
-            return sp.m_pImpl ? sp.m_pImpl->vs.Get() : nullptr;
-        }
-        ID3D11PixelShader* GetPixelShader(Shader& sp) noexcept
-        {
-            return sp.m_pImpl ? sp.m_pImpl->ps.Get() : nullptr;
-        }
-        ID3D11InputLayout* GetInputLayout(Shader& sp) noexcept
-        {
-            return sp.m_pImpl ? sp.m_pImpl->layout.Get() : nullptr;
+            const auto& impl = shader.m_pImpl;
+            if (!impl || impl->stage != ShaderType::Vertex || !impl->vsBytecode)
+            {
+                return {};
+            }
+            return std::span<const std::byte>(static_cast<const std::byte*>(impl->vsBytecode->GetBufferPointer()),
+                                              impl->vsBytecode->GetBufferSize());
         }
     } // namespace detail
 

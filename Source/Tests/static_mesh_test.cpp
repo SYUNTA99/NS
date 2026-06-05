@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <Framework/Core/Filesystem.h>
 #include <Framework/Core/Logger.h>
 #include <Framework/Graphics/Renderer.h>
+#include <Framework/Graphics/Shader.h>
 #include <Framework/Graphics/StaticMesh.h>
 #include <Framework/Platform/Window.h>
 
@@ -222,4 +224,33 @@ TEST_F(MeshLoggerTest, AccessorsNonNull)
 
     EXPECT_NE(NS::Graphics::detail::GetVertexBuffer(mesh), nullptr);
     EXPECT_NE(NS::Graphics::detail::GetIndexBuffer(mesh), nullptr);
+}
+
+TEST_F(MeshLoggerTest, CreateInputLayoutSucceedsWithStandardShader)
+{
+    Window window(MakeWindowDesc("ns_mesh_layout"));
+    ASSERT_TRUE(window.IsValid());
+    Renderer renderer(MakeRendererDesc(), window);
+    ASSERT_TRUE(renderer.IsValid());
+
+    const auto vertices = MakeCubeVertices();
+    const auto indices = MakeCubeIndices();
+    MeshDesc desc{};
+    desc.vertices = vertices.data();
+    desc.vertexCount = vertices.size();
+    desc.indices = indices.data();
+    desc.indexCount = indices.size();
+    StaticMesh mesh(renderer, desc);
+    ASSERT_TRUE(mesh.IsValid());
+
+    // 生成前は layout 未所有
+    EXPECT_EQ(NS::Graphics::detail::GetInputLayout(mesh), nullptr);
+
+    const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
+    NS::Graphics::Shader shader(renderer, shaderDir / "standard.vs.hlsl");
+    ASSERT_TRUE(shader.IsValid());
+    ASSERT_FALSE(shader.IsUsingFallback());
+
+    mesh.CreateInputLayout(shader);
+    EXPECT_NE(NS::Graphics::detail::GetInputLayout(mesh), nullptr);
 }

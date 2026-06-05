@@ -2,6 +2,7 @@
 
 #include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/CommonStates.h"
+#include "Framework/Graphics/Mesh.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/Texture.h"
@@ -19,7 +20,8 @@ namespace NS::Graphics
 
     struct Material::Impl
     {
-        Shader* shader = nullptr;
+        Shader* vertexShader = nullptr;
+        Shader* pixelShader = nullptr;
         std::map<unsigned, const Texture*> textures;
         std::unique_ptr<ConstantBuffer> cb;
         ComPtr<ID3D11DeviceContext> context;
@@ -38,9 +40,10 @@ namespace NS::Graphics
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Material: Renderer の Device / Context が無効");
             return;
         }
-        if (desc.shader == nullptr)
+        if (desc.vertexShader == nullptr || desc.pixelShader == nullptr)
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Material: Shader が nullptr (共有参照必須)");
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "Material: VertexShader / PixelShader が nullptr (共有参照必須)");
             return;
         }
 
@@ -57,7 +60,8 @@ namespace NS::Graphics
             m_pImpl->cb = std::move(cb);
         }
 
-        m_pImpl->shader = desc.shader;
+        m_pImpl->vertexShader = desc.vertexShader;
+        m_pImpl->pixelShader = desc.pixelShader;
         m_pImpl->context = context;
         m_pImpl->sampler = static_cast<ID3D11SamplerState*>(renderer.States().LinearWrap());
         m_pImpl->cbSlot = desc.cbSlot;
@@ -74,11 +78,11 @@ namespace NS::Graphics
 
     bool Material::IsUsingFallback() const noexcept
     {
-        if (!m_pImpl || m_pImpl->shader == nullptr)
+        if (!m_pImpl || m_pImpl->vertexShader == nullptr || m_pImpl->pixelShader == nullptr)
         {
             return false;
         }
-        return m_pImpl->shader->IsUsingFallback();
+        return m_pImpl->vertexShader->IsUsingFallback() || m_pImpl->pixelShader->IsUsingFallback();
     }
 
     void Material::SetTexture(unsigned slot, const Texture* texture) noexcept
@@ -120,7 +124,8 @@ namespace NS::Graphics
             return;
         }
 
-        m_pImpl->shader->Bind();
+        m_pImpl->vertexShader->Bind();
+        m_pImpl->pixelShader->Bind();
 
         for (auto& [slot, tex] : m_pImpl->textures)
         {
@@ -139,6 +144,14 @@ namespace NS::Graphics
         {
             ID3D11SamplerState* samplers[1] = {m_pImpl->sampler.Get()};
             m_pImpl->context->PSSetSamplers(0u, 1u, samplers);
+        }
+    }
+
+    void Material::CreateInputLayoutFor(Mesh& mesh) noexcept
+    {
+        if (m_pImpl && m_pImpl->vertexShader != nullptr)
+        {
+            mesh.CreateInputLayout(*m_pImpl->vertexShader);
         }
     }
 

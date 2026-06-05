@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <Framework/Core/Filesystem.h>
 #include <Framework/Core/Logger.h>
 #include <Framework/Graphics/Renderer.h>
 #include <Framework/Graphics/Shader.h>
@@ -7,12 +8,9 @@
 
 namespace
 {
-    using NS::Graphics::InputElement;
-    using NS::Graphics::InputElementFormat;
     using NS::Graphics::Renderer;
     using NS::Graphics::RendererDesc;
     using NS::Graphics::Shader;
-    using NS::Graphics::ShaderDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 
@@ -32,12 +30,6 @@ namespace
         d.enableDebugLayer = false;
         return d;
     }
-
-    /// fallback VS が読む POSITION (float3, offset 0) を含む最小 InputLayout
-    std::vector<InputElement> MakePositionOnlyLayout()
-    {
-        return {InputElement{"POSITION", InputElementFormat::Float3, 0u}};
-    }
 } // namespace
 
 class ShaderLoggerTest : public ::testing::Test
@@ -47,83 +39,76 @@ protected:
     void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
-TEST_F(ShaderLoggerTest, MissingVsPathFallsBack)
+TEST_F(ShaderLoggerTest, MissingVsFileFallsBack)
 {
-    Window window(MakeWindowDesc("ns_sp_missing_vs"));
+    Window window(MakeWindowDesc("ns_shader_missing_vs"));
     ASSERT_TRUE(window.IsValid());
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ShaderDesc desc{};
-    desc.vertexShaderPath = "C:/nonexistent/__ns_test_missing_vs__.hlsl";
-    desc.pixelShaderPath = "C:/nonexistent/__ns_test_missing_ps__.hlsl";
-    desc.inputLayout = MakePositionOnlyLayout();
-
-    Shader sp(renderer, desc);
-    EXPECT_TRUE(sp.IsValid());
-    EXPECT_TRUE(sp.IsUsingFallback());
+    Shader vs(renderer, "C:/nonexistent/__ns_test_missing.vs.hlsl");
+    EXPECT_TRUE(vs.IsValid());
+    EXPECT_TRUE(vs.IsUsingFallback());
 }
 
-TEST_F(ShaderLoggerTest, EmptyPathsFallBack)
+TEST_F(ShaderLoggerTest, MissingPsFileFallsBack)
 {
-    Window window(MakeWindowDesc("ns_sp_empty"));
+    Window window(MakeWindowDesc("ns_shader_missing_ps"));
     ASSERT_TRUE(window.IsValid());
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ShaderDesc desc{};
-    desc.inputLayout = MakePositionOnlyLayout();
-
-    Shader sp(renderer, desc);
-    EXPECT_TRUE(sp.IsValid());
-    EXPECT_TRUE(sp.IsUsingFallback());
+    Shader ps(renderer, "C:/nonexistent/__ns_test_missing.ps.hlsl");
+    EXPECT_TRUE(ps.IsValid());
+    EXPECT_TRUE(ps.IsUsingFallback());
 }
 
-TEST_F(ShaderLoggerTest, EmptyInputLayoutBecomesInvalid)
+TEST_F(ShaderLoggerTest, UndetectableStageIsInvalid)
 {
-    Window window(MakeWindowDesc("ns_sp_empty_layout"));
+    Window window(MakeWindowDesc("ns_shader_no_stage"));
     ASSERT_TRUE(window.IsValid());
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    // inputLayout 空のまま fallback ルートへ流れ、CreateInputLayout が失敗して IsValid=false で完全クリアされる契約
-    ShaderDesc desc{};
-    Shader sp(renderer, desc);
-    EXPECT_FALSE(sp.IsValid());
-    EXPECT_FALSE(sp.IsUsingFallback());
+    // ファイル名に .vs. / .ps. が無いとステージ判定できず IsValid()==false
+    Shader s(renderer, "C:/nonexistent/__ns_test_unknown.hlsl");
+    EXPECT_FALSE(s.IsValid());
 }
 
-TEST_F(ShaderLoggerTest, FallbackBindDoesNotCrash)
+TEST_F(ShaderLoggerTest, RealVertexShaderCompiles)
 {
-    Window window(MakeWindowDesc("ns_sp_bind"));
+    Window window(MakeWindowDesc("ns_shader_real_vs"));
     ASSERT_TRUE(window.IsValid());
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ShaderDesc desc{};
-    desc.inputLayout = MakePositionOnlyLayout();
+    const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
+    Shader vs(renderer, shaderDir / "standard.vs.hlsl");
+    ASSERT_TRUE(vs.IsValid());
+    EXPECT_FALSE(vs.IsUsingFallback());
 
-    Shader sp(renderer, desc);
-    ASSERT_TRUE(sp.IsValid());
+    // 頂点ステージは InputLayout 用の VS バイトコードを持つ
+    EXPECT_FALSE(NS::Graphics::detail::GetVertexShaderBytecode(vs).empty());
 
-    sp.Bind();
+    vs.Bind();
     SUCCEED();
 }
 
-TEST_F(ShaderLoggerTest, FallbackAccessorsNonNull)
+TEST_F(ShaderLoggerTest, RealPixelShaderCompiles)
 {
-    Window window(MakeWindowDesc("ns_sp_accessors"));
+    Window window(MakeWindowDesc("ns_shader_real_ps"));
     ASSERT_TRUE(window.IsValid());
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ShaderDesc desc{};
-    desc.inputLayout = MakePositionOnlyLayout();
+    const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
+    Shader ps(renderer, shaderDir / "player.ps.hlsl");
+    ASSERT_TRUE(ps.IsValid());
+    EXPECT_FALSE(ps.IsUsingFallback());
 
-    Shader sp(renderer, desc);
-    ASSERT_TRUE(sp.IsValid());
+    // ピクセルステージは VS バイトコードを持たない
+    EXPECT_TRUE(NS::Graphics::detail::GetVertexShaderBytecode(ps).empty());
 
-    EXPECT_NE(NS::Graphics::detail::GetVertexShader(sp), nullptr);
-    EXPECT_NE(NS::Graphics::detail::GetPixelShader(sp), nullptr);
-    EXPECT_NE(NS::Graphics::detail::GetInputLayout(sp), nullptr);
+    ps.Bind();
+    SUCCEED();
 }

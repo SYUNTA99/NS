@@ -62,6 +62,8 @@ namespace NS::Graphics
             return;
         }
 
+        SetVertexLayout(StandardInputLayout());
+
         std::unique_ptr<VertexBuffer> vb;
         std::unique_ptr<IndexBuffer> ib;
 

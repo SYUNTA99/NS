@@ -204,13 +204,41 @@ TEST_F(SkeletalMeshLoggerTest, SkinnedShaderCompiles)
     ASSERT_TRUE(renderer.IsValid());
 
     const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
-    NS::Graphics::ShaderDesc desc{};
-    desc.vertexShaderPath = shaderDir / "skinned.vs.hlsl";
-    desc.pixelShaderPath = shaderDir / "player.ps.hlsl";
-    desc.inputLayout = SkeletalMesh::SkinnedInputLayout();
 
-    // fallback でない = skinned VS / PS のコンパイルと UInt4 入力レイアウト作成が全て成功
-    NS::Graphics::Shader program(renderer, desc);
-    EXPECT_TRUE(program.IsValid());
-    EXPECT_FALSE(program.IsUsingFallback());
+    // fallback でない = skinned VS / PS のコンパイルが成功
+    NS::Graphics::Shader vs(renderer, shaderDir / "skinned.vs.hlsl");
+    NS::Graphics::Shader ps(renderer, shaderDir / "player.ps.hlsl");
+    EXPECT_TRUE(vs.IsValid());
+    EXPECT_FALSE(vs.IsUsingFallback());
+    EXPECT_TRUE(ps.IsValid());
+    EXPECT_FALSE(ps.IsUsingFallback());
+}
+
+TEST_F(SkeletalMeshLoggerTest, CreateInputLayoutSucceedsWithSkinnedShader)
+{
+    Window window(MakeWindowDesc("ns_skinned_layout"));
+    ASSERT_TRUE(window.IsValid());
+    Renderer renderer(MakeRendererDesc(), window);
+    ASSERT_TRUE(renderer.IsValid());
+
+    const auto vertices = MakeSkinnedTriangle();
+    const auto indices = MakeTriangleIndices();
+    SkinnedMeshDesc meshDesc{};
+    meshDesc.vertices = vertices.data();
+    meshDesc.vertexCount = vertices.size();
+    meshDesc.indices = indices.data();
+    meshDesc.indexCount = indices.size();
+    meshDesc.boneCount = 2;
+    SkeletalMesh mesh(renderer, meshDesc);
+    ASSERT_TRUE(mesh.IsValid());
+    EXPECT_EQ(NS::Graphics::detail::GetInputLayout(mesh), nullptr);
+
+    const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
+    NS::Graphics::Shader shader(renderer, shaderDir / "skinned.vs.hlsl");
+    ASSERT_TRUE(shader.IsValid());
+    ASSERT_FALSE(shader.IsUsingFallback());
+
+    // BLENDINDICES=UInt4 を含む SkinnedInputLayout が skinned.vs の入力シグネチャと突合して生成される
+    mesh.CreateInputLayout(shader);
+    EXPECT_NE(NS::Graphics::detail::GetInputLayout(mesh), nullptr);
 }

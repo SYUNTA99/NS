@@ -9,19 +9,20 @@
 
 namespace
 {
-    using NS::Graphics::InputElement;
-    using NS::Graphics::InputElementFormat;
     using NS::Graphics::Material;
     using NS::Graphics::MaterialDesc;
     using NS::Graphics::Renderer;
     using NS::Graphics::RendererDesc;
     using NS::Graphics::Shader;
-    using NS::Graphics::ShaderDesc;
     using NS::Graphics::ShaderStage;
     using NS::Graphics::Texture;
     using NS::Graphics::TextureDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
+
+    // 存在しない .vs. / .ps. パスで magenta fallback shader になる (ステージはファイル名で判定)
+    constexpr const char* kFallbackVsPath = "C:/nonexistent/__ns_mat_fallback.vs.hlsl";
+    constexpr const char* kFallbackPsPath = "C:/nonexistent/__ns_mat_fallback.ps.hlsl";
 
     WindowDesc MakeWindowDesc(const char* title)
     {
@@ -37,13 +38,6 @@ namespace
         RendererDesc d{};
         d.vsync = false;
         d.enableDebugLayer = false;
-        return d;
-    }
-
-    ShaderDesc MakeFallbackShaderDesc()
-    {
-        ShaderDesc d{};
-        d.inputLayout = {InputElement{"POSITION", InputElementFormat::Float3, 0u}};
         return d;
     }
 
@@ -68,11 +62,14 @@ TEST_F(MaterialLoggerTest, ConstructWithShaderIsValid)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Shader shader(renderer, MakeFallbackShaderDesc());
-    ASSERT_TRUE(shader.IsValid());
+    Shader vs(renderer, kFallbackVsPath);
+    Shader ps(renderer, kFallbackPsPath);
+    ASSERT_TRUE(vs.IsValid());
+    ASSERT_TRUE(ps.IsValid());
 
     MaterialDesc desc{};
-    desc.shader = &shader;
+    desc.vertexShader = &vs;
+    desc.pixelShader = &ps;
     desc.constantBufferSize = sizeof(DummyCB);
     desc.cbSlot = 1;
     desc.cbStages = ShaderStage::Vertex | ShaderStage::Pixel;
@@ -89,7 +86,8 @@ TEST_F(MaterialLoggerTest, ConstructWithoutShaderIsInvalid)
     ASSERT_TRUE(renderer.IsValid());
 
     MaterialDesc desc{};
-    desc.shader = nullptr;
+    desc.vertexShader = nullptr;
+    desc.pixelShader = nullptr;
     desc.constantBufferSize = sizeof(DummyCB);
 
     Material mat(renderer, desc);
@@ -103,11 +101,14 @@ TEST_F(MaterialLoggerTest, ConstructWithZeroCbSizeStillValid)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Shader shader(renderer, MakeFallbackShaderDesc());
-    ASSERT_TRUE(shader.IsValid());
+    Shader vs(renderer, kFallbackVsPath);
+    Shader ps(renderer, kFallbackPsPath);
+    ASSERT_TRUE(vs.IsValid());
+    ASSERT_TRUE(ps.IsValid());
 
     MaterialDesc desc{};
-    desc.shader = &shader;
+    desc.vertexShader = &vs;
+    desc.pixelShader = &ps;
     desc.constantBufferSize = 0u;
 
     Material mat(renderer, desc);
@@ -121,14 +122,17 @@ TEST_F(MaterialLoggerTest, SetAndClearTextureBindDoesNotCrash)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Shader shader(renderer, MakeFallbackShaderDesc());
-    ASSERT_TRUE(shader.IsValid());
+    Shader vs(renderer, kFallbackVsPath);
+    Shader ps(renderer, kFallbackPsPath);
+    ASSERT_TRUE(vs.IsValid());
+    ASSERT_TRUE(ps.IsValid());
 
     Texture texture(renderer, TextureDesc{});
     ASSERT_TRUE(texture.IsValid());
 
     MaterialDesc desc{};
-    desc.shader = &shader;
+    desc.vertexShader = &vs;
+    desc.pixelShader = &ps;
     desc.constantBufferSize = sizeof(DummyCB);
     Material mat(renderer, desc);
     ASSERT_TRUE(mat.IsValid());
@@ -150,14 +154,17 @@ TEST_F(MaterialLoggerTest, BindDoesNotCrash)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Shader shader(renderer, MakeFallbackShaderDesc());
-    ASSERT_TRUE(shader.IsValid());
+    Shader vs(renderer, kFallbackVsPath);
+    Shader ps(renderer, kFallbackPsPath);
+    ASSERT_TRUE(vs.IsValid());
+    ASSERT_TRUE(ps.IsValid());
 
     Texture texture(renderer, TextureDesc{});
     ASSERT_TRUE(texture.IsValid());
 
     MaterialDesc desc{};
-    desc.shader = &shader;
+    desc.vertexShader = &vs;
+    desc.pixelShader = &ps;
     desc.constantBufferSize = sizeof(DummyCB);
     Material mat(renderer, desc);
     ASSERT_TRUE(mat.IsValid());
@@ -182,7 +189,8 @@ TEST_F(MaterialLoggerTest, InvalidMaterialBindIsNoOp)
     ASSERT_TRUE(renderer.IsValid());
 
     MaterialDesc desc{};
-    desc.shader = nullptr;
+    desc.vertexShader = nullptr;
+    desc.pixelShader = nullptr;
     Material mat(renderer, desc);
     ASSERT_FALSE(mat.IsValid());
 
@@ -197,11 +205,14 @@ TEST_F(MaterialLoggerTest, SetParamsWithoutCbIsNoOp)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Shader shader(renderer, MakeFallbackShaderDesc());
-    ASSERT_TRUE(shader.IsValid());
+    Shader vs(renderer, kFallbackVsPath);
+    Shader ps(renderer, kFallbackPsPath);
+    ASSERT_TRUE(vs.IsValid());
+    ASSERT_TRUE(ps.IsValid());
 
     MaterialDesc desc{};
-    desc.shader = &shader;
+    desc.vertexShader = &vs;
+    desc.pixelShader = &ps;
     desc.constantBufferSize = 0u;
     Material mat(renderer, desc);
     ASSERT_TRUE(mat.IsValid());
@@ -219,11 +230,14 @@ TEST_F(MaterialLoggerTest, SetParamsBeforeBindNoCrash)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Shader shader(renderer, MakeFallbackShaderDesc());
-    ASSERT_TRUE(shader.IsValid());
+    Shader vs(renderer, kFallbackVsPath);
+    Shader ps(renderer, kFallbackPsPath);
+    ASSERT_TRUE(vs.IsValid());
+    ASSERT_TRUE(ps.IsValid());
 
     MaterialDesc desc{};
-    desc.shader = &shader;
+    desc.vertexShader = &vs;
+    desc.pixelShader = &ps;
     desc.constantBufferSize = sizeof(DummyCB);
     Material mat(renderer, desc);
     ASSERT_TRUE(mat.IsValid());

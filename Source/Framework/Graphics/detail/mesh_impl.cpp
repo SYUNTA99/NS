@@ -2,10 +2,16 @@
 
 #include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/Renderer.h"
+#include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/detail/d3d_context.h"
 
+#include "Framework/Core/LogCategories.h"
+#include "Framework/Core/Logger.h"
+
 #include <cstddef>
+#include <span>
 #include <utility>
+#include <vector>
 
 namespace NS::Graphics
 {
@@ -15,12 +21,79 @@ namespace NS::Graphics
     {
         std::unique_ptr<VertexBuffer> vb;
         std::unique_ptr<IndexBuffer> ib;
+        ComPtr<ID3D11Device> device;
         ComPtr<ID3D11DeviceContext> context;
+        ComPtr<ID3D11InputLayout> inputLayout;
+        std::vector<InputElement> layoutElements;
         std::size_t vertexCount = 0;
         std::size_t indexCount = 0;
         bool valid = false;
         bool usingFallback = false;
     };
+
+    namespace
+    {
+        [[nodiscard]] DXGI_FORMAT ToDxgiFormat(InputElementFormat fmt) noexcept
+        {
+            switch (fmt)
+            {
+            case InputElementFormat::Float2:
+                return DXGI_FORMAT_R32G32_FLOAT;
+            case InputElementFormat::Float3:
+                return DXGI_FORMAT_R32G32B32_FLOAT;
+            case InputElementFormat::Float4:
+                return DXGI_FORMAT_R32G32B32A32_FLOAT;
+            case InputElementFormat::UInt32:
+                return DXGI_FORMAT_R32_UINT;
+            case InputElementFormat::UInt4:
+                return DXGI_FORMAT_R32G32B32A32_UINT;
+            }
+            return DXGI_FORMAT_UNKNOWN;
+        }
+
+        bool CreateInputLayoutFromDesc(ID3D11Device* device,
+                                       const void* vsBytecode,
+                                       std::size_t vsBytecodeSize,
+                                       const std::vector<InputElement>& elements,
+                                       ComPtr<ID3D11InputLayout>& outLayout) noexcept
+        {
+            if (device == nullptr || vsBytecode == nullptr || vsBytecodeSize == 0u || elements.empty())
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                             "Mesh::CreateInputLayout: 引数不正 (device={}, vsBytecode={}, vsSize={}, elements={})",
+                             static_cast<const void*>(device),
+                             vsBytecode,
+                             vsBytecodeSize,
+                             elements.size());
+                return false;
+            }
+            std::vector<D3D11_INPUT_ELEMENT_DESC> descs;
+            descs.reserve(elements.size());
+            for (const auto& e : elements)
+            {
+                D3D11_INPUT_ELEMENT_DESC d{};
+                d.SemanticName = e.semanticName.c_str();
+                d.SemanticIndex = 0u;
+                d.Format = ToDxgiFormat(e.format);
+                d.InputSlot = 0u;
+                d.AlignedByteOffset = e.byteOffset;
+                d.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+                d.InstanceDataStepRate = 0u;
+                descs.push_back(d);
+            }
+            const HRESULT hr = device->CreateInputLayout(
+                descs.data(), static_cast<UINT>(descs.size()), vsBytecode, vsBytecodeSize, outLayout.GetAddressOf());
+            if (FAILED(hr))
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                             "Mesh::CreateInputLayout: CreateInputLayout 失敗 (hr=0x{:X}, elements={})",
+                             static_cast<unsigned>(hr),
+                             elements.size());
+                return false;
+            }
+            return true;
+        }
+    } // namespace
 
     Mesh::Mesh() : m_pImpl(std::make_unique<Impl>()) {}
     Mesh::~Mesh() = default;
@@ -34,6 +107,7 @@ namespace NS::Graphics
     {
         if (!m_pImpl)
             return;
+        m_pImpl->device = detail::GetDevice(renderer);
         m_pImpl->context = detail::GetContext(renderer);
         m_pImpl->vb = std::move(vertexBuffer);
         m_pImpl->ib = std::move(indexBuffer);
@@ -41,6 +115,34 @@ namespace NS::Graphics
         m_pImpl->indexCount = indexCount;
         m_pImpl->usingFallback = usingFallback;
         m_pImpl->valid = (m_pImpl->vb != nullptr && m_pImpl->ib != nullptr && m_pImpl->context != nullptr);
+    }
+
+    void Mesh::SetVertexLayout(std::vector<InputElement> elements) noexcept
+    {
+        if (m_pImpl)
+            m_pImpl->layoutElements = std::move(elements);
+    }
+
+    void Mesh::CreateInputLayout(const Shader& vertexShader) noexcept
+    {
+        if (!m_pImpl || m_pImpl->inputLayout)
+            return;
+        if (m_pImpl->device == nullptr || m_pImpl->layoutElements.empty())
+            return;
+
+        const std::span<const std::byte> bytecode = detail::GetVertexShaderBytecode(vertexShader);
+        if (bytecode.empty())
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Mesh::CreateInputLayout: VS バイトコードが空");
+            return;
+        }
+
+        ComPtr<ID3D11InputLayout> layout;
+        if (CreateInputLayoutFromDesc(
+                m_pImpl->device.Get(), bytecode.data(), bytecode.size(), m_pImpl->layoutElements, layout))
+        {
+            m_pImpl->inputLayout = std::move(layout);
+        }
     }
 
     bool Mesh::IsValid() const noexcept
@@ -64,6 +166,8 @@ namespace NS::Graphics
     {
         if (!IsValid())
             return;
+        if (m_pImpl->inputLayout)
+            m_pImpl->context->IASetInputLayout(m_pImpl->inputLayout.Get());
         m_pImpl->vb->Bind(0);
         m_pImpl->ib->Bind();
         m_pImpl->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -79,6 +183,10 @@ namespace NS::Graphics
         ID3D11Buffer* GetIndexBuffer(Mesh& mesh) noexcept
         {
             return (mesh.m_pImpl && mesh.m_pImpl->ib) ? GetNative(*mesh.m_pImpl->ib) : nullptr;
+        }
+        ID3D11InputLayout* GetInputLayout(Mesh& mesh) noexcept
+        {
+            return mesh.m_pImpl ? mesh.m_pImpl->inputLayout.Get() : nullptr;
         }
     } // namespace detail
 
