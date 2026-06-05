@@ -12,6 +12,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace NS::Core
@@ -41,6 +42,12 @@ namespace NS::Core
         /// Win32 `<windows.h>` の `CreateDirectory` マクロと衝突するため複数形を採用
         /// 戻り値の確認漏れは sandbox 構築失敗の見落としに直結するため `[[nodiscard]]`
         [[nodiscard]] static bool CreateDirectories(const std::filesystem::path& path) noexcept;
+
+        /// `dir` 直下の通常ファイルを列挙する。 `extension` 指定時は先頭ドット込みの拡張子 (".nslvl" 等) で絞り込む
+        /// 再帰せず直下のみ。 dir 不在 / 列挙失敗時は空 vector + NS_LOG_ERROR を出す。 戻り順は未規定
+        /// (呼出側でソートすること)
+        [[nodiscard]] static std::vector<std::filesystem::path> ListFiles(const std::filesystem::path& dir,
+                                                                          std::string_view extension = {});
 
         /// 実行ファイルが置かれているディレクトリの絶対パス
         [[nodiscard]] static std::filesystem::path GetExeDirectory();

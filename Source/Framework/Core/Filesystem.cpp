@@ -132,6 +132,38 @@ namespace NS::Core
         return true;
     }
 
+    std::vector<std::filesystem::path> FileSystem::ListFiles(const std::filesystem::path& dir,
+                                                             std::string_view extension)
+    {
+        std::vector<std::filesystem::path> result;
+
+        std::error_code ec;
+        std::filesystem::directory_iterator it(dir, ec);
+        if (ec)
+        {
+            NS_LOG_ERROR(LogCat::Core, "FileSystem::ListFiles failed to open: {} ({})", dir.string(), ec.message());
+            return result;
+        }
+
+        const std::filesystem::directory_iterator end;
+        for (; it != end; it.increment(ec))
+        {
+            if (ec)
+            {
+                NS_LOG_ERROR(
+                    LogCat::Core, "FileSystem::ListFiles iteration failed: {} ({})", dir.string(), ec.message());
+                break;
+            }
+            std::error_code entryEc;
+            if (!it->is_regular_file(entryEc) || entryEc)
+                continue;
+            if (!extension.empty() && it->path().extension() != extension)
+                continue;
+            result.push_back(it->path());
+        }
+        return result;
+    }
+
     std::filesystem::path FileSystem::GetExeDirectory()
     {
         std::array<wchar_t, MAX_PATH> buffer{};

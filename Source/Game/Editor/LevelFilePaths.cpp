@@ -89,22 +89,11 @@ namespace NS::Game::Editor
         if (!NS::Core::FileSystem::Exists(dir))
             return result;
 
-        try
+        for (const auto& path : NS::Core::FileSystem::ListFiles(dir, ".nslvl"))
         {
-            for (const auto& entry : std::filesystem::directory_iterator(dir))
-            {
-                if (!entry.is_regular_file())
-                    continue;
-                if (entry.path().extension() != ".nslvl")
-                    continue;
-                auto stem = entry.path().stem().string();
-                if (!SanitizeLevelName(stem).empty())
-                    result.push_back(std::move(stem));
-            }
-        }
-        catch (...)
-        {
-            NS_LOG_ERROR(::NS::Core::LogCat::App, "Levels/ 列挙中に例外");
+            auto stem = path.stem().string();
+            if (!SanitizeLevelName(stem).empty())
+                result.push_back(std::move(stem));
         }
         std::sort(result.begin(), result.end());
         return result;
