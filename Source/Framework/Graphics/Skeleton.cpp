@@ -55,7 +55,8 @@ namespace NS::Graphics
             else
             {
                 // root、 または topological 順を満たさない前方参照は root 扱いに落とす
-                jointWorld[i] = local;
+                // root には skeleton 上位ノード変換 (アーマチュア) を親ワールドとして掛ける
+                jointWorld[i] = local * m_rootTransform;
             }
             out[i] = m_bones[i].inverseBind * jointWorld[i];
         }
@@ -70,6 +71,16 @@ namespace NS::Graphics
             bindPose.push_back(bone.bindLocal);
         }
         ComputePalette(bindPose, out);
+    }
+
+    void Skeleton::SetRootTransform(const NS::Math::Matrix& transform) noexcept
+    {
+        m_rootTransform = transform;
+    }
+
+    const NS::Math::Matrix& Skeleton::RootTransform() const noexcept
+    {
+        return m_rootTransform;
     }
 
     NS::Math::Vector3 Skeleton::SkinPositionReference(const SkinnedVertex& vertex,

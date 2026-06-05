@@ -399,6 +399,26 @@ namespace NS::Graphics
             return true;
         }
 
+        // root joint (親が joint でない) の親ノード world 変換を LH へ変換して返す
+        // skeleton より上のアーマチュア変換 (Z-up→Y-up 等) を skinned 出力へ効かせる
+        // 親ノードが無い / アーマチュアが無いスキンでは恒等
+        NS::Math::Matrix ComputeSkeletonRootTransform(const cgltf_skin& skin)
+        {
+            for (cgltf_size i = 0; i < skin.joints_count; ++i)
+            {
+                const cgltf_node* jointNode = skin.joints[i];
+                if (jointNode == nullptr || FindJointIndex(skin, jointNode->parent) != -1)
+                    continue;
+                const cgltf_node* armature = jointNode->parent;
+                if (armature == nullptr)
+                    return NS::Math::Matrix::Identity;
+                float world[16];
+                cgltf_node_transform_world(armature, world);
+                return detail::ConjugateZMatrix(detail::ReadColumnMajorMatrix(world));
+            }
+            return NS::Math::Matrix::Identity;
+        }
+
         // 1 skinned primitive を連結する (node 変換は焼き込まない)。 重みのある joint index が範囲外なら false
         bool AppendSkinnedPrimitive(const cgltf_primitive& prim,
                                     cgltf_size jointsCount,
@@ -735,6 +755,7 @@ namespace NS::Graphics
         data.vertices = std::move(vertices);
         data.indices = std::move(indices);
         data.skeleton = Skeleton(std::move(bones));
+        data.skeleton.SetRootTransform(ComputeSkeletonRootTransform(skin));
         ParseAnimations(model, skin, remap, path, data.animations);
         return data;
     }

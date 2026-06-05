@@ -50,9 +50,14 @@ namespace NS::Graphics
         /// @post out.size() == BoneCount()。 pose size 不一致時は NS_LOG_ERROR の上 out を恒等で埋める
         void ComputePalette(std::span<const BonePose> pose, std::vector<NS::Math::Matrix>& out) const;
 
-        /// bindLocal をポーズとして使ったパレット。 well-formed なスキンでは全要素が恒等になる
+        /// bindLocal をポーズとして使ったパレット。 root 上位変換が恒等のスキンでは全要素が恒等になる
         /// SkeletalMesh の既定 (pose 未指定) 描画に使う
         void ComputeBindPalette(std::vector<NS::Math::Matrix>& out) const;
+
+        /// root ボーン (parentIndex<0) に与える親ワールド変換。 skeleton より上のノード変換
+        /// (glTF のアーマチュア回転 Z-up→Y-up 等) を skinned 出力へ反映するために使う。 既定は恒等
+        void SetRootTransform(const NS::Math::Matrix& transform) noexcept;
+        [[nodiscard]] const NS::Math::Matrix& RootTransform() const noexcept;
 
         /// CPU 参照 LBS。 1 頂点を palette で変形して返す (skinned 頂点シェーダと同式)
         /// 戻り値 = Σ weights[i] * (position * palette[joints[i]])。 範囲外 joint と weight 0 は無視
@@ -61,6 +66,7 @@ namespace NS::Graphics
 
     private:
         std::vector<Bone> m_bones;
+        NS::Math::Matrix m_rootTransform{}; // skeleton より上のノード変換、 既定は恒等
     };
 
 } // namespace NS::Graphics
