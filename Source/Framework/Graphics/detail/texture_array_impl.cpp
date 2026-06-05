@@ -24,7 +24,6 @@ namespace NS::Graphics
         ComPtr<ID3D11Texture2D> arrayTexture;
         ComPtr<ID3D11ShaderResourceView> srv;
         ComPtr<ID3D11Device> device;
-        ComPtr<ID3D11DeviceContext> context;
         std::uint16_t sliceCount = 0;
         bool fallback = false;
     };
@@ -165,7 +164,6 @@ namespace NS::Graphics
             return;
         }
         m_pImpl->device = device;
-        m_pImpl->context = context;
 
         // slice 数を上限 (kTotalSlices) で clamp。 超過分は WARN を出して捨てる
         std::vector<std::filesystem::path> paths = desc.slicePaths;
@@ -373,32 +371,35 @@ namespace NS::Graphics
         return m_pImpl ? m_pImpl->sliceCount : static_cast<std::uint16_t>(0);
     }
 
-    void TextureArray::Bind(unsigned slot, ShaderStage stages) const noexcept
-    {
-        if (!IsValid() || !m_pImpl->context)
-        {
-            return;
-        }
-        ID3D11ShaderResourceView* srvs[1] = {m_pImpl->srv.Get()};
-        if (HasStage(stages, ShaderStage::Vertex))
-        {
-            m_pImpl->context->VSSetShaderResources(slot, 1u, srvs);
-        }
-        if (HasStage(stages, ShaderStage::Pixel))
-        {
-            m_pImpl->context->PSSetShaderResources(slot, 1u, srvs);
-        }
-        if (HasStage(stages, ShaderStage::Geometry))
-        {
-            m_pImpl->context->GSSetShaderResources(slot, 1u, srvs);
-        }
-    }
-
     namespace detail
     {
         ID3D11ShaderResourceView* GetSrv(TextureArray& textureArray) noexcept
         {
             return textureArray.m_pImpl ? textureArray.m_pImpl->srv.Get() : nullptr;
+        }
+
+        void BindTextureArray(ID3D11DeviceContext* context,
+                              const TextureArray& textureArray,
+                              unsigned slot,
+                              ShaderStage stages) noexcept
+        {
+            if (context == nullptr || !textureArray.m_pImpl || !textureArray.m_pImpl->srv)
+            {
+                return;
+            }
+            ID3D11ShaderResourceView* srvs[1] = {textureArray.m_pImpl->srv.Get()};
+            if (HasStage(stages, ShaderStage::Vertex))
+            {
+                context->VSSetShaderResources(slot, 1u, srvs);
+            }
+            if (HasStage(stages, ShaderStage::Pixel))
+            {
+                context->PSSetShaderResources(slot, 1u, srvs);
+            }
+            if (HasStage(stages, ShaderStage::Geometry))
+            {
+                context->GSSetShaderResources(slot, 1u, srvs);
+            }
         }
     } // namespace detail
 

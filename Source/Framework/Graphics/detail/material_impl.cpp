@@ -24,7 +24,6 @@ namespace NS::Graphics
         Shader* pixelShader = nullptr;
         std::map<unsigned, const Texture*> textures;
         std::unique_ptr<ConstantBuffer> cb;
-        ComPtr<ID3D11DeviceContext> context;
         ComPtr<ID3D11SamplerState> sampler;
         unsigned cbSlot = 1;
         ShaderStage cbStages = ShaderStage::Vertex | ShaderStage::Pixel;
@@ -62,7 +61,6 @@ namespace NS::Graphics
 
         m_pImpl->vertexShader = desc.vertexShader;
         m_pImpl->pixelShader = desc.pixelShader;
-        m_pImpl->context = context;
         m_pImpl->sampler = static_cast<ID3D11SamplerState*>(renderer.States().LinearWrap());
         m_pImpl->cbSlot = desc.cbSlot;
         m_pImpl->cbStages = desc.cbStages;
@@ -108,42 +106,46 @@ namespace NS::Graphics
         m_pImpl->textures.erase(slot);
     }
 
-    void Material::UpdateParamsRaw(const void* data, std::size_t bytes) noexcept
+    void Material::UpdateParamsRaw(Renderer& renderer, const void* data, std::size_t bytes) noexcept
     {
         if (!IsValid() || !m_pImpl->cb)
         {
             return;
         }
-        m_pImpl->cb->UpdateRaw(data, bytes);
+        renderer.UpdateBuffer(*m_pImpl->cb, data, bytes);
     }
 
-    void Material::Bind() noexcept
+    void Material::Bind(Renderer& renderer) noexcept
     {
         if (!IsValid())
         {
             return;
         }
 
-        m_pImpl->vertexShader->Bind();
-        m_pImpl->pixelShader->Bind();
+        renderer.BindShader(*m_pImpl->vertexShader);
+        renderer.BindShader(*m_pImpl->pixelShader);
 
         for (auto& [slot, tex] : m_pImpl->textures)
         {
             if (tex != nullptr)
             {
-                tex->Bind(slot, ShaderStage::Pixel);
+                renderer.BindTexture(*tex, slot, ShaderStage::Pixel);
             }
         }
 
         if (m_pImpl->cb)
         {
-            m_pImpl->cb->Bind(m_pImpl->cbSlot, m_pImpl->cbStages);
+            renderer.BindConstantBuffer(*m_pImpl->cb, m_pImpl->cbSlot, m_pImpl->cbStages);
         }
 
+        // sampler は Renderer のバインド API に該当する型が無いため context 経由で直接設定する
         if (m_pImpl->sampler)
         {
-            ID3D11SamplerState* samplers[1] = {m_pImpl->sampler.Get()};
-            m_pImpl->context->PSSetSamplers(0u, 1u, samplers);
+            if (auto* context = detail::GetContext(renderer))
+            {
+                ID3D11SamplerState* samplers[1] = {m_pImpl->sampler.Get()};
+                context->PSSetSamplers(0u, 1u, samplers);
+            }
         }
     }
 

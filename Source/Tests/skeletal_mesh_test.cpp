@@ -167,7 +167,7 @@ TEST_F(SkeletalMeshLoggerTest, EmptyDescIsInvalidWithoutFallback)
     EXPECT_EQ(mesh.IndexCount(), 0u);
 
     // 不正な mesh の Draw は no-op でクラッシュしない
-    mesh.Draw();
+    mesh.Draw(renderer);
     SUCCEED();
 }
 
@@ -192,7 +192,7 @@ TEST_F(SkeletalMeshLoggerTest, SetBonePaletteAndDrawDoesNotCrash)
 
     const std::array<Matrix, 2> palette{Matrix::Identity, Matrix::Identity};
     mesh.SetBonePalette(std::span<const Matrix>(palette.data(), palette.size()));
-    mesh.Draw();
+    mesh.Draw(renderer);
     SUCCEED();
 }
 

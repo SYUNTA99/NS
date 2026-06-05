@@ -8,7 +8,8 @@
 /// 基底 Mesh::Draw を呼ぶ。 SkinnedMeshDesc 不正 / Buffer 失敗時は geometry 未設定のまま
 /// IsValid()==false に落ちる (skinned 用 fallback geometry は持たない)
 /// ボーンパレットは SetBonePalette で外部 (Skeleton 等) から与える。 未設定時は恒等 (bind pose)
-/// @pre Renderer の DeviceContext を内部保持するため Renderer より先に破棄すること
+/// @details パレットは CPU 側に保持し、 GPU へのアップロードは Draw(Renderer&) 内で行う
+/// (SkeletalMesh は DeviceContext を保持しない)
 
 #include "Framework/Graphics/Mesh.h"
 #include "Framework/Math/Math.h"
@@ -68,12 +69,12 @@ namespace NS::Graphics
         SkeletalMesh(SkeletalMesh&&) = delete;
         SkeletalMesh& operator=(SkeletalMesh&&) = delete;
 
-        /// ボーンパレット (model 空間 skinning 行列群) を次の描画に反映する
+        /// ボーンパレット (model 空間 skinning 行列群) を CPU 側に蓄える (次の Draw で GPU 反映)
         /// 上限 (内部 kMaxBones) を超える分は無視し、 不足分は恒等のまま残す
         void SetBonePalette(std::span<const NS::Math::Matrix> palette) noexcept;
 
-        /// palette CB を b1(VS) に bind してから Mesh::Draw() を呼ぶ。 IsValid()==false なら no-op
-        void Draw() noexcept override;
+        /// palette を CB へアップロードして b1(VS) に bind し、 Mesh::Draw を呼ぶ。 IsValid()==false なら no-op
+        void Draw(Renderer& renderer) noexcept override;
 
         /// SkinnedVertex に対応する POSITION/TEXCOORD/NORMAL/BLENDINDICES/BLENDWEIGHT の InputElement 配列を返す
         /// 基底が CreateInputLayout で使う頂点レイアウトと同一

@@ -146,7 +146,6 @@ namespace NS::Graphics
         std::unordered_map<BucketKey, Bucket, BucketKeyHash> buckets{};
 
         ComPtr<ID3D11Device> device;
-        ComPtr<ID3D11DeviceContext> context;
 
         // 動的 instance VB + 自前 compile した VS / PS / input layout。 production 描画パスのみで使う
         std::unique_ptr<VertexBuffer> instanceVB;
@@ -190,7 +189,6 @@ namespace NS::Graphics
             return;
         }
         m_pImpl->device = device;
-        m_pImpl->context = context;
 
         m_pImpl->instanceVB = CreateInstanceVB(renderer, kInitialPerBucketCapacity);
         if (!m_pImpl->instanceVB)
@@ -274,23 +272,22 @@ namespace NS::Graphics
         m_pImpl->buckets[key].instances.push_back(instance);
     }
 
-    void InstanceBatcher::FlushAll() noexcept
+    void InstanceBatcher::FlushAll(Renderer& renderer) noexcept
     {
         if (!m_pImpl)
             return;
 
         std::size_t drawCalls = 0;
         const bool canDraw = m_pImpl->valid && !m_pImpl->countOnlyMode;
+        auto* ctx = detail::GetContext(renderer);
 
         for (auto& [key, bucket] : m_pImpl->buckets)
         {
             if (bucket.instances.empty())
                 continue;
 
-            if (canDraw)
+            if (canDraw && ctx != nullptr)
             {
-                auto* ctx = m_pImpl->context.Get();
-
                 if (bucket.instances.size() > m_pImpl->instanceVbCapacity)
                 {
                     NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
@@ -301,11 +298,11 @@ namespace NS::Graphics
                 }
 
                 const std::size_t bytes = bucket.instances.size() * sizeof(BlockInstance);
-                m_pImpl->instanceVB->UpdateRaw(bucket.instances.data(), bytes);
+                renderer.UpdateBuffer(*m_pImpl->instanceVB, bucket.instances.data(), bytes);
 
                 // material が握っている texture / sampler / CB を bind、 ただし VS / PS / InputLayout は
                 // 直後に instance 用で上書きする。 material 側 shader は使わない
-                key.material->Bind();
+                key.material->Bind(renderer);
 
                 ctx->VSSetShader(m_pImpl->vs.Get(), nullptr, 0);
                 ctx->PSSetShader(m_pImpl->ps.Get(), nullptr, 0);

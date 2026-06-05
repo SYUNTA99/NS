@@ -52,8 +52,8 @@ TEST_F(RenderTargetLoggerTest, ClearIsSafe)
     ASSERT_TRUE(renderer.IsValid());
 
     auto& rt = renderer.MainRenderTarget();
-    rt.Clear(0.5f, 0.5f, 0.5f, 1.0f);
-    rt.Clear(0.0f, 0.0f, 0.0f, 1.0f, 1.0f);
+    rt.Clear(renderer.NativeContext(), 0.5f, 0.5f, 0.5f, 1.0f);
+    rt.Clear(renderer.NativeContext(), 0.0f, 0.0f, 0.0f, 1.0f, 1.0f);
     SUCCEED();
 }
 
@@ -71,7 +71,7 @@ TEST_F(RenderTargetLoggerTest, BindIsSafe)
     ASSERT_TRUE(renderer.IsValid());
 
     auto& rt = renderer.MainRenderTarget();
-    rt.Bind();
+    renderer.SetRenderTarget(rt);
     SUCCEED();
 }
 

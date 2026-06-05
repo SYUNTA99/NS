@@ -178,7 +178,7 @@ TEST_F(MeshLoggerTest, FallbackMeshDrawDoesNotCrash)
     ASSERT_TRUE(mesh.IsValid());
     ASSERT_TRUE(mesh.IsUsingFallback());
 
-    mesh.Draw();
+    mesh.Draw(renderer);
     SUCCEED();
 }
 
@@ -200,7 +200,7 @@ TEST_F(MeshLoggerTest, DrawDoesNotCrash)
     StaticMesh mesh(renderer, desc);
     ASSERT_TRUE(mesh.IsValid());
 
-    mesh.Draw();
+    mesh.Draw(renderer);
     SUCCEED();
 }
 

@@ -9,15 +9,17 @@
 /// `IsUsingFallback()` が true になる (他ステージは代替表示が無いため失敗時は IsValid()==false)
 /// ファイル名からステージを判定できない場合も IsValid()==false
 /// 描画では頂点 + ピクセルの 2 個を作り Material が両方を合成して持つ (D3D11 では別オブジェクトのため)
-/// 本型の責務は 1 ステージの生成とバインド (Set*Shader)
+/// 本型の責務は 1 ステージの生成まで。 バインド (Set*Shader) は Renderer::BindShader が行う
 /// コンピュートの Dispatch / UAV バインドは扱わない
 /// 入力レイアウトは保持しない (Mesh が頂点 Shader の VS バイトコードから生成・所有する)
-/// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること
+/// 依存: 生成に Renderer の Device を使う。 context は保持せず、 バインドは Renderer 経由
 
 #include <cstddef>
 #include <filesystem>
 #include <memory>
 #include <span>
+
+struct ID3D11DeviceContext;
 
 namespace NS::Graphics
 {
@@ -28,11 +30,15 @@ namespace NS::Graphics
     {
         /// Mesh が InputLayout を生成するための VS バイトコード。 頂点 Shader でない or 構築失敗で空 span
         [[nodiscard]] std::span<const std::byte> GetVertexShaderBytecode(const Shader& shader) noexcept;
+
+        /// ステージに応じた *SSetShader (VS/PS/GS/HS/DS/CS) を context に発行する
+        /// 無効な Shader または context==nullptr は no-op。 Renderer::BindShader が本関数を呼ぶ
+        void BindShader(ID3D11DeviceContext* context, const Shader& shader) noexcept;
     } // namespace detail
 
     /// 単一ステージのシェーダ。 path のファイル名 (`.vs.`/`.ps.`/`.gs.`/`.hs.`/`.ds.`/`.cs.`) でステージを判定する
     /// 頂点・ピクセルは読込/コンパイル失敗時に magenta fallback へ切替わる (`IsUsingFallback()` で検知)
-    /// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること
+    /// 依存: 生成に Renderer の Device を使う。 context は保持せず、 バインドは Renderer::BindShader 経由
     class Shader
     {
     public:
@@ -52,13 +58,11 @@ namespace NS::Graphics
         /// 読込・コンパイル失敗で magenta fallback に切替わっているかを問い合わせる
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-        /// 自分のステージに応じた *SSetShader を発行する
-        void Bind() noexcept;
-
     private:
         std::unique_ptr<Impl> m_pImpl;
 
         friend std::span<const std::byte> detail::GetVertexShaderBytecode(const Shader& shader) noexcept;
+        friend void detail::BindShader(ID3D11DeviceContext* context, const Shader& shader) noexcept;
     };
 
 } // namespace NS::Graphics

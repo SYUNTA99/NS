@@ -22,7 +22,6 @@ namespace NS::Graphics
         std::unique_ptr<VertexBuffer> vb;
         std::unique_ptr<IndexBuffer> ib;
         ComPtr<ID3D11Device> device;
-        ComPtr<ID3D11DeviceContext> context;
         ComPtr<ID3D11InputLayout> inputLayout;
         std::vector<InputElement> layoutElements;
         std::size_t vertexCount = 0;
@@ -108,13 +107,12 @@ namespace NS::Graphics
         if (!m_pImpl)
             return;
         m_pImpl->device = detail::GetDevice(renderer);
-        m_pImpl->context = detail::GetContext(renderer);
         m_pImpl->vb = std::move(vertexBuffer);
         m_pImpl->ib = std::move(indexBuffer);
         m_pImpl->vertexCount = vertexCount;
         m_pImpl->indexCount = indexCount;
         m_pImpl->usingFallback = usingFallback;
-        m_pImpl->valid = (m_pImpl->vb != nullptr && m_pImpl->ib != nullptr && m_pImpl->context != nullptr);
+        m_pImpl->valid = (m_pImpl->vb != nullptr && m_pImpl->ib != nullptr && m_pImpl->device != nullptr);
     }
 
     void Mesh::SetVertexLayout(std::vector<InputElement> elements) noexcept
@@ -162,16 +160,18 @@ namespace NS::Graphics
         return m_pImpl ? m_pImpl->indexCount : 0u;
     }
 
-    void Mesh::Draw() noexcept
+    void Mesh::Draw(Renderer& renderer) noexcept
     {
         if (!IsValid())
             return;
-        if (m_pImpl->inputLayout)
-            m_pImpl->context->IASetInputLayout(m_pImpl->inputLayout.Get());
-        m_pImpl->vb->Bind(0);
-        m_pImpl->ib->Bind();
-        m_pImpl->context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        m_pImpl->context->DrawIndexed(static_cast<UINT>(m_pImpl->indexCount), 0u, 0);
+        auto* context = detail::GetContext(renderer);
+        if (m_pImpl->inputLayout && context != nullptr)
+            context->IASetInputLayout(m_pImpl->inputLayout.Get());
+        renderer.BindVertexBuffer(*m_pImpl->vb, 0);
+        renderer.BindIndexBuffer(*m_pImpl->ib);
+        if (context != nullptr)
+            context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        renderer.DrawIndexed(static_cast<unsigned>(m_pImpl->indexCount));
     }
 
     namespace detail

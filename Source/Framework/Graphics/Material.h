@@ -5,8 +5,8 @@
 ///
 /// @details Shader は共有参照 (非所有)、 Material 寿命中 shader が
 /// 有効であること。 Sampler は s0 LinearWrap 固定、 複数 sampler
-/// は将来拡張。 `Bind()` は shader / textures / CB / sampler を一括設定する
-/// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること
+/// は将来拡張。 `Bind(Renderer&)` は shader / textures / CB / sampler を一括設定する
+/// GPU バインドは渡された Renderer 経由で行い、 Material は DeviceContext を保持しない
 
 #include "Framework/Graphics/Buffer.h"
 
@@ -41,7 +41,7 @@ namespace NS::Graphics
     /// Generic 単一クラス Material
     /// Shader* (非所有) + Texture スロット (unsigned 番号) + 内蔵 ConstantBuffer
     /// Sampler は s0 LinearWrap 固定、複数 sampler は将来拡張
-    /// 依存: Renderer の DeviceContext を内部で保持するため、Renderer より先に破棄すること
+    /// GPU バインドは Bind(Renderer&) / SetParams(Renderer&) に渡す Renderer 経由で行う
     class Material
     {
     public:
@@ -70,17 +70,17 @@ namespace NS::Graphics
 
         /// CB 更新。`alignas(16)` + `sizeof(T) % 16 == 0` 必須
         /// constantBufferSize=0 で構築された Material では no-op
-        template <typename T> void SetParams(const T& params) noexcept
+        template <typename T> void SetParams(Renderer& renderer, const T& params) noexcept
         {
             static_assert((sizeof(T) % 16) == 0,
                           "Material::SetParams<T> は sizeof(T) が 16 byte 倍数で alignas(16) 必須");
             static_assert(alignof(T) >= 16, "Material::SetParams<T> は struct alignas(16) 必須 (Vector3 16-byte 境界)");
-            UpdateParamsRaw(&params, sizeof(T));
+            UpdateParamsRaw(renderer, &params, sizeof(T));
         }
 
-        /// vs->Bind() + ps->Bind() → 全 Texture::Bind(slot, Pixel) → ConstantBuffer::Bind(cbSlot, cbStages)
-        /// → PSSetSamplers(0, LinearWrap) 一括実行。Mesh::Draw() の前に呼ぶ
-        void Bind() noexcept;
+        /// VS/PS bind → 全 Texture bind(slot, Pixel) → ConstantBuffer bind(cbSlot, cbStages)
+        /// → PSSetSamplers(0, LinearWrap) を renderer 経由で一括実行。Mesh::Draw の前に呼ぶ
+        void Bind(Renderer& renderer) noexcept;
 
         /// 自分の Shader の VS バイトコードで mesh の InputLayout を生成する (mesh.CreateInputLayout への薄い委譲)
         /// 直接描画される mesh に対し描画前に呼ぶ。 冪等なので毎フレーム呼んでも安全
@@ -89,7 +89,7 @@ namespace NS::Graphics
     private:
         std::unique_ptr<Impl> m_pImpl;
 
-        void UpdateParamsRaw(const void* data, std::size_t bytes) noexcept;
+        void UpdateParamsRaw(Renderer& renderer, const void* data, std::size_t bytes) noexcept;
     };
 
 } // namespace NS::Graphics

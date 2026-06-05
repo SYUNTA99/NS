@@ -6,15 +6,16 @@
 /// @details 拡張子 .dds → DirectXTK DDSTextureLoader、 それ以外 → WICTextureLoader 経由
 /// File I/O は `NS::Core::FileSystem` 経由なので将来 pak / VFS で透過対応可能
 /// 読込失敗時は 1x1 マゼンタ fallback SRV が生成され、 `IsUsingFallback()` が true
-/// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること
+/// 依存: 生成に Renderer の Device / Context を使う (context は保持しない、 バインドは Renderer 経由)
 
 #include <filesystem>
 #include <memory>
 
-#include <Framework/Math/Math.h>
 #include <Framework/Graphics/Buffer.h>
+#include <Framework/Math/Math.h>
 
 struct ID3D11ShaderResourceView;
+struct ID3D11DeviceContext;
 
 namespace NS::Graphics
 {
@@ -26,6 +27,13 @@ namespace NS::Graphics
     {
         /// Texture 内部の SRV を取得 (Material が PSSetShaderResources 等に使用)
         [[nodiscard]] ID3D11ShaderResourceView* GetSrv(Texture& texture) noexcept;
+
+        /// Texture の SRV を context の slot + ステージ (VS/PS/GS) にバインドする
+        /// 無効な texture または context==nullptr は no-op。 Renderer::BindTexture が本関数を呼ぶ
+        void BindTexture(ID3D11DeviceContext* context,
+                         const Texture& texture,
+                         unsigned slot,
+                         ShaderStage stages) noexcept;
     } // namespace detail
 
     /// Texture 構築パラメータ
@@ -40,7 +48,7 @@ namespace NS::Graphics
     /// 2D テクスチャ。Cubemap / 3D Volume は対象外
     /// 拡張子 .dds → DirectXTK DDSTextureLoader、それ以外 → WICTextureLoader 経由
     /// File I/O は NS::Core::FileSystem 経由なので将来 pak / VFS で透過対応可能
-    /// 依存: Renderer の DeviceContext を内部で保持するため、Renderer より先に破棄すること
+    /// 依存: 生成に Renderer の Device / Context を使う。 context は保持せず、 バインドは Renderer::BindTexture 経由
     class Texture
     {
     public:
@@ -63,14 +71,14 @@ namespace NS::Graphics
         /// デバッグ時のアセット欠落検知に使用
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-        /// SRV を指定スロット + 対象ステージにバインド。デフォルトは Pixel ステージ
-        /// 内部 SRV ポインタを D3D11 コンテキストに渡すだけで Texture 状態は不変なので const
-        void Bind(unsigned slot, ShaderStage stages = ShaderStage::Pixel) const noexcept;
-
     private:
         std::unique_ptr<Impl> m_pImpl;
 
         friend ID3D11ShaderResourceView* detail::GetSrv(Texture& texture) noexcept;
+        friend void detail::BindTexture(ID3D11DeviceContext* context,
+                                        const Texture& texture,
+                                        unsigned slot,
+                                        ShaderStage stages) noexcept;
     };
 
 } // namespace NS::Graphics

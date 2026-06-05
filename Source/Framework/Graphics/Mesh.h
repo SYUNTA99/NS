@@ -9,7 +9,8 @@
 /// 入力レイアウトは `CreateInputLayout(shader)` で Shader の VS バイトコードから生成する (VS 入力シグネチャ突合に必要)
 /// `Draw` / `IsValid` 等は基底実装を共有する。 skinning する派生は `Draw` を override して bone palette CB の bind
 /// を足す
-/// @pre Renderer の DeviceContext を内部保持するため Renderer より先に破棄すること
+/// @details GPU バインドは `Draw(Renderer&)` に渡す Renderer 経由で行い、 Mesh は DeviceContext を保持しない
+/// (InputLayout 生成用に Device のみ保持する)
 
 #include <cstddef>
 #include <memory>
@@ -81,11 +82,11 @@ namespace NS::Graphics
         /// 直接描画される mesh に対し描画前に 1 度呼ぶ (MeshRendererComponent が Material 経由で呼ぶ)
         void CreateInputLayout(const Shader& vertexShader) noexcept;
 
-        /// InputLayout 生成済なら IASetInputLayout、 VB.Bind(0) + IB.Bind() +
+        /// InputLayout 生成済なら IASetInputLayout、 renderer 経由で VB(0) + IB の bind +
         /// IASetPrimitiveTopology(TRIANGLELIST) + DrawIndexed を一括発行する
         /// Shader / Material 側の Bind は呼出側 (MeshRendererComponent) 責任
         /// skinning する派生は override して bone palette CB の bind を足す
-        virtual void Draw() noexcept;
+        virtual void Draw(Renderer& renderer) noexcept;
 
     protected:
         Mesh();

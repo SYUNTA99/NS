@@ -140,10 +140,10 @@ TEST_F(MaterialLoggerTest, SetAndClearTextureBindDoesNotCrash)
     // SetTexture / ClearTexture / 未割当 slot に ClearTexture の各 call path が crash しないこと
     // 内部状態を query する公開 API は意図的に持たない (Deep Module 化、 raw pointer 露出回避)
     mat.SetTexture(0u, &texture);
-    mat.Bind();
+    mat.Bind(renderer);
     mat.ClearTexture(0u);
     mat.ClearTexture(1u);
-    mat.Bind();
+    mat.Bind(renderer);
     SUCCEED();
 }
 
@@ -175,9 +175,9 @@ TEST_F(MaterialLoggerTest, BindDoesNotCrash)
     cb.mvp[5] = 1.0f;
     cb.mvp[10] = 1.0f;
     cb.mvp[15] = 1.0f;
-    mat.SetParams(cb);
+    mat.SetParams(renderer, cb);
 
-    mat.Bind();
+    mat.Bind(renderer);
     SUCCEED();
 }
 
@@ -194,7 +194,7 @@ TEST_F(MaterialLoggerTest, InvalidMaterialBindIsNoOp)
     Material mat(renderer, desc);
     ASSERT_FALSE(mat.IsValid());
 
-    mat.Bind();
+    mat.Bind(renderer);
     SUCCEED();
 }
 
@@ -218,8 +218,8 @@ TEST_F(MaterialLoggerTest, SetParamsWithoutCbIsNoOp)
     ASSERT_TRUE(mat.IsValid());
 
     DummyCB cb{};
-    mat.SetParams(cb);
-    mat.Bind();
+    mat.SetParams(renderer, cb);
+    mat.Bind(renderer);
     SUCCEED();
 }
 
@@ -243,6 +243,6 @@ TEST_F(MaterialLoggerTest, SetParamsBeforeBindNoCrash)
     ASSERT_TRUE(mat.IsValid());
 
     DummyCB cb{};
-    mat.SetParams(cb);
+    mat.SetParams(renderer, cb);
     SUCCEED();
 }

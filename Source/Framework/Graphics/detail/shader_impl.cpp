@@ -218,7 +218,6 @@ float4 PSMain() : SV_Target
         ShaderType stage = ShaderType::Vertex;
         ComPtr<ID3D11DeviceChild> shader; // 全ステージ共通の保持先 (取得時に static_cast でダウンキャスト)
         ComPtr<ID3DBlob> vsBytecode;      // 頂点ステージのみ (Mesh の InputLayout 用)
-        ComPtr<ID3D11DeviceContext> context;
         bool fallback = false;
     };
 
@@ -230,7 +229,6 @@ float4 PSMain() : SV_Target
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Shader: Renderer の Device が無効");
             return;
         }
-        m_pImpl->context = detail::GetContext(renderer);
 
         const ShaderTypeInfo* info = DetectStage(hlslPath);
         if (info == nullptr)
@@ -283,37 +281,6 @@ float4 PSMain() : SV_Target
         return m_pImpl && m_pImpl->fallback;
     }
 
-    void Shader::Bind() noexcept
-    {
-        if (!m_pImpl || !m_pImpl->context || !m_pImpl->shader)
-        {
-            return;
-        }
-        // 生成時のステージで実型は保証済みなので static_cast 下方変換は well-defined
-        ID3D11DeviceChild* raw = m_pImpl->shader.Get();
-        switch (m_pImpl->stage)
-        {
-        case ShaderType::Vertex:
-            m_pImpl->context->VSSetShader(static_cast<ID3D11VertexShader*>(raw), nullptr, 0u);
-            break;
-        case ShaderType::Pixel:
-            m_pImpl->context->PSSetShader(static_cast<ID3D11PixelShader*>(raw), nullptr, 0u);
-            break;
-        case ShaderType::Geometry:
-            m_pImpl->context->GSSetShader(static_cast<ID3D11GeometryShader*>(raw), nullptr, 0u);
-            break;
-        case ShaderType::Hull:
-            m_pImpl->context->HSSetShader(static_cast<ID3D11HullShader*>(raw), nullptr, 0u);
-            break;
-        case ShaderType::Domain:
-            m_pImpl->context->DSSetShader(static_cast<ID3D11DomainShader*>(raw), nullptr, 0u);
-            break;
-        case ShaderType::Compute:
-            m_pImpl->context->CSSetShader(static_cast<ID3D11ComputeShader*>(raw), nullptr, 0u);
-            break;
-        }
-    }
-
     namespace detail
     {
         std::span<const std::byte> GetVertexShaderBytecode(const Shader& shader) noexcept
@@ -325,6 +292,38 @@ float4 PSMain() : SV_Target
             }
             return std::span<const std::byte>(static_cast<const std::byte*>(impl->vsBytecode->GetBufferPointer()),
                                               impl->vsBytecode->GetBufferSize());
+        }
+
+        void BindShader(ID3D11DeviceContext* context, const Shader& shader) noexcept
+        {
+            const auto& impl = shader.m_pImpl;
+            if (context == nullptr || !impl || !impl->shader)
+            {
+                return;
+            }
+            // 生成時のステージで実型は保証済みなので static_cast 下方変換は well-defined
+            ID3D11DeviceChild* raw = impl->shader.Get();
+            switch (impl->stage)
+            {
+            case ShaderType::Vertex:
+                context->VSSetShader(static_cast<ID3D11VertexShader*>(raw), nullptr, 0u);
+                break;
+            case ShaderType::Pixel:
+                context->PSSetShader(static_cast<ID3D11PixelShader*>(raw), nullptr, 0u);
+                break;
+            case ShaderType::Geometry:
+                context->GSSetShader(static_cast<ID3D11GeometryShader*>(raw), nullptr, 0u);
+                break;
+            case ShaderType::Hull:
+                context->HSSetShader(static_cast<ID3D11HullShader*>(raw), nullptr, 0u);
+                break;
+            case ShaderType::Domain:
+                context->DSSetShader(static_cast<ID3D11DomainShader*>(raw), nullptr, 0u);
+                break;
+            case ShaderType::Compute:
+                context->CSSetShader(static_cast<ID3D11ComputeShader*>(raw), nullptr, 0u);
+                break;
+            }
         }
     } // namespace detail
 

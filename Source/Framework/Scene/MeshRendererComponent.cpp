@@ -38,7 +38,8 @@ namespace NS::Scene
     void MeshRendererComponent::Draw(const RenderContext& context)
     {
         GameObject* owner = Owner();
-        if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
+        if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr ||
+            context.renderer == nullptr)
             return;
 
         // 直接描画される mesh の InputLayout を初回描画時に生成 (冪等)。 instanced block は
@@ -56,8 +57,8 @@ namespace NS::Scene
         cb.lightColor = m_lightColor;
         cb.ambientColor = m_ambientColor;
 
-        m_material->SetParams(cb);
-        m_material->Bind();
-        m_mesh->Draw();
+        m_material->SetParams(*context.renderer, cb);
+        m_material->Bind(*context.renderer);
+        m_mesh->Draw(*context.renderer);
     }
 } // namespace NS::Scene

@@ -12,7 +12,6 @@ namespace NS::Graphics
     struct RenderTarget::Impl
     {
         ComPtr<ID3D11Device> device;
-        ComPtr<ID3D11DeviceContext> context;
         ComPtr<IDXGISwapChain> swapchain;
 
         ComPtr<ID3D11RenderTargetView> rtv;
@@ -117,7 +116,6 @@ namespace NS::Graphics
 
         m_pImpl->swapchain = swapchain;
         m_pImpl->device = device;
-        m_pImpl->context = context;
         m_pImpl->hasDepth = createDepth;
 
         int w = 0;
@@ -138,60 +136,40 @@ namespace NS::Graphics
         return true;
     }
 
-    void RenderTarget::Clear(float r, float g, float b, float a, float depth) noexcept
+    void RenderTarget::Clear(ID3D11DeviceContext* context, float r, float g, float b, float a, float depth) noexcept
     {
-        if (!m_pImpl->context)
+        if (context == nullptr)
         {
             return;
         }
         if (m_pImpl->rtv)
         {
             const float color[4] = {r, g, b, a};
-            m_pImpl->context->ClearRenderTargetView(m_pImpl->rtv.Get(), color);
+            context->ClearRenderTargetView(m_pImpl->rtv.Get(), color);
         }
         if (m_pImpl->dsv)
         {
-            m_pImpl->context->ClearDepthStencilView(
-                m_pImpl->dsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, depth, 0);
+            context->ClearDepthStencilView(m_pImpl->dsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, depth, 0);
         }
     }
 
-    void RenderTarget::Bind() noexcept
-    {
-        if (!m_pImpl->context || !m_pImpl->rtv)
-        {
-            return;
-        }
-        ID3D11RenderTargetView* rtvs[1] = {m_pImpl->rtv.Get()};
-        m_pImpl->context->OMSetRenderTargets(1, rtvs, m_pImpl->dsv.Get());
-
-        D3D11_VIEWPORT vp{};
-        vp.TopLeftX = 0.0f;
-        vp.TopLeftY = 0.0f;
-        vp.Width = static_cast<float>(m_pImpl->size.width);
-        vp.Height = static_cast<float>(m_pImpl->size.height);
-        vp.MinDepth = 0.0f;
-        vp.MaxDepth = 1.0f;
-        m_pImpl->context->RSSetViewports(1, &vp);
-    }
-
-    void RenderTarget::Resize(::NS::Math::Size2D size) noexcept
+    void RenderTarget::Resize(ID3D11DeviceContext* context, ::NS::Math::Size2D size) noexcept
     {
         if (size.width <= 0 || size.height <= 0)
         {
             return;
         }
-        if (!m_pImpl->swapchain || !m_pImpl->device || !m_pImpl->context)
+        if (!m_pImpl->swapchain || !m_pImpl->device || context == nullptr)
         {
             return;
         }
 
-        m_pImpl->context->OMSetRenderTargets(0, nullptr, nullptr);
+        context->OMSetRenderTargets(0, nullptr, nullptr);
         m_pImpl->rtv.Reset();
         m_pImpl->dsv.Reset();
         m_pImpl->depthTex.Reset();
-        m_pImpl->context->ClearState();
-        m_pImpl->context->Flush();
+        context->ClearState();
+        context->Flush();
 
         HRESULT hr = m_pImpl->swapchain->ResizeBuffers(
             0, static_cast<UINT>(size.width), static_cast<UINT>(size.height), DXGI_FORMAT_UNKNOWN, 0);
@@ -224,5 +202,28 @@ namespace NS::Graphics
     {
         return m_pImpl->hasDepth;
     }
+
+    namespace detail
+    {
+        void SetRenderTarget(ID3D11DeviceContext* context, RenderTarget& renderTarget) noexcept
+        {
+            const auto& impl = renderTarget.m_pImpl;
+            if (context == nullptr || !impl || !impl->rtv)
+            {
+                return;
+            }
+            ID3D11RenderTargetView* rtvs[1] = {impl->rtv.Get()};
+            context->OMSetRenderTargets(1, rtvs, impl->dsv.Get());
+
+            D3D11_VIEWPORT vp{};
+            vp.TopLeftX = 0.0f;
+            vp.TopLeftY = 0.0f;
+            vp.Width = static_cast<float>(impl->size.width);
+            vp.Height = static_cast<float>(impl->size.height);
+            vp.MinDepth = 0.0f;
+            vp.MaxDepth = 1.0f;
+            context->RSSetViewports(1, &vp);
+        }
+    } // namespace detail
 
 } // namespace NS::Graphics

@@ -10,7 +10,7 @@
 /// 正規化される (アセット側で揃える運用)
 /// 読込失敗時は 1x1 magenta fallback を slice 0 に詰め、 `IsUsingFallback()` が true に
 /// なる (Texture と同じ流派)
-/// 依存: Renderer の Device / DeviceContext を内部で保持するため、 Renderer より先に破棄すること
+/// 依存: 生成に Renderer の Device / Context を使う (context は保持しない、 バインドは Renderer 経由)
 
 #include "Framework/Graphics/Buffer.h"
 
@@ -20,6 +20,7 @@
 #include <vector>
 
 struct ID3D11ShaderResourceView;
+struct ID3D11DeviceContext;
 
 namespace NS::Graphics
 {
@@ -31,6 +32,13 @@ namespace NS::Graphics
     {
         /// TextureArray 内部の SRV を取得 (Material 等が PSSetShaderResources 等に使用)
         [[nodiscard]] ID3D11ShaderResourceView* GetSrv(TextureArray& textureArray) noexcept;
+
+        /// TextureArray の SRV を context の slot + ステージ (VS/PS/GS) にバインドする
+        /// 無効な textureArray または context==nullptr は no-op。 Renderer::BindTextureArray が本関数を呼ぶ
+        void BindTextureArray(ID3D11DeviceContext* context,
+                              const TextureArray& textureArray,
+                              unsigned slot,
+                              ShaderStage stages) noexcept;
     } // namespace detail
 
     /// TextureArray 構築パラメータ
@@ -46,7 +54,8 @@ namespace NS::Graphics
     /// 1 つの `ID3D11Texture2D` (ArraySize=N) を保有する Texture2DArray ラッパ
     /// block 描画専用、 cubemap / 3D volume は対象外
     /// 全 slice 同一 width / height / format / mip count が D3D11 仕様で必須
-    /// 依存: Renderer の DeviceContext を内部で保持するため、 Renderer より先に破棄すること
+    /// 依存: 生成に Renderer の Device / Context を使う。 context は保持せず、 バインドは Renderer::BindTextureArray
+    /// 経由
     class TextureArray
     {
     public:
@@ -75,14 +84,14 @@ namespace NS::Graphics
         /// fallback 経路では 1 (magenta slice のみ) を返す
         [[nodiscard]] std::uint16_t SliceCount() const noexcept;
 
-        /// SRV を指定スロット + 対象ステージにバインドする
-        /// 内部 SRV は ArraySize>1 の Texture2DArray として bind され、 HLSL 側は `Texture2DArray` で受ける
-        void Bind(unsigned slot, ShaderStage stages = ShaderStage::Pixel) const noexcept;
-
     private:
         std::unique_ptr<Impl> m_pImpl;
 
         friend ID3D11ShaderResourceView* detail::GetSrv(TextureArray& textureArray) noexcept;
+        friend void detail::BindTextureArray(ID3D11DeviceContext* context,
+                                             const TextureArray& textureArray,
+                                             unsigned slot,
+                                             ShaderStage stages) noexcept;
     };
 
 } // namespace NS::Graphics

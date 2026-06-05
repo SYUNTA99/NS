@@ -100,7 +100,7 @@ namespace NS::Graphics
         /// 描画コマンド: リソースを context にバインド/更新する
         /// バインドはここに集約し、リソース側は context を保持しない方針へ寄せていく
         void BindShader(Shader& shader) noexcept;
-        void BindTexture(Texture& texture, unsigned slot, ShaderStage stages) noexcept;
+        void BindTexture(const Texture& texture, unsigned slot, ShaderStage stages) noexcept;
         void BindTextureArray(TextureArray& texture, unsigned slot, ShaderStage stages) noexcept;
         void BindVertexBuffer(VertexBuffer& vertexBuffer, unsigned slot = 0) noexcept;
         void BindIndexBuffer(IndexBuffer& indexBuffer) noexcept;

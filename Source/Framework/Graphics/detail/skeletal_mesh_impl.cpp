@@ -68,6 +68,8 @@ namespace NS::Graphics
     struct SkeletalMesh::Impl
     {
         std::unique_ptr<ConstantBuffer> bonePaletteCB;
+        // パレットは CPU 側に持ち、 Draw のたびに GPU へアップロードする (context は保持しない)
+        BonePaletteCB palette;
         std::size_t boneCount = 0;
     };
 
@@ -117,12 +119,10 @@ namespace NS::Graphics
         m_pImpl->boneCount = (desc.boneCount < kMaxBones) ? desc.boneCount : kMaxBones;
 
         // 既定は恒等パレットで初期化し、 pose 未指定でも bind pose 相当で描画できるようにする
+        FillIdentity(m_pImpl->palette);
         auto cb = std::make_unique<ConstantBuffer>(renderer, sizeof(BonePaletteCB));
         if (cb->IsValid())
         {
-            BonePaletteCB initial;
-            FillIdentity(initial);
-            cb->Update(initial);
             m_pImpl->bonePaletteCB = std::move(cb);
         }
         else
@@ -138,12 +138,11 @@ namespace NS::Graphics
         if (!m_pImpl || !m_pImpl->bonePaletteCB)
             return;
 
-        BonePaletteCB cb;
-        FillIdentity(cb);
+        FillIdentity(m_pImpl->palette);
         const std::size_t count = (palette.size() < kMaxBones) ? palette.size() : kMaxBones;
         for (std::size_t i = 0; i < count; ++i)
         {
-            cb.bones[i] = palette[i];
+            m_pImpl->palette.bones[i] = palette[i];
         }
         if (palette.size() > kMaxBones)
         {
@@ -152,18 +151,18 @@ namespace NS::Graphics
                          palette.size(),
                          kMaxBones);
         }
-        m_pImpl->bonePaletteCB->Update(cb);
     }
 
-    void SkeletalMesh::Draw() noexcept
+    void SkeletalMesh::Draw(Renderer& renderer) noexcept
     {
         if (!IsValid())
             return;
         if (m_pImpl && m_pImpl->bonePaletteCB)
         {
-            m_pImpl->bonePaletteCB->Bind(kBonePaletteSlot, ShaderStage::Vertex);
+            renderer.UpdateBuffer(*m_pImpl->bonePaletteCB, &m_pImpl->palette, sizeof(BonePaletteCB));
+            renderer.BindConstantBuffer(*m_pImpl->bonePaletteCB, kBonePaletteSlot, ShaderStage::Vertex);
         }
-        Mesh::Draw();
+        Mesh::Draw(renderer);
     }
 
     std::vector<InputElement> SkeletalMesh::SkinnedInputLayout()

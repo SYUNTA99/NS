@@ -9,7 +9,7 @@
 /// 揃え、 `static_assert` で C++ 側 stride と HLSL InputLayout の AlignedByteOffset が
 /// ずれない事をコンパイル時に保証する。 device 未提供 (テスト用ヘッドレス) 環境でも
 /// `BucketCount()` / `LastFrameDrawCallCount()` が観測できる薄い実装に保つ
-/// 依存: Renderer の Device / DeviceContext を内部で保持するため Renderer より先に破棄すること
+/// GPU バインドは FlushAll(Renderer&) に渡す Renderer 経由で行い、 DeviceContext は保持しない
 
 #include "Framework/Math/Math.h"
 
@@ -72,9 +72,9 @@ namespace NS::Graphics
         /// ownership は呼出側、 batcher は raw ポインタを bucket key として保持するのみ
         void Submit(StaticMesh* mesh, Material* material, const BlockInstance& instance);
 
-        /// 全 bucket を順次 `DrawIndexedInstanced` で発行する
+        /// 全 bucket を順次 `DrawIndexedInstanced` で発行する (バインドは renderer 経由)
         /// 発行後に `LastFrameDrawCallCount()` が更新される
-        void FlushAll() noexcept;
+        void FlushAll(Renderer& renderer) noexcept;
 
         /// 現フレームの bucket 数 (テスト観測用)
         [[nodiscard]] std::size_t BucketCount() const noexcept;

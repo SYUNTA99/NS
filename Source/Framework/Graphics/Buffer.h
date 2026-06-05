@@ -4,15 +4,16 @@
 /// @brief NS::Graphics::VertexBuffer / IndexBuffer / ConstantBuffer — D3D11 Buffer ラッパ
 ///
 /// @details Static / Dynamic の使い分けは `BufferUsage` で指定。 ConstantBuffer は
-/// 常に Dynamic 固定、 byteSize は内部で 16-byte 境界に切り上げ。 `Update<T>` は
-/// `static_assert` で `sizeof(T) % 16 == 0` をコンパイル時に強制する。 Index 幅は
-/// `IndexFormat` (UInt16 / UInt32)、 公開ヘッダから DXGI_FORMAT を漏らさない
-/// `ShaderStage` bitflag で ConstantBuffer の Bind 対象ステージを切替える
+/// 常に Dynamic 固定、 byteSize は内部で 16-byte 境界に切り上げ。 ConstantBuffer の
+/// 型付き更新 `detail::UpdateConstantBuffer<T>` は `sizeof(T) % 16 == 0` をコンパイル時に強制する
+/// Index 幅は `IndexFormat` (UInt16 / UInt32)、 公開ヘッダから DXGI_FORMAT を漏らさない
+/// ConstantBuffer のバインド/更新は Renderer 経由 (`Renderer::BindConstantBuffer` / `UpdateBuffer`)
 
 #include <cstddef>
 #include <memory>
 
 struct ID3D11Buffer;
+struct ID3D11DeviceContext;
 
 namespace NS::Graphics
 {
@@ -21,12 +22,47 @@ namespace NS::Graphics
     class VertexBuffer;
     class IndexBuffer;
     class ConstantBuffer;
+    enum class ShaderStage : unsigned;
 
     namespace detail
     {
         [[nodiscard]] ID3D11Buffer* GetNative(VertexBuffer& vb) noexcept;
         [[nodiscard]] ID3D11Buffer* GetNative(IndexBuffer& ib) noexcept;
         [[nodiscard]] ID3D11Buffer* GetNative(ConstantBuffer& cb) noexcept;
+
+        /// VertexBuffer を context の slot にバインドする (IASetVertexBuffers)。 無効な vb / context==nullptr は no-op
+        void BindVertexBuffer(ID3D11DeviceContext* context, VertexBuffer& vb, unsigned slot) noexcept;
+
+        /// Dynamic VertexBuffer を Map/Discard で更新する。 Static や容量超過は NS_LOG_ERROR + no-op
+        void UpdateVertexBufferRaw(ID3D11DeviceContext* context,
+                                   VertexBuffer& vb,
+                                   const void* data,
+                                   std::size_t bytes) noexcept;
+
+        /// IndexBuffer を context にバインドする (IASetIndexBuffer、 幅は Format から決定)。 無効/null は no-op
+        void BindIndexBuffer(ID3D11DeviceContext* context, IndexBuffer& ib) noexcept;
+
+        /// ConstantBuffer を context のステージ (VS/PS/GS、 HasStage で選択) にバインドする
+        /// 無効な cb または context==nullptr は no-op。 Renderer::BindConstantBuffer が本関数を呼ぶ
+        void BindConstantBuffer(ID3D11DeviceContext* context,
+                                ConstantBuffer& cb,
+                                unsigned slot,
+                                ShaderStage stages) noexcept;
+
+        /// ConstantBuffer を Map/Discard で更新する (bytes は 16-byte 倍数かつ ByteSize 以内)
+        void UpdateConstantBufferRaw(ID3D11DeviceContext* context,
+                                     ConstantBuffer& cb,
+                                     const void* data,
+                                     std::size_t bytes) noexcept;
+
+        /// 型付き ConstantBuffer 更新。 sizeof(T) が 16-byte 倍数であることをコンパイル時に強制する
+        template <typename T>
+        void UpdateConstantBuffer(ID3D11DeviceContext* context, ConstantBuffer& cb, const T& data) noexcept
+        {
+            static_assert((sizeof(T) % 16) == 0,
+                          "ConstantBuffer の更新は sizeof(T) が 16 byte 倍数で alignas(16) 必須");
+            UpdateConstantBufferRaw(context, cb, &data, sizeof(T));
+        }
     } // namespace detail
 
     /// バッファの D3D11 USAGE 切替。ConstantBuffer は常に Dynamic 固定なので Desc 引数なし
@@ -82,8 +118,8 @@ namespace NS::Graphics
         BufferUsage usage = BufferUsage::Static;
     };
 
-    /// 頂点バッファ。stride は 1 頂点バイト数、Bind は IASetVertexBuffers に対応
-    /// Static 用途で Update を呼ぶと NS_LOG_ERROR + 早期 return (D3D11 ランタイムエラー回避)
+    /// 頂点バッファ。stride は 1 頂点バイト数、 バインド/更新は Renderer 経由 (本型は GPU バッファのみ保持)
+    /// Static 用途で更新を呼ぶと NS_LOG_ERROR + 早期 return (D3D11 ランタイムエラー回避)
     class VertexBuffer
     {
     public:
@@ -101,19 +137,18 @@ namespace NS::Graphics
         [[nodiscard]] std::size_t Stride() const noexcept;
         [[nodiscard]] std::size_t VertexCount() const noexcept;
 
-        void Bind(unsigned slot = 0) noexcept;
-
-        template <typename T> void Update(const T& data) noexcept { UpdateRaw(&data, sizeof(T)); }
-
-        void UpdateRaw(const void* data, std::size_t bytes) noexcept;
-
     private:
         std::unique_ptr<Impl> m_pImpl;
 
         friend ID3D11Buffer* detail::GetNative(VertexBuffer& vb) noexcept;
+        friend void detail::BindVertexBuffer(ID3D11DeviceContext* context, VertexBuffer& vb, unsigned slot) noexcept;
+        friend void detail::UpdateVertexBufferRaw(ID3D11DeviceContext* context,
+                                                  VertexBuffer& vb,
+                                                  const void* data,
+                                                  std::size_t bytes) noexcept;
     };
 
-    /// インデックスバッファ。Format で R16/R32 を切替、Bind は IASetIndexBuffer に対応
+    /// インデックスバッファ。Format で R16/R32 を切替、 バインドは Renderer 経由 (本型は GPU バッファのみ保持)
     class IndexBuffer
     {
     public:
@@ -131,20 +166,15 @@ namespace NS::Graphics
         [[nodiscard]] IndexFormat Format() const noexcept;
         [[nodiscard]] std::size_t IndexCount() const noexcept;
 
-        void Bind() noexcept;
-
-        template <typename T> void Update(const T& data) noexcept { UpdateRaw(&data, sizeof(T)); }
-
-        void UpdateRaw(const void* data, std::size_t bytes) noexcept;
-
     private:
         std::unique_ptr<Impl> m_pImpl;
 
         friend ID3D11Buffer* detail::GetNative(IndexBuffer& ib) noexcept;
+        friend void detail::BindIndexBuffer(ID3D11DeviceContext* context, IndexBuffer& ib) noexcept;
     };
 
     /// 定数バッファ。常に Dynamic、byteSize は 16-byte 境界に切り上げて確保される
-    /// Update<T> は static_assert で T 総サイズが 16 倍数であることをコンパイル時に強制
+    /// バインド/更新は Renderer 経由 (`Renderer::BindConstantBuffer` / `UpdateBuffer`)、 本型は GPU バッファのみ保持
     /// alignas(16) と手動 padding (Vector3 a; float _pad;) で internal alignment を担保すること
     class ConstantBuffer
     {
@@ -162,21 +192,18 @@ namespace NS::Graphics
         [[nodiscard]] bool IsValid() const noexcept;
         [[nodiscard]] std::size_t ByteSize() const noexcept;
 
-        void Bind(unsigned slot, ShaderStage stages) noexcept;
-
-        template <typename T> void Update(const T& data) noexcept
-        {
-            static_assert((sizeof(T) % 16) == 0,
-                          "ConstantBuffer の Update<T> は sizeof(T) が 16 byte 倍数で alignas(16) 必須");
-            UpdateRaw(&data, sizeof(T));
-        }
-
-        void UpdateRaw(const void* data, std::size_t bytes) noexcept;
-
     private:
         std::unique_ptr<Impl> m_pImpl;
 
         friend ID3D11Buffer* detail::GetNative(ConstantBuffer& cb) noexcept;
+        friend void detail::BindConstantBuffer(ID3D11DeviceContext* context,
+                                               ConstantBuffer& cb,
+                                               unsigned slot,
+                                               ShaderStage stages) noexcept;
+        friend void detail::UpdateConstantBufferRaw(ID3D11DeviceContext* context,
+                                                    ConstantBuffer& cb,
+                                                    const void* data,
+                                                    std::size_t bytes) noexcept;
     };
 
 } // namespace NS::Graphics

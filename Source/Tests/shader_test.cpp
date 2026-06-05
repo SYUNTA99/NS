@@ -90,7 +90,7 @@ TEST_F(ShaderLoggerTest, RealVertexShaderCompiles)
     // 頂点ステージは InputLayout 用の VS バイトコードを持つ
     EXPECT_FALSE(NS::Graphics::detail::GetVertexShaderBytecode(vs).empty());
 
-    vs.Bind();
+    renderer.BindShader(vs);
     SUCCEED();
 }
 
@@ -109,6 +109,6 @@ TEST_F(ShaderLoggerTest, RealPixelShaderCompiles)
     // ピクセルステージは VS バイトコードを持たない
     EXPECT_TRUE(NS::Graphics::detail::GetVertexShaderBytecode(ps).empty());
 
-    ps.Bind();
+    renderer.BindShader(ps);
     SUCCEED();
 }

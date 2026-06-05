@@ -181,7 +181,7 @@ void LevelEditorScene::OnStart()
     if (m_skybox->IsValid())
     {
         const auto kurtDir = exeDir / "Assets" / "Skybox" / "kurt";
-        if (!m_skybox->LoadCubemap(kurtDir))
+        if (!m_skybox->LoadCubemap(renderer, kurtDir))
             NS_LOG_WARN(::NS::Core::LogCat::Game,
                         "LevelEditorScene: kurt cubemap 読込失敗、 magenta fallback で続行: {}",
                         kurtDir.string());
@@ -604,7 +604,7 @@ void LevelEditorScene::OnRender()
         blockCB.lightColor = theme.lightColor;
         blockCB.ambientColor = theme.ambientColor;
         if (m_blockMaterial)
-            m_blockMaterial->SetParams(blockCB);
+            m_blockMaterial->SetParams(*ctx.renderer, blockCB);
 
         m_instanceBatcher->BeginFrame();
         for (auto& block : m_blocks)
@@ -645,8 +645,8 @@ void LevelEditorScene::OnRender()
         // TextureArray を t0 に bind してから FlushAll。 Material::Bind では slot 0 を触っていない
         // (SetTexture せず構築した) ため、 ここで bind した SRV が bucket 描画まで残る
         if (m_blockTextures)
-            m_blockTextures->Bind(0u, NS::Graphics::ShaderStage::Pixel);
-        m_instanceBatcher->FlushAll();
+            ctx.renderer->BindTextureArray(*m_blockTextures, 0u, NS::Graphics::ShaderStage::Pixel);
+        m_instanceBatcher->FlushAll(*ctx.renderer);
     }
 
     for (NS::Scene::IRenderable* r : m_renderList)
@@ -669,7 +669,7 @@ void LevelEditorScene::OnRender()
             const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
             const auto absPath =
                 theme.skyboxCubemapPath.is_absolute() ? theme.skyboxCubemapPath : exeDir / theme.skyboxCubemapPath;
-            if (m_skybox->LoadCubemap(absPath))
+            if (m_skybox->LoadCubemap(*ctx.renderer, absPath))
             {
                 m_loadedSkyboxPath = theme.skyboxCubemapPath;
             }
@@ -689,7 +689,7 @@ void LevelEditorScene::OnRender()
         viewNoTranslate._42 = 0.0f;
         viewNoTranslate._43 = 0.0f;
         const NS::Math::Matrix viewProjNoTranslate = viewNoTranslate * cam.Projection();
-        m_skybox->Render(viewProjNoTranslate);
+        m_skybox->Render(*ctx.renderer, viewProjNoTranslate);
     }
 
     if (editActive)

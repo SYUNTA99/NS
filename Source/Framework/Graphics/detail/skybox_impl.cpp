@@ -58,7 +58,6 @@ namespace NS::Graphics
     struct Skybox::Impl
     {
         ComPtr<ID3D11Device> device;
-        ComPtr<ID3D11DeviceContext> context;
 
         // cube mesh / shader / sampler / states
         std::unique_ptr<StaticMesh> cubeMesh;
@@ -372,7 +371,6 @@ namespace NS::Graphics
             return;
         }
         m_pImpl->device = device;
-        m_pImpl->context = context;
 
         // unit cube mesh。 inside-out 描画なのでサイズは何でも良いが、 1m 立方 (half=0.5) で統一
         auto geom = MakeCube({0.5f, 0.5f, 0.5f});
@@ -427,9 +425,9 @@ namespace NS::Graphics
 
     Skybox::~Skybox() = default;
 
-    bool Skybox::LoadCubemap(const std::filesystem::path& path)
+    bool Skybox::LoadCubemap(Renderer& renderer, const std::filesystem::path& path)
     {
-        if (!m_pImpl || !m_pImpl->device || !m_pImpl->context)
+        if (!m_pImpl || !m_pImpl->device)
             return false;
 
         ComPtr<ID3D11ShaderResourceView> newSrv;
@@ -445,7 +443,8 @@ namespace NS::Graphics
             std::error_code ec;
             if (std::filesystem::is_directory(path, ec))
             {
-                loaded = LoadSixFacePngCubemap(m_pImpl->device.Get(), m_pImpl->context.Get(), path, newSrv);
+                auto* context = detail::GetContext(renderer);
+                loaded = (context != nullptr) && LoadSixFacePngCubemap(m_pImpl->device.Get(), context, path, newSrv);
             }
             else
             {
@@ -468,15 +467,17 @@ namespace NS::Graphics
         return false;
     }
 
-    void Skybox::Render(const NS::Math::Matrix& viewProjNoTranslate) noexcept
+    void Skybox::Render(Renderer& renderer, const NS::Math::Matrix& viewProjNoTranslate) noexcept
     {
-        if (!m_pImpl || !m_pImpl->valid || !m_pImpl->context)
+        if (!m_pImpl || !m_pImpl->valid)
             return;
-        auto* ctx = m_pImpl->context.Get();
+        auto* ctx = detail::GetContext(renderer);
+        if (ctx == nullptr)
+            return;
 
         SkyboxCB cbData{};
         cbData.viewProj = viewProjNoTranslate;
-        m_pImpl->cb->Update(cbData);
+        renderer.UpdateBuffer(*m_pImpl->cb, &cbData, sizeof(cbData));
 
         // 既存 depth/raster state を退避して draw 後に復元する
         ComPtr<ID3D11DepthStencilState> prevDss;
@@ -489,9 +490,9 @@ namespace NS::Graphics
         ctx->OMSetDepthStencilState(m_pImpl->depthState.Get(), 0);
         ctx->RSSetState(m_pImpl->rasterState.Get());
 
-        m_pImpl->vs->Bind();
-        m_pImpl->ps->Bind();
-        m_pImpl->cb->Bind(0, ShaderStage::Vertex);
+        renderer.BindShader(*m_pImpl->vs);
+        renderer.BindShader(*m_pImpl->ps);
+        renderer.BindConstantBuffer(*m_pImpl->cb, 0, ShaderStage::Vertex);
 
         ID3D11ShaderResourceView* srvs[1] = {m_pImpl->cubemapSrv.Get()};
         ctx->PSSetShaderResources(0, 1, srvs);
@@ -500,7 +501,7 @@ namespace NS::Graphics
         ctx->PSSetSamplers(0, 1, samplers);
 
         // Mesh::Draw は VB / IB / topology / DrawIndexed を一括実行する
-        m_pImpl->cubeMesh->Draw();
+        m_pImpl->cubeMesh->Draw(renderer);
 
         // バインドした SRV を解除しないと、 後段の通常 Material::Bind が同じ t0 に
         // Texture2D を再バインドする際に D3D11 ランタイムが警告を出すことがある

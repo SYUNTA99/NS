@@ -202,8 +202,8 @@ namespace NS::Graphics
         {
             return;
         }
-        m_pImpl->mainRT->Clear(r, g, b, a);
-        m_pImpl->mainRT->Bind();
+        m_pImpl->mainRT->Clear(m_pImpl->context.Get(), r, g, b, a);
+        SetRenderTarget(*m_pImpl->mainRT);
     }
 
     void Renderer::EndFrame() noexcept
@@ -228,7 +228,7 @@ namespace NS::Graphics
         }
         if (m_pImpl->mainRT)
         {
-            m_pImpl->mainRT->Resize(size);
+            m_pImpl->mainRT->Resize(m_pImpl->context.Get(), size);
         }
     }
 
@@ -265,39 +265,66 @@ namespace NS::Graphics
 
     void Renderer::BindShader(Shader& shader) noexcept
     {
-        shader.Bind();
+        if (m_pImpl)
+        {
+            detail::BindShader(m_pImpl->context.Get(), shader);
+        }
     }
-    void Renderer::BindTexture(Texture& texture, unsigned slot, ShaderStage stages) noexcept
+    void Renderer::BindTexture(const Texture& texture, unsigned slot, ShaderStage stages) noexcept
     {
-        texture.Bind(slot, stages);
+        if (m_pImpl)
+        {
+            detail::BindTexture(m_pImpl->context.Get(), texture, slot, stages);
+        }
     }
     void Renderer::BindTextureArray(TextureArray& texture, unsigned slot, ShaderStage stages) noexcept
     {
-        texture.Bind(slot, stages);
+        if (m_pImpl)
+        {
+            detail::BindTextureArray(m_pImpl->context.Get(), texture, slot, stages);
+        }
     }
     void Renderer::BindVertexBuffer(VertexBuffer& vertexBuffer, unsigned slot) noexcept
     {
-        vertexBuffer.Bind(slot);
+        if (m_pImpl)
+        {
+            detail::BindVertexBuffer(m_pImpl->context.Get(), vertexBuffer, slot);
+        }
     }
     void Renderer::BindIndexBuffer(IndexBuffer& indexBuffer) noexcept
     {
-        indexBuffer.Bind();
+        if (m_pImpl)
+        {
+            detail::BindIndexBuffer(m_pImpl->context.Get(), indexBuffer);
+        }
     }
     void Renderer::BindConstantBuffer(ConstantBuffer& constantBuffer, unsigned slot, ShaderStage stages) noexcept
     {
-        constantBuffer.Bind(slot, stages);
+        if (m_pImpl)
+        {
+            detail::BindConstantBuffer(m_pImpl->context.Get(), constantBuffer, slot, stages);
+        }
     }
     void Renderer::SetRenderTarget(RenderTarget& renderTarget) noexcept
     {
-        renderTarget.Bind();
+        if (m_pImpl)
+        {
+            detail::SetRenderTarget(m_pImpl->context.Get(), renderTarget);
+        }
     }
     void Renderer::UpdateBuffer(VertexBuffer& vertexBuffer, const void* data, std::size_t bytes) noexcept
     {
-        vertexBuffer.UpdateRaw(data, bytes);
+        if (m_pImpl)
+        {
+            detail::UpdateVertexBufferRaw(m_pImpl->context.Get(), vertexBuffer, data, bytes);
+        }
     }
     void Renderer::UpdateBuffer(ConstantBuffer& constantBuffer, const void* data, std::size_t bytes) noexcept
     {
-        constantBuffer.UpdateRaw(data, bytes);
+        if (m_pImpl)
+        {
+            detail::UpdateConstantBufferRaw(m_pImpl->context.Get(), constantBuffer, data, bytes);
+        }
     }
     void Renderer::DrawIndexed(unsigned indexCount) noexcept
     {

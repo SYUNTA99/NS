@@ -91,6 +91,6 @@ TEST_F(SkyboxRenderingTest, RenderWithFallbackDoesNotCrash)
 
     // LoadCubemap を呼ばずに Render() しても fallback が描かれてクラッシュしないこと
     NS::Math::Matrix vpNoTranslate = NS::Math::Matrix::Identity;
-    skybox.Render(vpNoTranslate);
+    skybox.Render(renderer, vpNoTranslate);
     SUCCEED();
 }

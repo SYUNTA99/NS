@@ -117,7 +117,7 @@ TEST_F(BufferLoggerTest, VertexBufferDynamicUpdateDoesNotCrash)
     ASSERT_TRUE(vb.IsValid());
 
     verts[0].pos[0] = 5.0f;
-    vb.UpdateRaw(verts.data(), verts.size() * sizeof(TestVertex));
+    renderer.UpdateBuffer(vb, verts.data(), verts.size() * sizeof(TestVertex));
     SUCCEED();
 }
 
@@ -138,7 +138,7 @@ TEST_F(BufferLoggerTest, VertexBufferStaticUpdateIsNoop)
     VertexBuffer vb(renderer, desc);
     ASSERT_TRUE(vb.IsValid());
 
-    vb.UpdateRaw(verts.data(), verts.size() * sizeof(TestVertex));
+    renderer.UpdateBuffer(vb, verts.data(), verts.size() * sizeof(TestVertex));
     SUCCEED();
 }
 
@@ -221,7 +221,7 @@ TEST_F(BufferLoggerTest, ConstantBufferUpdate)
     data.values[1] = 2.0f;
     data.values[2] = 3.0f;
     data.values[3] = 4.0f;
-    cb.Update(data);
+    renderer.UpdateBuffer(cb, &data, sizeof(data));
     SUCCEED();
 }
 
@@ -251,8 +251,8 @@ TEST_F(BufferLoggerTest, BufferBindsDoNotCrash)
     ConstantBuffer cb(renderer, sizeof(TestCB));
     ASSERT_TRUE(cb.IsValid());
 
-    vb.Bind(0);
-    ib.Bind();
-    cb.Bind(0, ShaderStage::Vertex | ShaderStage::Pixel);
+    renderer.BindVertexBuffer(vb, 0);
+    renderer.BindIndexBuffer(ib);
+    renderer.BindConstantBuffer(cb, 0, ShaderStage::Vertex | ShaderStage::Pixel);
     SUCCEED();
 }

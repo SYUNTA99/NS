@@ -111,7 +111,7 @@ TEST_F(InstanceBatcherTest, DrawCallBudgetUnder200)
         batcher.Submit(FakeMesh(bucketIndex), FakeMaterial(bucketIndex), inst);
     }
 
-    batcher.FlushAll();
+    batcher.FlushAll(renderer);
 
     EXPECT_LE(batcher.LastFrameDrawCallCount(), static_cast<std::size_t>(200))
         << "1000 block / 48 unique (mesh, material) bucket で draw call は 200 以下";
@@ -129,7 +129,7 @@ TEST_F(InstanceBatcherTest, EmptyBucketsAreSkipped)
     InstanceBatcher batcher(renderer);
     NS::Graphics::detail::SetCountOnlyMode(batcher, true);
     batcher.BeginFrame();
-    batcher.FlushAll();
+    batcher.FlushAll(renderer);
 
     EXPECT_EQ(batcher.BucketCount(), static_cast<std::size_t>(0));
     EXPECT_EQ(batcher.LastFrameDrawCallCount(), static_cast<std::size_t>(0));

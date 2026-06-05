@@ -22,7 +22,6 @@ namespace NS::Graphics
     {
         ComPtr<ID3D11Resource> resource;
         ComPtr<ID3D11ShaderResourceView> srv;
-        ComPtr<ID3D11DeviceContext> context;
         ::NS::Math::Size2D size{0, 0};
         bool fallback = false;
     };
@@ -179,7 +178,6 @@ namespace NS::Graphics
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Texture: Renderer の Device / Context が無効");
             return;
         }
-        m_pImpl->context = context;
 
         bool loaded = false;
         if (!desc.path.empty())
@@ -228,8 +226,6 @@ namespace NS::Graphics
         int fbH = 0;
         if (!CreateMagentaFallback(device, m_pImpl->resource, m_pImpl->srv, fbW, fbH))
         {
-            // fallback も失敗したら IsValid()==false、context だけ残らないよう統一クリアする
-            m_pImpl->context.Reset();
             return;
         }
         m_pImpl->size = ::NS::Math::Size2D{fbW, fbH};
@@ -255,32 +251,35 @@ namespace NS::Graphics
         return m_pImpl && m_pImpl->fallback;
     }
 
-    void Texture::Bind(unsigned slot, ShaderStage stages) const noexcept
-    {
-        if (!IsValid() || !m_pImpl->context)
-        {
-            return;
-        }
-        ID3D11ShaderResourceView* srvs[1] = {m_pImpl->srv.Get()};
-        if (HasStage(stages, ShaderStage::Vertex))
-        {
-            m_pImpl->context->VSSetShaderResources(slot, 1u, srvs);
-        }
-        if (HasStage(stages, ShaderStage::Pixel))
-        {
-            m_pImpl->context->PSSetShaderResources(slot, 1u, srvs);
-        }
-        if (HasStage(stages, ShaderStage::Geometry))
-        {
-            m_pImpl->context->GSSetShaderResources(slot, 1u, srvs);
-        }
-    }
-
     namespace detail
     {
         ID3D11ShaderResourceView* GetSrv(Texture& texture) noexcept
         {
             return texture.m_pImpl ? texture.m_pImpl->srv.Get() : nullptr;
+        }
+
+        void BindTexture(ID3D11DeviceContext* context,
+                         const Texture& texture,
+                         unsigned slot,
+                         ShaderStage stages) noexcept
+        {
+            if (context == nullptr || !texture.m_pImpl || !texture.m_pImpl->srv)
+            {
+                return;
+            }
+            ID3D11ShaderResourceView* srvs[1] = {texture.m_pImpl->srv.Get()};
+            if (HasStage(stages, ShaderStage::Vertex))
+            {
+                context->VSSetShaderResources(slot, 1u, srvs);
+            }
+            if (HasStage(stages, ShaderStage::Pixel))
+            {
+                context->PSSetShaderResources(slot, 1u, srvs);
+            }
+            if (HasStage(stages, ShaderStage::Geometry))
+            {
+                context->GSSetShaderResources(slot, 1u, srvs);
+            }
         }
     } // namespace detail
 

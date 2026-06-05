@@ -54,7 +54,7 @@ TEST_F(CubemapLoaderTest, LoadKurt6FacePngSucceeds)
     const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
     const auto kurtDir = exeDir / "Assets" / "Skybox" / "kurt";
 
-    const bool ok = skybox.LoadCubemap(kurtDir);
+    const bool ok = skybox.LoadCubemap(renderer, kurtDir);
     EXPECT_TRUE(ok);
     EXPECT_TRUE(skybox.IsValid());
     EXPECT_FALSE(skybox.IsUsingFallback());
@@ -70,7 +70,7 @@ TEST_F(CubemapLoaderTest, LoadMissingPathFallsBack)
     Skybox skybox(renderer);
     const std::filesystem::path missing = "C:/__nonexistent_ns_skybox__";
 
-    const bool ok = skybox.LoadCubemap(missing);
+    const bool ok = skybox.LoadCubemap(renderer, missing);
     EXPECT_FALSE(ok);
     EXPECT_TRUE(skybox.IsUsingFallback());
     // fallback magenta cubemap が常に生成されているので SRV は非 null
@@ -93,7 +93,7 @@ TEST_F(CubemapLoaderTest, LoadDdsCubemapReturnsTextureCubeDim)
         GTEST_SKIP() << "skybox .dds 未配置 (texassemble 生成は後続タスクで対応)";
     }
 
-    const bool ok = skybox.LoadCubemap(ddsPath);
+    const bool ok = skybox.LoadCubemap(renderer, ddsPath);
     EXPECT_TRUE(ok);
     EXPECT_TRUE(skybox.IsValid());
 

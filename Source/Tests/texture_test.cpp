@@ -81,9 +81,9 @@ TEST_F(TextureLoggerTest, FallbackBindDoesNotCrash)
     Texture tex(renderer, desc);
     ASSERT_TRUE(tex.IsValid());
 
-    tex.Bind(0);
-    tex.Bind(1, ShaderStage::Pixel);
-    tex.Bind(0, ShaderStage::Vertex | ShaderStage::Pixel);
+    renderer.BindTexture(tex, 0, ShaderStage::Pixel);
+    renderer.BindTexture(tex, 1, ShaderStage::Pixel);
+    renderer.BindTexture(tex, 0, ShaderStage::Vertex | ShaderStage::Pixel);
     SUCCEED();
 }
 
