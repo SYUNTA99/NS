@@ -20,7 +20,8 @@ namespace NS::Graphics
     class InstanceBatcher;
     class Material;
     class StaticMesh;
-    class ShaderProgram;
+    class SkeletalMesh;
+    class Shader;
     class Skybox;
     class Texture;
     class TextureArray;
@@ -29,6 +30,9 @@ namespace NS::Graphics
 namespace NS::Scene
 {
     class IRenderable;
+    class GameObject;
+    class MeshRendererComponent;
+    class SkeletalAnimationComponent;
 } // namespace NS::Scene
 
 namespace NS::Scene
@@ -96,11 +100,15 @@ private:
     /// dirty flag 経由で変更を拾う (毎 frame の全 alloc churn を回避)
     void RebuildBlocksFromLevelData();
 
+    /// 仮 skinned キャラ (glTF) を毎ステップ進めて描画する debug hook
+    /// F1 再生/停止、 F2 クリップ送り、 F3/F4 速度。 ImGui 入力中はキー無効
+    void UpdateAnimatedModel();
+
     std::unique_ptr<NS::Graphics::StaticMesh> m_cubeMesh;
     std::unique_ptr<NS::Graphics::Texture> m_texture;
     std::unique_ptr<NS::Graphics::TextureArray> m_blockTextures;
-    std::unique_ptr<NS::Graphics::ShaderProgram> m_playerShader;
-    std::unique_ptr<NS::Graphics::ShaderProgram> m_blockShader;
+    std::unique_ptr<NS::Graphics::Shader> m_playerShader;
+    std::unique_ptr<NS::Graphics::Shader> m_blockShader;
     std::unique_ptr<NS::Graphics::Material> m_playerMaterial;
     std::unique_ptr<NS::Graphics::Material> m_blockMaterial;
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
@@ -116,7 +124,18 @@ private:
     // 掴まり系 mesh: 円柱を 1 度だけ生成して全 instance で共有する
     std::unique_ptr<NS::Graphics::StaticMesh> m_poleMesh;
 
+    // 仮 skinned キャラの描画リソース (mesh / shader / material)。 アセット未取得時は全て null
+    std::unique_ptr<NS::Graphics::SkeletalMesh> m_skinnedMesh;
+    std::unique_ptr<NS::Graphics::Shader> m_skinnedShader;
+    std::unique_ptr<NS::Graphics::Material> m_skinnedMaterial;
+
     std::unique_ptr<Player> m_player;
+
+    // 仮 skinned キャラ本体。 GameObject が MeshRenderer + SkeletalAnimation を所有し、 参照をキャッシュする
+    std::unique_ptr<NS::Scene::GameObject> m_animatedModel;
+    NS::Scene::MeshRendererComponent* m_animMesh = nullptr;
+    NS::Scene::SkeletalAnimationComponent* m_animPlayer = nullptr;
+    float m_animSpeed = 1.0f;
     std::vector<std::unique_ptr<Block>> m_blocks;
     std::vector<std::unique_ptr<SlopeBlock>> m_slopes;
     std::vector<std::unique_ptr<PoleBlock>> m_poles;

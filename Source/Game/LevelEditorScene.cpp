@@ -17,11 +17,13 @@
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
+#include "Framework/Graphics/GltfLoader.h"
 #include "Framework/Graphics/InstanceBatcher.h"
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
-#include "Framework/Graphics/ShaderProgram.h"
+#include "Framework/Graphics/Shader.h"
+#include "Framework/Graphics/SkeletalMesh.h"
 #include "Framework/Graphics/Skybox.h"
 #include "Framework/Graphics/StaticMesh.h"
 #include "Framework/Graphics/Texture.h"
@@ -34,6 +36,7 @@
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/MeshRendererComponent.h"
 #include "Framework/Scene/RenderContext.h"
+#include "Framework/Scene/SkeletalAnimationComponent.h"
 #include "Framework/Scene/Transform.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Editor/AutoTile.h"
@@ -48,6 +51,11 @@ namespace
 {
     constexpr NS::Math::Vector3 kPlayerColor{0.85f, 0.20f, 0.20f};
     constexpr NS::Math::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
+
+    // 仮 skinned キャラの接地点と目標身長。 bind 境界から一様スケールを自動算出するので
+    // 別キャラ (Mixamo 等) に差し替えてもモデル単位に依らず接地して概ね同じ高さに収まる
+    constexpr NS::Math::Vector3 kAnimModelFootAnchor{2.5f, 0.0f, 0.0f};
+    constexpr float kAnimModelTargetHeight = 1.8f;
 
     /// 編集体験の起点となる最小床。 LevelData に block 1 個 + spawn を仕込んでおく
     void SeedInitialLevel(NS::Game::Level::LevelData& level)
@@ -118,13 +126,13 @@ void LevelEditorScene::OnStart()
         NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelEditorScene: cube_test.png 読込失敗、magenta fallback で続行");
 
     // Player は単一 Texture2D 流派 (player.ps.hlsl) を維持
-    NS::Graphics::ShaderProgramDesc playerShaderDesc{};
+    NS::Graphics::ShaderDesc playerShaderDesc{};
     playerShaderDesc.vertexShaderPath = exeDir / "Shaders" / "standard.vs.hlsl";
     playerShaderDesc.pixelShaderPath = exeDir / "Shaders" / "player.ps.hlsl";
     playerShaderDesc.vertexEntryPoint = "VSMain";
     playerShaderDesc.pixelEntryPoint = "PSMain";
     playerShaderDesc.inputLayout = NS::Graphics::StaticMesh::StandardInputLayout();
-    m_playerShader = std::make_unique<NS::Graphics::ShaderProgram>(renderer, playerShaderDesc);
+    m_playerShader = std::make_unique<NS::Graphics::Shader>(renderer, playerShaderDesc);
     if (m_playerShader->IsUsingFallback())
         NS_LOG_WARN(::NS::Core::LogCat::Game,
                     "LevelEditorScene: player 用 HLSL 読込/コンパイル失敗、 magenta fallback で続行");
@@ -132,13 +140,13 @@ void LevelEditorScene::OnStart()
     // Block 側は instanced.vs.hlsl + standard.ps.hlsl (Texture2DArray) ペアを InstanceBatcher が
     // 内部で組む。 ここで作る m_blockShader は ConstantBuffer の搬入経路として使うだけで、
     // 実際の VS/PS は FlushAll 内で上書きされる
-    NS::Graphics::ShaderProgramDesc blockShaderDesc{};
+    NS::Graphics::ShaderDesc blockShaderDesc{};
     blockShaderDesc.vertexShaderPath = exeDir / "Shaders" / "standard.vs.hlsl";
     blockShaderDesc.pixelShaderPath = exeDir / "Shaders" / "player.ps.hlsl";
     blockShaderDesc.vertexEntryPoint = "VSMain";
     blockShaderDesc.pixelEntryPoint = "PSMain";
     blockShaderDesc.inputLayout = NS::Graphics::StaticMesh::StandardInputLayout();
-    m_blockShader = std::make_unique<NS::Graphics::ShaderProgram>(renderer, blockShaderDesc);
+    m_blockShader = std::make_unique<NS::Graphics::Shader>(renderer, blockShaderDesc);
 
     NS::Graphics::MaterialDesc matDesc{};
     matDesc.shader = m_playerShader.get();
@@ -262,6 +270,81 @@ void LevelEditorScene::OnStart()
     m_player->InputComp().SetActive(false);
     m_cameraRig->Camera().SetActive(false);
     m_cameraRig->Follow().SetActive(false);
+
+    // 仮 skinned キャラを編集・プレイ両モードで常時表示し、 アニメ再生を画面で確認できるようにする
+    // アセットが無ければ skip して通常進行。 後で同じパスに別キャラ (glTF) を置けば差し替わる
+    {
+        const auto modelPath = exeDir / "Assets" / "Models" / "CesiumMan.glb";
+        auto skinned = NS::Graphics::LoadGltfSkinnedMesh(modelPath.string());
+        if (skinned.IsValid())
+        {
+            NS::Graphics::SkinnedMeshDesc smd{};
+            smd.vertices = skinned.vertices.data();
+            smd.vertexCount = skinned.vertices.size();
+            smd.indices = skinned.indices.data();
+            smd.indexCount = skinned.indices.size();
+            smd.boneCount = skinned.skeleton.BoneCount();
+            m_skinnedMesh = std::make_unique<NS::Graphics::SkeletalMesh>(renderer, smd);
+
+            NS::Graphics::ShaderDesc skinnedShaderDesc{};
+            skinnedShaderDesc.vertexShaderPath = exeDir / "Shaders" / "skinned.vs.hlsl";
+            skinnedShaderDesc.pixelShaderPath = exeDir / "Shaders" / "player.ps.hlsl";
+            skinnedShaderDesc.vertexEntryPoint = "VSMain";
+            skinnedShaderDesc.pixelEntryPoint = "PSMain";
+            skinnedShaderDesc.inputLayout = NS::Graphics::SkeletalMesh::SkinnedInputLayout();
+            m_skinnedShader = std::make_unique<NS::Graphics::Shader>(renderer, skinnedShaderDesc);
+            if (m_skinnedShader->IsUsingFallback())
+                NS_LOG_WARN(::NS::Core::LogCat::Game,
+                            "LevelEditorScene: skinned 用 HLSL 読込/コンパイル失敗、 magenta fallback で続行");
+
+            NS::Graphics::MaterialDesc skinnedMatDesc{};
+            skinnedMatDesc.shader = m_skinnedShader.get();
+            skinnedMatDesc.constantBufferSize = sizeof(NS::Scene::FrameCB);
+            skinnedMatDesc.cbSlot = 0;
+            skinnedMatDesc.cbStages = NS::Graphics::ShaderStage::Vertex | NS::Graphics::ShaderStage::Pixel;
+            m_skinnedMaterial = std::make_unique<NS::Graphics::Material>(renderer, skinnedMatDesc);
+            // 専用テクスチャは未取得なので block と同じ placeholder を貼る (変形が見えれば目的は足りる)
+            m_skinnedMaterial->SetTexture(0, m_texture.get());
+
+            // bind ポーズ頂点の境界から目標身長に合わせた一様スケールを出し、 足元を接地点へ寄せる
+            NS::Math::Vector3 boundsMin = skinned.vertices.front().position;
+            NS::Math::Vector3 boundsMax = boundsMin;
+            for (const NS::Graphics::SkinnedVertex& v : skinned.vertices)
+            {
+                boundsMin = NS::Math::Vector3::Min(boundsMin, v.position);
+                boundsMax = NS::Math::Vector3::Max(boundsMax, v.position);
+            }
+            const float modelHeight = std::max(boundsMax.y - boundsMin.y, 1e-3f);
+            const float fitScale = kAnimModelTargetHeight / modelHeight;
+            const NS::Math::Vector3 fitPosition{kAnimModelFootAnchor.x - (boundsMin.x + boundsMax.x) * 0.5f * fitScale,
+                                                kAnimModelFootAnchor.y - boundsMin.y * fitScale,
+                                                kAnimModelFootAnchor.z - (boundsMin.z + boundsMax.z) * 0.5f * fitScale};
+
+            const std::size_t boneCount = skinned.skeleton.BoneCount();
+            m_animatedModel = std::make_unique<NS::Scene::GameObject>();
+            m_animatedModel->AttachScene(this);
+            m_animatedModel->Root().SetPosition(fitPosition);
+            m_animatedModel->Root().SetScale({fitScale, fitScale, fitScale});
+            m_animMesh = m_animatedModel->AddComponent<NS::Scene::MeshRendererComponent>(m_skinnedMesh.get(),
+                                                                                         m_skinnedMaterial.get());
+            m_animPlayer = m_animatedModel->AddComponent<NS::Scene::SkeletalAnimationComponent>(
+                m_skinnedMesh.get(), std::move(skinned.skeleton), std::move(skinned.animations));
+            m_animPlayer->SetSpeed(m_animSpeed);
+            m_animatedModel->OnStart();
+            m_animatedModel->Root().Snapshot();
+
+            NS_LOG_INFO(::NS::Core::LogCat::Game,
+                        "LevelEditorScene: skinned 仮モデル読込 ({} bones, {} clips)",
+                        boneCount,
+                        m_animPlayer->ClipCount());
+        }
+        else
+        {
+            NS_LOG_WARN(::NS::Core::LogCat::Game,
+                        "LevelEditorScene: skinned 仮モデル {} 無し/読込失敗、 アニメ表示は skip",
+                        modelPath.string());
+        }
+    }
 }
 
 void LevelEditorScene::OnUpdate()
@@ -399,6 +482,8 @@ void LevelEditorScene::OnUpdate()
         water->OnUpdate();
     for (auto& deco : m_decorations)
         deco->OnUpdate();
+
+    UpdateAnimatedModel();
 }
 
 void LevelEditorScene::EnterPlay() noexcept
@@ -493,6 +578,13 @@ void LevelEditorScene::OnRender()
         mesh.SetLightDirection(theme.lightDirection);
         mesh.SetLightColor(theme.lightColor);
         mesh.SetAmbientColor(theme.ambientColor);
+    }
+
+    if (m_animMesh)
+    {
+        m_animMesh->SetLightDirection(theme.lightDirection);
+        m_animMesh->SetLightColor(theme.lightColor);
+        m_animMesh->SetAmbientColor(theme.ambientColor);
     }
 
     // Block 描画は InstanceBatcher の (mesh, material) bucket 経由に統一する
@@ -626,6 +718,8 @@ void LevelEditorScene::OnShutdown()
         (*it)->OnEndPlay();
     for (auto it = m_decorations.rbegin(); it != m_decorations.rend(); ++it)
         (*it)->OnEndPlay();
+    if (m_animatedModel)
+        m_animatedModel->OnEndPlay();
     if (m_player)
         m_player->OnEndPlay();
 
@@ -636,6 +730,9 @@ void LevelEditorScene::OnShutdown()
 
     m_editorCameraRig.reset();
     m_cameraRig.reset();
+    m_animatedModel.reset();
+    m_animMesh = nullptr;
+    m_animPlayer = nullptr;
     m_player.reset();
     m_blocks.clear();
     m_slopes.clear();
@@ -648,6 +745,8 @@ void LevelEditorScene::OnShutdown()
     // Renderer (Application) より先に破棄する必要がある。 m_cubeMesh と同階層で reset
     m_instanceBatcher.reset();
     m_skybox.reset();
+    m_skinnedMaterial.reset();
+    m_skinnedShader.reset();
     m_playerMaterial.reset();
     m_blockMaterial.reset();
     m_blockShader.reset();
@@ -659,6 +758,7 @@ void LevelEditorScene::OnShutdown()
     m_wedgeMesh22.reset();
     m_wedgeMesh15.reset();
     m_poleMesh.reset();
+    m_skinnedMesh.reset();
     m_cubeMesh.reset();
 }
 
@@ -857,4 +957,49 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
         m_player->Movement().SetCollisionTriangles(m_collisionTriangles);
         m_player->Movement().SetClimbables(std::span<NS::Scene::PoleComponent* const>{m_polePtrs});
     }
+}
+
+void LevelEditorScene::UpdateAnimatedModel()
+{
+    if (!m_animatedModel)
+        return;
+
+    auto* app = NS::App::Application::Get();
+    if (app != nullptr && m_animPlayer != nullptr)
+    {
+        bool wantKb = false;
+        if (auto* imgui = app->ImGui())
+            wantKb = imgui->WantCaptureKeyboard();
+
+        if (!wantKb)
+        {
+            auto& kb = app->Input().Keyboard();
+            if (kb.IsPressed(NS::Platform::Key::F1))
+            {
+                if (m_animPlayer->IsPlaying())
+                    m_animPlayer->Pause();
+                else
+                    m_animPlayer->Play();
+            }
+            if (kb.IsPressed(NS::Platform::Key::F2) && m_animPlayer->ClipCount() > 0)
+            {
+                const std::size_t next = (m_animPlayer->CurrentClip() + 1) % m_animPlayer->ClipCount();
+                m_animPlayer->SelectClip(next);
+                m_animPlayer->Play();
+            }
+            if (kb.IsPressed(NS::Platform::Key::F3))
+            {
+                m_animSpeed = std::max(0.0f, m_animSpeed - 0.25f);
+                m_animPlayer->SetSpeed(m_animSpeed);
+            }
+            if (kb.IsPressed(NS::Platform::Key::F4))
+            {
+                m_animSpeed += 0.25f;
+                m_animPlayer->SetSpeed(m_animSpeed);
+            }
+        }
+    }
+
+    m_animatedModel->Root().Snapshot();
+    m_animatedModel->OnUpdate();
 }
