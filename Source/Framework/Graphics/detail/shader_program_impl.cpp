@@ -53,6 +53,8 @@ float4 PSMain() : SV_Target
                 return DXGI_FORMAT_R32G32B32A32_FLOAT;
             case InputElementFormat::UInt32:
                 return DXGI_FORMAT_R32_UINT;
+            case InputElementFormat::UInt4:
+                return DXGI_FORMAT_R32G32B32A32_UINT;
             }
             return DXGI_FORMAT_UNKNOWN;
         }

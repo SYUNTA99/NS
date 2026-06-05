@@ -40,6 +40,7 @@ namespace NS::Graphics
         Float3, ///< R32G32B32_FLOAT
         Float4, ///< R32G32B32A32_FLOAT
         UInt32, ///< R32_UINT
+        UInt4,  ///< R32G32B32A32_UINT (4 ボーン index)
     };
 
     /// InputLayout の 1 要素。SemanticIndex は常に 0、InputSlot 0 単一 stream 前提
