@@ -62,6 +62,33 @@ namespace NS::Graphics
         }
     }
 
+    void Skeleton::ComputeGlobals(std::span<const BonePose> pose,
+                                  std::vector<NS::Math::Matrix>& out,
+                                  bool applyRootTransform) const
+    {
+        const std::size_t boneCount = m_bones.size();
+        out.assign(boneCount, NS::Math::Matrix::Identity);
+        if (pose.size() != boneCount)
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "Skeleton::ComputeGlobals: pose 数 ({}) が bone 数 ({}) と不一致",
+                         pose.size(),
+                         boneCount);
+            return;
+        }
+
+        const NS::Math::Matrix rootParent = applyRootTransform ? m_rootTransform : NS::Math::Matrix::Identity;
+        for (std::size_t i = 0; i < boneCount; ++i)
+        {
+            const NS::Math::Matrix local = LocalMatrix(pose[i]);
+            const int parent = m_bones[i].parentIndex;
+            if (parent >= 0 && static_cast<std::size_t>(parent) < i)
+                out[i] = local * out[parent];
+            else
+                out[i] = local * rootParent;
+        }
+    }
+
     void Skeleton::ComputeBindPalette(std::vector<NS::Math::Matrix>& out) const
     {
         std::vector<BonePose> bindPose;
