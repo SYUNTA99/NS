@@ -19,15 +19,6 @@ namespace NS::Graphics
 {
     using detail::ComPtr;
 
-    struct TextureArray::Impl
-    {
-        ComPtr<ID3D11Texture2D> arrayTexture;
-        ComPtr<ID3D11ShaderResourceView> srv;
-        ComPtr<ID3D11Device> device;
-        std::uint16_t sliceCount = 0;
-        bool fallback = false;
-    };
-
     namespace
     {
         constexpr std::uint8_t kMagentaPixel[4] = {0xFF, 0x00, 0xFF, 0xFF};
@@ -154,7 +145,7 @@ namespace NS::Graphics
         }
     } // namespace
 
-    TextureArray::TextureArray(Renderer& renderer, const TextureArrayDesc& desc) : m_pImpl(std::make_unique<Impl>())
+    TextureArray::TextureArray(Renderer& renderer, const TextureArrayDesc& desc)
     {
         auto* device = detail::GetDevice(renderer);
         auto* context = detail::GetContext(renderer);
@@ -163,7 +154,6 @@ namespace NS::Graphics
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "TextureArray: Renderer の Device / Context が無効");
             return;
         }
-        m_pImpl->device = device;
 
         // slice 数を上限 (kTotalSlices) で clamp。 超過分は WARN を出して捨てる
         std::vector<std::filesystem::path> paths = desc.slicePaths;
@@ -203,10 +193,10 @@ namespace NS::Graphics
                             "TextureArray: 全 {} slice の読込に失敗、 magenta fallback で構築",
                             paths.size());
             }
-            if (CreateMagentaFallbackArray(device, m_pImpl->arrayTexture, m_pImpl->srv))
+            if (CreateMagentaFallbackArray(device, m_arrayTexture, m_srv))
             {
-                m_pImpl->sliceCount = 1;
-                m_pImpl->fallback = true;
+                m_sliceCount = 1;
+                m_fallback = true;
             }
             return;
         }
@@ -215,10 +205,10 @@ namespace NS::Graphics
         if (FAILED(firstResource.As(&firstTex2d)) || !firstTex2d)
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "TextureArray: 1 枚目 slice の Texture2D QI 失敗");
-            if (CreateMagentaFallbackArray(device, m_pImpl->arrayTexture, m_pImpl->srv))
+            if (CreateMagentaFallbackArray(device, m_arrayTexture, m_srv))
             {
-                m_pImpl->sliceCount = 1;
-                m_pImpl->fallback = true;
+                m_sliceCount = 1;
+                m_fallback = true;
             }
             return;
         }
@@ -260,10 +250,10 @@ namespace NS::Graphics
                          sliceHeight,
                          static_cast<unsigned>(paths.size()),
                          static_cast<unsigned>(hr));
-            if (CreateMagentaFallbackArray(device, m_pImpl->arrayTexture, m_pImpl->srv))
+            if (CreateMagentaFallbackArray(device, m_arrayTexture, m_srv))
             {
-                m_pImpl->sliceCount = 1;
-                m_pImpl->fallback = true;
+                m_sliceCount = 1;
+                m_fallback = true;
             }
             return;
         }
@@ -335,10 +325,10 @@ namespace NS::Graphics
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
                          "TextureArray: CreateShaderResourceView 失敗 (hr=0x{:08X})",
                          static_cast<unsigned>(hr));
-            if (CreateMagentaFallbackArray(device, m_pImpl->arrayTexture, m_pImpl->srv))
+            if (CreateMagentaFallbackArray(device, m_arrayTexture, m_srv))
             {
-                m_pImpl->sliceCount = 1;
-                m_pImpl->fallback = true;
+                m_sliceCount = 1;
+                m_fallback = true;
             }
             return;
         }
@@ -348,34 +338,44 @@ namespace NS::Graphics
             context->GenerateMips(srv.Get());
         }
 
-        m_pImpl->arrayTexture = arrayTexture;
-        m_pImpl->srv = srv;
-        m_pImpl->sliceCount = static_cast<std::uint16_t>(paths.size());
-        m_pImpl->fallback = anySliceFailed;
+        m_arrayTexture = arrayTexture;
+        m_srv = srv;
+        m_sliceCount = static_cast<std::uint16_t>(paths.size());
+        m_fallback = anySliceFailed;
     }
 
     TextureArray::~TextureArray() = default;
 
     bool TextureArray::IsValid() const noexcept
     {
-        return m_pImpl && m_pImpl->srv;
+        return m_srv != nullptr;
     }
 
     bool TextureArray::IsUsingFallback() const noexcept
     {
-        return m_pImpl && m_pImpl->fallback;
+        return m_fallback;
     }
 
     std::uint16_t TextureArray::SliceCount() const noexcept
     {
-        return m_pImpl ? m_pImpl->sliceCount : static_cast<std::uint16_t>(0);
+        return m_sliceCount;
+    }
+
+    ID3D11Texture2D* TextureArray::Native() const noexcept
+    {
+        return m_arrayTexture.Get();
+    }
+
+    ID3D11ShaderResourceView* TextureArray::Srv() const noexcept
+    {
+        return m_srv.Get();
     }
 
     namespace detail
     {
         ID3D11ShaderResourceView* GetSrv(TextureArray& textureArray) noexcept
         {
-            return textureArray.m_pImpl ? textureArray.m_pImpl->srv.Get() : nullptr;
+            return textureArray.Srv();
         }
 
         void BindTextureArray(ID3D11DeviceContext* context,
@@ -383,11 +383,12 @@ namespace NS::Graphics
                               unsigned slot,
                               ShaderStage stages) noexcept
         {
-            if (context == nullptr || !textureArray.m_pImpl || !textureArray.m_pImpl->srv)
+            ID3D11ShaderResourceView* srv = textureArray.Srv();
+            if (context == nullptr || srv == nullptr)
             {
                 return;
             }
-            ID3D11ShaderResourceView* srvs[1] = {textureArray.m_pImpl->srv.Get()};
+            ID3D11ShaderResourceView* srvs[1] = {srv};
             if (HasStage(stages, ShaderStage::Vertex))
             {
                 context->VSSetShaderResources(slot, 1u, srvs);

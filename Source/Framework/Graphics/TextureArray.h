@@ -10,17 +10,17 @@
 /// 正規化される (アセット側で揃える運用)
 /// 読込失敗時は 1x1 magenta fallback を slice 0 に詰め、 `IsUsingFallback()` が true に
 /// なる (Texture と同じ流派)
-/// 依存: 生成に Renderer の Device / Context を使う (context は保持しない、 バインドは Renderer 経由)
+/// バインドは Renderer::BindTextureArray 経由 (本型は context を保持しない)
+/// Graphics は exposed-D3D lean 設計のため `ID3D11Texture2D*` / SRV を直接公開する
 
-#include "Framework/Graphics/Buffer.h"
+#include <Framework/Graphics/Buffer.h>
 
 #include <cstdint>
 #include <filesystem>
-#include <memory>
 #include <vector>
 
-struct ID3D11ShaderResourceView;
-struct ID3D11DeviceContext;
+#include <d3d11.h>
+#include <wrl/client.h>
 
 namespace NS::Graphics
 {
@@ -54,13 +54,10 @@ namespace NS::Graphics
     /// 1 つの `ID3D11Texture2D` (ArraySize=N) を保有する Texture2DArray ラッパ
     /// block 描画専用、 cubemap / 3D volume は対象外
     /// 全 slice 同一 width / height / format / mip count が D3D11 仕様で必須
-    /// 依存: 生成に Renderer の Device / Context を使う。 context は保持せず、 バインドは Renderer::BindTextureArray
-    /// 経由
+    /// バインドは Renderer::BindTextureArray 経由 (本型は context を保持しない)
     class TextureArray
     {
     public:
-        struct Impl;
-
         /// slice 予算上限。 5 theme x 8 variant = 40 を確保し、 24 slot を将来拡張用に残す
         /// 超過分はコンストラクタ内で捨てて WARN を出す (境界 clamp)
         static constexpr std::uint16_t kTotalSlices = 64;
@@ -84,14 +81,17 @@ namespace NS::Graphics
         /// fallback 経路では 1 (magenta slice のみ) を返す
         [[nodiscard]] std::uint16_t SliceCount() const noexcept;
 
-    private:
-        std::unique_ptr<Impl> m_pImpl;
+        /// 内部 ID3D11Texture2D (ArraySize=N)。継ぎ目で raw D3D を扱う場合に使う
+        [[nodiscard]] ID3D11Texture2D* Native() const noexcept;
 
-        friend ID3D11ShaderResourceView* detail::GetSrv(TextureArray& textureArray) noexcept;
-        friend void detail::BindTextureArray(ID3D11DeviceContext* context,
-                                             const TextureArray& textureArray,
-                                             unsigned slot,
-                                             ShaderStage stages) noexcept;
+        /// Texture2DArray 視点の SRV (fallback でも非 null)
+        [[nodiscard]] ID3D11ShaderResourceView* Srv() const noexcept;
+
+    private:
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_arrayTexture;
+        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_srv;
+        std::uint16_t m_sliceCount = 0;
+        bool m_fallback = false;
     };
 
 } // namespace NS::Graphics
