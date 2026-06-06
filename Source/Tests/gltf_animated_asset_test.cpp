@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <iostream>
 #include <span>
+#include <string>
 #include <vector>
 
 // 実アセット (Khronos サンプル CesiumMan.glb、 人型の歩行) を読み、 skin + animation が取り込めて
@@ -190,4 +191,91 @@ TEST(GltfAnimatedAssetTest, SameRigBindMatchesDirectLoad)
     std::cout << "[CesiumMan] same-rig identity maxRotErr=" << maxRotErr << " maxPosErr=" << maxPosErr << "\n";
     EXPECT_LT(maxRotErr, 1e-3f) << "同一リグなのに直読みとポーズが一致しない (回転)";
     EXPECT_LT(maxPosErr, 1e-3f) << "同一リグなのに直読みとポーズが一致しない (並進)";
+}
+
+// 実アセットの異リグ検証: 別キャラ (Soldier) の歩行を別スケルトン (Xbot) へリターゲットする
+// 人型ボーンの world 回転デルタ (rest→anim) が転送されているかを resample グリッド上で厳密に測る
+TEST(GltfAnimatedAssetTest, RetargetSoldierWalkOntoXbot)
+{
+    const std::filesystem::path dir = NS::Core::FileSystem::GetExeDirectory() / "Assets" / "Models";
+    const std::filesystem::path soldierPath = dir / "Soldier.glb";
+    const std::filesystem::path xbotPath = dir / "Xbot.glb";
+    if (!std::filesystem::exists(soldierPath) || !std::filesystem::exists(xbotPath))
+    {
+        GTEST_SKIP() << "Soldier.glb / Xbot.glb が無い";
+    }
+
+    const auto soldier = NS::Graphics::LoadGltfAnimationSource(soldierPath.string());
+    const auto xbot = NS::Graphics::LoadGltfSkinnedMesh(xbotPath.string());
+    ASSERT_TRUE(soldier.IsValid());
+    ASSERT_TRUE(xbot.IsValid());
+
+    const NS::Graphics::AnimationClip* walk = nullptr;
+    for (const NS::Graphics::AnimationClip& clip : soldier.animations)
+        if (clip.name == "Walk")
+            walk = &clip;
+    ASSERT_NE(walk, nullptr) << "Soldier に Walk クリップが無い";
+
+    constexpr float kFps = 30.0f;
+    const auto rt = NS::Graphics::RetargetClips(soldier.skeleton, {*walk}, xbot.skeleton, kFps);
+    ASSERT_EQ(rt.size(), 1u);
+    ASSERT_TRUE(rt[0].IsValid());
+    for (const NS::Graphics::BoneTrack& track : rt[0].tracks)
+    {
+        EXPECT_GE(track.boneIndex, 0);
+        EXPECT_LT(track.boneIndex, static_cast<int>(xbot.skeleton.BoneCount()));
+    }
+
+    const NS::Graphics::HumanoidMap srcMap = NS::Graphics::BuildHumanoidMap(soldier.skeleton);
+    const NS::Graphics::HumanoidMap dstMap = NS::Graphics::BuildHumanoidMap(xbot.skeleton);
+
+    std::vector<NS::Graphics::BonePose> srcBind(soldier.skeleton.BoneCount());
+    for (std::size_t i = 0; i < srcBind.size(); ++i)
+        srcBind[i] = soldier.skeleton.Bones()[i].bindLocal;
+    std::vector<NS::Graphics::BonePose> dstBind(xbot.skeleton.BoneCount());
+    for (std::size_t i = 0; i < dstBind.size(); ++i)
+        dstBind[i] = xbot.skeleton.Bones()[i].bindLocal;
+    std::vector<NS::Math::Matrix> srcRestW;
+    std::vector<NS::Math::Matrix> dstRestW;
+    soldier.skeleton.ComputeGlobals(srcBind, srcRestW, false);
+    xbot.skeleton.ComputeGlobals(dstBind, dstRestW, false);
+
+    auto rotOnly = [](const NS::Math::Matrix& m) {
+        return NS::Math::Matrix::CreateFromQuaternion(NS::Math::Quaternion::CreateFromRotationMatrix(m));
+    };
+    auto worldDelta = [&](const NS::Math::Matrix& rest, const NS::Math::Matrix& anim) {
+        return NS::Math::Quaternion::CreateFromRotationMatrix(rotOnly(rest).Transpose() * rotOnly(anim));
+    };
+
+    // resample グリッド上のサンプル時刻 (rt はそこにキーを持つので補間誤差なしで一致するはず)
+    const int frames = std::max(2, static_cast<int>(std::ceil(walk->duration * kFps)) + 1);
+    std::vector<NS::Graphics::BonePose> srcPose;
+    std::vector<NS::Graphics::BonePose> dstPose;
+    std::vector<NS::Math::Matrix> srcAnimW;
+    std::vector<NS::Math::Matrix> dstAnimW;
+    bool anyMotion = false;
+    float maxErr = 0.0f;
+    for (int k : {0, frames / 4, frames / 2, (3 * frames) / 4, frames - 1})
+    {
+        const float t = walk->duration * static_cast<float>(k) / static_cast<float>(frames - 1);
+        NS::Graphics::SampleClipPose(*walk, soldier.skeleton, t, srcPose);
+        NS::Graphics::SampleClipPose(rt[0], xbot.skeleton, t, dstPose);
+        soldier.skeleton.ComputeGlobals(srcPose, srcAnimW, false);
+        xbot.skeleton.ComputeGlobals(dstPose, dstAnimW, false);
+        for (std::size_t hb = 0; hb < static_cast<std::size_t>(NS::Graphics::HumanoidBone::Count); ++hb)
+        {
+            const int si = srcMap.boneIndex[hb];
+            const int di = dstMap.boneIndex[hb];
+            if (si < 0 || di < 0)
+                continue;
+            const NS::Math::Quaternion ds = worldDelta(srcRestW[si], srcAnimW[si]);
+            const NS::Math::Quaternion dd = worldDelta(dstRestW[di], dstAnimW[di]);
+            if (1.0f - std::fabs(ds.Dot(NS::Math::Quaternion::Identity)) > 1e-3f)
+                anyMotion = true;
+            maxErr = std::max(maxErr, 1.0f - std::fabs(ds.Dot(dd)));
+        }
+    }
+    std::cout << "[Soldier->Xbot] cross-rig world-delta maxErr=" << maxErr << "\n";
+    EXPECT_TRUE(anyMotion) << "歩行なのに source が全く動いていない";
+    EXPECT_LT(maxErr, 1e-2f) << "異リグへ world 回転デルタが転送されていない";
 }
