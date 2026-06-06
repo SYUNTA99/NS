@@ -284,37 +284,6 @@ float4 PSMain() : SV_Target
         {
             return shader.VertexShaderBytecode();
         }
-
-        void BindShader(ID3D11DeviceContext* context, const Shader& shader) noexcept
-        {
-            ID3D11DeviceChild* raw = shader.Native();
-            if (context == nullptr || raw == nullptr)
-            {
-                return;
-            }
-            // 生成時のステージで実型は保証済みなので static_cast 下方変換は well-defined
-            switch (shader.Type())
-            {
-            case ShaderType::Vertex:
-                context->VSSetShader(static_cast<ID3D11VertexShader*>(raw), nullptr, 0u);
-                break;
-            case ShaderType::Pixel:
-                context->PSSetShader(static_cast<ID3D11PixelShader*>(raw), nullptr, 0u);
-                break;
-            case ShaderType::Geometry:
-                context->GSSetShader(static_cast<ID3D11GeometryShader*>(raw), nullptr, 0u);
-                break;
-            case ShaderType::Hull:
-                context->HSSetShader(static_cast<ID3D11HullShader*>(raw), nullptr, 0u);
-                break;
-            case ShaderType::Domain:
-                context->DSSetShader(static_cast<ID3D11DomainShader*>(raw), nullptr, 0u);
-                break;
-            case ShaderType::Compute:
-                context->CSSetShader(static_cast<ID3D11ComputeShader*>(raw), nullptr, 0u);
-                break;
-            }
-        }
     } // namespace detail
 
 } // namespace NS::Graphics

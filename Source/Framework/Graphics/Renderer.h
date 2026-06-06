@@ -32,6 +32,7 @@ namespace NS::Graphics
     };
 
     class Renderer;
+    class CommandList;
     class CommonStates;
     class Shader;
     class Texture;
@@ -82,6 +83,10 @@ namespace NS::Graphics
 
         /// DirectXTK CommonStates ラッパ。Mesh/Material 等が利用
         [[nodiscard]] CommonStates& States() noexcept;
+
+        /// bind / draw を記録する CommandList。 context 呼び出しはここに集約される
+        /// `BindShader` 等の薄い facade も内部でこれに転送する
+        [[nodiscard]] CommandList& Commands() noexcept;
 
         /// 内部 ID3D11Device を非 detail 経路で公開。 ImGui_ImplDX11_Init など
         /// 外部 SDK が D3D11 ハンドルを直接必要とする場合のみ使う

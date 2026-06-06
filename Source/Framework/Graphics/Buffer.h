@@ -117,25 +117,4 @@ namespace NS::Graphics
     /// 定数バッファ用 BufferDesc を組む (usage = Dynamic、 bind = CONSTANT、 byteSize は ctor が 16 切り上げ)
     [[nodiscard]] BufferDesc MakeConstantBufferDesc(std::size_t byteSize) noexcept;
 
-    namespace detail
-    {
-        /// Buffer を context の slot にバインドする (IASetVertexBuffers)。 無効 buffer / context==nullptr は no-op
-        void BindVertexBuffer(ID3D11DeviceContext* context, Buffer& buffer, unsigned slot) noexcept;
-
-        /// Buffer を context にバインドする (IASetIndexBuffer、 幅は Format から決定)。 無効/null は no-op
-        void BindIndexBuffer(ID3D11DeviceContext* context, Buffer& buffer) noexcept;
-
-        /// Buffer を context のステージ (VS/PS/GS、 HasStage で選択) に定数として bind する。 無効/null は no-op
-        void BindConstantBuffer(ID3D11DeviceContext* context,
-                                Buffer& buffer,
-                                unsigned slot,
-                                ShaderStage stages) noexcept;
-
-        /// Dynamic Buffer を Map/Discard で更新する。 Static や容量超過は NS_LOG_ERROR + no-op
-        void UpdateBufferRaw(ID3D11DeviceContext* context,
-                             Buffer& buffer,
-                             const void* data,
-                             std::size_t bytes) noexcept;
-    } // namespace detail
-
 } // namespace NS::Graphics

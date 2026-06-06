@@ -340,31 +340,6 @@ namespace NS::Graphics
         {
             return texture.Srv();
         }
-
-        void BindTexture(ID3D11DeviceContext* context,
-                         const Texture& texture,
-                         unsigned slot,
-                         ShaderStage stages) noexcept
-        {
-            ID3D11ShaderResourceView* srv = texture.Srv();
-            if (context == nullptr || srv == nullptr)
-            {
-                return;
-            }
-            ID3D11ShaderResourceView* srvs[1] = {srv};
-            if (HasStage(stages, ShaderStage::Vertex))
-            {
-                context->VSSetShaderResources(slot, 1u, srvs);
-            }
-            if (HasStage(stages, ShaderStage::Pixel))
-            {
-                context->PSSetShaderResources(slot, 1u, srvs);
-            }
-            if (HasStage(stages, ShaderStage::Geometry))
-            {
-                context->GSSetShaderResources(slot, 1u, srvs);
-            }
-        }
     } // namespace detail
 
 } // namespace NS::Graphics

@@ -42,10 +42,6 @@ namespace NS::Graphics
     {
         /// Mesh が InputLayout を生成するための VS バイトコード。 頂点 Shader でない or 構築失敗で空 span
         [[nodiscard]] std::span<const std::byte> GetVertexShaderBytecode(const Shader& shader) noexcept;
-
-        /// ステージに応じた *SSetShader (VS/PS/GS/HS/DS/CS) を context に発行する
-        /// 無効な Shader または context==nullptr は no-op。 Renderer::BindShader が本関数を呼ぶ
-        void BindShader(ID3D11DeviceContext* context, const Shader& shader) noexcept;
     } // namespace detail
 
     /// 単一ステージのシェーダ。 path のファイル名 (`.vs.`/`.ps.`/`.gs.`/`.hs.`/`.ds.`/`.cs.`) でステージを判定する

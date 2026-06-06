@@ -1,6 +1,7 @@
 #include "Framework/Graphics/Renderer.h"
 
 #include "Framework/Graphics/Buffer.h"
+#include "Framework/Graphics/CommandList.h"
 #include "Framework/Graphics/CommonStates.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/Texture.h"
@@ -25,6 +26,7 @@ namespace NS::Graphics
 
         std::unique_ptr<Texture> backbuffer;
         std::unique_ptr<Texture> depth;
+        std::unique_ptr<CommandList> commands;
         std::unique_ptr<CommonStates> states;
 
         ::NS::Platform::Window* window = nullptr;
@@ -200,6 +202,8 @@ namespace NS::Graphics
 
         SuppressAltEnter(m_pImpl->swapchain.Get(), hwnd);
 
+        m_pImpl->commands = std::make_unique<CommandList>(m_pImpl->context.Get());
+
         if (!BuildBackbufferTargets(*this, m_pImpl->swapchain.Get(), m_pImpl->backbuffer, m_pImpl->depth))
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "backbuffer / depth Texture の構築失敗");
@@ -237,30 +241,20 @@ namespace NS::Graphics
 
     void Renderer::BeginFrame(float r, float g, float b, float a) noexcept
     {
-        if (!IsValid() || !m_pImpl->backbuffer || !m_pImpl->depth)
+        if (!IsValid() || !m_pImpl->backbuffer || !m_pImpl->depth || !m_pImpl->commands)
         {
             return;
         }
-        auto* context = m_pImpl->context.Get();
+        CommandList& cmd = *m_pImpl->commands;
         ID3D11RenderTargetView* rtv = m_pImpl->backbuffer->Rtv();
         ID3D11DepthStencilView* dsv = m_pImpl->depth->Dsv();
 
-        const float color[4] = {r, g, b, a};
-        context->ClearRenderTargetView(rtv, color);
-        context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
-
-        ID3D11RenderTargetView* rtvs[1] = {rtv};
-        context->OMSetRenderTargets(1, rtvs, dsv);
+        cmd.ClearRenderTarget(rtv, r, g, b, a);
+        cmd.ClearDepth(dsv, 1.0f);
+        cmd.SetRenderTarget(rtv, dsv);
 
         const ::NS::Math::Size2D size = m_pImpl->backbuffer->Size();
-        D3D11_VIEWPORT vp{};
-        vp.TopLeftX = 0.0f;
-        vp.TopLeftY = 0.0f;
-        vp.Width = static_cast<float>(size.width);
-        vp.Height = static_cast<float>(size.height);
-        vp.MinDepth = 0.0f;
-        vp.MaxDepth = 1.0f;
-        context->RSSetViewports(1, &vp);
+        cmd.SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
     }
 
     void Renderer::EndFrame() noexcept
@@ -319,6 +313,12 @@ namespace NS::Graphics
         return *m_pImpl->states;
     }
 
+    CommandList& Renderer::Commands() noexcept
+    {
+        assert(m_pImpl && m_pImpl->commands && "Renderer が無効な状態で Commands() を呼んでいる");
+        return *m_pImpl->commands;
+    }
+
     ID3D11Device* Renderer::NativeDevice() noexcept
     {
         return detail::GetDevice(*this);
@@ -331,58 +331,58 @@ namespace NS::Graphics
 
     void Renderer::BindShader(Shader& shader) noexcept
     {
-        if (m_pImpl)
+        if (m_pImpl && m_pImpl->commands)
         {
-            detail::BindShader(m_pImpl->context.Get(), shader);
+            m_pImpl->commands->SetShader(shader);
         }
     }
     void Renderer::BindTexture(const Texture& texture, unsigned slot, ShaderStage stages) noexcept
     {
-        if (m_pImpl)
+        if (m_pImpl && m_pImpl->commands)
         {
-            detail::BindTexture(m_pImpl->context.Get(), texture, slot, stages);
+            m_pImpl->commands->SetTexture(texture, slot, stages);
         }
     }
     void Renderer::BindTextureArray(TextureArray& texture, unsigned slot, ShaderStage stages) noexcept
     {
-        if (m_pImpl)
+        if (m_pImpl && m_pImpl->commands)
         {
-            detail::BindTextureArray(m_pImpl->context.Get(), texture, slot, stages);
+            m_pImpl->commands->SetTextureArray(texture, slot, stages);
         }
     }
     void Renderer::BindVertexBuffer(Buffer& vertexBuffer, unsigned slot) noexcept
     {
-        if (m_pImpl)
+        if (m_pImpl && m_pImpl->commands)
         {
-            detail::BindVertexBuffer(m_pImpl->context.Get(), vertexBuffer, slot);
+            m_pImpl->commands->SetVertexBuffer(vertexBuffer, slot);
         }
     }
     void Renderer::BindIndexBuffer(Buffer& indexBuffer) noexcept
     {
-        if (m_pImpl)
+        if (m_pImpl && m_pImpl->commands)
         {
-            detail::BindIndexBuffer(m_pImpl->context.Get(), indexBuffer);
+            m_pImpl->commands->SetIndexBuffer(indexBuffer);
         }
     }
     void Renderer::BindConstantBuffer(Buffer& constantBuffer, unsigned slot, ShaderStage stages) noexcept
     {
-        if (m_pImpl)
+        if (m_pImpl && m_pImpl->commands)
         {
-            detail::BindConstantBuffer(m_pImpl->context.Get(), constantBuffer, slot, stages);
+            m_pImpl->commands->SetConstantBuffer(constantBuffer, slot, stages);
         }
     }
     void Renderer::UpdateBuffer(Buffer& buffer, const void* data, std::size_t bytes) noexcept
     {
-        if (m_pImpl)
+        if (m_pImpl && m_pImpl->commands)
         {
-            detail::UpdateBufferRaw(m_pImpl->context.Get(), buffer, data, bytes);
+            m_pImpl->commands->UpdateBuffer(buffer, data, bytes);
         }
     }
     void Renderer::DrawIndexed(unsigned indexCount) noexcept
     {
-        if (m_pImpl && m_pImpl->context)
+        if (m_pImpl && m_pImpl->commands)
         {
-            m_pImpl->context->DrawIndexed(indexCount, 0u, 0);
+            m_pImpl->commands->DrawIndexed(indexCount);
         }
     }
 

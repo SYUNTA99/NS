@@ -32,13 +32,6 @@ namespace NS::Graphics
     {
         /// TextureArray 内部の SRV を取得 (Material 等が PSSetShaderResources 等に使用)
         [[nodiscard]] ID3D11ShaderResourceView* GetSrv(TextureArray& textureArray) noexcept;
-
-        /// TextureArray の SRV を context の slot + ステージ (VS/PS/GS) にバインドする
-        /// 無効な textureArray または context==nullptr は no-op。 Renderer::BindTextureArray が本関数を呼ぶ
-        void BindTextureArray(ID3D11DeviceContext* context,
-                              const TextureArray& textureArray,
-                              unsigned slot,
-                              ShaderStage stages) noexcept;
     } // namespace detail
 
     /// TextureArray 構築パラメータ

@@ -30,13 +30,6 @@ namespace NS::Graphics
     {
         /// Texture 内部の SRV を取得 (Material が PSSetShaderResources 等に使用)。 SRV を持たなければ null
         [[nodiscard]] ID3D11ShaderResourceView* GetSrv(Texture& texture) noexcept;
-
-        /// Texture の SRV を context の slot + ステージ (VS/PS/GS) にバインドする
-        /// 無効な texture または context==nullptr は no-op。 Renderer::BindTexture が本関数を呼ぶ
-        void BindTexture(ID3D11DeviceContext* context,
-                         const Texture& texture,
-                         unsigned slot,
-                         ShaderStage stages) noexcept;
     } // namespace detail
 
     /// ファイルロード用 Texture 構築パラメータ

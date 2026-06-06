@@ -6,56 +6,15 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 
-#include <cstring>
-
 namespace NS::Graphics
 {
     namespace
     {
         constexpr std::size_t kConstantBufferAlignment = 16;
 
-        [[nodiscard]] DXGI_FORMAT ToDxgiFormat(IndexFormat fmt) noexcept
-        {
-            switch (fmt)
-            {
-            case IndexFormat::UInt16:
-                return DXGI_FORMAT_R16_UINT;
-            case IndexFormat::UInt32:
-            default:
-                return DXGI_FORMAT_R32_UINT;
-            }
-        }
-
         [[nodiscard]] std::size_t RoundUpToAlignment(std::size_t bytes, std::size_t alignment) noexcept
         {
             return (bytes + alignment - 1u) & ~(alignment - 1u);
-        }
-
-        bool MapAndCopy(ID3D11DeviceContext* context,
-                        ID3D11Buffer* buffer,
-                        const void* data,
-                        std::size_t bytes) noexcept
-        {
-            if (context == nullptr || buffer == nullptr || data == nullptr || bytes == 0u)
-            {
-                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                             "Buffer::MapAndCopy: 引数不正 (context={}, buffer={}, data={}, bytes={})",
-                             static_cast<const void*>(context),
-                             static_cast<const void*>(buffer),
-                             data,
-                             bytes);
-                return false;
-            }
-            D3D11_MAPPED_SUBRESOURCE mapped{};
-            const HRESULT hr = context->Map(buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-            if (FAILED(hr))
-            {
-                NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Buffer::Map 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
-                return false;
-            }
-            std::memcpy(mapped.pData, data, bytes);
-            context->Unmap(buffer, 0);
-            return true;
         }
     } // namespace
 
@@ -183,76 +142,5 @@ namespace NS::Graphics
     {
         return m_usage;
     }
-
-    namespace detail
-    {
-        void BindVertexBuffer(ID3D11DeviceContext* context, Buffer& buffer, unsigned slot) noexcept
-        {
-            if (context == nullptr || !buffer.IsValid())
-            {
-                return;
-            }
-            ID3D11Buffer* buffers[1] = {buffer.Native()};
-            const UINT stride = static_cast<UINT>(buffer.Stride());
-            const UINT offset = 0u;
-            context->IASetVertexBuffers(slot, 1u, buffers, &stride, &offset);
-        }
-
-        void BindIndexBuffer(ID3D11DeviceContext* context, Buffer& buffer) noexcept
-        {
-            if (context == nullptr || !buffer.IsValid())
-            {
-                return;
-            }
-            context->IASetIndexBuffer(buffer.Native(), ToDxgiFormat(buffer.Format()), 0u);
-        }
-
-        void BindConstantBuffer(ID3D11DeviceContext* context,
-                                Buffer& buffer,
-                                unsigned slot,
-                                ShaderStage stages) noexcept
-        {
-            if (context == nullptr || !buffer.IsValid())
-            {
-                return;
-            }
-            ID3D11Buffer* buffers[1] = {buffer.Native()};
-            if (HasStage(stages, ShaderStage::Vertex))
-            {
-                context->VSSetConstantBuffers(slot, 1u, buffers);
-            }
-            if (HasStage(stages, ShaderStage::Pixel))
-            {
-                context->PSSetConstantBuffers(slot, 1u, buffers);
-            }
-            if (HasStage(stages, ShaderStage::Geometry))
-            {
-                context->GSSetConstantBuffers(slot, 1u, buffers);
-            }
-        }
-
-        void UpdateBufferRaw(ID3D11DeviceContext* context, Buffer& buffer, const void* data, std::size_t bytes) noexcept
-        {
-            if (context == nullptr || !buffer.IsValid())
-            {
-                return;
-            }
-            if (buffer.Usage() != BufferUsage::Dynamic)
-            {
-                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                             "Static Buffer への Update は無効 (Dynamic で再構築するか別バッファを使う)");
-                return;
-            }
-            if (bytes > buffer.ByteSize())
-            {
-                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                             "Buffer::Update のサイズ超過 (req={}, max={})",
-                             bytes,
-                             buffer.ByteSize());
-                return;
-            }
-            MapAndCopy(context, buffer.Native(), data, bytes);
-        }
-    } // namespace detail
 
 } // namespace NS::Graphics
