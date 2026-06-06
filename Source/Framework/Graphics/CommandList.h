@@ -45,15 +45,15 @@ namespace NS::Graphics
 
         /// Shader をステージに応じて発行する (VS/PS/GS/HS/DS/CSSetShader)。無効 Shader は no-op
         void SetShader(const Shader& shader) noexcept;
-        /// Texture の SRV を slot + ステージ (VS/PS/GS) にバインドする
+        /// Texture の SRV を slot + ステージ (VS/PS) にバインドする
         void SetTexture(const Texture& texture, unsigned slot, ShaderStage stages) noexcept;
-        /// TextureArray の SRV を slot + ステージ (VS/PS/GS) にバインドする
+        /// TextureArray の SRV を slot + ステージ (VS/PS) にバインドする
         void SetTextureArray(const TextureArray& textureArray, unsigned slot, ShaderStage stages) noexcept;
         /// 頂点バッファを slot にバインドする (IASetVertexBuffers)
         void SetVertexBuffer(const Buffer& buffer, unsigned slot = 0) noexcept;
         /// index バッファをバインドする (IASetIndexBuffer、 幅は Buffer の Format から)
         void SetIndexBuffer(const Buffer& buffer) noexcept;
-        /// 定数バッファを slot + ステージ (VS/PS/GS) にバインドする
+        /// 定数バッファを slot + ステージ (VS/PS) にバインドする
         void SetConstantBuffer(const Buffer& buffer, unsigned slot, ShaderStage stages) noexcept;
         /// Dynamic バッファを Map/Discard で更新する。Static や容量超過は NS_LOG_ERROR + no-op
         void UpdateBuffer(const Buffer& buffer, const void* data, std::size_t bytes) noexcept;

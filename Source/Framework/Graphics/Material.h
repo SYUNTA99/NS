@@ -8,7 +8,7 @@
 /// は将来拡張。 `Bind(Renderer&)` は shader / textures / CB / sampler を一括設定する
 /// GPU バインドは渡された Renderer 経由で行い、 Material は DeviceContext を保持しない
 
-#include "Framework/Graphics/Buffer.h"
+#include "Framework/Graphics/ShaderStage.h"
 
 #include <cstddef>
 #include <memory>

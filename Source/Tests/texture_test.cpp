@@ -2,6 +2,7 @@
 
 #include <Framework/Core/Logger.h>
 #include <Framework/Graphics/Renderer.h>
+#include <Framework/Graphics/ShaderStage.h>
 #include <Framework/Graphics/Texture.h>
 #include <Framework/Platform/Window.h>
 

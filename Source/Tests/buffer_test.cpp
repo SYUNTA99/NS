@@ -3,6 +3,7 @@
 #include <Framework/Core/Logger.h>
 #include <Framework/Graphics/Buffer.h>
 #include <Framework/Graphics/Renderer.h>
+#include <Framework/Graphics/ShaderStage.h>
 #include <Framework/Platform/Window.h>
 
 #include <array>
@@ -11,9 +12,6 @@
 namespace
 {
     using NS::Graphics::Buffer;
-    using NS::Graphics::BufferUsage;
-    using NS::Graphics::HasStage;
-    using NS::Graphics::IndexFormat;
     using NS::Graphics::MakeConstantBufferDesc;
     using NS::Graphics::MakeIndexBufferDesc;
     using NS::Graphics::MakeVertexBufferDesc;
@@ -60,19 +58,6 @@ protected:
     void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
-TEST(NsGraphicsShaderStage, BitflagOperators)
-{
-    constexpr auto vp = ShaderStage::Vertex | ShaderStage::Pixel;
-    EXPECT_TRUE(HasStage(vp, ShaderStage::Vertex));
-    EXPECT_TRUE(HasStage(vp, ShaderStage::Pixel));
-    EXPECT_FALSE(HasStage(vp, ShaderStage::Geometry));
-
-    EXPECT_TRUE(HasStage(ShaderStage::All, ShaderStage::Vertex));
-    EXPECT_TRUE(HasStage(ShaderStage::All, ShaderStage::Pixel));
-    EXPECT_TRUE(HasStage(ShaderStage::All, ShaderStage::Geometry));
-    EXPECT_FALSE(HasStage(ShaderStage::None, ShaderStage::Vertex));
-}
-
 TEST_F(BufferLoggerTest, VertexBufferStaticConstructs)
 {
     Window window(MakeWindowDesc("ns_vb_static"));
@@ -100,7 +85,7 @@ TEST_F(BufferLoggerTest, VertexBufferDynamicUpdateDoesNotCrash)
     ASSERT_TRUE(renderer.IsValid());
 
     std::array<TestVertex, 3> verts{};
-    Buffer vb(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex), BufferUsage::Dynamic));
+    Buffer vb(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex), D3D11_USAGE_DYNAMIC));
     ASSERT_TRUE(vb.IsValid());
 
     verts[0].pos[0] = 5.0f;
@@ -131,9 +116,9 @@ TEST_F(BufferLoggerTest, IndexBufferUint16Constructs)
     ASSERT_TRUE(renderer.IsValid());
 
     const std::array<std::uint16_t, 6> indices{0, 1, 2, 0, 2, 3};
-    Buffer ib(renderer, MakeIndexBufferDesc(indices.data(), indices.size(), IndexFormat::UInt16));
+    Buffer ib(renderer, MakeIndexBufferDesc(indices.data(), indices.size(), DXGI_FORMAT_R16_UINT));
     EXPECT_TRUE(ib.IsValid());
-    EXPECT_EQ(ib.Format(), IndexFormat::UInt16);
+    EXPECT_EQ(ib.Format(), DXGI_FORMAT_R16_UINT);
     EXPECT_EQ(ib.ByteSize(), indices.size() * sizeof(std::uint16_t));
 }
 
@@ -145,9 +130,9 @@ TEST_F(BufferLoggerTest, IndexBufferUint32Constructs)
     ASSERT_TRUE(renderer.IsValid());
 
     const std::array<std::uint32_t, 6> indices{0, 1, 2, 0, 2, 3};
-    Buffer ib(renderer, MakeIndexBufferDesc(indices.data(), indices.size(), IndexFormat::UInt32));
+    Buffer ib(renderer, MakeIndexBufferDesc(indices.data(), indices.size(), DXGI_FORMAT_R32_UINT));
     EXPECT_TRUE(ib.IsValid());
-    EXPECT_EQ(ib.Format(), IndexFormat::UInt32);
+    EXPECT_EQ(ib.Format(), DXGI_FORMAT_R32_UINT);
     EXPECT_EQ(ib.ByteSize(), indices.size() * sizeof(std::uint32_t));
 }
 
@@ -206,7 +191,7 @@ TEST_F(BufferLoggerTest, BufferBindsDoNotCrash)
     ASSERT_TRUE(vb.IsValid());
 
     const std::array<std::uint16_t, 3> indices{0, 1, 2};
-    Buffer ib(renderer, MakeIndexBufferDesc(indices.data(), indices.size(), IndexFormat::UInt16));
+    Buffer ib(renderer, MakeIndexBufferDesc(indices.data(), indices.size(), DXGI_FORMAT_R16_UINT));
     ASSERT_TRUE(ib.IsValid());
 
     Buffer cb(renderer, MakeConstantBufferDesc(sizeof(TestCB)));

@@ -2,6 +2,7 @@
 
 #include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/Shader.h"
+#include "Framework/Graphics/ShaderStage.h"
 #include "Framework/Graphics/Texture.h"
 #include "Framework/Graphics/TextureArray.h"
 
@@ -14,18 +15,6 @@ namespace NS::Graphics
 {
     namespace
     {
-        [[nodiscard]] DXGI_FORMAT ToDxgiFormat(IndexFormat fmt) noexcept
-        {
-            switch (fmt)
-            {
-            case IndexFormat::UInt16:
-                return DXGI_FORMAT_R16_UINT;
-            case IndexFormat::UInt32:
-            default:
-                return DXGI_FORMAT_R32_UINT;
-            }
-        }
-
         bool MapAndCopy(ID3D11DeviceContext* context,
                         ID3D11Buffer* buffer,
                         const void* data,
@@ -148,10 +137,6 @@ namespace NS::Graphics
         {
             m_context->PSSetShaderResources(slot, 1u, srvs);
         }
-        if (HasStage(stages, ShaderStage::Geometry))
-        {
-            m_context->GSSetShaderResources(slot, 1u, srvs);
-        }
     }
 
     void CommandList::SetTextureArray(const TextureArray& textureArray, unsigned slot, ShaderStage stages) noexcept
@@ -169,10 +154,6 @@ namespace NS::Graphics
         if (HasStage(stages, ShaderStage::Pixel))
         {
             m_context->PSSetShaderResources(slot, 1u, srvs);
-        }
-        if (HasStage(stages, ShaderStage::Geometry))
-        {
-            m_context->GSSetShaderResources(slot, 1u, srvs);
         }
     }
 
@@ -194,7 +175,7 @@ namespace NS::Graphics
         {
             return;
         }
-        m_context->IASetIndexBuffer(buffer.Native(), ToDxgiFormat(buffer.Format()), 0u);
+        m_context->IASetIndexBuffer(buffer.Native(), buffer.Format(), 0u);
     }
 
     void CommandList::SetConstantBuffer(const Buffer& buffer, unsigned slot, ShaderStage stages) noexcept
@@ -212,10 +193,6 @@ namespace NS::Graphics
         {
             m_context->PSSetConstantBuffers(slot, 1u, buffers);
         }
-        if (HasStage(stages, ShaderStage::Geometry))
-        {
-            m_context->GSSetConstantBuffers(slot, 1u, buffers);
-        }
     }
 
     void CommandList::UpdateBuffer(const Buffer& buffer, const void* data, std::size_t bytes) noexcept
@@ -224,7 +201,7 @@ namespace NS::Graphics
         {
             return;
         }
-        if (buffer.Usage() != BufferUsage::Dynamic)
+        if (!buffer.IsDynamic())
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
                          "Static Buffer への Update は無効 (Dynamic で再構築するか別バッファを使う)");

@@ -5,6 +5,7 @@
 #include <Framework/Graphics/CommandList.h>
 #include <Framework/Graphics/Renderer.h>
 #include <Framework/Graphics/Shader.h>
+#include <Framework/Graphics/ShaderStage.h>
 #include <Framework/Graphics/Texture.h>
 #include <Framework/Platform/Window.h>
 
@@ -14,9 +15,8 @@
 namespace
 {
     using NS::Graphics::Buffer;
-    using NS::Graphics::BufferUsage;
     using NS::Graphics::CommandList;
-    using NS::Graphics::IndexFormat;
+    using NS::Graphics::HasStage;
     using NS::Graphics::MakeConstantBufferDesc;
     using NS::Graphics::MakeIndexBufferDesc;
     using NS::Graphics::MakeVertexBufferDesc;
@@ -60,6 +60,18 @@ protected:
     void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
+TEST(NsGraphicsShaderStage, BitflagOperators)
+{
+    constexpr auto vp = ShaderStage::Vertex | ShaderStage::Pixel;
+    EXPECT_TRUE(HasStage(vp, ShaderStage::Vertex));
+    EXPECT_TRUE(HasStage(vp, ShaderStage::Pixel));
+
+    EXPECT_TRUE(HasStage(ShaderStage::All, ShaderStage::Vertex));
+    EXPECT_TRUE(HasStage(ShaderStage::All, ShaderStage::Pixel));
+    EXPECT_FALSE(HasStage(ShaderStage::Vertex, ShaderStage::Pixel));
+    EXPECT_FALSE(HasStage(ShaderStage::None, ShaderStage::Vertex));
+}
+
 TEST_F(CommandListLoggerTest, CommandsAccessibleFromRenderer)
 {
     Window window(MakeWindowDesc("ns_cmd_access"));
@@ -80,7 +92,7 @@ TEST_F(CommandListLoggerTest, SetAndDrawDoNotCrash)
     const std::array<TestVertex, 3> verts{};
     Buffer vb(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex)));
     const std::array<std::uint16_t, 3> indices{0, 1, 2};
-    Buffer ib(renderer, MakeIndexBufferDesc(indices.data(), indices.size(), IndexFormat::UInt16));
+    Buffer ib(renderer, MakeIndexBufferDesc(indices.data(), indices.size(), DXGI_FORMAT_R16_UINT));
     Buffer cb(renderer, MakeConstantBufferDesc(64));
     ASSERT_TRUE(vb.IsValid());
     ASSERT_TRUE(ib.IsValid());
@@ -113,7 +125,7 @@ TEST_F(CommandListLoggerTest, UpdateBufferDynamicWorksStaticIsNoop)
     ASSERT_TRUE(renderer.IsValid());
 
     std::array<TestVertex, 3> verts{};
-    Buffer dyn(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex), BufferUsage::Dynamic));
+    Buffer dyn(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex), D3D11_USAGE_DYNAMIC));
     Buffer stat(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex)));
     ASSERT_TRUE(dyn.IsValid());
     ASSERT_TRUE(stat.IsValid());

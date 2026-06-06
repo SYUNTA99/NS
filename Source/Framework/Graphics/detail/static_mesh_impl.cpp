@@ -34,7 +34,8 @@ namespace NS::Graphics
             if (!vb->IsValid())
                 return false;
 
-            auto ib = std::make_unique<Buffer>(renderer, MakeIndexBufferDesc(indices, indexCount, IndexFormat::UInt32));
+            auto ib =
+                std::make_unique<Buffer>(renderer, MakeIndexBufferDesc(indices, indexCount, DXGI_FORMAT_R32_UINT));
             if (!ib->IsValid())
                 return false;
 

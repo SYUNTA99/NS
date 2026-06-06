@@ -2,6 +2,7 @@
 
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/detail/d3d_context.h"
+#include "Framework/Graphics/detail/d3d_usage.h"
 
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -21,7 +22,7 @@ namespace NS::Graphics
     BufferDesc MakeVertexBufferDesc(const void* data,
                                     std::size_t vertexCount,
                                     std::size_t stride,
-                                    BufferUsage usage) noexcept
+                                    D3D11_USAGE usage) noexcept
     {
         BufferDesc desc{};
         desc.initialData = data;
@@ -34,10 +35,10 @@ namespace NS::Graphics
 
     BufferDesc MakeIndexBufferDesc(const void* data,
                                    std::size_t indexCount,
-                                   IndexFormat format,
-                                   BufferUsage usage) noexcept
+                                   DXGI_FORMAT format,
+                                   D3D11_USAGE usage) noexcept
     {
-        const std::size_t elementSize = (format == IndexFormat::UInt16) ? 2u : 4u;
+        const std::size_t elementSize = (format == DXGI_FORMAT_R16_UINT) ? 2u : 4u;
         BufferDesc desc{};
         desc.initialData = data;
         desc.byteSize = indexCount * elementSize;
@@ -51,7 +52,7 @@ namespace NS::Graphics
     {
         BufferDesc desc{};
         desc.byteSize = byteSize; // 16-byte 切り上げは Buffer ctor が行う
-        desc.usage = BufferUsage::Dynamic;
+        desc.usage = D3D11_USAGE_DYNAMIC;
         desc.bindFlags = D3D11_BIND_CONSTANT_BUFFER;
         return desc;
     }
@@ -65,7 +66,7 @@ namespace NS::Graphics
         m_stride = desc.stride;
         m_byteSize = bytes;
         m_format = desc.indexFormat;
-        m_usage = desc.usage;
+        m_dynamic = (detail::GetCpuAccessFlags(desc.usage) & D3D11_CPU_ACCESS_WRITE) != 0u;
 
         auto* device = detail::GetDevice(renderer);
         if (device == nullptr || bytes == 0u)
@@ -77,7 +78,7 @@ namespace NS::Graphics
                          static_cast<unsigned>(desc.bindFlags));
             return;
         }
-        if (desc.usage == BufferUsage::Static && desc.initialData == nullptr)
+        if (desc.usage != D3D11_USAGE_DYNAMIC && desc.initialData == nullptr)
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
                          "Static バッファは initialData 必須 (CreateBuffer 後 GPU が未初期化を読む危険)");
@@ -87,16 +88,8 @@ namespace NS::Graphics
         D3D11_BUFFER_DESC bd{};
         bd.ByteWidth = static_cast<UINT>(bytes);
         bd.BindFlags = desc.bindFlags;
-        if (desc.usage == BufferUsage::Dynamic)
-        {
-            bd.Usage = D3D11_USAGE_DYNAMIC;
-            bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-        }
-        else
-        {
-            bd.Usage = D3D11_USAGE_DEFAULT;
-            bd.CPUAccessFlags = 0;
-        }
+        bd.Usage = desc.usage;
+        bd.CPUAccessFlags = detail::GetCpuAccessFlags(desc.usage);
 
         D3D11_SUBRESOURCE_DATA srd{};
         D3D11_SUBRESOURCE_DATA* srdPtr = nullptr;
@@ -134,13 +127,13 @@ namespace NS::Graphics
     {
         return m_byteSize;
     }
-    IndexFormat Buffer::Format() const noexcept
+    DXGI_FORMAT Buffer::Format() const noexcept
     {
         return m_format;
     }
-    BufferUsage Buffer::Usage() const noexcept
+    bool Buffer::IsDynamic() const noexcept
     {
-        return m_usage;
+        return m_dynamic;
     }
 
 } // namespace NS::Graphics

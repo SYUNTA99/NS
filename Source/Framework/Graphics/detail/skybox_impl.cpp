@@ -4,6 +4,7 @@
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/Shader.h"
+#include "Framework/Graphics/ShaderStage.h"
 #include "Framework/Graphics/StaticMesh.h"
 #include "Framework/Graphics/detail/d3d_context.h"
 

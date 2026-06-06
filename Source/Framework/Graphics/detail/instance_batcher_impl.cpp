@@ -165,7 +165,7 @@ namespace NS::Graphics
         {
             // Dynamic は initial data 不要 (Map で都度書込)
             auto vb = std::make_unique<Buffer>(
-                renderer, MakeVertexBufferDesc(nullptr, capacity, sizeof(BlockInstance), BufferUsage::Dynamic));
+                renderer, MakeVertexBufferDesc(nullptr, capacity, sizeof(BlockInstance), D3D11_USAGE_DYNAMIC));
             if (!vb->IsValid())
             {
                 NS_LOG_ERROR(
