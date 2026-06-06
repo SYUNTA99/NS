@@ -1,21 +1,24 @@
 #pragma once
 
 /// @file Texture.h
-/// @brief NS::Graphics::Texture — 2D テクスチャ (DDS / WIC ロード対応)
+/// @brief NS::Graphics::Texture — 2D テクスチャ (ファイルロード / 生成 / 既存リソースラップ兼用)
 ///
-/// @details 拡張子 .dds → DirectXTK DDSTextureLoader、 それ以外 → WICTextureLoader 経由
-/// File I/O は `NS::Core::FileSystem` 経由なので将来 pak / VFS で透過対応可能
-/// 読込失敗時は 1x1 マゼンタ fallback SRV が生成され、 `IsUsingFallback()` が true
-/// 依存: 生成に Renderer の Device / Context を使う (context は保持しない、 バインドは Renderer 経由)
+/// @details 役割は `TextureCreateDesc::bindFlags` (SHADER_RESOURCE / RENDER_TARGET / DEPTH_STENCIL の
+/// 組合せ) で決まり、 必要な view (`Srv()` / `Rtv()` / `Dsv()`) だけを生成・保持する (用途外アクセサは null)
+/// ファイルロードは拡張子 .dds → DDSTextureLoader、 それ以外 → WICTextureLoader 経由で、 読込失敗時は
+/// 1x1 マゼンタ fallback SRV を生成し `IsUsingFallback()` が true になる。 File I/O は `NS::Core::FileSystem`
+/// 経由なので将来 pak / VFS で透過対応可能
+/// 既存 `ID3D11Texture2D` ラップ ctor は swapchain backbuffer を RTV として包む用途に使う
+/// バインドは Renderer 経由 (`Renderer::BindTexture`)、 本型は context を保持しない
+/// Graphics は exposed-D3D lean 設計のため `ID3D11Texture2D*` / 各 view を直接公開する
 
 #include <filesystem>
-#include <memory>
 
 #include <Framework/Graphics/Buffer.h>
 #include <Framework/Math/Math.h>
 
-struct ID3D11ShaderResourceView;
-struct ID3D11DeviceContext;
+#include <d3d11.h>
+#include <wrl/client.h>
 
 namespace NS::Graphics
 {
@@ -25,7 +28,7 @@ namespace NS::Graphics
 
     namespace detail
     {
-        /// Texture 内部の SRV を取得 (Material が PSSetShaderResources 等に使用)
+        /// Texture 内部の SRV を取得 (Material が PSSetShaderResources 等に使用)。 SRV を持たなければ null
         [[nodiscard]] ID3D11ShaderResourceView* GetSrv(Texture& texture) noexcept;
 
         /// Texture の SRV を context の slot + ステージ (VS/PS/GS) にバインドする
@@ -36,8 +39,8 @@ namespace NS::Graphics
                          ShaderStage stages) noexcept;
     } // namespace detail
 
-    /// Texture 構築パラメータ
-    /// path が空 or 読込失敗時は 1x1 マゼンタ fallback が生成され、IsUsingFallback() が true になる
+    /// ファイルロード用 Texture 構築パラメータ
+    /// path が空 or 読込失敗時は 1x1 マゼンタ fallback が生成され、 IsUsingFallback() が true になる
     struct TextureDesc
     {
         std::filesystem::path path;
@@ -45,17 +48,29 @@ namespace NS::Graphics
         bool sRGB = false;
     };
 
+    /// 生成用 Texture 構築パラメータ (offscreen RT / depth / render-to-texture)
+    /// bindFlags に SHADER_RESOURCE / RENDER_TARGET / DEPTH_STENCIL を組み合わせ、 必要な view が作られる
+    /// 例: RENDER_TARGET|SHADER_RESOURCE で render-to-texture (Rtv() と Srv() 両方が非 null)
+    struct TextureCreateDesc
+    {
+        UINT width = 0;
+        UINT height = 0;
+        DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        UINT mipLevels = 1;
+        UINT arraySize = 1;
+        UINT bindFlags = D3D11_BIND_SHADER_RESOURCE;
+    };
+
     /// 2D テクスチャ。Cubemap / 3D Volume は対象外
-    /// 拡張子 .dds → DirectXTK DDSTextureLoader、それ以外 → WICTextureLoader 経由
-    /// File I/O は NS::Core::FileSystem 経由なので将来 pak / VFS で透過対応可能
-    /// 依存: 生成に Renderer の Device / Context を使う。 context は保持せず、 バインドは Renderer::BindTexture 経由
+    /// 役割は bindFlags で決まり、 SRV / RTV / DSV を必要なぶんだけ保持する
+    /// バインドは Renderer::BindTexture 経由 (本型は context を保持しない)
     class Texture
     {
     public:
-        struct Impl;
-
         Texture(Renderer& renderer, const TextureDesc& desc);
         Texture(Renderer& renderer, const std::filesystem::path& path);
+        Texture(Renderer& renderer, const TextureCreateDesc& desc);
+        Texture(Renderer& renderer, Microsoft::WRL::ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
         ~Texture();
 
         Texture(const Texture&) = delete;
@@ -63,22 +78,31 @@ namespace NS::Graphics
         Texture(Texture&&) = delete;
         Texture& operator=(Texture&&) = delete;
 
-        /// SRV が有効か。fallback でも true (1x1 マゼンタ SRV が必ず生成される)
+        /// いずれかの view (SRV/RTV/DSV) が有効なら true。fallback でも true (1x1 マゼンタ SRV が生成される)
         [[nodiscard]] bool IsValid() const noexcept;
         [[nodiscard]] NS::Math::Size2D Size() const noexcept;
 
         /// 読込失敗で fallback (1x1 マゼンタ) になっているかを問い合わせる
-        /// デバッグ時のアセット欠落検知に使用
+        /// デバッグ時のアセット欠落検知に使用。 生成 / ラップ ctor では常に false
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-    private:
-        std::unique_ptr<Impl> m_pImpl;
+        /// 内部 ID3D11Texture2D。継ぎ目で raw D3D を扱う Renderer / detail が使う
+        [[nodiscard]] ID3D11Texture2D* Native() const noexcept;
 
-        friend ID3D11ShaderResourceView* detail::GetSrv(Texture& texture) noexcept;
-        friend void detail::BindTexture(ID3D11DeviceContext* context,
-                                        const Texture& texture,
-                                        unsigned slot,
-                                        ShaderStage stages) noexcept;
+        /// SHADER_RESOURCE bind 時の SRV (なければ null)
+        [[nodiscard]] ID3D11ShaderResourceView* Srv() const noexcept;
+        /// RENDER_TARGET bind 時の RTV (なければ null)
+        [[nodiscard]] ID3D11RenderTargetView* Rtv() const noexcept;
+        /// DEPTH_STENCIL bind 時の DSV (なければ null)
+        [[nodiscard]] ID3D11DepthStencilView* Dsv() const noexcept;
+
+    private:
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_tex;
+        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_srv;
+        Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_rtv;
+        Microsoft::WRL::ComPtr<ID3D11DepthStencilView> m_dsv;
+        NS::Math::Size2D m_size{0, 0};
+        bool m_fallback = false;
     };
 
 } // namespace NS::Graphics

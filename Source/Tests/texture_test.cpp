@@ -11,6 +11,7 @@ namespace
     using NS::Graphics::RendererDesc;
     using NS::Graphics::ShaderStage;
     using NS::Graphics::Texture;
+    using NS::Graphics::TextureCreateDesc;
     using NS::Graphics::TextureDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
@@ -112,4 +113,66 @@ TEST_F(TextureLoggerTest, FallbackSrvIsNonNull)
     ASSERT_TRUE(tex.IsValid());
 
     EXPECT_NE(NS::Graphics::detail::GetSrv(tex), nullptr);
+}
+
+TEST_F(TextureLoggerTest, RenderTargetHasRtvOnly)
+{
+    Window window(MakeWindowDesc("ns_tex_rt"));
+    ASSERT_TRUE(window.IsValid());
+    Renderer renderer(MakeRendererDesc(), window);
+    ASSERT_TRUE(renderer.IsValid());
+
+    TextureCreateDesc desc{};
+    desc.width = 64;
+    desc.height = 64;
+    desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.bindFlags = D3D11_BIND_RENDER_TARGET;
+
+    Texture tex(renderer, desc);
+    EXPECT_TRUE(tex.IsValid());
+    EXPECT_NE(tex.Rtv(), nullptr);
+    EXPECT_EQ(tex.Srv(), nullptr);
+    EXPECT_EQ(tex.Dsv(), nullptr);
+    EXPECT_FALSE(tex.IsUsingFallback());
+    EXPECT_EQ(tex.Size(), (NS::Math::Size2D{64, 64}));
+}
+
+TEST_F(TextureLoggerTest, RenderToTextureHasRtvAndSrv)
+{
+    Window window(MakeWindowDesc("ns_tex_rtt"));
+    ASSERT_TRUE(window.IsValid());
+    Renderer renderer(MakeRendererDesc(), window);
+    ASSERT_TRUE(renderer.IsValid());
+
+    TextureCreateDesc desc{};
+    desc.width = 32;
+    desc.height = 32;
+    desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.bindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+    Texture tex(renderer, desc);
+    EXPECT_TRUE(tex.IsValid());
+    EXPECT_NE(tex.Rtv(), nullptr);
+    EXPECT_NE(tex.Srv(), nullptr);
+    EXPECT_EQ(tex.Dsv(), nullptr);
+}
+
+TEST_F(TextureLoggerTest, DepthHasDsvOnly)
+{
+    Window window(MakeWindowDesc("ns_tex_depth"));
+    ASSERT_TRUE(window.IsValid());
+    Renderer renderer(MakeRendererDesc(), window);
+    ASSERT_TRUE(renderer.IsValid());
+
+    TextureCreateDesc desc{};
+    desc.width = 128;
+    desc.height = 96;
+    desc.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    desc.bindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+    Texture tex(renderer, desc);
+    EXPECT_TRUE(tex.IsValid());
+    EXPECT_NE(tex.Dsv(), nullptr);
+    EXPECT_EQ(tex.Rtv(), nullptr);
+    EXPECT_EQ(tex.Srv(), nullptr);
 }

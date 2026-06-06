@@ -18,14 +18,6 @@ namespace NS::Graphics
 {
     using detail::ComPtr;
 
-    struct Texture::Impl
-    {
-        ComPtr<ID3D11Resource> resource;
-        ComPtr<ID3D11ShaderResourceView> srv;
-        ::NS::Math::Size2D size{0, 0};
-        bool fallback = false;
-    };
-
     namespace
     {
         [[nodiscard]] bool IsDdsExtension(const std::filesystem::path& path)
@@ -37,34 +29,74 @@ namespace NS::Graphics
             return ext == ".dds";
         }
 
-        bool QueryTexture2DSize(ID3D11Resource* resource, int& outWidth, int& outHeight) noexcept
+        [[nodiscard]] ComPtr<ID3D11Texture2D> AsTexture2D(ID3D11Resource* resource) noexcept
         {
-            if (resource == nullptr)
-            {
-                NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "QueryTexture2DSize: resource が null");
-                return false;
-            }
             ComPtr<ID3D11Texture2D> tex2d;
-            const HRESULT hr = resource->QueryInterface(IID_PPV_ARGS(tex2d.GetAddressOf()));
-            if (FAILED(hr) || !tex2d)
+            if (resource != nullptr)
             {
-                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                             "QueryTexture2DSize: ID3D11Texture2D への QI 失敗 (hr=0x{:X})",
-                             static_cast<unsigned>(hr));
-                return false;
+                resource->QueryInterface(IID_PPV_ARGS(tex2d.GetAddressOf()));
+            }
+            return tex2d;
+        }
+
+        [[nodiscard]] ::NS::Math::Size2D Texture2DSize(ID3D11Texture2D* tex2d) noexcept
+        {
+            if (tex2d == nullptr)
+            {
+                return ::NS::Math::Size2D{0, 0};
             }
             D3D11_TEXTURE2D_DESC d{};
             tex2d->GetDesc(&d);
-            outWidth = static_cast<int>(d.Width);
-            outHeight = static_cast<int>(d.Height);
-            return true;
+            return ::NS::Math::Size2D{static_cast<int>(d.Width), static_cast<int>(d.Height)};
+        }
+
+        // bindFlags に応じて要求された view だけを生成する。 失敗した view は null のまま (致命ではない)
+        void CreateRequestedViews(ID3D11Device* device,
+                                  ID3D11Texture2D* tex2d,
+                                  UINT bindFlags,
+                                  ComPtr<ID3D11ShaderResourceView>& outSrv,
+                                  ComPtr<ID3D11RenderTargetView>& outRtv,
+                                  ComPtr<ID3D11DepthStencilView>& outDsv) noexcept
+        {
+            if (device == nullptr || tex2d == nullptr)
+            {
+                return;
+            }
+            if (bindFlags & D3D11_BIND_SHADER_RESOURCE)
+            {
+                const HRESULT hr = device->CreateShaderResourceView(tex2d, nullptr, outSrv.GetAddressOf());
+                if (FAILED(hr))
+                {
+                    NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                                 "Texture: CreateShaderResourceView 失敗 (hr=0x{:X})",
+                                 static_cast<unsigned>(hr));
+                }
+            }
+            if (bindFlags & D3D11_BIND_RENDER_TARGET)
+            {
+                const HRESULT hr = device->CreateRenderTargetView(tex2d, nullptr, outRtv.GetAddressOf());
+                if (FAILED(hr))
+                {
+                    NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                                 "Texture: CreateRenderTargetView 失敗 (hr=0x{:X})",
+                                 static_cast<unsigned>(hr));
+                }
+            }
+            if (bindFlags & D3D11_BIND_DEPTH_STENCIL)
+            {
+                const HRESULT hr = device->CreateDepthStencilView(tex2d, nullptr, outDsv.GetAddressOf());
+                if (FAILED(hr))
+                {
+                    NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                                 "Texture: CreateDepthStencilView 失敗 (hr=0x{:X})",
+                                 static_cast<unsigned>(hr));
+                }
+            }
         }
 
         bool CreateMagentaFallback(ID3D11Device* device,
-                                   ComPtr<ID3D11Resource>& outResource,
-                                   ComPtr<ID3D11ShaderResourceView>& outSrv,
-                                   int& outWidth,
-                                   int& outHeight) noexcept
+                                   ComPtr<ID3D11Texture2D>& outTex,
+                                   ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
         {
             if (device == nullptr)
             {
@@ -105,9 +137,7 @@ namespace NS::Graphics
                 return false;
             }
 
-            outResource = tex2d;
-            outWidth = 1;
-            outHeight = 1;
+            outTex = tex2d;
             return true;
         }
 
@@ -169,7 +199,7 @@ namespace NS::Graphics
         }
     } // namespace
 
-    Texture::Texture(Renderer& renderer, const TextureDesc& desc) : m_pImpl(std::make_unique<Impl>())
+    Texture::Texture(Renderer& renderer, const TextureDesc& desc)
     {
         auto* device = detail::GetDevice(renderer);
         auto* context = detail::GetContext(renderer);
@@ -179,6 +209,7 @@ namespace NS::Graphics
             return;
         }
 
+        ComPtr<ID3D11Resource> resource;
         bool loaded = false;
         if (!desc.path.empty())
         {
@@ -191,18 +222,12 @@ namespace NS::Graphics
                 {
                     // DDS は内蔵 mipmap を尊重、generateMipmaps フラグは無視
                     // mipmap が欲しければ Texconv.exe 等で事前生成した DDS を渡すこと
-                    loaded = TryLoadDds(device, context, data, bytes.size(), m_pImpl->resource, m_pImpl->srv);
+                    loaded = TryLoadDds(device, context, data, bytes.size(), resource, m_srv);
                 }
                 else
                 {
-                    loaded = TryLoadWic(device,
-                                        context,
-                                        data,
-                                        bytes.size(),
-                                        desc.generateMipmaps,
-                                        desc.sRGB,
-                                        m_pImpl->resource,
-                                        m_pImpl->srv);
+                    loaded = TryLoadWic(
+                        device, context, data, bytes.size(), desc.generateMipmaps, desc.sRGB, resource, m_srv);
                 }
             }
             else
@@ -213,49 +238,107 @@ namespace NS::Graphics
 
         if (loaded)
         {
-            int w = 0;
-            int h = 0;
-            if (QueryTexture2DSize(m_pImpl->resource.Get(), w, h))
-            {
-                m_pImpl->size = ::NS::Math::Size2D{w, h};
-            }
+            m_tex = AsTexture2D(resource.Get());
+            m_size = Texture2DSize(m_tex.Get());
             return;
         }
 
-        int fbW = 0;
-        int fbH = 0;
-        if (!CreateMagentaFallback(device, m_pImpl->resource, m_pImpl->srv, fbW, fbH))
+        if (!CreateMagentaFallback(device, m_tex, m_srv))
         {
             return;
         }
-        m_pImpl->size = ::NS::Math::Size2D{fbW, fbH};
-        m_pImpl->fallback = true;
+        m_size = ::NS::Math::Size2D{1, 1};
+        m_fallback = true;
     }
 
     Texture::Texture(Renderer& renderer, const std::filesystem::path& path)
         : Texture(renderer, TextureDesc{path, true, false})
     {}
 
+    Texture::Texture(Renderer& renderer, const TextureCreateDesc& desc)
+    {
+        auto* device = detail::GetDevice(renderer);
+        if (device == nullptr)
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Texture: Renderer の Device が無効");
+            return;
+        }
+
+        D3D11_TEXTURE2D_DESC td{};
+        td.Width = desc.width;
+        td.Height = desc.height;
+        td.MipLevels = desc.mipLevels;
+        td.ArraySize = desc.arraySize;
+        td.Format = desc.format;
+        td.SampleDesc.Count = 1;
+        td.SampleDesc.Quality = 0;
+        td.Usage = D3D11_USAGE_DEFAULT;
+        td.BindFlags = desc.bindFlags;
+
+        const HRESULT hr = device->CreateTexture2D(&td, nullptr, m_tex.GetAddressOf());
+        if (FAILED(hr))
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "Texture: CreateTexture2D 失敗 (W={} H={} hr=0x{:X})",
+                         desc.width,
+                         desc.height,
+                         static_cast<unsigned>(hr));
+            return;
+        }
+
+        CreateRequestedViews(device, m_tex.Get(), desc.bindFlags, m_srv, m_rtv, m_dsv);
+        m_size = ::NS::Math::Size2D{static_cast<int>(desc.width), static_cast<int>(desc.height)};
+    }
+
+    Texture::Texture(Renderer& renderer, ComPtr<ID3D11Texture2D> existing, UINT bindFlags)
+    {
+        auto* device = detail::GetDevice(renderer);
+        if (device == nullptr || !existing)
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Texture: ラップ対象 / Device が無効");
+            return;
+        }
+        m_tex = std::move(existing);
+        m_size = Texture2DSize(m_tex.Get());
+        CreateRequestedViews(device, m_tex.Get(), bindFlags, m_srv, m_rtv, m_dsv);
+    }
+
     Texture::~Texture() = default;
 
     bool Texture::IsValid() const noexcept
     {
-        return m_pImpl && m_pImpl->srv;
+        return m_srv || m_rtv || m_dsv;
     }
     ::NS::Math::Size2D Texture::Size() const noexcept
     {
-        return m_pImpl ? m_pImpl->size : ::NS::Math::Size2D{0, 0};
+        return m_size;
     }
     bool Texture::IsUsingFallback() const noexcept
     {
-        return m_pImpl && m_pImpl->fallback;
+        return m_fallback;
+    }
+    ID3D11Texture2D* Texture::Native() const noexcept
+    {
+        return m_tex.Get();
+    }
+    ID3D11ShaderResourceView* Texture::Srv() const noexcept
+    {
+        return m_srv.Get();
+    }
+    ID3D11RenderTargetView* Texture::Rtv() const noexcept
+    {
+        return m_rtv.Get();
+    }
+    ID3D11DepthStencilView* Texture::Dsv() const noexcept
+    {
+        return m_dsv.Get();
     }
 
     namespace detail
     {
         ID3D11ShaderResourceView* GetSrv(Texture& texture) noexcept
         {
-            return texture.m_pImpl ? texture.m_pImpl->srv.Get() : nullptr;
+            return texture.Srv();
         }
 
         void BindTexture(ID3D11DeviceContext* context,
@@ -263,11 +346,12 @@ namespace NS::Graphics
                          unsigned slot,
                          ShaderStage stages) noexcept
         {
-            if (context == nullptr || !texture.m_pImpl || !texture.m_pImpl->srv)
+            ID3D11ShaderResourceView* srv = texture.Srv();
+            if (context == nullptr || srv == nullptr)
             {
                 return;
             }
-            ID3D11ShaderResourceView* srvs[1] = {texture.m_pImpl->srv.Get()};
+            ID3D11ShaderResourceView* srvs[1] = {srv};
             if (HasStage(stages, ShaderStage::Vertex))
             {
                 context->VSSetShaderResources(slot, 1u, srvs);
