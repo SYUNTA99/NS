@@ -10,7 +10,6 @@
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/Mesh.h"
 #include "Framework/Graphics/MeshPrimitives.h"
-#include "Framework/Graphics/RenderTarget.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/SkeletalMesh.h"

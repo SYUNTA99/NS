@@ -32,7 +32,6 @@ namespace NS::Graphics
     };
 
     class Renderer;
-    class RenderTarget;
     class CommonStates;
     class Shader;
     class Texture;
@@ -69,20 +68,17 @@ namespace NS::Graphics
         /// 構築成功判定。D3D11CreateDevice / SwapChain 作成失敗時に false
         [[nodiscard]] bool IsValid() const noexcept;
 
-        /// フレーム頭で呼ぶ。MainRenderTarget をクリア + Bind する薄ラッパ
+        /// フレーム頭で呼ぶ。backbuffer と depth をクリアし、 描画先としてバインドする
         void BeginFrame(float r, float g, float b, float a) noexcept;
 
         /// フレーム末で呼ぶ。SwapChain::Present を実行する
         void EndFrame() noexcept;
 
-        /// SwapChain::ResizeBuffers + 主 RT 再構築。Window リサイズで自動呼出される
+        /// SwapChain::ResizeBuffers + backbuffer / depth Texture の再構築。Window リサイズで自動呼出される
         /// size.width または size.height が 0 以下なら no-op (最小化対応)
         void Resize(NS::Math::Size2D size) noexcept;
 
         [[nodiscard]] NS::Math::Size2D Size() const noexcept;
-
-        /// Backbuffer 主 RT。Renderer 寿命と同期、別 Window では使えない
-        [[nodiscard]] RenderTarget& MainRenderTarget() noexcept;
 
         /// DirectXTK CommonStates ラッパ。Mesh/Material 等が利用
         [[nodiscard]] CommonStates& States() noexcept;
@@ -103,7 +99,6 @@ namespace NS::Graphics
         void BindVertexBuffer(Buffer& vertexBuffer, unsigned slot = 0) noexcept;
         void BindIndexBuffer(Buffer& indexBuffer) noexcept;
         void BindConstantBuffer(Buffer& constantBuffer, unsigned slot, ShaderStage stages) noexcept;
-        void SetRenderTarget(RenderTarget& renderTarget) noexcept;
         void UpdateBuffer(Buffer& buffer, const void* data, std::size_t bytes) noexcept;
         void DrawIndexed(unsigned indexCount) noexcept;
 

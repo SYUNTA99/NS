@@ -105,7 +105,7 @@ namespace NS::Math
     }
 
     /// 2D ピクセルサイズ (width, height) を表す強い型
-    /// 用途: Window / Renderer / RenderTarget / Texture の解像度 API
+    /// 用途: Window / Renderer / Texture の解像度 API
     /// 暗黙変換禁止、 width と height を取り違える事故を型システムで防ぐ
     /// プラットフォーム API (DX11 / Win32) と整合させるため int 保持、
     /// 負値は無効 (リソース側は width > 0 && height > 0 を事前条件とする)

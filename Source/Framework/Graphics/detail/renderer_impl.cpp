@@ -2,7 +2,6 @@
 
 #include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/CommonStates.h"
-#include "Framework/Graphics/RenderTarget.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/Texture.h"
 #include "Framework/Graphics/TextureArray.h"
@@ -24,7 +23,8 @@ namespace NS::Graphics
         ComPtr<ID3D11DeviceContext> context;
         ComPtr<IDXGISwapChain> swapchain;
 
-        std::unique_ptr<RenderTarget> mainRT;
+        std::unique_ptr<Texture> backbuffer;
+        std::unique_ptr<Texture> depth;
         std::unique_ptr<CommonStates> states;
 
         ::NS::Platform::Window* window = nullptr;
@@ -116,6 +116,48 @@ namespace NS::Graphics
             }
             factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
         }
+
+        // swapchain の backbuffer を RTV Texture として包み、 同サイズの depth Texture を生成する
+        // 構築 / Resize の両方から呼ぶ。 いずれか失敗で false (out は未確定)
+        bool BuildBackbufferTargets(Renderer& renderer,
+                                    IDXGISwapChain* swapchain,
+                                    std::unique_ptr<Texture>& outBackbuffer,
+                                    std::unique_ptr<Texture>& outDepth)
+        {
+            ComPtr<ID3D11Texture2D> bb;
+            const HRESULT hr = swapchain->GetBuffer(0, IID_PPV_ARGS(bb.GetAddressOf()));
+            if (FAILED(hr))
+            {
+                NS_LOG_ERROR(
+                    ::NS::Core::LogCat::Graphics, "SwapChain::GetBuffer 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                return false;
+            }
+
+            auto backbuffer = std::make_unique<Texture>(renderer, bb, D3D11_BIND_RENDER_TARGET);
+            if (backbuffer->Rtv() == nullptr)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "backbuffer RTV の構築失敗");
+                return false;
+            }
+
+            const ::NS::Math::Size2D size = backbuffer->Size();
+            TextureCreateDesc depthDesc{};
+            depthDesc.width = static_cast<UINT>(size.width);
+            depthDesc.height = static_cast<UINT>(size.height);
+            depthDesc.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+            depthDesc.bindFlags = D3D11_BIND_DEPTH_STENCIL;
+
+            auto depth = std::make_unique<Texture>(renderer, depthDesc);
+            if (depth->Dsv() == nullptr)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "depth DSV の構築失敗");
+                return false;
+            }
+
+            outBackbuffer = std::move(backbuffer);
+            outDepth = std::move(depth);
+            return true;
+        }
     } // namespace
 
     Renderer::Renderer(const RendererDesc& desc, ::NS::Platform::Window& window) : m_pImpl(std::make_unique<Impl>())
@@ -158,12 +200,9 @@ namespace NS::Graphics
 
         SuppressAltEnter(m_pImpl->swapchain.Get(), hwnd);
 
-        m_pImpl->mainRT.reset(new RenderTarget());
-        if (!m_pImpl->mainRT->ConfigureAsBackbuffer(
-                m_pImpl->swapchain.Get(), m_pImpl->device.Get(), m_pImpl->context.Get(), true))
+        if (!BuildBackbufferTargets(*this, m_pImpl->swapchain.Get(), m_pImpl->backbuffer, m_pImpl->depth))
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "MainRenderTarget の構築失敗");
-            m_pImpl->mainRT.reset();
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "backbuffer / depth Texture の構築失敗");
             return;
         }
 
@@ -198,12 +237,30 @@ namespace NS::Graphics
 
     void Renderer::BeginFrame(float r, float g, float b, float a) noexcept
     {
-        if (!IsValid() || !m_pImpl->mainRT)
+        if (!IsValid() || !m_pImpl->backbuffer || !m_pImpl->depth)
         {
             return;
         }
-        m_pImpl->mainRT->Clear(m_pImpl->context.Get(), r, g, b, a);
-        SetRenderTarget(*m_pImpl->mainRT);
+        auto* context = m_pImpl->context.Get();
+        ID3D11RenderTargetView* rtv = m_pImpl->backbuffer->Rtv();
+        ID3D11DepthStencilView* dsv = m_pImpl->depth->Dsv();
+
+        const float color[4] = {r, g, b, a};
+        context->ClearRenderTargetView(rtv, color);
+        context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
+        ID3D11RenderTargetView* rtvs[1] = {rtv};
+        context->OMSetRenderTargets(1, rtvs, dsv);
+
+        const ::NS::Math::Size2D size = m_pImpl->backbuffer->Size();
+        D3D11_VIEWPORT vp{};
+        vp.TopLeftX = 0.0f;
+        vp.TopLeftY = 0.0f;
+        vp.Width = static_cast<float>(size.width);
+        vp.Height = static_cast<float>(size.height);
+        vp.MinDepth = 0.0f;
+        vp.MaxDepth = 1.0f;
+        context->RSSetViewports(1, &vp);
     }
 
     void Renderer::EndFrame() noexcept
@@ -226,25 +283,34 @@ namespace NS::Graphics
         {
             return;
         }
-        if (m_pImpl->mainRT)
+
+        auto* context = m_pImpl->context.Get();
+        // ResizeBuffers の前に backbuffer 参照を全て手放す (RTV を握ったままだと失敗する)
+        context->OMSetRenderTargets(0, nullptr, nullptr);
+        m_pImpl->backbuffer.reset();
+        m_pImpl->depth.reset();
+        context->ClearState();
+        context->Flush();
+
+        const HRESULT hr = m_pImpl->swapchain->ResizeBuffers(
+            0, static_cast<UINT>(size.width), static_cast<UINT>(size.height), DXGI_FORMAT_UNKNOWN, 0);
+        if (FAILED(hr))
         {
-            m_pImpl->mainRT->Resize(m_pImpl->context.Get(), size);
+            NS_LOG_ERROR(
+                ::NS::Core::LogCat::Graphics, "SwapChain::ResizeBuffers 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+            return;
         }
+
+        BuildBackbufferTargets(*this, m_pImpl->swapchain.Get(), m_pImpl->backbuffer, m_pImpl->depth);
     }
 
     ::NS::Math::Size2D Renderer::Size() const noexcept
     {
-        if (!m_pImpl || !m_pImpl->mainRT)
+        if (!m_pImpl || !m_pImpl->backbuffer)
         {
             return ::NS::Math::Size2D{0, 0};
         }
-        return m_pImpl->mainRT->Size();
-    }
-
-    RenderTarget& Renderer::MainRenderTarget() noexcept
-    {
-        assert(m_pImpl && m_pImpl->mainRT && "Renderer が無効な状態で MainRenderTarget() を呼んでいる");
-        return *m_pImpl->mainRT;
+        return m_pImpl->backbuffer->Size();
     }
 
     CommonStates& Renderer::States() noexcept
@@ -303,13 +369,6 @@ namespace NS::Graphics
         if (m_pImpl)
         {
             detail::BindConstantBuffer(m_pImpl->context.Get(), constantBuffer, slot, stages);
-        }
-    }
-    void Renderer::SetRenderTarget(RenderTarget& renderTarget) noexcept
-    {
-        if (m_pImpl)
-        {
-            detail::SetRenderTarget(m_pImpl->context.Get(), renderTarget);
         }
     }
     void Renderer::UpdateBuffer(Buffer& buffer, const void* data, std::size_t bytes) noexcept

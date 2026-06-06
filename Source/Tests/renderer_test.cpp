@@ -2,7 +2,6 @@
 
 #include <Framework/Core/Logger.h>
 #include <Framework/Graphics/CommonStates.h>
-#include <Framework/Graphics/RenderTarget.h>
 #include <Framework/Graphics/Renderer.h>
 #include <Framework/Platform/Window.h>
 
@@ -99,19 +98,6 @@ TEST_F(RendererLoggerTest, ResizeZeroIsNoop)
     const NS::Math::Size2D before = renderer.Size();
     renderer.Resize(NS::Math::Size2D{0, 0});
     EXPECT_EQ(renderer.Size(), before);
-}
-
-TEST_F(RendererLoggerTest, MainRenderTargetIsAccessible)
-{
-    Window window(MakeDesc("ns_renderer_mrt", 400, 300));
-    ASSERT_TRUE(window.IsValid());
-
-    Renderer renderer(MakeRendererDesc(), window);
-    ASSERT_TRUE(renderer.IsValid());
-
-    auto& rt = renderer.MainRenderTarget();
-    EXPECT_EQ(rt.Size(), (NS::Math::Size2D{400, 300}));
-    EXPECT_TRUE(rt.HasDepth());
 }
 
 TEST_F(RendererLoggerTest, StatesAreAccessible)

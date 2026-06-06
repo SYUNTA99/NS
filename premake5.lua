@@ -270,7 +270,7 @@ project "Platform"
 
 --============================================================================
 -- Graphics 層 (StaticLib)
---   Renderer / RenderTarget / CommonStates / Buffer / Texture / Shader /
+--   Renderer / CommonStates / Buffer / Texture / Shader /
 --   Mesh / Camera / Material
 --============================================================================
 project "Graphics"

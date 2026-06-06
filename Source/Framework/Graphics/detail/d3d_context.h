@@ -31,7 +31,7 @@ namespace NS::Graphics
         /// Renderer が所有する D3D11 DeviceContext を取得
         [[nodiscard]] ID3D11DeviceContext* GetContext(Renderer& renderer) noexcept;
 
-        /// Renderer が所有する DXGI SwapChain を取得 (RenderTarget::Resize で使用)
+        /// Renderer が所有する DXGI SwapChain を取得
         [[nodiscard]] IDXGISwapChain* GetSwapChain(Renderer& renderer) noexcept;
     } // namespace detail
 } // namespace NS::Graphics
