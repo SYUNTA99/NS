@@ -23,8 +23,7 @@ struct ID3D11InputLayout;
 namespace NS::Graphics
 {
     class Renderer;
-    class VertexBuffer;
-    class IndexBuffer;
+    class Buffer;
     class Shader;
     class Mesh;
 
@@ -95,8 +94,8 @@ namespace NS::Graphics
         /// renderer の Device / DeviceContext を内部保持する。 vb / ib のいずれかが null なら invalid 扱い
         /// `usingFallback` は fallback geometry に切替えた場合に true を渡す
         void SetGeometry(Renderer& renderer,
-                         std::unique_ptr<VertexBuffer> vertexBuffer,
-                         std::unique_ptr<IndexBuffer> indexBuffer,
+                         std::unique_ptr<Buffer> vertexBuffer,
+                         std::unique_ptr<Buffer> indexBuffer,
                          std::size_t vertexCount,
                          std::size_t indexCount,
                          bool usingFallback) noexcept;

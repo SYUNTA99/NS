@@ -284,21 +284,21 @@ namespace NS::Graphics
             detail::BindTextureArray(m_pImpl->context.Get(), texture, slot, stages);
         }
     }
-    void Renderer::BindVertexBuffer(VertexBuffer& vertexBuffer, unsigned slot) noexcept
+    void Renderer::BindVertexBuffer(Buffer& vertexBuffer, unsigned slot) noexcept
     {
         if (m_pImpl)
         {
             detail::BindVertexBuffer(m_pImpl->context.Get(), vertexBuffer, slot);
         }
     }
-    void Renderer::BindIndexBuffer(IndexBuffer& indexBuffer) noexcept
+    void Renderer::BindIndexBuffer(Buffer& indexBuffer) noexcept
     {
         if (m_pImpl)
         {
             detail::BindIndexBuffer(m_pImpl->context.Get(), indexBuffer);
         }
     }
-    void Renderer::BindConstantBuffer(ConstantBuffer& constantBuffer, unsigned slot, ShaderStage stages) noexcept
+    void Renderer::BindConstantBuffer(Buffer& constantBuffer, unsigned slot, ShaderStage stages) noexcept
     {
         if (m_pImpl)
         {
@@ -312,18 +312,11 @@ namespace NS::Graphics
             detail::SetRenderTarget(m_pImpl->context.Get(), renderTarget);
         }
     }
-    void Renderer::UpdateBuffer(VertexBuffer& vertexBuffer, const void* data, std::size_t bytes) noexcept
+    void Renderer::UpdateBuffer(Buffer& buffer, const void* data, std::size_t bytes) noexcept
     {
         if (m_pImpl)
         {
-            detail::UpdateVertexBufferRaw(m_pImpl->context.Get(), vertexBuffer, data, bytes);
-        }
-    }
-    void Renderer::UpdateBuffer(ConstantBuffer& constantBuffer, const void* data, std::size_t bytes) noexcept
-    {
-        if (m_pImpl)
-        {
-            detail::UpdateConstantBufferRaw(m_pImpl->context.Get(), constantBuffer, data, bytes);
+            detail::UpdateBufferRaw(m_pImpl->context.Get(), buffer, data, bytes);
         }
     }
     void Renderer::DrawIndexed(unsigned indexCount) noexcept

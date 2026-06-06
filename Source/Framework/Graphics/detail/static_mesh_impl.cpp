@@ -26,24 +26,15 @@ namespace NS::Graphics
                           std::size_t vertexCount,
                           const std::uint32_t* indices,
                           std::size_t indexCount,
-                          std::unique_ptr<VertexBuffer>& outVb,
-                          std::unique_ptr<IndexBuffer>& outIb)
+                          std::unique_ptr<Buffer>& outVb,
+                          std::unique_ptr<Buffer>& outIb)
         {
-            VertexBufferDesc vbd{};
-            vbd.initialData = vertices;
-            vbd.vertexCount = vertexCount;
-            vbd.stride = sizeof(StaticVertex);
-            vbd.usage = BufferUsage::Static;
-            auto vb = std::make_unique<VertexBuffer>(renderer, vbd);
+            auto vb =
+                std::make_unique<Buffer>(renderer, MakeVertexBufferDesc(vertices, vertexCount, sizeof(StaticVertex)));
             if (!vb->IsValid())
                 return false;
 
-            IndexBufferDesc ibd{};
-            ibd.initialData = indices;
-            ibd.indexCount = indexCount;
-            ibd.format = IndexFormat::UInt32;
-            ibd.usage = BufferUsage::Static;
-            auto ib = std::make_unique<IndexBuffer>(renderer, ibd);
+            auto ib = std::make_unique<Buffer>(renderer, MakeIndexBufferDesc(indices, indexCount, IndexFormat::UInt32));
             if (!ib->IsValid())
                 return false;
 
@@ -64,8 +55,8 @@ namespace NS::Graphics
 
         SetVertexLayout(StandardInputLayout());
 
-        std::unique_ptr<VertexBuffer> vb;
-        std::unique_ptr<IndexBuffer> ib;
+        std::unique_ptr<Buffer> vb;
+        std::unique_ptr<Buffer> ib;
 
         const bool descValid =
             (desc.vertices != nullptr && desc.vertexCount != 0u && desc.indices != nullptr && desc.indexCount != 0u);

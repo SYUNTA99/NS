@@ -10,17 +10,16 @@
 
 namespace
 {
+    using NS::Graphics::Buffer;
     using NS::Graphics::BufferUsage;
-    using NS::Graphics::ConstantBuffer;
     using NS::Graphics::HasStage;
-    using NS::Graphics::IndexBuffer;
-    using NS::Graphics::IndexBufferDesc;
     using NS::Graphics::IndexFormat;
+    using NS::Graphics::MakeConstantBufferDesc;
+    using NS::Graphics::MakeIndexBufferDesc;
+    using NS::Graphics::MakeVertexBufferDesc;
     using NS::Graphics::Renderer;
     using NS::Graphics::RendererDesc;
     using NS::Graphics::ShaderStage;
-    using NS::Graphics::VertexBuffer;
-    using NS::Graphics::VertexBufferDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 
@@ -87,16 +86,10 @@ TEST_F(BufferLoggerTest, VertexBufferStaticConstructs)
         TestVertex{{1.0f, -1.0f, 0.0f}, {1.0f, 1.0f}},
     };
 
-    VertexBufferDesc desc{};
-    desc.initialData = verts.data();
-    desc.vertexCount = verts.size();
-    desc.stride = sizeof(TestVertex);
-    desc.usage = BufferUsage::Static;
-
-    VertexBuffer vb(renderer, desc);
+    Buffer vb(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex)));
     EXPECT_TRUE(vb.IsValid());
     EXPECT_EQ(vb.Stride(), sizeof(TestVertex));
-    EXPECT_EQ(vb.VertexCount(), verts.size());
+    EXPECT_EQ(vb.ByteSize(), verts.size() * sizeof(TestVertex));
 }
 
 TEST_F(BufferLoggerTest, VertexBufferDynamicUpdateDoesNotCrash)
@@ -107,13 +100,7 @@ TEST_F(BufferLoggerTest, VertexBufferDynamicUpdateDoesNotCrash)
     ASSERT_TRUE(renderer.IsValid());
 
     std::array<TestVertex, 3> verts{};
-    VertexBufferDesc desc{};
-    desc.initialData = verts.data();
-    desc.vertexCount = verts.size();
-    desc.stride = sizeof(TestVertex);
-    desc.usage = BufferUsage::Dynamic;
-
-    VertexBuffer vb(renderer, desc);
+    Buffer vb(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex), BufferUsage::Dynamic));
     ASSERT_TRUE(vb.IsValid());
 
     verts[0].pos[0] = 5.0f;
@@ -129,13 +116,7 @@ TEST_F(BufferLoggerTest, VertexBufferStaticUpdateIsNoop)
     ASSERT_TRUE(renderer.IsValid());
 
     std::array<TestVertex, 3> verts{};
-    VertexBufferDesc desc{};
-    desc.initialData = verts.data();
-    desc.vertexCount = verts.size();
-    desc.stride = sizeof(TestVertex);
-    desc.usage = BufferUsage::Static;
-
-    VertexBuffer vb(renderer, desc);
+    Buffer vb(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex)));
     ASSERT_TRUE(vb.IsValid());
 
     renderer.UpdateBuffer(vb, verts.data(), verts.size() * sizeof(TestVertex));
@@ -150,16 +131,10 @@ TEST_F(BufferLoggerTest, IndexBufferUint16Constructs)
     ASSERT_TRUE(renderer.IsValid());
 
     const std::array<std::uint16_t, 6> indices{0, 1, 2, 0, 2, 3};
-    IndexBufferDesc desc{};
-    desc.initialData = indices.data();
-    desc.indexCount = indices.size();
-    desc.format = IndexFormat::UInt16;
-    desc.usage = BufferUsage::Static;
-
-    IndexBuffer ib(renderer, desc);
+    Buffer ib(renderer, MakeIndexBufferDesc(indices.data(), indices.size(), IndexFormat::UInt16));
     EXPECT_TRUE(ib.IsValid());
     EXPECT_EQ(ib.Format(), IndexFormat::UInt16);
-    EXPECT_EQ(ib.IndexCount(), indices.size());
+    EXPECT_EQ(ib.ByteSize(), indices.size() * sizeof(std::uint16_t));
 }
 
 TEST_F(BufferLoggerTest, IndexBufferUint32Constructs)
@@ -170,16 +145,10 @@ TEST_F(BufferLoggerTest, IndexBufferUint32Constructs)
     ASSERT_TRUE(renderer.IsValid());
 
     const std::array<std::uint32_t, 6> indices{0, 1, 2, 0, 2, 3};
-    IndexBufferDesc desc{};
-    desc.initialData = indices.data();
-    desc.indexCount = indices.size();
-    desc.format = IndexFormat::UInt32;
-    desc.usage = BufferUsage::Static;
-
-    IndexBuffer ib(renderer, desc);
+    Buffer ib(renderer, MakeIndexBufferDesc(indices.data(), indices.size(), IndexFormat::UInt32));
     EXPECT_TRUE(ib.IsValid());
     EXPECT_EQ(ib.Format(), IndexFormat::UInt32);
-    EXPECT_EQ(ib.IndexCount(), indices.size());
+    EXPECT_EQ(ib.ByteSize(), indices.size() * sizeof(std::uint32_t));
 }
 
 TEST_F(BufferLoggerTest, ConstantBufferConstructs)
@@ -189,7 +158,7 @@ TEST_F(BufferLoggerTest, ConstantBufferConstructs)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ConstantBuffer cb(renderer, 64);
+    Buffer cb(renderer, MakeConstantBufferDesc(64));
     EXPECT_TRUE(cb.IsValid());
     EXPECT_EQ(cb.ByteSize(), static_cast<std::size_t>(64));
 }
@@ -201,7 +170,7 @@ TEST_F(BufferLoggerTest, ConstantBufferRoundsUpTo16ByteBoundary)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ConstantBuffer cb(renderer, 20);
+    Buffer cb(renderer, MakeConstantBufferDesc(20));
     EXPECT_TRUE(cb.IsValid());
     EXPECT_EQ(cb.ByteSize(), static_cast<std::size_t>(32));
 }
@@ -213,7 +182,7 @@ TEST_F(BufferLoggerTest, ConstantBufferUpdate)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    ConstantBuffer cb(renderer, sizeof(TestCB));
+    Buffer cb(renderer, MakeConstantBufferDesc(sizeof(TestCB)));
     ASSERT_TRUE(cb.IsValid());
 
     TestCB data{};
@@ -233,22 +202,14 @@ TEST_F(BufferLoggerTest, BufferBindsDoNotCrash)
     ASSERT_TRUE(renderer.IsValid());
 
     const std::array<TestVertex, 3> verts{};
-    VertexBufferDesc vbDesc{};
-    vbDesc.initialData = verts.data();
-    vbDesc.vertexCount = verts.size();
-    vbDesc.stride = sizeof(TestVertex);
-    VertexBuffer vb(renderer, vbDesc);
+    Buffer vb(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex)));
     ASSERT_TRUE(vb.IsValid());
 
     const std::array<std::uint16_t, 3> indices{0, 1, 2};
-    IndexBufferDesc ibDesc{};
-    ibDesc.initialData = indices.data();
-    ibDesc.indexCount = indices.size();
-    ibDesc.format = IndexFormat::UInt16;
-    IndexBuffer ib(renderer, ibDesc);
+    Buffer ib(renderer, MakeIndexBufferDesc(indices.data(), indices.size(), IndexFormat::UInt16));
     ASSERT_TRUE(ib.IsValid());
 
-    ConstantBuffer cb(renderer, sizeof(TestCB));
+    Buffer cb(renderer, MakeConstantBufferDesc(sizeof(TestCB)));
     ASSERT_TRUE(cb.IsValid());
 
     renderer.BindVertexBuffer(vb, 0);

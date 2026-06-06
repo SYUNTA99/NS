@@ -63,7 +63,7 @@ namespace NS::Graphics
         std::unique_ptr<StaticMesh> cubeMesh;
         std::unique_ptr<Shader> vs;
         std::unique_ptr<Shader> ps;
-        std::unique_ptr<ConstantBuffer> cb;
+        std::unique_ptr<Buffer> cb;
         ComPtr<ID3D11SamplerState> sampler;
         ComPtr<ID3D11DepthStencilState> depthState;
         ComPtr<ID3D11RasterizerState> rasterState;
@@ -401,7 +401,7 @@ namespace NS::Graphics
         m_pImpl->cubeMesh->CreateInputLayout(*m_pImpl->vs);
 
         // viewProj を渡す 64 byte の CB
-        m_pImpl->cb = std::make_unique<ConstantBuffer>(renderer, sizeof(SkyboxCB));
+        m_pImpl->cb = std::make_unique<Buffer>(renderer, MakeConstantBufferDesc(sizeof(SkyboxCB)));
         if (!m_pImpl->cb->IsValid())
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Skybox: ConstantBuffer 構築失敗");

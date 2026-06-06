@@ -23,7 +23,7 @@ namespace NS::Graphics
         Shader* vertexShader = nullptr;
         Shader* pixelShader = nullptr;
         std::map<unsigned, const Texture*> textures;
-        std::unique_ptr<ConstantBuffer> cb;
+        std::unique_ptr<Buffer> cb;
         ComPtr<ID3D11SamplerState> sampler;
         unsigned cbSlot = 1;
         ShaderStage cbStages = ShaderStage::Vertex | ShaderStage::Pixel;
@@ -48,7 +48,7 @@ namespace NS::Graphics
 
         if (desc.constantBufferSize > 0u)
         {
-            auto cb = std::make_unique<ConstantBuffer>(renderer, desc.constantBufferSize);
+            auto cb = std::make_unique<Buffer>(renderer, MakeConstantBufferDesc(desc.constantBufferSize));
             if (!cb->IsValid())
             {
                 NS_LOG_ERROR(::NS::Core::LogCat::Graphics,

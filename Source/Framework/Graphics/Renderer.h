@@ -37,9 +37,7 @@ namespace NS::Graphics
     class Shader;
     class Texture;
     class TextureArray;
-    class VertexBuffer;
-    class IndexBuffer;
-    class ConstantBuffer;
+    class Buffer;
     enum class ShaderStage : unsigned;
 
     namespace detail
@@ -102,12 +100,11 @@ namespace NS::Graphics
         void BindShader(Shader& shader) noexcept;
         void BindTexture(const Texture& texture, unsigned slot, ShaderStage stages) noexcept;
         void BindTextureArray(TextureArray& texture, unsigned slot, ShaderStage stages) noexcept;
-        void BindVertexBuffer(VertexBuffer& vertexBuffer, unsigned slot = 0) noexcept;
-        void BindIndexBuffer(IndexBuffer& indexBuffer) noexcept;
-        void BindConstantBuffer(ConstantBuffer& constantBuffer, unsigned slot, ShaderStage stages) noexcept;
+        void BindVertexBuffer(Buffer& vertexBuffer, unsigned slot = 0) noexcept;
+        void BindIndexBuffer(Buffer& indexBuffer) noexcept;
+        void BindConstantBuffer(Buffer& constantBuffer, unsigned slot, ShaderStage stages) noexcept;
         void SetRenderTarget(RenderTarget& renderTarget) noexcept;
-        void UpdateBuffer(VertexBuffer& vertexBuffer, const void* data, std::size_t bytes) noexcept;
-        void UpdateBuffer(ConstantBuffer& constantBuffer, const void* data, std::size_t bytes) noexcept;
+        void UpdateBuffer(Buffer& buffer, const void* data, std::size_t bytes) noexcept;
         void DrawIndexed(unsigned indexCount) noexcept;
 
     private:

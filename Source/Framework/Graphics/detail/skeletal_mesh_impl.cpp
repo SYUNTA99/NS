@@ -38,24 +38,15 @@ namespace NS::Graphics
                           std::size_t vertexCount,
                           const std::uint32_t* indices,
                           std::size_t indexCount,
-                          std::unique_ptr<VertexBuffer>& outVb,
-                          std::unique_ptr<IndexBuffer>& outIb)
+                          std::unique_ptr<Buffer>& outVb,
+                          std::unique_ptr<Buffer>& outIb)
         {
-            VertexBufferDesc vbd{};
-            vbd.initialData = vertices;
-            vbd.vertexCount = vertexCount;
-            vbd.stride = sizeof(SkinnedVertex);
-            vbd.usage = BufferUsage::Static;
-            auto vb = std::make_unique<VertexBuffer>(renderer, vbd);
+            auto vb =
+                std::make_unique<Buffer>(renderer, MakeVertexBufferDesc(vertices, vertexCount, sizeof(SkinnedVertex)));
             if (!vb->IsValid())
                 return false;
 
-            IndexBufferDesc ibd{};
-            ibd.initialData = indices;
-            ibd.indexCount = indexCount;
-            ibd.format = IndexFormat::UInt32;
-            ibd.usage = BufferUsage::Static;
-            auto ib = std::make_unique<IndexBuffer>(renderer, ibd);
+            auto ib = std::make_unique<Buffer>(renderer, MakeIndexBufferDesc(indices, indexCount, IndexFormat::UInt32));
             if (!ib->IsValid())
                 return false;
 
@@ -67,7 +58,7 @@ namespace NS::Graphics
 
     struct SkeletalMesh::Impl
     {
-        std::unique_ptr<ConstantBuffer> bonePaletteCB;
+        std::unique_ptr<Buffer> bonePaletteCB;
         // パレットは CPU 側に持ち、 Draw のたびに GPU へアップロードする (context は保持しない)
         BonePaletteCB palette;
         std::size_t boneCount = 0;
@@ -97,8 +88,8 @@ namespace NS::Graphics
             return;
         }
 
-        std::unique_ptr<VertexBuffer> vb;
-        std::unique_ptr<IndexBuffer> ib;
+        std::unique_ptr<Buffer> vb;
+        std::unique_ptr<Buffer> ib;
         if (!BuildBuffers(renderer, desc.vertices, desc.vertexCount, desc.indices, desc.indexCount, vb, ib))
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
@@ -120,7 +111,7 @@ namespace NS::Graphics
 
         // 既定は恒等パレットで初期化し、 pose 未指定でも bind pose 相当で描画できるようにする
         FillIdentity(m_pImpl->palette);
-        auto cb = std::make_unique<ConstantBuffer>(renderer, sizeof(BonePaletteCB));
+        auto cb = std::make_unique<Buffer>(renderer, MakeConstantBufferDesc(sizeof(BonePaletteCB)));
         if (cb->IsValid())
         {
             m_pImpl->bonePaletteCB = std::move(cb);

@@ -19,8 +19,8 @@ namespace NS::Graphics
 
     struct Mesh::Impl
     {
-        std::unique_ptr<VertexBuffer> vb;
-        std::unique_ptr<IndexBuffer> ib;
+        std::unique_ptr<Buffer> vb;
+        std::unique_ptr<Buffer> ib;
         ComPtr<ID3D11Device> device;
         ComPtr<ID3D11InputLayout> inputLayout;
         std::vector<InputElement> layoutElements;
@@ -98,8 +98,8 @@ namespace NS::Graphics
     Mesh::~Mesh() = default;
 
     void Mesh::SetGeometry(Renderer& renderer,
-                           std::unique_ptr<VertexBuffer> vertexBuffer,
-                           std::unique_ptr<IndexBuffer> indexBuffer,
+                           std::unique_ptr<Buffer> vertexBuffer,
+                           std::unique_ptr<Buffer> indexBuffer,
                            std::size_t vertexCount,
                            std::size_t indexCount,
                            bool usingFallback) noexcept
@@ -178,11 +178,11 @@ namespace NS::Graphics
     {
         ID3D11Buffer* GetVertexBuffer(Mesh& mesh) noexcept
         {
-            return (mesh.m_pImpl && mesh.m_pImpl->vb) ? GetNative(*mesh.m_pImpl->vb) : nullptr;
+            return (mesh.m_pImpl && mesh.m_pImpl->vb) ? mesh.m_pImpl->vb->Native() : nullptr;
         }
         ID3D11Buffer* GetIndexBuffer(Mesh& mesh) noexcept
         {
-            return (mesh.m_pImpl && mesh.m_pImpl->ib) ? GetNative(*mesh.m_pImpl->ib) : nullptr;
+            return (mesh.m_pImpl && mesh.m_pImpl->ib) ? mesh.m_pImpl->ib->Native() : nullptr;
         }
         ID3D11InputLayout* GetInputLayout(Mesh& mesh) noexcept
         {

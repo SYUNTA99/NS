@@ -148,7 +148,7 @@ namespace NS::Graphics
         ComPtr<ID3D11Device> device;
 
         // 動的 instance VB + 自前 compile した VS / PS / input layout。 production 描画パスのみで使う
-        std::unique_ptr<VertexBuffer> instanceVB;
+        std::unique_ptr<Buffer> instanceVB;
         ComPtr<ID3D11VertexShader> vs;
         ComPtr<ID3D11PixelShader> ps;
         ComPtr<ID3D11InputLayout> inputLayout;
@@ -161,14 +161,11 @@ namespace NS::Graphics
 
     namespace
     {
-        [[nodiscard]] std::unique_ptr<VertexBuffer> CreateInstanceVB(Renderer& renderer, std::size_t capacity) noexcept
+        [[nodiscard]] std::unique_ptr<Buffer> CreateInstanceVB(Renderer& renderer, std::size_t capacity) noexcept
         {
-            VertexBufferDesc desc{};
-            desc.initialData = nullptr; // Dynamic は initial data 不要 (Map で都度書込)
-            desc.vertexCount = capacity;
-            desc.stride = sizeof(BlockInstance);
-            desc.usage = BufferUsage::Dynamic;
-            auto vb = std::make_unique<VertexBuffer>(renderer, desc);
+            // Dynamic は initial data 不要 (Map で都度書込)
+            auto vb = std::make_unique<Buffer>(
+                renderer, MakeVertexBufferDesc(nullptr, capacity, sizeof(BlockInstance), BufferUsage::Dynamic));
             if (!vb->IsValid())
             {
                 NS_LOG_ERROR(
@@ -310,7 +307,7 @@ namespace NS::Graphics
 
                 ID3D11Buffer* meshVB = detail::GetVertexBuffer(*key.mesh);
                 ID3D11Buffer* meshIB = detail::GetIndexBuffer(*key.mesh);
-                ID3D11Buffer* instanceVB = detail::GetNative(*m_pImpl->instanceVB);
+                ID3D11Buffer* instanceVB = m_pImpl->instanceVB->Native();
                 if (meshVB == nullptr || meshIB == nullptr || instanceVB == nullptr)
                 {
                     NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
