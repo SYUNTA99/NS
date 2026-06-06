@@ -21,16 +21,6 @@ namespace NS::Graphics
 
     namespace
     {
-        enum class ShaderType
-        {
-            Vertex,
-            Pixel,
-            Geometry,
-            Hull,
-            Domain,
-            Compute,
-        };
-
         struct ShaderTypeInfo
         {
             const char* infix;  // ファイル名に含まれる識別子
@@ -213,15 +203,7 @@ float4 PSMain() : SV_Target
         }
     } // namespace
 
-    struct Shader::Impl
-    {
-        ShaderType stage = ShaderType::Vertex;
-        ComPtr<ID3D11DeviceChild> shader; // 全ステージ共通の保持先 (取得時に static_cast でダウンキャスト)
-        ComPtr<ID3DBlob> vsBytecode;      // 頂点ステージのみ (Mesh の InputLayout 用)
-        bool fallback = false;
-    };
-
-    Shader::Shader(Renderer& renderer, const std::filesystem::path& hlslPath) : m_pImpl(std::make_unique<Impl>())
+    Shader::Shader(Renderer& renderer, const std::filesystem::path& hlslPath)
     {
         auto* device = detail::GetDevice(renderer);
         if (device == nullptr)
@@ -238,7 +220,7 @@ float4 PSMain() : SV_Target
                          hlslPath.string());
             return;
         }
-        m_pImpl->stage = info->stage;
+        m_type = info->stage;
 
         ComPtr<ID3DBlob> blob = CompileStage(hlslPath, info->entry, info->target);
         bool fallback = false;
@@ -259,51 +241,59 @@ float4 PSMain() : SV_Target
             return;
         }
 
-        if (!CreateStageObject(device, info->stage, blob, m_pImpl->shader))
+        if (!CreateStageObject(device, info->stage, blob, m_shader))
         {
             return;
         }
         if (info->stage == ShaderType::Vertex)
         {
-            m_pImpl->vsBytecode = std::move(blob);
+            m_vsBytecode = std::move(blob);
         }
-        m_pImpl->fallback = fallback;
+        m_fallback = fallback;
     }
-
-    Shader::~Shader() = default;
 
     bool Shader::IsValid() const noexcept
     {
-        return m_pImpl && static_cast<bool>(m_pImpl->shader);
+        return static_cast<bool>(m_shader);
     }
     bool Shader::IsUsingFallback() const noexcept
     {
-        return m_pImpl && m_pImpl->fallback;
+        return m_fallback;
+    }
+    ShaderType Shader::Type() const noexcept
+    {
+        return m_type;
+    }
+    ID3D11DeviceChild* Shader::Native() const noexcept
+    {
+        return m_shader.Get();
+    }
+    std::span<const std::byte> Shader::VertexShaderBytecode() const noexcept
+    {
+        if (m_type != ShaderType::Vertex || !m_vsBytecode)
+        {
+            return {};
+        }
+        return std::span<const std::byte>(static_cast<const std::byte*>(m_vsBytecode->GetBufferPointer()),
+                                          m_vsBytecode->GetBufferSize());
     }
 
     namespace detail
     {
         std::span<const std::byte> GetVertexShaderBytecode(const Shader& shader) noexcept
         {
-            const auto& impl = shader.m_pImpl;
-            if (!impl || impl->stage != ShaderType::Vertex || !impl->vsBytecode)
-            {
-                return {};
-            }
-            return std::span<const std::byte>(static_cast<const std::byte*>(impl->vsBytecode->GetBufferPointer()),
-                                              impl->vsBytecode->GetBufferSize());
+            return shader.VertexShaderBytecode();
         }
 
         void BindShader(ID3D11DeviceContext* context, const Shader& shader) noexcept
         {
-            const auto& impl = shader.m_pImpl;
-            if (context == nullptr || !impl || !impl->shader)
+            ID3D11DeviceChild* raw = shader.Native();
+            if (context == nullptr || raw == nullptr)
             {
                 return;
             }
             // 生成時のステージで実型は保証済みなので static_cast 下方変換は well-defined
-            ID3D11DeviceChild* raw = impl->shader.Get();
-            switch (impl->stage)
+            switch (shader.Type())
             {
             case ShaderType::Vertex:
                 context->VSSetShader(static_cast<ID3D11VertexShader*>(raw), nullptr, 0u);

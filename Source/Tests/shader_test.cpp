@@ -11,6 +11,7 @@ namespace
     using NS::Graphics::Renderer;
     using NS::Graphics::RendererDesc;
     using NS::Graphics::Shader;
+    using NS::Graphics::ShaderType;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 
@@ -86,8 +87,11 @@ TEST_F(ShaderLoggerTest, RealVertexShaderCompiles)
     Shader vs(renderer, shaderDir / "standard.vs.hlsl");
     ASSERT_TRUE(vs.IsValid());
     EXPECT_FALSE(vs.IsUsingFallback());
+    EXPECT_EQ(vs.Type(), ShaderType::Vertex);
+    EXPECT_NE(vs.Native(), nullptr);
 
     // 頂点ステージは InputLayout 用の VS バイトコードを持つ
+    EXPECT_FALSE(vs.VertexShaderBytecode().empty());
     EXPECT_FALSE(NS::Graphics::detail::GetVertexShaderBytecode(vs).empty());
 
     renderer.BindShader(vs);
@@ -105,8 +109,11 @@ TEST_F(ShaderLoggerTest, RealPixelShaderCompiles)
     Shader ps(renderer, shaderDir / "player.ps.hlsl");
     ASSERT_TRUE(ps.IsValid());
     EXPECT_FALSE(ps.IsUsingFallback());
+    EXPECT_EQ(ps.Type(), ShaderType::Pixel);
+    EXPECT_NE(ps.Native(), nullptr);
 
     // ピクセルステージは VS バイトコードを持たない
+    EXPECT_TRUE(ps.VertexShaderBytecode().empty());
     EXPECT_TRUE(NS::Graphics::detail::GetVertexShaderBytecode(ps).empty());
 
     renderer.BindShader(ps);

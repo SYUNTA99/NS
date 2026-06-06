@@ -11,20 +11,32 @@
 /// 描画では頂点 + ピクセルの 2 個を作り Material が両方を合成して持つ (D3D11 では別オブジェクトのため)
 /// 本型の責務は 1 ステージの生成まで。 バインド (Set*Shader) は Renderer::BindShader が行う
 /// コンピュートの Dispatch / UAV バインドは扱わない
-/// 入力レイアウトは保持しない (Mesh が頂点 Shader の VS バイトコードから生成・所有する)
+/// 入力レイアウトは保持しない (Mesh が `VertexShaderBytecode()` から生成・所有する)
+/// Graphics は exposed-D3D lean 設計のため `ID3D11DeviceChild*` を `Native()` で公開する
 /// 依存: 生成に Renderer の Device を使う。 context は保持せず、 バインドは Renderer 経由
 
 #include <cstddef>
 #include <filesystem>
-#include <memory>
 #include <span>
 
-struct ID3D11DeviceContext;
+#include <d3d11.h>
+#include <wrl/client.h>
 
 namespace NS::Graphics
 {
     class Renderer;
     class Shader;
+
+    /// シェーダのパイプラインステージ種別 (ファイル名から判定)
+    enum class ShaderType
+    {
+        Vertex,
+        Pixel,
+        Geometry,
+        Hull,
+        Domain,
+        Compute,
+    };
 
     namespace detail
     {
@@ -42,10 +54,7 @@ namespace NS::Graphics
     class Shader
     {
     public:
-        struct Impl;
-
         Shader(Renderer& renderer, const std::filesystem::path& hlslPath);
-        ~Shader();
 
         Shader(const Shader&) = delete;
         Shader& operator=(const Shader&) = delete;
@@ -58,11 +67,20 @@ namespace NS::Graphics
         /// 読込・コンパイル失敗で magenta fallback に切替わっているかを問い合わせる
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-    private:
-        std::unique_ptr<Impl> m_pImpl;
+        /// 判定されたパイプラインステージ種別
+        [[nodiscard]] ShaderType Type() const noexcept;
 
-        friend std::span<const std::byte> detail::GetVertexShaderBytecode(const Shader& shader) noexcept;
-        friend void detail::BindShader(ID3D11DeviceContext* context, const Shader& shader) noexcept;
+        /// 内部シェーダオブジェクト。継ぎ目で raw D3D を扱う Renderer / detail が type で分岐して使う
+        [[nodiscard]] ID3D11DeviceChild* Native() const noexcept;
+
+        /// InputLayout 生成用の VS バイトコード。 頂点ステージでない or 構築失敗時は空 span
+        [[nodiscard]] std::span<const std::byte> VertexShaderBytecode() const noexcept;
+
+    private:
+        ShaderType m_type = ShaderType::Vertex;
+        Microsoft::WRL::ComPtr<ID3D11DeviceChild> m_shader; // 全ステージ共通の保持先 (取得時に static_cast)
+        Microsoft::WRL::ComPtr<ID3DBlob> m_vsBytecode;      // 頂点ステージのみ (Mesh の InputLayout 用)
+        bool m_fallback = false;
     };
 
 } // namespace NS::Graphics
