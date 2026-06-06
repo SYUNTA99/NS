@@ -261,7 +261,18 @@ void LevelEditorScene::OnStart()
     // 仮 skinned キャラを編集・プレイ両モードで常時表示し、 アニメ再生を画面で確認できるようにする
     // アセットが無ければ skip して通常進行。 後で同じパスに別キャラ (glTF) を置けば差し替わる
     {
-        const auto modelPath = exeDir / "Assets" / "Models" / "CesiumMan.glb";
+        // 人型リグ (Xbot) があれば優先する。 CesiumMan は人型 profile に骨名が載らないので
+        // 別ファイルからのアニメ流用は人型リグのときだけ効く
+        std::filesystem::path modelPath = exeDir / "Assets" / "Models" / "CesiumMan.glb";
+        for (const char* name : {"Xbot.glb", "CesiumMan.glb"})
+        {
+            const auto candidate = exeDir / "Assets" / "Models" / name;
+            if (NS::Core::FileSystem::Exists(candidate))
+            {
+                modelPath = candidate;
+                break;
+            }
+        }
         auto skinned = NS::Graphics::LoadGltfSkinnedMesh(modelPath.string());
         if (skinned.IsValid())
         {
@@ -320,6 +331,15 @@ void LevelEditorScene::OnStart()
                     for (NS::Graphics::AnimationClip& clip : extra)
                         clips.push_back(std::move(clip));
                 }
+            }
+
+            // 別キャラのファイルからアニメだけ借りる (人型なら別リグでもリターゲットして合体)
+            const auto borrowPath = exeDir / "Assets" / "Models" / "Soldier.glb";
+            if (NS::Core::FileSystem::Exists(borrowPath) && borrowPath != modelPath)
+            {
+                auto borrowed = NS::Graphics::LoadAnimationsForSkeleton(borrowPath.string(), skinned.skeleton);
+                for (NS::Graphics::AnimationClip& clip : borrowed)
+                    clips.push_back(std::move(clip));
             }
 
             m_animatedModel = std::make_unique<NS::Scene::GameObject>();
