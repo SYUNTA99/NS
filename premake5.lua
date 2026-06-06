@@ -310,6 +310,16 @@ project "Graphics"
         "d3dcompiler"
     }
 
+    -- 公開ヘッダに d3d を出す lean 設計のため、 各 .cpp の d3d11.h / dxgi /
+    -- SimpleMath の cold parse を PCH で償却する。 /FI で全 .cpp に GraphicsPch.h を
+    -- 強制 include する (各 .cpp 側に #include を書かなくて済む)。 premake の
+    -- forceincludes はパスを project 相対へ rebase するが、 Graphics の .cpp は
+    -- Graphics/ と Graphics/detail/ で深さが異なり相対 /FI が破綻するため、 include
+    -- root (Source) 経由で全 .cpp から一意に解決できる論理名を /FI に直接渡す。
+    pchheader "Framework/Graphics/GraphicsPch.h"
+    pchsource "Source/Framework/Graphics/GraphicsPch.cpp"
+    buildoptions { "/FI\"Framework/Graphics/GraphicsPch.h\"" }
+
     applyFrameworkLayerDefaults("Graphics")
     applyCommonBuildOptions()
 
