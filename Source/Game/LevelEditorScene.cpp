@@ -318,16 +318,15 @@ void LevelEditorScene::OnStart()
             // モデル同梱クリップに Assets/Models/Anims/ の追加アニメ glTF を合体する
             // Mixamo 等の別ファイルを後から足せる (同一リグは骨名一致で再 index される)
             std::vector<NS::Graphics::AnimationClip> clips = std::move(skinned.animations);
-            std::error_code dirEc;
             const auto animDir = exeDir / "Assets" / "Models" / "Anims";
-            if (std::filesystem::is_directory(animDir, dirEc))
+            if (NS::Core::FileSystem::Exists(animDir))
             {
-                for (const auto& entry : std::filesystem::directory_iterator(animDir, dirEc))
+                for (const auto& animPath : NS::Core::FileSystem::ListFiles(animDir))
                 {
-                    const auto ext = entry.path().extension();
+                    const auto ext = animPath.extension();
                     if (ext != ".glb" && ext != ".gltf")
                         continue;
-                    auto extra = NS::Graphics::LoadAnimationsForSkeleton(entry.path().string(), skinned.skeleton);
+                    auto extra = NS::Graphics::LoadAnimationsForSkeleton(animPath.string(), skinned.skeleton);
                     for (NS::Graphics::AnimationClip& clip : extra)
                         clips.push_back(std::move(clip));
                 }
