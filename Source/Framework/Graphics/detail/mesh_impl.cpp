@@ -1,6 +1,7 @@
 #include "Framework/Graphics/Mesh.h"
 
 #include "Framework/Graphics/Buffer.h"
+#include "Framework/Graphics/CommandList.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/detail/d3d_context.h"
@@ -164,14 +165,13 @@ namespace NS::Graphics
     {
         if (!IsValid())
             return;
-        auto* context = detail::GetContext(renderer);
-        if (m_pImpl->inputLayout && context != nullptr)
-            context->IASetInputLayout(m_pImpl->inputLayout.Get());
-        renderer.BindVertexBuffer(*m_pImpl->vb, 0);
-        renderer.BindIndexBuffer(*m_pImpl->ib);
-        if (context != nullptr)
-            context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        renderer.DrawIndexed(static_cast<unsigned>(m_pImpl->indexCount));
+        auto& cmd = renderer.Commands();
+        if (m_pImpl->inputLayout)
+            cmd->IASetInputLayout(m_pImpl->inputLayout.Get());
+        cmd.SetVertexBuffer(*m_pImpl->vb, 0);
+        cmd.SetIndexBuffer(*m_pImpl->ib);
+        cmd->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        cmd.DrawIndexed(static_cast<unsigned>(m_pImpl->indexCount));
     }
 
     namespace detail

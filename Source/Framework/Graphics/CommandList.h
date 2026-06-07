@@ -7,6 +7,7 @@
 /// (Buffer / Texture / TextureArray / Shader) を public アクセサ (`Native()` / `Srv()` / `Type()` 等)
 /// 経由で参照し、 `IASetVertexBuffers` 等の D3D11 呼び出しをここに集約する。 取得は `Renderer::Commands()`、
 /// `Renderer::BindX` 系は本クラスへ転送する薄い facade
+/// 値変換 / 多段 fan-out を持つ操作のみラップし、 それ以外の D3D 呼び出しは `operator->` で生 context を直接叩く
 /// 依存: context の所有・寿命は Renderer。 本型は context を破棄しない
 /// 注: instanced 描画 (InstanceBatcher) は 2-stream など専用要件のため独自の context 経路を維持する
 
@@ -63,6 +64,10 @@ namespace NS::Graphics
 
         /// 借用している ID3D11DeviceContext (非所有)。継ぎ目で raw D3D を扱う場合に使う
         [[nodiscard]] ID3D11DeviceContext* Native() const noexcept;
+
+        /// ラップしていない D3D 呼び出しを生 context へ透過する (`cmd->IASetInputLayout(...)` 等)
+        /// context 無効時は nullptr を返すため呼び出し側で有効性を保証すること
+        [[nodiscard]] ID3D11DeviceContext* operator->() const noexcept;
 
     private:
         ID3D11DeviceContext* m_context; // 非所有 (Renderer が所有)

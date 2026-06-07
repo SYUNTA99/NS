@@ -1,6 +1,7 @@
 #include "Framework/Graphics/Material.h"
 
 #include "Framework/Graphics/Buffer.h"
+#include "Framework/Graphics/CommandList.h"
 #include "Framework/Graphics/CommonStates.h"
 #include "Framework/Graphics/Mesh.h"
 #include "Framework/Graphics/Renderer.h"
@@ -138,14 +139,11 @@ namespace NS::Graphics
             renderer.BindConstantBuffer(*m_pImpl->cb, m_pImpl->cbSlot, m_pImpl->cbStages);
         }
 
-        // sampler は Renderer のバインド API に該当する型が無いため context 経由で直接設定する
+        // sampler はラップ対象外 (生 D3D 型のみ) なので CommandList の operator-> で直接設定する
         if (m_pImpl->sampler)
         {
-            if (auto* context = detail::GetContext(renderer))
-            {
-                ID3D11SamplerState* samplers[1] = {m_pImpl->sampler.Get()};
-                context->PSSetSamplers(0u, 1u, samplers);
-            }
+            ID3D11SamplerState* samplers[1] = {m_pImpl->sampler.Get()};
+            renderer.Commands()->PSSetSamplers(0u, 1u, samplers);
         }
     }
 

@@ -1,6 +1,7 @@
 #include "Framework/Graphics/Skybox.h"
 
 #include "Framework/Graphics/Buffer.h"
+#include "Framework/Graphics/CommandList.h"
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/Shader.h"
@@ -472,8 +473,8 @@ namespace NS::Graphics
     {
         if (!m_pImpl || !m_pImpl->valid)
             return;
-        auto* ctx = detail::GetContext(renderer);
-        if (ctx == nullptr)
+        auto& cmd = renderer.Commands();
+        if (cmd.Native() == nullptr)
             return;
 
         SkyboxCB cbData{};
@@ -483,23 +484,23 @@ namespace NS::Graphics
         // 既存 depth/raster state を退避して draw 後に復元する
         ComPtr<ID3D11DepthStencilState> prevDss;
         UINT prevStencilRef = 0;
-        ctx->OMGetDepthStencilState(prevDss.GetAddressOf(), &prevStencilRef);
+        cmd->OMGetDepthStencilState(prevDss.GetAddressOf(), &prevStencilRef);
 
         ComPtr<ID3D11RasterizerState> prevRs;
-        ctx->RSGetState(prevRs.GetAddressOf());
+        cmd->RSGetState(prevRs.GetAddressOf());
 
-        ctx->OMSetDepthStencilState(m_pImpl->depthState.Get(), 0);
-        ctx->RSSetState(m_pImpl->rasterState.Get());
+        cmd->OMSetDepthStencilState(m_pImpl->depthState.Get(), 0);
+        cmd->RSSetState(m_pImpl->rasterState.Get());
 
         renderer.BindShader(*m_pImpl->vs);
         renderer.BindShader(*m_pImpl->ps);
         renderer.BindConstantBuffer(*m_pImpl->cb, 0, ShaderStage::Vertex);
 
         ID3D11ShaderResourceView* srvs[1] = {m_pImpl->cubemapSrv.Get()};
-        ctx->PSSetShaderResources(0, 1, srvs);
+        cmd->PSSetShaderResources(0, 1, srvs);
 
         ID3D11SamplerState* samplers[1] = {m_pImpl->sampler.Get()};
-        ctx->PSSetSamplers(0, 1, samplers);
+        cmd->PSSetSamplers(0, 1, samplers);
 
         // Mesh::Draw は VB / IB / topology / DrawIndexed を一括実行する
         m_pImpl->cubeMesh->Draw(renderer);
@@ -507,10 +508,10 @@ namespace NS::Graphics
         // バインドした SRV を解除しないと、 後段の通常 Material::Bind が同じ t0 に
         // Texture2D を再バインドする際に D3D11 ランタイムが警告を出すことがある
         ID3D11ShaderResourceView* nullSrv[1] = {nullptr};
-        ctx->PSSetShaderResources(0, 1, nullSrv);
+        cmd->PSSetShaderResources(0, 1, nullSrv);
 
-        ctx->OMSetDepthStencilState(prevDss.Get(), prevStencilRef);
-        ctx->RSSetState(prevRs.Get());
+        cmd->OMSetDepthStencilState(prevDss.Get(), prevStencilRef);
+        cmd->RSSetState(prevRs.Get());
     }
 
     bool Skybox::IsValid() const noexcept

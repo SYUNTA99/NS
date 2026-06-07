@@ -229,4 +229,9 @@ namespace NS::Graphics
         return m_context;
     }
 
+    ID3D11DeviceContext* CommandList::operator->() const noexcept
+    {
+        return m_context;
+    }
+
 } // namespace NS::Graphics
