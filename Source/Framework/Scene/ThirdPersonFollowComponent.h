@@ -30,7 +30,7 @@ namespace NS::Scene
         void SetTarget(Transform* target) noexcept;
         [[nodiscard]] Transform* Target() const noexcept { return m_target; }
 
-        /// 出力先 Camera を注入。null では OnUpdate は no-op
+        /// 出力先 Camera を注入。null では OnUpdate は何もしない
         void SetCamera(CameraComponent* camera) noexcept;
 
         /// 右スティック / マウス回転の入力ソース。null では旋回 0

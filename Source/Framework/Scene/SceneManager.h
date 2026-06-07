@@ -40,9 +40,9 @@ namespace NS::Scene
         /// 現在 active な scene が存在するか
         [[nodiscard]] bool HasScene() const noexcept;
 
-        /// 現 scene の OnUpdate にフォワード。 未ロードなら no-op
+        /// 現 scene の OnUpdate にフォワード。 未ロードなら何もしない
         void Update();
-        /// 現 scene の OnRender にフォワード。 未ロードなら no-op
+        /// 現 scene の OnRender にフォワード。 未ロードなら何もしない
         void Render();
 
     private:

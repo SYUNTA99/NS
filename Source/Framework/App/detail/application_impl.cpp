@@ -116,7 +116,7 @@ namespace NS::App
         // Run() が呼ばれず Shutdown() を経由しないケース (構築失敗 / IsValid チェック
         // のみのテスト等) でも、Window 破壊前に callback を nullptr 化し
         // Renderer / Input を先に破棄して dangling キャプチャを防ぐ
-        // Shutdown() は冪等のため Run() 経由ケースでは no-op になる
+        // Shutdown() は冪等のため Run() 経由ケースでは何もしない
         if (m_pImpl)
             Shutdown();
         if (s_instance == this)

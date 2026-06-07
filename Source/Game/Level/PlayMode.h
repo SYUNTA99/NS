@@ -52,7 +52,7 @@ namespace NS::Game::Level
 
         /// fixed step Tick。 const& 受取で書込禁止を compile-time 保証
         /// PlayState.playerPosition (Transform からミラー済) を読み、 落下死 / coin / power star
-        /// 接触判定を行う。 paused == true の間は no-op
+        /// 接触判定を行う。 paused == true の間は何もしない
         void Tick(const LevelData& level, PlayState& play, float dt) noexcept;
 
         /// Play→Edit 遷移時に呼ぶ。 次回 Enter で操作不能にならないよう、

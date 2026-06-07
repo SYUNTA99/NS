@@ -4,7 +4,7 @@
 /// @brief 編集モード sub-system — cursor / palette / UndoStack を集約する
 ///
 /// @details `LevelEditorScene` の value member として保有され、
-/// SetActive(false) で Tick / Render が no-op になる (mode toggle 用)
+/// SetActive(false) で Tick / Render が何もしない (mode toggle 用)
 /// LevelData への変更は **全て** `UndoStack::Push` 経由で発火し、
 /// PlayMode 側との変更経路衝突を防ぐ。 spawn marker のみ単一値の上書きなので
 /// Command を介さない直接 setter (`SetSpawnMarker`) を呼ぶ

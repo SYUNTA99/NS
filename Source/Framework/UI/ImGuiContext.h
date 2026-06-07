@@ -4,7 +4,7 @@
 /// @brief NS::UI::ImGuiContext — Dear ImGui (Win32 + DX11 backend) ライフサイクル管理
 ///
 /// @details Debug / Development build 限定で実 ImGui を初期化し、 GameDebug / GameRelease
-/// build では完全 stub (`IsUsingFallback() == true`) として全 API が no-op になる
+/// build では完全 stub (`IsUsingFallback() == true`) として全 API が何もしない
 /// 公開ヘッダから `<imgui.h>` / `<imgui_impl_*.h>` を露出させない pImpl 標準形
 /// 多重インスタンス禁止 — `ImGui::CreateContext()` がプロセス global のため、
 /// Application が単一所有する想定。 構築失敗時は例外を投げず `IsValid() == false` +

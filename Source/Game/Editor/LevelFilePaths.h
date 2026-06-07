@@ -29,7 +29,7 @@ namespace NS::Game::Editor
     /// sanitize 失敗時は `std::nullopt`。 caller は `*path` を直に I/O に渡せる
     [[nodiscard]] std::optional<std::filesystem::path> BuildLevelPath(std::string_view name) noexcept;
 
-    /// `Levels/` を必要なら作成。 既存なら no-op。 作成失敗時は false + `NS_LOG_ERROR`
+    /// `Levels/` を必要なら作成。 既存なら何もしない。 作成失敗時は false + `NS_LOG_ERROR`
     [[nodiscard]] bool EnsureLevelsDirectoryExists() noexcept;
 
     /// `<exe>/Levels/*.nslvl` を列挙し、 拡張子を除いた sanitize 済 stem を返す

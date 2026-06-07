@@ -5,7 +5,7 @@
 ///
 /// @details コンストラクタで Begin、 デストラクタで End を呼ぶため例外抜け / 早期 return でも End 漏れしない
 /// 内部実装は `detail/imgui_init.cpp` に閉じ、 公開ヘッダから `<imgui.h>` を露出させない
-/// `ImGuiContext` が未構築 / fallback mode の場合は no-op となり `IsOpen() == false`
+/// `ImGuiContext` が未構築 / fallback mode の場合は何もせず `IsOpen() == false`
 
 #include <string_view>
 

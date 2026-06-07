@@ -139,7 +139,7 @@ namespace NS::Core
 #define NS_CLOCK_PASTE(a, b) NS_CLOCK_PASTE_IMPL(a, b)
 
 /// 計測対象のスコープに置く。デストラクタで `[category] label: X.XXXms` を Debug ログ出力
-/// NS_ENABLE_PROFILING define 時のみ有効、 通常 build では no-op (ログの乱発を回避)
+/// NS_ENABLE_PROFILING define 時のみ有効、 通常 build では何もしない (ログの乱発を回避)
 /// Profile build は `tools\@build_profile.cmd` で作成する
 #if defined(NS_ENABLE_PROFILING)
 #define NS_SCOPED_TIMER(cat, label)                                                                                    \

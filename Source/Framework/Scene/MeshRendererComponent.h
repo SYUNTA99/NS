@@ -55,14 +55,14 @@ namespace NS::Scene
         void SetAmbientColor(const NS::Math::Vector3& color) noexcept { m_ambientColor = color; }
 
         /// IRenderable: Alpha 補間後の world matrix を FrameCB に詰めて 1 描画呼出
-        /// IsActive() == false なら no-op
+        /// IsActive() == false なら何もしない
         void Draw(const RenderContext& context) override;
 
         /// Owner の OwningScene に self を IRenderable として登録する
-        /// Owner / OwningScene が null の時は no-op で安全に return する
+        /// Owner / OwningScene が null の時は何もせず安全に return する
         void OnStart() override;
         /// Owner の OwningScene から self を解除する。SceneBase 破棄前に呼ぶことで
-        /// dangling pointer を残さない。Owner / OwningScene が null の時は no-op
+        /// dangling pointer を残さない。Owner / OwningScene が null の時は何もしない
         void OnEndPlay() override;
 
     private:

@@ -37,14 +37,14 @@ namespace NS::Graphics
 
         /// 描画先 (RTV + 任意 DSV) を設定する (OMSetRenderTargets)
         void SetRenderTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv) noexcept;
-        /// RTV を単色クリアする。rtv==nullptr は no-op
+        /// RTV を単色クリアする。rtv==nullptr は何もしない
         void ClearRenderTarget(ID3D11RenderTargetView* rtv, float r, float g, float b, float a) noexcept;
-        /// DSV を depth + stencil クリアする。dsv==nullptr は no-op
+        /// DSV を depth + stencil クリアする。dsv==nullptr は何もしない
         void ClearDepth(ID3D11DepthStencilView* dsv, float depth = 1.0f) noexcept;
         /// 単一ビューポートを左上 0,0 起点で設定する (RSSetViewports)
         void SetViewport(float width, float height) noexcept;
 
-        /// Shader をステージに応じて発行する (VS/PS/GS/HS/DS/CSSetShader)。無効 Shader は no-op
+        /// Shader をステージに応じて発行する (VS/PS/GS/HS/DS/CSSetShader)。無効 Shader は何もしない
         void SetShader(const Shader& shader) noexcept;
         /// Texture の SRV を slot + ステージ (VS/PS) にバインドする
         void SetTexture(const Texture& texture, unsigned slot, ShaderStage stages) noexcept;
@@ -56,7 +56,7 @@ namespace NS::Graphics
         void SetIndexBuffer(const Buffer& buffer) noexcept;
         /// 定数バッファを slot + ステージ (VS/PS) にバインドする
         void SetConstantBuffer(const Buffer& buffer, unsigned slot, ShaderStage stages) noexcept;
-        /// Dynamic バッファを Map/Discard で更新する。Static や容量超過は NS_LOG_ERROR + no-op
+        /// Dynamic バッファを Map/Discard で更新する。Static や容量超過は NS_LOG_ERROR を出して何もしない
         void UpdateBuffer(const Buffer& buffer, const void* data, std::size_t bytes) noexcept;
 
         /// index 付き描画 (DrawIndexed)

@@ -23,7 +23,7 @@ namespace NS::Game::Level
 
     /// `.nslvl` 書込: `BeginFile` → `BeginChunk` → `Write` 任意回 → `EndChunk` を
     /// 繰り返し → `EndFile` (`CRC3` chunk 自動追加 + disk flush)
-    /// 各メソッドは失敗時に false + `NS_LOG_ERROR`、 以降のメソッドは no-op となる
+    /// 各メソッドは失敗時に false + `NS_LOG_ERROR`、 以降のメソッドは何もしない
     class ChunkWriter
     {
     public:
@@ -53,7 +53,7 @@ namespace NS::Game::Level
 
     /// `.nslvl` 読込: コンストラクタで `Filesystem::ReadAllBytes` → Magic / Version / CRC32 を
     /// 検証。 検証失敗時は `IsValid() == false` を返し、 以降の `SeekChunk` / `Read`
-    /// は no-op (false 返却)
+    /// は何もしない (false 返却)
     class ChunkReader
     {
     public:

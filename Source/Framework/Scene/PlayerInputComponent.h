@@ -35,7 +35,7 @@ namespace NS::Scene
         void SetCameraForward(const NS::Math::Vector3& cameraForwardHorizontal) noexcept;
 
         /// 入力ソースを注入。LevelEditorScene が `Application::Get()->Input()` を渡す
-        /// null で no-op
+        /// null で何もしない
         void SetInput(NS::Platform::Input* input) noexcept;
 
         /// ImGui コンテキストを注入。 `WantCaptureKeyboard()` が true の間 (テキスト入力中など) は
