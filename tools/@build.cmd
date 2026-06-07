@@ -23,6 +23,10 @@ echo %CONFIG% ビルド...
 call "%~dp0_common.cmd" :setup_msbuild
 if errorlevel 1 exit /b 1
 
+:: clangd 用インデックス (compile_commands.json) を最新化 (失敗してもビルドは続行)
+call "%~dp0_common.cmd" :gen_compile_commands
+if errorlevel 1 echo [WARN] compile_commands.json の生成に失敗しましたが、ビルドを続行します
+
 msbuild build\NS.sln /p:Configuration=%CONFIG% /p:Platform=x64 /m /v:minimal
 if errorlevel 1 (
     echo [WARN] /m ビルド失敗。 /m:1 で再試行します...

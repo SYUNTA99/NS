@@ -1,48 +1,25 @@
 @echo off
 ::============================================================================
 :: @gen_compile_commands.cmd
-:: compile_commands.json を生成
+:: compile_commands.json を生成 (clangd / エディタの IntelliSense 用)
 ::
-:: vcvarsall.bat を実行してINCLUDE環境変数を設定した後、
-:: Premakeモジュールでcompile_commands.jsonを生成する
+:: 実体は _common.cmd の :gen_compile_commands に集約。
+:: 通常ビルド (@build.cmd) では自動で呼ばれるため、 手動実行は
+:: ビルドせずにインデックスだけ更新したい場合に使う。
 ::============================================================================
+setlocal
+chcp 65001 >nul
 
 call "%~dp0_common.cmd" :init
+if errorlevel 1 exit /b 1
 
 echo compile_commands.json を生成しています...
 
 :: MSBuild環境をセットアップ（INCLUDE環境変数が設定される）
 call "%~dp0_common.cmd" :setup_msbuild
-if %errorlevel% neq 0 exit /b 1
+if errorlevel 1 exit /b 1
 
-:: 日本語パス対策: TEMPにジャンクションを作成
-for /f %%a in ('powershell -command "[guid]::NewGuid().ToString()"') do set "GUID=%%a"
-set "JUNCTION_PATH=%TEMP%\%GUID%"
-mklink /j "%JUNCTION_PATH%" "%~dp0.." >nul
-pushd "%JUNCTION_PATH%"
-tools\premake5.exe export-compile-commands
-set "PREMAKE_RESULT=%errorlevel%"
-popd
+call "%~dp0_common.cmd" :gen_compile_commands
+if errorlevel 1 exit /b 1
 
-if %PREMAKE_RESULT% neq 0 (
-    rmdir "%JUNCTION_PATH%"
-    echo [ERROR] compile_commands.json の生成に失敗しました
-    exit /b 1
-)
-
-:: 生成された compile_commands.json をプロジェクトルートにコピーし、ジャンクションパスを実パスに置換
-if not exist "%JUNCTION_PATH%\build\premake\compile_commands.json" (
-    rmdir "%JUNCTION_PATH%"
-    echo [ERROR] build\premake\compile_commands.json が見つかりません
-    exit /b 1
-)
-
-powershell -Command "(Get-Content '%JUNCTION_PATH%\build\premake\compile_commands.json' -Raw) -replace [regex]::Escape('%JUNCTION_PATH%'.Replace('\','/')),'%CD:\=/%' | Set-Content 'compile_commands.json' -NoNewline"
-if %errorlevel% neq 0 (
-    rmdir "%JUNCTION_PATH%"
-    echo [ERROR] compile_commands.json の書き出しに失敗しました
-    exit /b 1
-)
-echo [OK] compile_commands.json を生成しました
-
-rmdir "%JUNCTION_PATH%"
+exit /b 0
