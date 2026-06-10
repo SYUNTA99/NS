@@ -49,9 +49,8 @@ namespace NS::Scene
         FrameCB cb{};
         cb.world = owner->Root().InterpolatedWorldMatrix(context.alpha);
         cb.viewProj = context.viewProjection;
+        // lightDir は解決済設定を SetLightDirection 経由で受け取る前提
         cb.lightDir = m_lightDir;
-        if (cb.lightDir.LengthSquared() <= 1e-6f)
-            cb.lightDir = NS::Math::Vector3{-0.3f, -1.0f, -0.2f};
         cb.lightDir.Normalize();
         cb.baseColor = m_baseColor;
         cb.lightColor = m_lightColor;
