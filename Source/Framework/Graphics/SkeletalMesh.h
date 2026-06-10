@@ -24,6 +24,7 @@
 namespace NS::Graphics
 {
     class Renderer;
+    class Buffer;
 
     /// ボーンパレット (skinning 行列群) の最大数
     /// 128 * 64byte = 8KB で D3D11 定数バッファ上限 (64KB) 内、 単一キャラに十分
@@ -56,18 +57,23 @@ namespace NS::Graphics
         std::size_t boneCount = 0;
     };
 
+    /// ボーンパレット定数バッファの CPU 側レイアウト (skinned.vs の cbuffer BonePalette : b1 と一致)
+    /// サイズは 16 byte 倍数 (ConstantBuffer 更新要件)、 アップロードは memcpy のため CPU 側 alignas は不要
+    struct BonePaletteCB
+    {
+        NS::Math::Matrix bones[kMaxBones];
+    };
+    static_assert((sizeof(BonePaletteCB) % 16) == 0, "BonePaletteCB は 16 byte 倍数 (ConstantBuffer 更新要件)");
+
     /// GPU スキニング対象 mesh。 SkinnedVertex を VB に持ち、 ボーンパレット CB を b1(VS) に bind して
     /// skinned 頂点シェーダの LBS で変形描画する。 desc 不正 / Buffer 失敗時は IsValid()==false (fallback 無し)
     class SkeletalMesh : public Mesh
     {
     public:
-        SkeletalMesh(Renderer& renderer, const SkinnedMeshDesc& desc);
-        ~SkeletalMesh() override;
+        /// SkinnedMeshDesc から SkeletalMesh を生成する。 失敗時も非 null (IsValid()==false、 fallback 無し)
+        [[nodiscard]] static std::unique_ptr<SkeletalMesh> Create(const SkinnedMeshDesc& desc);
 
-        SkeletalMesh(const SkeletalMesh&) = delete;
-        SkeletalMesh& operator=(const SkeletalMesh&) = delete;
-        SkeletalMesh(SkeletalMesh&&) = delete;
-        SkeletalMesh& operator=(SkeletalMesh&&) = delete;
+        ~SkeletalMesh() override;
 
         /// ボーンパレット (model 空間 skinning 行列群) を CPU 側に蓄える (次の Draw で GPU 反映)
         /// 上限 (内部 kMaxBones) を超える分は無視し、 不足分は恒等のまま残す
@@ -84,8 +90,11 @@ namespace NS::Graphics
         [[nodiscard]] std::size_t BoneCount() const noexcept;
 
     private:
-        struct Impl;
-        std::unique_ptr<Impl> m_pImpl;
+        explicit SkeletalMesh(const SkinnedMeshDesc& desc);
+
+        std::unique_ptr<Buffer> m_bonePaletteCB;
+        BonePaletteCB m_palette;
+        std::size_t m_boneCount = 0;
     };
 
 } // namespace NS::Graphics

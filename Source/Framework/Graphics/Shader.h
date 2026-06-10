@@ -9,27 +9,30 @@
 /// `IsUsingFallback()` が true になる (他ステージは代替表示が無いため失敗時は IsValid()==false)
 /// ファイル名からステージを判定できない場合も IsValid()==false
 /// 描画では頂点 + ピクセルの 2 個を作り Material が両方を合成して持つ (D3D11 では別オブジェクトのため)
-/// 本型の責務は 1 ステージの生成まで。 バインド (Set*Shader) は Renderer::BindShader が行う
+/// 本型の責務は 1 ステージの生成まで。 バインド (Set*Shader) は CommandList が行う
 /// コンピュートの Dispatch / UAV バインドは扱わない
 /// 入力レイアウトは保持しない (Mesh が `VertexShaderBytecode()` から生成・所有する)
 /// Graphics は exposed-D3D lean 設計のため `ID3D11DeviceChild*` を `Native()` で公開する
-/// 依存: 生成に Renderer の Device を使う。 context は保持せず、 バインドは Renderer 経由
+/// 依存: 生成にグローバル Device を使い、 context は保持せず、 バインドは CommandList 経由
 
 #include <cstddef>
 #include <filesystem>
+#include <memory>
 #include <span>
 
-#include <d3d11.h>
-#include <wrl/client.h>
+#include <Framework/Core/NonCopyable.h>
+#include <Framework/Graphics/D3dCommon.h>
 
 namespace NS::Graphics
 {
-    class Renderer;
     class Shader;
 
     /// シェーダのパイプラインステージ種別 (ファイル名から判定)
+    /// @note bind 先指定の bitflag である `ShaderStage` とは別物。 こちらは Shader 実体が
+    /// どのステージのコードかを表す
     enum class ShaderType
     {
+        Unknown,
         Vertex,
         Pixel,
         Geometry,
@@ -46,16 +49,12 @@ namespace NS::Graphics
 
     /// 単一ステージのシェーダ。 path のファイル名 (`.vs.`/`.ps.`/`.gs.`/`.hs.`/`.ds.`/`.cs.`) でステージを判定する
     /// 頂点・ピクセルは読込/コンパイル失敗時に magenta fallback へ切替わる (`IsUsingFallback()` で検知)
-    /// 依存: 生成に Renderer の Device を使う。 context は保持せず、 バインドは Renderer::BindShader 経由
-    class Shader
+    /// 依存: 生成にグローバル Device を使い、 context は保持せず、 バインドは CommandList 経由
+    class Shader : public NS::Core::NonCopyable
     {
     public:
-        Shader(Renderer& renderer, const std::filesystem::path& hlslPath);
-
-        Shader(const Shader&) = delete;
-        Shader& operator=(const Shader&) = delete;
-        Shader(Shader&&) = delete;
-        Shader& operator=(Shader&&) = delete;
+        /// HLSL ファイルから単一ステージ Shader を生成する。 失敗時も非 null (fallback / IsValid() で検知)
+        [[nodiscard]] static std::unique_ptr<Shader> Create(const std::filesystem::path& hlslPath);
 
         /// シェーダが生成済みなら true。fallback でも true。 ステージ判定失敗時は false
         [[nodiscard]] bool IsValid() const noexcept;
@@ -73,9 +72,11 @@ namespace NS::Graphics
         [[nodiscard]] std::span<const std::byte> VertexShaderBytecode() const noexcept;
 
     private:
-        ShaderType m_type = ShaderType::Vertex;
-        Microsoft::WRL::ComPtr<ID3D11DeviceChild> m_shader; // 全ステージ共通の保持先 (取得時に static_cast)
-        Microsoft::WRL::ComPtr<ID3DBlob> m_vsBytecode;      // 頂点ステージのみ (Mesh の InputLayout 用)
+        explicit Shader(const std::filesystem::path& hlslPath);
+
+        ShaderType m_type = ShaderType::Unknown;
+        ComPtr<ID3D11DeviceChild> m_shader; // 全ステージ共通の保持先 (取得時に static_cast)
+        ComPtr<ID3DBlob> m_vsBytecode;      // 頂点ステージのみ (Mesh の InputLayout 用)
         bool m_fallback = false;
     };
 

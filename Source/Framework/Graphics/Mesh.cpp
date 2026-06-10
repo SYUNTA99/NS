@@ -2,9 +2,10 @@
 
 #include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/CommandList.h"
+#include "Framework/Graphics/D3dCommon.h"
+#include "Framework/Graphics/GraphicObject.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/Shader.h"
-#include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -16,20 +17,6 @@
 
 namespace NS::Graphics
 {
-    using detail::ComPtr;
-
-    struct Mesh::Impl
-    {
-        std::unique_ptr<Buffer> vb;
-        std::unique_ptr<Buffer> ib;
-        ComPtr<ID3D11Device> device;
-        ComPtr<ID3D11InputLayout> inputLayout;
-        std::vector<InputElement> layoutElements;
-        std::size_t vertexCount = 0;
-        std::size_t indexCount = 0;
-        bool valid = false;
-        bool usingFallback = false;
-    };
 
     namespace
     {
@@ -95,38 +82,34 @@ namespace NS::Graphics
         }
     } // namespace
 
-    Mesh::Mesh() : m_pImpl(std::make_unique<Impl>()) {}
+    Mesh::Mesh() = default;
     Mesh::~Mesh() = default;
 
-    void Mesh::SetGeometry(Renderer& renderer,
-                           std::unique_ptr<Buffer> vertexBuffer,
+    void Mesh::SetGeometry(std::unique_ptr<Buffer> vertexBuffer,
                            std::unique_ptr<Buffer> indexBuffer,
                            std::size_t vertexCount,
                            std::size_t indexCount,
                            bool usingFallback) noexcept
     {
-        if (!m_pImpl)
-            return;
-        m_pImpl->device = detail::GetDevice(renderer);
-        m_pImpl->vb = std::move(vertexBuffer);
-        m_pImpl->ib = std::move(indexBuffer);
-        m_pImpl->vertexCount = vertexCount;
-        m_pImpl->indexCount = indexCount;
-        m_pImpl->usingFallback = usingFallback;
-        m_pImpl->valid = (m_pImpl->vb != nullptr && m_pImpl->ib != nullptr && m_pImpl->device != nullptr);
+        m_device = Gpu().device;
+        m_vb = std::move(vertexBuffer);
+        m_ib = std::move(indexBuffer);
+        m_vertexCount = vertexCount;
+        m_indexCount = indexCount;
+        m_usingFallback = usingFallback;
+        m_valid = (m_vb != nullptr && m_ib != nullptr && m_device != nullptr);
     }
 
     void Mesh::SetVertexLayout(std::vector<InputElement> elements) noexcept
     {
-        if (m_pImpl)
-            m_pImpl->layoutElements = std::move(elements);
+        m_layoutElements = std::move(elements);
     }
 
     void Mesh::CreateInputLayout(const Shader& vertexShader) noexcept
     {
-        if (!m_pImpl || m_pImpl->inputLayout)
+        if (m_inputLayout)
             return;
-        if (m_pImpl->device == nullptr || m_pImpl->layoutElements.empty())
+        if (m_device == nullptr || m_layoutElements.empty())
             return;
 
         const std::span<const std::byte> bytecode = detail::GetVertexShaderBytecode(vertexShader);
@@ -137,28 +120,27 @@ namespace NS::Graphics
         }
 
         ComPtr<ID3D11InputLayout> layout;
-        if (CreateInputLayoutFromDesc(
-                m_pImpl->device.Get(), bytecode.data(), bytecode.size(), m_pImpl->layoutElements, layout))
+        if (CreateInputLayoutFromDesc(m_device.Get(), bytecode.data(), bytecode.size(), m_layoutElements, layout))
         {
-            m_pImpl->inputLayout = std::move(layout);
+            m_inputLayout = std::move(layout);
         }
     }
 
     bool Mesh::IsValid() const noexcept
     {
-        return m_pImpl && m_pImpl->valid;
+        return m_valid;
     }
     bool Mesh::IsUsingFallback() const noexcept
     {
-        return m_pImpl && m_pImpl->usingFallback;
+        return m_usingFallback;
     }
     std::size_t Mesh::VertexCount() const noexcept
     {
-        return m_pImpl ? m_pImpl->vertexCount : 0u;
+        return m_vertexCount;
     }
     std::size_t Mesh::IndexCount() const noexcept
     {
-        return m_pImpl ? m_pImpl->indexCount : 0u;
+        return m_indexCount;
     }
 
     void Mesh::Draw(Renderer& renderer) noexcept
@@ -166,27 +148,27 @@ namespace NS::Graphics
         if (!IsValid())
             return;
         auto& cmd = renderer.Commands();
-        if (m_pImpl->inputLayout)
-            cmd->IASetInputLayout(m_pImpl->inputLayout.Get());
-        cmd.SetVertexBuffer(*m_pImpl->vb, 0);
-        cmd.SetIndexBuffer(*m_pImpl->ib);
+        if (m_inputLayout)
+            cmd->IASetInputLayout(m_inputLayout.Get());
+        cmd.SetVertexBuffer(*m_vb, 0);
+        cmd.SetIndexBuffer(*m_ib);
         cmd->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        cmd.DrawIndexed(static_cast<unsigned>(m_pImpl->indexCount));
+        cmd.DrawIndexed(static_cast<unsigned>(m_indexCount));
     }
 
     namespace detail
     {
-        ID3D11Buffer* GetVertexBuffer(Mesh& mesh) noexcept
+        const Buffer* GetVertexBuffer(Mesh& mesh) noexcept
         {
-            return (mesh.m_pImpl && mesh.m_pImpl->vb) ? mesh.m_pImpl->vb->Native() : nullptr;
+            return mesh.m_vb.get();
         }
-        ID3D11Buffer* GetIndexBuffer(Mesh& mesh) noexcept
+        const Buffer* GetIndexBuffer(Mesh& mesh) noexcept
         {
-            return (mesh.m_pImpl && mesh.m_pImpl->ib) ? mesh.m_pImpl->ib->Native() : nullptr;
+            return mesh.m_ib.get();
         }
         ID3D11InputLayout* GetInputLayout(Mesh& mesh) noexcept
         {
-            return mesh.m_pImpl ? mesh.m_pImpl->inputLayout.Get() : nullptr;
+            return mesh.m_inputLayout.Get();
         }
     } // namespace detail
 

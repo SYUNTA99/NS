@@ -12,22 +12,23 @@
 /// 6-face Texture2D を組み立てる。 失敗時は 1x1 マゼンタ cubemap fallback に切替わり
 /// `IsUsingFallback()` が true、 Render() はそのまま安全に呼び出せる
 /// 描画順は scene の不透明描画後 + ImGui 直前 (Z=1 同士の深度比較対策)
-/// GPU バインドは Render(Renderer&) / LoadCubemap(Renderer&) に渡す Renderer 経由で行い、 DeviceContext は保持しない
+/// GPU バインドは Render(Renderer&) に渡す Renderer 経由で行い、 DeviceContext は保持しない
 
 #include <filesystem>
 #include <memory>
 
+#include <Framework/Core/NonCopyable.h>
+#include <Framework/Graphics/D3dCommon.h>
 #include <Framework/Math/Math.h>
-
-struct ID3D11ShaderResourceView;
-struct D3D11_DEPTH_STENCIL_DESC;
-struct D3D11_RASTERIZER_DESC;
 
 namespace NS::Graphics
 {
 
     class Renderer;
     class Skybox;
+    class StaticMesh;
+    class Shader;
+    class Buffer;
 
     namespace detail
     {
@@ -48,19 +49,14 @@ namespace NS::Graphics
     /// LoadCubemap は .dds (DirectXTK DDSTextureLoader) と 6-face PNG ディレクトリ
     /// の両方を受け付け、 拡張子で auto-detect する
     /// 失敗時は 1x1 マゼンタ cubemap fallback に切替わり IsUsingFallback() が true
-    /// 依存: Renderer の DeviceContext を内部で保持するため Renderer より先に破棄すること
-    class Skybox
+    /// 依存: 構築でグローバル Device を使うため Renderer より先に破棄すること
+    class Skybox : public NS::Core::NonCopyable
     {
     public:
-        struct Impl;
+        /// Skybox を生成する。 cube mesh / shader / fallback cubemap を構築して返す
+        [[nodiscard]] static std::unique_ptr<Skybox> Create();
 
-        explicit Skybox(Renderer& renderer);
         ~Skybox();
-
-        Skybox(const Skybox&) = delete;
-        Skybox& operator=(const Skybox&) = delete;
-        Skybox(Skybox&&) = delete;
-        Skybox& operator=(Skybox&&) = delete;
 
         /// 6-face PNG ディレクトリまたは .dds cubemap をロードする
         /// path がディレクトリならば内部で kurt レイアウトの `space_rt/lf/up/dn/ft/bk.png` を
@@ -68,8 +64,8 @@ namespace NS::Graphics
         /// path のファイル拡張子が .dds ならば DirectXTK CreateDDSTextureFromFileEx で TEXTURECUBE
         /// として読込む
         /// 失敗時は内部 SRV を 1x1 マゼンタ fallback に維持し false を返す。 成功時 true
-        /// 6-face PNG の取込は renderer の DeviceContext で CopySubresourceRegion する
-        [[nodiscard]] bool LoadCubemap(Renderer& renderer, const std::filesystem::path& path);
+        /// 6-face PNG の取込はグローバル DeviceContext で CopySubresourceRegion する
+        [[nodiscard]] bool LoadCubemap(const std::filesystem::path& path);
 
         /// 与えられた viewProj (camera の translation 成分を除去済) で skybox を 1 drawcall 描画する
         /// シーン不透明描画の後、 ImGui overlay の前で呼ぶこと (Z=1 重複対策)
@@ -84,7 +80,21 @@ namespace NS::Graphics
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
     private:
-        std::unique_ptr<Impl> m_pImpl;
+        Skybox();
+
+        ComPtr<ID3D11Device> m_device;
+        std::unique_ptr<StaticMesh> m_cubeMesh;
+        std::unique_ptr<Shader> m_vs;
+        std::unique_ptr<Shader> m_ps;
+        std::unique_ptr<Buffer> m_cb;
+        ComPtr<ID3D11SamplerState> m_sampler;
+        ComPtr<ID3D11DepthStencilState> m_depthState;
+        ComPtr<ID3D11RasterizerState> m_rasterState;
+        ComPtr<ID3D11ShaderResourceView> m_cubemapSrv;
+        D3D11_DEPTH_STENCIL_DESC m_depthDesc{};
+        D3D11_RASTERIZER_DESC m_rasterDesc{};
+        bool m_usingFallback = true;
+        bool m_valid = false;
 
         friend ID3D11ShaderResourceView* detail::GetCubemapSrv(Skybox& skybox) noexcept;
         friend void detail::GetDepthStateDesc(Skybox& skybox, D3D11_DEPTH_STENCIL_DESC& out) noexcept;

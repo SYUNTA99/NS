@@ -9,28 +9,21 @@
 /// 1x1 マゼンタ fallback SRV を生成し `IsUsingFallback()` が true になる。 File I/O は `NS::Core::FileSystem`
 /// 経由なので将来 pak / VFS で透過対応可能
 /// 既存 `ID3D11Texture2D` ラップ ctor は swapchain backbuffer を RTV として包む用途に使う
-/// バインドは Renderer 経由 (`Renderer::BindTexture`)、 本型は context を保持しない
+/// バインドは CommandList 経由、 本型は context を保持しない
 /// Graphics は exposed-D3D lean 設計のため `ID3D11Texture2D*` / 各 view を直接公開する
 
 #include <filesystem>
+#include <memory>
 
+#include <Framework/Core/NonCopyable.h>
 #include <Framework/Graphics/Buffer.h>
+#include <Framework/Graphics/D3dCommon.h>
 #include <Framework/Math/Math.h>
-
-#include <d3d11.h>
-#include <wrl/client.h>
 
 namespace NS::Graphics
 {
 
-    class Renderer;
     class Texture;
-
-    namespace detail
-    {
-        /// Texture 内部の SRV を取得 (Material が PSSetShaderResources 等に使用)。 SRV を持たなければ null
-        [[nodiscard]] ID3D11ShaderResourceView* GetSrv(Texture& texture) noexcept;
-    } // namespace detail
 
     /// ファイルロード用 Texture 構築パラメータ
     /// path が空 or 読込失敗時は 1x1 マゼンタ fallback が生成され、 IsUsingFallback() が true になる
@@ -56,20 +49,20 @@ namespace NS::Graphics
 
     /// 2D テクスチャ。Cubemap / 3D Volume は対象外
     /// 役割は bindFlags で決まり、 SRV / RTV / DSV を必要なぶんだけ保持する
-    /// バインドは Renderer::BindTexture 経由 (本型は context を保持しない)
-    class Texture
+    /// バインドは CommandList 経由 (本型は context を保持しない)
+    class Texture : public NS::Core::NonCopyable
     {
     public:
-        Texture(Renderer& renderer, const TextureDesc& desc);
-        Texture(Renderer& renderer, const std::filesystem::path& path);
-        Texture(Renderer& renderer, const TextureCreateDesc& desc);
-        Texture(Renderer& renderer, Microsoft::WRL::ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
-        ~Texture();
+        /// ファイルロード用 TextureDesc から生成する。 読込失敗でも非 null (fallback / IsUsingFallback())
+        [[nodiscard]] static std::unique_ptr<Texture> Create(const TextureDesc& desc);
+        /// パス指定で生成する (TextureDesc{path, true, false} 相当)
+        [[nodiscard]] static std::unique_ptr<Texture> Create(const std::filesystem::path& path);
+        /// 生成用 TextureCreateDesc から offscreen RT / depth テクスチャを生成する
+        [[nodiscard]] static std::unique_ptr<Texture> Create(const TextureCreateDesc& desc);
+        /// 既存 ID3D11Texture2D をラップして生成する (swapchain backbuffer 等)
+        [[nodiscard]] static std::unique_ptr<Texture> Create(ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
 
-        Texture(const Texture&) = delete;
-        Texture& operator=(const Texture&) = delete;
-        Texture(Texture&&) = delete;
-        Texture& operator=(Texture&&) = delete;
+        ~Texture();
 
         /// いずれかの view (SRV/RTV/DSV) が有効なら true。fallback でも true (1x1 マゼンタ SRV が生成される)
         [[nodiscard]] bool IsValid() const noexcept;
@@ -90,10 +83,15 @@ namespace NS::Graphics
         [[nodiscard]] ID3D11DepthStencilView* Dsv() const noexcept;
 
     private:
-        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_tex;
-        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_srv;
-        Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_rtv;
-        Microsoft::WRL::ComPtr<ID3D11DepthStencilView> m_dsv;
+        explicit Texture(const TextureDesc& desc);
+        explicit Texture(const std::filesystem::path& path);
+        explicit Texture(const TextureCreateDesc& desc);
+        Texture(ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
+
+        ComPtr<ID3D11Texture2D> m_tex;
+        ComPtr<ID3D11ShaderResourceView> m_srv;
+        ComPtr<ID3D11RenderTargetView> m_rtv;
+        ComPtr<ID3D11DepthStencilView> m_dsv;
         NS::Math::Size2D m_size{0, 0};
         bool m_fallback = false;
     };

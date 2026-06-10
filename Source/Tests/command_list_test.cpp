@@ -11,10 +11,12 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 
 namespace
 {
     using NS::Graphics::Buffer;
+    using NS::Graphics::BufferDesc;
     using NS::Graphics::CommandList;
     using NS::Graphics::HasStage;
     using NS::Graphics::MakeConstantBufferDesc;
@@ -90,20 +92,29 @@ TEST_F(CommandListLoggerTest, SetAndDrawDoNotCrash)
     ASSERT_TRUE(renderer.IsValid());
 
     const std::array<TestVertex, 3> verts{};
-    Buffer vb(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex)));
+    BufferDesc vbDesc = MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex));
+    std::unique_ptr<Buffer> vbHolder = Buffer::Create(vbDesc);
+    Buffer& vb = *vbHolder;
     const std::array<std::uint16_t, 3> indices{0, 1, 2};
-    Buffer ib(renderer, MakeIndexBufferDesc(indices.data(), indices.size(), DXGI_FORMAT_R16_UINT));
-    Buffer cb(renderer, MakeConstantBufferDesc(64));
+    BufferDesc ibDesc = MakeIndexBufferDesc(indices.data(), indices.size(), DXGI_FORMAT_R16_UINT);
+    std::unique_ptr<Buffer> ibHolder = Buffer::Create(ibDesc);
+    Buffer& ib = *ibHolder;
+    BufferDesc cbDesc = MakeConstantBufferDesc(64);
+    std::unique_ptr<Buffer> cbHolder = Buffer::Create(cbDesc);
+    Buffer& cb = *cbHolder;
     ASSERT_TRUE(vb.IsValid());
     ASSERT_TRUE(ib.IsValid());
     ASSERT_TRUE(cb.IsValid());
 
     // 読込失敗で magenta fallback になり IsValid()==true
-    Shader vs(renderer, "C:/nonexistent/__ns_cmd.vs.hlsl");
-    Shader ps(renderer, "C:/nonexistent/__ns_cmd.ps.hlsl");
+    std::unique_ptr<Shader> vsHolder = Shader::Create("C:/nonexistent/__ns_cmd.vs.hlsl");
+    Shader& vs = *vsHolder;
+    std::unique_ptr<Shader> psHolder = Shader::Create("C:/nonexistent/__ns_cmd.ps.hlsl");
+    Shader& ps = *psHolder;
     ASSERT_TRUE(vs.IsValid());
     ASSERT_TRUE(ps.IsValid());
-    Texture tex(renderer, "C:/nonexistent/__ns_cmd.png");
+    std::unique_ptr<Texture> texHolder = Texture::Create("C:/nonexistent/__ns_cmd.png");
+    Texture& tex = *texHolder;
     ASSERT_TRUE(tex.IsValid());
 
     CommandList& cmd = renderer.Commands();
@@ -125,8 +136,12 @@ TEST_F(CommandListLoggerTest, UpdateBufferDynamicWorksStaticIsNoop)
     ASSERT_TRUE(renderer.IsValid());
 
     std::array<TestVertex, 3> verts{};
-    Buffer dyn(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex), D3D11_USAGE_DYNAMIC));
-    Buffer stat(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex)));
+    BufferDesc dynDesc = MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex), D3D11_USAGE_DYNAMIC);
+    std::unique_ptr<Buffer> dynHolder = Buffer::Create(dynDesc);
+    Buffer& dyn = *dynHolder;
+    BufferDesc statDesc = MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex));
+    std::unique_ptr<Buffer> statHolder = Buffer::Create(statDesc);
+    Buffer& stat = *statHolder;
     ASSERT_TRUE(dyn.IsValid());
     ASSERT_TRUE(stat.IsValid());
 
@@ -149,14 +164,16 @@ TEST_F(CommandListLoggerTest, RenderTargetAndClearDoNotCrash)
     colorDesc.width = 64;
     colorDesc.height = 64;
     colorDesc.bindFlags = D3D11_BIND_RENDER_TARGET;
-    Texture color(renderer, colorDesc);
+    std::unique_ptr<Texture> colorHolder = Texture::Create(colorDesc);
+    Texture& color = *colorHolder;
 
     TextureCreateDesc depthDesc{};
     depthDesc.width = 64;
     depthDesc.height = 64;
     depthDesc.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
     depthDesc.bindFlags = D3D11_BIND_DEPTH_STENCIL;
-    Texture depth(renderer, depthDesc);
+    std::unique_ptr<Texture> depthHolder = Texture::Create(depthDesc);
+    Texture& depth = *depthHolder;
 
     ASSERT_TRUE(color.IsValid());
     ASSERT_TRUE(depth.IsValid());

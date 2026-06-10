@@ -8,9 +8,11 @@
 /// は将来拡張。 `Bind(Renderer&)` は shader / textures / CB / sampler を一括設定する
 /// GPU バインドは渡された Renderer 経由で行い、 Material は DeviceContext を保持しない
 
+#include "Framework/Core/NonCopyable.h"
 #include "Framework/Graphics/ShaderStage.h"
 
 #include <cstddef>
+#include <map>
 #include <memory>
 
 namespace NS::Graphics
@@ -20,6 +22,7 @@ namespace NS::Graphics
     class Shader;
     class Texture;
     class Mesh;
+    class Buffer;
 
     /// Material 構築パラメータ
     /// vertexShader / pixelShader は共有参照、Material は所有しない。Material 寿命中 両者が有効であること
@@ -42,18 +45,13 @@ namespace NS::Graphics
     /// Shader* (非所有) + Texture スロット (unsigned 番号) + 内蔵 ConstantBuffer
     /// Sampler は s0 LinearWrap 固定、複数 sampler は将来拡張
     /// GPU バインドは Bind(Renderer&) / SetParams(Renderer&) に渡す Renderer 経由で行う
-    class Material
+    class Material : public NS::Core::NonCopyable
     {
     public:
-        struct Impl;
+        /// MaterialDesc から Material を生成する。 失敗時も非 null (IsValid() で検知)
+        [[nodiscard]] static std::unique_ptr<Material> Create(const MaterialDesc& desc);
 
-        Material(Renderer& renderer, const MaterialDesc& desc);
         ~Material();
-
-        Material(const Material&) = delete;
-        Material& operator=(const Material&) = delete;
-        Material(Material&&) = delete;
-        Material& operator=(Material&&) = delete;
 
         /// Shader が非 null で内部リソース構築済なら true。fallback shader でも true
         [[nodiscard]] bool IsValid() const noexcept;
@@ -87,9 +85,17 @@ namespace NS::Graphics
         void CreateInputLayoutFor(Mesh& mesh) noexcept;
 
     private:
-        std::unique_ptr<Impl> m_pImpl;
+        explicit Material(const MaterialDesc& desc);
 
         void UpdateParamsRaw(Renderer& renderer, const void* data, std::size_t bytes) noexcept;
+
+        Shader* m_vertexShader = nullptr;
+        Shader* m_pixelShader = nullptr;
+        std::map<unsigned, const Texture*> m_textures;
+        std::unique_ptr<Buffer> m_cb;
+        unsigned m_cbSlot = 1;
+        ShaderStage m_cbStages = ShaderStage::Vertex | ShaderStage::Pixel;
+        bool m_valid = false;
     };
 
 } // namespace NS::Graphics

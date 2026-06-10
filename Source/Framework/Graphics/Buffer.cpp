@@ -1,7 +1,8 @@
 #include "Framework/Graphics/Buffer.h"
 
+#include "Framework/Graphics/D3dCommon.h"
+#include "Framework/Graphics/GraphicObject.h"
 #include "Framework/Graphics/Renderer.h"
-#include "Framework/Graphics/detail/d3d_context.h"
 #include "Framework/Graphics/detail/d3d_usage.h"
 
 #include "Framework/Core/LogCategories.h"
@@ -57,7 +58,12 @@ namespace NS::Graphics
         return desc;
     }
 
-    Buffer::Buffer(Renderer& renderer, const BufferDesc& desc)
+    std::unique_ptr<Buffer> Buffer::Create(const BufferDesc& desc)
+    {
+        return std::unique_ptr<Buffer>(new Buffer(desc));
+    }
+
+    Buffer::Buffer(const BufferDesc& desc)
     {
         const bool isConstant = (desc.bindFlags & D3D11_BIND_CONSTANT_BUFFER) != 0u;
         const std::size_t bytes =
@@ -68,7 +74,7 @@ namespace NS::Graphics
         m_format = desc.indexFormat;
         m_dynamic = (detail::GetCpuAccessFlags(desc.usage) & D3D11_CPU_ACCESS_WRITE) != 0u;
 
-        auto* device = detail::GetDevice(renderer);
+        auto* device = Gpu().device;
         if (device == nullptr || bytes == 0u)
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics,

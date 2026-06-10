@@ -2,16 +2,19 @@
 
 #include <Framework/Core/Logger.h>
 #include <Framework/Graphics/Buffer.h>
+#include <Framework/Graphics/CommandList.h>
 #include <Framework/Graphics/Renderer.h>
 #include <Framework/Graphics/ShaderStage.h>
 #include <Framework/Platform/Window.h>
 
 #include <array>
 #include <cstdint>
+#include <memory>
 
 namespace
 {
     using NS::Graphics::Buffer;
+    using NS::Graphics::BufferDesc;
     using NS::Graphics::MakeConstantBufferDesc;
     using NS::Graphics::MakeIndexBufferDesc;
     using NS::Graphics::MakeVertexBufferDesc;
@@ -71,7 +74,9 @@ TEST_F(BufferLoggerTest, VertexBufferStaticConstructs)
         TestVertex{{1.0f, -1.0f, 0.0f}, {1.0f, 1.0f}},
     };
 
-    Buffer vb(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex)));
+    BufferDesc vbDesc = MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex));
+    std::unique_ptr<Buffer> vbHolder = Buffer::Create(vbDesc);
+    Buffer& vb = *vbHolder;
     EXPECT_TRUE(vb.IsValid());
     EXPECT_EQ(vb.Stride(), sizeof(TestVertex));
     EXPECT_EQ(vb.ByteSize(), verts.size() * sizeof(TestVertex));
@@ -85,11 +90,13 @@ TEST_F(BufferLoggerTest, VertexBufferDynamicUpdateDoesNotCrash)
     ASSERT_TRUE(renderer.IsValid());
 
     std::array<TestVertex, 3> verts{};
-    Buffer vb(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex), D3D11_USAGE_DYNAMIC));
+    BufferDesc vbDesc = MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex), D3D11_USAGE_DYNAMIC);
+    std::unique_ptr<Buffer> vbHolder = Buffer::Create(vbDesc);
+    Buffer& vb = *vbHolder;
     ASSERT_TRUE(vb.IsValid());
 
     verts[0].pos[0] = 5.0f;
-    renderer.UpdateBuffer(vb, verts.data(), verts.size() * sizeof(TestVertex));
+    renderer.Commands().UpdateBuffer(vb, verts.data(), verts.size() * sizeof(TestVertex));
     SUCCEED();
 }
 
@@ -101,10 +108,12 @@ TEST_F(BufferLoggerTest, VertexBufferStaticUpdateIsNoop)
     ASSERT_TRUE(renderer.IsValid());
 
     std::array<TestVertex, 3> verts{};
-    Buffer vb(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex)));
+    BufferDesc vbDesc = MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex));
+    std::unique_ptr<Buffer> vbHolder = Buffer::Create(vbDesc);
+    Buffer& vb = *vbHolder;
     ASSERT_TRUE(vb.IsValid());
 
-    renderer.UpdateBuffer(vb, verts.data(), verts.size() * sizeof(TestVertex));
+    renderer.Commands().UpdateBuffer(vb, verts.data(), verts.size() * sizeof(TestVertex));
     SUCCEED();
 }
 
@@ -116,7 +125,9 @@ TEST_F(BufferLoggerTest, IndexBufferUint16Constructs)
     ASSERT_TRUE(renderer.IsValid());
 
     const std::array<std::uint16_t, 6> indices{0, 1, 2, 0, 2, 3};
-    Buffer ib(renderer, MakeIndexBufferDesc(indices.data(), indices.size(), DXGI_FORMAT_R16_UINT));
+    BufferDesc ibDesc = MakeIndexBufferDesc(indices.data(), indices.size(), DXGI_FORMAT_R16_UINT);
+    std::unique_ptr<Buffer> ibHolder = Buffer::Create(ibDesc);
+    Buffer& ib = *ibHolder;
     EXPECT_TRUE(ib.IsValid());
     EXPECT_EQ(ib.Format(), DXGI_FORMAT_R16_UINT);
     EXPECT_EQ(ib.ByteSize(), indices.size() * sizeof(std::uint16_t));
@@ -130,7 +141,9 @@ TEST_F(BufferLoggerTest, IndexBufferUint32Constructs)
     ASSERT_TRUE(renderer.IsValid());
 
     const std::array<std::uint32_t, 6> indices{0, 1, 2, 0, 2, 3};
-    Buffer ib(renderer, MakeIndexBufferDesc(indices.data(), indices.size(), DXGI_FORMAT_R32_UINT));
+    BufferDesc ibDesc = MakeIndexBufferDesc(indices.data(), indices.size(), DXGI_FORMAT_R32_UINT);
+    std::unique_ptr<Buffer> ibHolder = Buffer::Create(ibDesc);
+    Buffer& ib = *ibHolder;
     EXPECT_TRUE(ib.IsValid());
     EXPECT_EQ(ib.Format(), DXGI_FORMAT_R32_UINT);
     EXPECT_EQ(ib.ByteSize(), indices.size() * sizeof(std::uint32_t));
@@ -143,7 +156,9 @@ TEST_F(BufferLoggerTest, ConstantBufferConstructs)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Buffer cb(renderer, MakeConstantBufferDesc(64));
+    BufferDesc cbDesc = MakeConstantBufferDesc(64);
+    std::unique_ptr<Buffer> cbHolder = Buffer::Create(cbDesc);
+    Buffer& cb = *cbHolder;
     EXPECT_TRUE(cb.IsValid());
     EXPECT_EQ(cb.ByteSize(), static_cast<std::size_t>(64));
 }
@@ -155,7 +170,9 @@ TEST_F(BufferLoggerTest, ConstantBufferRoundsUpTo16ByteBoundary)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Buffer cb(renderer, MakeConstantBufferDesc(20));
+    BufferDesc cbDesc = MakeConstantBufferDesc(20);
+    std::unique_ptr<Buffer> cbHolder = Buffer::Create(cbDesc);
+    Buffer& cb = *cbHolder;
     EXPECT_TRUE(cb.IsValid());
     EXPECT_EQ(cb.ByteSize(), static_cast<std::size_t>(32));
 }
@@ -167,7 +184,9 @@ TEST_F(BufferLoggerTest, ConstantBufferUpdate)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Buffer cb(renderer, MakeConstantBufferDesc(sizeof(TestCB)));
+    BufferDesc cbDesc = MakeConstantBufferDesc(sizeof(TestCB));
+    std::unique_ptr<Buffer> cbHolder = Buffer::Create(cbDesc);
+    Buffer& cb = *cbHolder;
     ASSERT_TRUE(cb.IsValid());
 
     TestCB data{};
@@ -175,7 +194,7 @@ TEST_F(BufferLoggerTest, ConstantBufferUpdate)
     data.values[1] = 2.0f;
     data.values[2] = 3.0f;
     data.values[3] = 4.0f;
-    renderer.UpdateBuffer(cb, &data, sizeof(data));
+    renderer.Commands().UpdateBuffer(cb, &data, sizeof(data));
     SUCCEED();
 }
 
@@ -187,18 +206,24 @@ TEST_F(BufferLoggerTest, BufferBindsDoNotCrash)
     ASSERT_TRUE(renderer.IsValid());
 
     const std::array<TestVertex, 3> verts{};
-    Buffer vb(renderer, MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex)));
+    BufferDesc vbDesc = MakeVertexBufferDesc(verts.data(), verts.size(), sizeof(TestVertex));
+    std::unique_ptr<Buffer> vbHolder = Buffer::Create(vbDesc);
+    Buffer& vb = *vbHolder;
     ASSERT_TRUE(vb.IsValid());
 
     const std::array<std::uint16_t, 3> indices{0, 1, 2};
-    Buffer ib(renderer, MakeIndexBufferDesc(indices.data(), indices.size(), DXGI_FORMAT_R16_UINT));
+    BufferDesc ibDesc = MakeIndexBufferDesc(indices.data(), indices.size(), DXGI_FORMAT_R16_UINT);
+    std::unique_ptr<Buffer> ibHolder = Buffer::Create(ibDesc);
+    Buffer& ib = *ibHolder;
     ASSERT_TRUE(ib.IsValid());
 
-    Buffer cb(renderer, MakeConstantBufferDesc(sizeof(TestCB)));
+    BufferDesc cbDesc = MakeConstantBufferDesc(sizeof(TestCB));
+    std::unique_ptr<Buffer> cbHolder = Buffer::Create(cbDesc);
+    Buffer& cb = *cbHolder;
     ASSERT_TRUE(cb.IsValid());
 
-    renderer.BindVertexBuffer(vb, 0);
-    renderer.BindIndexBuffer(ib);
-    renderer.BindConstantBuffer(cb, 0, ShaderStage::Vertex | ShaderStage::Pixel);
+    renderer.Commands().SetVertexBuffer(vb, 0);
+    renderer.Commands().SetIndexBuffer(ib);
+    renderer.Commands().SetConstantBuffer(cb, 0, ShaderStage::Vertex | ShaderStage::Pixel);
     SUCCEED();
 }

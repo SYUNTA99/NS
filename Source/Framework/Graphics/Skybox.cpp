@@ -2,12 +2,13 @@
 
 #include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/CommandList.h"
+#include "Framework/Graphics/D3dCommon.h"
+#include "Framework/Graphics/GraphicObject.h"
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/ShaderStage.h"
 #include "Framework/Graphics/StaticMesh.h"
-#include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
@@ -24,7 +25,6 @@
 
 namespace NS::Graphics
 {
-    using detail::ComPtr;
 
     namespace
     {
@@ -55,34 +55,7 @@ namespace NS::Graphics
             });
             return ext == ".dds";
         }
-    } // namespace
 
-    struct Skybox::Impl
-    {
-        ComPtr<ID3D11Device> device;
-
-        // cube mesh / shader / sampler / states
-        std::unique_ptr<StaticMesh> cubeMesh;
-        std::unique_ptr<Shader> vs;
-        std::unique_ptr<Shader> ps;
-        std::unique_ptr<Buffer> cb;
-        ComPtr<ID3D11SamplerState> sampler;
-        ComPtr<ID3D11DepthStencilState> depthState;
-        ComPtr<ID3D11RasterizerState> rasterState;
-
-        // cubemap SRV (実物 or fallback)
-        ComPtr<ID3D11ShaderResourceView> cubemapSrv;
-
-        // テスト / デバッグ用に desc を保持しておく (state object 自体は不透明)
-        D3D11_DEPTH_STENCIL_DESC depthDesc{};
-        D3D11_RASTERIZER_DESC rasterDesc{};
-
-        bool usingFallback = true;
-        bool valid = false;
-    };
-
-    namespace
-    {
         // 1x1 マゼンタ cubemap fallback。 ロード未呼出 / 失敗時に使用、 Render の安全保証
         bool CreateMagentaCubemapFallback(ID3D11Device* device, ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
         {
@@ -363,16 +336,20 @@ namespace NS::Graphics
         }
     } // namespace
 
-    Skybox::Skybox(Renderer& renderer) : m_pImpl(std::make_unique<Impl>())
+    std::unique_ptr<Skybox> Skybox::Create()
     {
-        auto* device = detail::GetDevice(renderer);
-        auto* context = detail::GetContext(renderer);
-        if (device == nullptr || context == nullptr)
+        return std::unique_ptr<Skybox>(new Skybox());
+    }
+
+    Skybox::Skybox()
+    {
+        auto* device = Gpu().device;
+        if (device == nullptr)
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Skybox: Renderer の Device / Context が無効");
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Skybox: グローバル Device が無効");
             return;
         }
-        m_pImpl->device = device;
+        m_device = device;
 
         // unit cube mesh。 inside-out 描画なのでサイズは何でも良いが、 1m 立方 (half=0.5) で統一
         auto geom = MakeCube({0.5f, 0.5f, 0.5f});
@@ -381,8 +358,8 @@ namespace NS::Graphics
         md.vertexCount = geom.vertices.size();
         md.indices = geom.indices.data();
         md.indexCount = geom.indices.size();
-        m_pImpl->cubeMesh = std::make_unique<StaticMesh>(renderer, md);
-        if (!m_pImpl->cubeMesh->IsValid())
+        m_cubeMesh = StaticMesh::Create(md);
+        if (!m_cubeMesh->IsValid())
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Skybox: cube mesh 構築失敗");
             return;
@@ -391,45 +368,46 @@ namespace NS::Graphics
         // skybox 専用 shader。 cube mesh の StandardInputLayout (POSITION+TEXCOORD+NORMAL) と
         // skybox.vs の入力シグネチャを共有する
         const auto exeDir = ::NS::Core::FileSystem::GetExeDirectory();
-        m_pImpl->vs = std::make_unique<Shader>(renderer, exeDir / "Shaders" / "skybox.vs.hlsl");
-        m_pImpl->ps = std::make_unique<Shader>(renderer, exeDir / "Shaders" / "skybox.ps.hlsl");
-        if (!m_pImpl->vs->IsValid() || !m_pImpl->ps->IsValid())
+        m_vs = Shader::Create(exeDir / "Shaders" / "skybox.vs.hlsl");
+        m_ps = Shader::Create(exeDir / "Shaders" / "skybox.ps.hlsl");
+        if (!m_vs->IsValid() || !m_ps->IsValid())
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Skybox: shader 構築失敗");
             return;
         }
 
         // skybox は MeshRendererComponent を経由せず直接 Draw するため、 ここで InputLayout を生成する
-        m_pImpl->cubeMesh->CreateInputLayout(*m_pImpl->vs);
+        m_cubeMesh->CreateInputLayout(*m_vs);
 
         // viewProj を渡す 64 byte の CB
-        m_pImpl->cb = std::make_unique<Buffer>(renderer, MakeConstantBufferDesc(sizeof(SkyboxCB)));
-        if (!m_pImpl->cb->IsValid())
+        BufferDesc cbDesc = MakeConstantBufferDesc(sizeof(SkyboxCB));
+        m_cb = Buffer::Create(cbDesc);
+        if (!m_cb->IsValid())
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Skybox: ConstantBuffer 構築失敗");
             return;
         }
 
-        if (!CreateSkyboxDepthState(device, m_pImpl->depthDesc, m_pImpl->depthState))
+        if (!CreateSkyboxDepthState(device, m_depthDesc, m_depthState))
             return;
-        if (!CreateSkyboxRasterState(device, m_pImpl->rasterDesc, m_pImpl->rasterState))
+        if (!CreateSkyboxRasterState(device, m_rasterDesc, m_rasterState))
             return;
-        if (!CreateSkyboxSampler(device, m_pImpl->sampler))
+        if (!CreateSkyboxSampler(device, m_sampler))
             return;
 
         // LoadCubemap 未呼出でも Render が安全に動くよう fallback を必ず先に用意する
-        if (!CreateMagentaCubemapFallback(device, m_pImpl->cubemapSrv))
+        if (!CreateMagentaCubemapFallback(device, m_cubemapSrv))
             return;
 
-        m_pImpl->usingFallback = true;
-        m_pImpl->valid = true;
+        m_usingFallback = true;
+        m_valid = true;
     }
 
     Skybox::~Skybox() = default;
 
-    bool Skybox::LoadCubemap(Renderer& renderer, const std::filesystem::path& path)
+    bool Skybox::LoadCubemap(const std::filesystem::path& path)
     {
-        if (!m_pImpl || !m_pImpl->device)
+        if (!m_device)
             return false;
 
         ComPtr<ID3D11ShaderResourceView> newSrv;
@@ -437,7 +415,7 @@ namespace NS::Graphics
 
         if (IsDdsExtension(path))
         {
-            loaded = LoadDdsCubemap(m_pImpl->device.Get(), path, newSrv);
+            loaded = LoadDdsCubemap(m_device.Get(), path, newSrv);
         }
         else
         {
@@ -445,8 +423,8 @@ namespace NS::Graphics
             std::error_code ec;
             if (std::filesystem::is_directory(path, ec))
             {
-                auto* context = detail::GetContext(renderer);
-                loaded = (context != nullptr) && LoadSixFacePngCubemap(m_pImpl->device.Get(), context, path, newSrv);
+                auto* context = Gpu().context;
+                loaded = (context != nullptr) && LoadSixFacePngCubemap(m_device.Get(), context, path, newSrv);
             }
             else
             {
@@ -459,19 +437,19 @@ namespace NS::Graphics
 
         if (loaded && newSrv)
         {
-            m_pImpl->cubemapSrv = std::move(newSrv);
-            m_pImpl->usingFallback = false;
+            m_cubemapSrv = std::move(newSrv);
+            m_usingFallback = false;
             return true;
         }
 
         // 既存 fallback SRV をそのまま維持し、 呼出側に false を返す
-        m_pImpl->usingFallback = true;
+        m_usingFallback = true;
         return false;
     }
 
     void Skybox::Render(Renderer& renderer, const NS::Math::Matrix& viewProjNoTranslate) noexcept
     {
-        if (!m_pImpl || !m_pImpl->valid)
+        if (!m_valid)
             return;
         auto& cmd = renderer.Commands();
         if (cmd.Native() == nullptr)
@@ -479,7 +457,7 @@ namespace NS::Graphics
 
         SkyboxCB cbData{};
         cbData.viewProj = viewProjNoTranslate;
-        renderer.UpdateBuffer(*m_pImpl->cb, &cbData, sizeof(cbData));
+        renderer.Commands().UpdateBuffer(*m_cb, &cbData, sizeof(cbData));
 
         // 既存 depth/raster state を退避して draw 後に復元する
         ComPtr<ID3D11DepthStencilState> prevDss;
@@ -489,21 +467,20 @@ namespace NS::Graphics
         ComPtr<ID3D11RasterizerState> prevRs;
         cmd->RSGetState(prevRs.GetAddressOf());
 
-        cmd->OMSetDepthStencilState(m_pImpl->depthState.Get(), 0);
-        cmd->RSSetState(m_pImpl->rasterState.Get());
+        cmd->OMSetDepthStencilState(m_depthState.Get(), 0);
+        cmd->RSSetState(m_rasterState.Get());
 
-        renderer.BindShader(*m_pImpl->vs);
-        renderer.BindShader(*m_pImpl->ps);
-        renderer.BindConstantBuffer(*m_pImpl->cb, 0, ShaderStage::Vertex);
+        renderer.Commands().SetShader(*m_vs);
+        renderer.Commands().SetShader(*m_ps);
+        renderer.Commands().SetConstantBuffer(*m_cb, 0, ShaderStage::Vertex);
 
-        ID3D11ShaderResourceView* srvs[1] = {m_pImpl->cubemapSrv.Get()};
+        ID3D11ShaderResourceView* srvs[1] = {m_cubemapSrv.Get()};
         cmd->PSSetShaderResources(0, 1, srvs);
 
-        ID3D11SamplerState* samplers[1] = {m_pImpl->sampler.Get()};
-        cmd->PSSetSamplers(0, 1, samplers);
+        cmd.SetSampler(m_sampler.Get(), 0, ShaderStage::Pixel);
 
         // Mesh::Draw は VB / IB / topology / DrawIndexed を一括実行する
-        m_pImpl->cubeMesh->Draw(renderer);
+        m_cubeMesh->Draw(renderer);
 
         // バインドした SRV を解除しないと、 後段の通常 Material::Bind が同じ t0 に
         // Texture2D を再バインドする際に D3D11 ランタイムが警告を出すことがある
@@ -516,35 +493,29 @@ namespace NS::Graphics
 
     bool Skybox::IsValid() const noexcept
     {
-        return m_pImpl && m_pImpl->valid;
+        return m_valid;
     }
 
     bool Skybox::IsUsingFallback() const noexcept
     {
-        return m_pImpl && m_pImpl->usingFallback;
+        return m_usingFallback;
     }
 
     namespace detail
     {
         ID3D11ShaderResourceView* GetCubemapSrv(Skybox& skybox) noexcept
         {
-            return skybox.m_pImpl ? skybox.m_pImpl->cubemapSrv.Get() : nullptr;
+            return skybox.m_cubemapSrv.Get();
         }
 
         void GetDepthStateDesc(Skybox& skybox, D3D11_DEPTH_STENCIL_DESC& out) noexcept
         {
-            if (skybox.m_pImpl)
-                out = skybox.m_pImpl->depthDesc;
-            else
-                out = {};
+            out = skybox.m_depthDesc;
         }
 
         void GetRasterStateDesc(Skybox& skybox, D3D11_RASTERIZER_DESC& out) noexcept
         {
-            if (skybox.m_pImpl)
-                out = skybox.m_pImpl->rasterDesc;
-            else
-                out = {};
+            out = skybox.m_rasterDesc;
         }
     } // namespace detail
 

@@ -9,6 +9,7 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 
 namespace
 {
@@ -110,7 +111,8 @@ TEST_F(MeshLoggerTest, ConstructWithCubeDataIsValid)
     desc.indices = indices.data();
     desc.indexCount = indices.size();
 
-    StaticMesh mesh(renderer, desc);
+    std::unique_ptr<StaticMesh> meshHolder = StaticMesh::Create(desc);
+    StaticMesh& mesh = *meshHolder;
     EXPECT_TRUE(mesh.IsValid());
     EXPECT_EQ(mesh.VertexCount(), kCubeVertexCount);
     EXPECT_EQ(mesh.IndexCount(), kCubeIndexCount);
@@ -124,7 +126,8 @@ TEST_F(MeshLoggerTest, EmptyDescFallsBackToCube)
     ASSERT_TRUE(renderer.IsValid());
 
     MeshDesc desc{};
-    StaticMesh mesh(renderer, desc);
+    std::unique_ptr<StaticMesh> meshHolder = StaticMesh::Create(desc);
+    StaticMesh& mesh = *meshHolder;
     EXPECT_TRUE(mesh.IsValid());
     EXPECT_TRUE(mesh.IsUsingFallback());
     EXPECT_GT(mesh.VertexCount(), 0u);
@@ -148,7 +151,8 @@ TEST_F(MeshLoggerTest, PartiallyEmptyDescFallsBackToCube)
         desc.vertexCount = vertices.size();
         desc.indices = nullptr;
         desc.indexCount = indices.size();
-        StaticMesh mesh(renderer, desc);
+        std::unique_ptr<StaticMesh> meshHolder = StaticMesh::Create(desc);
+        StaticMesh& mesh = *meshHolder;
         EXPECT_TRUE(mesh.IsValid());
         EXPECT_TRUE(mesh.IsUsingFallback());
     }
@@ -160,7 +164,8 @@ TEST_F(MeshLoggerTest, PartiallyEmptyDescFallsBackToCube)
         desc.vertexCount = 0u;
         desc.indices = indices.data();
         desc.indexCount = indices.size();
-        StaticMesh mesh(renderer, desc);
+        std::unique_ptr<StaticMesh> meshHolder = StaticMesh::Create(desc);
+        StaticMesh& mesh = *meshHolder;
         EXPECT_TRUE(mesh.IsValid());
         EXPECT_TRUE(mesh.IsUsingFallback());
     }
@@ -174,7 +179,8 @@ TEST_F(MeshLoggerTest, FallbackMeshDrawDoesNotCrash)
     ASSERT_TRUE(renderer.IsValid());
 
     MeshDesc desc{};
-    StaticMesh mesh(renderer, desc);
+    std::unique_ptr<StaticMesh> meshHolder = StaticMesh::Create(desc);
+    StaticMesh& mesh = *meshHolder;
     ASSERT_TRUE(mesh.IsValid());
     ASSERT_TRUE(mesh.IsUsingFallback());
 
@@ -197,7 +203,8 @@ TEST_F(MeshLoggerTest, DrawDoesNotCrash)
     desc.indices = indices.data();
     desc.indexCount = indices.size();
 
-    StaticMesh mesh(renderer, desc);
+    std::unique_ptr<StaticMesh> meshHolder = StaticMesh::Create(desc);
+    StaticMesh& mesh = *meshHolder;
     ASSERT_TRUE(mesh.IsValid());
 
     mesh.Draw(renderer);
@@ -219,7 +226,8 @@ TEST_F(MeshLoggerTest, AccessorsNonNull)
     desc.indices = indices.data();
     desc.indexCount = indices.size();
 
-    StaticMesh mesh(renderer, desc);
+    std::unique_ptr<StaticMesh> meshHolder = StaticMesh::Create(desc);
+    StaticMesh& mesh = *meshHolder;
     ASSERT_TRUE(mesh.IsValid());
 
     EXPECT_NE(NS::Graphics::detail::GetVertexBuffer(mesh), nullptr);
@@ -240,14 +248,16 @@ TEST_F(MeshLoggerTest, CreateInputLayoutSucceedsWithStandardShader)
     desc.vertexCount = vertices.size();
     desc.indices = indices.data();
     desc.indexCount = indices.size();
-    StaticMesh mesh(renderer, desc);
+    std::unique_ptr<StaticMesh> meshHolder = StaticMesh::Create(desc);
+    StaticMesh& mesh = *meshHolder;
     ASSERT_TRUE(mesh.IsValid());
 
     // 生成前は layout 未所有
     EXPECT_EQ(NS::Graphics::detail::GetInputLayout(mesh), nullptr);
 
     const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
-    NS::Graphics::Shader shader(renderer, shaderDir / "standard.vs.hlsl");
+    std::unique_ptr<NS::Graphics::Shader> shaderHolder = NS::Graphics::Shader::Create(shaderDir / "standard.vs.hlsl");
+    NS::Graphics::Shader& shader = *shaderHolder;
     ASSERT_TRUE(shader.IsValid());
     ASSERT_FALSE(shader.IsUsingFallback());
 

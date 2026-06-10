@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 
 namespace
 {
@@ -72,7 +73,8 @@ TEST_F(InstanceBatcherTest, BucketsByMeshMaterial)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    InstanceBatcher batcher(renderer);
+    std::unique_ptr<InstanceBatcher> batcherHolder = InstanceBatcher::Create();
+    InstanceBatcher& batcher = *batcherHolder;
     NS::Graphics::detail::SetCountOnlyMode(batcher, true);
     batcher.BeginFrame();
 
@@ -98,7 +100,8 @@ TEST_F(InstanceBatcherTest, DrawCallBudgetUnder200)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    InstanceBatcher batcher(renderer);
+    std::unique_ptr<InstanceBatcher> batcherHolder = InstanceBatcher::Create();
+    InstanceBatcher& batcher = *batcherHolder;
     NS::Graphics::detail::SetCountOnlyMode(batcher, true);
     batcher.BeginFrame();
 
@@ -126,7 +129,8 @@ TEST_F(InstanceBatcherTest, EmptyBucketsAreSkipped)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    InstanceBatcher batcher(renderer);
+    std::unique_ptr<InstanceBatcher> batcherHolder = InstanceBatcher::Create();
+    InstanceBatcher& batcher = *batcherHolder;
     NS::Graphics::detail::SetCountOnlyMode(batcher, true);
     batcher.BeginFrame();
     batcher.FlushAll(renderer);

@@ -17,8 +17,8 @@
 #include <string>
 #include <vector>
 
-struct ID3D11Buffer;
-struct ID3D11InputLayout;
+#include <Framework/Core/NonCopyable.h>
+#include <Framework/Graphics/D3dCommon.h>
 
 namespace NS::Graphics
 {
@@ -29,9 +29,9 @@ namespace NS::Graphics
 
     namespace detail
     {
-        /// Material / Renderer 拡張から ID3D11Buffer / InputLayout に直接アクセスするための typed friend accessor
-        [[nodiscard]] ID3D11Buffer* GetVertexBuffer(Mesh& mesh) noexcept;
-        [[nodiscard]] ID3D11Buffer* GetIndexBuffer(Mesh& mesh) noexcept;
+        /// Material / Renderer 拡張から Buffer / InputLayout に直接アクセスするための typed friend accessor
+        [[nodiscard]] const Buffer* GetVertexBuffer(Mesh& mesh) noexcept;
+        [[nodiscard]] const Buffer* GetIndexBuffer(Mesh& mesh) noexcept;
         [[nodiscard]] ID3D11InputLayout* GetInputLayout(Mesh& mesh) noexcept;
     } // namespace detail
 
@@ -56,15 +56,10 @@ namespace NS::Graphics
 
     /// 描画できるジオメトリの基底。 VB / IB / InputLayout を所有し DrawIndexed を 1 回発行する
     /// 頂点フォーマットは派生 (StaticMesh / SkeletalMesh) が `SetVertexLayout` で渡す
-    class Mesh
+    class Mesh : public NS::Core::NonCopyable
     {
     public:
         virtual ~Mesh();
-
-        Mesh(const Mesh&) = delete;
-        Mesh& operator=(const Mesh&) = delete;
-        Mesh(Mesh&&) = delete;
-        Mesh& operator=(Mesh&&) = delete;
 
         /// VB / IB が構築済なら true。 fallback geometry に切替わった場合も true (描画は可能)
         /// Device / Context 無効や geometry 未設定なら false。 InputLayout 未生成でも true (Draw は layout 無しで発行)
@@ -91,10 +86,9 @@ namespace NS::Graphics
         Mesh();
 
         /// 派生が構築した VB / IB と頂点 / index 数を基底に預ける
-        /// renderer の Device / DeviceContext を内部保持する。 vb / ib のいずれかが null なら invalid 扱い
+        /// InputLayout 生成用にグローバル Device を内部保持する。 vb / ib のいずれかが null なら invalid 扱い
         /// `usingFallback` は fallback geometry に切替えた場合に true を渡す
-        void SetGeometry(Renderer& renderer,
-                         std::unique_ptr<Buffer> vertexBuffer,
+        void SetGeometry(std::unique_ptr<Buffer> vertexBuffer,
                          std::unique_ptr<Buffer> indexBuffer,
                          std::size_t vertexCount,
                          std::size_t indexCount,
@@ -104,11 +98,18 @@ namespace NS::Graphics
         void SetVertexLayout(std::vector<InputElement> elements) noexcept;
 
     private:
-        struct Impl;
-        std::unique_ptr<Impl> m_pImpl;
+        std::unique_ptr<Buffer> m_vb;
+        std::unique_ptr<Buffer> m_ib;
+        ComPtr<ID3D11Device> m_device;
+        ComPtr<ID3D11InputLayout> m_inputLayout;
+        std::vector<InputElement> m_layoutElements;
+        std::size_t m_vertexCount = 0;
+        std::size_t m_indexCount = 0;
+        bool m_valid = false;
+        bool m_usingFallback = false;
 
-        friend ID3D11Buffer* detail::GetVertexBuffer(Mesh& mesh) noexcept;
-        friend ID3D11Buffer* detail::GetIndexBuffer(Mesh& mesh) noexcept;
+        friend const Buffer* detail::GetVertexBuffer(Mesh& mesh) noexcept;
+        friend const Buffer* detail::GetIndexBuffer(Mesh& mesh) noexcept;
         friend ID3D11InputLayout* detail::GetInputLayout(Mesh& mesh) noexcept;
     };
 

@@ -7,6 +7,8 @@
 #include <Framework/Graphics/Texture.h>
 #include <Framework/Platform/Window.h>
 
+#include <memory>
+
 namespace
 {
     using NS::Graphics::Material;
@@ -62,8 +64,10 @@ TEST_F(MaterialLoggerTest, ConstructWithShaderIsValid)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Shader vs(renderer, kFallbackVsPath);
-    Shader ps(renderer, kFallbackPsPath);
+    std::unique_ptr<Shader> vsHolder = Shader::Create(kFallbackVsPath);
+    Shader& vs = *vsHolder;
+    std::unique_ptr<Shader> psHolder = Shader::Create(kFallbackPsPath);
+    Shader& ps = *psHolder;
     ASSERT_TRUE(vs.IsValid());
     ASSERT_TRUE(ps.IsValid());
 
@@ -74,7 +78,8 @@ TEST_F(MaterialLoggerTest, ConstructWithShaderIsValid)
     desc.cbSlot = 1;
     desc.cbStages = ShaderStage::Vertex | ShaderStage::Pixel;
 
-    Material mat(renderer, desc);
+    std::unique_ptr<Material> matHolder = Material::Create(desc);
+    Material& mat = *matHolder;
     EXPECT_TRUE(mat.IsValid());
 }
 
@@ -90,7 +95,8 @@ TEST_F(MaterialLoggerTest, ConstructWithoutShaderIsInvalid)
     desc.pixelShader = nullptr;
     desc.constantBufferSize = sizeof(DummyCB);
 
-    Material mat(renderer, desc);
+    std::unique_ptr<Material> matHolder = Material::Create(desc);
+    Material& mat = *matHolder;
     EXPECT_FALSE(mat.IsValid());
 }
 
@@ -101,8 +107,10 @@ TEST_F(MaterialLoggerTest, ConstructWithZeroCbSizeStillValid)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Shader vs(renderer, kFallbackVsPath);
-    Shader ps(renderer, kFallbackPsPath);
+    std::unique_ptr<Shader> vsHolder = Shader::Create(kFallbackVsPath);
+    Shader& vs = *vsHolder;
+    std::unique_ptr<Shader> psHolder = Shader::Create(kFallbackPsPath);
+    Shader& ps = *psHolder;
     ASSERT_TRUE(vs.IsValid());
     ASSERT_TRUE(ps.IsValid());
 
@@ -111,7 +119,8 @@ TEST_F(MaterialLoggerTest, ConstructWithZeroCbSizeStillValid)
     desc.pixelShader = &ps;
     desc.constantBufferSize = 0u;
 
-    Material mat(renderer, desc);
+    std::unique_ptr<Material> matHolder = Material::Create(desc);
+    Material& mat = *matHolder;
     EXPECT_TRUE(mat.IsValid());
 }
 
@@ -122,19 +131,23 @@ TEST_F(MaterialLoggerTest, SetAndClearTextureBindDoesNotCrash)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Shader vs(renderer, kFallbackVsPath);
-    Shader ps(renderer, kFallbackPsPath);
+    std::unique_ptr<Shader> vsHolder = Shader::Create(kFallbackVsPath);
+    Shader& vs = *vsHolder;
+    std::unique_ptr<Shader> psHolder = Shader::Create(kFallbackPsPath);
+    Shader& ps = *psHolder;
     ASSERT_TRUE(vs.IsValid());
     ASSERT_TRUE(ps.IsValid());
 
-    Texture texture(renderer, TextureDesc{});
+    std::unique_ptr<Texture> textureHolder = Texture::Create(TextureDesc{});
+    Texture& texture = *textureHolder;
     ASSERT_TRUE(texture.IsValid());
 
     MaterialDesc desc{};
     desc.vertexShader = &vs;
     desc.pixelShader = &ps;
     desc.constantBufferSize = sizeof(DummyCB);
-    Material mat(renderer, desc);
+    std::unique_ptr<Material> matHolder = Material::Create(desc);
+    Material& mat = *matHolder;
     ASSERT_TRUE(mat.IsValid());
 
     // SetTexture / ClearTexture / 未割当 slot に ClearTexture の各 call path が crash しないこと
@@ -154,19 +167,23 @@ TEST_F(MaterialLoggerTest, BindDoesNotCrash)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Shader vs(renderer, kFallbackVsPath);
-    Shader ps(renderer, kFallbackPsPath);
+    std::unique_ptr<Shader> vsHolder = Shader::Create(kFallbackVsPath);
+    Shader& vs = *vsHolder;
+    std::unique_ptr<Shader> psHolder = Shader::Create(kFallbackPsPath);
+    Shader& ps = *psHolder;
     ASSERT_TRUE(vs.IsValid());
     ASSERT_TRUE(ps.IsValid());
 
-    Texture texture(renderer, TextureDesc{});
+    std::unique_ptr<Texture> textureHolder = Texture::Create(TextureDesc{});
+    Texture& texture = *textureHolder;
     ASSERT_TRUE(texture.IsValid());
 
     MaterialDesc desc{};
     desc.vertexShader = &vs;
     desc.pixelShader = &ps;
     desc.constantBufferSize = sizeof(DummyCB);
-    Material mat(renderer, desc);
+    std::unique_ptr<Material> matHolder = Material::Create(desc);
+    Material& mat = *matHolder;
     ASSERT_TRUE(mat.IsValid());
 
     mat.SetTexture(0u, &texture);
@@ -191,7 +208,8 @@ TEST_F(MaterialLoggerTest, InvalidMaterialBindIsNoOp)
     MaterialDesc desc{};
     desc.vertexShader = nullptr;
     desc.pixelShader = nullptr;
-    Material mat(renderer, desc);
+    std::unique_ptr<Material> matHolder = Material::Create(desc);
+    Material& mat = *matHolder;
     ASSERT_FALSE(mat.IsValid());
 
     mat.Bind(renderer);
@@ -205,8 +223,10 @@ TEST_F(MaterialLoggerTest, SetParamsWithoutCbIsNoOp)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Shader vs(renderer, kFallbackVsPath);
-    Shader ps(renderer, kFallbackPsPath);
+    std::unique_ptr<Shader> vsHolder = Shader::Create(kFallbackVsPath);
+    Shader& vs = *vsHolder;
+    std::unique_ptr<Shader> psHolder = Shader::Create(kFallbackPsPath);
+    Shader& ps = *psHolder;
     ASSERT_TRUE(vs.IsValid());
     ASSERT_TRUE(ps.IsValid());
 
@@ -214,7 +234,8 @@ TEST_F(MaterialLoggerTest, SetParamsWithoutCbIsNoOp)
     desc.vertexShader = &vs;
     desc.pixelShader = &ps;
     desc.constantBufferSize = 0u;
-    Material mat(renderer, desc);
+    std::unique_ptr<Material> matHolder = Material::Create(desc);
+    Material& mat = *matHolder;
     ASSERT_TRUE(mat.IsValid());
 
     DummyCB cb{};
@@ -230,8 +251,10 @@ TEST_F(MaterialLoggerTest, SetParamsBeforeBindNoCrash)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Shader vs(renderer, kFallbackVsPath);
-    Shader ps(renderer, kFallbackPsPath);
+    std::unique_ptr<Shader> vsHolder = Shader::Create(kFallbackVsPath);
+    Shader& vs = *vsHolder;
+    std::unique_ptr<Shader> psHolder = Shader::Create(kFallbackPsPath);
+    Shader& ps = *psHolder;
     ASSERT_TRUE(vs.IsValid());
     ASSERT_TRUE(ps.IsValid());
 
@@ -239,7 +262,8 @@ TEST_F(MaterialLoggerTest, SetParamsBeforeBindNoCrash)
     desc.vertexShader = &vs;
     desc.pixelShader = &ps;
     desc.constantBufferSize = sizeof(DummyCB);
-    Material mat(renderer, desc);
+    std::unique_ptr<Material> matHolder = Material::Create(desc);
+    Material& mat = *matHolder;
     ASSERT_TRUE(mat.IsValid());
 
     DummyCB cb{};

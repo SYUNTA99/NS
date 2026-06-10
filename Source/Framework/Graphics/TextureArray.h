@@ -10,29 +10,22 @@
 /// 正規化される (アセット側で揃える運用)
 /// 読込失敗時は 1x1 magenta fallback を slice 0 に詰め、 `IsUsingFallback()` が true に
 /// なる (Texture と同じ流派)
-/// バインドは Renderer::BindTextureArray 経由 (本型は context を保持しない)
+/// バインドは CommandList 経由 (本型は context を保持しない)
 /// Graphics は exposed-D3D lean 設計のため `ID3D11Texture2D*` / SRV を直接公開する
 
+#include <Framework/Core/NonCopyable.h>
 #include <Framework/Graphics/Buffer.h>
+#include <Framework/Graphics/D3dCommon.h>
 
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <vector>
-
-#include <d3d11.h>
-#include <wrl/client.h>
 
 namespace NS::Graphics
 {
 
-    class Renderer;
     class TextureArray;
-
-    namespace detail
-    {
-        /// TextureArray 内部の SRV を取得 (Material 等が PSSetShaderResources 等に使用)
-        [[nodiscard]] ID3D11ShaderResourceView* GetSrv(TextureArray& textureArray) noexcept;
-    } // namespace detail
 
     /// TextureArray 構築パラメータ
     /// `slicePaths` の先頭から順に slice 0, 1, ... を埋める。 1 枚以上必須 (0 枚なら fallback)
@@ -47,21 +40,18 @@ namespace NS::Graphics
     /// 1 つの `ID3D11Texture2D` (ArraySize=N) を保有する Texture2DArray ラッパ
     /// block 描画専用、 cubemap / 3D volume は対象外
     /// 全 slice 同一 width / height / format / mip count が D3D11 仕様で必須
-    /// バインドは Renderer::BindTextureArray 経由 (本型は context を保持しない)
-    class TextureArray
+    /// バインドは CommandList 経由 (本型は context を保持しない)
+    class TextureArray : public NS::Core::NonCopyable
     {
     public:
         /// slice 予算上限。 5 theme x 8 variant = 40 を確保し、 24 slot を将来拡張用に残す
         /// 超過分はコンストラクタ内で捨てて WARN を出す (境界 clamp)
         static constexpr std::uint16_t kTotalSlices = 64;
 
-        TextureArray(Renderer& renderer, const TextureArrayDesc& desc);
-        ~TextureArray();
+        /// TextureArrayDesc から Texture2DArray を生成する。 失敗時も非 null (fallback / IsUsingFallback())
+        [[nodiscard]] static std::unique_ptr<TextureArray> Create(const TextureArrayDesc& desc);
 
-        TextureArray(const TextureArray&) = delete;
-        TextureArray& operator=(const TextureArray&) = delete;
-        TextureArray(TextureArray&&) = delete;
-        TextureArray& operator=(TextureArray&&) = delete;
+        ~TextureArray();
 
         /// SRV が有効なら true。 fallback でも true (1x1 magenta が必ず生成される)
         [[nodiscard]] bool IsValid() const noexcept;
@@ -81,8 +71,10 @@ namespace NS::Graphics
         [[nodiscard]] ID3D11ShaderResourceView* Srv() const noexcept;
 
     private:
-        Microsoft::WRL::ComPtr<ID3D11Texture2D> m_arrayTexture;
-        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_srv;
+        explicit TextureArray(const TextureArrayDesc& desc);
+
+        ComPtr<ID3D11Texture2D> m_arrayTexture;
+        ComPtr<ID3D11ShaderResourceView> m_srv;
         std::uint16_t m_sliceCount = 0;
         bool m_fallback = false;
     };

@@ -2,9 +2,12 @@
 
 #include <Framework/Core/Filesystem.h>
 #include <Framework/Core/Logger.h>
+#include <Framework/Graphics/CommandList.h>
 #include <Framework/Graphics/Renderer.h>
 #include <Framework/Graphics/Shader.h>
 #include <Framework/Platform/Window.h>
+
+#include <memory>
 
 namespace
 {
@@ -47,7 +50,8 @@ TEST_F(ShaderLoggerTest, MissingVsFileFallsBack)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Shader vs(renderer, "C:/nonexistent/__ns_test_missing.vs.hlsl");
+    std::unique_ptr<Shader> vsHolder = Shader::Create("C:/nonexistent/__ns_test_missing.vs.hlsl");
+    Shader& vs = *vsHolder;
     EXPECT_TRUE(vs.IsValid());
     EXPECT_TRUE(vs.IsUsingFallback());
 }
@@ -59,7 +63,8 @@ TEST_F(ShaderLoggerTest, MissingPsFileFallsBack)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Shader ps(renderer, "C:/nonexistent/__ns_test_missing.ps.hlsl");
+    std::unique_ptr<Shader> psHolder = Shader::Create("C:/nonexistent/__ns_test_missing.ps.hlsl");
+    Shader& ps = *psHolder;
     EXPECT_TRUE(ps.IsValid());
     EXPECT_TRUE(ps.IsUsingFallback());
 }
@@ -72,7 +77,8 @@ TEST_F(ShaderLoggerTest, UndetectableStageIsInvalid)
     ASSERT_TRUE(renderer.IsValid());
 
     // ファイル名に .vs. / .ps. が無いとステージ判定できず IsValid()==false
-    Shader s(renderer, "C:/nonexistent/__ns_test_unknown.hlsl");
+    std::unique_ptr<Shader> sHolder = Shader::Create("C:/nonexistent/__ns_test_unknown.hlsl");
+    Shader& s = *sHolder;
     EXPECT_FALSE(s.IsValid());
 }
 
@@ -84,7 +90,8 @@ TEST_F(ShaderLoggerTest, RealVertexShaderCompiles)
     ASSERT_TRUE(renderer.IsValid());
 
     const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
-    Shader vs(renderer, shaderDir / "standard.vs.hlsl");
+    std::unique_ptr<Shader> vsHolder = Shader::Create(shaderDir / "standard.vs.hlsl");
+    Shader& vs = *vsHolder;
     ASSERT_TRUE(vs.IsValid());
     EXPECT_FALSE(vs.IsUsingFallback());
     EXPECT_EQ(vs.Type(), ShaderType::Vertex);
@@ -94,7 +101,7 @@ TEST_F(ShaderLoggerTest, RealVertexShaderCompiles)
     EXPECT_FALSE(vs.VertexShaderBytecode().empty());
     EXPECT_FALSE(NS::Graphics::detail::GetVertexShaderBytecode(vs).empty());
 
-    renderer.BindShader(vs);
+    renderer.Commands().SetShader(vs);
     SUCCEED();
 }
 
@@ -106,7 +113,8 @@ TEST_F(ShaderLoggerTest, RealPixelShaderCompiles)
     ASSERT_TRUE(renderer.IsValid());
 
     const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
-    Shader ps(renderer, shaderDir / "player.ps.hlsl");
+    std::unique_ptr<Shader> psHolder = Shader::Create(shaderDir / "player.ps.hlsl");
+    Shader& ps = *psHolder;
     ASSERT_TRUE(ps.IsValid());
     EXPECT_FALSE(ps.IsUsingFallback());
     EXPECT_EQ(ps.Type(), ShaderType::Pixel);
@@ -116,6 +124,6 @@ TEST_F(ShaderLoggerTest, RealPixelShaderCompiles)
     EXPECT_TRUE(ps.VertexShaderBytecode().empty());
     EXPECT_TRUE(NS::Graphics::detail::GetVertexShaderBytecode(ps).empty());
 
-    renderer.BindShader(ps);
+    renderer.Commands().SetShader(ps);
     SUCCEED();
 }

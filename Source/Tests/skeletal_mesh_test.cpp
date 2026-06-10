@@ -12,6 +12,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <span>
 #include <type_traits>
 
@@ -144,7 +145,8 @@ TEST_F(SkeletalMeshLoggerTest, ConstructWithValidDescIsValid)
     desc.indexCount = indices.size();
     desc.boneCount = 2;
 
-    SkeletalMesh mesh(renderer, desc);
+    std::unique_ptr<SkeletalMesh> meshHolder = SkeletalMesh::Create(desc);
+    SkeletalMesh& mesh = *meshHolder;
     EXPECT_TRUE(mesh.IsValid());
     EXPECT_FALSE(mesh.IsUsingFallback());
     EXPECT_EQ(mesh.VertexCount(), kTriVertexCount);
@@ -160,7 +162,8 @@ TEST_F(SkeletalMeshLoggerTest, EmptyDescIsInvalidWithoutFallback)
     ASSERT_TRUE(renderer.IsValid());
 
     SkinnedMeshDesc desc{};
-    SkeletalMesh mesh(renderer, desc);
+    std::unique_ptr<SkeletalMesh> meshHolder = SkeletalMesh::Create(desc);
+    SkeletalMesh& mesh = *meshHolder;
     EXPECT_FALSE(mesh.IsValid());
     EXPECT_FALSE(mesh.IsUsingFallback());
     EXPECT_EQ(mesh.VertexCount(), 0u);
@@ -187,7 +190,8 @@ TEST_F(SkeletalMeshLoggerTest, SetBonePaletteAndDrawDoesNotCrash)
     desc.indexCount = indices.size();
     desc.boneCount = 2;
 
-    SkeletalMesh mesh(renderer, desc);
+    std::unique_ptr<SkeletalMesh> meshHolder = SkeletalMesh::Create(desc);
+    SkeletalMesh& mesh = *meshHolder;
     ASSERT_TRUE(mesh.IsValid());
 
     const std::array<Matrix, 2> palette{Matrix::Identity, Matrix::Identity};
@@ -206,8 +210,10 @@ TEST_F(SkeletalMeshLoggerTest, SkinnedShaderCompiles)
     const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
 
     // fallback でない = skinned VS / PS のコンパイルが成功
-    NS::Graphics::Shader vs(renderer, shaderDir / "skinned.vs.hlsl");
-    NS::Graphics::Shader ps(renderer, shaderDir / "player.ps.hlsl");
+    std::unique_ptr<NS::Graphics::Shader> vsHolder = NS::Graphics::Shader::Create(shaderDir / "skinned.vs.hlsl");
+    NS::Graphics::Shader& vs = *vsHolder;
+    std::unique_ptr<NS::Graphics::Shader> psHolder = NS::Graphics::Shader::Create(shaderDir / "player.ps.hlsl");
+    NS::Graphics::Shader& ps = *psHolder;
     EXPECT_TRUE(vs.IsValid());
     EXPECT_FALSE(vs.IsUsingFallback());
     EXPECT_TRUE(ps.IsValid());
@@ -229,12 +235,14 @@ TEST_F(SkeletalMeshLoggerTest, CreateInputLayoutSucceedsWithSkinnedShader)
     meshDesc.indices = indices.data();
     meshDesc.indexCount = indices.size();
     meshDesc.boneCount = 2;
-    SkeletalMesh mesh(renderer, meshDesc);
+    std::unique_ptr<SkeletalMesh> meshHolder = SkeletalMesh::Create(meshDesc);
+    SkeletalMesh& mesh = *meshHolder;
     ASSERT_TRUE(mesh.IsValid());
     EXPECT_EQ(NS::Graphics::detail::GetInputLayout(mesh), nullptr);
 
     const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
-    NS::Graphics::Shader shader(renderer, shaderDir / "skinned.vs.hlsl");
+    std::unique_ptr<NS::Graphics::Shader> shaderHolder = NS::Graphics::Shader::Create(shaderDir / "skinned.vs.hlsl");
+    NS::Graphics::Shader& shader = *shaderHolder;
     ASSERT_TRUE(shader.IsValid());
     ASSERT_FALSE(shader.IsUsingFallback());
 

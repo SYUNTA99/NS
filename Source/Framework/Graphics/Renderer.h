@@ -5,18 +5,18 @@
 /// 所有する描画ファサード
 ///
 /// @details Window と 1 対 1 で生成し、 Window のリサイズ通知を購読する
-/// 公開ヘッダから `<d3d11.h>` / `<dxgi.h>` を漏らさないため pImpl 標準形
-/// 内部 D3D ハンドルは `detail::GetDevice/GetContext/GetSwapChain` で取得する
+/// device / context / swapchain は `D3dCommon.h` (公開) 経由で D3D 型を取り込み ComPtr メンバで直接保持する
+/// リソース生成で要る Device / Context は `Gpu()` (プロセスグローバル) で引く
 /// 構築失敗時は `IsValid() == false` を返し例外は投げない (`NS_LOG_ERROR` に詳細出力)
+/// @warning プロセス唯一の device 前提。 Renderer を static / グローバル変数として持つと `Gpu()` の
+/// グローバルとの破棄順序が未定義になるため、 必ずスタックまたは他オブジェクトのメンバとして所有すること
 
 #include <cstddef>
 #include <memory>
 
+#include <Framework/Core/NonCopyable.h>
+#include <Framework/Graphics/D3dCommon.h>
 #include <Framework/Platform/Window.h>
-
-struct ID3D11Device;
-struct ID3D11DeviceContext;
-struct IDXGISwapChain;
 
 namespace NS::Graphics
 {
@@ -34,37 +34,17 @@ namespace NS::Graphics
     class Renderer;
     class CommandList;
     class CommonStates;
-    class Shader;
     class Texture;
-    class TextureArray;
-    class Buffer;
-    enum class ShaderStage : unsigned;
-
-    namespace detail
-    {
-        /// detail/d3d_context.h で再宣言される typed accessor
-        /// Renderer の friend として private impl にアクセスする
-        [[nodiscard]] ID3D11Device* GetDevice(Renderer& renderer) noexcept;
-        [[nodiscard]] ID3D11DeviceContext* GetContext(Renderer& renderer) noexcept;
-        [[nodiscard]] IDXGISwapChain* GetSwapChain(Renderer& renderer) noexcept;
-    } // namespace detail
 
     /// D3D11 Device / DeviceContext / SwapChain を所有するレンダラ
     /// Window と 1 対 1 で生成し、Window のリサイズ通知を購読する
-    /// 公開ヘッダから <d3d11.h> / <dxgi.h> を漏らさないため pImpl 標準形
-    /// 内部 D3D ハンドルは detail::GetDevice/GetContext/GetSwapChain で取得する
-    class Renderer
+    /// device / context / swapchain は ComPtr メンバで直接保持する (D3D 型は D3dCommon.h 経由で公開)
+    /// リソース生成で要る Device / Context は Gpu() (プロセスグローバル) で引く
+    class Renderer : public NS::Core::NonCopyable
     {
     public:
-        struct Impl;
-
         Renderer(const RendererDesc& desc, ::NS::Platform::Window& window);
         ~Renderer();
-
-        Renderer(const Renderer&) = delete;
-        Renderer& operator=(const Renderer&) = delete;
-        Renderer(Renderer&&) = delete;
-        Renderer& operator=(Renderer&&) = delete;
 
         /// 構築成功判定。D3D11CreateDevice / SwapChain 作成失敗時に false
         [[nodiscard]] bool IsValid() const noexcept;
@@ -84,35 +64,20 @@ namespace NS::Graphics
         /// DirectXTK CommonStates ラッパ。Mesh/Material 等が利用
         [[nodiscard]] CommonStates& States() noexcept;
 
-        /// bind / draw を記録する CommandList。 context 呼び出しはここに集約される
-        /// `BindShader` 等の薄い facade も内部でこれに転送する
+        /// bind / draw / update を記録する CommandList。 context 呼び出しは全てここに集約される
         [[nodiscard]] CommandList& Commands() noexcept;
 
-        /// 内部 ID3D11Device を非 detail 経路で公開。 ImGui_ImplDX11_Init など
-        /// 外部 SDK が D3D11 ハンドルを直接必要とする場合のみ使う
-        /// 通常の Graphics ロジックは `detail::GetDevice` 経由を推奨
-        [[nodiscard]] ID3D11Device* NativeDevice() noexcept;
-
-        /// 内部 ID3D11DeviceContext を非 detail 経路で公開。 用途は `NativeDevice()` と同じ
-        [[nodiscard]] ID3D11DeviceContext* NativeContext() noexcept;
-
-        /// 描画コマンド: リソースを context にバインド/更新する
-        /// バインドはここに集約し、リソース側は context を保持しない方針へ寄せていく
-        void BindShader(Shader& shader) noexcept;
-        void BindTexture(const Texture& texture, unsigned slot, ShaderStage stages) noexcept;
-        void BindTextureArray(TextureArray& texture, unsigned slot, ShaderStage stages) noexcept;
-        void BindVertexBuffer(Buffer& vertexBuffer, unsigned slot = 0) noexcept;
-        void BindIndexBuffer(Buffer& indexBuffer) noexcept;
-        void BindConstantBuffer(Buffer& constantBuffer, unsigned slot, ShaderStage stages) noexcept;
-        void UpdateBuffer(Buffer& buffer, const void* data, std::size_t bytes) noexcept;
-        void DrawIndexed(unsigned indexCount) noexcept;
-
     private:
-        std::unique_ptr<Impl> m_pImpl;
-
-        friend ID3D11Device* detail::GetDevice(Renderer& renderer) noexcept;
-        friend ID3D11DeviceContext* detail::GetContext(Renderer& renderer) noexcept;
-        friend IDXGISwapChain* detail::GetSwapChain(Renderer& renderer) noexcept;
+        ComPtr<ID3D11Device> m_device;
+        ComPtr<ID3D11DeviceContext> m_context;
+        ComPtr<IDXGISwapChain> m_swapchain;
+        std::unique_ptr<Texture> m_backbuffer;
+        std::unique_ptr<Texture> m_depth;
+        std::unique_ptr<CommandList> m_commands;
+        std::unique_ptr<CommonStates> m_states;
+        ::NS::Platform::Window* m_window = nullptr;
+        bool m_vsync = true;
+        bool m_valid = false;
     };
 
 } // namespace NS::Graphics

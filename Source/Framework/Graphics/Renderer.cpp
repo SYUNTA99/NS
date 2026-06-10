@@ -3,10 +3,11 @@
 #include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/CommandList.h"
 #include "Framework/Graphics/CommonStates.h"
+#include "Framework/Graphics/D3dCommon.h"
+#include "Framework/Graphics/GraphicObject.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/Texture.h"
 #include "Framework/Graphics/TextureArray.h"
-#include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -16,23 +17,6 @@
 
 namespace NS::Graphics
 {
-    using detail::ComPtr;
-
-    struct Renderer::Impl
-    {
-        ComPtr<ID3D11Device> device;
-        ComPtr<ID3D11DeviceContext> context;
-        ComPtr<IDXGISwapChain> swapchain;
-
-        std::unique_ptr<Texture> backbuffer;
-        std::unique_ptr<Texture> depth;
-        std::unique_ptr<CommandList> commands;
-        std::unique_ptr<CommonStates> states;
-
-        ::NS::Platform::Window* window = nullptr;
-        bool vsync = true;
-        bool valid = false;
-    };
 
     namespace
     {
@@ -121,8 +105,7 @@ namespace NS::Graphics
 
         // swapchain の backbuffer を RTV Texture として包み、 同サイズの depth Texture を生成する
         // 構築 / Resize の両方から呼ぶ。 いずれか失敗で false (out は未確定)
-        bool BuildBackbufferTargets(Renderer& renderer,
-                                    IDXGISwapChain* swapchain,
+        bool BuildBackbufferTargets(IDXGISwapChain* swapchain,
                                     std::unique_ptr<Texture>& outBackbuffer,
                                     std::unique_ptr<Texture>& outDepth)
         {
@@ -135,7 +118,7 @@ namespace NS::Graphics
                 return false;
             }
 
-            auto backbuffer = std::make_unique<Texture>(renderer, bb, D3D11_BIND_RENDER_TARGET);
+            std::unique_ptr<Texture> backbuffer = Texture::Create(bb, D3D11_BIND_RENDER_TARGET);
             if (backbuffer->Rtv() == nullptr)
             {
                 NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "backbuffer RTV の構築失敗");
@@ -149,7 +132,7 @@ namespace NS::Graphics
             depthDesc.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
             depthDesc.bindFlags = D3D11_BIND_DEPTH_STENCIL;
 
-            auto depth = std::make_unique<Texture>(renderer, depthDesc);
+            std::unique_ptr<Texture> depth = Texture::Create(depthDesc);
             if (depth->Dsv() == nullptr)
             {
                 NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "depth DSV の構築失敗");
@@ -162,10 +145,10 @@ namespace NS::Graphics
         }
     } // namespace
 
-    Renderer::Renderer(const RendererDesc& desc, ::NS::Platform::Window& window) : m_pImpl(std::make_unique<Impl>())
+    Renderer::Renderer(const RendererDesc& desc, ::NS::Platform::Window& window)
     {
-        m_pImpl->window = &window;
-        m_pImpl->vsync = desc.vsync;
+        m_window = &window;
+        m_vsync = desc.vsync;
 
         if (!window.IsValid())
         {
@@ -184,15 +167,13 @@ namespace NS::Graphics
             createFlags |= D3D11_CREATE_DEVICE_DEBUG;
         }
 
-        bool ok =
-            TryCreateDeviceAndSwapChain(hwnd, w, h, createFlags, m_pImpl->device, m_pImpl->context, m_pImpl->swapchain);
+        bool ok = TryCreateDeviceAndSwapChain(hwnd, w, h, createFlags, m_device, m_context, m_swapchain);
         if (!ok && desc.enableDebugLayer)
         {
             NS_LOG_WARN(::NS::Core::LogCat::Graphics,
                         "Debug Layer 付きでの D3D11 デバイス作成に失敗、Debug Layer 無しで再試行");
             createFlags &= ~static_cast<UINT>(D3D11_CREATE_DEVICE_DEBUG);
-            ok = TryCreateDeviceAndSwapChain(
-                hwnd, w, h, createFlags, m_pImpl->device, m_pImpl->context, m_pImpl->swapchain);
+            ok = TryCreateDeviceAndSwapChain(hwnd, w, h, createFlags, m_device, m_context, m_swapchain);
         }
         if (!ok)
         {
@@ -200,21 +181,32 @@ namespace NS::Graphics
             return;
         }
 
-        SuppressAltEnter(m_pImpl->swapchain.Get(), hwnd);
+        // 単一 device 前提。 既に別 Renderer が公開済みならグローバルを上書きするため検知する
+        if (Gpu().device != nullptr)
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "Renderer を同時に複数構築している (単一 device 前提、 グローバルが上書きされる)");
+        }
+        // backbuffer Texture 構築より前にグローバル公開する (構築が Gpu() を引くため)
+        Gpu().device = m_device.Get();
+        Gpu().context = m_context.Get();
 
-        m_pImpl->commands = std::make_unique<CommandList>(m_pImpl->context.Get());
+        SuppressAltEnter(m_swapchain.Get(), hwnd);
 
-        if (!BuildBackbufferTargets(*this, m_pImpl->swapchain.Get(), m_pImpl->backbuffer, m_pImpl->depth))
+        m_commands = std::make_unique<CommandList>(m_context.Get());
+
+        if (!BuildBackbufferTargets(m_swapchain.Get(), m_backbuffer, m_depth))
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "backbuffer / depth Texture の構築失敗");
             return;
         }
 
-        m_pImpl->states.reset(new CommonStates(static_cast<void*>(m_pImpl->device.Get())));
+        // CommonStates の ctor は friend Renderer 限定 (private) で make_unique が呼べないため new で構築する
+        m_states.reset(new CommonStates(m_device.Get()));
 
         window.SetResizeCallback([this](::NS::Math::Size2D rs) { this->Resize(rs); });
 
-        m_pImpl->valid = true;
+        m_valid = true;
         // 構築完了は通常運用では成功が想定 (失敗時のみ別途 ERROR ログ済) なので Debug 段
         // test loop で per-fixture に renderer が立ち上がる時の log 雑音を抑える
         NS_LOG_DEBUG(::NS::Core::LogCat::Graphics,
@@ -227,44 +219,51 @@ namespace NS::Graphics
 
     Renderer::~Renderer()
     {
-        if (m_pImpl && m_pImpl->context)
+        // 自分が公開したグローバルだけを戻す (別 Renderer が上書きしている場合は触らない)
+        if (m_device && Gpu().device == m_device.Get())
         {
-            m_pImpl->context->ClearState();
-            m_pImpl->context->Flush();
+            Gpu() = {};
         }
+        if (m_context)
+        {
+            m_context->ClearState();
+            m_context->Flush();
+        }
+        // この後メンバ (m_states / m_backbuffer / m_depth 等) の破棄が宣言の逆順で走るが、
+        // Gpu() は既に空のため各リソースのデストラクタから Gpu() を参照しないこと
     }
 
     bool Renderer::IsValid() const noexcept
     {
-        return m_pImpl != nullptr && m_pImpl->valid;
+        return m_valid;
     }
 
     void Renderer::BeginFrame(float r, float g, float b, float a) noexcept
     {
-        if (!IsValid() || !m_pImpl->backbuffer || !m_pImpl->depth || !m_pImpl->commands)
+        if (!IsValid() || !m_backbuffer || !m_depth || !m_commands)
         {
             return;
         }
-        CommandList& cmd = *m_pImpl->commands;
-        ID3D11RenderTargetView* rtv = m_pImpl->backbuffer->Rtv();
-        ID3D11DepthStencilView* dsv = m_pImpl->depth->Dsv();
+        CommandList& cmd = *m_commands;
+        ID3D11RenderTargetView* rtv = m_backbuffer->Rtv();
+        ID3D11DepthStencilView* dsv = m_depth->Dsv();
 
         cmd.ClearRenderTarget(rtv, r, g, b, a);
         cmd.ClearDepth(dsv, 1.0f);
         cmd.SetRenderTarget(rtv, dsv);
 
-        const ::NS::Math::Size2D size = m_pImpl->backbuffer->Size();
+        const ::NS::Math::Size2D size = m_backbuffer->Size();
         cmd.SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
     }
 
     void Renderer::EndFrame() noexcept
     {
-        if (!IsValid() || !m_pImpl->swapchain)
+        if (!IsValid() || !m_swapchain)
         {
             return;
         }
-        const UINT sync = m_pImpl->vsync ? 1 : 0;
-        m_pImpl->swapchain->Present(sync, 0);
+        const UINT sync = m_vsync ? 1 : 0;
+        m_swapchain->Present(sync, 0);
     }
 
     void Renderer::Resize(::NS::Math::Size2D size) noexcept
@@ -278,15 +277,15 @@ namespace NS::Graphics
             return;
         }
 
-        auto* context = m_pImpl->context.Get();
+        auto* context = m_context.Get();
         // ResizeBuffers の前に backbuffer 参照を全て手放す (RTV を握ったままだと失敗する)
         context->OMSetRenderTargets(0, nullptr, nullptr);
-        m_pImpl->backbuffer.reset();
-        m_pImpl->depth.reset();
+        m_backbuffer.reset();
+        m_depth.reset();
         context->ClearState();
         context->Flush();
 
-        const HRESULT hr = m_pImpl->swapchain->ResizeBuffers(
+        const HRESULT hr = m_swapchain->ResizeBuffers(
             0, static_cast<UINT>(size.width), static_cast<UINT>(size.height), DXGI_FORMAT_UNKNOWN, 0);
         if (FAILED(hr))
         {
@@ -295,113 +294,32 @@ namespace NS::Graphics
             return;
         }
 
-        BuildBackbufferTargets(*this, m_pImpl->swapchain.Get(), m_pImpl->backbuffer, m_pImpl->depth);
+        if (!BuildBackbufferTargets(m_swapchain.Get(), m_backbuffer, m_depth))
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Resize 後の backbuffer / depth Texture 再構築失敗");
+            m_valid = false;
+        }
     }
 
     ::NS::Math::Size2D Renderer::Size() const noexcept
     {
-        if (!m_pImpl || !m_pImpl->backbuffer)
+        if (!m_backbuffer)
         {
             return ::NS::Math::Size2D{0, 0};
         }
-        return m_pImpl->backbuffer->Size();
+        return m_backbuffer->Size();
     }
 
     CommonStates& Renderer::States() noexcept
     {
-        assert(m_pImpl && m_pImpl->states && "Renderer が無効な状態で States() を呼んでいる");
-        return *m_pImpl->states;
+        assert(m_states && "Renderer が無効な状態で States() を呼んでいる");
+        return *m_states;
     }
 
     CommandList& Renderer::Commands() noexcept
     {
-        assert(m_pImpl && m_pImpl->commands && "Renderer が無効な状態で Commands() を呼んでいる");
-        return *m_pImpl->commands;
+        assert(m_commands && "Renderer が無効な状態で Commands() を呼んでいる");
+        return *m_commands;
     }
-
-    ID3D11Device* Renderer::NativeDevice() noexcept
-    {
-        return detail::GetDevice(*this);
-    }
-
-    ID3D11DeviceContext* Renderer::NativeContext() noexcept
-    {
-        return detail::GetContext(*this);
-    }
-
-    void Renderer::BindShader(Shader& shader) noexcept
-    {
-        if (m_pImpl && m_pImpl->commands)
-        {
-            m_pImpl->commands->SetShader(shader);
-        }
-    }
-    void Renderer::BindTexture(const Texture& texture, unsigned slot, ShaderStage stages) noexcept
-    {
-        if (m_pImpl && m_pImpl->commands)
-        {
-            m_pImpl->commands->SetTexture(texture, slot, stages);
-        }
-    }
-    void Renderer::BindTextureArray(TextureArray& texture, unsigned slot, ShaderStage stages) noexcept
-    {
-        if (m_pImpl && m_pImpl->commands)
-        {
-            m_pImpl->commands->SetTextureArray(texture, slot, stages);
-        }
-    }
-    void Renderer::BindVertexBuffer(Buffer& vertexBuffer, unsigned slot) noexcept
-    {
-        if (m_pImpl && m_pImpl->commands)
-        {
-            m_pImpl->commands->SetVertexBuffer(vertexBuffer, slot);
-        }
-    }
-    void Renderer::BindIndexBuffer(Buffer& indexBuffer) noexcept
-    {
-        if (m_pImpl && m_pImpl->commands)
-        {
-            m_pImpl->commands->SetIndexBuffer(indexBuffer);
-        }
-    }
-    void Renderer::BindConstantBuffer(Buffer& constantBuffer, unsigned slot, ShaderStage stages) noexcept
-    {
-        if (m_pImpl && m_pImpl->commands)
-        {
-            m_pImpl->commands->SetConstantBuffer(constantBuffer, slot, stages);
-        }
-    }
-    void Renderer::UpdateBuffer(Buffer& buffer, const void* data, std::size_t bytes) noexcept
-    {
-        if (m_pImpl && m_pImpl->commands)
-        {
-            m_pImpl->commands->UpdateBuffer(buffer, data, bytes);
-        }
-    }
-    void Renderer::DrawIndexed(unsigned indexCount) noexcept
-    {
-        if (m_pImpl && m_pImpl->commands)
-        {
-            m_pImpl->commands->DrawIndexed(indexCount);
-        }
-    }
-
-    namespace detail
-    {
-        ID3D11Device* GetDevice(Renderer& renderer) noexcept
-        {
-            return renderer.m_pImpl ? renderer.m_pImpl->device.Get() : nullptr;
-        }
-
-        ID3D11DeviceContext* GetContext(Renderer& renderer) noexcept
-        {
-            return renderer.m_pImpl ? renderer.m_pImpl->context.Get() : nullptr;
-        }
-
-        IDXGISwapChain* GetSwapChain(Renderer& renderer) noexcept
-        {
-            return renderer.m_pImpl ? renderer.m_pImpl->swapchain.Get() : nullptr;
-        }
-    } // namespace detail
 
 } // namespace NS::Graphics

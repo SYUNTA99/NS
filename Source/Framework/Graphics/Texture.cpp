@@ -1,7 +1,8 @@
 #include "Framework/Graphics/Texture.h"
 
+#include "Framework/Graphics/D3dCommon.h"
+#include "Framework/Graphics/GraphicObject.h"
 #include "Framework/Graphics/Renderer.h"
-#include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
@@ -16,7 +17,6 @@
 
 namespace NS::Graphics
 {
-    using detail::ComPtr;
 
     namespace
     {
@@ -34,7 +34,13 @@ namespace NS::Graphics
             ComPtr<ID3D11Texture2D> tex2d;
             if (resource != nullptr)
             {
-                resource->QueryInterface(IID_PPV_ARGS(tex2d.GetAddressOf()));
+                const HRESULT hr = resource->QueryInterface(IID_PPV_ARGS(tex2d.GetAddressOf()));
+                if (FAILED(hr))
+                {
+                    NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                                 "Texture: ID3D11Texture2D への QI 失敗、 2D 以外のリソースの可能性 (hr=0x{:X})",
+                                 static_cast<unsigned>(hr));
+                }
             }
             return tex2d;
         }
@@ -199,10 +205,30 @@ namespace NS::Graphics
         }
     } // namespace
 
-    Texture::Texture(Renderer& renderer, const TextureDesc& desc)
+    std::unique_ptr<Texture> Texture::Create(const TextureDesc& desc)
     {
-        auto* device = detail::GetDevice(renderer);
-        auto* context = detail::GetContext(renderer);
+        return std::unique_ptr<Texture>(new Texture(desc));
+    }
+
+    std::unique_ptr<Texture> Texture::Create(const std::filesystem::path& path)
+    {
+        return std::unique_ptr<Texture>(new Texture(path));
+    }
+
+    std::unique_ptr<Texture> Texture::Create(const TextureCreateDesc& desc)
+    {
+        return std::unique_ptr<Texture>(new Texture(desc));
+    }
+
+    std::unique_ptr<Texture> Texture::Create(ComPtr<ID3D11Texture2D> existing, UINT bindFlags)
+    {
+        return std::unique_ptr<Texture>(new Texture(std::move(existing), bindFlags));
+    }
+
+    Texture::Texture(const TextureDesc& desc)
+    {
+        auto* device = Gpu().device;
+        auto* context = Gpu().context;
         if (device == nullptr || context == nullptr)
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Texture: Renderer の Device / Context が無効");
@@ -251,13 +277,11 @@ namespace NS::Graphics
         m_fallback = true;
     }
 
-    Texture::Texture(Renderer& renderer, const std::filesystem::path& path)
-        : Texture(renderer, TextureDesc{path, true, false})
-    {}
+    Texture::Texture(const std::filesystem::path& path) : Texture(TextureDesc{path, true, false}) {}
 
-    Texture::Texture(Renderer& renderer, const TextureCreateDesc& desc)
+    Texture::Texture(const TextureCreateDesc& desc)
     {
-        auto* device = detail::GetDevice(renderer);
+        auto* device = Gpu().device;
         if (device == nullptr)
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Texture: Renderer の Device が無効");
@@ -290,9 +314,9 @@ namespace NS::Graphics
         m_size = ::NS::Math::Size2D{static_cast<int>(desc.width), static_cast<int>(desc.height)};
     }
 
-    Texture::Texture(Renderer& renderer, ComPtr<ID3D11Texture2D> existing, UINT bindFlags)
+    Texture::Texture(ComPtr<ID3D11Texture2D> existing, UINT bindFlags)
     {
-        auto* device = detail::GetDevice(renderer);
+        auto* device = Gpu().device;
         if (device == nullptr || !existing)
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Texture: ラップ対象 / Device が無効");
@@ -333,13 +357,5 @@ namespace NS::Graphics
     {
         return m_dsv.Get();
     }
-
-    namespace detail
-    {
-        ID3D11ShaderResourceView* GetSrv(Texture& texture) noexcept
-        {
-            return texture.Srv();
-        }
-    } // namespace detail
 
 } // namespace NS::Graphics

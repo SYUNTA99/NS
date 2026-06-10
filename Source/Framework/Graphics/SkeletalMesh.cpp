@@ -1,9 +1,11 @@
 #include "Framework/Graphics/SkeletalMesh.h"
 
 #include "Framework/Graphics/Buffer.h"
+#include "Framework/Graphics/CommandList.h"
+#include "Framework/Graphics/D3dCommon.h"
+#include "Framework/Graphics/GraphicObject.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/ShaderStage.h"
-#include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -20,12 +22,6 @@ namespace NS::Graphics
         // skinned.vs.hlsl の cbuffer BonePalette : register(b1) に対応
         constexpr unsigned kBonePaletteSlot = 1;
 
-        struct alignas(16) BonePaletteCB
-        {
-            NS::Math::Matrix bones[kMaxBones];
-        };
-        static_assert((sizeof(BonePaletteCB) % 16) == 0, "BonePaletteCB は 16 byte 倍数 (ConstantBuffer::Update 要件)");
-
         void FillIdentity(BonePaletteCB& cb) noexcept
         {
             for (std::size_t i = 0; i < kMaxBones; ++i)
@@ -34,21 +30,20 @@ namespace NS::Graphics
             }
         }
 
-        bool BuildBuffers(Renderer& renderer,
-                          const SkinnedVertex* vertices,
+        bool BuildBuffers(const SkinnedVertex* vertices,
                           std::size_t vertexCount,
                           const std::uint32_t* indices,
                           std::size_t indexCount,
                           std::unique_ptr<Buffer>& outVb,
                           std::unique_ptr<Buffer>& outIb)
         {
-            auto vb =
-                std::make_unique<Buffer>(renderer, MakeVertexBufferDesc(vertices, vertexCount, sizeof(SkinnedVertex)));
+            BufferDesc vbDesc = MakeVertexBufferDesc(vertices, vertexCount, sizeof(SkinnedVertex));
+            std::unique_ptr<Buffer> vb = Buffer::Create(vbDesc);
             if (!vb->IsValid())
                 return false;
 
-            auto ib =
-                std::make_unique<Buffer>(renderer, MakeIndexBufferDesc(indices, indexCount, DXGI_FORMAT_R32_UINT));
+            BufferDesc ibDesc = MakeIndexBufferDesc(indices, indexCount, DXGI_FORMAT_R32_UINT);
+            std::unique_ptr<Buffer> ib = Buffer::Create(ibDesc);
             if (!ib->IsValid())
                 return false;
 
@@ -58,17 +53,14 @@ namespace NS::Graphics
         }
     } // namespace
 
-    struct SkeletalMesh::Impl
+    std::unique_ptr<SkeletalMesh> SkeletalMesh::Create(const SkinnedMeshDesc& desc)
     {
-        std::unique_ptr<Buffer> bonePaletteCB;
-        // パレットは CPU 側に持ち、 Draw のたびに GPU へアップロードする (context は保持しない)
-        BonePaletteCB palette;
-        std::size_t boneCount = 0;
-    };
+        return std::unique_ptr<SkeletalMesh>(new SkeletalMesh(desc));
+    }
 
-    SkeletalMesh::SkeletalMesh(Renderer& renderer, const SkinnedMeshDesc& desc) : m_pImpl(std::make_unique<Impl>())
+    SkeletalMesh::SkeletalMesh(const SkinnedMeshDesc& desc)
     {
-        if (detail::GetDevice(renderer) == nullptr || detail::GetContext(renderer) == nullptr)
+        if (Gpu().device == nullptr || Gpu().context == nullptr)
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "SkeletalMesh: Renderer の Device / Context が無効");
             return;
@@ -92,7 +84,7 @@ namespace NS::Graphics
 
         std::unique_ptr<Buffer> vb;
         std::unique_ptr<Buffer> ib;
-        if (!BuildBuffers(renderer, desc.vertices, desc.vertexCount, desc.indices, desc.indexCount, vb, ib))
+        if (!BuildBuffers(desc.vertices, desc.vertexCount, desc.indices, desc.indexCount, vb, ib))
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
                          "SkeletalMesh: VertexBuffer / IndexBuffer 構築失敗 — IsValid false (v={}, i={})",
@@ -100,7 +92,7 @@ namespace NS::Graphics
                          desc.indexCount);
             return;
         }
-        SetGeometry(renderer, std::move(vb), std::move(ib), desc.vertexCount, desc.indexCount, false);
+        SetGeometry(std::move(vb), std::move(ib), desc.vertexCount, desc.indexCount, false);
 
         if (desc.boneCount > kMaxBones)
         {
@@ -109,14 +101,15 @@ namespace NS::Graphics
                          desc.boneCount,
                          kMaxBones);
         }
-        m_pImpl->boneCount = (desc.boneCount < kMaxBones) ? desc.boneCount : kMaxBones;
+        m_boneCount = (desc.boneCount < kMaxBones) ? desc.boneCount : kMaxBones;
 
         // 既定は恒等パレットで初期化し、 pose 未指定でも bind pose 相当で描画できるようにする
-        FillIdentity(m_pImpl->palette);
-        auto cb = std::make_unique<Buffer>(renderer, MakeConstantBufferDesc(sizeof(BonePaletteCB)));
+        FillIdentity(m_palette);
+        BufferDesc cbDesc = MakeConstantBufferDesc(sizeof(BonePaletteCB));
+        std::unique_ptr<Buffer> cb = Buffer::Create(cbDesc);
         if (cb->IsValid())
         {
-            m_pImpl->bonePaletteCB = std::move(cb);
+            m_bonePaletteCB = std::move(cb);
         }
         else
         {
@@ -128,14 +121,14 @@ namespace NS::Graphics
 
     void SkeletalMesh::SetBonePalette(std::span<const NS::Math::Matrix> palette) noexcept
     {
-        if (!m_pImpl || !m_pImpl->bonePaletteCB)
+        if (!m_bonePaletteCB)
             return;
 
-        FillIdentity(m_pImpl->palette);
+        FillIdentity(m_palette);
         const std::size_t count = (palette.size() < kMaxBones) ? palette.size() : kMaxBones;
         for (std::size_t i = 0; i < count; ++i)
         {
-            m_pImpl->palette.bones[i] = palette[i];
+            m_palette.bones[i] = palette[i];
         }
         if (palette.size() > kMaxBones)
         {
@@ -150,10 +143,10 @@ namespace NS::Graphics
     {
         if (!IsValid())
             return;
-        if (m_pImpl && m_pImpl->bonePaletteCB)
+        if (m_bonePaletteCB)
         {
-            renderer.UpdateBuffer(*m_pImpl->bonePaletteCB, &m_pImpl->palette, sizeof(BonePaletteCB));
-            renderer.BindConstantBuffer(*m_pImpl->bonePaletteCB, kBonePaletteSlot, ShaderStage::Vertex);
+            renderer.Commands().UpdateBuffer(*m_bonePaletteCB, &m_palette, sizeof(BonePaletteCB));
+            renderer.Commands().SetConstantBuffer(*m_bonePaletteCB, kBonePaletteSlot, ShaderStage::Vertex);
         }
         Mesh::Draw(renderer);
     }
@@ -175,7 +168,7 @@ namespace NS::Graphics
 
     std::size_t SkeletalMesh::BoneCount() const noexcept
     {
-        return m_pImpl ? m_pImpl->boneCount : 0u;
+        return m_boneCount;
     }
 
 } // namespace NS::Graphics

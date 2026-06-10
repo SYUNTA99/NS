@@ -47,7 +47,8 @@ TEST_F(SkyboxRenderingTest, DepthStateIsLessEqual)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Skybox skybox(renderer);
+    std::unique_ptr<Skybox> skyboxHolder = Skybox::Create();
+    Skybox& skybox = *skyboxHolder;
     ASSERT_TRUE(skybox.IsValid());
 
     D3D11_DEPTH_STENCIL_DESC desc{};
@@ -67,7 +68,8 @@ TEST_F(SkyboxRenderingTest, RasterFrontCull)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Skybox skybox(renderer);
+    std::unique_ptr<Skybox> skyboxHolder = Skybox::Create();
+    Skybox& skybox = *skyboxHolder;
     ASSERT_TRUE(skybox.IsValid());
 
     D3D11_RASTERIZER_DESC desc{};
@@ -86,7 +88,8 @@ TEST_F(SkyboxRenderingTest, RenderWithFallbackDoesNotCrash)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Skybox skybox(renderer);
+    std::unique_ptr<Skybox> skyboxHolder = Skybox::Create();
+    Skybox& skybox = *skyboxHolder;
     ASSERT_TRUE(skybox.IsValid());
 
     // LoadCubemap を呼ばずに Render() しても fallback が描かれてクラッシュしないこと

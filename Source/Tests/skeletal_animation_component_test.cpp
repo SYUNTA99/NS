@@ -12,6 +12,7 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -205,7 +206,8 @@ TEST_F(SkeletalAnimationMeshTest, DrivesMeshPaletteWithoutCrash)
     desc.indices = idx.data();
     desc.indexCount = idx.size();
     desc.boneCount = 1;
-    NS::Graphics::SkeletalMesh mesh(renderer, desc);
+    std::unique_ptr<NS::Graphics::SkeletalMesh> meshHolder = NS::Graphics::SkeletalMesh::Create(desc);
+    NS::Graphics::SkeletalMesh& mesh = *meshHolder;
     ASSERT_TRUE(mesh.IsValid());
 
     std::vector<NS::Graphics::Bone> bones(1);

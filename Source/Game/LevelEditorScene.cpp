@@ -17,6 +17,7 @@
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
+#include "Framework/Graphics/CommandList.h"
 #include "Framework/Graphics/GltfLoader.h"
 #include "Framework/Graphics/InstanceBatcher.h"
 #include "Framework/Graphics/Material.h"
@@ -91,7 +92,7 @@ void LevelEditorScene::OnStart()
     meshDesc.vertexCount = cubeGeom.vertices.size();
     meshDesc.indices = cubeGeom.indices.data();
     meshDesc.indexCount = cubeGeom.indices.size();
-    m_cubeMesh = std::make_unique<NS::Graphics::StaticMesh>(renderer, meshDesc);
+    m_cubeMesh = NS::Graphics::StaticMesh::Create(meshDesc);
 
     // 4 種 wedge mesh を 1 度だけ生成して scene 寿命のあいだ共有する
     auto buildWedge = [&renderer](float angleDeg) {
@@ -101,7 +102,7 @@ void LevelEditorScene::OnStart()
         md.vertexCount = geom.vertices.size();
         md.indices = geom.indices.data();
         md.indexCount = geom.indices.size();
-        return std::make_unique<NS::Graphics::StaticMesh>(renderer, md);
+        return NS::Graphics::StaticMesh::Create(md);
     };
     m_wedgeMesh45 = buildWedge(45.0f);
     m_wedgeMesh30 = buildWedge(30.0f);
@@ -115,20 +116,20 @@ void LevelEditorScene::OnStart()
         poleDesc.vertexCount = poleGeom.vertices.size();
         poleDesc.indices = poleGeom.indices.data();
         poleDesc.indexCount = poleGeom.indices.size();
-        m_poleMesh = std::make_unique<NS::Graphics::StaticMesh>(renderer, poleDesc);
+        m_poleMesh = NS::Graphics::StaticMesh::Create(poleDesc);
     }
 
     NS::Graphics::TextureDesc texDesc{};
     texDesc.path = exeDir / "Assets" / "Textures" / "cube_test.png";
     texDesc.generateMipmaps = true;
     texDesc.sRGB = false;
-    m_texture = std::make_unique<NS::Graphics::Texture>(renderer, texDesc);
+    m_texture = NS::Graphics::Texture::Create(texDesc);
     if (m_texture->IsUsingFallback())
         NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelEditorScene: cube_test.png 読込失敗、magenta fallback で続行");
 
     // Player は単一 Texture2D 流派 (player.ps.hlsl)。 standard.vs は block と、 player.ps は block / skinned と共有する
-    m_standardVS = std::make_unique<NS::Graphics::Shader>(renderer, exeDir / "Shaders" / "standard.vs.hlsl");
-    m_playerPS = std::make_unique<NS::Graphics::Shader>(renderer, exeDir / "Shaders" / "player.ps.hlsl");
+    m_standardVS = NS::Graphics::Shader::Create(exeDir / "Shaders" / "standard.vs.hlsl");
+    m_playerPS = NS::Graphics::Shader::Create(exeDir / "Shaders" / "player.ps.hlsl");
     if (m_standardVS->IsUsingFallback() || m_playerPS->IsUsingFallback())
         NS_LOG_WARN(::NS::Core::LogCat::Game,
                     "LevelEditorScene: player 用 HLSL 読込/コンパイル失敗、 magenta fallback で続行");
@@ -139,13 +140,13 @@ void LevelEditorScene::OnStart()
     matDesc.constantBufferSize = sizeof(NS::Scene::FrameCB);
     matDesc.cbSlot = 0;
     matDesc.cbStages = NS::Graphics::ShaderStage::Vertex | NS::Graphics::ShaderStage::Pixel;
-    m_playerMaterial = std::make_unique<NS::Graphics::Material>(renderer, matDesc);
+    m_playerMaterial = NS::Graphics::Material::Create(matDesc);
     m_playerMaterial->SetTexture(0, m_texture.get());
 
     // Block は player と同じ VS/PS を共有。 実際の VS/PS/Texture は InstanceBatcher が FlushAll で
     // 上書きするので、 ここの Material は ConstantBuffer 搬入路として使うだけ
     NS::Graphics::MaterialDesc blockMatDesc = matDesc;
-    m_blockMaterial = std::make_unique<NS::Graphics::Material>(renderer, blockMatDesc);
+    m_blockMaterial = NS::Graphics::Material::Create(blockMatDesc);
     // block の slot 0 は外側で TextureArray を bind するので Material 側には SetTexture しない
     // SetTexture すると Material::Bind が slot 0 を上書きしてしまい、 InstanceBatcher 側で
     // ぶら下げた TextureArray SRV が消える
@@ -164,24 +165,24 @@ void LevelEditorScene::OnStart()
         }
         taDesc.generateMipmaps = true;
         taDesc.sRGB = false;
-        m_blockTextures = std::make_unique<NS::Graphics::TextureArray>(renderer, taDesc);
+        m_blockTextures = NS::Graphics::TextureArray::Create(taDesc);
         if (m_blockTextures->IsUsingFallback())
             NS_LOG_WARN(::NS::Core::LogCat::Game,
                         "LevelEditorScene: block 用 TextureArray の slice 読込で失敗あり、 magenta fallback で続行");
     }
 
-    m_instanceBatcher = std::make_unique<NS::Graphics::InstanceBatcher>(renderer);
+    m_instanceBatcher = NS::Graphics::InstanceBatcher::Create();
     if (!m_instanceBatcher->IsValid())
         NS_LOG_WARN(::NS::Core::LogCat::Game,
                     "LevelEditorScene: InstanceBatcher 構築失敗、 block 描画はスキップされる");
 
     // placeholder skybox。 kurt 6-face PNG をロードし、 取得できなければ
     // 1x1 マゼンタ cubemap fallback で続行する (描画は OnRender 末尾)
-    m_skybox = std::make_unique<NS::Graphics::Skybox>(renderer);
+    m_skybox = NS::Graphics::Skybox::Create();
     if (m_skybox->IsValid())
     {
         const auto kurtDir = exeDir / "Assets" / "Skybox" / "kurt";
-        if (!m_skybox->LoadCubemap(renderer, kurtDir))
+        if (!m_skybox->LoadCubemap(kurtDir))
             NS_LOG_WARN(::NS::Core::LogCat::Game,
                         "LevelEditorScene: kurt cubemap 読込失敗、 magenta fallback で続行: {}",
                         kurtDir.string());
@@ -282,9 +283,9 @@ void LevelEditorScene::OnStart()
             smd.indices = skinned.indices.data();
             smd.indexCount = skinned.indices.size();
             smd.boneCount = skinned.skeleton.BoneCount();
-            m_skinnedMesh = std::make_unique<NS::Graphics::SkeletalMesh>(renderer, smd);
+            m_skinnedMesh = NS::Graphics::SkeletalMesh::Create(smd);
 
-            m_skinnedVS = std::make_unique<NS::Graphics::Shader>(renderer, exeDir / "Shaders" / "skinned.vs.hlsl");
+            m_skinnedVS = NS::Graphics::Shader::Create(exeDir / "Shaders" / "skinned.vs.hlsl");
             if (m_skinnedVS->IsUsingFallback())
                 NS_LOG_WARN(::NS::Core::LogCat::Game,
                             "LevelEditorScene: skinned 用 HLSL 読込/コンパイル失敗、 magenta fallback で続行");
@@ -295,7 +296,7 @@ void LevelEditorScene::OnStart()
             skinnedMatDesc.constantBufferSize = sizeof(NS::Scene::FrameCB);
             skinnedMatDesc.cbSlot = 0;
             skinnedMatDesc.cbStages = NS::Graphics::ShaderStage::Vertex | NS::Graphics::ShaderStage::Pixel;
-            m_skinnedMaterial = std::make_unique<NS::Graphics::Material>(renderer, skinnedMatDesc);
+            m_skinnedMaterial = NS::Graphics::Material::Create(skinnedMatDesc);
             // 専用テクスチャは未取得なので block と同じ placeholder を貼る (変形が見えれば目的は足りる)
             m_skinnedMaterial->SetTexture(0, m_texture.get());
 
@@ -664,7 +665,7 @@ void LevelEditorScene::OnRender()
         // TextureArray を t0 に bind してから FlushAll。 Material::Bind では slot 0 を触っていない
         // (SetTexture せず構築した) ため、 ここで bind した SRV が bucket 描画まで残る
         if (m_blockTextures)
-            ctx.renderer->BindTextureArray(*m_blockTextures, 0u, NS::Graphics::ShaderStage::Pixel);
+            ctx.renderer->Commands().SetTextureArray(*m_blockTextures, 0u, NS::Graphics::ShaderStage::Pixel);
         m_instanceBatcher->FlushAll(*ctx.renderer);
     }
 
@@ -688,7 +689,7 @@ void LevelEditorScene::OnRender()
             const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
             const auto absPath =
                 theme.skyboxCubemapPath.is_absolute() ? theme.skyboxCubemapPath : exeDir / theme.skyboxCubemapPath;
-            if (m_skybox->LoadCubemap(*ctx.renderer, absPath))
+            if (m_skybox->LoadCubemap(absPath))
             {
                 m_loadedSkyboxPath = theme.skyboxCubemapPath;
             }

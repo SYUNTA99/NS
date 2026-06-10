@@ -10,6 +10,8 @@ namespace NS::Graphics
 {
 
     /// 定数バッファ / SRV の bind 対象ステージ bitflag (描画は VS / PS のみ)
+    /// @note Shader 実体のステージ種別である `ShaderType` とは別物。 こちらはリソースを
+    /// どのステージに bind するかの指定のみに使う
     enum class ShaderStage : unsigned
     {
         None = 0,

@@ -1,10 +1,13 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Core/Logger.h>
+#include <Framework/Graphics/CommandList.h>
 #include <Framework/Graphics/Renderer.h>
 #include <Framework/Graphics/ShaderStage.h>
 #include <Framework/Graphics/Texture.h>
 #include <Framework/Platform/Window.h>
+
+#include <memory>
 
 namespace
 {
@@ -52,7 +55,8 @@ TEST_F(TextureLoggerTest, MissingFileFallsBackToMagenta)
     TextureDesc desc{};
     desc.path = "C:/nonexistent/__ns_test_missing__.png";
 
-    Texture tex(renderer, desc);
+    std::unique_ptr<Texture> texHolder = Texture::Create(desc);
+    Texture& tex = *texHolder;
     EXPECT_TRUE(tex.IsValid());
     EXPECT_TRUE(tex.IsUsingFallback());
     EXPECT_EQ(tex.Size(), (NS::Math::Size2D{1, 1}));
@@ -66,7 +70,8 @@ TEST_F(TextureLoggerTest, EmptyPathFallsBack)
     ASSERT_TRUE(renderer.IsValid());
 
     TextureDesc desc{};
-    Texture tex(renderer, desc);
+    std::unique_ptr<Texture> texHolder = Texture::Create(desc);
+    Texture& tex = *texHolder;
     EXPECT_TRUE(tex.IsValid());
     EXPECT_TRUE(tex.IsUsingFallback());
 }
@@ -80,12 +85,13 @@ TEST_F(TextureLoggerTest, FallbackBindDoesNotCrash)
 
     TextureDesc desc{};
     desc.path = "C:/nonexistent/__ns_test_bind__.png";
-    Texture tex(renderer, desc);
+    std::unique_ptr<Texture> texHolder = Texture::Create(desc);
+    Texture& tex = *texHolder;
     ASSERT_TRUE(tex.IsValid());
 
-    renderer.BindTexture(tex, 0, ShaderStage::Pixel);
-    renderer.BindTexture(tex, 1, ShaderStage::Pixel);
-    renderer.BindTexture(tex, 0, ShaderStage::Vertex | ShaderStage::Pixel);
+    renderer.Commands().SetTexture(tex, 0, ShaderStage::Pixel);
+    renderer.Commands().SetTexture(tex, 1, ShaderStage::Pixel);
+    renderer.Commands().SetTexture(tex, 0, ShaderStage::Vertex | ShaderStage::Pixel);
     SUCCEED();
 }
 
@@ -96,7 +102,8 @@ TEST_F(TextureLoggerTest, SimpleOverloadConstructs)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Texture tex(renderer, "C:/nonexistent/__ns_test_overload__.png");
+    std::unique_ptr<Texture> texHolder = Texture::Create("C:/nonexistent/__ns_test_overload__.png");
+    Texture& tex = *texHolder;
     EXPECT_TRUE(tex.IsValid());
     EXPECT_TRUE(tex.IsUsingFallback());
 }
@@ -110,10 +117,11 @@ TEST_F(TextureLoggerTest, FallbackSrvIsNonNull)
 
     TextureDesc desc{};
     desc.path = "C:/nonexistent/__ns_test_srv__.png";
-    Texture tex(renderer, desc);
+    std::unique_ptr<Texture> texHolder = Texture::Create(desc);
+    Texture& tex = *texHolder;
     ASSERT_TRUE(tex.IsValid());
 
-    EXPECT_NE(NS::Graphics::detail::GetSrv(tex), nullptr);
+    EXPECT_NE(tex.Srv(), nullptr);
 }
 
 TEST_F(TextureLoggerTest, RenderTargetHasRtvOnly)
@@ -129,7 +137,8 @@ TEST_F(TextureLoggerTest, RenderTargetHasRtvOnly)
     desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
     desc.bindFlags = D3D11_BIND_RENDER_TARGET;
 
-    Texture tex(renderer, desc);
+    std::unique_ptr<Texture> texHolder = Texture::Create(desc);
+    Texture& tex = *texHolder;
     EXPECT_TRUE(tex.IsValid());
     EXPECT_NE(tex.Rtv(), nullptr);
     EXPECT_EQ(tex.Srv(), nullptr);
@@ -151,7 +160,8 @@ TEST_F(TextureLoggerTest, RenderToTextureHasRtvAndSrv)
     desc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
     desc.bindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
 
-    Texture tex(renderer, desc);
+    std::unique_ptr<Texture> texHolder = Texture::Create(desc);
+    Texture& tex = *texHolder;
     EXPECT_TRUE(tex.IsValid());
     EXPECT_NE(tex.Rtv(), nullptr);
     EXPECT_NE(tex.Srv(), nullptr);
@@ -171,7 +181,8 @@ TEST_F(TextureLoggerTest, DepthHasDsvOnly)
     desc.format = DXGI_FORMAT_D24_UNORM_S8_UINT;
     desc.bindFlags = D3D11_BIND_DEPTH_STENCIL;
 
-    Texture tex(renderer, desc);
+    std::unique_ptr<Texture> texHolder = Texture::Create(desc);
+    Texture& tex = *texHolder;
     EXPECT_TRUE(tex.IsValid());
     EXPECT_NE(tex.Dsv(), nullptr);
     EXPECT_EQ(tex.Rtv(), nullptr);

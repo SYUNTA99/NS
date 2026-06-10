@@ -7,20 +7,19 @@
 /// 構築した buffer を基底 `SetGeometry` に預け、 `Draw` / `IsValid` 等は基底実装を共有する
 /// MeshDesc 不正 / Buffer 失敗時は fallback Cube に切替わる (基底 IsUsingFallback で検知)
 /// Submesh / 複数 Material は glTF 対応時に拡張、 cube は単一マテリアル相当
-/// @pre Renderer の DeviceContext を内部保持するため Renderer より先に破棄すること
+/// @pre グローバル Device を内部保持するため Renderer より先に破棄すること
 
 #include "Framework/Graphics/Mesh.h"
 #include "Framework/Math/Math.h"
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <type_traits>
 #include <vector>
 
 namespace NS::Graphics
 {
-    class Renderer;
-
     /// 固定頂点フォーマット (32 byte 固定)
     /// cube と glTF static の共通形式。 ボーン重み付きの SkinnedVertex は SkeletalMesh が別途持つ
     struct StaticVertex
@@ -48,17 +47,17 @@ namespace NS::Graphics
     class StaticMesh : public Mesh
     {
     public:
-        StaticMesh(Renderer& renderer, const MeshDesc& desc);
-        ~StaticMesh() override = default;
+        /// MeshDesc から StaticMesh を生成する。 失敗時も非 null (fallback Cube / IsUsingFallback())
+        [[nodiscard]] static std::unique_ptr<StaticMesh> Create(const MeshDesc& desc);
 
-        StaticMesh(const StaticMesh&) = delete;
-        StaticMesh& operator=(const StaticMesh&) = delete;
-        StaticMesh(StaticMesh&&) = delete;
-        StaticMesh& operator=(StaticMesh&&) = delete;
+        ~StaticMesh() override = default;
 
         /// StaticVertex に対応する POSITION / TEXCOORD / NORMAL の InputElement 配列を返す
         /// 基底が CreateInputLayout で使う頂点レイアウトと同一
         [[nodiscard]] static std::vector<InputElement> StandardInputLayout();
+
+    private:
+        explicit StaticMesh(const MeshDesc& desc);
     };
 
 } // namespace NS::Graphics

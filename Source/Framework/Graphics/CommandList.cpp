@@ -1,6 +1,7 @@
 #include "Framework/Graphics/CommandList.h"
 
 #include "Framework/Graphics/Buffer.h"
+#include "Framework/Graphics/D3dCommon.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/ShaderStage.h"
 #include "Framework/Graphics/Texture.h"
@@ -154,6 +155,24 @@ namespace NS::Graphics
         if (HasStage(stages, ShaderStage::Pixel))
         {
             m_context->PSSetShaderResources(slot, 1u, srvs);
+        }
+    }
+
+    // サンプラーは NS にラッパ型が無いため CommonStates の生 ID3D11SamplerState* をそのまま受ける
+    void CommandList::SetSampler(ID3D11SamplerState* sampler, unsigned slot, ShaderStage stages) noexcept
+    {
+        if (m_context == nullptr || sampler == nullptr)
+        {
+            return;
+        }
+        ID3D11SamplerState* samplers[1] = {sampler};
+        if (HasStage(stages, ShaderStage::Vertex))
+        {
+            m_context->VSSetSamplers(slot, 1u, samplers);
+        }
+        if (HasStage(stages, ShaderStage::Pixel))
+        {
+            m_context->PSSetSamplers(slot, 1u, samplers);
         }
     }
 

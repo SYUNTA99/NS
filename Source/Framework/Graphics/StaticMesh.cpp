@@ -1,9 +1,10 @@
 #include "Framework/Graphics/StaticMesh.h"
 
 #include "Framework/Graphics/Buffer.h"
+#include "Framework/Graphics/D3dCommon.h"
+#include "Framework/Graphics/GraphicObject.h"
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
-#include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -21,21 +22,20 @@ namespace NS::Graphics
         constexpr float kFallbackCubeHalfExtent = 0.5f;
 
         // raw 頂点 / index から VB + IB を構築。 両方 valid なら true を返し out に move する
-        bool BuildBuffers(Renderer& renderer,
-                          const StaticVertex* vertices,
+        bool BuildBuffers(const StaticVertex* vertices,
                           std::size_t vertexCount,
                           const std::uint32_t* indices,
                           std::size_t indexCount,
                           std::unique_ptr<Buffer>& outVb,
                           std::unique_ptr<Buffer>& outIb)
         {
-            auto vb =
-                std::make_unique<Buffer>(renderer, MakeVertexBufferDesc(vertices, vertexCount, sizeof(StaticVertex)));
+            BufferDesc vbDesc = MakeVertexBufferDesc(vertices, vertexCount, sizeof(StaticVertex));
+            std::unique_ptr<Buffer> vb = Buffer::Create(vbDesc);
             if (!vb->IsValid())
                 return false;
 
-            auto ib =
-                std::make_unique<Buffer>(renderer, MakeIndexBufferDesc(indices, indexCount, DXGI_FORMAT_R32_UINT));
+            BufferDesc ibDesc = MakeIndexBufferDesc(indices, indexCount, DXGI_FORMAT_R32_UINT);
+            std::unique_ptr<Buffer> ib = Buffer::Create(ibDesc);
             if (!ib->IsValid())
                 return false;
 
@@ -45,9 +45,14 @@ namespace NS::Graphics
         }
     } // namespace
 
-    StaticMesh::StaticMesh(Renderer& renderer, const MeshDesc& desc)
+    std::unique_ptr<StaticMesh> StaticMesh::Create(const MeshDesc& desc)
     {
-        if (detail::GetDevice(renderer) == nullptr || detail::GetContext(renderer) == nullptr)
+        return std::unique_ptr<StaticMesh>(new StaticMesh(desc));
+    }
+
+    StaticMesh::StaticMesh(const MeshDesc& desc)
+    {
+        if (Gpu().device == nullptr || Gpu().context == nullptr)
         {
             // device 自体が無いと fallback Cube すら作れない致命状態 (geometry 未設定 → IsValid false)
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "StaticMesh: Renderer の Device / Context が無効");
@@ -61,9 +66,9 @@ namespace NS::Graphics
 
         const bool descValid =
             (desc.vertices != nullptr && desc.vertexCount != 0u && desc.indices != nullptr && desc.indexCount != 0u);
-        if (descValid && BuildBuffers(renderer, desc.vertices, desc.vertexCount, desc.indices, desc.indexCount, vb, ib))
+        if (descValid && BuildBuffers(desc.vertices, desc.vertexCount, desc.indices, desc.indexCount, vb, ib))
         {
-            SetGeometry(renderer, std::move(vb), std::move(ib), desc.vertexCount, desc.indexCount, false);
+            SetGeometry(std::move(vb), std::move(ib), desc.vertexCount, desc.indexCount, false);
             return;
         }
 
@@ -83,9 +88,8 @@ namespace NS::Graphics
 
         const MeshGeometry geom =
             MakeCube(NS::Math::Vector3{kFallbackCubeHalfExtent, kFallbackCubeHalfExtent, kFallbackCubeHalfExtent});
-        if (BuildBuffers(
-                renderer, geom.vertices.data(), geom.vertices.size(), geom.indices.data(), geom.indices.size(), vb, ib))
-            SetGeometry(renderer, std::move(vb), std::move(ib), geom.vertices.size(), geom.indices.size(), true);
+        if (BuildBuffers(geom.vertices.data(), geom.vertices.size(), geom.indices.data(), geom.indices.size(), vb, ib))
+            SetGeometry(std::move(vb), std::move(ib), geom.vertices.size(), geom.indices.size(), true);
         else
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "StaticMesh: fallback Cube 構築失敗");
     }

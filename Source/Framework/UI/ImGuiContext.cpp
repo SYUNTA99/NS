@@ -3,6 +3,7 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 #include "Framework/Framework.h"
+#include "Framework/Graphics/GraphicObject.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Platform/Window.h"
 
@@ -58,8 +59,9 @@ namespace NS::UI
             return;
         }
 
-        ID3D11Device* device = renderer.NativeDevice();
-        ID3D11DeviceContext* context = renderer.NativeContext();
+        (void)renderer;
+        ID3D11Device* device = NS::Graphics::Gpu().device;
+        ID3D11DeviceContext* context = NS::Graphics::Gpu().context;
         if (device == nullptr || context == nullptr || !::ImGui_ImplDX11_Init(device, context))
         {
             NS_LOG_ERROR(::NS::Core::LogCat::UI, "ImGui_ImplDX11_Init 失敗、 stub mode に fallback");

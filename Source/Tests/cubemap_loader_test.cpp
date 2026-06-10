@@ -50,11 +50,12 @@ TEST_F(CubemapLoaderTest, LoadKurt6FacePngSucceeds)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Skybox skybox(renderer);
+    std::unique_ptr<Skybox> skyboxHolder = Skybox::Create();
+    Skybox& skybox = *skyboxHolder;
     const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
     const auto kurtDir = exeDir / "Assets" / "Skybox" / "kurt";
 
-    const bool ok = skybox.LoadCubemap(renderer, kurtDir);
+    const bool ok = skybox.LoadCubemap(kurtDir);
     EXPECT_TRUE(ok);
     EXPECT_TRUE(skybox.IsValid());
     EXPECT_FALSE(skybox.IsUsingFallback());
@@ -67,10 +68,11 @@ TEST_F(CubemapLoaderTest, LoadMissingPathFallsBack)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Skybox skybox(renderer);
+    std::unique_ptr<Skybox> skyboxHolder = Skybox::Create();
+    Skybox& skybox = *skyboxHolder;
     const std::filesystem::path missing = "C:/__nonexistent_ns_skybox__";
 
-    const bool ok = skybox.LoadCubemap(renderer, missing);
+    const bool ok = skybox.LoadCubemap(missing);
     EXPECT_FALSE(ok);
     EXPECT_TRUE(skybox.IsUsingFallback());
     // fallback magenta cubemap が常に生成されているので SRV は非 null
@@ -84,7 +86,8 @@ TEST_F(CubemapLoaderTest, LoadDdsCubemapReturnsTextureCubeDim)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    Skybox skybox(renderer);
+    std::unique_ptr<Skybox> skyboxHolder = Skybox::Create();
+    Skybox& skybox = *skyboxHolder;
     const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
     const auto ddsPath = exeDir / "Assets" / "Skybox" / "kurt.dds";
 
@@ -93,7 +96,7 @@ TEST_F(CubemapLoaderTest, LoadDdsCubemapReturnsTextureCubeDim)
         GTEST_SKIP() << "skybox .dds 未配置 (texassemble 生成は後続タスクで対応)";
     }
 
-    const bool ok = skybox.LoadCubemap(renderer, ddsPath);
+    const bool ok = skybox.LoadCubemap(ddsPath);
     EXPECT_TRUE(ok);
     EXPECT_TRUE(skybox.IsValid());
 
@@ -113,7 +116,8 @@ TEST_F(CubemapLoaderTest, ConstructedSkyboxHasFallbackSrv)
 
     // LoadCubemap 呼び出し前の初期状態でも fallback magenta SRV が用意されており、
     // Render() を即時呼んでもクラッシュしないことを保証する
-    Skybox skybox(renderer);
+    std::unique_ptr<Skybox> skyboxHolder = Skybox::Create();
+    Skybox& skybox = *skyboxHolder;
     EXPECT_TRUE(skybox.IsValid());
     EXPECT_TRUE(skybox.IsUsingFallback());
     EXPECT_NE(NS::Graphics::detail::GetCubemapSrv(skybox), nullptr);

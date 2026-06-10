@@ -4,11 +4,21 @@
 /// @brief NS::Graphics::CommonStates — DirectXTK CommonStates のラッパ
 ///
 /// @details 公開セット = 10 getter (Blend 2 / Depth 2 / Rasterizer 2 / Sampler 4)
-/// 戻り値は `void*` で D3D11 型を公開ヘッダに漏らさず、 利用側 (Buffer / Texture /
-/// Material) は `detail/d3d_context.h` 経由で `reinterpret_cast<ID3D11BlendState*>`
-/// 等に戻す。 構築は `Renderer` のみが行い (friend)、 外部から直接コンストラクタは呼べない
+/// 戻り値は型付き D3D11 state ポインタを直接返し、 利用側 (Material 等) はキャスト無しで
+/// そのまま bind する。 構築は `Renderer` のみが行い (friend)、 外部から直接コンストラクタは呼べない
 
 #include <memory>
+
+#include <Framework/Core/NonCopyable.h>
+#include <Framework/Graphics/D3dCommon.h>
+
+namespace DirectX
+{
+    inline namespace DX11
+    {
+        class CommonStates;
+    }
+} // namespace DirectX
 
 namespace NS::Graphics
 {
@@ -17,40 +27,31 @@ namespace NS::Graphics
 
     /// DirectXTK CommonStates のラッパ
     /// 公開セット = 10 getter (Blend 2 / Depth 2 / Rasterizer 2 / Sampler 4)
-    /// 戻り値は void* で D3D11 型を公開ヘッダに漏らさない
-    /// 利用側 (Buffer/Texture/Material) は detail/d3d_context.h 経由で
-    /// reinterpret_cast<ID3D11BlendState*> 等に戻す
-    class CommonStates
+    /// 戻り値は型付き D3D11 state ポインタ。 継ぎ目で raw D3D を扱う Renderer / Material が直接 bind する
+    class CommonStates : public NS::Core::NonCopyable
     {
     public:
-        struct Impl;
-
         ~CommonStates();
 
-        CommonStates(const CommonStates&) = delete;
-        CommonStates& operator=(const CommonStates&) = delete;
-        CommonStates(CommonStates&&) = delete;
-        CommonStates& operator=(CommonStates&&) = delete;
+        [[nodiscard]] ID3D11BlendState* Opaque() const noexcept;
+        [[nodiscard]] ID3D11BlendState* AlphaBlend() const noexcept;
 
-        [[nodiscard]] void* Opaque() const noexcept;
-        [[nodiscard]] void* AlphaBlend() const noexcept;
+        [[nodiscard]] ID3D11DepthStencilState* DepthDefault() const noexcept;
+        [[nodiscard]] ID3D11DepthStencilState* DepthNone() const noexcept;
 
-        [[nodiscard]] void* DepthDefault() const noexcept;
-        [[nodiscard]] void* DepthNone() const noexcept;
+        [[nodiscard]] ID3D11RasterizerState* CullCounterClockwise() const noexcept;
+        [[nodiscard]] ID3D11RasterizerState* CullClockwise() const noexcept;
 
-        [[nodiscard]] void* CullCounterClockwise() const noexcept;
-        [[nodiscard]] void* CullClockwise() const noexcept;
-
-        [[nodiscard]] void* LinearWrap() const noexcept;
-        [[nodiscard]] void* LinearClamp() const noexcept;
-        [[nodiscard]] void* PointWrap() const noexcept;
-        [[nodiscard]] void* PointClamp() const noexcept;
+        [[nodiscard]] ID3D11SamplerState* LinearWrap() const noexcept;
+        [[nodiscard]] ID3D11SamplerState* LinearClamp() const noexcept;
+        [[nodiscard]] ID3D11SamplerState* PointWrap() const noexcept;
+        [[nodiscard]] ID3D11SamplerState* PointClamp() const noexcept;
 
     private:
-        std::unique_ptr<Impl> m_pImpl;
+        std::unique_ptr<DirectX::CommonStates> m_states;
 
         friend class Renderer;
-        explicit CommonStates(void* device);
+        explicit CommonStates(ID3D11Device* device);
     };
 
 } // namespace NS::Graphics

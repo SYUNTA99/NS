@@ -11,11 +11,15 @@
 /// `BucketCount()` / `LastFrameDrawCallCount()` が観測できる薄い実装に保つ
 /// GPU バインドは FlushAll(Renderer&) に渡す Renderer 経由で行い、 DeviceContext は保持しない
 
+#include "Framework/Core/NonCopyable.h"
+#include "Framework/Graphics/D3dCommon.h"
 #include "Framework/Math/Math.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <unordered_map>
+#include <vector>
 
 namespace NS::Graphics
 {
@@ -23,6 +27,7 @@ namespace NS::Graphics
     class StaticMesh;
     class Material;
     class Renderer;
+    class Buffer;
     class InstanceBatcher;
 
     namespace detail
@@ -50,18 +55,13 @@ namespace NS::Graphics
     /// (mesh, material) bucket 集約バッチャ。 1 bucket = 1 `DrawIndexedInstanced`
     /// 同一 Renderer 寿命中だけ有効、 Renderer より先に破棄すること
     /// device 未提供環境では bucket カウントと draw call カウントのみが更新される
-    class InstanceBatcher
+    class InstanceBatcher : public NS::Core::NonCopyable
     {
     public:
-        struct Impl;
+        /// InstanceBatcher を生成する。 device 未提供環境でも非 null (集約のみ動作)
+        [[nodiscard]] static std::unique_ptr<InstanceBatcher> Create();
 
-        explicit InstanceBatcher(Renderer& renderer);
         ~InstanceBatcher();
-
-        InstanceBatcher(const InstanceBatcher&) = delete;
-        InstanceBatcher& operator=(const InstanceBatcher&) = delete;
-        InstanceBatcher(InstanceBatcher&&) = delete;
-        InstanceBatcher& operator=(InstanceBatcher&&) = delete;
 
         /// 新フレーム開始: 全 bucket の instance 配列を空にする
         /// `Renderer::BeginFrame` の直後に呼ぶ想定
@@ -89,7 +89,44 @@ namespace NS::Graphics
         [[nodiscard]] bool IsValid() const noexcept;
 
     private:
-        std::unique_ptr<Impl> m_pImpl;
+        InstanceBatcher();
+
+        // (mesh, material) を bucket key にする。 同一性は 2 つのアドレスで判定
+        struct BucketKey
+        {
+            StaticMesh* mesh = nullptr;
+            Material* material = nullptr;
+
+            [[nodiscard]] bool operator==(const BucketKey& rhs) const noexcept
+            {
+                return mesh == rhs.mesh && material == rhs.material;
+            }
+        };
+        struct BucketKeyHash
+        {
+            [[nodiscard]] std::size_t operator()(const BucketKey& k) const noexcept
+            {
+                const auto a = reinterpret_cast<std::uintptr_t>(k.mesh);
+                const auto b = reinterpret_cast<std::uintptr_t>(k.material);
+                // mesh / material の 2 アドレスを xor で混ぜる素朴な hash、 衝突は事実上ゼロ
+                return static_cast<std::size_t>(a ^ ((b << 32) | (b >> 32)));
+            }
+        };
+        struct Bucket
+        {
+            std::vector<BlockInstance> instances{};
+        };
+
+        std::unordered_map<BucketKey, Bucket, BucketKeyHash> m_buckets;
+        ComPtr<ID3D11Device> m_device;
+        std::unique_ptr<Buffer> m_instanceVB;
+        ComPtr<ID3D11VertexShader> m_vs;
+        ComPtr<ID3D11PixelShader> m_ps;
+        ComPtr<ID3D11InputLayout> m_inputLayout;
+        std::size_t m_instanceVbCapacity = 0;
+        std::size_t m_lastDrawCallCount = 0;
+        bool m_valid = false;
+        bool m_countOnlyMode = false;
 
         friend void detail::SetCountOnlyMode(InstanceBatcher& batcher, bool countOnly) noexcept;
     };

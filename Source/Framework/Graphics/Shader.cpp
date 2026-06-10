@@ -1,7 +1,8 @@
 #include "Framework/Graphics/Shader.h"
 
+#include "Framework/Graphics/D3dCommon.h"
+#include "Framework/Graphics/GraphicObject.h"
 #include "Framework/Graphics/Renderer.h"
-#include "Framework/Graphics/detail/d3d_context.h"
 
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
@@ -17,7 +18,6 @@
 
 namespace NS::Graphics
 {
-    using detail::ComPtr;
 
     namespace
     {
@@ -203,9 +203,14 @@ float4 PSMain() : SV_Target
         }
     } // namespace
 
-    Shader::Shader(Renderer& renderer, const std::filesystem::path& hlslPath)
+    std::unique_ptr<Shader> Shader::Create(const std::filesystem::path& hlslPath)
     {
-        auto* device = detail::GetDevice(renderer);
+        return std::unique_ptr<Shader>(new Shader(hlslPath));
+    }
+
+    Shader::Shader(const std::filesystem::path& hlslPath)
+    {
+        auto* device = Gpu().device;
         if (device == nullptr)
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Shader: Renderer の Device が無効");

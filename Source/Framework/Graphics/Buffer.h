@@ -7,18 +7,18 @@
 /// `MakeVertexBufferDesc` / `MakeIndexBufferDesc` / `MakeConstantBufferDesc` ヘルパ経由が簡便
 /// (byteSize / bindFlags を用途別に埋める)。 定数バッファは byteSize を 16-byte 境界へ切り上げ、
 /// usage は Dynamic 前提で生成する。 非 Dynamic バッファは initialData 必須 (未初期化 GPU 読み回避)
-/// バインド / 更新は context を持つ Renderer 経由 (`Renderer::BindVertexBuffer` / `UpdateBuffer` 等)
+/// バインド / 更新は CommandList 経由 (`renderer.Commands().SetVertexBuffer` / `UpdateBuffer` 等)
 /// Graphics は exposed-D3D lean 設計のため `ID3D11Buffer*` を `Native()` で公開する
 
 #include <cstddef>
+#include <memory>
 
-#include <d3d11.h>
-#include <wrl/client.h>
+#include <Framework/Core/NonCopyable.h>
+#include <Framework/Graphics/D3dCommon.h>
 
 namespace NS::Graphics
 {
 
-    class Renderer;
     class Buffer;
 
     /// バッファ構築パラメータ。役割は bindFlags (D3D11_BIND_*) で表す
@@ -34,17 +34,13 @@ namespace NS::Graphics
     };
 
     /// 頂点 / index / 定数を兼ねる単一 Buffer。役割は bindFlags で決まる
-    /// バインド / 更新は Renderer 経由 (本型は GPU バッファ + メタのみ保持、 context は持たない)
+    /// バインド / 更新は CommandList 経由 (本型は GPU バッファ + メタのみ保持、 context は持たない)
     /// alignas(16) と手動 padding (Vector3 a; float _pad;) で定数の internal alignment を担保すること
-    class Buffer
+    class Buffer : public NS::Core::NonCopyable
     {
     public:
-        Buffer(Renderer& renderer, const BufferDesc& desc);
-
-        Buffer(const Buffer&) = delete;
-        Buffer& operator=(const Buffer&) = delete;
-        Buffer(Buffer&&) = delete;
-        Buffer& operator=(Buffer&&) = delete;
+        /// BufferDesc から Buffer を生成する。 生成失敗でも非 null を返し IsValid() が false になる
+        [[nodiscard]] static std::unique_ptr<Buffer> Create(const BufferDesc& desc);
 
         /// CreateBuffer 成功で true。device 無効 / byteSize=0 / 非 Dynamic で initialData 欠如時 false
         [[nodiscard]] bool IsValid() const noexcept;
@@ -60,7 +56,9 @@ namespace NS::Graphics
         [[nodiscard]] bool IsDynamic() const noexcept;
 
     private:
-        Microsoft::WRL::ComPtr<ID3D11Buffer> m_buffer;
+        explicit Buffer(const BufferDesc& desc);
+
+        ComPtr<ID3D11Buffer> m_buffer;
         std::size_t m_stride = 0;
         std::size_t m_byteSize = 0;
         DXGI_FORMAT m_format = DXGI_FORMAT_R32_UINT;

@@ -5,15 +5,15 @@
 ///
 /// @details context は Renderer が所有し、 CommandList は非所有ポインタとして借用する。 描画リソース
 /// (Buffer / Texture / TextureArray / Shader) を public アクセサ (`Native()` / `Srv()` / `Type()` 等)
-/// 経由で参照し、 `IASetVertexBuffers` 等の D3D11 呼び出しをここに集約する。 取得は `Renderer::Commands()`、
-/// `Renderer::BindX` 系は本クラスへ転送する薄い facade
+/// 経由で参照し、 `IASetVertexBuffers` 等の D3D11 呼び出しをここに集約する。 取得は `Renderer::Commands()` で、
+/// 呼び出し側は得た CommandList の bind / draw / update を直接呼ぶ
 /// 値変換 / 多段 fan-out を持つ操作のみラップし、 それ以外の D3D 呼び出しは `operator->` で生 context を直接叩く
 /// 依存: context の所有・寿命は Renderer。 本型は context を破棄しない
 /// 注: instanced 描画 (InstanceBatcher) は 2-stream など専用要件のため独自の context 経路を維持する
 
 #include <cstddef>
 
-#include <d3d11.h>
+#include <Framework/Graphics/D3dCommon.h>
 
 namespace NS::Graphics
 {
@@ -50,6 +50,8 @@ namespace NS::Graphics
         void SetTexture(const Texture& texture, unsigned slot, ShaderStage stages) noexcept;
         /// TextureArray の SRV を slot + ステージ (VS/PS) にバインドする
         void SetTextureArray(const TextureArray& textureArray, unsigned slot, ShaderStage stages) noexcept;
+        /// サンプラーを slot + ステージ (VS/PS) にバインドする (CommonStates の生 ID3D11SamplerState* を受ける)
+        void SetSampler(ID3D11SamplerState* sampler, unsigned slot, ShaderStage stages) noexcept;
         /// 頂点バッファを slot にバインドする (IASetVertexBuffers)
         void SetVertexBuffer(const Buffer& buffer, unsigned slot = 0) noexcept;
         /// index バッファをバインドする (IASetIndexBuffer、 幅は Buffer の Format から)
