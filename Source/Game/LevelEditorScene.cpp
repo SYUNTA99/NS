@@ -590,20 +590,28 @@ void LevelEditorScene::OnRender()
     // 範囲外 themeId は ThemeRegistry::Get 側で Grass にフォールバックされる
     const ThemeData& theme = ThemeRegistry::Get(m_level.themeId);
 
+    // テーマはシーン単位の上書きなので override に詰め、 プロジェクト既定値の上に Resolve する
+    // 解決済設定を mesh / block 両経路に流すことで lighting の出所を 1 か所に統一する
+    NS::Graphics::RenderSettingsOverride themeOverride{};
+    themeOverride.lightDir = theme.lightDirection;
+    themeOverride.lightColor = theme.lightColor;
+    themeOverride.ambientColor = theme.ambientColor;
+    const NS::Graphics::RenderSettings resolved = NS::Graphics::Resolve(app->RenderDefaults(), themeOverride);
+
     // Player の赤系 baseColor 等の個体色は MeshRendererComponent::SetBaseColor で別途設定済なので触らない
     if (m_player)
     {
         auto& mesh = m_player->MeshComp();
-        mesh.SetLightDirection(theme.lightDirection);
-        mesh.SetLightColor(theme.lightColor);
-        mesh.SetAmbientColor(theme.ambientColor);
+        mesh.SetLightDirection(resolved.lightDir);
+        mesh.SetLightColor(resolved.lightColor);
+        mesh.SetAmbientColor(resolved.ambientColor);
     }
 
     if (m_animMesh)
     {
-        m_animMesh->SetLightDirection(theme.lightDirection);
-        m_animMesh->SetLightColor(theme.lightColor);
-        m_animMesh->SetAmbientColor(theme.ambientColor);
+        m_animMesh->SetLightDirection(resolved.lightDir);
+        m_animMesh->SetLightColor(resolved.lightColor);
+        m_animMesh->SetAmbientColor(resolved.ambientColor);
     }
 
     // Block 描画は InstanceBatcher の (mesh, material) bucket 経由に統一する
@@ -611,16 +619,14 @@ void LevelEditorScene::OnRender()
     // 描画呼出は本フレームの instance VB 1 回 + bucket 数の DrawIndexedInstanced に集約される
     if (m_instanceBatcher && m_instanceBatcher->IsValid())
     {
-        // theme tint を block 全体の FrameCB に流す。 baseColor は per-instance で個体色を別途乗算する
+        // 解決済 lighting を block 全体の FrameCB に流す。 baseColor は per-instance で個体色を別途乗算する
         NS::Scene::FrameCB blockCB{};
         blockCB.viewProj = ctx.viewProjection;
-        blockCB.lightDir = theme.lightDirection;
-        if (blockCB.lightDir.LengthSquared() <= 1e-6f)
-            blockCB.lightDir = NS::Math::Vector3{-0.3f, -1.0f, -0.2f};
+        blockCB.lightDir = resolved.lightDir;
         blockCB.lightDir.Normalize();
         blockCB.baseColor = NS::Math::Vector3{1.0f, 1.0f, 1.0f}; // per-instance baseColor と乗算するので 1 に固定
-        blockCB.lightColor = theme.lightColor;
-        blockCB.ambientColor = theme.ambientColor;
+        blockCB.lightColor = resolved.lightColor;
+        blockCB.ambientColor = resolved.ambientColor;
         if (m_blockMaterial)
             m_blockMaterial->SetParams(*ctx.renderer, blockCB);
 
