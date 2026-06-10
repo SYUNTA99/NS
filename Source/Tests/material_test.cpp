@@ -16,7 +16,6 @@ namespace
     using NS::Graphics::Renderer;
     using NS::Graphics::RendererDesc;
     using NS::Graphics::Shader;
-    using NS::Graphics::ShaderStage;
     using NS::Graphics::Texture;
     using NS::Graphics::TextureDesc;
     using NS::Platform::Window;
@@ -76,7 +75,6 @@ TEST_F(MaterialLoggerTest, ConstructWithShaderIsValid)
     desc.pixelShader = &ps;
     desc.constantBufferSize = sizeof(DummyCB);
     desc.cbSlot = 1;
-    desc.cbStages = ShaderStage::Vertex | ShaderStage::Pixel;
 
     std::unique_ptr<Material> matHolder = Material::Create(desc);
     Material& mat = *matHolder;

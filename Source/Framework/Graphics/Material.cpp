@@ -54,7 +54,6 @@ namespace NS::Graphics
         m_vertexShader = desc.vertexShader;
         m_pixelShader = desc.pixelShader;
         m_cbSlot = desc.cbSlot;
-        m_cbStages = desc.cbStages;
         m_valid = true;
     }
 
@@ -112,19 +111,20 @@ namespace NS::Graphics
         {
             if (tex != nullptr)
             {
-                renderer.Commands().SetTexture(*tex, slot, ShaderStage::Pixel);
+                renderer.Commands().SetTexture(*tex, slot, ShaderType::Pixel);
             }
         }
 
         if (m_cb)
         {
-            renderer.Commands().SetConstantBuffer(*m_cb, m_cbSlot, m_cbStages);
+            renderer.Commands().SetConstantBuffer(*m_cb, m_cbSlot, ShaderType::Vertex);
+            renderer.Commands().SetConstantBuffer(*m_cb, m_cbSlot, ShaderType::Pixel);
         }
 
         // 共有 LinearWrap は Renderer の CommonStates から bind 時に取得する
         if (auto* sampler = renderer.States().LinearWrap())
         {
-            renderer.Commands().SetSampler(sampler, 0u, ShaderStage::Pixel);
+            renderer.Commands().SetSampler(sampler, 0u, ShaderType::Pixel);
         }
     }
 

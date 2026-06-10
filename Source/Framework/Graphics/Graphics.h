@@ -18,7 +18,6 @@
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/Retarget.h"
 #include "Framework/Graphics/Shader.h"
-#include "Framework/Graphics/ShaderStage.h"
 #include "Framework/Graphics/SkeletalMesh.h"
 #include "Framework/Graphics/Skeleton.h"
 #include "Framework/Graphics/Skybox.h"

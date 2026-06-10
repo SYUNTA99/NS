@@ -5,7 +5,7 @@
 #include "Framework/Graphics/D3dCommon.h"
 #include "Framework/Graphics/GraphicObject.h"
 #include "Framework/Graphics/Renderer.h"
-#include "Framework/Graphics/ShaderStage.h"
+#include "Framework/Graphics/Shader.h"
 
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -146,7 +146,7 @@ namespace NS::Graphics
         if (m_bonePaletteCB)
         {
             renderer.Commands().UpdateBuffer(*m_bonePaletteCB, &m_palette, sizeof(BonePaletteCB));
-            renderer.Commands().SetConstantBuffer(*m_bonePaletteCB, kBonePaletteSlot, ShaderStage::Vertex);
+            renderer.Commands().SetConstantBuffer(*m_bonePaletteCB, kBonePaletteSlot, ShaderType::Vertex);
         }
         Mesh::Draw(renderer);
     }

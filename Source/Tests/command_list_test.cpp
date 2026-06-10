@@ -5,7 +5,6 @@
 #include <Framework/Graphics/CommandList.h>
 #include <Framework/Graphics/Renderer.h>
 #include <Framework/Graphics/Shader.h>
-#include <Framework/Graphics/ShaderStage.h>
 #include <Framework/Graphics/Texture.h>
 #include <Framework/Platform/Window.h>
 
@@ -18,14 +17,13 @@ namespace
     using NS::Graphics::Buffer;
     using NS::Graphics::BufferDesc;
     using NS::Graphics::CommandList;
-    using NS::Graphics::HasStage;
     using NS::Graphics::MakeConstantBufferDesc;
     using NS::Graphics::MakeIndexBufferDesc;
     using NS::Graphics::MakeVertexBufferDesc;
     using NS::Graphics::Renderer;
     using NS::Graphics::RendererDesc;
     using NS::Graphics::Shader;
-    using NS::Graphics::ShaderStage;
+    using NS::Graphics::ShaderType;
     using NS::Graphics::Texture;
     using NS::Graphics::TextureCreateDesc;
     using NS::Platform::Window;
@@ -61,18 +59,6 @@ protected:
     void SetUp() override { NS::Core::Logger::Init(); }
     void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
-
-TEST(NsGraphicsShaderStage, BitflagOperators)
-{
-    constexpr auto vp = ShaderStage::Vertex | ShaderStage::Pixel;
-    EXPECT_TRUE(HasStage(vp, ShaderStage::Vertex));
-    EXPECT_TRUE(HasStage(vp, ShaderStage::Pixel));
-
-    EXPECT_TRUE(HasStage(ShaderStage::All, ShaderStage::Vertex));
-    EXPECT_TRUE(HasStage(ShaderStage::All, ShaderStage::Pixel));
-    EXPECT_FALSE(HasStage(ShaderStage::Vertex, ShaderStage::Pixel));
-    EXPECT_FALSE(HasStage(ShaderStage::None, ShaderStage::Vertex));
-}
 
 TEST_F(CommandListLoggerTest, CommandsAccessibleFromRenderer)
 {
@@ -122,8 +108,9 @@ TEST_F(CommandListLoggerTest, SetAndDrawDoNotCrash)
     cmd.SetShader(ps);
     cmd.SetVertexBuffer(vb, 0);
     cmd.SetIndexBuffer(ib);
-    cmd.SetConstantBuffer(cb, 0, ShaderStage::Vertex | ShaderStage::Pixel);
-    cmd.SetTexture(tex, 0, ShaderStage::Pixel);
+    cmd.SetConstantBuffer(cb, 0, ShaderType::Vertex);
+    cmd.SetConstantBuffer(cb, 0, ShaderType::Pixel);
+    cmd.SetTexture(tex, 0, ShaderType::Pixel);
     cmd.DrawIndexed(3);
     SUCCEED();
 }

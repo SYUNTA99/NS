@@ -3,7 +3,7 @@
 #include <Framework/Core/Logger.h>
 #include <Framework/Graphics/CommandList.h>
 #include <Framework/Graphics/Renderer.h>
-#include <Framework/Graphics/ShaderStage.h>
+#include <Framework/Graphics/Shader.h>
 #include <Framework/Graphics/Texture.h>
 #include <Framework/Platform/Window.h>
 
@@ -13,7 +13,7 @@ namespace
 {
     using NS::Graphics::Renderer;
     using NS::Graphics::RendererDesc;
-    using NS::Graphics::ShaderStage;
+    using NS::Graphics::ShaderType;
     using NS::Graphics::Texture;
     using NS::Graphics::TextureCreateDesc;
     using NS::Graphics::TextureDesc;
@@ -89,9 +89,9 @@ TEST_F(TextureLoggerTest, FallbackBindDoesNotCrash)
     Texture& tex = *texHolder;
     ASSERT_TRUE(tex.IsValid());
 
-    renderer.Commands().SetTexture(tex, 0, ShaderStage::Pixel);
-    renderer.Commands().SetTexture(tex, 1, ShaderStage::Pixel);
-    renderer.Commands().SetTexture(tex, 0, ShaderStage::Vertex | ShaderStage::Pixel);
+    renderer.Commands().SetTexture(tex, 0, ShaderType::Pixel);
+    renderer.Commands().SetTexture(tex, 1, ShaderType::Pixel);
+    renderer.Commands().SetTexture(tex, 0, ShaderType::Vertex);
     SUCCEED();
 }
 

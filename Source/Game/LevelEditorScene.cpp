@@ -139,7 +139,6 @@ void LevelEditorScene::OnStart()
     matDesc.pixelShader = m_playerPS.get();
     matDesc.constantBufferSize = sizeof(NS::Scene::FrameCB);
     matDesc.cbSlot = 0;
-    matDesc.cbStages = NS::Graphics::ShaderStage::Vertex | NS::Graphics::ShaderStage::Pixel;
     m_playerMaterial = NS::Graphics::Material::Create(matDesc);
     m_playerMaterial->SetTexture(0, m_texture.get());
 
@@ -295,7 +294,6 @@ void LevelEditorScene::OnStart()
             skinnedMatDesc.pixelShader = m_playerPS.get();
             skinnedMatDesc.constantBufferSize = sizeof(NS::Scene::FrameCB);
             skinnedMatDesc.cbSlot = 0;
-            skinnedMatDesc.cbStages = NS::Graphics::ShaderStage::Vertex | NS::Graphics::ShaderStage::Pixel;
             m_skinnedMaterial = NS::Graphics::Material::Create(skinnedMatDesc);
             // 専用テクスチャは未取得なので block と同じ placeholder を貼る (変形が見えれば目的は足りる)
             m_skinnedMaterial->SetTexture(0, m_texture.get());
@@ -665,7 +663,7 @@ void LevelEditorScene::OnRender()
         // TextureArray を t0 に bind してから FlushAll。 Material::Bind では slot 0 を触っていない
         // (SetTexture せず構築した) ため、 ここで bind した SRV が bucket 描画まで残る
         if (m_blockTextures)
-            ctx.renderer->Commands().SetTextureArray(*m_blockTextures, 0u, NS::Graphics::ShaderStage::Pixel);
+            ctx.renderer->Commands().SetTextureArray(*m_blockTextures, 0u, NS::Graphics::ShaderType::Pixel);
         m_instanceBatcher->FlushAll(*ctx.renderer);
     }
 

@@ -7,7 +7,6 @@
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/Shader.h"
-#include "Framework/Graphics/ShaderStage.h"
 #include "Framework/Graphics/StaticMesh.h"
 
 #include "Framework/Core/Filesystem.h"
@@ -472,12 +471,12 @@ namespace NS::Graphics
 
         renderer.Commands().SetShader(*m_vs);
         renderer.Commands().SetShader(*m_ps);
-        renderer.Commands().SetConstantBuffer(*m_cb, 0, ShaderStage::Vertex);
+        renderer.Commands().SetConstantBuffer(*m_cb, 0, ShaderType::Vertex);
 
         ID3D11ShaderResourceView* srvs[1] = {m_cubemapSrv.Get()};
         cmd->PSSetShaderResources(0, 1, srvs);
 
-        cmd.SetSampler(m_sampler.Get(), 0, ShaderStage::Pixel);
+        cmd.SetSampler(m_sampler.Get(), 0, ShaderType::Pixel);
 
         // Mesh::Draw は VB / IB / topology / DrawIndexed を一括実行する
         m_cubeMesh->Draw(renderer);

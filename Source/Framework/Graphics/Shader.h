@@ -28,8 +28,7 @@ namespace NS::Graphics
     class Shader;
 
     /// シェーダのパイプラインステージ種別 (ファイル名から判定)
-    /// @note bind 先指定の bitflag である `ShaderStage` とは別物。 こちらは Shader 実体が
-    /// どのステージのコードかを表す
+    /// CommandList のリソース bind 先指定にも使う (bind 対応は Vertex / Pixel のみ)
     enum class ShaderType
     {
         Unknown,

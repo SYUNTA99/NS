@@ -4,7 +4,7 @@
 #include <Framework/Graphics/Buffer.h>
 #include <Framework/Graphics/CommandList.h>
 #include <Framework/Graphics/Renderer.h>
-#include <Framework/Graphics/ShaderStage.h>
+#include <Framework/Graphics/Shader.h>
 #include <Framework/Platform/Window.h>
 
 #include <array>
@@ -20,7 +20,7 @@ namespace
     using NS::Graphics::MakeVertexBufferDesc;
     using NS::Graphics::Renderer;
     using NS::Graphics::RendererDesc;
-    using NS::Graphics::ShaderStage;
+    using NS::Graphics::ShaderType;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 
@@ -224,6 +224,7 @@ TEST_F(BufferLoggerTest, BufferBindsDoNotCrash)
 
     renderer.Commands().SetVertexBuffer(vb, 0);
     renderer.Commands().SetIndexBuffer(ib);
-    renderer.Commands().SetConstantBuffer(cb, 0, ShaderStage::Vertex | ShaderStage::Pixel);
+    renderer.Commands().SetConstantBuffer(cb, 0, ShaderType::Vertex);
+    renderer.Commands().SetConstantBuffer(cb, 0, ShaderType::Pixel);
     SUCCEED();
 }

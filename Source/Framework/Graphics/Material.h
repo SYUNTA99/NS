@@ -9,7 +9,6 @@
 /// GPU バインドは渡された Renderer 経由で行い、 Material は DeviceContext を保持しない
 
 #include "Framework/Core/NonCopyable.h"
-#include "Framework/Graphics/ShaderStage.h"
 
 #include <cstddef>
 #include <map>
@@ -35,10 +34,8 @@ namespace NS::Graphics
         Shader* pixelShader = nullptr;
         /// 内蔵 ConstantBuffer のバイト数 (alignas(16) + sizeof%16==0 必須)
         std::size_t constantBufferSize = 0;
-        /// ConstantBuffer Bind 先スロット
+        /// ConstantBuffer Bind 先スロット (Bind 先ステージは VS + PS 固定)
         unsigned cbSlot = 1;
-        /// ConstantBuffer Bind 対象ステージ (既定: VS + PS)
-        ShaderStage cbStages = ShaderStage::Vertex | ShaderStage::Pixel;
     };
 
     /// Generic 単一クラス Material
@@ -76,7 +73,7 @@ namespace NS::Graphics
             UpdateParamsRaw(renderer, &params, sizeof(T));
         }
 
-        /// VS/PS bind → 全 Texture bind(slot, Pixel) → ConstantBuffer bind(cbSlot, cbStages)
+        /// VS/PS bind → 全 Texture bind(slot, Pixel) → ConstantBuffer bind(cbSlot, VS + PS)
         /// → PSSetSamplers(0, LinearWrap) を renderer 経由で一括実行。Mesh::Draw の前に呼ぶ
         void Bind(Renderer& renderer) noexcept;
 
@@ -94,7 +91,6 @@ namespace NS::Graphics
         std::map<unsigned, const Texture*> m_textures;
         std::unique_ptr<Buffer> m_cb;
         unsigned m_cbSlot = 1;
-        ShaderStage m_cbStages = ShaderStage::Vertex | ShaderStage::Pixel;
         bool m_valid = false;
     };
 

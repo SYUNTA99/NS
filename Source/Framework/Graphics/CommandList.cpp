@@ -3,7 +3,6 @@
 #include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/D3dCommon.h"
 #include "Framework/Graphics/Shader.h"
-#include "Framework/Graphics/ShaderStage.h"
 #include "Framework/Graphics/Texture.h"
 #include "Framework/Graphics/TextureArray.h"
 
@@ -122,7 +121,7 @@ namespace NS::Graphics
         }
     }
 
-    void CommandList::SetTexture(const Texture& texture, unsigned slot, ShaderStage stages) noexcept
+    void CommandList::SetTexture(const Texture& texture, unsigned slot, ShaderType stage) noexcept
     {
         ID3D11ShaderResourceView* srv = texture.Srv();
         if (m_context == nullptr || srv == nullptr)
@@ -130,17 +129,23 @@ namespace NS::Graphics
             return;
         }
         ID3D11ShaderResourceView* srvs[1] = {srv};
-        if (HasStage(stages, ShaderStage::Vertex))
+        switch (stage)
         {
+        case ShaderType::Vertex:
             m_context->VSSetShaderResources(slot, 1u, srvs);
-        }
-        if (HasStage(stages, ShaderStage::Pixel))
-        {
+            break;
+        case ShaderType::Pixel:
             m_context->PSSetShaderResources(slot, 1u, srvs);
+            break;
+        default:
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "CommandList::SetTexture: bind 対応は Vertex / Pixel のみ (stage={})",
+                         static_cast<int>(stage));
+            break;
         }
     }
 
-    void CommandList::SetTextureArray(const TextureArray& textureArray, unsigned slot, ShaderStage stages) noexcept
+    void CommandList::SetTextureArray(const TextureArray& textureArray, unsigned slot, ShaderType stage) noexcept
     {
         ID3D11ShaderResourceView* srv = textureArray.Srv();
         if (m_context == nullptr || srv == nullptr)
@@ -148,31 +153,43 @@ namespace NS::Graphics
             return;
         }
         ID3D11ShaderResourceView* srvs[1] = {srv};
-        if (HasStage(stages, ShaderStage::Vertex))
+        switch (stage)
         {
+        case ShaderType::Vertex:
             m_context->VSSetShaderResources(slot, 1u, srvs);
-        }
-        if (HasStage(stages, ShaderStage::Pixel))
-        {
+            break;
+        case ShaderType::Pixel:
             m_context->PSSetShaderResources(slot, 1u, srvs);
+            break;
+        default:
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "CommandList::SetTextureArray: bind 対応は Vertex / Pixel のみ (stage={})",
+                         static_cast<int>(stage));
+            break;
         }
     }
 
     // サンプラーは NS にラッパ型が無いため CommonStates の生 ID3D11SamplerState* をそのまま受ける
-    void CommandList::SetSampler(ID3D11SamplerState* sampler, unsigned slot, ShaderStage stages) noexcept
+    void CommandList::SetSampler(ID3D11SamplerState* sampler, unsigned slot, ShaderType stage) noexcept
     {
         if (m_context == nullptr || sampler == nullptr)
         {
             return;
         }
         ID3D11SamplerState* samplers[1] = {sampler};
-        if (HasStage(stages, ShaderStage::Vertex))
+        switch (stage)
         {
+        case ShaderType::Vertex:
             m_context->VSSetSamplers(slot, 1u, samplers);
-        }
-        if (HasStage(stages, ShaderStage::Pixel))
-        {
+            break;
+        case ShaderType::Pixel:
             m_context->PSSetSamplers(slot, 1u, samplers);
+            break;
+        default:
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "CommandList::SetSampler: bind 対応は Vertex / Pixel のみ (stage={})",
+                         static_cast<int>(stage));
+            break;
         }
     }
 
@@ -197,20 +214,26 @@ namespace NS::Graphics
         m_context->IASetIndexBuffer(buffer.Native(), buffer.Format(), 0u);
     }
 
-    void CommandList::SetConstantBuffer(const Buffer& buffer, unsigned slot, ShaderStage stages) noexcept
+    void CommandList::SetConstantBuffer(const Buffer& buffer, unsigned slot, ShaderType stage) noexcept
     {
         if (m_context == nullptr || !buffer.IsValid())
         {
             return;
         }
         ID3D11Buffer* buffers[1] = {buffer.Native()};
-        if (HasStage(stages, ShaderStage::Vertex))
+        switch (stage)
         {
+        case ShaderType::Vertex:
             m_context->VSSetConstantBuffers(slot, 1u, buffers);
-        }
-        if (HasStage(stages, ShaderStage::Pixel))
-        {
+            break;
+        case ShaderType::Pixel:
             m_context->PSSetConstantBuffers(slot, 1u, buffers);
+            break;
+        default:
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "CommandList::SetConstantBuffer: bind 対応は Vertex / Pixel のみ (stage={})",
+                         static_cast<int>(stage));
+            break;
         }
     }
 

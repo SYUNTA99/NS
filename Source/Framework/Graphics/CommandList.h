@@ -21,7 +21,7 @@ namespace NS::Graphics
     class Texture;
     class TextureArray;
     class Shader;
-    enum class ShaderStage : unsigned;
+    enum class ShaderType;
 
     /// 1 つの `ID3D11DeviceContext` に bind / clear / draw を発行する記録面
     /// Renderer が 1 個保持し、 描画コードは `Renderer::Commands()` で取得して記録する
@@ -46,18 +46,18 @@ namespace NS::Graphics
 
         /// Shader をステージに応じて発行する (VS/PS/GS/HS/DS/CSSetShader)。無効 Shader は何もしない
         void SetShader(const Shader& shader) noexcept;
-        /// Texture の SRV を slot + ステージ (VS/PS) にバインドする
-        void SetTexture(const Texture& texture, unsigned slot, ShaderStage stages) noexcept;
-        /// TextureArray の SRV を slot + ステージ (VS/PS) にバインドする
-        void SetTextureArray(const TextureArray& textureArray, unsigned slot, ShaderStage stages) noexcept;
-        /// サンプラーを slot + ステージ (VS/PS) にバインドする (CommonStates の生 ID3D11SamplerState* を受ける)
-        void SetSampler(ID3D11SamplerState* sampler, unsigned slot, ShaderStage stages) noexcept;
+        /// Texture の SRV を slot + 指定ステージにバインドする (bind 対応は Vertex / Pixel のみ)
+        void SetTexture(const Texture& texture, unsigned slot, ShaderType stage) noexcept;
+        /// TextureArray の SRV を slot + 指定ステージにバインドする (bind 対応は Vertex / Pixel のみ)
+        void SetTextureArray(const TextureArray& textureArray, unsigned slot, ShaderType stage) noexcept;
+        /// サンプラーを slot + 指定ステージにバインドする (CommonStates の生 ID3D11SamplerState* を受ける)
+        void SetSampler(ID3D11SamplerState* sampler, unsigned slot, ShaderType stage) noexcept;
         /// 頂点バッファを slot にバインドする (IASetVertexBuffers)
         void SetVertexBuffer(const Buffer& buffer, unsigned slot = 0) noexcept;
         /// index バッファをバインドする (IASetIndexBuffer、 幅は Buffer の Format から)
         void SetIndexBuffer(const Buffer& buffer) noexcept;
-        /// 定数バッファを slot + ステージ (VS/PS) にバインドする
-        void SetConstantBuffer(const Buffer& buffer, unsigned slot, ShaderStage stages) noexcept;
+        /// 定数バッファを slot + 指定ステージにバインドする (bind 対応は Vertex / Pixel のみ)
+        void SetConstantBuffer(const Buffer& buffer, unsigned slot, ShaderType stage) noexcept;
         /// Dynamic バッファを Map/Discard で更新する。Static や容量超過は NS_LOG_ERROR を出して何もしない
         void UpdateBuffer(const Buffer& buffer, const void* data, std::size_t bytes) noexcept;
 
