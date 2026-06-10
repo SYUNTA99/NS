@@ -13,6 +13,7 @@
 /// `Run` は -1 で即終了。 Static accessor (`Get` / `Quit`) は未構築時に nullptr を返す no-throw 設計
 /// 時刻や経過時間、補間 alpha が要るなら `NS::Core::FrameTimer` を直接呼ぶ
 
+#include "Framework/Graphics/RenderSettings.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Platform/Window.h"
 
@@ -37,18 +38,15 @@ namespace NS::App
 {
 
     /// Application 構築パラメータ
-    /// Window / Renderer の Desc を内包し、メインループの固定 delta + クリアカラーも持つ
+    /// Window / Renderer の Desc を内包し、 メインループの固定 delta + 描画既定値も持つ
     struct ApplicationDesc
     {
         NS::Platform::WindowDesc window{};
         NS::Graphics::RendererDesc renderer{};
-        /// 固定 Update の delta 秒。デフォルト 1/60
+        /// 固定 Update の delta 秒。 デフォルト 1/60
         float fixedDelta = 1.0f / 60.0f;
-        /// BeginFrame のクリアカラー (RGBA)。Application が毎フレーム適用する
-        float clearR = 0.10f;
-        float clearG = 0.10f;
-        float clearB = 0.15f;
-        float clearA = 1.0f;
+        /// プロジェクト描画既定値 (クリア色 / 光 / ambient / vsync の出所)
+        NS::Graphics::RenderSettings render{};
     };
 
     /// Engine layer。 Subsystem (Window/Renderer/Input/Audio) を RAII 所有、 Layers で Layer 群を駆動
@@ -85,6 +83,9 @@ namespace NS::App
         [[nodiscard]] NS::Platform::Window& Window() noexcept;
         [[nodiscard]] NS::Graphics::Renderer& Renderer() noexcept;
         [[nodiscard]] NS::Platform::Input& Input() noexcept;
+
+        /// プロジェクト描画既定値 (ApplicationDesc.render)。 シーンはこれを基に override を Resolve する
+        [[nodiscard]] const NS::Graphics::RenderSettings& RenderDefaults() const noexcept;
 
         /// Debug / Development build のみ実体を持つ ImGuiContext
         /// GameDebug / GameRelease では nullptr (ImGui 非搭載 shipping を保証)

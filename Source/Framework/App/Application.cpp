@@ -81,7 +81,10 @@ namespace NS::App
             return;
         }
 
-        m_pImpl->renderer = std::make_unique<NS::Graphics::Renderer>(desc.renderer, *m_pImpl->window);
+        // vsync の正は RenderSettings 側、 構築時に 1 回だけ RendererDesc へ写す
+        NS::Graphics::RendererDesc rendererDesc = desc.renderer;
+        rendererDesc.vsync = desc.render.vsync;
+        m_pImpl->renderer = std::make_unique<NS::Graphics::Renderer>(rendererDesc, *m_pImpl->window);
         if (!m_pImpl->renderer->IsValid())
         {
             NS_LOG_ERROR(::NS::Core::LogCat::App, "Application: Renderer 構築失敗");
@@ -141,6 +144,11 @@ namespace NS::App
     NS::Platform::Input& Application::Input() noexcept
     {
         return *m_pImpl->input;
+    }
+
+    const NS::Graphics::RenderSettings& Application::RenderDefaults() const noexcept
+    {
+        return m_pImpl->desc.render;
     }
 
     NS::UI::ImGuiContext* Application::ImGui() noexcept
@@ -239,7 +247,8 @@ namespace NS::App
             if (m_pImpl->quitRequested)
                 break;
 
-            renderer.BeginFrame(desc.clearR, desc.clearG, desc.clearB, desc.clearA);
+            const NS::Math::Color& clear = desc.render.clearColor;
+            renderer.BeginFrame(clear.R(), clear.G(), clear.B(), clear.A());
             if (m_pImpl->imgui)
                 m_pImpl->imgui->BeginFrame();
 
