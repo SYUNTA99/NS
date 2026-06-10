@@ -23,10 +23,13 @@
 ///
 /// 将来拡張: SceneManager (push/pop/replace) で複数 SceneBase の切替対応予定
 
+#include "Framework/Graphics/RenderSettings.h"
+
 namespace NS::Scene
 {
 
     class IRenderable;
+    struct RenderContext;
 
     class SceneBase
     {
@@ -42,23 +45,34 @@ namespace NS::Scene
         /// Application::Run() 開始時に 1 回呼ばれる。Window/Renderer/Input は既に有効
         virtual void OnStart() {}
 
-        /// 固定タイムステップ Update。 dt は `NS::Core::FrameTimer::FixedDelta()` で取得
-        /// (ApplicationDesc::fixedDelta 固定、 default 1/60)。 物理 / 入力判定はここで行い、
-        /// Render 側は補間描画のみに留める
+        /// 固定タイムステップ Update (default 1/60)。物理・入力判定はここ、Render は補間のみ
         virtual void OnUpdate() {}
 
-        /// 可変フレーム Render。NS::Core::FrameTimer::Alpha() で fixed 補間係数を取得可
-        virtual void OnRender() {}
+        /// 可変フレーム Render の入口。派生はこれを override せず OnRenderScene を実装する
+        /// scene 段解決の呼び忘れを防ぐため final 化し、解決を必ず通してから描画本体へ委譲する
+        virtual void OnRender() final;
 
         /// MainLoop 終了後に 1 回呼ばれる。Window/Renderer はまだ有効、Shutdown 後に解放
         virtual void OnShutdown() {}
 
         /// IRenderable Component の自己登録。MeshRendererComponent 等が OnStart で呼ぶ
-        /// 基底 default は何もしない。LevelEditorScene などが override で RenderRegistry に追加する
         virtual void RegisterRenderable(IRenderable* renderable) { (void)renderable; }
         /// IRenderable Component の自己解除。MeshRendererComponent 等が OnEndPlay で呼ぶ
-        /// 基底 default は何もしない。LevelEditorScene などが override で RenderRegistry から削除する
         virtual void UnregisterRenderable(IRenderable* renderable) { (void)renderable; }
+
+    protected:
+        /// 派生がシーン単位の上書きを宣言する hook。default は空 override (= project 既定値そのまま)
+        /// lighting 3 種 (lightDir / lightColor / ambientColor) と clearColor を上書きできる
+        virtual NS::Graphics::RenderSettingsOverride BuildSceneOverride() { return {}; }
+
+        /// 可変フレーム Render の本体。派生が ctx を組み立てて描画する
+        /// 描画前に ctx.resolvedSettings = ResolveSceneSettings(renderer.Settings()) を詰めること
+        virtual void OnRenderScene() {}
+
+        /// project 既定値に BuildSceneOverride() を Resolve した scene 段解決値を返す
+        /// テスト用に protected 公開 (Application 経路では OnRenderScene が描画前に呼ぶ)
+        [[nodiscard]] NS::Graphics::RenderSettings ResolveSceneSettings(
+            const NS::Graphics::RenderSettings& projectDefaults);
     };
 
 } // namespace NS::Scene

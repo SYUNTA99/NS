@@ -19,7 +19,7 @@ namespace
 
         void OnStart() override { m_log->append(m_name + ":Start;"); }
         void OnUpdate() override { m_log->append(m_name + ":Update;"); }
-        void OnRender() override { m_log->append(m_name + ":Render;"); }
+        void OnRenderScene() override { m_log->append(m_name + ":Render;"); }
         void OnShutdown() override { m_log->append(m_name + ":Shutdown;"); }
 
         const std::string& Name() const noexcept { return m_name; }

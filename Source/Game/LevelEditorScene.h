@@ -49,8 +49,7 @@ class SlopeBlock;
 class WaterBlock;
 
 /// 編集 / プレイ両モードを 1 scene 内で扱う root scene
-/// LevelData (永続) + PlayState (一時) + EditorMode を value member で保有し、
-/// 今後 mode toggle / PlayMode を同 scene 内に追加する基盤になる
+/// LevelData (永続) + PlayState (一時) + EditorMode を value member で保有する
 class LevelEditorScene : public NS::Scene::SceneBase
 {
 public:
@@ -64,7 +63,6 @@ public:
 
     void OnStart() override;
     void OnUpdate() override;
-    void OnRender() override;
     void OnShutdown() override;
 
     void RegisterRenderable(NS::Scene::IRenderable* renderable) override;
@@ -76,8 +74,7 @@ public:
     [[nodiscard]] NS::Game::Editor::EditorMode& Editor() noexcept { return m_editor; }
     [[nodiscard]] NS::Game::Level::PlayMode& PlayModeSub() noexcept { return m_playMode; }
 
-    /// 編集 ↔ プレイのモード状態。 単一 enum で同フレーム instant flip する設計
-    /// (Mario Builder 64 の current/target 2 変数 async と異なり、 NS は遷移アニメを持たない)
+    /// 編集 ↔ プレイのモード状態。 単一 enum で同フレーム即切替する
     enum class Mode : std::uint8_t
     {
         Edit,
@@ -86,18 +83,17 @@ public:
 
     [[nodiscard]] Mode CurrentMode() const noexcept { return m_mode; }
 
-    /// Edit → Play。 PlayMode::Enter で spawn 位置に player 再構築、 EditorMode 休止、
-    /// EditorCamera off → ThirdPersonFollow on、 Player 各 Component 再活性化
+    /// Edit → Play 遷移。 spawn 位置に player 再構築、 EditorCamera off、 Player Component 再活性化
     void EnterPlay() noexcept;
 
-    /// Play → Edit。 PlayMode::Exit で paused/clear/death をリセット、 EditorMode 復帰、
-    /// EditorCamera on → ThirdPersonFollow off、 Player 各 Component 休止
+    /// Play → Edit 遷移。 paused/clear/death をリセット、 EditorCamera on、 Player Component 休止
     void EnterEdit() noexcept;
 
 private:
-    /// `m_level.blocks` を観測駆動で見て、 `m_blocks` (Block オブジェクト群) と
-    /// `m_collisionWorld` (AABB 配列) を再構築する。 mutation 発生 frame だけ呼ばれる
-    /// dirty flag 経由で変更を拾う (毎 frame の全 alloc churn を回避)
+    /// 基底 OnRender が scene 解決後に呼ぶ描画本体。ctx を組み立てて全 Renderable を描く
+    void OnRenderScene() override;
+
+    /// dirty flag 検出時のみ m_blocks と m_collisionWorld を LevelData から再構築する
     void RebuildBlocksFromLevelData();
 
     /// 仮 skinned キャラ (glTF) を毎ステップ進めて描画する debug hook
@@ -157,8 +153,6 @@ private:
     NS::Game::Level::PlayMode m_playMode{};
     Mode m_mode = Mode::Edit;
 
-    /// テーマ swap は同一 frame 内で skybox / block / lighting に同じ ThemeData を反映させる必要がある
-    /// 同じパスを毎フレーム LoadCubemap し直すと texture I/O が走るので、 最後にロードした絶対パスを
-    /// 記憶しておき、 ThemeRegistry::Get(...).skyboxCubemapPath と差分が出たフレームだけ Reload する
+    /// 差分フレームのみ cubemap を再ロードするため前回パスを保持する
     std::filesystem::path m_loadedSkyboxPath{};
 };

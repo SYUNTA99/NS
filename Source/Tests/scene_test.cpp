@@ -20,7 +20,7 @@ namespace
             ++updateCount;
             dtAccum += NS::Core::FrameTimer::FixedDelta();
         }
-        void OnRender() override { ++renderCount; }
+        void OnRenderScene() override { ++renderCount; }
         void OnShutdown() override { ++shutdownCount; }
     };
 } // namespace

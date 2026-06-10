@@ -54,8 +54,7 @@ namespace
     constexpr NS::Math::Vector3 kPlayerColor{0.85f, 0.20f, 0.20f};
     constexpr NS::Math::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
 
-    // 仮 skinned キャラの接地点と目標身長。 bind 境界から一様スケールを自動算出するので
-    // 別キャラ (Mixamo 等) に差し替えてもモデル単位に依らず接地して概ね同じ高さに収まる
+    // bind 境界から一様スケールを自動算出するためモデル単位に依らず接地・同身長に収まる
     constexpr NS::Math::Vector3 kAnimModelFootAnchor{2.5f, 0.0f, 0.0f};
     constexpr float kAnimModelTargetHeight = 1.8f;
 
@@ -146,13 +145,9 @@ void LevelEditorScene::OnStart()
     // 上書きするので、 ここの Material は ConstantBuffer 搬入路として使うだけ
     NS::Graphics::MaterialDesc blockMatDesc = matDesc;
     m_blockMaterial = NS::Graphics::Material::Create(blockMatDesc);
-    // block の slot 0 は外側で TextureArray を bind するので Material 側には SetTexture しない
-    // SetTexture すると Material::Bind が slot 0 を上書きしてしまい、 InstanceBatcher 側で
-    // ぶら下げた TextureArray SRV が消える
+    // slot 0 は外側で TextureArray を bind するため SetTexture 禁止 — 呼ぶと Material::Bind が SRV を上書きする
 
-    // 全 theme 用 block texture を 1 つの Texture2DArray に集約する。 現状はアセット未取得なので
-    // cube_test.png を代替で 40 slice ぶん詰める (5 theme x 8 variant の枠だけ確保しておく流派)
-    // Kenney prototype texture が揃ったら slicePaths をテーマ別に差し替える
+    // 全テーマ block texture を Texture2DArray 1 本に集約。 アセット未取得のため cube_test.png を 40 slice 充填
     {
         NS::Graphics::TextureArrayDesc taDesc{};
         const auto placeholderSlice = exeDir / "Assets" / "Textures" / "cube_test.png";
@@ -176,7 +171,7 @@ void LevelEditorScene::OnStart()
                     "LevelEditorScene: InstanceBatcher 構築失敗、 block 描画はスキップされる");
 
     // placeholder skybox。 kurt 6-face PNG をロードし、 取得できなければ
-    // 1x1 マゼンタ cubemap fallback で続行する (描画は OnRender 末尾)
+    // 1x1 マゼンタ cubemap fallback で続行する (描画は OnRenderScene 末尾)
     m_skybox = NS::Graphics::Skybox::Create();
     if (m_skybox->IsValid())
     {
@@ -211,7 +206,6 @@ void LevelEditorScene::OnStart()
     camera.SetAspectRatioFromRenderer(renderer);
     camera.SetNearPlane(0.1f);
     camera.SetFarPlane(100.0f);
-    camera.SetFovY(m_cameraRig->Follow().FovY());
     camera.SetUp({0.0f, 1.0f, 0.0f});
 
     m_player->OnStart();
@@ -261,8 +255,7 @@ void LevelEditorScene::OnStart()
     // 仮 skinned キャラを編集・プレイ両モードで常時表示し、 アニメ再生を画面で確認できるようにする
     // アセットが無ければ skip して通常進行。 後で同じパスに別キャラ (glTF) を置けば差し替わる
     {
-        // 人型リグ (Xbot) があれば優先する。 CesiumMan は人型 profile に骨名が載らないので
-        // 別ファイルからのアニメ流用は人型リグのときだけ効く
+        // Xbot は人型 profile 骨名と一致するため優先。 CesiumMan は骨名が違うので外部アニメ流用不可
         std::filesystem::path modelPath = exeDir / "Assets" / "Models" / "CesiumMan.glb";
         for (const char* name : {"Xbot.glb", "CesiumMan.glb"})
         {
@@ -426,10 +419,8 @@ void LevelEditorScene::OnUpdate()
     {
         const float dt = NS::Core::FrameTimer::FixedDelta();
 
-        // 入力と物理は Player の Component が担う。 camera 水平 forward を入力 Component に渡してから
-        // Player を tick すると、 PlayerInput → CharacterMovement の順 (priority) で desired move /
-        // 掴まり入力 / jump が反映され、 結果が Player.Root (Transform) に直接書かれる
-        // SSOT は Transform。 ThirdPersonFollow が Player.Root を target にしているため camera も追従する
+        // camera 水平 forward を先に渡してから tick。 priority 順 PlayerInput→CharacterMovement で入力→物理が確定し
+        // Transform に書かれる
         if (m_player)
         {
             NS::Math::Vector3 camForward{0.0f, 0.0f, 1.0f};
@@ -445,9 +436,7 @@ void LevelEditorScene::OnUpdate()
         // Play のゲームルール (落下死 / coin / star)。 物理は持たず player 位置を読むだけ
         m_playMode.Tick(m_level, m_play, dt);
 
-        // ハザード AABB と player capsule の overlap 判定。 接触していれば HazardComponent に
-        // 通知して playerHealth を 1 減算する (per-fixed-step accumulating)。 hazard は solid 衝突世界にも
-        // 入っており capsule 中心は表面から radius ぶん外に留まるため、 capsule 芯線分から AABB の最近距離で判定する
+        // hazard は solid 衝突世界にも含まれ capsule 中心は表面外に留まるため芯線分から AABB の最近距離で判定する
         if (m_player)
         {
             NS::Physics::Capsule playerCapsule{};
@@ -559,7 +548,7 @@ void LevelEditorScene::EnterEdit() noexcept
     }
 }
 
-void LevelEditorScene::OnRender()
+void LevelEditorScene::OnRenderScene()
 {
     auto* app = NS::App::Application::Get();
     if (app == nullptr)
@@ -580,8 +569,7 @@ void LevelEditorScene::OnRender()
     {
         if (m_cameraRig == nullptr)
             return;
-        // Player Mesh の補間と camera を同位相にする。 OnUpdate (fixed step) で
-        // SetPosition すると相対位置が discrete に動いて jitter として見える
+        // fixed step で SetPosition すると相対位置が discrete になり jitter するため補間を先に適用する
         m_cameraRig->Follow().ApplyCameraTransform(ctx.alpha);
         ctx.viewProjection = m_cameraRig->Camera().ViewProjection();
     }
@@ -593,10 +581,24 @@ void LevelEditorScene::OnRender()
     // テーマはシーン単位の上書きなので override に詰め、 プロジェクト既定値の上に Resolve する
     // 解決済設定を mesh / block 両経路に流すことで lighting の出所を 1 か所に統一する
     NS::Graphics::RenderSettingsOverride themeOverride{};
-    themeOverride.lightDir = theme.lightDirection;
+    if (theme.lightDirection.LengthSquared() > 1e-6f)
+    {
+        themeOverride.lightDir = theme.lightDirection;
+    }
+    else
+    {
+        // zero ベクトルは normalize で拡散光が無言で消えるため override せず既定 lightDir に落とす
+        static bool s_warnedZeroLightDir = false;
+        if (!s_warnedZeroLightDir)
+        {
+            NS_LOG_WARN(::NS::Core::LogCat::Game,
+                        "LevelEditorScene: テーマの lightDirection が zero のため既定 lightDir で描画する");
+            s_warnedZeroLightDir = true;
+        }
+    }
     themeOverride.lightColor = theme.lightColor;
     themeOverride.ambientColor = theme.ambientColor;
-    const NS::Graphics::RenderSettings resolved = NS::Graphics::Resolve(app->RenderDefaults(), themeOverride);
+    const NS::Graphics::RenderSettings resolved = NS::Graphics::Resolve(ctx.renderer->Settings(), themeOverride);
 
     // Player の赤系 baseColor 等の個体色は MeshRendererComponent::SetBaseColor で別途設定済なので触らない
     if (m_player)
@@ -614,9 +616,8 @@ void LevelEditorScene::OnRender()
         m_animMesh->SetAmbientColor(resolved.ambientColor);
     }
 
-    // Block 描画は InstanceBatcher の (mesh, material) bucket 経由に統一する
-    // block の MeshRendererComponent::IsActive(false) で旧 per-block Draw 経路は短絡されるため、
-    // 描画呼出は本フレームの instance VB 1 回 + bucket 数の DrawIndexedInstanced に集約される
+    // Block 描画は InstanceBatcher bucket 経由に統一。 MeshRendererComponent が非アクティブなので旧 per-block
+    // 経路は通らない
     if (m_instanceBatcher && m_instanceBatcher->IsValid())
     {
         // 解決済 lighting を block 全体の FrameCB に流す。 baseColor は per-instance で個体色を別途乗算する
@@ -631,8 +632,9 @@ void LevelEditorScene::OnRender()
             m_blockMaterial->SetParams(*ctx.renderer, blockCB);
 
         m_instanceBatcher->BeginFrame();
-        for (auto& block : m_blocks)
+        for (std::size_t bi = 0; bi < m_blocks.size(); ++bi)
         {
+            const auto& block = m_blocks[bi];
             if (!block)
                 continue;
             const NS::Game::Level::BlockEntry* entry = nullptr;
@@ -641,14 +643,23 @@ void LevelEditorScene::OnRender()
             const std::int16_t x = static_cast<std::int16_t>(std::lround(wp.x));
             const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
             const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
-            // blockId は LevelData 側にしか無いので、 対応 entry を見つける。 SeedInitialLevel /
-            // RebuildBlocksFromLevelData の関係から index 一致は保証されるが、 安全側で線形検索する
-            for (const auto& e : m_level.blocks)
+            // blockId は LevelData 側にしか無い。 SeedInitialLevel / RebuildBlocksFromLevelData が
+            // index 一致を保証するため同 index を先に照合し、 不一致時のみ線形検索へフォールバック
+            if (bi < m_level.blocks.size())
             {
-                if (e.x == x && e.y == y && e.z == z)
+                const auto& same = m_level.blocks[bi];
+                if (same.x == x && same.y == y && same.z == z)
+                    entry = &same;
+            }
+            if (entry == nullptr)
+            {
+                for (const auto& e : m_level.blocks)
                 {
-                    entry = &e;
-                    break;
+                    if (e.x == x && e.y == y && e.z == z)
+                    {
+                        entry = &e;
+                        break;
+                    }
                 }
             }
             const std::uint16_t blockId =
@@ -679,15 +690,10 @@ void LevelEditorScene::OnRender()
             r->Draw(ctx);
     }
 
-    // Skybox は不透明描画後 + 編集オーバーレイ前に挟む (depth=1 同士の
-    // LESS_EQUAL 比較を成立させるため depth buffer 上の遠景 pixel が確定した直後)
-    // viewProj から camera 位置を抜くために行列の translation 行 (_41/_42/_43) を 0 化する
-    // これで skybox は常に camera 中心に追従し、 player が前進しても同じ星空を見続ける
+    // Skybox は不透明描画後・オーバーレイ前。 view の translation 行 (_41/_42/_43) を 0 化して camera 中心に固定する
     if (m_skybox && m_skybox->IsValid())
     {
-        // テーマが切替わった (or 起動直後) frame だけ cubemap を再ロードする
-        // 毎フレーム LoadCubemap すると DDS / 6-face PNG の I/O が常時走るので、
-        // 最後にロードしたパスを記憶して差分が出た時だけ呼ぶ
+        // 毎フレーム LoadCubemap すると I/O が常時走るため、 前回パスと差分があるときだけ再ロードする
         if (!theme.skyboxCubemapPath.empty() && theme.skyboxCubemapPath != m_loadedSkyboxPath)
         {
             const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
@@ -749,9 +755,6 @@ void LevelEditorScene::OnShutdown()
         m_player->OnEndPlay();
 
     m_renderList.clear();
-
-    if (auto* app = NS::App::Application::Get())
-        app->Window().SetResizeCallback({});
 
     m_editorCameraRig.reset();
     m_cameraRig.reset();
@@ -855,9 +858,8 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
             block->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
             block->OnStart();
-            // block の IRenderable 経路は休止させ、 描画は InstanceBatcher の bucket 集約に任せる
-            // OnStart 内で MeshRendererComponent が RegisterRenderable しているため、 ここで SetActive(false) すると
-            // Draw(context) が no-op になり 1 block = 1 draw call の旧経路が完全に消える
+            // OnStart で RegisterRenderable 済のため SetActive(false) で旧 per-block Draw 経路を無効化し
+            // InstanceBatcher に委ねる
             block->MeshComp().SetActive(false);
 
             m_collisionWorld.push_back(block->Collider().WorldAABB());
@@ -960,9 +962,8 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
         }
     }
 
-    // 生成直後は previous PRS が default(原点/単位回転)のため、ここで Snapshot して previous==current に揃える
-    // これを欠かすと描画の InterpolatedWorldMatrix(alpha) が原点から配置先へ補間し、編集のたびに全ブロックが一瞬振れる
-    // 毎フレームの Snapshot ループは Tick/Rebuild より前に走るので、この step では再構築分を拾えない
+    // 生成直後は previous PRS が原点/単位回転のため Snapshot で current に揃える
+    // 欠かすと InterpolatedWorldMatrix(alpha) が原点→配置先を補間し編集のたびに全ブロックが振れる
     for (auto& block : m_blocks)
         block->Root().Snapshot();
     for (auto& slope : m_slopes)
