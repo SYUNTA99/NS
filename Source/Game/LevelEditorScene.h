@@ -84,6 +84,22 @@ public:
 
     [[nodiscard]] Mode CurrentMode() const noexcept { return m_mode; }
 
+    /// 最後に OnRenderScene で解決した scene 段設定 (project 既定 ← scene override)。object 段は含まない
+    [[nodiscard]] const NS::Graphics::RenderSettings& DebugResolvedSettings() const noexcept
+    {
+        return m_debugResolvedSettings;
+    }
+    /// 最後に構築した scene override。出所逆算 (default / scene) の入力に使う
+    [[nodiscard]] const NS::Graphics::RenderSettingsOverride& DebugSceneOverride() const noexcept
+    {
+        return m_debugSceneOverride;
+    }
+    /// 代表 object override (Player の MeshRenderer)。出所逆算 (object) の入力。未設定なら空 override
+    [[nodiscard]] const NS::Graphics::RenderSettingsOverride& DebugPlayerObjectOverride() const noexcept
+    {
+        return m_debugPlayerObjectOverride;
+    }
+
     /// Edit → Play 遷移。 spawn 位置に player 再構築、 EditorCamera off、 Player Component 再活性化
     void EnterPlay() noexcept;
 
@@ -157,6 +173,12 @@ private:
     NS::Game::Editor::EditorMode m_editor{};
     NS::Game::Level::PlayMode m_playMode{};
     Mode m_mode = Mode::Edit;
+
+    // Debug provenance パネルの読み出し元。書き込みは OnRenderScene で毎フレーム行う
+    // 値メンバなので Release でも存在するが、 ImGui 読み出しのみ #if ガードする
+    NS::Graphics::RenderSettings m_debugResolvedSettings{};
+    NS::Graphics::RenderSettingsOverride m_debugSceneOverride{};
+    NS::Graphics::RenderSettingsOverride m_debugPlayerObjectOverride{};
 
     /// 差分フレームのみ cubemap を再ロードするため前回パスを保持する
     std::filesystem::path m_loadedSkyboxPath{};

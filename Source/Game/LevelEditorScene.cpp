@@ -604,6 +604,13 @@ void LevelEditorScene::OnRenderScene()
     // mesh 経路は ctx 経由で pull、 block 経路はこの解決値を FrameCB に詰めて同一値を流す
     ctx.resolvedSettings = ResolveSceneSettings(ctx.renderer->Settings());
 
+    // Debug provenance パネルの入力を毎フレーム退避する。出所は has_value の突き合わせで逆算するので
+    // Resolve のホットパスに追跡を入れず、 scene override と代表 object override をそのまま保持する
+    m_debugSceneOverride = BuildSceneOverride();
+    m_debugResolvedSettings = ctx.resolvedSettings;
+    if (m_player)
+        m_debugPlayerObjectOverride = m_player->MeshComp().RenderOverride();
+
     // テーマ swap は同一 frame 内で skybox / block / lighting に同じ ThemeData を反映させる必要がある
     // 範囲外 themeId は ThemeRegistry::Get 側で Grass にフォールバックされる
     const ThemeData& theme = ThemeRegistry::Get(m_level.themeId);
