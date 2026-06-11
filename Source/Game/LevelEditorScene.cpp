@@ -600,55 +600,26 @@ void LevelEditorScene::OnRenderScene()
         ctx.viewProjection = m_cameraRig->Camera().ViewProjection();
     }
 
+    // 基底が BuildSceneOverride() を Resolve するので、 theme override が scene 解決値として ctx に載る
+    // mesh 経路は ctx 経由で pull、 block 経路はこの解決値を FrameCB に詰めて同一値を流す
+    ctx.resolvedSettings = ResolveSceneSettings(ctx.renderer->Settings());
+
     // テーマ swap は同一 frame 内で skybox / block / lighting に同じ ThemeData を反映させる必要がある
     // 範囲外 themeId は ThemeRegistry::Get 側で Grass にフォールバックされる
     const ThemeData& theme = ThemeRegistry::Get(m_level.themeId);
-
-    // テーマはシーン単位の上書きなので override に詰め、 プロジェクト既定値の上に Resolve する
-    // 解決済設定を mesh / block 両経路に流すことで lighting の出所を 1 か所に統一する
-    NS::Graphics::RenderSettingsOverride themeOverride{};
-    if (theme.lightDirection.LengthSquared() > 1e-6f)
-    {
-        themeOverride.lightDir = theme.lightDirection;
-    }
-    else
-    {
-        // zero ベクトルは normalize で拡散光が無言で消えるため override せず既定 lightDir に落とす
-        static bool s_warnedZeroLightDir = false;
-        if (!s_warnedZeroLightDir)
-        {
-            NS_LOG_WARN(::NS::Core::LogCat::Game,
-                        "LevelEditorScene: テーマの lightDirection が zero のため既定 lightDir で描画する");
-            s_warnedZeroLightDir = true;
-        }
-    }
-    themeOverride.lightColor = theme.lightColor;
-    themeOverride.ambientColor = theme.ambientColor;
-    const NS::Graphics::RenderSettings resolved = NS::Graphics::Resolve(ctx.renderer->Settings(), themeOverride);
-
-    // Player の赤系 baseColor 等の個体色は MeshRendererComponent::SetBaseColor で別途設定済なので触らない
-    if (m_player)
-    {
-        m_player->MeshComp().SetRenderOverride(themeOverride);
-    }
-
-    if (m_animMesh)
-    {
-        m_animMesh->SetRenderOverride(themeOverride);
-    }
 
     // Block 描画は InstanceBatcher bucket 経由に統一。 MeshRendererComponent が非アクティブなので旧 per-block
     // 経路は通らない
     if (m_instanceBatcher && m_instanceBatcher->IsValid())
     {
-        // 解決済 lighting を block 全体の FrameCB に流す。 baseColor は per-instance で個体色を別途乗算する
+        // scene 解決値を block 全体の FrameCB に流す。 baseColor は per-instance で個体色を別途乗算する
         NS::Scene::FrameCB blockCB{};
         blockCB.viewProj = ctx.viewProjection;
-        blockCB.lightDir = resolved.lightDir;
+        blockCB.lightDir = ctx.resolvedSettings.lightDir;
         blockCB.lightDir.Normalize();
         blockCB.baseColor = NS::Math::Vector3{1.0f, 1.0f, 1.0f}; // per-instance baseColor と乗算するので 1 に固定
-        blockCB.lightColor = resolved.lightColor;
-        blockCB.ambientColor = resolved.ambientColor;
+        blockCB.lightColor = ctx.resolvedSettings.lightColor;
+        blockCB.ambientColor = ctx.resolvedSettings.ambientColor;
         if (m_blockMaterial)
             m_blockMaterial->SetParams(*ctx.renderer, blockCB);
 
