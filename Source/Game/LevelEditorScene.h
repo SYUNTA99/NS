@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Framework/Graphics/RenderSettings.h"
 #include "Framework/Math/Math.h"
 #include "Framework/Physics/SweptTriangle.h"
 #include "Framework/Scene/SceneBase.h"
@@ -88,6 +89,10 @@ public:
 
     /// Play → Edit 遷移。 paused/clear/death をリセット、 EditorCamera on、 Player Component 休止
     void EnterEdit() noexcept;
+
+protected:
+    /// テーマの lighting をシーン単位の上書きとして宣言する。push は書かず override を返すだけ
+    NS::Graphics::RenderSettingsOverride BuildSceneOverride() override;
 
 private:
     /// 基底 OnRender が scene 解決後に呼ぶ描画本体。ctx を組み立てて全 Renderable を描く

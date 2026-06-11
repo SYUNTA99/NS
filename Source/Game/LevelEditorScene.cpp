@@ -548,6 +548,32 @@ void LevelEditorScene::EnterEdit() noexcept
     }
 }
 
+NS::Graphics::RenderSettingsOverride LevelEditorScene::BuildSceneOverride()
+{
+    // 範囲外 themeId は ThemeRegistry::Get 側で Grass にフォールバックされる
+    const ThemeData& theme = ThemeRegistry::Get(m_level.themeId);
+
+    NS::Graphics::RenderSettingsOverride over{};
+    if (theme.lightDirection.LengthSquared() > 1e-6f)
+    {
+        over.lightDir = theme.lightDirection;
+    }
+    else
+    {
+        // zero ベクトルは normalize で拡散光が無言で消えるため override せず既定 lightDir に落とす
+        static bool s_warnedZeroLightDir = false;
+        if (!s_warnedZeroLightDir)
+        {
+            NS_LOG_WARN(::NS::Core::LogCat::Game,
+                        "LevelEditorScene: テーマの lightDirection が zero のため既定 lightDir で描画する");
+            s_warnedZeroLightDir = true;
+        }
+    }
+    over.lightColor = theme.lightColor;
+    over.ambientColor = theme.ambientColor;
+    return over;
+}
+
 void LevelEditorScene::OnRenderScene()
 {
     auto* app = NS::App::Application::Get();
