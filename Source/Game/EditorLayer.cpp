@@ -3,6 +3,7 @@
 #include "Framework/App/Application.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
+#include "Framework/Graphics/RenderSettings.h"
 #include "Framework/Platform/Gamepad.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
@@ -59,6 +60,7 @@ void EditorLayer::OnRender()
         RenderPauseModal(*scene);
 
     RenderFpsOverlay();
+    RenderRenderSettingsPanel(*scene);
 }
 
 void EditorLayer::HandleModeToggleInput(LevelEditorScene& scene) noexcept
@@ -68,7 +70,7 @@ void EditorLayer::HandleModeToggleInput(LevelEditorScene& scene) noexcept
         return;
     auto& input = app->Input();
 
-    // テキスト入力中の Tab は ImGui に渡し、 mode flip させない
+    // ImGui がキーボードを握っている間は mode flip させない
     bool wantKb = false;
     if (auto* imgui = app->ImGui())
         wantKb = imgui->WantCaptureKeyboard();
@@ -113,7 +115,7 @@ void EditorLayer::RenderFpsOverlay() noexcept
     const auto vp = ImGui::GetMainViewport();
     if (vp == nullptr)
         return;
-    // 右上に padding 10px 寄せ。 pivot=(1,0) で width 不確定でも右端固定
+    // pivot=(1,0) で右端固定。 width が不確定でも右端から padding 分だけ内側に収まる
     constexpr float kPadding = 10.0f;
     ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x - kPadding, vp->WorkPos.y + kPadding),
                             ImGuiCond_Always,
@@ -134,10 +136,58 @@ void EditorLayer::RenderFpsOverlay() noexcept
 #endif
 }
 
+void EditorLayer::RenderRenderSettingsPanel(LevelEditorScene& scene) noexcept
+{
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+    const NS::Graphics::RenderSettings& resolved = scene.DebugResolvedSettings();
+    const NS::Graphics::RenderSettingsOverride& sceneOver = scene.DebugSceneOverride();
+    const NS::Graphics::RenderSettingsOverride& objOver = scene.DebugPlayerObjectOverride();
+
+    // 出所は has_value の突き合わせで逆算する。 Resolve のホットパスに追跡を入れない
+    auto provenance = [](bool sceneHas, bool objectHas) -> const char* {
+        if (objectHas)
+            return "object";
+        if (sceneHas)
+            return "scene";
+        return "default";
+    };
+
+    if (ImGui::Begin("RenderSettings"))
+    {
+        ImGui::Text("lightDir   : (%.2f,%.2f,%.2f) [%s]",
+                    static_cast<double>(resolved.lightDir.x),
+                    static_cast<double>(resolved.lightDir.y),
+                    static_cast<double>(resolved.lightDir.z),
+                    provenance(sceneOver.lightDir.has_value(), objOver.lightDir.has_value()));
+        ImGui::Text("lightColor : (%.2f,%.2f,%.2f) [%s]",
+                    static_cast<double>(resolved.lightColor.x),
+                    static_cast<double>(resolved.lightColor.y),
+                    static_cast<double>(resolved.lightColor.z),
+                    provenance(sceneOver.lightColor.has_value(), objOver.lightColor.has_value()));
+        ImGui::Text("ambient    : (%.2f,%.2f,%.2f) [%s]",
+                    static_cast<double>(resolved.ambientColor.x),
+                    static_cast<double>(resolved.ambientColor.y),
+                    static_cast<double>(resolved.ambientColor.z),
+                    provenance(sceneOver.ambientColor.has_value(), objOver.ambientColor.has_value()));
+        ImGui::Separator();
+        ImGui::Text("clearColor : (%.2f,%.2f,%.2f,%.2f) [%s]",
+                    static_cast<double>(resolved.clearColor.R()),
+                    static_cast<double>(resolved.clearColor.G()),
+                    static_cast<double>(resolved.clearColor.B()),
+                    static_cast<double>(resolved.clearColor.A()),
+                    provenance(sceneOver.clearColor.has_value(), objOver.clearColor.has_value()));
+        ImGui::TextDisabled("clearColor / vsync のシーン上書きは非対応 (lighting 3 種のみ階層対応)");
+    }
+    ImGui::End();
+#else
+    (void)scene;
+#endif
+}
+
 void EditorLayer::RenderPauseModal(LevelEditorScene& scene) noexcept
 {
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
-    // Pause 状態は paused フラグ単独で表現するため、 ここで modal の閉じ X (右上) は不要
+    // paused フラグ単独で状態を表現するため、 modal の閉じ X は不要
     const auto vp = ImGui::GetMainViewport();
     if (vp != nullptr)
     {

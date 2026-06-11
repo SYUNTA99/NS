@@ -40,7 +40,9 @@ private:
     static void HandleModeToggleInput(LevelEditorScene& scene) noexcept;
     static void HandlePauseInput(LevelEditorScene& scene) noexcept;
     static void RenderPauseModal(LevelEditorScene& scene) noexcept;
-    /// 右上に半透明の FPS / frame time オーバーレイを描画する。 ImGui の io.Framerate を
-    /// 使うので追加の状態は持たない。 Debug / Dev build 限定 (EditorLayer 自体がそうなので継承)
+    /// 右上に半透明の FPS / frame time オーバーレイを描画する。 追加の状態は持たない
     static void RenderFpsOverlay() noexcept;
+    /// 解決済 RenderSettings の最終値と各フィールドの出所 (default / scene / object) を表示する
+    /// 出所は scene / object override の has_value 突き合わせで逆算する。 Release では #if で除外
+    static void RenderRenderSettingsPanel(LevelEditorScene& scene) noexcept;
 };
