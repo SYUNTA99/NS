@@ -25,9 +25,8 @@ namespace NS::Graphics
 
     class Renderer;
 
-    /// DirectXTK CommonStates のラッパ
-    /// 公開セット = 10 getter (Blend 2 / Depth 2 / Rasterizer 2 / Sampler 4)
-    /// 戻り値は型付き D3D11 state ポインタ。 継ぎ目で raw D3D を扱う Renderer / Material が直接 bind する
+    /// DirectXTK CommonStates のラッパ。公開セット = 10 getter (Blend 2 / Depth 2 / Rasterizer 2 / Sampler 4)
+    /// 戻り値は型付き D3D11 state ポインタで、Renderer / Material が直接 bind する
     class CommonStates : public NS::Core::NonCopyable
     {
     public:

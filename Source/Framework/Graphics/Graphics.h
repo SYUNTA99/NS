@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Graphics.h
-/// @brief Graphics 層 umbrella header — D3D11 ベースの描画 API
+/// @brief Graphics 層一括 include ヘッダ — D3D11 ベースの描画 API
 
 #include "Framework/Graphics/Animation.h"
 #include "Framework/Graphics/Buffer.h"

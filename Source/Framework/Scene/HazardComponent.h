@@ -18,16 +18,13 @@ namespace NS::Game::Level
 
 namespace NS::Scene
 {
-    /// 触れたプレイヤーに毎フレーム 1 ダメージを与える trigger Component
-    /// 自身は world に対して描画も衝突応答も持たない (HazardBlock 側の StaticColliderComponent が
-    /// 衝突応答を、 MeshRendererComponent が描画を別途担う)
+    /// 触れたプレイヤーに毎フレーム 1 ダメージを与える trigger Component。描画・衝突応答は他 Component が担う
     class HazardComponent : public Component
     {
     public:
         HazardComponent() noexcept;
 
-        /// LevelEditorScene / PlayMode が capsule × hazard AABB の overlap を検出した frame で呼ぶ
-        /// `playState.playerHealth` を 1 減算 (下限 0 でクランプ)、 0 到達で `deathTriggered=true`
+        /// overlap 検出 frame で呼ぶ。playerHealth を 1 減算 (下限 0)、0 到達で deathTriggered=true
         void OnPlayerOverlap(NS::Game::Level::PlayState& playState) noexcept;
     };
 } // namespace NS::Scene

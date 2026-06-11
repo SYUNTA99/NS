@@ -3,10 +3,7 @@
 /// @file ThemeData.h
 /// @brief 1 テーマの全データ。 POD struct、 ThemeRegistry が 5 件を read-only で保持する
 ///
-/// @details ECS 禁止の locked constraint に従い「振る舞いが同じならクラス化しない」 純データ表現
-/// Texture2DArray slice は今後 blockTextureArrayBaseSlice を本格活用するため、
-/// ここではフィールドのみ用意する。 物理は全テーマ共通なので視覚フィールド (skybox + lighting)
-/// のみを持たせる。 Game partition convention により namespace 無し
+/// @details 物理は全テーマ共通なので視覚フィールド (skybox + lighting) のみを持つ純データ表現
 
 #include <cstdint>
 #include <filesystem>

@@ -68,7 +68,7 @@ namespace NS::Core
 
     bool FileSystem::WriteAllBytes(const std::filesystem::path& path, std::span<const std::byte> bytes)
     {
-        // 中間ディレクトリを必要なら作成 (parent が空 path なら何もしない)
+        // parent が空 path (ファイル名のみ指定) の場合はスキップ
         const auto parent = path.parent_path();
         if (!parent.empty())
         {

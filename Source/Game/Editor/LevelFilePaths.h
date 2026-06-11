@@ -17,23 +17,18 @@
 
 namespace NS::Game::Editor
 {
-    /// 安全な level name のみ通す。 許可: ASCII 英数字 + `_` / `-` / 半角空白、
-    /// 1〜200 char、 `..` 含まず、 先頭末尾は空白以外、 Windows 予約名でないこと
-    /// 失敗時は空 string を返す (no-throw、 `[[nodiscard]]`)
+    /// ASCII 英数字+`_`/`-`/空白、1〜200 char、`..`なし、Windows 予約名なし。 失敗時は空文字列
     [[nodiscard]] std::string SanitizeLevelName(std::string_view name) noexcept;
 
     /// `<exe>/Levels/` の絶対 path。 exe 起動 directory に依存
     [[nodiscard]] std::filesystem::path GetLevelsDirectory() noexcept;
 
-    /// sanitize 済 name から `<exe>/Levels/<name>.nslvl` を構築
-    /// sanitize 失敗時は `std::nullopt`。 caller は `*path` を直に I/O に渡せる
+    /// sanitize 済 name から `<exe>/Levels/<name>.nslvl` を構築。 失敗時は `std::nullopt`
     [[nodiscard]] std::optional<std::filesystem::path> BuildLevelPath(std::string_view name) noexcept;
 
     /// `Levels/` を必要なら作成。 既存なら何もしない。 作成失敗時は false + `NS_LOG_ERROR`
     [[nodiscard]] bool EnsureLevelsDirectoryExists() noexcept;
 
-    /// `<exe>/Levels/*.nslvl` を列挙し、 拡張子を除いた sanitize 済 stem を返す
-    /// サブディレクトリは対象外。 ソート済 ASCII 比較。 例外発生時は部分的な list を返し
-    /// `NS_LOG_ERROR` を出す
+    /// `<exe>/Levels/*.nslvl` を列挙しソート済 stem を返す。 例外時は部分リスト + `NS_LOG_ERROR`
     [[nodiscard]] std::vector<std::string> EnumerateLevelFiles() noexcept;
 } // namespace NS::Game::Editor

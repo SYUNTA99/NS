@@ -3,8 +3,7 @@
 /// @file ThemeRegistry.h
 /// @brief 5 テーマを静的に保有する read-only lookup (全テーマ視覚フィールドのみ)
 ///
-/// @details Game partition convention により namespace は最小限の関数グルーピング用 1 段のみ
-/// `ThemeRegistry::Get(id)` は 5 件の `ThemeData` への const 参照を返し、 範囲外は Grass にフォールバックする
+/// @details `ThemeRegistry::Get(id)` は 5 件の `ThemeData` への const 参照を返し、 範囲外は Grass にフォールバックする
 /// 静的 storage 上に並ぶので呼出側は参照を frame 越しに保持して問題ない
 
 #include <cstdint>

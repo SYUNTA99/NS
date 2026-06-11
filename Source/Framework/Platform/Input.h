@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Input.h
-/// @brief NS::Platform::Input — Keyboard / Mouse / Gamepad の集約 facade
+/// @brief NS::Platform::Input — Keyboard / Mouse / Gamepad をまとめる窓口
 ///
 /// @details Application が所有し、 fixed step ループの頭で `Update()` を 1 回呼ぶ
 /// 共通基底は持たず、 サブクラスへの参照取得 API のみ提供する
@@ -16,9 +16,7 @@
 namespace NS::Platform
 {
 
-    /// 入力デバイスの集約。Application が所有し、毎フレーム頭で Update() を呼ぶ
-    /// Keyboard / Mouse / Gamepad のサブクラスへの参照を提供する
-    /// 共通基底クラスは持たない
+    /// 入力デバイスの集約。Keyboard / Mouse / Gamepad への参照を提供する静的クラス
     class Input
     {
     public:
@@ -30,8 +28,7 @@ namespace NS::Platform
         [[nodiscard]] NS::Platform::Mouse& Mouse() noexcept { return m_mouse; }
         [[nodiscard]] const NS::Platform::Mouse& Mouse() const noexcept { return m_mouse; }
 
-        /// 現状は 1 スロットのみ。将来 4 スロット対応は配列拡張で API 互換
-        /// index が範囲外の場合は index 0 を返す (no-throw、未接続として振る舞う)
+        /// index 範囲外は 0 を返す。将来の複数スロット対応は配列拡張で API 互換
         [[nodiscard]] NS::Platform::Gamepad& Gamepad(int index = 0) noexcept;
         [[nodiscard]] const NS::Platform::Gamepad& Gamepad(int index = 0) const noexcept;
 

@@ -147,16 +147,13 @@ namespace NS::Game::Editor
         if (!m_active || !m_cursor.valid)
             return;
 
-        // DebugDraw への蓄積は維持 (将来 GPU 描画 path が整ったら自動的に表示される)
-        // 既存 test (CursorPreview.RendersAABBToDebugDraw) も buffered vertex を assert
+        // DebugDraw への蓄積は維持 (GPU 描画 path が整ったら自動表示される)
         const NS::Math::AABB placeBox(m_cursor.placementCenter,
                                       NS::Math::Vector3{kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
         NS::Graphics::DebugDraw::AABB(placeBox, m_cursor.placementBlocked ? kCursorBlockedColor : kCursorOkColor);
 
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
-        // 即座に画面上で wireframe を確認できるよう、 ImGui の background DrawList に
-        // 8 頂点を view-projection で screen 投影して 12 辺を線描画する
-        // DebugDraw::Flush の GPU 描画が未配線な間の代替手段
+        // ImGui の background DrawList に 8 頂点を view-projection で screen 投影して 12 辺を線描画する
         if (m_camera == nullptr)
             return;
         auto* app = NS::App::Application::Get();
@@ -410,7 +407,7 @@ namespace NS::Game::Editor
 
         const auto vp = m_camera->ViewProjection();
         const NS::Math::Ray ray =
-            NS::Scene::EditorGridMath::ScreenToWorldRay(vp, viewport, m_input->Mouse().X(), m_input->Mouse().Y());
+            NS::Scene::EditorGridMath::ScreenToWorldRay(vp, viewport, m_input->Mouse().GetX(), m_input->Mouse().GetY());
 
         float bestT = std::numeric_limits<float>::max();
         bool hit = false;
@@ -452,9 +449,8 @@ namespace NS::Game::Editor
 
         if (hit)
         {
-            // 隣接セルは「hit セル座標 + 整数 normal」 で素直に求める
-            // SnapHitToPlacementCell 経由だと、 境界座標 (hit.y=0.5 等) を最近接 cell に round
-            // する時に +1 され、 さらに normal*g で +1 されて 2 セル先に飛んでしまう pitfall がある
+            // hitCell + 整数 normal で隣接セルを求める。 SnapHitToPlacementCell は境界座標を round するとさらに +1 され
+            // 2 セル先に飛ぶ
             const std::int16_t normalX = static_cast<std::int16_t>(std::lround(hitNormal.x));
             const std::int16_t normalY = static_cast<std::int16_t>(std::lround(hitNormal.y));
             const std::int16_t normalZ = static_cast<std::int16_t>(std::lround(hitNormal.z));
@@ -499,8 +495,7 @@ namespace NS::Game::Editor
     {
         if (m_input == nullptr || m_level == nullptr || !m_cursor.valid)
             return;
-        // ImGui UI が mouse を握っている時は editor の place / delete を発火しない (pitfall: UI クリックが
-        // 裏で block を消す事故を防ぐ)
+        // ImGui UI が mouse を握っている時は place / delete を発火しない (UI クリックが裏で block を消す事故を防ぐ)
         if (m_imgui != nullptr && m_imgui->WantCaptureMouse())
             return;
 
@@ -512,9 +507,7 @@ namespace NS::Game::Editor
         {
             if (spawnSlotActive)
             {
-                // Spawn は世界に 1 点しか持てない marker。 LevelData.spawnX/Y/Z を上書きするだけで
-                // BlockEntry は積まない。 既存ブロックの上でも下でも、 ボタンを押した瞬間の cursor
-                // placement cell を spawn 候補とする
+                // Spawn は世界に 1 点。 LevelData.spawnX/Y/Z を上書きするだけで BlockEntry は積まない
                 SetSpawnAtProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
             }
             else if (!m_cursor.placementBlocked)

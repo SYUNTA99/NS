@@ -15,8 +15,7 @@ namespace NS::Platform
     namespace
     {
         /// 配列インデックスとして安全な Key 値か判定する
-        /// `enum class : int` の整数キャスト経由で不正値 (Unknown 以下 / kCount 以上 / 負値)
-        /// が来ても m_current/m_previous の境界外アクセスを防ぐ
+        /// 整数キャスト経由の不正値による m_current / m_previous の境界外アクセスを防ぐ
         [[nodiscard]] constexpr bool IsValidKey(Key k) noexcept
         {
             const auto i = static_cast<std::size_t>(k);
@@ -37,10 +36,8 @@ namespace NS::Platform
             return i < static_cast<std::size_t>(GamepadButton::kCount);
         }
 
-        /// XInput の SHORT スティック生値を -1.0〜1.0 に正規化し、軸別デッドゾーンを適用
-        /// 負値は /32768、正値は /32767 で対称的にマップする
-        /// ラジアルではなく軸別デッドゾーン (Mario 系の縦横独立操作向け)
-        /// deadzone は符号なし: 負値で「全入力が deadzone 越え」と誤判定されるのを防ぐ
+        /// XInput のスティック生値を -1.0〜1.0 へ対称正規化 (負 /32768、正 /32767) し軸別デッドゾーンを適用
+        /// 軸別なのは Mario 系の縦横独立操作向け。deadzone は符号なしで持ち負値での誤判定を防ぐ
         [[nodiscard]] Stick NormalizeStick(short rawX, short rawY, unsigned short deadzone) noexcept
         {
             const float fx = (rawX < 0) ? static_cast<float>(rawX) / 32768.0f : static_cast<float>(rawX) / 32767.0f;
@@ -399,7 +396,7 @@ namespace NS::Platform
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:
         {
-            // lparam: scan code / repeat flag (bit 30) / extended key — 現状未使用
+            // lparam の scan code / repeat flag (bit 30) / extended key は現状未使用
             const Key k = MapVkToKey(static_cast<unsigned int>(wparam));
             input.Keyboard().OnKeyDown(k);
             break;

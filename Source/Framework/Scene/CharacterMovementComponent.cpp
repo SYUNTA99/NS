@@ -160,8 +160,8 @@ namespace NS::Scene
             return;
         }
 
-        // ClimbingPole では default CharacterController を bypass し、 pole の axis に拘束された
-        // 専用 update で position を直接更新する (Mario-style non-physical controller)
+        // ClimbingPole では default CharacterController を bypass し、pole の axis に拘束された
+        // 専用 update で position を直接更新する
         if (m_state == MovementState::ClimbingPole)
         {
             // 離脱 jump: pole から outward (XZ 半径方向) + 上方向に飛び離れて Falling へ
@@ -193,9 +193,8 @@ namespace NS::Scene
             if (m_attachedPole != nullptr)
             {
                 NS::Math::Vector3 pos = RootTransform().Position();
-                // 縦入力は climb 専用チャンネル (生ローカル前後入力) を使う。 camera 相対の
-                // m_desiredDir を使うと camera 向き次第で上昇量が 0 になるため別系統で受ける
-                // (前=上昇、 後=下降、 camera 非依存)
+                // 縦入力は climb 専用チャンネル (前=上昇、後=下降) を使う
+                // camera 相対の m_desiredDir だと camera 向き次第で上昇量が 0 になるため別系統で受ける
                 const float verticalInput = m_climbForward;
                 pos.y += verticalInput * kClimbSpeed * dt;
 

@@ -19,8 +19,7 @@ namespace NS::Scene
     class CameraComponent : public Component
     {
     public:
-        /// priority は Camera 帯 (400)。 follow 系処理を Input / Physics 帯の後に走らせる
-        /// owner は GameObject::AddComponent が注入する
+        /// priority は Camera 帯 (400)。follow 系処理を Input / Physics 帯の後に走らせる
         CameraComponent() noexcept;
 
         void SetPosition(const NS::Math::Vector3& position) noexcept;
@@ -43,8 +42,7 @@ namespace NS::Scene
 
         [[nodiscard]] NS::Math::Matrix ViewProjection() const noexcept { return m_camera.ViewProjection(); }
 
-        /// target - position を XZ 平面で正規化した forward。距離 0 / Y 方向のみの場合は world +Z
-        /// PlayerInput が camera 相対移動の前向きベクトルとして読む
+        /// target-position を XZ 正規化した forward。距離0 / Y 方向のみなら world +Z。PlayerInput の camera 相対移動用
         [[nodiscard]] NS::Math::Vector3 ForwardHorizontal() const noexcept;
 
     private:

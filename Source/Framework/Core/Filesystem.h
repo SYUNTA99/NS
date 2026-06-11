@@ -18,8 +18,7 @@
 namespace NS::Core
 {
 
-    /// ファイル / ディレクトリ操作の最小ユーティリティ
-    /// 例外を投げず、失敗は std::optional の nullopt / bool false で表現する
+    /// ファイル / ディレクトリ操作の最小ユーティリティ。失敗は nullopt / false で返す
     class FileSystem
     {
     public:
@@ -28,24 +27,20 @@ namespace NS::Core
         /// `path` が存在するか
         [[nodiscard]] static bool Exists(const std::filesystem::path& path) noexcept;
 
-        /// `path` のバイナリ内容を読み込む。失敗時 nullopt + NS_LOG_ERROR。空ファイルは空 vector を返す
+        /// バイナリ読み込み。失敗時 nullopt + NS_LOG_ERROR。空ファイルは空 vector
         [[nodiscard]] static std::optional<std::vector<std::byte>> ReadAllBytes(const std::filesystem::path& path);
 
-        /// `path` にバイナリ内容を書き込む (既存ファイルは上書き)。 中間ディレクトリは未作成なら作る
-        /// 失敗時 false + `NS_LOG_ERROR`。 空 vector を渡すと 0 byte ファイルになる
+        /// バイナリ書き込み (上書き)。中間ディレクトリは自動作成。失敗時 false + NS_LOG_ERROR
         [[nodiscard]] static bool WriteAllBytes(const std::filesystem::path& path, std::span<const std::byte> bytes);
 
-        /// `path` のテキスト内容を読み込む (UTF-8 想定)。失敗時 nullopt + NS_LOG_ERROR
+        /// テキスト読み込み (UTF-8 想定)。失敗時 nullopt + NS_LOG_ERROR
         [[nodiscard]] static std::optional<std::string> ReadAllText(const std::filesystem::path& path);
 
-        /// `path` のディレクトリを (必要なら中間も) 作成する。既存も true。失敗時 false + NS_LOG_ERROR
-        /// Win32 `<windows.h>` の `CreateDirectory` マクロと衝突するため複数形を採用
-        /// 戻り値の確認漏れは sandbox 構築失敗の見落としに直結するため `[[nodiscard]]`
+        /// ディレクトリを中間も含め作成する。既存でも true。Win32 マクロ衝突回避で複数形
         [[nodiscard]] static bool CreateDirectories(const std::filesystem::path& path) noexcept;
 
-        /// `dir` 直下の通常ファイルを列挙する。 `extension` 指定時は先頭ドット込みの拡張子 (".nslvl" 等) で絞り込む
-        /// 再帰せず直下のみ。 dir 不在 / 列挙失敗時は空 vector + NS_LOG_ERROR を出す。 戻り順は未規定
-        /// (呼出側でソートすること)
+        /// `dir` 直下の通常ファイルを列挙する。`extension` で拡張子絞り込み可 (先頭ドット込み)
+        /// 失敗時は空 vector + NS_LOG_ERROR。戻り順は未規定
         [[nodiscard]] static std::vector<std::filesystem::path> ListFiles(const std::filesystem::path& dir,
                                                                           std::string_view extension = {});
 

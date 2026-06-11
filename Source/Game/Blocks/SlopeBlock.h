@@ -5,8 +5,7 @@
 ///
 /// @details MeshRendererComponent + SlopeColliderComponent を GameObject が所有し、参照を member キャッシュする
 /// Block (AABB collider 専用) からではなく GameObject を直接派生する
-/// Mesh / Material は外部 (LevelEditorScene) が共有してくれた raw pointer を保持し、
-/// 角度別 wedge mesh は scene 側でキャッシュする想定
+/// Mesh / Material は LevelEditorScene が共有する生ポインタを受け取り、角度別 wedge mesh は scene 側でキャッシュする
 
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/GameObject.h"

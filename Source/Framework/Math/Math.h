@@ -16,7 +16,7 @@ namespace NS::Math
     /// 2D ベクトル
     using Vector2 = DirectX::SimpleMath::Vector2;
 
-    /// 3D ベクトル。位置・方向・スケール全般に使う
+    /// 3D ベクトル
     using Vector3 = DirectX::SimpleMath::Vector3;
 
     /// 4D ベクトル。同次座標・カラー前段に使う
@@ -61,15 +61,13 @@ namespace NS::Math
         return rad * (180.0f / kPi);
     }
 
-    /// 角度を弧度法で持つ強い型。 暗黙変換禁止、 raw float の取り違え事故を防ぐ
-    /// 用途: Camera::SetFovY、 Transform 回転 API 等。 値は `value` メンバ経由で取り出す
+    /// 弧度法の強い型。暗黙変換禁止。値は `value` メンバで取り出す
     struct Radians
     {
         float value;
     };
 
-    /// 角度を度数法で持つ強い型。 ヒューマン向け数値リテラル用
-    /// 暗黙変換禁止、 ToRadians() 経由で明示変換が必要
+    /// 度数法の強い型。暗黙変換禁止。ToRadians() 経由で変換する
     struct Degrees
     {
         float value;
@@ -104,11 +102,7 @@ namespace NS::Math
         return !(a == b);
     }
 
-    /// 2D ピクセルサイズ (width, height) を表す強い型
-    /// 用途: Window / Renderer / Texture の解像度 API
-    /// 暗黙変換禁止、 width と height を取り違える事故を型システムで防ぐ
-    /// プラットフォーム API (DX11 / Win32) と整合させるため int 保持、
-    /// 負値は無効 (リソース側は width > 0 && height > 0 を事前条件とする)
+    /// 2D ピクセルサイズの強い型。int 保持、負値は無効。暗黙変換禁止
     struct Size2D
     {
         int width;

@@ -156,20 +156,19 @@ namespace NS::Graphics
         cmd.DrawIndexed(static_cast<unsigned>(m_indexCount));
     }
 
-    namespace detail
+    const Buffer* Mesh::VertexBuffer() const noexcept
     {
-        const Buffer* GetVertexBuffer(Mesh& mesh) noexcept
-        {
-            return mesh.m_vb.get();
-        }
-        const Buffer* GetIndexBuffer(Mesh& mesh) noexcept
-        {
-            return mesh.m_ib.get();
-        }
-        ID3D11InputLayout* GetInputLayout(Mesh& mesh) noexcept
-        {
-            return mesh.m_inputLayout.Get();
-        }
-    } // namespace detail
+        return m_vb.get();
+    }
+
+    const Buffer* Mesh::IndexBuffer() const noexcept
+    {
+        return m_ib.get();
+    }
+
+    ID3D11InputLayout* Mesh::InputLayout() const noexcept
+    {
+        return m_inputLayout.Get();
+    }
 
 } // namespace NS::Graphics

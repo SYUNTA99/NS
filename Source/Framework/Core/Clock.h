@@ -1,11 +1,11 @@
 #pragma once
 
 /// @file Clock.h
-/// @brief NS::Core 時刻関連 3 クラス + RAII 計測マクロを単一ヘッダに集約
+/// @brief NS::Core 時刻関連 3 クラス + スコープ計測マクロを単一ヘッダに集約
 ///
 /// - Clock: 起動時刻基準の時刻ソース (all-static)
 /// - FrameTimer: ゲームループ tick 管理 + 固定タイムステップ accumulator
-/// - ScopedTimer: RAII スコープ計測 (デストラクタで NS_LOG_DEBUG)
+/// - ScopedTimer: スコープ脱出で経過時間を記録 (デストラクタで NS_LOG_DEBUG)
 /// - NS_SCOPED_TIMER(cat, label): __COUNTER__ ベースの計測マクロ
 ///
 /// 実装は std::chrono::steady_clock 一本、`<windows.h>` 非依存
@@ -47,8 +47,7 @@ namespace NS::Core
         }
     };
 
-    /// ゲームループの tick 管理。固定タイムステップ accumulator を内包
-    /// all-static、 単一 Application 前提で global state を保持する
+    /// ゲームループの tick 管理。固定タイムステップ accumulator を内包する静的クラス
     class FrameTimer
     {
     public:
@@ -69,7 +68,7 @@ namespace NS::Core
             s_accumulator -= static_cast<float>(s_fixedSteps) * s_fixedDelta;
         }
 
-        /// 状態を初期化 (FrameNumber=0、accumulator/total=0)。 テスト fixture では SetUp で必ず呼ぶ
+        /// 状態を初期化 (FrameNumber=0、accumulator/total=0)。テスト fixture の SetUp でも呼ぶこと
         static void Reset() noexcept
         {
             s_lastTime = std::chrono::steady_clock::now();
@@ -83,6 +82,9 @@ namespace NS::Core
         [[nodiscard]] static float DeltaSeconds() noexcept { return s_delta; }
         [[nodiscard]] static double TotalSeconds() noexcept { return s_total; }
         [[nodiscard]] static std::uint64_t FrameNumber() noexcept { return s_frame; }
+
+        /// 固定タイムステップの既定値 (60Hz)。ApplicationDesc 等の既定値もここを参照する
+        static constexpr float kDefaultFixedDelta = 1.0f / 60.0f;
 
         /// 固定タイムステップを設定 (default 1/60 秒)。ゼロ / 負値は無視 (Tick/Alpha のゼロ除算 UB 防止)
         static void SetFixedDelta(float fixed) noexcept
@@ -103,16 +105,16 @@ namespace NS::Core
         static inline float s_delta = 0.0f;
         static inline double s_total = 0.0;
         static inline std::uint64_t s_frame = 0;
-        static inline float s_fixedDelta = 1.0f / 60.0f;
+        static inline float s_fixedDelta = kDefaultFixedDelta;
         static inline float s_accumulator = 0.0f;
         static inline int s_fixedSteps = 0;
     };
 
-    /// RAII スコープ計測。デストラクタで NS_LOG_DEBUG により経過 ms を出力する
+    /// デストラクタで経過ミリ秒を NS_LOG_DEBUG に出力するスコープ計測クラス
     class ScopedTimer
     {
     public:
-        /// `label` は内部で std::string コピー保持するため、一時 std::string の c_str() を渡しても安全
+        /// `label` は std::string コピー保持。一時文字列の c_str() を渡しても安全
         ScopedTimer(LogCat category, std::string label)
             : m_category(category), m_label(std::move(label)), m_start(std::chrono::steady_clock::now())
         {}
@@ -138,9 +140,7 @@ namespace NS::Core
 #define NS_CLOCK_PASTE_IMPL(a, b) a##b
 #define NS_CLOCK_PASTE(a, b) NS_CLOCK_PASTE_IMPL(a, b)
 
-/// 計測対象のスコープに置く。デストラクタで `[category] label: X.XXXms` を Debug ログ出力
-/// NS_ENABLE_PROFILING define 時のみ有効、 通常 build では何もしない (ログの乱発を回避)
-/// Profile build は `tools\@build_profile.cmd` で作成する
+/// スコープ経過時間を Debug ログ出力。NS_ENABLE_PROFILING 未定義時は何もしない
 #if defined(NS_ENABLE_PROFILING)
 #define NS_SCOPED_TIMER(cat, label)                                                                                    \
     ::NS::Core::ScopedTimer NS_CLOCK_PASTE(ns_scoped_timer_, __COUNTER__)((cat), (label))

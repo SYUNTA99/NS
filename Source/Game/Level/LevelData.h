@@ -42,9 +42,7 @@ namespace NS::Game::Level
         std::uint16_t coinThreshold = 0;
         std::uint16_t timeLimitSeconds = 0;
 
-        /// 全 field を明示的に CRC32 update して計算する
-        /// vector の内部 padding (capacity と size の差) は対象外で、 `data()` から
-        /// `size() * sizeof(BlockEntry)` byte だけ hash する
+        /// field 単位の明示 update で計算。 vector は `data()+size()*sizeof(BlockEntry)` のみ対象 (capacity 除外)
         [[nodiscard]] std::uint32_t ComputeCrc32() const noexcept;
     };
 

@@ -26,19 +26,13 @@ namespace NS::Graphics
 namespace NS::UI
 {
 
-    /// Dear ImGui (Win32 + DX11 backend) ライフサイクル管理
-    /// Application が所有し、 MainLoop の Begin / End ペアを呼び出す
-    /// プロセス内で複数構築すると ImGui::CreateContext が衝突するため
-    /// 単一インスタンス前提 (copy / move 禁止)
+    /// Dear ImGui (Win32 + DX11 backend) ライフサイクル管理。単一インスタンス前提 (copy/move 禁止)
     class ImGuiContext
     {
     public:
         struct Impl;
 
-        /// 構築時に `IMGUI_CHECKVERSION` → `ImGui::CreateContext` →
-        /// `ImGui_ImplWin32_Init` → `ImGui_ImplDX11_Init` を順に実行する
-        /// 失敗時は `IsValid() == false`、 `IsUsingFallback() == true` を返し
-        /// 詳細を `NS_LOG_ERROR` に記録する
+        /// CHECKVERSION → CreateContext → ImplWin32_Init → ImplDX11_Init を順に実行する。失敗時は IsValid()==false
         ImGuiContext(NS::Platform::Window& window, NS::Graphics::Renderer& renderer) noexcept;
         ~ImGuiContext() noexcept;
 
@@ -53,23 +47,22 @@ namespace NS::UI
         /// 実機能が無効化されている (stub or 初期化失敗) と true
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-        /// `Renderer::BeginFrame()` 直後に呼ぶ。 NewFrame trio を発火させる
+        /// `Renderer::BeginFrame()` 直後に呼ぶ。NewFrame 3 関数を順に発火する
         void BeginFrame() noexcept;
 
-        /// `Renderer::EndFrame()` 直前に呼ぶ。 `ImGui::Render` + `ImGui_ImplDX11_RenderDrawData`
+        /// `Renderer::EndFrame()` 直前に呼ぶ。`ImGui::Render` + `ImGui_ImplDX11_RenderDrawData`
         void EndFrame() noexcept;
 
-        /// WndProc 入口で最初に呼ぶ。 戻り値 true なら ImGui がイベントを消費したので
-        /// ゲーム側入力へ転送しない
+        /// WndProc 入口で最初に呼ぶ。戻り値 true なら ImGui がイベントを消費したのでゲーム側へ転送しない
         [[nodiscard]] bool ForwardWndProc(void* hwnd,
                                           std::uint32_t msg,
                                           std::uintptr_t wParam,
                                           std::intptr_t lParam) noexcept;
 
-        /// NewFrame 後に limit valid。 EditorMode のマウス入力判定で参照する
+        /// NewFrame 後のみ有効。EditorMode のマウス入力判定で参照する
         [[nodiscard]] bool WantCaptureMouse() const noexcept;
 
-        /// NewFrame 後に limit valid。 テキスト入力中の Tab / Esc 等を game に流さない判定に使う
+        /// NewFrame 後のみ有効。テキスト入力中の Tab / Esc 等をゲームに流さない判定に使う
         [[nodiscard]] bool WantCaptureKeyboard() const noexcept;
 
     private:

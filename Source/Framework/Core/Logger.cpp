@@ -23,16 +23,15 @@ namespace NS::Core
 
         constexpr const char* kLoggerName = "ns";
         constexpr std::size_t kRotatingMaxBytes = 5 * 1024 * 1024;
-        // spdlog の max_files は 「rotated backup の本数」 を意味するため、 current の
-        // `<name>.log` 含めて計 (kRotatingMaxFiles + 1) 個になる。 2 指定で 3 ファイル運用
-        // (`<name>.log` + `<name>.1.log` + `<name>.2.log`)
+        // spdlog の max_files は rotated backup の本数で、 current 含め計 (N+1) 個
+        // 2 指定で `<name>.log` + `.1.log` + `.2.log` の 3 ファイル運用
         constexpr std::size_t kRotatingMaxFiles = 2;
 
         std::atomic<bool> g_initialized{false};
         // SetLogName で上書き可能なログ stem。 Init() 前に書込まれる前提で std::string、
         // 既定値 "ns" で従来挙動を維持
         std::string g_logName{"ns"};
-        // 起動ごとに rotate する (Game.exe 推奨)。 Tests は SetRotateOnOpen(false) して
+        // 起動ごとに rotate する。 Tests は SetRotateOnOpen(false) して
         // 1 ファイル蓄積モードに切替える。 既定 false で従来挙動を維持
         bool g_rotateOnOpen{false};
 
@@ -48,10 +47,8 @@ namespace NS::Core
             return std::filesystem::path{buffer}.parent_path();
         }
 
-        /// ログ出力先を絶対パスで返す。 exe ディレクトリから上位を辿って
-        /// `premake5.lua` か `.git` を見つけたらそこをリポジトリルートとみなし、
-        /// `<root>/logs/` を返す。 build 配下にログが散らばらないようにする狙い
-        /// shipping 配布 (リポルート無し) では fallback として exe 同階層の `logs/`
+        /// ログ出力先の絶対パス。 premake5.lua / .git を上位へ辿りリポジトリルート直下の `logs/` を返す
+        /// ルート検出失敗 (shipping 配布) は exe 同階層の `logs/` に fallback
         std::filesystem::path GetLogsDirectory() noexcept
         {
             const auto exeDir = GetExeDirectory();
@@ -159,9 +156,8 @@ namespace NS::Core
 
         try
         {
-            // 新環境でも初回起動でファイル sink が失敗しないように logs/ を作成しておく
-            // リポジトリルート (premake5.lua / .git アンカー検出) 直下の logs/ を優先、
-            // 検出失敗時は exe 同階層に fallback して CWD 依存の散らばりを防ぐ
+            // 初回起動でファイル sink が失敗しないよう logs/ を先に作成する
+            // 場所の優先順は GetLogsDirectory と同じ (リポジトリルート → exe 同階層)
             std::error_code ec;
             const auto logsDir = GetLogsDirectory();
             std::filesystem::create_directories(logsDir.empty() ? std::filesystem::path{"logs"} : logsDir, ec);

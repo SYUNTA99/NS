@@ -15,8 +15,7 @@
 namespace NS::Platform
 {
 
-    /// XInput 互換コントローラのボタン識別子
-    /// kCount は配列サイズ用の番兵
+    /// XInput 互換コントローラのボタン識別子。kCount は配列サイズ用番兵
     enum class GamepadButton : int
     {
         A = 0,
@@ -41,19 +40,15 @@ namespace NS::Platform
         kCount
     };
 
-    /// アナログスティックの正規化済 (x, y) ペア
-    /// 各軸は -1.0〜1.0、デッドゾーン内は 0.0 にクランプ済
-    /// Y 軸は XInput 生値の符号を維持 (上が正)
+    /// アナログスティックの正規化済 (x, y)。各軸 -1.0〜1.0、デッドゾーン内は 0.0
     struct Stick
     {
         float x = 0.0f;
         float y = 0.0f;
     };
 
-    /// XInput ベースのゲームパッド状態
-    /// `Update()` をフレーム頭で 1 回呼ぶ。内部で `XInputGetState()` をポーリングし、
-    /// `ERROR_DEVICE_NOT_CONNECTED` の場合は `IsConnected() = false`、ボタン/軸はリセット
-    /// マルチスレッドは未サポート (単一スレッド前提)
+    /// XInput ベースのゲームパッド状態。フレーム頭で Update() を 1 回呼ぶこと
+    /// 未接続時は IsConnected() = false でボタン/軸はリセット (固着防止)
     class Gamepad
     {
     public:
@@ -84,8 +79,7 @@ namespace NS::Platform
         /// 右トリガー (0.0〜1.0)、トリガースレッショルド未満は 0.0
         [[nodiscard]] float RightTrigger() const noexcept;
 
-        /// previous = current 退避後、XInputGetState() でポーリング
-        /// 未接続時は m_current をリセット (ボタン固着防止)
+        /// previous = current 退避後、XInputGetState() をポーリング。未接続時は m_current をリセット
         void Update() noexcept;
 
     private:

@@ -28,33 +28,18 @@ namespace NS::Graphics
     class Material;
     class Renderer;
     class Buffer;
-    class InstanceBatcher;
 
-    namespace detail
-    {
-        /// テスト用フック: D3D11 draw 呼出を抑止し、 bucket カウントと draw call カウント
-        /// だけを更新する count-only モードを切替える。 production code からは呼ばない
-        /// mock pointer を bucket key に渡すユニットテスト (`instance_batcher_test`) 専用
-        void SetCountOnlyMode(InstanceBatcher& batcher, bool countOnly) noexcept;
-    } // namespace detail
-
-    /// 1 block 1 instance ぶんの per-instance データ (slot 1 入力)
-    /// `worldMatrix` 64 byte + `baseColor` 12 byte + `textureSlice` 4 byte = 80 byte 固定
-    /// `alignas(16)` で 16 byte 境界に揃え、 HLSL `INSTANCE_WORLD` / `INSTANCE_COLOR` の
-    /// AlignedByteOffset (0 / 16 / 32 / 48 / 64) と完全一致させる
-    /// `textureSlice` は INSTANCE_COLOR.w に乗せ、 VS 経由で PS の Texture2DArray sample index になる
+    /// per-instance データ (slot 1)。80 byte / 16 byte align で HLSL InputLayout の AlignedByteOffset と一致
     struct alignas(16) BlockInstance
     {
-        NS::Math::Matrix worldMatrix{};                ///< 64 byte: row_major world 行列
-        NS::Math::Vector3 baseColor{1.0f, 1.0f, 1.0f}; ///< 12 byte: 個体色 (theme tint multiplier)
-        float textureSlice = 0.0f;                     ///< 4 byte: Texture2DArray slice index (float で VS->PS 補間)
+        NS::Math::Matrix worldMatrix{};                // 64 byte: row_major world 行列
+        NS::Math::Vector3 baseColor{1.0f, 1.0f, 1.0f}; // 12 byte: 個体色
+        float textureSlice = 0.0f;                     // 4 byte: Texture2DArray slice index
     };
     static_assert(sizeof(BlockInstance) == 80, "BlockInstance stride は 80 byte 固定 (HLSL slot1 layout 整合)");
     static_assert(alignof(BlockInstance) == 16, "BlockInstance は 16 byte align 必須");
 
-    /// (mesh, material) bucket 集約バッチャ。 1 bucket = 1 `DrawIndexedInstanced`
-    /// 同一 Renderer 寿命中だけ有効、 Renderer より先に破棄すること
-    /// device 未提供環境では bucket カウントと draw call カウントのみが更新される
+    /// (mesh, material) bucket 集約バッチャ。1 bucket = 1 DrawIndexedInstanced、Renderer より先に破棄すること
     class InstanceBatcher : public NS::Core::NonCopyable
     {
     public:
@@ -63,30 +48,26 @@ namespace NS::Graphics
 
         ~InstanceBatcher();
 
-        /// 新フレーム開始: 全 bucket の instance 配列を空にする
-        /// `Renderer::BeginFrame` の直後に呼ぶ想定
+        /// 新フレーム開始: 全 bucket の instance 配列を空にする (Renderer::BeginFrame 直後に呼ぶ)
         void BeginFrame() noexcept;
 
-        /// 1 block instance を (mesh, material) bucket に追加
-        /// mesh / material は非 null 必須 (null 渡し時は no-op + `NS_LOG_ERROR`)
-        /// ownership は呼出側、 batcher は raw ポインタを bucket key として保持するのみ
+        /// 1 block instance を (mesh, material) bucket に追加。mesh / material は非 null 必須
         void Submit(StaticMesh* mesh, Material* material, const BlockInstance& instance);
 
-        /// 全 bucket を順次 `DrawIndexedInstanced` で発行する (バインドは renderer 経由)
-        /// 発行後に `LastFrameDrawCallCount()` が更新される
+        /// 全 bucket を DrawIndexedInstanced で発行する。発行後に LastFrameDrawCallCount() が更新される
         void FlushAll(Renderer& renderer) noexcept;
 
         /// 現フレームの bucket 数 (テスト観測用)
         [[nodiscard]] std::size_t BucketCount() const noexcept;
 
-        /// 直近 `FlushAll` で発行された `DrawIndexedInstanced` 回数
-        /// 1000 block / ≤200 draw call の監視に使う
+        /// 直近 FlushAll で発行された DrawIndexedInstanced 回数
         [[nodiscard]] std::size_t LastFrameDrawCallCount() const noexcept;
 
-        /// 内部 VB / InputLayout / Shader が構築済なら true
-        /// device 未提供時 (テスト) は false でも `BucketCount` / `LastFrameDrawCallCount`
-        /// は機能する (集約ロジックのみ動かしたい単体テストのため)
+        /// 内部リソース構築済なら true (device 無しでもカウント系は機能する)
         [[nodiscard]] bool IsValid() const noexcept;
+
+        /// D3D11 draw を抑止しカウントのみ更新するテスト専用モード。製品コードから呼ぶと描画が無音で消える
+        void SetCountOnlyMode(bool countOnly) noexcept;
 
     private:
         InstanceBatcher();
@@ -127,8 +108,6 @@ namespace NS::Graphics
         std::size_t m_lastDrawCallCount = 0;
         bool m_valid = false;
         bool m_countOnlyMode = false;
-
-        friend void detail::SetCountOnlyMode(InstanceBatcher& batcher, bool countOnly) noexcept;
     };
 
 } // namespace NS::Graphics

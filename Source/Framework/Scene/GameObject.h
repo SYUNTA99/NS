@@ -13,7 +13,7 @@
 ///                    dt は `NS::Core::FrameTimer::FixedDelta()` で取得
 ///   - OnEndPlay()  — SceneBase 破棄前に 1 回、登録逆順で Component::OnEndPlay を呼ぶ
 ///
-/// Cross-GameObject アクセスはコンストラクタ経由の明示 raw pointer 注入のみ (GetComponent<T>() なし)
+/// 他 GameObject へのアクセスはコンストラクタ経由の明示的な生ポインタ注入のみ (GetComponent<T>() なし)
 
 #include "Framework/Scene/Transform.h"
 
@@ -50,8 +50,7 @@ namespace NS::Scene
 
         [[nodiscard]] const std::vector<Component*>& Components() const noexcept { return m_components; }
 
-        /// Component を生成し GameObject が unique_ptr で寿命を所有する。 生成後に owner を注入し
-        /// priority 昇順の tick 列へ登録する。 戻り値は非所有の生ポインタで、 派生が member キャッシュに使う
+        /// Component を生成して寿命を所有し priority 昇順の tick 列へ登録する。戻り値は非所有の生ポインタ
         template <class T, class... Args> T* AddComponent(Args&&... args)
         {
             static_assert(std::is_base_of_v<Component, T>, "T は Component 派生でなければならない");
@@ -67,8 +66,7 @@ namespace NS::Scene
         /// SceneBase 側が attach 時に呼ぶ。GameObject 派生から手動で呼ばない
         void AttachScene(SceneBase* scene) noexcept { m_scene = scene; }
 
-        /// 配下 Component の OnStart を伝播。派生クラスは override で固有処理を足す前後に
-        /// `GameObject::OnStart()` を呼ぶこと
+        /// 配下 Component の OnStart を伝播。override 時は前後に `GameObject::OnStart()` を呼ぶこと
         virtual void OnStart();
         /// IsActive==true の Component にだけ OnUpdate() を伝播
         virtual void OnUpdate();
@@ -80,13 +78,12 @@ namespace NS::Scene
         void MarkPendingKill() noexcept { m_alive = false; }
 
     private:
-        /// AddComponent が生成した Component に owner を注入し、 tick 列へ priority 昇順で挿入する
+        /// Component に owner を注入し tick 列へ priority 昇順で挿入する
         void AttachOwnedComponent(Component* comp) noexcept;
 
         Transform m_root;
         std::vector<Component*> m_components;
-        std::vector<std::unique_ptr<Component>>
-            m_ownedComponents; // AddComponent 生成分の寿命を所有 (tick 列は m_components)
+        std::vector<std::unique_ptr<Component>> m_ownedComponents; // 所有権保持用 (tick 順序は m_components が担う)
         std::vector<GameObject*> m_children;
         GameObject* m_parent = nullptr;
         SceneBase* m_scene = nullptr;

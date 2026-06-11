@@ -75,7 +75,7 @@ TEST_F(InstanceBatcherTest, BucketsByMeshMaterial)
 
     std::unique_ptr<InstanceBatcher> batcherHolder = InstanceBatcher::Create();
     InstanceBatcher& batcher = *batcherHolder;
-    NS::Graphics::detail::SetCountOnlyMode(batcher, true);
+    batcher.SetCountOnlyMode(true);
     batcher.BeginFrame();
 
     constexpr std::size_t kUniqueBuckets = 48;
@@ -102,7 +102,7 @@ TEST_F(InstanceBatcherTest, DrawCallBudgetUnder200)
 
     std::unique_ptr<InstanceBatcher> batcherHolder = InstanceBatcher::Create();
     InstanceBatcher& batcher = *batcherHolder;
-    NS::Graphics::detail::SetCountOnlyMode(batcher, true);
+    batcher.SetCountOnlyMode(true);
     batcher.BeginFrame();
 
     constexpr std::size_t kUniqueBuckets = 48;
@@ -131,7 +131,7 @@ TEST_F(InstanceBatcherTest, EmptyBucketsAreSkipped)
 
     std::unique_ptr<InstanceBatcher> batcherHolder = InstanceBatcher::Create();
     InstanceBatcher& batcher = *batcherHolder;
-    NS::Graphics::detail::SetCountOnlyMode(batcher, true);
+    batcher.SetCountOnlyMode(true);
     batcher.BeginFrame();
     batcher.FlushAll(renderer);
 

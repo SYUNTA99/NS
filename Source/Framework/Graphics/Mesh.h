@@ -27,15 +27,7 @@ namespace NS::Graphics
     class Shader;
     class Mesh;
 
-    namespace detail
-    {
-        /// Material / Renderer 拡張から Buffer / InputLayout に直接アクセスするための typed friend accessor
-        [[nodiscard]] const Buffer* GetVertexBuffer(Mesh& mesh) noexcept;
-        [[nodiscard]] const Buffer* GetIndexBuffer(Mesh& mesh) noexcept;
-        [[nodiscard]] ID3D11InputLayout* GetInputLayout(Mesh& mesh) noexcept;
-    } // namespace detail
-
-    /// 公開 InputElement 用フォーマット。D3D11 / DXGI を漏らさない独自 enum
+    /// 公開 InputElement 用フォーマット。頂点属性として受け付けるフォーマットの閉集合
     enum class InputElementFormat
     {
         Float2, ///< R32G32_FLOAT
@@ -71,23 +63,23 @@ namespace NS::Graphics
         [[nodiscard]] std::size_t VertexCount() const noexcept;
         [[nodiscard]] std::size_t IndexCount() const noexcept;
 
-        /// 自分の頂点レイアウトと頂点 Shader の VS バイトコードから ID3D11InputLayout を生成する
-        /// 生成済 / device 無効 / layout 未設定 / VS バイトコード空 (頂点 Shader でない等) なら no-op (冪等)
-        /// 直接描画される mesh に対し描画前に 1 度呼ぶ (MeshRendererComponent が Material 経由で呼ぶ)
+        /// VS バイトコードから InputLayout を生成する。生成済・device 無効・layout 未設定なら無操作 (冪等)
         void CreateInputLayout(const Shader& vertexShader) noexcept;
 
-        /// InputLayout 生成済なら IASetInputLayout、 renderer 経由で VB(0) + IB の bind +
-        /// IASetPrimitiveTopology(TRIANGLELIST) + DrawIndexed を一括発行する
-        /// Shader / Material 側の Bind は呼出側 (MeshRendererComponent) 責任
-        /// skinning する派生は override して bone palette CB の bind を足す
+        /// VB + IB + InputLayout を bind して DrawIndexed を発行する。Shader/Material の Bind は呼出側責任
         virtual void Draw(Renderer& renderer) noexcept;
+
+        /// 頂点バッファ (非所有)。InstanceBatcher 等エンジン内部の継ぎ目とテスト向け、未構築なら nullptr
+        [[nodiscard]] const Buffer* VertexBuffer() const noexcept;
+        /// index バッファ (非所有)。同上
+        [[nodiscard]] const Buffer* IndexBuffer() const noexcept;
+        /// 生成済 InputLayout (非所有)。CreateInputLayout 前は nullptr
+        [[nodiscard]] ID3D11InputLayout* InputLayout() const noexcept;
 
     protected:
         Mesh();
 
-        /// 派生が構築した VB / IB と頂点 / index 数を基底に預ける
-        /// InputLayout 生成用にグローバル Device を内部保持する。 vb / ib のいずれかが null なら invalid 扱い
-        /// `usingFallback` は fallback geometry に切替えた場合に true を渡す
+        /// 派生が構築した VB / IB を基底に預ける。vb / ib のいずれかが null なら invalid 扱い
         void SetGeometry(std::unique_ptr<Buffer> vertexBuffer,
                          std::unique_ptr<Buffer> indexBuffer,
                          std::size_t vertexCount,
@@ -107,10 +99,6 @@ namespace NS::Graphics
         std::size_t m_indexCount = 0;
         bool m_valid = false;
         bool m_usingFallback = false;
-
-        friend const Buffer* detail::GetVertexBuffer(Mesh& mesh) noexcept;
-        friend const Buffer* detail::GetIndexBuffer(Mesh& mesh) noexcept;
-        friend ID3D11InputLayout* detail::GetInputLayout(Mesh& mesh) noexcept;
     };
 
 } // namespace NS::Graphics

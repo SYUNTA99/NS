@@ -14,9 +14,7 @@
 namespace NS::Platform
 {
 
-    /// 物理キー識別子。VK コードや特定 OS の値とは独立して定義する
-    /// 公開ヘッダから <windows.h> を排除するための間接層
-    /// kCount は配列サイズ用の番兵、Unknown は未マップ VK の戻り値
+    /// 物理キー識別子。VK コード非依存の間接層。kCount は配列サイズ用番兵
     enum class Key : int
     {
         Unknown = 0,
@@ -90,9 +88,7 @@ namespace NS::Platform
         kCount
     };
 
-    /// キーボード入力の現在/前フレーム状態を保持する
-    /// `Update()` をフレーム頭で 1 回呼び、`OnKeyDown` / `OnKeyUp` は WndProc 経由で呼ばれる
-    /// マルチスレッドは未サポート (単一スレッド前提)
+    /// キーボード入力の現在/前フレーム状態を保持する。フレーム頭で Update() を 1 回呼ぶこと
     class Keyboard
     {
     public:
@@ -107,7 +103,7 @@ namespace NS::Platform
         /// このフレームで離した (前 true → 現 false)
         [[nodiscard]] bool IsReleased(Key k) const noexcept;
 
-        /// previous = current のコピー。次フレーム用の差分判定基準を更新する
+        /// previous = current をコピーし、差分判定基準を更新する
         void Update() noexcept;
 
         /// WndProc から呼ばれる内部 API。Key::Unknown は無視する

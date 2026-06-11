@@ -21,9 +21,7 @@ namespace NS::Game::Level
     constexpr std::uint16_t kCurrentVersionMajor = 1;
     constexpr std::uint16_t kCurrentVersionMinor = 0;
 
-    /// `.nslvl` 書込: `BeginFile` → `BeginChunk` → `Write` 任意回 → `EndChunk` を
-    /// 繰り返し → `EndFile` (`CRC3` chunk 自動追加 + disk flush)
-    /// 各メソッドは失敗時に false + `NS_LOG_ERROR`、 以降のメソッドは何もしない
+    /// `.nslvl` 書込。 BeginFile→(BeginChunk→Write→EndChunk)×N→EndFile の順に呼ぶ。 失敗後は何もしない
     class ChunkWriter
     {
     public:
@@ -51,9 +49,7 @@ namespace NS::Game::Level
         bool m_fileEnded = false;
     };
 
-    /// `.nslvl` 読込: コンストラクタで `Filesystem::ReadAllBytes` → Magic / Version / CRC32 を
-    /// 検証。 検証失敗時は `IsValid() == false` を返し、 以降の `SeekChunk` / `Read`
-    /// は何もしない (false 返却)
+    /// `.nslvl` 読込。 コンストラクタで Magic/Version/CRC32 を検証し、 失敗時は IsValid()==false になる
     class ChunkReader
     {
     public:
@@ -67,9 +63,7 @@ namespace NS::Game::Level
         [[nodiscard]] std::uint16_t VersionMajor() const noexcept { return m_major; }
         [[nodiscard]] std::uint16_t VersionMinor() const noexcept { return m_minor; }
 
-        /// 先頭 chunk から線形走査して `fourcc` 一致の chunk を見つける
-        /// 見つかれば `outSize` に chunk のデータ size をセットし内部 cursor を data 先頭へ
-        /// 未知 chunk は size 分 skip するので「不在 == false、 存在 == true」 を返す
+        /// 先頭から線形走査して `fourcc` 一致 chunk を探す。 未知 chunk は size 分 skip。 不在 == false
         bool SeekChunk(const char fourcc[4], std::uint32_t& outSize) noexcept;
 
         /// 直前 `SeekChunk` の data 領域から `bytes` byte をコピー。 領域外なら false

@@ -7,10 +7,7 @@
 
 namespace NS::Graphics
 {
-    /// プロセス唯一の D3D11 device と immediate context を束ねたグローバルハンドル
-    /// Renderer 構築で代入、 破棄で nullptr に戻る。 未構築時は両方 nullptr
-    /// 実体は Renderer の ComPtr が所有し、 ここは非所有の観測ポインタ
-    /// リソース生成は型ごとの Create() を使い、 ここを直接参照するのは層内部 / 外部 SDK 連携に限る
+    /// 非所有の観測ポインタ (Renderer が所有、未構築時は nullptr)。直接参照は層内部のみ
     struct GraphicObject
     {
         ID3D11Device* device = nullptr;

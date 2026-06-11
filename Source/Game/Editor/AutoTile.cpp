@@ -11,25 +11,9 @@ namespace NS::Game::Editor
 
     namespace
     {
-        // 6-neighbor bitmask (64 通り) を 8 variant (0..7) に縮約するテーブル
-        // popcount で「埋まり具合」 を見て大まかな variant に丸める素朴な対応付け
-        // - 0 neighbor (孤立 cube): variant 0 = isolated
-        // - 1-2 neighbor (端 / 角): variant 1-2
-        // - 3-4 neighbor (壁 / 床中央): variant 3-4
-        // - 5 neighbor (T 字): variant 5-6
-        // - 6 neighbor (完全埋没): variant 7 = interior
-        // popcount が同じでも上下軸 (bit 2 / 3) の有無で variant をずらし、 上面が
-        // 見えるケースだけは「天井あり」 風の variant に飛ばす。 詳細チューニングは
-        // designer 介入で差し替え可能、 ここでは全 64 mask が valid variant に丸まる事を保証する
+        // 6-neighbor bitmask(64 通り)を popcount ベースで 8 variant(0=孤立〜7=完全埋没)に縮約するテーブル
+        // 上下軸 bit(2/3)の有無で同 popcount でも variant をずらして天井面を区別する
         constexpr std::uint8_t kBitmaskToVariant[64] = {
-            // bit 0..3..5 popcount (mask): variant
-            // mask 0 = 000000: 0 (isolated)
-            // mask が +X (bit0) のみなどの 1-neighbor: 1
-            // 2-neighbor: 2
-            // 3-neighbor: 3 / 4 (上向き面の有無で分ける)
-            // 4-neighbor: 4 / 5
-            // 5-neighbor: 5 / 6
-            // 6-neighbor: 7 (interior)
             0, 1, 1, 2, 1, 2, 2, 3, // 0..7
             3, 4, 4, 5, 4, 5, 5, 6, // 8..15  (bit 3 = -Y、 床に埋まる)
             1, 2, 2, 3, 2, 3, 3, 4, // 16..23 (bit 4 = +Z)

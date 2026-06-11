@@ -13,8 +13,7 @@
 namespace NS::Core
 {
 
-    /// UTF-8 と UTF-16 (wide) 間の変換ユーティリティ
-    /// 不正入力時はエラーログを出力して空文字列を返す (例外は投げない)
+    /// UTF-8 と UTF-16 (wide) 間の変換ユーティリティ。不正入力時は空文字列 + NS_LOG_ERROR
     class StringUtils
     {
     public:

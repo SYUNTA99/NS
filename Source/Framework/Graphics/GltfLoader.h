@@ -21,10 +21,7 @@
 
 namespace NS::Graphics
 {
-    /// glTF (.gltf / .glb) を読み MeshGeometry に展開する
-    /// ファイル IO は NS::Core::FileSystem 経由、 parse は cgltf (メモリ上で実行)
-    /// 失敗 (ファイル無し / parse 失敗 / POSITION 欠如) 時は empty を返し NS_LOG_ERROR を出す
-    /// 戻り値が empty かどうかで成否を判定できる (vertices が空 = 失敗)
+    /// glTF (.gltf / .glb) を読み MeshGeometry に展開する。失敗時は empty を返し NS_LOG_ERROR を出す
     [[nodiscard]] MeshGeometry LoadGltfMesh(const std::string& path);
 
     /// skinned glTF の取込結果。 skinned 頂点・index と Skeleton を保持する
@@ -42,11 +39,7 @@ namespace NS::Graphics
         }
     };
 
-    /// skinned glTF (.gltf / .glb) を読み SkinnedMeshData に展開する
-    /// JOINTS_0 / WEIGHTS_0 / skin の joint 階層 / inverse bind を取り込み、 既存 static と同じ左手座標へ変換する
-    /// (頂点・joint 変換とも S=diag(1,1,-1) で揃え、 skinned mesh node の node 変換は焼き込まない)
-    /// skin 無し / joint index 範囲外 / inverse bind 欠落 / ボーン上限超過 / 非三角形 / Draco は
-    /// NS_LOG_ERROR の上 empty を返す (IsValid() == false で検知)
+    /// skinned glTF を読み SkinnedMeshData に展開する。失敗時は empty (IsValid()==false) を返す
     [[nodiscard]] SkinnedMeshData LoadGltfSkinnedMesh(const std::string& path);
 
     /// skin 非依存で読んだアニメソース。 リターゲット元の骨格 (rest + 骨名) と clips を保持する
@@ -60,8 +53,6 @@ namespace NS::Graphics
         [[nodiscard]] bool IsValid() const noexcept { return skeleton.BoneCount() > 0 && !animations.empty(); }
     };
 
-    /// アニメソース glTF を skin 非依存で読み、 AnimationSource を返す
-    /// animation 対象 node とその祖先から source 骨格 (rest + 骨名) を組む
-    /// animation 無し / parse 失敗 / ボーン上限超過は NS_LOG_ERROR の上 IsValid()==false を返す
+    /// skin 非依存でアニメ glTF を読み AnimationSource を返す。失敗時は IsValid()==false
     [[nodiscard]] AnimationSource LoadGltfAnimationSource(const std::string& path);
 } // namespace NS::Graphics

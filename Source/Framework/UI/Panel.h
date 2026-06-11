@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file Panel.h
-/// @brief NS::UI::Panel — `ImGui::Begin` / `ImGui::End` を RAII で扱う薄い facade
+/// @brief NS::UI::Panel — `ImGui::Begin` / `ImGui::End` の対を寿命で管理する薄いラッパ
 ///
 /// @details コンストラクタで Begin、 デストラクタで End を呼ぶため例外抜け / 早期 return でも End 漏れしない
-/// 内部実装は `detail/imgui_init.cpp` に閉じ、 公開ヘッダから `<imgui.h>` を露出させない
+/// 実装は `Panel.cpp` に閉じ、 公開ヘッダから `<imgui.h>` を露出させない
 /// `ImGuiContext` が未構築 / fallback mode の場合は何もせず `IsOpen() == false`
 
 #include <string_view>
@@ -12,16 +12,7 @@
 namespace NS::UI
 {
 
-    /// ImGui ウィンドウ Begin / End ペアを RAII で扱う facade
-    /// ```
-    /// {
-    ///     NS::UI::Panel p("Inspector", &show);
-    ///     if (p.IsOpen())
-    ///     {
-    ///         // ImGui widgets...
-    ///     }
-    /// }
-    /// ```
+    /// ImGui ウィンドウ Begin / End の対を寿命で管理するラッパ
     class Panel
     {
     public:
@@ -34,8 +25,7 @@ namespace NS::UI
         Panel(Panel&&) = delete;
         Panel& operator=(Panel&&) = delete;
 
-        /// `ImGui::Begin` の戻り値。 collapsed や fallback mode では false
-        /// false の場合は widget 書き込みを skip する
+        /// `ImGui::Begin` の戻り値。collapsed / fallback mode では false。false なら widget を skip する
         [[nodiscard]] bool IsOpen() const noexcept { return m_isOpen; }
 
     private:

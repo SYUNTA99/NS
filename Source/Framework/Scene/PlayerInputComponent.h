@@ -27,19 +27,16 @@ namespace NS::Scene
     class PlayerInputComponent : public Component
     {
     public:
-        /// movement を受け取って構築する。 owner は GameObject::AddComponent が注入する
+        /// movement を受け取って構築する
         explicit PlayerInputComponent(CharacterMovementComponent* movement) noexcept;
 
-        /// LevelEditorScene が active CameraComponent から計算した水平 forward (XZ 平面、Y は 0) を注入する
-        /// 注入前の default は world -Z+ 方向
+        /// camera 相対移動用の水平 forward (XZ, Y=0) を注入。未注入時は world +Z
         void SetCameraForward(const NS::Math::Vector3& cameraForwardHorizontal) noexcept;
 
-        /// 入力ソースを注入。LevelEditorScene が `Application::Get()->Input()` を渡す
-        /// null で何もしない
+        /// 入力ソースを注入。null で何もしない
         void SetInput(NS::Platform::Input* input) noexcept;
 
-        /// ImGui コンテキストを注入。 `WantCaptureKeyboard()` が true の間 (テキスト入力中など) は
-        /// キーボード由来の移動 / ジャンプを無視する (gamepad は維持)。 null でガード無効
+        /// ImGui 注入。WantCaptureKeyboard==true 中はキーボード入力を無視 (gamepad は維持)。null でガード無効
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept;
 
         [[nodiscard]] CharacterMovementComponent* Movement() const noexcept { return m_movement; }

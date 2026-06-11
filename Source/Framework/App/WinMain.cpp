@@ -13,15 +13,14 @@
 
 namespace
 {
-    /// Logger の Init / Shutdown を RAII で対応付けて、早期 return の追加で Shutdown
-    /// 呼び忘れを起こさないようにする
+    // Logger Init/Shutdown を RAII で対応付け、早期 return での Shutdown 漏れを防ぐ
     class LoggerScope
     {
     public:
         LoggerScope()
         {
             ::NS::Core::Logger::SetLogName("game");
-            // Game は起動ごとに rotate して 1 セッション = 1 ファイル運用にする
+            // 起動ごとにローテートし 1 セッション = 1 ファイルにする
             ::NS::Core::Logger::SetRotateOnOpen(true);
             ::NS::Core::Logger::Init();
         }

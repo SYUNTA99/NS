@@ -28,12 +28,6 @@ namespace NS::Physics
     /// @param outToi   [0, 1) の接触時刻、 no hit なら 1.0
     /// @param outNormal 三角形の表面 normal (CCW で計算)、 no hit なら zero
     /// @retresult true = 接触あり / false = no hit
-    ///
-    /// @details Capsule を上下 2 個の sphere 端点として扱う簡易実装
-    /// (Mario 系 platformer の固定 wedge 4 種のみが要件のため十分な近似)
-    /// 各端点に対し triangle 平面までの swept TOI を計算し、 接触点が三角形内
-    /// (barycentric coordinate で判定) なら hit と返す。 2 端点のうち TOI が
-    /// 小さい方を採用する。 motion が triangle 表面から離れる方向なら no hit
     [[nodiscard]] bool SweptCapsuleVsTriangle(const Capsule& capsule,
                                               const NS::Math::Vector3& motion,
                                               const Triangle& tri,

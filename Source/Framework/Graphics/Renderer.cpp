@@ -149,6 +149,7 @@ namespace NS::Graphics
     {
         m_window = &window;
         m_vsync = desc.vsync;
+        m_settings = desc.settings;
 
         if (!window.IsValid())
         {
@@ -205,10 +206,10 @@ namespace NS::Graphics
         m_states.reset(new CommonStates(m_device.Get()));
 
         window.SetResizeCallback([this](::NS::Math::Size2D rs) { this->Resize(rs); });
+        m_resizeCallbackRegistered = true;
 
         m_valid = true;
-        // 構築完了は通常運用では成功が想定 (失敗時のみ別途 ERROR ログ済) なので Debug 段
-        // test loop で per-fixture に renderer が立ち上がる時の log 雑音を抑える
+        // 失敗時は別途 ERROR ログ済のため成功は Debug 段のみ出力 (テスト時のログ雑音を抑える)
         NS_LOG_DEBUG(::NS::Core::LogCat::Graphics,
                      "Renderer 構築完了 ({}x{}, vsync={}, debugLayer={})",
                      w,
@@ -219,6 +220,11 @@ namespace NS::Graphics
 
     Renderer::~Renderer()
     {
+        // ctor で登録したリサイズ購読を解除し、Window 側の発火で dangling を踏むのを防ぐ
+        if (m_resizeCallbackRegistered && m_window != nullptr)
+        {
+            m_window->SetResizeCallback(nullptr);
+        }
         // 自分が公開したグローバルだけを戻す (別 Renderer が上書きしている場合は触らない)
         if (m_device && Gpu().device == m_device.Get())
         {
@@ -254,6 +260,17 @@ namespace NS::Graphics
 
         const ::NS::Math::Size2D size = m_backbuffer->Size();
         cmd.SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
+    }
+
+    void Renderer::BeginFrame() noexcept
+    {
+        const ::NS::Math::Color& c = m_settings.clearColor;
+        BeginFrame(c.R(), c.G(), c.B(), c.A());
+    }
+
+    const RenderSettings& Renderer::Settings() const noexcept
+    {
+        return m_settings;
     }
 
     void Renderer::EndFrame() noexcept

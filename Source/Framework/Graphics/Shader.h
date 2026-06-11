@@ -12,7 +12,7 @@
 /// 本型の責務は 1 ステージの生成まで。 バインド (Set*Shader) は CommandList が行う
 /// コンピュートの Dispatch / UAV バインドは扱わない
 /// 入力レイアウトは保持しない (Mesh が `VertexShaderBytecode()` から生成・所有する)
-/// Graphics は exposed-D3D lean 設計のため `ID3D11DeviceChild*` を `Native()` で公開する
+/// D3D11 型を公開する設計のため `ID3D11DeviceChild*` を `Native()` で公開する
 /// 依存: 生成にグローバル Device を使い、 context は保持せず、 バインドは CommandList 経由
 
 #include <cstddef>
@@ -47,8 +47,7 @@ namespace NS::Graphics
     } // namespace detail
 
     /// 単一ステージのシェーダ。 path のファイル名 (`.vs.`/`.ps.`/`.gs.`/`.hs.`/`.ds.`/`.cs.`) でステージを判定する
-    /// 頂点・ピクセルは読込/コンパイル失敗時に magenta fallback へ切替わる (`IsUsingFallback()` で検知)
-    /// 依存: 生成にグローバル Device を使い、 context は保持せず、 バインドは CommandList 経由
+    /// 頂点・ピクセルは読込 / コンパイル失敗時に magenta fallback へ切替わる (`IsUsingFallback()` で検知)
     class Shader : public NS::Core::NonCopyable
     {
     public:
@@ -64,7 +63,7 @@ namespace NS::Graphics
         /// 判定されたパイプラインステージ種別
         [[nodiscard]] ShaderType Type() const noexcept;
 
-        /// 内部シェーダオブジェクト。継ぎ目で raw D3D を扱う Renderer / detail が type で分岐して使う
+        /// 内部シェーダオブジェクト。継ぎ目で生 D3D を扱う Renderer / detail が type で分岐して使う
         [[nodiscard]] ID3D11DeviceChild* Native() const noexcept;
 
         /// InputLayout 生成用の VS バイトコード。 頂点ステージでない or 構築失敗時は空 span

@@ -51,8 +51,7 @@ TEST_F(SkyboxRenderingTest, DepthStateIsLessEqual)
     Skybox& skybox = *skyboxHolder;
     ASSERT_TRUE(skybox.IsValid());
 
-    D3D11_DEPTH_STENCIL_DESC desc{};
-    NS::Graphics::detail::GetDepthStateDesc(skybox, desc);
+    const D3D11_DEPTH_STENCIL_DESC desc = skybox.DepthStateDesc();
 
     EXPECT_TRUE(desc.DepthEnable);
     // skybox は z=1 の far plane に張り付くので LESS_EQUAL 必須
@@ -72,8 +71,7 @@ TEST_F(SkyboxRenderingTest, RasterFrontCull)
     Skybox& skybox = *skyboxHolder;
     ASSERT_TRUE(skybox.IsValid());
 
-    D3D11_RASTERIZER_DESC desc{};
-    NS::Graphics::detail::GetRasterStateDesc(skybox, desc);
+    const D3D11_RASTERIZER_DESC desc = skybox.RasterStateDesc();
 
     EXPECT_EQ(desc.FillMode, D3D11_FILL_SOLID);
     // inside-out cube を視点中心で描くので FRONT or NONE が許容される

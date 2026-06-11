@@ -66,9 +66,7 @@ namespace NS::Scene
 
     void EditorCameraComponent::ApplyZoom(float zoomDelta) noexcept
     {
-        // 加算式だと近距離で 1 notch が画面の半分を動き、 遠距離では微動にしかならず
-        // 体感の zoom が非対称になる。 距離 N に対して一定比率で動かす log scale で
-        // 対称化する。 zoomDelta = 1 で ×0.9 (近づく)、 -1 で ÷0.9 (離れる)
+        // 加算でなく log scale にすることで近距離・遠距離の体感変化量を均等化する
         if (zoomDelta == 0.0f)
             return;
         const float factor = std::pow(0.9f, zoomDelta);
@@ -102,17 +100,16 @@ namespace NS::Scene
             auto& mouse = m_input->Mouse();
             if (mouse.IsHeld(NS::Platform::MouseButton::Right))
             {
-                ApplyOrbit(static_cast<float>(mouse.DeltaX()) * m_mouseSensOrbit,
-                           static_cast<float>(mouse.DeltaY()) * m_mouseSensOrbit);
+                ApplyOrbit(static_cast<float>(mouse.GetDeltaX()) * m_mouseSensOrbit,
+                           static_cast<float>(mouse.GetDeltaY()) * m_mouseSensOrbit);
             }
             if (mouse.IsHeld(NS::Platform::MouseButton::Middle))
             {
-                ApplyPan(static_cast<float>(mouse.DeltaX()) * m_mouseSensPan,
-                         static_cast<float>(mouse.DeltaY()) * m_mouseSensPan);
+                ApplyPan(static_cast<float>(mouse.GetDeltaX()) * m_mouseSensPan,
+                         static_cast<float>(mouse.GetDeltaY()) * m_mouseSensPan);
             }
-            // Wheel: 1 notch (= WHEEL_DELTA 120 単位) を 1 zoomDelta に正規化
-            // ApplyZoom が log scale なので 1 notch = 10% × m_mouseSensZoom の距離変化
-            ApplyZoom(static_cast<float>(mouse.WheelDelta()) / 120.0f * m_mouseSensZoom);
+            // GetWheelDelta は WHEEL_DELTA=120 単位なので /120 で 1 notch=1.0 に正規化
+            ApplyZoom(static_cast<float>(mouse.GetWheelDelta()) / 120.0f * m_mouseSensZoom);
         }
 
         // Gamepad は ImGui キャプチャ対象外、 常に入力する

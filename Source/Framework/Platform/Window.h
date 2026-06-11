@@ -34,14 +34,11 @@ namespace NS::Platform
         bool visible = true;
     };
 
-    /// Win32 ウィンドウのラッパ
-    /// 単一インスタンス前提 (HWND 所有権を固定するためコピー/ムーブ禁止)
-    /// 公開ヘッダから <windows.h> / HWND は露出させない (Graphics 層は NativeHandle() を reinterpret_cast)
+    /// Win32 ウィンドウのラッパ。単一インスタンス前提、コピー/ムーブ禁止
     class Window
     {
     public:
-        /// 内部実装。定義は detail/win32_window.h にある
-        /// 公開しているのは WndProc などの自由関数からアクセス可能にするためで、外部から触らないこと
+        /// 内部実装 (定義は detail/win32_window.h)。WndProc 等の自由関数からのアクセス用で外部から触らないこと
         struct Impl;
 
         explicit Window(const WindowDesc& desc);
@@ -52,12 +49,10 @@ namespace NS::Platform
         Window(Window&&) = delete;
         Window& operator=(Window&&) = delete;
 
-        /// 構築成功判定。RegisterClassExW / CreateWindowExW が失敗した時は false を返す
-        /// 失敗時は NS_LOG_ERROR にも詳細が出ているが、呼び出し側は API 経路で検知できるようこれを参照する
+        /// 構築成功判定。RegisterClassExW / CreateWindowExW が失敗した時は false
         [[nodiscard]] bool IsValid() const noexcept;
 
-        /// 1 フレーム頭で呼ぶ。PeekMessageW(PM_REMOVE) で非ブロッキング処理
-        /// WM_QUIT を受信したら ShouldClose() が true になる
+        /// 1 フレーム頭で呼ぶ。WM_QUIT 受信で ShouldClose() が true になる
         void PollMessages() noexcept;
 
         [[nodiscard]] bool ShouldClose() const noexcept;
@@ -70,26 +65,20 @@ namespace NS::Platform
         /// UTF-8 入力でタイトル変更
         void SetTitle(std::string_view utf8Title) noexcept;
 
-        /// 自身に WM_CLOSE を投げて閉じ要求を出す (× ボタンと同じ経路)
-        /// SetCloseCallback が登録されていればそこに通知、未設定なら PostQuitMessage に落ちて
-        /// 次回 PollMessages 後に ShouldClose() が true になる
+        /// WM_CLOSE を投げて閉じ要求を出す (×ボタンと同じ経路)
+        /// SetCloseCallback が登録されていればそこへ通知、未設定なら PostQuitMessage に落ちる
         void RequestClose() noexcept;
 
         /// リサイズ通知 (WM_SIZE)。最小化中は呼ばれない
         void SetResizeCallback(std::function<void(NS::Math::Size2D)> cb);
 
-        /// ×ボタン等で閉じる要求 (WM_CLOSE) を受け取った時に呼ばれる
-        /// callback 内で RequestClose() を呼ばないと閉じない (拒否可能)
+        /// WM_CLOSE を受け取った時に呼ばれる。callback 内で RequestClose() を呼ばないと閉じない (拒否可能)
         void SetCloseCallback(std::function<void()> cb);
 
-        /// 入力ターゲットを設定する。WndProc が WM_KEYDOWN / WM_KEYUP / WM_KILLFOCUS を
-        /// 受信した時にこの Input へ転送する。非所有ポインタ (Application が所有)
-        /// nullptr 解除可
+        /// 入力転送先を設定する。非所有ポインタ、nullptr で解除
         void AttachInput(Input* input) noexcept;
 
-        /// ImGui コンテキストを登録する。 WndProc 入口で先に ImGui へ message を
-        /// forward し、 ImGui がキャプチャ中 (WantCaptureMouse / WantCaptureKeyboard)
-        /// なら Input への転送を抑止する。 非所有ポインタ、 nullptr 解除可
+        /// ImGui 転送先を設定する。ImGui キャプチャ中は Input 転送を抑止。nullptr で解除
         void AttachImGui(NS::UI::ImGuiContext* imgui) noexcept;
 
     private:

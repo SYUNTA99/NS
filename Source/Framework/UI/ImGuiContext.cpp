@@ -12,8 +12,7 @@
 #include <backends/imgui_impl_win32.h>
 #include <imgui.h>
 
-// imgui_impl_win32.h は <windows.h> 依存を避けるため WndProcHandler を `#if 0`
-// ブロックで公開していない。 利用側で forward declare してから呼ぶのが backend の規約
+// WndProcHandler は backend が非公開にしているため利用側で前方宣言する
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 #define NS_UI_IMGUI_ENABLED 1

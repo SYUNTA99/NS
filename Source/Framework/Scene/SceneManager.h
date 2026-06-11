@@ -17,7 +17,7 @@ namespace NS::Scene
 
     class SceneBase;
 
-    /// SceneBase の lifecycle を管理する単一 scene ホルダ。 LoadScene で切替える
+    /// SceneBase の生存期間を管理する単一 scene ホルダ。LoadScene で切り替える
     class SceneManager
     {
     public:
@@ -29,8 +29,7 @@ namespace NS::Scene
         SceneManager(SceneManager&&) = delete;
         SceneManager& operator=(SceneManager&&) = delete;
 
-        /// 現 scene を OnShutdown してから新 scene を OnStart
-        /// nullptr 渡しで「scene 無し」 状態に
+        /// 現 scene を OnShutdown 後に新 scene を OnStart。nullptr で scene 無し状態へ
         void LoadScene(std::unique_ptr<SceneBase> scene);
 
         /// 現在 active な scene。 未ロードなら nullptr

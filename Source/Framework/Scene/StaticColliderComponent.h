@@ -26,7 +26,7 @@ namespace NS::Scene
         [[nodiscard]] NS::Math::Vector3 HalfExtents() const noexcept;
 
         /// Owner の root world position を center とした AABB を返す
-        /// Owner が未登録の場合は origin 中心の AABB を返す (no-throw)
+        /// Owner が未登録の場合は origin 中心の AABB を返す (例外を投げない)
         [[nodiscard]] NS::Math::AABB WorldAABB() const noexcept;
 
     private:

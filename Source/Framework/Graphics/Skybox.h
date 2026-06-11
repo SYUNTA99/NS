@@ -25,31 +25,11 @@ namespace NS::Graphics
 {
 
     class Renderer;
-    class Skybox;
     class StaticMesh;
     class Shader;
     class Buffer;
 
-    namespace detail
-    {
-        /// Skybox 内部の cubemap SRV を取得 (テストおよび ThemeRegistry 連携で使用)
-        /// 未ロード状態でも fallback SRV (1x1 マゼンタ cubemap) が返るため非 null 保証
-        [[nodiscard]] ID3D11ShaderResourceView* GetCubemapSrv(Skybox& skybox) noexcept;
-
-        /// Skybox が構築時に作った DepthStencilState の Desc を取り出す
-        /// 状態オブジェクトそのものは内部に閉じ、 公開は Desc 値のみで D3D11 を漏らさない設計
-        void GetDepthStateDesc(Skybox& skybox, D3D11_DEPTH_STENCIL_DESC& out) noexcept;
-
-        /// Skybox が構築時に作った RasterizerState の Desc を取り出す (同上、 テスト用途主体)
-        void GetRasterStateDesc(Skybox& skybox, D3D11_RASTERIZER_DESC& out) noexcept;
-    } // namespace detail
-
-    /// Cubemap ベースのスカイボックス描画ファサード
-    /// 単位 cube mesh + cubemap SRV + xyww shader + LESS_EQUAL depth + 前面カリングで描画する
-    /// LoadCubemap は .dds (DirectXTK DDSTextureLoader) と 6-face PNG ディレクトリ
-    /// の両方を受け付け、 拡張子で auto-detect する
-    /// 失敗時は 1x1 マゼンタ cubemap fallback に切替わり IsUsingFallback() が true
-    /// 依存: 構築でグローバル Device を使うため Renderer より先に破棄すること
+    /// cubemap + xyww shader + LESS_EQUAL depth + 前面カリングで描画するスカイボックス。Renderer より先に破棄すること
     class Skybox : public NS::Core::NonCopyable
     {
     public:
@@ -58,18 +38,10 @@ namespace NS::Graphics
 
         ~Skybox();
 
-        /// 6-face PNG ディレクトリまたは .dds cubemap をロードする
-        /// path がディレクトリならば内部で kurt レイアウトの `space_rt/lf/up/dn/ft/bk.png` を
-        /// 探索し 6-face Texture2D + MISC_TEXTURECUBE flag で組み立てる
-        /// path のファイル拡張子が .dds ならば DirectXTK CreateDDSTextureFromFileEx で TEXTURECUBE
-        /// として読込む
-        /// 失敗時は内部 SRV を 1x1 マゼンタ fallback に維持し false を返す。 成功時 true
-        /// 6-face PNG の取込はグローバル DeviceContext で CopySubresourceRegion する
+        /// .dds または 6-face PNG ディレクトリを cubemap としてロードする。失敗時は fallback 維持で false を返す
         [[nodiscard]] bool LoadCubemap(const std::filesystem::path& path);
 
-        /// 与えられた viewProj (camera の translation 成分を除去済) で skybox を 1 drawcall 描画する
-        /// シーン不透明描画の後、 ImGui overlay の前で呼ぶこと (Z=1 重複対策)
-        /// fallback 状態でもクラッシュせずマゼンタ cubemap を描く
+        /// viewProjNoTranslate で skybox を描画する (不透明描画後・ImGui 前に呼ぶこと)
         void Render(Renderer& renderer, const NS::Math::Matrix& viewProjNoTranslate) noexcept;
 
         /// 構築完了 (cube mesh / shader / states / fallback SRV が揃っている) なら true
@@ -78,6 +50,13 @@ namespace NS::Graphics
 
         /// 現在 fallback (1x1 マゼンタ cubemap) を使用中か。 ロード失敗 / 未呼出で true
         [[nodiscard]] bool IsUsingFallback() const noexcept;
+
+        /// cubemap SRV (非所有)。 未ロードでも fallback SRV (1x1 マゼンタ) が返るため構築成功後は非 null
+        [[nodiscard]] ID3D11ShaderResourceView* Srv() const noexcept;
+        /// 構築時に作った DepthStencilState の Desc 値 (LESS_EQUAL / 深度書込 OFF の検証用)
+        [[nodiscard]] D3D11_DEPTH_STENCIL_DESC DepthStateDesc() const noexcept;
+        /// 構築時に作った RasterizerState の Desc 値 (前面カリングの検証用)
+        [[nodiscard]] D3D11_RASTERIZER_DESC RasterStateDesc() const noexcept;
 
     private:
         Skybox();
@@ -95,10 +74,6 @@ namespace NS::Graphics
         D3D11_RASTERIZER_DESC m_rasterDesc{};
         bool m_usingFallback = true;
         bool m_valid = false;
-
-        friend ID3D11ShaderResourceView* detail::GetCubemapSrv(Skybox& skybox) noexcept;
-        friend void detail::GetDepthStateDesc(Skybox& skybox, D3D11_DEPTH_STENCIL_DESC& out) noexcept;
-        friend void detail::GetRasterStateDesc(Skybox& skybox, D3D11_RASTERIZER_DESC& out) noexcept;
     };
 
 } // namespace NS::Graphics

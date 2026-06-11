@@ -16,6 +16,7 @@
 
 #include <Framework/Core/NonCopyable.h>
 #include <Framework/Graphics/D3dCommon.h>
+#include <Framework/Graphics/RenderSettings.h>
 #include <Framework/Platform/Window.h>
 
 namespace NS::Graphics
@@ -29,6 +30,8 @@ namespace NS::Graphics
         bool enableDebugLayer = false;
         /// Present 時の V-Sync (true で SyncInterval=1、false で 0)
         bool vsync = true;
+        /// プロジェクト描画既定値 (クリア色 / lighting)。シーンはこれを基に override を Resolve する
+        RenderSettings settings{};
     };
 
     class Renderer;
@@ -36,10 +39,8 @@ namespace NS::Graphics
     class CommonStates;
     class Texture;
 
-    /// D3D11 Device / DeviceContext / SwapChain を所有するレンダラ
-    /// Window と 1 対 1 で生成し、Window のリサイズ通知を購読する
-    /// device / context / swapchain は ComPtr メンバで直接保持する (D3D 型は D3dCommon.h 経由で公開)
-    /// リソース生成で要る Device / Context は Gpu() (プロセスグローバル) で引く
+    /// D3D11 Device / DeviceContext / SwapChain を所有するレンダラ。Window と 1 対 1 で生成しリサイズ通知を購読
+    /// リソース生成側は Device / Context をプロセスグローバルの Gpu() で引く
     class Renderer : public NS::Core::NonCopyable
     {
     public:
@@ -52,11 +53,17 @@ namespace NS::Graphics
         /// フレーム頭で呼ぶ。backbuffer と depth をクリアし、 描画先としてバインドする
         void BeginFrame(float r, float g, float b, float a) noexcept;
 
+        /// クリア色に Settings().clearColor を使う省略形
+        void BeginFrame() noexcept;
+
+        /// プロジェクト描画既定値 (RendererDesc.settings)。シーンはこれを基に override を Resolve する
+        [[nodiscard]] const RenderSettings& Settings() const noexcept;
+
         /// フレーム末で呼ぶ。SwapChain::Present を実行する
         void EndFrame() noexcept;
 
         /// SwapChain::ResizeBuffers + backbuffer / depth Texture の再構築。Window リサイズで自動呼出される
-        /// size.width または size.height が 0 以下なら no-op (最小化対応)
+        /// size.width または size.height が 0 以下なら何もしない (最小化対応)
         void Resize(NS::Math::Size2D size) noexcept;
 
         [[nodiscard]] NS::Math::Size2D Size() const noexcept;
@@ -76,8 +83,11 @@ namespace NS::Graphics
         std::unique_ptr<CommandList> m_commands;
         std::unique_ptr<CommonStates> m_states;
         ::NS::Platform::Window* m_window = nullptr;
+        RenderSettings m_settings{};
         bool m_vsync = true;
         bool m_valid = false;
+        // dtor の購読解除判定は「登録したか」で行う (Resize 失敗で m_valid が落ちても解除は必要)
+        bool m_resizeCallbackRegistered = false;
     };
 
 } // namespace NS::Graphics

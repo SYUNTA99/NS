@@ -4,8 +4,8 @@
 /// @brief NS::Scene::Component — 振る舞いを表現する再利用ブロック
 ///
 /// GameObject::AddComponent<T>() で生成され、 GameObject が unique_ptr で寿命を所有する
-/// Component 自身は所有者 GameObject を raw 参照する (owner は生成後に GameObject が注入)
-/// Component 間 / cross-GameObject アクセスはコンストラクタ経由の明示的 raw pointer 注入のみ許可
+/// Component 自身は所有者 GameObject を生参照する (owner は生成後に GameObject が注入)
+/// Component 間 / 他 GameObject へのアクセスはコンストラクタ経由の明示的な生ポインタ注入のみ許可
 /// (GetComponent<T>() 動的検索 API は提供しない)
 ///
 /// Lifecycle:
@@ -19,9 +19,7 @@ namespace NS::Scene
     class GameObject;
     class Transform;
 
-    /// Component の OnUpdate 実行順序を制御する priority 帯
-    /// 値が小さいほど先に呼ばれる。 同 priority 内は登録順 (stable_sort)
-    /// 帯は意味的にグルーピング (Input 系 / Physics 系等)、 中間値で挟み込み可
+    /// OnUpdate 実行順を制御する priority 帯。値が小さいほど先、同 priority 内は登録順
     enum class TickPriority : int
     {
         Input = 0,       ///< 入力読取 (PlayerInputComponent 等)
@@ -31,15 +29,11 @@ namespace NS::Scene
         Camera = 400,    ///< Camera follow / transform (ThirdPersonFollowComponent 等)
     };
 
-    /// 全 Component の基底。pure virtual を持たないため直接 instance も可能だが
-    /// 通常は派生して使う
+    /// 全 Component の基底。通常は派生して使う
     class Component
     {
     public:
-        /// priority を data として受け取るコンストラクタ。 owner は GameObject::AddComponent が
-        /// 生成後に注入する。 派生は `Component(static_cast<int>(TickPriority::X))` を base init で渡す
-        /// priority を ctor 引数で確定するのは、 登録時の priority sort が virtual dispatch
-        /// (vtable がまだ derived を指さない base ctor 内) に依存しないようにするため
+        /// priority を ctor 引数で確定する。base ctor 内の virtual dispatch を避けるため (vtable 未確定)
         explicit Component(int priority = static_cast<int>(TickPriority::Physics)) noexcept;
 
         virtual ~Component() noexcept;
@@ -49,18 +43,14 @@ namespace NS::Scene
         Component(Component&&) = delete;
         Component& operator=(Component&&) = delete;
 
-        /// OnUpdate iteration 順を決める priority 帯。 値小→先呼出、 stable sort で同値保持
-        /// 既定 `TickPriority::Physics` (200) — 物理 / movement 帯
-        /// 派生はコンストラクタの base init で `Component((int)TickPriority::X)` を渡す
-        /// (override ではなく data 注入)
+        /// OnUpdate 実行順の priority。既定 `TickPriority::Physics` (200)
         [[nodiscard]] int Priority() const noexcept { return m_priority; }
 
         /// 所有 GameObject。Scene attach 後は non-null
         [[nodiscard]] GameObject* Owner() noexcept { return m_owner; }
         [[nodiscard]] const GameObject* Owner() const noexcept { return m_owner; }
 
-        /// 所有 GameObject の root Transform への short-cut
-        /// 関数名が型名と衝突しないよう RootTransform 命名 (C++ の hidden type rule 回避)
+        /// 所有 GameObject の root Transform への short-cut。型名衝突回避のため RootTransform 命名
         [[nodiscard]] Transform& RootTransform() noexcept;
         [[nodiscard]] const Transform& RootTransform() const noexcept;
 
@@ -72,8 +62,7 @@ namespace NS::Scene
         virtual void OnEndPlay() {}
 
     private:
-        // owner 注入は AddComponent 経由でのみ行う一方向 friend。 Component から GameObject の
-        // 非公開にはアクセスしない (GameObject 側は Component を friend にしない)
+        // owner 注入は AddComponent 経由のみ。Component から GameObject の非公開メンバへはアクセスしない
         friend class GameObject;
         void AttachOwner(GameObject* owner) noexcept { m_owner = owner; }
 

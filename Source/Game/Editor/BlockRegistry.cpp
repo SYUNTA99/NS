@@ -78,8 +78,7 @@ namespace NS::Game::Editor
 
     bool IsSolidBlock(std::uint16_t blockId) noexcept
     {
-        // 「cube 形状の固形 block で InstanceBatcher の cube bucket に乗せる対象」 を判定する述語
-        // slope / pole / hazard / water / decoration は専用の Component や mesh を持つため対象外
+        // slope/pole/hazard 等は専用 Component を持つため対象外
         return blockId == kBlockIdSolid;
     }
 
@@ -152,8 +151,7 @@ namespace NS::Game::Editor
 
     bool IsCollidable(std::uint16_t blockId) noexcept
     {
-        // hazard は AABB 固形 + 接触ダメージ。 water / decoration は player を素通しさせるため非衝突
-        // pole は capsule との衝突解決はせず掴まり state machine 経由で扱うため、 物理 collidable ではない
+        // pole は掴まり state machine 経由で扱うため物理 collidable ではない。 water/decoration は素通し
         return IsSolidBlock(blockId) || IsSlopeBlock(blockId) || IsHazardBlock(blockId);
     }
 } // namespace NS::Game::Editor

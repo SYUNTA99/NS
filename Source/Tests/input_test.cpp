@@ -165,15 +165,15 @@ TEST(NsPlatformMouse, PositionAndDelta)
 {
     Mouse m;
     m.OnMove(10, 20);
-    EXPECT_EQ(m.X(), 10);
-    EXPECT_EQ(m.Y(), 20);
+    EXPECT_EQ(m.GetX(), 10);
+    EXPECT_EQ(m.GetY(), 20);
 
     m.Update();
     m.OnMove(15, 30);
-    EXPECT_EQ(m.X(), 15);
-    EXPECT_EQ(m.Y(), 30);
-    EXPECT_EQ(m.DeltaX(), 5);
-    EXPECT_EQ(m.DeltaY(), 10);
+    EXPECT_EQ(m.GetX(), 15);
+    EXPECT_EQ(m.GetY(), 30);
+    EXPECT_EQ(m.GetDeltaX(), 5);
+    EXPECT_EQ(m.GetDeltaY(), 10);
 }
 
 TEST(NsPlatformMouse, WheelAccumulatesAndResetsOnUpdate)
@@ -181,10 +181,10 @@ TEST(NsPlatformMouse, WheelAccumulatesAndResetsOnUpdate)
     Mouse m;
     m.OnWheel(120);
     m.OnWheel(120);
-    EXPECT_EQ(m.WheelDelta(), 240);
+    EXPECT_EQ(m.GetWheelDelta(), 240);
 
     m.Update();
-    EXPECT_EQ(m.WheelDelta(), 0);
+    EXPECT_EQ(m.GetWheelDelta(), 0);
 }
 
 TEST(NsPlatformMouse, ClearStateResetsButtonsAndWheel)
@@ -198,7 +198,7 @@ TEST(NsPlatformMouse, ClearStateResetsButtonsAndWheel)
 
     EXPECT_FALSE(m.IsHeld(MouseButton::Left));
     EXPECT_FALSE(m.IsHeld(MouseButton::Right));
-    EXPECT_EQ(m.WheelDelta(), 0);
+    EXPECT_EQ(m.GetWheelDelta(), 0);
 }
 
 TEST(NsPlatformInput, UpdatePropagatesToMouse)
@@ -207,12 +207,12 @@ TEST(NsPlatformInput, UpdatePropagatesToMouse)
     input.Mouse().OnButtonDown(MouseButton::Left);
     input.Mouse().OnWheel(120);
     EXPECT_TRUE(input.Mouse().IsPressed(MouseButton::Left));
-    EXPECT_EQ(input.Mouse().WheelDelta(), 120);
+    EXPECT_EQ(input.Mouse().GetWheelDelta(), 120);
 
     input.Update();
     EXPECT_FALSE(input.Mouse().IsPressed(MouseButton::Left));
     EXPECT_TRUE(input.Mouse().IsHeld(MouseButton::Left));
-    EXPECT_EQ(input.Mouse().WheelDelta(), 0);
+    EXPECT_EQ(input.Mouse().GetWheelDelta(), 0);
 }
 
 TEST(NsPlatformGamepad, DefaultIsNotConnected)

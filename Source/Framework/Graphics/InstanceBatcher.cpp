@@ -79,9 +79,8 @@ namespace NS::Graphics
             return true;
         }
 
-        // POSITION + TEXCOORD + NORMAL (slot0) + INSTANCE_WORLD0..3 + INSTANCE_COLOR (slot1) の
-        // 8 element input layout を組む。 Shader の InputElement 抽象は slot 切替や
-        // per-instance step rate を露出していないため、 この impl 内に閉じた生 D3D11 layout で構築する
+        // POSITION+TEXCOORD+NORMAL (slot0) + INSTANCE_WORLD0..3+INSTANCE_COLOR (slot1) の 8 要素 layout。slot
+        // 切替・per-instance step rate は Shader 抽象に非公開のため生 D3D11 で構築
         [[nodiscard]] ComPtr<ID3D11InputLayout> CreateInstancedInputLayout(ID3D11Device* device,
                                                                            const void* vsBytecode,
                                                                            std::size_t vsBytecodeSize) noexcept
@@ -150,9 +149,7 @@ namespace NS::Graphics
         }
         m_instanceVbCapacity = kInitialPerBucketCapacity;
 
-        // Shader の InputElement は slot 0 単 stream 専用なので、 本 batcher は直接 D3D11 で VS+PS を組む
-        // PS は standard.ps.hlsl を流用する (worldNormal / uv 出力を期待する PS と整合)
-        // VS_OUT が standard と完全一致しない点 (instColor の有無等) は将来の lighting 拡張で reconcile
+        // Shader は slot 0 単 stream 専用のため batcher が直接 VS+PS を組む。PS は standard.ps.hlsl 流用
         const auto exeDir = ::NS::Core::FileSystem::GetExeDirectory();
         const auto vsPath = exeDir / "Shaders" / "instanced.vs.hlsl";
         const auto psPath = exeDir / "Shaders" / "standard.ps.hlsl";
@@ -254,8 +251,8 @@ namespace NS::Graphics
                 ctx->PSSetShader(m_ps.Get(), nullptr, 0);
                 ctx->IASetInputLayout(m_inputLayout.Get());
 
-                const Buffer* meshVBuf = detail::GetVertexBuffer(*key.mesh);
-                const Buffer* meshIBuf = detail::GetIndexBuffer(*key.mesh);
+                const Buffer* meshVBuf = key.mesh->VertexBuffer();
+                const Buffer* meshIBuf = key.mesh->IndexBuffer();
                 ID3D11Buffer* meshVB = meshVBuf ? meshVBuf->Native() : nullptr;
                 ID3D11Buffer* meshIB = meshIBuf ? meshIBuf->Native() : nullptr;
                 ID3D11Buffer* instanceVB = m_instanceVB->Native();
@@ -303,12 +300,9 @@ namespace NS::Graphics
         return m_valid;
     }
 
-    namespace detail
+    void InstanceBatcher::SetCountOnlyMode(bool countOnly) noexcept
     {
-        void SetCountOnlyMode(InstanceBatcher& batcher, bool countOnly) noexcept
-        {
-            batcher.m_countOnlyMode = countOnly;
-        }
-    } // namespace detail
+        m_countOnlyMode = countOnly;
+    }
 
 } // namespace NS::Graphics

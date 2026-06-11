@@ -47,9 +47,8 @@ namespace NS::Graphics::detail
         return NS::Math::Quaternion{-q.x, -q.y, q.z, q.w};
     }
 
-    /// cgltf の列優先 16 float を NS の row-major 行ベクトル Matrix に読む
-    /// 列優先 M の格納列は行優先 Mᵀ の格納と一致し、 行ベクトル規約 (p * M) で必要なのは Mᵀ なので
-    /// 結果として 16 float を順序そのまま写すのが正しい (translation は _41/_42/_43 に入る)
+    /// cgltf 列優先 16 float を行ベクトル Matrix に読む。列優先 M == 行優先 Mᵀ なので順序そのままでよい (translation は
+    /// _41/_42/_43)
     [[nodiscard]] inline NS::Math::Matrix ReadColumnMajorMatrix(const float m[16]) noexcept
     {
         return NS::Math::Matrix{

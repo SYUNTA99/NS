@@ -3,8 +3,8 @@
 /// @file ThirdPersonFollowComponent.h
 /// @brief Mario 系ジャンプアクションの追従カメラ
 ///        critically-damped spring で distance を smoothing、マウス/右スティック手動回転、
-///        FOV/sensitivity/invert を member 保持、Dynamic zoom (idle 5 / run 6 / jump 7) を
-///        movement の grounded / horizontal velocity から自動切替
+///        sensitivity/invert と自動ズーム距離 (idle/run/jump) を member 保持し setter で調整可
+///        FOV は CameraComponent 側が所有する
 
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Component.h"
@@ -24,7 +24,7 @@ namespace NS::Scene
     class ThirdPersonFollowComponent : public Component
     {
     public:
-        /// target を受け取って構築する。 owner は GameObject::AddComponent が注入する
+        /// target を受け取って構築する
         explicit ThirdPersonFollowComponent(Transform* target) noexcept;
 
         void SetTarget(Transform* target) noexcept;
@@ -40,8 +40,6 @@ namespace NS::Scene
         void SetMovement(const CharacterMovementComponent* movement) noexcept;
 
         /// 設定 (将来 Settings UI から bridge)
-        void SetFovY(NS::Math::Radians fov) noexcept;
-        [[nodiscard]] NS::Math::Radians FovY() const noexcept { return m_fovY; }
         void SetSensX(float radPerPixel) noexcept;
         [[nodiscard]] float SensX() const noexcept { return m_sensX; }
         void SetSensY(float radPerPixel) noexcept;
@@ -51,8 +49,12 @@ namespace NS::Scene
         void SetInvertY(bool invert) noexcept;
         [[nodiscard]] bool IsInvertY() const noexcept { return m_invertY; }
 
-        /// 距離の手動オーバーライド (test / cinematic 用)。default は dynamic zoom
-        /// 一度呼出すと dynamic zoom を無効化し、`ClearManualDistance()` で再有効化する
+        /// 自動ズームの距離 3 段 (idle / run / jump)。非正値は無視する
+        void SetAutoDistances(float idle, float run, float jump) noexcept;
+        /// 自動ズームで run 距離へ切替える水平速度しきい値
+        void SetRunSpeedThreshold(float speed) noexcept;
+
+        /// 距離を手動固定。dynamic zoom を無効化し、ClearManualDistance() で再有効化する
         void SetDistance(float distance) noexcept;
         void ClearManualDistance() noexcept;
         [[nodiscard]] float Distance() const noexcept { return m_distance; }
@@ -61,15 +63,10 @@ namespace NS::Scene
         [[nodiscard]] float Yaw() const noexcept { return m_yaw; }
         [[nodiscard]] float Pitch() const noexcept { return m_pitch; }
 
-        /// fixed step での state mutation (input → yaw/pitch、 distance spring)
-        /// Camera position の SetPosition / SetTarget はここでは呼ばず、
-        /// `ApplyCameraTransform(alpha)` で render frame ごとに行う (ガタつき回避)
+        /// fixed step で yaw/pitch・distance spring を更新。Camera 位置は ApplyCameraTransform に委ねる (ガタつき回避)
         void OnUpdate() override;
 
-        /// 可変 frame Render 時に呼出す。 Player の補間 position に追随して
-        /// camera position / target を SetPosition / SetTarget する。 alpha は
-        /// `NS::Core::FrameTimer::Alpha()` (= accumulator / fixedDelta) を渡す
-        /// fixed step state (yaw/pitch/distance) は OnUpdate で更新済の値を使う
+        /// Render 時に呼ぶ。alpha で補間した Player position に追随して Camera を更新する
         void ApplyCameraTransform(float alpha) noexcept;
 
     private:
@@ -86,9 +83,13 @@ namespace NS::Scene
         float m_springOmega = 6.0f;
         bool m_manualDistance = false;
 
+        float m_idleDistance = 5.0f;
+        float m_runDistance = 6.0f;
+        float m_jumpDistance = 7.0f;
+        float m_runSpeedThreshold = 4.0f;
+
         float m_headHeight = 1.2f;
 
-        NS::Math::Radians m_fovY{1.0472f};
         float m_sensX = 0.0030f;
         float m_sensY = 0.0030f;
         float m_stickSensX = 2.0f;

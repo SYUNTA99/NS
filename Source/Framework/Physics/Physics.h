@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Physics.h
-/// @brief Physics 層 umbrella header — Mario 系プラットフォーマー特化 Custom AABB 物理
+/// @brief Physics 層一括includeヘッダ — Mario 系プラットフォーマー特化 Custom AABB 物理
 
 #include "Framework/Physics/Capsule.h"
 #include "Framework/Physics/CharacterController.h"

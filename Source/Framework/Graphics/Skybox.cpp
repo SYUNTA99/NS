@@ -34,9 +34,7 @@ namespace NS::Graphics
         };
         static_assert(sizeof(SkyboxCB) == 64, "SkyboxCB は HLSL 側 cbuffer (b0) と byte 一致が必要");
 
-        // kurt placeholder の 6 face レイアウト。 D3D11 cubemap の標準順は +X / -X / +Y / -Y / +Z / -Z
-        // kurt の命名 (rt / lf / up / dn / ft / bk) は左手系 LH カメラから見た方向にマップする
-        // 視覚的に上下逆や水平反転がある場合は個別差替え
+        // D3D11 cubemap 標準順 (+X/-X/+Y/-Y/+Z/-Z) に rt/lf/up/dn/ft/bk をマップ。上下逆・水平反転時は個別差替え
         constexpr std::array<const char*, 6> kKurtFaceFileNames = {
             "space_rt.png", // +X (right)
             "space_lf.png", // -X (left)
@@ -134,9 +132,8 @@ namespace NS::Graphics
             return true;
         }
 
-        // 6 枚 PNG を読み込み、 cubemap として束ねた Texture2D + SRV を作る
-        // 各 face は 2D Texture2D として WIC で staging に読み込み、 そこから
-        // ArraySize=6 + MISC_TEXTURECUBE の本体テクスチャに CopySubresourceRegion で転写する
+        // 6 枚 PNG を cubemap に束ねる。各 face を WIC で個別 Texture2D に読み、
+        // ArraySize=6 + MISC_TEXTURECUBE の本体へ CopySubresourceRegion で転写する
         bool LoadSixFacePngCubemap(ID3D11Device* device,
                                    ID3D11DeviceContext* context,
                                    const std::filesystem::path& dir,
@@ -500,22 +497,19 @@ namespace NS::Graphics
         return m_usingFallback;
     }
 
-    namespace detail
+    ID3D11ShaderResourceView* Skybox::Srv() const noexcept
     {
-        ID3D11ShaderResourceView* GetCubemapSrv(Skybox& skybox) noexcept
-        {
-            return skybox.m_cubemapSrv.Get();
-        }
+        return m_cubemapSrv.Get();
+    }
 
-        void GetDepthStateDesc(Skybox& skybox, D3D11_DEPTH_STENCIL_DESC& out) noexcept
-        {
-            out = skybox.m_depthDesc;
-        }
+    D3D11_DEPTH_STENCIL_DESC Skybox::DepthStateDesc() const noexcept
+    {
+        return m_depthDesc;
+    }
 
-        void GetRasterStateDesc(Skybox& skybox, D3D11_RASTERIZER_DESC& out) noexcept
-        {
-            out = skybox.m_rasterDesc;
-        }
-    } // namespace detail
+    D3D11_RASTERIZER_DESC Skybox::RasterStateDesc() const noexcept
+    {
+        return m_rasterDesc;
+    }
 
 } // namespace NS::Graphics

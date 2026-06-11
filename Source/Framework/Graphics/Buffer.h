@@ -8,7 +8,7 @@
 /// (byteSize / bindFlags を用途別に埋める)。 定数バッファは byteSize を 16-byte 境界へ切り上げ、
 /// usage は Dynamic 前提で生成する。 非 Dynamic バッファは initialData 必須 (未初期化 GPU 読み回避)
 /// バインド / 更新は CommandList 経由 (`renderer.Commands().SetVertexBuffer` / `UpdateBuffer` 等)
-/// Graphics は exposed-D3D lean 設計のため `ID3D11Buffer*` を `Native()` で公開する
+/// D3D11 型を公開する設計のため `ID3D11Buffer*` を `Native()` で公開する
 
 #include <cstddef>
 #include <memory>
@@ -33,9 +33,8 @@ namespace NS::Graphics
         UINT bindFlags = 0;                             ///< D3D11_BIND_VERTEX_BUFFER 等 (役割)
     };
 
-    /// 頂点 / index / 定数を兼ねる単一 Buffer。役割は bindFlags で決まる
-    /// バインド / 更新は CommandList 経由 (本型は GPU バッファ + メタのみ保持、 context は持たない)
-    /// alignas(16) と手動 padding (Vector3 a; float _pad;) で定数の internal alignment を担保すること
+    /// 頂点 / index / 定数を兼ねる単一 Buffer。役割は bindFlags で決まり、バインド / 更新は CommandList 経由
+    /// 定数用途は alignas(16) と手動 padding で 16 byte 境界を担保すること
     class Buffer : public NS::Core::NonCopyable
     {
     public:
@@ -45,7 +44,7 @@ namespace NS::Graphics
         /// CreateBuffer 成功で true。device 無効 / byteSize=0 / 非 Dynamic で initialData 欠如時 false
         [[nodiscard]] bool IsValid() const noexcept;
 
-        /// 内部 ID3D11Buffer。継ぎ目で raw D3D を扱う Renderer / detail が使う
+        /// 内部 ID3D11Buffer。継ぎ目で生 D3D を扱う Renderer / detail が使う
         [[nodiscard]] ID3D11Buffer* Native() const noexcept;
 
         [[nodiscard]] std::size_t Stride() const noexcept;

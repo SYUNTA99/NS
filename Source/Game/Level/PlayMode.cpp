@@ -14,13 +14,8 @@ namespace NS::Game::Level
 
     void PlayMode::Enter(const LevelData& level, PlayState& play) noexcept
     {
-        // capsule 縦総長 = (halfHeight + radius) × 2 = 1.8m で 1m cell より大きい
-        // cell 中心に置くと直下ブロックに 0.4m 深くめり込み、 controller の swept 衝突が
-        // toi=0 を返し続けて horizontal motion も止まる (= 操作不能) ので、 capsule の底端を
-        // spawn セルの底面 (= 直下にブロックがあればその上面) に乗せる位置に center を置く
-        //
-        // さらに 1cm 浮かせて、 浮動小数誤差で feet がブロック上面と完全一致した時にも
-        // 1tick 目の gravity が確実に着地させる安全マージンを取る
+        // cell 中心に置くと直下ブロックに 0.4m めり込み swept が toi=0 を返し続けて操作不能になる
+        // capsule 底端を spawn セル底面に乗せ、さらに 1cm 浮かせて浮動小数誤差の安全マージンを取る
         constexpr float kCellHalfExtent = 0.5f;
         constexpr float kSpawnLiftEpsilon = 0.01f;
         const float playerCenterY = static_cast<float>(level.spawnY) - kCellHalfExtent + kPlayerCapsuleHalfHeight +
@@ -32,7 +27,6 @@ namespace NS::Game::Level
         play.paused = false;
         play.clearTriggered = false;
         play.deathTriggered = false;
-        // HUD / 回復アイテムが入るまで、 Play 開始 / respawn 毎に最大値へ戻す placeholder
         play.playerHealth = 8;
 
         m_collectedCoinIndices.clear();
@@ -83,9 +77,7 @@ namespace NS::Game::Level
 
     void PlayMode::Exit(PlayState& play) noexcept
     {
-        // Quit-to-Edit 中の paused 残留や、 clear/death の flag を持ち越さないようリセット
-        // 次の EnterPlay は Enter() でも上書きされるが、 Exit 直後に PlayState を観測する
-        // EditorLayer 等のために整える
+        // Enter() でも上書きされるが、 Exit 直後に PlayState を観測する側のために整える
         play.paused = false;
         play.clearTriggered = false;
         play.deathTriggered = false;

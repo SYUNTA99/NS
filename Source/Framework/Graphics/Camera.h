@@ -13,10 +13,7 @@
 namespace NS::Graphics
 {
 
-    /// Camera 構築パラメータ。 デフォルト値は default コンストラクタと同一 (Z=-5 から原点を見る LH 60deg)
-    /// C++20 designated initializer で部分指定可: `CameraDesc{ .fovY = ..., .aspect = ... }`
-    /// 全パラメータを一発で確定できる場面 (initial scene 構築 etc) で setter cascade の代替に使う
-    /// 動的更新 (ThirdPerson 追従の position / aspect リサイズ等) は引き続き setter を使う
+    /// Camera 構築パラメータ。setter cascade の代替に使う (動的更新は setter で)
     struct CameraDesc
     {
         NS::Math::Vector3 position{0.0f, 0.0f, -5.0f};
@@ -28,11 +25,7 @@ namespace NS::Graphics
         float farPlane = 1000.0f;
     };
 
-    /// View + Projection 行列を提供する Plain Class
-    /// GPU リソース所有なし、Renderer/Scene 依存なし
-    /// CameraComponent から将来内包される予定
-    /// 座標系は LH 一本、Up = (0,1,0) 既定、Perspective のみ
-    /// setter で内部の dirty フラグが立ち、Getter で初めて行列再計算するレイジー方式
+    /// View + Projection 行列を提供する Plain Class。LH / Perspective 専用、dirty フラグによるレイジー再計算
     class Camera
     {
     public:
@@ -52,7 +45,7 @@ namespace NS::Graphics
         void SetTarget(const NS::Math::Vector3& target) noexcept;
         void SetUp(const NS::Math::Vector3& up) noexcept;
 
-        /// 垂直 FOV を強い型 Radians で受ける。 raw float の取り違え事故を防ぐ
+        /// 垂直 FOV を強い型 Radians で受ける。 生 float の取り違え事故を防ぐ
         void SetFovY(NS::Math::Radians fov) noexcept;
         /// アスペクト比 (width / height)。Window リサイズ時に呼出責任は Game 側
         void SetAspectRatio(float aspect) noexcept;

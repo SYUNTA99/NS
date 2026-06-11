@@ -10,7 +10,7 @@
 /// 経由なので将来 pak / VFS で透過対応可能
 /// 既存 `ID3D11Texture2D` ラップ ctor は swapchain backbuffer を RTV として包む用途に使う
 /// バインドは CommandList 経由、 本型は context を保持しない
-/// Graphics は exposed-D3D lean 設計のため `ID3D11Texture2D*` / 各 view を直接公開する
+/// D3D11 型を公開する設計のため `ID3D11Texture2D*` / 各 view を直接公開する
 
 #include <filesystem>
 #include <memory>
@@ -34,9 +34,8 @@ namespace NS::Graphics
         bool sRGB = false;
     };
 
-    /// 生成用 Texture 構築パラメータ (offscreen RT / depth / render-to-texture)
-    /// bindFlags に SHADER_RESOURCE / RENDER_TARGET / DEPTH_STENCIL を組み合わせ、 必要な view が作られる
-    /// 例: RENDER_TARGET|SHADER_RESOURCE で render-to-texture (Rtv() と Srv() 両方が非 null)
+    /// 生成用 Texture 構築パラメータ。bindFlags の組み合わせに応じて必要な view が作られる
+    /// 例: RENDER_TARGET|SHADER_RESOURCE で render-to-texture (Rtv() / Srv() 両方が非 null)
     struct TextureCreateDesc
     {
         UINT width = 0;
@@ -47,9 +46,8 @@ namespace NS::Graphics
         UINT bindFlags = D3D11_BIND_SHADER_RESOURCE;
     };
 
-    /// 2D テクスチャ。Cubemap / 3D Volume は対象外
-    /// 役割は bindFlags で決まり、 SRV / RTV / DSV を必要なぶんだけ保持する
-    /// バインドは CommandList 経由 (本型は context を保持しない)
+    /// 2D テクスチャ (Cubemap / 3D Volume は対象外)。bindFlags に応じて SRV / RTV / DSV を必要なぶん保持
+    /// バインドは CommandList 経由 (context は保持しない)
     class Texture : public NS::Core::NonCopyable
     {
     public:
@@ -72,7 +70,7 @@ namespace NS::Graphics
         /// デバッグ時のアセット欠落検知に使用。 生成 / ラップ ctor では常に false
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-        /// 内部 ID3D11Texture2D。継ぎ目で raw D3D を扱う Renderer / detail が使う
+        /// 内部 ID3D11Texture2D。継ぎ目で生 D3D を扱う Renderer / detail が使う
         [[nodiscard]] ID3D11Texture2D* Native() const noexcept;
 
         /// SHADER_RESOURCE bind 時の SRV (なければ null)

@@ -66,8 +66,7 @@ namespace NS::Game::Editor
     void CategoryPalette::Render() noexcept
     {
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
-        // Mario Builder 64 と同じく画面 center-top に default 配置する
-        // ユーザーは初回ドラッグで自由に移動可能 (ImGuiCond_FirstUseEver)
+        // 画面上部中央に default 配置。 ユーザーは初回ドラッグで移動可能 (ImGuiCond_FirstUseEver)
         if (ImGuiViewport* vp = ImGui::GetMainViewport())
         {
             ImGui::SetNextWindowPos(
@@ -90,7 +89,7 @@ namespace NS::Game::Editor
             const char* label = (blockId != 0) ? GetDisplayName(blockId) : "-";
             const bool isActive = (i == m_activeSlot);
 
-            // active slot は色を変えて視覚的に区別する (Mario Maker 風)
+            // active slot は色を変えて視覚的に区別する
             if (isActive)
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.50f, 0.80f, 1.0f));
 

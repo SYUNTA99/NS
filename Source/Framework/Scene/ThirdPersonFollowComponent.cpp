@@ -13,11 +13,6 @@
 
 namespace
 {
-    constexpr float kRunSpeedThreshold = 4.0f;
-    constexpr float kIdleDistance = 5.0f;
-    constexpr float kRunDistance = 6.0f;
-    constexpr float kJumpDistance = 7.0f;
-
     [[nodiscard]] float SpringApproach(float curr, float target, float omega, float dt) noexcept
     {
         if (omega <= 0.0f || dt <= 0.0f)
@@ -52,13 +47,6 @@ namespace NS::Scene
         m_movement = movement;
     }
 
-    void ThirdPersonFollowComponent::SetFovY(NS::Math::Radians fov) noexcept
-    {
-        m_fovY = fov;
-        if (m_camera != nullptr)
-            m_camera->SetFovY(fov);
-    }
-
     void ThirdPersonFollowComponent::SetSensX(float radPerPixel) noexcept
     {
         m_sensX = radPerPixel;
@@ -74,6 +62,21 @@ namespace NS::Scene
     void ThirdPersonFollowComponent::SetInvertY(bool invert) noexcept
     {
         m_invertY = invert;
+    }
+
+    void ThirdPersonFollowComponent::SetAutoDistances(float idle, float run, float jump) noexcept
+    {
+        if (idle > 0.0f)
+            m_idleDistance = idle;
+        if (run > 0.0f)
+            m_runDistance = run;
+        if (jump > 0.0f)
+            m_jumpDistance = jump;
+    }
+
+    void ThirdPersonFollowComponent::SetRunSpeedThreshold(float speed) noexcept
+    {
+        m_runSpeedThreshold = speed;
     }
 
     void ThirdPersonFollowComponent::SetDistance(float distance) noexcept
@@ -99,8 +102,8 @@ namespace NS::Scene
             const auto& mouse = m_input->Mouse();
             const float mxSign = m_invertX ? -1.0f : 1.0f;
             const float mySign = m_invertY ? -1.0f : 1.0f;
-            m_yaw += static_cast<float>(mouse.DeltaX()) * m_sensX * mxSign;
-            m_pitch += static_cast<float>(mouse.DeltaY()) * m_sensY * mySign;
+            m_yaw += static_cast<float>(mouse.GetDeltaX()) * m_sensX * mxSign;
+            m_pitch += static_cast<float>(mouse.GetDeltaY()) * m_sensY * mySign;
 
             const auto& pad = m_input->Gamepad(0);
             const NS::Platform::Stick rstick = pad.RightStick();
@@ -112,18 +115,18 @@ namespace NS::Scene
 
         if (!m_manualDistance)
         {
-            float desired = kIdleDistance;
+            float desired = m_idleDistance;
             if (m_movement != nullptr)
             {
                 if (!m_movement->IsGrounded())
                 {
-                    desired = kJumpDistance;
+                    desired = m_jumpDistance;
                 }
                 else
                 {
                     const auto v = m_movement->Velocity();
                     const float horiz = std::sqrt(v.x * v.x + v.z * v.z);
-                    desired = (horiz > kRunSpeedThreshold) ? kRunDistance : kIdleDistance;
+                    desired = (horiz > m_runSpeedThreshold) ? m_runDistance : m_idleDistance;
                 }
             }
             m_desiredDistance = desired;
@@ -142,8 +145,7 @@ namespace NS::Scene
         const float sp = std::sin(m_pitch);
         const NS::Math::Vector3 forward{sy * cp, sp, cy * cp};
 
-        // target は補間位置を使うことで Player Mesh の補間と一致させ、
-        // 相対位置にガタつきが乗らないようにする (補間整合)
+        // Player Mesh の補間と整合させ、相対位置のガタつきを防ぐ
         const NS::Math::Vector3 tgtPos = m_target->InterpolatedWorldMatrix(alpha).Translation();
         const NS::Math::Vector3 headPos{tgtPos.x, tgtPos.y + m_headHeight, tgtPos.z};
         const NS::Math::Vector3 camPos{
@@ -155,6 +157,5 @@ namespace NS::Scene
         m_camera->SetPosition(camPos);
         m_camera->SetTarget(headPos);
         m_camera->SetUp({0.0f, 1.0f, 0.0f});
-        m_camera->SetFovY(m_fovY);
     }
 } // namespace NS::Scene

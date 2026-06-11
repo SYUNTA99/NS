@@ -13,9 +13,7 @@ namespace NS::Platform
     /// <windows.h> 依存を避けるため引数は unsigned int で受ける (実体は WPARAM 互換)
     [[nodiscard]] Key MapVkToKey(unsigned int vk) noexcept;
 
-    /// Window WndProc から呼ばれる Win32 メッセージディスパッチ
-    /// WM_KEYDOWN / WM_KEYUP / WM_SYSKEYDOWN / WM_SYSKEYUP / WM_KILLFOCUS のみ処理
-    /// 引数は <windows.h> 露出回避のため intptr 系で受ける (実体は WPARAM/LPARAM)
+    /// WndProc から呼ばれる Win32 入力メッセージディスパッチ。引数は WPARAM/LPARAM 互換
     void DispatchWin32MessageToInput(Input& input,
                                      unsigned int msg,
                                      std::uintptr_t wparam,

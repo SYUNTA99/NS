@@ -9,7 +9,6 @@
 /// `AutoTile::LookupTextureSlice(theme, neighborMask, blockId)` で 8 slice から 1 つ選ぶ」
 /// 設計で達成する。 これにより LevelData フォーマット変更ゼロで variation を実現する
 /// slope 4 種 (200..203) / pole (210) / hazard (220) / water (221) / decoration (222) を扱う
-/// 将来、 敵 / ギミック等を 300 番台以降で予約する
 
 #include "Framework/Math/Math.h"
 
@@ -56,12 +55,10 @@ namespace NS::Game::Editor
     /// slope の blockId に対応する角度 (度数法) を返す。 slope でなければ 0
     [[nodiscard]] float GetSlopeAngleDegrees(std::uint16_t blockId) noexcept;
 
-    /// slope の角度を 1 段階切り替える (45→30→22→15→45)。 slope 以外はそのまま返す
-    /// 9 スロット固定の palette で slope スロット再選択時に角度を循環させる用途
+    /// slope 角度を 45→30→22→15→45 と循環させる。 slope 以外はそのまま返す
     [[nodiscard]] std::uint16_t NextSlopeBlock(std::uint16_t blockId) noexcept;
 
-    /// 編集中に R で 90° 回転させる対象の block か。 向きが意味を持つ slope と通常の固形 block が true
-    /// pole (Y 対称) / water / decoration は回しても見た目が変わらないので false
+    /// R で 90° 回転させる対象か。 pole(Y 対称)/water/decoration は false
     [[nodiscard]] bool IsRotatableBlock(std::uint16_t blockId) noexcept;
 
     /// 掴まり pole かどうか
@@ -82,11 +79,9 @@ namespace NS::Game::Editor
     /// 各 ID に紐づく base color (RGBA float)。 テクスチャが揃うまでの色分け用
     [[nodiscard]] NS::Math::Color GetBaseColor(std::uint16_t blockId) noexcept;
 
-    /// 「衝突 cube 1 個分の固形ブロック」 系か否かを返す。 現状 `kBlockIdSolid` のみが該当
-    /// slope / pole 等は独自の collider component で扱うので本判定の対象外
+    /// 衝突 cube 固形ブロックか。 slope/pole は独自 collider を持つので対象外
     [[nodiscard]] bool IsSolidBlock(std::uint16_t blockId) noexcept;
 
-    /// プレイヤーが触ったときに衝突解決を必要とするか
-    /// solid / slope / hazard は true、 water / decoration は false (素通し)
+    /// 衝突解決が必要か。 solid/slope/hazard が true、 water/decoration は素通し
     [[nodiscard]] bool IsCollidable(std::uint16_t blockId) noexcept;
 } // namespace NS::Game::Editor

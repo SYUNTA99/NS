@@ -8,10 +8,7 @@
 /// Windows.h などの重い OS / SDK ヘッダを公開 API に巻き込まないため、
 /// 層 PCH (<Layer>Pch.h) と detail/*.cpp のみがこのヘッダを参照する
 
-// Windows ヘッダ
-//   前提 define (NOMINMAX / WIN32_LEAN_AND_MEAN / _WIN32_WINNT 等) は premake5.lua
-//   workspace.defines で /D 経由 global 伝搬している (third_party transitive <windows.h>
-//   への取りこぼし回避のため)
+// NOMINMAX 等の前提 define は premake5.lua で global 伝搬 (サードパーティ経由の漏れ込み回避)
 #include <windows.h>
 
 // C 標準ライブラリ

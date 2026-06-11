@@ -10,7 +10,7 @@
 namespace NS::Graphics
 {
     /// 描画の既定値を完全な値で保持する POD
-    /// プロジェクトで 1 個だけ Application が保持し、 シーンは override だけ書く
+    /// プロジェクトで 1 個だけ RendererDesc 経由で Renderer が保持し、 シーンは override だけ書く
     struct RenderSettings
     {
         /// backbuffer クリア色 (RGBA)
@@ -21,8 +21,6 @@ namespace NS::Graphics
         NS::Math::Vector3 lightColor{1.0f, 1.0f, 1.0f};
         /// 環境光の色 (N.L = 0 の影側ベース色)
         NS::Math::Vector3 ambientColor{0.2f, 0.2f, 0.2f};
-        /// Present 時の V-Sync (Application 構築時に RendererDesc.vsync へ写す)
-        bool vsync = true;
     };
 
     /// 指定フィールドだけを上書きする POD
@@ -33,7 +31,6 @@ namespace NS::Graphics
         std::optional<NS::Math::Vector3> lightDir;
         std::optional<NS::Math::Vector3> lightColor;
         std::optional<NS::Math::Vector3> ambientColor;
-        std::optional<bool> vsync;
     };
 
     /// defaults を基に over の has_value フィールドだけ差し替えた新しい設定を返す純粋関数

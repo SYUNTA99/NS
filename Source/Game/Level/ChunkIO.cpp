@@ -20,12 +20,10 @@ namespace NS::Game::Level
         constexpr char kBlksFourCc[4] = {'B', 'L', 'K', 'S'};
         constexpr char kSpwnFourCc[4] = {'S', 'P', 'W', 'N'};
 
-        /// chunk header (FourCC + size) と CRC3 chunk の上限は 16MB に hard cap、
-        /// 巨大 size に対する memory exhaustion を防ぐ
+        /// 読込 / 書込の上限。 巨大 size による memory exhaustion を防ぐ
         constexpr std::size_t kMaxLevelFileBytes = 16u * 1024u * 1024u;
 
-        /// 何個まで block を許容するか。 攻撃的な block_count u32 値で
-        /// 大量 allocation を引き起こさない上限
+        /// block_count u32 による大量 allocation を防ぐ上限
         constexpr std::uint32_t kMaxBlockCount = 100'000u;
 
         bool FourCcEqual(const char a[4], const char b[4]) noexcept

@@ -11,10 +11,7 @@ namespace NS::Graphics
     class StaticMesh;
 } // namespace NS::Graphics
 
-/// 静的ブロックの GameObject
-/// MeshRendererComponent + StaticColliderComponent を GameObject が所有し、参照を member キャッシュする
-/// Mesh / Material は LevelEditorScene が共有し、見た目サイズは Root::SetScale で、
-/// 衝突サイズは StaticColliderComponent::SetHalfExtents で同期管理する
+/// 静的ブロック。 Mesh / Collider Component を所有し Scale と halfExtents を同期管理する
 class Block : public NS::Scene::GameObject
 {
 public:

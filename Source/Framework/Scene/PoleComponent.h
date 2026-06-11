@@ -30,8 +30,7 @@ namespace NS::Scene
         /// world 空間でのポール上端 (Y 方向に +height/2 オフセット)
         [[nodiscard]] NS::Math::Vector3 AxisEnd() const noexcept;
 
-        /// `worldPos` がポール表面の cylinder 内側か。 XZ 距離が radius 以下かつ
-        /// Y が AxisStart..AxisEnd の範囲内なら true
+        /// XZ 距離が radius 以下かつ Y が AxisStart..AxisEnd 内なら true
         [[nodiscard]] bool ContainsPoint(const NS::Math::Vector3& worldPos) const noexcept;
 
     private:

@@ -15,7 +15,7 @@
 namespace NS::Scene
 {
 
-    /// 階層 Transform。所有関係は持たない (Transform 間は raw 参照、寿命は GameObject が支配)
+    /// 階層 Transform。所有関係は持たない (Transform 間は生参照、寿命は GameObject が支配)
     class Transform
     {
     public:
@@ -43,9 +43,8 @@ namespace NS::Scene
         [[nodiscard]] const NS::Math::Quaternion& PreviousRotation() const noexcept { return m_previousRotation; }
         [[nodiscard]] const NS::Math::Vector3& PreviousScale() const noexcept { return m_previousScale; }
 
-        /// 現在 PRS を previous に退避する。Scene::OnUpdate 末尾で LevelEditorScene が
-        /// 全 Transform に対して一括実行する。Component の OnUpdate 末尾で
-        /// 個別実行するのは禁止 (階層 parent-child の世代不一致防止)
+        /// 現在 PRS を previous に退避する。Scene::OnUpdate 末尾で全 Transform に一括実行する
+        /// Component の OnUpdate 内で個別実行すると parent-child の世代がずれるため禁止
         void Snapshot() noexcept;
 
         /// Local 行列 (Scale * Rotate * Translate)

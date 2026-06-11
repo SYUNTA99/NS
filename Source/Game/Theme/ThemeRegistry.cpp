@@ -5,9 +5,7 @@
 
 namespace
 {
-    /// 5 テーマの静的レジストリ。 baseSlice /
-    /// lightColor / ambientColor を定義する。 skyboxCubemapPath は CC0 cubemap
-    /// 確保まで全テーマで kurt placeholder を共有する
+    /// 5 テーマの静的レジストリ。 baseSlice / lightColor / ambientColor を定義する
     const std::array<ThemeData, 5>& Themes()
     {
         static const std::array<ThemeData, 5> kThemes = [] {

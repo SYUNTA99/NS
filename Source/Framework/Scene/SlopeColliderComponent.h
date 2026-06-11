@@ -18,8 +18,7 @@
 
 namespace NS::Scene
 {
-    /// 1 wedge slope の 2 三角形を世界座標で返す Component。 AABB collider ではないため
-    /// `StaticColliderComponent` とは独立、 wedge 専用のスロープ block に組み込む
+    /// wedge slope の world 座標 Triangle を返す Component。StaticColliderComponent とは独立
     class SlopeColliderComponent : public Component
     {
     public:
@@ -32,9 +31,7 @@ namespace NS::Scene
         /// 半サイズ
         [[nodiscard]] NS::Math::Vector3 HalfExtents() const noexcept { return m_halfExtents; }
 
-        /// Owner の root world matrix を適用した世界座標版 wedge 三角形 (8 個)
-        /// 内訳: 斜面 2 + 底面 2 + 裏壁 2 + 左側面 1 + 右側面 1
-        /// Owner が未登録なら local 座標版を返す
+        /// world 座標の wedge 三角形 8 個 (斜面2+底2+裏壁2+側面各1)。Owner 未登録なら local 座標版
         [[nodiscard]] std::array<NS::Physics::Triangle, 8> WorldTriangles() const noexcept;
 
     private:

@@ -230,8 +230,8 @@ TEST_F(MeshLoggerTest, AccessorsNonNull)
     StaticMesh& mesh = *meshHolder;
     ASSERT_TRUE(mesh.IsValid());
 
-    EXPECT_NE(NS::Graphics::detail::GetVertexBuffer(mesh), nullptr);
-    EXPECT_NE(NS::Graphics::detail::GetIndexBuffer(mesh), nullptr);
+    EXPECT_NE(mesh.VertexBuffer(), nullptr);
+    EXPECT_NE(mesh.IndexBuffer(), nullptr);
 }
 
 TEST_F(MeshLoggerTest, CreateInputLayoutSucceedsWithStandardShader)
@@ -253,7 +253,7 @@ TEST_F(MeshLoggerTest, CreateInputLayoutSucceedsWithStandardShader)
     ASSERT_TRUE(mesh.IsValid());
 
     // 生成前は layout 未所有
-    EXPECT_EQ(NS::Graphics::detail::GetInputLayout(mesh), nullptr);
+    EXPECT_EQ(mesh.InputLayout(), nullptr);
 
     const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
     std::unique_ptr<NS::Graphics::Shader> shaderHolder = NS::Graphics::Shader::Create(shaderDir / "standard.vs.hlsl");
@@ -262,5 +262,5 @@ TEST_F(MeshLoggerTest, CreateInputLayoutSucceedsWithStandardShader)
     ASSERT_FALSE(shader.IsUsingFallback());
 
     mesh.CreateInputLayout(shader);
-    EXPECT_NE(NS::Graphics::detail::GetInputLayout(mesh), nullptr);
+    EXPECT_NE(mesh.InputLayout(), nullptr);
 }

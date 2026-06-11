@@ -28,10 +28,8 @@ namespace NS::Game::Editor
                                                    std::int16_t z,
                                                    std::uint16_t blockId) noexcept;
 
-    /// `(theme, neighborMask, blockId)` を `TextureArray` の slice index に変換する
-    /// 64 entry の縮約テーブルで mask を 8 variant に丸め、 `ThemeRegistry` の base slice に加算する
-    /// `theme` が範囲外なら Grass、 `neighborMask` が 64 以上なら slice 0 を返す (入力境界の fallback)
-    /// 戻り値は `TextureArray::kTotalSlices` 未満を保証する
+    /// 6-neighbor mask を 64 entry テーブルで 8 variant に縮約し ThemeRegistry の base slice に加算する
+    /// theme 範囲外は Grass、 mask>=64 は slice 0 にフォールバック
     [[nodiscard]] std::uint16_t LookupTextureSlice(ThemeId theme,
                                                    std::uint8_t neighborMask,
                                                    std::uint16_t blockId) noexcept;

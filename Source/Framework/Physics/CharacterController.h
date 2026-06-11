@@ -12,9 +12,8 @@
 
 namespace NS::Physics
 {
-    /// 1 frame の Update 入力。dt は fixed step (Determinism)
-    /// AABB と Triangle の collision world を併せて受ける。 同 substep 内で
-    /// 両方を sweep し、 最小 TOI 側を採用する
+    /// 1 frame の Update 入力。dt は fixed step
+    /// AABB と Triangle の両 world を同 substep 内で sweep し、最小 TOI 側を採用する
     struct CharacterControllerInput
     {
         NS::Math::Vector3 position{0.0f, 0.0f, 0.0f};

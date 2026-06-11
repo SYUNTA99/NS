@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Platform.h
-/// @brief Platform 層 umbrella header — Window / Input / Keyboard / Mouse / Gamepad
+/// @brief Platform 層一括 include ヘッダ — Window / Input / Keyboard / Mouse / Gamepad
 
 #include "Framework/Platform/Gamepad.h"
 #include "Framework/Platform/Input.h"

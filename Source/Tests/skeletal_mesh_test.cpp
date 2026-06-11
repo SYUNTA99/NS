@@ -238,7 +238,7 @@ TEST_F(SkeletalMeshLoggerTest, CreateInputLayoutSucceedsWithSkinnedShader)
     std::unique_ptr<SkeletalMesh> meshHolder = SkeletalMesh::Create(meshDesc);
     SkeletalMesh& mesh = *meshHolder;
     ASSERT_TRUE(mesh.IsValid());
-    EXPECT_EQ(NS::Graphics::detail::GetInputLayout(mesh), nullptr);
+    EXPECT_EQ(mesh.InputLayout(), nullptr);
 
     const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
     std::unique_ptr<NS::Graphics::Shader> shaderHolder = NS::Graphics::Shader::Create(shaderDir / "skinned.vs.hlsl");
@@ -248,5 +248,5 @@ TEST_F(SkeletalMeshLoggerTest, CreateInputLayoutSucceedsWithSkinnedShader)
 
     // BLENDINDICES=UInt4 を含む SkinnedInputLayout が skinned.vs の入力シグネチャと突合して生成される
     mesh.CreateInputLayout(shader);
-    EXPECT_NE(NS::Graphics::detail::GetInputLayout(mesh), nullptr);
+    EXPECT_NE(mesh.InputLayout(), nullptr);
 }

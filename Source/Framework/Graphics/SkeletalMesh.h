@@ -30,10 +30,7 @@ namespace NS::Graphics
     /// 128 * 64byte = 8KB で D3D11 定数バッファ上限 (64KB) 内、 単一キャラに十分
     inline constexpr std::size_t kMaxBones = 128;
 
-    /// スキン付き頂点フォーマット (64 byte 固定)
-    /// position/uv/normal に加え 1 頂点あたり最大 4 ボーンの影響 (joints=ボーン index, weights=重み) を持つ
-    /// joints/weights は GPU 入力レイアウト (BLENDINDICES=uint4 / BLENDWEIGHT=float4) と byte 単位で
-    /// 一致させるため固定長配列で保持する
+    /// スキン付き頂点フォーマット (64 byte 固定)。最大 4 ボーンの影響 (joints + weights) を持つ
     struct SkinnedVertex
     {
         NS::Math::Vector3 position; // offset 0  POSITION
@@ -46,8 +43,7 @@ namespace NS::Graphics
     static_assert(std::is_standard_layout_v<SkinnedVertex>,
                   "SkinnedVertex は offsetof 使用のため標準レイアウト必須 (SkinnedInputLayout)");
 
-    /// SkeletalMesh 構築パラメータ。 Static Buffer 前提で initialData はコンストラクタ内でコピーされる
-    /// Index は uint32_t、 boneCount はボーンパレットの有効要素数 (上限 kMaxBones)
+    /// SkeletalMesh 構築パラメータ。boneCount は上限 kMaxBones
     struct SkinnedMeshDesc
     {
         const SkinnedVertex* vertices = nullptr;
@@ -57,8 +53,7 @@ namespace NS::Graphics
         std::size_t boneCount = 0;
     };
 
-    /// ボーンパレット定数バッファの CPU 側レイアウト (skinned.vs の cbuffer BonePalette : b1 と一致)
-    /// サイズは 16 byte 倍数 (ConstantBuffer 更新要件)、 アップロードは memcpy のため CPU 側 alignas は不要
+    /// ボーンパレット CB の CPU 側レイアウト (skinned.vs cbuffer BonePalette : b1 と一致)
     struct BonePaletteCB
     {
         NS::Math::Matrix bones[kMaxBones];
@@ -75,15 +70,13 @@ namespace NS::Graphics
 
         ~SkeletalMesh() override;
 
-        /// ボーンパレット (model 空間 skinning 行列群) を CPU 側に蓄える (次の Draw で GPU 反映)
-        /// 上限 (内部 kMaxBones) を超える分は無視し、 不足分は恒等のまま残す
+        /// model 空間 skinning 行列群を CPU 側に蓄える (次の Draw で GPU 反映)。kMaxBones 超は無視、不足分は恒等
         void SetBonePalette(std::span<const NS::Math::Matrix> palette) noexcept;
 
         /// palette を CB へアップロードして b1(VS) に bind し、 Mesh::Draw を呼ぶ。 IsValid()==false なら no-op
         void Draw(Renderer& renderer) noexcept override;
 
-        /// SkinnedVertex に対応する POSITION/TEXCOORD/NORMAL/BLENDINDICES/BLENDWEIGHT の InputElement 配列を返す
-        /// 基底が CreateInputLayout で使う頂点レイアウトと同一
+        /// POSITION/TEXCOORD/NORMAL/BLENDINDICES/BLENDWEIGHT の InputElement 配列を返す
         [[nodiscard]] static std::vector<InputElement> SkinnedInputLayout();
 
         /// desc.boneCount を内部上限でクランプした有効ボーン数

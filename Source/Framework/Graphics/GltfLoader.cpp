@@ -65,9 +65,8 @@ namespace NS::Graphics
             return false;
         }
 
-        // world の上 3x3 から法線用の逆転置行列を余因子で求める
-        // cgltf の world は列優先格納なので 1 行目は m[0] / m[4] / m[8]、 戻り値 out は 1 行ずつ並べる
-        // normal は後で正規化するので行列式スケールは無視でき、 非一様 scale でも歪まない
+        // world 3x3 の逆転置を余因子で求める。列優先 cgltf: 1 行目は
+        // m[0]/m[4]/m[8]。後で正規化するので行列式スケール無視可
         void ComputeNormalMatrix(const float m[16], float out[9])
         {
             const float a = m[0], b = m[4], c = m[8];
@@ -84,9 +83,8 @@ namespace NS::Graphics
             out[8] = a * e - b * d;
         }
 
-        // NORMAL 属性が無い primitive 向けに、 面法線を頂点へ area-weighted で積算した smooth normal を
-        // RH ローカル空間で計算する (winding は glTF CCW のまま)。 戻り値は未正規化で、 呼出側が
-        // normal matrix 変換後に正規化する。 縮退三角形しか触れない頂点は (0,0,1) を既定にする
+        // NORMAL 無し primitive 向け: 面法線を area-weighted 積算した smooth normal を RH
+        // ローカル空間で計算。縮退頂点は (0,0,1)
         std::vector<std::array<float, 3>> ComputeSmoothNormals(const cgltf_primitive& prim,
                                                                const cgltf_accessor& posAcc,
                                                                cgltf_size vertexCount)
@@ -407,9 +405,7 @@ namespace NS::Graphics
             return true;
         }
 
-        // root joint (親が joint でない) の親ノード world 変換を LH へ変換して返す
-        // skeleton より上のアーマチュア変換 (Z-up→Y-up 等) を skinned 出力へ効かせる
-        // 親ノードが無い / アーマチュアが無いスキンでは恒等
+        // root joint の親ノード world 変換を LH で返す (アーマチュア変換を skinned 出力へ反映)。親なしは恒等
         NS::Math::Matrix ComputeSkeletonRootTransform(const cgltf_skin& skin)
         {
             for (cgltf_size i = 0; i < skin.joints_count; ++i)
@@ -550,10 +546,8 @@ namespace NS::Graphics
             return Interpolation::Linear; // linear、 cubic_spline は linear で代替
         }
 
-        // animation channel/sampler を AnimationClip へ変換する。 target は skin joint に限り、
-        // joint index を remap で bone index 化する。 値は RH→LH (translation/rotation を mirror)
-        // animation を AnimationClip 群に取り込む。 resolveBone は target node → bone index (-1 = 対象外)
-        // skinned (skin+remap) と source (node→index map) で resolver を差し替えて共用する
+        // animation channel/sampler を AnimationClip へ変換。resolveBone(node)→bone index (-1=対象外)で skinned/source
+        // 共用
         template <class ResolveBone>
         void ParseAnimations(const cgltf_data& model,
                              ResolveBone resolveBone,
@@ -659,8 +653,7 @@ namespace NS::Graphics
             }
         }
 
-        // animation 対象 node とその祖先から source skeleton を組む (skin / inverseBind 非依存)
-        // bones は親が先の順、 nodeToBone は node→bone index、 outRootXf は skeleton 上位ノード変換 (LH)
+        // animation 対象 node と祖先から source skeleton を組む (skin 非依存)。bones は親先順、outRootXf は LH 上位変換
         bool BuildSourceSkeleton(const cgltf_data& model,
                                  const std::string& path,
                                  std::vector<Bone>& outBones,

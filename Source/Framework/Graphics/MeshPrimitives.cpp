@@ -97,8 +97,7 @@ namespace NS::Graphics
         geom.vertices.reserve(18);
 
         // Slope (top) quad: 4 vertex、 normal (0, c, -s)
-        // 順序: lowLeft (-ex, yBottom, -ez), lowRight (ex, yBottom, -ez),
-        //       highRight (ex, yTop, ez), highLeft (-ex, yTop, ez)
+        // 順序: lowLeft(-ex,yBottom,-ez) → lowRight(ex,yBottom,-ez) → highRight(ex,yTop,ez) → highLeft(-ex,yTop,ez)
         geom.vertices.push_back({{-ex, yBottom, -ez}, {0.0f, 1.0f}, {0.0f, c, -s}});
         geom.vertices.push_back({{ex, yBottom, -ez}, {1.0f, 1.0f}, {0.0f, c, -s}});
         geom.vertices.push_back({{ex, yTop, ez}, {1.0f, 0.0f}, {0.0f, c, -s}});
@@ -138,9 +137,8 @@ namespace NS::Graphics
             0,
             2,
             1,
-            // Bottom quad (vertex 4..7): 下面、 法線 -Y、 下から見て CW にしたい
-            // -ex,-ez → -ex,ez → ex,ez → ex,-ez の順で並んでいる。 下から見ると 4→5→6→7 で
-            // CCW なので、 CW にするため 4,7,6,4,6,5
+            // Bottom quad (vertex 4..7): 法線 -Y。下から見ると 4→5→6→7 が CCW のため
+            // CW になるよう 4,7,6,4,6,5 で張る
             4,
             7,
             6,

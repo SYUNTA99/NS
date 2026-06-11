@@ -7,9 +7,9 @@
 /// (Buffer / Texture / TextureArray / Shader) を public アクセサ (`Native()` / `Srv()` / `Type()` 等)
 /// 経由で参照し、 `IASetVertexBuffers` 等の D3D11 呼び出しをここに集約する。 取得は `Renderer::Commands()` で、
 /// 呼び出し側は得た CommandList の bind / draw / update を直接呼ぶ
-/// 値変換 / 多段 fan-out を持つ操作のみラップし、 それ以外の D3D 呼び出しは `operator->` で生 context を直接叩く
-/// 依存: context の所有・寿命は Renderer。 本型は context を破棄しない
-/// 注: instanced 描画 (InstanceBatcher) は 2-stream など専用要件のため独自の context 経路を維持する
+/// 値変換や複数ステージへの一括設定を持つ操作のみラップし、 それ以外の D3D 呼び出しは `operator->` で生 context
+/// を直接叩く 依存: context の所有・寿命は Renderer。 本型は context を破棄しない 注: instanced 描画 (InstanceBatcher)
+/// は 2-stream など専用要件のため独自の context 経路を維持する
 
 #include <cstddef>
 
@@ -64,7 +64,7 @@ namespace NS::Graphics
         /// index 付き描画 (DrawIndexed)
         void DrawIndexed(unsigned indexCount) noexcept;
 
-        /// 借用している ID3D11DeviceContext (非所有)。継ぎ目で raw D3D を扱う場合に使う
+        /// 借用している ID3D11DeviceContext (非所有)。継ぎ目で生 D3D を扱う場合に使う
         [[nodiscard]] ID3D11DeviceContext* Native() const noexcept;
 
         /// ラップしていない D3D 呼び出しを生 context へ透過する (`cmd->IASetInputLayout(...)` 等)

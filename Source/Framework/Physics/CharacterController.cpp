@@ -18,8 +18,7 @@ namespace
     // 着地直後に player.y が跳ねて grounded がちらつくのを抑える許容距離
     // raycast を少し下まで延ばして接地を拾い続け、grounded 判定の点滅を防ぐ補助
     constexpr float kGroundProbeDistance = 0.2f;
-    // 床判定の cosine 閾値。 normal.y がこれを超える接触面を walkable floor 扱い、
-    // 以下は wall として slide させる。 cos 45 ≈ 0.707 なので 45 度を含めるべく 0.7 を採用
+    // walkable 床とみなす normal.y の閾値。cos 45 ≈ 0.707、45° 含むため 0.7
     constexpr float kFloorNormalY = 0.7f;
 } // namespace
 
@@ -80,9 +79,7 @@ namespace NS::Physics
                     }
                 }
 
-                // AABB と Triangle 双方を同じ substep 内で sweep し、 最小 TOI 側の接触面で
-                // velocity を slide させる。 slope と solid block を混在させた場合でも
-                // 一回の解決で済むのでガタつきを避けられる
+                // AABB と Triangle を同 substep 内で sweep し最小 TOI 側で slide させる
                 for (const Triangle& tri : input.worldTriangles)
                 {
                     float toi = 1.0f;

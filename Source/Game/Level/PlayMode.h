@@ -46,24 +46,19 @@ namespace NS::Game::Level
         void SetActive(bool active) noexcept { m_active = active; }
         [[nodiscard]] bool IsActive() const noexcept { return m_active; }
 
-        /// Edit→Play 遷移時に呼ぶ。 player を spawn 位置 (spawn セル中心の床上) に再配置、
-        /// velocity ゼロ、 coin / death / clear / paused flag をリセットする
+        /// Edit→Play 遷移。 player を spawn セル床上に再配置し velocity / flag を全リセット
         void Enter(const LevelData& level, PlayState& play) noexcept;
 
-        /// fixed step Tick。 const& 受取で書込禁止を compile-time 保証
-        /// PlayState.playerPosition (Transform からミラー済) を読み、 落下死 / coin / power star
-        /// 接触判定を行う。 paused == true の間は何もしない
+        /// fixed step Tick。 落下死 / coin / power star 接触判定。 paused 中は何もしない
         void Tick(const LevelData& level, PlayState& play, float dt) noexcept;
 
-        /// Play→Edit 遷移時に呼ぶ。 次回 Enter で操作不能にならないよう、
-        /// paused / clearTriggered / deathTriggered を全て false に戻す
+        /// Play→Edit 遷移。 paused / clearTriggered / deathTriggered を false にリセット
         void Exit(PlayState& play) noexcept;
 
     private:
         bool m_active = false;
 
-        /// 二重カウント防止のため取得済 coin の index を保持する。 LevelData の coin block
-        /// 自体は削除しない (Play 中の LevelData は不変)
+        /// 二重カウント防止用。 LevelData の block は削除しない (Play 中は不変)
         std::vector<std::size_t> m_collectedCoinIndices;
     };
 } // namespace NS::Game::Level

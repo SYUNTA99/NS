@@ -4,9 +4,9 @@
 /// @brief 掴まりポール GameObject
 ///
 /// @details MeshRendererComponent (cylinder mesh) + PoleComponent (trigger) を GameObject が所有し、参照を member
-/// キャッシュする Block (AABB collider 専用) からではなく GameObject を直接派生する Mesh / Material は scene 寿命中、
-/// 共有 raw pointer として LevelEditorScene が持つ 描画は per-block MeshRendererComponent::Draw 経路 (SlopeBlock
-/// と同じ、 InstanceBatcher は cube 専用)
+/// キャッシュする Block (AABB collider 専用) からではなく GameObject を直接派生する Mesh / Material は LevelEditorScene
+/// が scene 寿命中に保持する生ポインタを受け取る 描画は per-block MeshRendererComponent::Draw 経路 (InstanceBatcher は
+/// cube 専用)
 
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/GameObject.h"

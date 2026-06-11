@@ -57,16 +57,12 @@ namespace NS::Scene
         void ApplyPan(float panX, float panY) noexcept;
         void ApplyZoom(float zoomDelta) noexcept;
 
-        // 1m grid を一次対象とする vertical slice 想定で範囲を調整
-        // 近すぎる (< 2m) と FOV 60° で block 内側に入って描画破綻、 遠すぎる (> 30m)
-        // と block が点になるため 2 ~ 30m に絞る
+        // 2m 未満: block 内側に入り描画破綻。30m 超: block が点になる
         static constexpr float kMinDistance = 2.0f;
         static constexpr float kMaxDistance = 30.0f;
-        // 編集 free-fly camera は真上 (top-down) ~ 真下 (under-view) まで自由に振れる
-        // ようにする。 90° 直前は LookAt の up 軸と forward が平行になり gimbal lock
-        // 寸前で計算が崩れるため ±89° で clamp する
-        static constexpr float kPitchMin = -1.553f; // -89° (scene の真下から見上げる手前)
-        static constexpr float kPitchMax = +1.553f; // +89° (scene の真上から見下ろす手前)
+        // ±90° は up/forward 平行で gimbal lock 寸前のため ±89° でクランプ
+        static constexpr float kPitchMin = -1.553f; // -89°
+        static constexpr float kPitchMax = +1.553f; // +89°
 
     private:
         CameraComponent* m_camera = nullptr;
@@ -80,7 +76,6 @@ namespace NS::Scene
         float m_desiredDistance = 15.0f;
         float m_springOmega = 6.0f;
 
-        // 個人プロジェクト固定値。 今後 Settings UI 経由 tune 想定
         float m_mouseSensOrbit = 0.003f;
         float m_mouseSensPan = 0.02f;
         // 1 wheel notch あたりの zoomDelta 倍率。 ApplyZoom が log scale なので

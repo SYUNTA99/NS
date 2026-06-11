@@ -49,7 +49,7 @@ namespace NS::Game::Editor
         [[nodiscard]] std::uint16_t SlotBlockId(std::size_t slot) const noexcept;
         [[nodiscard]] std::uint16_t CurrentBlockId() const noexcept { return SlotBlockId(m_activeSlot); }
 
-        /// 範囲外指定は無視する (no-throw)
+        /// 範囲外指定は無視する
         void SetActiveSlot(std::size_t slot) noexcept;
 
         /// active slot が slope なら角度を 1 段階循環させる (45→30→22→15→45)。 slope 以外は何もしない

@@ -16,9 +16,7 @@ namespace NS::Platform
     class Input;
 } // namespace NS::Platform
 
-/// プレイヤーキャラクタの GameObject
-/// MeshRendererComponent + CharacterMovementComponent + PlayerInputComponent を GameObject が所有し、
-/// 参照を member キャッシュする。Mesh / Material / Input は寿命を LevelEditorScene が保証
+/// プレイヤーキャラクタ。 Mesh / Movement / Input の 3 Component を所有し参照をキャッシュする
 class Player : public NS::Scene::GameObject
 {
 public:

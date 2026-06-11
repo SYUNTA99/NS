@@ -76,7 +76,7 @@ TEST_F(CubemapLoaderTest, LoadMissingPathFallsBack)
     EXPECT_FALSE(ok);
     EXPECT_TRUE(skybox.IsUsingFallback());
     // fallback magenta cubemap が常に生成されているので SRV は非 null
-    EXPECT_NE(NS::Graphics::detail::GetCubemapSrv(skybox), nullptr);
+    EXPECT_NE(skybox.Srv(), nullptr);
 }
 
 TEST_F(CubemapLoaderTest, LoadDdsCubemapReturnsTextureCubeDim)
@@ -100,7 +100,7 @@ TEST_F(CubemapLoaderTest, LoadDdsCubemapReturnsTextureCubeDim)
     EXPECT_TRUE(ok);
     EXPECT_TRUE(skybox.IsValid());
 
-    auto* srv = NS::Graphics::detail::GetCubemapSrv(skybox);
+    auto* srv = skybox.Srv();
     ASSERT_NE(srv, nullptr);
     D3D11_SHADER_RESOURCE_VIEW_DESC desc{};
     srv->GetDesc(&desc);
@@ -120,5 +120,5 @@ TEST_F(CubemapLoaderTest, ConstructedSkyboxHasFallbackSrv)
     Skybox& skybox = *skyboxHolder;
     EXPECT_TRUE(skybox.IsValid());
     EXPECT_TRUE(skybox.IsUsingFallback());
-    EXPECT_NE(NS::Graphics::detail::GetCubemapSrv(skybox), nullptr);
+    EXPECT_NE(skybox.Srv(), nullptr);
 }

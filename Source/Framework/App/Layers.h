@@ -3,14 +3,12 @@
 /// @file Layers.h
 /// @brief NS::App::Layers — Layer 群を順序付きで保持するコンテナ
 ///
-/// @details Application が 1 個所有し、 Run ループから iteration される。 regular layer
-/// (AddLayer) と overlay (AddOverlay) を区別し、 overlay は常に末尾側に挿入される
-/// 反復順 (begin → end) で OnUpdate / OnRender が呼ばれるので、 overlay は描画最後・
-/// update も後段、 regular は先に処理される
+/// @details Application が 1 個所有し、Run ループから反復される
+/// regular (AddLayer) と overlay (AddOverlay) を区別し、overlay は常に末尾に挿入される
+/// 反復順 (begin → end) で OnUpdate / OnRender が呼ばれ、overlay は常に後段で実行される
 ///
-/// @note Application::Run ループ内から AddLayer / AddOverlay / Remove を呼ぶのは禁止
-///       (iterator 無効化)。 layer 構成は WinMain 段階で確定させる方針。 動的追加要件化時は
-///       deferred queue 導入で対応 (本クラスの拡張)
+/// Run ループ内から AddLayer / AddOverlay / Remove を呼ぶことは禁止 (iterator 無効化)
+/// layer 構成は WinMain 段階で確定させる。動的追加が必要なら deferred queue を導入する
 
 #include <cstddef>
 #include <memory>

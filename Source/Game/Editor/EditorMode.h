@@ -79,8 +79,7 @@ namespace NS::Game::Editor
         /// variable frame で cursor preview の `DebugDraw::AABB` を 1 frame 分蓄積する
         void RenderCursorPreview() noexcept;
 
-        /// LevelData.spawnX/Y/Z の位置に常時表示する 1m wireframe (黄色)
-        /// 編集モードで spawn を視覚的に把握できるようにする。 カーソル preview と独立
+        /// spawnX/Y/Z 位置に黄色 1m wireframe を常時表示する
         void RenderSpawnMarker() noexcept;
 
         [[nodiscard]] const NS::Game::Undo::UndoStack& Undo() const noexcept { return m_undo; }
@@ -92,9 +91,7 @@ namespace NS::Game::Editor
         void RotateAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
         void SetSpawnAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
 
-        /// LevelData の変更通知用 dirty flag
-        /// 全 LevelData mutation で内部的に true、 LevelEditorScene::OnUpdate でチェック → rebuild
-        /// 毎 frame rebuild の alloc churn (60fps × 100 block = 6000 alloc/sec) を回避する
+        /// mutation で true になる dirty flag。 毎フレーム rebuild を避けるため検出時のみ rebuild を走らせる
         [[nodiscard]] bool IsLevelDirty() const noexcept { return m_levelDirty; }
         void ClearLevelDirty() noexcept { m_levelDirty = false; }
 
@@ -110,8 +107,7 @@ namespace NS::Game::Editor
         /// ImGui がキーボードを掴んでいる時 (テキスト入力 focus 中) は無視する
         void HandleSaveLoadInput() noexcept;
 
-        /// EditorLayer::OnRender から呼ぶ。 modal の描画 + OK 押下時の SaveLevelToFile /
-        /// LoadLevelFromFile 実行 + UndoStack の clear (新 level open 時) を担う
+        /// modal 描画 + OK 押下時の Save/Load 実行 + 新規 open 時の UndoStack clear を担う
         void RenderFileBrowser() noexcept;
 
         [[nodiscard]] LevelFileBrowser& FileBrowser() noexcept { return m_fileBrowser; }
@@ -132,9 +128,7 @@ namespace NS::Game::Editor
         NS::Game::Undo::UndoStack m_undo;
         LevelFileBrowser m_fileBrowser{};
 
-        /// カーソル preview / 配置プレビューに使う「表示中の回転」 (Y 軸 yaw)
-        /// R キーで `m_currentRotation` が即時切替わっても、 本値は Slerp で滑らかに追従し
-        /// 回転方向を視覚的に把握できるようにする。 物理 / 配置データには影響しない (表示専用)
+        /// Slerp で m_currentRotation に追従する表示専用 yaw。 物理・配置データには影響しない
         NS::Math::Quaternion m_displayedYawQuat{NS::Math::Quaternion::Identity};
 
         void UpdateCursorFromInput() noexcept;

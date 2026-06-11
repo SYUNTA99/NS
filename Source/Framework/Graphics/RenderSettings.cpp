@@ -13,8 +13,6 @@ namespace NS::Graphics
             result.lightColor = *over.lightColor;
         if (over.ambientColor)
             result.ambientColor = *over.ambientColor;
-        if (over.vsync)
-            result.vsync = *over.vsync;
         return result;
     }
 } // namespace NS::Graphics

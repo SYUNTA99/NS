@@ -3,7 +3,7 @@
 /// @file UndoStack.h
 /// @brief Command スタック。 std::deque 管理で 200 op / 50 MB の oldest pop_front cap
 ///
-/// @details `Push` 時に redo stack をクリアする Photoshop 流の "branch on edit" 方針
+/// @details `Push` 時に redo stack をクリアする (branch on edit)
 /// `Clear()` は新 level open 時のみ呼ぶ (mode toggle では呼ばない)
 /// 50 MB の hard cap は `ICommand::EstimatedBytes()` を合算して判定する
 

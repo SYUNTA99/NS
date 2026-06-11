@@ -78,9 +78,7 @@ namespace NS::Platform
                 return ::DefWindowProcW(hwnd, msg, wparam, lparam);
             }
 
-            // ImGui に message を先に forward する。 戻り値は ImGui の内部 IO 更新に
-            // 使われるだけで「常に進める」のが backend の規約。 ゲーム入力との競合は
-            // 下記の WantCaptureMouse / WantCaptureKeyboard で別途ゲートする
+            // ImGui に先に転送する。ゲーム入力との競合は WantCaptureMouse / WantCaptureKeyboard でゲートする
             if (impl->imgui != nullptr)
             {
                 (void)impl->imgui->ForwardWndProc(static_cast<void*>(hwnd),
@@ -91,8 +89,7 @@ namespace NS::Platform
 
             if (IsInputMessage(msg))
             {
-                // ImGui の widget にフォーカスがある時はゲーム側へイベントを流さない
-                // テキスト入力中の Tab を PlayMode 切替に消費されないようにする等の対策
+                // ImGui がキャプチャ中はゲーム側へイベントを流さない
                 if (impl->imgui != nullptr)
                 {
                     if ((IsKeyboardMessage(msg) && impl->imgui->WantCaptureKeyboard()) ||
@@ -116,9 +113,8 @@ namespace NS::Platform
             {
             case WM_ERASEBKGND:
             {
-                // D3D が毎フレーム全クライアント領域を Present するため GDI 背景消去は不要
-                // DefWindowProc に流すと WNDCLASSEX::hbrBackground が走り、初回 Present 前の
-                // 一瞬で白フラッシュが見える事象が発生する。明示的に処理済を返して抑止する
+                // D3D が毎フレーム Present するため GDI 背景消去は不要。DefWindowProc に流すと初回 Present
+                // 前に白フラッシュが出る
                 return 1;
             }
             case WM_SIZE:
@@ -179,8 +175,7 @@ namespace NS::Platform
         wc.lpfnWndProc = WndProc;
         wc.hInstance = m_pImpl->hInstance;
         wc.hCursor = ::LoadCursorW(nullptr, IDC_ARROW);
-        // hbrBackground=nullptr + WM_ERASEBKGND を握り潰して、D3D の初回 Present 前に
-        // GDI 背景が走るのを完全に塞ぐ。両方揃って初めて白フラッシュが消える
+        // hbrBackground=nullptr + WM_ERASEBKGND 抑止の両方が揃って白フラッシュが消える
         wc.hbrBackground = nullptr;
         wc.lpszClassName = m_pImpl->className.c_str();
 

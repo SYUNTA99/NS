@@ -1,7 +1,6 @@
 #include "Framework/App/Application.h"
 
 #include "Framework/App/Layer.h"
-#include "Framework/App/Layers.h"
 #include "Framework/Core/Clock.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -15,11 +14,7 @@
 
 namespace
 {
-    /// 前 Application 終了時の Window destruction で PostQuitMessage の thread quit flag
-    /// が残ることがある (Win32 仕様、PeekMessageW の filter range では取れない)
-    /// 同一プロセスで Application を再起動した時に初回 PollMessages で即 ShouldClose=true
-    /// になるのを防ぐため、起動時に全メッセージを排出する。前 Application の HWND は
-    /// すでに破棄済みなので Dispatch は呼ばず破棄のみで足りる
+    // 前回の PostQuitMessage 残留が次回起動の PollMessages で ShouldClose=true にならないよう捨てる
     void DrainPendingQuit() noexcept
     {
         MSG msg;
@@ -35,26 +30,7 @@ namespace NS::App
 
     Application* Application::s_instance = nullptr;
 
-    struct Application::Impl
-    {
-        ApplicationDesc desc;
-        std::unique_ptr<NS::Platform::Window> window;
-        std::unique_ptr<NS::Graphics::Renderer> renderer;
-        std::unique_ptr<NS::Platform::Input> input;
-        /// Debug / Development build のみ実体化される
-        /// GameDebug / GameRelease では常に nullptr (ImGui 非搭載 shipping を保証)
-        std::unique_ptr<NS::UI::ImGuiContext> imgui;
-        Layers layers;
-        bool valid = false;
-        bool quitRequested = false;
-        // Run() 経由の Shutdown と、 デストラクタ経由の Shutdown が両方走った時に OnDetach が二重に
-        // 呼ばれるのを防ぐ flag。 Window / Renderer の reset は unique_ptr で冪等だが、 Layer
-        // 側 OnDetach は副作用を持ち得るため、 ここで明示的に guard する
-        bool shutdownCalled = false;
-        std::chrono::steady_clock::time_point lastStutterWarnAt{};
-    };
-
-    Application::Application(const ApplicationDesc& desc) : m_pImpl(std::make_unique<Impl>())
+    Application::Application(const ApplicationDesc& desc)
     {
         if (s_instance != nullptr)
         {
@@ -64,110 +40,91 @@ namespace NS::App
         }
         s_instance = this;
 
-        m_pImpl->desc = desc;
-        if (m_pImpl->desc.fixedDelta <= 0.0f)
+        m_desc = desc;
+        if (m_desc.fixedDelta <= 0.0f)
         {
             NS_LOG_WARN(::NS::Core::LogCat::App,
                         "ApplicationDesc::fixedDelta が非正値 ({}) のため default 1/60 にフォールバック",
-                        m_pImpl->desc.fixedDelta);
-            m_pImpl->desc.fixedDelta = 1.0f / 60.0f;
+                        m_desc.fixedDelta);
+            m_desc.fixedDelta = NS::Core::FrameTimer::kDefaultFixedDelta;
         }
-        NS::Core::FrameTimer::SetFixedDelta(m_pImpl->desc.fixedDelta);
+        NS::Core::FrameTimer::SetFixedDelta(m_desc.fixedDelta);
 
-        m_pImpl->window = std::make_unique<NS::Platform::Window>(desc.window);
-        if (!m_pImpl->window->IsValid())
+        m_window = std::make_unique<NS::Platform::Window>(desc.window);
+        if (!m_window->IsValid())
         {
             NS_LOG_ERROR(::NS::Core::LogCat::App, "Application: Window 構築失敗");
             return;
         }
 
-        // vsync の正は RenderSettings 側、 構築時に 1 回だけ RendererDesc へ写す
-        NS::Graphics::RendererDesc rendererDesc = desc.renderer;
-        rendererDesc.vsync = desc.render.vsync;
-        m_pImpl->renderer = std::make_unique<NS::Graphics::Renderer>(rendererDesc, *m_pImpl->window);
-        if (!m_pImpl->renderer->IsValid())
+        m_renderer = std::make_unique<NS::Graphics::Renderer>(desc.renderer, *m_window);
+        if (!m_renderer->IsValid())
         {
             NS_LOG_ERROR(::NS::Core::LogCat::App, "Application: Renderer 構築失敗");
             return;
         }
 
-        m_pImpl->input = std::make_unique<NS::Platform::Input>();
-        m_pImpl->window->AttachInput(m_pImpl->input.get());
+        m_input = std::make_unique<NS::Platform::Input>();
+        m_window->AttachInput(m_input.get());
 
-        auto* rendererPtr = m_pImpl->renderer.get();
-        m_pImpl->window->SetResizeCallback([rendererPtr](::NS::Math::Size2D s) { rendererPtr->Resize(s); });
+        // リサイズ購読は Renderer が ctor で自己登録済 (swapchain 再構築はレンダラの責務)
 
-        auto* impl = m_pImpl.get();
-        // callback 内で RequestClose を呼ぶと PostMessage が WM_CLOSE を再投擲し、
-        // PollMessages が永久に抜けなくなる
-        m_pImpl->window->SetCloseCallback([impl]() { impl->quitRequested = true; });
+        // WM_CLOSE 再投擲による PollMessages 無限ループを防ぐためフラグ経由でメインループに委譲
+        m_window->SetCloseCallback([this]() { m_quitRequested = true; });
 
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
-        m_pImpl->imgui = std::make_unique<NS::UI::ImGuiContext>(*m_pImpl->window, *m_pImpl->renderer);
-        if (!m_pImpl->imgui->IsValid())
+        m_imgui = std::make_unique<NS::UI::ImGuiContext>(*m_window, *m_renderer);
+        if (!m_imgui->IsValid())
         {
             NS_LOG_ERROR(::NS::Core::LogCat::App, "ImGuiContext 構築失敗、 ImGui 機能は無効");
         }
-        m_pImpl->window->AttachImGui(m_pImpl->imgui.get());
+        m_window->AttachImGui(m_imgui.get());
 #endif
 
-        m_pImpl->valid = true;
+        m_valid = true;
     }
 
     Application::~Application()
     {
-        // Run() が呼ばれず Shutdown() を経由しないケース (構築失敗 / IsValid チェック
-        // のみのテスト等) でも、Window 破壊前に callback を nullptr 化し
-        // Renderer / Input を先に破棄して dangling キャプチャを防ぐ
-        // Shutdown() は冪等のため Run() 経由ケースでは何もしない
-        if (m_pImpl)
-            Shutdown();
+        // Run() を経由しないケースでも dangling キャプチャを防ぐため Shutdown() を呼ぶ。冪等
+        Shutdown();
         if (s_instance == this)
             s_instance = nullptr;
     }
 
     bool Application::IsValid() const noexcept
     {
-        return m_pImpl && m_pImpl->valid;
+        return m_valid;
     }
 
     NS::Platform::Window& Application::Window() noexcept
     {
-        return *m_pImpl->window;
+        return *m_window;
     }
 
     NS::Graphics::Renderer& Application::Renderer() noexcept
     {
-        return *m_pImpl->renderer;
+        return *m_renderer;
     }
 
     NS::Platform::Input& Application::Input() noexcept
     {
-        return *m_pImpl->input;
-    }
-
-    const NS::Graphics::RenderSettings& Application::RenderDefaults() const noexcept
-    {
-        return m_pImpl->desc.render;
+        return *m_input;
     }
 
     NS::UI::ImGuiContext* Application::ImGui() noexcept
     {
-        return m_pImpl ? m_pImpl->imgui.get() : nullptr;
+        return m_imgui.get();
     }
 
     void Application::AddLayer(std::unique_ptr<NS::App::Layer> layer)
     {
-        if (!m_pImpl)
-            return;
-        m_pImpl->layers.AddLayer(std::move(layer));
+        m_layers.AddLayer(std::move(layer));
     }
 
     void Application::AddOverlay(std::unique_ptr<NS::App::Layer> overlay)
     {
-        if (!m_pImpl)
-            return;
-        m_pImpl->layers.AddOverlay(std::move(overlay));
+        m_layers.AddOverlay(std::move(overlay));
     }
 
     int Application::Run()
@@ -177,7 +134,7 @@ namespace NS::App
             NS_LOG_ERROR(::NS::Core::LogCat::App, "Application::Run: IsValid()==false で起動拒否");
             return -1;
         }
-        if (m_pImpl->layers.Empty())
+        if (m_layers.Empty())
         {
             NS_LOG_ERROR(::NS::Core::LogCat::App, "Application::Run: layer が 1 個も追加されていません");
             return -1;
@@ -193,22 +150,21 @@ namespace NS::App
     {
         DrainPendingQuit();
         NS::Core::FrameTimer::Reset();
-        for (auto& layer : m_pImpl->layers)
+        for (auto& layer : m_layers)
             layer->OnAttach();
     }
 
     void Application::MainLoop()
     {
-        auto& window = *m_pImpl->window;
-        auto& renderer = *m_pImpl->renderer;
-        auto& input = *m_pImpl->input;
-        auto& stack = m_pImpl->layers;
-        const auto& desc = m_pImpl->desc;
+        auto& window = *m_window;
+        auto& renderer = *m_renderer;
+        auto& input = *m_input;
+        auto& stack = m_layers;
 
-        while (!window.ShouldClose() && !m_pImpl->quitRequested)
+        while (!window.ShouldClose() && !m_quitRequested)
         {
             window.PollMessages();
-            if (window.ShouldClose() || m_pImpl->quitRequested)
+            if (window.ShouldClose() || m_quitRequested)
                 break;
 
             NS::Core::FrameTimer::Tick();
@@ -219,11 +175,11 @@ namespace NS::App
             {
                 const auto now = std::chrono::steady_clock::now();
                 const auto since =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(now - m_pImpl->lastStutterWarnAt).count();
+                    std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastStutterWarnAt).count();
                 if (since >= 1000)
                 {
                     NS_LOG_WARN(::NS::Core::LogCat::App, "Frame drop indicator: {} fixed steps in single frame", steps);
-                    m_pImpl->lastStutterWarnAt = now;
+                    m_lastStutterWarnAt = now;
                 }
             }
 
@@ -236,21 +192,18 @@ namespace NS::App
                         if (layer->IsActive())
                             layer->OnUpdate();
                     }
-                    // fixed step ごとに input.Update を呼ぶことで、1 frame に複数 step
-                    // 走った時に同じ edge が複数回検出されるのを防ぐ
-                    // 参考: https://jakubtomsu.github.io/posts/input_in_fixed_timestep/
+                    // fixed step ごとに Update して edge 重複検出を防ぐ
                     input.Update();
-                    if (m_pImpl->quitRequested)
+                    if (m_quitRequested)
                         break;
                 }
             }
-            if (m_pImpl->quitRequested)
+            if (m_quitRequested)
                 break;
 
-            const NS::Math::Color& clear = desc.render.clearColor;
-            renderer.BeginFrame(clear.R(), clear.G(), clear.B(), clear.A());
-            if (m_pImpl->imgui)
-                m_pImpl->imgui->BeginFrame();
+            renderer.BeginFrame();
+            if (m_imgui)
+                m_imgui->BeginFrame();
 
             for (auto& layer : stack)
             {
@@ -258,37 +211,35 @@ namespace NS::App
                     layer->OnRender();
             }
 
-            if (m_pImpl->imgui)
-                m_pImpl->imgui->EndFrame();
+            if (m_imgui)
+                m_imgui->EndFrame();
             renderer.EndFrame();
         }
     }
 
     void Application::Shutdown()
     {
-        if (m_pImpl->shutdownCalled)
+        if (m_shutdownCalled)
             return;
-        m_pImpl->shutdownCalled = true;
+        m_shutdownCalled = true;
 
         // Layer の OnDetach は逆順 (top → bottom) で呼ぶ
-        for (auto it = m_pImpl->layers.rbegin(); it != m_pImpl->layers.rend(); ++it)
+        for (auto it = m_layers.rbegin(); it != m_layers.rend(); ++it)
             (*it)->OnDetach();
 
-        // Window が生存中にコールバックが発火すると rendererPtr / impl 生キャプチャが
-        // 解放済みになるリスクがあるため、Renderer / Input を破棄する前に Window 側の
-        // コールバックを全て nullptr に解除する
-        if (m_pImpl->window)
+        // 破棄前に自分が登録したコールバックを解除し、Window 側の発火で dangling ポインタを踏むのを防ぐ
+        // リサイズ購読は Renderer 自身が dtor で解除する
+        if (m_window)
         {
-            m_pImpl->window->SetResizeCallback(nullptr);
-            m_pImpl->window->SetCloseCallback(nullptr);
-            m_pImpl->window->AttachInput(nullptr);
-            m_pImpl->window->AttachImGui(nullptr);
+            m_window->SetCloseCallback(nullptr);
+            m_window->AttachInput(nullptr);
+            m_window->AttachImGui(nullptr);
         }
-        // ImGui_ImplDX11_Shutdown は ID3D11Device を要求するので Renderer より先に破棄
-        m_pImpl->imgui.reset();
-        m_pImpl->renderer.reset();
-        m_pImpl->input.reset();
-        m_pImpl->window.reset();
+        // ImGui_ImplDX11_Shutdown が ID3D11Device を要求するため Renderer より先に破棄
+        m_imgui.reset();
+        m_renderer.reset();
+        m_input.reset();
+        m_window.reset();
     }
 
     Application* Application::Get() noexcept
@@ -298,9 +249,9 @@ namespace NS::App
 
     void Application::Quit() noexcept
     {
-        if (s_instance == nullptr || !s_instance->m_pImpl)
+        if (s_instance == nullptr)
             return;
-        s_instance->m_pImpl->quitRequested = true;
+        s_instance->m_quitRequested = true;
     }
 
 } // namespace NS::App

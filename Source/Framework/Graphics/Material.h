@@ -23,9 +23,8 @@ namespace NS::Graphics
     class Mesh;
     class Buffer;
 
-    /// Material 構築パラメータ
-    /// vertexShader / pixelShader は共有参照、Material は所有しない。Material 寿命中 両者が有効であること
-    /// constantBufferSize=0 のとき内部 ConstantBuffer は構築されず、SetParams は no-op になる
+    /// Material 構築パラメータ。shader 2 本は共有参照 (非所有)、Material 寿命中有効であること
+    /// constantBufferSize=0 なら内部 CB は構築されず SetParams は何もしない
     struct MaterialDesc
     {
         /// 共有 頂点 Shader (.vs)。nullptr で IsValid()=false
@@ -38,10 +37,8 @@ namespace NS::Graphics
         unsigned cbSlot = 1;
     };
 
-    /// Generic 単一クラス Material
-    /// Shader* (非所有) + Texture スロット (unsigned 番号) + 内蔵 ConstantBuffer
-    /// Sampler は s0 LinearWrap 固定、複数 sampler は将来拡張
-    /// GPU バインドは Bind(Renderer&) / SetParams(Renderer&) に渡す Renderer 経由で行う
+    /// Shader* (非所有) + Texture スロット + 内蔵 ConstantBuffer を束ねる汎用 Material
+    /// Sampler は s0 LinearWrap 固定。GPU バインドは Bind / SetParams に渡す Renderer 経由
     class Material : public NS::Core::NonCopyable
     {
     public:
@@ -53,9 +50,7 @@ namespace NS::Graphics
         /// Shader が非 null で内部リソース構築済なら true。fallback shader でも true
         [[nodiscard]] bool IsValid() const noexcept;
 
-        /// 共有 Shader が fallback 描画 (magenta) に切替わっているかを問い合わせる
-        /// 内部の `Shader::IsUsingFallback()` への薄いラッパ、 Material 単体では独自の
-        /// fallback 状態は持たない。 デバッグ時のシェーダ欠落検知に使用
+        /// Shader::IsUsingFallback() への薄いラッパ (Material 独自の fallback 状態は持たない)
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
         /// 指定スロットにテクスチャを割り当てる。texture=nullptr で割当解除と同義
@@ -64,7 +59,7 @@ namespace NS::Graphics
         void ClearTexture(unsigned slot) noexcept;
 
         /// CB 更新。`alignas(16)` + `sizeof(T) % 16 == 0` 必須
-        /// constantBufferSize=0 で構築された Material では no-op
+        /// constantBufferSize=0 で構築された Material では何もしない
         template <typename T> void SetParams(Renderer& renderer, const T& params) noexcept
         {
             static_assert((sizeof(T) % 16) == 0,

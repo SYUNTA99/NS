@@ -32,9 +32,7 @@ namespace NS::Graphics
             return ext == ".dds";
         }
 
-        // 1 slice ぶん (1 枚の 2D texture) を WIC / DDS で staging texture として読み、
-        // ArraySize=1 / mip=1 / R8G8B8A8 のサイズとコピー元の bytes をホスト側に持ち帰る
-        // 失敗時は false で抜けて呼出側に slice skip を選ばせる
+        // 1 slice を WIC/DDS で staging texture として読む。失敗時は false (呼出側が skip を選択)
         [[nodiscard]] bool TryLoadSliceResource(ID3D11Device* device,
                                                 ID3D11DeviceContext* context,
                                                 const std::filesystem::path& path,
@@ -263,9 +261,7 @@ namespace NS::Graphics
             return;
         }
 
-        // 各 slice 用 staging texture を順に読み、 CopySubresourceRegion で array へ転写する
-        // 失敗 slice は magenta で埋める運用にせず、 後段の GenerateMips に渡る前にスキップして
-        // 「失敗 1 枚以上 → fallback フラグ true、 ただし array 自体は機能継続」 とする
+        // 各 slice を staging→CopySubresourceRegion で転写。失敗 slice はスキップ (fallback フラグのみ立てて継続)
         bool anySliceFailed = false;
         for (std::size_t i = 0; i < paths.size(); ++i)
         {
