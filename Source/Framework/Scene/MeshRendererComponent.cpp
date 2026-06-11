@@ -42,19 +42,21 @@ namespace NS::Scene
             context.renderer == nullptr)
             return;
 
-        // 直接描画される mesh の InputLayout を初回描画時に生成 (冪等)。 instanced block は
-        // ここを通らない (component が inactive で InstanceBatcher が自前 layout を持つ)
+        // InputLayout を初回描画時に生成 (冪等)。instanced block は inactive で InstanceBatcher が担う
         m_material->CreateInputLayoutFor(*m_mesh);
+
+        // ctx.resolvedSettings は project 既定 ← scene override まで解決済。ここに個体段 override を載せる
+        const NS::Graphics::RenderSettings finalSettings =
+            NS::Graphics::Resolve(context.resolvedSettings, m_objectOverride);
 
         FrameCB cb{};
         cb.world = owner->Root().InterpolatedWorldMatrix(context.alpha);
         cb.viewProj = context.viewProjection;
-        // lightDir は解決済設定を SetLightDirection 経由で受け取る前提
-        cb.lightDir = m_lightDir;
+        cb.lightDir = finalSettings.lightDir;
         cb.lightDir.Normalize();
-        cb.baseColor = m_baseColor;
-        cb.lightColor = m_lightColor;
-        cb.ambientColor = m_ambientColor;
+        cb.baseColor = m_baseColor; // 個体色は lighting と別系統
+        cb.lightColor = finalSettings.lightColor;
+        cb.ambientColor = finalSettings.ambientColor;
 
         m_material->SetParams(*context.renderer, cb);
         m_material->Bind(*context.renderer);

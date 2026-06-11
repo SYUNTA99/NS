@@ -603,17 +603,12 @@ void LevelEditorScene::OnRenderScene()
     // Player の赤系 baseColor 等の個体色は MeshRendererComponent::SetBaseColor で別途設定済なので触らない
     if (m_player)
     {
-        auto& mesh = m_player->MeshComp();
-        mesh.SetLightDirection(resolved.lightDir);
-        mesh.SetLightColor(resolved.lightColor);
-        mesh.SetAmbientColor(resolved.ambientColor);
+        m_player->MeshComp().SetRenderOverride(themeOverride);
     }
 
     if (m_animMesh)
     {
-        m_animMesh->SetLightDirection(resolved.lightDir);
-        m_animMesh->SetLightColor(resolved.lightColor);
-        m_animMesh->SetAmbientColor(resolved.ambientColor);
+        m_animMesh->SetRenderOverride(themeOverride);
     }
 
     // Block 描画は InstanceBatcher bucket 経由に統一。 MeshRendererComponent が非アクティブなので旧 per-block

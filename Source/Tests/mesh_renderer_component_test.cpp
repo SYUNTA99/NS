@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <Framework/Graphics/RenderSettings.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/IRenderable.h>
 #include <Framework/Scene/MeshRendererComponent.h>
@@ -53,12 +54,15 @@ TEST(MeshRendererComponentTest, DrawIsNoOpWhenMeshOrMaterialIsNull)
     SUCCEED();
 }
 
-TEST(MeshRendererComponentTest, SetLightDirectionAndBaseColorDoNotCrash)
+TEST(MeshRendererComponentTest, SetRenderOverrideAndBaseColorDoNotCrash)
 {
     MeshRendererComponent mc(nullptr, nullptr);
-    mc.SetLightDirection({1.0f, 0.0f, 0.0f});
+    NS::Graphics::RenderSettingsOverride over{};
+    over.lightDir = NS::Math::Vector3{1.0f, 0.0f, 0.0f};
+    mc.SetRenderOverride(over);
     mc.SetBaseColor({0.5f, 0.5f, 0.5f});
-    // getter は提供していない。setter 呼出が crash せず IsActive を破壊しないことのみ verify
+    // 個体段 override が保持され IsActive を破壊しないことを verify
+    EXPECT_TRUE(mc.RenderOverride().lightDir.has_value());
     EXPECT_TRUE(mc.IsActive());
 }
 

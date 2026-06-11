@@ -7,6 +7,7 @@
 /// `Draw(context)` 内で `Transform::InterpolatedWorldMatrix(context.alpha)` を使い、
 /// fixed step 物理結果を可変 frame rate でなめらかに補間描画する
 
+#include "Framework/Graphics/RenderSettings.h"
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Component.h"
 #include "Framework/Scene/IRenderable.h"
@@ -19,20 +20,19 @@ namespace NS::Graphics
 
 namespace NS::Scene
 {
-    /// HLSL standard FrameCB と完全一致 (sizeof=192、 16 byte 倍数)
-    /// Material::SetParams に渡す per-draw constant buffer
-    /// lightColor / ambientColor は ThemeRegistry::Get(level.themeId) から毎フレーム流し込む
+    /// per-draw constant buffer。HLSL standard と完全一致 (sizeof=192)
     struct alignas(16) FrameCB
     {
         NS::Math::Matrix world{};
         NS::Math::Matrix viewProj{};
-        NS::Math::Vector3 lightDir{-0.3f, -1.0f, -0.2f};
+        // lighting の既定値はプロジェクト描画既定値 (RenderSettings) と共有し、値の二重管理を避ける
+        NS::Math::Vector3 lightDir = NS::Graphics::RenderSettings{}.lightDir;
         float pad0 = 0.0f;
         NS::Math::Vector3 baseColor{1.0f, 1.0f, 1.0f};
         float pad1 = 0.0f;
-        NS::Math::Vector3 lightColor{1.0f, 1.0f, 1.0f};
+        NS::Math::Vector3 lightColor = NS::Graphics::RenderSettings{}.lightColor;
         float pad2 = 0.0f;
-        NS::Math::Vector3 ambientColor{0.2f, 0.2f, 0.2f};
+        NS::Math::Vector3 ambientColor = NS::Graphics::RenderSettings{}.ambientColor;
         float pad3 = 0.0f;
     };
     static_assert(sizeof(FrameCB) == 192, "FrameCB size は HLSL standard と完全一致 (192 byte)");
@@ -41,36 +41,33 @@ namespace NS::Scene
     class MeshRendererComponent : public Component, public IRenderable
     {
     public:
-        /// Mesh / Material は raw pointer、寿命は呼出側 (通常は Scene or Player) が保証する
-        /// owner は GameObject::AddComponent が生成後に注入する
+        /// Mesh / Material は生ポインタ、寿命は呼出側 (通常は Scene or Player) が保証する
         MeshRendererComponent(NS::Graphics::Mesh* mesh, NS::Graphics::Material* material) noexcept;
 
-        /// 光源方向 (default は CubeScene と同値 (-0.3, -1, -0.2) を normalize 前で渡す)
-        void SetLightDirection(const NS::Math::Vector3& dir) noexcept { m_lightDir = dir; }
-        /// Material instance ごとの色味 (Player=赤系 / Block=灰色系の色分け)
+        /// Material instance ごとの色味 (Player=赤系 / Block=灰色系の色分け)。lighting とは別系統の個体色
         void SetBaseColor(const NS::Math::Vector3& color) noexcept { m_baseColor = color; }
-        /// テーマ駆動 sun color (ThemeData::lightColor)。 LevelEditorScene が毎フレーム流す
-        void SetLightColor(const NS::Math::Vector3& color) noexcept { m_lightColor = color; }
-        /// テーマ駆動 ambient color (ThemeData::ambientColor)。 LevelEditorScene が毎フレーム流す
-        void SetAmbientColor(const NS::Math::Vector3& color) noexcept { m_ambientColor = color; }
 
-        /// IRenderable: Alpha 補間後の world matrix を FrameCB に詰めて 1 描画呼出
-        /// IsActive() == false なら何もしない
+        /// 個体段の lighting 上書き。空なら scene 解決値 (ctx.resolvedSettings) がそのまま使われる
+        /// 描画時に Resolve(ctx.resolvedSettings, m_objectOverride) で個体段を解決する
+        void SetRenderOverride(const NS::Graphics::RenderSettingsOverride& over) noexcept { m_objectOverride = over; }
+        /// 現在の個体段 override を返す (出所表示・編集用)
+        [[nodiscard]] const NS::Graphics::RenderSettingsOverride& RenderOverride() const noexcept
+        {
+            return m_objectOverride;
+        }
+
+        /// alpha 補間 world matrix を FrameCB に詰めて 1 描画呼出。IsActive()==false なら何もしない
         void Draw(const RenderContext& context) override;
 
-        /// Owner の OwningScene に self を IRenderable として登録する
-        /// Owner / OwningScene が null の時は何もせず安全に return する
+        /// OwningScene に self を IRenderable として登録する。Owner/Scene が null なら何もしない
         void OnStart() override;
-        /// Owner の OwningScene から self を解除する。SceneBase 破棄前に呼ぶことで
-        /// dangling pointer を残さない。Owner / OwningScene が null の時は何もしない
+        /// Owner の OwningScene から self を解除する。dangling pointer を残さないよう SceneBase 破棄前に呼ぶ
         void OnEndPlay() override;
 
     private:
         NS::Graphics::Mesh* m_mesh = nullptr;
         NS::Graphics::Material* m_material = nullptr;
-        NS::Math::Vector3 m_lightDir{-0.3f, -1.0f, -0.2f};
         NS::Math::Vector3 m_baseColor{1.0f, 1.0f, 1.0f};
-        NS::Math::Vector3 m_lightColor{1.0f, 1.0f, 1.0f};
-        NS::Math::Vector3 m_ambientColor{0.2f, 0.2f, 0.2f};
+        NS::Graphics::RenderSettingsOverride m_objectOverride{};
     };
 } // namespace NS::Scene
