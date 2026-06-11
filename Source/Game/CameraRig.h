@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Framework/Scene/CameraComponent.h"
+#include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/Scene/GameObject.h"
-#include "Framework/Scene/ThirdPersonFollowComponent.h"
+#include "Framework/Scene/Components/ThirdPersonFollowComponent.h"
 
 namespace NS::Platform
 {

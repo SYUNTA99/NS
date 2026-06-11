@@ -9,7 +9,7 @@
 /// `m_collisionWorld` には登録されず CharacterController の swept AABB 解決を素通りする
 
 #include "Framework/Scene/GameObject.h"
-#include "Framework/Scene/MeshRendererComponent.h"
+#include "Framework/Scene/Components/MeshRendererComponent.h"
 
 namespace NS::Graphics
 {

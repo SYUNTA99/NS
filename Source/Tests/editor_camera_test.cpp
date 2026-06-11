@@ -1,4 +1,4 @@
-#include "Framework/Scene/EditorCameraComponent.h"
+#include "Framework/Scene/Components/EditorCameraComponent.h"
 #include "Framework/Scene/GameObject.h"
 
 #include <gtest/gtest.h>

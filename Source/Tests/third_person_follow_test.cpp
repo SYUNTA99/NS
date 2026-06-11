@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Core/Clock.h>
-#include <Framework/Scene/CameraComponent.h>
+#include <Framework/Scene/Components/CameraComponent.h>
 #include <Framework/Scene/GameObject.h>
-#include <Framework/Scene/ThirdPersonFollowComponent.h>
+#include <Framework/Scene/Components/ThirdPersonFollowComponent.h>
 #include <Framework/Scene/Transform.h>
 
 #include <cmath>

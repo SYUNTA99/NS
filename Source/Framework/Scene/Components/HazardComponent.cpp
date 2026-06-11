@@ -1,4 +1,4 @@
-#include "Framework/Scene/HazardComponent.h"
+#include "Framework/Scene/Components/HazardComponent.h"
 
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"

@@ -9,8 +9,8 @@
 #include "Game/Player.h"
 
 #include "Framework/Scene/GameObject.h"
-#include "Framework/Scene/HazardComponent.h"
-#include "Framework/Scene/PoleComponent.h"
+#include "Framework/Scene/Components/HazardComponent.h"
+#include "Framework/Scene/Components/PoleComponent.h"
 
 #include "Framework/App/Application.h"
 #include "Framework/Core/Clock.h"
@@ -36,9 +36,9 @@
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
 #include "Framework/Scene/IRenderable.h"
-#include "Framework/Scene/MeshRendererComponent.h"
+#include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/RenderContext.h"
-#include "Framework/Scene/SkeletalAnimationComponent.h"
+#include "Framework/Scene/Components/SkeletalAnimationComponent.h"
 #include "Framework/Scene/Transform.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Editor/AutoTile.h"

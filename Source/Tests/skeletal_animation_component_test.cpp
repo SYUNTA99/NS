@@ -8,7 +8,7 @@
 #include <Framework/Graphics/Skeleton.h>
 #include <Framework/Math/Math.h>
 #include <Framework/Platform/Window.h>
-#include <Framework/Scene/SkeletalAnimationComponent.h>
+#include <Framework/Scene/Components/SkeletalAnimationComponent.h>
 
 #include <array>
 #include <cstdint>

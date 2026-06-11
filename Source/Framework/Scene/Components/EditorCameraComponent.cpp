@@ -1,8 +1,8 @@
-#include "Framework/Scene/EditorCameraComponent.h"
+#include "Framework/Scene/Components/EditorCameraComponent.h"
 
 #include "Framework/Core/Clock.h"
 #include "Framework/Platform/Input.h"
-#include "Framework/Scene/CameraComponent.h"
+#include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/UI/ImGuiContext.h"
 
 #include <algorithm>

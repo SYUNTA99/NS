@@ -12,9 +12,9 @@
 
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/GameObject.h"
-#include "Framework/Scene/HazardComponent.h"
-#include "Framework/Scene/MeshRendererComponent.h"
-#include "Framework/Scene/StaticColliderComponent.h"
+#include "Framework/Scene/Components/HazardComponent.h"
+#include "Framework/Scene/Components/MeshRendererComponent.h"
+#include "Framework/Scene/Components/StaticColliderComponent.h"
 
 namespace NS::Graphics
 {

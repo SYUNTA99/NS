@@ -1,5 +1,5 @@
 #include "Framework/Math/Math.h"
-#include "Framework/Scene/EditorCameraComponent.h"
+#include "Framework/Scene/Components/EditorCameraComponent.h"
 
 #include <gtest/gtest.h>
 

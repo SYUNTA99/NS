@@ -1,4 +1,4 @@
-#include "Framework/Scene/CameraComponent.h"
+#include "Framework/Scene/Components/CameraComponent.h"
 
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Scene/GameObject.h"

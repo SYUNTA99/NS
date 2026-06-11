@@ -1,4 +1,4 @@
-#include "Framework/Scene/PoleComponent.h"
+#include "Framework/Scene/Components/PoleComponent.h"
 
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"

@@ -1,11 +1,11 @@
-#include "Framework/Scene/ThirdPersonFollowComponent.h"
+#include "Framework/Scene/Components/ThirdPersonFollowComponent.h"
 
 #include "Framework/Core/Clock.h"
 #include "Framework/Platform/Gamepad.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Mouse.h"
-#include "Framework/Scene/CameraComponent.h"
-#include "Framework/Scene/CharacterMovementComponent.h"
+#include "Framework/Scene/Components/CameraComponent.h"
+#include "Framework/Scene/Components/CharacterMovementComponent.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 

@@ -9,7 +9,7 @@
 /// 省く構造を取る。 LevelEditorScene 側の collider 集約からも自動的に外れる
 
 #include "Framework/Scene/GameObject.h"
-#include "Framework/Scene/MeshRendererComponent.h"
+#include "Framework/Scene/Components/MeshRendererComponent.h"
 
 namespace NS::Graphics
 {

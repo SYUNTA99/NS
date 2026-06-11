@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Scene/GameObject.h>
-#include <Framework/Scene/StaticColliderComponent.h>
+#include <Framework/Scene/Components/StaticColliderComponent.h>
 #include <Framework/Scene/Transform.h>
 
 namespace

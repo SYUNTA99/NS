@@ -9,8 +9,8 @@
 
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/GameObject.h"
-#include "Framework/Scene/MeshRendererComponent.h"
-#include "Framework/Scene/SlopeColliderComponent.h"
+#include "Framework/Scene/Components/MeshRendererComponent.h"
+#include "Framework/Scene/Components/SlopeColliderComponent.h"
 
 namespace NS::Graphics
 {

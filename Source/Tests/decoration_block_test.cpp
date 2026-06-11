@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <Framework/Scene/HazardComponent.h>
-#include <Framework/Scene/MeshRendererComponent.h>
-#include <Framework/Scene/StaticColliderComponent.h>
+#include <Framework/Scene/Components/HazardComponent.h>
+#include <Framework/Scene/Components/MeshRendererComponent.h>
+#include <Framework/Scene/Components/StaticColliderComponent.h>
 #include <Game/Blocks/DecorationBlock.h>
 #include <Game/Blocks/HazardBlock.h>
 #include <Game/Blocks/WaterBlock.h>

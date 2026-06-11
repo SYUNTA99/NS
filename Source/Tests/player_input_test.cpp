@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <Framework/Scene/CharacterMovementComponent.h>
+#include <Framework/Scene/Components/CharacterMovementComponent.h>
 #include <Framework/Scene/GameObject.h>
-#include <Framework/Scene/PlayerInputComponent.h>
+#include <Framework/Scene/Components/PlayerInputComponent.h>
 
 namespace
 {

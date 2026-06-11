@@ -1,4 +1,4 @@
-#include "Framework/Scene/SlopeColliderComponent.h"
+#include "Framework/Scene/Components/SlopeColliderComponent.h"
 
 #include "Framework/Physics/WedgeGeometry.h"
 #include "Framework/Scene/GameObject.h"

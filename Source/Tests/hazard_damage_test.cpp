@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Scene/GameObject.h>
-#include <Framework/Scene/HazardComponent.h>
+#include <Framework/Scene/Components/HazardComponent.h>
 #include <Game/Level/LevelData.h>
 #include <Game/Level/PlayState.h>
 

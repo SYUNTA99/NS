@@ -3,7 +3,7 @@
 #include <Framework/Graphics/RenderSettings.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/IRenderable.h>
-#include <Framework/Scene/MeshRendererComponent.h>
+#include <Framework/Scene/Components/MeshRendererComponent.h>
 #include <Framework/Scene/RenderContext.h>
 #include <Framework/Scene/SceneBase.h>
 

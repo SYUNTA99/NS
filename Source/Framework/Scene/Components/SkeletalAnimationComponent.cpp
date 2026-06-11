@@ -1,4 +1,4 @@
-#include "Framework/Scene/SkeletalAnimationComponent.h"
+#include "Framework/Scene/Components/SkeletalAnimationComponent.h"
 
 #include "Framework/Core/Clock.h"
 

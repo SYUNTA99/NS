@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Math/Math.h>
-#include <Framework/Scene/CameraComponent.h>
+#include <Framework/Scene/Components/CameraComponent.h>
 
 namespace
 {

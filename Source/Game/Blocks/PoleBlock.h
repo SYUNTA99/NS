@@ -10,8 +10,8 @@
 
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/GameObject.h"
-#include "Framework/Scene/MeshRendererComponent.h"
-#include "Framework/Scene/PoleComponent.h"
+#include "Framework/Scene/Components/MeshRendererComponent.h"
+#include "Framework/Scene/Components/PoleComponent.h"
 
 namespace NS::Graphics
 {
