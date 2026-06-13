@@ -124,10 +124,13 @@ private:
     std::unique_ptr<NS::Graphics::Shader> m_standardVS; // player / block 共有 (standard.vs)
     std::unique_ptr<NS::Graphics::Shader> m_playerPS;   // player / block / skinned 共有 (player.ps)
     std::unique_ptr<NS::Graphics::Shader> m_waterPS;    // 水専用 (water.ps、alpha<1 出力)
+    std::unique_ptr<NS::Graphics::Shader> m_shadowPS;   // 接地シャドウ専用 (shadow.ps、放射状アルファ)
     std::unique_ptr<NS::Graphics::Material> m_playerMaterial;
     std::unique_ptr<NS::Graphics::Material> m_blockMaterial;
     // 水ブロック専用の半透明 Material (Alpha)。不透明ブロックと共有すると全ブロックが透けるため別インスタンス
     std::unique_ptr<NS::Graphics::Material> m_waterMaterial;
+    // 接地シャドウ共有 Material (standard.vs + shadow.ps、Alpha)
+    std::unique_ptr<NS::Graphics::Material> m_shadowMaterial;
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
     std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
 
@@ -140,6 +143,9 @@ private:
 
     // 掴まり系 mesh: 円柱を 1 度だけ生成して全 instance で共有する
     std::unique_ptr<NS::Graphics::StaticMesh> m_poleMesh;
+
+    // 接地シャドウ用の共有 quad mesh (XZ 平面)
+    std::unique_ptr<NS::Graphics::StaticMesh> m_shadowMesh;
 
     // 仮 skinned キャラの描画リソース (mesh / shader / material)。 アセット未取得時は全て null
     std::unique_ptr<NS::Graphics::SkeletalMesh> m_skinnedMesh;

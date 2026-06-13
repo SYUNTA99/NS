@@ -158,6 +158,25 @@ void LevelEditorScene::OnStart()
     m_waterMaterial = NS::Graphics::Material::Create(waterMatDesc);
     m_waterMaterial->SetTexture(0, m_texture.get());
 
+    // 接地シャドウ: 共有 quad mesh + shadow.ps + Alpha Material (テクスチャ不要、PS が放射状アルファを生成)
+    m_shadowPS = NS::Graphics::Shader::Create(exeDir / "Shaders" / "shadow.ps.hlsl");
+    if (m_shadowPS->IsUsingFallback())
+        NS_LOG_WARN(::NS::Core::LogCat::Game,
+                    "LevelEditorScene: shadow.ps 読込/コンパイル失敗、 magenta fallback で続行");
+    {
+        const auto planeGeom = NS::Graphics::MakePlane({0.5f, 0.5f});
+        NS::Graphics::MeshDesc planeDesc{};
+        planeDesc.vertices = planeGeom.vertices.data();
+        planeDesc.vertexCount = planeGeom.vertices.size();
+        planeDesc.indices = planeGeom.indices.data();
+        planeDesc.indexCount = planeGeom.indices.size();
+        m_shadowMesh = NS::Graphics::StaticMesh::Create(planeDesc);
+    }
+    NS::Graphics::MaterialDesc shadowMatDesc = matDesc;
+    shadowMatDesc.pixelShader = m_shadowPS.get();
+    shadowMatDesc.blend = NS::Graphics::BlendMode::Alpha;
+    m_shadowMaterial = NS::Graphics::Material::Create(shadowMatDesc);
+
     // 全テーマ block texture を Texture2DArray 1 本に集約。 アセット未取得のため cube_test.png を 40 slice 充填
     {
         NS::Graphics::TextureArrayDesc taDesc{};
@@ -206,6 +225,7 @@ void LevelEditorScene::OnStart()
     m_player->MeshComp().SetBaseColor(kPlayerColor);
     // Play 中の入力は PlayerInputComponent が担う。 ImGui のテキスト入力中に WASD を取り合わないよう注入
     m_player->InputComp().SetImGui(app->ImGui());
+    m_player->Shadow().SetResources(m_shadowMesh.get(), m_shadowMaterial.get());
 
     SeedInitialLevel(m_level);
     RebuildBlocksFromLevelData();
@@ -790,9 +810,11 @@ void LevelEditorScene::OnShutdown()
     m_playerMaterial.reset();
     m_blockMaterial.reset();
     m_waterMaterial.reset();
+    m_shadowMaterial.reset();
     m_skinnedVS.reset();
     m_playerPS.reset();
     m_waterPS.reset();
+    m_shadowPS.reset();
     m_standardVS.reset();
     m_blockTextures.reset();
     m_texture.reset();
@@ -801,6 +823,7 @@ void LevelEditorScene::OnShutdown()
     m_wedgeMesh22.reset();
     m_wedgeMesh15.reset();
     m_poleMesh.reset();
+    m_shadowMesh.reset();
     m_skinnedMesh.reset();
     m_cubeMesh.reset();
 }
@@ -978,6 +1001,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
     {
         m_player->Movement().SetCollisionWorld(m_collisionWorld);
         m_player->Movement().SetCollisionTriangles(m_collisionTriangles);
+        m_player->Shadow().SetCollisionWorld(m_collisionWorld);
         m_player->Movement().SetClimbables(std::span<NS::Scene::PoleComponent* const>{m_polePtrs});
     }
 }
