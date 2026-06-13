@@ -2,6 +2,7 @@
 
 #include <Framework/Core/Logger.h>
 #include <Framework/Graphics/CommonStates.h>
+#include <Framework/Graphics/Pipeline.h>
 #include <Framework/Graphics/Renderer.h>
 #include <Framework/Platform/Window.h>
 
@@ -48,6 +49,39 @@ TEST_F(RendererLoggerTest, ConstructsAndIsValid)
 
     Renderer renderer(MakeRendererDesc(), window);
     EXPECT_TRUE(renderer.IsValid());
+}
+
+TEST_F(RendererLoggerTest, CommonPipelinesAreValidDistinctAndCached)
+{
+    Window window(MakeDesc("ns_renderer_pipelines"));
+    ASSERT_TRUE(window.IsValid());
+
+    Renderer renderer(MakeRendererDesc(), window);
+    ASSERT_TRUE(renderer.IsValid());
+
+    const NS::Graphics::Pipeline& opaque = renderer.CommonPipeline(NS::Graphics::BlendMode::Opaque);
+    const NS::Graphics::Pipeline& alpha = renderer.CommonPipeline(NS::Graphics::BlendMode::Alpha);
+    const NS::Graphics::Pipeline& additive = renderer.CommonPipeline(NS::Graphics::BlendMode::Additive);
+
+    EXPECT_TRUE(opaque.IsValid());
+    EXPECT_TRUE(alpha.IsValid());
+    EXPECT_TRUE(additive.IsValid());
+
+    // BlendMode ごとに別インスタンス
+    EXPECT_NE(&opaque, &alpha);
+    EXPECT_NE(&opaque, &additive);
+    EXPECT_NE(&alpha, &additive);
+
+    // create-once: 再取得で同一インスタンスを返す
+    EXPECT_EQ(&opaque, &renderer.CommonPipeline(NS::Graphics::BlendMode::Opaque));
+
+    // desc は意図どおり (半透明は深度読取専用)
+    EXPECT_EQ(opaque.Desc().blend, NS::Graphics::BlendMode::Opaque);
+    EXPECT_EQ(opaque.Desc().depth, NS::Graphics::DepthMode::ReadWrite);
+    EXPECT_EQ(alpha.Desc().blend, NS::Graphics::BlendMode::Alpha);
+    EXPECT_EQ(alpha.Desc().depth, NS::Graphics::DepthMode::ReadOnly);
+    EXPECT_EQ(additive.Desc().blend, NS::Graphics::BlendMode::Additive);
+    EXPECT_EQ(additive.Desc().depth, NS::Graphics::DepthMode::ReadOnly);
 }
 
 TEST_F(RendererLoggerTest, SizeMatchesWindow)

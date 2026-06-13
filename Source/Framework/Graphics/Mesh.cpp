@@ -105,6 +105,11 @@ namespace NS::Graphics
         m_layoutElements = std::move(elements);
     }
 
+    void Mesh::SetTopology(Topology topology) noexcept
+    {
+        m_topology = topology;
+    }
+
     void Mesh::CreateInputLayout(const Shader& vertexShader) noexcept
     {
         if (m_inputLayout)
@@ -148,11 +153,10 @@ namespace NS::Graphics
         if (!IsValid())
             return;
         auto& cmd = renderer.Commands();
-        if (m_inputLayout)
-            cmd->IASetInputLayout(m_inputLayout.Get());
+        cmd.SetInputLayout(m_inputLayout.Get());
         cmd.SetVertexBuffer(*m_vb, 0);
         cmd.SetIndexBuffer(*m_ib);
-        cmd->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        cmd.SetTopology(m_topology);
         cmd.DrawIndexed(static_cast<unsigned>(m_indexCount));
     }
 

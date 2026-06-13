@@ -106,6 +106,7 @@ TEST_F(CommandListLoggerTest, SetAndDrawDoNotCrash)
     CommandList& cmd = renderer.Commands();
     cmd.SetShader(vs);
     cmd.SetShader(ps);
+    cmd.SetInputLayout(nullptr); // nullptr は no-op (実レイアウト経路は mesh テストがカバー)
     cmd.SetVertexBuffer(vb, 0);
     cmd.SetIndexBuffer(ib);
     cmd.SetConstantBuffer(cb, 0, ShaderType::Vertex);

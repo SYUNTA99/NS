@@ -224,6 +224,10 @@ namespace NS::Graphics
         const bool canDraw = m_valid && !m_countOnlyMode;
         auto* ctx = Gpu().context;
 
+        // ブロックは不透明。描画する者が自分の Pipeline を set する不変条件で、前 submitter の残留 state を断つ
+        if (canDraw && ctx != nullptr)
+            renderer.Commands().SetPipeline(renderer.CommonPipeline(BlendMode::Opaque));
+
         for (auto& [key, bucket] : m_buckets)
         {
             if (bucket.instances.empty())

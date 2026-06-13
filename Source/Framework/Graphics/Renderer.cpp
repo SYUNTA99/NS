@@ -5,6 +5,7 @@
 #include "Framework/Graphics/CommonStates.h"
 #include "Framework/Graphics/D3dCommon.h"
 #include "Framework/Graphics/GraphicObject.h"
+#include "Framework/Graphics/Pipeline.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/Texture.h"
 #include "Framework/Graphics/TextureArray.h"
@@ -205,6 +206,12 @@ namespace NS::Graphics
         // CommonStates の ctor は friend Renderer 限定 (private) で make_unique が呼べないため new で構築する
         m_states.reset(new CommonStates(m_device.Get()));
 
+        // 共通 Pipeline を1回だけ生成しキャッシュする。Gpu() は上で公開済 (描画する者が毎回 set する)
+        m_commonPipelines[0] = Pipeline::Create(PipelineDesc{});
+        m_commonPipelines[1] = Pipeline::Create(PipelineDesc{.blend = BlendMode::Alpha, .depth = DepthMode::ReadOnly});
+        m_commonPipelines[2] =
+            Pipeline::Create(PipelineDesc{.blend = BlendMode::Additive, .depth = DepthMode::ReadOnly});
+
         window.SetResizeCallback([this](::NS::Math::Size2D rs) { this->Resize(rs); });
         m_resizeCallbackRegistered = true;
 
@@ -242,6 +249,20 @@ namespace NS::Graphics
     bool Renderer::IsValid() const noexcept
     {
         return m_valid;
+    }
+
+    const Pipeline& Renderer::CommonPipeline(BlendMode blend) const noexcept
+    {
+        switch (blend)
+        {
+        case BlendMode::Alpha:
+            return *m_commonPipelines[1];
+        case BlendMode::Additive:
+            return *m_commonPipelines[2];
+        case BlendMode::Opaque:
+        default:
+            return *m_commonPipelines[0];
+        }
     }
 
     void Renderer::BeginFrame(float r, float g, float b, float a) noexcept

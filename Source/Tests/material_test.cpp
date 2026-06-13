@@ -56,6 +56,27 @@ protected:
     void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
+TEST_F(MaterialLoggerTest, BlendAndRenderPriorityReflectDescEvenWhenInvalid)
+{
+    // blend / renderPriority は GPU リソースに依らない分類メタなので device 無し (invalid) でも desc 値を返す
+    MaterialDesc desc{};
+    desc.blend = NS::Graphics::BlendMode::Alpha;
+    desc.renderPriority = 7;
+    const auto material = Material::Create(desc);
+    ASSERT_NE(material, nullptr);
+    EXPECT_FALSE(material->IsValid());
+    EXPECT_EQ(material->Blend(), NS::Graphics::BlendMode::Alpha);
+    EXPECT_EQ(material->RenderPriority(), 7);
+}
+
+TEST_F(MaterialLoggerTest, DefaultBlendIsOpaque)
+{
+    const auto material = Material::Create(MaterialDesc{});
+    ASSERT_NE(material, nullptr);
+    EXPECT_EQ(material->Blend(), NS::Graphics::BlendMode::Opaque);
+    EXPECT_EQ(material->RenderPriority(), 0);
+}
+
 TEST_F(MaterialLoggerTest, ConstructWithShaderIsValid)
 {
     Window window(MakeWindowDesc("ns_mat_valid"));

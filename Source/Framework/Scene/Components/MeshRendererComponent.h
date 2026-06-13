@@ -57,7 +57,15 @@ namespace NS::Scene
         }
 
         /// alpha 補間 world matrix を FrameCB に詰めて 1 描画呼出。IsActive()==false なら何もしない
+        /// 描画直前に Material の BlendMode に対応する共通 Pipeline を SetPipeline する (state リーク防止)
         void Draw(const RenderContext& context) override;
+
+        /// Material の BlendMode から bucket を返す (Opaque 以外は Transparent)。Material 不在は Opaque
+        [[nodiscard]] RenderBucket Bucket() const noexcept override;
+        /// Owner の world 行列の平行移動成分 (半透明ソート用中心)
+        [[nodiscard]] NS::Math::Vector3 SortCenter() const noexcept override;
+        /// Material の renderPriority (距離同値時のタイブレーク)
+        [[nodiscard]] int SortPriority() const noexcept override;
 
         /// OwningScene に self を IRenderable として登録する。Owner/Scene が null なら何もしない
         void OnStart() override;

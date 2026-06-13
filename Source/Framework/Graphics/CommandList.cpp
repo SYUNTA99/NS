@@ -2,6 +2,8 @@
 
 #include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/D3dCommon.h"
+#include "Framework/Graphics/Mesh.h"
+#include "Framework/Graphics/Pipeline.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/Texture.h"
 #include "Framework/Graphics/TextureArray.h"
@@ -15,6 +17,12 @@ namespace NS::Graphics
 {
     namespace
     {
+        D3D11_PRIMITIVE_TOPOLOGY ToD3d(Topology topology) noexcept
+        {
+            return (topology == Topology::LineList) ? D3D11_PRIMITIVE_TOPOLOGY_LINELIST
+                                                    : D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+        }
+
         bool MapAndCopy(ID3D11DeviceContext* context,
                         ID3D11Buffer* buffer,
                         const void* data,
@@ -88,6 +96,17 @@ namespace NS::Graphics
         vp.MinDepth = 0.0f;
         vp.MaxDepth = 1.0f;
         m_context->RSSetViewports(1u, &vp);
+    }
+
+    void CommandList::SetPipeline(const Pipeline& pipeline) noexcept
+    {
+        if (m_context == nullptr || !pipeline.IsValid())
+        {
+            return;
+        }
+        m_context->RSSetState(pipeline.RasterizerState());
+        m_context->OMSetBlendState(pipeline.BlendState(), nullptr, 0xFFFFFFFFu);
+        m_context->OMSetDepthStencilState(pipeline.DepthStencilState(), 0u);
     }
 
     void CommandList::SetShader(const Shader& shader) noexcept
@@ -193,6 +212,16 @@ namespace NS::Graphics
         }
     }
 
+    // InputLayout は NS にラッパ型が無いため Mesh が所有する生 ID3D11InputLayout* をそのまま受ける
+    void CommandList::SetInputLayout(ID3D11InputLayout* layout) noexcept
+    {
+        if (m_context == nullptr || layout == nullptr)
+        {
+            return;
+        }
+        m_context->IASetInputLayout(layout);
+    }
+
     void CommandList::SetVertexBuffer(const Buffer& buffer, unsigned slot) noexcept
     {
         if (m_context == nullptr || !buffer.IsValid())
@@ -212,6 +241,15 @@ namespace NS::Graphics
             return;
         }
         m_context->IASetIndexBuffer(buffer.Native(), buffer.Format(), 0u);
+    }
+
+    void CommandList::SetTopology(Topology topology) noexcept
+    {
+        if (m_context == nullptr)
+        {
+            return;
+        }
+        m_context->IASetPrimitiveTopology(ToD3d(topology));
     }
 
     void CommandList::SetConstantBuffer(const Buffer& buffer, unsigned slot, ShaderType stage) noexcept

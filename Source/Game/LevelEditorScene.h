@@ -66,9 +66,6 @@ public:
     void OnUpdate() override;
     void OnShutdown() override;
 
-    void RegisterRenderable(NS::Scene::IRenderable* renderable) override;
-    void UnregisterRenderable(NS::Scene::IRenderable* renderable) override;
-
     [[nodiscard]] NS::Game::Level::LevelData& Level() noexcept { return m_level; }
     [[nodiscard]] const NS::Game::Level::LevelData& Level() const noexcept { return m_level; }
     [[nodiscard]] NS::Game::Level::PlayState& Play() noexcept { return m_play; }
@@ -126,8 +123,11 @@ private:
     std::unique_ptr<NS::Graphics::TextureArray> m_blockTextures;
     std::unique_ptr<NS::Graphics::Shader> m_standardVS; // player / block 共有 (standard.vs)
     std::unique_ptr<NS::Graphics::Shader> m_playerPS;   // player / block / skinned 共有 (player.ps)
+    std::unique_ptr<NS::Graphics::Shader> m_waterPS;    // 水専用 (water.ps、alpha<1 出力)
     std::unique_ptr<NS::Graphics::Material> m_playerMaterial;
     std::unique_ptr<NS::Graphics::Material> m_blockMaterial;
+    // 水ブロック専用の半透明 Material (Alpha)。不透明ブロックと共有すると全ブロックが透けるため別インスタンス
+    std::unique_ptr<NS::Graphics::Material> m_waterMaterial;
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
     std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
 
@@ -163,7 +163,6 @@ private:
     std::unique_ptr<CameraRig> m_cameraRig;
     std::unique_ptr<EditorCameraRig> m_editorCameraRig;
 
-    std::vector<NS::Scene::IRenderable*> m_renderList;
     std::vector<NS::Math::AABB> m_collisionWorld;
     std::vector<NS::Physics::Triangle> m_collisionTriangles;
     std::vector<NS::Scene::PoleComponent*> m_polePtrs;

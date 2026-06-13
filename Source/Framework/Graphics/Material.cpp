@@ -25,6 +25,11 @@ namespace NS::Graphics
 
     Material::Material(const MaterialDesc& desc)
     {
+        // blend / renderPriority は GPU
+        // リソースに依らない分類メタデータなので、構築失敗時でも参照できるよう先に保持する
+        m_blend = desc.blend;
+        m_renderPriority = desc.renderPriority;
+
         if (Gpu().device == nullptr)
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Material: グローバル Device が無効");
@@ -71,6 +76,16 @@ namespace NS::Graphics
             return false;
         }
         return m_vertexShader->IsUsingFallback() || m_pixelShader->IsUsingFallback();
+    }
+
+    BlendMode Material::Blend() const noexcept
+    {
+        return m_blend;
+    }
+
+    int Material::RenderPriority() const noexcept
+    {
+        return m_renderPriority;
     }
 
     void Material::SetTexture(unsigned slot, const Texture* texture) noexcept

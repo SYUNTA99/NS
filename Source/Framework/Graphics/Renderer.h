@@ -38,6 +38,8 @@ namespace NS::Graphics
     class CommandList;
     class CommonStates;
     class Texture;
+    class Pipeline;
+    enum class BlendMode;
 
     /// D3D11 Device / DeviceContext / SwapChain を所有するレンダラ。Window と 1 対 1 で生成しリサイズ通知を購読
     /// リソース生成側は Device / Context をプロセスグローバルの Gpu() で引く
@@ -74,6 +76,10 @@ namespace NS::Graphics
         /// bind / draw / update を記録する CommandList。 context 呼び出しは全てここに集約される
         [[nodiscard]] CommandList& Commands() noexcept;
 
+        /// BlendMode に対応する共通 Pipeline (Opaque/Alpha/Additive)。初期化時に1回生成しキャッシュ済 (create-once)
+        /// 描画する者が DrawCall 直前に SetPipeline で適用する。返り値は常に有効インスタンス (失敗時も非 null)
+        [[nodiscard]] const Pipeline& CommonPipeline(BlendMode blend) const noexcept;
+
     private:
         ComPtr<ID3D11Device> m_device;
         ComPtr<ID3D11DeviceContext> m_context;
@@ -82,6 +88,8 @@ namespace NS::Graphics
         std::unique_ptr<Texture> m_depth;
         std::unique_ptr<CommandList> m_commands;
         std::unique_ptr<CommonStates> m_states;
+        // 共通 Pipeline (0:Opaque / 1:Alpha / 2:Additive)。ctor で生成、CommonPipeline で引く
+        std::unique_ptr<Pipeline> m_commonPipelines[3];
         ::NS::Platform::Window* m_window = nullptr;
         RenderSettings m_settings{};
         bool m_vsync = true;

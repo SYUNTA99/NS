@@ -21,7 +21,9 @@ namespace NS::Graphics
     class Texture;
     class TextureArray;
     class Shader;
+    class Pipeline;
     enum class ShaderType;
+    enum class Topology;
 
     /// 1 つの `ID3D11DeviceContext` に bind / clear / draw を発行する記録面
     /// Renderer が 1 個保持し、 描画コードは `Renderer::Commands()` で取得して記録する
@@ -44,6 +46,10 @@ namespace NS::Graphics
         /// 単一ビューポートを左上 0,0 起点で設定する (RSSetViewports)
         void SetViewport(float width, float height) noexcept;
 
+        /// Pipeline の固定機能ステート一式を一括適用する (RS / OM blend / OM depth-stencil)
+        /// 無効 Pipeline は何もしない。個別 Set の呼び忘れによるステート残留はこれで防ぐ
+        void SetPipeline(const Pipeline& pipeline) noexcept;
+
         /// Shader をステージに応じて発行する (VS/PS/GS/HS/DS/CSSetShader)。無効 Shader は何もしない
         void SetShader(const Shader& shader) noexcept;
         /// Texture の SRV を slot + 指定ステージにバインドする (bind 対応は Vertex / Pixel のみ)
@@ -52,10 +58,15 @@ namespace NS::Graphics
         void SetTextureArray(const TextureArray& textureArray, unsigned slot, ShaderType stage) noexcept;
         /// サンプラーを slot + 指定ステージにバインドする (CommonStates の生 ID3D11SamplerState* を受ける)
         void SetSampler(ID3D11SamplerState* sampler, unsigned slot, ShaderType stage) noexcept;
+        /// InputLayout を IA にバインドする (IASetInputLayout)。レイアウトの所有は Mesh、 ここは bind のみ
+        /// 無効 (nullptr) は何もしない
+        void SetInputLayout(ID3D11InputLayout* layout) noexcept;
         /// 頂点バッファを slot にバインドする (IASetVertexBuffers)
         void SetVertexBuffer(const Buffer& buffer, unsigned slot = 0) noexcept;
         /// index バッファをバインドする (IASetIndexBuffer、 幅は Buffer の Format から)
         void SetIndexBuffer(const Buffer& buffer) noexcept;
+        /// プリミティブ形状を IA に設定する (IASetPrimitiveTopology)。所有は Mesh、 ここは bind のみ
+        void SetTopology(Topology topology) noexcept;
         /// 定数バッファを slot + 指定ステージにバインドする (bind 対応は Vertex / Pixel のみ)
         void SetConstantBuffer(const Buffer& buffer, unsigned slot, ShaderType stage) noexcept;
         /// Dynamic バッファを Map/Discard で更新する。Static や容量超過は NS_LOG_ERROR を出して何もしない

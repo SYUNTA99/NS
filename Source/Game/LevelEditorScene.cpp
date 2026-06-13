@@ -8,9 +8,9 @@
 #include "Game/Blocks/WaterBlock.h"
 #include "Game/Player.h"
 
-#include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/PoleComponent.h"
+#include "Framework/Scene/GameObject.h"
 
 #include "Framework/App/Application.h"
 #include "Framework/Core/Clock.h"
@@ -35,10 +35,10 @@
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
-#include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
-#include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/Components/SkeletalAnimationComponent.h"
+#include "Framework/Scene/IRenderable.h"
+#include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/Transform.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Editor/AutoTile.h"
@@ -146,6 +146,17 @@ void LevelEditorScene::OnStart()
     NS::Graphics::MaterialDesc blockMatDesc = matDesc;
     m_blockMaterial = NS::Graphics::Material::Create(blockMatDesc);
     // slot 0 は外側で TextureArray を bind するため SetTexture 禁止 — 呼ぶと Material::Bind が SRV を上書きする
+
+    // 水は個別描画 (WaterBlock + MeshRenderer)。alpha<1 を出す water.ps + Alpha ブレンドの専用 Material にする
+    m_waterPS = NS::Graphics::Shader::Create(exeDir / "Shaders" / "water.ps.hlsl");
+    if (m_waterPS->IsUsingFallback())
+        NS_LOG_WARN(::NS::Core::LogCat::Game,
+                    "LevelEditorScene: water.ps 読込/コンパイル失敗、 magenta fallback で続行");
+    NS::Graphics::MaterialDesc waterMatDesc = matDesc;
+    waterMatDesc.pixelShader = m_waterPS.get();
+    waterMatDesc.blend = NS::Graphics::BlendMode::Alpha;
+    m_waterMaterial = NS::Graphics::Material::Create(waterMatDesc);
+    m_waterMaterial->SetTexture(0, m_texture.get());
 
     // 全テーマ block texture を Texture2DArray 1 本に集約。 アセット未取得のため cube_test.png を 40 slice 充填
     {
@@ -600,6 +611,11 @@ void LevelEditorScene::OnRenderScene()
         ctx.viewProjection = m_cameraRig->Camera().ViewProjection();
     }
 
+    // 半透明 back-to-front ソート用に active camera の world 座標を渡す (view 行列の逆変換の平行移動成分)
+    const NS::Math::Matrix camView =
+        editActive ? m_editorCameraRig->Camera().Camera().View() : m_cameraRig->Camera().Camera().View();
+    ctx.cameraPosition = camView.Invert().Translation();
+
     // 基底が BuildSceneOverride() を Resolve するので、 theme override が scene 解決値として ctx に載る
     // mesh 経路は ctx 経由で pull、 block 経路はこの解決値を FrameCB に詰めて同一値を流す
     ctx.resolvedSettings = ResolveSceneSettings(ctx.renderer->Settings());
@@ -683,13 +699,10 @@ void LevelEditorScene::OnRenderScene()
         m_instanceBatcher->FlushAll(*ctx.renderer);
     }
 
-    for (NS::Scene::IRenderable* r : m_renderList)
-    {
-        if (r != nullptr)
-            r->Draw(ctx);
-    }
+    // 不透明 IRenderable。各 Draw が自分の Pipeline を set する (基底が bucket 分類して登録順に呼ぶ)
+    DrawOpaque(ctx);
 
-    // Skybox は不透明描画後・オーバーレイ前。 view の translation 行 (_41/_42/_43) を 0 化して camera 中心に固定する
+    // Skybox は不透明描画後・半透明前。 view の translation 行 (_41/_42/_43) を 0 化して camera 中心に固定する
     if (m_skybox && m_skybox->IsValid())
     {
         // 毎フレーム LoadCubemap すると I/O が常時走るため、 前回パスと差分があるときだけ再ロードする
@@ -720,6 +733,9 @@ void LevelEditorScene::OnRenderScene()
         const NS::Math::Matrix viewProjNoTranslate = viewNoTranslate * cam.Projection();
         m_skybox->Render(*ctx.renderer, viewProjNoTranslate);
     }
+
+    // 半透明 IRenderable は不透明 + skybox の後。カメラから遠い順に各 Draw が alpha/additive Pipeline を set する
+    DrawTransparent(ctx);
 
     if (editActive)
     {
@@ -753,8 +769,6 @@ void LevelEditorScene::OnShutdown()
     if (m_player)
         m_player->OnEndPlay();
 
-    m_renderList.clear();
-
     m_editorCameraRig.reset();
     m_cameraRig.reset();
     m_animatedModel.reset();
@@ -775,8 +789,10 @@ void LevelEditorScene::OnShutdown()
     m_skinnedMaterial.reset();
     m_playerMaterial.reset();
     m_blockMaterial.reset();
+    m_waterMaterial.reset();
     m_skinnedVS.reset();
     m_playerPS.reset();
+    m_waterPS.reset();
     m_standardVS.reset();
     m_blockTextures.reset();
     m_texture.reset();
@@ -787,24 +803,6 @@ void LevelEditorScene::OnShutdown()
     m_poleMesh.reset();
     m_skinnedMesh.reset();
     m_cubeMesh.reset();
-}
-
-void LevelEditorScene::RegisterRenderable(NS::Scene::IRenderable* renderable)
-{
-    if (renderable == nullptr)
-        return;
-    // 二重登録を防ぐ。Component 側で OnStart が誤って 2 回呼ばれても二重描画にならない
-    if (std::find(m_renderList.begin(), m_renderList.end(), renderable) != m_renderList.end())
-        return;
-    m_renderList.push_back(renderable);
-}
-
-void LevelEditorScene::UnregisterRenderable(NS::Scene::IRenderable* renderable)
-{
-    if (renderable == nullptr)
-        return;
-    // erase-remove で全要素を消し、不変式 (一意性) と防御的削除を両立する
-    m_renderList.erase(std::remove(m_renderList.begin(), m_renderList.end(), renderable), m_renderList.end());
 }
 
 void LevelEditorScene::RebuildBlocksFromLevelData()
@@ -931,7 +929,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
 
         if (NS::Game::Editor::IsWaterBlock(entry.blockId))
         {
-            auto water = std::make_unique<WaterBlock>(m_cubeMesh.get(), m_blockMaterial.get());
+            auto water = std::make_unique<WaterBlock>(m_cubeMesh.get(), m_waterMaterial.get());
             water->AttachScene(this);
             placeInCell(*water);
             water->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});

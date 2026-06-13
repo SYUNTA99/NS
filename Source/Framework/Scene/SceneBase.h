@@ -25,6 +25,8 @@
 
 #include "Framework/Graphics/RenderSettings.h"
 
+#include <vector>
+
 namespace NS::Scene
 {
 
@@ -55,12 +57,19 @@ namespace NS::Scene
         /// MainLoop 終了後に 1 回呼ばれる。Window/Renderer はまだ有効、Shutdown 後に解放
         virtual void OnShutdown() {}
 
-        /// IRenderable Component の自己登録。MeshRendererComponent 等が OnStart で呼ぶ
-        virtual void RegisterRenderable(IRenderable* renderable) { (void)renderable; }
+        /// IRenderable Component の自己登録。MeshRendererComponent 等が OnStart で呼ぶ (二重登録は無視)
+        /// 基底が container を一元管理する。テスト等が spy するため virtual だが、通常は override しない
+        virtual void RegisterRenderable(IRenderable* renderable);
         /// IRenderable Component の自己解除。MeshRendererComponent 等が OnEndPlay で呼ぶ
-        virtual void UnregisterRenderable(IRenderable* renderable) { (void)renderable; }
+        virtual void UnregisterRenderable(IRenderable* renderable);
 
     protected:
+        /// Opaque バケットの Renderable を登録順に描画する。Game が OnRenderScene から呼ぶ
+        void DrawOpaque(const RenderContext& context);
+        /// Transparent バケットを context.cameraPosition から遠い順 (back-to-front) にソートして描画する
+        /// 距離同値は SortPriority 昇順、さらに同値は登録順 (stable_sort) のタイブレーク
+        void DrawTransparent(const RenderContext& context);
+
         /// 派生がシーン単位の上書きを宣言する hook。default は空 override (= project 既定値そのまま)
         /// lighting 3 種 (lightDir / lightColor / ambientColor) と clearColor を上書きできる
         virtual NS::Graphics::RenderSettingsOverride BuildSceneOverride() { return {}; }
@@ -73,6 +82,10 @@ namespace NS::Scene
         /// テスト用に protected 公開 (Application 経路では OnRenderScene が描画前に呼ぶ)
         [[nodiscard]] NS::Graphics::RenderSettings ResolveSceneSettings(
             const NS::Graphics::RenderSettings& projectDefaults);
+
+    private:
+        /// 登録された全 IRenderable (非所有)。Game ではなく engine 側 (この基底) が一元管理する
+        std::vector<IRenderable*> m_renderables;
     };
 
 } // namespace NS::Scene

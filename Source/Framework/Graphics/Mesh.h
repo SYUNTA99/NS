@@ -46,6 +46,13 @@ namespace NS::Graphics
         unsigned byteOffset = 0;
     };
 
+    /// プリミティブ形状。Mesh の index buffer の解釈方法 (描画元が持つ属性)
+    enum class Topology
+    {
+        TriangleList,
+        LineList
+    };
+
     /// 描画できるジオメトリの基底。 VB / IB / InputLayout を所有し DrawIndexed を 1 回発行する
     /// 頂点フォーマットは派生 (StaticMesh / SkeletalMesh) が `SetVertexLayout` で渡す
     class Mesh : public NS::Core::NonCopyable
@@ -89,12 +96,16 @@ namespace NS::Graphics
         /// 派生が自分の頂点フォーマットの InputElement 配列を基底に渡す (CreateInputLayout が使う)
         void SetVertexLayout(std::vector<InputElement> elements) noexcept;
 
+        /// 派生が自分のプリミティブ形状を渡す (既定 TriangleList、line mesh は LineList)
+        void SetTopology(Topology topology) noexcept;
+
     private:
         std::unique_ptr<Buffer> m_vb;
         std::unique_ptr<Buffer> m_ib;
         ComPtr<ID3D11Device> m_device;
         ComPtr<ID3D11InputLayout> m_inputLayout;
         std::vector<InputElement> m_layoutElements;
+        Topology m_topology = Topology::TriangleList;
         std::size_t m_vertexCount = 0;
         std::size_t m_indexCount = 0;
         bool m_valid = false;

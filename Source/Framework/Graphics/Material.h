@@ -9,6 +9,7 @@
 /// GPU バインドは渡された Renderer 経由で行い、 Material は DeviceContext を保持しない
 
 #include "Framework/Core/NonCopyable.h"
+#include "Framework/Graphics/Pipeline.h"
 
 #include <cstddef>
 #include <map>
@@ -35,6 +36,10 @@ namespace NS::Graphics
         std::size_t constantBufferSize = 0;
         /// ConstantBuffer Bind 先スロット (Bind 先ステージは VS + PS 固定)
         unsigned cbSlot = 1;
+        /// 描画バケット判定に使うブレンド方式。Alpha / Additive で半透明バケットへ分類される
+        BlendMode blend = BlendMode::Opaque;
+        /// 半透明ソートのタイブレーク。距離同値時に小さいほど先に描かれる
+        int renderPriority = 0;
     };
 
     /// Shader* (非所有) + Texture スロット + 内蔵 ConstantBuffer を束ねる汎用 Material
@@ -52,6 +57,11 @@ namespace NS::Graphics
 
         /// Shader::IsUsingFallback() への薄いラッパ (Material 独自の fallback 状態は持たない)
         [[nodiscard]] bool IsUsingFallback() const noexcept;
+
+        /// 構築時に宣言したブレンド方式。SceneBase の bucket 分類と Draw 時の Pipeline 選択に使う
+        [[nodiscard]] BlendMode Blend() const noexcept;
+        /// 構築時に宣言した半透明ソートのタイブレーク優先度
+        [[nodiscard]] int RenderPriority() const noexcept;
 
         /// 指定スロットにテクスチャを割り当てる。texture=nullptr で割当解除と同義
         void SetTexture(unsigned slot, const Texture* texture) noexcept;
@@ -86,6 +96,8 @@ namespace NS::Graphics
         std::map<unsigned, const Texture*> m_textures;
         std::unique_ptr<Buffer> m_cb;
         unsigned m_cbSlot = 1;
+        BlendMode m_blend = BlendMode::Opaque;
+        int m_renderPriority = 0;
         bool m_valid = false;
     };
 

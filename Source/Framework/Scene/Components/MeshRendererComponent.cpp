@@ -1,7 +1,9 @@
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 
+#include "Framework/Graphics/CommandList.h"
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/Mesh.h"
+#include "Framework/Graphics/Renderer.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/SceneBase.h"
@@ -42,6 +44,9 @@ namespace NS::Scene
             context.renderer == nullptr)
             return;
 
+        // 描画する者が自分の Pipeline を毎回 set する不変条件。前 submitter (Skybox 等) の残留 state を引き継がない
+        context.renderer->Commands().SetPipeline(context.renderer->CommonPipeline(m_material->Blend()));
+
         // InputLayout を初回描画時に生成 (冪等)。instanced block は inactive で InstanceBatcher が担う
         m_material->CreateInputLayoutFor(*m_mesh);
 
@@ -61,5 +66,27 @@ namespace NS::Scene
         m_material->SetParams(*context.renderer, cb);
         m_material->Bind(*context.renderer);
         m_mesh->Draw(*context.renderer);
+    }
+
+    RenderBucket MeshRendererComponent::Bucket() const noexcept
+    {
+        if (m_material == nullptr)
+            return RenderBucket::Opaque;
+        return (m_material->Blend() == NS::Graphics::BlendMode::Opaque) ? RenderBucket::Opaque
+                                                                        : RenderBucket::Transparent;
+    }
+
+    NS::Math::Vector3 MeshRendererComponent::SortCenter() const noexcept
+    {
+        const GameObject* owner = Owner();
+        if (owner == nullptr)
+            return {};
+        const NS::Math::Matrix world = owner->Root().WorldMatrix();
+        return NS::Math::Vector3{world._41, world._42, world._43};
+    }
+
+    int MeshRendererComponent::SortPriority() const noexcept
+    {
+        return (m_material != nullptr) ? m_material->RenderPriority() : 0;
     }
 } // namespace NS::Scene

@@ -24,6 +24,8 @@ namespace NS::Scene
         NS::Graphics::Renderer* renderer = nullptr;
         /// active CameraComponent から取り出した VP 行列 (Alpha 補間済を渡す想定)
         NS::Math::Matrix viewProjection{};
+        /// active camera のワールド座標。SceneBase が半透明を back-to-front ソートする距離計算に使う
+        NS::Math::Vector3 cameraPosition{};
         /// fixed step 補間係数 [0,1]。NS::Core::FrameTimer::Alpha() を Scene が転記
         float alpha = 1.0f;
         /// scene 段まで解決済の描画設定 (project 既定 ← scene override)。object 段は各 Draw で最終解決する
