@@ -139,6 +139,17 @@ namespace NS::Game::Editor
                                                             float amount,
                                                             bool snap) noexcept;
 
+        /// Q/W/E/R をツールに対応付ける。対象外キーは current を素通しする
+        [[nodiscard]] static GizmoTool ToolForKey(GizmoTool current, NS::Platform::Key key) noexcept;
+
+        /// gizmoOrigin と 3 軸端点を screen 投影し、mouse2d に最も近い軸ハンドルを返す
+        /// Select は常に None、Scale は中心 Uniform ハンドルを優先、閾値外/不正 viewport は None
+        [[nodiscard]] static GizmoAxis ToolHandlePick(const NS::Math::Vector3& gizmoOrigin,
+                                                      GizmoTool tool,
+                                                      NS::Math::Vector2 mouse2d,
+                                                      const NS::Math::Matrix& viewProjection,
+                                                      NS::Math::Size2D viewport) noexcept;
+
         /// テスト用。Tick を介さずツール状態を注入する
         void SetToolForTest(GizmoTool tool) noexcept { m_tool = tool; }
         /// テスト用。選択を直接注入する
@@ -152,9 +163,6 @@ namespace NS::Game::Editor
 
     private:
         void OnToolKey(NS::Platform::Key key) noexcept;
-        [[nodiscard]] GizmoAxis PickHandle(NS::Math::Vector2 mouse2d,
-                                           const NS::Math::Matrix& viewProjection,
-                                           NS::Math::Size2D viewport) const noexcept;
 
         NS::Platform::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
