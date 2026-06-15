@@ -9,7 +9,7 @@ namespace LevelNs = NS::Game::Level;
 TEST(AutoTileTest, IsolatedBlockHasZeroMask)
 {
     LevelNs::LevelData lv;
-    lv.blocks.push_back({0, 0, 0, 1, 0, 0});
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
     auto m = EditorNs::ComputeNeighborMask(lv, 0, 0, 0, 1);
     EXPECT_EQ(m, 0u);
 }
@@ -17,13 +17,13 @@ TEST(AutoTileTest, IsolatedBlockHasZeroMask)
 TEST(AutoTileTest, AllSixNeighborsSetAllBits)
 {
     LevelNs::LevelData lv;
-    lv.blocks.push_back({0, 0, 0, 1, 0, 0});
-    lv.blocks.push_back({+1, 0, 0, 1, 0, 0});
-    lv.blocks.push_back({-1, 0, 0, 1, 0, 0});
-    lv.blocks.push_back({0, +1, 0, 1, 0, 0});
-    lv.blocks.push_back({0, -1, 0, 1, 0, 0});
-    lv.blocks.push_back({0, 0, +1, 1, 0, 0});
-    lv.blocks.push_back({0, 0, -1, 1, 0, 0});
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(+1, 0, 0, 1, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(-1, 0, 0, 1, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(0, +1, 0, 1, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(0, -1, 0, 1, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, +1, 1, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, -1, 1, 0));
     auto m = EditorNs::ComputeNeighborMask(lv, 0, 0, 0, 1);
     EXPECT_EQ(m, 0b00111111u);
 }
@@ -31,8 +31,8 @@ TEST(AutoTileTest, AllSixNeighborsSetAllBits)
 TEST(AutoTileTest, DifferentBlockIdNeighborDoesNotSetBit)
 {
     LevelNs::LevelData lv;
-    lv.blocks.push_back({0, 0, 0, 1, 0, 0});
-    lv.blocks.push_back({+1, 0, 0, 2, 0, 0}); // 違う blockId
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(+1, 0, 0, 2, 0)); // 違う blockId
     auto m = EditorNs::ComputeNeighborMask(lv, 0, 0, 0, 1);
     EXPECT_EQ(m, 0u);
 }
@@ -40,8 +40,8 @@ TEST(AutoTileTest, DifferentBlockIdNeighborDoesNotSetBit)
 TEST(AutoTileTest, OnlyPlusXNeighborSetsBit0)
 {
     LevelNs::LevelData lv;
-    lv.blocks.push_back({0, 0, 0, 1, 0, 0});
-    lv.blocks.push_back({+1, 0, 0, 1, 0, 0});
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(+1, 0, 0, 1, 0));
     auto m = EditorNs::ComputeNeighborMask(lv, 0, 0, 0, 1);
     EXPECT_EQ(m, 0b00000001u);
 }

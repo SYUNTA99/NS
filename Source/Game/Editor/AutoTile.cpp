@@ -76,13 +76,10 @@ namespace NS::Game::Editor
             const std::int16_t nx = static_cast<std::int16_t>(x + kOffsets[i][0]);
             const std::int16_t ny = static_cast<std::int16_t>(y + kOffsets[i][1]);
             const std::int16_t nz = static_cast<std::int16_t>(z + kOffsets[i][2]);
-            for (const auto& b : level.blocks)
+            const std::size_t neighbor = NS::Game::Level::FindGridObjectAtCell(level, nx, ny, nz);
+            if (neighbor != NS::Game::Level::kNoObjectIndex && level.objects[neighbor].kind == blockId)
             {
-                if (b.x == nx && b.y == ny && b.z == nz && b.blockId == blockId)
-                {
-                    mask = static_cast<std::uint8_t>(mask | (1u << i));
-                    break;
-                }
+                mask = static_cast<std::uint8_t>(mask | (1u << i));
             }
         }
         return mask;

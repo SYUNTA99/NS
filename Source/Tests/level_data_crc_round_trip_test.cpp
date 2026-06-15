@@ -22,10 +22,10 @@ TEST(PlayModeCrc, RoundTripPreservesLevelData_PMODE_06)
     level.themeId = 7;
     level.coinThreshold = 30;
     level.timeLimitSeconds = 240;
-    level.blocks.push_back({0, 0, 0, EditorNs::kBlockIdSolid, 0, 0});
-    level.blocks.push_back({1, 0, 0, EditorNs::kBlockIdSolid, 1, 0});
-    level.blocks.push_back({0, 0, 1, EditorNs::kBlockIdCoin, 0, 0});
-    level.blocks.push_back({2, 0, 0, EditorNs::kBlockIdPowerStar, 0, 0});
+    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdSolid, 0));
+    level.objects.push_back(LevelNs::MakeGridObject(1, 0, 0, EditorNs::kBlockIdSolid, 1));
+    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 1, EditorNs::kBlockIdCoin, 0));
+    level.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, EditorNs::kBlockIdPowerStar, 0));
 
     const std::uint32_t before = level.ComputeCrc32();
 
@@ -45,7 +45,7 @@ TEST(PlayModeCrc, RoundTripWithCoinCollectionPreservesLevelData)
     level.spawnX = 0;
     level.spawnY = 0;
     level.spawnZ = 0;
-    level.blocks.push_back({0, 0, 0, EditorNs::kBlockIdCoin, 0, 0});
+    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdCoin, 0));
     const std::uint32_t before = level.ComputeCrc32();
 
     LevelNs::PlayState play;
@@ -57,8 +57,8 @@ TEST(PlayModeCrc, RoundTripWithCoinCollectionPreservesLevelData)
     mode.Exit(play);
 
     EXPECT_EQ(level.ComputeCrc32(), before) << "Coin 取得時に LevelData 変更";
-    EXPECT_EQ(level.blocks.size(), 1u);
-    EXPECT_EQ(level.blocks[0].blockId, EditorNs::kBlockIdCoin);
+    EXPECT_EQ(level.objects.size(), 1u);
+    EXPECT_EQ(level.objects[0].kind, EditorNs::kBlockIdCoin);
 }
 
 TEST(PlayModeCrc, RoundTripWithStarContactPreservesLevelData)
@@ -67,7 +67,7 @@ TEST(PlayModeCrc, RoundTripWithStarContactPreservesLevelData)
     level.spawnX = 0;
     level.spawnY = 0;
     level.spawnZ = 0;
-    level.blocks.push_back({0, 0, 0, EditorNs::kBlockIdPowerStar, 0, 0});
+    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdPowerStar, 0));
     const std::uint32_t before = level.ComputeCrc32();
 
     LevelNs::PlayState play;

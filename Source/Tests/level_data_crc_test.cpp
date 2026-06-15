@@ -11,18 +11,18 @@ TEST(LevelDataCrcTest, EmptyLevelIsDeterministic)
     EXPECT_EQ(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
-TEST(LevelDataCrcTest, DifferentBlockIdsProduceDifferentCrc)
+TEST(LevelDataCrcTest, DifferentKindsProduceDifferentCrc)
 {
     LevelNs::LevelData a, b;
-    a.blocks.push_back({1, 2, 3, 100, 0, 0});
-    b.blocks.push_back({1, 2, 3, 101, 0, 0});
+    a.objects.push_back(LevelNs::MakeGridObject(1, 2, 3, 100, 0));
+    b.objects.push_back(LevelNs::MakeGridObject(1, 2, 3, 101, 0));
     EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
 TEST(LevelDataCrcTest, PlayStateMutationDoesNotAffectLevelDataCrc)
 {
     LevelNs::LevelData level;
-    level.blocks.push_back({0, 0, 0, 1, 0, 0});
+    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
     level.spawnX = 5;
     const auto before = level.ComputeCrc32();
 
@@ -37,20 +37,28 @@ TEST(LevelDataCrcTest, PlayStateMutationDoesNotAffectLevelDataCrc)
     EXPECT_EQ(before, after);
 }
 
-TEST(LevelDataCrcTest, BlocksSizeIsHashed)
+TEST(LevelDataCrcTest, ObjectsSizeIsHashed)
 {
     LevelNs::LevelData a, b;
-    a.blocks.push_back({0, 0, 0, 1, 0, 0});
-    a.blocks.push_back({1, 0, 0, 1, 0, 0});
-    b.blocks.push_back({0, 0, 0, 1, 0, 0});
+    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+    a.objects.push_back(LevelNs::MakeGridObject(1, 0, 0, 1, 0));
+    b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
     EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
-TEST(LevelDataCrcTest, ReservedFieldIsHashed)
+TEST(LevelDataCrcTest, RotationStepIsHashed)
 {
     LevelNs::LevelData a, b;
-    a.blocks.push_back({0, 0, 0, 1, 0, 0});
-    b.blocks.push_back({0, 0, 0, 1, 0, 1});
+    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+    b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 1));
+    EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
+}
+
+TEST(LevelDataCrcTest, MaterialPathsAreHashed)
+{
+    LevelNs::LevelData a, b;
+    a.materialPaths.push_back("Assets/Materials/Stone.mat");
+    b.materialPaths.push_back("Assets/Materials/Grass.mat");
     EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
@@ -65,8 +73,8 @@ TEST(LevelDataCrcTest, MetadataFieldsAreHashed)
 TEST(LevelDataCrcTest, VectorCapacityDoesNotAffectCrc)
 {
     LevelNs::LevelData a, b;
-    a.blocks.push_back({0, 0, 0, 1, 0, 0});
-    b.blocks.reserve(1000);
-    b.blocks.push_back({0, 0, 0, 1, 0, 0});
+    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+    b.objects.reserve(1000);
+    b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
     EXPECT_EQ(a.ComputeCrc32(), b.ComputeCrc32());
 }

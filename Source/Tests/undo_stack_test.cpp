@@ -24,7 +24,7 @@ TEST(UndoStackTest, PushExecutesDoAndStoresInUndoStack)
     stack.Push(std::make_unique<UndoNs::PlaceCommand>(0, 0, 0, 1, 0), lv);
     EXPECT_EQ(stack.UndoSize(), 1u);
     EXPECT_EQ(stack.RedoSize(), 0u);
-    EXPECT_EQ(lv.blocks.size(), 1u);
+    EXPECT_EQ(lv.objects.size(), 1u);
 }
 
 TEST(UndoStackTest, UndoRedoRoundTripPreservesState)

@@ -58,11 +58,11 @@ namespace
     constexpr NS::Math::Vector3 kAnimModelFootAnchor{2.5f, 0.0f, 0.0f};
     constexpr float kAnimModelTargetHeight = 1.8f;
 
-    /// 編集体験の起点となる最小床。 LevelData に block 1 個 + spawn を仕込んでおく
+    /// 編集体験の起点となる最小床。 LevelData に grid block 1 個 + spawn を仕込んでおく
     void SeedInitialLevel(NS::Game::Level::LevelData& level)
     {
-        level.blocks.clear();
-        level.blocks.push_back({0, 0, 0, NS::Game::Editor::kBlockIdSolid, 0, 0});
+        level.objects.clear();
+        level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, NS::Game::Editor::kBlockIdSolid, 0));
         level.spawnX = 0;
         level.spawnY = 1;
         level.spawnZ = 0;
@@ -283,61 +283,9 @@ void LevelEditorScene::OnStart()
     m_cameraRig->Camera().SetActive(false);
     m_cameraRig->Follow().SetActive(false);
 
-    // Object ツールモードでギズモ変形を試せる自由 Transform オブジェクトをテスト用に数個置く
-    // grid ブロックと違い LevelData に属さず、 texture 付き m_playerMaterial で個別 (DrawOpaque) 描画する
-    {
-        constexpr NS::Math::Vector3 kFreeHalfExtents{0.5f, 0.5f, 0.5f};
-        const NS::Math::Vector3 seedPositions[3] = {
-            {2.0f, 2.0f, 0.0f},
-            {-2.0f, 2.0f, 1.0f},
-            {0.0f, 3.0f, -2.0f},
-        };
-        for (const auto& pos : seedPositions)
-        {
-            auto cube = std::make_unique<Block>(m_cubeMesh.get(), m_playerMaterial.get(), kFreeHalfExtents);
-            cube->AttachScene(this);
-            cube->Root().SetPosition(pos);
-            // grid ブロックと一目で区別できるよう橙色に着色する (テスト seed の目印)
-            cube->MeshComp().SetBaseColor(NS::Math::Vector3{1.0f, 0.5f, 0.1f});
-            cube->OnStart();
-            m_freeObjectPtrs.push_back(cube.get());
-            m_freeHalfExtents.push_back(kFreeHalfExtents);
-            m_freeObjects.push_back(std::move(cube));
-        }
-    }
-
-    // .mat から読んだ別々のマテリアルを並べて見た目の差を実証する (lit テクスチャ / flat unlit / 手続き grid)
+    // .mat を読み込み / キャッシュする。 自由オブジェクトの材質は RebuildBlocksFromLevelData が
+    // 各 ObjectInstance.materialIndex から解決して適用する
     m_materialLibrary = std::make_unique<NS::Scene::MaterialLibrary>(exeDir);
-    {
-        constexpr NS::Math::Vector3 kFreeHalfExtents{0.5f, 0.5f, 0.5f};
-        const struct
-        {
-            const char* file;
-            NS::Math::Vector3 position;
-        } demoMaterials[] = {
-            {"stone.mat", {-2.0f, 2.0f, 3.0f}},
-            {"flat.mat", {0.0f, 2.0f, 3.0f}},
-            {"grid.mat", {2.0f, 2.0f, 3.0f}},
-        };
-        for (const auto& demo : demoMaterials)
-        {
-            const auto loaded = m_materialLibrary->Load(exeDir / "Assets" / "Materials" / demo.file);
-            if (loaded.material == nullptr)
-            {
-                NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelEditorScene: {} 読込失敗、 実証キューブは skip", demo.file);
-                continue;
-            }
-            auto cube = std::make_unique<Block>(m_cubeMesh.get(), loaded.material, kFreeHalfExtents);
-            cube->AttachScene(this);
-            cube->Root().SetPosition(demo.position);
-            cube->MeshComp().SetBaseColor(loaded.baseColor);
-            cube->OnStart();
-            cube->Root().Snapshot();
-            m_freeObjectPtrs.push_back(cube.get());
-            m_freeHalfExtents.push_back(kFreeHalfExtents);
-            m_freeObjects.push_back(std::move(cube));
-        }
-    }
 
     // ギズモに依存先を注入する。 選択候補は自由オブジェクト + grid solid ブロックを連結して渡す
     m_gizmo.SetInput(&app->Input());
@@ -767,33 +715,12 @@ void LevelEditorScene::OnRenderScene()
             const auto& block = m_blocks[bi];
             if (!block)
                 continue;
-            const NS::Game::Level::BlockEntry* entry = nullptr;
-            // Block は親無しなので local Position == world position。 grid cell に丸めて LevelData と照合する
+            // m_blocks は gridAligned solid のみ。 cell は world 座標を丸めて求め、 近傍マスクは solid 同士で取る
             const NS::Math::Vector3 wp = block->Root().Position();
             const std::int16_t x = static_cast<std::int16_t>(std::lround(wp.x));
             const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
             const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
-            // blockId は LevelData 側にしか無い。 SeedInitialLevel / RebuildBlocksFromLevelData が
-            // index 一致を保証するため同 index を先に照合し、 不一致時のみ線形検索へフォールバック
-            if (bi < m_level.blocks.size())
-            {
-                const auto& same = m_level.blocks[bi];
-                if (same.x == x && same.y == y && same.z == z)
-                    entry = &same;
-            }
-            if (entry == nullptr)
-            {
-                for (const auto& e : m_level.blocks)
-                {
-                    if (e.x == x && e.y == y && e.z == z)
-                    {
-                        entry = &e;
-                        break;
-                    }
-                }
-            }
-            const std::uint16_t blockId =
-                entry ? entry->blockId : static_cast<std::uint16_t>(NS::Game::Editor::kBlockIdSolid);
+            constexpr std::uint16_t blockId = NS::Game::Editor::kBlockIdSolid;
             const std::uint8_t mask = NS::Game::Editor::ComputeNeighborMask(m_level, x, y, z, blockId);
             const std::uint16_t slice =
                 NS::Game::Editor::LookupTextureSlice(static_cast<ThemeId>(m_level.themeId), mask, blockId);
@@ -903,8 +830,7 @@ void LevelEditorScene::OnShutdown()
     m_decorations.clear();
     m_gizmo.ClearSelection();
     m_freeObjects.clear();
-    m_freeObjectPtrs.clear();
-    m_freeHalfExtents.clear();
+    m_freeSourceIndices.clear();
     m_selectablePtrs.clear();
     m_selectableHalfExtents.clear();
 
@@ -952,44 +878,75 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
         (*it)->OnEndPlay();
     for (auto it = m_decorations.rbegin(); it != m_decorations.rend(); ++it)
         (*it)->OnEndPlay();
+    for (auto it = m_freeObjects.rbegin(); it != m_freeObjects.rend(); ++it)
+        (*it)->OnEndPlay();
     m_blocks.clear();
     m_slopes.clear();
     m_poles.clear();
     m_hazards.clear();
     m_waters.clear();
     m_decorations.clear();
+    m_freeObjects.clear();
+    m_freeSourceIndices.clear();
     m_collisionWorld.clear();
     m_collisionTriangles.clear();
     m_polePtrs.clear();
 
-    m_blocks.reserve(m_level.blocks.size());
-    m_collisionWorld.reserve(m_level.blocks.size());
+    m_collisionWorld.reserve(m_level.objects.size());
 
-    for (const auto& entry : m_level.blocks)
+    const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
+
+    // ObjectInstance.materialIndex から runtime Material* を解決する。 無効なら既定の m_playerMaterial
+    const auto resolveMaterial = [&](const NS::Game::Level::ObjectInstance& object) -> NS::Graphics::Material* {
+        if (object.materialIndex >= 0 &&
+            static_cast<std::size_t>(object.materialIndex) < m_level.materialPaths.size() && m_materialLibrary)
+        {
+            const auto loaded = m_materialLibrary->Load(exeDir / m_level.materialPaths[object.materialIndex]);
+            if (loaded.material != nullptr)
+                return loaded.material;
+        }
+        return m_playerMaterial.get();
+    };
+
+    for (std::size_t objectIndex = 0; objectIndex < m_level.objects.size(); ++objectIndex)
     {
-        const NS::Math::Vector3 cellCenter{
-            static_cast<float>(entry.x), static_cast<float>(entry.y), static_cast<float>(entry.z)};
+        const NS::Game::Level::ObjectInstance& entry = m_level.objects[objectIndex];
+        const bool gridAligned = (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0;
 
-        // 全ブロック共通の配置。 entry.rotation (0-255) を Y 軸 yaw として transform に載せる
-        // slope は SlopeColliderComponent が Owner world matrix を掛けるので collider も自動で回る
-        const auto placeInCell = [&](NS::Scene::GameObject& obj) {
-            obj.Root().SetPosition(cellCenter);
-            const float yaw = NS::Game::Editor::BlockRotationToYaw(entry.rotation);
-            obj.Root().SetRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f));
+        // ObjectInstance の transform をそのまま載せる。 grid はセルスナップ済の値、 自由配置物はギズモ編集値
+        const auto placeFromEntry = [&](NS::Scene::GameObject& obj) {
+            obj.Root().SetPosition(NS::Math::Vector3{entry.positionX, entry.positionY, entry.positionZ});
+            obj.Root().SetRotation(
+                NS::Math::Quaternion{entry.rotationX, entry.rotationY, entry.rotationZ, entry.rotationW});
+            obj.Root().SetScale(NS::Math::Vector3{entry.scaleX, entry.scaleY, entry.scaleZ});
         };
+        const auto color = NS::Game::Editor::GetBaseColor(entry.kind);
+        const NS::Math::Vector3 baseColor{color.R(), color.G(), color.B()};
 
-        if (entry.blockId == NS::Game::Editor::kBlockIdSolid)
+        // 非 gridAligned (自由配置物) は個別描画の Block として扱う。 材質は materialIndex から解決する
+        // (v1 で昇格できるのは solid のみなので kind は問わず cube で表現する)
+        if (!gridAligned)
+        {
+            auto cube = std::make_unique<Block>(m_cubeMesh.get(), resolveMaterial(entry), kCellHalfExtents);
+            cube->AttachScene(this);
+            placeFromEntry(*cube);
+            cube->MeshComp().SetBaseColor(baseColor);
+            cube->OnStart();
+            m_collisionWorld.push_back(cube->Collider().WorldAABB());
+            m_freeSourceIndices.push_back(objectIndex);
+            m_freeObjects.push_back(std::move(cube));
+            continue;
+        }
+
+        if (entry.kind == NS::Game::Editor::kBlockIdSolid)
         {
             auto block = std::make_unique<Block>(m_cubeMesh.get(), m_blockMaterial.get(), kCellHalfExtents);
             block->AttachScene(this);
-            placeInCell(*block);
-            block->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
-
-            const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
-            block->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
+            placeFromEntry(*block);
+            block->MeshComp().SetBaseColor(baseColor);
             block->OnStart();
-            // OnStart で RegisterRenderable 済のため SetActive(false) で旧 per-block Draw 経路を無効化し
-            // InstanceBatcher に委ねる
+            // OnStart で RegisterRenderable 済のため SetActive(false) で個別 Draw 経路を無効化し InstanceBatcher
+            // に委ねる
             block->MeshComp().SetActive(false);
 
             m_collisionWorld.push_back(block->Collider().WorldAABB());
@@ -997,25 +954,24 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             continue;
         }
 
-        if (NS::Game::Editor::IsSlopeBlock(entry.blockId))
+        if (NS::Game::Editor::IsSlopeBlock(entry.kind))
         {
-            const float angle = NS::Game::Editor::GetSlopeAngleDegrees(entry.blockId);
+            const float angle = NS::Game::Editor::GetSlopeAngleDegrees(entry.kind);
             NS::Graphics::StaticMesh* wedge = nullptr;
-            if (entry.blockId == NS::Game::Editor::kBlockIdSlope45)
+            if (entry.kind == NS::Game::Editor::kBlockIdSlope45)
                 wedge = m_wedgeMesh45.get();
-            else if (entry.blockId == NS::Game::Editor::kBlockIdSlope30)
+            else if (entry.kind == NS::Game::Editor::kBlockIdSlope30)
                 wedge = m_wedgeMesh30.get();
-            else if (entry.blockId == NS::Game::Editor::kBlockIdSlope22)
+            else if (entry.kind == NS::Game::Editor::kBlockIdSlope22)
                 wedge = m_wedgeMesh22.get();
-            else if (entry.blockId == NS::Game::Editor::kBlockIdSlope15)
+            else if (entry.kind == NS::Game::Editor::kBlockIdSlope15)
                 wedge = m_wedgeMesh15.get();
 
             auto slope = std::make_unique<SlopeBlock>(wedge, m_blockMaterial.get(), angle, kCellHalfExtents);
             slope->AttachScene(this);
-            placeInCell(*slope);
+            placeFromEntry(*slope);
 
-            const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
-            slope->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
+            slope->MeshComp().SetBaseColor(baseColor);
             slope->OnStart();
 
             const auto tris = slope->Collider().WorldTriangles();
@@ -1025,16 +981,15 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             continue;
         }
 
-        if (NS::Game::Editor::IsPoleBlock(entry.blockId))
+        if (NS::Game::Editor::IsPoleBlock(entry.kind))
         {
             constexpr float kPoleRadius = 0.15f;
             constexpr float kPoleHeight = 1.0f;
             auto pole = std::make_unique<PoleBlock>(m_poleMesh.get(), m_blockMaterial.get(), kPoleRadius, kPoleHeight);
             pole->AttachScene(this);
-            placeInCell(*pole);
+            placeFromEntry(*pole);
 
-            const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
-            pole->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
+            pole->MeshComp().SetBaseColor(baseColor);
             pole->OnStart();
 
             m_polePtrs.push_back(&pole->Pole());
@@ -1042,15 +997,13 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             continue;
         }
 
-        if (NS::Game::Editor::IsHazardBlock(entry.blockId))
+        if (NS::Game::Editor::IsHazardBlock(entry.kind))
         {
             auto hazard = std::make_unique<HazardBlock>(m_cubeMesh.get(), m_blockMaterial.get(), kCellHalfExtents);
             hazard->AttachScene(this);
-            placeInCell(*hazard);
-            hazard->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
+            placeFromEntry(*hazard);
 
-            const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
-            hazard->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
+            hazard->MeshComp().SetBaseColor(baseColor);
             hazard->OnStart();
 
             // 衝突は通常 Block と同じく AABB として登録。 hazard 固有のダメージ trigger は
@@ -1060,15 +1013,13 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             continue;
         }
 
-        if (NS::Game::Editor::IsWaterBlock(entry.blockId))
+        if (NS::Game::Editor::IsWaterBlock(entry.kind))
         {
             auto water = std::make_unique<WaterBlock>(m_cubeMesh.get(), m_waterMaterial.get());
             water->AttachScene(this);
-            placeInCell(*water);
-            water->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
+            placeFromEntry(*water);
 
-            const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
-            water->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
+            water->MeshComp().SetBaseColor(baseColor);
             water->OnStart();
 
             // collider なしで m_collisionWorld にも m_collisionTriangles にも入れない (装飾と同じ理由)
@@ -1076,15 +1027,13 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             continue;
         }
 
-        if (NS::Game::Editor::IsDecorationBlock(entry.blockId))
+        if (NS::Game::Editor::IsDecorationBlock(entry.kind))
         {
             auto deco = std::make_unique<DecorationBlock>(m_cubeMesh.get(), m_blockMaterial.get());
             deco->AttachScene(this);
-            placeInCell(*deco);
-            deco->Root().SetScale({kCellHalfExtents.x * 2.0f, kCellHalfExtents.y * 2.0f, kCellHalfExtents.z * 2.0f});
+            placeFromEntry(*deco);
 
-            const auto color = NS::Game::Editor::GetBaseColor(entry.blockId);
-            deco->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
+            deco->MeshComp().SetBaseColor(baseColor);
             deco->OnStart();
 
             m_decorations.push_back(std::move(deco));
@@ -1106,6 +1055,8 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
         water->Root().Snapshot();
     for (auto& deco : m_decorations)
         deco->Root().Snapshot();
+    for (auto& obj : m_freeObjects)
+        obj->Root().Snapshot();
 
     if (m_player)
     {
@@ -1123,13 +1074,18 @@ void LevelEditorScene::RefreshGizmoSelectables()
 {
     m_selectablePtrs.clear();
     m_selectableHalfExtents.clear();
-    m_selectablePtrs.reserve(m_freeObjectPtrs.size() + m_blocks.size());
-    m_selectableHalfExtents.reserve(m_freeHalfExtents.size() + m_blocks.size());
+    m_selectablePtrs.reserve(m_freeObjects.size() + m_blocks.size());
+    m_selectableHalfExtents.reserve(m_freeObjects.size() + m_blocks.size());
 
-    for (std::size_t i = 0; i < m_freeObjectPtrs.size(); ++i)
+    // 自由オブジェクトは scale 付きなので pick box は halfExtents にスケールを乗せる
+    for (const auto& obj : m_freeObjects)
     {
-        m_selectablePtrs.push_back(m_freeObjectPtrs[i]);
-        m_selectableHalfExtents.push_back(m_freeHalfExtents[i]);
+        if (!obj)
+            continue;
+        const NS::Math::Vector3 scale = obj->Root().Scale();
+        m_selectablePtrs.push_back(obj.get());
+        m_selectableHalfExtents.push_back(NS::Math::Vector3{
+            kCellHalfExtents.x * scale.x, kCellHalfExtents.y * scale.y, kCellHalfExtents.z * scale.z});
     }
 
     // grid solid ブロックも掴める。 掴むと PromoteGridBlockToFree で自由オブジェクトに変わる
@@ -1149,41 +1105,28 @@ void LevelEditorScene::PromoteGridBlockToFree(std::size_t blockIndex)
     if (blockIndex >= m_blocks.size() || !m_blocks[blockIndex])
         return;
 
-    // Block は親無しなので local Position == world position。 grid cell に丸めて LevelData と照合する
+    // 選択された grid block の cell を求め、 対応する ObjectInstance の gridAligned を落として自由化する
     const NS::Math::Vector3 worldPos = m_blocks[blockIndex]->Root().Position();
     const std::int16_t cx = static_cast<std::int16_t>(std::lround(worldPos.x));
     const std::int16_t cy = static_cast<std::int16_t>(std::lround(worldPos.y));
     const std::int16_t cz = static_cast<std::int16_t>(std::lround(worldPos.z));
 
-    // 対応する grid entry の blockId を控えて LevelData から外す。 これで rebuild 後に grid から消える
-    std::uint16_t blockId = NS::Game::Editor::kBlockIdSolid;
-    for (auto it = m_level.blocks.begin(); it != m_level.blocks.end(); ++it)
+    const std::size_t objectIndex = NS::Game::Level::FindGridObjectAtCell(m_level, cx, cy, cz);
+    if (objectIndex == NS::Game::Level::kNoObjectIndex)
+        return;
+    m_level.objects[objectIndex].flags &= static_cast<std::uint8_t>(~NS::Game::Level::kObjectFlagGridAligned);
+
+    // 作り直すと自由化した object は m_freeObjects 側へ回る (rebuild 末尾が選択候補 span を貼り直す)
+    // 選択は同じ source index を指す新しい runtime オブジェクトへ移す
+    RebuildBlocksFromLevelData();
+    for (std::size_t i = 0; i < m_freeSourceIndices.size(); ++i)
     {
-        if (it->x == cx && it->y == cy && it->z == cz)
+        if (m_freeSourceIndices[i] == objectIndex && m_freeObjects[i])
         {
-            blockId = it->blockId;
-            m_level.blocks.erase(it);
-            break;
+            m_gizmo.SetSelected(&m_freeObjects[i]->Root());
+            return;
         }
     }
-
-    // 同位置・同色の自由 Block を作る。 grid と違い texture 付き m_playerMaterial で個別 (DrawOpaque) 描画する
-    const auto color = NS::Game::Editor::GetBaseColor(blockId);
-    auto cube = std::make_unique<Block>(m_cubeMesh.get(), m_playerMaterial.get(), kCellHalfExtents);
-    cube->AttachScene(this);
-    cube->Root().SetPosition(worldPos);
-    cube->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
-    cube->OnStart();
-    // previous==current に揃えて昇格初フレームの補間飛びを防ぐ
-    cube->Root().Snapshot();
-    NS::Scene::Transform* newSelected = &cube->Root();
-    m_freeObjectPtrs.push_back(cube.get());
-    m_freeHalfExtents.push_back(kCellHalfExtents);
-    m_freeObjects.push_back(std::move(cube));
-
-    // grid を作り直して昇格 cell を消す (rebuild 末尾が選択候補 span を貼り直す)。 選択は新オブジェクトへ移す
-    RebuildBlocksFromLevelData();
-    m_gizmo.SetSelected(newSelected);
 }
 
 bool LevelEditorScene::ApplyMaterialToSelected(const std::filesystem::path& matPath)
@@ -1195,25 +1138,46 @@ bool LevelEditorScene::ApplyMaterialToSelected(const std::filesystem::path& matP
     if (selected == nullptr)
         return false;
 
-    // 選択中の Transform を持つ自由オブジェクトを探す (ギズモ選択は常に free オブジェクトを指す)
-    Block* target = nullptr;
-    for (auto& obj : m_freeObjects)
+    // 選択中の Transform を持つ自由オブジェクトを探す (ギズモ選択は自由オブジェクトを指す)
+    std::size_t freeSlot = m_freeObjects.size();
+    for (std::size_t i = 0; i < m_freeObjects.size(); ++i)
     {
-        if (obj && &obj->Root() == selected)
+        if (m_freeObjects[i] && &m_freeObjects[i]->Root() == selected)
         {
-            target = obj.get();
+            freeSlot = i;
             break;
         }
     }
-    if (target == nullptr)
+    if (freeSlot >= m_freeObjects.size())
         return false;
 
     const auto loaded = m_materialLibrary->Load(matPath);
     if (loaded.material == nullptr)
         return false;
 
-    target->MeshComp().SetMaterial(loaded.material);
-    target->MeshComp().SetBaseColor(loaded.baseColor);
+    // .mat パスを exe 相対で材質表に登録 (重複は再利用) し、 ObjectInstance.materialIndex を更新して永続化する
+    const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
+    const std::filesystem::path relative = matPath.lexically_relative(exeDir);
+    const std::string stored = relative.empty() ? matPath.generic_string() : relative.generic_string();
+
+    int materialIndex = -1;
+    for (std::size_t k = 0; k < m_level.materialPaths.size(); ++k)
+    {
+        if (m_level.materialPaths[k] == stored)
+        {
+            materialIndex = static_cast<int>(k);
+            break;
+        }
+    }
+    if (materialIndex < 0)
+    {
+        m_level.materialPaths.push_back(stored);
+        materialIndex = static_cast<int>(m_level.materialPaths.size() - 1);
+    }
+    m_level.objects[m_freeSourceIndices[freeSlot]].materialIndex = static_cast<std::int16_t>(materialIndex);
+
+    m_freeObjects[freeSlot]->MeshComp().SetMaterial(loaded.material);
+    m_freeObjects[freeSlot]->MeshComp().SetBaseColor(loaded.baseColor);
     return true;
 }
 

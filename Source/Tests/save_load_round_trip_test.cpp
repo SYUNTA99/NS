@@ -27,9 +27,9 @@ TEST(SaveLoadRoundTrip, SaveAndReloadProducesIdenticalCrc)
     src.themeId = 4;
     src.coinThreshold = 10;
     src.timeLimitSeconds = 180;
-    src.blocks.push_back({0, 0, 0, EditorNs::kBlockIdSolid, 0, 0});
-    src.blocks.push_back({1, 0, 1, EditorNs::kBlockIdSolid, 1, 0});
-    src.blocks.push_back({2, 0, 0, EditorNs::kBlockIdCoin, 0, 0});
+    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdSolid, 0));
+    src.objects.push_back(LevelNs::MakeGridObject(1, 0, 1, EditorNs::kBlockIdSolid, 1));
+    src.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, EditorNs::kBlockIdCoin, 0));
     const auto crc0 = src.ComputeCrc32();
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
@@ -48,7 +48,7 @@ TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
     ASSERT_TRUE(path2);
 
     LevelNs::LevelData src;
-    src.blocks.push_back({5, 5, 5, EditorNs::kBlockIdSolid, 0, 0});
+    src.objects.push_back(LevelNs::MakeGridObject(5, 5, 5, EditorNs::kBlockIdSolid, 0));
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path1));
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path2));
@@ -68,7 +68,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     ASSERT_TRUE(path.has_value());
 
     LevelNs::LevelData src;
-    src.blocks.push_back({0, 0, 0, EditorNs::kBlockIdSolid, 0, 0});
+    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdSolid, 0));
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
 
     auto bytes = NS::Core::FileSystem::ReadAllBytes(*path);
@@ -79,12 +79,12 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
 
     LevelNs::LevelData dst;
     EXPECT_FALSE(LevelNs::LoadLevelFromFile(dst, *path));
-    EXPECT_TRUE(dst.blocks.empty());
+    EXPECT_TRUE(dst.objects.empty());
 }
 
 TEST(SaveLoadRoundTrip, BuildLevelPathRejectsTraversal)
 {
-    // path traversal が path 構築層で構造的に止まることを test (T-03-10)
+    // path traversal が path 構築層で構造的に止まることを検証する
     EXPECT_FALSE(EditorNs::BuildLevelPath("../etc/passwd").has_value());
     EXPECT_FALSE(EditorNs::BuildLevelPath("..").has_value());
     EXPECT_FALSE(EditorNs::BuildLevelPath("a/b").has_value());
@@ -107,8 +107,8 @@ TEST(SaveLoadRoundTrip, ForwardCompatibleUnknownChunkSkip)
     src.themeId = 5;
     src.coinThreshold = 12;
     src.timeLimitSeconds = 240;
-    src.blocks.push_back({0, 0, 0, EditorNs::kBlockIdSolid, 0, 0});
-    src.blocks.push_back({2, 1, 4, EditorNs::kBlockIdSolid, 2, 0});
+    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdSolid, 0));
+    src.objects.push_back(LevelNs::MakeGridObject(2, 1, 4, EditorNs::kBlockIdSolid, 2));
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
 
     auto bytes = NS::Core::FileSystem::ReadAllBytes(*path);
@@ -164,8 +164,89 @@ TEST(SaveLoadRoundTrip, ForwardCompatibleUnknownChunkSkip)
     LevelNs::LevelData dst;
     ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
     EXPECT_EQ(dst.ComputeCrc32(), src.ComputeCrc32());
-    ASSERT_EQ(dst.blocks.size(), 2u);
+    ASSERT_EQ(dst.objects.size(), 2u);
     EXPECT_EQ(dst.spawnX, 7);
     EXPECT_EQ(dst.spawnY, 3);
     EXPECT_EQ(dst.spawnZ, -1);
+}
+
+// 統一配置物 (ObjectInstance) と material 文字列表が round-trip で完全復元できることを検証する
+TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
+{
+    EditorNs::EnsureLevelsDirectoryExists();
+    auto path = EditorNs::BuildLevelPath("test_objects_roundtrip");
+    ASSERT_TRUE(path.has_value());
+
+    LevelNs::LevelData src;
+    src.materialPaths.push_back("Assets/Materials/stone.mat");
+    src.materialPaths.push_back("Assets/Materials/grid.mat");
+
+    LevelNs::ObjectInstance freeObject{};
+    freeObject.positionX = 1.5f;
+    freeObject.positionY = 2.25f;
+    freeObject.positionZ = -3.75f;
+    freeObject.rotationY = 0.70710677f;
+    freeObject.rotationW = 0.70710677f;
+    freeObject.scaleX = 2.0f;
+    freeObject.scaleY = 0.5f;
+    freeObject.scaleZ = 1.0f;
+    freeObject.kind = EditorNs::kBlockIdSolid;
+    freeObject.materialIndex = 1;
+    freeObject.flags = 0;
+    src.objects.push_back(freeObject);
+
+    LevelNs::ObjectInstance gridObject{};
+    gridObject.kind = EditorNs::kBlockIdSlope45;
+    gridObject.materialIndex = -1;
+    gridObject.flags = LevelNs::kObjectFlagGridAligned;
+    src.objects.push_back(gridObject);
+
+    const auto crc0 = src.ComputeCrc32();
+    ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
+
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
+    EXPECT_EQ(dst.ComputeCrc32(), crc0);
+
+    ASSERT_EQ(dst.objects.size(), 2u);
+    ASSERT_EQ(dst.materialPaths.size(), 2u);
+    EXPECT_EQ(dst.materialPaths[0], "Assets/Materials/stone.mat");
+    EXPECT_EQ(dst.materialPaths[1], "Assets/Materials/grid.mat");
+
+    EXPECT_FLOAT_EQ(dst.objects[0].positionX, 1.5f);
+    EXPECT_FLOAT_EQ(dst.objects[0].positionZ, -3.75f);
+    EXPECT_FLOAT_EQ(dst.objects[0].rotationW, 0.70710677f);
+    EXPECT_FLOAT_EQ(dst.objects[0].scaleX, 2.0f);
+    EXPECT_EQ(dst.objects[0].kind, EditorNs::kBlockIdSolid);
+    EXPECT_EQ(dst.objects[0].materialIndex, 1);
+    EXPECT_EQ(dst.objects[0].flags, 0u);
+
+    EXPECT_EQ(dst.objects[1].kind, EditorNs::kBlockIdSlope45);
+    EXPECT_EQ(dst.objects[1].materialIndex, -1);
+    EXPECT_EQ(dst.objects[1].flags, LevelNs::kObjectFlagGridAligned);
+}
+
+// 旧 blocks → 統一 objects の移行写像 (セル整数 → world float、 rotation → yaw quaternion、 gridAligned 付与)
+TEST(SaveLoadRoundTrip, MigrateBlocksToObjectsMapsCells)
+{
+    LevelNs::LevelData level;
+    std::vector<LevelNs::BlockEntry> blocks;
+    blocks.push_back({1, 2, 3, EditorNs::kBlockIdSolid, 0, 0});
+    blocks.push_back({-4, 0, 5, EditorNs::kBlockIdSlope45, 1, 0});
+    LevelNs::MigrateBlocksToObjects(level, blocks);
+
+    ASSERT_EQ(level.objects.size(), 2u);
+
+    EXPECT_FLOAT_EQ(level.objects[0].positionX, 1.0f);
+    EXPECT_FLOAT_EQ(level.objects[0].positionY, 2.0f);
+    EXPECT_FLOAT_EQ(level.objects[0].positionZ, 3.0f);
+    EXPECT_FLOAT_EQ(level.objects[0].scaleX, 1.0f);
+    EXPECT_EQ(level.objects[0].kind, EditorNs::kBlockIdSolid);
+    EXPECT_EQ(level.objects[0].materialIndex, -1);
+    EXPECT_NE(level.objects[0].flags & LevelNs::kObjectFlagGridAligned, 0u);
+
+    EXPECT_FLOAT_EQ(level.objects[1].positionX, -4.0f);
+    EXPECT_EQ(level.objects[1].kind, EditorNs::kBlockIdSlope45);
+    // rotation=1 は yaw 90°、 単位 quaternion ではない (w != 1)
+    EXPECT_NE(level.objects[1].rotationW, 1.0f);
 }

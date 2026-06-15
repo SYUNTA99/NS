@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <filesystem>
 #include <random>
 #include <string>
@@ -24,9 +25,13 @@ namespace
     LevelNs::LevelData MakeFixture()
     {
         LevelNs::LevelData lv;
-        lv.blocks.push_back({0, 0, 0, 1, 0, 0});
-        lv.blocks.push_back({1, 0, 0, 2, 1, 0});
-        lv.blocks.push_back({-3, 5, 7, 100, 2, 0});
+        lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+        lv.objects.push_back(LevelNs::MakeGridObject(1, 0, 0, 2, 1));
+        lv.objects.push_back(LevelNs::MakeGridObject(-3, 5, 7, 100, 2));
+        lv.materialPaths.push_back("Assets/Materials/Stone.mat");
+        lv.materialPaths.push_back("Assets/Materials/Grass.mat");
+        lv.objects[0].materialIndex = 0;
+        lv.objects[1].materialIndex = 1;
         lv.spawnX = 1;
         lv.spawnY = 2;
         lv.spawnZ = 3;
@@ -49,14 +54,24 @@ TEST(ChunkIOTest, RoundTripPreservesAllFields)
     ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, path));
 
     EXPECT_EQ(src.ComputeCrc32(), dst.ComputeCrc32());
-    ASSERT_EQ(src.blocks.size(), dst.blocks.size());
-    for (std::size_t i = 0; i < src.blocks.size(); ++i)
+    ASSERT_EQ(src.objects.size(), dst.objects.size());
+    for (std::size_t i = 0; i < src.objects.size(); ++i)
     {
-        EXPECT_EQ(src.blocks[i].x, dst.blocks[i].x);
-        EXPECT_EQ(src.blocks[i].y, dst.blocks[i].y);
-        EXPECT_EQ(src.blocks[i].z, dst.blocks[i].z);
-        EXPECT_EQ(src.blocks[i].blockId, dst.blocks[i].blockId);
-        EXPECT_EQ(src.blocks[i].rotation, dst.blocks[i].rotation);
+        EXPECT_EQ(src.objects[i].positionX, dst.objects[i].positionX);
+        EXPECT_EQ(src.objects[i].positionY, dst.objects[i].positionY);
+        EXPECT_EQ(src.objects[i].positionZ, dst.objects[i].positionZ);
+        EXPECT_EQ(src.objects[i].rotationX, dst.objects[i].rotationX);
+        EXPECT_EQ(src.objects[i].rotationY, dst.objects[i].rotationY);
+        EXPECT_EQ(src.objects[i].rotationZ, dst.objects[i].rotationZ);
+        EXPECT_EQ(src.objects[i].rotationW, dst.objects[i].rotationW);
+        EXPECT_EQ(src.objects[i].kind, dst.objects[i].kind);
+        EXPECT_EQ(src.objects[i].materialIndex, dst.objects[i].materialIndex);
+        EXPECT_EQ(src.objects[i].flags, dst.objects[i].flags);
+    }
+    ASSERT_EQ(src.materialPaths.size(), dst.materialPaths.size());
+    for (std::size_t i = 0; i < src.materialPaths.size(); ++i)
+    {
+        EXPECT_EQ(src.materialPaths[i], dst.materialPaths[i]);
     }
     EXPECT_EQ(src.spawnX, dst.spawnX);
     EXPECT_EQ(src.spawnY, dst.spawnY);
@@ -102,7 +117,7 @@ TEST(ChunkIOTest, RejectMagicMismatch)
 
     LevelNs::LevelData dst;
     EXPECT_FALSE(LevelNs::LoadLevelFromFile(dst, path));
-    EXPECT_TRUE(dst.blocks.empty());
+    EXPECT_TRUE(dst.objects.empty());
 
     std::error_code ec;
     std::filesystem::remove(path, ec);
@@ -171,8 +186,54 @@ TEST(ChunkIOTest, EmptyLevelRoundTrip)
 
     LevelNs::LevelData dst;
     ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, path));
-    EXPECT_TRUE(dst.blocks.empty());
+    EXPECT_TRUE(dst.objects.empty());
+    EXPECT_TRUE(dst.materialPaths.empty());
     EXPECT_EQ(empty.ComputeCrc32(), dst.ComputeCrc32());
+
+    std::error_code ec;
+    std::filesystem::remove(path, ec);
+}
+
+// 旧 .nslvl (BLKS だけ持つ file) を読むと objects へ移行されることを検証する
+// 新規保存経路は OBJS のみなので、 ChunkWriter で旧レイアウトの BLKS chunk を手組みして読ませる
+TEST(ChunkIOTest, LegacyBlksChunkMigratesToObjects)
+{
+    const auto path = UniqueTempPath("legacy_blks");
+
+    LevelNs::ChunkWriter writer(path);
+    ASSERT_TRUE(writer.IsValid());
+    ASSERT_TRUE(writer.BeginFile(LevelNs::kCurrentVersionMajor, LevelNs::kCurrentVersionMinor));
+
+    // 旧 BLKS レイアウト: u32 count + N × BlockEntry(10 byte)
+    const LevelNs::BlockEntry blocks[] = {
+        {0, 0, 0, 1, 0, 0},
+        {2, 3, -4, 5, 1, 0},
+        {-7, 8, 9, 42, 3, 0},
+    };
+    const std::uint32_t blockCount = static_cast<std::uint32_t>(std::size(blocks));
+
+    const char blksFourCc[4] = {'B', 'L', 'K', 'S'};
+    ASSERT_TRUE(writer.BeginChunk(blksFourCc));
+    ASSERT_TRUE(writer.Write(&blockCount, sizeof(blockCount)));
+    ASSERT_TRUE(writer.Write(blocks, sizeof(blocks)));
+    ASSERT_TRUE(writer.EndChunk());
+    ASSERT_TRUE(writer.EndFile());
+
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, path));
+
+    ASSERT_EQ(dst.objects.size(), static_cast<std::size_t>(blockCount));
+    for (std::size_t i = 0; i < blockCount; ++i)
+    {
+        const auto& object = dst.objects[i];
+        EXPECT_NE(object.flags & LevelNs::kObjectFlagGridAligned, 0);
+        EXPECT_EQ(LevelNs::ObjectCellX(object), blocks[i].x);
+        EXPECT_EQ(LevelNs::ObjectCellY(object), blocks[i].y);
+        EXPECT_EQ(LevelNs::ObjectCellZ(object), blocks[i].z);
+        EXPECT_EQ(object.kind, blocks[i].blockId);
+        EXPECT_EQ(LevelNs::GridRotationStep(object), blocks[i].rotation);
+        EXPECT_EQ(object.materialIndex, -1);
+    }
 
     std::error_code ec;
     std::filesystem::remove(path, ec);

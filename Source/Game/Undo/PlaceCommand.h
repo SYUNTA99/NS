@@ -29,7 +29,7 @@ namespace NS::Game::Undo
         std::int16_t m_z;
         std::uint16_t m_blockId;
         std::uint8_t m_rotation;
-        std::optional<NS::Game::Level::BlockEntry> m_replaced;
+        std::optional<NS::Game::Level::ObjectInstance> m_replaced;
     };
 
 } // namespace NS::Game::Undo

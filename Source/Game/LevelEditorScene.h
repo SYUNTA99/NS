@@ -224,10 +224,10 @@ private:
     // 逆順破棄でも free オブジェクト (Material* を参照) より後に破棄されるよう順序を保証する
     std::unique_ptr<NS::Scene::MaterialLibrary> m_materialLibrary;
 
-    // Object モードで変形する自由 Transform オブジェクト (v1 はテスト seed)。 LevelData には属さない
+    // 非 gridAligned な配置物の runtime インスタンス。 RebuildBlocksFromLevelData が m_level.objects から作り直す
     std::vector<std::unique_ptr<Block>> m_freeObjects;
-    std::vector<NS::Scene::GameObject*> m_freeObjectPtrs;
-    std::vector<NS::Math::Vector3> m_freeHalfExtents;
+    // m_freeObjects[i] に対応する m_level.objects の添字 (材質適用 / 再選択の逆引き用)
+    std::vector<std::size_t> m_freeSourceIndices;
 
     // ギズモへ渡す選択候補の安定ストレージ。 自由オブジェクトと grid solid ブロックを連結した span の実体
     std::vector<NS::Scene::GameObject*> m_selectablePtrs;

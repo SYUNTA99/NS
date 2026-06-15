@@ -8,6 +8,7 @@
 
 #include <cstring>
 #include <span>
+#include <string>
 #include <utility>
 
 namespace NS::Game::Level
@@ -18,6 +19,8 @@ namespace NS::Game::Level
         constexpr char kCrcFourCc[4] = {'C', 'R', 'C', '3'};
         constexpr char kMetaFourCc[4] = {'M', 'E', 'T', 'A'};
         constexpr char kBlksFourCc[4] = {'B', 'L', 'K', 'S'};
+        constexpr char kObjsFourCc[4] = {'O', 'B', 'J', 'S'};
+        constexpr char kMatsFourCc[4] = {'M', 'A', 'T', 'S'};
         constexpr char kSpwnFourCc[4] = {'S', 'P', 'W', 'N'};
 
         /// 読込 / 書込の上限。 巨大 size による memory exhaustion を防ぐ
@@ -25,6 +28,13 @@ namespace NS::Game::Level
 
         /// block_count u32 による大量 allocation を防ぐ上限
         constexpr std::uint32_t kMaxBlockCount = 100'000u;
+
+        /// object_count u32 による大量 allocation を防ぐ上限
+        constexpr std::uint32_t kMaxObjectCount = 100'000u;
+
+        /// material 文字列表の上限 (枚数と 1 件あたり byte 長)
+        constexpr std::uint32_t kMaxMaterialPaths = 4'096u;
+        constexpr std::uint16_t kMaxMaterialPathLength = 1'024u;
 
         bool FourCcEqual(const char a[4], const char b[4]) noexcept
         {
@@ -280,13 +290,33 @@ namespace NS::Game::Level
 
     bool SaveLevelToFile(const LevelData& level, const std::filesystem::path& path) noexcept
     {
-        if (level.blocks.size() > kMaxBlockCount)
+        if (level.objects.size() > kMaxObjectCount)
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Game,
-                         "SaveLevelToFile: block 数が上限超過 ({} > {})",
-                         level.blocks.size(),
-                         kMaxBlockCount);
+                         "SaveLevelToFile: object 数が上限超過 ({} > {})",
+                         level.objects.size(),
+                         kMaxObjectCount);
             return false;
+        }
+
+        if (level.materialPaths.size() > kMaxMaterialPaths)
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Game,
+                         "SaveLevelToFile: material path 数が上限超過 ({} > {})",
+                         level.materialPaths.size(),
+                         kMaxMaterialPaths);
+            return false;
+        }
+        for (const auto& materialPath : level.materialPaths)
+        {
+            if (materialPath.size() > kMaxMaterialPathLength)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Game,
+                             "SaveLevelToFile: material path が長すぎる ({} > {} byte)",
+                             materialPath.size(),
+                             kMaxMaterialPathLength);
+                return false;
+            }
         }
 
         ChunkWriter writer(path);
@@ -309,16 +339,37 @@ namespace NS::Game::Level
             return false;
         }
 
-        // BLKS chunk: u32 count + N × BlockEntry (8 byte each)
-        if (!writer.BeginChunk(kBlksFourCc))
+        // OBJS chunk: u32 count + N × ObjectInstance (48 byte each)
+        if (!writer.BeginChunk(kObjsFourCc))
         {
             return false;
         }
-        const std::uint32_t blockCount = static_cast<std::uint32_t>(level.blocks.size());
-        writer.Write(&blockCount, sizeof(blockCount));
-        if (blockCount > 0)
+        const std::uint32_t objectCount = static_cast<std::uint32_t>(level.objects.size());
+        writer.Write(&objectCount, sizeof(objectCount));
+        if (objectCount > 0)
         {
-            writer.Write(level.blocks.data(), blockCount * sizeof(BlockEntry));
+            writer.Write(level.objects.data(), objectCount * sizeof(ObjectInstance));
+        }
+        if (!writer.EndChunk())
+        {
+            return false;
+        }
+
+        // MATS chunk: u32 count + N × (u16 length + length byte の UTF-8 path)
+        if (!writer.BeginChunk(kMatsFourCc))
+        {
+            return false;
+        }
+        const std::uint32_t materialCount = static_cast<std::uint32_t>(level.materialPaths.size());
+        writer.Write(&materialCount, sizeof(materialCount));
+        for (const auto& materialPath : level.materialPaths)
+        {
+            const std::uint16_t length = static_cast<std::uint16_t>(materialPath.size());
+            writer.Write(&length, sizeof(length));
+            if (length > 0)
+            {
+                writer.Write(materialPath.data(), length);
+            }
         }
         if (!writer.EndChunk())
         {
@@ -365,6 +416,7 @@ namespace NS::Game::Level
             }
         }
 
+        // 旧 .nslvl の BLKS は読込時に一時 vector へ読んで objects へ移行する (新規保存は OBJS のみ)
         if (reader.SeekChunk(kBlksFourCc, size))
         {
             std::uint32_t blockCount = 0;
@@ -394,10 +446,96 @@ namespace NS::Game::Level
                 outLevel = LevelData{};
                 return false;
             }
-            outLevel.blocks.resize(blockCount);
+            std::vector<BlockEntry> legacyBlocks(blockCount);
             if (blockCount > 0)
             {
-                reader.Read(outLevel.blocks.data(), expectedDataBytes);
+                reader.Read(legacyBlocks.data(), expectedDataBytes);
+            }
+            MigrateBlocksToObjects(outLevel, legacyBlocks);
+        }
+
+        if (reader.SeekChunk(kObjsFourCc, size))
+        {
+            std::uint32_t objectCount = 0;
+            if (!reader.Read(&objectCount, sizeof(objectCount)))
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Game, "LoadLevelFromFile: OBJS chunk から object count を読めない");
+                outLevel = LevelData{};
+                return false;
+            }
+            if (objectCount > kMaxObjectCount)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Game,
+                             "LoadLevelFromFile: object count {} が上限 {} を超過",
+                             objectCount,
+                             kMaxObjectCount);
+                outLevel = LevelData{};
+                return false;
+            }
+            const std::size_t expectedDataBytes = objectCount * sizeof(ObjectInstance);
+            if (expectedDataBytes + sizeof(objectCount) > size)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Game,
+                             "LoadLevelFromFile: OBJS chunk 内 data 不足 (期待 {} 実際 {})",
+                             expectedDataBytes + sizeof(objectCount),
+                             size);
+                outLevel = LevelData{};
+                return false;
+            }
+            outLevel.objects.resize(objectCount);
+            if (objectCount > 0)
+            {
+                reader.Read(outLevel.objects.data(), expectedDataBytes);
+            }
+        }
+
+        if (reader.SeekChunk(kMatsFourCc, size))
+        {
+            std::uint32_t materialCount = 0;
+            if (!reader.Read(&materialCount, sizeof(materialCount)))
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Game, "LoadLevelFromFile: MATS chunk から material count を読めない");
+                outLevel = LevelData{};
+                return false;
+            }
+            if (materialCount > kMaxMaterialPaths)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Game,
+                             "LoadLevelFromFile: material count {} が上限 {} を超過",
+                             materialCount,
+                             kMaxMaterialPaths);
+                outLevel = LevelData{};
+                return false;
+            }
+
+            // 可変長 string の連続。 chunk 残量を consumed で追って境界外 read を弾く
+            std::size_t consumed = sizeof(materialCount);
+            outLevel.materialPaths.reserve(materialCount);
+            for (std::uint32_t i = 0; i < materialCount; ++i)
+            {
+                std::uint16_t length = 0;
+                if (consumed + sizeof(length) > size || !reader.Read(&length, sizeof(length)))
+                {
+                    NS_LOG_ERROR(::NS::Core::LogCat::Game, "LoadLevelFromFile: MATS chunk から path length を読めない");
+                    outLevel = LevelData{};
+                    return false;
+                }
+                consumed += sizeof(length);
+                if (length > kMaxMaterialPathLength || consumed + length > size)
+                {
+                    NS_LOG_ERROR(
+                        ::NS::Core::LogCat::Game, "LoadLevelFromFile: MATS chunk の path length {} が不正", length);
+                    outLevel = LevelData{};
+                    return false;
+                }
+                std::string materialPath(length, '\0');
+                if (length > 0 && !reader.Read(materialPath.data(), length))
+                {
+                    outLevel = LevelData{};
+                    return false;
+                }
+                consumed += length;
+                outLevel.materialPaths.push_back(std::move(materialPath));
             }
         }
 

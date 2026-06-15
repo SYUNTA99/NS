@@ -36,7 +36,7 @@ TEST(PlayMode, PausedTickDoesNotEvaluateRules)
     lv.spawnY = 0;
     lv.spawnZ = 0;
     // spawn セル中心に coin を置くと中心距離が近く、 非 paused なら取得される位置
-    lv.blocks.push_back({0, 0, 0, EditorNs::kBlockIdCoin, 0, 0});
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdCoin, 0));
 
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;
@@ -70,7 +70,7 @@ TEST(PlayMode, CoinContactIncrementsCounter)
     lv.spawnY = 0;
     lv.spawnZ = 0;
     // player の spawn セル中心と同じ位置に coin を置くと中心距離 0 で必ず pickup
-    lv.blocks.push_back({0, 0, 0, EditorNs::kBlockIdCoin, 0, 0});
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdCoin, 0));
 
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;
@@ -90,7 +90,7 @@ TEST(PlayMode, PowerStarTriggersClear)
     lv.spawnX = 0;
     lv.spawnY = 0;
     lv.spawnZ = 0;
-    lv.blocks.push_back({0, 0, 0, EditorNs::kBlockIdPowerStar, 0, 0});
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdPowerStar, 0));
 
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;

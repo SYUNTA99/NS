@@ -40,9 +40,7 @@ namespace NS::Game::Editor
                                           std::int16_t y,
                                           std::int16_t z) noexcept
         {
-            return std::any_of(level.blocks.begin(), level.blocks.end(), [x, y, z](const auto& b) {
-                return b.x == x && b.y == y && b.z == z;
-            });
+            return NS::Game::Level::FindGridObjectAtCell(level, x, y, z) != NS::Game::Level::kNoObjectIndex;
         }
 
         [[nodiscard]] std::int16_t RoundToCell(float v) noexcept
@@ -420,18 +418,24 @@ namespace NS::Game::Editor
         NS::Math::Vector3 hitPoint{};
         NS::Math::Vector3 hitNormal{0.0f, 1.0f, 0.0f};
 
-        for (const auto& b : m_level->blocks)
+        for (const auto& object : m_level->objects)
         {
-            const NS::Math::Vector3 center{static_cast<float>(b.x), static_cast<float>(b.y), static_cast<float>(b.z)};
+            // grid カーソルの pick 対象は gridAligned のみ (自由配置物はギズモが拾う)
+            if ((object.flags & NS::Game::Level::kObjectFlagGridAligned) == 0)
+                continue;
+            const std::int16_t cx = NS::Game::Level::ObjectCellX(object);
+            const std::int16_t cy = NS::Game::Level::ObjectCellY(object);
+            const std::int16_t cz = NS::Game::Level::ObjectCellZ(object);
+            const NS::Math::Vector3 center{static_cast<float>(cx), static_cast<float>(cy), static_cast<float>(cz)};
             const NS::Math::AABB box(center, {kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
             float t = 0.0f;
             if (ray.Intersects(box, t) && t < bestT)
             {
                 bestT = t;
                 hit = true;
-                hitX = b.x;
-                hitY = b.y;
-                hitZ = b.z;
+                hitX = cx;
+                hitY = cy;
+                hitZ = cz;
                 hitPoint = NS::Math::Vector3(ray.position.x + ray.direction.x * t,
                                              ray.position.y + ray.direction.y * t,
                                              ray.position.z + ray.direction.z * t);
@@ -563,10 +567,9 @@ namespace NS::Game::Editor
         if (HasBlockAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
         {
             // cursor 直下の既存 block を 90° 回す。 回転対象外の block は無視する
-            const auto it = std::find_if(m_level->blocks.begin(), m_level->blocks.end(), [this](const auto& b) {
-                return b.x == m_cursor.hitX && b.y == m_cursor.hitY && b.z == m_cursor.hitZ;
-            });
-            if (it != m_level->blocks.end() && IsRotatableBlock(it->blockId))
+            const std::size_t index =
+                NS::Game::Level::FindGridObjectAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
+            if (index != NS::Game::Level::kNoObjectIndex && IsRotatableBlock(m_level->objects[index].kind))
             {
                 m_undo.Push(std::make_unique<NS::Game::Undo::RotateCommand>(
                                 m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ, std::int8_t{1}),

@@ -9,16 +9,18 @@ namespace LevelNs = NS::Game::Level;
 TEST(RotateCommandTest, DoIncrementsRotation)
 {
     LevelNs::LevelData lv;
-    lv.blocks.push_back({0, 0, 0, 1, 0, 0});
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
     UndoNs::RotateCommand cmd(0, 0, 0, +1);
     cmd.Do(lv);
-    EXPECT_EQ(lv.blocks[0].rotation, 1u);
+    const std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 0, 0, 0);
+    ASSERT_NE(idx, LevelNs::kNoObjectIndex);
+    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 1u);
 }
 
 TEST(RotateCommandTest, FourDoesCycleBackToZero)
 {
     LevelNs::LevelData lv;
-    lv.blocks.push_back({0, 0, 0, 1, 0, 0});
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
     UndoNs::RotateCommand cmd1(0, 0, 0, +1);
     UndoNs::RotateCommand cmd2(0, 0, 0, +1);
     UndoNs::RotateCommand cmd3(0, 0, 0, +1);
@@ -27,27 +29,35 @@ TEST(RotateCommandTest, FourDoesCycleBackToZero)
     cmd2.Do(lv);
     cmd3.Do(lv);
     cmd4.Do(lv);
-    EXPECT_EQ(lv.blocks[0].rotation, 0u);
+    const std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 0, 0, 0);
+    ASSERT_NE(idx, LevelNs::kNoObjectIndex);
+    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 0u);
 }
 
 TEST(RotateCommandTest, NegativeDeltaWrapsToThree)
 {
     LevelNs::LevelData lv;
-    lv.blocks.push_back({0, 0, 0, 1, 0, 0});
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
     UndoNs::RotateCommand cmd(0, 0, 0, -1);
     cmd.Do(lv);
-    EXPECT_EQ(lv.blocks[0].rotation, 3u);
+    const std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 0, 0, 0);
+    ASSERT_NE(idx, LevelNs::kNoObjectIndex);
+    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 3u);
 }
 
 TEST(RotateCommandTest, UndoRestoresPreviousRotation)
 {
     LevelNs::LevelData lv;
-    lv.blocks.push_back({0, 0, 0, 1, 2, 0});
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 2));
     UndoNs::RotateCommand cmd(0, 0, 0, +1);
     cmd.Do(lv);
-    EXPECT_EQ(lv.blocks[0].rotation, 3u);
+    std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 0, 0, 0);
+    ASSERT_NE(idx, LevelNs::kNoObjectIndex);
+    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 3u);
     cmd.Undo(lv);
-    EXPECT_EQ(lv.blocks[0].rotation, 2u);
+    idx = LevelNs::FindGridObjectAtCell(lv, 0, 0, 0);
+    ASSERT_NE(idx, LevelNs::kNoObjectIndex);
+    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 2u);
 }
 
 TEST(RotateCommandTest, NonExistentCellIsNoOp)

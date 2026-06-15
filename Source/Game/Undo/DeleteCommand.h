@@ -26,7 +26,7 @@ namespace NS::Game::Undo
         std::int16_t m_x;
         std::int16_t m_y;
         std::int16_t m_z;
-        std::optional<NS::Game::Level::BlockEntry> m_deleted;
+        std::optional<NS::Game::Level::ObjectInstance> m_deleted;
     };
 
 } // namespace NS::Game::Undo

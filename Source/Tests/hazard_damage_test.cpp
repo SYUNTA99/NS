@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Components/HazardComponent.h>
+#include <Framework/Scene/GameObject.h>
 #include <Game/Level/LevelData.h>
 #include <Game/Level/PlayState.h>
 
@@ -45,7 +45,7 @@ TEST(HazardDamageTest, HealthClampsAtZero)
 TEST(HazardDamageTest, HazardDoesNotModifyLevelData)
 {
     NS::Game::Level::LevelData level;
-    level.blocks.push_back({0, 0, 0, 220, 0, 0});
+    level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, 220, 0));
     level.spawnX = 1;
     level.spawnY = 2;
     level.spawnZ = 3;

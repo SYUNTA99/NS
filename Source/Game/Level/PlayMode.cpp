@@ -45,17 +45,17 @@ namespace NS::Game::Level
             play.deathTriggered = true;
 
         const float pickupSq = kPickupRadius * kPickupRadius;
-        for (std::size_t i = 0; i < level.blocks.size(); ++i)
+        for (std::size_t i = 0; i < level.objects.size(); ++i)
         {
-            const auto& entry = level.blocks[i];
-            const bool isCoin = (entry.blockId == NS::Game::Editor::kBlockIdCoin);
-            const bool isStar = (entry.blockId == NS::Game::Editor::kBlockIdPowerStar);
+            const auto& entry = level.objects[i];
+            const bool isCoin = (entry.kind == NS::Game::Editor::kBlockIdCoin);
+            const bool isStar = (entry.kind == NS::Game::Editor::kBlockIdPowerStar);
             if (!isCoin && !isStar)
                 continue;
 
-            const float dx = static_cast<float>(entry.x) - play.playerPosition.x;
-            const float dy = static_cast<float>(entry.y) - play.playerPosition.y;
-            const float dz = static_cast<float>(entry.z) - play.playerPosition.z;
+            const float dx = entry.positionX - play.playerPosition.x;
+            const float dy = entry.positionY - play.playerPosition.y;
+            const float dz = entry.positionZ - play.playerPosition.z;
             if (dx * dx + dy * dy + dz * dz >= pickupSq)
                 continue;
 

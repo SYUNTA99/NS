@@ -15,40 +15,42 @@ TEST(EditorMode, ProgrammaticPlaceAddsBlock)
 
     editor.PlaceUnderCursorProgrammatic(5, 0, 3);
 
-    ASSERT_EQ(lv.blocks.size(), 1u);
-    EXPECT_EQ(lv.blocks[0].x, 5);
-    EXPECT_EQ(lv.blocks[0].y, 0);
-    EXPECT_EQ(lv.blocks[0].z, 3);
-    EXPECT_EQ(lv.blocks[0].blockId, EditorNs::kBlockIdSolid);
+    ASSERT_EQ(lv.objects.size(), 1u);
+    const auto idx = LevelNs::FindGridObjectAtCell(lv, 5, 0, 3);
+    ASSERT_NE(idx, LevelNs::kNoObjectIndex);
+    EXPECT_EQ(LevelNs::ObjectCellX(lv.objects[idx]), 5);
+    EXPECT_EQ(LevelNs::ObjectCellY(lv.objects[idx]), 0);
+    EXPECT_EQ(LevelNs::ObjectCellZ(lv.objects[idx]), 3);
+    EXPECT_EQ(lv.objects[idx].kind, EditorNs::kBlockIdSolid);
 }
 
 TEST(EditorMode, ProgrammaticDeleteRemovesBlock)
 {
     LevelNs::LevelData lv;
-    lv.blocks.push_back({2, 0, 4, EditorNs::kBlockIdSolid, 0, 0});
+    lv.objects.push_back(LevelNs::MakeGridObject(2, 0, 4, EditorNs::kBlockIdSolid, 0));
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
 
     editor.DeleteAtProgrammatic(2, 0, 4);
 
-    EXPECT_TRUE(lv.blocks.empty());
+    EXPECT_TRUE(lv.objects.empty());
 }
 
 TEST(EditorMode, ProgrammaticRotateCycles)
 {
     LevelNs::LevelData lv;
-    lv.blocks.push_back({0, 0, 0, EditorNs::kBlockIdSolid, 0, 0});
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdSolid, 0));
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
 
     editor.RotateAtProgrammatic(0, 0, 0);
-    EXPECT_EQ(lv.blocks[0].rotation, 1);
+    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 1);
     editor.RotateAtProgrammatic(0, 0, 0);
-    EXPECT_EQ(lv.blocks[0].rotation, 2);
+    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 2);
     editor.RotateAtProgrammatic(0, 0, 0);
-    EXPECT_EQ(lv.blocks[0].rotation, 3);
+    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 3);
     editor.RotateAtProgrammatic(0, 0, 0);
-    EXPECT_EQ(lv.blocks[0].rotation, 0);
+    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 0);
 }
 
 TEST(EditorMode, ProgrammaticSpawnSetsCoordinates)
@@ -75,7 +77,7 @@ TEST(EditorMode, UndoStackIntegration)
     ASSERT_EQ(editor.Undo().UndoSize(), 1u);
 
     ASSERT_TRUE(editor.Undo().Undo(lv));
-    EXPECT_TRUE(lv.blocks.empty());
+    EXPECT_TRUE(lv.objects.empty());
     EXPECT_EQ(lv.ComputeCrc32(), crc0);
 }
 
@@ -103,14 +105,14 @@ TEST(EditorMode, LevelDirtyFlagSetByMutation)
 TEST(EditorMode, CellRotationViaProgrammaticOnExistingBlock)
 {
     LevelNs::LevelData lv;
-    lv.blocks.push_back({0, 0, 0, EditorNs::kBlockIdSolid, 0, 0});
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdSolid, 0));
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
 
     editor.RotateAtProgrammatic(0, 0, 0);
-    EXPECT_EQ(lv.blocks[0].rotation, 1);
+    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 1);
     EXPECT_TRUE(editor.IsLevelDirty());
 
     ASSERT_TRUE(editor.Undo().Undo(lv));
-    EXPECT_EQ(lv.blocks[0].rotation, 0);
+    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 0);
 }

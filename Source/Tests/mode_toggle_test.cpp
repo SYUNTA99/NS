@@ -52,13 +52,13 @@ TEST(ModeToggle, EditorStateIsPreservedAcrossToggle_PMODE_03)
     scene.Editor().PlaceUnderCursorProgrammatic(5, 0, 3);
     const auto undoSizeBefore = scene.Editor().Undo().UndoSize();
     ASSERT_GE(undoSizeBefore, 1u);
-    const auto blocksBefore = scene.Level().blocks.size();
+    const auto objectsBefore = scene.Level().objects.size();
 
     scene.EnterPlay();
     scene.EnterEdit();
 
     EXPECT_EQ(scene.Editor().Undo().UndoSize(), undoSizeBefore);
-    EXPECT_EQ(scene.Level().blocks.size(), blocksBefore);
+    EXPECT_EQ(scene.Level().objects.size(), objectsBefore);
 }
 
 TEST(ModeToggle, SingleFrameFlipIsCompletePMODE_01)
