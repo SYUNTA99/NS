@@ -1,8 +1,11 @@
 #include "Game/Editor/GizmoEditor.h"
 
+#include "Framework/Scene/Transform.h"
+
 #include <gtest/gtest.h>
 
 #include <array>
+#include <cmath>
 
 namespace
 {
@@ -455,5 +458,185 @@ namespace
         const auto axis =
             GizmoEditor::ToolHandlePick(origin, GizmoTool::Move, NS::Math::Vector2{400.0f, 300.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::None);
+    }
+
+    // 回転は軸リングで掴む。 identity VP では Z リングが楕円(中心 400,300)に投影される
+    TEST(GizmoEditor, ToolHandlePickRotateHitsZRing)
+    {
+        const NS::Math::Matrix vp;
+        const NS::Math::Size2D viewport{800, 600};
+        const NS::Math::Vector3 origin{0.0f, 0.0f, 0.0f};
+        // t=45° の Z リング点は screen (682.8, 87.9)。 X/Y 軸線から十分離れ Z リングだけが近い
+        const auto axis =
+            GizmoEditor::ToolHandlePick(origin, GizmoTool::Rotate, NS::Math::Vector2{683.0f, 88.0f}, vp, viewport);
+        EXPECT_EQ(axis, GizmoAxis::Z);
+    }
+
+    TEST(GizmoEditor, ToolHandlePickRotateFarReturnsNone)
+    {
+        const NS::Math::Matrix vp;
+        const NS::Math::Size2D viewport{800, 600};
+        const NS::Math::Vector3 origin{0.0f, 0.0f, 0.0f};
+        // 中心寄りでどの軸リングからも 12px 超なので掴めない
+        const auto axis =
+            GizmoEditor::ToolHandlePick(origin, GizmoTool::Rotate, NS::Math::Vector2{440.0f, 260.0f}, vp, viewport);
+        EXPECT_EQ(axis, GizmoAxis::None);
+    }
+
+    // identity VP + 100x100 viewport では原点(0,0,0)が画面中心(50,50)へ投影され、
+    // screen x 差 Δpx の X 軸移動が world Δx = 2*Δpx/width に対応する
+    TEST(GizmoEditorDrag, MoveDragChangesOnlyAxisAndPushesOneEdit)
+    {
+        NS::Scene::Transform t;
+        GizmoEditor gizmo;
+        gizmo.SelectForTest(&t);
+        gizmo.SetToolForTest(GizmoTool::Move);
+
+        const NS::Math::Matrix vp;
+        const NS::Math::Size2D viewport{100, 100};
+        gizmo.ApplyDragForTest(
+            vp, viewport, GizmoAxis::X, NS::Math::Vector2{50.0f, 50.0f}, NS::Math::Vector2{60.0f, 50.0f});
+
+        EXPECT_NEAR(t.Position().x, 0.2f, 1e-4f);
+        EXPECT_NEAR(t.Position().y, 0.0f, 1e-4f);
+        EXPECT_NEAR(t.Position().z, 0.0f, 1e-4f);
+    }
+
+    TEST(GizmoEditorDrag, UndoRestoresBeforeRedoRestoresAfter)
+    {
+        NS::Scene::Transform t;
+        GizmoEditor gizmo;
+        gizmo.SelectForTest(&t);
+        gizmo.SetToolForTest(GizmoTool::Move);
+
+        const NS::Math::Matrix vp;
+        const NS::Math::Size2D viewport{100, 100};
+        gizmo.ApplyDragForTest(
+            vp, viewport, GizmoAxis::X, NS::Math::Vector2{50.0f, 50.0f}, NS::Math::Vector2{60.0f, 50.0f});
+        EXPECT_NEAR(t.Position().x, 0.2f, 1e-4f);
+
+        EXPECT_TRUE(gizmo.Undo());
+        EXPECT_NEAR(t.Position().x, 0.0f, 1e-4f);
+
+        EXPECT_TRUE(gizmo.Redo());
+        EXPECT_NEAR(t.Position().x, 0.2f, 1e-4f);
+    }
+
+    TEST(GizmoEditorDrag, UndoRedoOnEmptyHistoryReturnsFalse)
+    {
+        GizmoEditor gizmo;
+        EXPECT_FALSE(gizmo.Undo());
+        EXPECT_FALSE(gizmo.Redo());
+    }
+
+    TEST(GizmoEditorDrag, NewEditClearsRedoBranch)
+    {
+        NS::Scene::Transform t;
+        GizmoEditor gizmo;
+        gizmo.SelectForTest(&t);
+        gizmo.SetToolForTest(GizmoTool::Move);
+
+        const NS::Math::Matrix vp;
+        const NS::Math::Size2D viewport{100, 100};
+        gizmo.ApplyDragForTest(
+            vp, viewport, GizmoAxis::X, NS::Math::Vector2{50.0f, 50.0f}, NS::Math::Vector2{60.0f, 50.0f});
+        EXPECT_TRUE(gizmo.Undo());
+
+        gizmo.ApplyDragForTest(
+            vp, viewport, GizmoAxis::X, NS::Math::Vector2{50.0f, 50.0f}, NS::Math::Vector2{40.0f, 50.0f});
+        EXPECT_NEAR(t.Position().x, -0.2f, 1e-4f);
+        EXPECT_FALSE(gizmo.Redo());
+        EXPECT_NEAR(t.Position().x, -0.2f, 1e-4f);
+    }
+
+    TEST(GizmoEditorDrag, NoOpDragPushesNothing)
+    {
+        NS::Scene::Transform t;
+        GizmoEditor gizmo;
+        gizmo.SelectForTest(&t);
+        gizmo.SetToolForTest(GizmoTool::Move);
+
+        const NS::Math::Matrix vp;
+        const NS::Math::Size2D viewport{100, 100};
+        gizmo.ApplyDragForTest(
+            vp, viewport, GizmoAxis::X, NS::Math::Vector2{50.0f, 50.0f}, NS::Math::Vector2{50.0f, 50.0f});
+        EXPECT_FALSE(gizmo.Undo());
+    }
+
+    TEST(GizmoEditorDrag, NoSelectionDragIsNoOp)
+    {
+        GizmoEditor gizmo;
+        gizmo.SetToolForTest(GizmoTool::Move);
+
+        const NS::Math::Matrix vp;
+        const NS::Math::Size2D viewport{100, 100};
+        gizmo.ApplyDragForTest(
+            vp, viewport, GizmoAxis::X, NS::Math::Vector2{50.0f, 50.0f}, NS::Math::Vector2{60.0f, 50.0f});
+        EXPECT_FALSE(gizmo.Undo());
+    }
+
+    TEST(GizmoEditorDrag, RotateDragChangesRotationAndUndoRestores)
+    {
+        NS::Scene::Transform t;
+        const NS::Math::Quaternion identity = t.Rotation();
+
+        GizmoEditor gizmo;
+        gizmo.SelectForTest(&t);
+        gizmo.SetToolForTest(GizmoTool::Rotate);
+
+        const NS::Math::Matrix vp;
+        const NS::Math::Size2D viewport{100, 100};
+        gizmo.ApplyDragForTest(
+            vp, viewport, GizmoAxis::X, NS::Math::Vector2{60.0f, 50.0f}, NS::Math::Vector2{50.0f, 60.0f});
+
+        const NS::Math::Quaternion after = t.Rotation();
+        const float dot = identity.x * after.x + identity.y * after.y + identity.z * after.z + identity.w * after.w;
+        EXPECT_LT(std::fabs(dot), 0.9999f);
+
+        EXPECT_TRUE(gizmo.Undo());
+        EXPECT_NEAR(t.Rotation().x, identity.x, 1e-4f);
+        EXPECT_NEAR(t.Rotation().y, identity.y, 1e-4f);
+        EXPECT_NEAR(t.Rotation().z, identity.z, 1e-4f);
+        EXPECT_NEAR(t.Rotation().w, identity.w, 1e-4f);
+    }
+
+    TEST(GizmoEditorDrag, UniformScaleDragGrowsAllAxesUniformly)
+    {
+        NS::Scene::Transform t;
+        GizmoEditor gizmo;
+        gizmo.SelectForTest(&t);
+        gizmo.SetToolForTest(GizmoTool::Scale);
+
+        const NS::Math::Matrix vp;
+        const NS::Math::Size2D viewport{100, 100};
+        gizmo.ApplyDragForTest(
+            vp, viewport, GizmoAxis::Uniform, NS::Math::Vector2{50.0f, 50.0f}, NS::Math::Vector2{70.0f, 50.0f});
+
+        EXPECT_GT(t.Scale().x, 1.0f);
+        EXPECT_NEAR(t.Scale().x, t.Scale().y, 1e-4f);
+        EXPECT_NEAR(t.Scale().y, t.Scale().z, 1e-4f);
+
+        EXPECT_TRUE(gizmo.Undo());
+        EXPECT_NEAR(t.Scale().x, 1.0f, 1e-4f);
+    }
+
+    TEST(GizmoEditorTick, InactiveTickIsNoOp)
+    {
+        GizmoEditor gizmo;
+        const NS::Math::Matrix vp;
+        const NS::Math::Size2D viewport{100, 100};
+        gizmo.Tick(vp, viewport);
+        EXPECT_EQ(gizmo.Tool(), GizmoTool::Select);
+        EXPECT_EQ(gizmo.Selected(), nullptr);
+    }
+
+    TEST(GizmoEditorTick, ActiveWithoutInputIsNoOp)
+    {
+        GizmoEditor gizmo;
+        gizmo.SetActive(true);
+        const NS::Math::Matrix vp;
+        const NS::Math::Size2D viewport{100, 100};
+        gizmo.Tick(vp, viewport);
+        EXPECT_EQ(gizmo.Selected(), nullptr);
     }
 } // namespace

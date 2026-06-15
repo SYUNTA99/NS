@@ -99,7 +99,21 @@ namespace NS::Game::Editor
 
         [[nodiscard]] GizmoTool Tool() const noexcept { return m_tool; }
         [[nodiscard]] NS::Scene::Transform* Selected() const noexcept { return m_selected; }
-        void ClearSelection() noexcept { m_selected = nullptr; }
+        /// 選択を外し、 進行中のドラッグも破棄する (モード切替で安全に呼べる)
+        void ClearSelection() noexcept
+        {
+            m_selected = nullptr;
+            m_dragging = false;
+            m_dragAxis = GizmoAxis::None;
+        }
+
+        /// 選択対象を差し替える。 進行中のドラッグは破棄する (grid ブロック昇格後に新オブジェクトへ貼り直す)
+        void SetSelected(NS::Scene::Transform* target) noexcept
+        {
+            m_selected = target;
+            m_dragging = false;
+            m_dragAxis = GizmoAxis::None;
+        }
 
         /// 直近の TransformEdit を 1 つ戻す。履歴が無ければ false
         bool Undo() noexcept;
@@ -164,6 +178,9 @@ namespace NS::Game::Editor
     private:
         void OnToolKey(NS::Platform::Key key) noexcept;
 
+        /// redo 分岐を捨てて TransformEdit を 1 件積む
+        void PushEdit(const TransformEdit& edit) noexcept;
+
         NS::Platform::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
         std::span<NS::Scene::GameObject* const> m_objects{};
@@ -171,6 +188,12 @@ namespace NS::Game::Editor
         bool m_active = false;
         GizmoTool m_tool = GizmoTool::Select;
         NS::Scene::Transform* m_selected = nullptr;
+
+        bool m_dragging = false;
+        GizmoAxis m_dragAxis = GizmoAxis::None;
+        NS::Math::Vector2 m_dragStartScreen{};
+        TransformState m_dragBefore{};
+
         std::vector<TransformEdit> m_history;
         std::size_t m_historyIndex = 0;
     };
