@@ -3,6 +3,7 @@
 #include <Framework/Core/Clock.h>
 #include <Framework/Scene/Components/CameraBrainComponent.h>
 #include <Framework/Scene/Components/CameraComponent.h>
+#include <Framework/Scene/Components/PlacedVirtualCamera.h>
 #include <Framework/Scene/Components/VirtualCameraComponent.h>
 #include <Framework/Scene/GameObject.h>
 
@@ -12,6 +13,7 @@ namespace
     using NS::Scene::CameraComponent;
     using NS::Scene::CameraPose;
     using NS::Scene::GameObject;
+    using NS::Scene::PlacedVirtualCamera;
     using NS::Scene::TickPriority;
     using NS::Scene::VirtualCameraComponent;
 
@@ -167,5 +169,60 @@ TEST_F(CameraBrainTest, ZeroBlendDurationCutsInstantly)
     b->SetVcamPriority(30);
     brain->OnUpdate();
     brain->Evaluate(1.0f);
+    EXPECT_FLOAT_EQ(cam->Position().x, 10.0f);
+}
+
+TEST_F(CameraBrainTest, PlacedVcamReturnsItsSetView)
+{
+    GameObject host;
+    auto* placed = host.AddComponent<PlacedVirtualCamera>();
+    placed->SetView({3.0f, 7.0f, -2.0f}, {1.0f, 0.0f, 4.0f});
+
+    const auto pose = placed->EvaluatePose(1.0f);
+    EXPECT_FLOAT_EQ(pose.position.x, 3.0f);
+    EXPECT_FLOAT_EQ(pose.position.y, 7.0f);
+    EXPECT_FLOAT_EQ(pose.position.z, -2.0f);
+    EXPECT_FLOAT_EQ(pose.target.x, 1.0f);
+    EXPECT_FLOAT_EQ(pose.target.z, 4.0f);
+}
+
+TEST_F(CameraBrainTest, ActivatingPlacedVcamBlendsTowardIt)
+{
+    GameObject host;
+    auto* cam = host.AddComponent<CameraComponent>();
+    auto* brain = host.AddComponent<CameraBrainComponent>();
+    brain->SetCamera(cam);
+    brain->SetBlendDuration(0.5f);
+
+    GameObject followHost;
+    GameObject areaHost;
+    auto* follow = followHost.AddComponent<FixedVcam>(0.0f);
+    auto* area = areaHost.AddComponent<PlacedVirtualCamera>();
+    area->SetView({10.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f});
+    follow->SetVcamPriority(0);
+    area->SetVcamPriority(10); // active な間だけ follow を上回る
+    area->SetActive(false);    // エリア外を想定
+    brain->AddVirtualCamera(follow);
+    brain->AddVirtualCamera(area);
+
+    // エリア外: follow が選ばれる
+    brain->OnUpdate();
+    brain->Evaluate(1.0f);
+    EXPECT_EQ(brain->ActiveVirtualCamera(), follow);
+    EXPECT_FLOAT_EQ(cam->Position().x, 0.0f);
+
+    // エリア進入で placed を active 化 → ブレンドで近づく
+    area->SetActive(true);
+    brain->OnUpdate();
+    brain->Evaluate(1.0f);
+    EXPECT_EQ(brain->ActiveVirtualCamera(), area);
+    EXPECT_GT(cam->Position().x, 0.0f);
+    EXPECT_LT(cam->Position().x, 10.0f);
+
+    for (int i = 0; i < 60; ++i)
+    {
+        brain->OnUpdate();
+        brain->Evaluate(1.0f);
+    }
     EXPECT_FLOAT_EQ(cam->Position().x, 10.0f);
 }
