@@ -36,6 +36,7 @@ namespace NS::Scene
     class GameObject;
     class MeshRendererComponent;
     class SkeletalAnimationComponent;
+    class Transform;
 } // namespace NS::Scene
 
 namespace NS::Scene
@@ -93,8 +94,42 @@ public:
             return;
         m_editorToolMode = next;
         if (!active)
+        {
             m_gizmo.ClearSelection();
+            m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+            m_lastGizmoSelected = nullptr;
+        }
     }
+
+    /// 現在選択中の配置物の m_level.objects 添字。 未選択 / 範囲外は kNoObjectIndex
+    [[nodiscard]] std::size_t SelectedObjectIndex() const noexcept { return m_selectedObjectIndex; }
+    /// Hierarchy から添字で配置物を選択する。 Object ツールへ切替え、 free / grid solid はギズモ選択も貼る
+    void SelectObjectByIndex(std::size_t index) noexcept;
+
+    /// Inspector が編集 / 表示できる選択を持つか (選択添字が範囲内か)
+    [[nodiscard]] bool HasInspectableSelection() const noexcept
+    {
+        return m_selectedObjectIndex < m_level.objects.size();
+    }
+    /// 選択中の配置物が gridAligned か。 未選択は false
+    [[nodiscard]] bool SelectedIsGridAligned() const noexcept
+    {
+        return HasInspectableSelection() &&
+               (m_level.objects[m_selectedObjectIndex].flags & NS::Game::Level::kObjectFlagGridAligned) != 0;
+    }
+    /// Inspector 表示用に選択中 ObjectInstance のコピーを返す。 未選択は既定値
+    [[nodiscard]] NS::Game::Level::ObjectInstance SelectedObjectSnapshot() const noexcept
+    {
+        if (m_selectedObjectIndex < m_level.objects.size())
+            return m_level.objects[m_selectedObjectIndex];
+        return NS::Game::Level::ObjectInstance{};
+    }
+    /// 選択中の自由オブジェクトの位置を設定する。 永続化は SyncFreeObjectTransforms 任せ (gridAligned / 非選択は no-op)
+    void SetSelectedFreePosition(NS::Math::Vector3 position) noexcept;
+    /// 選択中の自由オブジェクトのスケールを設定する。 最小正値に clamp する (gridAligned / 非選択は no-op)
+    void SetSelectedFreeScale(NS::Math::Vector3 scale) noexcept;
+    /// 選択中の grid solid ブロックを自由オブジェクトへ昇格する (grid solid 以外は no-op)
+    void PromoteSelectedToFree() noexcept;
 
     /// Object モードかつギズモで何か選択中なら true (material 適用先がある状態)
     [[nodiscard]] bool HasGizmoSelection() const noexcept
@@ -152,6 +187,10 @@ private:
     /// ギズモで変形した自由オブジェクトの Transform を対応する ObjectInstance へ書き戻す
     /// セーブに載せ、 次の RebuildBlocksFromLevelData で巻き戻らないようにする
     void SyncFreeObjectTransforms();
+
+    /// ビューポートでギズモ選択が変わった時だけ m_selectedObjectIndex を追従させる
+    /// Hierarchy で選んだ非選択候補 (slope 等) を毎フレーム潰さないよう前フレーム値で差分判定する
+    void ResolveSelectedIndexFromGizmo() noexcept;
 
     std::unique_ptr<NS::Graphics::StaticMesh> m_cubeMesh;
     std::unique_ptr<NS::Graphics::Texture> m_texture;
@@ -236,6 +275,13 @@ private:
     // ギズモへ渡す選択候補の安定ストレージ。 自由オブジェクトと grid solid ブロックを連結した span の実体
     std::vector<NS::Scene::GameObject*> m_selectablePtrs;
     std::vector<NS::Math::Vector3> m_selectableHalfExtents;
+
+    // m_blocks[i] に対応する m_level.objects の添字 (Hierarchy からの grid solid 選択の逆引き用、 m_blocks と同長)
+    std::vector<std::size_t> m_blockSourceIndices;
+    // Hierarchy / Inspector が参照する選択添字。 Hierarchy クリックとギズモ選択の両方から更新する
+    std::size_t m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+    // ビューポート由来のギズモ選択変化だけを index へ反映するための前フレーム値 (Hierarchy 選択を潰さない)
+    NS::Scene::Transform* m_lastGizmoSelected = nullptr;
 
     // Debug provenance パネルの読み出し元。書き込みは OnRenderScene で毎フレーム行う
     // 値メンバなので Release でも存在するが、 ImGui 読み出しのみ #if ガードする

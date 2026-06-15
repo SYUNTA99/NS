@@ -9,9 +9,11 @@
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/UI/ImGuiContext.h"
+#include "Game/Editor/BlockRegistry.h"
 #include "Game/Game.h"
 #include "Game/LevelEditorScene.h"
 
+#include <cstdio>
 #include <filesystem>
 #include <string>
 
@@ -60,8 +62,11 @@ void EditorLayer::OnRender()
 
     if (scene->CurrentMode() == LevelEditorScene::Mode::Edit)
     {
+        RenderDockSpaceHost();
         scene->Editor().RenderFileBrowser();
         RenderToolModePanel(*scene);
+        RenderHierarchyPanel(*scene);
+        RenderInspectorPanel(*scene);
         RenderMaterialsPanel(*scene);
     }
     else if (scene->Play().paused)
@@ -115,6 +120,15 @@ void EditorLayer::HandlePauseInput(LevelEditorScene& scene) noexcept
 
     if (pPressed || backPressed)
         scene.Play().paused = !scene.Play().paused;
+}
+
+void EditorLayer::RenderDockSpaceHost() noexcept
+{
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+    // 中央ノードは透過 (背景非描画 + 入力素通し) なので、 奥の全画面 3D とギズモがそのまま見え
+    // 中央クリックは編集に届く。 周囲に各パネルがドッキングできる。 dockspace_id=0 で viewport から自動生成
+    ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
+#endif
 }
 
 void EditorLayer::RenderFpsOverlay() noexcept
@@ -195,9 +209,7 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorScene& scene) noexcept
 void EditorLayer::RenderToolModePanel(LevelEditorScene& scene) noexcept
 {
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
-    const auto vp = ImGui::GetMainViewport();
-    if (vp != nullptr)
-        ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + 10.0f, vp->WorkPos.y + 10.0f), ImGuiCond_FirstUseEver);
+    // 位置はドッキング / imgui.ini 任せ (固定座標を置くとドッキング配置と競合する)
     if (ImGui::Begin("Edit Mode"))
     {
         const bool objectActive = scene.ObjectToolActive();
@@ -210,6 +222,110 @@ void EditorLayer::RenderToolModePanel(LevelEditorScene& scene) noexcept
             ImGui::TextUnformatted("Click orange box to select. Q/W/E/R = Select/Move/Rotate/Scale");
         else
             ImGui::TextUnformatted("Left click = place block");
+    }
+    ImGui::End();
+#else
+    (void)scene;
+#endif
+}
+
+void EditorLayer::RenderHierarchyPanel(LevelEditorScene& scene) noexcept
+{
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+    if (ImGui::Begin("Hierarchy"))
+    {
+        const auto& objects = scene.Level().objects;
+        const std::size_t selected = scene.SelectedObjectIndex();
+
+        ImGui::Text("%zu objects", objects.size());
+        ImGui::Separator();
+
+        for (std::size_t i = 0; i < objects.size(); ++i)
+        {
+            const NS::Game::Level::ObjectInstance& object = objects[i];
+            const bool grid = (object.flags & NS::Game::Level::kObjectFlagGridAligned) != 0;
+            const char* name = NS::Game::Editor::GetDisplayName(object.kind);
+
+            char label[96];
+            std::snprintf(label, sizeof(label), "[%zu] %s (%s)", i, name, grid ? "grid" : "free");
+
+            ImGui::PushID(static_cast<int>(i));
+            if (ImGui::Selectable(label, i == selected))
+                scene.SelectObjectByIndex(i);
+            ImGui::PopID();
+        }
+
+        if (objects.empty())
+            ImGui::TextDisabled("(no objects)");
+    }
+    ImGui::End();
+#else
+    (void)scene;
+#endif
+}
+
+void EditorLayer::RenderInspectorPanel(LevelEditorScene& scene) noexcept
+{
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+    if (ImGui::Begin("Inspector"))
+    {
+        if (!scene.HasInspectableSelection())
+        {
+            ImGui::TextDisabled("(no selection)");
+            ImGui::End();
+            return;
+        }
+
+        const NS::Game::Level::ObjectInstance obj = scene.SelectedObjectSnapshot();
+        const bool grid = scene.SelectedIsGridAligned();
+        ImGui::Text("[%zu] %s (%s)",
+                    scene.SelectedObjectIndex(),
+                    NS::Game::Editor::GetDisplayName(obj.kind),
+                    grid ? "grid" : "free");
+        ImGui::Separator();
+
+        if (grid)
+        {
+            ImGui::Text("Cell: (%d, %d, %d)",
+                        static_cast<int>(NS::Game::Level::ObjectCellX(obj)),
+                        static_cast<int>(NS::Game::Level::ObjectCellY(obj)),
+                        static_cast<int>(NS::Game::Level::ObjectCellZ(obj)));
+            if (obj.kind == NS::Game::Editor::kBlockIdSolid)
+            {
+                ImGui::TextDisabled("Promote to free to edit transform");
+                if (ImGui::Button("Promote to Free"))
+                    scene.PromoteSelectedToFree();
+            }
+            else
+                ImGui::TextDisabled("grid object (no gizmo/edit in v1)");
+        }
+        else
+        {
+            // free オブジェクトは runtime Transform が真実の源なので毎フレーム即反映する (SyncFreeObjectTransforms
+            // が永続化)
+            float pos[3] = {obj.positionX, obj.positionY, obj.positionZ};
+            if (ImGui::DragFloat3("Position", pos, 0.05f))
+                scene.SetSelectedFreePosition(NS::Math::Vector3{pos[0], pos[1], pos[2]});
+
+            float scl[3] = {obj.scaleX, obj.scaleY, obj.scaleZ};
+            if (ImGui::DragFloat3("Scale", scl, 0.05f))
+                scene.SetSelectedFreeScale(NS::Math::Vector3{scl[0], scl[1], scl[2]});
+
+            ImGui::Text("Rotation: (%.2f, %.2f, %.2f, %.2f)",
+                        static_cast<double>(obj.rotationX),
+                        static_cast<double>(obj.rotationY),
+                        static_cast<double>(obj.rotationZ),
+                        static_cast<double>(obj.rotationW));
+            ImGui::TextDisabled("rotate with gizmo R tool");
+        }
+
+        ImGui::Separator();
+        // 材質の適用は Assets パネルのドロップ / クリック。 ここでは現在値の表示のみ
+        if (obj.materialIndex >= 0 && static_cast<std::size_t>(obj.materialIndex) < scene.Level().materialPaths.size())
+            ImGui::Text("Material: %s",
+                        scene.Level().materialPaths[static_cast<std::size_t>(obj.materialIndex)].c_str());
+        else
+            ImGui::TextDisabled("Material: default");
     }
     ImGui::End();
 #else

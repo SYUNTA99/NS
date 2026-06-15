@@ -500,6 +500,9 @@ void LevelEditorScene::OnUpdate()
 
             // ギズモ変形 / undo の結果を ObjectInstance に反映してセーブと rebuild に耐えるようにする
             SyncFreeObjectTransforms();
+
+            // ビューポートでのギズモ選択変化を Hierarchy / Inspector の選択添字へ追従させる
+            ResolveSelectedIndexFromGizmo();
         }
 
         m_editor.Tick();
@@ -908,6 +911,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
     m_decorations.clear();
     m_freeObjects.clear();
     m_freeSourceIndices.clear();
+    m_blockSourceIndices.clear();
     m_collisionWorld.clear();
     m_collisionTriangles.clear();
     m_polePtrs.clear();
@@ -970,6 +974,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             block->MeshComp().SetActive(false);
 
             m_collisionWorld.push_back(block->Collider().WorldAABB());
+            m_blockSourceIndices.push_back(objectIndex);
             m_blocks.push_back(std::move(block));
             continue;
         }
@@ -1143,6 +1148,106 @@ void LevelEditorScene::SyncFreeObjectTransforms()
         object.scaleX = scale.x;
         object.scaleY = scale.y;
         object.scaleZ = scale.z;
+    }
+}
+
+void LevelEditorScene::SelectObjectByIndex(std::size_t index) noexcept
+{
+    if (index >= m_level.objects.size())
+    {
+        m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+        return;
+    }
+    m_selectedObjectIndex = index;
+
+    // ハンドルを出すため Object ツールへ切替える (Build のままだとギズモが描かれない)
+    SetObjectToolActive(true);
+
+    // 自由オブジェクトだけギズモへ貼る。 grid 配置物 (solid 含む) は一覧クリックでは昇格させず、
+    // Inspector の Promote で明示的に自由化する (一覧での選択を非破壊に保つ)。 grid / 非選択候補は
+    // ギズモ選択を外し Inspector のデータ表示のみとする
+    for (std::size_t i = 0; i < m_freeSourceIndices.size(); ++i)
+    {
+        if (m_freeSourceIndices[i] == index && m_freeObjects[i])
+        {
+            m_gizmo.SetSelected(&m_freeObjects[i]->Root());
+            m_lastGizmoSelected = m_gizmo.Selected();
+            return;
+        }
+    }
+    m_gizmo.ClearSelection();
+    m_lastGizmoSelected = nullptr;
+}
+
+void LevelEditorScene::ResolveSelectedIndexFromGizmo() noexcept
+{
+    NS::Scene::Transform* selected = m_gizmo.Selected();
+    // 前フレームと同じなら据え置き (Hierarchy で選んだ非選択候補を毎フレーム潰さないため)
+    if (selected == m_lastGizmoSelected)
+        return;
+    m_lastGizmoSelected = selected;
+    if (selected == nullptr)
+    {
+        m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+        return;
+    }
+    for (std::size_t i = 0; i < m_freeObjects.size(); ++i)
+    {
+        if (m_freeObjects[i] && &m_freeObjects[i]->Root() == selected)
+        {
+            m_selectedObjectIndex = m_freeSourceIndices[i];
+            return;
+        }
+    }
+    for (std::size_t i = 0; i < m_blocks.size(); ++i)
+    {
+        if (m_blocks[i] && &m_blocks[i]->Root() == selected)
+        {
+            m_selectedObjectIndex = m_blockSourceIndices[i];
+            return;
+        }
+    }
+    m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+}
+
+void LevelEditorScene::SetSelectedFreePosition(NS::Math::Vector3 position) noexcept
+{
+    for (std::size_t i = 0; i < m_freeSourceIndices.size(); ++i)
+    {
+        if (m_freeSourceIndices[i] == m_selectedObjectIndex && m_freeObjects[i])
+        {
+            m_freeObjects[i]->Root().SetPosition(position);
+            return;
+        }
+    }
+}
+
+void LevelEditorScene::SetSelectedFreeScale(NS::Math::Vector3 scale) noexcept
+{
+    // ImGui の入力で 0 / 負になると描画と当たり判定が壊れるため最小正値で止める
+    constexpr float kMinScale = 0.01f;
+    scale.x = scale.x < kMinScale ? kMinScale : scale.x;
+    scale.y = scale.y < kMinScale ? kMinScale : scale.y;
+    scale.z = scale.z < kMinScale ? kMinScale : scale.z;
+    for (std::size_t i = 0; i < m_freeSourceIndices.size(); ++i)
+    {
+        if (m_freeSourceIndices[i] == m_selectedObjectIndex && m_freeObjects[i])
+        {
+            m_freeObjects[i]->Root().SetScale(scale);
+            return;
+        }
+    }
+}
+
+void LevelEditorScene::PromoteSelectedToFree() noexcept
+{
+    for (std::size_t i = 0; i < m_blockSourceIndices.size(); ++i)
+    {
+        if (m_blockSourceIndices[i] == m_selectedObjectIndex && m_blocks[i])
+        {
+            PromoteGridBlockToFree(i);
+            return;
+        }
     }
 }
 
