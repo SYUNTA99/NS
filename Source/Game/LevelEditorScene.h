@@ -145,9 +145,13 @@ private:
     /// grid rebuild で m_blocks の pointer が変わるたびに呼んで span を貼り直す
     void RefreshGizmoSelectables();
 
-    /// grid solid ブロックを LevelData から外し、 同位置・同色の自由 Transform オブジェクトへ移す
-    /// Object モードで grid ブロックを掴んだ時に呼ぶ。 自由化後は collider / セーブ対象から外れる
+    /// grid solid ブロックの ObjectInstance から gridAligned ビットを落として自由オブジェクト化する
+    /// Object モードで grid ブロックを掴んだ時に呼ぶ。 自由化後も当たり判定とセーブ対象のまま
     void PromoteGridBlockToFree(std::size_t blockIndex);
+
+    /// ギズモで変形した自由オブジェクトの Transform を対応する ObjectInstance へ書き戻す
+    /// セーブに載せ、 次の RebuildBlocksFromLevelData で巻き戻らないようにする
+    void SyncFreeObjectTransforms();
 
     std::unique_ptr<NS::Graphics::StaticMesh> m_cubeMesh;
     std::unique_ptr<NS::Graphics::Texture> m_texture;

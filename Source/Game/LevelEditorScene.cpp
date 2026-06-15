@@ -480,6 +480,26 @@ void LevelEditorScene::OnUpdate()
                     }
                 }
             }
+
+            // Object モードの Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y はギズモ変形履歴を操作する
+            // (grid の undo は EditorMode が inputSuppressed で止めている)
+            const bool imguiKeyboard = app->ImGui() != nullptr && app->ImGui()->WantCaptureKeyboard();
+            if (!imguiKeyboard)
+            {
+                auto& kb = app->Input().Keyboard();
+                const bool ctrl = kb.IsHeld(NS::Platform::Key::Ctrl);
+                const bool shift = kb.IsHeld(NS::Platform::Key::Shift);
+                const bool redo =
+                    ctrl && ((shift && kb.IsPressed(NS::Platform::Key::Z)) || kb.IsPressed(NS::Platform::Key::Y));
+                const bool undo = ctrl && !shift && kb.IsPressed(NS::Platform::Key::Z);
+                if (redo)
+                    m_gizmo.Redo();
+                else if (undo)
+                    m_gizmo.Undo();
+            }
+
+            // ギズモ変形 / undo の結果を ObjectInstance に反映してセーブと rebuild に耐えるようにする
+            SyncFreeObjectTransforms();
         }
 
         m_editor.Tick();
@@ -1098,6 +1118,32 @@ void LevelEditorScene::RefreshGizmoSelectables()
     }
 
     m_gizmo.SetSelectableObjects(m_selectablePtrs, m_selectableHalfExtents);
+}
+
+void LevelEditorScene::SyncFreeObjectTransforms()
+{
+    for (std::size_t i = 0; i < m_freeObjects.size(); ++i)
+    {
+        if (!m_freeObjects[i] || m_freeSourceIndices[i] >= m_level.objects.size())
+            continue;
+
+        const NS::Scene::Transform& root = m_freeObjects[i]->Root();
+        const NS::Math::Vector3 position = root.Position();
+        const NS::Math::Quaternion rotation = root.Rotation();
+        const NS::Math::Vector3 scale = root.Scale();
+
+        NS::Game::Level::ObjectInstance& object = m_level.objects[m_freeSourceIndices[i]];
+        object.positionX = position.x;
+        object.positionY = position.y;
+        object.positionZ = position.z;
+        object.rotationX = rotation.x;
+        object.rotationY = rotation.y;
+        object.rotationZ = rotation.z;
+        object.rotationW = rotation.w;
+        object.scaleX = scale.x;
+        object.scaleY = scale.y;
+        object.scaleZ = scale.z;
+    }
 }
 
 void LevelEditorScene::PromoteGridBlockToFree(std::size_t blockIndex)
