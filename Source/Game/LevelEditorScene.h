@@ -96,6 +96,14 @@ public:
             m_gizmo.ClearSelection();
     }
 
+    /// Object モードかつギズモで何か選択中なら true (material 適用先がある状態)
+    [[nodiscard]] bool HasGizmoSelection() const noexcept
+    {
+        return ObjectToolActive() && m_gizmo.Selected() != nullptr;
+    }
+    /// ギズモ選択中の自由オブジェクトに matPath の .mat を適用する。 適用できたら true
+    bool ApplyMaterialToSelected(const std::filesystem::path& matPath);
+
     /// 最後に OnRenderScene で解決した scene 段設定 (project 既定 ← scene override)。object 段は含まない
     [[nodiscard]] const NS::Graphics::RenderSettings& DebugResolvedSettings() const noexcept
     {

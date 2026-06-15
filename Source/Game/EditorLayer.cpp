@@ -1,6 +1,7 @@
 #include "Game/EditorLayer.h"
 
 #include "Framework/App/Application.h"
+#include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 #include "Framework/Graphics/RenderSettings.h"
@@ -10,6 +11,9 @@
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Game.h"
 #include "Game/LevelEditorScene.h"
+
+#include <filesystem>
+#include <string>
 
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
 #include <imgui.h>
@@ -58,6 +62,7 @@ void EditorLayer::OnRender()
     {
         scene->Editor().RenderFileBrowser();
         RenderToolModePanel(*scene);
+        RenderMaterialsPanel(*scene);
     }
     else if (scene->Play().paused)
         RenderPauseModal(*scene);
@@ -208,6 +213,84 @@ void EditorLayer::RenderToolModePanel(LevelEditorScene& scene) noexcept
     }
     ImGui::End();
 #else
+    (void)scene;
+#endif
+}
+
+void EditorLayer::RenderMaterialsPanel(LevelEditorScene& scene) noexcept
+{
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+    // Object モード専用 (適用先のギズモ選択は Object モードにしか存在しない)
+    if (!scene.ObjectToolActive())
+        return;
+
+    if (ImGui::Begin("Assets"))
+    {
+        const bool hasSelection = scene.HasGizmoSelection();
+        ImGui::TextUnformatted(hasSelection ? "Selected object: yes" : "Select an object first (click it)");
+
+        // ドロップ枠: ツリーの .mat をここへドラッグすると選択中の物体へ適用する
+        ImGui::Button(hasSelection ? "Drop .mat here -> apply to selected" : "Drop target (needs selection)",
+                      ImVec2(-1.0f, 32.0f));
+        if (ImGui::BeginDragDropTarget())
+        {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("NS_MATERIAL"))
+            {
+                const char* droppedPath = static_cast<const char*>(payload->Data);
+                scene.ApplyMaterialToSelected(std::filesystem::path(droppedPath));
+            }
+            ImGui::EndDragDropTarget();
+        }
+
+        ImGui::Separator();
+        // Assets/ 以下をフォルダツリーで表示する。 .mat はクリック適用 / ドラッグ可
+        RenderAssetTree(NS::Core::FileSystem::GetExeDirectory() / "Assets", scene);
+    }
+    ImGui::End();
+#else
+    (void)scene;
+#endif
+}
+
+void EditorLayer::RenderAssetTree(const std::filesystem::path& dir, LevelEditorScene& scene) noexcept
+{
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+    const bool hasSelection = scene.HasGizmoSelection();
+
+    // サブフォルダを TreeNode で再帰表示する (open 時のみ中身を走査する遅延読み)
+    for (const auto& sub : NS::Core::FileSystem::ListDirectories(dir))
+    {
+        const std::string label = sub.filename().string();
+        if (ImGui::TreeNode(label.c_str()))
+        {
+            RenderAssetTree(sub, scene);
+            ImGui::TreePop();
+        }
+    }
+
+    // フォルダ直下のファイル。 .mat はクリックで選択物体へ適用 + ドラッグ可、 他は読み取り専用表示
+    for (const auto& file : NS::Core::FileSystem::ListFiles(dir))
+    {
+        const std::string name = file.filename().string();
+        if (file.extension() != ".mat")
+        {
+            ImGui::TextDisabled("%s", name.c_str());
+            continue;
+        }
+        ImGui::PushID(name.c_str());
+        if (ImGui::Selectable(name.c_str()) && hasSelection)
+            scene.ApplyMaterialToSelected(file);
+        if (ImGui::BeginDragDropSource())
+        {
+            const std::string full = file.string();
+            ImGui::SetDragDropPayload("NS_MATERIAL", full.c_str(), full.size() + 1);
+            ImGui::TextUnformatted(name.c_str());
+            ImGui::EndDragDropSource();
+        }
+        ImGui::PopID();
+    }
+#else
+    (void)dir;
     (void)scene;
 #endif
 }

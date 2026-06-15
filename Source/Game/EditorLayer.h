@@ -15,6 +15,8 @@
 
 #include "Framework/App/Layer.h"
 
+#include <filesystem>
+
 class LevelEditorScene;
 
 class EditorLayer : public NS::App::Layer
@@ -47,4 +49,8 @@ private:
     static void RenderRenderSettingsPanel(LevelEditorScene& scene) noexcept;
     /// 編集モード中に Build (グリッド設置) ⇔ Object (ギズモ変形) を切替える UI ボタンを描く
     static void RenderToolModePanel(LevelEditorScene& scene) noexcept;
+    /// Object モード中に Assets/ をフォルダツリーで出し、 ドロップ枠 / クリックで選択物体へ材質を適用する
+    static void RenderMaterialsPanel(LevelEditorScene& scene) noexcept;
+    /// dir 直下を再帰描画する。 サブフォルダは TreeNode、 .mat はクリック適用 + ドラッグ可
+    static void RenderAssetTree(const std::filesystem::path& dir, LevelEditorScene& scene) noexcept;
 };

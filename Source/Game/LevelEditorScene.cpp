@@ -1186,6 +1186,37 @@ void LevelEditorScene::PromoteGridBlockToFree(std::size_t blockIndex)
     m_gizmo.SetSelected(newSelected);
 }
 
+bool LevelEditorScene::ApplyMaterialToSelected(const std::filesystem::path& matPath)
+{
+    if (m_editorToolMode != EditorToolMode::Object || !m_materialLibrary)
+        return false;
+
+    NS::Scene::Transform* selected = m_gizmo.Selected();
+    if (selected == nullptr)
+        return false;
+
+    // 選択中の Transform を持つ自由オブジェクトを探す (ギズモ選択は常に free オブジェクトを指す)
+    Block* target = nullptr;
+    for (auto& obj : m_freeObjects)
+    {
+        if (obj && &obj->Root() == selected)
+        {
+            target = obj.get();
+            break;
+        }
+    }
+    if (target == nullptr)
+        return false;
+
+    const auto loaded = m_materialLibrary->Load(matPath);
+    if (loaded.material == nullptr)
+        return false;
+
+    target->MeshComp().SetMaterial(loaded.material);
+    target->MeshComp().SetBaseColor(loaded.baseColor);
+    return true;
+}
+
 void LevelEditorScene::UpdateAnimatedModel()
 {
     if (!m_animatedModel)
