@@ -6,6 +6,7 @@
 #include "Framework/Scene/SceneBase.h"
 #include "Game/CameraRig.h"
 #include "Game/Editor/EditorMode.h"
+#include "Game/Editor/GizmoEditor.h"
 #include "Game/EditorCameraRig.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayMode.h"
@@ -81,6 +82,19 @@ public:
 
     [[nodiscard]] Mode CurrentMode() const noexcept { return m_mode; }
 
+    /// Object (ギズモ変形) ツールが有効か。 false は Build (グリッド設置)。 切替は UI ボタンから行う
+    [[nodiscard]] bool ObjectToolActive() const noexcept { return m_editorToolMode == EditorToolMode::Object; }
+    /// 編集ツールを Build / Object 切替える。 Build へ戻す時はギズモ選択を解除する
+    void SetObjectToolActive(bool active) noexcept
+    {
+        const EditorToolMode next = active ? EditorToolMode::Object : EditorToolMode::Build;
+        if (next == m_editorToolMode)
+            return;
+        m_editorToolMode = next;
+        if (!active)
+            m_gizmo.ClearSelection();
+    }
+
     /// 最後に OnRenderScene で解決した scene 段設定 (project 既定 ← scene override)。object 段は含まない
     [[nodiscard]] const NS::Graphics::RenderSettings& DebugResolvedSettings() const noexcept
     {
@@ -117,6 +131,14 @@ private:
     /// 仮 skinned キャラ (glTF) を毎ステップ進めて描画する debug hook
     /// F1 再生/停止、 F2 クリップ送り、 F3/F4 速度。 ImGui 入力中はキー無効
     void UpdateAnimatedModel();
+
+    /// ギズモの選択候補 (自由オブジェクト + grid solid ブロック) を連結し直して注入する
+    /// grid rebuild で m_blocks の pointer が変わるたびに呼んで span を貼り直す
+    void RefreshGizmoSelectables();
+
+    /// grid solid ブロックを LevelData から外し、 同位置・同色の自由 Transform オブジェクトへ移す
+    /// Object モードで grid ブロックを掴んだ時に呼ぶ。 自由化後は collider / セーブ対象から外れる
+    void PromoteGridBlockToFree(std::size_t blockIndex);
 
     std::unique_ptr<NS::Graphics::StaticMesh> m_cubeMesh;
     std::unique_ptr<NS::Graphics::Texture> m_texture;
@@ -178,6 +200,24 @@ private:
     NS::Game::Editor::EditorMode m_editor{};
     NS::Game::Level::PlayMode m_playMode{};
     Mode m_mode = Mode::Edit;
+
+    /// 編集中の入力所有。 Build=grid 設置、 Object=ギズモ変形。 Tab で切替え同時に 1 つだけが LMB/R/Ctrl+Z を消費
+    enum class EditorToolMode : std::uint8_t
+    {
+        Build,
+        Object
+    };
+    EditorToolMode m_editorToolMode = EditorToolMode::Build;
+
+    NS::Game::Editor::GizmoEditor m_gizmo{};
+    // Object モードで変形する自由 Transform オブジェクト (v1 はテスト seed)。 LevelData には属さない
+    std::vector<std::unique_ptr<Block>> m_freeObjects;
+    std::vector<NS::Scene::GameObject*> m_freeObjectPtrs;
+    std::vector<NS::Math::Vector3> m_freeHalfExtents;
+
+    // ギズモへ渡す選択候補の安定ストレージ。 自由オブジェクトと grid solid ブロックを連結した span の実体
+    std::vector<NS::Scene::GameObject*> m_selectablePtrs;
+    std::vector<NS::Math::Vector3> m_selectableHalfExtents;
 
     // Debug provenance パネルの読み出し元。書き込みは OnRenderScene で毎フレーム行う
     // 値メンバなので Release でも存在するが、 ImGui 読み出しのみ #if ガードする

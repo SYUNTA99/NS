@@ -395,6 +395,9 @@ namespace NS::Game::Editor
     void EditorMode::UpdateCursorFromInput() noexcept
     {
         m_cursor = CursorState{};
+        // Object ツールモード中は grid 設置 cursor を出さない (カーソル追従の ■ プレビューがギズモ操作の邪魔になる)
+        if (m_inputSuppressed)
+            return;
         if (m_input == nullptr || m_camera == nullptr || m_level == nullptr)
             return;
 
@@ -498,6 +501,9 @@ namespace NS::Game::Editor
         // ImGui UI が mouse を握っている時は place / delete を発火しない (UI クリックが裏で block を消す事故を防ぐ)
         if (m_imgui != nullptr && m_imgui->WantCaptureMouse())
             return;
+        // Object ツールモード中はギズモが LMB を専有するので grid の設置/削除は止める
+        if (m_inputSuppressed)
+            return;
 
         const std::uint16_t currentId = m_palette.CurrentBlockId();
         const bool spawnSlotActive = (currentId == kBlockIdSpawn);
@@ -543,6 +549,9 @@ namespace NS::Game::Editor
             return;
         if (m_imgui != nullptr && m_imgui->WantCaptureKeyboard())
             return;
+        // Object ツールモード中は R をギズモの Rotate ツールが使うので grid の 90° 回転は止める
+        if (m_inputSuppressed)
+            return;
 
         // R を 1 回叩くごとに 90° 回す。 slope も cube も 4 方向スナップ (押しっぱの連続回転はしない)
         const bool rotate =
@@ -577,6 +586,9 @@ namespace NS::Game::Editor
         if (m_input == nullptr || m_level == nullptr)
             return;
         if (m_imgui != nullptr && m_imgui->WantCaptureKeyboard())
+            return;
+        // Object ツールモード中は Ctrl+Z をギズモの変形 undo が使うので grid の undo/redo は止める
+        if (m_inputSuppressed)
             return;
 
         auto& kb = m_input->Keyboard();

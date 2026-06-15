@@ -283,6 +283,34 @@ void LevelEditorScene::OnStart()
     m_cameraRig->Camera().SetActive(false);
     m_cameraRig->Follow().SetActive(false);
 
+    // Object ツールモードでギズモ変形を試せる自由 Transform オブジェクトをテスト用に数個置く
+    // grid ブロックと違い LevelData に属さず、 texture 付き m_playerMaterial で個別 (DrawOpaque) 描画する
+    {
+        constexpr NS::Math::Vector3 kFreeHalfExtents{0.5f, 0.5f, 0.5f};
+        const NS::Math::Vector3 seedPositions[3] = {
+            {2.0f, 2.0f, 0.0f},
+            {-2.0f, 2.0f, 1.0f},
+            {0.0f, 3.0f, -2.0f},
+        };
+        for (const auto& pos : seedPositions)
+        {
+            auto cube = std::make_unique<Block>(m_cubeMesh.get(), m_playerMaterial.get(), kFreeHalfExtents);
+            cube->AttachScene(this);
+            cube->Root().SetPosition(pos);
+            // grid ブロックと一目で区別できるよう橙色に着色する (テスト seed の目印)
+            cube->MeshComp().SetBaseColor(NS::Math::Vector3{1.0f, 0.5f, 0.1f});
+            cube->OnStart();
+            m_freeObjectPtrs.push_back(cube.get());
+            m_freeHalfExtents.push_back(kFreeHalfExtents);
+            m_freeObjects.push_back(std::move(cube));
+        }
+    }
+
+    // ギズモに依存先を注入する。 選択候補は自由オブジェクト + grid solid ブロックを連結して渡す
+    m_gizmo.SetInput(&app->Input());
+    m_gizmo.SetImGui(app->ImGui());
+    RefreshGizmoSelectables();
+
     // 仮 skinned キャラを編集・プレイ両モードで常時表示し、 アニメ再生を画面で確認できるようにする
     // アセットが無ければ skip して通常進行。 後で同じパスに別キャラ (glTF) を置けば差し替わる
     {
@@ -398,6 +426,12 @@ void LevelEditorScene::OnUpdate()
 
     if (app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
     {
+        // Object モードで選択中なら、 Esc はまず選択解除に使い終了させない
+        if (m_mode == Mode::Edit && m_editorToolMode == EditorToolMode::Object && m_gizmo.Selected() != nullptr)
+        {
+            m_gizmo.ClearSelection();
+            return;
+        }
         NS::App::Application::Quit();
         return;
     }
@@ -429,6 +463,8 @@ void LevelEditorScene::OnUpdate()
         water->Root().Snapshot();
     for (auto& deco : m_decorations)
         deco->Root().Snapshot();
+    for (auto& obj : m_freeObjects)
+        obj->Root().Snapshot();
 
     if (editActive)
     {
@@ -437,6 +473,32 @@ void LevelEditorScene::OnUpdate()
         {
             m_editorCameraRig->Root().Snapshot();
             m_editorCameraRig->OnUpdate();
+        }
+
+        // 同時に 1 モードだけが LMB/R/Ctrl+Z を消費する。 Object 中は grid 入力を抑制しギズモへ回す
+        // モード切替は EditorLayer の UI ボタン (SetObjectToolActive) から行う (Tab は Edit↔Play 専用)
+        const bool objectMode = (m_editorToolMode == EditorToolMode::Object);
+        m_gizmo.SetActive(objectMode);
+        m_editor.SetInputSuppressed(objectMode);
+
+        if (objectMode && m_editorCameraRig)
+        {
+            const auto vp = m_editorCameraRig->Camera().ViewProjection();
+            const auto viewport = app->Window().Size();
+            m_gizmo.Tick(vp, viewport);
+
+            // 掴んだら自由化: 選択が grid solid ブロックなら自由 Transform オブジェクトへ昇格する
+            if (NS::Scene::Transform* selected = m_gizmo.Selected())
+            {
+                for (std::size_t bi = 0; bi < m_blocks.size(); ++bi)
+                {
+                    if (m_blocks[bi] && &m_blocks[bi]->Root() == selected)
+                    {
+                        PromoteGridBlockToFree(bi);
+                        break;
+                    }
+                }
+            }
         }
 
         m_editor.Tick();
@@ -763,6 +825,9 @@ void LevelEditorScene::OnRenderScene()
         m_editor.RenderCursorPreview();
         // Toolbar UI を ImGui 経由で描画 (Debug / Development build のみ実機能)
         m_editor.Palette().Render();
+        // Object モードのギズモは最前面 (drawlist) に重ねる
+        if (m_gizmo.IsActive())
+            m_gizmo.Render(ctx.viewProjection, app->Window().Size());
     }
 }
 
@@ -784,6 +849,8 @@ void LevelEditorScene::OnShutdown()
         (*it)->OnEndPlay();
     for (auto it = m_decorations.rbegin(); it != m_decorations.rend(); ++it)
         (*it)->OnEndPlay();
+    for (auto it = m_freeObjects.rbegin(); it != m_freeObjects.rend(); ++it)
+        (*it)->OnEndPlay();
     if (m_animatedModel)
         m_animatedModel->OnEndPlay();
     if (m_player)
@@ -801,6 +868,12 @@ void LevelEditorScene::OnShutdown()
     m_hazards.clear();
     m_waters.clear();
     m_decorations.clear();
+    m_gizmo.ClearSelection();
+    m_freeObjects.clear();
+    m_freeObjectPtrs.clear();
+    m_freeHalfExtents.clear();
+    m_selectablePtrs.clear();
+    m_selectableHalfExtents.clear();
 
     // Skybox / InstanceBatcher / TextureArray は Renderer の DeviceContext を ComPtr で握っているため、
     // Renderer (Application) より先に破棄する必要がある。 m_cubeMesh と同階層で reset
@@ -1004,6 +1077,76 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
         m_player->Shadow().SetCollisionWorld(m_collisionWorld);
         m_player->Movement().SetClimbables(std::span<NS::Scene::PoleComponent* const>{m_polePtrs});
     }
+
+    // m_blocks の pointer が作り直されたので、 ギズモの選択候補 span を必ず貼り直す (dangling 防止)
+    RefreshGizmoSelectables();
+}
+
+void LevelEditorScene::RefreshGizmoSelectables()
+{
+    m_selectablePtrs.clear();
+    m_selectableHalfExtents.clear();
+    m_selectablePtrs.reserve(m_freeObjectPtrs.size() + m_blocks.size());
+    m_selectableHalfExtents.reserve(m_freeHalfExtents.size() + m_blocks.size());
+
+    for (std::size_t i = 0; i < m_freeObjectPtrs.size(); ++i)
+    {
+        m_selectablePtrs.push_back(m_freeObjectPtrs[i]);
+        m_selectableHalfExtents.push_back(m_freeHalfExtents[i]);
+    }
+
+    // grid solid ブロックも掴める。 掴むと PromoteGridBlockToFree で自由オブジェクトに変わる
+    for (const auto& block : m_blocks)
+    {
+        if (!block)
+            continue;
+        m_selectablePtrs.push_back(block.get());
+        m_selectableHalfExtents.push_back(kCellHalfExtents);
+    }
+
+    m_gizmo.SetSelectableObjects(m_selectablePtrs, m_selectableHalfExtents);
+}
+
+void LevelEditorScene::PromoteGridBlockToFree(std::size_t blockIndex)
+{
+    if (blockIndex >= m_blocks.size() || !m_blocks[blockIndex])
+        return;
+
+    // Block は親無しなので local Position == world position。 grid cell に丸めて LevelData と照合する
+    const NS::Math::Vector3 worldPos = m_blocks[blockIndex]->Root().Position();
+    const std::int16_t cx = static_cast<std::int16_t>(std::lround(worldPos.x));
+    const std::int16_t cy = static_cast<std::int16_t>(std::lround(worldPos.y));
+    const std::int16_t cz = static_cast<std::int16_t>(std::lround(worldPos.z));
+
+    // 対応する grid entry の blockId を控えて LevelData から外す。 これで rebuild 後に grid から消える
+    std::uint16_t blockId = NS::Game::Editor::kBlockIdSolid;
+    for (auto it = m_level.blocks.begin(); it != m_level.blocks.end(); ++it)
+    {
+        if (it->x == cx && it->y == cy && it->z == cz)
+        {
+            blockId = it->blockId;
+            m_level.blocks.erase(it);
+            break;
+        }
+    }
+
+    // 同位置・同色の自由 Block を作る。 grid と違い texture 付き m_playerMaterial で個別 (DrawOpaque) 描画する
+    const auto color = NS::Game::Editor::GetBaseColor(blockId);
+    auto cube = std::make_unique<Block>(m_cubeMesh.get(), m_playerMaterial.get(), kCellHalfExtents);
+    cube->AttachScene(this);
+    cube->Root().SetPosition(worldPos);
+    cube->MeshComp().SetBaseColor(NS::Math::Vector3{color.R(), color.G(), color.B()});
+    cube->OnStart();
+    // previous==current に揃えて昇格初フレームの補間飛びを防ぐ
+    cube->Root().Snapshot();
+    NS::Scene::Transform* newSelected = &cube->Root();
+    m_freeObjectPtrs.push_back(cube.get());
+    m_freeHalfExtents.push_back(kCellHalfExtents);
+    m_freeObjects.push_back(std::move(cube));
+
+    // grid を作り直して昇格 cell を消す (rebuild 末尾が選択候補 span を貼り直す)。 選択は新オブジェクトへ移す
+    RebuildBlocksFromLevelData();
+    m_gizmo.SetSelected(newSelected);
 }
 
 void LevelEditorScene::UpdateAnimatedModel()

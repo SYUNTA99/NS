@@ -73,6 +73,9 @@ namespace NS::Game::Editor
         void SetActive(bool active) noexcept { m_active = active; }
         [[nodiscard]] bool IsActive() const noexcept { return m_active; }
 
+        /// Object ツールモード中など、 grid 編集入力 (設置/削除/回転/undo) を一時的に無視させる
+        void SetInputSuppressed(bool suppressed) noexcept { m_inputSuppressed = suppressed; }
+
         /// fixed step での Tick。 cursor 更新 + 入力 → Place / Delete / Rotate / Spawn / Undo / Redo を発火
         void Tick() noexcept;
 
@@ -120,6 +123,7 @@ namespace NS::Game::Editor
         NS::Scene::EditorCameraComponent* m_editorCamera = nullptr;
 
         bool m_active = true;
+        bool m_inputSuppressed = false; // Object ツールモード中は grid 編集入力を無視する
         bool m_levelDirty = true; // 初期 true。 初回 LevelEditorScene::OnUpdate で seed level の rebuild を走らせる
         std::uint8_t m_currentRotation = 0;
 

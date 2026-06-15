@@ -45,4 +45,6 @@ private:
     /// 解決済 RenderSettings の最終値と各フィールドの出所 (default / scene / object) を表示する
     /// 出所は scene / object override の has_value 突き合わせで逆算する。 Release では #if で除外
     static void RenderRenderSettingsPanel(LevelEditorScene& scene) noexcept;
+    /// 編集モード中に Build (グリッド設置) ⇔ Object (ギズモ変形) を切替える UI ボタンを描く
+    static void RenderToolModePanel(LevelEditorScene& scene) noexcept;
 };

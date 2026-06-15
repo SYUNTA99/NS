@@ -55,7 +55,10 @@ void EditorLayer::OnRender()
         return;
 
     if (scene->CurrentMode() == LevelEditorScene::Mode::Edit)
+    {
         scene->Editor().RenderFileBrowser();
+        RenderToolModePanel(*scene);
+    }
     else if (scene->Play().paused)
         RenderPauseModal(*scene);
 
@@ -177,6 +180,31 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorScene& scene) noexcept
                     static_cast<double>(resolved.clearColor.A()),
                     provenance(sceneOver.clearColor.has_value(), objOver.clearColor.has_value()));
         ImGui::TextDisabled("clearColor / vsync のシーン上書きは非対応 (lighting 3 種のみ階層対応)");
+    }
+    ImGui::End();
+#else
+    (void)scene;
+#endif
+}
+
+void EditorLayer::RenderToolModePanel(LevelEditorScene& scene) noexcept
+{
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+    const auto vp = ImGui::GetMainViewport();
+    if (vp != nullptr)
+        ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + 10.0f, vp->WorkPos.y + 10.0f), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Edit Mode"))
+    {
+        const bool objectActive = scene.ObjectToolActive();
+        if (ImGui::RadioButton("Build (Grid place)", !objectActive))
+            scene.SetObjectToolActive(false);
+        if (ImGui::RadioButton("Object (Gizmo)", objectActive))
+            scene.SetObjectToolActive(true);
+        ImGui::Separator();
+        if (objectActive)
+            ImGui::TextUnformatted("Click orange box to select. Q/W/E/R = Select/Move/Rotate/Scale");
+        else
+            ImGui::TextUnformatted("Left click = place block");
     }
     ImGui::End();
 #else
