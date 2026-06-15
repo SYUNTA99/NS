@@ -47,6 +47,12 @@ namespace NS::Scene
         /// Material instance ごとの色味 (Player=赤系 / Block=灰色系の色分け)。lighting とは別系統の個体色
         void SetBaseColor(const NS::Math::Vector3& color) noexcept { m_baseColor = color; }
 
+        /// 描画に使う Material を差し替える。material=nullptr で Draw は no-op になる
+        /// bucket は Draw 時に Material::Blend() から都度判定するため opaque↔transparent も即反映される
+        void SetMaterial(NS::Graphics::Material* material) noexcept { m_material = material; }
+        /// 現在の Material (非所有)。未設定なら nullptr
+        [[nodiscard]] NS::Graphics::Material* GetMaterial() const noexcept { return m_material; }
+
         /// 個体段の lighting 上書き。空なら scene 解決値 (ctx.resolvedSettings) がそのまま使われる
         /// 描画時に Resolve(ctx.resolvedSettings, m_objectOverride) で個体段を解決する
         void SetRenderOverride(const NS::Graphics::RenderSettingsOverride& over) noexcept { m_objectOverride = over; }
