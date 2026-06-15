@@ -1,0 +1,6 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/unlit.ps.hlsl",
+  "baseColor": [0.95, 0.45, 0.1],
+  "blend": "Opaque"
+}

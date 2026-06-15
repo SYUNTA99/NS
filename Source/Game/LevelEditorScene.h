@@ -3,6 +3,7 @@
 #include "Framework/Graphics/RenderSettings.h"
 #include "Framework/Math/Math.h"
 #include "Framework/Physics/SweptTriangle.h"
+#include "Framework/Scene/MaterialLibrary.h"
 #include "Framework/Scene/SceneBase.h"
 #include "Game/CameraRig.h"
 #include "Game/Editor/EditorMode.h"
@@ -210,6 +211,11 @@ private:
     EditorToolMode m_editorToolMode = EditorToolMode::Build;
 
     NS::Game::Editor::GizmoEditor m_gizmo{};
+
+    // .mat からマテリアルを読み込みキャッシュする。 free オブジェクトより先に宣言し、 暗黙デストラクタの
+    // 逆順破棄でも free オブジェクト (Material* を参照) より後に破棄されるよう順序を保証する
+    std::unique_ptr<NS::Scene::MaterialLibrary> m_materialLibrary;
+
     // Object モードで変形する自由 Transform オブジェクト (v1 はテスト seed)。 LevelData には属さない
     std::vector<std::unique_ptr<Block>> m_freeObjects;
     std::vector<NS::Scene::GameObject*> m_freeObjectPtrs;

@@ -306,6 +306,39 @@ void LevelEditorScene::OnStart()
         }
     }
 
+    // .mat から読んだ別々のマテリアルを並べて見た目の差を実証する (lit テクスチャ / flat unlit / 手続き grid)
+    m_materialLibrary = std::make_unique<NS::Scene::MaterialLibrary>(exeDir);
+    {
+        constexpr NS::Math::Vector3 kFreeHalfExtents{0.5f, 0.5f, 0.5f};
+        const struct
+        {
+            const char* file;
+            NS::Math::Vector3 position;
+        } demoMaterials[] = {
+            {"stone.mat", {-2.0f, 2.0f, 3.0f}},
+            {"flat.mat", {0.0f, 2.0f, 3.0f}},
+            {"grid.mat", {2.0f, 2.0f, 3.0f}},
+        };
+        for (const auto& demo : demoMaterials)
+        {
+            const auto loaded = m_materialLibrary->Load(exeDir / "Assets" / "Materials" / demo.file);
+            if (loaded.material == nullptr)
+            {
+                NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelEditorScene: {} 読込失敗、 実証キューブは skip", demo.file);
+                continue;
+            }
+            auto cube = std::make_unique<Block>(m_cubeMesh.get(), loaded.material, kFreeHalfExtents);
+            cube->AttachScene(this);
+            cube->Root().SetPosition(demo.position);
+            cube->MeshComp().SetBaseColor(loaded.baseColor);
+            cube->OnStart();
+            cube->Root().Snapshot();
+            m_freeObjectPtrs.push_back(cube.get());
+            m_freeHalfExtents.push_back(kFreeHalfExtents);
+            m_freeObjects.push_back(std::move(cube));
+        }
+    }
+
     // ギズモに依存先を注入する。 選択候補は自由オブジェクト + grid solid ブロックを連結して渡す
     m_gizmo.SetInput(&app->Input());
     m_gizmo.SetImGui(app->ImGui());
@@ -874,6 +907,10 @@ void LevelEditorScene::OnShutdown()
     m_freeHalfExtents.clear();
     m_selectablePtrs.clear();
     m_selectableHalfExtents.clear();
+
+    // MaterialLibrary の Material / Shader / Texture も device リソースを握るため Renderer より先に破棄する
+    // (参照する free オブジェクトは上で破棄済)
+    m_materialLibrary.reset();
 
     // Skybox / InstanceBatcher / TextureArray は Renderer の DeviceContext を ComPtr で握っているため、
     // Renderer (Application) より先に破棄する必要がある。 m_cubeMesh と同階層で reset
