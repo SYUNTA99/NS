@@ -1,8 +1,7 @@
 #pragma once
 
-#include "Framework/Scene/Components/CameraComponent.h"
-#include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Components/ThirdPersonFollowComponent.h"
+#include "Framework/Scene/GameObject.h"
 
 namespace NS::Platform
 {
@@ -29,10 +28,8 @@ public:
     CameraRig(CameraRig&&) = delete;
     CameraRig& operator=(CameraRig&&) = delete;
 
-    [[nodiscard]] NS::Scene::CameraComponent& Camera() noexcept { return *m_camera; }
     [[nodiscard]] NS::Scene::ThirdPersonFollowComponent& Follow() noexcept { return *m_follow; }
 
 private:
-    NS::Scene::CameraComponent* m_camera = nullptr;
     NS::Scene::ThirdPersonFollowComponent* m_follow = nullptr;
 };

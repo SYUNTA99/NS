@@ -7,7 +7,7 @@
 ///        FOV は CameraComponent 側が所有する
 
 #include "Framework/Math/Math.h"
-#include "Framework/Scene/Component.h"
+#include "Framework/Scene/Components/VirtualCameraComponent.h"
 
 namespace NS::Platform
 {
@@ -16,12 +16,12 @@ namespace NS::Platform
 
 namespace NS::Scene
 {
-    class CameraComponent;
     class CharacterMovementComponent;
     class Transform;
     class GameObject;
 
-    class ThirdPersonFollowComponent : public Component
+    /// 実カメラは持たず、追従姿勢を pose として返す follow 仮想カメラ。CameraBrain が実カメラへ書く
+    class ThirdPersonFollowComponent : public VirtualCameraComponent
     {
     public:
         /// target を受け取って構築する
@@ -29,9 +29,6 @@ namespace NS::Scene
 
         void SetTarget(Transform* target) noexcept;
         [[nodiscard]] Transform* Target() const noexcept { return m_target; }
-
-        /// 出力先 Camera を注入。null では OnUpdate は何もしない
-        void SetCamera(CameraComponent* camera) noexcept;
 
         /// 右スティック / マウス回転の入力ソース。null では旋回 0
         void SetInput(NS::Platform::Input* input) noexcept;
@@ -63,15 +60,14 @@ namespace NS::Scene
         [[nodiscard]] float Yaw() const noexcept { return m_yaw; }
         [[nodiscard]] float Pitch() const noexcept { return m_pitch; }
 
-        /// fixed step で yaw/pitch・distance spring を更新。Camera 位置は ApplyCameraTransform に委ねる (ガタつき回避)
+        /// fixed step で yaw/pitch・distance spring を更新。最終姿勢は EvaluatePose が返す (ガタつき回避)
         void OnUpdate() override;
 
-        /// Render 時に呼ぶ。alpha で補間した Player position に追随して Camera を更新する
-        void ApplyCameraTransform(float alpha) noexcept;
+        /// 補間 target (alpha) を追う最終姿勢を返す。Brain が選択時に実カメラへ書く (旧 ApplyCameraTransform)
+        [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
     private:
         Transform* m_target = nullptr;
-        CameraComponent* m_camera = nullptr;
         NS::Platform::Input* m_input = nullptr;
         const CharacterMovementComponent* m_movement = nullptr;
 

@@ -8,7 +8,6 @@
 /// `CameraRig` (Player 追従) と並列に LevelEditorScene が所有し、
 /// mode toggle で active な側を切替える
 
-#include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/Scene/Components/EditorCameraComponent.h"
 #include "Framework/Scene/GameObject.h"
 
@@ -23,10 +22,8 @@ public:
     EditorCameraRig(EditorCameraRig&&) = delete;
     EditorCameraRig& operator=(EditorCameraRig&&) = delete;
 
-    [[nodiscard]] NS::Scene::CameraComponent& Camera() noexcept { return *m_camera; }
     [[nodiscard]] NS::Scene::EditorCameraComponent& EditorCam() noexcept { return *m_editorCam; }
 
 private:
-    NS::Scene::CameraComponent* m_camera = nullptr;
     NS::Scene::EditorCameraComponent* m_editorCam = nullptr;
 };

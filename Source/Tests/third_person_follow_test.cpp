@@ -1,16 +1,14 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Core/Clock.h>
-#include <Framework/Scene/Components/CameraComponent.h>
-#include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Components/ThirdPersonFollowComponent.h>
+#include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Transform.h>
 
 #include <cmath>
 
 namespace
 {
-    using NS::Scene::CameraComponent;
     using NS::Scene::GameObject;
     using NS::Scene::ThirdPersonFollowComponent;
 
@@ -30,7 +28,7 @@ TEST_F(ThirdPersonFollowTest, ConstructsWithNullTarget)
     EXPECT_TRUE(follow.IsActive());
 }
 
-TEST_F(ThirdPersonFollowTest, OnUpdateNoOpWhenCameraIsNull)
+TEST_F(ThirdPersonFollowTest, OnUpdateRunsWhenActive)
 {
     GameObject obj;
     auto& follow = *obj.AddComponent<ThirdPersonFollowComponent>(&obj.Root());
@@ -38,45 +36,33 @@ TEST_F(ThirdPersonFollowTest, OnUpdateNoOpWhenCameraIsNull)
     SUCCEED();
 }
 
-TEST_F(ThirdPersonFollowTest, OnUpdateNoOpWhenTargetIsNull)
+TEST_F(ThirdPersonFollowTest, EvaluatePoseFallbackWhenTargetIsNull)
 {
-    CameraComponent cc;
     ThirdPersonFollowComponent follow(nullptr);
-    follow.SetCamera(&cc);
-
-    const auto posBefore = cc.Position();
     follow.OnUpdate();
-    const auto posAfter = cc.Position();
-
-    EXPECT_FLOAT_EQ(posBefore.x, posAfter.x);
-    EXPECT_FLOAT_EQ(posBefore.y, posAfter.y);
-    EXPECT_FLOAT_EQ(posBefore.z, posAfter.z);
+    // target が無い時は EvaluatePose が既定 pose を返す (実カメラは動かない)
+    const auto pose = follow.EvaluatePose(1.0f);
+    EXPECT_FLOAT_EQ(pose.position.z, -5.0f);
 }
 
-TEST_F(ThirdPersonFollowTest, UpdatesCameraPositionBehindTarget)
+TEST_F(ThirdPersonFollowTest, EvaluatePosePlacesCameraBehindTarget)
 {
     GameObject obj;
     obj.Root().SetPosition({0.0f, 0.0f, 0.0f});
 
-    CameraComponent cc;
     auto& follow = *obj.AddComponent<ThirdPersonFollowComponent>(&obj.Root());
-    follow.SetCamera(&cc);
     follow.SetDistance(5.0f);
 
     for (int i = 0; i < 60; ++i)
         follow.OnUpdate();
 
-    // OnUpdate は state mutation のみ (yaw/pitch/distance)、 camera position は
-    // ApplyCameraTransform で render frame ごとに反映する設計 (jitter 回避)
-    follow.ApplyCameraTransform(1.0f);
+    // OnUpdate は state mutation のみ (yaw/pitch/distance)、 最終姿勢は EvaluatePose が返す (jitter 回避)
+    const auto pose = follow.EvaluatePose(1.0f);
 
-    const auto pos = cc.Position();
-    EXPECT_NEAR(pos.x, 0.0f, 0.1f);
-    EXPECT_GT(pos.y, 1.0f);
-    EXPECT_LT(pos.z, -3.0f);
-
-    const auto tgt = cc.Target();
-    EXPECT_NEAR(tgt.y, 1.2f, 0.01f);
+    EXPECT_NEAR(pose.position.x, 0.0f, 0.1f);
+    EXPECT_GT(pose.position.y, 1.0f);
+    EXPECT_LT(pose.position.z, -3.0f);
+    EXPECT_NEAR(pose.target.y, 1.2f, 0.01f);
 }
 
 TEST_F(ThirdPersonFollowTest, SensitivityAndInvertSettersPersist)
@@ -103,9 +89,7 @@ TEST_F(ThirdPersonFollowTest, SetDistanceSyncsCurrentAndDesired)
 TEST_F(ThirdPersonFollowTest, PitchIsClampedAfterUpdate)
 {
     GameObject obj;
-    CameraComponent cc;
     auto& follow = *obj.AddComponent<ThirdPersonFollowComponent>(&obj.Root());
-    follow.SetCamera(&cc);
 
     for (int i = 0; i < 200; ++i)
         follow.OnUpdate();

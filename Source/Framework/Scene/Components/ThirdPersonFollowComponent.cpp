@@ -4,7 +4,6 @@
 #include "Framework/Platform/Gamepad.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Mouse.h"
-#include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/Scene/Components/CharacterMovementComponent.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
@@ -26,16 +25,12 @@ namespace NS::Scene
 {
 
     ThirdPersonFollowComponent::ThirdPersonFollowComponent(Transform* target) noexcept
-        : Component(static_cast<int>(NS::Scene::TickPriority::Camera)), m_target(target)
+        : VirtualCameraComponent(static_cast<int>(NS::Scene::TickPriority::Camera)), m_target(target)
     {}
 
     void ThirdPersonFollowComponent::SetTarget(Transform* target) noexcept
     {
         m_target = target;
-    }
-    void ThirdPersonFollowComponent::SetCamera(CameraComponent* camera) noexcept
-    {
-        m_camera = camera;
     }
     void ThirdPersonFollowComponent::SetInput(NS::Platform::Input* input) noexcept
     {
@@ -94,7 +89,7 @@ namespace NS::Scene
     void ThirdPersonFollowComponent::OnUpdate()
     {
         const float dt = NS::Core::FrameTimer::FixedDelta();
-        if (!IsActive() || m_camera == nullptr || m_target == nullptr || dt <= 0.0f)
+        if (!IsActive() || m_target == nullptr || dt <= 0.0f)
             return;
 
         if (m_input != nullptr)
@@ -134,10 +129,12 @@ namespace NS::Scene
         m_distance = SpringApproach(m_distance, m_desiredDistance, m_springOmega, dt);
     }
 
-    void ThirdPersonFollowComponent::ApplyCameraTransform(float alpha) noexcept
+    CameraPose ThirdPersonFollowComponent::EvaluatePose(float alpha) const noexcept
     {
-        if (!IsActive() || m_camera == nullptr || m_target == nullptr)
-            return;
+        if (m_target == nullptr)
+            return MakePose(NS::Math::Vector3{0.0f, 0.0f, -5.0f},
+                            NS::Math::Vector3{0.0f, 0.0f, 0.0f},
+                            NS::Math::Vector3{0.0f, 1.0f, 0.0f});
 
         const float cy = std::cos(m_yaw);
         const float sy = std::sin(m_yaw);
@@ -154,8 +151,6 @@ namespace NS::Scene
             headPos.z - forward.z * m_distance,
         };
 
-        m_camera->SetPosition(camPos);
-        m_camera->SetTarget(headPos);
-        m_camera->SetUp({0.0f, 1.0f, 0.0f});
+        return MakePose(camPos, headPos, NS::Math::Vector3{0.0f, 1.0f, 0.0f});
     }
 } // namespace NS::Scene

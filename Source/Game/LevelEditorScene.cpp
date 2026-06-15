@@ -8,6 +8,8 @@
 #include "Game/Blocks/WaterBlock.h"
 #include "Game/Player.h"
 
+#include "Framework/Scene/Components/CameraBrainComponent.h"
+#include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/PoleComponent.h"
 #include "Framework/Scene/GameObject.h"
@@ -232,12 +234,8 @@ void LevelEditorScene::OnStart()
 
     m_cameraRig = std::make_unique<CameraRig>(&app->Input(), &m_player->Root(), &m_player->Movement());
     m_cameraRig->AttachScene(this);
-
-    auto& camera = m_cameraRig->Camera();
-    camera.SetAspectRatioFromRenderer(renderer);
-    camera.SetNearPlane(0.1f);
-    camera.SetFarPlane(100.0f);
-    camera.SetUp({0.0f, 1.0f, 0.0f});
+    // follow vcam の投影設定 (near 0.1 / fov 60 は既定、 play は遠景を 100 までに抑える)
+    m_cameraRig->Follow().SetFarPlane(100.0f);
 
     m_player->OnStart();
     m_cameraRig->OnStart();
@@ -249,12 +247,10 @@ void LevelEditorScene::OnStart()
     m_editorCameraRig->EditorCam().SetInput(&app->Input());
     m_editorCameraRig->EditorCam().SetImGui(app->ImGui());
 
-    auto& editorCam = m_editorCameraRig->Camera();
-    editorCam.SetAspectRatioFromRenderer(renderer);
-    editorCam.SetNearPlane(0.1f);
-    editorCam.SetFarPlane(200.0f);
-    editorCam.SetFovY(NS::Math::ToRadians(NS::Math::Degrees{60.0f}));
-    editorCam.SetUp({0.0f, 1.0f, 0.0f});
+    // free-fly vcam の投影設定 (編集は遠景を 200 まで見せる、 near 0.1 は既定)
+    m_editorCameraRig->EditorCam().SetNearPlane(0.1f);
+    m_editorCameraRig->EditorCam().SetFarPlane(200.0f);
+    m_editorCameraRig->EditorCam().SetFovY(NS::Math::ToRadians(NS::Math::Degrees{60.0f}));
 
     // 初期視点は spawn 位置を中心に少し引いた位置から見下ろす
     const NS::Math::Vector3 spawnPos{
@@ -265,12 +261,24 @@ void LevelEditorScene::OnStart()
 
     m_editorCameraRig->OnStart();
 
+    // 実カメラ 1 個 + Brain を載せる host を作り、 follow / free-fly vcam を登録する
+    // 描画 / aspect / PlayerInput forward は全て Brain 出力カメラへ集約する
+    m_cameraHost = std::make_unique<NS::Scene::GameObject>();
+    m_mainCamera = m_cameraHost->AddComponent<NS::Scene::CameraComponent>();
+    m_brain = m_cameraHost->AddComponent<NS::Scene::CameraBrainComponent>();
+    m_brain->SetCamera(m_mainCamera);
+    m_mainCamera->SetAspectRatioFromRenderer(renderer);
+    m_mainCamera->SetUp({0.0f, 1.0f, 0.0f});
+    m_brain->AddVirtualCamera(&m_cameraRig->Follow());
+    m_brain->AddVirtualCamera(&m_editorCameraRig->EditorCam());
+    m_cameraHost->AttachScene(this);
+    m_cameraHost->OnStart();
+
     // EditorMode に依存先を注入する。 mode toggle が入るまでは常時 active
     m_editor.SetLevel(&m_level);
     m_editor.SetInput(&app->Input());
     m_editor.SetImGui(app->ImGui());
-    m_editor.SetCameraComponent(&m_editorCameraRig->Camera());
-    m_editor.SetEditorCamera(&m_editorCameraRig->EditorCam());
+    m_editor.SetCameraComponent(m_mainCamera);
     m_editor.SetActive(true);
     // OnStart で手動 rebuild 済なので、 初回 OnUpdate の二重 rebuild を抑制
     m_editor.ClearLevelDirty();
@@ -280,7 +288,7 @@ void LevelEditorScene::OnStart()
     m_player->MeshComp().SetActive(false);
     m_player->Movement().SetActive(false);
     m_player->InputComp().SetActive(false);
-    m_cameraRig->Camera().SetActive(false);
+    // follow vcam を休止 (起動は編集モード = free-fly vcam が active)。Brain が active な vcam を選ぶ
     m_cameraRig->Follow().SetActive(false);
 
     // .mat を読み込み / キャッシュする。 自由オブジェクトの材質は RebuildBlocksFromLevelData が
@@ -421,15 +429,8 @@ void LevelEditorScene::OnUpdate()
 
     // Application が Renderer::Resize を排他で握っているため、 Camera の aspect ratio は
     // Renderer の現在 Size から毎フレーム pull する (callback 上書きで競合させない)
-    if (editActive)
-    {
-        if (m_editorCameraRig)
-            m_editorCameraRig->Camera().SetAspectRatioFromRenderer(app->Renderer());
-    }
-    else if (m_cameraRig)
-    {
-        m_cameraRig->Camera().SetAspectRatioFromRenderer(app->Renderer());
-    }
+    if (m_mainCamera)
+        m_mainCamera->SetAspectRatioFromRenderer(app->Renderer());
 
     // 各ブロック GameObject の Snapshot は edit / play 共通 (静的 display object なので常時)
     for (auto& block : m_blocks)
@@ -456,6 +457,10 @@ void LevelEditorScene::OnUpdate()
             m_editorCameraRig->OnUpdate();
         }
 
+        // free-fly 更新後に実カメラへ反映し、 ギズモ / 編集の ray-pick が当フレームの視点を使えるようにする
+        if (m_brain)
+            m_brain->Evaluate(1.0f);
+
         // 同時に 1 モードだけが LMB/R/Ctrl+Z を消費する。 Object 中は grid 入力を抑制しギズモへ回す
         // モード切替は EditorLayer の UI ボタン (SetObjectToolActive) から行う (Tab は Edit↔Play 専用)
         const bool objectMode = (m_editorToolMode == EditorToolMode::Object);
@@ -464,7 +469,7 @@ void LevelEditorScene::OnUpdate()
 
         if (objectMode && m_editorCameraRig)
         {
-            const auto vp = m_editorCameraRig->Camera().ViewProjection();
+            const auto vp = m_brain->ViewProjection();
             const auto viewport = app->Window().Size();
             m_gizmo.Tick(vp, viewport);
 
@@ -521,8 +526,8 @@ void LevelEditorScene::OnUpdate()
         if (m_player)
         {
             NS::Math::Vector3 camForward{0.0f, 0.0f, 1.0f};
-            if (m_cameraRig)
-                camForward = m_cameraRig->Camera().ForwardHorizontal();
+            if (m_brain)
+                camForward = m_brain->ForwardHorizontal();
             m_player->InputComp().SetCameraForward(camForward);
             m_player->OnUpdate();
 
@@ -613,11 +618,9 @@ void LevelEditorScene::EnterPlay() noexcept
         m_player->Root().SetPosition(m_play.playerPosition);
         m_player->Movement().ResetState();
     }
+    // follow vcam を active 化 (free-fly は EnterPlay 冒頭で休止済)。Brain が follow を選んで実カメラへ書く
     if (m_cameraRig)
-    {
-        m_cameraRig->Camera().SetActive(true);
         m_cameraRig->Follow().SetActive(true);
-    }
 }
 
 void LevelEditorScene::EnterEdit() noexcept
@@ -638,11 +641,9 @@ void LevelEditorScene::EnterEdit() noexcept
         m_player->Movement().SetActive(false);
         m_player->InputComp().SetActive(false);
     }
+    // follow vcam を休止 (free-fly は EnterEdit 冒頭で active 化済)。Brain が free-fly を選ぶ
     if (m_cameraRig)
-    {
-        m_cameraRig->Camera().SetActive(false);
         m_cameraRig->Follow().SetActive(false);
-    }
 }
 
 NS::Graphics::RenderSettingsOverride LevelEditorScene::BuildSceneOverride()
@@ -682,25 +683,16 @@ void LevelEditorScene::OnRenderScene()
     ctx.alpha = NS::Core::FrameTimer::Alpha();
 
     const bool editActive = (m_mode == Mode::Edit);
-    if (editActive)
-    {
-        if (m_editorCameraRig == nullptr)
-            return;
-        ctx.viewProjection = m_editorCameraRig->Camera().ViewProjection();
-    }
-    else
-    {
-        if (m_cameraRig == nullptr)
-            return;
-        // fixed step で SetPosition すると相対位置が discrete になり jitter するため補間を先に適用する
-        m_cameraRig->Follow().ApplyCameraTransform(ctx.alpha);
-        ctx.viewProjection = m_cameraRig->Camera().ViewProjection();
-    }
+    if (m_brain == nullptr || m_mainCamera == nullptr)
+        return;
 
-    // 半透明 back-to-front ソート用に active camera の world 座標を渡す (view 行列の逆変換の平行移動成分)
-    const NS::Math::Matrix camView =
-        editActive ? m_editorCameraRig->Camera().Camera().View() : m_cameraRig->Camera().Camera().View();
-    ctx.cameraPosition = camView.Invert().Translation();
+    // 有効な vcam (edit=free-fly / play=follow) を選び、 alpha 補間で実カメラへ書く
+    // follow は補間 target を追うのでここで alpha を渡す (旧 ApplyCameraTransform 相当の補間)
+    m_brain->Evaluate(ctx.alpha);
+    ctx.viewProjection = m_brain->ViewProjection();
+
+    // 半透明 back-to-front ソート用に実カメラの world 座標を渡す (view 行列の逆変換の平行移動成分)
+    ctx.cameraPosition = m_mainCamera->Camera().View().Invert().Translation();
 
     // 基底が BuildSceneOverride() を Resolve するので、 theme override が scene 解決値として ctx に載る
     // mesh 経路は ctx 経由で pull、 block 経路はこの解決値を FrameCB に詰めて同一値を流す
@@ -790,7 +782,7 @@ void LevelEditorScene::OnRenderScene()
             }
         }
 
-        const auto& cam = editActive ? m_editorCameraRig->Camera().Camera() : m_cameraRig->Camera().Camera();
+        const auto& cam = m_mainCamera->Camera();
         NS::Math::Matrix viewNoTranslate = cam.View();
         viewNoTranslate._41 = 0.0f;
         viewNoTranslate._42 = 0.0f;
@@ -816,6 +808,8 @@ void LevelEditorScene::OnRenderScene()
 
 void LevelEditorScene::OnShutdown()
 {
+    if (m_cameraHost)
+        m_cameraHost->OnEndPlay();
     if (m_editorCameraRig)
         m_editorCameraRig->OnEndPlay();
     if (m_cameraRig)
@@ -839,6 +833,10 @@ void LevelEditorScene::OnShutdown()
     if (m_player)
         m_player->OnEndPlay();
 
+    // Brain は vcam を非所有参照するので、 rig より先に host を畳んで dangling を避ける
+    m_cameraHost.reset();
+    m_mainCamera = nullptr;
+    m_brain = nullptr;
     m_editorCameraRig.reset();
     m_cameraRig.reset();
     m_animatedModel.reset();

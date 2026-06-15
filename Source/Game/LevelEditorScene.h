@@ -37,6 +37,8 @@ namespace NS::Scene
     class MeshRendererComponent;
     class SkeletalAnimationComponent;
     class Transform;
+    class CameraComponent;
+    class CameraBrainComponent;
 } // namespace NS::Scene
 
 namespace NS::Scene
@@ -242,6 +244,11 @@ private:
 
     std::unique_ptr<CameraRig> m_cameraRig;
     std::unique_ptr<EditorCameraRig> m_editorCameraRig;
+
+    // 実カメラ 1 個 + Brain を載せる host。Brain が follow / free-fly vcam から選んで実カメラへ書く
+    std::unique_ptr<NS::Scene::GameObject> m_cameraHost;
+    NS::Scene::CameraComponent* m_mainCamera = nullptr;
+    NS::Scene::CameraBrainComponent* m_brain = nullptr;
 
     std::vector<NS::Math::AABB> m_collisionWorld;
     std::vector<NS::Physics::Triangle> m_collisionTriangles;

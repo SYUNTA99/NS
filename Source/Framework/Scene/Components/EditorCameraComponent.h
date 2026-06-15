@@ -10,7 +10,7 @@
 /// pitch / distance は clamp で有限範囲に強制、 NaN / 巨大値での render crash を防ぐ
 
 #include "Framework/Math/Math.h"
-#include "Framework/Scene/Component.h"
+#include "Framework/Scene/Components/VirtualCameraComponent.h"
 
 #include <cstdint>
 
@@ -25,21 +25,21 @@ namespace NS::UI
 
 namespace NS::Scene
 {
-    class CameraComponent;
     class GameObject;
 
-    /// 編集モード free-fly camera。 ThirdPersonFollowComponent と並列の Component で、
-    /// mode 切替時に `SetActive(bool)` で on/off する
-    class EditorCameraComponent : public Component
+    /// 編集モード free-fly 仮想カメラ。実カメラは持たず free-fly 姿勢を pose として返す
+    /// mode 切替時に `SetActive(bool)` で on/off し、CameraBrain が選択して実カメラへ書く
+    class EditorCameraComponent : public VirtualCameraComponent
     {
     public:
         EditorCameraComponent() noexcept;
 
-        void SetCamera(CameraComponent* camera) noexcept;
         void SetInput(NS::Platform::Input* input) noexcept;
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept;
 
         void OnUpdate() override;
+        /// free-fly の現在姿勢を返す (alpha は使わない)。Brain が選択時に実カメラへ書く
+        [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
         // Programmatic API (test / mode toggle で state save/restore)
         void SetYawPitch(float yaw, float pitch) noexcept;
@@ -65,7 +65,6 @@ namespace NS::Scene
         static constexpr float kPitchMax = +1.553f; // +89°
 
     private:
-        CameraComponent* m_camera = nullptr;
         NS::Platform::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
 

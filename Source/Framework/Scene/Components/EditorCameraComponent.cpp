@@ -2,7 +2,6 @@
 
 #include "Framework/Core/Clock.h"
 #include "Framework/Platform/Input.h"
-#include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/UI/ImGuiContext.h"
 
 #include <algorithm>
@@ -11,12 +10,9 @@
 namespace NS::Scene
 {
 
-    EditorCameraComponent::EditorCameraComponent() noexcept : Component(static_cast<int>(TickPriority::Camera)) {}
-
-    void EditorCameraComponent::SetCamera(CameraComponent* camera) noexcept
-    {
-        m_camera = camera;
-    }
+    EditorCameraComponent::EditorCameraComponent() noexcept
+        : VirtualCameraComponent(static_cast<int>(TickPriority::Camera))
+    {}
 
     void EditorCameraComponent::SetInput(NS::Platform::Input* input) noexcept
     {
@@ -128,12 +124,11 @@ namespace NS::Scene
 
         // distance の critically-damped spring smoothing
         m_distance += (m_desiredDistance - m_distance) * std::min(1.0f, m_springOmega * dt);
+    }
 
-        if (m_camera != nullptr)
-        {
-            m_camera->SetPosition(ComputeCameraPosition());
-            m_camera->SetTarget(m_center);
-        }
+    CameraPose EditorCameraComponent::EvaluatePose(float) const noexcept
+    {
+        return MakePose(ComputeCameraPosition(), m_center, NS::Math::Vector3{0.0f, 1.0f, 0.0f});
     }
 
     namespace EditorGridMath

@@ -27,7 +27,6 @@ namespace NS::UI
 namespace NS::Scene
 {
     class CameraComponent;
-    class EditorCameraComponent;
 } // namespace NS::Scene
 namespace NS::Game::Level
 {
@@ -68,7 +67,6 @@ namespace NS::Game::Editor
         void SetInput(NS::Platform::Input* input) noexcept { m_input = input; }
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
         void SetCameraComponent(NS::Scene::CameraComponent* camera) noexcept { m_camera = camera; }
-        void SetEditorCamera(NS::Scene::EditorCameraComponent* editorCam) noexcept { m_editorCamera = editorCam; }
 
         void SetActive(bool active) noexcept { m_active = active; }
         [[nodiscard]] bool IsActive() const noexcept { return m_active; }
@@ -120,7 +118,6 @@ namespace NS::Game::Editor
         NS::Platform::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
         NS::Scene::CameraComponent* m_camera = nullptr;
-        NS::Scene::EditorCameraComponent* m_editorCamera = nullptr;
 
         bool m_active = true;
         bool m_inputSuppressed = false; // Object ツールモード中は grid 編集入力を無視する
