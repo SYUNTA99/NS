@@ -119,3 +119,25 @@ TEST_F(FileSystemLoggerTest, ListFilesReturnsEmptyForMissingDirectory)
     const auto files = NS::Core::FileSystem::ListFiles(dir, ".nslvl");
     EXPECT_TRUE(files.empty());
 }
+
+TEST(NsCoreFileSystem, ListDirectoriesReturnsOnlySubdirectories)
+{
+    const auto root = MakeTempPath("listdirs");
+    ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(root / "sub1"));
+    ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(root / "sub2"));
+    const std::vector<std::byte> data = {std::byte{0x01}};
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(root / "file.txt", data));
+
+    const auto dirs = NS::Core::FileSystem::ListDirectories(root);
+    EXPECT_EQ(dirs.size(), 2u);
+    for (const auto& p : dirs)
+        EXPECT_TRUE(std::filesystem::is_directory(p));
+
+    std::filesystem::remove_all(root);
+}
+
+TEST_F(FileSystemLoggerTest, ListDirectoriesReturnsEmptyForMissingDirectory)
+{
+    const auto dir = MakeTempPath("listdirs_missing");
+    EXPECT_TRUE(NS::Core::FileSystem::ListDirectories(dir).empty());
+}

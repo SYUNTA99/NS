@@ -44,6 +44,9 @@ namespace NS::Core
         [[nodiscard]] static std::vector<std::filesystem::path> ListFiles(const std::filesystem::path& dir,
                                                                           std::string_view extension = {});
 
+        /// `dir` 直下のサブディレクトリを列挙する。失敗時は空 vector + NS_LOG_ERROR。戻り順は未規定
+        [[nodiscard]] static std::vector<std::filesystem::path> ListDirectories(const std::filesystem::path& dir);
+
         /// 実行ファイルが置かれているディレクトリの絶対パス
         [[nodiscard]] static std::filesystem::path GetExeDirectory();
     };

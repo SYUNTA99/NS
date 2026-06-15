@@ -164,6 +164,36 @@ namespace NS::Core
         return result;
     }
 
+    std::vector<std::filesystem::path> FileSystem::ListDirectories(const std::filesystem::path& dir)
+    {
+        std::vector<std::filesystem::path> result;
+
+        std::error_code ec;
+        std::filesystem::directory_iterator it(dir, ec);
+        if (ec)
+        {
+            NS_LOG_ERROR(
+                LogCat::Core, "FileSystem::ListDirectories failed to open: {} ({})", dir.string(), ec.message());
+            return result;
+        }
+
+        const std::filesystem::directory_iterator end;
+        for (; it != end; it.increment(ec))
+        {
+            if (ec)
+            {
+                NS_LOG_ERROR(
+                    LogCat::Core, "FileSystem::ListDirectories iteration failed: {} ({})", dir.string(), ec.message());
+                break;
+            }
+            std::error_code entryEc;
+            if (!it->is_directory(entryEc) || entryEc)
+                continue;
+            result.push_back(it->path());
+        }
+        return result;
+    }
+
     std::filesystem::path FileSystem::GetExeDirectory()
     {
         std::array<wchar_t, MAX_PATH> buffer{};
