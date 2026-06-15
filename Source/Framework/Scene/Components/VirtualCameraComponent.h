@@ -24,6 +24,21 @@ namespace NS::Scene
         NS::Math::Radians fovY{NS::Math::ToRadians(NS::Math::Degrees{60.0f})};
         float nearPlane = 0.1f;
         float farPlane = 1000.0f;
+
+        /// t=0 で a、t=1 で b の線形補間。up は補間後に正規化する。Brain の vcam 切替ブレンドが使う
+        [[nodiscard]] static CameraPose Lerp(const CameraPose& a, const CameraPose& b, float t) noexcept
+        {
+            CameraPose pose{};
+            pose.position = NS::Math::Vector3::Lerp(a.position, b.position, t);
+            pose.target = NS::Math::Vector3::Lerp(a.target, b.target, t);
+            NS::Math::Vector3 up = NS::Math::Vector3::Lerp(a.up, b.up, t);
+            up.Normalize();
+            pose.up = up;
+            pose.fovY = NS::Math::Radians{NS::Math::Lerp(a.fovY.value, b.fovY.value, t)};
+            pose.nearPlane = NS::Math::Lerp(a.nearPlane, b.nearPlane, t);
+            pose.farPlane = NS::Math::Lerp(a.farPlane, b.farPlane, t);
+            return pose;
+        }
     };
 
     /// 描画しないカメラ定義。CameraBrain が選んで実 CameraComponent を駆動する

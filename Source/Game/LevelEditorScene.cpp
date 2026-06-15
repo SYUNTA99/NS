@@ -432,6 +432,10 @@ void LevelEditorScene::OnUpdate()
     if (m_mainCamera)
         m_mainCamera->SetAspectRatioFromRenderer(app->Renderer());
 
+    // mode 切替で active vcam が入れ替わったらブレンドを進める (play / edit 共通、 fixed step ごとに 1 度)
+    if (m_brain)
+        m_brain->OnUpdate();
+
     // 各ブロック GameObject の Snapshot は edit / play 共通 (静的 display object なので常時)
     for (auto& block : m_blocks)
         block->Root().Snapshot();

@@ -1,5 +1,6 @@
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 
+#include "Framework/Core/Clock.h"
 #include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/Scene/Components/VirtualCameraComponent.h"
 
@@ -18,6 +19,11 @@ namespace NS::Scene
         m_vcams.push_back(vcam);
     }
 
+    void CameraBrainComponent::SetBlendDuration(float seconds) noexcept
+    {
+        m_blendDuration = (seconds > 0.0f) ? seconds : 0.0f;
+    }
+
     VirtualCameraComponent* CameraBrainComponent::SelectActive() const noexcept
     {
         VirtualCameraComponent* best = nullptr;
@@ -31,13 +37,45 @@ namespace NS::Scene
         return best;
     }
 
+    void CameraBrainComponent::OnUpdate()
+    {
+        VirtualCameraComponent* next = SelectActive();
+        if (next != m_active)
+        {
+            // 直前まで写していた pose から新 vcam へ繋ぐ。初回 active 化 (旧 pose 無し) はカット
+            if (m_active != nullptr && m_blendDuration > 0.0f)
+            {
+                m_blendFrom = m_lastPose;
+                m_blendElapsed = 0.0f;
+                m_blending = true;
+            }
+            m_active = next;
+        }
+
+        if (m_blending)
+        {
+            m_blendElapsed += NS::Core::FrameTimer::FixedDelta();
+            if (m_blendElapsed >= m_blendDuration)
+                m_blending = false;
+        }
+    }
+
     void CameraBrainComponent::Evaluate(float alpha) noexcept
     {
-        m_active = SelectActive();
+        if (m_active == nullptr)
+            m_active = SelectActive(); // OnUpdate より先に render が来た初回フレーム用の保険
         if (m_active == nullptr || m_camera == nullptr)
             return;
 
-        const CameraPose pose = m_active->EvaluatePose(alpha);
+        CameraPose pose = m_active->EvaluatePose(alpha);
+        if (m_blending && m_blendDuration > 0.0f)
+        {
+            const float t = NS::Math::Clamp(m_blendElapsed / m_blendDuration, 0.0f, 1.0f);
+            const float eased = t * t * (3.0f - 2.0f * t); // smoothstep で ease-in-out
+            pose = CameraPose::Lerp(m_blendFrom, pose, eased);
+        }
+
+        m_lastPose = pose;
         m_camera->SetPosition(pose.position);
         m_camera->SetTarget(pose.target);
         m_camera->SetUp(pose.up);
