@@ -8,7 +8,7 @@
 /// ImGui 描画は `Render` で行う。 Render は Debug / Development build 時のみ
 /// 実体があり、 Shipping では何もしない
 
-#include "Game/Editor/BlockRegistry.h"
+#include "Game/Blocks/BlockRegistry.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -60,13 +60,13 @@ namespace NS::Game::Editor
         std::size_t m_activeSlot = 0;
         // 8 スロット = 固形 / コイン / スター / spawn + 地形系 4 種 (slope / pole / hazard / water)
         // slope スロットは再選択で 45→30→22→15° を循環 (CycleActiveVariant)
-        std::uint16_t m_slots[kSlotCount] = {kBlockIdSolid,
-                                             kBlockIdCoin,
-                                             kBlockIdPowerStar,
-                                             kBlockIdSpawn,
-                                             kBlockIdSlope45,
-                                             kBlockIdPole,
-                                             kBlockIdHazard,
-                                             kBlockIdWater};
+        std::uint16_t m_slots[kSlotCount] = {NS::Game::Blocks::kBlockIdSolid,
+                                             NS::Game::Blocks::kBlockIdCoin,
+                                             NS::Game::Blocks::kBlockIdPowerStar,
+                                             NS::Game::Blocks::kBlockIdSpawn,
+                                             NS::Game::Blocks::kBlockIdSlope45,
+                                             NS::Game::Blocks::kBlockIdPole,
+                                             NS::Game::Blocks::kBlockIdHazard,
+                                             NS::Game::Blocks::kBlockIdWater};
     };
 } // namespace NS::Game::Editor

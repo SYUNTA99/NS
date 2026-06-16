@@ -9,7 +9,7 @@
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/UI/ImGuiContext.h"
-#include "Game/Editor/BlockRegistry.h"
+#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Game.h"
 #include "Game/LevelEditorScene.h"
 
@@ -244,7 +244,7 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorScene& scene) noexcept
         {
             const NS::Game::Level::ObjectInstance& object = objects[i];
             const bool grid = (object.flags & NS::Game::Level::kObjectFlagGridAligned) != 0;
-            const char* name = NS::Game::Editor::GetDisplayName(object.kind);
+            const char* name = NS::Game::Blocks::GetDisplayName(object.kind);
 
             char label[96];
             std::snprintf(label, sizeof(label), "[%zu] %s (%s)", i, name, grid ? "grid" : "free");
@@ -365,7 +365,7 @@ void EditorLayer::RenderInspectorPanel(LevelEditorScene& scene) noexcept
         const bool grid = scene.SelectedIsGridAligned();
         ImGui::Text("[%zu] %s (%s)",
                     scene.SelectedObjectIndex(),
-                    NS::Game::Editor::GetDisplayName(obj.kind),
+                    NS::Game::Blocks::GetDisplayName(obj.kind),
                     grid ? "grid" : "free");
         ImGui::Separator();
 
@@ -375,7 +375,7 @@ void EditorLayer::RenderInspectorPanel(LevelEditorScene& scene) noexcept
                         static_cast<int>(NS::Game::Level::ObjectCellX(obj)),
                         static_cast<int>(NS::Game::Level::ObjectCellY(obj)),
                         static_cast<int>(NS::Game::Level::ObjectCellZ(obj)));
-            if (obj.kind == NS::Game::Editor::kBlockIdSolid)
+            if (obj.kind == NS::Game::Blocks::kBlockIdSolid)
             {
                 ImGui::TextDisabled("Promote to free to edit transform");
                 if (ImGui::Button("Promote to Free"))

@@ -1,4 +1,4 @@
-#include "Game/Editor/AutoTile.h"
+#include "Game/Blocks/AutoTile.h"
 
 #include "Framework/Graphics/TextureArray.h"
 #include "Game/Level/LevelData.h"
@@ -6,7 +6,7 @@
 
 #include <cstddef>
 
-namespace NS::Game::Editor
+namespace NS::Game::Blocks
 {
 
     namespace
@@ -92,4 +92,4 @@ namespace NS::Game::Editor
         level.spawnZ = z;
     }
 
-} // namespace NS::Game::Editor
+} // namespace NS::Game::Blocks

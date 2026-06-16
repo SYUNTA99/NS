@@ -1,7 +1,7 @@
 #include "Game/Level/LevelData.h"
 
 #include "Framework/Math/Math.h"
-#include "Game/Editor/BlockRegistry.h"
+#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/detail/crc32.h"
 
 #include <cmath>
@@ -104,7 +104,7 @@ namespace NS::Game::Level
         float bestDot = -2.0f;
         for (std::uint8_t step = 0; step < 4; ++step)
         {
-            const float yaw = NS::Game::Editor::BlockRotationToYaw(step);
+            const float yaw = NS::Game::Blocks::BlockRotationToYaw(step);
             const NS::Math::Quaternion candidate = NS::Math::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
             const float dot = std::fabs(current.x * candidate.x + current.y * candidate.y + current.z * candidate.z +
                                         current.w * candidate.w);
@@ -119,7 +119,7 @@ namespace NS::Game::Level
 
     void SetGridRotationStep(ObjectInstance& object, std::uint8_t rotationStep) noexcept
     {
-        const float yaw = NS::Game::Editor::BlockRotationToYaw(static_cast<std::uint8_t>(rotationStep & 0x03));
+        const float yaw = NS::Game::Blocks::BlockRotationToYaw(static_cast<std::uint8_t>(rotationStep & 0x03));
         const NS::Math::Quaternion rotation = NS::Math::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
         object.rotationX = rotation.x;
         object.rotationY = rotation.y;

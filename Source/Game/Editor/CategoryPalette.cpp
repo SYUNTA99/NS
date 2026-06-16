@@ -24,8 +24,8 @@ namespace NS::Game::Editor
     void CategoryPalette::CycleActiveVariant() noexcept
     {
         const std::uint16_t id = m_slots[m_activeSlot];
-        if (IsSlopeBlock(id))
-            m_slots[m_activeSlot] = NextSlopeBlock(id);
+        if (NS::Game::Blocks::IsSlopeBlock(id))
+            m_slots[m_activeSlot] = NS::Game::Blocks::NextSlopeBlock(id);
     }
 
     void CategoryPalette::TickInput(NS::Platform::Input* input, NS::UI::ImGuiContext* imgui) noexcept
@@ -86,7 +86,7 @@ namespace NS::Game::Editor
             ImGui::PushID(static_cast<int>(i));
 
             const std::uint16_t blockId = m_slots[i];
-            const char* label = (blockId != 0) ? GetDisplayName(blockId) : "-";
+            const char* label = (blockId != 0) ? NS::Game::Blocks::GetDisplayName(blockId) : "-";
             const bool isActive = (i == m_activeSlot);
 
             // active slot は色を変えて視覚的に区別する

@@ -14,7 +14,7 @@
 
 #include <cstdint>
 
-namespace NS::Game::Editor
+namespace NS::Game::Blocks
 {
     /// block の向きを表す `BlockEntry::rotation` の分解能。 0..3 を Y 軸 90° 刻みの 4 方向へ割り当てる
     inline constexpr std::uint16_t kBlockRotationSteps = 4;
@@ -84,4 +84,4 @@ namespace NS::Game::Editor
 
     /// 衝突解決が必要か。 solid/slope/hazard が true、 water/decoration は素通し
     [[nodiscard]] bool IsCollidable(std::uint16_t blockId) noexcept;
-} // namespace NS::Game::Editor
+} // namespace NS::Game::Blocks

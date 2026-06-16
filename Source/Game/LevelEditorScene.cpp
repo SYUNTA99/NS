@@ -45,8 +45,8 @@
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/Transform.h"
 #include "Framework/UI/ImGuiContext.h"
-#include "Game/Editor/AutoTile.h"
-#include "Game/Editor/BlockRegistry.h"
+#include "Game/Blocks/AutoTile.h"
+#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Theme/ThemeRegistry.h"
 
 #include <algorithm>
@@ -66,7 +66,7 @@ namespace
     void SeedInitialLevel(NS::Game::Level::LevelData& level)
     {
         level.objects.clear();
-        level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, NS::Game::Editor::kBlockIdSolid, 0));
+        level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdSolid, 0));
         level.spawnX = 0;
         level.spawnY = 1;
         level.spawnZ = 0;
@@ -771,15 +771,15 @@ void LevelEditorScene::OnRenderScene()
             const std::int16_t x = static_cast<std::int16_t>(std::lround(wp.x));
             const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
             const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
-            constexpr std::uint16_t blockId = NS::Game::Editor::kBlockIdSolid;
-            const std::uint8_t mask = NS::Game::Editor::ComputeNeighborMask(m_level, x, y, z, blockId);
+            constexpr std::uint16_t blockId = NS::Game::Blocks::kBlockIdSolid;
+            const std::uint8_t mask = NS::Game::Blocks::ComputeNeighborMask(m_level, x, y, z, blockId);
             const std::uint16_t slice =
-                NS::Game::Editor::LookupTextureSlice(static_cast<ThemeId>(m_level.themeId), mask, blockId);
+                NS::Game::Blocks::LookupTextureSlice(static_cast<ThemeId>(m_level.themeId), mask, blockId);
 
             NS::Graphics::BlockInstance inst{};
             inst.worldMatrix = block->Root().InterpolatedWorldMatrix(ctx.alpha);
             // 個体色は GetBaseColor を流し込んでおく (theme tint は FrameCB の lightColor/ambientColor で行う)
-            const auto color = NS::Game::Editor::GetBaseColor(blockId);
+            const auto color = NS::Game::Blocks::GetBaseColor(blockId);
             inst.baseColor = NS::Math::Vector3{color.R(), color.G(), color.B()};
             inst.textureSlice = static_cast<float>(slice);
             m_instanceBatcher->Submit(m_cubeMesh.get(), m_blockMaterial.get(), inst);
@@ -985,7 +985,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
                 NS::Math::Quaternion{entry.rotationX, entry.rotationY, entry.rotationZ, entry.rotationW});
             obj.Root().SetScale(NS::Math::Vector3{entry.scaleX, entry.scaleY, entry.scaleZ});
         };
-        const auto color = NS::Game::Editor::GetBaseColor(entry.kind);
+        const auto color = NS::Game::Blocks::GetBaseColor(entry.kind);
         const NS::Math::Vector3 baseColor{color.R(), color.G(), color.B()};
 
         // 非 gridAligned (自由配置物) は個別描画の Block として扱う。 材質は materialIndex から解決する
@@ -1003,7 +1003,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             continue;
         }
 
-        if (entry.kind == NS::Game::Editor::kBlockIdSolid)
+        if (entry.kind == NS::Game::Blocks::kBlockIdSolid)
         {
             auto block = std::make_unique<Block>(m_cubeMesh.get(), m_blockMaterial.get(), kCellHalfExtents);
             block->AttachScene(this);
@@ -1020,17 +1020,17 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             continue;
         }
 
-        if (NS::Game::Editor::IsSlopeBlock(entry.kind))
+        if (NS::Game::Blocks::IsSlopeBlock(entry.kind))
         {
-            const float angle = NS::Game::Editor::GetSlopeAngleDegrees(entry.kind);
+            const float angle = NS::Game::Blocks::GetSlopeAngleDegrees(entry.kind);
             NS::Graphics::StaticMesh* wedge = nullptr;
-            if (entry.kind == NS::Game::Editor::kBlockIdSlope45)
+            if (entry.kind == NS::Game::Blocks::kBlockIdSlope45)
                 wedge = m_wedgeMesh45.get();
-            else if (entry.kind == NS::Game::Editor::kBlockIdSlope30)
+            else if (entry.kind == NS::Game::Blocks::kBlockIdSlope30)
                 wedge = m_wedgeMesh30.get();
-            else if (entry.kind == NS::Game::Editor::kBlockIdSlope22)
+            else if (entry.kind == NS::Game::Blocks::kBlockIdSlope22)
                 wedge = m_wedgeMesh22.get();
-            else if (entry.kind == NS::Game::Editor::kBlockIdSlope15)
+            else if (entry.kind == NS::Game::Blocks::kBlockIdSlope15)
                 wedge = m_wedgeMesh15.get();
 
             auto slope = std::make_unique<SlopeBlock>(wedge, m_blockMaterial.get(), angle, kCellHalfExtents);
@@ -1047,7 +1047,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             continue;
         }
 
-        if (NS::Game::Editor::IsPoleBlock(entry.kind))
+        if (NS::Game::Blocks::IsPoleBlock(entry.kind))
         {
             constexpr float kPoleRadius = 0.15f;
             constexpr float kPoleHeight = 1.0f;
@@ -1063,7 +1063,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             continue;
         }
 
-        if (NS::Game::Editor::IsHazardBlock(entry.kind))
+        if (NS::Game::Blocks::IsHazardBlock(entry.kind))
         {
             auto hazard = std::make_unique<HazardBlock>(m_cubeMesh.get(), m_blockMaterial.get(), kCellHalfExtents);
             hazard->AttachScene(this);
@@ -1079,7 +1079,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             continue;
         }
 
-        if (NS::Game::Editor::IsWaterBlock(entry.kind))
+        if (NS::Game::Blocks::IsWaterBlock(entry.kind))
         {
             auto water = std::make_unique<WaterBlock>(m_cubeMesh.get(), m_waterMaterial.get());
             water->AttachScene(this);
@@ -1093,7 +1093,7 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
             continue;
         }
 
-        if (NS::Game::Editor::IsDecorationBlock(entry.kind))
+        if (NS::Game::Blocks::IsDecorationBlock(entry.kind))
         {
             auto deco = std::make_unique<DecorationBlock>(m_cubeMesh.get(), m_blockMaterial.get());
             deco->AttachScene(this);

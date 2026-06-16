@@ -1,4 +1,4 @@
-#include "Game/Editor/BlockRegistry.h"
+#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayMode.h"
 #include "Game/Level/PlayState.h"
@@ -6,7 +6,6 @@
 #include <gtest/gtest.h>
 
 namespace LevelNs = NS::Game::Level;
-namespace EditorNs = NS::Game::Editor;
 
 TEST(PlayMode, EnterInitializesPlayerAtSpawn)
 {
@@ -36,7 +35,7 @@ TEST(PlayMode, PausedTickDoesNotEvaluateRules)
     lv.spawnY = 0;
     lv.spawnZ = 0;
     // spawn セル中心に coin を置くと中心距離が近く、 非 paused なら取得される位置
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdCoin, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdCoin, 0));
 
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;
@@ -70,7 +69,7 @@ TEST(PlayMode, CoinContactIncrementsCounter)
     lv.spawnY = 0;
     lv.spawnZ = 0;
     // player の spawn セル中心と同じ位置に coin を置くと中心距離 0 で必ず pickup
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdCoin, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdCoin, 0));
 
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;
@@ -90,7 +89,7 @@ TEST(PlayMode, PowerStarTriggersClear)
     lv.spawnX = 0;
     lv.spawnY = 0;
     lv.spawnZ = 0;
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdPowerStar, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdPowerStar, 0));
 
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;

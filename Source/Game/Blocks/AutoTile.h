@@ -17,7 +17,7 @@ namespace NS::Game::Level
     struct LevelData;
 }
 
-namespace NS::Game::Editor
+namespace NS::Game::Blocks
 {
 
     /// 6-neighbor bitmask。 bit 0=+X, 1=-X, 2=+Y, 3=-Y, 4=+Z, 5=-Z
@@ -37,4 +37,4 @@ namespace NS::Game::Editor
     /// 1 spawn 限定なので Command 経路を通さない直接 setter
     void SetSpawnMarker(NS::Game::Level::LevelData& level, std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
 
-} // namespace NS::Game::Editor
+} // namespace NS::Game::Blocks

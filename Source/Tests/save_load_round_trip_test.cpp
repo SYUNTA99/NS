@@ -1,5 +1,5 @@
 #include "Framework/Core/Filesystem.h"
-#include "Game/Editor/BlockRegistry.h"
+#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Editor/LevelFilePaths.h"
 #include "Game/Level/ChunkIO.h"
 #include "Game/Level/LevelData.h"
@@ -27,9 +27,9 @@ TEST(SaveLoadRoundTrip, SaveAndReloadProducesIdenticalCrc)
     src.themeId = 4;
     src.coinThreshold = 10;
     src.timeLimitSeconds = 180;
-    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdSolid, 0));
-    src.objects.push_back(LevelNs::MakeGridObject(1, 0, 1, EditorNs::kBlockIdSolid, 1));
-    src.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, EditorNs::kBlockIdCoin, 0));
+    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdSolid, 0));
+    src.objects.push_back(LevelNs::MakeGridObject(1, 0, 1, NS::Game::Blocks::kBlockIdSolid, 1));
+    src.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, NS::Game::Blocks::kBlockIdCoin, 0));
     const auto crc0 = src.ComputeCrc32();
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
@@ -48,7 +48,7 @@ TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
     ASSERT_TRUE(path2);
 
     LevelNs::LevelData src;
-    src.objects.push_back(LevelNs::MakeGridObject(5, 5, 5, EditorNs::kBlockIdSolid, 0));
+    src.objects.push_back(LevelNs::MakeGridObject(5, 5, 5, NS::Game::Blocks::kBlockIdSolid, 0));
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path1));
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path2));
@@ -68,7 +68,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     ASSERT_TRUE(path.has_value());
 
     LevelNs::LevelData src;
-    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdSolid, 0));
+    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdSolid, 0));
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
 
     auto bytes = NS::Core::FileSystem::ReadAllBytes(*path);
@@ -107,8 +107,8 @@ TEST(SaveLoadRoundTrip, ForwardCompatibleUnknownChunkSkip)
     src.themeId = 5;
     src.coinThreshold = 12;
     src.timeLimitSeconds = 240;
-    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdSolid, 0));
-    src.objects.push_back(LevelNs::MakeGridObject(2, 1, 4, EditorNs::kBlockIdSolid, 2));
+    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdSolid, 0));
+    src.objects.push_back(LevelNs::MakeGridObject(2, 1, 4, NS::Game::Blocks::kBlockIdSolid, 2));
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
 
     auto bytes = NS::Core::FileSystem::ReadAllBytes(*path);
@@ -190,13 +190,13 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     freeObject.scaleX = 2.0f;
     freeObject.scaleY = 0.5f;
     freeObject.scaleZ = 1.0f;
-    freeObject.kind = EditorNs::kBlockIdSolid;
+    freeObject.kind = NS::Game::Blocks::kBlockIdSolid;
     freeObject.materialIndex = 1;
     freeObject.flags = 0;
     src.objects.push_back(freeObject);
 
     LevelNs::ObjectInstance gridObject{};
-    gridObject.kind = EditorNs::kBlockIdSlope45;
+    gridObject.kind = NS::Game::Blocks::kBlockIdSlope45;
     gridObject.materialIndex = -1;
     gridObject.flags = LevelNs::kObjectFlagGridAligned;
     src.objects.push_back(gridObject);
@@ -217,11 +217,11 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     EXPECT_FLOAT_EQ(dst.objects[0].positionZ, -3.75f);
     EXPECT_FLOAT_EQ(dst.objects[0].rotationW, 0.70710677f);
     EXPECT_FLOAT_EQ(dst.objects[0].scaleX, 2.0f);
-    EXPECT_EQ(dst.objects[0].kind, EditorNs::kBlockIdSolid);
+    EXPECT_EQ(dst.objects[0].kind, NS::Game::Blocks::kBlockIdSolid);
     EXPECT_EQ(dst.objects[0].materialIndex, 1);
     EXPECT_EQ(dst.objects[0].flags, 0u);
 
-    EXPECT_EQ(dst.objects[1].kind, EditorNs::kBlockIdSlope45);
+    EXPECT_EQ(dst.objects[1].kind, NS::Game::Blocks::kBlockIdSlope45);
     EXPECT_EQ(dst.objects[1].materialIndex, -1);
     EXPECT_EQ(dst.objects[1].flags, LevelNs::kObjectFlagGridAligned);
 }
@@ -231,8 +231,8 @@ TEST(SaveLoadRoundTrip, MigrateBlocksToObjectsMapsCells)
 {
     LevelNs::LevelData level;
     std::vector<LevelNs::BlockEntry> blocks;
-    blocks.push_back({1, 2, 3, EditorNs::kBlockIdSolid, 0, 0});
-    blocks.push_back({-4, 0, 5, EditorNs::kBlockIdSlope45, 1, 0});
+    blocks.push_back({1, 2, 3, NS::Game::Blocks::kBlockIdSolid, 0, 0});
+    blocks.push_back({-4, 0, 5, NS::Game::Blocks::kBlockIdSlope45, 1, 0});
     LevelNs::MigrateBlocksToObjects(level, blocks);
 
     ASSERT_EQ(level.objects.size(), 2u);
@@ -241,12 +241,12 @@ TEST(SaveLoadRoundTrip, MigrateBlocksToObjectsMapsCells)
     EXPECT_FLOAT_EQ(level.objects[0].positionY, 2.0f);
     EXPECT_FLOAT_EQ(level.objects[0].positionZ, 3.0f);
     EXPECT_FLOAT_EQ(level.objects[0].scaleX, 1.0f);
-    EXPECT_EQ(level.objects[0].kind, EditorNs::kBlockIdSolid);
+    EXPECT_EQ(level.objects[0].kind, NS::Game::Blocks::kBlockIdSolid);
     EXPECT_EQ(level.objects[0].materialIndex, -1);
     EXPECT_NE(level.objects[0].flags & LevelNs::kObjectFlagGridAligned, 0u);
 
     EXPECT_FLOAT_EQ(level.objects[1].positionX, -4.0f);
-    EXPECT_EQ(level.objects[1].kind, EditorNs::kBlockIdSlope45);
+    EXPECT_EQ(level.objects[1].kind, NS::Game::Blocks::kBlockIdSlope45);
     // rotation=1 は yaw 90°、 単位 quaternion ではない (w != 1)
     EXPECT_NE(level.objects[1].rotationW, 1.0f);
 }

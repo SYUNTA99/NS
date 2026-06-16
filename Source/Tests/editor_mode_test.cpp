@@ -1,4 +1,4 @@
-#include "Game/Editor/BlockRegistry.h"
+#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Editor/EditorMode.h"
 #include "Game/Level/LevelData.h"
 
@@ -21,13 +21,13 @@ TEST(EditorMode, ProgrammaticPlaceAddsBlock)
     EXPECT_EQ(LevelNs::ObjectCellX(lv.objects[idx]), 5);
     EXPECT_EQ(LevelNs::ObjectCellY(lv.objects[idx]), 0);
     EXPECT_EQ(LevelNs::ObjectCellZ(lv.objects[idx]), 3);
-    EXPECT_EQ(lv.objects[idx].kind, EditorNs::kBlockIdSolid);
+    EXPECT_EQ(lv.objects[idx].kind, NS::Game::Blocks::kBlockIdSolid);
 }
 
 TEST(EditorMode, ProgrammaticDeleteRemovesBlock)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(2, 0, 4, EditorNs::kBlockIdSolid, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(2, 0, 4, NS::Game::Blocks::kBlockIdSolid, 0));
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
 
@@ -39,7 +39,7 @@ TEST(EditorMode, ProgrammaticDeleteRemovesBlock)
 TEST(EditorMode, ProgrammaticRotateCycles)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdSolid, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdSolid, 0));
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
 
@@ -105,7 +105,7 @@ TEST(EditorMode, LevelDirtyFlagSetByMutation)
 TEST(EditorMode, CellRotationViaProgrammaticOnExistingBlock)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, EditorNs::kBlockIdSolid, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdSolid, 0));
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
 

@@ -1,5 +1,5 @@
 #include "Framework/Platform/Input.h"
-#include "Game/Editor/BlockRegistry.h"
+#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Editor/CategoryPalette.h"
 
 #include <gtest/gtest.h>
@@ -10,17 +10,17 @@ TEST(CategoryPalette, InitialSlotIsSolid)
 {
     EditorNs::CategoryPalette palette;
     EXPECT_EQ(palette.ActiveSlot(), 0u);
-    EXPECT_EQ(palette.SlotBlockId(0), EditorNs::kBlockIdSolid);
-    EXPECT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdSolid);
+    EXPECT_EQ(palette.SlotBlockId(0), NS::Game::Blocks::kBlockIdSolid);
+    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdSolid);
 }
 
 TEST(CategoryPalette, SlotLayoutMatchesVerticalSliceMapping)
 {
     EditorNs::CategoryPalette palette;
-    EXPECT_EQ(palette.SlotBlockId(0), EditorNs::kBlockIdSolid);
-    EXPECT_EQ(palette.SlotBlockId(1), EditorNs::kBlockIdCoin);
-    EXPECT_EQ(palette.SlotBlockId(2), EditorNs::kBlockIdPowerStar);
-    EXPECT_EQ(palette.SlotBlockId(3), EditorNs::kBlockIdSpawn);
+    EXPECT_EQ(palette.SlotBlockId(0), NS::Game::Blocks::kBlockIdSolid);
+    EXPECT_EQ(palette.SlotBlockId(1), NS::Game::Blocks::kBlockIdCoin);
+    EXPECT_EQ(palette.SlotBlockId(2), NS::Game::Blocks::kBlockIdPowerStar);
+    EXPECT_EQ(palette.SlotBlockId(3), NS::Game::Blocks::kBlockIdSpawn);
 }
 
 TEST(CategoryPalette, SetActiveSlotChangesCurrentBlockId)
@@ -28,7 +28,7 @@ TEST(CategoryPalette, SetActiveSlotChangesCurrentBlockId)
     EditorNs::CategoryPalette palette;
     palette.SetActiveSlot(2);
     EXPECT_EQ(palette.ActiveSlot(), 2u);
-    EXPECT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdPowerStar);
+    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdPowerStar);
 }
 
 TEST(CategoryPalette, OutOfRangeSlotIsIgnored)
@@ -55,22 +55,22 @@ TEST(CategoryPalette, KeyboardNumSelectsSlot)
     palette.TickInput(&input, nullptr);
 
     EXPECT_EQ(palette.ActiveSlot(), 2u);
-    EXPECT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdPowerStar);
+    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdPowerStar);
 }
 
 TEST(CategoryPalette, SlopeSlotCyclesThroughAngles)
 {
     EditorNs::CategoryPalette palette;
     palette.SetActiveSlot(4); // slot 4 = slope (固形/コイン/スター/spawn の次)
-    ASSERT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdSlope45);
+    ASSERT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdSlope45);
     palette.CycleActiveVariant();
-    EXPECT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdSlope30);
+    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdSlope30);
     palette.CycleActiveVariant();
-    EXPECT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdSlope22);
+    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdSlope22);
     palette.CycleActiveVariant();
-    EXPECT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdSlope15);
+    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdSlope15);
     palette.CycleActiveVariant();
-    EXPECT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdSlope45);
+    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdSlope45);
 }
 
 TEST(CategoryPalette, CycleVariantOnNonSlopeIsNoOp)
@@ -78,7 +78,7 @@ TEST(CategoryPalette, CycleVariantOnNonSlopeIsNoOp)
     EditorNs::CategoryPalette palette;
     palette.SetActiveSlot(0); // solid
     palette.CycleActiveVariant();
-    EXPECT_EQ(palette.CurrentBlockId(), EditorNs::kBlockIdSolid);
+    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdSolid);
 }
 
 TEST(CategoryPalette, KeyboardNumNotEdgeNoChange)

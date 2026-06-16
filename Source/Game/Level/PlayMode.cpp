@@ -1,6 +1,6 @@
 #include "Game/Level/PlayMode.h"
 
-#include "Game/Editor/BlockRegistry.h"
+#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
 
@@ -48,8 +48,8 @@ namespace NS::Game::Level
         for (std::size_t i = 0; i < level.objects.size(); ++i)
         {
             const auto& entry = level.objects[i];
-            const bool isCoin = (entry.kind == NS::Game::Editor::kBlockIdCoin);
-            const bool isStar = (entry.kind == NS::Game::Editor::kBlockIdPowerStar);
+            const bool isCoin = (entry.kind == NS::Game::Blocks::kBlockIdCoin);
+            const bool isStar = (entry.kind == NS::Game::Blocks::kBlockIdPowerStar);
             if (!isCoin && !isStar)
                 continue;
 

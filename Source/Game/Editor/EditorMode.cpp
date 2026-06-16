@@ -8,8 +8,8 @@
 #include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/Scene/Components/EditorCameraComponent.h"
 #include "Framework/UI/ImGuiContext.h"
-#include "Game/Editor/AutoTile.h"
-#include "Game/Editor/BlockRegistry.h"
+#include "Game/Blocks/AutoTile.h"
+#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Editor/LevelFilePaths.h"
 #include "Game/Level/ChunkIO.h"
 #include "Game/Level/LevelData.h"
@@ -63,7 +63,7 @@ namespace NS::Game::Editor
 
         // 表示用 yaw quaternion を「現在の cursor rotation」 に Slerp で寄せて回転方向を視覚化する
         const auto targetQuat = NS::Math::Quaternion::CreateFromAxisAngle(
-            {0.0f, 1.0f, 0.0f}, NS::Game::Editor::BlockRotationToYaw(m_currentRotation));
+            {0.0f, 1.0f, 0.0f}, NS::Game::Blocks::BlockRotationToYaw(m_currentRotation));
         constexpr float kRotationSpringRate = 12.0f;
         const float dt = NS::Core::FrameTimer::FixedDelta();
         const float t = std::min(1.0f, kRotationSpringRate * dt);
@@ -222,10 +222,10 @@ namespace NS::Game::Editor
         // slope を選択中なら、 セル内に実形状の wedge を薄く描いて向きを可視化する
         // 斜面の稜線 (斜め) が m_displayedYawQuat で回るので、 回転が一目で分かる
         const std::uint16_t currentId = m_palette.CurrentBlockId();
-        if (NS::Game::Editor::IsSlopeBlock(currentId))
+        if (NS::Game::Blocks::IsSlopeBlock(currentId))
         {
             constexpr float kPi = 3.14159265358979323846f;
-            const float angle = NS::Game::Editor::GetSlopeAngleDegrees(currentId);
+            const float angle = NS::Game::Blocks::GetSlopeAngleDegrees(currentId);
             const float rawHeight = std::tan(angle * (kPi / 180.0f)) * (2.0f * h);
             const float height = (rawHeight > 2.0f * h) ? 2.0f * h : rawHeight;
             const float yBot = -h;
@@ -361,7 +361,7 @@ namespace NS::Game::Editor
             return;
         // 回転対象でない block (pole / water 等) は m_currentRotation が非ゼロでも 0 で焼き込む
         const std::uint16_t blockId = m_palette.CurrentBlockId();
-        const std::uint8_t rotation = IsRotatableBlock(blockId) ? m_currentRotation : std::uint8_t{0};
+        const std::uint8_t rotation = NS::Game::Blocks::IsRotatableBlock(blockId) ? m_currentRotation : std::uint8_t{0};
         m_undo.Push(std::make_unique<NS::Game::Undo::PlaceCommand>(x, y, z, blockId, rotation), *m_level);
         m_levelDirty = true;
     }
@@ -386,7 +386,7 @@ namespace NS::Game::Editor
     {
         if (m_level == nullptr)
             return;
-        SetSpawnMarker(*m_level, x, y, z);
+        NS::Game::Blocks::SetSpawnMarker(*m_level, x, y, z);
         m_levelDirty = true;
     }
 
@@ -510,7 +510,7 @@ namespace NS::Game::Editor
             return;
 
         const std::uint16_t currentId = m_palette.CurrentBlockId();
-        const bool spawnSlotActive = (currentId == kBlockIdSpawn);
+        const bool spawnSlotActive = (currentId == NS::Game::Blocks::kBlockIdSpawn);
 
         auto& mouse = m_input->Mouse();
         if (mouse.IsPressed(NS::Platform::MouseButton::Left))
@@ -569,7 +569,8 @@ namespace NS::Game::Editor
             // cursor 直下の既存 block を 90° 回す。 回転対象外の block は無視する
             const std::size_t index =
                 NS::Game::Level::FindGridObjectAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
-            if (index != NS::Game::Level::kNoObjectIndex && IsRotatableBlock(m_level->objects[index].kind))
+            if (index != NS::Game::Level::kNoObjectIndex &&
+                NS::Game::Blocks::IsRotatableBlock(m_level->objects[index].kind))
             {
                 m_undo.Push(std::make_unique<NS::Game::Undo::RotateCommand>(
                                 m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ, std::int8_t{1}),
@@ -577,7 +578,7 @@ namespace NS::Game::Editor
                 m_levelDirty = true;
             }
         }
-        else if (IsRotatableBlock(m_palette.CurrentBlockId()))
+        else if (NS::Game::Blocks::IsRotatableBlock(m_palette.CurrentBlockId()))
         {
             // 既存 block がなければ次に置く block の向きを 90° 進める (4 方向で循環)
             m_currentRotation = static_cast<std::uint8_t>((m_currentRotation + 1) & 0x03);

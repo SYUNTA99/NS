@@ -6,16 +6,16 @@
 #include <Game/Blocks/DecorationBlock.h>
 #include <Game/Blocks/HazardBlock.h>
 #include <Game/Blocks/WaterBlock.h>
-#include <Game/Editor/BlockRegistry.h>
+#include <Game/Blocks/BlockRegistry.h>
 
 #include <algorithm>
 
 namespace
 {
-    using NS::Game::Editor::IsCollidable;
-    using NS::Game::Editor::kBlockIdDecoration;
-    using NS::Game::Editor::kBlockIdHazard;
-    using NS::Game::Editor::kBlockIdWater;
+    using NS::Game::Blocks::IsCollidable;
+    using NS::Game::Blocks::kBlockIdDecoration;
+    using NS::Game::Blocks::kBlockIdHazard;
+    using NS::Game::Blocks::kBlockIdWater;
 } // namespace
 
 TEST(DecorationBlockTest, NoColliderAttached)

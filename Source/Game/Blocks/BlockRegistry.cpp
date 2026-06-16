@@ -1,6 +1,6 @@
-#include "Game/Editor/BlockRegistry.h"
+#include "Game/Blocks/BlockRegistry.h"
 
-namespace NS::Game::Editor
+namespace NS::Game::Blocks
 {
     float BlockRotationToYaw(std::uint8_t rotation) noexcept
     {
@@ -154,4 +154,4 @@ namespace NS::Game::Editor
         // pole は掴まり state machine 経由で扱うため物理 collidable ではない。 water/decoration は素通し
         return IsSolidBlock(blockId) || IsSlopeBlock(blockId) || IsHazardBlock(blockId);
     }
-} // namespace NS::Game::Editor
+} // namespace NS::Game::Blocks
