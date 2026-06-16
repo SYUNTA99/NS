@@ -22,6 +22,7 @@ namespace NS::Game::Level
         constexpr char kObjsFourCc[4] = {'O', 'B', 'J', 'S'};
         constexpr char kMatsFourCc[4] = {'M', 'A', 'T', 'S'};
         constexpr char kSpwnFourCc[4] = {'S', 'P', 'W', 'N'};
+        constexpr char kCamsFourCc[4] = {'C', 'A', 'M', 'S'};
 
         /// 読込 / 書込の上限。 巨大 size による memory exhaustion を防ぐ
         constexpr std::size_t kMaxLevelFileBytes = 16u * 1024u * 1024u;
@@ -35,6 +36,9 @@ namespace NS::Game::Level
         /// material 文字列表の上限 (枚数と 1 件あたり byte 長)
         constexpr std::uint32_t kMaxMaterialPaths = 4'096u;
         constexpr std::uint16_t kMaxMaterialPathLength = 1'024u;
+
+        /// camera_volume_count u32 による大量 allocation を防ぐ上限
+        constexpr std::uint32_t kMaxCameraVolumeCount = 4'096u;
 
         bool FourCcEqual(const char a[4], const char b[4]) noexcept
         {
@@ -307,6 +311,15 @@ namespace NS::Game::Level
                          kMaxMaterialPaths);
             return false;
         }
+
+        if (level.cameraVolumes.size() > kMaxCameraVolumeCount)
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Game,
+                         "SaveLevelToFile: camera volume 数が上限超過 ({} > {})",
+                         level.cameraVolumes.size(),
+                         kMaxCameraVolumeCount);
+            return false;
+        }
         for (const auto& materialPath : level.materialPaths)
         {
             if (materialPath.size() > kMaxMaterialPathLength)
@@ -349,6 +362,22 @@ namespace NS::Game::Level
         if (objectCount > 0)
         {
             writer.Write(level.objects.data(), objectCount * sizeof(ObjectInstance));
+        }
+        if (!writer.EndChunk())
+        {
+            return false;
+        }
+
+        // CAMS chunk: u32 count + N × CameraVolume (56 byte each)
+        if (!writer.BeginChunk(kCamsFourCc))
+        {
+            return false;
+        }
+        const std::uint32_t cameraVolumeCount = static_cast<std::uint32_t>(level.cameraVolumes.size());
+        writer.Write(&cameraVolumeCount, sizeof(cameraVolumeCount));
+        if (cameraVolumeCount > 0)
+        {
+            writer.Write(level.cameraVolumes.data(), cameraVolumeCount * sizeof(CameraVolume));
         }
         if (!writer.EndChunk())
         {
@@ -486,6 +515,42 @@ namespace NS::Game::Level
             if (objectCount > 0)
             {
                 reader.Read(outLevel.objects.data(), expectedDataBytes);
+            }
+        }
+
+        if (reader.SeekChunk(kCamsFourCc, size))
+        {
+            std::uint32_t cameraVolumeCount = 0;
+            if (!reader.Read(&cameraVolumeCount, sizeof(cameraVolumeCount)))
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Game,
+                             "LoadLevelFromFile: CAMS chunk から camera volume count を読めない");
+                outLevel = LevelData{};
+                return false;
+            }
+            if (cameraVolumeCount > kMaxCameraVolumeCount)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Game,
+                             "LoadLevelFromFile: camera volume count {} が上限 {} を超過",
+                             cameraVolumeCount,
+                             kMaxCameraVolumeCount);
+                outLevel = LevelData{};
+                return false;
+            }
+            const std::size_t expectedDataBytes = cameraVolumeCount * sizeof(CameraVolume);
+            if (expectedDataBytes + sizeof(cameraVolumeCount) > size)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Game,
+                             "LoadLevelFromFile: CAMS chunk 内 data 不足 (期待 {} 実際 {})",
+                             expectedDataBytes + sizeof(cameraVolumeCount),
+                             size);
+                outLevel = LevelData{};
+                return false;
+            }
+            outLevel.cameraVolumes.resize(cameraVolumeCount);
+            if (cameraVolumeCount > 0)
+            {
+                reader.Read(outLevel.cameraVolumes.data(), expectedDataBytes);
             }
         }
 

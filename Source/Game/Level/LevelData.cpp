@@ -33,6 +33,15 @@ namespace NS::Game::Level
             crc = detail::Crc32Update(crc, std::span<const std::byte>(raw, size));
         }
 
+        const std::uint64_t cameraVolumeCount = static_cast<std::uint64_t>(cameraVolumes.size());
+        crc = UpdateWith(crc, cameraVolumeCount);
+        if (!cameraVolumes.empty())
+        {
+            const auto* raw = reinterpret_cast<const std::byte*>(cameraVolumes.data());
+            const std::size_t size = cameraVolumes.size() * sizeof(CameraVolume);
+            crc = detail::Crc32Update(crc, std::span<const std::byte>(raw, size));
+        }
+
         const std::uint64_t materialCount = static_cast<std::uint64_t>(materialPaths.size());
         crc = UpdateWith(crc, materialCount);
         for (const auto& materialPath : materialPaths)

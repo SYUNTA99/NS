@@ -32,6 +32,24 @@ namespace
         lv.materialPaths.push_back("Assets/Materials/Grass.mat");
         lv.objects[0].materialIndex = 0;
         lv.objects[1].materialIndex = 1;
+        {
+            LevelNs::CameraVolume cam{};
+            cam.cameraPositionX = 4.0f;
+            cam.cameraPositionY = 8.0f;
+            cam.cameraPositionZ = -6.0f;
+            cam.lookTargetX = 1.0f;
+            cam.lookTargetY = 2.0f;
+            cam.lookTargetZ = 3.0f;
+            cam.triggerCenterX = 10.0f;
+            cam.triggerCenterY = 0.0f;
+            cam.triggerCenterZ = 5.0f;
+            cam.triggerExtentX = 3.0f;
+            cam.triggerExtentY = 2.0f;
+            cam.triggerExtentZ = 4.0f;
+            cam.priority = 20;
+            cam.lookAtPlayer = 1;
+            lv.cameraVolumes.push_back(cam);
+        }
         lv.spawnX = 1;
         lv.spawnY = 2;
         lv.spawnZ = 3;
@@ -72,6 +90,24 @@ TEST(ChunkIOTest, RoundTripPreservesAllFields)
     for (std::size_t i = 0; i < src.materialPaths.size(); ++i)
     {
         EXPECT_EQ(src.materialPaths[i], dst.materialPaths[i]);
+    }
+    ASSERT_EQ(src.cameraVolumes.size(), dst.cameraVolumes.size());
+    for (std::size_t i = 0; i < src.cameraVolumes.size(); ++i)
+    {
+        EXPECT_EQ(src.cameraVolumes[i].cameraPositionX, dst.cameraVolumes[i].cameraPositionX);
+        EXPECT_EQ(src.cameraVolumes[i].cameraPositionY, dst.cameraVolumes[i].cameraPositionY);
+        EXPECT_EQ(src.cameraVolumes[i].cameraPositionZ, dst.cameraVolumes[i].cameraPositionZ);
+        EXPECT_EQ(src.cameraVolumes[i].lookTargetX, dst.cameraVolumes[i].lookTargetX);
+        EXPECT_EQ(src.cameraVolumes[i].lookTargetY, dst.cameraVolumes[i].lookTargetY);
+        EXPECT_EQ(src.cameraVolumes[i].lookTargetZ, dst.cameraVolumes[i].lookTargetZ);
+        EXPECT_EQ(src.cameraVolumes[i].triggerCenterX, dst.cameraVolumes[i].triggerCenterX);
+        EXPECT_EQ(src.cameraVolumes[i].triggerCenterY, dst.cameraVolumes[i].triggerCenterY);
+        EXPECT_EQ(src.cameraVolumes[i].triggerCenterZ, dst.cameraVolumes[i].triggerCenterZ);
+        EXPECT_EQ(src.cameraVolumes[i].triggerExtentX, dst.cameraVolumes[i].triggerExtentX);
+        EXPECT_EQ(src.cameraVolumes[i].triggerExtentY, dst.cameraVolumes[i].triggerExtentY);
+        EXPECT_EQ(src.cameraVolumes[i].triggerExtentZ, dst.cameraVolumes[i].triggerExtentZ);
+        EXPECT_EQ(src.cameraVolumes[i].priority, dst.cameraVolumes[i].priority);
+        EXPECT_EQ(src.cameraVolumes[i].lookAtPlayer, dst.cameraVolumes[i].lookAtPlayer);
     }
     EXPECT_EQ(src.spawnX, dst.spawnX);
     EXPECT_EQ(src.spawnY, dst.spawnY);
