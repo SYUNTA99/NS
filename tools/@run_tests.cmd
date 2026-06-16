@@ -12,8 +12,12 @@ chcp 65001 >nul
 set "CONFIG=%~1"
 if "%CONFIG%"=="" set "CONFIG=Debug"
 
+:: PC を張り付かせないよう msbuild の並列数を論理コアの半分に制限する (最低 1)
+set /a MSBUILD_CPUS=%NUMBER_OF_PROCESSORS% / 2
+if %MSBUILD_CPUS% LSS 1 set MSBUILD_CPUS=1
+
 echo ===================================
-echo テストビルド・実行 (%CONFIG%)
+echo テストビルド・実行 (%CONFIG%, msbuild -m:%MSBUILD_CPUS%)
 echo ===================================
 echo.
 
@@ -29,9 +33,9 @@ echo [2/3] テストビルド中...
 call "%~dp0_common.cmd" :setup_msbuild
 if errorlevel 1 exit /b 1
 
-msbuild build\NS.sln /p:Configuration=%CONFIG% /p:Platform=x64 /m /v:minimal
+msbuild build\NS.sln /p:Configuration=%CONFIG% /p:Platform=x64 /m:%MSBUILD_CPUS% /v:minimal
 if errorlevel 1 (
-    echo [WARN] /m ビルド失敗。 /m:1 で再試行します...
+    echo [WARN] 並列ビルド失敗。 /m:1 で再試行します...
     msbuild build\NS.sln /p:Configuration=%CONFIG% /p:Platform=x64 /m:1 /v:minimal
     if errorlevel 1 (
         echo [ERROR] ビルド失敗
