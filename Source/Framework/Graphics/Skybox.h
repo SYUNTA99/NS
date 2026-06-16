@@ -28,6 +28,7 @@ namespace NS::Graphics
     class StaticMesh;
     class Shader;
     class Buffer;
+    class Pipeline;
 
     /// cubemap + xyww shader + LESS_EQUAL depth + 前面カリングで描画するスカイボックス。Renderer より先に破棄すること
     class Skybox : public NS::Core::NonCopyable
@@ -53,10 +54,8 @@ namespace NS::Graphics
 
         /// cubemap SRV (非所有)。 未ロードでも fallback SRV (1x1 マゼンタ) が返るため構築成功後は非 null
         [[nodiscard]] ID3D11ShaderResourceView* Srv() const noexcept;
-        /// 構築時に作った DepthStencilState の Desc 値 (LESS_EQUAL / 深度書込 OFF の検証用)
-        [[nodiscard]] D3D11_DEPTH_STENCIL_DESC DepthStateDesc() const noexcept;
-        /// 構築時に作った RasterizerState の Desc 値 (前面カリングの検証用)
-        [[nodiscard]] D3D11_RASTERIZER_DESC RasterStateDesc() const noexcept;
+        /// skybox 描画用の固定機能ステート束 (前面カリング + 深度 ReadOnly)。構築失敗時は nullptr
+        [[nodiscard]] const Pipeline* RenderPipeline() const noexcept;
 
     private:
         Skybox();
@@ -67,11 +66,8 @@ namespace NS::Graphics
         std::unique_ptr<Shader> m_ps;
         std::unique_ptr<Buffer> m_cb;
         ComPtr<ID3D11SamplerState> m_sampler;
-        ComPtr<ID3D11DepthStencilState> m_depthState;
-        ComPtr<ID3D11RasterizerState> m_rasterState;
+        std::unique_ptr<Pipeline> m_pipeline;
         ComPtr<ID3D11ShaderResourceView> m_cubemapSrv;
-        D3D11_DEPTH_STENCIL_DESC m_depthDesc{};
-        D3D11_RASTERIZER_DESC m_rasterDesc{};
         bool m_usingFallback = true;
         bool m_valid = false;
     };

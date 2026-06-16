@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Core/Logger.h>
+#include <Framework/Graphics/Pipeline.h>
 #include <Framework/Graphics/Renderer.h>
 #include <Framework/Graphics/Skybox.h>
 #include <Framework/Platform/Window.h>
@@ -51,13 +52,11 @@ TEST_F(SkyboxRenderingTest, DepthStateIsLessEqual)
     Skybox& skybox = *skyboxHolder;
     ASSERT_TRUE(skybox.IsValid());
 
-    const D3D11_DEPTH_STENCIL_DESC desc = skybox.DepthStateDesc();
+    ASSERT_NE(skybox.RenderPipeline(), nullptr);
+    const NS::Graphics::PipelineDesc& desc = skybox.RenderPipeline()->Desc();
 
-    EXPECT_TRUE(desc.DepthEnable);
-    // skybox は z=1 の far plane に張り付くので LESS_EQUAL 必須
-    EXPECT_EQ(desc.DepthFunc, D3D11_COMPARISON_LESS_EQUAL);
-    // depth には書き込まない (後続透過オブジェクトのため)
-    EXPECT_EQ(desc.DepthWriteMask, D3D11_DEPTH_WRITE_MASK_ZERO);
+    // skybox は z=1 の far plane に張り付くので LESS_EQUAL + 書込なし (= ReadOnly) 必須
+    EXPECT_EQ(desc.depth, NS::Graphics::DepthMode::ReadOnly);
 }
 
 TEST_F(SkyboxRenderingTest, RasterFrontCull)
@@ -71,11 +70,12 @@ TEST_F(SkyboxRenderingTest, RasterFrontCull)
     Skybox& skybox = *skyboxHolder;
     ASSERT_TRUE(skybox.IsValid());
 
-    const D3D11_RASTERIZER_DESC desc = skybox.RasterStateDesc();
+    ASSERT_NE(skybox.RenderPipeline(), nullptr);
+    const NS::Graphics::PipelineDesc& desc = skybox.RenderPipeline()->Desc();
 
-    EXPECT_EQ(desc.FillMode, D3D11_FILL_SOLID);
-    // inside-out cube を視点中心で描くので FRONT or NONE が許容される
-    const bool cullOk = (desc.CullMode == D3D11_CULL_FRONT) || (desc.CullMode == D3D11_CULL_NONE);
+    EXPECT_EQ(desc.fill, NS::Graphics::FillMode::Solid);
+    // inside-out cube を視点中心で描くので Front or None が許容される
+    const bool cullOk = (desc.cull == NS::Graphics::CullMode::Front) || (desc.cull == NS::Graphics::CullMode::None);
     EXPECT_TRUE(cullOk);
 }
 

@@ -5,6 +5,7 @@
 #include "Framework/Graphics/D3dCommon.h"
 #include "Framework/Graphics/GraphicObject.h"
 #include "Framework/Graphics/MeshPrimitives.h"
+#include "Framework/Graphics/Pipeline.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/StaticMesh.h"
@@ -264,52 +265,6 @@ namespace NS::Graphics
             return true;
         }
 
-        bool CreateSkyboxDepthState(ID3D11Device* device,
-                                    D3D11_DEPTH_STENCIL_DESC& outDesc,
-                                    ComPtr<ID3D11DepthStencilState>& outState) noexcept
-        {
-            outDesc = {};
-            outDesc.DepthEnable = TRUE;
-            outDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
-            outDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
-            outDesc.StencilEnable = FALSE;
-            outDesc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
-            outDesc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
-
-            const HRESULT hr = device->CreateDepthStencilState(&outDesc, outState.GetAddressOf());
-            if (FAILED(hr))
-            {
-                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                             "Skybox DepthStencilState 作成失敗 (hr=0x{:08X})",
-                             static_cast<unsigned>(hr));
-                return false;
-            }
-            return true;
-        }
-
-        bool CreateSkyboxRasterState(ID3D11Device* device,
-                                     D3D11_RASTERIZER_DESC& outDesc,
-                                     ComPtr<ID3D11RasterizerState>& outState) noexcept
-        {
-            outDesc = {};
-            outDesc.FillMode = D3D11_FILL_SOLID;
-            // inside-out cube なので前面を捨てる。 NS の他の不透明描画は CW = front
-            // (Mesh の MakeCube が CW front)。 FrontCCW=FALSE のまま CullMode=FRONT で背面が残る
-            outDesc.CullMode = D3D11_CULL_FRONT;
-            outDesc.FrontCounterClockwise = FALSE;
-            outDesc.DepthClipEnable = TRUE;
-
-            const HRESULT hr = device->CreateRasterizerState(&outDesc, outState.GetAddressOf());
-            if (FAILED(hr))
-            {
-                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                             "Skybox RasterizerState 作成失敗 (hr=0x{:08X})",
-                             static_cast<unsigned>(hr));
-                return false;
-            }
-            return true;
-        }
-
         bool CreateSkyboxSampler(ID3D11Device* device, ComPtr<ID3D11SamplerState>& outSampler) noexcept
         {
             D3D11_SAMPLER_DESC sd{};
@@ -384,9 +339,13 @@ namespace NS::Graphics
             return;
         }
 
-        if (!CreateSkyboxDepthState(device, m_depthDesc, m_depthState))
-            return;
-        if (!CreateSkyboxRasterState(device, m_rasterDesc, m_rasterState))
+        // inside-out cube なので前面を捨てる (NS の他の不透明描画は CW = front)
+        // 深度は z=1 張り付きに合わせ ReadOnly (LESS_EQUAL + 書込なし)
+        PipelineDesc pipeDesc{};
+        pipeDesc.cull = CullMode::Front;
+        pipeDesc.depth = DepthMode::ReadOnly;
+        m_pipeline = Pipeline::Create(pipeDesc);
+        if (!m_pipeline->IsValid())
             return;
         if (!CreateSkyboxSampler(device, m_sampler))
             return;
@@ -455,7 +414,7 @@ namespace NS::Graphics
         cbData.viewProj = viewProjNoTranslate;
         renderer.Commands().UpdateBuffer(*m_cb, &cbData, sizeof(cbData));
 
-        // 既存 depth/raster state を退避して draw 後に復元する
+        // 既存 depth/raster/blend state を退避して draw 後に復元する
         ComPtr<ID3D11DepthStencilState> prevDss;
         UINT prevStencilRef = 0;
         cmd->OMGetDepthStencilState(prevDss.GetAddressOf(), &prevStencilRef);
@@ -463,8 +422,12 @@ namespace NS::Graphics
         ComPtr<ID3D11RasterizerState> prevRs;
         cmd->RSGetState(prevRs.GetAddressOf());
 
-        cmd->OMSetDepthStencilState(m_depthState.Get(), 0);
-        cmd->RSSetState(m_rasterState.Get());
+        ComPtr<ID3D11BlendState> prevBlend;
+        float prevBlendFactor[4] = {};
+        UINT prevSampleMask = 0xFFFFFFFFu;
+        cmd->OMGetBlendState(prevBlend.GetAddressOf(), prevBlendFactor, &prevSampleMask);
+
+        cmd.SetPipeline(*m_pipeline);
 
         renderer.Commands().SetShader(*m_vs);
         renderer.Commands().SetShader(*m_ps);
@@ -485,6 +448,7 @@ namespace NS::Graphics
 
         cmd->OMSetDepthStencilState(prevDss.Get(), prevStencilRef);
         cmd->RSSetState(prevRs.Get());
+        cmd->OMSetBlendState(prevBlend.Get(), prevBlendFactor, prevSampleMask);
     }
 
     bool Skybox::IsValid() const noexcept
@@ -502,14 +466,9 @@ namespace NS::Graphics
         return m_cubemapSrv.Get();
     }
 
-    D3D11_DEPTH_STENCIL_DESC Skybox::DepthStateDesc() const noexcept
+    const Pipeline* Skybox::RenderPipeline() const noexcept
     {
-        return m_depthDesc;
-    }
-
-    D3D11_RASTERIZER_DESC Skybox::RasterStateDesc() const noexcept
-    {
-        return m_rasterDesc;
+        return m_pipeline.get();
     }
 
 } // namespace NS::Graphics

@@ -15,6 +15,7 @@
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/Mesh.h"
 #include "Framework/Graphics/MeshPrimitives.h"
+#include "Framework/Graphics/Pipeline.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/Retarget.h"
 #include "Framework/Graphics/Shader.h"
