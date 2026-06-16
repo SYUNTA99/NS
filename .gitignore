@@ -39,8 +39,8 @@ node_modules/
 compile_commands.json
 
 # Assimp ランタイム DLL は例外的に追跡 (実行に必要)
-!Source/third_party/assimp/bin/
-!Source/third_party/assimp/bin/**
+!Source/ThirdParty/assimp/bin/
+!Source/ThirdParty/assimp/bin/**
 
 # ====================================================================
 # ログ・OS・エディタ残骸
@@ -77,9 +77,9 @@ review
 # ====================================================================
 # 大容量・ローカル専用バイナリ
 # ====================================================================
-Source/third_party/lib/Debug/
-Source/third_party/lib/Release/
-Source/third_party/*/build/
+Source/ThirdParty/lib/Debug/
+Source/ThirdParty/lib/Release/
+Source/ThirdParty/*/build/
 
 # ====================================================================
 # tools/ 配下のローカル成果物

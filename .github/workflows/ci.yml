@@ -89,7 +89,7 @@ jobs:
           }
           $files = git diff --name-only "$base...HEAD" |
             Where-Object { $_ -match '\.(cpp|hpp|h|cc|cxx|inl)$' } |
-            Where-Object { $_ -notmatch '^(build|tools|third_party|external|vendor)/' } |
+            Where-Object { $_ -notmatch '^(build|tools|Source/ThirdParty|external|vendor)/' } |
             Where-Object { Test-Path $_ }
           if ($files) {
             $files | Out-File -FilePath changed.txt -Encoding utf8

@@ -12,7 +12,7 @@
 
 // json.hpp は /W4 で警告が出るため、 この TU でだけ警告を抑止して取り込む
 #pragma warning(push, 0)
-#include "third_party/nlohmann/json.hpp"
+#include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
 
 namespace NS::Scene

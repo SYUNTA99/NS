@@ -22,7 +22,7 @@ workspace "NS"
     includedirs { "Source" }
 
     -- Windows 共通定義 (全プロジェクト共通)
-    --   third_party (spdlog 等) からの transitive <windows.h> でも NOMINMAX が確実に効くよう
+    --   ThirdParty (spdlog 等) からの transitive <windows.h> でも NOMINMAX が確実に効くよう
     --   コマンドライン /D で global 伝搬させる (header 経由では取りこぼし発生)
     defines {
         "_WIN32_WINNT=0x0A00",
@@ -140,27 +140,27 @@ project "directxtk_simplemath"
 
     files {
         -- PCH (DirectXTK 標準パターン、 各 .cpp が冒頭で `#include "pch.h"`)
-        "Source/third_party/DirectXTK/Src/pch.cpp",
-        "Source/third_party/DirectXTK/Src/pch.h",
+        "Source/ThirdParty/DirectXTK/Src/pch.cpp",
+        "Source/ThirdParty/DirectXTK/Src/pch.h",
         -- NS が利用する最小サブセット
-        "Source/third_party/DirectXTK/Src/SimpleMath.cpp",
-        "Source/third_party/DirectXTK/Src/CommonStates.cpp",
-        "Source/third_party/DirectXTK/Src/DDSTextureLoader.cpp",
-        "Source/third_party/DirectXTK/Src/WICTextureLoader.cpp",
+        "Source/ThirdParty/DirectXTK/Src/SimpleMath.cpp",
+        "Source/ThirdParty/DirectXTK/Src/CommonStates.cpp",
+        "Source/ThirdParty/DirectXTK/Src/DDSTextureLoader.cpp",
+        "Source/ThirdParty/DirectXTK/Src/WICTextureLoader.cpp",
         -- 上記 .cpp が依存する内部ヘッダ
-        "Source/third_party/DirectXTK/Src/DDS.h",
-        "Source/third_party/DirectXTK/Src/LoaderHelpers.h",
-        "Source/third_party/DirectXTK/Src/PlatformHelpers.h",
+        "Source/ThirdParty/DirectXTK/Src/DDS.h",
+        "Source/ThirdParty/DirectXTK/Src/LoaderHelpers.h",
+        "Source/ThirdParty/DirectXTK/Src/PlatformHelpers.h",
     }
 
     includedirs {
-        "Source/third_party/DirectXTK/Inc",
-        "Source/third_party/DirectXTK/Src"   -- "pch.h" 解決用
+        "Source/ThirdParty/DirectXTK/Inc",
+        "Source/ThirdParty/DirectXTK/Src"   -- "pch.h" 解決用
     }
 
     -- DirectXTK 標準の pch.h を PCH 化 (各 .cpp が冒頭で `#include "pch.h"` 済)
     pchheader "pch.h"
-    pchsource "Source/third_party/DirectXTK/Src/pch.cpp"
+    pchsource "Source/ThirdParty/DirectXTK/Src/pch.cpp"
 
     warnings "Off"
     buildoptions { "/utf-8", "/FS" }
@@ -188,7 +188,7 @@ project "Math"
         "Source/Framework/Math/**.cpp"
     }
     includedirs {
-        "Source/third_party/DirectXTK/Inc"
+        "Source/ThirdParty/DirectXTK/Inc"
     }
     links { "directxtk_simplemath" }
     applyFrameworkLayerDefaults("Math")
@@ -212,9 +212,9 @@ project "Core"
 
     -- NS::Core::Math は SimpleMath の using-alias、Logger は spdlog/magic_enum を使用
     includedirs {
-        "Source/third_party/DirectXTK/Inc",
-        "Source/third_party/spdlog/include",
-        "Source/third_party/magic_enum/include",
+        "Source/ThirdParty/DirectXTK/Inc",
+        "Source/ThirdParty/spdlog/include",
+        "Source/ThirdParty/magic_enum/include",
     }
 
     -- Math 層経由で SimpleMath の静的定数 TU をリンク伝播させる
@@ -247,9 +247,9 @@ project "Platform"
 
     -- WindowDesc 等が NS::Core::Size2D (Math.h 経由で SimpleMath) を保持するため DirectXTK が必要
     includedirs {
-        "Source/third_party/DirectXTK/Inc",
-        "Source/third_party/spdlog/include",
-        "Source/third_party/magic_enum/include",
+        "Source/ThirdParty/DirectXTK/Inc",
+        "Source/ThirdParty/spdlog/include",
+        "Source/ThirdParty/magic_enum/include",
     }
 
     defines {
@@ -286,11 +286,11 @@ project "Graphics"
     }
 
     includedirs {
-        "Source/third_party/DirectXTK/Inc",
-        "Source/third_party/DirectXTex/DirectXTex",
-        "Source/third_party/spdlog/include",
-        "Source/third_party/magic_enum/include",
-        "Source/third_party/cgltf"
+        "Source/ThirdParty/DirectXTK/Inc",
+        "Source/ThirdParty/DirectXTex/DirectXTex",
+        "Source/ThirdParty/spdlog/include",
+        "Source/ThirdParty/magic_enum/include",
+        "Source/ThirdParty/cgltf"
     }
 
     defines {
@@ -342,9 +342,9 @@ project "Physics"
 
     -- NS::Core::Vector3 / BoundingBox / Ray (SimpleMath) を使う
     includedirs {
-        "Source/third_party/DirectXTK/Inc",
-        "Source/third_party/spdlog/include",
-        "Source/third_party/magic_enum/include",
+        "Source/ThirdParty/DirectXTK/Inc",
+        "Source/ThirdParty/spdlog/include",
+        "Source/ThirdParty/magic_enum/include",
     }
 
     defines {
@@ -376,8 +376,8 @@ project "Audio"
     }
 
     includedirs {
-        "Source/third_party/spdlog/include",
-        "Source/third_party/magic_enum/include",
+        "Source/ThirdParty/spdlog/include",
+        "Source/ThirdParty/magic_enum/include",
     }
 
     defines {
@@ -410,9 +410,9 @@ project "Scene"
     }
 
     includedirs {
-        "Source/third_party/DirectXTK/Inc",
-        "Source/third_party/spdlog/include",
-        "Source/third_party/magic_enum/include",
+        "Source/ThirdParty/DirectXTK/Inc",
+        "Source/ThirdParty/spdlog/include",
+        "Source/ThirdParty/magic_enum/include",
     }
 
     defines {
@@ -451,9 +451,9 @@ project "UI"
     }
 
     includedirs {
-        "Source/third_party/DirectXTK/Inc",
-        "Source/third_party/spdlog/include",
-        "Source/third_party/magic_enum/include",
+        "Source/ThirdParty/DirectXTK/Inc",
+        "Source/ThirdParty/spdlog/include",
+        "Source/ThirdParty/magic_enum/include",
     }
 
     defines {
@@ -473,8 +473,8 @@ project "UI"
     -- GameDebug / GameRelease では preprocessor で stub に切替わるので link 不要。
     filter "configurations:Debug or Development"
         includedirs {
-            "Source/third_party/imgui",
-            "Source/third_party/imgui/backends",
+            "Source/ThirdParty/imgui",
+            "Source/ThirdParty/imgui/backends",
         }
         links { "imgui" }
     filter {}
@@ -502,9 +502,9 @@ project "App"
     -- WindowDesc 等が NS::Core::Size2D (Math.h 経由で SimpleMath) を保持するため DirectXTK が必要
     -- Logger 経由で spdlog / magic_enum も参照
     includedirs {
-        "Source/third_party/DirectXTK/Inc",
-        "Source/third_party/spdlog/include",
-        "Source/third_party/magic_enum/include",
+        "Source/ThirdParty/DirectXTK/Inc",
+        "Source/ThirdParty/spdlog/include",
+        "Source/ThirdParty/magic_enum/include",
     }
 
     defines {
@@ -551,9 +551,9 @@ project "Game"
     -- Framework/Core/Math.h → SimpleMath.h、Material::SetParams で
     -- DirectXMath.h が必要になる。spdlog/magic_enum は将来 Game 側でも使う想定で同居。
     includedirs {
-        "Source/third_party/DirectXTK/Inc",
-        "Source/third_party/spdlog/include",
-        "Source/third_party/magic_enum/include",
+        "Source/ThirdParty/DirectXTK/Inc",
+        "Source/ThirdParty/spdlog/include",
+        "Source/ThirdParty/magic_enum/include",
     }
 
     defines {
@@ -587,8 +587,8 @@ project "Game"
     -- include path のみ通す (実体 link は UI 経由)。 Shipping 構成では gate により stub。
     filter "configurations:Debug or Development"
         includedirs {
-            "Source/third_party/imgui",
-            "Source/third_party/imgui/backends",
+            "Source/ThirdParty/imgui",
+            "Source/ThirdParty/imgui/backends",
         }
     filter {}
 
@@ -617,26 +617,26 @@ project "imgui"
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/third_party/imgui/imgui.h",
-        "Source/third_party/imgui/imgui.cpp",
-        "Source/third_party/imgui/imgui_internal.h",
-        "Source/third_party/imgui/imconfig.h",
-        "Source/third_party/imgui/imgui_draw.cpp",
-        "Source/third_party/imgui/imgui_widgets.cpp",
-        "Source/third_party/imgui/imgui_tables.cpp",
-        "Source/third_party/imgui/imgui_demo.cpp",
-        "Source/third_party/imgui/backends/imgui_impl_win32.h",
-        "Source/third_party/imgui/backends/imgui_impl_win32.cpp",
-        "Source/third_party/imgui/backends/imgui_impl_dx11.h",
-        "Source/third_party/imgui/backends/imgui_impl_dx11.cpp",
-        "Source/third_party/imgui/imstb_textedit.h",
-        "Source/third_party/imgui/imstb_truetype.h",
-        "Source/third_party/imgui/imstb_rectpack.h",
+        "Source/ThirdParty/imgui/imgui.h",
+        "Source/ThirdParty/imgui/imgui.cpp",
+        "Source/ThirdParty/imgui/imgui_internal.h",
+        "Source/ThirdParty/imgui/imconfig.h",
+        "Source/ThirdParty/imgui/imgui_draw.cpp",
+        "Source/ThirdParty/imgui/imgui_widgets.cpp",
+        "Source/ThirdParty/imgui/imgui_tables.cpp",
+        "Source/ThirdParty/imgui/imgui_demo.cpp",
+        "Source/ThirdParty/imgui/backends/imgui_impl_win32.h",
+        "Source/ThirdParty/imgui/backends/imgui_impl_win32.cpp",
+        "Source/ThirdParty/imgui/backends/imgui_impl_dx11.h",
+        "Source/ThirdParty/imgui/backends/imgui_impl_dx11.cpp",
+        "Source/ThirdParty/imgui/imstb_textedit.h",
+        "Source/ThirdParty/imgui/imstb_truetype.h",
+        "Source/ThirdParty/imgui/imstb_rectpack.h",
     }
 
     includedirs {
-        "Source/third_party/imgui",
-        "Source/third_party/imgui/backends",
+        "Source/ThirdParty/imgui",
+        "Source/ThirdParty/imgui/backends",
     }
 
     warnings "Off"
@@ -648,7 +648,7 @@ project "imgui"
     filter {}
 
 --============================================================================
--- Google Test ライブラリ（Source/third_party/ source drop）
+-- Google Test ライブラリ（Source/ThirdParty/ source drop）
 --============================================================================
 project "googletest"
     kind "StaticLib"
@@ -658,15 +658,15 @@ project "googletest"
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/third_party/googletest/googletest/src/gtest-all.cc",
-        "Source/third_party/googletest/googlemock/src/gmock-all.cc"
+        "Source/ThirdParty/googletest/googletest/src/gtest-all.cc",
+        "Source/ThirdParty/googletest/googlemock/src/gmock-all.cc"
     }
 
     includedirs {
-        "Source/third_party/googletest/googletest/include",
-        "Source/third_party/googletest/googletest",
-        "Source/third_party/googletest/googlemock/include",
-        "Source/third_party/googletest/googlemock"
+        "Source/ThirdParty/googletest/googletest/include",
+        "Source/ThirdParty/googletest/googletest",
+        "Source/ThirdParty/googletest/googlemock/include",
+        "Source/ThirdParty/googletest/googlemock"
     }
 
     -- Google Testの警告を無視
@@ -708,11 +708,11 @@ project "Tests"
     }
 
     includedirs {
-        "Source/third_party/googletest/googletest/include",
-        "Source/third_party/googletest/googlemock/include",
-        "Source/third_party/DirectXTK/Inc",
-        "Source/third_party/spdlog/include",
-        "Source/third_party/magic_enum/include",
+        "Source/ThirdParty/googletest/googletest/include",
+        "Source/ThirdParty/googletest/googlemock/include",
+        "Source/ThirdParty/DirectXTK/Inc",
+        "Source/ThirdParty/spdlog/include",
+        "Source/ThirdParty/magic_enum/include",
     }
 
     defines {
@@ -739,8 +739,8 @@ project "Tests"
     filter "configurations:Debug or Development"
         links { "imgui" }
         includedirs {
-            "Source/third_party/imgui",
-            "Source/third_party/imgui/backends",
+            "Source/ThirdParty/imgui",
+            "Source/ThirdParty/imgui/backends",
         }
     filter {}
 
