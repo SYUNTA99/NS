@@ -695,10 +695,12 @@ project "Tests"
         "Source/Game/Blocks/**.cpp",
         "Source/Game/CameraRig.cpp",
         "Source/Game/EditorCameraRig.cpp",
-        -- LevelEditorScene は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
-        -- OnStart は Application::Get() を要求するため test では呼ばないが、 ctor / EnterPlay /
+        -- LevelEditorController は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
+        -- Setup は Application::Get() を要求するため test では呼ばないが、 ctor / EnterPlay /
         -- EnterEdit / 値メンバ accessor の symbol が要るので .cpp を Tests に取り込む。
-        "Source/Game/LevelEditorScene.cpp",
+        -- 操作対象の LevelPlayScene も ctor / dtor / vtable / SetPlaying symbol のため併せて取り込む。
+        "Source/Game/LevelPlayScene.cpp",
+        "Source/Game/LevelEditorController.cpp",
         -- Level data / ChunkIO / CRC32 / Undo Command / AutoTile は Application
         -- 非依存の純粋ロジックなので Tests project から直接 compile する。
         "Source/Game/Level/**.cpp",

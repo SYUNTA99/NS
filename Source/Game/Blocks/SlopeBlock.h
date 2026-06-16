@@ -5,12 +5,12 @@
 ///
 /// @details MeshRendererComponent + SlopeColliderComponent を GameObject が所有し、参照を member キャッシュする
 /// Block (AABB collider 専用) からではなく GameObject を直接派生する
-/// Mesh / Material は LevelEditorScene が共有する生ポインタを受け取り、角度別 wedge mesh は scene 側でキャッシュする
+/// Mesh / Material は LevelPlayScene が共有する生ポインタを受け取り、角度別 wedge mesh は scene 側でキャッシュする
 
 #include "Framework/Math/Math.h"
-#include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/Components/SlopeColliderComponent.h"
+#include "Framework/Scene/GameObject.h"
 
 namespace NS::Graphics
 {

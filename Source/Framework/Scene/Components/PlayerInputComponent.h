@@ -5,7 +5,7 @@
 ///
 /// WASD + Left Stick を camera forward 相対の world direction に変換し、Space / Gamepad A の
 /// rising edge / held を movement の SetJumpPressed / SetJumpHeld へ流す。Camera への直接依存は
-/// 持たず、`SetCameraForward()` で LevelEditorScene が毎フレーム値を注入する
+/// 持たず、`SetCameraForward()` で LevelPlayScene が毎フレーム値を注入する
 
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Component.h"

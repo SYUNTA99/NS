@@ -3,7 +3,7 @@
 /// @file EditorMode.h
 /// @brief 編集モード sub-system — cursor / palette / UndoStack を集約する
 ///
-/// @details `LevelEditorScene` の value member として保有され、
+/// @details `LevelEditorController` の value member として保有され、
 /// SetActive(false) で Tick / Render が何もしない (mode toggle 用)
 /// LevelData への変更は **全て** `UndoStack::Push` 経由で発火し、
 /// PlayMode 側との変更経路衝突を防ぐ。 spawn marker のみ単一値の上書きなので
@@ -121,7 +121,7 @@ namespace NS::Game::Editor
 
         bool m_active = true;
         bool m_inputSuppressed = false; // Object ツールモード中は grid 編集入力を無視する
-        bool m_levelDirty = true; // 初期 true。 初回 LevelEditorScene::OnUpdate で seed level の rebuild を走らせる
+        bool m_levelDirty = true;       // 初期 true。 編集側の初回 rebuild 判定に使う
         std::uint8_t m_currentRotation = 0;
 
         CursorState m_cursor{};

@@ -1,0 +1,640 @@
+#include "Game/LevelEditorController.h"
+
+#include "Game/Block.h"
+#include "Game/EditorCameraRig.h"
+#include "Game/LevelPlayScene.h"
+#include "Game/Player.h"
+
+#include "Framework/App/Application.h"
+#include "Framework/Core/Filesystem.h"
+#include "Framework/Graphics/DebugDraw.h"
+#include "Framework/Platform/Input.h"
+#include "Framework/Platform/Keyboard.h"
+#include "Framework/Platform/Window.h"
+#include "Framework/Scene/Components/CameraBrainComponent.h"
+#include "Framework/Scene/Components/MeshRendererComponent.h"
+#include "Framework/Scene/Components/PlacedVirtualCamera.h"
+#include "Framework/Scene/Transform.h"
+#include "Framework/UI/ImGuiContext.h"
+#include "Game/Level/LevelData.h"
+
+#include <cmath>
+
+namespace
+{
+    constexpr NS::Math::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
+} // namespace
+
+LevelEditorController::LevelEditorController(LevelPlayScene* scene) noexcept : m_scene(scene) {}
+
+LevelEditorController::~LevelEditorController() = default;
+
+NS::Game::Level::LevelData& LevelEditorController::Level() noexcept
+{
+    return m_scene->Level();
+}
+
+NS::Game::Level::PlayState& LevelEditorController::Play() noexcept
+{
+    return m_scene->Play();
+}
+
+void LevelEditorController::Setup()
+{
+    auto* app = NS::App::Application::Get();
+    if (app == nullptr || m_scene == nullptr)
+        return;
+
+    // 編集モード専用の free-fly カメラを Player / follow camera と並列で立ち上げる
+    // MB64 の freecam に相当 (mouse + gamepad で Orbit / Pan / Zoom)
+    m_editorCameraRig = std::make_unique<EditorCameraRig>();
+    m_editorCameraRig->AttachScene(m_scene);
+    m_editorCameraRig->EditorCam().SetInput(&app->Input());
+    m_editorCameraRig->EditorCam().SetImGui(app->ImGui());
+
+    // free-fly vcam の投影設定 (編集は遠景を 200 まで見せる、 near 0.1 は既定)
+    m_editorCameraRig->EditorCam().SetNearPlane(0.1f);
+    m_editorCameraRig->EditorCam().SetFarPlane(200.0f);
+    m_editorCameraRig->EditorCam().SetFovY(NS::Math::ToRadians(NS::Math::Degrees{60.0f}));
+
+    // 初期視点は spawn 位置を中心に少し引いた位置から見下ろす
+    const NS::Math::Vector3 spawnPos{static_cast<float>(m_scene->m_level.spawnX),
+                                     static_cast<float>(m_scene->m_level.spawnY),
+                                     static_cast<float>(m_scene->m_level.spawnZ)};
+    m_editorCameraRig->EditorCam().SetCenter(spawnPos);
+    // 起動直後は spawn block を真ん中近めに見せる距離。 1m cube が画面の十数 % を占める
+    m_editorCameraRig->EditorCam().SetDistance(5.0f);
+
+    m_editorCameraRig->OnStart();
+
+    // free-fly vcam を Brain へ登録する (follow / area camera は scene が登録済)
+    if (m_scene->m_brain)
+        m_scene->m_brain->AddVirtualCamera(&m_editorCameraRig->EditorCam());
+
+    // EditorMode に依存先を注入する
+    m_editor.SetLevel(&m_scene->m_level);
+    m_editor.SetInput(&app->Input());
+    m_editor.SetImGui(app->ImGui());
+    m_editor.SetCameraComponent(m_scene->m_mainCamera);
+    m_editor.SetActive(true);
+    // scene が OnStart で rebuild 済なので、 初回 Tick の二重 rebuild を抑制
+    m_editor.ClearLevelDirty();
+
+    // ギズモに依存先を注入する。 選択候補は自由オブジェクト + grid solid ブロックを連結して渡す
+    m_gizmo.SetInput(&app->Input());
+    m_gizmo.SetImGui(app->ImGui());
+    RefreshGizmoSelectables();
+
+    // scene は OnStart でプレイ開始済。 編集モードへ切替える (player 凍結 / free-fly camera 有効)
+    m_scene->SetPlaying(false);
+    m_editorCameraRig->EditorCam().SetActive(true);
+    m_mode = Mode::Edit;
+}
+
+void LevelEditorController::Teardown()
+{
+    // ギズモは free オブジェクトの Transform を非所有参照するので、 scene 破棄前に選択を外す
+    m_gizmo.ClearSelection();
+    if (m_editorCameraRig)
+    {
+        // Brain は free-fly vcam を非所有参照する。 vcam を畳む前に Brain から外して dangling を避ける
+        if (m_scene != nullptr && m_scene->m_brain)
+            m_scene->m_brain->RemoveVirtualCamera(&m_editorCameraRig->EditorCam());
+        m_editorCameraRig->OnEndPlay();
+    }
+    m_editorCameraRig.reset();
+    m_selectablePtrs.clear();
+    m_selectableHalfExtents.clear();
+}
+
+void LevelEditorController::EnterPlay() noexcept
+{
+    if (m_mode == Mode::Play)
+        return;
+    m_mode = Mode::Play;
+    // player spawn / 物理 / follow camera は scene が握る
+    m_scene->SetPlaying(true);
+    m_editor.SetActive(false);
+    if (m_editorCameraRig)
+        m_editorCameraRig->EditorCam().SetActive(false);
+}
+
+void LevelEditorController::EnterEdit() noexcept
+{
+    if (m_mode == Mode::Edit)
+        return;
+    m_mode = Mode::Edit;
+    // player 凍結 / follow・area camera 休止 / play 状態リセットは scene が握る
+    m_scene->SetPlaying(false);
+    m_editor.SetActive(true);
+    if (m_editorCameraRig)
+        m_editorCameraRig->EditorCam().SetActive(true);
+}
+
+void LevelEditorController::Tick()
+{
+    if (m_mode == Mode::Edit)
+    {
+        TickEdit();
+    }
+    else if (m_scene->Play().clearTriggered)
+    {
+        // クリア成立で編集へ戻す (出荷にはこの controller が無いためクリア演出は別途必要)
+        EnterEdit();
+    }
+}
+
+void LevelEditorController::TickEdit()
+{
+    auto* app = NS::App::Application::Get();
+    if (app == nullptr)
+        return;
+
+    // Esc: Object モードで選択中ならまず選択解除に使い終了させない
+    if (app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
+    {
+        if (m_editorToolMode == EditorToolMode::Object && m_gizmo.Selected() != nullptr)
+        {
+            m_gizmo.ClearSelection();
+            return;
+        }
+        NS::App::Application::Quit();
+        return;
+    }
+
+    // free-fly camera を駆動
+    if (m_editorCameraRig)
+    {
+        m_editorCameraRig->Root().Snapshot();
+        m_editorCameraRig->OnUpdate();
+    }
+
+    // free-fly 更新後に実カメラへ反映し、 ギズモ / 編集の ray-pick が当フレームの視点を使えるようにする
+    if (m_scene->m_brain)
+        m_scene->m_brain->Evaluate(1.0f);
+
+    // 同時に 1 モードだけが LMB/R/Ctrl+Z を消費する。 Object 中は grid 入力を抑制しギズモへ回す
+    // モード切替は EditorLayer の UI ボタン (SetObjectToolActive) から行う (Tab は Edit↔Play 専用)
+    const bool objectMode = (m_editorToolMode == EditorToolMode::Object);
+    m_gizmo.SetActive(objectMode);
+    m_editor.SetInputSuppressed(objectMode);
+
+    if (objectMode && m_editorCameraRig && m_scene->m_brain)
+    {
+        const auto vp = m_scene->m_brain->ViewProjection();
+        const auto viewport = app->Window().Size();
+        m_gizmo.Tick(vp, viewport);
+
+        // 掴んだら自由化: 選択が grid solid ブロックなら自由 Transform オブジェクトへ昇格する
+        if (NS::Scene::Transform* selected = m_gizmo.Selected())
+        {
+            for (std::size_t bi = 0; bi < m_scene->m_blocks.size(); ++bi)
+            {
+                if (m_scene->m_blocks[bi] && &m_scene->m_blocks[bi]->Root() == selected)
+                {
+                    PromoteGridBlockToFree(bi);
+                    break;
+                }
+            }
+        }
+
+        // Object モードの Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y はギズモ変形履歴を操作する
+        // (grid の undo は EditorMode が inputSuppressed で止めている)
+        const bool imguiKeyboard = app->ImGui() != nullptr && app->ImGui()->WantCaptureKeyboard();
+        if (!imguiKeyboard)
+        {
+            auto& kb = app->Input().Keyboard();
+            const bool ctrl = kb.IsHeld(NS::Platform::Key::Ctrl);
+            const bool shift = kb.IsHeld(NS::Platform::Key::Shift);
+            const bool redo =
+                ctrl && ((shift && kb.IsPressed(NS::Platform::Key::Z)) || kb.IsPressed(NS::Platform::Key::Y));
+            const bool undo = ctrl && !shift && kb.IsPressed(NS::Platform::Key::Z);
+            if (redo)
+                m_gizmo.Redo();
+            else if (undo)
+                m_gizmo.Undo();
+        }
+
+        // ギズモ変形 / undo の結果を ObjectInstance に反映してセーブと rebuild に耐えるようにする
+        SyncFreeObjectTransforms();
+
+        // ビューポートでのギズモ選択変化を Hierarchy / Inspector の選択添字へ追従させる
+        ResolveSelectedIndexFromGizmo();
+    }
+
+    m_editor.Tick();
+    if (m_editor.IsLevelDirty())
+    {
+        m_scene->RebuildBlocksFromLevelData();
+        // ファイル読込で cameraVolumes が差し替わった場合に area camera を追従させる
+        m_scene->RebuildAreaCamerasFromLevelData();
+        // 作り直した runtime オブジェクトへギズモ選択候補を貼り直す (pointer dangling 防止)
+        RefreshGizmoSelectables();
+        m_editor.ClearLevelDirty();
+    }
+}
+
+void LevelEditorController::Render()
+{
+    auto* app = NS::App::Application::Get();
+    if (app == nullptr)
+        return;
+
+    // Debug provenance パネルの入力を毎フレーム退避する。出所は has_value の突き合わせで逆算するので
+    // Resolve のホットパスに追跡を入れず、 scene の解決値と代表 object override をそのまま保持する
+    m_debugResolvedSettings = m_scene->m_lastResolvedSettings;
+    m_debugSceneOverride = m_scene->BuildSceneOverride();
+    if (m_scene->m_player)
+        m_debugPlayerObjectOverride = m_scene->m_player->MeshComp().RenderOverride();
+
+    if (m_mode != Mode::Edit)
+        return;
+
+    m_editor.RenderSpawnMarker();
+    m_editor.RenderCursorPreview();
+    RenderAreaCameraGizmos();
+    // Toolbar UI を ImGui 経由で描画 (Debug / Development build のみ実機能)
+    m_editor.Palette().Render();
+    // Object モードのギズモは最前面 (drawlist) に重ねる
+    if (m_gizmo.IsActive() && m_scene->m_brain)
+        m_gizmo.Render(m_scene->m_brain->ViewProjection(), app->Window().Size());
+}
+
+void LevelEditorController::SetObjectToolActive(bool active) noexcept
+{
+    const EditorToolMode next = active ? EditorToolMode::Object : EditorToolMode::Build;
+    if (next == m_editorToolMode)
+        return;
+    m_editorToolMode = next;
+    if (!active)
+    {
+        m_gizmo.ClearSelection();
+        m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+        m_lastGizmoSelected = nullptr;
+    }
+}
+
+bool LevelEditorController::HasInspectableSelection() const noexcept
+{
+    return m_selectedObjectIndex < m_scene->m_level.objects.size();
+}
+
+bool LevelEditorController::SelectedIsGridAligned() const noexcept
+{
+    return HasInspectableSelection() &&
+           (m_scene->m_level.objects[m_selectedObjectIndex].flags & NS::Game::Level::kObjectFlagGridAligned) != 0;
+}
+
+NS::Game::Level::ObjectInstance LevelEditorController::SelectedObjectSnapshot() const noexcept
+{
+    if (m_selectedObjectIndex < m_scene->m_level.objects.size())
+        return m_scene->m_level.objects[m_selectedObjectIndex];
+    return NS::Game::Level::ObjectInstance{};
+}
+
+bool LevelEditorController::HasCameraSelection() const noexcept
+{
+    return m_selectedCameraIndex < m_scene->m_level.cameraVolumes.size();
+}
+
+void LevelEditorController::RefreshGizmoSelectables()
+{
+    m_selectablePtrs.clear();
+    m_selectableHalfExtents.clear();
+    m_selectablePtrs.reserve(m_scene->m_freeObjects.size() + m_scene->m_blocks.size());
+    m_selectableHalfExtents.reserve(m_scene->m_freeObjects.size() + m_scene->m_blocks.size());
+
+    // 自由オブジェクトは scale 付きなので pick box は halfExtents にスケールを乗せる
+    for (const auto& obj : m_scene->m_freeObjects)
+    {
+        if (!obj)
+            continue;
+        const NS::Math::Vector3 scale = obj->Root().Scale();
+        m_selectablePtrs.push_back(obj.get());
+        m_selectableHalfExtents.push_back(NS::Math::Vector3{
+            kCellHalfExtents.x * scale.x, kCellHalfExtents.y * scale.y, kCellHalfExtents.z * scale.z});
+    }
+
+    // grid solid ブロックも掴める。 掴むと PromoteGridBlockToFree で自由オブジェクトに変わる
+    for (const auto& block : m_scene->m_blocks)
+    {
+        if (!block)
+            continue;
+        m_selectablePtrs.push_back(block.get());
+        m_selectableHalfExtents.push_back(kCellHalfExtents);
+    }
+
+    m_gizmo.SetSelectableObjects(m_selectablePtrs, m_selectableHalfExtents);
+}
+
+void LevelEditorController::SyncFreeObjectTransforms()
+{
+    for (std::size_t i = 0; i < m_scene->m_freeObjects.size(); ++i)
+    {
+        if (!m_scene->m_freeObjects[i] || m_scene->m_freeSourceIndices[i] >= m_scene->m_level.objects.size())
+            continue;
+
+        const NS::Scene::Transform& root = m_scene->m_freeObjects[i]->Root();
+        const NS::Math::Vector3 position = root.Position();
+        const NS::Math::Quaternion rotation = root.Rotation();
+        const NS::Math::Vector3 scale = root.Scale();
+
+        NS::Game::Level::ObjectInstance& object = m_scene->m_level.objects[m_scene->m_freeSourceIndices[i]];
+        object.positionX = position.x;
+        object.positionY = position.y;
+        object.positionZ = position.z;
+        object.rotationX = rotation.x;
+        object.rotationY = rotation.y;
+        object.rotationZ = rotation.z;
+        object.rotationW = rotation.w;
+        object.scaleX = scale.x;
+        object.scaleY = scale.y;
+        object.scaleZ = scale.z;
+    }
+}
+
+void LevelEditorController::SelectObjectByIndex(std::size_t index) noexcept
+{
+    // オブジェクトとカメラの選択は排他。 オブジェクトを選んだらカメラ選択を解除する
+    m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
+
+    if (index >= m_scene->m_level.objects.size())
+    {
+        m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+        return;
+    }
+    m_selectedObjectIndex = index;
+
+    // ハンドルを出すため Object ツールへ切替える (Build のままだとギズモが描かれない)
+    SetObjectToolActive(true);
+
+    // 自由オブジェクトだけギズモへ貼る。 grid 配置物 (solid 含む) は一覧クリックでは昇格させず、
+    // Inspector の Promote で明示的に自由化する (一覧での選択を非破壊に保つ)
+    for (std::size_t i = 0; i < m_scene->m_freeSourceIndices.size(); ++i)
+    {
+        if (m_scene->m_freeSourceIndices[i] == index && m_scene->m_freeObjects[i])
+        {
+            m_gizmo.SetSelected(&m_scene->m_freeObjects[i]->Root());
+            m_lastGizmoSelected = m_gizmo.Selected();
+            return;
+        }
+    }
+    m_gizmo.ClearSelection();
+    m_lastGizmoSelected = nullptr;
+}
+
+void LevelEditorController::SelectCameraByIndex(std::size_t index) noexcept
+{
+    if (index >= m_scene->m_level.cameraVolumes.size())
+    {
+        m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
+        return;
+    }
+    m_selectedCameraIndex = index;
+
+    // カメラ選択中はオブジェクト / ギズモ選択を外す (Inspector はカメラを表示する)
+    m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+    m_gizmo.ClearSelection();
+    m_lastGizmoSelected = nullptr;
+}
+
+NS::Game::Level::CameraVolume LevelEditorController::SelectedCameraSnapshot() const noexcept
+{
+    if (m_selectedCameraIndex < m_scene->m_level.cameraVolumes.size())
+        return m_scene->m_level.cameraVolumes[m_selectedCameraIndex];
+    return NS::Game::Level::CameraVolume{};
+}
+
+void LevelEditorController::SetSelectedCameraVolume(const NS::Game::Level::CameraVolume& volume) noexcept
+{
+    if (m_selectedCameraIndex >= m_scene->m_level.cameraVolumes.size())
+        return;
+    m_scene->m_level.cameraVolumes[m_selectedCameraIndex] = volume;
+
+    // 同順の area camera を in-place 更新する (drag 毎に全 rebuild すると churn するため)
+    if (m_selectedCameraIndex < m_scene->m_areaCameras.size() && m_scene->m_areaCameras[m_selectedCameraIndex].cam)
+    {
+        LevelPlayScene::AreaCamera& area = m_scene->m_areaCameras[m_selectedCameraIndex];
+        area.volume = volume;
+        area.cam->SetView({volume.cameraPositionX, volume.cameraPositionY, volume.cameraPositionZ},
+                          {volume.lookTargetX, volume.lookTargetY, volume.lookTargetZ});
+        area.cam->SetVcamPriority(volume.priority);
+    }
+}
+
+void LevelEditorController::AddCameraVolume() noexcept
+{
+    // 新規カメラは編集視点の中心あたりに置き、 そこから少し引いた位置から中心を見るデフォルトにする
+    NS::Math::Vector3 center{static_cast<float>(m_scene->m_level.spawnX),
+                             static_cast<float>(m_scene->m_level.spawnY),
+                             static_cast<float>(m_scene->m_level.spawnZ)};
+    if (m_editorCameraRig)
+        center = m_editorCameraRig->EditorCam().Center();
+
+    NS::Game::Level::CameraVolume volume{};
+    volume.cameraPositionX = center.x;
+    volume.cameraPositionY = center.y + 5.0f;
+    volume.cameraPositionZ = center.z - 10.0f;
+    volume.lookTargetX = center.x;
+    volume.lookTargetY = center.y;
+    volume.lookTargetZ = center.z;
+    volume.triggerCenterX = center.x;
+    volume.triggerCenterY = center.y;
+    volume.triggerCenterZ = center.z;
+    volume.triggerExtentX = 3.0f;
+    volume.triggerExtentY = 3.0f;
+    volume.triggerExtentZ = 3.0f;
+    volume.priority = 10;
+
+    m_scene->m_level.cameraVolumes.push_back(volume);
+    m_scene->RebuildAreaCamerasFromLevelData();
+    SelectCameraByIndex(m_scene->m_level.cameraVolumes.size() - 1);
+}
+
+void LevelEditorController::DeleteSelectedCamera() noexcept
+{
+    if (m_selectedCameraIndex >= m_scene->m_level.cameraVolumes.size())
+        return;
+    m_scene->m_level.cameraVolumes.erase(m_scene->m_level.cameraVolumes.begin() +
+                                         static_cast<std::ptrdiff_t>(m_selectedCameraIndex));
+    m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
+    m_scene->RebuildAreaCamerasFromLevelData();
+}
+
+void LevelEditorController::RenderAreaCameraGizmos() noexcept
+{
+    // edit 中、 各 area camera のトリガ範囲 (AABB) とカメラ位置 → 注視点を線で可視化する
+    // 選択中のカメラは強調色にする
+    for (std::size_t i = 0; i < m_scene->m_level.cameraVolumes.size(); ++i)
+    {
+        const NS::Game::Level::CameraVolume& v = m_scene->m_level.cameraVolumes[i];
+        const bool selected = (i == m_selectedCameraIndex);
+
+        const NS::Math::Color triggerColor =
+            selected ? NS::Math::Color{1.0f, 0.55f, 0.10f, 1.0f} : NS::Math::Color{0.20f, 0.70f, 1.0f, 1.0f};
+        const NS::Math::AABB trigger{NS::Math::Vector3{v.triggerCenterX, v.triggerCenterY, v.triggerCenterZ},
+                                     NS::Math::Vector3{v.triggerExtentX, v.triggerExtentY, v.triggerExtentZ}};
+        NS::Graphics::DebugDraw::AABB(trigger, triggerColor);
+
+        const NS::Math::Vector3 camPos{v.cameraPositionX, v.cameraPositionY, v.cameraPositionZ};
+        const NS::Math::Vector3 lookAt{v.lookTargetX, v.lookTargetY, v.lookTargetZ};
+        const NS::Math::Color camColor{1.0f, 0.85f, 0.10f, 1.0f};
+        const NS::Math::AABB camMarker{camPos, NS::Math::Vector3{0.3f, 0.3f, 0.3f}};
+        NS::Graphics::DebugDraw::AABB(camMarker, camColor);
+        NS::Graphics::DebugDraw::Line(camPos, lookAt, camColor);
+    }
+}
+
+void LevelEditorController::ResolveSelectedIndexFromGizmo() noexcept
+{
+    NS::Scene::Transform* selected = m_gizmo.Selected();
+    // 前フレームと同じなら据え置き (Hierarchy で選んだ非選択候補を毎フレーム潰さないため)
+    if (selected == m_lastGizmoSelected)
+        return;
+    m_lastGizmoSelected = selected;
+    if (selected == nullptr)
+    {
+        m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+        return;
+    }
+    for (std::size_t i = 0; i < m_scene->m_freeObjects.size(); ++i)
+    {
+        if (m_scene->m_freeObjects[i] && &m_scene->m_freeObjects[i]->Root() == selected)
+        {
+            m_selectedObjectIndex = m_scene->m_freeSourceIndices[i];
+            return;
+        }
+    }
+    for (std::size_t i = 0; i < m_scene->m_blocks.size(); ++i)
+    {
+        if (m_scene->m_blocks[i] && &m_scene->m_blocks[i]->Root() == selected)
+        {
+            m_selectedObjectIndex = m_scene->m_blockSourceIndices[i];
+            return;
+        }
+    }
+    m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+}
+
+void LevelEditorController::SetSelectedFreePosition(NS::Math::Vector3 position) noexcept
+{
+    for (std::size_t i = 0; i < m_scene->m_freeSourceIndices.size(); ++i)
+    {
+        if (m_scene->m_freeSourceIndices[i] == m_selectedObjectIndex && m_scene->m_freeObjects[i])
+        {
+            m_scene->m_freeObjects[i]->Root().SetPosition(position);
+            return;
+        }
+    }
+}
+
+void LevelEditorController::SetSelectedFreeScale(NS::Math::Vector3 scale) noexcept
+{
+    // ImGui の入力で 0 / 負になると描画と当たり判定が壊れるため最小正値で止める
+    constexpr float kMinScale = 0.01f;
+    scale.x = scale.x < kMinScale ? kMinScale : scale.x;
+    scale.y = scale.y < kMinScale ? kMinScale : scale.y;
+    scale.z = scale.z < kMinScale ? kMinScale : scale.z;
+    for (std::size_t i = 0; i < m_scene->m_freeSourceIndices.size(); ++i)
+    {
+        if (m_scene->m_freeSourceIndices[i] == m_selectedObjectIndex && m_scene->m_freeObjects[i])
+        {
+            m_scene->m_freeObjects[i]->Root().SetScale(scale);
+            return;
+        }
+    }
+}
+
+void LevelEditorController::PromoteSelectedToFree() noexcept
+{
+    for (std::size_t i = 0; i < m_scene->m_blockSourceIndices.size(); ++i)
+    {
+        if (m_scene->m_blockSourceIndices[i] == m_selectedObjectIndex && m_scene->m_blocks[i])
+        {
+            PromoteGridBlockToFree(i);
+            return;
+        }
+    }
+}
+
+void LevelEditorController::PromoteGridBlockToFree(std::size_t blockIndex)
+{
+    if (blockIndex >= m_scene->m_blocks.size() || !m_scene->m_blocks[blockIndex])
+        return;
+
+    // 選択された grid block の cell を求め、 対応する ObjectInstance の gridAligned を落として自由化する
+    const NS::Math::Vector3 worldPos = m_scene->m_blocks[blockIndex]->Root().Position();
+    const std::int16_t cx = static_cast<std::int16_t>(std::lround(worldPos.x));
+    const std::int16_t cy = static_cast<std::int16_t>(std::lround(worldPos.y));
+    const std::int16_t cz = static_cast<std::int16_t>(std::lround(worldPos.z));
+
+    const std::size_t objectIndex = NS::Game::Level::FindGridObjectAtCell(m_scene->m_level, cx, cy, cz);
+    if (objectIndex == NS::Game::Level::kNoObjectIndex)
+        return;
+    m_scene->m_level.objects[objectIndex].flags &= static_cast<std::uint8_t>(~NS::Game::Level::kObjectFlagGridAligned);
+
+    // 作り直すと自由化した object は m_freeObjects 側へ回る。 選択候補 span も貼り直す
+    m_scene->RebuildBlocksFromLevelData();
+    RefreshGizmoSelectables();
+    for (std::size_t i = 0; i < m_scene->m_freeSourceIndices.size(); ++i)
+    {
+        if (m_scene->m_freeSourceIndices[i] == objectIndex && m_scene->m_freeObjects[i])
+        {
+            m_gizmo.SetSelected(&m_scene->m_freeObjects[i]->Root());
+            return;
+        }
+    }
+}
+
+bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path& matPath)
+{
+    if (m_editorToolMode != EditorToolMode::Object || !m_scene->m_materialLibrary)
+        return false;
+
+    NS::Scene::Transform* selected = m_gizmo.Selected();
+    if (selected == nullptr)
+        return false;
+
+    // 選択中の Transform を持つ自由オブジェクトを探す (ギズモ選択は自由オブジェクトを指す)
+    std::size_t freeSlot = m_scene->m_freeObjects.size();
+    for (std::size_t i = 0; i < m_scene->m_freeObjects.size(); ++i)
+    {
+        if (m_scene->m_freeObjects[i] && &m_scene->m_freeObjects[i]->Root() == selected)
+        {
+            freeSlot = i;
+            break;
+        }
+    }
+    if (freeSlot >= m_scene->m_freeObjects.size())
+        return false;
+
+    const auto loaded = m_scene->m_materialLibrary->Load(matPath);
+    if (loaded.material == nullptr)
+        return false;
+
+    // .mat パスを exe 相対で材質表に登録 (重複は再利用) し、 ObjectInstance.materialIndex を更新して永続化する
+    const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
+    const std::filesystem::path relative = matPath.lexically_relative(exeDir);
+    const std::string stored = relative.empty() ? matPath.generic_string() : relative.generic_string();
+
+    int materialIndex = -1;
+    for (std::size_t k = 0; k < m_scene->m_level.materialPaths.size(); ++k)
+    {
+        if (m_scene->m_level.materialPaths[k] == stored)
+        {
+            materialIndex = static_cast<int>(k);
+            break;
+        }
+    }
+    if (materialIndex < 0)
+    {
+        m_scene->m_level.materialPaths.push_back(stored);
+        materialIndex = static_cast<int>(m_scene->m_level.materialPaths.size() - 1);
+    }
+    m_scene->m_level.objects[m_scene->m_freeSourceIndices[freeSlot]].materialIndex =
+        static_cast<std::int16_t>(materialIndex);
+
+    m_scene->m_freeObjects[freeSlot]->MeshComp().SetMaterial(loaded.material);
+    m_scene->m_freeObjects[freeSlot]->MeshComp().SetBaseColor(loaded.baseColor);
+    return true;
+}

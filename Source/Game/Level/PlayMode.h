@@ -7,7 +7,7 @@
 /// PlayMode は Play 開始時の spawn 配置 + counter リセット (Enter) と、 毎フレームの
 /// 落下死 / coin / star 取得判定 (Tick) のみを受け持つ
 /// `const LevelData&` を Tick 受取に強制することで、 PlayMode 経路では LevelData を
-/// 書き換えられないことを compile-time に保証する。 player 位置は LevelEditorScene が
+/// 書き換えられないことを compile-time に保証する。 player 位置は LevelPlayScene が
 /// Transform (SSOT) から `PlayState::playerPosition` にミラーした値を読む
 ///
 /// 落下死: `playerPosition.y < kFallDeathThreshold` で deathTriggered

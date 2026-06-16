@@ -5,11 +5,11 @@
 ///
 /// @details MeshRendererComponent のみを保有する非衝突 GameObject。 player は通り抜け可能で、
 /// 半透明テクスチャの見た目だけを提供する
-/// 物理 collider 系 Component を意図的に持たないことで、 LevelEditorScene の
+/// 物理 collider 系 Component を意図的に持たないことで、 LevelPlayScene の
 /// `m_collisionWorld` には登録されず CharacterController の swept AABB 解決を素通りする
 
-#include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
+#include "Framework/Scene/GameObject.h"
 
 namespace NS::Graphics
 {

@@ -2,7 +2,11 @@
 
 #include "Framework/App/Application.h"
 #include "Game/Level/PlayState.h"
-#include "Game/LevelEditorScene.h"
+#include "Game/LevelPlayScene.h"
+
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#include "Game/EditorLayer.h"
+#endif
 
 #include <memory>
 
@@ -19,7 +23,15 @@ namespace NS::App
 #else
         desc.renderer.enableDebugLayer = false;
 #endif
-        return std::make_unique<Application>(desc);
+        auto app = std::make_unique<Application>(desc);
+
+        // Layer / overlay の構成は Game 側で握る。 出荷 build には editor overlay を積まない
+        // NS::App スコープ内では非修飾 Game が NS::Game 名前空間に解決されるため global の ::Game を明示する
+        app->AddLayer(std::make_unique<::Game>());
+#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+        app->AddOverlay(std::make_unique<::EditorLayer>());
+#endif
+        return app;
     }
 
 } // namespace NS::App
@@ -39,7 +51,8 @@ Game::~Game()
 
 void Game::OnAttach()
 {
-    m_scenes.LoadScene(std::make_unique<LevelEditorScene>());
+    // scene は出荷 / 開発とも LevelPlayScene の 1 種類だけ。 編集機能は EditorLayer (overlay) が乗せる
+    m_scenes.LoadScene(std::make_unique<LevelPlayScene>());
 }
 
 void Game::OnDetach()
@@ -51,9 +64,9 @@ void Game::OnUpdate()
 {
     m_scenes.Update();
 
-    // ハザード接触死 (playerHealth==0) で即 Quit。落下死は LevelEditorScene 側で
+    // ハザード接触死 (playerHealth==0) で即 Quit。落下死は scene 側で
     // respawn に乗るのでここでは観測しない (deathTriggered は落下死でも立つため区別できない)
-    if (auto* scene = CurrentLevelEditorScene())
+    if (auto* scene = CurrentPlayScene())
     {
         if (scene->Play().playerHealth <= 0)
             NS::App::Application::Quit();
@@ -65,8 +78,8 @@ void Game::OnRender()
     m_scenes.Render();
 }
 
-LevelEditorScene* Game::CurrentLevelEditorScene() noexcept
+LevelPlayScene* Game::CurrentPlayScene() noexcept
 {
-    // 現状 active scene は LevelEditorScene 一択なので static_cast で十分
-    return static_cast<LevelEditorScene*>(m_scenes.Current());
+    // boot scene は LevelPlayScene の 1 種類だけなので静的 cast で足りる
+    return static_cast<LevelPlayScene*>(m_scenes.Current());
 }

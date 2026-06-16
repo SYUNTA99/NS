@@ -4,20 +4,19 @@
 /// @brief 編集モード UI Layer。 Debug / Development build 限定で active
 ///
 /// @details Application::AddOverlay 経由で push される。 Regular Game Layer より後段で
-/// OnUpdate / OnRender が走るため、 LevelEditorScene の進行を妨げず Editor 専用の入力
-/// ハンドリング (Tab / Start で Edit↔Play flip、 P / Back で paused toggle) と Pause modal
-/// 描画を担う。 Toolbar / palette / cursor preview 等の編集 UI は LevelEditorScene 内で
-/// 描画済なので、 本 Layer は overlay 限定機能 (toggle + pause + 将来 HUD) に
-/// 責務を絞る
+/// OnUpdate / OnRender が走るため、 起動 scene (LevelPlayScene) のプレイ進行を妨げずに
+/// 編集機能を上乗せする。 編集状態 (cursor / palette / ギズモ / free-fly カメラ / モード切替) は
+/// `LevelEditorController` が保持し、 本 Layer はその生成・駆動と ImGui パネル描画を担う
 ///
-/// GameDebug / GameRelease では WinMain で本 Layer を AddOverlay しないため、 編集 UI が
-/// shipping ビルドに紛れ込まない
+/// GameDebug / GameRelease では CreateApplication が本 Layer を AddOverlay しないため、
+/// 編集 UI が shipping ビルドに紛れ込まない (起動 scene は LevelPlayScene のまま)
 
 #include "Framework/App/Layer.h"
 
 #include <filesystem>
+#include <memory>
 
-class LevelEditorScene;
+class LevelEditorController;
 
 class EditorLayer : public NS::App::Layer
 {
@@ -36,12 +35,9 @@ public:
     void OnRender() override;
 
 private:
-    /// 現在 active な LevelEditorScene を取得 (Game::Get() 経由)。 scene 未 load なら nullptr
-    [[nodiscard]] static LevelEditorScene* CurrentScene() noexcept;
-
-    static void HandleModeToggleInput(LevelEditorScene& scene) noexcept;
-    static void HandlePauseInput(LevelEditorScene& scene) noexcept;
-    static void RenderPauseModal(LevelEditorScene& scene) noexcept;
+    static void HandleModeToggleInput(LevelEditorController& editor) noexcept;
+    static void HandlePauseInput(LevelEditorController& editor) noexcept;
+    static void RenderPauseModal(LevelEditorController& editor) noexcept;
     /// 中央ノードを透過にした DockSpace を毎フレーム置き、 周囲パネルのドッキング先にする
     /// 中央は背景非描画 + 入力素通しなので、 全画面 3D とギズモがそのまま見え編集操作も届く
     static void RenderDockSpaceHost() noexcept;
@@ -49,15 +45,18 @@ private:
     static void RenderFpsOverlay() noexcept;
     /// 解決済 RenderSettings の最終値と各フィールドの出所 (default / scene / object) を表示する
     /// 出所は scene / object override の has_value 突き合わせで逆算する。 Release では #if で除外
-    static void RenderRenderSettingsPanel(LevelEditorScene& scene) noexcept;
+    static void RenderRenderSettingsPanel(LevelEditorController& editor) noexcept;
     /// 編集モード中に Build (グリッド設置) ⇔ Object (ギズモ変形) を切替える UI ボタンを描く
-    static void RenderToolModePanel(LevelEditorScene& scene) noexcept;
+    static void RenderToolModePanel(LevelEditorController& editor) noexcept;
     /// 全配置物を一覧し、 行クリックで選択する。 grid/free バッジ付き、 選択中をハイライトする
-    static void RenderHierarchyPanel(LevelEditorScene& scene) noexcept;
+    static void RenderHierarchyPanel(LevelEditorController& editor) noexcept;
     /// 選択中の配置物のプロパティを表示 / 編集する。 free は Position/Scale 数値編集、 grid は昇格ボタン
-    static void RenderInspectorPanel(LevelEditorScene& scene) noexcept;
+    static void RenderInspectorPanel(LevelEditorController& editor) noexcept;
     /// Object モード中に Assets/ をフォルダツリーで出し、 ドロップ枠 / クリックで選択物体へ材質を適用する
-    static void RenderMaterialsPanel(LevelEditorScene& scene) noexcept;
+    static void RenderMaterialsPanel(LevelEditorController& editor) noexcept;
     /// dir 直下を再帰描画する。 サブフォルダは TreeNode、 .mat はクリック適用 + ドラッグ可
-    static void RenderAssetTree(const std::filesystem::path& dir, LevelEditorScene& scene) noexcept;
+    static void RenderAssetTree(const std::filesystem::path& dir, LevelEditorController& editor) noexcept;
+
+    // 起動 scene (LevelPlayScene) を編集するコントローラ。 OnAttach で scene へ束ねて Setup する
+    std::unique_ptr<LevelEditorController> m_controller;
 };

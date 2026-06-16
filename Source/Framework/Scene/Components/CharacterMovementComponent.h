@@ -54,7 +54,7 @@ namespace NS::Scene
         /// Slope 用の世界座標 triangle 配列を受け取り、 内部 vector にコピーする
         void SetCollisionTriangles(std::span<const NS::Physics::Triangle> triangles);
 
-        /// pole 群を span で注入する。span のみ保存し、要素の寿命は呼出側 (LevelEditorScene) が保証する
+        /// pole 群を span で注入する。span のみ保存し、要素の寿命は呼出側 (LevelPlayScene) が保証する
         void SetClimbables(std::span<PoleComponent* const> poles) noexcept;
 
         [[nodiscard]] MovementState State() const noexcept { return m_state; }

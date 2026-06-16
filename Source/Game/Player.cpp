@@ -8,6 +8,6 @@ Player::Player(NS::Graphics::StaticMesh* mesh, NS::Graphics::Material* material,
     m_movement = AddComponent<NS::Scene::CharacterMovementComponent>();
     m_input = AddComponent<NS::Scene::PlayerInputComponent>(m_movement);
     m_input->SetInput(input);
-    // 接地シャドウ。mesh / material / 衝突 world は LevelEditorScene が後から注入する
+    // 接地シャドウ。mesh / material / 衝突 world は LevelPlayScene が後から注入する
     m_shadow = AddComponent<NS::Scene::ShadowComponent>();
 }

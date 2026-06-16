@@ -104,7 +104,8 @@ namespace NS::App
         static Application* s_instance;
     };
 
-    /// Game 側で実装必須。ApplicationDesc を構築して Application を返す。Layer は WinMain 側で積む
+    /// Game 側で実装必須。ApplicationDesc を構築し、Layer / overlay まで積んだ Application を返す
+    /// (WinMain を Game / Editor へ依存させないため、Layer 構成は本関数側で完結させる)
     [[nodiscard]] std::unique_ptr<Application> CreateApplication();
 
 } // namespace NS::App

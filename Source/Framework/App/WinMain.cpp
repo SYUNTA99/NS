@@ -1,15 +1,8 @@
 #include "Framework/App/Application.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
-#include "Game/Game.h"
-
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
-#include "Game/EditorLayer.h"
-#endif
 
 #include "Framework/Framework.h"
-
-#include <memory>
 
 namespace
 {
@@ -49,11 +42,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         return -1;
     }
 
-    app->AddLayer(std::make_unique<Game>());
-
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
-    app->AddOverlay(std::make_unique<EditorLayer>());
-#endif
-
+    // Layer / overlay の構成は CreateApplication (Game 側) が済ませている。 WinMain は Game / Editor へ依存しない
     return app->Run();
 }

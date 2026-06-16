@@ -5,7 +5,7 @@
 ///
 /// @details `CameraComponent` (描画元) と `EditorCameraComponent`
 /// (Mouse / Gamepad 操作で Orbit / Pan / Zoom を駆動) を GameObject が所有する
-/// `CameraRig` (Player 追従) と並列に LevelEditorScene が所有し、
+/// `CameraRig` (Player 追従) と並列に LevelEditorController が所有し、
 /// mode toggle で active な側を切替える
 
 #include "Framework/Scene/Components/EditorCameraComponent.h"

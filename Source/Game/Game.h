@@ -11,7 +11,7 @@
 #include "Framework/App/Layer.h"
 #include "Framework/Scene/SceneManager.h"
 
-class LevelEditorScene;
+class LevelPlayScene;
 
 class Game : public NS::App::Layer
 {
@@ -29,8 +29,9 @@ public:
     void OnUpdate() override;
     void OnRender() override;
 
-    /// 現在 active な scene を `LevelEditorScene` として返す。 別 scene 型なら nullptr
-    [[nodiscard]] LevelEditorScene* CurrentLevelEditorScene() noexcept;
+    /// 現在 active な scene を play scene として返す。 boot scene は常に LevelPlayScene か派生なので
+    /// 出荷 / 開発の両 build で使える。 scene 未 load なら nullptr
+    [[nodiscard]] LevelPlayScene* CurrentPlayScene() noexcept;
 
     /// プロセス内の単一インスタンス取得。 Application は Layer を型不知で保持するため、
     /// Game 型を直接取得するには Game::Get() を使う

@@ -11,7 +11,7 @@
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/BlockRegistry.h"
 #include "Game/Game.h"
-#include "Game/LevelEditorScene.h"
+#include "Game/LevelEditorController.h"
 
 #include <cstdio>
 #include <filesystem>
@@ -26,57 +26,65 @@ EditorLayer::~EditorLayer() = default;
 
 void EditorLayer::OnAttach()
 {
+    // 起動 scene は Game レイヤが既に load + OnStart 済 (SceneManager::LoadScene が同期実行)
+    auto* game = Game::Get();
+    auto* scene = game ? game->CurrentPlayScene() : nullptr;
+    if (scene == nullptr)
+    {
+        NS_LOG_ERROR(::NS::Core::LogCat::App, "EditorLayer::OnAttach: play scene 不在のため編集を起動できない");
+        return;
+    }
+    m_controller = std::make_unique<LevelEditorController>(scene);
+    m_controller->Setup();
     NS_LOG_INFO(::NS::Core::LogCat::App, "EditorLayer attached (Debug/Dev only)");
 }
 
 void EditorLayer::OnDetach()
 {
+    // scene 破棄 (Game::OnDetach) より先に呼ばれる順序 (overlay は逆順で OnDetach) なので安全に片付く
+    if (m_controller)
+        m_controller->Teardown();
+    m_controller.reset();
     NS_LOG_INFO(::NS::Core::LogCat::App, "EditorLayer detached");
-}
-
-LevelEditorScene* EditorLayer::CurrentScene() noexcept
-{
-    auto* game = Game::Get();
-    return game ? game->CurrentLevelEditorScene() : nullptr;
 }
 
 void EditorLayer::OnUpdate()
 {
-    if (!IsActive())
-        return;
-    auto* scene = CurrentScene();
-    if (scene == nullptr)
+    if (!IsActive() || !m_controller)
         return;
 
-    HandleModeToggleInput(*scene);
-    HandlePauseInput(*scene);
+    // 編集ロジック (free-fly カメラ / ギズモ / EditorMode / クリア監視) を先に回す
+    m_controller->Tick();
+    HandleModeToggleInput(*m_controller);
+    HandlePauseInput(*m_controller);
 }
 
 void EditorLayer::OnRender()
 {
-    if (!IsActive())
+    if (!IsActive() || !m_controller)
         return;
-    auto* scene = CurrentScene();
-    if (scene == nullptr)
-        return;
+    LevelEditorController& editor = *m_controller;
 
-    if (scene->CurrentMode() == LevelEditorScene::Mode::Edit)
+    // 編集用の上乗せ描画 (ギズモ / palette / 編集ビジュアル) と debug provenance 退避
+    editor.Render();
+
+    if (editor.CurrentMode() == LevelEditorController::Mode::Edit)
     {
         RenderDockSpaceHost();
-        scene->Editor().RenderFileBrowser();
-        RenderToolModePanel(*scene);
-        RenderHierarchyPanel(*scene);
-        RenderInspectorPanel(*scene);
-        RenderMaterialsPanel(*scene);
+        editor.Editor().RenderFileBrowser();
+        RenderToolModePanel(editor);
+        RenderHierarchyPanel(editor);
+        RenderInspectorPanel(editor);
+        RenderMaterialsPanel(editor);
     }
-    else if (scene->Play().paused)
-        RenderPauseModal(*scene);
+    else if (editor.Play().paused)
+        RenderPauseModal(editor);
 
     RenderFpsOverlay();
-    RenderRenderSettingsPanel(*scene);
+    RenderRenderSettingsPanel(editor);
 }
 
-void EditorLayer::HandleModeToggleInput(LevelEditorScene& scene) noexcept
+void EditorLayer::HandleModeToggleInput(LevelEditorController& editor) noexcept
 {
     auto* app = NS::App::Application::Get();
     if (app == nullptr)
@@ -94,16 +102,16 @@ void EditorLayer::HandleModeToggleInput(LevelEditorScene& scene) noexcept
 
     if (tabPressed || startPressed)
     {
-        if (scene.CurrentMode() == LevelEditorScene::Mode::Edit)
-            scene.EnterPlay();
+        if (editor.CurrentMode() == LevelEditorController::Mode::Edit)
+            editor.EnterPlay();
         else
-            scene.EnterEdit();
+            editor.EnterEdit();
     }
 }
 
-void EditorLayer::HandlePauseInput(LevelEditorScene& scene) noexcept
+void EditorLayer::HandlePauseInput(LevelEditorController& editor) noexcept
 {
-    if (scene.CurrentMode() != LevelEditorScene::Mode::Play)
+    if (editor.CurrentMode() != LevelEditorController::Mode::Play)
         return;
     auto* app = NS::App::Application::Get();
     if (app == nullptr)
@@ -119,7 +127,7 @@ void EditorLayer::HandlePauseInput(LevelEditorScene& scene) noexcept
         input.Gamepad(0).IsConnected() && input.Gamepad(0).IsPressed(NS::Platform::GamepadButton::Back);
 
     if (pPressed || backPressed)
-        scene.Play().paused = !scene.Play().paused;
+        editor.Play().paused = !editor.Play().paused;
 }
 
 void EditorLayer::RenderDockSpaceHost() noexcept
@@ -158,12 +166,12 @@ void EditorLayer::RenderFpsOverlay() noexcept
 #endif
 }
 
-void EditorLayer::RenderRenderSettingsPanel(LevelEditorScene& scene) noexcept
+void EditorLayer::RenderRenderSettingsPanel(LevelEditorController& editor) noexcept
 {
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
-    const NS::Graphics::RenderSettings& resolved = scene.DebugResolvedSettings();
-    const NS::Graphics::RenderSettingsOverride& sceneOver = scene.DebugSceneOverride();
-    const NS::Graphics::RenderSettingsOverride& objOver = scene.DebugPlayerObjectOverride();
+    const NS::Graphics::RenderSettings& resolved = editor.DebugResolvedSettings();
+    const NS::Graphics::RenderSettingsOverride& sceneOver = editor.DebugSceneOverride();
+    const NS::Graphics::RenderSettingsOverride& objOver = editor.DebugPlayerObjectOverride();
 
     // 出所は has_value の突き合わせで逆算する。 Resolve のホットパスに追跡を入れない
     auto provenance = [](bool sceneHas, bool objectHas) -> const char* {
@@ -202,21 +210,21 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorScene& scene) noexcept
     }
     ImGui::End();
 #else
-    (void)scene;
+    (void)editor;
 #endif
 }
 
-void EditorLayer::RenderToolModePanel(LevelEditorScene& scene) noexcept
+void EditorLayer::RenderToolModePanel(LevelEditorController& editor) noexcept
 {
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
     // 位置はドッキング / imgui.ini 任せ (固定座標を置くとドッキング配置と競合する)
     if (ImGui::Begin("Edit Mode"))
     {
-        const bool objectActive = scene.ObjectToolActive();
+        const bool objectActive = editor.ObjectToolActive();
         if (ImGui::RadioButton("Build (Grid place)", !objectActive))
-            scene.SetObjectToolActive(false);
+            editor.SetObjectToolActive(false);
         if (ImGui::RadioButton("Object (Gizmo)", objectActive))
-            scene.SetObjectToolActive(true);
+            editor.SetObjectToolActive(true);
         ImGui::Separator();
         if (objectActive)
             ImGui::TextUnformatted("Click orange box to select. Q/W/E/R = Select/Move/Rotate/Scale");
@@ -225,17 +233,17 @@ void EditorLayer::RenderToolModePanel(LevelEditorScene& scene) noexcept
     }
     ImGui::End();
 #else
-    (void)scene;
+    (void)editor;
 #endif
 }
 
-void EditorLayer::RenderHierarchyPanel(LevelEditorScene& scene) noexcept
+void EditorLayer::RenderHierarchyPanel(LevelEditorController& editor) noexcept
 {
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
     if (ImGui::Begin("Hierarchy"))
     {
-        const auto& objects = scene.Level().objects;
-        const std::size_t selected = scene.SelectedObjectIndex();
+        const auto& objects = editor.Level().objects;
+        const std::size_t selected = editor.SelectedObjectIndex();
 
         ImGui::Text("%zu objects", objects.size());
         ImGui::Separator();
@@ -251,7 +259,7 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorScene& scene) noexcept
 
             ImGui::PushID(static_cast<int>(i));
             if (ImGui::Selectable(label, i == selected))
-                scene.SelectObjectByIndex(i);
+                editor.SelectObjectByIndex(i);
             ImGui::PopID();
         }
 
@@ -259,11 +267,11 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorScene& scene) noexcept
             ImGui::TextDisabled("(no objects)");
 
         ImGui::Separator();
-        const auto& cameras = scene.Level().cameraVolumes;
-        const std::size_t selectedCamera = scene.SelectedCameraIndex();
+        const auto& cameras = editor.Level().cameraVolumes;
+        const std::size_t selectedCamera = editor.SelectedCameraIndex();
         ImGui::Text("%zu area cameras", cameras.size());
         if (ImGui::SmallButton("+ Add Camera"))
-            scene.AddCameraVolume();
+            editor.AddCameraVolume();
 
         for (std::size_t i = 0; i < cameras.size(); ++i)
         {
@@ -272,7 +280,7 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorScene& scene) noexcept
 
             ImGui::PushID(static_cast<int>(i) + 100000); // object 添字と ID 衝突しないようずらす
             if (ImGui::Selectable(label, i == selectedCamera))
-                scene.SelectCameraByIndex(i);
+                editor.SelectCameraByIndex(i);
             ImGui::PopID();
         }
 
@@ -281,19 +289,19 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorScene& scene) noexcept
     }
     ImGui::End();
 #else
-    (void)scene;
+    (void)editor;
 #endif
 }
 
-void EditorLayer::RenderInspectorPanel(LevelEditorScene& scene) noexcept
+void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
 {
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
     if (ImGui::Begin("Inspector"))
     {
-        if (scene.HasCameraSelection())
+        if (editor.HasCameraSelection())
         {
-            NS::Game::Level::CameraVolume cam = scene.SelectedCameraSnapshot();
-            ImGui::Text("[cam %zu] area camera", scene.SelectedCameraIndex());
+            NS::Game::Level::CameraVolume cam = editor.SelectedCameraSnapshot();
+            ImGui::Text("[cam %zu] area camera", editor.SelectedCameraIndex());
             ImGui::Separator();
 
             bool changed = false;
@@ -344,27 +352,27 @@ void EditorLayer::RenderInspectorPanel(LevelEditorScene& scene) noexcept
             }
 
             if (changed)
-                scene.SetSelectedCameraVolume(cam);
+                editor.SetSelectedCameraVolume(cam);
 
             ImGui::Separator();
             if (ImGui::Button("Delete Camera"))
-                scene.DeleteSelectedCamera();
+                editor.DeleteSelectedCamera();
 
             ImGui::End();
             return;
         }
 
-        if (!scene.HasInspectableSelection())
+        if (!editor.HasInspectableSelection())
         {
             ImGui::TextDisabled("(no selection)");
             ImGui::End();
             return;
         }
 
-        const NS::Game::Level::ObjectInstance obj = scene.SelectedObjectSnapshot();
-        const bool grid = scene.SelectedIsGridAligned();
+        const NS::Game::Level::ObjectInstance obj = editor.SelectedObjectSnapshot();
+        const bool grid = editor.SelectedIsGridAligned();
         ImGui::Text("[%zu] %s (%s)",
-                    scene.SelectedObjectIndex(),
+                    editor.SelectedObjectIndex(),
                     NS::Game::Blocks::GetDisplayName(obj.kind),
                     grid ? "grid" : "free");
         ImGui::Separator();
@@ -379,7 +387,7 @@ void EditorLayer::RenderInspectorPanel(LevelEditorScene& scene) noexcept
             {
                 ImGui::TextDisabled("Promote to free to edit transform");
                 if (ImGui::Button("Promote to Free"))
-                    scene.PromoteSelectedToFree();
+                    editor.PromoteSelectedToFree();
             }
             else
                 ImGui::TextDisabled("grid object (no gizmo/edit in v1)");
@@ -390,11 +398,11 @@ void EditorLayer::RenderInspectorPanel(LevelEditorScene& scene) noexcept
             // が永続化)
             float pos[3] = {obj.positionX, obj.positionY, obj.positionZ};
             if (ImGui::DragFloat3("Position", pos, 0.05f))
-                scene.SetSelectedFreePosition(NS::Math::Vector3{pos[0], pos[1], pos[2]});
+                editor.SetSelectedFreePosition(NS::Math::Vector3{pos[0], pos[1], pos[2]});
 
             float scl[3] = {obj.scaleX, obj.scaleY, obj.scaleZ};
             if (ImGui::DragFloat3("Scale", scl, 0.05f))
-                scene.SetSelectedFreeScale(NS::Math::Vector3{scl[0], scl[1], scl[2]});
+                editor.SetSelectedFreeScale(NS::Math::Vector3{scl[0], scl[1], scl[2]});
 
             ImGui::Text("Rotation: (%.2f, %.2f, %.2f, %.2f)",
                         static_cast<double>(obj.rotationX),
@@ -406,28 +414,28 @@ void EditorLayer::RenderInspectorPanel(LevelEditorScene& scene) noexcept
 
         ImGui::Separator();
         // 材質の適用は Assets パネルのドロップ / クリック。 ここでは現在値の表示のみ
-        if (obj.materialIndex >= 0 && static_cast<std::size_t>(obj.materialIndex) < scene.Level().materialPaths.size())
+        if (obj.materialIndex >= 0 && static_cast<std::size_t>(obj.materialIndex) < editor.Level().materialPaths.size())
             ImGui::Text("Material: %s",
-                        scene.Level().materialPaths[static_cast<std::size_t>(obj.materialIndex)].c_str());
+                        editor.Level().materialPaths[static_cast<std::size_t>(obj.materialIndex)].c_str());
         else
             ImGui::TextDisabled("Material: default");
     }
     ImGui::End();
 #else
-    (void)scene;
+    (void)editor;
 #endif
 }
 
-void EditorLayer::RenderMaterialsPanel(LevelEditorScene& scene) noexcept
+void EditorLayer::RenderMaterialsPanel(LevelEditorController& editor) noexcept
 {
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
     // Object モード専用 (適用先のギズモ選択は Object モードにしか存在しない)
-    if (!scene.ObjectToolActive())
+    if (!editor.ObjectToolActive())
         return;
 
     if (ImGui::Begin("Assets"))
     {
-        const bool hasSelection = scene.HasGizmoSelection();
+        const bool hasSelection = editor.HasGizmoSelection();
         ImGui::TextUnformatted(hasSelection ? "Selected object: yes" : "Select an object first (click it)");
 
         // ドロップ枠: ツリーの .mat をここへドラッグすると選択中の物体へ適用する
@@ -438,25 +446,25 @@ void EditorLayer::RenderMaterialsPanel(LevelEditorScene& scene) noexcept
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("NS_MATERIAL"))
             {
                 const char* droppedPath = static_cast<const char*>(payload->Data);
-                scene.ApplyMaterialToSelected(std::filesystem::path(droppedPath));
+                editor.ApplyMaterialToSelected(std::filesystem::path(droppedPath));
             }
             ImGui::EndDragDropTarget();
         }
 
         ImGui::Separator();
         // Assets/ 以下をフォルダツリーで表示する。 .mat はクリック適用 / ドラッグ可
-        RenderAssetTree(NS::Core::FileSystem::GetExeDirectory() / "Assets", scene);
+        RenderAssetTree(NS::Core::FileSystem::GetExeDirectory() / "Assets", editor);
     }
     ImGui::End();
 #else
-    (void)scene;
+    (void)editor;
 #endif
 }
 
-void EditorLayer::RenderAssetTree(const std::filesystem::path& dir, LevelEditorScene& scene) noexcept
+void EditorLayer::RenderAssetTree(const std::filesystem::path& dir, LevelEditorController& editor) noexcept
 {
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
-    const bool hasSelection = scene.HasGizmoSelection();
+    const bool hasSelection = editor.HasGizmoSelection();
 
     // サブフォルダを TreeNode で再帰表示する (open 時のみ中身を走査する遅延読み)
     for (const auto& sub : NS::Core::FileSystem::ListDirectories(dir))
@@ -464,7 +472,7 @@ void EditorLayer::RenderAssetTree(const std::filesystem::path& dir, LevelEditorS
         const std::string label = sub.filename().string();
         if (ImGui::TreeNode(label.c_str()))
         {
-            RenderAssetTree(sub, scene);
+            RenderAssetTree(sub, editor);
             ImGui::TreePop();
         }
     }
@@ -480,7 +488,7 @@ void EditorLayer::RenderAssetTree(const std::filesystem::path& dir, LevelEditorS
         }
         ImGui::PushID(name.c_str());
         if (ImGui::Selectable(name.c_str()) && hasSelection)
-            scene.ApplyMaterialToSelected(file);
+            editor.ApplyMaterialToSelected(file);
         if (ImGui::BeginDragDropSource())
         {
             const std::string full = file.string();
@@ -492,11 +500,11 @@ void EditorLayer::RenderAssetTree(const std::filesystem::path& dir, LevelEditorS
     }
 #else
     (void)dir;
-    (void)scene;
+    (void)editor;
 #endif
 }
 
-void EditorLayer::RenderPauseModal(LevelEditorScene& scene) noexcept
+void EditorLayer::RenderPauseModal(LevelEditorController& editor) noexcept
 {
 #if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
     // paused フラグ単独で状態を表現するため、 modal の閉じ X は不要
@@ -514,12 +522,12 @@ void EditorLayer::RenderPauseModal(LevelEditorScene& scene) noexcept
         ImGui::TextUnformatted("Paused");
         ImGui::Separator();
         if (ImGui::Button("Resume", ImVec2(160.0f, 0.0f)))
-            scene.Play().paused = false;
+            editor.Play().paused = false;
         if (ImGui::Button("Quit to Edit", ImVec2(160.0f, 0.0f)))
-            scene.EnterEdit();
+            editor.EnterEdit();
     }
     ImGui::End();
 #else
-    (void)scene;
+    (void)editor;
 #endif
 }
