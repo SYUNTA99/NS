@@ -32,6 +32,10 @@ namespace NS::Scene
         /// 候補 vcam を登録する (null / 重複は無視)。寿命は呼出側が支配する非所有参照
         void AddVirtualCamera(VirtualCameraComponent* vcam);
 
+        /// 登録済み vcam を外す (未登録 / null は無視)。外した vcam が active 中なら選び直す
+        /// 寿命を呼出側が握る area camera を破棄する前に呼んで dangling を防ぐ
+        void RemoveVirtualCamera(VirtualCameraComponent* vcam) noexcept;
+
         /// active 切替時のブレンド秒数。0 以下で即時カット。負値は 0 に丸める
         void SetBlendDuration(float seconds) noexcept;
         [[nodiscard]] float BlendDuration() const noexcept { return m_blendDuration; }

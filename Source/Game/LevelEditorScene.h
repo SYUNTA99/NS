@@ -39,6 +39,7 @@ namespace NS::Scene
     class Transform;
     class CameraComponent;
     class CameraBrainComponent;
+    class PlacedVirtualCamera;
 } // namespace NS::Scene
 
 namespace NS::Scene
@@ -174,6 +175,10 @@ private:
     /// dirty flag 検出時のみ m_blocks と m_collisionWorld を LevelData から再構築する
     void RebuildBlocksFromLevelData();
 
+    /// m_level.cameraVolumes から area camera (PlacedVirtualCamera) 群を作り直して Brain へ登録する
+    /// 旧 area camera は Brain から外して破棄する。 Brain 構築前 (OnStart 序盤) は no-op
+    void RebuildAreaCamerasFromLevelData();
+
     /// 仮 skinned キャラ (glTF) を毎ステップ進めて描画する debug hook
     /// F1 再生/停止、 F2 クリップ送り、 F3/F4 速度。 ImGui 入力中はキー無効
     void UpdateAnimatedModel();
@@ -249,6 +254,16 @@ private:
     std::unique_ptr<NS::Scene::GameObject> m_cameraHost;
     NS::Scene::CameraComponent* m_mainCamera = nullptr;
     NS::Scene::CameraBrainComponent* m_brain = nullptr;
+
+    // CameraVolume 1 件に対応する area camera の runtime 実体。 host が PlacedVirtualCamera を所有し、
+    // volume はトリガ判定 / lookAtPlayer 追視の元データ。 Brain は cam を非所有参照する
+    struct AreaCamera
+    {
+        std::unique_ptr<NS::Scene::GameObject> host;
+        NS::Scene::PlacedVirtualCamera* cam = nullptr;
+        NS::Game::Level::CameraVolume volume{};
+    };
+    std::vector<AreaCamera> m_areaCameras;
 
     std::vector<NS::Math::AABB> m_collisionWorld;
     std::vector<NS::Physics::Triangle> m_collisionTriangles;

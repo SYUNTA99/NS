@@ -11,6 +11,7 @@
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/Scene/Components/HazardComponent.h"
+#include "Framework/Scene/Components/PlacedVirtualCamera.h"
 #include "Framework/Scene/Components/PoleComponent.h"
 #include "Framework/Scene/GameObject.h"
 
@@ -274,6 +275,9 @@ void LevelEditorScene::OnStart()
     m_cameraHost->AttachScene(this);
     m_cameraHost->OnStart();
 
+    // level の cameraVolumes から area camera を生成し Brain へ登録する (Brain 構築後に呼ぶ必要がある)
+    RebuildAreaCamerasFromLevelData();
+
     // EditorMode に依存先を注入する。 mode toggle が入るまでは常時 active
     m_editor.SetLevel(&m_level);
     m_editor.SetInput(&app->Input());
@@ -518,6 +522,8 @@ void LevelEditorScene::OnUpdate()
         if (m_editor.IsLevelDirty())
         {
             RebuildBlocksFromLevelData();
+            // ファイル読込で cameraVolumes が差し替わった場合に area camera を追従させる (edit 中のみ走る)
+            RebuildAreaCamerasFromLevelData();
             m_editor.ClearLevelDirty();
         }
     }
@@ -555,6 +561,24 @@ void LevelEditorScene::OnUpdate()
                     continue;
                 if (NS::Physics::IntersectsCapsuleAabb(playerCapsule, hazard->Collider().WorldAABB()))
                     hazard->Hazard().OnPlayerOverlap(m_play);
+            }
+        }
+
+        // area camera: プレイヤーが各トリガ AABB に入っている間だけ対応 vcam を active 化する
+        // active 化 / 解除は Brain が優先度で選びブレンドする。 lookAtPlayer なら注視点をプレイヤーへ更新する
+        for (auto& area : m_areaCameras)
+        {
+            if (area.cam == nullptr)
+                continue;
+            const auto& volume = area.volume;
+            const NS::Math::Vector3 p = m_play.playerPosition;
+            const bool inside = std::abs(p.x - volume.triggerCenterX) <= volume.triggerExtentX &&
+                                std::abs(p.y - volume.triggerCenterY) <= volume.triggerExtentY &&
+                                std::abs(p.z - volume.triggerCenterZ) <= volume.triggerExtentZ;
+            area.cam->SetActive(inside);
+            if (inside && volume.lookAtPlayer != 0)
+            {
+                area.cam->SetView({volume.cameraPositionX, volume.cameraPositionY, volume.cameraPositionZ}, p);
             }
         }
 
@@ -648,6 +672,13 @@ void LevelEditorScene::EnterEdit() noexcept
     // follow vcam を休止 (free-fly は EnterEdit 冒頭で active 化済)。Brain が free-fly を選ぶ
     if (m_cameraRig)
         m_cameraRig->Follow().SetActive(false);
+
+    // play 中に area camera が active のまま編集へ戻ると free-fly より優先されてしまうので全て休止する
+    for (auto& area : m_areaCameras)
+    {
+        if (area.cam)
+            area.cam->SetActive(false);
+    }
 }
 
 NS::Graphics::RenderSettingsOverride LevelEditorScene::BuildSceneOverride()
@@ -814,6 +845,11 @@ void LevelEditorScene::OnShutdown()
 {
     if (m_cameraHost)
         m_cameraHost->OnEndPlay();
+    for (auto& area : m_areaCameras)
+    {
+        if (area.host)
+            area.host->OnEndPlay();
+    }
     if (m_editorCameraRig)
         m_editorCameraRig->OnEndPlay();
     if (m_cameraRig)
@@ -837,10 +873,11 @@ void LevelEditorScene::OnShutdown()
     if (m_player)
         m_player->OnEndPlay();
 
-    // Brain は vcam を非所有参照するので、 rig より先に host を畳んで dangling を避ける
+    // Brain は vcam を非所有参照するので、 rig / area camera より先に host を畳んで dangling を避ける
     m_cameraHost.reset();
     m_mainCamera = nullptr;
     m_brain = nullptr;
+    m_areaCameras.clear();
     m_editorCameraRig.reset();
     m_cameraRig.reset();
     m_animatedModel.reset();
@@ -1095,6 +1132,37 @@ void LevelEditorScene::RebuildBlocksFromLevelData()
 
     // m_blocks の pointer が作り直されたので、 ギズモの選択候補 span を必ず貼り直す (dangling 防止)
     RefreshGizmoSelectables();
+}
+
+void LevelEditorScene::RebuildAreaCamerasFromLevelData()
+{
+    if (m_brain == nullptr)
+        return;
+
+    // 旧 area camera を Brain から外してから破棄する (Brain の非所有参照を dangling させない)
+    for (auto& area : m_areaCameras)
+    {
+        if (area.cam)
+            m_brain->RemoveVirtualCamera(area.cam);
+    }
+    m_areaCameras.clear();
+
+    m_areaCameras.reserve(m_level.cameraVolumes.size());
+    for (const auto& volume : m_level.cameraVolumes)
+    {
+        AreaCamera area{};
+        area.host = std::make_unique<NS::Scene::GameObject>();
+        area.cam = area.host->AddComponent<NS::Scene::PlacedVirtualCamera>();
+        area.cam->SetView({volume.cameraPositionX, volume.cameraPositionY, volume.cameraPositionZ},
+                          {volume.lookTargetX, volume.lookTargetY, volume.lookTargetZ});
+        area.cam->SetVcamPriority(volume.priority);
+        area.cam->SetActive(false); // エリア外。 play 中の AABB 判定で active 化する
+        area.volume = volume;
+        area.host->AttachScene(this);
+        area.host->OnStart();
+        m_brain->AddVirtualCamera(area.cam);
+        m_areaCameras.push_back(std::move(area));
+    }
 }
 
 void LevelEditorScene::RefreshGizmoSelectables()

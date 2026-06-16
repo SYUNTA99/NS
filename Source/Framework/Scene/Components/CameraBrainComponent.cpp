@@ -19,6 +19,15 @@ namespace NS::Scene
         m_vcams.push_back(vcam);
     }
 
+    void CameraBrainComponent::RemoveVirtualCamera(VirtualCameraComponent* vcam) noexcept
+    {
+        if (vcam == nullptr)
+            return;
+        m_vcams.erase(std::remove(m_vcams.begin(), m_vcams.end(), vcam), m_vcams.end());
+        if (m_active == vcam)
+            m_active = nullptr; // 次の OnUpdate / Evaluate で選び直す
+    }
+
     void CameraBrainComponent::SetBlendDuration(float seconds) noexcept
     {
         m_blendDuration = (seconds > 0.0f) ? seconds : 0.0f;
