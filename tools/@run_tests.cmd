@@ -12,9 +12,8 @@ chcp 65001 >nul
 set "CONFIG=%~1"
 if "%CONFIG%"=="" set "CONFIG=Debug"
 
-:: PC を張り付かせないよう msbuild の並列数を論理コアの半分に制限する (最低 1)
-set /a MSBUILD_CPUS=%NUMBER_OF_PROCESSORS% / 2
-if %MSBUILD_CPUS% LSS 1 set MSBUILD_CPUS=1
+:: PC を張り付かせないよう msbuild の並列数を 10 に制限する (物理 20 コア中 10、 残りは OS / 編集用)
+set "MSBUILD_CPUS=10"
 
 echo ===================================
 echo テストビルド・実行 (%CONFIG%, msbuild -m:%MSBUILD_CPUS%)
