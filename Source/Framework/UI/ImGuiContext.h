@@ -3,12 +3,12 @@
 /// @file ImGuiContext.h
 /// @brief NS::UI::ImGuiContext — Dear ImGui (Win32 + DX11 backend) ライフサイクル管理
 ///
-/// @details Debug / Development build 限定で実 ImGui を初期化し、 GameDebug / GameRelease
-/// build では完全 stub (`IsUsingFallback() == true`) として全 API が何もしない
+/// @details UI 層は GameRelease では丸ごとビルドされない (premake kind None)。Debug / Development /
+/// GameDebug でのみ実 ImGui を初期化する。出荷から editor を物理排除するため Framework は UI へ依存せず、
+/// EditorLayer が本 context を単一所有して NewFrame / Render を駆動する
 /// 公開ヘッダから `<imgui.h>` / `<imgui_impl_*.h>` を露出させない pImpl 標準形
-/// 多重インスタンス禁止 — `ImGui::CreateContext()` がプロセス global のため、
-/// Application が単一所有する想定。 構築失敗時は例外を投げず `IsValid() == false` +
-/// `NS_LOG_ERROR` で詳細を残す
+/// 多重インスタンス禁止 — `ImGui::CreateContext()` がプロセス global のため単一所有が前提
+/// 構築失敗時は例外を投げず `IsValid() == false` + `NS_LOG_ERROR` で詳細を残す
 
 #include <cstdint>
 #include <memory>

@@ -4,37 +4,7 @@
 #include "Game/Level/PlayState.h"
 #include "Game/LevelPlayScene.h"
 
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
-#include "Game/EditorLayer.h"
-#endif
-
 #include <memory>
-
-namespace NS::App
-{
-
-    std::unique_ptr<Application> CreateApplication()
-    {
-        ApplicationDesc desc{};
-        desc.window.title = "NS Game";
-        desc.window.size = NS::Math::Size2D{1280, 720};
-#ifdef NS_BUILD_DEBUG
-        desc.renderer.enableDebugLayer = true;
-#else
-        desc.renderer.enableDebugLayer = false;
-#endif
-        auto app = std::make_unique<Application>(desc);
-
-        // Layer / overlay の構成は Game 側で握る。 出荷 build には editor overlay を積まない
-        // NS::App スコープ内では非修飾 Game が NS::Game 名前空間に解決されるため global の ::Game を明示する
-        app->AddLayer(std::make_unique<::Game>());
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
-        app->AddOverlay(std::make_unique<::EditorLayer>());
-#endif
-        return app;
-    }
-
-} // namespace NS::App
 
 Game* Game::s_instance = nullptr;
 

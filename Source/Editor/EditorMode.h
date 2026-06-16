@@ -10,8 +10,8 @@
 /// Command を介さない直接 setter (`SetSpawnMarker`) を呼ぶ
 
 #include "Framework/Math/Math.h"
-#include "Game/Editor/CategoryPalette.h"
-#include "Game/Editor/LevelFileBrowser.h"
+#include "Editor/CategoryPalette.h"
+#include "Editor/LevelFileBrowser.h"
 #include "Game/Undo/UndoStack.h"
 
 #include <cstdint>
@@ -33,7 +33,7 @@ namespace NS::Game::Level
     struct LevelData;
 }
 
-namespace NS::Game::Editor
+namespace NS::Editor
 {
     /// 編集モード本体。 入力 / cursor / palette / UndoStack を 1 か所に集約する
     class EditorMode
@@ -137,4 +137,4 @@ namespace NS::Game::Editor
         void HandleRotationInput() noexcept;
         void HandleUndoRedoInput() noexcept;
     };
-} // namespace NS::Game::Editor
+} // namespace NS::Editor

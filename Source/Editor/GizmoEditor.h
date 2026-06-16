@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file GizmoEditor.h
-/// @brief NS::Game::Editor::GizmoEditor — Object モードの選択 + Maya 風変形ギズモ
+/// @brief NS::Editor::GizmoEditor — Object モードの選択 + Maya 風変形ギズモ
 ///
 /// @details LevelData に属さない自由 Transform オブジェクトを Q/W/E/R の 4 ツールで
 /// 選択・移動・回転・スケールする。描画から独立して検証できるよう view-projection 行列と
@@ -31,7 +31,7 @@ namespace NS::Scene
     class GameObject;
 } // namespace NS::Scene
 
-namespace NS::Game::Editor
+namespace NS::Editor
 {
     /// 変形ツール種別 (Q=Select / W=Move / E=Rotate / R=Scale)
     enum class GizmoTool : std::uint8_t
@@ -197,4 +197,4 @@ namespace NS::Game::Editor
         std::vector<TransformEdit> m_history;
         std::size_t m_historyIndex = 0;
     };
-} // namespace NS::Game::Editor
+} // namespace NS::Editor

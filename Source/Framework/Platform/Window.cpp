@@ -6,7 +6,6 @@
 #include <Framework/Platform/Input.h>
 #include <Framework/Platform/detail/input_win32.h>
 #include <Framework/Platform/detail/win32_window.h>
-#include <Framework/UI/ImGuiContext.h>
 
 namespace NS::Platform
 {
@@ -78,29 +77,26 @@ namespace NS::Platform
                 return ::DefWindowProcW(hwnd, msg, wparam, lparam);
             }
 
-            // ImGui に先に転送する。ゲーム入力との競合は WantCaptureMouse / WantCaptureKeyboard でゲートする
-            if (impl->imgui != nullptr)
+            // 生メッセージを最初にフックへ流す (editor が ImGui へ転送する)。Platform は中身を知らない
+            if (impl->messageHook)
             {
-                (void)impl->imgui->ForwardWndProc(static_cast<void*>(hwnd),
-                                                  static_cast<std::uint32_t>(msg),
-                                                  static_cast<std::uintptr_t>(wparam),
-                                                  static_cast<std::intptr_t>(lparam));
+                impl->messageHook(static_cast<void*>(hwnd),
+                                  static_cast<std::uint32_t>(msg),
+                                  static_cast<std::uintptr_t>(wparam),
+                                  static_cast<std::intptr_t>(lparam));
             }
 
             if (IsInputMessage(msg))
             {
-                // ImGui がキャプチャ中はゲーム側へイベントを流さない
-                if (impl->imgui != nullptr)
+                if (impl->input != nullptr)
                 {
-                    if ((IsKeyboardMessage(msg) && impl->imgui->WantCaptureKeyboard()) ||
-                        (IsMouseMessage(msg) && impl->imgui->WantCaptureMouse()))
+                    // UI がキャプチャ中のキー / マウスはゲーム側へ流さない
+                    if ((IsKeyboardMessage(msg) && impl->input->UiWantsKeyboard()) ||
+                        (IsMouseMessage(msg) && impl->input->UiWantsMouse()))
                     {
                         return ::DefWindowProcW(hwnd, msg, wparam, lparam);
                     }
-                }
 
-                if (impl->input != nullptr)
-                {
                     DispatchWin32MessageToInput(*impl->input,
                                                 static_cast<unsigned int>(msg),
                                                 static_cast<std::uintptr_t>(wparam),
@@ -303,9 +299,9 @@ namespace NS::Platform
         m_pImpl->input = input;
     }
 
-    void Window::AttachImGui(NS::UI::ImGuiContext* imgui) noexcept
+    void Window::SetMessageHook(MessageHook hook)
     {
-        m_pImpl->imgui = imgui;
+        m_pImpl->messageHook = std::move(hook);
     }
 
 } // namespace NS::Platform

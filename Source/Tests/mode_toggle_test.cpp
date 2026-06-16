@@ -1,8 +1,8 @@
-#include "Game/Editor/EditorMode.h"
+#include "Editor/EditorMode.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayMode.h"
 #include "Game/Level/PlayState.h"
-#include "Game/LevelEditorController.h"
+#include "Editor/LevelEditorController.h"
 #include "Game/LevelPlayScene.h"
 
 #include <gtest/gtest.h>

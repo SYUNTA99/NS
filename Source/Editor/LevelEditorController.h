@@ -10,8 +10,8 @@
 
 #include "Framework/Graphics/RenderSettings.h"
 #include "Framework/Math/Math.h"
-#include "Game/Editor/EditorMode.h"
-#include "Game/Editor/GizmoEditor.h"
+#include "Editor/EditorMode.h"
+#include "Editor/GizmoEditor.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
 
@@ -26,6 +26,11 @@ namespace NS::Scene
     class GameObject;
     class Transform;
 } // namespace NS::Scene
+
+namespace NS::UI
+{
+    class ImGuiContext;
+}
 
 class EditorCameraRig;
 class LevelPlayScene;
@@ -43,7 +48,8 @@ public:
     LevelEditorController& operator=(LevelEditorController&&) = delete;
 
     /// scene の OnStart 完了後に呼ぶ。 free-fly カメラ / EditorMode / ギズモを立ち上げ編集モードへ入る
-    void Setup();
+    /// imgui は EditorLayer 所有の context。EditorMode / ギズモの入力ゲートへ橋渡しする (非所有)
+    void Setup(NS::UI::ImGuiContext* imgui);
     /// fixed step 更新。 編集中は free-fly カメラ / ギズモ / EditorMode を回す。 プレイ中はクリア監視のみ
     void Tick();
     /// render フレームの上乗せ描画 (ギズモ / palette / 編集ビジュアル) と debug provenance 退避
@@ -64,7 +70,7 @@ public:
     /// Play → Edit 遷移。 scene のプレイを止め free-fly カメラと編集入力を再開する
     void EnterEdit() noexcept;
 
-    [[nodiscard]] NS::Game::Editor::EditorMode& Editor() noexcept { return m_editor; }
+    [[nodiscard]] NS::Editor::EditorMode& Editor() noexcept { return m_editor; }
     [[nodiscard]] LevelPlayScene& Scene() noexcept { return *m_scene; }
     /// panel 利便のための pass-through。 編集対象の LevelData
     [[nodiscard]] NS::Game::Level::LevelData& Level() noexcept;
@@ -154,9 +160,12 @@ private:
 
     LevelPlayScene* m_scene = nullptr;
 
+    // EditorLayer 所有の ImGui context (非所有)。EditorMode / ギズモへ渡し、 keyboard キャプチャ判定にも使う
+    NS::UI::ImGuiContext* m_imgui = nullptr;
+
     std::unique_ptr<EditorCameraRig> m_editorCameraRig;
 
-    NS::Game::Editor::EditorMode m_editor{};
+    NS::Editor::EditorMode m_editor{};
     Mode m_mode = Mode::Edit;
 
     /// 編集中の入力所有。 Build=grid 設置、 Object=ギズモ変形。 同時に 1 つだけが LMB/R/Ctrl+Z を消費
@@ -167,7 +176,7 @@ private:
     };
     EditorToolMode m_editorToolMode = EditorToolMode::Build;
 
-    NS::Game::Editor::GizmoEditor m_gizmo{};
+    NS::Editor::GizmoEditor m_gizmo{};
 
     // ギズモへ渡す選択候補の安定ストレージ。 自由オブジェクトと grid solid ブロックを連結した span の実体
     std::vector<NS::Scene::GameObject*> m_selectablePtrs;

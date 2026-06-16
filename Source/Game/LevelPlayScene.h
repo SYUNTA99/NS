@@ -9,6 +9,7 @@
 /// free-fly カメラ / モード切替) は scene の外側、 `LevelEditorController` が friend 経由で
 /// 本 scene を操作して実現する。 scene 自身は「編集されている」ことを知らない
 
+#include "Framework/Core/EditorAccess.h"
 #include "Framework/Math/Math.h"
 #include "Framework/Physics/SweptTriangle.h"
 #include "Framework/Scene/MaterialLibrary.h"
@@ -62,7 +63,8 @@ class LevelPlayScene : public NS::Scene::SceneBase
 {
     // 編集ツールは scene の内部 (runtime オブジェクト群 / camera brain / play 状態) へ深く触れるため
     // friend で許可する。 scene 側に編集専用の public API を生やさず、 編集の知識を外へ閉じ込める
-    friend class LevelEditorController;
+    // 出荷ビルドではマクロが空に展開され、 editor のクラス名ごとバイナリから消える
+    NS_EDITOR_FRIEND(LevelEditorController)
 
 public:
     LevelPlayScene();

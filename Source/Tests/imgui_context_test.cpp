@@ -20,7 +20,7 @@ namespace
 
 TEST(ImGuiContextTest, ValidModeWithRealWindowAndRenderer)
 {
-#if !(defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV))
+#if !NS_EDITOR_ENABLED
     GTEST_SKIP() << "ImGui 実機能は Debug / Development build のみ";
 #endif
     NS::Platform::Window window(MakeHiddenWindowDesc());
@@ -46,7 +46,7 @@ TEST(ImGuiContextTest, ValidModeWithRealWindowAndRenderer)
 
 TEST(ImGuiContextTest, WantCaptureSafeBeforeNewFrame)
 {
-#if !(defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV))
+#if !NS_EDITOR_ENABLED
     GTEST_SKIP();
 #endif
     NS::Platform::Window window(MakeHiddenWindowDesc());

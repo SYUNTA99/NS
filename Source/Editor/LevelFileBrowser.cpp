@@ -1,14 +1,14 @@
-#include "Game/Editor/LevelFileBrowser.h"
+#include "Editor/LevelFileBrowser.h"
 
-#include "Game/Editor/LevelFilePaths.h"
+#include "Editor/LevelFilePaths.h"
 
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
 #include <imgui.h>
 #endif
 
 #include <algorithm>
 
-namespace NS::Game::Editor
+namespace NS::Editor
 {
     namespace
     {
@@ -54,7 +54,7 @@ namespace NS::Game::Editor
     LevelFileBrowser::Result LevelFileBrowser::Render() noexcept
     {
         Result result;
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
         if (m_saveModalOpen)
         {
             // 中央寄せの auto-resize modal。 input + Save / Cancel + 直前結果 message
@@ -170,4 +170,4 @@ namespace NS::Game::Editor
         return result;
     }
 
-} // namespace NS::Game::Editor
+} // namespace NS::Editor

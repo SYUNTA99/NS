@@ -1,4 +1,4 @@
-#include "Game/Editor/LevelFilePaths.h"
+#include "Editor/LevelFilePaths.h"
 
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
@@ -8,7 +8,7 @@
 #include <array>
 #include <cctype>
 
-namespace NS::Game::Editor
+namespace NS::Editor
 {
     namespace
     {
@@ -99,4 +99,4 @@ namespace NS::Game::Editor
         return result;
     }
 
-} // namespace NS::Game::Editor
+} // namespace NS::Editor

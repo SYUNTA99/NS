@@ -14,7 +14,7 @@ TEST(UIPanelTest, NoOpWhenImGuiNotInitialized)
 
 TEST(UIPanelTest, BeginEndPairInValidContext)
 {
-#if !(defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV))
+#if !NS_EDITOR_ENABLED
     GTEST_SKIP();
 #endif
     NS::Platform::WindowDesc wd{};

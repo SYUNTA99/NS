@@ -1,4 +1,4 @@
-#include "Game/EditorCameraRig.h"
+#include "Editor/EditorCameraRig.h"
 
 EditorCameraRig::EditorCameraRig() noexcept
 {

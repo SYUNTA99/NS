@@ -1,6 +1,6 @@
 #include "Framework/UI/Panel.h"
 
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
 #include <imgui.h>
 #define NS_UI_IMGUI_ENABLED 1
 #else

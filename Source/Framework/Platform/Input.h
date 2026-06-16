@@ -35,12 +35,29 @@ namespace NS::Platform
         /// 全サブクラスの Update を呼ぶ (フレーム頭で 1 回)
         void Update() noexcept;
 
+        /// 開発用 UI (editor の ImGui) が入力を掴んでいるかを毎フレーム反映する窓口
+        /// editor が描画後に push し、Window / gameplay 側の入力ゲートはここを読む
+        /// 出荷 build には editor が無いため常に false のまま (全入力がゲームに届く)
+        void SetUiCapture(bool wantMouse, bool wantKeyboard) noexcept
+        {
+            m_uiWantsMouse = wantMouse;
+            m_uiWantsKeyboard = wantKeyboard;
+        }
+
+        /// UI がマウスを掴んでいるか。直前フレームの状態 (NewFrame 後に push されるため 1 フレーム遅延)
+        [[nodiscard]] bool UiWantsMouse() const noexcept { return m_uiWantsMouse; }
+        /// UI がキーボードを掴んでいるか。テキスト入力中のゲーム操作抑止に使う
+        [[nodiscard]] bool UiWantsKeyboard() const noexcept { return m_uiWantsKeyboard; }
+
     private:
         static constexpr std::size_t kGamepadSlotCount = 1;
 
         NS::Platform::Keyboard m_keyboard;
         NS::Platform::Mouse m_mouse;
         std::array<NS::Platform::Gamepad, kGamepadSlotCount> m_gamepads;
+
+        bool m_uiWantsMouse = false;
+        bool m_uiWantsKeyboard = false;
     };
 
 } // namespace NS::Platform

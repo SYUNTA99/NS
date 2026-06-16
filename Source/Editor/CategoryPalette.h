@@ -22,7 +22,7 @@ namespace NS::UI
     class ImGuiContext;
 }
 
-namespace NS::Game::Editor
+namespace NS::Editor
 {
     /// 8 スロット toolbar の状態保持と入力ハンドラ
     class CategoryPalette
@@ -69,4 +69,4 @@ namespace NS::Game::Editor
                                              NS::Game::Blocks::kBlockIdHazard,
                                              NS::Game::Blocks::kBlockIdWater};
     };
-} // namespace NS::Game::Editor
+} // namespace NS::Editor

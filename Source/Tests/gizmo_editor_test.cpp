@@ -1,4 +1,4 @@
-#include "Game/Editor/GizmoEditor.h"
+#include "Editor/GizmoEditor.h"
 
 #include "Framework/Scene/Transform.h"
 
@@ -9,9 +9,9 @@
 
 namespace
 {
-    using NS::Game::Editor::GizmoAxis;
-    using NS::Game::Editor::GizmoEditor;
-    using NS::Game::Editor::GizmoTool;
+    using NS::Editor::GizmoAxis;
+    using NS::Editor::GizmoEditor;
+    using NS::Editor::GizmoTool;
 
     TEST(GizmoEditor, DefaultToolIsSelect)
     {

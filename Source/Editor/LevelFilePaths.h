@@ -15,7 +15,7 @@
 #include <string_view>
 #include <vector>
 
-namespace NS::Game::Editor
+namespace NS::Editor
 {
     /// ASCII 英数字+`_`/`-`/空白、1〜200 char、`..`なし、Windows 予約名なし。 失敗時は空文字列
     [[nodiscard]] std::string SanitizeLevelName(std::string_view name) noexcept;
@@ -31,4 +31,4 @@ namespace NS::Game::Editor
 
     /// `<exe>/Levels/*.nslvl` を列挙しソート済 stem を返す。 例外時は部分リスト + `NS_LOG_ERROR`
     [[nodiscard]] std::vector<std::string> EnumerateLevelFiles() noexcept;
-} // namespace NS::Game::Editor
+} // namespace NS::Editor

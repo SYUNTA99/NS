@@ -49,6 +49,7 @@ workspace "NS"
     filter "configurations:Debug"
         defines {
             "NS_BUILD_DEBUG",
+            "NS_EDITOR_ENABLED=1",
             "NS_LOG_LEVEL=0",          -- Trace+
             "NS_ENABLE_ASSERT=1",
             "_ITERATOR_DEBUG_LEVEL=2", -- フルチェック
@@ -61,6 +62,7 @@ workspace "NS"
     filter "configurations:Development"
         defines {
             "NS_BUILD_DEV",
+            "NS_EDITOR_ENABLED=1",
             "NS_LOG_LEVEL=1",          -- Debug+
             "NS_ENABLE_ASSERT=1",
             "_ITERATOR_DEBUG_LEVEL=0",
@@ -74,6 +76,7 @@ workspace "NS"
         -- ns.lib は -O2、Game.exe は -O0（Game プロジェクト側で上書き）
         defines {
             "NS_BUILD_GAMEDEBUG",
+            "NS_EDITOR_ENABLED=1",
             "NS_LOG_LEVEL=1",
             "NS_ENABLE_ASSERT=1",
             "_ITERATOR_DEBUG_LEVEL=1", -- 境界チェックのみ
@@ -86,6 +89,7 @@ workspace "NS"
     filter "configurations:GameRelease"
         defines {
             "NS_BUILD_RELEASE",
+            "NS_EDITOR_ENABLED=0",
             "NS_LOG_LEVEL=4",          -- Error/Fatal のみ
             "NS_ENABLE_ASSERT=0",
             "_ITERATOR_DEBUG_LEVEL=0",
@@ -435,7 +439,7 @@ project "Scene"
 
 --============================================================================
 -- UI 層 (StaticLib、 Framework 8 層目)
---   ImGui ラッパ (Debug / Development 構成のみ実機能、 GameDebug / GameRelease は stub)。
+--   ImGui ラッパ (GameRelease では非ビルド、 Debug / Development / GameDebug でのみビルド)。
 --   ImGui 型はヘッダから露出させず detail/ 配下にのみ取り込む (header pollution rule)。
 --============================================================================
 project "UI"
@@ -469,14 +473,18 @@ project "UI"
         "Graphics"
     }
 
-    -- Debug / Development のみ imgui を取り込み + link する。
-    -- GameDebug / GameRelease では preprocessor で stub に切替わるので link 不要。
-    filter "configurations:Debug or Development"
+    -- editor は Debug / Development / GameDebug にのみ存在するため、imgui を取り込み + link する。
+    filter "configurations:Debug or Development or GameDebug"
         includedirs {
             "Source/ThirdParty/imgui",
             "Source/ThirdParty/imgui/backends",
         }
         links { "imgui" }
+    filter {}
+
+    -- GameRelease では UI 層を丸ごとビルドしない。Framework が UI へ依存しないため出荷から物理排除できる
+    filter "configurations:GameRelease"
+        kind "None"
     filter {}
 
     applyFrameworkLayerDefaults("UI")
@@ -520,8 +528,7 @@ project "App"
         "Physics",
         "Graphics",
         "Audio",
-        "Scene",
-        "UI"
+        "Scene"
     }
 
     applyFrameworkLayerDefaults("App")
@@ -533,23 +540,25 @@ project "App"
 group ""
 
 --============================================================================
--- Game 実行ファイル (WindowedApp)
---   MainScene + CreateApplication / CreateInitialWorld
+-- GameCore (StaticLib) — ゲーム本体 (content / logic)
+--   Player / Block / LevelPlayScene / Level / Undo / Theme / CameraRig 等。
+--   editor を一切知らない (依存の向きは Editor → GameCore の一方向)。 出荷を含む全構成でビルド。
+--   合成 Layer ::Game もここに置き、 editor から Game::Get() で参照できるようにする。
 --============================================================================
-project "Game"
-    kind "WindowedApp"
-    location "build/Game"
+project "GameCore"
+    kind "StaticLib"
+    location "build/GameCore"
 
-    targetdir (bindir)        -- exe は build/bin/<Config>/ 直下
+    targetdir (bindir .. "/%{prj.name}")
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
         "Source/Game/**.h",
         "Source/Game/**.cpp"
     }
+    -- GameMain.cpp (CreateApplication = 合成ルート) は exe 側。 GameCore からは除外する
+    removefiles { "Source/Game/GameMain.cpp" }
 
-    -- Framework/Core/Math.h → SimpleMath.h、Material::SetParams で
-    -- DirectXMath.h が必要になる。spdlog/magic_enum は将来 Game 側でも使う想定で同居。
     includedirs {
         "Source/ThirdParty/DirectXTK/Inc",
         "Source/ThirdParty/spdlog/include",
@@ -570,8 +579,111 @@ project "Game"
         "Graphics",
         "Audio",
         "Scene",
+        "App",
+        "directxtk_simplemath"
+    }
+
+    applyCommonBuildOptions()
+
+--============================================================================
+-- Editor (StaticLib) — エディタモジュール (NS::Editor)
+--   EditorLayer / LevelEditorController / EditorCameraRig / EditorMode /
+--   GizmoEditor / CategoryPalette / LevelFileBrowser / LevelFilePaths。
+--   GameCore + UI(ImGui) に依存。 GameRelease では kind None で出荷から物理排除し、
+--   「ゲーム本体は editor を知らない」をリンカで強制する。
+--============================================================================
+project "Editor"
+    kind "StaticLib"
+    location "build/Editor"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/Editor/**.h",
+        "Source/Editor/**.cpp"
+    }
+
+    includedirs {
+        "Source/ThirdParty/DirectXTK/Inc",
+        "Source/ThirdParty/spdlog/include",
+        "Source/ThirdParty/magic_enum/include",
+        "Source/ThirdParty/imgui",
+        "Source/ThirdParty/imgui/backends",
+    }
+
+    defines {
+        "SPDLOG_HEADER_ONLY",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_NO_EXCEPTIONS"
+    }
+
+    links {
+        "GameCore",
+        "Math",
+        "Core",
+        "Platform",
+        "Physics",
+        "Graphics",
+        "Audio",
+        "Scene",
+        "App",
         "UI",
-        "App"
+        "imgui",
+        "directxtk_simplemath"
+    }
+
+    -- GameRelease では editor を丸ごとビルドしない (出荷から物理排除)
+    filter "configurations:GameRelease"
+        kind "None"
+    filter {}
+
+    applyCommonBuildOptions()
+
+--============================================================================
+-- Solution Folder を解除し、 Game 実行ファイルをルート直下に戻す。
+--============================================================================
+group ""
+
+--============================================================================
+-- Game 実行ファイル (WindowedApp) — 薄い合成ルート
+--   GameMain.cpp (CreateApplication) のみ。 GameCore を常時、 Editor を editor 構成のみリンクし、
+--   出荷 (GameRelease) には editor / UI / imgui を一切積まない。
+--============================================================================
+project "Game"
+    kind "WindowedApp"
+    location "build/Game"
+
+    targetdir (bindir)        -- exe は build/bin/<Config>/ 直下
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/Game/GameMain.cpp"
+    }
+
+    includedirs {
+        "Source/ThirdParty/DirectXTK/Inc",
+        "Source/ThirdParty/spdlog/include",
+        "Source/ThirdParty/magic_enum/include",
+    }
+
+    defines {
+        "SPDLOG_HEADER_ONLY",
+        "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
+        "SPDLOG_NO_EXCEPTIONS"
+    }
+
+    links {
+        "GameCore",
+        "Math",
+        "Core",
+        "Platform",
+        "Physics",
+        "Graphics",
+        "Audio",
+        "Scene",
+        "App",
+        "directxtk_simplemath"
     }
 
     -- HLSL / Texture は exe 隣の Shaders/ Assets/ にコピーし、FileSystem::GetExeDirectory()
@@ -583,19 +695,14 @@ project "Game"
         '{COPYDIR} "%{wks.location}/../Assets" "%{cfg.buildtarget.directory}/Assets"',
     }
 
-    -- Debug / Development では Editor UI (CategoryPalette 等) が直接 ImGui を呼ぶため
-    -- include path のみ通す (実体 link は UI 経由)。 Shipping 構成では gate により stub。
-    filter "configurations:Debug or Development"
-        includedirs {
-            "Source/ThirdParty/imgui",
-            "Source/ThirdParty/imgui/backends",
-        }
+    -- editor 構成のみ Editor モジュール (+UI/imgui) をリンクする。 GameRelease では積まない
+    filter "configurations:Debug or Development or GameDebug"
+        links { "Editor", "UI", "imgui" }
     filter {}
 
     -- GameDebug: Game.exe のみ -O0 + symbols フル
     filter "configurations:GameDebug"
         optimize "Off"
-
     filter {}
 
     applyCommonBuildOptions()
@@ -606,8 +713,8 @@ project "Game"
 group "_Tests"
 
 --============================================================================
--- Dear ImGui (docking branch v1.92.6、 Debug/Development 構成のみ build)
---   NS::UI 内部実装で使用、 GameDebug/GameRelease では link しない
+-- Dear ImGui (docking branch v1.92.6、 GameRelease 以外で build)
+--   NS::UI 内部実装で使用、 GameRelease のみ link しない
 --============================================================================
 project "imgui"
     kind "StaticLib"
@@ -642,8 +749,8 @@ project "imgui"
     warnings "Off"
     buildoptions { "/utf-8", "/FS" }
 
-    -- GameDebug / GameRelease では build しない (kind を None にして空 project 化)
-    filter "configurations:GameDebug or GameRelease"
+    -- GameRelease では build しない (kind を None にして空 project 化)
+    filter "configurations:GameRelease"
         kind "None"
     filter {}
 
@@ -694,18 +801,23 @@ project "Tests"
         "Source/Game/Block.cpp",
         "Source/Game/Blocks/**.cpp",
         "Source/Game/CameraRig.cpp",
-        "Source/Game/EditorCameraRig.cpp",
+        "Source/Editor/EditorCameraRig.cpp",
         -- LevelEditorController は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
         -- Setup は Application::Get() を要求するため test では呼ばないが、 ctor / EnterPlay /
         -- EnterEdit / 値メンバ accessor の symbol が要るので .cpp を Tests に取り込む。
         -- 操作対象の LevelPlayScene も ctor / dtor / vtable / SetPlaying symbol のため併せて取り込む。
         "Source/Game/LevelPlayScene.cpp",
-        "Source/Game/LevelEditorController.cpp",
+        "Source/Editor/LevelEditorController.cpp",
         -- Level data / ChunkIO / CRC32 / Undo Command / AutoTile は Application
         -- 非依存の純粋ロジックなので Tests project から直接 compile する。
         "Source/Game/Level/**.cpp",
         "Source/Game/Undo/**.cpp",
-        "Source/Game/Editor/**.cpp",
+        -- editor のうち Application 非依存なものだけ取り込む (EditorLayer は Application 依存のため除外)
+        "Source/Editor/EditorMode.cpp",
+        "Source/Editor/GizmoEditor.cpp",
+        "Source/Editor/CategoryPalette.cpp",
+        "Source/Editor/LevelFileBrowser.cpp",
+        "Source/Editor/LevelFilePaths.cpp",
         "Source/Game/Theme/**.cpp"
     }
 
@@ -732,18 +844,23 @@ project "Tests"
         "Graphics",
         "Audio",
         "Scene",
-        "UI",
         "App"
     }
 
-    -- Debug / Development の Tests は ImGui 機能を呼ぶため imgui を link する。
-    -- GameDebug / GameRelease では UI 側が stub なので link 不要。
-    filter "configurations:Debug or Development"
-        links { "imgui" }
+    -- Debug / Development / GameDebug の Tests は editor / ImGui を呼ぶため UI + imgui を link する。
+    -- GameRelease では UI 層が非ビルドのため link / include しない。
+    filter "configurations:Debug or Development or GameDebug"
+        links { "UI", "imgui" }
         includedirs {
             "Source/ThirdParty/imgui",
             "Source/ThirdParty/imgui/backends",
         }
+    filter {}
+
+    -- 出荷 (GameRelease) ではテストをビルドしない。テストは Debug/Development/GameDebug の関心事で
+    -- shipping 構成の成果物ではない (UI 非ビルドと SimpleMath link 漏れの両方をここで回避)
+    filter "configurations:GameRelease"
+        kind "None"
     filter {}
 
     -- Skybox / Texture 等のテストは Shaders / Assets を実行時に exe 隣ディレクトリから

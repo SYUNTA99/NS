@@ -10,15 +10,11 @@
 
 #include "Framework/Math/Math.h"
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
-
-namespace NS::UI
-{
-    class ImGuiContext;
-}
 
 namespace NS::Platform
 {
@@ -40,6 +36,11 @@ namespace NS::Platform
     public:
         /// 内部実装 (定義は detail/win32_window.h)。WndProc 等の自由関数からのアクセス用で外部から触らないこと
         struct Impl;
+
+        /// 生 Win32 メッセージを WndProc 先頭で覗くフック。editor が ImGui へ転送する用途で登録する
+        /// Platform 層を UI へ依存させないため型は void* / 整数で受け、解釈は登録側に委ねる
+        using MessageHook =
+            std::function<void(void* hwnd, std::uint32_t msg, std::uintptr_t wParam, std::intptr_t lParam)>;
 
         explicit Window(const WindowDesc& desc);
         ~Window();
@@ -78,8 +79,9 @@ namespace NS::Platform
         /// 入力転送先を設定する。非所有ポインタ、nullptr で解除
         void AttachInput(Input* input) noexcept;
 
-        /// ImGui 転送先を設定する。ImGui キャプチャ中は Input 転送を抑止。nullptr で解除
-        void AttachImGui(NS::UI::ImGuiContext* imgui) noexcept;
+        /// 生メッセージフックを設定する。WndProc 先頭で呼ばれる。nullptr で解除
+        /// ゲーム入力のゲートは Input::UiWantsMouse / UiWantsKeyboard を見て判定する
+        void SetMessageHook(MessageHook hook);
 
     private:
         std::unique_ptr<Impl> m_pImpl;

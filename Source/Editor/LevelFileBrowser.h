@@ -14,7 +14,7 @@
 #include <string_view>
 #include <vector>
 
-namespace NS::Game::Editor
+namespace NS::Editor
 {
     class LevelFileBrowser
     {
@@ -61,4 +61,4 @@ namespace NS::Game::Editor
         std::string m_lastMessage;
         bool m_lastMessageError = false;
     };
-} // namespace NS::Game::Editor
+} // namespace NS::Editor

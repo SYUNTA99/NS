@@ -1,7 +1,7 @@
-#include "Game/LevelEditorController.h"
+#include "Editor/LevelEditorController.h"
 
 #include "Game/Block.h"
-#include "Game/EditorCameraRig.h"
+#include "Editor/EditorCameraRig.h"
 #include "Game/LevelPlayScene.h"
 #include "Game/Player.h"
 
@@ -39,18 +39,19 @@ NS::Game::Level::PlayState& LevelEditorController::Play() noexcept
     return m_scene->Play();
 }
 
-void LevelEditorController::Setup()
+void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
 {
     auto* app = NS::App::Application::Get();
     if (app == nullptr || m_scene == nullptr)
         return;
+
+    m_imgui = imgui;
 
     // 編集モード専用の free-fly カメラを Player / follow camera と並列で立ち上げる
     // MB64 の freecam に相当 (mouse + gamepad で Orbit / Pan / Zoom)
     m_editorCameraRig = std::make_unique<EditorCameraRig>();
     m_editorCameraRig->AttachScene(m_scene);
     m_editorCameraRig->EditorCam().SetInput(&app->Input());
-    m_editorCameraRig->EditorCam().SetImGui(app->ImGui());
 
     // free-fly vcam の投影設定 (編集は遠景を 200 まで見せる、 near 0.1 は既定)
     m_editorCameraRig->EditorCam().SetNearPlane(0.1f);
@@ -74,7 +75,7 @@ void LevelEditorController::Setup()
     // EditorMode に依存先を注入する
     m_editor.SetLevel(&m_scene->m_level);
     m_editor.SetInput(&app->Input());
-    m_editor.SetImGui(app->ImGui());
+    m_editor.SetImGui(imgui);
     m_editor.SetCameraComponent(m_scene->m_mainCamera);
     m_editor.SetActive(true);
     // scene が OnStart で rebuild 済なので、 初回 Tick の二重 rebuild を抑制
@@ -82,7 +83,7 @@ void LevelEditorController::Setup()
 
     // ギズモに依存先を注入する。 選択候補は自由オブジェクト + grid solid ブロックを連結して渡す
     m_gizmo.SetInput(&app->Input());
-    m_gizmo.SetImGui(app->ImGui());
+    m_gizmo.SetImGui(imgui);
     RefreshGizmoSelectables();
 
     // scene は OnStart でプレイ開始済。 編集モードへ切替える (player 凍結 / free-fly camera 有効)
@@ -200,7 +201,7 @@ void LevelEditorController::TickEdit()
 
         // Object モードの Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y はギズモ変形履歴を操作する
         // (grid の undo は EditorMode が inputSuppressed で止めている)
-        const bool imguiKeyboard = app->ImGui() != nullptr && app->ImGui()->WantCaptureKeyboard();
+        const bool imguiKeyboard = m_imgui != nullptr && m_imgui->WantCaptureKeyboard();
         if (!imguiKeyboard)
         {
             auto& kb = app->Input().Keyboard();

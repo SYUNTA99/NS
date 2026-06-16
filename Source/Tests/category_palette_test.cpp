@@ -1,10 +1,10 @@
 #include "Framework/Platform/Input.h"
 #include "Game/Blocks/BlockRegistry.h"
-#include "Game/Editor/CategoryPalette.h"
+#include "Editor/CategoryPalette.h"
 
 #include <gtest/gtest.h>
 
-namespace EditorNs = NS::Game::Editor;
+namespace EditorNs = NS::Editor;
 
 TEST(CategoryPalette, InitialSlotIsSolid)
 {

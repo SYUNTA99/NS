@@ -1,10 +1,10 @@
-#include "Game/Editor/LevelFilePaths.h"
+#include "Editor/LevelFilePaths.h"
 
 #include <string>
 
 #include <gtest/gtest.h>
 
-namespace EditorNs = NS::Game::Editor;
+namespace EditorNs = NS::Editor;
 
 TEST(LevelFilePaths, SanitizeAcceptsAlphanumeric)
 {

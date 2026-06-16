@@ -7,7 +7,7 @@
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Platform/Window.h"
 
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
 #include <backends/imgui_impl_dx11.h>
 #include <backends/imgui_impl_win32.h>
 #include <imgui.h>

@@ -42,7 +42,6 @@
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/Transform.h"
-#include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/AutoTile.h"
 #include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/ChunkIO.h"
@@ -233,8 +232,6 @@ void LevelPlayScene::OnStart()
     // (= AABB 半サイズ 0.4, 0.9, 0.4)。両者が一致するよう scale で mesh を縮める
     m_player->Root().SetScale({0.8f, 1.8f, 0.8f});
     m_player->MeshComp().SetBaseColor(kPlayerColor);
-    // Play 中の入力は PlayerInputComponent が担う。 ImGui のテキスト入力中に WASD を取り合わないよう注入
-    m_player->InputComp().SetImGui(app->ImGui());
     m_player->Shadow().SetResources(m_shadowMesh.get(), m_shadowMaterial.get());
 
     LoadInitialLevel();
@@ -1036,9 +1033,7 @@ void LevelPlayScene::UpdateAnimatedModel()
     auto* app = NS::App::Application::Get();
     if (app != nullptr && m_animPlayer != nullptr)
     {
-        bool wantKb = false;
-        if (auto* imgui = app->ImGui())
-            wantKb = imgui->WantCaptureKeyboard();
+        const bool wantKb = app->Input().UiWantsKeyboard();
 
         if (!wantKb)
         {

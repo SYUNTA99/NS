@@ -1,4 +1,4 @@
-#include "Game/Editor/EditorMode.h"
+#include "Editor/EditorMode.h"
 
 #include "Framework/App/Application.h"
 #include "Framework/Core/Clock.h"
@@ -10,14 +10,14 @@
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/AutoTile.h"
 #include "Game/Blocks/BlockRegistry.h"
-#include "Game/Editor/LevelFilePaths.h"
+#include "Editor/LevelFilePaths.h"
 #include "Game/Level/ChunkIO.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Undo/DeleteCommand.h"
 #include "Game/Undo/PlaceCommand.h"
 #include "Game/Undo/RotateCommand.h"
 
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
 #include <imgui.h>
 #endif
 
@@ -26,7 +26,7 @@
 #include <limits>
 #include <memory>
 
-namespace NS::Game::Editor
+namespace NS::Editor
 {
     namespace
     {
@@ -150,7 +150,7 @@ namespace NS::Game::Editor
                                       NS::Math::Vector3{kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
         NS::Graphics::DebugDraw::AABB(placeBox, m_cursor.placementBlocked ? kCursorBlockedColor : kCursorOkColor);
 
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
         // ImGui の background DrawList に 8 頂点を view-projection で screen 投影して 12 辺を線描画する
         if (m_camera == nullptr)
             return;
@@ -288,7 +288,7 @@ namespace NS::Game::Editor
         const NS::Math::Color spawnColor{1.0f, 0.85f, 0.10f, 1.0f};
         NS::Graphics::DebugDraw::AABB(marker, spawnColor);
 
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
         if (m_camera == nullptr)
             return;
         auto* app = NS::App::Application::Get();
@@ -617,4 +617,4 @@ namespace NS::Game::Editor
                 m_levelDirty = true;
         }
     }
-} // namespace NS::Game::Editor
+} // namespace NS::Editor

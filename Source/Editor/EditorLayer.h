@@ -16,6 +16,11 @@
 #include <filesystem>
 #include <memory>
 
+namespace NS::UI
+{
+    class ImGuiContext;
+}
+
 class LevelEditorController;
 
 class EditorLayer : public NS::App::Layer
@@ -56,6 +61,10 @@ private:
     static void RenderMaterialsPanel(LevelEditorController& editor) noexcept;
     /// dir 直下を再帰描画する。 サブフォルダは TreeNode、 .mat はクリック適用 + ドラッグ可
     static void RenderAssetTree(const std::filesystem::path& dir, LevelEditorController& editor) noexcept;
+
+    // ImGui ライフサイクルを Layer が所有する。Application は UI を知らないため editor が NewFrame/Render を駆動する
+    // OnRender 内で BeginFrame → パネル構築 → EndFrame の順に回し、終端で UI キャプチャ状態を Input へ反映する
+    std::unique_ptr<NS::UI::ImGuiContext> m_imgui;
 
     // 起動 scene (LevelPlayScene) を編集するコントローラ。 OnAttach で scene へ束ねて Setup する
     std::unique_ptr<LevelEditorController> m_controller;

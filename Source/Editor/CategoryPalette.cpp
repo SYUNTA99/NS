@@ -1,14 +1,14 @@
-#include "Game/Editor/CategoryPalette.h"
+#include "Editor/CategoryPalette.h"
 
 #include "Framework/Platform/Input.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Framework/UI/Panel.h"
 
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
 #include <imgui.h>
 #endif
 
-namespace NS::Game::Editor
+namespace NS::Editor
 {
     void CategoryPalette::SetActiveSlot(std::size_t slot) noexcept
     {
@@ -65,7 +65,7 @@ namespace NS::Game::Editor
 
     void CategoryPalette::Render() noexcept
     {
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
         // 画面上部中央に default 配置。 ユーザーは初回ドラッグで移動可能 (ImGuiCond_FirstUseEver)
         if (ImGuiViewport* vp = ImGui::GetMainViewport())
         {
@@ -109,4 +109,4 @@ namespace NS::Game::Editor
         }
 #endif
     }
-} // namespace NS::Game::Editor
+} // namespace NS::Editor

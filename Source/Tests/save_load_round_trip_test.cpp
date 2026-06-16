@@ -1,6 +1,6 @@
 #include "Framework/Core/Filesystem.h"
 #include "Game/Blocks/BlockRegistry.h"
-#include "Game/Editor/LevelFilePaths.h"
+#include "Editor/LevelFilePaths.h"
 #include "Game/Level/ChunkIO.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/detail/crc32.h"
@@ -12,7 +12,7 @@
 #include <gtest/gtest.h>
 
 namespace LevelNs = NS::Game::Level;
-namespace EditorNs = NS::Game::Editor;
+namespace EditorNs = NS::Editor;
 
 TEST(SaveLoadRoundTrip, SaveAndReloadProducesIdenticalCrc)
 {

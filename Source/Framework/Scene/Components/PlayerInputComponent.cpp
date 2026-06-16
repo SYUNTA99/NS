@@ -5,7 +5,6 @@
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Scene/Components/CharacterMovementComponent.h"
 #include "Framework/Scene/GameObject.h"
-#include "Framework/UI/ImGuiContext.h"
 
 #include <cmath>
 
@@ -38,11 +37,6 @@ namespace NS::Scene
         m_input = input;
     }
 
-    void PlayerInputComponent::SetImGui(NS::UI::ImGuiContext* imgui) noexcept
-    {
-        m_imgui = imgui;
-    }
-
     void PlayerInputComponent::OnUpdate()
     {
         if (!IsActive() || m_movement == nullptr || m_input == nullptr)
@@ -51,8 +45,8 @@ namespace NS::Scene
         const auto& kb = m_input->Keyboard();
         const auto& pad = m_input->Gamepad(0);
 
-        // ImGui のテキスト入力中はキーボード由来の移動 / ジャンプを取り合わない (gamepad は維持)
-        const bool wantKb = (m_imgui != nullptr) && m_imgui->WantCaptureKeyboard();
+        // UI のテキスト入力中はキーボード由来の移動 / ジャンプを取り合わない (gamepad は維持)
+        const bool wantKb = m_input->UiWantsKeyboard();
 
         float kbForward = 0.0f;
         float kbRight = 0.0f;

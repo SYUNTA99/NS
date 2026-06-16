@@ -1,4 +1,4 @@
-#include "Game/Editor/GizmoEditor.h"
+#include "Editor/GizmoEditor.h"
 
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Mouse.h"
@@ -11,11 +11,11 @@
 #include <cmath>
 #include <vector>
 
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
 #include <imgui.h>
 #endif
 
-namespace NS::Game::Editor
+namespace NS::Editor
 {
     namespace
     {
@@ -332,7 +332,7 @@ namespace NS::Game::Editor
 
     void GizmoEditor::Render(const NS::Math::Matrix& viewProjection, NS::Math::Size2D viewport) noexcept
     {
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
         if (!m_active || m_selected == nullptr)
             return;
         if (viewport.width <= 0 || viewport.height <= 0)
@@ -753,4 +753,4 @@ namespace NS::Game::Editor
         m_history.push_back(edit);
         m_historyIndex = m_history.size();
     }
-} // namespace NS::Game::Editor
+} // namespace NS::Editor

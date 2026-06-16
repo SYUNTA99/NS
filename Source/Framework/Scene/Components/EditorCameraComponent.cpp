@@ -2,7 +2,6 @@
 
 #include "Framework/Core/Clock.h"
 #include "Framework/Platform/Input.h"
-#include "Framework/UI/ImGuiContext.h"
 
 #include <algorithm>
 #include <cmath>
@@ -17,11 +16,6 @@ namespace NS::Scene
     void EditorCameraComponent::SetInput(NS::Platform::Input* input) noexcept
     {
         m_input = input;
-    }
-
-    void EditorCameraComponent::SetImGui(NS::UI::ImGuiContext* imgui) noexcept
-    {
-        m_imgui = imgui;
     }
 
     void EditorCameraComponent::SetYawPitch(float yaw, float pitch) noexcept
@@ -89,8 +83,8 @@ namespace NS::Scene
 
         const float dt = NS::Core::FrameTimer::FixedDelta();
 
-        // Mouse 入力。 ImGui がフォーカス中なら無視する
-        const bool wantMouse = (m_imgui != nullptr) && m_imgui->WantCaptureMouse();
+        // Mouse 入力。 UI がフォーカス中なら無視する
+        const bool wantMouse = (m_input != nullptr) && m_input->UiWantsMouse();
         if (m_input != nullptr && !wantMouse)
         {
             auto& mouse = m_input->Mouse();

@@ -1,10 +1,10 @@
 #include "Framework/Graphics/DebugDraw.h"
-#include "Game/Editor/EditorMode.h"
+#include "Editor/EditorMode.h"
 #include "Game/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
-namespace EditorNs = NS::Game::Editor;
+namespace EditorNs = NS::Editor;
 
 TEST(CursorPreview, RendersAABBToDebugDrawWhenCursorValid)
 {

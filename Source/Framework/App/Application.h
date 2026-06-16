@@ -29,11 +29,6 @@ namespace NS::Platform
     class Input;
 }
 
-namespace NS::UI
-{
-    class ImGuiContext;
-}
-
 namespace NS::App
 {
 
@@ -75,9 +70,6 @@ namespace NS::App
         [[nodiscard]] NS::Graphics::Renderer& Renderer() noexcept;
         [[nodiscard]] NS::Platform::Input& Input() noexcept;
 
-        /// Debug/Dev build のみ実体を持つ ImGuiContext。Shipping では nullptr
-        [[nodiscard]] NS::UI::ImGuiContext* ImGui() noexcept;
-
         /// 現在の Application インスタンス。未構築時は nullptr
         [[nodiscard]] static Application* Get() noexcept;
         /// 次フレームの MainLoop ループ抜け要求。Get() が nullptr の場合は何もしない
@@ -92,8 +84,6 @@ namespace NS::App
         std::unique_ptr<NS::Platform::Window> m_window;
         std::unique_ptr<NS::Graphics::Renderer> m_renderer;
         std::unique_ptr<NS::Platform::Input> m_input;
-        // Debug / Development build のみ実体化。GameDebug / GameRelease では常に nullptr
-        std::unique_ptr<NS::UI::ImGuiContext> m_imgui;
         Layers m_layers;
         bool m_valid = false;
         bool m_quitRequested = false;

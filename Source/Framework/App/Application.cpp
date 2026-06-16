@@ -5,7 +5,6 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 #include "Framework/Platform/Input.h"
-#include "Framework/UI/ImGuiContext.h"
 
 #include "Framework/Framework.h"
 
@@ -72,14 +71,7 @@ namespace NS::App
         // WM_CLOSE 再投擲による PollMessages 無限ループを防ぐためフラグ経由でメインループに委譲
         m_window->SetCloseCallback([this]() { m_quitRequested = true; });
 
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
-        m_imgui = std::make_unique<NS::UI::ImGuiContext>(*m_window, *m_renderer);
-        if (!m_imgui->IsValid())
-        {
-            NS_LOG_ERROR(::NS::Core::LogCat::App, "ImGuiContext 構築失敗、 ImGui 機能は無効");
-        }
-        m_window->AttachImGui(m_imgui.get());
-#endif
+        // ImGui / 編集 UI の駆動は EditorLayer (overlay) が握る。App は UI を知らない (出荷で UI 層を外せる)
 
         m_valid = true;
     }
@@ -110,11 +102,6 @@ namespace NS::App
     NS::Platform::Input& Application::Input() noexcept
     {
         return *m_input;
-    }
-
-    NS::UI::ImGuiContext* Application::ImGui() noexcept
-    {
-        return m_imgui.get();
     }
 
     void Application::AddLayer(std::unique_ptr<NS::App::Layer> layer)
@@ -202,8 +189,6 @@ namespace NS::App
                 break;
 
             renderer.BeginFrame();
-            if (m_imgui)
-                m_imgui->BeginFrame();
 
             for (auto& layer : stack)
             {
@@ -211,8 +196,6 @@ namespace NS::App
                     layer->OnRender();
             }
 
-            if (m_imgui)
-                m_imgui->EndFrame();
             renderer.EndFrame();
         }
     }
@@ -233,10 +216,8 @@ namespace NS::App
         {
             m_window->SetCloseCallback(nullptr);
             m_window->AttachInput(nullptr);
-            m_window->AttachImGui(nullptr);
+            // ImGui の message hook 解除と context 破棄は EditorLayer::OnDetach が先に済ませている
         }
-        // ImGui_ImplDX11_Shutdown が ID3D11Device を要求するため Renderer より先に破棄
-        m_imgui.reset();
         m_renderer.reset();
         m_input.reset();
         m_window.reset();

@@ -1,4 +1,4 @@
-#include "Game/EditorLayer.h"
+#include "Editor/EditorLayer.h"
 
 #include "Framework/App/Application.h"
 #include "Framework/Core/Filesystem.h"
@@ -8,16 +8,18 @@
 #include "Framework/Platform/Gamepad.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
+#include "Framework/Platform/Window.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/BlockRegistry.h"
 #include "Game/Game.h"
-#include "Game/LevelEditorController.h"
+#include "Editor/LevelEditorController.h"
 
+#include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <string>
 
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
 #include <imgui.h>
 #endif
 
@@ -27,16 +29,30 @@ EditorLayer::~EditorLayer() = default;
 void EditorLayer::OnAttach()
 {
     // 起動 scene は Game レイヤが既に load + OnStart 済 (SceneManager::LoadScene が同期実行)
+    auto* app = NS::App::Application::Get();
     auto* game = Game::Get();
     auto* scene = game ? game->CurrentPlayScene() : nullptr;
-    if (scene == nullptr)
+    if (app == nullptr || scene == nullptr)
     {
-        NS_LOG_ERROR(::NS::Core::LogCat::App, "EditorLayer::OnAttach: play scene 不在のため編集を起動できない");
+        NS_LOG_ERROR(::NS::Core::LogCat::App, "EditorLayer::OnAttach: app / play scene 不在のため編集を起動できない");
         return;
     }
+
+    // ImGui ライフサイクルを Layer が所有する。Application は UI を知らないので editor が立ち上げる
+    m_imgui = std::make_unique<NS::UI::ImGuiContext>(app->Window(), app->Renderer());
+    if (!m_imgui->IsValid())
+        NS_LOG_ERROR(::NS::Core::LogCat::App, "ImGuiContext 構築失敗、 編集 UI は機能しない");
+
+    // 生 Win32 メッセージを ImGui へ転送するフックを Window に登録する (Platform は中身を知らない)
+    app->Window().SetMessageHook(
+        [imgui = m_imgui.get()](void* hwnd, std::uint32_t msg, std::uintptr_t wParam, std::intptr_t lParam) {
+            if (imgui != nullptr)
+                (void)imgui->ForwardWndProc(hwnd, msg, wParam, lParam);
+        });
+
     m_controller = std::make_unique<LevelEditorController>(scene);
-    m_controller->Setup();
-    NS_LOG_INFO(::NS::Core::LogCat::App, "EditorLayer attached (Debug/Dev only)");
+    m_controller->Setup(m_imgui.get());
+    NS_LOG_INFO(::NS::Core::LogCat::App, "EditorLayer attached (Debug/Dev/GameDebug only)");
 }
 
 void EditorLayer::OnDetach()
@@ -45,6 +61,15 @@ void EditorLayer::OnDetach()
     if (m_controller)
         m_controller->Teardown();
     m_controller.reset();
+
+    // ImGui を畳む前に hook を外し、 WndProc から dangling な context を踏まないようにする
+    if (auto* app = NS::App::Application::Get())
+    {
+        app->Window().SetMessageHook(nullptr);
+        app->Input().SetUiCapture(false, false);
+    }
+    // ImGui_ImplDX11_Shutdown が ID3D11Device を要求するため Renderer 健在の今 (Application::Shutdown より前) に破棄
+    m_imgui.reset();
     NS_LOG_INFO(::NS::Core::LogCat::App, "EditorLayer detached");
 }
 
@@ -61,9 +86,12 @@ void EditorLayer::OnUpdate()
 
 void EditorLayer::OnRender()
 {
-    if (!IsActive() || !m_controller)
+    if (!IsActive() || !m_controller || !m_imgui)
         return;
     LevelEditorController& editor = *m_controller;
+
+    // ImGui の 1 フレームを Layer が囲う。Renderer::BeginFrame 済の RT へ EndFrame (Render) が描く
+    m_imgui->BeginFrame();
 
     // 編集用の上乗せ描画 (ギズモ / palette / 編集ビジュアル) と debug provenance 退避
     editor.Render();
@@ -82,6 +110,12 @@ void EditorLayer::OnRender()
 
     RenderFpsOverlay();
     RenderRenderSettingsPanel(editor);
+
+    m_imgui->EndFrame();
+
+    // 次フレームの gameplay / Window 入力ゲート用に UI キャプチャ状態を Input へ反映する
+    if (auto* app = NS::App::Application::Get())
+        app->Input().SetUiCapture(m_imgui->WantCaptureMouse(), m_imgui->WantCaptureKeyboard());
 }
 
 void EditorLayer::HandleModeToggleInput(LevelEditorController& editor) noexcept
@@ -91,10 +125,8 @@ void EditorLayer::HandleModeToggleInput(LevelEditorController& editor) noexcept
         return;
     auto& input = app->Input();
 
-    // ImGui がキーボードを握っている間は mode flip させない
-    bool wantKb = false;
-    if (auto* imgui = app->ImGui())
-        wantKb = imgui->WantCaptureKeyboard();
+    // UI がキーボードを握っている間は mode flip させない
+    const bool wantKb = input.UiWantsKeyboard();
 
     const bool tabPressed = !wantKb && input.Keyboard().IsPressed(NS::Platform::Key::Tab);
     const bool startPressed =
@@ -118,9 +150,7 @@ void EditorLayer::HandlePauseInput(LevelEditorController& editor) noexcept
         return;
     auto& input = app->Input();
 
-    bool wantKb = false;
-    if (auto* imgui = app->ImGui())
-        wantKb = imgui->WantCaptureKeyboard();
+    const bool wantKb = input.UiWantsKeyboard();
 
     const bool pPressed = !wantKb && input.Keyboard().IsPressed(NS::Platform::Key::P);
     const bool backPressed =
@@ -132,7 +162,7 @@ void EditorLayer::HandlePauseInput(LevelEditorController& editor) noexcept
 
 void EditorLayer::RenderDockSpaceHost() noexcept
 {
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
     // 中央ノードは透過 (背景非描画 + 入力素通し) なので、 奥の全画面 3D とギズモがそのまま見え
     // 中央クリックは編集に届く。 周囲に各パネルがドッキングできる。 dockspace_id=0 で viewport から自動生成
     ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
@@ -141,7 +171,7 @@ void EditorLayer::RenderDockSpaceHost() noexcept
 
 void EditorLayer::RenderFpsOverlay() noexcept
 {
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
     const auto vp = ImGui::GetMainViewport();
     if (vp == nullptr)
         return;
@@ -168,7 +198,7 @@ void EditorLayer::RenderFpsOverlay() noexcept
 
 void EditorLayer::RenderRenderSettingsPanel(LevelEditorController& editor) noexcept
 {
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
     const NS::Graphics::RenderSettings& resolved = editor.DebugResolvedSettings();
     const NS::Graphics::RenderSettingsOverride& sceneOver = editor.DebugSceneOverride();
     const NS::Graphics::RenderSettingsOverride& objOver = editor.DebugPlayerObjectOverride();
@@ -216,7 +246,7 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorController& editor) noexc
 
 void EditorLayer::RenderToolModePanel(LevelEditorController& editor) noexcept
 {
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
     // 位置はドッキング / imgui.ini 任せ (固定座標を置くとドッキング配置と競合する)
     if (ImGui::Begin("Edit Mode"))
     {
@@ -239,7 +269,7 @@ void EditorLayer::RenderToolModePanel(LevelEditorController& editor) noexcept
 
 void EditorLayer::RenderHierarchyPanel(LevelEditorController& editor) noexcept
 {
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
     if (ImGui::Begin("Hierarchy"))
     {
         const auto& objects = editor.Level().objects;
@@ -295,7 +325,7 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorController& editor) noexcept
 
 void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
 {
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
     if (ImGui::Begin("Inspector"))
     {
         if (editor.HasCameraSelection())
@@ -428,7 +458,7 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
 
 void EditorLayer::RenderMaterialsPanel(LevelEditorController& editor) noexcept
 {
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
     // Object モード専用 (適用先のギズモ選択は Object モードにしか存在しない)
     if (!editor.ObjectToolActive())
         return;
@@ -463,7 +493,7 @@ void EditorLayer::RenderMaterialsPanel(LevelEditorController& editor) noexcept
 
 void EditorLayer::RenderAssetTree(const std::filesystem::path& dir, LevelEditorController& editor) noexcept
 {
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
     const bool hasSelection = editor.HasGizmoSelection();
 
     // サブフォルダを TreeNode で再帰表示する (open 時のみ中身を走査する遅延読み)
@@ -506,7 +536,7 @@ void EditorLayer::RenderAssetTree(const std::filesystem::path& dir, LevelEditorC
 
 void EditorLayer::RenderPauseModal(LevelEditorController& editor) noexcept
 {
-#if defined(NS_BUILD_DEBUG) || defined(NS_BUILD_DEV)
+#if NS_EDITOR_ENABLED
     // paused フラグ単独で状態を表現するため、 modal の閉じ X は不要
     const auto vp = ImGui::GetMainViewport();
     if (vp != nullptr)
