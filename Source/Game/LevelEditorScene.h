@@ -134,6 +134,24 @@ public:
     /// 選択中の grid solid ブロックを自由オブジェクトへ昇格する (grid solid 以外は no-op)
     void PromoteSelectedToFree() noexcept;
 
+    /// 現在選択中の area camera の m_level.cameraVolumes 添字。 未選択 / 範囲外は kNoObjectIndex
+    [[nodiscard]] std::size_t SelectedCameraIndex() const noexcept { return m_selectedCameraIndex; }
+    /// Hierarchy から添字で area camera を選択する。 オブジェクト / ギズモ選択は解除する
+    void SelectCameraByIndex(std::size_t index) noexcept;
+    /// Inspector が編集できる area camera の選択を持つか
+    [[nodiscard]] bool HasCameraSelection() const noexcept
+    {
+        return m_selectedCameraIndex < m_level.cameraVolumes.size();
+    }
+    /// Inspector 表示用に選択中 CameraVolume のコピーを返す。 未選択は既定値
+    [[nodiscard]] NS::Game::Level::CameraVolume SelectedCameraSnapshot() const noexcept;
+    /// 選択中 area camera の値を書き換える。 同順の PlacedVirtualCamera を in-place 更新する (非選択は no-op)
+    void SetSelectedCameraVolume(const NS::Game::Level::CameraVolume& volume) noexcept;
+    /// 編集視点の中心あたりに新しい area camera を追加して選択する
+    void AddCameraVolume() noexcept;
+    /// 選択中の area camera を削除する (非選択は no-op)
+    void DeleteSelectedCamera() noexcept;
+
     /// Object モードかつギズモで何か選択中なら true (material 適用先がある状態)
     [[nodiscard]] bool HasGizmoSelection() const noexcept
     {
@@ -178,6 +196,9 @@ private:
     /// m_level.cameraVolumes から area camera (PlacedVirtualCamera) 群を作り直して Brain へ登録する
     /// 旧 area camera は Brain から外して破棄する。 Brain 構築前 (OnStart 序盤) は no-op
     void RebuildAreaCamerasFromLevelData();
+
+    /// edit 中、 area camera のトリガ AABB とカメラ位置 → 注視点を DebugDraw で可視化する
+    void RenderAreaCameraGizmos() noexcept;
 
     /// 仮 skinned キャラ (glTF) を毎ステップ進めて描画する debug hook
     /// F1 再生/停止、 F2 クリップ送り、 F3/F4 速度。 ImGui 入力中はキー無効
@@ -302,6 +323,8 @@ private:
     std::vector<std::size_t> m_blockSourceIndices;
     // Hierarchy / Inspector が参照する選択添字。 Hierarchy クリックとギズモ選択の両方から更新する
     std::size_t m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+    // 選択中の area camera の cameraVolumes 添字。 オブジェクト選択とは排他 (片方を選ぶと他方を解除)
+    std::size_t m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
     // ビューポート由来のギズモ選択変化だけを index へ反映するための前フレーム値 (Hierarchy 選択を潰さない)
     NS::Scene::Transform* m_lastGizmoSelected = nullptr;
 

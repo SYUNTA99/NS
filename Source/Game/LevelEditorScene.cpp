@@ -21,6 +21,7 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 #include "Framework/Graphics/CommandList.h"
+#include "Framework/Graphics/DebugDraw.h"
 #include "Framework/Graphics/GltfLoader.h"
 #include "Framework/Graphics/InstanceBatcher.h"
 #include "Framework/Graphics/Material.h"
@@ -833,6 +834,7 @@ void LevelEditorScene::OnRenderScene()
     {
         m_editor.RenderSpawnMarker();
         m_editor.RenderCursorPreview();
+        RenderAreaCameraGizmos();
         // Toolbar UI を ImGui 経由で描画 (Debug / Development build のみ実機能)
         m_editor.Palette().Render();
         // Object モードのギズモは最前面 (drawlist) に重ねる
@@ -1223,6 +1225,9 @@ void LevelEditorScene::SyncFreeObjectTransforms()
 
 void LevelEditorScene::SelectObjectByIndex(std::size_t index) noexcept
 {
+    // オブジェクトとカメラの選択は排他。 オブジェクトを選んだらカメラ選択を解除する
+    m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
+
     if (index >= m_level.objects.size())
     {
         m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
@@ -1247,6 +1252,106 @@ void LevelEditorScene::SelectObjectByIndex(std::size_t index) noexcept
     }
     m_gizmo.ClearSelection();
     m_lastGizmoSelected = nullptr;
+}
+
+void LevelEditorScene::SelectCameraByIndex(std::size_t index) noexcept
+{
+    if (index >= m_level.cameraVolumes.size())
+    {
+        m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
+        return;
+    }
+    m_selectedCameraIndex = index;
+
+    // カメラ選択中はオブジェクト / ギズモ選択を外す (Inspector はカメラを表示する)
+    m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+    m_gizmo.ClearSelection();
+    m_lastGizmoSelected = nullptr;
+}
+
+NS::Game::Level::CameraVolume LevelEditorScene::SelectedCameraSnapshot() const noexcept
+{
+    if (m_selectedCameraIndex < m_level.cameraVolumes.size())
+        return m_level.cameraVolumes[m_selectedCameraIndex];
+    return NS::Game::Level::CameraVolume{};
+}
+
+void LevelEditorScene::SetSelectedCameraVolume(const NS::Game::Level::CameraVolume& volume) noexcept
+{
+    if (m_selectedCameraIndex >= m_level.cameraVolumes.size())
+        return;
+    m_level.cameraVolumes[m_selectedCameraIndex] = volume;
+
+    // 同順の area camera を in-place 更新する (drag 毎に全 rebuild すると churn するため)
+    if (m_selectedCameraIndex < m_areaCameras.size() && m_areaCameras[m_selectedCameraIndex].cam)
+    {
+        AreaCamera& area = m_areaCameras[m_selectedCameraIndex];
+        area.volume = volume;
+        area.cam->SetView({volume.cameraPositionX, volume.cameraPositionY, volume.cameraPositionZ},
+                          {volume.lookTargetX, volume.lookTargetY, volume.lookTargetZ});
+        area.cam->SetVcamPriority(volume.priority);
+    }
+}
+
+void LevelEditorScene::AddCameraVolume() noexcept
+{
+    // 新規カメラは編集視点の中心あたりに置き、 そこから少し引いた位置から中心を見るデフォルトにする
+    NS::Math::Vector3 center{
+        static_cast<float>(m_level.spawnX), static_cast<float>(m_level.spawnY), static_cast<float>(m_level.spawnZ)};
+    if (m_editorCameraRig)
+        center = m_editorCameraRig->EditorCam().Center();
+
+    NS::Game::Level::CameraVolume volume{};
+    volume.cameraPositionX = center.x;
+    volume.cameraPositionY = center.y + 5.0f;
+    volume.cameraPositionZ = center.z - 10.0f;
+    volume.lookTargetX = center.x;
+    volume.lookTargetY = center.y;
+    volume.lookTargetZ = center.z;
+    volume.triggerCenterX = center.x;
+    volume.triggerCenterY = center.y;
+    volume.triggerCenterZ = center.z;
+    volume.triggerExtentX = 3.0f;
+    volume.triggerExtentY = 3.0f;
+    volume.triggerExtentZ = 3.0f;
+    volume.priority = 10;
+
+    m_level.cameraVolumes.push_back(volume);
+    RebuildAreaCamerasFromLevelData();
+    SelectCameraByIndex(m_level.cameraVolumes.size() - 1);
+}
+
+void LevelEditorScene::DeleteSelectedCamera() noexcept
+{
+    if (m_selectedCameraIndex >= m_level.cameraVolumes.size())
+        return;
+    m_level.cameraVolumes.erase(m_level.cameraVolumes.begin() + static_cast<std::ptrdiff_t>(m_selectedCameraIndex));
+    m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
+    RebuildAreaCamerasFromLevelData();
+}
+
+void LevelEditorScene::RenderAreaCameraGizmos() noexcept
+{
+    // edit 中、 各 area camera のトリガ範囲 (AABB) とカメラ位置 → 注視点を線で可視化する
+    // 選択中のカメラは強調色にする
+    for (std::size_t i = 0; i < m_level.cameraVolumes.size(); ++i)
+    {
+        const NS::Game::Level::CameraVolume& v = m_level.cameraVolumes[i];
+        const bool selected = (i == m_selectedCameraIndex);
+
+        const NS::Math::Color triggerColor =
+            selected ? NS::Math::Color{1.0f, 0.55f, 0.10f, 1.0f} : NS::Math::Color{0.20f, 0.70f, 1.0f, 1.0f};
+        const NS::Math::AABB trigger{NS::Math::Vector3{v.triggerCenterX, v.triggerCenterY, v.triggerCenterZ},
+                                     NS::Math::Vector3{v.triggerExtentX, v.triggerExtentY, v.triggerExtentZ}};
+        NS::Graphics::DebugDraw::AABB(trigger, triggerColor);
+
+        const NS::Math::Vector3 camPos{v.cameraPositionX, v.cameraPositionY, v.cameraPositionZ};
+        const NS::Math::Vector3 lookAt{v.lookTargetX, v.lookTargetY, v.lookTargetZ};
+        const NS::Math::Color camColor{1.0f, 0.85f, 0.10f, 1.0f};
+        const NS::Math::AABB camMarker{camPos, NS::Math::Vector3{0.3f, 0.3f, 0.3f}};
+        NS::Graphics::DebugDraw::AABB(camMarker, camColor);
+        NS::Graphics::DebugDraw::Line(camPos, lookAt, camColor);
+    }
 }
 
 void LevelEditorScene::ResolveSelectedIndexFromGizmo() noexcept
