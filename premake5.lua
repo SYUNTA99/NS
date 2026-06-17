@@ -690,7 +690,7 @@ project "Game"
     -- 相対で実行時に読込む。premake トークン {COPYDIR}/{MKDIR} はクロスシェル安全。
     postbuildcommands {
         '{MKDIR} "%{cfg.buildtarget.directory}/Shaders"',
-        '{COPYDIR} "%{wks.location}/../Source/Shaders" "%{cfg.buildtarget.directory}/Shaders"',
+        '{COPYDIR} "%{wks.location}/../Shaders" "%{cfg.buildtarget.directory}/Shaders"',
         '{MKDIR} "%{cfg.buildtarget.directory}/Assets"',
         '{COPYDIR} "%{wks.location}/../Assets" "%{cfg.buildtarget.directory}/Assets"',
     }
@@ -867,7 +867,7 @@ project "Tests"
     -- 読み込むため、 Game.exe と同じ postbuild で出力先にコピーしておく。
     postbuildcommands {
         '{MKDIR} "%{cfg.buildtarget.directory}/Shaders"',
-        '{COPYDIR} "%{wks.location}/../Source/Shaders" "%{cfg.buildtarget.directory}/Shaders"',
+        '{COPYDIR} "%{wks.location}/../Shaders" "%{cfg.buildtarget.directory}/Shaders"',
         '{MKDIR} "%{cfg.buildtarget.directory}/Assets"',
         '{COPYDIR} "%{wks.location}/../Assets" "%{cfg.buildtarget.directory}/Assets"',
     }
