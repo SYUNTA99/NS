@@ -1,11 +1,12 @@
 #pragma once
 
 /// @file PlacedVirtualCamera.h
-/// @brief NS::Scene::PlacedVirtualCamera — 固定 pose を返す配置型の仮想カメラ
+/// @brief NS::Scene::PlacedVirtualCamera — 視点とトリガ範囲を自分で持つ据え置き仮想カメラ
 ///
-/// @details 位置 / 注視点 / up を直接保持し、`EvaluatePose` はそれをそのまま返す
-/// (alpha は無視)。エリア進入トリガ等で `SetActive` を切替え、`SetVcamPriority` を
-/// follow より高くしておくと、active な間だけ CameraBrain がこれを選んでブレンドする
+/// @details 位置 / 注視点 / up に加え、進入判定用のトリガ AABB と lookAtPlayer を自身で保持する
+/// `UpdateActivation(playerPos)` がトリガ内なら自分を active 化し、lookAtPlayer 時は注視点を
+/// プレイヤーへ向ける。`SetVcamPriority` を follow より高くしておけば、active な間だけ
+/// CameraBrain がこれを選んでブレンドする。`EvaluatePose` は alpha 無視で固定 pose を返す
 /// 依存: NS::Math, NS::Scene::VirtualCameraComponent
 
 #include "Framework/Math/Math.h"
@@ -13,7 +14,7 @@
 
 namespace NS::Scene
 {
-    /// 据え置きカメラ。指定位置から注視点を見る pose を固定で返す
+    /// 据え置きカメラ。視点とトリガを自身で持ち、進入判定で自分を active 化する
     class PlacedVirtualCamera : public VirtualCameraComponent
     {
     public:
@@ -22,6 +23,19 @@ namespace NS::Scene
         /// 据え置き位置と注視点を設定する
         void SetView(const NS::Math::Vector3& position, const NS::Math::Vector3& target) noexcept;
         void SetUpDirection(const NS::Math::Vector3& up) noexcept { m_up = up; }
+
+        /// 進入判定用のトリガ AABB (中心 + 半径)。 半径成分は呼出側が正値に保つ
+        void SetTrigger(const NS::Math::Vector3& center, const NS::Math::Vector3& extent) noexcept
+        {
+            m_triggerCenter = center;
+            m_triggerExtent = extent;
+        }
+        /// true の間、進入中は注視点をプレイヤー位置へ追従させる (位置固定で被写体を追う Mario 系の挙動)
+        void SetLookAtPlayer(bool enable) noexcept { m_lookAtPlayer = enable; }
+
+        /// プレイヤー位置を受け、トリガ AABB 内なら自分を active 化する (外なら非 active)
+        /// lookAtPlayer 時は進入中の注視点をプレイヤーへ更新する。play 中に毎ステップ呼ぶ
+        void UpdateActivation(const NS::Math::Vector3& playerPosition) noexcept;
 
         [[nodiscard]] const NS::Math::Vector3& ViewPosition() const noexcept { return m_position; }
         [[nodiscard]] const NS::Math::Vector3& ViewTarget() const noexcept { return m_target; }
@@ -32,5 +46,8 @@ namespace NS::Scene
         NS::Math::Vector3 m_position{0.0f, 5.0f, -10.0f};
         NS::Math::Vector3 m_target{0.0f, 0.0f, 0.0f};
         NS::Math::Vector3 m_up{0.0f, 1.0f, 0.0f};
+        NS::Math::Vector3 m_triggerCenter{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 m_triggerExtent{1.0f, 1.0f, 1.0f};
+        bool m_lookAtPlayer = false;
     };
 } // namespace NS::Scene

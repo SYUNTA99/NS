@@ -177,12 +177,11 @@ private:
     NS::Scene::CameraBrainComponent* m_brain = nullptr;
 
     // CameraVolume 1 件に対応する area camera の runtime 実体。 host が PlacedVirtualCamera を所有し、
-    // volume はトリガ判定 / lookAtPlayer 追視の元データ。 Brain は cam を非所有参照する
+    // vcam 自身が pose / トリガ / lookAtPlayer を持って自分で active 化する。 Brain は cam を非所有参照する
     struct AreaCamera
     {
         std::unique_ptr<NS::Scene::GameObject> host;
         NS::Scene::PlacedVirtualCamera* cam = nullptr;
-        NS::Game::Level::CameraVolume volume{};
     };
     std::vector<AreaCamera> m_areaCameras;
 

@@ -226,3 +226,48 @@ TEST_F(CameraBrainTest, ActivatingPlacedVcamBlendsTowardIt)
     }
     EXPECT_FLOAT_EQ(cam->Position().x, 10.0f);
 }
+
+TEST_F(CameraBrainTest, PlacedVcamSelfActivatesInsideTrigger)
+{
+    GameObject host;
+    auto* cam = host.AddComponent<PlacedVirtualCamera>();
+    cam->SetTrigger({0.0f, 0.0f, 0.0f}, {2.0f, 2.0f, 2.0f});
+    cam->SetActive(false);
+
+    cam->UpdateActivation({1.0f, 0.0f, -1.5f}); // トリガ内
+    EXPECT_TRUE(cam->IsActive());
+
+    cam->UpdateActivation({5.0f, 0.0f, 0.0f}); // トリガ外
+    EXPECT_FALSE(cam->IsActive());
+}
+
+TEST_F(CameraBrainTest, PlacedVcamLookAtPlayerTracksTarget)
+{
+    GameObject host;
+    auto* cam = host.AddComponent<PlacedVirtualCamera>();
+    cam->SetView({0.0f, 5.0f, 0.0f}, {0.0f, 0.0f, 0.0f});
+    cam->SetTrigger({0.0f, 0.0f, 0.0f}, {10.0f, 10.0f, 10.0f});
+    cam->SetLookAtPlayer(true);
+
+    cam->UpdateActivation({3.0f, 1.0f, -2.0f}); // 進入中は注視点がプレイヤーへ追従する
+    const auto pose = cam->EvaluatePose(1.0f);
+    EXPECT_TRUE(cam->IsActive());
+    EXPECT_FLOAT_EQ(pose.target.x, 3.0f);
+    EXPECT_FLOAT_EQ(pose.target.y, 1.0f);
+    EXPECT_FLOAT_EQ(pose.target.z, -2.0f);
+    EXPECT_FLOAT_EQ(pose.position.y, 5.0f); // 視点位置は固定のまま
+}
+
+TEST_F(CameraBrainTest, PlacedVcamWithoutLookAtKeepsFixedTarget)
+{
+    GameObject host;
+    auto* cam = host.AddComponent<PlacedVirtualCamera>();
+    cam->SetView({0.0f, 5.0f, 0.0f}, {9.0f, 9.0f, 9.0f});
+    cam->SetTrigger({0.0f, 0.0f, 0.0f}, {10.0f, 10.0f, 10.0f});
+    cam->SetLookAtPlayer(false);
+
+    cam->UpdateActivation({3.0f, 1.0f, -2.0f}); // 進入中でも追視しないので注視点は固定
+    const auto pose = cam->EvaluatePose(1.0f);
+    EXPECT_TRUE(cam->IsActive());
+    EXPECT_FLOAT_EQ(pose.target.x, 9.0f);
+}

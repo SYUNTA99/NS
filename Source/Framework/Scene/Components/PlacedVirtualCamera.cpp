@@ -1,5 +1,7 @@
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
 
+#include <cmath>
+
 namespace NS::Scene
 {
     PlacedVirtualCamera::PlacedVirtualCamera() noexcept : VirtualCameraComponent(static_cast<int>(TickPriority::Camera))
@@ -9,6 +11,16 @@ namespace NS::Scene
     {
         m_position = position;
         m_target = target;
+    }
+
+    void PlacedVirtualCamera::UpdateActivation(const NS::Math::Vector3& playerPosition) noexcept
+    {
+        const bool inside = std::abs(playerPosition.x - m_triggerCenter.x) <= m_triggerExtent.x &&
+                            std::abs(playerPosition.y - m_triggerCenter.y) <= m_triggerExtent.y &&
+                            std::abs(playerPosition.z - m_triggerCenter.z) <= m_triggerExtent.z;
+        SetActive(inside);
+        if (inside && m_lookAtPlayer)
+            m_target = playerPosition;
     }
 
     CameraPose PlacedVirtualCamera::EvaluatePose(float /*alpha*/) const noexcept

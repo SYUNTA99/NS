@@ -416,9 +416,11 @@ void LevelEditorController::SetSelectedCameraVolume(const NS::Game::Level::Camer
     if (m_selectedCameraIndex < m_scene->m_areaCameras.size() && m_scene->m_areaCameras[m_selectedCameraIndex].cam)
     {
         LevelPlayScene::AreaCamera& area = m_scene->m_areaCameras[m_selectedCameraIndex];
-        area.volume = volume;
         area.cam->SetView({volume.cameraPositionX, volume.cameraPositionY, volume.cameraPositionZ},
                           {volume.lookTargetX, volume.lookTargetY, volume.lookTargetZ});
+        area.cam->SetTrigger({volume.triggerCenterX, volume.triggerCenterY, volume.triggerCenterZ},
+                             {volume.triggerExtentX, volume.triggerExtentY, volume.triggerExtentZ});
+        area.cam->SetLookAtPlayer(volume.lookAtPlayer != 0);
         area.cam->SetVcamPriority(volume.priority);
     }
 }

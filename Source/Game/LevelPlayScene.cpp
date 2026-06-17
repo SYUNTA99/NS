@@ -489,22 +489,12 @@ void LevelPlayScene::TickPlay()
         }
     }
 
-    // area camera: プレイヤーが各トリガ AABB に入っている間だけ対応 vcam を active 化する
-    // active 化 / 解除は Brain が優先度で選びブレンドする。 lookAtPlayer なら注視点をプレイヤーへ更新する
+    // area camera: 各 vcam が自分のトリガ AABB でプレイヤー進入を判定し、自分を active 化する
+    // active / 解除の切替は Brain が優先度で選びブレンドする
     for (auto& area : m_areaCameras)
     {
-        if (area.cam == nullptr)
-            continue;
-        const auto& volume = area.volume;
-        const NS::Math::Vector3 p = m_play.playerPosition;
-        const bool inside = std::abs(p.x - volume.triggerCenterX) <= volume.triggerExtentX &&
-                            std::abs(p.y - volume.triggerCenterY) <= volume.triggerExtentY &&
-                            std::abs(p.z - volume.triggerCenterZ) <= volume.triggerExtentZ;
-        area.cam->SetActive(inside);
-        if (inside && volume.lookAtPlayer != 0)
-        {
-            area.cam->SetView({volume.cameraPositionX, volume.cameraPositionY, volume.cameraPositionZ}, p);
-        }
+        if (area.cam)
+            area.cam->UpdateActivation(m_play.playerPosition);
     }
 
     // 落下死 (PlayMode が y < kFallDeathThreshold で立てた deathTriggered) は respawn 経路
@@ -1015,9 +1005,11 @@ void LevelPlayScene::RebuildAreaCamerasFromLevelData()
         area.cam = area.host->AddComponent<NS::Scene::PlacedVirtualCamera>();
         area.cam->SetView({volume.cameraPositionX, volume.cameraPositionY, volume.cameraPositionZ},
                           {volume.lookTargetX, volume.lookTargetY, volume.lookTargetZ});
+        area.cam->SetTrigger({volume.triggerCenterX, volume.triggerCenterY, volume.triggerCenterZ},
+                             {volume.triggerExtentX, volume.triggerExtentY, volume.triggerExtentZ});
+        area.cam->SetLookAtPlayer(volume.lookAtPlayer != 0);
         area.cam->SetVcamPriority(volume.priority);
-        area.cam->SetActive(false); // エリア外。 play 中の AABB 判定で active 化する
-        area.volume = volume;
+        area.cam->SetActive(false); // エリア外。 play 中の進入判定で vcam が自分を active 化する
         area.host->AttachScene(this);
         area.host->OnStart();
         m_brain->AddVirtualCamera(area.cam);
