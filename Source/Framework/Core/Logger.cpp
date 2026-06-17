@@ -154,6 +154,11 @@ namespace NS::Core
             return;
         }
 
+#if defined(_WIN32)
+        // コンソール出力を UTF-8 に固定し、 呼び出し側の chcp に依存せず日本語ログの文字化けを防ぐ
+        ::SetConsoleOutputCP(CP_UTF8);
+#endif
+
         try
         {
             // 初回起動でファイル sink が失敗しないよう logs/ を先に作成する
