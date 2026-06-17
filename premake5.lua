@@ -686,14 +686,16 @@ project "Game"
         "directxtk_simplemath"
     }
 
-    -- HLSL / Texture は exe 隣の Shaders/ Assets/ にコピーし、FileSystem::GetExeDirectory()
-    -- 相対で実行時に読込む。premake トークン {COPYDIR}/{MKDIR} はクロスシェル安全。
-    postbuildcommands {
-        '{MKDIR} "%{cfg.buildtarget.directory}/Shaders"',
-        '{COPYDIR} "%{wks.location}/../Shaders" "%{cfg.buildtarget.directory}/Shaders"',
-        '{MKDIR} "%{cfg.buildtarget.directory}/Assets"',
-        '{COPYDIR} "%{wks.location}/../Assets" "%{cfg.buildtarget.directory}/Assets"',
-    }
+    -- 出荷 (GameRelease) のみ exe 隣へ Shaders/ Assets/ をコピーする (exe 相対で読込む配布レイアウト)
+    -- 開発構成は FileSystem::ContentRoot() がリポ直下を直接読むためコピーしない (ビルド毎のコピーを排除)
+    filter "configurations:GameRelease"
+        postbuildcommands {
+            '{MKDIR} "%{cfg.buildtarget.directory}/Shaders"',
+            '{COPYDIR} "%{wks.location}/../Shaders" "%{cfg.buildtarget.directory}/Shaders"',
+            '{MKDIR} "%{cfg.buildtarget.directory}/Assets"',
+            '{COPYDIR} "%{wks.location}/../Assets" "%{cfg.buildtarget.directory}/Assets"',
+        }
+    filter {}
 
     -- editor 構成のみ Editor モジュール (+UI/imgui) をリンクする。 GameRelease では積まない
     filter "configurations:Debug or Development or GameDebug"

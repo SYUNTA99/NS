@@ -1,5 +1,6 @@
 #include "Editor/EditorLayer.h"
 
+#include "Editor/LevelEditorController.h"
 #include "Framework/App/Application.h"
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
@@ -12,7 +13,6 @@
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/BlockRegistry.h"
 #include "Game/Game.h"
-#include "Editor/LevelEditorController.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -483,7 +483,7 @@ void EditorLayer::RenderMaterialsPanel(LevelEditorController& editor) noexcept
 
         ImGui::Separator();
         // Assets/ 以下をフォルダツリーで表示する。 .mat はクリック適用 / ドラッグ可
-        RenderAssetTree(NS::Core::FileSystem::GetExeDirectory() / "Assets", editor);
+        RenderAssetTree(NS::Core::FileSystem::ContentRoot() / "Assets", editor);
     }
     ImGui::End();
 #else

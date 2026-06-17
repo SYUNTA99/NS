@@ -49,6 +49,12 @@ namespace NS::Core
 
         /// 実行ファイルが置かれているディレクトリの絶対パス
         [[nodiscard]] static std::filesystem::path GetExeDirectory();
+
+        /// アセット / シェーダ等ランタイムコンテンツの基準ディレクトリ
+        /// @details 出荷ビルド (`NS_SHIPPING`) は exe と同階層、 開発ビルドはリポジトリルート
+        /// (`premake5.lua` / `.git` を上位探索) を返す。 これにより開発時はリポ直下の `Assets/`
+        /// `Shaders/` を直接読み、 ビルド毎のコピーを不要にする。 ルート検出失敗時は exe 同階層へ fallback
+        [[nodiscard]] static std::filesystem::path ContentRoot();
     };
 
 } // namespace NS::Core

@@ -206,4 +206,24 @@ namespace NS::Core
         return std::filesystem::path(std::wstring(buffer.data(), len)).parent_path();
     }
 
+    std::filesystem::path FileSystem::ContentRoot()
+    {
+#if defined(NS_SHIPPING)
+        return GetExeDirectory();
+#else
+        // exe から premake5.lua / .git を上位へ辿りリポジトリルートを返す (Logger のログ出力先探索と同方針)
+        for (auto dir = GetExeDirectory(); !dir.empty();)
+        {
+            std::error_code ec;
+            if (std::filesystem::exists(dir / "premake5.lua", ec) || std::filesystem::exists(dir / ".git", ec))
+                return dir;
+            const auto parent = dir.parent_path();
+            if (parent == dir)
+                break;
+            dir = parent;
+        }
+        return GetExeDirectory();
+#endif
+    }
+
 } // namespace NS::Core

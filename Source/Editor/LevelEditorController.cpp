@@ -1,7 +1,7 @@
 #include "Editor/LevelEditorController.h"
 
-#include "Game/Block.h"
 #include "Editor/EditorCameraRig.h"
+#include "Game/Block.h"
 #include "Game/LevelPlayScene.h"
 #include "Game/Player.h"
 
@@ -613,8 +613,8 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
     if (loaded.material == nullptr)
         return false;
 
-    // .mat パスを exe 相対で材質表に登録 (重複は再利用) し、 ObjectInstance.materialIndex を更新して永続化する
-    const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
+    // .mat パスを ContentRoot 相対で材質表に登録 (重複は再利用) し、 ObjectInstance.materialIndex を更新して永続化する
+    const auto exeDir = NS::Core::FileSystem::ContentRoot();
     const std::filesystem::path relative = matPath.lexically_relative(exeDir);
     const std::string stored = relative.empty() ? matPath.generic_string() : relative.generic_string();
 

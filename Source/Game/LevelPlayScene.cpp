@@ -94,7 +94,7 @@ void LevelPlayScene::OnStart()
     }
 
     auto& renderer = app->Renderer();
-    const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
+    const auto exeDir = NS::Core::FileSystem::ContentRoot();
 
     auto cubeGeom = NS::Graphics::MakeCube({0.5f, 0.5f, 0.5f});
     NS::Graphics::MeshDesc meshDesc{};
@@ -679,7 +679,7 @@ void LevelPlayScene::OnRenderScene()
         // 毎フレーム LoadCubemap すると I/O が常時走るため、 前回パスと差分があるときだけ再ロードする
         if (!theme.skyboxCubemapPath.empty() && theme.skyboxCubemapPath != m_loadedSkyboxPath)
         {
-            const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
+            const auto exeDir = NS::Core::FileSystem::ContentRoot();
             const auto absPath =
                 theme.skyboxCubemapPath.is_absolute() ? theme.skyboxCubemapPath : exeDir / theme.skyboxCubemapPath;
             if (m_skybox->LoadCubemap(absPath))
@@ -820,7 +820,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
 
     m_collisionWorld.reserve(m_level.objects.size());
 
-    const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
+    const auto exeDir = NS::Core::FileSystem::ContentRoot();
 
     // ObjectInstance.materialIndex から runtime Material* を解決する。 無効なら既定の m_playerMaterial
     const auto resolveMaterial = [&](const NS::Game::Level::ObjectInstance& object) -> NS::Graphics::Material* {

@@ -150,7 +150,7 @@ namespace NS::Graphics
         m_instanceVbCapacity = kInitialPerBucketCapacity;
 
         // Shader は slot 0 単 stream 専用のため batcher が直接 VS+PS を組む。PS は standard.ps.hlsl 流用
-        const auto exeDir = ::NS::Core::FileSystem::GetExeDirectory();
+        const auto exeDir = ::NS::Core::FileSystem::ContentRoot();
         const auto vsPath = exeDir / "Shaders" / "instanced.vs.hlsl";
         const auto psPath = exeDir / "Shaders" / "standard.ps.hlsl";
 

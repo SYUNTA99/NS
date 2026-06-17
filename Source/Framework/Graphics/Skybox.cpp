@@ -318,7 +318,7 @@ namespace NS::Graphics
 
         // skybox 専用 shader。 cube mesh の StandardInputLayout (POSITION+TEXCOORD+NORMAL) と
         // skybox.vs の入力シグネチャを共有する
-        const auto exeDir = ::NS::Core::FileSystem::GetExeDirectory();
+        const auto exeDir = ::NS::Core::FileSystem::ContentRoot();
         m_vs = Shader::Create(exeDir / "Shaders" / "skybox.vs.hlsl");
         m_ps = Shader::Create(exeDir / "Shaders" / "skybox.ps.hlsl");
         if (!m_vs->IsValid() || !m_ps->IsValid())
