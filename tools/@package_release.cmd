@@ -1,131 +1,82 @@
 @echo off
 ::============================================================================
 :: @package_release.cmd
-:: リリースパッケージ作成スクリプト
+:: Build GameRelease and assemble a submission package under dist\NS
 ::
-:: 使用方法:
-::   tools\@package_release.cmd              - ビルド後にパッケージ作成
-::   tools\@package_release.cmd --skip-build - ビルドをスキップ
+:: Usage:
+::   tools\@package_release.cmd              - build then package
+::   tools\@package_release.cmd --skip-build - reuse existing build
 ::
-:: 出力: release/
-::   ├── 実行環境/
-::   │   ├── tests.exe
-::   │   ├── assimp-vc143-mt.dll
-::   │   └── assets/
-::   └── source/
+:: Output dist\NS\ (exe / Assets / Shaders / Source at the same level):
+::   NS.exe
+::   Assets\
+::   Shaders\
+::   Source\        (git-tracked files only, ThirdParty excluded)
+::   premake5.lua
+::
+:: NOTE: ASCII-only on purpose. cmd.exe misparses UTF-8 multibyte in logic
+::       lines, so this script avoids Japanese entirely.
 ::============================================================================
+setlocal
+chcp 65001 >nul
+
 call "%~dp0_common.cmd" :init
+if errorlevel 1 exit /b 1
 
-set OUTPUT_DIR=release
-set RUNTIME_DIR=%OUTPUT_DIR%\実行環境
-set SOURCE_DIR=%OUTPUT_DIR%\source
+set "CONFIG=GameRelease"
+set "BIN=build\bin\%CONFIG%-windows-x86_64"
+set "OUT=dist\NS"
 
-:: パラメータ確認
-set SKIP_BUILD=0
-if "%1"=="--skip-build" set SKIP_BUILD=1
+set "SKIP_BUILD=0"
+if "%~1"=="--skip-build" set "SKIP_BUILD=1"
 
 echo ============================================
-echo  NS リリースパッケージ作成
+echo  NS submission package (%CONFIG%)
 echo ============================================
 echo.
 
-:: 1. Releaseビルド
-if %SKIP_BUILD%==0 (
-    echo [1/5] Release ビルド中...
-    call "%~dp0@build.cmd" Release
+if "%SKIP_BUILD%"=="0" (
+    echo [1/5] Building %CONFIG% ...
+    call "%~dp0@build.cmd" %CONFIG%
     if errorlevel 1 (
-        echo [ERROR] ビルドに失敗しました
+        echo [ERROR] build failed
         exit /b 1
     )
-    echo.
 ) else (
-    echo [1/5] ビルドをスキップ
+    echo [1/5] skip build
 )
 
-:: 2. 既存の出力ディレクトリをクリーンアップ
-echo [2/5] 出力ディレクトリ準備中...
-if exist "%OUTPUT_DIR%" (
-    echo   既存の %OUTPUT_DIR% を削除中...
-    rmdir /s /q "%OUTPUT_DIR%"
-)
-mkdir "%RUNTIME_DIR%"
-mkdir "%SOURCE_DIR%"
+echo [2/5] Preparing output dir ...
+if exist "%OUT%" rmdir /s /q "%OUT%"
+mkdir "%OUT%"
 
-:: 3. 実行環境をコピー
-echo [3/5] 実行環境をコピー中...
-
-:: tests.exe
-set EXE_PATH=build\bin\Release-windows-x86_64\tests\tests.exe
-if not exist "%EXE_PATH%" (
-    echo [ERROR] %EXE_PATH% が見つかりません
-    echo         先にビルドを実行してください: tools\@build.cmd Release
+echo [3/5] Copying exe as NS.exe ...
+if not exist "%BIN%\Game.exe" (
+    echo [ERROR] %BIN%\Game.exe not found. build first
     exit /b 1
 )
-echo   tests.exe をコピー中...
-copy /y "%EXE_PATH%" "%RUNTIME_DIR%\" >nul
+copy /y "%BIN%\Game.exe" "%OUT%\NS.exe" >nul
 
-:: assimp DLL
-set DLL_PATH=build\bin\Release-windows-x86_64\tests\assimp-vc143-mt.dll
-if not exist "%DLL_PATH%" (
-    :: フォールバック: 元の場所からコピー
-    set DLL_PATH=external\assimp\bin\Release\assimp-vc143-mt.dll
-)
-if not exist "%DLL_PATH%" (
-    echo [ERROR] assimp-vc143-mt.dll が見つかりません
+echo [4/5] Copying Assets / Shaders ...
+xcopy /e /i /q /y "Assets" "%OUT%\Assets\" >nul
+xcopy /e /i /q /y "Shaders" "%OUT%\Shaders\" >nul
+
+echo [5/5] Exporting tracked source, ThirdParty excluded ...
+git archive -o "%OUT%\_src.tar" HEAD Source/Framework Source/Game Source/Editor Source/Tests premake5.lua
+if errorlevel 1 (
+    echo [ERROR] git archive failed
     exit /b 1
 )
-echo   assimp-vc143-mt.dll をコピー中...
-copy /y "%DLL_PATH%" "%RUNTIME_DIR%\" >nul
+tar -xf "%OUT%\_src.tar" -C "%OUT%"
+del /q "%OUT%\_src.tar"
 
-:: assets フォルダ（テストフォルダを除外）
-echo   assets フォルダをコピー中...
-if exist "assets\shader" xcopy /e /i /q /y "assets\shader" "%RUNTIME_DIR%\assets\shader\" >nul
-if exist "assets\texture" xcopy /e /i /q /y "assets\texture" "%RUNTIME_DIR%\assets\texture\" >nul
-if exist "assets\model" xcopy /e /i /q /y "assets\model" "%RUNTIME_DIR%\assets\model\" >nul
-if exist "assets\material" xcopy /e /i /q /y "assets\material" "%RUNTIME_DIR%\assets\material\" >nul
-
-:: README をコピー（存在する場合）
-if exist "tools\templates\README_実行環境.txt" (
-    copy /y "tools\templates\README_実行環境.txt" "%RUNTIME_DIR%\README.txt" >nul
-)
-
-:: 4. ソースコードをコピー
-echo [4/5] ソースコードをコピー中...
-if exist "source\common" xcopy /e /i /q /y "source\common" "%SOURCE_DIR%\common\" >nul
-if exist "source\dx11" xcopy /e /i /q /y "source\dx11" "%SOURCE_DIR%\dx11\" >nul
-if exist "source\engine" xcopy /e /i /q /y "source\engine" "%SOURCE_DIR%\engine\" >nul
-
-:: premake5.lua と主要な設定ファイルもコピー
-if exist "premake5.lua" copy /y "premake5.lua" "%SOURCE_DIR%\" >nul
-
-:: 5. 完了メッセージ
-echo [5/5] パッケージ作成完了
 echo.
 echo ============================================
-echo  出力先: %OUTPUT_DIR%\
+echo  Output: %OUT%\
+echo    NS.exe / Assets\ / Shaders\ / Source\ / premake5.lua
 echo ============================================
+echo  Note: runtime needs d3dcompiler_47.dll for runtime shader compile
+echo        and the VC++ redistributable, both shipped with Windows 10/11.
 echo.
-echo  実行環境\
-echo    - tests.exe
-echo    - assimp-vc143-mt.dll
-echo    - assets\ (shader, texture, model, material)
-echo.
-echo  source\
-echo    - common, dx11, engine
-echo    - premake5.lua
-echo.
-
-:: サイズ表示
-echo  フォルダサイズ:
-for /f "tokens=3" %%a in ('dir /s /-c "%RUNTIME_DIR%" 2^>nul ^| findstr /c:"個のファイル"') do (
-    set /a SIZE_MB=%%a / 1048576
-    echo    実行環境: 約 !SIZE_MB! MB
-)
-for /f "tokens=3" %%a in ('dir /s /-c "%SOURCE_DIR%" 2^>nul ^| findstr /c:"個のファイル"') do (
-    set /a SIZE_MB=%%a / 1048576
-    echo    source: 約 !SIZE_MB! MB
-)
-
-echo.
-echo [OK] パッケージ作成成功
+echo [OK] package done
 exit /b 0
