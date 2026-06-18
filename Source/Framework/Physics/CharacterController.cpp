@@ -3,12 +3,14 @@
 #include "Framework/Core/Clock.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Physics/Capsule.h"
+#include "Framework/Physics/CollisionGrid.h"
 #include "Framework/Physics/SweptAABB.h"
 #include "Framework/Physics/SweptOBB.h"
 #include "Framework/Physics/SweptTriangle.h"
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace
 {
@@ -21,6 +23,28 @@ namespace
     constexpr float kGroundProbeDistance = 0.2f;
     // walkable 床とみなす normal.y の閾値。cos 45 ≈ 0.707、45° 含むため 0.7
     constexpr float kFloorNormalY = 0.7f;
+
+    /// capsule が motion だけ動く間に占有する swept AABB を返す。 grid 候補絞り込みの query box に使う
+    /// 縦 capsule (axis=Y) 前提で、 XZ は radius、 Y は radius + halfHeight 膨張させる
+    [[nodiscard]] NS::Math::AABB CapsuleSweptAabb(const NS::Physics::Capsule& cap,
+                                                  const NS::Math::Vector3& motion) noexcept
+    {
+        const float rx = cap.radius;
+        const float ry = cap.radius + cap.halfHeight;
+        const float rz = cap.radius;
+        const NS::Math::Vector3 a = cap.center;
+        const NS::Math::Vector3 b = cap.center + motion;
+        const float minX = std::min(a.x, b.x) - rx;
+        const float maxX = std::max(a.x, b.x) + rx;
+        const float minY = std::min(a.y, b.y) - ry;
+        const float maxY = std::max(a.y, b.y) + ry;
+        const float minZ = std::min(a.z, b.z) - rz;
+        const float maxZ = std::max(a.z, b.z) + rz;
+        NS::Math::AABB q;
+        q.Center = NS::Math::Vector3{(minX + maxX) * 0.5f, (minY + maxY) * 0.5f, (minZ + maxZ) * 0.5f};
+        q.Extents = NS::Math::Vector3{(maxX - minX) * 0.5f, (maxY - minY) * 0.5f, (maxZ - minZ) * 0.5f};
+        return q;
+    }
 } // namespace
 
 namespace NS::Physics
@@ -40,6 +64,8 @@ namespace NS::Physics
             return result;
 
         const float subDt = input.dt / static_cast<float>(kMaxSubSteps);
+
+        std::vector<std::uint32_t> candidates; // grid broad-phase の候補バッファ (substep 間で使い回す)
 
         for (int step = 0; step < kMaxSubSteps; ++step)
         {
@@ -65,17 +91,40 @@ namespace NS::Physics
                 NS::Math::Vector3 hitNormal{0.0f, 0.0f, 0.0f};
                 bool anyHit = false;
 
-                for (const NS::Math::AABB& box : input.world)
+                // grid があれば capsule の swept AABB 近傍だけを narrow phase に掛ける (無ければ総当たり)
+                if (input.grid != nullptr && !input.grid->IsEmpty())
                 {
-                    float toi = 1.0f;
-                    NS::Math::Vector3 n{};
-                    if (SweptCapsuleVsAABB(cap, motion, box, toi, n))
+                    const NS::Math::AABB queryBox = CapsuleSweptAabb(cap, motion);
+                    input.grid->Query(queryBox, candidates);
+                    for (const std::uint32_t idx : candidates)
                     {
-                        if (toi < earliestToi)
+                        float toi = 1.0f;
+                        NS::Math::Vector3 n{};
+                        if (SweptCapsuleVsAABB(cap, motion, input.world[idx], toi, n))
                         {
-                            earliestToi = toi;
-                            hitNormal = n;
-                            anyHit = true;
+                            if (toi < earliestToi)
+                            {
+                                earliestToi = toi;
+                                hitNormal = n;
+                                anyHit = true;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    for (const NS::Math::AABB& box : input.world)
+                    {
+                        float toi = 1.0f;
+                        NS::Math::Vector3 n{};
+                        if (SweptCapsuleVsAABB(cap, motion, box, toi, n))
+                        {
+                            if (toi < earliestToi)
+                            {
+                                earliestToi = toi;
+                                hitNormal = n;
+                                anyHit = true;
+                            }
                         }
                     }
                 }

@@ -14,6 +14,9 @@ namespace
 {
     constexpr float kHorizontalSpeedEpsilon = 0.01f;
 
+    /// collision world のブロードフェーズ用グリッドのセル幅 (m)
+    constexpr float kGridCellSize = 2.0f;
+
     /// 一次遅れの離散化。tau = 時定数 (大きいほど鈍い)、dt = step。0 < tau で安定
     [[nodiscard]] float SmoothApproach(float current, float target, float tau, float dt) noexcept
     {
@@ -111,6 +114,7 @@ namespace NS::Scene
     void CharacterMovementComponent::SetCollisionWorld(std::span<const NS::Math::AABB> world)
     {
         m_collisionWorld.assign(world.begin(), world.end());
+        m_collisionGrid.Build(m_collisionWorld, kGridCellSize);
     }
 
     void CharacterMovementComponent::SetCollisionTriangles(std::span<const NS::Physics::Triangle> triangles)
@@ -313,6 +317,7 @@ namespace NS::Scene
         in.world = std::span<const NS::Math::AABB>(m_collisionWorld);
         in.worldTriangles = std::span<const NS::Physics::Triangle>(m_collisionTriangles);
         in.worldObbs = std::span<const NS::Physics::OBB>(m_collisionObbs);
+        in.grid = &m_collisionGrid;
         const NS::Physics::CharacterControllerResult out = m_controller.Update(in);
 
         RootTransform().SetPosition(out.position);

@@ -6,6 +6,7 @@
 /// 入出力は POD struct。gameplay 値 (gravity / jump 等) は保持しない (責任分担)
 
 #include "Framework/Math/Math.h"
+#include "Framework/Physics/CollisionGrid.h"
 #include "Framework/Physics/SweptOBB.h"
 #include "Framework/Physics/SweptTriangle.h"
 
@@ -25,6 +26,7 @@ namespace NS::Physics
         std::span<const NS::Math::AABB> world{};
         std::span<const NS::Physics::Triangle> worldTriangles{};
         std::span<const NS::Physics::OBB> worldObbs{};
+        const NS::Physics::CollisionGrid* grid = nullptr;
     };
 
     /// Update の戻り値。新 position / velocity と接触情報

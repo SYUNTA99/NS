@@ -11,6 +11,7 @@
 
 #include "Framework/Math/Math.h"
 #include "Framework/Physics/CharacterController.h"
+#include "Framework/Physics/CollisionGrid.h"
 #include "Framework/Physics/SweptTriangle.h"
 #include "Framework/Scene/Component.h"
 
@@ -133,6 +134,7 @@ namespace NS::Scene
         std::vector<NS::Math::AABB> m_collisionWorld;
         std::vector<NS::Physics::Triangle> m_collisionTriangles;
         std::vector<NS::Physics::OBB> m_collisionObbs;
+        NS::Physics::CollisionGrid m_collisionGrid;
         NS::Physics::CharacterController m_controller;
 
         MovementState m_state = MovementState::Walking;
