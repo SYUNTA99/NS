@@ -3,8 +3,8 @@
 #include "Framework/Core/Clock.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Graphics/DebugDraw.h"
-#include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Components/PoleComponent.h"
+#include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 
 #include <algorithm>
@@ -116,6 +116,11 @@ namespace NS::Scene
     void CharacterMovementComponent::SetCollisionTriangles(std::span<const NS::Physics::Triangle> triangles)
     {
         m_collisionTriangles.assign(triangles.begin(), triangles.end());
+    }
+
+    void CharacterMovementComponent::SetCollisionObbs(std::span<const NS::Physics::OBB> obbs)
+    {
+        m_collisionObbs.assign(obbs.begin(), obbs.end());
     }
 
     void CharacterMovementComponent::SetClimbables(std::span<PoleComponent* const> poles) noexcept
@@ -307,6 +312,7 @@ namespace NS::Scene
         in.capsuleHalfHeight = m_capsuleHalfHeight;
         in.world = std::span<const NS::Math::AABB>(m_collisionWorld);
         in.worldTriangles = std::span<const NS::Physics::Triangle>(m_collisionTriangles);
+        in.worldObbs = std::span<const NS::Physics::OBB>(m_collisionObbs);
         const NS::Physics::CharacterControllerResult out = m_controller.Update(in);
 
         RootTransform().SetPosition(out.position);

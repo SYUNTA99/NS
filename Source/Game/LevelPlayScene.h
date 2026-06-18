@@ -11,6 +11,7 @@
 
 #include "Framework/Core/EditorAccess.h"
 #include "Framework/Math/Math.h"
+#include "Framework/Physics/SweptOBB.h"
 #include "Framework/Physics/SweptTriangle.h"
 #include "Framework/Scene/MaterialLibrary.h"
 #include "Framework/Scene/SceneBase.h"
@@ -190,6 +191,7 @@ private:
 
     std::vector<NS::Math::AABB> m_collisionWorld;
     std::vector<NS::Physics::Triangle> m_collisionTriangles;
+    std::vector<NS::Physics::OBB> m_collisionObbs;
     std::vector<NS::Scene::PoleComponent*> m_polePtrs;
 
     NS::Game::Level::LevelData m_level{};

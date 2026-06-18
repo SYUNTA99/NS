@@ -816,6 +816,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
     m_blockSourceIndices.clear();
     m_collisionWorld.clear();
     m_collisionTriangles.clear();
+    m_collisionObbs.clear();
     m_polePtrs.clear();
 
     m_collisionWorld.reserve(m_level.objects.size());
@@ -858,7 +859,8 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
             placeFromEntry(*cube);
             cube->MeshComp().SetBaseColor(baseColor);
             cube->OnStart();
-            m_collisionWorld.push_back(cube->Collider().WorldAABB());
+            // 自由配置物は回転 / scale を潰さない OBB チャネルへ載せる (grid solid は AABB のまま)
+            m_collisionObbs.push_back(cube->Collider().WorldOBB());
             m_freeSourceIndices.push_back(objectIndex);
             m_freeObjects.push_back(std::move(cube));
             continue;
@@ -989,7 +991,15 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
     {
         m_player->Movement().SetCollisionWorld(m_collisionWorld);
         m_player->Movement().SetCollisionTriangles(m_collisionTriangles);
-        m_player->Shadow().SetCollisionWorld(m_collisionWorld);
+        m_player->Movement().SetCollisionObbs(m_collisionObbs);
+
+        // 接地シャドウは grid + 自由物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
+        std::vector<NS::Math::AABB> shadowReceivers(m_collisionWorld.begin(), m_collisionWorld.end());
+        for (auto& freeCube : m_freeObjects)
+            if (freeCube)
+                shadowReceivers.push_back(freeCube->Collider().WorldAABB());
+        m_player->Shadow().SetCollisionWorld(shadowReceivers);
+
         m_player->Movement().SetClimbables(std::span<NS::Scene::PoleComponent* const>{m_polePtrs});
     }
 }
