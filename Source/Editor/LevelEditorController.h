@@ -8,10 +8,10 @@
 /// ギズモ変形・free-fly カメラ・編集 ↔ プレイのモード切替を実現する。 EditorLayer が所有し、
 /// Setup / Tick / Render / Teardown を駆動する。 出荷 build には本クラスも EditorLayer も含めない
 
-#include "Framework/Graphics/RenderSettings.h"
-#include "Framework/Math/Math.h"
 #include "Editor/EditorMode.h"
 #include "Editor/GizmoEditor.h"
+#include "Framework/Graphics/RenderSettings.h"
+#include "Framework/Math/Math.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
 
@@ -25,6 +25,7 @@ namespace NS::Scene
 {
     class GameObject;
     class Transform;
+    class PlacedVirtualCamera;
 } // namespace NS::Scene
 
 namespace NS::UI
@@ -106,10 +107,11 @@ public:
     void SelectCameraByIndex(std::size_t index) noexcept;
     /// Inspector が編集できる area camera の選択を持つか
     [[nodiscard]] bool HasCameraSelection() const noexcept;
-    /// Inspector 表示用に選択中 CameraVolume のコピーを返す。 未選択は既定値
-    [[nodiscard]] NS::Game::Level::CameraVolume SelectedCameraSnapshot() const noexcept;
-    /// 選択中 area camera の値を書き換える。 同順の PlacedVirtualCamera を in-place 更新する (非選択は no-op)
-    void SetSelectedCameraVolume(const NS::Game::Level::CameraVolume& volume) noexcept;
+    /// 選択中 area camera の runtime PlacedVirtualCamera。 未選択 / 範囲外は nullptr。 Inspector の反射編集対象
+    [[nodiscard]] NS::Scene::PlacedVirtualCamera* SelectedAreaCamera() noexcept;
+    /// 反射編集された PlacedVirtualCamera の値を選択中 CameraVolume へ書き戻す (保存に乗せる、 非選択は no-op)
+    /// トリガ半径は最小正値に clamp し component 側へも反映する
+    void SyncSelectedCameraVolumeFromComponent() noexcept;
     /// 編集視点の中心あたりに新しい area camera を追加して選択する
     void AddCameraVolume() noexcept;
     /// 選択中の area camera を削除する (非選択は no-op)

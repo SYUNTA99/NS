@@ -11,6 +11,7 @@
 
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Components/VirtualCameraComponent.h"
+#include "Framework/Scene/Reflection.h"
 
 namespace NS::Scene
 {
@@ -40,7 +41,23 @@ namespace NS::Scene
         [[nodiscard]] const NS::Math::Vector3& ViewPosition() const noexcept { return m_position; }
         [[nodiscard]] const NS::Math::Vector3& ViewTarget() const noexcept { return m_target; }
 
+        /// 進入判定トリガ AABB の中心
+        [[nodiscard]] const NS::Math::Vector3& TriggerCenter() const noexcept { return m_triggerCenter; }
+        /// 進入判定トリガ AABB の半径成分
+        [[nodiscard]] const NS::Math::Vector3& TriggerExtent() const noexcept { return m_triggerExtent; }
+        /// 進入中にプレイヤーを追視するか
+        [[nodiscard]] bool LooksAtPlayer() const noexcept { return m_lookAtPlayer; }
+
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
+
+        NS_REFLECT_BEGIN(PlacedVirtualCamera)
+        NS_REFLECT_FIELD(m_position, "Camera Pos")
+        NS_REFLECT_FIELD(m_target, "Look Target")
+        NS_REFLECT_FIELD(m_triggerCenter, "Trigger Center")
+        NS_REFLECT_FIELD(m_triggerExtent, "Trigger Extent")
+        NS_REFLECT_FIELD(m_lookAtPlayer, "Look At Player")
+        NS_REFLECT_ACCESSOR(int, "Priority", VcamPriority(), SetVcamPriority)
+        NS_REFLECT_END()
 
     private:
         NS::Math::Vector3 m_position{0.0f, 5.0f, -10.0f};

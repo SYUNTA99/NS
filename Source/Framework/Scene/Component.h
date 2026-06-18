@@ -14,6 +14,8 @@
 ///     dt は `NS::Core::FrameTimer::FixedDelta()` で取得 (all-static、 Application 不要)
 ///   - OnEndPlay() — Scene 破棄 / Component 廃棄前に 1 回
 
+#include "Framework/Scene/Reflection.h"
+
 namespace NS::Scene
 {
     class GameObject;
@@ -60,6 +62,9 @@ namespace NS::Scene
         virtual void OnStart() {}
         virtual void OnUpdate() {}
         virtual void OnEndPlay() {}
+
+        /// このコンポーネント型の反射情報。未反射型は nullptr。エディタが Component* 越しに field を列挙する
+        [[nodiscard]] virtual const ReflectionInfo* GetReflection() const noexcept { return nullptr; }
 
     private:
         // owner 注入は AddComponent 経由のみ。Component から GameObject の非公開メンバへはアクセスしない

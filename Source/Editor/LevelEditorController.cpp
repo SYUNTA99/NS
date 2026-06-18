@@ -399,30 +399,48 @@ void LevelEditorController::SelectCameraByIndex(std::size_t index) noexcept
     m_lastGizmoSelected = nullptr;
 }
 
-NS::Game::Level::CameraVolume LevelEditorController::SelectedCameraSnapshot() const noexcept
+NS::Scene::PlacedVirtualCamera* LevelEditorController::SelectedAreaCamera() noexcept
 {
-    if (m_selectedCameraIndex < m_scene->m_level.cameraVolumes.size())
-        return m_scene->m_level.cameraVolumes[m_selectedCameraIndex];
-    return NS::Game::Level::CameraVolume{};
+    if (m_selectedCameraIndex >= m_scene->m_areaCameras.size())
+        return nullptr;
+    return m_scene->m_areaCameras[m_selectedCameraIndex].cam;
 }
 
-void LevelEditorController::SetSelectedCameraVolume(const NS::Game::Level::CameraVolume& volume) noexcept
+void LevelEditorController::SyncSelectedCameraVolumeFromComponent() noexcept
 {
-    if (m_selectedCameraIndex >= m_scene->m_level.cameraVolumes.size())
+    if (m_selectedCameraIndex >= m_scene->m_level.cameraVolumes.size() ||
+        m_selectedCameraIndex >= m_scene->m_areaCameras.size())
         return;
-    m_scene->m_level.cameraVolumes[m_selectedCameraIndex] = volume;
+    NS::Scene::PlacedVirtualCamera* cam = m_scene->m_areaCameras[m_selectedCameraIndex].cam;
+    if (cam == nullptr)
+        return;
 
-    // 同順の area camera を in-place 更新する (drag 毎に全 rebuild すると churn するため)
-    if (m_selectedCameraIndex < m_scene->m_areaCameras.size() && m_scene->m_areaCameras[m_selectedCameraIndex].cam)
-    {
-        LevelPlayScene::AreaCamera& area = m_scene->m_areaCameras[m_selectedCameraIndex];
-        area.cam->SetView({volume.cameraPositionX, volume.cameraPositionY, volume.cameraPositionZ},
-                          {volume.lookTargetX, volume.lookTargetY, volume.lookTargetZ});
-        area.cam->SetTrigger({volume.triggerCenterX, volume.triggerCenterY, volume.triggerCenterZ},
-                             {volume.triggerExtentX, volume.triggerExtentY, volume.triggerExtentZ});
-        area.cam->SetLookAtPlayer(volume.lookAtPlayer != 0);
-        area.cam->SetVcamPriority(volume.priority);
-    }
+    // トリガ半径が 0 以下だと進入判定が常に外れるので最小正値に clamp し、 component 側へ反映する
+    const NS::Math::Vector3 extent = cam->TriggerExtent();
+    const NS::Math::Vector3 clamped{
+        extent.x > 0.01f ? extent.x : 0.01f, extent.y > 0.01f ? extent.y : 0.01f, extent.z > 0.01f ? extent.z : 0.01f};
+    if (clamped.x != extent.x || clamped.y != extent.y || clamped.z != extent.z)
+        cam->SetTrigger(cam->TriggerCenter(), clamped);
+
+    NS::Game::Level::CameraVolume& volume = m_scene->m_level.cameraVolumes[m_selectedCameraIndex];
+    const NS::Math::Vector3& position = cam->ViewPosition();
+    const NS::Math::Vector3& target = cam->ViewTarget();
+    const NS::Math::Vector3& center = cam->TriggerCenter();
+    const NS::Math::Vector3& finalExtent = cam->TriggerExtent();
+    volume.cameraPositionX = position.x;
+    volume.cameraPositionY = position.y;
+    volume.cameraPositionZ = position.z;
+    volume.lookTargetX = target.x;
+    volume.lookTargetY = target.y;
+    volume.lookTargetZ = target.z;
+    volume.triggerCenterX = center.x;
+    volume.triggerCenterY = center.y;
+    volume.triggerCenterZ = center.z;
+    volume.triggerExtentX = finalExtent.x;
+    volume.triggerExtentY = finalExtent.y;
+    volume.triggerExtentZ = finalExtent.z;
+    volume.lookAtPlayer = cam->LooksAtPlayer() ? 1u : 0u;
+    volume.priority = cam->VcamPriority();
 }
 
 void LevelEditorController::AddCameraVolume() noexcept

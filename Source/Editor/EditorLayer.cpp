@@ -1,5 +1,6 @@
 #include "Editor/EditorLayer.h"
 
+#include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
 #include "Framework/App/Application.h"
 #include "Framework/Core/Filesystem.h"
@@ -10,6 +11,7 @@
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
+#include "Framework/Scene/Components/PlacedVirtualCamera.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/BlockRegistry.h"
 #include "Game/Game.h"
@@ -330,59 +332,15 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
     {
         if (editor.HasCameraSelection())
         {
-            NS::Game::Level::CameraVolume cam = editor.SelectedCameraSnapshot();
             ImGui::Text("[cam %zu] area camera", editor.SelectedCameraIndex());
             ImGui::Separator();
 
-            bool changed = false;
-            float camPos[3] = {cam.cameraPositionX, cam.cameraPositionY, cam.cameraPositionZ};
-            if (ImGui::DragFloat3("Camera Pos", camPos, 0.05f))
+            // PlacedVirtualCamera を反射フィールドから描き、 編集されたら CameraVolume へ書き戻す
+            if (auto* cam = editor.SelectedAreaCamera())
             {
-                cam.cameraPositionX = camPos[0];
-                cam.cameraPositionY = camPos[1];
-                cam.cameraPositionZ = camPos[2];
-                changed = true;
+                if (NS::Editor::DrawReflectedComponent(*cam))
+                    editor.SyncSelectedCameraVolumeFromComponent();
             }
-            float look[3] = {cam.lookTargetX, cam.lookTargetY, cam.lookTargetZ};
-            if (ImGui::DragFloat3("Look Target", look, 0.05f))
-            {
-                cam.lookTargetX = look[0];
-                cam.lookTargetY = look[1];
-                cam.lookTargetZ = look[2];
-                changed = true;
-            }
-            float center[3] = {cam.triggerCenterX, cam.triggerCenterY, cam.triggerCenterZ};
-            if (ImGui::DragFloat3("Trigger Center", center, 0.05f))
-            {
-                cam.triggerCenterX = center[0];
-                cam.triggerCenterY = center[1];
-                cam.triggerCenterZ = center[2];
-                changed = true;
-            }
-            float extent[3] = {cam.triggerExtentX, cam.triggerExtentY, cam.triggerExtentZ};
-            if (ImGui::DragFloat3("Trigger Extent", extent, 0.05f))
-            {
-                // 半径が 0 以下だと判定が常に外れるので最小正値に clamp する
-                cam.triggerExtentX = extent[0] > 0.01f ? extent[0] : 0.01f;
-                cam.triggerExtentY = extent[1] > 0.01f ? extent[1] : 0.01f;
-                cam.triggerExtentZ = extent[2] > 0.01f ? extent[2] : 0.01f;
-                changed = true;
-            }
-            int priority = cam.priority;
-            if (ImGui::DragInt("Priority", &priority, 0.2f, -1000, 1000))
-            {
-                cam.priority = priority;
-                changed = true;
-            }
-            bool lookAtPlayer = cam.lookAtPlayer != 0;
-            if (ImGui::Checkbox("Look At Player", &lookAtPlayer))
-            {
-                cam.lookAtPlayer = lookAtPlayer; // bool → uint8_t は 0/1 で安全
-                changed = true;
-            }
-
-            if (changed)
-                editor.SetSelectedCameraVolume(cam);
 
             ImGui::Separator();
             if (ImGui::Button("Delete Camera"))
