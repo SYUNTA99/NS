@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file StaticColliderComponent.h
-/// @brief 静的 AABB collider Component。Owner の Root world 変換を halfExtents に適用した
-///        world AABB を返す。LevelPlayScene の collision world 構築に使う
+/// @brief 静的 collider Component。 owner の world 変換から WorldAABB (内包軸並行) と
+///        WorldOBB (回転・非一様 scale 厳密) を返す。 LevelPlayScene の collision world 構築に使う
 
 #include "Framework/Math/Math.h"
 #include "Framework/Physics/SweptOBB.h"
@@ -10,8 +10,8 @@
 
 namespace NS::Scene
 {
-    /// 軸並行 BoundingBox を SceneBase に登録する Component
-    /// world 変換を適用するが結果は AABB なので、 回転時は内包する軸並行ボックスになる
+    /// collider を SceneBase に登録する Component
+    /// WorldAABB は回転時に内包軸並行ボックスへ畳むが、 WorldOBB は回転・非一様 scale を厳密に保持する
     /// Mesh と分離し、 視覚と衝突を独立して調整可能にする
     class StaticColliderComponent : public Component
     {
