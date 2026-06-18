@@ -60,14 +60,6 @@ namespace NS::Editor
         NS::Math::Vector3 scale{1.0f, 1.0f, 1.0f};
     };
 
-    /// undo 1 単位。target は非所有、消えたら無効 (v1 は削除経路なし)
-    struct TransformEdit
-    {
-        NS::Scene::Transform* target = nullptr;
-        TransformState before{};
-        TransformState after{};
-    };
-
     /// Object モードの選択 + 変形ギズモ本体
     class GizmoEditor
     {
@@ -115,10 +107,8 @@ namespace NS::Editor
             m_dragAxis = GizmoAxis::None;
         }
 
-        /// 直近の TransformEdit を 1 つ戻す。履歴が無ければ false
-        bool Undo() noexcept;
-        /// 戻した TransformEdit を 1 つやり直す。先が無ければ false
-        bool Redo() noexcept;
+        /// ドラッグ中か。 controller が drag 開始 / 終了を検出して undo を確定するために使う
+        [[nodiscard]] bool IsDragging() const noexcept { return m_dragging; }
 
         /// ray とローカル AABB (OBB 判定) で最近ヒットの index を返す。無ヒットは -1
         [[nodiscard]] static int PickNearestObb(const NS::Math::Ray& ray,
@@ -168,7 +158,7 @@ namespace NS::Editor
         void SetToolForTest(GizmoTool tool) noexcept { m_tool = tool; }
         /// テスト用。選択を直接注入する
         void SelectForTest(NS::Scene::Transform* target) noexcept { m_selected = target; }
-        /// テスト用。screen 上のドラッグを 1 操作分適用し TransformEdit を 1 件積む
+        /// テスト用。screen 上のドラッグを 1 操作分 live Transform へ適用する
         void ApplyDragForTest(const NS::Math::Matrix& viewProjection,
                               NS::Math::Size2D viewport,
                               GizmoAxis axis,
@@ -177,9 +167,6 @@ namespace NS::Editor
 
     private:
         void OnToolKey(NS::Platform::Key key) noexcept;
-
-        /// redo 分岐を捨てて TransformEdit を 1 件積む
-        void PushEdit(const TransformEdit& edit) noexcept;
 
         NS::Platform::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
@@ -193,8 +180,5 @@ namespace NS::Editor
         GizmoAxis m_dragAxis = GizmoAxis::None;
         NS::Math::Vector2 m_dragStartScreen{};
         TransformState m_dragBefore{};
-
-        std::vector<TransformEdit> m_history;
-        std::size_t m_historyIndex = 0;
     };
 } // namespace NS::Editor

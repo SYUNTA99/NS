@@ -17,8 +17,11 @@
 #include "Framework/Scene/Transform.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Level/LevelData.h"
+#include "Game/Undo/TransformCommand.h"
 
 #include <cmath>
+#include <cstring>
+#include <memory>
 
 namespace
 {
@@ -74,6 +77,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
 
     // EditorMode に依存先を注入する
     m_editor.SetLevel(&m_scene->m_level);
+    m_editor.SetEditIds(&m_scene->m_objectIds, &m_scene->m_nextObjectId);
     m_editor.SetInput(&app->Input());
     m_editor.SetImGui(imgui);
     m_editor.SetCameraComponent(m_scene->m_mainCamera);
@@ -184,6 +188,7 @@ void LevelEditorController::TickEdit()
     {
         const auto vp = m_scene->m_brain->ViewProjection();
         const auto viewport = app->Window().Size();
+        const bool wasDragging = m_gizmoWasDragging;
         m_gizmo.Tick(vp, viewport);
 
         // 掴んだら自由化: 選択が grid solid ブロックなら自由 Transform オブジェクトへ昇格する
@@ -199,28 +204,25 @@ void LevelEditorController::TickEdit()
             }
         }
 
-        // Object モードの Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y はギズモ変形履歴を操作する
-        // (grid の undo は EditorMode が inputSuppressed で止めている)
-        const bool imguiKeyboard = m_imgui != nullptr && m_imgui->WantCaptureKeyboard();
-        if (!imguiKeyboard)
-        {
-            auto& kb = app->Input().Keyboard();
-            const bool ctrl = kb.IsHeld(NS::Platform::Key::Ctrl);
-            const bool shift = kb.IsHeld(NS::Platform::Key::Shift);
-            const bool redo =
-                ctrl && ((shift && kb.IsPressed(NS::Platform::Key::Z)) || kb.IsPressed(NS::Platform::Key::Y));
-            const bool undo = ctrl && !shift && kb.IsPressed(NS::Platform::Key::Z);
-            if (redo)
-                m_gizmo.Redo();
-            else if (undo)
-                m_gizmo.Undo();
-        }
-
-        // ギズモ変形 / undo の結果を ObjectInstance に反映してセーブと rebuild に耐えるようにする
-        SyncFreeObjectTransforms();
-
         // ビューポートでのギズモ選択変化を Hierarchy / Inspector の選択添字へ追従させる
         ResolveSelectedIndexFromGizmo();
+
+        // ギズモ変形の結果を ObjectInstance へ反映 (live → model)。 begin/commit はこの model を基準にする
+        SyncFreeObjectTransforms();
+
+        // ドラッグ開始で baseline 退避、 終了で TransformCommand を 1 つ確定する (grid undo と同じ履歴)
+        const bool nowDragging = m_gizmo.IsDragging();
+        if (!wasDragging && nowDragging)
+            BeginTransformEdit();
+        else if (wasDragging && !nowDragging)
+            CommitTransformEdit();
+        m_gizmoWasDragging = nowDragging;
+    }
+    else if (m_transformEditing)
+    {
+        // Object モードを抜けても未確定の変形があれば確定する (silent な変更を残さない)
+        CommitTransformEdit();
+        m_gizmoWasDragging = false;
     }
 
     m_editor.Tick();
@@ -231,6 +233,8 @@ void LevelEditorController::TickEdit()
         m_scene->RebuildAreaCamerasFromLevelData();
         // 作り直した runtime オブジェクトへギズモ選択候補を貼り直す (pointer dangling 防止)
         RefreshGizmoSelectables();
+        // undo / redo / ロードで作り直した後、 ダングリングを避けるためギズモ選択を解除する
+        m_gizmo.ClearSelection();
         m_editor.ClearLevelDirty();
     }
 }
@@ -592,19 +596,95 @@ void LevelEditorController::PromoteGridBlockToFree(std::size_t blockIndex)
     const std::size_t objectIndex = NS::Game::Level::FindGridObjectAtCell(m_scene->m_level, cx, cy, cz);
     if (objectIndex == NS::Game::Level::kNoObjectIndex)
         return;
-    m_scene->m_level.objects[objectIndex].flags &= static_cast<std::uint8_t>(~NS::Game::Level::kObjectFlagGridAligned);
+
+    // 昇格 (gridAligned を落とす) を TransformCommand 1 つとして積み、 grid undo と同じ履歴へ載せる
+    const std::uint32_t id = m_scene->m_objectIds[objectIndex];
+    const NS::Game::Level::ObjectInstance before = m_scene->m_level.objects[objectIndex];
+    NS::Game::Level::ObjectInstance after = before;
+    after.flags &= static_cast<std::uint8_t>(~NS::Game::Level::kObjectFlagGridAligned);
+    NS::Game::Undo::EditTarget target = SceneEditTarget();
+    m_editor.Undo().Push(std::make_unique<NS::Game::Undo::TransformCommand>(id, before, after), target);
 
     // 作り直すと自由化した object は m_freeObjects 側へ回る。 選択候補 span も貼り直す
     m_scene->RebuildBlocksFromLevelData();
     RefreshGizmoSelectables();
+    ReselectFreeObjectById(id);
+}
+
+NS::Game::Undo::EditTarget LevelEditorController::SceneEditTarget() noexcept
+{
+    return NS::Game::Undo::EditTarget{m_scene->m_level, m_scene->m_objectIds, m_scene->m_nextObjectId};
+}
+
+void LevelEditorController::BeginTransformEdit() noexcept
+{
+    if (m_transformEditing)
+        return;
+    if (m_selectedObjectIndex >= m_scene->m_level.objects.size())
+        return;
+    m_editBaseline = m_scene->m_level.objects[m_selectedObjectIndex];
+    m_editBaselineId = m_scene->m_objectIds[m_selectedObjectIndex];
+    m_transformEditing = true;
+}
+
+void LevelEditorController::CommitTransformEdit() noexcept
+{
+    if (!m_transformEditing)
+        return;
+    m_transformEditing = false;
+
+    NS::Game::Undo::EditTarget target = SceneEditTarget();
+    const std::size_t index = NS::Game::Undo::IndexOfId(target, m_editBaselineId);
+    if (index == NS::Game::Level::kNoObjectIndex)
+        return;
+
+    // 非 PRS (kind / flags / material) は model から、 PRS は live Transform から取る
+    // (パネル編集は Sync が 1 フレーム遅れるため model 直読みだと取りこぼす)
+    NS::Game::Level::ObjectInstance after = m_scene->m_level.objects[index];
     for (std::size_t i = 0; i < m_scene->m_freeSourceIndices.size(); ++i)
     {
-        if (m_scene->m_freeSourceIndices[i] == objectIndex && m_scene->m_freeObjects[i])
+        if (m_scene->m_freeSourceIndices[i] == index && m_scene->m_freeObjects[i])
+        {
+            const NS::Scene::Transform& root = m_scene->m_freeObjects[i]->Root();
+            const NS::Math::Vector3 p = root.Position();
+            const NS::Math::Quaternion r = root.Rotation();
+            const NS::Math::Vector3 s = root.Scale();
+            after.positionX = p.x;
+            after.positionY = p.y;
+            after.positionZ = p.z;
+            after.rotationX = r.x;
+            after.rotationY = r.y;
+            after.rotationZ = r.z;
+            after.rotationW = r.w;
+            after.scaleX = s.x;
+            after.scaleY = s.y;
+            after.scaleZ = s.z;
+            break;
+        }
+    }
+
+    if (std::memcmp(&after, &m_editBaseline, sizeof(NS::Game::Level::ObjectInstance)) == 0)
+        return;
+
+    // model を after に確定してから push する。 Push の Do は model == after なので no-op で履歴記録のみ
+    m_scene->m_level.objects[index] = after;
+    m_editor.Undo().Push(std::make_unique<NS::Game::Undo::TransformCommand>(m_editBaselineId, m_editBaseline, after),
+                         target);
+}
+
+void LevelEditorController::ReselectFreeObjectById(std::uint32_t id) noexcept
+{
+    NS::Game::Undo::EditTarget target = SceneEditTarget();
+    const std::size_t index = NS::Game::Undo::IndexOfId(target, id);
+    for (std::size_t i = 0; i < m_scene->m_freeSourceIndices.size(); ++i)
+    {
+        if (m_scene->m_freeSourceIndices[i] == index && m_scene->m_freeObjects[i])
         {
             m_gizmo.SetSelected(&m_scene->m_freeObjects[i]->Root());
             return;
         }
     }
+    m_gizmo.ClearSelection();
 }
 
 bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path& matPath)

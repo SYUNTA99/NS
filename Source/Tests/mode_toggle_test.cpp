@@ -1,11 +1,14 @@
 #include "Editor/EditorMode.h"
+#include "Editor/LevelEditorController.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayMode.h"
 #include "Game/Level/PlayState.h"
-#include "Editor/LevelEditorController.h"
 #include "Game/LevelPlayScene.h"
 
 #include <gtest/gtest.h>
+
+#include <cstdint>
+#include <vector>
 
 /// Application 依存のない LevelPlayScene + LevelEditorController の組を相手に、
 /// mode toggle の enum / EditorMode / PlayMode の active 切替 / Undo 履歴保持を検証する
@@ -54,7 +57,10 @@ TEST(ModeToggle, EditorStateIsPreservedAcrossToggle_PMODE_03)
 {
     LevelPlayScene scene;
     LevelEditorController editor(&scene);
+    std::vector<std::uint32_t> ids;
+    std::uint32_t nextId = 0;
     editor.Editor().SetLevel(&scene.Level());
+    editor.Editor().SetEditIds(&ids, &nextId);
     editor.Editor().PlaceUnderCursorProgrammatic(5, 0, 3);
     const auto undoSizeBefore = editor.Editor().Undo().UndoSize();
     ASSERT_GE(undoSizeBefore, 1u);

@@ -101,6 +101,9 @@ private:
     /// dirty flag 検出時のみ m_blocks と m_collisionWorld を LevelData から再構築する
     void RebuildBlocksFromLevelData();
 
+    /// m_objectIds を m_level.objects と同サイズの連番へ再構築する (objects 全置換直後に呼ぶ)
+    void RebuildObjectIds() noexcept;
+
     /// m_level.cameraVolumes から area camera (PlacedVirtualCamera) 群を作り直して Brain へ登録する
     /// 旧 area camera は Brain から外して破棄する。 Brain 構築前 (OnStart 序盤) は no-op
     void RebuildAreaCamerasFromLevelData();
@@ -190,6 +193,12 @@ private:
     std::vector<NS::Scene::PoleComponent*> m_polePtrs;
 
     NS::Game::Level::LevelData m_level{};
+
+    // m_level.objects と 1:1 の編集セッション識別子。 undo 履歴が free オブジェクトを再特定するため
+    // 保持する (非シリアライズ)。 objects 全置換時は RebuildObjectIds で連番へ戻す
+    std::vector<std::uint32_t> m_objectIds;
+    std::uint32_t m_nextObjectId = 0;
+
     NS::Game::Level::PlayState m_play{};
     NS::Game::Level::PlayMode m_playMode{};
 

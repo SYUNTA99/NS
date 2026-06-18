@@ -9,9 +9,9 @@
 /// PlayMode 側との変更経路衝突を防ぐ。 spawn marker のみ単一値の上書きなので
 /// Command を介さない直接 setter (`SetSpawnMarker`) を呼ぶ
 
-#include "Framework/Math/Math.h"
 #include "Editor/CategoryPalette.h"
 #include "Editor/LevelFileBrowser.h"
+#include "Framework/Math/Math.h"
 #include "Game/Undo/UndoStack.h"
 
 #include <cstdint>
@@ -64,6 +64,12 @@ namespace NS::Editor
         EditorMode& operator=(EditorMode&&) = delete;
 
         void SetLevel(NS::Game::Level::LevelData* level) noexcept { m_level = level; }
+        /// 編集セッション id ストアを注入する。 EditTarget の構築に使う (level と同じ scene が所有)
+        void SetEditIds(std::vector<std::uint32_t>* ids, std::uint32_t* nextId) noexcept
+        {
+            m_objectIds = ids;
+            m_nextObjectId = nextId;
+        }
         void SetInput(NS::Platform::Input* input) noexcept { m_input = input; }
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
         void SetCameraComponent(NS::Scene::CameraComponent* camera) noexcept { m_camera = camera; }
@@ -115,6 +121,8 @@ namespace NS::Editor
 
     private:
         NS::Game::Level::LevelData* m_level = nullptr;
+        std::vector<std::uint32_t>* m_objectIds = nullptr; // m_level.objects と 1:1 の編集 id (scene 所有)
+        std::uint32_t* m_nextObjectId = nullptr;
         NS::Platform::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
         NS::Scene::CameraComponent* m_camera = nullptr;
@@ -136,5 +144,8 @@ namespace NS::Editor
         void HandlePlaceDeleteInput() noexcept;
         void HandleRotationInput() noexcept;
         void HandleUndoRedoInput() noexcept;
+
+        /// m_level + id ストアから EditTarget view を組む。 全ポインタ非 null の前提で呼ぶ
+        [[nodiscard]] NS::Game::Undo::EditTarget Target() noexcept;
     };
 } // namespace NS::Editor

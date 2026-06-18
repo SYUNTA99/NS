@@ -1,21 +1,30 @@
-#include "Game/Blocks/BlockRegistry.h"
 #include "Editor/EditorMode.h"
+#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/LevelData.h"
+#include "Game/Undo/EditTarget.h"
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
+#include <vector>
+
 namespace EditorNs = NS::Editor;
 namespace LevelNs = NS::Game::Level;
+namespace UndoNs = NS::Game::Undo;
 
 TEST(EditorMode, ProgrammaticPlaceAddsBlock)
 {
     LevelNs::LevelData lv;
+    std::vector<std::uint32_t> ids;
+    std::uint32_t next = 0;
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
+    editor.SetEditIds(&ids, &next);
 
     editor.PlaceUnderCursorProgrammatic(5, 0, 3);
 
     ASSERT_EQ(lv.objects.size(), 1u);
+    EXPECT_EQ(ids.size(), lv.objects.size());
     const auto idx = LevelNs::FindGridObjectAtCell(lv, 5, 0, 3);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
     EXPECT_EQ(LevelNs::ObjectCellX(lv.objects[idx]), 5);
@@ -28,20 +37,27 @@ TEST(EditorMode, ProgrammaticDeleteRemovesBlock)
 {
     LevelNs::LevelData lv;
     lv.objects.push_back(LevelNs::MakeGridObject(2, 0, 4, NS::Game::Blocks::kBlockIdSolid, 0));
+    std::vector<std::uint32_t> ids{0};
+    std::uint32_t next = 1;
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
+    editor.SetEditIds(&ids, &next);
 
     editor.DeleteAtProgrammatic(2, 0, 4);
 
     EXPECT_TRUE(lv.objects.empty());
+    EXPECT_TRUE(ids.empty());
 }
 
 TEST(EditorMode, ProgrammaticRotateCycles)
 {
     LevelNs::LevelData lv;
     lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdSolid, 0));
+    std::vector<std::uint32_t> ids{0};
+    std::uint32_t next = 1;
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
+    editor.SetEditIds(&ids, &next);
 
     editor.RotateAtProgrammatic(0, 0, 0);
     EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 1);
@@ -56,8 +72,11 @@ TEST(EditorMode, ProgrammaticRotateCycles)
 TEST(EditorMode, ProgrammaticSpawnSetsCoordinates)
 {
     LevelNs::LevelData lv;
+    std::vector<std::uint32_t> ids;
+    std::uint32_t next = 0;
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
+    editor.SetEditIds(&ids, &next);
 
     editor.SetSpawnAtProgrammatic(10, 2, -5);
 
@@ -69,14 +88,18 @@ TEST(EditorMode, ProgrammaticSpawnSetsCoordinates)
 TEST(EditorMode, UndoStackIntegration)
 {
     LevelNs::LevelData lv;
+    std::vector<std::uint32_t> ids;
+    std::uint32_t next = 0;
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
+    editor.SetEditIds(&ids, &next);
 
     const auto crc0 = lv.ComputeCrc32();
     editor.PlaceUnderCursorProgrammatic(0, 0, 0);
     ASSERT_EQ(editor.Undo().UndoSize(), 1u);
 
-    ASSERT_TRUE(editor.Undo().Undo(lv));
+    UndoNs::EditTarget target{lv, ids, next};
+    ASSERT_TRUE(editor.Undo().Undo(target));
     EXPECT_TRUE(lv.objects.empty());
     EXPECT_EQ(lv.ComputeCrc32(), crc0);
 }
@@ -84,8 +107,11 @@ TEST(EditorMode, UndoStackIntegration)
 TEST(EditorMode, LevelDirtyFlagSetByMutation)
 {
     LevelNs::LevelData lv;
+    std::vector<std::uint32_t> ids;
+    std::uint32_t next = 0;
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
+    editor.SetEditIds(&ids, &next);
 
     editor.ClearLevelDirty();
     EXPECT_FALSE(editor.IsLevelDirty());
@@ -106,13 +132,17 @@ TEST(EditorMode, CellRotationViaProgrammaticOnExistingBlock)
 {
     LevelNs::LevelData lv;
     lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdSolid, 0));
+    std::vector<std::uint32_t> ids{0};
+    std::uint32_t next = 1;
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
+    editor.SetEditIds(&ids, &next);
 
     editor.RotateAtProgrammatic(0, 0, 0);
     EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 1);
     EXPECT_TRUE(editor.IsLevelDirty());
 
-    ASSERT_TRUE(editor.Undo().Undo(lv));
+    UndoNs::EditTarget target{lv, ids, next};
+    ASSERT_TRUE(editor.Undo().Undo(target));
     EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 0);
 }

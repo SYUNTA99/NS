@@ -1,16 +1,19 @@
 #include "Game/Undo/UndoStack.h"
 
+#include "Framework/Core/Logger.h"
+
 #include <utility>
 
 namespace NS::Game::Undo
 {
 
-    void UndoStack::Push(std::unique_ptr<ICommand> cmd, NS::Game::Level::LevelData& level) noexcept
+    void UndoStack::Push(std::unique_ptr<ICommand> cmd, EditTarget& target) noexcept
     {
         if (!cmd)
             return;
 
-        cmd->Do(level);
+        EnsureIdsConsistent(target);
+        cmd->Do(target);
         const std::size_t bytes = cmd->EstimatedBytes();
         m_undoBytes += bytes;
         m_undo.push_back(std::move(cmd));
@@ -22,12 +25,13 @@ namespace NS::Game::Undo
         TrimOldest();
     }
 
-    bool UndoStack::Undo(NS::Game::Level::LevelData& level) noexcept
+    bool UndoStack::Undo(EditTarget& target) noexcept
     {
         if (m_undo.empty())
             return false;
+        EnsureIdsConsistent(target);
         auto& back = m_undo.back();
-        back->Undo(level);
+        back->Undo(target);
         const std::size_t bytes = back->EstimatedBytes();
         m_undoBytes -= bytes;
         m_redoBytes += bytes;
@@ -36,12 +40,13 @@ namespace NS::Game::Undo
         return true;
     }
 
-    bool UndoStack::Redo(NS::Game::Level::LevelData& level) noexcept
+    bool UndoStack::Redo(EditTarget& target) noexcept
     {
         if (m_redo.empty())
             return false;
+        EnsureIdsConsistent(target);
         auto& back = m_redo.back();
-        back->Do(level);
+        back->Do(target);
         const std::size_t bytes = back->EstimatedBytes();
         m_redoBytes -= bytes;
         m_undoBytes += bytes;
@@ -66,6 +71,17 @@ namespace NS::Game::Undo
             m_undoBytes -= bytes;
             m_undo.pop_front();
         }
+    }
+
+    void UndoStack::EnsureIdsConsistent(EditTarget& target) noexcept
+    {
+        if (target.ids.size() == target.level.objects.size())
+            return;
+        NS_LOG_ERROR(::NS::Core::LogCat::Game,
+                     "UndoStack: id 配列が objects と desync ({} != {})、 連番へ再構築する",
+                     target.ids.size(),
+                     target.level.objects.size());
+        ResetEditIds(target);
     }
 
 } // namespace NS::Game::Undo

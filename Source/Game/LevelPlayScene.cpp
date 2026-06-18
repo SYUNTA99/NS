@@ -7,6 +7,7 @@
 #include "Game/Blocks/SlopeBlock.h"
 #include "Game/Blocks/WaterBlock.h"
 #include "Game/Player.h"
+#include "Game/Undo/EditTarget.h"
 
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/CameraComponent.h"
@@ -79,9 +80,15 @@ void LevelPlayScene::LoadInitialLevel()
     // 同梱 default レベルがあればそれを、 無ければ最小床を seed する
     const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
     const auto defaultPath = exeDir / "Levels" / "default.nslvl";
-    if (NS::Game::Level::LoadLevelFromFile(m_level, defaultPath))
-        return;
-    SeedInitialLevel(m_level);
+    if (!NS::Game::Level::LoadLevelFromFile(m_level, defaultPath))
+        SeedInitialLevel(m_level);
+    RebuildObjectIds();
+}
+
+void LevelPlayScene::RebuildObjectIds() noexcept
+{
+    NS::Game::Undo::EditTarget target{m_level, m_objectIds, m_nextObjectId};
+    NS::Game::Undo::ResetEditIds(target);
 }
 
 void LevelPlayScene::OnStart()

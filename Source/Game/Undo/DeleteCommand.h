@@ -17,8 +17,8 @@ namespace NS::Game::Undo
     public:
         DeleteCommand(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
 
-        void Do(NS::Game::Level::LevelData& level) noexcept override;
-        void Undo(NS::Game::Level::LevelData& level) noexcept override;
+        void Do(EditTarget& target) noexcept override;
+        void Undo(EditTarget& target) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override { return sizeof(DeleteCommand); }
 
@@ -27,6 +27,7 @@ namespace NS::Game::Undo
         std::int16_t m_y;
         std::int16_t m_z;
         std::optional<NS::Game::Level::ObjectInstance> m_deleted;
+        std::optional<std::uint32_t> m_deletedId; // 削除前の識別子。 Undo 復元で再利用し参照を壊さない
     };
 
 } // namespace NS::Game::Undo

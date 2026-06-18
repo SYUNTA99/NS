@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <vector>
 
 #if NS_EDITOR_ENABLED
@@ -46,6 +47,9 @@ namespace NS::Editor
         // ray と平面の交差判定で、 分母 (rayDir・n) がこの値未満なら平行とみなし交差不能
         constexpr float kPlaneParallelEpsilon = 1e-6f;
 
+        // スラブ判定で方向成分がこの絶対値未満なら、 その軸に平行とみなす
+        constexpr float kRayAabbParallelEpsilon = 1e-8f;
+
         // 最近接の step 倍へ丸める。 step<=0 は素通し
         [[nodiscard]] float SnapTo(float value, float step) noexcept
         {
@@ -78,6 +82,45 @@ namespace NS::Editor
                 return false;
             const float t = (planePoint - ray.position).Dot(planeNormal) / denom;
             outPoint = ray.position + ray.direction * t;
+            return true;
+        }
+
+        // ray と中心原点 AABB のスラブ判定 (返す t は ray パラメータで方向のスケールを保つので
+        // object 間でそのまま大小比較できる)。 SimpleMath の Ray::Intersects は方向が単位ベクトル
+        // である assert を持つが、 ここは逆変換後の非単位方向を渡すので自前で判定する
+        [[nodiscard]] bool IntersectRayCenteredAabb(const NS::Math::Vector3& origin,
+                                                    const NS::Math::Vector3& direction,
+                                                    const NS::Math::Vector3& halfExtents,
+                                                    float& outT) noexcept
+        {
+            const float o[3] = {origin.x, origin.y, origin.z};
+            const float d[3] = {direction.x, direction.y, direction.z};
+            const float he[3] = {halfExtents.x, halfExtents.y, halfExtents.z};
+
+            float tMin = -std::numeric_limits<float>::infinity();
+            float tMax = std::numeric_limits<float>::infinity();
+            for (int axis = 0; axis < 3; ++axis)
+            {
+                if (std::fabs(d[axis]) < kRayAabbParallelEpsilon)
+                {
+                    if (o[axis] < -he[axis] || o[axis] > he[axis])
+                        return false; // 軸に平行かつスラブ外
+                    continue;
+                }
+                const float invD = 1.0f / d[axis];
+                float t1 = (-he[axis] - o[axis]) * invD;
+                float t2 = (he[axis] - o[axis]) * invD;
+                if (t1 > t2)
+                    std::swap(t1, t2);
+                tMin = (t1 > tMin) ? t1 : tMin;
+                tMax = (t2 < tMax) ? t2 : tMax;
+                if (tMin > tMax)
+                    return false;
+            }
+            if (tMax < 0.0f)
+                return false; // box は ray の後方
+
+            outT = (tMin >= 0.0f) ? tMin : tMax; // origin が box 外なら入口、 内なら出口
             return true;
         }
 
@@ -124,18 +167,6 @@ namespace NS::Editor
             target.SetPosition(state.position);
             target.SetRotation(state.rotation);
             target.SetScale(state.scale);
-        }
-
-        // 掴んだだけ等の無変化ドラッグを undo に積まないための判定
-        [[nodiscard]] bool StateChanged(const TransformState& a, const TransformState& b) noexcept
-        {
-            constexpr float kEps = 1e-6f;
-            if ((a.position - b.position).LengthSquared() > kEps)
-                return true;
-            if ((a.scale - b.scale).LengthSquared() > kEps)
-                return true;
-            return std::fabs(a.rotation.x - b.rotation.x) > kEps || std::fabs(a.rotation.y - b.rotation.y) > kEps ||
-                   std::fabs(a.rotation.z - b.rotation.z) > kEps || std::fabs(a.rotation.w - b.rotation.w) > kEps;
         }
 
         // ドラッグ (screenStart→screenEnd) を現ツール / 軸の新 PRS へ変換する
@@ -287,13 +318,7 @@ namespace NS::Editor
             }
             else
             {
-                // 離した瞬間に 1 ドラッグを 1 undo 単位として確定する
-                if (m_selected != nullptr)
-                {
-                    const TransformState after{m_selected->Position(), m_selected->Rotation(), m_selected->Scale()};
-                    if (StateChanged(m_dragBefore, after))
-                        PushEdit(TransformEdit{m_selected, m_dragBefore, after});
-                }
+                // 離した瞬間にドラッグ終了。 undo 確定は controller が drag 終了を検出して行う
                 m_dragging = false;
                 m_dragAxis = GizmoAxis::None;
             }
@@ -450,28 +475,6 @@ namespace NS::Editor
 #endif
     }
 
-    bool GizmoEditor::Undo() noexcept
-    {
-        if (m_historyIndex == 0)
-            return false;
-        --m_historyIndex;
-        const TransformEdit& edit = m_history[m_historyIndex];
-        if (edit.target != nullptr)
-            ApplyState(*edit.target, edit.before);
-        return true;
-    }
-
-    bool GizmoEditor::Redo() noexcept
-    {
-        if (m_historyIndex >= m_history.size())
-            return false;
-        const TransformEdit& edit = m_history[m_historyIndex];
-        if (edit.target != nullptr)
-            ApplyState(*edit.target, edit.after);
-        ++m_historyIndex;
-        return true;
-    }
-
     GizmoTool GizmoEditor::ToolForKey(GizmoTool current, NS::Platform::Key key) noexcept
     {
         switch (key)
@@ -504,10 +507,8 @@ namespace NS::Editor
             const NS::Math::Vector3 localOrigin = NS::Math::Vector3::Transform(ray.position, inv);
             // 方向は w=0 の線形部のみ変換し、 正規化しない (正規化すると t がローカル長さに巻き込まれ比較が壊れる)
             const NS::Math::Vector3 localDir = NS::Math::Vector3::TransformNormal(ray.direction, inv);
-            const NS::Math::Ray localRay{localOrigin, localDir};
-            const NS::Math::AABB localBox(NS::Math::Vector3{0.0f, 0.0f, 0.0f}, localHalfExtents[i]);
             float t = 0.0f;
-            if (localRay.Intersects(localBox, t) && (best < 0 || t < bestT))
+            if (IntersectRayCenteredAabb(localOrigin, localDir, localHalfExtents[i], t) && (best < 0 || t < bestT))
             {
                 best = static_cast<int>(i);
                 bestT = t;
@@ -736,8 +737,6 @@ namespace NS::Editor
         const TransformState after =
             ComputeDragResult(before, m_tool, axis, viewProjection, viewport, screenStart, screenEnd, false);
         ApplyState(*m_selected, after);
-        if (StateChanged(before, after))
-            PushEdit(TransformEdit{m_selected, before, after});
     }
 
     void GizmoEditor::OnToolKey(NS::Platform::Key key) noexcept
@@ -745,12 +744,4 @@ namespace NS::Editor
         m_tool = ToolForKey(m_tool, key);
     }
 
-    void GizmoEditor::PushEdit(const TransformEdit& edit) noexcept
-    {
-        // 現在位置より先 (redo 分岐) を捨ててから末尾に積む
-        if (m_historyIndex < m_history.size())
-            m_history.erase(m_history.begin() + static_cast<std::ptrdiff_t>(m_historyIndex), m_history.end());
-        m_history.push_back(edit);
-        m_historyIndex = m_history.size();
-    }
 } // namespace NS::Editor

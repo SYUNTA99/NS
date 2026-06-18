@@ -1,5 +1,6 @@
 #include "Editor/EditorMode.h"
 
+#include "Editor/LevelFilePaths.h"
 #include "Framework/App/Application.h"
 #include "Framework/Core/Clock.h"
 #include "Framework/Graphics/DebugDraw.h"
@@ -10,7 +11,6 @@
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/AutoTile.h"
 #include "Game/Blocks/BlockRegistry.h"
-#include "Editor/LevelFilePaths.h"
 #include "Game/Level/ChunkIO.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Undo/DeleteCommand.h"
@@ -125,6 +125,11 @@ namespace NS::Editor
                 // 別 LevelData を pointer で持つため、 そのまま undo すると use-after-free 的 mismatch)
                 *m_level = std::move(fresh);
                 m_undo.Clear();
+                if (m_objectIds != nullptr)
+                {
+                    auto target = Target();
+                    NS::Game::Undo::ResetEditIds(target);
+                }
                 m_levelDirty = true;
                 m_fileBrowser.NotifyLoadResult(true, "読込成功");
             }
@@ -355,30 +360,38 @@ namespace NS::Editor
 #endif
     }
 
+    NS::Game::Undo::EditTarget EditorMode::Target() noexcept
+    {
+        return NS::Game::Undo::EditTarget{*m_level, *m_objectIds, *m_nextObjectId};
+    }
+
     void EditorMode::PlaceUnderCursorProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept
     {
-        if (m_level == nullptr)
+        if (m_level == nullptr || m_objectIds == nullptr)
             return;
         // 回転対象でない block (pole / water 等) は m_currentRotation が非ゼロでも 0 で焼き込む
         const std::uint16_t blockId = m_palette.CurrentBlockId();
         const std::uint8_t rotation = NS::Game::Blocks::IsRotatableBlock(blockId) ? m_currentRotation : std::uint8_t{0};
-        m_undo.Push(std::make_unique<NS::Game::Undo::PlaceCommand>(x, y, z, blockId, rotation), *m_level);
+        auto target = Target();
+        m_undo.Push(std::make_unique<NS::Game::Undo::PlaceCommand>(x, y, z, blockId, rotation), target);
         m_levelDirty = true;
     }
 
     void EditorMode::DeleteAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept
     {
-        if (m_level == nullptr)
+        if (m_level == nullptr || m_objectIds == nullptr)
             return;
-        m_undo.Push(std::make_unique<NS::Game::Undo::DeleteCommand>(x, y, z), *m_level);
+        auto target = Target();
+        m_undo.Push(std::make_unique<NS::Game::Undo::DeleteCommand>(x, y, z), target);
         m_levelDirty = true;
     }
 
     void EditorMode::RotateAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept
     {
-        if (m_level == nullptr)
+        if (m_level == nullptr || m_objectIds == nullptr)
             return;
-        m_undo.Push(std::make_unique<NS::Game::Undo::RotateCommand>(x, y, z, +1), *m_level);
+        auto target = Target();
+        m_undo.Push(std::make_unique<NS::Game::Undo::RotateCommand>(x, y, z, +1), target);
         m_levelDirty = true;
     }
 
@@ -549,7 +562,7 @@ namespace NS::Editor
 
     void EditorMode::HandleRotationInput() noexcept
     {
-        if (m_input == nullptr || m_level == nullptr)
+        if (m_input == nullptr || m_level == nullptr || m_objectIds == nullptr)
             return;
         if (m_imgui != nullptr && m_imgui->WantCaptureKeyboard())
             return;
@@ -572,9 +585,10 @@ namespace NS::Editor
             if (index != NS::Game::Level::kNoObjectIndex &&
                 NS::Game::Blocks::IsRotatableBlock(m_level->objects[index].kind))
             {
+                auto target = Target();
                 m_undo.Push(std::make_unique<NS::Game::Undo::RotateCommand>(
                                 m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ, std::int8_t{1}),
-                            *m_level);
+                            target);
                 m_levelDirty = true;
             }
         }
@@ -587,33 +601,31 @@ namespace NS::Editor
 
     void EditorMode::HandleUndoRedoInput() noexcept
     {
-        if (m_input == nullptr || m_level == nullptr)
+        if (m_input == nullptr || m_level == nullptr || m_objectIds == nullptr)
             return;
         if (m_imgui != nullptr && m_imgui->WantCaptureKeyboard())
-            return;
-        // Object ツールモード中は Ctrl+Z をギズモの変形 undo が使うので grid の undo/redo は止める
-        if (m_inputSuppressed)
             return;
 
         auto& kb = m_input->Keyboard();
         const bool ctrl = kb.IsHeld(NS::Platform::Key::Ctrl);
         const bool shift = kb.IsHeld(NS::Platform::Key::Shift);
+        auto target = Target();
 
         // Ctrl+Shift+Z = Redo、 Ctrl+Z = Undo、 Ctrl+Y = Redo
         if (ctrl && shift && kb.IsPressed(NS::Platform::Key::Z))
         {
-            if (m_undo.Redo(*m_level))
+            if (m_undo.Redo(target))
                 m_levelDirty = true;
             return;
         }
         if (ctrl && kb.IsPressed(NS::Platform::Key::Z))
         {
-            if (m_undo.Undo(*m_level))
+            if (m_undo.Undo(target))
                 m_levelDirty = true;
         }
         if (ctrl && kb.IsPressed(NS::Platform::Key::Y))
         {
-            if (m_undo.Redo(*m_level))
+            if (m_undo.Redo(target))
                 m_levelDirty = true;
         }
     }

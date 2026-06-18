@@ -387,10 +387,18 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             float pos[3] = {obj.positionX, obj.positionY, obj.positionZ};
             if (ImGui::DragFloat3("Position", pos, 0.05f))
                 editor.SetSelectedFreePosition(NS::Math::Vector3{pos[0], pos[1], pos[2]});
+            if (ImGui::IsItemActivated())
+                editor.BeginTransformEdit();
+            if (ImGui::IsItemDeactivatedAfterEdit())
+                editor.CommitTransformEdit();
 
             float scl[3] = {obj.scaleX, obj.scaleY, obj.scaleZ};
             if (ImGui::DragFloat3("Scale", scl, 0.05f))
                 editor.SetSelectedFreeScale(NS::Math::Vector3{scl[0], scl[1], scl[2]});
+            if (ImGui::IsItemActivated())
+                editor.BeginTransformEdit();
+            if (ImGui::IsItemDeactivatedAfterEdit())
+                editor.CommitTransformEdit();
 
             ImGui::Text("Rotation: (%.2f, %.2f, %.2f, %.2f)",
                         static_cast<double>(obj.rotationX),

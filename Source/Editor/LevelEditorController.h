@@ -14,6 +14,7 @@
 #include "Framework/Math/Math.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
+#include "Game/Undo/EditTarget.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -98,6 +99,10 @@ public:
     void SetSelectedFreePosition(NS::Math::Vector3 position) noexcept;
     /// 選択中の自由オブジェクトのスケールを設定する。 最小正値に clamp する (gridAligned / 非選択は no-op)
     void SetSelectedFreeScale(NS::Math::Vector3 scale) noexcept;
+    /// 選択中自由オブジェクトの変形編集を開始し baseline を退避する (gizmo ドラッグ / パネル入力の開始で呼ぶ)
+    void BeginTransformEdit() noexcept;
+    /// 進行中の変形編集を 1 つの undo 単位として確定する (無変化なら積まない)
+    void CommitTransformEdit() noexcept;
     /// 選択中の grid solid ブロックを自由オブジェクトへ昇格する (grid solid 以外は no-op)
     void PromoteSelectedToFree() noexcept;
 
@@ -160,6 +165,12 @@ private:
     /// ビューポートでギズモ選択が変わった時だけ m_selectedObjectIndex を追従させる
     void ResolveSelectedIndexFromGizmo() noexcept;
 
+    /// scene の level + 識別子ストアから編集対象 view を組む
+    [[nodiscard]] NS::Game::Undo::EditTarget SceneEditTarget() noexcept;
+
+    /// 識別子でギズモ選択を貼り直す。 対象が消えていれば選択解除する
+    void ReselectFreeObjectById(std::uint32_t id) noexcept;
+
     LevelPlayScene* m_scene = nullptr;
 
     // EditorLayer 所有の ImGui context (非所有)。EditorMode / ギズモへ渡し、 keyboard キャプチャ判定にも使う
@@ -190,6 +201,12 @@ private:
     std::size_t m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
     // ビューポート由来のギズモ選択変化だけを index へ反映するための前フレーム値
     NS::Scene::Transform* m_lastGizmoSelected = nullptr;
+
+    // 変形編集 (ギズモドラッグ / Inspector パネル) を 1 undo 単位へ束ねる状態
+    bool m_gizmoWasDragging = false;
+    bool m_transformEditing = false;
+    std::uint32_t m_editBaselineId = NS::Game::Undo::kInvalidObjectId;
+    NS::Game::Level::ObjectInstance m_editBaseline{};
 
     // Debug provenance パネルの読み出し元。 書き込みは Render で毎フレーム行う
     NS::Graphics::RenderSettings m_debugResolvedSettings{};

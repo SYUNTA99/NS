@@ -18,8 +18,8 @@ namespace NS::Game::Undo
         PlaceCommand(
             std::int16_t x, std::int16_t y, std::int16_t z, std::uint16_t blockId, std::uint8_t rotation) noexcept;
 
-        void Do(NS::Game::Level::LevelData& level) noexcept override;
-        void Undo(NS::Game::Level::LevelData& level) noexcept override;
+        void Do(EditTarget& target) noexcept override;
+        void Undo(EditTarget& target) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override { return sizeof(PlaceCommand); }
 
@@ -30,6 +30,7 @@ namespace NS::Game::Undo
         std::uint16_t m_blockId;
         std::uint8_t m_rotation;
         std::optional<NS::Game::Level::ObjectInstance> m_replaced;
+        std::optional<std::uint32_t> m_assignedId; // append 時の識別子。 redo で再利用し参照を壊さない
     };
 
 } // namespace NS::Game::Undo
