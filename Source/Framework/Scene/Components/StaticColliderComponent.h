@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file StaticColliderComponent.h
-/// @brief 静的 AABB collider Component。Owner の Root::WorldPosition を center とし、
-///        halfExtents から world AABB を返す。LevelPlayScene の collision world 構築に使う
+/// @brief 静的 AABB collider Component。Owner の Root world 変換を halfExtents に適用した
+///        world AABB を返す。LevelPlayScene の collision world 構築に使う
 
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Component.h"
@@ -10,7 +10,8 @@
 namespace NS::Scene
 {
     /// 軸並行 BoundingBox を SceneBase に登録する Component
-    /// 回転非対応 (AABB 厳守)。Mesh と分離し、視覚と衝突を独立して調整可能にする
+    /// world 変換を適用するが結果は AABB なので、 回転時は内包する軸並行ボックスになる
+    /// Mesh と分離し、 視覚と衝突を独立して調整可能にする
     class StaticColliderComponent : public Component
     {
     public:
