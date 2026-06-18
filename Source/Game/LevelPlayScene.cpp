@@ -386,6 +386,9 @@ void LevelPlayScene::SetPlaying(bool playing) noexcept
     m_playing = playing;
     if (playing)
     {
+        // 編集中の変形を確定した最新 level でプレイするため、 collision snapshot を作り直す
+        // CommitTransformEdit は dirty を立てないため、 ここで突入時に一度作り直して取りこぼしを防ぐ
+        RebuildBlocksFromLevelData();
         // spawn を計算して player をそこへ置き、 物理 / 入力 / follow camera を有効化する
         m_playMode.Enter(m_level, m_play);
         m_playMode.SetActive(true);
