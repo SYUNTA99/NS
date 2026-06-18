@@ -28,24 +28,21 @@ namespace NS::Scene
         Vector3
     };
 
-    namespace detail
+    /// メンバ型 → FieldType タグの写像。マクロが型タグを自動推論するのに使う (未対応型はここで弾く)
+    template <class T> constexpr FieldType FieldTypeOf() noexcept
     {
-        /// メンバ型 → FieldType タグの写像。マクロが型タグを自動推論するのに使う (未対応型はここで弾く)
-        template <class T> constexpr FieldType FieldTypeOf() noexcept
-        {
-            static_assert(std::is_same_v<T, float> || std::is_same_v<T, int> || std::is_same_v<T, bool> ||
-                              std::is_same_v<T, NS::Math::Vector3>,
-                          "reflection: 未対応のフィールド型 (Float / Int / Bool / Vector3 のみ)");
-            if constexpr (std::is_same_v<T, float>)
-                return FieldType::Float;
-            else if constexpr (std::is_same_v<T, int>)
-                return FieldType::Int;
-            else if constexpr (std::is_same_v<T, bool>)
-                return FieldType::Bool;
-            else
-                return FieldType::Vector3;
-        }
-    } // namespace detail
+        static_assert(std::is_same_v<T, float> || std::is_same_v<T, int> || std::is_same_v<T, bool> ||
+                          std::is_same_v<T, NS::Math::Vector3>,
+                      "reflection: 未対応のフィールド型 (Float / Int / Bool / Vector3 のみ)");
+        if constexpr (std::is_same_v<T, float>)
+            return FieldType::Float;
+        else if constexpr (std::is_same_v<T, int>)
+            return FieldType::Int;
+        else if constexpr (std::is_same_v<T, bool>)
+            return FieldType::Bool;
+        else
+            return FieldType::Vector3;
+    }
 
     /// 反射された 1 フィールドの記述子。get/set は型消去 thunk、out/in はフィールド型の値を指す
     struct FieldDesc
@@ -65,7 +62,7 @@ namespace NS::Scene
     };
 } // namespace NS::Scene
 
-/// 直メンバ用フィールド宣言の開始。クラス本体に書く 
+/// 直メンバ用フィールド宣言の開始。クラス本体に書く
 #define NS_REFLECT_BEGIN(ThisType)                                                                                     \
     [[nodiscard]] const NS::Scene::ReflectionInfo* GetReflection() const noexcept override                             \
     {                                                                                                                  \
@@ -76,7 +73,7 @@ namespace NS::Scene
 /// 同一クラスの (private 可) 直メンバを 1 フィールドとして登録する。型タグはメンバ型から推論する
 #define NS_REFLECT_FIELD(member, label)                                                                                \
     NS::Scene::FieldDesc{label,                                                                                        \
-                         NS::Scene::detail::FieldTypeOf<decltype(Self::member)>(),                                     \
+                         NS::Scene::FieldTypeOf<decltype(Self::member)>(),                                             \
                          +[](const NS::Scene::Component* c, void* out) noexcept {                                      \
                              *static_cast<decltype(Self::member)*>(out) = static_cast<const Self*>(c)->member;         \
                          },                                                                                            \
@@ -87,7 +84,7 @@ namespace NS::Scene
 /// 基底の private や検証付きフィールドを getter/setter 経由で登録する (getter は値返し、setter は 1 引数)
 #define NS_REFLECT_ACCESSOR(ValueType, label, getterCall, setterCall)                                                  \
     NS::Scene::FieldDesc{label,                                                                                        \
-                         NS::Scene::detail::FieldTypeOf<ValueType>(),                                                  \
+                         NS::Scene::FieldTypeOf<ValueType>(),                                                          \
                          +[](const NS::Scene::Component* c, void* out) noexcept {                                      \
                              *static_cast<ValueType*>(out) = static_cast<const Self*>(c)->getterCall;                  \
                          },                                                                                            \
