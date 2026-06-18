@@ -5,6 +5,7 @@
 ///        world AABB を返す。LevelPlayScene の collision world 構築に使う
 
 #include "Framework/Math/Math.h"
+#include "Framework/Physics/SweptOBB.h"
 #include "Framework/Scene/Component.h"
 
 namespace NS::Scene
@@ -29,6 +30,10 @@ namespace NS::Scene
         /// Owner の root world position を center とした AABB を返す
         /// Owner が未登録の場合は origin 中心の AABB を返す (例外を投げない)
         [[nodiscard]] NS::Math::AABB WorldAABB() const noexcept;
+
+        /// Owner の world 変換から有向境界ボックスを返す。 回転・非一様 scale を厳密に保持する
+        /// Owner 未登録時は原点・単位回転・素の halfExtents の OBB を返す
+        [[nodiscard]] NS::Physics::OBB WorldOBB() const noexcept;
 
     private:
         NS::Math::Vector3 m_halfExtents{0.5f, 0.5f, 0.5f};

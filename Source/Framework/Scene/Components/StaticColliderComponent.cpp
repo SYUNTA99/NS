@@ -3,6 +3,8 @@
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 
+#include <cmath>
+
 namespace NS::Scene
 {
     namespace
@@ -45,5 +47,23 @@ namespace NS::Scene
         NS::Math::AABB world;
         local.Transform(world, owner->Root().WorldMatrix());
         return world;
+    }
+
+    NS::Physics::OBB StaticColliderComponent::WorldOBB() const noexcept
+    {
+        const GameObject* owner = Owner();
+        if (owner == nullptr)
+            return NS::Physics::MakeObb(
+                NS::Math::Vector3{0.0f, 0.0f, 0.0f}, NS::Math::Quaternion::Identity, m_halfExtents);
+
+        NS::Math::Vector3 scale{1.0f, 1.0f, 1.0f};
+        NS::Math::Quaternion rotation = NS::Math::Quaternion::Identity;
+        NS::Math::Vector3 translation{0.0f, 0.0f, 0.0f};
+        owner->Root().WorldMatrix().Decompose(scale, rotation, translation);
+
+        const NS::Math::Vector3 half{m_halfExtents.x * std::abs(scale.x),
+                                     m_halfExtents.y * std::abs(scale.y),
+                                     m_halfExtents.z * std::abs(scale.z)};
+        return NS::Physics::MakeObb(translation, rotation, half);
     }
 } // namespace NS::Scene
