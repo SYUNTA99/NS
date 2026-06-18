@@ -6,6 +6,7 @@
 /// 入出力は POD struct。gameplay 値 (gravity / jump 等) は保持しない (責任分担)
 
 #include "Framework/Math/Math.h"
+#include "Framework/Physics/SweptOBB.h"
 #include "Framework/Physics/SweptTriangle.h"
 
 #include <span>
@@ -23,6 +24,7 @@ namespace NS::Physics
         float capsuleHalfHeight = 0.5f;
         std::span<const NS::Math::AABB> world{};
         std::span<const NS::Physics::Triangle> worldTriangles{};
+        std::span<const NS::Physics::OBB> worldObbs{};
     };
 
     /// Update の戻り値。新 position / velocity と接触情報

@@ -4,6 +4,7 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Physics/Capsule.h"
 #include "Framework/Physics/SweptAABB.h"
+#include "Framework/Physics/SweptOBB.h"
 #include "Framework/Physics/SweptTriangle.h"
 
 #include <algorithm>
@@ -95,6 +96,22 @@ namespace NS::Physics
                     }
                 }
 
+                // 自由配置物の OBB を同 substep 内で sweep し最小 TOI 側で slide させる
+                for (const OBB& obb : input.worldObbs)
+                {
+                    float toi = 1.0f;
+                    NS::Math::Vector3 n{};
+                    if (SweptCapsuleVsOBB(cap, motion, obb, toi, n))
+                    {
+                        if (toi < earliestToi)
+                        {
+                            earliestToi = toi;
+                            hitNormal = n;
+                            anyHit = true;
+                        }
+                    }
+                }
+
                 if (!anyHit)
                 {
                     result.position = result.position + motion;
@@ -133,6 +150,22 @@ namespace NS::Physics
             {
                 float dist = 0.0f;
                 if (ray.Intersects(box, dist) && dist <= input.capsuleRadius + kGroundProbeDistance)
+                {
+                    result.grounded = true;
+                    break;
+                }
+            }
+
+            for (const OBB& obb : input.worldObbs)
+            {
+                const NS::Math::Vector3 d = bottomCenter - obb.center;
+                const NS::Math::Vector3 localOrigin{d.Dot(obb.axisX), d.Dot(obb.axisY), d.Dot(obb.axisZ)};
+                const NS::Math::Vector3 down{0.0f, -1.0f, 0.0f};
+                const NS::Math::Vector3 localDir{down.Dot(obb.axisX), down.Dot(obb.axisY), down.Dot(obb.axisZ)};
+                const NS::Math::Ray localRay(localOrigin, localDir);
+                const NS::Math::AABB localBox(NS::Math::Vector3{0.0f, 0.0f, 0.0f}, obb.halfExtents);
+                float dist = 0.0f;
+                if (localRay.Intersects(localBox, dist) && dist <= input.capsuleRadius + kGroundProbeDistance)
                 {
                     result.grounded = true;
                     break;
