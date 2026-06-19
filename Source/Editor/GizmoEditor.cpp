@@ -47,6 +47,9 @@ namespace NS::Editor
         // ray と平面の交差判定で、 分母 (rayDir・n) がこの値未満なら平行とみなし交差不能
         constexpr float kPlaneParallelEpsilon = 1e-6f;
 
+        // 回転で掴んだ点が origin に近すぎる (半径ほぼ 0) と角度が暴れるので無視する閾値 (world 距離の二乗)
+        constexpr float kRingGrabRadiusEpsilonSq = 1e-6f;
+
         // スラブ判定で方向成分がこの絶対値未満なら、 その軸に平行とみなす
         constexpr float kRayAabbParallelEpsilon = 1e-8f;
 
@@ -194,12 +197,9 @@ namespace NS::Editor
             }
             case GizmoTool::Rotate:
             {
-                NS::Math::Vector2 origin2d{};
-                if (ProjectToScreen(before.position, viewProjection, viewport, origin2d))
-                {
-                    const float angle = GizmoEditor::ScreenDragToAngle(origin2d, screenStart, screenEnd);
-                    after.rotation = GizmoEditor::ComputeAxisRotate(before.rotation, axis, angle, snap);
-                }
+                const float angle = GizmoEditor::WorldDragToAngle(
+                    before.position, axis, viewProjection, viewport, screenStart, screenEnd);
+                after.rotation = GizmoEditor::ComputeAxisRotate(before.rotation, axis, angle, snap);
                 break;
             }
             case GizmoTool::Scale:
@@ -563,16 +563,37 @@ namespace NS::Editor
         return newPos;
     }
 
-    float GizmoEditor::ScreenDragToAngle(NS::Math::Vector2 origin2d,
-                                         NS::Math::Vector2 start2d,
-                                         NS::Math::Vector2 now2d) noexcept
+    float GizmoEditor::WorldDragToAngle(const NS::Math::Vector3& origin,
+                                        GizmoAxis axis,
+                                        const NS::Math::Matrix& viewProjection,
+                                        NS::Math::Size2D viewport,
+                                        NS::Math::Vector2 screenStart,
+                                        NS::Math::Vector2 screenEnd) noexcept
     {
-        // origin から start / now へ伸びるベクトルの符号付きなす角を atan2(cross, dot) で取る
-        const NS::Math::Vector2 v0 = start2d - origin2d;
-        const NS::Math::Vector2 v1 = now2d - origin2d;
-        const float cross = v0.x * v1.y - v0.y * v1.x;
-        const float dot = v0.x * v1.x + v0.y * v1.y;
-        return std::atan2(cross, dot);
+        const NS::Math::Vector3 n = AxisVector(axis);
+        if (n.LengthSquared() < 0.5f) // X/Y/Z 以外は回さない
+            return 0.0f;
+
+        const NS::Math::Ray rayStart = NS::Scene::EditorGridMath::ScreenToWorldRay(
+            viewProjection, viewport, static_cast<int>(screenStart.x), static_cast<int>(screenStart.y));
+        const NS::Math::Ray rayNow = NS::Scene::EditorGridMath::ScreenToWorldRay(
+            viewProjection, viewport, static_cast<int>(screenEnd.x), static_cast<int>(screenEnd.y));
+
+        // 軸に直交する平面 (origin を通り法線 n) との交点で、 掴んだ点を world 座標に復元する
+        NS::Math::Vector3 hitStart{};
+        NS::Math::Vector3 hitNow{};
+        if (!IntersectRayWithPlane(rayStart, origin, n, hitStart) || !IntersectRayWithPlane(rayNow, origin, n, hitNow))
+            return 0.0f;
+
+        const NS::Math::Vector3 v0 = hitStart - origin;
+        const NS::Math::Vector3 v1 = hitNow - origin;
+        if (v0.LengthSquared() < kRingGrabRadiusEpsilonSq || v1.LengthSquared() < kRingGrabRadiusEpsilonSq)
+            return 0.0f;
+
+        // 軸まわりの符号付き角。 cross の軸成分が回転の向きを与えるのでカメラの視点側に依存しない
+        const float sinComponent = v0.Cross(v1).Dot(n);
+        const float cosComponent = v0.Dot(v1);
+        return std::atan2(sinComponent, cosComponent);
     }
 
     NS::Math::Quaternion GizmoEditor::ComputeAxisRotate(const NS::Math::Quaternion& startRot,

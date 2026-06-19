@@ -122,10 +122,15 @@ namespace NS::Editor
                                                                const NS::Math::Ray& rayNow,
                                                                bool snap) noexcept;
 
-        /// 回転リングの screen 上ドラッグを回転角 (rad) に変換する
-        [[nodiscard]] static float ScreenDragToAngle(NS::Math::Vector2 origin2d,
-                                                     NS::Math::Vector2 start2d,
-                                                     NS::Math::Vector2 now2d) noexcept;
+        /// 回転リングのドラッグを軸まわりの回転角 (rad) に変換する
+        /// screenStart / screenEnd のカーソル ray を軸直交平面に当て、 掴んだ点が運ばれた角を測る
+        /// screen 2D 角と違いカメラがどちら側から見ても符号が反転せず、 平面を真横から見る縮退時は 0
+        [[nodiscard]] static float WorldDragToAngle(const NS::Math::Vector3& origin,
+                                                    GizmoAxis axis,
+                                                    const NS::Math::Matrix& viewProjection,
+                                                    NS::Math::Size2D viewport,
+                                                    NS::Math::Vector2 screenStart,
+                                                    NS::Math::Vector2 screenEnd) noexcept;
 
         /// startRot を axis 周りに angleRad 回した新 rotation を返す
         [[nodiscard]] static NS::Math::Quaternion ComputeAxisRotate(const NS::Math::Quaternion& startRot,

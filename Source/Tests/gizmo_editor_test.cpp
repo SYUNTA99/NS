@@ -134,28 +134,70 @@ namespace
         }
     }
 
-    TEST(GizmoEditorScreenDragToAngle, QuarterTurnIsHalfPi)
+    // 単位 VP は world {x,y,z,1} がそのまま clip + 視線 +Z。 viewport 800x600 では
+    // screen(600,300)->world(0.5,0,0)、 screen(400,150)->world(0,0.5,0) に逆投影される
+    TEST(GizmoEditorWorldDragToAngle, GrabXDragToYAroundZIsQuarterTurn)
     {
-        // origin 中心、 +X 方向 (1,0) から +Y 方向 (0,1) へ 90 度回す
-        const NS::Math::Vector2 origin{100.0f, 100.0f};
-        const NS::Math::Vector2 start{200.0f, 100.0f};
-        const NS::Math::Vector2 now{100.0f, 200.0f};
-        EXPECT_NEAR(GizmoEditor::ScreenDragToAngle(origin, start, now), kPi / 2.0f, 1e-4f);
+        const NS::Math::Matrix vp;
+        const NS::Math::Size2D viewport{800, 600};
+        const float angle = GizmoEditor::WorldDragToAngle(NS::Math::Vector3{0.0f, 0.0f, 0.0f},
+                                                          GizmoAxis::Z,
+                                                          vp,
+                                                          viewport,
+                                                          NS::Math::Vector2{600.0f, 300.0f},
+                                                          NS::Math::Vector2{400.0f, 150.0f});
+        EXPECT_NEAR(angle, kPi / 2.0f, 1e-3f);
     }
 
-    TEST(GizmoEditorScreenDragToAngle, ClockwiseIsNegative)
+    // 掴み点と運び先を入れ替えると逆回り
+    TEST(GizmoEditorWorldDragToAngle, ReverseDragNegatesAngle)
     {
-        const NS::Math::Vector2 origin{0.0f, 0.0f};
-        const NS::Math::Vector2 start{1.0f, 0.0f};
-        const NS::Math::Vector2 now{0.0f, -1.0f};
-        EXPECT_NEAR(GizmoEditor::ScreenDragToAngle(origin, start, now), -kPi / 2.0f, 1e-4f);
+        const NS::Math::Matrix vp;
+        const NS::Math::Size2D viewport{800, 600};
+        const float angle = GizmoEditor::WorldDragToAngle(NS::Math::Vector3{0.0f, 0.0f, 0.0f},
+                                                          GizmoAxis::Z,
+                                                          vp,
+                                                          viewport,
+                                                          NS::Math::Vector2{400.0f, 150.0f},
+                                                          NS::Math::Vector2{600.0f, 300.0f});
+        EXPECT_NEAR(angle, -kPi / 2.0f, 1e-3f);
     }
 
-    TEST(GizmoEditorScreenDragToAngle, NoMovementIsZero)
+    TEST(GizmoEditorWorldDragToAngle, NonAxisReturnsZero)
     {
-        const NS::Math::Vector2 origin{5.0f, 5.0f};
-        const NS::Math::Vector2 start{10.0f, 5.0f};
-        EXPECT_NEAR(GizmoEditor::ScreenDragToAngle(origin, start, start), 0.0f, 1e-4f);
+        const NS::Math::Matrix vp;
+        const NS::Math::Size2D viewport{800, 600};
+        EXPECT_NEAR(GizmoEditor::WorldDragToAngle(NS::Math::Vector3{0.0f, 0.0f, 0.0f},
+                                                  GizmoAxis::None,
+                                                  vp,
+                                                  viewport,
+                                                  NS::Math::Vector2{600.0f, 300.0f},
+                                                  NS::Math::Vector2{400.0f, 150.0f}),
+                    0.0f,
+                    1e-6f);
+        EXPECT_NEAR(GizmoEditor::WorldDragToAngle(NS::Math::Vector3{0.0f, 0.0f, 0.0f},
+                                                  GizmoAxis::Uniform,
+                                                  vp,
+                                                  viewport,
+                                                  NS::Math::Vector2{600.0f, 300.0f},
+                                                  NS::Math::Vector2{400.0f, 150.0f}),
+                    0.0f,
+                    1e-6f);
+    }
+
+    // 単位 VP の視線は +Z。 X 軸リング平面 (YZ) を真横から見るため交点が定まらず 0 (縮退)
+    TEST(GizmoEditorWorldDragToAngle, EdgeOnPlaneReturnsZero)
+    {
+        const NS::Math::Matrix vp;
+        const NS::Math::Size2D viewport{800, 600};
+        EXPECT_NEAR(GizmoEditor::WorldDragToAngle(NS::Math::Vector3{0.0f, 0.0f, 0.0f},
+                                                  GizmoAxis::X,
+                                                  vp,
+                                                  viewport,
+                                                  NS::Math::Vector2{600.0f, 300.0f},
+                                                  NS::Math::Vector2{400.0f, 150.0f}),
+                    0.0f,
+                    1e-6f);
     }
 
     TEST(GizmoEditorComputeAxisRotate, NoneReturnsStart)
@@ -541,14 +583,62 @@ namespace
         gizmo.SelectForTest(&t);
         gizmo.SetToolForTest(GizmoTool::Rotate);
 
+        // 単位 VP の視線は +Z。 Z 軸リング平面 (XY) はカメラ正面なので回転が定まる
         const NS::Math::Matrix vp;
         const NS::Math::Size2D viewport{100, 100};
         gizmo.ApplyDragForTest(
-            vp, viewport, GizmoAxis::X, NS::Math::Vector2{60.0f, 50.0f}, NS::Math::Vector2{50.0f, 60.0f});
+            vp, viewport, GizmoAxis::Z, NS::Math::Vector2{60.0f, 50.0f}, NS::Math::Vector2{50.0f, 60.0f});
 
         const NS::Math::Quaternion after = t.Rotation();
         const float dot = identity.x * after.x + identity.y * after.y + identity.z * after.z + identity.w * after.w;
         EXPECT_LT(std::fabs(dot), 0.9999f);
+    }
+
+    // ワールドの同じ点を掴んで同じワールド点へ運ぶドラッグは、 カメラが軸の表から見ても裏から
+    // 見ても同じワールド回転になるべき。 screen 2D 角だけで決めると裏視点で逆回転する
+    TEST(GizmoEditorDrag, RotateSameWorldRotationFromOppositeCameraSides)
+    {
+        const NS::Math::Size2D viewport{800, 600};
+        const float aspect = 800.0f / 600.0f;
+        const auto proj = NS::Math::Matrix::CreatePerspectiveFieldOfView(kPi / 3.0f, aspect, 0.1f, 100.0f);
+        const auto viewFront =
+            NS::Math::Matrix::CreateLookAt({0.0f, 0.0f, -5.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f});
+        const auto viewBack =
+            NS::Math::Matrix::CreateLookAt({0.0f, 0.0f, 5.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f});
+        const NS::Math::Matrix vpFront = viewFront * proj;
+        const NS::Math::Matrix vpBack = viewBack * proj;
+
+        auto projectToScreen =
+            [](const NS::Math::Matrix& vp, NS::Math::Size2D vpSize, NS::Math::Vector3 w) -> NS::Math::Vector2 {
+            const NS::Math::Vector4 clip = NS::Math::Vector4::Transform(NS::Math::Vector4{w.x, w.y, w.z, 1.0f}, vp);
+            NS::Math::Vector2 s{};
+            s.x = ((clip.x / clip.w) * 0.5f + 0.5f) * static_cast<float>(vpSize.width);
+            s.y = (1.0f - ((clip.y / clip.w) * 0.5f + 0.5f)) * static_cast<float>(vpSize.height);
+            return s;
+        };
+
+        // Z 軸リングを「+X 点を掴んで +Y 点へ」 運ぶ。 これはどちらの視点でも同じワールド操作
+        NS::Scene::Transform tFront;
+        GizmoEditor gFront;
+        gFront.SelectForTest(&tFront);
+        gFront.SetToolForTest(GizmoTool::Rotate);
+        gFront.ApplyDragForTest(vpFront,
+                                viewport,
+                                GizmoAxis::Z,
+                                projectToScreen(vpFront, viewport, {1.0f, 0.0f, 0.0f}),
+                                projectToScreen(vpFront, viewport, {0.0f, 1.0f, 0.0f}));
+
+        NS::Scene::Transform tBack;
+        GizmoEditor gBack;
+        gBack.SelectForTest(&tBack);
+        gBack.SetToolForTest(GizmoTool::Rotate);
+        gBack.ApplyDragForTest(vpBack,
+                               viewport,
+                               GizmoAxis::Z,
+                               projectToScreen(vpBack, viewport, {1.0f, 0.0f, 0.0f}),
+                               projectToScreen(vpBack, viewport, {0.0f, 1.0f, 0.0f}));
+
+        ExpectRotatesSame(tFront.Rotation(), tBack.Rotation(), 3e-2f);
     }
 
     TEST(GizmoEditorDrag, UniformScaleDragGrowsAllAxesUniformly)
