@@ -774,7 +774,7 @@ namespace NS::Graphics
             return data;
         }
 
-        // mesh と skin を両方持つ node (skinned mesh) を最初に 1 つ使う
+        // skin を持つ最初の mesh node から skeleton 用の skin を確定する
         const cgltf_node* skinnedNode = nullptr;
         for (cgltf_size n = 0; n < model.nodes_count; ++n)
         {
@@ -793,34 +793,42 @@ namespace NS::Graphics
         }
 
         const cgltf_skin& skin = *skinnedNode->skin;
-        const cgltf_mesh& mesh = *skinnedNode->mesh;
 
         std::vector<Bone> bones;
         if (!BuildSkeletonBones(skin, path, bones))
             return data;
 
+        // 同一 skin を共有する全 mesh node を連結する (Mixamo は本体と関節マーカーが別 mesh に分かれており、
+        // 先頭だけ読むと関節マーカーしか出ない。 joint index 整合のため skin が一致する node のみ対象)
         std::vector<SkinnedVertex> vertices;
         std::vector<std::uint32_t> indices;
-        for (cgltf_size p = 0; p < mesh.primitives_count; ++p)
+        for (cgltf_size n = 0; n < model.nodes_count; ++n)
         {
-            const cgltf_primitive& prim = mesh.primitives[p];
-            if (prim.type != cgltf_primitive_type_triangles)
-            {
-                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                             "LoadGltfSkinnedMesh: 三角形以外の primitive を skip (path={}, type={})",
-                             path,
-                             static_cast<int>(prim.type));
+            const cgltf_node& node = model.nodes[n];
+            if (node.mesh == nullptr || node.skin != &skin)
                 continue;
-            }
-            if (prim.has_draco_mesh_compression)
+            const cgltf_mesh& mesh = *node.mesh;
+            for (cgltf_size p = 0; p < mesh.primitives_count; ++p)
             {
-                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                             "LoadGltfSkinnedMesh: Draco 圧縮 primitive は未対応のため skip (path={})",
-                             path);
-                continue;
+                const cgltf_primitive& prim = mesh.primitives[p];
+                if (prim.type != cgltf_primitive_type_triangles)
+                {
+                    NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                                 "LoadGltfSkinnedMesh: 三角形以外の primitive を skip (path={}, type={})",
+                                 path,
+                                 static_cast<int>(prim.type));
+                    continue;
+                }
+                if (prim.has_draco_mesh_compression)
+                {
+                    NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                                 "LoadGltfSkinnedMesh: Draco 圧縮 primitive は未対応のため skip (path={})",
+                                 path);
+                    continue;
+                }
+                if (!AppendSkinnedPrimitive(prim, skin.joints_count, path, vertices, indices))
+                    return data;
             }
-            if (!AppendSkinnedPrimitive(prim, skin.joints_count, path, vertices, indices))
-                return data;
         }
 
         if (vertices.empty())
