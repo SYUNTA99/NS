@@ -352,7 +352,7 @@ namespace NS::Game::Level
             return false;
         }
 
-        // OBJS chunk: u32 count + N × ObjectInstance (48 byte each)
+        // OBJS chunk: u32 count + N × ObjectInstance (88 byte each)
         if (!writer.BeginChunk(kObjsFourCc))
         {
             return false;
@@ -501,20 +501,36 @@ namespace NS::Game::Level
                 outLevel = LevelData{};
                 return false;
             }
-            const std::size_t expectedDataBytes = objectCount * sizeof(ObjectInstance);
-            if (expectedDataBytes + sizeof(objectCount) > size)
+            // record サイズ: minor 0=48 byte、 minor 1=60 byte (collider half-extents)、 現行 minor 2=88 byte
+            // (collider offset / rotation 追加分)。 chunk 実データ長 / count で判別し、 旧形式は先頭 prefix だけ
+            // 読んで新フィールドは default (half 0.5 / offset 0 / rotation 単位) を残す
+            constexpr std::size_t kObjectRecordV0Bytes = 48;
+            constexpr std::size_t kObjectRecordV1Bytes = 60;
+            const std::size_t recordBytes =
+                (objectCount > 0) ? (size - sizeof(objectCount)) / objectCount : sizeof(ObjectInstance);
+            const std::size_t expectedDataBytes = objectCount * recordBytes;
+            const bool knownRecord = (recordBytes == sizeof(ObjectInstance) || recordBytes == kObjectRecordV1Bytes ||
+                                      recordBytes == kObjectRecordV0Bytes);
+            if (!knownRecord || expectedDataBytes + sizeof(objectCount) != size)
             {
                 NS_LOG_ERROR(::NS::Core::LogCat::Game,
-                             "LoadLevelFromFile: OBJS chunk 内 data 不足 (期待 {} 実際 {})",
-                             expectedDataBytes + sizeof(objectCount),
+                             "LoadLevelFromFile: OBJS chunk の record サイズが不正 (record {} count {} size {})",
+                             recordBytes,
+                             objectCount,
                              size);
                 outLevel = LevelData{};
                 return false;
             }
-            outLevel.objects.resize(objectCount);
-            if (objectCount > 0)
+            outLevel.objects.resize(objectCount); // 新フィールドは default で埋まる
+            if (objectCount > 0 && recordBytes == sizeof(ObjectInstance))
             {
                 reader.Read(outLevel.objects.data(), expectedDataBytes);
+            }
+            else
+            {
+                // 旧 prefix を 1 件ずつ読む (48 / 60 とも現行レイアウトの先頭 prefix なのでそのまま載る)
+                for (std::uint32_t i = 0; i < objectCount; ++i)
+                    reader.Read(&outLevel.objects[i], recordBytes);
             }
         }
 

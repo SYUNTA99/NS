@@ -20,6 +20,14 @@ namespace NS::Graphics::DebugDraw
     void Line(const NS::Math::Vector3& a, const NS::Math::Vector3& b, const NS::Math::Color& color) noexcept;
     /// AABB wireframe (12 line) を蓄積
     void AABB(const NS::Math::AABB& box, const NS::Math::Color& color) noexcept;
+    /// 有向境界ボックス wireframe (12 line) を蓄積する。 axisX/Y/Z は正規直交基底、 halfExtents は scale 込み半サイズ
+    /// center を中心に各 axis 方向へ halfExtents 伸びた箱を描く (AABB と違い回転を保持する)
+    void OBB(const NS::Math::Vector3& center,
+             const NS::Math::Vector3& axisX,
+             const NS::Math::Vector3& axisY,
+             const NS::Math::Vector3& axisZ,
+             const NS::Math::Vector3& halfExtents,
+             const NS::Math::Color& color) noexcept;
     /// Capsule wireframe を蓄積
     void Capsule(const NS::Math::Vector3& base,
                  const NS::Math::Vector3& axis,

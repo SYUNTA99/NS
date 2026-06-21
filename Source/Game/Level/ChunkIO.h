@@ -19,7 +19,9 @@ namespace NS::Game::Level
     struct LevelData;
 
     constexpr std::uint16_t kCurrentVersionMajor = 1;
-    constexpr std::uint16_t kCurrentVersionMinor = 0;
+    // minor 1: collider half-extents 追加 (48→60)。 minor 2: collider offset / rotation 追加 (60→88)
+    // 旧 minor は読込時に record サイズを見て前方互換 migration する (新フィールドは既定値)
+    constexpr std::uint16_t kCurrentVersionMinor = 2;
 
     /// `.nslvl` 書込。 BeginFile→(BeginChunk→Write→EndChunk)×N→EndFile の順に呼ぶ。 失敗後は何もしない
     class ChunkWriter

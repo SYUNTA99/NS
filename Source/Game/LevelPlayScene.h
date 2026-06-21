@@ -166,6 +166,7 @@ private:
     NS::Scene::MeshRendererComponent* m_animMesh = nullptr;
     NS::Scene::SkeletalAnimationComponent* m_animPlayer = nullptr;
     float m_animSpeed = 1.0f;
+
     std::vector<std::unique_ptr<Block>> m_blocks;
     std::vector<std::unique_ptr<SlopeBlock>> m_slopes;
     std::vector<std::unique_ptr<PoleBlock>> m_poles;

@@ -27,7 +27,6 @@
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
-#include "Framework/Graphics/Retarget.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/SkeletalMesh.h"
 #include "Framework/Graphics/Skybox.h"
@@ -326,31 +325,9 @@ void LevelPlayScene::OnStart()
 
             const std::size_t boneCount = skinned.skeleton.BoneCount();
 
-            // モデル同梱クリップに Assets/Models/Anims/ の追加アニメ glTF を合体する
-            // Mixamo 等の別ファイルを後から足せる (同一リグは骨名一致で再 index される)
+            // モデル同梱クリップのみ再生する。 別リグの焼きアニメ流用はオフライン (DCC) でベイクして
+            // 自前クリップとして持たせる方針 (実行時リターゲットは持たない)
             std::vector<NS::Graphics::AnimationClip> clips = std::move(skinned.animations);
-            const auto animDir = exeDir / "Assets" / "Models" / "Anims";
-            if (NS::Core::FileSystem::Exists(animDir))
-            {
-                for (const auto& animPath : NS::Core::FileSystem::ListFiles(animDir))
-                {
-                    const auto ext = animPath.extension();
-                    if (ext != ".glb" && ext != ".gltf")
-                        continue;
-                    auto extra = NS::Graphics::LoadAnimationsForSkeleton(animPath.string(), skinned.skeleton);
-                    for (NS::Graphics::AnimationClip& clip : extra)
-                        clips.push_back(std::move(clip));
-                }
-            }
-
-            // 別キャラのファイルからアニメだけ借りる (人型なら別リグでもリターゲットして合体)
-            const auto borrowPath = exeDir / "Assets" / "Models" / "Soldier.glb";
-            if (NS::Core::FileSystem::Exists(borrowPath) && borrowPath != modelPath)
-            {
-                auto borrowed = NS::Graphics::LoadAnimationsForSkeleton(borrowPath.string(), skinned.skeleton);
-                for (NS::Graphics::AnimationClip& clip : borrowed)
-                    clips.push_back(std::move(clip));
-            }
 
             m_animatedModel = std::make_unique<NS::Scene::GameObject>();
             m_animatedModel->AttachScene(this);
@@ -852,12 +829,20 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
 
         // 非 gridAligned (自由配置物) は個別描画の Block として扱う。 材質は materialIndex から解決する
         // (v1 で昇格できるのは solid のみなので kind は問わず cube で表現する)
+        // collider は Transform と独立した保存値から組む (world では Root の scale が別途乗る)
         if (!gridAligned)
         {
-            auto cube = std::make_unique<Block>(m_cubeMesh.get(), resolveMaterial(entry), kCellHalfExtents);
+            const NS::Math::Vector3 colliderHalfExtents{
+                entry.colliderHalfExtentsX, entry.colliderHalfExtentsY, entry.colliderHalfExtentsZ};
+            auto cube = std::make_unique<Block>(m_cubeMesh.get(), resolveMaterial(entry), colliderHalfExtents);
             cube->AttachScene(this);
             placeFromEntry(*cube);
             cube->MeshComp().SetBaseColor(baseColor);
+            // 当たり箱の親 local オフセット / 回転を保存値から復元する (世界では owner の scale / 回転が更に乗る)
+            cube->Collider().SetCenterOffset(
+                NS::Math::Vector3{entry.colliderOffsetX, entry.colliderOffsetY, entry.colliderOffsetZ});
+            cube->Collider().SetLocalRotation(NS::Math::Quaternion{
+                entry.colliderRotationX, entry.colliderRotationY, entry.colliderRotationZ, entry.colliderRotationW});
             cube->OnStart();
             // 自由配置物は回転 / scale を潰さない OBB チャネルへ載せる (grid solid は AABB のまま)
             m_collisionObbs.push_back(cube->Collider().WorldOBB());

@@ -1,6 +1,6 @@
+#include "Editor/LevelFilePaths.h"
 #include "Framework/Core/Filesystem.h"
 #include "Game/Blocks/BlockRegistry.h"
-#include "Editor/LevelFilePaths.h"
 #include "Game/Level/ChunkIO.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/detail/crc32.h"
@@ -193,6 +193,14 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     freeObject.kind = NS::Game::Blocks::kBlockIdSolid;
     freeObject.materialIndex = 1;
     freeObject.flags = 0;
+    freeObject.colliderHalfExtentsX = 0.3f;
+    freeObject.colliderHalfExtentsY = 1.25f;
+    freeObject.colliderHalfExtentsZ = 0.8f;
+    freeObject.colliderOffsetX = 0.1f;
+    freeObject.colliderOffsetY = -0.4f;
+    freeObject.colliderOffsetZ = 0.6f;
+    freeObject.colliderRotationY = 0.70710677f;
+    freeObject.colliderRotationW = 0.70710677f;
     src.objects.push_back(freeObject);
 
     LevelNs::ObjectInstance gridObject{};
@@ -220,6 +228,14 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     EXPECT_EQ(dst.objects[0].kind, NS::Game::Blocks::kBlockIdSolid);
     EXPECT_EQ(dst.objects[0].materialIndex, 1);
     EXPECT_EQ(dst.objects[0].flags, 0u);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsX, 0.3f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsY, 1.25f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsZ, 0.8f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderOffsetX, 0.1f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderOffsetY, -0.4f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderOffsetZ, 0.6f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderRotationY, 0.70710677f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderRotationW, 0.70710677f);
 
     EXPECT_EQ(dst.objects[1].kind, NS::Game::Blocks::kBlockIdSlope45);
     EXPECT_EQ(dst.objects[1].materialIndex, -1);

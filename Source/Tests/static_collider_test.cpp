@@ -5,6 +5,8 @@
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Transform.h>
 
+#include <cmath>
+
 namespace
 {
     using NS::Scene::GameObject;
@@ -135,4 +137,67 @@ TEST(StaticColliderTest, WorldOBBWithoutOwnerIsOriginIdentity)
     EXPECT_FLOAT_EQ(obb.center.x, 0.0f);
     EXPECT_NEAR(obb.halfExtents.x, 1.0f, 1e-4f);
     EXPECT_NEAR(obb.axisX.x, 1.0f, 1e-4f);
+}
+
+// 当たり箱の中心オフセットが owner 位置へ足された world 中心になる (回転 / scale 無し)
+TEST(StaticColliderTest, CenterOffsetShiftsWorldCenter)
+{
+    GameObject obj;
+    auto& sc = *obj.AddComponent<StaticColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
+    obj.Root().SetPosition({10.0f, 0.0f, 0.0f});
+    sc.SetCenterOffset({0.0f, 2.0f, 0.0f});
+
+    const NS::Physics::OBB obb = sc.WorldOBB();
+    EXPECT_NEAR(obb.center.x, 10.0f, 1e-4f);
+    EXPECT_NEAR(obb.center.y, 2.0f, 1e-4f);
+    EXPECT_NEAR(obb.center.z, 0.0f, 1e-4f);
+}
+
+// オフセットは親 local 基準なので owner の scale が乗る
+TEST(StaticColliderTest, CenterOffsetScalesWithOwner)
+{
+    GameObject obj;
+    auto& sc = *obj.AddComponent<StaticColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
+    obj.Root().SetScale({3.0f, 3.0f, 3.0f});
+    sc.SetCenterOffset({1.0f, 0.0f, 0.0f});
+
+    const NS::Physics::OBB obb = sc.WorldOBB();
+    EXPECT_NEAR(obb.center.x, 3.0f, 1e-4f); // 1.0 * scale 3
+}
+
+// オフセットは親 local 基準なので owner の回転で向きが回る (Y 90° で local +X が world XZ 平面で 90° 回る)
+TEST(StaticColliderTest, CenterOffsetRotatesWithOwner)
+{
+    GameObject obj;
+    auto& sc = *obj.AddComponent<StaticColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
+    obj.Root().SetRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::kPi * 0.5f, 0.0f, 0.0f));
+    sc.SetCenterOffset({1.0f, 0.0f, 0.0f});
+
+    const NS::Physics::OBB obb = sc.WorldOBB();
+    EXPECT_NEAR(obb.center.x, 0.0f, 1e-4f);
+    EXPECT_NEAR(obb.center.y, 0.0f, 1e-4f);
+    EXPECT_NEAR(std::abs(obb.center.z), 1.0f, 1e-4f);
+}
+
+// 当たり箱の local 回転だけで OBB 軸が回る (owner は無回転)
+TEST(StaticColliderTest, LocalRotationRotatesObbAxes)
+{
+    GameObject obj;
+    auto& sc = *obj.AddComponent<StaticColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
+    sc.SetLocalRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::kPi * 0.5f, 0.0f, 0.0f));
+
+    const NS::Physics::OBB obb = sc.WorldOBB();
+    EXPECT_NEAR(obb.axisX.x, 0.0f, 1e-4f);
+    EXPECT_NEAR(obb.axisX.Dot(obb.axisX), 1.0f, 1e-4f);
+}
+
+// Euler(度) で設定し Euler(度) で読み戻すと往復一致する (Inspector 窓口の往復保証)
+TEST(StaticColliderTest, RotationEulerDegreesRoundTrips)
+{
+    StaticColliderComponent sc;
+    sc.SetRotationEulerDegrees({0.0f, 90.0f, 0.0f});
+    const NS::Math::Vector3 deg = sc.RotationEulerDegrees();
+    EXPECT_NEAR(deg.x, 0.0f, 1e-3f);
+    EXPECT_NEAR(deg.y, 90.0f, 1e-3f);
+    EXPECT_NEAR(deg.z, 0.0f, 1e-3f);
 }

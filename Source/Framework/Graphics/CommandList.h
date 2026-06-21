@@ -75,6 +75,9 @@ namespace NS::Graphics
         /// index 付き描画 (DrawIndexed)
         void DrawIndexed(unsigned indexCount) noexcept;
 
+        /// index 無し描画 (Draw)。line list 等 index を持たない蓄積描画に使う
+        void Draw(unsigned vertexCount) noexcept;
+
         /// 借用している ID3D11DeviceContext (非所有)。継ぎ目で生 D3D を扱う場合に使う
         [[nodiscard]] ID3D11DeviceContext* Native() const noexcept;
 
