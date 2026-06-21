@@ -1,0 +1,67 @@
+#pragma once
+
+/// @file AssetManager.h
+/// @brief NS::Scene::AssetManager — アプリ寿命の単一アセットキャッシュ
+///
+/// @details path 鍵 leaf (Mesh / Texture / Shader) を dedupe 所有し、 手続き生成 builtin を名前鍵で配り、
+/// Reload で reload-in-place する。 利用側は全て raw ポインタで参照する (所有は本クラス単一)
+/// 内部 GPU リソースを握るため、 参照する Renderer より先に Clear / 破棄すること
+/// 型別のロード処理を独立メソッドに分け、 本体は「キャッシュの容れ物 + Reload の窓口」に徹する
+/// 依存: NS::Graphics::Shader / Texture / Mesh / StaticMesh, NS::Core::FileSystem
+
+#include <filesystem>
+#include <map>
+#include <memory>
+#include <string>
+#include <string_view>
+
+namespace NS::Graphics
+{
+    class Shader;
+    class Texture;
+    class Mesh;
+    class StaticMesh;
+} // namespace NS::Graphics
+
+namespace NS::Scene
+{
+    /// アプリ寿命でアセットを dedupe 所有する単一キャッシュ。 leaf は path 鍵、 builtin は名前鍵
+    class AssetManager
+    {
+    public:
+        /// baseDir は将来 file mesh 等の相対 path を解決する基準 (通常は ContentRoot)
+        explicit AssetManager(std::filesystem::path baseDir) noexcept;
+        ~AssetManager();
+
+        AssetManager(const AssetManager&) = delete;
+        AssetManager& operator=(const AssetManager&) = delete;
+        AssetManager(AssetManager&&) = delete;
+        AssetManager& operator=(AssetManager&&) = delete;
+
+        /// path 鍵で Shader を dedupe して返す。 同一 path は同一インスタンス。 失敗時も非 null (fallback)
+        [[nodiscard]] NS::Graphics::Shader* GetOrLoadShader(const std::filesystem::path& path);
+        /// path 鍵で Texture を dedupe して返す。 同一 path は同一インスタンス
+        [[nodiscard]] NS::Graphics::Texture* GetOrLoadTexture(const std::filesystem::path& path);
+        /// path 鍵で Mesh を dedupe して返す。 file mesh のロード対応前は未対応 path で nullptr
+        [[nodiscard]] NS::Graphics::Mesh* GetOrLoadMesh(const std::filesystem::path& path);
+
+        /// 手続き生成 builtin を一括登録する (cube / wedge45 / wedge30 / wedge22 / wedge15 / pole / shadowQuad)
+        /// device 確立後・最初の利用前に 1 度だけ呼ぶ。 既登録名は上書きしない
+        void RegisterBuiltins();
+        /// 名前鍵で builtin StaticMesh を引く。 未登録は nullptr
+        [[nodiscard]] NS::Graphics::StaticMesh* Builtin(std::string_view name) const noexcept;
+
+        /// path 鍵 leaf を引き reload-in-place する (現状 Shader のみ)。 成功で true、 未キャッシュ / 失敗で false
+        [[nodiscard]] bool Reload(const std::filesystem::path& path);
+
+        /// 全キャッシュを解放する。 Renderer 破棄より前に呼ぶ
+        void Clear() noexcept;
+
+    private:
+        std::filesystem::path m_baseDir;
+        std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Shader>> m_shaders;
+        std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Texture>> m_textures;
+        std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Mesh>> m_meshes;
+        std::map<std::string, std::unique_ptr<NS::Graphics::StaticMesh>> m_builtins; // path 無し、 leaf と別容器
+    };
+} // namespace NS::Scene
