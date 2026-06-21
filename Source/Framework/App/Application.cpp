@@ -2,9 +2,11 @@
 
 #include "Framework/App/Layer.h"
 #include "Framework/Core/Clock.h"
+#include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 #include "Framework/Platform/Input.h"
+#include "Framework/Scene/AssetManager.h"
 
 #include "Framework/Framework.h"
 
@@ -104,6 +106,11 @@ namespace NS::App
         return *m_input;
     }
 
+    NS::Scene::AssetManager& Application::Assets() noexcept
+    {
+        return *m_assets;
+    }
+
     void Application::AddLayer(std::unique_ptr<NS::App::Layer> layer)
     {
         m_layers.AddLayer(std::move(layer));
@@ -137,6 +144,13 @@ namespace NS::App
     {
         DrainPendingQuit();
         NS::Core::FrameTimer::Reset();
+
+        // Renderer は ctor で構築済。各 scene の OnAttach/OnStart が builtin や共有 material を引く前に用意する
+        // 共有 material は builtin の shader/texture を借りるため RegisterBuiltins の後に組む
+        m_assets = std::make_unique<NS::Scene::AssetManager>(NS::Core::FileSystem::ContentRoot());
+        m_assets->RegisterBuiltins();
+        m_assets->RegisterSharedMaterials();
+
         for (auto& layer : m_layers)
             layer->OnAttach();
     }
@@ -218,6 +232,9 @@ namespace NS::App
             m_window->AttachInput(nullptr);
             // ImGui の message hook 解除と context 破棄は EditorLayer::OnDetach が先に済ませている
         }
+        // AssetManager は GPU リソースを握るため Renderer 破棄より前に解放する
+        if (m_assets)
+            m_assets->Clear();
         m_renderer.reset();
         m_input.reset();
         m_window.reset();

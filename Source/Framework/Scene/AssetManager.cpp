@@ -9,11 +9,17 @@
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/StaticMesh.h"
 #include "Framework/Graphics/Texture.h"
+#include "Framework/Graphics/TextureArray.h"
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 
 #include <string>
 #include <utility>
+
+// json.hpp は /W4 で警告が出るため、 この TU でだけ警告を抑止して取り込む
+#pragma warning(push, 0)
+#include "ThirdParty/nlohmann/json.hpp"
+#pragma warning(pop)
 
 namespace NS::Scene
 {
@@ -42,9 +48,66 @@ namespace NS::Scene
             desc.indexCount = geom.indices.size();
             return NS::Graphics::StaticMesh::Create(desc);
         }
+
+        [[nodiscard]] NS::Graphics::BlendMode ParseBlend(const std::string& value) noexcept
+        {
+            if (value == "Alpha")
+                return NS::Graphics::BlendMode::Alpha;
+            if (value == "Additive")
+                return NS::Graphics::BlendMode::Additive;
+            return NS::Graphics::BlendMode::Opaque;
+        }
     } // namespace
 
-    // ParseMaterialJson の定義は MaterialLibrary.cpp に置く (削除時に当 TU へ移す)。 ここでは宣言を使うだけ
+    bool ParseMaterialJson(std::string_view jsonText, MaterialFileDesc& out, std::string& outError)
+    {
+        // 例外を投げない parse。 不正 JSON は is_discarded() で検知する
+        const nlohmann::json j = nlohmann::json::parse(jsonText, nullptr, false);
+        if (j.is_discarded())
+        {
+            outError = "JSON parse に失敗";
+            return false;
+        }
+        if (!j.is_object())
+        {
+            outError = "ルートが object でない";
+            return false;
+        }
+
+        // vs / ps は必須。 これが無いと Material を作れない
+        if (!j.contains("vs") || !j["vs"].is_string() || !j.contains("ps") || !j["ps"].is_string())
+        {
+            outError = "vs / ps (string) が必要";
+            return false;
+        }
+        out.vertexShader = j["vs"].get<std::string>();
+        out.pixelShader = j["ps"].get<std::string>();
+
+        out.textures.clear();
+        if (j.contains("textures") && j["textures"].is_array())
+        {
+            for (const auto& tex : j["textures"])
+            {
+                if (tex.is_string())
+                    out.textures.emplace_back(tex.get<std::string>());
+            }
+        }
+
+        out.baseColor = NS::Math::Vector3{1.0f, 1.0f, 1.0f};
+        if (j.contains("baseColor") && j["baseColor"].is_array() && j["baseColor"].size() == 3)
+        {
+            const auto& c = j["baseColor"];
+            if (c[0].is_number() && c[1].is_number() && c[2].is_number())
+                out.baseColor = NS::Math::Vector3{c[0].get<float>(), c[1].get<float>(), c[2].get<float>()};
+        }
+
+        out.blend = NS::Graphics::BlendMode::Opaque;
+        if (j.contains("blend") && j["blend"].is_string())
+            out.blend = ParseBlend(j["blend"].get<std::string>());
+
+        outError.clear();
+        return true;
+    }
 
     AssetManager::AssetManager(std::filesystem::path baseDir) noexcept : m_baseDir(std::move(baseDir)) {}
     AssetManager::~AssetManager() = default;
@@ -207,6 +270,24 @@ namespace NS::Scene
         return it != m_sharedMaterials.end() ? it->second.get() : nullptr;
     }
 
+    NS::Graphics::TextureArray* AssetManager::GetOrCreateTextureArray(std::string_view name,
+                                                                      const NS::Graphics::TextureArrayDesc& desc)
+    {
+        const std::string key(name);
+        if (const auto it = m_textureArrays.find(key); it != m_textureArrays.end())
+            return it->second.get();
+        auto array = NS::Graphics::TextureArray::Create(desc);
+        NS::Graphics::TextureArray* raw = array.get();
+        m_textureArrays.emplace(key, std::move(array));
+        return raw;
+    }
+
+    NS::Graphics::TextureArray* AssetManager::TextureArrayByName(std::string_view name) const noexcept
+    {
+        const auto it = m_textureArrays.find(std::string(name));
+        return it != m_textureArrays.end() ? it->second.get() : nullptr;
+    }
+
     bool AssetManager::Reload(const std::filesystem::path& path)
     {
         const std::filesystem::path key = path.lexically_normal();
@@ -216,11 +297,25 @@ namespace NS::Scene
         return false;
     }
 
+    std::size_t AssetManager::ReloadAllShaders()
+    {
+        std::size_t reloaded = 0;
+        for (auto& entry : m_shaders)
+        {
+            if (entry.second->Reload())
+                ++reloaded;
+        }
+        NS_LOG_INFO(
+            ::NS::Core::LogCat::Graphics, "AssetManager: shader reload {} / {} 本成功", reloaded, m_shaders.size());
+        return reloaded;
+    }
+
     void AssetManager::Clear() noexcept
     {
         // material は leaf (shader / texture) を参照するので先に解放する
         m_sharedMaterials.clear();
         m_materials.clear();
+        m_textureArrays.clear();
         m_textures.clear();
         m_shaders.clear();
         m_meshes.clear();

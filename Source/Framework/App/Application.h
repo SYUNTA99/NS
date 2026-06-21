@@ -29,6 +29,11 @@ namespace NS::Platform
     class Input;
 }
 
+namespace NS::Scene
+{
+    class AssetManager;
+}
+
 namespace NS::App
 {
 
@@ -70,6 +75,9 @@ namespace NS::App
         [[nodiscard]] NS::Graphics::Renderer& Renderer() noexcept;
         [[nodiscard]] NS::Platform::Input& Input() noexcept;
 
+        /// アプリ寿命のアセットキャッシュ。builtin / leaf / 共有 material の取得窓口
+        [[nodiscard]] NS::Scene::AssetManager& Assets() noexcept;
+
         /// 現在の Application インスタンス。未構築時は nullptr
         [[nodiscard]] static Application* Get() noexcept;
         /// 次フレームの MainLoop ループ抜け要求。Get() が nullptr の場合は何もしない
@@ -83,6 +91,8 @@ namespace NS::App
         ApplicationDesc m_desc;
         std::unique_ptr<NS::Platform::Window> m_window;
         std::unique_ptr<NS::Graphics::Renderer> m_renderer;
+        // Renderer より後に宣言する = 逆順破棄で Renderer より先に死ぬ (GPU リソース解放順を保証)
+        std::unique_ptr<NS::Scene::AssetManager> m_assets;
         std::unique_ptr<NS::Platform::Input> m_input;
         Layers m_layers;
         bool m_valid = false;

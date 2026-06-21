@@ -12,6 +12,7 @@
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
+#include "Framework/Scene/AssetManager.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
@@ -122,6 +123,9 @@ void LevelEditorController::EnterPlay() noexcept
     m_mode = Mode::Play;
     // player spawn / 物理 / follow camera は scene が握る
     m_scene->SetPlaying(true);
+    // SetPlaying(true) は RebuildBlocksFromLevelData で全オブジェクトを作り直す。 旧実体を指したままの
+    // ギズモが Edit 復帰後のクリックで dangling を踏むため、 ここで選択と候補を貼り直す
+    InvalidateGizmoSelectionAfterRebuild();
     m_editor.SetActive(false);
     if (m_editorCameraRig)
         m_editorCameraRig->EditorCam().SetActive(false);
@@ -134,9 +138,21 @@ void LevelEditorController::EnterEdit() noexcept
     m_mode = Mode::Edit;
     // player 凍結 / follow・area camera 休止 / play 状態リセットは scene が握る
     m_scene->SetPlaying(false);
+    // Play 中の rebuild を跨いだ選択 / 候補をクリーンにしてから編集へ戻る
+    InvalidateGizmoSelectionAfterRebuild();
     m_editor.SetActive(true);
     if (m_editorCameraRig)
         m_editorCameraRig->EditorCam().SetActive(true);
+}
+
+void LevelEditorController::InvalidateGizmoSelectionAfterRebuild() noexcept
+{
+    // rebuild 後は free/grid オブジェクトが別アドレスで作り直されるため、 ギズモの選択 (m_selected) と
+    // 選択候補 span が解放済みを指す。 選択を外し候補を現在の実体へ貼り直して dangling を断つ
+    m_gizmo.ClearSelection();
+    m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+    m_lastGizmoSelected = nullptr;
+    RefreshGizmoSelectables();
 }
 
 void LevelEditorController::Tick()
@@ -843,7 +859,8 @@ void LevelEditorController::ReselectFreeObjectById(std::uint32_t id) noexcept
 
 bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path& matPath)
 {
-    if (m_editorToolMode != EditorToolMode::Object || !m_scene->m_materialLibrary)
+    auto* app = NS::App::Application::Get();
+    if (m_editorToolMode != EditorToolMode::Object || app == nullptr)
         return false;
 
     NS::Scene::Transform* selected = m_gizmo.Selected();
@@ -863,7 +880,7 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
     if (freeSlot >= m_scene->m_freeObjects.size())
         return false;
 
-    const auto loaded = m_scene->m_materialLibrary->Load(matPath);
+    const auto loaded = app->Assets().LoadMaterial(matPath);
     if (loaded.material == nullptr)
         return false;
 

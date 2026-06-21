@@ -187,6 +187,10 @@ private:
     /// ギズモの選択候補 (自由オブジェクト + grid solid ブロック) を連結し直して注入する
     void RefreshGizmoSelectables();
 
+    /// scene の rebuild (Play 突入の SetPlaying 等) を跨いだ後、 ギズモの選択 / 選択候補 span が
+    /// 解放済みオブジェクトを指したままになるのを断つ。 選択を外し候補を現在の実体へ貼り直す
+    void InvalidateGizmoSelectionAfterRebuild() noexcept;
+
     /// grid solid ブロックの ObjectInstance から gridAligned ビットを落として自由オブジェクト化する
     void PromoteGridBlockToFree(std::size_t blockIndex);
 

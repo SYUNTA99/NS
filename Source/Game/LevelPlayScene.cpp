@@ -9,6 +9,7 @@
 #include "Game/Player.h"
 #include "Game/Undo/EditTarget.h"
 
+#include "Framework/Scene/AssetManager.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/Scene/Components/HazardComponent.h"
@@ -102,96 +103,12 @@ void LevelPlayScene::OnStart()
     auto& renderer = app->Renderer();
     const auto exeDir = NS::Core::FileSystem::ContentRoot();
 
-    auto cubeGeom = NS::Graphics::MakeCube({0.5f, 0.5f, 0.5f});
-    NS::Graphics::MeshDesc meshDesc{};
-    meshDesc.vertices = cubeGeom.vertices.data();
-    meshDesc.vertexCount = cubeGeom.vertices.size();
-    meshDesc.indices = cubeGeom.indices.data();
-    meshDesc.indexCount = cubeGeom.indices.size();
-    m_cubeMesh = NS::Graphics::StaticMesh::Create(meshDesc);
+    // builtin mesh と共有 material は AssetManager がアプリ寿命で所有する。 ここは使う時に引くだけ
+    auto& assets = app->Assets();
 
-    // 4 種 wedge mesh を 1 度だけ生成して scene 寿命のあいだ共有する
-    auto buildWedge = [&renderer](float angleDeg) {
-        auto geom = NS::Graphics::MakeWedge(angleDeg, {0.5f, 0.5f, 0.5f});
-        NS::Graphics::MeshDesc md{};
-        md.vertices = geom.vertices.data();
-        md.vertexCount = geom.vertices.size();
-        md.indices = geom.indices.data();
-        md.indexCount = geom.indices.size();
-        return NS::Graphics::StaticMesh::Create(md);
-    };
-    m_wedgeMesh45 = buildWedge(45.0f);
-    m_wedgeMesh30 = buildWedge(30.0f);
-    m_wedgeMesh22 = buildWedge(22.5f);
-    m_wedgeMesh15 = buildWedge(15.0f);
-
-    {
-        auto poleGeom = NS::Graphics::MakeCylinder(0.15f, 1.0f, 12);
-        NS::Graphics::MeshDesc poleDesc{};
-        poleDesc.vertices = poleGeom.vertices.data();
-        poleDesc.vertexCount = poleGeom.vertices.size();
-        poleDesc.indices = poleGeom.indices.data();
-        poleDesc.indexCount = poleGeom.indices.size();
-        m_poleMesh = NS::Graphics::StaticMesh::Create(poleDesc);
-    }
-
-    NS::Graphics::TextureDesc texDesc{};
-    texDesc.path = exeDir / "Assets" / "Textures" / "cube_test.png";
-    texDesc.generateMipmaps = true;
-    texDesc.sRGB = false;
-    m_texture = NS::Graphics::Texture::Create(texDesc);
-    if (m_texture->IsUsingFallback())
-        NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelPlayScene: cube_test.png 読込失敗、magenta fallback で続行");
-
-    // Player は単一 Texture2D 流派 (player.ps.hlsl)。 standard.vs は block と、 player.ps は block / skinned と共有する
-    m_standardVS = NS::Graphics::Shader::Create(exeDir / "Shaders" / "standard.vs.hlsl");
-    m_playerPS = NS::Graphics::Shader::Create(exeDir / "Shaders" / "player.ps.hlsl");
-    if (m_standardVS->IsUsingFallback() || m_playerPS->IsUsingFallback())
-        NS_LOG_WARN(::NS::Core::LogCat::Game,
-                    "LevelPlayScene: player 用 HLSL 読込/コンパイル失敗、 magenta fallback で続行");
-
-    NS::Graphics::MaterialDesc matDesc{};
-    matDesc.vertexShader = m_standardVS.get();
-    matDesc.pixelShader = m_playerPS.get();
-    matDesc.constantBufferSize = sizeof(NS::Scene::FrameCB);
-    matDesc.cbSlot = 0;
-    m_playerMaterial = NS::Graphics::Material::Create(matDesc);
-    m_playerMaterial->SetTexture(0, m_texture.get());
-
-    // Block は player と同じ VS/PS を共有。 実際の VS/PS/Texture は InstanceBatcher が FlushAll で
-    // 上書きするので、 ここの Material は ConstantBuffer 搬入路として使うだけ
-    NS::Graphics::MaterialDesc blockMatDesc = matDesc;
-    m_blockMaterial = NS::Graphics::Material::Create(blockMatDesc);
-    // slot 0 は外側で TextureArray を bind するため SetTexture 禁止 — 呼ぶと Material::Bind が SRV を上書きする
-
-    // 水は個別描画 (WaterBlock + MeshRenderer)。alpha<1 を出す water.ps + Alpha ブレンドの専用 Material にする
-    m_waterPS = NS::Graphics::Shader::Create(exeDir / "Shaders" / "water.ps.hlsl");
-    if (m_waterPS->IsUsingFallback())
-        NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelPlayScene: water.ps 読込/コンパイル失敗、 magenta fallback で続行");
-    NS::Graphics::MaterialDesc waterMatDesc = matDesc;
-    waterMatDesc.pixelShader = m_waterPS.get();
-    waterMatDesc.blend = NS::Graphics::BlendMode::Alpha;
-    m_waterMaterial = NS::Graphics::Material::Create(waterMatDesc);
-    m_waterMaterial->SetTexture(0, m_texture.get());
-
-    // 接地シャドウ: 共有 quad mesh + shadow.ps + Alpha Material (テクスチャ不要、PS が放射状アルファを生成)
-    m_shadowPS = NS::Graphics::Shader::Create(exeDir / "Shaders" / "shadow.ps.hlsl");
-    if (m_shadowPS->IsUsingFallback())
-        NS_LOG_WARN(::NS::Core::LogCat::Game,
-                    "LevelPlayScene: shadow.ps 読込/コンパイル失敗、 magenta fallback で続行");
-    {
-        const auto planeGeom = NS::Graphics::MakePlane({0.5f, 0.5f});
-        NS::Graphics::MeshDesc planeDesc{};
-        planeDesc.vertices = planeGeom.vertices.data();
-        planeDesc.vertexCount = planeGeom.vertices.size();
-        planeDesc.indices = planeGeom.indices.data();
-        planeDesc.indexCount = planeGeom.indices.size();
-        m_shadowMesh = NS::Graphics::StaticMesh::Create(planeDesc);
-    }
-    NS::Graphics::MaterialDesc shadowMatDesc = matDesc;
-    shadowMatDesc.pixelShader = m_shadowPS.get();
-    shadowMatDesc.blend = NS::Graphics::BlendMode::Alpha;
-    m_shadowMaterial = NS::Graphics::Material::Create(shadowMatDesc);
+    // 接地シャドウは Player が scene 寿命のあいだ参照を握る。 builtin quad + 共有 shadow material を渡す
+    auto* shadowMesh = assets.Builtin("shadowQuad");
+    auto* shadowMaterial = assets.SharedMaterial("shadow");
 
     // 全テーマ block texture を Texture2DArray 1 本に集約。 アセット未取得のため cube_test.png を 40 slice 充填
     {
@@ -205,8 +122,8 @@ void LevelPlayScene::OnStart()
         }
         taDesc.generateMipmaps = true;
         taDesc.sRGB = false;
-        m_blockTextures = NS::Graphics::TextureArray::Create(taDesc);
-        if (m_blockTextures->IsUsingFallback())
+        auto* blockTextures = assets.GetOrCreateTextureArray("block", taDesc);
+        if (blockTextures->IsUsingFallback())
             NS_LOG_WARN(::NS::Core::LogCat::Game,
                         "LevelPlayScene: block 用 TextureArray の slice 読込で失敗あり、 magenta fallback で続行");
     }
@@ -231,14 +148,14 @@ void LevelPlayScene::OnStart()
         NS_LOG_ERROR(::NS::Core::LogCat::Game, "LevelPlayScene: Skybox 構築失敗 (Device 不在?)");
     }
 
-    m_player = std::make_unique<Player>(m_cubeMesh.get(), m_playerMaterial.get(), &app->Input());
+    m_player = std::make_unique<Player>(assets.Builtin("cube"), assets.SharedMaterial("player"), &app->Input());
     m_player->AttachScene(this);
     m_player->Root().SetPosition({0.0f, 1.0f, -4.0f});
     // cube mesh の半サイズは 0.5 だが capsule collider は radius=0.4 / halfHeight=0.5
     // (= AABB 半サイズ 0.4, 0.9, 0.4)。両者が一致するよう scale で mesh を縮める
     m_player->Root().SetScale({0.8f, 1.8f, 0.8f});
     m_player->MeshComp().SetBaseColor(kPlayerColor);
-    m_player->Shadow().SetResources(m_shadowMesh.get(), m_shadowMaterial.get());
+    m_player->Shadow().SetResources(shadowMesh, shadowMaterial);
 
     LoadInitialLevel();
     RebuildBlocksFromLevelData();
@@ -265,10 +182,6 @@ void LevelPlayScene::OnStart()
 
     // level の cameraVolumes から area camera を生成し Brain へ登録する (Brain 構築後に呼ぶ必要がある)
     RebuildAreaCamerasFromLevelData();
-
-    // .mat を読み込み / キャッシュする。 自由オブジェクトの材質は RebuildBlocksFromLevelData が
-    // 各 ObjectInstance.materialIndex から解決して適用する
-    m_materialLibrary = std::make_unique<NS::Scene::MaterialLibrary>(exeDir);
 
     // 仮 skinned キャラをプレイ画面で常時表示し、 アニメ再生を画面で確認できるようにする
     // アセットが無ければ skip して通常進行。 後で同じパスに別キャラ (glTF) を置けば差し替わる
@@ -302,12 +215,12 @@ void LevelPlayScene::OnStart()
 
             NS::Graphics::MaterialDesc skinnedMatDesc{};
             skinnedMatDesc.vertexShader = m_skinnedVS.get();
-            skinnedMatDesc.pixelShader = m_playerPS.get();
+            skinnedMatDesc.pixelShader = assets.GetOrLoadShader(exeDir / "Shaders" / "player.ps.hlsl");
             skinnedMatDesc.constantBufferSize = sizeof(NS::Scene::FrameCB);
             skinnedMatDesc.cbSlot = 0;
             m_skinnedMaterial = NS::Graphics::Material::Create(skinnedMatDesc);
             // 専用テクスチャは未取得なので block と同じ placeholder を貼る (変形が見えれば目的は足りる)
-            m_skinnedMaterial->SetTexture(0, m_texture.get());
+            m_skinnedMaterial->SetTexture(0, assets.GetOrLoadTexture(exeDir / "Assets" / "Textures" / "cube_test.png"));
 
             // bind ポーズ頂点の境界から目標身長に合わせた一様スケールを出し、 足元を接地点へ寄せる
             NS::Math::Vector3 boundsMin = skinned.vertices.front().position;
@@ -407,6 +320,11 @@ void LevelPlayScene::OnUpdate()
     auto* app = NS::App::Application::Get();
     if (app == nullptr)
         return;
+
+    // F5 で編集中の HLSL を再起動なしで反映する (reload-in-place、 play / edit 共通の dev hot reload)
+    // ImGui 入力中は誤爆を防ぐため無効化する
+    if (!app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::Platform::Key::F5))
+        app->Assets().ReloadAllShaders();
 
     // プレイ中の Esc は終了。 編集中は editor が Esc を握る (選択解除 / 終了) ので scene は触らない
     if (m_playing && app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
@@ -604,6 +522,11 @@ void LevelPlayScene::OnRenderScene()
     // 経路は通らない
     if (m_instanceBatcher && m_instanceBatcher->IsValid())
     {
+        // builtin cube と共有 block material は AssetManager 所有。 毎フレームここで 1 度だけ引く
+        auto& assets = app->Assets();
+        auto* cubeMesh = assets.Builtin("cube");
+        auto* blockMat = assets.SharedMaterial("block");
+
         // scene 解決値を block 全体の FrameCB に流す。 baseColor は per-instance で個体色を別途乗算する
         NS::Scene::FrameCB blockCB{};
         blockCB.viewProj = ctx.viewProjection;
@@ -612,8 +535,8 @@ void LevelPlayScene::OnRenderScene()
         blockCB.baseColor = NS::Math::Vector3{1.0f, 1.0f, 1.0f}; // per-instance baseColor と乗算するので 1 に固定
         blockCB.lightColor = ctx.resolvedSettings.lightColor;
         blockCB.ambientColor = ctx.resolvedSettings.ambientColor;
-        if (m_blockMaterial)
-            m_blockMaterial->SetParams(*ctx.renderer, blockCB);
+        if (blockMat)
+            blockMat->SetParams(*ctx.renderer, blockCB);
 
         m_instanceBatcher->BeginFrame();
         for (std::size_t bi = 0; bi < m_blocks.size(); ++bi)
@@ -637,13 +560,13 @@ void LevelPlayScene::OnRenderScene()
             const auto color = NS::Game::Blocks::GetBaseColor(blockId);
             inst.baseColor = NS::Math::Vector3{color.R(), color.G(), color.B()};
             inst.textureSlice = static_cast<float>(slice);
-            m_instanceBatcher->Submit(m_cubeMesh.get(), m_blockMaterial.get(), inst);
+            m_instanceBatcher->Submit(cubeMesh, blockMat, inst);
         }
 
         // TextureArray を t0 に bind してから FlushAll。 Material::Bind では slot 0 を触っていない
         // (SetTexture せず構築した) ため、 ここで bind した SRV が bucket 描画まで残る
-        if (m_blockTextures)
-            ctx.renderer->Commands().SetTextureArray(*m_blockTextures, 0u, NS::Graphics::ShaderType::Pixel);
+        if (auto* blockTextures = assets.TextureArrayByName("block"))
+            ctx.renderer->Commands().SetTextureArray(*blockTextures, 0u, NS::Graphics::ShaderType::Pixel);
         m_instanceBatcher->FlushAll(*ctx.renderer);
     }
 
@@ -736,34 +659,14 @@ void LevelPlayScene::OnShutdown()
     m_freeSourceIndices.clear();
     m_blockSourceIndices.clear();
 
-    // MaterialLibrary の Material / Shader / Texture も device リソースを握るため Renderer より先に破棄する
-    // (参照する free オブジェクトは上で破棄済)
-    m_materialLibrary.reset();
-
-    // Skybox / InstanceBatcher / TextureArray は Renderer の DeviceContext を ComPtr で握っているため、
-    // Renderer (Application) より先に破棄する必要がある。 m_cubeMesh と同階層で reset
+    // Skybox / InstanceBatcher / skinned 一式は Renderer の DeviceContext を ComPtr で握るため、
+    // Renderer (Application) より先に破棄する。 builtin / leaf / 共有 material / block TextureArray は AssetManager が
+    // Clear で解放する
     m_instanceBatcher.reset();
     m_skybox.reset();
     m_skinnedMaterial.reset();
-    m_playerMaterial.reset();
-    m_blockMaterial.reset();
-    m_waterMaterial.reset();
-    m_shadowMaterial.reset();
     m_skinnedVS.reset();
-    m_playerPS.reset();
-    m_waterPS.reset();
-    m_shadowPS.reset();
-    m_standardVS.reset();
-    m_blockTextures.reset();
-    m_texture.reset();
-    m_wedgeMesh45.reset();
-    m_wedgeMesh30.reset();
-    m_wedgeMesh22.reset();
-    m_wedgeMesh15.reset();
-    m_poleMesh.reset();
-    m_shadowMesh.reset();
     m_skinnedMesh.reset();
-    m_cubeMesh.reset();
 }
 
 void LevelPlayScene::RebuildBlocksFromLevelData()
@@ -799,17 +702,42 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
     m_collisionWorld.reserve(m_level.objects.size());
 
     const auto exeDir = NS::Core::FileSystem::ContentRoot();
+    auto* app = NS::App::Application::Get();
 
-    // ObjectInstance.materialIndex から runtime Material* を解決する。 無効なら既定の m_playerMaterial
+    // builtin mesh と共有 material は AssetManager 所有。 この再構築の間だけローカルに引く
+    NS::Graphics::StaticMesh* cubeMesh = nullptr;
+    NS::Graphics::StaticMesh* wedge45 = nullptr;
+    NS::Graphics::StaticMesh* wedge30 = nullptr;
+    NS::Graphics::StaticMesh* wedge22 = nullptr;
+    NS::Graphics::StaticMesh* wedge15 = nullptr;
+    NS::Graphics::StaticMesh* poleMesh = nullptr;
+    NS::Graphics::Material* playerMat = nullptr;
+    NS::Graphics::Material* blockMat = nullptr;
+    NS::Graphics::Material* waterMat = nullptr;
+    if (app != nullptr)
+    {
+        auto& assets = app->Assets();
+        cubeMesh = assets.Builtin("cube");
+        wedge45 = assets.Builtin("wedge45");
+        wedge30 = assets.Builtin("wedge30");
+        wedge22 = assets.Builtin("wedge22");
+        wedge15 = assets.Builtin("wedge15");
+        poleMesh = assets.Builtin("pole");
+        playerMat = assets.SharedMaterial("player");
+        blockMat = assets.SharedMaterial("block");
+        waterMat = assets.SharedMaterial("water");
+    }
+
+    // ObjectInstance.materialIndex から runtime Material* を解決する。 無効なら既定の共有 player material
     const auto resolveMaterial = [&](const NS::Game::Level::ObjectInstance& object) -> NS::Graphics::Material* {
-        if (object.materialIndex >= 0 &&
-            static_cast<std::size_t>(object.materialIndex) < m_level.materialPaths.size() && m_materialLibrary)
+        if (app != nullptr && object.materialIndex >= 0 &&
+            static_cast<std::size_t>(object.materialIndex) < m_level.materialPaths.size())
         {
-            const auto loaded = m_materialLibrary->Load(exeDir / m_level.materialPaths[object.materialIndex]);
+            const auto loaded = app->Assets().LoadMaterial(exeDir / m_level.materialPaths[object.materialIndex]);
             if (loaded.material != nullptr)
                 return loaded.material;
         }
-        return m_playerMaterial.get();
+        return playerMat;
     };
 
     for (std::size_t objectIndex = 0; objectIndex < m_level.objects.size(); ++objectIndex)
@@ -834,7 +762,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
         {
             const NS::Math::Vector3 colliderHalfExtents{
                 entry.colliderHalfExtentsX, entry.colliderHalfExtentsY, entry.colliderHalfExtentsZ};
-            auto cube = std::make_unique<Block>(m_cubeMesh.get(), resolveMaterial(entry), colliderHalfExtents);
+            auto cube = std::make_unique<Block>(cubeMesh, resolveMaterial(entry), colliderHalfExtents);
             cube->AttachScene(this);
             placeFromEntry(*cube);
             cube->MeshComp().SetBaseColor(baseColor);
@@ -853,7 +781,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
 
         if (entry.kind == NS::Game::Blocks::kBlockIdSolid)
         {
-            auto block = std::make_unique<Block>(m_cubeMesh.get(), m_blockMaterial.get(), kCellHalfExtents);
+            auto block = std::make_unique<Block>(cubeMesh, blockMat, kCellHalfExtents);
             block->AttachScene(this);
             placeFromEntry(*block);
             block->MeshComp().SetBaseColor(baseColor);
@@ -873,15 +801,15 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
             const float angle = NS::Game::Blocks::GetSlopeAngleDegrees(entry.kind);
             NS::Graphics::StaticMesh* wedge = nullptr;
             if (entry.kind == NS::Game::Blocks::kBlockIdSlope45)
-                wedge = m_wedgeMesh45.get();
+                wedge = wedge45;
             else if (entry.kind == NS::Game::Blocks::kBlockIdSlope30)
-                wedge = m_wedgeMesh30.get();
+                wedge = wedge30;
             else if (entry.kind == NS::Game::Blocks::kBlockIdSlope22)
-                wedge = m_wedgeMesh22.get();
+                wedge = wedge22;
             else if (entry.kind == NS::Game::Blocks::kBlockIdSlope15)
-                wedge = m_wedgeMesh15.get();
+                wedge = wedge15;
 
-            auto slope = std::make_unique<SlopeBlock>(wedge, m_blockMaterial.get(), angle, kCellHalfExtents);
+            auto slope = std::make_unique<SlopeBlock>(wedge, blockMat, angle, kCellHalfExtents);
             slope->AttachScene(this);
             placeFromEntry(*slope);
 
@@ -899,7 +827,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
         {
             constexpr float kPoleRadius = 0.15f;
             constexpr float kPoleHeight = 1.0f;
-            auto pole = std::make_unique<PoleBlock>(m_poleMesh.get(), m_blockMaterial.get(), kPoleRadius, kPoleHeight);
+            auto pole = std::make_unique<PoleBlock>(poleMesh, blockMat, kPoleRadius, kPoleHeight);
             pole->AttachScene(this);
             placeFromEntry(*pole);
 
@@ -913,7 +841,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
 
         if (NS::Game::Blocks::IsHazardBlock(entry.kind))
         {
-            auto hazard = std::make_unique<HazardBlock>(m_cubeMesh.get(), m_blockMaterial.get(), kCellHalfExtents);
+            auto hazard = std::make_unique<HazardBlock>(cubeMesh, blockMat, kCellHalfExtents);
             hazard->AttachScene(this);
             placeFromEntry(*hazard);
 
@@ -929,7 +857,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
 
         if (NS::Game::Blocks::IsWaterBlock(entry.kind))
         {
-            auto water = std::make_unique<WaterBlock>(m_cubeMesh.get(), m_waterMaterial.get());
+            auto water = std::make_unique<WaterBlock>(cubeMesh, waterMat);
             water->AttachScene(this);
             placeFromEntry(*water);
 
@@ -943,7 +871,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
 
         if (NS::Game::Blocks::IsDecorationBlock(entry.kind))
         {
-            auto deco = std::make_unique<DecorationBlock>(m_cubeMesh.get(), m_blockMaterial.get());
+            auto deco = std::make_unique<DecorationBlock>(cubeMesh, blockMat);
             deco->AttachScene(this);
             placeFromEntry(*deco);
 

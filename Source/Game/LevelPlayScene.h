@@ -13,7 +13,6 @@
 #include "Framework/Math/Math.h"
 #include "Framework/Physics/SweptOBB.h"
 #include "Framework/Physics/SweptTriangle.h"
-#include "Framework/Scene/MaterialLibrary.h"
 #include "Framework/Scene/SceneBase.h"
 #include "Game/CameraRig.h"
 #include "Game/Level/LevelData.h"
@@ -34,7 +33,6 @@ namespace NS::Graphics
     class Shader;
     class Skybox;
     class Texture;
-    class TextureArray;
 } // namespace NS::Graphics
 
 namespace NS::Scene
@@ -125,34 +123,11 @@ private:
     /// 起動時のレベル供給: 同梱 default `.nslvl` をロードし、 無ければ最小床を seed する
     void LoadInitialLevel();
 
-    std::unique_ptr<NS::Graphics::StaticMesh> m_cubeMesh;
-    std::unique_ptr<NS::Graphics::Texture> m_texture;
-    std::unique_ptr<NS::Graphics::TextureArray> m_blockTextures;
-    std::unique_ptr<NS::Graphics::Shader> m_standardVS; // player / block 共有 (standard.vs)
-    std::unique_ptr<NS::Graphics::Shader> m_playerPS;   // player / block / skinned 共有 (player.ps)
-    std::unique_ptr<NS::Graphics::Shader> m_waterPS;    // 水専用 (water.ps、alpha<1 出力)
-    std::unique_ptr<NS::Graphics::Shader> m_shadowPS;   // 接地シャドウ専用 (shadow.ps、放射状アルファ)
-    std::unique_ptr<NS::Graphics::Material> m_playerMaterial;
-    std::unique_ptr<NS::Graphics::Material> m_blockMaterial;
-    // 水ブロック専用の半透明 Material (Alpha)。不透明ブロックと共有すると全ブロックが透けるため別インスタンス
-    std::unique_ptr<NS::Graphics::Material> m_waterMaterial;
-    // 接地シャドウ共有 Material (standard.vs + shadow.ps、Alpha)
-    std::unique_ptr<NS::Graphics::Material> m_shadowMaterial;
+    // builtin mesh / 共有 material / block の TextureArray は AssetManager (Application 所有) が持つ
+    // scene は使う箇所で都度引く (メンバとして控えない = 単一所有元は AssetManager のみ)
+
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
     std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
-
-    // 角度別 wedge mesh を 4 種だけ shared でキャッシュ。 SlopeBlock 1 個ずつに mesh を持たせず、
-    // scene 寿命のあいだ共有して描画コストとメモリを抑える
-    std::unique_ptr<NS::Graphics::StaticMesh> m_wedgeMesh45;
-    std::unique_ptr<NS::Graphics::StaticMesh> m_wedgeMesh30;
-    std::unique_ptr<NS::Graphics::StaticMesh> m_wedgeMesh22;
-    std::unique_ptr<NS::Graphics::StaticMesh> m_wedgeMesh15;
-
-    // 掴まり系 mesh: 円柱を 1 度だけ生成して全 instance で共有する
-    std::unique_ptr<NS::Graphics::StaticMesh> m_poleMesh;
-
-    // 接地シャドウ用の共有 quad mesh (XZ 平面)
-    std::unique_ptr<NS::Graphics::StaticMesh> m_shadowMesh;
 
     // 仮 skinned キャラの描画リソース (mesh / shader / material)。 アセット未取得時は全て null
     std::unique_ptr<NS::Graphics::SkeletalMesh> m_skinnedMesh;
@@ -210,10 +185,6 @@ private:
 
     // 直近 OnRenderScene で解決した scene 段設定。 editor の RenderSettings パネルが friend で読む
     NS::Graphics::RenderSettings m_lastResolvedSettings{};
-
-    // .mat からマテリアルを読み込みキャッシュする。 free オブジェクトより先に宣言し、 暗黙デストラクタの
-    // 逆順破棄でも free オブジェクト (Material* を参照) より後に破棄されるよう順序を保証する
-    std::unique_ptr<NS::Scene::MaterialLibrary> m_materialLibrary;
 
     // 非 gridAligned な配置物の runtime インスタンス。 RebuildBlocksFromLevelData が m_level.objects から作り直す
     std::vector<std::unique_ptr<Block>> m_freeObjects;
