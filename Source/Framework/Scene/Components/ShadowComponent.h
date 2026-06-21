@@ -55,6 +55,14 @@ namespace NS::Scene
         /// 落下距離 dist に対する高さフェード係数 [0,1]。dist=0 で 1、dist>=maxDist で 0
         [[nodiscard]] static float ComputeFade(float dist, float maxDist) noexcept;
 
+        // 接地シャドウの見た目を Inspector へ公開する。 毎 Draw 読まれるのでライブで効く
+        NS_REFLECT_BEGIN(ShadowComponent)
+        NS_REFLECT_FIELD(m_baseDiameter, "Base Diameter")
+        NS_REFLECT_FIELD(m_maxDrop, "Max Drop")
+        NS_REFLECT_FIELD(m_surfaceOffset, "Surface Offset")
+        NS_REFLECT_FIELD(m_baseAlpha, "Base Alpha")
+        NS_REFLECT_END()
+
     private:
         NS::Graphics::StaticMesh* m_mesh = nullptr;
         NS::Graphics::Material* m_material = nullptr;

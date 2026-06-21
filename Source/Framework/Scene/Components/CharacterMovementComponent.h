@@ -84,6 +84,23 @@ namespace NS::Scene
 
         void OnUpdate() override;
 
+        // 操作感の調整値を Inspector へ公開する。 プレイ中にライブで触って感触を詰める用途
+        NS_REFLECT_BEGIN(CharacterMovementComponent)
+        NS_REFLECT_FIELD(m_jumpImpulse, "Jump Impulse")
+        NS_REFLECT_FIELD(m_gravityUp, "Gravity Up")
+        NS_REFLECT_FIELD(m_gravityDown, "Gravity Down")
+        NS_REFLECT_FIELD(m_apexHangVy, "Apex Hang Vy")
+        NS_REFLECT_FIELD(m_apexHangScale, "Apex Hang Scale")
+        NS_REFLECT_FIELD(m_jumpReleaseScale, "Jump Release Scale")
+        NS_REFLECT_FIELD(m_coyoteTime, "Coyote Time")
+        NS_REFLECT_FIELD(m_jumpBufferTime, "Jump Buffer Time")
+        NS_REFLECT_FIELD(m_maxSpeed, "Max Speed")
+        NS_REFLECT_FIELD(m_walkSpeed, "Walk Speed")
+        NS_REFLECT_FIELD(m_accelTau, "Accel Tau")
+        NS_REFLECT_FIELD(m_decelTau, "Decel Tau")
+        NS_REFLECT_FIELD(m_stickDeadzone, "Stick Deadzone")
+        NS_REFLECT_END()
+
     private:
         /// 空中下降中に進行方向の block 縁を検出し、掴めれば LedgeHanging へ遷移して true を返す
         bool TryGrabLedge(const NS::Math::Vector3& pos) noexcept;

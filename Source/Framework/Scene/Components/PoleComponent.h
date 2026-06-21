@@ -33,6 +33,12 @@ namespace NS::Scene
         /// XZ 距離が radius 以下かつ Y が AxisStart..AxisEnd 内なら true
         [[nodiscard]] bool ContainsPoint(const NS::Math::Vector3& worldPos) const noexcept;
 
+        // ポール寸法を Inspector へ公開する。 掴み判定が毎フレーム読むのでライブで効く
+        NS_REFLECT_BEGIN(PoleComponent)
+        NS_REFLECT_FIELD(m_radius, "Radius")
+        NS_REFLECT_FIELD(m_height, "Height")
+        NS_REFLECT_END()
+
     private:
         float m_radius = 0.15f;
         float m_height = 2.0f;
