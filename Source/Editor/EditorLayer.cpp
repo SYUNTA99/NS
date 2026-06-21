@@ -12,6 +12,7 @@
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
+#include "Framework/Scene/GameObject.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/BlockRegistry.h"
 #include "Game/Game.h"
@@ -98,17 +99,20 @@ void EditorLayer::OnRender()
     // 編集用の上乗せ描画 (ギズモ / palette / 編集ビジュアル) と debug provenance 退避
     editor.Render();
 
+    // Hierarchy / Inspector はプレイ中も出す。 Player / Camera を選んで操作感をライブ調整できるようにするため
+    // DockSpace も両モードで毎フレーム置き、 edit で組んだドッキングがプレイ移行で崩れないようにする
+    RenderDockSpaceHost();
     if (editor.CurrentMode() == LevelEditorController::Mode::Edit)
     {
-        RenderDockSpaceHost();
         editor.Editor().RenderFileBrowser();
         RenderToolModePanel(editor);
-        RenderHierarchyPanel(editor);
-        RenderInspectorPanel(editor);
         RenderMaterialsPanel(editor);
     }
     else if (editor.Play().paused)
         RenderPauseModal(editor);
+
+    RenderHierarchyPanel(editor);
+    RenderInspectorPanel(editor);
 
     RenderFpsOverlay();
     RenderRenderSettingsPanel(editor);
@@ -274,6 +278,13 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorController& editor) noexcept
 #if NS_EDITOR_ENABLED
     if (ImGui::Begin("Hierarchy"))
     {
+        // Player / Camera は配置物ではないが、 選んで Inspector に出せるよう先頭に常設する
+        if (ImGui::Selectable("Player", editor.IsPlayerSelected()))
+            editor.SelectPlayer();
+        if (ImGui::Selectable("Camera", editor.IsCameraSelected()))
+            editor.SelectCamera();
+        ImGui::Separator();
+
         const auto& objects = editor.Level().objects;
         const std::size_t selected = editor.SelectedObjectIndex();
 
@@ -297,6 +308,9 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorController& editor) noexcept
 
         if (objects.empty())
             ImGui::TextDisabled("(no objects)");
+
+        if (ImGui::SmallButton("+ Add Object"))
+            editor.AddObject();
 
         ImGui::Separator();
         const auto& cameras = editor.Level().cameraVolumes;
@@ -330,6 +344,40 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
 #if NS_EDITOR_ENABLED
     if (ImGui::Begin("Inspector"))
     {
+        if (editor.IsPlayerSelected())
+        {
+            ImGui::Text("Player");
+            ImGui::Separator();
+            // Player の Component を反射で一覧編集する。 操作感はライブで効き、 値は保存されない
+            // (good な値が出たらコードの既定へ焼き戻す運用)
+            if (auto* player = editor.PlayerObject())
+                (void)NS::Editor::DrawObjectComponents(*player);
+            else
+                ImGui::TextDisabled("(no player)");
+
+            ImGui::End();
+            return;
+        }
+
+        if (editor.IsCameraSelected())
+        {
+            ImGui::Text("Camera");
+            ImGui::Separator();
+            // Brain (ブレンド秒) と現在 active な vcam (編集中=free-fly / プレイ中=follow) を反射で出す
+            // 値はライブで効き保存はしない
+            auto* brain = editor.CameraBrainObject();
+            auto* vcam = editor.ActiveVirtualCameraObject();
+            if (brain == nullptr && vcam == nullptr)
+                ImGui::TextDisabled("(no camera)");
+            if (brain != nullptr)
+                (void)NS::Editor::DrawObjectComponents(*brain);
+            if (vcam != nullptr && vcam != brain)
+                (void)NS::Editor::DrawObjectComponents(*vcam);
+
+            ImGui::End();
+            return;
+        }
+
         if (editor.HasCameraSelection())
         {
             ImGui::Text("[cam %zu] area camera", editor.SelectedCameraIndex());
@@ -382,11 +430,29 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
         }
         else
         {
-            // free オブジェクトは runtime Transform が真実の源なので毎フレーム即反映する (SyncFreeObjectTransforms
-            // が永続化)
+            // free オブジェクトは runtime Transform が真実の源なので即反映する (SyncFreeObjectTransforms が永続化)
+            ImGui::SeparatorText("Transform");
+
             float pos[3] = {obj.positionX, obj.positionY, obj.positionZ};
             if (ImGui::DragFloat3("Position", pos, 0.05f))
                 editor.SetSelectedFreePosition(NS::Math::Vector3{pos[0], pos[1], pos[2]});
+            if (ImGui::IsItemActivated())
+                editor.BeginTransformEdit();
+            if (ImGui::IsItemDeactivatedAfterEdit())
+                editor.CommitTransformEdit();
+
+            // 回転は内部 quaternion を Euler (度) に直して編集し、 入力を quaternion へ戻す
+            // 滑らかに回し続けるならギズモ R が向く。 ここは角度の直接入力 / 微調整用
+            const NS::Math::Quaternion q{obj.rotationX, obj.rotationY, obj.rotationZ, obj.rotationW};
+            const NS::Math::Vector3 euler = q.ToEuler();
+            float rot[3] = {NS::Math::RadiansToDegrees(euler.x),
+                            NS::Math::RadiansToDegrees(euler.y),
+                            NS::Math::RadiansToDegrees(euler.z)};
+            if (ImGui::DragFloat3("Rotation", rot, 0.5f))
+                editor.SetSelectedFreeRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(
+                    NS::Math::Vector3{NS::Math::DegreesToRadians(rot[0]),
+                                      NS::Math::DegreesToRadians(rot[1]),
+                                      NS::Math::DegreesToRadians(rot[2])}));
             if (ImGui::IsItemActivated())
                 editor.BeginTransformEdit();
             if (ImGui::IsItemDeactivatedAfterEdit())
@@ -399,13 +465,6 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
                 editor.BeginTransformEdit();
             if (ImGui::IsItemDeactivatedAfterEdit())
                 editor.CommitTransformEdit();
-
-            ImGui::Text("Rotation: (%.2f, %.2f, %.2f, %.2f)",
-                        static_cast<double>(obj.rotationX),
-                        static_cast<double>(obj.rotationY),
-                        static_cast<double>(obj.rotationZ),
-                        static_cast<double>(obj.rotationW));
-            ImGui::TextDisabled("rotate with gizmo R tool");
         }
 
         ImGui::Separator();
@@ -415,6 +474,16 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
                         editor.Level().materialPaths[static_cast<std::size_t>(obj.materialIndex)].c_str());
         else
             ImGui::TextDisabled("Material: default");
+
+        // 選択オブジェクトの runtime Component を反射で一覧編集する
+        // collider half-extents は編集後に ObjectInstance へ書き戻して保存・rebuild に乗せる
+        // (色など他のフィールドはライブのみで保存対象外)
+        if (auto* go = editor.SelectedObjectGameObject())
+        {
+            ImGui::Separator();
+            if (NS::Editor::DrawObjectComponents(*go))
+                editor.SyncSelectedObjectColliderFromComponent();
+        }
     }
     ImGui::End();
 #else

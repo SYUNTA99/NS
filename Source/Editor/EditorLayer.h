@@ -55,7 +55,8 @@ private:
     static void RenderToolModePanel(LevelEditorController& editor) noexcept;
     /// 全配置物を一覧し、 行クリックで選択する。 grid/free バッジ付き、 選択中をハイライトする
     static void RenderHierarchyPanel(LevelEditorController& editor) noexcept;
-    /// 選択中の配置物のプロパティを表示 / 編集する。 free は Position/Scale 数値編集、 grid は昇格ボタン
+    /// 選択中の対象を表示 / 編集する。 Player / Camera はその Component、 配置物は Transform + Component、
+    /// area camera は専用 UI を出す。 free は Position/Scale 数値編集、 grid は昇格ボタン
     static void RenderInspectorPanel(LevelEditorController& editor) noexcept;
     /// Object モード中に Assets/ をフォルダツリーで出し、 ドロップ枠 / クリックで選択物体へ材質を適用する
     static void RenderMaterialsPanel(LevelEditorController& editor) noexcept;

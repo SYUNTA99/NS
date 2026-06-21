@@ -97,6 +97,8 @@ public:
     [[nodiscard]] NS::Game::Level::ObjectInstance SelectedObjectSnapshot() const noexcept;
     /// 選択中の自由オブジェクトの位置を設定する (gridAligned / 非選択は no-op)
     void SetSelectedFreePosition(NS::Math::Vector3 position) noexcept;
+    /// 選択中の自由オブジェクトの回転を設定する (gridAligned / 非選択は no-op)
+    void SetSelectedFreeRotation(NS::Math::Quaternion rotation) noexcept;
     /// 選択中の自由オブジェクトのスケールを設定する。 最小正値に clamp する (gridAligned / 非選択は no-op)
     void SetSelectedFreeScale(NS::Math::Vector3 scale) noexcept;
     /// 選択中自由オブジェクトの変形編集を開始し baseline を退避する (gizmo ドラッグ / パネル入力の開始で呼ぶ)
@@ -105,6 +107,32 @@ public:
     void CommitTransformEdit() noexcept;
     /// 選択中の grid solid ブロックを自由オブジェクトへ昇格する (grid solid 以外は no-op)
     void PromoteSelectedToFree() noexcept;
+
+    /// 編集視点の中心あたりに新しい自由オブジェクトを 1 個追加して選択する (Undo 対応)
+    void AddObject();
+
+    /// 選択中の配置物に対応する runtime GameObject。 未選択 / 未構築は nullptr
+    /// Inspector が Component の反射フィールドを描くのに使う
+    [[nodiscard]] NS::Scene::GameObject* SelectedObjectGameObject() noexcept;
+    /// Player の runtime GameObject。 未構築は nullptr。 操作感のライブ調整 Inspector に使う
+    [[nodiscard]] NS::Scene::GameObject* PlayerObject() noexcept;
+    /// 選択中の自由オブジェクトの runtime collider half-extents を ObjectInstance へ書き戻す (保存に乗せる)
+    /// Inspector で collider を反射編集した後に呼ぶ。 grid / 非選択は no-op
+    void SyncSelectedObjectColliderFromComponent() noexcept;
+
+    /// CameraBrain を載せた GameObject。 未構築は nullptr。 Camera 選択時の Inspector 反射編集対象
+    [[nodiscard]] NS::Scene::GameObject* CameraBrainObject() noexcept;
+    /// 現在 active な仮想カメラ (編集中=free-fly / プレイ中=follow) の GameObject。 無ければ nullptr
+    [[nodiscard]] NS::Scene::GameObject* ActiveVirtualCameraObject() noexcept;
+
+    /// Hierarchy から Player を選択する。 配置物 / カメラ / ギズモ選択は解除する (Player は gizmo 対象外)
+    void SelectPlayer() noexcept;
+    /// Hierarchy から Camera (Brain + active vcam) を選択する。 配置物 / カメラ / ギズモ選択は解除する
+    void SelectCamera() noexcept;
+    /// Inspector / Hierarchy が Player 選択中か
+    [[nodiscard]] bool IsPlayerSelected() const noexcept { return m_specialSelection == SpecialSelection::Player; }
+    /// Inspector / Hierarchy が Camera 選択中か
+    [[nodiscard]] bool IsCameraSelected() const noexcept { return m_specialSelection == SpecialSelection::Camera; }
 
     /// 現在選択中の area camera の cameraVolumes 添字。 未選択 / 範囲外は kNoObjectIndex
     [[nodiscard]] std::size_t SelectedCameraIndex() const noexcept { return m_selectedCameraIndex; }
@@ -153,6 +181,9 @@ private:
     /// edit 中、 area camera のトリガ AABB とカメラ位置 → 注視点を DebugDraw で可視化する
     void RenderAreaCameraGizmos() noexcept;
 
+    /// edit 中、 各オブジェクトの当たり形状 (自由配置=OBB / grid solid=AABB) を DebugDraw で可視化する
+    void RenderColliderWireframes() noexcept;
+
     /// ギズモの選択候補 (自由オブジェクト + grid solid ブロック) を連結し直して注入する
     void RefreshGizmoSelectables();
 
@@ -194,6 +225,15 @@ private:
     // ギズモへ渡す選択候補の安定ストレージ。 自由オブジェクトと grid solid ブロックを連結した span の実体
     std::vector<NS::Scene::GameObject*> m_selectablePtrs;
     std::vector<NS::Math::Vector3> m_selectableHalfExtents;
+
+    // 配置物でもエリアカメラでもない単一物の選択 (Player / Camera)。 添字選択とは排他
+    enum class SpecialSelection : std::uint8_t
+    {
+        None,
+        Player,
+        Camera
+    };
+    SpecialSelection m_specialSelection = SpecialSelection::None;
 
     // Hierarchy / Inspector が参照する選択添字。 Hierarchy クリックとギズモ選択の両方から更新する
     std::size_t m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
