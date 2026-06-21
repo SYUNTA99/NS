@@ -208,53 +208,98 @@ float4 PSMain() : SV_Target
         return std::unique_ptr<Shader>(new Shader(hlslPath));
     }
 
-    Shader::Shader(const std::filesystem::path& hlslPath)
+    Shader::Shader(const std::filesystem::path& hlslPath) : m_sourcePath(hlslPath)
+    {
+        const ShaderTypeInfo* info = DetectStage(m_sourcePath);
+        if (info == nullptr)
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "Shader: ファイル名からステージを判定できない (.vs./.ps./.gs./.hs./.ds./.cs. を含まない): {}",
+                         m_sourcePath.string());
+            return;
+        }
+        m_type = info->stage;
+
+        ComPtr<ID3D11DeviceChild> shader;
+        ComPtr<ID3DBlob> bytecode;
+        if (Compile(shader, bytecode))
+        {
+            m_shader = std::move(shader);
+            m_vsBytecode = std::move(bytecode);
+            return;
+        }
+
+        // 初回ロード失敗時のみ、 画面に出る頂点・ピクセルを magenta fallback にして「壊れて見える」状態にする
+        // Reload は fallback せず旧物を保持するので、 編集中の typo では画面が壊れない
+        if (m_type != ShaderType::Vertex && m_type != ShaderType::Pixel)
+        {
+            return;
+        }
+        auto* device = Gpu().device;
+        if (device == nullptr)
+        {
+            return;
+        }
+        NS_LOG_ERROR(
+            ::NS::Core::LogCat::Graphics, "Shader build failed, falling back to magenta: {}", m_sourcePath.string());
+        ComPtr<ID3DBlob> fb = CompileFallbackStage(info->entry, info->target);
+        if (!fb || !CreateStageObject(device, m_type, fb, m_shader))
+        {
+            return;
+        }
+        if (m_type == ShaderType::Vertex)
+        {
+            m_vsBytecode = std::move(fb);
+        }
+        m_fallback = true;
+    }
+
+    bool Shader::Compile(ComPtr<ID3D11DeviceChild>& outShader, ComPtr<ID3DBlob>& outVsBytecode) const noexcept
     {
         auto* device = Gpu().device;
         if (device == nullptr)
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "Shader: Renderer の Device が無効");
-            return;
+            return false;
         }
-
-        const ShaderTypeInfo* info = DetectStage(hlslPath);
+        const ShaderTypeInfo* info = DetectStage(m_sourcePath);
         if (info == nullptr)
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                         "Shader: ファイル名からステージを判定できない (.vs./.ps./.gs./.hs./.ds./.cs. を含まない): {}",
-                         hlslPath.string());
-            return;
+            return false;
         }
-        m_type = info->stage;
-
-        ComPtr<ID3DBlob> blob = CompileStage(hlslPath, info->entry, info->target);
-        bool fallback = false;
+        ComPtr<ID3DBlob> blob = CompileStage(m_sourcePath, info->entry, info->target);
         if (!blob)
         {
-            // magenta fallback は画面に出る頂点・ピクセルのみ。 他ステージは代替表示が無いので無効のまま残す
-            if (info->stage == ShaderType::Vertex || info->stage == ShaderType::Pixel)
-            {
-                NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
-                             "Shader build failed, falling back to magenta: {}",
-                             hlslPath.string());
-                blob = CompileFallbackStage(info->entry, info->target);
-                fallback = true;
-            }
+            return false;
         }
-        if (!blob)
+        ComPtr<ID3D11DeviceChild> shader;
+        if (!CreateStageObject(device, info->stage, blob, shader))
         {
-            return;
+            return false;
         }
-
-        if (!CreateStageObject(device, info->stage, blob, m_shader))
-        {
-            return;
-        }
+        outShader = std::move(shader);
         if (info->stage == ShaderType::Vertex)
         {
-            m_vsBytecode = std::move(blob);
+            outVsBytecode = std::move(blob);
         }
-        m_fallback = fallback;
+        return true;
+    }
+
+    bool Shader::Reload()
+    {
+        ComPtr<ID3D11DeviceChild> shader;
+        ComPtr<ID3DBlob> bytecode;
+        if (!Compile(shader, bytecode))
+        {
+            return false; // 旧 m_shader / m_vsBytecode を保持する
+        }
+        m_shader = std::move(shader);
+        if (m_type == ShaderType::Vertex)
+        {
+            m_vsBytecode = std::move(bytecode);
+        }
+        m_fallback = false; // 実ファイルの再コンパイル成功は fallback ではない
+        return true;
     }
 
     bool Shader::IsValid() const noexcept
