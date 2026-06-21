@@ -9,11 +9,15 @@
 /// 型別のロード処理を独立メソッドに分け、 本体は「キャッシュの容れ物 + Reload の窓口」に徹する
 /// 依存: NS::Graphics::Shader / Texture / Mesh / StaticMesh, NS::Core::FileSystem
 
+#include "Framework/Graphics/Material.h"
+#include "Framework/Math/Math.h"
+
 #include <filesystem>
 #include <map>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace NS::Graphics
 {
@@ -25,7 +29,29 @@ namespace NS::Graphics
 
 namespace NS::Scene
 {
+    /// .mat (JSON) の解析結果。 GPU 非依存なので deviceless でテストできる
+    struct MaterialFileDesc
+    {
+        std::filesystem::path vertexShader;
+        std::filesystem::path pixelShader;
+        std::vector<std::filesystem::path> textures;
+        NS::Math::Vector3 baseColor{1.0f, 1.0f, 1.0f};
+        NS::Graphics::BlendMode blend = NS::Graphics::BlendMode::Opaque;
+    };
+
+    /// JSON 文字列を MaterialFileDesc へ解析する。 成功で true、 失敗時は outError に理由を入れる
+    /// vs / ps は必須、 他は欠落時に既定値
+    [[nodiscard]] bool ParseMaterialJson(std::string_view jsonText, MaterialFileDesc& out, std::string& outError);
+
+    /// 読み込んだ Material とその基準色。 baseColor は MeshRenderer 側に適用するため別で返す
+    struct LoadedMaterial
+    {
+        NS::Graphics::Material* material = nullptr; ///< AssetManager 所有、 キャッシュ寿命中のみ有効
+        NS::Math::Vector3 baseColor{1.0f, 1.0f, 1.0f};
+    };
+
     /// アプリ寿命でアセットを dedupe 所有する単一キャッシュ。 leaf は path 鍵、 builtin は名前鍵
+    /// Material 内蔵 CB は MeshRenderer が流す FrameCB に合わせるため本クラスは Scene 層に置く
     class AssetManager
     {
     public:
@@ -51,6 +77,17 @@ namespace NS::Scene
         /// 名前鍵で builtin StaticMesh を引く。 未登録は nullptr
         [[nodiscard]] NS::Graphics::StaticMesh* Builtin(std::string_view name) const noexcept;
 
+        /// matPath の .mat を読み込み composite Material を組んで返す。 shader / texture は内部 leaf を借りて dedupe
+        /// 既読なら cache を返す。 読込 / 解析失敗時は material=nullptr の LoadedMaterial を返す
+        /// 相対 path は構築時の baseDir 基準で解決する
+        [[nodiscard]] LoadedMaterial LoadMaterial(const std::filesystem::path& matPath);
+
+        /// 共有 material (player / block / water / shadow) を builtin shader + texture から一括組み立てする
+        /// device + RegisterBuiltins 後・最初の利用前に 1 度呼ぶ。 既登録名は上書きしない
+        void RegisterSharedMaterials();
+        /// 名前鍵で共有 material を引く ("player" / "block" / "water" / "shadow")。 未登録は nullptr
+        [[nodiscard]] NS::Graphics::Material* SharedMaterial(std::string_view name) const noexcept;
+
         /// path 鍵 leaf を引き reload-in-place する (現状 Shader のみ)。 成功で true、 未キャッシュ / 失敗で false
         [[nodiscard]] bool Reload(const std::filesystem::path& path);
 
@@ -58,10 +95,18 @@ namespace NS::Scene
         void Clear() noexcept;
 
     private:
+        struct MaterialRecord
+        {
+            std::unique_ptr<NS::Graphics::Material> material;
+            NS::Math::Vector3 baseColor{1.0f, 1.0f, 1.0f};
+        };
+
         std::filesystem::path m_baseDir;
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Shader>> m_shaders;
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Texture>> m_textures;
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Mesh>> m_meshes;
-        std::map<std::string, std::unique_ptr<NS::Graphics::StaticMesh>> m_builtins; // path 無し、 leaf と別容器
+        std::map<std::string, std::unique_ptr<NS::Graphics::StaticMesh>> m_builtins;      // path 無し、 leaf と別容器
+        std::map<std::filesystem::path, MaterialRecord> m_materials;                      // .mat composite
+        std::map<std::string, std::unique_ptr<NS::Graphics::Material>> m_sharedMaterials; // 手続き共有 material
     };
 } // namespace NS::Scene
