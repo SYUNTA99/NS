@@ -327,10 +327,10 @@ NS::Scene::GameObject* LevelEditorController::SelectedObjectGameObject() noexcep
     // objects 添字 → runtime インスタンスの逆引き。 自由配置物 / grid solid のどちらかに居る
     for (std::size_t i = 0; i < m_scene->m_freeObjects.size() && i < m_scene->m_freeSourceIndices.size(); ++i)
         if (m_scene->m_freeSourceIndices[i] == m_selectedObjectIndex && m_scene->m_freeObjects[i])
-            return m_scene->m_freeObjects[i].get();
+            return m_scene->m_freeObjects[i];
     for (std::size_t i = 0; i < m_scene->m_blocks.size() && i < m_scene->m_blockSourceIndices.size(); ++i)
         if (m_scene->m_blockSourceIndices[i] == m_selectedObjectIndex && m_scene->m_blocks[i])
-            return m_scene->m_blocks[i].get();
+            return m_scene->m_blocks[i];
     return nullptr;
 }
 
@@ -400,7 +400,7 @@ void LevelEditorController::RefreshGizmoSelectables()
         if (!obj)
             continue;
         const NS::Math::Vector3 scale = obj->Root().Scale();
-        m_selectablePtrs.push_back(obj.get());
+        m_selectablePtrs.push_back(obj);
         m_selectableHalfExtents.push_back(NS::Math::Vector3{
             kCellHalfExtents.x * scale.x, kCellHalfExtents.y * scale.y, kCellHalfExtents.z * scale.z});
     }
@@ -410,7 +410,7 @@ void LevelEditorController::RefreshGizmoSelectables()
     {
         if (!block)
             continue;
-        m_selectablePtrs.push_back(block.get());
+        m_selectablePtrs.push_back(block);
         m_selectableHalfExtents.push_back(kCellHalfExtents);
     }
 

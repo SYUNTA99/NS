@@ -129,12 +129,11 @@ private:
     // 仮 skinned キャラ。 形 / 骨 / 材質は AssetManager 所有を参照し、 components を自分で合成する
     std::unique_ptr<SkinnedDebugCharacter> m_animatedModel;
 
-    std::vector<std::unique_ptr<Block>> m_blocks;
-    std::vector<std::unique_ptr<SlopeBlock>> m_slopes;
-    std::vector<std::unique_ptr<PoleBlock>> m_poles;
-    std::vector<std::unique_ptr<HazardBlock>> m_hazards;
-    std::vector<std::unique_ptr<WaterBlock>> m_waters;
-    std::vector<std::unique_ptr<DecorationBlock>> m_decorations;
+    // 配置物の単一所有リスト。 grid / slope / pole / hazard / water / deco / 自由配置物すべてを
+    // generic GameObject として保持する。 RebuildBlocksFromLevelData がファクトリ経由で作り直す
+    std::vector<std::unique_ptr<NS::Scene::GameObject>> m_objects;
+    // m_objects[i] に対応する m_level.objects の添字 (m_objects と同長・ 1:1)
+    std::vector<std::size_t> m_objectSourceIndices;
 
     std::unique_ptr<CameraRig> m_cameraRig;
 
@@ -175,12 +174,13 @@ private:
     // 直近 OnRenderScene で解決した scene 段設定。 editor の RenderSettings パネルが friend で読む
     NS::Graphics::RenderSettings m_lastResolvedSettings{};
 
-    // 非 gridAligned な配置物の runtime インスタンス。 RebuildBlocksFromLevelData が m_level.objects から作り直す
-    std::vector<std::unique_ptr<Block>> m_freeObjects;
-    // m_freeObjects[i] に対応する m_level.objects の添字 (材質適用 / 再選択の逆引き用)
-    std::vector<std::size_t> m_freeSourceIndices;
-    // m_blocks[i] に対応する m_level.objects の添字 (Hierarchy からの grid solid 選択の逆引き用、 m_blocks と同長)
-    std::vector<std::size_t> m_blockSourceIndices;
+    // m_objects の非所有 view。 描画 / 衝突 / 編集が段階移行するあいだ旧来の参照を保つための一時 view で、
+    // build 時に再構築する (所有は m_objects 側、 ここは観測のみ)
+    std::vector<Block*> m_blocks;                  // grid solid の view (instanced 描画が走査)
+    std::vector<std::size_t> m_blockSourceIndices; // m_blocks[i] -> m_level.objects 添字
+    std::vector<Block*> m_freeObjects;             // 非 gridAligned の view (編集 / 影が走査)
+    std::vector<std::size_t> m_freeSourceIndices;  // m_freeObjects[i] -> m_level.objects 添字
+    std::vector<HazardBlock*> m_hazardView;        // ダメージ判定で芯線 vs AABB を取る hazard の view
 
     /// 差分フレームのみ cubemap を再ロードするため前回パスを保持する
     std::filesystem::path m_loadedSkyboxPath{};

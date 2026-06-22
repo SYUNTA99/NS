@@ -1,6 +1,7 @@
 #include "Game/LevelPlayScene.h"
 
 #include "Game/Block.h"
+#include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Blocks/DecorationBlock.h"
 #include "Game/Blocks/HazardBlock.h"
 #include "Game/Blocks/PoleBlock.h"
@@ -39,6 +40,7 @@
 #include "Framework/Platform/Window.h"
 #include "Framework/Scene/Components/CapsuleColliderComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
+#include "Framework/Scene/Components/SlopeColliderComponent.h"
 #include "Framework/Scene/Components/SphereColliderComponent.h"
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/RenderContext.h"
@@ -307,7 +309,7 @@ void LevelPlayScene::TickPlay()
         playerCapsule.center = m_player->Root().Position();
         playerCapsule.radius = m_player->Movement().CapsuleRadius();
         playerCapsule.halfHeight = m_player->Movement().CapsuleHalfHeight();
-        for (auto& hazard : m_hazards)
+        for (auto* hazard : m_hazardView)
         {
             if (!hazard)
                 continue;
@@ -350,37 +352,20 @@ void LevelPlayScene::TickPlay()
 
 void LevelPlayScene::SnapshotDisplayBlocks()
 {
-    // 各ブロック GameObject の Snapshot は edit / play 共通 (静的 display object なので常時)
-    for (auto& block : m_blocks)
-        block->Root().Snapshot();
-    for (auto& slope : m_slopes)
-        slope->Root().Snapshot();
-    for (auto& pole : m_poles)
-        pole->Root().Snapshot();
-    for (auto& hazard : m_hazards)
-        hazard->Root().Snapshot();
-    for (auto& water : m_waters)
-        water->Root().Snapshot();
-    for (auto& deco : m_decorations)
-        deco->Root().Snapshot();
-    for (auto& obj : m_freeObjects)
+    // 各配置物 GameObject の Snapshot は edit / play 共通 (静的 display object なので常時)
+    for (auto& obj : m_objects)
         obj->Root().Snapshot();
 }
 
 void LevelPlayScene::UpdateDisplayBlocks()
 {
-    for (auto& block : m_blocks)
-        block->OnUpdate();
-    for (auto& slope : m_slopes)
-        slope->OnUpdate();
-    for (auto& pole : m_poles)
-        pole->OnUpdate();
-    for (auto& hazard : m_hazards)
-        hazard->OnUpdate();
-    for (auto& water : m_waters)
-        water->OnUpdate();
-    for (auto& deco : m_decorations)
-        deco->OnUpdate();
+    // gridAligned な配置物のみ OnUpdate する。 自由配置物は OnUpdate 対象外 (旧挙動を保つ)
+    for (std::size_t i = 0; i < m_objects.size(); ++i)
+    {
+        const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
+        if ((entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
+            m_objects[i]->OnUpdate();
+    }
 }
 
 NS::Graphics::RenderSettingsOverride LevelPlayScene::BuildSceneOverride()
@@ -542,19 +527,7 @@ void LevelPlayScene::OnShutdown()
     }
     if (m_cameraRig)
         m_cameraRig->OnEndPlay();
-    for (auto it = m_blocks.rbegin(); it != m_blocks.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_slopes.rbegin(); it != m_slopes.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_poles.rbegin(); it != m_poles.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_hazards.rbegin(); it != m_hazards.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_waters.rbegin(); it != m_waters.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_decorations.rbegin(); it != m_decorations.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_freeObjects.rbegin(); it != m_freeObjects.rend(); ++it)
+    for (auto it = m_objects.rbegin(); it != m_objects.rend(); ++it)
         (*it)->OnEndPlay();
     if (m_animatedModel)
         m_animatedModel->OnEndPlay();
@@ -569,15 +542,13 @@ void LevelPlayScene::OnShutdown()
     m_cameraRig.reset();
     m_animatedModel.reset();
     m_player.reset();
+    m_objects.clear();
+    m_objectSourceIndices.clear();
     m_blocks.clear();
-    m_slopes.clear();
-    m_poles.clear();
-    m_hazards.clear();
-    m_waters.clear();
-    m_decorations.clear();
+    m_blockSourceIndices.clear();
     m_freeObjects.clear();
     m_freeSourceIndices.clear();
-    m_blockSourceIndices.clear();
+    m_hazardView.clear();
 
     // Skybox / InstanceBatcher は Renderer の DeviceContext を ComPtr で握るため、 Renderer (Application) より
     // 先に破棄する。 builtin / leaf / 共有 material / block TextureArray / skinned model は AssetManager が Clear
@@ -588,29 +559,15 @@ void LevelPlayScene::OnShutdown()
 
 void LevelPlayScene::RebuildBlocksFromLevelData()
 {
-    for (auto it = m_blocks.rbegin(); it != m_blocks.rend(); ++it)
+    for (auto it = m_objects.rbegin(); it != m_objects.rend(); ++it)
         (*it)->OnEndPlay();
-    for (auto it = m_slopes.rbegin(); it != m_slopes.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_poles.rbegin(); it != m_poles.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_hazards.rbegin(); it != m_hazards.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_waters.rbegin(); it != m_waters.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_decorations.rbegin(); it != m_decorations.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_freeObjects.rbegin(); it != m_freeObjects.rend(); ++it)
-        (*it)->OnEndPlay();
+    m_objects.clear();
+    m_objectSourceIndices.clear();
     m_blocks.clear();
-    m_slopes.clear();
-    m_poles.clear();
-    m_hazards.clear();
-    m_waters.clear();
-    m_decorations.clear();
+    m_blockSourceIndices.clear();
     m_freeObjects.clear();
     m_freeSourceIndices.clear();
-    m_blockSourceIndices.clear();
+    m_hazardView.clear();
     m_collisionWorld.clear();
     m_collisionTriangles.clear();
     m_collisionObbs.clear();
@@ -618,232 +575,83 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
     m_collisionCapsules.clear();
     m_polePtrs.clear();
 
+    m_objects.reserve(m_level.objects.size());
     m_collisionWorld.reserve(m_level.objects.size());
 
-    const auto exeDir = NS::Core::FileSystem::ContentRoot();
+    // ファクトリは mesh / material を AssetManager から借りる。 app 不在 (起動前 / テスト) では何も組まない
     auto* app = NS::App::Application::Get();
-
-    // builtin mesh と共有 material は AssetManager 所有。 この再構築の間だけローカルに引く
-    NS::Graphics::StaticMesh* cubeMesh = nullptr;
-    NS::Graphics::StaticMesh* wedge45 = nullptr;
-    NS::Graphics::StaticMesh* wedge30 = nullptr;
-    NS::Graphics::StaticMesh* wedge22 = nullptr;
-    NS::Graphics::StaticMesh* wedge15 = nullptr;
-    NS::Graphics::StaticMesh* poleMesh = nullptr;
-    NS::Graphics::Material* playerMat = nullptr;
-    NS::Graphics::Material* blockMat = nullptr;
-    NS::Graphics::Material* waterMat = nullptr;
-    if (app != nullptr)
-    {
-        auto& assets = app->Assets();
-        cubeMesh = assets.Builtin("cube");
-        wedge45 = assets.Builtin("wedge45");
-        wedge30 = assets.Builtin("wedge30");
-        wedge22 = assets.Builtin("wedge22");
-        wedge15 = assets.Builtin("wedge15");
-        poleMesh = assets.Builtin("pole");
-        playerMat = assets.SharedMaterial("player");
-        blockMat = assets.SharedMaterial("block");
-        waterMat = assets.SharedMaterial("water");
-    }
-
-    // ObjectInstance.materialIndex から runtime Material* を解決する。 無効なら既定の共有 player material
-    const auto resolveMaterial = [&](const NS::Game::Level::ObjectInstance& object) -> NS::Graphics::Material* {
-        if (app != nullptr && object.materialIndex >= 0 &&
-            static_cast<std::size_t>(object.materialIndex) < m_level.materialPaths.size())
-        {
-            const auto loaded = app->Assets().LoadMaterial(exeDir / m_level.materialPaths[object.materialIndex]);
-            if (loaded.material != nullptr)
-                return loaded.material;
-        }
-        return playerMat;
-    };
+    if (app == nullptr)
+        return;
+    auto& assets = app->Assets();
 
     for (std::size_t objectIndex = 0; objectIndex < m_level.objects.size(); ++objectIndex)
     {
         const NS::Game::Level::ObjectInstance& entry = m_level.objects[objectIndex];
+
+        auto obj = NS::Game::Blocks::BuildPlacedObject(entry, assets, m_level.materialPaths);
+        if (!obj)
+            continue; // 配置物にしない kind (coin / star 等) はファクトリが nullptr を返す
+
+        obj->AttachScene(this);
+        obj->OnStart();
+
         const bool gridAligned = (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0;
 
-        // ObjectInstance の transform をそのまま載せる。 grid はセルスナップ済の値、 自由配置物はギズモ編集値
-        const auto placeFromEntry = [&](NS::Scene::GameObject& obj) {
-            obj.Root().SetPosition(NS::Math::Vector3{entry.positionX, entry.positionY, entry.positionZ});
-            obj.Root().SetRotation(
-                NS::Math::Quaternion{entry.rotationX, entry.rotationY, entry.rotationZ, entry.rotationW});
-            obj.Root().SetScale(NS::Math::Vector3{entry.scaleX, entry.scaleY, entry.scaleZ});
-        };
-        const auto color = NS::Game::Blocks::GetBaseColor(entry.kind);
-        const NS::Math::Vector3 baseColor{color.R(), color.G(), color.B()};
-
-        // 非 gridAligned (自由配置物) は個別描画の Block として扱う。 材質は materialIndex から解決する
-        // (v1 で昇格できるのは solid のみなので kind は問わず cube で表現する)
-        // collider は Transform と独立した保存値から組む (world では Root の scale が別途乗る)
         if (!gridAligned)
         {
-            const NS::Math::Vector3 colliderHalfExtents{
-                entry.colliderHalfExtentsX, entry.colliderHalfExtentsY, entry.colliderHalfExtentsZ};
-            auto cube = std::make_unique<Block>(cubeMesh, resolveMaterial(entry), colliderHalfExtents);
-            cube->AttachScene(this);
-            placeFromEntry(*cube);
-            cube->MeshComp().SetBaseColor(baseColor);
-            // 当たり箱の親 local オフセット / 回転を保存値から復元する (世界では owner の scale / 回転が更に乗る)
-            const NS::Math::Vector3 colliderOffset{entry.colliderOffsetX, entry.colliderOffsetY, entry.colliderOffsetZ};
-            const NS::Math::Quaternion colliderRotation{
-                entry.colliderRotationX, entry.colliderRotationY, entry.colliderRotationZ, entry.colliderRotationW};
-            cube->Collider().SetCenterOffset(colliderOffset);
-            cube->Collider().SetLocalRotation(colliderRotation);
-
-            // 形状別の当たり判定 component を足す。 colliderHalfExtents の解釈は LevelData の規約に従う
-            // (球 = x が半径、 capsule = x 半径 / y 半高)。 視覚は当面 cube のまま
-            const NS::Game::Level::ShapeCollider shape = NS::Game::Level::ObjectShapeCollider(entry);
-            NS::Scene::SphereColliderComponent* sphereCollider = nullptr;
-            NS::Scene::CapsuleColliderComponent* capsuleCollider = nullptr;
-            if (shape == NS::Game::Level::ShapeCollider::Sphere)
-            {
-                sphereCollider = cube->AddComponent<NS::Scene::SphereColliderComponent>(entry.colliderHalfExtentsX);
-                sphereCollider->SetCenterOffset(colliderOffset);
-            }
-            else if (shape == NS::Game::Level::ShapeCollider::Capsule)
-            {
-                capsuleCollider = cube->AddComponent<NS::Scene::CapsuleColliderComponent>(entry.colliderHalfExtentsX,
-                                                                                          entry.colliderHalfExtentsY);
-                capsuleCollider->SetCenterOffset(colliderOffset);
-                capsuleCollider->SetLocalRotation(colliderRotation);
-            }
-
-            cube->OnStart();
-
-            // 形状別チャネルへ載せる。 Mesh は三角形ソース (glTF 取り込み) 未配置のため Box 当たりへ退避する
-            if (sphereCollider != nullptr)
-                m_collisionSpheres.push_back(sphereCollider->WorldSphere());
-            else if (capsuleCollider != nullptr)
-                m_collisionCapsules.push_back(capsuleCollider->WorldCapsule());
-            else
-                m_collisionObbs.push_back(cube->Collider().WorldOBB());
-
+            // 自由配置物は個別描画のまま。 ファクトリ実体は Block なので view へ Block* を載せる
+            Block* freePtr = static_cast<Block*>(obj.get());
+            m_freeObjects.push_back(freePtr);
             m_freeSourceIndices.push_back(objectIndex);
-            m_freeObjects.push_back(std::move(cube));
-            continue;
+
+            // 形状別チャネルへ排他で載せる。 内蔵 Box は Sphere / Capsule が無い時だけ OBB へ (二重登録しない)
+            if (auto* sphere = NS::Game::Blocks::FindComponent<NS::Scene::SphereColliderComponent>(*obj))
+                m_collisionSpheres.push_back(sphere->WorldSphere());
+            else if (auto* capsule = NS::Game::Blocks::FindComponent<NS::Scene::CapsuleColliderComponent>(*obj))
+                m_collisionCapsules.push_back(capsule->WorldCapsule());
+            else
+                m_collisionObbs.push_back(freePtr->Collider().WorldOBB());
         }
-
-        if (entry.kind == NS::Game::Blocks::kBlockIdSolid)
+        else if (entry.kind == NS::Game::Blocks::kBlockIdSolid)
         {
-            auto block = std::make_unique<Block>(cubeMesh, blockMat, kCellHalfExtents);
-            block->AttachScene(this);
-            placeFromEntry(*block);
-            block->MeshComp().SetBaseColor(baseColor);
-            block->OnStart();
-            // OnStart で RegisterRenderable 済のため SetActive(false) で個別 Draw 経路を無効化し InstanceBatcher
-            // に委ねる
-            block->MeshComp().SetActive(false);
-
-            m_collisionWorld.push_back(block->Collider().WorldAABB());
+            Block* blockPtr = static_cast<Block*>(obj.get());
+            // OnStart で RegisterRenderable 済のため個別 Draw を殺し InstanceBatcher に委ねる
+            blockPtr->MeshComp().SetActive(false);
+            m_blocks.push_back(blockPtr);
             m_blockSourceIndices.push_back(objectIndex);
-            m_blocks.push_back(std::move(block));
-            continue;
+            m_collisionWorld.push_back(blockPtr->Collider().WorldAABB());
         }
-
-        if (NS::Game::Blocks::IsSlopeBlock(entry.kind))
+        else if (NS::Game::Blocks::IsSlopeBlock(entry.kind))
         {
-            const float angle = NS::Game::Blocks::GetSlopeAngleDegrees(entry.kind);
-            NS::Graphics::StaticMesh* wedge = nullptr;
-            if (entry.kind == NS::Game::Blocks::kBlockIdSlope45)
-                wedge = wedge45;
-            else if (entry.kind == NS::Game::Blocks::kBlockIdSlope30)
-                wedge = wedge30;
-            else if (entry.kind == NS::Game::Blocks::kBlockIdSlope22)
-                wedge = wedge22;
-            else if (entry.kind == NS::Game::Blocks::kBlockIdSlope15)
-                wedge = wedge15;
-
-            auto slope = std::make_unique<SlopeBlock>(wedge, blockMat, angle, kCellHalfExtents);
-            slope->AttachScene(this);
-            placeFromEntry(*slope);
-
-            slope->MeshComp().SetBaseColor(baseColor);
-            slope->OnStart();
-
-            const auto tris = slope->Collider().WorldTriangles();
-            for (const auto& tri : tris)
-                m_collisionTriangles.push_back(tri);
-            m_slopes.push_back(std::move(slope));
-            continue;
+            if (auto* slope = NS::Game::Blocks::FindComponent<NS::Scene::SlopeColliderComponent>(*obj))
+            {
+                const auto tris = slope->WorldTriangles();
+                for (const auto& tri : tris)
+                    m_collisionTriangles.push_back(tri);
+            }
         }
-
-        if (NS::Game::Blocks::IsPoleBlock(entry.kind))
+        else if (NS::Game::Blocks::IsPoleBlock(entry.kind))
         {
-            constexpr float kPoleRadius = 0.15f;
-            constexpr float kPoleHeight = 1.0f;
-            auto pole = std::make_unique<PoleBlock>(poleMesh, blockMat, kPoleRadius, kPoleHeight);
-            pole->AttachScene(this);
-            placeFromEntry(*pole);
-
-            pole->MeshComp().SetBaseColor(baseColor);
-            pole->OnStart();
-
-            m_polePtrs.push_back(&pole->Pole());
-            m_poles.push_back(std::move(pole));
-            continue;
+            if (auto* pole = NS::Game::Blocks::FindComponent<NS::Scene::PoleComponent>(*obj))
+                m_polePtrs.push_back(pole);
         }
-
-        if (NS::Game::Blocks::IsHazardBlock(entry.kind))
+        else if (NS::Game::Blocks::IsHazardBlock(entry.kind))
         {
-            auto hazard = std::make_unique<HazardBlock>(cubeMesh, blockMat, kCellHalfExtents);
-            hazard->AttachScene(this);
-            placeFromEntry(*hazard);
-
-            hazard->MeshComp().SetBaseColor(baseColor);
-            hazard->OnStart();
-
-            // 衝突は通常 Block と同じく AABB として登録。 hazard 固有のダメージ trigger は
-            // OnUpdate 内で player.position vs AABB を per-frame check する経路を取る
-            m_collisionWorld.push_back(hazard->Collider().WorldAABB());
-            m_hazards.push_back(std::move(hazard));
-            continue;
+            // hazard は GameObject 直系なので実体型へ戻す。 衝突は通常ブロックと同じ AABB、
+            // ダメージ trigger は per-frame に芯線 vs AABB を判定するため view にも積む
+            HazardBlock* hazardPtr = static_cast<HazardBlock*>(obj.get());
+            m_collisionWorld.push_back(hazardPtr->Collider().WorldAABB());
+            m_hazardView.push_back(hazardPtr);
         }
+        // water / deco は当たり無し・ view 不要
 
-        if (NS::Game::Blocks::IsWaterBlock(entry.kind))
-        {
-            auto water = std::make_unique<WaterBlock>(cubeMesh, waterMat);
-            water->AttachScene(this);
-            placeFromEntry(*water);
-
-            water->MeshComp().SetBaseColor(baseColor);
-            water->OnStart();
-
-            // collider なしで m_collisionWorld にも m_collisionTriangles にも入れない (装飾と同じ理由)
-            m_waters.push_back(std::move(water));
-            continue;
-        }
-
-        if (NS::Game::Blocks::IsDecorationBlock(entry.kind))
-        {
-            auto deco = std::make_unique<DecorationBlock>(cubeMesh, blockMat);
-            deco->AttachScene(this);
-            placeFromEntry(*deco);
-
-            deco->MeshComp().SetBaseColor(baseColor);
-            deco->OnStart();
-
-            m_decorations.push_back(std::move(deco));
-            continue;
-        }
+        m_objectSourceIndices.push_back(objectIndex);
+        m_objects.push_back(std::move(obj));
     }
 
     // 生成直後は previous PRS が原点/単位回転のため Snapshot で current に揃える
-    // 欠かすと InterpolatedWorldMatrix(alpha) が原点→配置先を補間し編集のたびに全ブロックが振れる
-    for (auto& block : m_blocks)
-        block->Root().Snapshot();
-    for (auto& slope : m_slopes)
-        slope->Root().Snapshot();
-    for (auto& pole : m_poles)
-        pole->Root().Snapshot();
-    for (auto& hazard : m_hazards)
-        hazard->Root().Snapshot();
-    for (auto& water : m_waters)
-        water->Root().Snapshot();
-    for (auto& deco : m_decorations)
-        deco->Root().Snapshot();
-    for (auto& obj : m_freeObjects)
+    // 欠かすと InterpolatedWorldMatrix(alpha) が原点→配置先を補間し編集のたびに全配置物が振れる
+    for (auto& obj : m_objects)
         obj->Root().Snapshot();
 
     if (m_player)
@@ -856,9 +664,9 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
 
         // 接地シャドウは grid + 自由物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
         std::vector<NS::Math::AABB> shadowReceivers(m_collisionWorld.begin(), m_collisionWorld.end());
-        for (auto& freeCube : m_freeObjects)
-            if (freeCube)
-                shadowReceivers.push_back(freeCube->Collider().WorldAABB());
+        for (auto* freeObj : m_freeObjects)
+            if (freeObj)
+                shadowReceivers.push_back(freeObj->Collider().WorldAABB());
         m_player->Shadow().SetCollisionWorld(shadowReceivers);
 
         m_player->Movement().SetClimbables(std::span<NS::Scene::PoleComponent* const>{m_polePtrs});
