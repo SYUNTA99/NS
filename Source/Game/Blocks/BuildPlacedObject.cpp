@@ -1,17 +1,16 @@
 #include "Game/Blocks/BuildPlacedObject.h"
 
 #include "Framework/Core/Filesystem.h"
+#include "Framework/Graphics/StaticMesh.h"
 #include "Framework/Scene/AssetManager.h"
+#include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/CapsuleColliderComponent.h"
+#include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
+#include "Framework/Scene/Components/PoleComponent.h"
+#include "Framework/Scene/Components/SlopeColliderComponent.h"
 #include "Framework/Scene/Components/SphereColliderComponent.h"
-#include "Game/Block.h"
 #include "Game/Blocks/BlockRegistry.h"
-#include "Game/Blocks/DecorationBlock.h"
-#include "Game/Blocks/HazardBlock.h"
-#include "Game/Blocks/PoleBlock.h"
-#include "Game/Blocks/SlopeBlock.h"
-#include "Game/Blocks/WaterBlock.h"
 #include "Game/Level/LevelData.h"
 
 namespace NS::Game::Blocks
@@ -39,7 +38,7 @@ namespace NS::Game::Blocks
         NS::Graphics::StaticMesh* const cubeMesh = assets.Builtin("cube");
         NS::Graphics::Material* const blockMat = assets.SharedMaterial("block");
 
-        std::unique_ptr<NS::Scene::GameObject> result;
+        auto obj = std::make_unique<NS::Scene::GameObject>();
 
         if (!gridAligned)
         {
@@ -60,30 +59,30 @@ namespace NS::Game::Blocks
             const NS::Math::Quaternion colliderRotation{
                 object.colliderRotationX, object.colliderRotationY, object.colliderRotationZ, object.colliderRotationW};
 
-            auto cube = std::make_unique<Block>(cubeMesh, freeMat, colliderHalfExtents);
-            cube->Collider().SetCenterOffset(colliderOffset);
-            cube->Collider().SetLocalRotation(colliderRotation);
+            obj->AddComponent<NS::Scene::MeshRendererComponent>(cubeMesh, freeMat);
+            auto* box = obj->AddComponent<NS::Scene::BoxColliderComponent>(colliderHalfExtents);
+            box->SetCenterOffset(colliderOffset);
+            box->SetLocalRotation(colliderRotation);
 
             // 形状別の当たりを内蔵 Box に加えて足す。 視覚は cube のまま、 内蔵 Box は当たり退避として残す
             const ShapeCollider shape = ObjectShapeCollider(object);
             if (shape == ShapeCollider::Sphere)
             {
-                auto* sphere = cube->AddComponent<NS::Scene::SphereColliderComponent>(object.colliderHalfExtentsX);
+                auto* sphere = obj->AddComponent<NS::Scene::SphereColliderComponent>(object.colliderHalfExtentsX);
                 sphere->SetCenterOffset(colliderOffset);
             }
             else if (shape == ShapeCollider::Capsule)
             {
-                auto* capsule = cube->AddComponent<NS::Scene::CapsuleColliderComponent>(object.colliderHalfExtentsX,
-                                                                                        object.colliderHalfExtentsY);
+                auto* capsule = obj->AddComponent<NS::Scene::CapsuleColliderComponent>(object.colliderHalfExtentsX,
+                                                                                       object.colliderHalfExtentsY);
                 capsule->SetCenterOffset(colliderOffset);
                 capsule->SetLocalRotation(colliderRotation);
             }
-
-            result = std::move(cube);
         }
         else if (object.kind == kBlockIdSolid)
         {
-            result = std::make_unique<Block>(cubeMesh, blockMat, kCellHalfExtents);
+            obj->AddComponent<NS::Scene::MeshRendererComponent>(cubeMesh, blockMat);
+            obj->AddComponent<NS::Scene::BoxColliderComponent>(kCellHalfExtents);
         }
         else if (IsSlopeBlock(object.kind))
         {
@@ -96,23 +95,27 @@ namespace NS::Game::Blocks
                 wedge = assets.Builtin("wedge22");
             else if (object.kind == kBlockIdSlope15)
                 wedge = assets.Builtin("wedge15");
-            result = std::make_unique<SlopeBlock>(wedge, blockMat, GetSlopeAngleDegrees(object.kind), kCellHalfExtents);
+            obj->AddComponent<NS::Scene::MeshRendererComponent>(wedge, blockMat);
+            obj->AddComponent<NS::Scene::SlopeColliderComponent>(GetSlopeAngleDegrees(object.kind), kCellHalfExtents);
         }
         else if (IsPoleBlock(object.kind))
         {
-            result = std::make_unique<PoleBlock>(assets.Builtin("pole"), blockMat, kPoleRadius, kPoleHeight);
+            obj->AddComponent<NS::Scene::MeshRendererComponent>(assets.Builtin("pole"), blockMat);
+            obj->AddComponent<NS::Scene::PoleComponent>(kPoleRadius, kPoleHeight);
         }
         else if (IsHazardBlock(object.kind))
         {
-            result = std::make_unique<HazardBlock>(cubeMesh, blockMat, kCellHalfExtents);
+            obj->AddComponent<NS::Scene::MeshRendererComponent>(cubeMesh, blockMat);
+            obj->AddComponent<NS::Scene::BoxColliderComponent>(kCellHalfExtents);
+            obj->AddComponent<NS::Scene::HazardComponent>();
         }
         else if (IsWaterBlock(object.kind))
         {
-            result = std::make_unique<WaterBlock>(cubeMesh, assets.SharedMaterial("water"));
+            obj->AddComponent<NS::Scene::MeshRendererComponent>(cubeMesh, assets.SharedMaterial("water"));
         }
         else if (IsDecorationBlock(object.kind))
         {
-            result = std::make_unique<DecorationBlock>(cubeMesh, blockMat);
+            obj->AddComponent<NS::Scene::MeshRendererComponent>(cubeMesh, blockMat);
         }
         else
         {
@@ -120,14 +123,14 @@ namespace NS::Game::Blocks
             return nullptr;
         }
 
-        result->Root().SetPosition(NS::Math::Vector3{object.positionX, object.positionY, object.positionZ});
-        result->Root().SetRotation(
+        obj->Root().SetPosition(NS::Math::Vector3{object.positionX, object.positionY, object.positionZ});
+        obj->Root().SetRotation(
             NS::Math::Quaternion{object.rotationX, object.rotationY, object.rotationZ, object.rotationW});
-        result->Root().SetScale(NS::Math::Vector3{object.scaleX, object.scaleY, object.scaleZ});
+        obj->Root().SetScale(NS::Math::Vector3{object.scaleX, object.scaleY, object.scaleZ});
 
-        if (auto* meshComp = FindComponent<NS::Scene::MeshRendererComponent>(*result))
+        if (auto* meshComp = FindComponent<NS::Scene::MeshRendererComponent>(*obj))
             meshComp->SetBaseColor(baseColor);
 
-        return result;
+        return obj;
     }
 } // namespace NS::Game::Blocks

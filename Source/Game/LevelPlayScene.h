@@ -43,14 +43,8 @@ namespace NS::Scene
     struct RenderContext;
 } // namespace NS::Scene
 
-class Block;
-class DecorationBlock;
-class HazardBlock;
 class Player;
-class PoleBlock;
 class SkinnedDebugCharacter;
-class SlopeBlock;
-class WaterBlock;
 
 /// レベルを遊ぶための root scene。 編集機能を持たず、 派生もしない単一の scene 型
 class LevelPlayScene : public NS::Scene::SceneBase

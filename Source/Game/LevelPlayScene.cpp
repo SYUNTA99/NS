@@ -1,12 +1,6 @@
 #include "Game/LevelPlayScene.h"
 
-#include "Game/Block.h"
 #include "Game/Blocks/BuildPlacedObject.h"
-#include "Game/Blocks/DecorationBlock.h"
-#include "Game/Blocks/HazardBlock.h"
-#include "Game/Blocks/PoleBlock.h"
-#include "Game/Blocks/SlopeBlock.h"
-#include "Game/Blocks/WaterBlock.h"
 #include "Game/Player.h"
 #include "Game/SkinnedDebugCharacter.h"
 #include "Game/Undo/EditTarget.h"
