@@ -3,10 +3,12 @@
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
+#include "Framework/Graphics/GltfLoader.h"
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/Mesh.h"
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Shader.h"
+#include "Framework/Graphics/SkeletalMesh.h"
 #include "Framework/Graphics/StaticMesh.h"
 #include "Framework/Graphics/Texture.h"
 #include "Framework/Graphics/TextureArray.h"
@@ -120,6 +122,10 @@ namespace NS::Scene
             return it->second.get();
         auto shader = NS::Graphics::Shader::Create(key);
         NS::Graphics::Shader* raw = shader.get();
+        if (raw->IsUsingFallback())
+            NS_LOG_WARN(::NS::Core::LogCat::Graphics,
+                        "AssetManager: shader の読込/コンパイル失敗、 fallback 描画: {}",
+                        key.string());
         m_shaders.emplace(key, std::move(shader));
         return raw;
     }
@@ -148,6 +154,59 @@ namespace NS::Scene
         NS_LOG_WARN(
             ::NS::Core::LogCat::Graphics, "AssetManager::GetOrLoadMesh: file mesh ロード未対応: {}", key.string());
         return nullptr;
+    }
+
+    LoadedSkinnedModel AssetManager::GetOrLoadSkinnedModel(const std::filesystem::path& path)
+    {
+        const std::filesystem::path key = path.lexically_normal();
+        auto it = m_skinnedModels.find(key);
+        if (it == m_skinnedModels.end())
+        {
+            NS::Graphics::SkinnedMeshData data = NS::Graphics::LoadGltfSkinnedMesh(key.string());
+            if (!data.IsValid())
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "AssetManager: skinned glTF 読込失敗: {}", key.string());
+                return LoadedSkinnedModel{};
+            }
+
+            NS::Graphics::SkinnedMeshDesc smd{};
+            smd.vertices = data.vertices.data();
+            smd.vertexCount = data.vertices.size();
+            smd.indices = data.indices.data();
+            smd.indexCount = data.indices.size();
+            smd.boneCount = data.skeleton.BoneCount();
+
+            SkinnedModelRecord record{};
+            record.mesh = NS::Graphics::SkeletalMesh::Create(smd);
+            if (record.mesh == nullptr || !record.mesh->IsValid())
+            {
+                // GPU buffer 生成に失敗。 ダッド mesh をキャッシュせず無効を返す (Draw が無音 no-op になるのを防ぐ)
+                NS_LOG_ERROR(
+                    ::NS::Core::LogCat::Graphics, "AssetManager: skinned mesh の GPU 生成失敗: {}", key.string());
+                return LoadedSkinnedModel{};
+            }
+
+            // bind ポーズ頂点の境界を求めて配置スケール計算用に持たせる
+            record.boundsMin = data.vertices.front().position;
+            record.boundsMax = record.boundsMin;
+            for (const NS::Graphics::SkinnedVertex& v : data.vertices)
+            {
+                record.boundsMin = NS::Math::Vector3::Min(record.boundsMin, v.position);
+                record.boundsMax = NS::Math::Vector3::Max(record.boundsMax, v.position);
+            }
+            record.skeleton = std::move(data.skeleton);
+            record.clips = std::move(data.animations);
+            it = m_skinnedModels.emplace(key, std::move(record)).first;
+        }
+
+        LoadedSkinnedModel out{};
+        out.mesh = it->second.mesh.get();
+        out.skeleton = it->second.skeleton;
+        out.clips = it->second.clips;
+        out.boundsMin = it->second.boundsMin;
+        out.boundsMax = it->second.boundsMax;
+        out.valid = true;
+        return out;
     }
 
     void AssetManager::RegisterBuiltins()
@@ -319,6 +378,7 @@ namespace NS::Scene
         m_textures.clear();
         m_shaders.clear();
         m_meshes.clear();
+        m_skinnedModels.clear();
         m_builtins.clear();
     }
 } // namespace NS::Scene

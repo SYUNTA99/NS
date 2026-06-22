@@ -27,20 +27,13 @@
 namespace NS::Graphics
 {
     class InstanceBatcher;
-    class Material;
-    class StaticMesh;
-    class SkeletalMesh;
-    class Shader;
     class Skybox;
-    class Texture;
 } // namespace NS::Graphics
 
 namespace NS::Scene
 {
     class IRenderable;
     class GameObject;
-    class MeshRendererComponent;
-    class SkeletalAnimationComponent;
     class Transform;
     class CameraComponent;
     class CameraBrainComponent;
@@ -54,6 +47,7 @@ class DecorationBlock;
 class HazardBlock;
 class Player;
 class PoleBlock;
+class SkinnedDebugCharacter;
 class SlopeBlock;
 class WaterBlock;
 
@@ -129,18 +123,10 @@ private:
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
     std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
 
-    // 仮 skinned キャラの描画リソース (mesh / shader / material)。 アセット未取得時は全て null
-    std::unique_ptr<NS::Graphics::SkeletalMesh> m_skinnedMesh;
-    std::unique_ptr<NS::Graphics::Shader> m_skinnedVS;
-    std::unique_ptr<NS::Graphics::Material> m_skinnedMaterial;
-
     std::unique_ptr<Player> m_player;
 
-    // 仮 skinned キャラ本体。 GameObject が MeshRenderer + SkeletalAnimation を所有し、 参照をキャッシュする
-    std::unique_ptr<NS::Scene::GameObject> m_animatedModel;
-    NS::Scene::MeshRendererComponent* m_animMesh = nullptr;
-    NS::Scene::SkeletalAnimationComponent* m_animPlayer = nullptr;
-    float m_animSpeed = 1.0f;
+    // 仮 skinned キャラ。 形 / 骨 / 材質は AssetManager 所有を参照し、 components を自分で合成する
+    std::unique_ptr<SkinnedDebugCharacter> m_animatedModel;
 
     std::vector<std::unique_ptr<Block>> m_blocks;
     std::vector<std::unique_ptr<SlopeBlock>> m_slopes;

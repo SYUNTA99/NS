@@ -9,7 +9,9 @@
 /// 型別のロード処理を独立メソッドに分け、 本体は「キャッシュの容れ物 + Reload の窓口」に徹する
 /// 依存: NS::Graphics::Shader / Texture / Mesh / StaticMesh, NS::Core::FileSystem
 
+#include "Framework/Graphics/Animation.h"
 #include "Framework/Graphics/Material.h"
+#include "Framework/Graphics/Skeleton.h"
 #include "Framework/Math/Math.h"
 
 #include <filesystem>
@@ -52,6 +54,18 @@ namespace NS::Scene
         NS::Math::Vector3 baseColor{1.0f, 1.0f, 1.0f};
     };
 
+    /// 読み込んだ skinned model。 mesh は AssetManager 所有 (参照)、 skeleton / clips は呼出側へ複製を渡す
+    /// 再生状態とクリップ合成 (リターゲット) はインスタンス側で持つため、 共有テンプレートを複製で配る
+    struct LoadedSkinnedModel
+    {
+        NS::Graphics::SkeletalMesh* mesh = nullptr;     ///< AssetManager 所有、 キャッシュ寿命中のみ有効
+        NS::Graphics::Skeleton skeleton;                ///< 複製 (呼出側が所有する)
+        std::vector<NS::Graphics::AnimationClip> clips; ///< 複製 (呼出側が所有する)
+        NS::Math::Vector3 boundsMin{};                  ///< bind ポーズ頂点の境界 (配置スケール計算用)
+        NS::Math::Vector3 boundsMax{};
+        bool valid = false;
+    };
+
     /// アプリ寿命でアセットを dedupe 所有する単一キャッシュ。 leaf は path 鍵、 builtin は名前鍵
     /// Material 内蔵 CB は MeshRenderer が流す FrameCB に合わせるため本クラスは Scene 層に置く
     class AssetManager
@@ -72,6 +86,10 @@ namespace NS::Scene
         [[nodiscard]] NS::Graphics::Texture* GetOrLoadTexture(const std::filesystem::path& path);
         /// path 鍵で Mesh を dedupe して返す。 file mesh のロード対応前は未対応 path で nullptr
         [[nodiscard]] NS::Graphics::Mesh* GetOrLoadMesh(const std::filesystem::path& path);
+
+        /// skinned glTF を読み SkeletalMesh を path 鍵で dedupe 所有して返す。 skeleton / clips は複製で返す
+        /// (再生状態とクリップ合成はインスタンス側が持つため)。 失敗時は valid=false。 相対 path は baseDir 基準
+        [[nodiscard]] LoadedSkinnedModel GetOrLoadSkinnedModel(const std::filesystem::path& path);
 
         /// 手続き生成 builtin を一括登録する (cube / wedge45 / wedge30 / wedge22 / wedge15 / pole / shadowQuad)
         /// device 確立後・最初の利用前に 1 度だけ呼ぶ。 既登録名は上書きしない
@@ -114,6 +132,15 @@ namespace NS::Scene
             NS::Math::Vector3 baseColor{1.0f, 1.0f, 1.0f};
         };
 
+        struct SkinnedModelRecord
+        {
+            std::unique_ptr<NS::Graphics::SkeletalMesh> mesh;
+            NS::Graphics::Skeleton skeleton;
+            std::vector<NS::Graphics::AnimationClip> clips;
+            NS::Math::Vector3 boundsMin{};
+            NS::Math::Vector3 boundsMax{};
+        };
+
         std::filesystem::path m_baseDir;
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Shader>> m_shaders;
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Texture>> m_textures;
@@ -122,5 +149,7 @@ namespace NS::Scene
         std::map<std::filesystem::path, MaterialRecord> m_materials;                        // .mat composite
         std::map<std::string, std::unique_ptr<NS::Graphics::Material>> m_sharedMaterials;   // 手続き共有 material
         std::map<std::string, std::unique_ptr<NS::Graphics::TextureArray>> m_textureArrays; // 名前鍵 Texture2DArray
+        std::map<std::filesystem::path, SkinnedModelRecord>
+            m_skinnedModels; // skinned glTF (mesh 所有 + skeleton/clips テンプレ)
     };
 } // namespace NS::Scene
