@@ -187,9 +187,9 @@ private:
     /// ギズモの選択候補 (自由オブジェクト + grid solid ブロック) を連結し直して注入する
     void RefreshGizmoSelectables();
 
-    /// scene の rebuild (Play 突入の SetPlaying 等) を跨いだ後、 ギズモの選択 / 選択候補 span が
-    /// 解放済みオブジェクトを指したままになるのを断つ。 選択を外し候補を現在の実体へ貼り直す
-    void InvalidateGizmoSelectionAfterRebuild() noexcept;
+    /// 選択 id から現在の runtime 実体を解決し、 派生添字の更新と gizmo への貼り直しを行う
+    /// rebuild を跨いでも生ポインタを持ち越さない fail-safe の要。 ドラッグ中は gizmo 貼り直しを抑止する
+    void ResolveSelectionFromId() noexcept;
 
     /// grid solid ブロックの ObjectInstance から gridAligned ビットを落として自由オブジェクト化する
     void PromoteGridBlockToFree(std::size_t blockIndex);
@@ -197,8 +197,8 @@ private:
     /// ギズモで変形した自由オブジェクトの Transform を対応する ObjectInstance へ書き戻す
     void SyncFreeObjectTransforms();
 
-    /// ビューポートでギズモ選択が変わった時だけ m_selectedObjectIndex を追従させる
-    void ResolveSelectedIndexFromGizmo() noexcept;
+    /// ビューポートでギズモ選択が変わった時だけ、 選択 id (と派生の添字) を追従させる
+    void CaptureSelectionFromGizmo() noexcept;
 
     /// scene の level + 識別子ストアから編集対象 view を組む
     [[nodiscard]] NS::Game::Undo::EditTarget SceneEditTarget() noexcept;
@@ -239,7 +239,9 @@ private:
     };
     SpecialSelection m_specialSelection = SpecialSelection::None;
 
-    // Hierarchy / Inspector が参照する選択添字。 Hierarchy クリックとギズモ選択の両方から更新する
+    // 選択の真実は id (安定セッション識別子)。 rebuild / delete / undo を跨いでも生ポインタや添字に依存しない
+    std::uint32_t m_selectedObjectId = NS::Game::Undo::kInvalidObjectId;
+    // id から毎フレーム解決する派生の添字 (m_level.objects 用、 ズレても crash しない安定 vector を指す)
     std::size_t m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
     // 選択中の area camera の cameraVolumes 添字。 オブジェクト選択とは排他
     std::size_t m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;

@@ -123,9 +123,9 @@ void LevelEditorController::EnterPlay() noexcept
     m_mode = Mode::Play;
     // player spawn / 物理 / follow camera は scene が握る
     m_scene->SetPlaying(true);
-    // SetPlaying(true) は RebuildBlocksFromLevelData で全オブジェクトを作り直す。 旧実体を指したままの
-    // ギズモが Edit 復帰後のクリックで dangling を踏むため、 ここで選択と候補を貼り直す
-    InvalidateGizmoSelectionAfterRebuild();
+    // SetPlaying(true) の rebuild を跨いでも生ポインタが残らないよう、 候補と選択を実体へ解決し直す
+    RefreshGizmoSelectables();
+    ResolveSelectionFromId();
     m_editor.SetActive(false);
     if (m_editorCameraRig)
         m_editorCameraRig->EditorCam().SetActive(false);
@@ -138,21 +138,12 @@ void LevelEditorController::EnterEdit() noexcept
     m_mode = Mode::Edit;
     // player 凍結 / follow・area camera 休止 / play 状態リセットは scene が握る
     m_scene->SetPlaying(false);
-    // Play 中の rebuild を跨いだ選択 / 候補をクリーンにしてから編集へ戻る
-    InvalidateGizmoSelectionAfterRebuild();
+    // Play 中の rebuild を跨いだ選択を、 id から現在の実体へ貼り直してから編集へ戻る
+    RefreshGizmoSelectables();
+    ResolveSelectionFromId();
     m_editor.SetActive(true);
     if (m_editorCameraRig)
         m_editorCameraRig->EditorCam().SetActive(true);
-}
-
-void LevelEditorController::InvalidateGizmoSelectionAfterRebuild() noexcept
-{
-    // rebuild 後は free/grid オブジェクトが別アドレスで作り直されるため、 ギズモの選択 (m_selected) と
-    // 選択候補 span が解放済みを指す。 選択を外し候補を現在の実体へ貼り直して dangling を断つ
-    m_gizmo.ClearSelection();
-    m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
-    m_lastGizmoSelected = nullptr;
-    RefreshGizmoSelectables();
 }
 
 void LevelEditorController::Tick()
@@ -205,6 +196,11 @@ void LevelEditorController::TickEdit()
 
     if (objectMode && m_editorCameraRig && m_scene->m_brain)
     {
+        // 毎フレーム live な scene から候補 span を作り直し、 選択を id → 実体へ解決し直す
+        // rebuild (Play 突入 / undo / promote) を跨いでも生ポインタが残らない fail-safe の要
+        RefreshGizmoSelectables();
+        ResolveSelectionFromId();
+
         const auto vp = m_scene->m_brain->ViewProjection();
         const auto viewport = app->Window().Size();
         const bool wasDragging = m_gizmoWasDragging;
@@ -223,8 +219,8 @@ void LevelEditorController::TickEdit()
             }
         }
 
-        // ビューポートでのギズモ選択変化を Hierarchy / Inspector の選択添字へ追従させる
-        ResolveSelectedIndexFromGizmo();
+        // ビューポートでのギズモ選択変化を選択 id (と Inspector が見る派生添字) へ追従させる
+        CaptureSelectionFromGizmo();
 
         // ギズモ変形の結果を ObjectInstance へ反映 (live → model)。 begin/commit はこの model を基準にする
         SyncFreeObjectTransforms();
@@ -250,10 +246,12 @@ void LevelEditorController::TickEdit()
         m_scene->RebuildBlocksFromLevelData();
         // ファイル読込で cameraVolumes が差し替わった場合に area camera を追従させる
         m_scene->RebuildAreaCamerasFromLevelData();
-        // 作り直した runtime オブジェクトへギズモ選択候補を貼り直す (pointer dangling 防止)
-        RefreshGizmoSelectables();
-        // undo / redo / ロードで作り直した後、 ダングリングを避けるためギズモ選択を解除する
+        // undo / redo / ロードは objects を作り直す。 ロードは id が振り直され旧 id が別物に化けるため、
+        // ここで選択 id を解除する (候補 span と gizmo の貼り直しは次フレーム頭の解決に委ねる)
+        m_selectedObjectId = NS::Game::Undo::kInvalidObjectId;
+        m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
         m_gizmo.ClearSelection();
+        m_lastGizmoSelected = nullptr;
         m_editor.ClearLevelDirty();
     }
 }
@@ -297,6 +295,7 @@ void LevelEditorController::SetObjectToolActive(bool active) noexcept
     if (!active)
     {
         m_gizmo.ClearSelection();
+        m_selectedObjectId = NS::Game::Undo::kInvalidObjectId;
         m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
         m_lastGizmoSelected = nullptr;
     }
@@ -452,9 +451,12 @@ void LevelEditorController::SelectObjectByIndex(std::size_t index) noexcept
 
     if (index >= m_scene->m_level.objects.size())
     {
+        m_selectedObjectId = NS::Game::Undo::kInvalidObjectId;
         m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
         return;
     }
+    // 選択の真実は id。 索引が動いても id から引き直せる
+    m_selectedObjectId = m_scene->m_objectIds[index];
     m_selectedObjectIndex = index;
 
     // ハンドルを出すため Object ツールへ切替える (Build のままだとギズモが描かれない)
@@ -486,6 +488,7 @@ void LevelEditorController::SelectCameraByIndex(std::size_t index) noexcept
     m_selectedCameraIndex = index;
 
     // カメラ選択中はオブジェクト / ギズモ選択を外す (Inspector はカメラを表示する)
+    m_selectedObjectId = NS::Game::Undo::kInvalidObjectId;
     m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
     m_gizmo.ClearSelection();
     m_lastGizmoSelected = nullptr;
@@ -494,6 +497,7 @@ void LevelEditorController::SelectCameraByIndex(std::size_t index) noexcept
 void LevelEditorController::SelectPlayer() noexcept
 {
     // Player は gizmo 対象外。 添字 / ギズモ選択を外して特殊選択へ移す (ツールモードは触らない)
+    m_selectedObjectId = NS::Game::Undo::kInvalidObjectId;
     m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
     m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
     m_gizmo.ClearSelection();
@@ -503,6 +507,7 @@ void LevelEditorController::SelectPlayer() noexcept
 
 void LevelEditorController::SelectCamera() noexcept
 {
+    m_selectedObjectId = NS::Game::Undo::kInvalidObjectId;
     m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
     m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
     m_gizmo.ClearSelection();
@@ -639,15 +644,16 @@ void LevelEditorController::RenderColliderWireframes() noexcept
     }
 }
 
-void LevelEditorController::ResolveSelectedIndexFromGizmo() noexcept
+void LevelEditorController::CaptureSelectionFromGizmo() noexcept
 {
     NS::Scene::Transform* selected = m_gizmo.Selected();
-    // 前フレームと同じなら据え置き (Hierarchy で選んだ非選択候補を毎フレーム潰さないため)
+    // 前フレームと同じなら据え置き (Hierarchy で選んだ非 gizmo 選択を毎フレーム潰さないため)
     if (selected == m_lastGizmoSelected)
         return;
     m_lastGizmoSelected = selected;
     if (selected == nullptr)
     {
+        m_selectedObjectId = NS::Game::Undo::kInvalidObjectId;
         m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
         return;
     }
@@ -658,6 +664,7 @@ void LevelEditorController::ResolveSelectedIndexFromGizmo() noexcept
         if (m_scene->m_freeObjects[i] && &m_scene->m_freeObjects[i]->Root() == selected)
         {
             m_selectedObjectIndex = m_scene->m_freeSourceIndices[i];
+            m_selectedObjectId = m_scene->m_objectIds[m_selectedObjectIndex];
             return;
         }
     }
@@ -666,10 +673,43 @@ void LevelEditorController::ResolveSelectedIndexFromGizmo() noexcept
         if (m_scene->m_blocks[i] && &m_scene->m_blocks[i]->Root() == selected)
         {
             m_selectedObjectIndex = m_scene->m_blockSourceIndices[i];
+            m_selectedObjectId = m_scene->m_objectIds[m_selectedObjectIndex];
             return;
         }
     }
+    m_selectedObjectId = NS::Game::Undo::kInvalidObjectId;
     m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+}
+
+void LevelEditorController::ResolveSelectionFromId() noexcept
+{
+    // id → 現在の objects 添字。 delete / undo で添字はズレるので毎フレーム引き直す
+    m_selectedObjectIndex = (m_selectedObjectId == NS::Game::Undo::kInvalidObjectId)
+                                ? NS::Game::Level::kNoObjectIndex
+                                : NS::Game::Undo::IndexOfId(SceneEditTarget(), m_selectedObjectId);
+
+    // ドラッグ中は gizmo の選択を貼り直さない (SetSelected が進行中ドラッグを切ってしまう)
+    if (m_gizmo.IsDragging())
+        return;
+
+    // 選択 id が自由オブジェクトを指すなら gizmo に貼り直す。 grid / 不在 / 特殊選択は gizmo を外す
+    if (m_specialSelection == SpecialSelection::None && m_selectedObjectIndex != NS::Game::Level::kNoObjectIndex)
+    {
+        for (std::size_t i = 0; i < m_scene->m_freeSourceIndices.size(); ++i)
+        {
+            if (m_scene->m_freeSourceIndices[i] == m_selectedObjectIndex && m_scene->m_freeObjects[i])
+            {
+                NS::Scene::Transform* root = &m_scene->m_freeObjects[i]->Root();
+                if (m_gizmo.Selected() != root)
+                    m_gizmo.SetSelected(root);
+                m_lastGizmoSelected = root;
+                return;
+            }
+        }
+    }
+    if (m_gizmo.Selected() != nullptr)
+        m_gizmo.ClearSelection();
+    m_lastGizmoSelected = nullptr;
 }
 
 void LevelEditorController::SetSelectedFreePosition(NS::Math::Vector3 position) noexcept
@@ -775,9 +815,10 @@ void LevelEditorController::PromoteGridBlockToFree(std::size_t blockIndex)
     NS::Game::Undo::EditTarget target = SceneEditTarget();
     m_editor.Undo().Push(std::make_unique<NS::Game::Undo::TransformCommand>(id, before, after), target);
 
-    // 作り直すと自由化した object は m_freeObjects 側へ回る。 選択候補 span も貼り直す
+    // 作り直すと自由化した object は m_freeObjects 側へ回る。 選択候補 span も貼り直し、 選択 id も追従させる
     m_scene->RebuildBlocksFromLevelData();
     RefreshGizmoSelectables();
+    m_selectedObjectId = id;
     ReselectFreeObjectById(id);
 }
 
