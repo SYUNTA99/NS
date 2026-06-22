@@ -92,7 +92,7 @@ private:
     /// false で player を凍結し follow / area camera を休止する (editor の編集モード用)
     void SetPlaying(bool playing) noexcept;
 
-    /// dirty flag 検出時のみ m_blocks と m_collisionWorld を LevelData から再構築する
+    /// dirty flag 検出時のみ m_objects と衝突世界を LevelData から再構築する
     void RebuildBlocksFromLevelData();
 
     /// m_objectIds を m_level.objects と同サイズの連番へ再構築する (objects 全置換直後に呼ぶ)
@@ -174,13 +174,9 @@ private:
     // 直近 OnRenderScene で解決した scene 段設定。 editor の RenderSettings パネルが friend で読む
     NS::Graphics::RenderSettings m_lastResolvedSettings{};
 
-    // m_objects の非所有 view。 描画 / 衝突 / 編集が段階移行するあいだ旧来の参照を保つための一時 view で、
-    // build 時に再構築する (所有は m_objects 側、 ここは観測のみ)
-    std::vector<Block*> m_blocks;                     // grid solid の view (描画は m_objects 直読み、 ここは editor 用)
-    std::vector<std::size_t> m_blockSourceIndices;    // m_blocks[i] -> m_level.objects 添字
-    std::vector<Block*> m_freeObjects;                // 非 gridAligned の view (編集 / 影が走査)
-    std::vector<std::size_t> m_freeSourceIndices;     // m_freeObjects[i] -> m_level.objects 添字
-    std::vector<NS::Scene::GameObject*> m_hazardView; // hazard の damage 走査 view (芯線 vs AABB、 衝突応答とは別経路)
+    // hazard の damage 走査 view。 衝突応答とは別経路 (芯線 vs AABB) で per-frame に当てるため build 時に積む
+    // 所有は m_objects 側、 ここは観測のみ
+    std::vector<NS::Scene::GameObject*> m_hazardView;
 
     /// 差分フレームのみ cubemap を再ロードするため前回パスを保持する
     std::filesystem::path m_loadedSkyboxPath{};

@@ -1,7 +1,6 @@
 #include "Editor/LevelEditorController.h"
 
 #include "Editor/EditorCameraRig.h"
-#include "Game/Block.h"
 #include "Game/LevelPlayScene.h"
 #include "Game/Player.h"
 
@@ -13,17 +12,18 @@
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
 #include "Framework/Scene/AssetManager.h"
+#include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
 #include "Framework/Scene/Transform.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/BlockRegistry.h"
+#include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Undo/AddObjectCommand.h"
 #include "Game/Undo/TransformCommand.h"
 
-#include <cmath>
 #include <cstring>
 #include <memory>
 
@@ -206,16 +206,20 @@ void LevelEditorController::TickEdit()
         const bool wasDragging = m_gizmoWasDragging;
         m_gizmo.Tick(vp, viewport);
 
-        // 掴んだら自由化: 選択が grid solid ブロックなら自由 Transform オブジェクトへ昇格する
+        // 掴んだら自由化: 選択が grid solid なら自由 Transform オブジェクトへ昇格する。 free はそのまま gizmo 変形
         if (NS::Scene::Transform* selected = m_gizmo.Selected())
         {
-            for (std::size_t bi = 0; bi < m_scene->m_blocks.size(); ++bi)
+            for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
             {
-                if (m_scene->m_blocks[bi] && &m_scene->m_blocks[bi]->Root() == selected)
-                {
-                    PromoteGridBlockToFree(bi);
-                    break;
-                }
+                if (&m_scene->m_objects[i]->Root() != selected)
+                    continue;
+                const std::size_t objectIndex = m_scene->m_objectSourceIndices[i];
+                const NS::Game::Level::ObjectInstance& entry = m_scene->m_level.objects[objectIndex];
+                const bool isGridSolid = (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0 &&
+                                         entry.kind == NS::Game::Blocks::kBlockIdSolid;
+                if (isGridSolid)
+                    PromoteGridBlockToFree(objectIndex);
+                break;
             }
         }
 
@@ -324,13 +328,10 @@ NS::Scene::GameObject* LevelEditorController::SelectedObjectGameObject() noexcep
     if (m_selectedObjectIndex >= m_scene->m_level.objects.size())
         return nullptr;
 
-    // objects 添字 → runtime インスタンスの逆引き。 自由配置物 / grid solid のどちらかに居る
-    for (std::size_t i = 0; i < m_scene->m_freeObjects.size() && i < m_scene->m_freeSourceIndices.size(); ++i)
-        if (m_scene->m_freeSourceIndices[i] == m_selectedObjectIndex && m_scene->m_freeObjects[i])
-            return m_scene->m_freeObjects[i];
-    for (std::size_t i = 0; i < m_scene->m_blocks.size() && i < m_scene->m_blockSourceIndices.size(); ++i)
-        if (m_scene->m_blockSourceIndices[i] == m_selectedObjectIndex && m_scene->m_blocks[i])
-            return m_scene->m_blocks[i];
+    // objects 添字 → runtime インスタンスの逆引き。 free / grid の別は ObjectInstance が握り runtime list は 1 本
+    for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
+        if (m_scene->m_objectSourceIndices[i] == m_selectedObjectIndex)
+            return m_scene->m_objects[i].get();
     return nullptr;
 }
 
@@ -344,16 +345,22 @@ void LevelEditorController::SyncSelectedObjectColliderFromComponent() noexcept
     if (m_selectedObjectIndex >= m_scene->m_level.objects.size())
         return;
 
+    // grid は cell 固定で collider を編集しない (自由配置物のみ反射を書き戻す)
+    if ((m_scene->m_level.objects[m_selectedObjectIndex].flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
+        return;
+
     // 反射編集で runtime collider の half-extents / offset / 回転は既に更新済。 それを ObjectInstance へ写して
-    // 保存と次プレイの rebuild に乗せる (自由オブジェクトのみ。 grid は cell 固定で編集しない)
-    for (std::size_t i = 0; i < m_scene->m_freeObjects.size() && i < m_scene->m_freeSourceIndices.size(); ++i)
+    // 保存と次プレイの rebuild に乗せる
+    for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
-        if (m_scene->m_freeSourceIndices[i] != m_selectedObjectIndex || !m_scene->m_freeObjects[i])
+        if (m_scene->m_objectSourceIndices[i] != m_selectedObjectIndex)
             continue;
-        const NS::Scene::BoxColliderComponent& collider = m_scene->m_freeObjects[i]->Collider();
-        const NS::Math::Vector3 he = collider.HalfExtents();
-        const NS::Math::Vector3 offset = collider.CenterOffset();
-        const NS::Math::Quaternion rot = collider.LocalRotation();
+        auto* collider = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_scene->m_objects[i]);
+        if (collider == nullptr)
+            return;
+        const NS::Math::Vector3 he = collider->HalfExtents();
+        const NS::Math::Vector3 offset = collider->CenterOffset();
+        const NS::Math::Quaternion rot = collider->LocalRotation();
         NS::Game::Level::ObjectInstance& object = m_scene->m_level.objects[m_selectedObjectIndex];
         object.colliderHalfExtentsX = he.x;
         object.colliderHalfExtentsY = he.y;
@@ -391,26 +398,31 @@ void LevelEditorController::RefreshGizmoSelectables()
 {
     m_selectablePtrs.clear();
     m_selectableHalfExtents.clear();
-    m_selectablePtrs.reserve(m_scene->m_freeObjects.size() + m_scene->m_blocks.size());
-    m_selectableHalfExtents.reserve(m_scene->m_freeObjects.size() + m_scene->m_blocks.size());
+    m_selectablePtrs.reserve(m_scene->m_objects.size());
+    m_selectableHalfExtents.reserve(m_scene->m_objects.size());
 
-    // 自由オブジェクトは scale 付きなので pick box は halfExtents にスケールを乗せる
-    for (const auto& obj : m_scene->m_freeObjects)
+    // free / grid の別は ObjectInstance の flags/kind で決まる。 runtime list は 1 本
+    // 自由配置物を先に積む。 scale 付きなので pick box の halfExtents にスケールを乗せる
+    for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
-        if (!obj)
+        const NS::Game::Level::ObjectInstance& entry = m_scene->m_level.objects[m_scene->m_objectSourceIndices[i]];
+        if ((entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
             continue;
-        const NS::Math::Vector3 scale = obj->Root().Scale();
-        m_selectablePtrs.push_back(obj);
+        const NS::Math::Vector3 scale = m_scene->m_objects[i]->Root().Scale();
+        m_selectablePtrs.push_back(m_scene->m_objects[i].get());
         m_selectableHalfExtents.push_back(NS::Math::Vector3{
             kCellHalfExtents.x * scale.x, kCellHalfExtents.y * scale.y, kCellHalfExtents.z * scale.z});
     }
 
-    // grid solid ブロックも掴める。 掴むと PromoteGridBlockToFree で自由オブジェクトに変わる
-    for (const auto& block : m_scene->m_blocks)
+    // grid solid も掴める。 掴むと PromoteGridBlockToFree で自由オブジェクトに変わる (slope/pole 等は対象外)
+    for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
-        if (!block)
+        const NS::Game::Level::ObjectInstance& entry = m_scene->m_level.objects[m_scene->m_objectSourceIndices[i]];
+        const bool isGridSolid = (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0 &&
+                                 entry.kind == NS::Game::Blocks::kBlockIdSolid;
+        if (!isGridSolid)
             continue;
-        m_selectablePtrs.push_back(block);
+        m_selectablePtrs.push_back(m_scene->m_objects[i].get());
         m_selectableHalfExtents.push_back(kCellHalfExtents);
     }
 
@@ -419,17 +431,21 @@ void LevelEditorController::RefreshGizmoSelectables()
 
 void LevelEditorController::SyncFreeObjectTransforms()
 {
-    for (std::size_t i = 0; i < m_scene->m_freeObjects.size(); ++i)
+    for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
-        if (!m_scene->m_freeObjects[i] || m_scene->m_freeSourceIndices[i] >= m_scene->m_level.objects.size())
+        const std::size_t objectIndex = m_scene->m_objectSourceIndices[i];
+        if (objectIndex >= m_scene->m_level.objects.size())
+            continue;
+        NS::Game::Level::ObjectInstance& object = m_scene->m_level.objects[objectIndex];
+        // grid は cell 固定なので Transform を ObjectInstance へ書き戻さない (自由配置物のみ)
+        if ((object.flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
             continue;
 
-        const NS::Scene::Transform& root = m_scene->m_freeObjects[i]->Root();
+        const NS::Scene::Transform& root = m_scene->m_objects[i]->Root();
         const NS::Math::Vector3 position = root.Position();
         const NS::Math::Quaternion rotation = root.Rotation();
         const NS::Math::Vector3 scale = root.Scale();
 
-        NS::Game::Level::ObjectInstance& object = m_scene->m_level.objects[m_scene->m_freeSourceIndices[i]];
         object.positionX = position.x;
         object.positionY = position.y;
         object.positionZ = position.z;
@@ -464,14 +480,15 @@ void LevelEditorController::SelectObjectByIndex(std::size_t index) noexcept
 
     // 自由オブジェクトだけギズモへ貼る。 grid 配置物 (solid 含む) は一覧クリックでは昇格させず、
     // Inspector の Promote で明示的に自由化する (一覧での選択を非破壊に保つ)
-    for (std::size_t i = 0; i < m_scene->m_freeSourceIndices.size(); ++i)
+    for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
-        if (m_scene->m_freeSourceIndices[i] == index && m_scene->m_freeObjects[i])
-        {
-            m_gizmo.SetSelected(&m_scene->m_freeObjects[i]->Root());
-            m_lastGizmoSelected = m_gizmo.Selected();
-            return;
-        }
+        if (m_scene->m_objectSourceIndices[i] != index)
+            continue;
+        if ((m_scene->m_level.objects[index].flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
+            break;
+        m_gizmo.SetSelected(&m_scene->m_objects[i]->Root());
+        m_lastGizmoSelected = m_gizmo.Selected();
+        return;
     }
     m_gizmo.ClearSelection();
     m_lastGizmoSelected = nullptr;
@@ -629,18 +646,23 @@ void LevelEditorController::RenderColliderWireframes() noexcept
     const NS::Math::Color freeColor{0.35f, 1.0f, 0.45f, 1.0f};
     const NS::Math::Color gridColor{0.15f, 0.70f, 0.30f, 1.0f};
 
-    for (const auto& obj : m_scene->m_freeObjects)
+    // free / grid の別は ObjectInstance の flags/kind で決まる。 runtime list は 1 本
+    for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
-        if (!obj)
+        auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_scene->m_objects[i]);
+        if (box == nullptr)
             continue;
-        const NS::Physics::OBB obb = obj->Collider().WorldOBB();
-        NS::Graphics::DebugDraw::OBB(obb.center, obb.axisX, obb.axisY, obb.axisZ, obb.halfExtents, freeColor);
-    }
-    for (const auto& block : m_scene->m_blocks)
-    {
-        if (!block)
-            continue;
-        NS::Graphics::DebugDraw::AABB(block->Collider().WorldAABB(), gridColor);
+        const NS::Game::Level::ObjectInstance& entry = m_scene->m_level.objects[m_scene->m_objectSourceIndices[i]];
+        if ((entry.flags & NS::Game::Level::kObjectFlagGridAligned) == 0)
+        {
+            const NS::Physics::OBB obb = box->WorldOBB();
+            NS::Graphics::DebugDraw::OBB(obb.center, obb.axisX, obb.axisY, obb.axisZ, obb.halfExtents, freeColor);
+        }
+        else if (entry.kind == NS::Game::Blocks::kBlockIdSolid)
+        {
+            NS::Graphics::DebugDraw::AABB(box->WorldAABB(), gridColor);
+        }
+        // grid の非 solid (hazard 等) は当たり形状を出さない
     }
 }
 
@@ -659,20 +681,11 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
     }
     // ビューポートでの実ピックは Player / Camera の特殊選択より優先する
     m_specialSelection = SpecialSelection::None;
-    for (std::size_t i = 0; i < m_scene->m_freeObjects.size(); ++i)
+    for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
-        if (m_scene->m_freeObjects[i] && &m_scene->m_freeObjects[i]->Root() == selected)
+        if (&m_scene->m_objects[i]->Root() == selected)
         {
-            m_selectedObjectIndex = m_scene->m_freeSourceIndices[i];
-            m_selectedObjectId = m_scene->m_objectIds[m_selectedObjectIndex];
-            return;
-        }
-    }
-    for (std::size_t i = 0; i < m_scene->m_blocks.size(); ++i)
-    {
-        if (m_scene->m_blocks[i] && &m_scene->m_blocks[i]->Root() == selected)
-        {
-            m_selectedObjectIndex = m_scene->m_blockSourceIndices[i];
+            m_selectedObjectIndex = m_scene->m_objectSourceIndices[i];
             m_selectedObjectId = m_scene->m_objectIds[m_selectedObjectIndex];
             return;
         }
@@ -695,16 +708,18 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
     // 選択 id が自由オブジェクトを指すなら gizmo に貼り直す。 grid / 不在 / 特殊選択は gizmo を外す
     if (m_specialSelection == SpecialSelection::None && m_selectedObjectIndex != NS::Game::Level::kNoObjectIndex)
     {
-        for (std::size_t i = 0; i < m_scene->m_freeSourceIndices.size(); ++i)
+        for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
         {
-            if (m_scene->m_freeSourceIndices[i] == m_selectedObjectIndex && m_scene->m_freeObjects[i])
-            {
-                NS::Scene::Transform* root = &m_scene->m_freeObjects[i]->Root();
-                if (m_gizmo.Selected() != root)
-                    m_gizmo.SetSelected(root);
-                m_lastGizmoSelected = root;
-                return;
-            }
+            if (m_scene->m_objectSourceIndices[i] != m_selectedObjectIndex)
+                continue;
+            // grid solid は掴むと自由化されるため gizmo に貼り直さない
+            if ((m_scene->m_level.objects[m_selectedObjectIndex].flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
+                break;
+            NS::Scene::Transform* root = &m_scene->m_objects[i]->Root();
+            if (m_gizmo.Selected() != root)
+                m_gizmo.SetSelected(root);
+            m_lastGizmoSelected = root;
+            return;
         }
     }
     if (m_gizmo.Selected() != nullptr)
@@ -714,26 +729,28 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
 
 void LevelEditorController::SetSelectedFreePosition(NS::Math::Vector3 position) noexcept
 {
-    for (std::size_t i = 0; i < m_scene->m_freeSourceIndices.size(); ++i)
+    for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
-        if (m_scene->m_freeSourceIndices[i] == m_selectedObjectIndex && m_scene->m_freeObjects[i])
-        {
-            m_scene->m_freeObjects[i]->Root().SetPosition(position);
+        if (m_scene->m_objectSourceIndices[i] != m_selectedObjectIndex)
+            continue;
+        if ((m_scene->m_level.objects[m_selectedObjectIndex].flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
             return;
-        }
+        m_scene->m_objects[i]->Root().SetPosition(position);
+        return;
     }
 }
 
 void LevelEditorController::SetSelectedFreeRotation(NS::Math::Quaternion rotation) noexcept
 {
     // 永続化は gizmo R と同じく SyncFreeObjectTransforms 経由 (runtime Transform を真実の源にする)
-    for (std::size_t i = 0; i < m_scene->m_freeSourceIndices.size(); ++i)
+    for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
-        if (m_scene->m_freeSourceIndices[i] == m_selectedObjectIndex && m_scene->m_freeObjects[i])
-        {
-            m_scene->m_freeObjects[i]->Root().SetRotation(rotation);
+        if (m_scene->m_objectSourceIndices[i] != m_selectedObjectIndex)
+            continue;
+        if ((m_scene->m_level.objects[m_selectedObjectIndex].flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
             return;
-        }
+        m_scene->m_objects[i]->Root().SetRotation(rotation);
+        return;
     }
 }
 
@@ -744,26 +761,26 @@ void LevelEditorController::SetSelectedFreeScale(NS::Math::Vector3 scale) noexce
     scale.x = scale.x < kMinScale ? kMinScale : scale.x;
     scale.y = scale.y < kMinScale ? kMinScale : scale.y;
     scale.z = scale.z < kMinScale ? kMinScale : scale.z;
-    for (std::size_t i = 0; i < m_scene->m_freeSourceIndices.size(); ++i)
+    for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
-        if (m_scene->m_freeSourceIndices[i] == m_selectedObjectIndex && m_scene->m_freeObjects[i])
-        {
-            m_scene->m_freeObjects[i]->Root().SetScale(scale);
+        if (m_scene->m_objectSourceIndices[i] != m_selectedObjectIndex)
+            continue;
+        if ((m_scene->m_level.objects[m_selectedObjectIndex].flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
             return;
-        }
+        m_scene->m_objects[i]->Root().SetScale(scale);
+        return;
     }
 }
 
 void LevelEditorController::PromoteSelectedToFree() noexcept
 {
-    for (std::size_t i = 0; i < m_scene->m_blockSourceIndices.size(); ++i)
-    {
-        if (m_scene->m_blockSourceIndices[i] == m_selectedObjectIndex && m_scene->m_blocks[i])
-        {
-            PromoteGridBlockToFree(i);
-            return;
-        }
-    }
+    if (m_selectedObjectIndex >= m_scene->m_level.objects.size())
+        return;
+    const NS::Game::Level::ObjectInstance& entry = m_scene->m_level.objects[m_selectedObjectIndex];
+    const bool isGridSolid =
+        (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0 && entry.kind == NS::Game::Blocks::kBlockIdSolid;
+    if (isGridSolid)
+        PromoteGridBlockToFree(m_selectedObjectIndex);
 }
 
 void LevelEditorController::AddObject()
@@ -792,19 +809,9 @@ void LevelEditorController::AddObject()
     SelectObjectByIndex(m_scene->m_level.objects.size() - 1);
 }
 
-void LevelEditorController::PromoteGridBlockToFree(std::size_t blockIndex)
+void LevelEditorController::PromoteGridBlockToFree(std::size_t objectIndex)
 {
-    if (blockIndex >= m_scene->m_blocks.size() || !m_scene->m_blocks[blockIndex])
-        return;
-
-    // 選択された grid block の cell を求め、 対応する ObjectInstance の gridAligned を落として自由化する
-    const NS::Math::Vector3 worldPos = m_scene->m_blocks[blockIndex]->Root().Position();
-    const std::int16_t cx = static_cast<std::int16_t>(std::lround(worldPos.x));
-    const std::int16_t cy = static_cast<std::int16_t>(std::lround(worldPos.y));
-    const std::int16_t cz = static_cast<std::int16_t>(std::lround(worldPos.z));
-
-    const std::size_t objectIndex = NS::Game::Level::FindGridObjectAtCell(m_scene->m_level, cx, cy, cz);
-    if (objectIndex == NS::Game::Level::kNoObjectIndex)
+    if (objectIndex >= m_scene->m_level.objects.size())
         return;
 
     // 昇格 (gridAligned を落とす) を TransformCommand 1 つとして積み、 grid undo と同じ履歴へ載せる
@@ -815,7 +822,7 @@ void LevelEditorController::PromoteGridBlockToFree(std::size_t blockIndex)
     NS::Game::Undo::EditTarget target = SceneEditTarget();
     m_editor.Undo().Push(std::make_unique<NS::Game::Undo::TransformCommand>(id, before, after), target);
 
-    // 作り直すと自由化した object は m_freeObjects 側へ回る。 選択候補 span も貼り直し、 選択 id も追従させる
+    // 作り直すと自由化した object は非 gridAligned として組み直る。 選択候補 span を貼り直し、 選択 id も追従させる
     m_scene->RebuildBlocksFromLevelData();
     RefreshGizmoSelectables();
     m_selectedObjectId = id;
@@ -852,26 +859,28 @@ void LevelEditorController::CommitTransformEdit() noexcept
     // 非 PRS (kind / flags / material) は model から、 PRS は live Transform から取る
     // (パネル編集は Sync が 1 フレーム遅れるため model 直読みだと取りこぼす)
     NS::Game::Level::ObjectInstance after = m_scene->m_level.objects[index];
-    for (std::size_t i = 0; i < m_scene->m_freeSourceIndices.size(); ++i)
+    for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
-        if (m_scene->m_freeSourceIndices[i] == index && m_scene->m_freeObjects[i])
-        {
-            const NS::Scene::Transform& root = m_scene->m_freeObjects[i]->Root();
-            const NS::Math::Vector3 p = root.Position();
-            const NS::Math::Quaternion r = root.Rotation();
-            const NS::Math::Vector3 s = root.Scale();
-            after.positionX = p.x;
-            after.positionY = p.y;
-            after.positionZ = p.z;
-            after.rotationX = r.x;
-            after.rotationY = r.y;
-            after.rotationZ = r.z;
-            after.rotationW = r.w;
-            after.scaleX = s.x;
-            after.scaleY = s.y;
-            after.scaleZ = s.z;
+        if (m_scene->m_objectSourceIndices[i] != index)
+            continue;
+        // grid は live Transform を持たない (cell 固定)。 自由配置物のみ PRS を live から取る
+        if ((m_scene->m_level.objects[index].flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
             break;
-        }
+        const NS::Scene::Transform& root = m_scene->m_objects[i]->Root();
+        const NS::Math::Vector3 p = root.Position();
+        const NS::Math::Quaternion r = root.Rotation();
+        const NS::Math::Vector3 s = root.Scale();
+        after.positionX = p.x;
+        after.positionY = p.y;
+        after.positionZ = p.z;
+        after.rotationX = r.x;
+        after.rotationY = r.y;
+        after.rotationZ = r.z;
+        after.rotationW = r.w;
+        after.scaleX = s.x;
+        after.scaleY = s.y;
+        after.scaleZ = s.z;
+        break;
     }
 
     if (std::memcmp(&after, &m_editBaseline, sizeof(NS::Game::Level::ObjectInstance)) == 0)
@@ -887,13 +896,15 @@ void LevelEditorController::ReselectFreeObjectById(std::uint32_t id) noexcept
 {
     NS::Game::Undo::EditTarget target = SceneEditTarget();
     const std::size_t index = NS::Game::Undo::IndexOfId(target, id);
-    for (std::size_t i = 0; i < m_scene->m_freeSourceIndices.size(); ++i)
+    for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
-        if (m_scene->m_freeSourceIndices[i] == index && m_scene->m_freeObjects[i])
-        {
-            m_gizmo.SetSelected(&m_scene->m_freeObjects[i]->Root());
-            return;
-        }
+        if (m_scene->m_objectSourceIndices[i] != index)
+            continue;
+        // grid solid は gizmo に貼らない (掴むと自由化されるため)
+        if ((m_scene->m_level.objects[index].flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
+            break;
+        m_gizmo.SetSelected(&m_scene->m_objects[i]->Root());
+        return;
     }
     m_gizmo.ClearSelection();
 }
@@ -908,17 +919,22 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
     if (selected == nullptr)
         return false;
 
-    // 選択中の Transform を持つ自由オブジェクトを探す (ギズモ選択は自由オブジェクトを指す)
-    std::size_t freeSlot = m_scene->m_freeObjects.size();
-    for (std::size_t i = 0; i < m_scene->m_freeObjects.size(); ++i)
+    // 選択中の Transform を持つ自由配置物を探す (ギズモ選択は自由配置物を指す)。 free / grid は flags で決まる
+    std::size_t slot = m_scene->m_objects.size();
+    for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
-        if (m_scene->m_freeObjects[i] && &m_scene->m_freeObjects[i]->Root() == selected)
-        {
-            freeSlot = i;
-            break;
-        }
+        if (&m_scene->m_objects[i]->Root() != selected)
+            continue;
+        if ((m_scene->m_level.objects[m_scene->m_objectSourceIndices[i]].flags &
+             NS::Game::Level::kObjectFlagGridAligned) == 0)
+            slot = i;
+        break;
     }
-    if (freeSlot >= m_scene->m_freeObjects.size())
+    if (slot >= m_scene->m_objects.size())
+        return false;
+
+    auto* mesh = NS::Game::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*m_scene->m_objects[slot]);
+    if (mesh == nullptr)
         return false;
 
     const auto loaded = app->Assets().LoadMaterial(matPath);
@@ -944,10 +960,10 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
         m_scene->m_level.materialPaths.push_back(stored);
         materialIndex = static_cast<int>(m_scene->m_level.materialPaths.size() - 1);
     }
-    m_scene->m_level.objects[m_scene->m_freeSourceIndices[freeSlot]].materialIndex =
+    m_scene->m_level.objects[m_scene->m_objectSourceIndices[slot]].materialIndex =
         static_cast<std::int16_t>(materialIndex);
 
-    m_scene->m_freeObjects[freeSlot]->MeshComp().SetMaterial(loaded.material);
-    m_scene->m_freeObjects[freeSlot]->MeshComp().SetBaseColor(loaded.baseColor);
+    mesh->SetMaterial(loaded.material);
+    mesh->SetBaseColor(loaded.baseColor);
     return true;
 }

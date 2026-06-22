@@ -191,8 +191,9 @@ private:
     /// rebuild を跨いでも生ポインタを持ち越さない fail-safe の要。 ドラッグ中は gizmo 貼り直しを抑止する
     void ResolveSelectionFromId() noexcept;
 
-    /// grid solid ブロックの ObjectInstance から gridAligned ビットを落として自由オブジェクト化する
-    void PromoteGridBlockToFree(std::size_t blockIndex);
+    /// objects 添字の ObjectInstance から gridAligned ビットを落として自由オブジェクト化する (grid solid 掴み / Promote
+    /// が渡す)
+    void PromoteGridBlockToFree(std::size_t objectIndex);
 
     /// ギズモで変形した自由オブジェクトの Transform を対応する ObjectInstance へ書き戻す
     void SyncFreeObjectTransforms();

@@ -555,10 +555,6 @@ void LevelPlayScene::OnShutdown()
     m_player.reset();
     m_objects.clear();
     m_objectSourceIndices.clear();
-    m_blocks.clear();
-    m_blockSourceIndices.clear();
-    m_freeObjects.clear();
-    m_freeSourceIndices.clear();
     m_hazardView.clear();
 
     // Skybox / InstanceBatcher は Renderer の DeviceContext を ComPtr で握るため、 Renderer (Application) より
@@ -574,10 +570,6 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
         (*it)->OnEndPlay();
     m_objects.clear();
     m_objectSourceIndices.clear();
-    m_blocks.clear();
-    m_blockSourceIndices.clear();
-    m_freeObjects.clear();
-    m_freeSourceIndices.clear();
     m_hazardView.clear();
     m_collisionWorld.clear();
     m_collisionTriangles.clear();
@@ -608,24 +600,11 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
 
         const bool gridAligned = (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0;
 
-        // 描画 / 編集 view は段階移行中のため種別で振り分けて残す。 当たりは下の collider component が決める
-        if (!gridAligned)
-        {
-            // 自由配置物は個別描画のまま。 ファクトリ実体は Block なので view へ Block* を載せる
-            Block* freePtr = static_cast<Block*>(obj.get());
-            m_freeObjects.push_back(freePtr);
-            m_freeSourceIndices.push_back(objectIndex);
-        }
-        else if (entry.kind == NS::Game::Blocks::kBlockIdSolid)
-        {
-            Block* blockPtr = static_cast<Block*>(obj.get());
-            // OnStart で RegisterRenderable 済のため個別 Draw を殺し InstanceBatcher に委ねる
-            blockPtr->MeshComp().SetActive(false);
-            // grid solid view は描画では非参照 (描画段は m_objects を直読みして instanceable 判定する)
-            // editor が gizmo selectable / 逆引きで読むため残置する
-            m_blocks.push_back(blockPtr);
-            m_blockSourceIndices.push_back(objectIndex);
-        }
+        // grid solid は個別 Draw を殺して InstanceBatcher へ委ねる (描画段が m_objects を直読みして instanceable 判定)
+        // OnStart で RegisterRenderable 済なので MeshRenderer を非アクティブにするだけでよい
+        if (gridAligned && entry.kind == NS::Game::Blocks::kBlockIdSolid)
+            if (auto* mesh = NS::Game::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*obj))
+                mesh->SetActive(false);
 
         // 当たりは collider component の有無で channel が決まる。 free は Sphere / Capsule があれば内蔵 Box を OBB
         // へ入れない (排他)
@@ -671,9 +650,14 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
 
         // 接地シャドウは grid + 自由物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
         std::vector<NS::Math::AABB> shadowReceivers(m_collisionWorld.begin(), m_collisionWorld.end());
-        for (auto* freeObj : m_freeObjects)
-            if (freeObj)
-                shadowReceivers.push_back(freeObj->Collider().WorldAABB());
+        for (std::size_t i = 0; i < m_objects.size(); ++i)
+        {
+            const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
+            if ((entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
+                continue;
+            if (auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_objects[i]))
+                shadowReceivers.push_back(box->WorldAABB());
+        }
         m_player->Shadow().SetCollisionWorld(shadowReceivers);
 
         m_player->Movement().SetClimbables(std::span<NS::Scene::PoleComponent* const>{m_polePtrs});
