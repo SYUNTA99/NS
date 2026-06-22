@@ -127,6 +127,16 @@ namespace NS::Scene
         m_collisionObbs.assign(obbs.begin(), obbs.end());
     }
 
+    void CharacterMovementComponent::SetCollisionSpheres(std::span<const NS::Physics::Sphere> spheres)
+    {
+        m_collisionSpheres.assign(spheres.begin(), spheres.end());
+    }
+
+    void CharacterMovementComponent::SetCollisionCapsules(std::span<const NS::Physics::Capsule> capsules)
+    {
+        m_collisionCapsules.assign(capsules.begin(), capsules.end());
+    }
+
     void CharacterMovementComponent::SetClimbables(std::span<PoleComponent* const> poles) noexcept
     {
         m_poles = poles;
@@ -317,6 +327,8 @@ namespace NS::Scene
         in.world = std::span<const NS::Math::AABB>(m_collisionWorld);
         in.worldTriangles = std::span<const NS::Physics::Triangle>(m_collisionTriangles);
         in.worldObbs = std::span<const NS::Physics::OBB>(m_collisionObbs);
+        in.worldSpheres = std::span<const NS::Physics::Sphere>(m_collisionSpheres);
+        in.worldCapsules = std::span<const NS::Physics::Capsule>(m_collisionCapsules);
         in.grid = &m_collisionGrid;
         const NS::Physics::CharacterControllerResult out = m_controller.Update(in);
 

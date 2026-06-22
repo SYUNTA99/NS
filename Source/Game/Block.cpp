@@ -6,5 +6,5 @@ Block::Block(NS::Graphics::StaticMesh* mesh,
              const NS::Math::Vector3& halfExtents) noexcept
 {
     m_mesh = AddComponent<NS::Scene::MeshRendererComponent>(mesh, material);
-    m_collider = AddComponent<NS::Scene::StaticColliderComponent>(halfExtents);
+    m_collider = AddComponent<NS::Scene::BoxColliderComponent>(halfExtents);
 }

@@ -3,7 +3,7 @@
 /// @file HazardBlock.h
 /// @brief 接触ダメージ付きの固形ブロック GameObject
 ///
-/// @details MeshRendererComponent (cube mesh) + StaticColliderComponent (AABB 衝突) +
+/// @details MeshRendererComponent (cube mesh) + BoxColliderComponent (AABB 衝突) +
 /// HazardComponent (ダメージ trigger) を GameObject が所有し、参照を member キャッシュする
 /// 固形挙動は通常 Block と同じだが、 player capsule が AABB と overlap した frame で
 /// HazardComponent::OnPlayerOverlap が呼ばれ PlayState.playerHealth を 1 削る
@@ -14,7 +14,7 @@
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
-#include "Framework/Scene/Components/StaticColliderComponent.h"
+#include "Framework/Scene/Components/BoxColliderComponent.h"
 
 namespace NS::Graphics
 {
@@ -36,11 +36,11 @@ public:
     HazardBlock& operator=(HazardBlock&&) = delete;
 
     [[nodiscard]] NS::Scene::MeshRendererComponent& MeshComp() noexcept { return *m_mesh; }
-    [[nodiscard]] NS::Scene::StaticColliderComponent& Collider() noexcept { return *m_collider; }
+    [[nodiscard]] NS::Scene::BoxColliderComponent& Collider() noexcept { return *m_collider; }
     [[nodiscard]] NS::Scene::HazardComponent& Hazard() noexcept { return *m_hazard; }
 
 private:
     NS::Scene::MeshRendererComponent* m_mesh = nullptr;
-    NS::Scene::StaticColliderComponent* m_collider = nullptr;
+    NS::Scene::BoxColliderComponent* m_collider = nullptr;
     NS::Scene::HazardComponent* m_hazard = nullptr;
 };

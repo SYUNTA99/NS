@@ -1,7 +1,7 @@
 #pragma once
 
-/// @file StaticColliderComponent.h
-/// @brief 静的 collider Component。 owner の world 変換から WorldAABB (内包軸並行) と
+/// @file BoxColliderComponent.h
+/// @brief 箱型 collider Component。 owner の world 変換から WorldAABB (内包軸並行) と
 ///        WorldOBB (回転・非一様 scale 厳密) を返す。 LevelPlayScene の collision world 構築に使う
 
 #include "Framework/Math/Math.h"
@@ -10,16 +10,16 @@
 
 namespace NS::Scene
 {
-    /// collider を SceneBase に登録する Component
+    /// 箱型 collider を SceneBase に登録する Component
     /// WorldAABB は回転時に内包軸並行ボックスへ畳むが、 WorldOBB は回転・非一様 scale を厳密に保持する
     /// Mesh と分離し、 視覚と衝突を独立して調整可能にする
-    class StaticColliderComponent : public Component
+    class BoxColliderComponent : public Component
     {
     public:
         /// 既定 halfExtents {0.5,0.5,0.5} で構築する
-        StaticColliderComponent() noexcept;
+        BoxColliderComponent() noexcept;
         /// halfExtents を指定して構築する。 ClampNonNegative で負を 0 にクランプ
-        explicit StaticColliderComponent(const NS::Math::Vector3& halfExtents) noexcept;
+        explicit BoxColliderComponent(const NS::Math::Vector3& halfExtents) noexcept;
 
         /// 半サイズを設定
         void SetHalfExtents(const NS::Math::Vector3& halfExtents) noexcept;
@@ -49,7 +49,7 @@ namespace NS::Scene
 
         // 当たり箱の形状 (半径) と Transform からの独立オフセット / 回転を Inspector へ公開する
         // 半径は負クランプ、 回転は Euler 度で受けるため全て setter 経由で書く
-        NS_REFLECT_BEGIN(StaticColliderComponent)
+        NS_REFLECT_BEGIN(BoxColliderComponent)
         NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Half Extents", HalfExtents(), SetHalfExtents)
         NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Center Offset", CenterOffset(), SetCenterOffset)
         NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Rotation (deg)", RotationEulerDegrees(), SetRotationEulerDegrees)

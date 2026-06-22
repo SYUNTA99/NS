@@ -2,7 +2,7 @@
 
 #include <Framework/Scene/Components/HazardComponent.h>
 #include <Framework/Scene/Components/MeshRendererComponent.h>
-#include <Framework/Scene/Components/StaticColliderComponent.h>
+#include <Framework/Scene/Components/BoxColliderComponent.h>
 #include <Game/Blocks/DecorationBlock.h>
 #include <Game/Blocks/HazardBlock.h>
 #include <Game/Blocks/WaterBlock.h>
@@ -23,12 +23,12 @@ TEST(DecorationBlockTest, NoColliderAttached)
     DecorationBlock deco(nullptr, nullptr);
 
     // GameObject::Components() に登録された Component を走査し、
-    // StaticColliderComponent 型が混入していないことを保証する。 dynamic_cast を使うのは
+    // BoxColliderComponent 型が混入していないことを保証する。 dynamic_cast を使うのは
     // 「ヘッダから collider 型が消えていることを runtime でも検証する」 ための明示的な型確認
     const auto& components = deco.Components();
     for (const auto* comp : components)
     {
-        const auto* collider = dynamic_cast<const NS::Scene::StaticColliderComponent*>(comp);
+        const auto* collider = dynamic_cast<const NS::Scene::BoxColliderComponent*>(comp);
         EXPECT_EQ(collider, nullptr);
     }
 }
@@ -39,7 +39,7 @@ TEST(DecorationBlockTest, WaterBlockHasNoCollider)
     const auto& components = water.Components();
     for (const auto* comp : components)
     {
-        const auto* collider = dynamic_cast<const NS::Scene::StaticColliderComponent*>(comp);
+        const auto* collider = dynamic_cast<const NS::Scene::BoxColliderComponent*>(comp);
         EXPECT_EQ(collider, nullptr);
     }
 }
@@ -53,7 +53,7 @@ TEST(DecorationBlockTest, HazardBlockHasColliderAndHazardComponent)
     bool hasHazard = false;
     for (const auto* comp : components)
     {
-        if (dynamic_cast<const NS::Scene::StaticColliderComponent*>(comp) != nullptr)
+        if (dynamic_cast<const NS::Scene::BoxColliderComponent*>(comp) != nullptr)
             hasCollider = true;
         if (dynamic_cast<const NS::Scene::HazardComponent*>(comp) != nullptr)
             hasHazard = true;

@@ -350,7 +350,7 @@ void LevelEditorController::SyncSelectedObjectColliderFromComponent() noexcept
     {
         if (m_scene->m_freeSourceIndices[i] != m_selectedObjectIndex || !m_scene->m_freeObjects[i])
             continue;
-        const NS::Scene::StaticColliderComponent& collider = m_scene->m_freeObjects[i]->Collider();
+        const NS::Scene::BoxColliderComponent& collider = m_scene->m_freeObjects[i]->Collider();
         const NS::Math::Vector3 he = collider.HalfExtents();
         const NS::Math::Vector3 offset = collider.CenterOffset();
         const NS::Math::Quaternion rot = collider.LocalRotation();

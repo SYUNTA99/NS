@@ -58,6 +58,12 @@ namespace NS::Scene
         /// 自由配置物 (回転 / scale 込み) の世界座標 OBB 配列を受け取り、 内部 vector にコピーする
         void SetCollisionObbs(std::span<const NS::Physics::OBB> obbs);
 
+        /// 球 collider の世界座標配列を受け取り、 内部 vector にコピーする
+        void SetCollisionSpheres(std::span<const NS::Physics::Sphere> spheres);
+
+        /// capsule collider の世界座標配列を受け取り、 内部 vector にコピーする
+        void SetCollisionCapsules(std::span<const NS::Physics::Capsule> capsules);
+
         /// pole 群を span で注入する。span のみ保存し、要素の寿命は呼出側 (LevelPlayScene) が保証する
         void SetClimbables(std::span<PoleComponent* const> poles) noexcept;
 
@@ -151,6 +157,8 @@ namespace NS::Scene
         std::vector<NS::Math::AABB> m_collisionWorld;
         std::vector<NS::Physics::Triangle> m_collisionTriangles;
         std::vector<NS::Physics::OBB> m_collisionObbs;
+        std::vector<NS::Physics::Sphere> m_collisionSpheres;
+        std::vector<NS::Physics::Capsule> m_collisionCapsules;
         NS::Physics::CollisionGrid m_collisionGrid;
         NS::Physics::CharacterController m_controller;
 

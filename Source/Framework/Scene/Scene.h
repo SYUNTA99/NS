@@ -12,6 +12,6 @@
 #include "Framework/Scene/Components/PlayerInputComponent.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/SceneBase.h"
-#include "Framework/Scene/Components/StaticColliderComponent.h"
+#include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/ThirdPersonFollowComponent.h"
 #include "Framework/Scene/Transform.h"

@@ -9,7 +9,7 @@
 #include <Framework/Scene/Components/PlacedVirtualCamera.h>
 #include <Framework/Scene/Components/PoleComponent.h>
 #include <Framework/Scene/Components/ShadowComponent.h>
-#include <Framework/Scene/Components/StaticColliderComponent.h>
+#include <Framework/Scene/Components/BoxColliderComponent.h>
 #include <Framework/Scene/Components/ThirdPersonFollowComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Reflection.h>
@@ -240,9 +240,9 @@ TEST(ReflectionTest, MeshRendererReflectsBaseColor)
     EXPECT_FLOAT_EQ(got.z, 0.4f);
 }
 
-TEST(ReflectionTest, StaticColliderHalfExtentsAccessorClampsNegative)
+TEST(ReflectionTest, BoxColliderHalfExtentsAccessorClampsNegative)
 {
-    NS::Scene::StaticColliderComponent collider;
+    NS::Scene::BoxColliderComponent collider;
     const ReflectionInfo* info = collider.GetReflection();
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 3u);
@@ -264,9 +264,9 @@ TEST(ReflectionTest, StaticColliderHalfExtentsAccessorClampsNegative)
     EXPECT_FLOAT_EQ(collider.HalfExtents().z, 0.0f);
 }
 
-TEST(ReflectionTest, StaticColliderExposesCenterOffsetAndRotation)
+TEST(ReflectionTest, BoxColliderExposesCenterOffsetAndRotation)
 {
-    NS::Scene::StaticColliderComponent collider;
+    NS::Scene::BoxColliderComponent collider;
     const ReflectionInfo* info = collider.GetReflection();
     ASSERT_NE(info, nullptr);
 

@@ -18,7 +18,7 @@
 
 namespace NS::Scene
 {
-    /// wedge slope の world 座標 Triangle を返す Component。StaticColliderComponent とは独立
+    /// wedge slope の world 座標 Triangle を返す Component。BoxColliderComponent とは独立
     class SlopeColliderComponent : public Component
     {
     public:

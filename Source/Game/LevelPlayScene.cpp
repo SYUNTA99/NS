@@ -37,7 +37,9 @@
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
+#include "Framework/Scene/Components/CapsuleColliderComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
+#include "Framework/Scene/Components/SphereColliderComponent.h"
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/Transform.h"
@@ -612,6 +614,8 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
     m_collisionWorld.clear();
     m_collisionTriangles.clear();
     m_collisionObbs.clear();
+    m_collisionSpheres.clear();
+    m_collisionCapsules.clear();
     m_polePtrs.clear();
 
     m_collisionWorld.reserve(m_level.objects.size());
@@ -682,13 +686,40 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
             placeFromEntry(*cube);
             cube->MeshComp().SetBaseColor(baseColor);
             // 当たり箱の親 local オフセット / 回転を保存値から復元する (世界では owner の scale / 回転が更に乗る)
-            cube->Collider().SetCenterOffset(
-                NS::Math::Vector3{entry.colliderOffsetX, entry.colliderOffsetY, entry.colliderOffsetZ});
-            cube->Collider().SetLocalRotation(NS::Math::Quaternion{
-                entry.colliderRotationX, entry.colliderRotationY, entry.colliderRotationZ, entry.colliderRotationW});
+            const NS::Math::Vector3 colliderOffset{entry.colliderOffsetX, entry.colliderOffsetY, entry.colliderOffsetZ};
+            const NS::Math::Quaternion colliderRotation{
+                entry.colliderRotationX, entry.colliderRotationY, entry.colliderRotationZ, entry.colliderRotationW};
+            cube->Collider().SetCenterOffset(colliderOffset);
+            cube->Collider().SetLocalRotation(colliderRotation);
+
+            // 形状別の当たり判定 component を足す。 colliderHalfExtents の解釈は LevelData の規約に従う
+            // (球 = x が半径、 capsule = x 半径 / y 半高)。 視覚は当面 cube のまま
+            const NS::Game::Level::ShapeCollider shape = NS::Game::Level::ObjectShapeCollider(entry);
+            NS::Scene::SphereColliderComponent* sphereCollider = nullptr;
+            NS::Scene::CapsuleColliderComponent* capsuleCollider = nullptr;
+            if (shape == NS::Game::Level::ShapeCollider::Sphere)
+            {
+                sphereCollider = cube->AddComponent<NS::Scene::SphereColliderComponent>(entry.colliderHalfExtentsX);
+                sphereCollider->SetCenterOffset(colliderOffset);
+            }
+            else if (shape == NS::Game::Level::ShapeCollider::Capsule)
+            {
+                capsuleCollider = cube->AddComponent<NS::Scene::CapsuleColliderComponent>(entry.colliderHalfExtentsX,
+                                                                                          entry.colliderHalfExtentsY);
+                capsuleCollider->SetCenterOffset(colliderOffset);
+                capsuleCollider->SetLocalRotation(colliderRotation);
+            }
+
             cube->OnStart();
-            // 自由配置物は回転 / scale を潰さない OBB チャネルへ載せる (grid solid は AABB のまま)
-            m_collisionObbs.push_back(cube->Collider().WorldOBB());
+
+            // 形状別チャネルへ載せる。 Mesh は三角形ソース (glTF 取り込み) 未配置のため Box 当たりへ退避する
+            if (sphereCollider != nullptr)
+                m_collisionSpheres.push_back(sphereCollider->WorldSphere());
+            else if (capsuleCollider != nullptr)
+                m_collisionCapsules.push_back(capsuleCollider->WorldCapsule());
+            else
+                m_collisionObbs.push_back(cube->Collider().WorldOBB());
+
             m_freeSourceIndices.push_back(objectIndex);
             m_freeObjects.push_back(std::move(cube));
             continue;
@@ -820,6 +851,8 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
         m_player->Movement().SetCollisionWorld(m_collisionWorld);
         m_player->Movement().SetCollisionTriangles(m_collisionTriangles);
         m_player->Movement().SetCollisionObbs(m_collisionObbs);
+        m_player->Movement().SetCollisionSpheres(m_collisionSpheres);
+        m_player->Movement().SetCollisionCapsules(m_collisionCapsules);
 
         // 接地シャドウは grid + 自由物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
         std::vector<NS::Math::AABB> shadowReceivers(m_collisionWorld.begin(), m_collisionWorld.end());

@@ -3,7 +3,7 @@
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
-#include "Framework/Scene/Components/StaticColliderComponent.h"
+#include "Framework/Scene/Components/BoxColliderComponent.h"
 
 namespace NS::Graphics
 {
@@ -26,9 +26,9 @@ public:
     Block& operator=(Block&&) = delete;
 
     [[nodiscard]] NS::Scene::MeshRendererComponent& MeshComp() noexcept { return *m_mesh; }
-    [[nodiscard]] NS::Scene::StaticColliderComponent& Collider() noexcept { return *m_collider; }
+    [[nodiscard]] NS::Scene::BoxColliderComponent& Collider() noexcept { return *m_collider; }
 
 private:
     NS::Scene::MeshRendererComponent* m_mesh = nullptr;
-    NS::Scene::StaticColliderComponent* m_collider = nullptr;
+    NS::Scene::BoxColliderComponent* m_collider = nullptr;
 };

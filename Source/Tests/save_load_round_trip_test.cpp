@@ -39,6 +39,40 @@ TEST(SaveLoadRoundTrip, SaveAndReloadProducesIdenticalCrc)
     EXPECT_EQ(dst.ComputeCrc32(), crc0);
 }
 
+TEST(SaveLoadRoundTrip, DefaultObjectShapeColliderIsBox)
+{
+    LevelNs::ObjectInstance obj{};
+    EXPECT_EQ(LevelNs::ObjectShapeCollider(obj), LevelNs::ShapeCollider::Box);
+
+    LevelNs::SetObjectShapeCollider(obj, LevelNs::ShapeCollider::Sphere);
+    EXPECT_EQ(LevelNs::ObjectShapeCollider(obj), LevelNs::ShapeCollider::Sphere);
+    EXPECT_EQ(obj.shapeCollider, static_cast<std::uint8_t>(1));
+}
+
+TEST(SaveLoadRoundTrip, ShapeColliderAndDimensionsSurviveRoundTrip)
+{
+    EditorNs::EnsureLevelsDirectoryExists();
+    auto path = EditorNs::BuildLevelPath("test_collider_shape");
+    ASSERT_TRUE(path.has_value());
+
+    LevelNs::LevelData src;
+    LevelNs::ObjectInstance obj{}; // 自由配置物 (gridAligned は立てない)
+    obj.positionX = 2.0f;
+    LevelNs::SetObjectShapeCollider(obj, LevelNs::ShapeCollider::Capsule);
+    obj.colliderHalfExtentsX = 0.3f; // capsule では半径
+    obj.colliderHalfExtentsY = 0.7f; // capsule では半高
+    src.objects.push_back(obj);
+
+    ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
+
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
+    ASSERT_EQ(dst.objects.size(), 1u);
+    EXPECT_EQ(LevelNs::ObjectShapeCollider(dst.objects[0]), LevelNs::ShapeCollider::Capsule);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsX, 0.3f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsY, 0.7f);
+}
+
 TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
 {
     EditorNs::EnsureLevelsDirectoryExists();

@@ -1,4 +1,4 @@
-#include "Framework/Scene/Components/StaticColliderComponent.h"
+#include "Framework/Scene/Components/BoxColliderComponent.h"
 
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
@@ -19,43 +19,43 @@ namespace NS::Scene
         }
     } // namespace
 
-    StaticColliderComponent::StaticColliderComponent() noexcept {}
+    BoxColliderComponent::BoxColliderComponent() noexcept {}
 
-    StaticColliderComponent::StaticColliderComponent(const NS::Math::Vector3& halfExtents) noexcept
+    BoxColliderComponent::BoxColliderComponent(const NS::Math::Vector3& halfExtents) noexcept
         : m_halfExtents(ClampNonNegative(halfExtents))
     {}
 
-    void StaticColliderComponent::SetHalfExtents(const NS::Math::Vector3& halfExtents) noexcept
+    void BoxColliderComponent::SetHalfExtents(const NS::Math::Vector3& halfExtents) noexcept
     {
         m_halfExtents = ClampNonNegative(halfExtents);
     }
 
-    NS::Math::Vector3 StaticColliderComponent::HalfExtents() const noexcept
+    NS::Math::Vector3 BoxColliderComponent::HalfExtents() const noexcept
     {
         return m_halfExtents;
     }
 
-    void StaticColliderComponent::SetCenterOffset(const NS::Math::Vector3& offset) noexcept
+    void BoxColliderComponent::SetCenterOffset(const NS::Math::Vector3& offset) noexcept
     {
         m_centerOffset = offset;
     }
 
-    NS::Math::Vector3 StaticColliderComponent::CenterOffset() const noexcept
+    NS::Math::Vector3 BoxColliderComponent::CenterOffset() const noexcept
     {
         return m_centerOffset;
     }
 
-    void StaticColliderComponent::SetLocalRotation(const NS::Math::Quaternion& rotation) noexcept
+    void BoxColliderComponent::SetLocalRotation(const NS::Math::Quaternion& rotation) noexcept
     {
         m_localRotation = rotation;
     }
 
-    NS::Math::Quaternion StaticColliderComponent::LocalRotation() const noexcept
+    NS::Math::Quaternion BoxColliderComponent::LocalRotation() const noexcept
     {
         return m_localRotation;
     }
 
-    void StaticColliderComponent::SetRotationEulerDegrees(const NS::Math::Vector3& eulerDegrees) noexcept
+    void BoxColliderComponent::SetRotationEulerDegrees(const NS::Math::Vector3& eulerDegrees) noexcept
     {
         m_localRotation =
             NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::Vector3{NS::Math::DegreesToRadians(eulerDegrees.x),
@@ -63,7 +63,7 @@ namespace NS::Scene
                                                                            NS::Math::DegreesToRadians(eulerDegrees.z)});
     }
 
-    NS::Math::Vector3 StaticColliderComponent::RotationEulerDegrees() const noexcept
+    NS::Math::Vector3 BoxColliderComponent::RotationEulerDegrees() const noexcept
     {
         const NS::Math::Vector3 euler = m_localRotation.ToEuler();
         return NS::Math::Vector3{NS::Math::RadiansToDegrees(euler.x),
@@ -71,13 +71,13 @@ namespace NS::Scene
                                  NS::Math::RadiansToDegrees(euler.z)};
     }
 
-    NS::Math::Matrix StaticColliderComponent::LocalMatrix() const noexcept
+    NS::Math::Matrix BoxColliderComponent::LocalMatrix() const noexcept
     {
         return NS::Math::Matrix::CreateFromQuaternion(m_localRotation) *
                NS::Math::Matrix::CreateTranslation(m_centerOffset);
     }
 
-    NS::Math::AABB StaticColliderComponent::WorldAABB() const noexcept
+    NS::Math::AABB BoxColliderComponent::WorldAABB() const noexcept
     {
         const GameObject* owner = Owner();
         // local box (原点中心 + 半径) に、 当たり箱の local offset / 回転 → owner の world 変換の順で重ねる
@@ -90,7 +90,7 @@ namespace NS::Scene
         return world;
     }
 
-    NS::Physics::OBB StaticColliderComponent::WorldOBB() const noexcept
+    NS::Physics::OBB BoxColliderComponent::WorldOBB() const noexcept
     {
         const GameObject* owner = Owner();
         // Decompose は非 const のためローカルは mutable で持つ
