@@ -239,7 +239,12 @@ void LevelPlayScene::OnUpdate()
     // F5 で編集中の HLSL を再起動なしで反映する (reload-in-place、 play / edit 共通の dev hot reload)
     // ImGui 入力中は誤爆を防ぐため無効化する
     if (!app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::Platform::Key::F5))
+    {
         app->Assets().ReloadAllShaders();
+        // block 描画の instanced shader は AssetManager 管理外で自前コンパイルなので個別に reload する
+        if (m_instanceBatcher)
+            m_instanceBatcher->ReloadShaders();
+    }
 
     // プレイ中の Esc は終了。 編集中は editor が Esc を握る (選択解除 / 終了) ので scene は触らない
     if (m_playing && app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
