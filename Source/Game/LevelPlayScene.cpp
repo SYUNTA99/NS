@@ -445,14 +445,21 @@ void LevelPlayScene::OnRenderScene()
         if (blockMat)
             blockMat->SetParams(*ctx.renderer, blockCB);
 
+        // instancing は描画段の判断であってオブジェクトの種別ではない
+        // gridAligned かつ solid の配置物だけを instanced bucket へ流し、 他は個別描画へ委ねる
+        const auto isInstanceable = [](const NS::Game::Level::ObjectInstance& entry) noexcept {
+            return (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0 &&
+                   entry.kind == NS::Game::Blocks::kBlockIdSolid;
+        };
+
         m_instanceBatcher->BeginFrame();
-        for (std::size_t bi = 0; bi < m_blocks.size(); ++bi)
+        for (std::size_t i = 0; i < m_objects.size(); ++i)
         {
-            const auto& block = m_blocks[bi];
-            if (!block)
+            const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
+            if (!isInstanceable(entry))
                 continue;
-            // m_blocks は gridAligned solid のみ。 cell は world 座標を丸めて求め、 近傍マスクは solid 同士で取る
-            const NS::Math::Vector3 wp = block->Root().Position();
+            // cell は world 座標を丸めて求め、 近傍マスクは solid 同士で取る
+            const NS::Math::Vector3 wp = m_objects[i]->Root().Position();
             const std::int16_t x = static_cast<std::int16_t>(std::lround(wp.x));
             const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
             const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
@@ -462,7 +469,7 @@ void LevelPlayScene::OnRenderScene()
                 NS::Game::Blocks::LookupTextureSlice(static_cast<ThemeId>(m_level.themeId), mask, blockId);
 
             NS::Graphics::BlockInstance inst{};
-            inst.worldMatrix = block->Root().InterpolatedWorldMatrix(ctx.alpha);
+            inst.worldMatrix = m_objects[i]->Root().InterpolatedWorldMatrix(ctx.alpha);
             // 個体色は GetBaseColor を流し込んでおく (theme tint は FrameCB の lightColor/ambientColor で行う)
             const auto color = NS::Game::Blocks::GetBaseColor(blockId);
             inst.baseColor = NS::Math::Vector3{color.R(), color.G(), color.B()};
@@ -617,6 +624,8 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
             Block* blockPtr = static_cast<Block*>(obj.get());
             // OnStart で RegisterRenderable 済のため個別 Draw を殺し InstanceBatcher に委ねる
             blockPtr->MeshComp().SetActive(false);
+            // grid solid view は描画では非参照 (描画段は m_objects を直読みして instanceable 判定する)
+            // editor が gizmo selectable / 逆引きで読むため残置する
             m_blocks.push_back(blockPtr);
             m_blockSourceIndices.push_back(objectIndex);
             m_collisionWorld.push_back(blockPtr->Collider().WorldAABB());

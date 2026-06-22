@@ -176,7 +176,7 @@ private:
 
     // m_objects の非所有 view。 描画 / 衝突 / 編集が段階移行するあいだ旧来の参照を保つための一時 view で、
     // build 時に再構築する (所有は m_objects 側、 ここは観測のみ)
-    std::vector<Block*> m_blocks;                  // grid solid の view (instanced 描画が走査)
+    std::vector<Block*> m_blocks;                  // grid solid の view (描画は m_objects 直読み、 ここは editor 用)
     std::vector<std::size_t> m_blockSourceIndices; // m_blocks[i] -> m_level.objects 添字
     std::vector<Block*> m_freeObjects;             // 非 gridAligned の view (編集 / 影が走査)
     std::vector<std::size_t> m_freeSourceIndices;  // m_freeObjects[i] -> m_level.objects 添字
