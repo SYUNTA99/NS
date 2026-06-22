@@ -38,6 +38,7 @@
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
+#include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/CapsuleColliderComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/Components/SlopeColliderComponent.h"
@@ -313,8 +314,11 @@ void LevelPlayScene::TickPlay()
         {
             if (!hazard)
                 continue;
-            if (NS::Physics::IntersectsCapsuleAabb(playerCapsule, hazard->Collider().WorldAABB()))
-                hazard->Hazard().OnPlayerOverlap(m_play);
+            // damage は衝突応答とは別経路の per-frame overlap なので collider と hazard を component で引く
+            auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*hazard);
+            auto* damage = NS::Game::Blocks::FindComponent<NS::Scene::HazardComponent>(*hazard);
+            if (box && damage && NS::Physics::IntersectsCapsuleAabb(playerCapsule, box->WorldAABB()))
+                damage->OnPlayerOverlap(m_play);
         }
     }
 
@@ -604,20 +608,13 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
 
         const bool gridAligned = (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0;
 
+        // 描画 / 編集 view は段階移行中のため種別で振り分けて残す。 当たりは下の collider component が決める
         if (!gridAligned)
         {
             // 自由配置物は個別描画のまま。 ファクトリ実体は Block なので view へ Block* を載せる
             Block* freePtr = static_cast<Block*>(obj.get());
             m_freeObjects.push_back(freePtr);
             m_freeSourceIndices.push_back(objectIndex);
-
-            // 形状別チャネルへ排他で載せる。 内蔵 Box は Sphere / Capsule が無い時だけ OBB へ (二重登録しない)
-            if (auto* sphere = NS::Game::Blocks::FindComponent<NS::Scene::SphereColliderComponent>(*obj))
-                m_collisionSpheres.push_back(sphere->WorldSphere());
-            else if (auto* capsule = NS::Game::Blocks::FindComponent<NS::Scene::CapsuleColliderComponent>(*obj))
-                m_collisionCapsules.push_back(capsule->WorldCapsule());
-            else
-                m_collisionObbs.push_back(freePtr->Collider().WorldOBB());
         }
         else if (entry.kind == NS::Game::Blocks::kBlockIdSolid)
         {
@@ -628,31 +625,32 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
             // editor が gizmo selectable / 逆引きで読むため残置する
             m_blocks.push_back(blockPtr);
             m_blockSourceIndices.push_back(objectIndex);
-            m_collisionWorld.push_back(blockPtr->Collider().WorldAABB());
         }
-        else if (NS::Game::Blocks::IsSlopeBlock(entry.kind))
+
+        // 当たりは collider component の有無で channel が決まる。 free は Sphere / Capsule があれば内蔵 Box を OBB
+        // へ入れない (排他)
+        if (auto* sphere = NS::Game::Blocks::FindComponent<NS::Scene::SphereColliderComponent>(*obj))
+            m_collisionSpheres.push_back(sphere->WorldSphere());
+        else if (auto* capsule = NS::Game::Blocks::FindComponent<NS::Scene::CapsuleColliderComponent>(*obj))
+            m_collisionCapsules.push_back(capsule->WorldCapsule());
+        else if (auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*obj))
         {
-            if (auto* slope = NS::Game::Blocks::FindComponent<NS::Scene::SlopeColliderComponent>(*obj))
-            {
-                const auto tris = slope->WorldTriangles();
-                for (const auto& tri : tris)
-                    m_collisionTriangles.push_back(tri);
-            }
+            // 同じ Box でも gridAligned なら軸並行 AABB、 自由配置なら回転込み OBB
+            if (gridAligned)
+                m_collisionWorld.push_back(box->WorldAABB());
+            else
+                m_collisionObbs.push_back(box->WorldOBB());
         }
-        else if (NS::Game::Blocks::IsPoleBlock(entry.kind))
-        {
-            if (auto* pole = NS::Game::Blocks::FindComponent<NS::Scene::PoleComponent>(*obj))
-                m_polePtrs.push_back(pole);
-        }
-        else if (NS::Game::Blocks::IsHazardBlock(entry.kind))
-        {
-            // hazard は GameObject 直系なので実体型へ戻す。 衝突は通常ブロックと同じ AABB、
-            // ダメージ trigger は per-frame に芯線 vs AABB を判定するため view にも積む
-            HazardBlock* hazardPtr = static_cast<HazardBlock*>(obj.get());
-            m_collisionWorld.push_back(hazardPtr->Collider().WorldAABB());
-            m_hazardView.push_back(hazardPtr);
-        }
-        // water / deco は当たり無し・ view 不要
+
+        if (auto* slope = NS::Game::Blocks::FindComponent<NS::Scene::SlopeColliderComponent>(*obj))
+            for (const auto& tri : slope->WorldTriangles())
+                m_collisionTriangles.push_back(tri);
+        if (auto* pole = NS::Game::Blocks::FindComponent<NS::Scene::PoleComponent>(*obj))
+            m_polePtrs.push_back(pole);
+        // hazard の damage は固形 AABB とは別経路 (per-frame overlap) で効くため view にも積む
+        if (NS::Game::Blocks::FindComponent<NS::Scene::HazardComponent>(*obj))
+            m_hazardView.push_back(obj.get());
+        // water / deco は collider を持たないため当たり無し・ view 不要
 
         m_objectSourceIndices.push_back(objectIndex);
         m_objects.push_back(std::move(obj));

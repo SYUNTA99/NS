@@ -176,11 +176,11 @@ private:
 
     // m_objects の非所有 view。 描画 / 衝突 / 編集が段階移行するあいだ旧来の参照を保つための一時 view で、
     // build 時に再構築する (所有は m_objects 側、 ここは観測のみ)
-    std::vector<Block*> m_blocks;                  // grid solid の view (描画は m_objects 直読み、 ここは editor 用)
-    std::vector<std::size_t> m_blockSourceIndices; // m_blocks[i] -> m_level.objects 添字
-    std::vector<Block*> m_freeObjects;             // 非 gridAligned の view (編集 / 影が走査)
-    std::vector<std::size_t> m_freeSourceIndices;  // m_freeObjects[i] -> m_level.objects 添字
-    std::vector<HazardBlock*> m_hazardView;        // ダメージ判定で芯線 vs AABB を取る hazard の view
+    std::vector<Block*> m_blocks;                     // grid solid の view (描画は m_objects 直読み、 ここは editor 用)
+    std::vector<std::size_t> m_blockSourceIndices;    // m_blocks[i] -> m_level.objects 添字
+    std::vector<Block*> m_freeObjects;                // 非 gridAligned の view (編集 / 影が走査)
+    std::vector<std::size_t> m_freeSourceIndices;     // m_freeObjects[i] -> m_level.objects 添字
+    std::vector<NS::Scene::GameObject*> m_hazardView; // hazard の damage 走査 view (芯線 vs AABB、 衝突応答とは別経路)
 
     /// 差分フレームのみ cubemap を再ロードするため前回パスを保持する
     std::filesystem::path m_loadedSkyboxPath{};
