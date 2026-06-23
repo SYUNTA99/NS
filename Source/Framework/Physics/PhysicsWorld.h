@@ -16,6 +16,7 @@
 #include "Framework/Physics/SweptTriangle.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 namespace NS::Physics
@@ -83,5 +84,8 @@ namespace NS::Physics
         std::vector<Sphere> m_spheres;
         std::vector<Capsule> m_capsules;
         CollisionGrid m_grid;
+
+        // sweep 候補の再利用スクラッチ (const query から確保なしで使うため mutable)
+        mutable std::vector<std::uint32_t> m_candidates;
     };
 } // namespace NS::Physics
