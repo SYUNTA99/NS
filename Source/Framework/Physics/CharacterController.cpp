@@ -3,16 +3,10 @@
 #include "Framework/Core/Clock.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Physics/Capsule.h"
-#include "Framework/Physics/CollisionGrid.h"
 #include "Framework/Physics/PhysicsWorld.h"
-#include "Framework/Physics/SweptAABB.h"
-#include "Framework/Physics/SweptCapsule.h"
-#include "Framework/Physics/SweptOBB.h"
-#include "Framework/Physics/SweptTriangle.h"
 
 #include <algorithm>
 #include <cmath>
-#include <vector>
 
 namespace
 {
@@ -25,28 +19,6 @@ namespace
     constexpr float kGroundProbeDistance = 0.2f;
     // walkable 床とみなす normal.y の閾値。cos 45 ≈ 0.707、45° 含むため 0.7
     constexpr float kFloorNormalY = 0.7f;
-
-    /// capsule が motion だけ動く間に占有する swept AABB を返す。 grid 候補絞り込みの query box に使う
-    /// 縦 capsule (axis=Y) 前提で、 XZ は radius、 Y は radius + halfHeight 膨張させる
-    [[nodiscard]] NS::Math::AABB CapsuleSweptAabb(const NS::Physics::Capsule& cap,
-                                                  const NS::Math::Vector3& motion) noexcept
-    {
-        const float rx = cap.radius;
-        const float ry = cap.radius + cap.halfHeight;
-        const float rz = cap.radius;
-        const NS::Math::Vector3 a = cap.center;
-        const NS::Math::Vector3 b = cap.center + motion;
-        const float minX = std::min(a.x, b.x) - rx;
-        const float maxX = std::max(a.x, b.x) + rx;
-        const float minY = std::min(a.y, b.y) - ry;
-        const float maxY = std::max(a.y, b.y) + ry;
-        const float minZ = std::min(a.z, b.z) - rz;
-        const float maxZ = std::max(a.z, b.z) + rz;
-        NS::Math::AABB q;
-        q.Center = NS::Math::Vector3{(minX + maxX) * 0.5f, (minY + maxY) * 0.5f, (minZ + maxZ) * 0.5f};
-        q.Extents = NS::Math::Vector3{(maxX - minX) * 0.5f, (maxY - minY) * 0.5f, (maxZ - minZ) * 0.5f};
-        return q;
-    }
 } // namespace
 
 namespace NS::Physics
@@ -66,8 +38,6 @@ namespace NS::Physics
             return result;
 
         const float subDt = input.dt / static_cast<float>(kMaxSubSteps);
-
-        std::vector<std::uint32_t> candidates; // grid broad-phase の候補バッファ (substep 間で使い回す)
 
         for (int step = 0; step < kMaxSubSteps; ++step)
         {
@@ -95,105 +65,10 @@ namespace NS::Physics
 
                 if (input.physicsWorld != nullptr)
                 {
-                    // 集約 world 経由の query。 physicsWorld が非 null なら span 群より優先する
                     const SweepHit hit = input.physicsWorld->SweepCapsule(cap, motion);
                     earliestToi = hit.toi;
                     hitNormal = hit.normal;
                     anyHit = hit.hit;
-                }
-                else
-                {
-                    // grid があれば capsule の swept AABB 近傍だけを narrow phase に掛ける (無ければ総当たり)
-                    if (input.grid != nullptr && !input.grid->IsEmpty())
-                    {
-                        const NS::Math::AABB queryBox = CapsuleSweptAabb(cap, motion);
-                        input.grid->Query(queryBox, candidates);
-                        for (const std::uint32_t idx : candidates)
-                        {
-                            float toi = 1.0f;
-                            NS::Math::Vector3 n{};
-                            if (SweptCapsuleVsAABB(cap, motion, input.world[idx], toi, n))
-                            {
-                                if (toi < earliestToi)
-                                {
-                                    earliestToi = toi;
-                                    hitNormal = n;
-                                    anyHit = true;
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        for (const NS::Math::AABB& box : input.world)
-                        {
-                            float toi = 1.0f;
-                            NS::Math::Vector3 n{};
-                            if (SweptCapsuleVsAABB(cap, motion, box, toi, n))
-                            {
-                                if (toi < earliestToi)
-                                {
-                                    earliestToi = toi;
-                                    hitNormal = n;
-                                    anyHit = true;
-                                }
-                            }
-                        }
-                    }
-
-                    for (const Triangle& tri : input.worldTriangles)
-                    {
-                        float toi = 1.0f;
-                        NS::Math::Vector3 n{};
-                        if (SweptCapsuleVsTriangle(cap, motion, tri, toi, n))
-                        {
-                            if (toi < earliestToi)
-                            {
-                                earliestToi = toi;
-                                hitNormal = n;
-                                anyHit = true;
-                            }
-                        }
-                    }
-
-                    for (const OBB& obb : input.worldObbs)
-                    {
-                        float toi = 1.0f;
-                        NS::Math::Vector3 n{};
-                        if (SweptCapsuleVsOBB(cap, motion, obb, toi, n))
-                        {
-                            if (toi < earliestToi)
-                            {
-                                earliestToi = toi;
-                                hitNormal = n;
-                                anyHit = true;
-                            }
-                        }
-                    }
-
-                    for (const Sphere& sphere : input.worldSpheres)
-                    {
-                        float toi = 1.0f;
-                        NS::Math::Vector3 n{};
-                        if (SweptCapsuleVsSphere(cap, motion, sphere, toi, n) && toi < earliestToi)
-                        {
-                            earliestToi = toi;
-                            hitNormal = n;
-                            anyHit = true;
-                        }
-                    }
-
-                    for (const Capsule& other : input.worldCapsules)
-                    {
-                        float toi = 1.0f;
-                        NS::Math::Vector3 n{};
-                        if (SweptCapsuleVsCapsule(cap, motion, other, toi, n) && toi < earliestToi)
-                        {
-                            earliestToi = toi;
-                            hitNormal = n;
-                            anyHit = true;
-                        }
-                    }
                 }
 
                 if (!anyHit)
@@ -231,38 +106,8 @@ namespace NS::Physics
                 result.position.x, result.position.y - input.capsuleHalfHeight, result.position.z};
 
             if (input.physicsWorld != nullptr)
-            {
                 result.grounded =
                     input.physicsWorld->ProbeGround(bottomCenter, input.capsuleRadius + kGroundProbeDistance);
-                return result;
-            }
-
-            const NS::Math::Ray ray(bottomCenter, NS::Math::Vector3{0.0f, -1.0f, 0.0f});
-            for (const NS::Math::AABB& box : input.world)
-            {
-                float dist = 0.0f;
-                if (ray.Intersects(box, dist) && dist <= input.capsuleRadius + kGroundProbeDistance)
-                {
-                    result.grounded = true;
-                    break;
-                }
-            }
-
-            for (const OBB& obb : input.worldObbs)
-            {
-                const NS::Math::Vector3 d = bottomCenter - obb.center;
-                const NS::Math::Vector3 localOrigin{d.Dot(obb.axisX), d.Dot(obb.axisY), d.Dot(obb.axisZ)};
-                const NS::Math::Vector3 down{0.0f, -1.0f, 0.0f};
-                const NS::Math::Vector3 localDir{down.Dot(obb.axisX), down.Dot(obb.axisY), down.Dot(obb.axisZ)};
-                const NS::Math::Ray localRay(localOrigin, localDir);
-                const NS::Math::AABB localBox(NS::Math::Vector3{0.0f, 0.0f, 0.0f}, obb.halfExtents);
-                float dist = 0.0f;
-                if (localRay.Intersects(localBox, dist) && dist <= input.capsuleRadius + kGroundProbeDistance)
-                {
-                    result.grounded = true;
-                    break;
-                }
-            }
         }
 
         return result;

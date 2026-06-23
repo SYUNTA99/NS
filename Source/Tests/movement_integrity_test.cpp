@@ -2,11 +2,11 @@
 
 #include <Framework/Core/Clock.h>
 #include <Framework/Math/Math.h>
+#include <Framework/Physics/PhysicsWorld.h>
 #include <Framework/Scene/Components/CharacterMovementComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Transform.h>
 
-#include <span>
 #include <vector>
 
 namespace
@@ -39,7 +39,10 @@ namespace
         auto& movement = *owner.AddComponent<CharacterMovementComponent>();
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
 
-        movement.SetCollisionWorld(std::span<const AABB>(&floor, 1));
+        NS::Physics::PhysicsWorld pw;
+        pw.AddAabb(floor);
+        pw.BuildBroadphase();
+        movement.SetPhysicsWorld(&pw);
         movement.SetDebugDrawEnabled(false);
 
         std::vector<Vector3> trajectory;
@@ -113,7 +116,10 @@ TEST_F(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
     auto& movement = *owner.AddComponent<CharacterMovementComponent>();
     owner.Root().SetPosition(Vector3{0.0f, 0.5f, 0.0f}); // 床上に直置きで grounded スタート
 
-    movement.SetCollisionWorld(std::span<const AABB>(&floor, 1));
+    NS::Physics::PhysicsWorld pw;
+    pw.AddAabb(floor);
+    pw.BuildBroadphase();
+    movement.SetPhysicsWorld(&pw);
     movement.SetDebugDrawEnabled(false);
 
     for (int i = 0; i < 60; ++i)

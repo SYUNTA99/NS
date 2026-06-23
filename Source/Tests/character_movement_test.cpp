@@ -2,8 +2,8 @@
 
 #include <Framework/Core/Clock.h>
 #include <Framework/Scene/Components/CharacterMovementComponent.h>
-#include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Components/PoleComponent.h>
+#include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Transform.h>
 
 #include <span>
@@ -18,8 +18,6 @@ namespace
     /// 衝突なしの環境で N 回 OnUpdate を呼ぶ。debug draw は false 固定
     void StepN(CharacterMovementComponent& mov, int n)
     {
-        std::span<const NS::Math::AABB> empty;
-        mov.SetCollisionWorld(empty);
         mov.SetDebugDrawEnabled(false);
         for (int i = 0; i < n; ++i)
             mov.OnUpdate();
@@ -109,8 +107,6 @@ TEST_F(CharacterMovementTest, ApexHangScalesGravity)
     GameObject obj;
     auto& mov = *obj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
-    std::span<const NS::Math::AABB> empty;
-    mov.SetCollisionWorld(empty);
 
     mov.SetJumpPressed();
     for (int i = 0; i < 10; ++i)
@@ -147,8 +143,6 @@ TEST_F(CharacterMovementTest, OnUpdateNoOpWhenInactive)
     mov.SetDebugDrawEnabled(false);
 
     mov.SetJumpPressed();
-    std::span<const NS::Math::AABB> empty;
-    mov.SetCollisionWorld(empty);
     mov.OnUpdate();
 
     EXPECT_FLOAT_EQ(mov.Velocity().y, 0.0f);
@@ -159,8 +153,6 @@ TEST_F(CharacterMovementTest, ClimbPoleVerticalUsesClimbChannelNotDesiredDir)
     GameObject playerObj;
     auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
-    std::span<const NS::Math::AABB> empty;
-    mov.SetCollisionWorld(empty);
 
     GameObject poleObj; // origin 中心、 半径 0.5 / 高さ 2 (軸 y=-1..+1)
     auto& pole = *poleObj.AddComponent<NS::Scene::PoleComponent>(0.5f, 2.0f);

@@ -2,8 +2,10 @@
 
 #include <Framework/Math/Math.h>
 #include <Framework/Physics/CharacterController.h>
+#include <Framework/Physics/PhysicsWorld.h>
 
 #include <array>
+#include <span>
 
 namespace
 {
@@ -12,6 +14,7 @@ namespace
     using NS::Physics::CharacterController;
     using NS::Physics::CharacterControllerInput;
     using NS::Physics::CharacterControllerResult;
+    using NS::Physics::PhysicsWorld;
 
     AABB MakeAABB(const Vector3& center, const Vector3& extents)
     {
@@ -20,18 +23,27 @@ namespace
         box.Extents = extents;
         return box;
     }
+
+    // AABB 群を積んで broadphase まで作った physics world を返す
+    PhysicsWorld MakeWorld(std::span<const AABB> boxes)
+    {
+        PhysicsWorld world;
+        for (const AABB& b : boxes)
+            world.AddAabb(b);
+        world.BuildBroadphase();
+        return world;
+    }
 } // namespace
 
 TEST(CharacterControllerTest, FreeFallProgressesWhenWorldIsEmpty)
 {
     CharacterController cc;
-    const std::array<AABB, 0> world{};
 
+    // world 未設定 (physicsWorld == nullptr) は衝突なし = 自由落下
     CharacterControllerInput input;
-    input.position = {0.0f, 5.0f, 0.0f};
-    input.velocity = {0.0f, -10.0f, 0.0f};
+    input.position = Vector3{0.0f, 5.0f, 0.0f};
+    input.velocity = Vector3{0.0f, -10.0f, 0.0f};
     input.dt = 0.1f;
-    input.world = std::span<const AABB>{world};
 
     const CharacterControllerResult r = cc.Update(input);
     EXPECT_LT(r.position.y, 5.0f);
@@ -42,14 +54,15 @@ TEST(CharacterControllerTest, LandsOnFloorAndReportsGrounded)
 {
     CharacterController cc;
     const std::array<AABB, 1> world = {MakeAABB({0.0f, 0.0f, 0.0f}, {5.0f, 0.5f, 5.0f})};
+    PhysicsWorld pw = MakeWorld(world);
 
     CharacterControllerInput input;
     // Capsule 底端 = position.y - halfHeight - radius = 2 - 0.5 - 0.4 = 1.1
     // 床上面 = 0.5。差分 0.6m を 1 step で 0.7m 落下させて確実に着地
-    input.position = {0.0f, 2.0f, 0.0f};
-    input.velocity = {0.0f, -7.0f, 0.0f};
+    input.position = Vector3{0.0f, 2.0f, 0.0f};
+    input.velocity = Vector3{0.0f, -7.0f, 0.0f};
     input.dt = 0.1f;
-    input.world = std::span<const AABB>{world};
+    input.physicsWorld = &pw;
 
     const CharacterControllerResult r = cc.Update(input);
     EXPECT_TRUE(r.grounded);
@@ -61,12 +74,13 @@ TEST(CharacterControllerTest, NoGroundedWhenAirborne)
 {
     CharacterController cc;
     const std::array<AABB, 1> world = {MakeAABB({0.0f, 0.0f, 0.0f}, {5.0f, 0.5f, 5.0f})};
+    PhysicsWorld pw = MakeWorld(world);
 
     CharacterControllerInput input;
-    input.position = {0.0f, 10.0f, 0.0f}; // 床から 10m 上空
-    input.velocity = {0.0f, 0.0f, 0.0f};
+    input.position = Vector3{0.0f, 10.0f, 0.0f}; // 床から 10m 上空
+    input.velocity = Vector3{0.0f, 0.0f, 0.0f};
     input.dt = 0.016f;
-    input.world = std::span<const AABB>{world};
+    input.physicsWorld = &pw;
 
     const CharacterControllerResult r = cc.Update(input);
     EXPECT_FALSE(r.grounded);
@@ -76,12 +90,13 @@ TEST(CharacterControllerTest, StopsAtWallAndSlidesAlongIt)
 {
     CharacterController cc;
     const std::array<AABB, 1> world = {MakeAABB({5.0f, 1.0f, 0.0f}, {0.5f, 1.0f, 5.0f})};
+    PhysicsWorld pw = MakeWorld(world);
 
     CharacterControllerInput input;
-    input.position = {0.0f, 1.0f, 0.0f};
-    input.velocity = {20.0f, 0.0f, 0.0f}; // 壁に向かって突進
+    input.position = Vector3{0.0f, 1.0f, 0.0f};
+    input.velocity = Vector3{20.0f, 0.0f, 0.0f}; // 壁に向かって突進
     input.dt = 0.1f;
-    input.world = std::span<const AABB>{world};
+    input.physicsWorld = &pw;
 
     const CharacterControllerResult r = cc.Update(input);
     // 壁面 (西側 x=4.5) と Capsule radius 0.4 = position.x の上限 = 4.1
@@ -92,12 +107,13 @@ TEST(CharacterControllerTest, DeterministicUnderSameInput)
 {
     CharacterController cc;
     const std::array<AABB, 1> world = {MakeAABB({0.0f, 0.0f, 0.0f}, {5.0f, 0.5f, 5.0f})};
+    PhysicsWorld pw = MakeWorld(world);
 
     CharacterControllerInput input;
-    input.position = {0.0f, 3.0f, 0.0f};
-    input.velocity = {1.0f, -2.0f, 0.5f};
+    input.position = Vector3{0.0f, 3.0f, 0.0f};
+    input.velocity = Vector3{1.0f, -2.0f, 0.5f};
     input.dt = 0.0167f;
-    input.world = std::span<const AABB>{world};
+    input.physicsWorld = &pw;
 
     const auto a = cc.Update(input);
     const auto b = cc.Update(input);
