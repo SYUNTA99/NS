@@ -7,6 +7,7 @@
 
 #include "Framework/Math/Math.h"
 #include "Framework/Physics/CollisionGrid.h"
+#include "Framework/Physics/SweptCapsule.h"
 #include "Framework/Physics/SweptOBB.h"
 #include "Framework/Physics/SweptTriangle.h"
 
@@ -26,6 +27,8 @@ namespace NS::Physics
         std::span<const NS::Math::AABB> world{};
         std::span<const NS::Physics::Triangle> worldTriangles{};
         std::span<const NS::Physics::OBB> worldObbs{};
+        std::span<const NS::Physics::Sphere> worldSpheres{};
+        std::span<const NS::Physics::Capsule> worldCapsules{};
         const NS::Physics::CollisionGrid* grid = nullptr;
     };
 

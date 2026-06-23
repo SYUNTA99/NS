@@ -274,3 +274,94 @@ TEST(ChunkIOTest, LegacyBlksChunkMigratesToObjects)
     std::error_code ec;
     std::filesystem::remove(path, ec);
 }
+
+// 旧 minor (OBJS record 48 byte、 collider half-extents 無し) を読むと collider が default 0.5 で補完される
+// 現行 ObjectInstance の先頭 48 byte がちょうど旧レイアウトなので、 先頭 48 byte だけ書いて旧 record を再現する
+TEST(ChunkIOTest, LegacyObjsRecordDefaultsColliderHalfExtents)
+{
+    const auto path = UniqueTempPath("legacy_objs");
+
+    LevelNs::ChunkWriter writer(path);
+    ASSERT_TRUE(writer.IsValid());
+    ASSERT_TRUE(writer.BeginFile(LevelNs::kCurrentVersionMajor, static_cast<std::uint16_t>(0)));
+
+    LevelNs::ObjectInstance src{};
+    src.positionX = 1.0f;
+    src.positionY = 2.0f;
+    src.positionZ = 3.0f;
+    src.scaleX = 4.0f;
+    src.kind = 1;
+
+    constexpr std::size_t kV0RecordBytes = 48;
+    const std::uint32_t objectCount = 1;
+    const char objsFourCc[4] = {'O', 'B', 'J', 'S'};
+    ASSERT_TRUE(writer.BeginChunk(objsFourCc));
+    ASSERT_TRUE(writer.Write(&objectCount, sizeof(objectCount)));
+    ASSERT_TRUE(writer.Write(&src, kV0RecordBytes)); // 先頭 48 byte だけ = 旧 record
+    ASSERT_TRUE(writer.EndChunk());
+    ASSERT_TRUE(writer.EndFile());
+
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, path));
+    ASSERT_EQ(dst.objects.size(), 1u);
+    EXPECT_FLOAT_EQ(dst.objects[0].positionX, 1.0f);
+    EXPECT_FLOAT_EQ(dst.objects[0].positionZ, 3.0f);
+    EXPECT_FLOAT_EQ(dst.objects[0].scaleX, 4.0f);
+    EXPECT_EQ(dst.objects[0].kind, 1u);
+    // 旧 record に collider は無いので default 0.5 が補完される
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsX, 0.5f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsY, 0.5f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsZ, 0.5f);
+
+    std::error_code ec;
+    std::filesystem::remove(path, ec);
+}
+
+// minor 1 (OBJS record 60 byte、 collider offset/rotation 無し) を読むと offset 0 / rotation 単位で補完される
+// 現行 ObjectInstance の先頭 60 byte が minor 1 レイアウトなので、 先頭 60 byte だけ書いて旧 record を再現する
+TEST(ChunkIOTest, V1ObjsRecordDefaultsColliderOffsetAndRotation)
+{
+    const auto path = UniqueTempPath("v1_objs");
+
+    LevelNs::ChunkWriter writer(path);
+    ASSERT_TRUE(writer.IsValid());
+    ASSERT_TRUE(writer.BeginFile(LevelNs::kCurrentVersionMajor, static_cast<std::uint16_t>(1)));
+
+    LevelNs::ObjectInstance src{};
+    src.positionX = 1.0f;
+    src.kind = 1;
+    src.colliderHalfExtentsX = 0.3f;
+    src.colliderHalfExtentsY = 1.25f;
+    src.colliderHalfExtentsZ = 0.8f;
+    // offset/rotation を非既定にしても 60 byte までしか書かないので読み側へは伝わらない
+    src.colliderOffsetX = 9.0f;
+    src.colliderRotationW = 0.0f;
+
+    constexpr std::size_t kV1RecordBytes = 60;
+    const std::uint32_t objectCount = 1;
+    const char objsFourCc[4] = {'O', 'B', 'J', 'S'};
+    ASSERT_TRUE(writer.BeginChunk(objsFourCc));
+    ASSERT_TRUE(writer.Write(&objectCount, sizeof(objectCount)));
+    ASSERT_TRUE(writer.Write(&src, kV1RecordBytes)); // 先頭 60 byte だけ = minor 1 record
+    ASSERT_TRUE(writer.EndChunk());
+    ASSERT_TRUE(writer.EndFile());
+
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, path));
+    ASSERT_EQ(dst.objects.size(), 1u);
+    EXPECT_FLOAT_EQ(dst.objects[0].positionX, 1.0f);
+    EXPECT_EQ(dst.objects[0].kind, 1u);
+    // half-extents は minor 1 に含まれるので保持される
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsX, 0.3f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsY, 1.25f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsZ, 0.8f);
+    // offset/rotation は minor 1 に無いので default (0 / 単位) が補完される
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderOffsetX, 0.0f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderOffsetY, 0.0f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderOffsetZ, 0.0f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderRotationX, 0.0f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderRotationW, 1.0f);
+
+    std::error_code ec;
+    std::filesystem::remove(path, ec);
+}

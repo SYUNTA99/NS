@@ -25,7 +25,13 @@ jobs:
 
       - name: Setup premake5
         shell: pwsh
-        run: tools/download_premake.ps1
+        run: |
+          # premake5.exe は gitignore 対象のため CI で取得する (版は tools/@download_premake.cmd と一致)
+          $ErrorActionPreference = 'Stop'
+          $version = '5.0.0-beta2'
+          $url = "https://github.com/premake/premake-core/releases/download/v$version/premake-$version-windows.zip"
+          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP/premake.zip"
+          Expand-Archive -Path "$env:RUNNER_TEMP/premake.zip" -DestinationPath tools -Force
 
       - name: Cache build outputs
         uses: actions/cache@v4
@@ -68,7 +74,13 @@ jobs:
 
       - name: Setup premake5
         shell: pwsh
-        run: tools/download_premake.ps1
+        run: |
+          # premake5.exe は gitignore 対象のため CI で取得する (版は tools/@download_premake.cmd と一致)
+          $ErrorActionPreference = 'Stop'
+          $version = '5.0.0-beta2'
+          $url = "https://github.com/premake/premake-core/releases/download/v$version/premake-$version-windows.zip"
+          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP/premake.zip"
+          Expand-Archive -Path "$env:RUNNER_TEMP/premake.zip" -DestinationPath tools -Force
 
       - name: Generate compile_commands.json
         shell: cmd

@@ -11,9 +11,9 @@
 
 #include "Framework/Core/EditorAccess.h"
 #include "Framework/Math/Math.h"
+#include "Framework/Physics/SweptCapsule.h"
 #include "Framework/Physics/SweptOBB.h"
 #include "Framework/Physics/SweptTriangle.h"
-#include "Framework/Scene/MaterialLibrary.h"
 #include "Framework/Scene/SceneBase.h"
 #include "Game/CameraRig.h"
 #include "Game/Level/LevelData.h"
@@ -28,21 +28,13 @@
 namespace NS::Graphics
 {
     class InstanceBatcher;
-    class Material;
-    class StaticMesh;
-    class SkeletalMesh;
-    class Shader;
     class Skybox;
-    class Texture;
-    class TextureArray;
 } // namespace NS::Graphics
 
 namespace NS::Scene
 {
     class IRenderable;
     class GameObject;
-    class MeshRendererComponent;
-    class SkeletalAnimationComponent;
     class Transform;
     class CameraComponent;
     class CameraBrainComponent;
@@ -51,13 +43,8 @@ namespace NS::Scene
     struct RenderContext;
 } // namespace NS::Scene
 
-class Block;
-class DecorationBlock;
-class HazardBlock;
 class Player;
-class PoleBlock;
-class SlopeBlock;
-class WaterBlock;
+class SkinnedDebugCharacter;
 
 /// レベルを遊ぶための root scene。 編集機能を持たず、 派生もしない単一の scene 型
 class LevelPlayScene : public NS::Scene::SceneBase
@@ -99,7 +86,7 @@ private:
     /// false で player を凍結し follow / area camera を休止する (editor の編集モード用)
     void SetPlaying(bool playing) noexcept;
 
-    /// dirty flag 検出時のみ m_blocks と m_collisionWorld を LevelData から再構築する
+    /// dirty flag 検出時のみ m_objects と衝突世界を LevelData から再構築する
     void RebuildBlocksFromLevelData();
 
     /// m_objectIds を m_level.objects と同サイズの連番へ再構築する (objects 全置換直後に呼ぶ)
@@ -125,53 +112,22 @@ private:
     /// 起動時のレベル供給: 同梱 default `.nslvl` をロードし、 無ければ最小床を seed する
     void LoadInitialLevel();
 
-    std::unique_ptr<NS::Graphics::StaticMesh> m_cubeMesh;
-    std::unique_ptr<NS::Graphics::Texture> m_texture;
-    std::unique_ptr<NS::Graphics::TextureArray> m_blockTextures;
-    std::unique_ptr<NS::Graphics::Shader> m_standardVS; // player / block 共有 (standard.vs)
-    std::unique_ptr<NS::Graphics::Shader> m_playerPS;   // player / block / skinned 共有 (player.ps)
-    std::unique_ptr<NS::Graphics::Shader> m_waterPS;    // 水専用 (water.ps、alpha<1 出力)
-    std::unique_ptr<NS::Graphics::Shader> m_shadowPS;   // 接地シャドウ専用 (shadow.ps、放射状アルファ)
-    std::unique_ptr<NS::Graphics::Material> m_playerMaterial;
-    std::unique_ptr<NS::Graphics::Material> m_blockMaterial;
-    // 水ブロック専用の半透明 Material (Alpha)。不透明ブロックと共有すると全ブロックが透けるため別インスタンス
-    std::unique_ptr<NS::Graphics::Material> m_waterMaterial;
-    // 接地シャドウ共有 Material (standard.vs + shadow.ps、Alpha)
-    std::unique_ptr<NS::Graphics::Material> m_shadowMaterial;
+    // builtin mesh / 共有 material / block の TextureArray は AssetManager (Application 所有) が持つ
+    // scene は使う箇所で都度引く (メンバとして控えない = 単一所有元は AssetManager のみ)
+
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
     std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
 
-    // 角度別 wedge mesh を 4 種だけ shared でキャッシュ。 SlopeBlock 1 個ずつに mesh を持たせず、
-    // scene 寿命のあいだ共有して描画コストとメモリを抑える
-    std::unique_ptr<NS::Graphics::StaticMesh> m_wedgeMesh45;
-    std::unique_ptr<NS::Graphics::StaticMesh> m_wedgeMesh30;
-    std::unique_ptr<NS::Graphics::StaticMesh> m_wedgeMesh22;
-    std::unique_ptr<NS::Graphics::StaticMesh> m_wedgeMesh15;
-
-    // 掴まり系 mesh: 円柱を 1 度だけ生成して全 instance で共有する
-    std::unique_ptr<NS::Graphics::StaticMesh> m_poleMesh;
-
-    // 接地シャドウ用の共有 quad mesh (XZ 平面)
-    std::unique_ptr<NS::Graphics::StaticMesh> m_shadowMesh;
-
-    // 仮 skinned キャラの描画リソース (mesh / shader / material)。 アセット未取得時は全て null
-    std::unique_ptr<NS::Graphics::SkeletalMesh> m_skinnedMesh;
-    std::unique_ptr<NS::Graphics::Shader> m_skinnedVS;
-    std::unique_ptr<NS::Graphics::Material> m_skinnedMaterial;
-
     std::unique_ptr<Player> m_player;
 
-    // 仮 skinned キャラ本体。 GameObject が MeshRenderer + SkeletalAnimation を所有し、 参照をキャッシュする
-    std::unique_ptr<NS::Scene::GameObject> m_animatedModel;
-    NS::Scene::MeshRendererComponent* m_animMesh = nullptr;
-    NS::Scene::SkeletalAnimationComponent* m_animPlayer = nullptr;
-    float m_animSpeed = 1.0f;
-    std::vector<std::unique_ptr<Block>> m_blocks;
-    std::vector<std::unique_ptr<SlopeBlock>> m_slopes;
-    std::vector<std::unique_ptr<PoleBlock>> m_poles;
-    std::vector<std::unique_ptr<HazardBlock>> m_hazards;
-    std::vector<std::unique_ptr<WaterBlock>> m_waters;
-    std::vector<std::unique_ptr<DecorationBlock>> m_decorations;
+    // 仮 skinned キャラ。 形 / 骨 / 材質は AssetManager 所有を参照し、 components を自分で合成する
+    std::unique_ptr<SkinnedDebugCharacter> m_animatedModel;
+
+    // 配置物の単一所有リスト。 grid / slope / pole / hazard / water / deco / 自由配置物すべてを
+    // generic GameObject として保持する。 RebuildBlocksFromLevelData がファクトリ経由で作り直す
+    std::vector<std::unique_ptr<NS::Scene::GameObject>> m_objects;
+    // m_objects[i] に対応する m_level.objects の添字 (m_objects と同長・ 1:1)
+    std::vector<std::size_t> m_objectSourceIndices;
 
     std::unique_ptr<CameraRig> m_cameraRig;
 
@@ -192,6 +148,8 @@ private:
     std::vector<NS::Math::AABB> m_collisionWorld;
     std::vector<NS::Physics::Triangle> m_collisionTriangles;
     std::vector<NS::Physics::OBB> m_collisionObbs;
+    std::vector<NS::Physics::Sphere> m_collisionSpheres;
+    std::vector<NS::Physics::Capsule> m_collisionCapsules;
     std::vector<NS::Scene::PoleComponent*> m_polePtrs;
 
     NS::Game::Level::LevelData m_level{};
@@ -210,16 +168,9 @@ private:
     // 直近 OnRenderScene で解決した scene 段設定。 editor の RenderSettings パネルが friend で読む
     NS::Graphics::RenderSettings m_lastResolvedSettings{};
 
-    // .mat からマテリアルを読み込みキャッシュする。 free オブジェクトより先に宣言し、 暗黙デストラクタの
-    // 逆順破棄でも free オブジェクト (Material* を参照) より後に破棄されるよう順序を保証する
-    std::unique_ptr<NS::Scene::MaterialLibrary> m_materialLibrary;
-
-    // 非 gridAligned な配置物の runtime インスタンス。 RebuildBlocksFromLevelData が m_level.objects から作り直す
-    std::vector<std::unique_ptr<Block>> m_freeObjects;
-    // m_freeObjects[i] に対応する m_level.objects の添字 (材質適用 / 再選択の逆引き用)
-    std::vector<std::size_t> m_freeSourceIndices;
-    // m_blocks[i] に対応する m_level.objects の添字 (Hierarchy からの grid solid 選択の逆引き用、 m_blocks と同長)
-    std::vector<std::size_t> m_blockSourceIndices;
+    // hazard の damage 走査 view。 衝突応答とは別経路 (芯線 vs AABB) で per-frame に当てるため build 時に積む
+    // 所有は m_objects 側、 ここは観測のみ
+    std::vector<NS::Scene::GameObject*> m_hazardView;
 
     /// 差分フレームのみ cubemap を再ロードするため前回パスを保持する
     std::filesystem::path m_loadedSkyboxPath{};

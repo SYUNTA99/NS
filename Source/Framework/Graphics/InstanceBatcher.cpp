@@ -149,6 +149,21 @@ namespace NS::Graphics
         }
         m_instanceVbCapacity = kInitialPerBucketCapacity;
 
+        if (!BuildShaders())
+        {
+            return;
+        }
+
+        m_valid = true;
+    }
+
+    bool InstanceBatcher::BuildShaders() noexcept
+    {
+        if (m_device == nullptr)
+        {
+            return false;
+        }
+
         // Shader は slot 0 単 stream 専用のため batcher が直接 VS+PS を組む。PS は standard.ps.hlsl 流用
         const auto exeDir = ::NS::Core::FileSystem::ContentRoot();
         const auto vsPath = exeDir / "Shaders" / "instanced.vs.hlsl";
@@ -157,40 +172,58 @@ namespace NS::Graphics
         ComPtr<ID3DBlob> vsBlob;
         if (!CompileHlsl(vsPath, "VSMain", "vs_5_0", vsBlob))
         {
-            return;
+            return false;
         }
         ComPtr<ID3DBlob> psBlob;
         if (!CompileHlsl(psPath, "PSMain", "ps_5_0", psBlob))
         {
-            return;
+            return false;
         }
 
-        HRESULT hr = device->CreateVertexShader(
-            vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, m_vs.GetAddressOf());
+        ComPtr<ID3D11VertexShader> vs;
+        HRESULT hr = m_device->CreateVertexShader(
+            vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, vs.GetAddressOf());
         if (FAILED(hr))
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
                          "InstanceBatcher: CreateVertexShader 失敗 (hr=0x{:08X})",
                          static_cast<unsigned>(hr));
-            return;
+            return false;
         }
-        hr = device->CreatePixelShader(
-            psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, m_ps.GetAddressOf());
+        ComPtr<ID3D11PixelShader> ps;
+        hr = m_device->CreatePixelShader(
+            psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, ps.GetAddressOf());
         if (FAILED(hr))
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
                          "InstanceBatcher: CreatePixelShader 失敗 (hr=0x{:08X})",
                          static_cast<unsigned>(hr));
-            return;
+            return false;
+        }
+        ComPtr<ID3D11InputLayout> layout =
+            CreateInstancedInputLayout(m_device.Get(), vsBlob->GetBufferPointer(), vsBlob->GetBufferSize());
+        if (!layout)
+        {
+            return false;
         }
 
-        m_inputLayout = CreateInstancedInputLayout(device, vsBlob->GetBufferPointer(), vsBlob->GetBufferSize());
-        if (!m_inputLayout)
+        // 全段成功してから差し替える (reload 失敗時に旧 shader / layout を壊さない)
+        m_vs = std::move(vs);
+        m_ps = std::move(ps);
+        m_inputLayout = std::move(layout);
+        return true;
+    }
+
+    void InstanceBatcher::ReloadShaders() noexcept
+    {
+        if (m_device == nullptr)
         {
             return;
         }
-
-        m_valid = true;
+        if (BuildShaders())
+        {
+            NS_LOG_INFO(::NS::Core::LogCat::Graphics, "InstanceBatcher: instanced shader reload 成功");
+        }
     }
 
     InstanceBatcher::~InstanceBatcher() = default;

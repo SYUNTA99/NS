@@ -58,6 +58,12 @@ namespace NS::Scene
         /// 自由配置物 (回転 / scale 込み) の世界座標 OBB 配列を受け取り、 内部 vector にコピーする
         void SetCollisionObbs(std::span<const NS::Physics::OBB> obbs);
 
+        /// 球 collider の世界座標配列を受け取り、 内部 vector にコピーする
+        void SetCollisionSpheres(std::span<const NS::Physics::Sphere> spheres);
+
+        /// capsule collider の世界座標配列を受け取り、 内部 vector にコピーする
+        void SetCollisionCapsules(std::span<const NS::Physics::Capsule> capsules);
+
         /// pole 群を span で注入する。span のみ保存し、要素の寿命は呼出側 (LevelPlayScene) が保証する
         void SetClimbables(std::span<PoleComponent* const> poles) noexcept;
 
@@ -83,6 +89,23 @@ namespace NS::Scene
         void ResetState() noexcept;
 
         void OnUpdate() override;
+
+        // 操作感の調整値を Inspector へ公開する。 プレイ中にライブで触って感触を詰める用途
+        NS_REFLECT_BEGIN(CharacterMovementComponent)
+        NS_REFLECT_FIELD(m_jumpImpulse, "Jump Impulse")
+        NS_REFLECT_FIELD(m_gravityUp, "Gravity Up")
+        NS_REFLECT_FIELD(m_gravityDown, "Gravity Down")
+        NS_REFLECT_FIELD(m_apexHangVy, "Apex Hang Vy")
+        NS_REFLECT_FIELD(m_apexHangScale, "Apex Hang Scale")
+        NS_REFLECT_FIELD(m_jumpReleaseScale, "Jump Release Scale")
+        NS_REFLECT_FIELD(m_coyoteTime, "Coyote Time")
+        NS_REFLECT_FIELD(m_jumpBufferTime, "Jump Buffer Time")
+        NS_REFLECT_FIELD(m_maxSpeed, "Max Speed")
+        NS_REFLECT_FIELD(m_walkSpeed, "Walk Speed")
+        NS_REFLECT_FIELD(m_accelTau, "Accel Tau")
+        NS_REFLECT_FIELD(m_decelTau, "Decel Tau")
+        NS_REFLECT_FIELD(m_stickDeadzone, "Stick Deadzone")
+        NS_REFLECT_END()
 
     private:
         /// 空中下降中に進行方向の block 縁を検出し、掴めれば LedgeHanging へ遷移して true を返す
@@ -134,6 +157,8 @@ namespace NS::Scene
         std::vector<NS::Math::AABB> m_collisionWorld;
         std::vector<NS::Physics::Triangle> m_collisionTriangles;
         std::vector<NS::Physics::OBB> m_collisionObbs;
+        std::vector<NS::Physics::Sphere> m_collisionSpheres;
+        std::vector<NS::Physics::Capsule> m_collisionCapsules;
         NS::Physics::CollisionGrid m_collisionGrid;
         NS::Physics::CharacterController m_controller;
 

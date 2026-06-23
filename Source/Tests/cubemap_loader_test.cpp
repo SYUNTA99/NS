@@ -55,6 +55,11 @@ TEST_F(CubemapLoaderTest, LoadKurt6FacePngSucceeds)
     const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
     const auto kurtDir = exeDir / "Assets" / "Skybox" / "kurt";
 
+    if (!NS::Core::FileSystem::Exists(kurtDir / "space_ft.png"))
+    {
+        GTEST_SKIP() << "skybox kurt PNG 未配置 (exe 隣に Assets 未コピー)";
+    }
+
     const bool ok = skybox.LoadCubemap(kurtDir);
     EXPECT_TRUE(ok);
     EXPECT_TRUE(skybox.IsValid());

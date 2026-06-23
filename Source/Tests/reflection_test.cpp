@@ -2,7 +2,15 @@
 
 #include <Framework/Math/Math.h>
 #include <Framework/Scene/Component.h>
+#include <Framework/Scene/Components/CameraBrainComponent.h>
+#include <Framework/Scene/Components/CharacterMovementComponent.h>
+#include <Framework/Scene/Components/EditorCameraComponent.h>
+#include <Framework/Scene/Components/MeshRendererComponent.h>
 #include <Framework/Scene/Components/PlacedVirtualCamera.h>
+#include <Framework/Scene/Components/PoleComponent.h>
+#include <Framework/Scene/Components/ShadowComponent.h>
+#include <Framework/Scene/Components/BoxColliderComponent.h>
+#include <Framework/Scene/Components/ThirdPersonFollowComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Reflection.h>
 
@@ -188,4 +196,162 @@ TEST(ReflectionTest, PlacedVirtualCameraReflectsSixFields)
     EXPECT_FLOAT_EQ(cam->TriggerCenter().x, 20.0f);
     EXPECT_FLOAT_EQ(cam->TriggerCenter().y, 21.0f);
     EXPECT_FLOAT_EQ(cam->TriggerCenter().z, 22.0f);
+}
+
+TEST(ReflectionTest, CharacterMovementReflectsFeelFloats)
+{
+    NS::Scene::CharacterMovementComponent move;
+    const ReflectionInfo* info = move.GetReflection();
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->fieldCount, 13u);
+
+    // 操作感の代表値が float として往復する (getter が無いので反射 get で確認する)
+    const FieldDesc* jump = FindField(info, "Jump Impulse");
+    ASSERT_NE(jump, nullptr);
+    EXPECT_EQ(jump->type, FieldType::Float);
+
+    float got = 0.0f;
+    jump->get(&move, &got);
+    EXPECT_FLOAT_EQ(got, 12.0f);
+
+    float set = 20.0f;
+    jump->set(&move, &set);
+    jump->get(&move, &got);
+    EXPECT_FLOAT_EQ(got, 20.0f);
+}
+
+TEST(ReflectionTest, MeshRendererReflectsBaseColor)
+{
+    NS::Scene::MeshRendererComponent renderer(nullptr, nullptr);
+    const ReflectionInfo* info = renderer.GetReflection();
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->fieldCount, 1u);
+
+    const FieldDesc* color = FindField(info, "Base Color");
+    ASSERT_NE(color, nullptr);
+    EXPECT_EQ(color->type, FieldType::Vector3);
+
+    NS::Math::Vector3 set{0.2f, 0.3f, 0.4f};
+    color->set(&renderer, &set);
+    NS::Math::Vector3 got{};
+    color->get(&renderer, &got);
+    EXPECT_FLOAT_EQ(got.x, 0.2f);
+    EXPECT_FLOAT_EQ(got.y, 0.3f);
+    EXPECT_FLOAT_EQ(got.z, 0.4f);
+}
+
+TEST(ReflectionTest, BoxColliderHalfExtentsAccessorClampsNegative)
+{
+    NS::Scene::BoxColliderComponent collider;
+    const ReflectionInfo* info = collider.GetReflection();
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->fieldCount, 3u);
+
+    const FieldDesc* he = FindField(info, "Half Extents");
+    ASSERT_NE(he, nullptr);
+
+    NS::Math::Vector3 set{2.0f, 3.0f, 4.0f};
+    he->set(&collider, &set);
+    EXPECT_FLOAT_EQ(collider.HalfExtents().x, 2.0f);
+    EXPECT_FLOAT_EQ(collider.HalfExtents().y, 3.0f);
+    EXPECT_FLOAT_EQ(collider.HalfExtents().z, 4.0f);
+
+    // ACCESSOR は setter 経由なので負は 0 にクランプされる (直 FIELD では起きない保証)
+    NS::Math::Vector3 negative{-1.0f, 5.0f, -2.0f};
+    he->set(&collider, &negative);
+    EXPECT_FLOAT_EQ(collider.HalfExtents().x, 0.0f);
+    EXPECT_FLOAT_EQ(collider.HalfExtents().y, 5.0f);
+    EXPECT_FLOAT_EQ(collider.HalfExtents().z, 0.0f);
+}
+
+TEST(ReflectionTest, BoxColliderExposesCenterOffsetAndRotation)
+{
+    NS::Scene::BoxColliderComponent collider;
+    const ReflectionInfo* info = collider.GetReflection();
+    ASSERT_NE(info, nullptr);
+
+    const FieldDesc* offset = FindField(info, "Center Offset");
+    ASSERT_NE(offset, nullptr);
+    NS::Math::Vector3 setOffset{1.0f, -2.0f, 3.0f};
+    offset->set(&collider, &setOffset);
+    EXPECT_FLOAT_EQ(collider.CenterOffset().x, 1.0f);
+    EXPECT_FLOAT_EQ(collider.CenterOffset().y, -2.0f);
+    EXPECT_FLOAT_EQ(collider.CenterOffset().z, 3.0f);
+
+    // 回転は Euler(度) 窓口で読み書きし、 往復で一致する
+    const FieldDesc* rot = FindField(info, "Rotation (deg)");
+    ASSERT_NE(rot, nullptr);
+    NS::Math::Vector3 setRot{0.0f, 90.0f, 0.0f};
+    rot->set(&collider, &setRot);
+    NS::Math::Vector3 readRot{};
+    rot->get(&collider, &readRot);
+    EXPECT_NEAR(readRot.y, 90.0f, 1e-3f);
+}
+
+TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
+{
+    NS::Scene::ThirdPersonFollowComponent follow(nullptr);
+    const ReflectionInfo* info = follow.GetReflection();
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->fieldCount, 14u);
+
+    const FieldDesc* jump = FindField(info, "Jump Distance");
+    ASSERT_NE(jump, nullptr);
+    EXPECT_EQ(jump->type, FieldType::Float);
+    float got = 0.0f;
+    jump->get(&follow, &got);
+    EXPECT_FLOAT_EQ(got, 7.0f);
+    float set = 9.0f;
+    jump->set(&follow, &set);
+    jump->get(&follow, &got);
+    EXPECT_FLOAT_EQ(got, 9.0f);
+
+    const FieldDesc* invertX = FindField(info, "Invert X");
+    ASSERT_NE(invertX, nullptr);
+    EXPECT_EQ(invertX->type, FieldType::Bool);
+}
+
+TEST(ReflectionTest, CameraBrainBlendDurationAccessorClampsNegative)
+{
+    NS::Scene::CameraBrainComponent brain;
+    const ReflectionInfo* info = brain.GetReflection();
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->fieldCount, 1u);
+
+    const FieldDesc* blend = FindField(info, "Blend Duration");
+    ASSERT_NE(blend, nullptr);
+    float set = -1.0f;
+    blend->set(&brain, &set);
+    EXPECT_FLOAT_EQ(brain.BlendDuration(), 0.0f); // ACCESSOR は setter 経由でクランプ
+}
+
+TEST(ReflectionTest, PoleReflectsRadiusAndHeight)
+{
+    NS::Scene::PoleComponent pole(0.15f, 2.0f);
+    const ReflectionInfo* info = pole.GetReflection();
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->fieldCount, 2u);
+
+    const FieldDesc* radius = FindField(info, "Radius");
+    ASSERT_NE(radius, nullptr);
+    float got = 0.0f;
+    radius->get(&pole, &got);
+    EXPECT_FLOAT_EQ(got, 0.15f);
+}
+
+TEST(ReflectionTest, ShadowReflectsAppearanceFields)
+{
+    NS::Scene::ShadowComponent shadow;
+    const ReflectionInfo* info = shadow.GetReflection();
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->fieldCount, 4u);
+    EXPECT_NE(FindField(info, "Base Alpha"), nullptr);
+}
+
+TEST(ReflectionTest, EditorCameraReflectsSensitivityFields)
+{
+    NS::Scene::EditorCameraComponent cam;
+    const ReflectionInfo* info = cam.GetReflection();
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->fieldCount, 7u);
 }

@@ -304,6 +304,14 @@ namespace NS::Graphics
         }
     }
 
+    void CommandList::Draw(unsigned vertexCount) noexcept
+    {
+        if (m_context != nullptr)
+        {
+            m_context->Draw(vertexCount, 0u);
+        }
+    }
+
     ID3D11DeviceContext* CommandList::Native() const noexcept
     {
         return m_context;

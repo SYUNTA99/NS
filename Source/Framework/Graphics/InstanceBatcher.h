@@ -57,6 +57,11 @@ namespace NS::Graphics
         /// 全 bucket を DrawIndexedInstanced で発行する。発行後に LastFrameDrawCallCount() が更新される
         void FlushAll(Renderer& renderer) noexcept;
 
+        /// 自前コンパイルした instanced VS/PS と InputLayout を HLSL から再コンパイルして差し替える
+        /// (dev の F5 hot reload 用)。 InstanceBatcher の shader は AssetManager 管理外のため個別に必要。 失敗時は旧
+        /// shader 維持
+        void ReloadShaders() noexcept;
+
         /// 現フレームの bucket 数 (テスト観測用)
         [[nodiscard]] std::size_t BucketCount() const noexcept;
 
@@ -71,6 +76,9 @@ namespace NS::Graphics
 
     private:
         InstanceBatcher();
+
+        /// instanced VS/PS をコンパイルし InputLayout を作って member へ commit する (全段成功時のみ差し替え)
+        [[nodiscard]] bool BuildShaders() noexcept;
 
         // (mesh, material) を bucket key にする。 同一性は 2 つのアドレスで判定
         struct BucketKey

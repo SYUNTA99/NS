@@ -1,9 +1,21 @@
 #include "Framework/Graphics/DebugDraw.h"
 
+#include "Framework/Graphics/Buffer.h"
+#include "Framework/Graphics/CommandList.h"
+#include "Framework/Graphics/D3dCommon.h"
+#include "Framework/Graphics/GraphicObject.h"
+#include "Framework/Graphics/Mesh.h"
+#include "Framework/Graphics/Pipeline.h"
+#include "Framework/Graphics/Renderer.h"
+#include "Framework/Graphics/Shader.h"
+
+#include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 
 #include <cmath>
+#include <cstddef>
+#include <memory>
 #include <vector>
 
 namespace
@@ -16,6 +28,8 @@ namespace
         NS::Math::Vector3 position;
         NS::Math::Color color;
     };
+    // POSITION(12) + COLOR(16) = 28 byte。 InputLayout の COLOR offset 12 はこの並びに依存する
+    static_assert(sizeof(DebugVertex) == 28, "DebugVertex は POSITION(12) + COLOR(16) の 28 byte 前提");
 
     std::vector<DebugVertex>& Storage() noexcept
     {
@@ -23,10 +37,74 @@ namespace
         return g_vertices;
     }
 
-    bool& FlushWarningShown() noexcept
+    // line list を 1 描画する GPU リソース一式。 初回 Flush 時に遅延生成する
+    struct LineBackend
     {
-        static bool s_warned = false;
-        return s_warned;
+        std::unique_ptr<NS::Graphics::Shader> vs;
+        std::unique_ptr<NS::Graphics::Shader> ps;
+        NS::Graphics::ComPtr<ID3D11InputLayout> inputLayout;
+        std::unique_ptr<NS::Graphics::Buffer> vb;
+        std::unique_ptr<NS::Graphics::Buffer> cb;
+        bool initAttempted = false;
+        bool valid = false;
+    };
+
+    LineBackend& Backend() noexcept
+    {
+        static LineBackend backend;
+        return backend;
+    }
+
+    // shader / InputLayout / 動的 VB / CB を生成する。 1 度だけ試行し、 device 無効や失敗は valid=false で抜ける
+    bool EnsureBackend() noexcept
+    {
+        LineBackend& b = Backend();
+        if (b.initAttempted)
+            return b.valid;
+        b.initAttempted = true;
+
+        auto* device = NS::Graphics::Gpu().device;
+        if (device == nullptr)
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "DebugDraw: グローバル Device が無効");
+            return false;
+        }
+
+        const auto shaderDir = ::NS::Core::FileSystem::ContentRoot() / "Shaders";
+        b.vs = NS::Graphics::Shader::Create(shaderDir / "debug_line.vs.hlsl");
+        b.ps = NS::Graphics::Shader::Create(shaderDir / "debug_line.ps.hlsl");
+        if (!b.vs->IsValid() || !b.ps->IsValid())
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "DebugDraw: shader 構築失敗");
+            return false;
+        }
+
+        const auto bytecode = b.vs->VertexShaderBytecode();
+        const D3D11_INPUT_ELEMENT_DESC layout[] = {
+            {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+            {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
+        };
+        const HRESULT hr =
+            device->CreateInputLayout(layout, 2u, bytecode.data(), bytecode.size(), b.inputLayout.GetAddressOf());
+        if (FAILED(hr))
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
+                         "DebugDraw: CreateInputLayout 失敗 (hr=0x{:08X})",
+                         static_cast<unsigned>(hr));
+            return false;
+        }
+
+        b.vb = NS::Graphics::Buffer::Create(
+            NS::Graphics::MakeVertexBufferDesc(nullptr, kMaxVertices, sizeof(DebugVertex), D3D11_USAGE_DYNAMIC));
+        b.cb = NS::Graphics::Buffer::Create(NS::Graphics::MakeConstantBufferDesc(sizeof(NS::Math::Matrix)));
+        if (!b.vb->IsValid() || !b.cb->IsValid())
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "DebugDraw: VB / CB 構築失敗");
+            return false;
+        }
+
+        b.valid = true;
+        return true;
     }
 
     /// 1 frame で 2 vertex 追加。容量超過時は最古の 1 line (2 vertex) を drop
@@ -84,6 +162,46 @@ namespace NS::Graphics::DebugDraw
         PushLine(c100, c110, color);
         PushLine(c101, c111, color);
         PushLine(c001, c011, color);
+    }
+
+    void OBB(const NS::Math::Vector3& center,
+             const NS::Math::Vector3& axisX,
+             const NS::Math::Vector3& axisY,
+             const NS::Math::Vector3& axisZ,
+             const NS::Math::Vector3& halfExtents,
+             const NS::Math::Color& color) noexcept
+    {
+        const NS::Math::Vector3 ex = axisX * halfExtents.x;
+        const NS::Math::Vector3 ey = axisY * halfExtents.y;
+        const NS::Math::Vector3 ez = axisZ * halfExtents.z;
+
+        // 8 隅 (添字は各 axis 方向の符号 -/+)
+        const NS::Math::Vector3 c000 = center - ex - ey - ez;
+        const NS::Math::Vector3 c100 = center + ex - ey - ez;
+        const NS::Math::Vector3 c110 = center + ex + ey - ez;
+        const NS::Math::Vector3 c010 = center - ex + ey - ez;
+        const NS::Math::Vector3 c001 = center - ex - ey + ez;
+        const NS::Math::Vector3 c101 = center + ex - ey + ez;
+        const NS::Math::Vector3 c111 = center + ex + ey + ez;
+        const NS::Math::Vector3 c011 = center - ex + ey + ez;
+
+        // -Z 面 4 line
+        PushLine(c000, c100, color);
+        PushLine(c100, c110, color);
+        PushLine(c110, c010, color);
+        PushLine(c010, c000, color);
+
+        // +Z 面 4 line
+        PushLine(c001, c101, color);
+        PushLine(c101, c111, color);
+        PushLine(c111, c011, color);
+        PushLine(c011, c001, color);
+
+        // axisZ 方向 4 稜
+        PushLine(c000, c001, color);
+        PushLine(c100, c101, color);
+        PushLine(c110, c111, color);
+        PushLine(c010, c011, color);
     }
 
     void Capsule(const NS::Math::Vector3& base,
@@ -152,17 +270,40 @@ namespace NS::Graphics::DebugDraw
         }
     }
 
-    void Flush(Renderer& /*renderer*/, const NS::Math::Matrix& /*viewProjection*/) noexcept
+    void Flush(Renderer& renderer, const NS::Math::Matrix& viewProjection) noexcept
     {
-        // GPU 描画接続は Player Capsule 表示と並行で実装する
-        // 蓄積側は完成しているので、現状は 1 度だけ警告して clear する
-        if (!FlushWarningShown())
+        std::vector<DebugVertex>& store = Storage();
+        if (store.empty())
+            return;
+
+        if (!EnsureBackend())
         {
-            NS_LOG_WARN(::NS::Core::LogCat::Graphics,
-                        "DebugDraw::Flush は描画未接続。蓄積 {} vertex を drop。",
-                        Storage().size());
-            FlushWarningShown() = true;
+            Clear();
+            return;
         }
+
+        auto& cmd = renderer.Commands();
+        if (cmd.Native() == nullptr)
+        {
+            Clear();
+            return;
+        }
+
+        LineBackend& b = Backend();
+        const std::size_t vertexCount = store.size(); // 蓄積側で kMaxVertices に cap 済
+
+        cmd.UpdateBuffer(*b.cb, &viewProjection, sizeof(viewProjection));
+        cmd.UpdateBuffer(*b.vb, store.data(), vertexCount * sizeof(DebugVertex));
+
+        cmd.SetPipeline(renderer.CommonPipeline(BlendMode::Opaque));
+        cmd.SetShader(*b.vs);
+        cmd.SetShader(*b.ps);
+        cmd.SetInputLayout(b.inputLayout.Get());
+        cmd.SetConstantBuffer(*b.cb, 0u, ShaderType::Vertex);
+        cmd.SetVertexBuffer(*b.vb, 0u);
+        cmd.SetTopology(Topology::LineList);
+        cmd.Draw(static_cast<unsigned>(vertexCount));
+
         Clear();
     }
 

@@ -52,6 +52,17 @@ namespace NS::Scene
         void ApplyPan(float panX, float panY) noexcept;
         void ApplyZoom(float zoomDelta) noexcept;
 
+        // free-fly の感触を Inspector へ公開する。 毎フレーム読まれるのでライブで効く
+        NS_REFLECT_BEGIN(EditorCameraComponent)
+        NS_REFLECT_FIELD(m_springOmega, "Spring Omega")
+        NS_REFLECT_FIELD(m_mouseSensOrbit, "Mouse Orbit Sens")
+        NS_REFLECT_FIELD(m_mouseSensPan, "Mouse Pan Sens")
+        NS_REFLECT_FIELD(m_mouseSensZoom, "Mouse Zoom Sens")
+        NS_REFLECT_FIELD(m_padSensOrbit, "Pad Orbit Sens")
+        NS_REFLECT_FIELD(m_padSensPan, "Pad Pan Sens")
+        NS_REFLECT_FIELD(m_padSensZoom, "Pad Zoom Sens")
+        NS_REFLECT_END()
+
         // 2m 未満: block 内側に入り描画破綻。30m 超: block が点になる
         static constexpr float kMinDistance = 2.0f;
         static constexpr float kMaxDistance = 30.0f;

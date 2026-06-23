@@ -69,9 +69,20 @@ namespace NS::Graphics
         /// InputLayout 生成用の VS バイトコード。 頂点ステージでない or 構築失敗時は空 span
         [[nodiscard]] std::span<const std::byte> VertexShaderBytecode() const noexcept;
 
+        /// 生成元 path から再コンパイルして内部 GPU オブジェクトを差し替える
+        /// 成功で true。 失敗時は旧オブジェクトを保持し false を返す (編集中の typo で画面を壊さない)
+        /// Shader* の identity は不変なので Material 等が保持する参照は無効化されない
+        [[nodiscard]] bool Reload();
+
     private:
         explicit Shader(const std::filesystem::path& hlslPath);
 
+        /// m_sourcePath の実ファイルから 1 ステージをコンパイルし、 成功時のみ out へ書く (fallback はしない)
+        /// device 無効 / ステージ判定不可 / 読込・コンパイル・生成失敗で false (失敗時 out には触れない)
+        [[nodiscard]] bool Compile(ComPtr<ID3D11DeviceChild>& outShader,
+                                   ComPtr<ID3DBlob>& outVsBytecode) const noexcept;
+
+        std::filesystem::path m_sourcePath; // reload のため生成元 path を保持する
         ShaderType m_type = ShaderType::Unknown;
         ComPtr<ID3D11DeviceChild> m_shader; // 全ステージ共通の保持先 (取得時に static_cast)
         ComPtr<ID3DBlob> m_vsBytecode;      // 頂点ステージのみ (Mesh の InputLayout 用)

@@ -1,6 +1,6 @@
+#include "Editor/LevelFilePaths.h"
 #include "Framework/Core/Filesystem.h"
 #include "Game/Blocks/BlockRegistry.h"
-#include "Editor/LevelFilePaths.h"
 #include "Game/Level/ChunkIO.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/detail/crc32.h"
@@ -37,6 +37,40 @@ TEST(SaveLoadRoundTrip, SaveAndReloadProducesIdenticalCrc)
     LevelNs::LevelData dst;
     ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
     EXPECT_EQ(dst.ComputeCrc32(), crc0);
+}
+
+TEST(SaveLoadRoundTrip, DefaultObjectShapeColliderIsBox)
+{
+    LevelNs::ObjectInstance obj{};
+    EXPECT_EQ(LevelNs::ObjectShapeCollider(obj), LevelNs::ShapeCollider::Box);
+
+    LevelNs::SetObjectShapeCollider(obj, LevelNs::ShapeCollider::Sphere);
+    EXPECT_EQ(LevelNs::ObjectShapeCollider(obj), LevelNs::ShapeCollider::Sphere);
+    EXPECT_EQ(obj.shapeCollider, static_cast<std::uint8_t>(1));
+}
+
+TEST(SaveLoadRoundTrip, ShapeColliderAndDimensionsSurviveRoundTrip)
+{
+    EditorNs::EnsureLevelsDirectoryExists();
+    auto path = EditorNs::BuildLevelPath("test_collider_shape");
+    ASSERT_TRUE(path.has_value());
+
+    LevelNs::LevelData src;
+    LevelNs::ObjectInstance obj{}; // 自由配置物 (gridAligned は立てない)
+    obj.positionX = 2.0f;
+    LevelNs::SetObjectShapeCollider(obj, LevelNs::ShapeCollider::Capsule);
+    obj.colliderHalfExtentsX = 0.3f; // capsule では半径
+    obj.colliderHalfExtentsY = 0.7f; // capsule では半高
+    src.objects.push_back(obj);
+
+    ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
+
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
+    ASSERT_EQ(dst.objects.size(), 1u);
+    EXPECT_EQ(LevelNs::ObjectShapeCollider(dst.objects[0]), LevelNs::ShapeCollider::Capsule);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsX, 0.3f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsY, 0.7f);
 }
 
 TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
@@ -193,6 +227,14 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     freeObject.kind = NS::Game::Blocks::kBlockIdSolid;
     freeObject.materialIndex = 1;
     freeObject.flags = 0;
+    freeObject.colliderHalfExtentsX = 0.3f;
+    freeObject.colliderHalfExtentsY = 1.25f;
+    freeObject.colliderHalfExtentsZ = 0.8f;
+    freeObject.colliderOffsetX = 0.1f;
+    freeObject.colliderOffsetY = -0.4f;
+    freeObject.colliderOffsetZ = 0.6f;
+    freeObject.colliderRotationY = 0.70710677f;
+    freeObject.colliderRotationW = 0.70710677f;
     src.objects.push_back(freeObject);
 
     LevelNs::ObjectInstance gridObject{};
@@ -220,6 +262,14 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     EXPECT_EQ(dst.objects[0].kind, NS::Game::Blocks::kBlockIdSolid);
     EXPECT_EQ(dst.objects[0].materialIndex, 1);
     EXPECT_EQ(dst.objects[0].flags, 0u);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsX, 0.3f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsY, 1.25f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsZ, 0.8f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderOffsetX, 0.1f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderOffsetY, -0.4f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderOffsetZ, 0.6f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderRotationY, 0.70710677f);
+    EXPECT_FLOAT_EQ(dst.objects[0].colliderRotationW, 0.70710677f);
 
     EXPECT_EQ(dst.objects[1].kind, NS::Game::Blocks::kBlockIdSlope45);
     EXPECT_EQ(dst.objects[1].materialIndex, -1);

@@ -1,14 +1,11 @@
 #include "Game/LevelPlayScene.h"
 
-#include "Game/Block.h"
-#include "Game/Blocks/DecorationBlock.h"
-#include "Game/Blocks/HazardBlock.h"
-#include "Game/Blocks/PoleBlock.h"
-#include "Game/Blocks/SlopeBlock.h"
-#include "Game/Blocks/WaterBlock.h"
+#include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Player.h"
+#include "Game/SkinnedDebugCharacter.h"
 #include "Game/Undo/EditTarget.h"
 
+#include "Framework/Scene/AssetManager.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/Scene/Components/HazardComponent.h"
@@ -22,14 +19,11 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 #include "Framework/Graphics/CommandList.h"
-#include "Framework/Graphics/GltfLoader.h"
 #include "Framework/Graphics/InstanceBatcher.h"
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
-#include "Framework/Graphics/Retarget.h"
 #include "Framework/Graphics/Shader.h"
-#include "Framework/Graphics/SkeletalMesh.h"
 #include "Framework/Graphics/Skybox.h"
 #include "Framework/Graphics/StaticMesh.h"
 #include "Framework/Graphics/Texture.h"
@@ -38,8 +32,11 @@
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
+#include "Framework/Scene/Components/BoxColliderComponent.h"
+#include "Framework/Scene/Components/CapsuleColliderComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
-#include "Framework/Scene/Components/SkeletalAnimationComponent.h"
+#include "Framework/Scene/Components/SlopeColliderComponent.h"
+#include "Framework/Scene/Components/SphereColliderComponent.h"
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/Transform.h"
@@ -55,10 +52,6 @@ namespace
 {
     constexpr NS::Math::Vector3 kPlayerColor{0.85f, 0.20f, 0.20f};
     constexpr NS::Math::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
-
-    // bind 境界から一様スケールを自動算出するためモデル単位に依らず接地・同身長に収まる
-    constexpr NS::Math::Vector3 kAnimModelFootAnchor{2.5f, 0.0f, 0.0f};
-    constexpr float kAnimModelTargetHeight = 1.8f;
 
     /// 編集体験の起点となる最小床。 LevelData に grid block 1 個 + spawn を仕込んでおく
     void SeedInitialLevel(NS::Game::Level::LevelData& level)
@@ -103,96 +96,12 @@ void LevelPlayScene::OnStart()
     auto& renderer = app->Renderer();
     const auto exeDir = NS::Core::FileSystem::ContentRoot();
 
-    auto cubeGeom = NS::Graphics::MakeCube({0.5f, 0.5f, 0.5f});
-    NS::Graphics::MeshDesc meshDesc{};
-    meshDesc.vertices = cubeGeom.vertices.data();
-    meshDesc.vertexCount = cubeGeom.vertices.size();
-    meshDesc.indices = cubeGeom.indices.data();
-    meshDesc.indexCount = cubeGeom.indices.size();
-    m_cubeMesh = NS::Graphics::StaticMesh::Create(meshDesc);
+    // builtin mesh と共有 material は AssetManager がアプリ寿命で所有する。 ここは使う時に引くだけ
+    auto& assets = app->Assets();
 
-    // 4 種 wedge mesh を 1 度だけ生成して scene 寿命のあいだ共有する
-    auto buildWedge = [&renderer](float angleDeg) {
-        auto geom = NS::Graphics::MakeWedge(angleDeg, {0.5f, 0.5f, 0.5f});
-        NS::Graphics::MeshDesc md{};
-        md.vertices = geom.vertices.data();
-        md.vertexCount = geom.vertices.size();
-        md.indices = geom.indices.data();
-        md.indexCount = geom.indices.size();
-        return NS::Graphics::StaticMesh::Create(md);
-    };
-    m_wedgeMesh45 = buildWedge(45.0f);
-    m_wedgeMesh30 = buildWedge(30.0f);
-    m_wedgeMesh22 = buildWedge(22.5f);
-    m_wedgeMesh15 = buildWedge(15.0f);
-
-    {
-        auto poleGeom = NS::Graphics::MakeCylinder(0.15f, 1.0f, 12);
-        NS::Graphics::MeshDesc poleDesc{};
-        poleDesc.vertices = poleGeom.vertices.data();
-        poleDesc.vertexCount = poleGeom.vertices.size();
-        poleDesc.indices = poleGeom.indices.data();
-        poleDesc.indexCount = poleGeom.indices.size();
-        m_poleMesh = NS::Graphics::StaticMesh::Create(poleDesc);
-    }
-
-    NS::Graphics::TextureDesc texDesc{};
-    texDesc.path = exeDir / "Assets" / "Textures" / "cube_test.png";
-    texDesc.generateMipmaps = true;
-    texDesc.sRGB = false;
-    m_texture = NS::Graphics::Texture::Create(texDesc);
-    if (m_texture->IsUsingFallback())
-        NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelPlayScene: cube_test.png 読込失敗、magenta fallback で続行");
-
-    // Player は単一 Texture2D 流派 (player.ps.hlsl)。 standard.vs は block と、 player.ps は block / skinned と共有する
-    m_standardVS = NS::Graphics::Shader::Create(exeDir / "Shaders" / "standard.vs.hlsl");
-    m_playerPS = NS::Graphics::Shader::Create(exeDir / "Shaders" / "player.ps.hlsl");
-    if (m_standardVS->IsUsingFallback() || m_playerPS->IsUsingFallback())
-        NS_LOG_WARN(::NS::Core::LogCat::Game,
-                    "LevelPlayScene: player 用 HLSL 読込/コンパイル失敗、 magenta fallback で続行");
-
-    NS::Graphics::MaterialDesc matDesc{};
-    matDesc.vertexShader = m_standardVS.get();
-    matDesc.pixelShader = m_playerPS.get();
-    matDesc.constantBufferSize = sizeof(NS::Scene::FrameCB);
-    matDesc.cbSlot = 0;
-    m_playerMaterial = NS::Graphics::Material::Create(matDesc);
-    m_playerMaterial->SetTexture(0, m_texture.get());
-
-    // Block は player と同じ VS/PS を共有。 実際の VS/PS/Texture は InstanceBatcher が FlushAll で
-    // 上書きするので、 ここの Material は ConstantBuffer 搬入路として使うだけ
-    NS::Graphics::MaterialDesc blockMatDesc = matDesc;
-    m_blockMaterial = NS::Graphics::Material::Create(blockMatDesc);
-    // slot 0 は外側で TextureArray を bind するため SetTexture 禁止 — 呼ぶと Material::Bind が SRV を上書きする
-
-    // 水は個別描画 (WaterBlock + MeshRenderer)。alpha<1 を出す water.ps + Alpha ブレンドの専用 Material にする
-    m_waterPS = NS::Graphics::Shader::Create(exeDir / "Shaders" / "water.ps.hlsl");
-    if (m_waterPS->IsUsingFallback())
-        NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelPlayScene: water.ps 読込/コンパイル失敗、 magenta fallback で続行");
-    NS::Graphics::MaterialDesc waterMatDesc = matDesc;
-    waterMatDesc.pixelShader = m_waterPS.get();
-    waterMatDesc.blend = NS::Graphics::BlendMode::Alpha;
-    m_waterMaterial = NS::Graphics::Material::Create(waterMatDesc);
-    m_waterMaterial->SetTexture(0, m_texture.get());
-
-    // 接地シャドウ: 共有 quad mesh + shadow.ps + Alpha Material (テクスチャ不要、PS が放射状アルファを生成)
-    m_shadowPS = NS::Graphics::Shader::Create(exeDir / "Shaders" / "shadow.ps.hlsl");
-    if (m_shadowPS->IsUsingFallback())
-        NS_LOG_WARN(::NS::Core::LogCat::Game,
-                    "LevelPlayScene: shadow.ps 読込/コンパイル失敗、 magenta fallback で続行");
-    {
-        const auto planeGeom = NS::Graphics::MakePlane({0.5f, 0.5f});
-        NS::Graphics::MeshDesc planeDesc{};
-        planeDesc.vertices = planeGeom.vertices.data();
-        planeDesc.vertexCount = planeGeom.vertices.size();
-        planeDesc.indices = planeGeom.indices.data();
-        planeDesc.indexCount = planeGeom.indices.size();
-        m_shadowMesh = NS::Graphics::StaticMesh::Create(planeDesc);
-    }
-    NS::Graphics::MaterialDesc shadowMatDesc = matDesc;
-    shadowMatDesc.pixelShader = m_shadowPS.get();
-    shadowMatDesc.blend = NS::Graphics::BlendMode::Alpha;
-    m_shadowMaterial = NS::Graphics::Material::Create(shadowMatDesc);
+    // 接地シャドウは Player が scene 寿命のあいだ参照を握る。 builtin quad + 共有 shadow material を渡す
+    auto* shadowMesh = assets.Builtin("shadowQuad");
+    auto* shadowMaterial = assets.SharedMaterial("shadow");
 
     // 全テーマ block texture を Texture2DArray 1 本に集約。 アセット未取得のため cube_test.png を 40 slice 充填
     {
@@ -206,8 +115,8 @@ void LevelPlayScene::OnStart()
         }
         taDesc.generateMipmaps = true;
         taDesc.sRGB = false;
-        m_blockTextures = NS::Graphics::TextureArray::Create(taDesc);
-        if (m_blockTextures->IsUsingFallback())
+        auto* blockTextures = assets.GetOrCreateTextureArray("block", taDesc);
+        if (blockTextures->IsUsingFallback())
             NS_LOG_WARN(::NS::Core::LogCat::Game,
                         "LevelPlayScene: block 用 TextureArray の slice 読込で失敗あり、 magenta fallback で続行");
     }
@@ -232,14 +141,14 @@ void LevelPlayScene::OnStart()
         NS_LOG_ERROR(::NS::Core::LogCat::Game, "LevelPlayScene: Skybox 構築失敗 (Device 不在?)");
     }
 
-    m_player = std::make_unique<Player>(m_cubeMesh.get(), m_playerMaterial.get(), &app->Input());
+    m_player = std::make_unique<Player>(assets.Builtin("cube"), assets.SharedMaterial("player"), &app->Input());
     m_player->AttachScene(this);
     m_player->Root().SetPosition({0.0f, 1.0f, -4.0f});
     // cube mesh の半サイズは 0.5 だが capsule collider は radius=0.4 / halfHeight=0.5
     // (= AABB 半サイズ 0.4, 0.9, 0.4)。両者が一致するよう scale で mesh を縮める
     m_player->Root().SetScale({0.8f, 1.8f, 0.8f});
     m_player->MeshComp().SetBaseColor(kPlayerColor);
-    m_player->Shadow().SetResources(m_shadowMesh.get(), m_shadowMaterial.get());
+    m_player->Shadow().SetResources(shadowMesh, shadowMaterial);
 
     LoadInitialLevel();
     RebuildBlocksFromLevelData();
@@ -267,115 +176,10 @@ void LevelPlayScene::OnStart()
     // level の cameraVolumes から area camera を生成し Brain へ登録する (Brain 構築後に呼ぶ必要がある)
     RebuildAreaCamerasFromLevelData();
 
-    // .mat を読み込み / キャッシュする。 自由オブジェクトの材質は RebuildBlocksFromLevelData が
-    // 各 ObjectInstance.materialIndex から解決して適用する
-    m_materialLibrary = std::make_unique<NS::Scene::MaterialLibrary>(exeDir);
-
     // 仮 skinned キャラをプレイ画面で常時表示し、 アニメ再生を画面で確認できるようにする
-    // アセットが無ければ skip して通常進行。 後で同じパスに別キャラ (glTF) を置けば差し替わる
-    {
-        // Xbot は人型 profile 骨名と一致するため優先。 CesiumMan は骨名が違うので外部アニメ流用不可
-        std::filesystem::path modelPath = exeDir / "Assets" / "Models" / "CesiumMan.glb";
-        for (const char* name : {"Xbot.glb", "CesiumMan.glb"})
-        {
-            const auto candidate = exeDir / "Assets" / "Models" / name;
-            if (NS::Core::FileSystem::Exists(candidate))
-            {
-                modelPath = candidate;
-                break;
-            }
-        }
-        auto skinned = NS::Graphics::LoadGltfSkinnedMesh(modelPath.string());
-        if (skinned.IsValid())
-        {
-            NS::Graphics::SkinnedMeshDesc smd{};
-            smd.vertices = skinned.vertices.data();
-            smd.vertexCount = skinned.vertices.size();
-            smd.indices = skinned.indices.data();
-            smd.indexCount = skinned.indices.size();
-            smd.boneCount = skinned.skeleton.BoneCount();
-            m_skinnedMesh = NS::Graphics::SkeletalMesh::Create(smd);
-
-            m_skinnedVS = NS::Graphics::Shader::Create(exeDir / "Shaders" / "skinned.vs.hlsl");
-            if (m_skinnedVS->IsUsingFallback())
-                NS_LOG_WARN(::NS::Core::LogCat::Game,
-                            "LevelPlayScene: skinned 用 HLSL 読込/コンパイル失敗、 magenta fallback で続行");
-
-            NS::Graphics::MaterialDesc skinnedMatDesc{};
-            skinnedMatDesc.vertexShader = m_skinnedVS.get();
-            skinnedMatDesc.pixelShader = m_playerPS.get();
-            skinnedMatDesc.constantBufferSize = sizeof(NS::Scene::FrameCB);
-            skinnedMatDesc.cbSlot = 0;
-            m_skinnedMaterial = NS::Graphics::Material::Create(skinnedMatDesc);
-            // 専用テクスチャは未取得なので block と同じ placeholder を貼る (変形が見えれば目的は足りる)
-            m_skinnedMaterial->SetTexture(0, m_texture.get());
-
-            // bind ポーズ頂点の境界から目標身長に合わせた一様スケールを出し、 足元を接地点へ寄せる
-            NS::Math::Vector3 boundsMin = skinned.vertices.front().position;
-            NS::Math::Vector3 boundsMax = boundsMin;
-            for (const NS::Graphics::SkinnedVertex& v : skinned.vertices)
-            {
-                boundsMin = NS::Math::Vector3::Min(boundsMin, v.position);
-                boundsMax = NS::Math::Vector3::Max(boundsMax, v.position);
-            }
-            const float modelHeight = std::max(boundsMax.y - boundsMin.y, 1e-3f);
-            const float fitScale = kAnimModelTargetHeight / modelHeight;
-            const NS::Math::Vector3 fitPosition{kAnimModelFootAnchor.x - (boundsMin.x + boundsMax.x) * 0.5f * fitScale,
-                                                kAnimModelFootAnchor.y - boundsMin.y * fitScale,
-                                                kAnimModelFootAnchor.z - (boundsMin.z + boundsMax.z) * 0.5f * fitScale};
-
-            const std::size_t boneCount = skinned.skeleton.BoneCount();
-
-            // モデル同梱クリップに Assets/Models/Anims/ の追加アニメ glTF を合体する
-            // Mixamo 等の別ファイルを後から足せる (同一リグは骨名一致で再 index される)
-            std::vector<NS::Graphics::AnimationClip> clips = std::move(skinned.animations);
-            const auto animDir = exeDir / "Assets" / "Models" / "Anims";
-            if (NS::Core::FileSystem::Exists(animDir))
-            {
-                for (const auto& animPath : NS::Core::FileSystem::ListFiles(animDir))
-                {
-                    const auto ext = animPath.extension();
-                    if (ext != ".glb" && ext != ".gltf")
-                        continue;
-                    auto extra = NS::Graphics::LoadAnimationsForSkeleton(animPath.string(), skinned.skeleton);
-                    for (NS::Graphics::AnimationClip& clip : extra)
-                        clips.push_back(std::move(clip));
-                }
-            }
-
-            // 別キャラのファイルからアニメだけ借りる (人型なら別リグでもリターゲットして合体)
-            const auto borrowPath = exeDir / "Assets" / "Models" / "Soldier.glb";
-            if (NS::Core::FileSystem::Exists(borrowPath) && borrowPath != modelPath)
-            {
-                auto borrowed = NS::Graphics::LoadAnimationsForSkeleton(borrowPath.string(), skinned.skeleton);
-                for (NS::Graphics::AnimationClip& clip : borrowed)
-                    clips.push_back(std::move(clip));
-            }
-
-            m_animatedModel = std::make_unique<NS::Scene::GameObject>();
-            m_animatedModel->AttachScene(this);
-            m_animatedModel->Root().SetPosition(fitPosition);
-            m_animatedModel->Root().SetScale({fitScale, fitScale, fitScale});
-            m_animMesh = m_animatedModel->AddComponent<NS::Scene::MeshRendererComponent>(m_skinnedMesh.get(),
-                                                                                         m_skinnedMaterial.get());
-            m_animPlayer = m_animatedModel->AddComponent<NS::Scene::SkeletalAnimationComponent>(
-                m_skinnedMesh.get(), std::move(skinned.skeleton), std::move(clips));
-            m_animPlayer->SetSpeed(m_animSpeed);
-            m_animatedModel->OnStart();
-            m_animatedModel->Root().Snapshot();
-
-            NS_LOG_INFO(::NS::Core::LogCat::Game,
-                        "LevelPlayScene: skinned 仮モデル読込 ({} bones, {} clips)",
-                        boneCount,
-                        m_animPlayer->ClipCount());
-        }
-        else
-        {
-            NS_LOG_WARN(::NS::Core::LogCat::Game,
-                        "LevelPlayScene: skinned 仮モデル {} 無し/読込失敗、 アニメ表示は skip",
-                        modelPath.string());
-        }
-    }
+    // 形 / 骨 / 材質は AssetManager 所有を借り、 アセットが無ければ Create が nullptr を返して通常進行する
+    m_animatedModel = SkinnedDebugCharacter::Create(
+        assets, this, exeDir / "Assets" / "Models", exeDir / "Assets" / "Materials" / "skinned_debug.mat");
 
     // 出荷も開発も、 起動直後はプレイ可能な状態にする。 開発時は editor が直後に編集モードへ切替える
     SetPlaying(true);
@@ -430,6 +234,16 @@ void LevelPlayScene::OnUpdate()
     auto* app = NS::App::Application::Get();
     if (app == nullptr)
         return;
+
+    // F5 で編集中の HLSL を再起動なしで反映する (reload-in-place、 play / edit 共通の dev hot reload)
+    // ImGui 入力中は誤爆を防ぐため無効化する
+    if (!app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::Platform::Key::F5))
+    {
+        app->Assets().ReloadAllShaders();
+        // block 描画の instanced shader は AssetManager 管理外で自前コンパイルなので個別に reload する
+        if (m_instanceBatcher)
+            m_instanceBatcher->ReloadShaders();
+    }
 
     // プレイ中の Esc は終了。 編集中は editor が Esc を握る (選択解除 / 終了) ので scene は触らない
     if (m_playing && app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
@@ -490,12 +304,15 @@ void LevelPlayScene::TickPlay()
         playerCapsule.center = m_player->Root().Position();
         playerCapsule.radius = m_player->Movement().CapsuleRadius();
         playerCapsule.halfHeight = m_player->Movement().CapsuleHalfHeight();
-        for (auto& hazard : m_hazards)
+        for (auto* hazard : m_hazardView)
         {
             if (!hazard)
                 continue;
-            if (NS::Physics::IntersectsCapsuleAabb(playerCapsule, hazard->Collider().WorldAABB()))
-                hazard->Hazard().OnPlayerOverlap(m_play);
+            // damage は衝突応答とは別経路の per-frame overlap なので collider と hazard を component で引く
+            auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*hazard);
+            auto* damage = NS::Game::Blocks::FindComponent<NS::Scene::HazardComponent>(*hazard);
+            if (box && damage && NS::Physics::IntersectsCapsuleAabb(playerCapsule, box->WorldAABB()))
+                damage->OnPlayerOverlap(m_play);
         }
     }
 
@@ -533,37 +350,20 @@ void LevelPlayScene::TickPlay()
 
 void LevelPlayScene::SnapshotDisplayBlocks()
 {
-    // 各ブロック GameObject の Snapshot は edit / play 共通 (静的 display object なので常時)
-    for (auto& block : m_blocks)
-        block->Root().Snapshot();
-    for (auto& slope : m_slopes)
-        slope->Root().Snapshot();
-    for (auto& pole : m_poles)
-        pole->Root().Snapshot();
-    for (auto& hazard : m_hazards)
-        hazard->Root().Snapshot();
-    for (auto& water : m_waters)
-        water->Root().Snapshot();
-    for (auto& deco : m_decorations)
-        deco->Root().Snapshot();
-    for (auto& obj : m_freeObjects)
+    // 各配置物 GameObject の Snapshot は edit / play 共通 (静的 display object なので常時)
+    for (auto& obj : m_objects)
         obj->Root().Snapshot();
 }
 
 void LevelPlayScene::UpdateDisplayBlocks()
 {
-    for (auto& block : m_blocks)
-        block->OnUpdate();
-    for (auto& slope : m_slopes)
-        slope->OnUpdate();
-    for (auto& pole : m_poles)
-        pole->OnUpdate();
-    for (auto& hazard : m_hazards)
-        hazard->OnUpdate();
-    for (auto& water : m_waters)
-        water->OnUpdate();
-    for (auto& deco : m_decorations)
-        deco->OnUpdate();
+    // gridAligned な配置物のみ OnUpdate する。 自由配置物は OnUpdate 対象外 (旧挙動を保つ)
+    for (std::size_t i = 0; i < m_objects.size(); ++i)
+    {
+        const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
+        if ((entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
+            m_objects[i]->OnUpdate();
+    }
 }
 
 NS::Graphics::RenderSettingsOverride LevelPlayScene::BuildSceneOverride()
@@ -627,6 +427,11 @@ void LevelPlayScene::OnRenderScene()
     // 経路は通らない
     if (m_instanceBatcher && m_instanceBatcher->IsValid())
     {
+        // builtin cube と共有 block material は AssetManager 所有。 毎フレームここで 1 度だけ引く
+        auto& assets = app->Assets();
+        auto* cubeMesh = assets.Builtin("cube");
+        auto* blockMat = assets.SharedMaterial("block");
+
         // scene 解決値を block 全体の FrameCB に流す。 baseColor は per-instance で個体色を別途乗算する
         NS::Scene::FrameCB blockCB{};
         blockCB.viewProj = ctx.viewProjection;
@@ -635,17 +440,24 @@ void LevelPlayScene::OnRenderScene()
         blockCB.baseColor = NS::Math::Vector3{1.0f, 1.0f, 1.0f}; // per-instance baseColor と乗算するので 1 に固定
         blockCB.lightColor = ctx.resolvedSettings.lightColor;
         blockCB.ambientColor = ctx.resolvedSettings.ambientColor;
-        if (m_blockMaterial)
-            m_blockMaterial->SetParams(*ctx.renderer, blockCB);
+        if (blockMat)
+            blockMat->SetParams(*ctx.renderer, blockCB);
+
+        // instancing は描画段の判断であってオブジェクトの種別ではない
+        // gridAligned かつ solid の配置物だけを instanced bucket へ流し、 他は個別描画へ委ねる
+        const auto isInstanceable = [](const NS::Game::Level::ObjectInstance& entry) noexcept {
+            return (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0 &&
+                   entry.kind == NS::Game::Blocks::kBlockIdSolid;
+        };
 
         m_instanceBatcher->BeginFrame();
-        for (std::size_t bi = 0; bi < m_blocks.size(); ++bi)
+        for (std::size_t i = 0; i < m_objects.size(); ++i)
         {
-            const auto& block = m_blocks[bi];
-            if (!block)
+            const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
+            if (!isInstanceable(entry))
                 continue;
-            // m_blocks は gridAligned solid のみ。 cell は world 座標を丸めて求め、 近傍マスクは solid 同士で取る
-            const NS::Math::Vector3 wp = block->Root().Position();
+            // cell は world 座標を丸めて求め、 近傍マスクは solid 同士で取る
+            const NS::Math::Vector3 wp = m_objects[i]->Root().Position();
             const std::int16_t x = static_cast<std::int16_t>(std::lround(wp.x));
             const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
             const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
@@ -655,18 +467,18 @@ void LevelPlayScene::OnRenderScene()
                 NS::Game::Blocks::LookupTextureSlice(static_cast<ThemeId>(m_level.themeId), mask, blockId);
 
             NS::Graphics::BlockInstance inst{};
-            inst.worldMatrix = block->Root().InterpolatedWorldMatrix(ctx.alpha);
+            inst.worldMatrix = m_objects[i]->Root().InterpolatedWorldMatrix(ctx.alpha);
             // 個体色は GetBaseColor を流し込んでおく (theme tint は FrameCB の lightColor/ambientColor で行う)
             const auto color = NS::Game::Blocks::GetBaseColor(blockId);
             inst.baseColor = NS::Math::Vector3{color.R(), color.G(), color.B()};
             inst.textureSlice = static_cast<float>(slice);
-            m_instanceBatcher->Submit(m_cubeMesh.get(), m_blockMaterial.get(), inst);
+            m_instanceBatcher->Submit(cubeMesh, blockMat, inst);
         }
 
         // TextureArray を t0 に bind してから FlushAll。 Material::Bind では slot 0 を触っていない
         // (SetTexture せず構築した) ため、 ここで bind した SRV が bucket 描画まで残る
-        if (m_blockTextures)
-            ctx.renderer->Commands().SetTextureArray(*m_blockTextures, 0u, NS::Graphics::ShaderType::Pixel);
+        if (auto* blockTextures = assets.TextureArrayByName("block"))
+            ctx.renderer->Commands().SetTextureArray(*blockTextures, 0u, NS::Graphics::ShaderType::Pixel);
         m_instanceBatcher->FlushAll(*ctx.renderer);
     }
 
@@ -720,19 +532,7 @@ void LevelPlayScene::OnShutdown()
     }
     if (m_cameraRig)
         m_cameraRig->OnEndPlay();
-    for (auto it = m_blocks.rbegin(); it != m_blocks.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_slopes.rbegin(); it != m_slopes.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_poles.rbegin(); it != m_poles.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_hazards.rbegin(); it != m_hazards.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_waters.rbegin(); it != m_waters.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_decorations.rbegin(); it != m_decorations.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_freeObjects.rbegin(); it != m_freeObjects.rend(); ++it)
+    for (auto it = m_objects.rbegin(); it != m_objects.rend(); ++it)
         (*it)->OnEndPlay();
     if (m_animatedModel)
         m_animatedModel->OnEndPlay();
@@ -746,245 +546,92 @@ void LevelPlayScene::OnShutdown()
     m_areaCameras.clear();
     m_cameraRig.reset();
     m_animatedModel.reset();
-    m_animMesh = nullptr;
-    m_animPlayer = nullptr;
     m_player.reset();
-    m_blocks.clear();
-    m_slopes.clear();
-    m_poles.clear();
-    m_hazards.clear();
-    m_waters.clear();
-    m_decorations.clear();
-    m_freeObjects.clear();
-    m_freeSourceIndices.clear();
-    m_blockSourceIndices.clear();
+    m_objects.clear();
+    m_objectSourceIndices.clear();
+    m_hazardView.clear();
 
-    // MaterialLibrary の Material / Shader / Texture も device リソースを握るため Renderer より先に破棄する
-    // (参照する free オブジェクトは上で破棄済)
-    m_materialLibrary.reset();
-
-    // Skybox / InstanceBatcher / TextureArray は Renderer の DeviceContext を ComPtr で握っているため、
-    // Renderer (Application) より先に破棄する必要がある。 m_cubeMesh と同階層で reset
+    // Skybox / InstanceBatcher は Renderer の DeviceContext を ComPtr で握るため、 Renderer (Application) より
+    // 先に破棄する。 builtin / leaf / 共有 material / block TextureArray / skinned model は AssetManager が Clear
+    // で解放する
     m_instanceBatcher.reset();
     m_skybox.reset();
-    m_skinnedMaterial.reset();
-    m_playerMaterial.reset();
-    m_blockMaterial.reset();
-    m_waterMaterial.reset();
-    m_shadowMaterial.reset();
-    m_skinnedVS.reset();
-    m_playerPS.reset();
-    m_waterPS.reset();
-    m_shadowPS.reset();
-    m_standardVS.reset();
-    m_blockTextures.reset();
-    m_texture.reset();
-    m_wedgeMesh45.reset();
-    m_wedgeMesh30.reset();
-    m_wedgeMesh22.reset();
-    m_wedgeMesh15.reset();
-    m_poleMesh.reset();
-    m_shadowMesh.reset();
-    m_skinnedMesh.reset();
-    m_cubeMesh.reset();
 }
 
 void LevelPlayScene::RebuildBlocksFromLevelData()
 {
-    for (auto it = m_blocks.rbegin(); it != m_blocks.rend(); ++it)
+    for (auto it = m_objects.rbegin(); it != m_objects.rend(); ++it)
         (*it)->OnEndPlay();
-    for (auto it = m_slopes.rbegin(); it != m_slopes.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_poles.rbegin(); it != m_poles.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_hazards.rbegin(); it != m_hazards.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_waters.rbegin(); it != m_waters.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_decorations.rbegin(); it != m_decorations.rend(); ++it)
-        (*it)->OnEndPlay();
-    for (auto it = m_freeObjects.rbegin(); it != m_freeObjects.rend(); ++it)
-        (*it)->OnEndPlay();
-    m_blocks.clear();
-    m_slopes.clear();
-    m_poles.clear();
-    m_hazards.clear();
-    m_waters.clear();
-    m_decorations.clear();
-    m_freeObjects.clear();
-    m_freeSourceIndices.clear();
-    m_blockSourceIndices.clear();
+    m_objects.clear();
+    m_objectSourceIndices.clear();
+    m_hazardView.clear();
     m_collisionWorld.clear();
     m_collisionTriangles.clear();
     m_collisionObbs.clear();
+    m_collisionSpheres.clear();
+    m_collisionCapsules.clear();
     m_polePtrs.clear();
 
+    m_objects.reserve(m_level.objects.size());
     m_collisionWorld.reserve(m_level.objects.size());
 
-    const auto exeDir = NS::Core::FileSystem::ContentRoot();
-
-    // ObjectInstance.materialIndex から runtime Material* を解決する。 無効なら既定の m_playerMaterial
-    const auto resolveMaterial = [&](const NS::Game::Level::ObjectInstance& object) -> NS::Graphics::Material* {
-        if (object.materialIndex >= 0 &&
-            static_cast<std::size_t>(object.materialIndex) < m_level.materialPaths.size() && m_materialLibrary)
-        {
-            const auto loaded = m_materialLibrary->Load(exeDir / m_level.materialPaths[object.materialIndex]);
-            if (loaded.material != nullptr)
-                return loaded.material;
-        }
-        return m_playerMaterial.get();
-    };
+    // ファクトリは mesh / material を AssetManager から借りる。 app 不在 (起動前 / テスト) では何も組まない
+    auto* app = NS::App::Application::Get();
+    if (app == nullptr)
+        return;
+    auto& assets = app->Assets();
 
     for (std::size_t objectIndex = 0; objectIndex < m_level.objects.size(); ++objectIndex)
     {
         const NS::Game::Level::ObjectInstance& entry = m_level.objects[objectIndex];
+
+        auto obj = NS::Game::Blocks::BuildPlacedObject(entry, assets, m_level.materialPaths);
+        if (!obj)
+            continue; // 配置物にしない kind (coin / star 等) はファクトリが nullptr を返す
+
+        obj->AttachScene(this);
+        obj->OnStart();
+
         const bool gridAligned = (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0;
 
-        // ObjectInstance の transform をそのまま載せる。 grid はセルスナップ済の値、 自由配置物はギズモ編集値
-        const auto placeFromEntry = [&](NS::Scene::GameObject& obj) {
-            obj.Root().SetPosition(NS::Math::Vector3{entry.positionX, entry.positionY, entry.positionZ});
-            obj.Root().SetRotation(
-                NS::Math::Quaternion{entry.rotationX, entry.rotationY, entry.rotationZ, entry.rotationW});
-            obj.Root().SetScale(NS::Math::Vector3{entry.scaleX, entry.scaleY, entry.scaleZ});
-        };
-        const auto color = NS::Game::Blocks::GetBaseColor(entry.kind);
-        const NS::Math::Vector3 baseColor{color.R(), color.G(), color.B()};
+        // grid solid は個別 Draw を殺して InstanceBatcher へ委ねる (描画段が m_objects を直読みして instanceable 判定)
+        // OnStart で RegisterRenderable 済なので MeshRenderer を非アクティブにするだけでよい
+        if (gridAligned && entry.kind == NS::Game::Blocks::kBlockIdSolid)
+            if (auto* mesh = NS::Game::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*obj))
+                mesh->SetActive(false);
 
-        // 非 gridAligned (自由配置物) は個別描画の Block として扱う。 材質は materialIndex から解決する
-        // (v1 で昇格できるのは solid のみなので kind は問わず cube で表現する)
-        if (!gridAligned)
+        // 当たりは collider component の有無で channel が決まる。 free は Sphere / Capsule があれば内蔵 Box を OBB
+        // へ入れない (排他)
+        if (auto* sphere = NS::Game::Blocks::FindComponent<NS::Scene::SphereColliderComponent>(*obj))
+            m_collisionSpheres.push_back(sphere->WorldSphere());
+        else if (auto* capsule = NS::Game::Blocks::FindComponent<NS::Scene::CapsuleColliderComponent>(*obj))
+            m_collisionCapsules.push_back(capsule->WorldCapsule());
+        else if (auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*obj))
         {
-            auto cube = std::make_unique<Block>(m_cubeMesh.get(), resolveMaterial(entry), kCellHalfExtents);
-            cube->AttachScene(this);
-            placeFromEntry(*cube);
-            cube->MeshComp().SetBaseColor(baseColor);
-            cube->OnStart();
-            // 自由配置物は回転 / scale を潰さない OBB チャネルへ載せる (grid solid は AABB のまま)
-            m_collisionObbs.push_back(cube->Collider().WorldOBB());
-            m_freeSourceIndices.push_back(objectIndex);
-            m_freeObjects.push_back(std::move(cube));
-            continue;
+            // 同じ Box でも gridAligned なら軸並行 AABB、 自由配置なら回転込み OBB
+            if (gridAligned)
+                m_collisionWorld.push_back(box->WorldAABB());
+            else
+                m_collisionObbs.push_back(box->WorldOBB());
         }
 
-        if (entry.kind == NS::Game::Blocks::kBlockIdSolid)
-        {
-            auto block = std::make_unique<Block>(m_cubeMesh.get(), m_blockMaterial.get(), kCellHalfExtents);
-            block->AttachScene(this);
-            placeFromEntry(*block);
-            block->MeshComp().SetBaseColor(baseColor);
-            block->OnStart();
-            // OnStart で RegisterRenderable 済のため SetActive(false) で個別 Draw 経路を無効化し InstanceBatcher
-            // に委ねる
-            block->MeshComp().SetActive(false);
-
-            m_collisionWorld.push_back(block->Collider().WorldAABB());
-            m_blockSourceIndices.push_back(objectIndex);
-            m_blocks.push_back(std::move(block));
-            continue;
-        }
-
-        if (NS::Game::Blocks::IsSlopeBlock(entry.kind))
-        {
-            const float angle = NS::Game::Blocks::GetSlopeAngleDegrees(entry.kind);
-            NS::Graphics::StaticMesh* wedge = nullptr;
-            if (entry.kind == NS::Game::Blocks::kBlockIdSlope45)
-                wedge = m_wedgeMesh45.get();
-            else if (entry.kind == NS::Game::Blocks::kBlockIdSlope30)
-                wedge = m_wedgeMesh30.get();
-            else if (entry.kind == NS::Game::Blocks::kBlockIdSlope22)
-                wedge = m_wedgeMesh22.get();
-            else if (entry.kind == NS::Game::Blocks::kBlockIdSlope15)
-                wedge = m_wedgeMesh15.get();
-
-            auto slope = std::make_unique<SlopeBlock>(wedge, m_blockMaterial.get(), angle, kCellHalfExtents);
-            slope->AttachScene(this);
-            placeFromEntry(*slope);
-
-            slope->MeshComp().SetBaseColor(baseColor);
-            slope->OnStart();
-
-            const auto tris = slope->Collider().WorldTriangles();
-            for (const auto& tri : tris)
+        if (auto* slope = NS::Game::Blocks::FindComponent<NS::Scene::SlopeColliderComponent>(*obj))
+            for (const auto& tri : slope->WorldTriangles())
                 m_collisionTriangles.push_back(tri);
-            m_slopes.push_back(std::move(slope));
-            continue;
-        }
+        if (auto* pole = NS::Game::Blocks::FindComponent<NS::Scene::PoleComponent>(*obj))
+            m_polePtrs.push_back(pole);
+        // hazard の damage は固形 AABB とは別経路 (per-frame overlap) で効くため view にも積む
+        if (NS::Game::Blocks::FindComponent<NS::Scene::HazardComponent>(*obj))
+            m_hazardView.push_back(obj.get());
+        // water / deco は collider を持たないため当たり無し・ view 不要
 
-        if (NS::Game::Blocks::IsPoleBlock(entry.kind))
-        {
-            constexpr float kPoleRadius = 0.15f;
-            constexpr float kPoleHeight = 1.0f;
-            auto pole = std::make_unique<PoleBlock>(m_poleMesh.get(), m_blockMaterial.get(), kPoleRadius, kPoleHeight);
-            pole->AttachScene(this);
-            placeFromEntry(*pole);
-
-            pole->MeshComp().SetBaseColor(baseColor);
-            pole->OnStart();
-
-            m_polePtrs.push_back(&pole->Pole());
-            m_poles.push_back(std::move(pole));
-            continue;
-        }
-
-        if (NS::Game::Blocks::IsHazardBlock(entry.kind))
-        {
-            auto hazard = std::make_unique<HazardBlock>(m_cubeMesh.get(), m_blockMaterial.get(), kCellHalfExtents);
-            hazard->AttachScene(this);
-            placeFromEntry(*hazard);
-
-            hazard->MeshComp().SetBaseColor(baseColor);
-            hazard->OnStart();
-
-            // 衝突は通常 Block と同じく AABB として登録。 hazard 固有のダメージ trigger は
-            // OnUpdate 内で player.position vs AABB を per-frame check する経路を取る
-            m_collisionWorld.push_back(hazard->Collider().WorldAABB());
-            m_hazards.push_back(std::move(hazard));
-            continue;
-        }
-
-        if (NS::Game::Blocks::IsWaterBlock(entry.kind))
-        {
-            auto water = std::make_unique<WaterBlock>(m_cubeMesh.get(), m_waterMaterial.get());
-            water->AttachScene(this);
-            placeFromEntry(*water);
-
-            water->MeshComp().SetBaseColor(baseColor);
-            water->OnStart();
-
-            // collider なしで m_collisionWorld にも m_collisionTriangles にも入れない (装飾と同じ理由)
-            m_waters.push_back(std::move(water));
-            continue;
-        }
-
-        if (NS::Game::Blocks::IsDecorationBlock(entry.kind))
-        {
-            auto deco = std::make_unique<DecorationBlock>(m_cubeMesh.get(), m_blockMaterial.get());
-            deco->AttachScene(this);
-            placeFromEntry(*deco);
-
-            deco->MeshComp().SetBaseColor(baseColor);
-            deco->OnStart();
-
-            m_decorations.push_back(std::move(deco));
-            continue;
-        }
+        m_objectSourceIndices.push_back(objectIndex);
+        m_objects.push_back(std::move(obj));
     }
 
     // 生成直後は previous PRS が原点/単位回転のため Snapshot で current に揃える
-    // 欠かすと InterpolatedWorldMatrix(alpha) が原点→配置先を補間し編集のたびに全ブロックが振れる
-    for (auto& block : m_blocks)
-        block->Root().Snapshot();
-    for (auto& slope : m_slopes)
-        slope->Root().Snapshot();
-    for (auto& pole : m_poles)
-        pole->Root().Snapshot();
-    for (auto& hazard : m_hazards)
-        hazard->Root().Snapshot();
-    for (auto& water : m_waters)
-        water->Root().Snapshot();
-    for (auto& deco : m_decorations)
-        deco->Root().Snapshot();
-    for (auto& obj : m_freeObjects)
+    // 欠かすと InterpolatedWorldMatrix(alpha) が原点→配置先を補間し編集のたびに全配置物が振れる
+    for (auto& obj : m_objects)
         obj->Root().Snapshot();
 
     if (m_player)
@@ -992,12 +639,19 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
         m_player->Movement().SetCollisionWorld(m_collisionWorld);
         m_player->Movement().SetCollisionTriangles(m_collisionTriangles);
         m_player->Movement().SetCollisionObbs(m_collisionObbs);
+        m_player->Movement().SetCollisionSpheres(m_collisionSpheres);
+        m_player->Movement().SetCollisionCapsules(m_collisionCapsules);
 
         // 接地シャドウは grid + 自由物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
         std::vector<NS::Math::AABB> shadowReceivers(m_collisionWorld.begin(), m_collisionWorld.end());
-        for (auto& freeCube : m_freeObjects)
-            if (freeCube)
-                shadowReceivers.push_back(freeCube->Collider().WorldAABB());
+        for (std::size_t i = 0; i < m_objects.size(); ++i)
+        {
+            const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
+            if ((entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
+                continue;
+            if (auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_objects[i]))
+                shadowReceivers.push_back(box->WorldAABB());
+        }
         m_player->Shadow().SetCollisionWorld(shadowReceivers);
 
         m_player->Movement().SetClimbables(std::span<NS::Scene::PoleComponent* const>{m_polePtrs});
@@ -1042,40 +696,7 @@ void LevelPlayScene::UpdateAnimatedModel()
     if (!m_animatedModel)
         return;
 
-    auto* app = NS::App::Application::Get();
-    if (app != nullptr && m_animPlayer != nullptr)
-    {
-        const bool wantKb = app->Input().UiWantsKeyboard();
-
-        if (!wantKb)
-        {
-            auto& kb = app->Input().Keyboard();
-            if (kb.IsPressed(NS::Platform::Key::F1))
-            {
-                if (m_animPlayer->IsPlaying())
-                    m_animPlayer->Pause();
-                else
-                    m_animPlayer->Play();
-            }
-            if (kb.IsPressed(NS::Platform::Key::F2) && m_animPlayer->ClipCount() > 0)
-            {
-                const std::size_t next = (m_animPlayer->CurrentClip() + 1) % m_animPlayer->ClipCount();
-                m_animPlayer->SelectClip(next);
-                m_animPlayer->Play();
-            }
-            if (kb.IsPressed(NS::Platform::Key::F3))
-            {
-                m_animSpeed = std::max(0.0f, m_animSpeed - 0.25f);
-                m_animPlayer->SetSpeed(m_animSpeed);
-            }
-            if (kb.IsPressed(NS::Platform::Key::F4))
-            {
-                m_animSpeed += 0.25f;
-                m_animPlayer->SetSpeed(m_animSpeed);
-            }
-        }
-    }
-
+    m_animatedModel->HandleDebugInput();
     m_animatedModel->Root().Snapshot();
     m_animatedModel->OnUpdate();
 }

@@ -66,6 +66,24 @@ namespace NS::Scene
         /// 補間 target (alpha) を追う最終姿勢を返す。Brain が選択時に実カメラへ書く (旧 ApplyCameraTransform)
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
+        // 追従カメラの感触を Inspector へ公開する。 毎フレーム読まれるのでライブで効く
+        NS_REFLECT_BEGIN(ThirdPersonFollowComponent)
+        NS_REFLECT_FIELD(m_springOmega, "Spring Omega")
+        NS_REFLECT_FIELD(m_idleDistance, "Idle Distance")
+        NS_REFLECT_FIELD(m_runDistance, "Run Distance")
+        NS_REFLECT_FIELD(m_jumpDistance, "Jump Distance")
+        NS_REFLECT_FIELD(m_runSpeedThreshold, "Run Speed Threshold")
+        NS_REFLECT_FIELD(m_headHeight, "Head Height")
+        NS_REFLECT_FIELD(m_sensX, "Sensitivity X")
+        NS_REFLECT_FIELD(m_sensY, "Sensitivity Y")
+        NS_REFLECT_FIELD(m_stickSensX, "Stick Sens X")
+        NS_REFLECT_FIELD(m_stickSensY, "Stick Sens Y")
+        NS_REFLECT_FIELD(m_invertX, "Invert X")
+        NS_REFLECT_FIELD(m_invertY, "Invert Y")
+        NS_REFLECT_FIELD(m_pitchMin, "Pitch Min")
+        NS_REFLECT_FIELD(m_pitchMax, "Pitch Max")
+        NS_REFLECT_END()
+
     private:
         Transform* m_target = nullptr;
         NS::Platform::Input* m_input = nullptr;

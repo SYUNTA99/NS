@@ -2,7 +2,6 @@
 
 #include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/CommandList.h"
-#include "Framework/Graphics/D3dCommon.h"
 #include "Framework/Graphics/GraphicObject.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/Shader.h"

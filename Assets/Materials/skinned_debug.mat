@@ -1,0 +1,7 @@
+{
+  "vs": "Shaders/skinned.vs.hlsl",
+  "ps": "Shaders/player.ps.hlsl",
+  "textures": ["Assets/Textures/cube_test.png"],
+  "baseColor": [1.0, 1.0, 1.0],
+  "blend": "Opaque"
+}

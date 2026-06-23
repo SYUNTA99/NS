@@ -78,6 +78,11 @@ namespace NS::Scene
         /// Owner の OwningScene から self を解除する。dangling pointer を残さないよう SceneBase 破棄前に呼ぶ
         void OnEndPlay() override;
 
+        // 個体色を Inspector へ公開する (RGB)。 lighting とは別系統の個体色
+        NS_REFLECT_BEGIN(MeshRendererComponent)
+        NS_REFLECT_FIELD(m_baseColor, "Base Color")
+        NS_REFLECT_END()
+
     private:
         NS::Graphics::Mesh* m_mesh = nullptr;
         NS::Graphics::Material* m_material = nullptr;

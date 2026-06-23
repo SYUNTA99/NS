@@ -33,10 +33,23 @@ namespace NS::Game::Level
     /// `ObjectInstance::flags` の bit。 グリッド配置物は bit0 を立て instancing / オートタイル対象にする
     inline constexpr std::uint8_t kObjectFlagGridAligned = 0x01;
 
-    /// 配置物の永続表現 (48 byte、 natural alignment、 padding なし)
+    /// 当たり判定の形状種別。 `ObjectInstance::shapeCollider` に格納する (既定 / 旧データは Box)
+    enum class ShapeCollider : std::uint8_t
+    {
+        Box = 0,
+        Sphere = 1,
+        Capsule = 2,
+        Mesh = 3,
+    };
+
+    /// 配置物の永続表現 (88 byte、 natural alignment、 padding なし)
     /// grid block も自由配置物も同じ型で 1 リストに格納する。 grid かどうかは flags の bit0 で区別する
     /// position / rotation(quaternion) / scale をフル保持し、 kind は BlockRegistry の blockId を流用する
     /// materialIndex は `LevelData::materialPaths` への添字、 -1 は kind 既定マテリアルを表す
+    /// colliderHalfExtents は Transform と独立した当たり箱の local 半径 (既定 0.5)。 world では Transform.scale が乗る
+    /// colliderOffset / colliderRotation は当たり箱を視覚と独立に owner local 空間でずらす / 回す (既定 0 / 単位)
+    /// shapeCollider は当たり判定形状 (Box/Sphere/Capsule/Mesh、 既定 / 旧データは Box)
+    /// colliderHalfExtents は形状で解釈が変わる: Box=各半径 / Sphere=x が半径 / Capsule=x 半径・y 半高 / Mesh=未使用
     struct ObjectInstance
     {
         float positionX = 0.0f;
@@ -52,11 +65,21 @@ namespace NS::Game::Level
         std::uint16_t kind = 0;
         std::int16_t materialIndex = -1;
         std::uint8_t flags = 0;
-        std::uint8_t reserved0 = 0;
+        std::uint8_t shapeCollider = 0;
         std::uint16_t reserved1 = 0;
+        float colliderHalfExtentsX = 0.5f;
+        float colliderHalfExtentsY = 0.5f;
+        float colliderHalfExtentsZ = 0.5f;
+        float colliderOffsetX = 0.0f;
+        float colliderOffsetY = 0.0f;
+        float colliderOffsetZ = 0.0f;
+        float colliderRotationX = 0.0f;
+        float colliderRotationY = 0.0f;
+        float colliderRotationZ = 0.0f;
+        float colliderRotationW = 1.0f;
     };
-    static_assert(sizeof(ObjectInstance) == 48,
-                  "ObjectInstance must be 48 bytes (10×float + uint16 + int16 + 2×uint8 + uint16)");
+    static_assert(sizeof(ObjectInstance) == 88,
+                  "ObjectInstance must be 88 bytes (20×float + uint16 + int16 + 2×uint8 + uint16)");
     static_assert(std::is_trivially_copyable_v<ObjectInstance>,
                   "ObjectInstance must be trivially copyable for memcpy I/O");
 
@@ -113,6 +136,11 @@ namespace NS::Game::Level
 
     /// objects 配列で「該当無し」を表す添字
     inline constexpr std::size_t kNoObjectIndex = static_cast<std::size_t>(-1);
+
+    /// object の collider 形状を返す。 未知値は安全側で Box に倒す
+    [[nodiscard]] ShapeCollider ObjectShapeCollider(const ObjectInstance& object) noexcept;
+    /// object の collider 形状を設定する
+    void SetObjectShapeCollider(ObjectInstance& object, ShapeCollider shape) noexcept;
 
     /// gridAligned object の cell 座標 = position を最近接整数へ丸めた値
     [[nodiscard]] std::int16_t ObjectCellX(const ObjectInstance& object) noexcept;

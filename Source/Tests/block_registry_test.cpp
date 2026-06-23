@@ -2,7 +2,6 @@
 
 #include <gtest/gtest.h>
 
-
 TEST(BlockRegistry, SlopeAndSolidAreRotatable)
 {
     EXPECT_TRUE(NS::Game::Blocks::IsRotatableBlock(NS::Game::Blocks::kBlockIdSlope45));
@@ -40,4 +39,11 @@ TEST(BlockRegistry, RotationToYawIsQuarterTurns)
     EXPECT_NEAR(NS::Game::Blocks::BlockRotationToYaw(1), kPi * 0.5f, 1e-4f);
     EXPECT_NEAR(NS::Game::Blocks::BlockRotationToYaw(2), kPi, 1e-4f);
     EXPECT_NEAR(NS::Game::Blocks::BlockRotationToYaw(3), kPi * 1.5f, 1e-4f);
+}
+
+TEST(BlockRegistry, IsCollidableExcludesDecorationAndWater)
+{
+    EXPECT_FALSE(NS::Game::Blocks::IsCollidable(NS::Game::Blocks::kBlockIdDecoration));
+    EXPECT_FALSE(NS::Game::Blocks::IsCollidable(NS::Game::Blocks::kBlockIdWater));
+    EXPECT_TRUE(NS::Game::Blocks::IsCollidable(NS::Game::Blocks::kBlockIdHazard));
 }
