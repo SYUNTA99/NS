@@ -330,6 +330,7 @@ namespace NS::Scene
         in.worldSpheres = std::span<const NS::Physics::Sphere>(m_collisionSpheres);
         in.worldCapsules = std::span<const NS::Physics::Capsule>(m_collisionCapsules);
         in.grid = &m_collisionGrid;
+        in.physicsWorld = m_world;
         const NS::Physics::CharacterControllerResult out = m_controller.Update(in);
 
         RootTransform().SetPosition(out.position);

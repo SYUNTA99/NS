@@ -67,6 +67,9 @@ namespace NS::Scene
         /// pole 群を span で注入する。span のみ保存し、要素の寿命は呼出側 (LevelPlayScene) が保証する
         void SetClimbables(std::span<PoleComponent* const> poles) noexcept;
 
+        /// 衝突 query 元の physics world を非所有で借用する。 非 null なら衝突計算をこの world へ委ねる
+        void SetPhysicsWorld(const NS::Physics::PhysicsWorld* world) noexcept { m_world = world; }
+
         [[nodiscard]] MovementState State() const noexcept { return m_state; }
         /// テスト / 強制遷移用の setter。 通常は OnUpdate 内で遷移するため呼出不要
         void SetState(MovementState s) noexcept { m_state = s; }
@@ -160,6 +163,7 @@ namespace NS::Scene
         std::vector<NS::Physics::Sphere> m_collisionSpheres;
         std::vector<NS::Physics::Capsule> m_collisionCapsules;
         NS::Physics::CollisionGrid m_collisionGrid;
+        const NS::Physics::PhysicsWorld* m_world = nullptr;
         NS::Physics::CharacterController m_controller;
 
         MovementState m_state = MovementState::Walking;
