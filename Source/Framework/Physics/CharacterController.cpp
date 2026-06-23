@@ -4,6 +4,7 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Physics/Capsule.h"
 #include "Framework/Physics/CollisionGrid.h"
+#include "Framework/Physics/PhysicsWorld.h"
 #include "Framework/Physics/SweptAABB.h"
 #include "Framework/Physics/SweptCapsule.h"
 #include "Framework/Physics/SweptOBB.h"
@@ -92,33 +93,59 @@ namespace NS::Physics
                 NS::Math::Vector3 hitNormal{0.0f, 0.0f, 0.0f};
                 bool anyHit = false;
 
-                // grid があれば capsule の swept AABB 近傍だけを narrow phase に掛ける (無ければ総当たり)
-                if (input.grid != nullptr && !input.grid->IsEmpty())
+                if (input.physicsWorld != nullptr)
                 {
-                    const NS::Math::AABB queryBox = CapsuleSweptAabb(cap, motion);
-                    input.grid->Query(queryBox, candidates);
-                    for (const std::uint32_t idx : candidates)
-                    {
-                        float toi = 1.0f;
-                        NS::Math::Vector3 n{};
-                        if (SweptCapsuleVsAABB(cap, motion, input.world[idx], toi, n))
-                        {
-                            if (toi < earliestToi)
-                            {
-                                earliestToi = toi;
-                                hitNormal = n;
-                                anyHit = true;
-                            }
-                        }
-                    }
+                    // 集約 world 経由の query。 physicsWorld が非 null なら span 群より優先する
+                    const SweepHit hit = input.physicsWorld->SweepCapsule(cap, motion);
+                    earliestToi = hit.toi;
+                    hitNormal = hit.normal;
+                    anyHit = hit.hit;
                 }
                 else
                 {
-                    for (const NS::Math::AABB& box : input.world)
+                    // grid があれば capsule の swept AABB 近傍だけを narrow phase に掛ける (無ければ総当たり)
+                    if (input.grid != nullptr && !input.grid->IsEmpty())
+                    {
+                        const NS::Math::AABB queryBox = CapsuleSweptAabb(cap, motion);
+                        input.grid->Query(queryBox, candidates);
+                        for (const std::uint32_t idx : candidates)
+                        {
+                            float toi = 1.0f;
+                            NS::Math::Vector3 n{};
+                            if (SweptCapsuleVsAABB(cap, motion, input.world[idx], toi, n))
+                            {
+                                if (toi < earliestToi)
+                                {
+                                    earliestToi = toi;
+                                    hitNormal = n;
+                                    anyHit = true;
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (const NS::Math::AABB& box : input.world)
+                        {
+                            float toi = 1.0f;
+                            NS::Math::Vector3 n{};
+                            if (SweptCapsuleVsAABB(cap, motion, box, toi, n))
+                            {
+                                if (toi < earliestToi)
+                                {
+                                    earliestToi = toi;
+                                    hitNormal = n;
+                                    anyHit = true;
+                                }
+                            }
+                        }
+                    }
+
+                    for (const Triangle& tri : input.worldTriangles)
                     {
                         float toi = 1.0f;
                         NS::Math::Vector3 n{};
-                        if (SweptCapsuleVsAABB(cap, motion, box, toi, n))
+                        if (SweptCapsuleVsTriangle(cap, motion, tri, toi, n))
                         {
                             if (toi < earliestToi)
                             {
@@ -128,63 +155,44 @@ namespace NS::Physics
                             }
                         }
                     }
-                }
 
-                // AABB と Triangle を同 substep 内で sweep し最小 TOI 側で slide させる
-                for (const Triangle& tri : input.worldTriangles)
-                {
-                    float toi = 1.0f;
-                    NS::Math::Vector3 n{};
-                    if (SweptCapsuleVsTriangle(cap, motion, tri, toi, n))
+                    for (const OBB& obb : input.worldObbs)
                     {
-                        if (toi < earliestToi)
+                        float toi = 1.0f;
+                        NS::Math::Vector3 n{};
+                        if (SweptCapsuleVsOBB(cap, motion, obb, toi, n))
+                        {
+                            if (toi < earliestToi)
+                            {
+                                earliestToi = toi;
+                                hitNormal = n;
+                                anyHit = true;
+                            }
+                        }
+                    }
+
+                    for (const Sphere& sphere : input.worldSpheres)
+                    {
+                        float toi = 1.0f;
+                        NS::Math::Vector3 n{};
+                        if (SweptCapsuleVsSphere(cap, motion, sphere, toi, n) && toi < earliestToi)
                         {
                             earliestToi = toi;
                             hitNormal = n;
                             anyHit = true;
                         }
                     }
-                }
 
-                // 自由配置物の OBB を同 substep 内で sweep し最小 TOI 側で slide させる
-                for (const OBB& obb : input.worldObbs)
-                {
-                    float toi = 1.0f;
-                    NS::Math::Vector3 n{};
-                    if (SweptCapsuleVsOBB(cap, motion, obb, toi, n))
+                    for (const Capsule& other : input.worldCapsules)
                     {
-                        if (toi < earliestToi)
+                        float toi = 1.0f;
+                        NS::Math::Vector3 n{};
+                        if (SweptCapsuleVsCapsule(cap, motion, other, toi, n) && toi < earliestToi)
                         {
                             earliestToi = toi;
                             hitNormal = n;
                             anyHit = true;
                         }
-                    }
-                }
-
-                // 球 collider を同 substep 内で sweep
-                for (const Sphere& sphere : input.worldSpheres)
-                {
-                    float toi = 1.0f;
-                    NS::Math::Vector3 n{};
-                    if (SweptCapsuleVsSphere(cap, motion, sphere, toi, n) && toi < earliestToi)
-                    {
-                        earliestToi = toi;
-                        hitNormal = n;
-                        anyHit = true;
-                    }
-                }
-
-                // capsule collider を同 substep 内で sweep
-                for (const Capsule& other : input.worldCapsules)
-                {
-                    float toi = 1.0f;
-                    NS::Math::Vector3 n{};
-                    if (SweptCapsuleVsCapsule(cap, motion, other, toi, n) && toi < earliestToi)
-                    {
-                        earliestToi = toi;
-                        hitNormal = n;
-                        anyHit = true;
                     }
                 }
 
@@ -221,6 +229,14 @@ namespace NS::Physics
         {
             const NS::Math::Vector3 bottomCenter{
                 result.position.x, result.position.y - input.capsuleHalfHeight, result.position.z};
+
+            if (input.physicsWorld != nullptr)
+            {
+                result.grounded =
+                    input.physicsWorld->ProbeGround(bottomCenter, input.capsuleRadius + kGroundProbeDistance);
+                return result;
+            }
+
             const NS::Math::Ray ray(bottomCenter, NS::Math::Vector3{0.0f, -1.0f, 0.0f});
             for (const NS::Math::AABB& box : input.world)
             {

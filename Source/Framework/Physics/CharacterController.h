@@ -15,6 +15,8 @@
 
 namespace NS::Physics
 {
+    class PhysicsWorld;
+
     /// 1 frame の Update 入力。dt は fixed step
     /// AABB と Triangle の両 world を同 substep 内で sweep し、最小 TOI 側を採用する
     struct CharacterControllerInput
@@ -30,6 +32,8 @@ namespace NS::Physics
         std::span<const NS::Physics::Sphere> worldSpheres{};
         std::span<const NS::Physics::Capsule> worldCapsules{};
         const NS::Physics::CollisionGrid* grid = nullptr;
+        /// 非 null なら span 群より優先して衝突 query に使う集約 path
+        const PhysicsWorld* physicsWorld = nullptr;
     };
 
     /// Update の戻り値。新 position / velocity と接触情報
