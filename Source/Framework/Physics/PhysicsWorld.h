@@ -59,6 +59,15 @@ namespace NS::Physics
         /// AABB channel から broadphase grid を構築する。 Add 完了後に 1 度呼ぶ
         void BuildBroadphase() noexcept;
 
+        // query
+
+        /// capsule が motion だけ動く間の全 channel 横断で最小 TOI の接触を返す
+        /// 評価順は AABB (grid 候補 or 総当たり) -> Triangle -> OBB -> Sphere -> Capsule、 同 TOI は先勝ち
+        [[nodiscard]] SweepHit SweepCapsule(const Capsule& cap, const NS::Math::Vector3& motion) const noexcept;
+
+        /// bottomCenter から下方向へ reach 以内に床 (AABB / OBB) があれば true。 接地補助 probe 用
+        [[nodiscard]] bool ProbeGround(const NS::Math::Vector3& bottomCenter, float reach) const noexcept;
+
         // accessors
 
         /// AABB channel の参照。 blob shadow の receiver 構築など読み取り専用用途に使う
