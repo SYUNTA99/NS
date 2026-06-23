@@ -169,6 +169,12 @@ namespace NS::Scene
                 return LoadedSkinnedModel{};
             }
 
+            if (data.vertices.empty())
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "AssetManager: skinned mesh に頂点が無い: {}", key.string());
+                return LoadedSkinnedModel{};
+            }
+
             NS::Graphics::SkinnedMeshDesc smd{};
             smd.vertices = data.vertices.data();
             smd.vertexCount = data.vertices.size();

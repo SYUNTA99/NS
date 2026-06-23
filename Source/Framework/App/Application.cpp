@@ -10,6 +10,7 @@
 
 #include "Framework/Framework.h"
 
+#include <cassert>
 #include <chrono>
 #include <utility>
 
@@ -108,6 +109,7 @@ namespace NS::App
 
     NS::Scene::AssetManager& Application::Assets() noexcept
     {
+        assert(m_assets && "Init 前 / Shutdown 後に Assets() を呼んでいる");
         return *m_assets;
     }
 
