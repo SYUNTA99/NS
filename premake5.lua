@@ -796,11 +796,10 @@ project "Tests"
     files {
         "Source/Tests/**.h",
         "Source/Tests/**.cpp",
-        -- Game 側 GameObject 派生 (Player / Block) は Application 依存を持たないので
+        -- Game 側 GameObject 派生 (Player) は Application 依存を持たないので
         -- Tests から直接コンパイルしてリンクする。Game.cpp は Application や
         -- Window への依存があるので除外し、unit test で扱える範囲だけ取り込む。
         "Source/Game/Player.cpp",
-        "Source/Game/Block.cpp",
         "Source/Game/Blocks/**.cpp",
         "Source/Game/CameraRig.cpp",
         "Source/Editor/EditorCameraRig.cpp",
