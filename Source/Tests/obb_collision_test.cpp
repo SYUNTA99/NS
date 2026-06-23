@@ -2,21 +2,18 @@
 
 #include <Framework/Math/Math.h>
 #include <Framework/Physics/CharacterController.h>
+#include <Framework/Physics/PhysicsWorld.h>
 #include <Framework/Physics/SweptOBB.h>
-
-#include <array>
 
 namespace
 {
-    using NS::Math::AABB;
     using NS::Math::Quaternion;
     using NS::Math::Vector3;
     using NS::Physics::CharacterController;
     using NS::Physics::CharacterControllerInput;
     using NS::Physics::CharacterControllerResult;
     using NS::Physics::MakeObb;
-    using NS::Physics::OBB;
-    using NS::Physics::Triangle;
+    using NS::Physics::PhysicsWorld;
 
     constexpr float kPi = 3.14159265358979323846f;
 } // namespace
@@ -25,17 +22,15 @@ namespace
 TEST(ObbCollisionTest, CapsuleLandsOnFlatObb)
 {
     CharacterController cc;
-    const std::array<AABB, 0> emptyWorld{};
-    const std::array<Triangle, 0> emptyTris{};
-    const std::array<OBB, 1> obbs{MakeObb({0.0f, 0.0f, 0.0f}, Quaternion::Identity, {2.0f, 0.5f, 2.0f})};
+    PhysicsWorld world;
+    world.AddObb(MakeObb({0.0f, 0.0f, 0.0f}, Quaternion::Identity, {2.0f, 0.5f, 2.0f}));
+    world.BuildBroadphase();
 
     CharacterControllerInput input;
     input.position = Vector3{0.0f, 1.5f, 0.0f};
     input.velocity = Vector3{0.0f, -8.0f, 0.0f};
     input.dt = 0.1f;
-    input.world = std::span<const AABB>{emptyWorld};
-    input.worldTriangles = std::span<const Triangle>{emptyTris};
-    input.worldObbs = std::span<const OBB>{obbs};
+    input.physicsWorld = &world;
 
     const CharacterControllerResult r = cc.Update(input);
     EXPECT_TRUE(r.grounded);
@@ -46,18 +41,16 @@ TEST(ObbCollisionTest, CapsuleLandsOnFlatObb)
 TEST(ObbCollisionTest, CapsuleRestingOnObbStaysGrounded)
 {
     CharacterController cc;
-    const std::array<AABB, 0> emptyWorld{};
-    const std::array<Triangle, 0> emptyTris{};
-    const std::array<OBB, 1> obbs{MakeObb({0.0f, 0.0f, 0.0f}, Quaternion::Identity, {2.0f, 0.5f, 2.0f})};
+    PhysicsWorld world;
+    world.AddObb(MakeObb({0.0f, 0.0f, 0.0f}, Quaternion::Identity, {2.0f, 0.5f, 2.0f}));
+    world.BuildBroadphase();
 
     // capsule 底端 (center.y - halfHeight = 0.9) が床上面 0.5 から radius 内に収まる静止姿勢
     CharacterControllerInput input;
     input.position = Vector3{0.0f, 1.4f, 0.0f};
     input.velocity = Vector3{0.0f, 0.0f, 0.0f};
     input.dt = 1.0f / 60.0f;
-    input.world = std::span<const AABB>{emptyWorld};
-    input.worldTriangles = std::span<const Triangle>{emptyTris};
-    input.worldObbs = std::span<const OBB>{obbs};
+    input.physicsWorld = &world;
 
     const CharacterControllerResult r = cc.Update(input);
     EXPECT_TRUE(r.grounded);
@@ -67,10 +60,10 @@ TEST(ObbCollisionTest, CapsuleRestingOnObbStaysGrounded)
 TEST(ObbCollisionTest, CapsuleStopsAtRotatedWall)
 {
     CharacterController cc;
-    const std::array<AABB, 0> emptyWorld{};
-    const std::array<Triangle, 0> emptyTris{};
     const Quaternion rot = Quaternion::CreateFromAxisAngle(Vector3::UnitY, kPi / 4.0f);
-    const std::array<OBB, 1> obbs{MakeObb({0.0f, 0.0f, 0.0f}, rot, {0.1f, 2.0f, 2.0f})};
+    PhysicsWorld world;
+    world.AddObb(MakeObb({0.0f, 0.0f, 0.0f}, rot, {0.1f, 2.0f, 2.0f}));
+    world.BuildBroadphase();
 
     Vector3 position{-3.0f, 0.0f, 0.0f};
     const float dt = 1.0f / 60.0f;
@@ -80,9 +73,7 @@ TEST(ObbCollisionTest, CapsuleStopsAtRotatedWall)
         in.position = position;
         in.velocity = Vector3{10.0f, 0.0f, 0.0f};
         in.dt = dt;
-        in.world = std::span<const AABB>{emptyWorld};
-        in.worldTriangles = std::span<const Triangle>{emptyTris};
-        in.worldObbs = std::span<const OBB>{obbs};
+        in.physicsWorld = &world;
         const CharacterControllerResult r = cc.Update(in);
         position = r.position;
     }

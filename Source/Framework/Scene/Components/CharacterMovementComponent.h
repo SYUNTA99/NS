@@ -11,12 +11,9 @@
 
 #include "Framework/Math/Math.h"
 #include "Framework/Physics/CharacterController.h"
-#include "Framework/Physics/CollisionGrid.h"
-#include "Framework/Physics/SweptTriangle.h"
 #include "Framework/Scene/Component.h"
 
 #include <span>
-#include <vector>
 
 namespace NS::Scene
 {
@@ -34,8 +31,8 @@ namespace NS::Scene
         LedgeMantling,
     };
 
-    /// Player の物理状態を管理する Component。Input→desired velocity は PlayerInputComponent、collision world
-    /// は毎フレーム span で注入する
+    /// Player の物理状態を管理する Component。Input→desired velocity は PlayerInputComponent、衝突 world は
+    /// SetPhysicsWorld で非所有借用する
     class CharacterMovementComponent : public Component
     {
     public:
@@ -49,23 +46,11 @@ namespace NS::Scene
         void SetJumpPressed() noexcept;
         void SetJumpHeld(bool held) noexcept;
 
-        /// 内部 vector にコピーして保持する。呼出側 vector の再確保や破棄で dangling にならないようにするため
-        void SetCollisionWorld(std::span<const NS::Math::AABB> world);
-
-        /// Slope 用の世界座標 triangle 配列を受け取り、 内部 vector にコピーする
-        void SetCollisionTriangles(std::span<const NS::Physics::Triangle> triangles);
-
-        /// 自由配置物 (回転 / scale 込み) の世界座標 OBB 配列を受け取り、 内部 vector にコピーする
-        void SetCollisionObbs(std::span<const NS::Physics::OBB> obbs);
-
-        /// 球 collider の世界座標配列を受け取り、 内部 vector にコピーする
-        void SetCollisionSpheres(std::span<const NS::Physics::Sphere> spheres);
-
-        /// capsule collider の世界座標配列を受け取り、 内部 vector にコピーする
-        void SetCollisionCapsules(std::span<const NS::Physics::Capsule> capsules);
-
         /// pole 群を span で注入する。span のみ保存し、要素の寿命は呼出側 (LevelPlayScene) が保証する
         void SetClimbables(std::span<PoleComponent* const> poles) noexcept;
+
+        /// 衝突 query 元の physics world を非所有で借用する。 非 null なら衝突計算をこの world へ委ねる
+        void SetPhysicsWorld(const NS::Physics::PhysicsWorld* world) noexcept { m_world = world; }
 
         [[nodiscard]] MovementState State() const noexcept { return m_state; }
         /// テスト / 強制遷移用の setter。 通常は OnUpdate 内で遷移するため呼出不要
@@ -154,12 +139,7 @@ namespace NS::Scene
 
         bool m_debugDraw = true;
 
-        std::vector<NS::Math::AABB> m_collisionWorld;
-        std::vector<NS::Physics::Triangle> m_collisionTriangles;
-        std::vector<NS::Physics::OBB> m_collisionObbs;
-        std::vector<NS::Physics::Sphere> m_collisionSpheres;
-        std::vector<NS::Physics::Capsule> m_collisionCapsules;
-        NS::Physics::CollisionGrid m_collisionGrid;
+        const NS::Physics::PhysicsWorld* m_world = nullptr;
         NS::Physics::CharacterController m_controller;
 
         MovementState m_state = MovementState::Walking;

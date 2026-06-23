@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Core/Clock.h>
+#include <Framework/Physics/PhysicsWorld.h>
 #include <Framework/Scene/Components/CharacterMovementComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Transform.h>
@@ -20,6 +21,16 @@ namespace
     NS::Math::AABB MakeBlock(float cx, float cy, float cz)
     {
         return NS::Math::AABB(NS::Math::Vector3{cx, cy, cz}, NS::Math::Vector3{0.5f, 0.5f, 0.5f});
+    }
+
+    /// AABB 群を積んで broadphase まで作った physics world を返す
+    NS::Physics::PhysicsWorld MakeWorld(std::span<const NS::Math::AABB> boxes)
+    {
+        NS::Physics::PhysicsWorld world;
+        for (const NS::Math::AABB& b : boxes)
+            world.AddAabb(b);
+        world.BuildBroadphase();
+        return world;
     }
 
     void StepN(CharacterMovementComponent& mov, int n)
@@ -42,7 +53,8 @@ TEST_F(LedgeGrabStateTest, GrabsLedgeWhenDescendingIntoEdge)
     mov.SetDebugDrawEnabled(false);
 
     const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
-    mov.SetCollisionWorld(world);
+    NS::Physics::PhysicsWorld pw = MakeWorld(world);
+    mov.SetPhysicsWorld(&pw);
 
     // block (上端 y=0.5) の -x 面手前、 手が上端付近に来る高さに置いて +x へ押す
     playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
@@ -62,7 +74,8 @@ TEST_F(LedgeGrabStateTest, ClimbInputMantlesOntoBlockTop)
     mov.SetDebugDrawEnabled(false);
 
     const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
-    mov.SetCollisionWorld(world);
+    NS::Physics::PhysicsWorld pw = MakeWorld(world);
+    mov.SetPhysicsWorld(&pw);
 
     playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
     mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
@@ -92,7 +105,8 @@ TEST_F(LedgeGrabStateTest, JumpMantlesOntoBlockTop)
     mov.SetDebugDrawEnabled(false);
 
     const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
-    mov.SetCollisionWorld(world);
+    NS::Physics::PhysicsWorld pw = MakeWorld(world);
+    mov.SetPhysicsWorld(&pw);
 
     playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
     mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
@@ -119,7 +133,8 @@ TEST_F(LedgeGrabStateTest, MantleRisesGraduallyNotInstant)
     mov.SetDebugDrawEnabled(false);
 
     const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
-    mov.SetCollisionWorld(world);
+    NS::Physics::PhysicsWorld pw = MakeWorld(world);
+    mov.SetPhysicsWorld(&pw);
 
     playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
     mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
@@ -149,7 +164,8 @@ TEST_F(LedgeGrabStateTest, BackInputDropsAndDoesNotReGrabImmediately)
     mov.SetDebugDrawEnabled(false);
 
     const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
-    mov.SetCollisionWorld(world);
+    NS::Physics::PhysicsWorld pw = MakeWorld(world);
+    mov.SetPhysicsWorld(&pw);
 
     playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
     mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
@@ -175,7 +191,8 @@ TEST_F(LedgeGrabStateTest, DoesNotGrabWhileAscending)
     mov.SetDebugDrawEnabled(false);
 
     const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
-    mov.SetCollisionWorld(world);
+    NS::Physics::PhysicsWorld pw = MakeWorld(world);
+    mov.SetPhysicsWorld(&pw);
 
     playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
     mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
@@ -199,7 +216,8 @@ TEST_F(LedgeGrabStateTest, ShimmyMovesAlongLedge)
         MakeBlock(0.0f, 0.0f, 1.0f),
         MakeBlock(0.0f, 0.0f, -1.0f),
     };
-    mov.SetCollisionWorld(world);
+    NS::Physics::PhysicsWorld pw = MakeWorld(world);
+    mov.SetPhysicsWorld(&pw);
 
     playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
     mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
@@ -224,7 +242,8 @@ TEST_F(LedgeGrabStateTest, ShimmyStopsAtLedgeEnd)
 
     // 1 マスだけの縁。 端まで来たらそれ以上シミーできず、 落ちもしない
     const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
-    mov.SetCollisionWorld(world);
+    NS::Physics::PhysicsWorld pw = MakeWorld(world);
+    mov.SetPhysicsWorld(&pw);
 
     playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
     mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);

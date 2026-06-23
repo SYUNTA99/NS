@@ -2,10 +2,8 @@
 
 #include <Framework/Math/Math.h>
 #include <Framework/Physics/CharacterController.h>
-#include <Framework/Physics/CollisionGrid.h>
+#include <Framework/Physics/PhysicsWorld.h>
 
-#include <array>
-#include <span>
 #include <vector>
 
 namespace
@@ -15,9 +13,7 @@ namespace
     using NS::Physics::CharacterController;
     using NS::Physics::CharacterControllerInput;
     using NS::Physics::CharacterControllerResult;
-    using NS::Physics::CollisionGrid;
-    using NS::Physics::OBB;
-    using NS::Physics::Triangle;
+    using NS::Physics::PhysicsWorld;
 
     AABB MakeBox(const Vector3& c, const Vector3& e)
     {
@@ -37,11 +33,16 @@ namespace
         return world;
     }
 
-    Vector3 RunSim(const std::vector<AABB>& world, const CollisionGrid* grid)
+    // useGrid=true は BuildBroadphase 済 (grid 候補駆動)、 false は未 build (総当たり)
+    Vector3 RunSim(const std::vector<AABB>& world, bool useGrid)
     {
+        PhysicsWorld pw;
+        for (const AABB& b : world)
+            pw.AddAabb(b);
+        if (useGrid)
+            pw.BuildBroadphase();
+
         CharacterController cc;
-        const std::array<Triangle, 0> tris{};
-        const std::array<OBB, 0> obbs{};
         Vector3 pos{0.0f, 3.0f, 0.0f};
         Vector3 vel{4.0f, 0.0f, 2.0f};
         for (int i = 0; i < 120; ++i)
@@ -51,10 +52,7 @@ namespace
             in.position = pos;
             in.velocity = vel;
             in.dt = 1.0f / 60.0f;
-            in.world = std::span<const AABB>{world};
-            in.worldTriangles = std::span<const Triangle>{tris};
-            in.worldObbs = std::span<const OBB>{obbs};
-            in.grid = grid;
+            in.physicsWorld = &pw;
             const CharacterControllerResult r = cc.Update(in);
             pos = r.position;
             vel = r.velocity;
@@ -67,22 +65,20 @@ namespace
 TEST(BroadphaseTest, GridResultMatchesBruteForce)
 {
     const std::vector<AABB> world = MakeScene();
-    CollisionGrid grid;
-    grid.Build(world, 2.0f);
 
-    const Vector3 withGrid = RunSim(world, &grid);
-    const Vector3 bruteForce = RunSim(world, nullptr);
+    const Vector3 withGrid = RunSim(world, true);
+    const Vector3 bruteForce = RunSim(world, false);
 
     EXPECT_NEAR(withGrid.x, bruteForce.x, 1e-4f);
     EXPECT_NEAR(withGrid.y, bruteForce.y, 1e-4f);
     EXPECT_NEAR(withGrid.z, bruteForce.z, 1e-4f);
 }
 
-// grid == nullptr でも従来どおり床に乗る (フォールバック回帰防止)
-TEST(BroadphaseTest, NullGridFallsBackToBruteForce)
+// broadphase 未構築でも従来どおり床に乗る (フォールバック回帰防止)
+TEST(BroadphaseTest, NoBroadphaseFallsBackToBruteForce)
 {
     const std::vector<AABB> world = MakeScene();
-    const Vector3 pos = RunSim(world, nullptr);
+    const Vector3 pos = RunSim(world, false);
     EXPECT_GT(pos.y, -0.5f);
     EXPECT_LT(pos.y, 2.0f);
 }

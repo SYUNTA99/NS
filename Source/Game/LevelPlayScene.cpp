@@ -565,15 +565,11 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
     m_objects.clear();
     m_objectSourceIndices.clear();
     m_hazardView.clear();
-    m_collisionWorld.clear();
-    m_collisionTriangles.clear();
-    m_collisionObbs.clear();
-    m_collisionSpheres.clear();
-    m_collisionCapsules.clear();
+    m_physicsWorld.Clear();
     m_polePtrs.clear();
 
     m_objects.reserve(m_level.objects.size());
-    m_collisionWorld.reserve(m_level.objects.size());
+    m_physicsWorld.ReserveAabbs(m_level.objects.size());
 
     // ファクトリは mesh / material を AssetManager から借りる。 app 不在 (起動前 / テスト) では何も組まない
     auto* app = NS::App::Application::Get();
@@ -603,21 +599,21 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
         // 当たりは collider component の有無で channel が決まる。 free は Sphere / Capsule があれば内蔵 Box を OBB
         // へ入れない (排他)
         if (auto* sphere = NS::Game::Blocks::FindComponent<NS::Scene::SphereColliderComponent>(*obj))
-            m_collisionSpheres.push_back(sphere->WorldSphere());
+            m_physicsWorld.AddSphere(sphere->WorldSphere());
         else if (auto* capsule = NS::Game::Blocks::FindComponent<NS::Scene::CapsuleColliderComponent>(*obj))
-            m_collisionCapsules.push_back(capsule->WorldCapsule());
+            m_physicsWorld.AddCapsule(capsule->WorldCapsule());
         else if (auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*obj))
         {
             // 同じ Box でも gridAligned なら軸並行 AABB、 自由配置なら回転込み OBB
             if (gridAligned)
-                m_collisionWorld.push_back(box->WorldAABB());
+                m_physicsWorld.AddAabb(box->WorldAABB());
             else
-                m_collisionObbs.push_back(box->WorldOBB());
+                m_physicsWorld.AddObb(box->WorldOBB());
         }
 
         if (auto* slope = NS::Game::Blocks::FindComponent<NS::Scene::SlopeColliderComponent>(*obj))
             for (const auto& tri : slope->WorldTriangles())
-                m_collisionTriangles.push_back(tri);
+                m_physicsWorld.AddTriangle(tri);
         if (auto* pole = NS::Game::Blocks::FindComponent<NS::Scene::PoleComponent>(*obj))
             m_polePtrs.push_back(pole);
         // hazard の damage は固形 AABB とは別経路 (per-frame overlap) で効くため view にも積む
@@ -634,16 +630,14 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
     for (auto& obj : m_objects)
         obj->Root().Snapshot();
 
+    m_physicsWorld.BuildBroadphase();
+
     if (m_player)
     {
-        m_player->Movement().SetCollisionWorld(m_collisionWorld);
-        m_player->Movement().SetCollisionTriangles(m_collisionTriangles);
-        m_player->Movement().SetCollisionObbs(m_collisionObbs);
-        m_player->Movement().SetCollisionSpheres(m_collisionSpheres);
-        m_player->Movement().SetCollisionCapsules(m_collisionCapsules);
+        m_player->Movement().SetPhysicsWorld(&m_physicsWorld);
 
         // 接地シャドウは grid + 自由物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
-        std::vector<NS::Math::AABB> shadowReceivers(m_collisionWorld.begin(), m_collisionWorld.end());
+        std::vector<NS::Math::AABB> shadowReceivers(m_physicsWorld.Aabbs().begin(), m_physicsWorld.Aabbs().end());
         for (std::size_t i = 0; i < m_objects.size(); ++i)
         {
             const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];

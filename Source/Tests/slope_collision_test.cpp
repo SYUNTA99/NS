@@ -2,6 +2,7 @@
 
 #include <Framework/Math/Math.h>
 #include <Framework/Physics/CharacterController.h>
+#include <Framework/Physics/PhysicsWorld.h>
 #include <Framework/Physics/SweptTriangle.h>
 
 #include <array>
@@ -9,11 +10,11 @@
 
 namespace
 {
-    using NS::Math::AABB;
     using NS::Math::Vector3;
     using NS::Physics::CharacterController;
     using NS::Physics::CharacterControllerInput;
     using NS::Physics::CharacterControllerResult;
+    using NS::Physics::PhysicsWorld;
     using NS::Physics::Triangle;
 
     constexpr float kPi = 3.14159265358979323846f;
@@ -36,21 +37,29 @@ namespace
         result[1] = Triangle{lowLeft, highLeft, highRight};
         return result;
     }
+
+    /// wedge slope 三角群を積んで broadphase まで作った physics world を返す
+    PhysicsWorld MakeSlopeWorld(float angleDeg)
+    {
+        PhysicsWorld world;
+        for (const Triangle& tri : MakeWedgeSlope(angleDeg))
+            world.AddTriangle(tri);
+        world.BuildBroadphase();
+        return world;
+    }
 } // namespace
 
 TEST(SlopeCollisionTest, CapsuleOnRampBecomesGrounded)
 {
     CharacterController cc;
-    const auto tris = MakeWedgeSlope(45.0f);
-    const std::array<AABB, 0> emptyWorld{};
+    PhysicsWorld world = MakeSlopeWorld(45.0f);
 
     CharacterControllerInput input;
     // capsule center を slope の中央上空 1m に置く。 重力相当の下方向 velocity で 1 step 落下させる
-    input.position = {0.0f, 1.5f, 0.0f};
-    input.velocity = {0.0f, -6.0f, 0.0f};
+    input.position = Vector3{0.0f, 1.5f, 0.0f};
+    input.velocity = Vector3{0.0f, -6.0f, 0.0f};
     input.dt = 0.1f;
-    input.world = std::span<const AABB>{emptyWorld};
-    input.worldTriangles = std::span<const Triangle>{tris};
+    input.physicsWorld = &world;
 
     const CharacterControllerResult r = cc.Update(input);
     EXPECT_TRUE(r.grounded);
@@ -62,8 +71,7 @@ TEST(SlopeCollisionTest, CapsuleWalkingOnRampDoesNotJitter)
     CharacterController cc;
     // 30 度の緩い slope を選び、 60 frame ぶん前進させても y が単調増加することを確認する
     // 急角度だと sphere 近似で contact が外れて y が振動する
-    const auto tris = MakeWedgeSlope(30.0f);
-    const std::array<AABB, 0> emptyWorld{};
+    PhysicsWorld world = MakeSlopeWorld(30.0f);
 
     Vector3 position{0.0f, 1.0f, -0.4f};
     Vector3 velocity{0.0f, 0.0f, 0.0f};
@@ -77,8 +85,7 @@ TEST(SlopeCollisionTest, CapsuleWalkingOnRampDoesNotJitter)
         in.position = position;
         in.velocity = velocity;
         in.dt = dt;
-        in.world = std::span<const AABB>{emptyWorld};
-        in.worldTriangles = std::span<const Triangle>{tris};
+        in.physicsWorld = &world;
         const CharacterControllerResult r = cc.Update(in);
         position = r.position;
         velocity = r.velocity;
@@ -96,8 +103,7 @@ TEST(SlopeCollisionTest, CapsuleWalkingOnRampDoesNotJitter)
         in.position = position;
         in.velocity = velocity;
         in.dt = dt;
-        in.world = std::span<const AABB>{emptyWorld};
-        in.worldTriangles = std::span<const Triangle>{tris};
+        in.physicsWorld = &world;
         const CharacterControllerResult r = cc.Update(in);
         position = r.position;
         velocity = r.velocity;

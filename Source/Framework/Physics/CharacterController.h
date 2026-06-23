@@ -6,17 +6,13 @@
 /// 入出力は POD struct。gameplay 値 (gravity / jump 等) は保持しない (責任分担)
 
 #include "Framework/Math/Math.h"
-#include "Framework/Physics/CollisionGrid.h"
-#include "Framework/Physics/SweptCapsule.h"
-#include "Framework/Physics/SweptOBB.h"
-#include "Framework/Physics/SweptTriangle.h"
-
-#include <span>
 
 namespace NS::Physics
 {
+    class PhysicsWorld;
+
     /// 1 frame の Update 入力。dt は fixed step
-    /// AABB と Triangle の両 world を同 substep 内で sweep し、最小 TOI 側を採用する
+    /// 衝突は physicsWorld への capsule sweep query で解決する。 null なら衝突なしで motion を進める
     struct CharacterControllerInput
     {
         NS::Math::Vector3 position{0.0f, 0.0f, 0.0f};
@@ -24,12 +20,7 @@ namespace NS::Physics
         float dt = 0.0f;
         float capsuleRadius = 0.4f;
         float capsuleHalfHeight = 0.5f;
-        std::span<const NS::Math::AABB> world{};
-        std::span<const NS::Physics::Triangle> worldTriangles{};
-        std::span<const NS::Physics::OBB> worldObbs{};
-        std::span<const NS::Physics::Sphere> worldSpheres{};
-        std::span<const NS::Physics::Capsule> worldCapsules{};
-        const NS::Physics::CollisionGrid* grid = nullptr;
+        const PhysicsWorld* physicsWorld = nullptr;
     };
 
     /// Update の戻り値。新 position / velocity と接触情報

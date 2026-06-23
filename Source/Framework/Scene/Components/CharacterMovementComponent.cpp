@@ -3,6 +3,7 @@
 #include "Framework/Core/Clock.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Graphics/DebugDraw.h"
+#include "Framework/Physics/PhysicsWorld.h"
 #include "Framework/Scene/Components/PoleComponent.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
@@ -14,8 +15,13 @@ namespace
 {
     constexpr float kHorizontalSpeedEpsilon = 0.01f;
 
-    /// collision world のブロードフェーズ用グリッドのセル幅 (m)
-    constexpr float kGridCellSize = 2.0f;
+    /// ledge grab が走査する AABB 群を world から借りる。 world 未設定時は空 (掴めない)
+    [[nodiscard]] std::span<const NS::Math::AABB> WorldAabbs(const NS::Physics::PhysicsWorld* world) noexcept
+    {
+        if (world == nullptr)
+            return {};
+        return std::span<const NS::Math::AABB>(world->Aabbs());
+    }
 
     /// 一次遅れの離散化。tau = 時定数 (大きいほど鈍い)、dt = step。0 < tau で安定
     [[nodiscard]] float SmoothApproach(float current, float target, float tau, float dt) noexcept
@@ -109,32 +115,6 @@ namespace NS::Scene
     void CharacterMovementComponent::SetJumpHeld(bool held) noexcept
     {
         m_jumpHeld = held;
-    }
-
-    void CharacterMovementComponent::SetCollisionWorld(std::span<const NS::Math::AABB> world)
-    {
-        m_collisionWorld.assign(world.begin(), world.end());
-        m_collisionGrid.Build(m_collisionWorld, kGridCellSize);
-    }
-
-    void CharacterMovementComponent::SetCollisionTriangles(std::span<const NS::Physics::Triangle> triangles)
-    {
-        m_collisionTriangles.assign(triangles.begin(), triangles.end());
-    }
-
-    void CharacterMovementComponent::SetCollisionObbs(std::span<const NS::Physics::OBB> obbs)
-    {
-        m_collisionObbs.assign(obbs.begin(), obbs.end());
-    }
-
-    void CharacterMovementComponent::SetCollisionSpheres(std::span<const NS::Physics::Sphere> spheres)
-    {
-        m_collisionSpheres.assign(spheres.begin(), spheres.end());
-    }
-
-    void CharacterMovementComponent::SetCollisionCapsules(std::span<const NS::Physics::Capsule> capsules)
-    {
-        m_collisionCapsules.assign(capsules.begin(), capsules.end());
     }
 
     void CharacterMovementComponent::SetClimbables(std::span<PoleComponent* const> poles) noexcept
@@ -324,12 +304,7 @@ namespace NS::Scene
         in.dt = dt;
         in.capsuleRadius = m_capsuleRadius;
         in.capsuleHalfHeight = m_capsuleHalfHeight;
-        in.world = std::span<const NS::Math::AABB>(m_collisionWorld);
-        in.worldTriangles = std::span<const NS::Physics::Triangle>(m_collisionTriangles);
-        in.worldObbs = std::span<const NS::Physics::OBB>(m_collisionObbs);
-        in.worldSpheres = std::span<const NS::Physics::Sphere>(m_collisionSpheres);
-        in.worldCapsules = std::span<const NS::Physics::Capsule>(m_collisionCapsules);
-        in.grid = &m_collisionGrid;
+        in.physicsWorld = m_world;
         const NS::Physics::CharacterControllerResult out = m_controller.Update(in);
 
         RootTransform().SetPosition(out.position);
@@ -411,7 +386,7 @@ namespace NS::Scene
             pos.z + dir.z * (m_capsuleRadius + kLedgeReach),
         };
 
-        for (const NS::Math::AABB& box : m_collisionWorld)
+        for (const NS::Math::AABB& box : WorldAabbs(m_world))
         {
             const float top = box.Center.y + box.Extents.y;
             if (top < handY - kLedgeGrabBandLow || top > handY + kLedgeGrabBandHigh)
@@ -450,7 +425,7 @@ namespace NS::Scene
                 hang.z - faceNormal.z * mantleStep,
             };
             bool blocked = false;
-            for (const NS::Math::AABB& other : m_collisionWorld)
+            for (const NS::Math::AABB& other : WorldAabbs(m_world))
             {
                 if (AabbContainsPoint(other, mantleCheck))
                 {
@@ -572,7 +547,7 @@ namespace NS::Scene
             hangPos.z + inward.z * (m_capsuleRadius + kLedgeReach),
         };
 
-        for (const NS::Math::AABB& box : m_collisionWorld)
+        for (const NS::Math::AABB& box : WorldAabbs(m_world))
         {
             const float top = box.Center.y + box.Extents.y;
             if (std::abs(top - m_ledgeTopY) > kLedgeContinueTopTol)
@@ -590,7 +565,7 @@ namespace NS::Scene
                 hangPos.z - m_ledgeFaceNormal.z * mantleStep,
             };
             bool blocked = false;
-            for (const NS::Math::AABB& other : m_collisionWorld)
+            for (const NS::Math::AABB& other : WorldAabbs(m_world))
             {
                 if (AabbContainsPoint(other, mantleCheck))
                 {
