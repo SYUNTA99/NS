@@ -116,6 +116,8 @@ private:
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
     std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
 
+    // 借用元なので m_player より前に宣言する (player を先に破棄し CMC の dangling を防ぐ)
+    NS::Physics::PhysicsWorld m_physicsWorld;
     std::unique_ptr<Player> m_player;
 
     // 仮 skinned キャラ。 形 / 骨 / 材質は AssetManager 所有を参照し、 components を自分で合成する
@@ -143,7 +145,6 @@ private:
     };
     std::vector<AreaCamera> m_areaCameras;
 
-    NS::Physics::PhysicsWorld m_physicsWorld;
     std::vector<NS::Scene::PoleComponent*> m_polePtrs;
 
     NS::Game::Level::LevelData m_level{};
