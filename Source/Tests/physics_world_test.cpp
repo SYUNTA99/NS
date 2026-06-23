@@ -194,6 +194,63 @@ TEST(PhysicsWorldTest, SweepCapsuleHitsCapsule)
     EXPECT_LT(h.toi, 1.0f);
 }
 
+// 開始時に AABB 内部へ貫通している capsule は、 motion で外へ抜けるほど動かしても
+// 初期貫通が優先され toi=0 + 最寄り面の押し戻し法線を返す (退化ケースを貫通させない)
+TEST(PhysicsWorldTest, SweepCapsuleOverlappingAabbReturnsZeroToi)
+{
+    PhysicsWorld world;
+    world.AddAabb(MakeBox({0.0f, 0.0f, 0.0f}, {2.0f, 2.0f, 2.0f}));
+    world.BuildBroadphase();
+
+    const SweepHit h = world.SweepCapsule(MakeCapsule({1.5f, 0.0f, 0.0f}), Vector3{3.0f, 0.0f, 0.0f});
+
+    EXPECT_TRUE(h.hit);
+    EXPECT_FLOAT_EQ(h.toi, 0.0f);
+    EXPECT_GT(h.normal.x, 0.99f); // 最寄り +X 面へ押し戻す
+}
+
+// 回転 OBB 内部から始まっても toi=0 + 単位の押し戻し法線
+TEST(PhysicsWorldTest, SweepCapsuleOverlappingObbReturnsZeroToi)
+{
+    PhysicsWorld world;
+    const Quaternion rot = Quaternion::CreateFromAxisAngle(Vector3::UnitY, kPi / 4.0f);
+    world.AddObb(MakeObb({0.0f, 0.0f, 0.0f}, rot, {2.0f, 2.0f, 2.0f}));
+
+    const SweepHit h = world.SweepCapsule(MakeCapsule({0.0f, 0.0f, 0.0f}), Vector3{3.0f, 0.0f, 0.0f});
+
+    EXPECT_TRUE(h.hit);
+    EXPECT_FLOAT_EQ(h.toi, 0.0f);
+    const float nLen = std::sqrt(h.normal.x * h.normal.x + h.normal.y * h.normal.y + h.normal.z * h.normal.z);
+    EXPECT_GT(nLen, 0.99f);
+}
+
+// Sphere に深く食い込んだ状態から始まると toi=0
+TEST(PhysicsWorldTest, SweepCapsuleOverlappingSphereReturnsZeroToi)
+{
+    PhysicsWorld world;
+    Sphere s;
+    s.center = Vector3{0.0f, 0.0f, 0.0f};
+    s.radius = 1.0f;
+    world.AddSphere(s);
+
+    const SweepHit h = world.SweepCapsule(MakeCapsule({0.0f, 0.0f, 0.0f}), Vector3{3.0f, 0.0f, 0.0f});
+
+    EXPECT_TRUE(h.hit);
+    EXPECT_FLOAT_EQ(h.toi, 0.0f);
+}
+
+// 別 capsule と重なった状態から始まると toi=0
+TEST(PhysicsWorldTest, SweepCapsuleOverlappingCapsuleReturnsZeroToi)
+{
+    PhysicsWorld world;
+    world.AddCapsule(MakeCapsule({0.0f, 0.0f, 0.0f}, 0.5f, 0.5f));
+
+    const SweepHit h = world.SweepCapsule(MakeCapsule({0.0f, 0.0f, 0.0f}), Vector3{3.0f, 0.0f, 0.0f});
+
+    EXPECT_TRUE(h.hit);
+    EXPECT_FLOAT_EQ(h.toi, 0.0f);
+}
+
 // ProbeGround: 真下の平 AABB を reach 内で拾う
 TEST(PhysicsWorldTest, ProbeGroundDetectsAabbBelow)
 {
