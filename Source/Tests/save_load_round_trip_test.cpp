@@ -3,10 +3,11 @@
 #include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/ChunkIO.h"
 #include "Game/Level/LevelData.h"
-#include "Game/Level/detail/crc32.h"
+#include "Game/Level/LevelJson.h"
 
 #include <cstring>
 #include <span>
+#include <variant>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -14,7 +15,7 @@
 namespace LevelNs = NS::Game::Level;
 namespace EditorNs = NS::Editor;
 
-TEST(SaveLoadRoundTrip, SaveAndReloadProducesIdenticalCrc)
+TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
 {
     EditorNs::EnsureLevelsDirectoryExists();
     auto path = EditorNs::BuildLevelPath("test_roundtrip");
@@ -73,6 +74,8 @@ TEST(SaveLoadRoundTrip, ShapeColliderAndDimensionsSurviveRoundTrip)
     EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsY, 0.7f);
 }
 
+// 正準 JSON は object キーが辞書順・float が shortest round-trip なので、 同一データの 2 回保存は
+// バイト一致する。 これがレベル差分の決定性 (git diff の安定) を担保する
 TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
 {
     EditorNs::EnsureLevelsDirectoryExists();
@@ -108,6 +111,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     auto bytes = NS::Core::FileSystem::ReadAllBytes(*path);
     ASSERT_TRUE(bytes.has_value());
     ASSERT_GE(bytes->size(), 1u);
+    // 先頭の '{' を壊すと JSON parse が失敗し、 load は false + 空 LevelData を返す
     (*bytes)[0] = std::byte{'X'};
     ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(*path, std::span<const std::byte>(*bytes)));
 
@@ -116,92 +120,95 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     EXPECT_TRUE(dst.objects.empty());
 }
 
+// object 数が上限を超えるレベルは保存段でクラッシュせず false を返す (memory exhaustion の DoS 防御)
+TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
+{
+    EditorNs::EnsureLevelsDirectoryExists();
+    auto path = EditorNs::BuildLevelPath("test_oversized");
+    ASSERT_TRUE(path.has_value());
+
+    LevelNs::LevelData huge;
+    huge.objects.resize(100'001); // 上限 100'000 を 1 件超過させる
+
+    EXPECT_FALSE(LevelNs::SaveLevelToFile(huge, *path));
+}
+
+// 型名 + 反射フィールド値 (全 5 変種) を持つコンポ一覧が save→load で復元される (full SSOT の往復)
+// フィールドは辞書順でない順に積み、 往復後も意味的に同一になることを確かめる。 並びは正準化 (名前昇順)
+// されるため等価判定は CRC ではなく正準 JSON の一致で行う
+TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
+{
+    EditorNs::EnsureLevelsDirectoryExists();
+    auto path = EditorNs::BuildLevelPath("test_components");
+    ASSERT_TRUE(path.has_value());
+
+    LevelNs::LevelData src;
+    LevelNs::ObjectInstance freeObject{};
+    freeObject.positionX = 1.5f;
+    freeObject.kind = NS::Game::Blocks::kBlockIdSolid;
+
+    LevelNs::ComponentData comp;
+    comp.typeName = "BoxColliderComponent";
+    comp.fields.push_back(LevelNs::FieldValue{"vHalf", NS::Math::Vector3{1.0f, 2.0f, 3.0f}});
+    comp.fields.push_back(LevelNs::FieldValue{"iCount", 7});
+    comp.fields.push_back(LevelNs::FieldValue{"bOn", true});
+    comp.fields.push_back(LevelNs::FieldValue{"fSpeed", 1.5f});
+    comp.fields.push_back(LevelNs::FieldValue{"fWhole", 4.0f}); // 整数値の float が int に化けないことを確かめる
+    freeObject.components.push_back(std::move(comp));
+    src.objects.push_back(std::move(freeObject));
+
+    ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
+
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
+
+    EXPECT_EQ(LevelNs::SerializeLevelToJson(dst), LevelNs::SerializeLevelToJson(src));
+
+    ASSERT_EQ(dst.objects.size(), 1u);
+    ASSERT_EQ(dst.objects[0].components.size(), 1u);
+    const auto& fields = dst.objects[0].components[0].fields;
+    EXPECT_EQ(dst.objects[0].components[0].typeName, "BoxColliderComponent");
+    ASSERT_EQ(fields.size(), 5u);
+
+    const auto find = [&fields](const char* name) -> const LevelNs::FieldValue* {
+        for (const auto& f : fields)
+            if (f.name == name)
+                return &f;
+        return nullptr;
+    };
+
+    const auto* vHalf = find("vHalf");
+    ASSERT_NE(vHalf, nullptr);
+    ASSERT_EQ(vHalf->value.index(), 3u);
+    EXPECT_FLOAT_EQ(std::get<NS::Math::Vector3>(vHalf->value).y, 2.0f);
+
+    const auto* iCount = find("iCount");
+    ASSERT_NE(iCount, nullptr);
+    ASSERT_EQ(iCount->value.index(), 1u); // int
+    EXPECT_EQ(std::get<int>(iCount->value), 7);
+
+    const auto* bOn = find("bOn");
+    ASSERT_NE(bOn, nullptr);
+    ASSERT_EQ(bOn->value.index(), 2u); // bool
+    EXPECT_TRUE(std::get<bool>(bOn->value));
+
+    const auto* fSpeed = find("fSpeed");
+    ASSERT_NE(fSpeed, nullptr);
+    ASSERT_EQ(fSpeed->value.index(), 0u); // float
+    EXPECT_FLOAT_EQ(std::get<float>(fSpeed->value), 1.5f);
+
+    const auto* fWhole = find("fWhole");
+    ASSERT_NE(fWhole, nullptr);
+    ASSERT_EQ(fWhole->value.index(), 0u); // 整数値でも float のまま
+    EXPECT_FLOAT_EQ(std::get<float>(fWhole->value), 4.0f);
+}
+
 TEST(SaveLoadRoundTrip, BuildLevelPathRejectsTraversal)
 {
     // path traversal が path 構築層で構造的に止まることを検証する
     EXPECT_FALSE(EditorNs::BuildLevelPath("../etc/passwd").has_value());
     EXPECT_FALSE(EditorNs::BuildLevelPath("..").has_value());
     EXPECT_FALSE(EditorNs::BuildLevelPath("a/b").has_value());
-}
-
-// 既知 chunk (META/BLKS/SPWN) と CRC3 の間に未知 chunk 'XXXX' を挿入しても、
-// v1 reader が unknown chunk を size 分 skip し、 既知 chunk の値を完全復元できることを検証
-// forward-compat の end-to-end 自動検証 (将来 DECO / ENMY 等を導入した
-// file を旧 reader に読ませた時の挙動を保証する)
-TEST(SaveLoadRoundTrip, ForwardCompatibleUnknownChunkSkip)
-{
-    EditorNs::EnsureLevelsDirectoryExists();
-    auto path = EditorNs::BuildLevelPath("test_forward");
-    ASSERT_TRUE(path.has_value());
-
-    LevelNs::LevelData src;
-    src.spawnX = 7;
-    src.spawnY = 3;
-    src.spawnZ = -1;
-    src.themeId = 5;
-    src.coinThreshold = 12;
-    src.timeLimitSeconds = 240;
-    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdSolid, 0));
-    src.objects.push_back(LevelNs::MakeGridObject(2, 1, 4, NS::Game::Blocks::kBlockIdSolid, 2));
-    ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
-
-    auto bytes = NS::Core::FileSystem::ReadAllBytes(*path);
-    ASSERT_TRUE(bytes.has_value());
-
-    constexpr std::size_t kCrc3ChunkBytes = 4 + 4 + 4;
-    ASSERT_GT(bytes->size(), kCrc3ChunkBytes);
-    const std::size_t insertOffset = bytes->size() - kCrc3ChunkBytes;
-
-    std::vector<std::byte> injected;
-    injected.reserve(bytes->size() + 16);
-    injected.insert(injected.end(), bytes->begin(), bytes->begin() + insertOffset);
-
-    constexpr std::byte unknownChunk[] = {
-        std::byte{'X'},
-        std::byte{'X'},
-        std::byte{'X'},
-        std::byte{'X'},
-        std::byte{8},
-        std::byte{0},
-        std::byte{0},
-        std::byte{0},
-        std::byte{0xDE},
-        std::byte{0xAD},
-        std::byte{0xBE},
-        std::byte{0xEF},
-        std::byte{0xCA},
-        std::byte{0xFE},
-        std::byte{0xBA},
-        std::byte{0xBE},
-    };
-    injected.insert(injected.end(), std::begin(unknownChunk), std::end(unknownChunk));
-
-    const std::uint32_t newCrc =
-        NS::Game::Level::detail::Crc32(std::span<const std::byte>(injected.data(), injected.size()));
-
-    constexpr std::byte crc3Header[] = {
-        std::byte{'C'},
-        std::byte{'R'},
-        std::byte{'C'},
-        std::byte{'3'},
-        std::byte{4},
-        std::byte{0},
-        std::byte{0},
-        std::byte{0},
-    };
-    injected.insert(injected.end(), std::begin(crc3Header), std::end(crc3Header));
-    for (int i = 0; i < 4; ++i)
-        injected.push_back(static_cast<std::byte>((newCrc >> (i * 8)) & 0xFF));
-
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(*path, std::span<const std::byte>(injected)));
-
-    LevelNs::LevelData dst;
-    ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
-    EXPECT_EQ(dst.ComputeCrc32(), src.ComputeCrc32());
-    ASSERT_EQ(dst.objects.size(), 2u);
-    EXPECT_EQ(dst.spawnX, 7);
-    EXPECT_EQ(dst.spawnY, 3);
-    EXPECT_EQ(dst.spawnZ, -1);
 }
 
 // 統一配置物 (ObjectInstance) と material 文字列表が round-trip で完全復元できることを検証する

@@ -266,3 +266,50 @@ TEST_F(BuildPlacedObjectTest, FreeBoxWorldAabbReflectsPositionAndHalfExtents)
     EXPECT_NEAR(aabb.Extents.y, 2.0f, 1e-4f);
     EXPECT_NEAR(aabb.Extents.z, 3.0f, 1e-4f);
 }
+
+// components 一覧を持つ object は registry でコンポを生成し、 反射 set でフィールドが入る (full SSOT 主経路)
+TEST_F(BuildPlacedObjectTest, ComponentsDriveBuild)
+{
+    ObjectInstance object;
+    object.kind = kBlockIdSolid;
+    object.flags = 0;
+
+    NS::Game::Level::ComponentData box;
+    box.typeName = "BoxColliderComponent";
+    box.fields.push_back(NS::Game::Level::FieldValue{"Half Extents", Vector3{1.0f, 2.0f, 3.0f}});
+    object.components.push_back(std::move(box));
+
+    auto obj = Build(object);
+    ASSERT_NE(obj, nullptr);
+    auto* boxComp = FindComponent<NS::Scene::BoxColliderComponent>(*obj);
+    ASSERT_NE(boxComp, nullptr);
+    const Vector3 half = boxComp->HalfExtents();
+    EXPECT_FLOAT_EQ(half.x, 1.0f);
+    EXPECT_FLOAT_EQ(half.y, 2.0f);
+    EXPECT_FLOAT_EQ(half.z, 3.0f);
+}
+
+// components が空の grid object は従来 kind 駆動へフォールバックする (旧データ互換)
+TEST_F(BuildPlacedObjectTest, EmptyComponentsFallsBackToKind)
+{
+    ObjectInstance object = MakeGrid(kBlockIdSolid);
+    ASSERT_TRUE(object.components.empty());
+
+    auto obj = Build(object);
+    ASSERT_NE(obj, nullptr);
+    EXPECT_TRUE(Has<NS::Scene::MeshRendererComponent>(*obj));
+    EXPECT_TRUE(Has<NS::Scene::BoxColliderComponent>(*obj));
+}
+
+// material asset path に .. を含む値は ContentRoot 外解決を拒否し、 共有 fallback へ倒れてクラッシュしない
+TEST_F(BuildPlacedObjectTest, AssetPathTraversalRejectedFallsBackToDefault)
+{
+    ObjectInstance object = MakeFree(ShapeCollider::Box);
+    object.materialIndex = 0;
+    std::vector<std::string> traversalPaths = {"../evil.mat"};
+
+    auto obj = BuildPlacedObject(object, m_assets, traversalPaths);
+    ASSERT_NE(obj, nullptr);
+    EXPECT_TRUE(Has<NS::Scene::MeshRendererComponent>(*obj));
+    EXPECT_TRUE(Has<NS::Scene::BoxColliderComponent>(*obj));
+}
