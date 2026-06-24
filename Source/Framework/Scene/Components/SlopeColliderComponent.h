@@ -8,7 +8,7 @@
 /// 斜面のみだと側面 / 裏 / 底から capsule がめり込むため全面を登録する
 /// LevelPlayScene 側でこれを集約して `CharacterControllerInput::worldTriangles`
 /// 経由で physics に渡す
-/// 角度・半サイズはコンストラクタで確定する data として保持し、 v2 で任意角度に拡張する余地を残す
+/// 角度・半サイズは反射 set で編集でき、 WorldTriangles が member を都度読むため形状の再生成は要らない
 
 #include "Framework/Math/Math.h"
 #include "Framework/Physics/SweptTriangle.h"
@@ -33,6 +33,12 @@ namespace NS::Scene
 
         /// world 座標の wedge 三角形 8 個 (斜面2+底2+裏壁2+側面各1)。Owner 未登録なら local 座標版
         [[nodiscard]] std::array<NS::Physics::Triangle, 8> WorldTriangles() const noexcept;
+
+        // 角度・半サイズを Inspector / 直列化へ公開する。 WorldTriangles は member を都度読むため set で即反映する
+        NS_REFLECT_BEGIN(SlopeColliderComponent)
+        NS_REFLECT_FIELD(m_angleDegrees, "Angle (deg)")
+        NS_REFLECT_FIELD(m_halfExtents, "Half Extents")
+        NS_REFLECT_END()
 
     private:
         float m_angleDegrees = 45.0f;

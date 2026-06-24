@@ -63,12 +63,14 @@ TEST(ComponentRegistryTest, CreatesEachCuratedType)
 
 TEST(ComponentRegistryTest, CreatedTypeNameMatchesReflection)
 {
-    // 反射を持つ curated 型は反射 typeName が登録キーと一致する (JSON の type キーと整合)
+    // curated 型はいずれも反射 typeName が登録キーと一致する (JSON の type キーと整合)
     const char* kReflected[] = {
         "BoxColliderComponent",
         "SphereColliderComponent",
         "CapsuleColliderComponent",
+        "SlopeColliderComponent",
         "PoleComponent",
+        "HazardComponent",
         "MeshRendererComponent",
     };
     for (const char* name : kReflected)
@@ -79,21 +81,6 @@ TEST(ComponentRegistryTest, CreatedTypeNameMatchesReflection)
         const ReflectionInfo* info = comp->GetReflection();
         ASSERT_NE(info, nullptr) << name;
         EXPECT_STREQ(info->typeName, name);
-    }
-}
-
-TEST(ComponentRegistryTest, SlopeAndHazardHaveNoReflectionYet)
-{
-    // 両型は現状 GetReflection() が nullptr で、 登録キーと typeName の一致を機械検証できない
-    // 反射を後から追加するとこの tripwire が落ちるので、 その時点で両型を
-    // CreatedTypeNameMatchesReflection の一覧へ移し typeName 一致を検証すること
-    const char* kUnreflected[] = {"SlopeColliderComponent", "HazardComponent"};
-    for (const char* name : kUnreflected)
-    {
-        GameObject obj;
-        Component* comp = CreateComponent(name, obj);
-        ASSERT_NE(comp, nullptr) << name;
-        EXPECT_EQ(comp->GetReflection(), nullptr) << name;
     }
 }
 

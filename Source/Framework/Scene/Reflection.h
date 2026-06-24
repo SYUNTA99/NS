@@ -103,3 +103,11 @@ namespace NS::Scene
     static const NS::Scene::ReflectionInfo kInfo{kTypeName, kFields, sizeof(kFields) / sizeof(kFields[0])};            \
     return &kInfo;                                                                                                     \
     }
+
+/// 調整フィールドを持たない型用。typeName だけの反射情報を返す (空配列は ill-formed なので fields は nullptr)
+#define NS_REFLECT_NONE(ThisType)                                                                                      \
+    [[nodiscard]] const NS::Scene::ReflectionInfo* GetReflection() const noexcept override                             \
+    {                                                                                                                  \
+        static constexpr NS::Scene::ReflectionInfo kInfo{#ThisType, nullptr, 0};                                       \
+        return &kInfo;                                                                                                 \
+    }

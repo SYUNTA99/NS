@@ -26,5 +26,8 @@ namespace NS::Scene
 
         /// overlap 検出 frame で呼ぶ。playerHealth を 1 減算 (下限 0)、0 到達で deathTriggered=true
         void OnPlayerOverlap(NS::Game::Level::PlayState& playState) noexcept;
+
+        // 調整できるフィールドは無いが、 反射 typeName を持たせて type と空 fields で直列化できるようにする
+        NS_REFLECT_NONE(HazardComponent)
     };
 } // namespace NS::Scene
