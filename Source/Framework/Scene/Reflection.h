@@ -13,6 +13,7 @@
 #include "Framework/Math/Math.h"
 
 #include <cstddef>
+#include <string>
 #include <type_traits>
 
 namespace NS::Scene
@@ -25,21 +26,24 @@ namespace NS::Scene
         Float,
         Int,
         Bool,
-        Vector3
+        Vector3,
+        String
     };
 
     /// メンバ型 → FieldType タグの写像。マクロが型タグを自動推論するのに使う (未対応型はここで弾く)
     template <class T> constexpr FieldType FieldTypeOf() noexcept
     {
         static_assert(std::is_same_v<T, float> || std::is_same_v<T, int> || std::is_same_v<T, bool> ||
-                          std::is_same_v<T, NS::Math::Vector3>,
-                      "reflection: 未対応のフィールド型 (Float / Int / Bool / Vector3 のみ)");
+                          std::is_same_v<T, NS::Math::Vector3> || std::is_same_v<T, std::string>,
+                      "reflection: 未対応のフィールド型 (Float / Int / Bool / Vector3 / String のみ)");
         if constexpr (std::is_same_v<T, float>)
             return FieldType::Float;
         else if constexpr (std::is_same_v<T, int>)
             return FieldType::Int;
         else if constexpr (std::is_same_v<T, bool>)
             return FieldType::Bool;
+        else if constexpr (std::is_same_v<T, std::string>)
+            return FieldType::String;
         else
             return FieldType::Vector3;
     }
