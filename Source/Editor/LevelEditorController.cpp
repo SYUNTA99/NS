@@ -402,16 +402,16 @@ void LevelEditorController::RefreshGizmoSelectables()
     m_selectableHalfExtents.reserve(m_scene->m_objects.size());
 
     // free / grid の別は ObjectInstance の flags/kind で決まる。 runtime list は 1 本
-    // 自由配置物を先に積む。 scale 付きなので pick box の halfExtents にスケールを乗せる
+    // 自由配置物を先に積む。 pick OBB は Root().WorldMatrix() が scale 込みで持ち、 判定は
+    // 逆変換した unit ローカル空間で行う。 ここで halfExtents に scale を乗せると二重適用になり、
+    // 拡大した配置物の判定箱が scale^2 に膨らんで近くの grid クリックを先に奪うので unit のまま渡す
     for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
         const NS::Game::Level::ObjectInstance& entry = m_scene->m_level.objects[m_scene->m_objectSourceIndices[i]];
         if ((entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
             continue;
-        const NS::Math::Vector3 scale = m_scene->m_objects[i]->Root().Scale();
         m_selectablePtrs.push_back(m_scene->m_objects[i].get());
-        m_selectableHalfExtents.push_back(NS::Math::Vector3{
-            kCellHalfExtents.x * scale.x, kCellHalfExtents.y * scale.y, kCellHalfExtents.z * scale.z});
+        m_selectableHalfExtents.push_back(kCellHalfExtents);
     }
 
     // grid solid も掴める。 掴むと PromoteGridBlockToFree で自由オブジェクトに変わる (slope/pole 等は対象外)
