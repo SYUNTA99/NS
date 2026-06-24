@@ -4,9 +4,10 @@
 /// @brief NS::Editor::GizmoEditor — Object モードの選択 + Maya 風変形ギズモ
 ///
 /// @details LevelData に属さない自由 Transform オブジェクトを Q/W/E/R の 4 ツールで
-/// 選択・移動・回転・スケールする。描画から独立して検証できるよう view-projection 行列と
-/// viewport を Tick / Render に注入し、変形算出は静的純関数へ切り出す。undo は grid 系の
-/// UndoStack とは別の TransformHistory で持ち、入力はツールモードで grid 系と排他にする
+/// 選択・移動・回転・スケールする。変形軸は選択物の local 座標系に追従する (ハンドルの向き・
+/// 移動方向・回転リング・スケール方向すべて選択物の回転で回す)。描画から独立して検証できるよう
+/// view-projection 行列と viewport を Tick / Render に注入し、変形算出は静的純関数へ切り出す。undo は
+/// grid 系の UndoStack とは別の TransformHistory で持ち、入力はツールモードで grid 系と排他にする
 /// 依存: NS::Math, NS::Scene::Transform / GameObject, NS::Platform::Input / Key, NS::UI::ImGuiContext
 
 #include "Framework/Math/Math.h"
@@ -40,6 +41,14 @@ namespace NS::Editor
         Move,
         Rotate,
         Scale
+    };
+
+    /// 変形の座標系 (X キーで切替)。Move / Rotate のみ従い、 Scale は常に Local 固定
+    /// (非一様 world スケールは TRS で表現できないため)
+    enum class GizmoSpace : std::uint8_t
+    {
+        Local,
+        World
     };
 
     /// ギズモのハンドル軸。Uniform は scale 中心ハンドル (全軸均一)
@@ -83,6 +92,14 @@ namespace NS::Editor
         void SetActive(bool active) noexcept { m_active = active; }
         [[nodiscard]] bool IsActive() const noexcept { return m_active; }
 
+        /// 変形座標系 (Local / World)。Move / Rotate のみ従い Scale は常に Local
+        void SetSpace(GizmoSpace space) noexcept { m_space = space; }
+        [[nodiscard]] GizmoSpace Space() const noexcept { return m_space; }
+        void ToggleSpace() noexcept
+        {
+            m_space = (m_space == GizmoSpace::Local) ? GizmoSpace::World : GizmoSpace::Local;
+        }
+
         /// fixed step: ツール切替 → ピック → ドラッグ → 確定。vp / viewport は外部注入
         void Tick(const NS::Math::Matrix& viewProjection, NS::Math::Size2D viewport) noexcept;
 
@@ -115,28 +132,33 @@ namespace NS::Editor
                                                 std::span<const NS::Math::Matrix> worldMatrices,
                                                 std::span<const NS::Math::Vector3> localHalfExtents) noexcept;
 
-        /// 軸を含む平面と ray の交点から、軸成分のみ反映した新 position を返す
+        /// 選択物の local 軸 (rotation で回した方向) を含む平面と ray の交点から、軸成分のみ反映した新 position を返す
         [[nodiscard]] static NS::Math::Vector3 ComputeAxisMove(const NS::Math::Vector3& startPos,
                                                                GizmoAxis axis,
+                                                               const NS::Math::Quaternion& rotation,
                                                                const NS::Math::Ray& rayStart,
                                                                const NS::Math::Ray& rayNow,
                                                                bool snap) noexcept;
 
         /// 回転リングのドラッグを軸まわりの回転角 (rad) に変換する
-        /// screenStart / screenEnd のカーソル ray を軸直交平面に当て、 掴んだ点が運ばれた角を測る
+        /// 軸は選択物の local 軸 (rotation で回した方向)。screenStart / screenEnd のカーソル ray を
+        /// 軸直交平面に当て、 掴んだ点が運ばれた角を測る
         /// screen 2D 角と違いカメラがどちら側から見ても符号が反転せず、 平面を真横から見る縮退時は 0
         [[nodiscard]] static float WorldDragToAngle(const NS::Math::Vector3& origin,
                                                     GizmoAxis axis,
+                                                    const NS::Math::Quaternion& rotation,
                                                     const NS::Math::Matrix& viewProjection,
                                                     NS::Math::Size2D viewport,
                                                     NS::Math::Vector2 screenStart,
                                                     NS::Math::Vector2 screenEnd) noexcept;
 
         /// startRot を axis 周りに angleRad 回した新 rotation を返す
+        /// worldSpace=false は選択物の local 軸、true は world 軸で回す (合成基準は常に startRot)
         [[nodiscard]] static NS::Math::Quaternion ComputeAxisRotate(const NS::Math::Quaternion& startRot,
                                                                     GizmoAxis axis,
                                                                     float angleRad,
-                                                                    bool snap) noexcept;
+                                                                    bool snap,
+                                                                    bool worldSpace = false) noexcept;
 
         /// 軸方向の screen ドラッグ量をスケール変化量に変換する
         [[nodiscard]] static float ScreenDragToScaleAmount(NS::Math::Vector2 axisDir2d,
@@ -151,9 +173,10 @@ namespace NS::Editor
         /// Q/W/E/R をツールに対応付ける。対象外キーは current を素通しする
         [[nodiscard]] static GizmoTool ToolForKey(GizmoTool current, NS::Platform::Key key) noexcept;
 
-        /// gizmoOrigin と 3 軸端点を screen 投影し、mouse2d に最も近い軸ハンドルを返す
+        /// gizmoOrigin と 3 軸端点 (rotation で回した local 軸) を screen 投影し、mouse2d に最も近い軸ハンドルを返す
         /// Select は常に None、Scale は中心 Uniform ハンドルを優先、閾値外/不正 viewport は None
         [[nodiscard]] static GizmoAxis ToolHandlePick(const NS::Math::Vector3& gizmoOrigin,
+                                                      const NS::Math::Quaternion& rotation,
                                                       GizmoTool tool,
                                                       NS::Math::Vector2 mouse2d,
                                                       const NS::Math::Matrix& viewProjection,
@@ -179,6 +202,7 @@ namespace NS::Editor
         std::span<const NS::Math::Vector3> m_halfExtents{};
         bool m_active = false;
         GizmoTool m_tool = GizmoTool::Select;
+        GizmoSpace m_space = GizmoSpace::Local;
         NS::Scene::Transform* m_selected = nullptr;
 
         bool m_dragging = false;
