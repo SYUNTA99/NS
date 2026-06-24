@@ -1,6 +1,8 @@
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
 
+#include "Framework/Math/Math.h"
+
 #include <gtest/gtest.h>
 
 namespace LevelNs = NS::Game::Level;
@@ -97,4 +99,41 @@ TEST(LevelDataCrcTest, VectorCapacityDoesNotAffectCrc)
     b.objects.reserve(1000);
     b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
     EXPECT_EQ(a.ComputeCrc32(), b.ComputeCrc32());
+}
+
+TEST(LevelDataComponents, ComponentDataHoldsTypeNameAndFields)
+{
+    LevelNs::ComponentData cd;
+    cd.typeName = "BoxColliderComponent";
+    cd.fields.push_back(LevelNs::FieldValue{"Half Extents", NS::Math::Vector3{0.5f, 0.5f, 0.5f}});
+    cd.fields.push_back(LevelNs::FieldValue{"Radius", 1.0f});
+
+    EXPECT_EQ(cd.typeName, "BoxColliderComponent");
+    ASSERT_EQ(cd.fields.size(), 2u);
+    EXPECT_EQ(cd.fields[0].name, "Half Extents");
+    EXPECT_EQ(cd.fields[1].name, "Radius");
+}
+
+TEST(LevelDataComponents, ObjectInstanceCopyIsDeep)
+{
+    LevelNs::ObjectInstance a{};
+    a.components.push_back(LevelNs::ComponentData{"HazardComponent", {}});
+
+    LevelNs::ObjectInstance b = a;
+    b.components.clear();
+
+    EXPECT_EQ(a.components.size(), 1u);
+    EXPECT_EQ(b.components.size(), 0u);
+}
+
+TEST(LevelDataComponents, Crc32ChangesWhenComponentAdded)
+{
+    LevelNs::LevelData a, b;
+    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+
+    LevelNs::ObjectInstance withComponent = LevelNs::MakeGridObject(0, 0, 0, 1, 0);
+    withComponent.components.push_back(LevelNs::ComponentData{"HazardComponent", {}});
+    b.objects.push_back(withComponent);
+
+    EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
 }

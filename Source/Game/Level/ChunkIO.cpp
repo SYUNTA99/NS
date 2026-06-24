@@ -56,6 +56,105 @@ namespace NS::Game::Level
             static_assert(std::is_trivially_copyable_v<T>, "AppendPod expects trivially copyable type");
             AppendBytes(buf, &value, sizeof(T));
         }
+
+        /// ObjectInstance のスカラ部だけを写した 88-byte の I/O DTO
+        /// 脱 POD 後も binary I/O のバイト列を従来と一致させるための暫定表現で、 レベル保存を JSON へ移行し
+        /// 旧 .nslvl を全て移行し終えたら撤去する。 フィールド順・型は脱 POD 前の ObjectInstance と同一
+        /// ObjectInstance にスカラを足したら下の static_assert で検知する
+        struct ObjectRecordV2
+        {
+            float positionX;
+            float positionY;
+            float positionZ;
+            float rotationX;
+            float rotationY;
+            float rotationZ;
+            float rotationW;
+            float scaleX;
+            float scaleY;
+            float scaleZ;
+            std::uint16_t kind;
+            std::int16_t materialIndex;
+            std::uint8_t flags;
+            std::uint8_t shapeCollider;
+            std::uint16_t reserved1;
+            float colliderHalfExtentsX;
+            float colliderHalfExtentsY;
+            float colliderHalfExtentsZ;
+            float colliderOffsetX;
+            float colliderOffsetY;
+            float colliderOffsetZ;
+            float colliderRotationX;
+            float colliderRotationY;
+            float colliderRotationZ;
+            float colliderRotationW;
+        };
+        static_assert(sizeof(ObjectRecordV2) == 88,
+                      "ObjectRecordV2 must match the legacy 88-byte ObjectInstance layout");
+        static_assert(std::is_trivially_copyable_v<ObjectRecordV2>,
+                      "ObjectRecordV2 must be trivially copyable for I/O");
+        // ObjectInstance はスカラ 88 byte と components の vector だけ、 という前提を縛る。 スカラを 1 つ足すと
+        // この等式が崩れてここで落ち、 ObjectRecordV2/ToRecord/FromRecord の同期忘れを compile time に検知できる
+        static_assert(sizeof(ObjectInstance) == sizeof(ObjectRecordV2) + sizeof(std::vector<ComponentData>),
+                      "ObjectInstance scalar block must stay 88 bytes; sync ObjectRecordV2/ToRecord/FromRecord");
+
+        ObjectRecordV2 ToRecord(const ObjectInstance& o) noexcept
+        {
+            return ObjectRecordV2{o.positionX,
+                                  o.positionY,
+                                  o.positionZ,
+                                  o.rotationX,
+                                  o.rotationY,
+                                  o.rotationZ,
+                                  o.rotationW,
+                                  o.scaleX,
+                                  o.scaleY,
+                                  o.scaleZ,
+                                  o.kind,
+                                  o.materialIndex,
+                                  o.flags,
+                                  o.shapeCollider,
+                                  o.reserved1,
+                                  o.colliderHalfExtentsX,
+                                  o.colliderHalfExtentsY,
+                                  o.colliderHalfExtentsZ,
+                                  o.colliderOffsetX,
+                                  o.colliderOffsetY,
+                                  o.colliderOffsetZ,
+                                  o.colliderRotationX,
+                                  o.colliderRotationY,
+                                  o.colliderRotationZ,
+                                  o.colliderRotationW};
+        }
+
+        void FromRecord(const ObjectRecordV2& r, ObjectInstance& o) noexcept
+        {
+            o.positionX = r.positionX;
+            o.positionY = r.positionY;
+            o.positionZ = r.positionZ;
+            o.rotationX = r.rotationX;
+            o.rotationY = r.rotationY;
+            o.rotationZ = r.rotationZ;
+            o.rotationW = r.rotationW;
+            o.scaleX = r.scaleX;
+            o.scaleY = r.scaleY;
+            o.scaleZ = r.scaleZ;
+            o.kind = r.kind;
+            o.materialIndex = r.materialIndex;
+            o.flags = r.flags;
+            o.shapeCollider = r.shapeCollider;
+            o.reserved1 = r.reserved1;
+            o.colliderHalfExtentsX = r.colliderHalfExtentsX;
+            o.colliderHalfExtentsY = r.colliderHalfExtentsY;
+            o.colliderHalfExtentsZ = r.colliderHalfExtentsZ;
+            o.colliderOffsetX = r.colliderOffsetX;
+            o.colliderOffsetY = r.colliderOffsetY;
+            o.colliderOffsetZ = r.colliderOffsetZ;
+            o.colliderRotationX = r.colliderRotationX;
+            o.colliderRotationY = r.colliderRotationY;
+            o.colliderRotationZ = r.colliderRotationZ;
+            o.colliderRotationW = r.colliderRotationW;
+        }
     } // namespace
 
     // ---------------------------------------------------------------- ChunkWriter
@@ -359,9 +458,11 @@ namespace NS::Game::Level
         }
         const std::uint32_t objectCount = static_cast<std::uint32_t>(level.objects.size());
         writer.Write(&objectCount, sizeof(objectCount));
-        if (objectCount > 0)
+        for (const auto& object : level.objects)
         {
-            writer.Write(level.objects.data(), objectCount * sizeof(ObjectInstance));
+            // components はこの暫定 binary I/O では落とす
+            const ObjectRecordV2 record = ToRecord(object);
+            writer.Write(&record, sizeof(record));
         }
         if (!writer.EndChunk())
         {
@@ -507,9 +608,9 @@ namespace NS::Game::Level
             constexpr std::size_t kObjectRecordV0Bytes = 48;
             constexpr std::size_t kObjectRecordV1Bytes = 60;
             const std::size_t recordBytes =
-                (objectCount > 0) ? (size - sizeof(objectCount)) / objectCount : sizeof(ObjectInstance);
+                (objectCount > 0) ? (size - sizeof(objectCount)) / objectCount : sizeof(ObjectRecordV2);
             const std::size_t expectedDataBytes = objectCount * recordBytes;
-            const bool knownRecord = (recordBytes == sizeof(ObjectInstance) || recordBytes == kObjectRecordV1Bytes ||
+            const bool knownRecord = (recordBytes == sizeof(ObjectRecordV2) || recordBytes == kObjectRecordV1Bytes ||
                                       recordBytes == kObjectRecordV0Bytes);
             if (!knownRecord || expectedDataBytes + sizeof(objectCount) != size)
             {
@@ -521,16 +622,16 @@ namespace NS::Game::Level
                 outLevel = LevelData{};
                 return false;
             }
-            outLevel.objects.resize(objectCount); // 新フィールドは default で埋まる
-            if (objectCount > 0 && recordBytes == sizeof(ObjectInstance))
+            outLevel.objects.resize(objectCount);
+            // 既定値入りの record に先頭 recordBytes だけ上書きする。 V0/V1 は現行レイアウトの
+            // 先頭 prefix なので不足分は ObjectInstance の default が残る
+            // components はこの暫定 binary I/O では常に空
+            const ObjectRecordV2 defaults = ToRecord(ObjectInstance{});
+            for (std::uint32_t i = 0; i < objectCount; ++i)
             {
-                reader.Read(outLevel.objects.data(), expectedDataBytes);
-            }
-            else
-            {
-                // 旧 prefix を 1 件ずつ読む (48 / 60 とも現行レイアウトの先頭 prefix なのでそのまま載る)
-                for (std::uint32_t i = 0; i < objectCount; ++i)
-                    reader.Read(&outLevel.objects[i], recordBytes);
+                ObjectRecordV2 record = defaults;
+                reader.Read(&record, recordBytes);
+                FromRecord(record, outLevel.objects[i]);
             }
         }
 

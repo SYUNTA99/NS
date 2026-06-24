@@ -9,9 +9,12 @@
 /// `ComputeCrc32()` は field 単位の明示 update なので vector capacity 等の内部 padding
 /// に依存せず、 同一データに対して常に同じ値を返す
 
+#include "Framework/Math/Math.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace NS::Game::Level
@@ -42,7 +45,28 @@ namespace NS::Game::Level
         Mesh = 3,
     };
 
-    /// 配置物の永続表現 (88 byte、 natural alignment、 padding なし)
+    /// 反射 1 フィールドの永続値。 name は反射フィールド名、 value の代替型は FieldType と 1:1
+    struct FieldValue
+    {
+        std::string name;
+        /// 変種の宣言順に ComputeCrc32 と operator== の switch が依存する。 増減・並べ替え時は両方を直す
+        std::variant<float, int, bool, NS::Math::Vector3, std::string> value;
+
+        /// variant の Vector3 代替が operator== を持たないため代替ごとに明示比較する
+        [[nodiscard]] bool operator==(const FieldValue& other) const noexcept;
+    };
+
+    /// 1 コンポーネントの永続表現。 型名 + 反射フィールド値一覧
+    struct ComponentData
+    {
+        std::string typeName;
+        std::vector<FieldValue> fields;
+
+        /// fields 比較は FieldValue::operator== に委譲される
+        [[nodiscard]] bool operator==(const ComponentData& other) const = default;
+    };
+
+    /// 配置物の永続表現。 コンポーネント一覧を内包する full SSOT 表現
     /// grid block も自由配置物も同じ型で 1 リストに格納する。 grid かどうかは flags の bit0 で区別する
     /// position / rotation(quaternion) / scale をフル保持し、 kind は BlockRegistry の blockId を流用する
     /// materialIndex は `LevelData::materialPaths` への添字、 -1 は kind 既定マテリアルを表す
@@ -77,11 +101,12 @@ namespace NS::Game::Level
         float colliderRotationY = 0.0f;
         float colliderRotationZ = 0.0f;
         float colliderRotationW = 1.0f;
+
+        /// このオブジェクトが持つコンポーネント一覧。 full SSOT のコンポ構成
+        std::vector<ComponentData> components;
+
+        [[nodiscard]] bool operator==(const ObjectInstance& other) const = default;
     };
-    static_assert(sizeof(ObjectInstance) == 88,
-                  "ObjectInstance must be 88 bytes (20×float + uint16 + int16 + 2×uint8 + uint16)");
-    static_assert(std::is_trivially_copyable_v<ObjectInstance>,
-                  "ObjectInstance must be trivially copyable for memcpy I/O");
 
     /// エリア進入で切り替わる据え置きカメラ 1 件の永続表現 (56 byte、 natural alignment、 padding なし)
     /// camera* がカメラ視点、 trigger* がプレイヤー進入を判定する AABB (中心 + 半径)

@@ -883,7 +883,7 @@ void LevelEditorController::CommitTransformEdit() noexcept
         break;
     }
 
-    if (std::memcmp(&after, &m_editBaseline, sizeof(NS::Game::Level::ObjectInstance)) == 0)
+    if (after == m_editBaseline)
         return;
 
     // model を after に確定してから push する。 Push の Do は model == after なので no-op で履歴記録のみ

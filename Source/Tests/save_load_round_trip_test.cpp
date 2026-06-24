@@ -293,7 +293,7 @@ TEST(SaveLoadRoundTrip, MigrateBlocksToObjectsMapsCells)
     EXPECT_FLOAT_EQ(level.objects[0].scaleX, 1.0f);
     EXPECT_EQ(level.objects[0].kind, NS::Game::Blocks::kBlockIdSolid);
     EXPECT_EQ(level.objects[0].materialIndex, -1);
-    EXPECT_NE(level.objects[0].flags & LevelNs::kObjectFlagGridAligned, 0u);
+    EXPECT_NE(level.objects[0].flags & LevelNs::kObjectFlagGridAligned, 0);
 
     EXPECT_FLOAT_EQ(level.objects[1].positionX, -4.0f);
     EXPECT_EQ(level.objects[1].kind, NS::Game::Blocks::kBlockIdSlope45);

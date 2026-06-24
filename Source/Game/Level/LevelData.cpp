@@ -17,7 +17,114 @@ namespace NS::Game::Level
             const auto* raw = reinterpret_cast<const std::byte*>(&value);
             return detail::Crc32Update(crc, std::span<const std::byte>(raw, sizeof(T)));
         }
+
+        /// 長さ prefix + 中身バイトで文字列を hash する
+        std::uint32_t UpdateWithString(std::uint32_t crc, const std::string& text) noexcept
+        {
+            crc = UpdateWith(crc, static_cast<std::uint64_t>(text.size()));
+            if (!text.empty())
+            {
+                const auto* raw = reinterpret_cast<const std::byte*>(text.data());
+                crc = detail::Crc32Update(crc, std::span<const std::byte>(raw, text.size()));
+            }
+            return crc;
+        }
+
+        /// FieldValue を「名前 + variant tag + 値」の順で hash する。 順序固定で決定的
+        /// case の数値は FieldValue::value の変種宣言順に対応する
+        /// 変種を増減・並べ替えるときは FieldValue::operator== の switch と必ず一緒に直すこと
+        std::uint32_t UpdateWithFieldValue(std::uint32_t crc, const FieldValue& field) noexcept
+        {
+            crc = UpdateWithString(crc, field.name);
+            crc = UpdateWith(crc, static_cast<std::uint8_t>(field.value.index()));
+            switch (field.value.index())
+            {
+            case 0:
+                return UpdateWith(crc, std::get<float>(field.value));
+            case 1:
+                return UpdateWith(crc, std::get<int>(field.value));
+            case 2:
+                return UpdateWith(crc, std::get<bool>(field.value));
+            case 3:
+                return UpdateWith(crc, std::get<NS::Math::Vector3>(field.value));
+            case 4:
+                return UpdateWithString(crc, std::get<std::string>(field.value));
+            default:
+                // valueless_by_exception 等の想定外 index。 tag は hash 済なので値は足さない
+                return crc;
+            }
+        }
+
+        /// ObjectInstance のスカラ部を宣言順で hash し、 続けて components を hash する
+        /// components が空なら何も足さないため、 旧データの CRC は脱 POD 前と一致する
+        std::uint32_t UpdateWithObject(std::uint32_t crc, const ObjectInstance& object) noexcept
+        {
+            crc = UpdateWith(crc, object.positionX);
+            crc = UpdateWith(crc, object.positionY);
+            crc = UpdateWith(crc, object.positionZ);
+            crc = UpdateWith(crc, object.rotationX);
+            crc = UpdateWith(crc, object.rotationY);
+            crc = UpdateWith(crc, object.rotationZ);
+            crc = UpdateWith(crc, object.rotationW);
+            crc = UpdateWith(crc, object.scaleX);
+            crc = UpdateWith(crc, object.scaleY);
+            crc = UpdateWith(crc, object.scaleZ);
+            crc = UpdateWith(crc, object.kind);
+            crc = UpdateWith(crc, object.materialIndex);
+            crc = UpdateWith(crc, object.flags);
+            crc = UpdateWith(crc, object.shapeCollider);
+            crc = UpdateWith(crc, object.reserved1);
+            crc = UpdateWith(crc, object.colliderHalfExtentsX);
+            crc = UpdateWith(crc, object.colliderHalfExtentsY);
+            crc = UpdateWith(crc, object.colliderHalfExtentsZ);
+            crc = UpdateWith(crc, object.colliderOffsetX);
+            crc = UpdateWith(crc, object.colliderOffsetY);
+            crc = UpdateWith(crc, object.colliderOffsetZ);
+            crc = UpdateWith(crc, object.colliderRotationX);
+            crc = UpdateWith(crc, object.colliderRotationY);
+            crc = UpdateWith(crc, object.colliderRotationZ);
+            crc = UpdateWith(crc, object.colliderRotationW);
+
+            for (const auto& component : object.components)
+            {
+                crc = UpdateWithString(crc, component.typeName);
+                crc = UpdateWith(crc, static_cast<std::uint64_t>(component.fields.size()));
+                for (const auto& field : component.fields)
+                {
+                    crc = UpdateWithFieldValue(crc, field);
+                }
+            }
+            return crc;
+        }
     } // namespace
+
+    bool FieldValue::operator==(const FieldValue& other) const noexcept
+    {
+        if (name != other.name || value.index() != other.value.index())
+        {
+            return false;
+        }
+        switch (value.index())
+        {
+        case 0:
+            return std::get<float>(value) == std::get<float>(other.value);
+        case 1:
+            return std::get<int>(value) == std::get<int>(other.value);
+        case 2:
+            return std::get<bool>(value) == std::get<bool>(other.value);
+        case 3:
+        {
+            const auto& a = std::get<NS::Math::Vector3>(value);
+            const auto& b = std::get<NS::Math::Vector3>(other.value);
+            return a.x == b.x && a.y == b.y && a.z == b.z;
+        }
+        case 4:
+            return std::get<std::string>(value) == std::get<std::string>(other.value);
+        default:
+            // 両者 index 一致を確認済なので、 valueless 同士など想定外 index は等しくないとみなす
+            return false;
+        }
+    }
 
     std::uint32_t LevelData::ComputeCrc32() const noexcept
     {
@@ -26,11 +133,9 @@ namespace NS::Game::Level
         // objects の論理 size を先に hash しておくと「append したら CRC 必ず変わる」 を保証できる
         const std::uint64_t objectCount = static_cast<std::uint64_t>(objects.size());
         crc = UpdateWith(crc, objectCount);
-        if (!objects.empty())
+        for (const auto& object : objects)
         {
-            const auto* raw = reinterpret_cast<const std::byte*>(objects.data());
-            const std::size_t size = objects.size() * sizeof(ObjectInstance);
-            crc = detail::Crc32Update(crc, std::span<const std::byte>(raw, size));
+            crc = UpdateWithObject(crc, object);
         }
 
         const std::uint64_t cameraVolumeCount = static_cast<std::uint64_t>(cameraVolumes.size());
@@ -46,13 +151,7 @@ namespace NS::Game::Level
         crc = UpdateWith(crc, materialCount);
         for (const auto& materialPath : materialPaths)
         {
-            const std::uint64_t length = static_cast<std::uint64_t>(materialPath.size());
-            crc = UpdateWith(crc, length);
-            if (!materialPath.empty())
-            {
-                const auto* raw = reinterpret_cast<const std::byte*>(materialPath.data());
-                crc = detail::Crc32Update(crc, std::span<const std::byte>(raw, materialPath.size()));
-            }
+            crc = UpdateWithString(crc, materialPath);
         }
 
         crc = UpdateWith(crc, spawnX);
