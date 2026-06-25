@@ -7,7 +7,7 @@
 /// 生成し、 GameObject が unique_ptr で寿命を所有する。 Tick / OnEndPlay 伝播用の priority 昇順
 /// 生ポインタ列を `m_components` に併せて保持する
 ///
-/// Lifecycle:
+/// ライフサイクル:
 ///   - OnStart()    — SceneBase attach 直後に 1 回、配下 Component の OnStart を伝播
 ///   - OnUpdate()   — fixed step 毎回、IsActive==true の Component に伝播
 ///                    dt は `NS::Core::FrameTimer::FixedDelta()` で取得

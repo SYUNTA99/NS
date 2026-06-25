@@ -91,7 +91,7 @@ private:
     void RebuildObjectIds() noexcept;
 
     /// m_level.cameraVolumes から area camera (PlacedVirtualCamera) 群を作り直して Brain へ登録する
-    /// 旧 area camera は Brain から外して破棄する。 Brain 構築前 (OnStart 序盤) は no-op
+    /// 旧 area camera は Brain から外して破棄する。 Brain 構築前 (OnStart 序盤) は何もしない
     void RebuildAreaCamerasFromLevelData();
 
     /// プレイ更新本体: 入力 → 物理 → ルール → area camera → 死亡/リスポーン → カメラ追従
@@ -110,13 +110,13 @@ private:
     /// 起動時のレベル供給: 同梱 default `.nslvl` をロードし、 無ければ最小床を seed する
     void LoadInitialLevel();
 
-    // builtin mesh / 共有 material / block の TextureArray は AssetManager (Application 所有) が持つ
+    // 組み込み mesh / 共有 material / block の TextureArray は AssetManager (Application 所有) が持つ
     // scene は使う箇所で都度引く (メンバとして控えない = 単一所有元は AssetManager のみ)
 
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
     std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
 
-    // 借用元なので m_player より前に宣言する (player を先に破棄し CMC の dangling を防ぐ)
+    // 借用元なので m_player より前に宣言する (player を先に破棄し CMC の無効参照を防ぐ)
     NS::Physics::PhysicsWorld m_physicsWorld;
     std::unique_ptr<Player> m_player;
 

@@ -81,7 +81,7 @@ TEST_F(AssetManagerTest, SamePathReturnsSamePointer)
     EXPECT_EQ(texA, texB);
 }
 
-// builtin 名前鍵は同一の非 null StaticMesh を返し、 未登録名は nullptr
+// 組み込み名前鍵は同一の非 null StaticMesh を返し、 未登録名は nullptr
 TEST_F(AssetManagerTest, BuiltinReturnsSameNonNullPointer)
 {
     Window window(MakeWindowDesc("ns_am_builtin"));

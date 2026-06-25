@@ -30,7 +30,7 @@ namespace NS::Scene
         /// 共有の quad mesh と shadow material を注入する (非所有)。未設定なら Draw は何もしない
         void SetResources(NS::Graphics::StaticMesh* mesh, NS::Graphics::Material* material) noexcept;
 
-        /// 地面探索に使う衝突 AABB を内部 vector にコピーして保持する (呼出側 vector の再確保で dangling しない)
+        /// 地面探索に使う衝突 AABB を内部 vector にコピーして保持する (呼出側 vector の再確保で無効参照にならない)
         void SetCollisionWorld(std::span<const NS::Math::AABB> world);
 
         /// 真下の地面に影クアッドを 1 描画呼出。地面が無い / リソース未設定なら何もしない

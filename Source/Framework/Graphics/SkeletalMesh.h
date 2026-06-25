@@ -73,7 +73,7 @@ namespace NS::Graphics
         /// model 空間 skinning 行列群を CPU 側に蓄える (次の Draw で GPU 反映)。kMaxBones 超は無視、不足分は恒等
         void SetBonePalette(std::span<const NS::Math::Matrix> palette) noexcept;
 
-        /// palette を CB へアップロードして b1(VS) に bind し、 Mesh::Draw を呼ぶ。 IsValid()==false なら no-op
+        /// palette を CB へアップロードして b1(VS) に bind し、 Mesh::Draw を呼ぶ。 IsValid()==false なら何もしない
         void Draw(Renderer& renderer) noexcept override;
 
         /// POSITION/TEXCOORD/NORMAL/BLENDINDICES/BLENDWEIGHT の InputElement 配列を返す

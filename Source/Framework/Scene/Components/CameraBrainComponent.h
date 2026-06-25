@@ -33,7 +33,7 @@ namespace NS::Scene
         void AddVirtualCamera(VirtualCameraComponent* vcam);
 
         /// 登録済み vcam を外す (未登録 / null は無視)。外した vcam が active 中なら選び直す
-        /// 寿命を呼出側が握る area camera を破棄する前に呼んで dangling を防ぐ
+        /// 寿命を呼出側が握る area camera を破棄する前に呼んで無効参照を防ぐ
         void RemoveVirtualCamera(VirtualCameraComponent* vcam) noexcept;
 
         /// active 切替時のブレンド秒数。0 以下で即時カット。負値は 0 に丸める

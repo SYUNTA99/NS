@@ -18,7 +18,7 @@
 #include <string>
 #include <utility>
 
-// json.hpp は /W4 で警告が出るため、 この TU でだけ警告を抑止して取り込む
+// json.hpp は /W4 で警告が出るため、 この翻訳単位でだけ警告を抑止して取り込む
 #pragma warning(push, 0)
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
@@ -186,7 +186,7 @@ namespace NS::Scene
             record.mesh = NS::Graphics::SkeletalMesh::Create(smd);
             if (record.mesh == nullptr || !record.mesh->IsValid())
             {
-                // GPU buffer 生成に失敗。 ダッド mesh をキャッシュせず無効を返す (Draw が無音 no-op になるのを防ぐ)
+                // GPU buffer 生成に失敗。 ダッド mesh をキャッシュせず無効を返す (Draw が無音で何もしないのを防ぐ)
                 NS_LOG_ERROR(
                     ::NS::Core::LogCat::Graphics, "AssetManager: skinned mesh の GPU 生成失敗: {}", key.string());
                 return LoadedSkinnedModel{};

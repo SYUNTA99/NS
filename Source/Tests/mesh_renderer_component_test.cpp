@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Graphics/RenderSettings.h>
+#include <Framework/Scene/Components/MeshRendererComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/IRenderable.h>
-#include <Framework/Scene/Components/MeshRendererComponent.h>
 #include <Framework/Scene/RenderContext.h>
 #include <Framework/Scene/SceneBase.h>
 
@@ -38,7 +38,7 @@ TEST(MeshRendererComponentTest, DrawIsNoOpWhenInactive)
     auto& mc = *obj.AddComponent<MeshRendererComponent>(nullptr, nullptr);
     mc.SetActive(false);
 
-    // ctx を最小限で作って Draw 呼出。null mesh/material でもガード経由で no-op
+    // ctx を最小限で作って Draw 呼出。null mesh/material でもガード経由で何もしない
     NS::Scene::RenderContext ctx{};
     mc.Draw(ctx); // crash しなければ OK
     SUCCEED();
@@ -50,7 +50,7 @@ TEST(MeshRendererComponentTest, DrawIsNoOpWhenMeshOrMaterialIsNull)
     auto& mc = *obj.AddComponent<MeshRendererComponent>(nullptr, nullptr);
 
     NS::Scene::RenderContext ctx{};
-    mc.Draw(ctx); // null ガードで no-op
+    mc.Draw(ctx); // null ガードで何もしない
     SUCCEED();
 }
 

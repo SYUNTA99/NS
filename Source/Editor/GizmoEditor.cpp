@@ -41,7 +41,7 @@ namespace NS::Editor
         // screen 上のヒット許容半径 (px)。 これ未満の最近接軸を採用する
         constexpr float kPickThresholdPixels = 12.0f;
 
-        // 軸と視線がこれ以上そろうと、 軸を含む平面が薄くなって交点が暴れるので no-op にする
+        // 軸と視線がこれ以上そろうと、 軸を含む平面が薄くなって交点が暴れるので何もしないようにする
         constexpr float kAxisViewParallelEpsilon = 0.999f;
 
         // ray と平面の交差判定で、 分母 (rayDir・n) がこの値未満なら平行とみなし交差不能
@@ -592,7 +592,7 @@ namespace NS::Editor
 
         const NS::Math::Vector3 a = OrientedAxis(axis, rotation);
 
-        // viewDir を正規化して軸との平行度を測る。 ほぼ平行ならドラッグ平面が薄く交点が暴れるので no-op
+        // viewDir を正規化して軸との平行度を測る。 ほぼ平行ならドラッグ平面が薄く交点が暴れるので何もしない
         NS::Math::Vector3 viewDir = rayNow.direction;
         viewDir.Normalize();
         if (std::fabs(a.Dot(viewDir)) >= kAxisViewParallelEpsilon)

@@ -95,17 +95,17 @@ public:
     [[nodiscard]] bool SelectedIsGridAligned() const noexcept;
     /// Inspector 表示用に選択中 ObjectInstance のコピーを返す。 未選択は既定値
     [[nodiscard]] NS::Game::Level::ObjectInstance SelectedObjectSnapshot() const noexcept;
-    /// 選択中の自由オブジェクトの位置を設定する (gridAligned / 非選択は no-op)
+    /// 選択中の自由オブジェクトの位置を設定する (gridAligned / 非選択時は何もしない)
     void SetSelectedFreePosition(NS::Math::Vector3 position) noexcept;
-    /// 選択中の自由オブジェクトの回転を設定する (gridAligned / 非選択は no-op)
+    /// 選択中の自由オブジェクトの回転を設定する (gridAligned / 非選択時は何もしない)
     void SetSelectedFreeRotation(NS::Math::Quaternion rotation) noexcept;
-    /// 選択中の自由オブジェクトのスケールを設定する。 最小正値に clamp する (gridAligned / 非選択は no-op)
+    /// 選択中の自由オブジェクトのスケールを設定する。 最小正値に clamp する (gridAligned / 非選択時は何もしない)
     void SetSelectedFreeScale(NS::Math::Vector3 scale) noexcept;
     /// 選択中自由オブジェクトの変形編集を開始し baseline を退避する (gizmo ドラッグ / パネル入力の開始で呼ぶ)
     void BeginTransformEdit() noexcept;
     /// 進行中の変形編集を 1 つの undo 単位として確定する (無変化なら積まない)
     void CommitTransformEdit() noexcept;
-    /// 選択中の grid solid ブロックを自由オブジェクトへ昇格する (grid solid 以外は no-op)
+    /// 選択中の grid solid ブロックを自由オブジェクトへ昇格する (grid solid 以外は何もしない)
     void PromoteSelectedToFree() noexcept;
 
     /// 編集視点の中心あたりに新しい自由オブジェクトを 1 個追加して選択する (Undo 対応)
@@ -117,7 +117,7 @@ public:
     /// Player の runtime GameObject。 未構築は nullptr。 操作感のライブ調整 Inspector に使う
     [[nodiscard]] NS::Scene::GameObject* PlayerObject() noexcept;
     /// 選択中の自由オブジェクトの runtime collider half-extents を ObjectInstance へ書き戻す (保存に乗せる)
-    /// Inspector で collider を反射編集した後に呼ぶ。 grid / 非選択は no-op
+    /// Inspector で collider を反射編集した後に呼ぶ。 grid / 非選択時は何もしない
     void SyncSelectedObjectColliderFromComponent() noexcept;
 
     /// CameraBrain を載せた GameObject。 未構築は nullptr。 Camera 選択時の Inspector 反射編集対象
@@ -142,12 +142,12 @@ public:
     [[nodiscard]] bool HasCameraSelection() const noexcept;
     /// 選択中 area camera の runtime PlacedVirtualCamera。 未選択 / 範囲外は nullptr。 Inspector の反射編集対象
     [[nodiscard]] NS::Scene::PlacedVirtualCamera* SelectedAreaCamera() noexcept;
-    /// 反射編集された PlacedVirtualCamera の値を選択中 CameraVolume へ書き戻す (保存に乗せる、 非選択は no-op)
+    /// 反射編集された PlacedVirtualCamera の値を選択中 CameraVolume へ書き戻す (保存に乗せる、 非選択時は何もしない)
     /// トリガ半径は最小正値に clamp し component 側へも反映する
     void SyncSelectedCameraVolumeFromComponent() noexcept;
     /// 編集視点の中心あたりに新しい area camera を追加して選択する
     void AddCameraVolume() noexcept;
-    /// 選択中の area camera を削除する (非選択は no-op)
+    /// 選択中の area camera を削除する (非選択時は何もしない)
     void DeleteSelectedCamera() noexcept;
 
     /// Object モードかつギズモで何か選択中なら true (material 適用先がある状態)

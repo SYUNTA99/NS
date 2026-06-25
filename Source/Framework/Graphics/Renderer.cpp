@@ -203,7 +203,7 @@ namespace NS::Graphics
             return;
         }
 
-        // CommonStates の ctor は friend Renderer 限定 (private) で make_unique が呼べないため new で構築する
+        // CommonStates のコンストラクタは friend Renderer 限定 (private) で make_unique が呼べないため new で構築する
         m_states.reset(new CommonStates(m_device.Get()));
 
         // 共通 Pipeline を1回だけ生成しキャッシュする。Gpu() は上で公開済 (描画する者が毎回 set する)
@@ -227,7 +227,7 @@ namespace NS::Graphics
 
     Renderer::~Renderer()
     {
-        // ctor で登録したリサイズ購読を解除し、Window 側の発火で dangling を踏むのを防ぐ
+        // コンストラクタで登録したリサイズ購読を解除し、Window 側の発火で無効参照を踏むのを防ぐ
         if (m_resizeCallbackRegistered && m_window != nullptr)
         {
             m_window->SetResizeCallback(nullptr);

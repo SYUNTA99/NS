@@ -76,7 +76,7 @@ namespace NS::Graphics
                                                  DXGI_FORMAT format = DXGI_FORMAT_R32_UINT,
                                                  D3D11_USAGE usage = D3D11_USAGE_DEFAULT) noexcept;
 
-    /// 定数バッファ用 BufferDesc を組む (usage = Dynamic、 bind = CONSTANT、 byteSize は ctor が 16 切り上げ)
+    /// 定数バッファ用 BufferDesc を組む (usage = Dynamic、 bind = CONSTANT、 byteSize はコンストラクタが 16 切り上げ)
     [[nodiscard]] BufferDesc MakeConstantBufferDesc(std::size_t byteSize) noexcept;
 
 } // namespace NS::Graphics

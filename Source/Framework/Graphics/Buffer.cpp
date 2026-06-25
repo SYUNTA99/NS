@@ -52,7 +52,7 @@ namespace NS::Graphics
     BufferDesc MakeConstantBufferDesc(std::size_t byteSize) noexcept
     {
         BufferDesc desc{};
-        desc.byteSize = byteSize; // 16-byte 切り上げは Buffer ctor が行う
+        desc.byteSize = byteSize; // 16-byte 切り上げは Buffer コンストラクタが行う
         desc.usage = D3D11_USAGE_DYNAMIC;
         desc.bindFlags = D3D11_BIND_CONSTANT_BUFFER;
         return desc;

@@ -8,7 +8,7 @@
 /// ファイルロードは拡張子 .dds → DDSTextureLoader、 それ以外 → WICTextureLoader 経由で、 読込失敗時は
 /// 1x1 マゼンタ fallback SRV を生成し `IsUsingFallback()` が true になる。 File I/O は `NS::Core::FileSystem`
 /// 経由なので将来 pak / VFS で透過対応可能
-/// 既存 `ID3D11Texture2D` ラップ ctor は swapchain backbuffer を RTV として包む用途に使う
+/// 既存 `ID3D11Texture2D` ラップコンストラクタは swapchain backbuffer を RTV として包む用途に使う
 /// バインドは CommandList 経由、 本型は context を保持しない
 /// D3D11 型を公開する設計のため `ID3D11Texture2D*` / 各 view を直接公開する
 
@@ -67,7 +67,7 @@ namespace NS::Graphics
         [[nodiscard]] NS::Math::Size2D Size() const noexcept;
 
         /// 読込失敗で fallback (1x1 マゼンタ) になっているかを問い合わせる
-        /// デバッグ時のアセット欠落検知に使用。 生成 / ラップ ctor では常に false
+        /// デバッグ時のアセット欠落検知に使用。 生成 / ラップコンストラクタでは常に false
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
         /// 内部 ID3D11Texture2D。継ぎ目で生 D3D を扱う Renderer / detail が使う

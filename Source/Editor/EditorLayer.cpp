@@ -65,7 +65,7 @@ void EditorLayer::OnDetach()
         m_controller->Teardown();
     m_controller.reset();
 
-    // ImGui を畳む前に hook を外し、 WndProc から dangling な context を踏まないようにする
+    // ImGui を畳む前に hook を外し、 WndProc から無効になった context を踏まないようにする
     if (auto* app = NS::App::Application::Get())
     {
         app->Window().SetMessageHook(nullptr);

@@ -169,7 +169,7 @@ TEST_F(SkeletalMeshLoggerTest, EmptyDescIsInvalidWithoutFallback)
     EXPECT_EQ(mesh.VertexCount(), 0u);
     EXPECT_EQ(mesh.IndexCount(), 0u);
 
-    // 不正な mesh の Draw は no-op でクラッシュしない
+    // 不正な mesh の Draw は何もせずクラッシュしない
     mesh.Draw(renderer);
     SUCCEED();
 }

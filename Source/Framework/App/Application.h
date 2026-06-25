@@ -3,7 +3,7 @@
 /// @file Application.h
 /// @brief NS::App::Application — Window/Renderer/Input/Audio + Layers を所有し、メインループを駆動する
 ///
-/// @details サブシステム (Window/Renderer/Input、Audio は placeholder) を所有し破棄まで管理する
+/// @details サブシステム (Window/Renderer/Input、Audio は仮実装) を所有し破棄まで管理する
 /// `Run()` で Init → MainLoop → Shutdown を順に実行する。Layer 群は WinMain 段階で
 /// AddLayer / AddOverlay で積み、Run ループ内では追加/削除しない (iterator が無効化されるため)
 ///
@@ -75,7 +75,7 @@ namespace NS::App
         [[nodiscard]] NS::Graphics::Renderer& Renderer() noexcept;
         [[nodiscard]] NS::Platform::Input& Input() noexcept;
 
-        /// アプリ寿命のアセットキャッシュ。builtin / leaf / 共有 material の取得窓口
+        /// アプリ寿命のアセットキャッシュ。組み込み / leaf / 共有 material の取得窓口
         [[nodiscard]] NS::Scene::AssetManager& Assets() noexcept;
 
         /// 現在の Application インスタンス。未構築時は nullptr

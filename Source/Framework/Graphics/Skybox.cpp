@@ -37,12 +37,12 @@ namespace NS::Graphics
 
         // D3D11 cubemap 標準順 (+X/-X/+Y/-Y/+Z/-Z) に rt/lf/up/dn/ft/bk をマップ。上下逆・水平反転時は個別差替え
         constexpr std::array<const char*, 6> kKurtFaceFileNames = {
-            "space_rt.png", // +X (right)
-            "space_lf.png", // -X (left)
-            "space_up.png", // +Y (top)
-            "space_dn.png", // -Y (bottom)
-            "space_ft.png", // +Z (forward, LH)
-            "space_bk.png", // -Z (back,    LH)
+            "space_rt.png", // +X (右)
+            "space_lf.png", // -X (左)
+            "space_up.png", // +Y (上)
+            "space_dn.png", // -Y (下)
+            "space_ft.png", // +Z (左手系で前)
+            "space_bk.png", // -Z (左手系で後)
         };
 
         [[nodiscard]] bool IsDdsExtension(const std::filesystem::path& path)
@@ -219,7 +219,7 @@ namespace NS::Graphics
                 faceTextures[i] = std::move(tex2d);
             }
 
-            // 6-face cubemap 本体を作る。 mipmap は v1 では生成しない (置物 placeholder、
+            // 6-face cubemap 本体を作る。 mipmap は v1 では生成しない (置物の仮実装、
             // theme 確定後に texconv で .dds 直接配布に切り替える運用)
             D3D11_TEXTURE2D_DESC cubeDesc{};
             cubeDesc.Width = static_cast<UINT>(faceWidth);

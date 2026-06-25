@@ -8,7 +8,7 @@
 /// Component 間 / 他 GameObject へのアクセスはコンストラクタ経由の明示的な生ポインタ注入のみ許可
 /// (GetComponent<T>() 動的検索 API は提供しない)
 ///
-/// Lifecycle:
+/// ライフサイクル:
 ///   - OnStart() — Scene attach 直後に 1 回
 ///   - OnUpdate() — fixed step 内で毎回 (`IsActive()==false` で skip)
 ///     dt は `NS::Core::FrameTimer::FixedDelta()` で取得 (all-static、 Application 不要)
@@ -35,7 +35,8 @@ namespace NS::Scene
     class Component
     {
     public:
-        /// priority を ctor 引数で確定する。base ctor 内の virtual dispatch を避けるため (vtable 未確定)
+        /// priority をコンストラクタ引数で確定する。基底コンストラクタ内での仮想呼び出しを避けるため
+        /// (仮想関数テーブルが未確定)
         explicit Component(int priority = static_cast<int>(TickPriority::Physics)) noexcept;
 
         virtual ~Component() noexcept;

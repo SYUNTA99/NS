@@ -96,10 +96,10 @@ void LevelPlayScene::OnStart()
     auto& renderer = app->Renderer();
     const auto exeDir = NS::Core::FileSystem::ContentRoot();
 
-    // builtin mesh と共有 material は AssetManager がアプリ寿命で所有する。 ここは使う時に引くだけ
+    // 組み込み mesh と共有 material は AssetManager がアプリ寿命で所有する。 ここは使う時に引くだけ
     auto& assets = app->Assets();
 
-    // 接地シャドウは Player が scene 寿命のあいだ参照を握る。 builtin quad + 共有 shadow material を渡す
+    // 接地シャドウは Player が scene 寿命のあいだ参照を握る。 組み込み quad + 共有 shadow material を渡す
     auto* shadowMesh = assets.Builtin("shadowQuad");
     auto* shadowMaterial = assets.SharedMaterial("shadow");
 
@@ -125,7 +125,7 @@ void LevelPlayScene::OnStart()
     if (!m_instanceBatcher->IsValid())
         NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelPlayScene: InstanceBatcher 構築失敗、 block 描画はスキップされる");
 
-    // placeholder skybox。 kurt 6-face PNG をロードし、 取得できなければ
+    // 仮の skybox。 kurt 6-face PNG をロードし、 取得できなければ
     // 1x1 マゼンタ cubemap fallback で続行する (描画は OnRenderScene 末尾)
     m_skybox = NS::Graphics::Skybox::Create();
     if (m_skybox->IsValid())
@@ -427,7 +427,7 @@ void LevelPlayScene::OnRenderScene()
     // 経路は通らない
     if (m_instanceBatcher && m_instanceBatcher->IsValid())
     {
-        // builtin cube と共有 block material は AssetManager 所有。 毎フレームここで 1 度だけ引く
+        // 組み込み cube と共有 block material は AssetManager 所有。 毎フレームここで 1 度だけ引く
         auto& assets = app->Assets();
         auto* cubeMesh = assets.Builtin("cube");
         auto* blockMat = assets.SharedMaterial("block");
@@ -539,7 +539,7 @@ void LevelPlayScene::OnShutdown()
     if (m_player)
         m_player->OnEndPlay();
 
-    // Brain は vcam を非所有参照するので、 rig / area camera より先に host を畳んで dangling を避ける
+    // Brain は vcam を非所有参照するので、 rig / area camera より先に host を畳んで無効参照を避ける
     m_cameraHost.reset();
     m_mainCamera = nullptr;
     m_brain = nullptr;
@@ -552,7 +552,7 @@ void LevelPlayScene::OnShutdown()
     m_hazardView.clear();
 
     // Skybox / InstanceBatcher は Renderer の DeviceContext を ComPtr で握るため、 Renderer (Application) より
-    // 先に破棄する。 builtin / leaf / 共有 material / block TextureArray / skinned model は AssetManager が Clear
+    // 先に破棄する。 組み込み / leaf / 共有 material / block TextureArray / skinned model は AssetManager が Clear
     // で解放する
     m_instanceBatcher.reset();
     m_skybox.reset();
@@ -657,7 +657,7 @@ void LevelPlayScene::RebuildAreaCamerasFromLevelData()
     if (m_brain == nullptr)
         return;
 
-    // 旧 area camera を Brain から外してから破棄する (Brain の非所有参照を dangling させない)
+    // 旧 area camera を Brain から外してから破棄する (Brain の非所有参照を無効化させない)
     for (auto& area : m_areaCameras)
     {
         if (area.cam)

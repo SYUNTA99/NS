@@ -185,13 +185,13 @@ namespace NS::Graphics::DebugDraw
         const NS::Math::Vector3 c111 = center + ex + ey + ez;
         const NS::Math::Vector3 c011 = center - ex + ey + ez;
 
-        // -Z 面 4 line
+        // -Z 面の線 4 本
         PushLine(c000, c100, color);
         PushLine(c100, c110, color);
         PushLine(c110, c010, color);
         PushLine(c010, c000, color);
 
-        // +Z 面 4 line
+        // +Z 面の線 4 本
         PushLine(c001, c101, color);
         PushLine(c101, c111, color);
         PushLine(c111, c011, color);

@@ -3,7 +3,7 @@
 /// @file AssetManager.h
 /// @brief NS::Scene::AssetManager — アプリ寿命の単一アセットキャッシュ
 ///
-/// @details path 鍵 leaf (Mesh / Texture / Shader) を dedupe 所有し、 手続き生成 builtin を名前鍵で配り、
+/// @details path 鍵 leaf (Mesh / Texture / Shader) を dedupe 所有し、 手続き生成の組み込みを名前鍵で配り、
 /// Reload で reload-in-place する。 利用側は全て raw ポインタで参照する (所有は本クラス単一)
 /// 内部 GPU リソースを握るため、 参照する Renderer より先に Clear / 破棄すること
 /// 型別のロード処理を独立メソッドに分け、 本体は「キャッシュの容れ物 + Reload の窓口」に徹する
@@ -66,7 +66,7 @@ namespace NS::Scene
         bool valid = false;
     };
 
-    /// アプリ寿命でアセットを dedupe 所有する単一キャッシュ。 leaf は path 鍵、 builtin は名前鍵
+    /// アプリ寿命でアセットを dedupe 所有する単一キャッシュ。 leaf は path 鍵、 組み込みは名前鍵
     /// Material 内蔵 CB は MeshRenderer が流す FrameCB に合わせるため本クラスは Scene 層に置く
     class AssetManager
     {
@@ -91,10 +91,10 @@ namespace NS::Scene
         /// (再生状態とクリップ合成はインスタンス側が持つため)。 失敗時は valid=false。 相対 path は baseDir 基準
         [[nodiscard]] LoadedSkinnedModel GetOrLoadSkinnedModel(const std::filesystem::path& path);
 
-        /// 手続き生成 builtin を一括登録する (cube / wedge45 / wedge30 / wedge22 / wedge15 / pole / shadowQuad)
+        /// 手続き生成の組み込みを一括登録する (cube / wedge45 / wedge30 / wedge22 / wedge15 / pole / shadowQuad)
         /// device 確立後・最初の利用前に 1 度だけ呼ぶ。 既登録名は上書きしない
         void RegisterBuiltins();
-        /// 名前鍵で builtin StaticMesh を引く。 未登録は nullptr
+        /// 名前鍵で組み込み StaticMesh を引く。 未登録は nullptr
         [[nodiscard]] NS::Graphics::StaticMesh* Builtin(std::string_view name) const noexcept;
 
         /// matPath の .mat を読み込み composite Material を組んで返す。 shader / texture は内部 leaf を借りて dedupe
@@ -102,7 +102,7 @@ namespace NS::Scene
         /// 相対 path は構築時の baseDir 基準で解決する
         [[nodiscard]] LoadedMaterial LoadMaterial(const std::filesystem::path& matPath);
 
-        /// 共有 material (player / block / water / shadow) を builtin shader + texture から一括組み立てする
+        /// 共有 material (player / block / water / shadow) を組み込み shader + texture から一括組み立てする
         /// device + RegisterBuiltins 後・最初の利用前に 1 度呼ぶ。 既登録名は上書きしない
         void RegisterSharedMaterials();
         /// 名前鍵で共有 material を引く ("player" / "block" / "water" / "shadow")。 未登録は nullptr
@@ -110,7 +110,7 @@ namespace NS::Scene
 
         /// 名前鍵で Texture2DArray を保持する。 初回は desc から生成して所有、 2 回目以降は name で cache hit (desc
         /// は無視) slice path リストから組む theme atlas のような app 寿命で 1 本の array 向け。 失敗時も非 null
-        /// (fallback)
+        /// (フォールバック)
         [[nodiscard]] NS::Graphics::TextureArray* GetOrCreateTextureArray(std::string_view name,
                                                                           const NS::Graphics::TextureArrayDesc& desc);
         /// 名前鍵で TextureArray を引く (描画パスの毎フレーム取得用)。 未登録は nullptr

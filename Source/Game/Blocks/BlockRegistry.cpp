@@ -57,7 +57,7 @@ namespace NS::Game::Blocks
         case kBlockIdSlope30:
         case kBlockIdSlope22:
         case kBlockIdSlope15:
-            // solid と同系色だが少しウォーム寄りで識別できるようにする (placeholder)
+            // solid と同系色だが少しウォーム寄りで識別できるようにする (仮)
             return NS::Math::Color{0.78f, 0.65f, 0.50f, 1.0f};
         case kBlockIdPole:
             // 木製ポールを意識した茶色系

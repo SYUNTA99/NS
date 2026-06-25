@@ -88,13 +88,13 @@ namespace NS::Graphics
         std::unique_ptr<Texture> m_depth;
         std::unique_ptr<CommandList> m_commands;
         std::unique_ptr<CommonStates> m_states;
-        // 共通 Pipeline (0:Opaque / 1:Alpha / 2:Additive)。ctor で生成、CommonPipeline で引く
+        // 共通 Pipeline (0:Opaque / 1:Alpha / 2:Additive)。コンストラクタで生成、CommonPipeline で引く
         std::unique_ptr<Pipeline> m_commonPipelines[3];
         ::NS::Platform::Window* m_window = nullptr;
         RenderSettings m_settings{};
         bool m_vsync = true;
         bool m_valid = false;
-        // dtor の購読解除判定は「登録したか」で行う (Resize 失敗で m_valid が落ちても解除は必要)
+        // デストラクタの購読解除判定は「登録したか」で行う (Resize 失敗で m_valid が落ちても解除は必要)
         bool m_resizeCallbackRegistered = false;
     };
 

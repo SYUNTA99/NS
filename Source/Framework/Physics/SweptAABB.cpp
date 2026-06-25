@@ -40,7 +40,7 @@ namespace
             return true;
         }
 
-        // Slab test on expanded AABB (axis-aligned)
+        // 拡張した AABB への slab 判定 (軸並行)
         const float boxMin[3] = {boxCenter.x - ex, boxCenter.y - ey, boxCenter.z - ez};
         const float boxMax[3] = {boxCenter.x + ex, boxCenter.y + ey, boxCenter.z + ez};
         const float p[3] = {start.x, start.y, start.z};

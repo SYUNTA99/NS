@@ -47,7 +47,7 @@ namespace NS::Scene
         /// Material instance ごとの色味 (Player=赤系 / Block=灰色系の色分け)。lighting とは別系統の個体色
         void SetBaseColor(const NS::Math::Vector3& color) noexcept { m_baseColor = color; }
 
-        /// 描画に使う Material を差し替える。material=nullptr で Draw は no-op になる
+        /// 描画に使う Material を差し替える。material=nullptr で Draw は何もしなくなる
         /// bucket は Draw 時に Material::Blend() から都度判定するため opaque↔transparent も即反映される
         void SetMaterial(NS::Graphics::Material* material) noexcept { m_material = material; }
         /// 現在の Material (非所有)。未設定なら nullptr
@@ -75,7 +75,7 @@ namespace NS::Scene
 
         /// OwningScene に self を IRenderable として登録する。Owner/Scene が null なら何もしない
         void OnStart() override;
-        /// Owner の OwningScene から self を解除する。dangling pointer を残さないよう SceneBase 破棄前に呼ぶ
+        /// Owner の OwningScene から self を解除する。無効ポインタを残さないよう SceneBase 破棄前に呼ぶ
         void OnEndPlay() override;
 
         // 個体色を Inspector へ公開する (RGB)。 lighting とは別系統の個体色

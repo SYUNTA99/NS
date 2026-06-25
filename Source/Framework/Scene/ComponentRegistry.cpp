@@ -24,7 +24,7 @@ namespace NS::Scene
             Component* (*attach)(GameObject&);
         };
 
-        // curated subset。 既定 ctor を持つ型はその自然既定で構築する。 持たない型 (Slope/Pole/MeshRenderer) は
+        // 厳選した一部。 既定コンストラクタを持つ型はその自然既定で構築する。 持たない型 (Slope/Pole/MeshRenderer) は
         // 読み込み時に反射 / BuildPlacedObject が上書きする placeholder 既定値を渡す
         // 除外型 (player / editor / camera 専用) はここに一切書かない
         const Entry kEntries[] = {

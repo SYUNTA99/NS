@@ -886,7 +886,7 @@ void LevelEditorController::CommitTransformEdit() noexcept
     if (after == m_editBaseline)
         return;
 
-    // model を after に確定してから push する。 Push の Do は model == after なので no-op で履歴記録のみ
+    // model を after に確定してから push する。 Push の Do は model == after なので何もせず履歴記録のみ
     m_scene->m_level.objects[index] = after;
     m_editor.Undo().Push(std::make_unique<NS::Game::Undo::TransformCommand>(m_editBaselineId, m_editBaseline, after),
                          target);
