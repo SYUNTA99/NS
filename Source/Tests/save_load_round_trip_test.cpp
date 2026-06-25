@@ -7,6 +7,7 @@
 
 #include <cstring>
 #include <span>
+#include <string>
 #include <variant>
 #include <vector>
 
@@ -131,6 +132,20 @@ TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
     huge.objects.resize(100'001); // 上限 100'000 を 1 件超過させる
 
     EXPECT_FALSE(LevelNs::SaveLevelToFile(huge, *path));
+}
+
+// material path が 1 件でも上限長を超えるレベルは保存段で false を返す
+// load 側は同じ閾値で拒否するので、 往復不能になる前に保存時点で止める
+TEST(SaveLoadRoundTrip, RejectsOversizedMaterialPathLength)
+{
+    EditorNs::EnsureLevelsDirectoryExists();
+    auto path = EditorNs::BuildLevelPath("test_oversized_material_path");
+    ASSERT_TRUE(path.has_value());
+
+    LevelNs::LevelData level;
+    level.materialPaths.push_back(std::string(1'025u, 'a')); // 上限 1'024 byte を 1 byte 超過
+
+    EXPECT_FALSE(LevelNs::SaveLevelToFile(level, *path));
 }
 
 // 型名 + 反射フィールド値 (全 5 変種) を持つコンポ一覧が save→load で復元される (full SSOT の往復)

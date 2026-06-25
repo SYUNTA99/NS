@@ -430,6 +430,18 @@ namespace NS::Game::Level
                          kMaxMaterialPaths);
             return false;
         }
+        // load 側が同じ閾値で拒否するため、 上限超過パスは保存段で弾いて往復不能を防ぐ
+        for (const auto& materialPath : level.materialPaths)
+        {
+            if (materialPath.size() > kMaxMaterialPathLength)
+            {
+                NS_LOG_ERROR(::NS::Core::LogCat::Game,
+                             "SaveLevelToJsonFile: material path が長すぎる ({} > {} byte)",
+                             materialPath.size(),
+                             kMaxMaterialPathLength);
+                return false;
+            }
+        }
         if (level.cameraVolumes.size() > kMaxCameraVolumeCount)
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Game,
