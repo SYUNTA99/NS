@@ -1,13 +1,13 @@
 #include "Game/Level/LevelData.h"
-#include "Game/Undo/AddObjectCommand.h"
-#include "Game/Undo/EditTarget.h"
+#include "Editor/Undo/AddObjectCommand.h"
+#include "Game/Level/EditTarget.h"
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
 #include <vector>
 
-namespace UndoNs = NS::Game::Undo;
+namespace EditorNs = NS::Editor;
 namespace LevelNs = NS::Game::Level;
 
 namespace
@@ -27,9 +27,9 @@ TEST(AddObjectCommandTest, DoAppendsFreeObjectAndId)
     LevelNs::LevelData lv;
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
-    UndoNs::EditTarget t{lv, ids, next};
+    LevelNs::EditTarget t{lv, ids, next};
 
-    UndoNs::AddObjectCommand cmd(MakeFree(1.0f, 2.0f, 3.0f));
+    EditorNs::AddObjectCommand cmd(MakeFree(1.0f, 2.0f, 3.0f));
     cmd.Do(t);
 
     ASSERT_EQ(lv.objects.size(), 1u);
@@ -47,9 +47,9 @@ TEST(AddObjectCommandTest, UndoRemovesOnlyTheAddedObject)
     lv.objects.push_back(MakeFree(9.0f, 0.0f, 0.0f));
     std::vector<std::uint32_t> ids{99u};
     std::uint32_t next = 100;
-    UndoNs::EditTarget t{lv, ids, next};
+    LevelNs::EditTarget t{lv, ids, next};
 
-    UndoNs::AddObjectCommand cmd(MakeFree(1.0f, 1.0f, 1.0f));
+    EditorNs::AddObjectCommand cmd(MakeFree(1.0f, 1.0f, 1.0f));
     cmd.Do(t);
     ASSERT_EQ(lv.objects.size(), 2u);
 
@@ -65,9 +65,9 @@ TEST(AddObjectCommandTest, RedoReusesSameIdWithoutBumpingNext)
     LevelNs::LevelData lv;
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 7;
-    UndoNs::EditTarget t{lv, ids, next};
+    LevelNs::EditTarget t{lv, ids, next};
 
-    UndoNs::AddObjectCommand cmd(MakeFree(0.0f, 0.0f, 0.0f));
+    EditorNs::AddObjectCommand cmd(MakeFree(0.0f, 0.0f, 0.0f));
     cmd.Do(t); // id 7 を採番
     EXPECT_EQ(ids[0], 7u);
     EXPECT_EQ(next, 8u);

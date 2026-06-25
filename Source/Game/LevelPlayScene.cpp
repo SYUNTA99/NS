@@ -3,7 +3,7 @@
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Player.h"
 #include "Game/SkinnedDebugCharacter.h"
-#include "Game/Undo/EditTarget.h"
+#include "Game/Level/EditTarget.h"
 
 #include "Framework/Scene/AssetManager.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
@@ -80,8 +80,8 @@ void LevelPlayScene::LoadInitialLevel()
 
 void LevelPlayScene::RebuildObjectIds() noexcept
 {
-    NS::Game::Undo::EditTarget target{m_level, m_objectIds, m_nextObjectId};
-    NS::Game::Undo::ResetEditIds(target);
+    NS::Game::Level::EditTarget target{m_level, m_objectIds, m_nextObjectId};
+    NS::Game::Level::ResetEditIds(target);
 }
 
 void LevelPlayScene::OnStart()

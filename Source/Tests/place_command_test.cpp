@@ -1,13 +1,13 @@
 #include "Game/Level/LevelData.h"
-#include "Game/Undo/EditTarget.h"
-#include "Game/Undo/PlaceCommand.h"
+#include "Game/Level/EditTarget.h"
+#include "Editor/Undo/PlaceCommand.h"
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
 #include <vector>
 
-namespace UndoNs = NS::Game::Undo;
+namespace EditorNs = NS::Editor;
 namespace LevelNs = NS::Game::Level;
 
 TEST(PlaceCommandTest, DoAddsBlockEntry)
@@ -15,8 +15,8 @@ TEST(PlaceCommandTest, DoAddsBlockEntry)
     LevelNs::LevelData lv;
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
-    UndoNs::EditTarget t{lv, ids, next};
-    UndoNs::PlaceCommand cmd(5, 0, 3, 10, 1);
+    LevelNs::EditTarget t{lv, ids, next};
+    EditorNs::PlaceCommand cmd(5, 0, 3, 10, 1);
     cmd.Do(t);
     ASSERT_EQ(lv.objects.size(), 1u);
     EXPECT_EQ(ids.size(), lv.objects.size());
@@ -34,9 +34,9 @@ TEST(PlaceCommandTest, UndoRestoresEmptyState)
     LevelNs::LevelData lv;
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
-    UndoNs::EditTarget t{lv, ids, next};
+    LevelNs::EditTarget t{lv, ids, next};
     const auto before = lv.ComputeCrc32();
-    UndoNs::PlaceCommand cmd(5, 0, 3, 10, 1);
+    EditorNs::PlaceCommand cmd(5, 0, 3, 10, 1);
     cmd.Do(t);
     cmd.Undo(t);
     EXPECT_EQ(lv.ComputeCrc32(), before);
@@ -50,9 +50,9 @@ TEST(PlaceCommandTest, ReplaceExistingBlockPreservesUndoRestore)
     lv.objects.push_back(LevelNs::MakeGridObject(5, 0, 3, 20, 2));
     std::vector<std::uint32_t> ids{0};
     std::uint32_t next = 1;
-    UndoNs::EditTarget t{lv, ids, next};
+    LevelNs::EditTarget t{lv, ids, next};
     const auto before = lv.ComputeCrc32();
-    UndoNs::PlaceCommand cmd(5, 0, 3, 10, 1);
+    EditorNs::PlaceCommand cmd(5, 0, 3, 10, 1);
     cmd.Do(t);
     std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 5, 0, 3);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
@@ -72,8 +72,8 @@ TEST(PlaceCommandTest, RotationIsMaskedToTwoBits)
     LevelNs::LevelData lv;
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
-    UndoNs::EditTarget t{lv, ids, next};
-    UndoNs::PlaceCommand cmd(0, 0, 0, 1, 5);
+    LevelNs::EditTarget t{lv, ids, next};
+    EditorNs::PlaceCommand cmd(0, 0, 0, 1, 5);
     cmd.Do(t);
     const std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 0, 0, 0);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);

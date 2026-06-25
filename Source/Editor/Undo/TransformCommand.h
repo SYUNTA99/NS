@@ -8,12 +8,12 @@
 /// 対象は識別子 (EditTarget::ids) で再特定するので、間に Place / Delete で添字がずれても追従する
 
 #include "Game/Level/LevelData.h"
-#include "Game/Undo/ICommand.h"
+#include "Editor/Undo/ICommand.h"
 
 #include <cstddef>
 #include <cstdint>
 
-namespace NS::Game::Undo
+namespace NS::Editor
 {
 
     class TransformCommand final : public ICommand
@@ -24,8 +24,8 @@ namespace NS::Game::Undo
                          const NS::Game::Level::ObjectInstance& before,
                          const NS::Game::Level::ObjectInstance& after) noexcept;
 
-        void Do(EditTarget& target) noexcept override;
-        void Undo(EditTarget& target) noexcept override;
+        void Do(NS::Game::Level::EditTarget& target) noexcept override;
+        void Undo(NS::Game::Level::EditTarget& target) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override { return sizeof(TransformCommand); }
 
@@ -35,4 +35,4 @@ namespace NS::Game::Undo
         NS::Game::Level::ObjectInstance m_after;
     };
 
-} // namespace NS::Game::Undo
+} // namespace NS::Editor

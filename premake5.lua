@@ -541,7 +541,7 @@ group ""
 
 --============================================================================
 -- GameCore (StaticLib) — ゲーム本体 (content / logic)
---   Player / Block / LevelPlayScene / Level / Undo / Theme / CameraRig 等。
+--   Player / Block / LevelPlayScene / Level / Theme / CameraRig 等。
 --   editor を一切知らない (依存の向きは Editor → GameCore の一方向)。 出荷を含む全構成でビルド。
 --   合成 Layer ::Game もここに置き、 editor から Game::Get() で参照できるようにする。
 --============================================================================
@@ -814,7 +814,7 @@ project "Tests"
         -- Level data / ChunkIO / CRC32 / Undo Command / AutoTile は Application
         -- 非依存の純粋ロジックなので Tests project から直接 compile する。
         "Source/Game/Level/**.cpp",
-        "Source/Game/Undo/**.cpp",
+        "Source/Editor/Undo/**.cpp",
         -- editor のうち Application 非依存なものだけ取り込む (EditorLayer は Application 依存のため除外)
         "Source/Editor/EditorMode.cpp",
         "Source/Editor/GizmoEditor.cpp",

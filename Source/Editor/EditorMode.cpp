@@ -13,9 +13,9 @@
 #include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/ChunkIO.h"
 #include "Game/Level/LevelData.h"
-#include "Game/Undo/DeleteCommand.h"
-#include "Game/Undo/PlaceCommand.h"
-#include "Game/Undo/RotateCommand.h"
+#include "Editor/Undo/DeleteCommand.h"
+#include "Editor/Undo/PlaceCommand.h"
+#include "Editor/Undo/RotateCommand.h"
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -128,7 +128,7 @@ namespace NS::Editor
                 if (m_objectIds != nullptr)
                 {
                     auto target = Target();
-                    NS::Game::Undo::ResetEditIds(target);
+                    NS::Game::Level::ResetEditIds(target);
                 }
                 m_levelDirty = true;
                 m_fileBrowser.NotifyLoadResult(true, "読込成功");
@@ -360,9 +360,9 @@ namespace NS::Editor
 #endif
     }
 
-    NS::Game::Undo::EditTarget EditorMode::Target() noexcept
+    NS::Game::Level::EditTarget EditorMode::Target() noexcept
     {
-        return NS::Game::Undo::EditTarget{*m_level, *m_objectIds, *m_nextObjectId};
+        return NS::Game::Level::EditTarget{*m_level, *m_objectIds, *m_nextObjectId};
     }
 
     void EditorMode::PlaceUnderCursorProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept
@@ -373,7 +373,7 @@ namespace NS::Editor
         const std::uint16_t blockId = m_palette.CurrentBlockId();
         const std::uint8_t rotation = NS::Game::Blocks::IsRotatableBlock(blockId) ? m_currentRotation : std::uint8_t{0};
         auto target = Target();
-        m_undo.Push(std::make_unique<NS::Game::Undo::PlaceCommand>(x, y, z, blockId, rotation), target);
+        m_undo.Push(std::make_unique<NS::Editor::PlaceCommand>(x, y, z, blockId, rotation), target);
         m_levelDirty = true;
     }
 
@@ -382,7 +382,7 @@ namespace NS::Editor
         if (m_level == nullptr || m_objectIds == nullptr)
             return;
         auto target = Target();
-        m_undo.Push(std::make_unique<NS::Game::Undo::DeleteCommand>(x, y, z), target);
+        m_undo.Push(std::make_unique<NS::Editor::DeleteCommand>(x, y, z), target);
         m_levelDirty = true;
     }
 
@@ -391,7 +391,7 @@ namespace NS::Editor
         if (m_level == nullptr || m_objectIds == nullptr)
             return;
         auto target = Target();
-        m_undo.Push(std::make_unique<NS::Game::Undo::RotateCommand>(x, y, z, +1), target);
+        m_undo.Push(std::make_unique<NS::Editor::RotateCommand>(x, y, z, +1), target);
         m_levelDirty = true;
     }
 
@@ -586,7 +586,7 @@ namespace NS::Editor
                 NS::Game::Blocks::IsRotatableBlock(m_level->objects[index].kind))
             {
                 auto target = Target();
-                m_undo.Push(std::make_unique<NS::Game::Undo::RotateCommand>(
+                m_undo.Push(std::make_unique<NS::Editor::RotateCommand>(
                                 m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ, std::int8_t{1}),
                             target);
                 m_levelDirty = true;

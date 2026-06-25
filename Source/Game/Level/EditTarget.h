@@ -14,7 +14,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace NS::Game::Undo
+namespace NS::Game::Level
 {
     /// 識別子の「該当無し」を表す番兵
     inline constexpr std::uint32_t kInvalidObjectId = static_cast<std::uint32_t>(-1);
@@ -56,4 +56,4 @@ namespace NS::Game::Undo
         return index < target.ids.size() ? target.ids[index] : kInvalidObjectId;
     }
 
-} // namespace NS::Game::Undo
+} // namespace NS::Game::Level

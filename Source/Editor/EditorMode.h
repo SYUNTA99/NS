@@ -12,7 +12,7 @@
 #include "Editor/CategoryPalette.h"
 #include "Editor/LevelFileBrowser.h"
 #include "Framework/Math/Math.h"
-#include "Game/Undo/UndoStack.h"
+#include "Editor/Undo/UndoStack.h"
 
 #include <cstdint>
 
@@ -89,8 +89,8 @@ namespace NS::Editor
         /// spawnX/Y/Z 位置に黄色 1m wireframe を常時表示する
         void RenderSpawnMarker() noexcept;
 
-        [[nodiscard]] const NS::Game::Undo::UndoStack& Undo() const noexcept { return m_undo; }
-        [[nodiscard]] NS::Game::Undo::UndoStack& Undo() noexcept { return m_undo; }
+        [[nodiscard]] const NS::Editor::UndoStack& Undo() const noexcept { return m_undo; }
+        [[nodiscard]] NS::Editor::UndoStack& Undo() noexcept { return m_undo; }
 
         /// programmatic API: Tick 経路を介さずに同等の変更を発火する (テスト / 一括処理用)
         void PlaceUnderCursorProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
@@ -134,7 +134,7 @@ namespace NS::Editor
 
         CursorState m_cursor{};
         CategoryPalette m_palette{};
-        NS::Game::Undo::UndoStack m_undo;
+        NS::Editor::UndoStack m_undo;
         LevelFileBrowser m_fileBrowser{};
 
         /// Slerp で m_currentRotation に追従する表示専用 yaw。 物理・配置データには影響しない
@@ -146,6 +146,6 @@ namespace NS::Editor
         void HandleUndoRedoInput() noexcept;
 
         /// m_level + id ストアから EditTarget view を組む。 全ポインタ非 null の前提で呼ぶ
-        [[nodiscard]] NS::Game::Undo::EditTarget Target() noexcept;
+        [[nodiscard]] NS::Game::Level::EditTarget Target() noexcept;
     };
 } // namespace NS::Editor

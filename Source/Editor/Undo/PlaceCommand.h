@@ -4,12 +4,12 @@
 /// @brief 指定 cell に block を配置する Command。 既存 block があれば置換、 Undo で復元
 
 #include "Game/Level/LevelData.h"
-#include "Game/Undo/ICommand.h"
+#include "Editor/Undo/ICommand.h"
 
 #include <cstdint>
 #include <optional>
 
-namespace NS::Game::Undo
+namespace NS::Editor
 {
 
     class PlaceCommand final : public ICommand
@@ -18,8 +18,8 @@ namespace NS::Game::Undo
         PlaceCommand(
             std::int16_t x, std::int16_t y, std::int16_t z, std::uint16_t blockId, std::uint8_t rotation) noexcept;
 
-        void Do(EditTarget& target) noexcept override;
-        void Undo(EditTarget& target) noexcept override;
+        void Do(NS::Game::Level::EditTarget& target) noexcept override;
+        void Undo(NS::Game::Level::EditTarget& target) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override { return sizeof(PlaceCommand); }
 
@@ -33,4 +33,4 @@ namespace NS::Game::Undo
         std::optional<std::uint32_t> m_assignedId; // append 時の識別子。 redo で再利用し参照を壊さない
     };
 
-} // namespace NS::Game::Undo
+} // namespace NS::Editor

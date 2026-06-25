@@ -14,7 +14,7 @@
 #include "Framework/Math/Math.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
-#include "Game/Undo/EditTarget.h"
+#include "Game/Level/EditTarget.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -202,7 +202,7 @@ private:
     void CaptureSelectionFromGizmo() noexcept;
 
     /// scene の level + 識別子ストアから編集対象 view を組む
-    [[nodiscard]] NS::Game::Undo::EditTarget SceneEditTarget() noexcept;
+    [[nodiscard]] NS::Game::Level::EditTarget SceneEditTarget() noexcept;
 
     /// 識別子でギズモ選択を貼り直す。 対象が消えていれば選択解除する
     void ReselectFreeObjectById(std::uint32_t id) noexcept;
@@ -241,7 +241,7 @@ private:
     SpecialSelection m_specialSelection = SpecialSelection::None;
 
     // 選択の真実は id (安定セッション識別子)。 rebuild / delete / undo を跨いでも生ポインタや添字に依存しない
-    std::uint32_t m_selectedObjectId = NS::Game::Undo::kInvalidObjectId;
+    std::uint32_t m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
     // id から毎フレーム解決する派生の添字 (m_level.objects 用、 ズレても crash しない安定 vector を指す)
     std::size_t m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
     // 選択中の area camera の cameraVolumes 添字。 オブジェクト選択とは排他
@@ -252,7 +252,7 @@ private:
     // 変形編集 (ギズモドラッグ / Inspector パネル) を 1 undo 単位へ束ねる状態
     bool m_gizmoWasDragging = false;
     bool m_transformEditing = false;
-    std::uint32_t m_editBaselineId = NS::Game::Undo::kInvalidObjectId;
+    std::uint32_t m_editBaselineId = NS::Game::Level::kInvalidObjectId;
     NS::Game::Level::ObjectInstance m_editBaseline{};
 
     // Debug provenance パネルの読み出し元。 書き込みは Render で毎フレーム行う

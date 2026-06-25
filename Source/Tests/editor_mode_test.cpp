@@ -1,7 +1,7 @@
 #include "Editor/EditorMode.h"
 #include "Game/Blocks/BlockRegistry.h"
+#include "Game/Level/EditTarget.h"
 #include "Game/Level/LevelData.h"
-#include "Game/Undo/EditTarget.h"
 
 #include <gtest/gtest.h>
 
@@ -10,7 +10,6 @@
 
 namespace EditorNs = NS::Editor;
 namespace LevelNs = NS::Game::Level;
-namespace UndoNs = NS::Game::Undo;
 
 TEST(EditorMode, ProgrammaticPlaceAddsBlock)
 {
@@ -98,7 +97,7 @@ TEST(EditorMode, UndoStackIntegration)
     editor.PlaceUnderCursorProgrammatic(0, 0, 0);
     ASSERT_EQ(editor.Undo().UndoSize(), 1u);
 
-    UndoNs::EditTarget target{lv, ids, next};
+    LevelNs::EditTarget target{lv, ids, next};
     ASSERT_TRUE(editor.Undo().Undo(target));
     EXPECT_TRUE(lv.objects.empty());
     EXPECT_EQ(lv.ComputeCrc32(), crc0);
@@ -142,7 +141,7 @@ TEST(EditorMode, CellRotationViaProgrammaticOnExistingBlock)
     EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 1);
     EXPECT_TRUE(editor.IsLevelDirty());
 
-    UndoNs::EditTarget target{lv, ids, next};
+    LevelNs::EditTarget target{lv, ids, next};
     ASSERT_TRUE(editor.Undo().Undo(target));
     EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 0);
 }
