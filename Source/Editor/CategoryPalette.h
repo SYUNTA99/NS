@@ -9,6 +9,7 @@
 /// 実体があり、 Shipping では何もしない
 
 #include "Game/Blocks/BlockRegistry.h"
+#include "Game/Level/LevelData.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -30,7 +31,7 @@ namespace NS::Editor
     public:
         static constexpr std::size_t kSlotCount = 8;
 
-        CategoryPalette() noexcept = default;
+        CategoryPalette() noexcept;
         ~CategoryPalette() noexcept = default;
 
         CategoryPalette(const CategoryPalette&) = delete;
@@ -47,7 +48,16 @@ namespace NS::Editor
 
         [[nodiscard]] std::size_t ActiveSlot() const noexcept { return m_activeSlot; }
         [[nodiscard]] std::uint16_t SlotBlockId(std::size_t slot) const noexcept;
-        [[nodiscard]] std::uint16_t CurrentBlockId() const noexcept { return SlotBlockId(m_activeSlot); }
+        [[nodiscard]] std::uint16_t CurrentBlockId() const noexcept { return m_currentTemplate.kind; }
+
+        /// 配置に複製する現在のプロトタイプ。 active slot (slope は選択中の角度) のテンプレート
+        [[nodiscard]] const NS::Game::Level::ObjectInstance& CurrentTemplate() const noexcept
+        {
+            return m_currentTemplate;
+        }
+
+        /// active slot の表示名。 slope は角度別 variant 名を返す
+        [[nodiscard]] const char* CurrentTemplateName() const noexcept;
 
         /// 範囲外指定は無視する
         void SetActiveSlot(std::size_t slot) noexcept;
@@ -57,6 +67,9 @@ namespace NS::Editor
         void CycleActiveVariant() noexcept;
 
     private:
+        /// active slot の kind から m_currentTemplate を組み直す。 slot / variant を変えた直後に呼ぶ
+        void RefreshCurrentTemplate() noexcept;
+
         std::size_t m_activeSlot = 0;
         // 8 スロット = 固形 / コイン / スター / spawn + 地形系 4 種 (slope / pole / hazard / water)
         // slope スロットは再選択で 45→30→22→15° を循環 (CycleActiveVariant)
@@ -68,5 +81,8 @@ namespace NS::Editor
                                              NS::Game::Blocks::kBlockIdPole,
                                              NS::Game::Blocks::kBlockIdHazard,
                                              NS::Game::Blocks::kBlockIdWater};
+
+        // active slot に対応する配置プロトタイプ。 SlotBlockId は kind 索引、 こちらは複製元の実体
+        NS::Game::Level::ObjectInstance m_currentTemplate{};
     };
 } // namespace NS::Editor

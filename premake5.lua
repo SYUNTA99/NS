@@ -820,6 +820,7 @@ project "Tests"
         "Source/Editor/EditorMode.cpp",
         "Source/Editor/GizmoEditor.cpp",
         "Source/Editor/CategoryPalette.cpp",
+        "Source/Editor/PaletteTemplates.cpp",
         "Source/Editor/LevelFileBrowser.cpp",
         "Source/Editor/LevelFilePaths.cpp",
         "Source/Game/Theme/**.cpp"

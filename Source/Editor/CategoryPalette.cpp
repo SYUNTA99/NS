@@ -1,5 +1,6 @@
 #include "Editor/CategoryPalette.h"
 
+#include "Editor/PaletteTemplates.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Framework/UI/Panel.h"
@@ -10,10 +11,23 @@
 
 namespace NS::Editor
 {
+    CategoryPalette::CategoryPalette() noexcept
+    {
+        RefreshCurrentTemplate();
+    }
+
+    void CategoryPalette::RefreshCurrentTemplate() noexcept
+    {
+        m_currentTemplate = PaletteTemplateForKind(m_slots[m_activeSlot]);
+    }
+
     void CategoryPalette::SetActiveSlot(std::size_t slot) noexcept
     {
         if (slot < kSlotCount)
+        {
             m_activeSlot = slot;
+            RefreshCurrentTemplate();
+        }
     }
 
     std::uint16_t CategoryPalette::SlotBlockId(std::size_t slot) const noexcept
@@ -21,11 +35,20 @@ namespace NS::Editor
         return slot < kSlotCount ? m_slots[slot] : 0;
     }
 
+    const char* CategoryPalette::CurrentTemplateName() const noexcept
+    {
+        const std::uint16_t id = m_slots[m_activeSlot];
+        return NS::Game::Blocks::IsSlopeBlock(id) ? SlopeVariantName(id) : PaletteTemplateSlots()[m_activeSlot].name;
+    }
+
     void CategoryPalette::CycleActiveVariant() noexcept
     {
         const std::uint16_t id = m_slots[m_activeSlot];
         if (NS::Game::Blocks::IsSlopeBlock(id))
+        {
             m_slots[m_activeSlot] = NS::Game::Blocks::NextSlopeBlock(id);
+            RefreshCurrentTemplate();
+        }
     }
 
     void CategoryPalette::TickInput(NS::Platform::Input* input, NS::UI::ImGuiContext* imgui) noexcept
@@ -86,7 +109,8 @@ namespace NS::Editor
             ImGui::PushID(static_cast<int>(i));
 
             const std::uint16_t blockId = m_slots[i];
-            const char* label = (blockId != 0) ? NS::Game::Blocks::GetDisplayName(blockId) : "-";
+            const char* label =
+                NS::Game::Blocks::IsSlopeBlock(blockId) ? SlopeVariantName(blockId) : PaletteTemplateSlots()[i].name;
             const bool isActive = (i == m_activeSlot);
 
             // active slot は色を変えて視覚的に区別する
