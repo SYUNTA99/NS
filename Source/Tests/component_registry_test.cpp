@@ -53,6 +53,7 @@ TEST(ComponentRegistryTest, CreatesEachCuratedType)
         "PoleComponent",
         "HazardComponent",
         "MeshRendererComponent",
+        "PickupComponent",
     };
     for (const char* name : kCurated)
     {
@@ -72,6 +73,7 @@ TEST(ComponentRegistryTest, CreatedTypeNameMatchesReflection)
         "PoleComponent",
         "HazardComponent",
         "MeshRendererComponent",
+        "PickupComponent",
     };
     for (const char* name : kReflected)
     {
@@ -111,11 +113,12 @@ TEST(ComponentRegistryTest, IsRegisteredReflectsCuratedSet)
     EXPECT_FALSE(IsRegistered("Bogus"));
 }
 
-TEST(ComponentRegistryTest, RegisteredNamesListsCuratedSeven)
+TEST(ComponentRegistryTest, RegisteredNamesListsCuratedEight)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 7u);
+    EXPECT_EQ(names.size(), 8u);
     EXPECT_TRUE(Contains(names, "BoxColliderComponent"));
     EXPECT_TRUE(Contains(names, "MeshRendererComponent"));
+    EXPECT_TRUE(Contains(names, "PickupComponent"));
     EXPECT_FALSE(Contains(names, "CameraComponent"));
 }

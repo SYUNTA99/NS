@@ -67,6 +67,12 @@ namespace NS::Scene
         /// 描くメッシュの参照を設定する。 build 時にこの文字列から mesh を解決する
         void SetMeshRef(std::string ref) noexcept { m_meshRef = std::move(ref); }
 
+        /// 描画 material の参照。 共有 material 名 (player / block / water / shadow) または .mat 相対パス
+        /// 空なら build が materialIndex / 既定 material へ倒す
+        [[nodiscard]] const std::string& MaterialRef() const noexcept { return m_materialRef; }
+        /// 描画 material の参照を設定する。 build 時にこの文字列から material を解決する
+        void SetMaterialRef(std::string ref) noexcept { m_materialRef = std::move(ref); }
+
         /// 個体段の lighting 上書き。空なら scene 解決値 (ctx.resolvedSettings) がそのまま使われる
         /// 描画時に Resolve(ctx.resolvedSettings, m_objectOverride) で個体段を解決する
         void SetRenderOverride(const NS::Graphics::RenderSettingsOverride& over) noexcept { m_objectOverride = over; }
@@ -92,18 +98,20 @@ namespace NS::Scene
         /// Owner の OwningScene から self を解除する。無効ポインタを残さないよう SceneBase 破棄前に呼ぶ
         void OnEndPlay() override;
 
-        // 個体色とメッシュ参照を Inspector へ公開する。 lighting とは別系統の個体色 + 描くメッシュの住み処
+        // 個体色とメッシュ / material 参照を Inspector へ公開する。 lighting とは別系統の個体色 + 描く住み処
         NS_REFLECT_BEGIN(MeshRendererComponent)
         NS_REFLECT_FIELD(m_baseColor, "Base Color")
         NS_REFLECT_FIELD(m_meshRef, "Mesh")
+        NS_REFLECT_FIELD(m_materialRef, "Material")
         NS_REFLECT_END()
 
     private:
         NS::Graphics::Mesh* m_mesh = nullptr;
         NS::Graphics::Material* m_material = nullptr;
         NS::Math::Vector3 m_baseColor{1.0f, 1.0f, 1.0f};
-        // 保存・編集される参照文字列。 build 時に解決して m_mesh へ実体を当てる二層構造
+        // 保存・編集される参照文字列。 build 時に解決して m_mesh / m_material へ実体を当てる二層構造
         std::string m_meshRef{};
+        std::string m_materialRef{};
         NS::Graphics::RenderSettingsOverride m_objectOverride{};
     };
 } // namespace NS::Scene

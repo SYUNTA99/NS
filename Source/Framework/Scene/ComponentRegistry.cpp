@@ -8,6 +8,7 @@
 #include "Framework/Scene/Components/CapsuleColliderComponent.h"
 #include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
+#include "Framework/Scene/Components/PickupComponent.h"
 #include "Framework/Scene/Components/PoleComponent.h"
 #include "Framework/Scene/Components/SlopeColliderComponent.h"
 #include "Framework/Scene/Components/SphereColliderComponent.h"
@@ -42,6 +43,7 @@ namespace NS::Scene
             {"HazardComponent", [](GameObject& o) -> Component* { return o.AddComponent<HazardComponent>(); }},
             {"MeshRendererComponent",
              [](GameObject& o) -> Component* { return o.AddComponent<MeshRendererComponent>(nullptr, nullptr); }},
+            {"PickupComponent", [](GameObject& o) -> Component* { return o.AddComponent<PickupComponent>(); }},
         };
     } // namespace
 
