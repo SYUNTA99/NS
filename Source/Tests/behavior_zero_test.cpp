@@ -9,6 +9,8 @@
 #include <Framework/Scene/Components/BoxColliderComponent.h>
 #include <Framework/Scene/Components/CapsuleColliderComponent.h>
 #include <Framework/Scene/Components/HazardComponent.h>
+#include <Framework/Scene/Components/MeshRendererComponent.h>
+#include <Framework/Scene/Components/PickupComponent.h>
 #include <Framework/Scene/Components/PoleComponent.h>
 #include <Framework/Scene/Components/SlopeColliderComponent.h>
 #include <Framework/Scene/Components/SphereColliderComponent.h>
@@ -24,16 +26,22 @@
 #include <filesystem>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace
 {
     using NS::Game::Blocks::BuildPlacedObject;
     using NS::Game::Blocks::FindComponent;
+    using NS::Game::Blocks::kBlockIdCoin;
+    using NS::Game::Blocks::kBlockIdDecoration;
     using NS::Game::Blocks::kBlockIdHazard;
     using NS::Game::Blocks::kBlockIdPole;
+    using NS::Game::Blocks::kBlockIdPowerStar;
     using NS::Game::Blocks::kBlockIdSlope45;
     using NS::Game::Blocks::kBlockIdSolid;
+    using NS::Game::Blocks::kBlockIdWater;
+    using NS::Game::Blocks::MaterializeComponentsFromKind;
     using NS::Game::Level::CameraVolume;
     using NS::Game::Level::ComponentData;
     using NS::Game::Level::DeserializeLevelFromJson;
@@ -193,6 +201,47 @@ namespace
         component.typeName = std::move(typeName);
         component.fields = std::move(fields);
         return component;
+    }
+
+    // ComponentData の反射フィールドを名前で引く data 段ヘルパ群。 device を持たずに materialize 結果を直接検証する
+    const FieldValue* FindFieldValue(const ComponentData& component, const std::string& name)
+    {
+        for (const auto& field : component.fields)
+            if (field.name == name)
+                return &field;
+        return nullptr;
+    }
+
+    std::string FieldString(const ComponentData& component, const std::string& name)
+    {
+        const FieldValue* field = FindFieldValue(component, name);
+        if (field != nullptr && std::holds_alternative<std::string>(field->value))
+            return std::get<std::string>(field->value);
+        return std::string{};
+    }
+
+    float FieldFloat(const ComponentData& component, const std::string& name)
+    {
+        const FieldValue* field = FindFieldValue(component, name);
+        if (field != nullptr && std::holds_alternative<float>(field->value))
+            return std::get<float>(field->value);
+        return 0.0f;
+    }
+
+    int FieldInt(const ComponentData& component, const std::string& name)
+    {
+        const FieldValue* field = FindFieldValue(component, name);
+        if (field != nullptr && std::holds_alternative<int>(field->value))
+            return std::get<int>(field->value);
+        return -1;
+    }
+
+    bool HasComponentType(const std::vector<ComponentData>& components, const std::string& typeName)
+    {
+        for (const auto& component : components)
+            if (component.typeName == typeName)
+                return true;
+        return false;
     }
 
     // grid と free と全 collider channel を含む代表レベル。 旧形式の components 空 kind 駆動で組む
@@ -390,4 +439,111 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     EXPECT_NEAR(half.x, 1.0f, kTol);
     EXPECT_NEAR(half.y, 2.0f, kTol);
     EXPECT_NEAR(half.z, 3.0f, kTol);
+}
+
+// kind が materialize する ComponentData がレシピどおりで、 kind 駆動と手書き components が同一 collider を組む
+TEST(BehaviorZero, MaterializedKindMatchesAuthoredComponents)
+{
+    // grid solid: cube + block material + BoxCollider
+    {
+        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdSolid, 0.0f, 0.0f, 0.0f));
+        ASSERT_EQ(comps.size(), 2u);
+        EXPECT_EQ(comps[0].typeName, "MeshRendererComponent");
+        EXPECT_EQ(FieldString(comps[0], "Mesh"), "cube");
+        EXPECT_EQ(FieldString(comps[0], "Material"), "block");
+        EXPECT_EQ(comps[1].typeName, "BoxColliderComponent");
+    }
+    // grid slope45: wedge45 + SlopeCollider(45 度)
+    {
+        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdSlope45, 0.0f, 0.0f, 0.0f));
+        ASSERT_EQ(comps.size(), 2u);
+        EXPECT_EQ(FieldString(comps[0], "Mesh"), "wedge45");
+        EXPECT_EQ(comps[1].typeName, "SlopeColliderComponent");
+        EXPECT_FLOAT_EQ(FieldFloat(comps[1], "Angle (deg)"), 45.0f);
+    }
+    // grid pole: pole + PoleComponent
+    {
+        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdPole, 0.0f, 0.0f, 0.0f));
+        ASSERT_EQ(comps.size(), 2u);
+        EXPECT_EQ(FieldString(comps[0], "Mesh"), "pole");
+        EXPECT_EQ(comps[1].typeName, "PoleComponent");
+    }
+    // grid hazard: cube + BoxCollider + HazardComponent
+    {
+        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdHazard, 0.0f, 0.0f, 0.0f));
+        ASSERT_EQ(comps.size(), 3u);
+        EXPECT_EQ(comps[1].typeName, "BoxColliderComponent");
+        EXPECT_EQ(comps[2].typeName, "HazardComponent");
+    }
+    // grid water: MeshRenderer のみ・ material は water
+    {
+        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdWater, 0.0f, 0.0f, 0.0f));
+        ASSERT_EQ(comps.size(), 1u);
+        EXPECT_EQ(comps[0].typeName, "MeshRendererComponent");
+        EXPECT_EQ(FieldString(comps[0], "Material"), "water");
+    }
+    // grid decoration: MeshRenderer のみ・ material は block
+    {
+        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdDecoration, 0.0f, 0.0f, 0.0f));
+        ASSERT_EQ(comps.size(), 1u);
+        EXPECT_EQ(FieldString(comps[0], "Material"), "block");
+    }
+    // grid coin: PickupComponent のみ (Pickup Kind 0)・ MeshRenderer を含まない (視覚ゼロ)
+    {
+        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdCoin, 0.0f, 0.0f, 0.0f));
+        ASSERT_EQ(comps.size(), 1u);
+        EXPECT_EQ(comps[0].typeName, "PickupComponent");
+        EXPECT_EQ(FieldInt(comps[0], "Pickup Kind"), 0);
+        EXPECT_FALSE(HasComponentType(comps, "MeshRendererComponent"));
+    }
+    // grid star: PickupComponent のみ (Pickup Kind 1)・ MeshRenderer を含まない (視覚ゼロ)
+    {
+        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdPowerStar, 0.0f, 0.0f, 0.0f));
+        ASSERT_EQ(comps.size(), 1u);
+        EXPECT_EQ(comps[0].typeName, "PickupComponent");
+        EXPECT_EQ(FieldInt(comps[0], "Pickup Kind"), 1);
+        EXPECT_FALSE(HasComponentType(comps, "MeshRendererComponent"));
+    }
+    // free sphere: cube (空 material) + BoxCollider + SphereCollider 退避
+    {
+        const auto comps = MaterializeComponentsFromKind(MakeFree(ShapeCollider::Sphere, 0.0f, 0.0f, 0.0f));
+        ASSERT_EQ(comps.size(), 3u);
+        EXPECT_EQ(comps[0].typeName, "MeshRendererComponent");
+        EXPECT_EQ(FieldString(comps[0], "Mesh"), "cube");
+        EXPECT_EQ(FieldString(comps[0], "Material"), "");
+        EXPECT_EQ(comps[1].typeName, "BoxColliderComponent");
+        EXPECT_EQ(comps[2].typeName, "SphereColliderComponent");
+    }
+    // free capsule: cube + BoxCollider + CapsuleCollider 退避
+    {
+        const auto comps = MaterializeComponentsFromKind(MakeFree(ShapeCollider::Capsule, 0.0f, 0.0f, 0.0f));
+        ASSERT_EQ(comps.size(), 3u);
+        EXPECT_EQ(comps[2].typeName, "CapsuleColliderComponent");
+    }
+
+    // golden 等価: kind 駆動 (materialize→build) と手書き components→build が同一 collider signature を組む
+    NS::Scene::AssetManager assets{std::filesystem::path{"."}};
+    const std::vector<std::string> noPaths;
+
+    ObjectInstance kindSolid = MakeGrid(kBlockIdSolid, 1.0f, 2.0f, 3.0f);
+    ObjectInstance authoredSolid;
+    authoredSolid.kind = kBlockIdSolid;
+    authoredSolid.flags = kObjectFlagGridAligned;
+    authoredSolid.positionX = 1.0f;
+    authoredSolid.positionY = 2.0f;
+    authoredSolid.positionZ = 3.0f;
+    authoredSolid.components.push_back(
+        MakeComponent("MeshRendererComponent",
+                      {FieldValue{"Mesh", std::string{"cube"}}, FieldValue{"Material", std::string{"block"}}}));
+    authoredSolid.components.push_back(
+        MakeComponent("BoxColliderComponent", {FieldValue{"Half Extents", Vector3{0.5f, 0.5f, 0.5f}}}));
+
+    auto kindBuilt = BuildPlacedObject(kindSolid, assets, noPaths);
+    auto authoredBuilt = BuildPlacedObject(authoredSolid, assets, noPaths);
+    ASSERT_NE(kindBuilt, nullptr);
+    ASSERT_NE(authoredBuilt, nullptr);
+
+    const ColliderSignature kindSig = ExtractColliderSignature(*kindBuilt);
+    EXPECT_TRUE(kindSig.hasBox);
+    ExpectSignatureEqual(kindSig, ExtractColliderSignature(*authoredBuilt));
 }

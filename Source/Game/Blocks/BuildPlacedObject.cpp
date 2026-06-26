@@ -8,6 +8,7 @@
 #include "Framework/Scene/Components/CapsuleColliderComponent.h"
 #include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
+#include "Framework/Scene/Components/PickupComponent.h"
 #include "Framework/Scene/Components/PoleComponent.h"
 #include "Framework/Scene/Components/SlopeColliderComponent.h"
 #include "Framework/Scene/Components/SphereColliderComponent.h"
@@ -73,6 +74,12 @@ namespace NS::Game::Blocks
             return assets.Builtin("cube");
         }
 
+        // 共有 material 名 (player / block / water / shadow) なら true。 これ以外は .mat パス / 既定へ倒す
+        bool IsSharedMaterialName(const std::string& ref) noexcept
+        {
+            return ref == "player" || ref == "block" || ref == "water" || ref == "shadow";
+        }
+
         // full SSOT 主経路: object.components を ComponentRegistry で生成し反射 set で値を入れる
         std::unique_ptr<NS::Scene::GameObject> BuildFromComponents(const NS::Game::Level::ObjectInstance& object,
                                                                    NS::Scene::AssetManager& assets,
@@ -88,11 +95,14 @@ namespace NS::Game::Blocks
                 const nlohmann::json fields = NS::Game::Level::ComponentFieldsToJson(component);
                 NS::Scene::ApplyJsonFields(*created, fields);
 
-                // material は反射で運べないので free material を当てる。 mesh はメッシュ参照があれば参照優先で解決し、
-                // 空 / 解決不可なら kind 由来 geometry へフォールバックする
+                // material 参照が共有名なら共有 material、 空なら materialIndex / 既定へ倒す。 mesh はメッシュ参照を
+                // 参照優先で解決し、 空 / 解決不可なら kind 由来 geometry へフォールバックする
                 if (auto* mesh = dynamic_cast<NS::Scene::MeshRendererComponent*>(created))
                 {
-                    mesh->SetMaterial(ResolveFreeMaterial(object, assets, materialPaths));
+                    const std::string& matRef = mesh->MaterialRef();
+                    mesh->SetMaterial(IsSharedMaterialName(matRef)
+                                          ? assets.SharedMaterial(matRef)
+                                          : ResolveFreeMaterial(object, assets, materialPaths));
                     NS::Graphics::Mesh* resolved =
                         mesh->MeshRef().empty() ? nullptr : ResolveMeshFromRef(assets, mesh->MeshRef());
                     mesh->SetMesh(resolved != nullptr ? resolved : ResolveVisualMesh(assets, object));
@@ -101,91 +111,151 @@ namespace NS::Game::Blocks
             return obj;
         }
 
-        // 旧データ互換のフォールバック: components を持たない object を kind のレシピから組む
-        // 未対応 grid kind (coin / star 等) は nullptr を返す
-        std::unique_ptr<NS::Scene::GameObject> BuildFromKind(const NS::Game::Level::ObjectInstance& object,
-                                                             NS::Scene::AssetManager& assets,
-                                                             const std::vector<std::string>& materialPaths)
+        // kind から描画メッシュの builtin 名を引く。 ResolveVisualMesh と同じ規則で名前だけを返す
+        const char* VisualMeshName(const NS::Game::Level::ObjectInstance& object) noexcept
         {
             using namespace NS::Game::Level;
+            if ((object.flags & kObjectFlagGridAligned) == 0)
+                return "cube";
+            if (IsSlopeBlock(object.kind))
+            {
+                if (object.kind == kBlockIdSlope45)
+                    return "wedge45";
+                if (object.kind == kBlockIdSlope30)
+                    return "wedge30";
+                if (object.kind == kBlockIdSlope22)
+                    return "wedge22";
+                if (object.kind == kBlockIdSlope15)
+                    return "wedge15";
+                return "cube";
+            }
+            if (IsPoleBlock(object.kind))
+                return "pole";
+            return "cube";
+        }
 
-            const bool gridAligned = (object.flags & kObjectFlagGridAligned) != 0;
-            NS::Graphics::StaticMesh* const visualMesh = ResolveVisualMesh(assets, object);
-            NS::Graphics::Material* const blockMat = assets.SharedMaterial("block");
+        // 当たり箱の quaternion を反射 "Rotation (deg)" が受ける Euler 度へ写す。 SetRotationEulerDegrees の逆変換
+        NS::Math::Vector3 QuaternionToEulerDegrees(const NS::Math::Quaternion& q) noexcept
+        {
+            const NS::Math::Vector3 euler = q.ToEuler();
+            return NS::Math::Vector3{NS::Math::RadiansToDegrees(euler.x),
+                                     NS::Math::RadiansToDegrees(euler.y),
+                                     NS::Math::RadiansToDegrees(euler.z)};
+        }
 
-            auto obj = std::make_unique<NS::Scene::GameObject>();
+        NS::Game::Level::ComponentData MakeComponentData(std::string typeName,
+                                                         std::vector<NS::Game::Level::FieldValue> fields)
+        {
+            NS::Game::Level::ComponentData component;
+            component.typeName = std::move(typeName);
+            component.fields = std::move(fields);
+            return component;
+        }
 
-            if (!gridAligned)
-            {
-                NS::Graphics::Material* freeMat = ResolveFreeMaterial(object, assets, materialPaths);
-
-                const NS::Math::Vector3 colliderHalfExtents{
-                    object.colliderHalfExtentsX, object.colliderHalfExtentsY, object.colliderHalfExtentsZ};
-                const NS::Math::Vector3 colliderOffset{
-                    object.colliderOffsetX, object.colliderOffsetY, object.colliderOffsetZ};
-                const NS::Math::Quaternion colliderRotation{object.colliderRotationX,
-                                                            object.colliderRotationY,
-                                                            object.colliderRotationZ,
-                                                            object.colliderRotationW};
-
-                obj->AddComponent<NS::Scene::MeshRendererComponent>(visualMesh, freeMat);
-                auto* box = obj->AddComponent<NS::Scene::BoxColliderComponent>(colliderHalfExtents);
-                box->SetCenterOffset(colliderOffset);
-                box->SetLocalRotation(colliderRotation);
-
-                // 形状別の当たりを内蔵 Box に加えて足す。 視覚は cube のまま、 内蔵 Box は当たり退避として残す
-                const ShapeCollider shape = ObjectShapeCollider(object);
-                if (shape == ShapeCollider::Sphere)
-                {
-                    auto* sphere = obj->AddComponent<NS::Scene::SphereColliderComponent>(object.colliderHalfExtentsX);
-                    sphere->SetCenterOffset(colliderOffset);
-                }
-                else if (shape == ShapeCollider::Capsule)
-                {
-                    auto* capsule = obj->AddComponent<NS::Scene::CapsuleColliderComponent>(object.colliderHalfExtentsX,
-                                                                                           object.colliderHalfExtentsY);
-                    capsule->SetCenterOffset(colliderOffset);
-                    capsule->SetLocalRotation(colliderRotation);
-                }
-            }
-            else if (object.kind == kBlockIdSolid)
-            {
-                obj->AddComponent<NS::Scene::MeshRendererComponent>(visualMesh, blockMat);
-                obj->AddComponent<NS::Scene::BoxColliderComponent>(kCellHalfExtents);
-            }
-            else if (IsSlopeBlock(object.kind))
-            {
-                obj->AddComponent<NS::Scene::MeshRendererComponent>(visualMesh, blockMat);
-                obj->AddComponent<NS::Scene::SlopeColliderComponent>(GetSlopeAngleDegrees(object.kind),
-                                                                     kCellHalfExtents);
-            }
-            else if (IsPoleBlock(object.kind))
-            {
-                obj->AddComponent<NS::Scene::MeshRendererComponent>(visualMesh, blockMat);
-                obj->AddComponent<NS::Scene::PoleComponent>(kPoleRadius, kPoleHeight);
-            }
-            else if (IsHazardBlock(object.kind))
-            {
-                obj->AddComponent<NS::Scene::MeshRendererComponent>(visualMesh, blockMat);
-                obj->AddComponent<NS::Scene::BoxColliderComponent>(kCellHalfExtents);
-                obj->AddComponent<NS::Scene::HazardComponent>();
-            }
-            else if (IsWaterBlock(object.kind))
-            {
-                obj->AddComponent<NS::Scene::MeshRendererComponent>(visualMesh, assets.SharedMaterial("water"));
-            }
-            else if (IsDecorationBlock(object.kind))
-            {
-                obj->AddComponent<NS::Scene::MeshRendererComponent>(visualMesh, blockMat);
-            }
-            else
-            {
-                // 未対応の grid kind (coin / star 等) は配置物として組まない。 呼出側が nullptr を読み飛ばす
-                return nullptr;
-            }
-            return obj;
+        NS::Game::Level::ComponentData MeshRendererData(std::string meshName,
+                                                        std::string materialName,
+                                                        const NS::Math::Vector3& baseColor)
+        {
+            return MakeComponentData("MeshRendererComponent",
+                                     {NS::Game::Level::FieldValue{"Mesh", std::move(meshName)},
+                                      NS::Game::Level::FieldValue{"Material", std::move(materialName)},
+                                      NS::Game::Level::FieldValue{"Base Color", baseColor}});
         }
     } // namespace
+
+    std::vector<NS::Game::Level::ComponentData> MaterializeComponentsFromKind(
+        const NS::Game::Level::ObjectInstance& object)
+    {
+        using namespace NS::Game::Level;
+        std::vector<ComponentData> result;
+
+        const bool gridAligned = (object.flags & kObjectFlagGridAligned) != 0;
+
+        // コイン / スターは視覚も当たりも持たず、 拾得の意味だけを PickupComponent で表す (不可視を維持)
+        if (gridAligned && object.kind == kBlockIdCoin)
+        {
+            result.push_back(MakeComponentData("PickupComponent", {FieldValue{"Pickup Kind", 0}}));
+            return result;
+        }
+        if (gridAligned && object.kind == kBlockIdPowerStar)
+        {
+            result.push_back(MakeComponentData("PickupComponent", {FieldValue{"Pickup Kind", 1}}));
+            return result;
+        }
+
+        const NS::Math::Color color = GetBaseColor(object.kind);
+        const NS::Math::Vector3 baseColor{color.R(), color.G(), color.B()};
+        const std::string meshName = VisualMeshName(object);
+
+        if (!gridAligned)
+        {
+            // 自由配置物は cube + 当たり Box、 shape により Sphere / Capsule を退避追加する
+            const NS::Math::Vector3 half{
+                object.colliderHalfExtentsX, object.colliderHalfExtentsY, object.colliderHalfExtentsZ};
+            const NS::Math::Vector3 offset{object.colliderOffsetX, object.colliderOffsetY, object.colliderOffsetZ};
+            const NS::Math::Quaternion rotation{
+                object.colliderRotationX, object.colliderRotationY, object.colliderRotationZ, object.colliderRotationW};
+            const NS::Math::Vector3 rotationEuler = QuaternionToEulerDegrees(rotation);
+
+            result.push_back(MeshRendererData(meshName, "", baseColor));
+            result.push_back(MakeComponentData("BoxColliderComponent",
+                                               {FieldValue{"Half Extents", half},
+                                                FieldValue{"Center Offset", offset},
+                                                FieldValue{"Rotation (deg)", rotationEuler}}));
+
+            const ShapeCollider shape = ObjectShapeCollider(object);
+            if (shape == ShapeCollider::Sphere)
+            {
+                result.push_back(MakeComponentData(
+                    "SphereColliderComponent",
+                    {FieldValue{"Radius", object.colliderHalfExtentsX}, FieldValue{"Center Offset", offset}}));
+            }
+            else if (shape == ShapeCollider::Capsule)
+            {
+                result.push_back(MakeComponentData("CapsuleColliderComponent",
+                                                   {FieldValue{"Radius", object.colliderHalfExtentsX},
+                                                    FieldValue{"Half Height", object.colliderHalfExtentsY},
+                                                    FieldValue{"Center Offset", offset},
+                                                    FieldValue{"Rotation (deg)", rotationEuler}}));
+            }
+            return result;
+        }
+
+        if (object.kind == kBlockIdSolid)
+        {
+            result.push_back(MeshRendererData(meshName, "block", baseColor));
+            result.push_back(MakeComponentData("BoxColliderComponent", {FieldValue{"Half Extents", kCellHalfExtents}}));
+        }
+        else if (IsSlopeBlock(object.kind))
+        {
+            result.push_back(MeshRendererData(meshName, "block", baseColor));
+            result.push_back(MakeComponentData("SlopeColliderComponent",
+                                               {FieldValue{"Angle (deg)", GetSlopeAngleDegrees(object.kind)},
+                                                FieldValue{"Half Extents", kCellHalfExtents}}));
+        }
+        else if (IsPoleBlock(object.kind))
+        {
+            result.push_back(MeshRendererData(meshName, "block", baseColor));
+            result.push_back(MakeComponentData("PoleComponent",
+                                               {FieldValue{"Radius", kPoleRadius}, FieldValue{"Height", kPoleHeight}}));
+        }
+        else if (IsHazardBlock(object.kind))
+        {
+            result.push_back(MeshRendererData(meshName, "block", baseColor));
+            result.push_back(MakeComponentData("BoxColliderComponent", {FieldValue{"Half Extents", kCellHalfExtents}}));
+            result.push_back(MakeComponentData("HazardComponent", {}));
+        }
+        else if (IsWaterBlock(object.kind))
+        {
+            result.push_back(MeshRendererData(meshName, "water", baseColor));
+        }
+        else if (IsDecorationBlock(object.kind))
+        {
+            result.push_back(MeshRendererData(meshName, "block", baseColor));
+        }
+        // 未対応の grid kind は空一覧のまま返す (呼出側が配置物として組まない)
+        return result;
+    }
 
     std::optional<std::filesystem::path> ResolveContentPath(const std::string& relative)
     {
@@ -216,9 +286,6 @@ namespace NS::Game::Blocks
                                                              NS::Scene::AssetManager& assets,
                                                              const std::vector<std::string>& materialPaths)
     {
-        const auto color = GetBaseColor(object.kind);
-        const NS::Math::Vector3 baseColor{color.R(), color.G(), color.B()};
-
         std::unique_ptr<NS::Scene::GameObject> obj;
         if (!object.components.empty())
         {
@@ -226,18 +293,18 @@ namespace NS::Game::Blocks
         }
         else
         {
-            obj = BuildFromKind(object, assets, materialPaths);
-            if (obj == nullptr)
-                return nullptr;
+            // components 空の旧データは kind を ComponentData へ展開してから単一 build 経路へ流す
+            NS::Game::Level::ObjectInstance materialized = object;
+            materialized.components = MaterializeComponentsFromKind(object);
+            if (materialized.components.empty())
+                return nullptr; // 未対応 kind は配置物として組まない
+            obj = BuildFromComponents(materialized, assets, materialPaths);
         }
 
         obj->Root().SetPosition(NS::Math::Vector3{object.positionX, object.positionY, object.positionZ});
         obj->Root().SetRotation(
             NS::Math::Quaternion{object.rotationX, object.rotationY, object.rotationZ, object.rotationW});
         obj->Root().SetScale(NS::Math::Vector3{object.scaleX, object.scaleY, object.scaleZ});
-
-        if (auto* meshComp = FindComponent<NS::Scene::MeshRendererComponent>(*obj))
-            meshComp->SetBaseColor(baseColor);
 
         return obj;
     }
