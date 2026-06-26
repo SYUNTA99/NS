@@ -5,6 +5,8 @@
 
 #include <gtest/gtest.h>
 
+#include <utility>
+
 namespace LevelNs = NS::Game::Level;
 
 TEST(PlayMode, EnterInitializesPlayerAtSpawn)
@@ -90,6 +92,61 @@ TEST(PlayMode, PowerStarTriggersClear)
     lv.spawnY = 0;
     lv.spawnZ = 0;
     lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdPowerStar, 0));
+
+    LevelNs::PlayState play;
+    LevelNs::PlayMode mode;
+    mode.Enter(lv, play);
+    mode.Tick(lv, play, 1.0f / 60.0f);
+
+    EXPECT_TRUE(play.clearTriggered);
+}
+
+TEST(PlayMode, PickupComponentCoinIncrementsCounter)
+{
+    LevelNs::LevelData lv;
+    lv.spawnX = 0;
+    lv.spawnY = 0;
+    lv.spawnZ = 0;
+
+    // kind は coin の ID でなく、 PickupComponent が拾得を駆動することを示す
+    LevelNs::ObjectInstance coin;
+    coin.flags = LevelNs::kObjectFlagGridAligned;
+    coin.kind = 0;
+    coin.positionX = 0.0f;
+    coin.positionY = 0.0f;
+    coin.positionZ = 0.0f;
+    LevelNs::ComponentData pickup;
+    pickup.typeName = "PickupComponent";
+    pickup.fields.push_back(LevelNs::FieldValue{"Pickup Kind", 0});
+    coin.components.push_back(std::move(pickup));
+    lv.objects.push_back(std::move(coin));
+
+    LevelNs::PlayState play;
+    LevelNs::PlayMode mode;
+    mode.Enter(lv, play);
+    mode.Tick(lv, play, 1.0f / 60.0f);
+
+    EXPECT_GE(play.coinCount, 1);
+}
+
+TEST(PlayMode, PickupComponentStarTriggersClear)
+{
+    LevelNs::LevelData lv;
+    lv.spawnX = 0;
+    lv.spawnY = 0;
+    lv.spawnZ = 0;
+
+    LevelNs::ObjectInstance star;
+    star.flags = LevelNs::kObjectFlagGridAligned;
+    star.kind = 0;
+    star.positionX = 0.0f;
+    star.positionY = 0.0f;
+    star.positionZ = 0.0f;
+    LevelNs::ComponentData pickup;
+    pickup.typeName = "PickupComponent";
+    pickup.fields.push_back(LevelNs::FieldValue{"Pickup Kind", 1});
+    star.components.push_back(std::move(pickup));
+    lv.objects.push_back(std::move(star));
 
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;

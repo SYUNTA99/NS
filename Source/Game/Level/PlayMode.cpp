@@ -5,9 +5,44 @@
 #include "Game/Level/PlayState.h"
 
 #include <algorithm>
+#include <variant>
 
 namespace NS::Game::Level
 {
+    namespace
+    {
+        // PickupComponent の "Pickup Kind" を返す。 PickupComponent が無ければ -1、 フィールド欠損は 0 (コイン既定)
+        int PickupKindOf(const ObjectInstance& object) noexcept
+        {
+            for (const auto& component : object.components)
+            {
+                if (component.typeName != "PickupComponent")
+                    continue;
+                for (const auto& field : component.fields)
+                    if (field.name == "Pickup Kind" && std::holds_alternative<int>(field.value))
+                        return std::get<int>(field.value);
+                return 0;
+            }
+            return -1;
+        }
+
+        // PickupComponent があればその種別で、 無ければ components 化前の旧 kind データへ倒して判定する
+        bool ObjectIsCoin(const ObjectInstance& object) noexcept
+        {
+            const int kind = PickupKindOf(object);
+            if (kind >= 0)
+                return kind == 0;
+            return object.kind == NS::Game::Blocks::kBlockIdCoin;
+        }
+
+        bool ObjectIsStar(const ObjectInstance& object) noexcept
+        {
+            const int kind = PickupKindOf(object);
+            if (kind >= 0)
+                return kind == 1;
+            return object.kind == NS::Game::Blocks::kBlockIdPowerStar;
+        }
+    } // namespace
 
     PlayMode::PlayMode() noexcept = default;
     PlayMode::~PlayMode() noexcept = default;
@@ -48,8 +83,8 @@ namespace NS::Game::Level
         for (std::size_t i = 0; i < level.objects.size(); ++i)
         {
             const auto& entry = level.objects[i];
-            const bool isCoin = (entry.kind == NS::Game::Blocks::kBlockIdCoin);
-            const bool isStar = (entry.kind == NS::Game::Blocks::kBlockIdPowerStar);
+            const bool isCoin = ObjectIsCoin(entry);
+            const bool isStar = ObjectIsStar(entry);
             if (!isCoin && !isStar)
                 continue;
 
