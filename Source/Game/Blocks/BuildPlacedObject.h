@@ -11,9 +11,16 @@
 #include "Framework/Scene/Component.h"
 #include "Framework/Scene/GameObject.h"
 
+#include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
+
+namespace NS::Graphics
+{
+    class Mesh;
+} // namespace NS::Graphics
 
 namespace NS::Scene
 {
@@ -34,6 +41,14 @@ namespace NS::Game::Blocks
         const NS::Game::Level::ObjectInstance& object,
         NS::Scene::AssetManager& assets,
         const std::vector<std::string>& materialPaths);
+
+    /// asset 相対パスを ContentRoot 配下へ正規化して返す。 `..` で外へ出るパスは nullopt にし任意ファイル読込を防ぐ
+    /// path 型メソッドのみで判定し、 実在確認の filesystem 操作系は呼ばない
+    [[nodiscard]] std::optional<std::filesystem::path> ResolveContentPath(const std::string& relative);
+
+    /// メッシュ参照文字列からメッシュを解決する。 builtin 名を先引きし、 外れたら ContentRoot 配下の相対パスとして
+    /// glTF を読む。 空 / traversal / 未解決は nullptr を返す。 traversal は ResolveContentPath が弾く
+    [[nodiscard]] NS::Graphics::Mesh* ResolveMeshFromRef(NS::Scene::AssetManager& assets, const std::string& meshRef);
 
     /// obj の Component 列から型 T の最初の一致を返す (無ければ nullptr)
     /// 描画 / 衝突 / editor が具象型を知らずに Component を取り出す共通窓口

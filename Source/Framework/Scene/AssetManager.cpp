@@ -150,10 +150,28 @@ namespace NS::Scene
         const std::filesystem::path key = path.lexically_normal();
         if (const auto it = m_meshes.find(key); it != m_meshes.end())
             return it->second.get();
-        // file mesh (.glb 等) のロードは消費者が出た時に実装する。 dedupe の枠だけ用意し、 現状は未対応
-        NS_LOG_WARN(
-            ::NS::Core::LogCat::Graphics, "AssetManager::GetOrLoadMesh: file mesh ロード未対応: {}", key.string());
-        return nullptr;
+
+        // 静的 glTF を読み StaticMesh を生成して path 鍵で dedupe 所有する
+        const NS::Graphics::MeshGeometry geom = NS::Graphics::LoadGltfMesh(key.string());
+        if (geom.vertices.empty() || geom.indices.empty())
+        {
+            NS_LOG_WARN(
+                ::NS::Core::LogCat::Graphics, "AssetManager::GetOrLoadMesh: mesh の読込失敗 / 空: {}", key.string());
+            return nullptr;
+        }
+
+        std::unique_ptr<NS::Graphics::StaticMesh> mesh = MakeStaticMesh(geom);
+        if (mesh == nullptr || !mesh->IsValid())
+        {
+            // GPU buffer 生成に失敗。 ダッド mesh をキャッシュせず無効を返す
+            NS_LOG_ERROR(
+                ::NS::Core::LogCat::Graphics, "AssetManager::GetOrLoadMesh: mesh の GPU 生成失敗: {}", key.string());
+            return nullptr;
+        }
+
+        NS::Graphics::Mesh* raw = mesh.get();
+        m_meshes.emplace(key, std::move(mesh));
+        return raw;
     }
 
     LoadedSkinnedModel AssetManager::GetOrLoadSkinnedModel(const std::filesystem::path& path)

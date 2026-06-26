@@ -30,18 +30,6 @@ namespace NS::Game::Blocks
         constexpr float kPoleRadius = 0.15f;
         constexpr float kPoleHeight = 1.0f;
 
-        // asset path を ContentRoot 配下へ正規化して返す。 .. で外へ出る path は nullopt にし任意ファイル読込を防ぐ
-        std::optional<std::filesystem::path> ResolveContentPath(const std::string& relative)
-        {
-            namespace fs = std::filesystem;
-            const fs::path root = NS::Core::FileSystem::ContentRoot().lexically_normal();
-            fs::path resolved = (root / relative).lexically_normal();
-            const fs::path rel = resolved.lexically_relative(root);
-            if (rel.empty() || *rel.begin() == fs::path{".."})
-                return std::nullopt;
-            return resolved;
-        }
-
         // free 配置物の material を解決する。 materialIndex 無効 / traversal は共有 player material に倒す
         NS::Graphics::Material* ResolveFreeMaterial(const NS::Game::Level::ObjectInstance& object,
                                                     NS::Scene::AssetManager& assets,
@@ -100,11 +88,14 @@ namespace NS::Game::Blocks
                 const nlohmann::json fields = NS::Game::Level::ComponentFieldsToJson(component);
                 NS::Scene::ApplyJsonFields(*created, fields);
 
-                // mesh / material は反射で運べない。 MeshRenderer には free material と kind 由来 geometry を当てる
+                // material は反射で運べないので free material を当てる。 mesh はメッシュ参照があれば参照優先で解決し、
+                // 空 / 解決不可なら kind 由来 geometry へフォールバックする
                 if (auto* mesh = dynamic_cast<NS::Scene::MeshRendererComponent*>(created))
                 {
                     mesh->SetMaterial(ResolveFreeMaterial(object, assets, materialPaths));
-                    mesh->SetMesh(ResolveVisualMesh(assets, object));
+                    NS::Graphics::Mesh* resolved =
+                        mesh->MeshRef().empty() ? nullptr : ResolveMeshFromRef(assets, mesh->MeshRef());
+                    mesh->SetMesh(resolved != nullptr ? resolved : ResolveVisualMesh(assets, object));
                 }
             }
             return obj;
@@ -195,6 +186,31 @@ namespace NS::Game::Blocks
             return obj;
         }
     } // namespace
+
+    std::optional<std::filesystem::path> ResolveContentPath(const std::string& relative)
+    {
+        namespace fs = std::filesystem;
+        const fs::path root = NS::Core::FileSystem::ContentRoot().lexically_normal();
+        fs::path resolved = (root / relative).lexically_normal();
+        const fs::path rel = resolved.lexically_relative(root);
+        if (rel.empty() || *rel.begin() == fs::path{".."})
+            return std::nullopt;
+        return resolved;
+    }
+
+    NS::Graphics::Mesh* ResolveMeshFromRef(NS::Scene::AssetManager& assets, const std::string& meshRef)
+    {
+        if (meshRef.empty())
+            return nullptr;
+        // builtin 名を先引きする (cube / wedge45 / wedge30 / wedge22 / wedge15 / pole)
+        if (NS::Graphics::StaticMesh* builtin = assets.Builtin(meshRef))
+            return builtin;
+        // builtin に無ければ ContentRoot 配下の相対パスとして glTF を読む。 .. の traversal は弾かれ nullptr
+        const std::optional<std::filesystem::path> resolved = ResolveContentPath(meshRef);
+        if (!resolved)
+            return nullptr;
+        return assets.GetOrLoadMesh(*resolved);
+    }
 
     std::unique_ptr<NS::Scene::GameObject> BuildPlacedObject(const NS::Game::Level::ObjectInstance& object,
                                                              NS::Scene::AssetManager& assets,
