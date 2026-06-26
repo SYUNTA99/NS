@@ -60,6 +60,31 @@ TEST(AutoTileTest, DifferentMaterialNeighborDoesNotConnect)
     EXPECT_EQ(m, 0u);
 }
 
+TEST(AutoTileTest, DifferentVisualIdentityNeighborDoesNotSetBit)
+{
+    // solid (cube) の隣に slope (wedge) を置くとメッシュが異なるので連結しない
+    LevelNs::LevelData lv;
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, BlocksNs::kBlockIdSolid, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(+1, 0, 0, BlocksNs::kBlockIdSlope45, 0));
+    auto m = BlocksNs::ComputeNeighborMask(lv, 0, 0, 0);
+    EXPECT_EQ(m, 0u);
+}
+
+TEST(AutoTileTest, MixedNeighborsConnectOnlySameVisual)
+{
+    // 視覚が一致する隣だけ bit が立つ。 別メッシュ (slope) や別マテリアルの solid は連結しない
+    LevelNs::LevelData lv;
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, BlocksNs::kBlockIdSolid, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(+1, 0, 0, BlocksNs::kBlockIdSolid, 0));   // 同一視覚 → bit0
+    lv.objects.push_back(LevelNs::MakeGridObject(-1, 0, 0, BlocksNs::kBlockIdSlope45, 0)); // 別メッシュ → 立たない
+    LevelNs::ObjectInstance tinted = LevelNs::MakeGridObject(0, +1, 0, BlocksNs::kBlockIdSolid, 0);
+    tinted.materialIndex = 3; // 別マテリアル → 立たない
+    lv.objects.push_back(tinted);
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, +1, BlocksNs::kBlockIdSolid, 0)); // 同一視覚 → bit4
+    auto m = BlocksNs::ComputeNeighborMask(lv, 0, 0, 0);
+    EXPECT_EQ(m, 0b00010001u);
+}
+
 TEST(AutoTileTest, SetSpawnMarkerWritesCoordinates)
 {
     LevelNs::LevelData lv;
