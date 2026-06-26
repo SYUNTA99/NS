@@ -1,18 +1,33 @@
 #include "Editor/Undo/PlaceCommand.h"
 
+#include <utility>
+
 namespace NS::Editor
 {
+    PlaceCommand::PlaceCommand(NS::Game::Level::ObjectInstance prototype,
+                               std::int16_t x,
+                               std::int16_t y,
+                               std::int16_t z,
+                               std::uint8_t rotation) noexcept
+        : m_x(x), m_y(y), m_z(z), m_rotation(static_cast<std::uint8_t>(rotation & 0x03)),
+          m_prototype(std::move(prototype))
+    {}
+
     PlaceCommand::PlaceCommand(
         std::int16_t x, std::int16_t y, std::int16_t z, std::uint16_t blockId, std::uint8_t rotation) noexcept
-        : m_x(x), m_y(y), m_z(z), m_blockId(blockId), m_rotation(static_cast<std::uint8_t>(rotation & 0x03))
+        : PlaceCommand(NS::Game::Level::MakeGridObject(0, 0, 0, blockId, 0), x, y, z, rotation)
     {}
 
     void PlaceCommand::Do(NS::Game::Level::EditTarget& target) noexcept
     {
         NS::Game::Level::LevelData& level = target.level;
         const std::size_t index = NS::Game::Level::FindGridObjectAtCell(level, m_x, m_y, m_z);
-        const NS::Game::Level::ObjectInstance placed =
-            NS::Game::Level::MakeGridObject(m_x, m_y, m_z, m_blockId, m_rotation);
+        // プロトタイプを複製し cell 座標と回転 step だけ焼く。 回転対象外は呼び元が rotation=0 を渡す
+        NS::Game::Level::ObjectInstance placed = m_prototype;
+        placed.positionX = static_cast<float>(m_x);
+        placed.positionY = static_cast<float>(m_y);
+        placed.positionZ = static_cast<float>(m_z);
+        NS::Game::Level::SetGridRotationStep(placed, m_rotation);
         if (index != NS::Game::Level::kNoObjectIndex)
         {
             // 既存 cell の置換は in-place なので id を据え置く

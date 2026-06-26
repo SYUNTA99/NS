@@ -1,6 +1,9 @@
 #include "Editor/EditorMode.h"
 
 #include "Editor/LevelFilePaths.h"
+#include "Editor/Undo/DeleteCommand.h"
+#include "Editor/Undo/PlaceCommand.h"
+#include "Editor/Undo/RotateCommand.h"
 #include "Framework/App/Application.h"
 #include "Framework/Core/Clock.h"
 #include "Framework/Graphics/DebugDraw.h"
@@ -13,9 +16,6 @@
 #include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/ChunkIO.h"
 #include "Game/Level/LevelData.h"
-#include "Editor/Undo/DeleteCommand.h"
-#include "Editor/Undo/PlaceCommand.h"
-#include "Editor/Undo/RotateCommand.h"
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -369,11 +369,13 @@ namespace NS::Editor
     {
         if (m_level == nullptr || m_objectIds == nullptr)
             return;
+        // 現在のブラシ = 複製元テンプレート。 配置は複製で行う
+        const NS::Game::Level::ObjectInstance& tmpl = m_palette.CurrentTemplate();
         // 回転対象でない block (pole / water 等) は m_currentRotation が非ゼロでも 0 で焼き込む
-        const std::uint16_t blockId = m_palette.CurrentBlockId();
-        const std::uint8_t rotation = NS::Game::Blocks::IsRotatableBlock(blockId) ? m_currentRotation : std::uint8_t{0};
+        const std::uint8_t rotation =
+            NS::Game::Blocks::IsRotatableBlock(tmpl.kind) ? m_currentRotation : std::uint8_t{0};
         auto target = Target();
-        m_undo.Push(std::make_unique<NS::Editor::PlaceCommand>(x, y, z, blockId, rotation), target);
+        m_undo.Push(std::make_unique<NS::Editor::PlaceCommand>(tmpl, x, y, z, rotation), target);
         m_levelDirty = true;
     }
 

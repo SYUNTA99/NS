@@ -1,6 +1,8 @@
-#include "Game/Level/LevelData.h"
-#include "Game/Level/EditTarget.h"
+#include "Editor/PaletteTemplates.h"
 #include "Editor/Undo/PlaceCommand.h"
+#include "Game/Blocks/BlockRegistry.h"
+#include "Game/Level/EditTarget.h"
+#include "Game/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
@@ -9,6 +11,7 @@
 
 namespace EditorNs = NS::Editor;
 namespace LevelNs = NS::Game::Level;
+namespace BlockNs = NS::Game::Blocks;
 
 TEST(PlaceCommandTest, DoAddsBlockEntry)
 {
@@ -78,4 +81,41 @@ TEST(PlaceCommandTest, RotationIsMaskedToTwoBits)
     const std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 0, 0, 0);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
     EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 1u);
+}
+
+namespace
+{
+    LevelNs::ObjectInstance PlaceOneAndTake(EditorNs::PlaceCommand&& cmd) noexcept
+    {
+        LevelNs::LevelData lv;
+        std::vector<std::uint32_t> ids;
+        std::uint32_t next = 0;
+        LevelNs::EditTarget t{lv, ids, next};
+        cmd.Do(t);
+        return lv.objects.empty() ? LevelNs::ObjectInstance{} : lv.objects.front();
+    }
+} // namespace
+
+TEST(PlaceCommandTest, TemplateClonePlacementEqualsLegacyKindPlacement)
+{
+    struct Case
+    {
+        std::uint16_t kind;
+        std::uint8_t rotation;
+    };
+    const Case cases[] = {
+        {BlockNs::kBlockIdSolid, 1},
+        {BlockNs::kBlockIdSlope45, 3},
+        {BlockNs::kBlockIdHazard, 0},
+    };
+
+    for (const auto& c : cases)
+    {
+        const LevelNs::ObjectInstance legacy = PlaceOneAndTake(EditorNs::PlaceCommand(7, 2, 4, c.kind, c.rotation));
+        const LevelNs::ObjectInstance cloned =
+            PlaceOneAndTake(EditorNs::PlaceCommand(EditorNs::PaletteTemplateForKind(c.kind), 7, 2, 4, c.rotation));
+
+        EXPECT_EQ(cloned, legacy);
+        EXPECT_EQ(cloned, LevelNs::MakeGridObject(7, 2, 4, c.kind, c.rotation));
+    }
 }
