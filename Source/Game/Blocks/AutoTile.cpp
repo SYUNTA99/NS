@@ -1,10 +1,13 @@
 #include "Game/Blocks/AutoTile.h"
 
 #include "Framework/Graphics/TextureArray.h"
+#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Theme/ThemeRegistry.h"
 
 #include <cstddef>
+#include <string>
+#include <variant>
 
 namespace NS::Game::Blocks
 {
@@ -24,9 +27,69 @@ namespace NS::Game::Blocks
             5, 6, 6, 7, 6, 7, 7, 7, // 56..63 (完全埋没側)
         };
         constexpr std::uint8_t kVariantsPerTheme = 8;
+
+        // 連結判定に使う視覚キー。 描画されるメッシュ参照とマテリアル添字が一致する隣接だけを連結扱いにする
+        struct VisualTileKey
+        {
+            std::string mesh;
+            int material = -1;
+
+            [[nodiscard]] bool operator==(const VisualTileKey& other) const noexcept
+            {
+                return material == other.material && mesh == other.mesh;
+            }
+        };
+
+        // components が空の旧データ向けに kind から描画メッシュの builtin 名を引く
+        // 解決規則は BuildPlacedObject の描画メッシュ選択と揃える (slope は角度別 wedge、 pole は pole、 他は cube)
+        std::string BuiltinMeshNameForKind(const NS::Game::Level::ObjectInstance& object)
+        {
+            using namespace NS::Game::Level;
+            if ((object.flags & kObjectFlagGridAligned) == 0)
+                return "cube";
+            if (IsSlopeBlock(object.kind))
+            {
+                if (object.kind == kBlockIdSlope45)
+                    return "wedge45";
+                if (object.kind == kBlockIdSlope30)
+                    return "wedge30";
+                if (object.kind == kBlockIdSlope22)
+                    return "wedge22";
+                if (object.kind == kBlockIdSlope15)
+                    return "wedge15";
+                return "cube";
+            }
+            if (IsPoleBlock(object.kind))
+                return "pole";
+            return "cube";
+        }
+
+        // object の視覚キーを導く。 MeshRenderer の反射 "Mesh" 値があればそれを、 空 / 無ければ kind 由来へ倒す
+        VisualTileKey ComputeVisualKey(const NS::Game::Level::ObjectInstance& object)
+        {
+            VisualTileKey key;
+            key.material = object.materialIndex;
+            for (const auto& component : object.components)
+            {
+                if (component.typeName != "MeshRendererComponent")
+                    continue;
+                for (const auto& field : component.fields)
+                {
+                    if (field.name != "Mesh")
+                        continue;
+                    if (const auto* meshName = std::get_if<std::string>(&field.value))
+                        key.mesh = *meshName;
+                    break;
+                }
+                break;
+            }
+            if (key.mesh.empty())
+                key.mesh = BuiltinMeshNameForKind(object);
+            return key;
+        }
     } // namespace
 
-    std::uint16_t LookupTextureSlice(ThemeId theme, std::uint8_t neighborMask, std::uint16_t /*blockId*/) noexcept
+    std::uint16_t LookupTextureSlice(ThemeId theme, std::uint8_t neighborMask) noexcept
     {
         // theme 範囲外 → Grass (入力境界の fallback)
         if (static_cast<std::size_t>(theme) >= static_cast<std::size_t>(ThemeId::Count))
@@ -57,8 +120,7 @@ namespace NS::Game::Blocks
     std::uint8_t ComputeNeighborMask(const NS::Game::Level::LevelData& level,
                                      std::int16_t x,
                                      std::int16_t y,
-                                     std::int16_t z,
-                                     std::uint16_t blockId) noexcept
+                                     std::int16_t z) noexcept
     {
         // bit 0=+X, 1=-X, 2=+Y, 3=-Y, 4=+Z, 5=-Z の順で 6 方向
         static constexpr std::int16_t kOffsets[6][3] = {
@@ -70,6 +132,11 @@ namespace NS::Game::Blocks
             {0, 0, -1},
         };
 
+        const std::size_t center = NS::Game::Level::FindGridObjectAtCell(level, x, y, z);
+        if (center == NS::Game::Level::kNoObjectIndex)
+            return 0;
+        const VisualTileKey centerKey = ComputeVisualKey(level.objects[center]);
+
         std::uint8_t mask = 0;
         for (int i = 0; i < 6; ++i)
         {
@@ -77,7 +144,7 @@ namespace NS::Game::Blocks
             const std::int16_t ny = static_cast<std::int16_t>(y + kOffsets[i][1]);
             const std::int16_t nz = static_cast<std::int16_t>(z + kOffsets[i][2]);
             const std::size_t neighbor = NS::Game::Level::FindGridObjectAtCell(level, nx, ny, nz);
-            if (neighbor != NS::Game::Level::kNoObjectIndex && level.objects[neighbor].kind == blockId)
+            if (neighbor != NS::Game::Level::kNoObjectIndex && ComputeVisualKey(level.objects[neighbor]) == centerKey)
             {
                 mask = static_cast<std::uint8_t>(mask | (1u << i));
             }

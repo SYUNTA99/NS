@@ -6,7 +6,7 @@
 /// @details `LevelData::BlockEntry::blockId` に格納される値。 ID 体系をテクスチャテーブル /
 /// 振る舞いテーブルに流用する。 「テーマあたり 8 variant 以上」 は
 /// blockId 値を 8 枚個別に切らずに、 「block kind は 1 つ (kBlockIdSolid) / 描画時に
-/// `AutoTile::LookupTextureSlice(theme, neighborMask, blockId)` で 8 slice から 1 つ選ぶ」
+/// `AutoTile::LookupTextureSlice(theme, neighborMask)` で 8 slice から 1 つ選ぶ」
 /// 設計で達成する。 これにより LevelData フォーマット変更ゼロで variation を実現する
 /// slope 4 種 (200..203) / pole (210) / hazard (220) / water (221) / decoration (222) を扱う
 

@@ -462,9 +462,9 @@ void LevelPlayScene::OnRenderScene()
             const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
             const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
             constexpr std::uint16_t blockId = NS::Game::Blocks::kBlockIdSolid;
-            const std::uint8_t mask = NS::Game::Blocks::ComputeNeighborMask(m_level, x, y, z, blockId);
+            const std::uint8_t mask = NS::Game::Blocks::ComputeNeighborMask(m_level, x, y, z);
             const std::uint16_t slice =
-                NS::Game::Blocks::LookupTextureSlice(static_cast<ThemeId>(m_level.themeId), mask, blockId);
+                NS::Game::Blocks::LookupTextureSlice(static_cast<ThemeId>(m_level.themeId), mask);
 
             NS::Graphics::BlockInstance inst{};
             inst.worldMatrix = m_objects[i]->Root().InterpolatedWorldMatrix(ctx.alpha);
