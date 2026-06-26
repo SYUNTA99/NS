@@ -119,3 +119,19 @@ TEST(PlaceCommandTest, TemplateClonePlacementEqualsLegacyKindPlacement)
         EXPECT_EQ(cloned, LevelNs::MakeGridObject(7, 2, 4, c.kind, c.rotation));
     }
 }
+
+TEST(PlaceCommandTest, AllPaletteSlotsClonePlacementMatchLegacyKind)
+{
+    const auto& slots = EditorNs::PaletteTemplateSlots();
+    constexpr std::uint8_t kRotation = 2;
+    for (const auto& slot : slots)
+    {
+        const std::uint16_t kind = slot.prototype.kind;
+        if (kind == BlockNs::kBlockIdSpawn)
+            continue; // spawn は世界に 1 点の marker で grid 配置物にならない
+
+        const LevelNs::ObjectInstance cloned =
+            PlaceOneAndTake(EditorNs::PlaceCommand(slot.prototype, 1, 0, -2, kRotation));
+        EXPECT_EQ(cloned, LevelNs::MakeGridObject(1, 0, -2, kind, kRotation)) << "kind=" << kind;
+    }
+}
