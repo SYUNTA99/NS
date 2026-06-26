@@ -685,3 +685,58 @@ TEST(BehaviorZero, LegacyKindJsonMigratesToComponents)
         ExpectSignatureEqual(ExtractColliderSignature(*directBuilt), ExtractColliderSignature(*migratedBuilt));
     }
 }
+
+// seed / 旧 BLKS バイナリ由来の components 空 + kind オブジェクトも MigrateLegacyLevel が実 component へ展開し、
+// 移行前の kind 駆動 build と同一 collider channel になる。 二重 migrate しても構成は変わらない (冪等)
+TEST(BehaviorZero, SeedAndBinaryKindMigratesAndIsIdempotent)
+{
+    LevelData level;
+    // seed 相当 (MakeGridObject) と 旧 BLKS 由来 (MigrateBlocksToObjects) を混ぜる
+    level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, kBlockIdSolid, 0));
+    std::vector<NS::Game::Level::BlockEntry> blocks;
+    blocks.push_back({1, 0, 0, kBlockIdSlope45, 1, 0});
+    blocks.push_back({2, 0, 0, kBlockIdCoin, 0, 0});
+    NS::Game::Level::MigrateBlocksToObjects(level, blocks);
+
+    // 移行前は全 object が components 空 + kind (LegacyKind placeholder すら持たない)
+    ASSERT_EQ(level.objects.size(), 3u);
+    for (const auto& object : level.objects)
+        ASSERT_TRUE(object.components.empty());
+
+    NS::Scene::AssetManager assets{std::filesystem::path{"."}};
+    const std::vector<std::string> noPaths;
+
+    // 移行前の kind 駆動 build の signature を退避する
+    std::vector<ColliderSignature> beforeSigs;
+    for (const auto& object : level.objects)
+    {
+        auto built = BuildPlacedObject(object, assets, noPaths);
+        ASSERT_NE(built, nullptr);
+        beforeSigs.push_back(ExtractColliderSignature(*built));
+    }
+
+    MigrateLegacyLevel(level);
+
+    // 移行後は全 object が実 component を持ち LegacyKind は残らない
+    for (const auto& object : level.objects)
+    {
+        EXPECT_FALSE(object.components.empty());
+        for (const auto& comp : object.components)
+            EXPECT_NE(comp.typeName, "LegacyKind");
+    }
+
+    // 二重 migrate しても各 object の構成 (component 一覧 + スカラ) が変わらない
+    LevelData twice = level;
+    MigrateLegacyLevel(twice);
+    ASSERT_EQ(twice.objects.size(), level.objects.size());
+    for (std::size_t i = 0; i < level.objects.size(); ++i)
+        EXPECT_TRUE(twice.objects[i] == level.objects[i]);
+
+    // 移行後の build が移行前 kind 駆動 build と同一 collider channel
+    for (std::size_t i = 0; i < level.objects.size(); ++i)
+    {
+        auto built = BuildPlacedObject(level.objects[i], assets, noPaths);
+        ASSERT_NE(built, nullptr);
+        ExpectSignatureEqual(beforeSigs[i], ExtractColliderSignature(*built));
+    }
+}
