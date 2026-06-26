@@ -11,6 +11,7 @@
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
+#include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/UI/ImGuiContext.h"
@@ -483,6 +484,57 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             ImGui::Separator();
             if (NS::Editor::DrawObjectComponents(*go))
                 editor.SyncSelectedObjectColliderFromComponent();
+        }
+
+        // 自由オブジェクトはコンポーネント構成をデータとして編集できる
+        // 反射編集は上の一覧、 ここは構成そのものの 追加 / 複製 / コピー / 削除 を担う
+        if (!grid)
+        {
+            ImGui::SeparatorText("Components");
+
+            // curated 一覧から末尾へ足す。 選べる型は登録済みに限られ未知型は生成できない
+            if (ImGui::Button("+ Add Component"))
+                ImGui::OpenPopup("AddComponentPopup");
+            if (ImGui::BeginPopup("AddComponentPopup"))
+            {
+                for (const std::string& name : NS::Scene::RegisteredNames())
+                {
+                    if (ImGui::Selectable(name.c_str()))
+                        editor.AddComponentToSelected(name);
+                }
+                ImGui::EndPopup();
+            }
+
+            if (obj.components.empty())
+                ImGui::TextDisabled("kind 由来の構成。 足すとデータ駆動の構成に変わる");
+
+            // データ上のコンポーネント 1 件ずつに Copy / Delete を出す
+            // 添字で狙うので同型が複数あっても選んだ 1 つだけを取り違えずに扱える
+            for (std::size_t k = 0; k < obj.components.size(); ++k)
+            {
+                const std::string& typeName = obj.components[k].typeName;
+                ImGui::PushID(static_cast<int>(k));
+                ImGui::TextUnformatted(typeName.c_str());
+                ImGui::SameLine();
+                if (ImGui::SmallButton("Copy"))
+                    editor.CopyComponentToClipboard(k);
+                ImGui::SameLine();
+                if (ImGui::SmallButton("Delete"))
+                    editor.RemoveComponentFromSelected(k);
+                if (typeName == "MeshRendererComponent")
+                    ImGui::TextColored(ImVec4{1.0f, 0.6f, 0.2f, 1.0f}, "削除すると見えなくなる");
+                ImGui::PopID();
+            }
+
+            if (editor.HasClipboardComponent())
+            {
+                if (ImGui::Button("Paste Component"))
+                    editor.PasteClipboardComponentToSelected();
+            }
+
+            ImGui::Separator();
+            if (ImGui::Button("Duplicate Object"))
+                editor.DuplicateSelectedObject();
         }
     }
     ImGui::End();

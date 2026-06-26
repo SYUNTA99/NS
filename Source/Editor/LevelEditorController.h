@@ -12,14 +12,16 @@
 #include "Editor/GizmoEditor.h"
 #include "Framework/Graphics/RenderSettings.h"
 #include "Framework/Math/Math.h"
+#include "Game/Level/EditTarget.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
-#include "Game/Level/EditTarget.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <optional>
+#include <string_view>
 #include <vector>
 
 namespace NS::Scene
@@ -120,6 +122,20 @@ public:
     /// Inspector で collider を反射編集した後に呼ぶ。 grid / 非選択時は何もしない
     void SyncSelectedObjectColliderFromComponent() noexcept;
 
+    /// 選択 object の末尾へ型名のみのコンポーネントを足す (Undo 対応、 非選択時は何もしない)
+    void AddComponentToSelected(std::string_view typeName);
+    /// 選択 object の components から添字 1 つを取り除く (Undo 対応、 範囲外 / 非選択時は何もしない)
+    void RemoveComponentFromSelected(std::size_t componentIndex);
+    /// 選択 object を全コンポーネント込みで複製し複製を選択する (Undo 対応、 非選択時は何もしない)
+    void DuplicateSelectedObject();
+    /// 選択 object の指定添字コンポーネントを今のフィールド値ごと clipboard へ写す (範囲外 / 非選択時は何もしない)
+    void CopyComponentToClipboard(std::size_t componentIndex);
+    /// clipboard のコンポーネントを選択 object の末尾へ貼る (Undo 対応、 clipboard 空 / 非選択時は何もしない)
+    /// 貼り付けても clipboard は残るので、 同じコンポを複数の object へ続けて貼れる
+    void PasteClipboardComponentToSelected();
+    /// clipboard にコンポーネントを保持しているか
+    [[nodiscard]] bool HasClipboardComponent() const noexcept { return m_componentClipboard.has_value(); }
+
     /// CameraBrain を載せた GameObject。 未構築は nullptr。 Camera 選択時の Inspector 反射編集対象
     [[nodiscard]] NS::Scene::GameObject* CameraBrainObject() noexcept;
     /// 現在 active な仮想カメラ (編集中=free-fly / プレイ中=follow) の GameObject。 無ければ nullptr
@@ -204,6 +220,14 @@ private:
     /// scene の level + 識別子ストアから編集対象 view を組む
     [[nodiscard]] NS::Game::Level::EditTarget SceneEditTarget() noexcept;
 
+    /// kind 由来しか持たないオブジェクトに 1 コンポを足す時、 先に kind 構成をデータ化してから appended を末尾へ付ける
+    /// データ化と追加を 1 つの undo 単位にまとめ、 components 駆動への切替で mesh と当たりが落ちないようにする
+    void ConvertKindObjectAndAppend(std::uint32_t objectId, NS::Game::Level::ComponentData appended);
+
+    /// object の kind 構成を runtime に一度組んで反射値ごと ComponentData の一覧へ写し取る
+    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MaterializeKindComponents(
+        const NS::Game::Level::ObjectInstance& object) const;
+
     /// 識別子でギズモ選択を貼り直す。 対象が消えていれば選択解除する
     void ReselectFreeObjectById(std::uint32_t id) noexcept;
 
@@ -248,6 +272,9 @@ private:
     std::size_t m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
     // ビューポート由来のギズモ選択変化だけを index へ反映するための前フレーム値
     NS::Scene::Transform* m_lastGizmoSelected = nullptr;
+
+    // コンポ単位 copy/paste の退避先。 型名 + 反射値を 1 つ保持する
+    std::optional<NS::Game::Level::ComponentData> m_componentClipboard;
 
     // 変形編集 (ギズモドラッグ / Inspector パネル) を 1 undo 単位へ束ねる状態
     bool m_gizmoWasDragging = false;

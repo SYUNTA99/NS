@@ -1,8 +1,9 @@
-#include "Game/Level/LevelData.h"
 #include "Editor/Undo/AddComponentCommand.h"
 #include "Editor/Undo/DuplicateObjectCommand.h"
-#include "Game/Level/EditTarget.h"
 #include "Editor/Undo/RemoveComponentCommand.h"
+#include "Editor/Undo/SetObjectComponentsCommand.h"
+#include "Game/Level/EditTarget.h"
+#include "Game/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
@@ -43,7 +44,7 @@ TEST(ComponentCommand, AddComponentDoAddsOneTypeUndoRemoves)
     LevelNs::ResetEditIds(t);
 
     const std::uint32_t id = LevelNs::IdAt(t, 0);
-    EditorNs::AddComponentCommand cmd(id, "PoleComponent");
+    EditorNs::AddComponentCommand cmd(id, LevelNs::ComponentData{"PoleComponent"});
 
     cmd.Do(t);
     ASSERT_EQ(lv.objects[0].components.size(), 1u);
@@ -64,7 +65,7 @@ TEST(ComponentCommand, AddComponentAllowsDuplicateType)
     LevelNs::ResetEditIds(t);
 
     const std::uint32_t id = LevelNs::IdAt(t, 0);
-    EditorNs::AddComponentCommand cmd(id, "PoleComponent");
+    EditorNs::AddComponentCommand cmd(id, LevelNs::ComponentData{"PoleComponent"});
 
     cmd.Do(t); // 同型でも重ねて足せる
     EXPECT_EQ(lv.objects[0].components.size(), 2u);
@@ -86,7 +87,7 @@ TEST(ComponentCommand, RemoveComponentUndoRestoresFieldValues)
     LevelNs::ResetEditIds(t);
 
     const std::uint32_t id = LevelNs::IdAt(t, 0);
-    EditorNs::RemoveComponentCommand cmd(id, "BoxCollider");
+    EditorNs::RemoveComponentCommand cmd(id, 1); // BoxCollider は添字 1
 
     cmd.Do(t);
     ASSERT_EQ(lv.objects[0].components.size(), 1u);
@@ -115,7 +116,7 @@ TEST(ComponentCommand, RemoveComponentRedoRemovesAgain)
     LevelNs::ResetEditIds(t);
 
     const std::uint32_t id = LevelNs::IdAt(t, 0);
-    EditorNs::RemoveComponentCommand cmd(id, "BoxCollider");
+    EditorNs::RemoveComponentCommand cmd(id, 1); // BoxCollider は添字 1
 
     cmd.Do(t);
     cmd.Undo(t);
@@ -202,12 +203,12 @@ TEST(ComponentCommand, CommandsOnUnknownIdAreNoOp)
 
     const std::uint32_t unknownId = 999u;
 
-    EditorNs::AddComponentCommand add(unknownId, "PoleComponent");
+    EditorNs::AddComponentCommand add(unknownId, LevelNs::ComponentData{"PoleComponent"});
     add.Do(t);
     add.Undo(t);
     EXPECT_EQ(lv.objects[0].components.size(), 1u); // 対象が居ないので増減しない
 
-    EditorNs::RemoveComponentCommand remove(unknownId, "BoxCollider");
+    EditorNs::RemoveComponentCommand remove(unknownId, 0);
     remove.Do(t);
     remove.Undo(t);
     EXPECT_EQ(lv.objects[0].components.size(), 1u);
@@ -217,4 +218,39 @@ TEST(ComponentCommand, CommandsOnUnknownIdAreNoOp)
     EXPECT_EQ(lv.objects.size(), 1u);
     dup.Undo(t);
     EXPECT_EQ(lv.objects.size(), 1u);
+}
+
+TEST(ComponentCommand, SetObjectComponentsReplacesWholeListUndoRestores)
+{
+    LevelNs::LevelData lv;
+    lv.objects.push_back(MakeObject());
+    lv.objects[0].components.push_back(LevelNs::ComponentData{"MeshRendererComponent"});
+    std::vector<std::uint32_t> ids;
+    std::uint32_t next = 0;
+    LevelNs::EditTarget t{lv, ids, next};
+    LevelNs::ResetEditIds(t);
+
+    const std::uint32_t id = LevelNs::IdAt(t, 0);
+    std::vector<LevelNs::ComponentData> replacement;
+    replacement.push_back(LevelNs::ComponentData{"MeshRendererComponent"});
+    replacement.push_back(MakeBoxCollider(0.5f));
+    replacement.push_back(LevelNs::ComponentData{"PoleComponent"});
+    EditorNs::SetObjectComponentsCommand cmd(id, replacement);
+
+    cmd.Do(t);
+    ASSERT_EQ(lv.objects[0].components.size(), 3u);
+    EXPECT_EQ(lv.objects[0].components[1].typeName, "BoxCollider");
+    EXPECT_EQ(lv.objects[0].components[2].typeName, "PoleComponent");
+
+    cmd.Undo(t); // 置換前の 1 件だけの一覧へ戻る
+    ASSERT_EQ(lv.objects[0].components.size(), 1u);
+    EXPECT_EQ(lv.objects[0].components[0].typeName, "MeshRendererComponent");
+
+    cmd.Do(t); // redo: 退避した旧一覧を上書きしても同じ置換結果になる
+    ASSERT_EQ(lv.objects[0].components.size(), 3u);
+    EXPECT_EQ(lv.objects[0].components[2].typeName, "PoleComponent");
+
+    cmd.Undo(t); // 再び置換前の 1 件へ戻る
+    ASSERT_EQ(lv.objects[0].components.size(), 1u);
+    EXPECT_EQ(lv.objects[0].components[0].typeName, "MeshRendererComponent");
 }

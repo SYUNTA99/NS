@@ -7,8 +7,9 @@
 
 namespace NS::Editor
 {
-    AddComponentCommand::AddComponentCommand(std::uint32_t targetObjectId, std::string typeName) noexcept
-        : m_targetObjectId(targetObjectId), m_typeName(std::move(typeName))
+    AddComponentCommand::AddComponentCommand(std::uint32_t targetObjectId,
+                                             NS::Game::Level::ComponentData payload) noexcept
+        : m_targetObjectId(targetObjectId), m_payload(std::move(payload))
     {}
 
     void AddComponentCommand::Do(NS::Game::Level::EditTarget& target) noexcept
@@ -19,7 +20,7 @@ namespace NS::Editor
             return;
         std::vector<NS::Game::Level::ComponentData>& components = target.level.objects[index].components;
         // 同型がすでにあっても重ねて足す。 単一強制が要る型は上位の出し分けで扱う
-        components.push_back(NS::Game::Level::ComponentData{m_typeName});
+        components.push_back(m_payload);
         m_addedIndex = components.size() - 1;
     }
 
@@ -37,7 +38,11 @@ namespace NS::Editor
 
     std::size_t AddComponentCommand::EstimatedBytes() const noexcept
     {
-        return sizeof(AddComponentCommand) + m_typeName.size();
+        // 反射値の文字列が確保するヒープは概算に含めない
+        std::size_t bytes = sizeof(AddComponentCommand) + m_payload.typeName.size();
+        for (const NS::Game::Level::FieldValue& field : m_payload.fields)
+            bytes += sizeof(NS::Game::Level::FieldValue) + field.name.size();
+        return bytes;
     }
 
 } // namespace NS::Editor

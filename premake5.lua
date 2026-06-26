@@ -816,6 +816,7 @@ project "Tests"
         "Source/Game/Level/**.cpp",
         "Source/Editor/Undo/**.cpp",
         -- editor のうち Application 非依存なものだけ取り込む (EditorLayer は Application 依存のため除外)
+        "Source/Editor/ComponentClipboard.cpp",
         "Source/Editor/EditorMode.cpp",
         "Source/Editor/GizmoEditor.cpp",
         "Source/Editor/CategoryPalette.cpp",

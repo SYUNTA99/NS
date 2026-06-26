@@ -4,6 +4,13 @@
 #include "Game/LevelPlayScene.h"
 #include "Game/Player.h"
 
+#include "Editor/ComponentClipboard.h"
+#include "Editor/Undo/AddComponentCommand.h"
+#include "Editor/Undo/AddObjectCommand.h"
+#include "Editor/Undo/DuplicateObjectCommand.h"
+#include "Editor/Undo/RemoveComponentCommand.h"
+#include "Editor/Undo/SetObjectComponentsCommand.h"
+#include "Editor/Undo/TransformCommand.h"
 #include "Framework/App/Application.h"
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Graphics/DebugDraw.h"
@@ -12,20 +19,21 @@
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
 #include "Framework/Scene/AssetManager.h"
+#include "Framework/Scene/Component.h"
 #include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
+#include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/BlockRegistry.h"
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Level/LevelData.h"
-#include "Editor/Undo/AddObjectCommand.h"
-#include "Editor/Undo/TransformCommand.h"
 
 #include <cstring>
 #include <memory>
+#include <string>
 
 namespace
 {
@@ -807,6 +815,168 @@ void LevelEditorController::AddObject()
     m_scene->RebuildBlocksFromLevelData();
     RefreshGizmoSelectables();
     SelectObjectByIndex(m_scene->m_level.objects.size() - 1);
+}
+
+void LevelEditorController::AddComponentToSelected(std::string_view typeName)
+{
+    const std::uint32_t id = m_selectedObjectId;
+    if (id == NS::Game::Level::kInvalidObjectId)
+        return;
+    NS::Game::Level::EditTarget target = SceneEditTarget();
+    const std::size_t objectIndex = NS::Game::Level::IndexOfId(target, id);
+    if (objectIndex == NS::Game::Level::kNoObjectIndex)
+        return;
+
+    NS::Game::Level::ComponentData payload;
+    payload.typeName = std::string(typeName);
+
+    if (m_scene->m_level.objects[objectIndex].components.empty())
+        ConvertKindObjectAndAppend(id, std::move(payload));
+    else
+        m_editor.Undo().Push(std::make_unique<NS::Editor::AddComponentCommand>(id, std::move(payload)), target);
+
+    // components が変わったので runtime を組み直し、 同じ id の選択を貼り直す
+    m_scene->RebuildBlocksFromLevelData();
+    RefreshGizmoSelectables();
+    ResolveSelectionFromId();
+}
+
+void LevelEditorController::RemoveComponentFromSelected(std::size_t componentIndex)
+{
+    const std::uint32_t id = m_selectedObjectId;
+    if (id == NS::Game::Level::kInvalidObjectId)
+        return;
+    NS::Game::Level::EditTarget target = SceneEditTarget();
+    if (NS::Game::Level::IndexOfId(target, id) == NS::Game::Level::kNoObjectIndex)
+        return;
+
+    m_editor.Undo().Push(std::make_unique<NS::Editor::RemoveComponentCommand>(id, componentIndex), target);
+
+    m_scene->RebuildBlocksFromLevelData();
+    RefreshGizmoSelectables();
+    ResolveSelectionFromId();
+}
+
+void LevelEditorController::DuplicateSelectedObject()
+{
+    const std::uint32_t id = m_selectedObjectId;
+    if (id == NS::Game::Level::kInvalidObjectId)
+        return;
+    NS::Game::Level::EditTarget target = SceneEditTarget();
+    if (NS::Game::Level::IndexOfId(target, id) == NS::Game::Level::kNoObjectIndex)
+        return;
+
+    // 複製は objects 末尾へ積まれる。 組み直してから末尾を新しい選択にする
+    m_editor.Undo().Push(std::make_unique<NS::Editor::DuplicateObjectCommand>(id), target);
+
+    m_scene->RebuildBlocksFromLevelData();
+    RefreshGizmoSelectables();
+    if (!m_scene->m_level.objects.empty())
+        SelectObjectByIndex(m_scene->m_level.objects.size() - 1);
+}
+
+void LevelEditorController::CopyComponentToClipboard(std::size_t componentIndex)
+{
+    const std::uint32_t id = m_selectedObjectId;
+    if (id == NS::Game::Level::kInvalidObjectId)
+        return;
+    NS::Game::Level::EditTarget target = SceneEditTarget();
+    const std::size_t objectIndex = NS::Game::Level::IndexOfId(target, id);
+    if (objectIndex == NS::Game::Level::kNoObjectIndex)
+        return;
+    const std::vector<NS::Game::Level::ComponentData>& dataComponents =
+        m_scene->m_level.objects[objectIndex].components;
+    if (componentIndex >= dataComponents.size())
+        return;
+
+    // runtime の同添字コンポが同型なら Inspector でライブ編集した値ごと写す
+    // 未登録型が混じり runtime と data の添字がずれた時は data モデルの値で写して取り違えを防ぐ
+    if (NS::Scene::GameObject* go = SelectedObjectGameObject())
+    {
+        const std::vector<NS::Scene::Component*>& runtime = go->Components();
+        if (componentIndex < runtime.size() && runtime[componentIndex] != nullptr)
+        {
+            NS::Game::Level::ComponentData captured = NS::Editor::CaptureComponentData(*runtime[componentIndex]);
+            if (captured.typeName == dataComponents[componentIndex].typeName)
+            {
+                m_componentClipboard = std::move(captured);
+                return;
+            }
+        }
+    }
+    m_componentClipboard = dataComponents[componentIndex];
+}
+
+void LevelEditorController::PasteClipboardComponentToSelected()
+{
+    if (!m_componentClipboard)
+        return;
+    const std::uint32_t id = m_selectedObjectId;
+    if (id == NS::Game::Level::kInvalidObjectId)
+        return;
+    NS::Game::Level::EditTarget target = SceneEditTarget();
+    const std::size_t objectIndex = NS::Game::Level::IndexOfId(target, id);
+    if (objectIndex == NS::Game::Level::kNoObjectIndex)
+        return;
+
+    // 同型がすでにあっても末尾へ重ねて貼る (上書きはしない)
+    if (m_scene->m_level.objects[objectIndex].components.empty())
+        ConvertKindObjectAndAppend(id, *m_componentClipboard);
+    else
+        m_editor.Undo().Push(std::make_unique<NS::Editor::AddComponentCommand>(id, *m_componentClipboard), target);
+
+    m_scene->RebuildBlocksFromLevelData();
+    RefreshGizmoSelectables();
+    ResolveSelectionFromId();
+}
+
+void LevelEditorController::ConvertKindObjectAndAppend(std::uint32_t objectId, NS::Game::Level::ComponentData appended)
+{
+    NS::Game::Level::EditTarget target = SceneEditTarget();
+    const std::size_t objectIndex = NS::Game::Level::IndexOfId(target, objectId);
+    if (objectIndex == NS::Game::Level::kNoObjectIndex)
+        return;
+
+    // kind 由来しか持たないオブジェクトを components 駆動へ移す時、 先に kind の構成をデータ化する
+    // そうしないと components が非空になった瞬間に mesh と当たりが落ちる
+    std::vector<NS::Game::Level::ComponentData> list = MaterializeKindComponents(m_scene->m_level.objects[objectIndex]);
+
+    // kind をデータ化できない時は全置換を避け単発追加へ倒す
+    if (list.empty())
+    {
+        m_editor.Undo().Push(std::make_unique<NS::Editor::AddComponentCommand>(objectId, std::move(appended)), target);
+        return;
+    }
+
+    list.push_back(std::move(appended));
+    m_editor.Undo().Push(std::make_unique<NS::Editor::SetObjectComponentsCommand>(objectId, std::move(list)), target);
+}
+
+std::vector<NS::Game::Level::ComponentData> LevelEditorController::MaterializeKindComponents(
+    const NS::Game::Level::ObjectInstance& object) const
+{
+    std::vector<NS::Game::Level::ComponentData> result;
+    auto* app = NS::App::Application::Get();
+    if (app == nullptr)
+        return result;
+
+    // kind から runtime を一度組み、 その構成を反射値ごとデータへ写し取る
+    // mesh は反射で運べないが BuildPlacedObject が kind から再解決するので欠けてよい
+    // collider 回転の反射は euler 度なので、 quaternion との往復で gimbal 付近だけ精度が落ちる
+    std::unique_ptr<NS::Scene::GameObject> temp =
+        NS::Game::Blocks::BuildPlacedObject(object, app->Assets(), m_scene->m_level.materialPaths);
+    if (temp == nullptr)
+        return result;
+    for (NS::Scene::Component* comp : temp->Components())
+    {
+        if (comp == nullptr)
+            continue;
+        NS::Game::Level::ComponentData captured = NS::Editor::CaptureComponentData(*comp);
+        // 反射を持たない型は空 typeName になり rebuild で読み飛ばされるので、 データへ写さない
+        if (!captured.typeName.empty())
+            result.push_back(std::move(captured));
+    }
+    return result;
 }
 
 void LevelEditorController::PromoteGridBlockToFree(std::size_t objectIndex)
