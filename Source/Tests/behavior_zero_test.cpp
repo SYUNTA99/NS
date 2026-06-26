@@ -253,6 +253,11 @@ namespace
         level.objects.push_back(MakeGrid(kBlockIdSlope45, 2.0f, 0.0f, 0.0f));
         level.objects.push_back(MakeGrid(kBlockIdPole, 3.0f, 0.0f, 0.0f));
         level.objects.push_back(MakeGrid(kBlockIdHazard, 4.0f, 0.0f, 0.0f));
+        // 当たりを持たない代表 (water / deco) と視覚を持たない代表 (coin / star) も往復経路に通す
+        level.objects.push_back(MakeGrid(kBlockIdWater, 8.0f, 0.0f, 0.0f));
+        level.objects.push_back(MakeGrid(kBlockIdDecoration, 9.0f, 0.0f, 0.0f));
+        level.objects.push_back(MakeGrid(kBlockIdCoin, 10.0f, 0.0f, 0.0f));
+        level.objects.push_back(MakeGrid(kBlockIdPowerStar, 11.0f, 0.0f, 0.0f));
 
         ObjectInstance freeBox = MakeFree(ShapeCollider::Box, 5.0f, 1.5f, -2.0f);
         freeBox.materialIndex = 0;
@@ -316,6 +321,7 @@ TEST(BehaviorZero, JsonRoundTripPreservesColliderChannels)
 
     NS::Scene::AssetManager assets{std::filesystem::path{"."}};
 
+    bool anyColliderObserved = false;
     for (std::size_t i = 0; i < src.objects.size(); ++i)
     {
         // 旧形式は components 空なので往復後も空のまま kind 駆動を通り、 ここで分岐前提を固定する
@@ -328,10 +334,12 @@ TEST(BehaviorZero, JsonRoundTripPreservesColliderChannels)
         ASSERT_NE(after, nullptr);
 
         const ColliderSignature beforeSig = ExtractColliderSignature(*before);
-        // 代表配置物は全て当たりを持つ。 両辺が同時に当たり無しへ潰れて比較が素通る偽陽性を塞ぐ
-        EXPECT_TRUE(HasAnyColliderChannel(beforeSig));
+        anyColliderObserved = anyColliderObserved || HasAnyColliderChannel(beforeSig);
         ExpectSignatureEqual(beforeSig, ExtractColliderSignature(*after));
     }
+    // water / deco / coin / star は当たり無しだが、 当たりを持つ代表も含むのでレベル全体では当たりが観測される
+    // 両辺が一斉に当たり無しへ潰れて比較が素通る偽陽性をレベル単位で塞ぐ
+    EXPECT_TRUE(anyColliderObserved);
 }
 
 // JSON 往復が CRC32 を保ち、 描画と当たりに効く全フィールドが意味的に同一になる
@@ -546,4 +554,49 @@ TEST(BehaviorZero, MaterializedKindMatchesAuthoredComponents)
     const ColliderSignature kindSig = ExtractColliderSignature(*kindBuilt);
     EXPECT_TRUE(kindSig.hasBox);
     ExpectSignatureEqual(kindSig, ExtractColliderSignature(*authoredBuilt));
+}
+
+// コイン / スターは視覚 (MeshRenderer) も当たりも持たず PickupComponent だけを持つ — 不可視を機械検証する
+TEST(BehaviorZero, CoinAndStarHaveNoVisual)
+{
+    NS::Scene::AssetManager assets{std::filesystem::path{"."}};
+    const std::vector<std::string> noPaths;
+
+    for (const std::uint16_t kind : {kBlockIdCoin, kBlockIdPowerStar})
+    {
+        auto built = BuildPlacedObject(MakeGrid(kind, 0.0f, 0.0f, 0.0f), assets, noPaths);
+        ASSERT_NE(built, nullptr);
+        EXPECT_EQ(FindComponent<NS::Scene::MeshRendererComponent>(*built), nullptr);
+        EXPECT_NE(FindComponent<NS::Scene::PickupComponent>(*built), nullptr);
+        EXPECT_FALSE(HasAnyColliderChannel(ExtractColliderSignature(*built)));
+    }
+}
+
+// water / deco は当たりを持たないが、 material 参照がデータとして JSON 往復後も保たれる
+TEST(BehaviorZero, WaterAndDecorationMaterialSurvivesRoundTrip)
+{
+    LevelData src;
+    src.objects.push_back(MakeGrid(kBlockIdWater, 0.0f, 0.0f, 0.0f));
+    src.objects.push_back(MakeGrid(kBlockIdDecoration, 1.0f, 0.0f, 0.0f));
+
+    LevelData restored;
+    ASSERT_TRUE(DeserializeLevelFromJson(restored, SerializeLevelToJson(src)));
+    ASSERT_EQ(restored.objects.size(), 2u);
+
+    NS::Scene::AssetManager assets{std::filesystem::path{"."}};
+    const std::vector<std::string> noPaths;
+
+    auto water = BuildPlacedObject(restored.objects[0], assets, noPaths);
+    auto deco = BuildPlacedObject(restored.objects[1], assets, noPaths);
+    ASSERT_NE(water, nullptr);
+    ASSERT_NE(deco, nullptr);
+
+    auto* waterMesh = FindComponent<NS::Scene::MeshRendererComponent>(*water);
+    auto* decoMesh = FindComponent<NS::Scene::MeshRendererComponent>(*deco);
+    ASSERT_NE(waterMesh, nullptr);
+    ASSERT_NE(decoMesh, nullptr);
+    EXPECT_EQ(waterMesh->MaterialRef(), "water");
+    EXPECT_EQ(decoMesh->MaterialRef(), "block");
+    EXPECT_FALSE(HasAnyColliderChannel(ExtractColliderSignature(*water)));
+    EXPECT_FALSE(HasAnyColliderChannel(ExtractColliderSignature(*deco)));
 }
