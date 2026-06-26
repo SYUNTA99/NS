@@ -1,9 +1,9 @@
 #include "Game/LevelPlayScene.h"
 
 #include "Game/Blocks/BuildPlacedObject.h"
+#include "Game/Level/EditTarget.h"
 #include "Game/Player.h"
 #include "Game/SkinnedDebugCharacter.h"
-#include "Game/Level/EditTarget.h"
 
 #include "Framework/Scene/AssetManager.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
@@ -596,29 +596,51 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
             if (auto* mesh = NS::Game::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*obj))
                 mesh->SetActive(false);
 
-        // 当たりは collider component の有無で channel が決まる。 free は Sphere / Capsule があれば内蔵 Box を OBB
-        // へ入れない (排他)
-        if (auto* sphere = NS::Game::Blocks::FindComponent<NS::Scene::SphereColliderComponent>(*obj))
-            m_physicsWorld.AddSphere(sphere->WorldSphere());
-        else if (auto* capsule = NS::Game::Blocks::FindComponent<NS::Scene::CapsuleColliderComponent>(*obj))
-            m_physicsWorld.AddCapsule(capsule->WorldCapsule());
-        else if (auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*obj))
+        // collider component を全部登録する。 同型を重ねれば複合形状として当たりに効く
+        // Sphere / Capsule がある時は内蔵 Box を退避扱いにし当たりへ入れず従来の排他を踏襲する
+        bool hasRoundShape = false;
+        for (NS::Scene::Component* comp : obj->Components())
         {
-            // 同じ Box でも gridAligned なら軸並行 AABB、 自由配置なら回転込み OBB
-            if (gridAligned)
-                m_physicsWorld.AddAabb(box->WorldAABB());
-            else
-                m_physicsWorld.AddObb(box->WorldOBB());
+            if (dynamic_cast<NS::Scene::SphereColliderComponent*>(comp) != nullptr ||
+                dynamic_cast<NS::Scene::CapsuleColliderComponent*>(comp) != nullptr)
+            {
+                hasRoundShape = true;
+                break;
+            }
         }
 
-        if (auto* slope = NS::Game::Blocks::FindComponent<NS::Scene::SlopeColliderComponent>(*obj))
-            for (const auto& tri : slope->WorldTriangles())
-                m_physicsWorld.AddTriangle(tri);
-        if (auto* pole = NS::Game::Blocks::FindComponent<NS::Scene::PoleComponent>(*obj))
-            m_polePtrs.push_back(pole);
-        // hazard の damage は固形 AABB とは別経路 (per-frame overlap) で効くため view にも積む
-        if (NS::Game::Blocks::FindComponent<NS::Scene::HazardComponent>(*obj))
-            m_hazardView.push_back(obj.get());
+        bool hazardRegistered = false;
+        for (NS::Scene::Component* comp : obj->Components())
+        {
+            if (auto* sphere = dynamic_cast<NS::Scene::SphereColliderComponent*>(comp))
+                m_physicsWorld.AddSphere(sphere->WorldSphere());
+            else if (auto* capsule = dynamic_cast<NS::Scene::CapsuleColliderComponent*>(comp))
+                m_physicsWorld.AddCapsule(capsule->WorldCapsule());
+            else if (auto* box = dynamic_cast<NS::Scene::BoxColliderComponent*>(comp))
+            {
+                if (hasRoundShape)
+                    continue; // 内蔵 Box は退避、 Sphere/Capsule があれば当たりに入れない
+                // 同じ Box でも gridAligned なら軸並行 AABB、 自由配置なら回転込み OBB
+                if (gridAligned)
+                    m_physicsWorld.AddAabb(box->WorldAABB());
+                else
+                    m_physicsWorld.AddObb(box->WorldOBB());
+            }
+            else if (auto* slope = dynamic_cast<NS::Scene::SlopeColliderComponent*>(comp))
+                for (const auto& tri : slope->WorldTriangles())
+                    m_physicsWorld.AddTriangle(tri);
+            else if (auto* pole = dynamic_cast<NS::Scene::PoleComponent*>(comp))
+                m_polePtrs.push_back(pole);
+            else if (dynamic_cast<NS::Scene::HazardComponent*>(comp) != nullptr)
+            {
+                // hazard の damage は固形 AABB とは別経路の毎フレーム重なり判定で効くため view にも積む
+                if (!hazardRegistered)
+                {
+                    m_hazardView.push_back(obj.get());
+                    hazardRegistered = true;
+                }
+            }
+        }
         // water / deco は collider を持たないため当たり無し・ view 不要
 
         m_objectSourceIndices.push_back(objectIndex);
