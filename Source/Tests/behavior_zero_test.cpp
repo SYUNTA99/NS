@@ -740,3 +740,59 @@ TEST(BehaviorZero, SeedAndBinaryKindMigratesAndIsIdempotent)
         ExpectSignatureEqual(beforeSigs[i], ExtractColliderSignature(*built));
     }
 }
+
+// 旧 kind JSON の読込移行を JSON 往復しても、 実 component 一覧と collider channel が安定する (移行の不動点)
+// 端 A: 旧形式 → 読込 → 移行。 端 B: 端 A を直列化 → 再読込 → 再移行。 両端が同じ構成 / 同じ当たりを組む
+TEST(BehaviorZero, LegacyKindMigrationRoundTripIsStable)
+{
+    const std::vector<LegacyKindCase> cases = {{kBlockIdSolid, 0.0f},
+                                               {kBlockIdSlope45, 1.0f},
+                                               {kBlockIdPole, 2.0f},
+                                               {kBlockIdHazard, 3.0f},
+                                               {kBlockIdWater, 4.0f},
+                                               {kBlockIdDecoration, 5.0f},
+                                               {kBlockIdCoin, 6.0f},
+                                               {kBlockIdPowerStar, 7.0f}};
+
+    LevelData endA;
+    ASSERT_TRUE(DeserializeLevelFromJson(endA, MakeLegacyLevelJson(cases)));
+    MigrateLegacyLevel(endA);
+
+    // 端 A を直列化して再読込・再移行する。 実 component なので 2 度目の移行は何もしない
+    LevelData endB;
+    ASSERT_TRUE(DeserializeLevelFromJson(endB, SerializeLevelToJson(endA)));
+    MigrateLegacyLevel(endB);
+
+    ASSERT_EQ(endA.objects.size(), cases.size());
+    ASSERT_EQ(endB.objects.size(), cases.size());
+
+    // 正準直列化の一致は typeName 集合 + 全 FieldValue が往復後も安定していることを示す (順序非依存)
+    EXPECT_EQ(SerializeLevelToJson(endA), SerializeLevelToJson(endB));
+
+    NS::Scene::AssetManager assets{std::filesystem::path{"."}};
+    const std::vector<std::string> noPaths;
+
+    for (std::size_t i = 0; i < cases.size(); ++i)
+    {
+        for (const auto& comp : endA.objects[i].components)
+            EXPECT_NE(comp.typeName, "LegacyKind");
+        for (const auto& comp : endB.objects[i].components)
+            EXPECT_NE(comp.typeName, "LegacyKind");
+
+        auto builtA = BuildPlacedObject(endA.objects[i], assets, noPaths);
+        auto builtB = BuildPlacedObject(endB.objects[i], assets, noPaths);
+        ASSERT_NE(builtA, nullptr);
+        ASSERT_NE(builtB, nullptr);
+
+        if (cases[i].kind == kBlockIdCoin || cases[i].kind == kBlockIdPowerStar)
+        {
+            // coin / star は PickupComponent のみ・ MeshRenderer 無し (視覚ゼロ) を両端で維持する
+            EXPECT_EQ(FindComponent<NS::Scene::MeshRendererComponent>(*builtA), nullptr);
+            EXPECT_EQ(FindComponent<NS::Scene::MeshRendererComponent>(*builtB), nullptr);
+            EXPECT_NE(FindComponent<NS::Scene::PickupComponent>(*builtA), nullptr);
+            EXPECT_NE(FindComponent<NS::Scene::PickupComponent>(*builtB), nullptr);
+        }
+
+        ExpectSignatureEqual(ExtractColliderSignature(*builtA), ExtractColliderSignature(*builtB));
+    }
+}
