@@ -53,6 +53,10 @@ namespace NS::Scene
         /// 現在の Material (非所有)。未設定なら nullptr
         [[nodiscard]] NS::Graphics::Material* GetMaterial() const noexcept { return m_material; }
 
+        /// 描画に使う Mesh を差し替える。mesh=nullptr で Draw は何もしなくなる
+        /// 反射では mesh を運べないため、 components 駆動の構築側が kind から引いた geometry をここで当てる
+        void SetMesh(NS::Graphics::Mesh* mesh) noexcept { m_mesh = mesh; }
+
         /// 個体段の lighting 上書き。空なら scene 解決値 (ctx.resolvedSettings) がそのまま使われる
         /// 描画時に Resolve(ctx.resolvedSettings, m_objectOverride) で個体段を解決する
         void SetRenderOverride(const NS::Graphics::RenderSettingsOverride& over) noexcept { m_objectOverride = over; }
