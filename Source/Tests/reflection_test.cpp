@@ -237,12 +237,12 @@ TEST(ReflectionTest, CharacterMovementReflectsFeelFloats)
     EXPECT_FLOAT_EQ(got, 20.0f);
 }
 
-TEST(ReflectionTest, MeshRendererReflectsBaseColor)
+TEST(ReflectionTest, MeshRendererReflectsBaseColorAndMeshRef)
 {
     NS::Scene::MeshRendererComponent renderer(nullptr, nullptr);
     const ReflectionInfo* info = renderer.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 1u);
+    EXPECT_EQ(info->fieldCount, 2u);
 
     const FieldDesc* color = FindField(info, "Base Color");
     ASSERT_NE(color, nullptr);
@@ -255,6 +255,16 @@ TEST(ReflectionTest, MeshRendererReflectsBaseColor)
     EXPECT_FLOAT_EQ(got.x, 0.2f);
     EXPECT_FLOAT_EQ(got.y, 0.3f);
     EXPECT_FLOAT_EQ(got.z, 0.4f);
+
+    const FieldDesc* mesh = FindField(info, "Mesh");
+    ASSERT_NE(mesh, nullptr);
+    EXPECT_EQ(mesh->type, FieldType::String);
+
+    std::string meshSet{"cube"};
+    mesh->set(&renderer, &meshSet);
+    std::string meshGot;
+    mesh->get(&renderer, &meshGot);
+    EXPECT_EQ(meshGot, "cube");
 }
 
 TEST(ReflectionTest, BoxColliderHalfExtentsAccessorClampsNegative)

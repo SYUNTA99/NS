@@ -12,6 +12,9 @@
 #include "Framework/Scene/Component.h"
 #include "Framework/Scene/IRenderable.h"
 
+#include <string>
+#include <utility>
+
 namespace NS::Graphics
 {
     class Mesh;
@@ -56,6 +59,13 @@ namespace NS::Scene
         /// 描画に使う Mesh を差し替える。mesh=nullptr で Draw は何もしなくなる
         /// 反射では mesh を運べないため、 components 駆動の構築側が kind から引いた geometry をここで当てる
         void SetMesh(NS::Graphics::Mesh* mesh) noexcept { m_mesh = mesh; }
+        /// build 時に解決された実体 Mesh を返す。 未解決なら nullptr
+        [[nodiscard]] const NS::Graphics::Mesh* GetMesh() const noexcept { return m_mesh; }
+
+        /// 描くメッシュの参照。 builtin 名または ContentRoot 配下の相対パス。 空なら build が kind から解決する
+        [[nodiscard]] const std::string& MeshRef() const noexcept { return m_meshRef; }
+        /// 描くメッシュの参照を設定する。 build 時にこの文字列から mesh を解決する
+        void SetMeshRef(std::string ref) noexcept { m_meshRef = std::move(ref); }
 
         /// 個体段の lighting 上書き。空なら scene 解決値 (ctx.resolvedSettings) がそのまま使われる
         /// 描画時に Resolve(ctx.resolvedSettings, m_objectOverride) で個体段を解決する
@@ -82,15 +92,18 @@ namespace NS::Scene
         /// Owner の OwningScene から self を解除する。無効ポインタを残さないよう SceneBase 破棄前に呼ぶ
         void OnEndPlay() override;
 
-        // 個体色を Inspector へ公開する (RGB)。 lighting とは別系統の個体色
+        // 個体色とメッシュ参照を Inspector へ公開する。 lighting とは別系統の個体色 + 描くメッシュの住み処
         NS_REFLECT_BEGIN(MeshRendererComponent)
         NS_REFLECT_FIELD(m_baseColor, "Base Color")
+        NS_REFLECT_FIELD(m_meshRef, "Mesh")
         NS_REFLECT_END()
 
     private:
         NS::Graphics::Mesh* m_mesh = nullptr;
         NS::Graphics::Material* m_material = nullptr;
         NS::Math::Vector3 m_baseColor{1.0f, 1.0f, 1.0f};
+        // 保存・編集される参照文字列。 build 時に解決して m_mesh へ実体を当てる二層構造
+        std::string m_meshRef{};
         NS::Graphics::RenderSettingsOverride m_objectOverride{};
     };
 } // namespace NS::Scene
