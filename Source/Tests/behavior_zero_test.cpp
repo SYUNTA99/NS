@@ -41,7 +41,8 @@ namespace
     using NS::Game::Blocks::kBlockIdSlope45;
     using NS::Game::Blocks::kBlockIdSolid;
     using NS::Game::Blocks::kBlockIdWater;
-    using NS::Game::Blocks::MaterializeComponentsFromKind;
+    using NS::Game::Blocks::MaterializeLegacyKind;
+    using NS::Game::Blocks::MigrateLegacyLevel;
     using NS::Game::Level::CameraVolume;
     using NS::Game::Level::ComponentData;
     using NS::Game::Level::DeserializeLevelFromJson;
@@ -201,6 +202,12 @@ namespace
         component.typeName = std::move(typeName);
         component.fields = std::move(fields);
         return component;
+    }
+
+    // object.kind を materializer の kind 引数へ渡す薄いアダプタ。 旧 1 引数呼出の検証をそのまま保つ
+    std::vector<ComponentData> MaterializeKind(const ObjectInstance& object)
+    {
+        return MaterializeLegacyKind(object.kind, object);
     }
 
     // ComponentData の反射フィールドを名前で引く data 段ヘルパ群。 device を持たずに materialize 結果を直接検証する
@@ -454,7 +461,7 @@ TEST(BehaviorZero, MaterializedKindMatchesAuthoredComponents)
 {
     // grid solid: cube + block material + BoxCollider
     {
-        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdSolid, 0.0f, 0.0f, 0.0f));
+        const auto comps = MaterializeKind(MakeGrid(kBlockIdSolid, 0.0f, 0.0f, 0.0f));
         ASSERT_EQ(comps.size(), 2u);
         EXPECT_EQ(comps[0].typeName, "MeshRendererComponent");
         EXPECT_EQ(FieldString(comps[0], "Mesh"), "cube");
@@ -463,7 +470,7 @@ TEST(BehaviorZero, MaterializedKindMatchesAuthoredComponents)
     }
     // grid slope45: wedge45 + SlopeCollider(45 度)
     {
-        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdSlope45, 0.0f, 0.0f, 0.0f));
+        const auto comps = MaterializeKind(MakeGrid(kBlockIdSlope45, 0.0f, 0.0f, 0.0f));
         ASSERT_EQ(comps.size(), 2u);
         EXPECT_EQ(FieldString(comps[0], "Mesh"), "wedge45");
         EXPECT_EQ(comps[1].typeName, "SlopeColliderComponent");
@@ -471,34 +478,34 @@ TEST(BehaviorZero, MaterializedKindMatchesAuthoredComponents)
     }
     // grid pole: pole + PoleComponent
     {
-        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdPole, 0.0f, 0.0f, 0.0f));
+        const auto comps = MaterializeKind(MakeGrid(kBlockIdPole, 0.0f, 0.0f, 0.0f));
         ASSERT_EQ(comps.size(), 2u);
         EXPECT_EQ(FieldString(comps[0], "Mesh"), "pole");
         EXPECT_EQ(comps[1].typeName, "PoleComponent");
     }
     // grid hazard: cube + BoxCollider + HazardComponent
     {
-        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdHazard, 0.0f, 0.0f, 0.0f));
+        const auto comps = MaterializeKind(MakeGrid(kBlockIdHazard, 0.0f, 0.0f, 0.0f));
         ASSERT_EQ(comps.size(), 3u);
         EXPECT_EQ(comps[1].typeName, "BoxColliderComponent");
         EXPECT_EQ(comps[2].typeName, "HazardComponent");
     }
     // grid water: MeshRenderer のみ・ material は water
     {
-        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdWater, 0.0f, 0.0f, 0.0f));
+        const auto comps = MaterializeKind(MakeGrid(kBlockIdWater, 0.0f, 0.0f, 0.0f));
         ASSERT_EQ(comps.size(), 1u);
         EXPECT_EQ(comps[0].typeName, "MeshRendererComponent");
         EXPECT_EQ(FieldString(comps[0], "Material"), "water");
     }
     // grid decoration: MeshRenderer のみ・ material は block
     {
-        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdDecoration, 0.0f, 0.0f, 0.0f));
+        const auto comps = MaterializeKind(MakeGrid(kBlockIdDecoration, 0.0f, 0.0f, 0.0f));
         ASSERT_EQ(comps.size(), 1u);
         EXPECT_EQ(FieldString(comps[0], "Material"), "block");
     }
     // grid coin: PickupComponent のみ (Pickup Kind 0)・ MeshRenderer を含まない (視覚ゼロ)
     {
-        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdCoin, 0.0f, 0.0f, 0.0f));
+        const auto comps = MaterializeKind(MakeGrid(kBlockIdCoin, 0.0f, 0.0f, 0.0f));
         ASSERT_EQ(comps.size(), 1u);
         EXPECT_EQ(comps[0].typeName, "PickupComponent");
         EXPECT_EQ(FieldInt(comps[0], "Pickup Kind"), 0);
@@ -506,7 +513,7 @@ TEST(BehaviorZero, MaterializedKindMatchesAuthoredComponents)
     }
     // grid star: PickupComponent のみ (Pickup Kind 1)・ MeshRenderer を含まない (視覚ゼロ)
     {
-        const auto comps = MaterializeComponentsFromKind(MakeGrid(kBlockIdPowerStar, 0.0f, 0.0f, 0.0f));
+        const auto comps = MaterializeKind(MakeGrid(kBlockIdPowerStar, 0.0f, 0.0f, 0.0f));
         ASSERT_EQ(comps.size(), 1u);
         EXPECT_EQ(comps[0].typeName, "PickupComponent");
         EXPECT_EQ(FieldInt(comps[0], "Pickup Kind"), 1);
@@ -514,7 +521,7 @@ TEST(BehaviorZero, MaterializedKindMatchesAuthoredComponents)
     }
     // free sphere: cube (空 material) + BoxCollider + SphereCollider 退避
     {
-        const auto comps = MaterializeComponentsFromKind(MakeFree(ShapeCollider::Sphere, 0.0f, 0.0f, 0.0f));
+        const auto comps = MaterializeKind(MakeFree(ShapeCollider::Sphere, 0.0f, 0.0f, 0.0f));
         ASSERT_EQ(comps.size(), 3u);
         EXPECT_EQ(comps[0].typeName, "MeshRendererComponent");
         EXPECT_EQ(FieldString(comps[0], "Mesh"), "cube");
@@ -524,7 +531,7 @@ TEST(BehaviorZero, MaterializedKindMatchesAuthoredComponents)
     }
     // free capsule: cube + BoxCollider + CapsuleCollider 退避
     {
-        const auto comps = MaterializeComponentsFromKind(MakeFree(ShapeCollider::Capsule, 0.0f, 0.0f, 0.0f));
+        const auto comps = MaterializeKind(MakeFree(ShapeCollider::Capsule, 0.0f, 0.0f, 0.0f));
         ASSERT_EQ(comps.size(), 3u);
         EXPECT_EQ(comps[2].typeName, "CapsuleColliderComponent");
     }
@@ -599,4 +606,82 @@ TEST(BehaviorZero, WaterAndDecorationMaterialSurvivesRoundTrip)
     EXPECT_EQ(decoMesh->MaterialRef(), "block");
     EXPECT_FALSE(HasAnyColliderChannel(ExtractColliderSignature(*water)));
     EXPECT_FALSE(HasAnyColliderChannel(ExtractColliderSignature(*deco)));
+}
+
+namespace
+{
+    struct LegacyKindCase
+    {
+        std::uint16_t kind;
+        float x;
+    };
+
+    // components 配列を持たず kind だけで配置物を表す旧形式 level JSON を組む
+    std::string MakeLegacyLevelJson(const std::vector<LegacyKindCase>& cases)
+    {
+        std::string objects;
+        for (std::size_t i = 0; i < cases.size(); ++i)
+        {
+            if (i != 0)
+                objects += ",";
+            objects += "{\"kind\":" + std::to_string(cases[i].kind) + ",\"flags\":1,\"transform\":{\"pos\":[" +
+                       std::to_string(cases[i].x) + ",0,0]}}";
+        }
+        return "{\"objects\":[" + objects + "]}";
+    }
+} // namespace
+
+// 旧形式 JSON (components 配列なし・ kind だけ) を読込→移行すると、 各 object が LegacyKind placeholder 経由で
+// 実 component を持ち、 その collider channel が同じ kind を直接組んだ object と一致する
+TEST(BehaviorZero, LegacyKindJsonMigratesToComponents)
+{
+    const std::vector<LegacyKindCase> cases = {{kBlockIdSolid, 0.0f},
+                                               {kBlockIdSlope45, 1.0f},
+                                               {kBlockIdPole, 2.0f},
+                                               {kBlockIdHazard, 3.0f},
+                                               {kBlockIdWater, 4.0f},
+                                               {kBlockIdDecoration, 5.0f},
+                                               {kBlockIdCoin, 6.0f},
+                                               {kBlockIdPowerStar, 7.0f}};
+
+    LevelData migrated;
+    ASSERT_TRUE(DeserializeLevelFromJson(migrated, MakeLegacyLevelJson(cases)));
+    ASSERT_EQ(migrated.objects.size(), cases.size());
+
+    // 読込直後は各 object が LegacyKind placeholder を 1 つだけ持つ (まだ展開前)
+    for (const auto& object : migrated.objects)
+    {
+        ASSERT_EQ(object.components.size(), 1u);
+        EXPECT_EQ(object.components[0].typeName, "LegacyKind");
+    }
+
+    MigrateLegacyLevel(migrated);
+
+    NS::Scene::AssetManager assets{std::filesystem::path{"."}};
+    const std::vector<std::string> noPaths;
+
+    for (std::size_t i = 0; i < cases.size(); ++i)
+    {
+        const ObjectInstance& obj = migrated.objects[i];
+
+        // 移行後は placeholder が消え、 実 component を持つ
+        EXPECT_FALSE(obj.components.empty());
+        for (const auto& comp : obj.components)
+            EXPECT_NE(comp.typeName, "LegacyKind");
+
+        ObjectInstance direct = MakeGrid(cases[i].kind, cases[i].x, 0.0f, 0.0f);
+        auto migratedBuilt = BuildPlacedObject(obj, assets, noPaths);
+        auto directBuilt = BuildPlacedObject(direct, assets, noPaths);
+        ASSERT_NE(migratedBuilt, nullptr);
+        ASSERT_NE(directBuilt, nullptr);
+
+        if (cases[i].kind == kBlockIdCoin || cases[i].kind == kBlockIdPowerStar)
+        {
+            // coin / star は PickupComponent のみ・ MeshRenderer 無し (視覚ゼロ) を保つ
+            EXPECT_EQ(FindComponent<NS::Scene::MeshRendererComponent>(*migratedBuilt), nullptr);
+            EXPECT_NE(FindComponent<NS::Scene::PickupComponent>(*migratedBuilt), nullptr);
+        }
+
+        ExpectSignatureEqual(ExtractColliderSignature(*directBuilt), ExtractColliderSignature(*migratedBuilt));
+    }
 }

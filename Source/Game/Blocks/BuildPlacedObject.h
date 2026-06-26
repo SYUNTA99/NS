@@ -11,6 +11,7 @@
 #include "Framework/Scene/Component.h"
 #include "Framework/Scene/GameObject.h"
 
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -31,6 +32,7 @@ namespace NS::Game::Level
 {
     struct ObjectInstance;
     struct ComponentData;
+    struct LevelData;
 } // namespace NS::Game::Level
 
 namespace NS::Game::Blocks
@@ -44,11 +46,17 @@ namespace NS::Game::Blocks
         const std::vector<std::string>& materialPaths);
 
     /// kind が決めていた mesh / material / 色 / 当たり / 拾得を ComponentData 一覧へ展開する
-    /// components 空の旧データを単一 build 経路へ流すための data 段 materializer
+    /// kind は引数で受け取り、 collider 寸法 / flags など kind 以外の属性は object から読む
     /// コイン / スターは視覚を持たないため PickupComponent のみを返す。 未対応 kind は空一覧を返す
     /// 積む typeName は ComponentRegistry の curated 名のみで、 任意 type は生成しない
-    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MaterializeComponentsFromKind(
-        const NS::Game::Level::ObjectInstance& object);
+    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MaterializeLegacyKind(
+        std::uint16_t kind, const NS::Game::Level::ObjectInstance& object);
+
+    /// 旧 kind 付きレベルを読込時に一度だけ実 component 一覧へ移行する
+    /// LegacyKind placeholder を持つ object はその id を、 component を持たず kind!=0 の object は kind を使って
+    /// MaterializeLegacyKind で展開し、 placeholder ごと置換する。 既に実 component を持つ object は変えない
+    /// 二重に呼んでも構成は変わらない (冪等)
+    void MigrateLegacyLevel(NS::Game::Level::LevelData& level);
 
     /// asset 相対パスを ContentRoot 配下へ正規化して返す。 `..` で外へ出るパスは nullopt にし任意ファイル読込を防ぐ
     /// path 型メソッドのみで判定し、 実在確認の filesystem 操作系は呼ばない

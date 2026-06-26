@@ -75,6 +75,8 @@ void LevelPlayScene::LoadInitialLevel()
     const auto defaultPath = exeDir / "Levels" / "default.nslvl";
     if (!NS::Game::Level::LoadLevelFromFile(m_level, defaultPath))
         SeedInitialLevel(m_level);
+    // 旧 kind 付きデータを読込時に一度だけ実 component 一覧へ移行する (rebuild より前で component を揃える)
+    NS::Game::Blocks::MigrateLegacyLevel(m_level);
     RebuildObjectIds();
 }
 

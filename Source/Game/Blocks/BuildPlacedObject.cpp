@@ -19,6 +19,7 @@
 
 #include <filesystem>
 #include <optional>
+#include <variant>
 
 namespace NS::Game::Blocks
 {
@@ -112,24 +113,23 @@ namespace NS::Game::Blocks
         }
 
         // kind から描画メッシュの builtin 名を引く。 ResolveVisualMesh と同じ規則で名前だけを返す
-        const char* VisualMeshName(const NS::Game::Level::ObjectInstance& object) noexcept
+        const char* VisualMeshName(std::uint16_t kind, bool gridAligned) noexcept
         {
-            using namespace NS::Game::Level;
-            if ((object.flags & kObjectFlagGridAligned) == 0)
+            if (!gridAligned)
                 return "cube";
-            if (IsSlopeBlock(object.kind))
+            if (IsSlopeBlock(kind))
             {
-                if (object.kind == kBlockIdSlope45)
+                if (kind == kBlockIdSlope45)
                     return "wedge45";
-                if (object.kind == kBlockIdSlope30)
+                if (kind == kBlockIdSlope30)
                     return "wedge30";
-                if (object.kind == kBlockIdSlope22)
+                if (kind == kBlockIdSlope22)
                     return "wedge22";
-                if (object.kind == kBlockIdSlope15)
+                if (kind == kBlockIdSlope15)
                     return "wedge15";
                 return "cube";
             }
-            if (IsPoleBlock(object.kind))
+            if (IsPoleBlock(kind))
                 return "pole";
             return "cube";
         }
@@ -161,10 +161,29 @@ namespace NS::Game::Blocks
                                       NS::Game::Level::FieldValue{"Material", std::move(materialName)},
                                       NS::Game::Level::FieldValue{"Base Color", baseColor}});
         }
+
+        // 旧フォーマットの kind を読込時だけ持ち回る placeholder の型名。 LevelJson 側と綴りを合わせる契約
+        constexpr const char* kLegacyKindTypeName = "LegacyKind";
+
+        // object が LegacyKind placeholder を持てばその id を返す。 無ければ nullopt
+        std::optional<std::uint16_t> FindLegacyKindId(const NS::Game::Level::ObjectInstance& object) noexcept
+        {
+            for (const auto& component : object.components)
+            {
+                if (component.typeName != kLegacyKindTypeName)
+                    continue;
+                for (const auto& field : component.fields)
+                {
+                    if (field.name == "id" && std::holds_alternative<int>(field.value))
+                        return static_cast<std::uint16_t>(std::get<int>(field.value));
+                }
+            }
+            return std::nullopt;
+        }
     } // namespace
 
-    std::vector<NS::Game::Level::ComponentData> MaterializeComponentsFromKind(
-        const NS::Game::Level::ObjectInstance& object)
+    std::vector<NS::Game::Level::ComponentData> MaterializeLegacyKind(std::uint16_t kind,
+                                                                      const NS::Game::Level::ObjectInstance& object)
     {
         using namespace NS::Game::Level;
         std::vector<ComponentData> result;
@@ -172,20 +191,20 @@ namespace NS::Game::Blocks
         const bool gridAligned = (object.flags & kObjectFlagGridAligned) != 0;
 
         // コイン / スターは視覚も当たりも持たず、 拾得の意味だけを PickupComponent で表す (不可視を維持)
-        if (gridAligned && object.kind == kBlockIdCoin)
+        if (gridAligned && kind == kBlockIdCoin)
         {
             result.push_back(MakeComponentData("PickupComponent", {FieldValue{"Pickup Kind", 0}}));
             return result;
         }
-        if (gridAligned && object.kind == kBlockIdPowerStar)
+        if (gridAligned && kind == kBlockIdPowerStar)
         {
             result.push_back(MakeComponentData("PickupComponent", {FieldValue{"Pickup Kind", 1}}));
             return result;
         }
 
-        const NS::Math::Color color = GetBaseColor(object.kind);
+        const NS::Math::Color color = GetBaseColor(kind);
         const NS::Math::Vector3 baseColor{color.R(), color.G(), color.B()};
-        const std::string meshName = VisualMeshName(object);
+        const std::string meshName = VisualMeshName(kind, gridAligned);
 
         if (!gridAligned)
         {
@@ -221,35 +240,35 @@ namespace NS::Game::Blocks
             return result;
         }
 
-        if (object.kind == kBlockIdSolid)
+        if (kind == kBlockIdSolid)
         {
             result.push_back(MeshRendererData(meshName, "block", baseColor));
             result.push_back(MakeComponentData("BoxColliderComponent", {FieldValue{"Half Extents", kCellHalfExtents}}));
         }
-        else if (IsSlopeBlock(object.kind))
+        else if (IsSlopeBlock(kind))
         {
             result.push_back(MeshRendererData(meshName, "block", baseColor));
-            result.push_back(MakeComponentData("SlopeColliderComponent",
-                                               {FieldValue{"Angle (deg)", GetSlopeAngleDegrees(object.kind)},
-                                                FieldValue{"Half Extents", kCellHalfExtents}}));
+            result.push_back(MakeComponentData(
+                "SlopeColliderComponent",
+                {FieldValue{"Angle (deg)", GetSlopeAngleDegrees(kind)}, FieldValue{"Half Extents", kCellHalfExtents}}));
         }
-        else if (IsPoleBlock(object.kind))
+        else if (IsPoleBlock(kind))
         {
             result.push_back(MeshRendererData(meshName, "block", baseColor));
             result.push_back(MakeComponentData("PoleComponent",
                                                {FieldValue{"Radius", kPoleRadius}, FieldValue{"Height", kPoleHeight}}));
         }
-        else if (IsHazardBlock(object.kind))
+        else if (IsHazardBlock(kind))
         {
             result.push_back(MeshRendererData(meshName, "block", baseColor));
             result.push_back(MakeComponentData("BoxColliderComponent", {FieldValue{"Half Extents", kCellHalfExtents}}));
             result.push_back(MakeComponentData("HazardComponent", {}));
         }
-        else if (IsWaterBlock(object.kind))
+        else if (IsWaterBlock(kind))
         {
             result.push_back(MeshRendererData(meshName, "water", baseColor));
         }
-        else if (IsDecorationBlock(object.kind))
+        else if (IsDecorationBlock(kind))
         {
             result.push_back(MeshRendererData(meshName, "block", baseColor));
         }
@@ -295,7 +314,7 @@ namespace NS::Game::Blocks
         {
             // components 空の旧データは kind を ComponentData へ展開してから単一 build 経路へ流す
             NS::Game::Level::ObjectInstance materialized = object;
-            materialized.components = MaterializeComponentsFromKind(object);
+            materialized.components = MaterializeLegacyKind(object.kind, object);
             if (materialized.components.empty())
                 return nullptr; // 未対応 kind は配置物として組まない
             obj = BuildFromComponents(materialized, assets, materialPaths);
@@ -307,5 +326,25 @@ namespace NS::Game::Blocks
         obj->Root().SetScale(NS::Math::Vector3{object.scaleX, object.scaleY, object.scaleZ});
 
         return obj;
+    }
+
+    void MigrateLegacyLevel(NS::Game::Level::LevelData& level)
+    {
+        using namespace NS::Game::Level;
+        for (ObjectInstance& object : level.objects)
+        {
+            // 読込時の旧 "kind" は LegacyKind placeholder に入る。 id を取り出して実 component へ展開し置換する
+            // placeholder ごと差し替わるので migrate 後に LegacyKind は残らない
+            if (const std::optional<std::uint16_t> legacyKind = FindLegacyKindId(object))
+            {
+                object.components = MaterializeLegacyKind(*legacyKind, object);
+                continue;
+            }
+
+            // placeholder を持たず component が空で kind!=0 の object (seed / 旧 binary / kind だけ持つ JSON) も
+            // kind を使って同様に展開する。 既に実 component を持つ object は触らない
+            if (object.components.empty() && object.kind != 0)
+                object.components = MaterializeLegacyKind(object.kind, object);
+        }
     }
 } // namespace NS::Game::Blocks
