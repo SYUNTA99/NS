@@ -188,13 +188,13 @@ TEST_F(BuildPlacedObjectTest, FreeBoxHasBoxColliderWithSavedHalfExtents)
     EXPECT_FALSE(Has<NS::Scene::CapsuleColliderComponent>(*obj));
 }
 
-TEST_F(BuildPlacedObjectTest, FreeSphereHasInternalBoxPlusSphere)
+TEST_F(BuildPlacedObjectTest, FreeSphereHasOnlySphereCollider)
 {
     ObjectInstance object = MakeFree(ShapeCollider::Sphere, Vector3{0.7f, 0.5f, 0.5f}, Vector3{0.0f, 1.0f, 0.0f});
 
     auto obj = Build(object);
     ASSERT_NE(obj, nullptr);
-    EXPECT_TRUE(Has<NS::Scene::BoxColliderComponent>(*obj)); // 内蔵 Box は残る
+    EXPECT_FALSE(Has<NS::Scene::BoxColliderComponent>(*obj));
     auto* sphere = FindComponent<NS::Scene::SphereColliderComponent>(*obj);
     ASSERT_NE(sphere, nullptr);
     EXPECT_FALSE(Has<NS::Scene::CapsuleColliderComponent>(*obj));
@@ -204,13 +204,27 @@ TEST_F(BuildPlacedObjectTest, FreeSphereHasInternalBoxPlusSphere)
     EXPECT_NEAR(world.center.y, 1.0f, 1e-4f); // offset 反映
 }
 
-TEST_F(BuildPlacedObjectTest, FreeCapsuleHasInternalBoxPlusCapsule)
+TEST_F(BuildPlacedObjectTest, SphereColliderWorldAabbEnclosesSphere)
+{
+    ObjectInstance object = MakeFree(ShapeCollider::Sphere, Vector3{0.7f, 0.5f, 0.5f}, Vector3{0.0f, 1.0f, 0.0f});
+    auto obj = Build(object);
+    ASSERT_NE(obj, nullptr);
+    auto* sphere = FindComponent<NS::Scene::SphereColliderComponent>(*obj);
+    ASSERT_NE(sphere, nullptr);
+    const NS::Math::AABB aabb = sphere->WorldAABB();
+    EXPECT_NEAR(aabb.Center.y, 1.0f, 1e-4f);
+    EXPECT_NEAR(aabb.Extents.x, 0.7f, 1e-4f);
+    EXPECT_NEAR(aabb.Extents.y, 0.7f, 1e-4f);
+    EXPECT_NEAR(aabb.Extents.z, 0.7f, 1e-4f);
+}
+
+TEST_F(BuildPlacedObjectTest, FreeCapsuleHasOnlyCapsuleCollider)
 {
     ObjectInstance object = MakeFree(ShapeCollider::Capsule, Vector3{0.4f, 0.9f, 0.5f});
 
     auto obj = Build(object);
     ASSERT_NE(obj, nullptr);
-    EXPECT_TRUE(Has<NS::Scene::BoxColliderComponent>(*obj)); // 内蔵 Box は残る
+    EXPECT_FALSE(Has<NS::Scene::BoxColliderComponent>(*obj));
     auto* capsule = FindComponent<NS::Scene::CapsuleColliderComponent>(*obj);
     ASSERT_NE(capsule, nullptr);
     EXPECT_FALSE(Has<NS::Scene::SphereColliderComponent>(*obj));
@@ -218,6 +232,19 @@ TEST_F(BuildPlacedObjectTest, FreeCapsuleHasInternalBoxPlusCapsule)
     const NS::Physics::Capsule world = capsule->WorldCapsule();
     EXPECT_NEAR(world.radius, 0.4f, 1e-4f);
     EXPECT_NEAR(world.halfHeight, 0.9f, 1e-4f);
+}
+
+TEST_F(BuildPlacedObjectTest, CapsuleColliderWorldAabbEnclosesCapsule)
+{
+    ObjectInstance object = MakeFree(ShapeCollider::Capsule, Vector3{0.4f, 0.9f, 0.5f});
+    auto obj = Build(object);
+    ASSERT_NE(obj, nullptr);
+    auto* capsule = FindComponent<NS::Scene::CapsuleColliderComponent>(*obj);
+    ASSERT_NE(capsule, nullptr);
+    const NS::Math::AABB aabb = capsule->WorldAABB();
+    EXPECT_NEAR(aabb.Extents.x, 0.4f, 1e-4f);
+    EXPECT_NEAR(aabb.Extents.y, 1.3f, 1e-4f);
+    EXPECT_NEAR(aabb.Extents.z, 0.4f, 1e-4f);
 }
 
 TEST_F(BuildPlacedObjectTest, TransformAppliedToRoot)

@@ -58,4 +58,10 @@ namespace NS::Scene
 
         return NS::Physics::Sphere{center, m_radius * MaxAbsComponent(scale)};
     }
+
+    NS::Math::AABB SphereColliderComponent::WorldAABB() const noexcept
+    {
+        const NS::Physics::Sphere s = WorldSphere();
+        return NS::Math::AABB{s.center, NS::Math::Vector3{s.radius, s.radius, s.radius}};
+    }
 } // namespace NS::Scene

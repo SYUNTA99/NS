@@ -598,18 +598,6 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
                 mesh->SetActive(false);
 
         // collider component を全部登録する。 同型を重ねれば複合形状として当たりに効く
-        // Sphere / Capsule がある時は内蔵 Box を退避扱いにし当たりへ入れず従来の排他を踏襲する
-        bool hasRoundShape = false;
-        for (NS::Scene::Component* comp : obj->Components())
-        {
-            if (dynamic_cast<NS::Scene::SphereColliderComponent*>(comp) != nullptr ||
-                dynamic_cast<NS::Scene::CapsuleColliderComponent*>(comp) != nullptr)
-            {
-                hasRoundShape = true;
-                break;
-            }
-        }
-
         bool hazardRegistered = false;
         for (NS::Scene::Component* comp : obj->Components())
         {
@@ -619,8 +607,6 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
                 m_physicsWorld.AddCapsule(capsule->WorldCapsule());
             else if (auto* box = dynamic_cast<NS::Scene::BoxColliderComponent*>(comp))
             {
-                if (hasRoundShape)
-                    continue; // 内蔵 Box は退避、 Sphere/Capsule があれば当たりに入れない
                 // 同じ Box でも gridAligned なら軸並行 AABB、 自由配置なら回転込み OBB
                 if (gridAligned)
                     m_physicsWorld.AddAabb(box->WorldAABB());
@@ -666,8 +652,8 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
             const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
             if ((entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
                 continue;
-            if (auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_objects[i]))
-                shadowReceivers.push_back(box->WorldAABB());
+            if (auto aabb = NS::Game::Blocks::ColliderWorldAABB(*m_objects[i]))
+                shadowReceivers.push_back(*aabb);
         }
         m_player->Shadow().SetCollisionWorld(shadowReceivers);
 

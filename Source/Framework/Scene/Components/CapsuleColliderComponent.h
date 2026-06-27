@@ -45,6 +45,9 @@ namespace NS::Scene
         /// Owner 未登録時は local offset / 回転だけを反映する (例外を投げない)
         [[nodiscard]] NS::Physics::Capsule WorldCapsule() const noexcept;
 
+        /// owner の world 変換を反映した世界軸並行 AABB を返す。 Owner 未登録時は local だけを反映する
+        [[nodiscard]] NS::Math::AABB WorldAABB() const noexcept;
+
         NS_REFLECT_BEGIN(CapsuleColliderComponent)
         NS_REFLECT_ACCESSOR(float, "Radius", Radius(), SetRadius)
         NS_REFLECT_ACCESSOR(float, "Half Height", HalfHeight(), SetHalfHeight)

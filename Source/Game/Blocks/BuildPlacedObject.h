@@ -8,6 +8,7 @@
 /// 構築のみを担い、 SceneBase への attach / OnStart / 衝突世界への登録は呼出側が行う
 /// 依存: NS::Scene::GameObject / AssetManager, NS::Game::Level::ObjectInstance, NS::Game::Blocks::BlockRegistry
 
+#include "Framework/Math/Math.h"
 #include "Framework/Scene/Component.h"
 #include "Framework/Scene/GameObject.h"
 
@@ -75,6 +76,10 @@ namespace NS::Game::Blocks
     /// メッシュ参照文字列からメッシュを解決する。 builtin 名を先引きし、 外れたら ContentRoot 配下の相対パスとして
     /// glTF を読む。 空 / traversal / 未解決は nullptr を返す。 traversal は ResolveContentPath が弾く
     [[nodiscard]] NS::Graphics::Mesh* ResolveMeshFromRef(NS::Scene::AssetManager& assets, const std::string& meshRef);
+
+    /// obj の collider を Box / Sphere / Capsule / Slope の順に見て最初に見つかった世界 AABB を返す
+    /// 影の受け皿と当たり可視化が collider 種別に依存せず世界境界を 1 つ取る窓口。 collider が無ければ nullopt
+    [[nodiscard]] std::optional<NS::Math::AABB> ColliderWorldAABB(NS::Scene::GameObject& obj) noexcept;
 
     /// obj の Component 列から型 T の最初の一致を返す (無ければ nullptr)
     /// 描画 / 衝突 / editor が具象型を知らずに Component を取り出す共通窓口

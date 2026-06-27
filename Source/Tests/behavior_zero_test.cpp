@@ -518,21 +518,20 @@ TEST(BehaviorZero, MaterializedKindMatchesAuthoredComponents)
         EXPECT_EQ(FieldInt(comps[0], "Pickup Kind"), 1);
         EXPECT_FALSE(HasComponentType(comps, "MeshRendererComponent"));
     }
-    // free sphere: cube (空 material) + BoxCollider + SphereCollider 退避
+    // free sphere: cube + SphereCollider のみ
     {
         const auto comps = MaterializeKind(MakeFree(ShapeCollider::Sphere, 0.0f, 0.0f, 0.0f));
-        ASSERT_EQ(comps.size(), 3u);
+        ASSERT_EQ(comps.size(), 2u);
         EXPECT_EQ(comps[0].typeName, "MeshRendererComponent");
         EXPECT_EQ(FieldString(comps[0], "Mesh"), "cube");
         EXPECT_EQ(FieldString(comps[0], "Material"), "");
-        EXPECT_EQ(comps[1].typeName, "BoxColliderComponent");
-        EXPECT_EQ(comps[2].typeName, "SphereColliderComponent");
+        EXPECT_EQ(comps[1].typeName, "SphereColliderComponent");
     }
-    // free capsule: cube + BoxCollider + CapsuleCollider 退避
+    // free capsule: cube + CapsuleCollider のみ
     {
         const auto comps = MaterializeKind(MakeFree(ShapeCollider::Capsule, 0.0f, 0.0f, 0.0f));
-        ASSERT_EQ(comps.size(), 3u);
-        EXPECT_EQ(comps[2].typeName, "CapsuleColliderComponent");
+        ASSERT_EQ(comps.size(), 2u);
+        EXPECT_EQ(comps[1].typeName, "CapsuleColliderComponent");
     }
 
     // golden 等価: kind 駆動 (materialize→build) と手書き components→build が同一 collider signature を組む

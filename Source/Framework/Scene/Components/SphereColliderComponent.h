@@ -32,6 +32,9 @@ namespace NS::Scene
         /// Owner 未登録時は local offset / radius だけを反映する (例外を投げない)
         [[nodiscard]] NS::Physics::Sphere WorldSphere() const noexcept;
 
+        /// owner の world 変換を反映した世界軸並行 AABB を返す。 Owner 未登録時は local だけを反映する
+        [[nodiscard]] NS::Math::AABB WorldAABB() const noexcept;
+
         NS_REFLECT_BEGIN(SphereColliderComponent)
         NS_REFLECT_ACCESSOR(float, "Radius", Radius(), SetRadius)
         NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Center Offset", CenterOffset(), SetCenterOffset)

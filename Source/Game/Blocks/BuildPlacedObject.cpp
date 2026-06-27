@@ -238,7 +238,7 @@ namespace NS::Game::Blocks
 
         if (!gridAligned)
         {
-            // 自由配置物は cube + 当たり Box、 shape により Sphere / Capsule を退避追加する
+            // 自由配置物は cube を描き、 当たりは shape ごとに collider を 1 つだけ持つ
             const NS::Math::Vector3 half{
                 object.colliderHalfExtentsX, object.colliderHalfExtentsY, object.colliderHalfExtentsZ};
             const NS::Math::Vector3 offset{object.colliderOffsetX, object.colliderOffsetY, object.colliderOffsetZ};
@@ -247,10 +247,6 @@ namespace NS::Game::Blocks
             const NS::Math::Vector3 rotationEuler = QuaternionToEulerDegrees(rotation);
 
             result.push_back(MeshRendererData(meshName, "", baseColor));
-            result.push_back(MakeComponentData("BoxColliderComponent",
-                                               {FieldValue{"Half Extents", half},
-                                                FieldValue{"Center Offset", offset},
-                                                FieldValue{"Rotation (deg)", rotationEuler}}));
 
             const ShapeCollider shape = ObjectShapeCollider(object);
             if (shape == ShapeCollider::Sphere)
@@ -264,6 +260,14 @@ namespace NS::Game::Blocks
                 result.push_back(MakeComponentData("CapsuleColliderComponent",
                                                    {FieldValue{"Radius", object.colliderHalfExtentsX},
                                                     FieldValue{"Half Height", object.colliderHalfExtentsY},
+                                                    FieldValue{"Center Offset", offset},
+                                                    FieldValue{"Rotation (deg)", rotationEuler}}));
+            }
+            else
+            {
+                // Box / Mesh 形状は当たり箱で受ける。 回転・非一様 scale は WorldOBB が保つ
+                result.push_back(MakeComponentData("BoxColliderComponent",
+                                                   {FieldValue{"Half Extents", half},
                                                     FieldValue{"Center Offset", offset},
                                                     FieldValue{"Rotation (deg)", rotationEuler}}));
             }
@@ -304,6 +308,30 @@ namespace NS::Game::Blocks
         }
         // 未対応の grid kind は空一覧のまま返す (呼出側が配置物として組まない)
         return result;
+    }
+
+    std::optional<NS::Math::AABB> ColliderWorldAABB(NS::Scene::GameObject& obj) noexcept
+    {
+        if (auto* box = FindComponent<NS::Scene::BoxColliderComponent>(obj))
+            return box->WorldAABB();
+        if (auto* sphere = FindComponent<NS::Scene::SphereColliderComponent>(obj))
+            return sphere->WorldAABB();
+        if (auto* capsule = FindComponent<NS::Scene::CapsuleColliderComponent>(obj))
+            return capsule->WorldAABB();
+        if (auto* slope = FindComponent<NS::Scene::SlopeColliderComponent>(obj))
+        {
+            const auto tris = slope->WorldTriangles();
+            NS::Math::Vector3 lo = tris[0].v0;
+            NS::Math::Vector3 hi = tris[0].v0;
+            for (const auto& t : tris)
+                for (const NS::Math::Vector3& v : {t.v0, t.v1, t.v2})
+                {
+                    lo = NS::Math::Vector3::Min(lo, v);
+                    hi = NS::Math::Vector3::Max(hi, v);
+                }
+            return NS::Math::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
+        }
+        return std::nullopt;
     }
 
     bool IsGridSolidObject(const NS::Game::Level::ObjectInstance& object)
