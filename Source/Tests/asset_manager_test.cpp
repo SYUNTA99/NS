@@ -101,6 +101,18 @@ TEST_F(AssetManagerTest, BuiltinReturnsSameNonNullPointer)
     EXPECT_EQ(am.Builtin("nonexistent"), nullptr);
 }
 
+// 読込失敗した mesh path は負キャッシュされ、 2 度目以降は再読込せず即 nullptr を返す (device 不要)
+TEST_F(AssetManagerTest, FailedMeshLoadIsNegativeCached)
+{
+    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    const std::filesystem::path missing = "__ns_am_missing_mesh__.gltf";
+
+    EXPECT_EQ(am.GetOrLoadMesh(missing), nullptr);
+    EXPECT_EQ(am.MeshCacheSize(), 1u); // 失敗を 1 件だけ負キャッシュする
+    EXPECT_EQ(am.GetOrLoadMesh(missing), nullptr);
+    EXPECT_EQ(am.MeshCacheSize(), 1u); // 2 度目は再読込せず件数が増えない
+}
+
 // Reload は path 鍵の Shader を reload-in-place するのでキャッシュのポインタが不変
 TEST_F(AssetManagerTest, ReloadShaderInPlaceKeepsIdentity)
 {

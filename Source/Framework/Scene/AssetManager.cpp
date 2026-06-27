@@ -148,6 +148,7 @@ namespace NS::Scene
     NS::Graphics::Mesh* AssetManager::GetOrLoadMesh(const std::filesystem::path& path)
     {
         const std::filesystem::path key = path.lexically_normal();
+        // null エントリは負キャッシュした失敗 path を表す。 get() が nullptr を返し再読込を短絡する
         if (const auto it = m_meshes.find(key); it != m_meshes.end())
             return it->second.get();
 
@@ -157,21 +158,29 @@ namespace NS::Scene
         {
             NS_LOG_WARN(
                 ::NS::Core::LogCat::Graphics, "AssetManager::GetOrLoadMesh: mesh の読込失敗 / 空: {}", key.string());
+            // 壊れた path を負キャッシュし、 同じ参照を持つ object 群が毎回ディスク I/O を踏むのを防ぐ
+            m_meshes.emplace(key, nullptr);
             return nullptr;
         }
 
         std::unique_ptr<NS::Graphics::StaticMesh> mesh = MakeStaticMesh(geom);
         if (mesh == nullptr || !mesh->IsValid())
         {
-            // GPU buffer 生成に失敗。 ダッド mesh をキャッシュせず無効を返す
             NS_LOG_ERROR(
                 ::NS::Core::LogCat::Graphics, "AssetManager::GetOrLoadMesh: mesh の GPU 生成失敗: {}", key.string());
+            // GPU 生成失敗も負キャッシュする。 修正後の再試行は Clear() で解いてから
+            m_meshes.emplace(key, nullptr);
             return nullptr;
         }
 
         NS::Graphics::Mesh* raw = mesh.get();
         m_meshes.emplace(key, std::move(mesh));
         return raw;
+    }
+
+    std::size_t AssetManager::MeshCacheSize() const noexcept
+    {
+        return m_meshes.size();
     }
 
     LoadedSkinnedModel AssetManager::GetOrLoadSkinnedModel(const std::filesystem::path& path)

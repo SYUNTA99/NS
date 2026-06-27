@@ -84,8 +84,11 @@ namespace NS::Scene
         [[nodiscard]] NS::Graphics::Shader* GetOrLoadShader(const std::filesystem::path& path);
         /// path 鍵で Texture を dedupe して返す。 同一 path は同一インスタンス
         [[nodiscard]] NS::Graphics::Texture* GetOrLoadTexture(const std::filesystem::path& path);
-        /// path 鍵で Mesh を dedupe して返す。 file mesh のロード対応前は未対応 path で nullptr
+        /// path 鍵で Mesh を dedupe して返す。 読込 / GPU 生成に失敗した path も負キャッシュし、 以後は再読込せず
+        /// 即 nullptr を返す。 修正した file の再試行は Clear() でキャッシュを解いてから
         [[nodiscard]] NS::Graphics::Mesh* GetOrLoadMesh(const std::filesystem::path& path);
+        /// 現在キャッシュしている mesh エントリ数。 読込失敗を負キャッシュした path も 1 件として数える
+        [[nodiscard]] std::size_t MeshCacheSize() const noexcept;
 
         /// skinned glTF を読み SkeletalMesh を path 鍵で dedupe 所有して返す。 skeleton / clips は複製で返す
         /// (再生状態とクリップ合成はインスタンス側が持つため)。 失敗時は valid=false。 相対 path は baseDir 基準
