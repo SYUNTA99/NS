@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -198,5 +199,16 @@ namespace NS::Game::Level
     /// component vector / typeName / field 名の確保分を数える。 配置・変形系 Command の EstimatedBytes が使う
     [[nodiscard]] std::size_t EstimatedHeapBytes(const ComponentData& component) noexcept;
     [[nodiscard]] std::size_t EstimatedHeapBytes(const ObjectInstance& object) noexcept;
+
+    /// object.components から typeName 一致の最初の 1 件を返す。 無ければ nullptr
+    /// component / field 走査の唯一の窓口。 各 consumer が同じループを手書きするのを防ぐ
+    [[nodiscard]] const ComponentData* FindComponentData(const ObjectInstance& object,
+                                                         std::string_view typeName) noexcept;
+    /// component.fields から name 一致の最初の 1 件を返す。 無ければ nullptr
+    [[nodiscard]] const FieldValue* FindField(const ComponentData& component, std::string_view name) noexcept;
+
+    /// 拾得種別を返す。 PickupComponent が無ければ -1、 "Pickup Kind" 欠損は 0 (コイン既定)
+    /// 0=コイン / 1=スター。 配置物の表示・固形判定 (Blocks) とプレイの拾得判定 (PlayMode) が同じ契約を読む
+    [[nodiscard]] int PickupKindOf(const ObjectInstance& object) noexcept;
 
 } // namespace NS::Game::Level

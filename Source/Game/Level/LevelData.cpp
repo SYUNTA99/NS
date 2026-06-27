@@ -302,4 +302,31 @@ namespace NS::Game::Level
         return bytes;
     }
 
+    const ComponentData* FindComponentData(const ObjectInstance& object, std::string_view typeName) noexcept
+    {
+        for (const ComponentData& component : object.components)
+            if (component.typeName == typeName)
+                return &component;
+        return nullptr;
+    }
+
+    const FieldValue* FindField(const ComponentData& component, std::string_view name) noexcept
+    {
+        for (const FieldValue& field : component.fields)
+            if (field.name == name)
+                return &field;
+        return nullptr;
+    }
+
+    int PickupKindOf(const ObjectInstance& object) noexcept
+    {
+        const ComponentData* pickup = FindComponentData(object, "PickupComponent");
+        if (pickup == nullptr)
+            return -1;
+        const FieldValue* field = FindField(*pickup, "Pickup Kind");
+        if (field != nullptr && std::holds_alternative<int>(field->value))
+            return std::get<int>(field->value);
+        return 0; // PickupComponent はあるが field 欠損 → コイン既定
+    }
+
 } // namespace NS::Game::Level

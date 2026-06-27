@@ -144,70 +144,45 @@ namespace NS::Game::Blocks
         // object が LegacyKind placeholder を持てばその id を返す。 無ければ nullopt
         std::optional<std::uint16_t> FindLegacyKindId(const NS::Game::Level::ObjectInstance& object) noexcept
         {
-            for (const auto& component : object.components)
-            {
-                if (component.typeName != kLegacyKindTypeName)
-                    continue;
-                for (const auto& field : component.fields)
-                {
-                    if (field.name == "id" && std::holds_alternative<int>(field.value))
-                        return static_cast<std::uint16_t>(std::get<int>(field.value));
-                }
-            }
+            const NS::Game::Level::ComponentData* legacy =
+                NS::Game::Level::FindComponentData(object, kLegacyKindTypeName);
+            if (legacy == nullptr)
+                return std::nullopt;
+            const NS::Game::Level::FieldValue* id = NS::Game::Level::FindField(*legacy, "id");
+            if (id != nullptr && std::holds_alternative<int>(id->value))
+                return static_cast<std::uint16_t>(std::get<int>(id->value));
             return std::nullopt;
         }
 
         // object が指定 typeName の component を持つか
         bool HasComponentType(const NS::Game::Level::ObjectInstance& object, const char* typeName) noexcept
         {
-            for (const auto& component : object.components)
-                if (component.typeName == typeName)
-                    return true;
-            return false;
-        }
-
-        // PickupComponent の "Pickup Kind" を返す。 PickupComponent 無しは -1、 フィールド欠損は 0
-        int PickupKindOf(const NS::Game::Level::ObjectInstance& object) noexcept
-        {
-            for (const auto& component : object.components)
-            {
-                if (component.typeName != "PickupComponent")
-                    continue;
-                for (const auto& field : component.fields)
-                    if (field.name == "Pickup Kind" && std::holds_alternative<int>(field.value))
-                        return std::get<int>(field.value);
-                return 0;
-            }
-            return -1;
+            return NS::Game::Level::FindComponentData(object, typeName) != nullptr;
         }
 
         // SlopeColliderComponent の "Angle (deg)" を返す。 SlopeCollider 無しは -1
         float SlopeAngleOf(const NS::Game::Level::ObjectInstance& object) noexcept
         {
-            for (const auto& component : object.components)
-            {
-                if (component.typeName != "SlopeColliderComponent")
-                    continue;
-                for (const auto& field : component.fields)
-                    if (field.name == "Angle (deg)" && std::holds_alternative<float>(field.value))
-                        return std::get<float>(field.value);
-                return 0.0f;
-            }
-            return -1.0f;
+            const NS::Game::Level::ComponentData* slope =
+                NS::Game::Level::FindComponentData(object, "SlopeColliderComponent");
+            if (slope == nullptr)
+                return -1.0f;
+            const NS::Game::Level::FieldValue* angle = NS::Game::Level::FindField(*slope, "Angle (deg)");
+            if (angle != nullptr && std::holds_alternative<float>(angle->value))
+                return std::get<float>(angle->value);
+            return 0.0f;
         }
 
         // MeshRenderer の "Material" 参照を返す。 MeshRenderer / フィールド無しは nullptr
         const std::string* MaterialRefOf(const NS::Game::Level::ObjectInstance& object) noexcept
         {
-            for (const auto& component : object.components)
-            {
-                if (component.typeName != "MeshRendererComponent")
-                    continue;
-                for (const auto& field : component.fields)
-                    if (field.name == "Material" && std::holds_alternative<std::string>(field.value))
-                        return &std::get<std::string>(field.value);
+            const NS::Game::Level::ComponentData* renderer =
+                NS::Game::Level::FindComponentData(object, "MeshRendererComponent");
+            if (renderer == nullptr)
                 return nullptr;
-            }
+            const NS::Game::Level::FieldValue* material = NS::Game::Level::FindField(*renderer, "Material");
+            if (material != nullptr && std::holds_alternative<std::string>(material->value))
+                return &std::get<std::string>(material->value);
             return nullptr;
         }
     } // namespace

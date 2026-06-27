@@ -48,25 +48,16 @@ namespace NS::Game::Blocks
         {
             VisualTileKey key;
             key.materialIndex = object.materialIndex;
-            for (const auto& component : object.components)
-            {
-                if (component.typeName != "MeshRendererComponent")
-                    continue;
-                for (const auto& field : component.fields)
-                {
-                    if (field.name == "Mesh")
-                    {
-                        if (const auto* meshName = std::get_if<std::string>(&field.value))
-                            key.mesh = *meshName;
-                    }
-                    else if (field.name == "Material")
-                    {
-                        if (const auto* matRef = std::get_if<std::string>(&field.value))
-                            key.materialRef = *matRef;
-                    }
-                }
-                break;
-            }
+            const NS::Game::Level::ComponentData* renderer =
+                NS::Game::Level::FindComponentData(object, "MeshRendererComponent");
+            if (renderer == nullptr)
+                return key; // MeshRenderer 無し (coin / star 等) は空メッシュキーで solid と連結しない
+            if (const NS::Game::Level::FieldValue* mesh = NS::Game::Level::FindField(*renderer, "Mesh"))
+                if (const auto* meshName = std::get_if<std::string>(&mesh->value))
+                    key.mesh = *meshName;
+            if (const NS::Game::Level::FieldValue* material = NS::Game::Level::FindField(*renderer, "Material"))
+                if (const auto* matRef = std::get_if<std::string>(&material->value))
+                    key.materialRef = *matRef;
             return key;
         }
     } // namespace

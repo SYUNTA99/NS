@@ -4,28 +4,13 @@
 #include "Game/Level/PlayState.h"
 
 #include <algorithm>
-#include <variant>
 
 namespace NS::Game::Level
 {
     namespace
     {
-        // PickupComponent の "Pickup Kind" を返す。 PickupComponent が無ければ -1、 フィールド欠損は 0 (コイン既定)
-        int PickupKindOf(const ObjectInstance& object) noexcept
-        {
-            for (const auto& component : object.components)
-            {
-                if (component.typeName != "PickupComponent")
-                    continue;
-                for (const auto& field : component.fields)
-                    if (field.name == "Pickup Kind" && std::holds_alternative<int>(field.value))
-                        return std::get<int>(field.value);
-                return 0;
-            }
-            return -1;
-        }
-
         // 拾得種別は PickupComponent だけで決まる。 読込時移行でどの拾得物も PickupComponent を持つ
+        // 種別判定は LevelData の共有 PickupKindOf に一本化する (配置物の表示・固形判定と同じ契約を読む)
         bool ObjectIsCoin(const ObjectInstance& object) noexcept
         {
             return PickupKindOf(object) == 0;
