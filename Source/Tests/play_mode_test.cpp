@@ -125,10 +125,9 @@ TEST(PlayMode, PickupComponentCoinIncrementsCounter)
     lv.spawnY = 0;
     lv.spawnZ = 0;
 
-    // kind は coin の ID でなく、 PickupComponent が拾得を駆動することを示す
+    // 拾得は PickupComponent が駆動する (種別フィールドではなく component が表す)
     LevelNs::ObjectInstance coin;
     coin.flags = LevelNs::kObjectFlagGridAligned;
-    coin.kind = 0;
     coin.positionX = 0.0f;
     coin.positionY = 0.0f;
     coin.positionZ = 0.0f;
@@ -155,7 +154,6 @@ TEST(PlayMode, PickupComponentStarTriggersClear)
 
     LevelNs::ObjectInstance star;
     star.flags = LevelNs::kObjectFlagGridAligned;
-    star.kind = 0;
     star.positionX = 0.0f;
     star.positionY = 0.0f;
     star.positionZ = 0.0f;

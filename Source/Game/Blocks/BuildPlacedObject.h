@@ -38,7 +38,7 @@ namespace NS::Game::Level
 namespace NS::Game::Blocks
 {
     /// ObjectInstance から配置物を組み立てて返す。 mesh / material は assets から借り、 free 配置物の .mat は
-    /// materialPaths を介して解決する。 未対応の grid kind は nullptr を返す (呼出側が読み飛ばす)
+    /// materialPaths を介して解決する。 component を持たない object は nullptr を返す (呼出側が読み飛ばす)
     /// assets が deviceless (Builtin / SharedMaterial が nullptr) でも落ちない
     [[nodiscard]] std::unique_ptr<NS::Scene::GameObject> BuildPlacedObject(
         const NS::Game::Level::ObjectInstance& object,
@@ -53,9 +53,8 @@ namespace NS::Game::Blocks
         std::uint16_t kind, const NS::Game::Level::ObjectInstance& object);
 
     /// 旧 kind 付きレベルを読込時に一度だけ実 component 一覧へ移行する
-    /// LegacyKind placeholder を持つ object はその id を、 component を持たず kind!=0 の object は kind を使って
-    /// MaterializeLegacyKind で展開し、 placeholder ごと置換する。 既に実 component を持つ object は変えない
-    /// 二重に呼んでも構成は変わらない (冪等)
+    /// LegacyKind placeholder を持つ object はその id を MaterializeLegacyKind で展開し、 placeholder ごと置換する
+    /// 既に実 component を持つ object は変えない。 二重に呼んでも構成は変わらない (冪等)
     void MigrateLegacyLevel(NS::Game::Level::LevelData& level);
 
     /// grid 配置された固形 block か。 components から判定する (gridAligned かつ BoxCollider 持ちで

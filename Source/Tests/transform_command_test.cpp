@@ -1,6 +1,6 @@
-#include "Game/Level/LevelData.h"
-#include "Game/Level/EditTarget.h"
 #include "Editor/Undo/TransformCommand.h"
+#include "Game/Level/EditTarget.h"
+#include "Game/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
@@ -12,13 +12,12 @@ namespace LevelNs = NS::Game::Level;
 
 namespace
 {
-    LevelNs::ObjectInstance MakeFree(float x, float y, float z, std::uint16_t kind = 1)
+    LevelNs::ObjectInstance MakeFree(float x, float y, float z)
     {
         LevelNs::ObjectInstance o;
         o.positionX = x;
         o.positionY = y;
         o.positionZ = z;
-        o.kind = kind;
         return o;
     }
 } // namespace

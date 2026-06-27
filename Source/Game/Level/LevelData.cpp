@@ -2,6 +2,7 @@
 
 #include "Framework/Math/Math.h"
 #include "Game/Blocks/BlockRegistry.h"
+#include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Level/detail/crc32.h"
 
 #include <cmath>
@@ -56,7 +57,7 @@ namespace NS::Game::Level
         }
 
         /// ObjectInstance のスカラ部を宣言順で hash し、 続けて components を hash する
-        /// components が空なら何も足さないため、 旧データの CRC は脱 POD 前と一致する
+        /// component の field は名前順に hash するため、 save→load の正準化 (名前昇順) を跨いでも CRC が安定する
         std::uint32_t UpdateWithObject(std::uint32_t crc, const ObjectInstance& object) noexcept
         {
             crc = UpdateWith(crc, object.positionX);
@@ -69,7 +70,6 @@ namespace NS::Game::Level
             crc = UpdateWith(crc, object.scaleX);
             crc = UpdateWith(crc, object.scaleY);
             crc = UpdateWith(crc, object.scaleZ);
-            crc = UpdateWith(crc, object.kind);
             crc = UpdateWith(crc, object.materialIndex);
             crc = UpdateWith(crc, object.flags);
             crc = UpdateWith(crc, object.shapeCollider);
@@ -88,10 +88,24 @@ namespace NS::Game::Level
             for (const auto& component : object.components)
             {
                 crc = UpdateWithString(crc, component.typeName);
-                crc = UpdateWith(crc, static_cast<std::uint64_t>(component.fields.size()));
-                for (const auto& field : component.fields)
+                const std::size_t fieldCount = component.fields.size();
+                crc = UpdateWith(crc, static_cast<std::uint64_t>(fieldCount));
+                // JSON は field を名前順に正準化するので CRC も名前順で hash する。 field 名は component 内で一意なので
+                // heap を使わず「直前より大きい最小名」を順に選んで安定させる (noexcept・ 非確保)
+                const std::string* previousName = nullptr;
+                for (std::size_t emitted = 0; emitted < fieldCount; ++emitted)
                 {
-                    crc = UpdateWithFieldValue(crc, field);
+                    const FieldValue* next = nullptr;
+                    for (const auto& field : component.fields)
+                    {
+                        const bool afterPrevious = previousName == nullptr || field.name > *previousName;
+                        if (afterPrevious && (next == nullptr || field.name < next->name))
+                            next = &field;
+                    }
+                    if (next == nullptr)
+                        break; // 想定外 (重複名) は安全側で打ち切る
+                    crc = UpdateWithFieldValue(crc, *next);
+                    previousName = &next->name;
                 }
             }
             return crc;
@@ -247,26 +261,28 @@ namespace NS::Game::Level
         object.rotationW = rotation.w;
     }
 
-    ObjectInstance MakeGridObject(
-        std::int16_t x, std::int16_t y, std::int16_t z, std::uint16_t kind, std::uint8_t rotationStep) noexcept
+    ObjectInstance MakeGridObject(std::int16_t x, std::int16_t y, std::int16_t z, std::uint8_t rotationStep)
     {
         ObjectInstance object{};
         object.positionX = static_cast<float>(x);
         object.positionY = static_cast<float>(y);
         object.positionZ = static_cast<float>(z);
-        object.kind = kind;
         object.materialIndex = -1;
         object.flags = kObjectFlagGridAligned;
         SetGridRotationStep(object, rotationStep);
+        object.components = NS::Game::Blocks::MaterializeLegacyKind(NS::Game::Blocks::kBlockIdSolid, object);
         return object;
     }
 
-    void MigrateBlocksToObjects(LevelData& level, const std::vector<BlockEntry>& blocks) noexcept
+    void MigrateBlocksToObjects(LevelData& level, const std::vector<BlockEntry>& blocks)
     {
         level.objects.reserve(level.objects.size() + blocks.size());
         for (const auto& block : blocks)
         {
-            level.objects.push_back(MakeGridObject(block.x, block.y, block.z, block.blockId, block.rotation));
+            // 旧 blockId が決めていた mesh / 当たり / 拾得を実 component へ起こして積む
+            ObjectInstance object = MakeGridObject(block.x, block.y, block.z, block.rotation);
+            object.components = NS::Game::Blocks::MaterializeLegacyKind(block.blockId, object);
+            level.objects.push_back(std::move(object));
         }
     }
 

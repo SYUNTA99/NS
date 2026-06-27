@@ -1,6 +1,6 @@
-#include "Game/Level/LevelData.h"
 #include "Editor/Undo/DeleteCommand.h"
 #include "Game/Level/EditTarget.h"
+#include "Game/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
@@ -13,7 +13,7 @@ namespace LevelNs = NS::Game::Level;
 TEST(DeleteCommandTest, DoRemovesExistingBlock)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(2, 0, 4, 5, 2));
+    lv.objects.push_back(LevelNs::MakeGridObject(2, 0, 4, 2));
     std::vector<std::uint32_t> ids{0};
     std::uint32_t next = 1;
     LevelNs::EditTarget t{lv, ids, next};
@@ -26,7 +26,7 @@ TEST(DeleteCommandTest, DoRemovesExistingBlock)
 TEST(DeleteCommandTest, UndoRestoresOriginalEntry)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(2, 0, 4, 5, 2));
+    lv.objects.push_back(LevelNs::MakeGridObject(2, 0, 4, 2));
     std::vector<std::uint32_t> ids{0};
     std::uint32_t next = 1;
     LevelNs::EditTarget t{lv, ids, next};
@@ -39,7 +39,6 @@ TEST(DeleteCommandTest, UndoRestoresOriginalEntry)
     const std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 2, 0, 4);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
     EXPECT_EQ(LevelNs::ObjectCellX(lv.objects[idx]), 2);
-    EXPECT_EQ(lv.objects[idx].kind, 5u);
     EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 2u);
     EXPECT_EQ(lv.ComputeCrc32(), before);
 }

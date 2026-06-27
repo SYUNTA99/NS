@@ -44,7 +44,6 @@ namespace NS::Editor
         PaletteTemplate tmpl{};
         tmpl.name = NameForKind(kind);
         tmpl.isSpawn = (kind == NS::Game::Blocks::kBlockIdSpawn);
-        tmpl.rotatable = NS::Game::Blocks::IsRotatableBlock(kind);
 
         if (tmpl.isSpawn)
         {
@@ -52,13 +51,16 @@ namespace NS::Editor
             NS::Game::Level::ObjectInstance marker{};
             marker.materialIndex = -1;
             marker.flags = 0;
+            tmpl.rotatable = false;
             tmpl.prototype = std::move(marker);
             return tmpl;
         }
 
         // prototype は cell 原点の grid 配置物。 kind が決める mesh / 当たり / 拾得を実 component へ展開して持つ
-        NS::Game::Level::ObjectInstance prototype = NS::Game::Level::MakeGridObject(0, 0, 0, kind, 0);
+        NS::Game::Level::ObjectInstance prototype = NS::Game::Level::MakeGridObject(0, 0, 0, 0);
         prototype.components = NS::Game::Blocks::MaterializeLegacyKind(kind, prototype);
+        // 回転可否は組み上がった component から導く (slope か grid 固形)
+        tmpl.rotatable = NS::Game::Blocks::IsRotatableObject(prototype);
         tmpl.prototype = std::move(prototype);
         return tmpl;
     }

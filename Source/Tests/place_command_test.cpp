@@ -19,7 +19,7 @@ TEST(PlaceCommandTest, DoAddsBlockEntry)
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
     LevelNs::EditTarget t{lv, ids, next};
-    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 10, 0), 5, 0, 3, 1);
+    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 0), 5, 0, 3, 1);
     cmd.Do(t);
     ASSERT_EQ(lv.objects.size(), 1u);
     EXPECT_EQ(ids.size(), lv.objects.size());
@@ -28,7 +28,6 @@ TEST(PlaceCommandTest, DoAddsBlockEntry)
     EXPECT_EQ(LevelNs::ObjectCellX(lv.objects[idx]), 5);
     EXPECT_EQ(LevelNs::ObjectCellY(lv.objects[idx]), 0);
     EXPECT_EQ(LevelNs::ObjectCellZ(lv.objects[idx]), 3);
-    EXPECT_EQ(lv.objects[idx].kind, 10u);
     EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 1u);
 }
 
@@ -39,7 +38,7 @@ TEST(PlaceCommandTest, UndoRestoresEmptyState)
     std::uint32_t next = 0;
     LevelNs::EditTarget t{lv, ids, next};
     const auto before = lv.ComputeCrc32();
-    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 10, 0), 5, 0, 3, 1);
+    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 0), 5, 0, 3, 1);
     cmd.Do(t);
     cmd.Undo(t);
     EXPECT_EQ(lv.ComputeCrc32(), before);
@@ -50,22 +49,20 @@ TEST(PlaceCommandTest, UndoRestoresEmptyState)
 TEST(PlaceCommandTest, ReplaceExistingBlockPreservesUndoRestore)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(5, 0, 3, 20, 2));
+    lv.objects.push_back(LevelNs::MakeGridObject(5, 0, 3, 2));
     std::vector<std::uint32_t> ids{0};
     std::uint32_t next = 1;
     LevelNs::EditTarget t{lv, ids, next};
     const auto before = lv.ComputeCrc32();
-    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 10, 0), 5, 0, 3, 1);
+    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 0), 5, 0, 3, 1);
     cmd.Do(t);
     std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 5, 0, 3);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
-    EXPECT_EQ(lv.objects[idx].kind, 10u);
     EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 1u);
     EXPECT_EQ(ids.size(), lv.objects.size());
     cmd.Undo(t);
     idx = LevelNs::FindGridObjectAtCell(lv, 5, 0, 3);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
-    EXPECT_EQ(lv.objects[idx].kind, 20u);
     EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 2u);
     EXPECT_EQ(lv.ComputeCrc32(), before);
 }
@@ -76,7 +73,7 @@ TEST(PlaceCommandTest, RotationIsMaskedToTwoBits)
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
     LevelNs::EditTarget t{lv, ids, next};
-    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 1, 0), 0, 0, 0, 5);
+    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 0), 0, 0, 0, 5);
     cmd.Do(t);
     const std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 0, 0, 0);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);

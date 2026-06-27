@@ -176,23 +176,27 @@ namespace
     ObjectInstance MakeGrid(std::uint16_t kind, float x, float y, float z)
     {
         ObjectInstance object;
-        object.kind = kind;
         object.flags = kObjectFlagGridAligned;
         object.positionX = x;
         object.positionY = y;
         object.positionZ = z;
+        object.components = MaterializeLegacyKind(kind, object);
         return object;
     }
 
-    ObjectInstance MakeFree(ShapeCollider shape, float x, float y, float z)
+    ObjectInstance MakeFree(
+        ShapeCollider shape, float x, float y, float z, const Vector3& half = Vector3{0.5f, 0.5f, 0.5f})
     {
         ObjectInstance object;
-        object.kind = kBlockIdSolid;
         object.flags = 0;
         object.positionX = x;
         object.positionY = y;
         object.positionZ = z;
         SetObjectShapeCollider(object, shape);
+        object.colliderHalfExtentsX = half.x;
+        object.colliderHalfExtentsY = half.y;
+        object.colliderHalfExtentsZ = half.z;
+        object.components = MaterializeLegacyKind(kBlockIdSolid, object);
         return object;
     }
 
@@ -204,10 +208,10 @@ namespace
         return component;
     }
 
-    // object.kind を materializer の kind 引数へ渡す薄いアダプタ。 旧 1 引数呼出の検証をそのまま保つ
+    // 種別から起こした実 component 一覧を返す。 MakeGrid / MakeFree が構築時に materialize 済
     std::vector<ComponentData> MaterializeKind(const ObjectInstance& object)
     {
-        return MaterializeLegacyKind(object.kind, object);
+        return object.components;
     }
 
     // ComponentData の反射フィールドを名前で引く data 段ヘルパ群。 device を持たずに materialize 結果を直接検証する
@@ -251,7 +255,7 @@ namespace
         return false;
     }
 
-    // grid と free と全 collider channel を含む代表レベル。 旧形式の components 空 kind 駆動で組む
+    // grid と free と全 collider channel を含む代表レベル。 各 object は種別から実 component を起こして持つ
     LevelData MakeRepresentativeLevel()
     {
         LevelData level;
@@ -317,7 +321,7 @@ namespace
     }
 } // namespace
 
-// 旧 kind 駆動レベルを JSON 往復した後も、 各配置物が同じ collider channel 集合と当たり幾何を組む
+// components 駆動レベルを JSON 往復した後も、 各配置物が同じ collider channel 集合と当たり幾何を組む
 TEST(BehaviorZero, JsonRoundTripPreservesColliderChannels)
 {
     const LevelData src = MakeRepresentativeLevel();
@@ -331,9 +335,9 @@ TEST(BehaviorZero, JsonRoundTripPreservesColliderChannels)
     bool anyColliderObserved = false;
     for (std::size_t i = 0; i < src.objects.size(); ++i)
     {
-        // 旧形式は components 空なので往復後も空のまま kind 駆動を通り、 ここで分岐前提を固定する
-        EXPECT_TRUE(src.objects[i].components.empty());
-        EXPECT_TRUE(restored.objects[i].components.empty());
+        // 各 object は実 component を持ち、 往復後も components 駆動で同じ collider channel を組む
+        EXPECT_FALSE(src.objects[i].components.empty());
+        EXPECT_FALSE(restored.objects[i].components.empty());
 
         auto before = BuildPlacedObject(src.objects[i], assets, src.materialPaths);
         auto after = BuildPlacedObject(restored.objects[i], assets, restored.materialPaths);
@@ -384,13 +388,9 @@ TEST(BehaviorZero, ComponentsDrivenMatchesKindDriven)
     NS::Scene::AssetManager assets{std::filesystem::path{"."}};
     const std::vector<std::string> noPaths;
 
-    ObjectInstance kindBox = MakeFree(ShapeCollider::Box, 5.0f, 1.5f, -2.0f);
-    kindBox.colliderHalfExtentsX = 1.0f;
-    kindBox.colliderHalfExtentsY = 2.0f;
-    kindBox.colliderHalfExtentsZ = 3.0f;
+    ObjectInstance kindBox = MakeFree(ShapeCollider::Box, 5.0f, 1.5f, -2.0f, Vector3{1.0f, 2.0f, 3.0f});
 
     ObjectInstance compBox;
-    compBox.kind = kBlockIdSolid;
     compBox.flags = 0;
     compBox.positionX = 5.0f;
     compBox.positionY = 1.5f;
@@ -415,7 +415,6 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
 {
     LevelData src;
     ObjectInstance obj;
-    obj.kind = kBlockIdSolid;
     obj.flags = 0;
     obj.positionX = 2.0f;
     obj.positionY = 1.0f;
@@ -542,7 +541,6 @@ TEST(BehaviorZero, MaterializedKindMatchesAuthoredComponents)
 
     ObjectInstance kindSolid = MakeGrid(kBlockIdSolid, 1.0f, 2.0f, 3.0f);
     ObjectInstance authoredSolid;
-    authoredSolid.kind = kBlockIdSolid;
     authoredSolid.flags = kObjectFlagGridAligned;
     authoredSolid.positionX = 1.0f;
     authoredSolid.positionY = 2.0f;
@@ -686,27 +684,31 @@ TEST(BehaviorZero, LegacyKindJsonMigratesToComponents)
     }
 }
 
-// seed / 旧 BLKS バイナリ由来の components 空 + kind オブジェクトも MigrateLegacyLevel が実 component へ展開し、
-// 移行前の kind 駆動 build と同一 collider channel になる。 二重 migrate しても構成は変わらない (冪等)
+// seed (MakeGridObject) と 旧 BLKS 由来 (MigrateBlocksToObjects) はその場で実 component を起こす
+// 既に実 component を持つので MigrateLegacyLevel は何もしない (冪等)、 二重 migrate でも構成は変わらない
 TEST(BehaviorZero, SeedAndBinaryKindMigratesAndIsIdempotent)
 {
     LevelData level;
     // seed 相当 (MakeGridObject) と 旧 BLKS 由来 (MigrateBlocksToObjects) を混ぜる
-    level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, kBlockIdSolid, 0));
+    level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, 0));
     std::vector<NS::Game::Level::BlockEntry> blocks;
     blocks.push_back({1, 0, 0, kBlockIdSlope45, 1, 0});
     blocks.push_back({2, 0, 0, kBlockIdCoin, 0, 0});
     NS::Game::Level::MigrateBlocksToObjects(level, blocks);
 
-    // 移行前は全 object が components 空 + kind (LegacyKind placeholder すら持たない)
+    // 構築時点で全 object が実 component を持ち LegacyKind placeholder は無い
     ASSERT_EQ(level.objects.size(), 3u);
     for (const auto& object : level.objects)
-        ASSERT_TRUE(object.components.empty());
+    {
+        EXPECT_FALSE(object.components.empty());
+        for (const auto& comp : object.components)
+            EXPECT_NE(comp.typeName, "LegacyKind");
+    }
 
     NS::Scene::AssetManager assets{std::filesystem::path{"."}};
     const std::vector<std::string> noPaths;
 
-    // 移行前の kind 駆動 build の signature を退避する
+    // 移行前の build signature を退避する (移行は no-op なので前後で一致するはず)
     std::vector<ColliderSignature> beforeSigs;
     for (const auto& object : level.objects)
     {

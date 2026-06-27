@@ -68,8 +68,8 @@ namespace NS::Game::Level
 
     /// 配置物の永続表現。 コンポーネント一覧を内包する full SSOT 表現
     /// grid block も自由配置物も同じ型で 1 リストに格納する。 grid かどうかは flags の bit0 で区別する
-    /// position / rotation(quaternion) / scale をフル保持し、 kind は BlockRegistry の blockId を流用する
-    /// materialIndex は `LevelData::materialPaths` への添字、 -1 は kind 既定マテリアルを表す
+    /// position / rotation(quaternion) / scale をフル保持し、 種別は components が表す
+    /// materialIndex は `LevelData::materialPaths` への添字、 -1 は既定マテリアルを表す
     /// colliderHalfExtents は Transform と独立した当たり箱の local 半径 (既定 0.5)。 world では Transform.scale が乗る
     /// colliderOffset / colliderRotation は当たり箱を視覚と独立に owner local 空間でずらす / 回す (既定 0 / 単位)
     /// shapeCollider は当たり判定形状 (Box/Sphere/Capsule/Mesh、 既定 / 旧データは Box)
@@ -86,7 +86,6 @@ namespace NS::Game::Level
         float scaleX = 1.0f;
         float scaleY = 1.0f;
         float scaleZ = 1.0f;
-        std::uint16_t kind = 0;
         std::int16_t materialIndex = -1;
         std::uint8_t flags = 0;
         std::uint8_t shapeCollider = 0;
@@ -178,9 +177,12 @@ namespace NS::Game::Level
                                                    std::int16_t y,
                                                    std::int16_t z) noexcept;
 
-    /// cell (x, y, z) + kind + rotationStep(0..3) から gridAligned な ObjectInstance を作る
-    [[nodiscard]] ObjectInstance MakeGridObject(
-        std::int16_t x, std::int16_t y, std::int16_t z, std::uint16_t kind, std::uint8_t rotationStep) noexcept;
+    /// cell (x, y, z) + rotationStep(0..3) から gridAligned な既定 solid の ObjectInstance を作る
+    /// 既定 solid 一式 (cube 描画 + Box 当たり) を component として積む
+    [[nodiscard]] ObjectInstance MakeGridObject(std::int16_t x,
+                                                std::int16_t y,
+                                                std::int16_t z,
+                                                std::uint8_t rotationStep);
 
     /// gridAligned object の現在の 90° 回転 step(0..3) を quaternion から最近接で復元する
     [[nodiscard]] std::uint8_t GridRotationStep(const ObjectInstance& object) noexcept;
@@ -190,6 +192,6 @@ namespace NS::Game::Level
 
     /// 旧 BLKS の BlockEntry 群を ObjectInstance に変換して `level.objects` 末尾へ追加する (gridAligned を立てる)
     /// rotation(0..3) は Y 軸 yaw quaternion に、 セル整数座標は world 座標 float に写す
-    void MigrateBlocksToObjects(LevelData& level, const std::vector<BlockEntry>& blocks) noexcept;
+    void MigrateBlocksToObjects(LevelData& level, const std::vector<BlockEntry>& blocks);
 
 } // namespace NS::Game::Level

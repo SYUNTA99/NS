@@ -28,6 +28,7 @@ namespace
     using NS::Game::Blocks::kBlockIdSlope45;
     using NS::Game::Blocks::kBlockIdSolid;
     using NS::Game::Blocks::kBlockIdWater;
+    using NS::Game::Blocks::MaterializeLegacyKind;
     using NS::Game::Level::kObjectFlagGridAligned;
     using NS::Game::Level::ObjectInstance;
     using NS::Game::Level::SetObjectShapeCollider;
@@ -48,20 +49,30 @@ namespace
         }
     };
 
+    // grid 種別を実 component へ展開した配置物。 種別が決める mesh / 当たり / 拾得を component で持つ
     ObjectInstance MakeGrid(std::uint16_t kind)
     {
         ObjectInstance object;
-        object.kind = kind;
         object.flags = kObjectFlagGridAligned;
+        object.components = MaterializeLegacyKind(kind, object);
         return object;
     }
 
-    ObjectInstance MakeFree(ShapeCollider shape)
+    // 自由配置物。 当たり寸法は materialize 前に焼くため引数で受ける
+    ObjectInstance MakeFree(ShapeCollider shape,
+                            const Vector3& half = Vector3{0.5f, 0.5f, 0.5f},
+                            const Vector3& offset = Vector3{0.0f, 0.0f, 0.0f})
     {
         ObjectInstance object;
-        object.kind = kBlockIdSolid;
         object.flags = 0;
         SetObjectShapeCollider(object, shape);
+        object.colliderHalfExtentsX = half.x;
+        object.colliderHalfExtentsY = half.y;
+        object.colliderHalfExtentsZ = half.z;
+        object.colliderOffsetX = offset.x;
+        object.colliderOffsetY = offset.y;
+        object.colliderOffsetZ = offset.z;
+        object.components = MaterializeLegacyKind(kBlockIdSolid, object);
         return object;
     }
 
@@ -163,10 +174,7 @@ TEST_F(BuildPlacedObjectTest, DecorationHasNoCollider)
 
 TEST_F(BuildPlacedObjectTest, FreeBoxHasBoxColliderWithSavedHalfExtents)
 {
-    ObjectInstance object = MakeFree(ShapeCollider::Box);
-    object.colliderHalfExtentsX = 1.0f;
-    object.colliderHalfExtentsY = 2.0f;
-    object.colliderHalfExtentsZ = 3.0f;
+    ObjectInstance object = MakeFree(ShapeCollider::Box, Vector3{1.0f, 2.0f, 3.0f});
 
     auto obj = Build(object);
     ASSERT_NE(obj, nullptr);
@@ -182,9 +190,7 @@ TEST_F(BuildPlacedObjectTest, FreeBoxHasBoxColliderWithSavedHalfExtents)
 
 TEST_F(BuildPlacedObjectTest, FreeSphereHasInternalBoxPlusSphere)
 {
-    ObjectInstance object = MakeFree(ShapeCollider::Sphere);
-    object.colliderHalfExtentsX = 0.7f; // 球半径
-    object.colliderOffsetY = 1.0f;
+    ObjectInstance object = MakeFree(ShapeCollider::Sphere, Vector3{0.7f, 0.5f, 0.5f}, Vector3{0.0f, 1.0f, 0.0f});
 
     auto obj = Build(object);
     ASSERT_NE(obj, nullptr);
@@ -200,9 +206,7 @@ TEST_F(BuildPlacedObjectTest, FreeSphereHasInternalBoxPlusSphere)
 
 TEST_F(BuildPlacedObjectTest, FreeCapsuleHasInternalBoxPlusCapsule)
 {
-    ObjectInstance object = MakeFree(ShapeCollider::Capsule);
-    object.colliderHalfExtentsX = 0.4f; // 半径
-    object.colliderHalfExtentsY = 0.9f; // 半高
+    ObjectInstance object = MakeFree(ShapeCollider::Capsule, Vector3{0.4f, 0.9f, 0.5f});
 
     auto obj = Build(object);
     ASSERT_NE(obj, nullptr);
@@ -248,11 +252,8 @@ TEST_F(BuildPlacedObjectTest, SolidGridWorldAabbMatchesCellHalfExtents)
 
 TEST_F(BuildPlacedObjectTest, FreeBoxWorldAabbReflectsPositionAndHalfExtents)
 {
-    ObjectInstance object = MakeFree(ShapeCollider::Box);
+    ObjectInstance object = MakeFree(ShapeCollider::Box, Vector3{1.0f, 2.0f, 3.0f});
     object.positionX = 2.0f;
-    object.colliderHalfExtentsX = 1.0f;
-    object.colliderHalfExtentsY = 2.0f;
-    object.colliderHalfExtentsZ = 3.0f;
 
     auto obj = Build(object);
     ASSERT_NE(obj, nullptr);
@@ -271,7 +272,6 @@ TEST_F(BuildPlacedObjectTest, FreeBoxWorldAabbReflectsPositionAndHalfExtents)
 TEST_F(BuildPlacedObjectTest, ComponentsDriveBuild)
 {
     ObjectInstance object;
-    object.kind = kBlockIdSolid;
     object.flags = 0;
 
     NS::Game::Level::ComponentData box;
@@ -289,16 +289,14 @@ TEST_F(BuildPlacedObjectTest, ComponentsDriveBuild)
     EXPECT_FLOAT_EQ(half.z, 3.0f);
 }
 
-// components が空の grid object は従来 kind 駆動へフォールバックする (旧データ互換)
-TEST_F(BuildPlacedObjectTest, EmptyComponentsFallsBackToKind)
+// components を持たない object は配置物として組まれず nullptr が返る
+TEST_F(BuildPlacedObjectTest, EmptyComponentsBuildsNothing)
 {
-    ObjectInstance object = MakeGrid(kBlockIdSolid);
+    ObjectInstance object;
+    object.flags = kObjectFlagGridAligned;
     ASSERT_TRUE(object.components.empty());
 
-    auto obj = Build(object);
-    ASSERT_NE(obj, nullptr);
-    EXPECT_TRUE(Has<NS::Scene::MeshRendererComponent>(*obj));
-    EXPECT_TRUE(Has<NS::Scene::BoxColliderComponent>(*obj));
+    EXPECT_EQ(Build(object), nullptr);
 }
 
 // material asset path に .. を含む値は ContentRoot 外解決を拒否し、 共有 fallback へ倒れてクラッシュしない

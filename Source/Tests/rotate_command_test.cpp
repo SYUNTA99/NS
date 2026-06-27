@@ -1,6 +1,6 @@
-#include "Game/Level/LevelData.h"
-#include "Game/Level/EditTarget.h"
 #include "Editor/Undo/RotateCommand.h"
+#include "Game/Level/EditTarget.h"
+#include "Game/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
@@ -13,7 +13,7 @@ namespace LevelNs = NS::Game::Level;
 TEST(RotateCommandTest, DoIncrementsRotation)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
     std::vector<std::uint32_t> ids{0};
     std::uint32_t next = 1;
     LevelNs::EditTarget t{lv, ids, next};
@@ -27,7 +27,7 @@ TEST(RotateCommandTest, DoIncrementsRotation)
 TEST(RotateCommandTest, FourDoesCycleBackToZero)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
     std::vector<std::uint32_t> ids{0};
     std::uint32_t next = 1;
     LevelNs::EditTarget t{lv, ids, next};
@@ -47,7 +47,7 @@ TEST(RotateCommandTest, FourDoesCycleBackToZero)
 TEST(RotateCommandTest, NegativeDeltaWrapsToThree)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
     std::vector<std::uint32_t> ids{0};
     std::uint32_t next = 1;
     LevelNs::EditTarget t{lv, ids, next};
@@ -61,7 +61,7 @@ TEST(RotateCommandTest, NegativeDeltaWrapsToThree)
 TEST(RotateCommandTest, UndoRestoresPreviousRotation)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 2));
+    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 2));
     std::vector<std::uint32_t> ids{0};
     std::uint32_t next = 1;
     LevelNs::EditTarget t{lv, ids, next};

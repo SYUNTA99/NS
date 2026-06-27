@@ -57,7 +57,7 @@ namespace
     void SeedInitialLevel(NS::Game::Level::LevelData& level)
     {
         level.objects.clear();
-        level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdSolid, 0));
+        level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, 0));
         level.spawnX = 0;
         level.spawnY = 1;
         level.spawnZ = 0;

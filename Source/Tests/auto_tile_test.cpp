@@ -16,7 +16,11 @@ namespace
     LevelNs::ObjectInstance MakeVisual(
         std::int16_t x, std::int16_t y, std::int16_t z, const char* mesh, int materialIndex = -1)
     {
-        LevelNs::ObjectInstance object = LevelNs::MakeGridObject(x, y, z, 0, 0);
+        LevelNs::ObjectInstance object{};
+        object.flags = LevelNs::kObjectFlagGridAligned;
+        object.positionX = static_cast<float>(x);
+        object.positionY = static_cast<float>(y);
+        object.positionZ = static_cast<float>(z);
         object.materialIndex = static_cast<std::int16_t>(materialIndex);
         LevelNs::ComponentData renderer;
         renderer.typeName = "MeshRendererComponent";

@@ -7,24 +7,37 @@
 
 namespace LevelNs = NS::Game::Level;
 
+namespace
+{
+    // 拾得種別だけが異なる grid object を作る。 種別は components が表すので CRC も components で決まる
+    LevelNs::ObjectInstance MakePickupObject(int pickupKind)
+    {
+        LevelNs::ObjectInstance object{};
+        object.flags = LevelNs::kObjectFlagGridAligned;
+        object.components.push_back(
+            LevelNs::ComponentData{"PickupComponent", {LevelNs::FieldValue{"Pickup Kind", pickupKind}}});
+        return object;
+    }
+} // namespace
+
 TEST(LevelDataCrcTest, EmptyLevelIsDeterministic)
 {
     LevelNs::LevelData a, b;
     EXPECT_EQ(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
-TEST(LevelDataCrcTest, DifferentKindsProduceDifferentCrc)
+TEST(LevelDataCrcTest, DifferentComponentsProduceDifferentCrc)
 {
     LevelNs::LevelData a, b;
-    a.objects.push_back(LevelNs::MakeGridObject(1, 2, 3, 100, 0));
-    b.objects.push_back(LevelNs::MakeGridObject(1, 2, 3, 101, 0));
+    a.objects.push_back(MakePickupObject(0));
+    b.objects.push_back(MakePickupObject(1));
     EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
 TEST(LevelDataCrcTest, PlayStateMutationDoesNotAffectLevelDataCrc)
 {
     LevelNs::LevelData level;
-    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
     level.spawnX = 5;
     const auto before = level.ComputeCrc32();
 
@@ -42,17 +55,17 @@ TEST(LevelDataCrcTest, PlayStateMutationDoesNotAffectLevelDataCrc)
 TEST(LevelDataCrcTest, ObjectsSizeIsHashed)
 {
     LevelNs::LevelData a, b;
-    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
-    a.objects.push_back(LevelNs::MakeGridObject(1, 0, 0, 1, 0));
-    b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    a.objects.push_back(LevelNs::MakeGridObject(1, 0, 0, 0));
+    b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
     EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
 TEST(LevelDataCrcTest, RotationStepIsHashed)
 {
     LevelNs::LevelData a, b;
-    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
-    b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 1));
+    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1));
     EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
@@ -95,9 +108,9 @@ TEST(LevelDataCrcTest, CameraVolumeCountIsHashed)
 TEST(LevelDataCrcTest, VectorCapacityDoesNotAffectCrc)
 {
     LevelNs::LevelData a, b;
-    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
     b.objects.reserve(1000);
-    b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+    b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
     EXPECT_EQ(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
@@ -129,9 +142,9 @@ TEST(LevelDataComponents, ObjectInstanceCopyIsDeep)
 TEST(LevelDataComponents, Crc32ChangesWhenComponentAdded)
 {
     LevelNs::LevelData a, b;
-    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1, 0));
+    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
 
-    LevelNs::ObjectInstance withComponent = LevelNs::MakeGridObject(0, 0, 0, 1, 0);
+    LevelNs::ObjectInstance withComponent = LevelNs::MakeGridObject(0, 0, 0, 0);
     withComponent.components.push_back(LevelNs::ComponentData{"HazardComponent", {}});
     b.objects.push_back(withComponent);
 

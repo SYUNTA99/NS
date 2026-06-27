@@ -193,7 +193,6 @@ namespace NS::Game::Level
 
             nlohmann::json out;
             out["transform"] = std::move(transform);
-            out["kind"] = static_cast<int>(o.kind);
             out["materialIndex"] = static_cast<int>(o.materialIndex);
             out["flags"] = static_cast<int>(o.flags);
             out["reserved1"] = static_cast<int>(o.reserved1);
@@ -216,7 +215,8 @@ namespace NS::Game::Level
                 ReadVec3(*transformIt, "scale", o.scaleX, o.scaleY, o.scaleZ);
             }
 
-            o.kind = static_cast<std::uint16_t>(ReadInt(j, "kind", o.kind));
+            // 旧 "kind" は構造体には載らない。 ローカルで読み、 components 不在のとき LegacyKind placeholder へ移す
+            const int legacyKind = ReadInt(j, "kind", 0);
             o.materialIndex = static_cast<std::int16_t>(ReadInt(j, "materialIndex", o.materialIndex));
             o.flags = static_cast<std::uint8_t>(ReadInt(j, "flags", o.flags));
             o.reserved1 = static_cast<std::uint16_t>(ReadInt(j, "reserved1", o.reserved1));
@@ -244,14 +244,14 @@ namespace NS::Game::Level
                 for (const auto& cj : *componentsIt)
                     o.components.push_back(DeserializeComponentData(cj));
             }
-            else if (o.kind != 0)
+            else if (legacyKind != 0)
             {
                 // components 配列を持たず kind だけで配置物を表す古い JSON は移行 placeholder を 1 つ積む
                 // MigrateLegacyLevel が読込後に実 component へ展開する。 現フォーマット (空配列でも array あり)
                 // は対象外
                 ComponentData legacy;
                 legacy.typeName = kLegacyKindTypeName;
-                legacy.fields.push_back(FieldValue{"id", static_cast<int>(o.kind)});
+                legacy.fields.push_back(FieldValue{"id", legacyKind});
                 o.components.push_back(std::move(legacy));
             }
             return o;

@@ -78,14 +78,13 @@ TEST(MeshRefResolution, BuiltinNameResolvesToBuiltinMesh)
     EXPECT_EQ(ResolveMeshFromRef(assets, "pole"), assets.Builtin("pole"));
 }
 
-// メッシュ参照が空の component 駆動 object は従来 kind 経路 (slope45 → wedge45) へフォールバックする
-TEST(MeshRefResolution, EmptyMeshRefFallsBackToKindMesh)
+// メッシュ参照が空の MeshRenderer は cube フォールバックへ解決される (種別由来の geometry 選択は廃止)
+TEST(MeshRefResolution, EmptyMeshRefFallsBackToCube)
 {
     AssetManager assets{std::filesystem::path{"."}};
     const std::vector<std::string> noPaths;
 
     ObjectInstance obj;
-    obj.kind = kBlockIdSlope45;
     obj.flags = kObjectFlagGridAligned;
     obj.components.push_back(MakeMeshRenderer(""));
 
@@ -93,7 +92,7 @@ TEST(MeshRefResolution, EmptyMeshRefFallsBackToKindMesh)
     ASSERT_NE(built, nullptr);
     auto* mr = FindComponent<MeshRendererComponent>(*built);
     ASSERT_NE(mr, nullptr);
-    EXPECT_EQ(mr->GetMesh(), assets.Builtin("wedge45"));
+    EXPECT_EQ(mr->GetMesh(), assets.Builtin("cube"));
 }
 
 // ".." で ContentRoot の外へ出る参照は path 解決で弾かれ、 任意ファイル読込にならない
@@ -116,32 +115,20 @@ TEST(MeshRefResolution, RelativePathAttemptsContentRootLoad)
     EXPECT_EQ(ResolveMeshFromRef(assets, "meshes/foo.gltf"), assets.GetOrLoadMesh(*resolved));
 }
 
-// メッシュ参照が空の component 駆動 grid solid と、 kind 駆動 grid solid が同一の cube mesh に解決される回帰
-TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefMatchesKindMesh)
+// メッシュ参照が空の component 駆動 grid solid は cube に解決される
+TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
 {
     AssetManager assets{std::filesystem::path{"."}};
     const std::vector<std::string> noPaths;
 
     ObjectInstance compObj;
-    compObj.kind = kBlockIdSolid;
     compObj.flags = kObjectFlagGridAligned;
     compObj.components.push_back(MakeMeshRenderer(""));
 
-    ObjectInstance kindObj;
-    kindObj.kind = kBlockIdSolid;
-    kindObj.flags = kObjectFlagGridAligned;
-    ASSERT_TRUE(kindObj.components.empty());
-
     auto compBuilt = BuildPlacedObject(compObj, assets, noPaths);
-    auto kindBuilt = BuildPlacedObject(kindObj, assets, noPaths);
     ASSERT_NE(compBuilt, nullptr);
-    ASSERT_NE(kindBuilt, nullptr);
 
     auto* compMesh = FindComponent<MeshRendererComponent>(*compBuilt);
-    auto* kindMesh = FindComponent<MeshRendererComponent>(*kindBuilt);
     ASSERT_NE(compMesh, nullptr);
-    ASSERT_NE(kindMesh, nullptr);
-
-    EXPECT_EQ(compMesh->GetMesh(), kindMesh->GetMesh());
     EXPECT_EQ(compMesh->GetMesh(), assets.Builtin("cube"));
 }

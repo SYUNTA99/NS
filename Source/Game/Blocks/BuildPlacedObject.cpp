@@ -50,31 +50,6 @@ namespace NS::Game::Blocks
             return material;
         }
 
-        // kind から描画 geometry を引く。 mesh は反射で運べないので kind 駆動と components 駆動で共有する
-        // free 配置物は形によらず cube、 grid は slope なら角度別 wedge・ pole なら pole・ それ以外は cube
-        NS::Graphics::StaticMesh* ResolveVisualMesh(NS::Scene::AssetManager& assets,
-                                                    const NS::Game::Level::ObjectInstance& object)
-        {
-            using namespace NS::Game::Level;
-            if ((object.flags & kObjectFlagGridAligned) == 0)
-                return assets.Builtin("cube");
-            if (IsSlopeBlock(object.kind))
-            {
-                if (object.kind == kBlockIdSlope45)
-                    return assets.Builtin("wedge45");
-                if (object.kind == kBlockIdSlope30)
-                    return assets.Builtin("wedge30");
-                if (object.kind == kBlockIdSlope22)
-                    return assets.Builtin("wedge22");
-                if (object.kind == kBlockIdSlope15)
-                    return assets.Builtin("wedge15");
-                return assets.Builtin("cube");
-            }
-            if (IsPoleBlock(object.kind))
-                return assets.Builtin("pole");
-            return assets.Builtin("cube");
-        }
-
         // 共有 material 名 (player / block / water / shadow) なら true。 これ以外は .mat パス / 既定へ倒す
         bool IsSharedMaterialName(const std::string& ref) noexcept
         {
@@ -104,9 +79,10 @@ namespace NS::Game::Blocks
                     mesh->SetMaterial(IsSharedMaterialName(matRef)
                                           ? assets.SharedMaterial(matRef)
                                           : ResolveFreeMaterial(object, assets, materialPaths));
+                    // メッシュ参照を解決し、 空 / 解決不可なら cube へ倒す (移行済データは必ず参照を持つ)
                     NS::Graphics::Mesh* resolved =
                         mesh->MeshRef().empty() ? nullptr : ResolveMeshFromRef(assets, mesh->MeshRef());
-                    mesh->SetMesh(resolved != nullptr ? resolved : ResolveVisualMesh(assets, object));
+                    mesh->SetMesh(resolved != nullptr ? resolved : assets.Builtin("cube"));
                 }
             }
             return obj;
@@ -419,20 +395,11 @@ namespace NS::Game::Blocks
                                                              NS::Scene::AssetManager& assets,
                                                              const std::vector<std::string>& materialPaths)
     {
-        std::unique_ptr<NS::Scene::GameObject> obj;
-        if (!object.components.empty())
-        {
-            obj = BuildFromComponents(object, assets, materialPaths);
-        }
-        else
-        {
-            // components 空の旧データは kind を ComponentData へ展開してから単一 build 経路へ流す
-            NS::Game::Level::ObjectInstance materialized = object;
-            materialized.components = MaterializeLegacyKind(object.kind, object);
-            if (materialized.components.empty())
-                return nullptr; // 未対応 kind は配置物として組まない
-            obj = BuildFromComponents(materialized, assets, materialPaths);
-        }
+        // 全 load 源が component を持って到達する (JSON / BLKS は移行で、 seed / 配置は materialize 済)
+        // 空構成は未対応につき配置物として組まない
+        if (object.components.empty())
+            return nullptr;
+        std::unique_ptr<NS::Scene::GameObject> obj = BuildFromComponents(object, assets, materialPaths);
 
         obj->Root().SetPosition(NS::Math::Vector3{object.positionX, object.positionY, object.positionZ});
         obj->Root().SetRotation(
@@ -448,17 +415,10 @@ namespace NS::Game::Blocks
         for (ObjectInstance& object : level.objects)
         {
             // 読込時の旧 "kind" は LegacyKind placeholder に入る。 id を取り出して実 component へ展開し置換する
-            // placeholder ごと差し替わるので migrate 後に LegacyKind は残らない
+            // placeholder ごと差し替わるので migrate 後に LegacyKind は残らない。 既に実 component を持つ object
+            // は触らない
             if (const std::optional<std::uint16_t> legacyKind = FindLegacyKindId(object))
-            {
                 object.components = MaterializeLegacyKind(*legacyKind, object);
-                continue;
-            }
-
-            // placeholder を持たず component が空で kind!=0 の object (seed / 旧 binary / kind だけ持つ JSON) も
-            // kind を使って同様に展開する。 既に実 component を持つ object は触らない
-            if (object.components.empty() && object.kind != 0)
-                object.components = MaterializeLegacyKind(object.kind, object);
         }
     }
 } // namespace NS::Game::Blocks

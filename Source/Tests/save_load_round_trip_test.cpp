@@ -29,9 +29,9 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
     src.themeId = 4;
     src.coinThreshold = 10;
     src.timeLimitSeconds = 180;
-    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdSolid, 0));
-    src.objects.push_back(LevelNs::MakeGridObject(1, 0, 1, NS::Game::Blocks::kBlockIdSolid, 1));
-    src.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, NS::Game::Blocks::kBlockIdCoin, 0));
+    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    src.objects.push_back(LevelNs::MakeGridObject(1, 0, 1, 1));
+    src.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, 0));
     const auto crc0 = src.ComputeCrc32();
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
@@ -86,7 +86,7 @@ TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
     ASSERT_TRUE(path2);
 
     LevelNs::LevelData src;
-    src.objects.push_back(LevelNs::MakeGridObject(5, 5, 5, NS::Game::Blocks::kBlockIdSolid, 0));
+    src.objects.push_back(LevelNs::MakeGridObject(5, 5, 5, 0));
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path1));
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path2));
@@ -106,7 +106,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     ASSERT_TRUE(path.has_value());
 
     LevelNs::LevelData src;
-    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdSolid, 0));
+    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
 
     auto bytes = NS::Core::FileSystem::ReadAllBytes(*path);
@@ -160,7 +160,6 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
     LevelNs::LevelData src;
     LevelNs::ObjectInstance freeObject{};
     freeObject.positionX = 1.5f;
-    freeObject.kind = NS::Game::Blocks::kBlockIdSolid;
 
     LevelNs::ComponentData comp;
     comp.typeName = "BoxColliderComponent";
@@ -246,7 +245,6 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     freeObject.scaleX = 2.0f;
     freeObject.scaleY = 0.5f;
     freeObject.scaleZ = 1.0f;
-    freeObject.kind = NS::Game::Blocks::kBlockIdSolid;
     freeObject.materialIndex = 1;
     freeObject.flags = 0;
     freeObject.colliderHalfExtentsX = 0.3f;
@@ -260,7 +258,6 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     src.objects.push_back(freeObject);
 
     LevelNs::ObjectInstance gridObject{};
-    gridObject.kind = NS::Game::Blocks::kBlockIdSlope45;
     gridObject.materialIndex = -1;
     gridObject.flags = LevelNs::kObjectFlagGridAligned;
     src.objects.push_back(gridObject);
@@ -281,7 +278,6 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     EXPECT_FLOAT_EQ(dst.objects[0].positionZ, -3.75f);
     EXPECT_FLOAT_EQ(dst.objects[0].rotationW, 0.70710677f);
     EXPECT_FLOAT_EQ(dst.objects[0].scaleX, 2.0f);
-    EXPECT_EQ(dst.objects[0].kind, NS::Game::Blocks::kBlockIdSolid);
     EXPECT_EQ(dst.objects[0].materialIndex, 1);
     EXPECT_EQ(dst.objects[0].flags, 0u);
     EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsX, 0.3f);
@@ -293,12 +289,12 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     EXPECT_FLOAT_EQ(dst.objects[0].colliderRotationY, 0.70710677f);
     EXPECT_FLOAT_EQ(dst.objects[0].colliderRotationW, 0.70710677f);
 
-    EXPECT_EQ(dst.objects[1].kind, NS::Game::Blocks::kBlockIdSlope45);
     EXPECT_EQ(dst.objects[1].materialIndex, -1);
     EXPECT_EQ(dst.objects[1].flags, LevelNs::kObjectFlagGridAligned);
 }
 
 // 旧 blocks → 統一 objects の移行写像 (セル整数 → world float、 rotation → yaw quaternion、 gridAligned 付与)
+// blockId が決めていた種別は移行で実 component へ起き、 solid は Box・ slope は SlopeCollider になる
 TEST(SaveLoadRoundTrip, MigrateBlocksToObjectsMapsCells)
 {
     LevelNs::LevelData level;
@@ -309,16 +305,23 @@ TEST(SaveLoadRoundTrip, MigrateBlocksToObjectsMapsCells)
 
     ASSERT_EQ(level.objects.size(), 2u);
 
+    const auto hasComponent = [](const LevelNs::ObjectInstance& object, const char* typeName) {
+        for (const auto& component : object.components)
+            if (component.typeName == typeName)
+                return true;
+        return false;
+    };
+
     EXPECT_FLOAT_EQ(level.objects[0].positionX, 1.0f);
     EXPECT_FLOAT_EQ(level.objects[0].positionY, 2.0f);
     EXPECT_FLOAT_EQ(level.objects[0].positionZ, 3.0f);
     EXPECT_FLOAT_EQ(level.objects[0].scaleX, 1.0f);
-    EXPECT_EQ(level.objects[0].kind, NS::Game::Blocks::kBlockIdSolid);
+    EXPECT_TRUE(hasComponent(level.objects[0], "BoxColliderComponent"));
     EXPECT_EQ(level.objects[0].materialIndex, -1);
     EXPECT_NE(level.objects[0].flags & LevelNs::kObjectFlagGridAligned, 0);
 
     EXPECT_FLOAT_EQ(level.objects[1].positionX, -4.0f);
-    EXPECT_EQ(level.objects[1].kind, NS::Game::Blocks::kBlockIdSlope45);
+    EXPECT_TRUE(hasComponent(level.objects[1], "SlopeColliderComponent"));
     // rotation=1 は yaw 90°、 単位 quaternion ではない (w != 1)
     EXPECT_NE(level.objects[1].rotationW, 1.0f);
 }
