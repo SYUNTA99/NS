@@ -19,9 +19,9 @@ namespace NS::Editor
     /// name は toolbar 表示名、 isSpawn は spawn marker か、 rotatable は R で回せるか、 prototype は複製元
     struct PaletteTemplate
     {
-        const char* name;
-        bool isSpawn;
-        bool rotatable;
+        const char* name = nullptr;
+        bool isSpawn = false;
+        bool rotatable = false;
         NS::Game::Level::ObjectInstance prototype;
     };
 
