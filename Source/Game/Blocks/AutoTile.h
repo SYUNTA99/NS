@@ -6,7 +6,7 @@
 /// @details `ComputeNeighborMask` で 6 面 bitmask を算出し、 `LookupTextureSlice` で
 /// `(theme, mask)` を `TextureArray` の slice index に変換する。 slice 引きは
 /// 64 entry の縮約テーブルで mask を 8 variant に丸め、 theme 別の base slice に加算する
-/// 連結判定は kind ではなく視覚的な同一性 (メッシュ参照 + マテリアル) で行う
+/// 連結判定はメッシュ参照とマテリアルの同一性で行う
 /// SpawnMarker は値が 1 つだけ (上書き運用) なので Command 経路ではなく直接 setter を提供する
 
 #include <cstdint>

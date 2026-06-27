@@ -1,6 +1,5 @@
 #include "Editor/LevelFilePaths.h"
 #include "Framework/Core/Filesystem.h"
-#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/ChunkIO.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/LevelJson.h"

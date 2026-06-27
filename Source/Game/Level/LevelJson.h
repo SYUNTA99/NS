@@ -3,7 +3,7 @@
 /// @file LevelJson.h
 /// @brief LevelData を正準 JSON へ往復させるレベル直列化
 ///
-/// @details object ヘッダ (transform / kind / collider) + コンポ一覧 + material 表 + camera + meta を
+/// @details object ヘッダの transform / collider、 コンポ一覧、 material 表、 camera、 meta を
 /// 1 つの JSON へ書く。 nlohmann 素の `json` が object キーを辞書順・ float を shortest round-trip で
 /// 出力するため、 同一 LevelData の 2 回保存は byte-identical になる。 読込は信頼できないローカルファイルを
 /// 例外なく parse し、 要素数・ file size の上限ガードで memory exhaustion を防ぐ

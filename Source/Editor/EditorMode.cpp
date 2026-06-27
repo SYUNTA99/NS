@@ -531,7 +531,7 @@ namespace NS::Editor
         {
             if (spawnSlotActive)
             {
-                // Spawn は世界に 1 点。 LevelData.spawnX/Y/Z を上書きするだけで BlockEntry は積まない
+                // Spawn は世界に 1 点。 LevelData.spawnX/Y/Z を上書きするだけで配置物は積まない
                 SetSpawnAtProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
             }
             else if (!m_cursor.placementBlocked)

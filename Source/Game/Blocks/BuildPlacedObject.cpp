@@ -1,17 +1,12 @@
 #include "Game/Blocks/BuildPlacedObject.h"
 
 #include "Framework/Core/Filesystem.h"
-#include "Framework/Core/LogCategories.h"
-#include "Framework/Core/Logger.h"
 #include "Framework/Graphics/StaticMesh.h"
 #include "Framework/Scene/AssetManager.h"
 #include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/CapsuleColliderComponent.h"
-#include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
-#include "Framework/Scene/Components/PickupComponent.h"
-#include "Framework/Scene/Components/PoleComponent.h"
 #include "Framework/Scene/Components/SlopeColliderComponent.h"
 #include "Framework/Scene/Components/SphereColliderComponent.h"
 #include "Framework/Scene/ReflectionJson.h"
@@ -69,7 +64,7 @@ namespace NS::Game::Blocks
                 NS::Scene::ApplyJsonFields(*created, fields);
 
                 // material 参照が共有名なら共有 material、 空なら materialIndex / 既定へ倒す。 mesh はメッシュ参照を
-                // 参照優先で解決し、 空 / 解決不可なら kind 由来 geometry へフォールバックする
+                // 参照優先で解決し、 空 / 解決不可なら cube へフォールバックする
                 if (auto* mesh = dynamic_cast<NS::Scene::MeshRendererComponent*>(created))
                 {
                     const std::string& matRef = mesh->MaterialRef();

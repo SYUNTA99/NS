@@ -15,7 +15,6 @@
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/UI/ImGuiContext.h"
-#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Game.h"
 

@@ -14,7 +14,7 @@ namespace NS::Editor
 {
 
     /// id で再特定したオブジェクトの components を新しい一覧へ置き換える
-    /// @details kind 由来の構成をデータ化してからコンポを足す等、 複数の変更を 1 つの undo 単位へまとめる時に使う
+    /// @details 複数の component 変更を 1 つの undo 単位へまとめる時に使う
     /// Do で旧一覧を退避し、 Undo で差し戻す
     class SetObjectComponentsCommand final : public ICommand
     {

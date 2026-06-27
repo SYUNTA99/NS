@@ -385,7 +385,7 @@ void LevelEditorController::RefreshGizmoSelectables()
     m_selectablePtrs.reserve(m_scene->m_objects.size());
     m_selectableHalfExtents.reserve(m_scene->m_objects.size());
 
-    // free / grid の別は ObjectInstance の flags/kind で決まる。 runtime list は 1 本
+    // free / grid の別は ObjectInstance の flags で決まる。 runtime list は 1 本
     // 自由配置物を先に積む。 pick OBB は Root().WorldMatrix() が scale 込みで持ち、 判定は
     // 逆変換した unit ローカル空間で行う。 ここで halfExtents に scale を乗せると二重適用になり、
     // 拡大した配置物の判定箱が scale^2 に膨らんで近くの grid クリックを先に奪うので unit のまま渡す
@@ -954,7 +954,7 @@ void LevelEditorController::CommitTransformEdit() noexcept
     if (index == NS::Game::Level::kNoObjectIndex)
         return;
 
-    // 非 PRS (kind / flags / material) は model から、 PRS は live Transform から取る
+    // 非 PRS の flags / material は model から、 PRS は live Transform から取る
     // (パネル編集は Sync が 1 フレーム遅れるため model 直読みだと取りこぼす)
     NS::Game::Level::ObjectInstance after = m_scene->m_level.objects[index];
     for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)

@@ -4,7 +4,6 @@
 
 #include <Framework/Graphics/TextureArray.h>
 #include <Game/Blocks/AutoTile.h>
-#include <Game/Blocks/BlockRegistry.h>
 #include <Game/Theme/ThemeId.h>
 
 namespace
