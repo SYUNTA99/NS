@@ -43,11 +43,7 @@ namespace NS::Editor
         // 反射値の文字列が確保するヒープは概算に含めない
         std::size_t bytes = sizeof(RemoveComponentCommand);
         if (m_removed)
-        {
-            bytes += m_removed->typeName.size();
-            for (const NS::Game::Level::FieldValue& field : m_removed->fields)
-                bytes += sizeof(NS::Game::Level::FieldValue) + field.name.size();
-        }
+            bytes += NS::Game::Level::EstimatedHeapBytes(*m_removed);
         return bytes;
     }
 

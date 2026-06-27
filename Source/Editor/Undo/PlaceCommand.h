@@ -25,7 +25,13 @@ namespace NS::Editor
         void Do(NS::Game::Level::EditTarget& target) noexcept override;
         void Undo(NS::Game::Level::EditTarget& target) noexcept override;
 
-        [[nodiscard]] std::size_t EstimatedBytes() const noexcept override { return sizeof(PlaceCommand); }
+        [[nodiscard]] std::size_t EstimatedBytes() const noexcept override
+        {
+            std::size_t bytes = sizeof(PlaceCommand) + NS::Game::Level::EstimatedHeapBytes(m_prototype);
+            if (m_replaced)
+                bytes += NS::Game::Level::EstimatedHeapBytes(*m_replaced);
+            return bytes;
+        }
 
     private:
         std::int16_t m_x;

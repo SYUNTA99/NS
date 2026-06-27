@@ -39,10 +39,7 @@ namespace NS::Editor
     std::size_t AddComponentCommand::EstimatedBytes() const noexcept
     {
         // 反射値の文字列が確保するヒープは概算に含めない
-        std::size_t bytes = sizeof(AddComponentCommand) + m_payload.typeName.size();
-        for (const NS::Game::Level::FieldValue& field : m_payload.fields)
-            bytes += sizeof(NS::Game::Level::FieldValue) + field.name.size();
-        return bytes;
+        return sizeof(AddComponentCommand) + NS::Game::Level::EstimatedHeapBytes(m_payload);
     }
 
 } // namespace NS::Editor

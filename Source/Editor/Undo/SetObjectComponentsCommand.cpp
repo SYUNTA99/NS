@@ -32,17 +32,10 @@ namespace NS::Editor
     {
         // 反射値の文字列が確保するヒープは概算に含めない
         std::size_t bytes = sizeof(SetObjectComponentsCommand);
-        const auto accumulate = [](const std::vector<NS::Game::Level::ComponentData>& list) {
-            std::size_t total = 0;
-            for (const NS::Game::Level::ComponentData& comp : list)
-            {
-                total += comp.typeName.size();
-                for (const NS::Game::Level::FieldValue& field : comp.fields)
-                    total += sizeof(NS::Game::Level::FieldValue) + field.name.size();
-            }
-            return total;
-        };
-        bytes += accumulate(m_newComponents) + accumulate(m_oldComponents);
+        for (const NS::Game::Level::ComponentData& comp : m_newComponents)
+            bytes += NS::Game::Level::EstimatedHeapBytes(comp);
+        for (const NS::Game::Level::ComponentData& comp : m_oldComponents)
+            bytes += NS::Game::Level::EstimatedHeapBytes(comp);
         return bytes;
     }
 

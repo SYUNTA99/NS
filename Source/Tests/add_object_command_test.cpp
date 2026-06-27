@@ -1,10 +1,12 @@
-#include "Game/Level/LevelData.h"
 #include "Editor/Undo/AddObjectCommand.h"
 #include "Game/Level/EditTarget.h"
+#include "Game/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace EditorNs = NS::Editor;
@@ -58,6 +60,22 @@ TEST(AddObjectCommandTest, UndoRemovesOnlyTheAddedObject)
     ASSERT_EQ(ids.size(), 1u);
     EXPECT_EQ(ids[0], 99u);
     EXPECT_FLOAT_EQ(lv.objects[0].positionX, 9.0f);
+}
+
+TEST(AddObjectCommandTest, EstimatedBytesCountsComponentHeap)
+{
+    // components を持つ object はその heap 分だけ概算が増える。 sizeof のみだと undo の cap が取りこぼす
+    LevelNs::ObjectInstance withComponents = MakeFree(0.0f, 0.0f, 0.0f);
+    LevelNs::ComponentData mesh;
+    mesh.typeName = "MeshRendererComponent";
+    mesh.fields.push_back(LevelNs::FieldValue{"Mesh", std::string("cube")});
+    withComponents.components.push_back(std::move(mesh));
+
+    EditorNs::AddObjectCommand bareCmd(MakeFree(0.0f, 0.0f, 0.0f));
+    EditorNs::AddObjectCommand richCmd(withComponents);
+
+    EXPECT_GE(bareCmd.EstimatedBytes(), sizeof(EditorNs::AddObjectCommand));
+    EXPECT_GT(richCmd.EstimatedBytes(), bareCmd.EstimatedBytes());
 }
 
 TEST(AddObjectCommandTest, RedoReusesSameIdWithoutBumpingNext)

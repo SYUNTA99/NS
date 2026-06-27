@@ -286,4 +286,20 @@ namespace NS::Game::Level
         }
     }
 
+    std::size_t EstimatedHeapBytes(const ComponentData& component) noexcept
+    {
+        std::size_t bytes = component.typeName.size();
+        for (const FieldValue& field : component.fields)
+            bytes += sizeof(FieldValue) + field.name.size();
+        return bytes;
+    }
+
+    std::size_t EstimatedHeapBytes(const ObjectInstance& object) noexcept
+    {
+        std::size_t bytes = object.components.size() * sizeof(ComponentData);
+        for (const ComponentData& component : object.components)
+            bytes += EstimatedHeapBytes(component);
+        return bytes;
+    }
+
 } // namespace NS::Game::Level

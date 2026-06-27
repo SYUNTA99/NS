@@ -194,4 +194,9 @@ namespace NS::Game::Level
     /// rotation(0..3) は Y 軸 yaw quaternion に、 セル整数座標は world 座標 float に写す
     void MigrateBlocksToObjects(LevelData& level, const std::vector<BlockEntry>& blocks);
 
+    /// undo の概算メモリに使う heap 量 (sizeof 外)。 反射値の文字列ヒープは概算に含めない
+    /// component vector / typeName / field 名の確保分を数える。 配置・変形系 Command の EstimatedBytes が使う
+    [[nodiscard]] std::size_t EstimatedHeapBytes(const ComponentData& component) noexcept;
+    [[nodiscard]] std::size_t EstimatedHeapBytes(const ObjectInstance& object) noexcept;
+
 } // namespace NS::Game::Level
