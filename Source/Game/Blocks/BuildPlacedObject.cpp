@@ -1,6 +1,8 @@
 #include "Game/Blocks/BuildPlacedObject.h"
 
 #include "Framework/Core/Filesystem.h"
+#include "Framework/Core/LogCategories.h"
+#include "Framework/Core/Logger.h"
 #include "Framework/Graphics/StaticMesh.h"
 #include "Framework/Scene/AssetManager.h"
 #include "Framework/Scene/ComponentRegistry.h"
@@ -214,6 +216,15 @@ namespace NS::Game::Blocks
         if (!gridAligned)
         {
             // 自由配置物は cube を描き、 当たりは shape ごとに collider を 1 つだけ持つ
+            // 旧データの自由配置に拾得・ダメージ・掴みなど振る舞いを持つ kind が紛れると、 自由側は形しか
+            // 移行できず黙って落ちる。 失われたことを警告で残す
+            if (kind == kBlockIdCoin || kind == kBlockIdPowerStar || IsHazardBlock(kind) || IsPoleBlock(kind))
+            {
+                NS_LOG_WARN(::NS::Core::LogCat::Game,
+                            "MaterializeLegacyKind: 自由配置の kind {} は形状のみ移行され振る舞いが失われた",
+                            kind);
+            }
+
             const NS::Math::Vector3 half{
                 object.colliderHalfExtentsX, object.colliderHalfExtentsY, object.colliderHalfExtentsZ};
             const NS::Math::Vector3 offset{object.colliderOffsetX, object.colliderOffsetY, object.colliderOffsetZ};

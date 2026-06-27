@@ -188,6 +188,25 @@ TEST_F(BuildPlacedObjectTest, FreeBoxHasBoxColliderWithSavedHalfExtents)
     EXPECT_FALSE(Has<NS::Scene::CapsuleColliderComponent>(*obj));
 }
 
+// 旧データの自由配置に振る舞い kind が紛れた回帰。 自由側は形しか移行できず hazard 振る舞いは落ちるが、
+// 配置物としては mesh + collider を持つ有効な形で組め、 空やクラッシュにはならない。 移行時に警告も残る
+TEST_F(BuildPlacedObjectTest, FreeBehavioralKindMigratesToShapeOnly)
+{
+    ObjectInstance object;
+    object.flags = 0;
+    SetObjectShapeCollider(object, ShapeCollider::Box);
+    object.colliderHalfExtentsX = 0.5f;
+    object.colliderHalfExtentsY = 0.5f;
+    object.colliderHalfExtentsZ = 0.5f;
+    object.components = MaterializeLegacyKind(kBlockIdHazard, object);
+
+    auto obj = Build(object);
+    ASSERT_NE(obj, nullptr);
+    EXPECT_TRUE(Has<NS::Scene::MeshRendererComponent>(*obj));
+    EXPECT_TRUE(Has<NS::Scene::BoxColliderComponent>(*obj));
+    EXPECT_FALSE(Has<NS::Scene::HazardComponent>(*obj)); // 自由側は振る舞いを移行しない
+}
+
 TEST_F(BuildPlacedObjectTest, FreeSphereHasOnlySphereCollider)
 {
     ObjectInstance object = MakeFree(ShapeCollider::Sphere, Vector3{0.7f, 0.5f, 0.5f}, Vector3{0.0f, 1.0f, 0.0f});
