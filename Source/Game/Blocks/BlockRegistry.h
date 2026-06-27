@@ -1,75 +1,19 @@
 #pragma once
 
 /// @file BlockRegistry.h
-/// @brief 編集時に扱う block / marker の ID 体系。 ID -> 色 / 種別判定 / slope 角度の lookup を提供する
+/// @brief grid 配置物の 90° 回転ヘルパ
 ///
-/// @details `LevelData::BlockEntry::blockId` に格納される値。 ID 体系をテクスチャテーブル /
-/// 振る舞いテーブルに流用する。 「テーマあたり 8 variant 以上」 は
-/// blockId 値を 8 枚個別に切らずに、 「block kind は 1 つ (kBlockIdSolid) / 描画時に
-/// `AutoTile::LookupTextureSlice(theme, neighborMask)` で 8 slice から 1 つ選ぶ」
-/// 設計で達成する。 これにより LevelData フォーマット変更ゼロで variation を実現する
-/// slope 4 種 (200..203) / pole (210) / hazard (220) / water (221) / decoration (222) を扱う
-
-#include "Framework/Math/Math.h"
+/// @details grid 配置物の向きは 0..3 の 4 段階で Y 軸 90° 刻み
+/// その step を yaw ラジアンへ変換する関数と段階数だけを提供する
 
 #include <cstdint>
 
 namespace NS::Game::Blocks
 {
-    /// block の向きを表す `BlockEntry::rotation` の分解能。 0..3 を Y 軸 90° 刻みの 4 方向へ割り当てる
+    /// grid 配置物の向きの分解能。 0..3 を Y 軸 90° 刻みの 4 方向へ割り当てる
     inline constexpr std::uint16_t kBlockRotationSteps = 4;
 
-    /// `BlockEntry::rotation` (0..3) を Y 軸 yaw (ラジアン) に変換する
-    /// 描画と当たり判定 (BuildWedgeTriangles) が同じ向きになるよう全経路でこれを使う
+    /// 0..3 の回転値を Y 軸 yaw ラジアンに変換する
+    /// 描画と当たり判定が同じ向きになるよう全経路でこれを使う
     [[nodiscard]] float BlockRotationToYaw(std::uint8_t rotation) noexcept;
-
-    /// 通常の固形ブロック。 描画時のテクスチャは theme + neighborMask で 8 slice から決まる
-    inline constexpr std::uint16_t kBlockIdSolid = 1;
-
-    /// 取得アイテムのコイン
-    inline constexpr std::uint16_t kBlockIdCoin = 100;
-
-    /// クリア条件にもなり得るパワースター
-    inline constexpr std::uint16_t kBlockIdPowerStar = 101;
-
-    /// toolbar の表示用識別子。 実体は `LevelData::spawnX/Y/Z` に書く
-    inline constexpr std::uint16_t kBlockIdSpawn = 102;
-
-    /// 楔形 (wedge) スロープ 4 種。 200 番台を斜面系に予約する
-    inline constexpr std::uint16_t kBlockIdSlope45 = 200;
-    inline constexpr std::uint16_t kBlockIdSlope30 = 201;
-    inline constexpr std::uint16_t kBlockIdSlope22 = 202;
-    inline constexpr std::uint16_t kBlockIdSlope15 = 203;
-
-    /// 掴まり pole。 210 番台を掴まり系に予約する
-    inline constexpr std::uint16_t kBlockIdPole = 210;
-
-    /// 接触ダメージ / 視覚装飾系。 220 番台を予約する
-    inline constexpr std::uint16_t kBlockIdHazard = 220;
-    inline constexpr std::uint16_t kBlockIdWater = 221;
-    inline constexpr std::uint16_t kBlockIdDecoration = 222;
-
-    /// 任意 blockId が 4 種 slope のいずれかかを判定する
-    [[nodiscard]] bool IsSlopeBlock(std::uint16_t blockId) noexcept;
-
-    /// slope の blockId に対応する角度 (度数法) を返す。 slope でなければ 0
-    [[nodiscard]] float GetSlopeAngleDegrees(std::uint16_t blockId) noexcept;
-
-    /// slope 角度を 45→30→22→15→45 と循環させる。 slope 以外はそのまま返す
-    [[nodiscard]] std::uint16_t NextSlopeBlock(std::uint16_t blockId) noexcept;
-
-    /// 掴まり pole かどうか
-    [[nodiscard]] bool IsPoleBlock(std::uint16_t blockId) noexcept;
-
-    /// 接触ダメージ hazard かどうか
-    [[nodiscard]] bool IsHazardBlock(std::uint16_t blockId) noexcept;
-
-    /// 視覚のみの水 block かどうか。 非衝突
-    [[nodiscard]] bool IsWaterBlock(std::uint16_t blockId) noexcept;
-
-    /// 視覚のみの装飾 block かどうか。 非衝突
-    [[nodiscard]] bool IsDecorationBlock(std::uint16_t blockId) noexcept;
-
-    /// 各 ID に紐づく base color (RGBA float)。 テクスチャが揃うまでの色分け用
-    [[nodiscard]] NS::Math::Color GetBaseColor(std::uint16_t blockId) noexcept;
 } // namespace NS::Game::Blocks

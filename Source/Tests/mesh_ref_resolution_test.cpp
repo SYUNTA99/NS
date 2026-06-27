@@ -8,7 +8,6 @@
 #include <Framework/Scene/AssetManager.h>
 #include <Framework/Scene/Components/MeshRendererComponent.h>
 #include <Framework/Scene/GameObject.h>
-#include <Game/Blocks/BlockRegistry.h>
 #include <Game/Blocks/BuildPlacedObject.h>
 #include <Game/Level/LevelData.h>
 
@@ -20,8 +19,6 @@ namespace
 {
     using NS::Game::Blocks::BuildPlacedObject;
     using NS::Game::Blocks::FindComponent;
-    using NS::Game::Blocks::kBlockIdSlope45;
-    using NS::Game::Blocks::kBlockIdSolid;
     using NS::Game::Blocks::ResolveContentPath;
     using NS::Game::Blocks::ResolveMeshFromRef;
     using NS::Game::Level::ComponentData;
@@ -78,7 +75,7 @@ TEST(MeshRefResolution, BuiltinNameResolvesToBuiltinMesh)
     EXPECT_EQ(ResolveMeshFromRef(assets, "pole"), assets.Builtin("pole"));
 }
 
-// メッシュ参照が空の MeshRenderer は cube フォールバックへ解決される (種別由来の geometry 選択は廃止)
+// メッシュ参照が空の MeshRenderer は cube フォールバックへ解決される
 TEST(MeshRefResolution, EmptyMeshRefFallsBackToCube)
 {
     AssetManager assets{std::filesystem::path{"."}};
@@ -118,7 +115,7 @@ TEST(MeshRefResolution, RelativePathAttemptsContentRootLoad)
     EXPECT_EQ(ResolveMeshFromRef(assets, "meshes/foo.gltf"), assets.GetOrLoadMesh(*resolved));
 }
 
-// メッシュ参照が空の component 駆動 grid solid は cube に解決される
+// メッシュ参照が空の component 駆動 grid cube は cube に解決される
 TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
 {
     AssetManager assets{std::filesystem::path{"."}};
@@ -133,7 +130,7 @@ TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
 
     auto* compMesh = FindComponent<MeshRendererComponent>(*compBuilt);
     ASSERT_NE(compMesh, nullptr);
-    // 上と同じく headless でも意味を持つ解決器の判定を縛る (cube 比較は device 上でのみ非 vacuous)
+    // 上と同じく headless でも意味を持つ解決器の判定を縛る。 cube 比較は device 上でのみ非 vacuous
     EXPECT_EQ(ResolveMeshFromRef(assets, ""), nullptr);
     EXPECT_EQ(compMesh->GetMesh(), assets.Builtin("cube"));
 }

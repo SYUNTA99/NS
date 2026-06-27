@@ -9,49 +9,31 @@
 #include <Framework/Scene/Components/BoxColliderComponent.h>
 #include <Framework/Scene/Components/CapsuleColliderComponent.h>
 #include <Framework/Scene/Components/HazardComponent.h>
-#include <Framework/Scene/Components/MeshRendererComponent.h>
-#include <Framework/Scene/Components/PickupComponent.h>
 #include <Framework/Scene/Components/PoleComponent.h>
 #include <Framework/Scene/Components/SlopeColliderComponent.h>
 #include <Framework/Scene/Components/SphereColliderComponent.h>
 #include <Framework/Scene/GameObject.h>
-#include <Game/Blocks/BlockRegistry.h>
 #include <Game/Blocks/BuildPlacedObject.h>
 #include <Game/Level/LevelData.h>
 #include <Game/Level/LevelJson.h>
 
 #include <array>
 #include <cstddef>
-#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <utility>
-#include <variant>
 #include <vector>
 
 namespace
 {
     using NS::Game::Blocks::BuildPlacedObject;
     using NS::Game::Blocks::FindComponent;
-    using NS::Game::Blocks::kBlockIdCoin;
-    using NS::Game::Blocks::kBlockIdDecoration;
-    using NS::Game::Blocks::kBlockIdHazard;
-    using NS::Game::Blocks::kBlockIdPole;
-    using NS::Game::Blocks::kBlockIdPowerStar;
-    using NS::Game::Blocks::kBlockIdSlope45;
-    using NS::Game::Blocks::kBlockIdSolid;
-    using NS::Game::Blocks::kBlockIdWater;
-    using NS::Game::Blocks::MaterializeLegacyKind;
-    using NS::Game::Level::CameraVolume;
     using NS::Game::Level::ComponentData;
     using NS::Game::Level::DeserializeLevelFromJson;
     using NS::Game::Level::FieldValue;
-    using NS::Game::Level::kObjectFlagGridAligned;
     using NS::Game::Level::LevelData;
     using NS::Game::Level::ObjectInstance;
     using NS::Game::Level::SerializeLevelToJson;
-    using NS::Game::Level::SetObjectShapeCollider;
-    using NS::Game::Level::ShapeCollider;
     using NS::Math::Vector3;
 
     constexpr float kTol = 1e-4f;
@@ -63,8 +45,7 @@ namespace
         EXPECT_NEAR(expected.z, actual.z, kTol);
     }
 
-    // collider channel の同一性を測る指紋。 型の有無と AABB / OBB / 球 / カプセル / 三角形の当たり幾何を持ち
-    // mesh や material には依存しないので device を持たない環境でも成立する
+    // collider channel の同一性を測る指紋。 型の有無と当たり幾何を持ち、 mesh / material に依存しない
     struct ColliderSignature
     {
         bool hasBox = false;
@@ -119,11 +100,6 @@ namespace
         return sig;
     }
 
-    bool HasAnyColliderChannel(const ColliderSignature& sig)
-    {
-        return sig.hasBox || sig.hasSphere || sig.hasCapsule || sig.hasSlope || sig.hasPole;
-    }
-
     void ExpectSignatureEqual(const ColliderSignature& expected, const ColliderSignature& actual)
     {
         EXPECT_EQ(expected.hasBox, actual.hasBox);
@@ -172,33 +148,6 @@ namespace
         }
     }
 
-    ObjectInstance MakeGrid(std::uint16_t kind, float x, float y, float z)
-    {
-        ObjectInstance object;
-        object.flags = kObjectFlagGridAligned;
-        object.positionX = x;
-        object.positionY = y;
-        object.positionZ = z;
-        object.components = MaterializeLegacyKind(kind, object);
-        return object;
-    }
-
-    ObjectInstance MakeFree(
-        ShapeCollider shape, float x, float y, float z, const Vector3& half = Vector3{0.5f, 0.5f, 0.5f})
-    {
-        ObjectInstance object;
-        object.flags = 0;
-        object.positionX = x;
-        object.positionY = y;
-        object.positionZ = z;
-        SetObjectShapeCollider(object, shape);
-        object.colliderHalfExtentsX = half.x;
-        object.colliderHalfExtentsY = half.y;
-        object.colliderHalfExtentsZ = half.z;
-        object.components = MaterializeLegacyKind(kBlockIdSolid, object);
-        return object;
-    }
-
     ComponentData MakeComponent(std::string typeName, std::vector<FieldValue> fields)
     {
         ComponentData component;
@@ -206,217 +155,7 @@ namespace
         component.fields = std::move(fields);
         return component;
     }
-
-    // 種別から起こした実 component 一覧を返す。 MakeGrid / MakeFree が構築時に materialize 済
-    std::vector<ComponentData> MaterializeKind(const ObjectInstance& object)
-    {
-        return object.components;
-    }
-
-    // ComponentData の反射フィールドを名前で引く data 段ヘルパ群。 device を持たずに materialize 結果を直接検証する
-    const FieldValue* FindFieldValue(const ComponentData& component, const std::string& name)
-    {
-        for (const auto& field : component.fields)
-            if (field.name == name)
-                return &field;
-        return nullptr;
-    }
-
-    std::string FieldString(const ComponentData& component, const std::string& name)
-    {
-        const FieldValue* field = FindFieldValue(component, name);
-        if (field != nullptr && std::holds_alternative<std::string>(field->value))
-            return std::get<std::string>(field->value);
-        return std::string{};
-    }
-
-    float FieldFloat(const ComponentData& component, const std::string& name)
-    {
-        const FieldValue* field = FindFieldValue(component, name);
-        if (field != nullptr && std::holds_alternative<float>(field->value))
-            return std::get<float>(field->value);
-        return 0.0f;
-    }
-
-    int FieldInt(const ComponentData& component, const std::string& name)
-    {
-        const FieldValue* field = FindFieldValue(component, name);
-        if (field != nullptr && std::holds_alternative<int>(field->value))
-            return std::get<int>(field->value);
-        return -1;
-    }
-
-    bool HasComponentType(const std::vector<ComponentData>& components, const std::string& typeName)
-    {
-        for (const auto& component : components)
-            if (component.typeName == typeName)
-                return true;
-        return false;
-    }
-
-    // grid と free と全 collider channel を含む代表レベル。 各 object は種別から実 component を起こして持つ
-    LevelData MakeRepresentativeLevel()
-    {
-        LevelData level;
-
-        level.objects.push_back(MakeGrid(kBlockIdSolid, 1.0f, 0.0f, 0.0f));
-        level.objects.push_back(MakeGrid(kBlockIdSlope45, 2.0f, 0.0f, 0.0f));
-        level.objects.push_back(MakeGrid(kBlockIdPole, 3.0f, 0.0f, 0.0f));
-        level.objects.push_back(MakeGrid(kBlockIdHazard, 4.0f, 0.0f, 0.0f));
-        // 当たりを持たない代表 (water / deco) と視覚を持たない代表 (coin / star) も往復経路に通す
-        level.objects.push_back(MakeGrid(kBlockIdWater, 8.0f, 0.0f, 0.0f));
-        level.objects.push_back(MakeGrid(kBlockIdDecoration, 9.0f, 0.0f, 0.0f));
-        level.objects.push_back(MakeGrid(kBlockIdCoin, 10.0f, 0.0f, 0.0f));
-        level.objects.push_back(MakeGrid(kBlockIdPowerStar, 11.0f, 0.0f, 0.0f));
-
-        ObjectInstance freeBox = MakeFree(ShapeCollider::Box, 5.0f, 1.5f, -2.0f);
-        freeBox.materialIndex = 0;
-        freeBox.colliderHalfExtentsX = 1.0f;
-        freeBox.colliderHalfExtentsY = 2.0f;
-        freeBox.colliderHalfExtentsZ = 3.0f;
-        level.objects.push_back(freeBox);
-
-        ObjectInstance freeSphere = MakeFree(ShapeCollider::Sphere, -3.0f, 0.5f, 4.0f);
-        freeSphere.colliderHalfExtentsX = 0.7f; // 球の半径
-        freeSphere.colliderOffsetY = 1.0f;
-        level.objects.push_back(freeSphere);
-
-        ObjectInstance freeCapsule = MakeFree(ShapeCollider::Capsule, 6.0f, 0.0f, 1.0f);
-        freeCapsule.colliderHalfExtentsX = 0.4f; // カプセルの半径
-        freeCapsule.colliderHalfExtentsY = 0.9f; // カプセルの半高
-        level.objects.push_back(freeCapsule);
-
-        // 回転と非一様 scale と非単位 colliderRotation を持つ free box で WorldOBB 経路を張る
-        ObjectInstance rotatedBox = MakeFree(ShapeCollider::Box, 7.0f, 2.0f, -1.0f);
-        rotatedBox.rotationY = 0.3826834f; // Y 軸 45 度の sin
-        rotatedBox.rotationW = 0.9238795f; // Y 軸 45 度の cos
-        rotatedBox.scaleX = 1.0f;
-        rotatedBox.scaleY = 2.0f;
-        rotatedBox.scaleZ = 1.5f;
-        rotatedBox.colliderHalfExtentsX = 0.6f;
-        rotatedBox.colliderHalfExtentsY = 0.7f;
-        rotatedBox.colliderHalfExtentsZ = 0.8f;
-        rotatedBox.colliderRotationY = 0.3826834f;
-        rotatedBox.colliderRotationW = 0.9238795f;
-        level.objects.push_back(rotatedBox);
-
-        level.materialPaths.push_back("materials/stone.mat");
-
-        level.spawnX = 1;
-        level.spawnY = 2;
-        level.spawnZ = 3;
-        level.themeId = 2;
-        level.bgmId = 3;
-        level.coinThreshold = 10;
-        level.timeLimitSeconds = 120;
-
-        CameraVolume volume;
-        volume.cameraPositionX = 5.0f;
-        volume.priority = 20;
-        volume.lookAtPlayer = 1;
-        level.cameraVolumes.push_back(volume);
-
-        return level;
-    }
 } // namespace
-
-// components 駆動レベルを JSON 往復した後も、 各配置物が同じ collider channel 集合と当たり幾何を組む
-TEST(BehaviorZero, JsonRoundTripPreservesColliderChannels)
-{
-    const LevelData src = MakeRepresentativeLevel();
-
-    LevelData restored;
-    ASSERT_TRUE(DeserializeLevelFromJson(restored, SerializeLevelToJson(src)));
-    ASSERT_EQ(restored.objects.size(), src.objects.size());
-
-    NS::Scene::AssetManager assets{std::filesystem::path{"."}};
-
-    bool anyColliderObserved = false;
-    for (std::size_t i = 0; i < src.objects.size(); ++i)
-    {
-        // 各 object は実 component を持ち、 往復後も components 駆動で同じ collider channel を組む
-        EXPECT_FALSE(src.objects[i].components.empty());
-        EXPECT_FALSE(restored.objects[i].components.empty());
-
-        auto before = BuildPlacedObject(src.objects[i], assets, src.materialPaths);
-        auto after = BuildPlacedObject(restored.objects[i], assets, restored.materialPaths);
-        ASSERT_NE(before, nullptr);
-        ASSERT_NE(after, nullptr);
-
-        const ColliderSignature beforeSig = ExtractColliderSignature(*before);
-        anyColliderObserved = anyColliderObserved || HasAnyColliderChannel(beforeSig);
-
-        // collider component を持つ object は build 後に対応 channel を必ず組む。 特定 object が当たりを
-        // 黙って落とす退行をレベル全体の anyColliderObserved より強く per-object で塞ぐ
-        const auto& comps = src.objects[i].components;
-        EXPECT_EQ(HasComponentType(comps, "BoxColliderComponent"), beforeSig.hasBox);
-        EXPECT_EQ(HasComponentType(comps, "SphereColliderComponent"), beforeSig.hasSphere);
-        EXPECT_EQ(HasComponentType(comps, "CapsuleColliderComponent"), beforeSig.hasCapsule);
-        EXPECT_EQ(HasComponentType(comps, "SlopeColliderComponent"), beforeSig.hasSlope);
-        EXPECT_EQ(HasComponentType(comps, "PoleComponent"), beforeSig.hasPole);
-
-        ExpectSignatureEqual(beforeSig, ExtractColliderSignature(*after));
-    }
-    // 代表レベルに当たり持ちが 1 つも無ければ per-object 比較が全て偽同士で素通るため、 非退化を保証する
-    EXPECT_TRUE(anyColliderObserved);
-}
-
-// JSON 往復が CRC32 を保ち、 描画と当たりに効く全フィールドが意味的に同一になる
-TEST(BehaviorZero, JsonRoundTripPreservesCrc)
-{
-    const LevelData src = MakeRepresentativeLevel();
-    const std::uint32_t crcBefore = src.ComputeCrc32();
-
-    LevelData restored;
-    ASSERT_TRUE(DeserializeLevelFromJson(restored, SerializeLevelToJson(src)));
-    EXPECT_EQ(restored.ComputeCrc32(), crcBefore);
-}
-
-// 同一 LevelData の 2 回直列化は byte-identical で、 直列化が決定論であることを示す
-TEST(BehaviorZero, TwoSerializationsAreByteIdentical)
-{
-    const LevelData src = MakeRepresentativeLevel();
-    EXPECT_EQ(SerializeLevelToJson(src), SerializeLevelToJson(src));
-}
-
-// JSON 往復で復元した LevelData を再直列化すると元の文字列に一致し、 正準性の不動点を示す
-TEST(BehaviorZero, SerializeAfterRoundTripMatchesOriginal)
-{
-    const LevelData src = MakeRepresentativeLevel();
-    const std::string original = SerializeLevelToJson(src);
-
-    LevelData restored;
-    ASSERT_TRUE(DeserializeLevelFromJson(restored, original));
-    EXPECT_EQ(SerializeLevelToJson(restored), original);
-}
-
-// 新形式の components 駆動 BuildFromComponents が、 旧形式の kind 駆動と同じ box を同一 channel に組む
-TEST(BehaviorZero, ComponentsDrivenMatchesKindDriven)
-{
-    NS::Scene::AssetManager assets{std::filesystem::path{"."}};
-    const std::vector<std::string> noPaths;
-
-    ObjectInstance kindBox = MakeFree(ShapeCollider::Box, 5.0f, 1.5f, -2.0f, Vector3{1.0f, 2.0f, 3.0f});
-
-    ObjectInstance compBox;
-    compBox.flags = 0;
-    compBox.positionX = 5.0f;
-    compBox.positionY = 1.5f;
-    compBox.positionZ = -2.0f;
-    compBox.components.push_back(MakeComponent("MeshRendererComponent", {}));
-    compBox.components.push_back(
-        MakeComponent("BoxColliderComponent", {FieldValue{"Half Extents", Vector3{1.0f, 2.0f, 3.0f}}}));
-
-    ASSERT_FALSE(compBox.components.empty()); // BuildFromComponents 分岐へ入ることを固定する
-    auto kindBuilt = BuildPlacedObject(kindBox, assets, noPaths);
-    auto compBuilt = BuildPlacedObject(compBox, assets, noPaths);
-    ASSERT_NE(kindBuilt, nullptr);
-    ASSERT_NE(compBuilt, nullptr);
-
-    const ColliderSignature kindSig = ExtractColliderSignature(*kindBuilt);
-    EXPECT_TRUE(kindSig.hasBox); // 等価比較が空 signature 同士の素通りでないことを保証する
-    ExpectSignatureEqual(kindSig, ExtractColliderSignature(*compBuilt));
-}
 
 // components 駆動 object を JSON 往復しても新経路で同一 channel を組み、 反射 set が値を復元する
 TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
@@ -462,155 +201,3 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     EXPECT_NEAR(half.y, 2.0f, kTol);
     EXPECT_NEAR(half.z, 3.0f, kTol);
 }
-
-// kind が materialize する ComponentData がレシピどおりで、 kind 駆動と手書き components が同一 collider を組む
-TEST(BehaviorZero, MaterializedKindMatchesAuthoredComponents)
-{
-    // grid solid: cube + block material + BoxCollider
-    {
-        const auto comps = MaterializeKind(MakeGrid(kBlockIdSolid, 0.0f, 0.0f, 0.0f));
-        ASSERT_EQ(comps.size(), 2u);
-        EXPECT_EQ(comps[0].typeName, "MeshRendererComponent");
-        EXPECT_EQ(FieldString(comps[0], "Mesh"), "cube");
-        EXPECT_EQ(FieldString(comps[0], "Material"), "block");
-        EXPECT_EQ(comps[1].typeName, "BoxColliderComponent");
-    }
-    // grid slope45: wedge45 + SlopeCollider(45 度)
-    {
-        const auto comps = MaterializeKind(MakeGrid(kBlockIdSlope45, 0.0f, 0.0f, 0.0f));
-        ASSERT_EQ(comps.size(), 2u);
-        EXPECT_EQ(FieldString(comps[0], "Mesh"), "wedge45");
-        EXPECT_EQ(comps[1].typeName, "SlopeColliderComponent");
-        EXPECT_FLOAT_EQ(FieldFloat(comps[1], "Angle (deg)"), 45.0f);
-    }
-    // grid pole: pole + PoleComponent
-    {
-        const auto comps = MaterializeKind(MakeGrid(kBlockIdPole, 0.0f, 0.0f, 0.0f));
-        ASSERT_EQ(comps.size(), 2u);
-        EXPECT_EQ(FieldString(comps[0], "Mesh"), "pole");
-        EXPECT_EQ(comps[1].typeName, "PoleComponent");
-    }
-    // grid hazard: cube + BoxCollider + HazardComponent
-    {
-        const auto comps = MaterializeKind(MakeGrid(kBlockIdHazard, 0.0f, 0.0f, 0.0f));
-        ASSERT_EQ(comps.size(), 3u);
-        EXPECT_EQ(comps[1].typeName, "BoxColliderComponent");
-        EXPECT_EQ(comps[2].typeName, "HazardComponent");
-    }
-    // grid water: MeshRenderer のみ・ material は water
-    {
-        const auto comps = MaterializeKind(MakeGrid(kBlockIdWater, 0.0f, 0.0f, 0.0f));
-        ASSERT_EQ(comps.size(), 1u);
-        EXPECT_EQ(comps[0].typeName, "MeshRendererComponent");
-        EXPECT_EQ(FieldString(comps[0], "Material"), "water");
-    }
-    // grid decoration: MeshRenderer のみ・ material は block
-    {
-        const auto comps = MaterializeKind(MakeGrid(kBlockIdDecoration, 0.0f, 0.0f, 0.0f));
-        ASSERT_EQ(comps.size(), 1u);
-        EXPECT_EQ(FieldString(comps[0], "Material"), "block");
-    }
-    // grid coin: PickupComponent のみ (Pickup Kind 0)・ MeshRenderer を含まない (視覚ゼロ)
-    {
-        const auto comps = MaterializeKind(MakeGrid(kBlockIdCoin, 0.0f, 0.0f, 0.0f));
-        ASSERT_EQ(comps.size(), 1u);
-        EXPECT_EQ(comps[0].typeName, "PickupComponent");
-        EXPECT_EQ(FieldInt(comps[0], "Pickup Kind"), 0);
-        EXPECT_FALSE(HasComponentType(comps, "MeshRendererComponent"));
-    }
-    // grid star: PickupComponent のみ (Pickup Kind 1)・ MeshRenderer を含まない (視覚ゼロ)
-    {
-        const auto comps = MaterializeKind(MakeGrid(kBlockIdPowerStar, 0.0f, 0.0f, 0.0f));
-        ASSERT_EQ(comps.size(), 1u);
-        EXPECT_EQ(comps[0].typeName, "PickupComponent");
-        EXPECT_EQ(FieldInt(comps[0], "Pickup Kind"), 1);
-        EXPECT_FALSE(HasComponentType(comps, "MeshRendererComponent"));
-    }
-    // free sphere: cube + SphereCollider のみ
-    {
-        const auto comps = MaterializeKind(MakeFree(ShapeCollider::Sphere, 0.0f, 0.0f, 0.0f));
-        ASSERT_EQ(comps.size(), 2u);
-        EXPECT_EQ(comps[0].typeName, "MeshRendererComponent");
-        EXPECT_EQ(FieldString(comps[0], "Mesh"), "cube");
-        EXPECT_EQ(FieldString(comps[0], "Material"), "");
-        EXPECT_EQ(comps[1].typeName, "SphereColliderComponent");
-    }
-    // free capsule: cube + CapsuleCollider のみ
-    {
-        const auto comps = MaterializeKind(MakeFree(ShapeCollider::Capsule, 0.0f, 0.0f, 0.0f));
-        ASSERT_EQ(comps.size(), 2u);
-        EXPECT_EQ(comps[1].typeName, "CapsuleColliderComponent");
-    }
-
-    // golden 等価: kind 駆動 (materialize→build) と手書き components→build が同一 collider signature を組む
-    NS::Scene::AssetManager assets{std::filesystem::path{"."}};
-    const std::vector<std::string> noPaths;
-
-    ObjectInstance kindSolid = MakeGrid(kBlockIdSolid, 1.0f, 2.0f, 3.0f);
-    ObjectInstance authoredSolid;
-    authoredSolid.flags = kObjectFlagGridAligned;
-    authoredSolid.positionX = 1.0f;
-    authoredSolid.positionY = 2.0f;
-    authoredSolid.positionZ = 3.0f;
-    authoredSolid.components.push_back(
-        MakeComponent("MeshRendererComponent",
-                      {FieldValue{"Mesh", std::string{"cube"}}, FieldValue{"Material", std::string{"block"}}}));
-    authoredSolid.components.push_back(
-        MakeComponent("BoxColliderComponent", {FieldValue{"Half Extents", Vector3{0.5f, 0.5f, 0.5f}}}));
-
-    auto kindBuilt = BuildPlacedObject(kindSolid, assets, noPaths);
-    auto authoredBuilt = BuildPlacedObject(authoredSolid, assets, noPaths);
-    ASSERT_NE(kindBuilt, nullptr);
-    ASSERT_NE(authoredBuilt, nullptr);
-
-    const ColliderSignature kindSig = ExtractColliderSignature(*kindBuilt);
-    EXPECT_TRUE(kindSig.hasBox);
-    ExpectSignatureEqual(kindSig, ExtractColliderSignature(*authoredBuilt));
-}
-
-// コイン / スターは視覚 (MeshRenderer) も当たりも持たず PickupComponent だけを持つ — 不可視を機械検証する
-TEST(BehaviorZero, CoinAndStarHaveNoVisual)
-{
-    NS::Scene::AssetManager assets{std::filesystem::path{"."}};
-    const std::vector<std::string> noPaths;
-
-    for (const std::uint16_t kind : {kBlockIdCoin, kBlockIdPowerStar})
-    {
-        auto built = BuildPlacedObject(MakeGrid(kind, 0.0f, 0.0f, 0.0f), assets, noPaths);
-        ASSERT_NE(built, nullptr);
-        EXPECT_EQ(FindComponent<NS::Scene::MeshRendererComponent>(*built), nullptr);
-        EXPECT_NE(FindComponent<NS::Scene::PickupComponent>(*built), nullptr);
-        EXPECT_FALSE(HasAnyColliderChannel(ExtractColliderSignature(*built)));
-    }
-}
-
-// water / deco は当たりを持たないが、 material 参照がデータとして JSON 往復後も保たれる
-TEST(BehaviorZero, WaterAndDecorationMaterialSurvivesRoundTrip)
-{
-    LevelData src;
-    src.objects.push_back(MakeGrid(kBlockIdWater, 0.0f, 0.0f, 0.0f));
-    src.objects.push_back(MakeGrid(kBlockIdDecoration, 1.0f, 0.0f, 0.0f));
-
-    LevelData restored;
-    ASSERT_TRUE(DeserializeLevelFromJson(restored, SerializeLevelToJson(src)));
-    ASSERT_EQ(restored.objects.size(), 2u);
-
-    NS::Scene::AssetManager assets{std::filesystem::path{"."}};
-    const std::vector<std::string> noPaths;
-
-    auto water = BuildPlacedObject(restored.objects[0], assets, noPaths);
-    auto deco = BuildPlacedObject(restored.objects[1], assets, noPaths);
-    ASSERT_NE(water, nullptr);
-    ASSERT_NE(deco, nullptr);
-
-    auto* waterMesh = FindComponent<NS::Scene::MeshRendererComponent>(*water);
-    auto* decoMesh = FindComponent<NS::Scene::MeshRendererComponent>(*deco);
-    ASSERT_NE(waterMesh, nullptr);
-    ASSERT_NE(decoMesh, nullptr);
-    EXPECT_EQ(waterMesh->MaterialRef(), "water");
-    EXPECT_EQ(decoMesh->MaterialRef(), "block");
-    EXPECT_FALSE(HasAnyColliderChannel(ExtractColliderSignature(*water)));
-    EXPECT_FALSE(HasAnyColliderChannel(ExtractColliderSignature(*deco)));
-}
-
-// 配置物の "Base Color" 反射値が save→reload を往復で保持される

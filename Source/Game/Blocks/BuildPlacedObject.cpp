@@ -15,8 +15,6 @@
 #include "Framework/Scene/Components/SlopeColliderComponent.h"
 #include "Framework/Scene/Components/SphereColliderComponent.h"
 #include "Framework/Scene/ReflectionJson.h"
-#include "Game/Blocks/BlockRegistry.h"
-#include "Game/Blocks/BlockTypeRegistry.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/LevelJson.h"
 
@@ -87,28 +85,6 @@ namespace NS::Game::Blocks
             return obj;
         }
 
-        // kind から描画メッシュの builtin 名を引く。 ResolveVisualMesh と同じ規則で名前だけを返す
-        const char* VisualMeshName(std::uint16_t kind, bool gridAligned) noexcept
-        {
-            if (!gridAligned)
-                return "cube";
-            if (IsSlopeBlock(kind))
-            {
-                if (kind == kBlockIdSlope45)
-                    return "wedge45";
-                if (kind == kBlockIdSlope30)
-                    return "wedge30";
-                if (kind == kBlockIdSlope22)
-                    return "wedge22";
-                if (kind == kBlockIdSlope15)
-                    return "wedge15";
-                return "cube";
-            }
-            if (IsPoleBlock(kind))
-                return "pole";
-            return "cube";
-        }
-
         // 当たり箱の quaternion を反射 "Rotation (deg)" が受ける Euler 度へ写す。 SetRotationEulerDegrees の逆変換
         NS::Math::Vector3 QuaternionToEulerDegrees(const NS::Math::Quaternion& q) noexcept
         {
@@ -169,71 +145,6 @@ namespace NS::Game::Blocks
             return nullptr;
         }
     } // namespace
-
-    std::vector<NS::Game::Level::ComponentData> MaterializeLegacyKind(std::uint16_t kind,
-                                                                      const NS::Game::Level::ObjectInstance& object)
-    {
-        using namespace NS::Game::Level;
-
-        const bool gridAligned = (object.flags & kObjectFlagGridAligned) != 0;
-
-        if (!gridAligned)
-        {
-            std::vector<ComponentData> result;
-            // 自由配置物は cube を描き、 当たりは shape ごとに collider を 1 つだけ持つ
-            // 旧データの自由配置に拾得・ダメージ・掴みなど振る舞いを持つ kind が紛れると、 自由側は形しか
-            // 移行できず黙って落ちる。 失われたことを警告で残す
-            if (kind == kBlockIdCoin || kind == kBlockIdPowerStar || IsHazardBlock(kind) || IsPoleBlock(kind))
-            {
-                NS_LOG_WARN(::NS::Core::LogCat::Game,
-                            "MaterializeLegacyKind: 自由配置の kind {} は形状のみ移行され振る舞いが失われた",
-                            kind);
-            }
-
-            const NS::Math::Color color = GetBaseColor(kind);
-            const NS::Math::Vector3 baseColor{color.R(), color.G(), color.B()};
-            const std::string meshName = VisualMeshName(kind, gridAligned);
-
-            const NS::Math::Vector3 half{
-                object.colliderHalfExtentsX, object.colliderHalfExtentsY, object.colliderHalfExtentsZ};
-            const NS::Math::Vector3 offset{object.colliderOffsetX, object.colliderOffsetY, object.colliderOffsetZ};
-            const NS::Math::Quaternion rotation{
-                object.colliderRotationX, object.colliderRotationY, object.colliderRotationZ, object.colliderRotationW};
-            const NS::Math::Vector3 rotationEuler = QuaternionToEulerDegrees(rotation);
-
-            result.push_back(MeshRendererData(meshName, "", baseColor));
-
-            const ShapeCollider shape = ObjectShapeCollider(object);
-            if (shape == ShapeCollider::Sphere)
-            {
-                result.push_back(MakeComponentData(
-                    "SphereColliderComponent",
-                    {FieldValue{"Radius", object.colliderHalfExtentsX}, FieldValue{"Center Offset", offset}}));
-            }
-            else if (shape == ShapeCollider::Capsule)
-            {
-                result.push_back(MakeComponentData("CapsuleColliderComponent",
-                                                   {FieldValue{"Radius", object.colliderHalfExtentsX},
-                                                    FieldValue{"Half Height", object.colliderHalfExtentsY},
-                                                    FieldValue{"Center Offset", offset},
-                                                    FieldValue{"Rotation (deg)", rotationEuler}}));
-            }
-            else
-            {
-                // Box / Mesh 形状は当たり箱で受ける。 回転・非一様 scale は WorldOBB が保つ
-                result.push_back(MakeComponentData("BoxColliderComponent",
-                                                   {FieldValue{"Half Extents", half},
-                                                    FieldValue{"Center Offset", offset},
-                                                    FieldValue{"Rotation (deg)", rotationEuler}}));
-            }
-            return result;
-        }
-
-        // grid 配置物は種別記述子のレシピが component 一覧を組む。 未対応 kind は空一覧
-        if (const BlockTypeDescriptor* desc = FindBlockType(kind); desc != nullptr && desc->recipe != nullptr)
-            return desc->recipe(object);
-        return {};
-    }
 
     std::vector<NS::Game::Level::ComponentData> MakeGridCubeComponents()
     {

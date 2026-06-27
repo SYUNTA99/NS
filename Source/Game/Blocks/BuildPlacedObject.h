@@ -3,16 +3,15 @@
 /// @file BuildPlacedObject.h
 /// @brief ObjectInstance 1 件から配置物 GameObject を組み立てる単一ファクトリ
 ///
-/// @details 旧ブロックサブクラス群の prefab レシピ (どの Component をどう合成するか) を 1 箇所へ集約する
-/// kind を BlockRegistry で引き、 mesh / material は AssetManager から借り、 collider / 挙動 Component を合成する
+/// @details object.components を ComponentRegistry で生成し反射 set で値を入れて 1 箇所へ集約する
+/// mesh / material は AssetManager から借り、 collider / 挙動 Component を合成する
 /// 構築のみを担い、 SceneBase への attach / OnStart / 衝突世界への登録は呼出側が行う
-/// 依存: NS::Scene::GameObject / AssetManager, NS::Game::Level::ObjectInstance, NS::Game::Blocks::BlockRegistry
+/// 依存: NS::Scene::GameObject / AssetManager, NS::Game::Level::ObjectInstance
 
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Component.h"
 #include "Framework/Scene/GameObject.h"
 
-#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -57,13 +56,6 @@ namespace NS::Game::Blocks
     /// 当たり寸法 / offset / 回転は object の collider フィールドから読む
     [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeFreeCubeComponents(
         const NS::Game::Level::ObjectInstance& object);
-
-    /// kind が決めていた mesh / material / 色 / 当たり / 拾得を ComponentData 一覧へ展開する
-    /// kind は引数で受け取り、 collider 寸法 / flags など kind 以外の属性は object から読む
-    /// コイン / スターは視覚を持たないため PickupComponent のみを返す。 未対応 kind は空一覧を返す
-    /// 積む typeName は ComponentRegistry の curated 名のみで、 任意 type は生成しない
-    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MaterializeLegacyKind(
-        std::uint16_t kind, const NS::Game::Level::ObjectInstance& object);
 
     /// grid 配置された固形 block か。 components から判定する (gridAligned かつ BoxCollider 持ちで
     /// slope / pole / hazard / 拾得を持たない)。 instancing / 昇格 / 当たり可視化の「固形」判定窓口
