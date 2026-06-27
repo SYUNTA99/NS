@@ -1,6 +1,5 @@
 #include "Editor/PaletteTemplates.h"
 #include "Editor/Undo/PlaceCommand.h"
-#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/EditTarget.h"
 #include "Game/Level/LevelData.h"
 
@@ -11,9 +10,8 @@
 
 namespace EditorNs = NS::Editor;
 namespace LevelNs = NS::Game::Level;
-namespace BlockNs = NS::Game::Blocks;
 
-TEST(PlaceCommandTest, DoAddsBlockEntry)
+TEST(PlaceCommandTest, DoAddsGridObject)
 {
     LevelNs::LevelData lv;
     std::vector<std::uint32_t> ids;
@@ -95,27 +93,23 @@ namespace
 
 TEST(PlaceCommandTest, TemplateClonePlacesPrototypeWithBakedTransform)
 {
-    const std::uint16_t kinds[] = {BlockNs::kBlockIdSolid, BlockNs::kBlockIdSlope45, BlockNs::kBlockIdHazard};
     constexpr std::int16_t cx = 7;
     constexpr std::int16_t cy = 2;
     constexpr std::int16_t cz = 4;
     constexpr std::uint8_t rotation = 1;
 
-    for (const std::uint16_t kind : kinds)
-    {
-        const EditorNs::PaletteTemplate tmpl = EditorNs::PaletteTemplateForKind(kind);
+    const EditorNs::PaletteTemplate tmpl = EditorNs::PaletteTemplateSlots()[0];
 
-        // 配置結果はテンプレ複製に cell 座標 + 回転 step を焼いたものになる
-        LevelNs::ObjectInstance expected = tmpl.prototype;
-        expected.positionX = static_cast<float>(cx);
-        expected.positionY = static_cast<float>(cy);
-        expected.positionZ = static_cast<float>(cz);
-        LevelNs::SetGridRotationStep(expected, rotation);
+    // 配置結果はテンプレ複製に cell 座標 + 回転 step を焼いたものになる
+    LevelNs::ObjectInstance expected = tmpl.prototype;
+    expected.positionX = static_cast<float>(cx);
+    expected.positionY = static_cast<float>(cy);
+    expected.positionZ = static_cast<float>(cz);
+    LevelNs::SetGridRotationStep(expected, rotation);
 
-        const LevelNs::ObjectInstance cloned =
-            PlaceOneAndTake(EditorNs::PlaceCommand(tmpl.prototype, cx, cy, cz, rotation));
-        EXPECT_EQ(cloned, expected) << "kind=" << kind;
-    }
+    const LevelNs::ObjectInstance cloned =
+        PlaceOneAndTake(EditorNs::PlaceCommand(tmpl.prototype, cx, cy, cz, rotation));
+    EXPECT_EQ(cloned, expected);
 }
 
 TEST(PlaceCommandTest, AllPaletteSlotsClonePlacesPrototype)

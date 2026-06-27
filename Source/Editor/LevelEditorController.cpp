@@ -26,7 +26,6 @@
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 #include "Framework/UI/ImGuiContext.h"
-#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Level/LevelData.h"
 
@@ -784,8 +783,8 @@ void LevelEditorController::AddObject()
     object.positionX = center.x;
     object.positionY = center.y;
     object.positionZ = center.z;
-    // 既定の自由 solid を実 component で起こす (種別は kind でなく component で表す)
-    object.components = NS::Game::Blocks::MaterializeLegacyKind(NS::Game::Blocks::kBlockIdSolid, object);
+    // 既定の素の cube を自由配置物として実 component で起こす
+    object.components = NS::Game::Blocks::MakeFreeCubeComponents(object);
 
     // grid 設置と同じ undo 履歴へ載せる。 Do が objects / ids 末尾へ append する
     NS::Game::Level::EditTarget target = SceneEditTarget();
