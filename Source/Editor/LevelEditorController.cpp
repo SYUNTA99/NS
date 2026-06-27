@@ -223,9 +223,7 @@ void LevelEditorController::TickEdit()
                     continue;
                 const std::size_t objectIndex = m_scene->m_objectSourceIndices[i];
                 const NS::Game::Level::ObjectInstance& entry = m_scene->m_level.objects[objectIndex];
-                const bool isGridSolid = (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0 &&
-                                         entry.kind == NS::Game::Blocks::kBlockIdSolid;
-                if (isGridSolid)
+                if (NS::Game::Blocks::IsGridSolidObject(entry))
                     PromoteGridBlockToFree(objectIndex);
                 break;
             }
@@ -426,9 +424,7 @@ void LevelEditorController::RefreshGizmoSelectables()
     for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
         const NS::Game::Level::ObjectInstance& entry = m_scene->m_level.objects[m_scene->m_objectSourceIndices[i]];
-        const bool isGridSolid = (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0 &&
-                                 entry.kind == NS::Game::Blocks::kBlockIdSolid;
-        if (!isGridSolid)
+        if (!NS::Game::Blocks::IsGridSolidObject(entry))
             continue;
         m_selectablePtrs.push_back(m_scene->m_objects[i].get());
         m_selectableHalfExtents.push_back(kCellHalfExtents);
@@ -666,7 +662,7 @@ void LevelEditorController::RenderColliderWireframes() noexcept
             const NS::Physics::OBB obb = box->WorldOBB();
             NS::Graphics::DebugDraw::OBB(obb.center, obb.axisX, obb.axisY, obb.axisZ, obb.halfExtents, freeColor);
         }
-        else if (entry.kind == NS::Game::Blocks::kBlockIdSolid)
+        else if (NS::Game::Blocks::IsGridSolidObject(entry))
         {
             NS::Graphics::DebugDraw::AABB(box->WorldAABB(), gridColor);
         }
@@ -785,9 +781,7 @@ void LevelEditorController::PromoteSelectedToFree() noexcept
     if (m_selectedObjectIndex >= m_scene->m_level.objects.size())
         return;
     const NS::Game::Level::ObjectInstance& entry = m_scene->m_level.objects[m_selectedObjectIndex];
-    const bool isGridSolid =
-        (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0 && entry.kind == NS::Game::Blocks::kBlockIdSolid;
-    if (isGridSolid)
+    if (NS::Game::Blocks::IsGridSolidObject(entry))
         PromoteGridBlockToFree(m_selectedObjectIndex);
 }
 
@@ -805,7 +799,8 @@ void LevelEditorController::AddObject()
     object.positionX = center.x;
     object.positionY = center.y;
     object.positionZ = center.z;
-    object.kind = NS::Game::Blocks::kBlockIdSolid;
+    // 既定の自由 solid を実 component で起こす (種別は kind でなく component で表す)
+    object.components = NS::Game::Blocks::MaterializeLegacyKind(NS::Game::Blocks::kBlockIdSolid, object);
 
     // grid 設置と同じ undo 履歴へ載せる。 Do が objects / ids 末尾へ append する
     NS::Game::Level::EditTarget target = SceneEditTarget();
@@ -937,11 +932,11 @@ void LevelEditorController::ConvertKindObjectAndAppend(std::uint32_t objectId, N
     if (objectIndex == NS::Game::Level::kNoObjectIndex)
         return;
 
-    // kind 由来しか持たないオブジェクトを components 駆動へ移す時、 先に kind の構成をデータ化する
+    // components が空のオブジェクトに 1 コンポを足す前に、 現在の構成をデータ化して取りこぼしを防ぐ
     // そうしないと components が非空になった瞬間に mesh と当たりが落ちる
     std::vector<NS::Game::Level::ComponentData> list = MaterializeKindComponents(m_scene->m_level.objects[objectIndex]);
 
-    // kind をデータ化できない時は全置換を避け単発追加へ倒す
+    // データ化できない時は全置換を避け単発追加へ倒す
     if (list.empty())
     {
         m_editor.Undo().Push(std::make_unique<NS::Editor::AddComponentCommand>(objectId, std::move(appended)), target);
@@ -960,8 +955,8 @@ std::vector<NS::Game::Level::ComponentData> LevelEditorController::MaterializeKi
     if (app == nullptr)
         return result;
 
-    // kind から runtime を一度組み、 その構成を反射値ごとデータへ写し取る
-    // mesh は反射で運べないが BuildPlacedObject が kind から再解決するので欠けてよい
+    // オブジェクトを runtime に一度組み、 その構成を反射値ごとデータへ写し取る
+    // mesh は反射で運べないが BuildPlacedObject が再解決するので欠けてよい
     // collider 回転の反射は euler 度なので、 quaternion との往復で gimbal 付近だけ精度が落ちる
     std::unique_ptr<NS::Scene::GameObject> temp =
         NS::Game::Blocks::BuildPlacedObject(object, app->Assets(), m_scene->m_level.materialPaths);

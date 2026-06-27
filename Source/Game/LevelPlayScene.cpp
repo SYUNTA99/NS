@@ -446,10 +446,9 @@ void LevelPlayScene::OnRenderScene()
             blockMat->SetParams(*ctx.renderer, blockCB);
 
         // instancing は描画段の判断であってオブジェクトの種別ではない
-        // gridAligned かつ solid の配置物だけを instanced bucket へ流し、 他は個別描画へ委ねる
+        // grid 固形の配置物だけを instanced bucket へ流し、 他は個別描画へ委ねる
         const auto isInstanceable = [](const NS::Game::Level::ObjectInstance& entry) noexcept {
-            return (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0 &&
-                   entry.kind == NS::Game::Blocks::kBlockIdSolid;
+            return NS::Game::Blocks::IsGridSolidObject(entry);
         };
 
         m_instanceBatcher->BeginFrame();
@@ -585,7 +584,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
 
         auto obj = NS::Game::Blocks::BuildPlacedObject(entry, assets, m_level.materialPaths);
         if (!obj)
-            continue; // 配置物にしない kind (coin / star 等) はファクトリが nullptr を返す
+            continue; // 組み立てる component が無いオブジェクトはファクトリが nullptr を返す
 
         obj->AttachScene(this);
         obj->OnStart();
@@ -594,7 +593,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
 
         // grid solid は個別 Draw を殺して InstanceBatcher へ委ねる (描画段が m_objects を直読みして instanceable 判定)
         // OnStart で RegisterRenderable 済なので MeshRenderer を非アクティブにするだけでよい
-        if (gridAligned && entry.kind == NS::Game::Blocks::kBlockIdSolid)
+        if (NS::Game::Blocks::IsGridSolidObject(entry))
             if (auto* mesh = NS::Game::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*obj))
                 mesh->SetActive(false);
 

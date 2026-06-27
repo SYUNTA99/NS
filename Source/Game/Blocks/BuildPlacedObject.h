@@ -65,6 +65,10 @@ namespace NS::Game::Blocks
     /// R で 90° 回す対象か。 SlopeCollider を持つか grid 固形なら true (掴み pole / 水 / 装飾は false)
     [[nodiscard]] bool IsRotatableObject(const NS::Game::Level::ObjectInstance& object);
 
+    /// components から種別の表示名を導く ASCII 固定文字列 (Solid / Coin / Star / Slope NN / Pole / Hazard /
+    /// Water / Decoration)。 Hierarchy / Inspector の見出しに使う。 未知構成は "?"
+    [[nodiscard]] const char* ObjectDisplayName(const NS::Game::Level::ObjectInstance& object);
+
     /// asset 相対パスを ContentRoot 配下へ正規化して返す。 `..` で外へ出るパスは nullopt にし任意ファイル読込を防ぐ
     /// path 型メソッドのみで判定し、 実在確認の filesystem 操作系は呼ばない
     [[nodiscard]] std::optional<std::filesystem::path> ResolveContentPath(const std::string& relative);

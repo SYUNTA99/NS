@@ -219,6 +219,21 @@ namespace NS::Game::Blocks
             }
             return -1.0f;
         }
+
+        // MeshRenderer の "Material" 参照を返す。 MeshRenderer / フィールド無しは nullptr
+        const std::string* MaterialRefOf(const NS::Game::Level::ObjectInstance& object) noexcept
+        {
+            for (const auto& component : object.components)
+            {
+                if (component.typeName != "MeshRendererComponent")
+                    continue;
+                for (const auto& field : component.fields)
+                    if (field.name == "Material" && std::holds_alternative<std::string>(field.value))
+                        return &std::get<std::string>(field.value);
+                return nullptr;
+            }
+            return nullptr;
+        }
     } // namespace
 
     std::vector<NS::Game::Level::ComponentData> MaterializeLegacyKind(std::uint16_t kind,
@@ -336,6 +351,43 @@ namespace NS::Game::Blocks
     {
         // R で 90° 回す対象。 向きが意味を持つ slope と固形 block (掴み pole / 水 / 装飾は除く)
         return SlopeAngleOf(object) >= 0.0f || IsGridSolidObject(object);
+    }
+
+    const char* ObjectDisplayName(const NS::Game::Level::ObjectInstance& object)
+    {
+        const int pickupKind = PickupKindOf(object);
+        if (pickupKind == 0)
+            return "Coin";
+        if (pickupKind == 1)
+            return "Star";
+        if (pickupKind > 1)
+            return "Pickup";
+
+        const float slopeAngle = SlopeAngleOf(object);
+        if (slopeAngle >= 0.0f)
+        {
+            if (slopeAngle >= 44.0f)
+                return "Slope 45";
+            if (slopeAngle >= 29.0f)
+                return "Slope 30";
+            if (slopeAngle >= 22.0f)
+                return "Slope 22.5";
+            if (slopeAngle >= 14.0f)
+                return "Slope 15";
+            return "Slope";
+        }
+
+        if (HasComponentType(object, "PoleComponent"))
+            return "Pole";
+        if (HasComponentType(object, "HazardComponent"))
+            return "Hazard";
+        if (const std::string* materialRef = MaterialRefOf(object); materialRef != nullptr && *materialRef == "water")
+            return "Water";
+        if (HasComponentType(object, "BoxColliderComponent"))
+            return "Solid";
+        if (HasComponentType(object, "MeshRendererComponent"))
+            return "Decoration";
+        return "?";
     }
 
     std::optional<std::filesystem::path> ResolveContentPath(const std::string& relative)
