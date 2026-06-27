@@ -8,39 +8,6 @@ namespace NS::Game::Blocks
         return static_cast<float>(rotation) * (kTwoPi / static_cast<float>(kBlockRotationSteps));
     }
 
-    const char* GetDisplayName(std::uint16_t blockId) noexcept
-    {
-        switch (blockId)
-        {
-        case kBlockIdSolid:
-            return "Solid";
-        case kBlockIdCoin:
-            return "Coin";
-        case kBlockIdPowerStar:
-            return "Star";
-        case kBlockIdSpawn:
-            return "Spawn";
-        case kBlockIdSlope45:
-            return "Slope 45";
-        case kBlockIdSlope30:
-            return "Slope 30";
-        case kBlockIdSlope22:
-            return "Slope 22.5";
-        case kBlockIdSlope15:
-            return "Slope 15";
-        case kBlockIdPole:
-            return "Pole";
-        case kBlockIdHazard:
-            return "Hazard";
-        case kBlockIdWater:
-            return "Water";
-        case kBlockIdDecoration:
-            return "Decoration";
-        default:
-            return "?";
-        }
-    }
-
     NS::Math::Color GetBaseColor(std::uint16_t blockId) noexcept
     {
         switch (blockId)
@@ -74,12 +41,6 @@ namespace NS::Game::Blocks
         default:
             return NS::Math::Color{1.0f, 0.0f, 1.0f, 1.0f};
         }
-    }
-
-    bool IsSolidBlock(std::uint16_t blockId) noexcept
-    {
-        // slope/pole/hazard 等は専用 Component を持つため対象外
-        return blockId == kBlockIdSolid;
     }
 
     bool IsSlopeBlock(std::uint16_t blockId) noexcept
@@ -122,13 +83,6 @@ namespace NS::Game::Blocks
         }
     }
 
-    bool IsRotatableBlock(std::uint16_t blockId) noexcept
-    {
-        // R で 90° 回す対象。 向きが意味を持つ slope と通常の固形 block。 pole (Y 対称) や
-        // water / decoration は回しても見た目が変わらないので除外する
-        return IsSlopeBlock(blockId) || IsSolidBlock(blockId);
-    }
-
     bool IsPoleBlock(std::uint16_t blockId) noexcept
     {
         return blockId == kBlockIdPole;
@@ -147,11 +101,5 @@ namespace NS::Game::Blocks
     bool IsDecorationBlock(std::uint16_t blockId) noexcept
     {
         return blockId == kBlockIdDecoration;
-    }
-
-    bool IsCollidable(std::uint16_t blockId) noexcept
-    {
-        // pole は掴まり state machine 経由で扱うため物理 collidable ではない。 water/decoration は素通し
-        return IsSolidBlock(blockId) || IsSlopeBlock(blockId) || IsHazardBlock(blockId);
     }
 } // namespace NS::Game::Blocks

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file BlockRegistry.h
-/// @brief 編集時に扱う block / marker の ID 体系。 ID -> 表示名 / 色 / 種別判定の lookup を提供する
+/// @brief 編集時に扱う block / marker の ID 体系。 ID -> 色 / 種別判定 / slope 角度の lookup を提供する
 ///
 /// @details `LevelData::BlockEntry::blockId` に格納される値。 ID 体系をテクスチャテーブル /
 /// 振る舞いテーブルに流用する。 「テーマあたり 8 variant 以上」 は
@@ -58,9 +58,6 @@ namespace NS::Game::Blocks
     /// slope 角度を 45→30→22→15→45 と循環させる。 slope 以外はそのまま返す
     [[nodiscard]] std::uint16_t NextSlopeBlock(std::uint16_t blockId) noexcept;
 
-    /// R で 90° 回転させる対象か。 pole(Y 対称)/water/decoration は false
-    [[nodiscard]] bool IsRotatableBlock(std::uint16_t blockId) noexcept;
-
     /// 掴まり pole かどうか
     [[nodiscard]] bool IsPoleBlock(std::uint16_t blockId) noexcept;
 
@@ -73,15 +70,6 @@ namespace NS::Game::Blocks
     /// 視覚のみの装飾 block かどうか。 非衝突
     [[nodiscard]] bool IsDecorationBlock(std::uint16_t blockId) noexcept;
 
-    /// 各 ID に紐づく Toolbar 表示名 (ASCII 固定で ImGui label 直渡し可能)
-    [[nodiscard]] const char* GetDisplayName(std::uint16_t blockId) noexcept;
-
     /// 各 ID に紐づく base color (RGBA float)。 テクスチャが揃うまでの色分け用
     [[nodiscard]] NS::Math::Color GetBaseColor(std::uint16_t blockId) noexcept;
-
-    /// 衝突 cube 固形ブロックか。 slope/pole は独自 collider を持つので対象外
-    [[nodiscard]] bool IsSolidBlock(std::uint16_t blockId) noexcept;
-
-    /// 衝突解決が必要か。 solid/slope/hazard が true、 water/decoration は素通し
-    [[nodiscard]] bool IsCollidable(std::uint16_t blockId) noexcept;
 } // namespace NS::Game::Blocks

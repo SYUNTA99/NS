@@ -1,20 +1,36 @@
 #include "Game/Blocks/BlockRegistry.h"
+#include "Game/Blocks/BuildPlacedObject.h"
+#include "Game/Level/LevelData.h"
+
+#include <cstdint>
 
 #include <gtest/gtest.h>
 
-TEST(BlockRegistry, SlopeAndSolidAreRotatable)
+namespace
 {
-    EXPECT_TRUE(NS::Game::Blocks::IsRotatableBlock(NS::Game::Blocks::kBlockIdSlope45));
-    EXPECT_TRUE(NS::Game::Blocks::IsRotatableBlock(NS::Game::Blocks::kBlockIdSlope15));
-    EXPECT_TRUE(NS::Game::Blocks::IsRotatableBlock(NS::Game::Blocks::kBlockIdSolid));
+    // grid 種別を実 component へ起こした配置物。 回転可否は component から導く
+    NS::Game::Level::ObjectInstance MakeGridKind(std::uint16_t kind)
+    {
+        NS::Game::Level::ObjectInstance object{};
+        object.flags = NS::Game::Level::kObjectFlagGridAligned;
+        object.components = NS::Game::Blocks::MaterializeLegacyKind(kind, object);
+        return object;
+    }
+} // namespace
+
+TEST(BlockRegistry, SlopeAndSolidObjectsAreRotatable)
+{
+    EXPECT_TRUE(NS::Game::Blocks::IsRotatableObject(MakeGridKind(NS::Game::Blocks::kBlockIdSlope45)));
+    EXPECT_TRUE(NS::Game::Blocks::IsRotatableObject(MakeGridKind(NS::Game::Blocks::kBlockIdSlope15)));
+    EXPECT_TRUE(NS::Game::Blocks::IsRotatableObject(MakeGridKind(NS::Game::Blocks::kBlockIdSolid)));
 }
 
-TEST(BlockRegistry, NonOrientableBlocksAreNotRotatable)
+TEST(BlockRegistry, NonOrientableObjectsAreNotRotatable)
 {
-    EXPECT_FALSE(NS::Game::Blocks::IsRotatableBlock(NS::Game::Blocks::kBlockIdPole));
-    EXPECT_FALSE(NS::Game::Blocks::IsRotatableBlock(NS::Game::Blocks::kBlockIdWater));
-    EXPECT_FALSE(NS::Game::Blocks::IsRotatableBlock(NS::Game::Blocks::kBlockIdDecoration));
-    EXPECT_FALSE(NS::Game::Blocks::IsRotatableBlock(NS::Game::Blocks::kBlockIdCoin));
+    EXPECT_FALSE(NS::Game::Blocks::IsRotatableObject(MakeGridKind(NS::Game::Blocks::kBlockIdPole)));
+    EXPECT_FALSE(NS::Game::Blocks::IsRotatableObject(MakeGridKind(NS::Game::Blocks::kBlockIdWater)));
+    EXPECT_FALSE(NS::Game::Blocks::IsRotatableObject(MakeGridKind(NS::Game::Blocks::kBlockIdDecoration)));
+    EXPECT_FALSE(NS::Game::Blocks::IsRotatableObject(MakeGridKind(NS::Game::Blocks::kBlockIdCoin)));
 }
 
 TEST(BlockRegistry, NextSlopeBlockCyclesAngles)
@@ -39,11 +55,4 @@ TEST(BlockRegistry, RotationToYawIsQuarterTurns)
     EXPECT_NEAR(NS::Game::Blocks::BlockRotationToYaw(1), kPi * 0.5f, 1e-4f);
     EXPECT_NEAR(NS::Game::Blocks::BlockRotationToYaw(2), kPi, 1e-4f);
     EXPECT_NEAR(NS::Game::Blocks::BlockRotationToYaw(3), kPi * 1.5f, 1e-4f);
-}
-
-TEST(BlockRegistry, IsCollidableExcludesDecorationAndWater)
-{
-    EXPECT_FALSE(NS::Game::Blocks::IsCollidable(NS::Game::Blocks::kBlockIdDecoration));
-    EXPECT_FALSE(NS::Game::Blocks::IsCollidable(NS::Game::Blocks::kBlockIdWater));
-    EXPECT_TRUE(NS::Game::Blocks::IsCollidable(NS::Game::Blocks::kBlockIdHazard));
 }
