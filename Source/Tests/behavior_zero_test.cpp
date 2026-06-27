@@ -346,10 +346,19 @@ TEST(BehaviorZero, JsonRoundTripPreservesColliderChannels)
 
         const ColliderSignature beforeSig = ExtractColliderSignature(*before);
         anyColliderObserved = anyColliderObserved || HasAnyColliderChannel(beforeSig);
+
+        // collider component を持つ object は build 後に対応 channel を必ず組む。 特定 object が当たりを
+        // 黙って落とす退行をレベル全体の anyColliderObserved より強く per-object で塞ぐ
+        const auto& comps = src.objects[i].components;
+        EXPECT_EQ(HasComponentType(comps, "BoxColliderComponent"), beforeSig.hasBox);
+        EXPECT_EQ(HasComponentType(comps, "SphereColliderComponent"), beforeSig.hasSphere);
+        EXPECT_EQ(HasComponentType(comps, "CapsuleColliderComponent"), beforeSig.hasCapsule);
+        EXPECT_EQ(HasComponentType(comps, "SlopeColliderComponent"), beforeSig.hasSlope);
+        EXPECT_EQ(HasComponentType(comps, "PoleComponent"), beforeSig.hasPole);
+
         ExpectSignatureEqual(beforeSig, ExtractColliderSignature(*after));
     }
-    // water / deco / coin / star は当たり無しだが、 当たりを持つ代表も含むのでレベル全体では当たりが観測される
-    // 両辺が一斉に当たり無しへ潰れて比較が素通る偽陽性をレベル単位で塞ぐ
+    // 代表レベルに当たり持ちが 1 つも無ければ per-object 比較が全て偽同士で素通るため、 非退化を保証する
     EXPECT_TRUE(anyColliderObserved);
 }
 
