@@ -16,6 +16,7 @@
 #include "Framework/Scene/Components/SphereColliderComponent.h"
 #include "Framework/Scene/ReflectionJson.h"
 #include "Game/Blocks/BlockRegistry.h"
+#include "Game/Blocks/BlockTypeRegistry.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/LevelJson.h"
 
@@ -27,13 +28,6 @@ namespace NS::Game::Blocks
 {
     namespace
     {
-        // 1m grid セルの半径。 grid 配置物の当たり箱と wedge 半サイズに使う
-        constexpr NS::Math::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
-
-        // 掴み判定が現挙動を保つためのポール寸法。 PoleComponent 既定 (0.15 / 2.0) と高さが異なる
-        constexpr float kPoleRadius = 0.15f;
-        constexpr float kPoleHeight = 1.0f;
-
         // free 配置物の material を解決する。 materialIndex 無効 / traversal は共有 player material に倒す
         NS::Graphics::Material* ResolveFreeMaterial(const NS::Game::Level::ObjectInstance& object,
                                                     NS::Scene::AssetManager& assets,
@@ -193,28 +187,12 @@ namespace NS::Game::Blocks
                                                                       const NS::Game::Level::ObjectInstance& object)
     {
         using namespace NS::Game::Level;
-        std::vector<ComponentData> result;
 
         const bool gridAligned = (object.flags & kObjectFlagGridAligned) != 0;
 
-        // コイン / スターは視覚も当たりも持たず、 拾得の意味だけを PickupComponent で表す (不可視を維持)
-        if (gridAligned && kind == kBlockIdCoin)
-        {
-            result.push_back(MakeComponentData("PickupComponent", {FieldValue{"Pickup Kind", 0}}));
-            return result;
-        }
-        if (gridAligned && kind == kBlockIdPowerStar)
-        {
-            result.push_back(MakeComponentData("PickupComponent", {FieldValue{"Pickup Kind", 1}}));
-            return result;
-        }
-
-        const NS::Math::Color color = GetBaseColor(kind);
-        const NS::Math::Vector3 baseColor{color.R(), color.G(), color.B()};
-        const std::string meshName = VisualMeshName(kind, gridAligned);
-
         if (!gridAligned)
         {
+            std::vector<ComponentData> result;
             // 自由配置物は cube を描き、 当たりは shape ごとに collider を 1 つだけ持つ
             // 旧データの自由配置に拾得・ダメージ・掴みなど振る舞いを持つ kind が紛れると、 自由側は形しか
             // 移行できず黙って落ちる。 失われたことを警告で残す
@@ -224,6 +202,10 @@ namespace NS::Game::Blocks
                             "MaterializeLegacyKind: 自由配置の kind {} は形状のみ移行され振る舞いが失われた",
                             kind);
             }
+
+            const NS::Math::Color color = GetBaseColor(kind);
+            const NS::Math::Vector3 baseColor{color.R(), color.G(), color.B()};
+            const std::string meshName = VisualMeshName(kind, gridAligned);
 
             const NS::Math::Vector3 half{
                 object.colliderHalfExtentsX, object.colliderHalfExtentsY, object.colliderHalfExtentsZ};
@@ -260,40 +242,10 @@ namespace NS::Game::Blocks
             return result;
         }
 
-        if (kind == kBlockIdSolid)
-        {
-            result.push_back(MeshRendererData(meshName, "block", baseColor));
-            result.push_back(MakeComponentData("BoxColliderComponent", {FieldValue{"Half Extents", kCellHalfExtents}}));
-        }
-        else if (IsSlopeBlock(kind))
-        {
-            result.push_back(MeshRendererData(meshName, "block", baseColor));
-            result.push_back(MakeComponentData(
-                "SlopeColliderComponent",
-                {FieldValue{"Angle (deg)", GetSlopeAngleDegrees(kind)}, FieldValue{"Half Extents", kCellHalfExtents}}));
-        }
-        else if (IsPoleBlock(kind))
-        {
-            result.push_back(MeshRendererData(meshName, "block", baseColor));
-            result.push_back(MakeComponentData("PoleComponent",
-                                               {FieldValue{"Radius", kPoleRadius}, FieldValue{"Height", kPoleHeight}}));
-        }
-        else if (IsHazardBlock(kind))
-        {
-            result.push_back(MeshRendererData(meshName, "block", baseColor));
-            result.push_back(MakeComponentData("BoxColliderComponent", {FieldValue{"Half Extents", kCellHalfExtents}}));
-            result.push_back(MakeComponentData("HazardComponent", {}));
-        }
-        else if (IsWaterBlock(kind))
-        {
-            result.push_back(MeshRendererData(meshName, "water", baseColor));
-        }
-        else if (IsDecorationBlock(kind))
-        {
-            result.push_back(MeshRendererData(meshName, "block", baseColor));
-        }
-        // 未対応の grid kind は空一覧のまま返す (呼出側が配置物として組まない)
-        return result;
+        // grid 配置物は種別記述子のレシピが component 一覧を組む。 未対応 kind は空一覧
+        if (const BlockTypeDescriptor* desc = FindBlockType(kind); desc != nullptr && desc->recipe != nullptr)
+            return desc->recipe(object);
+        return {};
     }
 
     std::optional<NS::Math::AABB> ColliderWorldAABB(NS::Scene::GameObject& obj) noexcept
