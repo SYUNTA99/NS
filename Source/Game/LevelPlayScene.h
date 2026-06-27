@@ -129,6 +129,16 @@ private:
     // m_objects[i] に対応する m_level.objects の添字 (m_objects と同長・ 1:1)
     std::vector<std::size_t> m_objectSourceIndices;
 
+    // instanced 描画する grid solid block の静的属性キャッシュ。 instanceable 判定 / 近傍マスク / texture slice は
+    // level + theme が変わらない限り不変なので RebuildBlocksFromLevelData で 1 度だけ焼く。 描画ループは
+    // world matrix だけを毎フレーム読む。 theme は load 時のみ変わり必ず rebuild を伴うので stale にならない
+    struct InstancedBlock
+    {
+        std::size_t objectIndex = 0; // m_objects への添字。 補間 world matrix の取得に使う
+        float textureSlice = 0.0f;
+    };
+    std::vector<InstancedBlock> m_instancedBlocks;
+
     std::unique_ptr<CameraRig> m_cameraRig;
 
     // 実カメラ 1 個 + Brain を載せる host。Brain が follow / free-fly vcam から選んで実カメラへ書く

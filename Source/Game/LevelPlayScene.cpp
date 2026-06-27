@@ -445,34 +445,18 @@ void LevelPlayScene::OnRenderScene()
         if (blockMat)
             blockMat->SetParams(*ctx.renderer, blockCB);
 
-        // instancing は描画段の判断であってオブジェクトの種別ではない
-        // grid 固形の配置物だけを instanced bucket へ流し、 他は個別描画へ委ねる
-        const auto isInstanceable = [](const NS::Game::Level::ObjectInstance& entry) noexcept {
-            return NS::Game::Blocks::IsGridSolidObject(entry);
-        };
-
+        // instanceable 判定 / 近傍マスク / slice は RebuildBlocksFromLevelData で焼き済。 ここは焼いた slice と
+        // 補間 world matrix だけを読み、 毎フレームの文字列走査と近傍マスク O(N^2) を持ち込まない
         m_instanceBatcher->BeginFrame();
-        for (std::size_t i = 0; i < m_objects.size(); ++i)
+        // 個体色は全 instanced block 共通の solid 色 (theme tint は FrameCB の lightColor/ambientColor で行う)
+        const auto solidColor = NS::Game::Blocks::GetBaseColor(NS::Game::Blocks::kBlockIdSolid);
+        const NS::Math::Vector3 solidBaseColor{solidColor.R(), solidColor.G(), solidColor.B()};
+        for (const InstancedBlock& block : m_instancedBlocks)
         {
-            const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
-            if (!isInstanceable(entry))
-                continue;
-            // cell は world 座標を丸めて求め、 近傍マスクは solid 同士で取る
-            const NS::Math::Vector3 wp = m_objects[i]->Root().Position();
-            const std::int16_t x = static_cast<std::int16_t>(std::lround(wp.x));
-            const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
-            const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
-            constexpr std::uint16_t blockId = NS::Game::Blocks::kBlockIdSolid;
-            const std::uint8_t mask = NS::Game::Blocks::ComputeNeighborMask(m_level, x, y, z);
-            const std::uint16_t slice =
-                NS::Game::Blocks::LookupTextureSlice(static_cast<ThemeId>(m_level.themeId), mask);
-
             NS::Graphics::BlockInstance inst{};
-            inst.worldMatrix = m_objects[i]->Root().InterpolatedWorldMatrix(ctx.alpha);
-            // 個体色は GetBaseColor を流し込んでおく (theme tint は FrameCB の lightColor/ambientColor で行う)
-            const auto color = NS::Game::Blocks::GetBaseColor(blockId);
-            inst.baseColor = NS::Math::Vector3{color.R(), color.G(), color.B()};
-            inst.textureSlice = static_cast<float>(slice);
+            inst.worldMatrix = m_objects[block.objectIndex]->Root().InterpolatedWorldMatrix(ctx.alpha);
+            inst.baseColor = solidBaseColor;
+            inst.textureSlice = block.textureSlice;
             m_instanceBatcher->Submit(cubeMesh, blockMat, inst);
         }
 
@@ -550,6 +534,7 @@ void LevelPlayScene::OnShutdown()
     m_player.reset();
     m_objects.clear();
     m_objectSourceIndices.clear();
+    m_instancedBlocks.clear();
     m_hazardView.clear();
 
     // Skybox / InstanceBatcher は Renderer の DeviceContext を ComPtr で握るため、 Renderer (Application) より
@@ -565,6 +550,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
         (*it)->OnEndPlay();
     m_objects.clear();
     m_objectSourceIndices.clear();
+    m_instancedBlocks.clear();
     m_hazardView.clear();
     m_physicsWorld.Clear();
     m_polePtrs.clear();
@@ -638,6 +624,22 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
     // 欠かすと InterpolatedWorldMatrix(alpha) が原点→配置先を補間し編集のたびに全配置物が振れる
     for (auto& obj : m_objects)
         obj->Root().Snapshot();
+
+    // instanced block の静的属性を焼く。 描画ループの per-frame 文字列走査と近傍マスクの O(N^2) を畳む
+    // instancing は描画段の判断で、 grid 固形だけを instanced bucket へ流す。 position は Snapshot 後で確定済
+    for (std::size_t i = 0; i < m_objects.size(); ++i)
+    {
+        const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
+        if (!NS::Game::Blocks::IsGridSolidObject(entry))
+            continue;
+        const NS::Math::Vector3 wp = m_objects[i]->Root().Position();
+        const std::int16_t x = static_cast<std::int16_t>(std::lround(wp.x));
+        const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
+        const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
+        const std::uint8_t mask = NS::Game::Blocks::ComputeNeighborMask(m_level, x, y, z);
+        const std::uint16_t slice = NS::Game::Blocks::LookupTextureSlice(static_cast<ThemeId>(m_level.themeId), mask);
+        m_instancedBlocks.push_back(InstancedBlock{i, static_cast<float>(slice)});
+    }
 
     m_physicsWorld.BuildBroadphase();
 
