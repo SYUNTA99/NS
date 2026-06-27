@@ -325,3 +325,39 @@ TEST(SaveLoadRoundTrip, MigrateBlocksToObjectsMapsCells)
     // rotation=1 は yaw 90°、 単位 quaternion ではない (w != 1)
     EXPECT_NE(level.objects[1].rotationW, 1.0f);
 }
+
+// 配置物の "Base Color" 反射値が save→reload を往復で保持される
+// 種別固定の色上書きが消え、 色は component 経由で永続することの担保
+TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
+{
+    EditorNs::EnsureLevelsDirectoryExists();
+    auto path = EditorNs::BuildLevelPath("test_basecolor");
+    ASSERT_TRUE(path.has_value());
+
+    LevelNs::LevelData src;
+    LevelNs::ObjectInstance solid = LevelNs::MakeGridObject(0, 0, 0, 0);
+    const NS::Math::Vector3 baseColor{0.2f, 0.6f, 0.9f};
+    for (auto& component : solid.components)
+        for (auto& field : component.fields)
+            if (field.name == "Base Color")
+                field.value = baseColor;
+    src.objects.push_back(solid);
+
+    ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
+
+    ASSERT_EQ(dst.objects.size(), 1u);
+    bool found = false;
+    for (const auto& component : dst.objects[0].components)
+        for (const auto& field : component.fields)
+            if (field.name == "Base Color" && std::holds_alternative<NS::Math::Vector3>(field.value))
+            {
+                const auto& v = std::get<NS::Math::Vector3>(field.value);
+                EXPECT_FLOAT_EQ(v.x, 0.2f);
+                EXPECT_FLOAT_EQ(v.y, 0.6f);
+                EXPECT_FLOAT_EQ(v.z, 0.9f);
+                found = true;
+            }
+    EXPECT_TRUE(found) << "Base Color が往復で消えた";
+}
