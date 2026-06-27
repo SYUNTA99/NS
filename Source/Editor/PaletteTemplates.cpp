@@ -1,6 +1,7 @@
 #include "Editor/PaletteTemplates.h"
 
 #include "Game/Blocks/BlockRegistry.h"
+#include "Game/Blocks/BlockTypeRegistry.h"
 #include "Game/Blocks/BuildPlacedObject.h"
 
 #include <utility>
@@ -9,33 +10,11 @@ namespace NS::Editor
 {
     namespace
     {
-        // パレットが自前で持つ表示名。 配置物の種別名を kind から引かず palette 内で確定する
+        // 表示名は種別記述子から引く。 種別の表示名定義はそちらへ一本化する
         const char* NameForKind(std::uint16_t kind) noexcept
         {
-            namespace Blk = NS::Game::Blocks;
-            if (Blk::IsSlopeBlock(kind))
-                return SlopeVariantName(kind);
-            switch (kind)
-            {
-            case Blk::kBlockIdSolid:
-                return "Solid";
-            case Blk::kBlockIdCoin:
-                return "Coin";
-            case Blk::kBlockIdPowerStar:
-                return "Star";
-            case Blk::kBlockIdSpawn:
-                return "Spawn";
-            case Blk::kBlockIdPole:
-                return "Pole";
-            case Blk::kBlockIdHazard:
-                return "Hazard";
-            case Blk::kBlockIdWater:
-                return "Water";
-            case Blk::kBlockIdDecoration:
-                return "Decoration";
-            default:
-                return "?";
-            }
+            const NS::Game::Blocks::BlockTypeDescriptor* desc = NS::Game::Blocks::FindBlockType(kind);
+            return desc != nullptr ? desc->displayName : "?";
         }
     } // namespace
 
@@ -67,34 +46,23 @@ namespace NS::Editor
 
     const char* SlopeVariantName(std::uint16_t slopeKind) noexcept
     {
-        switch (slopeKind)
-        {
-        case NS::Game::Blocks::kBlockIdSlope45:
-            return "Slope 45";
-        case NS::Game::Blocks::kBlockIdSlope30:
-            return "Slope 30";
-        case NS::Game::Blocks::kBlockIdSlope22:
-            return "Slope 22.5";
-        case NS::Game::Blocks::kBlockIdSlope15:
-            return "Slope 15";
-        default:
+        if (!NS::Game::Blocks::IsSlopeBlock(slopeKind))
             return "Slope";
-        }
+        const NS::Game::Blocks::BlockTypeDescriptor* desc = NS::Game::Blocks::FindBlockType(slopeKind);
+        return desc != nullptr ? desc->displayName : "Slope";
     }
 
     const std::array<PaletteTemplate, 8>& PaletteTemplateSlots() noexcept
     {
-        namespace Blk = NS::Game::Blocks;
-        static const std::array<PaletteTemplate, 8> slots = {{
-            PaletteTemplateForKind(Blk::kBlockIdSolid),
-            PaletteTemplateForKind(Blk::kBlockIdCoin),
-            PaletteTemplateForKind(Blk::kBlockIdPowerStar),
-            PaletteTemplateForKind(Blk::kBlockIdSpawn),
-            PaletteTemplateForKind(Blk::kBlockIdSlope45),
-            PaletteTemplateForKind(Blk::kBlockIdPole),
-            PaletteTemplateForKind(Blk::kBlockIdHazard),
-            PaletteTemplateForKind(Blk::kBlockIdWater),
-        }};
+        // 登録簿の paletteSlot 並び順がそのまま toolbar スロット。 CategoryPalette の slot 並びと一致を保つ
+        static const std::array<PaletteTemplate, 8> slots = []() {
+            std::array<PaletteTemplate, 8> result{};
+            auto out = result.begin();
+            for (const NS::Game::Blocks::BlockTypeDescriptor& desc : NS::Game::Blocks::BlockTypeDescriptors())
+                if (desc.paletteSlot && out != result.end())
+                    *out++ = PaletteTemplateForKind(desc.id);
+            return result;
+        }();
         return slots;
     }
 } // namespace NS::Editor
