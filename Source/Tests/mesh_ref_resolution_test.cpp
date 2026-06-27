@@ -92,6 +92,9 @@ TEST(MeshRefResolution, EmptyMeshRefFallsBackToCube)
     ASSERT_NE(built, nullptr);
     auto* mr = FindComponent<MeshRendererComponent>(*built);
     ASSERT_NE(mr, nullptr);
+    // headless では Builtin("cube") も nullptr で cube 比較が vacuous になる。 解決器が空参照で nullptr を
+    // 返すこと自体を headless でも縛り、 空参照が未解決のまま残る退行を捕まえる
+    EXPECT_EQ(ResolveMeshFromRef(assets, ""), nullptr);
     EXPECT_EQ(mr->GetMesh(), assets.Builtin("cube"));
 }
 
@@ -130,5 +133,7 @@ TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
 
     auto* compMesh = FindComponent<MeshRendererComponent>(*compBuilt);
     ASSERT_NE(compMesh, nullptr);
+    // 上と同じく headless でも意味を持つ解決器の判定を縛る (cube 比較は device 上でのみ非 vacuous)
+    EXPECT_EQ(ResolveMeshFromRef(assets, ""), nullptr);
     EXPECT_EQ(compMesh->GetMesh(), assets.Builtin("cube"));
 }
