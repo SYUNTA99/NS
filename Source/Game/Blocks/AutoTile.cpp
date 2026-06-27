@@ -27,35 +27,43 @@ namespace NS::Game::Blocks
         };
         constexpr std::uint8_t kVariantsPerTheme = 8;
 
-        // 連結判定に使う視覚キー。 描画されるメッシュ参照とマテリアル添字が一致する隣接だけを連結扱いにする
+        // 連結判定に使う視覚キー。 メッシュ参照 + マテリアル参照 + マテリアル添字が一致する隣接だけを連結扱いにする
+        // materialRef は MeshRenderer の "Material" 文字列。 solid("block") と water("water") は mesh / 添字が同じでも
+        // 見た目が違うので連結させない
         struct VisualTileKey
         {
             std::string mesh;
-            int material = -1;
+            std::string materialRef;
+            int materialIndex = -1;
 
             [[nodiscard]] bool operator==(const VisualTileKey& other) const noexcept
             {
-                return material == other.material && mesh == other.mesh;
+                return materialIndex == other.materialIndex && mesh == other.mesh && materialRef == other.materialRef;
             }
         };
 
-        // object の視覚キーを導く。 MeshRenderer の反射 "Mesh" 値とマテリアル添字で連結同一性を決める
+        // object の視覚キーを導く。 MeshRenderer の反射 "Mesh" / "Material" 値とマテリアル添字で連結同一性を決める
         // MeshRenderer を持たない object (coin / star 等) は空メッシュキーになり solid と連結しない
         VisualTileKey ComputeVisualKey(const NS::Game::Level::ObjectInstance& object)
         {
             VisualTileKey key;
-            key.material = object.materialIndex;
+            key.materialIndex = object.materialIndex;
             for (const auto& component : object.components)
             {
                 if (component.typeName != "MeshRendererComponent")
                     continue;
                 for (const auto& field : component.fields)
                 {
-                    if (field.name != "Mesh")
-                        continue;
-                    if (const auto* meshName = std::get_if<std::string>(&field.value))
-                        key.mesh = *meshName;
-                    break;
+                    if (field.name == "Mesh")
+                    {
+                        if (const auto* meshName = std::get_if<std::string>(&field.value))
+                            key.mesh = *meshName;
+                    }
+                    else if (field.name == "Material")
+                    {
+                        if (const auto* matRef = std::get_if<std::string>(&field.value))
+                            key.materialRef = *matRef;
+                    }
                 }
                 break;
             }

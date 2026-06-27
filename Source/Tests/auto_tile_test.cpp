@@ -28,6 +28,15 @@ namespace
         object.components.push_back(std::move(renderer));
         return object;
     }
+
+    // MeshRenderer に "Material" 反射値を足した object。 solid="block" / water="water" の連結差を検証する種
+    LevelNs::ObjectInstance MakeVisualMat(
+        std::int16_t x, std::int16_t y, std::int16_t z, const char* mesh, const char* materialRef)
+    {
+        LevelNs::ObjectInstance object = MakeVisual(x, y, z, mesh);
+        object.components[0].fields.push_back(LevelNs::FieldValue{"Material", std::string(materialRef)});
+        return object;
+    }
 } // namespace
 
 TEST(AutoTileTest, IsolatedBlockHasZeroMask)
@@ -79,6 +88,27 @@ TEST(AutoTileTest, DifferentMaterialNeighborDoesNotConnect)
     lv.objects.push_back(MakeVisual(+1, 0, 0, "cube", 7));
     auto m = BlocksNs::ComputeNeighborMask(lv, 0, 0, 0);
     EXPECT_EQ(m, 0u);
+}
+
+TEST(AutoTileTest, DifferentMaterialRefNeighborDoesNotConnect)
+{
+    // メッシュもマテリアル添字も同じでも、 MeshRenderer の Material 参照が違えば見た目が異なるので連結しない
+    // solid("block") の面が隣の water("water") へ誤って埋没する退行を縛る
+    LevelNs::LevelData lv;
+    lv.objects.push_back(MakeVisualMat(0, 0, 0, "cube", "block"));
+    lv.objects.push_back(MakeVisualMat(+1, 0, 0, "cube", "water"));
+    auto m = BlocksNs::ComputeNeighborMask(lv, 0, 0, 0);
+    EXPECT_EQ(m, 0u);
+}
+
+TEST(AutoTileTest, SameMaterialRefNeighborConnects)
+{
+    // メッシュ・添字・Material 参照がすべて一致する隣接は連結する
+    LevelNs::LevelData lv;
+    lv.objects.push_back(MakeVisualMat(0, 0, 0, "cube", "block"));
+    lv.objects.push_back(MakeVisualMat(+1, 0, 0, "cube", "block"));
+    auto m = BlocksNs::ComputeNeighborMask(lv, 0, 0, 0);
+    EXPECT_EQ(m, 0b00000001u);
 }
 
 TEST(AutoTileTest, DifferentVisualIdentityNeighborDoesNotSetBit)
