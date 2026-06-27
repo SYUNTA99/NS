@@ -220,6 +220,28 @@ TEST(ComponentCommand, CommandsOnUnknownIdAreNoOp)
     EXPECT_EQ(lv.objects.size(), 1u);
 }
 
+TEST(ComponentCommand, RemoveLastComponentIsRefusedToAvoidGhost)
+{
+    LevelNs::LevelData lv;
+    lv.objects.push_back(MakeObject());
+    lv.objects[0].components.push_back(LevelNs::ComponentData{"MeshRendererComponent"});
+    std::vector<std::uint32_t> ids;
+    std::uint32_t next = 0;
+    LevelNs::EditTarget t{lv, ids, next};
+    LevelNs::ResetEditIds(t);
+
+    const std::uint32_t id = LevelNs::IdAt(t, 0);
+    EditorNs::RemoveComponentCommand cmd(id, 0); // 唯一の component を消そうとする
+
+    cmd.Do(t); // 空構成は build で不可視ゴーストになるので除去を拒む
+    ASSERT_EQ(lv.objects[0].components.size(), 1u);
+    EXPECT_EQ(lv.objects[0].components[0].typeName, "MeshRendererComponent");
+
+    cmd.Undo(t); // 退避が無いので Undo も何もしない
+    ASSERT_EQ(lv.objects[0].components.size(), 1u);
+    EXPECT_EQ(lv.objects[0].components[0].typeName, "MeshRendererComponent");
+}
+
 TEST(ComponentCommand, SetObjectComponentsReplacesWholeListUndoRestores)
 {
     LevelNs::LevelData lv;

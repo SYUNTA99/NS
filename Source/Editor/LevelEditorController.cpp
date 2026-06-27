@@ -9,7 +9,6 @@
 #include "Editor/Undo/AddObjectCommand.h"
 #include "Editor/Undo/DuplicateObjectCommand.h"
 #include "Editor/Undo/RemoveComponentCommand.h"
-#include "Editor/Undo/SetObjectComponentsCommand.h"
 #include "Editor/Undo/TransformCommand.h"
 #include "Framework/App/Application.h"
 #include "Framework/Core/Filesystem.h"
@@ -346,40 +345,20 @@ NS::Scene::GameObject* LevelEditorController::PlayerObject() noexcept
     return m_scene->m_player.get();
 }
 
-void LevelEditorController::SyncSelectedObjectColliderFromComponent() noexcept
+void LevelEditorController::SyncSelectedObjectColliderFromComponent()
 {
     if (m_selectedObjectIndex >= m_scene->m_level.objects.size())
         return;
 
-    // grid は cell 固定で collider を編集しない (自由配置物のみ反射を書き戻す)
-    if ((m_scene->m_level.objects[m_selectedObjectIndex].flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
+    NS::Game::Level::ObjectInstance& object = m_scene->m_level.objects[m_selectedObjectIndex];
+    // grid は cell 固定で collider を編集しない (自由配置物のみ書き戻す)
+    if ((object.flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
         return;
 
-    // 反射編集で runtime collider の half-extents / offset / 回転は既に更新済。 それを ObjectInstance へ写して
-    // 保存と次プレイの rebuild に乗せる
-    for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
-    {
-        if (m_scene->m_objectSourceIndices[i] != m_selectedObjectIndex)
-            continue;
-        auto* collider = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_scene->m_objects[i]);
-        if (collider == nullptr)
-            return;
-        const NS::Math::Vector3 he = collider->HalfExtents();
-        const NS::Math::Vector3 offset = collider->CenterOffset();
-        const NS::Math::Quaternion rot = collider->LocalRotation();
-        NS::Game::Level::ObjectInstance& object = m_scene->m_level.objects[m_selectedObjectIndex];
-        object.colliderHalfExtentsX = he.x;
-        object.colliderHalfExtentsY = he.y;
-        object.colliderHalfExtentsZ = he.z;
-        object.colliderOffsetX = offset.x;
-        object.colliderOffsetY = offset.y;
-        object.colliderOffsetZ = offset.z;
-        object.colliderRotationX = rot.x;
-        object.colliderRotationY = rot.y;
-        object.colliderRotationZ = rot.z;
-        object.colliderRotationW = rot.w;
-        return;
-    }
+    // 反射編集で更新済の runtime collider を components データへ書き戻す。 BuildFromComponents が読むのは
+    // components 側で、 scalar collider フィールドへ書いても次の rebuild で編集が失われる
+    if (NS::Scene::GameObject* go = SelectedObjectGameObject())
+        NS::Editor::WriteBackColliderEdits(*go, object);
 }
 
 NS::Scene::GameObject* LevelEditorController::CameraBrainObject() noexcept
@@ -650,21 +629,27 @@ void LevelEditorController::RenderColliderWireframes() noexcept
     const NS::Math::Color freeColor{0.35f, 1.0f, 0.45f, 1.0f};
     const NS::Math::Color gridColor{0.15f, 0.70f, 0.30f, 1.0f};
 
-    // free / grid の別は ObjectInstance の flags/kind で決まる。 runtime list は 1 本
+    // free / grid の別は ObjectInstance の flags で決まる。 runtime list は 1 本
     for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
-        auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_scene->m_objects[i]);
-        if (box == nullptr)
-            continue;
         const NS::Game::Level::ObjectInstance& entry = m_scene->m_level.objects[m_scene->m_objectSourceIndices[i]];
         if ((entry.flags & NS::Game::Level::kObjectFlagGridAligned) == 0)
         {
-            const NS::Physics::OBB obb = box->WorldOBB();
-            NS::Graphics::DebugDraw::OBB(obb.center, obb.axisX, obb.axisY, obb.axisZ, obb.halfExtents, freeColor);
+            // 自由配置物は Box があれば回転込み OBB、 球 / カプセルは collider 由来の AABB で出す
+            if (auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_scene->m_objects[i]))
+            {
+                const NS::Physics::OBB obb = box->WorldOBB();
+                NS::Graphics::DebugDraw::OBB(obb.center, obb.axisX, obb.axisY, obb.axisZ, obb.halfExtents, freeColor);
+            }
+            else if (auto aabb = NS::Game::Blocks::ColliderWorldAABB(*m_scene->m_objects[i]))
+            {
+                NS::Graphics::DebugDraw::AABB(*aabb, freeColor);
+            }
         }
         else if (NS::Game::Blocks::IsGridSolidObject(entry))
         {
-            NS::Graphics::DebugDraw::AABB(box->WorldAABB(), gridColor);
+            if (auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_scene->m_objects[i]))
+                NS::Graphics::DebugDraw::AABB(box->WorldAABB(), gridColor);
         }
         // grid の非 solid (hazard 等) は当たり形状を出さない
     }
@@ -818,17 +803,12 @@ void LevelEditorController::AddComponentToSelected(std::string_view typeName)
     if (id == NS::Game::Level::kInvalidObjectId)
         return;
     NS::Game::Level::EditTarget target = SceneEditTarget();
-    const std::size_t objectIndex = NS::Game::Level::IndexOfId(target, id);
-    if (objectIndex == NS::Game::Level::kNoObjectIndex)
+    if (NS::Game::Level::IndexOfId(target, id) == NS::Game::Level::kNoObjectIndex)
         return;
 
     NS::Game::Level::ComponentData payload;
     payload.typeName = std::string(typeName);
-
-    if (m_scene->m_level.objects[objectIndex].components.empty())
-        ConvertKindObjectAndAppend(id, std::move(payload));
-    else
-        m_editor.Undo().Push(std::make_unique<NS::Editor::AddComponentCommand>(id, std::move(payload)), target);
+    m_editor.Undo().Push(std::make_unique<NS::Editor::AddComponentCommand>(id, std::move(payload)), target);
 
     // components が変わったので runtime を組み直し、 同じ id の選択を貼り直す
     m_scene->RebuildBlocksFromLevelData();
@@ -842,7 +822,14 @@ void LevelEditorController::RemoveComponentFromSelected(std::size_t componentInd
     if (id == NS::Game::Level::kInvalidObjectId)
         return;
     NS::Game::Level::EditTarget target = SceneEditTarget();
-    if (NS::Game::Level::IndexOfId(target, id) == NS::Game::Level::kNoObjectIndex)
+    const std::size_t objectIndex = NS::Game::Level::IndexOfId(target, id);
+    if (objectIndex == NS::Game::Level::kNoObjectIndex)
+        return;
+
+    // 最後の 1 個 / 範囲外は消さない (空構成は build で消えるゴーストになる)。 no-op command を積まず undo
+    // 履歴も汚さない
+    const std::vector<NS::Game::Level::ComponentData>& components = m_scene->m_level.objects[objectIndex].components;
+    if (componentIndex >= components.size() || components.size() <= 1)
         return;
 
     m_editor.Undo().Push(std::make_unique<NS::Editor::RemoveComponentCommand>(id, componentIndex), target);
@@ -910,68 +897,15 @@ void LevelEditorController::PasteClipboardComponentToSelected()
     if (id == NS::Game::Level::kInvalidObjectId)
         return;
     NS::Game::Level::EditTarget target = SceneEditTarget();
-    const std::size_t objectIndex = NS::Game::Level::IndexOfId(target, id);
-    if (objectIndex == NS::Game::Level::kNoObjectIndex)
+    if (NS::Game::Level::IndexOfId(target, id) == NS::Game::Level::kNoObjectIndex)
         return;
 
     // 同型がすでにあっても末尾へ重ねて貼る (上書きはしない)
-    if (m_scene->m_level.objects[objectIndex].components.empty())
-        ConvertKindObjectAndAppend(id, *m_componentClipboard);
-    else
-        m_editor.Undo().Push(std::make_unique<NS::Editor::AddComponentCommand>(id, *m_componentClipboard), target);
+    m_editor.Undo().Push(std::make_unique<NS::Editor::AddComponentCommand>(id, *m_componentClipboard), target);
 
     m_scene->RebuildBlocksFromLevelData();
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
-}
-
-void LevelEditorController::ConvertKindObjectAndAppend(std::uint32_t objectId, NS::Game::Level::ComponentData appended)
-{
-    NS::Game::Level::EditTarget target = SceneEditTarget();
-    const std::size_t objectIndex = NS::Game::Level::IndexOfId(target, objectId);
-    if (objectIndex == NS::Game::Level::kNoObjectIndex)
-        return;
-
-    // components が空のオブジェクトに 1 コンポを足す前に、 現在の構成をデータ化して取りこぼしを防ぐ
-    // そうしないと components が非空になった瞬間に mesh と当たりが落ちる
-    std::vector<NS::Game::Level::ComponentData> list = MaterializeKindComponents(m_scene->m_level.objects[objectIndex]);
-
-    // データ化できない時は全置換を避け単発追加へ倒す
-    if (list.empty())
-    {
-        m_editor.Undo().Push(std::make_unique<NS::Editor::AddComponentCommand>(objectId, std::move(appended)), target);
-        return;
-    }
-
-    list.push_back(std::move(appended));
-    m_editor.Undo().Push(std::make_unique<NS::Editor::SetObjectComponentsCommand>(objectId, std::move(list)), target);
-}
-
-std::vector<NS::Game::Level::ComponentData> LevelEditorController::MaterializeKindComponents(
-    const NS::Game::Level::ObjectInstance& object) const
-{
-    std::vector<NS::Game::Level::ComponentData> result;
-    auto* app = NS::App::Application::Get();
-    if (app == nullptr)
-        return result;
-
-    // オブジェクトを runtime に一度組み、 その構成を反射値ごとデータへ写し取る
-    // mesh は反射で運べないが BuildPlacedObject が再解決するので欠けてよい
-    // collider 回転の反射は euler 度なので、 quaternion との往復で gimbal 付近だけ精度が落ちる
-    std::unique_ptr<NS::Scene::GameObject> temp =
-        NS::Game::Blocks::BuildPlacedObject(object, app->Assets(), m_scene->m_level.materialPaths);
-    if (temp == nullptr)
-        return result;
-    for (NS::Scene::Component* comp : temp->Components())
-    {
-        if (comp == nullptr)
-            continue;
-        NS::Game::Level::ComponentData captured = NS::Editor::CaptureComponentData(*comp);
-        // 反射を持たない型は空 typeName になり rebuild で読み飛ばされるので、 データへ写さない
-        if (!captured.typeName.empty())
-            result.push_back(std::move(captured));
-    }
-    return result;
 }
 
 void LevelEditorController::PromoteGridBlockToFree(std::size_t objectIndex)

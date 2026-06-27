@@ -118,9 +118,9 @@ public:
     [[nodiscard]] NS::Scene::GameObject* SelectedObjectGameObject() noexcept;
     /// Player の runtime GameObject。 未構築は nullptr。 操作感のライブ調整 Inspector に使う
     [[nodiscard]] NS::Scene::GameObject* PlayerObject() noexcept;
-    /// 選択中の自由オブジェクトの runtime collider half-extents を ObjectInstance へ書き戻す (保存に乗せる)
+    /// 選択中の自由オブジェクトの runtime collider を components データへ書き戻す (保存と rebuild に乗せる)
     /// Inspector で collider を反射編集した後に呼ぶ。 grid / 非選択時は何もしない
-    void SyncSelectedObjectColliderFromComponent() noexcept;
+    void SyncSelectedObjectColliderFromComponent();
 
     /// 選択 object の末尾へ型名のみのコンポーネントを足す (Undo 対応、 非選択時は何もしない)
     void AddComponentToSelected(std::string_view typeName);
@@ -219,14 +219,6 @@ private:
 
     /// scene の level + 識別子ストアから編集対象 view を組む
     [[nodiscard]] NS::Game::Level::EditTarget SceneEditTarget() noexcept;
-
-    /// kind 由来しか持たないオブジェクトに 1 コンポを足す時、 先に kind 構成をデータ化してから appended を末尾へ付ける
-    /// データ化と追加を 1 つの undo 単位にまとめ、 components 駆動への切替で mesh と当たりが落ちないようにする
-    void ConvertKindObjectAndAppend(std::uint32_t objectId, NS::Game::Level::ComponentData appended);
-
-    /// object の kind 構成を runtime に一度組んで反射値ごと ComponentData の一覧へ写し取る
-    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MaterializeKindComponents(
-        const NS::Game::Level::ObjectInstance& object) const;
 
     /// 識別子でギズモ選択を貼り直す。 対象が消えていれば選択解除する
     void ReselectFreeObjectById(std::uint32_t id) noexcept;

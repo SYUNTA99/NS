@@ -478,8 +478,7 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             ImGui::TextDisabled("Material: default");
 
         // 選択オブジェクトの runtime Component を反射で一覧編集する
-        // collider half-extents は編集後に ObjectInstance へ書き戻して保存・rebuild に乗せる
-        // (色など他のフィールドはライブのみで保存対象外)
+        // collider は編集後に components データへ書き戻して保存・rebuild に乗せる。 色など他のフィールドはライブのみ
         if (auto* go = editor.SelectedObjectGameObject())
         {
             ImGui::Separator();
@@ -507,7 +506,7 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             }
 
             if (obj.components.empty())
-                ImGui::TextDisabled("kind 由来の構成。 足すとデータ駆動の構成に変わる");
+                ImGui::TextDisabled("コンポーネント無し。 足すと表示・当たりが付く");
 
             // データ上のコンポーネント 1 件ずつに Copy / Delete を出す
             // 添字で狙うので同型が複数あっても選んだ 1 つだけを取り違えずに扱える
@@ -519,9 +518,13 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
                 ImGui::SameLine();
                 if (ImGui::SmallButton("Copy"))
                     editor.CopyComponentToClipboard(k);
-                ImGui::SameLine();
-                if (ImGui::SmallButton("Delete"))
-                    editor.RemoveComponentFromSelected(k);
+                // 最後の 1 個は消すと空構成のゴーストになるので Delete を出さない
+                if (obj.components.size() > 1)
+                {
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("Delete"))
+                        editor.RemoveComponentFromSelected(k);
+                }
                 if (typeName == "MeshRendererComponent")
                     ImGui::TextColored(ImVec4{1.0f, 0.6f, 0.2f, 1.0f}, "削除すると見えなくなる");
                 ImGui::PopID();

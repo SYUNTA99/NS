@@ -17,6 +17,10 @@ namespace NS::Editor
         std::vector<NS::Game::Level::ComponentData>& components = target.level.objects[index].components;
         if (m_componentIndex >= components.size())
             return;
+        // 最後の 1 個は消さない。 空構成の object は build で nullptr になり、 不可視で当たりも gizmo 選択も
+        // 失う ゴーストとして level に残る
+        if (components.size() <= 1)
+            return;
         m_removed = components[m_componentIndex]; // erase より先に反射値ごと退避する
         m_removedIndex = m_componentIndex;
         components.erase(components.begin() + static_cast<std::ptrdiff_t>(m_componentIndex));

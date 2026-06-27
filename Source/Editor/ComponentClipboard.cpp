@@ -2,14 +2,26 @@
 
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Component.h"
+#include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Reflection.h"
 
 #include <cstddef>
 #include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 namespace NS::Editor
 {
+    namespace
+    {
+        bool IsColliderTypeName(std::string_view typeName) noexcept
+        {
+            return typeName == "BoxColliderComponent" || typeName == "SphereColliderComponent" ||
+                   typeName == "CapsuleColliderComponent" || typeName == "SlopeColliderComponent";
+        }
+    } // namespace
+
     NS::Game::Level::ComponentData CaptureComponentData(const NS::Scene::Component& comp)
     {
         NS::Game::Level::ComponentData data;
@@ -68,5 +80,26 @@ namespace NS::Editor
             data.fields.push_back(std::move(value));
         }
         return data;
+    }
+
+    void WriteBackColliderEdits(NS::Scene::GameObject& runtime, NS::Game::Level::ObjectInstance& object)
+    {
+        for (NS::Scene::Component* comp : runtime.Components())
+        {
+            if (comp == nullptr)
+                continue;
+            const NS::Scene::ReflectionInfo* info = comp->GetReflection();
+            if (info == nullptr || !IsColliderTypeName(info->typeName))
+                continue;
+
+            NS::Game::Level::ComponentData captured = CaptureComponentData(*comp);
+            for (NS::Game::Level::ComponentData& data : object.components)
+            {
+                if (data.typeName != captured.typeName)
+                    continue;
+                data.fields = std::move(captured.fields); // 同型の最初の 1 件へ反射値ごと写す
+                break;
+            }
+        }
     }
 } // namespace NS::Editor
