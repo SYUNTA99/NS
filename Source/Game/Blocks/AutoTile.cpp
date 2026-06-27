@@ -1,7 +1,6 @@
 #include "Game/Blocks/AutoTile.h"
 
 #include "Framework/Graphics/TextureArray.h"
-#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Theme/ThemeRegistry.h"
 
@@ -40,31 +39,8 @@ namespace NS::Game::Blocks
             }
         };
 
-        // components が空の旧データ向けに kind から描画メッシュの builtin 名を引く
-        // 解決規則は BuildPlacedObject の描画メッシュ選択と揃える (slope は角度別 wedge、 pole は pole、 他は cube)
-        std::string BuiltinMeshNameForKind(const NS::Game::Level::ObjectInstance& object)
-        {
-            using namespace NS::Game::Level;
-            if ((object.flags & kObjectFlagGridAligned) == 0)
-                return "cube";
-            if (IsSlopeBlock(object.kind))
-            {
-                if (object.kind == kBlockIdSlope45)
-                    return "wedge45";
-                if (object.kind == kBlockIdSlope30)
-                    return "wedge30";
-                if (object.kind == kBlockIdSlope22)
-                    return "wedge22";
-                if (object.kind == kBlockIdSlope15)
-                    return "wedge15";
-                return "cube";
-            }
-            if (IsPoleBlock(object.kind))
-                return "pole";
-            return "cube";
-        }
-
-        // object の視覚キーを導く。 MeshRenderer の反射 "Mesh" 値があればそれを、 空 / 無ければ kind 由来へ倒す
+        // object の視覚キーを導く。 MeshRenderer の反射 "Mesh" 値とマテリアル添字で連結同一性を決める
+        // MeshRenderer を持たない object (coin / star 等) は空メッシュキーになり solid と連結しない
         VisualTileKey ComputeVisualKey(const NS::Game::Level::ObjectInstance& object)
         {
             VisualTileKey key;
@@ -83,8 +59,6 @@ namespace NS::Game::Blocks
                 }
                 break;
             }
-            if (key.mesh.empty())
-                key.mesh = BuiltinMeshNameForKind(object);
             return key;
         }
     } // namespace

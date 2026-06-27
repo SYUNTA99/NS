@@ -1,6 +1,5 @@
 #include "Game/Level/PlayMode.h"
 
-#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
 
@@ -26,21 +25,15 @@ namespace NS::Game::Level
             return -1;
         }
 
-        // PickupComponent があればその種別で、 無ければ components 化前の旧 kind データへ倒して判定する
+        // 拾得種別は PickupComponent だけで決まる。 読込時移行でどの拾得物も PickupComponent を持つ
         bool ObjectIsCoin(const ObjectInstance& object) noexcept
         {
-            const int kind = PickupKindOf(object);
-            if (kind >= 0)
-                return kind == 0;
-            return object.kind == NS::Game::Blocks::kBlockIdCoin;
+            return PickupKindOf(object) == 0;
         }
 
         bool ObjectIsStar(const ObjectInstance& object) noexcept
         {
-            const int kind = PickupKindOf(object);
-            if (kind >= 0)
-                return kind == 1;
-            return object.kind == NS::Game::Blocks::kBlockIdPowerStar;
+            return PickupKindOf(object) == 1;
         }
     } // namespace
 

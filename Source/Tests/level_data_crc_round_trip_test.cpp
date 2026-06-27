@@ -44,7 +44,12 @@ TEST(PlayModeCrc, RoundTripWithCoinCollectionPreservesLevelData)
     level.spawnX = 0;
     level.spawnY = 0;
     level.spawnZ = 0;
-    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdCoin, 0));
+    LevelNs::ObjectInstance coin = LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdCoin, 0);
+    LevelNs::ComponentData pickup;
+    pickup.typeName = "PickupComponent";
+    pickup.fields.push_back(LevelNs::FieldValue{"Pickup Kind", 0});
+    coin.components.push_back(std::move(pickup));
+    level.objects.push_back(std::move(coin));
     const std::uint32_t before = level.ComputeCrc32();
 
     LevelNs::PlayState play;
@@ -66,7 +71,12 @@ TEST(PlayModeCrc, RoundTripWithStarContactPreservesLevelData)
     level.spawnX = 0;
     level.spawnY = 0;
     level.spawnZ = 0;
-    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdPowerStar, 0));
+    LevelNs::ObjectInstance star = LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdPowerStar, 0);
+    LevelNs::ComponentData pickup;
+    pickup.typeName = "PickupComponent";
+    pickup.fields.push_back(LevelNs::FieldValue{"Pickup Kind", 1});
+    star.components.push_back(std::move(pickup));
+    level.objects.push_back(std::move(star));
     const std::uint32_t before = level.ComputeCrc32();
 
     LevelNs::PlayState play;
