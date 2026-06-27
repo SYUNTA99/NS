@@ -46,17 +46,24 @@ namespace NS::Game::Blocks
         NS::Scene::AssetManager& assets,
         const std::vector<std::string>& materialPaths);
 
+    /// テクスチャが揃うまで cube 配置物に与える基準色
+    inline constexpr NS::Math::Vector3 kSolidBaseColor{0.70f, 0.70f, 0.75f};
+
+    /// grid セルに置く cube 1 個分の component 一覧を組む。 cube メッシュ + block 材質 + 半径 0.5 の Box 当たり
+    /// MakeGridObject と editor の grid 配置が同じ cube を起こす窓口
+    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeGridCubeComponents();
+
+    /// 自由配置の cube 1 個分の component 一覧を組む。 cube メッシュ + shapeCollider に応じた Box/Sphere/Capsule 当たり
+    /// 当たり寸法 / offset / 回転は object の collider フィールドから読む
+    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeFreeCubeComponents(
+        const NS::Game::Level::ObjectInstance& object);
+
     /// kind が決めていた mesh / material / 色 / 当たり / 拾得を ComponentData 一覧へ展開する
     /// kind は引数で受け取り、 collider 寸法 / flags など kind 以外の属性は object から読む
     /// コイン / スターは視覚を持たないため PickupComponent のみを返す。 未対応 kind は空一覧を返す
     /// 積む typeName は ComponentRegistry の curated 名のみで、 任意 type は生成しない
     [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MaterializeLegacyKind(
         std::uint16_t kind, const NS::Game::Level::ObjectInstance& object);
-
-    /// 旧 kind 付きレベルを読込時に一度だけ実 component 一覧へ移行する
-    /// LegacyKind placeholder を持つ object はその id を MaterializeLegacyKind で展開し、 placeholder ごと置換する
-    /// 既に実 component を持つ object は変えない。 二重に呼んでも構成は変わらない (冪等)
-    void MigrateLegacyLevel(NS::Game::Level::LevelData& level);
 
     /// grid 配置された固形 block か。 components から判定する (gridAligned かつ BoxCollider 持ちで
     /// slope / pole / hazard / 拾得を持たない)。 instancing / 昇格 / 当たり可視化の「固形」判定窓口

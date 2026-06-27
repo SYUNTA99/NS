@@ -293,68 +293,6 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     EXPECT_EQ(dst.objects[1].flags, LevelNs::kObjectFlagGridAligned);
 }
 
-// 旧 blocks → 統一 objects の移行写像 (セル整数 → world float、 rotation → yaw quaternion、 gridAligned 付与)
-// blockId が決めていた種別は移行で実 component へ起き、 solid は Box・ slope は SlopeCollider になる
-TEST(SaveLoadRoundTrip, MigrateBlocksToObjectsMapsCells)
-{
-    LevelNs::LevelData level;
-    std::vector<LevelNs::BlockEntry> blocks;
-    blocks.push_back({1, 2, 3, NS::Game::Blocks::kBlockIdSolid, 0, 0});
-    blocks.push_back({-4, 0, 5, NS::Game::Blocks::kBlockIdSlope45, 1, 0});
-    LevelNs::MigrateBlocksToObjects(level, blocks);
-
-    ASSERT_EQ(level.objects.size(), 2u);
-
-    const auto hasComponent = [](const LevelNs::ObjectInstance& object, const char* typeName) {
-        for (const auto& component : object.components)
-            if (component.typeName == typeName)
-                return true;
-        return false;
-    };
-
-    EXPECT_FLOAT_EQ(level.objects[0].positionX, 1.0f);
-    EXPECT_FLOAT_EQ(level.objects[0].positionY, 2.0f);
-    EXPECT_FLOAT_EQ(level.objects[0].positionZ, 3.0f);
-    EXPECT_FLOAT_EQ(level.objects[0].scaleX, 1.0f);
-    EXPECT_TRUE(hasComponent(level.objects[0], "BoxColliderComponent"));
-    EXPECT_EQ(level.objects[0].materialIndex, -1);
-    EXPECT_NE(level.objects[0].flags & LevelNs::kObjectFlagGridAligned, 0);
-
-    EXPECT_FLOAT_EQ(level.objects[1].positionX, -4.0f);
-    EXPECT_TRUE(hasComponent(level.objects[1], "SlopeColliderComponent"));
-    // rotation=1 は yaw 90°、 単位 quaternion ではない (w != 1)
-    EXPECT_NE(level.objects[1].rotationW, 1.0f);
-}
-
-// 旧 "kind" だけで components 配列を持たない古いレベルは、 LoadLevelFromFile が読込時に実 component へ
-// 移行する。 editor / play どちらの load 経路でも LegacyKind placeholder が残らず描画・当たりが起きる
-TEST(SaveLoadRoundTrip, LegacyKindFileMigratesOnLoad)
-{
-    EditorNs::EnsureLevelsDirectoryExists();
-    auto path = EditorNs::BuildLevelPath("test_legacy_kind");
-    ASSERT_TRUE(path.has_value());
-
-    // 旧フォーマット: gridAligned solid を kind=1 だけで表し、 components 配列を持たない
-    const std::string legacy = R"({"formatVersion":1,"objects":[)"
-                               R"({"transform":{"pos":[0,0,0],"rot":[0,0,0,1],"scale":[1,1,1]},"flags":1,"kind":1}]})";
-    const auto* raw = reinterpret_cast<const std::byte*>(legacy.data());
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(*path, std::span<const std::byte>(raw, legacy.size())));
-
-    LevelNs::LevelData dst;
-    ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
-    ASSERT_EQ(dst.objects.size(), 1u);
-
-    const auto hasComponent = [](const LevelNs::ObjectInstance& object, const char* typeName) {
-        for (const auto& component : object.components)
-            if (component.typeName == typeName)
-                return true;
-        return false;
-    };
-    EXPECT_FALSE(hasComponent(dst.objects[0], "LegacyKind")); // 移行で placeholder は消える
-    EXPECT_TRUE(hasComponent(dst.objects[0], "MeshRendererComponent"));
-    EXPECT_TRUE(hasComponent(dst.objects[0], "BoxColliderComponent"));
-}
-
 // 配置物の "Base Color" 反射値が save→reload を往復で保持される
 // 種別固定の色上書きが消え、 色は component 経由で永続することの担保
 TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)

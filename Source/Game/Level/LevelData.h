@@ -21,19 +21,6 @@
 namespace NS::Game::Level
 {
 
-    /// 1 block の永続表現 (10 byte、 natural alignment、 padding なし)
-    /// rotation は 0/1/2/3 で 90° 刻みの Y 軸スナップ。 reserved は将来拡張枠で CRC32 hash 対象
-    struct BlockEntry
-    {
-        std::int16_t x = 0;
-        std::int16_t y = 0;
-        std::int16_t z = 0;
-        std::uint16_t blockId = 0;
-        std::uint8_t rotation = 0;
-        std::uint8_t reserved = 0;
-    };
-    static_assert(sizeof(BlockEntry) == 10, "BlockEntry must be 10 bytes (3×int16 + uint16 + 2×uint8)");
-
     /// `ObjectInstance::flags` の bit。 グリッド配置物は bit0 を立て instancing / オートタイル対象にする
     inline constexpr std::uint8_t kObjectFlagGridAligned = 0x01;
 
@@ -190,10 +177,6 @@ namespace NS::Game::Level
 
     /// gridAligned object の回転を step(0..3) の Y 軸 yaw quaternion に設定する
     void SetGridRotationStep(ObjectInstance& object, std::uint8_t rotationStep) noexcept;
-
-    /// 旧 BLKS の BlockEntry 群を ObjectInstance に変換して `level.objects` 末尾へ追加する (gridAligned を立てる)
-    /// rotation(0..3) は Y 軸 yaw quaternion に、 セル整数座標は world 座標 float に写す
-    void MigrateBlocksToObjects(LevelData& level, const std::vector<BlockEntry>& blocks);
 
     /// undo の概算メモリに使う heap 量 (sizeof 外)。 反射値の文字列ヒープは概算に含めない
     /// component vector / typeName / field 名の確保分を数える。 配置・変形系 Command の EstimatedBytes が使う

@@ -41,7 +41,6 @@
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/Transform.h"
 #include "Game/Blocks/AutoTile.h"
-#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/ChunkIO.h"
 #include "Game/Theme/ThemeRegistry.h"
 
@@ -75,8 +74,6 @@ void LevelPlayScene::LoadInitialLevel()
     const auto defaultPath = exeDir / "Levels" / "default.nslvl";
     if (!NS::Game::Level::LoadLevelFromFile(m_level, defaultPath))
         SeedInitialLevel(m_level);
-    // 旧 kind 付きデータを読込時に一度だけ実 component 一覧へ移行する (rebuild より前で component を揃える)
-    NS::Game::Blocks::MigrateLegacyLevel(m_level);
     RebuildObjectIds();
 }
 
@@ -449,13 +446,11 @@ void LevelPlayScene::OnRenderScene()
         // 補間 world matrix だけを読み、 毎フレームの文字列走査と近傍マスク O(N^2) を持ち込まない
         m_instanceBatcher->BeginFrame();
         // 個体色は全 instanced block 共通の solid 色 (theme tint は FrameCB の lightColor/ambientColor で行う)
-        const auto solidColor = NS::Game::Blocks::GetBaseColor(NS::Game::Blocks::kBlockIdSolid);
-        const NS::Math::Vector3 solidBaseColor{solidColor.R(), solidColor.G(), solidColor.B()};
         for (const InstancedBlock& block : m_instancedBlocks)
         {
             NS::Graphics::BlockInstance inst{};
             inst.worldMatrix = m_objects[block.objectIndex]->Root().InterpolatedWorldMatrix(ctx.alpha);
-            inst.baseColor = solidBaseColor;
+            inst.baseColor = NS::Game::Blocks::kSolidBaseColor;
             inst.textureSlice = block.textureSlice;
             m_instanceBatcher->Submit(cubeMesh, blockMat, inst);
         }

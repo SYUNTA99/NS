@@ -270,20 +270,8 @@ namespace NS::Game::Level
         object.materialIndex = -1;
         object.flags = kObjectFlagGridAligned;
         SetGridRotationStep(object, rotationStep);
-        object.components = NS::Game::Blocks::MaterializeLegacyKind(NS::Game::Blocks::kBlockIdSolid, object);
+        object.components = NS::Game::Blocks::MakeGridCubeComponents();
         return object;
-    }
-
-    void MigrateBlocksToObjects(LevelData& level, const std::vector<BlockEntry>& blocks)
-    {
-        level.objects.reserve(level.objects.size() + blocks.size());
-        for (const auto& block : blocks)
-        {
-            // 旧 blockId が決めていた mesh / 当たり / 拾得を実 component へ起こして積む
-            ObjectInstance object = MakeGridObject(block.x, block.y, block.z, block.rotation);
-            object.components = NS::Game::Blocks::MaterializeLegacyKind(block.blockId, object);
-            level.objects.push_back(std::move(object));
-        }
     }
 
     std::size_t EstimatedHeapBytes(const ComponentData& component) noexcept

@@ -24,10 +24,6 @@ namespace NS::Game::Level
         /// セーブフォーマットのバージョン。 binary 時代の major/minor を 1 整数へ置換した
         constexpr int kFormatVersion = 1;
 
-        /// 旧 "kind" だけで配置物を表す古い JSON を読込時に持ち回る移行 placeholder の型名
-        /// MigrateLegacyLevel が実 component へ展開して取り除くため、 保存時はこの型を書き出さない
-        constexpr const char* kLegacyKindTypeName = "LegacyKind";
-
         /// 読込時の上限。 巨大 size / 要素数による memory exhaustion を防ぐ (binary 版から移植)
         constexpr std::size_t kMaxLevelFileBytes = 16u * 1024u * 1024u;
         constexpr std::size_t kMaxObjectCount = 100'000u;
@@ -183,13 +179,7 @@ namespace NS::Game::Level
 
             nlohmann::json components = nlohmann::json::array();
             for (const auto& component : o.components)
-            {
-                // 移行 placeholder は永続させない。 通常は MigrateLegacyLevel が読込後に取り除くが、
-                // 万一残っていても保存段で弾いてファイルへ漏らさない
-                if (component.typeName == kLegacyKindTypeName)
-                    continue;
                 components.push_back(SerializeComponentData(component));
-            }
 
             nlohmann::json out;
             out["transform"] = std::move(transform);
@@ -215,8 +205,6 @@ namespace NS::Game::Level
                 ReadVec3(*transformIt, "scale", o.scaleX, o.scaleY, o.scaleZ);
             }
 
-            // 旧 "kind" は構造体には載らない。 ローカルで読み、 components 不在のとき LegacyKind placeholder へ移す
-            const int legacyKind = ReadInt(j, "kind", 0);
             o.materialIndex = static_cast<std::int16_t>(ReadInt(j, "materialIndex", o.materialIndex));
             o.flags = static_cast<std::uint8_t>(ReadInt(j, "flags", o.flags));
             o.reserved1 = static_cast<std::uint16_t>(ReadInt(j, "reserved1", o.reserved1));
@@ -237,22 +225,11 @@ namespace NS::Game::Level
             }
 
             const auto componentsIt = j.find("components");
-            const bool hasComponentsArray = componentsIt != j.end() && componentsIt->is_array();
-            if (hasComponentsArray)
+            if (componentsIt != j.end() && componentsIt->is_array())
             {
                 o.components.reserve(componentsIt->size());
                 for (const auto& cj : *componentsIt)
                     o.components.push_back(DeserializeComponentData(cj));
-            }
-            else if (legacyKind != 0)
-            {
-                // components 配列を持たず kind だけで配置物を表す古い JSON は移行 placeholder を 1 つ積む
-                // MigrateLegacyLevel が読込後に実 component へ展開する。 現フォーマット (空配列でも array あり)
-                // は対象外
-                ComponentData legacy;
-                legacy.typeName = kLegacyKindTypeName;
-                legacy.fields.push_back(FieldValue{"id", legacyKind});
-                o.components.push_back(std::move(legacy));
             }
             return o;
         }

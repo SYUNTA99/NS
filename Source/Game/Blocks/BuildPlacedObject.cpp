@@ -28,6 +28,9 @@ namespace NS::Game::Blocks
 {
     namespace
     {
+        // 1m grid セルの半径。 cube の grid 当たり箱に使う
+        constexpr NS::Math::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
+
         // free 配置物の material を解決する。 materialIndex 無効 / traversal は共有 player material に倒す
         NS::Graphics::Material* ResolveFreeMaterial(const NS::Game::Level::ObjectInstance& object,
                                                     NS::Scene::AssetManager& assets,
@@ -134,22 +137,6 @@ namespace NS::Game::Blocks
                                       NS::Game::Level::FieldValue{"Base Color", baseColor}});
         }
 
-        // 旧フォーマットの kind を読込時だけ持ち回る placeholder の型名。 LevelJson 側と綴りを合わせる契約
-        constexpr const char* kLegacyKindTypeName = "LegacyKind";
-
-        // object が LegacyKind placeholder を持てばその id を返す。 無ければ nullopt
-        std::optional<std::uint16_t> FindLegacyKindId(const NS::Game::Level::ObjectInstance& object) noexcept
-        {
-            const NS::Game::Level::ComponentData* legacy =
-                NS::Game::Level::FindComponentData(object, kLegacyKindTypeName);
-            if (legacy == nullptr)
-                return std::nullopt;
-            const NS::Game::Level::FieldValue* id = NS::Game::Level::FindField(*legacy, "id");
-            if (id != nullptr && std::holds_alternative<int>(id->value))
-                return static_cast<std::uint16_t>(std::get<int>(id->value));
-            return std::nullopt;
-        }
-
         // object が指定 typeName の component を持つか
         bool HasComponentType(const NS::Game::Level::ObjectInstance& object, const char* typeName) noexcept
         {
@@ -246,6 +233,53 @@ namespace NS::Game::Blocks
         if (const BlockTypeDescriptor* desc = FindBlockType(kind); desc != nullptr && desc->recipe != nullptr)
             return desc->recipe(object);
         return {};
+    }
+
+    std::vector<NS::Game::Level::ComponentData> MakeGridCubeComponents()
+    {
+        using namespace NS::Game::Level;
+        return {MeshRendererData("cube", "block", kSolidBaseColor),
+                MakeComponentData("BoxColliderComponent", {FieldValue{"Half Extents", kCellHalfExtents}})};
+    }
+
+    std::vector<NS::Game::Level::ComponentData> MakeFreeCubeComponents(const NS::Game::Level::ObjectInstance& object)
+    {
+        using namespace NS::Game::Level;
+        std::vector<ComponentData> result;
+
+        const NS::Math::Vector3 offset{object.colliderOffsetX, object.colliderOffsetY, object.colliderOffsetZ};
+        const NS::Math::Vector3 half{
+            object.colliderHalfExtentsX, object.colliderHalfExtentsY, object.colliderHalfExtentsZ};
+        const NS::Math::Quaternion rotation{
+            object.colliderRotationX, object.colliderRotationY, object.colliderRotationZ, object.colliderRotationW};
+        const NS::Math::Vector3 rotationEuler = QuaternionToEulerDegrees(rotation);
+
+        result.push_back(MeshRendererData("cube", "", kSolidBaseColor));
+
+        const ShapeCollider shape = ObjectShapeCollider(object);
+        if (shape == ShapeCollider::Sphere)
+        {
+            result.push_back(MakeComponentData(
+                "SphereColliderComponent",
+                {FieldValue{"Radius", object.colliderHalfExtentsX}, FieldValue{"Center Offset", offset}}));
+        }
+        else if (shape == ShapeCollider::Capsule)
+        {
+            result.push_back(MakeComponentData("CapsuleColliderComponent",
+                                               {FieldValue{"Radius", object.colliderHalfExtentsX},
+                                                FieldValue{"Half Height", object.colliderHalfExtentsY},
+                                                FieldValue{"Center Offset", offset},
+                                                FieldValue{"Rotation (deg)", rotationEuler}}));
+        }
+        else
+        {
+            // Box / Mesh 形状は回転込み当たり箱で受ける
+            result.push_back(MakeComponentData("BoxColliderComponent",
+                                               {FieldValue{"Half Extents", half},
+                                                FieldValue{"Center Offset", offset},
+                                                FieldValue{"Rotation (deg)", rotationEuler}}));
+        }
+        return result;
     }
 
     std::optional<NS::Math::AABB> ColliderWorldAABB(NS::Scene::GameObject& obj) noexcept
@@ -373,18 +407,5 @@ namespace NS::Game::Blocks
         obj->Root().SetScale(NS::Math::Vector3{object.scaleX, object.scaleY, object.scaleZ});
 
         return obj;
-    }
-
-    void MigrateLegacyLevel(NS::Game::Level::LevelData& level)
-    {
-        using namespace NS::Game::Level;
-        for (ObjectInstance& object : level.objects)
-        {
-            // 読込時の旧 "kind" は LegacyKind placeholder に入る。 id を取り出して実 component へ展開し置換する
-            // placeholder ごと差し替わるので migrate 後に LegacyKind は残らない。 既に実 component を持つ object
-            // は触らない
-            if (const std::optional<std::uint16_t> legacyKind = FindLegacyKindId(object))
-                object.components = MaterializeLegacyKind(*legacyKind, object);
-        }
     }
 } // namespace NS::Game::Blocks
