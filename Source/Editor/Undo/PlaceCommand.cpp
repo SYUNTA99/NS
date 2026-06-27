@@ -13,11 +13,6 @@ namespace NS::Editor
           m_prototype(std::move(prototype))
     {}
 
-    PlaceCommand::PlaceCommand(
-        std::int16_t x, std::int16_t y, std::int16_t z, std::uint16_t blockId, std::uint8_t rotation) noexcept
-        : PlaceCommand(NS::Game::Level::MakeGridObject(0, 0, 0, blockId, 0), x, y, z, rotation)
-    {}
-
     void PlaceCommand::Do(NS::Game::Level::EditTarget& target) noexcept
     {
         NS::Game::Level::LevelData& level = target.level;

@@ -5,7 +5,7 @@
 ///
 /// @details 「パレットで何を置くか」を kind 値ではなくプロトタイプの配置物として持つ
 /// 各スロットは複製元の `ObjectInstance` を 1 つ抱え、 配置時はこれを複製して座標 / 回転を焼く
-/// 表示名はこのレジストリが持ち、 BlockRegistry の表示名引きに依存しない
+/// prototype は kind ではなく実 component 一覧を持ち、 表示名 / spawn / 回転可否はこのレジストリが持つ
 
 #include "Game/Level/LevelData.h"
 
@@ -15,10 +15,13 @@
 
 namespace NS::Editor
 {
-    /// パレット 1 スロットの配置プロトタイプ。 name は toolbar 表示名、 prototype は複製元
+    /// パレット 1 スロットの配置プロトタイプ
+    /// name は toolbar 表示名、 isSpawn は spawn marker か、 rotatable は R で回せるか、 prototype は複製元
     struct PaletteTemplate
     {
         const char* name;
+        bool isSpawn;
+        bool rotatable;
         NS::Game::Level::ObjectInstance prototype;
     };
 
@@ -26,8 +29,8 @@ namespace NS::Editor
     /// slope スロットは 45° を既定に持ち、 variant 循環で 30 / 22.5 / 15° へ差し替わる
     [[nodiscard]] const std::array<PaletteTemplate, 8>& PaletteTemplateSlots() noexcept;
 
-    /// kind に対応する配置プロトタイプを作る。 spawn は世界に 1 点の marker なので grid 化しない
-    [[nodiscard]] NS::Game::Level::ObjectInstance PaletteTemplateForKind(std::uint16_t kind) noexcept;
+    /// kind に対応する配置テンプレートを作る。 prototype は実 component 入り (spawn は世界に 1 点の marker)
+    [[nodiscard]] PaletteTemplate PaletteTemplateForKind(std::uint16_t kind) noexcept;
 
     /// slope kind の表示名 (45 / 30 / 22.5 / 15)。 slope でなければ "Slope"
     [[nodiscard]] const char* SlopeVariantName(std::uint16_t slopeKind) noexcept;

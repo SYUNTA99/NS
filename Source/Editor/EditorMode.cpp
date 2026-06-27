@@ -14,6 +14,7 @@
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/AutoTile.h"
 #include "Game/Blocks/BlockRegistry.h"
+#include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Level/ChunkIO.h"
 #include "Game/Level/LevelData.h"
 
@@ -226,11 +227,11 @@ namespace NS::Editor
 
         // slope を選択中なら、 セル内に実形状の wedge を薄く描いて向きを可視化する
         // 斜面の稜線 (斜め) が m_displayedYawQuat で回るので、 回転が一目で分かる
-        const std::uint16_t currentId = m_palette.CurrentBlockId();
-        if (NS::Game::Blocks::IsSlopeBlock(currentId))
+        const float slopeAngle = m_palette.CurrentSlopeAngleDegrees();
+        if (slopeAngle >= 0.0f)
         {
             constexpr float kPi = 3.14159265358979323846f;
-            const float angle = NS::Game::Blocks::GetSlopeAngleDegrees(currentId);
+            const float angle = slopeAngle;
             const float rawHeight = std::tan(angle * (kPi / 180.0f)) * (2.0f * h);
             const float height = (rawHeight > 2.0f * h) ? 2.0f * h : rawHeight;
             const float yBot = -h;
@@ -372,8 +373,7 @@ namespace NS::Editor
         // 現在のブラシ = 複製元テンプレート。 配置は複製で行う
         const NS::Game::Level::ObjectInstance& tmpl = m_palette.CurrentTemplate();
         // 回転対象でない block (pole / water 等) は m_currentRotation が非ゼロでも 0 で焼き込む
-        const std::uint8_t rotation =
-            NS::Game::Blocks::IsRotatableBlock(tmpl.kind) ? m_currentRotation : std::uint8_t{0};
+        const std::uint8_t rotation = m_palette.CurrentIsRotatable() ? m_currentRotation : std::uint8_t{0};
         auto target = Target();
         m_undo.Push(std::make_unique<NS::Editor::PlaceCommand>(tmpl, x, y, z, rotation), target);
         m_levelDirty = true;
@@ -524,8 +524,7 @@ namespace NS::Editor
         if (m_inputSuppressed)
             return;
 
-        const std::uint16_t currentId = m_palette.CurrentBlockId();
-        const bool spawnSlotActive = (currentId == NS::Game::Blocks::kBlockIdSpawn);
+        const bool spawnSlotActive = m_palette.CurrentIsSpawn();
 
         auto& mouse = m_input->Mouse();
         if (mouse.IsPressed(NS::Platform::MouseButton::Left))
@@ -585,7 +584,7 @@ namespace NS::Editor
             const std::size_t index =
                 NS::Game::Level::FindGridObjectAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
             if (index != NS::Game::Level::kNoObjectIndex &&
-                NS::Game::Blocks::IsRotatableBlock(m_level->objects[index].kind))
+                NS::Game::Blocks::IsRotatableObject(m_level->objects[index]))
             {
                 auto target = Target();
                 m_undo.Push(std::make_unique<NS::Editor::RotateCommand>(
@@ -594,7 +593,7 @@ namespace NS::Editor
                 m_levelDirty = true;
             }
         }
-        else if (NS::Game::Blocks::IsRotatableBlock(m_palette.CurrentBlockId()))
+        else if (m_palette.CurrentIsRotatable())
         {
             // 既存 block がなければ次に置く block の向きを 90° 進める (4 方向で循環)
             m_currentRotation = static_cast<std::uint8_t>((m_currentRotation + 1) & 0x03);

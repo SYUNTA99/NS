@@ -8,6 +8,7 @@
 /// ImGui 描画は `Render` で行う。 Render は Debug / Development build 時のみ
 /// 実体があり、 Shipping では何もしない
 
+#include "Editor/PaletteTemplates.h"
 #include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/LevelData.h"
 
@@ -48,16 +49,24 @@ namespace NS::Editor
 
         [[nodiscard]] std::size_t ActiveSlot() const noexcept { return m_activeSlot; }
         [[nodiscard]] std::uint16_t SlotBlockId(std::size_t slot) const noexcept;
-        [[nodiscard]] std::uint16_t CurrentBlockId() const noexcept { return m_currentTemplate.kind; }
 
         /// 配置に複製する現在のプロトタイプ。 active slot (slope は選択中の角度) のテンプレート
         [[nodiscard]] const NS::Game::Level::ObjectInstance& CurrentTemplate() const noexcept
         {
-            return m_currentTemplate;
+            return m_current.prototype;
         }
 
         /// active slot の表示名。 slope は角度別 variant 名を返す
-        [[nodiscard]] const char* CurrentTemplateName() const noexcept;
+        [[nodiscard]] const char* CurrentTemplateName() const noexcept { return m_current.name; }
+
+        /// 現在のブラシが spawn marker か (置くと LevelData::spawn を上書きする)
+        [[nodiscard]] bool CurrentIsSpawn() const noexcept { return m_current.isSpawn; }
+
+        /// 現在のブラシが R で 90° 回せる種別か
+        [[nodiscard]] bool CurrentIsRotatable() const noexcept { return m_current.rotatable; }
+
+        /// 現在のブラシが slope なら角度 (度)、 slope でなければ -1。 cursor preview の wedge 表示に使う
+        [[nodiscard]] float CurrentSlopeAngleDegrees() const noexcept;
 
         /// 範囲外指定は無視する
         void SetActiveSlot(std::size_t slot) noexcept;
@@ -67,7 +76,7 @@ namespace NS::Editor
         void CycleActiveVariant() noexcept;
 
     private:
-        /// active slot の kind から m_currentTemplate を組み直す。 slot / variant を変えた直後に呼ぶ
+        /// active slot の kind から m_current を組み直す。 slot / variant を変えた直後に呼ぶ
         void RefreshCurrentTemplate() noexcept;
 
         std::size_t m_activeSlot = 0;
@@ -82,7 +91,7 @@ namespace NS::Editor
                                              NS::Game::Blocks::kBlockIdHazard,
                                              NS::Game::Blocks::kBlockIdWater};
 
-        // active slot に対応する配置プロトタイプ。 SlotBlockId は kind 索引、 こちらは複製元の実体
-        NS::Game::Level::ObjectInstance m_currentTemplate{};
+        // active slot (slope は選択中の角度) に対応する配置テンプレート。 表示名 / spawn / 回転可否 / 複製元を持つ
+        PaletteTemplate m_current{};
     };
 } // namespace NS::Editor

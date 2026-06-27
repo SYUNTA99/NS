@@ -22,10 +22,6 @@ namespace NS::Editor
                      std::int16_t z,
                      std::uint8_t rotation) noexcept;
 
-        /// kind から既定プロトタイプを起こして置く薄経路。 結果は prototype 版と同一
-        PlaceCommand(
-            std::int16_t x, std::int16_t y, std::int16_t z, std::uint16_t blockId, std::uint8_t rotation) noexcept;
-
         void Do(NS::Game::Level::EditTarget& target) noexcept override;
         void Undo(NS::Game::Level::EditTarget& target) noexcept override;
 

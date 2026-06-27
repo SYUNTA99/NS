@@ -180,6 +180,45 @@ namespace NS::Game::Blocks
             }
             return std::nullopt;
         }
+
+        // object が指定 typeName の component を持つか
+        bool HasComponentType(const NS::Game::Level::ObjectInstance& object, const char* typeName) noexcept
+        {
+            for (const auto& component : object.components)
+                if (component.typeName == typeName)
+                    return true;
+            return false;
+        }
+
+        // PickupComponent の "Pickup Kind" を返す。 PickupComponent 無しは -1、 フィールド欠損は 0
+        int PickupKindOf(const NS::Game::Level::ObjectInstance& object) noexcept
+        {
+            for (const auto& component : object.components)
+            {
+                if (component.typeName != "PickupComponent")
+                    continue;
+                for (const auto& field : component.fields)
+                    if (field.name == "Pickup Kind" && std::holds_alternative<int>(field.value))
+                        return std::get<int>(field.value);
+                return 0;
+            }
+            return -1;
+        }
+
+        // SlopeColliderComponent の "Angle (deg)" を返す。 SlopeCollider 無しは -1
+        float SlopeAngleOf(const NS::Game::Level::ObjectInstance& object) noexcept
+        {
+            for (const auto& component : object.components)
+            {
+                if (component.typeName != "SlopeColliderComponent")
+                    continue;
+                for (const auto& field : component.fields)
+                    if (field.name == "Angle (deg)" && std::holds_alternative<float>(field.value))
+                        return std::get<float>(field.value);
+                return 0.0f;
+            }
+            return -1.0f;
+        }
     } // namespace
 
     std::vector<NS::Game::Level::ComponentData> MaterializeLegacyKind(std::uint16_t kind,
@@ -274,6 +313,29 @@ namespace NS::Game::Blocks
         }
         // 未対応の grid kind は空一覧のまま返す (呼出側が配置物として組まない)
         return result;
+    }
+
+    bool IsGridSolidObject(const NS::Game::Level::ObjectInstance& object)
+    {
+        using namespace NS::Game::Level;
+        if ((object.flags & kObjectFlagGridAligned) == 0)
+            return false;
+        // 拾得 / slope / pole / hazard は固形でない。 残る BoxCollider 持ちだけが固形 block
+        if (PickupKindOf(object) >= 0)
+            return false;
+        if (HasComponentType(object, "SlopeColliderComponent"))
+            return false;
+        if (HasComponentType(object, "PoleComponent"))
+            return false;
+        if (HasComponentType(object, "HazardComponent"))
+            return false;
+        return HasComponentType(object, "BoxColliderComponent");
+    }
+
+    bool IsRotatableObject(const NS::Game::Level::ObjectInstance& object)
+    {
+        // R で 90° 回す対象。 向きが意味を持つ slope と固形 block (掴み pole / 水 / 装飾は除く)
+        return SlopeAngleOf(object) >= 0.0f || IsGridSolidObject(object);
     }
 
     std::optional<std::filesystem::path> ResolveContentPath(const std::string& relative)

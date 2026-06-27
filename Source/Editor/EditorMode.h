@@ -11,8 +11,8 @@
 
 #include "Editor/CategoryPalette.h"
 #include "Editor/LevelFileBrowser.h"
-#include "Framework/Math/Math.h"
 #include "Editor/Undo/UndoStack.h"
+#include "Framework/Math/Math.h"
 
 #include <cstdint>
 
@@ -104,7 +104,6 @@ namespace NS::Editor
 
         [[nodiscard]] const CursorState& Cursor() const noexcept { return m_cursor; }
         [[nodiscard]] CategoryPalette& Palette() noexcept { return m_palette; }
-        [[nodiscard]] std::uint16_t CurrentBlockId() const noexcept { return m_palette.CurrentBlockId(); }
         [[nodiscard]] std::uint8_t CurrentRotation() const noexcept { return m_currentRotation; }
 
         /// テスト経路で cursor 状態を直接注入する。 Tick を呼ばずに RenderCursorPreview を検証する用途

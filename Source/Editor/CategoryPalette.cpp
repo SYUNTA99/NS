@@ -18,7 +18,7 @@ namespace NS::Editor
 
     void CategoryPalette::RefreshCurrentTemplate() noexcept
     {
-        m_currentTemplate = PaletteTemplateForKind(m_slots[m_activeSlot]);
+        m_current = PaletteTemplateForKind(m_slots[m_activeSlot]);
     }
 
     void CategoryPalette::SetActiveSlot(std::size_t slot) noexcept
@@ -35,10 +35,10 @@ namespace NS::Editor
         return slot < kSlotCount ? m_slots[slot] : 0;
     }
 
-    const char* CategoryPalette::CurrentTemplateName() const noexcept
+    float CategoryPalette::CurrentSlopeAngleDegrees() const noexcept
     {
         const std::uint16_t id = m_slots[m_activeSlot];
-        return NS::Game::Blocks::IsSlopeBlock(id) ? SlopeVariantName(id) : PaletteTemplateSlots()[m_activeSlot].name;
+        return NS::Game::Blocks::IsSlopeBlock(id) ? NS::Game::Blocks::GetSlopeAngleDegrees(id) : -1.0f;
     }
 
     void CategoryPalette::CycleActiveVariant() noexcept

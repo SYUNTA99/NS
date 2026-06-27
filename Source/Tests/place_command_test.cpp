@@ -19,7 +19,7 @@ TEST(PlaceCommandTest, DoAddsBlockEntry)
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
     LevelNs::EditTarget t{lv, ids, next};
-    EditorNs::PlaceCommand cmd(5, 0, 3, 10, 1);
+    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 10, 0), 5, 0, 3, 1);
     cmd.Do(t);
     ASSERT_EQ(lv.objects.size(), 1u);
     EXPECT_EQ(ids.size(), lv.objects.size());
@@ -39,7 +39,7 @@ TEST(PlaceCommandTest, UndoRestoresEmptyState)
     std::uint32_t next = 0;
     LevelNs::EditTarget t{lv, ids, next};
     const auto before = lv.ComputeCrc32();
-    EditorNs::PlaceCommand cmd(5, 0, 3, 10, 1);
+    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 10, 0), 5, 0, 3, 1);
     cmd.Do(t);
     cmd.Undo(t);
     EXPECT_EQ(lv.ComputeCrc32(), before);
@@ -55,7 +55,7 @@ TEST(PlaceCommandTest, ReplaceExistingBlockPreservesUndoRestore)
     std::uint32_t next = 1;
     LevelNs::EditTarget t{lv, ids, next};
     const auto before = lv.ComputeCrc32();
-    EditorNs::PlaceCommand cmd(5, 0, 3, 10, 1);
+    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 10, 0), 5, 0, 3, 1);
     cmd.Do(t);
     std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 5, 0, 3);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
@@ -76,7 +76,7 @@ TEST(PlaceCommandTest, RotationIsMaskedToTwoBits)
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
     LevelNs::EditTarget t{lv, ids, next};
-    EditorNs::PlaceCommand cmd(0, 0, 0, 1, 5);
+    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 1, 0), 0, 0, 0, 5);
     cmd.Do(t);
     const std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 0, 0, 0);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
@@ -96,42 +96,51 @@ namespace
     }
 } // namespace
 
-TEST(PlaceCommandTest, TemplateClonePlacementEqualsLegacyKindPlacement)
+TEST(PlaceCommandTest, TemplateClonePlacesPrototypeWithBakedTransform)
 {
-    struct Case
-    {
-        std::uint16_t kind;
-        std::uint8_t rotation;
-    };
-    const Case cases[] = {
-        {BlockNs::kBlockIdSolid, 1},
-        {BlockNs::kBlockIdSlope45, 3},
-        {BlockNs::kBlockIdHazard, 0},
-    };
+    const std::uint16_t kinds[] = {BlockNs::kBlockIdSolid, BlockNs::kBlockIdSlope45, BlockNs::kBlockIdHazard};
+    constexpr std::int16_t cx = 7;
+    constexpr std::int16_t cy = 2;
+    constexpr std::int16_t cz = 4;
+    constexpr std::uint8_t rotation = 1;
 
-    for (const auto& c : cases)
+    for (const std::uint16_t kind : kinds)
     {
-        const LevelNs::ObjectInstance legacy = PlaceOneAndTake(EditorNs::PlaceCommand(7, 2, 4, c.kind, c.rotation));
+        const EditorNs::PaletteTemplate tmpl = EditorNs::PaletteTemplateForKind(kind);
+
+        // 配置結果はテンプレ複製に cell 座標 + 回転 step を焼いたものになる
+        LevelNs::ObjectInstance expected = tmpl.prototype;
+        expected.positionX = static_cast<float>(cx);
+        expected.positionY = static_cast<float>(cy);
+        expected.positionZ = static_cast<float>(cz);
+        LevelNs::SetGridRotationStep(expected, rotation);
+
         const LevelNs::ObjectInstance cloned =
-            PlaceOneAndTake(EditorNs::PlaceCommand(EditorNs::PaletteTemplateForKind(c.kind), 7, 2, 4, c.rotation));
-
-        EXPECT_EQ(cloned, legacy);
-        EXPECT_EQ(cloned, LevelNs::MakeGridObject(7, 2, 4, c.kind, c.rotation));
+            PlaceOneAndTake(EditorNs::PlaceCommand(tmpl.prototype, cx, cy, cz, rotation));
+        EXPECT_EQ(cloned, expected) << "kind=" << kind;
     }
 }
 
-TEST(PlaceCommandTest, AllPaletteSlotsClonePlacementMatchLegacyKind)
+TEST(PlaceCommandTest, AllPaletteSlotsClonePlacesPrototype)
 {
     const auto& slots = EditorNs::PaletteTemplateSlots();
+    constexpr std::int16_t cx = 1;
+    constexpr std::int16_t cy = 0;
+    constexpr std::int16_t cz = -2;
     constexpr std::uint8_t kRotation = 2;
     for (const auto& slot : slots)
     {
-        const std::uint16_t kind = slot.prototype.kind;
-        if (kind == BlockNs::kBlockIdSpawn)
+        if (slot.isSpawn)
             continue; // spawn は世界に 1 点の marker で grid 配置物にならない
 
+        LevelNs::ObjectInstance expected = slot.prototype;
+        expected.positionX = static_cast<float>(cx);
+        expected.positionY = static_cast<float>(cy);
+        expected.positionZ = static_cast<float>(cz);
+        LevelNs::SetGridRotationStep(expected, kRotation);
+
         const LevelNs::ObjectInstance cloned =
-            PlaceOneAndTake(EditorNs::PlaceCommand(slot.prototype, 1, 0, -2, kRotation));
-        EXPECT_EQ(cloned, LevelNs::MakeGridObject(1, 0, -2, kind, kRotation)) << "kind=" << kind;
+            PlaceOneAndTake(EditorNs::PlaceCommand(slot.prototype, cx, cy, cz, kRotation));
+        EXPECT_EQ(cloned, expected) << "slot=" << slot.name;
     }
 }

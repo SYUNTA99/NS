@@ -58,6 +58,13 @@ namespace NS::Game::Blocks
     /// 二重に呼んでも構成は変わらない (冪等)
     void MigrateLegacyLevel(NS::Game::Level::LevelData& level);
 
+    /// grid 配置された固形 block か。 components から判定する (gridAligned かつ BoxCollider 持ちで
+    /// slope / pole / hazard / 拾得を持たない)。 instancing / 昇格 / 当たり可視化の「固形」判定窓口
+    [[nodiscard]] bool IsGridSolidObject(const NS::Game::Level::ObjectInstance& object);
+
+    /// R で 90° 回す対象か。 SlopeCollider を持つか grid 固形なら true (掴み pole / 水 / 装飾は false)
+    [[nodiscard]] bool IsRotatableObject(const NS::Game::Level::ObjectInstance& object);
+
     /// asset 相対パスを ContentRoot 配下へ正規化して返す。 `..` で外へ出るパスは nullopt にし任意ファイル読込を防ぐ
     /// path 型メソッドのみで判定し、 実在確認の filesystem 操作系は呼ばない
     [[nodiscard]] std::optional<std::filesystem::path> ResolveContentPath(const std::string& relative);
