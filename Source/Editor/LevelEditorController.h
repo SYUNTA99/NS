@@ -119,9 +119,9 @@ public:
     [[nodiscard]] NS::Scene::GameObject* SelectedObjectGameObject() noexcept;
     /// Player の runtime GameObject。 未構築は nullptr。 操作感のライブ調整 Inspector に使う
     [[nodiscard]] NS::Scene::GameObject* PlayerObject() noexcept;
-    /// 選択中の自由オブジェクトの runtime collider を components データへ書き戻し、 保存と rebuild に乗せる
-    /// Inspector で collider を反射編集した後に呼ぶ。 grid / 非選択時は何もしない
-    void SyncSelectedObjectColliderFromComponent();
+    /// 選択中の自由オブジェクトの runtime 全コンポーネントを components データへ書き戻し、 保存と rebuild に乗せる
+    /// Inspector で反射編集した後に呼ぶ。 grid / 非選択時は何もしない
+    void SyncSelectedObjectComponentsFromComponent();
 
     /// 選択 object の末尾へ型名のみのコンポーネントを足す。 Undo 対応、 非選択時は何もしない
     void AddComponentToSelected(std::string_view typeName);

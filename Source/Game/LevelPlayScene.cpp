@@ -3,6 +3,7 @@
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Level/EditTarget.h"
 #include "Game/Player.h"
+#include "Game/PlayerTuning.h"
 
 #include "Framework/Scene/AssetManager.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
@@ -162,6 +163,9 @@ void LevelPlayScene::OnStart()
     m_player->Root().SetScale({0.8f, 1.8f, 0.8f});
     m_player->MeshComp().SetBaseColor(kPlayerColor);
     m_player->Shadow().SetResources(shadowMesh, shadowMaterial);
+
+    // 保存済みチューニングがあればプレイヤーの全コンポーネントへ適用する。 無ければコード既定値のまま
+    LoadPlayerTuning(*m_player);
 
     LoadInitialLevel();
     RebuildBlocksFromLevelData();

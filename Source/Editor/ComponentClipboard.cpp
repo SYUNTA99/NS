@@ -7,21 +7,11 @@
 
 #include <cstddef>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
 namespace NS::Editor
 {
-    namespace
-    {
-        bool IsColliderTypeName(std::string_view typeName) noexcept
-        {
-            return typeName == "BoxColliderComponent" || typeName == "SphereColliderComponent" ||
-                   typeName == "CapsuleColliderComponent" || typeName == "SlopeColliderComponent";
-        }
-    } // namespace
-
     NS::Game::Level::ComponentData CaptureComponentData(const NS::Scene::Component& comp)
     {
         NS::Game::Level::ComponentData data;
@@ -74,7 +64,7 @@ namespace NS::Editor
                 break;
             }
             default:
-                // 未対応の FieldType は値を取り違えるより写さない方が安全
+                // 未対応の FieldType は取り違えるより写さない方が安全
                 continue;
             }
             data.fields.push_back(std::move(value));
@@ -82,14 +72,14 @@ namespace NS::Editor
         return data;
     }
 
-    void WriteBackColliderEdits(NS::Scene::GameObject& runtime, NS::Game::Level::ObjectInstance& object)
+    void WriteBackComponentEdits(NS::Scene::GameObject& runtime, NS::Game::Level::ObjectInstance& object)
     {
         for (NS::Scene::Component* comp : runtime.Components())
         {
             if (comp == nullptr)
                 continue;
             const NS::Scene::ReflectionInfo* info = comp->GetReflection();
-            if (info == nullptr || !IsColliderTypeName(info->typeName))
+            if (info == nullptr)
                 continue;
 
             NS::Game::Level::ComponentData captured = CaptureComponentData(*comp);

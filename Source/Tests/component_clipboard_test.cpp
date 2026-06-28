@@ -3,6 +3,7 @@
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/HazardComponent.h"
+#include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/Components/PoleComponent.h"
 #include "Framework/Scene/GameObject.h"
 #include "Game/Level/EditTarget.h"
@@ -74,36 +75,43 @@ TEST(ComponentClipboard, PasteAddsCapturedComponentWithSameValues)
     EXPECT_TRUE(lv.objects[0].components.empty());
 }
 
-TEST(ComponentClipboard, WriteBackColliderEditsUpdatesMatchingComponentData)
+TEST(ComponentClipboard, WriteBackComponentEditsUpdatesAllMatchingComponentData)
 {
-    // runtime collider を Inspector で編集した状態を作る
+    auto findVec3 = [](const LevelNs::ComponentData& data, const char* name) -> const NS::Math::Vector3* {
+        for (const LevelNs::FieldValue& field : data.fields)
+            if (field.name == name && std::holds_alternative<NS::Math::Vector3>(field.value))
+                return &std::get<NS::Math::Vector3>(field.value);
+        return nullptr;
+    };
+
+    // runtime の collider と MeshRenderer を Inspector で編集した状態を作る
     SceneNs::GameObject go;
     auto* box = go.AddComponent<SceneNs::BoxColliderComponent>();
     box->SetHalfExtents(NS::Math::Vector3{1.0f, 2.0f, 3.0f});
+    auto* mesh = go.AddComponent<SceneNs::MeshRendererComponent>(nullptr, nullptr);
+    mesh->SetBaseColor(NS::Math::Vector3{0.1f, 0.2f, 0.3f});
 
-    // data 側は旧 half-extents の BoxCollider と、 書き戻し対象外の MeshRenderer
+    // data 側は旧値の BoxCollider と、 空の MeshRenderer
     LevelNs::ObjectInstance object;
-    object.components.push_back(LevelNs::ComponentData{"MeshRendererComponent"});
     LevelNs::ComponentData boxData;
     boxData.typeName = "BoxColliderComponent";
     boxData.fields.push_back(LevelNs::FieldValue{"Half Extents", NS::Math::Vector3{0.5f, 0.5f, 0.5f}});
     object.components.push_back(boxData);
+    object.components.push_back(LevelNs::ComponentData{"MeshRendererComponent"});
 
-    EditorNs::WriteBackColliderEdits(go, object);
+    EditorNs::WriteBackComponentEdits(go, object);
 
-    // collider データが編集後の値で更新される (rebuild が読むのは components 側)
-    const LevelNs::ComponentData& updated = object.components[1];
-    ASSERT_EQ(updated.typeName, "BoxColliderComponent");
-    const NS::Math::Vector3* halfExtents = nullptr;
-    for (const LevelNs::FieldValue& field : updated.fields)
-        if (field.name == "Half Extents" && std::holds_alternative<NS::Math::Vector3>(field.value))
-            halfExtents = &std::get<NS::Math::Vector3>(field.value);
+    // collider が編集後の値で更新される (rebuild が読むのは components 側)
+    const NS::Math::Vector3* halfExtents = findVec3(object.components[0], "Half Extents");
     ASSERT_NE(halfExtents, nullptr);
     EXPECT_FLOAT_EQ(halfExtents->x, 1.0f);
     EXPECT_FLOAT_EQ(halfExtents->y, 2.0f);
     EXPECT_FLOAT_EQ(halfExtents->z, 3.0f);
 
-    // collider 以外のコンポーネントは触られない
-    EXPECT_EQ(object.components[0].typeName, "MeshRendererComponent");
-    EXPECT_TRUE(object.components[0].fields.empty());
+    // collider 以外 (MeshRenderer の Base Color) も書き戻る
+    const NS::Math::Vector3* baseColor = findVec3(object.components[1], "Base Color");
+    ASSERT_NE(baseColor, nullptr);
+    EXPECT_FLOAT_EQ(baseColor->x, 0.1f);
+    EXPECT_FLOAT_EQ(baseColor->y, 0.2f);
+    EXPECT_FLOAT_EQ(baseColor->z, 0.3f);
 }

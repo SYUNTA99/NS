@@ -821,6 +821,8 @@ project "Tests"
         -- Tests から直接コンパイルしてリンクする。Game.cpp は Application や
         -- Window への依存があるので除外し、unit test で扱える範囲だけ取り込む。
         "Source/Game/Player.cpp",
+        -- PlayerTuning は LevelPlayScene(OnStart) と LevelEditorController が参照するので symbol 解決のため取り込む
+        "Source/Game/PlayerTuning.cpp",
         "Source/Game/Blocks/**.cpp",
         "Source/Game/CameraRig.cpp",
         "Source/Editor/EditorCameraRig.cpp",

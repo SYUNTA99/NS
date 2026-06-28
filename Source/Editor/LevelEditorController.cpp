@@ -347,20 +347,20 @@ NS::Scene::GameObject* LevelEditorController::PlayerObject() noexcept
     return m_scene->m_player.get();
 }
 
-void LevelEditorController::SyncSelectedObjectColliderFromComponent()
+void LevelEditorController::SyncSelectedObjectComponentsFromComponent()
 {
     if (m_selectedObjectIndex >= m_scene->m_level.objects.size())
         return;
 
     NS::Game::Level::ObjectInstance& object = m_scene->m_level.objects[m_selectedObjectIndex];
-    // grid は cell 固定で collider を編集しない。 自由配置物のみ書き戻す
+    // grid は cell 固定で編集しない。 自由配置物のみ書き戻す
     if ((object.flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
         return;
 
-    // 反射編集で更新済の runtime collider を components データへ書き戻す。 BuildFromComponents が読むのは
-    // components 側で、 scalar collider フィールドへ書いても次の rebuild で編集が失われる
+    // 反射編集で更新済の runtime コンポーネントを components データへ書き戻す。 BuildFromComponents が読むのは
+    // components 側で、 ここを更新しないと次の rebuild で編集が失われる
     if (NS::Scene::GameObject* go = SelectedObjectGameObject())
-        NS::Editor::WriteBackColliderEdits(*go, object);
+        NS::Editor::WriteBackComponentEdits(*go, object);
 }
 
 NS::Scene::GameObject* LevelEditorController::CameraBrainObject() noexcept

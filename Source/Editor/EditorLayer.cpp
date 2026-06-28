@@ -2,6 +2,7 @@
 
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
+#include "Editor/PlayerTuningIO.h"
 #include "Framework/App/Application.h"
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
@@ -373,10 +374,15 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
         {
             ImGui::Text("Player");
             ImGui::Separator();
-            // Player の Component を反射で一覧編集する。 操作感はライブで効き、 値は保存されない
-            // good な値が出たらコードの既定へ焼き戻す運用
+            // Player の Component を反射で一覧編集する。 操作感はライブで効き、 保存すると PlayerTuning.json へ
+            // 焼かれて次回起動や出荷ビルドでも同じ値で動く
             if (auto* player = editor.PlayerObject())
+            {
                 (void)NS::Editor::DrawObjectComponents(*player);
+                ImGui::Separator();
+                if (ImGui::Button("チューニングを保存"))
+                    (void)NS::Editor::SavePlayerTuning(*player);
+            }
             else
                 ImGui::TextDisabled("(no player)");
 
@@ -501,12 +507,12 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             ImGui::TextDisabled("Material: default");
 
         // 選択オブジェクトの runtime Component を反射で一覧編集する
-        // collider は編集後に components データへ書き戻して保存・rebuild に乗せる。 色など他のフィールドはライブのみ
+        // 編集後に全コンポーネントを components データへ書き戻して保存・rebuild に乗せる
         if (auto* go = editor.SelectedObjectGameObject())
         {
             ImGui::Separator();
             if (NS::Editor::DrawObjectComponents(*go))
-                editor.SyncSelectedObjectColliderFromComponent();
+                editor.SyncSelectedObjectComponentsFromComponent();
         }
 
         // 自由オブジェクトはコンポーネント構成をデータとして編集できる
