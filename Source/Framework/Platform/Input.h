@@ -9,9 +9,9 @@
 
 #include <array>
 
-#include <Framework/Platform/Gamepad.h>
-#include <Framework/Platform/Keyboard.h>
-#include <Framework/Platform/Mouse.h>
+#include "Framework/Platform/Gamepad.h"
+#include "Framework/Platform/Keyboard.h"
+#include "Framework/Platform/Mouse.h"
 
 namespace NS::Platform
 {

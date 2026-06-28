@@ -13,9 +13,9 @@
 /// バインドは CommandList 経由 (本型は context を保持しない)
 /// D3D11 型を公開する設計のため `ID3D11Texture2D*` / SRV を直接公開する
 
-#include <Framework/Core/NonCopyable.h>
-#include <Framework/Graphics/Buffer.h>
-#include <Framework/Graphics/D3dCommon.h>
+#include "Framework/Core/NonCopyable.h"
+#include "Framework/Graphics/Buffer.h"
+#include "Framework/Graphics/D3dCommon.h"
 
 #include <cstdint>
 #include <filesystem>

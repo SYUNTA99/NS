@@ -10,8 +10,8 @@
 ///
 /// 実装は std::chrono::steady_clock 一本、`<windows.h>` 非依存
 
-#include <Framework/Core/LogCategories.h>
-#include <Framework/Core/Logger.h>
+#include "Framework/Core/LogCategories.h"
+#include "Framework/Core/Logger.h"
 
 #include <chrono>
 #include <cstdint>

@@ -14,10 +14,10 @@
 #include <cstddef>
 #include <memory>
 
-#include <Framework/Core/NonCopyable.h>
-#include <Framework/Graphics/D3dCommon.h>
-#include <Framework/Graphics/RenderSettings.h>
-#include <Framework/Platform/Window.h>
+#include "Framework/Core/NonCopyable.h"
+#include "Framework/Graphics/D3dCommon.h"
+#include "Framework/Graphics/RenderSettings.h"
+#include "Framework/Platform/Window.h"
 
 namespace NS::Graphics
 {

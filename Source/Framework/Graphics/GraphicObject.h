@@ -3,7 +3,7 @@
 /// @file GraphicObject.h
 /// @brief NS::Graphics — プロセス唯一の D3D11 device / immediate context を束ねたグローバル
 
-#include <Framework/Graphics/D3dCommon.h>
+#include "Framework/Graphics/D3dCommon.h"
 
 namespace NS::Graphics
 {

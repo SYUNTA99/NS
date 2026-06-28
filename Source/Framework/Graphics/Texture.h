@@ -15,10 +15,10 @@
 #include <filesystem>
 #include <memory>
 
-#include <Framework/Core/NonCopyable.h>
-#include <Framework/Graphics/Buffer.h>
-#include <Framework/Graphics/D3dCommon.h>
-#include <Framework/Math/Math.h>
+#include "Framework/Core/NonCopyable.h"
+#include "Framework/Graphics/Buffer.h"
+#include "Framework/Graphics/D3dCommon.h"
+#include "Framework/Math/Math.h"
 
 namespace NS::Graphics
 {

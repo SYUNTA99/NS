@@ -13,8 +13,8 @@
 #include <cstddef>
 #include <memory>
 
-#include <Framework/Core/NonCopyable.h>
-#include <Framework/Graphics/D3dCommon.h>
+#include "Framework/Core/NonCopyable.h"
+#include "Framework/Graphics/D3dCommon.h"
 
 namespace NS::Graphics
 {

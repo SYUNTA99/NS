@@ -1,6 +1,6 @@
-#include <Framework/Platform/Input.h>
+#include "Framework/Platform/Input.h"
 
-#include <Framework/Platform/detail/input_win32.h>
+#include "Framework/Platform/detail/input_win32.h"
 
 #include "Framework/Framework.h"
 

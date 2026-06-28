@@ -9,7 +9,7 @@
 /// 可変引数を取る。Fatal は flush 後に `__debugbreak()` (Debug 時) → `std::abort()`
 /// シングルスレッド前提
 
-#include <Framework/Core/LogCategories.h>
+#include "Framework/Core/LogCategories.h"
 
 #include <magic_enum/magic_enum.hpp>
 

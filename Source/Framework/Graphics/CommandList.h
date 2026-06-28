@@ -13,7 +13,7 @@
 
 #include <cstddef>
 
-#include <Framework/Graphics/D3dCommon.h>
+#include "Framework/Graphics/D3dCommon.h"
 
 namespace NS::Graphics
 {

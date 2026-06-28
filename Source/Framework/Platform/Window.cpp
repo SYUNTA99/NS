@@ -1,11 +1,11 @@
-#include <Framework/Platform/Window.h>
+#include "Framework/Platform/Window.h"
 
-#include <Framework/Core/LogCategories.h>
-#include <Framework/Core/Logger.h>
-#include <Framework/Core/StringUtils.h>
-#include <Framework/Platform/Input.h>
-#include <Framework/Platform/detail/input_win32.h>
-#include <Framework/Platform/detail/win32_window.h>
+#include "Framework/Core/LogCategories.h"
+#include "Framework/Core/Logger.h"
+#include "Framework/Core/StringUtils.h"
+#include "Framework/Platform/Input.h"
+#include "Framework/Platform/detail/input_win32.h"
+#include "Framework/Platform/detail/win32_window.h"
 
 namespace NS::Platform
 {
