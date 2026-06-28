@@ -42,7 +42,7 @@ namespace NS::Game::Blocks
             return material;
         }
 
-        // 共有 material 名 (player / block / water / shadow) なら true。 これ以外は .mat パス / 既定へ倒す
+        // player / block / water / shadow の共有 material 名なら true。 これ以外は .mat パス / 既定へ倒す
         bool IsSharedMaterialName(const std::string& ref) noexcept
         {
             return ref == "player" || ref == "block" || ref == "water" || ref == "shadow";
@@ -71,7 +71,7 @@ namespace NS::Game::Blocks
                     mesh->SetMaterial(IsSharedMaterialName(matRef)
                                           ? assets.SharedMaterial(matRef)
                                           : ResolveFreeMaterial(object, assets, materialPaths));
-                    // メッシュ参照を解決し、 空 / 解決不可なら cube へ倒す (移行済データは必ず参照を持つ)
+                    // メッシュ参照を解決し、 空 / 解決不可なら cube へ倒す。 移行済データは必ず参照を持つ
                     NS::Graphics::Mesh* resolved =
                         mesh->MeshRef().empty() ? nullptr : ResolveMeshFromRef(assets, mesh->MeshRef());
                     mesh->SetMesh(resolved != nullptr ? resolved : assets.Builtin("cube"));
@@ -231,7 +231,7 @@ namespace NS::Game::Blocks
 
     bool IsRotatableObject(const NS::Game::Level::ObjectInstance& object)
     {
-        // R で 90° 回す対象。 向きが意味を持つ slope と固形 block (掴み pole / 水 / 装飾は除く)
+        // R で 90° 回す対象。 向きが意味を持つ slope と固形 block。 掴み pole / 水 / 装飾は除く
         return SlopeAngleOf(object) >= 0.0f || IsGridSolidObject(object);
     }
 
@@ -287,7 +287,7 @@ namespace NS::Game::Blocks
     {
         if (meshRef.empty())
             return nullptr;
-        // builtin 名を先引きする (cube / wedge45 / wedge30 / wedge22 / wedge15 / pole)
+        // builtin 名 cube / wedge45 / wedge30 / wedge22 / wedge15 / pole を先引きする
         if (NS::Graphics::StaticMesh* builtin = assets.Builtin(meshRef))
             return builtin;
         // builtin に無ければ ContentRoot 配下の相対パスとして glTF を読む。 .. の traversal は弾かれ nullptr
@@ -301,7 +301,7 @@ namespace NS::Game::Blocks
                                                              NS::Scene::AssetManager& assets,
                                                              const std::vector<std::string>& materialPaths)
     {
-        // 全 load 源が component を持って到達する (JSON / BLKS は移行で、 seed / 配置は materialize 済)
+        // 全 load 源が component を持って到達する。 JSON / BLKS は移行で、 seed / 配置は materialize 済
         // 空構成は未対応につき配置物として組まない
         if (object.components.empty())
             return nullptr;

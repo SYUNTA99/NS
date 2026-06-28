@@ -1,17 +1,17 @@
 #pragma once
 
 /// @file PlayMode.h
-/// @brief NS::Game::Level::PlayMode — Play 中のゲームルール bookkeeping (Enter/Tick/Exit)
+/// @brief NS::Game::Level::PlayMode — Play 中のゲームルール bookkeeping を Enter/Tick/Exit で担う
 ///
-/// @details 物理 (移動 / 重力 / 衝突 / 掴まり) は Player の CharacterMovementComponent が担う
-/// PlayMode は Play 開始時の spawn 配置 + counter リセット (Enter) と、 毎フレームの
-/// 落下死 / coin / star 取得判定 (Tick) のみを受け持つ
+/// @details 物理すなわち移動 / 重力 / 衝突 / 掴まりは Player の CharacterMovementComponent が担う
+/// PlayMode は Play 開始時の spawn 配置 + counter リセットを Enter で行い、 毎フレームの
+/// 落下死 / coin / star 取得判定を Tick で受け持つ
 /// `const LevelData&` を Tick 受取に強制することで、 PlayMode 経路では LevelData を
 /// 書き換えられないことを compile-time に保証する。 player 位置は LevelPlayScene が
-/// Transform (SSOT) から `PlayState::playerPosition` にミラーした値を読む
+/// SSOT である Transform から `PlayState::playerPosition` にミラーした値を読む
 ///
 /// 落下死: `playerPosition.y < kFallDeathThreshold` で deathTriggered
-/// coin/star 接触: 中心間距離の単純比較 (kPickupRadius)
+/// coin/star 接触: kPickupRadius を使う中心間距離の単純比較
 
 #include "Framework/Math/Math.h"
 
@@ -27,12 +27,12 @@ namespace NS::Game::Level
     class PlayMode
     {
     public:
-        /// 落下死判定の y 閾値 (これより低くなったら deathTriggered)
+        /// 落下死判定の y 閾値。 これより低くなったら deathTriggered
         static constexpr float kFallDeathThreshold = -50.0f;
-        /// spawn 配置に使う player capsule の半径 / 半身長 (CharacterMovementComponent の既定値と一致)
+        /// spawn 配置に使う player capsule の半径 / 半身長。 CharacterMovementComponent の既定値と一致
         static constexpr float kPlayerCapsuleRadius = 0.4f;
         static constexpr float kPlayerCapsuleHalfHeight = 0.5f;
-        /// coin / power star を「取れた」 とみなす player 中心からの距離 (m)
+        /// coin / power star を「取れた」 とみなす player 中心からのメートル距離
         static constexpr float kPickupRadius = 0.9f;
 
         PlayMode() noexcept;
@@ -58,7 +58,7 @@ namespace NS::Game::Level
     private:
         bool m_active = false;
 
-        /// 二重カウント防止用。 LevelData の block は削除しない (Play 中は不変)
+        /// 二重カウント防止用。 LevelData の block は Play 中は不変なので削除しない
         std::vector<std::size_t> m_collectedCoinIndices;
     };
 

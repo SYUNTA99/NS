@@ -24,7 +24,7 @@ namespace NS::Game::Level
     /// `ObjectInstance::flags` の bit。 グリッド配置物は bit0 を立て instancing / オートタイル対象にする
     inline constexpr std::uint8_t kObjectFlagGridAligned = 0x01;
 
-    /// 当たり判定の形状種別。 `ObjectInstance::shapeCollider` に格納する (既定 / 旧データは Box)
+    /// 当たり判定の形状種別。 `ObjectInstance::shapeCollider` に格納する。 既定 / 旧データは Box
     enum class ShapeCollider : std::uint8_t
     {
         Box = 0,
@@ -56,11 +56,11 @@ namespace NS::Game::Level
 
     /// 配置物の永続表現。 コンポーネント一覧を内包する full SSOT 表現
     /// grid block も自由配置物も同じ型で 1 リストに格納する。 grid かどうかは flags の bit0 で区別する
-    /// position / rotation(quaternion) / scale をフル保持し、 種別は components が表す
+    /// position / rotation すなわち quaternion / scale をフル保持し、 種別は components が表す
     /// materialIndex は `LevelData::materialPaths` への添字、 -1 は既定マテリアルを表す
-    /// colliderHalfExtents は Transform と独立した当たり箱の local 半径 (既定 0.5)。 world では Transform.scale が乗る
-    /// colliderOffset / colliderRotation は当たり箱を視覚と独立に owner local 空間でずらす / 回す (既定 0 / 単位)
-    /// shapeCollider は当たり判定形状 (Box/Sphere/Capsule/Mesh、 既定 / 旧データは Box)
+    /// colliderHalfExtents は Transform と独立した当たり箱の local 半径で既定 0.5。 world では Transform.scale が乗る
+    /// colliderOffset / colliderRotation は当たり箱を視覚と独立に owner local 空間でずらす / 回す。 既定は 0 / 単位
+    /// shapeCollider は当たり判定形状 Box/Sphere/Capsule/Mesh で既定 / 旧データは Box
     /// colliderHalfExtents は形状で解釈が変わる: Box=各半径 / Sphere=x が半径 / Capsule=x 半径・y 半高 / Mesh=未使用
     struct ObjectInstance
     {
@@ -95,10 +95,10 @@ namespace NS::Game::Level
         [[nodiscard]] bool operator==(const ObjectInstance& other) const = default;
     };
 
-    /// エリア進入で切り替わる据え置きカメラ 1 件の永続表現 (56 byte、 natural alignment、 padding なし)
-    /// camera* がカメラ視点、 trigger* がプレイヤー進入を判定する AABB (中心 + 半径)
+    /// エリア進入で切り替わる据え置きカメラ 1 件の永続表現で 56 byte・ natural alignment・ padding なし
+    /// camera* がカメラ視点、 trigger* がプレイヤー進入を判定する AABB で中心 + 半径を持つ
     /// priority が高いほど他 vcam を上回って選ばれる。 lookAtPlayer が 0 以外なら
-    /// lookTarget を無視してプレイヤーを追視する (位置固定で被写体を追う Mario 系の挙動)
+    /// lookTarget を無視してプレイヤーを追視する。 位置固定で被写体を追う Mario 系の挙動
     struct CameraVolume
     {
         float cameraPositionX = 0.0f;
@@ -124,13 +124,13 @@ namespace NS::Game::Level
     /// `.nslvl` に書かれる永続データ。 PlayMode 中は const 参照でしか触らせない
     struct LevelData
     {
-        /// 唯一の配置物リスト (grid block も自由配置物も含む)。 grid かどうかは各要素の flags で判別する
+        /// grid block も自由配置物も含む唯一の配置物リスト。 grid かどうかは各要素の flags で判別する
         std::vector<ObjectInstance> objects;
 
         /// objects の materialIndex が参照する .mat 相対パス表
         std::vector<std::string> materialPaths;
 
-        /// エリアカメラの永続リスト。 objects とは別管理 (視点 + トリガ範囲を 1 件で持つため箱型に入らない)
+        /// エリアカメラの永続リスト。 視点 + トリガ範囲を 1 件で持ち箱型に入らないため objects とは別管理
         std::vector<CameraVolume> cameraVolumes;
 
         std::int16_t spawnX = 0;
@@ -142,7 +142,7 @@ namespace NS::Game::Level
         std::uint16_t coinThreshold = 0;
         std::uint16_t timeLimitSeconds = 0;
 
-        /// field 単位の明示 update で計算。 vector は `data()+size()*sizeof(element)` のみ対象 (capacity 除外)
+        /// field 単位の明示 update で計算。 vector は `data()+size()*sizeof(element)` のみ対象で capacity は除外
         [[nodiscard]] std::uint32_t ComputeCrc32() const noexcept;
     };
 
@@ -159,26 +159,26 @@ namespace NS::Game::Level
     [[nodiscard]] std::int16_t ObjectCellY(const ObjectInstance& object) noexcept;
     [[nodiscard]] std::int16_t ObjectCellZ(const ObjectInstance& object) noexcept;
 
-    /// gridAligned かつ cell (x, y, z) に一致する最初の object の添字。 無ければ kNoObjectIndex
+    /// gridAligned かつ cell の x, y, z に一致する最初の object の添字。 無ければ kNoObjectIndex
     [[nodiscard]] std::size_t FindGridObjectAtCell(const LevelData& level,
                                                    std::int16_t x,
                                                    std::int16_t y,
                                                    std::int16_t z) noexcept;
 
-    /// cell (x, y, z) + rotationStep(0..3) から gridAligned な既定 solid の ObjectInstance を作る
-    /// 既定 solid 一式 (cube 描画 + Box 当たり) を component として積む
+    /// cell の x, y, z と rotationStep 0..3 から gridAligned な既定 solid の ObjectInstance を作る
+    /// 既定 solid 一式すなわち cube 描画 + Box 当たりを component として積む
     [[nodiscard]] ObjectInstance MakeGridObject(std::int16_t x,
                                                 std::int16_t y,
                                                 std::int16_t z,
                                                 std::uint8_t rotationStep);
 
-    /// gridAligned object の現在の 90° 回転 step(0..3) を quaternion から最近接で復元する
+    /// gridAligned object の現在の 90° 回転 step を quaternion から最近接で復元する
     [[nodiscard]] std::uint8_t GridRotationStep(const ObjectInstance& object) noexcept;
 
-    /// gridAligned object の回転を step(0..3) の Y 軸 yaw quaternion に設定する
+    /// gridAligned object の回転を rotationStep に対応する Y 軸 yaw quaternion に設定する
     void SetGridRotationStep(ObjectInstance& object, std::uint8_t rotationStep) noexcept;
 
-    /// undo の概算メモリに使う heap 量 (sizeof 外)。 反射値の文字列ヒープは概算に含めない
+    /// undo の概算メモリに使う sizeof 外の heap 量。 反射値の文字列ヒープは概算に含めない
     /// component vector / typeName / field 名の確保分を数える。 配置・変形系 Command の EstimatedBytes が使う
     [[nodiscard]] std::size_t EstimatedHeapBytes(const ComponentData& component) noexcept;
     [[nodiscard]] std::size_t EstimatedHeapBytes(const ObjectInstance& object) noexcept;
@@ -190,8 +190,8 @@ namespace NS::Game::Level
     /// component.fields から name 一致の最初の 1 件を返す。 無ければ nullptr
     [[nodiscard]] const FieldValue* FindField(const ComponentData& component, std::string_view name) noexcept;
 
-    /// 拾得種別を返す。 PickupComponent が無ければ -1、 "Pickup Kind" 欠損は 0 (コイン既定)
-    /// 0=コイン / 1=スター。 配置物の表示・固形判定 (Blocks) とプレイの拾得判定 (PlayMode) が同じ契約を読む
+    /// 拾得種別を返す。 PickupComponent が無ければ -1、 "Pickup Kind" 欠損は 0 でコイン既定
+    /// 0=コイン / 1=スター。 Blocks の配置物の表示・固形判定と PlayMode のプレイ拾得判定が同じ契約を読む
     [[nodiscard]] int PickupKindOf(const ObjectInstance& object) noexcept;
 
 } // namespace NS::Game::Level

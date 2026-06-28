@@ -127,7 +127,7 @@ void LevelPlayScene::OnStart()
         NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelPlayScene: InstanceBatcher 構築失敗、 block 描画はスキップされる");
 
     // 仮の skybox。 kurt 6-face PNG をロードし、 取得できなければ
-    // 1x1 マゼンタ cubemap fallback で続行する (描画は OnRenderScene 末尾)
+    // 1x1 マゼンタ cubemap fallback で続行する。 描画は OnRenderScene 末尾
     m_skybox = NS::Graphics::Skybox::Create();
     if (m_skybox->IsValid())
     {
@@ -146,7 +146,7 @@ void LevelPlayScene::OnStart()
     m_player->AttachScene(this);
     m_player->Root().SetPosition({0.0f, 1.0f, -4.0f});
     // cube mesh の半サイズは 0.5 だが capsule collider は radius=0.4 / halfHeight=0.5
-    // (= AABB 半サイズ 0.4, 0.9, 0.4)。両者が一致するよう scale で mesh を縮める
+    // すなわち AABB 半サイズ 0.4, 0.9, 0.4。両者が一致するよう scale で mesh を縮める
     m_player->Root().SetScale({0.8f, 1.8f, 0.8f});
     m_player->MeshComp().SetBaseColor(kPlayerColor);
     m_player->Shadow().SetResources(shadowMesh, shadowMaterial);
@@ -156,7 +156,7 @@ void LevelPlayScene::OnStart()
 
     m_cameraRig = std::make_unique<CameraRig>(&app->Input(), &m_player->Root(), &m_player->Movement());
     m_cameraRig->AttachScene(this);
-    // follow vcam の投影設定 (near 0.1 / fov 60 は既定、 play は遠景を 100 までに抑える)
+    // follow vcam の投影設定。 near 0.1 / fov 60 は既定、 play は遠景を 100 までに抑える
     m_cameraRig->Follow().SetFarPlane(100.0f);
 
     m_player->OnStart();
@@ -174,7 +174,7 @@ void LevelPlayScene::OnStart()
     m_cameraHost->AttachScene(this);
     m_cameraHost->OnStart();
 
-    // level の cameraVolumes から area camera を生成し Brain へ登録する (Brain 構築後に呼ぶ必要がある)
+    // level の cameraVolumes から area camera を生成し Brain へ登録する。 Brain 構築後に呼ぶ必要がある
     RebuildAreaCamerasFromLevelData();
 
     // 仮 skinned キャラをプレイ画面で常時表示し、 アニメ再生を画面で確認できるようにする
@@ -211,7 +211,7 @@ void LevelPlayScene::SetPlaying(bool playing) noexcept
     else
     {
         // 編集モードへ: paused/clear/death をリセットし player を凍結、 follow / area camera を休止する
-        // (free-fly カメラは editor が握るため scene は触らない)
+        // free-fly カメラは editor が握るため scene は触らない
         m_playMode.Exit(m_play);
         m_playMode.SetActive(false);
         if (m_player)
@@ -246,7 +246,7 @@ void LevelPlayScene::OnUpdate()
             m_instanceBatcher->ReloadShaders();
     }
 
-    // プレイ中の Esc は終了。 編集中は editor が Esc を握る (選択解除 / 終了) ので scene は触らない
+    // プレイ中の Esc は終了。 編集中は editor が Esc を握り選択解除 / 終了に使うので scene は触らない
     if (m_playing && app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
     {
         NS::App::Application::Quit();
@@ -254,17 +254,17 @@ void LevelPlayScene::OnUpdate()
     }
 
     // Application が Renderer::Resize を排他で握っているため、 Camera の aspect ratio は
-    // Renderer の現在 Size から毎フレーム pull する (callback 上書きで競合させない)
+    // Renderer の現在 Size から毎フレーム pull する。 callback 上書きで競合させない
     if (m_mainCamera)
         m_mainCamera->SetAspectRatioFromRenderer(app->Renderer());
 
-    // active vcam が入れ替わったらブレンドを進める (play / edit 共通、 fixed step ごとに 1 度)
+    // active vcam が入れ替わったらブレンドを進める。 play / edit 共通で fixed step ごとに 1 度
     if (m_brain)
         m_brain->OnUpdate();
 
     SnapshotDisplayBlocks();
 
-    // 編集中はプレイ更新を止める。 free-fly カメラ / 編集入力は editor 側 (overlay layer) が回す
+    // 編集中はプレイ更新を止める。 free-fly カメラ / 編集入力は overlay layer の editor 側が回す
     if (m_playing)
         TickPlay();
 
@@ -295,7 +295,7 @@ void LevelPlayScene::TickPlay()
         m_play.playerPosition = m_player->Root().Position();
     }
 
-    // Play のゲームルール (落下死 / coin / star)。 物理は持たず player 位置を読むだけ
+    // Play のゲームルールである落下死 / coin / star。 物理は持たず player 位置を読むだけ
     m_playMode.Tick(m_level, m_play, dt);
 
     // hazard は solid 衝突世界にも含まれ capsule 中心は表面外に留まるため芯線分から AABB の最近距離で判定する
@@ -325,8 +325,8 @@ void LevelPlayScene::TickPlay()
             area.cam->UpdateActivation(m_play.playerPosition);
     }
 
-    // 落下死 (PlayMode が y < kFallDeathThreshold で立てた deathTriggered) は respawn 経路
-    // ハザード接触の死 (playerHealth==0) は Game.cpp が Application::Quit を呼ぶためここでは respawn しない
+    // PlayMode が y < kFallDeathThreshold で立てた deathTriggered の落下死は respawn 経路
+    // playerHealth==0 のハザード接触の死は Game.cpp が Application::Quit を呼ぶためここでは respawn しない
     if (m_play.deathTriggered && m_play.playerHealth > 0)
     {
         m_play.deathTriggered = false;
@@ -337,7 +337,7 @@ void LevelPlayScene::TickPlay()
             m_player->Movement().ResetState();
         }
     }
-    // clearTriggered のクリア後遷移 (編集へ戻る / 次レベル / リザルト) は scene の外で扱う
+    // clearTriggered のクリア後遷移すなわち編集へ戻る / 次レベル / リザルトは scene の外で扱う
     // 開発時は editor が観測して編集モードへ戻す。 出荷のクリア演出は後続フェーズ
 
     if (m_player)
@@ -351,14 +351,14 @@ void LevelPlayScene::TickPlay()
 
 void LevelPlayScene::SnapshotDisplayBlocks()
 {
-    // 各配置物 GameObject の Snapshot は edit / play 共通 (静的 display object なので常時)
+    // 各配置物 GameObject の Snapshot は edit / play 共通。 静的 display object なので常時
     for (auto& obj : m_objects)
         obj->Root().Snapshot();
 }
 
 void LevelPlayScene::UpdateDisplayBlocks()
 {
-    // gridAligned な配置物のみ OnUpdate する。 自由配置物は OnUpdate 対象外 (旧挙動を保つ)
+    // gridAligned な配置物のみ OnUpdate する。 自由配置物は旧挙動を保つため OnUpdate 対象外
     for (std::size_t i = 0; i < m_objects.size(); ++i)
     {
         const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
@@ -406,12 +406,12 @@ void LevelPlayScene::OnRenderScene()
     if (m_brain == nullptr || m_mainCamera == nullptr)
         return;
 
-    // 有効な vcam (edit=free-fly / play=follow) を選び、 alpha 補間で実カメラへ書く
-    // follow は補間 target を追うのでここで alpha を渡す (旧 ApplyCameraTransform 相当の補間)
+    // 有効な vcam すなわち edit=free-fly / play=follow を選び、 alpha 補間で実カメラへ書く
+    // follow は補間 target を追うのでここで alpha を渡す。 旧 ApplyCameraTransform 相当の補間
     m_brain->Evaluate(ctx.alpha);
     ctx.viewProjection = m_brain->ViewProjection();
 
-    // 半透明 back-to-front ソート用に実カメラの world 座標を渡す (view 行列の逆変換の平行移動成分)
+    // 半透明 back-to-front ソート用に実カメラの world 座標を渡す。 view 行列の逆変換の平行移動成分
     ctx.cameraPosition = m_mainCamera->Camera().View().Invert().Translation();
 
     // 基底が BuildSceneOverride() を Resolve するので、 theme override が scene 解決値として ctx に載る
@@ -447,7 +447,7 @@ void LevelPlayScene::OnRenderScene()
         // instanceable 判定 / 近傍マスク / slice は RebuildBlocksFromLevelData で焼き済。 ここは焼いた slice と
         // 補間 world matrix だけを読み、 毎フレームの文字列走査と近傍マスク O(N^2) を持ち込まない
         m_instanceBatcher->BeginFrame();
-        // 個体色は全 instanced block 共通の solid 色 (theme tint は FrameCB の lightColor/ambientColor で行う)
+        // 個体色は全 instanced block 共通の solid 色。 theme tint は FrameCB の lightColor/ambientColor で行う
         for (const InstancedBlock& block : m_instancedBlocks)
         {
             NS::Graphics::BlockInstance inst{};
@@ -458,16 +458,16 @@ void LevelPlayScene::OnRenderScene()
         }
 
         // TextureArray を t0 に bind してから FlushAll。 Material::Bind では slot 0 を触っていない
-        // (SetTexture せず構築した) ため、 ここで bind した SRV が bucket 描画まで残る
+        // SetTexture せず構築したため、 ここで bind した SRV が bucket 描画まで残る
         if (auto* blockTextures = assets.TextureArrayByName("block"))
             ctx.renderer->Commands().SetTextureArray(*blockTextures, 0u, NS::Graphics::ShaderType::Pixel);
         m_instanceBatcher->FlushAll(*ctx.renderer);
     }
 
-    // 不透明 IRenderable。各 Draw が自分の Pipeline を set する (基底が bucket 分類して登録順に呼ぶ)
+    // 不透明 IRenderable。各 Draw が自分の Pipeline を set する。 基底が bucket 分類して登録順に呼ぶ
     DrawOpaque(ctx);
 
-    // Skybox は不透明描画後・半透明前。 view の translation 行 (_41/_42/_43) を 0 化して camera 中心に固定する
+    // Skybox は不透明描画後・半透明前。 view の translation 行 _41/_42/_43 を 0 化して camera 中心に固定する
     if (m_skybox && m_skybox->IsValid())
     {
         // 毎フレーム LoadCubemap すると I/O が常時走るため、 前回パスと差分があるときだけ再ロードする
@@ -534,7 +534,7 @@ void LevelPlayScene::OnShutdown()
     m_instancedBlocks.clear();
     m_hazardView.clear();
 
-    // Skybox / InstanceBatcher は Renderer の DeviceContext を ComPtr で握るため、 Renderer (Application) より
+    // Skybox / InstanceBatcher は Renderer の DeviceContext を ComPtr で握るため、 Application の Renderer より
     // 先に破棄する。 組み込み / leaf / 共有 material / block TextureArray / skinned model は AssetManager が Clear
     // で解放する
     m_instanceBatcher.reset();
@@ -555,7 +555,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
     m_objects.reserve(m_level.objects.size());
     m_physicsWorld.ReserveAabbs(m_level.objects.size());
 
-    // ファクトリは mesh / material を AssetManager から借りる。 app 不在 (起動前 / テスト) では何も組まない
+    // ファクトリは mesh / material を AssetManager から借りる。 app 不在の起動前 / テストでは何も組まない
     auto* app = NS::App::Application::Get();
     if (app == nullptr)
         return;
@@ -574,7 +574,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
 
         const bool gridAligned = (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0;
 
-        // grid solid は個別 Draw を殺して InstanceBatcher へ委ねる (描画段が m_objects を直読みして instanceable 判定)
+        // grid solid は個別 Draw を殺して InstanceBatcher へ委ねる。 描画段が m_objects を直読みして instanceable 判定
         // OnStart で RegisterRenderable 済なので MeshRenderer を非アクティブにするだけでよい
         if (NS::Game::Blocks::IsGridSolidObject(entry))
             if (auto* mesh = NS::Game::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*obj))
@@ -665,7 +665,7 @@ void LevelPlayScene::RebuildAreaCamerasFromLevelData()
     if (m_brain == nullptr)
         return;
 
-    // 旧 area camera を Brain から外してから破棄する (Brain の非所有参照を無効化させない)
+    // 旧 area camera を Brain から外してから破棄する。 Brain の非所有参照を無効化させない
     for (auto& area : m_areaCameras)
     {
         if (area.cam)

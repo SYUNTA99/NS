@@ -45,7 +45,7 @@ namespace NS::Game::Blocks
         };
 
         // object の視覚キーを導く。 MeshRenderer の反射 "Mesh" / "Material" 値とマテリアル添字で連結同一性を決める
-        // MeshRenderer を持たない object (coin / star 等) は空メッシュキーになり solid と連結しない
+        // MeshRenderer を持たない coin / star 等の object は空メッシュキーになり solid と連結しない
         VisualTileKey ComputeVisualKey(const NS::Game::Level::ObjectInstance& object)
         {
             VisualTileKey key;
@@ -53,7 +53,7 @@ namespace NS::Game::Blocks
             const NS::Game::Level::ComponentData* renderer =
                 NS::Game::Level::FindComponentData(object, "MeshRendererComponent");
             if (renderer == nullptr)
-                return key; // MeshRenderer 無し (coin / star 等) は空メッシュキーで solid と連結しない
+                return key; // MeshRenderer 無しの coin / star 等は空メッシュキーで solid と連結しない
             if (const NS::Game::Level::FieldValue* mesh = NS::Game::Level::FindField(*renderer, "Mesh"))
                 if (const auto* meshName = std::get_if<std::string>(&mesh->value))
                     key.mesh = *meshName;
@@ -66,12 +66,12 @@ namespace NS::Game::Blocks
 
     std::uint16_t LookupTextureSlice(ThemeId theme, std::uint8_t neighborMask) noexcept
     {
-        // theme 範囲外 → Grass (入力境界の fallback)
+        // theme 範囲外は入力境界の fallback として Grass
         if (static_cast<std::size_t>(theme) >= static_cast<std::size_t>(ThemeId::Count))
         {
             theme = ThemeId::Grass;
         }
-        // bitmask 範囲外 (>=64) は base slice (offset 0) にフォールバック
+        // bitmask が 64 以上なら base slice つまり offset 0 にフォールバック
         if (neighborMask >= 64)
         {
             const ThemeData& td0 = Get(theme);

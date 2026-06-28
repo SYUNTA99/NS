@@ -12,7 +12,7 @@ namespace NS::Game::Level
     namespace
     {
         // 拾得種別は PickupComponent だけで決まる。 読込時移行でどの拾得物も PickupComponent を持つ
-        // 種別判定は LevelData の共有 PickupKindOf に一本化する (配置物の表示・固形判定と同じ契約を読む)
+        // 種別判定は LevelData の共有 PickupKindOf に一本化し、 配置物の表示・固形判定と同じ契約を読む
         bool ObjectIsCoin(const ObjectInstance& object) noexcept
         {
             return PickupKindOf(object) == 0;
@@ -54,7 +54,7 @@ namespace NS::Game::Level
         if (dt <= 0.0f)
             return;
 
-        // 物理 (移動 / 重力 / 衝突) は CharacterMovementComponent が担う。 ここは Transform から
+        // 物理すなわち移動 / 重力 / 衝突は CharacterMovementComponent が担う。 ここは Transform から
         // ミラーされた play.playerPosition を読んでゲームルールだけを評価する
         if (play.playerPosition.y < kFallDeathThreshold)
             play.deathTriggered = true;

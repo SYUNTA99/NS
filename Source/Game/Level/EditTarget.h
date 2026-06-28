@@ -4,9 +4,9 @@
 /// @brief Command が編集する対象の非所有 view。 LevelData.objects と同長の transient id を束ねる
 ///
 /// @details `ids` は `objects` と 1:1 対応の **セッション限定** 識別子で `.nslvl` には保存しない
-/// 自由オブジェクトを undo 履歴から再特定するために使う (grid block は cell 座標で再特定するため
-/// id を参照しない)。 `objects` の追加 / 削除と `ids` は常に lockstep で維持する不変条件を持ち、
-/// objects を全置換 (load / 既定生成 / migrate) した直後は `ResetEditIds` で連番へ復元する
+/// 自由オブジェクトを undo 履歴から再特定するために使う。 grid block は cell 座標で再特定するため
+/// id を参照しない。 `objects` の追加 / 削除と `ids` は常に lockstep で維持する不変条件を持ち、
+/// objects を load / 既定生成 / migrate で全置換した直後は `ResetEditIds` で連番へ復元する
 
 #include "Game/Level/LevelData.h"
 

@@ -38,8 +38,8 @@ namespace NS::Game::Level
 namespace NS::Game::Blocks
 {
     /// ObjectInstance から配置物を組み立てて返す。 mesh / material は assets から借り、 free 配置物の .mat は
-    /// materialPaths を介して解決する。 component を持たない object は nullptr を返す (呼出側が読み飛ばす)
-    /// assets が deviceless (Builtin / SharedMaterial が nullptr) でも落ちない
+    /// materialPaths を介して解決する。 component を持たない object は nullptr を返し呼出側が読み飛ばす
+    /// assets が deviceless つまり Builtin / SharedMaterial が nullptr でも落ちない
     [[nodiscard]] std::unique_ptr<NS::Scene::GameObject> BuildPlacedObject(
         const NS::Game::Level::ObjectInstance& object,
         NS::Scene::AssetManager& assets,
@@ -57,15 +57,16 @@ namespace NS::Game::Blocks
     [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeFreeCubeComponents(
         const NS::Game::Level::ObjectInstance& object);
 
-    /// grid 配置された固形 block か。 components から判定する (gridAligned かつ BoxCollider 持ちで
-    /// slope / pole / hazard / 拾得を持たない)。 instancing / 昇格 / 当たり可視化の「固形」判定窓口
+    /// grid 配置された固形 block か。 gridAligned かつ BoxCollider 持ちで
+    /// slope / pole / hazard / 拾得を持たないことを components から判定する。 instancing / 昇格 /
+    /// 当たり可視化の「固形」判定窓口
     [[nodiscard]] bool IsGridSolidObject(const NS::Game::Level::ObjectInstance& object);
 
-    /// R で 90° 回す対象か。 SlopeCollider を持つか grid 固形なら true (掴み pole / 水 / 装飾は false)
+    /// R で 90° 回す対象か。 SlopeCollider を持つか grid 固形なら true。 掴み pole / 水 / 装飾は false
     [[nodiscard]] bool IsRotatableObject(const NS::Game::Level::ObjectInstance& object);
 
-    /// components から種別の表示名を導く ASCII 固定文字列 (Solid / Coin / Star / Slope NN / Pole / Hazard /
-    /// Water / Decoration)。 Hierarchy / Inspector の見出しに使う。 未知構成は "?"
+    /// components から種別の表示名を導く ASCII 固定文字列。 Solid / Coin / Star / Slope NN / Pole / Hazard /
+    /// Water / Decoration のいずれか。 Hierarchy / Inspector の見出しに使う。 未知構成は "?"
     [[nodiscard]] const char* ObjectDisplayName(const NS::Game::Level::ObjectInstance& object);
 
     /// asset 相対パスを ContentRoot 配下へ正規化して返す。 `..` で外へ出るパスは nullopt にし任意ファイル読込を防ぐ
@@ -80,7 +81,7 @@ namespace NS::Game::Blocks
     /// 影の受け皿と当たり可視化が collider 種別に依存せず世界境界を 1 つ取る窓口。 collider が無ければ nullopt
     [[nodiscard]] std::optional<NS::Math::AABB> ColliderWorldAABB(NS::Scene::GameObject& obj) noexcept;
 
-    /// obj の Component 列から型 T の最初の一致を返す (無ければ nullptr)
+    /// obj の Component 列から型 T の最初の一致を返す。 無ければ nullptr
     /// 描画 / 衝突 / editor が具象型を知らずに Component を取り出す共通窓口
     template <class T> [[nodiscard]] T* FindComponent(NS::Scene::GameObject& obj) noexcept
     {

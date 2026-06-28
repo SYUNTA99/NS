@@ -57,7 +57,7 @@ namespace NS::Game::Level
         }
 
         /// ObjectInstance のスカラ部を宣言順で hash し、 続けて components を hash する
-        /// component の field は名前順に hash するため、 save→load の正準化 (名前昇順) を跨いでも CRC が安定する
+        /// component の field は名前順に hash するため、 名前昇順の save→load 正準化を跨いでも CRC が安定する
         std::uint32_t UpdateWithObject(std::uint32_t crc, const ObjectInstance& object) noexcept
         {
             crc = UpdateWith(crc, object.positionX);
@@ -91,7 +91,7 @@ namespace NS::Game::Level
                 const std::size_t fieldCount = component.fields.size();
                 crc = UpdateWith(crc, static_cast<std::uint64_t>(fieldCount));
                 // JSON は field を名前順に正準化するので CRC も名前順で hash する。 field 名は component 内で一意なので
-                // heap を使わず「直前より大きい最小名」を順に選んで安定させる (noexcept・ 非確保)
+                // heap を使わず「直前より大きい最小名」を順に選んで安定させる。 noexcept で非確保
                 const std::string* previousName = nullptr;
                 for (std::size_t emitted = 0; emitted < fieldCount; ++emitted)
                 {
@@ -103,7 +103,7 @@ namespace NS::Game::Level
                             next = &field;
                     }
                     if (next == nullptr)
-                        break; // 想定外 (重複名) は安全側で打ち切る
+                        break; // 想定外の重複名は安全側で打ち切る
                     crc = UpdateWithFieldValue(crc, *next);
                     previousName = &next->name;
                 }
@@ -206,7 +206,7 @@ namespace NS::Game::Level
         case static_cast<std::uint8_t>(ShapeCollider::Mesh):
             return ShapeCollider::Mesh;
         default:
-            // 未知値 (新しい shape を旧コードで読む等) は安全側で Box に倒す
+            // 新しい shape を旧コードで読む等の未知値は安全側で Box に倒す
             return ShapeCollider::Box;
         }
     }
@@ -232,7 +232,7 @@ namespace NS::Game::Level
 
     std::uint8_t GridRotationStep(const ObjectInstance& object) noexcept
     {
-        // q と -q は同一回転なので符号無視 (fabs) で 4 候補の最近接を選ぶ。 BlockRotationToYaw の符号規約に依存しない
+        // q と -q は同一回転なので fabs で符号を無視し 4 候補の最近接を選ぶ。 BlockRotationToYaw の符号規約に依存しない
         const NS::Math::Quaternion current{object.rotationX, object.rotationY, object.rotationZ, object.rotationW};
         std::uint8_t best = 0;
         float bestDot = -2.0f;
