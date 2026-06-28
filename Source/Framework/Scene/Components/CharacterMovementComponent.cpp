@@ -174,11 +174,13 @@ namespace NS::Scene
             return;
         }
 
+#if !defined(NS_SHIPPING)
         // コヨーテジャンプ記録を寿命で減衰させる。 pole / ledge で早期 return する状態でも確実に老化させるため
         // どの state へ分岐するより前に処理する
         for (CoyoteJumpMarker& marker : m_coyoteJumpMarkers)
             marker.remaining -= dt;
         std::erase_if(m_coyoteJumpMarkers, [](const CoyoteJumpMarker& m) { return m.remaining <= 0.0f; });
+#endif
 
         // ClimbingPole では default CharacterController を bypass し、pole の axis に拘束された
         // 専用 update で position を直接更新する
@@ -299,19 +301,15 @@ namespace NS::Scene
         const bool wantJump = m_jumpPressedThisFrame || m_bufferTimer > 0.0f;
         if (canGroundJump && wantJump)
         {
+#if !defined(NS_SHIPPING)
             // 接地していないのに窓が残って跳べた= コヨーテ窓内ジャンプを debug 記録する
             if (m_debugDraw && !m_isGrounded && m_coyoteTimer > 0.0f)
                 PushCoyoteJumpMarker(m_lastGroundedPosition, RootTransform().Position());
+#endif
             m_velocity.y = m_jumpImpulse;
             --m_jumpsRemaining;
             m_bufferTimer = 0.0f;
             m_coyoteTimer = 0.0f;
-        }
-        else if (m_jumpPressedThisFrame && !m_isGrounded && m_coyoteTimer <= 0.0f && m_jumpsRemaining > 0)
-        {
-            m_velocity.y = m_jumpImpulse;
-            --m_jumpsRemaining;
-            m_bufferTimer = 0.0f;
         }
 
         if (m_prevJumpHeld && !m_jumpHeld && m_velocity.y > 0.0f)

@@ -46,15 +46,23 @@ namespace NS::Game::Blocks
             const float zMin = cz - 0.5f;
             const float zMax = cz + 0.5f;
 
-            // 側方の隣が固形でなければ、 その天面の縁辺は踏み外せる縁
+            // 側方の隣が固形でなければ、 その天面の縁辺は踏み外せる縁。 outward は空セル側へ向ける
             if (!IsSolidCell(level, static_cast<std::int16_t>(x + 1), y, z))
-                edges.push_back(LedgeEdge{NS::Math::Vector3{xMax, top, zMin}, NS::Math::Vector3{xMax, top, zMax}});
+                edges.push_back(LedgeEdge{NS::Math::Vector3{xMax, top, zMin},
+                                          NS::Math::Vector3{xMax, top, zMax},
+                                          NS::Math::Vector3{1.0f, 0.0f, 0.0f}});
             if (!IsSolidCell(level, static_cast<std::int16_t>(x - 1), y, z))
-                edges.push_back(LedgeEdge{NS::Math::Vector3{xMin, top, zMin}, NS::Math::Vector3{xMin, top, zMax}});
+                edges.push_back(LedgeEdge{NS::Math::Vector3{xMin, top, zMin},
+                                          NS::Math::Vector3{xMin, top, zMax},
+                                          NS::Math::Vector3{-1.0f, 0.0f, 0.0f}});
             if (!IsSolidCell(level, x, y, static_cast<std::int16_t>(z + 1)))
-                edges.push_back(LedgeEdge{NS::Math::Vector3{xMin, top, zMax}, NS::Math::Vector3{xMax, top, zMax}});
+                edges.push_back(LedgeEdge{NS::Math::Vector3{xMin, top, zMax},
+                                          NS::Math::Vector3{xMax, top, zMax},
+                                          NS::Math::Vector3{0.0f, 0.0f, 1.0f}});
             if (!IsSolidCell(level, x, y, static_cast<std::int16_t>(z - 1)))
-                edges.push_back(LedgeEdge{NS::Math::Vector3{xMin, top, zMin}, NS::Math::Vector3{xMax, top, zMin}});
+                edges.push_back(LedgeEdge{NS::Math::Vector3{xMin, top, zMin},
+                                          NS::Math::Vector3{xMax, top, zMin},
+                                          NS::Math::Vector3{0.0f, 0.0f, -1.0f}});
         }
         return edges;
     }

@@ -258,9 +258,11 @@ void LevelPlayScene::OnUpdate()
             m_instanceBatcher->ReloadShaders();
     }
 
+#if !defined(NS_SHIPPING)
     // F2 で コヨーテ debug 描画 すなわち 縁の紫線 / カプセル / コヨーテジャンプの赤線 を切替える
     if (!app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::Platform::Key::F2))
         m_debugCoyoteDraw = !m_debugCoyoteDraw;
+#endif
 
     // プレイ中の Esc は終了。 編集中は editor が Esc を握り選択解除 / 終了に使うので scene は触らない
     if (m_playing && app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
@@ -307,8 +309,8 @@ void LevelPlayScene::TickPlay()
 
     const float dt = NS::Core::FrameTimer::FixedDelta();
 
-    // 暗転シーケンス中は入力 / 物理 / ゲームルールを止めてプレイヤーを操作不能にし、 タイマーだけ進める
-    // 暗転しきった裏でレベルを組み直すため、 全黒の一瞬で spawn への teleport が隠れる
+    // 暗転の間は入力 / 物理 / ゲームルールを止めてプレイヤーを操作不能にし、 タイマーだけ進める
+    // 暗転しきった裏でレベルを組み直すので、 全黒の一瞬で spawn への瞬間移動が隠れる
     if (m_fadeStage != FadeStage::None)
     {
         AdvanceFade(dt);
@@ -366,7 +368,7 @@ void LevelPlayScene::TickPlay()
             area.cam->UpdateActivation(m_play.playerPosition);
     }
 
-    // 落下死は即リスタート、 ゴール接触 (出荷のみ) は暗転シーケンスで仕切り直してループを閉じる
+    // 落下死は即リスタート、 ゴール接触は出荷のみ暗転で仕切り直してループを閉じる
     // どちらも RestartLevel が spawn へ戻し health / coin / flag を全リセットするのでループが続く
     // 開発ビルドは editor が clearTriggered を観測して編集モードへ戻すため scene 側では扱わない
     if (m_play.deathTriggered)
@@ -589,13 +591,35 @@ void LevelPlayScene::OnRenderScene()
     // 半透明 IRenderable は不透明 + skybox の後。カメラから遠い順に各 Draw が alpha/additive Pipeline を set する
     DrawTransparent(ctx);
 
+#if !defined(NS_SHIPPING)
     // コヨーテタイムの debug 可視化を world 描画後にまとめて出す。 player は fixed step で記録した赤線を持つが、
     // ここで render rate に蓄積し直すことで高リフレッシュでもちらつかせない
     if (m_debugCoyoteDraw)
     {
+        // 縁から空セル側へ伸ばすコヨーテ到達距離 = 最高速 × 猶予秒。 Inspector で Coyote Time を変えると即追従する
+        // 内側の縁を踏み外し点、 外側の明るい線を猶予の限界として、 間を横線で塗り「範囲」を面で見せる
         const NS::Math::Color ledgeColor{0.65f, 0.30f, 1.0f, 1.0f};
+        const NS::Math::Color limitColor{1.0f, 0.20f, 0.90f, 1.0f};
+        float coyoteReach = 0.0f;
+        if (m_player)
+            coyoteReach = m_player->Movement().MaxSpeed() * m_player->Movement().CoyoteTime();
         for (const NS::Game::Blocks::LedgeEdge& edge : m_ledgeEdges)
+        {
+            const NS::Math::Vector3 off{edge.outward.x * coyoteReach, 0.0f, edge.outward.z * coyoteReach};
+            const NS::Math::Vector3 outerA{edge.a.x + off.x, edge.a.y, edge.a.z + off.z};
+            const NS::Math::Vector3 outerB{edge.b.x + off.x, edge.b.y, edge.b.z + off.z};
             NS::Graphics::DebugDraw::Line(edge.a, edge.b, ledgeColor);
+            NS::Graphics::DebugDraw::Line(edge.a, outerA, ledgeColor);
+            NS::Graphics::DebugDraw::Line(edge.b, outerB, ledgeColor);
+            NS::Graphics::DebugDraw::Line(outerA, outerB, limitColor);
+            for (int hatch = 1; hatch <= 2; ++hatch)
+            {
+                const float t = static_cast<float>(hatch) / 3.0f;
+                const NS::Math::Vector3 ha{edge.a.x + off.x * t, edge.a.y, edge.a.z + off.z * t};
+                const NS::Math::Vector3 hb{edge.b.x + off.x * t, edge.b.y, edge.b.z + off.z * t};
+                NS::Graphics::DebugDraw::Line(ha, hb, ledgeColor);
+            }
+        }
 
         if (m_player)
         {
@@ -618,8 +642,9 @@ void LevelPlayScene::OnRenderScene()
     }
     // 編集モードでは LevelEditorController がギズモ等を足して別途 Flush するが、 プレイ中はここが唯一の Flush
     NS::Graphics::DebugDraw::Flush(*ctx.renderer, ctx.viewProjection);
+#endif
 
-    // クリア / 死亡の暗転 overlay は全描画の最後に最前面で重ねる。 alpha=0 のフレームは描かない
+    // クリア / 死亡の暗転は全描画の最後に最前面で重ねる。 不透明度 0 のフレームは描かない
     if (m_screenFade && m_screenFade->IsValid() && m_fadeAlpha > 0.0f)
         m_screenFade->Render(*ctx.renderer, NS::Math::Color{0.0f, 0.0f, 0.0f, m_fadeAlpha});
 }
@@ -757,8 +782,10 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
         m_instancedBlocks.push_back(InstancedBlock{i, static_cast<float>(slice)});
     }
 
+#if !defined(NS_SHIPPING)
     // コヨーテ debug 用に踏み外せる縁を焼く。 level が変わらない限り不変なのでここで 1 度だけ
     m_ledgeEdges = NS::Game::Blocks::ComputeTopLedgeEdges(m_level);
+#endif
 
     m_physicsWorld.BuildBroadphase();
 

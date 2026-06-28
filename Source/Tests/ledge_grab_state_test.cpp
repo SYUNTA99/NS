@@ -194,14 +194,16 @@ TEST_F(LedgeGrabStateTest, DoesNotGrabWhileAscending)
     NS::Physics::PhysicsWorld pw = MakeWorld(world);
     mov.SetPhysicsWorld(&pw);
 
+    // GrabsLedgeWhenDescendingIntoEdge と同じ掴める高さ / 距離 / 前方入力に置く
+    // 違いは速度だけ。 上向き速度を直接与え velocity.y > 0 の上昇中なら掴まないを検証する
     playerObj.Root().SetPosition({-0.9f, 0.0f, 0.0f});
     mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
-    // jump で上昇させると velocity.y > 0 になり、 上昇中は掴まない
-    mov.SetJumpPressed();
+    mov.SetVelocity({0.0f, 6.0f, 0.0f});
     StepN(mov, 1);
 
-    EXPECT_EQ(mov.State(), MovementState::Jumping);
+    ASSERT_GT(mov.Velocity().y, 0.0f);
     EXPECT_NE(mov.State(), MovementState::LedgeHanging);
+    EXPECT_NE(mov.State(), MovementState::LedgeMantling);
 }
 
 TEST_F(LedgeGrabStateTest, ShimmyMovesAlongLedge)

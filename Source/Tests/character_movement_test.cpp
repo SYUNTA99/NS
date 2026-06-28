@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Core/Clock.h>
+#include <Framework/Math/Math.h>
+#include <Framework/Physics/PhysicsWorld.h>
 #include <Framework/Scene/Components/CharacterMovementComponent.h>
 #include <Framework/Scene/Components/PoleComponent.h>
 #include <Framework/Scene/GameObject.h>
@@ -10,6 +12,8 @@
 
 namespace
 {
+    using NS::Math::AABB;
+    using NS::Math::Vector3;
     using NS::Scene::CharacterMovementComponent;
     using NS::Scene::GameObject;
 
@@ -21,6 +25,21 @@ namespace
         mov.SetDebugDrawEnabled(false);
         for (int i = 0; i < n; ++i)
             mov.OnUpdate();
+    }
+
+    /// owner と world に床 1 枚を仕込み、 接地するまで step した CMC を返す。 接地 / コヨーテ経路の
+    /// ジャンプを試す土台。 物理世界なしだと永遠に空中なので、 接地ジャンプの検証にはこれで地面を与える
+    CharacterMovementComponent& MakeGrounded(GameObject& owner, NS::Physics::PhysicsWorld& world)
+    {
+        auto& mov = *owner.AddComponent<CharacterMovementComponent>();
+        world.AddAabb(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
+        world.BuildBroadphase();
+        owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
+        mov.SetPhysicsWorld(&world);
+        mov.SetDebugDrawEnabled(false);
+        for (int i = 0; i < 30 && !mov.IsGrounded(); ++i)
+            mov.OnUpdate();
+        return mov;
     }
 } // namespace
 
@@ -44,7 +63,9 @@ TEST_F(CharacterMovementTest, GravityReducesVerticalVelocityWhenAirborne)
 TEST_F(CharacterMovementTest, JumpPressedAppliesImpulseAndConsumesOneJump)
 {
     GameObject obj;
-    auto& mov = *obj.AddComponent<CharacterMovementComponent>();
+    NS::Physics::PhysicsWorld world;
+    auto& mov = MakeGrounded(obj, world);
+    ASSERT_TRUE(mov.IsGrounded());
 
     mov.SetJumpPressed();
     StepN(mov, 1);
@@ -52,10 +73,24 @@ TEST_F(CharacterMovementTest, JumpPressedAppliesImpulseAndConsumesOneJump)
     EXPECT_EQ(mov.JumpsRemaining(), 0);
 }
 
+TEST_F(CharacterMovementTest, NoJumpAfterCoyoteExpiresWhileAirborne)
+{
+    // 接地もコヨーテ窓も無い空中で press しても跳べない。 コヨーテを跳べる限界にした回帰
+    GameObject obj;
+    auto& mov = *obj.AddComponent<CharacterMovementComponent>();
+    mov.SetDebugDrawEnabled(false);
+
+    mov.SetJumpPressed();
+    StepN(mov, 1);
+    EXPECT_LE(mov.Velocity().y, 0.0f);  // ジャンプの上向き初速は出ず重力で負のまま
+    EXPECT_EQ(mov.JumpsRemaining(), 1); // ジャンプは消費されない
+}
+
 TEST_F(CharacterMovementTest, SecondJumpDoesNotFireWithoutLanding)
 {
     GameObject obj;
-    auto& mov = *obj.AddComponent<CharacterMovementComponent>();
+    NS::Physics::PhysicsWorld world;
+    auto& mov = MakeGrounded(obj, world);
 
     mov.SetJumpPressed();
     StepN(mov, 1);
@@ -70,7 +105,8 @@ TEST_F(CharacterMovementTest, SecondJumpDoesNotFireWithoutLanding)
 TEST_F(CharacterMovementTest, JumpReleaseHalvesVerticalVelocity)
 {
     GameObject obj;
-    auto& mov = *obj.AddComponent<CharacterMovementComponent>();
+    NS::Physics::PhysicsWorld world;
+    auto& mov = MakeGrounded(obj, world);
 
     mov.SetJumpPressed();
     mov.SetJumpHeld(true);
@@ -88,8 +124,9 @@ TEST_F(CharacterMovementTest, JumpReleaseHalvesVerticalVelocity)
 TEST_F(CharacterMovementTest, AsymmetricGravityIsStrongerOnDescent)
 {
     GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& movA = MakeGrounded(obj, world);
     GameObject objB;
-    auto& movA = *obj.AddComponent<CharacterMovementComponent>();
     auto& movB = *objB.AddComponent<CharacterMovementComponent>();
 
     movA.SetJumpPressed();
@@ -105,8 +142,8 @@ TEST_F(CharacterMovementTest, AsymmetricGravityIsStrongerOnDescent)
 TEST_F(CharacterMovementTest, ApexHangScalesGravity)
 {
     GameObject obj;
-    auto& mov = *obj.AddComponent<CharacterMovementComponent>();
-    mov.SetDebugDrawEnabled(false);
+    NS::Physics::PhysicsWorld world;
+    auto& mov = MakeGrounded(obj, world);
 
     mov.SetJumpPressed();
     for (int i = 0; i < 10; ++i)

@@ -59,6 +59,8 @@ namespace NS::Scene
         [[nodiscard]] PoleComponent* AttachedPole() const noexcept { return m_attachedPole; }
 
         [[nodiscard]] NS::Math::Vector3 Velocity() const noexcept { return m_velocity; }
+        /// テスト / 外力用に速度を直接与える。 通常は OnUpdate 内で更新するため呼出不要
+        void SetVelocity(const NS::Math::Vector3& v) noexcept { m_velocity = v; }
         [[nodiscard]] bool IsGrounded() const noexcept { return m_isGrounded; }
         [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; }
 
@@ -66,6 +68,10 @@ namespace NS::Scene
         void SetCapsuleHalfHeight(float h) noexcept { m_capsuleHalfHeight = (h < 0.001f) ? 0.001f : h; }
         [[nodiscard]] float CapsuleRadius() const noexcept { return m_capsuleRadius; }
         [[nodiscard]] float CapsuleHalfHeight() const noexcept { return m_capsuleHalfHeight; }
+
+        /// debug 可視化が縁の外側へ伸ばすコヨーテ帯の寸法に使う。 ライブ調整した値をそのまま反映する
+        [[nodiscard]] float CoyoteTime() const noexcept { return m_coyoteTime; }
+        [[nodiscard]] float MaxSpeed() const noexcept { return m_maxSpeed; }
 
         /// Debug 可視化の on/off。default true。CI / unit test では false 推奨
         void SetDebugDrawEnabled(bool enabled) noexcept { m_debugDraw = enabled; }
@@ -128,7 +134,7 @@ namespace NS::Scene
         float m_apexHangScale = 0.5f;
         float m_jumpReleaseScale = 0.6f;
         float m_jumpImpulse = 12.0f;
-        float m_coyoteTime = 0.20f;
+        float m_coyoteTime = 0.025f;
         float m_jumpBufferTime = 0.25f;
         float m_maxSpeed = 8.0f;
         float m_walkSpeed = 4.0f;

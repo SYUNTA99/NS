@@ -19,10 +19,12 @@ namespace NS::Game::Level
 namespace NS::Game::Blocks
 {
     /// 天面の縁辺 1 本。 a, b は world 端点で y は天面高さ
+    /// outward は空セル側 すなわちコヨーテ猶予が伸びる向きの水平単位ベクトル
     struct LedgeEdge
     {
         NS::Math::Vector3 a{0.0f, 0.0f, 0.0f};
         NS::Math::Vector3 b{0.0f, 0.0f, 0.0f};
+        NS::Math::Vector3 outward{0.0f, 0.0f, 0.0f};
     };
 
     /// level の grid 固形から、 歩ける天面の踏み外せる縁辺を world 線分列で返す
