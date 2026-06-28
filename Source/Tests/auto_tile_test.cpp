@@ -133,22 +133,3 @@ TEST(AutoTileTest, MixedNeighborsConnectOnlySameVisual)
     auto m = BlocksNs::ComputeNeighborMask(lv, 0, 0, 0);
     EXPECT_EQ(m, 0b00010001u);
 }
-
-TEST(AutoTileTest, SetSpawnMarkerWritesCoordinates)
-{
-    LevelNs::LevelData lv;
-    BlocksNs::SetSpawnMarker(lv, 10, 2, -5);
-    EXPECT_EQ(lv.spawnX, 10);
-    EXPECT_EQ(lv.spawnY, 2);
-    EXPECT_EQ(lv.spawnZ, -5);
-}
-
-TEST(AutoTileTest, SetSpawnMarkerOverwritesPreviousValue)
-{
-    LevelNs::LevelData lv;
-    BlocksNs::SetSpawnMarker(lv, 1, 1, 1);
-    BlocksNs::SetSpawnMarker(lv, -3, 0, 7);
-    EXPECT_EQ(lv.spawnX, -3);
-    EXPECT_EQ(lv.spawnY, 0);
-    EXPECT_EQ(lv.spawnZ, 7);
-}

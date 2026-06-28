@@ -106,7 +106,7 @@ TEST(ModeToggle, EnterPlayInitializesPlayStateAtSpawn)
     editor.EnterPlay();
 
     EXPECT_NEAR(scene.Play().playerPosition.x, 7.0f, 1e-4f);
-    // y は spawn セル底面 + (capsule halfHeight + radius) + 1cm lift = spawnY + 0.41
-    EXPECT_NEAR(scene.Play().playerPosition.y, 2.41f, 1e-3f);
+    // spawn は capsule 中心 world 位置そのものなので player はその座標へ正確に置かれる
+    EXPECT_NEAR(scene.Play().playerPosition.y, 2.0f, 1e-4f);
     EXPECT_NEAR(scene.Play().playerPosition.z, -4.0f, 1e-4f);
 }

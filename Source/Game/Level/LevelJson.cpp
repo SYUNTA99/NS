@@ -22,7 +22,8 @@ namespace NS::Game::Level
     namespace
     {
         /// セーブフォーマットのバージョン。 binary 時代の major/minor を 1 整数へ置換した
-        constexpr int kFormatVersion = 1;
+        /// v2 で spawn をグリッドセル番号から capsule 中心の world 位置 + 向きへ変更した
+        constexpr int kFormatVersion = 2;
 
         /// 読込時の上限。 巨大 size / 要素数による memory exhaustion を防ぐ。 binary 版から移植
         constexpr std::size_t kMaxLevelFileBytes = 16u * 1024u * 1024u;
@@ -289,8 +290,9 @@ namespace NS::Game::Level
         meta["timeLimitSeconds"] = static_cast<int>(level.timeLimitSeconds);
         root["meta"] = std::move(meta);
 
-        root["spawn"] = nlohmann::json{
-            static_cast<int>(level.spawnX), static_cast<int>(level.spawnY), static_cast<int>(level.spawnZ)};
+        root["spawn"] = Vec3Json(level.spawnX, level.spawnY, level.spawnZ);
+        root["spawnRotation"] =
+            Vec4Json(level.spawnRotationX, level.spawnRotationY, level.spawnRotationZ, level.spawnRotationW);
 
         nlohmann::json objects = nlohmann::json::array();
         for (const auto& object : level.objects)
@@ -391,13 +393,20 @@ namespace NS::Game::Level
                 outLevel.cameraVolumes.push_back(DeserializeCameraVolume(cameraJson));
         }
 
-        const auto spawnIt = root.find("spawn");
-        if (spawnIt != root.end() && spawnIt->is_array() && spawnIt->size() == 3u && (*spawnIt)[0].is_number() &&
-            (*spawnIt)[1].is_number() && (*spawnIt)[2].is_number())
+        const int loadedVersion = ReadInt(root, "formatVersion", 1);
+        ReadVec3(root, "spawn", outLevel.spawnX, outLevel.spawnY, outLevel.spawnZ);
+        ReadVec4(root,
+                 "spawnRotation",
+                 outLevel.spawnRotationX,
+                 outLevel.spawnRotationY,
+                 outLevel.spawnRotationZ,
+                 outLevel.spawnRotationW);
+        if (loadedVersion < 2 && root.contains("spawn"))
         {
-            outLevel.spawnX = static_cast<std::int16_t>((*spawnIt)[0].get<int>());
-            outLevel.spawnY = static_cast<std::int16_t>((*spawnIt)[1].get<int>());
-            outLevel.spawnZ = static_cast<std::int16_t>((*spawnIt)[2].get<int>());
+            // v1 までの spawn はグリッドセル番号で「そのセルに立つ」 意味だった。 v2 以降は capsule 中心の
+            // world 位置なので、 旧コードの床乗せ分を足して中心へ移す
+            constexpr float kLegacyStandLift = 0.41f; // capsule halfHeight 0.5 + radius 0.4 + 1cm - cell 半 0.5
+            outLevel.spawnY += kLegacyStandLift;
         }
 
         const auto metaIt = root.find("meta");

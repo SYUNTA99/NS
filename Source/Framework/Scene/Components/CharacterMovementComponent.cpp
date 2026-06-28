@@ -2,7 +2,6 @@
 
 #include "Framework/Core/Clock.h"
 #include "Framework/Core/LogCategories.h"
-#include "Framework/Graphics/DebugDraw.h"
 #include "Framework/Physics/PhysicsWorld.h"
 #include "Framework/Scene/Components/PoleComponent.h"
 #include "Framework/Scene/GameObject.h"
@@ -10,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 
 namespace
 {
@@ -68,6 +68,11 @@ namespace
     /// 縁掴み: つかんだ後、 前入力での自動登りを許すまでの最小ぶら下がり時間で単位は s。 壁に向かう
     /// 入力のまま即登り切ってつかみが見えない問題を防ぐ。 jump / drop はこの待ちを受けない
     constexpr float kLedgeMinHangTime = 0.3f;
+
+    /// コヨーテジャンプ記録の表示寿命で単位は s。 直近の数試行を見比べられる長さ
+    constexpr float kCoyoteJumpMarkerLifetime = 3.0f;
+    /// 同時に保持するコヨーテジャンプ記録の上限。 画面が赤線で埋まらない数
+    constexpr std::size_t kMaxCoyoteJumpMarkers = 16;
     /// 縁掴み: ぶら下がりから上面へよじ登る mantle モーションの所要時間で単位は s。 瞬間移動を避けて
     /// 登りを視認できるようにする。 前半で上昇、 後半で前進の 2 段に割る
     constexpr float kLedgeMantleDuration = 0.25f;
@@ -144,6 +149,16 @@ namespace NS::Scene
         m_ledgeRegrabCooldown = 0.0f;
         m_ledgeHangTimer = 0.0f;
         m_ledgeMantleTimer = 0.0f;
+        m_lastGroundedPosition = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+        m_coyoteJumpMarkers.clear();
+    }
+
+    void CharacterMovementComponent::PushCoyoteJumpMarker(const NS::Math::Vector3& edge,
+                                                          const NS::Math::Vector3& jump) noexcept
+    {
+        if (m_coyoteJumpMarkers.size() >= kMaxCoyoteJumpMarkers)
+            m_coyoteJumpMarkers.erase(m_coyoteJumpMarkers.begin());
+        m_coyoteJumpMarkers.push_back(CoyoteJumpMarker{edge, jump, kCoyoteJumpMarkerLifetime});
     }
 
     void CharacterMovementComponent::OnUpdate()
@@ -158,6 +173,12 @@ namespace NS::Scene
             m_prevJumpHeld = m_jumpHeld;
             return;
         }
+
+        // コヨーテジャンプ記録を寿命で減衰させる。 pole / ledge で早期 return する状態でも確実に老化させるため
+        // どの state へ分岐するより前に処理する
+        for (CoyoteJumpMarker& marker : m_coyoteJumpMarkers)
+            marker.remaining -= dt;
+        std::erase_if(m_coyoteJumpMarkers, [](const CoyoteJumpMarker& m) { return m.remaining <= 0.0f; });
 
         // ClimbingPole では default CharacterController を bypass し、pole の axis に拘束された
         // 専用 update で position を直接更新する
@@ -278,6 +299,9 @@ namespace NS::Scene
         const bool wantJump = m_jumpPressedThisFrame || m_bufferTimer > 0.0f;
         if (canGroundJump && wantJump)
         {
+            // 接地していないのに窓が残って跳べた= コヨーテ窓内ジャンプを debug 記録する
+            if (m_debugDraw && !m_isGrounded && m_coyoteTimer > 0.0f)
+                PushCoyoteJumpMarker(m_lastGroundedPosition, RootTransform().Position());
             m_velocity.y = m_jumpImpulse;
             --m_jumpsRemaining;
             m_bufferTimer = 0.0f;
@@ -318,6 +342,10 @@ namespace NS::Scene
         if (m_isGrounded)
             m_coyoteTimer = m_coyoteTime;
 
+        // 縁を踏み外した瞬間に踏み外し点を保てるよう、 接地している間は最終接地位置を更新し続ける
+        if (m_isGrounded)
+            m_lastGroundedPosition = out.position;
+
         // Walking / Jumping / Falling のサブ分類は high-level state の参考にする。 controller bypass はしない
         if (m_isGrounded)
             m_state = MovementState::Walking;
@@ -347,15 +375,6 @@ namespace NS::Scene
         // pole を掴んでいなければ、 通常 block の縁を掴めるか試す。 空中下降中のみ成立する
         if (m_state != MovementState::ClimbingPole)
             TryGrabLedge(out.position);
-
-        if (m_debugDraw)
-        {
-            const NS::Math::Vector3 center = RootTransform().Position();
-            const NS::Math::Vector3 axis{0.0f, m_capsuleHalfHeight, 0.0f};
-            const NS::Math::Color color =
-                m_isGrounded ? NS::Math::Color{0.2f, 1.0f, 0.2f, 1.0f} : NS::Math::Color{1.0f, 1.0f, 0.2f, 1.0f};
-            NS::Graphics::DebugDraw::Capsule(center, axis, m_capsuleRadius, color);
-        }
 
         m_prevJumpHeld = m_jumpHeld;
         m_jumpPressedThisFrame = false;

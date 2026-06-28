@@ -13,6 +13,7 @@
 #include "Framework/Math/Math.h"
 #include "Framework/Physics/PhysicsWorld.h"
 #include "Framework/Scene/SceneBase.h"
+#include "Game/Blocks/LedgeEdges.h"
 #include "Game/CameraRig.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayMode.h"
@@ -27,6 +28,7 @@ namespace NS::Graphics
 {
     class InstanceBatcher;
     class Skybox;
+    class ScreenFade;
 } // namespace NS::Graphics
 
 namespace NS::Scene
@@ -42,7 +44,6 @@ namespace NS::Scene
 } // namespace NS::Scene
 
 class Player;
-class SkinnedDebugCharacter;
 
 /// レベルを遊ぶための root scene。 編集機能を持たず、 派生もしない単一の scene 型
 class LevelPlayScene : public NS::Scene::SceneBase
@@ -97,9 +98,14 @@ private:
     /// プレイ更新本体: 入力 → 物理 → ルール → area camera → 死亡/リスポーン → カメラ追従
     void TickPlay();
 
-    /// 仮 skinned キャラの glTF を毎ステップ進めて描画する debug hook
-    /// F1 再生/停止、 F2 クリップ送り、 F3/F4 速度。 ImGui 入力中はキー無効
-    void UpdateAnimatedModel();
+    /// レベルを頭から組み直す。 spawn へ戻し health / coin / flag を全リセットして再開する
+    void RestartLevel() noexcept;
+
+    /// ゴール接触の暗転シーケンスを開始する。 進行中の再呼び出しは無視する
+    void BeginClearFade() noexcept;
+
+    /// 暗転シーケンスを dt だけ進める。 暗転しきった瞬間に RestartLevel し、 明転しきったら通常へ戻す
+    void AdvanceFade(float dt) noexcept;
 
     /// 全表示ブロックの Snapshot を取る。 補間描画のため edit / play 共通で毎フレーム
     void SnapshotDisplayBlocks();
@@ -116,12 +122,12 @@ private:
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
     std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
 
+    // クリア / 死亡からレベル再開へ繋ぐ暗転 / 明転を全画面へ重ねる overlay
+    std::unique_ptr<NS::Graphics::ScreenFade> m_screenFade;
+
     // 借用元なので m_player より前に宣言する。 player を先に破棄し CMC の無効参照を防ぐ
     NS::Physics::PhysicsWorld m_physicsWorld;
     std::unique_ptr<Player> m_player;
-
-    // 仮 skinned キャラ。 形 / 骨 / 材質は AssetManager 所有を参照し、 components を自分で合成する
-    std::unique_ptr<SkinnedDebugCharacter> m_animatedModel;
 
     // 配置物の単一所有リスト。 grid / slope / pole / hazard / water / deco / 自由配置物すべてを
     // generic GameObject として保持する。 RebuildBlocksFromLevelData がファクトリ経由で作り直す
@@ -138,6 +144,10 @@ private:
         float textureSlice = 0.0f;
     };
     std::vector<InstancedBlock> m_instancedBlocks;
+
+    // コヨーテ debug 用に焼く踏み外せる縁の world 線分。 level + theme 不変なので RebuildBlocksFromLevelData で 1
+    // 度焼く
+    std::vector<NS::Game::Blocks::LedgeEdge> m_ledgeEdges;
 
     std::unique_ptr<CameraRig> m_cameraRig;
 
@@ -169,6 +179,22 @@ private:
 
     // プレイ更新の有効フラグ。 編集モード中は false にして物理 / ルールを止める。 editor が SetPlaying で切替
     bool m_playing = false;
+
+    // コヨーテ debug 描画 すなわち 縁の紫線 / カプセル / コヨーテジャンプの赤線 の表示トグル。 F2 で切替える
+    bool m_debugCoyoteDraw = true;
+
+    // ゴール接触からレベル再開へ繋ぐ暗転シーケンスの段階。 None は通常プレイ
+    enum class FadeStage
+    {
+        None,
+        Out,
+        In
+    };
+    FadeStage m_fadeStage = FadeStage::None;
+    // 現在の暗転段階の経過秒。 段階の開始ごとに 0 へ戻す
+    float m_fadeTimer = 0.0f;
+    // 全画面に重ねる黒の不透明度。 0 で透明、 1 で全黒。 OnRenderScene が読む
+    float m_fadeAlpha = 0.0f;
 
     // 直近 OnRenderScene で解決した scene 段設定。 editor の RenderSettings パネルが friend で読む
     NS::Graphics::RenderSettings m_lastResolvedSettings{};

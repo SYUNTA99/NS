@@ -3,7 +3,6 @@
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Level/EditTarget.h"
 #include "Game/Player.h"
-#include "Game/SkinnedDebugCharacter.h"
 
 #include "Framework/Scene/AssetManager.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
@@ -19,10 +18,12 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 #include "Framework/Graphics/CommandList.h"
+#include "Framework/Graphics/DebugDraw.h"
 #include "Framework/Graphics/InstanceBatcher.h"
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
+#include "Framework/Graphics/ScreenFade.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/Skybox.h"
 #include "Framework/Graphics/StaticMesh.h"
@@ -54,14 +55,20 @@ namespace
     constexpr NS::Math::Vector3 kPlayerColor{0.85f, 0.20f, 0.20f};
     constexpr NS::Math::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
 
+    // ゴール到達の達成を一拍味わわせ、 暗転で区切って「もう一周」へ自然に送り出すためのテンポ
+    // 短すぎると唐突、 長いと待たされるため、 プラットフォーマーの仕切り感として前後 0.4 秒に置く
+    constexpr float kFadeOutSeconds = 0.4f;
+    constexpr float kFadeInSeconds = 0.4f;
+
     /// 編集体験の起点となる最小床。 LevelData に grid block 1 個 + spawn を仕込んでおく
     void SeedInitialLevel(NS::Game::Level::LevelData& level)
     {
         level.objects.clear();
         level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, 0));
-        level.spawnX = 0;
-        level.spawnY = 1;
-        level.spawnZ = 0;
+        // spawn は capsule 中心の world 位置。 床ブロック上面 0.5 + capsule(radius 0.4 + halfHeight 0.5) + 1cm
+        level.spawnX = 0.0f;
+        level.spawnY = 1.41f;
+        level.spawnZ = 0.0f;
     }
 } // namespace
 
@@ -142,6 +149,11 @@ void LevelPlayScene::OnStart()
         NS_LOG_ERROR(::NS::Core::LogCat::Game, "LevelPlayScene: Skybox 構築失敗 (Device 不在?)");
     }
 
+    // ゴール到達 / 死亡からレベル再開へ繋ぐ暗転 / 明転に使う。 構築失敗時は演出なしで続行する
+    m_screenFade = NS::Graphics::ScreenFade::Create();
+    if (!m_screenFade->IsValid())
+        NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelPlayScene: ScreenFade 構築失敗、 暗転演出なしで続行");
+
     m_player = std::make_unique<Player>(assets.Builtin("cube"), assets.SharedMaterial("player"), &app->Input());
     m_player->AttachScene(this);
     m_player->Root().SetPosition({0.0f, 1.0f, -4.0f});
@@ -177,11 +189,6 @@ void LevelPlayScene::OnStart()
     // level の cameraVolumes から area camera を生成し Brain へ登録する。 Brain 構築後に呼ぶ必要がある
     RebuildAreaCamerasFromLevelData();
 
-    // 仮 skinned キャラをプレイ画面で常時表示し、 アニメ再生を画面で確認できるようにする
-    // 形 / 骨 / 材質は AssetManager 所有を借り、 アセットが無ければ Create が nullptr を返して通常進行する
-    m_animatedModel = SkinnedDebugCharacter::Create(
-        assets, this, exeDir / "Assets" / "Models", exeDir / "Assets" / "Materials" / "skinned_debug.mat");
-
     // 出荷も開発も、 起動直後はプレイ可能な状態にする。 開発時は editor が直後に編集モードへ切替える
     SetPlaying(true);
 }
@@ -216,9 +223,14 @@ void LevelPlayScene::SetPlaying(bool playing) noexcept
         m_playMode.SetActive(false);
         if (m_player)
         {
-            m_player->MeshComp().SetActive(false);
             m_player->Movement().SetActive(false);
             m_player->InputComp().SetActive(false);
+            // 編集中も実プレイヤーを spawn 位置 / 向きに見せ、 ギズモで掴んで動かせるようにする
+            m_player->MeshComp().SetActive(true);
+            m_player->Root().SetPosition({m_level.spawnX, m_level.spawnY, m_level.spawnZ});
+            m_player->Root().SetRotation(NS::Math::Quaternion{
+                m_level.spawnRotationX, m_level.spawnRotationY, m_level.spawnRotationZ, m_level.spawnRotationW});
+            m_player->Root().Snapshot();
         }
         if (m_cameraRig)
             m_cameraRig->Follow().SetActive(false);
@@ -246,6 +258,10 @@ void LevelPlayScene::OnUpdate()
             m_instanceBatcher->ReloadShaders();
     }
 
+    // F2 で コヨーテ debug 描画 すなわち 縁の紫線 / カプセル / コヨーテジャンプの赤線 を切替える
+    if (!app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::Platform::Key::F2))
+        m_debugCoyoteDraw = !m_debugCoyoteDraw;
+
     // プレイ中の Esc は終了。 編集中は editor が Esc を握り選択解除 / 終了に使うので scene は触らない
     if (m_playing && app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
     {
@@ -269,8 +285,6 @@ void LevelPlayScene::OnUpdate()
         TickPlay();
 
     UpdateDisplayBlocks();
-
-    UpdateAnimatedModel();
 }
 
 void LevelPlayScene::TickPlay()
@@ -279,7 +293,34 @@ void LevelPlayScene::TickPlay()
     if (app == nullptr)
         return;
 
+    // 時間停止中は移動 / 重力 / ゲームルール / カメラ追従を一切進めない
+    // 手触り検証でジャンプ弧や着地の一瞬を止めて観察するための停止で、 エディタが paused を立てる
+    // 物理を止めても previous == current のまま補間が凍るよう snapshot だけ回し、 凍結フレームのガタつきを消す
+    if (m_play.paused)
+    {
+        if (m_player)
+            m_player->Root().Snapshot();
+        if (m_cameraRig)
+            m_cameraRig->Root().Snapshot();
+        return;
+    }
+
     const float dt = NS::Core::FrameTimer::FixedDelta();
+
+    // 暗転シーケンス中は入力 / 物理 / ゲームルールを止めてプレイヤーを操作不能にし、 タイマーだけ進める
+    // 暗転しきった裏でレベルを組み直すため、 全黒の一瞬で spawn への teleport が隠れる
+    if (m_fadeStage != FadeStage::None)
+    {
+        AdvanceFade(dt);
+        if (m_player)
+            m_player->Root().Snapshot();
+        if (m_cameraRig)
+        {
+            m_cameraRig->Root().Snapshot();
+            m_cameraRig->OnUpdate();
+        }
+        return;
+    }
 
     // camera 水平 forward を先に渡してから tick。 priority 順 PlayerInput→CharacterMovement で入力→物理が確定し
     // Transform に書かれる
@@ -325,20 +366,19 @@ void LevelPlayScene::TickPlay()
             area.cam->UpdateActivation(m_play.playerPosition);
     }
 
-    // PlayMode が y < kFallDeathThreshold で立てた deathTriggered の落下死は respawn 経路
-    // playerHealth==0 のハザード接触の死は Game.cpp が Application::Quit を呼ぶためここでは respawn しない
-    if (m_play.deathTriggered && m_play.playerHealth > 0)
+    // 落下死は即リスタート、 ゴール接触 (出荷のみ) は暗転シーケンスで仕切り直してループを閉じる
+    // どちらも RestartLevel が spawn へ戻し health / coin / flag を全リセットするのでループが続く
+    // 開発ビルドは editor が clearTriggered を観測して編集モードへ戻すため scene 側では扱わない
+    if (m_play.deathTriggered)
     {
-        m_play.deathTriggered = false;
-        m_playMode.Enter(m_level, m_play);
-        if (m_player)
-        {
-            m_player->Root().SetPosition(m_play.playerPosition);
-            m_player->Movement().ResetState();
-        }
+        RestartLevel();
     }
-    // clearTriggered のクリア後遷移すなわち編集へ戻る / 次レベル / リザルトは scene の外で扱う
-    // 開発時は editor が観測して編集モードへ戻す。 出荷のクリア演出は後続フェーズ
+#if !NS_EDITOR_ENABLED
+    else if (m_play.clearTriggered)
+    {
+        BeginClearFade();
+    }
+#endif
 
     if (m_player)
         m_player->Root().Snapshot();
@@ -346,6 +386,53 @@ void LevelPlayScene::TickPlay()
     {
         m_cameraRig->Root().Snapshot();
         m_cameraRig->OnUpdate();
+    }
+}
+
+void LevelPlayScene::RestartLevel() noexcept
+{
+    m_playMode.Enter(m_level, m_play);
+    if (m_player)
+    {
+        m_player->Root().SetPosition(m_play.playerPosition);
+        m_player->Movement().ResetState();
+    }
+}
+
+void LevelPlayScene::BeginClearFade() noexcept
+{
+    if (m_fadeStage != FadeStage::None)
+        return;
+    m_fadeStage = FadeStage::Out;
+    m_fadeTimer = 0.0f;
+    m_fadeAlpha = 0.0f;
+}
+
+void LevelPlayScene::AdvanceFade(float dt) noexcept
+{
+    m_fadeTimer += dt;
+    if (m_fadeStage == FadeStage::Out)
+    {
+        m_fadeAlpha = std::clamp(m_fadeTimer / kFadeOutSeconds, 0.0f, 1.0f);
+        if (m_fadeTimer >= kFadeOutSeconds)
+        {
+            // 全黒の裏でレベルを頭から組み直し、 spawn へ戻してから明転へ移る
+            RestartLevel();
+            if (m_player)
+                m_player->Root().Snapshot();
+            m_fadeStage = FadeStage::In;
+            m_fadeTimer = 0.0f;
+            m_fadeAlpha = 1.0f;
+        }
+    }
+    else
+    {
+        m_fadeAlpha = 1.0f - std::clamp(m_fadeTimer / kFadeInSeconds, 0.0f, 1.0f);
+        if (m_fadeTimer >= kFadeInSeconds)
+        {
+            m_fadeStage = FadeStage::None;
+            m_fadeAlpha = 0.0f;
+        }
     }
 }
 
@@ -501,6 +588,40 @@ void LevelPlayScene::OnRenderScene()
 
     // 半透明 IRenderable は不透明 + skybox の後。カメラから遠い順に各 Draw が alpha/additive Pipeline を set する
     DrawTransparent(ctx);
+
+    // コヨーテタイムの debug 可視化を world 描画後にまとめて出す。 player は fixed step で記録した赤線を持つが、
+    // ここで render rate に蓄積し直すことで高リフレッシュでもちらつかせない
+    if (m_debugCoyoteDraw)
+    {
+        const NS::Math::Color ledgeColor{0.65f, 0.30f, 1.0f, 1.0f};
+        for (const NS::Game::Blocks::LedgeEdge& edge : m_ledgeEdges)
+            NS::Graphics::DebugDraw::Line(edge.a, edge.b, ledgeColor);
+
+        if (m_player)
+        {
+            auto& movement = m_player->Movement();
+            const NS::Math::Vector3 center = m_player->Root().Position();
+            const NS::Math::Vector3 axis{0.0f, movement.CapsuleHalfHeight(), 0.0f};
+            const NS::Math::Color capsuleColor = movement.IsGrounded() ? NS::Math::Color{0.2f, 1.0f, 0.2f, 1.0f}
+                                                                       : NS::Math::Color{1.0f, 1.0f, 0.2f, 1.0f};
+            NS::Graphics::DebugDraw::Capsule(center, axis, movement.CapsuleRadius(), capsuleColor);
+
+            // 縁→跳躍点の赤い span と、 跳躍点に立てる赤い縦マーカーで「どこで猶予内に跳んだか」を示す
+            const NS::Math::Color coyoteColor{1.0f, 0.15f, 0.15f, 1.0f};
+            for (const auto& marker : movement.CoyoteJumpMarkers())
+            {
+                NS::Graphics::DebugDraw::Line(marker.edge, marker.jump, coyoteColor);
+                const NS::Math::Vector3 tickTop{marker.jump.x, marker.jump.y + 0.6f, marker.jump.z};
+                NS::Graphics::DebugDraw::Line(marker.jump, tickTop, coyoteColor);
+            }
+        }
+    }
+    // 編集モードでは LevelEditorController がギズモ等を足して別途 Flush するが、 プレイ中はここが唯一の Flush
+    NS::Graphics::DebugDraw::Flush(*ctx.renderer, ctx.viewProjection);
+
+    // クリア / 死亡の暗転 overlay は全描画の最後に最前面で重ねる。 alpha=0 のフレームは描かない
+    if (m_screenFade && m_screenFade->IsValid() && m_fadeAlpha > 0.0f)
+        m_screenFade->Render(*ctx.renderer, NS::Math::Color{0.0f, 0.0f, 0.0f, m_fadeAlpha});
 }
 
 void LevelPlayScene::OnShutdown()
@@ -516,8 +637,6 @@ void LevelPlayScene::OnShutdown()
         m_cameraRig->OnEndPlay();
     for (auto it = m_objects.rbegin(); it != m_objects.rend(); ++it)
         (*it)->OnEndPlay();
-    if (m_animatedModel)
-        m_animatedModel->OnEndPlay();
     if (m_player)
         m_player->OnEndPlay();
 
@@ -527,7 +646,6 @@ void LevelPlayScene::OnShutdown()
     m_brain = nullptr;
     m_areaCameras.clear();
     m_cameraRig.reset();
-    m_animatedModel.reset();
     m_player.reset();
     m_objects.clear();
     m_objectSourceIndices.clear();
@@ -539,6 +657,7 @@ void LevelPlayScene::OnShutdown()
     // で解放する
     m_instanceBatcher.reset();
     m_skybox.reset();
+    m_screenFade.reset();
 }
 
 void LevelPlayScene::RebuildBlocksFromLevelData()
@@ -638,6 +757,9 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
         m_instancedBlocks.push_back(InstancedBlock{i, static_cast<float>(slice)});
     }
 
+    // コヨーテ debug 用に踏み外せる縁を焼く。 level が変わらない限り不変なのでここで 1 度だけ
+    m_ledgeEdges = NS::Game::Blocks::ComputeTopLedgeEdges(m_level);
+
     m_physicsWorld.BuildBroadphase();
 
     if (m_player)
@@ -691,14 +813,4 @@ void LevelPlayScene::RebuildAreaCamerasFromLevelData()
         m_brain->AddVirtualCamera(area.cam);
         m_areaCameras.push_back(std::move(area));
     }
-}
-
-void LevelPlayScene::UpdateAnimatedModel()
-{
-    if (!m_animatedModel)
-        return;
-
-    m_animatedModel->HandleDebugInput();
-    m_animatedModel->Root().Snapshot();
-    m_animatedModel->OnUpdate();
 }

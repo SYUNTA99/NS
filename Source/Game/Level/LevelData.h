@@ -133,9 +133,15 @@ namespace NS::Game::Level
         /// エリアカメラの永続リスト。 視点 + トリガ範囲を 1 件で持ち箱型に入らないため objects とは別管理
         std::vector<CameraVolume> cameraVolumes;
 
-        std::int16_t spawnX = 0;
-        std::int16_t spawnY = 0;
-        std::int16_t spawnZ = 0;
+        /// プレイヤー出現時の capsule 中心 world 位置。 エディタで配置した実プレイヤーの Transform を焼く
+        float spawnX = 0.0f;
+        float spawnY = 0.0f;
+        float spawnZ = 0.0f;
+        /// プレイヤー出現時の向き quaternion。 既定は単位回転
+        float spawnRotationX = 0.0f;
+        float spawnRotationY = 0.0f;
+        float spawnRotationZ = 0.0f;
+        float spawnRotationW = 1.0f;
 
         std::uint16_t themeId = 0;
         std::uint16_t bgmId = 0;

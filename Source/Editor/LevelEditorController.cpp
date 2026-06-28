@@ -177,6 +177,8 @@ void LevelEditorController::TickEdit()
         if (m_editorToolMode == EditorToolMode::Object && m_gizmo.Selected() != nullptr)
         {
             m_gizmo.ClearSelection();
+            // Player を掴んでいた場合も特殊選択を解除し、 次フレームの再貼り付けで掴み続けないようにする
+            m_specialSelection = SpecialSelection::None;
             return;
         }
         NS::App::Application::Quit();
@@ -232,6 +234,8 @@ void LevelEditorController::TickEdit()
 
         // ギズモ変形の結果を live → model で ObjectInstance へ反映する。 begin/commit はこの model を基準にする
         SyncFreeObjectTransforms();
+        // Player 選択中は実プレイヤー Transform ↔ spawn を同期する
+        SyncPlayerSpawnFromTransform();
 
         // ドラッグ開始で baseline 退避、 終了で TransformCommand を 1 つ確定する。 grid undo と同じ履歴
         const bool nowDragging = m_gizmo.IsDragging();
@@ -280,7 +284,6 @@ void LevelEditorController::Render()
     if (m_mode != Mode::Edit)
         return;
 
-    m_editor.RenderSpawnMarker();
     m_editor.RenderCursorPreview();
     RenderAreaCameraGizmos();
     RenderColliderWireframes();
@@ -408,6 +411,14 @@ void LevelEditorController::RefreshGizmoSelectables()
         m_selectableHalfExtents.push_back(kCellHalfExtents);
     }
 
+    // 実プレイヤーも掴める。 objects には属さないが、 ビューポート直クリックを Player 選択へ流すため候補に積む
+    // pick OBB は player の cube mesh と同じ unit 半径。 world scale 0.8/1.8/0.8 は Root().WorldMatrix() が持つ
+    if (m_scene->m_player)
+    {
+        m_selectablePtrs.push_back(m_scene->m_player.get());
+        m_selectableHalfExtents.push_back(kCellHalfExtents);
+    }
+
     m_gizmo.SetSelectableObjects(m_selectablePtrs, m_selectableHalfExtents);
 }
 
@@ -439,6 +450,50 @@ void LevelEditorController::SyncFreeObjectTransforms()
         object.scaleY = scale.y;
         object.scaleZ = scale.z;
     }
+}
+
+NS::Editor::SetSpawnCommand::SpawnState LevelEditorController::CurrentSpawnState() const noexcept
+{
+    const NS::Game::Level::LevelData& level = m_scene->m_level;
+    return NS::Editor::SetSpawnCommand::SpawnState{level.spawnX,
+                                                   level.spawnY,
+                                                   level.spawnZ,
+                                                   level.spawnRotationX,
+                                                   level.spawnRotationY,
+                                                   level.spawnRotationZ,
+                                                   level.spawnRotationW};
+}
+
+void LevelEditorController::SyncPlayerSpawnFromTransform() noexcept
+{
+    if (m_specialSelection != SpecialSelection::Player || !m_scene->m_player)
+        return;
+
+    NS::Scene::Transform& root = m_scene->m_player->Root();
+    const bool drivingPlayer = m_gizmo.IsDragging() && m_gizmo.Selected() == &root;
+    if (drivingPlayer)
+    {
+        // ギズモが実プレイヤーを掴んでいる間は Transform を真実として spawn を追従させる
+        const NS::Math::Vector3 p = root.Position();
+        const NS::Math::Quaternion r = root.Rotation();
+        m_scene->m_level.spawnX = p.x;
+        m_scene->m_level.spawnY = p.y;
+        m_scene->m_level.spawnZ = p.z;
+        m_scene->m_level.spawnRotationX = r.x;
+        m_scene->m_level.spawnRotationY = r.y;
+        m_scene->m_level.spawnRotationZ = r.z;
+        m_scene->m_level.spawnRotationW = r.w;
+    }
+    else
+    {
+        // 非ドラッグ時は spawn を真実として実プレイヤーをそこへ置く。 undo / redo の spawn 変化もこれで反映する
+        const NS::Game::Level::LevelData& level = m_scene->m_level;
+        root.SetPosition({level.spawnX, level.spawnY, level.spawnZ});
+        root.SetRotation(NS::Math::Quaternion{
+            level.spawnRotationX, level.spawnRotationY, level.spawnRotationZ, level.spawnRotationW});
+    }
+    // edit 中の実プレイヤーは scene が Snapshot しないため、 ここで previous=current に揃え補間ジッタを消す
+    root.Snapshot();
 }
 
 void LevelEditorController::SelectObjectByIndex(std::size_t index) noexcept
@@ -495,13 +550,24 @@ void LevelEditorController::SelectCameraByIndex(std::size_t index) noexcept
 
 void LevelEditorController::SelectPlayer() noexcept
 {
-    // Player は gizmo 対象外。 添字 / ギズモ選択を外して特殊選択へ移す。 ツールモードは触らない
+    // 添字 / カメラ選択を外して特殊選択へ移す
     m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
     m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
     m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
-    m_gizmo.ClearSelection();
-    m_lastGizmoSelected = nullptr;
     m_specialSelection = SpecialSelection::Player;
+
+    // 実プレイヤーを掴んで動かせるよう、 ギズモを player Transform へ貼り Object ツールへ切替える
+    SetObjectToolActive(true);
+    if (m_scene->m_player)
+    {
+        m_gizmo.SetSelected(&m_scene->m_player->Root());
+        m_lastGizmoSelected = m_gizmo.Selected();
+    }
+    else
+    {
+        m_gizmo.ClearSelection();
+        m_lastGizmoSelected = nullptr;
+    }
 }
 
 void LevelEditorController::SelectCamera() noexcept
@@ -665,9 +731,20 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
     {
         m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
         m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+        // Player のギズモが外れた (空クリック等) ら特殊選択も解除し、 再貼り付けで掴み続けないようにする
+        m_specialSelection = SpecialSelection::None;
         return;
     }
-    // ビューポートでの実ピックは Player / Camera の特殊選択より優先する
+    // ビューポートでプレイヤーをピックしたら Player 特殊選択へ流す。 移動 / 回転 / undo は同じ経路に乗る
+    if (m_scene->m_player && selected == &m_scene->m_player->Root())
+    {
+        m_specialSelection = SpecialSelection::Player;
+        m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
+        m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+        m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
+        return;
+    }
+    // ビューポートでのオブジェクト実ピックは Player / Camera の特殊選択より優先する
     m_specialSelection = SpecialSelection::None;
     for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
@@ -709,6 +786,15 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
             m_lastGizmoSelected = root;
             return;
         }
+    }
+    // Player 選択中はギズモを実プレイヤーへ貼り直す。 rebuild / mode 切替を跨いでも掴める状態を保つ
+    if (m_specialSelection == SpecialSelection::Player && m_scene->m_player)
+    {
+        NS::Scene::Transform* root = &m_scene->m_player->Root();
+        if (m_gizmo.Selected() != root)
+            m_gizmo.SetSelected(root);
+        m_lastGizmoSelected = root;
+        return;
     }
     if (m_gizmo.Selected() != nullptr)
         m_gizmo.ClearSelection();
@@ -936,10 +1022,19 @@ void LevelEditorController::BeginTransformEdit() noexcept
 {
     if (m_transformEditing)
         return;
+    // Player 選択中は spawn を 1 undo 単位として baseline 退避する
+    if (m_specialSelection == SpecialSelection::Player)
+    {
+        m_spawnEditBaseline = CurrentSpawnState();
+        m_editingSpawn = true;
+        m_transformEditing = true;
+        return;
+    }
     if (m_selectedObjectIndex >= m_scene->m_level.objects.size())
         return;
     m_editBaseline = m_scene->m_level.objects[m_selectedObjectIndex];
     m_editBaselineId = m_scene->m_objectIds[m_selectedObjectIndex];
+    m_editingSpawn = false;
     m_transformEditing = true;
 }
 
@@ -948,6 +1043,19 @@ void LevelEditorController::CommitTransformEdit() noexcept
     if (!m_transformEditing)
         return;
     m_transformEditing = false;
+
+    // Player の spawn 変形は SetSpawnCommand 1 つで確定する
+    if (m_editingSpawn)
+    {
+        m_editingSpawn = false;
+        const NS::Editor::SetSpawnCommand::SpawnState after = CurrentSpawnState();
+        if (after == m_spawnEditBaseline)
+            return;
+        NS::Game::Level::EditTarget spawnTarget = SceneEditTarget();
+        // spawn は live sync で既に after。 Push の Do は idempotent で履歴記録のみ
+        m_editor.Undo().Push(std::make_unique<NS::Editor::SetSpawnCommand>(m_spawnEditBaseline, after), spawnTarget);
+        return;
+    }
 
     NS::Game::Level::EditTarget target = SceneEditTarget();
     const std::size_t index = NS::Game::Level::IndexOfId(target, m_editBaselineId);

@@ -6,8 +6,7 @@
 /// @details `LevelEditorController` の value member として保有され、
 /// mode toggle 用に SetActive(false) で Tick / Render が何もしない
 /// LevelData への変更は **全て** `UndoStack::Push` 経由で発火し、
-/// PlayMode 側との変更経路衝突を防ぐ。 spawn marker のみ単一値の上書きなので
-/// Command を介さない直接 setter の `SetSpawnMarker` を呼ぶ
+/// PlayMode 側との変更経路衝突を防ぐ
 
 #include "Editor/CategoryPalette.h"
 #include "Editor/LevelFileBrowser.h"
@@ -90,9 +89,6 @@ namespace NS::Editor
         /// variable frame で cursor preview の `DebugDraw::AABB` を 1 frame 分蓄積する
         void RenderCursorPreview() noexcept;
 
-        /// spawnX/Y/Z 位置に黄色 1m wireframe を常時表示する
-        void RenderSpawnMarker() noexcept;
-
         [[nodiscard]] const NS::Editor::UndoStack& Undo() const noexcept { return m_undo; }
         [[nodiscard]] NS::Editor::UndoStack& Undo() noexcept { return m_undo; }
 
@@ -100,7 +96,6 @@ namespace NS::Editor
         void PlaceUnderCursorProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
         void DeleteAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
         void RotateAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
-        void SetSpawnAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
 
         /// mutation で true になる dirty flag。 毎フレーム rebuild を避けるため検出時のみ rebuild を走らせる
         [[nodiscard]] bool IsLevelDirty() const noexcept { return m_levelDirty; }

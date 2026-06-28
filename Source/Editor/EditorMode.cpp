@@ -277,91 +277,6 @@ namespace NS::Editor
 #endif
     }
 
-    void EditorMode::RenderSpawnMarker() noexcept
-    {
-        if (!m_active || m_level == nullptr)
-            return;
-
-        // カーソルが spawn セルに乗っている時は cursor preview と完全に重なるので、 描画を譲って
-        // 黄色とそれ以外がアンチエイリアス境界 + 描画順依存で滲む問題を避ける
-        if (m_cursor.valid && m_cursor.placeX == m_level->spawnX && m_cursor.placeY == m_level->spawnY &&
-            m_cursor.placeZ == m_level->spawnZ)
-            return;
-
-        const NS::Math::Vector3 center{static_cast<float>(m_level->spawnX),
-                                       static_cast<float>(m_level->spawnY),
-                                       static_cast<float>(m_level->spawnZ)};
-        const NS::Math::AABB marker(center, NS::Math::Vector3{kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
-        const NS::Math::Color spawnColor{1.0f, 0.85f, 0.10f, 1.0f};
-        NS::Graphics::DebugDraw::AABB(marker, spawnColor);
-
-#if NS_EDITOR_ENABLED
-        if (m_camera == nullptr)
-            return;
-        auto* app = NS::App::Application::Get();
-        if (app == nullptr)
-            return;
-        const auto viewport = app->Window().Size();
-        if (viewport.width <= 0 || viewport.height <= 0)
-            return;
-
-        const auto vp = m_camera->ViewProjection();
-        constexpr float h = kCellHalfExtent;
-        const NS::Math::Vector3 corners[8] = {
-            {center.x - h, center.y - h, center.z - h},
-            {center.x + h, center.y - h, center.z - h},
-            {center.x + h, center.y + h, center.z - h},
-            {center.x - h, center.y + h, center.z - h},
-            {center.x - h, center.y - h, center.z + h},
-            {center.x + h, center.y - h, center.z + h},
-            {center.x + h, center.y + h, center.z + h},
-            {center.x - h, center.y + h, center.z + h},
-        };
-
-        ImVec2 screen[8]{};
-        bool inFront[8]{};
-        for (int i = 0; i < 8; ++i)
-        {
-            const NS::Math::Vector4 worldH{corners[i].x, corners[i].y, corners[i].z, 1.0f};
-            const NS::Math::Vector4 clip = NS::Math::Vector4::Transform(worldH, vp);
-            if (clip.w <= 0.0f)
-            {
-                inFront[i] = false;
-                continue;
-            }
-            const float ndcX = clip.x / clip.w;
-            const float ndcY = clip.y / clip.w;
-            screen[i].x = (ndcX * 0.5f + 0.5f) * static_cast<float>(viewport.width);
-            screen[i].y = (1.0f - (ndcY * 0.5f + 0.5f)) * static_cast<float>(viewport.height);
-            inFront[i] = true;
-        }
-
-        static constexpr int kEdges[12][2] = {
-            {0, 1},
-            {1, 2},
-            {2, 3},
-            {3, 0},
-            {4, 5},
-            {5, 6},
-            {6, 7},
-            {7, 4},
-            {0, 4},
-            {1, 5},
-            {2, 6},
-            {3, 7},
-        };
-        const ImU32 color = IM_COL32(255, 220, 0, 255);
-        if (ImDrawList* dl = ImGui::GetBackgroundDrawList())
-        {
-            for (const auto& e : kEdges)
-            {
-                if (inFront[e[0]] && inFront[e[1]])
-                    dl->AddLine(screen[e[0]], screen[e[1]], color, 2.0f);
-            }
-        }
-#endif
-    }
-
     NS::Game::Level::EditTarget EditorMode::Target() noexcept
     {
         return NS::Game::Level::EditTarget{*m_level, *m_objectIds, *m_nextObjectId};
@@ -395,14 +310,6 @@ namespace NS::Editor
             return;
         auto target = Target();
         m_undo.Push(std::make_unique<NS::Editor::RotateCommand>(x, y, z, +1), target);
-        m_levelDirty = true;
-    }
-
-    void EditorMode::SetSpawnAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept
-    {
-        if (m_level == nullptr)
-            return;
-        NS::Game::Blocks::SetSpawnMarker(*m_level, x, y, z);
         m_levelDirty = true;
     }
 
@@ -525,20 +432,10 @@ namespace NS::Editor
         if (m_inputSuppressed)
             return;
 
-        const bool spawnSlotActive = m_palette.CurrentIsSpawn();
-
         auto& mouse = m_input->Mouse();
-        if (mouse.IsPressed(NS::Platform::MouseButton::Left))
+        if (mouse.IsPressed(NS::Platform::MouseButton::Left) && !m_cursor.placementBlocked)
         {
-            if (spawnSlotActive)
-            {
-                // Spawn は世界に 1 点。 LevelData.spawnX/Y/Z を上書きするだけで配置物は積まない
-                SetSpawnAtProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
-            }
-            else if (!m_cursor.placementBlocked)
-            {
-                PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
-            }
+            PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
         }
         if (mouse.IsPressed(NS::Platform::MouseButton::Right) &&
             HasBlockAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
@@ -550,13 +447,8 @@ namespace NS::Editor
         if (!gp.IsConnected())
             return;
 
-        if (gp.IsPressed(NS::Platform::GamepadButton::A))
-        {
-            if (spawnSlotActive)
-                SetSpawnAtProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
-            else if (!m_cursor.placementBlocked)
-                PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
-        }
+        if (gp.IsPressed(NS::Platform::GamepadButton::A) && !m_cursor.placementBlocked)
+            PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
         if (gp.IsPressed(NS::Platform::GamepadButton::B) &&
             HasBlockAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
             DeleteAtProgrammatic(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);

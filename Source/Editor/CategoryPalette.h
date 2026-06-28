@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file CategoryPalette.h
-/// @brief 配置ブラシを選ぶ toolbar。 cube と spawn の 2 スロットを持つ
+/// @brief 配置ブラシを選ぶ toolbar。 現状は cube の 1 スロット
 ///
 /// @details 状態は active slot index のみ
-/// Gamepad LB/RB、 Keyboard 1-2 の入力ハンドリングは TickInput、
+/// Gamepad LB/RB、 Keyboard 数字キーの入力ハンドリングは TickInput、
 /// ImGui 描画は Render で行う。 Render は Debug / Development build 時のみ
 /// 実体があり、 Shipping では何もしない
 
@@ -28,7 +28,7 @@ namespace NS::Editor
     class CategoryPalette
     {
     public:
-        static constexpr std::size_t kSlotCount = 2;
+        static constexpr std::size_t kSlotCount = 1;
 
         CategoryPalette() noexcept;
         ~CategoryPalette() noexcept = default;
@@ -56,9 +56,6 @@ namespace NS::Editor
         /// active slot の表示名
         [[nodiscard]] const char* CurrentTemplateName() const noexcept { return m_current.name; }
 
-        /// 現在のブラシが spawn marker か。 置くと LevelData::spawn を上書きする
-        [[nodiscard]] bool CurrentIsSpawn() const noexcept { return m_current.isSpawn; }
-
         /// 現在のブラシが R で 90° 回せる種別か
         [[nodiscard]] bool CurrentIsRotatable() const noexcept { return m_current.rotatable; }
 
@@ -68,7 +65,7 @@ namespace NS::Editor
         /// 範囲外指定は無視する
         void SetActiveSlot(std::size_t slot) noexcept;
 
-        /// active slot を再選択した時の variant 切替。 cube / spawn には variant が無く何もしない
+        /// active slot を再選択した時の variant 切替。 cube には variant が無く何もしない
         void CycleActiveVariant() noexcept;
 
     private:
@@ -77,7 +74,7 @@ namespace NS::Editor
 
         std::size_t m_activeSlot = 0;
 
-        // active slot に対応する配置テンプレート。 表示名 / spawn / 回転可否 / 複製元を持つ
+        // active slot に対応する配置テンプレート。 表示名 / 回転可否 / 複製元を持つ
         PaletteTemplate m_current{};
     };
 } // namespace NS::Editor

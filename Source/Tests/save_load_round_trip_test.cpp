@@ -327,3 +327,44 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
             }
     EXPECT_TRUE(found) << "Base Color が往復で消えた";
 }
+
+// spawn が capsule 中心 world 位置 + 向き quaternion として save→load を往復で保持される
+TEST(SaveLoadRoundTrip, SpawnPositionAndRotationRoundTrip)
+{
+    LevelNs::LevelData src;
+    src.spawnX = 1.25f;
+    src.spawnY = 3.5f;
+    src.spawnZ = -2.75f;
+    src.spawnRotationY = 0.70710677f;
+    src.spawnRotationW = 0.70710677f;
+
+    const std::string json = LevelNs::SerializeLevelToJson(src);
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json));
+
+    EXPECT_FLOAT_EQ(dst.spawnX, 1.25f);
+    EXPECT_FLOAT_EQ(dst.spawnY, 3.5f);
+    EXPECT_FLOAT_EQ(dst.spawnZ, -2.75f);
+    EXPECT_FLOAT_EQ(dst.spawnRotationY, 0.70710677f);
+    EXPECT_FLOAT_EQ(dst.spawnRotationW, 0.70710677f);
+}
+
+// v1 までのレベルは spawn がグリッドセル番号だった。 load で capsule 中心の world 位置 (床乗せ +0.41) へ移行する
+TEST(SaveLoadRoundTrip, LegacyV1SpawnMigratesToCenter)
+{
+    const std::string legacyJson = R"({
+        "formatVersion": 1,
+        "spawn": [3, 5, -2],
+        "objects": [],
+        "materialPaths": [],
+        "cameraVolumes": []
+    })";
+
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, legacyJson));
+
+    EXPECT_FLOAT_EQ(dst.spawnX, 3.0f);
+    EXPECT_FLOAT_EQ(dst.spawnY, 5.41f); // セル 5 に立つ = 中心 5 + 床乗せ 0.41
+    EXPECT_FLOAT_EQ(dst.spawnZ, -2.0f);
+    EXPECT_FLOAT_EQ(dst.spawnRotationW, 1.0f); // 旧データに向きは無く単位回転
+}

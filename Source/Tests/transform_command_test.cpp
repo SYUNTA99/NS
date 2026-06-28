@@ -1,3 +1,4 @@
+#include "Editor/Undo/SetSpawnCommand.h"
 #include "Editor/Undo/TransformCommand.h"
 #include "Game/Level/EditTarget.h"
 #include "Game/Level/LevelData.h"
@@ -101,4 +102,33 @@ TEST(TransformCommandTest, MissingIdIsNoOp)
     cmd.Do(t);
     cmd.Undo(t);
     EXPECT_EQ(lv.ComputeCrc32(), crc);
+}
+
+TEST(SetSpawnCommandTest, DoAppliesAfterUndoRestoresBefore)
+{
+    LevelNs::LevelData lv;
+    lv.spawnX = 1.0f;
+    lv.spawnY = 2.0f;
+    lv.spawnZ = 3.0f;
+    std::vector<std::uint32_t> ids;
+    std::uint32_t next = 0;
+    LevelNs::EditTarget t{lv, ids, next};
+
+    const EditorNs::SetSpawnCommand::SpawnState before{1.0f, 2.0f, 3.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+    const EditorNs::SetSpawnCommand::SpawnState after{4.5f, 6.0f, -7.0f, 0.0f, 0.70710677f, 0.0f, 0.70710677f};
+
+    EditorNs::SetSpawnCommand cmd(before, after);
+    cmd.Do(t);
+    EXPECT_FLOAT_EQ(lv.spawnX, 4.5f);
+    EXPECT_FLOAT_EQ(lv.spawnY, 6.0f);
+    EXPECT_FLOAT_EQ(lv.spawnZ, -7.0f);
+    EXPECT_FLOAT_EQ(lv.spawnRotationY, 0.70710677f);
+    EXPECT_FLOAT_EQ(lv.spawnRotationW, 0.70710677f);
+
+    cmd.Undo(t);
+    EXPECT_FLOAT_EQ(lv.spawnX, 1.0f);
+    EXPECT_FLOAT_EQ(lv.spawnY, 2.0f);
+    EXPECT_FLOAT_EQ(lv.spawnZ, 3.0f);
+    EXPECT_FLOAT_EQ(lv.spawnRotationY, 0.0f);
+    EXPECT_FLOAT_EQ(lv.spawnRotationW, 1.0f);
 }

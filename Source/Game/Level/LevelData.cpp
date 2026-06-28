@@ -171,6 +171,10 @@ namespace NS::Game::Level
         crc = UpdateWith(crc, spawnX);
         crc = UpdateWith(crc, spawnY);
         crc = UpdateWith(crc, spawnZ);
+        crc = UpdateWith(crc, spawnRotationX);
+        crc = UpdateWith(crc, spawnRotationY);
+        crc = UpdateWith(crc, spawnRotationZ);
+        crc = UpdateWith(crc, spawnRotationW);
 
         crc = UpdateWith(crc, themeId);
         crc = UpdateWith(crc, bgmId);

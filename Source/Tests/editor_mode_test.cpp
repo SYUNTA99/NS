@@ -68,22 +68,6 @@ TEST(EditorMode, ProgrammaticRotateCycles)
     EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 0);
 }
 
-TEST(EditorMode, ProgrammaticSpawnSetsCoordinates)
-{
-    LevelNs::LevelData lv;
-    std::vector<std::uint32_t> ids;
-    std::uint32_t next = 0;
-    EditorNs::EditorMode editor;
-    editor.SetLevel(&lv);
-    editor.SetEditIds(&ids, &next);
-
-    editor.SetSpawnAtProgrammatic(10, 2, -5);
-
-    EXPECT_EQ(lv.spawnX, 10);
-    EXPECT_EQ(lv.spawnY, 2);
-    EXPECT_EQ(lv.spawnZ, -5);
-}
-
 TEST(EditorMode, UndoStackIntegration)
 {
     LevelNs::LevelData lv;
@@ -120,10 +104,6 @@ TEST(EditorMode, LevelDirtyFlagSetByMutation)
 
     editor.ClearLevelDirty();
     editor.DeleteAtProgrammatic(0, 0, 0);
-    EXPECT_TRUE(editor.IsLevelDirty());
-
-    editor.ClearLevelDirty();
-    editor.SetSpawnAtProgrammatic(1, 2, 3);
     EXPECT_TRUE(editor.IsLevelDirty());
 }
 

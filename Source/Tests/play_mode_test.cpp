@@ -38,8 +38,8 @@ TEST(PlayMode, EnterInitializesPlayerAtSpawn)
     mode.Enter(lv, play);
 
     EXPECT_NEAR(play.playerPosition.x, 5.0f, 1e-4f);
-    // y は spawn セル底面 + (capsule halfHeight + radius) + 1cm lift = spawnY + 0.41
-    EXPECT_NEAR(play.playerPosition.y, 2.41f, 1e-3f);
+    // spawn は capsule 中心 world 位置そのものなので player はその座標へ正確に置かれる
+    EXPECT_NEAR(play.playerPosition.y, 2.0f, 1e-4f);
     EXPECT_NEAR(play.playerPosition.z, 3.0f, 1e-4f);
     EXPECT_EQ(play.coinCount, 0);
     EXPECT_FALSE(play.paused);

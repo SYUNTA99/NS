@@ -1,7 +1,6 @@
 #include "Game/Game.h"
 
 #include "Framework/App/Application.h"
-#include "Game/Level/PlayState.h"
 #include "Game/LevelPlayScene.h"
 
 #include <memory>
@@ -33,14 +32,6 @@ void Game::OnDetach()
 void Game::OnUpdate()
 {
     m_scenes.Update();
-
-    // ハザード接触死すなわち playerHealth==0 で即 Quit。落下死は scene 側で
-    // respawn に乗るのでここでは観測しない。 deathTriggered は落下死でも立つため区別できない
-    if (auto* scene = CurrentPlayScene())
-    {
-        if (scene->Play().playerHealth <= 0)
-            NS::App::Application::Quit();
-    }
 }
 
 void Game::OnRender()
@@ -50,6 +41,6 @@ void Game::OnRender()
 
 LevelPlayScene* Game::CurrentPlayScene() noexcept
 {
-    // boot scene は LevelPlayScene の 1 種類だけなので静的 cast で足りる
-    return static_cast<LevelPlayScene*>(m_scenes.Current());
+    // 別の SceneBase 派生が load されても未定義動作にせず nullptr へ倒すため検査付きの動的キャストを使う
+    return dynamic_cast<LevelPlayScene*>(m_scenes.Current());
 }

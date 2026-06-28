@@ -38,7 +38,7 @@ namespace NS::Editor
 
     void CategoryPalette::CycleActiveVariant() noexcept
     {
-        // cube / spawn には variant が無いので再選択しても何もしない
+        // cube には variant が無いので再選択しても何もしない
     }
 
     void CategoryPalette::TickInput(NS::Platform::Input* input, NS::UI::ImGuiContext* imgui) noexcept

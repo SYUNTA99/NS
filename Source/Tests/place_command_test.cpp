@@ -121,9 +121,6 @@ TEST(PlaceCommandTest, AllPaletteSlotsClonePlacesPrototype)
     constexpr std::uint8_t kRotation = 2;
     for (const auto& slot : slots)
     {
-        if (slot.isSpawn)
-            continue; // spawn は世界に 1 点の marker で grid 配置物にならない
-
         LevelNs::ObjectInstance expected = slot.prototype;
         expected.positionX = static_cast<float>(cx);
         expected.positionY = static_cast<float>(cy);

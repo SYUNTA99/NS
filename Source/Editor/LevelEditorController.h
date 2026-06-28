@@ -10,6 +10,7 @@
 
 #include "Editor/EditorMode.h"
 #include "Editor/GizmoEditor.h"
+#include "Editor/Undo/SetSpawnCommand.h"
 #include "Framework/Graphics/RenderSettings.h"
 #include "Framework/Math/Math.h"
 #include "Game/Level/EditTarget.h"
@@ -214,6 +215,13 @@ private:
     /// ギズモで変形した自由オブジェクトの Transform を対応する ObjectInstance へ書き戻す
     void SyncFreeObjectTransforms();
 
+    /// Player 選択中、 ドラッグ中は実プレイヤー Transform → spawn、 非ドラッグ中は spawn → 実プレイヤー Transform
+    /// と双方向に同期する。 後者で undo / redo による spawn 変化も実プレイヤーへ反映される
+    void SyncPlayerSpawnFromTransform() noexcept;
+
+    /// 現在の LevelData の spawn 位置 + 向きを SpawnState として読む。 undo の before / after に使う
+    [[nodiscard]] NS::Editor::SetSpawnCommand::SpawnState CurrentSpawnState() const noexcept;
+
     /// ビューポートでギズモ選択が変わった時だけ、 選択 id と派生の添字を追従させる
     void CaptureSelectionFromGizmo() noexcept;
 
@@ -273,6 +281,10 @@ private:
     bool m_transformEditing = false;
     std::uint32_t m_editBaselineId = NS::Game::Level::kInvalidObjectId;
     NS::Game::Level::ObjectInstance m_editBaseline{};
+
+    // Player の spawn 変形編集を区別するフラグと baseline。 m_transformEditing と併用する
+    bool m_editingSpawn = false;
+    NS::Editor::SetSpawnCommand::SpawnState m_spawnEditBaseline{};
 
     // Debug provenance パネルの読み出し元。 書き込みは Render で毎フレーム行う
     NS::Graphics::RenderSettings m_debugResolvedSettings{};

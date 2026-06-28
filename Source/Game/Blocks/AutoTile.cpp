@@ -127,11 +127,4 @@ namespace NS::Game::Blocks
         return mask;
     }
 
-    void SetSpawnMarker(NS::Game::Level::LevelData& level, std::int16_t x, std::int16_t y, std::int16_t z) noexcept
-    {
-        level.spawnX = x;
-        level.spawnY = y;
-        level.spawnZ = z;
-    }
-
 } // namespace NS::Game::Blocks

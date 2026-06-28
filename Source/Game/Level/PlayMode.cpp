@@ -29,13 +29,9 @@ namespace NS::Game::Level
 
     void PlayMode::Enter(const LevelData& level, PlayState& play) noexcept
     {
-        // cell 中心に置くと直下ブロックに 0.4m めり込み swept が toi=0 を返し続けて操作不能になる
-        // capsule 底端を spawn セル底面に乗せ、さらに 1cm 浮かせて浮動小数誤差の安全マージンを取る
-        constexpr float kCellHalfExtent = 0.5f;
-        constexpr float kSpawnLiftEpsilon = 0.01f;
-        const float playerCenterY = static_cast<float>(level.spawnY) - kCellHalfExtent + kPlayerCapsuleHalfHeight +
-                                    kPlayerCapsuleRadius + kSpawnLiftEpsilon;
-        play.playerPosition = {static_cast<float>(level.spawnX), playerCenterY, static_cast<float>(level.spawnZ)};
+        // spawn はエディタで配置した実プレイヤーの capsule 中心 world 位置そのもの
+        // 床乗せの補正は配置時に決まっているのでここでは持たず、 焼かれた位置へそのまま置く
+        play.playerPosition = {level.spawnX, level.spawnY, level.spawnZ};
         play.playerVelocity = {0.0f, 0.0f, 0.0f};
         play.coinCount = 0;
         play.remainingSeconds = static_cast<float>(level.timeLimitSeconds);

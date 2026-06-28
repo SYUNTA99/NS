@@ -14,6 +14,7 @@
 #include "Framework/Scene/Component.h"
 
 #include <span>
+#include <vector>
 
 namespace NS::Scene
 {
@@ -70,6 +71,19 @@ namespace NS::Scene
         void SetDebugDrawEnabled(bool enabled) noexcept { m_debugDraw = enabled; }
         [[nodiscard]] bool IsDebugDrawEnabled() const noexcept { return m_debugDraw; }
 
+        /// コヨーテ窓内で跳んだ 1 件の記録。edge=最終接地位置, jump=跳躍位置, remaining=残り表示秒
+        struct CoyoteJumpMarker
+        {
+            NS::Math::Vector3 edge{0.0f, 0.0f, 0.0f};
+            NS::Math::Vector3 jump{0.0f, 0.0f, 0.0f};
+            float remaining = 0.0f;
+        };
+        /// 生存中のコヨーテジャンプ記録。debug 描画が縁→跳躍点の赤線を引くのに読む。寿命切れは除外済
+        [[nodiscard]] std::span<const CoyoteJumpMarker> CoyoteJumpMarkers() const noexcept
+        {
+            return m_coyoteJumpMarkers;
+        }
+
         /// 奈落落ち復活などで状態を初期化する。velocity / grounded / jump 関連 timer を全リセット
         void ResetState() noexcept;
 
@@ -105,6 +119,9 @@ namespace NS::Scene
         /// 指定ぶら下がり位置で縁が同じ高さで続いているか。シミー先が端を越えていないか判定する
         [[nodiscard]] bool LedgeContinuesAt(const NS::Math::Vector3& hangPos) const noexcept;
 
+        /// コヨーテ窓内ジャンプを 1 件記録する。上限超過時は最古を捨てる
+        void PushCoyoteJumpMarker(const NS::Math::Vector3& edge, const NS::Math::Vector3& jump) noexcept;
+
         float m_gravityUp = -25.0f;
         float m_gravityDown = -35.0f;
         float m_apexHangVy = 1.0f;
@@ -138,6 +155,11 @@ namespace NS::Scene
         bool m_isGrounded = false;
 
         bool m_debugDraw = true;
+
+        // 最後に接地していた world 位置。 縁を踏み外した直後はここが踏み外し点 すなわち縁になる
+        NS::Math::Vector3 m_lastGroundedPosition{0.0f, 0.0f, 0.0f};
+        // 表示中のコヨーテジャンプ記録。 寿命付きで OnUpdate 冒頭に減衰させ、 切れたら除外する
+        std::vector<CoyoteJumpMarker> m_coyoteJumpMarkers;
 
         const NS::Physics::PhysicsWorld* m_world = nullptr;
         NS::Physics::CharacterController m_controller;
