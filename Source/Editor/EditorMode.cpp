@@ -1,5 +1,6 @@
 #include "Editor/EditorMode.h"
 
+#include "Editor/GridMath.h"
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/DeleteCommand.h"
 #include "Editor/Undo/PlaceCommand.h"
@@ -423,7 +424,7 @@ namespace NS::Editor
 
         const auto vp = m_camera->ViewProjection();
         const NS::Math::Ray ray =
-            NS::Scene::EditorGridMath::ScreenToWorldRay(vp, viewport, m_input->Mouse().GetX(), m_input->Mouse().GetY());
+            NS::Editor::ScreenToWorldRay(vp, viewport, m_input->Mouse().GetX(), m_input->Mouse().GetY());
 
         float bestT = std::numeric_limits<float>::max();
         bool hit = false;
@@ -497,7 +498,7 @@ namespace NS::Editor
         }
 
         NS::Math::Vector3 cellCenter{};
-        if (!NS::Scene::EditorGridMath::TryGroundPlaneFallback(ray, cellCenter))
+        if (!NS::Editor::TryGroundPlaneFallback(ray, cellCenter))
             return;
 
         m_cursor.valid = true;

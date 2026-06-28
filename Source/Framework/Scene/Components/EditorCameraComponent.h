@@ -90,38 +90,4 @@ namespace NS::Scene
         float m_padSensZoom = 4.0f;
     };
 
-    /// 編集モード用 grid 数学 helper。 Component ではなく自由関数として配置し、
-    /// EditorMode や Place / Delete / Rotate Command から再利用する
-    namespace EditorGridMath
-    {
-        /// 1 grid サイズ (世界座標 1.0 m)
-        constexpr float kGridSize = 1.0f;
-
-        /// マウス screen 座標から world ray を生成する
-        /// `viewProjection` は camera の VP matrix、 viewport は backbuffer サイズ
-        [[nodiscard]] NS::Math::Ray ScreenToWorldRay(const NS::Math::Matrix& viewProjection,
-                                                     NS::Math::Size2D viewport,
-                                                     int mouseX,
-                                                     int mouseY) noexcept;
-
-        /// world 座標を grid 中心に snap (最近接 cell center)
-        [[nodiscard]] NS::Math::Vector3 SnapWorldPointToGrid(NS::Math::Vector3 worldPoint,
-                                                             float gridSize = kGridSize) noexcept;
-
-        /// AABB hit 結果から、 hit 面の法線方向に 1 grid offset した cell 中心を返す
-        /// `hitNormal` は ±X / ±Y / ±Z のいずれか
-        [[nodiscard]] NS::Math::Vector3 SnapHitToPlacementCell(NS::Math::Vector3 hitPoint,
-                                                               NS::Math::Vector3 hitNormal,
-                                                               float gridSize = kGridSize) noexcept;
-
-        /// ray が ground plane (y = 0) と交わる点を grid snap して返す
-        /// 上向き ray / 後方ヒットの場合は false (`outCellCenter` 未変更)
-        [[nodiscard]] bool TryGroundPlaneFallback(const NS::Math::Ray& ray,
-                                                  NS::Math::Vector3& outCellCenter,
-                                                  float gridSize = kGridSize) noexcept;
-
-        /// rotation u8 (0/1/2/3) を Y 軸 90° 単位の quaternion に変換する
-        [[nodiscard]] NS::Math::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept;
-    } // namespace EditorGridMath
-
 } // namespace NS::Scene

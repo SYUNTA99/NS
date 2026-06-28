@@ -819,6 +819,7 @@ project "Tests"
         "Source/Editor/ComponentClipboard.cpp",
         "Source/Editor/EditorMode.cpp",
         "Source/Editor/GizmoEditor.cpp",
+        "Source/Editor/GridMath.cpp",
         "Source/Editor/CategoryPalette.cpp",
         "Source/Editor/PaletteTemplates.cpp",
         "Source/Editor/LevelFileBrowser.cpp",

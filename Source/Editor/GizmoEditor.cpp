@@ -1,5 +1,6 @@
 #include "Editor/GizmoEditor.h"
 
+#include "Editor/GridMath.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Mouse.h"
 #include "Framework/Scene/Components/EditorCameraComponent.h"
@@ -209,9 +210,9 @@ namespace NS::Editor
             {
             case GizmoTool::Move:
             {
-                const NS::Math::Ray rayStart = NS::Scene::EditorGridMath::ScreenToWorldRay(
+                const NS::Math::Ray rayStart = NS::Editor::ScreenToWorldRay(
                     viewProjection, viewport, static_cast<int>(screenStart.x), static_cast<int>(screenStart.y));
-                const NS::Math::Ray rayNow = NS::Scene::EditorGridMath::ScreenToWorldRay(
+                const NS::Math::Ray rayNow = NS::Editor::ScreenToWorldRay(
                     viewProjection, viewport, static_cast<int>(screenEnd.x), static_cast<int>(screenEnd.y));
                 after.position =
                     GizmoEditor::ComputeAxisMove(before.position, axis, axisOrient, rayStart, rayNow, snap);
@@ -398,8 +399,7 @@ namespace NS::Editor
         }
 
         // ハンドル外をクリック → オブジェクトを選び直す (無ヒットは選択解除)
-        const NS::Math::Ray ray =
-            NS::Scene::EditorGridMath::ScreenToWorldRay(viewProjection, viewport, mouse.GetX(), mouse.GetY());
+        const NS::Math::Ray ray = NS::Editor::ScreenToWorldRay(viewProjection, viewport, mouse.GetX(), mouse.GetY());
         std::vector<NS::Math::Matrix> worldMatrices;
         worldMatrices.reserve(m_objects.size());
         for (const NS::Scene::GameObject* obj : m_objects)
@@ -630,9 +630,9 @@ namespace NS::Editor
         if (n.LengthSquared() < 0.5f) // X/Y/Z 以外 (None/Uniform は零ベクトル) は回さない
             return 0.0f;
 
-        const NS::Math::Ray rayStart = NS::Scene::EditorGridMath::ScreenToWorldRay(
+        const NS::Math::Ray rayStart = NS::Editor::ScreenToWorldRay(
             viewProjection, viewport, static_cast<int>(screenStart.x), static_cast<int>(screenStart.y));
-        const NS::Math::Ray rayNow = NS::Scene::EditorGridMath::ScreenToWorldRay(
+        const NS::Math::Ray rayNow = NS::Editor::ScreenToWorldRay(
             viewProjection, viewport, static_cast<int>(screenEnd.x), static_cast<int>(screenEnd.y));
 
         // 軸に直交する平面 (origin を通り法線 n) との交点で、 掴んだ点を world 座標に復元する
