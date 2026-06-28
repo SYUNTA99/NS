@@ -1,6 +1,7 @@
 #include "Game/Level/PlayMode.h"
 
-#include "Game/Blocks/BlockRegistry.h"
+#include "Framework/Core/LogCategories.h"
+#include "Framework/Core/Logger.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
 
@@ -8,6 +9,20 @@
 
 namespace NS::Game::Level
 {
+    namespace
+    {
+        // 拾得種別は PickupComponent だけで決まる。 読込時移行でどの拾得物も PickupComponent を持つ
+        // 種別判定は LevelData の共有 PickupKindOf に一本化し、 配置物の表示・固形判定と同じ契約を読む
+        bool ObjectIsCoin(const ObjectInstance& object) noexcept
+        {
+            return PickupKindOf(object) == 0;
+        }
+
+        bool ObjectIsStar(const ObjectInstance& object) noexcept
+        {
+            return PickupKindOf(object) == 1;
+        }
+    } // namespace
 
     PlayMode::PlayMode() noexcept = default;
     PlayMode::~PlayMode() noexcept = default;
@@ -39,7 +54,7 @@ namespace NS::Game::Level
         if (dt <= 0.0f)
             return;
 
-        // 物理 (移動 / 重力 / 衝突) は CharacterMovementComponent が担う。 ここは Transform から
+        // 物理すなわち移動 / 重力 / 衝突は CharacterMovementComponent が担う。 ここは Transform から
         // ミラーされた play.playerPosition を読んでゲームルールだけを評価する
         if (play.playerPosition.y < kFallDeathThreshold)
             play.deathTriggered = true;
@@ -48,8 +63,8 @@ namespace NS::Game::Level
         for (std::size_t i = 0; i < level.objects.size(); ++i)
         {
             const auto& entry = level.objects[i];
-            const bool isCoin = (entry.kind == NS::Game::Blocks::kBlockIdCoin);
-            const bool isStar = (entry.kind == NS::Game::Blocks::kBlockIdPowerStar);
+            const bool isCoin = ObjectIsCoin(entry);
+            const bool isStar = ObjectIsStar(entry);
             if (!isCoin && !isStar)
                 continue;
 
@@ -82,6 +97,20 @@ namespace NS::Game::Level
         play.clearTriggered = false;
         play.deathTriggered = false;
         m_collectedCoinIndices.clear();
+    }
+
+    void ApplyContactDamage(PlayState& play) noexcept
+    {
+        if (play.playerHealth <= 0)
+            return;
+
+        --play.playerHealth;
+        if (play.playerHealth <= 0)
+        {
+            play.playerHealth = 0;
+            play.deathTriggered = true;
+            NS_LOG_INFO(::NS::Core::LogCat::Game, "ハザード接触で死亡 placeholder、 将来 HUD / 回復 / 演出に置換予定");
+        }
     }
 
 } // namespace NS::Game::Level

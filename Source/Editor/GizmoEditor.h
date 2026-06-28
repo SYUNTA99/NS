@@ -4,8 +4,8 @@
 /// @brief NS::Editor::GizmoEditor — Object モードの選択 + Maya 風変形ギズモ
 ///
 /// @details LevelData に属さない自由 Transform オブジェクトを Q/W/E/R の 4 ツールで
-/// 選択・移動・回転・スケールする。変形軸は選択物の local 座標系に追従する (ハンドルの向き・
-/// 移動方向・回転リング・スケール方向すべて選択物の回転で回す)。描画から独立して検証できるよう
+/// 選択・移動・回転・スケールする。変形軸は選択物の local 座標系に追従し、ハンドルの向き・
+/// 移動方向・回転リング・スケール方向すべて選択物の回転で回す。描画から独立して検証できるよう
 /// view-projection 行列と viewport を Tick / Render に注入し、変形算出は静的純関数へ切り出す。undo は
 /// grid 系の UndoStack とは別の TransformHistory で持ち、入力はツールモードで grid 系と排他にする
 /// 依存: NS::Math, NS::Scene::Transform / GameObject, NS::Platform::Input / Key, NS::UI::ImGuiContext
@@ -34,7 +34,7 @@ namespace NS::Scene
 
 namespace NS::Editor
 {
-    /// 変形ツール種別 (Q=Select / W=Move / E=Rotate / R=Scale)
+    /// 変形ツール種別。Q=Select / W=Move / E=Rotate / R=Scale
     enum class GizmoTool : std::uint8_t
     {
         Select,
@@ -43,15 +43,15 @@ namespace NS::Editor
         Scale
     };
 
-    /// 変形の座標系 (X キーで切替)。Move / Rotate のみ従い、 Scale は常に Local 固定
-    /// (非一様 world スケールは TRS で表現できないため)
+    /// X キーで切り替える変形の座標系。Move / Rotate のみ従い、 Scale は常に Local 固定
+    /// 非一様 world スケールは TRS で表現できないため
     enum class GizmoSpace : std::uint8_t
     {
         Local,
         World
     };
 
-    /// ギズモのハンドル軸。Uniform は scale 中心ハンドル (全軸均一)
+    /// ギズモのハンドル軸。Uniform は全軸均一の scale 中心ハンドル
     enum class GizmoAxis : std::uint8_t
     {
         None,
@@ -92,7 +92,7 @@ namespace NS::Editor
         void SetActive(bool active) noexcept { m_active = active; }
         [[nodiscard]] bool IsActive() const noexcept { return m_active; }
 
-        /// 変形座標系 (Local / World)。Move / Rotate のみ従い Scale は常に Local
+        /// 変形座標系は Local / World。Move / Rotate のみ従い Scale は常に Local
         void SetSpace(GizmoSpace space) noexcept { m_space = space; }
         [[nodiscard]] GizmoSpace Space() const noexcept { return m_space; }
         void ToggleSpace() noexcept
@@ -108,7 +108,7 @@ namespace NS::Editor
 
         [[nodiscard]] GizmoTool Tool() const noexcept { return m_tool; }
         [[nodiscard]] NS::Scene::Transform* Selected() const noexcept { return m_selected; }
-        /// 選択を外し、 進行中のドラッグも破棄する (モード切替で安全に呼べる)
+        /// 選択を外し、 進行中のドラッグも破棄する。モード切替で安全に呼べる
         void ClearSelection() noexcept
         {
             m_selected = nullptr;
@@ -116,7 +116,7 @@ namespace NS::Editor
             m_dragAxis = GizmoAxis::None;
         }
 
-        /// 選択対象を差し替える。 進行中のドラッグは破棄する (grid ブロック昇格後に新オブジェクトへ貼り直す)
+        /// 選択対象を差し替える。 進行中のドラッグは破棄する。grid ブロック昇格後に新オブジェクトへ貼り直すのに使う
         void SetSelected(NS::Scene::Transform* target) noexcept
         {
             m_selected = target;
@@ -127,12 +127,12 @@ namespace NS::Editor
         /// ドラッグ中か。 controller が drag 開始 / 終了を検出して undo を確定するために使う
         [[nodiscard]] bool IsDragging() const noexcept { return m_dragging; }
 
-        /// ray とローカル AABB (OBB 判定) で最近ヒットの index を返す。無ヒットは -1
+        /// ray とローカル AABB の OBB 判定で最近ヒットの index を返す。無ヒットは -1
         [[nodiscard]] static int PickNearestObb(const NS::Math::Ray& ray,
                                                 std::span<const NS::Math::Matrix> worldMatrices,
                                                 std::span<const NS::Math::Vector3> localHalfExtents) noexcept;
 
-        /// 選択物の local 軸 (rotation で回した方向) を含む平面と ray の交点から、軸成分のみ反映した新 position を返す
+        /// rotation で回した方向の選択物 local 軸を含む平面と ray の交点から、軸成分のみ反映した新 position を返す
         [[nodiscard]] static NS::Math::Vector3 ComputeAxisMove(const NS::Math::Vector3& startPos,
                                                                GizmoAxis axis,
                                                                const NS::Math::Quaternion& rotation,
@@ -140,8 +140,8 @@ namespace NS::Editor
                                                                const NS::Math::Ray& rayNow,
                                                                bool snap) noexcept;
 
-        /// 回転リングのドラッグを軸まわりの回転角 (rad) に変換する
-        /// 軸は選択物の local 軸 (rotation で回した方向)。screenStart / screenEnd のカーソル ray を
+        /// 回転リングのドラッグを軸まわりの回転角 rad に変換する
+        /// 軸は rotation で回した方向の選択物 local 軸。screenStart / screenEnd のカーソル ray を
         /// 軸直交平面に当て、 掴んだ点が運ばれた角を測る
         /// screen 2D 角と違いカメラがどちら側から見ても符号が反転せず、 平面を真横から見る縮退時は 0
         [[nodiscard]] static float WorldDragToAngle(const NS::Math::Vector3& origin,
@@ -153,7 +153,7 @@ namespace NS::Editor
                                                     NS::Math::Vector2 screenEnd) noexcept;
 
         /// startRot を axis 周りに angleRad 回した新 rotation を返す
-        /// worldSpace=false は選択物の local 軸、true は world 軸で回す (合成基準は常に startRot)
+        /// worldSpace=false は選択物の local 軸、true は world 軸で回す。合成基準は常に startRot
         [[nodiscard]] static NS::Math::Quaternion ComputeAxisRotate(const NS::Math::Quaternion& startRot,
                                                                     GizmoAxis axis,
                                                                     float angleRad,
@@ -164,7 +164,7 @@ namespace NS::Editor
         [[nodiscard]] static float ScreenDragToScaleAmount(NS::Math::Vector2 axisDir2d,
                                                            NS::Math::Vector2 dragPixels) noexcept;
 
-        /// axis (Uniform 含む) と amount から新 scale を返す。0 以下は最小正値に clamp
+        /// Uniform を含む axis と amount から新 scale を返す。0 以下は最小正値に clamp
         [[nodiscard]] static NS::Math::Vector3 ComputeScale(const NS::Math::Vector3& startScale,
                                                             GizmoAxis axis,
                                                             float amount,
@@ -173,7 +173,7 @@ namespace NS::Editor
         /// Q/W/E/R をツールに対応付ける。対象外キーは current を素通しする
         [[nodiscard]] static GizmoTool ToolForKey(GizmoTool current, NS::Platform::Key key) noexcept;
 
-        /// gizmoOrigin と 3 軸端点 (rotation で回した local 軸) を screen 投影し、mouse2d に最も近い軸ハンドルを返す
+        /// gizmoOrigin と rotation で回した local 軸の 3 軸端点を screen 投影し、mouse2d に最も近い軸ハンドルを返す
         /// Select は常に None、Scale は中心 Uniform ハンドルを優先、閾値外/不正 viewport は None
         [[nodiscard]] static GizmoAxis ToolHandlePick(const NS::Math::Vector3& gizmoOrigin,
                                                       const NS::Math::Quaternion& rotation,

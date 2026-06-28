@@ -5,10 +5,10 @@
 ///
 /// @details Game / Editor / Debug HUD を独立した Layer として並立させる基盤
 /// イベントクラス階層は持たず、入力は Application::Get()->Input() のポーリングで参照する
-/// active フラグは各 Layer の自己判断用 (pause overlay / Edit-Play 切替等で
-/// SetActive(false) にすると OnUpdate / OnRender がスキップされる)
+/// active フラグは各 Layer の自己判断用。pause overlay / Edit-Play 切替等で
+/// SetActive(false) にすると OnUpdate / OnRender がスキップされる
 ///
-/// Run ループ内から PushLayer / Pop を呼ぶことは禁止 (iterator 無効化)
+/// iterator が無効化されるため Run ループ内から PushLayer / Pop を呼ぶことは禁止
 /// layer 構成は WinMain 段階で確定させる。動的変更が必要なら deferred queue を導入する
 
 #include <string>
@@ -30,10 +30,10 @@ namespace NS::App
         Layer(Layer&&) = delete;
         Layer& operator=(Layer&&) = delete;
 
-        /// Application::Run の Init フェーズで一度呼ばれる (LayerStack 反復)
+        /// Application::Run の Init フェーズで LayerStack を反復して一度呼ばれる
         virtual void OnAttach() {}
 
-        /// Application::Run の Shutdown フェーズで一度呼ばれる (LayerStack 逆順反復)
+        /// Application::Run の Shutdown フェーズで LayerStack を逆順反復して一度呼ばれる
         virtual void OnDetach() {}
 
         /// fixed step ループ内で 1 step あたり 1 回呼ばれる。 dt は FrameTimer::FixedDelta()

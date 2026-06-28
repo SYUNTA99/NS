@@ -14,6 +14,7 @@ namespace NS::Core
     {
         Core,
         Platform,
+        Physics,
         Graphics,
         App,
         Game,

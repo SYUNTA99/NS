@@ -1,11 +1,11 @@
-#include <Framework/Platform/Window.h>
+#include "Framework/Platform/Window.h"
 
-#include <Framework/Core/LogCategories.h>
-#include <Framework/Core/Logger.h>
-#include <Framework/Core/StringUtils.h>
-#include <Framework/Platform/Input.h>
-#include <Framework/Platform/detail/input_win32.h>
-#include <Framework/Platform/detail/win32_window.h>
+#include "Framework/Core/LogCategories.h"
+#include "Framework/Core/Logger.h"
+#include "Framework/Core/StringUtils.h"
+#include "Framework/Platform/Input.h"
+#include "Framework/Platform/detail/input_win32.h"
+#include "Framework/Platform/detail/win32_window.h"
 
 namespace NS::Platform
 {
@@ -41,14 +41,14 @@ namespace NS::Platform
             }
         }
 
-        /// キーボード系メッセージ (WantCaptureKeyboard でゲートする対象)
+        /// WantCaptureKeyboard でゲートする対象のキーボード系メッセージ
         /// WM_KILLFOCUS は ImGui キャプチャに関係なく Input を flush するので除外
         [[nodiscard]] constexpr bool IsKeyboardMessage(UINT msg) noexcept
         {
             return msg == WM_KEYDOWN || msg == WM_KEYUP || msg == WM_SYSKEYDOWN || msg == WM_SYSKEYUP;
         }
 
-        /// マウス系メッセージ (WantCaptureMouse でゲートする対象)
+        /// WantCaptureMouse でゲートする対象のマウス系メッセージ
         [[nodiscard]] constexpr bool IsMouseMessage(UINT msg) noexcept
         {
             switch (msg)
@@ -77,7 +77,7 @@ namespace NS::Platform
                 return ::DefWindowProcW(hwnd, msg, wparam, lparam);
             }
 
-            // 生メッセージを最初にフックへ流す (editor が ImGui へ転送する)。Platform は中身を知らない
+            // 生メッセージを最初にフックへ流して editor が ImGui へ転送する。Platform は中身を知らない
             if (impl->messageHook)
             {
                 impl->messageHook(static_cast<void*>(hwnd),
@@ -178,7 +178,7 @@ namespace NS::Platform
         m_pImpl->classAtom = ::RegisterClassExW(&wc);
         if (m_pImpl->classAtom == 0)
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::Platform, "RegisterClassExW failed (GetLastError={})", ::GetLastError());
+            NS_LOG_ERROR(::NS::Core::LogCat::Platform, "RegisterClassExW 失敗 (GetLastError={})", ::GetLastError());
             s_instance = nullptr;
             return;
         }
@@ -205,7 +205,7 @@ namespace NS::Platform
 
         if (m_pImpl->hwnd == nullptr)
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::Platform, "CreateWindowExW failed (GetLastError={})", ::GetLastError());
+            NS_LOG_ERROR(::NS::Core::LogCat::Platform, "CreateWindowExW 失敗 (GetLastError={})", ::GetLastError());
             ::UnregisterClassW(m_pImpl->className.c_str(), m_pImpl->hInstance);
             m_pImpl->classAtom = 0;
             s_instance = nullptr;

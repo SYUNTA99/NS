@@ -1,7 +1,7 @@
-#include <Framework/Core/Filesystem.h>
+#include "Framework/Core/Filesystem.h"
 
-#include <Framework/Core/LogCategories.h>
-#include <Framework/Core/Logger.h>
+#include "Framework/Core/LogCategories.h"
+#include "Framework/Core/Logger.h"
 
 #include <array>
 #include <fstream>
@@ -68,7 +68,7 @@ namespace NS::Core
 
     bool FileSystem::WriteAllBytes(const std::filesystem::path& path, std::span<const std::byte> bytes)
     {
-        // parent が空 path (ファイル名のみ指定) の場合はスキップ
+        // parent が空 path となるファイル名のみ指定の場合はスキップ
         const auto parent = path.parent_path();
         if (!parent.empty())
         {
@@ -211,7 +211,7 @@ namespace NS::Core
 #if defined(NS_SHIPPING)
         return GetExeDirectory();
 #else
-        // exe から premake5.lua / .git を上位へ辿りリポジトリルートを返す (Logger のログ出力先探索と同方針)
+        // exe から premake5.lua / .git を上位へ辿りリポジトリルートを返す。 Logger のログ出力先探索と同方針
         for (auto dir = GetExeDirectory(); !dir.empty();)
         {
             std::error_code ec;

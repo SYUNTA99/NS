@@ -1,24 +1,24 @@
 #pragma once
 
 /// @file Mesh.h
-/// @brief NS::Graphics::Mesh — 描画できるジオメトリの基底 (VB / IB / InputLayout を所有し DrawIndexed を発行する)
+/// @brief NS::Graphics::Mesh — VB / IB / InputLayout を所有し DrawIndexed を発行する描画できるジオメトリの基底
 ///
 /// @details StaticMesh / SkeletalMesh の共通実体 = GPU 頂点 / index buffer と入力レイアウト、 描画呼出を持つ
-/// 頂点フォーマットは派生が決める (StaticMesh は StaticVertex、 SkeletalMesh は SkinnedVertex)
+/// 頂点フォーマットは派生が決め、 StaticMesh は StaticVertex、 SkeletalMesh は SkinnedVertex を使う
 /// 派生は構築した VB / IB を `SetGeometry` で基底に預け、 自分の頂点レイアウトを `SetVertexLayout` で渡す
-/// 入力レイアウトは `CreateInputLayout(shader)` で Shader の VS バイトコードから生成する (VS 入力シグネチャ突合に必要)
-/// `Draw` / `IsValid` 等は基底実装を共有する。 skinning する派生は `Draw` を override して bone palette CB の bind
-/// を足す
-/// @details GPU バインドは `Draw(Renderer&)` に渡す Renderer 経由で行い、 Mesh は DeviceContext を保持しない
-/// (InputLayout 生成用に Device のみ保持する)
+/// 入力レイアウトは VS 入力シグネチャ突合のため `CreateInputLayout(shader)` で Shader の VS バイトコードから生成する
+/// `Draw` / `IsValid` 等は基底実装を共有する。 skinning する派生は `Draw` を override して
+/// bone palette CB の bind を足す
+/// @details GPU バインドは `Draw(Renderer&)` に渡す Renderer 経由で行い、 Mesh は DeviceContext を持たず
+/// InputLayout 生成用に Device のみ保持する
 
 #include <cstddef>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <Framework/Core/NonCopyable.h>
-#include <Framework/Graphics/D3dCommon.h>
+#include "Framework/Core/NonCopyable.h"
+#include "Framework/Graphics/D3dCommon.h"
 
 namespace NS::Graphics
 {
@@ -30,11 +30,16 @@ namespace NS::Graphics
     /// 公開 InputElement 用フォーマット。頂点属性として受け付けるフォーマットの閉集合
     enum class InputElementFormat
     {
-        Float2, ///< R32G32_FLOAT
-        Float3, ///< R32G32B32_FLOAT
-        Float4, ///< R32G32B32A32_FLOAT
-        UInt32, ///< R32_UINT
-        UInt4,  ///< R32G32B32A32_UINT (4 ボーン index)
+        /// R32G32_FLOAT
+        Float2,
+        /// R32G32B32_FLOAT
+        Float3,
+        /// R32G32B32A32_FLOAT
+        Float4,
+        /// R32_UINT
+        UInt32,
+        /// R32G32B32A32_UINT。4 ボーン index 用
+        UInt4,
     };
 
     /// InputLayout の 1 要素。SemanticIndex は常に 0、InputSlot 0 単一 stream 前提
@@ -46,7 +51,7 @@ namespace NS::Graphics
         unsigned byteOffset = 0;
     };
 
-    /// プリミティブ形状。Mesh の index buffer の解釈方法 (描画元が持つ属性)
+    /// プリミティブ形状。Mesh の index buffer の解釈方法を表す描画元の属性
     enum class Topology
     {
         TriangleList,
@@ -54,14 +59,15 @@ namespace NS::Graphics
     };
 
     /// 描画できるジオメトリの基底。 VB / IB / InputLayout を所有し DrawIndexed を 1 回発行する
-    /// 頂点フォーマットは派生 (StaticMesh / SkeletalMesh) が `SetVertexLayout` で渡す
+    /// 頂点フォーマットは派生の StaticMesh / SkeletalMesh が `SetVertexLayout` で渡す
     class Mesh : public NS::Core::NonCopyable
     {
     public:
         virtual ~Mesh();
 
-        /// VB / IB が構築済なら true。 fallback geometry に切替わった場合も true (描画は可能)
-        /// Device / Context 無効や geometry 未設定なら false。 InputLayout 未生成でも true (Draw は layout 無しで発行)
+        /// VB / IB が構築済なら true。 fallback geometry に切替わった場合も描画可能なので true
+        /// Device / Context 無効や geometry 未設定なら false。 InputLayout 未生成でも Draw は layout 無しで発行するため
+        /// true
         [[nodiscard]] bool IsValid() const noexcept;
 
         /// 構築失敗で fallback geometry に切替わっているか。 デバッグ時のジオメトリ欠落検知に使う
@@ -70,17 +76,17 @@ namespace NS::Graphics
         [[nodiscard]] std::size_t VertexCount() const noexcept;
         [[nodiscard]] std::size_t IndexCount() const noexcept;
 
-        /// VS バイトコードから InputLayout を生成する。生成済・device 無効・layout 未設定なら無操作 (冪等)
+        /// VS バイトコードから InputLayout を生成する。生成済・device 無効・layout 未設定なら無操作で冪等
         void CreateInputLayout(const Shader& vertexShader) noexcept;
 
         /// VB + IB + InputLayout を bind して DrawIndexed を発行する。Shader/Material の Bind は呼出側責任
         virtual void Draw(Renderer& renderer) noexcept;
 
-        /// 頂点バッファ (非所有)。InstanceBatcher 等エンジン内部の継ぎ目とテスト向け、未構築なら nullptr
+        /// 非所有の頂点バッファ。InstanceBatcher 等エンジン内部の継ぎ目とテスト向け、未構築なら nullptr
         [[nodiscard]] const Buffer* VertexBuffer() const noexcept;
-        /// index バッファ (非所有)。同上
+        /// 非所有の index バッファ。同上
         [[nodiscard]] const Buffer* IndexBuffer() const noexcept;
-        /// 生成済 InputLayout (非所有)。CreateInputLayout 前は nullptr
+        /// 非所有の生成済 InputLayout。CreateInputLayout 前は nullptr
         [[nodiscard]] ID3D11InputLayout* InputLayout() const noexcept;
 
     protected:
@@ -93,10 +99,10 @@ namespace NS::Graphics
                          std::size_t indexCount,
                          bool usingFallback) noexcept;
 
-        /// 派生が自分の頂点フォーマットの InputElement 配列を基底に渡す (CreateInputLayout が使う)
+        /// 派生が自分の頂点フォーマットの InputElement 配列を基底に渡す。CreateInputLayout が使う
         void SetVertexLayout(std::vector<InputElement> elements) noexcept;
 
-        /// 派生が自分のプリミティブ形状を渡す (既定 TriangleList、line mesh は LineList)
+        /// 派生が自分のプリミティブ形状を渡す。既定 TriangleList、line mesh は LineList
         void SetTopology(Topology topology) noexcept;
 
     private:

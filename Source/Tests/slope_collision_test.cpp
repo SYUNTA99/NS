@@ -31,9 +31,9 @@ namespace
         const Vector3 highLeft{-0.5f, h, 0.5f};
         const Vector3 highRight{0.5f, h, 0.5f};
         std::array<Triangle, 2> result;
-        // Triangle 1: lowLeft → highRight → lowRight (CCW from outside).
+        // 三角形 1: lowLeft → highRight → lowRight (外から見て反時計回り)
         result[0] = Triangle{lowLeft, highRight, lowRight};
-        // Triangle 2: lowLeft → highLeft → highRight (CCW from outside).
+        // 三角形 2: lowLeft → highLeft → highRight (外から見て反時計回り)
         result[1] = Triangle{lowLeft, highLeft, highRight};
         return result;
     }

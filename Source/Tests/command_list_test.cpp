@@ -106,7 +106,7 @@ TEST_F(CommandListLoggerTest, SetAndDrawDoNotCrash)
     CommandList& cmd = renderer.Commands();
     cmd.SetShader(vs);
     cmd.SetShader(ps);
-    cmd.SetInputLayout(nullptr); // nullptr は no-op (実レイアウト経路は mesh テストがカバー)
+    cmd.SetInputLayout(nullptr); // nullptr は何もしない (実レイアウト経路は mesh テストがカバー)
     cmd.SetVertexBuffer(vb, 0);
     cmd.SetIndexBuffer(ib);
     cmd.SetConstantBuffer(cb, 0, ShaderType::Vertex);
@@ -136,7 +136,7 @@ TEST_F(CommandListLoggerTest, UpdateBufferDynamicWorksStaticIsNoop)
     CommandList& cmd = renderer.Commands();
     verts[0].pos[0] = 1.0f;
     cmd.UpdateBuffer(dyn, verts.data(), verts.size() * sizeof(TestVertex));
-    // Static への Update は no-op (ERROR ログのみ、 crash しない)
+    // Static への Update は何もしない (ERROR ログのみ、 crash しない)
     cmd.UpdateBuffer(stat, verts.data(), verts.size() * sizeof(TestVertex));
     SUCCEED();
 }

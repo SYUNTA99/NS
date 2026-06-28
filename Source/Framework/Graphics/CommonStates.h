@@ -3,14 +3,14 @@
 /// @file CommonStates.h
 /// @brief NS::Graphics::CommonStates — DirectXTK CommonStates のラッパ
 ///
-/// @details 公開セット = 10 getter (Blend 2 / Depth 2 / Rasterizer 2 / Sampler 4)
-/// 戻り値は型付き D3D11 state ポインタを直接返し、 利用側 (Material 等) はキャスト無しで
-/// そのまま bind する。 構築は `Renderer` のみが行い (friend)、 外部から直接コンストラクタは呼べない
+/// @details 公開セットは Blend 2 / Depth 2 / Rasterizer 2 / Sampler 4 の 10 getter
+/// 戻り値は型付き D3D11 state ポインタを直接返し、 Material 等の利用側はキャスト無しで
+/// そのまま bind する。 構築は friend である `Renderer` のみが行い、 外部から直接コンストラクタは呼べない
 
 #include <memory>
 
-#include <Framework/Core/NonCopyable.h>
-#include <Framework/Graphics/D3dCommon.h>
+#include "Framework/Core/NonCopyable.h"
+#include "Framework/Graphics/D3dCommon.h"
 
 namespace DirectX
 {
@@ -25,7 +25,7 @@ namespace NS::Graphics
 
     class Renderer;
 
-    /// DirectXTK CommonStates のラッパ。公開セット = 10 getter (Blend 2 / Depth 2 / Rasterizer 2 / Sampler 4)
+    /// DirectXTK CommonStates のラッパ。公開セットは Blend 2 / Depth 2 / Rasterizer 2 / Sampler 4 の 10 getter
     /// 戻り値は型付き D3D11 state ポインタで、Renderer / Material が直接 bind する
     class CommonStates : public NS::Core::NonCopyable
     {

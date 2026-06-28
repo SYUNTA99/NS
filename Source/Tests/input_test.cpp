@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 
-#include <Framework/Platform/detail/input_win32.h>
 #include <Framework/Platform/Gamepad.h>
 #include <Framework/Platform/Input.h>
 #include <Framework/Platform/Keyboard.h>
 #include <Framework/Platform/Mouse.h>
+#include <Framework/Platform/detail/input_win32.h>
 
 #include "Framework/Framework.h"
 
@@ -77,7 +77,7 @@ TEST(NsPlatformKeyboard, OutOfRangeKeyIsNoop)
 {
     Keyboard kb;
     const auto negativeKey = static_cast<Key>(-1);
-    const auto overflowKey = static_cast<Key>(static_cast<int>(Key::kCount) + 10);
+    const auto overflowKey = static_cast<Key>(static_cast<int>(Key::Count) + 10);
 
     kb.OnKeyDown(negativeKey);
     kb.OnKeyDown(overflowKey);
@@ -150,7 +150,7 @@ TEST(NsPlatformMouse, OutOfRangeButtonIsNoop)
 {
     Mouse m;
     const auto negativeButton = static_cast<MouseButton>(-1);
-    const auto overflowButton = static_cast<MouseButton>(static_cast<int>(MouseButton::kCount) + 10);
+    const auto overflowButton = static_cast<MouseButton>(static_cast<int>(MouseButton::Count) + 10);
 
     m.OnButtonDown(negativeButton);
     m.OnButtonDown(overflowButton);
@@ -247,7 +247,7 @@ TEST(NsPlatformGamepad, OutOfRangeButtonIsNoop)
 {
     Gamepad pad;
     const auto negative = static_cast<GamepadButton>(-1);
-    const auto overflow = static_cast<GamepadButton>(static_cast<int>(GamepadButton::kCount) + 10);
+    const auto overflow = static_cast<GamepadButton>(static_cast<int>(GamepadButton::Count) + 10);
 
     EXPECT_FALSE(pad.IsHeld(negative));
     EXPECT_FALSE(pad.IsHeld(overflow));

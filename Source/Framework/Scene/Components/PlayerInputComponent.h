@@ -25,7 +25,7 @@ namespace NS::Scene
         /// movement を受け取って構築する
         explicit PlayerInputComponent(CharacterMovementComponent* movement) noexcept;
 
-        /// camera 相対移動用の水平 forward (XZ, Y=0) を注入。未注入時は world +Z
+        /// camera 相対移動用の水平 forward を注入し、 XZ 平面で Y=0 とする。未注入時は world +Z
         void SetCameraForward(const NS::Math::Vector3& cameraForwardHorizontal) noexcept;
 
         /// 入力ソースを注入。null で何もしない

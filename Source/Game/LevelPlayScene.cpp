@@ -1,9 +1,9 @@
 #include "Game/LevelPlayScene.h"
 
 #include "Game/Blocks/BuildPlacedObject.h"
+#include "Game/Level/EditTarget.h"
 #include "Game/Player.h"
 #include "Game/SkinnedDebugCharacter.h"
-#include "Game/Undo/EditTarget.h"
 
 #include "Framework/Scene/AssetManager.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
@@ -41,12 +41,13 @@
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/Transform.h"
 #include "Game/Blocks/AutoTile.h"
-#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/ChunkIO.h"
 #include "Game/Theme/ThemeRegistry.h"
 
 #include <algorithm>
 #include <cmath>
+
+using namespace NS::Game::Theme;
 
 namespace
 {
@@ -57,7 +58,7 @@ namespace
     void SeedInitialLevel(NS::Game::Level::LevelData& level)
     {
         level.objects.clear();
-        level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdSolid, 0));
+        level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, 0));
         level.spawnX = 0;
         level.spawnY = 1;
         level.spawnZ = 0;
@@ -80,8 +81,8 @@ void LevelPlayScene::LoadInitialLevel()
 
 void LevelPlayScene::RebuildObjectIds() noexcept
 {
-    NS::Game::Undo::EditTarget target{m_level, m_objectIds, m_nextObjectId};
-    NS::Game::Undo::ResetEditIds(target);
+    NS::Game::Level::EditTarget target{m_level, m_objectIds, m_nextObjectId};
+    NS::Game::Level::ResetEditIds(target);
 }
 
 void LevelPlayScene::OnStart()
@@ -96,10 +97,10 @@ void LevelPlayScene::OnStart()
     auto& renderer = app->Renderer();
     const auto exeDir = NS::Core::FileSystem::ContentRoot();
 
-    // builtin mesh と共有 material は AssetManager がアプリ寿命で所有する。 ここは使う時に引くだけ
+    // 組み込み mesh と共有 material は AssetManager がアプリ寿命で所有する。 ここは使う時に引くだけ
     auto& assets = app->Assets();
 
-    // 接地シャドウは Player が scene 寿命のあいだ参照を握る。 builtin quad + 共有 shadow material を渡す
+    // 接地シャドウは Player が scene 寿命のあいだ参照を握る。 組み込み quad + 共有 shadow material を渡す
     auto* shadowMesh = assets.Builtin("shadowQuad");
     auto* shadowMaterial = assets.SharedMaterial("shadow");
 
@@ -125,8 +126,8 @@ void LevelPlayScene::OnStart()
     if (!m_instanceBatcher->IsValid())
         NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelPlayScene: InstanceBatcher 構築失敗、 block 描画はスキップされる");
 
-    // placeholder skybox。 kurt 6-face PNG をロードし、 取得できなければ
-    // 1x1 マゼンタ cubemap fallback で続行する (描画は OnRenderScene 末尾)
+    // 仮の skybox。 kurt 6-face PNG をロードし、 取得できなければ
+    // 1x1 マゼンタ cubemap fallback で続行する。 描画は OnRenderScene 末尾
     m_skybox = NS::Graphics::Skybox::Create();
     if (m_skybox->IsValid())
     {
@@ -145,7 +146,7 @@ void LevelPlayScene::OnStart()
     m_player->AttachScene(this);
     m_player->Root().SetPosition({0.0f, 1.0f, -4.0f});
     // cube mesh の半サイズは 0.5 だが capsule collider は radius=0.4 / halfHeight=0.5
-    // (= AABB 半サイズ 0.4, 0.9, 0.4)。両者が一致するよう scale で mesh を縮める
+    // すなわち AABB 半サイズ 0.4, 0.9, 0.4。両者が一致するよう scale で mesh を縮める
     m_player->Root().SetScale({0.8f, 1.8f, 0.8f});
     m_player->MeshComp().SetBaseColor(kPlayerColor);
     m_player->Shadow().SetResources(shadowMesh, shadowMaterial);
@@ -155,7 +156,7 @@ void LevelPlayScene::OnStart()
 
     m_cameraRig = std::make_unique<CameraRig>(&app->Input(), &m_player->Root(), &m_player->Movement());
     m_cameraRig->AttachScene(this);
-    // follow vcam の投影設定 (near 0.1 / fov 60 は既定、 play は遠景を 100 までに抑える)
+    // follow vcam の投影設定。 near 0.1 / fov 60 は既定、 play は遠景を 100 までに抑える
     m_cameraRig->Follow().SetFarPlane(100.0f);
 
     m_player->OnStart();
@@ -173,7 +174,7 @@ void LevelPlayScene::OnStart()
     m_cameraHost->AttachScene(this);
     m_cameraHost->OnStart();
 
-    // level の cameraVolumes から area camera を生成し Brain へ登録する (Brain 構築後に呼ぶ必要がある)
+    // level の cameraVolumes から area camera を生成し Brain へ登録する。 Brain 構築後に呼ぶ必要がある
     RebuildAreaCamerasFromLevelData();
 
     // 仮 skinned キャラをプレイ画面で常時表示し、 アニメ再生を画面で確認できるようにする
@@ -210,7 +211,7 @@ void LevelPlayScene::SetPlaying(bool playing) noexcept
     else
     {
         // 編集モードへ: paused/clear/death をリセットし player を凍結、 follow / area camera を休止する
-        // (free-fly カメラは editor が握るため scene は触らない)
+        // free-fly カメラは editor が握るため scene は触らない
         m_playMode.Exit(m_play);
         m_playMode.SetActive(false);
         if (m_player)
@@ -235,9 +236,9 @@ void LevelPlayScene::OnUpdate()
     if (app == nullptr)
         return;
 
-    // F5 で編集中の HLSL を再起動なしで反映する (reload-in-place、 play / edit 共通の dev hot reload)
-    // ImGui 入力中は誤爆を防ぐため無効化する
-    if (!app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::Platform::Key::F5))
+    // F5 で編集中の HLSL を再起動なしで反映する。 プレイ中の F5 はエディタ UI の表示トグルに使うため
+    // ここでは編集モード中だけシェーダを再読み込みする。 ImGui 入力中は誤爆を防ぐため無効化する
+    if (!m_playing && !app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::Platform::Key::F5))
     {
         app->Assets().ReloadAllShaders();
         // block 描画の instanced shader は AssetManager 管理外で自前コンパイルなので個別に reload する
@@ -245,7 +246,7 @@ void LevelPlayScene::OnUpdate()
             m_instanceBatcher->ReloadShaders();
     }
 
-    // プレイ中の Esc は終了。 編集中は editor が Esc を握る (選択解除 / 終了) ので scene は触らない
+    // プレイ中の Esc は終了。 編集中は editor が Esc を握り選択解除 / 終了に使うので scene は触らない
     if (m_playing && app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
     {
         NS::App::Application::Quit();
@@ -253,17 +254,17 @@ void LevelPlayScene::OnUpdate()
     }
 
     // Application が Renderer::Resize を排他で握っているため、 Camera の aspect ratio は
-    // Renderer の現在 Size から毎フレーム pull する (callback 上書きで競合させない)
+    // Renderer の現在 Size から毎フレーム pull する。 callback 上書きで競合させない
     if (m_mainCamera)
         m_mainCamera->SetAspectRatioFromRenderer(app->Renderer());
 
-    // active vcam が入れ替わったらブレンドを進める (play / edit 共通、 fixed step ごとに 1 度)
+    // active vcam が入れ替わったらブレンドを進める。 play / edit 共通で fixed step ごとに 1 度
     if (m_brain)
         m_brain->OnUpdate();
 
     SnapshotDisplayBlocks();
 
-    // 編集中はプレイ更新を止める。 free-fly カメラ / 編集入力は editor 側 (overlay layer) が回す
+    // 編集中はプレイ更新を止める。 free-fly カメラ / 編集入力は overlay layer の editor 側が回す
     if (m_playing)
         TickPlay();
 
@@ -294,7 +295,7 @@ void LevelPlayScene::TickPlay()
         m_play.playerPosition = m_player->Root().Position();
     }
 
-    // Play のゲームルール (落下死 / coin / star)。 物理は持たず player 位置を読むだけ
+    // Play のゲームルールである落下死 / coin / star。 物理は持たず player 位置を読むだけ
     m_playMode.Tick(m_level, m_play, dt);
 
     // hazard は solid 衝突世界にも含まれ capsule 中心は表面外に留まるため芯線分から AABB の最近距離で判定する
@@ -312,7 +313,7 @@ void LevelPlayScene::TickPlay()
             auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*hazard);
             auto* damage = NS::Game::Blocks::FindComponent<NS::Scene::HazardComponent>(*hazard);
             if (box && damage && NS::Physics::IntersectsCapsuleAabb(playerCapsule, box->WorldAABB()))
-                damage->OnPlayerOverlap(m_play);
+                NS::Game::Level::ApplyContactDamage(m_play);
         }
     }
 
@@ -324,8 +325,8 @@ void LevelPlayScene::TickPlay()
             area.cam->UpdateActivation(m_play.playerPosition);
     }
 
-    // 落下死 (PlayMode が y < kFallDeathThreshold で立てた deathTriggered) は respawn 経路
-    // ハザード接触の死 (playerHealth==0) は Game.cpp が Application::Quit を呼ぶためここでは respawn しない
+    // PlayMode が y < kFallDeathThreshold で立てた deathTriggered の落下死は respawn 経路
+    // playerHealth==0 のハザード接触の死は Game.cpp が Application::Quit を呼ぶためここでは respawn しない
     if (m_play.deathTriggered && m_play.playerHealth > 0)
     {
         m_play.deathTriggered = false;
@@ -336,7 +337,7 @@ void LevelPlayScene::TickPlay()
             m_player->Movement().ResetState();
         }
     }
-    // clearTriggered のクリア後遷移 (編集へ戻る / 次レベル / リザルト) は scene の外で扱う
+    // clearTriggered のクリア後遷移すなわち編集へ戻る / 次レベル / リザルトは scene の外で扱う
     // 開発時は editor が観測して編集モードへ戻す。 出荷のクリア演出は後続フェーズ
 
     if (m_player)
@@ -350,14 +351,14 @@ void LevelPlayScene::TickPlay()
 
 void LevelPlayScene::SnapshotDisplayBlocks()
 {
-    // 各配置物 GameObject の Snapshot は edit / play 共通 (静的 display object なので常時)
+    // 各配置物 GameObject の Snapshot は edit / play 共通。 静的 display object なので常時
     for (auto& obj : m_objects)
         obj->Root().Snapshot();
 }
 
 void LevelPlayScene::UpdateDisplayBlocks()
 {
-    // gridAligned な配置物のみ OnUpdate する。 自由配置物は OnUpdate 対象外 (旧挙動を保つ)
+    // gridAligned な配置物のみ OnUpdate する。 自由配置物は旧挙動を保つため OnUpdate 対象外
     for (std::size_t i = 0; i < m_objects.size(); ++i)
     {
         const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
@@ -368,8 +369,8 @@ void LevelPlayScene::UpdateDisplayBlocks()
 
 NS::Graphics::RenderSettingsOverride LevelPlayScene::BuildSceneOverride()
 {
-    // 範囲外 themeId は ThemeRegistry::Get 側で Grass にフォールバックされる
-    const ThemeData& theme = ThemeRegistry::Get(m_level.themeId);
+    // 範囲外 themeId は NS::Game::Theme::Get 側で Grass にフォールバックされる
+    const ThemeData& theme = Get(m_level.themeId);
 
     NS::Graphics::RenderSettingsOverride over{};
     if (theme.lightDirection.LengthSquared() > 1e-6f)
@@ -405,12 +406,12 @@ void LevelPlayScene::OnRenderScene()
     if (m_brain == nullptr || m_mainCamera == nullptr)
         return;
 
-    // 有効な vcam (edit=free-fly / play=follow) を選び、 alpha 補間で実カメラへ書く
-    // follow は補間 target を追うのでここで alpha を渡す (旧 ApplyCameraTransform 相当の補間)
+    // 有効な vcam すなわち edit=free-fly / play=follow を選び、 alpha 補間で実カメラへ書く
+    // follow は補間 target を追うのでここで alpha を渡す。 旧 ApplyCameraTransform 相当の補間
     m_brain->Evaluate(ctx.alpha);
     ctx.viewProjection = m_brain->ViewProjection();
 
-    // 半透明 back-to-front ソート用に実カメラの world 座標を渡す (view 行列の逆変換の平行移動成分)
+    // 半透明 back-to-front ソート用に実カメラの world 座標を渡す。 view 行列の逆変換の平行移動成分
     ctx.cameraPosition = m_mainCamera->Camera().View().Invert().Translation();
 
     // 基底が BuildSceneOverride() を Resolve するので、 theme override が scene 解決値として ctx に載る
@@ -420,14 +421,14 @@ void LevelPlayScene::OnRenderScene()
     m_lastResolvedSettings = ctx.resolvedSettings;
 
     // テーマ swap は同一 frame 内で skybox / block / lighting に同じ ThemeData を反映させる必要がある
-    // 範囲外 themeId は ThemeRegistry::Get 側で Grass にフォールバックされる
-    const ThemeData& theme = ThemeRegistry::Get(m_level.themeId);
+    // 範囲外 themeId は NS::Game::Theme::Get 側で Grass にフォールバックされる
+    const ThemeData& theme = Get(m_level.themeId);
 
     // Block 描画は InstanceBatcher bucket 経由に統一。 MeshRendererComponent が非アクティブなので旧 per-block
     // 経路は通らない
     if (m_instanceBatcher && m_instanceBatcher->IsValid())
     {
-        // builtin cube と共有 block material は AssetManager 所有。 毎フレームここで 1 度だけ引く
+        // 組み込み cube と共有 block material は AssetManager 所有。 毎フレームここで 1 度だけ引く
         auto& assets = app->Assets();
         auto* cubeMesh = assets.Builtin("cube");
         auto* blockMat = assets.SharedMaterial("block");
@@ -443,49 +444,30 @@ void LevelPlayScene::OnRenderScene()
         if (blockMat)
             blockMat->SetParams(*ctx.renderer, blockCB);
 
-        // instancing は描画段の判断であってオブジェクトの種別ではない
-        // gridAligned かつ solid の配置物だけを instanced bucket へ流し、 他は個別描画へ委ねる
-        const auto isInstanceable = [](const NS::Game::Level::ObjectInstance& entry) noexcept {
-            return (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0 &&
-                   entry.kind == NS::Game::Blocks::kBlockIdSolid;
-        };
-
+        // instanceable 判定 / 近傍マスク / slice は RebuildBlocksFromLevelData で焼き済。 ここは焼いた slice と
+        // 補間 world matrix だけを読み、 毎フレームの文字列走査と近傍マスク O(N^2) を持ち込まない
         m_instanceBatcher->BeginFrame();
-        for (std::size_t i = 0; i < m_objects.size(); ++i)
+        // 個体色は全 instanced block 共通の solid 色。 theme tint は FrameCB の lightColor/ambientColor で行う
+        for (const InstancedBlock& block : m_instancedBlocks)
         {
-            const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
-            if (!isInstanceable(entry))
-                continue;
-            // cell は world 座標を丸めて求め、 近傍マスクは solid 同士で取る
-            const NS::Math::Vector3 wp = m_objects[i]->Root().Position();
-            const std::int16_t x = static_cast<std::int16_t>(std::lround(wp.x));
-            const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
-            const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
-            constexpr std::uint16_t blockId = NS::Game::Blocks::kBlockIdSolid;
-            const std::uint8_t mask = NS::Game::Blocks::ComputeNeighborMask(m_level, x, y, z, blockId);
-            const std::uint16_t slice =
-                NS::Game::Blocks::LookupTextureSlice(static_cast<ThemeId>(m_level.themeId), mask, blockId);
-
             NS::Graphics::BlockInstance inst{};
-            inst.worldMatrix = m_objects[i]->Root().InterpolatedWorldMatrix(ctx.alpha);
-            // 個体色は GetBaseColor を流し込んでおく (theme tint は FrameCB の lightColor/ambientColor で行う)
-            const auto color = NS::Game::Blocks::GetBaseColor(blockId);
-            inst.baseColor = NS::Math::Vector3{color.R(), color.G(), color.B()};
-            inst.textureSlice = static_cast<float>(slice);
+            inst.worldMatrix = m_objects[block.objectIndex]->Root().InterpolatedWorldMatrix(ctx.alpha);
+            inst.baseColor = NS::Game::Blocks::kSolidBaseColor;
+            inst.textureSlice = block.textureSlice;
             m_instanceBatcher->Submit(cubeMesh, blockMat, inst);
         }
 
         // TextureArray を t0 に bind してから FlushAll。 Material::Bind では slot 0 を触っていない
-        // (SetTexture せず構築した) ため、 ここで bind した SRV が bucket 描画まで残る
+        // SetTexture せず構築したため、 ここで bind した SRV が bucket 描画まで残る
         if (auto* blockTextures = assets.TextureArrayByName("block"))
             ctx.renderer->Commands().SetTextureArray(*blockTextures, 0u, NS::Graphics::ShaderType::Pixel);
         m_instanceBatcher->FlushAll(*ctx.renderer);
     }
 
-    // 不透明 IRenderable。各 Draw が自分の Pipeline を set する (基底が bucket 分類して登録順に呼ぶ)
+    // 不透明 IRenderable。各 Draw が自分の Pipeline を set する。 基底が bucket 分類して登録順に呼ぶ
     DrawOpaque(ctx);
 
-    // Skybox は不透明描画後・半透明前。 view の translation 行 (_41/_42/_43) を 0 化して camera 中心に固定する
+    // Skybox は不透明描画後・半透明前。 view の translation 行 _41/_42/_43 を 0 化して camera 中心に固定する
     if (m_skybox && m_skybox->IsValid())
     {
         // 毎フレーム LoadCubemap すると I/O が常時走るため、 前回パスと差分があるときだけ再ロードする
@@ -539,7 +521,7 @@ void LevelPlayScene::OnShutdown()
     if (m_player)
         m_player->OnEndPlay();
 
-    // Brain は vcam を非所有参照するので、 rig / area camera より先に host を畳んで dangling を避ける
+    // Brain は vcam を非所有参照するので、 rig / area camera より先に host を畳んで無効参照を避ける
     m_cameraHost.reset();
     m_mainCamera = nullptr;
     m_brain = nullptr;
@@ -549,10 +531,11 @@ void LevelPlayScene::OnShutdown()
     m_player.reset();
     m_objects.clear();
     m_objectSourceIndices.clear();
+    m_instancedBlocks.clear();
     m_hazardView.clear();
 
-    // Skybox / InstanceBatcher は Renderer の DeviceContext を ComPtr で握るため、 Renderer (Application) より
-    // 先に破棄する。 builtin / leaf / 共有 material / block TextureArray / skinned model は AssetManager が Clear
+    // Skybox / InstanceBatcher は Renderer の DeviceContext を ComPtr で握るため、 Application の Renderer より
+    // 先に破棄する。 組み込み / leaf / 共有 material / block TextureArray / skinned model は AssetManager が Clear
     // で解放する
     m_instanceBatcher.reset();
     m_skybox.reset();
@@ -564,6 +547,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
         (*it)->OnEndPlay();
     m_objects.clear();
     m_objectSourceIndices.clear();
+    m_instancedBlocks.clear();
     m_hazardView.clear();
     m_physicsWorld.Clear();
     m_polePtrs.clear();
@@ -571,7 +555,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
     m_objects.reserve(m_level.objects.size());
     m_physicsWorld.ReserveAabbs(m_level.objects.size());
 
-    // ファクトリは mesh / material を AssetManager から借りる。 app 不在 (起動前 / テスト) では何も組まない
+    // ファクトリは mesh / material を AssetManager から借りる。 app 不在の起動前 / テストでは何も組まない
     auto* app = NS::App::Application::Get();
     if (app == nullptr)
         return;
@@ -583,42 +567,50 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
 
         auto obj = NS::Game::Blocks::BuildPlacedObject(entry, assets, m_level.materialPaths);
         if (!obj)
-            continue; // 配置物にしない kind (coin / star 等) はファクトリが nullptr を返す
+            continue; // 組み立てる component が無いオブジェクトはファクトリが nullptr を返す
 
         obj->AttachScene(this);
         obj->OnStart();
 
         const bool gridAligned = (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0;
 
-        // grid solid は個別 Draw を殺して InstanceBatcher へ委ねる (描画段が m_objects を直読みして instanceable 判定)
+        // grid solid は個別 Draw を殺して InstanceBatcher へ委ねる。 描画段が m_objects を直読みして instanceable 判定
         // OnStart で RegisterRenderable 済なので MeshRenderer を非アクティブにするだけでよい
-        if (gridAligned && entry.kind == NS::Game::Blocks::kBlockIdSolid)
+        if (NS::Game::Blocks::IsGridSolidObject(entry))
             if (auto* mesh = NS::Game::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*obj))
                 mesh->SetActive(false);
 
-        // 当たりは collider component の有無で channel が決まる。 free は Sphere / Capsule があれば内蔵 Box を OBB
-        // へ入れない (排他)
-        if (auto* sphere = NS::Game::Blocks::FindComponent<NS::Scene::SphereColliderComponent>(*obj))
-            m_physicsWorld.AddSphere(sphere->WorldSphere());
-        else if (auto* capsule = NS::Game::Blocks::FindComponent<NS::Scene::CapsuleColliderComponent>(*obj))
-            m_physicsWorld.AddCapsule(capsule->WorldCapsule());
-        else if (auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*obj))
+        // collider component を全部登録する。 同型を重ねれば複合形状として当たりに効く
+        bool hazardRegistered = false;
+        for (NS::Scene::Component* comp : obj->Components())
         {
-            // 同じ Box でも gridAligned なら軸並行 AABB、 自由配置なら回転込み OBB
-            if (gridAligned)
-                m_physicsWorld.AddAabb(box->WorldAABB());
-            else
-                m_physicsWorld.AddObb(box->WorldOBB());
+            if (auto* sphere = dynamic_cast<NS::Scene::SphereColliderComponent*>(comp))
+                m_physicsWorld.AddSphere(sphere->WorldSphere());
+            else if (auto* capsule = dynamic_cast<NS::Scene::CapsuleColliderComponent*>(comp))
+                m_physicsWorld.AddCapsule(capsule->WorldCapsule());
+            else if (auto* box = dynamic_cast<NS::Scene::BoxColliderComponent*>(comp))
+            {
+                // 同じ Box でも gridAligned なら軸並行 AABB、 自由配置なら回転込み OBB
+                if (gridAligned)
+                    m_physicsWorld.AddAabb(box->WorldAABB());
+                else
+                    m_physicsWorld.AddObb(box->WorldOBB());
+            }
+            else if (auto* slope = dynamic_cast<NS::Scene::SlopeColliderComponent*>(comp))
+                for (const auto& tri : slope->WorldTriangles())
+                    m_physicsWorld.AddTriangle(tri);
+            else if (auto* pole = dynamic_cast<NS::Scene::PoleComponent*>(comp))
+                m_polePtrs.push_back(pole);
+            else if (dynamic_cast<NS::Scene::HazardComponent*>(comp) != nullptr)
+            {
+                // hazard の damage は固形 AABB とは別経路の毎フレーム重なり判定で効くため view にも積む
+                if (!hazardRegistered)
+                {
+                    m_hazardView.push_back(obj.get());
+                    hazardRegistered = true;
+                }
+            }
         }
-
-        if (auto* slope = NS::Game::Blocks::FindComponent<NS::Scene::SlopeColliderComponent>(*obj))
-            for (const auto& tri : slope->WorldTriangles())
-                m_physicsWorld.AddTriangle(tri);
-        if (auto* pole = NS::Game::Blocks::FindComponent<NS::Scene::PoleComponent>(*obj))
-            m_polePtrs.push_back(pole);
-        // hazard の damage は固形 AABB とは別経路 (per-frame overlap) で効くため view にも積む
-        if (NS::Game::Blocks::FindComponent<NS::Scene::HazardComponent>(*obj))
-            m_hazardView.push_back(obj.get());
         // water / deco は collider を持たないため当たり無し・ view 不要
 
         m_objectSourceIndices.push_back(objectIndex);
@@ -629,6 +621,22 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
     // 欠かすと InterpolatedWorldMatrix(alpha) が原点→配置先を補間し編集のたびに全配置物が振れる
     for (auto& obj : m_objects)
         obj->Root().Snapshot();
+
+    // instanced block の静的属性を焼く。 描画ループの per-frame 文字列走査と近傍マスクの O(N^2) を畳む
+    // instancing は描画段の判断で、 grid 固形だけを instanced bucket へ流す。 position は Snapshot 後で確定済
+    for (std::size_t i = 0; i < m_objects.size(); ++i)
+    {
+        const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
+        if (!NS::Game::Blocks::IsGridSolidObject(entry))
+            continue;
+        const NS::Math::Vector3 wp = m_objects[i]->Root().Position();
+        const std::int16_t x = static_cast<std::int16_t>(std::lround(wp.x));
+        const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
+        const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
+        const std::uint8_t mask = NS::Game::Blocks::ComputeNeighborMask(m_level, x, y, z);
+        const std::uint16_t slice = NS::Game::Blocks::LookupTextureSlice(static_cast<ThemeId>(m_level.themeId), mask);
+        m_instancedBlocks.push_back(InstancedBlock{i, static_cast<float>(slice)});
+    }
 
     m_physicsWorld.BuildBroadphase();
 
@@ -643,8 +651,8 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
             const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
             if ((entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
                 continue;
-            if (auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_objects[i]))
-                shadowReceivers.push_back(box->WorldAABB());
+            if (auto aabb = NS::Game::Blocks::ColliderWorldAABB(*m_objects[i]))
+                shadowReceivers.push_back(*aabb);
         }
         m_player->Shadow().SetCollisionWorld(shadowReceivers);
 
@@ -657,7 +665,7 @@ void LevelPlayScene::RebuildAreaCamerasFromLevelData()
     if (m_brain == nullptr)
         return;
 
-    // 旧 area camera を Brain から外してから破棄する (Brain の非所有参照を dangling させない)
+    // 旧 area camera を Brain から外してから破棄する。 Brain の非所有参照を無効化させない
     for (auto& area : m_areaCameras)
     {
         if (area.cam)

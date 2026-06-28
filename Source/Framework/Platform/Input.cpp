@@ -1,6 +1,6 @@
-#include <Framework/Platform/Input.h>
+#include "Framework/Platform/Input.h"
 
-#include <Framework/Platform/detail/input_win32.h>
+#include "Framework/Platform/detail/input_win32.h"
 
 #include "Framework/Framework.h"
 
@@ -19,24 +19,24 @@ namespace NS::Platform
         [[nodiscard]] constexpr bool IsValidKey(Key k) noexcept
         {
             const auto i = static_cast<std::size_t>(k);
-            return i > static_cast<std::size_t>(Key::Unknown) && i < static_cast<std::size_t>(Key::kCount);
+            return i > static_cast<std::size_t>(Key::Unknown) && i < static_cast<std::size_t>(Key::Count);
         }
 
         /// MouseButton 用の境界チェック。Key と同じ理由で必要
-        /// MouseButton::Left = 0 始まりなので i >= 0 && i < kCount で判定
+        /// MouseButton::Left = 0 始まりなので i >= 0 && i < Count で判定
         [[nodiscard]] constexpr bool IsValidButton(MouseButton b) noexcept
         {
             const auto i = static_cast<std::size_t>(b);
-            return i < static_cast<std::size_t>(MouseButton::kCount);
+            return i < static_cast<std::size_t>(MouseButton::Count);
         }
 
         [[nodiscard]] constexpr bool IsValidGamepadButton(GamepadButton b) noexcept
         {
             const auto i = static_cast<std::size_t>(b);
-            return i < static_cast<std::size_t>(GamepadButton::kCount);
+            return i < static_cast<std::size_t>(GamepadButton::Count);
         }
 
-        /// XInput のスティック生値を -1.0〜1.0 へ対称正規化 (負 /32768、正 /32767) し軸別デッドゾーンを適用
+        /// XInput のスティック生値を負は 32768、正は 32767 で割って -1.0〜1.0 へ対称正規化し軸別デッドゾーンを適用
         /// 軸別なのは Mario 系の縦横独立操作向け。deadzone は符号なしで持ち負値での誤判定を防ぐ
         [[nodiscard]] Stick NormalizeStick(short rawX, short rawY, unsigned short deadzone) noexcept
         {
@@ -61,7 +61,7 @@ namespace NS::Platform
 
         /// XINPUT_GAMEPAD::wButtons のビットマスクと GamepadButton enum の対応表
         /// 添字順は GamepadButton 宣言順と一致させる
-        constexpr std::array<unsigned short, static_cast<std::size_t>(GamepadButton::kCount)> kButtonBits{
+        constexpr std::array<unsigned short, static_cast<std::size_t>(GamepadButton::Count)> kButtonBits{
             XINPUT_GAMEPAD_A,
             XINPUT_GAMEPAD_B,
             XINPUT_GAMEPAD_X,
@@ -77,7 +77,7 @@ namespace NS::Platform
             XINPUT_GAMEPAD_DPAD_LEFT,
             XINPUT_GAMEPAD_DPAD_RIGHT,
         };
-        static_assert(kButtonBits.size() == static_cast<std::size_t>(GamepadButton::kCount),
+        static_assert(kButtonBits.size() == static_cast<std::size_t>(GamepadButton::Count),
                       "kButtonBits は GamepadButton 全要素に対応する必要があります");
     } // namespace
 
@@ -396,7 +396,7 @@ namespace NS::Platform
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:
         {
-            // lparam の scan code / repeat flag (bit 30) / extended key は現状未使用
+            // lparam の scan code、 bit 30 の repeat flag、 extended key は現状未使用
             const Key k = MapVkToKey(static_cast<unsigned int>(wparam));
             input.Keyboard().OnKeyDown(k);
             break;

@@ -4,8 +4,8 @@
 /// @brief NS::Physics::PhysicsWorld — 静的衝突プリミティブ 5 channel + broadphase grid を所有し
 ///        capsule sweep / ground probe を提供する pure physics の衝突 world
 ///
-/// 依存: Math (AABB / Vector3), Capsule, Sphere, SweptOBB (OBB), SweptTriangle (Triangle), CollisionGrid
-/// pole / hazard 等 Scene gameplay は層が違うため含めない (NS::Physics は NS::Scene に依存しない)
+/// 依存: Math の AABB / Vector3、 Capsule、 Sphere、 SweptOBB の OBB、 SweptTriangle の Triangle、 CollisionGrid
+/// pole / hazard 等 Scene gameplay は層が違うため含めない。 NS::Physics は NS::Scene に依存しない
 /// collision 再構築時に Clear -> Add* -> BuildBroadphase で満たし、 SweepCapsule / ProbeGround で問い合わせる
 
 #include "Framework/Math/Math.h"
@@ -29,26 +29,26 @@ namespace NS::Physics
         bool hit = false;
     };
 
-    /// 静的衝突プリミティブ 5 channel (AABB / Triangle / OBB / Sphere / Capsule) と AABB 専用 broadphase
+    /// AABB / Triangle / OBB / Sphere / Capsule の静的衝突プリミティブ 5 channel と AABB 専用 broadphase
     /// grid を所有する。 pole / hazard は gameplay 判定のため含めない
     class PhysicsWorld
     {
     public:
-        // build (collision 再構築時に 1 度満たす)
+        // build。 collision 再構築時に 1 度満たす
 
         /// 全 channel と grid を空にする
         void Clear() noexcept;
 
-        /// AABB channel の領域を予約する (grid 配置物数が既知の時の任意最適化)
+        /// grid 配置物数が既知の時の任意最適化として AABB channel の領域を予約する
         void ReserveAabbs(std::size_t count);
 
-        /// 軸並行 box (grid solid) を AABB channel へ追加する
+        /// grid solid の軸並行 box を AABB channel へ追加する
         void AddAabb(const NS::Math::AABB& box);
 
         /// slope の世界三角形を Triangle channel へ追加する
         void AddTriangle(const Triangle& triangle);
 
-        /// 自由配置物 (回転 / scale 込み) を OBB channel へ追加する
+        /// 回転 / scale 込みの自由配置物を OBB channel へ追加する
         void AddObb(const OBB& obb);
 
         /// 球 collider を Sphere channel へ追加する
@@ -60,21 +60,21 @@ namespace NS::Physics
         /// AABB channel から broadphase grid を構築する。 Add 完了後に 1 度呼ぶ
         void BuildBroadphase() noexcept;
 
-        // query
+        // クエリ
 
         /// capsule が motion だけ動く間の全 channel 横断で最小 TOI の接触を返す
-        /// 評価順は AABB (grid 候補 or 総当たり) -> Triangle -> OBB -> Sphere -> Capsule、 同 TOI は先勝ち
+        /// 評価順は grid 候補または総当たりの AABB -> Triangle -> OBB -> Sphere -> Capsule、 同 TOI は先勝ち
         [[nodiscard]] SweepHit SweepCapsule(const Capsule& cap, const NS::Math::Vector3& motion) const noexcept;
 
-        /// bottomCenter から下方向へ reach 以内に床 (AABB / OBB) があれば true。 接地補助 probe 用
+        /// bottomCenter から下方向へ reach 以内に AABB / OBB の床があれば true。 接地補助 probe 用
         [[nodiscard]] bool ProbeGround(const NS::Math::Vector3& bottomCenter, float reach) const noexcept;
 
-        // accessors
+        // アクセサ
 
         /// AABB channel の参照。 blob shadow の receiver 構築など読み取り専用用途に使う
         [[nodiscard]] const std::vector<NS::Math::AABB>& Aabbs() const noexcept { return m_aabbs; }
 
-        /// 全 channel が空か (未 build / プリミティブ無し)
+        /// 未 build かプリミティブ無しで全 channel が空か
         [[nodiscard]] bool IsEmpty() const noexcept;
 
     private:
@@ -85,7 +85,7 @@ namespace NS::Physics
         std::vector<Capsule> m_capsules;
         CollisionGrid m_grid;
 
-        // sweep 候補の再利用スクラッチ (const query から確保なしで使うため mutable)
+        // sweep 候補の再利用スクラッチ。 const query から確保なしで使うため mutable
         mutable std::vector<std::uint32_t> m_candidates;
     };
 } // namespace NS::Physics

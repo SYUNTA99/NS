@@ -1,13 +1,13 @@
-#include "Game/Undo/UndoStack.h"
+#include "Editor/Undo/UndoStack.h"
 
 #include "Framework/Core/Logger.h"
 
 #include <utility>
 
-namespace NS::Game::Undo
+namespace NS::Editor
 {
 
-    void UndoStack::Push(std::unique_ptr<ICommand> cmd, EditTarget& target) noexcept
+    void UndoStack::Push(std::unique_ptr<ICommand> cmd, NS::Game::Level::EditTarget& target) noexcept
     {
         if (!cmd)
             return;
@@ -25,7 +25,7 @@ namespace NS::Game::Undo
         TrimOldest();
     }
 
-    bool UndoStack::Undo(EditTarget& target) noexcept
+    bool UndoStack::Undo(NS::Game::Level::EditTarget& target) noexcept
     {
         if (m_undo.empty())
             return false;
@@ -40,7 +40,7 @@ namespace NS::Game::Undo
         return true;
     }
 
-    bool UndoStack::Redo(EditTarget& target) noexcept
+    bool UndoStack::Redo(NS::Game::Level::EditTarget& target) noexcept
     {
         if (m_redo.empty())
             return false;
@@ -73,7 +73,7 @@ namespace NS::Game::Undo
         }
     }
 
-    void UndoStack::EnsureIdsConsistent(EditTarget& target) noexcept
+    void UndoStack::EnsureIdsConsistent(NS::Game::Level::EditTarget& target) noexcept
     {
         if (target.ids.size() == target.level.objects.size())
             return;
@@ -81,7 +81,7 @@ namespace NS::Game::Undo
                      "UndoStack: id 配列が objects と desync ({} != {})、 連番へ再構築する",
                      target.ids.size(),
                      target.level.objects.size());
-        ResetEditIds(target);
+        NS::Game::Level::ResetEditIds(target);
     }
 
-} // namespace NS::Game::Undo
+} // namespace NS::Editor

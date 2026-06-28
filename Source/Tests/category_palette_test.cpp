@@ -1,34 +1,27 @@
-#include "Framework/Platform/Input.h"
-#include "Game/Blocks/BlockRegistry.h"
 #include "Editor/CategoryPalette.h"
+#include "Framework/Platform/Input.h"
 
 #include <gtest/gtest.h>
 
 namespace EditorNs = NS::Editor;
 
-TEST(CategoryPalette, InitialSlotIsSolid)
+TEST(CategoryPalette, InitialSlotIsCube)
 {
     EditorNs::CategoryPalette palette;
     EXPECT_EQ(palette.ActiveSlot(), 0u);
-    EXPECT_EQ(palette.SlotBlockId(0), NS::Game::Blocks::kBlockIdSolid);
-    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdSolid);
+    EXPECT_STREQ(palette.CurrentTemplateName(), "Cube");
+    EXPECT_FALSE(palette.CurrentIsSpawn());
+    EXPECT_TRUE(palette.CurrentIsRotatable());
 }
 
-TEST(CategoryPalette, SlotLayoutMatchesVerticalSliceMapping)
+TEST(CategoryPalette, SecondSlotIsSpawn)
 {
     EditorNs::CategoryPalette palette;
-    EXPECT_EQ(palette.SlotBlockId(0), NS::Game::Blocks::kBlockIdSolid);
-    EXPECT_EQ(palette.SlotBlockId(1), NS::Game::Blocks::kBlockIdCoin);
-    EXPECT_EQ(palette.SlotBlockId(2), NS::Game::Blocks::kBlockIdPowerStar);
-    EXPECT_EQ(palette.SlotBlockId(3), NS::Game::Blocks::kBlockIdSpawn);
-}
-
-TEST(CategoryPalette, SetActiveSlotChangesCurrentBlockId)
-{
-    EditorNs::CategoryPalette palette;
-    palette.SetActiveSlot(2);
-    EXPECT_EQ(palette.ActiveSlot(), 2u);
-    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdPowerStar);
+    palette.SetActiveSlot(1);
+    EXPECT_EQ(palette.ActiveSlot(), 1u);
+    EXPECT_STREQ(palette.CurrentTemplateName(), "Spawn");
+    EXPECT_TRUE(palette.CurrentIsSpawn());
+    EXPECT_FALSE(palette.CurrentIsRotatable());
 }
 
 TEST(CategoryPalette, OutOfRangeSlotIsIgnored)
@@ -39,46 +32,26 @@ TEST(CategoryPalette, OutOfRangeSlotIsIgnored)
     EXPECT_EQ(palette.ActiveSlot(), 0u);
 }
 
-TEST(CategoryPalette, OutOfRangeSlotBlockIdReturnsZero)
-{
-    EditorNs::CategoryPalette palette;
-    EXPECT_EQ(palette.SlotBlockId(99), 0u);
-}
-
 TEST(CategoryPalette, KeyboardNumSelectsSlot)
 {
     NS::Platform::Input input;
     EditorNs::CategoryPalette palette;
 
-    // 数字キー '3' edge → 0-indexed の slot 2 (PowerStar) が active になる
-    input.Keyboard().OnKeyDown(NS::Platform::Key::Num3);
+    // 数字キー '2' edge で spawn の slot 1 が active になる
+    input.Keyboard().OnKeyDown(NS::Platform::Key::Num2);
     palette.TickInput(&input, nullptr);
 
-    EXPECT_EQ(palette.ActiveSlot(), 2u);
-    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdPowerStar);
+    EXPECT_EQ(palette.ActiveSlot(), 1u);
+    EXPECT_STREQ(palette.CurrentTemplateName(), "Spawn");
 }
 
-TEST(CategoryPalette, SlopeSlotCyclesThroughAngles)
+TEST(CategoryPalette, CycleVariantIsNoOp)
 {
     EditorNs::CategoryPalette palette;
-    palette.SetActiveSlot(4); // slot 4 = slope (固形/コイン/スター/spawn の次)
-    ASSERT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdSlope45);
+    palette.SetActiveSlot(0);
     palette.CycleActiveVariant();
-    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdSlope30);
-    palette.CycleActiveVariant();
-    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdSlope22);
-    palette.CycleActiveVariant();
-    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdSlope15);
-    palette.CycleActiveVariant();
-    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdSlope45);
-}
-
-TEST(CategoryPalette, CycleVariantOnNonSlopeIsNoOp)
-{
-    EditorNs::CategoryPalette palette;
-    palette.SetActiveSlot(0); // solid
-    palette.CycleActiveVariant();
-    EXPECT_EQ(palette.CurrentBlockId(), NS::Game::Blocks::kBlockIdSolid);
+    EXPECT_STREQ(palette.CurrentTemplateName(), "Cube");
+    EXPECT_LT(palette.CurrentSlopeAngleDegrees(), 0.0f);
 }
 
 TEST(CategoryPalette, KeyboardNumNotEdgeNoChange)
@@ -86,8 +59,8 @@ TEST(CategoryPalette, KeyboardNumNotEdgeNoChange)
     NS::Platform::Input input;
     EditorNs::CategoryPalette palette;
 
-    // OnKeyDown → Update で edge が消費される。 次の TickInput では IsPressed=false
-    input.Keyboard().OnKeyDown(NS::Platform::Key::Num4);
+    // OnKeyDown → Update で edge が消費される。 次の TickInput では IsPressed が false
+    input.Keyboard().OnKeyDown(NS::Platform::Key::Num2);
     input.Keyboard().Update();
     palette.TickInput(&input, nullptr);
 

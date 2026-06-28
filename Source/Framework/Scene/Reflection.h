@@ -13,6 +13,7 @@
 #include "Framework/Math/Math.h"
 
 #include <cstddef>
+#include <string>
 #include <type_traits>
 
 namespace NS::Scene
@@ -25,21 +26,24 @@ namespace NS::Scene
         Float,
         Int,
         Bool,
-        Vector3
+        Vector3,
+        String
     };
 
-    /// メンバ型 → FieldType タグの写像。マクロが型タグを自動推論するのに使う (未対応型はここで弾く)
+    /// メンバ型 → FieldType タグの写像。マクロが型タグを自動推論するのに使う。未対応型はここで弾く
     template <class T> constexpr FieldType FieldTypeOf() noexcept
     {
         static_assert(std::is_same_v<T, float> || std::is_same_v<T, int> || std::is_same_v<T, bool> ||
-                          std::is_same_v<T, NS::Math::Vector3>,
-                      "reflection: 未対応のフィールド型 (Float / Int / Bool / Vector3 のみ)");
+                          std::is_same_v<T, NS::Math::Vector3> || std::is_same_v<T, std::string>,
+                      "reflection: 未対応のフィールド型 (Float / Int / Bool / Vector3 / String のみ)");
         if constexpr (std::is_same_v<T, float>)
             return FieldType::Float;
         else if constexpr (std::is_same_v<T, int>)
             return FieldType::Int;
         else if constexpr (std::is_same_v<T, bool>)
             return FieldType::Bool;
+        else if constexpr (std::is_same_v<T, std::string>)
+            return FieldType::String;
         else
             return FieldType::Vector3;
     }
@@ -70,7 +74,7 @@ namespace NS::Scene
         static constexpr const char* kTypeName = #ThisType;                                                            \
         static const NS::Scene::FieldDesc kFields[] = {
 
-/// 同一クラスの (private 可) 直メンバを 1 フィールドとして登録する。型タグはメンバ型から推論する
+/// 同一クラスの直メンバを 1 フィールドとして登録する。private メンバも対象にできる。型タグはメンバ型から推論する
 #define NS_REFLECT_FIELD(member, label)                                                                                \
     NS::Scene::FieldDesc{label,                                                                                        \
                          NS::Scene::FieldTypeOf<decltype(Self::member)>(),                                             \
@@ -81,7 +85,7 @@ namespace NS::Scene
                              static_cast<Self*>(c)->member = *static_cast<const decltype(Self::member)*>(in);          \
                          }},
 
-/// 基底の private や検証付きフィールドを getter/setter 経由で登録する (getter は値返し、setter は 1 引数)
+/// 基底の private や検証付きフィールドを getter/setter 経由で登録する。getter は値返し、setter は 1 引数
 #define NS_REFLECT_ACCESSOR(ValueType, label, getterCall, setterCall)                                                  \
     NS::Scene::FieldDesc{label,                                                                                        \
                          NS::Scene::FieldTypeOf<ValueType>(),                                                          \
@@ -98,4 +102,12 @@ namespace NS::Scene
     ;                                                                                                                  \
     static const NS::Scene::ReflectionInfo kInfo{kTypeName, kFields, sizeof(kFields) / sizeof(kFields[0])};            \
     return &kInfo;                                                                                                     \
+    }
+
+/// 調整フィールドを持たない型用。typeName だけの反射情報を返す。空配列は ill-formed なので fields は nullptr
+#define NS_REFLECT_NONE(ThisType)                                                                                      \
+    [[nodiscard]] const NS::Scene::ReflectionInfo* GetReflection() const noexcept override                             \
+    {                                                                                                                  \
+        static constexpr NS::Scene::ReflectionInfo kInfo{#ThisType, nullptr, 0};                                       \
+        return &kInfo;                                                                                                 \
     }

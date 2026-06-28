@@ -1,34 +1,26 @@
 #include "Game/Blocks/BlockRegistry.h"
+#include "Game/Blocks/BuildPlacedObject.h"
+#include "Game/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
-TEST(BlockRegistry, SlopeAndSolidAreRotatable)
+TEST(BlockRegistry, GridCubeIsRotatable)
 {
-    EXPECT_TRUE(NS::Game::Blocks::IsRotatableBlock(NS::Game::Blocks::kBlockIdSlope45));
-    EXPECT_TRUE(NS::Game::Blocks::IsRotatableBlock(NS::Game::Blocks::kBlockIdSlope15));
-    EXPECT_TRUE(NS::Game::Blocks::IsRotatableBlock(NS::Game::Blocks::kBlockIdSolid));
+    // grid に置く cube は固形なので R で 90° 回せる
+    EXPECT_TRUE(NS::Game::Blocks::IsRotatableObject(NS::Game::Level::MakeGridObject(0, 0, 0, 0)));
 }
 
-TEST(BlockRegistry, NonOrientableBlocksAreNotRotatable)
+TEST(BlockRegistry, FreeCubeAndMarkerAreNotRotatable)
 {
-    EXPECT_FALSE(NS::Game::Blocks::IsRotatableBlock(NS::Game::Blocks::kBlockIdPole));
-    EXPECT_FALSE(NS::Game::Blocks::IsRotatableBlock(NS::Game::Blocks::kBlockIdWater));
-    EXPECT_FALSE(NS::Game::Blocks::IsRotatableBlock(NS::Game::Blocks::kBlockIdDecoration));
-    EXPECT_FALSE(NS::Game::Blocks::IsRotatableBlock(NS::Game::Blocks::kBlockIdCoin));
-}
+    // 自由配置の cube は grid 固形でないため回せない
+    NS::Game::Level::ObjectInstance freeCube{};
+    freeCube.flags = 0;
+    freeCube.components = NS::Game::Blocks::MakeFreeCubeComponents(freeCube);
+    EXPECT_FALSE(NS::Game::Blocks::IsRotatableObject(freeCube));
 
-TEST(BlockRegistry, NextSlopeBlockCyclesAngles)
-{
-    EXPECT_EQ(NS::Game::Blocks::NextSlopeBlock(NS::Game::Blocks::kBlockIdSlope45), NS::Game::Blocks::kBlockIdSlope30);
-    EXPECT_EQ(NS::Game::Blocks::NextSlopeBlock(NS::Game::Blocks::kBlockIdSlope30), NS::Game::Blocks::kBlockIdSlope22);
-    EXPECT_EQ(NS::Game::Blocks::NextSlopeBlock(NS::Game::Blocks::kBlockIdSlope22), NS::Game::Blocks::kBlockIdSlope15);
-    EXPECT_EQ(NS::Game::Blocks::NextSlopeBlock(NS::Game::Blocks::kBlockIdSlope15), NS::Game::Blocks::kBlockIdSlope45);
-}
-
-TEST(BlockRegistry, NextSlopeBlockOnNonSlopeIsUnchanged)
-{
-    EXPECT_EQ(NS::Game::Blocks::NextSlopeBlock(NS::Game::Blocks::kBlockIdSolid), NS::Game::Blocks::kBlockIdSolid);
-    EXPECT_EQ(NS::Game::Blocks::NextSlopeBlock(NS::Game::Blocks::kBlockIdPole), NS::Game::Blocks::kBlockIdPole);
+    // component を持たない spawn marker も回せない
+    NS::Game::Level::ObjectInstance marker{};
+    EXPECT_FALSE(NS::Game::Blocks::IsRotatableObject(marker));
 }
 
 TEST(BlockRegistry, RotationToYawIsQuarterTurns)
@@ -39,11 +31,4 @@ TEST(BlockRegistry, RotationToYawIsQuarterTurns)
     EXPECT_NEAR(NS::Game::Blocks::BlockRotationToYaw(1), kPi * 0.5f, 1e-4f);
     EXPECT_NEAR(NS::Game::Blocks::BlockRotationToYaw(2), kPi, 1e-4f);
     EXPECT_NEAR(NS::Game::Blocks::BlockRotationToYaw(3), kPi * 1.5f, 1e-4f);
-}
-
-TEST(BlockRegistry, IsCollidableExcludesDecorationAndWater)
-{
-    EXPECT_FALSE(NS::Game::Blocks::IsCollidable(NS::Game::Blocks::kBlockIdDecoration));
-    EXPECT_FALSE(NS::Game::Blocks::IsCollidable(NS::Game::Blocks::kBlockIdWater));
-    EXPECT_TRUE(NS::Game::Blocks::IsCollidable(NS::Game::Blocks::kBlockIdHazard));
 }

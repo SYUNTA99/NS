@@ -1,8 +1,8 @@
+#include "Editor/Undo/PlaceCommand.h"
+#include "Editor/Undo/TransformCommand.h"
+#include "Editor/Undo/UndoStack.h"
+#include "Game/Level/EditTarget.h"
 #include "Game/Level/LevelData.h"
-#include "Game/Undo/EditTarget.h"
-#include "Game/Undo/PlaceCommand.h"
-#include "Game/Undo/TransformCommand.h"
-#include "Game/Undo/UndoStack.h"
 
 #include <gtest/gtest.h>
 
@@ -10,28 +10,28 @@
 #include <memory>
 #include <vector>
 
-namespace UndoNs = NS::Game::Undo;
+namespace EditorNs = NS::Editor;
 namespace LevelNs = NS::Game::Level;
 
 TEST(UndoStackTest, EmptyStackUndoRedoReturnFalse)
 {
-    UndoNs::UndoStack stack;
+    EditorNs::UndoStack stack;
     LevelNs::LevelData lv;
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
-    UndoNs::EditTarget t{lv, ids, next};
+    LevelNs::EditTarget t{lv, ids, next};
     EXPECT_FALSE(stack.Undo(t));
     EXPECT_FALSE(stack.Redo(t));
 }
 
 TEST(UndoStackTest, PushExecutesDoAndStoresInUndoStack)
 {
-    UndoNs::UndoStack stack;
+    EditorNs::UndoStack stack;
     LevelNs::LevelData lv;
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
-    UndoNs::EditTarget t{lv, ids, next};
-    stack.Push(std::make_unique<UndoNs::PlaceCommand>(0, 0, 0, 1, 0), t);
+    LevelNs::EditTarget t{lv, ids, next};
+    stack.Push(std::make_unique<EditorNs::PlaceCommand>(LevelNs::MakeGridObject(0, 0, 0, 0), 0, 0, 0, 0), t);
     EXPECT_EQ(stack.UndoSize(), 1u);
     EXPECT_EQ(stack.RedoSize(), 0u);
     EXPECT_EQ(lv.objects.size(), 1u);
@@ -40,14 +40,14 @@ TEST(UndoStackTest, PushExecutesDoAndStoresInUndoStack)
 
 TEST(UndoStackTest, UndoRedoRoundTripPreservesState)
 {
-    UndoNs::UndoStack stack;
+    EditorNs::UndoStack stack;
     LevelNs::LevelData lv;
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
-    UndoNs::EditTarget t{lv, ids, next};
+    LevelNs::EditTarget t{lv, ids, next};
     const auto before = lv.ComputeCrc32();
 
-    stack.Push(std::make_unique<UndoNs::PlaceCommand>(0, 0, 0, 1, 0), t);
+    stack.Push(std::make_unique<EditorNs::PlaceCommand>(LevelNs::MakeGridObject(0, 0, 0, 0), 0, 0, 0, 0), t);
     const auto afterPush = lv.ComputeCrc32();
 
     EXPECT_TRUE(stack.Undo(t));
@@ -63,42 +63,44 @@ TEST(UndoStackTest, UndoRedoRoundTripPreservesState)
 
 TEST(UndoStackTest, MaxOpsCapPopsOldest)
 {
-    UndoNs::UndoStack stack;
+    EditorNs::UndoStack stack;
     LevelNs::LevelData lv;
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
-    UndoNs::EditTarget t{lv, ids, next};
-    for (std::size_t i = 0; i < UndoNs::UndoStack::kMaxOps + 5; ++i)
+    LevelNs::EditTarget t{lv, ids, next};
+    for (std::size_t i = 0; i < EditorNs::UndoStack::kMaxOps + 5; ++i)
     {
-        stack.Push(std::make_unique<UndoNs::PlaceCommand>(static_cast<std::int16_t>(i), 0, 0, 1, 0), t);
+        stack.Push(std::make_unique<EditorNs::PlaceCommand>(
+                       LevelNs::MakeGridObject(0, 0, 0, 0), static_cast<std::int16_t>(i), 0, 0, 0),
+                   t);
     }
-    EXPECT_EQ(stack.UndoSize(), UndoNs::UndoStack::kMaxOps);
+    EXPECT_EQ(stack.UndoSize(), EditorNs::UndoStack::kMaxOps);
 }
 
 TEST(UndoStackTest, PushAfterUndoClearsRedoStack)
 {
-    UndoNs::UndoStack stack;
+    EditorNs::UndoStack stack;
     LevelNs::LevelData lv;
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
-    UndoNs::EditTarget t{lv, ids, next};
-    stack.Push(std::make_unique<UndoNs::PlaceCommand>(0, 0, 0, 1, 0), t);
+    LevelNs::EditTarget t{lv, ids, next};
+    stack.Push(std::make_unique<EditorNs::PlaceCommand>(LevelNs::MakeGridObject(0, 0, 0, 0), 0, 0, 0, 0), t);
     stack.Undo(t);
     EXPECT_EQ(stack.RedoSize(), 1u);
 
-    stack.Push(std::make_unique<UndoNs::PlaceCommand>(1, 0, 0, 2, 0), t);
+    stack.Push(std::make_unique<EditorNs::PlaceCommand>(LevelNs::MakeGridObject(0, 0, 0, 0), 1, 0, 0, 0), t);
     EXPECT_EQ(stack.RedoSize(), 0u);
 }
 
 TEST(UndoStackTest, ClearEmptiesBothStacks)
 {
-    UndoNs::UndoStack stack;
+    EditorNs::UndoStack stack;
     LevelNs::LevelData lv;
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
-    UndoNs::EditTarget t{lv, ids, next};
-    stack.Push(std::make_unique<UndoNs::PlaceCommand>(0, 0, 0, 1, 0), t);
-    stack.Push(std::make_unique<UndoNs::PlaceCommand>(1, 0, 0, 2, 0), t);
+    LevelNs::EditTarget t{lv, ids, next};
+    stack.Push(std::make_unique<EditorNs::PlaceCommand>(LevelNs::MakeGridObject(0, 0, 0, 0), 0, 0, 0, 0), t);
+    stack.Push(std::make_unique<EditorNs::PlaceCommand>(LevelNs::MakeGridObject(0, 0, 0, 0), 1, 0, 0, 0), t);
     stack.Undo(t);
 
     stack.Clear();
@@ -109,14 +111,14 @@ TEST(UndoStackTest, ClearEmptiesBothStacks)
 
 TEST(UndoStackTest, InterleavedGridAndTransformUndoInLifoOrder)
 {
-    UndoNs::UndoStack stack;
+    EditorNs::UndoStack stack;
     LevelNs::LevelData lv;
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
-    UndoNs::EditTarget t{lv, ids, next};
+    LevelNs::EditTarget t{lv, ids, next};
 
     // grid block を置く (append、 id 採番)
-    stack.Push(std::make_unique<UndoNs::PlaceCommand>(0, 0, 0, 1, 0), t);
+    stack.Push(std::make_unique<EditorNs::PlaceCommand>(LevelNs::MakeGridObject(0, 0, 0, 0), 0, 0, 0, 0), t);
     ASSERT_EQ(lv.objects.size(), 1u);
     ASSERT_EQ(ids.size(), 1u);
     const std::uint32_t id0 = ids[0];
@@ -126,7 +128,7 @@ TEST(UndoStackTest, InterleavedGridAndTransformUndoInLifoOrder)
     LevelNs::ObjectInstance after = before;
     after.positionX = 9.0f;
     after.flags = static_cast<std::uint8_t>(before.flags & ~LevelNs::kObjectFlagGridAligned);
-    stack.Push(std::make_unique<UndoNs::TransformCommand>(id0, before, after), t);
+    stack.Push(std::make_unique<EditorNs::TransformCommand>(id0, before, after), t);
     EXPECT_FLOAT_EQ(lv.objects[0].positionX, 9.0f);
 
     // LIFO: 先に変形を戻すと grid 状態 + 元位置へ復帰する

@@ -18,7 +18,7 @@
 #include <string>
 #include <utility>
 
-// json.hpp は /W4 で警告が出るため、 この TU でだけ警告を抑止して取り込む
+// json.hpp は /W4 で警告が出るため、 この翻訳単位でだけ警告を抑止して取り込む
 #pragma warning(push, 0)
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
@@ -116,7 +116,7 @@ namespace NS::Scene
 
     NS::Graphics::Shader* AssetManager::GetOrLoadShader(const std::filesystem::path& path)
     {
-        // 表記揺れ (区切り文字 / . / ..) で同一ファイルが別キー扱いにならないよう正規化してから dedupe する
+        // 区切り文字や . / .. の表記揺れで同一ファイルが別キー扱いにならないよう正規化してから dedupe する
         const std::filesystem::path key = path.lexically_normal();
         if (const auto it = m_shaders.find(key); it != m_shaders.end())
             return it->second.get();
@@ -148,12 +148,39 @@ namespace NS::Scene
     NS::Graphics::Mesh* AssetManager::GetOrLoadMesh(const std::filesystem::path& path)
     {
         const std::filesystem::path key = path.lexically_normal();
+        // null エントリは負キャッシュした失敗 path を表す。 get() が nullptr を返し再読込を短絡する
         if (const auto it = m_meshes.find(key); it != m_meshes.end())
             return it->second.get();
-        // file mesh (.glb 等) のロードは消費者が出た時に実装する。 dedupe の枠だけ用意し、 現状は未対応
-        NS_LOG_WARN(
-            ::NS::Core::LogCat::Graphics, "AssetManager::GetOrLoadMesh: file mesh ロード未対応: {}", key.string());
-        return nullptr;
+
+        // 静的 glTF を読み StaticMesh を生成して path 鍵で dedupe 所有する
+        const NS::Graphics::MeshGeometry geom = NS::Graphics::LoadGltfMesh(key.string());
+        if (geom.vertices.empty() || geom.indices.empty())
+        {
+            NS_LOG_WARN(
+                ::NS::Core::LogCat::Graphics, "AssetManager::GetOrLoadMesh: mesh の読込失敗 / 空: {}", key.string());
+            // 壊れた path を負キャッシュし、 同じ参照を持つ object 群が毎回ディスク I/O を踏むのを防ぐ
+            m_meshes.emplace(key, nullptr);
+            return nullptr;
+        }
+
+        std::unique_ptr<NS::Graphics::StaticMesh> mesh = MakeStaticMesh(geom);
+        if (mesh == nullptr || !mesh->IsValid())
+        {
+            NS_LOG_ERROR(
+                ::NS::Core::LogCat::Graphics, "AssetManager::GetOrLoadMesh: mesh の GPU 生成失敗: {}", key.string());
+            // GPU 生成失敗も負キャッシュする。 修正後の再試行は Clear() で解いてから
+            m_meshes.emplace(key, nullptr);
+            return nullptr;
+        }
+
+        NS::Graphics::Mesh* raw = mesh.get();
+        m_meshes.emplace(key, std::move(mesh));
+        return raw;
+    }
+
+    std::size_t AssetManager::MeshCacheSize() const noexcept
+    {
+        return m_meshes.size();
     }
 
     LoadedSkinnedModel AssetManager::GetOrLoadSkinnedModel(const std::filesystem::path& path)
@@ -186,7 +213,7 @@ namespace NS::Scene
             record.mesh = NS::Graphics::SkeletalMesh::Create(smd);
             if (record.mesh == nullptr || !record.mesh->IsValid())
             {
-                // GPU buffer 生成に失敗。 ダッド mesh をキャッシュせず無効を返す (Draw が無音 no-op になるのを防ぐ)
+                // GPU buffer 生成に失敗。 ダッド mesh をキャッシュせず無効を返し、 Draw が無音で何もしないのを防ぐ
                 NS_LOG_ERROR(
                     ::NS::Core::LogCat::Graphics, "AssetManager: skinned mesh の GPU 生成失敗: {}", key.string());
                 return LoadedSkinnedModel{};
@@ -261,7 +288,7 @@ namespace NS::Scene
         NS::Graphics::Shader* vertexShader = GetOrLoadShader(resolve(fileDesc.vertexShader));
         NS::Graphics::Shader* pixelShader = GetOrLoadShader(resolve(fileDesc.pixelShader));
 
-        // CB は MeshRendererComponent::Draw が流す FrameCB に合わせる (slot 0)
+        // CB は slot 0 で MeshRendererComponent::Draw が流す FrameCB に合わせる
         NS::Graphics::MaterialDesc matDesc{};
         matDesc.vertexShader = vertexShader;
         matDesc.pixelShader = pixelShader;
@@ -292,7 +319,7 @@ namespace NS::Scene
         NS::Graphics::Shader* playerPS = GetOrLoadShader(shaderPath("player.ps.hlsl"));
         NS::Graphics::Texture* baseTexture = GetOrLoadTexture(m_baseDir / "Assets" / "Textures" / "cube_test.png");
 
-        // CB は MeshRendererComponent::Draw が流す FrameCB に合わせる (slot 0)
+        // CB は slot 0 で MeshRendererComponent::Draw が流す FrameCB に合わせる
         NS::Graphics::MaterialDesc base{};
         base.vertexShader = standardVS;
         base.pixelShader = playerPS;
@@ -377,7 +404,7 @@ namespace NS::Scene
 
     void AssetManager::Clear() noexcept
     {
-        // material は leaf (shader / texture) を参照するので先に解放する
+        // material は leaf である shader / texture を参照するので先に解放する
         m_sharedMaterials.clear();
         m_materials.clear();
         m_textureArrays.clear();

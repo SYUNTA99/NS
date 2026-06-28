@@ -51,7 +51,7 @@ namespace NS::Scene
         VirtualCameraComponent* next = SelectActive();
         if (next != m_active)
         {
-            // 直前まで写していた pose から新 vcam へ繋ぐ。初回 active 化 (旧 pose 無し) はカット
+            // 直前まで写していた pose から新 vcam へ繋ぐ。旧 pose が無い初回 active 化はカットする
             if (m_active != nullptr && m_blendDuration > 0.0f)
             {
                 m_blendFrom = m_lastPose;

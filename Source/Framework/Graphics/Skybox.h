@@ -5,21 +5,21 @@
 ///
 /// @details 単位 cube mesh と TextureCube SRV を保持し、 専用 skybox.vs/ps.hlsl で
 /// `xyww` swizzle により depth=1 に張り付けて描画する。 深度比較は LESS_EQUAL、
-/// 深度書込は OFF、 CullMode は FRONT (inside-out cube) に固定
+/// 深度書込は OFF、 CullMode は inside-out cube のため FRONT に固定
 /// LoadCubemap は拡張子で auto-detect: `.dds` ならば DirectXTK の
 /// CreateDDSTextureFromFileEx で TEXTURECUBE フラグ付きで読込、 ディレクトリならば
-/// kurt レイアウト (space_rt/lf/up/dn/ft/bk.png) を WICTextureLoader で読み込み
+/// space_rt/lf/up/dn/ft/bk.png の kurt レイアウトを WICTextureLoader で読み込み
 /// 6-face Texture2D を組み立てる。 失敗時は 1x1 マゼンタ cubemap fallback に切替わり
 /// `IsUsingFallback()` が true、 Render() はそのまま安全に呼び出せる
-/// 描画順は scene の不透明描画後 + ImGui 直前 (Z=1 同士の深度比較対策)
+/// 描画順は scene の不透明描画後 + ImGui 直前。 Z=1 同士の深度比較対策
 /// GPU バインドは Render(Renderer&) に渡す Renderer 経由で行い、 DeviceContext は保持しない
 
 #include <filesystem>
 #include <memory>
 
-#include <Framework/Core/NonCopyable.h>
-#include <Framework/Graphics/D3dCommon.h>
-#include <Framework/Math/Math.h>
+#include "Framework/Core/NonCopyable.h"
+#include "Framework/Graphics/D3dCommon.h"
+#include "Framework/Math/Math.h"
 
 namespace NS::Graphics
 {
@@ -42,19 +42,19 @@ namespace NS::Graphics
         /// .dds または 6-face PNG ディレクトリを cubemap としてロードする。失敗時は fallback 維持で false を返す
         [[nodiscard]] bool LoadCubemap(const std::filesystem::path& path);
 
-        /// viewProjNoTranslate で skybox を描画する (不透明描画後・ImGui 前に呼ぶこと)
+        /// viewProjNoTranslate で skybox を描画する。 不透明描画後・ImGui 前に呼ぶこと
         void Render(Renderer& renderer, const NS::Math::Matrix& viewProjNoTranslate) noexcept;
 
-        /// 構築完了 (cube mesh / shader / states / fallback SRV が揃っている) なら true
+        /// cube mesh / shader / states / fallback SRV が揃って構築完了なら true
         /// LoadCubemap 未呼出でも fallback により true。 致命的な Device 不在のみ false
         [[nodiscard]] bool IsValid() const noexcept;
 
-        /// 現在 fallback (1x1 マゼンタ cubemap) を使用中か。 ロード失敗 / 未呼出で true
+        /// 現在 1x1 マゼンタ cubemap の fallback を使用中か。 ロード失敗 / 未呼出で true
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-        /// cubemap SRV (非所有)。 未ロードでも fallback SRV (1x1 マゼンタ) が返るため構築成功後は非 null
+        /// 非所有の cubemap SRV。 未ロードでも 1x1 マゼンタの fallback SRV が返るため構築成功後は非 null
         [[nodiscard]] ID3D11ShaderResourceView* Srv() const noexcept;
-        /// skybox 描画用の固定機能ステート束 (前面カリング + 深度 ReadOnly)。構築失敗時は nullptr
+        /// 前面カリング + 深度 ReadOnly の skybox 描画用固定機能ステート束。構築失敗時は nullptr
         [[nodiscard]] const Pipeline* RenderPipeline() const noexcept;
 
     private:

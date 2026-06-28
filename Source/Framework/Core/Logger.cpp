@@ -1,4 +1,4 @@
-#include <Framework/Core/Logger.h>
+#include "Framework/Core/Logger.h"
 
 #include "Framework/Framework.h"
 
@@ -7,6 +7,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
+#include <array>
 #include <atomic>
 #include <cassert>
 #include <chrono>
@@ -23,7 +24,7 @@ namespace NS::Core
 
         constexpr const char* kLoggerName = "ns";
         constexpr std::size_t kRotatingMaxBytes = 5 * 1024 * 1024;
-        // spdlog の max_files は rotated backup の本数で、 current 含め計 (N+1) 個
+        // spdlog の max_files は rotated backup の本数で、 current 含め計 N+1 個
         // 2 指定で `<name>.log` + `.1.log` + `.2.log` の 3 ファイル運用
         constexpr std::size_t kRotatingMaxFiles = 2;
 
@@ -38,17 +39,17 @@ namespace NS::Core
         /// 実行 exe の絶対ディレクトリを取得する。 取得失敗時は空 path
         std::filesystem::path GetExeDirectory() noexcept
         {
-            wchar_t buffer[MAX_PATH];
-            const DWORD len = ::GetModuleFileNameW(nullptr, buffer, MAX_PATH);
+            std::array<wchar_t, MAX_PATH> buffer{};
+            const DWORD len = ::GetModuleFileNameW(nullptr, buffer.data(), MAX_PATH);
             if (len == 0 || len >= MAX_PATH)
             {
                 return std::filesystem::path{};
             }
-            return std::filesystem::path{buffer}.parent_path();
+            return std::filesystem::path{buffer.data()}.parent_path();
         }
 
         /// ログ出力先の絶対パス。 premake5.lua / .git を上位へ辿りリポジトリルート直下の `logs/` を返す
-        /// ルート検出失敗 (shipping 配布) は exe 同階層の `logs/` に fallback
+        /// ルート検出失敗となる shipping 配布では exe 同階層の `logs/` に fallback
         std::filesystem::path GetLogsDirectory() noexcept
         {
             const auto exeDir = GetExeDirectory();
@@ -70,9 +71,9 @@ namespace NS::Core
             return exeDir / "logs";
         }
 
-        spdlog::level::level_enum ToSpdLevel(LogLevel lv)
+        spdlog::level::level_enum ToSpdLevel(LogLevel level)
         {
-            switch (lv)
+            switch (level)
             {
             case LogLevel::Trace:
                 return spdlog::level::trace;
@@ -103,7 +104,7 @@ namespace NS::Core
             const auto logsDir = GetLogsDirectory();
             const std::string logFilePath =
                 logsDir.empty() ? ("logs/" + g_logName + ".log") : (logsDir / (g_logName + ".log")).string();
-            // rotate_on_open: Game は起動ごと rotate (per-session log)、 Tests は false で
+            // rotate_on_open: Game は起動ごと rotate しセッション単位のログにする。 Tests は false で
             // 1 Tests.exe 内の test fixture の Init/Shutdown サイクルを 1 つの tests.log に蓄積
             auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
                 logFilePath, kRotatingMaxBytes, kRotatingMaxFiles, g_rotateOnOpen);
@@ -135,7 +136,7 @@ namespace NS::Core
 
     void Logger::SetLogName(std::string_view name) noexcept
     {
-        // 空入力は無視 (既定 "ns" のまま)。 Init() 後の呼出は既に開かれた file sink には反映
+        // 空入力は無視し既定 "ns" のまま。 Init() 後の呼出は既に開かれた file sink には反映
         // されないが、 後続の Shutdown → Init の組合せで効くため state は更新しておく
         if (name.empty())
             return;
@@ -162,7 +163,7 @@ namespace NS::Core
         try
         {
             // 初回起動でファイル sink が失敗しないよう logs/ を先に作成する
-            // 場所の優先順は GetLogsDirectory と同じ (リポジトリルート → exe 同階層)
+            // 場所の優先順は GetLogsDirectory と同じでリポジトリルート → exe 同階層
             std::error_code ec;
             const auto logsDir = GetLogsDirectory();
             std::filesystem::create_directories(logsDir.empty() ? std::filesystem::path{"logs"} : logsDir, ec);
@@ -204,12 +205,12 @@ namespace NS::Core
         }
         catch (...)
         {
-            // shutdown 中の例外は無視 (ログ出口を閉じている最中なので報告先がない)
+            // ログ出口を閉じている最中で報告先がないため shutdown 中の例外は無視
         }
     }
 
     void Logger::LogImpl(
-        LogLevel lv, std::string_view category, const char* file, int line, const char* func, std::string_view msg)
+        LogLevel level, std::string_view category, const char* file, int line, const char* func, std::string_view msg)
     {
         auto logger = spdlog::default_logger();
         if (!logger)
@@ -218,7 +219,7 @@ namespace NS::Core
         }
 
         spdlog::source_loc loc{file, line, func};
-        logger->log(loc, ToSpdLevel(lv), "[{}] {}", category, msg);
+        logger->log(loc, ToSpdLevel(level), "[{}] {}", category, msg);
     }
 
     [[noreturn]] void Logger::FatalImpl(

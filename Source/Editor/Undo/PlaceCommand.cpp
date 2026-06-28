@@ -1,0 +1,60 @@
+#include "Editor/Undo/PlaceCommand.h"
+
+#include <utility>
+
+namespace NS::Editor
+{
+    PlaceCommand::PlaceCommand(NS::Game::Level::ObjectInstance prototype,
+                               std::int16_t x,
+                               std::int16_t y,
+                               std::int16_t z,
+                               std::uint8_t rotation) noexcept
+        : m_x(x), m_y(y), m_z(z), m_rotation(static_cast<std::uint8_t>(rotation & 0x03)),
+          m_prototype(std::move(prototype))
+    {}
+
+    void PlaceCommand::Do(NS::Game::Level::EditTarget& target) noexcept
+    {
+        NS::Game::Level::LevelData& level = target.level;
+        const std::size_t index = NS::Game::Level::FindGridObjectAtCell(level, m_x, m_y, m_z);
+        // プロトタイプを複製し cell 座標と回転 step だけ焼く。 回転対象外は呼び元が rotation=0 を渡す
+        NS::Game::Level::ObjectInstance placed = m_prototype;
+        placed.positionX = static_cast<float>(m_x);
+        placed.positionY = static_cast<float>(m_y);
+        placed.positionZ = static_cast<float>(m_z);
+        NS::Game::Level::SetGridRotationStep(placed, m_rotation);
+        if (index != NS::Game::Level::kNoObjectIndex)
+        {
+            // 既存 cell の置換は in-place なので id を据え置く
+            m_replaced = level.objects[index];
+            level.objects[index] = placed;
+        }
+        else
+        {
+            m_replaced.reset();
+            // この object を指す TransformCommand を壊さないよう redo でも同じ識別子を再利用する
+            if (!m_assignedId)
+                m_assignedId = target.nextId++;
+            level.objects.push_back(placed);
+            target.ids.push_back(*m_assignedId);
+        }
+    }
+
+    void PlaceCommand::Undo(NS::Game::Level::EditTarget& target) noexcept
+    {
+        NS::Game::Level::LevelData& level = target.level;
+        const std::size_t index = NS::Game::Level::FindGridObjectAtCell(level, m_x, m_y, m_z);
+        if (index == NS::Game::Level::kNoObjectIndex)
+            return;
+        if (m_replaced)
+        {
+            level.objects[index] = *m_replaced;
+        }
+        else
+        {
+            level.objects.erase(level.objects.begin() + static_cast<std::ptrdiff_t>(index));
+            target.ids.erase(target.ids.begin() + static_cast<std::ptrdiff_t>(index));
+        }
+    }
+
+} // namespace NS::Editor

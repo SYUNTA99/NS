@@ -105,7 +105,7 @@ namespace NS::Graphics
         }
 
         // swapchain の backbuffer を RTV Texture として包み、 同サイズの depth Texture を生成する
-        // 構築 / Resize の両方から呼ぶ。 いずれか失敗で false (out は未確定)
+        // 構築 / Resize の両方から呼ぶ。 いずれか失敗で false を返し out は未確定
         bool BuildBackbufferTargets(IDXGISwapChain* swapchain,
                                     std::unique_ptr<Texture>& outBackbuffer,
                                     std::unique_ptr<Texture>& outDepth)
@@ -189,7 +189,7 @@ namespace NS::Graphics
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
                          "Renderer を同時に複数構築している (単一 device 前提、 グローバルが上書きされる)");
         }
-        // backbuffer Texture 構築より前にグローバル公開する (構築が Gpu() を引くため)
+        // backbuffer Texture 構築より前にグローバル公開する。 構築が Gpu() を引くため
         Gpu().device = m_device.Get();
         Gpu().context = m_context.Get();
 
@@ -203,10 +203,10 @@ namespace NS::Graphics
             return;
         }
 
-        // CommonStates の ctor は friend Renderer 限定 (private) で make_unique が呼べないため new で構築する
+        // CommonStates のコンストラクタは friend Renderer 限定の private で make_unique が呼べないため new で構築する
         m_states.reset(new CommonStates(m_device.Get()));
 
-        // 共通 Pipeline を1回だけ生成しキャッシュする。Gpu() は上で公開済 (描画する者が毎回 set する)
+        // 共通 Pipeline を1回だけ生成しキャッシュする。Gpu() は上で公開済で、描画する者が毎回 set する
         m_commonPipelines[0] = Pipeline::Create(PipelineDesc{});
         m_commonPipelines[1] = Pipeline::Create(PipelineDesc{.blend = BlendMode::Alpha, .depth = DepthMode::ReadOnly});
         m_commonPipelines[2] =
@@ -216,7 +216,7 @@ namespace NS::Graphics
         m_resizeCallbackRegistered = true;
 
         m_valid = true;
-        // 失敗時は別途 ERROR ログ済のため成功は Debug 段のみ出力 (テスト時のログ雑音を抑える)
+        // 失敗時は別途 ERROR ログ済のため成功は Debug 段のみ出力し、テスト時のログ雑音を抑える
         NS_LOG_DEBUG(::NS::Core::LogCat::Graphics,
                      "Renderer 構築完了 ({}x{}, vsync={}, debugLayer={})",
                      w,
@@ -227,12 +227,12 @@ namespace NS::Graphics
 
     Renderer::~Renderer()
     {
-        // ctor で登録したリサイズ購読を解除し、Window 側の発火で dangling を踏むのを防ぐ
+        // コンストラクタで登録したリサイズ購読を解除し、Window 側の発火で無効参照を踏むのを防ぐ
         if (m_resizeCallbackRegistered && m_window != nullptr)
         {
             m_window->SetResizeCallback(nullptr);
         }
-        // 自分が公開したグローバルだけを戻す (別 Renderer が上書きしている場合は触らない)
+        // 自分が公開したグローバルだけを戻す。 別 Renderer が上書きしている場合は触らない
         if (m_device && Gpu().device == m_device.Get())
         {
             Gpu() = {};
@@ -242,7 +242,7 @@ namespace NS::Graphics
             m_context->ClearState();
             m_context->Flush();
         }
-        // この後メンバ (m_states / m_backbuffer / m_depth 等) の破棄が宣言の逆順で走るが、
+        // この後 m_states / m_backbuffer / m_depth 等のメンバ破棄が宣言の逆順で走るが、
         // Gpu() は既に空のため各リソースのデストラクタから Gpu() を参照しないこと
     }
 
@@ -317,7 +317,7 @@ namespace NS::Graphics
         }
 
         auto* context = m_context.Get();
-        // ResizeBuffers の前に backbuffer 参照を全て手放す (RTV を握ったままだと失敗する)
+        // ResizeBuffers の前に backbuffer 参照を全て手放す。 RTV を握ったままだと失敗する
         context->OMSetRenderTargets(0, nullptr, nullptr);
         m_backbuffer.reset();
         m_depth.reset();

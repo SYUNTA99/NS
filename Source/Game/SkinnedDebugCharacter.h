@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file SkinnedDebugCharacter.h
-/// @brief 仮 skinned キャラ (glTF) をプレイ画面で常時再生する debug 用 GameObject
+/// @brief 仮 skinned キャラの glTF をプレイ画面で常時再生する debug 用 GameObject
 ///
-/// @details 形 (SkeletalMesh) と材質 (.mat) は AssetManager 所有を参照し、 アニメ clips と
+/// @details 形の SkeletalMesh と材質の .mat は AssetManager 所有を参照し、 アニメ clips と
 /// 再生状態のみ自分で持つ。 MeshRenderer + SkeletalAnimation を自分に合成する単一の「種別」
 /// F1 再生/停止、 F2 クリップ送り、 F3/F4 速度。 依存: NS::Scene::AssetManager / GameObject
 
@@ -30,7 +30,7 @@ public:
                                                                        const std::filesystem::path& modelDir,
                                                                        const std::filesystem::path& materialPath);
 
-    /// F1〜F4 の debug 操作を 1 フレームぶん処理する (ImGui 入力中は無効)
+    /// F1〜F4 の debug 操作を 1 フレームぶん処理する。 ImGui 入力中は無効
     void HandleDebugInput();
 
 private:

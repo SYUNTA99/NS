@@ -541,7 +541,7 @@ group ""
 
 --============================================================================
 -- GameCore (StaticLib) — ゲーム本体 (content / logic)
---   Player / Block / LevelPlayScene / Level / Undo / Theme / CameraRig 等。
+--   Player / Block / LevelPlayScene / Level / Theme / CameraRig 等。
 --   editor を一切知らない (依存の向きは Editor → GameCore の一方向)。 出荷を含む全構成でビルド。
 --   合成 Layer ::Game もここに置き、 editor から Game::Get() で参照できるようにする。
 --============================================================================
@@ -583,6 +583,13 @@ project "GameCore"
         "directxtk_simplemath"
     }
 
+    -- Game / Editor 共通の安定 Framework API を全 .cpp へ /FI 強制 include する。
+    -- GamePch.cpp は Source/Game/**.cpp の glob で既に拾われる。 GamePch.h は
+    -- include root (Source) 経由で全 .cpp から一意に解決できる論理名で渡す。
+    pchheader "Game/GamePch.h"
+    pchsource "Source/Game/GamePch.cpp"
+    buildoptions { "/FI\"Game/GamePch.h\"" }
+
     applyCommonBuildOptions()
 
 --============================================================================
@@ -601,7 +608,9 @@ project "Editor"
 
     files {
         "Source/Editor/**.h",
-        "Source/Editor/**.cpp"
+        "Source/Editor/**.cpp",
+        -- Game 側 PCH を共有するため pchsource 用に取り込む (Editor は GameCore に依存済)
+        "Source/Game/GamePch.cpp"
     }
 
     includedirs {
@@ -638,6 +647,11 @@ project "Editor"
         kind "None"
     filter {}
 
+    -- GameCore と同じ Game 側 PCH を共有する (GamePch.cpp は files に追加済)
+    pchheader "Game/GamePch.h"
+    pchsource "Source/Game/GamePch.cpp"
+    buildoptions { "/FI\"Game/GamePch.h\"" }
+
     applyCommonBuildOptions()
 
 --============================================================================
@@ -658,7 +672,9 @@ project "Game"
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/Game/GameMain.cpp"
+        "Source/Game/GameMain.cpp",
+        -- Game 側 PCH を共有するため pchsource 用に取り込む
+        "Source/Game/GamePch.cpp"
     }
 
     includedirs {
@@ -706,6 +722,11 @@ project "Game"
     filter "configurations:GameDebug"
         optimize "Off"
     filter {}
+
+    -- GameCore と同じ Game 側 PCH を共有する (GamePch.cpp は files に追加済)
+    pchheader "Game/GamePch.h"
+    pchsource "Source/Game/GamePch.cpp"
+    buildoptions { "/FI\"Game/GamePch.h\"" }
 
     applyCommonBuildOptions()
 
@@ -814,11 +835,14 @@ project "Tests"
         -- Level data / ChunkIO / CRC32 / Undo Command / AutoTile は Application
         -- 非依存の純粋ロジックなので Tests project から直接 compile する。
         "Source/Game/Level/**.cpp",
-        "Source/Game/Undo/**.cpp",
+        "Source/Editor/Undo/**.cpp",
         -- editor のうち Application 非依存なものだけ取り込む (EditorLayer は Application 依存のため除外)
+        "Source/Editor/ComponentClipboard.cpp",
         "Source/Editor/EditorMode.cpp",
         "Source/Editor/GizmoEditor.cpp",
+        "Source/Editor/GridMath.cpp",
         "Source/Editor/CategoryPalette.cpp",
+        "Source/Editor/PaletteTemplates.cpp",
         "Source/Editor/LevelFileBrowser.cpp",
         "Source/Editor/LevelFilePaths.cpp",
         "Source/Game/Theme/**.cpp"

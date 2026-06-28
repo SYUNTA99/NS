@@ -45,7 +45,7 @@ namespace NS::Scene
         const auto& kb = m_input->Keyboard();
         const auto& pad = m_input->Gamepad(0);
 
-        // UI のテキスト入力中はキーボード由来の移動 / ジャンプを取り合わない (gamepad は維持)
+        // UI のテキスト入力中はキーボード由来の移動 / ジャンプを取り合わない。 gamepad は維持する
         const bool wantKb = m_input->UiWantsKeyboard();
 
         float kbForward = 0.0f;
@@ -90,7 +90,7 @@ namespace NS::Scene
         };
 
         m_movement->SetDesiredMove(worldDir, speedScale);
-        // climb 中は camera 回転をかける前の生ローカル入力を渡す (前=登る、 右=面に沿って右)
+        // climb 中は camera 回転をかける前の生ローカル入力を渡す。 前で登り、 右で面に沿って右へ動く
         m_movement->SetClimbMove(localX, localZ);
 
         const bool jumpPressed =

@@ -7,7 +7,7 @@ namespace NS::Physics
 {
     std::int64_t CollisionGrid::CellKey(int x, int y, int z) noexcept
     {
-        // 各軸 21 bit (約 ±100 万セル) を pack する。 レベル範囲には十分
+        // 各軸 21 bit で約 ±100 万セルを pack する。 レベル範囲には十分
         const std::int64_t ux = static_cast<std::int64_t>(x) & 0x1FFFFF;
         const std::int64_t uy = static_cast<std::int64_t>(y) & 0x1FFFFF;
         const std::int64_t uz = static_cast<std::int64_t>(z) & 0x1FFFFF;
@@ -51,8 +51,8 @@ namespace NS::Physics
                     const auto it = m_cells.find(CellKey(x, y, z));
                     if (it == m_cells.end())
                         continue;
-                    for (const std::uint32_t idx : it->second)
-                        out.push_back(idx);
+                    for (const std::uint32_t index : it->second)
+                        out.push_back(index);
                 }
         std::sort(out.begin(), out.end());
         out.erase(std::unique(out.begin(), out.end()), out.end());

@@ -4,10 +4,10 @@
 /// @brief NS::App::Layers — Layer 群を順序付きで保持するコンテナ
 ///
 /// @details Application が 1 個所有し、Run ループから反復される
-/// regular (AddLayer) と overlay (AddOverlay) を区別し、overlay は常に末尾に挿入される
-/// 反復順 (begin → end) で OnUpdate / OnRender が呼ばれ、overlay は常に後段で実行される
+/// AddLayer の regular と AddOverlay の overlay を区別し、overlay は常に末尾に挿入される
+/// begin → end の反復順で OnUpdate / OnRender が呼ばれ、overlay は常に後段で実行される
 ///
-/// Run ループ内から AddLayer / AddOverlay / Remove を呼ぶことは禁止 (iterator 無効化)
+/// iterator が無効化されるため Run ループ内から AddLayer / AddOverlay / Remove を呼ぶことは禁止
 /// layer 構成は WinMain 段階で確定させる。動的追加が必要なら deferred queue を導入する
 
 #include <cstddef>
@@ -32,13 +32,13 @@ namespace NS::App
         Layers(Layers&&) = delete;
         Layers& operator=(Layers&&) = delete;
 
-        /// regular layer を追加する (overlay より前で反復される)
+        /// overlay より前で反復される regular layer を追加する
         void AddLayer(std::unique_ptr<Layer> layer);
 
-        /// overlay layer を追加する (regular より後ろ、 OnRender が最後)
+        /// OnRender が最後になるよう overlay layer を regular より後ろへ追加する
         void AddOverlay(std::unique_ptr<Layer> overlay);
 
-        /// 指定 layer を取り外して所有権を返す (見つからなければ nullptr)。 caller が寿命制御可
+        /// 指定 layer を取り外して所有権を返す。見つからなければ nullptr が返る。 caller が寿命制御可
         std::unique_ptr<Layer> Remove(Layer* layer) noexcept;
 
         [[nodiscard]] std::size_t Size() const noexcept { return m_layers.size(); }

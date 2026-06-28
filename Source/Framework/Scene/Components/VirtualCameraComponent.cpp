@@ -2,6 +2,7 @@
 
 namespace NS::Scene
 {
-    // out-of-line virtual dtor で vtable をこの TU に固定する (各 includer での重複生成を避ける)
+    // 仮想デストラクタをこの .cpp 側にだけ定義し、 仮想関数テーブルの出力をこの翻訳単位に固定する
+    // ヘッダのインクルード先ごとの重複生成を避ける
     VirtualCameraComponent::~VirtualCameraComponent() noexcept = default;
 } // namespace NS::Scene

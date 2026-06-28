@@ -3,7 +3,7 @@
 /// @file CharacterController.h
 /// @brief NS::Physics::CharacterController — Capsule + sub-step swept 物理
 ///
-/// 入出力は POD struct。gameplay 値 (gravity / jump 等) は保持しない (責任分担)
+/// 入出力は POD struct。gravity / jump 等の gameplay 値は責任分担として保持しない
 
 #include "Framework/Math/Math.h"
 
@@ -38,7 +38,7 @@ namespace NS::Physics
         CharacterController() noexcept = default;
 
         /// 1 frame ぶん物理を進めて新状態を返す。`NS::Core::FrameTimer::DeltaSeconds()` 等の variable delta は
-        /// 使わない (Determinism 制約)
+        /// 使わない。 これは Determinism 制約による
         [[nodiscard]] CharacterControllerResult Update(const CharacterControllerInput& input) noexcept;
     };
 } // namespace NS::Physics

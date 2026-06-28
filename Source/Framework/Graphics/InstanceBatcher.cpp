@@ -79,13 +79,13 @@ namespace NS::Graphics
             return true;
         }
 
-        // POSITION+TEXCOORD+NORMAL (slot0) + INSTANCE_WORLD0..3+INSTANCE_COLOR (slot1) の 8 要素 layout。slot
+        // slot0 の POSITION+TEXCOORD+NORMAL と slot1 の INSTANCE_WORLD0..3+INSTANCE_COLOR で 8 要素 layout。slot
         // 切替・per-instance step rate は Shader 抽象に非公開のため生 D3D11 で構築
         [[nodiscard]] ComPtr<ID3D11InputLayout> CreateInstancedInputLayout(ID3D11Device* device,
                                                                            const void* vsBytecode,
                                                                            std::size_t vsBytecodeSize) noexcept
         {
-            // slot 1 の AlignedByteOffset (0/16/32/48/64) は BlockInstance struct (sizeof==80) と整合
+            // slot 1 の AlignedByteOffset 0/16/32/48/64 は sizeof==80 の BlockInstance struct と整合
             // BlockInstance 側 static_assert で stride 不一致を防いでいる
             const D3D11_INPUT_ELEMENT_DESC layoutDesc[] = {
                 {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -114,7 +114,7 @@ namespace NS::Graphics
 
         [[nodiscard]] std::unique_ptr<Buffer> CreateInstanceVB(std::size_t capacity) noexcept
         {
-            // Dynamic は initial data 不要 (Map で都度書込)
+            // Dynamic は initial data 不要で Map で都度書込
             BufferDesc vbDesc = MakeVertexBufferDesc(nullptr, capacity, sizeof(BlockInstance), D3D11_USAGE_DYNAMIC);
             std::unique_ptr<Buffer> vb = Buffer::Create(vbDesc);
             if (!vb->IsValid())
@@ -207,7 +207,7 @@ namespace NS::Graphics
             return false;
         }
 
-        // 全段成功してから差し替える (reload 失敗時に旧 shader / layout を壊さない)
+        // 全段成功してから差し替える。 reload 失敗時に旧 shader / layout を壊さない
         m_vs = std::move(vs);
         m_ps = std::move(ps);
         m_inputLayout = std::move(layout);
@@ -255,10 +255,10 @@ namespace NS::Graphics
     {
         std::size_t drawCalls = 0;
         const bool canDraw = m_valid && !m_countOnlyMode;
-        auto* ctx = Gpu().context;
+        auto* context = Gpu().context;
 
         // ブロックは不透明。描画する者が自分の Pipeline を set する不変条件で、前 submitter の残留 state を断つ
-        if (canDraw && ctx != nullptr)
+        if (canDraw && context != nullptr)
             renderer.Commands().SetPipeline(renderer.CommonPipeline(BlendMode::Opaque));
 
         for (auto& [key, bucket] : m_buckets)
@@ -266,7 +266,7 @@ namespace NS::Graphics
             if (bucket.instances.empty())
                 continue;
 
-            if (canDraw && ctx != nullptr)
+            if (canDraw && context != nullptr)
             {
                 if (bucket.instances.size() > m_instanceVbCapacity)
                 {
@@ -284,9 +284,9 @@ namespace NS::Graphics
                 // 直後に instance 用で上書きする。 material 側 shader は使わない
                 key.material->Bind(renderer);
 
-                ctx->VSSetShader(m_vs.Get(), nullptr, 0);
-                ctx->PSSetShader(m_ps.Get(), nullptr, 0);
-                ctx->IASetInputLayout(m_inputLayout.Get());
+                context->VSSetShader(m_vs.Get(), nullptr, 0);
+                context->PSSetShader(m_ps.Get(), nullptr, 0);
+                context->IASetInputLayout(m_inputLayout.Get());
 
                 const Buffer* meshVBuf = key.mesh->VertexBuffer();
                 const Buffer* meshIBuf = key.mesh->IndexBuffer();
@@ -304,11 +304,11 @@ namespace NS::Graphics
                 const UINT strides[2] = {static_cast<UINT>(sizeof(StaticVertex)),
                                          static_cast<UINT>(sizeof(BlockInstance))};
                 const UINT offsets[2] = {0, 0};
-                ctx->IASetVertexBuffers(0, 2, vbs, strides, offsets);
-                ctx->IASetIndexBuffer(meshIB, meshIBuf->Format(), 0);
-                ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+                context->IASetVertexBuffers(0, 2, vbs, strides, offsets);
+                context->IASetIndexBuffer(meshIB, meshIBuf->Format(), 0);
+                context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-                ctx->DrawIndexedInstanced(
+                context->DrawIndexedInstanced(
                     static_cast<UINT>(key.mesh->IndexCount()), static_cast<UINT>(bucket.instances.size()), 0, 0, 0);
             }
             ++drawCalls;

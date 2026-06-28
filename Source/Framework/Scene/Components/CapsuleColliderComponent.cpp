@@ -90,4 +90,15 @@ namespace NS::Scene
         capsule.halfHeight = m_halfHeight * std::abs(scale.y);
         return capsule;
     }
+
+    NS::Math::AABB CapsuleColliderComponent::WorldAABB() const noexcept
+    {
+        const NS::Physics::Capsule c = WorldCapsule();
+        const NS::Math::Vector3 tip = c.center + c.axis * c.halfHeight;
+        const NS::Math::Vector3 base = c.center - c.axis * c.halfHeight;
+        const NS::Math::Vector3 r{c.radius, c.radius, c.radius};
+        const NS::Math::Vector3 lo = NS::Math::Vector3::Min(tip, base) - r;
+        const NS::Math::Vector3 hi = NS::Math::Vector3::Max(tip, base) + r;
+        return NS::Math::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
+    }
 } // namespace NS::Scene

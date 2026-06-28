@@ -1,7 +1,7 @@
-#include <Framework/Core/StringUtils.h>
+#include "Framework/Core/StringUtils.h"
 
-#include <Framework/Core/LogCategories.h>
-#include <Framework/Core/Logger.h>
+#include "Framework/Core/LogCategories.h"
+#include "Framework/Core/Logger.h"
 
 #include <limits>
 

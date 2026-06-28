@@ -6,10 +6,10 @@
 /// @details Application 開始時に `Logger::Init()`、終了時に `Logger::Shutdown()` を呼ぶ
 /// 公開ヘッダから spdlog の型は一切露出しない。ログ出力は
 /// `NS_LOG_TRACE/DEBUG/INFO/WARN/ERROR/FATAL` マクロで行い、`std::format` 構文の
-/// 可変引数を取る。Fatal は flush 後に `__debugbreak()` (Debug 時) → `std::abort()`
+/// 可変引数を取る。Fatal は flush 後に `std::abort()` し、 Debug 時はその前に `__debugbreak()` を呼ぶ
 /// シングルスレッド前提
 
-#include <Framework/Core/LogCategories.h>
+#include "Framework/Core/LogCategories.h"
 
 #include <magic_enum/magic_enum.hpp>
 
@@ -49,10 +49,14 @@ namespace NS::Core
         static void Shutdown() noexcept;
 
         /// NS_LOG_* マクロ内部用。直接呼ばないこと
-        static void LogImpl(
-            LogLevel lv, std::string_view category, const char* file, int line, const char* func, std::string_view msg);
+        static void LogImpl(LogLevel level,
+                            std::string_view category,
+                            const char* file,
+                            int line,
+                            const char* func,
+                            std::string_view msg);
 
-        /// Fatal 専用: flush → __debugbreak() (Shipping はスキップ) → std::abort()
+        /// Fatal 専用: flush → __debugbreak() → std::abort()。 Shipping では __debugbreak() をスキップ
         [[noreturn]] static void FatalImpl(
             std::string_view category, const char* file, int line, const char* func, std::string_view msg);
     };

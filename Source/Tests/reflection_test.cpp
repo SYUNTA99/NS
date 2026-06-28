@@ -2,6 +2,7 @@
 
 #include <Framework/Math/Math.h>
 #include <Framework/Scene/Component.h>
+#include <Framework/Scene/Components/BoxColliderComponent.h>
 #include <Framework/Scene/Components/CameraBrainComponent.h>
 #include <Framework/Scene/Components/CharacterMovementComponent.h>
 #include <Framework/Scene/Components/EditorCameraComponent.h>
@@ -9,11 +10,11 @@
 #include <Framework/Scene/Components/PlacedVirtualCamera.h>
 #include <Framework/Scene/Components/PoleComponent.h>
 #include <Framework/Scene/Components/ShadowComponent.h>
-#include <Framework/Scene/Components/BoxColliderComponent.h>
 #include <Framework/Scene/Components/ThirdPersonFollowComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Reflection.h>
 
+#include <string>
 #include <string_view>
 
 namespace
@@ -48,6 +49,22 @@ namespace
         int m_count = 3;
         bool m_enabled = true;
         NS::Math::Vector3 m_offset{1.0f, 2.0f, 3.0f};
+    };
+
+    // std::string を反射するテスト用 Component
+    class FakeStringComponent : public Component
+    {
+    public:
+        FakeStringComponent() noexcept : Component(0) {}
+
+        NS_REFLECT_BEGIN(FakeStringComponent)
+        NS_REFLECT_FIELD(m_label, "Label")
+        NS_REFLECT_END()
+
+        [[nodiscard]] const std::string& Label() const noexcept { return m_label; }
+
+    private:
+        std::string m_label{"hello"};
     };
 
     // 反射宣言を持たない素の Component 派生
@@ -220,12 +237,12 @@ TEST(ReflectionTest, CharacterMovementReflectsFeelFloats)
     EXPECT_FLOAT_EQ(got, 20.0f);
 }
 
-TEST(ReflectionTest, MeshRendererReflectsBaseColor)
+TEST(ReflectionTest, MeshRendererReflectsBaseColorMeshAndMaterialRef)
 {
     NS::Scene::MeshRendererComponent renderer(nullptr, nullptr);
     const ReflectionInfo* info = renderer.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 1u);
+    EXPECT_EQ(info->fieldCount, 3u);
 
     const FieldDesc* color = FindField(info, "Base Color");
     ASSERT_NE(color, nullptr);
@@ -238,6 +255,26 @@ TEST(ReflectionTest, MeshRendererReflectsBaseColor)
     EXPECT_FLOAT_EQ(got.x, 0.2f);
     EXPECT_FLOAT_EQ(got.y, 0.3f);
     EXPECT_FLOAT_EQ(got.z, 0.4f);
+
+    const FieldDesc* mesh = FindField(info, "Mesh");
+    ASSERT_NE(mesh, nullptr);
+    EXPECT_EQ(mesh->type, FieldType::String);
+
+    std::string meshSet{"cube"};
+    mesh->set(&renderer, &meshSet);
+    std::string meshGot;
+    mesh->get(&renderer, &meshGot);
+    EXPECT_EQ(meshGot, "cube");
+
+    const FieldDesc* material = FindField(info, "Material");
+    ASSERT_NE(material, nullptr);
+    EXPECT_EQ(material->type, FieldType::String);
+
+    std::string materialSet{"block"};
+    material->set(&renderer, &materialSet);
+    std::string materialGot;
+    material->get(&renderer, &materialGot);
+    EXPECT_EQ(materialGot, "block");
 }
 
 TEST(ReflectionTest, BoxColliderHalfExtentsAccessorClampsNegative)
@@ -354,4 +391,32 @@ TEST(ReflectionTest, EditorCameraReflectsSensitivityFields)
     const ReflectionInfo* info = cam.GetReflection();
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 7u);
+}
+
+TEST(ReflectionTest, FieldTypeOfStringIsString)
+{
+    EXPECT_EQ(NS::Scene::FieldTypeOf<std::string>(), FieldType::String);
+}
+
+TEST(ReflectionTest, StringFieldGetReturnsInitial)
+{
+    FakeStringComponent comp;
+    const FieldDesc* f = FindField(comp.GetReflection(), "Label");
+    ASSERT_NE(f, nullptr);
+    EXPECT_EQ(f->type, FieldType::String);
+
+    std::string out;
+    f->get(&comp, &out);
+    EXPECT_EQ(out, "hello");
+}
+
+TEST(ReflectionTest, StringFieldSetRoundTrips)
+{
+    FakeStringComponent comp;
+    const FieldDesc* f = FindField(comp.GetReflection(), "Label");
+    ASSERT_NE(f, nullptr);
+
+    std::string in = "world";
+    f->set(&comp, &in);
+    EXPECT_EQ(comp.Label(), "world");
 }

@@ -1,14 +1,14 @@
-#include "Game/Undo/RotateCommand.h"
+#include "Editor/Undo/RotateCommand.h"
 
 #include "Game/Level/LevelData.h"
 
-namespace NS::Game::Undo
+namespace NS::Editor
 {
     namespace
     {
         std::uint8_t RotateMod4(std::uint8_t current, std::int8_t delta) noexcept
         {
-            // (current + delta) mod 4。 delta は -1 or +1 を想定するが mod 4 で wrap させる
+            // current + delta を 4 で割った余り。 delta は -1 or +1 を想定するが mod 4 で wrap させる
             int32_t r = static_cast<int32_t>(current) + delta;
             r = ((r % 4) + 4) % 4;
             return static_cast<std::uint8_t>(r);
@@ -19,7 +19,7 @@ namespace NS::Game::Undo
         : m_x(x), m_y(y), m_z(z), m_delta(delta)
     {}
 
-    void RotateCommand::Do(EditTarget& target) noexcept
+    void RotateCommand::Do(NS::Game::Level::EditTarget& target) noexcept
     {
         NS::Game::Level::LevelData& level = target.level;
         const std::size_t index = NS::Game::Level::FindGridObjectAtCell(level, m_x, m_y, m_z);
@@ -33,7 +33,7 @@ namespace NS::Game::Undo
         NS::Game::Level::SetGridRotationStep(level.objects[index], RotateMod4(step, m_delta));
     }
 
-    void RotateCommand::Undo(EditTarget& target) noexcept
+    void RotateCommand::Undo(NS::Game::Level::EditTarget& target) noexcept
     {
         if (!m_prevRotation)
             return;
@@ -44,4 +44,4 @@ namespace NS::Game::Undo
         NS::Game::Level::SetGridRotationStep(level.objects[index], *m_prevRotation);
     }
 
-} // namespace NS::Game::Undo
+} // namespace NS::Editor

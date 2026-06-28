@@ -6,7 +6,7 @@
 /// @details Application と Scene の間に位置する Layer
 /// SceneManager を所有して scene 群を駆動する
 /// 現時点では SceneManager へのパス・スルーのみだが、
-/// クロス scene の共有状態 (設定 / セーブデータ) を持つ場所になる
+/// クロス scene の共有状態として設定 / セーブデータを持つ場所になる
 
 #include "Framework/App/Layer.h"
 #include "Framework/Scene/SceneManager.h"

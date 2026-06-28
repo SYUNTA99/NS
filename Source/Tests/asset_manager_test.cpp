@@ -81,7 +81,7 @@ TEST_F(AssetManagerTest, SamePathReturnsSamePointer)
     EXPECT_EQ(texA, texB);
 }
 
-// builtin 名前鍵は同一の非 null StaticMesh を返し、 未登録名は nullptr
+// 組み込み名前鍵は同一の非 null StaticMesh を返し、 未登録名は nullptr
 TEST_F(AssetManagerTest, BuiltinReturnsSameNonNullPointer)
 {
     Window window(MakeWindowDesc("ns_am_builtin"));
@@ -99,6 +99,18 @@ TEST_F(AssetManagerTest, BuiltinReturnsSameNonNullPointer)
     EXPECT_NE(am.Builtin("pole"), nullptr);
     EXPECT_NE(am.Builtin("shadowQuad"), nullptr);
     EXPECT_EQ(am.Builtin("nonexistent"), nullptr);
+}
+
+// 読込失敗した mesh path は負キャッシュされ、 2 度目以降は再読込せず即 nullptr を返す (device 不要)
+TEST_F(AssetManagerTest, FailedMeshLoadIsNegativeCached)
+{
+    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    const std::filesystem::path missing = "__ns_am_missing_mesh__.gltf";
+
+    EXPECT_EQ(am.GetOrLoadMesh(missing), nullptr);
+    EXPECT_EQ(am.MeshCacheSize(), 1u); // 失敗を 1 件だけ負キャッシュする
+    EXPECT_EQ(am.GetOrLoadMesh(missing), nullptr);
+    EXPECT_EQ(am.MeshCacheSize(), 1u); // 2 度目は再読込せず件数が増えない
 }
 
 // Reload は path 鍵の Shader を reload-in-place するのでキャッシュのポインタが不変

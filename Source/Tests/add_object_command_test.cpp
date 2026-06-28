@@ -1,13 +1,15 @@
+#include "Editor/Undo/AddObjectCommand.h"
+#include "Game/Level/EditTarget.h"
 #include "Game/Level/LevelData.h"
-#include "Game/Undo/AddObjectCommand.h"
-#include "Game/Undo/EditTarget.h"
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <string>
+#include <utility>
 #include <vector>
 
-namespace UndoNs = NS::Game::Undo;
+namespace EditorNs = NS::Editor;
 namespace LevelNs = NS::Game::Level;
 
 namespace
@@ -27,9 +29,9 @@ TEST(AddObjectCommandTest, DoAppendsFreeObjectAndId)
     LevelNs::LevelData lv;
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
-    UndoNs::EditTarget t{lv, ids, next};
+    LevelNs::EditTarget t{lv, ids, next};
 
-    UndoNs::AddObjectCommand cmd(MakeFree(1.0f, 2.0f, 3.0f));
+    EditorNs::AddObjectCommand cmd(MakeFree(1.0f, 2.0f, 3.0f));
     cmd.Do(t);
 
     ASSERT_EQ(lv.objects.size(), 1u);
@@ -47,9 +49,9 @@ TEST(AddObjectCommandTest, UndoRemovesOnlyTheAddedObject)
     lv.objects.push_back(MakeFree(9.0f, 0.0f, 0.0f));
     std::vector<std::uint32_t> ids{99u};
     std::uint32_t next = 100;
-    UndoNs::EditTarget t{lv, ids, next};
+    LevelNs::EditTarget t{lv, ids, next};
 
-    UndoNs::AddObjectCommand cmd(MakeFree(1.0f, 1.0f, 1.0f));
+    EditorNs::AddObjectCommand cmd(MakeFree(1.0f, 1.0f, 1.0f));
     cmd.Do(t);
     ASSERT_EQ(lv.objects.size(), 2u);
 
@@ -60,14 +62,30 @@ TEST(AddObjectCommandTest, UndoRemovesOnlyTheAddedObject)
     EXPECT_FLOAT_EQ(lv.objects[0].positionX, 9.0f);
 }
 
+TEST(AddObjectCommandTest, EstimatedBytesCountsComponentHeap)
+{
+    // components を持つ object はその heap 分だけ概算が増える。 sizeof のみだと undo の cap が取りこぼす
+    LevelNs::ObjectInstance withComponents = MakeFree(0.0f, 0.0f, 0.0f);
+    LevelNs::ComponentData mesh;
+    mesh.typeName = "MeshRendererComponent";
+    mesh.fields.push_back(LevelNs::FieldValue{"Mesh", std::string("cube")});
+    withComponents.components.push_back(std::move(mesh));
+
+    EditorNs::AddObjectCommand bareCmd(MakeFree(0.0f, 0.0f, 0.0f));
+    EditorNs::AddObjectCommand richCmd(withComponents);
+
+    EXPECT_GE(bareCmd.EstimatedBytes(), sizeof(EditorNs::AddObjectCommand));
+    EXPECT_GT(richCmd.EstimatedBytes(), bareCmd.EstimatedBytes());
+}
+
 TEST(AddObjectCommandTest, RedoReusesSameIdWithoutBumpingNext)
 {
     LevelNs::LevelData lv;
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 7;
-    UndoNs::EditTarget t{lv, ids, next};
+    LevelNs::EditTarget t{lv, ids, next};
 
-    UndoNs::AddObjectCommand cmd(MakeFree(0.0f, 0.0f, 0.0f));
+    EditorNs::AddObjectCommand cmd(MakeFree(0.0f, 0.0f, 0.0f));
     cmd.Do(t); // id 7 を採番
     EXPECT_EQ(ids[0], 7u);
     EXPECT_EQ(next, 8u);

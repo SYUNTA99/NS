@@ -3,7 +3,7 @@
 /// @file Material.h
 /// @brief NS::Graphics::Material — Shader + Texture スロット + 内蔵 CB
 ///
-/// @details Shader は共有参照 (非所有)、 Material 寿命中 shader が
+/// @details Shader は非所有の共有参照で、 Material 寿命中 shader が
 /// 有効であること。 Sampler は s0 LinearWrap 固定、 複数 sampler
 /// は将来拡張。 `Bind(Renderer&)` は shader / textures / CB / sampler を一括設定する
 /// GPU バインドは渡された Renderer 経由で行い、 Material は DeviceContext を保持しない
@@ -24,17 +24,17 @@ namespace NS::Graphics
     class Mesh;
     class Buffer;
 
-    /// Material 構築パラメータ。shader 2 本は共有参照 (非所有)、Material 寿命中有効であること
+    /// Material 構築パラメータ。shader 2 本は非所有の共有参照で、Material 寿命中有効であること
     /// constantBufferSize=0 なら内部 CB は構築されず SetParams は何もしない
     struct MaterialDesc
     {
-        /// 共有 頂点 Shader (.vs)。nullptr で IsValid()=false
+        /// 拡張子 .vs の共有頂点 Shader。nullptr で IsValid()=false
         Shader* vertexShader = nullptr;
-        /// 共有 ピクセル Shader (.ps)。nullptr で IsValid()=false
+        /// 拡張子 .ps の共有ピクセル Shader。nullptr で IsValid()=false
         Shader* pixelShader = nullptr;
-        /// 内蔵 ConstantBuffer のバイト数 (alignas(16) + sizeof%16==0 必須)
+        /// 内蔵 ConstantBuffer のバイト数。alignas(16) かつ sizeof%16==0 が必須
         std::size_t constantBufferSize = 0;
-        /// ConstantBuffer Bind 先スロット (Bind 先ステージは VS + PS 固定)
+        /// ConstantBuffer の Bind 先スロット。Bind 先ステージは VS + PS 固定
         unsigned cbSlot = 1;
         /// 描画バケット判定に使うブレンド方式。Alpha / Additive で半透明バケットへ分類される
         BlendMode blend = BlendMode::Opaque;
@@ -42,12 +42,12 @@ namespace NS::Graphics
         int renderPriority = 0;
     };
 
-    /// Shader* (非所有) + Texture スロット + 内蔵 ConstantBuffer を束ねる汎用 Material
+    /// 非所有 Shader* + Texture スロット + 内蔵 ConstantBuffer を束ねる汎用 Material
     /// Sampler は s0 LinearWrap 固定。GPU バインドは Bind / SetParams に渡す Renderer 経由
     class Material : public NS::Core::NonCopyable
     {
     public:
-        /// MaterialDesc から Material を生成する。 失敗時も非 null (IsValid() で検知)
+        /// MaterialDesc から Material を生成する。 失敗時も非 null を返し IsValid() で検知する
         [[nodiscard]] static std::unique_ptr<Material> Create(const MaterialDesc& desc);
 
         ~Material();
@@ -55,7 +55,7 @@ namespace NS::Graphics
         /// Shader が非 null で内部リソース構築済なら true。fallback shader でも true
         [[nodiscard]] bool IsValid() const noexcept;
 
-        /// Shader::IsUsingFallback() への薄いラッパ (Material 独自の fallback 状態は持たない)
+        /// Shader::IsUsingFallback() への薄いラッパで Material 独自の fallback 状態は持たない
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
         /// 構築時に宣言したブレンド方式。SceneBase の bucket 分類と Draw 時の Pipeline 選択に使う
@@ -82,7 +82,7 @@ namespace NS::Graphics
         /// → PSSetSamplers(0, LinearWrap) を renderer 経由で一括実行。Mesh::Draw の前に呼ぶ
         void Bind(Renderer& renderer) noexcept;
 
-        /// 自分の Shader の VS バイトコードで mesh の InputLayout を生成する (mesh.CreateInputLayout への薄い委譲)
+        /// mesh.CreateInputLayout へ薄く委譲し、 自分の Shader の VS バイトコードで mesh の InputLayout を生成する
         /// 直接描画される mesh に対し描画前に呼ぶ。 冪等なので毎フレーム呼んでも安全
         void CreateInputLayoutFor(Mesh& mesh) noexcept;
 

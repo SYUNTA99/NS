@@ -15,7 +15,7 @@ namespace NS::Physics
         constexpr float kGridCellSize = 2.0f;
 
         // capsule が motion だけ動く間に占有する swept AABB。 grid 候補絞り込みの query box に使う
-        // 縦 capsule (axis=Y) 前提で XZ は radius、 Y は radius + halfHeight 膨張させる
+        // axis=Y の縦 capsule 前提で XZ は radius、 Y は radius + halfHeight 膨張させる
         [[nodiscard]] NS::Math::AABB CapsuleSweptAabb(const Capsule& cap, const NS::Math::Vector3& motion) noexcept
         {
             const float rx = cap.radius;
@@ -104,8 +104,8 @@ namespace NS::Physics
         {
             const NS::Math::AABB queryBox = CapsuleSweptAabb(cap, motion);
             m_grid.Query(queryBox, m_candidates);
-            for (const std::uint32_t idx : m_candidates)
-                considerAabb(m_aabbs[idx]);
+            for (const std::uint32_t index : m_candidates)
+                considerAabb(m_aabbs[index]);
         }
         else
         {

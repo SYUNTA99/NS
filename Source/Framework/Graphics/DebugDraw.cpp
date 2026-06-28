@@ -28,7 +28,7 @@ namespace
         NS::Math::Vector3 position;
         NS::Math::Color color;
     };
-    // POSITION(12) + COLOR(16) = 28 byte。 InputLayout の COLOR offset 12 はこの並びに依存する
+    // POSITION 12 byte + COLOR 16 byte = 28 byte。 InputLayout の COLOR offset 12 はこの並びに依存する
     static_assert(sizeof(DebugVertex) == 28, "DebugVertex は POSITION(12) + COLOR(16) の 28 byte 前提");
 
     std::vector<DebugVertex>& Storage() noexcept
@@ -107,7 +107,7 @@ namespace
         return true;
     }
 
-    /// 1 frame で 2 vertex 追加。容量超過時は最古の 1 line (2 vertex) を drop
+    /// 1 frame で 2 vertex 追加。容量超過時は最古の 1 line ぶんの 2 vertex を drop
     void PushLine(const NS::Math::Vector3& a, const NS::Math::Vector3& b, const NS::Math::Color& color) noexcept
     {
         auto& v = Storage();
@@ -175,7 +175,7 @@ namespace NS::Graphics::DebugDraw
         const NS::Math::Vector3 ey = axisY * halfExtents.y;
         const NS::Math::Vector3 ez = axisZ * halfExtents.z;
 
-        // 8 隅 (添字は各 axis 方向の符号 -/+)
+        // 8 隅。 添字は各 axis 方向の符号 -/+
         const NS::Math::Vector3 c000 = center - ex - ey - ez;
         const NS::Math::Vector3 c100 = center + ex - ey - ez;
         const NS::Math::Vector3 c110 = center + ex + ey - ez;
@@ -185,13 +185,13 @@ namespace NS::Graphics::DebugDraw
         const NS::Math::Vector3 c111 = center + ex + ey + ez;
         const NS::Math::Vector3 c011 = center - ex + ey + ez;
 
-        // -Z 面 4 line
+        // -Z 面の線 4 本
         PushLine(c000, c100, color);
         PushLine(c100, c110, color);
         PushLine(c110, c010, color);
         PushLine(c010, c000, color);
 
-        // +Z 面 4 line
+        // +Z 面の線 4 本
         PushLine(c001, c101, color);
         PushLine(c101, c111, color);
         PushLine(c111, c011, color);
@@ -209,11 +209,11 @@ namespace NS::Graphics::DebugDraw
                  float radius,
                  const NS::Math::Color& color) noexcept
     {
-        // axis は Capsule 中心から top までの方向ベクトル (長さ = halfHeight)
+        // axis は Capsule 中心から top までの方向ベクトルで長さは halfHeight
         const NS::Math::Vector3 top = base + axis;
         const NS::Math::Vector3 bottom = base - axis;
 
-        // axis に垂直な 2 方向 (perpA, perpB) を計算
+        // axis に垂直な 2 方向 perpA と perpB を計算
         NS::Math::Vector3 axisN = axis;
         const float axisLen = std::sqrt(axisN.x * axisN.x + axisN.y * axisN.y + axisN.z * axisN.z);
         if (axisLen > 1e-6f)
@@ -238,7 +238,7 @@ namespace NS::Graphics::DebugDraw
                                       axisN.z * perpA.x - axisN.x * perpA.z,
                                       axisN.x * perpA.y - axisN.y * perpA.x};
 
-        // 上下 2 つの大円 (axis 周り、半径=radius)、各 12 分割
+        // axis 周り・半径 radius の上下 2 つの大円を各 12 分割
         const float twoPi = 6.2831853f;
         NS::Math::Vector3 prevTop{}, prevBot{};
         for (int i = 0; i <= kCapsuleSegments; ++i)
@@ -259,7 +259,7 @@ namespace NS::Graphics::DebugDraw
             prevBot = ptBot;
         }
 
-        // Cylinder 部の 4 縦線 (perpA / -perpA / perpB / -perpB 方向)
+        // Cylinder 部の 4 縦線で perpA / -perpA / perpB / -perpB 方向
         const NS::Math::Vector3 dirs[4] = {{perpA.x * radius, perpA.y * radius, perpA.z * radius},
                                            {-perpA.x * radius, -perpA.y * radius, -perpA.z * radius},
                                            {perpB.x * radius, perpB.y * radius, perpB.z * radius},

@@ -37,7 +37,7 @@ namespace NS::App
         if (s_instance != nullptr)
         {
             // assert は Release で消えるため、本制約は Release ビルドでも fatal で
-            // 落とす (単一保持を Shipping でも保証)
+            // 落とし、単一保持を Shipping でも保証する
             NS_LOG_FATAL(::NS::Core::LogCat::App, "Application 多重起動禁止");
         }
         s_instance = this;
@@ -69,19 +69,19 @@ namespace NS::App
         m_input = std::make_unique<NS::Platform::Input>();
         m_window->AttachInput(m_input.get());
 
-        // リサイズ購読は Renderer が ctor で自己登録済 (swapchain 再構築はレンダラの責務)
+        // リサイズ購読は Renderer がコンストラクタで自己登録済。swapchain 再構築はレンダラの責務
 
         // WM_CLOSE 再投擲による PollMessages 無限ループを防ぐためフラグ経由でメインループに委譲
         m_window->SetCloseCallback([this]() { m_quitRequested = true; });
 
-        // ImGui / 編集 UI の駆動は EditorLayer (overlay) が握る。App は UI を知らない (出荷で UI 層を外せる)
+        // ImGui / 編集 UI の駆動は overlay の EditorLayer が握る。App は UI を知らず出荷で UI 層を外せる
 
         m_valid = true;
     }
 
     Application::~Application()
     {
-        // Run() を経由しないケースでも dangling キャプチャを防ぐため Shutdown() を呼ぶ。冪等
+        // Run() を経由しないケースでも無効参照のキャプチャを防ぐため Shutdown() を呼ぶ。冪等
         Shutdown();
         if (s_instance == this)
             s_instance = nullptr;
@@ -147,8 +147,8 @@ namespace NS::App
         DrainPendingQuit();
         NS::Core::FrameTimer::Reset();
 
-        // Renderer は ctor で構築済。各 scene の OnAttach/OnStart が builtin や共有 material を引く前に用意する
-        // 共有 material は builtin の shader/texture を借りるため RegisterBuiltins の後に組む
+        // Renderer はコンストラクタで構築済。各 scene の OnAttach/OnStart が組み込みや共有 material を引く前に用意する
+        // 共有 material は組み込みの shader/texture を借りるため RegisterBuiltins の後に組む
         m_assets = std::make_unique<NS::Scene::AssetManager>(NS::Core::FileSystem::ContentRoot());
         m_assets->RegisterBuiltins();
         m_assets->RegisterSharedMaterials();
@@ -222,12 +222,12 @@ namespace NS::App
             return;
         m_shutdownCalled = true;
 
-        // Layer の OnDetach は逆順 (top → bottom) で呼ぶ
+        // Layer の OnDetach は top → bottom の逆順で呼ぶ
         for (auto it = m_layers.rbegin(); it != m_layers.rend(); ++it)
             (*it)->OnDetach();
 
-        // 破棄前に自分が登録したコールバックを解除し、Window 側の発火で dangling ポインタを踏むのを防ぐ
-        // リサイズ購読は Renderer 自身が dtor で解除する
+        // 破棄前に自分が登録したコールバックを解除し、Window 側の発火で無効ポインタを踏むのを防ぐ
+        // リサイズ購読は Renderer 自身がデストラクタで解除する
         if (m_window)
         {
             m_window->SetCloseCallback(nullptr);

@@ -118,7 +118,7 @@ namespace NS::Math
         return !(a == b);
     }
 
-    /// アスペクト比 (width / height) を float で返す
+    /// width を height で割ったアスペクト比を float で返す
     /// @pre s.height != 0
     [[nodiscard]] constexpr float AspectRatio(Size2D s) noexcept
     {

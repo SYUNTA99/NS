@@ -1,5 +1,6 @@
 #include "Editor/CategoryPalette.h"
 
+#include "Editor/PaletteTemplates.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Framework/UI/Panel.h"
@@ -10,22 +11,34 @@
 
 namespace NS::Editor
 {
+    CategoryPalette::CategoryPalette() noexcept
+    {
+        RefreshCurrentTemplate();
+    }
+
+    void CategoryPalette::RefreshCurrentTemplate() noexcept
+    {
+        m_current = PaletteTemplateSlots()[m_activeSlot];
+    }
+
     void CategoryPalette::SetActiveSlot(std::size_t slot) noexcept
     {
         if (slot < kSlotCount)
+        {
             m_activeSlot = slot;
+            RefreshCurrentTemplate();
+        }
     }
 
-    std::uint16_t CategoryPalette::SlotBlockId(std::size_t slot) const noexcept
+    float CategoryPalette::CurrentSlopeAngleDegrees() const noexcept
     {
-        return slot < kSlotCount ? m_slots[slot] : 0;
+        // cube ブラシは wedge preview を持たない
+        return -1.0f;
     }
 
     void CategoryPalette::CycleActiveVariant() noexcept
     {
-        const std::uint16_t id = m_slots[m_activeSlot];
-        if (NS::Game::Blocks::IsSlopeBlock(id))
-            m_slots[m_activeSlot] = NS::Game::Blocks::NextSlopeBlock(id);
+        // cube / spawn には variant が無いので再選択しても何もしない
     }
 
     void CategoryPalette::TickInput(NS::Platform::Input* input, NS::UI::ImGuiContext* imgui) noexcept
@@ -53,20 +66,14 @@ namespace NS::Editor
             const auto code =
                 static_cast<NS::Platform::Key>(static_cast<int>(NS::Platform::Key::Num1) + static_cast<int>(i));
             if (kb.IsPressed(code))
-            {
-                // 既に選択中の slot を再押し → variant 循環 (slope のみ実効)、 別 slot → 選択切替
-                if (i == m_activeSlot)
-                    CycleActiveVariant();
-                else
-                    SetActiveSlot(i);
-            }
+                SetActiveSlot(i);
         }
     }
 
     void CategoryPalette::Render() noexcept
     {
 #if NS_EDITOR_ENABLED
-        // 画面上部中央に default 配置。 ユーザーは初回ドラッグで移動可能 (ImGuiCond_FirstUseEver)
+        // 画面上部中央に default 配置。 ユーザーは初回ドラッグで移動できる
         if (ImGuiViewport* vp = ImGui::GetMainViewport())
         {
             ImGui::SetNextWindowPos(
@@ -85,8 +92,7 @@ namespace NS::Editor
 
             ImGui::PushID(static_cast<int>(i));
 
-            const std::uint16_t blockId = m_slots[i];
-            const char* label = (blockId != 0) ? NS::Game::Blocks::GetDisplayName(blockId) : "-";
+            const char* label = PaletteTemplateSlots()[i].name;
             const bool isActive = (i == m_activeSlot);
 
             // active slot は色を変えて視覚的に区別する
@@ -94,13 +100,7 @@ namespace NS::Editor
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.50f, 0.80f, 1.0f));
 
             if (ImGui::Button(label, ImVec2(64.0f, 32.0f)))
-            {
-                // active な slope スロットを再クリック → 角度を循環、 別スロット → 選択切替
-                if (isActive)
-                    CycleActiveVariant();
-                else
-                    SetActiveSlot(i);
-            }
+                SetActiveSlot(i);
 
             if (isActive)
                 ImGui::PopStyleColor();

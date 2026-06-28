@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file LevelEditorController.h
-/// @brief LevelPlayScene を編集する開発用コントローラ (Debug / Development 限定)
+/// @brief LevelPlayScene を編集する開発用コントローラ。Debug / Development 限定
 ///
 /// @details scene 自身は「編集されている」ことを知らない。 本クラスが LevelPlayScene の friend として
-/// 内部 (runtime オブジェクト群 / camera brain / play 状態) を操作し、 EditorMode (cursor / palette / undo) ・
+/// runtime オブジェクト群 / camera brain / play 状態といった内部を操作し、 cursor / palette / undo の EditorMode ・
 /// ギズモ変形・free-fly カメラ・編集 ↔ プレイのモード切替を実現する。 EditorLayer が所有し、
 /// Setup / Tick / Render / Teardown を駆動する。 出荷 build には本クラスも EditorLayer も含めない
 
@@ -12,14 +12,16 @@
 #include "Editor/GizmoEditor.h"
 #include "Framework/Graphics/RenderSettings.h"
 #include "Framework/Math/Math.h"
+#include "Game/Level/EditTarget.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
-#include "Game/Undo/EditTarget.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <optional>
+#include <string_view>
 #include <vector>
 
 namespace NS::Scene
@@ -50,11 +52,11 @@ public:
     LevelEditorController& operator=(LevelEditorController&&) = delete;
 
     /// scene の OnStart 完了後に呼ぶ。 free-fly カメラ / EditorMode / ギズモを立ち上げ編集モードへ入る
-    /// imgui は EditorLayer 所有の context。EditorMode / ギズモの入力ゲートへ橋渡しする (非所有)
+    /// imgui は EditorLayer 所有の context。EditorMode / ギズモの入力ゲートへ非所有で橋渡しする
     void Setup(NS::UI::ImGuiContext* imgui);
     /// fixed step 更新。 編集中は free-fly カメラ / ギズモ / EditorMode を回す。 プレイ中はクリア監視のみ
     void Tick();
-    /// render フレームの上乗せ描画 (ギズモ / palette / 編集ビジュアル) と debug provenance 退避
+    /// ギズモ / palette / 編集ビジュアルといった render フレームの上乗せ描画と debug provenance 退避
     void Render();
     /// scene 破棄の前に呼ぶ。 ギズモ選択解除と free-fly カメラの後始末
     void Teardown();
@@ -79,7 +81,7 @@ public:
     /// panel 利便のための pass-through。 一時的な PlayState
     [[nodiscard]] NS::Game::Level::PlayState& Play() noexcept;
 
-    /// Object (ギズモ変形) ツールが有効か。 false は Build (グリッド設置)
+    /// ギズモ変形の Object ツールが有効か。 false はグリッド設置の Build
     [[nodiscard]] bool ObjectToolActive() const noexcept { return m_editorToolMode == EditorToolMode::Object; }
     /// 編集ツールを Build / Object 切替える。 Build へ戻す時はギズモ選択を解除する
     void SetObjectToolActive(bool active) noexcept;
@@ -95,20 +97,20 @@ public:
     [[nodiscard]] bool SelectedIsGridAligned() const noexcept;
     /// Inspector 表示用に選択中 ObjectInstance のコピーを返す。 未選択は既定値
     [[nodiscard]] NS::Game::Level::ObjectInstance SelectedObjectSnapshot() const noexcept;
-    /// 選択中の自由オブジェクトの位置を設定する (gridAligned / 非選択は no-op)
+    /// 選択中の自由オブジェクトの位置を設定する。 gridAligned / 非選択時は何もしない
     void SetSelectedFreePosition(NS::Math::Vector3 position) noexcept;
-    /// 選択中の自由オブジェクトの回転を設定する (gridAligned / 非選択は no-op)
+    /// 選択中の自由オブジェクトの回転を設定する。 gridAligned / 非選択時は何もしない
     void SetSelectedFreeRotation(NS::Math::Quaternion rotation) noexcept;
-    /// 選択中の自由オブジェクトのスケールを設定する。 最小正値に clamp する (gridAligned / 非選択は no-op)
+    /// 選択中の自由オブジェクトのスケールを設定する。 最小正値に clamp する。 gridAligned / 非選択時は何もしない
     void SetSelectedFreeScale(NS::Math::Vector3 scale) noexcept;
-    /// 選択中自由オブジェクトの変形編集を開始し baseline を退避する (gizmo ドラッグ / パネル入力の開始で呼ぶ)
+    /// 選択中自由オブジェクトの変形編集を開始し baseline を退避する。 gizmo ドラッグ / パネル入力の開始で呼ぶ
     void BeginTransformEdit() noexcept;
-    /// 進行中の変形編集を 1 つの undo 単位として確定する (無変化なら積まない)
+    /// 進行中の変形編集を 1 つの undo 単位として確定する。 無変化なら積まない
     void CommitTransformEdit() noexcept;
-    /// 選択中の grid solid ブロックを自由オブジェクトへ昇格する (grid solid 以外は no-op)
+    /// 選択中の grid solid ブロックを自由オブジェクトへ昇格する。 grid solid 以外は何もしない
     void PromoteSelectedToFree() noexcept;
 
-    /// 編集視点の中心あたりに新しい自由オブジェクトを 1 個追加して選択する (Undo 対応)
+    /// 編集視点の中心あたりに新しい自由オブジェクトを 1 個追加して選択する。 Undo 対応
     void AddObject();
 
     /// 選択中の配置物に対応する runtime GameObject。 未選択 / 未構築は nullptr
@@ -116,18 +118,32 @@ public:
     [[nodiscard]] NS::Scene::GameObject* SelectedObjectGameObject() noexcept;
     /// Player の runtime GameObject。 未構築は nullptr。 操作感のライブ調整 Inspector に使う
     [[nodiscard]] NS::Scene::GameObject* PlayerObject() noexcept;
-    /// 選択中の自由オブジェクトの runtime collider half-extents を ObjectInstance へ書き戻す (保存に乗せる)
-    /// Inspector で collider を反射編集した後に呼ぶ。 grid / 非選択は no-op
-    void SyncSelectedObjectColliderFromComponent() noexcept;
+    /// 選択中の自由オブジェクトの runtime collider を components データへ書き戻し、 保存と rebuild に乗せる
+    /// Inspector で collider を反射編集した後に呼ぶ。 grid / 非選択時は何もしない
+    void SyncSelectedObjectColliderFromComponent();
+
+    /// 選択 object の末尾へ型名のみのコンポーネントを足す。 Undo 対応、 非選択時は何もしない
+    void AddComponentToSelected(std::string_view typeName);
+    /// 選択 object の components から添字 1 つを取り除く。 Undo 対応、 範囲外 / 非選択時は何もしない
+    void RemoveComponentFromSelected(std::size_t componentIndex);
+    /// 選択 object を全コンポーネント込みで複製し複製を選択する。 Undo 対応、 非選択時は何もしない
+    void DuplicateSelectedObject();
+    /// 選択 object の指定添字コンポーネントを今のフィールド値ごと clipboard へ写す。 範囲外 / 非選択時は何もしない
+    void CopyComponentToClipboard(std::size_t componentIndex);
+    /// clipboard のコンポーネントを選択 object の末尾へ貼る。 Undo 対応、 clipboard 空 / 非選択時は何もしない
+    /// 貼り付けても clipboard は残るので、 同じコンポを複数の object へ続けて貼れる
+    void PasteClipboardComponentToSelected();
+    /// clipboard にコンポーネントを保持しているか
+    [[nodiscard]] bool HasClipboardComponent() const noexcept { return m_componentClipboard.has_value(); }
 
     /// CameraBrain を載せた GameObject。 未構築は nullptr。 Camera 選択時の Inspector 反射編集対象
     [[nodiscard]] NS::Scene::GameObject* CameraBrainObject() noexcept;
-    /// 現在 active な仮想カメラ (編集中=free-fly / プレイ中=follow) の GameObject。 無ければ nullptr
+    /// 編集中=free-fly / プレイ中=follow の現在 active な仮想カメラの GameObject。 無ければ nullptr
     [[nodiscard]] NS::Scene::GameObject* ActiveVirtualCameraObject() noexcept;
 
-    /// Hierarchy から Player を選択する。 配置物 / カメラ / ギズモ選択は解除する (Player は gizmo 対象外)
+    /// Hierarchy から Player を選択する。 配置物 / カメラ / ギズモ選択は解除する。 Player は gizmo 対象外
     void SelectPlayer() noexcept;
-    /// Hierarchy から Camera (Brain + active vcam) を選択する。 配置物 / カメラ / ギズモ選択は解除する
+    /// Hierarchy から Brain + active vcam の Camera を選択する。 配置物 / カメラ / ギズモ選択は解除する
     void SelectCamera() noexcept;
     /// Inspector / Hierarchy が Player 選択中か
     [[nodiscard]] bool IsPlayerSelected() const noexcept { return m_specialSelection == SpecialSelection::Player; }
@@ -142,15 +158,15 @@ public:
     [[nodiscard]] bool HasCameraSelection() const noexcept;
     /// 選択中 area camera の runtime PlacedVirtualCamera。 未選択 / 範囲外は nullptr。 Inspector の反射編集対象
     [[nodiscard]] NS::Scene::PlacedVirtualCamera* SelectedAreaCamera() noexcept;
-    /// 反射編集された PlacedVirtualCamera の値を選択中 CameraVolume へ書き戻す (保存に乗せる、 非選択は no-op)
+    /// 反射編集された PlacedVirtualCamera の値を選択中 CameraVolume へ書き戻し、 保存に乗せる。 非選択時は何もしない
     /// トリガ半径は最小正値に clamp し component 側へも反映する
     void SyncSelectedCameraVolumeFromComponent() noexcept;
     /// 編集視点の中心あたりに新しい area camera を追加して選択する
     void AddCameraVolume() noexcept;
-    /// 選択中の area camera を削除する (非選択は no-op)
+    /// 選択中の area camera を削除する。 非選択時は何もしない
     void DeleteSelectedCamera() noexcept;
 
-    /// Object モードかつギズモで何か選択中なら true (material 適用先がある状態)
+    /// Object モードかつギズモで何か選択中なら true。 material 適用先がある状態
     [[nodiscard]] bool HasGizmoSelection() const noexcept
     {
         return ObjectToolActive() && m_gizmo.Selected() != nullptr;
@@ -163,12 +179,12 @@ public:
     {
         return m_debugResolvedSettings;
     }
-    /// 最後に構築した scene override。 出所逆算 (default / scene) の入力に使う
+    /// 最後に構築した scene override。 default / scene の出所逆算の入力に使う
     [[nodiscard]] const NS::Graphics::RenderSettingsOverride& DebugSceneOverride() const noexcept
     {
         return m_debugSceneOverride;
     }
-    /// 代表 object override (Player の MeshRenderer)。 出所逆算 (object) の入力
+    /// Player の MeshRenderer である代表 object override。 object の出所逆算の入力
     [[nodiscard]] const NS::Graphics::RenderSettingsOverride& DebugPlayerObjectOverride() const noexcept
     {
         return m_debugPlayerObjectOverride;
@@ -181,35 +197,35 @@ private:
     /// edit 中、 area camera のトリガ AABB とカメラ位置 → 注視点を DebugDraw で可視化する
     void RenderAreaCameraGizmos() noexcept;
 
-    /// edit 中、 各オブジェクトの当たり形状 (自由配置=OBB / grid solid=AABB) を DebugDraw で可視化する
+    /// edit 中、 各オブジェクトの当たり形状を DebugDraw で可視化する。 自由配置=OBB / grid solid=AABB
     void RenderColliderWireframes() noexcept;
 
-    /// ギズモの選択候補 (自由オブジェクト + grid solid ブロック) を連結し直して注入する
+    /// 自由オブジェクト + grid solid ブロックのギズモ選択候補を連結し直して注入する
     void RefreshGizmoSelectables();
 
     /// 選択 id から現在の runtime 実体を解決し、 派生添字の更新と gizmo への貼り直しを行う
     /// rebuild を跨いでも生ポインタを持ち越さない fail-safe の要。 ドラッグ中は gizmo 貼り直しを抑止する
     void ResolveSelectionFromId() noexcept;
 
-    /// objects 添字の ObjectInstance から gridAligned ビットを落として自由オブジェクト化する (grid solid 掴み / Promote
-    /// が渡す)
+    /// objects 添字の ObjectInstance から gridAligned ビットを落として自由オブジェクト化する。 grid solid 掴み /
+    /// Promote が渡す
     void PromoteGridBlockToFree(std::size_t objectIndex);
 
     /// ギズモで変形した自由オブジェクトの Transform を対応する ObjectInstance へ書き戻す
     void SyncFreeObjectTransforms();
 
-    /// ビューポートでギズモ選択が変わった時だけ、 選択 id (と派生の添字) を追従させる
+    /// ビューポートでギズモ選択が変わった時だけ、 選択 id と派生の添字を追従させる
     void CaptureSelectionFromGizmo() noexcept;
 
     /// scene の level + 識別子ストアから編集対象 view を組む
-    [[nodiscard]] NS::Game::Undo::EditTarget SceneEditTarget() noexcept;
+    [[nodiscard]] NS::Game::Level::EditTarget SceneEditTarget() noexcept;
 
     /// 識別子でギズモ選択を貼り直す。 対象が消えていれば選択解除する
     void ReselectFreeObjectById(std::uint32_t id) noexcept;
 
     LevelPlayScene* m_scene = nullptr;
 
-    // EditorLayer 所有の ImGui context (非所有)。EditorMode / ギズモへ渡し、 keyboard キャプチャ判定にも使う
+    // EditorLayer が所有する ImGui context を非所有で持つ。EditorMode / ギズモへ渡し、 keyboard キャプチャ判定にも使う
     NS::UI::ImGuiContext* m_imgui = nullptr;
 
     std::unique_ptr<EditorCameraRig> m_editorCameraRig;
@@ -231,7 +247,7 @@ private:
     std::vector<NS::Scene::GameObject*> m_selectablePtrs;
     std::vector<NS::Math::Vector3> m_selectableHalfExtents;
 
-    // 配置物でもエリアカメラでもない単一物の選択 (Player / Camera)。 添字選択とは排他
+    // Player / Camera のような配置物でもエリアカメラでもない単一物の選択。 添字選択とは排他
     enum class SpecialSelection : std::uint8_t
     {
         None,
@@ -240,19 +256,22 @@ private:
     };
     SpecialSelection m_specialSelection = SpecialSelection::None;
 
-    // 選択の真実は id (安定セッション識別子)。 rebuild / delete / undo を跨いでも生ポインタや添字に依存しない
-    std::uint32_t m_selectedObjectId = NS::Game::Undo::kInvalidObjectId;
-    // id から毎フレーム解決する派生の添字 (m_level.objects 用、 ズレても crash しない安定 vector を指す)
+    // 選択の真実は安定セッション識別子の id。 rebuild / delete / undo を跨いでも生ポインタや添字に依存しない
+    std::uint32_t m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
+    // id から毎フレーム解決する派生の添字。 m_level.objects 用で、 ズレても crash しない安定 vector を指す
     std::size_t m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
     // 選択中の area camera の cameraVolumes 添字。 オブジェクト選択とは排他
     std::size_t m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
     // ビューポート由来のギズモ選択変化だけを index へ反映するための前フレーム値
     NS::Scene::Transform* m_lastGizmoSelected = nullptr;
 
-    // 変形編集 (ギズモドラッグ / Inspector パネル) を 1 undo 単位へ束ねる状態
+    // コンポ単位 copy/paste の退避先。 型名 + 反射値を 1 つ保持する
+    std::optional<NS::Game::Level::ComponentData> m_componentClipboard;
+
+    // ギズモドラッグ / Inspector パネルの変形編集を 1 undo 単位へ束ねる状態
     bool m_gizmoWasDragging = false;
     bool m_transformEditing = false;
-    std::uint32_t m_editBaselineId = NS::Game::Undo::kInvalidObjectId;
+    std::uint32_t m_editBaselineId = NS::Game::Level::kInvalidObjectId;
     NS::Game::Level::ObjectInstance m_editBaseline{};
 
     // Debug provenance パネルの読み出し元。 書き込みは Render で毎フレーム行う

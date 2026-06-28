@@ -3,22 +3,22 @@
 /// @file RotateCommand.h
 /// @brief 指定 cell の rotation を 90° 単位で増減する Command。 4 回 Do で 1 周
 
-#include "Game/Undo/ICommand.h"
+#include "Editor/Undo/ICommand.h"
 
 #include <cstdint>
 #include <optional>
 
-namespace NS::Game::Undo
+namespace NS::Editor
 {
 
     class RotateCommand final : public ICommand
     {
     public:
-        /// `delta` は ±1 (90° 刻み)。 結果の rotation は mod 4
+        /// `delta` は 90° 刻みの ±1。 結果の rotation は mod 4
         RotateCommand(std::int16_t x, std::int16_t y, std::int16_t z, std::int8_t delta) noexcept;
 
-        void Do(EditTarget& target) noexcept override;
-        void Undo(EditTarget& target) noexcept override;
+        void Do(NS::Game::Level::EditTarget& target) noexcept override;
+        void Undo(NS::Game::Level::EditTarget& target) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override { return sizeof(RotateCommand); }
 
@@ -30,4 +30,4 @@ namespace NS::Game::Undo
         std::optional<std::uint8_t> m_prevRotation;
     };
 
-} // namespace NS::Game::Undo
+} // namespace NS::Editor

@@ -3,13 +3,13 @@
 /// @file AddObjectCommand.h
 /// @brief 自由配置オブジェクトを 1 個追加する Command。 Undo で同じ id の要素を削除する
 
+#include "Editor/Undo/ICommand.h"
 #include "Game/Level/LevelData.h"
-#include "Game/Undo/ICommand.h"
 
 #include <cstdint>
 #include <optional>
 
-namespace NS::Game::Undo
+namespace NS::Editor
 {
 
     /// 非 gridAligned な配置物を objects 末尾へ追加する。 grid block と違い cell を持たないため
@@ -19,14 +19,17 @@ namespace NS::Game::Undo
     public:
         explicit AddObjectCommand(const NS::Game::Level::ObjectInstance& object) noexcept;
 
-        void Do(EditTarget& target) noexcept override;
-        void Undo(EditTarget& target) noexcept override;
+        void Do(NS::Game::Level::EditTarget& target) noexcept override;
+        void Undo(NS::Game::Level::EditTarget& target) noexcept override;
 
-        [[nodiscard]] std::size_t EstimatedBytes() const noexcept override { return sizeof(AddObjectCommand); }
+        [[nodiscard]] std::size_t EstimatedBytes() const noexcept override
+        {
+            return sizeof(AddObjectCommand) + NS::Game::Level::EstimatedHeapBytes(m_object);
+        }
 
     private:
         NS::Game::Level::ObjectInstance m_object;
         std::optional<std::uint32_t> m_assignedId; // append 時の識別子。 redo で再利用し参照を壊さない
     };
 
-} // namespace NS::Game::Undo
+} // namespace NS::Editor

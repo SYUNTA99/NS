@@ -5,7 +5,7 @@
 ///        Player 移動 Component。`NS::Physics::CharacterController` を value
 ///        member として内包し、毎 OnUpdate で desired velocity と dt を渡して結果を Root に適用する
 ///
-/// gameplay 値 (gravity / jump など) はここに保持し、CharacterController には数値計算のみを任せる
+/// gravity / jump など gameplay 値はここに保持し、CharacterController には数値計算のみを任せる
 /// 責任分担。determinism 制約: OnUpdate(dt) で渡される fixed dt のみ使用、`NS::Core::FrameTimer::DeltaSeconds()`
 /// 不可
 
@@ -19,7 +19,7 @@ namespace NS::Scene
 {
     class PoleComponent;
 
-    /// 掴まり中 (ClimbingPole / LedgeHanging / LedgeMantling) は CharacterController を bypass して position
+    /// ClimbingPole / LedgeHanging / LedgeMantling の掴まり中は CharacterController を bypass して position
     /// を直更新する
     enum class MovementState
     {
@@ -40,13 +40,13 @@ namespace NS::Scene
 
         void SetDesiredMove(const NS::Math::Vector3& worldDir, float speedScale01) noexcept;
 
-        /// 掴まり中の生ローカル入力 (各 -1..1)。SetDesiredMove と別チャンネル、前=登る マップ用
+        /// 掴まり中の生ローカル入力で各成分は -1..1。SetDesiredMove と別チャンネル、前=登る マップ用
         void SetClimbMove(float localRight, float localForward) noexcept;
 
         void SetJumpPressed() noexcept;
         void SetJumpHeld(bool held) noexcept;
 
-        /// pole 群を span で注入する。span のみ保存し、要素の寿命は呼出側 (LevelPlayScene) が保証する
+        /// pole 群を span で注入する。span のみ保存し、要素の寿命は呼出側の LevelPlayScene が保証する
         void SetClimbables(std::span<PoleComponent* const> poles) noexcept;
 
         /// 衝突 query 元の physics world を非所有で借用する。 非 null なら衝突計算をこの world へ委ねる

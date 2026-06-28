@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file PoleComponent.h
-/// @brief ポール (cylinder trigger) Component
+/// @brief cylinder を trigger とするポール Component
 ///
-/// @details Owner の root transform を基準に axis (cylinder の上下端) を返す
+/// @details Owner の root transform を基準に cylinder の上下端である axis を返す
 /// Player は axis に沿って Y 移動し、 horizontal stick で軸まわり回転、
 /// jump で離脱する。 Player の state machine が AxisStart/AxisEnd の補間と
 /// ContainsPoint の判定を回して default CharacterController を bypass する
@@ -18,16 +18,16 @@ namespace NS::Scene
     class PoleComponent : public Component
     {
     public:
-        /// @param radius   ポール半径 (m)。 default 0.15
-        /// @param height   ポール全長 (m)。 default 2.0。 owner 中心から上下に半分ずつ伸びる
+        /// @param radius   ポール半径をメートルで表す。 default 0.15
+        /// @param height   ポール全長をメートルで表す。 default 2.0。 owner 中心から上下に半分ずつ伸びる
         PoleComponent(float radius, float height) noexcept;
 
         [[nodiscard]] float Radius() const noexcept { return m_radius; }
         [[nodiscard]] float Height() const noexcept { return m_height; }
 
-        /// world 空間でのポール下端 (Y 方向に -height/2 オフセット)
+        /// world 空間でのポール下端。 Y 方向に -height/2 オフセットした位置
         [[nodiscard]] NS::Math::Vector3 AxisStart() const noexcept;
-        /// world 空間でのポール上端 (Y 方向に +height/2 オフセット)
+        /// world 空間でのポール上端。 Y 方向に +height/2 オフセットした位置
         [[nodiscard]] NS::Math::Vector3 AxisEnd() const noexcept;
 
         /// XZ 距離が radius 以下かつ Y が AxisStart..AxisEnd 内なら true

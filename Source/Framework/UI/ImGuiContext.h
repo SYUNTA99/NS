@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file ImGuiContext.h
-/// @brief NS::UI::ImGuiContext — Dear ImGui (Win32 + DX11 backend) ライフサイクル管理
+/// @brief NS::UI::ImGuiContext — Win32 + DX11 backend の Dear ImGui ライフサイクル管理
 ///
-/// @details UI 層は GameRelease では丸ごとビルドされない (premake kind None)。Debug / Development /
+/// @details UI 層は GameRelease では premake kind None で丸ごとビルドされない。Debug / Development /
 /// GameDebug でのみ実 ImGui を初期化する。出荷から editor を物理排除するため Framework は UI へ依存せず、
 /// EditorLayer が本 context を単一所有して NewFrame / Render を駆動する
 /// 公開ヘッダから `<imgui.h>` / `<imgui_impl_*.h>` を露出させない pImpl 標準形
@@ -26,7 +26,7 @@ namespace NS::Graphics
 namespace NS::UI
 {
 
-    /// Dear ImGui (Win32 + DX11 backend) ライフサイクル管理。単一インスタンス前提 (copy/move 禁止)
+    /// Win32 + DX11 backend の Dear ImGui ライフサイクル管理。copy/move 禁止の単一インスタンス前提
     class ImGuiContext
     {
     public:
@@ -41,10 +41,10 @@ namespace NS::UI
         ImGuiContext(ImGuiContext&&) = delete;
         ImGuiContext& operator=(ImGuiContext&&) = delete;
 
-        /// 初期化成功なら true。 stub mode (GameRelease) では常に false
+        /// 初期化成功なら true。 GameRelease の stub mode では常に false
         [[nodiscard]] bool IsValid() const noexcept;
 
-        /// 実機能が無効化されている (stub or 初期化失敗) と true
+        /// stub または初期化失敗で実機能が無効化されていると true
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
         /// `Renderer::BeginFrame()` 直後に呼ぶ。NewFrame 3 関数を順に発火する

@@ -78,7 +78,7 @@ namespace NS::Scene
 
     void GameObject::OnEndPlay()
     {
-        // 逆順で OnEndPlay (後から register したもの先に廃棄)
+        // 逆順で OnEndPlay する。 後から登録したものを先に廃棄する
         for (auto it = m_components.rbegin(); it != m_components.rend(); ++it)
         {
             Component* comp = *it;

@@ -21,7 +21,7 @@ Game::~Game()
 
 void Game::OnAttach()
 {
-    // scene は出荷 / 開発とも LevelPlayScene の 1 種類だけ。 編集機能は EditorLayer (overlay) が乗せる
+    // scene は出荷 / 開発とも LevelPlayScene の 1 種類だけ。 編集機能は overlay の EditorLayer が乗せる
     m_scenes.LoadScene(std::make_unique<LevelPlayScene>());
 }
 
@@ -34,8 +34,8 @@ void Game::OnUpdate()
 {
     m_scenes.Update();
 
-    // ハザード接触死 (playerHealth==0) で即 Quit。落下死は scene 側で
-    // respawn に乗るのでここでは観測しない (deathTriggered は落下死でも立つため区別できない)
+    // ハザード接触死すなわち playerHealth==0 で即 Quit。落下死は scene 側で
+    // respawn に乗るのでここでは観測しない。 deathTriggered は落下死でも立つため区別できない
     if (auto* scene = CurrentPlayScene())
     {
         if (scene->Play().playerHealth <= 0)

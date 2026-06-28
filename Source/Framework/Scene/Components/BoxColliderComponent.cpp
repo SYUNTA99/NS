@@ -80,8 +80,8 @@ namespace NS::Scene
     NS::Math::AABB BoxColliderComponent::WorldAABB() const noexcept
     {
         const GameObject* owner = Owner();
-        // local box (原点中心 + 半径) に、 当たり箱の local offset / 回転 → owner の world 変換の順で重ねる
-        // grid (offset 0・回転単位・scale 1・整数位置) では結果が従来と一致する。 回転時は内包する軸並行 AABB になる
+        // 原点中心 + 半径の local box に、 当たり箱の local offset / 回転 → owner の world 変換の順で重ねる
+        // offset 0・回転単位・scale 1・整数位置の grid では結果が従来と一致する。 回転時は内包する軸並行 AABB になる
         const NS::Math::Matrix combined =
             (owner != nullptr) ? LocalMatrix() * owner->Root().WorldMatrix() : LocalMatrix();
         const NS::Math::AABB local(NS::Math::Vector3{0.0f, 0.0f, 0.0f}, m_halfExtents);

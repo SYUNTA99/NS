@@ -8,6 +8,8 @@
 #include <Game/Theme/ThemeId.h>
 #include <Game/Theme/ThemeRegistry.h>
 
+using namespace NS::Game::Theme;
+
 namespace
 {
     TEST(ThemeRegistryTest, FiveThemesExist)
@@ -17,11 +19,11 @@ namespace
 
     TEST(ThemeRegistryTest, AllThemesDistinct)
     {
-        const ThemeData& grass = ThemeRegistry::Get(ThemeId::Grass);
-        const ThemeData& cave = ThemeRegistry::Get(ThemeId::Cave);
-        const ThemeData& snow = ThemeRegistry::Get(ThemeId::Snow);
-        const ThemeData& lava = ThemeRegistry::Get(ThemeId::Lava);
-        const ThemeData& sky = ThemeRegistry::Get(ThemeId::Sky);
+        const ThemeData& grass = Get(ThemeId::Grass);
+        const ThemeData& cave = Get(ThemeId::Cave);
+        const ThemeData& snow = Get(ThemeId::Snow);
+        const ThemeData& lava = Get(ThemeId::Lava);
+        const ThemeData& sky = Get(ThemeId::Sky);
 
         // 表示名は全て異なる文字列を指していること
         ASSERT_NE(grass.displayName, nullptr);
@@ -63,10 +65,10 @@ namespace
 
     TEST(ThemeRegistryTest, OutOfRangeFallsBackToGrass)
     {
-        const ThemeData& grass = ThemeRegistry::Get(ThemeId::Grass);
+        const ThemeData& grass = Get(ThemeId::Grass);
 
-        const ThemeData& byEnum = ThemeRegistry::Get(static_cast<ThemeId>(99));
-        const ThemeData& byUint16 = ThemeRegistry::Get(static_cast<std::uint16_t>(999));
+        const ThemeData& byEnum = Get(static_cast<ThemeId>(99));
+        const ThemeData& byUint16 = Get(static_cast<std::uint16_t>(999));
 
         EXPECT_EQ(&byEnum, &grass);
         EXPECT_EQ(&byUint16, &grass);
@@ -78,7 +80,7 @@ namespace
     {
         NS::Game::Level::LevelData level{};
         level.themeId = 3;
-        const ThemeData& theme = ThemeRegistry::Get(level.themeId);
+        const ThemeData& theme = Get(level.themeId);
         EXPECT_STREQ(theme.displayName, "Lava");
     }
 } // namespace

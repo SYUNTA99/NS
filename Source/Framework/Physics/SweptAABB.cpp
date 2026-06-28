@@ -8,7 +8,7 @@ namespace
     using NS::Math::AABB;
     using NS::Math::Vector3;
 
-    /// Capsule の片端 (sphere) を motion だけ swept した時に AABB と最初に当たる TOI を返す
+    /// Capsule の片端である sphere を motion だけ swept した時に AABB と最初に当たる TOI を返す
     /// AABB を radius で膨張 → 線分 vs 膨張 AABB の slab test
     bool SweptSphereVsAABB(const Vector3& start,
                            const Vector3& motion,
@@ -40,7 +40,7 @@ namespace
             return true;
         }
 
-        // Slab test on expanded AABB (axis-aligned)
+        // 軸並行に拡張した AABB への slab 判定
         const float boxMin[3] = {boxCenter.x - ex, boxCenter.y - ey, boxCenter.z - ez};
         const float boxMax[3] = {boxCenter.x + ex, boxCenter.y + ey, boxCenter.z + ez};
         const float p[3] = {start.x, start.y, start.z};
@@ -116,8 +116,8 @@ namespace NS::Physics
                             float& outToi,
                             NS::Math::Vector3& outNormal) noexcept
     {
-        // 上下 2 endpoint を sphere swept する近似。Capsule 型は unit axis を強制しないためここで正規化 (非単位入力で
-        // TOI が歪む)
+        // 上下 2 endpoint を sphere swept する近似。Capsule 型は unit axis を強制しないため、 非単位入力で
+        // TOI が歪まないようここで正規化する
         NS::Math::Vector3 axis = capsule.axis;
         const float axisLenSq = axis.x * axis.x + axis.y * axis.y + axis.z * axis.z;
         if (axisLenSq > 1e-12f)

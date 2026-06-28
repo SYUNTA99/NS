@@ -14,38 +14,38 @@ namespace NS::Graphics
         MeshGeometry geom;
         geom.vertices.reserve(24);
 
-        // +X (right)
+        // +X 右面
         geom.vertices.push_back({{ex, -ey, ez}, {0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}});
         geom.vertices.push_back({{ex, ey, ez}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}});
         geom.vertices.push_back({{ex, ey, -ez}, {1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}});
         geom.vertices.push_back({{ex, -ey, -ez}, {1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}});
-        // -X (left)
+        // -X 左面
         geom.vertices.push_back({{-ex, -ey, -ez}, {0.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}});
         geom.vertices.push_back({{-ex, ey, -ez}, {0.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}});
         geom.vertices.push_back({{-ex, ey, ez}, {1.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}});
         geom.vertices.push_back({{-ex, -ey, ez}, {1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}});
-        // +Y (top)
+        // +Y 上面
         geom.vertices.push_back({{-ex, ey, ez}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
         geom.vertices.push_back({{-ex, ey, -ez}, {0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}});
         geom.vertices.push_back({{ex, ey, -ez}, {1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}});
         geom.vertices.push_back({{ex, ey, ez}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-        // -Y (bottom)
+        // -Y 下面
         geom.vertices.push_back({{-ex, -ey, -ez}, {0.0f, 1.0f}, {0.0f, -1.0f, 0.0f}});
         geom.vertices.push_back({{-ex, -ey, ez}, {0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}});
         geom.vertices.push_back({{ex, -ey, ez}, {1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}});
         geom.vertices.push_back({{ex, -ey, -ez}, {1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}});
-        // +Z (front in LH)
+        // +Z 左手系で手前
         geom.vertices.push_back({{ex, -ey, ez}, {0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}});
         geom.vertices.push_back({{ex, ey, ez}, {0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}});
         geom.vertices.push_back({{-ex, ey, ez}, {1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}});
         geom.vertices.push_back({{-ex, -ey, ez}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}});
-        // -Z (back in LH)
+        // -Z 左手系で奥
         geom.vertices.push_back({{-ex, -ey, -ez}, {0.0f, 1.0f}, {0.0f, 0.0f, -1.0f}});
         geom.vertices.push_back({{-ex, ey, -ez}, {0.0f, 0.0f}, {0.0f, 0.0f, -1.0f}});
         geom.vertices.push_back({{ex, ey, -ez}, {1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}});
         geom.vertices.push_back({{ex, -ey, -ez}, {1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}});
 
-        // CubeScene の修正後 winding 踏襲 (CW=front、X/Y は反転済、Z は元のまま)
+        // CubeScene の修正後 winding 踏襲。CW=front、X/Y は反転済、Z は元のまま
         geom.indices = {
             0,  2,  1,  0,  3,  2,  // +X
             4,  6,  5,  4,  7,  6,  // -X
@@ -69,7 +69,7 @@ namespace NS::Graphics
             {{ex, 0.0f, -ez}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
             {{-ex, 0.0f, -ez}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
         };
-        // 上から見て CW = front 外向き (上面)
+        // 上から見て CW = front 外向きの上面
         geom.indices = {0, 1, 2, 0, 2, 3};
         return geom;
     }
@@ -80,7 +80,7 @@ namespace NS::Graphics
         const float ey = extents.y;
         const float ez = extents.z;
 
-        // 高さ = tan(angle) × 底面奥行 (2 * ez)、 ただし extents.y * 2 を上限にクランプ
+        // 高さ = tan(angle) × 底面奥行 2 * ez。ただし extents.y * 2 を上限にクランプ
         constexpr float kPi = 3.14159265358979323846f;
         const float angleRad = angleDegrees * (kPi / 180.0f);
         const float rawHeight = std::tan(angleRad) * (2.0f * ez);
@@ -89,14 +89,14 @@ namespace NS::Graphics
         const float yBottom = -ey;
         const float yTop = -ey + height;
 
-        // 斜面 normal: (0, cos, -sin) で +Y +,-Z 向き (Z+ 側に登っていく傾斜)
+        // 斜面 normal: (0, cos, -sin) で +Y +,-Z 向き。Z+ 側に登っていく傾斜
         const float c = std::cos(angleRad);
         const float s = std::sin(angleRad);
 
         MeshGeometry geom;
         geom.vertices.reserve(18);
 
-        // Slope (top) quad: 4 vertex、 normal (0, c, -s)
+        // Slope top quad: 4 vertex、 normal (0, c, -s)
         // 順序: lowLeft(-ex,yBottom,-ez) → lowRight(ex,yBottom,-ez) → highRight(ex,yTop,ez) → highLeft(-ex,yTop,ez)
         geom.vertices.push_back({{-ex, yBottom, -ez}, {0.0f, 1.0f}, {0.0f, c, -s}});
         geom.vertices.push_back({{ex, yBottom, -ez}, {1.0f, 1.0f}, {0.0f, c, -s}});
@@ -109,27 +109,27 @@ namespace NS::Graphics
         geom.vertices.push_back({{ex, yBottom, ez}, {1.0f, 1.0f}, {0.0f, -1.0f, 0.0f}});
         geom.vertices.push_back({{ex, yBottom, -ez}, {1.0f, 0.0f}, {0.0f, -1.0f, 0.0f}});
 
-        // Front (+Z) quad: 垂直壁、 normal (0, 0, 1)。 高さ = height
+        // Front +Z quad: 垂直壁、 normal (0, 0, 1)。 高さ = height
         geom.vertices.push_back({{-ex, yBottom, ez}, {0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}});
         geom.vertices.push_back({{-ex, yTop, ez}, {0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}});
         geom.vertices.push_back({{ex, yTop, ez}, {1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}});
         geom.vertices.push_back({{ex, yBottom, ez}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}});
 
-        // Left (-X) triangle: 3 vertex、 normal (-1, 0, 0)
+        // Left -X triangle: 3 vertex、 normal (-1, 0, 0)
         // 頂点: lowBack (-ex, yBottom, -ez), lowFront (-ex, yBottom, ez), highFront (-ex, yTop, ez)
         geom.vertices.push_back({{-ex, yBottom, -ez}, {0.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}});
         geom.vertices.push_back({{-ex, yBottom, ez}, {1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}});
         geom.vertices.push_back({{-ex, yTop, ez}, {1.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}});
 
-        // Right (+X) triangle: 3 vertex、 normal (1, 0, 0)
+        // Right +X triangle: 3 vertex、 normal (1, 0, 0)
         geom.vertices.push_back({{ex, yBottom, -ez}, {0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}});
         geom.vertices.push_back({{ex, yTop, ez}, {1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}});
         geom.vertices.push_back({{ex, yBottom, ez}, {1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}});
 
-        // Index buffer: 3 quads × 6 + 2 triangles × 3 = 24 indices
-        // CW = front 外向き (MakeCube convention 踏襲)
+        // インデックス: 四角形 3 × 6 + 三角形 2 × 3 = 24 個
+        // CW = front 外向き。MakeCube の convention を踏襲
         geom.indices = {
-            // Slope quad (vertex 0..3): 外向きは +Y, -Z 方向 — 上面から見て winding CW
+            // Slope quad の vertex 0..3: 外向きは +Y, -Z 方向 — 上面から見て winding CW
             // 順序 lowLeft → highLeft → highRight、 lowLeft → highRight → lowRight
             0,
             3,
@@ -137,7 +137,7 @@ namespace NS::Graphics
             0,
             2,
             1,
-            // Bottom quad (vertex 4..7): 法線 -Y。下から見ると 4→5→6→7 が CCW のため
+            // Bottom quad の vertex 4..7: 法線 -Y。下から見ると 4→5→6→7 が CCW のため
             // CW になるよう 4,7,6,4,6,5 で張る
             4,
             7,
@@ -145,7 +145,7 @@ namespace NS::Graphics
             4,
             6,
             5,
-            // Back (+Z) quad (vertex 8..11): 外向き +Z で見える winding
+            // Back +Z quad の vertex 8..11: 外向き +Z で見える winding
             // 8=(-ex,yBottom,ez), 9=(-ex,yTop,ez), 10=(ex,yTop,ez), 11=(ex,yBottom,ez)
             8,
             10,
@@ -153,12 +153,12 @@ namespace NS::Graphics
             8,
             11,
             10,
-            // Left (-X) triangle (vertex 12..14): 外向き -X で見える winding
+            // Left -X triangle の vertex 12..14: 外向き -X で見える winding
             // 12=(-ex,yBottom,-ez), 13=(-ex,yBottom,ez), 14=(-ex,yTop,ez)
             12,
             13,
             14,
-            // Right (+X) triangle (vertex 15..17): 外向き +X、 +X 側から見て CW
+            // Right +X triangle の vertex 15..17: 外向き +X、 +X 側から見て CW
             // 15=(ex,yBottom,-ez), 16=(ex,yTop,ez), 17=(ex,yBottom,ez)
             15,
             16,
@@ -190,7 +190,7 @@ namespace NS::Graphics
         const std::uint32_t bottomCenterIdx = static_cast<std::uint32_t>(geom.vertices.size());
         geom.vertices.push_back({{0.0f, -halfH, 0.0f}, {0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}});
 
-        // 側面の per-segment vertex を 4 個ずつ発行する (segments × 4)
+        // 側面の per-segment vertex を 4 個ずつ、計 segments × 4 個発行する
         // top cap 用 / bottom cap 用 / 側面の top / 側面の bottom を別 vertex にして per-face normal を許す
         const std::size_t sideStartIdx = geom.vertices.size();
         for (int i = 0; i < segments; ++i)
@@ -203,17 +203,17 @@ namespace NS::Graphics
             const float z = cz * radius;
             const float u = t;
 
-            // top cap 用 (normal +Y)
+            // top cap 用で normal +Y
             geom.vertices.push_back({{x, halfH, z}, {0.5f + 0.5f * cx, 0.5f - 0.5f * cz}, {0.0f, 1.0f, 0.0f}});
-            // bottom cap 用 (normal -Y)
+            // bottom cap 用で normal -Y
             geom.vertices.push_back({{x, -halfH, z}, {0.5f + 0.5f * cx, 0.5f + 0.5f * cz}, {0.0f, -1.0f, 0.0f}});
-            // 側面 top (radial normal)
+            // 側面 top で radial normal
             geom.vertices.push_back({{x, halfH, z}, {u, 0.0f}, {cx, 0.0f, cz}});
-            // 側面 bottom (radial normal)
+            // 側面 bottom で radial normal
             geom.vertices.push_back({{x, -halfH, z}, {u, 1.0f}, {cx, 0.0f, cz}});
         }
 
-        // Index 構築: top cap (fan)、 bottom cap (fan、 逆 winding)、 side quad (4 vertex/quad)
+        // Index 構築: top cap は fan、bottom cap は fan で逆 winding、side quad は 4 vertex/quad
         for (int i = 0; i < segments; ++i)
         {
             const int next = (i + 1) % segments;
@@ -226,7 +226,7 @@ namespace NS::Graphics
             const std::uint32_t sideBotI = static_cast<std::uint32_t>(sideStartIdx + i * 4 + 3);
             const std::uint32_t sideBotNext = static_cast<std::uint32_t>(sideStartIdx + next * 4 + 3);
 
-            // top cap: 上から見て CW (MakeCube convention 踏襲)。 center → next → current
+            // top cap: 上から見て CW、MakeCube の convention を踏襲。center → next → current
             geom.indices.push_back(topCenterIdx);
             geom.indices.push_back(topNext);
             geom.indices.push_back(topI);

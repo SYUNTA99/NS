@@ -1,11 +1,30 @@
-#include "Game/Blocks/BlockRegistry.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayMode.h"
 #include "Game/Level/PlayState.h"
 
 #include <gtest/gtest.h>
 
+#include <utility>
+
 namespace LevelNs = NS::Game::Level;
+
+namespace
+{
+    // 拾得物を PickupComponent で組む。 pickupKind 0=コイン / 1=ゴールスター
+    LevelNs::ObjectInstance MakePickup(float x, float y, float z, int pickupKind)
+    {
+        LevelNs::ObjectInstance object;
+        object.flags = LevelNs::kObjectFlagGridAligned;
+        object.positionX = x;
+        object.positionY = y;
+        object.positionZ = z;
+        LevelNs::ComponentData pickup;
+        pickup.typeName = "PickupComponent";
+        pickup.fields.push_back(LevelNs::FieldValue{"Pickup Kind", pickupKind});
+        object.components.push_back(std::move(pickup));
+        return object;
+    }
+} // namespace
 
 TEST(PlayMode, EnterInitializesPlayerAtSpawn)
 {
@@ -35,7 +54,7 @@ TEST(PlayMode, PausedTickDoesNotEvaluateRules)
     lv.spawnY = 0;
     lv.spawnZ = 0;
     // spawn セル中心に coin を置くと中心距離が近く、 非 paused なら取得される位置
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdCoin, 0));
+    lv.objects.push_back(MakePickup(0.0f, 0.0f, 0.0f, 0));
 
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;
@@ -69,7 +88,7 @@ TEST(PlayMode, CoinContactIncrementsCounter)
     lv.spawnY = 0;
     lv.spawnZ = 0;
     // player の spawn セル中心と同じ位置に coin を置くと中心距離 0 で必ず pickup
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdCoin, 0));
+    lv.objects.push_back(MakePickup(0.0f, 0.0f, 0.0f, 0));
 
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;
@@ -89,7 +108,60 @@ TEST(PlayMode, PowerStarTriggersClear)
     lv.spawnX = 0;
     lv.spawnY = 0;
     lv.spawnZ = 0;
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, NS::Game::Blocks::kBlockIdPowerStar, 0));
+    lv.objects.push_back(MakePickup(0.0f, 0.0f, 0.0f, 1));
+
+    LevelNs::PlayState play;
+    LevelNs::PlayMode mode;
+    mode.Enter(lv, play);
+    mode.Tick(lv, play, 1.0f / 60.0f);
+
+    EXPECT_TRUE(play.clearTriggered);
+}
+
+TEST(PlayMode, PickupComponentCoinIncrementsCounter)
+{
+    LevelNs::LevelData lv;
+    lv.spawnX = 0;
+    lv.spawnY = 0;
+    lv.spawnZ = 0;
+
+    // 拾得は PickupComponent が駆動する (種別フィールドではなく component が表す)
+    LevelNs::ObjectInstance coin;
+    coin.flags = LevelNs::kObjectFlagGridAligned;
+    coin.positionX = 0.0f;
+    coin.positionY = 0.0f;
+    coin.positionZ = 0.0f;
+    LevelNs::ComponentData pickup;
+    pickup.typeName = "PickupComponent";
+    pickup.fields.push_back(LevelNs::FieldValue{"Pickup Kind", 0});
+    coin.components.push_back(std::move(pickup));
+    lv.objects.push_back(std::move(coin));
+
+    LevelNs::PlayState play;
+    LevelNs::PlayMode mode;
+    mode.Enter(lv, play);
+    mode.Tick(lv, play, 1.0f / 60.0f);
+
+    EXPECT_GE(play.coinCount, 1);
+}
+
+TEST(PlayMode, PickupComponentStarTriggersClear)
+{
+    LevelNs::LevelData lv;
+    lv.spawnX = 0;
+    lv.spawnY = 0;
+    lv.spawnZ = 0;
+
+    LevelNs::ObjectInstance star;
+    star.flags = LevelNs::kObjectFlagGridAligned;
+    star.positionX = 0.0f;
+    star.positionY = 0.0f;
+    star.positionZ = 0.0f;
+    LevelNs::ComponentData pickup;
+    pickup.typeName = "PickupComponent";
+    pickup.fields.push_back(LevelNs::FieldValue{"Pickup Kind", 1});
+    star.components.push_back(std::move(pickup));
+    lv.objects.push_back(std::move(star));
 
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;

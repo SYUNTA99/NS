@@ -15,7 +15,7 @@ namespace NS::Graphics
         };
 
         // times は昇順前提・ 非空前提。 t を含む区間 [i0, i1] と補間係数 f を返す
-        // 範囲外は端点へクランプ (i0==i1, f=0)
+        // 範囲外は端点へクランプし i0==i1, f=0 になる
         [[nodiscard]] Segment FindSegment(std::span<const float> times, float t) noexcept
         {
             const std::size_t n = times.size();

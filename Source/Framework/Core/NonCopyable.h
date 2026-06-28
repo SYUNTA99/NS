@@ -9,7 +9,7 @@
 
 namespace NS::Core
 {
-    /// コピー / ムーブを禁止する継承用基底 (空クラス、EBO でサイズ増加なし)
+    /// コピー / ムーブを禁止する継承用基底。 空クラスで EBO によりサイズ増加なし
     class NonCopyable
     {
     protected:

@@ -3,17 +3,17 @@
 /// @file GameObject.h
 /// @brief NS::Scene::GameObject — Transform を持つ継承可能基底
 ///
-/// 派生クラス (Player / Block / Enemy 等) の共通基底。 配下 Component は AddComponent<T>() で
+/// Player / Block / Enemy などの派生クラスの共通基底。 配下 Component は AddComponent<T>() で
 /// 生成し、 GameObject が unique_ptr で寿命を所有する。 Tick / OnEndPlay 伝播用の priority 昇順
 /// 生ポインタ列を `m_components` に併せて保持する
 ///
-/// Lifecycle:
+/// ライフサイクル:
 ///   - OnStart()    — SceneBase attach 直後に 1 回、配下 Component の OnStart を伝播
 ///   - OnUpdate()   — fixed step 毎回、IsActive==true の Component に伝播
 ///                    dt は `NS::Core::FrameTimer::FixedDelta()` で取得
 ///   - OnEndPlay()  — SceneBase 破棄前に 1 回、登録逆順で Component::OnEndPlay を呼ぶ
 ///
-/// 他 GameObject へのアクセスはコンストラクタ経由の明示的な生ポインタ注入のみ (GetComponent<T>() なし)
+/// 他 GameObject へのアクセスはコンストラクタ経由の明示的な生ポインタ注入のみで、 GetComponent<T>() は提供しない
 
 #include "Framework/Scene/Transform.h"
 
@@ -39,7 +39,7 @@ namespace NS::Scene
         GameObject(GameObject&&) = delete;
         GameObject& operator=(GameObject&&) = delete;
 
-        /// Root Transform (値型 member)。階層構築は SetParent で
+        /// 値型 member として持つ Root Transform。階層構築は SetParent で
         [[nodiscard]] Transform& Root() noexcept { return m_root; }
         [[nodiscard]] const Transform& Root() const noexcept { return m_root; }
 
@@ -83,7 +83,7 @@ namespace NS::Scene
 
         Transform m_root;
         std::vector<Component*> m_components;
-        std::vector<std::unique_ptr<Component>> m_ownedComponents; // 所有権保持用 (tick 順序は m_components が担う)
+        std::vector<std::unique_ptr<Component>> m_ownedComponents; // 所有権保持用。 tick 順序は m_components が担う
         std::vector<GameObject*> m_children;
         GameObject* m_parent = nullptr;
         SceneBase* m_scene = nullptr;

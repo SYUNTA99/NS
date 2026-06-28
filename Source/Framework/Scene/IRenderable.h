@@ -3,7 +3,7 @@
 /// @file IRenderable.h
 /// @brief NS::Scene::IRenderable — 描画機能を持つ Component が多重継承する基底インターフェース
 ///
-/// 描画責務を持つ Component (MeshRendererComponent 等) は `IRenderable` を多重継承して
+/// MeshRendererComponent 等の描画責務を持つ Component は `IRenderable` を多重継承して
 /// `Draw(const RenderContext&)` を実装する。`OnStart` で
 /// `Owner()->OwningScene()->RegisterRenderable(this)` を呼んで自己登録し、`OnEndPlay` で解除する
 /// SceneBase が render iteration を握るため、Player.cpp / Block.cpp は render を 1 行も書かない
@@ -36,10 +36,10 @@ namespace NS::Scene
         /// SceneBase::OnRender から呼ばれる。Alpha 補間後の transform を context.alpha 経由で取得
         virtual void Draw(const RenderContext& context) = 0;
 
-        /// 自分の描画バケット。既定は Opaque (透明を持たない既存 Renderable は無改変で従来どおり)
+        /// 自分の描画バケット。既定は Opaque。 透明を持たない既存 Renderable は無改変で従来どおり
         [[nodiscard]] virtual RenderBucket Bucket() const noexcept { return RenderBucket::Opaque; }
 
-        /// 半透明ソート用のワールド空間中心座標。既定は原点 (Opaque は未使用)
+        /// 半透明ソート用のワールド空間中心座標。既定は原点で Opaque は未使用
         [[nodiscard]] virtual NS::Math::Vector3 SortCenter() const noexcept { return {}; }
 
         /// 半透明ソートのタイブレーク優先度。距離同値時に小さいほど先。既定 0

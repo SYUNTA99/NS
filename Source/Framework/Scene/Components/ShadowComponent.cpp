@@ -4,7 +4,7 @@
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/StaticMesh.h"
-#include "Framework/Scene/Components/MeshRendererComponent.h" // FrameCB レイアウト共有 (standard.vs と一致)
+#include "Framework/Scene/Components/MeshRendererComponent.h" // FrameCB レイアウト共有で standard.vs と一致
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/SceneBase.h"
@@ -96,7 +96,7 @@ namespace NS::Scene
 
         float dist = 0.0f;
         if (!GroundBelow(origin, m_collisionWorld, m_maxDrop, dist))
-            return; // 真下に地面が無い (奈落上) なら描かない
+            return; // 真下に地面が無い奈落上なら描かない
 
         const float alpha = ComputeFade(dist, m_maxDrop) * m_baseAlpha;
         if (alpha <= 0.0f)
@@ -110,7 +110,7 @@ namespace NS::Scene
             NS::Math::Matrix::CreateScale(scale, 1.0f, scale) *
             NS::Math::Matrix::CreateTranslation(origin.x, groundY + m_surfaceOffset, origin.z);
 
-        // 描画する者が自分の Pipeline を set する不変条件。半透明 (Alpha + 深度書込OFF) で手前に遮蔽される
+        // 描画する者が自分の Pipeline を set する不変条件。Alpha 合成で深度書込OFF の半透明として手前に遮蔽される
         context.renderer->Commands().SetPipeline(context.renderer->CommonPipeline(NS::Graphics::BlendMode::Alpha));
 
         m_material->CreateInputLayoutFor(*m_mesh);
@@ -118,7 +118,7 @@ namespace NS::Scene
         FrameCB cb{};
         cb.world = world;
         cb.viewProj = context.viewProjection;
-        cb.baseColor = NS::Math::Vector3{alpha, 0.0f, 0.0f}; // x = 高さフェードアルファ (shadow.ps が読む)
+        cb.baseColor = NS::Math::Vector3{alpha, 0.0f, 0.0f}; // x = 高さフェードアルファで shadow.ps が読む
 
         m_material->SetParams(*context.renderer, cb);
         m_material->Bind(*context.renderer);

@@ -45,9 +45,9 @@ namespace NS::Graphics
         {
             for (cgltf_size i = 0; i < prim.attributes_count; ++i)
             {
-                const cgltf_attribute& attr = prim.attributes[i];
-                if (attr.type == type && attr.index == setIndex)
-                    return attr.data;
+                const cgltf_attribute& attribute = prim.attributes[i];
+                if (attribute.type == type && attribute.index == setIndex)
+                    return attribute.data;
             }
             return nullptr;
         }
@@ -131,7 +131,7 @@ namespace NS::Graphics
             return normals;
         }
 
-        // 1 primitive ぶんの頂点 / index を world 変換しつつ geom に連結する (POSITION 必須、 三角形前提)
+        // 1 primitive ぶんの頂点 / index を world 変換しつつ geom に連結する。POSITION 必須で三角形前提
         void AppendPrimitive(const cgltf_primitive& prim,
                              const float world[16],
                              const std::string& path,
@@ -149,7 +149,7 @@ namespace NS::Graphics
             const std::uint32_t baseVertex = static_cast<std::uint32_t>(geom.vertices.size());
             const cgltf_size vertexCount = posAcc->count;
 
-            // NORMAL 属性が無ければ面法線から smooth normal を自前計算する (RH ローカル空間)
+            // NORMAL 属性が無ければ面法線から RH ローカル空間で smooth normal を自前計算する
             std::vector<std::array<float, 3>> computedNormals;
             if (normalAcc == nullptr)
             {
@@ -164,7 +164,7 @@ namespace NS::Graphics
             {
                 float p[3] = {0.0f, 0.0f, 0.0f};
                 cgltf_accessor_read_float(posAcc, i, p, 3);
-                // node の world 変換 (右手空間) を適用してから、 Z 反転で 左手へ
+                // 右手空間の node world 変換を適用してから、 Z 反転で左手へ
                 const float wx = world[0] * p[0] + world[4] * p[1] + world[8] * p[2] + world[12];
                 const float wy = world[1] * p[0] + world[5] * p[1] + world[9] * p[2] + world[13];
                 const float wz = world[2] * p[0] + world[6] * p[1] + world[10] * p[2] + world[14];
@@ -212,7 +212,7 @@ namespace NS::Graphics
                     geom.indices.push_back(baseVertex + static_cast<std::uint32_t>(i));
             }
 
-            // この primitive 分だけ三角形 winding 反転 (右手 -> 左手 )
+            // この primitive 分だけ三角形 winding を右手から左手へ反転
             for (std::size_t t = indexStart; t + 2 < geom.indices.size(); t += 3)
                 std::swap(geom.indices[t + 1], geom.indices[t + 2]);
         }
@@ -247,7 +247,7 @@ namespace NS::Graphics
     {
         MeshGeometry geom;
 
-        // cgltf にはメモリを渡す (cgltf 内部 fopen を使わない)
+        // cgltf にはメモリを渡す。cgltf 内部の fopen を使わない
         const std::optional<std::vector<std::byte>> bytes = NS::Core::FileSystem::ReadAllBytes(path);
         if (!bytes)
             return geom; // ReadAllBytes 内で NS_LOG_ERROR 済
@@ -312,7 +312,7 @@ namespace NS::Graphics
 
     namespace
     {
-        // skin->joints の中で node が何番目かを返す (見つからなければ -1 = root)
+        // skin->joints の中で node が何番目かを返す。見つからなければ -1 で root 扱い
         int FindJointIndex(const cgltf_skin& skin, const cgltf_node* node)
         {
             if (node == nullptr)
@@ -405,7 +405,7 @@ namespace NS::Graphics
             return true;
         }
 
-        // root joint の親ノード world 変換を LH で返す (アーマチュア変換を skinned 出力へ反映)。親なしは恒等
+        // root joint の親ノード world 変換を LH で返しアーマチュア変換を skinned 出力へ反映。親なしは恒等
         NS::Math::Matrix ComputeSkeletonRootTransform(const cgltf_skin& skin)
         {
             for (cgltf_size i = 0; i < skin.joints_count; ++i)
@@ -423,7 +423,7 @@ namespace NS::Graphics
             return NS::Math::Matrix::Identity;
         }
 
-        // 1 skinned primitive を連結する (node 変換は焼き込まない)。 重みのある joint index が範囲外なら false
+        // 1 skinned primitive を連結し node 変換は焼き込まない。重みのある joint index が範囲外なら false
         bool AppendSkinnedPrimitive(const cgltf_primitive& prim,
                                     cgltf_size jointsCount,
                                     const std::string& path,
@@ -546,8 +546,8 @@ namespace NS::Graphics
             return Interpolation::Linear; // linear、 cubic_spline は linear で代替
         }
 
-        // animation channel/sampler を AnimationClip へ変換。resolveBone(node)→bone index (-1=対象外)で skinned/source
-        // 共用
+        // animation channel/sampler を AnimationClip へ変換。resolveBone(node)→bone index は -1
+        // で対象外、skinned/source 共用
         template <class ResolveBone>
         void ParseAnimations(const cgltf_data& model,
                              ResolveBone resolveBone,
@@ -599,7 +599,7 @@ namespace NS::Graphics
                                     path);
                     const Interpolation interp = MapInterpolation(sampler.interpolation);
                     const cgltf_size stride = cubic ? 3 : 1;
-                    const cgltf_size valueOffset = cubic ? 1 : 0; // cubic は (inTangent, value, outTangent) の中央
+                    const cgltf_size valueOffset = cubic ? 1 : 0; // cubic は inTangent, value, outTangent の中央
 
                     std::vector<float> times(keyCount, 0.0f);
                     for (cgltf_size i = 0; i < keyCount; ++i)
@@ -653,7 +653,7 @@ namespace NS::Graphics
             }
         }
 
-        // animation 対象 node と祖先から source skeleton を組む (skin 非依存)。bones は親先順、outRootXf は LH 上位変換
+        // animation 対象 node と祖先から source skeleton を組む。skin 非依存で bones は親先順、outRootXf は LH 上位変換
         bool BuildSourceSkeleton(const cgltf_data& model,
                                  const std::string& path,
                                  std::vector<Bone>& outBones,
@@ -676,7 +676,7 @@ namespace NS::Graphics
                 return false;
             }
 
-            // 対象 node とその全祖先を骨格に含める (global 計算に階層が要るため)
+            // global 計算に階層が要るため対象 node とその全祖先を骨格に含める
             std::unordered_set<const cgltf_node*> included;
             for (const cgltf_node* node : animated)
                 for (const cgltf_node* p = node; p != nullptr; p = p->parent)
@@ -684,7 +684,7 @@ namespace NS::Graphics
 
             outBones.clear();
             outNodeToBone.clear();
-            // root (親が included でない) から pre-order で並べると親が必ず子より前になる
+            // 親が included でない root から pre-order で並べると親が必ず子より前になる
             std::function<void(const cgltf_node*)> visit = [&](const cgltf_node* node) {
                 const int index = static_cast<int>(outBones.size());
                 outNodeToBone.emplace(node, index);
@@ -694,7 +694,7 @@ namespace NS::Graphics
                 bone.bindLocal = ReadJointLocalPose(*node);
                 if (node->name != nullptr)
                     bone.name = node->name;
-                outBones.push_back(std::move(bone)); // inverseBind は恒等のまま (source は skinning しない)
+                outBones.push_back(std::move(bone)); // inverseBind は恒等のまま、source は skinning しない
                 for (cgltf_size i = 0; i < node->children_count; ++i)
                     if (included.count(node->children[i]) != 0)
                         visit(node->children[i]);
@@ -710,7 +710,7 @@ namespace NS::Graphics
                 const bool isRoot = (node->parent == nullptr) || (included.count(node->parent) == 0);
                 if (!isRoot)
                     continue;
-                // 最初の root の親 (アーマチュア) の world を skeleton 上位変換として採る
+                // 最初の root の親アーマチュアの world を skeleton 上位変換として採る
                 if (!rootXfSet && node->parent != nullptr)
                 {
                     float world[16];
@@ -798,8 +798,8 @@ namespace NS::Graphics
         if (!BuildSkeletonBones(skin, path, bones))
             return data;
 
-        // 同一 skin を共有する全 mesh node を連結する (Mixamo は本体と関節マーカーが別 mesh に分かれており、
-        // 先頭だけ読むと関節マーカーしか出ない。 joint index 整合のため skin が一致する node のみ対象)
+        // 同一 skin を共有する全 mesh node を連結する。Mixamo は本体と関節マーカーが別 mesh に分かれており、
+        // 先頭だけ読むと関節マーカーしか出ない。 joint index 整合のため skin が一致する node のみ対象とする
         std::vector<SkinnedVertex> vertices;
         std::vector<std::uint32_t> indices;
         for (cgltf_size n = 0; n < model.nodes_count; ++n)

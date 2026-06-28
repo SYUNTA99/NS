@@ -6,6 +6,7 @@
 #include "Framework/Scene/Reflection.h"
 
 #include <cstddef>
+#include <string>
 #include <typeinfo>
 
 #if NS_EDITOR_ENABLED
@@ -89,6 +90,21 @@ namespace NS::Editor
                 {
                     value = NS::Math::Vector3{xyz[0], xyz[1], xyz[2]};
                     field.set(&comp, &value);
+                    changed = true;
+                }
+                break;
+            }
+            case NS::Scene::FieldType::String:
+            {
+                std::string value;
+                field.get(&comp, &value);
+                char buf[256];
+                const std::size_t copied = value.copy(buf, sizeof(buf) - 1);
+                buf[copied] = '\0';
+                if (ImGui::InputText(field.name, buf, sizeof(buf)))
+                {
+                    std::string edited(buf);
+                    field.set(&comp, &edited);
                     changed = true;
                 }
                 break;

@@ -3,6 +3,8 @@
 #include <array>
 #include <cstddef>
 
+using namespace NS::Game::Theme;
+
 namespace
 {
     /// 5 テーマの静的レジストリ。 baseSlice / lightColor / ambientColor を定義する
@@ -52,18 +54,18 @@ namespace
     }
 } // namespace
 
-namespace ThemeRegistry
+namespace NS::Game::Theme
 {
     const ThemeData& Get(ThemeId id) noexcept
     {
-        const auto idx = static_cast<std::size_t>(id);
-        if (idx >= static_cast<std::size_t>(ThemeId::Count))
+        const auto index = static_cast<std::size_t>(id);
+        if (index >= static_cast<std::size_t>(ThemeId::Count))
             return Themes()[0];
-        return Themes()[idx];
+        return Themes()[index];
     }
 
     const ThemeData& Get(std::uint16_t levelDataThemeId) noexcept
     {
         return Get(static_cast<ThemeId>(levelDataThemeId));
     }
-} // namespace ThemeRegistry
+} // namespace NS::Game::Theme

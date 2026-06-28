@@ -24,7 +24,7 @@ namespace NS::Graphics
         struct ShaderTypeInfo
         {
             const char* infix;  // ファイル名に含まれる識別子
-            const char* entry;  // エントリポイント (全 HLSL でステージ名 + Main に統一)
+            const char* entry;  // 全 HLSL でステージ名 + Main に統一したエントリポイント
             const char* target; // コンパイルターゲットプロファイル
             ShaderType stage;
         };

@@ -7,17 +7,17 @@
 /// PipelineDesc は NS がサポートする組合せを意図レベルの enum の閉集合で表し、 Create 時に
 /// D3D11 ステートオブジェクトへ変換して保持する。 適用は `CommandList::SetPipeline` で一括
 /// 生成は重いので初期化時に作り、 描画ループ中はセットのみ行うこと
-/// シェーダは Material、 InputLayout / topology は Mesh の所有 (固定機能ステートのみ束ねる)
+/// シェーダは Material、 InputLayout / topology は Mesh の所有で、 本型は固定機能ステートのみ束ねる
 
 #include <memory>
 
-#include <Framework/Core/NonCopyable.h>
-#include <Framework/Graphics/D3dCommon.h>
+#include "Framework/Core/NonCopyable.h"
+#include "Framework/Graphics/D3dCommon.h"
 
 namespace NS::Graphics
 {
 
-    /// カリング面。Front は inside-out cube (skybox) 用
+    /// カリング面。Front は skybox の inside-out cube 用
     enum class CullMode
     {
         None,
@@ -40,7 +40,7 @@ namespace NS::Graphics
         Additive
     };
 
-    /// 深度の扱い。ReadOnly は比較 LESS_EQUAL + 書込 OFF (z=1 張り付きの skybox / 半透明用)
+    /// 深度の扱い。ReadOnly は比較 LESS_EQUAL + 書込 OFF で z=1 張り付きの skybox / 半透明用
     enum class DepthMode
     {
         ReadWrite,
@@ -61,7 +61,7 @@ namespace NS::Graphics
     class Pipeline : public NS::Core::NonCopyable
     {
     public:
-        /// PipelineDesc から D3D11 ステートオブジェクトを構築する。 失敗時も非 null (IsValid() で検知)
+        /// PipelineDesc から D3D11 ステートオブジェクトを構築する。 失敗時も非 null を返し IsValid() で検知する
         [[nodiscard]] static std::unique_ptr<Pipeline> Create(const PipelineDesc& desc);
 
         ~Pipeline();
@@ -69,7 +69,7 @@ namespace NS::Graphics
         /// 全ステートオブジェクトの構築成功なら true。Device 不在や Create 失敗で false
         [[nodiscard]] bool IsValid() const noexcept;
 
-        /// 構築時の意図 (テスト観測・デバッグ表示用)
+        /// 構築時の意図で、 テスト観測・デバッグ表示に使う
         [[nodiscard]] const PipelineDesc& Desc() const noexcept;
 
         [[nodiscard]] ID3D11RasterizerState* RasterizerState() const noexcept;

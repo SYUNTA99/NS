@@ -9,9 +9,9 @@
 
 #include <array>
 
-#include <Framework/Platform/Gamepad.h>
-#include <Framework/Platform/Keyboard.h>
-#include <Framework/Platform/Mouse.h>
+#include "Framework/Platform/Gamepad.h"
+#include "Framework/Platform/Keyboard.h"
+#include "Framework/Platform/Mouse.h"
 
 namespace NS::Platform
 {
@@ -32,19 +32,19 @@ namespace NS::Platform
         [[nodiscard]] NS::Platform::Gamepad& Gamepad(int index = 0) noexcept;
         [[nodiscard]] const NS::Platform::Gamepad& Gamepad(int index = 0) const noexcept;
 
-        /// 全サブクラスの Update を呼ぶ (フレーム頭で 1 回)
+        /// フレーム頭で 1 回、 全サブクラスの Update を呼ぶ
         void Update() noexcept;
 
-        /// 開発用 UI (editor の ImGui) が入力を掴んでいるかを毎フレーム反映する窓口
+        /// 開発用 UI である editor の ImGui が入力を掴んでいるかを毎フレーム反映する窓口
         /// editor が描画後に push し、Window / gameplay 側の入力ゲートはここを読む
-        /// 出荷 build には editor が無いため常に false のまま (全入力がゲームに届く)
+        /// 出荷 build には editor が無いため常に false のままで全入力がゲームに届く
         void SetUiCapture(bool wantMouse, bool wantKeyboard) noexcept
         {
             m_uiWantsMouse = wantMouse;
             m_uiWantsKeyboard = wantKeyboard;
         }
 
-        /// UI がマウスを掴んでいるか。直前フレームの状態 (NewFrame 後に push されるため 1 フレーム遅延)
+        /// UI がマウスを掴んでいるか。NewFrame 後に push されるため 1 フレーム遅延した直前フレームの状態
         [[nodiscard]] bool UiWantsMouse() const noexcept { return m_uiWantsMouse; }
         /// UI がキーボードを掴んでいるか。テキスト入力中のゲーム操作抑止に使う
         [[nodiscard]] bool UiWantsKeyboard() const noexcept { return m_uiWantsKeyboard; }

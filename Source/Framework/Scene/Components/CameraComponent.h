@@ -2,7 +2,7 @@
 
 /// @file CameraComponent.h
 /// @brief `NS::Graphics::Camera` を value member で内包する Component
-///        Getter / Setter は基本的に内包 Camera への薄いラッパー。view forward (XZ) は
+///        Getter / Setter は基本的に内包 Camera への薄いラッパー。view forward の XZ 成分は
 ///        PlayerInput が camera 相対移動入力の参照に使う
 
 #include "Framework/Graphics/Camera.h"
@@ -19,7 +19,7 @@ namespace NS::Scene
     class CameraComponent : public Component
     {
     public:
-        /// priority は Camera 帯 (400)。follow 系処理を Input / Physics 帯の後に走らせる
+        /// priority は Camera 帯 400。follow 系処理を Input / Physics 帯の後に走らせる
         CameraComponent() noexcept;
 
         void SetPosition(const NS::Math::Vector3& position) noexcept;

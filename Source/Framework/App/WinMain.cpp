@@ -42,6 +42,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
         return -1;
     }
 
-    // Layer / overlay の構成は CreateApplication (Game 側) が済ませている。 WinMain は Game / Editor へ依存しない
+    // Layer / overlay の構成は Game 側の CreateApplication が済ませている。 WinMain は Game / Editor へ依存しない
     return app->Run();
 }

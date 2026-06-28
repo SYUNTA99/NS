@@ -1,6 +1,10 @@
 #include "Editor/EditorMode.h"
 
+#include "Editor/GridMath.h"
 #include "Editor/LevelFilePaths.h"
+#include "Editor/Undo/DeleteCommand.h"
+#include "Editor/Undo/PlaceCommand.h"
+#include "Editor/Undo/RotateCommand.h"
 #include "Framework/App/Application.h"
 #include "Framework/Core/Clock.h"
 #include "Framework/Graphics/DebugDraw.h"
@@ -11,11 +15,9 @@
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/AutoTile.h"
 #include "Game/Blocks/BlockRegistry.h"
+#include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Level/ChunkIO.h"
 #include "Game/Level/LevelData.h"
-#include "Game/Undo/DeleteCommand.h"
-#include "Game/Undo/PlaceCommand.h"
-#include "Game/Undo/RotateCommand.h"
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -121,14 +123,14 @@ namespace NS::Editor
             const bool ok = NS::Game::Level::LoadLevelFromFile(fresh, *path);
             if (ok)
             {
-                // 新 level open で UndoStack 履歴は破棄 (古い level 用 Command が
-                // 別 LevelData を pointer で持つため、 そのまま undo すると use-after-free 的 mismatch)
+                // 新 level open で UndoStack 履歴は破棄する。 古い level 用 Command が
+                // 別 LevelData を pointer で持つため、 そのまま undo すると use-after-free 的 mismatch
                 *m_level = std::move(fresh);
                 m_undo.Clear();
                 if (m_objectIds != nullptr)
                 {
                     auto target = Target();
-                    NS::Game::Undo::ResetEditIds(target);
+                    NS::Game::Level::ResetEditIds(target);
                 }
                 m_levelDirty = true;
                 m_fileBrowser.NotifyLoadResult(true, "読込成功");
@@ -150,7 +152,7 @@ namespace NS::Editor
         if (!m_active || !m_cursor.valid)
             return;
 
-        // DebugDraw への蓄積は維持 (GPU 描画 path が整ったら自動表示される)
+        // DebugDraw への蓄積は維持し、 GPU 描画 path が整ったら自動表示される
         const NS::Math::AABB placeBox(m_cursor.placementCenter,
                                       NS::Math::Vector3{kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
         NS::Graphics::DebugDraw::AABB(placeBox, m_cursor.placementBlocked ? kCursorBlockedColor : kCursorOkColor);
@@ -176,7 +178,7 @@ namespace NS::Editor
         if (dl == nullptr)
             return;
 
-        // world -> screen 投影。 clip.w<=0 (カメラ背後) は描画しない
+        // world -> screen 投影。 clip.w<=0 のカメラ背後は描画しない
         const auto project = [&](const NS::Math::Vector3& world, ImVec2& out) -> bool {
             const NS::Math::Vector4 worldH{world.x, world.y, world.z, 1.0f};
             const NS::Math::Vector4 clip = NS::Math::Vector4::Transform(worldH, vp);
@@ -187,7 +189,7 @@ namespace NS::Editor
             return true;
         };
 
-        // セル枠の箱 (■) は軸そろえのまま固定。 向きは中の形状で示すので box 自体は回さない
+        // セル枠の箱 ■ は軸そろえのまま固定。 向きは中の形状で示すので box 自体は回さない
         const NS::Math::Vector3 boxCorners[8] = {
             {c.x - h, c.y - h, c.z - h},
             {c.x + h, c.y - h, c.z - h},
@@ -225,18 +227,18 @@ namespace NS::Editor
         }
 
         // slope を選択中なら、 セル内に実形状の wedge を薄く描いて向きを可視化する
-        // 斜面の稜線 (斜め) が m_displayedYawQuat で回るので、 回転が一目で分かる
-        const std::uint16_t currentId = m_palette.CurrentBlockId();
-        if (NS::Game::Blocks::IsSlopeBlock(currentId))
+        // 斜めの斜面の稜線が m_displayedYawQuat で回るので、 回転が一目で分かる
+        const float slopeAngle = m_palette.CurrentSlopeAngleDegrees();
+        if (slopeAngle >= 0.0f)
         {
             constexpr float kPi = 3.14159265358979323846f;
-            const float angle = NS::Game::Blocks::GetSlopeAngleDegrees(currentId);
+            const float angle = slopeAngle;
             const float rawHeight = std::tan(angle * (kPi / 180.0f)) * (2.0f * h);
             const float height = (rawHeight > 2.0f * h) ? 2.0f * h : rawHeight;
             const float yBot = -h;
             const float yTop = -h + height;
 
-            // 6 頂点 (local、 +Z 側が高い斜面)。 BuildWedgeTriangles と同一規約
+            // local で +Z 側が高い斜面の 6 頂点。 BuildWedgeTriangles と同一規約
             const NS::Math::Vector3 wedgeLocal[6] = {
                 {-h, yBot, -h},
                 {+h, yBot, -h},
@@ -253,7 +255,7 @@ namespace NS::Editor
                 wedgeFront[i] = project(NS::Math::Vector3{c.x + r.x, c.y + r.y, c.z + r.z}, wedgeScreen[i]);
             }
 
-            // fBL=0 fBR=1 bBL=2 bBR=3 bTL=4 bTR=5。 0-4 / 1-5 が斜面の稜線 (斜め)
+            // fBL=0 fBR=1 bBL=2 bBR=3 bTL=4 bTR=5。 0-4 / 1-5 が斜めの斜面の稜線
             static constexpr int kWedgeEdges[9][2] = {
                 {0, 1},
                 {0, 2},
@@ -281,7 +283,7 @@ namespace NS::Editor
             return;
 
         // カーソルが spawn セルに乗っている時は cursor preview と完全に重なるので、 描画を譲って
-        // 黄色とそれ以外が滲む (アンチエイリアス境界 + 描画順依存) 問題を避ける
+        // 黄色とそれ以外がアンチエイリアス境界 + 描画順依存で滲む問題を避ける
         if (m_cursor.valid && m_cursor.placeX == m_level->spawnX && m_cursor.placeY == m_level->spawnY &&
             m_cursor.placeZ == m_level->spawnZ)
             return;
@@ -360,20 +362,21 @@ namespace NS::Editor
 #endif
     }
 
-    NS::Game::Undo::EditTarget EditorMode::Target() noexcept
+    NS::Game::Level::EditTarget EditorMode::Target() noexcept
     {
-        return NS::Game::Undo::EditTarget{*m_level, *m_objectIds, *m_nextObjectId};
+        return NS::Game::Level::EditTarget{*m_level, *m_objectIds, *m_nextObjectId};
     }
 
     void EditorMode::PlaceUnderCursorProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept
     {
         if (m_level == nullptr || m_objectIds == nullptr)
             return;
-        // 回転対象でない block (pole / water 等) は m_currentRotation が非ゼロでも 0 で焼き込む
-        const std::uint16_t blockId = m_palette.CurrentBlockId();
-        const std::uint8_t rotation = NS::Game::Blocks::IsRotatableBlock(blockId) ? m_currentRotation : std::uint8_t{0};
+        // 現在のブラシ = 複製元テンプレート。 配置は複製で行う
+        const NS::Game::Level::ObjectInstance& tmpl = m_palette.CurrentTemplate();
+        // pole / water 等の回転対象でない block は m_currentRotation が非ゼロでも 0 で焼き込む
+        const std::uint8_t rotation = m_palette.CurrentIsRotatable() ? m_currentRotation : std::uint8_t{0};
         auto target = Target();
-        m_undo.Push(std::make_unique<NS::Game::Undo::PlaceCommand>(x, y, z, blockId, rotation), target);
+        m_undo.Push(std::make_unique<NS::Editor::PlaceCommand>(tmpl, x, y, z, rotation), target);
         m_levelDirty = true;
     }
 
@@ -382,7 +385,7 @@ namespace NS::Editor
         if (m_level == nullptr || m_objectIds == nullptr)
             return;
         auto target = Target();
-        m_undo.Push(std::make_unique<NS::Game::Undo::DeleteCommand>(x, y, z), target);
+        m_undo.Push(std::make_unique<NS::Editor::DeleteCommand>(x, y, z), target);
         m_levelDirty = true;
     }
 
@@ -391,7 +394,7 @@ namespace NS::Editor
         if (m_level == nullptr || m_objectIds == nullptr)
             return;
         auto target = Target();
-        m_undo.Push(std::make_unique<NS::Game::Undo::RotateCommand>(x, y, z, +1), target);
+        m_undo.Push(std::make_unique<NS::Editor::RotateCommand>(x, y, z, +1), target);
         m_levelDirty = true;
     }
 
@@ -406,7 +409,7 @@ namespace NS::Editor
     void EditorMode::UpdateCursorFromInput() noexcept
     {
         m_cursor = CursorState{};
-        // Object ツールモード中は grid 設置 cursor を出さない (カーソル追従の ■ プレビューがギズモ操作の邪魔になる)
+        // カーソル追従の ■ プレビューがギズモ操作の邪魔になるので Object ツールモード中は grid 設置 cursor を出さない
         if (m_inputSuppressed)
             return;
         if (m_input == nullptr || m_camera == nullptr || m_level == nullptr)
@@ -421,7 +424,7 @@ namespace NS::Editor
 
         const auto vp = m_camera->ViewProjection();
         const NS::Math::Ray ray =
-            NS::Scene::EditorGridMath::ScreenToWorldRay(vp, viewport, m_input->Mouse().GetX(), m_input->Mouse().GetY());
+            NS::Editor::ScreenToWorldRay(vp, viewport, m_input->Mouse().GetX(), m_input->Mouse().GetY());
 
         float bestT = std::numeric_limits<float>::max();
         bool hit = false;
@@ -433,7 +436,7 @@ namespace NS::Editor
 
         for (const auto& object : m_level->objects)
         {
-            // grid カーソルの pick 対象は gridAligned のみ (自由配置物はギズモが拾う)
+            // grid カーソルの pick 対象は gridAligned のみで、 自由配置物はギズモが拾う
             if ((object.flags & NS::Game::Level::kObjectFlagGridAligned) == 0)
                 continue;
             const std::int16_t cx = NS::Game::Level::ObjectCellX(object);
@@ -495,7 +498,7 @@ namespace NS::Editor
         }
 
         NS::Math::Vector3 cellCenter{};
-        if (!NS::Scene::EditorGridMath::TryGroundPlaneFallback(ray, cellCenter))
+        if (!NS::Editor::TryGroundPlaneFallback(ray, cellCenter))
             return;
 
         m_cursor.valid = true;
@@ -515,22 +518,21 @@ namespace NS::Editor
     {
         if (m_input == nullptr || m_level == nullptr || !m_cursor.valid)
             return;
-        // ImGui UI が mouse を握っている時は place / delete を発火しない (UI クリックが裏で block を消す事故を防ぐ)
+        // UI クリックが裏で block を消す事故を防ぐため ImGui UI が mouse を握っている時は place / delete を発火しない
         if (m_imgui != nullptr && m_imgui->WantCaptureMouse())
             return;
         // Object ツールモード中はギズモが LMB を専有するので grid の設置/削除は止める
         if (m_inputSuppressed)
             return;
 
-        const std::uint16_t currentId = m_palette.CurrentBlockId();
-        const bool spawnSlotActive = (currentId == NS::Game::Blocks::kBlockIdSpawn);
+        const bool spawnSlotActive = m_palette.CurrentIsSpawn();
 
         auto& mouse = m_input->Mouse();
         if (mouse.IsPressed(NS::Platform::MouseButton::Left))
         {
             if (spawnSlotActive)
             {
-                // Spawn は世界に 1 点。 LevelData.spawnX/Y/Z を上書きするだけで BlockEntry は積まない
+                // Spawn は世界に 1 点。 LevelData.spawnX/Y/Z を上書きするだけで配置物は積まない
                 SetSpawnAtProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
             }
             else if (!m_cursor.placementBlocked)
@@ -570,7 +572,7 @@ namespace NS::Editor
         if (m_inputSuppressed)
             return;
 
-        // R を 1 回叩くごとに 90° 回す。 slope も cube も 4 方向スナップ (押しっぱの連続回転はしない)
+        // R を 1 回叩くごとに 90° 回す。 slope も cube も 4 方向スナップで押しっぱの連続回転はしない
         const bool rotate =
             m_input->Keyboard().IsPressed(NS::Platform::Key::R) ||
             (m_input->Gamepad(0).IsConnected() && m_input->Gamepad(0).IsPressed(NS::Platform::GamepadButton::Y));
@@ -583,18 +585,18 @@ namespace NS::Editor
             const std::size_t index =
                 NS::Game::Level::FindGridObjectAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
             if (index != NS::Game::Level::kNoObjectIndex &&
-                NS::Game::Blocks::IsRotatableBlock(m_level->objects[index].kind))
+                NS::Game::Blocks::IsRotatableObject(m_level->objects[index]))
             {
                 auto target = Target();
-                m_undo.Push(std::make_unique<NS::Game::Undo::RotateCommand>(
+                m_undo.Push(std::make_unique<NS::Editor::RotateCommand>(
                                 m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ, std::int8_t{1}),
                             target);
                 m_levelDirty = true;
             }
         }
-        else if (NS::Game::Blocks::IsRotatableBlock(m_palette.CurrentBlockId()))
+        else if (m_palette.CurrentIsRotatable())
         {
-            // 既存 block がなければ次に置く block の向きを 90° 進める (4 方向で循環)
+            // 既存 block がなければ次に置く block の向きを 90° 進めて 4 方向で循環させる
             m_currentRotation = static_cast<std::uint8_t>((m_currentRotation + 1) & 0x03);
         }
     }

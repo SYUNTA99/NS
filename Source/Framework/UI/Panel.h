@@ -16,7 +16,7 @@ namespace NS::UI
     class Panel
     {
     public:
-        /// `title` はラベル兼 ID、 `isOpen` は X ボタンの open / close 状態を受け取る (nullptr 可)
+        /// `title` はラベル兼 ID、 `isOpen` は X ボタンの open / close 状態を受け取り nullptr 可
         Panel(std::string_view title, bool* isOpen = nullptr) noexcept;
         ~Panel() noexcept;
 

@@ -32,7 +32,7 @@ namespace NS::Graphics
             return ext == ".dds";
         }
 
-        // 1 slice を WIC/DDS で staging texture として読む。失敗時は false (呼出側が skip を選択)
+        // 1 slice を WIC/DDS で staging texture として読む。失敗時は false を返し呼出側が skip を選択する
         [[nodiscard]] bool TryLoadSliceResource(ID3D11Device* device,
                                                 ID3D11DeviceContext* context,
                                                 const std::filesystem::path& path,
@@ -52,7 +52,7 @@ namespace NS::Graphics
             const auto& bytes = bytesOpt.value();
             const auto* data = reinterpret_cast<const std::uint8_t*>(bytes.data());
 
-            // STAGING usage は SHADER_RESOURCE bind 不可なので SRV 出力は要求しない (要求すると E_INVALIDARG)
+            // STAGING usage は SHADER_RESOURCE bind 不可なので SRV 出力は要求しない。 要求すると E_INVALIDARG になる
             if (IsDdsExtension(path))
             {
                 const HRESULT hr = DirectX::CreateDDSTextureFromMemory(
@@ -158,7 +158,7 @@ namespace NS::Graphics
             return;
         }
 
-        // slice 数を上限 (kTotalSlices) で clamp。 超過分は WARN を出して捨てる
+        // slice 数を上限 kTotalSlices で clamp する。 超過分は WARN を出して捨てる
         std::vector<std::filesystem::path> paths = desc.slicePaths;
         if (paths.size() > static_cast<std::size_t>(kTotalSlices))
         {
@@ -261,7 +261,7 @@ namespace NS::Graphics
             return;
         }
 
-        // 各 slice を staging→CopySubresourceRegion で転写。失敗 slice はスキップ (fallback フラグのみ立てて継続)
+        // 各 slice を staging→CopySubresourceRegion で転写。失敗 slice はスキップし fallback フラグのみ立てて継続する
         bool anySliceFailed = false;
         for (std::size_t i = 0; i < paths.size(); ++i)
         {

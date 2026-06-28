@@ -35,14 +35,14 @@ namespace NS::Graphics
         };
         static_assert(sizeof(SkyboxCB) == 64, "SkyboxCB は HLSL 側 cbuffer (b0) と byte 一致が必要");
 
-        // D3D11 cubemap 標準順 (+X/-X/+Y/-Y/+Z/-Z) に rt/lf/up/dn/ft/bk をマップ。上下逆・水平反転時は個別差替え
+        // D3D11 cubemap 標準順 +X/-X/+Y/-Y/+Z/-Z に rt/lf/up/dn/ft/bk をマップ。上下逆・水平反転時は個別差替え
         constexpr std::array<const char*, 6> kKurtFaceFileNames = {
-            "space_rt.png", // +X (right)
-            "space_lf.png", // -X (left)
-            "space_up.png", // +Y (top)
-            "space_dn.png", // -Y (bottom)
-            "space_ft.png", // +Z (forward, LH)
-            "space_bk.png", // -Z (back,    LH)
+            "space_rt.png", // +X 右
+            "space_lf.png", // -X 左
+            "space_up.png", // +Y 上
+            "space_dn.png", // -Y 下
+            "space_ft.png", // +Z 左手系で前
+            "space_bk.png", // -Z 左手系で後
         };
 
         [[nodiscard]] bool IsDdsExtension(const std::filesystem::path& path)
@@ -219,8 +219,8 @@ namespace NS::Graphics
                 faceTextures[i] = std::move(tex2d);
             }
 
-            // 6-face cubemap 本体を作る。 mipmap は v1 では生成しない (置物 placeholder、
-            // theme 確定後に texconv で .dds 直接配布に切り替える運用)
+            // 6-face cubemap 本体を作る。 mipmap は v1 では生成しない。 置物の仮実装で、
+            // theme 確定後に texconv で .dds 直接配布に切り替える運用
             D3D11_TEXTURE2D_DESC cubeDesc{};
             cubeDesc.Width = static_cast<UINT>(faceWidth);
             cubeDesc.Height = static_cast<UINT>(faceHeight);
@@ -302,7 +302,7 @@ namespace NS::Graphics
         }
         m_device = device;
 
-        // unit cube mesh。 inside-out 描画なのでサイズは何でも良いが、 1m 立方 (half=0.5) で統一
+        // unit cube mesh。 inside-out 描画なのでサイズは何でも良いが、 half=0.5 の 1m 立方で統一
         auto geom = MakeCube({0.5f, 0.5f, 0.5f});
         MeshDesc md{};
         md.vertices = geom.vertices.data();
@@ -316,7 +316,7 @@ namespace NS::Graphics
             return;
         }
 
-        // skybox 専用 shader。 cube mesh の StandardInputLayout (POSITION+TEXCOORD+NORMAL) と
+        // skybox 専用 shader。 POSITION+TEXCOORD+NORMAL を持つ cube mesh の StandardInputLayout と
         // skybox.vs の入力シグネチャを共有する
         const auto exeDir = ::NS::Core::FileSystem::ContentRoot();
         m_vs = Shader::Create(exeDir / "Shaders" / "skybox.vs.hlsl");
@@ -339,8 +339,8 @@ namespace NS::Graphics
             return;
         }
 
-        // inside-out cube なので前面を捨てる (NS の他の不透明描画は CW = front)
-        // 深度は z=1 張り付きに合わせ ReadOnly (LESS_EQUAL + 書込なし)
+        // inside-out cube なので前面を捨てる。 NS の他の不透明描画は CW = front
+        // 深度は z=1 張り付きに合わせ ReadOnly で LESS_EQUAL + 書込なし
         PipelineDesc pipeDesc{};
         pipeDesc.cull = CullMode::Front;
         pipeDesc.depth = DepthMode::ReadOnly;

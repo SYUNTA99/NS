@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file CapsuleColliderComponent.h
-/// @brief カプセル collider Component。 owner の world 変換から WorldCapsule (中心 / 軸 / 半径 / 半高) を返す
+/// @brief カプセル collider Component。 owner の world 変換から中心・軸・半径・半高を備えた WorldCapsule を返す
 
 #include "Framework/Math/Math.h"
 #include "Framework/Physics/Capsule.h"
@@ -10,8 +10,8 @@
 namespace NS::Scene
 {
     /// カプセル collider を SceneBase に登録する Component
-    /// 既定は縦 (Y 軸) capsule。 local 回転で寝かせられる。 半径は X/Z scale の最大、 半高は Y scale で拡縮する
-    /// (回転と非一様 scale の併用時は近似になる)
+    /// 既定は縦向き Y 軸の capsule。 local 回転で寝かせられる。 半径は X/Z scale の最大、 半高は Y scale で拡縮する
+    /// 回転と非一様 scale を併用すると近似になる
     class CapsuleColliderComponent : public Component
     {
     public:
@@ -24,7 +24,7 @@ namespace NS::Scene
         void SetRadius(float radius) noexcept;
         [[nodiscard]] float Radius() const noexcept;
 
-        /// 芯の半分の長さ (hemisphere を除く円柱部の半長) を設定 / 取得する。 負は 0 にクランプ
+        /// 芯の半分の長さ、 すなわち半球を除く円柱部の半長を設定 / 取得する。 負は 0 にクランプ
         void SetHalfHeight(float halfHeight) noexcept;
         [[nodiscard]] float HalfHeight() const noexcept;
 
@@ -32,18 +32,21 @@ namespace NS::Scene
         void SetCenterOffset(const NS::Math::Vector3& offset) noexcept;
         [[nodiscard]] NS::Math::Vector3 CenterOffset() const noexcept;
 
-        /// local 回転を quaternion で直接設定 / 取得する (保存値の復元用)
+        /// local 回転を quaternion で直接設定 / 取得する。 保存値の復元に使う
         void SetLocalRotation(const NS::Math::Quaternion& rotation) noexcept;
         [[nodiscard]] NS::Math::Quaternion LocalRotation() const noexcept;
 
-        /// local 回転を Euler (度・ pitch/yaw/roll) で読み書きする。 寝かせ capsule 用に内部は quaternion 保持
+        /// local 回転を pitch/yaw/roll の Euler 角を度数法で読み書きする。 寝かせ用に内部は quaternion 保持
         void SetRotationEulerDegrees(const NS::Math::Vector3& eulerDegrees) noexcept;
         [[nodiscard]] NS::Math::Vector3 RotationEulerDegrees() const noexcept;
 
         /// owner の world 変換に local offset / 回転を重ねた capsule を返す
         /// axis は local 回転で回した Y 軸、 半径は X/Z scale 最大、 半高は Y scale で拡縮する
-        /// Owner 未登録時は local offset / 回転だけを反映する (例外を投げない)
+        /// Owner 未登録時は local offset / 回転だけを反映する。 例外は投げない
         [[nodiscard]] NS::Physics::Capsule WorldCapsule() const noexcept;
+
+        /// owner の world 変換を反映した世界軸並行 AABB を返す。 Owner 未登録時は local だけを反映する
+        [[nodiscard]] NS::Math::AABB WorldAABB() const noexcept;
 
         NS_REFLECT_BEGIN(CapsuleColliderComponent)
         NS_REFLECT_ACCESSOR(float, "Radius", Radius(), SetRadius)

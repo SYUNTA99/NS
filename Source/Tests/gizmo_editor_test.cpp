@@ -97,7 +97,7 @@ namespace
     TEST(GizmoEditorComputeAxisMove, XAxisParallelViewIsNoOp)
     {
         const NS::Math::Vector3 start{2.0f, 3.0f, 4.0f};
-        // 視線方向が X 軸とほぼ平行 -> 縮退で no-op
+        // 視線方向が X 軸とほぼ平行 -> 縮退時は何もしない
         const NS::Math::Ray r0{NS::Math::Vector3{-5.0f, 3.0f, 4.0f}, NS::Math::Vector3{1.0f, 0.0f, 0.0f}};
         const NS::Math::Ray r1{NS::Math::Vector3{-5.0f, 3.0f, 4.0f}, NS::Math::Vector3{1.0f, 0.0f, 0.0f}};
         const auto out =

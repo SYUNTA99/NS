@@ -34,7 +34,7 @@ TEST(UIPanelTest, BeginEndPairInValidContext)
     imgui.BeginFrame();
     {
         NS::UI::Panel panel("test panel");
-        // dtor で End が呼ばれる、 ペアが揃わないと ImGui::EndFrame 内 assert で死ぬ
+        // デストラクタで End が呼ばれる、 ペアが揃わないと ImGui::EndFrame 内 assert で死ぬ
     }
     imgui.EndFrame();
     renderer.EndFrame();
