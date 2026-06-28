@@ -1,0 +1,60 @@
+============================================================
+ THIRD PARTY NOTICES  -  NS
+============================================================
+
+本ソフトウェア（NS.exe）には、以下のサードパーティ製ライブラリが
+組み込まれています。各ライブラリのライセンス全文は同梱の Licenses/
+フォルダ（一部は本ファイル内）に収録しています。
+（提出フォルダの Source/ には自作コードのみを含め、これら外部
+ ライブラリのソースは容量のため除外しています）
+
+------------------------------------------------------------
+ DirectXTK  (Microsoft) -- MIT License
+   用途: SimpleMath / CommonStates / DDS・WIC テクスチャ読込
+   全文: Licenses/DirectXTK-LICENSE.txt
+------------------------------------------------------------
+ DirectXTex  (Microsoft) -- MIT License
+   用途: テクスチャ処理ヘッダ
+   全文: Licenses/DirectXTex-LICENSE.txt
+------------------------------------------------------------
+ spdlog  (Gabime) -- MIT License
+   用途: ログ出力
+   全文: Licenses/spdlog-LICENSE.txt
+------------------------------------------------------------
+ magic_enum  (Daniil Goncharov) -- MIT License
+   用途: enum のリフレクション
+   全文: Licenses/magic_enum-LICENSE.txt
+------------------------------------------------------------
+ cgltf  (Johannes Kuhlmann) -- MIT License
+   用途: glTF モデル読込
+   ライセンス全文:
+
+   The MIT License (MIT)
+
+   Copyright (c) 2018-2021 Johannes Kuhlmann
+
+   Permission is hereby granted, free of charge, to any person obtaining
+   a copy of this software and associated documentation files (the
+   "Software"), to deal in the Software without restriction, including
+   without limitation the rights to use, copy, modify, merge, publish,
+   distribute, sublicense, and/or sell copies of the Software, and to
+   permit persons to whom the Software is furnished to do so, subject to
+   the following conditions:
+
+   The above copyright notice and this permission notice shall be included
+   in all copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+------------------------------------------------------------
+ システムランタイム（Windows / Microsoft 提供の再頒布可能コンポーネント）
+   - Microsoft Visual C++ Runtime（vcruntime140.dll, vcruntime140_1.dll, msvcp140.dll）
+   - d3dcompiler_47.dll（DirectX シェーダコンパイラ。実行時シェーダ
+     コンパイルに使用）
+============================================================
