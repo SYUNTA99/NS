@@ -33,6 +33,9 @@ namespace NS::Scene
         /// owner の world 変換を各頂点に乗せた world 三角形群を返す。 Owner 未登録なら local をそのまま返す
         [[nodiscard]] std::vector<NS::Physics::Triangle> WorldTriangles() const;
 
+        // 三角形群は反射で運べない。 兄弟 collider と揃えて型名だけ登録しておく
+        NS_REFLECT_NONE(MeshColliderComponent)
+
     private:
         std::vector<NS::Physics::Triangle> m_localTriangles;
     };
