@@ -42,6 +42,8 @@ public:
 private:
     static void HandleModeToggleInput(LevelEditorController& editor) noexcept;
     static void HandlePauseInput(LevelEditorController& editor) noexcept;
+    /// プレイ中だけ F5 でエディタ UI 全体の表示/非表示をトグルする。 編集モードでは常に表示へ戻す
+    void HandleUiVisibilityInput(LevelEditorController& editor) noexcept;
     static void RenderPauseModal(LevelEditorController& editor) noexcept;
     /// 中央ノードを透過にした DockSpace を毎フレーム置き、 周囲パネルのドッキング先にする
     /// 中央は背景非描画 + 入力素通しなので、 全画面 3D とギズモがそのまま見え編集操作も届く
@@ -69,4 +71,7 @@ private:
 
     // 起動 scene (LevelPlayScene) を編集するコントローラ。 OnAttach で scene へ束ねて Setup する
     std::unique_ptr<LevelEditorController> m_controller;
+
+    // プレイ中に F5 でトグルするエディタ UI の表示フラグ。 編集モードでは毎フレーム true へ戻す
+    bool m_uiVisible = true;
 };

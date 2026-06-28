@@ -234,9 +234,9 @@ void LevelPlayScene::OnUpdate()
     if (app == nullptr)
         return;
 
-    // F5 で編集中の HLSL を再起動なしで反映する (reload-in-place、 play / edit 共通の dev hot reload)
-    // ImGui 入力中は誤爆を防ぐため無効化する
-    if (!app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::Platform::Key::F5))
+    // F5 で編集中の HLSL を再起動なしで反映する。 プレイ中の F5 はエディタ UI の表示トグルに使うため
+    // ここでは編集モード中だけシェーダを再読み込みする。 ImGui 入力中は誤爆を防ぐため無効化する
+    if (!m_playing && !app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::Platform::Key::F5))
     {
         app->Assets().ReloadAllShaders();
         // block 描画の instanced shader は AssetManager 管理外で自前コンパイルなので個別に reload する

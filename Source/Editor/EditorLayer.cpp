@@ -86,6 +86,7 @@ void EditorLayer::OnUpdate()
     m_controller->Tick();
     HandleModeToggleInput(*m_controller);
     HandlePauseInput(*m_controller);
+    HandleUiVisibilityInput(*m_controller);
 }
 
 void EditorLayer::OnRender()
@@ -100,23 +101,27 @@ void EditorLayer::OnRender()
     // 編集用の上乗せ描画 (ギズモ / palette / 編集ビジュアル) と debug provenance 退避
     editor.Render();
 
-    // Hierarchy / Inspector はプレイ中も出す。 Player / Camera を選んで操作感をライブ調整できるようにするため
-    // DockSpace も両モードで毎フレーム置き、 edit で組んだドッキングがプレイ移行で崩れないようにする
-    RenderDockSpaceHost();
-    if (editor.CurrentMode() == LevelEditorController::Mode::Edit)
+    // プレイ中は F5 でエディタ UI を丸ごと隠せる。 隠している間も 3D 描画とゲーム進行はそのまま走る
+    if (m_uiVisible)
     {
-        editor.Editor().RenderFileBrowser();
-        RenderToolModePanel(editor);
-        RenderMaterialsPanel(editor);
+        // Hierarchy / Inspector はプレイ中も出す。 Player / Camera を選んで操作感をライブ調整できるようにするため
+        // DockSpace も両モードで毎フレーム置き、 edit で組んだドッキングがプレイ移行で崩れないようにする
+        RenderDockSpaceHost();
+        if (editor.CurrentMode() == LevelEditorController::Mode::Edit)
+        {
+            editor.Editor().RenderFileBrowser();
+            RenderToolModePanel(editor);
+            RenderMaterialsPanel(editor);
+        }
+        else if (editor.Play().paused)
+            RenderPauseModal(editor);
+
+        RenderHierarchyPanel(editor);
+        RenderInspectorPanel(editor);
+
+        RenderFpsOverlay();
+        RenderRenderSettingsPanel(editor);
     }
-    else if (editor.Play().paused)
-        RenderPauseModal(editor);
-
-    RenderHierarchyPanel(editor);
-    RenderInspectorPanel(editor);
-
-    RenderFpsOverlay();
-    RenderRenderSettingsPanel(editor);
 
     m_imgui->EndFrame();
 
@@ -165,6 +170,25 @@ void EditorLayer::HandlePauseInput(LevelEditorController& editor) noexcept
 
     if (pPressed || backPressed)
         editor.Play().paused = !editor.Play().paused;
+}
+
+void EditorLayer::HandleUiVisibilityInput(LevelEditorController& editor) noexcept
+{
+    // 編集モードでは UI を常時表示に戻す。 トグルはプレイ中だけ効かせる
+    if (editor.CurrentMode() != LevelEditorController::Mode::Play)
+    {
+        m_uiVisible = true;
+        return;
+    }
+
+    auto* app = NS::App::Application::Get();
+    if (app == nullptr)
+        return;
+    auto& input = app->Input();
+
+    // 隠している間は ImGui がキーボードを掴まないので F5 で再表示できる
+    if (!input.UiWantsKeyboard() && input.Keyboard().IsPressed(NS::Platform::Key::F5))
+        m_uiVisible = !m_uiVisible;
 }
 
 void EditorLayer::RenderDockSpaceHost() noexcept
