@@ -7,6 +7,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
+#include <array>
 #include <atomic>
 #include <cassert>
 #include <chrono>
@@ -38,13 +39,13 @@ namespace NS::Core
         /// 実行 exe の絶対ディレクトリを取得する。 取得失敗時は空 path
         std::filesystem::path GetExeDirectory() noexcept
         {
-            wchar_t buffer[MAX_PATH];
-            const DWORD len = ::GetModuleFileNameW(nullptr, buffer, MAX_PATH);
+            std::array<wchar_t, MAX_PATH> buffer{};
+            const DWORD len = ::GetModuleFileNameW(nullptr, buffer.data(), MAX_PATH);
             if (len == 0 || len >= MAX_PATH)
             {
                 return std::filesystem::path{};
             }
-            return std::filesystem::path{buffer}.parent_path();
+            return std::filesystem::path{buffer.data()}.parent_path();
         }
 
         /// ログ出力先の絶対パス。 premake5.lua / .git を上位へ辿りリポジトリルート直下の `logs/` を返す
