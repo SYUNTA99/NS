@@ -42,10 +42,14 @@ namespace NS::Editor
         /// 編集中の cursor 状態。 raycast 結果と placement 候補 cell を保持する
         struct CursorState
         {
-            bool valid = false;                  ///< 何かしらヒットあり (block 面 or ground)
-            NS::Math::Vector3 placementCenter{}; ///< 配置先 cell の世界座標 (cell 中心)
-            NS::Math::Vector3 deleteCenter{};    ///< 削除対象 cell の世界座標
-            bool placementBlocked = false;       ///< 既に block ある→赤表示
+            /// 何かしらヒットあり。 block 面か ground
+            bool valid = false;
+            /// 配置先 cell の世界座標で cell 中心
+            NS::Math::Vector3 placementCenter{};
+            /// 削除対象 cell の世界座標
+            NS::Math::Vector3 deleteCenter{};
+            /// 既に block があり赤表示
+            bool placementBlocked = false;
             std::int16_t hitX = 0;
             std::int16_t hitY = 0;
             std::int16_t hitZ = 0;

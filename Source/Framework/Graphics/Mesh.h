@@ -30,11 +30,16 @@ namespace NS::Graphics
     /// 公開 InputElement 用フォーマット。頂点属性として受け付けるフォーマットの閉集合
     enum class InputElementFormat
     {
-        Float2, ///< R32G32_FLOAT
-        Float3, ///< R32G32B32_FLOAT
-        Float4, ///< R32G32B32A32_FLOAT
-        UInt32, ///< R32_UINT
-        UInt4,  ///< R32G32B32A32_UINT (4 ボーン index)
+        /// R32G32_FLOAT
+        Float2,
+        /// R32G32B32_FLOAT
+        Float3,
+        /// R32G32B32A32_FLOAT
+        Float4,
+        /// R32_UINT
+        UInt32,
+        /// R32G32B32A32_UINT。4 ボーン index 用
+        UInt4,
     };
 
     /// InputLayout の 1 要素。SemanticIndex は常に 0、InputSlot 0 単一 stream 前提

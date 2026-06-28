@@ -23,8 +23,10 @@ namespace NS::Game::Level
     struct EditTarget
     {
         NS::Game::Level::LevelData& level;
-        std::vector<std::uint32_t>& ids; ///< level.objects と同長、 各要素のセッション識別子
-        std::uint32_t& nextId;           ///< 次に採番する識別子 (単調増加、 削除でも巻き戻さない)
+        /// level.objects と同長、 各要素のセッション識別子
+        std::vector<std::uint32_t>& ids;
+        /// 次に採番する識別子。 単調増加で削除でも巻き戻さない
+        std::uint32_t& nextId;
     };
 
     /// ids を objects と同サイズの連番 [0..N) へ再構築し nextId=N へ戻す

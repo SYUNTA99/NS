@@ -50,7 +50,8 @@ namespace NS::Scene
     /// 読み込んだ Material とその基準色。 baseColor は MeshRenderer 側に適用するため別で返す
     struct LoadedMaterial
     {
-        NS::Graphics::Material* material = nullptr; ///< AssetManager 所有、 キャッシュ寿命中のみ有効
+        /// AssetManager 所有、 キャッシュ寿命中のみ有効
+        NS::Graphics::Material* material = nullptr;
         NS::Math::Vector3 baseColor{1.0f, 1.0f, 1.0f};
     };
 
@@ -58,10 +59,14 @@ namespace NS::Scene
     /// 再生状態とクリップ合成 (リターゲット) はインスタンス側で持つため、 共有テンプレートを複製で配る
     struct LoadedSkinnedModel
     {
-        NS::Graphics::SkeletalMesh* mesh = nullptr;     ///< AssetManager 所有、 キャッシュ寿命中のみ有効
-        NS::Graphics::Skeleton skeleton;                ///< 複製 (呼出側が所有する)
-        std::vector<NS::Graphics::AnimationClip> clips; ///< 複製 (呼出側が所有する)
-        NS::Math::Vector3 boundsMin{};                  ///< bind ポーズ頂点の境界 (配置スケール計算用)
+        /// AssetManager 所有、 キャッシュ寿命中のみ有効
+        NS::Graphics::SkeletalMesh* mesh = nullptr;
+        /// 複製で呼出側が所有する
+        NS::Graphics::Skeleton skeleton;
+        /// 複製で呼出側が所有する
+        std::vector<NS::Graphics::AnimationClip> clips;
+        /// bind ポーズ頂点の境界。 配置スケール計算に使う
+        NS::Math::Vector3 boundsMin{};
         NS::Math::Vector3 boundsMax{};
         bool valid = false;
     };

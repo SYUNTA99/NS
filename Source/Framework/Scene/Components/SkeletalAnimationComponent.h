@@ -29,8 +29,10 @@ namespace NS::Scene
 
         void Play() noexcept;
         void Pause() noexcept;
-        void Stop() noexcept;                ///< 再生時刻を 0 に戻して停止する
-        void SetSpeed(float speed) noexcept; ///< 負値は 0 にクランプ
+        /// 再生時刻を 0 に戻して停止する
+        void Stop() noexcept;
+        /// 負値は 0 にクランプする
+        void SetSpeed(float speed) noexcept;
         void SetLooping(bool looping) noexcept;
         bool SelectClip(std::size_t index) noexcept;
         bool SelectClip(std::string_view name) noexcept;
@@ -41,7 +43,8 @@ namespace NS::Scene
         [[nodiscard]] std::size_t ClipCount() const noexcept;
         [[nodiscard]] std::size_t CurrentClip() const noexcept;
         [[nodiscard]] float Time() const noexcept;
-        [[nodiscard]] float Duration() const noexcept; ///< 現在クリップの尺 (無ければ 0)
+        /// 現在クリップの尺。 無ければ 0
+        [[nodiscard]] float Duration() const noexcept;
         [[nodiscard]] bool IsPlaying() const noexcept;
 
         void OnStart() override;

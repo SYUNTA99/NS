@@ -25,12 +25,18 @@ namespace NS::Graphics
     /// 用途別の埋め込みは `MakeVertexBufferDesc` 等のヘルパが行う
     struct BufferDesc
     {
-        const void* initialData = nullptr;              ///< 初期データ。非 Dynamic は必須
-        std::size_t byteSize = 0;                       ///< 総バイト数 (定数は内部で 16 切り上げ)
-        std::size_t stride = 0;                         ///< 頂点 1 個のバイト数 (頂点用)
-        DXGI_FORMAT indexFormat = DXGI_FORMAT_R32_UINT; ///< index 幅 (index 用)
-        D3D11_USAGE usage = D3D11_USAGE_DEFAULT;        ///< USAGE 切替 (CPUAccessFlags は usage から導出)
-        UINT bindFlags = 0;                             ///< D3D11_BIND_VERTEX_BUFFER 等 (役割)
+        /// 初期データ。非 Dynamic は必須
+        const void* initialData = nullptr;
+        /// 総バイト数。定数は内部で 16 byte 境界へ切り上げる
+        std::size_t byteSize = 0;
+        /// 頂点 1 個のバイト数。頂点用途で使う
+        std::size_t stride = 0;
+        /// index 幅。index 用途で使う
+        DXGI_FORMAT indexFormat = DXGI_FORMAT_R32_UINT;
+        /// USAGE 切替。CPUAccessFlags は usage から導出する
+        D3D11_USAGE usage = D3D11_USAGE_DEFAULT;
+        /// D3D11_BIND_VERTEX_BUFFER 等の役割を表す
+        UINT bindFlags = 0;
     };
 
     /// 頂点 / index / 定数を兼ねる単一 Buffer。役割は bindFlags で決まり、バインド / 更新は CommandList 経由

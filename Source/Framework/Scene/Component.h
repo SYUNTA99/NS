@@ -24,11 +24,16 @@ namespace NS::Scene
     /// OnUpdate 実行順を制御する priority 帯。値が小さいほど先、同 priority 内は登録順
     enum class TickPriority : int
     {
-        Input = 0,       ///< 入力読取 (PlayerInputComponent 等)
-        AI = 100,        ///< AI / state machine (将来 Enemy 用)
-        Physics = 200,   ///< 物理 / movement (CharacterMovementComponent 等) — Component default
-        Animation = 300, ///< animation / 補間 (将来 SkeletalAnim 用)
-        Camera = 400,    ///< Camera follow / transform (ThirdPersonFollowComponent 等)
+        /// 入力読取。PlayerInputComponent 等が使う
+        Input = 0,
+        /// AI / state machine。将来 Enemy 用
+        AI = 100,
+        /// 物理 / movement。Component の既定で CharacterMovementComponent 等が使う
+        Physics = 200,
+        /// animation / 補間。将来 SkeletalAnim 用
+        Animation = 300,
+        /// Camera follow / transform。ThirdPersonFollowComponent 等が使う
+        Camera = 400,
     };
 
     /// 全 Component の基底。通常は派生して使う
