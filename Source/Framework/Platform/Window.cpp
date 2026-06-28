@@ -178,7 +178,7 @@ namespace NS::Platform
         m_pImpl->classAtom = ::RegisterClassExW(&wc);
         if (m_pImpl->classAtom == 0)
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::Platform, "RegisterClassExW failed (GetLastError={})", ::GetLastError());
+            NS_LOG_ERROR(::NS::Core::LogCat::Platform, "RegisterClassExW 失敗 (GetLastError={})", ::GetLastError());
             s_instance = nullptr;
             return;
         }
@@ -205,7 +205,7 @@ namespace NS::Platform
 
         if (m_pImpl->hwnd == nullptr)
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::Platform, "CreateWindowExW failed (GetLastError={})", ::GetLastError());
+            NS_LOG_ERROR(::NS::Core::LogCat::Platform, "CreateWindowExW 失敗 (GetLastError={})", ::GetLastError());
             ::UnregisterClassW(m_pImpl->className.c_str(), m_pImpl->hInstance);
             m_pImpl->classAtom = 0;
             s_instance = nullptr;

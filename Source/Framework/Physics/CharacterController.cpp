@@ -25,7 +25,7 @@ namespace NS::Physics
 {
     CharacterControllerResult CharacterController::Update(const CharacterControllerInput& input) noexcept
     {
-        NS_SCOPED_TIMER(::NS::Core::LogCat::Game, "CharacterController::Update");
+        NS_SCOPED_TIMER(::NS::Core::LogCat::Physics, "CharacterController::Update");
 
         CharacterControllerResult result;
         result.position = input.position;
