@@ -15,7 +15,7 @@
 namespace NS::Platform
 {
 
-    /// XInput 互換コントローラのボタン識別子。kCount は配列サイズ用番兵
+    /// XInput 互換コントローラのボタン識別子。Count は配列サイズ用番兵
     enum class GamepadButton : int
     {
         A = 0,
@@ -37,7 +37,7 @@ namespace NS::Platform
         DPadLeft,
         DPadRight,
 
-        kCount
+        Count
     };
 
     /// アナログスティックの正規化済 (x, y)。各軸 -1.0〜1.0、デッドゾーン内は 0.0
@@ -83,7 +83,7 @@ namespace NS::Platform
         void Update() noexcept;
 
     private:
-        static constexpr std::size_t kButtonCount = static_cast<std::size_t>(GamepadButton::kCount);
+        static constexpr std::size_t kButtonCount = static_cast<std::size_t>(GamepadButton::Count);
 
         int m_userIndex = 0;
         bool m_connected = false;

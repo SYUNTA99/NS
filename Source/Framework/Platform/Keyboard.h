@@ -14,7 +14,7 @@
 namespace NS::Platform
 {
 
-    /// 物理キー識別子。VK コード非依存の間接層。kCount は配列サイズ用番兵
+    /// 物理キー識別子。VK コード非依存の間接層。Count は配列サイズ用番兵
     enum class Key : int
     {
         Unknown = 0,
@@ -85,7 +85,7 @@ namespace NS::Platform
         F11,
         F12,
 
-        kCount
+        Count
     };
 
     /// キーボード入力の現在/前フレーム状態を保持する。フレーム頭で Update() を 1 回呼ぶこと
@@ -116,7 +116,7 @@ namespace NS::Platform
         void ClearState() noexcept;
 
     private:
-        static constexpr std::size_t kKeyCount = static_cast<std::size_t>(Key::kCount);
+        static constexpr std::size_t kKeyCount = static_cast<std::size_t>(Key::Count);
 
         std::array<bool, kKeyCount> m_current{};
         std::array<bool, kKeyCount> m_previous{};

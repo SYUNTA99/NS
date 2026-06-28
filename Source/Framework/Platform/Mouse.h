@@ -14,7 +14,7 @@
 namespace NS::Platform
 {
 
-    /// マウスボタン識別子。kCount は配列サイズ用番兵
+    /// マウスボタン識別子。Count は配列サイズ用番兵
     /// X1 / X2 は OS 慣習に従う5 ボタンマウスのサイドボタン
     enum class MouseButton : int
     {
@@ -24,7 +24,7 @@ namespace NS::Platform
         X1,
         X2,
 
-        kCount
+        Count
     };
 
     /// マウス入力の現在/前フレーム状態を保持する。フレーム頭で Update() を 1 回呼ぶこと
@@ -61,7 +61,7 @@ namespace NS::Platform
         void ClearState() noexcept;
 
     private:
-        static constexpr std::size_t kButtonCount = static_cast<std::size_t>(MouseButton::kCount);
+        static constexpr std::size_t kButtonCount = static_cast<std::size_t>(MouseButton::Count);
 
         std::array<bool, kButtonCount> m_current{};
         std::array<bool, kButtonCount> m_previous{};
