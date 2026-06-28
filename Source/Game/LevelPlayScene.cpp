@@ -313,7 +313,7 @@ void LevelPlayScene::TickPlay()
             auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*hazard);
             auto* damage = NS::Game::Blocks::FindComponent<NS::Scene::HazardComponent>(*hazard);
             if (box && damage && NS::Physics::IntersectsCapsuleAabb(playerCapsule, box->WorldAABB()))
-                damage->OnPlayerOverlap(m_play);
+                NS::Game::Level::ApplyContactDamage(m_play);
         }
     }
 

@@ -1,5 +1,7 @@
 #include "Game/Level/PlayMode.h"
 
+#include "Framework/Core/LogCategories.h"
+#include "Framework/Core/Logger.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
 
@@ -95,6 +97,20 @@ namespace NS::Game::Level
         play.clearTriggered = false;
         play.deathTriggered = false;
         m_collectedCoinIndices.clear();
+    }
+
+    void ApplyContactDamage(PlayState& play) noexcept
+    {
+        if (play.playerHealth <= 0)
+            return;
+
+        --play.playerHealth;
+        if (play.playerHealth <= 0)
+        {
+            play.playerHealth = 0;
+            play.deathTriggered = true;
+            NS_LOG_INFO(::NS::Core::LogCat::Game, "ハザード接触で死亡 placeholder、 将来 HUD / 回復 / 演出に置換予定");
+        }
     }
 
 } // namespace NS::Game::Level

@@ -61,4 +61,7 @@ namespace NS::Game::Level
         /// 二重カウント防止用。 LevelData の block は削除しない (Play 中は不変)
         std::vector<std::size_t> m_collectedCoinIndices;
     };
+
+    /// 接触ダメージを 1 与える。 health 下限は 0、 0 到達で deathTriggered を立てる
+    void ApplyContactDamage(PlayState& play) noexcept;
 } // namespace NS::Game::Level

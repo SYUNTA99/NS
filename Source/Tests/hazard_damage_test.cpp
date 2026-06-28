@@ -1,15 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <Framework/Scene/Components/HazardComponent.h>
-#include <Framework/Scene/GameObject.h>
 #include <Game/Level/LevelData.h>
+#include <Game/Level/PlayMode.h>
 #include <Game/Level/PlayState.h>
-
-namespace
-{
-    using NS::Scene::GameObject;
-    using NS::Scene::HazardComponent;
-} // namespace
 
 TEST(HazardDamageTest, PlayStateInitializesHealthTo8)
 {
@@ -17,13 +10,11 @@ TEST(HazardDamageTest, PlayStateInitializesHealthTo8)
     EXPECT_EQ(play.playerHealth, 8);
 }
 
-TEST(HazardDamageTest, HazardDecrementsHealthOnOverlap)
+TEST(HazardDamageTest, ContactDamageDecrementsHealth)
 {
-    GameObject hazardObj;
-    auto& hazard = *hazardObj.AddComponent<HazardComponent>();
     NS::Game::Level::PlayState play;
 
-    hazard.OnPlayerOverlap(play);
+    NS::Game::Level::ApplyContactDamage(play);
 
     EXPECT_EQ(play.playerHealth, 7);
     EXPECT_FALSE(play.deathTriggered);
@@ -31,18 +22,16 @@ TEST(HazardDamageTest, HazardDecrementsHealthOnOverlap)
 
 TEST(HazardDamageTest, HealthClampsAtZero)
 {
-    GameObject hazardObj;
-    auto& hazard = *hazardObj.AddComponent<HazardComponent>();
     NS::Game::Level::PlayState play;
 
     for (int i = 0; i < 10; ++i)
-        hazard.OnPlayerOverlap(play);
+        NS::Game::Level::ApplyContactDamage(play);
 
     EXPECT_EQ(play.playerHealth, 0);
     EXPECT_GE(play.playerHealth, 0);
 }
 
-TEST(HazardDamageTest, HazardDoesNotModifyLevelData)
+TEST(HazardDamageTest, ContactDamageDoesNotModifyLevelData)
 {
     NS::Game::Level::LevelData level;
     level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, 0));
@@ -52,12 +41,9 @@ TEST(HazardDamageTest, HazardDoesNotModifyLevelData)
     level.themeId = 4;
     const std::uint32_t crcBefore = level.ComputeCrc32();
 
-    GameObject hazardObj;
-    auto& hazard = *hazardObj.AddComponent<HazardComponent>();
     NS::Game::Level::PlayState play;
-
     for (int i = 0; i < 5; ++i)
-        hazard.OnPlayerOverlap(play);
+        NS::Game::Level::ApplyContactDamage(play);
 
     const std::uint32_t crcAfter = level.ComputeCrc32();
     EXPECT_EQ(crcBefore, crcAfter);
@@ -66,12 +52,10 @@ TEST(HazardDamageTest, HazardDoesNotModifyLevelData)
 
 TEST(HazardDamageTest, HealthZeroFlagsDeath)
 {
-    GameObject hazardObj;
-    auto& hazard = *hazardObj.AddComponent<HazardComponent>();
     NS::Game::Level::PlayState play;
 
     for (int i = 0; i < 8; ++i)
-        hazard.OnPlayerOverlap(play);
+        NS::Game::Level::ApplyContactDamage(play);
 
     EXPECT_EQ(play.playerHealth, 0);
     EXPECT_TRUE(play.deathTriggered);
