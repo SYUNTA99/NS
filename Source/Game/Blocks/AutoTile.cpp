@@ -8,6 +8,8 @@
 #include <string>
 #include <variant>
 
+using namespace NS::Game::Theme;
+
 namespace NS::Game::Blocks
 {
 
@@ -72,12 +74,12 @@ namespace NS::Game::Blocks
         // bitmask 範囲外 (>=64) は base slice (offset 0) にフォールバック
         if (neighborMask >= 64)
         {
-            const ThemeData& td0 = ThemeRegistry::Get(theme);
+            const ThemeData& td0 = Get(theme);
             const std::uint16_t base0 = td0.blockTextureArrayBaseSlice;
             return base0 < NS::Graphics::TextureArray::kTotalSlices ? base0 : static_cast<std::uint16_t>(0);
         }
 
-        const ThemeData& td = ThemeRegistry::Get(theme);
+        const ThemeData& td = Get(theme);
         const std::uint16_t base = td.blockTextureArrayBaseSlice;
         const std::uint8_t variant = kBitmaskToVariant[neighborMask];
         // variant が 8 を超えないテーブルを書いてあるが、 念のため clamp する

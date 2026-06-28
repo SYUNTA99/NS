@@ -6,6 +6,8 @@
 #include <Game/Blocks/AutoTile.h>
 #include <Game/Theme/ThemeId.h>
 
+using namespace NS::Game::Theme;
+
 namespace
 {
     constexpr std::uint16_t kTotalSlices = NS::Graphics::TextureArray::kTotalSlices;

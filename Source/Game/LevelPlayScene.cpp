@@ -47,6 +47,8 @@
 #include <algorithm>
 #include <cmath>
 
+using namespace NS::Game::Theme;
+
 namespace
 {
     constexpr NS::Math::Vector3 kPlayerColor{0.85f, 0.20f, 0.20f};
@@ -367,8 +369,8 @@ void LevelPlayScene::UpdateDisplayBlocks()
 
 NS::Graphics::RenderSettingsOverride LevelPlayScene::BuildSceneOverride()
 {
-    // 範囲外 themeId は ThemeRegistry::Get 側で Grass にフォールバックされる
-    const ThemeData& theme = ThemeRegistry::Get(m_level.themeId);
+    // 範囲外 themeId は NS::Game::Theme::Get 側で Grass にフォールバックされる
+    const ThemeData& theme = Get(m_level.themeId);
 
     NS::Graphics::RenderSettingsOverride over{};
     if (theme.lightDirection.LengthSquared() > 1e-6f)
@@ -419,8 +421,8 @@ void LevelPlayScene::OnRenderScene()
     m_lastResolvedSettings = ctx.resolvedSettings;
 
     // テーマ swap は同一 frame 内で skybox / block / lighting に同じ ThemeData を反映させる必要がある
-    // 範囲外 themeId は ThemeRegistry::Get 側で Grass にフォールバックされる
-    const ThemeData& theme = ThemeRegistry::Get(m_level.themeId);
+    // 範囲外 themeId は NS::Game::Theme::Get 側で Grass にフォールバックされる
+    const ThemeData& theme = Get(m_level.themeId);
 
     // Block 描画は InstanceBatcher bucket 経由に統一。 MeshRendererComponent が非アクティブなので旧 per-block
     // 経路は通らない

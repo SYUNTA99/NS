@@ -31,7 +31,7 @@ namespace NS::Game::Blocks
 
     /// 6-neighbor mask を 64 entry テーブルで 8 variant に縮約し ThemeRegistry の base slice に加算する
     /// theme 範囲外は Grass、 mask>=64 は slice 0 にフォールバック
-    [[nodiscard]] std::uint16_t LookupTextureSlice(ThemeId theme, std::uint8_t neighborMask) noexcept;
+    [[nodiscard]] std::uint16_t LookupTextureSlice(NS::Game::Theme::ThemeId theme, std::uint8_t neighborMask) noexcept;
 
     /// 1 spawn 限定なので Command 経路を通さない直接 setter
     void SetSpawnMarker(NS::Game::Level::LevelData& level, std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
