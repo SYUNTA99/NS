@@ -5,8 +5,8 @@
 ///
 /// @details `Key` enum は VK コード非依存の独立識別子で公開ヘッダから
 /// `<windows.h>` を排除する間接層。 `OnKeyDown` / `OnKeyUp` は WndProc 経由で
-/// 呼ばれ、 `Update()` は fixed step ループの頭で 1 回呼ぶ (前フレームとの
-/// edge 判定基準を更新)。 マルチスレッドは未サポート (単一スレッド前提)
+/// 呼ばれ、 `Update()` は fixed step ループの頭で 1 回呼んで前フレームとの
+/// edge 判定基準を更新する。 単一スレッド前提でマルチスレッドは未サポート
 
 #include <array>
 #include <cstddef>
@@ -94,13 +94,13 @@ namespace NS::Platform
     public:
         Keyboard() = default;
 
-        /// このフレームで押された (前 false → 現 true)
+        /// このフレームで押された。前フレーム false から現フレーム true への変化
         [[nodiscard]] bool IsPressed(Key k) const noexcept;
 
-        /// 押し続けている (現 true)
+        /// 押し続けている。現フレームが true
         [[nodiscard]] bool IsHeld(Key k) const noexcept;
 
-        /// このフレームで離した (前 true → 現 false)
+        /// このフレームで離した。前フレーム true から現フレーム false への変化
         [[nodiscard]] bool IsReleased(Key k) const noexcept;
 
         /// previous = current をコピーし、差分判定基準を更新する
@@ -112,7 +112,7 @@ namespace NS::Platform
         /// WndProc から呼ばれる内部 API。Key::Unknown は無視する
         void OnKeyUp(Key k) noexcept;
 
-        /// 現在状態を全て false にクリアする (WM_KILLFOCUS でキー固着防止)
+        /// 現在状態を全て false にクリアする。WM_KILLFOCUS でキー固着を防ぐ
         void ClearState() noexcept;
 
     private:

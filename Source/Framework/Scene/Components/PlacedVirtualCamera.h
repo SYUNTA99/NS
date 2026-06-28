@@ -25,16 +25,16 @@ namespace NS::Scene
         void SetView(const NS::Math::Vector3& position, const NS::Math::Vector3& target) noexcept;
         void SetUpDirection(const NS::Math::Vector3& up) noexcept { m_up = up; }
 
-        /// 進入判定用のトリガ AABB (中心 + 半径)。 半径成分は呼出側が正値に保つ
+        /// 進入判定用のトリガ AABB を中心と半径で設定する。 半径成分は呼出側が正値に保つ
         void SetTrigger(const NS::Math::Vector3& center, const NS::Math::Vector3& extent) noexcept
         {
             m_triggerCenter = center;
             m_triggerExtent = extent;
         }
-        /// true の間、進入中は注視点をプレイヤー位置へ追従させる (位置固定で被写体を追う Mario 系の挙動)
+        /// true の間、進入中は注視点をプレイヤー位置へ追従させる。位置固定で被写体を追う Mario 系の挙動になる
         void SetLookAtPlayer(bool enable) noexcept { m_lookAtPlayer = enable; }
 
-        /// プレイヤー位置を受け、トリガ AABB 内なら自分を active 化する (外なら非 active)
+        /// プレイヤー位置を受け、トリガ AABB 内なら自分を active 化し、外なら非 active にする
         /// lookAtPlayer 時は進入中の注視点をプレイヤーへ更新する。play 中に毎ステップ呼ぶ
         void UpdateActivation(const NS::Math::Vector3& playerPosition) noexcept;
 

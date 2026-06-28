@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Audio.h
-/// @brief Audio 層の一括 include ヘッダ (仮実装)
+/// @brief 仮実装の Audio 層一括 include ヘッダ
 ///
 /// @details 将来 DirectXTK::Audio + XAudio2 で BGM / SE 機能を実装予定
 

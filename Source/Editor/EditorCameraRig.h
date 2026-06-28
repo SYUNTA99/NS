@@ -3,9 +3,9 @@
 /// @file EditorCameraRig.h
 /// @brief 編集モード用の自由視点カメラ GameObject
 ///
-/// @details `CameraComponent` (描画元) と `EditorCameraComponent`
-/// (Mouse / Gamepad 操作で Orbit / Pan / Zoom を駆動) を GameObject が所有する
-/// `CameraRig` (Player 追従) と並列に LevelEditorController が所有し、
+/// @details 描画元の `CameraComponent` と、 Mouse / Gamepad 操作で
+/// Orbit / Pan / Zoom を駆動する `EditorCameraComponent` を GameObject が所有する
+/// Player 追従の `CameraRig` と並列に LevelEditorController が所有し、
 /// mode toggle で active な側を切替える
 
 #include "Framework/Scene/Components/EditorCameraComponent.h"

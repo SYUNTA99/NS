@@ -3,8 +3,8 @@
 /// @file Animation.h
 /// @brief NS::Graphics::AnimationClip — スケルタルアニメのキーフレームクリップと sampling
 ///
-/// @details ボーンごとの TRS キーフレームトラックを保持し、 時刻 t でポーズ (BonePose 配列) を評価する
-/// 補間は LINEAR / STEP に対応 (CUBICSPLINE は非対応)。 評価結果は Skeleton::ComputePalette に渡して
+/// @details ボーンごとの TRS キーフレームトラックを保持し、 時刻 t で BonePose 配列のポーズを評価する
+/// 補間は LINEAR / STEP に対応し CUBICSPLINE は非対応。 評価結果は Skeleton::ComputePalette に渡して
 /// SkeletalMesh の描画ポーズにする。 sampling は純関数で、 skinned 頂点シェーダの前段として単体テスト可能
 
 #include "Framework/Graphics/Skeleton.h"
@@ -17,7 +17,7 @@
 
 namespace NS::Graphics
 {
-    /// キーフレーム間の補間方式 (glTF の LINEAR / STEP に対応)
+    /// キーフレーム間の補間方式。 glTF の LINEAR / STEP に対応する
     enum class Interpolation
     {
         Linear,
@@ -43,7 +43,7 @@ namespace NS::Graphics
         Interpolation scaleInterp = Interpolation::Linear;
     };
 
-    /// 1 本のアニメーションクリップ (名前・尺・動くボーンのトラック群)
+    /// 1 本のアニメーションクリップ。 名前・尺・動くボーンのトラック群を持つ
     struct AnimationClip
     {
         std::string name;

@@ -13,13 +13,13 @@ namespace
         return a.x * b.x + a.y * b.y + a.z * b.z;
     }
 
-    /// world ベクトルを OBB local 軸へ射影する (回転のみ、 平行移動なし)
+    /// 回転のみで平行移動なしに world ベクトルを OBB local 軸へ射影する
     [[nodiscard]] Vector3 ToLocalDir(const Vector3& v, const OBB& obb) noexcept
     {
         return Vector3{Dot(v, obb.axisX), Dot(v, obb.axisY), Dot(v, obb.axisZ)};
     }
 
-    /// sphere (start, radius) が motion だけ動いた時に OBB と最初に当たる TOI を返す
+    /// start と radius の sphere が motion だけ動いた時に OBB と最初に当たる TOI を返す
     /// 始点と変位を OBB local 軸へ移し、 原点中心の膨張 box への slab test へ帰着する
     [[nodiscard]] bool SweptSphereVsObb(const Vector3& start,
                                         const Vector3& motion,
@@ -135,7 +135,7 @@ namespace NS::Physics
         outToi = 1.0f;
         outNormal = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
 
-        // Capsule 型は unit axis を強制しないため正規化する (非単位入力で端点位置が歪む防止)
+        // Capsule 型は unit axis を強制しないため正規化する。 非単位入力で端点位置が歪むのを防ぐ
         NS::Math::Vector3 axis = capsule.axis;
         const float axisLenSq = axis.x * axis.x + axis.y * axis.y + axis.z * axis.z;
         if (axisLenSq > 1e-12f)

@@ -8,7 +8,7 @@ namespace NS::Editor
     {
         std::uint8_t RotateMod4(std::uint8_t current, std::int8_t delta) noexcept
         {
-            // (current + delta) mod 4。 delta は -1 or +1 を想定するが mod 4 で wrap させる
+            // current + delta を 4 で割った余り。 delta は -1 or +1 を想定するが mod 4 で wrap させる
             int32_t r = static_cast<int32_t>(current) + delta;
             r = ((r % 4) + 4) % 4;
             return static_cast<std::uint8_t>(r);

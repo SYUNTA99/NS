@@ -5,7 +5,7 @@
 ///
 /// @details fixed step ごとに再生時刻を進め、 AnimationClip を sampling してポーズを作り、
 /// Skeleton でボーンパレット化して SkeletalMesh に渡す。 再生 / 停止 / 速度 / ループ / クリップ選択を制御できる
-/// mesh は外部所有 (コンストラクタで注入)、 skeleton と clips は本コンポーネントが持つ。 priority は Animation 帯
+/// mesh は外部所有でコンストラクタから注入し、 skeleton と clips は本コンポーネントが持つ。 priority は Animation 帯
 
 #include "Framework/Graphics/Animation.h"
 #include "Framework/Graphics/SkeletalMesh.h"
@@ -19,7 +19,8 @@
 
 namespace NS::Scene
 {
-    /// クリップを時間再生し SkeletalMesh のボーンパレットを毎ステップ更新する。mesh は非所有 (コンストラクタ注入)
+    /// クリップを時間再生し SkeletalMesh のボーンパレットを毎ステップ更新する。mesh
+    /// は非所有でコンストラクタから注入する
     class SkeletalAnimationComponent : public Component
     {
     public:
@@ -50,7 +51,7 @@ namespace NS::Scene
         void OnStart() override;
         void OnUpdate() override;
 
-        // 再生速度 / ループを Inspector へ公開する。 毎ステップ読まれるのでライブで効く (負速度は逆再生)
+        // 再生速度 / ループを Inspector へ公開する。 毎ステップ読まれるのでライブで効き、 負速度なら逆再生になる
         NS_REFLECT_BEGIN(SkeletalAnimationComponent)
         NS_REFLECT_FIELD(m_speed, "Speed")
         NS_REFLECT_FIELD(m_looping, "Looping")

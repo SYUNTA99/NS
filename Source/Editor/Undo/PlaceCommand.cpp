@@ -32,7 +32,7 @@ namespace NS::Editor
         else
         {
             m_replaced.reset();
-            // redo でも同じ識別子を再利用する (この object を指す TransformCommand を壊さない)
+            // この object を指す TransformCommand を壊さないよう redo でも同じ識別子を再利用する
             if (!m_assignedId)
                 m_assignedId = target.nextId++;
             level.objects.push_back(placed);

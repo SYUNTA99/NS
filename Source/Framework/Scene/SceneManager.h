@@ -5,9 +5,9 @@
 ///
 /// @details 「ロード中の scene」 1 つを保持し、 OnStart / OnUpdate / OnRender / OnShutdown
 /// を Application から呼ばれた時にフォワードする。 intent API は LoadScene のみ — 内部 data
-/// structure (現在は単一 unique_ptr) は外から見えない設計
+/// structure は現在は単一 unique_ptr で外から見えない設計
 ///
-/// 将来 modal scene (pause menu 等) が確定要件化したら OpenModalScene / CloseModalScene の
+/// 将来 pause menu 等の modal scene が確定要件化したら OpenModalScene / CloseModalScene の
 /// 専用 API を追加して内部を stack 化する。 今は YAGNI で単一保持に閉じる
 
 #include <memory>

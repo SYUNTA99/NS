@@ -1,11 +1,11 @@
 #pragma once
 
 /// @file gltf_skin_helpers.h
-/// @brief glTF skin 取込の純粋ヘルパ (重み正規化 / RH→LH / topological 整列)
+/// @brief glTF skin 取込の純粋ヘルパで重み正規化 / RH→LH / topological 整列を行う
 ///
 /// @details LoadGltfSkinnedMesh が使う座標変換・正規化・並べ替えを cgltf 非依存の free 関数として切り出し、
-/// 単体テスト可能にする。 RH→LH は S = diag(1,1,-1) の相似変換 (position / translation の Z 反転、
-/// 回転 quaternion の x,y 反転、 inverseBind の S*M*S 共役) で行う。 detail 内部実装ヘッダ
+/// 単体テスト可能にする。 RH→LH は S = diag(1,1,-1) の相似変換で position / translation の Z 反転、
+/// 回転 quaternion の x,y 反転、 inverseBind の S*M*S 共役を行う。 detail 内部実装ヘッダ
 
 #include "Framework/Graphics/Skeleton.h"
 #include "Framework/Math/Math.h"
@@ -35,7 +35,7 @@ namespace NS::Graphics::detail
         }
     }
 
-    /// position / translation を RH→LH 変換する (Z 反転)
+    /// position / translation を Z 反転で RH→LH 変換する
     [[nodiscard]] inline NS::Math::Vector3 MirrorZ(const NS::Math::Vector3& v) noexcept
     {
         return NS::Math::Vector3{v.x, v.y, -v.z};
@@ -47,15 +47,15 @@ namespace NS::Graphics::detail
         return NS::Math::Quaternion{-q.x, -q.y, q.z, q.w};
     }
 
-    /// cgltf 列優先 16 float を行ベクトル Matrix に読む。列優先 M == 行優先 Mᵀ なので順序そのままでよい (translation は
-    /// _41/_42/_43)
+    /// cgltf 列優先 16 float を行ベクトル Matrix に読む。列優先 M == 行優先 Mᵀ なので順序そのままでよく、translation は
+    /// _41/_42/_43 に入る
     [[nodiscard]] inline NS::Math::Matrix ReadColumnMajorMatrix(const float m[16]) noexcept
     {
         return NS::Math::Matrix{
             m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], m[12], m[13], m[14], m[15]};
     }
 
-    /// 行列を Z 反転で相似変換する (inverseBind の RH→LH)。 S = diag(1,1,-1) として S * M * S
+    /// 行列を Z 反転で相似変換し inverseBind を RH→LH する。 S = diag(1,1,-1) として S * M * S
     [[nodiscard]] inline NS::Math::Matrix ConjugateZMatrix(const NS::Math::Matrix& m) noexcept
     {
         const NS::Math::Matrix s = NS::Math::Matrix::CreateScale(1.0f, 1.0f, -1.0f);
@@ -93,7 +93,7 @@ namespace NS::Graphics::detail
             }
         }
 
-        // 循環など未処理が残っても取りこぼさず末尾に積む (健全な skin では発生しない)
+        // 循環など未処理が残っても取りこぼさず末尾に積む。健全な skin では発生しない
         for (std::size_t i = 0; i < boneCount; ++i)
         {
             if (!emitted[i])

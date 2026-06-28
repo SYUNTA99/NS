@@ -79,13 +79,13 @@ namespace NS::Graphics
             return true;
         }
 
-        // POSITION+TEXCOORD+NORMAL (slot0) + INSTANCE_WORLD0..3+INSTANCE_COLOR (slot1) の 8 要素 layout。slot
+        // slot0 の POSITION+TEXCOORD+NORMAL と slot1 の INSTANCE_WORLD0..3+INSTANCE_COLOR で 8 要素 layout。slot
         // 切替・per-instance step rate は Shader 抽象に非公開のため生 D3D11 で構築
         [[nodiscard]] ComPtr<ID3D11InputLayout> CreateInstancedInputLayout(ID3D11Device* device,
                                                                            const void* vsBytecode,
                                                                            std::size_t vsBytecodeSize) noexcept
         {
-            // slot 1 の AlignedByteOffset (0/16/32/48/64) は BlockInstance struct (sizeof==80) と整合
+            // slot 1 の AlignedByteOffset 0/16/32/48/64 は sizeof==80 の BlockInstance struct と整合
             // BlockInstance 側 static_assert で stride 不一致を防いでいる
             const D3D11_INPUT_ELEMENT_DESC layoutDesc[] = {
                 {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
@@ -114,7 +114,7 @@ namespace NS::Graphics
 
         [[nodiscard]] std::unique_ptr<Buffer> CreateInstanceVB(std::size_t capacity) noexcept
         {
-            // Dynamic は initial data 不要 (Map で都度書込)
+            // Dynamic は initial data 不要で Map で都度書込
             BufferDesc vbDesc = MakeVertexBufferDesc(nullptr, capacity, sizeof(BlockInstance), D3D11_USAGE_DYNAMIC);
             std::unique_ptr<Buffer> vb = Buffer::Create(vbDesc);
             if (!vb->IsValid())
@@ -207,7 +207,7 @@ namespace NS::Graphics
             return false;
         }
 
-        // 全段成功してから差し替える (reload 失敗時に旧 shader / layout を壊さない)
+        // 全段成功してから差し替える。 reload 失敗時に旧 shader / layout を壊さない
         m_vs = std::move(vs);
         m_ps = std::move(ps);
         m_inputLayout = std::move(layout);

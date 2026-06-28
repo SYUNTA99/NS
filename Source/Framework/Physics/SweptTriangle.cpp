@@ -28,7 +28,7 @@ namespace
     }
 
     /// 接触点 `p` が三角形 `tri` 内に含まれるかを barycentric coordinate で判定する
-    /// 3 軸成分 (u, v, w) が全て [0, 1] 範囲内、 かつ合計 1 で内部接触とみなす
+    /// u, v, w の 3 軸成分が全て [0, 1] 範囲内、 かつ合計 1 で内部接触とみなす
     [[nodiscard]] bool PointInTriangle(const Vector3& p, const Triangle& tri) noexcept
     {
         const Vector3 v0 = tri.v1 - tri.v0;
@@ -50,7 +50,7 @@ namespace
         return (u >= -kEdgeEpsilon) && (v >= -kEdgeEpsilon) && (w >= -kEdgeEpsilon);
     }
 
-    /// 単一 sphere (`center` 中心、 `radius` 半径) が `motion` だけ移動したときに
+    /// `center` 中心、 `radius` 半径の単一 sphere が `motion` だけ移動したときに
     /// triangle と最初に接触する TOI を返す。 非接触 / 平行 / 離反は false
     [[nodiscard]] bool SweptSphereVsTriangle(const Vector3& center,
                                              float radius,
@@ -60,18 +60,18 @@ namespace
                                              float& outToi) noexcept
     {
         const float signedDist = Dot(normal, center - tri.v0);
-        // 開始時点ですでに反対側 (normal 逆方向) に居る場合は無視する。 wedge slope を
-        // 下からくり抜いて当たる挙動は本実装の想定外 (wedge 底面・ 背面の triangle が別途存在)
+        // 開始時点ですでに normal 逆方向の反対側に居る場合は無視する。 wedge slope を
+        // 下からくり抜いて当たる挙動は本実装の想定外で wedge 底面・ 背面の triangle が別途存在する
         if (signedDist < -radius)
             return false;
 
         const float denom = Dot(normal, motion);
 
-        // 開始時点で sphere center が plane から +radius 以下 (接触 or 既にめり込み) なら、
-        // 動きが離反方向でない限り、 motion 開始時に既に接触 (TOI = 0) と扱う
+        // 開始時点で sphere center が plane から +radius 以下で接触または既にめり込んでいるなら、
+        // 動きが離反方向でない限り、 motion 開始時に既に接触して TOI = 0 と扱う
         if (signedDist <= radius)
         {
-            // 離反方向 (denom > 0) かつ 1 frame で plane を抜けるなら、 これ以上接触しないので skip
+            // denom > 0 の離反方向で 1 frame で plane を抜けるなら、 これ以上接触しないので skip
             if (denom > 0.0f)
             {
                 const float separation = signedDist + denom;
@@ -117,7 +117,7 @@ namespace NS::Physics
 
         const NS::Math::Vector3 normal = NormalizeSafe(Cross(tri.v1 - tri.v0, tri.v2 - tri.v0));
 
-        // 公開 Capsule 型は axis 単位長を強制しないため、 ここで正規化する (非単位入力で TOI が歪む防止)
+        // 公開 Capsule 型は axis 単位長を強制しないため、 非単位入力で TOI が歪まないようここで正規化する
         NS::Math::Vector3 axis = capsule.axis;
         const float axisLenSq = axis.x * axis.x + axis.y * axis.y + axis.z * axis.z;
         if (axisLenSq > 1e-12f)

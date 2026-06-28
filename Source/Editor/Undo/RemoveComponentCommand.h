@@ -17,7 +17,7 @@ namespace NS::Editor
     /// @details 添字で狙うので同型が複数あっても選んだ 1 つだけを除ける。 除去した ComponentData を
     /// 反射値ごと退避し、 Undo で元の添字へ差し戻して順序を保つ
     /// 後入れ先出しの undo を前提とし、 Do と Undo の間に別操作が components を変えると元の添字はずれる
-    /// 最後の 1 個は除かない (空構成の object は build で不可視・当たり無しのゴーストになるため)
+    /// 空構成の object は build で不可視・当たり無しのゴーストになるため最後の 1 個は除かない
     class RemoveComponentCommand final : public ICommand
     {
     public:

@@ -4,7 +4,7 @@
 /// @brief 取得アイテムの種別だけを持つデータ Component
 ///
 /// @details コイン / ゴールスターの「拾える意味」だけを反射フィールド 1 つで表す。 描画 / 当たりは
-/// 持たない (視覚は別 Component が担い、 コイン / スターは視覚を持たないまま当たり判定だけで拾う)
+/// 持たない。 視覚は別 Component が担い、 コイン / スターは視覚を持たないまま当たり判定だけで拾う
 /// PlayMode が owner の collider ではなく本 Component の種別を読んで拾得とクリアを評価する
 
 #include "Framework/Scene/Component.h"
@@ -17,9 +17,9 @@ namespace NS::Scene
     public:
         PickupComponent() noexcept;
 
-        /// ゴールスター (拾得でクリア) かどうか
+        /// 拾得でクリアになるゴールスターかどうか
         [[nodiscard]] bool IsStar() const noexcept { return m_pickupKind == 1; }
-        /// コイン (拾得でカウント) かどうか
+        /// 拾得でカウントするコインかどうか
         [[nodiscard]] bool IsCoin() const noexcept { return m_pickupKind == 0; }
 
         // 拾得種別を Inspector / 直列化へ公開する。 0=コイン / 1=ゴールスター

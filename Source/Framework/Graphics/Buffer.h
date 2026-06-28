@@ -1,13 +1,13 @@
 #pragma once
 
 /// @file Buffer.h
-/// @brief NS::Graphics::Buffer — 単一の D3D11 Buffer ラッパ (頂点 / index / 定数を bindFlags で兼用)
+/// @brief NS::Graphics::Buffer — bindFlags で頂点 / index / 定数を兼用する単一の D3D11 Buffer ラッパ
 ///
-/// @details 役割は `BufferDesc::bindFlags` (D3D11_BIND_VERTEX_BUFFER 等) で決まる。 生成は
-/// `MakeVertexBufferDesc` / `MakeIndexBufferDesc` / `MakeConstantBufferDesc` ヘルパ経由が簡便
-/// (byteSize / bindFlags を用途別に埋める)。 定数バッファは byteSize を 16-byte 境界へ切り上げ、
-/// usage は Dynamic 前提で生成する。 非 Dynamic バッファは initialData 必須 (未初期化 GPU 読み回避)
-/// バインド / 更新は CommandList 経由 (`renderer.Commands().SetVertexBuffer` / `UpdateBuffer` 等)
+/// @details 役割は `BufferDesc::bindFlags` の D3D11_BIND_VERTEX_BUFFER 等で決まる。 生成は
+/// `MakeVertexBufferDesc` / `MakeIndexBufferDesc` / `MakeConstantBufferDesc` ヘルパ経由が簡便で、
+/// byteSize / bindFlags を用途別に埋める。 定数バッファは byteSize を 16-byte 境界へ切り上げ、
+/// usage は Dynamic 前提で生成する。 非 Dynamic バッファは未初期化 GPU 読みを避けるため initialData 必須
+/// バインド / 更新は `renderer.Commands().SetVertexBuffer` / `UpdateBuffer` 等の CommandList 経由
 /// D3D11 型を公開する設計のため `ID3D11Buffer*` を `Native()` で公開する
 
 #include <cstddef>
@@ -21,7 +21,7 @@ namespace NS::Graphics
 
     class Buffer;
 
-    /// バッファ構築パラメータ。役割は bindFlags (D3D11_BIND_*) で表す
+    /// バッファ構築パラメータ。役割は D3D11_BIND_* の bindFlags で表す
     /// 用途別の埋め込みは `MakeVertexBufferDesc` 等のヘルパが行う
     struct BufferDesc
     {
@@ -57,7 +57,7 @@ namespace NS::Graphics
         [[nodiscard]] std::size_t ByteSize() const noexcept;
         [[nodiscard]] DXGI_FORMAT Format() const noexcept;
 
-        /// Map/Discard 更新が可能か (CPU 書込可 = D3D11_USAGE_DYNAMIC)。UpdateBuffer の可否判定に使う
+        /// Map/Discard 更新が可能か。CPU 書込可 = D3D11_USAGE_DYNAMIC を表し、UpdateBuffer の可否判定に使う
         [[nodiscard]] bool IsDynamic() const noexcept;
 
     private:
@@ -70,19 +70,19 @@ namespace NS::Graphics
         bool m_dynamic = false;
     };
 
-    /// 頂点バッファ用 BufferDesc を組む (byteSize = vertexCount * stride、 bind = VERTEX)
+    /// 頂点バッファ用 BufferDesc を組む。 byteSize = vertexCount * stride、 bind = VERTEX
     [[nodiscard]] BufferDesc MakeVertexBufferDesc(const void* data,
                                                   std::size_t vertexCount,
                                                   std::size_t stride,
                                                   D3D11_USAGE usage = D3D11_USAGE_DEFAULT) noexcept;
 
-    /// index バッファ用 BufferDesc を組む (byteSize = indexCount * 要素サイズ、 bind = INDEX)
+    /// index バッファ用 BufferDesc を組む。 byteSize = indexCount * 要素サイズ、 bind = INDEX
     [[nodiscard]] BufferDesc MakeIndexBufferDesc(const void* data,
                                                  std::size_t indexCount,
                                                  DXGI_FORMAT format = DXGI_FORMAT_R32_UINT,
                                                  D3D11_USAGE usage = D3D11_USAGE_DEFAULT) noexcept;
 
-    /// 定数バッファ用 BufferDesc を組む (usage = Dynamic、 bind = CONSTANT、 byteSize はコンストラクタが 16 切り上げ)
+    /// 定数バッファ用 BufferDesc を組む。 usage = Dynamic、 bind = CONSTANT、 byteSize はコンストラクタが 16 切り上げ
     [[nodiscard]] BufferDesc MakeConstantBufferDesc(std::size_t byteSize) noexcept;
 
 } // namespace NS::Graphics

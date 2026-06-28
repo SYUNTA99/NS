@@ -44,10 +44,10 @@ namespace NS::Scene
             context.renderer == nullptr)
             return;
 
-        // 描画する者が自分の Pipeline を毎回 set する不変条件。前 submitter (Skybox 等) の残留 state を引き継がない
+        // 描画する者が自分の Pipeline を毎回 set する不変条件。前 submitter の Skybox 等が残した state を引き継がない
         context.renderer->Commands().SetPipeline(context.renderer->CommonPipeline(m_material->Blend()));
 
-        // InputLayout を初回描画時に生成 (冪等)。instanced block は inactive で InstanceBatcher が担う
+        // InputLayout を初回描画時に生成する冪等な処理。instanced block は inactive で InstanceBatcher が担う
         m_material->CreateInputLayoutFor(*m_mesh);
 
         // ctx.resolvedSettings は project 既定 ← scene override まで解決済。ここに個体段 override を載せる

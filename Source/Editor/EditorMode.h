@@ -4,10 +4,10 @@
 /// @brief 編集モード sub-system — cursor / palette / UndoStack を集約する
 ///
 /// @details `LevelEditorController` の value member として保有され、
-/// SetActive(false) で Tick / Render が何もしない (mode toggle 用)
+/// mode toggle 用に SetActive(false) で Tick / Render が何もしない
 /// LevelData への変更は **全て** `UndoStack::Push` 経由で発火し、
 /// PlayMode 側との変更経路衝突を防ぐ。 spawn marker のみ単一値の上書きなので
-/// Command を介さない直接 setter (`SetSpawnMarker`) を呼ぶ
+/// Command を介さない直接 setter の `SetSpawnMarker` を呼ぶ
 
 #include "Editor/CategoryPalette.h"
 #include "Editor/LevelFileBrowser.h"
@@ -68,7 +68,7 @@ namespace NS::Editor
         EditorMode& operator=(EditorMode&&) = delete;
 
         void SetLevel(NS::Game::Level::LevelData* level) noexcept { m_level = level; }
-        /// 編集セッション id ストアを注入する。 EditTarget の構築に使う (level と同じ scene が所有)
+        /// 編集セッション id ストアを注入する。 EditTarget の構築に使い、 level と同じ scene が所有する
         void SetEditIds(std::vector<std::uint32_t>* ids, std::uint32_t* nextId) noexcept
         {
             m_objectIds = ids;
@@ -81,7 +81,7 @@ namespace NS::Editor
         void SetActive(bool active) noexcept { m_active = active; }
         [[nodiscard]] bool IsActive() const noexcept { return m_active; }
 
-        /// Object ツールモード中など、 grid 編集入力 (設置/削除/回転/undo) を一時的に無視させる
+        /// Object ツールモード中など、 設置 / 削除 / 回転 / undo の grid 編集入力を一時的に無視させる
         void SetInputSuppressed(bool suppressed) noexcept { m_inputSuppressed = suppressed; }
 
         /// fixed step での Tick。 cursor 更新 + 入力 → Place / Delete / Rotate / Spawn / Undo / Redo を発火
@@ -96,7 +96,7 @@ namespace NS::Editor
         [[nodiscard]] const NS::Editor::UndoStack& Undo() const noexcept { return m_undo; }
         [[nodiscard]] NS::Editor::UndoStack& Undo() noexcept { return m_undo; }
 
-        /// programmatic API: Tick 経路を介さずに同等の変更を発火する (テスト / 一括処理用)
+        /// programmatic API: Tick 経路を介さずに同等の変更を発火する。 テスト / 一括処理用
         void PlaceUnderCursorProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
         void DeleteAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
         void RotateAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
@@ -114,7 +114,7 @@ namespace NS::Editor
         void SetCursorForTest(const CursorState& state) noexcept { m_cursor = state; }
 
         /// Ctrl+S / Ctrl+O の edge を検出して file browser modal を開く。 Tick 末尾から呼ばれる
-        /// ImGui がキーボードを掴んでいる時 (テキスト入力 focus 中) は無視する
+        /// テキスト入力 focus 中で ImGui がキーボードを掴んでいる時は無視する
         void HandleSaveLoadInput() noexcept;
 
         /// modal 描画 + OK 押下時の Save/Load 実行 + 新規 open 時の UndoStack clear を担う
@@ -124,7 +124,7 @@ namespace NS::Editor
 
     private:
         NS::Game::Level::LevelData* m_level = nullptr;
-        std::vector<std::uint32_t>* m_objectIds = nullptr; // m_level.objects と 1:1 の編集 id (scene 所有)
+        std::vector<std::uint32_t>* m_objectIds = nullptr; // m_level.objects と 1:1 の編集 id。scene が所有する
         std::uint32_t* m_nextObjectId = nullptr;
         NS::Platform::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;

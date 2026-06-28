@@ -51,7 +51,7 @@ namespace NS::Scene
             return nlohmann::json{};
         }
 
-        // JSON 値を field 型に合わせて取り出し set で書き戻す。 型が合わなければ何もしない (前方互換)
+        // JSON 値を field 型に合わせて取り出し set で書き戻す。 型が合わなければ前方互換のため何もしない
         void JsonToField(Component& comp, const FieldDesc& field, const nlohmann::json& value)
         {
             switch (field.type)

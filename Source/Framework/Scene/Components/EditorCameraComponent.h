@@ -3,10 +3,10 @@
 /// @file EditorCameraComponent.h
 /// @brief NS::Scene::EditorCameraComponent — 編集モード用 free-fly カメラ Component
 ///
-/// @details Spherical 座標 (yaw, pitch, distance) + center pivot 表現
+/// @details Spherical 座標 yaw / pitch / distance に center pivot を加えた表現
 /// Mouse 右ドラッグ = Orbit、 中ドラッグ = Pan、 Wheel = Zoom
 /// Gamepad 右スティック = Orbit、 左スティック = Pan、 LT-RT = Zoom
-/// UI (editor) がマウスを掴んでいる時は Mouse 入力を無視 (Input::UiWantsMouse で判定、 UI 操作優先)
+/// editor の UI がマウスを掴んでいる時は Mouse 入力を無視する。Input::UiWantsMouse で判定し UI 操作を優先する
 /// pitch / distance は clamp で有限範囲に強制、 NaN / 巨大値での render crash を防ぐ
 
 #include "Framework/Math/Math.h"
@@ -33,10 +33,10 @@ namespace NS::Scene
         void SetInput(NS::Platform::Input* input) noexcept;
 
         void OnUpdate() override;
-        /// free-fly の現在姿勢を返す (alpha は使わない)。Brain が選択時に実カメラへ書く
+        /// free-fly の現在姿勢を返す。alpha は使わない。Brain が選択時に実カメラへ書く
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
-        // Programmatic API (test / mode toggle で state save/restore)
+        // プログラム制御 API。test や mode 切替での state save / restore に使う
         void SetYawPitch(float yaw, float pitch) noexcept;
         void SetCenter(NS::Math::Vector3 center) noexcept;
         void SetDistance(float distance) noexcept;
@@ -47,7 +47,7 @@ namespace NS::Scene
         [[nodiscard]] NS::Math::Vector3 Center() const noexcept { return m_center; }
         [[nodiscard]] NS::Math::Vector3 ComputeCameraPosition() const noexcept;
 
-        // 直接 input 注入 (test 経路 / OnUpdate に頼らない外部制御)
+        // 直接 input を注入する。test 経路や OnUpdate に頼らない外部制御で使う
         void ApplyOrbit(float yawDelta, float pitchDelta) noexcept;
         void ApplyPan(float panX, float panY) noexcept;
         void ApplyZoom(float zoomDelta) noexcept;

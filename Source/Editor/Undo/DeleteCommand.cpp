@@ -23,7 +23,7 @@ namespace NS::Editor
     {
         if (!m_deleted)
             return;
-        // 削除前の識別子を保ったまま末尾へ復元する (この object を指す TransformCommand を壊さない)
+        // この object を指す TransformCommand を壊さないよう削除前の識別子を保ったまま末尾へ復元する
         target.level.objects.push_back(*m_deleted);
         if (m_deletedId)
             target.ids.push_back(*m_deletedId);

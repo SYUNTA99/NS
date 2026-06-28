@@ -3,9 +3,9 @@
 /// @file Clock.h
 /// @brief NS::Core 時刻関連 3 クラス + スコープ計測マクロを単一ヘッダに集約
 ///
-/// - Clock: 起動時刻基準の時刻ソース (all-static)
+/// - Clock: 全メンバ static な起動時刻基準の時刻ソース
 /// - FrameTimer: ゲームループ tick 管理 + 固定タイムステップ accumulator
-/// - ScopedTimer: スコープ脱出で経過時間を記録 (デストラクタで NS_LOG_DEBUG)
+/// - ScopedTimer: スコープ脱出のデストラクタで経過時間を NS_LOG_DEBUG に記録
 /// - NS_SCOPED_TIMER(cat, label): __COUNTER__ ベースの計測マクロ
 ///
 /// 実装は std::chrono::steady_clock 一本、`<windows.h>` 非依存
@@ -21,13 +21,13 @@
 namespace NS::Core
 {
 
-    /// 起動時刻基準の時刻ソース。最初の呼び出しで起動時刻を保存 (magic static)
+    /// 起動時刻基準の時刻ソース。最初の呼び出しで起動時刻を magic static として保存
     class Clock
     {
     public:
         Clock() = delete;
 
-        /// 単調増加な現在時刻 (steady_clock の time_point)
+        /// steady_clock の time_point として返す単調増加な現在時刻
         [[nodiscard]] static std::chrono::steady_clock::time_point Now() noexcept
         {
             return std::chrono::steady_clock::now();
@@ -68,7 +68,7 @@ namespace NS::Core
             s_accumulator -= static_cast<float>(s_fixedSteps) * s_fixedDelta;
         }
 
-        /// 状態を初期化 (FrameNumber=0、accumulator/total=0)。テスト fixture の SetUp でも呼ぶこと
+        /// 状態を初期化し FrameNumber=0、 accumulator/total=0 にする。テスト fixture の SetUp でも呼ぶこと
         static void Reset() noexcept
         {
             s_lastTime = std::chrono::steady_clock::now();
@@ -83,10 +83,10 @@ namespace NS::Core
         [[nodiscard]] static double TotalSeconds() noexcept { return s_total; }
         [[nodiscard]] static std::uint64_t FrameNumber() noexcept { return s_frame; }
 
-        /// 固定タイムステップの既定値 (60Hz)。ApplicationDesc 等の既定値もここを参照する
+        /// 固定タイムステップの既定値 60Hz。ApplicationDesc 等の既定値もここを参照する
         static constexpr float kDefaultFixedDelta = 1.0f / 60.0f;
 
-        /// 固定タイムステップを設定 (default 1/60 秒)。ゼロ / 負値は無視 (Tick/Alpha のゼロ除算 UB 防止)
+        /// 固定タイムステップを設定し既定は 1/60 秒。ゼロ / 負値は Tick/Alpha のゼロ除算 UB を防ぐため無視
         static void SetFixedDelta(float fixed) noexcept
         {
             if (fixed > 0.0f)

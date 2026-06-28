@@ -5,9 +5,9 @@
 ///
 /// @details `Update()` は fixed step ループの頭で 1 回呼び、 内部で
 /// `XInputGetState()` をポーリングする。 `ERROR_DEVICE_NOT_CONNECTED` の場合は
-/// `IsConnected() == false` で復帰し、 ボタン / 軸はリセットされる
-/// (ボタン固着防止)。 スティック / トリガーはデッドゾーン適用後の値を返す
-/// マルチスレッドは未サポート (単一スレッド前提)
+/// `IsConnected() == false` で復帰し、 ボタン / 軸はボタン固着防止のため
+/// リセットされる。 スティック / トリガーはデッドゾーン適用後の値を返す
+/// 単一スレッド前提でマルチスレッドは未サポート
 
 #include <array>
 #include <cstddef>
@@ -40,7 +40,7 @@ namespace NS::Platform
         Count
     };
 
-    /// アナログスティックの正規化済 (x, y)。各軸 -1.0〜1.0、デッドゾーン内は 0.0
+    /// x と y を正規化したアナログスティック値。各軸 -1.0〜1.0、デッドゾーン内は 0.0
     struct Stick
     {
         float x = 0.0f;
@@ -48,7 +48,7 @@ namespace NS::Platform
     };
 
     /// XInput ベースのゲームパッド状態。フレーム頭で Update() を 1 回呼ぶこと
-    /// 未接続時は IsConnected() = false でボタン/軸はリセット (固着防止)
+    /// 未接続時は IsConnected() = false でボタン/軸はリセットし固着を防ぐ
     class Gamepad
     {
     public:
@@ -58,25 +58,25 @@ namespace NS::Platform
         /// XInputGetState 戻り値が ERROR_SUCCESS なら true
         [[nodiscard]] bool IsConnected() const noexcept;
 
-        /// このフレームで押された (前 false → 現 true)
+        /// このフレームで押された。前フレーム false から現フレーム true への変化
         [[nodiscard]] bool IsPressed(GamepadButton b) const noexcept;
 
-        /// 押し続けている (現 true)
+        /// 押し続けている。現フレームが true
         [[nodiscard]] bool IsHeld(GamepadButton b) const noexcept;
 
-        /// このフレームで離した (前 true → 現 false)
+        /// このフレームで離した。前フレーム true から現フレーム false への変化
         [[nodiscard]] bool IsReleased(GamepadButton b) const noexcept;
 
-        /// 左スティック (-1.0〜1.0)、デッドゾーン適用済
+        /// -1.0〜1.0 の左スティック、デッドゾーン適用済
         [[nodiscard]] Stick LeftStick() const noexcept;
 
-        /// 右スティック (-1.0〜1.0)、デッドゾーン適用済
+        /// -1.0〜1.0 の右スティック、デッドゾーン適用済
         [[nodiscard]] Stick RightStick() const noexcept;
 
-        /// 左トリガー (0.0〜1.0)、トリガースレッショルド未満は 0.0
+        /// 0.0〜1.0 の左トリガー、トリガースレッショルド未満は 0.0
         [[nodiscard]] float LeftTrigger() const noexcept;
 
-        /// 右トリガー (0.0〜1.0)、トリガースレッショルド未満は 0.0
+        /// 0.0〜1.0 の右トリガー、トリガースレッショルド未満は 0.0
         [[nodiscard]] float RightTrigger() const noexcept;
 
         /// previous = current 退避後、XInputGetState() をポーリング。未接続時は m_current をリセット

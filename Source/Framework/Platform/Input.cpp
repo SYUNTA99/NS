@@ -36,7 +36,7 @@ namespace NS::Platform
             return i < static_cast<std::size_t>(GamepadButton::Count);
         }
 
-        /// XInput のスティック生値を -1.0〜1.0 へ対称正規化 (負 /32768、正 /32767) し軸別デッドゾーンを適用
+        /// XInput のスティック生値を負は 32768、正は 32767 で割って -1.0〜1.0 へ対称正規化し軸別デッドゾーンを適用
         /// 軸別なのは Mario 系の縦横独立操作向け。deadzone は符号なしで持ち負値での誤判定を防ぐ
         [[nodiscard]] Stick NormalizeStick(short rawX, short rawY, unsigned short deadzone) noexcept
         {
@@ -396,7 +396,7 @@ namespace NS::Platform
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:
         {
-            // lparam の scan code / repeat flag (bit 30) / extended key は現状未使用
+            // lparam の scan code、 bit 30 の repeat flag、 extended key は現状未使用
             const Key k = MapVkToKey(static_cast<unsigned int>(wparam));
             input.Keyboard().OnKeyDown(k);
             break;

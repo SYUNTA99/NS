@@ -74,9 +74,9 @@ namespace
         return false;
     }
 
-    /// ray P(t)=O+tD (t in [0,1]) が capsule(芯線分 [A,B], 半径 R) に最初に入る t と、
+    /// 芯線分 [A,B] と半径 R の capsule に、 t が [0,1] の ray P(t)=O+tD が最初に入る t と、
     /// その時の芯上の最近点 Q を返す。 既に内部なら t=0。 当たらなければ false
-    /// 無限円柱 (軸直交成分の二次式) + 端 cap 球 2 個 の最小 t を採る
+    /// 軸直交成分の二次式の無限円柱 + 端 cap 球 2 個 の最小 t を採る
     [[nodiscard]] bool RayVsCapsule(const Vector3& O,
                                     const Vector3& D,
                                     const Vector3& A,

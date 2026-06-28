@@ -6,7 +6,7 @@ namespace NS::Editor
 
     void AddObjectCommand::Do(NS::Game::Level::EditTarget& target) noexcept
     {
-        // redo でも同じ識別子を再利用する (この object を指す TransformCommand を壊さない)
+        // この object を指す TransformCommand を壊さないよう redo でも同じ識別子を再利用する
         if (!m_assignedId)
             m_assignedId = target.nextId++;
         target.level.objects.push_back(m_object);

@@ -1,12 +1,12 @@
 #pragma once
 
 /// @file LevelFileBrowser.h
-/// @brief 編集モード用 save / load dialog の最小実装 (ImGui)
+/// @brief 編集モード用 save / load dialog の ImGui 最小実装
 ///
 /// @details Ctrl+S / Ctrl+O で `OpenSaveModal()` / `OpenLoadModal()` を呼ぶと
 /// 次の OnRender で modal が描画される。 modal 内で OK が押されたら `Render()` の
-/// 戻り値 `Result::action` で要求を caller に通知し、 実 I/O (`SaveLevelToFile` /
-/// `LoadLevelFromFile`) は caller (EditorMode) 側が責任を持つ
+/// 戻り値 `Result::action` で要求を caller に通知し、 実 I/O の `SaveLevelToFile` /
+/// `LoadLevelFromFile` は caller の EditorMode 側が責任を持つ
 /// 責任分離: 本クラスは UI と一時 buffer のみ管理、 LevelData / filesystem には触れない
 
 #include <cstdint>

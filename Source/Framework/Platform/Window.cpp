@@ -41,14 +41,14 @@ namespace NS::Platform
             }
         }
 
-        /// キーボード系メッセージ (WantCaptureKeyboard でゲートする対象)
+        /// WantCaptureKeyboard でゲートする対象のキーボード系メッセージ
         /// WM_KILLFOCUS は ImGui キャプチャに関係なく Input を flush するので除外
         [[nodiscard]] constexpr bool IsKeyboardMessage(UINT msg) noexcept
         {
             return msg == WM_KEYDOWN || msg == WM_KEYUP || msg == WM_SYSKEYDOWN || msg == WM_SYSKEYUP;
         }
 
-        /// マウス系メッセージ (WantCaptureMouse でゲートする対象)
+        /// WantCaptureMouse でゲートする対象のマウス系メッセージ
         [[nodiscard]] constexpr bool IsMouseMessage(UINT msg) noexcept
         {
             switch (msg)
@@ -77,7 +77,7 @@ namespace NS::Platform
                 return ::DefWindowProcW(hwnd, msg, wparam, lparam);
             }
 
-            // 生メッセージを最初にフックへ流す (editor が ImGui へ転送する)。Platform は中身を知らない
+            // 生メッセージを最初にフックへ流して editor が ImGui へ転送する。Platform は中身を知らない
             if (impl->messageHook)
             {
                 impl->messageHook(static_cast<void*>(hwnd),

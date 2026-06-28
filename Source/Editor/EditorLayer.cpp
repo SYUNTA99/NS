@@ -32,7 +32,7 @@ EditorLayer::~EditorLayer() = default;
 
 void EditorLayer::OnAttach()
 {
-    // 起動 scene は Game レイヤが既に load + OnStart 済 (SceneManager::LoadScene が同期実行)
+    // SceneManager::LoadScene が同期実行するので起動 scene は Game レイヤが既に load + OnStart 済
     auto* app = NS::App::Application::Get();
     auto* game = Game::Get();
     auto* scene = game ? game->CurrentPlayScene() : nullptr;
@@ -47,7 +47,7 @@ void EditorLayer::OnAttach()
     if (!m_imgui->IsValid())
         NS_LOG_ERROR(::NS::Core::LogCat::App, "ImGuiContext 構築失敗、 編集 UI は機能しない");
 
-    // 生 Win32 メッセージを ImGui へ転送するフックを Window に登録する (Platform は中身を知らない)
+    // 生 Win32 メッセージを ImGui へ転送するフックを Window に登録する。 Platform は中身を知らない
     app->Window().SetMessageHook(
         [imgui = m_imgui.get()](void* hwnd, std::uint32_t msg, std::uintptr_t wParam, std::intptr_t lParam) {
             if (imgui != nullptr)
@@ -61,7 +61,7 @@ void EditorLayer::OnAttach()
 
 void EditorLayer::OnDetach()
 {
-    // scene 破棄 (Game::OnDetach) より先に呼ばれる順序 (overlay は逆順で OnDetach) なので安全に片付く
+    // scene 破棄の Game::OnDetach より先に呼ばれる順序で、 overlay は逆順で OnDetach されるので安全に片付く
     if (m_controller)
         m_controller->Teardown();
     m_controller.reset();
@@ -72,7 +72,7 @@ void EditorLayer::OnDetach()
         app->Window().SetMessageHook(nullptr);
         app->Input().SetUiCapture(false, false);
     }
-    // ImGui_ImplDX11_Shutdown が ID3D11Device を要求するため Renderer 健在の今 (Application::Shutdown より前) に破棄
+    // ImGui_ImplDX11_Shutdown が ID3D11Device を要求するため Renderer 健在で Application::Shutdown より前の今に破棄
     m_imgui.reset();
     NS_LOG_INFO(::NS::Core::LogCat::App, "EditorLayer detached");
 }
@@ -82,7 +82,7 @@ void EditorLayer::OnUpdate()
     if (!IsActive() || !m_controller)
         return;
 
-    // 編集ロジック (free-fly カメラ / ギズモ / EditorMode / クリア監視) を先に回す
+    // free-fly カメラ / ギズモ / EditorMode / クリア監視の編集ロジックを先に回す
     m_controller->Tick();
     HandleModeToggleInput(*m_controller);
     HandlePauseInput(*m_controller);
@@ -95,10 +95,10 @@ void EditorLayer::OnRender()
         return;
     LevelEditorController& editor = *m_controller;
 
-    // ImGui の 1 フレームを Layer が囲う。Renderer::BeginFrame 済の RT へ EndFrame (Render) が描く
+    // ImGui の 1 フレームを Layer が囲う。Renderer::BeginFrame 済の RT へ EndFrame の Render が描く
     m_imgui->BeginFrame();
 
-    // 編集用の上乗せ描画 (ギズモ / palette / 編集ビジュアル) と debug provenance 退避
+    // ギズモ / palette / 編集ビジュアルといった編集用の上乗せ描画と debug provenance 退避
     editor.Render();
 
     // プレイ中は F5 でエディタ UI を丸ごと隠せる。 隠している間も 3D 描画とゲーム進行はそのまま走る
@@ -194,7 +194,7 @@ void EditorLayer::HandleUiVisibilityInput(LevelEditorController& editor) noexcep
 void EditorLayer::RenderDockSpaceHost() noexcept
 {
 #if NS_EDITOR_ENABLED
-    // 中央ノードは透過 (背景非描画 + 入力素通し) なので、 奥の全画面 3D とギズモがそのまま見え
+    // 中央ノードは背景非描画 + 入力素通しで透過なので、 奥の全画面 3D とギズモがそのまま見え
     // 中央クリックは編集に届く。 周囲に各パネルがドッキングできる。 dockspace_id=0 で viewport から自動生成
     ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode);
 #endif
@@ -278,7 +278,7 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorController& editor) noexc
 void EditorLayer::RenderToolModePanel(LevelEditorController& editor) noexcept
 {
 #if NS_EDITOR_ENABLED
-    // 位置はドッキング / imgui.ini 任せ (固定座標を置くとドッキング配置と競合する)
+    // 固定座標を置くとドッキング配置と競合するので位置はドッキング / imgui.ini 任せ
     if (ImGui::Begin("Edit Mode"))
     {
         const bool objectActive = editor.ObjectToolActive();
@@ -374,7 +374,7 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             ImGui::Text("Player");
             ImGui::Separator();
             // Player の Component を反射で一覧編集する。 操作感はライブで効き、 値は保存されない
-            // (good な値が出たらコードの既定へ焼き戻す運用)
+            // good な値が出たらコードの既定へ焼き戻す運用
             if (auto* player = editor.PlayerObject())
                 (void)NS::Editor::DrawObjectComponents(*player);
             else
@@ -388,7 +388,7 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
         {
             ImGui::Text("Camera");
             ImGui::Separator();
-            // Brain (ブレンド秒) と現在 active な vcam (編集中=free-fly / プレイ中=follow) を反射で出す
+            // ブレンド秒の Brain と編集中=free-fly / プレイ中=follow の現在 active な vcam を反射で出す
             // 値はライブで効き保存はしない
             auto* brain = editor.CameraBrainObject();
             auto* vcam = editor.ActiveVirtualCameraObject();
@@ -455,7 +455,7 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
         }
         else
         {
-            // free オブジェクトは runtime Transform が真実の源なので即反映する (SyncFreeObjectTransforms が永続化)
+            // free オブジェクトは runtime Transform が真実の源なので即反映し、 SyncFreeObjectTransforms が永続化する
             ImGui::SeparatorText("Transform");
 
             float pos[3] = {obj.positionX, obj.positionY, obj.positionZ};
@@ -466,7 +466,7 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             if (ImGui::IsItemDeactivatedAfterEdit())
                 editor.CommitTransformEdit();
 
-            // 回転は内部 quaternion を Euler (度) に直して編集し、 入力を quaternion へ戻す
+            // 回転は内部 quaternion を度の Euler に直して編集し、 入力を quaternion へ戻す
             // 滑らかに回し続けるならギズモ R が向く。 ここは角度の直接入力 / 微調整用
             const NS::Math::Quaternion q{obj.rotationX, obj.rotationY, obj.rotationZ, obj.rotationW};
             const NS::Math::Vector3 euler = q.ToEuler();
@@ -573,7 +573,7 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
 void EditorLayer::RenderMaterialsPanel(LevelEditorController& editor) noexcept
 {
 #if NS_EDITOR_ENABLED
-    // Object モード専用 (適用先のギズモ選択は Object モードにしか存在しない)
+    // 適用先のギズモ選択は Object モードにしか存在しないので Object モード専用
     if (!editor.ObjectToolActive())
         return;
 
@@ -610,7 +610,7 @@ void EditorLayer::RenderAssetTree(const std::filesystem::path& dir, LevelEditorC
 #if NS_EDITOR_ENABLED
     const bool hasSelection = editor.HasGizmoSelection();
 
-    // サブフォルダを TreeNode で再帰表示する (open 時のみ中身を走査する遅延読み)
+    // サブフォルダを TreeNode で再帰表示する。 open 時のみ中身を走査する遅延読み
     for (const auto& sub : NS::Core::FileSystem::ListDirectories(dir))
     {
         const std::string label = sub.filename().string();

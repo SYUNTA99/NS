@@ -1,11 +1,11 @@
 #pragma once
 
 /// @file Window.h
-/// @brief NS::Platform::Window — Win32 ウィンドウのラッパ (単一インスタンス前提)
+/// @brief NS::Platform::Window — 単一インスタンス前提の Win32 ウィンドウのラッパ
 ///
 /// @details 公開ヘッダから `<windows.h>` / HWND は露出させない。 Graphics 層は
 /// `NativeHandle()` を `reinterpret_cast<HWND>` で取り出す。 構築失敗時は
-/// `IsValid() == false` を返し例外は投げない (詳細は `NS_LOG_ERROR` に出力)
+/// `IsValid() == false` を返し例外は投げない。 詳細は `NS_LOG_ERROR` に出力する
 /// 入力転送先 `Input*` は `AttachInput()` で非所有ポインタとして登録する
 
 #include "Framework/Math/Math.h"
@@ -21,12 +21,12 @@ namespace NS::Platform
 
     class Input;
 
-    /// Window 構築パラメータ。タイトルは UTF-8 で渡す (内部で wide 変換)
+    /// Window 構築パラメータ。タイトルは UTF-8 で渡し内部で wide 変換する
     struct WindowDesc
     {
         std::string title = "NS";
         NS::Math::Size2D size{1280, 720};
-        /// false で構築時に非表示 (SW_HIDE) 起動。Render テスト用に Window を見せないとき使う
+        /// false で構築時に SW_HIDE で非表示起動。Render テスト用に Window を見せないとき使う
         bool visible = true;
     };
 
@@ -34,7 +34,7 @@ namespace NS::Platform
     class Window
     {
     public:
-        /// 内部実装 (定義は detail/win32_window.h)。WndProc 等の自由関数からのアクセス用で外部から触らないこと
+        /// 内部実装。定義は detail/win32_window.h にある。WndProc 等の自由関数からのアクセス用で外部から触らないこと
         struct Impl;
 
         /// 生 Win32 メッセージを WndProc 先頭で覗くフック。editor が ImGui へ転送する用途で登録する
@@ -66,14 +66,14 @@ namespace NS::Platform
         /// UTF-8 入力でタイトル変更
         void SetTitle(std::string_view utf8Title) noexcept;
 
-        /// WM_CLOSE を投げて閉じ要求を出す (×ボタンと同じ経路)
+        /// ×ボタンと同じ経路で WM_CLOSE を投げて閉じ要求を出す
         /// SetCloseCallback が登録されていればそこへ通知、未設定なら PostQuitMessage に落ちる
         void RequestClose() noexcept;
 
-        /// リサイズ通知 (WM_SIZE)。最小化中は呼ばれない
+        /// WM_SIZE のリサイズ通知。最小化中は呼ばれない
         void SetResizeCallback(std::function<void(NS::Math::Size2D)> cb);
 
-        /// WM_CLOSE を受け取った時に呼ばれる。callback 内で RequestClose() を呼ばないと閉じない (拒否可能)
+        /// WM_CLOSE を受け取った時に呼ばれる。callback 内で RequestClose() を呼ばないと閉じないので拒否もできる
         void SetCloseCallback(std::function<void()> cb);
 
         /// 入力転送先を設定する。非所有ポインタ、nullptr で解除

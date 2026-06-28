@@ -3,7 +3,7 @@
 /// @file MeshRendererComponent.h
 /// @brief MeshRendererComponent — Mesh + Material 描画を担う IRenderable 多重継承 Component
 ///
-/// 既存 standard.{vs,ps}.hlsl + FrameCB 構造 (192 byte, row_major LH) を流用する
+/// 既存 standard.{vs,ps}.hlsl + FrameCB 構造を流用し、 FrameCB は 192 byte で row_major LH
 /// `Draw(context)` 内で `Transform::InterpolatedWorldMatrix(context.alpha)` を使い、
 /// fixed step 物理結果を可変 frame rate でなめらかに補間描画する
 
@@ -23,12 +23,12 @@ namespace NS::Graphics
 
 namespace NS::Scene
 {
-    /// per-draw constant buffer。HLSL standard と完全一致 (sizeof=192)
+    /// per-draw constant buffer。HLSL standard と完全一致で sizeof=192
     struct alignas(16) FrameCB
     {
         NS::Math::Matrix world{};
         NS::Math::Matrix viewProj{};
-        // lighting の既定値はプロジェクト描画既定値 (RenderSettings) と共有し、値の二重管理を避ける
+        // lighting の既定値はプロジェクト描画既定値の RenderSettings と共有し、値の二重管理を避ける
         NS::Math::Vector3 lightDir = NS::Graphics::RenderSettings{}.lightDir;
         float pad0 = 0.0f;
         NS::Math::Vector3 baseColor{1.0f, 1.0f, 1.0f};
@@ -44,16 +44,16 @@ namespace NS::Scene
     class MeshRendererComponent : public Component, public IRenderable
     {
     public:
-        /// Mesh / Material は生ポインタ、寿命は呼出側 (通常は Scene or Player) が保証する
+        /// Mesh / Material は生ポインタ、寿命は呼出側で通常は Scene か Player が保証する
         MeshRendererComponent(NS::Graphics::Mesh* mesh, NS::Graphics::Material* material) noexcept;
 
-        /// Material instance ごとの色味 (Player=赤系 / Block=灰色系の色分け)。lighting とは別系統の個体色
+        /// Material instance ごとの色味で Player は赤系 Block は灰色系に色分けする。lighting とは別系統の個体色
         void SetBaseColor(const NS::Math::Vector3& color) noexcept { m_baseColor = color; }
 
         /// 描画に使う Material を差し替える。material=nullptr で Draw は何もしなくなる
         /// bucket は Draw 時に Material::Blend() から都度判定するため opaque↔transparent も即反映される
         void SetMaterial(NS::Graphics::Material* material) noexcept { m_material = material; }
-        /// 現在の Material (非所有)。未設定なら nullptr
+        /// 現在の Material で非所有。未設定なら nullptr
         [[nodiscard]] NS::Graphics::Material* GetMaterial() const noexcept { return m_material; }
 
         /// 描画に使う Mesh を差し替える。mesh=nullptr で Draw は何もしなくなる
@@ -67,30 +67,30 @@ namespace NS::Scene
         /// 描くメッシュの参照を設定する。 build 時にこの文字列から mesh を解決する
         void SetMeshRef(std::string ref) noexcept { m_meshRef = std::move(ref); }
 
-        /// 描画 material の参照。 共有 material 名 (player / block / water / shadow) または .mat 相対パス
+        /// 描画 material の参照。 player / block / water / shadow といった共有 material 名または .mat 相対パス
         /// 空なら build が materialIndex / 既定 material へ倒す
         [[nodiscard]] const std::string& MaterialRef() const noexcept { return m_materialRef; }
         /// 描画 material の参照を設定する。 build 時にこの文字列から material を解決する
         void SetMaterialRef(std::string ref) noexcept { m_materialRef = std::move(ref); }
 
-        /// 個体段の lighting 上書き。空なら scene 解決値 (ctx.resolvedSettings) がそのまま使われる
+        /// 個体段の lighting 上書き。空なら scene 解決値の ctx.resolvedSettings がそのまま使われる
         /// 描画時に Resolve(ctx.resolvedSettings, m_objectOverride) で個体段を解決する
         void SetRenderOverride(const NS::Graphics::RenderSettingsOverride& over) noexcept { m_objectOverride = over; }
-        /// 現在の個体段 override を返す (出所表示・編集用)
+        /// 現在の個体段 override を返す。 出所表示や編集に使う
         [[nodiscard]] const NS::Graphics::RenderSettingsOverride& RenderOverride() const noexcept
         {
             return m_objectOverride;
         }
 
         /// alpha 補間 world matrix を FrameCB に詰めて 1 描画呼出。IsActive()==false なら何もしない
-        /// 描画直前に Material の BlendMode に対応する共通 Pipeline を SetPipeline する (state リーク防止)
+        /// 描画直前に Material の BlendMode に対応する共通 Pipeline を SetPipeline して state リークを防ぐ
         void Draw(const RenderContext& context) override;
 
-        /// Material の BlendMode から bucket を返す (Opaque 以外は Transparent)。Material 不在は Opaque
+        /// Material の BlendMode から bucket を返し、 Opaque 以外は Transparent。Material 不在は Opaque
         [[nodiscard]] RenderBucket Bucket() const noexcept override;
-        /// Owner の world 行列の平行移動成分 (半透明ソート用中心)
+        /// Owner の world 行列の平行移動成分で半透明ソート用の中心
         [[nodiscard]] NS::Math::Vector3 SortCenter() const noexcept override;
-        /// Material の renderPriority (距離同値時のタイブレーク)
+        /// Material の renderPriority で距離同値時のタイブレークに使う
         [[nodiscard]] int SortPriority() const noexcept override;
 
         /// OwningScene に self を IRenderable として登録する。Owner/Scene が null なら何もしない

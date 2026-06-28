@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Sphere.h
-/// @brief NS::Physics::Sphere — 球コライダー形状 (center + radius)
+/// @brief NS::Physics::Sphere — center と radius による球コライダー形状
 
 #include "Framework/Math/Math.h"
 

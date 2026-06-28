@@ -3,7 +3,7 @@
 /// @file ThirdPersonFollowComponent.h
 /// @brief Mario 系ジャンプアクションの追従カメラ
 ///        critically-damped spring で distance を smoothing、マウス/右スティック手動回転、
-///        sensitivity/invert と自動ズーム距離 (idle/run/jump) を member 保持し setter で調整可
+///        sensitivity/invert と自動ズーム距離を idle / run / jump の 3 段で member 保持し setter で調整可
 ///        FOV は CameraComponent 側が所有する
 
 #include "Framework/Math/Math.h"
@@ -33,10 +33,10 @@ namespace NS::Scene
         /// 右スティック / マウス回転の入力ソース。null では旋回 0
         void SetInput(NS::Platform::Input* input) noexcept;
 
-        /// Dynamic zoom 判定用 (grounded / horizontal velocity)。null で idle 距離固定
+        /// Dynamic zoom の判定に使い、grounded と horizontal velocity を見る。null で idle 距離固定
         void SetMovement(const CharacterMovementComponent* movement) noexcept;
 
-        /// 設定 (将来 Settings UI から bridge)
+        /// 設定。将来 Settings UI から bridge する
         void SetSensX(float radPerPixel) noexcept;
         [[nodiscard]] float SensX() const noexcept { return m_sensX; }
         void SetSensY(float radPerPixel) noexcept;
@@ -46,7 +46,7 @@ namespace NS::Scene
         void SetInvertY(bool invert) noexcept;
         [[nodiscard]] bool IsInvertY() const noexcept { return m_invertY; }
 
-        /// 自動ズームの距離 3 段 (idle / run / jump)。非正値は無視する
+        /// 自動ズームの距離 3 段を idle / run / jump で設定する。非正値は無視する
         void SetAutoDistances(float idle, float run, float jump) noexcept;
         /// 自動ズームで run 距離へ切替える水平速度しきい値
         void SetRunSpeedThreshold(float speed) noexcept;
@@ -60,10 +60,11 @@ namespace NS::Scene
         [[nodiscard]] float Yaw() const noexcept { return m_yaw; }
         [[nodiscard]] float Pitch() const noexcept { return m_pitch; }
 
-        /// fixed step で yaw/pitch・distance spring を更新。最終姿勢は EvaluatePose が返す (ガタつき回避)
+        /// fixed step で yaw/pitch・distance spring を更新。最終姿勢は EvaluatePose が返してガタつきを避ける
         void OnUpdate() override;
 
-        /// 補間 target (alpha) を追う最終姿勢を返す。Brain が選択時に実カメラへ書く (旧 ApplyCameraTransform)
+        /// alpha で補間した target を追う最終姿勢を返す。Brain が選択時に実カメラへ書く。旧 ApplyCameraTransform
+        /// に相当する
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
         // 追従カメラの感触を Inspector へ公開する。 毎フレーム読まれるのでライブで効く

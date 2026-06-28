@@ -8,7 +8,7 @@
 /// 文字列から型を作れないため、 curated 型ごとに lambda factory を 1 行ずつ手書き登録する
 /// player / editor / camera 専用コンポは allowlist に載せないので、 信頼できない type 名でも
 /// 不正なコンポを生成できない
-/// 依存: NS::Scene::GameObject / Component (前方宣言のみ、 各 Component の重いヘッダは露出しない)
+/// 依存: NS::Scene::GameObject / Component、 前方宣言のみで各 Component の重いヘッダは露出しない
 
 #include <string>
 #include <string_view>

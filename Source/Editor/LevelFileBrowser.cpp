@@ -12,7 +12,7 @@ namespace NS::Editor
 {
     namespace
     {
-        // ImGui InputText で確保する name buffer の容量。 sanitize 側 max (200) + 余裕
+        // ImGui InputText で確保する name buffer の容量。 sanitize 側 max 200 + 余裕
         constexpr std::size_t kInputBufferCapacity = 256;
     } // namespace
 

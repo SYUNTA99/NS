@@ -3,8 +3,8 @@
 /// @file Mouse.h
 /// @brief NS::Platform::Mouse / MouseButton — マウス入力の状態保持
 ///
-/// @details 座標はウィンドウのクライアント領域 (左上原点)、 ホイールは
-/// `WHEEL_DELTA` (=120) 単位の縦スクロール。 `OnMove` / `OnButton*` / `OnWheel`
+/// @details 座標はウィンドウのクライアント領域で左上原点、 ホイールは
+/// 120 にあたる `WHEEL_DELTA` 単位の縦スクロール。 `OnMove` / `OnButton*` / `OnWheel`
 /// は WndProc 経由で呼ばれる。 `Update()` は fixed step ループの頭で 1 回呼び、
 /// previous 状態の退避とホイールのリセットを行う。 マルチスレッドは未サポート
 
@@ -45,7 +45,7 @@ namespace NS::Platform
         [[nodiscard]] int GetDeltaX() const noexcept { return m_x - m_prevX; }
         [[nodiscard]] int GetDeltaY() const noexcept { return m_y - m_prevY; }
 
-        /// 縦ホイールデルタ (WHEEL_DELTA=120 単位)。Update() で 0 リセット
+        /// WHEEL_DELTA=120 単位の縦ホイールデルタ。Update() で 0 リセット
         [[nodiscard]] int GetWheelDelta() const noexcept { return m_wheel; }
 
         /// previous = current をコピーし wheel を 0 リセット。差分判定基準を更新する
@@ -57,7 +57,7 @@ namespace NS::Platform
         void OnButtonUp(MouseButton b) noexcept;
         void OnWheel(int delta) noexcept;
 
-        /// フォーカス喪失時に呼ぶ。ボタン状態とホイールをクリア (位置は維持)
+        /// フォーカス喪失時に呼ぶ。ボタン状態とホイールをクリアし位置は維持する
         void ClearState() noexcept;
 
     private:

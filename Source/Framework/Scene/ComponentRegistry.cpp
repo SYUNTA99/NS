@@ -25,9 +25,9 @@ namespace NS::Scene
             Component* (*attach)(GameObject&);
         };
 
-        // 厳選した一部。 既定コンストラクタを持つ型はその自然既定で構築する。 持たない型 (Slope/Pole/MeshRenderer) は
-        // 読み込み時に反射 / BuildPlacedObject が上書きする placeholder 既定値を渡す
-        // 除外型 (player / editor / camera 専用) はここに一切書かない
+        // 厳選した一部。 既定コンストラクタを持つ型はその自然既定で構築する。 持たない型である Slope/Pole/MeshRenderer
+        // は読み込み時に反射 / BuildPlacedObject が上書きする placeholder 既定値を渡す。 除外型である player / editor /
+        // camera 専用コンポはここに一切書かない
         const Entry kEntries[] = {
             {"BoxColliderComponent",
              [](GameObject& o) -> Component* { return o.AddComponent<BoxColliderComponent>(); }},

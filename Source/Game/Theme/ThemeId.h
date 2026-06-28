@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file ThemeId.h
-/// @brief ThemeId — 5 テーマ (Grass / Cave / Snow / Lava / Sky) を識別する enum class
+/// @brief ThemeId — Grass / Cave / Snow / Lava / Sky の 5 テーマを識別する enum class
 ///
-/// @details LevelData::themeId (uint16_t) との変換は NS::Game::Theme::Get(uint16_t) で吸収する
+/// @details uint16_t の LevelData::themeId との変換は NS::Game::Theme::Get(uint16_t) で吸収する
 
 #include <cstdint>
 

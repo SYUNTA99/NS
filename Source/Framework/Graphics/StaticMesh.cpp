@@ -18,7 +18,7 @@ namespace NS::Graphics
 {
     namespace
     {
-        // fallback Cube は 1m 立方 (player と大きさ揃え)、 default Cube として描画
+        // fallback Cube は player と大きさを揃えた 1m 立方、 default Cube として描画
         constexpr float kFallbackCubeHalfExtent = 0.5f;
 
         // 生の頂点 / index から VB + IB を構築。 両方 valid なら true を返し out に move する
@@ -54,7 +54,7 @@ namespace NS::Graphics
     {
         if (Gpu().device == nullptr || Gpu().context == nullptr)
         {
-            // device 自体が無いと fallback Cube すら作れない致命状態 (geometry 未設定 → IsValid false)
+            // device 自体が無いと fallback Cube すら作れない致命状態。geometry 未設定のまま IsValid は false
             NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "StaticMesh: Renderer の Device / Context が無効");
             return;
         }

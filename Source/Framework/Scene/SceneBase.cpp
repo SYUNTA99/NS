@@ -17,7 +17,7 @@ namespace NS::Scene
     void SceneBase::OnRender()
     {
         // 入口を派生に握らせず final 化することで scene 解決の呼び忘れを防ぐ
-        // renderer / camera は Game 層しか知らないため ctx 構築は派生 (OnRenderScene) に委ねる
+        // renderer / camera は Game 層しか知らないため ctx 構築は派生の OnRenderScene に委ねる
         OnRenderScene();
     }
 
@@ -59,13 +59,13 @@ namespace NS::Scene
         }
 
         const NS::Math::Vector3 camPos = context.cameraPosition;
-        // stable_sort で同 key 要素の登録順を保つ (距離・priority 同値時の最終タイブレーク)
+        // stable_sort で同 key 要素の登録順を保つ。 距離・priority 同値時の最終タイブレークになる
         std::stable_sort(
             transparent.begin(), transparent.end(), [camPos](const IRenderable* a, const IRenderable* b) noexcept {
                 const float da = (a->SortCenter() - camPos).LengthSquared();
                 const float db = (b->SortCenter() - camPos).LengthSquared();
                 if (da != db)
-                    return da > db; // 遠い順 (back-to-front)
+                    return da > db; // 遠い順すなわち back-to-front
                 return a->SortPriority() < b->SortPriority();
             });
 

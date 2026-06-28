@@ -11,7 +11,7 @@
 namespace
 {
     constexpr int kMaxSubSteps = 4;
-    // 壁との安全マージン。小さすぎると毎フレーム toi=0 で hit が連続して進まなくなる (引っかかり)
+    // 壁との安全マージン。小さすぎると毎フレーム toi=0 で hit が連続して進まなくなり引っかかる
     // 1cm 離れて stop することで次フレームの slide motion が確実に進む
     constexpr float kSkin = 0.01f;
     // 着地直後に player.y が跳ねて grounded がちらつくのを抑える許容距離
@@ -44,7 +44,7 @@ namespace NS::Physics
             // substep 内で hit -> slide -> 残り motion で再 swept を最大 kMaxSlideIters 回チェイン
             // これで床に接触したまま壁に走った時にも壁 hit が無視されず stop する
             constexpr int kMaxSlideIters = 4;
-            float remainingTime = 1.0f; // この substep のうち未消費の比率 (0..1)
+            float remainingTime = 1.0f; // この substep のうち未消費の比率で 0..1
 
             for (int slideIter = 0; slideIter < kMaxSlideIters && remainingTime > 0.0f; ++slideIter)
             {
@@ -99,7 +99,7 @@ namespace NS::Physics
         }
 
         // 補助の grounded probe: Capsule 底端から下方向に short ray。床ギリギリで停止した
-        // ケースを補足する (slide 後に anyHit が false になり grounded が立たない問題回避)
+        // ケースを補足する。 slide 後に anyHit が false になり grounded が立たない問題を回避する
         if (!result.grounded)
         {
             const NS::Math::Vector3 bottomCenter{

@@ -116,7 +116,7 @@ namespace NS::Scene
 
     NS::Graphics::Shader* AssetManager::GetOrLoadShader(const std::filesystem::path& path)
     {
-        // 表記揺れ (区切り文字 / . / ..) で同一ファイルが別キー扱いにならないよう正規化してから dedupe する
+        // 区切り文字や . / .. の表記揺れで同一ファイルが別キー扱いにならないよう正規化してから dedupe する
         const std::filesystem::path key = path.lexically_normal();
         if (const auto it = m_shaders.find(key); it != m_shaders.end())
             return it->second.get();
@@ -213,7 +213,7 @@ namespace NS::Scene
             record.mesh = NS::Graphics::SkeletalMesh::Create(smd);
             if (record.mesh == nullptr || !record.mesh->IsValid())
             {
-                // GPU buffer 生成に失敗。 ダッド mesh をキャッシュせず無効を返す (Draw が無音で何もしないのを防ぐ)
+                // GPU buffer 生成に失敗。 ダッド mesh をキャッシュせず無効を返し、 Draw が無音で何もしないのを防ぐ
                 NS_LOG_ERROR(
                     ::NS::Core::LogCat::Graphics, "AssetManager: skinned mesh の GPU 生成失敗: {}", key.string());
                 return LoadedSkinnedModel{};
@@ -288,7 +288,7 @@ namespace NS::Scene
         NS::Graphics::Shader* vertexShader = GetOrLoadShader(resolve(fileDesc.vertexShader));
         NS::Graphics::Shader* pixelShader = GetOrLoadShader(resolve(fileDesc.pixelShader));
 
-        // CB は MeshRendererComponent::Draw が流す FrameCB に合わせる (slot 0)
+        // CB は slot 0 で MeshRendererComponent::Draw が流す FrameCB に合わせる
         NS::Graphics::MaterialDesc matDesc{};
         matDesc.vertexShader = vertexShader;
         matDesc.pixelShader = pixelShader;
@@ -319,7 +319,7 @@ namespace NS::Scene
         NS::Graphics::Shader* playerPS = GetOrLoadShader(shaderPath("player.ps.hlsl"));
         NS::Graphics::Texture* baseTexture = GetOrLoadTexture(m_baseDir / "Assets" / "Textures" / "cube_test.png");
 
-        // CB は MeshRendererComponent::Draw が流す FrameCB に合わせる (slot 0)
+        // CB は slot 0 で MeshRendererComponent::Draw が流す FrameCB に合わせる
         NS::Graphics::MaterialDesc base{};
         base.vertexShader = standardVS;
         base.pixelShader = playerPS;
@@ -404,7 +404,7 @@ namespace NS::Scene
 
     void AssetManager::Clear() noexcept
     {
-        // material は leaf (shader / texture) を参照するので先に解放する
+        // material は leaf である shader / texture を参照するので先に解放する
         m_sharedMaterials.clear();
         m_materials.clear();
         m_textureArrays.clear();

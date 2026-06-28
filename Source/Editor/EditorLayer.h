@@ -4,12 +4,12 @@
 /// @brief 編集モード UI Layer。 Debug / Development build 限定で active
 ///
 /// @details Application::AddOverlay 経由で push される。 Regular Game Layer より後段で
-/// OnUpdate / OnRender が走るため、 起動 scene (LevelPlayScene) のプレイ進行を妨げずに
-/// 編集機能を上乗せする。 編集状態 (cursor / palette / ギズモ / free-fly カメラ / モード切替) は
+/// OnUpdate / OnRender が走るため、 起動 scene の LevelPlayScene のプレイ進行を妨げずに
+/// 編集機能を上乗せする。 cursor / palette / ギズモ / free-fly カメラ / モード切替といった編集状態は
 /// `LevelEditorController` が保持し、 本 Layer はその生成・駆動と ImGui パネル描画を担う
 ///
 /// GameDebug / GameRelease では CreateApplication が本 Layer を AddOverlay しないため、
-/// 編集 UI が shipping ビルドに紛れ込まない (起動 scene は LevelPlayScene のまま)
+/// 編集 UI が shipping ビルドに紛れ込まない。起動 scene は LevelPlayScene のまま
 
 #include "Framework/App/Layer.h"
 
@@ -50,10 +50,10 @@ private:
     static void RenderDockSpaceHost() noexcept;
     /// 右上に半透明の FPS / frame time オーバーレイを描画する。 追加の状態は持たない
     static void RenderFpsOverlay() noexcept;
-    /// 解決済 RenderSettings の最終値と各フィールドの出所 (default / scene / object) を表示する
+    /// 解決済 RenderSettings の最終値と各フィールドの出所 default / scene / object を表示する
     /// 出所は scene / object override の has_value 突き合わせで逆算する。 Release では #if で除外
     static void RenderRenderSettingsPanel(LevelEditorController& editor) noexcept;
-    /// 編集モード中に Build (グリッド設置) ⇔ Object (ギズモ変形) を切替える UI ボタンを描く
+    /// 編集モード中にグリッド設置の Build ⇔ ギズモ変形の Object を切替える UI ボタンを描く
     static void RenderToolModePanel(LevelEditorController& editor) noexcept;
     /// 全配置物を一覧し、 行クリックで選択する。 grid/free バッジ付き、 選択中をハイライトする
     static void RenderHierarchyPanel(LevelEditorController& editor) noexcept;
@@ -69,7 +69,7 @@ private:
     // OnRender 内で BeginFrame → パネル構築 → EndFrame の順に回し、終端で UI キャプチャ状態を Input へ反映する
     std::unique_ptr<NS::UI::ImGuiContext> m_imgui;
 
-    // 起動 scene (LevelPlayScene) を編集するコントローラ。 OnAttach で scene へ束ねて Setup する
+    // 起動 scene の LevelPlayScene を編集するコントローラ。 OnAttach で scene へ束ねて Setup する
     std::unique_ptr<LevelEditorController> m_controller;
 
     // プレイ中に F5 でトグルするエディタ UI の表示フラグ。 編集モードでは毎フレーム true へ戻す

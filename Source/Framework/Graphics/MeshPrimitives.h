@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file MeshPrimitives.h
-/// @brief 基本プリミティブの頂点/index データ生成 (cube / plane)
+/// @brief 基本プリミティブ cube / plane の頂点/index データ生成
 ///
 /// 生成された `MeshGeometry` の vector を `MeshDesc` に渡して `StaticMesh` を構築する
 /// MeshGeometry の生存中のみ MeshDesc::vertices/indices は有効。StaticMesh コンストラクタ内で
@@ -26,7 +26,7 @@ namespace NS::Graphics
     /// vector 確保で std::bad_alloc が伝搬する可能性があるため noexcept は付けない
     [[nodiscard]] MeshGeometry MakeCube(const NS::Math::Vector3& extents);
 
-    /// XZ 平面 (Y=0 上向き)、4 vertex + 6 index、normal=+Y
+    /// XZ 平面で Y=0 上向き、4 vertex + 6 index、normal=+Y
     [[nodiscard]] MeshGeometry MakePlane(const NS::Math::Vector2& extents);
 
     /// +Z 上昇スロープ付き楔形 5 面体。angleDegrees は傾斜角、extents.y は最大高さ上限。16 vertex + 24 index

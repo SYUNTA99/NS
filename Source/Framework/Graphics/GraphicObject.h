@@ -7,7 +7,7 @@
 
 namespace NS::Graphics
 {
-    /// 非所有の観測ポインタ (Renderer が所有、未構築時は nullptr)。直接参照は層内部のみ
+    /// Renderer が所有する非所有の観測ポインタで、 未構築時は nullptr。直接参照は層内部のみ
     struct GraphicObject
     {
         ID3D11Device* device = nullptr;

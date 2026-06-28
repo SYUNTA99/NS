@@ -4,14 +4,14 @@
 /// @brief NS::Scene::Component — 振る舞いを表現する再利用ブロック
 ///
 /// GameObject::AddComponent<T>() で生成され、 GameObject が unique_ptr で寿命を所有する
-/// Component 自身は所有者 GameObject を生参照する (owner は生成後に GameObject が注入)
-/// Component 間 / 他 GameObject へのアクセスはコンストラクタ経由の明示的な生ポインタ注入のみ許可
-/// (GetComponent<T>() 動的検索 API は提供しない)
+/// Component 自身は所有者 GameObject を生参照する。 owner は生成後に GameObject が注入する
+/// Component 間 / 他 GameObject へのアクセスはコンストラクタ経由の明示的な生ポインタ注入のみ許可する
+/// GetComponent<T>() のような動的検索 API は提供しない
 ///
 /// ライフサイクル:
 ///   - OnStart() — Scene attach 直後に 1 回
-///   - OnUpdate() — fixed step 内で毎回 (`IsActive()==false` で skip)
-///     dt は `NS::Core::FrameTimer::FixedDelta()` で取得 (all-static、 Application 不要)
+///   - OnUpdate() — fixed step 内で毎回。 `IsActive()==false` なら skip する
+///     dt は `NS::Core::FrameTimer::FixedDelta()` で取得する。 全て static なので Application 不要
 ///   - OnEndPlay() — Scene 破棄 / Component 廃棄前に 1 回
 
 #include "Framework/Scene/Reflection.h"
@@ -40,8 +40,8 @@ namespace NS::Scene
     class Component
     {
     public:
-        /// priority をコンストラクタ引数で確定する。基底コンストラクタ内での仮想呼び出しを避けるため
-        /// (仮想関数テーブルが未確定)
+        /// priority をコンストラクタ引数で確定する。基底コンストラクタ内は仮想関数テーブルが未確定なので
+        /// 仮想呼び出しを避ける
         explicit Component(int priority = static_cast<int>(TickPriority::Physics)) noexcept;
 
         virtual ~Component() noexcept;
@@ -51,7 +51,7 @@ namespace NS::Scene
         Component(Component&&) = delete;
         Component& operator=(Component&&) = delete;
 
-        /// OnUpdate 実行順の priority。既定 `TickPriority::Physics` (200)
+        /// OnUpdate 実行順の priority。既定は `TickPriority::Physics` の 200
         [[nodiscard]] int Priority() const noexcept { return m_priority; }
 
         /// 所有 GameObject。Scene attach 後は non-null

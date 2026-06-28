@@ -13,7 +13,7 @@
 namespace NS::Graphics
 {
 
-    /// Camera 構築パラメータ。setter cascade の代替に使う (動的更新は setter で)
+    /// Camera 構築パラメータ。setter cascade の代替に使う。 動的更新は setter で行う
     struct CameraDesc
     {
         NS::Math::Vector3 position{0.0f, 0.0f, -5.0f};
@@ -47,7 +47,7 @@ namespace NS::Graphics
 
         /// 垂直 FOV を強い型 Radians で受ける。 生 float の取り違え事故を防ぐ
         void SetFovY(NS::Math::Radians fov) noexcept;
-        /// アスペクト比 (width / height)。Window リサイズ時に呼出責任は Game 側
+        /// アスペクト比は width / height。Window リサイズ時に呼出責任は Game 側
         void SetAspectRatio(float aspect) noexcept;
         void SetNearPlane(float nearPlane) noexcept;
         void SetFarPlane(float farPlane) noexcept;
@@ -65,7 +65,7 @@ namespace NS::Graphics
         [[nodiscard]] const NS::Math::Matrix& View() const noexcept;
         /// XMMatrixPerspectiveFovLH 相当。dirty 時のみ再計算しキャッシュ
         [[nodiscard]] const NS::Math::Matrix& Projection() const noexcept;
-        /// View() * Projection() を返す (DirectXMath row-major LH 慣習)
+        /// View() * Projection() を返す。 DirectXMath の行優先 LH 慣習に従う
         /// HLSL 側は `mul(float4(pos,1), ViewProjection)` の行ベクトル前提で書く
         [[nodiscard]] NS::Math::Matrix ViewProjection() const noexcept;
 

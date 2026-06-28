@@ -4,7 +4,7 @@
 /// @brief 配置ブラシを選ぶ toolbar。 cube と spawn の 2 スロットを持つ
 ///
 /// @details 状態は active slot index のみ
-/// 入力ハンドリング (Gamepad LB/RB、 Keyboard 1-2) は TickInput、
+/// Gamepad LB/RB、 Keyboard 1-2 の入力ハンドリングは TickInput、
 /// ImGui 描画は Render で行う。 Render は Debug / Development build 時のみ
 /// 実体があり、 Shipping では何もしない
 
