@@ -255,10 +255,10 @@ namespace NS::Graphics
     {
         std::size_t drawCalls = 0;
         const bool canDraw = m_valid && !m_countOnlyMode;
-        auto* ctx = Gpu().context;
+        auto* context = Gpu().context;
 
         // ブロックは不透明。描画する者が自分の Pipeline を set する不変条件で、前 submitter の残留 state を断つ
-        if (canDraw && ctx != nullptr)
+        if (canDraw && context != nullptr)
             renderer.Commands().SetPipeline(renderer.CommonPipeline(BlendMode::Opaque));
 
         for (auto& [key, bucket] : m_buckets)
@@ -266,7 +266,7 @@ namespace NS::Graphics
             if (bucket.instances.empty())
                 continue;
 
-            if (canDraw && ctx != nullptr)
+            if (canDraw && context != nullptr)
             {
                 if (bucket.instances.size() > m_instanceVbCapacity)
                 {
@@ -284,9 +284,9 @@ namespace NS::Graphics
                 // 直後に instance 用で上書きする。 material 側 shader は使わない
                 key.material->Bind(renderer);
 
-                ctx->VSSetShader(m_vs.Get(), nullptr, 0);
-                ctx->PSSetShader(m_ps.Get(), nullptr, 0);
-                ctx->IASetInputLayout(m_inputLayout.Get());
+                context->VSSetShader(m_vs.Get(), nullptr, 0);
+                context->PSSetShader(m_ps.Get(), nullptr, 0);
+                context->IASetInputLayout(m_inputLayout.Get());
 
                 const Buffer* meshVBuf = key.mesh->VertexBuffer();
                 const Buffer* meshIBuf = key.mesh->IndexBuffer();
@@ -304,11 +304,11 @@ namespace NS::Graphics
                 const UINT strides[2] = {static_cast<UINT>(sizeof(StaticVertex)),
                                          static_cast<UINT>(sizeof(BlockInstance))};
                 const UINT offsets[2] = {0, 0};
-                ctx->IASetVertexBuffers(0, 2, vbs, strides, offsets);
-                ctx->IASetIndexBuffer(meshIB, meshIBuf->Format(), 0);
-                ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+                context->IASetVertexBuffers(0, 2, vbs, strides, offsets);
+                context->IASetIndexBuffer(meshIB, meshIBuf->Format(), 0);
+                context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-                ctx->DrawIndexedInstanced(
+                context->DrawIndexedInstanced(
                     static_cast<UINT>(key.mesh->IndexCount()), static_cast<UINT>(bucket.instances.size()), 0, 0, 0);
             }
             ++drawCalls;

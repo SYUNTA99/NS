@@ -45,9 +45,9 @@ namespace NS::Graphics
         {
             for (cgltf_size i = 0; i < prim.attributes_count; ++i)
             {
-                const cgltf_attribute& attr = prim.attributes[i];
-                if (attr.type == type && attr.index == setIndex)
-                    return attr.data;
+                const cgltf_attribute& attribute = prim.attributes[i];
+                if (attribute.type == type && attribute.index == setIndex)
+                    return attribute.data;
             }
             return nullptr;
         }

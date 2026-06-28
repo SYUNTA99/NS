@@ -71,9 +71,9 @@ namespace NS::Core
             return exeDir / "logs";
         }
 
-        spdlog::level::level_enum ToSpdLevel(LogLevel lv)
+        spdlog::level::level_enum ToSpdLevel(LogLevel level)
         {
-            switch (lv)
+            switch (level)
             {
             case LogLevel::Trace:
                 return spdlog::level::trace;
@@ -210,7 +210,7 @@ namespace NS::Core
     }
 
     void Logger::LogImpl(
-        LogLevel lv, std::string_view category, const char* file, int line, const char* func, std::string_view msg)
+        LogLevel level, std::string_view category, const char* file, int line, const char* func, std::string_view msg)
     {
         auto logger = spdlog::default_logger();
         if (!logger)
@@ -219,7 +219,7 @@ namespace NS::Core
         }
 
         spdlog::source_loc loc{file, line, func};
-        logger->log(loc, ToSpdLevel(lv), "[{}] {}", category, msg);
+        logger->log(loc, ToSpdLevel(level), "[{}] {}", category, msg);
     }
 
     [[noreturn]] void Logger::FatalImpl(

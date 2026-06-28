@@ -51,8 +51,8 @@ namespace NS::Physics
                     const auto it = m_cells.find(CellKey(x, y, z));
                     if (it == m_cells.end())
                         continue;
-                    for (const std::uint32_t idx : it->second)
-                        out.push_back(idx);
+                    for (const std::uint32_t index : it->second)
+                        out.push_back(index);
                 }
         std::sort(out.begin(), out.end());
         out.erase(std::unique(out.begin(), out.end()), out.end());

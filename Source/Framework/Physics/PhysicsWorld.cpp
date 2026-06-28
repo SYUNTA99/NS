@@ -104,8 +104,8 @@ namespace NS::Physics
         {
             const NS::Math::AABB queryBox = CapsuleSweptAabb(cap, motion);
             m_grid.Query(queryBox, m_candidates);
-            for (const std::uint32_t idx : m_candidates)
-                considerAabb(m_aabbs[idx]);
+            for (const std::uint32_t index : m_candidates)
+                considerAabb(m_aabbs[index]);
         }
         else
         {

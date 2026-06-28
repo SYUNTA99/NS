@@ -49,8 +49,12 @@ namespace NS::Core
         static void Shutdown() noexcept;
 
         /// NS_LOG_* マクロ内部用。直接呼ばないこと
-        static void LogImpl(
-            LogLevel lv, std::string_view category, const char* file, int line, const char* func, std::string_view msg);
+        static void LogImpl(LogLevel level,
+                            std::string_view category,
+                            const char* file,
+                            int line,
+                            const char* func,
+                            std::string_view msg);
 
         /// Fatal 専用: flush → __debugbreak() (Shipping はスキップ) → std::abort()
         [[noreturn]] static void FatalImpl(

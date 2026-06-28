@@ -28,7 +28,7 @@ namespace NS::UI
         bool valid = false;
         bool fallback = true;
 #if NS_UI_IMGUI_ENABLED
-        ::ImGuiContext* ctx = nullptr;
+        ::ImGuiContext* context = nullptr;
 #endif
     };
 
@@ -38,8 +38,8 @@ namespace NS::UI
 #if NS_UI_IMGUI_ENABLED
         IMGUI_CHECKVERSION();
 
-        m_pImpl->ctx = ::ImGui::CreateContext();
-        if (m_pImpl->ctx == nullptr)
+        m_pImpl->context = ::ImGui::CreateContext();
+        if (m_pImpl->context == nullptr)
         {
             NS_LOG_ERROR(::NS::Core::LogCat::UI, "ImGui::CreateContext 失敗、 stub mode に fallback");
             return;
@@ -53,8 +53,8 @@ namespace NS::UI
         if (hwnd == nullptr || !::ImGui_ImplWin32_Init(hwnd))
         {
             NS_LOG_ERROR(::NS::Core::LogCat::UI, "ImGui_ImplWin32_Init 失敗、 stub mode に fallback");
-            ::ImGui::DestroyContext(m_pImpl->ctx);
-            m_pImpl->ctx = nullptr;
+            ::ImGui::DestroyContext(m_pImpl->context);
+            m_pImpl->context = nullptr;
             return;
         }
 
@@ -65,8 +65,8 @@ namespace NS::UI
         {
             NS_LOG_ERROR(::NS::Core::LogCat::UI, "ImGui_ImplDX11_Init 失敗、 stub mode に fallback");
             ::ImGui_ImplWin32_Shutdown();
-            ::ImGui::DestroyContext(m_pImpl->ctx);
-            m_pImpl->ctx = nullptr;
+            ::ImGui::DestroyContext(m_pImpl->context);
+            m_pImpl->context = nullptr;
             return;
         }
 
@@ -81,12 +81,12 @@ namespace NS::UI
     ImGuiContext::~ImGuiContext() noexcept
     {
 #if NS_UI_IMGUI_ENABLED
-        if (m_pImpl && m_pImpl->ctx != nullptr)
+        if (m_pImpl && m_pImpl->context != nullptr)
         {
             ::ImGui_ImplDX11_Shutdown();
             ::ImGui_ImplWin32_Shutdown();
-            ::ImGui::DestroyContext(m_pImpl->ctx);
-            m_pImpl->ctx = nullptr;
+            ::ImGui::DestroyContext(m_pImpl->context);
+            m_pImpl->context = nullptr;
         }
 #endif
     }

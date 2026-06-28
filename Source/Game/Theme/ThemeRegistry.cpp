@@ -56,10 +56,10 @@ namespace ThemeRegistry
 {
     const ThemeData& Get(ThemeId id) noexcept
     {
-        const auto idx = static_cast<std::size_t>(id);
-        if (idx >= static_cast<std::size_t>(ThemeId::Count))
+        const auto index = static_cast<std::size_t>(id);
+        if (index >= static_cast<std::size_t>(ThemeId::Count))
             return Themes()[0];
-        return Themes()[idx];
+        return Themes()[index];
     }
 
     const ThemeData& Get(std::uint16_t levelDataThemeId) noexcept
