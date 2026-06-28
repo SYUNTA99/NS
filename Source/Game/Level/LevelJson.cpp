@@ -24,7 +24,7 @@ namespace NS::Game::Level
         /// セーブフォーマットのバージョン。 binary 時代の major/minor を 1 整数へ置換した
         constexpr int kFormatVersion = 1;
 
-        /// 読込時の上限。 巨大 size / 要素数による memory exhaustion を防ぐ (binary 版から移植)
+        /// 読込時の上限。 巨大 size / 要素数による memory exhaustion を防ぐ。 binary 版から移植
         constexpr std::size_t kMaxLevelFileBytes = 16u * 1024u * 1024u;
         constexpr std::size_t kMaxObjectCount = 100'000u;
         constexpr std::size_t kMaxMaterialPaths = 4'096u;
@@ -41,7 +41,7 @@ namespace NS::Game::Level
             return nlohmann::json{x, y, z, w};
         }
 
-        /// parent[key] が長さ 3 の数値配列なら x/y/z へ書き込む。 不在 / 型不一致は据え置き (前方互換)
+        /// parent[key] が長さ 3 の数値配列なら x/y/z へ書き込む。 不在 / 型不一致は据え置きで前方互換を保つ
         void ReadVec3(const nlohmann::json& parent, const char* key, float& x, float& y, float& z)
         {
             const auto it = parent.find(key);
@@ -54,7 +54,7 @@ namespace NS::Game::Level
             z = (*it)[2].get<float>();
         }
 
-        /// parent[key] が長さ 4 の数値配列なら x/y/z/w へ書き込む。 不在 / 型不一致は据え置き (前方互換)
+        /// parent[key] が長さ 4 の数値配列なら x/y/z/w へ書き込む。 不在 / 型不一致は据え置きで前方互換を保つ
         void ReadVec4(const nlohmann::json& parent, const char* key, float& x, float& y, float& z, float& w)
         {
             const auto it = parent.find(key);
@@ -68,7 +68,7 @@ namespace NS::Game::Level
             w = (*it)[3].get<float>();
         }
 
-        /// parent[key] が数値なら int で返す。 不在 / 型不一致は fallback (手編集の 1.0 形式も拾う)
+        /// parent[key] が数値なら int で返す。 不在 / 型不一致は fallback。 手編集の 1.0 形式も拾う
         int ReadInt(const nlohmann::json& parent, const char* key, int fallback)
         {
             const auto it = parent.find(key);
@@ -90,8 +90,8 @@ namespace NS::Game::Level
                 return std::get<bool>(field.value);
             case 3:
             {
-                const auto& v = std::get<NS::Math::Vector3>(field.value);
-                return Vec3Json(v.x, v.y, v.z);
+                const auto& vector3 = std::get<NS::Math::Vector3>(field.value);
+                return Vec3Json(vector3.x, vector3.y, vector3.z);
             }
             case 4:
                 return std::get<std::string>(field.value);
@@ -101,7 +101,7 @@ namespace NS::Game::Level
         }
 
         /// JSON 値から FieldValue の variant を推論する。 bool→bool / 小数→float / 整数→int / 配列3→Vector3 /
-        /// 文字列→string。 いずれにも合わなければ何も積まない (前方互換)
+        /// 文字列→string。 いずれにも合わなければ何も積まないで前方互換を保つ
         bool JsonToFieldValue(const std::string& name, const nlohmann::json& value, FieldValue& out)
         {
             if (value.is_boolean())
@@ -142,16 +142,16 @@ namespace NS::Game::Level
             return out;
         }
 
-        ComponentData DeserializeComponentData(const nlohmann::json& j)
+        ComponentData DeserializeComponentData(const nlohmann::json& json)
         {
             ComponentData component;
-            if (!j.is_object())
+            if (!json.is_object())
                 return component;
-            const auto typeIt = j.find("type");
-            if (typeIt != j.end() && typeIt->is_string())
+            const auto typeIt = json.find("type");
+            if (typeIt != json.end() && typeIt->is_string())
                 component.typeName = typeIt->get<std::string>();
-            const auto fieldsIt = j.find("fields");
-            if (fieldsIt != j.end() && fieldsIt->is_object())
+            const auto fieldsIt = json.find("fields");
+            if (fieldsIt != json.end() && fieldsIt->is_object())
             {
                 for (const auto& [name, value] : fieldsIt->items())
                 {
@@ -163,105 +163,109 @@ namespace NS::Game::Level
             return component;
         }
 
-        nlohmann::json SerializeObject(const ObjectInstance& o)
+        nlohmann::json SerializeObject(const ObjectInstance& object)
         {
             nlohmann::json transform;
-            transform["pos"] = Vec3Json(o.positionX, o.positionY, o.positionZ);
-            transform["rot"] = Vec4Json(o.rotationX, o.rotationY, o.rotationZ, o.rotationW);
-            transform["scale"] = Vec3Json(o.scaleX, o.scaleY, o.scaleZ);
+            transform["pos"] = Vec3Json(object.positionX, object.positionY, object.positionZ);
+            transform["rot"] = Vec4Json(object.rotationX, object.rotationY, object.rotationZ, object.rotationW);
+            transform["scale"] = Vec3Json(object.scaleX, object.scaleY, object.scaleZ);
 
             nlohmann::json collider;
-            collider["shape"] = static_cast<int>(o.shapeCollider);
-            collider["halfExtents"] = Vec3Json(o.colliderHalfExtentsX, o.colliderHalfExtentsY, o.colliderHalfExtentsZ);
-            collider["offset"] = Vec3Json(o.colliderOffsetX, o.colliderOffsetY, o.colliderOffsetZ);
-            collider["rotation"] =
-                Vec4Json(o.colliderRotationX, o.colliderRotationY, o.colliderRotationZ, o.colliderRotationW);
+            collider["shape"] = static_cast<int>(object.shapeCollider);
+            collider["halfExtents"] =
+                Vec3Json(object.colliderHalfExtentsX, object.colliderHalfExtentsY, object.colliderHalfExtentsZ);
+            collider["offset"] = Vec3Json(object.colliderOffsetX, object.colliderOffsetY, object.colliderOffsetZ);
+            collider["rotation"] = Vec4Json(
+                object.colliderRotationX, object.colliderRotationY, object.colliderRotationZ, object.colliderRotationW);
 
             nlohmann::json components = nlohmann::json::array();
-            for (const auto& component : o.components)
+            for (const auto& component : object.components)
                 components.push_back(SerializeComponentData(component));
 
             nlohmann::json out;
             out["transform"] = std::move(transform);
-            out["materialIndex"] = static_cast<int>(o.materialIndex);
-            out["flags"] = static_cast<int>(o.flags);
-            out["reserved1"] = static_cast<int>(o.reserved1);
+            out["materialIndex"] = static_cast<int>(object.materialIndex);
+            out["flags"] = static_cast<int>(object.flags);
+            out["reserved1"] = static_cast<int>(object.reserved1);
             out["collider"] = std::move(collider);
             out["components"] = std::move(components);
             return out;
         }
 
-        ObjectInstance DeserializeObject(const nlohmann::json& j)
+        ObjectInstance DeserializeObject(const nlohmann::json& json)
         {
-            ObjectInstance o{};
-            if (!j.is_object())
-                return o;
+            ObjectInstance object{};
+            if (!json.is_object())
+                return object;
 
-            const auto transformIt = j.find("transform");
-            if (transformIt != j.end() && transformIt->is_object())
+            const auto transformIt = json.find("transform");
+            if (transformIt != json.end() && transformIt->is_object())
             {
-                ReadVec3(*transformIt, "pos", o.positionX, o.positionY, o.positionZ);
-                ReadVec4(*transformIt, "rot", o.rotationX, o.rotationY, o.rotationZ, o.rotationW);
-                ReadVec3(*transformIt, "scale", o.scaleX, o.scaleY, o.scaleZ);
+                ReadVec3(*transformIt, "pos", object.positionX, object.positionY, object.positionZ);
+                ReadVec4(*transformIt, "rot", object.rotationX, object.rotationY, object.rotationZ, object.rotationW);
+                ReadVec3(*transformIt, "scale", object.scaleX, object.scaleY, object.scaleZ);
             }
 
-            o.materialIndex = static_cast<std::int16_t>(ReadInt(j, "materialIndex", o.materialIndex));
-            o.flags = static_cast<std::uint8_t>(ReadInt(j, "flags", o.flags));
-            o.reserved1 = static_cast<std::uint16_t>(ReadInt(j, "reserved1", o.reserved1));
+            object.materialIndex = static_cast<std::int16_t>(ReadInt(json, "materialIndex", object.materialIndex));
+            object.flags = static_cast<std::uint8_t>(ReadInt(json, "flags", object.flags));
+            object.reserved1 = static_cast<std::uint16_t>(ReadInt(json, "reserved1", object.reserved1));
 
-            const auto colliderIt = j.find("collider");
-            if (colliderIt != j.end() && colliderIt->is_object())
+            const auto colliderIt = json.find("collider");
+            if (colliderIt != json.end() && colliderIt->is_object())
             {
-                o.shapeCollider = static_cast<std::uint8_t>(ReadInt(*colliderIt, "shape", o.shapeCollider));
-                ReadVec3(
-                    *colliderIt, "halfExtents", o.colliderHalfExtentsX, o.colliderHalfExtentsY, o.colliderHalfExtentsZ);
-                ReadVec3(*colliderIt, "offset", o.colliderOffsetX, o.colliderOffsetY, o.colliderOffsetZ);
+                object.shapeCollider = static_cast<std::uint8_t>(ReadInt(*colliderIt, "shape", object.shapeCollider));
+                ReadVec3(*colliderIt,
+                         "halfExtents",
+                         object.colliderHalfExtentsX,
+                         object.colliderHalfExtentsY,
+                         object.colliderHalfExtentsZ);
+                ReadVec3(*colliderIt, "offset", object.colliderOffsetX, object.colliderOffsetY, object.colliderOffsetZ);
                 ReadVec4(*colliderIt,
                          "rotation",
-                         o.colliderRotationX,
-                         o.colliderRotationY,
-                         o.colliderRotationZ,
-                         o.colliderRotationW);
+                         object.colliderRotationX,
+                         object.colliderRotationY,
+                         object.colliderRotationZ,
+                         object.colliderRotationW);
             }
 
-            const auto componentsIt = j.find("components");
-            if (componentsIt != j.end() && componentsIt->is_array())
+            const auto componentsIt = json.find("components");
+            if (componentsIt != json.end() && componentsIt->is_array())
             {
-                o.components.reserve(componentsIt->size());
-                for (const auto& cj : *componentsIt)
-                    o.components.push_back(DeserializeComponentData(cj));
+                object.components.reserve(componentsIt->size());
+                for (const auto& componentJson : *componentsIt)
+                    object.components.push_back(DeserializeComponentData(componentJson));
             }
-            return o;
+            return object;
         }
 
-        nlohmann::json SerializeCameraVolume(const CameraVolume& c)
+        nlohmann::json SerializeCameraVolume(const CameraVolume& volume)
         {
             nlohmann::json out;
-            out["cameraPosition"] = Vec3Json(c.cameraPositionX, c.cameraPositionY, c.cameraPositionZ);
-            out["lookTarget"] = Vec3Json(c.lookTargetX, c.lookTargetY, c.lookTargetZ);
-            out["triggerCenter"] = Vec3Json(c.triggerCenterX, c.triggerCenterY, c.triggerCenterZ);
-            out["triggerExtent"] = Vec3Json(c.triggerExtentX, c.triggerExtentY, c.triggerExtentZ);
-            out["priority"] = c.priority;
-            out["lookAtPlayer"] = static_cast<int>(c.lookAtPlayer);
-            out["reserved0"] = static_cast<int>(c.reserved0);
-            out["reserved1"] = static_cast<int>(c.reserved1);
+            out["cameraPosition"] = Vec3Json(volume.cameraPositionX, volume.cameraPositionY, volume.cameraPositionZ);
+            out["lookTarget"] = Vec3Json(volume.lookTargetX, volume.lookTargetY, volume.lookTargetZ);
+            out["triggerCenter"] = Vec3Json(volume.triggerCenterX, volume.triggerCenterY, volume.triggerCenterZ);
+            out["triggerExtent"] = Vec3Json(volume.triggerExtentX, volume.triggerExtentY, volume.triggerExtentZ);
+            out["priority"] = volume.priority;
+            out["lookAtPlayer"] = static_cast<int>(volume.lookAtPlayer);
+            out["reserved0"] = static_cast<int>(volume.reserved0);
+            out["reserved1"] = static_cast<int>(volume.reserved1);
             return out;
         }
 
-        CameraVolume DeserializeCameraVolume(const nlohmann::json& j)
+        CameraVolume DeserializeCameraVolume(const nlohmann::json& json)
         {
-            CameraVolume c{};
-            if (!j.is_object())
-                return c;
-            ReadVec3(j, "cameraPosition", c.cameraPositionX, c.cameraPositionY, c.cameraPositionZ);
-            ReadVec3(j, "lookTarget", c.lookTargetX, c.lookTargetY, c.lookTargetZ);
-            ReadVec3(j, "triggerCenter", c.triggerCenterX, c.triggerCenterY, c.triggerCenterZ);
-            ReadVec3(j, "triggerExtent", c.triggerExtentX, c.triggerExtentY, c.triggerExtentZ);
-            c.priority = ReadInt(j, "priority", c.priority);
-            c.lookAtPlayer = static_cast<std::uint8_t>(ReadInt(j, "lookAtPlayer", c.lookAtPlayer));
-            c.reserved0 = static_cast<std::uint8_t>(ReadInt(j, "reserved0", c.reserved0));
-            c.reserved1 = static_cast<std::uint16_t>(ReadInt(j, "reserved1", c.reserved1));
-            return c;
+            CameraVolume volume{};
+            if (!json.is_object())
+                return volume;
+            ReadVec3(json, "cameraPosition", volume.cameraPositionX, volume.cameraPositionY, volume.cameraPositionZ);
+            ReadVec3(json, "lookTarget", volume.lookTargetX, volume.lookTargetY, volume.lookTargetZ);
+            ReadVec3(json, "triggerCenter", volume.triggerCenterX, volume.triggerCenterY, volume.triggerCenterZ);
+            ReadVec3(json, "triggerExtent", volume.triggerExtentX, volume.triggerExtentY, volume.triggerExtentZ);
+            volume.priority = ReadInt(json, "priority", volume.priority);
+            volume.lookAtPlayer = static_cast<std::uint8_t>(ReadInt(json, "lookAtPlayer", volume.lookAtPlayer));
+            volume.reserved0 = static_cast<std::uint8_t>(ReadInt(json, "reserved0", volume.reserved0));
+            volume.reserved1 = static_cast<std::uint16_t>(ReadInt(json, "reserved1", volume.reserved1));
+            return volume;
         }
     } // namespace
 
@@ -303,7 +307,7 @@ namespace NS::Game::Level
             cameras.push_back(SerializeCameraVolume(camera));
         root["cameraVolumes"] = std::move(cameras);
 
-        // 不正 UTF-8 は replace で握り、 dump が例外を投げないようにする (noexcept 経路を保つ)
+        // 不正 UTF-8 は replace で握り、 dump が例外を投げないようにして noexcept 経路を保つ
         return root.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
     }
 
@@ -336,8 +340,8 @@ namespace NS::Game::Level
                 return false;
             }
             outLevel.objects.reserve(objectsIt->size());
-            for (const auto& oj : *objectsIt)
-                outLevel.objects.push_back(DeserializeObject(oj));
+            for (const auto& objectJson : *objectsIt)
+                outLevel.objects.push_back(DeserializeObject(objectJson));
         }
 
         const auto materialsIt = root.find("materialPaths");
@@ -352,11 +356,11 @@ namespace NS::Game::Level
                 outLevel = LevelData{};
                 return false;
             }
-            for (const auto& mj : *materialsIt)
+            for (const auto& materialJson : *materialsIt)
             {
-                if (!mj.is_string())
+                if (!materialJson.is_string())
                     continue;
-                std::string materialPath = mj.get<std::string>();
+                std::string materialPath = materialJson.get<std::string>();
                 if (materialPath.size() > kMaxMaterialPathLength)
                 {
                     NS_LOG_ERROR(::NS::Core::LogCat::Game,
@@ -383,8 +387,8 @@ namespace NS::Game::Level
                 return false;
             }
             outLevel.cameraVolumes.reserve(camerasIt->size());
-            for (const auto& cj : *camerasIt)
-                outLevel.cameraVolumes.push_back(DeserializeCameraVolume(cj));
+            for (const auto& cameraJson : *camerasIt)
+                outLevel.cameraVolumes.push_back(DeserializeCameraVolume(cameraJson));
         }
 
         const auto spawnIt = root.find("spawn");
