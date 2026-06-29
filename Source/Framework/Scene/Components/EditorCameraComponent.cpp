@@ -2,6 +2,7 @@
 
 #include "Framework/Core/Clock.h"
 #include "Framework/Platform/Input.h"
+#include "Framework/Platform/Keyboard.h"
 
 #include <algorithm>
 #include <cmath>
@@ -63,6 +64,21 @@ namespace NS::Scene
         m_desiredDistance = std::clamp(m_desiredDistance * factor, kMinDistance, kMaxDistance);
     }
 
+    void EditorCameraComponent::ApplyKeyMove(float forwardAxis, float strafeAxis, float dt) noexcept
+    {
+        if (forwardAxis == 0.0f && strafeAxis == 0.0f)
+            return;
+
+        // yaw 向きの水平面に投影した forward / right。 pitch を無視するので見下ろしでも高さは変わらない
+        const float sinYaw = std::sin(m_yaw);
+        const float cosYaw = std::cos(m_yaw);
+        const NS::Math::Vector3 forward{-sinYaw, 0.0f, -cosYaw};
+        const NS::Math::Vector3 right{cosYaw, 0.0f, -sinYaw};
+        const float step = m_keyMoveSpeed * m_distance * dt;
+        m_center.x += (forward.x * forwardAxis + right.x * strafeAxis) * step;
+        m_center.z += (forward.z * forwardAxis + right.z * strafeAxis) * step;
+    }
+
     NS::Math::Vector3 EditorCameraComponent::ComputeCameraPosition() const noexcept
     {
         const float cosPitch = std::cos(m_pitch);
@@ -100,6 +116,24 @@ namespace NS::Scene
             }
             // GetWheelDelta は WHEEL_DELTA=120 単位なので /120 で 1 notch=1.0 に正規化
             ApplyZoom(static_cast<float>(mouse.GetWheelDelta()) / 120.0f * m_mouseSensZoom);
+        }
+
+        // Keyboard WASD。 UI がキー入力中なら無視する。 yaw に沿って水平面を平行移動し、 見下ろし角でも
+        // 地面へ突っ込まず一定の高さで広域を流せるようにする
+        if (m_input != nullptr && !m_input->UiWantsKeyboard())
+        {
+            auto& kb = m_input->Keyboard();
+            float forwardAxis = 0.0f;
+            float strafeAxis = 0.0f;
+            if (kb.IsHeld(NS::Platform::Key::W))
+                forwardAxis += 1.0f;
+            if (kb.IsHeld(NS::Platform::Key::S))
+                forwardAxis -= 1.0f;
+            if (kb.IsHeld(NS::Platform::Key::D))
+                strafeAxis += 1.0f;
+            if (kb.IsHeld(NS::Platform::Key::A))
+                strafeAxis -= 1.0f;
+            ApplyKeyMove(forwardAxis, strafeAxis, dt);
         }
 
         // Gamepad は ImGui キャプチャ対象外、 常に入力する

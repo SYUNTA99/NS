@@ -44,10 +44,30 @@ TEST(EditorCameraTest, DistanceClampedViaSetDistance)
     SceneNs::GameObject obj;
     auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
 
-    cam.SetDistance(1000.0f);
+    cam.SetDistance(SceneNs::EditorCameraComponent::kMaxDistance + 1000.0f);
     EXPECT_NEAR(cam.Distance(), SceneNs::EditorCameraComponent::kMaxDistance, 1e-4f);
     cam.SetDistance(-50.0f);
     EXPECT_NEAR(cam.Distance(), SceneNs::EditorCameraComponent::kMinDistance, 1e-4f);
+}
+
+TEST(EditorCameraTest, KeyMoveTranslatesCenterAlongYawPlane)
+{
+    SceneNs::GameObject obj;
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
+    cam.SetYawPitch(0.0f, -0.5236f);
+    cam.SetDistance(10.0f);
+    cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+
+    // yaw=0 で前進(W)は -Z、 右(D)は +X。 移動量は KeyMoveSpeed 0.6 × distance 10 × dt 1 = 6
+    cam.ApplyKeyMove(1.0f, 0.0f, 1.0f);
+    EXPECT_NEAR(cam.Center().z, -6.0f, 1e-4f);
+    EXPECT_NEAR(cam.Center().x, 0.0f, 1e-4f);
+    EXPECT_NEAR(cam.Center().y, 0.0f, 1e-4f); // 水平移動のみで高さは不変
+
+    cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+    cam.ApplyKeyMove(0.0f, 1.0f, 1.0f);
+    EXPECT_NEAR(cam.Center().x, 6.0f, 1e-4f);
+    EXPECT_NEAR(cam.Center().z, 0.0f, 1e-4f);
 }
 
 TEST(EditorCameraTest, ComputeCameraPositionForYawZeroPlacesCameraOnZAxis)

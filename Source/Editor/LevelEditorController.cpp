@@ -66,9 +66,10 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_editorCameraRig->AttachScene(m_scene);
     m_editorCameraRig->EditorCam().SetInput(&app->Input());
 
-    // free-fly vcam の投影設定で、 編集は遠景を 200 まで見せ near 0.1 は既定
+    // free-fly vcam の投影設定で、 編集は遠景を 5000 まで見せ near 0.1 は既定
+    // far は EditorCameraComponent の kMaxDistance より広く取り、 最大ズームアウトでも地形を映す
     m_editorCameraRig->EditorCam().SetNearPlane(0.1f);
-    m_editorCameraRig->EditorCam().SetFarPlane(200.0f);
+    m_editorCameraRig->EditorCam().SetFarPlane(5000.0f);
     m_editorCameraRig->EditorCam().SetFovY(NS::Math::ToRadians(NS::Math::Degrees{60.0f}));
 
     // 初期視点は spawn 位置を中心に少し引いた位置から見下ろす

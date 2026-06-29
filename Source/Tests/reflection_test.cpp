@@ -390,7 +390,7 @@ TEST(ReflectionTest, EditorCameraReflectsSensitivityFields)
     NS::Scene::EditorCameraComponent cam;
     const ReflectionInfo* info = cam.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 7u);
+    EXPECT_EQ(info->fieldCount, 8u);
 }
 
 TEST(ReflectionTest, FieldTypeOfStringIsString)

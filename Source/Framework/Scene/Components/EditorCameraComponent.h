@@ -51,6 +51,8 @@ namespace NS::Scene
         void ApplyOrbit(float yawDelta, float pitchDelta) noexcept;
         void ApplyPan(float panX, float panY) noexcept;
         void ApplyZoom(float zoomDelta) noexcept;
+        /// WASD 相当の水平移動。 forwardAxis / strafeAxis は -1..1、 yaw 向きの水平面で center を動かす
+        void ApplyKeyMove(float forwardAxis, float strafeAxis, float dt) noexcept;
 
         // free-fly の感触を Inspector へ公開する。 毎フレーム読まれるのでライブで効く
         NS_REFLECT_BEGIN(EditorCameraComponent)
@@ -61,11 +63,13 @@ namespace NS::Scene
         NS_REFLECT_FIELD(m_padSensOrbit, "Pad Orbit Sens")
         NS_REFLECT_FIELD(m_padSensPan, "Pad Pan Sens")
         NS_REFLECT_FIELD(m_padSensZoom, "Pad Zoom Sens")
+        NS_REFLECT_FIELD(m_keyMoveSpeed, "Key Move Speed")
         NS_REFLECT_END()
 
-        // 2m 未満: block 内側に入り描画破綻。30m 超: block が点になる
+        // 2m 未満は block 内側へ入り描画破綻するので下限は残す。 上限は広い地形を一望できるよう実質無制限まで
+        // 開け、 LevelEditorController の far plane と揃えて遠景も映す。 完全な無限は inf / far 越えで全消えを招く
         static constexpr float kMinDistance = 2.0f;
-        static constexpr float kMaxDistance = 30.0f;
+        static constexpr float kMaxDistance = 4000.0f;
         // ±90° は up/forward 平行で gimbal lock 寸前のため ±89° でクランプ
         static constexpr float kPitchMin = -1.553f; // -89°
         static constexpr float kPitchMax = +1.553f; // +89°
@@ -88,6 +92,8 @@ namespace NS::Scene
         float m_padSensOrbit = 2.5f;
         float m_padSensPan = 8.0f;
         float m_padSensZoom = 4.0f;
+        // WASD の 1 秒あたり移動量 = この値 × distance。 distance 比例でズーム量に依らず体感速度を一定に保つ
+        float m_keyMoveSpeed = 0.6f;
     };
 
 } // namespace NS::Scene
