@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file CategoryPalette.h
-/// @brief 配置ブラシを選ぶ toolbar。 現状は cube の 1 スロット
+/// @brief 配置ブラシを選ぶ toolbar。 cube / 45 度スロープ / ゴールの 3 スロット
 ///
 /// @details 状態は active slot index のみ
 /// Gamepad LB/RB、 Keyboard 数字キーの入力ハンドリングは TickInput、
@@ -28,7 +28,7 @@ namespace NS::Editor
     class CategoryPalette
     {
     public:
-        static constexpr std::size_t kSlotCount = 1;
+        static constexpr std::size_t kSlotCount = kPaletteSlotCount;
 
         CategoryPalette() noexcept;
         ~CategoryPalette() noexcept = default;

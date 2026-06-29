@@ -197,7 +197,7 @@ namespace NS::Game::Level
     [[nodiscard]] const FieldValue* FindField(const ComponentData& component, std::string_view name) noexcept;
 
     /// 拾得種別を返す。 PickupComponent が無ければ -1、 "Pickup Kind" 欠損は 0 でコイン既定
-    /// 0=コイン / 1=スター。 Blocks の配置物の表示・固形判定と PlayMode のプレイ拾得判定が同じ契約を読む
+    /// 0=コイン / 1=ゴール。 Blocks の配置物の表示・固形判定と PlayMode のプレイ拾得判定が同じ契約を読む
     [[nodiscard]] int PickupKindOf(const ObjectInstance& object) noexcept;
 
 } // namespace NS::Game::Level

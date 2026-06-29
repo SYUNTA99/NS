@@ -4,6 +4,8 @@
 #include <Framework/Scene/Components/BoxColliderComponent.h>
 #include <Framework/Scene/Components/CapsuleColliderComponent.h>
 #include <Framework/Scene/Components/MeshRendererComponent.h>
+#include <Framework/Scene/Components/PickupComponent.h>
+#include <Framework/Scene/Components/SlopeColliderComponent.h>
 #include <Framework/Scene/Components/SphereColliderComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Game/Blocks/BuildPlacedObject.h>
@@ -233,4 +235,38 @@ TEST_F(BuildPlacedObjectTest, AssetPathTraversalRejectedFallsBackToDefault)
     ASSERT_NE(obj, nullptr);
     EXPECT_TRUE(Has<NS::Scene::MeshRendererComponent>(*obj));
     EXPECT_TRUE(Has<NS::Scene::BoxColliderComponent>(*obj));
+}
+
+// 45 度スロープ prototype は wedge メッシュ + 45 度 SlopeCollider を起こし、 R で回せる
+TEST_F(BuildPlacedObjectTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
+{
+    ObjectInstance slope = MakeGridObject(0, 0, 0, 0);
+    slope.components = NS::Game::Blocks::MakeGridSlopeComponents(45.0f);
+
+    EXPECT_STREQ(NS::Game::Blocks::ObjectDisplayName(slope), "Slope 45");
+    EXPECT_TRUE(NS::Game::Blocks::IsRotatableObject(slope));
+
+    auto obj = Build(slope);
+    ASSERT_NE(obj, nullptr);
+    EXPECT_TRUE(Has<NS::Scene::MeshRendererComponent>(*obj));
+    auto* collider = FindComponent<NS::Scene::SlopeColliderComponent>(*obj);
+    ASSERT_NE(collider, nullptr);
+    EXPECT_FLOAT_EQ(collider->AngleDegrees(), 45.0f);
+    EXPECT_FALSE(Has<NS::Scene::BoxColliderComponent>(*obj));
+}
+
+// ゴール prototype は接触クリア用の pickup を持ち、 表示名は Goal、 向きは無関係で回転不可
+TEST_F(BuildPlacedObjectTest, GoalHasPickupAndDisplaysAsGoal)
+{
+    ObjectInstance goal = MakeGridObject(0, 0, 0, 0);
+    goal.components = NS::Game::Blocks::MakeGoalComponents();
+
+    EXPECT_STREQ(NS::Game::Blocks::ObjectDisplayName(goal), "Goal");
+    EXPECT_FALSE(NS::Game::Blocks::IsRotatableObject(goal));
+
+    auto obj = Build(goal);
+    ASSERT_NE(obj, nullptr);
+    auto* pickup = FindComponent<NS::Scene::PickupComponent>(*obj);
+    ASSERT_NE(pickup, nullptr);
+    EXPECT_TRUE(pickup->IsGoal());
 }

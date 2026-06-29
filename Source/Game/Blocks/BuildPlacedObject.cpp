@@ -148,6 +148,32 @@ namespace NS::Game::Blocks
                 MakeComponentData("BoxColliderComponent", {FieldValue{"Half Extents", kCellHalfExtents}})};
     }
 
+    std::vector<NS::Game::Level::ComponentData> MakeGridSlopeComponents(float angleDegrees)
+    {
+        using namespace NS::Game::Level;
+        // 角度に対応する楔 builtin メッシュを選び、 見た目の傾斜と当たりの傾斜を一致させる
+        const char* meshName = "wedge45";
+        if (angleDegrees < 18.75f)
+            meshName = "wedge15";
+        else if (angleDegrees < 26.25f)
+            meshName = "wedge22";
+        else if (angleDegrees < 37.5f)
+            meshName = "wedge30";
+        // grid 固形でなく per-object 描画なので material は free 経路と同じ空参照に倒す
+        return {
+            MeshRendererData(meshName, "", kSolidBaseColor),
+            MakeComponentData("SlopeColliderComponent",
+                              {FieldValue{"Angle (deg)", angleDegrees}, FieldValue{"Half Extents", kCellHalfExtents}})};
+    }
+
+    std::vector<NS::Game::Level::ComponentData> MakeGoalComponents()
+    {
+        using namespace NS::Game::Level;
+        // goal pickup は視覚を持たないため、 editor で識別できるよう金色 cube を載せる
+        return {MeshRendererData("cube", "", NS::Math::Vector3{1.0f, 0.84f, 0.0f}),
+                MakeComponentData("PickupComponent", {FieldValue{"Pickup Kind", 1}})};
+    }
+
     std::vector<NS::Game::Level::ComponentData> MakeFreeCubeComponents(const NS::Game::Level::ObjectInstance& object)
     {
         using namespace NS::Game::Level;
@@ -241,7 +267,7 @@ namespace NS::Game::Blocks
         if (pickupKind == 0)
             return "Coin";
         if (pickupKind == 1)
-            return "Star";
+            return "Goal";
         if (pickupKind > 1)
             return "Pickup";
 

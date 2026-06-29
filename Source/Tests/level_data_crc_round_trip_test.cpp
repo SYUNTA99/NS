@@ -11,7 +11,7 @@ namespace LevelNs = NS::Game::Level;
 
 namespace
 {
-    // 視覚 / 当たりを持たず拾得の意味だけを持つ grid pickup を作る (コイン=0 / スター=1)
+    // 視覚 / 当たりを持たず拾得の意味だけを持つ grid pickup を作る (コイン=0 / ゴール=1)
     LevelNs::ObjectInstance MakePickup(int pickupKind)
     {
         LevelNs::ObjectInstance object{};
@@ -74,7 +74,7 @@ TEST(PlayModeCrc, RoundTripWithCoinCollectionPreservesLevelData)
     EXPECT_EQ(level.objects.size(), 1u);
 }
 
-TEST(PlayModeCrc, RoundTripWithStarContactPreservesLevelData)
+TEST(PlayModeCrc, RoundTripWithGoalContactPreservesLevelData)
 {
     LevelNs::LevelData level;
     level.spawnX = 0;
@@ -91,5 +91,5 @@ TEST(PlayModeCrc, RoundTripWithStarContactPreservesLevelData)
     EXPECT_TRUE(play.clearTriggered);
     mode.Exit(play);
 
-    EXPECT_EQ(level.ComputeCrc32(), before) << "Star 接触時に LevelData 変更";
+    EXPECT_EQ(level.ComputeCrc32(), before) << "ゴール 接触時に LevelData 変更";
 }

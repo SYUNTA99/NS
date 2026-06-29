@@ -30,16 +30,16 @@ TEST(LevelDataCrcTest, EmptyLevelIsDeterministic)
 // Blocks / PlayMode / AutoTile が同じ窓口を読むので、 ここが種別判定の単一の真実になる
 TEST(LevelDataAccessors, FindComponentFieldAndPickupKind)
 {
-    LevelNs::ObjectInstance star = MakePickupObject(1);
+    LevelNs::ObjectInstance goal = MakePickupObject(1);
 
-    const LevelNs::ComponentData* pickup = LevelNs::FindComponentData(star, "PickupComponent");
+    const LevelNs::ComponentData* pickup = LevelNs::FindComponentData(goal, "PickupComponent");
     ASSERT_NE(pickup, nullptr);
-    EXPECT_EQ(LevelNs::FindComponentData(star, "BoxColliderComponent"), nullptr); // 不在は nullptr
+    EXPECT_EQ(LevelNs::FindComponentData(goal, "BoxColliderComponent"), nullptr); // 不在は nullptr
 
     ASSERT_NE(LevelNs::FindField(*pickup, "Pickup Kind"), nullptr);
     EXPECT_EQ(LevelNs::FindField(*pickup, "Missing"), nullptr); // 欠損 field は nullptr
 
-    EXPECT_EQ(LevelNs::PickupKindOf(star), 1);                       // スター
+    EXPECT_EQ(LevelNs::PickupKindOf(goal), 1);                       // ゴール
     EXPECT_EQ(LevelNs::PickupKindOf(MakePickupObject(0)), 0);        // コイン
     EXPECT_EQ(LevelNs::PickupKindOf(LevelNs::ObjectInstance{}), -1); // PickupComponent 無し
 

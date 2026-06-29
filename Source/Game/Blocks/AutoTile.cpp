@@ -45,7 +45,7 @@ namespace NS::Game::Blocks
         };
 
         // object の視覚キーを導く。 MeshRenderer の反射 "Mesh" / "Material" 値とマテリアル添字で連結同一性を決める
-        // MeshRenderer を持たない coin / star 等の object は空メッシュキーになり solid と連結しない
+        // MeshRenderer を持たない coin / goal 等の object は空メッシュキーになり solid と連結しない
         VisualTileKey ComputeVisualKey(const NS::Game::Level::ObjectInstance& object)
         {
             VisualTileKey key;
@@ -53,7 +53,7 @@ namespace NS::Game::Blocks
             const NS::Game::Level::ComponentData* renderer =
                 NS::Game::Level::FindComponentData(object, "MeshRendererComponent");
             if (renderer == nullptr)
-                return key; // MeshRenderer 無しの coin / star 等は空メッシュキーで solid と連結しない
+                return key; // MeshRenderer 無しの coin / goal 等は空メッシュキーで solid と連結しない
             if (const NS::Game::Level::FieldValue* mesh = NS::Game::Level::FindField(*renderer, "Mesh"))
                 if (const auto* meshName = std::get_if<std::string>(&mesh->value))
                     key.mesh = *meshName;

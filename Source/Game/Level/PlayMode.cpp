@@ -18,7 +18,7 @@ namespace NS::Game::Level
             return PickupKindOf(object) == 0;
         }
 
-        bool ObjectIsStar(const ObjectInstance& object) noexcept
+        bool ObjectIsGoal(const ObjectInstance& object) noexcept
         {
             return PickupKindOf(object) == 1;
         }
@@ -60,8 +60,8 @@ namespace NS::Game::Level
         {
             const auto& entry = level.objects[i];
             const bool isCoin = ObjectIsCoin(entry);
-            const bool isStar = ObjectIsStar(entry);
-            if (!isCoin && !isStar)
+            const bool isGoal = ObjectIsGoal(entry);
+            if (!isCoin && !isGoal)
                 continue;
 
             const float dx = entry.positionX - play.playerPosition.x;

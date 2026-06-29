@@ -52,6 +52,14 @@ namespace NS::Game::Blocks
     /// MakeGridObject と editor の grid 配置が同じ cube を起こす窓口
     [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeGridCubeComponents();
 
+    /// grid セルに置く楔スロープ 1 個分の component 一覧を組む。 角度に対応する wedge メッシュ + SlopeCollider
+    /// angleDegrees は 45 / 30 / 22.5 / 15 度を想定し、 メッシュと当たりの傾斜を一致させる
+    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeGridSlopeComponents(float angleDegrees);
+
+    /// 接触でレベルクリアになるゴール 1 個分の component 一覧を組む。 視覚を持たない goal pickup に
+    /// editor で見える金色 cube を載せる。 PlayMode が PickupComponent の種別を読んでクリアを判定する
+    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeGoalComponents();
+
     /// 自由配置の cube 1 個分の component 一覧を組む。 cube メッシュ + shapeCollider に応じた Box/Sphere/Capsule 当たり
     /// 当たり寸法 / offset / 回転は object の collider フィールドから読む
     [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeFreeCubeComponents(

@@ -10,7 +10,7 @@ namespace LevelNs = NS::Game::Level;
 
 namespace
 {
-    // 拾得物を PickupComponent で組む。 pickupKind 0=コイン / 1=ゴールスター
+    // 拾得物を PickupComponent で組む。 pickupKind 0=コイン / 1=ゴールゴール
     LevelNs::ObjectInstance MakePickup(float x, float y, float z, int pickupKind)
     {
         LevelNs::ObjectInstance object;
@@ -152,16 +152,16 @@ TEST(PlayMode, PickupComponentStarTriggersClear)
     lv.spawnY = 0;
     lv.spawnZ = 0;
 
-    LevelNs::ObjectInstance star;
-    star.flags = LevelNs::kObjectFlagGridAligned;
-    star.positionX = 0.0f;
-    star.positionY = 0.0f;
-    star.positionZ = 0.0f;
+    LevelNs::ObjectInstance goal;
+    goal.flags = LevelNs::kObjectFlagGridAligned;
+    goal.positionX = 0.0f;
+    goal.positionY = 0.0f;
+    goal.positionZ = 0.0f;
     LevelNs::ComponentData pickup;
     pickup.typeName = "PickupComponent";
     pickup.fields.push_back(LevelNs::FieldValue{"Pickup Kind", 1});
-    star.components.push_back(std::move(pickup));
-    lv.objects.push_back(std::move(star));
+    goal.components.push_back(std::move(pickup));
+    lv.objects.push_back(std::move(goal));
 
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;

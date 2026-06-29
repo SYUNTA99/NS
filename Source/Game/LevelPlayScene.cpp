@@ -338,11 +338,11 @@ void LevelPlayScene::TickPlay()
         m_player->InputComp().SetCameraForward(camForward);
         m_player->OnUpdate();
 
-        // 落下死 / coin / star / hazard 判定が読む PlayState.playerPosition に Transform をミラーする
+        // 落下死 / coin / goal / hazard 判定が読む PlayState.playerPosition に Transform をミラーする
         m_play.playerPosition = m_player->Root().Position();
     }
 
-    // Play のゲームルールである落下死 / coin / star。 物理は持たず player 位置を読むだけ
+    // Play のゲームルールである落下死 / coin / goal。 物理は持たず player 位置を読むだけ
     m_playMode.Tick(m_level, m_play, dt);
 
     // hazard は solid 衝突世界にも含まれ capsule 中心は表面外に留まるため芯線分から AABB の最近距離で判定する

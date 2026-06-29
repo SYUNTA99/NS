@@ -9,6 +9,7 @@
 #include "Game/Level/LevelData.h"
 
 #include <array>
+#include <cstddef>
 
 namespace NS::Editor
 {
@@ -21,6 +22,9 @@ namespace NS::Editor
         NS::Game::Level::ObjectInstance prototype;
     };
 
-    /// パレット 1 スロット。 grid に置く素の cube。 プレイヤー配置はギズモで実プレイヤーを動かすため別経路
-    [[nodiscard]] const std::array<PaletteTemplate, 1>& PaletteTemplateSlots() noexcept;
+    /// パレットのブラシ数。 grid cube / 45 度スロープ / ゴールの 3 種
+    inline constexpr std::size_t kPaletteSlotCount = 3;
+
+    /// パレットの配置ブラシ一覧。 プレイヤー配置はギズモで実プレイヤーを動かすため別経路
+    [[nodiscard]] const std::array<PaletteTemplate, kPaletteSlotCount>& PaletteTemplateSlots() noexcept;
 } // namespace NS::Editor
