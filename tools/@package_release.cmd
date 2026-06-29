@@ -7,10 +7,11 @@
 ::   tools\@package_release.cmd              - build then package
 ::   tools\@package_release.cmd --skip-build - reuse existing build
 ::
-:: Output dist\NS\ (exe / Assets / Shaders / Source at the same level):
+:: Output dist\NS\ (exe / Assets / Shaders / Levels / Source at the same level):
 ::   NS.exe
 ::   Assets\
 ::   Shaders\
+::   Levels\        new_level.nslvl (the level the game loads on start)
 ::   Source\        (git-tracked files only, ThirdParty excluded)
 ::   premake5.lua
 ::
@@ -57,9 +58,15 @@ if not exist "%BIN%\Game.exe" (
 )
 copy /y "%BIN%\Game.exe" "%OUT%\NS.exe" >nul
 
-echo [4/5] Copying Assets / Shaders ...
+echo [4/5] Copying Assets / Shaders / Levels ...
 xcopy /e /i /q /y "Assets" "%OUT%\Assets\" >nul
 xcopy /e /i /q /y "Shaders" "%OUT%\Shaders\" >nul
+:: Levels: repo is the source of truth. The game loads GetExeDirectory()\Levels\new_level.nslvl
+if exist "Levels" (
+    xcopy /e /i /q /y "Levels" "%OUT%\Levels\" >nul
+) else (
+    echo [WARN] Levels\ not found at repo root -- game will fall back to the seed floor
+)
 
 echo [5/5] Exporting tracked source, ThirdParty excluded ...
 git archive -o "%OUT%\_src.tar" HEAD Source/Framework Source/Game Source/Editor Source/Tests premake5.lua
@@ -73,7 +80,7 @@ del /q "%OUT%\_src.tar"
 echo.
 echo ============================================
 echo  Output: %OUT%\
-echo    NS.exe / Assets\ / Shaders\ / Source\ / premake5.lua
+echo    NS.exe / Assets\ / Shaders\ / Levels\ / Source\ / premake5.lua
 echo ============================================
 echo  Note: runtime needs d3dcompiler_47.dll for runtime shader compile
 echo        and the VC++ redistributable, both shipped with Windows 10/11.
