@@ -103,9 +103,7 @@ namespace NS::Editor
         [[nodiscard]] bool IsLevelDirty() const noexcept { return m_levelDirty; }
         void ClearLevelDirty() noexcept { m_levelDirty = false; }
 
-        [[nodiscard]] const CursorState& Cursor() const noexcept { return m_cursor; }
         [[nodiscard]] CategoryPalette& Palette() noexcept { return m_palette; }
-        [[nodiscard]] std::uint8_t CurrentRotation() const noexcept { return m_currentRotation; }
 
         /// テスト経路で cursor 状態を直接注入する。 Tick を呼ばずに RenderCursorPreview を検証する用途
         void SetCursorForTest(const CursorState& state) noexcept { m_cursor = state; }
@@ -116,8 +114,6 @@ namespace NS::Editor
 
         /// modal 描画 + OK 押下時の Save/Load 実行 + 新規 open 時の UndoStack clear を担う
         void RenderFileBrowser() noexcept;
-
-        [[nodiscard]] LevelFileBrowser& FileBrowser() noexcept { return m_fileBrowser; }
 
         /// 終了確認の保存に使う。 現在レベル名へ、 無ければ起動レベル new_level へ書き出す。 成功で true
         [[nodiscard]] bool SaveForQuit() noexcept;

@@ -76,7 +76,6 @@ public:
     void EnterEdit() noexcept;
 
     [[nodiscard]] NS::Editor::EditorMode& Editor() noexcept { return m_editor; }
-    [[nodiscard]] LevelPlayScene& Scene() noexcept { return *m_scene; }
     /// panel 利便のための pass-through。 編集対象の LevelData
     [[nodiscard]] NS::Game::Level::LevelData& Level() noexcept;
     /// panel 利便のための pass-through。 一時的な PlayState

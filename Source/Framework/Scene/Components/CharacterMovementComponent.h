@@ -164,7 +164,6 @@ namespace NS::Scene
         NS::Physics::CharacterController m_controller;
 
         MovementState m_state = MovementState::Walking;
-        bool m_skipControllerLastFrame = false;
 
         float m_ledgeTopY = 0.0f;
         NS::Math::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f};

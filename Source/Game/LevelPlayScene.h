@@ -70,9 +70,6 @@ public:
     [[nodiscard]] NS::Game::Level::PlayState& Play() noexcept { return m_play; }
     [[nodiscard]] NS::Game::Level::PlayMode& PlayModeSub() noexcept { return m_playMode; }
 
-    /// プレイ更新すなわち player 物理 / ルール / カメラ追従が走っているか。 編集中は false
-    [[nodiscard]] bool IsPlaying() const noexcept { return m_playing; }
-
 private:
     /// テーマの lighting をシーン単位の上書きとして宣言する。push は書かず override を返すだけ
     NS::Graphics::RenderSettingsOverride BuildSceneOverride() override;

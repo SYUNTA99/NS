@@ -50,9 +50,6 @@ namespace NS::Editor
         void NotifySaveResult(bool ok, std::string_view message) noexcept;
         void NotifyLoadResult(bool ok, std::string_view message) noexcept;
 
-        [[nodiscard]] bool IsSaveModalOpen() const noexcept { return m_saveModalOpen; }
-        [[nodiscard]] bool IsLoadModalOpen() const noexcept { return m_loadModalOpen; }
-
     private:
         bool m_saveModalOpen = false;
         bool m_loadModalOpen = false;

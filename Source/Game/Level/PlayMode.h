@@ -29,9 +29,6 @@ namespace NS::Game::Level
     public:
         /// 落下死判定の y 閾値。 これより低くなったら deathTriggered
         static constexpr float kFallDeathThreshold = -50.0f;
-        /// spawn 配置に使う player capsule の半径 / 半身長。 CharacterMovementComponent の既定値と一致
-        static constexpr float kPlayerCapsuleRadius = 0.4f;
-        static constexpr float kPlayerCapsuleHalfHeight = 0.5f;
         /// coin / power goal を「取れた」 とみなす player 中心からのメートル距離
         static constexpr float kPickupRadius = 0.9f;
 

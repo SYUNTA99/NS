@@ -170,7 +170,6 @@ namespace NS::Scene
         if (m_state == MovementState::LedgeHanging)
         {
             UpdateLedgeHang(dt);
-            m_skipControllerLastFrame = true;
             m_jumpPressedThisFrame = false;
             m_prevJumpHeld = m_jumpHeld;
             return;
@@ -179,7 +178,6 @@ namespace NS::Scene
         if (m_state == MovementState::LedgeMantling)
         {
             UpdateLedgeMantle(dt);
-            m_skipControllerLastFrame = true;
             m_jumpPressedThisFrame = false;
             m_prevJumpHeld = m_jumpHeld;
             return;
@@ -269,7 +267,6 @@ namespace NS::Scene
 
         m_prevJumpHeld = m_jumpHeld;
         m_jumpPressedThisFrame = false;
-        m_skipControllerLastFrame = false;
     }
 
     bool CharacterMovementComponent::TryGrabLedge(const NS::Math::Vector3& pos) noexcept
