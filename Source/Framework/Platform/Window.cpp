@@ -127,6 +127,16 @@ namespace NS::Platform
                 }
                 break;
             }
+            case WM_SETCURSOR:
+            {
+                // クライアント領域でカーソル非表示中なら null を当てて消す。 枠 / タイトルは既定へ流す
+                if (LOWORD(lparam) == HTCLIENT && !impl->cursorVisible)
+                {
+                    ::SetCursor(nullptr);
+                    return TRUE;
+                }
+                break;
+            }
             case WM_CLOSE:
             {
                 if (impl->onClose)
@@ -274,6 +284,13 @@ namespace NS::Platform
         }
         const std::wstring wide = ::NS::Core::StringUtils::WideFromUtf8(utf8Title);
         ::SetWindowTextW(m_pImpl->hwnd, wide.c_str());
+    }
+
+    void Window::SetCursorVisible(bool visible) noexcept
+    {
+        m_pImpl->cursorVisible = visible;
+        // 次の WM_SETCURSOR を待たず即時反映する。 マウスが動かなくても切替わる
+        ::SetCursor(visible ? ::LoadCursorW(nullptr, IDC_ARROW) : nullptr);
     }
 
     void Window::RequestClose() noexcept

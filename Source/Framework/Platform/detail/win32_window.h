@@ -27,6 +27,9 @@ namespace NS::Platform
 
         Input* input = nullptr;
         Window::MessageHook messageHook;
+
+        // false の間はクライアント領域のカーソルを消す。 WM_SETCURSOR が毎フレームこれを見て適用する
+        bool cursorVisible = true;
     };
 
 } // namespace NS::Platform

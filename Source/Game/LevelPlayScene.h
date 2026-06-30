@@ -177,10 +177,13 @@ private:
     // プレイ更新の有効フラグ。 編集モード中は false にして物理 / ルールを止める。 editor が SetPlaying で切替
     bool m_playing = false;
 
+    // プレイ中のカーソル表示状態。 false=非表示(通常プレイ)、 Esc で true=表示。 表示中の Esc で終了する
+    bool m_playCursorShown = false;
+
     // コヨーテ debug 描画 すなわち 縁の紫線 / カプセル / コヨーテジャンプの赤線 の表示トグル。 F2 で切替える
     bool m_debugCoyoteDraw = true;
 
-    // ゴール接触からレベル再開へ繋ぐ暗転シーケンスの段階。 None は通常プレイ
+    // ゴール接触からレベル再開へ繋ぐ暗転の段階。 None は通常プレイ
     enum class FadeStage
     {
         None,

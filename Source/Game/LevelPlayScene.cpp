@@ -217,6 +217,11 @@ void LevelPlayScene::SetPlaying(bool playing) noexcept
         }
         if (m_cameraRig)
             m_cameraRig->Follow().SetActive(true);
+
+        // プレイ突入はカーソルを消す。 Esc で出すまで非表示のまま
+        m_playCursorShown = false;
+        if (auto* app = NS::App::Application::Get())
+            app->Window().SetCursorVisible(false);
     }
     else
     {
@@ -242,6 +247,10 @@ void LevelPlayScene::SetPlaying(bool playing) noexcept
             if (area.cam)
                 area.cam->SetActive(false);
         }
+
+        // 編集モードはカーソルを出す
+        if (auto* app = NS::App::Application::Get())
+            app->Window().SetCursorVisible(true);
     }
 }
 
@@ -267,10 +276,19 @@ void LevelPlayScene::OnUpdate()
         m_debugCoyoteDraw = !m_debugCoyoteDraw;
 #endif
 
-    // プレイ中の Esc は終了。 編集中は editor が Esc を握り選択解除 / 終了に使うので scene は触らない
+    // プレイ中の Esc は 2 段階。 1 回目で隠したカーソルを出し、 出ている状態の 2 回目で終了する
+    // 編集中は editor が Esc を握り選択解除 / 終了に使うので scene は触らない
     if (m_playing && app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
     {
-        NS::App::Application::Quit();
+        if (!m_playCursorShown)
+        {
+            m_playCursorShown = true;
+            app->Window().SetCursorVisible(true);
+        }
+        else
+        {
+            NS::App::Application::Quit();
+        }
         return;
     }
 
