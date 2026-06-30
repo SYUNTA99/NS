@@ -17,6 +17,7 @@
 #include "Framework/Platform/Window.h"
 
 #include <chrono>
+#include <functional>
 #include <memory>
 
 namespace NS::App
@@ -83,10 +84,17 @@ namespace NS::App
         /// 次フレームの MainLoop ループ抜け要求。Get() が nullptr の場合は何もしない
         static void Quit() noexcept;
 
+        /// 終了要求を承認する guard を登録する。 guard が false を返した間はループを終了させない
+        /// 編集ビルドが終了前の保存確認に使う。 未登録なら終了要求はそのまま通る
+        void SetQuitGuard(std::function<bool()> guard) noexcept;
+
     private:
         void Init();
         void MainLoop();
         void Shutdown();
+
+        /// 終了すべきか判定する。 ShouldClose は即 true、 quit 要求は guard に諮り拒否なら取り下げる
+        [[nodiscard]] bool WantExit() noexcept;
 
         ApplicationDesc m_desc;
         std::unique_ptr<NS::Platform::Window> m_window;
@@ -97,6 +105,8 @@ namespace NS::App
         Layers m_layers;
         bool m_valid = false;
         bool m_quitRequested = false;
+        // 終了承認 guard。 設定時は終了要求を一度諮り、 false の間はループを継続する
+        std::function<bool()> m_quitGuard;
         // Run() とデストラクタ両経路で Shutdown が走ると Layer::OnDetach が二重呼びされるため防護
         bool m_shutdownCalled = false;
         std::chrono::steady_clock::time_point m_lastStutterWarnAt{};

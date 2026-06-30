@@ -57,6 +57,10 @@ void EditorLayer::OnAttach()
 
     m_controller = std::make_unique<LevelEditorController>(scene);
     m_controller->Setup(m_imgui.get());
+
+    // 終了要求を握って保存確認を挟む。 出荷には EditorLayer が無いのでリリースは確認なしで終了する
+    app->SetQuitGuard([this]() { return OnQuitRequested(); });
+
     NS_LOG_INFO(::NS::Core::LogCat::App, "EditorLayer attached (Debug/Dev/GameDebug only)");
 }
 
@@ -70,6 +74,7 @@ void EditorLayer::OnDetach()
     // ImGui を畳む前に hook を外し、 WndProc から無効になった context を踏まないようにする
     if (auto* app = NS::App::Application::Get())
     {
+        app->SetQuitGuard(nullptr);
         app->Window().SetMessageHook(nullptr);
         app->Input().SetUiCapture(false, false);
     }
@@ -101,6 +106,9 @@ void EditorLayer::OnRender()
 
     // ギズモ / palette / 編集ビジュアルといった編集用の上乗せ描画と debug provenance 退避
     editor.Render();
+
+    // 終了確認は UI 非表示やプレイ中でも必ず出すため m_uiVisible のゲート外で描く
+    RenderQuitModal(editor);
 
     // プレイ中は F5 でエディタ UI を丸ごと隠せる。 隠している間も 3D 描画とゲーム進行はそのまま走る
     if (m_uiVisible)
@@ -675,6 +683,65 @@ void EditorLayer::RenderPauseModal(LevelEditorController& editor) noexcept
             editor.Play().paused = false;
         if (ImGui::Button("Quit to Edit", ImVec2(160.0f, 0.0f)))
             editor.EnterEdit();
+    }
+    ImGui::End();
+#else
+    (void)editor;
+#endif
+}
+
+bool EditorLayer::OnQuitRequested() noexcept
+{
+    if (m_quitConfirmed)
+        return true;
+    // まだ確認していない終了要求は modal を開いて握りつぶす。 取り下げを Application に返す
+    m_quitModalOpen = true;
+    m_quitSaveFailed = false;
+    return false;
+}
+
+void EditorLayer::RenderQuitModal(LevelEditorController& editor) noexcept
+{
+#if NS_EDITOR_ENABLED
+    if (!m_quitModalOpen)
+        return;
+    const auto vp = ImGui::GetMainViewport();
+    if (vp != nullptr)
+    {
+        ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.5f, vp->WorkPos.y + vp->WorkSize.y * 0.5f),
+                                ImGuiCond_Always,
+                                ImVec2(0.5f, 0.5f));
+    }
+    constexpr ImGuiWindowFlags kFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                                        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize;
+    if (ImGui::Begin("終了の確認", nullptr, kFlags))
+    {
+        ImGui::TextUnformatted("変更を保存して終了しますか");
+        ImGui::Separator();
+        if (ImGui::Button("保存して終了", ImVec2(180.0f, 0.0f)))
+        {
+            // 保存成功でのみ終了する。 失敗時は modal を残しデータ消失を防ぐ
+            if (editor.Editor().SaveForQuit())
+            {
+                m_quitConfirmed = true;
+                m_quitModalOpen = false;
+                NS::App::Application::Quit();
+            }
+            else
+            {
+                m_quitSaveFailed = true;
+            }
+        }
+        if (ImGui::Button("保存せず終了", ImVec2(180.0f, 0.0f)))
+        {
+            m_quitConfirmed = true;
+            m_quitModalOpen = false;
+            NS::App::Application::Quit();
+        }
+        if (ImGui::Button("キャンセル", ImVec2(180.0f, 0.0f)))
+            m_quitModalOpen = false;
+        if (m_quitSaveFailed)
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "保存に失敗しました");
     }
     ImGui::End();
 #else

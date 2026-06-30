@@ -157,6 +157,22 @@ namespace NS::App
             layer->OnAttach();
     }
 
+    bool Application::WantExit() noexcept
+    {
+        // window 破棄経由の WM_QUIT は guard で覆せないので即終了する
+        if (m_window->ShouldClose())
+            return true;
+        if (!m_quitRequested)
+            return false;
+        // 終了要求あり: guard に一度諮り、 拒否されたら取り下げてループを続ける
+        if (m_quitGuard && !m_quitGuard())
+        {
+            m_quitRequested = false;
+            return false;
+        }
+        return true;
+    }
+
     void Application::MainLoop()
     {
         auto& window = *m_window;
@@ -164,10 +180,11 @@ namespace NS::App
         auto& input = *m_input;
         auto& stack = m_layers;
 
-        while (!window.ShouldClose() && !m_quitRequested)
+        while (true)
         {
             window.PollMessages();
-            if (window.ShouldClose() || m_quitRequested)
+            // 終了判定は WantExit に集約する。 guard が拒めば要求を取り下げて継続する
+            if (WantExit())
                 break;
 
             NS::Core::FrameTimer::Tick();
@@ -197,12 +214,8 @@ namespace NS::App
                     }
                     // fixed step ごとに Update して edge 重複検出を防ぐ
                     input.Update();
-                    if (m_quitRequested)
-                        break;
                 }
             }
-            if (m_quitRequested)
-                break;
 
             renderer.BeginFrame();
 
@@ -225,6 +238,9 @@ namespace NS::App
         // Layer の OnDetach は top → bottom の逆順で呼ぶ
         for (auto it = m_layers.rbegin(); it != m_layers.rend(); ++it)
             (*it)->OnDetach();
+
+        // guard が捕捉する Layer は OnDetach 済。 発火経路を断ってから subsystem を畳む
+        m_quitGuard = nullptr;
 
         // 破棄前に自分が登録したコールバックを解除し、Window 側の発火で無効ポインタを踏むのを防ぐ
         // リサイズ購読は Renderer 自身がデストラクタで解除する
@@ -252,6 +268,11 @@ namespace NS::App
         if (s_instance == nullptr)
             return;
         s_instance->m_quitRequested = true;
+    }
+
+    void Application::SetQuitGuard(std::function<bool()> guard) noexcept
+    {
+        m_quitGuard = std::move(guard);
     }
 
 } // namespace NS::App
