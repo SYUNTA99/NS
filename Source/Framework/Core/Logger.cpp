@@ -1,5 +1,6 @@
 #include "Framework/Core/Logger.h"
 
+#include "Framework/Core/Filesystem.h"
 #include "Framework/Framework.h"
 
 #include <spdlog/sinks/msvc_sink.h>
@@ -7,7 +8,6 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
-#include <array>
 #include <atomic>
 #include <cassert>
 #include <chrono>
@@ -35,41 +35,6 @@ namespace NS::Core
         // 起動ごとに rotate する。 Tests は SetRotateOnOpen(false) して
         // 1 ファイル蓄積モードに切替える。 既定 false で従来挙動を維持
         bool g_rotateOnOpen{false};
-
-        /// 実行 exe の絶対ディレクトリを取得する。 取得失敗時は空 path
-        std::filesystem::path GetExeDirectory() noexcept
-        {
-            std::array<wchar_t, MAX_PATH> buffer{};
-            const DWORD len = ::GetModuleFileNameW(nullptr, buffer.data(), MAX_PATH);
-            if (len == 0 || len >= MAX_PATH)
-            {
-                return std::filesystem::path{};
-            }
-            return std::filesystem::path{buffer.data()}.parent_path();
-        }
-
-        /// ログ出力先の絶対パス。 premake5.lua / .git を上位へ辿りリポジトリルート直下の `logs/` を返す
-        /// ルート検出失敗となる shipping 配布では exe 同階層の `logs/` に fallback
-        std::filesystem::path GetLogsDirectory() noexcept
-        {
-            const auto exeDir = GetExeDirectory();
-            if (exeDir.empty())
-                return std::filesystem::path{};
-
-            for (auto dir = exeDir; !dir.empty();)
-            {
-                std::error_code ec;
-                if (std::filesystem::exists(dir / "premake5.lua", ec) || std::filesystem::exists(dir / ".git", ec))
-                {
-                    return dir / "logs";
-                }
-                auto parent = dir.parent_path();
-                if (parent == dir)
-                    break;
-                dir = parent;
-            }
-            return exeDir / "logs";
-        }
 
         spdlog::level::level_enum ToSpdLevel(LogLevel level)
         {
@@ -101,15 +66,17 @@ namespace NS::Core
             console->set_pattern("%H:%M:%S.%e [%^%l%$] [%n] %v");
             sinks.push_back(console);
 
-            const auto logsDir = GetLogsDirectory();
-            const std::string logFilePath =
-                logsDir.empty() ? ("logs/" + g_logName + ".log") : (logsDir / (g_logName + ".log")).string();
+            // 出荷ビルドは log file を出さない。 console / msvc sink だけ残す
+#if !defined(NS_SHIPPING)
+            const auto logsDir = NS::Core::FileSystem::ContentRoot() / "logs";
+            const std::string logFilePath = (logsDir / (g_logName + ".log")).string();
             // rotate_on_open: Game は起動ごと rotate しセッション単位のログにする。 Tests は false で
             // 1 Tests.exe 内の test fixture の Init/Shutdown サイクルを 1 つの tests.log に蓄積
             auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
                 logFilePath, kRotatingMaxBytes, kRotatingMaxFiles, g_rotateOnOpen);
             file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread:%t] [%s:%#] %v");
             sinks.push_back(file);
+#endif
 
 #if defined(_WIN32)
             auto msvc = std::make_shared<spdlog::sinks::msvc_sink_mt>();
@@ -162,11 +129,11 @@ namespace NS::Core
 
         try
         {
-            // 初回起動でファイル sink が失敗しないよう logs/ を先に作成する
-            // 場所の優先順は GetLogsDirectory と同じでリポジトリルート → exe 同階層
-            std::error_code ec;
-            const auto logsDir = GetLogsDirectory();
-            std::filesystem::create_directories(logsDir.empty() ? std::filesystem::path{"logs"} : logsDir, ec);
+            // 初回起動でファイル sink が失敗しないよう logs/ を先に作る
+            // ContentRoot は dev=リポジトリルート / 出荷=exe 同階層。 出荷は file を出さないので作らない
+#if !defined(NS_SHIPPING)
+            (void)NS::Core::FileSystem::CreateDirectories(NS::Core::FileSystem::ContentRoot() / "logs");
+#endif
 
             auto sinks = BuildSinks();
             auto logger = std::make_shared<spdlog::logger>(kLoggerName, sinks.begin(), sinks.end());
