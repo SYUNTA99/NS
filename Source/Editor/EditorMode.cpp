@@ -37,6 +37,9 @@ namespace NS::Editor
         const NS::Math::Color kCursorOkColor{0.1f, 1.0f, 0.1f, 1.0f};
         const NS::Math::Color kCursorBlockedColor{1.0f, 0.1f, 0.1f, 1.0f};
 
+        // 上書き保存などモーダル外通知を画面に出す秒数
+        constexpr float kStatusToastSeconds = 2.5f;
+
         [[nodiscard]] bool HasBlockAtCell(const NS::Game::Level::LevelData& level,
                                           std::int16_t x,
                                           std::int16_t y,
@@ -83,10 +86,48 @@ namespace NS::Editor
         const auto& kb = m_input->Keyboard();
         if (!kb.IsHeld(NS::Platform::Key::Ctrl))
             return;
+        const bool shift = kb.IsHeld(NS::Platform::Key::Shift);
         if (kb.IsPressed(NS::Platform::Key::S))
-            m_fileBrowser.OpenSaveModal();
+        {
+            // Ctrl+S は現在レベルへ上書き、 Ctrl+Shift+S と未保存時は名前付け保存モーダル
+            if (shift || m_currentLevelName.empty())
+                m_fileBrowser.OpenSaveModal(m_currentLevelName);
+            else
+                OverwriteCurrentLevel();
+        }
         if (kb.IsPressed(NS::Platform::Key::O))
             m_fileBrowser.OpenLoadModal();
+    }
+
+    bool EditorMode::SaveLevelToName(std::string_view name) noexcept
+    {
+        if (m_level == nullptr)
+            return false;
+        const auto safe = SanitizeLevelName(name);
+        const auto path = BuildLevelPath(safe);
+        if (safe.empty() || !path)
+            return false;
+        (void)EnsureLevelsDirectoryExists();
+        const bool ok = NS::Game::Level::SaveLevelToFile(*m_level, *path);
+        if (ok)
+            m_currentLevelName = safe;
+        return ok;
+    }
+
+    void EditorMode::OverwriteCurrentLevel() noexcept
+    {
+        const bool ok = SaveLevelToName(m_currentLevelName);
+        m_statusMessage = (ok ? "上書き保存: " : "保存失敗: ") + m_currentLevelName;
+        m_statusError = !ok;
+        m_statusTimer = kStatusToastSeconds;
+    }
+
+    bool EditorMode::SaveForQuit() noexcept
+    {
+        // 現在名が無ければ起動時に読まれる new_level へ落として、 次回起動の表示と一致させる
+        const std::string_view name =
+            m_currentLevelName.empty() ? std::string_view{"new_level"} : std::string_view{m_currentLevelName};
+        return SaveLevelToName(name);
     }
 
     void EditorMode::RenderFileBrowser() noexcept
@@ -98,16 +139,8 @@ namespace NS::Editor
         {
         case LevelFileBrowser::Action::RequestSave:
         {
-            auto path = BuildLevelPath(result.targetName);
-            if (!path)
-            {
-                m_fileBrowser.NotifySaveResult(false, "不正な level name");
-                break;
-            }
-            // 失敗時は SaveLevelToFile 側でも write が失敗して NS_LOG_ERROR が出るので、 ここでは
-            // 結果を保持せず本体の Save を試みる方が message を 1 本にまとめられる
-            (void)EnsureLevelsDirectoryExists();
-            const bool ok = NS::Game::Level::SaveLevelToFile(*m_level, *path);
+            // 保存 I/O は SaveLevelToName に集約する。 名前は browser 側で sanitize 済
+            const bool ok = SaveLevelToName(result.targetName);
             m_fileBrowser.NotifySaveResult(ok, ok ? "保存成功" : "保存失敗");
             break;
         }
@@ -133,6 +166,7 @@ namespace NS::Editor
                     NS::Game::Level::ResetEditIds(target);
                 }
                 m_levelDirty = true;
+                m_currentLevelName = result.targetName;
                 m_fileBrowser.NotifyLoadResult(true, "読込成功");
             }
             else
@@ -145,6 +179,32 @@ namespace NS::Editor
         default:
             break;
         }
+
+        // 上書き保存などモーダル外の保存結果を数秒だけ画面上部中央に出す。 入力は奪わない
+#if NS_EDITOR_ENABLED
+        if (m_statusTimer > 0.0f)
+        {
+            m_statusTimer -= NS::Core::FrameTimer::DeltaSeconds();
+            const auto vp = ImGui::GetMainViewport();
+            if (vp != nullptr)
+            {
+                ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.5f, vp->WorkPos.y + 12.0f),
+                                        ImGuiCond_Always,
+                                        ImVec2(0.5f, 0.0f));
+                ImGui::SetNextWindowBgAlpha(0.75f);
+                constexpr ImGuiWindowFlags kFlags =
+                    ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize |
+                    ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings;
+                if (ImGui::Begin("##save_toast", nullptr, kFlags))
+                {
+                    const ImVec4 color =
+                        m_statusError ? ImVec4(1.0f, 0.4f, 0.4f, 1.0f) : ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
+                    ImGui::TextColored(color, "%s", m_statusMessage.c_str());
+                }
+                ImGui::End();
+            }
+        }
+#endif
     }
 
     void EditorMode::RenderCursorPreview() noexcept

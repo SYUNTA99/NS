@@ -78,10 +78,10 @@ LevelPlayScene::~LevelPlayScene() = default;
 
 void LevelPlayScene::LoadInitialLevel()
 {
-    // 同梱 default レベルがあればそれを、 無ければ最小床を seed する
+    // 同梱の起動レベルがあればそれを、 無ければ最小床を seed する
     const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
-    const auto defaultPath = exeDir / "Levels" / "default.nslvl";
-    if (!NS::Game::Level::LoadLevelFromFile(m_level, defaultPath))
+    const auto levelPath = exeDir / "Levels" / "new_level.nslvl";
+    if (!NS::Game::Level::LoadLevelFromFile(m_level, levelPath))
         SeedInitialLevel(m_level);
     RebuildObjectIds();
 }

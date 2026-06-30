@@ -14,6 +14,8 @@
 #include "Framework/Math/Math.h"
 
 #include <cstdint>
+#include <string>
+#include <string_view>
 
 namespace NS::Platform
 {
@@ -108,14 +110,17 @@ namespace NS::Editor
         /// テスト経路で cursor 状態を直接注入する。 Tick を呼ばずに RenderCursorPreview を検証する用途
         void SetCursorForTest(const CursorState& state) noexcept { m_cursor = state; }
 
-        /// Ctrl+S / Ctrl+O の edge を検出して file browser modal を開く。 Tick 末尾から呼ばれる
-        /// テキスト入力 focus 中で ImGui がキーボードを掴んでいる時は無視する
+        /// 保存 / 読込のキー入力を捌く。 Tick 末尾から呼ばれ、 テキスト入力 focus 中は無視する
+        /// Ctrl+S は現在レベルへ上書き保存、 Ctrl+Shift+S と未保存時は名前付け保存、 Ctrl+O は読込
         void HandleSaveLoadInput() noexcept;
 
         /// modal 描画 + OK 押下時の Save/Load 実行 + 新規 open 時の UndoStack clear を担う
         void RenderFileBrowser() noexcept;
 
         [[nodiscard]] LevelFileBrowser& FileBrowser() noexcept { return m_fileBrowser; }
+
+        /// 終了確認の保存に使う。 現在レベル名へ、 無ければ起動レベル new_level へ書き出す。 成功で true
+        [[nodiscard]] bool SaveForQuit() noexcept;
 
     private:
         NS::Game::Level::LevelData* m_level = nullptr;
@@ -135,6 +140,14 @@ namespace NS::Editor
         NS::Editor::UndoStack m_undo;
         LevelFileBrowser m_fileBrowser{};
 
+        // 現在開いているレベル名。 空なら未保存の新規で、 上書き保存は名前付け保存にフォールバックする
+        std::string m_currentLevelName;
+
+        // 上書き保存などモーダル外操作の結果を数秒だけ画面上部に出す通知
+        std::string m_statusMessage;
+        bool m_statusError = false;
+        float m_statusTimer = 0.0f;
+
         /// Slerp で m_currentRotation に追従する表示専用 yaw。 物理・配置データには影響しない
         NS::Math::Quaternion m_displayedYawQuat{NS::Math::Quaternion::Identity};
 
@@ -142,6 +155,12 @@ namespace NS::Editor
         void HandlePlaceDeleteInput() noexcept;
         void HandleRotationInput() noexcept;
         void HandleUndoRedoInput() noexcept;
+
+        /// name へレベルを書き出し、 成功時に m_currentLevelName を更新する。 保存 I/O の単一窓口
+        [[nodiscard]] bool SaveLevelToName(std::string_view name) noexcept;
+
+        /// 現在レベルへ上書き保存し、 結果を通知へ流す。 Ctrl+S 経路
+        void OverwriteCurrentLevel() noexcept;
 
         /// m_level + id ストアから EditTarget view を組む。 全ポインタ非 null の前提で呼ぶ
         [[nodiscard]] NS::Game::Level::EditTarget Target() noexcept;
