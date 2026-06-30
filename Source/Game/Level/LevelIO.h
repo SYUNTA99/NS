@@ -1,10 +1,10 @@
 #pragma once
 
-/// @file ChunkIO.h
+/// @file LevelIO.h
 /// @brief レベル save / load の呼び出し窓口。 実体は LevelJson の正準 JSON 直列化へ委譲する
 ///
-/// @details 旧 binary chunk 形式から正準 JSON へ移行したが、 editor / play scene の呼出側の
-/// 差分を最小化するため `SaveLevelToFile` / `LoadLevelFromFile` の signature はそのまま維持する
+/// @details 呼出側の editor / play scene が保存形式を知らずに済むよう、 形式非依存の
+/// `SaveLevelToFile` / `LoadLevelFromFile` だけを公開する
 
 #include <filesystem>
 
