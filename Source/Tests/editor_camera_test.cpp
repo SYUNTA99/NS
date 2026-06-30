@@ -50,24 +50,81 @@ TEST(EditorCameraTest, DistanceClampedViaSetDistance)
     EXPECT_NEAR(cam.Distance(), SceneNs::EditorCameraComponent::kMinDistance, 1e-4f);
 }
 
-TEST(EditorCameraTest, KeyMoveTranslatesCenterAlongYawPlane)
+TEST(EditorCameraTest, FlyMoveForwardFollowsLookDirection)
 {
     SceneNs::GameObject obj;
     auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
-    cam.SetYawPitch(0.0f, -0.5236f);
+    cam.SetYawPitch(0.0f, 0.0f); // 水平で -Z を向く
     cam.SetDistance(10.0f);
     cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
 
-    // yaw=0 で前進(W)は -Z、 右(D)は +X。 移動量は KeyMoveSpeed 0.6 × distance 10 × dt 1 = 6
-    cam.ApplyKeyMove(1.0f, 0.0f, 1.0f);
+    // yaw=0/pitch=0 で前進(W)は視線方向 -Z。 移動量は KeyMoveSpeed 0.6 × distance 10 × dt 1 = 6
+    cam.ApplyFlyMove(1.0f, 0.0f, 0.0f, 1.0f);
     EXPECT_NEAR(cam.Center().z, -6.0f, 1e-4f);
     EXPECT_NEAR(cam.Center().x, 0.0f, 1e-4f);
-    EXPECT_NEAR(cam.Center().y, 0.0f, 1e-4f); // 水平移動のみで高さは不変
+    EXPECT_NEAR(cam.Center().y, 0.0f, 1e-4f);
+}
 
+TEST(EditorCameraTest, FlyMoveForwardIncludesPitch)
+{
+    SceneNs::GameObject obj;
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
+    cam.SetYawPitch(0.0f, -0.5f); // 上を向く
+    cam.SetDistance(10.0f);
     cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
-    cam.ApplyKeyMove(0.0f, 1.0f, 1.0f);
-    EXPECT_NEAR(cam.Center().x, 6.0f, 1e-4f);
+
+    // pitch を含むので W は見上げた方向、 すなわち高さも上がる (旧 ApplyKeyMove は水平のみだった)
+    cam.ApplyFlyMove(1.0f, 0.0f, 0.0f, 1.0f);
+    EXPECT_GT(cam.Center().y, 0.0f);
+    EXPECT_LT(cam.Center().z, 0.0f);
+}
+
+TEST(EditorCameraTest, FlyMoveStrafeGoesScreenRight)
+{
+    SceneNs::GameObject obj;
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
+    cam.SetYawPitch(0.0f, 0.0f);
+    cam.SetDistance(10.0f);
+    cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+
+    // LH view では yaw=0 の画面右は -X。 D(strafe +1) はそちらへ動く (左右反転バグの回帰防止)
+    cam.ApplyFlyMove(0.0f, 1.0f, 0.0f, 1.0f);
+    EXPECT_NEAR(cam.Center().x, -6.0f, 1e-4f);
     EXPECT_NEAR(cam.Center().z, 0.0f, 1e-4f);
+    EXPECT_NEAR(cam.Center().y, 0.0f, 1e-4f);
+}
+
+TEST(EditorCameraTest, FlyMoveVerticalUsesWorldUp)
+{
+    SceneNs::GameObject obj;
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
+    cam.SetYawPitch(0.7f, -0.3f); // 向きに依らず上下は world 軸
+    cam.SetDistance(10.0f);
+    cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+
+    cam.ApplyFlyMove(0.0f, 0.0f, 1.0f, 1.0f); // E 相当
+    EXPECT_NEAR(cam.Center().y, 6.0f, 1e-4f);
+    EXPECT_NEAR(cam.Center().x, 0.0f, 1e-4f);
+    EXPECT_NEAR(cam.Center().z, 0.0f, 1e-4f);
+}
+
+TEST(EditorCameraTest, LookKeepsEyeFixed)
+{
+    SceneNs::GameObject obj;
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
+    cam.SetYawPitch(0.0f, -0.2f);
+    cam.SetDistance(10.0f);
+    cam.SetCenter(NS::Math::Vector3{1.0f, 2.0f, 3.0f});
+
+    // その場の見回し: yaw/pitch は変わるが eye は不変 (orbit ではない)
+    const auto eyeBefore = cam.ComputeCameraPosition();
+    cam.ApplyLook(0.4f, 0.1f);
+    const auto eyeAfter = cam.ComputeCameraPosition();
+    EXPECT_NEAR(eyeAfter.x, eyeBefore.x, 1e-3f);
+    EXPECT_NEAR(eyeAfter.y, eyeBefore.y, 1e-3f);
+    EXPECT_NEAR(eyeAfter.z, eyeBefore.z, 1e-3f);
+    EXPECT_NEAR(cam.Yaw(), 0.4f, 1e-4f);
+    EXPECT_NEAR(cam.Pitch(), -0.1f, 1e-4f);
 }
 
 TEST(EditorCameraTest, ComputeCameraPositionForYawZeroPlacesCameraOnZAxis)

@@ -4,10 +4,10 @@
 /// @brief NS::Scene::EditorCameraComponent — 編集モード用 free-fly カメラ Component
 ///
 /// @details Spherical 座標 yaw / pitch / distance に center pivot を加えた表現
-/// Mouse 右ドラッグ = Orbit、 中ドラッグ = Pan、 Wheel = Zoom
-/// Gamepad 右スティック = Orbit、 左スティック = Pan、 LT-RT = Zoom
-/// editor の UI がマウスを掴んでいる時は Mouse 入力を無視する。Input::UiWantsMouse で判定し UI 操作を優先する
-/// pitch / distance は clamp で有限範囲に強制、 NaN / 巨大値での render crash を防ぐ
+/// Mouse 右ドラッグ = その場で見回すフライ視点 (押している間 WASD で前後左右 / Q E で上下)、 中ドラッグ = Pan、 Wheel =
+/// Zoom Gamepad 右スティック = Orbit、 左スティック = Pan、 LT-RT = Zoom editor の UI がマウスを掴んでいる時は Mouse
+/// 入力を無視する。Input::UiWantsMouse で判定し UI 操作を優先する pitch / distance は clamp で有限範囲に強制、 NaN /
+/// 巨大値での render crash を防ぐ
 
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Components/VirtualCameraComponent.h"
@@ -51,8 +51,10 @@ namespace NS::Scene
         void ApplyOrbit(float yawDelta, float pitchDelta) noexcept;
         void ApplyPan(float panX, float panY) noexcept;
         void ApplyZoom(float zoomDelta) noexcept;
-        /// WASD 相当の水平移動。 forwardAxis / strafeAxis は -1..1、 yaw 向きの水平面で center を動かす
-        void ApplyKeyMove(float forwardAxis, float strafeAxis, float dt) noexcept;
+        /// eye を固定したまま yaw / pitch を回す その場の見回し。 右ドラッグのフライ視点で使う
+        void ApplyLook(float yawDelta, float pitchDelta) noexcept;
+        /// 視線方向へのフライ移動。 forward は視線(pitch込み)、 strafe は画面右、 vertical は world 上下。 各軸 -1..1
+        void ApplyFlyMove(float forwardAxis, float strafeAxis, float verticalAxis, float dt) noexcept;
 
         // free-fly の感触を Inspector へ公開する。 毎フレーム読まれるのでライブで効く
         NS_REFLECT_BEGIN(EditorCameraComponent)
