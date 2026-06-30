@@ -646,10 +646,15 @@ void LevelPlayScene::OnRenderScene()
         {
             auto& movement = m_player->Movement();
             const NS::Math::Vector3 center = m_player->Root().Position();
-            const NS::Math::Vector3 axis{0.0f, movement.CapsuleHalfHeight(), 0.0f};
-            const NS::Math::Color capsuleColor = movement.IsGrounded() ? NS::Math::Color{0.2f, 1.0f, 0.2f, 1.0f}
-                                                                       : NS::Math::Color{1.0f, 1.0f, 0.2f, 1.0f};
-            NS::Graphics::DebugDraw::Capsule(center, axis, movement.CapsuleRadius(), capsuleColor);
+
+            // 接地状態は頭上に浮かべた箱で示す。 カプセルはメッシュに埋もれて色が見えないため別表示にする
+            // 接地=緑 / 空中=黄。 頭の上へ出して body に隠れさせない
+            const float headTop = center.y + movement.CapsuleHalfHeight() + movement.CapsuleRadius();
+            const NS::Math::Color groundedColor = movement.IsGrounded() ? NS::Math::Color{0.2f, 1.0f, 0.2f, 1.0f}
+                                                                        : NS::Math::Color{1.0f, 1.0f, 0.2f, 1.0f};
+            const NS::Math::AABB groundedMarker(NS::Math::Vector3{center.x, headTop + 0.45f, center.z},
+                                                NS::Math::Vector3{0.18f, 0.18f, 0.18f});
+            NS::Graphics::DebugDraw::AABB(groundedMarker, groundedColor);
 
             // 縁→跳躍点の赤い span と、 跳躍点に立てる赤い縦マーカーで「どこで猶予内に跳んだか」を示す
             const NS::Math::Color coyoteColor{1.0f, 0.15f, 0.15f, 1.0f};
