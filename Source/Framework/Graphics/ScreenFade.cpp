@@ -17,12 +17,12 @@ namespace NS::Graphics
 
     namespace
     {
-        // fade.ps.hlsl の FadeCB と一致するレイアウト。 float4 1 個で 16 byte
+        // fade.ps.hlsl の FadeCB と一致するレイアウト。 float4 1 個で 16 バイト
         struct alignas(16) FadeCB
         {
             NS::Math::Color color;
         };
-        static_assert(sizeof(FadeCB) == 16, "FadeCB は HLSL 側 cbuffer (b0) と byte 一致が必要");
+        static_assert(sizeof(FadeCB) == 16, "FadeCB は HLSL の cbuffer b0 とバイト一致が必要");
     } // namespace
 
     std::unique_ptr<ScreenFade> ScreenFade::Create()
@@ -90,8 +90,8 @@ namespace NS::Graphics
         cmd.SetShader(*m_ps);
         cmd.SetConstantBuffer(*m_cb, 0, ShaderType::Pixel);
 
-        // 頂点バッファを使わず VS が SV_VertexID から三角形を作るため、 IA の InputLayout を外して
-        // 頂点 / index バインド無しで 3 頂点を投げる
+        // VS が SV_VertexID から三角形を作るので、 InputLayout を外し
+        // 頂点もインデックスもバインドせず 3 頂点を投げる
         cmd->IASetInputLayout(nullptr);
         cmd.SetTopology(Topology::TriangleList);
         cmd.Draw(3);

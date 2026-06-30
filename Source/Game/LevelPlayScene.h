@@ -100,10 +100,10 @@ private:
     /// レベルを頭から組み直す。 spawn へ戻し health / coin / flag を全リセットして再開する
     void RestartLevel() noexcept;
 
-    /// ゴール接触の暗転シーケンスを開始する。 進行中の再呼び出しは無視する
+    /// ゴール接触の暗転を開始する。 進行中の再呼び出しは無視する
     void BeginClearFade() noexcept;
 
-    /// 暗転シーケンスを dt だけ進める。 暗転しきった瞬間に RestartLevel し、 明転しきったら通常へ戻す
+    /// 暗転を dt だけ進める。 暗転しきった瞬間に RestartLevel し、 明転しきったら通常へ戻す
     void AdvanceFade(float dt) noexcept;
 
     /// 全表示ブロックの Snapshot を取る。 補間描画のため edit / play 共通で毎フレーム
