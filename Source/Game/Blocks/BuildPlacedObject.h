@@ -66,14 +66,14 @@ namespace NS::Game::Blocks
         const NS::Game::Level::ObjectInstance& object);
 
     /// grid 配置された固形 block か。 gridAligned かつ BoxCollider 持ちで
-    /// slope / pole / hazard / 拾得を持たないことを components から判定する。 instancing / 昇格 /
+    /// slope / hazard / 拾得を持たないことを components から判定する。 instancing / 昇格 /
     /// 当たり可視化の「固形」判定窓口
     [[nodiscard]] bool IsGridSolidObject(const NS::Game::Level::ObjectInstance& object);
 
-    /// R で 90° 回す対象か。 SlopeCollider を持つか grid 固形なら true。 掴み pole / 水 / 装飾は false
+    /// R で 90° 回す対象か。 SlopeCollider を持つか grid 固形なら true。 水 / 装飾は false
     [[nodiscard]] bool IsRotatableObject(const NS::Game::Level::ObjectInstance& object);
 
-    /// components から種別の表示名を導く ASCII 固定文字列。 Solid / Coin / Star / Slope NN / Pole / Hazard /
+    /// components から種別の表示名を導く ASCII 固定文字列。 Solid / Coin / Goal / Slope NN / Hazard /
     /// Water / Decoration のいずれか。 Hierarchy / Inspector の見出しに使う。 未知構成は "?"
     [[nodiscard]] const char* ObjectDisplayName(const NS::Game::Level::ObjectInstance& object);
 

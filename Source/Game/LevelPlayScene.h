@@ -39,7 +39,6 @@ namespace NS::Scene
     class CameraComponent;
     class CameraBrainComponent;
     class PlacedVirtualCamera;
-    class PoleComponent;
     struct RenderContext;
 } // namespace NS::Scene
 
@@ -122,14 +121,14 @@ private:
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
     std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
 
-    // クリア / 死亡からレベル再開へ繋ぐ暗転 / 明転を全画面へ重ねる overlay
+    // クリア / 死亡からレベル再開へ繋ぐ暗転 / 明転を全画面へ重ねる
     std::unique_ptr<NS::Graphics::ScreenFade> m_screenFade;
 
     // 借用元なので m_player より前に宣言する。 player を先に破棄し CMC の無効参照を防ぐ
     NS::Physics::PhysicsWorld m_physicsWorld;
     std::unique_ptr<Player> m_player;
 
-    // 配置物の単一所有リスト。 grid / slope / pole / hazard / water / deco / 自由配置物すべてを
+    // 配置物の単一所有リスト。 grid / slope / hazard / water / deco / 自由配置物すべてを
     // generic GameObject として保持する。 RebuildBlocksFromLevelData がファクトリ経由で作り直す
     std::vector<std::unique_ptr<NS::Scene::GameObject>> m_objects;
     // m_objects[i] に対応する m_level.objects の添字で m_objects と同長・ 1:1
@@ -164,8 +163,6 @@ private:
         NS::Scene::PlacedVirtualCamera* cam = nullptr;
     };
     std::vector<AreaCamera> m_areaCameras;
-
-    std::vector<NS::Scene::PoleComponent*> m_polePtrs;
 
     NS::Game::Level::LevelData m_level{};
 

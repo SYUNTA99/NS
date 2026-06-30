@@ -9,7 +9,6 @@
 #include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/Components/PickupComponent.h"
-#include "Framework/Scene/Components/PoleComponent.h"
 #include "Framework/Scene/Components/SlopeColliderComponent.h"
 #include "Framework/Scene/Components/SphereColliderComponent.h"
 #include "Framework/Scene/GameObject.h"
@@ -25,7 +24,7 @@ namespace NS::Scene
             Component* (*attach)(GameObject&);
         };
 
-        // 厳選した一部。 既定コンストラクタを持つ型はその自然既定で構築する。 持たない型である Slope/Pole/MeshRenderer
+        // 厳選した一部。 既定コンストラクタを持つ型はその自然既定で構築する。 持たない型である Slope/MeshRenderer
         // は読み込み時に反射 / BuildPlacedObject が上書きする placeholder 既定値を渡す。 除外型である player / editor /
         // camera 専用コンポはここに一切書かない
         const Entry kEntries[] = {
@@ -39,7 +38,6 @@ namespace NS::Scene
              [](GameObject& o) -> Component* {
                  return o.AddComponent<SlopeColliderComponent>(45.0f, NS::Math::Vector3{0.5f, 0.5f, 0.5f});
              }},
-            {"PoleComponent", [](GameObject& o) -> Component* { return o.AddComponent<PoleComponent>(0.15f, 2.0f); }},
             {"HazardComponent", [](GameObject& o) -> Component* { return o.AddComponent<HazardComponent>(); }},
             {"MeshRendererComponent",
              [](GameObject& o) -> Component* { return o.AddComponent<MeshRendererComponent>(nullptr, nullptr); }},

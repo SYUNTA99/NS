@@ -4,11 +4,8 @@
 #include <Framework/Math/Math.h>
 #include <Framework/Physics/PhysicsWorld.h>
 #include <Framework/Scene/Components/CharacterMovementComponent.h>
-#include <Framework/Scene/Components/PoleComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Transform.h>
-
-#include <span>
 
 namespace
 {
@@ -183,31 +180,4 @@ TEST_F(CharacterMovementTest, OnUpdateNoOpWhenInactive)
     mov.OnUpdate();
 
     EXPECT_FLOAT_EQ(mov.Velocity().y, 0.0f);
-}
-
-TEST_F(CharacterMovementTest, ClimbPoleVerticalUsesClimbChannelNotDesiredDir)
-{
-    GameObject playerObj;
-    auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
-    mov.SetDebugDrawEnabled(false);
-
-    GameObject poleObj; // origin 中心、 半径 0.5 / 高さ 2 (軸 y=-1..+1)
-    auto& pole = *poleObj.AddComponent<NS::Scene::PoleComponent>(0.5f, 2.0f);
-    NS::Scene::PoleComponent* polePtr = &pole;
-    mov.SetClimbables(std::span<NS::Scene::PoleComponent* const>(&polePtr, 1));
-
-    // pole に押し込んで掴む (speedScale > deadzone)
-    mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
-    mov.SetClimbMove(0.0f, 0.0f);
-    mov.OnUpdate();
-    ASSERT_EQ(mov.State(), NS::Scene::MovementState::ClimbingPole);
-
-    const float yAfterGrab = playerObj.Root().Position().y;
-
-    // desiredDir.z=0 でも climbForward=1 で登る → climb 入力が camera 相対 desiredDir 非依存の証明
-    mov.SetDesiredMove({0.0f, 0.0f, 0.0f}, 0.0f);
-    mov.SetClimbMove(0.0f, 1.0f);
-    mov.OnUpdate();
-
-    EXPECT_GT(playerObj.Root().Position().y, yAfterGrab);
 }

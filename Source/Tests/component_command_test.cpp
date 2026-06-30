@@ -44,11 +44,11 @@ TEST(ComponentCommand, AddComponentDoAddsOneTypeUndoRemoves)
     LevelNs::ResetEditIds(t);
 
     const std::uint32_t id = LevelNs::IdAt(t, 0);
-    EditorNs::AddComponentCommand cmd(id, LevelNs::ComponentData{"PoleComponent"});
+    EditorNs::AddComponentCommand cmd(id, LevelNs::ComponentData{"HazardComponent"});
 
     cmd.Do(t);
     ASSERT_EQ(lv.objects[0].components.size(), 1u);
-    EXPECT_EQ(lv.objects[0].components[0].typeName, "PoleComponent");
+    EXPECT_EQ(lv.objects[0].components[0].typeName, "HazardComponent");
 
     cmd.Undo(t);
     EXPECT_TRUE(lv.objects[0].components.empty());
@@ -58,28 +58,28 @@ TEST(ComponentCommand, AddComponentAllowsDuplicateType)
 {
     LevelNs::LevelData lv;
     lv.objects.push_back(MakeObject());
-    lv.objects[0].components.push_back(LevelNs::ComponentData{"PoleComponent"});
+    lv.objects[0].components.push_back(LevelNs::ComponentData{"HazardComponent"});
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
     LevelNs::EditTarget t{lv, ids, next};
     LevelNs::ResetEditIds(t);
 
     const std::uint32_t id = LevelNs::IdAt(t, 0);
-    EditorNs::AddComponentCommand cmd(id, LevelNs::ComponentData{"PoleComponent"});
+    EditorNs::AddComponentCommand cmd(id, LevelNs::ComponentData{"HazardComponent"});
 
     cmd.Do(t); // 同型でも重ねて足せる
     EXPECT_EQ(lv.objects[0].components.size(), 2u);
 
     cmd.Undo(t); // 足した 1 つだけ消え、 元からあった同型は残る
     ASSERT_EQ(lv.objects[0].components.size(), 1u);
-    EXPECT_EQ(lv.objects[0].components[0].typeName, "PoleComponent");
+    EXPECT_EQ(lv.objects[0].components[0].typeName, "HazardComponent");
 }
 
 TEST(ComponentCommand, RemoveComponentUndoRestoresFieldValues)
 {
     LevelNs::LevelData lv;
     lv.objects.push_back(MakeObject());
-    lv.objects[0].components.push_back(LevelNs::ComponentData{"PoleComponent"});
+    lv.objects[0].components.push_back(LevelNs::ComponentData{"HazardComponent"});
     lv.objects[0].components.push_back(MakeBoxCollider(2.5f));
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
@@ -91,7 +91,7 @@ TEST(ComponentCommand, RemoveComponentUndoRestoresFieldValues)
 
     cmd.Do(t);
     ASSERT_EQ(lv.objects[0].components.size(), 1u);
-    EXPECT_EQ(lv.objects[0].components[0].typeName, "PoleComponent");
+    EXPECT_EQ(lv.objects[0].components[0].typeName, "HazardComponent");
 
     cmd.Undo(t);
     ASSERT_EQ(lv.objects[0].components.size(), 2u);
@@ -108,7 +108,7 @@ TEST(ComponentCommand, RemoveComponentRedoRemovesAgain)
 {
     LevelNs::LevelData lv;
     lv.objects.push_back(MakeObject());
-    lv.objects[0].components.push_back(LevelNs::ComponentData{"PoleComponent"});
+    lv.objects[0].components.push_back(LevelNs::ComponentData{"HazardComponent"});
     lv.objects[0].components.push_back(MakeBoxCollider(3.0f));
     std::vector<std::uint32_t> ids;
     std::uint32_t next = 0;
@@ -122,7 +122,7 @@ TEST(ComponentCommand, RemoveComponentRedoRemovesAgain)
     cmd.Undo(t);
     cmd.Do(t); // 2 回目の Do でも退避がリセットされ同じ型を取り除ける
     ASSERT_EQ(lv.objects[0].components.size(), 1u);
-    EXPECT_EQ(lv.objects[0].components[0].typeName, "PoleComponent");
+    EXPECT_EQ(lv.objects[0].components[0].typeName, "HazardComponent");
 
     cmd.Undo(t); // 2 回目の Undo でも反射値ごと戻る
     ASSERT_EQ(lv.objects[0].components.size(), 2u);
@@ -135,7 +135,7 @@ TEST(ComponentCommand, DuplicateObjectDeepCopiesComponentsUndoRemoves)
     LevelNs::LevelData lv;
     LevelNs::ObjectInstance src = MakeObject();
     src.positionX = 3.0f;
-    src.components.push_back(LevelNs::ComponentData{"PoleComponent"});
+    src.components.push_back(LevelNs::ComponentData{"HazardComponent"});
     src.components.push_back(MakeBoxCollider(1.5f));
     lv.objects.push_back(src);
     std::vector<std::uint32_t> ids;
@@ -153,7 +153,7 @@ TEST(ComponentCommand, DuplicateObjectDeepCopiesComponentsUndoRemoves)
     const LevelNs::ObjectInstance& dup = lv.objects[1];
     EXPECT_FLOAT_EQ(dup.positionX, 3.0f);
     ASSERT_EQ(dup.components.size(), 2u);
-    EXPECT_EQ(dup.components[0].typeName, "PoleComponent");
+    EXPECT_EQ(dup.components[0].typeName, "HazardComponent");
     EXPECT_EQ(dup.components[1].typeName, "BoxCollider");
     ASSERT_EQ(dup.components[1].fields.size(), 1u);
     ASSERT_TRUE(std::holds_alternative<float>(dup.components[1].fields[0].value));
@@ -203,7 +203,7 @@ TEST(ComponentCommand, CommandsOnUnknownIdAreNoOp)
 
     const std::uint32_t unknownId = 999u;
 
-    EditorNs::AddComponentCommand add(unknownId, LevelNs::ComponentData{"PoleComponent"});
+    EditorNs::AddComponentCommand add(unknownId, LevelNs::ComponentData{"HazardComponent"});
     add.Do(t);
     add.Undo(t);
     EXPECT_EQ(lv.objects[0].components.size(), 1u); // 対象が居ないので増減しない
@@ -256,13 +256,13 @@ TEST(ComponentCommand, SetObjectComponentsReplacesWholeListUndoRestores)
     std::vector<LevelNs::ComponentData> replacement;
     replacement.push_back(LevelNs::ComponentData{"MeshRendererComponent"});
     replacement.push_back(MakeBoxCollider(0.5f));
-    replacement.push_back(LevelNs::ComponentData{"PoleComponent"});
+    replacement.push_back(LevelNs::ComponentData{"HazardComponent"});
     EditorNs::SetObjectComponentsCommand cmd(id, replacement);
 
     cmd.Do(t);
     ASSERT_EQ(lv.objects[0].components.size(), 3u);
     EXPECT_EQ(lv.objects[0].components[1].typeName, "BoxCollider");
-    EXPECT_EQ(lv.objects[0].components[2].typeName, "PoleComponent");
+    EXPECT_EQ(lv.objects[0].components[2].typeName, "HazardComponent");
 
     cmd.Undo(t); // 置換前の 1 件だけの一覧へ戻る
     ASSERT_EQ(lv.objects[0].components.size(), 1u);
@@ -270,7 +270,7 @@ TEST(ComponentCommand, SetObjectComponentsReplacesWholeListUndoRestores)
 
     cmd.Do(t); // redo: 退避した旧一覧を上書きしても同じ置換結果になる
     ASSERT_EQ(lv.objects[0].components.size(), 3u);
-    EXPECT_EQ(lv.objects[0].components[2].typeName, "PoleComponent");
+    EXPECT_EQ(lv.objects[0].components[2].typeName, "HazardComponent");
 
     cmd.Undo(t); // 再び置換前の 1 件へ戻る
     ASSERT_EQ(lv.objects[0].components.size(), 1u);

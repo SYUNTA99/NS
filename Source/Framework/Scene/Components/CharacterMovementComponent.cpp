@@ -3,7 +3,6 @@
 #include "Framework/Core/Clock.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Physics/PhysicsWorld.h"
-#include "Framework/Scene/Components/PoleComponent.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 
@@ -43,15 +42,6 @@ namespace
             SmoothApproach(curr.z, target.z, tau, dt),
         };
     }
-
-    /// pole 掴まり中の上下移動速度で単位は m/s。 入力 1.0 で kClimbSpeed のレート
-    constexpr float kClimbSpeed = 2.0f;
-    /// 離脱 jump 時、 接触面の逆方向に与える初速。 単位は m/s
-    constexpr float kClimbExitOutwardSpeed = 3.0f;
-    /// 離脱 jump 時、 上方向に与える初速。 単位は m/s
-    constexpr float kClimbExitUpwardSpeed = 6.0f;
-    /// auto-mantle 判定の上端余裕で単位は m。 pole top にこの距離まで近づいたら歩行へ
-    constexpr float kClimbMantleEpsilon = 0.05f;
 
     /// 縁掴み: capsule 上端を手とみなし、 block 上端との高さ差の許容下幅 / 上幅で単位は m。 この帯に
     /// block 上端が入ると掴める。 GUI playtest で詰める初期値
@@ -122,11 +112,6 @@ namespace NS::Scene
         m_jumpHeld = held;
     }
 
-    void CharacterMovementComponent::SetClimbables(std::span<PoleComponent* const> poles) noexcept
-    {
-        m_poles = poles;
-    }
-
     void CharacterMovementComponent::ResetState() noexcept
     {
         m_velocity = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
@@ -143,7 +128,6 @@ namespace NS::Scene
         m_wasGrounded = false;
         m_isGrounded = false;
         m_state = MovementState::Walking;
-        m_attachedPole = nullptr;
         m_ledgeTopY = 0.0f;
         m_ledgeFaceNormal = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
         m_ledgeRegrabCooldown = 0.0f;
@@ -175,84 +159,12 @@ namespace NS::Scene
         }
 
 #if !defined(NS_SHIPPING)
-        // コヨーテジャンプ記録を寿命で減衰させる。 pole / ledge で早期 return する状態でも確実に老化させるため
+        // コヨーテジャンプ記録を寿命で減衰させる。 ledge で早期 return する状態でも確実に老化させるため
         // どの state へ分岐するより前に処理する
         for (CoyoteJumpMarker& marker : m_coyoteJumpMarkers)
             marker.remaining -= dt;
         std::erase_if(m_coyoteJumpMarkers, [](const CoyoteJumpMarker& m) { return m.remaining <= 0.0f; });
 #endif
-
-        // ClimbingPole では default CharacterController を bypass し、pole の axis に拘束された
-        // 専用 update で position を直接更新する
-        if (m_state == MovementState::ClimbingPole)
-        {
-            // 離脱 jump: pole から XZ 半径方向の outward と上方向に飛び離れて Falling へ
-            if (m_jumpPressedThisFrame && m_attachedPole != nullptr)
-            {
-                const NS::Math::Vector3 pos = RootTransform().Position();
-                const NS::Math::Vector3 axisStart = m_attachedPole->AxisStart();
-                NS::Math::Vector3 outward{pos.x - axisStart.x, 0.0f, pos.z - axisStart.z};
-                const float len = std::sqrt(outward.x * outward.x + outward.z * outward.z);
-                if (len > 1e-4f)
-                {
-                    outward.x /= len;
-                    outward.z /= len;
-                }
-                else
-                {
-                    outward = NS::Math::Vector3{1.0f, 0.0f, 0.0f};
-                }
-                m_velocity = NS::Math::Vector3{
-                    outward.x * kClimbExitOutwardSpeed, kClimbExitUpwardSpeed, outward.z * kClimbExitOutwardSpeed};
-                m_state = MovementState::Falling;
-                m_attachedPole = nullptr;
-                m_isGrounded = false;
-                m_jumpPressedThisFrame = false;
-                m_prevJumpHeld = m_jumpHeld;
-                return;
-            }
-
-            if (m_attachedPole != nullptr)
-            {
-                NS::Math::Vector3 pos = RootTransform().Position();
-                // 縦入力は climb 専用チャンネルを使い、 前で上昇 後で下降する
-                // camera 相対の m_desiredDir だと camera 向き次第で上昇量が 0 になるため別系統で受ける
-                const float verticalInput = m_climbForward;
-                pos.y += verticalInput * kClimbSpeed * dt;
-
-                const NS::Math::Vector3 axisStart = m_attachedPole->AxisStart();
-                const NS::Math::Vector3 axisEnd = m_attachedPole->AxisEnd();
-                if (pos.y < axisStart.y)
-                    pos.y = axisStart.y;
-
-                // 上端に達したら自動で mantle して Walking へ遷移
-                if (pos.y >= axisEnd.y - kClimbMantleEpsilon)
-                {
-                    pos.y = axisEnd.y;
-                    RootTransform().SetPosition(pos);
-                    m_state = MovementState::Walking;
-                    m_attachedPole = nullptr;
-                    m_velocity = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
-                    m_isGrounded = true;
-                    m_jumpsRemaining = 1;
-                    m_jumpPressedThisFrame = false;
-                    m_prevJumpHeld = m_jumpHeld;
-                    return;
-                }
-
-                // XZ は pole 軸に snap して安定させる
-                pos.x = axisStart.x;
-                pos.z = axisStart.z;
-                RootTransform().SetPosition(pos);
-                // velocity は climb logic が完全に支配し、 gravity は無効で controller も bypass する
-                m_velocity = NS::Math::Vector3{0.0f, verticalInput * kClimbSpeed, 0.0f};
-            }
-
-            m_skipControllerLastFrame = true;
-            m_jumpPressedThisFrame = false;
-            m_prevJumpHeld = m_jumpHeld;
-            return;
-        }
 
         // LedgeHanging も controller を bypass し、 縁にぶら下がった専用更新で position を直接動かす
         if (m_state == MovementState::LedgeHanging)
@@ -352,27 +264,8 @@ namespace NS::Scene
         else
             m_state = MovementState::Falling;
 
-        // grab intent: 入力が pole に向いていて、 かつ player 中心が trigger 内なら掴まり状態へ
-        if (m_desiredSpeedScale > m_stickDeadzone)
-        {
-            const NS::Math::Vector3 pos = out.position;
-            for (PoleComponent* pole : m_poles)
-            {
-                if (pole != nullptr && pole->ContainsPoint(pos))
-                {
-                    m_attachedPole = pole;
-                    m_state = MovementState::ClimbingPole;
-                    m_velocity = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
-                    const NS::Math::Vector3 axisStart = pole->AxisStart();
-                    RootTransform().SetPosition(NS::Math::Vector3{axisStart.x, pos.y, axisStart.z});
-                    break;
-                }
-            }
-        }
-
-        // pole を掴んでいなければ、 通常 block の縁を掴めるか試す。 空中下降中のみ成立する
-        if (m_state != MovementState::ClimbingPole)
-            TryGrabLedge(out.position);
+        // 通常 block の縁を掴めるか試す。 空中下降中のみ成立する
+        TryGrabLedge(out.position);
 
         m_prevJumpHeld = m_jumpHeld;
         m_jumpPressedThisFrame = false;

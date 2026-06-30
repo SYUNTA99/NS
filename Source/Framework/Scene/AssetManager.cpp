@@ -32,7 +32,6 @@ namespace NS::Scene
         constexpr const char* kBuiltinWedge30 = "wedge30";
         constexpr const char* kBuiltinWedge22 = "wedge22";
         constexpr const char* kBuiltinWedge15 = "wedge15";
-        constexpr const char* kBuiltinPole = "pole";
         constexpr const char* kBuiltinShadowQuad = "shadowQuad";
 
         constexpr const char* kSharedPlayer = "player";
@@ -250,7 +249,6 @@ namespace NS::Scene
         m_builtins.emplace(kBuiltinWedge30, MakeStaticMesh(NS::Graphics::MakeWedge(30.0f, half)));
         m_builtins.emplace(kBuiltinWedge22, MakeStaticMesh(NS::Graphics::MakeWedge(22.5f, half)));
         m_builtins.emplace(kBuiltinWedge15, MakeStaticMesh(NS::Graphics::MakeWedge(15.0f, half)));
-        m_builtins.emplace(kBuiltinPole, MakeStaticMesh(NS::Graphics::MakeCylinder(0.15f, 1.0f, 12)));
         m_builtins.emplace(kBuiltinShadowQuad, MakeStaticMesh(NS::Graphics::MakePlane(NS::Math::Vector2{0.5f, 0.5f})));
     }
 

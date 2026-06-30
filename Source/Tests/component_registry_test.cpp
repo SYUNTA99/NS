@@ -50,7 +50,6 @@ TEST(ComponentRegistryTest, CreatesEachCuratedType)
         "SphereColliderComponent",
         "CapsuleColliderComponent",
         "SlopeColliderComponent",
-        "PoleComponent",
         "HazardComponent",
         "MeshRendererComponent",
         "PickupComponent",
@@ -70,7 +69,6 @@ TEST(ComponentRegistryTest, CreatedTypeNameMatchesReflection)
         "SphereColliderComponent",
         "CapsuleColliderComponent",
         "SlopeColliderComponent",
-        "PoleComponent",
         "HazardComponent",
         "MeshRendererComponent",
         "PickupComponent",
@@ -106,17 +104,16 @@ TEST(ComponentRegistryTest, UnknownTypeReturnsNull)
 
 TEST(ComponentRegistryTest, IsRegisteredReflectsCuratedSet)
 {
-    EXPECT_TRUE(IsRegistered("PoleComponent"));
     EXPECT_TRUE(IsRegistered("BoxColliderComponent"));
     EXPECT_FALSE(IsRegistered("PlayerInputComponent"));
     EXPECT_FALSE(IsRegistered("CameraComponent"));
     EXPECT_FALSE(IsRegistered("Bogus"));
 }
 
-TEST(ComponentRegistryTest, RegisteredNamesListsCuratedEight)
+TEST(ComponentRegistryTest, RegisteredNamesListsCuratedSeven)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 8u);
+    EXPECT_EQ(names.size(), 7u);
     EXPECT_TRUE(Contains(names, "BoxColliderComponent"));
     EXPECT_TRUE(Contains(names, "MeshRendererComponent"));
     EXPECT_TRUE(Contains(names, "PickupComponent"));

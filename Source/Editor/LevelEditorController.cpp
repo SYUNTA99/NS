@@ -402,7 +402,7 @@ void LevelEditorController::RefreshGizmoSelectables()
         m_selectableHalfExtents.push_back(kCellHalfExtents);
     }
 
-    // grid solid も掴める。 掴むと PromoteGridBlockToFree で自由オブジェクトに変わる。 slope/pole 等は対象外
+    // grid solid も掴める。 掴むと PromoteGridBlockToFree で自由オブジェクトに変わる。 slope 等は対象外
     for (std::size_t i = 0; i < m_scene->m_objects.size(); ++i)
     {
         const NS::Game::Level::ObjectInstance& entry = m_scene->m_level.objects[m_scene->m_objectSourceIndices[i]];

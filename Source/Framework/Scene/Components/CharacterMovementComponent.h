@@ -18,16 +18,13 @@
 
 namespace NS::Scene
 {
-    class PoleComponent;
-
-    /// ClimbingPole / LedgeHanging / LedgeMantling の掴まり中は CharacterController を bypass して position
+    /// LedgeHanging / LedgeMantling の掴まり中は CharacterController を bypass して position
     /// を直更新する
     enum class MovementState
     {
         Walking,
         Jumping,
         Falling,
-        ClimbingPole,
         LedgeHanging,
         LedgeMantling,
     };
@@ -47,16 +44,12 @@ namespace NS::Scene
         void SetJumpPressed() noexcept;
         void SetJumpHeld(bool held) noexcept;
 
-        /// pole 群を span で注入する。span のみ保存し、要素の寿命は呼出側の LevelPlayScene が保証する
-        void SetClimbables(std::span<PoleComponent* const> poles) noexcept;
-
         /// 衝突 query 元の physics world を非所有で借用する。 非 null なら衝突計算をこの world へ委ねる
         void SetPhysicsWorld(const NS::Physics::PhysicsWorld* world) noexcept { m_world = world; }
 
         [[nodiscard]] MovementState State() const noexcept { return m_state; }
         /// テスト / 強制遷移用の setter。 通常は OnUpdate 内で遷移するため呼出不要
         void SetState(MovementState s) noexcept { m_state = s; }
-        [[nodiscard]] PoleComponent* AttachedPole() const noexcept { return m_attachedPole; }
 
         [[nodiscard]] NS::Math::Vector3 Velocity() const noexcept { return m_velocity; }
         /// テスト / 外力用に速度を直接与える。 通常は OnUpdate 内で更新するため呼出不要
@@ -171,8 +164,6 @@ namespace NS::Scene
         NS::Physics::CharacterController m_controller;
 
         MovementState m_state = MovementState::Walking;
-        std::span<PoleComponent* const> m_poles{};
-        PoleComponent* m_attachedPole = nullptr;
         bool m_skipControllerLastFrame = false;
 
         float m_ledgeTopY = 0.0f;

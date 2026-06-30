@@ -8,7 +8,6 @@
 #include <Framework/Scene/Components/EditorCameraComponent.h>
 #include <Framework/Scene/Components/MeshRendererComponent.h>
 #include <Framework/Scene/Components/PlacedVirtualCamera.h>
-#include <Framework/Scene/Components/PoleComponent.h>
 #include <Framework/Scene/Components/ShadowComponent.h>
 #include <Framework/Scene/Components/ThirdPersonFollowComponent.h>
 #include <Framework/Scene/GameObject.h>
@@ -360,20 +359,6 @@ TEST(ReflectionTest, CameraBrainBlendDurationAccessorClampsNegative)
     float set = -1.0f;
     blend->set(&brain, &set);
     EXPECT_FLOAT_EQ(brain.BlendDuration(), 0.0f); // ACCESSOR は setter 経由でクランプ
-}
-
-TEST(ReflectionTest, PoleReflectsRadiusAndHeight)
-{
-    NS::Scene::PoleComponent pole(0.15f, 2.0f);
-    const ReflectionInfo* info = pole.GetReflection();
-    ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 2u);
-
-    const FieldDesc* radius = FindField(info, "Radius");
-    ASSERT_NE(radius, nullptr);
-    float got = 0.0f;
-    radius->get(&pole, &got);
-    EXPECT_FLOAT_EQ(got, 0.15f);
 }
 
 TEST(ReflectionTest, ShadowReflectsAppearanceFields)

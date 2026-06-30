@@ -9,7 +9,6 @@
 #include <Framework/Scene/Components/BoxColliderComponent.h>
 #include <Framework/Scene/Components/CapsuleColliderComponent.h>
 #include <Framework/Scene/Components/HazardComponent.h>
-#include <Framework/Scene/Components/PoleComponent.h>
 #include <Framework/Scene/Components/SlopeColliderComponent.h>
 #include <Framework/Scene/Components/SphereColliderComponent.h>
 #include <Framework/Scene/GameObject.h>
@@ -52,7 +51,6 @@ namespace
         bool hasSphere = false;
         bool hasCapsule = false;
         bool hasSlope = false;
-        bool hasPole = false;
         bool hasHazard = false;
         NS::Math::AABB boxAabb{};
         NS::Physics::OBB boxObb;
@@ -60,8 +58,6 @@ namespace
         NS::Physics::Capsule capsule;
         float slopeAngle = 0.0f;
         std::array<NS::Physics::Triangle, 8> slopeTriangles{};
-        float poleRadius = 0.0f;
-        float poleHeight = 0.0f;
     };
 
     ColliderSignature ExtractColliderSignature(NS::Scene::GameObject& obj)
@@ -89,12 +85,6 @@ namespace
             sig.slopeAngle = slope->AngleDegrees();
             sig.slopeTriangles = slope->WorldTriangles();
         }
-        if (auto* pole = FindComponent<NS::Scene::PoleComponent>(obj))
-        {
-            sig.hasPole = true;
-            sig.poleRadius = pole->Radius();
-            sig.poleHeight = pole->Height();
-        }
         if (FindComponent<NS::Scene::HazardComponent>(obj))
             sig.hasHazard = true;
         return sig;
@@ -106,7 +96,6 @@ namespace
         EXPECT_EQ(expected.hasSphere, actual.hasSphere);
         EXPECT_EQ(expected.hasCapsule, actual.hasCapsule);
         EXPECT_EQ(expected.hasSlope, actual.hasSlope);
-        EXPECT_EQ(expected.hasPole, actual.hasPole);
         EXPECT_EQ(expected.hasHazard, actual.hasHazard);
 
         if (expected.hasBox && actual.hasBox)
@@ -140,11 +129,6 @@ namespace
                 ExpectVec3Near(expected.slopeTriangles[i].v1, actual.slopeTriangles[i].v1);
                 ExpectVec3Near(expected.slopeTriangles[i].v2, actual.slopeTriangles[i].v2);
             }
-        }
-        if (expected.hasPole && actual.hasPole)
-        {
-            EXPECT_NEAR(expected.poleRadius, actual.poleRadius, kTol);
-            EXPECT_NEAR(expected.poleHeight, actual.poleHeight, kTol);
         }
     }
 

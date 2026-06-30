@@ -2,9 +2,9 @@
 #include "Editor/Undo/AddComponentCommand.h"
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Components/BoxColliderComponent.h"
+#include "Framework/Scene/Components/CapsuleColliderComponent.h"
 #include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
-#include "Framework/Scene/Components/PoleComponent.h"
 #include "Framework/Scene/GameObject.h"
 #include "Game/Level/EditTarget.h"
 #include "Game/Level/LevelData.h"
@@ -22,16 +22,16 @@ namespace SceneNs = NS::Scene;
 TEST(ComponentClipboard, CaptureCopiesTypeAndLiveFieldValues)
 {
     SceneNs::GameObject obj;
-    auto* pole = obj.AddComponent<SceneNs::PoleComponent>(0.5f, 4.0f);
+    auto* capsule = obj.AddComponent<SceneNs::CapsuleColliderComponent>(0.5f, 4.0f);
 
-    const LevelNs::ComponentData captured = EditorNs::CaptureComponentData(*pole);
+    const LevelNs::ComponentData captured = EditorNs::CaptureComponentData(*capsule);
 
-    EXPECT_EQ(captured.typeName, "PoleComponent");
-    ASSERT_EQ(captured.fields.size(), 2u);
+    EXPECT_EQ(captured.typeName, "CapsuleColliderComponent");
+    ASSERT_EQ(captured.fields.size(), 4u);
     EXPECT_EQ(captured.fields[0].name, "Radius");
     ASSERT_TRUE(std::holds_alternative<float>(captured.fields[0].value));
     EXPECT_FLOAT_EQ(std::get<float>(captured.fields[0].value), 0.5f);
-    EXPECT_EQ(captured.fields[1].name, "Height");
+    EXPECT_EQ(captured.fields[1].name, "Half Height");
     ASSERT_TRUE(std::holds_alternative<float>(captured.fields[1].value));
     EXPECT_FLOAT_EQ(std::get<float>(captured.fields[1].value), 4.0f);
 }
@@ -50,8 +50,8 @@ TEST(ComponentClipboard, CaptureOfFieldlessComponentKeepsTypeWithEmptyFields)
 TEST(ComponentClipboard, PasteAddsCapturedComponentWithSameValues)
 {
     SceneNs::GameObject obj;
-    auto* pole = obj.AddComponent<SceneNs::PoleComponent>(0.75f, 6.0f);
-    const LevelNs::ComponentData captured = EditorNs::CaptureComponentData(*pole);
+    auto* capsule = obj.AddComponent<SceneNs::CapsuleColliderComponent>(0.75f, 6.0f);
+    const LevelNs::ComponentData captured = EditorNs::CaptureComponentData(*capsule);
 
     LevelNs::LevelData lv;
     lv.objects.push_back(LevelNs::ObjectInstance{});
@@ -66,8 +66,8 @@ TEST(ComponentClipboard, PasteAddsCapturedComponentWithSameValues)
 
     ASSERT_EQ(lv.objects[0].components.size(), 1u);
     const LevelNs::ComponentData& pasted = lv.objects[0].components[0];
-    EXPECT_EQ(pasted.typeName, "PoleComponent");
-    ASSERT_EQ(pasted.fields.size(), 2u);
+    EXPECT_EQ(pasted.typeName, "CapsuleColliderComponent");
+    ASSERT_EQ(pasted.fields.size(), 4u);
     EXPECT_FLOAT_EQ(std::get<float>(pasted.fields[0].value), 0.75f);
     EXPECT_FLOAT_EQ(std::get<float>(pasted.fields[1].value), 6.0f);
 

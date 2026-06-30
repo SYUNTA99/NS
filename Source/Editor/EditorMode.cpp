@@ -288,7 +288,7 @@ namespace NS::Editor
             return;
         // 現在のブラシ = 複製元テンプレート。 配置は複製で行う
         const NS::Game::Level::ObjectInstance& tmpl = m_palette.CurrentTemplate();
-        // pole / water 等の回転対象でない block は m_currentRotation が非ゼロでも 0 で焼き込む
+        // water 等の回転対象でない block は m_currentRotation が非ゼロでも 0 で焼き込む
         const std::uint8_t rotation = m_palette.CurrentIsRotatable() ? m_currentRotation : std::uint8_t{0};
         auto target = Target();
         m_undo.Push(std::make_unique<NS::Editor::PlaceCommand>(tmpl, x, y, z, rotation), target);

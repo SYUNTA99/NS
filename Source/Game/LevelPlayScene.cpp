@@ -10,7 +10,6 @@
 #include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
-#include "Framework/Scene/Components/PoleComponent.h"
 #include "Framework/Scene/GameObject.h"
 
 #include "Framework/App/Application.h"
@@ -698,7 +697,6 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
     m_instancedBlocks.clear();
     m_hazardView.clear();
     m_physicsWorld.Clear();
-    m_polePtrs.clear();
 
     m_objects.reserve(m_level.objects.size());
     m_physicsWorld.ReserveAabbs(m_level.objects.size());
@@ -747,8 +745,6 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
             else if (auto* slope = dynamic_cast<NS::Scene::SlopeColliderComponent*>(comp))
                 for (const auto& tri : slope->WorldTriangles())
                     m_physicsWorld.AddTriangle(tri);
-            else if (auto* pole = dynamic_cast<NS::Scene::PoleComponent*>(comp))
-                m_polePtrs.push_back(pole);
             else if (dynamic_cast<NS::Scene::HazardComponent*>(comp) != nullptr)
             {
                 // hazard の damage は固形 AABB とは別経路の毎フレーム重なり判定で効くため view にも積む
@@ -808,8 +804,6 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
                 shadowReceivers.push_back(*aabb);
         }
         m_player->Shadow().SetCollisionWorld(shadowReceivers);
-
-        m_player->Movement().SetClimbables(std::span<NS::Scene::PoleComponent* const>{m_polePtrs});
     }
 }
 

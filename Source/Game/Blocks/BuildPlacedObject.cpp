@@ -243,12 +243,10 @@ namespace NS::Game::Blocks
         using namespace NS::Game::Level;
         if ((object.flags & kObjectFlagGridAligned) == 0)
             return false;
-        // 拾得 / slope / pole / hazard は固形でない。 残る BoxCollider 持ちだけが固形 block
+        // 拾得 / slope / hazard は固形でない。 残る BoxCollider 持ちだけが固形 block
         if (PickupKindOf(object) >= 0)
             return false;
         if (HasComponentType(object, "SlopeColliderComponent"))
-            return false;
-        if (HasComponentType(object, "PoleComponent"))
             return false;
         if (HasComponentType(object, "HazardComponent"))
             return false;
@@ -257,7 +255,7 @@ namespace NS::Game::Blocks
 
     bool IsRotatableObject(const NS::Game::Level::ObjectInstance& object)
     {
-        // R で 90° 回す対象。 向きが意味を持つ slope と固形 block。 掴み pole / 水 / 装飾は除く
+        // R で 90° 回す対象。 向きが意味を持つ slope と固形 block。 水 / 装飾は除く
         return SlopeAngleOf(object) >= 0.0f || IsGridSolidObject(object);
     }
 
@@ -285,8 +283,6 @@ namespace NS::Game::Blocks
             return "Slope";
         }
 
-        if (HasComponentType(object, "PoleComponent"))
-            return "Pole";
         if (HasComponentType(object, "HazardComponent"))
             return "Hazard";
         if (const std::string* materialRef = MaterialRefOf(object); materialRef != nullptr && *materialRef == "water")
@@ -313,7 +309,7 @@ namespace NS::Game::Blocks
     {
         if (meshRef.empty())
             return nullptr;
-        // builtin 名 cube / wedge45 / wedge30 / wedge22 / wedge15 / pole を先引きする
+        // builtin 名 cube / wedge45 / wedge30 / wedge22 / wedge15 を先引きする
         if (NS::Graphics::StaticMesh* builtin = assets.Builtin(meshRef))
             return builtin;
         // builtin に無ければ ContentRoot 配下の相対パスとして glTF を読む。 .. の traversal は弾かれ nullptr
