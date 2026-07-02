@@ -84,7 +84,7 @@ void LevelPlayScene::LoadInitialLevel()
 
 void LevelPlayScene::RebuildObjectIds() noexcept
 {
-    NS::Game::Level::EditTarget target{m_level, m_objectIds, m_nextObjectId};
+    NS::Game::Level::EditTarget target{m_level, m_world.EditIds(), m_world.NextEditId()};
     NS::Game::Level::ResetEditIds(target);
 }
 
@@ -161,7 +161,7 @@ void LevelPlayScene::OnStart()
     LoadPlayerTuning(*m_player);
 
     LoadInitialLevel();
-    RebuildBlocksFromLevelData();
+    RebuildWorld();
 
     m_cameraRig = std::make_unique<CameraRig>(&m_player->Root(), &m_player->Movement());
     m_cameraRig->AttachScene(this);
@@ -183,7 +183,7 @@ void LevelPlayScene::OnStart()
     m_cameraHost->OnStart();
 
     // level の cameraVolumes から area camera を生成し Brain へ登録する。 Brain 構築後に呼ぶ必要がある
-    RebuildAreaCamerasFromLevelData();
+    RebuildAreaCameras();
 
     // 出荷も開発も、 起動直後はプレイ可能な状態にする。 開発時は editor が直後に編集モードへ切替える
     SetPlaying(true);
@@ -196,7 +196,7 @@ void LevelPlayScene::SetPlaying(bool playing) noexcept
     {
         // 編集中の変形を確定した最新 level でプレイするため、 collision snapshot を作り直す
         // CommitTransformEdit は dirty を立てないため、 ここで突入時に一度作り直して取りこぼしを防ぐ
-        RebuildBlocksFromLevelData();
+        RebuildWorld();
         // spawn を計算して player をそこへ置き、 物理 / 入力 / follow camera を有効化する
         m_playMode.Enter(m_level, m_play);
         m_playMode.SetActive(true);
@@ -549,7 +549,7 @@ void LevelPlayScene::OnRenderScene()
         if (blockMat)
             blockMat->SetParams(*ctx.renderer, blockCB);
 
-        // instanceable 判定 / 近傍マスク / slice は RebuildBlocksFromLevelData で焼き済。 ここは焼いた slice と
+        // instanceable 判定 / 近傍マスク / slice は RebuildWorld で焼き済。 ここは焼いた slice と
         // 補間 world matrix だけを読み、 毎フレームの文字列走査と近傍マスク O(N^2) を持ち込まない
         batcher->BeginFrame();
         // 個体色は全 instanced block 共通の solid 色。 theme tint は FrameCB の lightColor/ambientColor で行う
@@ -702,7 +702,7 @@ void LevelPlayScene::OnShutdown()
     m_screenFade.reset();
 }
 
-void LevelPlayScene::RebuildBlocksFromLevelData()
+void LevelPlayScene::RebuildWorld()
 {
     // 構築は LevelWorld の一本道。 app 不在の起動前 / テストでは assets を渡さず何も組まない
     auto* app = NS::App::Application::Get();
@@ -725,7 +725,7 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
     }
 }
 
-void LevelPlayScene::RebuildAreaCamerasFromLevelData()
+void LevelPlayScene::RebuildAreaCameras()
 {
     if (m_brain == nullptr)
         return;

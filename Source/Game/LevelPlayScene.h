@@ -71,6 +71,39 @@ public:
     /// LevelData から組まれた runtime world。 editor の選択 / gizmo と描画がここから観測する
     [[nodiscard]] NS::Game::Level::LevelWorld& World() noexcept { return m_world; }
 
+    // CameraVolume 1 件に対応する area camera の runtime 実体。 host が PlacedVirtualCamera を所有し、
+    // vcam 自身が pose / トリガ / lookAtPlayer を持って自分で active 化する。 Brain は cam を非所有参照する
+    struct AreaCamera
+    {
+        std::unique_ptr<NS::Scene::GameObject> host;
+        NS::Scene::PlacedVirtualCamera* cam = nullptr;
+    };
+
+    /// 実カメラと vcam 切替を束ねる Brain。 起動前は nullptr
+    [[nodiscard]] NS::Scene::CameraBrainComponent* Brain() noexcept { return m_brain; }
+
+    /// Brain の出力先になる実カメラ。 起動前は nullptr
+    [[nodiscard]] NS::Scene::CameraComponent* MainCamera() noexcept { return m_mainCamera; }
+
+    /// 実体プレイヤー。 起動前は nullptr
+    [[nodiscard]] Player* PlayerRef() noexcept { return m_player.get(); }
+
+    /// CameraVolume 1 件に対応する area camera の runtime 実体列
+    [[nodiscard]] std::vector<AreaCamera>& AreaCameras() noexcept { return m_areaCameras; }
+
+    /// 直近 OnRenderScene で解決した scene 段の描画設定
+    [[nodiscard]] const NS::Graphics::RenderSettings& LastResolvedSettings() const noexcept
+    {
+        return m_lastResolvedSettings;
+    }
+
+    /// runtime world と衝突世界を LevelData から組み直す。 レベル編集後とプレイ突入時に呼ぶ
+    void RebuildWorld();
+
+    /// m_level.cameraVolumes から area camera の PlacedVirtualCamera 群を作り直して Brain へ登録する
+    /// 旧 area camera は Brain から外して破棄する。 Brain 構築前の OnStart 序盤は何もしない
+    void RebuildAreaCameras();
+
 private:
     /// テーマの lighting をシーン単位の上書きとして宣言する。push は書かず override を返すだけ
     NS::Graphics::RenderSettingsOverride BuildSceneOverride() override;
@@ -82,15 +115,8 @@ private:
     /// false で player を凍結し follow / area camera を休止する editor の編集モード用
     void SetPlaying(bool playing) noexcept;
 
-    /// dirty flag 検出時のみ runtime world と衝突世界を LevelData から再構築する
-    void RebuildBlocksFromLevelData();
-
-    /// m_objectIds を m_level.objects と同サイズの連番へ再構築する。 objects 全置換直後に呼ぶ
+    /// world の編集 id を m_level.objects と同サイズの連番へ再構築する。 objects 全置換直後に呼ぶ
     void RebuildObjectIds() noexcept;
-
-    /// m_level.cameraVolumes から area camera の PlacedVirtualCamera 群を作り直して Brain へ登録する
-    /// 旧 area camera は Brain から外して破棄する。 Brain 構築前の OnStart 序盤は何もしない
-    void RebuildAreaCamerasFromLevelData();
 
     /// プレイ更新本体: 入力 → 物理 → ルール → area camera → 死亡/リスポーン → カメラ追従
     void TickPlay();
@@ -134,21 +160,9 @@ private:
     NS::Scene::CameraComponent* m_mainCamera = nullptr;
     NS::Scene::CameraBrainComponent* m_brain = nullptr;
 
-    // CameraVolume 1 件に対応する area camera の runtime 実体。 host が PlacedVirtualCamera を所有し、
-    // vcam 自身が pose / トリガ / lookAtPlayer を持って自分で active 化する。 Brain は cam を非所有参照する
-    struct AreaCamera
-    {
-        std::unique_ptr<NS::Scene::GameObject> host;
-        NS::Scene::PlacedVirtualCamera* cam = nullptr;
-    };
     std::vector<AreaCamera> m_areaCameras;
 
     NS::Game::Level::LevelData m_level{};
-
-    // m_level.objects と 1:1 の編集セッション識別子。 undo 履歴が free オブジェクトを再特定するため
-    // 保持する。 非シリアライズで objects 全置換時は RebuildObjectIds で連番へ戻す
-    std::vector<std::uint32_t> m_objectIds;
-    std::uint32_t m_nextObjectId = 0;
 
     NS::Game::Level::PlayState m_play{};
     NS::Game::Level::PlayMode m_playMode{};

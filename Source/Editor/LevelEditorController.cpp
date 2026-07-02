@@ -87,7 +87,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
 
     // EditorMode に依存先を注入する
     m_editor.SetLevel(&m_scene->m_level);
-    m_editor.SetEditIds(&m_scene->m_objectIds, &m_scene->m_nextObjectId);
+    m_editor.SetEditIds(&m_scene->World().EditIds(), &m_scene->World().NextEditId());
     m_editor.SetInput(&app->Input());
     m_editor.SetImGui(imgui);
     m_editor.SetCameraComponent(m_scene->m_mainCamera);
@@ -255,9 +255,9 @@ void LevelEditorController::TickEdit()
     m_editor.Tick();
     if (m_editor.IsLevelDirty())
     {
-        m_scene->RebuildBlocksFromLevelData();
+        m_scene->RebuildWorld();
         // ファイル読込で cameraVolumes が差し替わった場合に area camera を追従させる
-        m_scene->RebuildAreaCamerasFromLevelData();
+        m_scene->RebuildAreaCameras();
         // undo / redo / ロードは objects を作り直す。 ロードは id が振り直され旧 id が別物に化けるため、
         // ここで選択 id を解除する。 候補 span と gizmo の貼り直しは次フレーム頭の解決に委ねる
         m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
@@ -509,7 +509,7 @@ void LevelEditorController::SelectObjectByIndex(std::size_t index) noexcept
         return;
     }
     // 選択の真実は id。 索引が動いても id から引き直せる
-    m_selectedObjectId = m_scene->m_objectIds[index];
+    m_selectedObjectId = m_scene->World().EditIds()[index];
     m_selectedObjectIndex = index;
 
     // ハンドルを出すため Object ツールへ切替える。 Build のままだとギズモが描かれない
@@ -649,7 +649,7 @@ void LevelEditorController::AddCameraVolume() noexcept
     volume.priority = 10;
 
     m_scene->m_level.cameraVolumes.push_back(volume);
-    m_scene->RebuildAreaCamerasFromLevelData();
+    m_scene->RebuildAreaCameras();
     SelectCameraByIndex(m_scene->m_level.cameraVolumes.size() - 1);
 }
 
@@ -660,7 +660,7 @@ void LevelEditorController::DeleteSelectedCamera() noexcept
     m_scene->m_level.cameraVolumes.erase(m_scene->m_level.cameraVolumes.begin() +
                                          static_cast<std::ptrdiff_t>(m_selectedCameraIndex));
     m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
-    m_scene->RebuildAreaCamerasFromLevelData();
+    m_scene->RebuildAreaCameras();
 }
 
 void LevelEditorController::RenderAreaCameraGizmos() noexcept
@@ -751,7 +751,7 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
         if (&m_scene->World().Objects()[i]->Root() == selected)
         {
             m_selectedObjectIndex = m_scene->World().SourceIndices()[i];
-            m_selectedObjectId = m_scene->m_objectIds[m_selectedObjectIndex];
+            m_selectedObjectId = m_scene->World().EditIds()[m_selectedObjectIndex];
             return;
         }
     }
@@ -877,7 +877,7 @@ void LevelEditorController::AddObject()
     m_editor.Undo().Push(std::make_unique<NS::Editor::AddObjectCommand>(object), target);
 
     // 追加した自由オブジェクトの runtime 実体を作り、 選択候補を貼り直して末尾の新規を選択する
-    m_scene->RebuildBlocksFromLevelData();
+    m_scene->RebuildWorld();
     RefreshGizmoSelectables();
     SelectObjectByIndex(m_scene->m_level.objects.size() - 1);
 }
@@ -896,7 +896,7 @@ void LevelEditorController::AddComponentToSelected(std::string_view typeName)
     m_editor.Undo().Push(std::make_unique<NS::Editor::AddComponentCommand>(id, std::move(payload)), target);
 
     // components が変わったので runtime を組み直し、 同じ id の選択を貼り直す
-    m_scene->RebuildBlocksFromLevelData();
+    m_scene->RebuildWorld();
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
 }
@@ -919,7 +919,7 @@ void LevelEditorController::RemoveComponentFromSelected(std::size_t componentInd
 
     m_editor.Undo().Push(std::make_unique<NS::Editor::RemoveComponentCommand>(id, componentIndex), target);
 
-    m_scene->RebuildBlocksFromLevelData();
+    m_scene->RebuildWorld();
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
 }
@@ -936,7 +936,7 @@ void LevelEditorController::DuplicateSelectedObject()
     // 複製は objects 末尾へ積まれる。 組み直してから末尾を新しい選択にする
     m_editor.Undo().Push(std::make_unique<NS::Editor::DuplicateObjectCommand>(id), target);
 
-    m_scene->RebuildBlocksFromLevelData();
+    m_scene->RebuildWorld();
     RefreshGizmoSelectables();
     if (!m_scene->m_level.objects.empty())
         SelectObjectByIndex(m_scene->m_level.objects.size() - 1);
@@ -988,7 +988,7 @@ void LevelEditorController::PasteClipboardComponentToSelected()
     // 同型がすでにあっても末尾へ重ねて貼り、 上書きはしない
     m_editor.Undo().Push(std::make_unique<NS::Editor::AddComponentCommand>(id, *m_componentClipboard), target);
 
-    m_scene->RebuildBlocksFromLevelData();
+    m_scene->RebuildWorld();
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
 }
@@ -999,7 +999,7 @@ void LevelEditorController::PromoteGridBlockToFree(std::size_t objectIndex)
         return;
 
     // gridAligned を落とす昇格を TransformCommand 1 つとして積み、 grid undo と同じ履歴へ載せる
-    const std::uint32_t id = m_scene->m_objectIds[objectIndex];
+    const std::uint32_t id = m_scene->World().EditIds()[objectIndex];
     const NS::Game::Level::ObjectInstance before = m_scene->m_level.objects[objectIndex];
     NS::Game::Level::ObjectInstance after = before;
     after.flags &= static_cast<std::uint8_t>(~NS::Game::Level::kObjectFlagGridAligned);
@@ -1007,7 +1007,7 @@ void LevelEditorController::PromoteGridBlockToFree(std::size_t objectIndex)
     m_editor.Undo().Push(std::make_unique<NS::Editor::TransformCommand>(id, before, after), target);
 
     // 作り直すと自由化した object は非 gridAligned として組み直る。 選択候補 span を貼り直し、 選択 id も追従させる
-    m_scene->RebuildBlocksFromLevelData();
+    m_scene->RebuildWorld();
     RefreshGizmoSelectables();
     m_selectedObjectId = id;
     ReselectFreeObjectById(id);
@@ -1015,7 +1015,7 @@ void LevelEditorController::PromoteGridBlockToFree(std::size_t objectIndex)
 
 NS::Game::Level::EditTarget LevelEditorController::SceneEditTarget() noexcept
 {
-    return NS::Game::Level::EditTarget{m_scene->m_level, m_scene->m_objectIds, m_scene->m_nextObjectId};
+    return NS::Game::Level::EditTarget{m_scene->m_level, m_scene->World().EditIds(), m_scene->World().NextEditId()};
 }
 
 void LevelEditorController::BeginTransformEdit() noexcept
@@ -1033,7 +1033,7 @@ void LevelEditorController::BeginTransformEdit() noexcept
     if (m_selectedObjectIndex >= m_scene->m_level.objects.size())
         return;
     m_editBaseline = m_scene->m_level.objects[m_selectedObjectIndex];
-    m_editBaselineId = m_scene->m_objectIds[m_selectedObjectIndex];
+    m_editBaselineId = m_scene->World().EditIds()[m_selectedObjectIndex];
     m_editingSpawn = false;
     m_transformEditing = true;
 }
