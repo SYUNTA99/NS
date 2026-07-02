@@ -10,7 +10,6 @@
 /// 本 scene を操作して実現する。 scene 自身は「編集されている」ことを知らない
 
 #include "Framework/Core/EditorAccess.h"
-#include "Framework/Math/Math.h"
 #include "Framework/Scene/SceneBase.h"
 #include "Game/CameraRig.h"
 #include "Game/Level/LevelData.h"
@@ -18,7 +17,6 @@
 #include "Game/Level/PlayMode.h"
 #include "Game/Level/PlayState.h"
 
-#include <cstddef>
 #include <filesystem>
 #include <memory>
 #include <vector>
@@ -97,6 +95,10 @@ public:
         return m_lastResolvedSettings;
     }
 
+    /// テーマの lighting をシーン単位の上書きとして宣言する。push は書かず override を返すだけ
+    /// 描画設定の由来表示が解決値と突き合わせて読むため公開する
+    NS::Graphics::RenderSettingsOverride BuildSceneOverride() override;
+
     /// runtime world と衝突世界を LevelData から組み直す。 レベル編集後とプレイ突入時に呼ぶ
     void RebuildWorld();
 
@@ -105,9 +107,6 @@ public:
     void RebuildAreaCameras();
 
 private:
-    /// テーマの lighting をシーン単位の上書きとして宣言する。push は書かず override を返すだけ
-    NS::Graphics::RenderSettingsOverride BuildSceneOverride() override;
-
     /// 基底 OnRender が scene 解決後に呼ぶ描画本体。 ワールドを描き編集ギズモ等は描かない
     void OnRenderScene() override;
 

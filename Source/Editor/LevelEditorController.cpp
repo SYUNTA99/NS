@@ -82,15 +82,15 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_editorCameraRig->OnStart();
 
     // free-fly vcam を Brain へ登録する。 follow / area camera は scene が登録済
-    if (m_scene->m_brain)
-        m_scene->m_brain->AddVirtualCamera(&m_editorCameraRig->EditorCam());
+    if (m_scene->Brain())
+        m_scene->Brain()->AddVirtualCamera(&m_editorCameraRig->EditorCam());
 
     // EditorMode に依存先を注入する
     m_editor.SetLevel(&m_scene->Level());
     m_editor.SetEditIds(&m_scene->World().EditIds(), &m_scene->World().NextEditId());
     m_editor.SetInput(&app->Input());
     m_editor.SetImGui(imgui);
-    m_editor.SetCameraComponent(m_scene->m_mainCamera);
+    m_editor.SetCameraComponent(m_scene->MainCamera());
     m_editor.SetActive(true);
     // scene が OnStart で rebuild 済なので、 初回 Tick の二重 rebuild を抑制
     m_editor.ClearLevelDirty();
@@ -113,8 +113,8 @@ void LevelEditorController::Teardown()
     if (m_editorCameraRig)
     {
         // Brain は free-fly vcam を非所有参照する。 vcam を畳む前に Brain から外して dangling を避ける
-        if (m_scene != nullptr && m_scene->m_brain)
-            m_scene->m_brain->RemoveVirtualCamera(&m_editorCameraRig->EditorCam());
+        if (m_scene != nullptr && m_scene->Brain())
+            m_scene->Brain()->RemoveVirtualCamera(&m_editorCameraRig->EditorCam());
         m_editorCameraRig->OnEndPlay();
     }
     m_editorCameraRig.reset();
@@ -193,8 +193,8 @@ void LevelEditorController::TickEdit()
     }
 
     // free-fly 更新後に実カメラへ反映し、 ギズモ / 編集の ray-pick が当フレームの視点を使えるようにする
-    if (m_scene->m_brain)
-        m_scene->m_brain->Evaluate(1.0f);
+    if (m_scene->Brain())
+        m_scene->Brain()->Evaluate(1.0f);
 
     // 同時に 1 モードだけが LMB/R/Ctrl+Z を消費する。 Object 中は grid 入力を抑制しギズモへ回す
     // モード切替は EditorLayer の UI ボタン SetObjectToolActive から行う。 Tab は Edit↔Play 専用
@@ -202,14 +202,14 @@ void LevelEditorController::TickEdit()
     m_gizmo.SetActive(objectMode);
     m_editor.SetInputSuppressed(objectMode);
 
-    if (objectMode && m_editorCameraRig && m_scene->m_brain)
+    if (objectMode && m_editorCameraRig && m_scene->Brain())
     {
         // 毎フレーム live な scene から候補 span を作り直し、 選択を id → 実体へ解決し直す
         // Play 突入 / undo / promote の rebuild を跨いでも生ポインタが残らない fail-safe の要
         RefreshGizmoSelectables();
         ResolveSelectionFromId();
 
-        const auto vp = m_scene->m_brain->ViewProjection();
+        const auto vp = m_scene->Brain()->ViewProjection();
         const auto viewport = app->Window().Size();
         const bool wasDragging = m_gizmoWasDragging;
         m_gizmo.Tick(vp, viewport);
@@ -276,10 +276,10 @@ void LevelEditorController::Render()
 
     // Debug provenance パネルの入力を毎フレーム退避する。出所は has_value の突き合わせで逆算するので
     // Resolve のホットパスに追跡を入れず、 scene の解決値と代表 object override をそのまま保持する
-    m_debugResolvedSettings = m_scene->m_lastResolvedSettings;
+    m_debugResolvedSettings = m_scene->LastResolvedSettings();
     m_debugSceneOverride = m_scene->BuildSceneOverride();
-    if (m_scene->m_player)
-        m_debugPlayerObjectOverride = m_scene->m_player->MeshComp().RenderOverride();
+    if (m_scene->PlayerRef())
+        m_debugPlayerObjectOverride = m_scene->PlayerRef()->MeshComp().RenderOverride();
 
     if (m_mode != Mode::Edit)
         return;
@@ -288,13 +288,13 @@ void LevelEditorController::Render()
     RenderAreaCameraGizmos();
     RenderColliderWireframes();
     // 蓄積した DebugDraw 線をシーン描画後・ ImGui 前にまとめて 1 描画する
-    if (m_scene->m_brain)
-        NS::Graphics::DebugDraw::Flush(app->Renderer(), m_scene->m_brain->ViewProjection());
+    if (m_scene->Brain())
+        NS::Graphics::DebugDraw::Flush(app->Renderer(), m_scene->Brain()->ViewProjection());
     // Toolbar UI を ImGui 経由で描画する。 Debug / Development build のみ実機能
     m_editor.Palette().Render();
     // Object モードのギズモは最前面の drawlist に重ねる
-    if (m_gizmo.IsActive() && m_scene->m_brain)
-        m_gizmo.Render(m_scene->m_brain->ViewProjection(), app->Window().Size());
+    if (m_gizmo.IsActive() && m_scene->Brain())
+        m_gizmo.Render(m_scene->Brain()->ViewProjection(), app->Window().Size());
 }
 
 void LevelEditorController::SetObjectToolActive(bool active) noexcept
@@ -344,7 +344,7 @@ NS::Scene::GameObject* LevelEditorController::SelectedObjectGameObject() noexcep
 
 NS::Scene::GameObject* LevelEditorController::PlayerObject() noexcept
 {
-    return m_scene->m_player.get();
+    return m_scene->PlayerRef();
 }
 
 void LevelEditorController::SyncSelectedObjectComponentsFromComponent()
@@ -365,14 +365,14 @@ void LevelEditorController::SyncSelectedObjectComponentsFromComponent()
 
 NS::Scene::GameObject* LevelEditorController::CameraBrainObject() noexcept
 {
-    return m_scene->m_brain ? m_scene->m_brain->Owner() : nullptr;
+    return m_scene->Brain() ? m_scene->Brain()->Owner() : nullptr;
 }
 
 NS::Scene::GameObject* LevelEditorController::ActiveVirtualCameraObject() noexcept
 {
-    if (m_scene->m_brain == nullptr)
+    if (m_scene->Brain() == nullptr)
         return nullptr;
-    NS::Scene::VirtualCameraComponent* active = m_scene->m_brain->ActiveVirtualCamera();
+    NS::Scene::VirtualCameraComponent* active = m_scene->Brain()->ActiveVirtualCamera();
     return active ? active->Owner() : nullptr;
 }
 
@@ -413,9 +413,9 @@ void LevelEditorController::RefreshGizmoSelectables()
 
     // 実プレイヤーも掴める。 objects には属さないが、 ビューポート直クリックを Player 選択へ流すため候補に積む
     // pick OBB は player の cube mesh と同じ unit 半径。 world scale 0.8/1.8/0.8 は Root().WorldMatrix() が持つ
-    if (m_scene->m_player)
+    if (m_scene->PlayerRef())
     {
-        m_selectablePtrs.push_back(m_scene->m_player.get());
+        m_selectablePtrs.push_back(m_scene->PlayerRef());
         m_selectableHalfExtents.push_back(kCellHalfExtents);
     }
 
@@ -466,10 +466,10 @@ NS::Editor::SetSpawnCommand::SpawnState LevelEditorController::CurrentSpawnState
 
 void LevelEditorController::SyncPlayerSpawnFromTransform() noexcept
 {
-    if (m_specialSelection != SpecialSelection::Player || !m_scene->m_player)
+    if (m_specialSelection != SpecialSelection::Player || !m_scene->PlayerRef())
         return;
 
-    NS::Scene::Transform& root = m_scene->m_player->Root();
+    NS::Scene::Transform& root = m_scene->PlayerRef()->Root();
     const bool drivingPlayer = m_gizmo.IsDragging() && m_gizmo.Selected() == &root;
     if (drivingPlayer)
     {
@@ -558,9 +558,9 @@ void LevelEditorController::SelectPlayer() noexcept
 
     // 実プレイヤーを掴んで動かせるよう、 ギズモを player Transform へ貼り Object ツールへ切替える
     SetObjectToolActive(true);
-    if (m_scene->m_player)
+    if (m_scene->PlayerRef())
     {
-        m_gizmo.SetSelected(&m_scene->m_player->Root());
+        m_gizmo.SetSelected(&m_scene->PlayerRef()->Root());
         m_lastGizmoSelected = m_gizmo.Selected();
     }
     else
@@ -582,17 +582,17 @@ void LevelEditorController::SelectCamera() noexcept
 
 NS::Scene::PlacedVirtualCamera* LevelEditorController::SelectedAreaCamera() noexcept
 {
-    if (m_selectedCameraIndex >= m_scene->m_areaCameras.size())
+    if (m_selectedCameraIndex >= m_scene->AreaCameras().size())
         return nullptr;
-    return m_scene->m_areaCameras[m_selectedCameraIndex].cam;
+    return m_scene->AreaCameras()[m_selectedCameraIndex].cam;
 }
 
 void LevelEditorController::SyncSelectedCameraVolumeFromComponent() noexcept
 {
     if (m_selectedCameraIndex >= m_scene->Level().cameraVolumes.size() ||
-        m_selectedCameraIndex >= m_scene->m_areaCameras.size())
+        m_selectedCameraIndex >= m_scene->AreaCameras().size())
         return;
-    NS::Scene::PlacedVirtualCamera* cam = m_scene->m_areaCameras[m_selectedCameraIndex].cam;
+    NS::Scene::PlacedVirtualCamera* cam = m_scene->AreaCameras()[m_selectedCameraIndex].cam;
     if (cam == nullptr)
         return;
 
@@ -736,7 +736,7 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
         return;
     }
     // ビューポートでプレイヤーをピックしたら Player 特殊選択へ流す。 移動 / 回転 / undo は同じ経路に乗る
-    if (m_scene->m_player && selected == &m_scene->m_player->Root())
+    if (m_scene->PlayerRef() && selected == &m_scene->PlayerRef()->Root())
     {
         m_specialSelection = SpecialSelection::Player;
         m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
@@ -788,9 +788,9 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
         }
     }
     // Player 選択中はギズモを実プレイヤーへ貼り直す。 rebuild / mode 切替を跨いでも掴める状態を保つ
-    if (m_specialSelection == SpecialSelection::Player && m_scene->m_player)
+    if (m_specialSelection == SpecialSelection::Player && m_scene->PlayerRef())
     {
-        NS::Scene::Transform* root = &m_scene->m_player->Root();
+        NS::Scene::Transform* root = &m_scene->PlayerRef()->Root();
         if (m_gizmo.Selected() != root)
             m_gizmo.SetSelected(root);
         m_lastGizmoSelected = root;
