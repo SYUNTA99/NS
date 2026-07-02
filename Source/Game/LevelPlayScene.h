@@ -11,7 +11,6 @@
 
 #include "Framework/Core/EditorAccess.h"
 #include "Framework/Math/Math.h"
-#include "Framework/Physics/PhysicsWorld.h"
 #include "Framework/Scene/SceneBase.h"
 #include "Game/Blocks/LedgeEdges.h"
 #include "Game/CameraRig.h"
@@ -121,8 +120,7 @@ private:
     // クリア / 死亡からレベル再開へ繋ぐ暗転 / 明転を全画面へ重ねる
     std::unique_ptr<NS::Graphics::ScreenFade> m_screenFade;
 
-    // 借用元なので m_player より前に宣言する。 player を先に破棄し CMC の無効参照を防ぐ
-    NS::Physics::PhysicsWorld m_physicsWorld;
+    // CameraRig が Movement を借用するため m_cameraRig より前に宣言する
     std::unique_ptr<Player> m_player;
 
     // 配置物の単一所有リスト。 grid / slope / hazard / water / deco / 自由配置物すべてを

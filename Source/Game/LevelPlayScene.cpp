@@ -719,10 +719,13 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
     m_objectSourceIndices.clear();
     m_instancedBlocks.clear();
     m_hazardView.clear();
-    m_physicsWorld.Clear();
+
+    // 衝突 world は基底 SceneBase が所有する。build のたびに Clear -> Add* -> BuildBroadphase で満たし直す
+    auto* physics = &Physics();
+    physics->Clear();
 
     m_objects.reserve(m_level.objects.size());
-    m_physicsWorld.ReserveAabbs(m_level.objects.size());
+    physics->ReserveAabbs(m_level.objects.size());
 
     // ファクトリは mesh / material を AssetManager から借りる。 app 不在の起動前 / テストでは何も組まない
     auto* app = NS::App::Application::Get();
@@ -754,20 +757,20 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
         for (NS::Scene::Component* comp : obj->Components())
         {
             if (auto* sphere = dynamic_cast<NS::Scene::SphereColliderComponent*>(comp))
-                m_physicsWorld.AddSphere(sphere->WorldSphere());
+                physics->AddSphere(sphere->WorldSphere());
             else if (auto* capsule = dynamic_cast<NS::Scene::CapsuleColliderComponent*>(comp))
-                m_physicsWorld.AddCapsule(capsule->WorldCapsule());
+                physics->AddCapsule(capsule->WorldCapsule());
             else if (auto* box = dynamic_cast<NS::Scene::BoxColliderComponent*>(comp))
             {
                 // 同じ Box でも gridAligned なら軸並行 AABB、 自由配置なら回転込み OBB
                 if (gridAligned)
-                    m_physicsWorld.AddAabb(box->WorldAABB());
+                    physics->AddAabb(box->WorldAABB());
                 else
-                    m_physicsWorld.AddObb(box->WorldOBB());
+                    physics->AddObb(box->WorldOBB());
             }
             else if (auto* slope = dynamic_cast<NS::Scene::SlopeColliderComponent*>(comp))
                 for (const auto& tri : slope->WorldTriangles())
-                    m_physicsWorld.AddTriangle(tri);
+                    physics->AddTriangle(tri);
             else if (dynamic_cast<NS::Scene::HazardComponent*>(comp) != nullptr)
             {
                 // hazard の damage は固形 AABB とは別経路の毎フレーム重なり判定で効くため view にも積む
@@ -810,14 +813,14 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
     m_ledgeEdges = NS::Game::Blocks::ComputeTopLedgeEdges(m_level);
 #endif
 
-    m_physicsWorld.BuildBroadphase();
+    physics->BuildBroadphase();
 
     if (m_player)
     {
-        m_player->Movement().SetPhysicsWorld(&m_physicsWorld);
+        m_player->Movement().SetPhysicsWorld(physics);
 
         // 接地シャドウは grid + 自由物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
-        std::vector<NS::Math::AABB> shadowReceivers(m_physicsWorld.Aabbs().begin(), m_physicsWorld.Aabbs().end());
+        std::vector<NS::Math::AABB> shadowReceivers(physics->Aabbs().begin(), physics->Aabbs().end());
         for (std::size_t i = 0; i < m_objects.size(); ++i)
         {
             const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];

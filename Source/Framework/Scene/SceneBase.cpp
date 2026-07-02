@@ -3,8 +3,10 @@
 #include "Framework/Graphics/RenderSettings.h"
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/RenderContext.h"
+#include "Framework/Scene/SubsystemRegistry.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace NS::Scene
 {
@@ -71,6 +73,34 @@ namespace NS::Scene
 
         for (IRenderable* r : transparent)
             r->Draw(context);
+    }
+
+    void SceneBase::CreateSceneSubsystems()
+    {
+        for (const SubsystemEntry& entry : SubsystemRegistry::Get().Entries())
+        {
+            if (entry.tier != SubsystemTier::Scene)
+                continue;
+            if (entry.shouldCreate != nullptr && !entry.shouldCreate(*this))
+                continue;
+            if (m_subsystems.find(entry.type) != m_subsystems.end())
+                continue;
+            std::unique_ptr<SceneSubsystem> sub = entry.factory();
+            sub->Initialize(*this);
+            m_subsystems.emplace(entry.type, std::move(sub));
+        }
+    }
+
+    void SceneBase::DeinitSceneSubsystems()
+    {
+        // 解放フックだけ回し、実体の破棄は scene と共に基底 collection に委ねる
+        // 借用元 (CMC 等) が生存中に service を消さず、派生メンバより後に service が死ぬ順序を保つ
+        for (auto& [type, sub] : m_subsystems)
+        {
+            (void)type;
+            if (sub)
+                sub->Deinitialize();
+        }
     }
 
 } // namespace NS::Scene

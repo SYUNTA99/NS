@@ -24,7 +24,12 @@
 /// 将来拡張: SceneManager で push/pop/replace により複数 SceneBase の切替対応予定
 
 #include "Framework/Graphics/RenderSettings.h"
+#include "Framework/Physics/PhysicsWorld.h"
+#include "Framework/Scene/SceneSubsystem.h"
 
+#include <memory>
+#include <typeindex>
+#include <unordered_map>
 #include <vector>
 
 namespace NS::Scene
@@ -63,6 +68,29 @@ namespace NS::Scene
         /// IRenderable Component の自己解除。MeshRendererComponent 等が OnEndPlay で呼ぶ
         virtual void UnregisterRenderable(IRenderable* renderable);
 
+        /// 型で service を取得する。scene tier を先に見て、無ければ app tier provider へ委譲する
+        /// どちらにも無ければ nullptr を返す
+        template <class T> [[nodiscard]] T* GetSubsystem() noexcept
+        {
+            const std::type_index key{typeid(T)};
+            if (const auto it = m_subsystems.find(key); it != m_subsystems.end())
+                return static_cast<T*>(it->second.get());
+            if (m_appProvider != nullptr)
+                return static_cast<T*>(m_appProvider->FindAppSubsystem(key));
+            return nullptr;
+        }
+
+        /// app tier service の解決口を差し込む。SceneManager が OnStart 前に設定する
+        void SetSubsystemProvider(ISubsystemProvider* provider) noexcept { m_appProvider = provider; }
+
+        /// 登録テーブルの scene tier を走査し shouldCreate 通過分を生成・Initialize する
+        /// SceneManager が OnStart 直前に呼ぶ。生成済みの型は再生成しない
+        void CreateSceneSubsystems();
+
+        /// 生成済みの scene tier service を Deinitialize する。SceneManager が OnShutdown 後に呼ぶ
+        /// 実体の破棄は scene と共に行われ、借用元より後に service が死ぬ順序を保つ
+        void DeinitSceneSubsystems();
+
     protected:
         /// Opaque バケットの Renderable を登録順に描画する。Game が OnRenderScene から呼ぶ
         void DrawOpaque(const RenderContext& context);
@@ -83,9 +111,22 @@ namespace NS::Scene
         [[nodiscard]] NS::Graphics::RenderSettings ResolveSceneSettings(
             const NS::Graphics::RenderSettings& projectDefaults);
 
+        /// 派生が build 時に衝突 world を満たし、借用元へ渡すための可変ハンドル
+        /// 全 scene が 1 個持ち、当たりの無い scene では空のまま使われない
+        [[nodiscard]] NS::Physics::PhysicsWorld& Physics() noexcept { return m_physicsWorld; }
+
     private:
+        /// 全 scene が 1 個持つ衝突 world。当たりの有る scene だけが build で満たし、無ければ空のまま
+        /// 借用する CMC は派生 scene のメンバで先に死ぬため、基底のこれは常に借用元より後まで生存する
+        NS::Physics::PhysicsWorld m_physicsWorld;
+
         /// 登録された全 IRenderable で非所有。Game ではなく engine 側のこの基底が一元管理する
         std::vector<IRenderable*> m_renderables;
+
+        /// type_index キーの scene tier service。scene と生成・破棄を共にする所有 collection
+        std::unordered_map<std::type_index, std::unique_ptr<SceneSubsystem>> m_subsystems;
+        /// app tier service の解決口で非所有。未設定なら app tier は解決しない
+        ISubsystemProvider* m_appProvider = nullptr;
     };
 
 } // namespace NS::Scene
