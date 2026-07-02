@@ -34,10 +34,7 @@
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
 #include "Framework/Scene/Components/BoxColliderComponent.h"
-#include "Framework/Scene/Components/CapsuleColliderComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
-#include "Framework/Scene/Components/SlopeColliderComponent.h"
-#include "Framework/Scene/Components/SphereColliderComponent.h"
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/Transform.h"
@@ -46,7 +43,6 @@
 #include "Game/Theme/ThemeRegistry.h"
 
 #include <algorithm>
-#include <cmath>
 
 using namespace NS::Game::Theme;
 
@@ -129,9 +125,7 @@ void LevelPlayScene::OnStart()
                         "LevelPlayScene: block 用 TextureArray の slice 読込で失敗あり、 magenta fallback で続行");
     }
 
-    m_instanceBatcher = NS::Graphics::InstanceBatcher::Create();
-    if (!m_instanceBatcher->IsValid())
-        NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelPlayScene: InstanceBatcher 構築失敗、 block 描画はスキップされる");
+    m_world.CreateBatcher();
 
     // 仮の skybox。 kurt 6-face PNG をロードし、 取得できなければ
     // 1x1 マゼンタ cubemap fallback で続行する。 描画は OnRenderScene 末尾
@@ -265,8 +259,8 @@ void LevelPlayScene::OnUpdate()
     {
         app->Assets().ReloadAllShaders();
         // block 描画の instanced shader は AssetManager 管理外で自前コンパイルなので個別に reload する
-        if (m_instanceBatcher)
-            m_instanceBatcher->ReloadShaders();
+        if (auto* batcher = m_world.Batcher())
+            batcher->ReloadShaders();
     }
 
 #if !defined(NS_SHIPPING)
@@ -368,7 +362,7 @@ void LevelPlayScene::TickPlay()
         playerCapsule.center = m_player->Root().Position();
         playerCapsule.radius = m_player->Movement().CapsuleRadius();
         playerCapsule.halfHeight = m_player->Movement().CapsuleHalfHeight();
-        for (auto* hazard : m_hazardView)
+        for (auto* hazard : m_world.HazardView())
         {
             if (!hazard)
                 continue;
@@ -461,18 +455,19 @@ void LevelPlayScene::AdvanceFade(float dt) noexcept
 void LevelPlayScene::SnapshotDisplayBlocks()
 {
     // 各配置物 GameObject の Snapshot は edit / play 共通。 静的 display object なので常時
-    for (auto& obj : m_objects)
+    for (auto& obj : m_world.Objects())
         obj->Root().Snapshot();
 }
 
 void LevelPlayScene::UpdateDisplayBlocks()
 {
     // gridAligned な配置物のみ OnUpdate する。 自由配置物は旧挙動を保つため OnUpdate 対象外
-    for (std::size_t i = 0; i < m_objects.size(); ++i)
+    const auto& objects = m_world.Objects();
+    for (std::size_t i = 0; i < objects.size(); ++i)
     {
-        const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
+        const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_world.SourceIndices()[i]];
         if ((entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
-            m_objects[i]->OnUpdate();
+            objects[i]->OnUpdate();
     }
 }
 
@@ -535,7 +530,8 @@ void LevelPlayScene::OnRenderScene()
 
     // Block 描画は InstanceBatcher bucket 経由に統一。 MeshRendererComponent が非アクティブなので旧 per-block
     // 経路は通らない
-    if (m_instanceBatcher && m_instanceBatcher->IsValid())
+    auto* batcher = m_world.Batcher();
+    if (batcher && batcher->IsValid())
     {
         // 組み込み cube と共有 block material は AssetManager 所有。 毎フレームここで 1 度だけ引く
         auto& assets = app->Assets();
@@ -555,22 +551,22 @@ void LevelPlayScene::OnRenderScene()
 
         // instanceable 判定 / 近傍マスク / slice は RebuildBlocksFromLevelData で焼き済。 ここは焼いた slice と
         // 補間 world matrix だけを読み、 毎フレームの文字列走査と近傍マスク O(N^2) を持ち込まない
-        m_instanceBatcher->BeginFrame();
+        batcher->BeginFrame();
         // 個体色は全 instanced block 共通の solid 色。 theme tint は FrameCB の lightColor/ambientColor で行う
-        for (const InstancedBlock& block : m_instancedBlocks)
+        for (const auto& block : m_world.InstancedBlocks())
         {
             NS::Graphics::BlockInstance inst{};
-            inst.worldMatrix = m_objects[block.objectIndex]->Root().InterpolatedWorldMatrix(ctx.alpha);
+            inst.worldMatrix = m_world.Objects()[block.objectIndex]->Root().InterpolatedWorldMatrix(ctx.alpha);
             inst.baseColor = NS::Game::Blocks::kSolidBaseColor;
             inst.textureSlice = block.textureSlice;
-            m_instanceBatcher->Submit(cubeMesh, blockMat, inst);
+            batcher->Submit(cubeMesh, blockMat, inst);
         }
 
         // TextureArray を t0 に bind してから FlushAll。 Material::Bind では slot 0 を触っていない
         // SetTexture せず構築したため、 ここで bind した SRV が bucket 描画まで残る
         if (auto* blockTextures = assets.TextureArrayByName("block"))
             ctx.renderer->Commands().SetTextureArray(*blockTextures, 0u, NS::Graphics::ShaderType::Pixel);
-        m_instanceBatcher->FlushAll(*ctx.renderer);
+        batcher->FlushAll(*ctx.renderer);
     }
 
     // 不透明 IRenderable。各 Draw が自分の Pipeline を set する。 基底が bucket 分類して登録順に呼ぶ
@@ -623,7 +619,7 @@ void LevelPlayScene::OnRenderScene()
         float coyoteReach = 0.0f;
         if (m_player)
             coyoteReach = m_player->Movement().MaxSpeed() * m_player->Movement().CoyoteTime();
-        for (const NS::Game::Blocks::LedgeEdge& edge : m_ledgeEdges)
+        for (const NS::Game::Blocks::LedgeEdge& edge : m_world.LedgeEdges())
         {
             const NS::Math::Vector3 off{edge.outward.x * coyoteReach, 0.0f, edge.outward.z * coyoteReach};
             const NS::Math::Vector3 outerA{edge.a.x + off.x, edge.a.y, edge.a.z + off.z};
@@ -685,8 +681,8 @@ void LevelPlayScene::OnShutdown()
     }
     if (m_cameraRig)
         m_cameraRig->OnEndPlay();
-    for (auto it = m_objects.rbegin(); it != m_objects.rend(); ++it)
-        (*it)->OnEndPlay();
+    // 配置物は逆順の OnEndPlay ごと LevelWorld が畳む
+    m_world.Clear();
     if (m_player)
         m_player->OnEndPlay();
 
@@ -697,133 +693,32 @@ void LevelPlayScene::OnShutdown()
     m_areaCameras.clear();
     m_cameraRig.reset();
     m_player.reset();
-    m_objects.clear();
-    m_objectSourceIndices.clear();
-    m_instancedBlocks.clear();
-    m_hazardView.clear();
 
     // Skybox / InstanceBatcher は Renderer の DeviceContext を ComPtr で握るため、 Application の Renderer より
     // 先に破棄する。 組み込み / leaf / 共有 material / block TextureArray / skinned model は AssetManager が Clear
     // で解放する
-    m_instanceBatcher.reset();
+    m_world.ResetBatcher();
     m_skybox.reset();
     m_screenFade.reset();
 }
 
 void LevelPlayScene::RebuildBlocksFromLevelData()
 {
-    for (auto it = m_objects.rbegin(); it != m_objects.rend(); ++it)
-        (*it)->OnEndPlay();
-    m_objects.clear();
-    m_objectSourceIndices.clear();
-    m_instancedBlocks.clear();
-    m_hazardView.clear();
-
-    // 衝突 world は基底 SceneBase が所有する。build のたびに Clear -> Add* -> BuildBroadphase で満たし直す
-    auto* physics = &Physics();
-    physics->Clear();
-
-    m_objects.reserve(m_level.objects.size());
-    physics->ReserveAabbs(m_level.objects.size());
-
-    // ファクトリは mesh / material を AssetManager から借りる。 app 不在の起動前 / テストでは何も組まない
+    // 構築は LevelWorld の一本道。 app 不在の起動前 / テストでは assets を渡さず何も組まない
     auto* app = NS::App::Application::Get();
-    if (app == nullptr)
-        return;
-    auto& assets = app->Assets();
-
-    for (std::size_t objectIndex = 0; objectIndex < m_level.objects.size(); ++objectIndex)
-    {
-        const NS::Game::Level::ObjectInstance& entry = m_level.objects[objectIndex];
-
-        auto obj = NS::Game::Blocks::BuildPlacedObject(entry, assets, m_level.materialPaths);
-        if (!obj)
-            continue; // 組み立てる component が無いオブジェクトはファクトリが nullptr を返す
-
-        obj->AttachScene(this);
-        obj->OnStart();
-
-        const bool gridAligned = (entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0;
-
-        // grid solid は個別 Draw を殺して InstanceBatcher へ委ねる。 描画段が m_objects を直読みして instanceable 判定
-        // OnStart で RegisterRenderable 済なので MeshRenderer を非アクティブにするだけでよい
-        if (NS::Game::Blocks::IsGridSolidObject(entry))
-            if (auto* mesh = NS::Game::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*obj))
-                mesh->SetActive(false);
-
-        // collider component を全部登録する。 同型を重ねれば複合形状として当たりに効く
-        bool hazardRegistered = false;
-        for (NS::Scene::Component* comp : obj->Components())
-        {
-            if (auto* sphere = dynamic_cast<NS::Scene::SphereColliderComponent*>(comp))
-                physics->AddSphere(sphere->WorldSphere());
-            else if (auto* capsule = dynamic_cast<NS::Scene::CapsuleColliderComponent*>(comp))
-                physics->AddCapsule(capsule->WorldCapsule());
-            else if (auto* box = dynamic_cast<NS::Scene::BoxColliderComponent*>(comp))
-            {
-                // 同じ Box でも gridAligned なら軸並行 AABB、 自由配置なら回転込み OBB
-                if (gridAligned)
-                    physics->AddAabb(box->WorldAABB());
-                else
-                    physics->AddObb(box->WorldOBB());
-            }
-            else if (auto* slope = dynamic_cast<NS::Scene::SlopeColliderComponent*>(comp))
-                for (const auto& tri : slope->WorldTriangles())
-                    physics->AddTriangle(tri);
-            else if (dynamic_cast<NS::Scene::HazardComponent*>(comp) != nullptr)
-            {
-                // hazard の damage は固形 AABB とは別経路の毎フレーム重なり判定で効くため view にも積む
-                if (!hazardRegistered)
-                {
-                    m_hazardView.push_back(obj.get());
-                    hazardRegistered = true;
-                }
-            }
-        }
-        // water / deco は collider を持たないため当たり無し・ view 不要
-
-        m_objectSourceIndices.push_back(objectIndex);
-        m_objects.push_back(std::move(obj));
-    }
-
-    // 生成直後は previous PRS が原点/単位回転のため Snapshot で current に揃える
-    // 欠かすと InterpolatedWorldMatrix(alpha) が原点→配置先を補間し編集のたびに全配置物が振れる
-    for (auto& obj : m_objects)
-        obj->Root().Snapshot();
-
-    // instanced block の静的属性を焼く。 描画ループの per-frame 文字列走査と近傍マスクの O(N^2) を畳む
-    // instancing は描画段の判断で、 grid 固形だけを instanced bucket へ流す。 position は Snapshot 後で確定済
-    for (std::size_t i = 0; i < m_objects.size(); ++i)
-    {
-        const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
-        if (!NS::Game::Blocks::IsGridSolidObject(entry))
-            continue;
-        const NS::Math::Vector3 wp = m_objects[i]->Root().Position();
-        const std::int16_t x = static_cast<std::int16_t>(std::lround(wp.x));
-        const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
-        const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
-        const std::uint8_t mask = NS::Game::Blocks::ComputeNeighborMask(m_level, x, y, z);
-        const std::uint16_t slice = NS::Game::Blocks::LookupTextureSlice(static_cast<ThemeId>(m_level.themeId), mask);
-        m_instancedBlocks.push_back(InstancedBlock{i, static_cast<float>(slice)});
-    }
-
-#if !defined(NS_SHIPPING)
-    // コヨーテ debug 用に踏み外せる縁を焼く。 level が変わらない限り不変なのでここで 1 度だけ
-    m_ledgeEdges = NS::Game::Blocks::ComputeTopLedgeEdges(m_level);
-#endif
-
-    physics->BuildBroadphase();
+    m_world.Rebuild(m_level, *this, Physics(), app ? &app->Assets() : nullptr);
 
     if (m_player)
     {
         // 接地シャドウは grid + 自由物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
-        std::vector<NS::Math::AABB> shadowReceivers(physics->Aabbs().begin(), physics->Aabbs().end());
-        for (std::size_t i = 0; i < m_objects.size(); ++i)
+        std::vector<NS::Math::AABB> shadowReceivers(Physics().Aabbs().begin(), Physics().Aabbs().end());
+        const auto& objects = m_world.Objects();
+        for (std::size_t i = 0; i < objects.size(); ++i)
         {
-            const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_objectSourceIndices[i]];
+            const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_world.SourceIndices()[i]];
             if ((entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
                 continue;
-            if (auto aabb = NS::Game::Blocks::ColliderWorldAABB(*m_objects[i]))
+            if (auto aabb = NS::Game::Blocks::ColliderWorldAABB(*objects[i]))
                 shadowReceivers.push_back(*aabb);
         }
         m_player->Shadow().SetCollisionWorld(shadowReceivers);

@@ -12,9 +12,9 @@
 #include "Framework/Core/EditorAccess.h"
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/SceneBase.h"
-#include "Game/Blocks/LedgeEdges.h"
 #include "Game/CameraRig.h"
 #include "Game/Level/LevelData.h"
+#include "Game/Level/LevelWorld.h"
 #include "Game/Level/PlayMode.h"
 #include "Game/Level/PlayState.h"
 
@@ -25,7 +25,6 @@
 
 namespace NS::Graphics
 {
-    class InstanceBatcher;
     class Skybox;
     class ScreenFade;
 } // namespace NS::Graphics
@@ -69,6 +68,9 @@ public:
     [[nodiscard]] NS::Game::Level::PlayState& Play() noexcept { return m_play; }
     [[nodiscard]] NS::Game::Level::PlayMode& PlayModeSub() noexcept { return m_playMode; }
 
+    /// LevelData から組まれた runtime world。 editor の選択 / gizmo と描画がここから観測する
+    [[nodiscard]] NS::Game::Level::LevelWorld& World() noexcept { return m_world; }
+
 private:
     /// テーマの lighting をシーン単位の上書きとして宣言する。push は書かず override を返すだけ
     NS::Graphics::RenderSettingsOverride BuildSceneOverride() override;
@@ -80,7 +82,7 @@ private:
     /// false で player を凍結し follow / area camera を休止する editor の編集モード用
     void SetPlaying(bool playing) noexcept;
 
-    /// dirty flag 検出時のみ m_objects と衝突世界を LevelData から再構築する
+    /// dirty flag 検出時のみ runtime world と衝突世界を LevelData から再構築する
     void RebuildBlocksFromLevelData();
 
     /// m_objectIds を m_level.objects と同サイズの連番へ再構築する。 objects 全置換直後に呼ぶ
@@ -115,7 +117,6 @@ private:
     // scene は使う箇所で都度引く。 メンバとして控えず単一所有元は AssetManager のみ
 
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
-    std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
 
     // クリア / 死亡からレベル再開へ繋ぐ暗転 / 明転を全画面へ重ねる
     std::unique_ptr<NS::Graphics::ScreenFade> m_screenFade;
@@ -123,25 +124,8 @@ private:
     // CameraRig が Movement を借用するため m_cameraRig より前に宣言する
     std::unique_ptr<Player> m_player;
 
-    // 配置物の単一所有リスト。 grid / slope / hazard / water / deco / 自由配置物すべてを
-    // generic GameObject として保持する。 RebuildBlocksFromLevelData がファクトリ経由で作り直す
-    std::vector<std::unique_ptr<NS::Scene::GameObject>> m_objects;
-    // m_objects[i] に対応する m_level.objects の添字で m_objects と同長・ 1:1
-    std::vector<std::size_t> m_objectSourceIndices;
-
-    // instanced 描画する grid solid block の静的属性キャッシュ。 instanceable 判定 / 近傍マスク / texture slice は
-    // level + theme が変わらない限り不変なので RebuildBlocksFromLevelData で 1 度だけ焼く。 描画ループは
-    // world matrix だけを毎フレーム読む。 theme は load 時のみ変わり必ず rebuild を伴うので stale にならない
-    struct InstancedBlock
-    {
-        std::size_t objectIndex = 0; // m_objects への添字。 補間 world matrix の取得に使う
-        float textureSlice = 0.0f;
-    };
-    std::vector<InstancedBlock> m_instancedBlocks;
-
-    // コヨーテ debug 用に焼く踏み外せる縁の world 線分。 level + theme 不変なので RebuildBlocksFromLevelData で 1
-    // 度焼く
-    std::vector<NS::Game::Blocks::LedgeEdge> m_ledgeEdges;
+    // LevelData から組んだ runtime world。 配置物 / instanced 描画キャッシュ / hazard view / コヨーテ縁を所有する
+    NS::Game::Level::LevelWorld m_world;
 
     std::unique_ptr<CameraRig> m_cameraRig;
 
@@ -193,10 +177,6 @@ private:
 
     // 直近 OnRenderScene で解決した scene 段設定。 editor の RenderSettings パネルが friend で読む
     NS::Graphics::RenderSettings m_lastResolvedSettings{};
-
-    // hazard の damage 走査 view。 衝突応答とは別経路の芯線 vs AABB で per-frame に当てるため build 時に積む
-    // 所有は m_objects 側、 ここは観測のみ
-    std::vector<NS::Scene::GameObject*> m_hazardView;
 
     /// 差分フレームのみ cubemap を再ロードするため前回パスを保持する
     std::filesystem::path m_loadedSkyboxPath{};
