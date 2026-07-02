@@ -93,11 +93,6 @@ namespace NS::Game::Blocks
     /// 描画 / 衝突 / editor が具象型を知らずに Component を取り出す共通窓口
     template <class T> [[nodiscard]] T* FindComponent(NS::Scene::GameObject& obj) noexcept
     {
-        for (NS::Scene::Component* comp : obj.Components())
-        {
-            if (T* typed = dynamic_cast<T*>(comp))
-                return typed;
-        }
-        return nullptr;
+        return obj.FindComponent<T>();
     }
 } // namespace NS::Game::Blocks
