@@ -178,25 +178,9 @@ void LevelPlayScene::OnStart()
     m_director->OnStart();
 
     // 出荷も開発も、 起動直後はプレイ可能な状態にする。 開発時は editor が直後に編集モードへ切替える
-    SetPlaying(true);
-}
-
-void LevelPlayScene::SetPlaying(bool playing) noexcept
-{
-    m_playing = playing;
-    if (playing)
-    {
-        // 編集中の変形を確定した最新 level でプレイするため、 collision snapshot を作り直す
-        // CommitTransformEdit は dirty を立てないため、 ここで突入時に一度作り直して取りこぼしを防ぐ
-        RebuildWorld();
-        m_director->Flow().EnterPlay();
-        m_director->Flow().SetActive(true);
-    }
-    else
-    {
-        m_director->Flow().ExitPlay();
-        m_director->Flow().SetActive(false);
-    }
+    // 編集中の変形を確定した最新 level で world を組み直してからプレイへ入る。 進行役は生成時から起きている
+    RebuildWorld();
+    m_director->Flow().EnterPlay();
 }
 
 void LevelPlayScene::OnUpdate()
@@ -204,16 +188,6 @@ void LevelPlayScene::OnUpdate()
     auto* app = NS::App::Application::Get();
     if (app == nullptr)
         return;
-
-    // F5 で編集中の HLSL を再起動なしで反映する。 プレイ中の F5 はエディタ UI の表示トグルに使うため
-    // ここでは編集モード中だけシェーダを再読み込みする。 ImGui 入力中は誤爆を防ぐため無効化する
-    if (!m_playing && !app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::Platform::Key::F5))
-    {
-        app->Assets().ReloadAllShaders();
-        // block 描画の instanced shader は AssetManager 管理外で自前コンパイルなので個別に reload する
-        if (auto* batcher = m_world.Batcher())
-            batcher->ReloadShaders();
-    }
 
 #if !defined(NS_SHIPPING)
     // F2 で コヨーテ debug 描画 すなわち 縁の紫線 / カプセル / コヨーテジャンプの赤線 を切替える

@@ -115,10 +115,6 @@ private:
     /// 基底 OnRender が scene 解決後に呼ぶ描画本体。 ワールドを描き編集ギズモ等は描かない
     void OnRenderScene() override;
 
-    /// プレイ開始 / 停止を切替える。 true で spawn + player/follow camera 有効化、
-    /// false で player を凍結し follow / area camera を休止する editor の編集モード用
-    void SetPlaying(bool playing) noexcept;
-
     /// world の編集 id を m_level.objects と同サイズの連番へ再構築する。 objects 全置換直後に呼ぶ
     void RebuildObjectIds() noexcept;
 
@@ -155,9 +151,6 @@ private:
 
     // プレイ進行役。 PlayState / PlayMode と進行の分岐は配下の PlayFlowComponent が所有する
     std::unique_ptr<NS::Game::Level::PlayDirector> m_director;
-
-    // プレイ更新の有効フラグ。 編集モード中は false にして物理 / ルールを止める。 editor が SetPlaying で切替
-    bool m_playing = false;
 
     // コヨーテ debug 描画 すなわち 縁の紫線 / カプセル / コヨーテジャンプの赤線 の表示トグル。 F2 で切替える
     bool m_debugCoyoteDraw = true;

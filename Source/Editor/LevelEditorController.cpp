@@ -13,6 +13,7 @@
 #include "Framework/App/Application.h"
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Graphics/DebugDraw.h"
+#include "Framework/Graphics/InstanceBatcher.h"
 #include "Framework/Physics/SweptOBB.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
@@ -49,7 +50,7 @@ NS::Game::Level::LevelData& LevelEditorController::Level() noexcept
 
 NS::Game::Level::PlayState& LevelEditorController::Play() noexcept
 {
-    return m_scene->Play();
+    return m_scene->Director().Flow().Play();
 }
 
 void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
@@ -100,8 +101,9 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_gizmo.SetImGui(imgui);
     RefreshGizmoSelectables();
 
-    // scene は OnStart でプレイ開始済。 player 凍結 / free-fly camera 有効の編集モードへ切替える
-    m_scene->SetPlaying(false);
+    // scene は OnStart でプレイ開始済。 進行役を寝かせ player 凍結 / free-fly camera 有効の編集モードへ切替える
+    m_scene->Director().Flow().ExitPlay();
+    m_scene->Director().Flow().SetActive(false);
     m_editorCameraRig->EditorCam().SetActive(true);
     m_mode = Mode::Edit;
 }
@@ -127,9 +129,11 @@ void LevelEditorController::EnterPlay() noexcept
     if (m_mode == Mode::Play)
         return;
     m_mode = Mode::Play;
-    // player spawn / 物理 / follow camera は scene が握る
-    m_scene->SetPlaying(true);
-    // SetPlaying(true) の rebuild を跨いでも生ポインタが残らないよう、 候補と選択を実体へ解決し直す
+    // 編集中の変形を確定した最新 level で world を組み直してから、 進行役を起こしてプレイへ入る
+    m_scene->RebuildWorld();
+    m_scene->Director().Flow().EnterPlay();
+    m_scene->Director().Flow().SetActive(true);
+    // プレイ突入の rebuild を跨いでも生ポインタが残らないよう、 候補と選択を実体へ解決し直す
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
     m_editor.SetActive(false);
@@ -142,8 +146,9 @@ void LevelEditorController::EnterEdit() noexcept
     if (m_mode == Mode::Edit)
         return;
     m_mode = Mode::Edit;
-    // player 凍結 / follow・area camera 休止 / play 状態リセットは scene が握る
-    m_scene->SetPlaying(false);
+    // 進行役を寝かせ player 凍結 / follow・area camera 休止 / play 状態リセットを行う
+    m_scene->Director().Flow().ExitPlay();
+    m_scene->Director().Flow().SetActive(false);
     // Play 中の rebuild を跨いだ選択を、 id から現在の実体へ貼り直してから編集へ戻る
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -158,7 +163,7 @@ void LevelEditorController::Tick()
     {
         TickEdit();
     }
-    else if (m_scene->Play().clearTriggered)
+    else if (Play().clearTriggered)
     {
         // クリア成立で編集へ戻す。 出荷にはこの controller が無いためクリア演出は別途必要
         EnterEdit();
@@ -170,6 +175,16 @@ void LevelEditorController::TickEdit()
     auto* app = NS::App::Application::Get();
     if (app == nullptr)
         return;
+
+    // F5 で編集中の HLSL を再起動なしで反映する。 プレイ中の F5 はエディタ UI の表示トグルに使うため
+    // 編集モードのここでだけ再読み込みする。 ImGui 入力中は誤爆を防ぐため無効化する
+    if (!app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::Platform::Key::F5))
+    {
+        app->Assets().ReloadAllShaders();
+        // block 描画の instanced shader は AssetManager 管理外で自前コンパイルなので個別に reload する
+        if (auto* batcher = m_scene->World().Batcher())
+            batcher->ReloadShaders();
+    }
 
     // Esc: Object モードで選択中ならまず選択解除に使い終了させない
     if (app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
@@ -701,7 +716,8 @@ void LevelEditorController::RenderColliderWireframes() noexcept
         if ((entry.flags & NS::Game::Level::kObjectFlagGridAligned) == 0)
         {
             // 自由配置物は Box があれば回転込み OBB、 球 / カプセルは collider 由来の AABB で出す
-            if (auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_scene->World().Objects()[i]))
+            if (auto* box =
+                    NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_scene->World().Objects()[i]))
             {
                 const NS::Physics::OBB obb = box->WorldOBB();
                 NS::Graphics::DebugDraw::OBB(obb.center, obb.axisX, obb.axisY, obb.axisZ, obb.halfExtents, freeColor);
@@ -713,7 +729,8 @@ void LevelEditorController::RenderColliderWireframes() noexcept
         }
         else if (NS::Game::Blocks::IsGridSolidObject(entry))
         {
-            if (auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_scene->World().Objects()[i]))
+            if (auto* box =
+                    NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_scene->World().Objects()[i]))
                 NS::Graphics::DebugDraw::AABB(box->WorldAABB(), gridColor);
         }
         // hazard 等の grid の非 solid は当たり形状を出さない
