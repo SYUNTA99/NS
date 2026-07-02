@@ -6,6 +6,7 @@
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
+#include "Framework/Scene/CameraSubsystem.h"
 #include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/HazardComponent.h"
@@ -176,7 +177,8 @@ namespace NS::Game::Level
         if (auto* player = scene->PlayerRef())
         {
             NS::Math::Vector3 camForward{0.0f, 0.0f, 1.0f};
-            if (auto* brain = scene->Brain())
+            auto* cameras = scene->GetSubsystem<NS::Scene::CameraSubsystem>();
+            if (auto* brain = (cameras != nullptr) ? cameras->Brain() : nullptr)
                 camForward = brain->ForwardHorizontal();
             player->InputComp().SetCameraForward(camForward);
             player->OnUpdate();

@@ -19,6 +19,7 @@
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
 #include "Framework/Scene/AssetManager.h"
+#include "Framework/Scene/CameraSubsystem.h"
 #include "Framework/Scene/Component.h"
 #include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
@@ -53,6 +54,18 @@ NS::Game::Level::PlayState& LevelEditorController::Play() noexcept
     return m_scene->Director().Flow().Play();
 }
 
+NS::Scene::CameraBrainComponent* LevelEditorController::Brain() const noexcept
+{
+    auto* cameras = (m_scene != nullptr) ? m_scene->GetSubsystem<NS::Scene::CameraSubsystem>() : nullptr;
+    return (cameras != nullptr) ? cameras->Brain() : nullptr;
+}
+
+NS::Scene::CameraComponent* LevelEditorController::MainCamera() const noexcept
+{
+    auto* cameras = (m_scene != nullptr) ? m_scene->GetSubsystem<NS::Scene::CameraSubsystem>() : nullptr;
+    return (cameras != nullptr) ? cameras->MainCamera() : nullptr;
+}
+
 void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
 {
     auto* app = NS::App::Application::Get();
@@ -83,15 +96,15 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_editorCameraRig->OnStart();
 
     // free-fly vcam を Brain へ登録する。 follow / area camera は scene が登録済
-    if (m_scene->Brain())
-        m_scene->Brain()->AddVirtualCamera(&m_editorCameraRig->EditorCam());
+    if (Brain())
+        Brain()->AddVirtualCamera(&m_editorCameraRig->EditorCam());
 
     // EditorMode に依存先を注入する
     m_editor.SetLevel(&m_scene->Level());
     m_editor.SetEditIds(&m_scene->World().EditIds(), &m_scene->World().NextEditId());
     m_editor.SetInput(&app->Input());
     m_editor.SetImGui(imgui);
-    m_editor.SetCameraComponent(m_scene->MainCamera());
+    m_editor.SetCameraComponent(MainCamera());
     m_editor.SetActive(true);
     // scene が OnStart で rebuild 済なので、 初回 Tick の二重 rebuild を抑制
     m_editor.ClearLevelDirty();
@@ -115,8 +128,8 @@ void LevelEditorController::Teardown()
     if (m_editorCameraRig)
     {
         // Brain は free-fly vcam を非所有参照する。 vcam を畳む前に Brain から外して dangling を避ける
-        if (m_scene != nullptr && m_scene->Brain())
-            m_scene->Brain()->RemoveVirtualCamera(&m_editorCameraRig->EditorCam());
+        if (m_scene != nullptr && Brain())
+            Brain()->RemoveVirtualCamera(&m_editorCameraRig->EditorCam());
         m_editorCameraRig->OnEndPlay();
     }
     m_editorCameraRig.reset();
@@ -208,8 +221,8 @@ void LevelEditorController::TickEdit()
     }
 
     // free-fly 更新後に実カメラへ反映し、 ギズモ / 編集の ray-pick が当フレームの視点を使えるようにする
-    if (m_scene->Brain())
-        m_scene->Brain()->Evaluate(1.0f);
+    if (Brain())
+        Brain()->Evaluate(1.0f);
 
     // 同時に 1 モードだけが LMB/R/Ctrl+Z を消費する。 Object 中は grid 入力を抑制しギズモへ回す
     // モード切替は EditorLayer の UI ボタン SetObjectToolActive から行う。 Tab は Edit↔Play 専用
@@ -217,14 +230,14 @@ void LevelEditorController::TickEdit()
     m_gizmo.SetActive(objectMode);
     m_editor.SetInputSuppressed(objectMode);
 
-    if (objectMode && m_editorCameraRig && m_scene->Brain())
+    if (objectMode && m_editorCameraRig && Brain())
     {
         // 毎フレーム live な scene から候補 span を作り直し、 選択を id → 実体へ解決し直す
         // Play 突入 / undo / promote の rebuild を跨いでも生ポインタが残らない fail-safe の要
         RefreshGizmoSelectables();
         ResolveSelectionFromId();
 
-        const auto vp = m_scene->Brain()->ViewProjection();
+        const auto vp = Brain()->ViewProjection();
         const auto viewport = app->Window().Size();
         const bool wasDragging = m_gizmoWasDragging;
         m_gizmo.Tick(vp, viewport);
@@ -303,13 +316,13 @@ void LevelEditorController::Render()
     RenderAreaCameraGizmos();
     RenderColliderWireframes();
     // 蓄積した DebugDraw 線をシーン描画後・ ImGui 前にまとめて 1 描画する
-    if (m_scene->Brain())
-        NS::Graphics::DebugDraw::Flush(app->Renderer(), m_scene->Brain()->ViewProjection());
+    if (Brain())
+        NS::Graphics::DebugDraw::Flush(app->Renderer(), Brain()->ViewProjection());
     // Toolbar UI を ImGui 経由で描画する。 Debug / Development build のみ実機能
     m_editor.Palette().Render();
     // Object モードのギズモは最前面の drawlist に重ねる
-    if (m_gizmo.IsActive() && m_scene->Brain())
-        m_gizmo.Render(m_scene->Brain()->ViewProjection(), app->Window().Size());
+    if (m_gizmo.IsActive() && Brain())
+        m_gizmo.Render(Brain()->ViewProjection(), app->Window().Size());
 }
 
 void LevelEditorController::SetObjectToolActive(bool active) noexcept
@@ -380,14 +393,14 @@ void LevelEditorController::SyncSelectedObjectComponentsFromComponent()
 
 NS::Scene::GameObject* LevelEditorController::CameraBrainObject() noexcept
 {
-    return m_scene->Brain() ? m_scene->Brain()->Owner() : nullptr;
+    return Brain() ? Brain()->Owner() : nullptr;
 }
 
 NS::Scene::GameObject* LevelEditorController::ActiveVirtualCameraObject() noexcept
 {
-    if (m_scene->Brain() == nullptr)
+    if (Brain() == nullptr)
         return nullptr;
-    NS::Scene::VirtualCameraComponent* active = m_scene->Brain()->ActiveVirtualCamera();
+    NS::Scene::VirtualCameraComponent* active = Brain()->ActiveVirtualCamera();
     return active ? active->Owner() : nullptr;
 }
 

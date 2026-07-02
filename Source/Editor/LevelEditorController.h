@@ -30,6 +30,8 @@ namespace NS::Scene
     class GameObject;
     class Transform;
     class PlacedVirtualCamera;
+    class CameraBrainComponent;
+    class CameraComponent;
 } // namespace NS::Scene
 
 namespace NS::UI
@@ -226,6 +228,11 @@ private:
 
     /// scene の level + 識別子ストアから編集対象 view を組む
     [[nodiscard]] NS::Game::Level::EditTarget SceneEditTarget() noexcept;
+
+    /// 描画カメラの窓口。 scene の CameraSubsystem から brain を引く。 未登録は nullptr
+    [[nodiscard]] NS::Scene::CameraBrainComponent* Brain() const noexcept;
+    /// brain が駆動する実カメラ。 brain 未登録・実カメラ未解決は nullptr
+    [[nodiscard]] NS::Scene::CameraComponent* MainCamera() const noexcept;
 
     /// 識別子でギズモ選択を貼り直す。 対象が消えていれば選択解除する
     void ReselectFreeObjectById(std::uint32_t id) noexcept;

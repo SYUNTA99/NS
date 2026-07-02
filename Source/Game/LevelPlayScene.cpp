@@ -6,6 +6,7 @@
 #include "Game/PlayerTuning.h"
 
 #include "Framework/Scene/AssetManager.h"
+#include "Framework/Scene/CameraSubsystem.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
@@ -170,6 +171,10 @@ void LevelPlayScene::OnStart()
     m_brain->AddVirtualCamera(&m_cameraRig->Follow());
     m_cameraHost->AttachScene(this);
     m_cameraHost->OnStart();
+
+    // 描画カメラの在り処を service へ公開する。 editor / 進行役は scene のメンバでなくこの窓口から引く
+    if (auto* cameras = GetSubsystem<NS::Scene::CameraSubsystem>())
+        cameras->SetBrain(m_brain);
 
     // level の cameraVolumes から area camera を生成し Brain へ登録する。 Brain 構築後に呼ぶ必要がある
     RebuildAreaCameras();
@@ -448,6 +453,10 @@ void LevelPlayScene::OnShutdown()
     m_world.Clear();
     if (m_player)
         m_player->OnEndPlay();
+
+    // brain 破棄前に service の参照を外し、 shutdown 中の消費者へ宙参照を渡さない
+    if (auto* cameras = GetSubsystem<NS::Scene::CameraSubsystem>())
+        cameras->SetBrain(nullptr);
 
     // Brain は vcam を非所有参照するので、 rig / area camera より先に host を畳んで無効参照を避ける
     m_cameraHost.reset();

@@ -7,10 +7,9 @@
 /// 進行役 PlayDirector 配下の PlayFlowComponent が所有する。 scene 自身は
 /// ブロック構築 / 描画 / Player / カメラ / 当たり判定 / area camera の所有と結線を担う
 /// 出荷 / 開発ともこの 1 種類だけを起動 scene に使う。 cursor / palette / ギズモ /
-/// free-fly カメラ / モード切替の編集は scene の外側、 `LevelEditorController` が friend 経由で
-/// 本 scene を操作して実現する。 scene 自身は「編集されている」ことを知らない
+/// free-fly カメラ / モード切替の編集は scene の外側、 `LevelEditorController` が公開 API と
+/// LevelData 経由で本 scene を操作して実現する。 scene 自身は「編集されている」ことを知らない
 
-#include "Framework/Core/EditorAccess.h"
 #include "Framework/Scene/SceneBase.h"
 #include "Game/CameraRig.h"
 #include "Game/Level/LevelData.h"
@@ -42,11 +41,6 @@ class Player;
 /// レベルを遊ぶための root scene。 編集機能を持たず、 派生もしない単一の scene 型
 class LevelPlayScene : public NS::Scene::SceneBase
 {
-    // 編集ツールは scene 内部の runtime オブジェクト群 / camera brain / play 状態へ深く触れるため
-    // friend で許可する。 scene 側に編集専用の public API を生やさず、 編集の知識を外へ閉じ込める
-    // 出荷ビルドではマクロが空に展開され、 editor のクラス名ごとバイナリから消える
-    NS_EDITOR_FRIEND(LevelEditorController)
-
 public:
     LevelPlayScene();
     ~LevelPlayScene() override;
@@ -62,9 +56,6 @@ public:
 
     [[nodiscard]] NS::Game::Level::LevelData& Level() noexcept { return m_level; }
     [[nodiscard]] const NS::Game::Level::LevelData& Level() const noexcept { return m_level; }
-    [[nodiscard]] NS::Game::Level::PlayState& Play() noexcept { return m_director->Flow().Play(); }
-    [[nodiscard]] NS::Game::Level::PlayMode& PlayModeSub() noexcept { return m_director->Flow().PlayModeSub(); }
-
     /// プレイ進行役。 PlayState / PlayMode と進行の分岐は配下の PlayFlowComponent が担う。 scene 生成時から存在する
     [[nodiscard]] NS::Game::Level::PlayDirector& Director() noexcept { return *m_director; }
 
@@ -79,11 +70,7 @@ public:
         NS::Scene::PlacedVirtualCamera* cam = nullptr;
     };
 
-    /// 実カメラと vcam 切替を束ねる Brain。 起動前は nullptr
-    [[nodiscard]] NS::Scene::CameraBrainComponent* Brain() noexcept { return m_brain; }
-
-    /// Brain の出力先になる実カメラ。 起動前は nullptr
-    [[nodiscard]] NS::Scene::CameraComponent* MainCamera() noexcept { return m_mainCamera; }
+    // brain / 実カメラの公開アクセサは持たない。 外の消費者は CameraSubsystem 経由で引く
 
     /// 実体プレイヤー。 起動前は nullptr
     [[nodiscard]] Player* PlayerRef() noexcept { return m_player.get(); }
@@ -155,7 +142,7 @@ private:
     // コヨーテ debug 描画 すなわち 縁の紫線 / カプセル / コヨーテジャンプの赤線 の表示トグル。 F2 で切替える
     bool m_debugCoyoteDraw = true;
 
-    // 直近 OnRenderScene で解決した scene 段設定。 editor の RenderSettings パネルが friend で読む
+    // 直近 OnRenderScene で解決した scene 段設定。 editor の RenderSettings パネルが LastResolvedSettings() で読む
     NS::Graphics::RenderSettings m_lastResolvedSettings{};
 
     /// 差分フレームのみ cubemap を再ロードするため前回パスを保持する
