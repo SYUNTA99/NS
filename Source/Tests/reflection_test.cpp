@@ -405,3 +405,8 @@ TEST(ReflectionTest, StringFieldSetRoundTrips)
     f->set(&comp, &in);
     EXPECT_EQ(comp.Label(), "world");
 }
+
+TEST(ReflectionTest, FieldTypeOfObjectRefIsObjectRef)
+{
+    EXPECT_EQ(NS::Scene::FieldTypeOf<NS::Scene::ObjectRef>(), FieldType::ObjectRef);
+}

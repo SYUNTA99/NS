@@ -51,6 +51,8 @@ namespace NS::Game::Level
                 return UpdateWith(crc, std::get<NS::Math::Vector3>(field.value));
             case 4:
                 return UpdateWithString(crc, std::get<std::string>(field.value));
+            case 5:
+                return UpdateWith(crc, std::get<NS::Scene::ObjectRef>(field.value).id);
             default:
                 // valueless_by_exception 等の想定外 index。 tag は hash 済なので値は足さない
                 return crc;
@@ -136,6 +138,8 @@ namespace NS::Game::Level
         }
         case 4:
             return std::get<std::string>(value) == std::get<std::string>(other.value);
+        case 5:
+            return std::get<NS::Scene::ObjectRef>(value) == std::get<NS::Scene::ObjectRef>(other.value);
         default:
             // 両者 index 一致を確認済なので、 valueless 同士など想定外 index は等しくないとみなす
             return false;
@@ -215,6 +219,31 @@ namespace NS::Game::Level
                 seen.insert(object.objectId);
             }
         }
+    }
+
+    std::size_t PruneDanglingObjectRefs(LevelData& level)
+    {
+        std::unordered_set<std::uint32_t> validIds;
+        validIds.reserve(level.objects.size());
+        for (const ObjectInstance& object : level.objects)
+            validIds.insert(object.objectId);
+
+        std::size_t prunedCount = 0;
+        for (ObjectInstance& object : level.objects)
+        {
+            for (ComponentData& component : object.components)
+            {
+                for (FieldValue& field : component.fields)
+                {
+                    auto* ref = std::get_if<NS::Scene::ObjectRef>(&field.value);
+                    if (ref == nullptr || !ref->IsSet() || validIds.contains(ref->id))
+                        continue;
+                    *ref = NS::Scene::ObjectRef{};
+                    ++prunedCount;
+                }
+            }
+        }
+        return prunedCount;
     }
 
     std::int16_t ObjectCellX(const ObjectInstance& object) noexcept

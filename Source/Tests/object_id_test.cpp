@@ -1,6 +1,7 @@
 #include "Editor/Undo/AddObjectCommand.h"
 #include "Editor/Undo/DuplicateObjectCommand.h"
 #include "Editor/Undo/PlaceCommand.h"
+#include "Framework/Scene/ObjectRef.h"
 #include "Game/Level/EditTarget.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/LevelJson.h"
@@ -10,6 +11,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_set>
+#include <variant>
 #include <vector>
 
 namespace EditorNs = NS::Editor;
@@ -155,4 +157,79 @@ TEST(ObjectIdTest, PlaceCommandReplaceKeepsPersistentId)
 
     ASSERT_EQ(level.objects.size(), 1u);
     EXPECT_EQ(level.objects[0].objectId, original);
+}
+
+TEST(ObjectIdTest, ObjectRefFieldSurvivesJsonRoundTrip)
+{
+    LevelNs::LevelData level;
+    level.objects.push_back(LevelNs::ObjectInstance{});
+    level.objects.push_back(LevelNs::ObjectInstance{});
+    LevelNs::EnsureUniqueObjectIds(level);
+    const std::uint32_t targetId = level.objects[0].objectId;
+
+    LevelNs::ComponentData comp;
+    comp.typeName = "FakeFollowComponent";
+    comp.fields.push_back(LevelNs::FieldValue{"Target", NS::Scene::ObjectRef{targetId}});
+    level.objects[1].components.push_back(std::move(comp));
+
+    const std::uint32_t crc0 = level.ComputeCrc32();
+    const std::string text = LevelNs::SerializeLevelToJson(level);
+    LevelNs::LevelData restored;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(restored, text));
+
+    EXPECT_EQ(restored.ComputeCrc32(), crc0);
+    ASSERT_EQ(restored.objects.size(), 2u);
+    ASSERT_EQ(restored.objects[1].components.size(), 1u);
+    const auto* field = LevelNs::FindField(restored.objects[1].components[0], "Target");
+    ASSERT_NE(field, nullptr);
+    ASSERT_TRUE(std::holds_alternative<NS::Scene::ObjectRef>(field->value));
+    EXPECT_EQ(std::get<NS::Scene::ObjectRef>(field->value).id, targetId);
+}
+
+TEST(ObjectIdTest, DanglingObjectRefIsPrunedOnLoad)
+{
+    LevelNs::LevelData level;
+    level.objects.push_back(LevelNs::ObjectInstance{});
+    LevelNs::EnsureUniqueObjectIds(level);
+
+    // どの object も持たない id を指す参照を仕込むと、読込で未設定 0 へ戻る
+    LevelNs::ComponentData comp;
+    comp.typeName = "FakeFollowComponent";
+    comp.fields.push_back(LevelNs::FieldValue{"Target", NS::Scene::ObjectRef{9999u}});
+    level.objects[0].components.push_back(std::move(comp));
+
+    const std::string text = LevelNs::SerializeLevelToJson(level);
+    LevelNs::LevelData restored;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(restored, text));
+
+    ASSERT_EQ(restored.objects.size(), 1u);
+    ASSERT_EQ(restored.objects[0].components.size(), 1u);
+    const auto* field = LevelNs::FindField(restored.objects[0].components[0], "Target");
+    ASSERT_NE(field, nullptr);
+    ASSERT_TRUE(std::holds_alternative<NS::Scene::ObjectRef>(field->value));
+    EXPECT_FALSE(std::get<NS::Scene::ObjectRef>(field->value).IsSet());
+}
+
+TEST(ObjectIdTest, PruneDanglingObjectRefsKeepsValidAndCountsPruned)
+{
+    LevelNs::LevelData level;
+    level.objects.push_back(LevelNs::ObjectInstance{});
+    level.objects.push_back(LevelNs::ObjectInstance{});
+    LevelNs::EnsureUniqueObjectIds(level);
+    const std::uint32_t validId = level.objects[1].objectId;
+
+    LevelNs::ComponentData comp;
+    comp.typeName = "FakeFollowComponent";
+    comp.fields.push_back(LevelNs::FieldValue{"Valid", NS::Scene::ObjectRef{validId}});
+    comp.fields.push_back(LevelNs::FieldValue{"Dangling", NS::Scene::ObjectRef{12345u}});
+    comp.fields.push_back(LevelNs::FieldValue{"Unset", NS::Scene::ObjectRef{}});
+    level.objects[0].components.push_back(std::move(comp));
+
+    // 有効参照と未設定は数えず、宙参照 1 件だけが直る
+    EXPECT_EQ(LevelNs::PruneDanglingObjectRefs(level), 1u);
+
+    const auto& fields = level.objects[0].components[0].fields;
+    EXPECT_EQ(std::get<NS::Scene::ObjectRef>(fields[0].value).id, validId);
+    EXPECT_FALSE(std::get<NS::Scene::ObjectRef>(fields[1].value).IsSet());
+    EXPECT_FALSE(std::get<NS::Scene::ObjectRef>(fields[2].value).IsSet());
 }

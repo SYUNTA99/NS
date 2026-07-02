@@ -11,6 +11,7 @@
 /// 依存: NS::Math
 
 #include "Framework/Math/Math.h"
+#include "Framework/Scene/ObjectRef.h"
 
 #include <cstddef>
 #include <string>
@@ -27,15 +28,17 @@ namespace NS::Scene
         Int,
         Bool,
         Vector3,
-        String
+        String,
+        ObjectRef
     };
 
     /// メンバ型 → FieldType タグの写像。マクロが型タグを自動推論するのに使う。未対応型はここで弾く
     template <class T> constexpr FieldType FieldTypeOf() noexcept
     {
         static_assert(std::is_same_v<T, float> || std::is_same_v<T, int> || std::is_same_v<T, bool> ||
-                          std::is_same_v<T, NS::Math::Vector3> || std::is_same_v<T, std::string>,
-                      "reflection: 未対応のフィールド型 (Float / Int / Bool / Vector3 / String のみ)");
+                          std::is_same_v<T, NS::Math::Vector3> || std::is_same_v<T, std::string> ||
+                          std::is_same_v<T, ObjectRef>,
+                      "reflection: 未対応のフィールド型 (Float / Int / Bool / Vector3 / String / ObjectRef のみ)");
         if constexpr (std::is_same_v<T, float>)
             return FieldType::Float;
         else if constexpr (std::is_same_v<T, int>)
@@ -44,6 +47,8 @@ namespace NS::Scene
             return FieldType::Bool;
         else if constexpr (std::is_same_v<T, std::string>)
             return FieldType::String;
+        else if constexpr (std::is_same_v<T, ObjectRef>)
+            return FieldType::ObjectRef;
         else
             return FieldType::Vector3;
     }

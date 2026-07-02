@@ -5,7 +5,9 @@
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Reflection.h"
 
+#include <climits>
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <typeinfo>
 
@@ -105,6 +107,20 @@ namespace NS::Editor
                 {
                     std::string edited(buf);
                     field.set(&comp, &edited);
+                    changed = true;
+                }
+                break;
+            }
+            case NS::Scene::FieldType::ObjectRef:
+            {
+                // 参照先はまだ永続 id の数値でしか編集できない。選択オブジェクトから拾う UI は後続で載せる
+                NS::Scene::ObjectRef value{};
+                field.get(&comp, &value);
+                int id = static_cast<int>(value.id);
+                if (ImGui::DragInt(field.name, &id, 1.0f, 0, INT_MAX, value.IsSet() ? "id %d" : "未設定"))
+                {
+                    value.id = id <= 0 ? 0u : static_cast<std::uint32_t>(id);
+                    field.set(&comp, &value);
                     changed = true;
                 }
                 break;

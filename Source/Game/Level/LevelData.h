@@ -10,6 +10,7 @@
 /// に依存せず、 同一データに対して常に同じ値を返す
 
 #include "Framework/Math/Math.h"
+#include "Framework/Scene/ObjectRef.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -38,7 +39,7 @@ namespace NS::Game::Level
     {
         std::string name;
         /// 変種の宣言順に ComputeCrc32 と operator== の switch が依存する。 増減・並べ替え時は両方を直す
-        std::variant<float, int, bool, NS::Math::Vector3, std::string> value;
+        std::variant<float, int, bool, NS::Math::Vector3, std::string, NS::Scene::ObjectRef> value;
 
         /// variant の Vector3 代替が operator== を持たないため代替ごとに明示比較する
         [[nodiscard]] bool operator==(const FieldValue& other) const noexcept;
@@ -166,6 +167,10 @@ namespace NS::Game::Level
     /// 全 object の永続 id を「非 0 かつ一意」へ整える。未割当と重複には新 id を振り、
     /// nextObjectId を既存最大 id より先へ進める。旧版や手編集のファイルを読込直後に通す移行の門
     void EnsureUniqueObjectIds(LevelData& level);
+
+    /// 存在しない object を指す ObjectRef フィールドを未設定 0 へ戻し、直した件数を返す
+    /// 手編集や参照先削除で宙に浮いた参照を読込直後に浄化し、実行時の照合失敗を入口で断つ
+    [[nodiscard]] std::size_t PruneDanglingObjectRefs(LevelData& level);
 
     /// object の collider 形状を返す。 未知値は安全側で Box に倒す
     [[nodiscard]] ShapeCollider ObjectShapeCollider(const ObjectInstance& object) noexcept;

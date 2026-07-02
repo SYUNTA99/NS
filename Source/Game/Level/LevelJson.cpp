@@ -97,6 +97,13 @@ namespace NS::Game::Level
             }
             case 4:
                 return std::get<std::string>(field.value);
+            case 5:
+            {
+                // 素の数値だと load 時の推論で int に化けるため {"ref": id} の単キー object で書く
+                nlohmann::json ref;
+                ref["ref"] = std::get<NS::Scene::ObjectRef>(field.value).id;
+                return ref;
+            }
             default:
                 return nlohmann::json{};
             }
@@ -132,6 +139,17 @@ namespace NS::Game::Level
                 out = FieldValue{
                     name, NS::Math::Vector3{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()}};
                 return true;
+            }
+            if (value.is_object())
+            {
+                const auto refIt = value.find("ref");
+                // 負数は id として不正なので unsigned のみ受ける。 壊れた ref は積まずに前方互換へ倒す
+                if (refIt != value.end() && refIt->is_number_unsigned())
+                {
+                    out = FieldValue{name, NS::Scene::ObjectRef{refIt->get<std::uint32_t>()}};
+                    return true;
+                }
+                return false;
             }
             return false;
         }
@@ -427,6 +445,11 @@ namespace NS::Game::Level
         outLevel.nextObjectId = static_cast<std::uint32_t>(ReadInt(root, "nextObjectId", 1));
         // v2 以前は id 無しで全 object が未割当。読込直後に必ず一意化し、以降の経路は id を信頼できる
         EnsureUniqueObjectIds(outLevel);
+
+        // 手編集や参照先削除で宙に浮いた参照は入口で未設定へ戻す。実行時は id 照合の失敗を考えずに済む
+        const std::size_t prunedRefs = PruneDanglingObjectRefs(outLevel);
+        if (prunedRefs > 0)
+            NS_LOG_WARN(::NS::Core::LogCat::Game, "存在しない object を指す参照を {} 件未設定に戻した", prunedRefs);
 
         return true;
     }

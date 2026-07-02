@@ -63,6 +63,13 @@ namespace NS::Editor
                 value.value = std::move(v);
                 break;
             }
+            case NS::Scene::FieldType::ObjectRef:
+            {
+                NS::Scene::ObjectRef v{};
+                field.get(&comp, &v);
+                value.value = v;
+                break;
+            }
             default:
                 // 未対応の FieldType は取り違えるより写さない方が安全
                 continue;

@@ -47,6 +47,15 @@ namespace NS::Scene
                 field.get(&comp, &value);
                 return value;
             }
+            case FieldType::ObjectRef:
+            {
+                // 素の数値だと load 時に Int と区別できないため {"ref": id} の単キー object で書く
+                ObjectRef value{};
+                field.get(&comp, &value);
+                nlohmann::json out;
+                out["ref"] = value.id;
+                return out;
+            }
             }
             return nlohmann::json{};
         }
@@ -96,6 +105,18 @@ namespace NS::Scene
                 if (!value.is_string())
                     return;
                 std::string v = value.get<std::string>();
+                field.set(&comp, &v);
+                return;
+            }
+            case FieldType::ObjectRef:
+            {
+                if (!value.is_object())
+                    return;
+                const auto it = value.find("ref");
+                // 負数は id として不正なので unsigned のみ受ける。 手編集の壊れた値は既定 0 のまま
+                if (it == value.end() || !it->is_number_unsigned())
+                    return;
+                ObjectRef v{it->get<std::uint32_t>()};
                 field.set(&comp, &v);
                 return;
             }

@@ -36,6 +36,22 @@ namespace
     private:
         std::string m_label{"hello"};
     };
+
+    // ObjectRef を反射するテスト用 Component (curated にまだ ObjectRef フィールドが無いため自前で用意)
+    class FakeRefComponent : public Component
+    {
+    public:
+        FakeRefComponent() noexcept : Component(0) {}
+
+        NS_REFLECT_BEGIN(FakeRefComponent)
+        NS_REFLECT_FIELD(m_target, "Target")
+        NS_REFLECT_END()
+
+        [[nodiscard]] NS::Scene::ObjectRef Target() const noexcept { return m_target; }
+
+    private:
+        NS::Scene::ObjectRef m_target{};
+    };
 } // namespace
 
 TEST(ReflectionJsonTest, SerializeWritesTypeAndFields)
@@ -131,4 +147,36 @@ TEST(ReflectionJsonTest, UnknownAndMissingKeysAreIgnored)
 
     EXPECT_FLOAT_EQ(box->HalfExtents().x, 2.0f);
     EXPECT_FLOAT_EQ(box->CenterOffset().x, 0.0f);
+}
+
+TEST(ReflectionJsonTest, ObjectRefSerializesAsSingleKeyObjectAndRoundTrips)
+{
+    FakeRefComponent src;
+    nlohmann::json j = SerializeComponent(src);
+    ASSERT_TRUE(j["fields"]["Target"].is_object());
+    EXPECT_EQ(j["fields"]["Target"]["ref"], 0u);
+
+    // id を書き換えた JSON を適用すると set で反映される
+    j["fields"]["Target"]["ref"] = 42u;
+    FakeRefComponent dst;
+    ApplyJsonFields(dst, j["fields"]);
+    EXPECT_EQ(dst.Target().id, 42u);
+}
+
+TEST(ReflectionJsonTest, ObjectRefRejectsBrokenJsonShapes)
+{
+    // 素の数値・負数・キー違いはいずれも受け付けず既定 0 のまま
+    FakeRefComponent comp;
+    nlohmann::json fields;
+    fields["Target"] = 7;
+    ApplyJsonFields(comp, fields);
+    EXPECT_EQ(comp.Target().id, 0u);
+
+    fields["Target"] = nlohmann::json{{"ref", -3}};
+    ApplyJsonFields(comp, fields);
+    EXPECT_EQ(comp.Target().id, 0u);
+
+    fields["Target"] = nlohmann::json{{"id", 5}};
+    ApplyJsonFields(comp, fields);
+    EXPECT_EQ(comp.Target().id, 0u);
 }
