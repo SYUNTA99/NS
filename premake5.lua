@@ -702,6 +702,10 @@ project "Game"
         "directxtk_simplemath"
     }
 
+    -- Scene の component 自己登録はどこからも参照されない TU の静的初期化に載っているため、
+    -- リンカの未参照 obj 除去で無言に欠け得る。Scene.lib は全 obj を強制で取り込んで防ぐ
+    linkoptions { "/WHOLEARCHIVE:Scene.lib" }
+
     -- 出荷 (GameRelease) のみ exe 隣へ Shaders/ Assets/ をコピーする (exe 相対で読込む配布レイアウト)
     -- 開発構成は FileSystem::ContentRoot() がリポ直下を直接読むためコピーしない (ビルド毎のコピーを排除)
     filter "configurations:GameRelease"
@@ -875,6 +879,9 @@ project "Tests"
         "Scene",
         "App"
     }
+
+    -- Game.exe と同じ理由で Scene の自己登録 TU をリンカ除去から守る
+    linkoptions { "/WHOLEARCHIVE:Scene.lib" }
 
     -- Debug / Development / GameDebug の Tests は editor / ImGui を呼ぶため UI + imgui を link する。
     -- GameRelease では UI 層が非ビルドのため link / include しない。

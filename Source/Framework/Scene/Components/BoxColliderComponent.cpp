@@ -1,5 +1,6 @@
 #include "Framework/Scene/Components/BoxColliderComponent.h"
 
+#include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 
@@ -106,4 +107,6 @@ namespace NS::Scene
                                      m_halfExtents.z * std::abs(scale.z)};
         return NS::Physics::MakeObb(translation, rotation, half);
     }
+
+    NS_REGISTER_COMPONENT(BoxColliderComponent)
 } // namespace NS::Scene

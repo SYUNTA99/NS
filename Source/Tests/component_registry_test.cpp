@@ -5,6 +5,7 @@
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Reflection.h>
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -43,6 +44,8 @@ namespace
     }
 } // namespace
 
+// 登録カバレッジの一覧。自己登録 TU がリンカに落とされたり登録マクロが消えたりすると、
+// この型の生成が失敗して露見する
 TEST(ComponentRegistryTest, CreatesEachCuratedType)
 {
     const char* kCurated[] = {
@@ -63,24 +66,16 @@ TEST(ComponentRegistryTest, CreatesEachCuratedType)
 
 TEST(ComponentRegistryTest, CreatedTypeNameMatchesReflection)
 {
-    // curated 型はいずれも反射 typeName が登録キーと一致する (JSON の type キーと整合)
-    const char* kReflected[] = {
-        "BoxColliderComponent",
-        "SphereColliderComponent",
-        "CapsuleColliderComponent",
-        "SlopeColliderComponent",
-        "HazardComponent",
-        "MeshRendererComponent",
-        "PickupComponent",
-    };
-    for (const char* name : kReflected)
+    // 登録済み全型で反射 typeName が登録キーと一致する (JSON の type キーと整合)
+    // 登録が増えても手直し不要なよう、一覧は registry 自身から取る
+    for (const std::string& name : RegisteredNames())
     {
         GameObject obj;
         Component* comp = CreateComponent(name, obj);
         ASSERT_NE(comp, nullptr) << name;
         const ReflectionInfo* info = comp->GetReflection();
         ASSERT_NE(info, nullptr) << name;
-        EXPECT_STREQ(info->typeName, name);
+        EXPECT_STREQ(info->typeName, name.c_str());
     }
 }
 
@@ -118,4 +113,6 @@ TEST(ComponentRegistryTest, RegisteredNamesListsCuratedSeven)
     EXPECT_TRUE(Contains(names, "MeshRendererComponent"));
     EXPECT_TRUE(Contains(names, "PickupComponent"));
     EXPECT_FALSE(Contains(names, "CameraComponent"));
+    // パレット表示が実行ごとに揺れない保証。map 由来の一覧は名前順に揃えてある
+    EXPECT_TRUE(std::is_sorted(names.begin(), names.end()));
 }
