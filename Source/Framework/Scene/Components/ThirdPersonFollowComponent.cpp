@@ -4,6 +4,7 @@
 #include "Framework/Platform/Gamepad.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Mouse.h"
+#include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/Components/CharacterMovementComponent.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
@@ -147,4 +148,7 @@ namespace NS::Scene
 
         return MakePose(camPos, headPos, NS::Math::Vector3{0.0f, 1.0f, 0.0f});
     }
+
+    // 追従対象はオブジェクト間参照なので data からは空で作り、配線は後から SetTarget で結ぶ
+    NS_REGISTER_COMPONENT(ThirdPersonFollowComponent, nullptr)
 } // namespace NS::Scene

@@ -29,6 +29,9 @@ namespace NS::Scene
         void OnStart() override;
         void OnUpdate() override;
 
+        // 入力の橋渡しだけで保存する調整値は無い。型名だけ登録する
+        NS_REFLECT_NONE(PlayerInputComponent)
+
     private:
         CharacterMovementComponent* m_movement = nullptr;
         NS::Math::Vector3 m_cameraForward{0.0f, 0.0f, 1.0f};

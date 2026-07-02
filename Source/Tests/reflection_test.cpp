@@ -219,7 +219,7 @@ TEST(ReflectionTest, CharacterMovementReflectsFeelFloats)
     NS::Scene::CharacterMovementComponent move;
     const ReflectionInfo* info = move.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 13u);
+    EXPECT_EQ(info->fieldCount, 16u);
 
     // 操作感の代表値が float として往復する (getter が無いので反射 get で確認する)
     const FieldDesc* jump = FindField(info, "Jump Impulse");
@@ -329,7 +329,7 @@ TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
     NS::Scene::ThirdPersonFollowComponent follow(nullptr);
     const ReflectionInfo* info = follow.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 14u);
+    EXPECT_EQ(info->fieldCount, 15u);
 
     const FieldDesc* jump = FindField(info, "Jump Distance");
     ASSERT_NE(jump, nullptr);

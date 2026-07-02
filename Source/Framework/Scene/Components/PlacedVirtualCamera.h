@@ -50,6 +50,7 @@ namespace NS::Scene
 
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
+        // up は保存側の CameraVolume に枠が無いので反射しない。編集出来て保存されない欄を作らない
         NS_REFLECT_BEGIN(PlacedVirtualCamera)
         NS_REFLECT_FIELD(m_position, "Camera Pos")
         NS_REFLECT_FIELD(m_target, "Look Target")

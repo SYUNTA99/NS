@@ -1,5 +1,6 @@
 #include "Framework/Scene/Components/MeshColliderComponent.h"
 
+#include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 
@@ -42,4 +43,7 @@ namespace NS::Scene
         }
         return result;
     }
+
+    // 三角形群は asset 由来なので data からは空で作り、BuildPlacedObject が読み込み時に差し込む
+    NS_REGISTER_COMPONENT(MeshColliderComponent)
 } // namespace NS::Scene

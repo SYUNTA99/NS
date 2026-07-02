@@ -108,6 +108,9 @@ namespace NS::Scene
         NS_REFLECT_FIELD(m_accelTau, "Accel Tau")
         NS_REFLECT_FIELD(m_decelTau, "Decel Tau")
         NS_REFLECT_FIELD(m_stickDeadzone, "Stick Deadzone")
+        NS_REFLECT_ACCESSOR(float, "Capsule Radius", CapsuleRadius(), SetCapsuleRadius)
+        NS_REFLECT_ACCESSOR(float, "Capsule Half Height", CapsuleHalfHeight(), SetCapsuleHalfHeight)
+        NS_REFLECT_FIELD(m_debugDraw, "Debug Draw")
         NS_REFLECT_END()
 
     private:

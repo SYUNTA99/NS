@@ -3,6 +3,7 @@
 #include "Framework/Core/Clock.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Physics/PhysicsWorld.h"
+#include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/SceneBase.h"
 #include "Framework/Scene/Transform.h"
@@ -494,4 +495,6 @@ namespace NS::Scene
         }
         return false;
     }
+
+    NS_REGISTER_COMPONENT(CharacterMovementComponent)
 } // namespace NS::Scene

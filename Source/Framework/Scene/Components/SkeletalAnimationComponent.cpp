@@ -1,6 +1,8 @@
 #include "Framework/Scene/Components/SkeletalAnimationComponent.h"
 
 #include "Framework/Core/Clock.h"
+#include "Framework/Scene/ComponentRegistry.h"
+#include "Framework/Scene/GameObject.h"
 
 #include <cmath>
 #include <span>
@@ -142,4 +144,9 @@ namespace NS::Scene
         m_mesh->SetBonePalette(std::span<const NS::Math::Matrix>(m_paletteScratch.data(), m_paletteScratch.size()));
     }
 
+    // mesh / skeleton / clips は asset 由来なので data からは空で作る。mesh 未注入の間 ApplyPose は何もしない
+    NS_REGISTER_COMPONENT(SkeletalAnimationComponent,
+                          nullptr,
+                          NS::Graphics::Skeleton{},
+                          std::vector<NS::Graphics::AnimationClip>{})
 } // namespace NS::Scene

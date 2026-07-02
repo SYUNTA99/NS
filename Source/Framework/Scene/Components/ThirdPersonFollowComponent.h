@@ -75,6 +75,7 @@ namespace NS::Scene
         NS_REFLECT_FIELD(m_invertY, "Invert Y")
         NS_REFLECT_FIELD(m_pitchMin, "Pitch Min")
         NS_REFLECT_FIELD(m_pitchMax, "Pitch Max")
+        NS_REFLECT_ACCESSOR(int, "Priority", VcamPriority(), SetVcamPriority)
         NS_REFLECT_END()
 
     private:

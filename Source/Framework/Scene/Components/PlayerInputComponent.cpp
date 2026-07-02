@@ -3,6 +3,7 @@
 #include "Framework/Platform/Gamepad.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
+#include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/Components/CharacterMovementComponent.h"
 #include "Framework/Scene/GameObject.h"
 
@@ -102,4 +103,6 @@ namespace NS::Scene
             m_movement->SetJumpPressed();
         m_movement->SetJumpHeld(jumpHeld);
     }
+
+    NS_REGISTER_COMPONENT(PlayerInputComponent)
 } // namespace NS::Scene

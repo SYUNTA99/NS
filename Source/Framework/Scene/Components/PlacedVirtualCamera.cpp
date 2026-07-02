@@ -1,5 +1,8 @@
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
 
+#include "Framework/Scene/ComponentRegistry.h"
+#include "Framework/Scene/GameObject.h"
+
 #include <cmath>
 
 namespace NS::Scene
@@ -27,4 +30,6 @@ namespace NS::Scene
     {
         return MakePose(m_position, m_target, m_up);
     }
+
+    NS_REGISTER_COMPONENT(PlacedVirtualCamera)
 } // namespace NS::Scene

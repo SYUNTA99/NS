@@ -4,6 +4,7 @@
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/StaticMesh.h"
+#include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h" // FrameCB レイアウト共有で standard.vs と一致
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/RenderContext.h"
@@ -124,4 +125,7 @@ namespace NS::Scene
         m_material->Bind(*context.renderer);
         m_mesh->Draw(*context.renderer);
     }
+
+    // 共有 quad / material は scene が SetResources で注入する。未注入の間 Draw は何もしない
+    NS_REGISTER_COMPONENT(ShadowComponent)
 } // namespace NS::Scene
