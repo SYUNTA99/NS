@@ -101,6 +101,8 @@ namespace NS::Scene
         /// Transparent バケットを context.cameraPosition から遠い順すなわち back-to-front にソートして描画する
         /// 距離同値は SortPriority 昇順、さらに同値は登録順を保つ stable_sort のタイブレーク
         void DrawTransparent(const RenderContext& context);
+        /// Overlay バケットを登録順に描画する。全 world 描画の後に呼び、暗転や HUD を最前面へ重ねる
+        void DrawOverlay(const RenderContext& context);
 
         /// 派生がシーン単位の上書きを宣言する hook。default は空 override で project 既定値そのまま
         /// lighting 3 種すなわち lightDir / lightColor / ambientColor と clearColor を上書きできる

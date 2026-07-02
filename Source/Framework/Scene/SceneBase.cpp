@@ -75,6 +75,16 @@ namespace NS::Scene
             r->Draw(context);
     }
 
+    void SceneBase::DrawOverlay(const RenderContext& context)
+    {
+        // 全画面の重ね物なので距離ソートは意味を持たず、登録順で安定させる
+        for (IRenderable* r : m_renderables)
+        {
+            if (r != nullptr && r->Bucket() == RenderBucket::Overlay)
+                r->Draw(context);
+        }
+    }
+
     void SceneBase::CreateSceneSubsystems()
     {
         for (const SubsystemEntry& entry : SubsystemRegistry::Get().Entries())
