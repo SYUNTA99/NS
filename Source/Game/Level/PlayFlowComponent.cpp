@@ -13,6 +13,7 @@
 #include "Framework/Scene/GameObject.h"
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/CameraRig.h"
+#include "Game/Level/ClearFadeComponent.h"
 #include "Game/LevelPlayScene.h"
 #include "Game/Player.h"
 
@@ -23,6 +24,13 @@ namespace NS::Game::Level
         if (m_scene == nullptr && Owner() != nullptr)
             m_scene = dynamic_cast<LevelPlayScene*>(Owner()->OwningScene());
         return m_scene;
+    }
+
+    ClearFadeComponent* PlayFlowComponent::FadeComp() noexcept
+    {
+        if (m_fade == nullptr && Owner() != nullptr)
+            m_fade = Owner()->FindComponent<ClearFadeComponent>();
+        return m_fade;
     }
 
     void PlayFlowComponent::OnStart()
@@ -149,9 +157,10 @@ namespace NS::Game::Level
 
         // 暗転の間は入力 / 物理 / ゲームルールを止めてプレイヤーを操作不能にし、 タイマーだけ進める
         // 暗転しきった裏でレベルを組み直すので、 全黒の一瞬で spawn への瞬間移動が隠れる
-        if (scene->IsClearFadeActive())
+        auto* fade = FadeComp();
+        if (fade != nullptr && fade->IsFading())
         {
-            scene->AdvanceFade(dt);
+            fade->Advance(dt);
             if (auto* player = scene->PlayerRef())
                 player->Root().Snapshot();
             if (auto* rig = scene->Rig())
@@ -216,7 +225,8 @@ namespace NS::Game::Level
 #if !NS_EDITOR_ENABLED
         else if (m_play.clearTriggered)
         {
-            scene->BeginClearFade();
+            if (fade != nullptr)
+                fade->Begin();
         }
 #endif
 

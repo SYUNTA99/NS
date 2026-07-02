@@ -4,6 +4,7 @@
 /// @brief プレイ進行役の GameObject。 進行の振る舞いは配下 Component が担う
 
 #include "Framework/Scene/GameObject.h"
+#include "Game/Level/ClearFadeComponent.h"
 #include "Game/Level/PlayFlowComponent.h"
 
 namespace NS::Game::Level
@@ -21,9 +22,11 @@ namespace NS::Game::Level
         PlayDirector& operator=(PlayDirector&&) = delete;
 
         [[nodiscard]] PlayFlowComponent& Flow() noexcept { return *m_flow; }
+        [[nodiscard]] ClearFadeComponent& Fade() noexcept { return *m_fade; }
 
     private:
         PlayFlowComponent* m_flow = nullptr;
+        ClearFadeComponent* m_fade = nullptr;
     };
 
 } // namespace NS::Game::Level

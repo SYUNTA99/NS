@@ -14,6 +14,8 @@ class LevelPlayScene;
 
 namespace NS::Game::Level
 {
+    class ClearFadeComponent;
+
     /// プレイ進行 Component。 paused / 暗転 / 死亡 / クリアの分岐と player 駆動を fixed step で回す
     class PlayFlowComponent : public NS::Scene::Component
     {
@@ -43,6 +45,9 @@ namespace NS::Game::Level
         /// 所有 scene を LevelPlayScene として返す。 未 attach なら nullptr。 初回参照で解決して控える
         [[nodiscard]] LevelPlayScene* OwnerScene() noexcept;
 
+        /// 同じ進行役に載る暗転 Component を返す。 無ければ nullptr。 初回参照で解決して控える
+        [[nodiscard]] ClearFadeComponent* FadeComp() noexcept;
+
         PlayState m_play{};
         PlayMode m_playMode{};
 
@@ -50,6 +55,7 @@ namespace NS::Game::Level
         bool m_playCursorShown = false;
 
         LevelPlayScene* m_scene = nullptr;
+        ClearFadeComponent* m_fade = nullptr;
     };
 
 } // namespace NS::Game::Level

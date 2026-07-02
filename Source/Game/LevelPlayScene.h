@@ -24,7 +24,6 @@
 namespace NS::Graphics
 {
     class Skybox;
-    class ScreenFade;
 } // namespace NS::Graphics
 
 namespace NS::Scene
@@ -112,15 +111,6 @@ public:
     /// 旧 area camera は Brain から外して破棄する。 Brain 構築前の OnStart 序盤は何もしない
     void RebuildAreaCameras();
 
-    /// ゴール接触の暗転が進行中か。 進行中は PlayFlowComponent がプレイ更新を止めてタイマーだけ進める
-    [[nodiscard]] bool IsClearFadeActive() const noexcept { return m_fadeStage != FadeStage::None; }
-
-    /// ゴール接触の暗転を開始する。 進行中の再呼び出しは無視する
-    void BeginClearFade() noexcept;
-
-    /// 暗転を dt だけ進める。 暗転しきった瞬間にレベルを頭から再開し、 明転しきったら通常へ戻す
-    void AdvanceFade(float dt) noexcept;
-
 private:
     /// 基底 OnRender が scene 解決後に呼ぶ描画本体。 ワールドを描き編集ギズモ等は描かない
     void OnRenderScene() override;
@@ -145,9 +135,6 @@ private:
     // scene は使う箇所で都度引く。 メンバとして控えず単一所有元は AssetManager のみ
 
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
-
-    // クリア / 死亡からレベル再開へ繋ぐ暗転 / 明転を全画面へ重ねる
-    std::unique_ptr<NS::Graphics::ScreenFade> m_screenFade;
 
     // CameraRig が Movement を借用するため m_cameraRig より前に宣言する
     std::unique_ptr<Player> m_player;
@@ -174,19 +161,6 @@ private:
 
     // コヨーテ debug 描画 すなわち 縁の紫線 / カプセル / コヨーテジャンプの赤線 の表示トグル。 F2 で切替える
     bool m_debugCoyoteDraw = true;
-
-    // ゴール接触からレベル再開へ繋ぐ暗転の段階。 None は通常プレイ
-    enum class FadeStage
-    {
-        None,
-        Out,
-        In
-    };
-    FadeStage m_fadeStage = FadeStage::None;
-    // 現在の暗転段階の経過秒。 段階の開始ごとに 0 へ戻す
-    float m_fadeTimer = 0.0f;
-    // 全画面に重ねる黒の不透明度。 0 で透明、 1 で全黒。 OnRenderScene が読む
-    float m_fadeAlpha = 0.0f;
 
     // 直近 OnRenderScene で解決した scene 段設定。 editor の RenderSettings パネルが friend で読む
     NS::Graphics::RenderSettings m_lastResolvedSettings{};

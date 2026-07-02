@@ -22,7 +22,6 @@
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
-#include "Framework/Graphics/ScreenFade.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/Skybox.h"
 #include "Framework/Graphics/StaticMesh.h"
@@ -39,19 +38,12 @@
 #include "Game/Level/LevelIO.h"
 #include "Game/Theme/ThemeRegistry.h"
 
-#include <algorithm>
-
 using namespace NS::Game::Theme;
 
 namespace
 {
     constexpr NS::Math::Vector3 kPlayerColor{0.85f, 0.20f, 0.20f};
     constexpr NS::Math::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
-
-    // ゴール到達の達成を一拍味わわせ、 暗転で区切って「もう一周」へ自然に送り出すためのテンポ
-    // 短すぎると唐突、 長いと待たされるため、 プラットフォーマーの仕切り感として前後 0.4 秒に置く
-    constexpr float kFadeOutSeconds = 0.4f;
-    constexpr float kFadeInSeconds = 0.4f;
 
     /// 編集体験の起点となる最小床。 LevelData に grid block 1 個 + spawn を仕込んでおく
     void SeedInitialLevel(NS::Game::Level::LevelData& level)
@@ -144,11 +136,6 @@ void LevelPlayScene::OnStart()
     {
         NS_LOG_ERROR(::NS::Core::LogCat::Game, "LevelPlayScene: Skybox 構築失敗 (Device 不在?)");
     }
-
-    // ゴール到達 / 死亡からレベル再開へ繋ぐ暗転 / 明転に使う。 構築失敗時は演出なしで続行する
-    m_screenFade = NS::Graphics::ScreenFade::Create();
-    if (!m_screenFade->IsValid())
-        NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelPlayScene: ScreenFade 構築失敗、 暗転演出なしで続行");
 
     m_player = std::make_unique<Player>(assets.Builtin("cube"), assets.SharedMaterial("player"));
     m_player->AttachScene(this);
@@ -250,43 +237,6 @@ void LevelPlayScene::OnUpdate()
     m_director->OnUpdate();
 
     UpdateDisplayBlocks();
-}
-
-void LevelPlayScene::BeginClearFade() noexcept
-{
-    if (m_fadeStage != FadeStage::None)
-        return;
-    m_fadeStage = FadeStage::Out;
-    m_fadeTimer = 0.0f;
-    m_fadeAlpha = 0.0f;
-}
-
-void LevelPlayScene::AdvanceFade(float dt) noexcept
-{
-    m_fadeTimer += dt;
-    if (m_fadeStage == FadeStage::Out)
-    {
-        m_fadeAlpha = std::clamp(m_fadeTimer / kFadeOutSeconds, 0.0f, 1.0f);
-        if (m_fadeTimer >= kFadeOutSeconds)
-        {
-            // 全黒の裏でレベルを頭から組み直し、 spawn へ戻してから明転へ移る
-            m_director->Flow().RestartLevel();
-            if (m_player)
-                m_player->Root().Snapshot();
-            m_fadeStage = FadeStage::In;
-            m_fadeTimer = 0.0f;
-            m_fadeAlpha = 1.0f;
-        }
-    }
-    else
-    {
-        m_fadeAlpha = 1.0f - std::clamp(m_fadeTimer / kFadeInSeconds, 0.0f, 1.0f);
-        if (m_fadeTimer >= kFadeInSeconds)
-        {
-            m_fadeStage = FadeStage::None;
-            m_fadeAlpha = 0.0f;
-        }
-    }
 }
 
 void LevelPlayScene::SnapshotDisplayBlocks()
@@ -502,9 +452,8 @@ void LevelPlayScene::OnRenderScene()
     NS::Graphics::DebugDraw::Flush(*ctx.renderer, ctx.viewProjection);
 #endif
 
-    // クリア / 死亡の暗転は全描画の最後に最前面で重ねる。 不透明度 0 のフレームは描かない
-    if (m_screenFade && m_screenFade->IsValid() && m_fadeAlpha > 0.0f)
-        m_screenFade->Render(*ctx.renderer, NS::Math::Color{0.0f, 0.0f, 0.0f, m_fadeAlpha});
+    // 暗転や HUD の重ね物は Overlay バケットが全描画の最後に最前面で描く
+    DrawOverlay(ctx);
 }
 
 void LevelPlayScene::OnShutdown()
@@ -539,7 +488,6 @@ void LevelPlayScene::OnShutdown()
     // で解放する
     m_world.ResetBatcher();
     m_skybox.reset();
-    m_screenFade.reset();
 }
 
 void LevelPlayScene::RebuildWorld()
