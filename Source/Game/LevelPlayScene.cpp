@@ -8,7 +8,6 @@
 #include "Framework/Scene/AssetManager.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/CameraComponent.h"
-#include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
 #include "Framework/Scene/GameObject.h"
 
@@ -29,11 +28,9 @@
 #include "Framework/Graphics/StaticMesh.h"
 #include "Framework/Graphics/Texture.h"
 #include "Framework/Graphics/TextureArray.h"
-#include "Framework/Physics/Capsule.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
-#include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/RenderContext.h"
@@ -68,7 +65,12 @@ namespace
     }
 } // namespace
 
-LevelPlayScene::LevelPlayScene() = default;
+LevelPlayScene::LevelPlayScene()
+{
+    // 進行役は OnStart を待たず生成する。 起動前でも editor / テストがプレイ切替と PlayState 参照を回せる
+    m_director = std::make_unique<NS::Game::Level::PlayDirector>();
+    m_director->AttachScene(this);
+}
 
 LevelPlayScene::~LevelPlayScene() = default;
 
@@ -185,6 +187,9 @@ void LevelPlayScene::OnStart()
     // level の cameraVolumes から area camera を生成し Brain へ登録する。 Brain 構築後に呼ぶ必要がある
     RebuildAreaCameras();
 
+    // 進行役の Component に scene / player / camera の解決を済ませる
+    m_director->OnStart();
+
     // 出荷も開発も、 起動直後はプレイ可能な状態にする。 開発時は editor が直後に編集モードへ切替える
     SetPlaying(true);
 }
@@ -197,53 +202,13 @@ void LevelPlayScene::SetPlaying(bool playing) noexcept
         // 編集中の変形を確定した最新 level でプレイするため、 collision snapshot を作り直す
         // CommitTransformEdit は dirty を立てないため、 ここで突入時に一度作り直して取りこぼしを防ぐ
         RebuildWorld();
-        // spawn を計算して player をそこへ置き、 物理 / 入力 / follow camera を有効化する
-        m_playMode.Enter(m_level, m_play);
-        m_playMode.SetActive(true);
-        if (m_player)
-        {
-            m_player->MeshComp().SetActive(true);
-            m_player->Movement().SetActive(true);
-            m_player->InputComp().SetActive(true);
-            m_player->Root().SetPosition(m_play.playerPosition);
-            m_player->Movement().ResetState();
-        }
-        if (m_cameraRig)
-            m_cameraRig->Follow().SetActive(true);
-
-        // プレイ突入はカーソルを消す。 Esc で出すまで非表示のまま
-        m_playCursorShown = false;
-        if (auto* app = NS::App::Application::Get())
-            app->Window().SetCursorVisible(false);
+        m_director->Flow().EnterPlay();
+        m_director->Flow().SetActive(true);
     }
     else
     {
-        // 編集モードへ: paused/clear/death をリセットし player を凍結、 follow / area camera を休止する
-        // free-fly カメラは editor が握るため scene は触らない
-        m_playMode.Exit(m_play);
-        m_playMode.SetActive(false);
-        if (m_player)
-        {
-            m_player->Movement().SetActive(false);
-            m_player->InputComp().SetActive(false);
-            // 編集中も実プレイヤーを spawn 位置 / 向きに見せ、 ギズモで掴んで動かせるようにする
-            m_player->MeshComp().SetActive(true);
-            m_player->Root().SetPosition({m_level.spawnX, m_level.spawnY, m_level.spawnZ});
-            m_player->Root().SetRotation(NS::Math::Quaternion{
-                m_level.spawnRotationX, m_level.spawnRotationY, m_level.spawnRotationZ, m_level.spawnRotationW});
-            m_player->Root().Snapshot();
-        }
-        if (m_cameraRig)
-            m_cameraRig->Follow().SetActive(false);
-        for (auto& area : m_areaCameras)
-        {
-            if (area.cam)
-                area.cam->SetActive(false);
-        }
-
-        // 編集モードはカーソルを出す
-        if (auto* app = NS::App::Application::Get())
-            app->Window().SetCursorVisible(true);
+        m_director->Flow().ExitPlay();
+        m_director->Flow().SetActive(false);
     }
 }
 
@@ -269,22 +234,6 @@ void LevelPlayScene::OnUpdate()
         m_debugCoyoteDraw = !m_debugCoyoteDraw;
 #endif
 
-    // プレイ中の Esc は 2 段階。 1 回目で隠したカーソルを出し、 出ている状態の 2 回目で終了する
-    // 編集中は editor が Esc を握り選択解除 / 終了に使うので scene は触らない
-    if (m_playing && app->Input().Keyboard().IsPressed(NS::Platform::Key::Escape))
-    {
-        if (!m_playCursorShown)
-        {
-            m_playCursorShown = true;
-            app->Window().SetCursorVisible(true);
-        }
-        else
-        {
-            NS::App::Application::Quit();
-        }
-        return;
-    }
-
     // Application が Renderer::Resize を排他で握っているため、 Camera の aspect ratio は
     // Renderer の現在 Size から毎フレーム pull する。 callback 上書きで競合させない
     if (m_mainCamera)
@@ -297,122 +246,10 @@ void LevelPlayScene::OnUpdate()
     SnapshotDisplayBlocks();
 
     // 編集中はプレイ更新を止める。 free-fly カメラ / 編集入力は overlay layer の editor 側が回す
-    if (m_playing)
-        TickPlay();
+    // 進行の分岐は配下の PlayFlowComponent が担い、 編集モード中は寝ているため素通りする
+    m_director->OnUpdate();
 
     UpdateDisplayBlocks();
-}
-
-void LevelPlayScene::TickPlay()
-{
-    auto* app = NS::App::Application::Get();
-    if (app == nullptr)
-        return;
-
-    // 時間停止中は移動 / 重力 / ゲームルール / カメラ追従を一切進めない
-    // 手触り検証でジャンプ弧や着地の一瞬を止めて観察するための停止で、 エディタが paused を立てる
-    // 物理を止めても previous == current のまま補間が凍るよう snapshot だけ回し、 凍結フレームのガタつきを消す
-    if (m_play.paused)
-    {
-        if (m_player)
-            m_player->Root().Snapshot();
-        if (m_cameraRig)
-            m_cameraRig->Root().Snapshot();
-        return;
-    }
-
-    const float dt = NS::Core::FrameTimer::FixedDelta();
-
-    // 暗転の間は入力 / 物理 / ゲームルールを止めてプレイヤーを操作不能にし、 タイマーだけ進める
-    // 暗転しきった裏でレベルを組み直すので、 全黒の一瞬で spawn への瞬間移動が隠れる
-    if (m_fadeStage != FadeStage::None)
-    {
-        AdvanceFade(dt);
-        if (m_player)
-            m_player->Root().Snapshot();
-        if (m_cameraRig)
-        {
-            m_cameraRig->Root().Snapshot();
-            m_cameraRig->OnUpdate();
-        }
-        return;
-    }
-
-    // camera 水平 forward を先に渡してから tick。 priority 順 PlayerInput→CharacterMovement で入力→物理が確定し
-    // Transform に書かれる
-    if (m_player)
-    {
-        NS::Math::Vector3 camForward{0.0f, 0.0f, 1.0f};
-        if (m_brain)
-            camForward = m_brain->ForwardHorizontal();
-        m_player->InputComp().SetCameraForward(camForward);
-        m_player->OnUpdate();
-
-        // 落下死 / coin / goal / hazard 判定が読む PlayState.playerPosition に Transform をミラーする
-        m_play.playerPosition = m_player->Root().Position();
-    }
-
-    // Play のゲームルールである落下死 / coin / goal。 物理は持たず player 位置を読むだけ
-    m_playMode.Tick(m_level, m_play, dt);
-
-    // hazard は solid 衝突世界にも含まれ capsule 中心は表面外に留まるため芯線分から AABB の最近距離で判定する
-    if (m_player)
-    {
-        NS::Physics::Capsule playerCapsule{};
-        playerCapsule.center = m_player->Root().Position();
-        playerCapsule.radius = m_player->Movement().CapsuleRadius();
-        playerCapsule.halfHeight = m_player->Movement().CapsuleHalfHeight();
-        for (auto* hazard : m_world.HazardView())
-        {
-            if (!hazard)
-                continue;
-            // damage は衝突応答とは別経路の per-frame overlap なので collider と hazard を component で引く
-            auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*hazard);
-            auto* damage = NS::Game::Blocks::FindComponent<NS::Scene::HazardComponent>(*hazard);
-            if (box && damage && NS::Physics::IntersectsCapsuleAabb(playerCapsule, box->WorldAABB()))
-                NS::Game::Level::ApplyContactDamage(m_play);
-        }
-    }
-
-    // area camera: 各 vcam が自分のトリガ AABB でプレイヤー進入を判定し、自分を active 化する
-    // active / 解除の切替は Brain が優先度で選びブレンドする
-    for (auto& area : m_areaCameras)
-    {
-        if (area.cam)
-            area.cam->UpdateActivation(m_play.playerPosition);
-    }
-
-    // 落下死は即リスタート、 ゴール接触は出荷のみ暗転で仕切り直してループを閉じる
-    // どちらも RestartLevel が spawn へ戻し health / coin / flag を全リセットするのでループが続く
-    // 開発ビルドは editor が clearTriggered を観測して編集モードへ戻すため scene 側では扱わない
-    if (m_play.deathTriggered)
-    {
-        RestartLevel();
-    }
-#if !NS_EDITOR_ENABLED
-    else if (m_play.clearTriggered)
-    {
-        BeginClearFade();
-    }
-#endif
-
-    if (m_player)
-        m_player->Root().Snapshot();
-    if (m_cameraRig)
-    {
-        m_cameraRig->Root().Snapshot();
-        m_cameraRig->OnUpdate();
-    }
-}
-
-void LevelPlayScene::RestartLevel() noexcept
-{
-    m_playMode.Enter(m_level, m_play);
-    if (m_player)
-    {
-        m_player->Root().SetPosition(m_play.playerPosition);
-        m_player->Movement().ResetState();
-    }
 }
 
 void LevelPlayScene::BeginClearFade() noexcept
@@ -433,7 +270,7 @@ void LevelPlayScene::AdvanceFade(float dt) noexcept
         if (m_fadeTimer >= kFadeOutSeconds)
         {
             // 全黒の裏でレベルを頭から組み直し、 spawn へ戻してから明転へ移る
-            RestartLevel();
+            m_director->Flow().RestartLevel();
             if (m_player)
                 m_player->Root().Snapshot();
             m_fadeStage = FadeStage::In;
@@ -672,6 +509,9 @@ void LevelPlayScene::OnRenderScene()
 
 void LevelPlayScene::OnShutdown()
 {
+    // 進行役は player / camera を非所有参照するだけなので先に畳む
+    if (m_director)
+        m_director->OnEndPlay();
     if (m_cameraHost)
         m_cameraHost->OnEndPlay();
     for (auto& area : m_areaCameras)

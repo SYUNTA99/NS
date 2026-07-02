@@ -3,8 +3,9 @@
 /// @file LevelPlayScene.h
 /// @brief レベルを読み込んで遊べる状態にする root scene。 編集機能は一切持たない
 ///
-/// @details 永続の LevelData + 一時の PlayState + ルールの PlayMode を value member で保有し、
-/// ブロック構築 / 描画 / Player / カメラ / 当たり判定 / area camera を駆動する
+/// @details 永続の LevelData を value member で保有し、 一時の PlayState とルールの PlayMode は
+/// 進行役 PlayDirector 配下の PlayFlowComponent が所有する。 scene 自身は
+/// ブロック構築 / 描画 / Player / カメラ / 当たり判定 / area camera の所有と結線を担う
 /// 出荷 / 開発ともこの 1 種類だけを起動 scene に使う。 cursor / palette / ギズモ /
 /// free-fly カメラ / モード切替の編集は scene の外側、 `LevelEditorController` が friend 経由で
 /// 本 scene を操作して実現する。 scene 自身は「編集されている」ことを知らない
@@ -14,8 +15,7 @@
 #include "Game/CameraRig.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/LevelWorld.h"
-#include "Game/Level/PlayMode.h"
-#include "Game/Level/PlayState.h"
+#include "Game/Level/PlayDirector.h"
 
 #include <filesystem>
 #include <memory>
@@ -63,8 +63,11 @@ public:
 
     [[nodiscard]] NS::Game::Level::LevelData& Level() noexcept { return m_level; }
     [[nodiscard]] const NS::Game::Level::LevelData& Level() const noexcept { return m_level; }
-    [[nodiscard]] NS::Game::Level::PlayState& Play() noexcept { return m_play; }
-    [[nodiscard]] NS::Game::Level::PlayMode& PlayModeSub() noexcept { return m_playMode; }
+    [[nodiscard]] NS::Game::Level::PlayState& Play() noexcept { return m_director->Flow().Play(); }
+    [[nodiscard]] NS::Game::Level::PlayMode& PlayModeSub() noexcept { return m_director->Flow().PlayModeSub(); }
+
+    /// プレイ進行役。 PlayState / PlayMode と進行の分岐は配下の PlayFlowComponent が担う。 scene 生成時から存在する
+    [[nodiscard]] NS::Game::Level::PlayDirector& Director() noexcept { return *m_director; }
 
     /// LevelData から組まれた runtime world。 editor の選択 / gizmo と描画がここから観測する
     [[nodiscard]] NS::Game::Level::LevelWorld& World() noexcept { return m_world; }
@@ -86,6 +89,9 @@ public:
     /// 実体プレイヤー。 起動前は nullptr
     [[nodiscard]] Player* PlayerRef() noexcept { return m_player.get(); }
 
+    /// 追従カメラの rig。 起動前は nullptr
+    [[nodiscard]] CameraRig* Rig() noexcept { return m_cameraRig.get(); }
+
     /// CameraVolume 1 件に対応する area camera の runtime 実体列
     [[nodiscard]] std::vector<AreaCamera>& AreaCameras() noexcept { return m_areaCameras; }
 
@@ -106,6 +112,15 @@ public:
     /// 旧 area camera は Brain から外して破棄する。 Brain 構築前の OnStart 序盤は何もしない
     void RebuildAreaCameras();
 
+    /// ゴール接触の暗転が進行中か。 進行中は PlayFlowComponent がプレイ更新を止めてタイマーだけ進める
+    [[nodiscard]] bool IsClearFadeActive() const noexcept { return m_fadeStage != FadeStage::None; }
+
+    /// ゴール接触の暗転を開始する。 進行中の再呼び出しは無視する
+    void BeginClearFade() noexcept;
+
+    /// 暗転を dt だけ進める。 暗転しきった瞬間にレベルを頭から再開し、 明転しきったら通常へ戻す
+    void AdvanceFade(float dt) noexcept;
+
 private:
     /// 基底 OnRender が scene 解決後に呼ぶ描画本体。 ワールドを描き編集ギズモ等は描かない
     void OnRenderScene() override;
@@ -116,18 +131,6 @@ private:
 
     /// world の編集 id を m_level.objects と同サイズの連番へ再構築する。 objects 全置換直後に呼ぶ
     void RebuildObjectIds() noexcept;
-
-    /// プレイ更新本体: 入力 → 物理 → ルール → area camera → 死亡/リスポーン → カメラ追従
-    void TickPlay();
-
-    /// レベルを頭から組み直す。 spawn へ戻し health / coin / flag を全リセットして再開する
-    void RestartLevel() noexcept;
-
-    /// ゴール接触の暗転を開始する。 進行中の再呼び出しは無視する
-    void BeginClearFade() noexcept;
-
-    /// 暗転を dt だけ進める。 暗転しきった瞬間に RestartLevel し、 明転しきったら通常へ戻す
-    void AdvanceFade(float dt) noexcept;
 
     /// 全表示ブロックの Snapshot を取る。 補間描画のため edit / play 共通で毎フレーム
     void SnapshotDisplayBlocks();
@@ -163,14 +166,11 @@ private:
 
     NS::Game::Level::LevelData m_level{};
 
-    NS::Game::Level::PlayState m_play{};
-    NS::Game::Level::PlayMode m_playMode{};
+    // プレイ進行役。 PlayState / PlayMode と進行の分岐は配下の PlayFlowComponent が所有する
+    std::unique_ptr<NS::Game::Level::PlayDirector> m_director;
 
     // プレイ更新の有効フラグ。 編集モード中は false にして物理 / ルールを止める。 editor が SetPlaying で切替
     bool m_playing = false;
-
-    // プレイ中のカーソル表示状態。 false=非表示(通常プレイ)、 Esc で true=表示。 表示中の Esc で終了する
-    bool m_playCursorShown = false;
 
     // コヨーテ debug 描画 すなわち 縁の紫線 / カプセル / コヨーテジャンプの赤線 の表示トグル。 F2 で切替える
     bool m_debugCoyoteDraw = true;
