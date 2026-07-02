@@ -1,9 +1,14 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Physics/PhysicsWorld.h>
+#include <Framework/Scene/AssetManager.h>
+#include <Framework/Scene/Components/PlacedVirtualCamera.h>
 #include <Framework/Scene/SceneBase.h>
 #include <Game/Level/LevelData.h>
 #include <Game/Level/LevelWorld.h>
+
+#include <filesystem>
+#include <utility>
 
 using NS::Game::Level::LevelData;
 using NS::Game::Level::LevelWorld;
@@ -45,4 +50,31 @@ TEST(LevelWorldTest, ClearEmptiesEverything)
     EXPECT_TRUE(world.SourceIndices().empty());
     EXPECT_TRUE(world.InstancedBlocks().empty());
     EXPECT_TRUE(world.HazardView().empty());
+    EXPECT_TRUE(world.PlacedCameras().empty());
+}
+
+// 据え置きカメラの配置物は Rebuild で走査 view に載り、エリア外の非アクティブで組み上がる
+TEST(LevelWorldTest, RebuildBakesPlacedCamerasInactive)
+{
+    LevelData level;
+    NS::Game::Level::ObjectInstance cameraObject{};
+    cameraObject.positionX = 8.0f;
+    NS::Game::Level::ComponentData comp;
+    comp.typeName = "PlacedVirtualCamera";
+    comp.fields.push_back(NS::Game::Level::FieldValue{"Priority", 20});
+    cameraObject.components.push_back(std::move(comp));
+    level.objects.push_back(std::move(cameraObject));
+
+    NS::Scene::SceneBase scene;
+    NS::Physics::PhysicsWorld physics;
+    NS::Scene::AssetManager assets{std::filesystem::path{"."}};
+    LevelWorld world;
+    world.Rebuild(level, scene, physics, &assets);
+
+    ASSERT_EQ(world.PlacedCameras().size(), 1u);
+    auto* placed = world.PlacedCameras()[0];
+    EXPECT_FALSE(placed->IsActive());
+    EXPECT_EQ(placed->VcamPriority(), 20);
+    // 視点位置は object の Transform から来る
+    EXPECT_FLOAT_EQ(placed->ViewPosition().x, 8.0f);
 }

@@ -108,26 +108,6 @@ TEST(LevelDataCrcTest, MetadataFieldsAreHashed)
     EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
-TEST(LevelDataCrcTest, CameraVolumesAreHashed)
-{
-    LevelNs::LevelData a, b;
-    LevelNs::CameraVolume cam{};
-    cam.cameraPositionX = 5.0f;
-    a.cameraVolumes.push_back(cam);
-    cam.cameraPositionX = 9.0f;
-    b.cameraVolumes.push_back(cam);
-    EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
-}
-
-TEST(LevelDataCrcTest, CameraVolumeCountIsHashed)
-{
-    LevelNs::LevelData a, b;
-    a.cameraVolumes.push_back(LevelNs::CameraVolume{});
-    a.cameraVolumes.push_back(LevelNs::CameraVolume{});
-    b.cameraVolumes.push_back(LevelNs::CameraVolume{});
-    EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
-}
-
 TEST(LevelDataCrcTest, VectorCapacityDoesNotAffectCrc)
 {
     LevelNs::LevelData a, b;

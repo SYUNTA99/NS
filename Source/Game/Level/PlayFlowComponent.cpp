@@ -88,11 +88,8 @@ namespace NS::Game::Level
         }
         if (auto* rig = scene->Rig())
             rig->Follow().SetActive(false);
-        for (auto& area : scene->AreaCameras())
-        {
-            if (area.cam)
-                area.cam->SetActive(false);
-        }
+        for (auto* placed : scene->World().PlacedCameras())
+            placed->SetActive(false);
 
         // 編集モードはカーソルを出す
         if (auto* app = NS::App::Application::Get())
@@ -211,11 +208,8 @@ namespace NS::Game::Level
 
         // area camera: 各 vcam が自分のトリガ AABB でプレイヤー進入を判定し、自分を active 化する
         // active / 解除の切替は Brain が優先度で選びブレンドする
-        for (auto& area : scene->AreaCameras())
-        {
-            if (area.cam)
-                area.cam->UpdateActivation(m_play.playerPosition);
-        }
+        for (auto* placed : scene->World().PlacedCameras())
+            placed->UpdateActivation(m_play.playerPosition);
 
         // 落下死は即リスタート、 ゴール接触は出荷のみ暗転で仕切り直してループを閉じる
         // どちらも RestartLevel が spawn へ戻し health / coin / flag を全リセットするのでループが続く

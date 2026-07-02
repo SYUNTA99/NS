@@ -188,14 +188,14 @@ TEST(ReflectionTest, PlacedVirtualCameraReflectsSixFields)
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 6u);
 
-    EXPECT_NE(FindField(info, "Camera Pos"), nullptr);
     EXPECT_NE(FindField(info, "Look Target"), nullptr);
+    EXPECT_NE(FindField(info, "Up"), nullptr);
     EXPECT_NE(FindField(info, "Trigger Center"), nullptr);
     EXPECT_NE(FindField(info, "Trigger Extent"), nullptr);
     EXPECT_NE(FindField(info, "Look At Player"), nullptr);
     EXPECT_NE(FindField(info, "Priority"), nullptr);
-    // up は POD に枠が無いため反射しない
-    EXPECT_EQ(FindField(info, "Up"), nullptr);
+    // 視点位置は owner Transform 所有なので反射しない。transform 編集の経路と二重にしない
+    EXPECT_EQ(FindField(info, "Camera Pos"), nullptr);
 
     // Priority は基底 accessor 経由で書き戻る
     const FieldDesc* priority = FindField(info, "Priority");

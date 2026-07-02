@@ -24,14 +24,15 @@ namespace NS::Game::Level
         /// セーブフォーマットのバージョン。 binary 時代の major/minor を 1 整数へ置換した
         /// v2 で spawn をグリッドセル番号から capsule 中心の world 位置 + 向きへ変更した
         /// v3 で object へ永続 id、 root へ nextObjectId を追加した。 旧版は読込時に採番して移行する
-        constexpr int kFormatVersion = 3;
+        /// v4 で据え置きカメラを cameraVolumes の別リストから objects の配置物へ統合した
+        constexpr int kFormatVersion = 4;
 
         /// 読込時の上限。 巨大 size / 要素数による memory exhaustion を防ぐ。 binary 版から移植
         constexpr std::size_t kMaxLevelFileBytes = 16u * 1024u * 1024u;
         constexpr std::size_t kMaxObjectCount = 100'000u;
         constexpr std::size_t kMaxMaterialPaths = 4'096u;
         constexpr std::size_t kMaxMaterialPathLength = 1'024u;
-        constexpr std::size_t kMaxCameraVolumeCount = 4'096u;
+        constexpr std::size_t kMaxLegacyCameraVolumeCount = 4'096u;
 
         nlohmann::json Vec3Json(float x, float y, float z)
         {
@@ -260,34 +261,42 @@ namespace NS::Game::Level
             return object;
         }
 
-        nlohmann::json SerializeCameraVolume(const CameraVolume& volume)
+        /// v3 以前の cameraVolumes 1 件を PlacedVirtualCamera 持ちの配置物へ変換する。読込移行専用
+        /// 視点位置は object の Transform、それ以外は component の反射フィールドに載せ替える
+        ObjectInstance MakeCameraObjectFromLegacyVolume(const nlohmann::json& json)
         {
-            nlohmann::json out;
-            out["cameraPosition"] = Vec3Json(volume.cameraPositionX, volume.cameraPositionY, volume.cameraPositionZ);
-            out["lookTarget"] = Vec3Json(volume.lookTargetX, volume.lookTargetY, volume.lookTargetZ);
-            out["triggerCenter"] = Vec3Json(volume.triggerCenterX, volume.triggerCenterY, volume.triggerCenterZ);
-            out["triggerExtent"] = Vec3Json(volume.triggerExtentX, volume.triggerExtentY, volume.triggerExtentZ);
-            out["priority"] = volume.priority;
-            out["lookAtPlayer"] = static_cast<int>(volume.lookAtPlayer);
-            out["reserved0"] = static_cast<int>(volume.reserved0);
-            out["reserved1"] = static_cast<int>(volume.reserved1);
-            return out;
-        }
-
-        CameraVolume DeserializeCameraVolume(const nlohmann::json& json)
-        {
-            CameraVolume volume{};
+            ObjectInstance object{};
+            object.materialIndex = -1;
             if (!json.is_object())
-                return volume;
-            ReadVec3(json, "cameraPosition", volume.cameraPositionX, volume.cameraPositionY, volume.cameraPositionZ);
-            ReadVec3(json, "lookTarget", volume.lookTargetX, volume.lookTargetY, volume.lookTargetZ);
-            ReadVec3(json, "triggerCenter", volume.triggerCenterX, volume.triggerCenterY, volume.triggerCenterZ);
-            ReadVec3(json, "triggerExtent", volume.triggerExtentX, volume.triggerExtentY, volume.triggerExtentZ);
-            volume.priority = ReadInt(json, "priority", volume.priority);
-            volume.lookAtPlayer = static_cast<std::uint8_t>(ReadInt(json, "lookAtPlayer", volume.lookAtPlayer));
-            volume.reserved0 = static_cast<std::uint8_t>(ReadInt(json, "reserved0", volume.reserved0));
-            volume.reserved1 = static_cast<std::uint16_t>(ReadInt(json, "reserved1", volume.reserved1));
-            return volume;
+                return object;
+
+            ReadVec3(json, "cameraPosition", object.positionX, object.positionY, object.positionZ);
+
+            float lookTargetX = 0.0f;
+            float lookTargetY = 0.0f;
+            float lookTargetZ = 0.0f;
+            ReadVec3(json, "lookTarget", lookTargetX, lookTargetY, lookTargetZ);
+            float triggerCenterX = 0.0f;
+            float triggerCenterY = 0.0f;
+            float triggerCenterZ = 0.0f;
+            ReadVec3(json, "triggerCenter", triggerCenterX, triggerCenterY, triggerCenterZ);
+            float triggerExtentX = 1.0f;
+            float triggerExtentY = 1.0f;
+            float triggerExtentZ = 1.0f;
+            ReadVec3(json, "triggerExtent", triggerExtentX, triggerExtentY, triggerExtentZ);
+
+            ComponentData camera;
+            camera.typeName = "PlacedVirtualCamera";
+            camera.fields.push_back(
+                FieldValue{"Look Target", NS::Math::Vector3{lookTargetX, lookTargetY, lookTargetZ}});
+            camera.fields.push_back(
+                FieldValue{"Trigger Center", NS::Math::Vector3{triggerCenterX, triggerCenterY, triggerCenterZ}});
+            camera.fields.push_back(
+                FieldValue{"Trigger Extent", NS::Math::Vector3{triggerExtentX, triggerExtentY, triggerExtentZ}});
+            camera.fields.push_back(FieldValue{"Look At Player", ReadInt(json, "lookAtPlayer", 0) != 0});
+            camera.fields.push_back(FieldValue{"Priority", ReadInt(json, "priority", 10)});
+            object.components.push_back(std::move(camera));
+            return object;
         }
     } // namespace
 
@@ -325,11 +334,6 @@ namespace NS::Game::Level
         for (const auto& materialPath : level.materialPaths)
             materials.push_back(materialPath);
         root["materialPaths"] = std::move(materials);
-
-        nlohmann::json cameras = nlohmann::json::array();
-        for (const auto& camera : level.cameraVolumes)
-            cameras.push_back(SerializeCameraVolume(camera));
-        root["cameraVolumes"] = std::move(cameras);
 
         // 不正 UTF-8 は replace で握り、 dump が例外を投げないようにして noexcept 経路を保つ
         return root.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
@@ -398,21 +402,22 @@ namespace NS::Game::Level
             }
         }
 
+        // v3 以前の据え置きカメラは別リストだった。読込時に配置物へ変換して objects へ合流させる
         const auto camerasIt = root.find("cameraVolumes");
         if (camerasIt != root.end() && camerasIt->is_array())
         {
-            if (camerasIt->size() > kMaxCameraVolumeCount)
+            if (camerasIt->size() > kMaxLegacyCameraVolumeCount)
             {
                 NS_LOG_ERROR(::NS::Core::LogCat::Game,
                              "DeserializeLevelFromJson: camera volume 数 {} が上限 {} を超過",
                              camerasIt->size(),
-                             kMaxCameraVolumeCount);
+                             kMaxLegacyCameraVolumeCount);
                 outLevel = LevelData{};
                 return false;
             }
-            outLevel.cameraVolumes.reserve(camerasIt->size());
+            outLevel.objects.reserve(outLevel.objects.size() + camerasIt->size());
             for (const auto& cameraJson : *camerasIt)
-                outLevel.cameraVolumes.push_back(DeserializeCameraVolume(cameraJson));
+                outLevel.objects.push_back(MakeCameraObjectFromLegacyVolume(cameraJson));
         }
 
         const int loadedVersion = ReadInt(root, "formatVersion", 1);
@@ -484,15 +489,6 @@ namespace NS::Game::Level
                 return false;
             }
         }
-        if (level.cameraVolumes.size() > kMaxCameraVolumeCount)
-        {
-            NS_LOG_ERROR(::NS::Core::LogCat::Game,
-                         "SaveLevelToJsonFile: camera volume 数が上限超過 ({} > {})",
-                         level.cameraVolumes.size(),
-                         kMaxCameraVolumeCount);
-            return false;
-        }
-
         // json の構築 / dump は bad_alloc を投げ得る。 noexcept 契約を守るため捕捉して false に変換する
         try
         {

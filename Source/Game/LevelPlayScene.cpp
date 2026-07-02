@@ -176,8 +176,9 @@ void LevelPlayScene::OnStart()
     if (auto* cameras = GetSubsystem<NS::Scene::CameraSubsystem>())
         cameras->SetBrain(m_brain);
 
-    // level の cameraVolumes から area camera を生成し Brain へ登録する。 Brain 構築後に呼ぶ必要がある
-    RebuildAreaCameras();
+    // world が組んだ据え置きカメラを Brain へ登録する。 以降の組み直しは RebuildWorld が面倒を見る
+    for (auto* placed : m_world.PlacedCameras())
+        m_brain->AddVirtualCamera(placed);
 
     // 進行役の Component に scene / player / camera の解決を済ませる
     m_director->OnStart();
@@ -442,13 +443,12 @@ void LevelPlayScene::OnShutdown()
         m_director->OnEndPlay();
     if (m_cameraHost)
         m_cameraHost->OnEndPlay();
-    for (auto& area : m_areaCameras)
-    {
-        if (area.host)
-            area.host->OnEndPlay();
-    }
     if (m_cameraRig)
         m_cameraRig->OnEndPlay();
+    // Brain は world の据え置きカメラを非所有参照する。 world を畳む前に外して無効参照を避ける
+    if (m_brain != nullptr)
+        for (auto* placed : m_world.PlacedCameras())
+            m_brain->RemoveVirtualCamera(placed);
     // 配置物は逆順の OnEndPlay ごと LevelWorld が畳む
     m_world.Clear();
     if (m_player)
@@ -458,11 +458,10 @@ void LevelPlayScene::OnShutdown()
     if (auto* cameras = GetSubsystem<NS::Scene::CameraSubsystem>())
         cameras->SetBrain(nullptr);
 
-    // Brain は vcam を非所有参照するので、 rig / area camera より先に host を畳んで無効参照を避ける
+    // Brain は vcam を非所有参照するので、 rig より先に host を畳んで無効参照を避ける
     m_cameraHost.reset();
     m_mainCamera = nullptr;
     m_brain = nullptr;
-    m_areaCameras.clear();
     m_cameraRig.reset();
     m_player.reset();
 
@@ -475,9 +474,19 @@ void LevelPlayScene::OnShutdown()
 
 void LevelPlayScene::RebuildWorld()
 {
+    // 旧 world の据え置きカメラを Brain から外してから組み直す。 Brain の非所有参照を無効化させない
+    if (m_brain != nullptr)
+        for (auto* placed : m_world.PlacedCameras())
+            m_brain->RemoveVirtualCamera(placed);
+
     // 構築は LevelWorld の一本道。 app 不在の起動前 / テストでは assets を渡さず何も組まない
     auto* app = NS::App::Application::Get();
     m_world.Rebuild(m_level, *this, Physics(), app ? &app->Assets() : nullptr);
+
+    // 組み直しで生まれた据え置きカメラを Brain へ登録し直す
+    if (m_brain != nullptr)
+        for (auto* placed : m_world.PlacedCameras())
+            m_brain->AddVirtualCamera(placed);
 
     if (m_player)
     {
@@ -493,38 +502,5 @@ void LevelPlayScene::RebuildWorld()
                 shadowReceivers.push_back(*aabb);
         }
         m_player->Shadow().SetCollisionWorld(shadowReceivers);
-    }
-}
-
-void LevelPlayScene::RebuildAreaCameras()
-{
-    if (m_brain == nullptr)
-        return;
-
-    // 旧 area camera を Brain から外してから破棄する。 Brain の非所有参照を無効化させない
-    for (auto& area : m_areaCameras)
-    {
-        if (area.cam)
-            m_brain->RemoveVirtualCamera(area.cam);
-    }
-    m_areaCameras.clear();
-
-    m_areaCameras.reserve(m_level.cameraVolumes.size());
-    for (const auto& volume : m_level.cameraVolumes)
-    {
-        AreaCamera area{};
-        area.host = std::make_unique<NS::Scene::GameObject>();
-        area.cam = area.host->AddComponent<NS::Scene::PlacedVirtualCamera>();
-        area.cam->SetView({volume.cameraPositionX, volume.cameraPositionY, volume.cameraPositionZ},
-                          {volume.lookTargetX, volume.lookTargetY, volume.lookTargetZ});
-        area.cam->SetTrigger({volume.triggerCenterX, volume.triggerCenterY, volume.triggerCenterZ},
-                             {volume.triggerExtentX, volume.triggerExtentY, volume.triggerExtentZ});
-        area.cam->SetLookAtPlayer(volume.lookAtPlayer != 0);
-        area.cam->SetVcamPriority(volume.priority);
-        area.cam->SetActive(false); // エリア外。 play 中の進入判定で vcam が自分を active 化する
-        area.host->AttachScene(this);
-        area.host->OnStart();
-        m_brain->AddVirtualCamera(area.cam);
-        m_areaCameras.push_back(std::move(area));
     }
 }

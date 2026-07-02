@@ -283,9 +283,8 @@ void LevelEditorController::TickEdit()
     m_editor.Tick();
     if (m_editor.IsLevelDirty())
     {
+        // 据え置きカメラの Brain 登録も RebuildWorld が面倒を見る
         m_scene->RebuildWorld();
-        // ファイル読込で cameraVolumes が差し替わった場合に area camera を追従させる
-        m_scene->RebuildAreaCameras();
         // undo / redo / ロードは objects を作り直す。 ロードは id が振り直され旧 id が別物に化けるため、
         // ここで選択 id を解除する。 候補 span と gizmo の貼り直しは次フレーム頭の解決に委ねる
         m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
@@ -402,11 +401,6 @@ NS::Scene::GameObject* LevelEditorController::ActiveVirtualCameraObject() noexce
         return nullptr;
     NS::Scene::VirtualCameraComponent* active = Brain()->ActiveVirtualCamera();
     return active ? active->Owner() : nullptr;
-}
-
-bool LevelEditorController::HasCameraSelection() const noexcept
-{
-    return m_selectedCameraIndex < m_scene->Level().cameraVolumes.size();
 }
 
 void LevelEditorController::RefreshGizmoSelectables()
@@ -526,8 +520,7 @@ void LevelEditorController::SyncPlayerSpawnFromTransform() noexcept
 
 void LevelEditorController::SelectObjectByIndex(std::size_t index) noexcept
 {
-    // オブジェクトとカメラ / Player / Camera の選択は排他。 オブジェクトを選んだら他を解除する
-    m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
+    // オブジェクトと Player / Camera の特殊選択は排他。 オブジェクトを選んだら解除する
     m_specialSelection = SpecialSelection::None;
 
     if (index >= m_scene->Level().objects.size())
@@ -559,29 +552,11 @@ void LevelEditorController::SelectObjectByIndex(std::size_t index) noexcept
     m_lastGizmoSelected = nullptr;
 }
 
-void LevelEditorController::SelectCameraByIndex(std::size_t index) noexcept
-{
-    m_specialSelection = SpecialSelection::None;
-    if (index >= m_scene->Level().cameraVolumes.size())
-    {
-        m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
-        return;
-    }
-    m_selectedCameraIndex = index;
-
-    // カメラ選択中はオブジェクト / ギズモ選択を外す。 Inspector はカメラを表示する
-    m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
-    m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
-    m_gizmo.ClearSelection();
-    m_lastGizmoSelected = nullptr;
-}
-
 void LevelEditorController::SelectPlayer() noexcept
 {
-    // 添字 / カメラ選択を外して特殊選択へ移す
+    // 添字選択を外して特殊選択へ移す
     m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
     m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
-    m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
     m_specialSelection = SpecialSelection::Player;
 
     // 実プレイヤーを掴んで動かせるよう、 ギズモを player Transform へ貼り Object ツールへ切替える
@@ -602,112 +577,62 @@ void LevelEditorController::SelectCamera() noexcept
 {
     m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
     m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
-    m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
     m_gizmo.ClearSelection();
     m_lastGizmoSelected = nullptr;
     m_specialSelection = SpecialSelection::Camera;
 }
 
-NS::Scene::PlacedVirtualCamera* LevelEditorController::SelectedAreaCamera() noexcept
+void LevelEditorController::AddCameraObject()
 {
-    if (m_selectedCameraIndex >= m_scene->AreaCameras().size())
-        return nullptr;
-    return m_scene->AreaCameras()[m_selectedCameraIndex].cam;
-}
-
-void LevelEditorController::SyncSelectedCameraVolumeFromComponent() noexcept
-{
-    if (m_selectedCameraIndex >= m_scene->Level().cameraVolumes.size() ||
-        m_selectedCameraIndex >= m_scene->AreaCameras().size())
-        return;
-    NS::Scene::PlacedVirtualCamera* cam = m_scene->AreaCameras()[m_selectedCameraIndex].cam;
-    if (cam == nullptr)
-        return;
-
-    // トリガ半径が 0 以下だと進入判定が常に外れるので最小正値に clamp し、 component 側へ反映する
-    const NS::Math::Vector3 extent = cam->TriggerExtent();
-    const NS::Math::Vector3 clamped{
-        extent.x > 0.01f ? extent.x : 0.01f, extent.y > 0.01f ? extent.y : 0.01f, extent.z > 0.01f ? extent.z : 0.01f};
-    if (clamped.x != extent.x || clamped.y != extent.y || clamped.z != extent.z)
-        cam->SetTrigger(cam->TriggerCenter(), clamped);
-
-    NS::Game::Level::CameraVolume& volume = m_scene->Level().cameraVolumes[m_selectedCameraIndex];
-    const NS::Math::Vector3& position = cam->ViewPosition();
-    const NS::Math::Vector3& target = cam->ViewTarget();
-    const NS::Math::Vector3& center = cam->TriggerCenter();
-    const NS::Math::Vector3& finalExtent = cam->TriggerExtent();
-    volume.cameraPositionX = position.x;
-    volume.cameraPositionY = position.y;
-    volume.cameraPositionZ = position.z;
-    volume.lookTargetX = target.x;
-    volume.lookTargetY = target.y;
-    volume.lookTargetZ = target.z;
-    volume.triggerCenterX = center.x;
-    volume.triggerCenterY = center.y;
-    volume.triggerCenterZ = center.z;
-    volume.triggerExtentX = finalExtent.x;
-    volume.triggerExtentY = finalExtent.y;
-    volume.triggerExtentZ = finalExtent.z;
-    volume.lookAtPlayer = cam->LooksAtPlayer() ? 1u : 0u;
-    volume.priority = cam->VcamPriority();
-}
-
-void LevelEditorController::AddCameraVolume() noexcept
-{
-    // 新規カメラは編集視点の中心あたりに置き、 そこから少し引いた位置から中心を見るデフォルトにする
+    // 新規カメラは編集視点の中心あたりを見る位置に置き、 トリガも中心へ重ねるデフォルトにする
     NS::Math::Vector3 center{static_cast<float>(m_scene->Level().spawnX),
                              static_cast<float>(m_scene->Level().spawnY),
                              static_cast<float>(m_scene->Level().spawnZ)};
     if (m_editorCameraRig)
         center = m_editorCameraRig->EditorCam().Center();
 
-    NS::Game::Level::CameraVolume volume{};
-    volume.cameraPositionX = center.x;
-    volume.cameraPositionY = center.y + 5.0f;
-    volume.cameraPositionZ = center.z - 10.0f;
-    volume.lookTargetX = center.x;
-    volume.lookTargetY = center.y;
-    volume.lookTargetZ = center.z;
-    volume.triggerCenterX = center.x;
-    volume.triggerCenterY = center.y;
-    volume.triggerCenterZ = center.z;
-    volume.triggerExtentX = 3.0f;
-    volume.triggerExtentY = 3.0f;
-    volume.triggerExtentZ = 3.0f;
-    volume.priority = 10;
+    NS::Game::Level::ObjectInstance object{};
+    object.positionX = center.x;
+    object.positionY = center.y + 5.0f;
+    object.positionZ = center.z - 10.0f;
 
-    m_scene->Level().cameraVolumes.push_back(volume);
-    m_scene->RebuildAreaCameras();
-    SelectCameraByIndex(m_scene->Level().cameraVolumes.size() - 1);
-}
+    NS::Game::Level::ComponentData camera;
+    camera.typeName = "PlacedVirtualCamera";
+    camera.fields.push_back(NS::Game::Level::FieldValue{"Look Target", center});
+    camera.fields.push_back(NS::Game::Level::FieldValue{"Trigger Center", center});
+    camera.fields.push_back(NS::Game::Level::FieldValue{"Trigger Extent", NS::Math::Vector3{3.0f, 3.0f, 3.0f}});
+    camera.fields.push_back(NS::Game::Level::FieldValue{"Look At Player", false});
+    camera.fields.push_back(NS::Game::Level::FieldValue{"Priority", 10});
+    object.components.push_back(std::move(camera));
 
-void LevelEditorController::DeleteSelectedCamera() noexcept
-{
-    if (m_selectedCameraIndex >= m_scene->Level().cameraVolumes.size())
-        return;
-    m_scene->Level().cameraVolumes.erase(m_scene->Level().cameraVolumes.begin() +
-                                         static_cast<std::ptrdiff_t>(m_selectedCameraIndex));
-    m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
-    m_scene->RebuildAreaCameras();
+    // 通常の配置物と同じ undo 履歴へ載せ、 追加した末尾のカメラを選択する
+    NS::Game::Level::EditTarget target = SceneEditTarget();
+    m_editor.Undo().Push(std::make_unique<NS::Editor::AddObjectCommand>(object), target);
+
+    m_scene->RebuildWorld();
+    RefreshGizmoSelectables();
+    SelectObjectByIndex(m_scene->Level().objects.size() - 1);
 }
 
 void LevelEditorController::RenderAreaCameraGizmos() noexcept
 {
-    // edit 中、 各 area camera のトリガ範囲 AABB とカメラ位置 → 注視点を線で可視化する
+    // edit 中、 各据え置きカメラのトリガ範囲 AABB とカメラ位置 → 注視点を線で可視化する
     // 選択中のカメラは強調色にする
-    for (std::size_t i = 0; i < m_scene->Level().cameraVolumes.size(); ++i)
+    const auto& world = m_scene->World();
+    for (std::size_t i = 0; i < world.Objects().size(); ++i)
     {
-        const NS::Game::Level::CameraVolume& v = m_scene->Level().cameraVolumes[i];
-        const bool selected = (i == m_selectedCameraIndex);
+        auto* placed = world.Objects()[i]->FindComponent<NS::Scene::PlacedVirtualCamera>();
+        if (placed == nullptr)
+            continue;
+        const bool selected = (world.SourceIndices()[i] == m_selectedObjectIndex);
 
         const NS::Math::Color triggerColor =
             selected ? NS::Math::Color{1.0f, 0.55f, 0.10f, 1.0f} : NS::Math::Color{0.20f, 0.70f, 1.0f, 1.0f};
-        const NS::Math::AABB trigger{NS::Math::Vector3{v.triggerCenterX, v.triggerCenterY, v.triggerCenterZ},
-                                     NS::Math::Vector3{v.triggerExtentX, v.triggerExtentY, v.triggerExtentZ}};
+        const NS::Math::AABB trigger{placed->TriggerCenter(), placed->TriggerExtent()};
         NS::Graphics::DebugDraw::AABB(trigger, triggerColor);
 
-        const NS::Math::Vector3 camPos{v.cameraPositionX, v.cameraPositionY, v.cameraPositionZ};
-        const NS::Math::Vector3 lookAt{v.lookTargetX, v.lookTargetY, v.lookTargetZ};
+        const NS::Math::Vector3 camPos = placed->ViewPosition();
+        const NS::Math::Vector3 lookAt = placed->ViewTarget();
         const NS::Math::Color camColor{1.0f, 0.85f, 0.10f, 1.0f};
         const NS::Math::AABB camMarker{camPos, NS::Math::Vector3{0.3f, 0.3f, 0.3f}};
         NS::Graphics::DebugDraw::AABB(camMarker, camColor);
@@ -771,7 +696,6 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
         m_specialSelection = SpecialSelection::Player;
         m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
         m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
-        m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
         return;
     }
     // ビューポートでのオブジェクト実ピックは Player / Camera の特殊選択より優先する

@@ -98,32 +98,6 @@ namespace NS::Game::Level
         [[nodiscard]] bool operator==(const ObjectInstance& other) const = default;
     };
 
-    /// エリア進入で切り替わる据え置きカメラ 1 件の永続表現で 56 byte・ natural alignment・ padding なし
-    /// camera* がカメラ視点、 trigger* がプレイヤー進入を判定する AABB で中心 + 半径を持つ
-    /// priority が高いほど他 vcam を上回って選ばれる。 lookAtPlayer が 0 以外なら
-    /// lookTarget を無視してプレイヤーを追視する。 位置固定で被写体を追う Mario 系の挙動
-    struct CameraVolume
-    {
-        float cameraPositionX = 0.0f;
-        float cameraPositionY = 0.0f;
-        float cameraPositionZ = 0.0f;
-        float lookTargetX = 0.0f;
-        float lookTargetY = 0.0f;
-        float lookTargetZ = 0.0f;
-        float triggerCenterX = 0.0f;
-        float triggerCenterY = 0.0f;
-        float triggerCenterZ = 0.0f;
-        float triggerExtentX = 1.0f;
-        float triggerExtentY = 1.0f;
-        float triggerExtentZ = 1.0f;
-        std::int32_t priority = 10;
-        std::uint8_t lookAtPlayer = 0;
-        std::uint8_t reserved0 = 0;
-        std::uint16_t reserved1 = 0;
-    };
-    static_assert(sizeof(CameraVolume) == 56, "CameraVolume must be 56 bytes (12×float + int32 + 2×uint8 + uint16)");
-    static_assert(std::is_trivially_copyable_v<CameraVolume>, "CameraVolume must be trivially copyable for memcpy I/O");
-
     /// `.nslvl` に書かれる永続データ。 PlayMode 中は const 参照でしか触らせない
     struct LevelData
     {
@@ -135,9 +109,6 @@ namespace NS::Game::Level
 
         /// objects の materialIndex が参照する .mat 相対パス表
         std::vector<std::string> materialPaths;
-
-        /// エリアカメラの永続リスト。 視点 + トリガ範囲を 1 件で持ち箱型に入らないため objects とは別管理
-        std::vector<CameraVolume> cameraVolumes;
 
         /// プレイヤー出現時の capsule 中心 world 位置。 エディタで配置した実プレイヤーの Transform を焼く
         float spawnX = 0.0f;

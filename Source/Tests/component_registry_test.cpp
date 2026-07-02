@@ -158,7 +158,7 @@ TEST(ComponentRegistryTest, ReflectedFieldsMatchLedger)
         {"MeshRendererComponent", {"Base Color", "Mesh", "Material"}},
         {"PickupComponent", {"Pickup Kind"}},
         {"PlacedVirtualCamera",
-         {"Camera Pos", "Look Target", "Trigger Center", "Trigger Extent", "Look At Player", "Priority"}},
+         {"Look Target", "Up", "Trigger Center", "Trigger Extent", "Look At Player", "Priority"}},
         {"PlayerInputComponent", {}},
         {"ShadowComponent", {"Base Diameter", "Max Drop", "Surface Offset", "Base Alpha"}},
         {"SkeletalAnimationComponent", {"Speed", "Looping"}},

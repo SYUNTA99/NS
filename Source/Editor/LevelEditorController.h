@@ -29,7 +29,6 @@ namespace NS::Scene
 {
     class GameObject;
     class Transform;
-    class PlacedVirtualCamera;
     class CameraBrainComponent;
     class CameraComponent;
 } // namespace NS::Scene
@@ -152,21 +151,9 @@ public:
     /// Inspector / Hierarchy が Camera 選択中か
     [[nodiscard]] bool IsCameraSelected() const noexcept { return m_specialSelection == SpecialSelection::Camera; }
 
-    /// 現在選択中の area camera の cameraVolumes 添字。 未選択 / 範囲外は kNoObjectIndex
-    [[nodiscard]] std::size_t SelectedCameraIndex() const noexcept { return m_selectedCameraIndex; }
-    /// Hierarchy から添字で area camera を選択する。 オブジェクト / ギズモ選択は解除する
-    void SelectCameraByIndex(std::size_t index) noexcept;
-    /// Inspector が編集できる area camera の選択を持つか
-    [[nodiscard]] bool HasCameraSelection() const noexcept;
-    /// 選択中 area camera の runtime PlacedVirtualCamera。 未選択 / 範囲外は nullptr。 Inspector の反射編集対象
-    [[nodiscard]] NS::Scene::PlacedVirtualCamera* SelectedAreaCamera() noexcept;
-    /// 反射編集された PlacedVirtualCamera の値を選択中 CameraVolume へ書き戻し、 保存に乗せる。 非選択時は何もしない
-    /// トリガ半径は最小正値に clamp し component 側へも反映する
-    void SyncSelectedCameraVolumeFromComponent() noexcept;
-    /// 編集視点の中心あたりに新しい area camera を追加して選択する
-    void AddCameraVolume() noexcept;
-    /// 選択中の area camera を削除する。 非選択時は何もしない
-    void DeleteSelectedCamera() noexcept;
+    /// 編集視点の中心あたりに据え置きカメラの配置物を 1 個追加して選択する。 Undo 対応
+    /// カメラは通常の配置物なので、 選択・変形・削除・Inspector 編集は object の既存経路に乗る
+    void AddCameraObject();
 
     /// Object モードかつギズモで何か選択中なら true。 material 適用先がある状態
     [[nodiscard]] bool HasGizmoSelection() const noexcept
@@ -274,8 +261,6 @@ private:
     std::uint32_t m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
     // id から毎フレーム解決する派生の添字。 m_level.objects 用で、 ズレても crash しない安定 vector を指す
     std::size_t m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
-    // 選択中の area camera の cameraVolumes 添字。 オブジェクト選択とは排他
-    std::size_t m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
     // ビューポート由来のギズモ選択変化だけを index へ反映するための前フレーム値
     NS::Scene::Transform* m_lastGizmoSelected = nullptr;
 

@@ -345,27 +345,10 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorController& editor) noexcept
 
         if (ImGui::SmallButton("+ Add Object"))
             editor.AddObject();
-
-        ImGui::Separator();
-        const auto& cameras = editor.Level().cameraVolumes;
-        const std::size_t selectedCamera = editor.SelectedCameraIndex();
-        ImGui::Text("%zu area cameras", cameras.size());
+        ImGui::SameLine();
+        // 据え置きカメラも通常の配置物。 上の objects 一覧に "Camera" として並び、 選択・変形・削除も共通
         if (ImGui::SmallButton("+ Add Camera"))
-            editor.AddCameraVolume();
-
-        for (std::size_t i = 0; i < cameras.size(); ++i)
-        {
-            char label[64];
-            std::snprintf(label, sizeof(label), "[cam %zu] priority %d", i, cameras[i].priority);
-
-            ImGui::PushID(static_cast<int>(i) + 100000); // object 添字と ID 衝突しないようずらす
-            if (ImGui::Selectable(label, i == selectedCamera))
-                editor.SelectCameraByIndex(i);
-            ImGui::PopID();
-        }
-
-        if (cameras.empty())
-            ImGui::TextDisabled("(no area cameras)");
+            editor.AddCameraObject();
     }
     ImGui::End();
 #else
@@ -446,26 +429,6 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
                 (void)NS::Editor::DrawObjectComponents(*brain);
             if (vcam != nullptr && vcam != brain)
                 (void)NS::Editor::DrawObjectComponents(*vcam);
-
-            ImGui::End();
-            return;
-        }
-
-        if (editor.HasCameraSelection())
-        {
-            ImGui::Text("[cam %zu] area camera", editor.SelectedCameraIndex());
-            ImGui::Separator();
-
-            // PlacedVirtualCamera を反射フィールドから描き、 編集されたら CameraVolume へ書き戻す
-            if (auto* cam = editor.SelectedAreaCamera())
-            {
-                if (NS::Editor::DrawReflectedComponent(*cam))
-                    editor.SyncSelectedCameraVolumeFromComponent();
-            }
-
-            ImGui::Separator();
-            if (ImGui::Button("Delete Camera"))
-                editor.DeleteSelectedCamera();
 
             ImGui::End();
             return;

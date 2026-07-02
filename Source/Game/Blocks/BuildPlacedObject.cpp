@@ -261,6 +261,9 @@ namespace NS::Game::Blocks
 
     const char* ObjectDisplayName(const NS::Game::Level::ObjectInstance& object)
     {
+        if (HasComponentType(object, "PlacedVirtualCamera"))
+            return "Camera";
+
         const int pickupKind = PickupKindOf(object);
         if (pickupKind == 0)
             return "Coin";

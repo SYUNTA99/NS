@@ -374,3 +374,47 @@ TEST(SaveLoadRoundTrip, LegacyV1SpawnMigratesToCenter)
     EXPECT_FLOAT_EQ(dst.spawnZ, -2.0f);
     EXPECT_FLOAT_EQ(dst.spawnRotationW, 1.0f); // 旧データに向きは無く単位回転
 }
+
+// v3 までの据え置きカメラは別リストだった。 load で PlacedVirtualCamera 持ちの配置物へ変換される
+TEST(SaveLoadRoundTrip, LegacyCameraVolumesMigrateToObjects)
+{
+    const std::string legacyJson = R"({
+        "formatVersion": 3,
+        "objects": [],
+        "cameraVolumes": [
+            {
+                "cameraPosition": [8.0, 4.0, -6.0],
+                "lookTarget": [8.0, 0.0, 0.0],
+                "triggerCenter": [8.0, 1.0, 0.0],
+                "triggerExtent": [2.0, 1.5, 2.0],
+                "priority": 20,
+                "lookAtPlayer": 1
+            }
+        ]
+    })";
+
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, legacyJson));
+
+    ASSERT_EQ(dst.objects.size(), 1u);
+    const LevelNs::ObjectInstance& camera = dst.objects[0];
+    EXPECT_NE(camera.objectId, 0u); // 移行後の一意化で永続 id も振られる
+    EXPECT_FLOAT_EQ(camera.positionX, 8.0f);
+    EXPECT_FLOAT_EQ(camera.positionY, 4.0f);
+    EXPECT_FLOAT_EQ(camera.positionZ, -6.0f);
+
+    const LevelNs::ComponentData* placed = LevelNs::FindComponentData(camera, "PlacedVirtualCamera");
+    ASSERT_NE(placed, nullptr);
+    const auto* lookTarget = LevelNs::FindField(*placed, "Look Target");
+    ASSERT_NE(lookTarget, nullptr);
+    EXPECT_FLOAT_EQ(std::get<NS::Math::Vector3>(lookTarget->value).x, 8.0f);
+    const auto* priority = LevelNs::FindField(*placed, "Priority");
+    ASSERT_NE(priority, nullptr);
+    EXPECT_EQ(std::get<int>(priority->value), 20);
+    const auto* lookAtPlayer = LevelNs::FindField(*placed, "Look At Player");
+    ASSERT_NE(lookAtPlayer, nullptr);
+    EXPECT_TRUE(std::get<bool>(lookAtPlayer->value));
+    const auto* extent = LevelNs::FindField(*placed, "Trigger Extent");
+    ASSERT_NE(extent, nullptr);
+    EXPECT_FLOAT_EQ(std::get<NS::Math::Vector3>(extent->value).y, 1.5f);
+}

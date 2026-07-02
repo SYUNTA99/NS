@@ -29,6 +29,7 @@ namespace NS::Scene
 {
     class AssetManager;
     class GameObject;
+    class PlacedVirtualCamera;
     class SceneBase;
 } // namespace NS::Scene
 
@@ -89,6 +90,12 @@ namespace NS::Game::Level
         /// hazard の damage 走査 view。 所有は Objects() 側でここは観測のみ
         [[nodiscard]] const std::vector<NS::Scene::GameObject*>& HazardView() const noexcept { return m_hazardView; }
 
+        /// 据え置きカメラの走査 view。 所有は Objects() 側で、 Brain 登録と進入判定の駆動が読む
+        [[nodiscard]] const std::vector<NS::Scene::PlacedVirtualCamera*>& PlacedCameras() const noexcept
+        {
+            return m_placedCameraView;
+        }
+
         /// コヨーテ debug 用に焼いた踏み外せる縁の world 線分。 出荷では焼かれず常に空
         [[nodiscard]] const std::vector<NS::Game::Blocks::LedgeEdge>& LedgeEdges() const noexcept
         {
@@ -110,6 +117,7 @@ namespace NS::Game::Level
         std::vector<std::size_t> m_objectSourceIndices;
         std::vector<InstancedBlock> m_instancedBlocks;
         std::vector<NS::Scene::GameObject*> m_hazardView;
+        std::vector<NS::Scene::PlacedVirtualCamera*> m_placedCameraView;
         std::vector<NS::Game::Blocks::LedgeEdge> m_ledgeEdges;
         std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
         std::vector<std::uint32_t> m_editIds;

@@ -8,6 +8,7 @@
 #include "Framework/Scene/Components/CapsuleColliderComponent.h"
 #include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
+#include "Framework/Scene/Components/PlacedVirtualCamera.h"
 #include "Framework/Scene/Components/SlopeColliderComponent.h"
 #include "Framework/Scene/Components/SphereColliderComponent.h"
 #include "Framework/Scene/GameObject.h"
@@ -92,6 +93,13 @@ namespace NS::Game::Level
             }
             // water / deco は collider を持たないため当たり無し・ view 不要
 
+            // 据え置きカメラはエリア外で開始し、 play 中の進入判定が自分を active 化する
+            if (auto* placed = obj->FindComponent<NS::Scene::PlacedVirtualCamera>())
+            {
+                placed->SetActive(false);
+                m_placedCameraView.push_back(placed);
+            }
+
             m_objectSourceIndices.push_back(objectIndex);
             m_objects.push_back(std::move(obj));
         }
@@ -135,6 +143,7 @@ namespace NS::Game::Level
         m_objectSourceIndices.clear();
         m_instancedBlocks.clear();
         m_hazardView.clear();
+        m_placedCameraView.clear();
     }
 
     void LevelWorld::CreateBatcher()

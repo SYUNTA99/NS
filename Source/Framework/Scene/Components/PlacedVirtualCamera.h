@@ -3,7 +3,8 @@
 /// @file PlacedVirtualCamera.h
 /// @brief NS::Scene::PlacedVirtualCamera — 視点とトリガ範囲を自分で持つ据え置き仮想カメラ
 ///
-/// @details 位置 / 注視点 / up に加え、進入判定用のトリガ AABB と lookAtPlayer を自身で保持する
+/// @details 視点位置は owner の Transform が持ち、ギズモや transform 編集がそのままカメラ移動になる
+/// 注視点 / up / 進入判定用のトリガ AABB / lookAtPlayer は自身で保持する
 /// `UpdateActivation(playerPos)` がトリガ内なら自分を active 化し、lookAtPlayer 時は注視点を
 /// プレイヤーへ向ける。`SetVcamPriority` を follow より高くしておけば、active な間だけ
 /// CameraBrain がこれを選んでブレンドする。`EvaluatePose` は alpha 無視で固定 pose を返す
@@ -21,7 +22,7 @@ namespace NS::Scene
     public:
         PlacedVirtualCamera() noexcept;
 
-        /// 据え置き位置と注視点を設定する
+        /// 据え置き位置と注視点を設定する。位置は owner の Transform へ書く。owner 不在なら注視点のみ
         void SetView(const NS::Math::Vector3& position, const NS::Math::Vector3& target) noexcept;
         void SetUpDirection(const NS::Math::Vector3& up) noexcept { m_up = up; }
 
@@ -38,7 +39,8 @@ namespace NS::Scene
         /// lookAtPlayer 時は進入中の注視点をプレイヤーへ更新する。play 中に毎ステップ呼ぶ
         void UpdateActivation(const NS::Math::Vector3& playerPosition) noexcept;
 
-        [[nodiscard]] const NS::Math::Vector3& ViewPosition() const noexcept { return m_position; }
+        /// 視点の world 位置。owner の Transform から読む。owner 不在は既定位置
+        [[nodiscard]] NS::Math::Vector3 ViewPosition() const noexcept;
         [[nodiscard]] const NS::Math::Vector3& ViewTarget() const noexcept { return m_target; }
 
         /// 進入判定トリガ AABB の中心
@@ -50,10 +52,10 @@ namespace NS::Scene
 
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
-        // up は保存側の CameraVolume に枠が無いので反射しない。編集出来て保存されない欄を作らない
+        // 視点位置は owner Transform 所有なので反射しない。transform 編集の経路と二重にしない
         NS_REFLECT_BEGIN(PlacedVirtualCamera)
-        NS_REFLECT_FIELD(m_position, "Camera Pos")
         NS_REFLECT_FIELD(m_target, "Look Target")
+        NS_REFLECT_FIELD(m_up, "Up")
         NS_REFLECT_FIELD(m_triggerCenter, "Trigger Center")
         NS_REFLECT_FIELD(m_triggerExtent, "Trigger Extent")
         NS_REFLECT_FIELD(m_lookAtPlayer, "Look At Player")
@@ -61,7 +63,6 @@ namespace NS::Scene
         NS_REFLECT_END()
 
     private:
-        NS::Math::Vector3 m_position{0.0f, 5.0f, -10.0f};
         NS::Math::Vector3 m_target{0.0f, 0.0f, 0.0f};
         NS::Math::Vector3 m_up{0.0f, 1.0f, 0.0f};
         NS::Math::Vector3 m_triggerCenter{0.0f, 0.0f, 0.0f};
