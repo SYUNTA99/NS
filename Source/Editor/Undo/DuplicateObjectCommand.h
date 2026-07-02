@@ -26,7 +26,8 @@ namespace NS::Editor
 
     private:
         std::uint32_t m_sourceObjectId;
-        std::optional<std::uint32_t> m_assignedId; // 複製の識別子。 redo で再利用する
+        std::optional<std::uint32_t> m_assignedId;       // 複製の識別子。 redo で再利用する
+        std::optional<std::uint32_t> m_assignedObjectId; // 複製の永続 id。 redo で再利用する
     };
 
 } // namespace NS::Editor

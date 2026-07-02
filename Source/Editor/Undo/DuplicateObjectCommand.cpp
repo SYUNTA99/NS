@@ -19,6 +19,10 @@ namespace NS::Editor
         NS::Game::Level::ObjectInstance copy = target.level.objects[srcIndex];
         if (!m_assignedId)
             m_assignedId = target.nextId++;
+        // 複製元の永続 id を引き継ぐと一意性が壊れるので、初回に新 id を採番し redo で再利用する
+        if (!m_assignedObjectId)
+            m_assignedObjectId = NS::Game::Level::AllocateObjectId(target.level);
+        copy.objectId = *m_assignedObjectId;
         target.level.objects.push_back(std::move(copy));
         target.ids.push_back(*m_assignedId);
     }

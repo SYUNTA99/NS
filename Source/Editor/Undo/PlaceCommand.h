@@ -40,7 +40,8 @@ namespace NS::Editor
         std::uint8_t m_rotation;
         NS::Game::Level::ObjectInstance m_prototype; // 配置時に複製する複製元
         std::optional<NS::Game::Level::ObjectInstance> m_replaced;
-        std::optional<std::uint32_t> m_assignedId; // append 時の識別子。 redo で再利用し参照を壊さない
+        std::optional<std::uint32_t> m_assignedId;       // append 時の識別子。 redo で再利用し参照を壊さない
+        std::optional<std::uint32_t> m_assignedObjectId; // append 時の永続 id。 redo で再利用する
     };
 
 } // namespace NS::Editor

@@ -23,7 +23,8 @@ namespace NS::Game::Level
     {
         /// セーブフォーマットのバージョン。 binary 時代の major/minor を 1 整数へ置換した
         /// v2 で spawn をグリッドセル番号から capsule 中心の world 位置 + 向きへ変更した
-        constexpr int kFormatVersion = 2;
+        /// v3 で object へ永続 id、 root へ nextObjectId を追加した。 旧版は読込時に採番して移行する
+        constexpr int kFormatVersion = 3;
 
         /// 読込時の上限。 巨大 size / 要素数による memory exhaustion を防ぐ。 binary 版から移植
         constexpr std::size_t kMaxLevelFileBytes = 16u * 1024u * 1024u;
@@ -184,6 +185,7 @@ namespace NS::Game::Level
                 components.push_back(SerializeComponentData(component));
 
             nlohmann::json out;
+            out["id"] = object.objectId;
             out["transform"] = std::move(transform);
             out["materialIndex"] = static_cast<int>(object.materialIndex);
             out["flags"] = static_cast<int>(object.flags);
@@ -207,6 +209,7 @@ namespace NS::Game::Level
                 ReadVec3(*transformIt, "scale", object.scaleX, object.scaleY, object.scaleZ);
             }
 
+            object.objectId = static_cast<std::uint32_t>(ReadInt(json, "id", 0));
             object.materialIndex = static_cast<std::int16_t>(ReadInt(json, "materialIndex", object.materialIndex));
             object.flags = static_cast<std::uint8_t>(ReadInt(json, "flags", object.flags));
             object.reserved1 = static_cast<std::uint16_t>(ReadInt(json, "reserved1", object.reserved1));
@@ -298,6 +301,7 @@ namespace NS::Game::Level
         for (const auto& object : level.objects)
             objects.push_back(SerializeObject(object));
         root["objects"] = std::move(objects);
+        root["nextObjectId"] = level.nextObjectId;
 
         nlohmann::json materials = nlohmann::json::array();
         for (const auto& materialPath : level.materialPaths)
@@ -419,6 +423,10 @@ namespace NS::Game::Level
             outLevel.timeLimitSeconds =
                 static_cast<std::uint16_t>(ReadInt(*metaIt, "timeLimitSeconds", outLevel.timeLimitSeconds));
         }
+
+        outLevel.nextObjectId = static_cast<std::uint32_t>(ReadInt(root, "nextObjectId", 1));
+        // v2 以前は id 無しで全 object が未割当。読込直後に必ず一意化し、以降の経路は id を信頼できる
+        EnsureUniqueObjectIds(outLevel);
 
         return true;
     }

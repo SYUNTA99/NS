@@ -6,6 +6,7 @@
 #include "Game/Level/detail/crc32.h"
 
 #include <cmath>
+#include <unordered_set>
 
 namespace NS::Game::Level
 {
@@ -60,6 +61,7 @@ namespace NS::Game::Level
         /// component の field は名前順に hash するため、 名前昇順の save→load 正準化を跨いでも CRC が安定する
         std::uint32_t UpdateWithObject(std::uint32_t crc, const ObjectInstance& object) noexcept
         {
+            crc = UpdateWith(crc, object.objectId);
             crc = UpdateWith(crc, object.positionX);
             crc = UpdateWith(crc, object.positionY);
             crc = UpdateWith(crc, object.positionZ);
@@ -181,7 +183,38 @@ namespace NS::Game::Level
         crc = UpdateWith(crc, coinThreshold);
         crc = UpdateWith(crc, timeLimitSeconds);
 
+        // nextObjectId は意図して hash しない。採番カウンタは undo で巻き戻さないため、入れると
+        // 「置いて undo しただけで dirty」が恒久化する。カウンタだけが進んだ状態は保存しなくても
+        // 未保存 object への参照が残らず整合が壊れないので、内容の変化検知からは外す
+
         return detail::Crc32Finalize(crc);
+    }
+
+    std::uint32_t AllocateObjectId(LevelData& level) noexcept
+    {
+        return level.nextObjectId++;
+    }
+
+    void EnsureUniqueObjectIds(LevelData& level)
+    {
+        // 先にカウンタを既存最大 id の先へ進め、これから振る id が既存と衝突しないようにする
+        for (const ObjectInstance& object : level.objects)
+        {
+            if (object.objectId >= level.nextObjectId)
+                level.nextObjectId = object.objectId + 1;
+        }
+
+        // 未割当は旧版ファイルの全 object、重複は手編集や複製バグの防波堤。先勝ちで後続へ新 id を振る
+        std::unordered_set<std::uint32_t> seen;
+        seen.reserve(level.objects.size());
+        for (ObjectInstance& object : level.objects)
+        {
+            if (object.objectId == 0 || !seen.insert(object.objectId).second)
+            {
+                object.objectId = level.nextObjectId++;
+                seen.insert(object.objectId);
+            }
+        }
     }
 
     std::int16_t ObjectCellX(const ObjectInstance& object) noexcept

@@ -109,6 +109,9 @@ TEST(PlaceCommandTest, TemplateClonePlacesPrototypeWithBakedTransform)
 
     const LevelNs::ObjectInstance cloned =
         PlaceOneAndTake(EditorNs::PlaceCommand(tmpl.prototype, cx, cy, cz, rotation));
+    // 配置時に永続 id が採番されるため、 id を揃えた上で残り全メンバの複製一致を確かめる
+    EXPECT_NE(cloned.objectId, 0u);
+    expected.objectId = cloned.objectId;
     EXPECT_EQ(cloned, expected);
 }
 
@@ -129,6 +132,8 @@ TEST(PlaceCommandTest, AllPaletteSlotsClonePlacesPrototype)
 
         const LevelNs::ObjectInstance cloned =
             PlaceOneAndTake(EditorNs::PlaceCommand(slot.prototype, cx, cy, cz, kRotation));
+        EXPECT_NE(cloned.objectId, 0u) << "slot=" << slot.name;
+        expected.objectId = cloned.objectId;
         EXPECT_EQ(cloned, expected) << "slot=" << slot.name;
     }
 }

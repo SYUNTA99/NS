@@ -25,8 +25,9 @@ namespace NS::Editor
         NS::Game::Level::SetGridRotationStep(placed, m_rotation);
         if (index != NS::Game::Level::kNoObjectIndex)
         {
-            // 既存 cell の置換は in-place なので id を据え置く
+            // 既存 cell の置換は in-place なので id を据え置く。永続 id も同じ物として引き継ぐ
             m_replaced = level.objects[index];
+            placed.objectId = level.objects[index].objectId;
             level.objects[index] = placed;
         }
         else
@@ -35,6 +36,10 @@ namespace NS::Editor
             // この object を指す TransformCommand を壊さないよう redo でも同じ識別子を再利用する
             if (!m_assignedId)
                 m_assignedId = target.nextId++;
+            // 永続 id も初回だけ採番し redo で再利用する
+            if (!m_assignedObjectId)
+                m_assignedObjectId = NS::Game::Level::AllocateObjectId(level);
+            placed.objectId = *m_assignedObjectId;
             level.objects.push_back(placed);
             target.ids.push_back(*m_assignedId);
         }

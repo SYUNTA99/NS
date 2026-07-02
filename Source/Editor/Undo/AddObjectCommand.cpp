@@ -1,5 +1,7 @@
 #include "Editor/Undo/AddObjectCommand.h"
 
+#include "Game/Level/LevelData.h"
+
 namespace NS::Editor
 {
     AddObjectCommand::AddObjectCommand(const NS::Game::Level::ObjectInstance& object) noexcept : m_object(object) {}
@@ -9,6 +11,9 @@ namespace NS::Editor
         // この object を指す TransformCommand を壊さないよう redo でも同じ識別子を再利用する
         if (!m_assignedId)
             m_assignedId = target.nextId++;
+        // 永続 id も初回だけ採番して m_object に焼き、redo で別の id にならないようにする
+        if (m_object.objectId == 0)
+            m_object.objectId = NS::Game::Level::AllocateObjectId(target.level);
         target.level.objects.push_back(m_object);
         target.ids.push_back(*m_assignedId);
     }

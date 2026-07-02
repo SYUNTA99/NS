@@ -31,6 +31,8 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
     src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
     src.objects.push_back(LevelNs::MakeGridObject(1, 0, 1, 1));
     src.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, 0));
+    // 編集中のレベルは読込採番か Command 採番で常に id を持つため、 基準 CRC も採番後から取る
+    LevelNs::EnsureUniqueObjectIds(src);
     const auto crc0 = src.ComputeCrc32();
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
@@ -169,6 +171,8 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
     comp.fields.push_back(LevelNs::FieldValue{"fWhole", 4.0f}); // 整数値の float が int に化けないことを確かめる
     freeObject.components.push_back(std::move(comp));
     src.objects.push_back(std::move(freeObject));
+    // 正準 JSON 同士の比較なので、 読込側と同じく採番済の状態に揃えてから保存する
+    LevelNs::EnsureUniqueObjectIds(src);
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
 
@@ -261,6 +265,8 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     gridObject.flags = LevelNs::kObjectFlagGridAligned;
     src.objects.push_back(gridObject);
 
+    // 編集中のレベルは常に採番済なので、 基準 CRC も採番後から取る
+    LevelNs::EnsureUniqueObjectIds(src);
     const auto crc0 = src.ComputeCrc32();
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
 

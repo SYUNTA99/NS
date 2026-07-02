@@ -62,8 +62,10 @@ namespace NS::Game::Level
     /// colliderOffset / colliderRotation は当たり箱を視覚と独立に owner local 空間でずらす / 回す。 既定は 0 / 単位
     /// shapeCollider は当たり判定形状 Box/Sphere/Capsule/Mesh で既定 / 旧データは Box
     /// colliderHalfExtents は形状で解釈が変わる: Box=各半径 / Sphere=x が半径 / Capsule=x 半径・y 半高 / Mesh=未使用
+    /// objectId はレベル内で一意な永続 id で 0 は未割当。並べ替えや改名に耐えるオブジェクト参照のキーになる
     struct ObjectInstance
     {
+        std::uint32_t objectId = 0;
         float positionX = 0.0f;
         float positionY = 0.0f;
         float positionZ = 0.0f;
@@ -127,6 +129,9 @@ namespace NS::Game::Level
         /// grid block も自由配置物も含む唯一の配置物リスト。 grid かどうかは各要素の flags で判別する
         std::vector<ObjectInstance> objects;
 
+        /// 次に割り当てる永続 object id。単調増加で欠番は再利用せず、削除済み id が別物を指す事故を防ぐ
+        std::uint32_t nextObjectId = 1;
+
         /// objects の materialIndex が参照する .mat 相対パス表
         std::vector<std::string> materialPaths;
 
@@ -154,6 +159,13 @@ namespace NS::Game::Level
 
     /// objects 配列で「該当無し」を表す添字
     inline constexpr std::size_t kNoObjectIndex = static_cast<std::size_t>(-1);
+
+    /// 永続 object id を 1 個割り当ててカウンタを進める。生成経路が新規 object に振るのに使う
+    [[nodiscard]] std::uint32_t AllocateObjectId(LevelData& level) noexcept;
+
+    /// 全 object の永続 id を「非 0 かつ一意」へ整える。未割当と重複には新 id を振り、
+    /// nextObjectId を既存最大 id より先へ進める。旧版や手編集のファイルを読込直後に通す移行の門
+    void EnsureUniqueObjectIds(LevelData& level);
 
     /// object の collider 形状を返す。 未知値は安全側で Box に倒す
     [[nodiscard]] ShapeCollider ObjectShapeCollider(const ObjectInstance& object) noexcept;

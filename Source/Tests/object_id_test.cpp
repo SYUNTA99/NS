@@ -1,0 +1,158 @@
+#include "Editor/Undo/AddObjectCommand.h"
+#include "Editor/Undo/DuplicateObjectCommand.h"
+#include "Editor/Undo/PlaceCommand.h"
+#include "Game/Level/EditTarget.h"
+#include "Game/Level/LevelData.h"
+#include "Game/Level/LevelJson.h"
+
+#include <gtest/gtest.h>
+
+#include <cstdint>
+#include <string>
+#include <unordered_set>
+#include <vector>
+
+namespace EditorNs = NS::Editor;
+namespace LevelNs = NS::Game::Level;
+
+namespace
+{
+    [[nodiscard]] bool AllIdsUniqueAndAssigned(const LevelNs::LevelData& level)
+    {
+        std::unordered_set<std::uint32_t> seen;
+        for (const auto& object : level.objects)
+        {
+            if (object.objectId == 0 || !seen.insert(object.objectId).second)
+                return false;
+        }
+        return true;
+    }
+} // namespace
+
+TEST(ObjectIdTest, EnsureUniqueAssignsMissingIds)
+{
+    LevelNs::LevelData level;
+    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeGridObject(1, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, 0));
+
+    LevelNs::EnsureUniqueObjectIds(level);
+
+    EXPECT_TRUE(AllIdsUniqueAndAssigned(level));
+    // カウンタは既存最大 id の先を指す
+    for (const auto& object : level.objects)
+        EXPECT_LT(object.objectId, level.nextObjectId);
+}
+
+TEST(ObjectIdTest, EnsureUniqueReassignsDuplicatesKeepingFirst)
+{
+    LevelNs::LevelData level;
+    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeGridObject(1, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, 0));
+    level.objects[0].objectId = 5;
+    level.objects[1].objectId = 5;
+    level.objects[2].objectId = 2;
+
+    LevelNs::EnsureUniqueObjectIds(level);
+
+    // 先勝ちで最初の 5 は保持、2 番目に新 id、既存の 2 も保持
+    EXPECT_EQ(level.objects[0].objectId, 5u);
+    EXPECT_NE(level.objects[1].objectId, 5u);
+    EXPECT_EQ(level.objects[2].objectId, 2u);
+    EXPECT_TRUE(AllIdsUniqueAndAssigned(level));
+}
+
+TEST(ObjectIdTest, JsonRoundTripPreservesIdsAndCounter)
+{
+    LevelNs::LevelData level;
+    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeGridObject(3, 1, 2, 1));
+    LevelNs::EnsureUniqueObjectIds(level);
+    const std::uint32_t id0 = level.objects[0].objectId;
+    const std::uint32_t id1 = level.objects[1].objectId;
+    const std::uint32_t counter = level.nextObjectId;
+
+    const std::string text = LevelNs::SerializeLevelToJson(level);
+    LevelNs::LevelData restored;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(restored, text));
+
+    ASSERT_EQ(restored.objects.size(), 2u);
+    EXPECT_EQ(restored.objects[0].objectId, id0);
+    EXPECT_EQ(restored.objects[1].objectId, id1);
+    EXPECT_EQ(restored.nextObjectId, counter);
+}
+
+TEST(ObjectIdTest, LegacyJsonWithoutIdsGetsAssignedOnLoad)
+{
+    // v2 相当の最小 JSON。id と nextObjectId が無い旧ファイルを読むと採番される
+    const std::string legacy = R"({
+        "formatVersion": 2,
+        "objects": [
+            {"transform": {"pos": [0.0, 0.0, 0.0]}, "flags": 1, "components": []},
+            {"transform": {"pos": [1.0, 0.0, 0.0]}, "flags": 1, "components": []}
+        ]
+    })";
+
+    LevelNs::LevelData restored;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(restored, legacy));
+    ASSERT_EQ(restored.objects.size(), 2u);
+    EXPECT_TRUE(AllIdsUniqueAndAssigned(restored));
+}
+
+TEST(ObjectIdTest, AddObjectCommandAssignsIdAndRedoReusesIt)
+{
+    LevelNs::LevelData level;
+    std::vector<std::uint32_t> ids;
+    std::uint32_t next = 0;
+    LevelNs::EditTarget target{level, ids, next};
+
+    EditorNs::AddObjectCommand cmd(LevelNs::ObjectInstance{});
+    cmd.Do(target);
+    ASSERT_EQ(level.objects.size(), 1u);
+    const std::uint32_t assigned = level.objects[0].objectId;
+    EXPECT_NE(assigned, 0u);
+
+    cmd.Undo(target);
+    EXPECT_TRUE(level.objects.empty());
+
+    // redo で別 id にならず、消えた間に参照が壊れない
+    cmd.Do(target);
+    ASSERT_EQ(level.objects.size(), 1u);
+    EXPECT_EQ(level.objects[0].objectId, assigned);
+}
+
+TEST(ObjectIdTest, DuplicateObjectCommandAssignsFreshId)
+{
+    LevelNs::LevelData level;
+    level.objects.push_back(LevelNs::ObjectInstance{});
+    LevelNs::EnsureUniqueObjectIds(level);
+    std::vector<std::uint32_t> ids{0};
+    std::uint32_t next = 1;
+    LevelNs::EditTarget target{level, ids, next};
+
+    EditorNs::DuplicateObjectCommand cmd(0);
+    cmd.Do(target);
+
+    ASSERT_EQ(level.objects.size(), 2u);
+    EXPECT_TRUE(AllIdsUniqueAndAssigned(level));
+    EXPECT_NE(level.objects[1].objectId, level.objects[0].objectId);
+}
+
+TEST(ObjectIdTest, PlaceCommandReplaceKeepsPersistentId)
+{
+    LevelNs::LevelData level;
+    level.objects.push_back(LevelNs::MakeGridObject(5, 0, 3, 0));
+    LevelNs::EnsureUniqueObjectIds(level);
+    const std::uint32_t original = level.objects[0].objectId;
+    std::vector<std::uint32_t> ids{0};
+    std::uint32_t next = 1;
+    LevelNs::EditTarget target{level, ids, next};
+
+    // 同じ cell への配置は置換になり、同じ場所の物として永続 id を引き継ぐ
+    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 0), 5, 0, 3, 1);
+    cmd.Do(target);
+
+    ASSERT_EQ(level.objects.size(), 1u);
+    EXPECT_EQ(level.objects[0].objectId, original);
+}
