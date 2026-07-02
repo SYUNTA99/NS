@@ -101,7 +101,6 @@ namespace NS::App
         std::unique_ptr<NS::Graphics::Renderer> m_renderer;
         // Renderer より後に宣言する = 逆順破棄で Renderer より先に死に GPU リソース解放順を保証する
         std::unique_ptr<NS::Scene::AssetManager> m_assets;
-        std::unique_ptr<NS::Platform::Input> m_input;
         Layers m_layers;
         bool m_valid = false;
         bool m_quitRequested = false;

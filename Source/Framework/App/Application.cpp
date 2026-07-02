@@ -66,8 +66,8 @@ namespace NS::App
             return;
         }
 
-        m_input = std::make_unique<NS::Platform::Input>();
-        m_window->AttachInput(m_input.get());
+        // 入力はプロセス全域の static。Application は所有せず Window の転送先として渡すだけ
+        m_window->AttachInput(&NS::Platform::Input::Get());
 
         // リサイズ購読は Renderer がコンストラクタで自己登録済。swapchain 再構築はレンダラの責務
 
@@ -104,7 +104,7 @@ namespace NS::App
 
     NS::Platform::Input& Application::Input() noexcept
     {
-        return *m_input;
+        return NS::Platform::Input::Get();
     }
 
     NS::Scene::AssetManager& Application::Assets() noexcept
@@ -177,7 +177,7 @@ namespace NS::App
     {
         auto& window = *m_window;
         auto& renderer = *m_renderer;
-        auto& input = *m_input;
+        auto& input = NS::Platform::Input::Get();
         auto& stack = m_layers;
 
         while (true)
@@ -254,7 +254,6 @@ namespace NS::App
         if (m_assets)
             m_assets->Clear();
         m_renderer.reset();
-        m_input.reset();
         m_window.reset();
     }
 

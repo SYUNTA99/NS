@@ -22,6 +22,13 @@ namespace NS::Platform
     public:
         Input() noexcept;
 
+        /// プロセス全域で 1 つの共有実体を静的に返す。所有者を介さずどこからでも取得する
+        [[nodiscard]] static Input& Get() noexcept
+        {
+            static Input s_instance;
+            return s_instance;
+        }
+
         [[nodiscard]] NS::Platform::Keyboard& Keyboard() noexcept { return m_keyboard; }
         [[nodiscard]] const NS::Platform::Keyboard& Keyboard() const noexcept { return m_keyboard; }
 
