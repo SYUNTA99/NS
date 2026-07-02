@@ -3,11 +3,6 @@
 #include "Framework/Scene/Components/ThirdPersonFollowComponent.h"
 #include "Framework/Scene/GameObject.h"
 
-namespace NS::Platform
-{
-    class Input;
-}
-
 namespace NS::Scene
 {
     class CharacterMovementComponent;
@@ -18,9 +13,7 @@ namespace NS::Scene
 class CameraRig : public NS::Scene::GameObject
 {
 public:
-    CameraRig(NS::Platform::Input* input,
-              NS::Scene::Transform* followTarget,
-              const NS::Scene::CharacterMovementComponent* movement) noexcept;
+    CameraRig(NS::Scene::Transform* followTarget, const NS::Scene::CharacterMovementComponent* movement) noexcept;
     ~CameraRig() override = default;
 
     CameraRig(const CameraRig&) = delete;

@@ -3,12 +3,18 @@
 #include "Framework/Core/Clock.h"
 #include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/Scene/Components/VirtualCameraComponent.h"
+#include "Framework/Scene/GameObject.h"
 
 #include <algorithm>
 
 namespace NS::Scene
 {
     CameraBrainComponent::CameraBrainComponent() noexcept : Component(static_cast<int>(TickPriority::Camera)) {}
+
+    void CameraBrainComponent::OnStart()
+    {
+        m_camera = (Owner() != nullptr) ? Owner()->FindComponent<CameraComponent>() : nullptr;
+    }
 
     void CameraBrainComponent::AddVirtualCamera(VirtualCameraComponent* vcam)
     {

@@ -26,8 +26,8 @@ namespace NS::Scene
     public:
         CameraBrainComponent() noexcept;
 
-        /// 出力先の実カメラを注入する。Brain と同じ GameObject に乗せる想定
-        void SetCamera(CameraComponent* camera) noexcept { m_camera = camera; }
+        /// 同じ GameObject に乗る実カメラをここで解決する。見つからなければ Evaluate は何もしない
+        void OnStart() override;
 
         /// 候補 vcam を登録する。null と重複は無視する。寿命は呼出側が支配する非所有参照
         void AddVirtualCamera(VirtualCameraComponent* vcam);

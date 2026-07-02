@@ -91,6 +91,10 @@ namespace NS::Scene
         /// 実体の破棄は scene と共に行われ、借用元より後に service が死ぬ順序を保つ
         void DeinitSceneSubsystems();
 
+        /// 全 scene が 1 個持つ衝突 world への可変ハンドル。派生 scene が build 時に満たし、
+        /// CharacterMovementComponent 等の借用元は OnStart で所属 scene から取りに来る
+        [[nodiscard]] NS::Physics::PhysicsWorld& Physics() noexcept { return m_physicsWorld; }
+
     protected:
         /// Opaque バケットの Renderable を登録順に描画する。Game が OnRenderScene から呼ぶ
         void DrawOpaque(const RenderContext& context);
@@ -110,10 +114,6 @@ namespace NS::Scene
         /// テスト用に protected 公開する。 Application 経路では OnRenderScene が描画前に呼ぶ
         [[nodiscard]] NS::Graphics::RenderSettings ResolveSceneSettings(
             const NS::Graphics::RenderSettings& projectDefaults);
-
-        /// 派生が build 時に衝突 world を満たし、借用元へ渡すための可変ハンドル
-        /// 全 scene が 1 個持ち、当たりの無い scene では空のまま使われない
-        [[nodiscard]] NS::Physics::PhysicsWorld& Physics() noexcept { return m_physicsWorld; }
 
     private:
         /// 全 scene が 1 個持つ衝突 world。当たりの有る scene だけが build で満たし、無ければ空のまま

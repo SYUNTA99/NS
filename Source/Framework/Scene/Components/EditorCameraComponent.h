@@ -14,11 +14,6 @@
 
 #include <cstdint>
 
-namespace NS::Platform
-{
-    class Input;
-}
-
 namespace NS::Scene
 {
     class GameObject;
@@ -29,8 +24,6 @@ namespace NS::Scene
     {
     public:
         EditorCameraComponent() noexcept;
-
-        void SetInput(NS::Platform::Input* input) noexcept;
 
         void OnUpdate() override;
         /// free-fly の現在姿勢を返す。alpha は使わない。Brain が選択時に実カメラへ書く
@@ -77,8 +70,6 @@ namespace NS::Scene
         static constexpr float kPitchMax = +1.553f; // +89°
 
     private:
-        NS::Platform::Input* m_input = nullptr;
-
         NS::Math::Vector3 m_center{0.0f, 0.0f, 0.0f};
         float m_yaw = 0.0f;
         float m_pitch = -0.5236f;

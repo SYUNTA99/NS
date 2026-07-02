@@ -4,6 +4,7 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Physics/PhysicsWorld.h"
 #include "Framework/Scene/GameObject.h"
+#include "Framework/Scene/SceneBase.h"
 #include "Framework/Scene/Transform.h"
 
 #include <algorithm>
@@ -135,6 +136,12 @@ namespace NS::Scene
         m_ledgeMantleTimer = 0.0f;
         m_lastGroundedPosition = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
         m_coyoteJumpMarkers.clear();
+    }
+
+    void CharacterMovementComponent::OnStart()
+    {
+        if (m_world == nullptr && Owner() != nullptr && Owner()->OwningScene() != nullptr)
+            m_world = &Owner()->OwningScene()->Physics();
     }
 
     void CharacterMovementComponent::PushCoyoteJumpMarker(const NS::Math::Vector3& edge,

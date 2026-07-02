@@ -9,11 +9,6 @@
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Components/VirtualCameraComponent.h"
 
-namespace NS::Platform
-{
-    class Input;
-}
-
 namespace NS::Scene
 {
     class CharacterMovementComponent;
@@ -29,9 +24,6 @@ namespace NS::Scene
 
         void SetTarget(Transform* target) noexcept;
         [[nodiscard]] Transform* Target() const noexcept { return m_target; }
-
-        /// 右スティック / マウス回転の入力ソース。null では旋回 0
-        void SetInput(NS::Platform::Input* input) noexcept;
 
         /// Dynamic zoom の判定に使い、grounded と horizontal velocity を見る。null で idle 距離固定
         void SetMovement(const CharacterMovementComponent* movement) noexcept;
@@ -87,7 +79,6 @@ namespace NS::Scene
 
     private:
         Transform* m_target = nullptr;
-        NS::Platform::Input* m_input = nullptr;
         const CharacterMovementComponent* m_movement = nullptr;
 
         float m_yaw = 0.0f;

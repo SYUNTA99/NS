@@ -12,16 +12,11 @@ namespace NS::Graphics
     class StaticMesh;
 } // namespace NS::Graphics
 
-namespace NS::Platform
-{
-    class Input;
-} // namespace NS::Platform
-
 /// プレイヤーキャラクタ。 Mesh / Movement / Input の 3 Component を所有し参照をキャッシュする
 class Player : public NS::Scene::GameObject
 {
 public:
-    Player(NS::Graphics::StaticMesh* mesh, NS::Graphics::Material* material, NS::Platform::Input* input) noexcept;
+    Player(NS::Graphics::StaticMesh* mesh, NS::Graphics::Material* material) noexcept;
     ~Player() override = default;
 
     Player(const Player&) = delete;

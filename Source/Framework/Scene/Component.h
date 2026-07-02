@@ -5,8 +5,8 @@
 ///
 /// GameObject::AddComponent<T>() で生成され、 GameObject が unique_ptr で寿命を所有する
 /// Component 自身は所有者 GameObject を生参照する。 owner は生成後に GameObject が注入する
-/// Component 間 / 他 GameObject へのアクセスはコンストラクタ経由の明示的な生ポインタ注入のみ許可する
-/// GetComponent<T>() のような動的検索 API は提供しない
+/// 兄弟 Component への参照は OnStart で Owner()->FindComponent<T>() により解決し、
+/// scene の service は OnStart で Owner()->OwningScene() 経由で借用する
 ///
 /// ライフサイクル:
 ///   - OnStart() — Scene attach 直後に 1 回

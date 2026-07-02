@@ -154,7 +154,7 @@ void LevelPlayScene::OnStart()
     if (!m_screenFade->IsValid())
         NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelPlayScene: ScreenFade 構築失敗、 暗転演出なしで続行");
 
-    m_player = std::make_unique<Player>(assets.Builtin("cube"), assets.SharedMaterial("player"), &app->Input());
+    m_player = std::make_unique<Player>(assets.Builtin("cube"), assets.SharedMaterial("player"));
     m_player->AttachScene(this);
     m_player->Root().SetPosition({0.0f, 1.0f, -4.0f});
     // cube mesh の半サイズは 0.5 だが capsule collider は radius=0.4 / halfHeight=0.5
@@ -169,7 +169,7 @@ void LevelPlayScene::OnStart()
     LoadInitialLevel();
     RebuildBlocksFromLevelData();
 
-    m_cameraRig = std::make_unique<CameraRig>(&app->Input(), &m_player->Root(), &m_player->Movement());
+    m_cameraRig = std::make_unique<CameraRig>(&m_player->Root(), &m_player->Movement());
     m_cameraRig->AttachScene(this);
     // follow vcam の投影設定。 near 0.1 / fov 60 は既定、 play は遠景を 100 までに抑える
     m_cameraRig->Follow().SetFarPlane(100.0f);
@@ -182,7 +182,6 @@ void LevelPlayScene::OnStart()
     m_cameraHost = std::make_unique<NS::Scene::GameObject>();
     m_mainCamera = m_cameraHost->AddComponent<NS::Scene::CameraComponent>();
     m_brain = m_cameraHost->AddComponent<NS::Scene::CameraBrainComponent>();
-    m_brain->SetCamera(m_mainCamera);
     m_mainCamera->SetAspectRatioFromRenderer(renderer);
     m_mainCamera->SetUp({0.0f, 1.0f, 0.0f});
     m_brain->AddVirtualCamera(&m_cameraRig->Follow());
@@ -817,8 +816,6 @@ void LevelPlayScene::RebuildBlocksFromLevelData()
 
     if (m_player)
     {
-        m_player->Movement().SetPhysicsWorld(physics);
-
         // 接地シャドウは grid + 自由物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
         std::vector<NS::Math::AABB> shadowReceivers(physics->Aabbs().begin(), physics->Aabbs().end());
         for (std::size_t i = 0; i < m_objects.size(); ++i)

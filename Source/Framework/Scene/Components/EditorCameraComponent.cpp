@@ -14,11 +14,6 @@ namespace NS::Scene
         : VirtualCameraComponent(static_cast<int>(TickPriority::Camera))
     {}
 
-    void EditorCameraComponent::SetInput(NS::Platform::Input* input) noexcept
-    {
-        m_input = input;
-    }
-
     void EditorCameraComponent::SetYawPitch(float yaw, float pitch) noexcept
     {
         m_yaw = yaw;
@@ -114,13 +109,14 @@ namespace NS::Scene
             return;
 
         const float dt = NS::Core::FrameTimer::FixedDelta();
+        auto& input = NS::Platform::Input::Get();
 
         // Mouse 入力。 UI がフォーカス中なら無視する
-        const bool wantMouse = (m_input != nullptr) && m_input->UiWantsMouse();
+        const bool wantMouse = input.UiWantsMouse();
         bool flying = false;
-        if (m_input != nullptr && !wantMouse)
+        if (!wantMouse)
         {
-            auto& mouse = m_input->Mouse();
+            auto& mouse = input.Mouse();
             // 右ドラッグ中はその場で見回すフライ視点。 eye 固定で回し、 WASD/QE の移動も許可する
             flying = mouse.IsHeld(NS::Platform::MouseButton::Right);
             if (flying)
@@ -138,9 +134,9 @@ namespace NS::Scene
         }
 
         // 右ドラッグ中のみ WASD で視線方向へフライ、 Q E で world 上下する。 UI がキー入力中なら無視する
-        if (flying && !m_input->UiWantsKeyboard())
+        if (flying && !input.UiWantsKeyboard())
         {
-            auto& kb = m_input->Keyboard();
+            auto& kb = input.Keyboard();
             float forwardAxis = 0.0f;
             float strafeAxis = 0.0f;
             float verticalAxis = 0.0f;
@@ -160,9 +156,8 @@ namespace NS::Scene
         }
 
         // Gamepad は ImGui キャプチャ対象外、 常に入力する
-        if (m_input != nullptr)
         {
-            auto& gp = m_input->Gamepad(0);
+            auto& gp = input.Gamepad(0);
             if (gp.IsConnected())
             {
                 const auto rs = gp.RightStick();

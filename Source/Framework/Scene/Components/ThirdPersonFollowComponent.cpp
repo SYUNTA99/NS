@@ -32,10 +32,6 @@ namespace NS::Scene
     {
         m_target = target;
     }
-    void ThirdPersonFollowComponent::SetInput(NS::Platform::Input* input) noexcept
-    {
-        m_input = input;
-    }
 
     void ThirdPersonFollowComponent::SetMovement(const CharacterMovementComponent* movement) noexcept
     {
@@ -92,19 +88,17 @@ namespace NS::Scene
         if (!IsActive() || m_target == nullptr || dt <= 0.0f)
             return;
 
-        if (m_input != nullptr)
-        {
-            const auto& mouse = m_input->Mouse();
-            const float mxSign = m_invertX ? -1.0f : 1.0f;
-            const float mySign = m_invertY ? -1.0f : 1.0f;
-            m_yaw += static_cast<float>(mouse.GetDeltaX()) * m_sensX * mxSign;
-            m_pitch += static_cast<float>(mouse.GetDeltaY()) * m_sensY * mySign;
+        auto& input = NS::Platform::Input::Get();
+        const auto& mouse = input.Mouse();
+        const float mxSign = m_invertX ? -1.0f : 1.0f;
+        const float mySign = m_invertY ? -1.0f : 1.0f;
+        m_yaw += static_cast<float>(mouse.GetDeltaX()) * m_sensX * mxSign;
+        m_pitch += static_cast<float>(mouse.GetDeltaY()) * m_sensY * mySign;
 
-            const auto& pad = m_input->Gamepad(0);
-            const NS::Platform::Stick rstick = pad.RightStick();
-            m_yaw += rstick.x * m_stickSensX * dt * mxSign;
-            m_pitch += rstick.y * m_stickSensY * dt * mySign;
-        }
+        const auto& pad = input.Gamepad(0);
+        const NS::Platform::Stick rstick = pad.RightStick();
+        m_yaw += rstick.x * m_stickSensX * dt * mxSign;
+        m_pitch += rstick.y * m_stickSensY * dt * mySign;
 
         m_pitch = NS::Math::Clamp(m_pitch, m_pitchMin, m_pitchMax);
 

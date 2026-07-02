@@ -64,7 +64,6 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     // MB64 の freecam に相当し mouse + gamepad で Orbit / Pan / Zoom する
     m_editorCameraRig = std::make_unique<EditorCameraRig>();
     m_editorCameraRig->AttachScene(m_scene);
-    m_editorCameraRig->EditorCam().SetInput(&app->Input());
 
     // free-fly vcam の投影設定で、 編集は遠景を 5000 まで見せ near 0.1 は既定
     // far は EditorCameraComponent の kMaxDistance より広く取り、 最大ズームアウトでも地形を映す

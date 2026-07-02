@@ -62,7 +62,7 @@ TEST_F(CameraBrainTest, SelectsHighestPriorityActiveVcam)
     GameObject host;
     auto* cam = host.AddComponent<CameraComponent>();
     auto* brain = host.AddComponent<CameraBrainComponent>();
-    brain->SetCamera(cam);
+    host.OnStart();
     brain->SetBlendDuration(0.0f);
 
     GameObject hostLow;
@@ -86,7 +86,7 @@ TEST_F(CameraBrainTest, InactiveVcamIsSkipped)
     GameObject host;
     auto* cam = host.AddComponent<CameraComponent>();
     auto* brain = host.AddComponent<CameraBrainComponent>();
-    brain->SetCamera(cam);
+    host.OnStart();
     brain->SetBlendDuration(0.0f);
 
     GameObject hostA;
@@ -111,7 +111,7 @@ TEST_F(CameraBrainTest, BlendSweepsFromOldToNewOverDuration)
     GameObject host;
     auto* cam = host.AddComponent<CameraComponent>();
     auto* brain = host.AddComponent<CameraBrainComponent>();
-    brain->SetCamera(cam);
+    host.OnStart();
     brain->SetBlendDuration(0.5f);
 
     GameObject hostA;
@@ -149,7 +149,7 @@ TEST_F(CameraBrainTest, ZeroBlendDurationCutsInstantly)
     GameObject host;
     auto* cam = host.AddComponent<CameraComponent>();
     auto* brain = host.AddComponent<CameraBrainComponent>();
-    brain->SetCamera(cam);
+    host.OnStart();
     brain->SetBlendDuration(0.0f);
 
     GameObject hostA;
@@ -191,7 +191,7 @@ TEST_F(CameraBrainTest, ActivatingPlacedVcamBlendsTowardIt)
     GameObject host;
     auto* cam = host.AddComponent<CameraComponent>();
     auto* brain = host.AddComponent<CameraBrainComponent>();
-    brain->SetCamera(cam);
+    host.OnStart();
     brain->SetBlendDuration(0.5f);
 
     GameObject followHost;

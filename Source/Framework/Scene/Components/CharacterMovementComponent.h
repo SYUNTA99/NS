@@ -30,7 +30,7 @@ namespace NS::Scene
     };
 
     /// Player の物理状態を管理する Component。Input→desired velocity は PlayerInputComponent、衝突 world は
-    /// SetPhysicsWorld で非所有借用する
+    /// OnStart で所属 scene から非所有借用する
     class CharacterMovementComponent : public Component
     {
     public:
@@ -44,8 +44,13 @@ namespace NS::Scene
         void SetJumpPressed() noexcept;
         void SetJumpHeld(bool held) noexcept;
 
-        /// 衝突 query 元の physics world を非所有で借用する。 非 null なら衝突計算をこの world へ委ねる
+        /// 衝突 query 元の physics world を非所有で借用する。 scene 無しで動かすテスト用の継ぎ目で、
+        /// 本編は OnStart が所属 scene の world を取る
         void SetPhysicsWorld(const NS::Physics::PhysicsWorld* world) noexcept { m_world = world; }
+
+        /// 未注入なら所属 scene の衝突 world を借用する。world は scene が所有する実体のため
+        /// level 再構築後もこの参照のまま有効
+        void OnStart() override;
 
         [[nodiscard]] MovementState State() const noexcept { return m_state; }
         /// テスト / 強制遷移用の setter。 通常は OnUpdate 内で遷移するため呼出不要

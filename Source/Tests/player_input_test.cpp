@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <Framework/Scene/Components/CharacterMovementComponent.h>
-#include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Components/PlayerInputComponent.h>
+#include <Framework/Scene/GameObject.h>
 
 namespace
 {
@@ -11,35 +11,34 @@ namespace
     using NS::Scene::PlayerInputComponent;
 } // namespace
 
-TEST(PlayerInputTest, ConstructsWithNullMovementWithoutCrashing)
+TEST(PlayerInputTest, ConstructsWithoutMovementResolved)
 {
-    PlayerInputComponent input(nullptr);
+    PlayerInputComponent input;
     EXPECT_EQ(input.Movement(), nullptr);
     EXPECT_TRUE(input.IsActive());
 }
 
-TEST(PlayerInputTest, OnUpdateIsNoOpWhenInputIsNull)
+TEST(PlayerInputTest, OnStartResolvesSiblingMovement)
 {
     GameObject obj;
     auto& mov = *obj.AddComponent<CharacterMovementComponent>();
+    auto& input = *obj.AddComponent<PlayerInputComponent>();
 
-    auto& input = *obj.AddComponent<PlayerInputComponent>(&mov);
+    obj.OnStart();
 
-    input.OnUpdate();
-    EXPECT_FLOAT_EQ(mov.Velocity().x, 0.0f);
-    EXPECT_FLOAT_EQ(mov.Velocity().z, 0.0f);
+    EXPECT_EQ(input.Movement(), &mov);
 }
 
 TEST(PlayerInputTest, OnUpdateIsNoOpWhenMovementIsNull)
 {
-    PlayerInputComponent input(nullptr);
+    PlayerInputComponent input;
     input.OnUpdate();
     SUCCEED();
 }
 
 TEST(PlayerInputTest, CameraForwardSetterPersists)
 {
-    PlayerInputComponent input(nullptr);
+    PlayerInputComponent input;
     input.SetCameraForward({1.0f, 5.0f, 0.0f});
     SUCCEED();
 }
