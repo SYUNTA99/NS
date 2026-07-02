@@ -28,7 +28,7 @@ TEST(ModeToggle, EnterPlayDeactivatesEditor)
     editor.EnterPlay();
     EXPECT_EQ(editor.CurrentMode(), LevelEditorController::Mode::Play);
     EXPECT_FALSE(editor.Editor().IsActive());
-    EXPECT_TRUE(scene.PlayModeSub().IsActive());
+    EXPECT_TRUE(scene.Director().Flow().PlayModeSub().IsActive());
 }
 
 TEST(ModeToggle, EnterEditReactivatesEditor)
@@ -39,7 +39,7 @@ TEST(ModeToggle, EnterEditReactivatesEditor)
     editor.EnterEdit();
     EXPECT_EQ(editor.CurrentMode(), LevelEditorController::Mode::Edit);
     EXPECT_TRUE(editor.Editor().IsActive());
-    EXPECT_FALSE(scene.PlayModeSub().IsActive());
+    EXPECT_FALSE(scene.Director().Flow().PlayModeSub().IsActive());
 }
 
 TEST(ModeToggle, RedundantEnterIsNoOp)
@@ -87,26 +87,28 @@ TEST(ModeToggle, QuitToEditWhilePausedResetsPausedFlag)
 {
     LevelPlayScene scene;
     LevelEditorController editor(&scene);
+    auto& flow = scene.Director().Flow();
     editor.EnterPlay();
-    scene.Play().paused = true;
+    flow.Play().paused = true;
     editor.EnterEdit();
-    EXPECT_FALSE(scene.Play().paused);
+    EXPECT_FALSE(flow.Play().paused);
 
     editor.EnterPlay();
-    EXPECT_FALSE(scene.Play().paused);
+    EXPECT_FALSE(flow.Play().paused);
 }
 
 TEST(ModeToggle, EnterPlayInitializesPlayStateAtSpawn)
 {
     LevelPlayScene scene;
     LevelEditorController editor(&scene);
+    auto& flow = scene.Director().Flow();
     scene.Level().spawnX = 7;
     scene.Level().spawnY = 2;
     scene.Level().spawnZ = -4;
     editor.EnterPlay();
 
-    EXPECT_NEAR(scene.Play().playerPosition.x, 7.0f, 1e-4f);
+    EXPECT_NEAR(flow.Play().playerPosition.x, 7.0f, 1e-4f);
     // spawn は capsule 中心 world 位置そのものなので player はその座標へ正確に置かれる
-    EXPECT_NEAR(scene.Play().playerPosition.y, 2.0f, 1e-4f);
-    EXPECT_NEAR(scene.Play().playerPosition.z, -4.0f, 1e-4f);
+    EXPECT_NEAR(flow.Play().playerPosition.y, 2.0f, 1e-4f);
+    EXPECT_NEAR(flow.Play().playerPosition.z, -4.0f, 1e-4f);
 }

@@ -41,7 +41,7 @@ TEST(PlayFlow, EnterPlacesPlayStateAtSpawn)
 
     flow.EnterPlay();
 
-    EXPECT_TRUE(scene.PlayModeSub().IsActive());
+    EXPECT_TRUE(flow.PlayModeSub().IsActive());
     EXPECT_NEAR(flow.Play().playerPosition.x, 7.0f, 1e-4f);
     EXPECT_NEAR(flow.Play().playerPosition.y, 2.0f, 1e-4f);
     EXPECT_NEAR(flow.Play().playerPosition.z, -4.0f, 1e-4f);
@@ -105,7 +105,7 @@ TEST(PlayFlow, ExitPlayResetsTransientFlagsAndDeactivates)
     flow.ExitPlay();
 
     EXPECT_FALSE(flow.Play().paused);
-    EXPECT_FALSE(scene.PlayModeSub().IsActive());
+    EXPECT_FALSE(flow.PlayModeSub().IsActive());
 }
 
 TEST(PlayFlow, ReEnterAfterClearResetsFlags)
