@@ -387,6 +387,40 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             if (auto* player = editor.PlayerObject())
             {
                 (void)NS::Editor::DrawObjectComponents(*player);
+
+                // 構成の追加。選べる型は登録済みに限られ、保存すると構成ごと PlayerTuning.json へ
+                // 焼かれて次回起動時は読込が factory で復元する。player の構成は同型 1 個までなので
+                // 既に載っている型は選べない
+                if (ImGui::Button("+ Add Component"))
+                    ImGui::OpenPopup("PlayerAddComponentPopup");
+                if (ImGui::BeginPopup("PlayerAddComponentPopup"))
+                {
+                    for (const std::string& name : NS::Scene::RegisteredNames())
+                    {
+                        bool alreadyOnPlayer = false;
+                        for (const NS::Scene::Component* comp : player->Components())
+                        {
+                            const NS::Scene::ReflectionInfo* info = (comp != nullptr) ? comp->GetReflection() : nullptr;
+                            if (info != nullptr && name == info->typeName)
+                            {
+                                alreadyOnPlayer = true;
+                                break;
+                            }
+                        }
+                        if (alreadyOnPlayer)
+                            ImGui::BeginDisabled();
+                        if (ImGui::Selectable(name.c_str()))
+                        {
+                            // 起動時の読込経路と違い OnStart 済みの player へ足すので、ここで自分で開始する
+                            if (NS::Scene::Component* added = NS::Scene::CreateComponent(name, *player))
+                                added->OnStart();
+                        }
+                        if (alreadyOnPlayer)
+                            ImGui::EndDisabled();
+                    }
+                    ImGui::EndPopup();
+                }
+
                 ImGui::Separator();
                 if (ImGui::Button("チューニングを保存"))
                     (void)NS::Editor::SavePlayerTuning(*player);

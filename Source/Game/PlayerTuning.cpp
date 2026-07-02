@@ -4,6 +4,7 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 #include "Framework/Scene/Component.h"
+#include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Reflection.h"
 #include "Framework/Scene/ReflectionJson.h"
@@ -21,21 +22,12 @@ std::filesystem::path PlayerTuningPath()
     return ::NS::Core::FileSystem::ContentRoot() / "Assets" / "PlayerTuning.json";
 }
 
-void LoadPlayerTuning(const NS::Scene::GameObject& player) noexcept
+void ApplyPlayerTuningText(NS::Scene::GameObject& player, std::string_view jsonText) noexcept
 {
-    const auto path = PlayerTuningPath();
-    if (!::NS::Core::FileSystem::Exists(path))
-        return; // 無ければコード既定値をそのまま使う
-
-    const auto bytes = ::NS::Core::FileSystem::ReadAllBytes(path);
-    if (!bytes.has_value())
-        return;
-
-    const std::string text(reinterpret_cast<const char*>(bytes->data()), bytes->size());
-    const nlohmann::json json = nlohmann::json::parse(text, nullptr, false);
+    const nlohmann::json json = nlohmann::json::parse(jsonText, nullptr, false);
     if (json.is_discarded())
     {
-        NS_LOG_WARN(::NS::Core::LogCat::Game, "PlayerTuning.json の解析に失敗、 既定値で続行: {}", path.string());
+        NS_LOG_WARN(::NS::Core::LogCat::Game, "PlayerTuning の解析に失敗、 既定の構成と値で続行");
         return;
     }
 
@@ -43,7 +35,6 @@ void LoadPlayerTuning(const NS::Scene::GameObject& player) noexcept
     if (components == json.end() || !components->is_array())
         return;
 
-    // 型名が一致する player のコンポーネントへ反射でフィールドを適用する
     for (const nlohmann::json& entry : *components)
     {
         const auto typeIt = entry.find("type");
@@ -52,15 +43,37 @@ void LoadPlayerTuning(const NS::Scene::GameObject& player) noexcept
             continue;
         const std::string typeName = typeIt->get<std::string>();
 
+        // 型名が一致する既存コンポーネントへ適用する。 同型は最初の 1 件だけが対象
+        NS::Scene::Component* target = nullptr;
         for (NS::Scene::Component* comp : player.Components())
         {
             if (comp == nullptr)
                 continue;
             const NS::Scene::ReflectionInfo* info = comp->GetReflection();
-            if (info == nullptr || typeName != info->typeName)
-                continue;
-            NS::Scene::ApplyJsonFields(*comp, *fieldsIt);
-            break; // 同型は最初の 1 件へ適用する
+            if (info != nullptr && typeName == info->typeName)
+            {
+                target = comp;
+                break;
+            }
         }
+        // 無い型は登録 factory で生成して構成へ加える。 editor の Add Component が保存した
+        // 追加分はこの経路で次回起動時に復元される。 未登録型はここで読み飛ばされる
+        if (target == nullptr)
+            target = NS::Scene::CreateComponent(typeName, player);
+        if (target != nullptr)
+            NS::Scene::ApplyJsonFields(*target, *fieldsIt);
     }
+}
+
+void LoadPlayerTuning(NS::Scene::GameObject& player) noexcept
+{
+    const auto path = PlayerTuningPath();
+    if (!::NS::Core::FileSystem::Exists(path))
+        return; // 無ければコード既定の構成と値をそのまま使う
+
+    const auto bytes = ::NS::Core::FileSystem::ReadAllBytes(path);
+    if (!bytes.has_value())
+        return;
+
+    ApplyPlayerTuningText(player, std::string_view(reinterpret_cast<const char*>(bytes->data()), bytes->size()));
 }

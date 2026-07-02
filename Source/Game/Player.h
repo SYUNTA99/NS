@@ -12,7 +12,8 @@ namespace NS::Graphics
     class StaticMesh;
 } // namespace NS::Graphics
 
-/// プレイヤーキャラクタ。 Mesh / Movement / Input の 3 Component を所有し参照をキャッシュする
+/// プレイヤーキャラクタ。 Mesh / Movement / Input / Shadow の既定構成をコードで組み、
+/// 追加の component と値は PlayerTuning.json の読込が data から合成する
 class Player : public NS::Scene::GameObject
 {
 public:
@@ -24,14 +25,19 @@ public:
     Player(Player&&) = delete;
     Player& operator=(Player&&) = delete;
 
-    [[nodiscard]] NS::Scene::MeshRendererComponent& MeshComp() noexcept { return *m_mesh; }
-    [[nodiscard]] NS::Scene::CharacterMovementComponent& Movement() noexcept { return *m_movement; }
-    [[nodiscard]] NS::Scene::PlayerInputComponent& InputComp() noexcept { return *m_input; }
-    [[nodiscard]] NS::Scene::ShadowComponent& Shadow() noexcept { return *m_shadow; }
-
-private:
-    NS::Scene::MeshRendererComponent* m_mesh = nullptr;
-    NS::Scene::CharacterMovementComponent* m_movement = nullptr;
-    NS::Scene::PlayerInputComponent* m_input = nullptr;
-    NS::Scene::ShadowComponent* m_shadow = nullptr;
+    // 既定構成に必ず載る型への short-cut。 参照をキャッシュせず現在の構成から引くので、
+    // 構成が data 合成で増えても取り違えない。 既定構成が前提なので戻りは非 null
+    [[nodiscard]] NS::Scene::MeshRendererComponent& MeshComp() noexcept
+    {
+        return *FindComponent<NS::Scene::MeshRendererComponent>();
+    }
+    [[nodiscard]] NS::Scene::CharacterMovementComponent& Movement() noexcept
+    {
+        return *FindComponent<NS::Scene::CharacterMovementComponent>();
+    }
+    [[nodiscard]] NS::Scene::PlayerInputComponent& InputComp() noexcept
+    {
+        return *FindComponent<NS::Scene::PlayerInputComponent>();
+    }
+    [[nodiscard]] NS::Scene::ShadowComponent& Shadow() noexcept { return *FindComponent<NS::Scene::ShadowComponent>(); }
 };
