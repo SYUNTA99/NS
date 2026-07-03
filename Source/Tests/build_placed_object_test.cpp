@@ -10,6 +10,7 @@
 #include <Framework/Scene/GameObject.h>
 #include <Game/Blocks/BuildPlacedObject.h>
 #include <Game/Level/LevelData.h>
+#include <Game/Player.h>
 
 #include <filesystem>
 #include <vector>
@@ -269,4 +270,39 @@ TEST_F(BuildPlacedObjectTest, GoalHasPickupAndDisplaysAsGoal)
     auto* pickup = FindComponent<NS::Scene::PickupComponent>(*obj);
     ASSERT_NE(pickup, nullptr);
     EXPECT_TRUE(pickup->IsGoal());
+}
+
+// プレイヤー実体は Player 派生の器に二重生成なしで組まれ、 移動と入力は休止で始まる
+TEST_F(BuildPlacedObjectTest, PlayerObjectBuildsDormantPlayerTyped)
+{
+    auto obj = Build(NS::Game::Level::MakePlayerObject(Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
+    ASSERT_NE(obj, nullptr);
+    auto* player = dynamic_cast<Player*>(obj.get());
+    ASSERT_NE(player, nullptr);
+
+    // ctor の既定構成へ data の値が写り、 同型の二重生成は起きない
+    EXPECT_EQ(player->Components().size(), 4u);
+
+    // 起こすのはプレイ突入の進行役。 組み立て直後は編集中と同じく動かず、 見た目だけ出る
+    EXPECT_FALSE(player->Movement().IsActive());
+    EXPECT_FALSE(player->InputComp().IsActive());
+    EXPECT_TRUE(player->MeshComp().IsActive());
+
+    // pose は他の配置物と同じく data から乗る
+    EXPECT_FLOAT_EQ(obj->Root().Position().y, 2.0f);
+}
+
+// data 側で焼いた値が既定構成の component へ反射適用される
+TEST_F(BuildPlacedObjectTest, PlayerObjectAppliesDataValuesToComponents)
+{
+    ObjectInstance data = NS::Game::Level::MakePlayerObject(Vector3{}, NS::Math::Quaternion{});
+    for (auto& component : data.components)
+        if (component.typeName == "CharacterMovementComponent")
+            component.fields.push_back(NS::Game::Level::FieldValue{"Max Speed", 11.0f});
+
+    auto obj = Build(data);
+    ASSERT_NE(obj, nullptr);
+    auto* player = dynamic_cast<Player*>(obj.get());
+    ASSERT_NE(player, nullptr);
+    EXPECT_FLOAT_EQ(player->Movement().MaxSpeed(), 11.0f);
 }

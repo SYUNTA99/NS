@@ -6,12 +6,17 @@
 #include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/CapsuleColliderComponent.h"
+#include "Framework/Scene/Components/CharacterMovementComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
+#include "Framework/Scene/Components/PlayerInputComponent.h"
+#include "Framework/Scene/Components/ShadowComponent.h"
 #include "Framework/Scene/Components/SlopeColliderComponent.h"
 #include "Framework/Scene/Components/SphereColliderComponent.h"
+#include "Framework/Scene/Reflection.h"
 #include "Framework/Scene/ReflectionJson.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/LevelJson.h"
+#include "Game/Player.h"
 
 #include <filesystem>
 #include <optional>
@@ -48,15 +53,32 @@ namespace NS::Game::Blocks
             return ref == "player" || ref == "block" || ref == "water" || ref == "shadow";
         }
 
-        // full SSOT 主経路: object.components を ComponentRegistry で生成し反射 set で値を入れる
-        std::unique_ptr<NS::Scene::GameObject> BuildFromComponents(const NS::Game::Level::ObjectInstance& object,
-                                                                   NS::Scene::AssetManager& assets,
-                                                                   const std::vector<std::string>& materialPaths)
+        // 器に既に載る同型 component を反射型名で探す。 無ければ nullptr
+        NS::Scene::Component* FindExistingComponent(NS::Scene::GameObject& obj, const std::string& typeName)
         {
-            auto obj = std::make_unique<NS::Scene::GameObject>();
+            for (NS::Scene::Component* comp : obj.Components())
+            {
+                if (comp == nullptr)
+                    continue;
+                const NS::Scene::ReflectionInfo* info = comp->GetReflection();
+                if (info != nullptr && typeName == info->typeName)
+                    return comp;
+            }
+            return nullptr;
+        }
+
+        // full SSOT 主経路: object.components を器の既存同型へ適用し、 無い型は ComponentRegistry で生成する
+        // 素の器では同型が無く全生成になり、 Player の器では ctor の既定構成へ値だけが写って二重生成しない
+        void ApplyComponentsFromData(NS::Scene::GameObject& obj,
+                                     const NS::Game::Level::ObjectInstance& object,
+                                     NS::Scene::AssetManager& assets,
+                                     const std::vector<std::string>& materialPaths)
+        {
             for (const auto& component : object.components)
             {
-                NS::Scene::Component* created = NS::Scene::CreateComponent(component.typeName, *obj);
+                NS::Scene::Component* created = FindExistingComponent(obj, component.typeName);
+                if (created == nullptr)
+                    created = NS::Scene::CreateComponent(component.typeName, obj);
                 if (created == nullptr)
                     continue; // allowlist 外 / 未知 type は読み飛ばす
 
@@ -76,8 +98,10 @@ namespace NS::Game::Blocks
                         mesh->MeshRef().empty() ? nullptr : ResolveMeshFromRef(assets, mesh->MeshRef());
                     mesh->SetMesh(resolved != nullptr ? resolved : assets.Builtin("cube"));
                 }
+                // 接地影の共有資源はファクトリが賄う。 影は常に組み込み quad + 共有 shadow 材質で描く
+                else if (auto* shadow = dynamic_cast<NS::Scene::ShadowComponent*>(created))
+                    shadow->SetResources(assets.Builtin("shadowQuad"), assets.SharedMaterial("shadow"));
             }
-            return obj;
         }
 
         // 当たり箱の quaternion を反射 "Rotation (deg)" が受ける Euler 度へ写す。 SetRotationEulerDegrees の逆変換
@@ -353,7 +377,25 @@ namespace NS::Game::Blocks
         // 空構成は未対応につき配置物として組まない
         if (object.components.empty())
             return nullptr;
-        std::unique_ptr<NS::Scene::GameObject> obj = BuildFromComponents(object, assets, materialPaths);
+
+        // プレイヤーだけ器を Player 派生にする。 組み方は他の配置物と同一で、 型の分岐はファクトリに閉じる
+        const bool isPlayer = NS::Game::Level::IsPlayerObject(object);
+        std::unique_ptr<NS::Scene::GameObject> obj;
+        if (isPlayer)
+            obj = std::make_unique<Player>();
+        else
+            obj = std::make_unique<NS::Scene::GameObject>();
+
+        ApplyComponentsFromData(*obj, object, assets, materialPaths);
+
+        // プレイヤーの移動と入力は休止で組む。 起こすのはプレイ突入の進行役で、 編集中は寝たまま見た目だけ出る
+        if (isPlayer)
+        {
+            if (auto* movement = obj->FindComponent<NS::Scene::CharacterMovementComponent>())
+                movement->SetActive(false);
+            if (auto* input = obj->FindComponent<NS::Scene::PlayerInputComponent>())
+                input->SetActive(false);
+        }
 
         obj->Root().SetPosition(NS::Math::Vector3{object.positionX, object.positionY, object.positionZ});
         obj->Root().SetRotation(

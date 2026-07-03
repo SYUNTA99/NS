@@ -1,6 +1,8 @@
 #include "Game/Player.h"
 #include "Framework/Graphics/StaticMesh.h"
 
+Player::Player() noexcept : Player(nullptr, nullptr) {}
+
 Player::Player(NS::Graphics::StaticMesh* mesh, NS::Graphics::Material* material) noexcept
 {
     // コード既定の構成。追加分は PlayerTuning の読込が data から factory で加える

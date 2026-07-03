@@ -17,6 +17,8 @@ namespace NS::Graphics
 class Player : public NS::Scene::GameObject
 {
 public:
+    /// 既定構成をデフォルト値で組む。 mesh / material / 影資源はファクトリが data と assets から注入する
+    Player() noexcept;
     Player(NS::Graphics::StaticMesh* mesh, NS::Graphics::Material* material) noexcept;
     ~Player() override = default;
 
