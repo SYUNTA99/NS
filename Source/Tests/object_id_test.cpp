@@ -106,6 +106,31 @@ TEST(ObjectIdTest, LegacyJsonWithoutIdsGetsAssignedOnLoad)
     EXPECT_TRUE(AllIdsUniqueAndAssigned(restored));
 }
 
+TEST(ObjectIdTest, FindObjectIndexByIdReturnsMatchingIndex)
+{
+    LevelNs::LevelData level;
+    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeGridObject(1, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, 0));
+    LevelNs::EnsureUniqueObjectIds(level);
+
+    const std::uint32_t id = level.objects[1].objectId;
+    EXPECT_EQ(LevelNs::FindObjectIndexById(level, id), 1u);
+}
+
+TEST(ObjectIdTest, FindObjectIndexByIdReturnsNoIndexForUnknownOrUnset)
+{
+    LevelNs::LevelData level;
+    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    LevelNs::EnsureUniqueObjectIds(level);
+
+    EXPECT_EQ(LevelNs::FindObjectIndexById(level, 9999u), LevelNs::kNoObjectIndex);
+
+    // 0 は「object 無し」の番兵なので、未割当 id 0 の実体が混ざっていても引かない
+    level.objects.push_back(LevelNs::ObjectInstance{});
+    EXPECT_EQ(LevelNs::FindObjectIndexById(level, LevelNs::kNoObjectId), LevelNs::kNoObjectIndex);
+}
+
 TEST(ObjectIdTest, AddObjectCommandAssignsIdAndRedoReusesIt)
 {
     LevelNs::LevelData level;

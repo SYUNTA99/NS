@@ -122,6 +122,10 @@ namespace NS::Game::Level
     /// objects 配列で「該当無し」を表す添字
     inline constexpr std::size_t kNoObjectIndex = static_cast<std::size_t>(-1);
 
+    /// 「object 無し」を表す永続 id の番兵。実 id は採番が 1 始まりで 0 を取らない
+    /// ObjectRef フィールドの「0 は未設定」と同じ約束
+    inline constexpr std::uint32_t kNoObjectId = 0;
+
     /// 新規レベルでプレイヤーを置く既定の capsule 中心高さ。 床 block 上面 0.5 + capsule 半高 0.9 + 1cm
     inline constexpr float kDefaultPlayerSpawnY = 1.41f;
 
@@ -147,6 +151,9 @@ namespace NS::Game::Level
     /// 追従カメラ実体 ObjectInstance を作る。 追従先の永続 id を Target 参照へ焼く。 0 は未設定
     /// pose は追従で毎フレーム決まるため Transform は既定のまま。 視覚と当たりは持たない
     [[nodiscard]] ObjectInstance MakeFollowCameraObject(std::uint32_t targetObjectId);
+
+    /// 永続 id が `id` の object の添字。無ければ kNoObjectIndex、kNoObjectId は常に該当無し
+    [[nodiscard]] std::size_t FindObjectIndexById(const LevelData& level, std::uint32_t id) noexcept;
 
     /// 永続 object id を 1 個割り当ててカウンタを進める。生成経路が新規 object に振るのに使う
     [[nodiscard]] std::uint32_t AllocateObjectId(LevelData& level) noexcept;

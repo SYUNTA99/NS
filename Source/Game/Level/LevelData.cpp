@@ -177,6 +177,18 @@ namespace NS::Game::Level
         return detail::Crc32Finalize(crc);
     }
 
+    std::size_t FindObjectIndexById(const LevelData& level, std::uint32_t id) noexcept
+    {
+        if (id == kNoObjectId)
+            return kNoObjectIndex;
+        for (std::size_t i = 0; i < level.objects.size(); ++i)
+        {
+            if (level.objects[i].objectId == id)
+                return i;
+        }
+        return kNoObjectIndex;
+    }
+
     std::uint32_t AllocateObjectId(LevelData& level) noexcept
     {
         return level.nextObjectId++;
