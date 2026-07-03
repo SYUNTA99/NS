@@ -124,21 +124,10 @@ void LevelPlayScene::OnStart()
 
     m_world.CreateBatcher();
 
-    // 仮の skybox。 kurt 6-face PNG をロードし、 取得できなければ
-    // 1x1 マゼンタ cubemap fallback で続行する。 描画は OnRenderScene 末尾
+    // skybox は描画装置だけ作る。 cubemap のパスはテーマが持ち、 OnRenderScene の差分再読込が初回から入れる
     m_skybox = NS::Graphics::Skybox::Create();
-    if (m_skybox->IsValid())
-    {
-        const auto kurtDir = exeDir / "Assets" / "Skybox" / "kurt";
-        if (!m_skybox->LoadCubemap(kurtDir))
-            NS_LOG_WARN(::NS::Core::LogCat::Game,
-                        "LevelPlayScene: kurt cubemap 読込失敗、 magenta fallback で続行: {}",
-                        kurtDir.string());
-    }
-    else
-    {
+    if (!m_skybox->IsValid())
         NS_LOG_ERROR(::NS::Core::LogCat::Game, "LevelPlayScene: Skybox 構築失敗 (Device 不在?)");
-    }
 
     // プレイヤーの構成と値の真実はレベルの player object。 world が他の配置物と同じ一本道で組む
     // 実カメラ + Brain は CameraSubsystem 所有で、 プレイヤー / 追従カメラは world が配置物として組む
