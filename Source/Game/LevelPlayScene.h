@@ -82,9 +82,6 @@ private:
     /// 基底 OnRender が scene 解決後に呼ぶ描画本体。 ワールドを描き編集ギズモ等は描かない
     void OnRenderScene() override;
 
-    /// world の編集 id を m_level.objects と同サイズの連番へ再構築する。 objects 全置換直後に呼ぶ
-    void RebuildObjectIds() noexcept;
-
     /// 全表示ブロックの Snapshot を取る。 補間描画のため edit / play 共通で毎フレーム
     void SnapshotDisplayBlocks();
 

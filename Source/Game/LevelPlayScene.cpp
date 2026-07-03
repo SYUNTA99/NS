@@ -1,7 +1,6 @@
 #include "Game/LevelPlayScene.h"
 
 #include "Game/Blocks/BuildPlacedObject.h"
-#include "Game/Level/EditTarget.h"
 #include "Game/Player.h"
 #include "Game/PlayerTuning.h"
 
@@ -80,13 +79,6 @@ void LevelPlayScene::LoadInitialLevel()
     const auto levelPath = exeDir / "Levels" / "new_level.nslvl";
     if (!NS::Game::Level::LoadLevelFromFile(m_level, levelPath))
         SeedInitialLevel(m_level);
-    RebuildObjectIds();
-}
-
-void LevelPlayScene::RebuildObjectIds() noexcept
-{
-    NS::Game::Level::EditTarget target{m_level, m_world.EditIds(), m_world.NextEditId()};
-    NS::Game::Level::ResetEditIds(target);
 }
 
 void LevelPlayScene::OnStart()

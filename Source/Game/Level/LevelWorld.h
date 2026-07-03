@@ -11,7 +11,6 @@
 #include "Game/Blocks/LedgeEdges.h"
 
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -125,13 +124,6 @@ namespace NS::Game::Level
         /// block instanced 描画装置。 CreateBatcher 前は nullptr
         [[nodiscard]] NS::Graphics::InstanceBatcher* Batcher() noexcept { return m_instanceBatcher.get(); }
 
-        /// level.objects と 1:1 の編集セッション識別子。 undo 履歴が free オブジェクトを再特定するために持つ
-        /// 非シリアライズで、 objects 全置換時は呼び手が連番へ戻す
-        [[nodiscard]] std::vector<std::uint32_t>& EditIds() noexcept { return m_editIds; }
-
-        /// 次に振る編集 id。 採番する編集操作が可変参照で束ねる
-        [[nodiscard]] std::uint32_t& NextEditId() noexcept { return m_nextEditId; }
-
     private:
         std::vector<std::unique_ptr<NS::Scene::GameObject>> m_objects;
         std::vector<std::size_t> m_objectSourceIndices;
@@ -143,8 +135,6 @@ namespace NS::Game::Level
         std::vector<NS::Game::Blocks::LedgeEdge> m_ledgeEdges;
         ::Player* m_playerView = nullptr;
         std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
-        std::vector<std::uint32_t> m_editIds;
-        std::uint32_t m_nextEditId = 0;
     };
 
 } // namespace NS::Game::Level
