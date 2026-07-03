@@ -19,9 +19,8 @@ namespace NS::Editor
         : m_x(x), m_y(y), m_z(z), m_delta(delta)
     {}
 
-    void RotateCommand::Do(NS::Game::Level::EditTarget& target) noexcept
+    void RotateCommand::Do(NS::Game::Level::LevelData& level) noexcept
     {
-        NS::Game::Level::LevelData& level = target.level;
         const std::size_t index = NS::Game::Level::FindGridObjectAtCell(level, m_x, m_y, m_z);
         if (index == NS::Game::Level::kNoObjectIndex)
         {
@@ -33,11 +32,10 @@ namespace NS::Editor
         NS::Game::Level::SetGridRotationStep(level.objects[index], RotateMod4(step, m_delta));
     }
 
-    void RotateCommand::Undo(NS::Game::Level::EditTarget& target) noexcept
+    void RotateCommand::Undo(NS::Game::Level::LevelData& level) noexcept
     {
         if (!m_prevRotation)
             return;
-        NS::Game::Level::LevelData& level = target.level;
         const std::size_t index = NS::Game::Level::FindGridObjectAtCell(level, m_x, m_y, m_z);
         if (index == NS::Game::Level::kNoObjectIndex)
             return;

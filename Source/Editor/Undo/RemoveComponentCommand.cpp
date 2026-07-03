@@ -8,13 +8,13 @@ namespace NS::Editor
         : m_targetObjectId(targetObjectId), m_componentIndex(componentIndex)
     {}
 
-    void RemoveComponentCommand::Do(NS::Game::Level::EditTarget& target) noexcept
+    void RemoveComponentCommand::Do(NS::Game::Level::LevelData& level) noexcept
     {
         m_removed.reset();
-        const std::size_t index = NS::Game::Level::IndexOfId(target, m_targetObjectId);
+        const std::size_t index = NS::Game::Level::FindObjectIndexById(level, m_targetObjectId);
         if (index == NS::Game::Level::kNoObjectIndex)
             return;
-        std::vector<NS::Game::Level::ComponentData>& components = target.level.objects[index].components;
+        std::vector<NS::Game::Level::ComponentData>& components = level.objects[index].components;
         if (m_componentIndex >= components.size())
             return;
         // 最後の 1 個は消さない。 空構成の object は build で nullptr になり、 不可視で当たりも gizmo 選択も
@@ -26,14 +26,14 @@ namespace NS::Editor
         components.erase(components.begin() + static_cast<std::ptrdiff_t>(m_componentIndex));
     }
 
-    void RemoveComponentCommand::Undo(NS::Game::Level::EditTarget& target) noexcept
+    void RemoveComponentCommand::Undo(NS::Game::Level::LevelData& level) noexcept
     {
         if (!m_removed)
             return;
-        const std::size_t index = NS::Game::Level::IndexOfId(target, m_targetObjectId);
+        const std::size_t index = NS::Game::Level::FindObjectIndexById(level, m_targetObjectId);
         if (index == NS::Game::Level::kNoObjectIndex)
             return;
-        std::vector<NS::Game::Level::ComponentData>& components = target.level.objects[index].components;
+        std::vector<NS::Game::Level::ComponentData>& components = level.objects[index].components;
         const std::size_t at = m_removedIndex < components.size() ? m_removedIndex : components.size();
         components.insert(components.begin() + static_cast<std::ptrdiff_t>(at), *m_removed);
     }

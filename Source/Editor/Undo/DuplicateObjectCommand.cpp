@@ -10,32 +10,28 @@ namespace NS::Editor
         : m_sourceObjectId(sourceObjectId)
     {}
 
-    void DuplicateObjectCommand::Do(NS::Game::Level::EditTarget& target) noexcept
+    void DuplicateObjectCommand::Do(NS::Game::Level::LevelData& level) noexcept
     {
-        const std::size_t srcIndex = NS::Game::Level::IndexOfId(target, m_sourceObjectId);
+        const std::size_t srcIndex = NS::Game::Level::FindObjectIndexById(level, m_sourceObjectId);
         if (srcIndex == NS::Game::Level::kNoObjectIndex)
             return;
         // push_back の再確保で source 参照が無効化される前にコピーを確定させる
-        NS::Game::Level::ObjectInstance copy = target.level.objects[srcIndex];
-        if (!m_assignedId)
-            m_assignedId = target.nextId++;
+        NS::Game::Level::ObjectInstance copy = level.objects[srcIndex];
         // 複製元の永続 id を引き継ぐと一意性が壊れるので、初回に新 id を採番し redo で再利用する
         if (!m_assignedObjectId)
-            m_assignedObjectId = NS::Game::Level::AllocateObjectId(target.level);
+            m_assignedObjectId = NS::Game::Level::AllocateObjectId(level);
         copy.objectId = *m_assignedObjectId;
-        target.level.objects.push_back(std::move(copy));
-        target.ids.push_back(*m_assignedId);
+        level.objects.push_back(std::move(copy));
     }
 
-    void DuplicateObjectCommand::Undo(NS::Game::Level::EditTarget& target) noexcept
+    void DuplicateObjectCommand::Undo(NS::Game::Level::LevelData& level) noexcept
     {
-        if (!m_assignedId)
+        if (!m_assignedObjectId)
             return;
-        const std::size_t index = NS::Game::Level::IndexOfId(target, *m_assignedId);
+        const std::size_t index = NS::Game::Level::FindObjectIndexById(level, *m_assignedObjectId);
         if (index == NS::Game::Level::kNoObjectIndex)
             return;
-        target.level.objects.erase(target.level.objects.begin() + static_cast<std::ptrdiff_t>(index));
-        target.ids.erase(target.ids.begin() + static_cast<std::ptrdiff_t>(index));
+        level.objects.erase(level.objects.begin() + static_cast<std::ptrdiff_t>(index));
     }
 
 } // namespace NS::Editor

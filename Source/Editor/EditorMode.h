@@ -69,12 +69,6 @@ namespace NS::Editor
         EditorMode& operator=(EditorMode&&) = delete;
 
         void SetLevel(NS::Game::Level::LevelData* level) noexcept { m_level = level; }
-        /// 編集セッション id ストアを注入する。 EditTarget の構築に使い、 level と同じ scene が所有する
-        void SetEditIds(std::vector<std::uint32_t>* ids, std::uint32_t* nextId) noexcept
-        {
-            m_objectIds = ids;
-            m_nextObjectId = nextId;
-        }
         void SetInput(NS::Platform::Input* input) noexcept { m_input = input; }
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
         void SetCameraComponent(NS::Scene::CameraComponent* camera) noexcept { m_camera = camera; }
@@ -120,8 +114,6 @@ namespace NS::Editor
 
     private:
         NS::Game::Level::LevelData* m_level = nullptr;
-        std::vector<std::uint32_t>* m_objectIds = nullptr; // m_level.objects と 1:1 の編集 id。scene が所有する
-        std::uint32_t* m_nextObjectId = nullptr;
         NS::Platform::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
         NS::Scene::CameraComponent* m_camera = nullptr;
@@ -157,8 +149,5 @@ namespace NS::Editor
 
         /// 現在レベルへ上書き保存し、 結果を通知へ流す。 Ctrl+S 経路
         void OverwriteCurrentLevel() noexcept;
-
-        /// m_level + id ストアから EditTarget view を組む。 全ポインタ非 null の前提で呼ぶ
-        [[nodiscard]] NS::Game::Level::EditTarget Target() noexcept;
     };
 } // namespace NS::Editor

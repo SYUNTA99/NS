@@ -17,8 +17,8 @@ namespace NS::Editor
         /// `delta` は 90° 刻みの ±1。 結果の rotation は mod 4
         RotateCommand(std::int16_t x, std::int16_t y, std::int16_t z, std::int8_t delta) noexcept;
 
-        void Do(NS::Game::Level::EditTarget& target) noexcept override;
-        void Undo(NS::Game::Level::EditTarget& target) noexcept override;
+        void Do(NS::Game::Level::LevelData& level) noexcept override;
+        void Undo(NS::Game::Level::LevelData& level) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override { return sizeof(RotateCommand); }
 

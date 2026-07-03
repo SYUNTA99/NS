@@ -3,13 +3,14 @@
 /// @file ICommand.h
 /// @brief Undo/Redo Command パターンの抽象基底
 ///
-/// @details `Do(target)` で編集操作を実行し、 `Undo(target)` で逆操作する
+/// @details `Do(level)` で編集操作を実行し、 `Undo(level)` で逆操作する
+/// 対象オブジェクトの再特定は ObjectInstance の永続 objectId か cell 座標で行う
 /// 派生は座標 + blockId + rotation 等のデータのみを保持し、 描画用 entity
 /// つまり MeshRendererComponent / Renderer ハンドル等を抱えない。 描画は EditorMode が
 /// LevelData の変更を観測して再構築する責務で、 Command と描画の所有関係を分離する
 /// `EstimatedBytes()` は UndoStack が 50 MB cap を回すための memory accounting
 
-#include "Game/Level/EditTarget.h"
+#include "Game/Level/LevelData.h"
 
 #include <cstddef>
 
@@ -26,8 +27,8 @@ namespace NS::Editor
         ICommand(ICommand&&) = delete;
         ICommand& operator=(ICommand&&) = delete;
 
-        virtual void Do(NS::Game::Level::EditTarget& target) noexcept = 0;
-        virtual void Undo(NS::Game::Level::EditTarget& target) noexcept = 0;
+        virtual void Do(NS::Game::Level::LevelData& level) noexcept = 0;
+        virtual void Undo(NS::Game::Level::LevelData& level) noexcept = 0;
 
         [[nodiscard]] virtual std::size_t EstimatedBytes() const noexcept = 0;
 

@@ -12,7 +12,6 @@
 #include "Editor/GizmoEditor.h"
 #include "Framework/Graphics/RenderSettings.h"
 #include "Framework/Math/Math.h"
-#include "Game/Level/EditTarget.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
 
@@ -202,9 +201,6 @@ private:
     /// ビューポートでギズモ選択が変わった時だけ、 選択 id と派生の添字を追従させる
     void CaptureSelectionFromGizmo() noexcept;
 
-    /// scene の level + 識別子ストアから編集対象 view を組む
-    [[nodiscard]] NS::Game::Level::EditTarget SceneEditTarget() noexcept;
-
     /// 描画カメラの窓口。 scene の CameraSubsystem から brain を引く。 未登録は nullptr
     [[nodiscard]] NS::Scene::CameraBrainComponent* Brain() const noexcept;
     /// brain が駆動する実カメラ。 brain 未登録・実カメラ未解決は nullptr
@@ -245,8 +241,8 @@ private:
     };
     SpecialSelection m_specialSelection = SpecialSelection::None;
 
-    // 選択の真実は安定セッション識別子の id。 rebuild / delete / undo を跨いでも生ポインタや添字に依存しない
-    std::uint32_t m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
+    // 選択の真実は永続 objectId。 rebuild / delete / undo を跨いでも生ポインタや添字に依存しない
+    std::uint32_t m_selectedObjectId = NS::Game::Level::kNoObjectId;
     // id から毎フレーム解決する派生の添字。 m_level.objects 用で、 ズレても crash しない安定 vector を指す
     std::size_t m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
     // ビューポート由来のギズモ選択変化だけを index へ反映するための前フレーム値
@@ -258,7 +254,7 @@ private:
     // ギズモドラッグ / Inspector パネルの変形編集を 1 undo 単位へ束ねる状態
     bool m_gizmoWasDragging = false;
     bool m_transformEditing = false;
-    std::uint32_t m_editBaselineId = NS::Game::Level::kInvalidObjectId;
+    std::uint32_t m_editBaselineId = NS::Game::Level::kNoObjectId;
     NS::Game::Level::ObjectInstance m_editBaseline{};
 
     // Debug provenance パネルの読み出し元。 書き込みは Render で毎フレーム行う

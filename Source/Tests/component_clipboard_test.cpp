@@ -6,7 +6,6 @@
 #include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/GameObject.h"
-#include "Game/Level/EditTarget.h"
 #include "Game/Level/LevelData.h"
 
 #include <gtest/gtest.h>
@@ -55,14 +54,11 @@ TEST(ComponentClipboard, PasteAddsCapturedComponentWithSameValues)
 
     LevelNs::LevelData lv;
     lv.objects.push_back(LevelNs::ObjectInstance{});
-    std::vector<std::uint32_t> ids;
-    std::uint32_t next = 0;
-    LevelNs::EditTarget t{lv, ids, next};
-    LevelNs::ResetEditIds(t);
+    LevelNs::EnsureUniqueObjectIds(lv);
 
-    const std::uint32_t id = LevelNs::IdAt(t, 0);
+    const std::uint32_t id = lv.objects[0].objectId;
     EditorNs::AddComponentCommand paste(id, captured);
-    paste.Do(t);
+    paste.Do(lv);
 
     ASSERT_EQ(lv.objects[0].components.size(), 1u);
     const LevelNs::ComponentData& pasted = lv.objects[0].components[0];
@@ -71,7 +67,7 @@ TEST(ComponentClipboard, PasteAddsCapturedComponentWithSameValues)
     EXPECT_FLOAT_EQ(std::get<float>(pasted.fields[0].value), 0.75f);
     EXPECT_FLOAT_EQ(std::get<float>(pasted.fields[1].value), 6.0f);
 
-    paste.Undo(t);
+    paste.Undo(lv);
     EXPECT_TRUE(lv.objects[0].components.empty());
 }
 

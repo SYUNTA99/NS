@@ -1,7 +1,5 @@
 #include "Editor/Undo/TransformCommand.h"
 
-#include "Game/Level/EditTarget.h"
-
 namespace NS::Editor
 {
 
@@ -11,20 +9,20 @@ namespace NS::Editor
         : m_id(id), m_before(before), m_after(after)
     {}
 
-    void TransformCommand::Do(NS::Game::Level::EditTarget& target) noexcept
+    void TransformCommand::Do(NS::Game::Level::LevelData& level) noexcept
     {
-        const std::size_t index = NS::Game::Level::IndexOfId(target, m_id);
+        const std::size_t index = NS::Game::Level::FindObjectIndexById(level, m_id);
         if (index == NS::Game::Level::kNoObjectIndex)
             return;
-        target.level.objects[index] = m_after;
+        level.objects[index] = m_after;
     }
 
-    void TransformCommand::Undo(NS::Game::Level::EditTarget& target) noexcept
+    void TransformCommand::Undo(NS::Game::Level::LevelData& level) noexcept
     {
-        const std::size_t index = NS::Game::Level::IndexOfId(target, m_id);
+        const std::size_t index = NS::Game::Level::FindObjectIndexById(level, m_id);
         if (index == NS::Game::Level::kNoObjectIndex)
             return;
-        target.level.objects[index] = m_before;
+        level.objects[index] = m_before;
     }
 
 } // namespace NS::Editor

@@ -2,7 +2,6 @@
 #include "Editor/Undo/DuplicateObjectCommand.h"
 #include "Editor/Undo/PlaceCommand.h"
 #include "Framework/Scene/ObjectRef.h"
-#include "Game/Level/EditTarget.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/LevelJson.h"
 
@@ -134,21 +133,18 @@ TEST(ObjectIdTest, FindObjectIndexByIdReturnsNoIndexForUnknownOrUnset)
 TEST(ObjectIdTest, AddObjectCommandAssignsIdAndRedoReusesIt)
 {
     LevelNs::LevelData level;
-    std::vector<std::uint32_t> ids;
-    std::uint32_t next = 0;
-    LevelNs::EditTarget target{level, ids, next};
 
     EditorNs::AddObjectCommand cmd(LevelNs::ObjectInstance{});
-    cmd.Do(target);
+    cmd.Do(level);
     ASSERT_EQ(level.objects.size(), 1u);
     const std::uint32_t assigned = level.objects[0].objectId;
     EXPECT_NE(assigned, 0u);
 
-    cmd.Undo(target);
+    cmd.Undo(level);
     EXPECT_TRUE(level.objects.empty());
 
     // redo で別 id にならず、消えた間に参照が壊れない
-    cmd.Do(target);
+    cmd.Do(level);
     ASSERT_EQ(level.objects.size(), 1u);
     EXPECT_EQ(level.objects[0].objectId, assigned);
 }
@@ -158,12 +154,9 @@ TEST(ObjectIdTest, DuplicateObjectCommandAssignsFreshId)
     LevelNs::LevelData level;
     level.objects.push_back(LevelNs::ObjectInstance{});
     LevelNs::EnsureUniqueObjectIds(level);
-    std::vector<std::uint32_t> ids{0};
-    std::uint32_t next = 1;
-    LevelNs::EditTarget target{level, ids, next};
 
-    EditorNs::DuplicateObjectCommand cmd(0);
-    cmd.Do(target);
+    EditorNs::DuplicateObjectCommand cmd(level.objects[0].objectId);
+    cmd.Do(level);
 
     ASSERT_EQ(level.objects.size(), 2u);
     EXPECT_TRUE(AllIdsUniqueAndAssigned(level));
@@ -176,13 +169,10 @@ TEST(ObjectIdTest, PlaceCommandReplaceKeepsPersistentId)
     level.objects.push_back(LevelNs::MakeGridObject(5, 0, 3, 0));
     LevelNs::EnsureUniqueObjectIds(level);
     const std::uint32_t original = level.objects[0].objectId;
-    std::vector<std::uint32_t> ids{0};
-    std::uint32_t next = 1;
-    LevelNs::EditTarget target{level, ids, next};
 
     // 同じ cell への配置は置換になり、同じ場所の物として永続 id を引き継ぐ
     EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 0), 5, 0, 3, 1);
-    cmd.Do(target);
+    cmd.Do(level);
 
     ASSERT_EQ(level.objects.size(), 1u);
     EXPECT_EQ(level.objects[0].objectId, original);

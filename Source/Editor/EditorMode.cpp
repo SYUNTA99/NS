@@ -160,11 +160,6 @@ namespace NS::Editor
                 // 別 LevelData を pointer で持つため、 そのまま undo すると use-after-free 的 mismatch
                 *m_level = std::move(fresh);
                 m_undo.Clear();
-                if (m_objectIds != nullptr)
-                {
-                    auto target = Target();
-                    NS::Game::Level::ResetEditIds(target);
-                }
                 m_levelDirty = true;
                 m_currentLevelName = result.targetName;
                 m_fileBrowser.NotifyLoadResult(true, "読込成功");
@@ -337,39 +332,31 @@ namespace NS::Editor
 #endif
     }
 
-    NS::Game::Level::EditTarget EditorMode::Target() noexcept
-    {
-        return NS::Game::Level::EditTarget{*m_level, *m_objectIds, *m_nextObjectId};
-    }
-
     void EditorMode::PlaceUnderCursorProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept
     {
-        if (m_level == nullptr || m_objectIds == nullptr)
+        if (m_level == nullptr)
             return;
         // 現在のブラシ = 複製元テンプレート。 配置は複製で行う
         const NS::Game::Level::ObjectInstance& tmpl = m_palette.CurrentTemplate();
         // water 等の回転対象でない block は m_currentRotation が非ゼロでも 0 で焼き込む
         const std::uint8_t rotation = m_palette.CurrentIsRotatable() ? m_currentRotation : std::uint8_t{0};
-        auto target = Target();
-        m_undo.Push(std::make_unique<NS::Editor::PlaceCommand>(tmpl, x, y, z, rotation), target);
+        m_undo.Push(std::make_unique<NS::Editor::PlaceCommand>(tmpl, x, y, z, rotation), *m_level);
         m_levelDirty = true;
     }
 
     void EditorMode::DeleteAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept
     {
-        if (m_level == nullptr || m_objectIds == nullptr)
+        if (m_level == nullptr)
             return;
-        auto target = Target();
-        m_undo.Push(std::make_unique<NS::Editor::DeleteCommand>(x, y, z), target);
+        m_undo.Push(std::make_unique<NS::Editor::DeleteCommand>(x, y, z), *m_level);
         m_levelDirty = true;
     }
 
     void EditorMode::RotateAtProgrammatic(std::int16_t x, std::int16_t y, std::int16_t z) noexcept
     {
-        if (m_level == nullptr || m_objectIds == nullptr)
+        if (m_level == nullptr)
             return;
-        auto target = Target();
-        m_undo.Push(std::make_unique<NS::Editor::RotateCommand>(x, y, z, +1), target);
+        m_undo.Push(std::make_unique<NS::Editor::RotateCommand>(x, y, z, +1), *m_level);
         m_levelDirty = true;
     }
 
@@ -516,7 +503,7 @@ namespace NS::Editor
 
     void EditorMode::HandleRotationInput() noexcept
     {
-        if (m_input == nullptr || m_level == nullptr || m_objectIds == nullptr)
+        if (m_input == nullptr || m_level == nullptr)
             return;
         if (m_imgui != nullptr && m_imgui->WantCaptureKeyboard())
             return;
@@ -539,10 +526,9 @@ namespace NS::Editor
             if (index != NS::Game::Level::kNoObjectIndex &&
                 NS::Game::Blocks::IsRotatableObject(m_level->objects[index]))
             {
-                auto target = Target();
                 m_undo.Push(std::make_unique<NS::Editor::RotateCommand>(
                                 m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ, std::int8_t{1}),
-                            target);
+                            *m_level);
                 m_levelDirty = true;
             }
         }
@@ -555,7 +541,7 @@ namespace NS::Editor
 
     void EditorMode::HandleUndoRedoInput() noexcept
     {
-        if (m_input == nullptr || m_level == nullptr || m_objectIds == nullptr)
+        if (m_input == nullptr || m_level == nullptr)
             return;
         if (m_imgui != nullptr && m_imgui->WantCaptureKeyboard())
             return;
@@ -563,23 +549,22 @@ namespace NS::Editor
         auto& kb = m_input->Keyboard();
         const bool ctrl = kb.IsHeld(NS::Platform::Key::Ctrl);
         const bool shift = kb.IsHeld(NS::Platform::Key::Shift);
-        auto target = Target();
 
         // Ctrl+Shift+Z = Redo、 Ctrl+Z = Undo、 Ctrl+Y = Redo
         if (ctrl && shift && kb.IsPressed(NS::Platform::Key::Z))
         {
-            if (m_undo.Redo(target))
+            if (m_undo.Redo(*m_level))
                 m_levelDirty = true;
             return;
         }
         if (ctrl && kb.IsPressed(NS::Platform::Key::Z))
         {
-            if (m_undo.Undo(target))
+            if (m_undo.Undo(*m_level))
                 m_levelDirty = true;
         }
         if (ctrl && kb.IsPressed(NS::Platform::Key::Y))
         {
-            if (m_undo.Redo(target))
+            if (m_undo.Redo(*m_level))
                 m_levelDirty = true;
         }
     }

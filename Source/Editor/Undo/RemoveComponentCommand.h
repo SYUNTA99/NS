@@ -13,7 +13,7 @@
 namespace NS::Editor
 {
 
-    /// id で再特定したオブジェクトの components から添字 1 つを除去する
+    /// 永続 id で再特定したオブジェクトの components から添字 1 つを除去する
     /// @details 添字で狙うので同型が複数あっても選んだ 1 つだけを除ける。 除去した ComponentData を
     /// 反射値ごと退避し、 Undo で元の添字へ差し戻して順序を保つ
     /// 後入れ先出しの undo を前提とし、 Do と Undo の間に別操作が components を変えると元の添字はずれる
@@ -23,8 +23,8 @@ namespace NS::Editor
     public:
         RemoveComponentCommand(std::uint32_t targetObjectId, std::size_t componentIndex) noexcept;
 
-        void Do(NS::Game::Level::EditTarget& target) noexcept override;
-        void Undo(NS::Game::Level::EditTarget& target) noexcept override;
+        void Do(NS::Game::Level::LevelData& level) noexcept override;
+        void Undo(NS::Game::Level::LevelData& level) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override;
 
