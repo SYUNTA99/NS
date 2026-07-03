@@ -104,9 +104,10 @@ namespace NS::Scene
         /// Overlay バケットを登録順に描画する。全 world 描画の後に呼び、暗転や HUD を最前面へ重ねる
         void DrawOverlay(const RenderContext& context);
 
-        /// 派生がシーン単位の上書きを宣言する hook。default は空 override で project 既定値そのまま
+        /// 派生がシーン単位の上書きを宣言する hook
+        /// default は EnvironmentSubsystem が居ればその設定の宣言を返し、居なければ空で project 既定値そのまま
         /// lighting 3 種すなわち lightDir / lightColor / ambientColor と clearColor を上書きできる
-        virtual NS::Graphics::RenderSettingsOverride BuildSceneOverride() { return {}; }
+        virtual NS::Graphics::RenderSettingsOverride BuildSceneOverride();
 
         /// 可変フレーム Render の本体。派生が ctx を組み立てて描画する
         /// 描画前に ctx.resolvedSettings = ResolveSceneSettings(renderer.Settings()) を詰めること

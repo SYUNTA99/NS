@@ -1,6 +1,7 @@
 #include "Framework/Scene/SceneBase.h"
 
 #include "Framework/Graphics/RenderSettings.h"
+#include "Framework/Scene/EnvironmentSubsystem.h"
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/SubsystemRegistry.h"
@@ -11,9 +12,21 @@
 namespace NS::Scene
 {
 
+    NS::Graphics::RenderSettingsOverride SceneBase::BuildSceneOverride()
+    {
+        // 環境 service が居ればその設定を scene 上書きに使う。派生がシーンごとに同じ変換を書かずに済む
+        if (auto* environment = GetSubsystem<EnvironmentSubsystem>())
+            return environment->BuildOverride();
+        return {};
+    }
+
     NS::Graphics::RenderSettings SceneBase::ResolveSceneSettings(const NS::Graphics::RenderSettings& projectDefaults)
     {
-        return NS::Graphics::Resolve(projectDefaults, BuildSceneOverride());
+        const NS::Graphics::RenderSettings resolved = NS::Graphics::Resolve(projectDefaults, BuildSceneOverride());
+        // editor の由来表示が読む控えをここで一元化する。service 不在なら控えも持たない
+        if (auto* environment = GetSubsystem<EnvironmentSubsystem>())
+            environment->SetLastResolved(resolved);
+        return resolved;
     }
 
     void SceneBase::OnRender()
