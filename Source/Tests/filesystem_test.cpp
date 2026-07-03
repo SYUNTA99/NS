@@ -42,6 +42,38 @@ TEST(NsCoreFileSystem, CreateDirectoryThenExistsReturnsTrue)
     std::filesystem::remove_all(root);
 }
 
+TEST(NsCoreFileSystem, ResolveUnderReturnsAbsoluteInsideBase)
+{
+    const std::filesystem::path base = "C:/content";
+    const auto resolved = NS::Core::FileSystem::ResolveUnder(base, "Assets/Skybox/kurt/");
+    ASSERT_TRUE(resolved.has_value());
+    EXPECT_EQ(*resolved, std::filesystem::path("C:/content/Assets/Skybox/kurt/").lexically_normal());
+}
+
+TEST(NsCoreFileSystem, ResolveUnderRejectsAbsolutePath)
+{
+    const std::filesystem::path base = "C:/content";
+    EXPECT_FALSE(NS::Core::FileSystem::ResolveUnder(base, "D:/evil/path").has_value());
+    EXPECT_FALSE(NS::Core::FileSystem::ResolveUnder(base, "C:/content/Assets").has_value());
+}
+
+TEST(NsCoreFileSystem, ResolveUnderRejectsEscapeAboveBase)
+{
+    const std::filesystem::path base = "C:/content";
+    EXPECT_FALSE(NS::Core::FileSystem::ResolveUnder(base, "../outside").has_value());
+    EXPECT_FALSE(NS::Core::FileSystem::ResolveUnder(base, "a/../../outside").has_value());
+    // ドライブ相対も base 配下を保証できないので拒否
+    EXPECT_FALSE(NS::Core::FileSystem::ResolveUnder(base, "C:evil").has_value());
+}
+
+TEST(NsCoreFileSystem, ResolveUnderAllowsInternalDotDot)
+{
+    const std::filesystem::path base = "C:/content";
+    const auto resolved = NS::Core::FileSystem::ResolveUnder(base, "a/../b");
+    ASSERT_TRUE(resolved.has_value());
+    EXPECT_EQ(*resolved, std::filesystem::path("C:/content/b"));
+}
+
 TEST(NsCoreFileSystem, WriteAndReadAllBytesRoundTrip)
 {
     const auto path = MakeTempPath("bytes.bin");

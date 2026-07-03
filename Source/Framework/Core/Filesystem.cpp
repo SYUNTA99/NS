@@ -226,4 +226,18 @@ namespace NS::Core
 #endif
     }
 
+    std::optional<std::filesystem::path> FileSystem::ResolveUnder(const std::filesystem::path& base,
+                                                                  const std::filesystem::path& relative)
+    {
+        // 絶対パスとドライブ相対は base 配下を保証できないので入口で拒否する
+        if (relative.is_absolute() || relative.has_root_name())
+            return std::nullopt;
+        std::filesystem::path combined = (base / relative).lexically_normal();
+        // 正規化後も base 配下かを相対化で確かめる。外へ出ていれば先頭要素が ".." になる
+        const std::filesystem::path fromBase = combined.lexically_relative(base.lexically_normal());
+        if (fromBase.empty() || *fromBase.begin() == "..")
+            return std::nullopt;
+        return combined;
+    }
+
 } // namespace NS::Core
