@@ -238,6 +238,29 @@ namespace NS::Game::Level
         return object;
     }
 
+    bool IsFollowCameraObject(const ObjectInstance& object) noexcept
+    {
+        return FindComponentData(object, "ThirdPersonFollowComponent") != nullptr;
+    }
+
+    std::size_t FindFollowCameraObjectIndex(const LevelData& level) noexcept
+    {
+        for (std::size_t i = 0; i < level.objects.size(); ++i)
+        {
+            if (IsFollowCameraObject(level.objects[i]))
+                return i;
+        }
+        return kNoObjectIndex;
+    }
+
+    ObjectInstance MakeFollowCameraObject(std::uint32_t targetObjectId)
+    {
+        ObjectInstance object{};
+        object.materialIndex = -1;
+        object.components = NS::Game::Blocks::MakeFollowCameraComponents(targetObjectId);
+        return object;
+    }
+
     std::size_t PruneDanglingObjectRefs(LevelData& level)
     {
         std::unordered_set<std::uint32_t> validIds;

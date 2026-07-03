@@ -31,6 +31,8 @@ namespace NS::Scene
     class GameObject;
     class PlacedVirtualCamera;
     class SceneBase;
+    class ThirdPersonFollowComponent;
+    class VirtualCameraComponent;
 } // namespace NS::Scene
 
 namespace NS::Game::Level
@@ -90,10 +92,22 @@ namespace NS::Game::Level
         /// hazard の damage 走査 view。 所有は Objects() 側でここは観測のみ
         [[nodiscard]] const std::vector<NS::Scene::GameObject*>& HazardView() const noexcept { return m_hazardView; }
 
-        /// 据え置きカメラの走査 view。 所有は Objects() 側で、 Brain 登録と進入判定の駆動が読む
+        /// 据え置きカメラの走査 view。 所有は Objects() 側で、 進入判定の駆動が読む
         [[nodiscard]] const std::vector<NS::Scene::PlacedVirtualCamera*>& PlacedCameras() const noexcept
         {
             return m_placedCameraView;
+        }
+
+        /// 追従カメラの走査 view。 所有は Objects() 側で、 プレイ進行の active 切替と spring 更新が読む
+        [[nodiscard]] const std::vector<NS::Scene::ThirdPersonFollowComponent*>& FollowCameras() const noexcept
+        {
+            return m_followCameraView;
+        }
+
+        /// 仮想カメラ全種の走査 view。 据え置きと追従を束ね、 Brain への登録 / 解除が読む
+        [[nodiscard]] const std::vector<NS::Scene::VirtualCameraComponent*>& VirtualCameras() const noexcept
+        {
+            return m_virtualCameraView;
         }
 
         /// コヨーテ debug 用に焼いた踏み外せる縁の world 線分。 出荷では焼かれず常に空
@@ -118,6 +132,8 @@ namespace NS::Game::Level
         std::vector<InstancedBlock> m_instancedBlocks;
         std::vector<NS::Scene::GameObject*> m_hazardView;
         std::vector<NS::Scene::PlacedVirtualCamera*> m_placedCameraView;
+        std::vector<NS::Scene::ThirdPersonFollowComponent*> m_followCameraView;
+        std::vector<NS::Scene::VirtualCameraComponent*> m_virtualCameraView;
         std::vector<NS::Game::Blocks::LedgeEdge> m_ledgeEdges;
         std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
         std::vector<std::uint32_t> m_editIds;

@@ -7,6 +7,8 @@
 #include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/Components/CharacterMovementComponent.h"
 #include "Framework/Scene/GameObject.h"
+#include "Framework/Scene/ObjectRefSubsystem.h"
+#include "Framework/Scene/SceneBase.h"
 #include "Framework/Scene/Transform.h"
 
 #include <cmath>
@@ -37,6 +39,19 @@ namespace NS::Scene
     void ThirdPersonFollowComponent::SetMovement(const CharacterMovementComponent* movement) noexcept
     {
         m_movement = movement;
+    }
+
+    void ThirdPersonFollowComponent::OnStart()
+    {
+        // 参照未設定はテスト / 直結線の構築なので触らない。解決不可も既存の結線を壊さず据え置く
+        if (!m_targetRef.IsSet() || Owner() == nullptr || Owner()->OwningScene() == nullptr)
+            return;
+        auto* refs = Owner()->OwningScene()->GetSubsystem<ObjectRefSubsystem>();
+        GameObject* target = (refs != nullptr) ? refs->Resolve(m_targetRef) : nullptr;
+        if (target == nullptr)
+            return;
+        m_target = &target->Root();
+        m_movement = target->FindComponent<CharacterMovementComponent>();
     }
 
     void ThirdPersonFollowComponent::SetSensX(float radPerPixel) noexcept

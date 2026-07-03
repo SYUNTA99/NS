@@ -67,6 +67,10 @@ namespace NS::Game::Blocks
     /// mesh 描画 + 移動 + 入力 + 接地影の 4 点。 値の細部は component のコード既定に任せる
     [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeDefaultPlayerComponents();
 
+    /// 追従カメラ実体の component 一覧を組む。 ThirdPersonFollowComponent 1 点で、 追従先の
+    /// 永続 id を Target 参照へ、 プレイの遠景 100 を Far Plane へ焼く。 感触値はコード既定に任せる
+    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeFollowCameraComponents(std::uint32_t targetObjectId);
+
     /// 自由配置の cube 1 個分の component 一覧を組む。 cube メッシュ + shapeCollider に応じた Box/Sphere/Capsule 当たり
     /// 当たり寸法 / offset / 回転は object の collider フィールドから読む
     [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeFreeCubeComponents(

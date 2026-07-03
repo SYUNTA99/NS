@@ -11,7 +11,10 @@
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
 #include "Framework/Scene/Components/SlopeColliderComponent.h"
 #include "Framework/Scene/Components/SphereColliderComponent.h"
+#include "Framework/Scene/Components/ThirdPersonFollowComponent.h"
 #include "Framework/Scene/GameObject.h"
+#include "Framework/Scene/ObjectRefSubsystem.h"
+#include "Framework/Scene/SceneBase.h"
 #include "Game/Blocks/AutoTile.h"
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Level/LevelData.h"
@@ -43,6 +46,9 @@ namespace NS::Game::Level
         if (assets == nullptr)
             return;
 
+        // 先に全 object を組んで永続 id を照合窓口へ登録し、 開始は後段でまとめて行う
+        // OnStart で ObjectRef を解決する component が、 自分より後ろの object も引けるようにするため
+        auto* refs = scene.GetSubsystem<NS::Scene::ObjectRefSubsystem>();
         for (std::size_t objectIndex = 0; objectIndex < level.objects.size(); ++objectIndex)
         {
             const ObjectInstance& entry = level.objects[objectIndex];
@@ -56,6 +62,17 @@ namespace NS::Game::Level
                 continue; // 組み立てる component が無いオブジェクトはファクトリが nullptr を返す
 
             obj->AttachScene(&scene);
+            if (refs != nullptr)
+                refs->Register(entry.objectId, obj.get());
+
+            m_objectSourceIndices.push_back(objectIndex);
+            m_objects.push_back(std::move(obj));
+        }
+
+        for (std::size_t i = 0; i < m_objects.size(); ++i)
+        {
+            const ObjectInstance& entry = level.objects[m_objectSourceIndices[i]];
+            NS::Scene::GameObject* obj = m_objects[i].get();
             obj->OnStart();
 
             const bool gridAligned = (entry.flags & kObjectFlagGridAligned) != 0;
@@ -90,7 +107,7 @@ namespace NS::Game::Level
                     // hazard の damage は固形 AABB とは別経路の毎フレーム重なり判定で効くため view にも積む
                     if (!hazardRegistered)
                     {
-                        m_hazardView.push_back(obj.get());
+                        m_hazardView.push_back(obj);
                         hazardRegistered = true;
                     }
                 }
@@ -102,10 +119,16 @@ namespace NS::Game::Level
             {
                 placed->SetActive(false);
                 m_placedCameraView.push_back(placed);
+                m_virtualCameraView.push_back(placed);
             }
 
-            m_objectSourceIndices.push_back(objectIndex);
-            m_objects.push_back(std::move(obj));
+            // 追従カメラは休止で開始し、 プレイ突入の進行役が active 化する。 編集中は free-fly が主役のまま
+            if (auto* follow = obj->FindComponent<NS::Scene::ThirdPersonFollowComponent>())
+            {
+                follow->SetActive(false);
+                m_followCameraView.push_back(follow);
+                m_virtualCameraView.push_back(follow);
+            }
         }
 
         // 生成直後は previous PRS が原点/単位回転のため Snapshot で current に揃える
@@ -148,6 +171,8 @@ namespace NS::Game::Level
         m_instancedBlocks.clear();
         m_hazardView.clear();
         m_placedCameraView.clear();
+        m_followCameraView.clear();
+        m_virtualCameraView.clear();
     }
 
     void LevelWorld::CreateBatcher()

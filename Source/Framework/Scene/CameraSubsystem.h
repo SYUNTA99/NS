@@ -1,38 +1,45 @@
 #pragma once
 
 /// @file CameraSubsystem.h
-/// @brief NS::Scene::CameraSubsystem — 「いまどのカメラで描くか」のシーン単位の検索窓
+/// @brief NS::Scene::CameraSubsystem — 実カメラ 1 個 + Brain を所有する「いまどのカメラで描くか」の窓口
 ///
 /// @details 描画と入力の camera 相対処理が scene の具体型や camera メンバの在り処を
-/// 知らずに済むよう、アクティブな `CameraBrainComponent` の非所有参照をシーン service
-/// として公開する。brain の所有と寿命は登録側が握り、破棄前に `SetBrain(nullptr)` で
-/// 解除する。未登録の間は Brain() / MainCamera() とも nullptr を返す
-/// 依存: NS::Scene::SceneSubsystem
+/// 知らずに済むよう、実 `CameraComponent` と `CameraBrainComponent` を載せた host を
+/// シーン service として所有・公開する。vcam の登録は消費者が Brain() 経由で行い、
+/// vcam 実体の寿命は登録側が握る。Initialize 前は Brain() / MainCamera() とも nullptr を返す
+/// 依存: NS::Scene::SceneSubsystem, NS::Scene::GameObject
 
 #include "Framework/Scene/SceneSubsystem.h"
+
+#include <memory>
 
 namespace NS::Scene
 {
     class CameraBrainComponent;
     class CameraComponent;
+    class GameObject;
 
-    /// アクティブな camera brain の在り処を握るシーン service。brain は非所有参照
+    /// 実カメラ + Brain を載せた host を所有するシーン service。vcam は非所有
     class CameraSubsystem final : public SceneSubsystem
     {
     public:
-        /// シーンの描画を駆動する brain を登録する。nullptr で解除。brain 破棄前に必ず解除する
-        void SetBrain(CameraBrainComponent* brain) noexcept { m_brain = brain; }
+        CameraSubsystem();
+        ~CameraSubsystem() override;
 
-        /// 登録中の brain。未登録は nullptr
+        /// 実カメラ + Brain を載せた host を組んで開始する。以降 Brain() / MainCamera() が有効になる
+        void Initialize(SceneBase& scene) noexcept override;
+
+        /// host を畳んで破棄する。登録されたままの vcam 参照も host ごと消える
+        void Deinitialize() noexcept override;
+
+        /// シーンの描画を駆動する brain。Initialize 前は nullptr
         [[nodiscard]] CameraBrainComponent* Brain() const noexcept { return m_brain; }
 
-        /// brain が駆動する実カメラ。brain 未登録か実カメラ未解決なら nullptr
+        /// brain が駆動する実カメラ。Initialize 前は nullptr
         [[nodiscard]] CameraComponent* MainCamera() const noexcept;
 
-        /// シーン破棄で参照だけ手放す。brain 実体の破棄は所有者に任せる
-        void Deinitialize() noexcept override { m_brain = nullptr; }
-
     private:
+        std::unique_ptr<GameObject> m_host;
         CameraBrainComponent* m_brain = nullptr;
     };
 } // namespace NS::Scene

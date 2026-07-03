@@ -20,28 +20,11 @@ TEST(CameraSubsystemTest, CreatedOnAnyScene)
     SceneBase scene;
     scene.CreateSceneSubsystems();
 
+    // どのシーンにもカメラ 1 系統。生成と同時に実カメラ + Brain の host が立ち上がる
     CameraSubsystem* subsystem = scene.GetSubsystem<CameraSubsystem>();
     ASSERT_NE(subsystem, nullptr);
-    // 未登録の間は両窓口とも nullptr で、消費者が無カメラを判定できる
-    EXPECT_EQ(subsystem->Brain(), nullptr);
-    EXPECT_EQ(subsystem->MainCamera(), nullptr);
-}
-
-TEST(CameraSubsystemTest, BrainRegistrationRoundTrip)
-{
-    SceneBase scene;
-    scene.CreateSceneSubsystems();
-    auto* subsystem = scene.GetSubsystem<CameraSubsystem>();
-    ASSERT_NE(subsystem, nullptr);
-
-    GameObject host;
-    auto* brain = host.AddComponent<CameraBrainComponent>();
-
-    subsystem->SetBrain(brain);
-    EXPECT_EQ(subsystem->Brain(), brain);
-
-    subsystem->SetBrain(nullptr);
-    EXPECT_EQ(subsystem->Brain(), nullptr);
+    EXPECT_NE(subsystem->Brain(), nullptr);
+    EXPECT_NE(subsystem->MainCamera(), nullptr);
 }
 
 TEST(CameraSubsystemTest, MainCameraResolvesThroughBrain)
@@ -51,26 +34,22 @@ TEST(CameraSubsystemTest, MainCameraResolvesThroughBrain)
     auto* subsystem = scene.GetSubsystem<CameraSubsystem>();
     ASSERT_NE(subsystem, nullptr);
 
-    GameObject host;
-    auto* cam = host.AddComponent<CameraComponent>();
-    auto* brain = host.AddComponent<CameraBrainComponent>();
-    host.OnStart();
-
-    subsystem->SetBrain(brain);
-    EXPECT_EQ(subsystem->MainCamera(), cam);
+    // 実カメラは Brain と同じ host に載り、窓口の 2 つが同じ実体系を指す
+    ASSERT_NE(subsystem->Brain(), nullptr);
+    EXPECT_EQ(subsystem->MainCamera(), subsystem->Brain()->Camera());
+    EXPECT_EQ(subsystem->Brain()->Owner(), subsystem->MainCamera()->Owner());
 }
 
-TEST(CameraSubsystemTest, DeinitializeReleasesBrainReference)
+TEST(CameraSubsystemTest, DeinitializeReleasesHost)
 {
     SceneBase scene;
     scene.CreateSceneSubsystems();
     auto* subsystem = scene.GetSubsystem<CameraSubsystem>();
     ASSERT_NE(subsystem, nullptr);
+    ASSERT_NE(subsystem->Brain(), nullptr);
 
-    GameObject host;
-    subsystem->SetBrain(host.AddComponent<CameraBrainComponent>());
-
-    // シーン破棄経路で参照が残らないこと。brain 実体の寿命は所有者側の管轄
+    // シーン破棄経路で host ごと畳まれ、窓口は無カメラを返す
     subsystem->Deinitialize();
     EXPECT_EQ(subsystem->Brain(), nullptr);
+    EXPECT_EQ(subsystem->MainCamera(), nullptr);
 }

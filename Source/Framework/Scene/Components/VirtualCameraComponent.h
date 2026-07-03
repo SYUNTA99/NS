@@ -61,7 +61,9 @@ namespace NS::Scene
         void SetFovY(NS::Math::Radians fov) noexcept { m_fovY = fov; }
         [[nodiscard]] NS::Math::Radians FovY() const noexcept { return m_fovY; }
         void SetNearPlane(float nearPlane) noexcept { m_nearPlane = nearPlane; }
+        [[nodiscard]] float NearPlane() const noexcept { return m_nearPlane; }
         void SetFarPlane(float farPlane) noexcept { m_farPlane = farPlane; }
+        [[nodiscard]] float FarPlane() const noexcept { return m_farPlane; }
 
     protected:
         /// 派生が position/target/up を渡すと、保持中の投影設定を載せた CameraPose を返す helper

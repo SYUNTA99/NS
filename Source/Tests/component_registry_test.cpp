@@ -165,7 +165,8 @@ TEST(ComponentRegistryTest, ReflectedFieldsMatchLedger)
         {"SlopeColliderComponent", {"Angle (deg)", "Half Extents"}},
         {"SphereColliderComponent", {"Radius", "Center Offset"}},
         {"ThirdPersonFollowComponent",
-         {"Spring Omega",
+         {"Target",
+          "Spring Omega",
           "Idle Distance",
           "Run Distance",
           "Jump Distance",
@@ -179,6 +180,7 @@ TEST(ComponentRegistryTest, ReflectedFieldsMatchLedger)
           "Invert Y",
           "Pitch Min",
           "Pitch Max",
+          "Far Plane",
           "Priority"}},
     };
 

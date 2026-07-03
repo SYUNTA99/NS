@@ -184,6 +184,15 @@ namespace NS::Game::Blocks
                 MakeComponentData("ShadowComponent", {})};
     }
 
+    std::vector<NS::Game::Level::ComponentData> MakeFollowCameraComponents(std::uint32_t targetObjectId)
+    {
+        using namespace NS::Game::Level;
+        // Far Plane 100 はプレイの遠景を抑える投影値。 感触の距離 / 感度はコード既定に任せる
+        return {MakeComponentData(
+            "ThirdPersonFollowComponent",
+            {FieldValue{"Target", NS::Scene::ObjectRef{targetObjectId}}, FieldValue{"Far Plane", 100.0f}})};
+    }
+
     std::vector<NS::Game::Level::ComponentData> MakeFreeCubeComponents(const NS::Game::Level::ObjectInstance& object)
     {
         using namespace NS::Game::Level;
@@ -273,6 +282,8 @@ namespace NS::Game::Blocks
     {
         if (NS::Game::Level::IsPlayerObject(object))
             return "Player";
+        if (HasComponentType(object, "ThirdPersonFollowComponent"))
+            return "Follow Camera";
         if (HasComponentType(object, "PlacedVirtualCamera"))
             return "Camera";
 

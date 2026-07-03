@@ -541,7 +541,7 @@ group ""
 
 --============================================================================
 -- GameCore (StaticLib) — ゲーム本体 (content / logic)
---   Player / Block / LevelPlayScene / Level / Theme / CameraRig 等。
+--   Player / Block / LevelPlayScene / Level / Theme 等。
 --   editor を一切知らない (依存の向きは Editor → GameCore の一方向)。 出荷を含む全構成でビルド。
 --   合成 Layer ::Game もここに置き、 editor から Game::Get() で参照できるようにする。
 --============================================================================
@@ -828,7 +828,6 @@ project "Tests"
         -- PlayerTuning は LevelPlayScene(OnStart) と LevelEditorController が参照するので symbol 解決のため取り込む
         "Source/Game/PlayerTuning.cpp",
         "Source/Game/Blocks/**.cpp",
-        "Source/Game/CameraRig.cpp",
         "Source/Editor/EditorCameraRig.cpp",
         -- LevelEditorController は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
         -- Setup は Application::Get() を要求するため test では呼ばないが、 ctor / EnterPlay /

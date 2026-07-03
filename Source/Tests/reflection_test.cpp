@@ -329,7 +329,7 @@ TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
     NS::Scene::ThirdPersonFollowComponent follow(nullptr);
     const ReflectionInfo* info = follow.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 15u);
+    EXPECT_EQ(info->fieldCount, 17u);
 
     const FieldDesc* jump = FindField(info, "Jump Distance");
     ASSERT_NE(jump, nullptr);
@@ -345,6 +345,16 @@ TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
     const FieldDesc* invertX = FindField(info, "Invert X");
     ASSERT_NE(invertX, nullptr);
     EXPECT_EQ(invertX->type, FieldType::Bool);
+
+    // 追従先はオブジェクト間参照としてデータ化される
+    const FieldDesc* target = FindField(info, "Target");
+    ASSERT_NE(target, nullptr);
+    EXPECT_EQ(target->type, FieldType::ObjectRef);
+
+    // プレイの遠景を抑える投影値も反射でデータ化される
+    const FieldDesc* farPlane = FindField(info, "Far Plane");
+    ASSERT_NE(farPlane, nullptr);
+    EXPECT_EQ(farPlane->type, FieldType::Float);
 }
 
 TEST(ReflectionTest, CameraBrainBlendDurationAccessorClampsNegative)

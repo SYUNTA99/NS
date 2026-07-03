@@ -164,7 +164,8 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
 
     LevelData restored;
     ASSERT_TRUE(DeserializeLevelFromJson(restored, SerializeLevelToJson(src)));
-    ASSERT_EQ(restored.objects.size(), 2u);
+    // 末尾に追従カメラが 1 台合成される
+    ASSERT_EQ(restored.objects.size(), 3u);
     ASSERT_FALSE(restored.objects[0].components.empty()); // 往復後も新経路の components 駆動を通る
 
     NS::Scene::AssetManager assets{std::filesystem::path{"."}};

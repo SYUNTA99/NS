@@ -138,6 +138,16 @@ namespace NS::Game::Level
     [[nodiscard]] ObjectInstance MakePlayerObject(const NS::Math::Vector3& position,
                                                   const NS::Math::Quaternion& rotation);
 
+    /// 追従カメラ実体か。 ThirdPersonFollowComponent の有無で判定する
+    [[nodiscard]] bool IsFollowCameraObject(const ObjectInstance& object) noexcept;
+
+    /// objects から追従カメラ実体を探す。 最初の 1 件の添字、 無ければ kNoObjectIndex
+    [[nodiscard]] std::size_t FindFollowCameraObjectIndex(const LevelData& level) noexcept;
+
+    /// 追従カメラ実体 ObjectInstance を作る。 追従先の永続 id を Target 参照へ焼く。 0 は未設定
+    /// pose は追従で毎フレーム決まるため Transform は既定のまま。 視覚と当たりは持たない
+    [[nodiscard]] ObjectInstance MakeFollowCameraObject(std::uint32_t targetObjectId);
+
     /// 永続 object id を 1 個割り当ててカウンタを進める。生成経路が新規 object に振るのに使う
     [[nodiscard]] std::uint32_t AllocateObjectId(LevelData& level) noexcept;
 

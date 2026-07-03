@@ -11,9 +11,9 @@
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
+#include "Framework/Scene/Components/ThirdPersonFollowComponent.h"
 #include "Framework/Scene/GameObject.h"
 #include "Game/Blocks/BuildPlacedObject.h"
-#include "Game/CameraRig.h"
 #include "Game/Level/ClearFadeComponent.h"
 #include "Game/LevelPlayScene.h"
 #include "Game/Player.h"
@@ -56,8 +56,9 @@ namespace NS::Game::Level
             player->Root().SetPosition(m_play.playerPosition);
             player->Movement().ResetState();
         }
-        if (auto* rig = scene->Rig())
-            rig->Follow().SetActive(true);
+        // 追従カメラは world のカメラ配置物。 プレイの間だけ起こす
+        for (auto* follow : scene->World().FollowCameras())
+            follow->SetActive(true);
 
         // プレイ突入はカーソルを消す。 Esc で出すまで非表示のまま
         m_playCursorShown = false;
@@ -91,8 +92,8 @@ namespace NS::Game::Level
             }
             player->Root().Snapshot();
         }
-        if (auto* rig = scene->Rig())
-            rig->Follow().SetActive(false);
+        for (auto* follow : scene->World().FollowCameras())
+            follow->SetActive(false);
         for (auto* placed : scene->World().PlacedCameras())
             placed->SetActive(false);
 
@@ -153,8 +154,6 @@ namespace NS::Game::Level
         {
             if (auto* player = scene->PlayerRef())
                 player->Root().Snapshot();
-            if (auto* rig = scene->Rig())
-                rig->Root().Snapshot();
             return;
         }
 
@@ -166,11 +165,8 @@ namespace NS::Game::Level
             fade->Advance(dt);
             if (auto* player = scene->PlayerRef())
                 player->Root().Snapshot();
-            if (auto* rig = scene->Rig())
-            {
-                rig->Root().Snapshot();
-                rig->OnUpdate();
-            }
+            for (auto* follow : scene->World().FollowCameras())
+                follow->OnUpdate();
             return;
         }
 
@@ -233,11 +229,9 @@ namespace NS::Game::Level
 
         if (auto* player = scene->PlayerRef())
             player->Root().Snapshot();
-        if (auto* rig = scene->Rig())
-        {
-            rig->Root().Snapshot();
-            rig->OnUpdate();
-        }
+        // 追従の spring は player 確定後に進める。 camera 配置物の Root Snapshot は scene が毎フレーム面倒を見る
+        for (auto* follow : scene->World().FollowCameras())
+            follow->OnUpdate();
     }
 
 } // namespace NS::Game::Level

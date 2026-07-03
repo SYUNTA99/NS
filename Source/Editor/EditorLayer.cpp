@@ -23,6 +23,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <string>
+#include <vector>
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -360,6 +361,22 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
 #if NS_EDITOR_ENABLED
     if (ImGui::Begin("Inspector"))
     {
+        // ObjectRef フィールドの参照先候補。 Hierarchy と同じ並びと表示名で全配置物を出す
+        std::vector<NS::Editor::ObjectRefOption> refOptions;
+        refOptions.reserve(editor.Level().objects.size());
+        for (std::size_t i = 0; i < editor.Level().objects.size(); ++i)
+        {
+            const NS::Game::Level::ObjectInstance& candidate = editor.Level().objects[i];
+            char label[96];
+            std::snprintf(label,
+                          sizeof(label),
+                          "[%zu] %s (id %u)",
+                          i,
+                          NS::Game::Blocks::ObjectDisplayName(candidate),
+                          candidate.objectId);
+            refOptions.push_back(NS::Editor::ObjectRefOption{candidate.objectId, label});
+        }
+
         if (editor.IsCameraSelected())
         {
             ImGui::Text("Camera");
@@ -371,9 +388,9 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             if (brain == nullptr && vcam == nullptr)
                 ImGui::TextDisabled("(no camera)");
             if (brain != nullptr)
-                (void)NS::Editor::DrawObjectComponents(*brain);
+                (void)NS::Editor::DrawObjectComponents(*brain, refOptions);
             if (vcam != nullptr && vcam != brain)
-                (void)NS::Editor::DrawObjectComponents(*vcam);
+                (void)NS::Editor::DrawObjectComponents(*vcam, refOptions);
 
             ImGui::End();
             return;
@@ -461,7 +478,7 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
         if (auto* go = editor.SelectedObjectGameObject())
         {
             ImGui::Separator();
-            if (NS::Editor::DrawObjectComponents(*go))
+            if (NS::Editor::DrawObjectComponents(*go, refOptions))
                 editor.SyncSelectedObjectComponentsFromComponent();
         }
 

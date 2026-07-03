@@ -9,8 +9,8 @@
 #include "Framework/Scene/CameraSubsystem.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/CameraComponent.h"
-#include "Framework/Scene/Components/PlacedVirtualCamera.h"
 #include "Framework/Scene/GameObject.h"
+#include "Framework/Scene/ObjectRefSubsystem.h"
 
 #include "Framework/App/Application.h"
 #include "Framework/Core/Clock.h"
@@ -55,6 +55,11 @@ namespace
             NS::Math::Vector3{0.0f, NS::Game::Level::kDefaultPlayerSpawnY, 0.0f}, NS::Math::Quaternion{}));
         // 新規プレイヤーには保存済みテンプレートの構成と値を写す
         MergeSavedPlayerTuning(level.objects.back());
+        NS::Game::Level::EnsureUniqueObjectIds(level);
+        // 追従カメラも配置物。 プレイヤーへの Target 参照が要るため採番の後に足し、 増分をもう一度採番する
+        const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(level);
+        level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(
+            (playerIndex != NS::Game::Level::kNoObjectIndex) ? level.objects[playerIndex].objectId : 0u));
         NS::Game::Level::EnsureUniqueObjectIds(level);
     }
 } // namespace
@@ -150,37 +155,18 @@ void LevelPlayScene::OnStart()
 
     // プレイヤーの構成と値の真実はレベルの player object。 RebuildWorld が components を、
     // ApplyPlayerPoseFromLevel が pose を live へ適用する
+    // 実カメラ + Brain は CameraSubsystem 所有で、 追従カメラは world が配置物として組む
     LoadInitialLevel();
     RebuildWorld();
     ApplyPlayerPoseFromLevel();
 
-    m_cameraRig = std::make_unique<CameraRig>(&m_player->Root(), &m_player->Movement());
-    m_cameraRig->AttachScene(this);
-    // follow vcam の投影設定。 near 0.1 / fov 60 は既定、 play は遠景を 100 までに抑える
-    m_cameraRig->Follow().SetFarPlane(100.0f);
-
     m_player->OnStart();
     m_playerStarted = true;
-    m_cameraRig->OnStart();
 
-    // 実カメラ 1 個 + Brain を載せる host を作り、 follow vcam を登録する
-    // 描画 / aspect / PlayerInput forward は全て Brain 出力カメラへ集約する
-    m_cameraHost = std::make_unique<NS::Scene::GameObject>();
-    m_mainCamera = m_cameraHost->AddComponent<NS::Scene::CameraComponent>();
-    m_brain = m_cameraHost->AddComponent<NS::Scene::CameraBrainComponent>();
-    m_mainCamera->SetAspectRatioFromRenderer(renderer);
-    m_mainCamera->SetUp({0.0f, 1.0f, 0.0f});
-    m_brain->AddVirtualCamera(&m_cameraRig->Follow());
-    m_cameraHost->AttachScene(this);
-    m_cameraHost->OnStart();
-
-    // 描画カメラの在り処を service へ公開する。 editor / 進行役は scene のメンバでなくこの窓口から引く
+    // 初回描画から正しい縦横比で出す。 以降は OnUpdate が Renderer の現在 Size を毎フレーム引き写す
     if (auto* cameras = GetSubsystem<NS::Scene::CameraSubsystem>())
-        cameras->SetBrain(m_brain);
-
-    // world が組んだ据え置きカメラを Brain へ登録する。 以降の組み直しは RebuildWorld が面倒を見る
-    for (auto* placed : m_world.PlacedCameras())
-        m_brain->AddVirtualCamera(placed);
+        if (auto* mainCamera = cameras->MainCamera())
+            mainCamera->SetAspectRatioFromRenderer(renderer);
 
     // 進行役の Component に scene / player / camera の解決を済ませる
     m_director->OnStart();
@@ -205,12 +191,13 @@ void LevelPlayScene::OnUpdate()
 
     // Application が Renderer::Resize を排他で握っているため、 Camera の aspect ratio は
     // Renderer の現在 Size から毎フレーム pull する。 callback 上書きで競合させない
-    if (m_mainCamera)
-        m_mainCamera->SetAspectRatioFromRenderer(app->Renderer());
+    auto* cameras = GetSubsystem<NS::Scene::CameraSubsystem>();
+    if (auto* mainCamera = (cameras != nullptr) ? cameras->MainCamera() : nullptr)
+        mainCamera->SetAspectRatioFromRenderer(app->Renderer());
 
     // active vcam が入れ替わったらブレンドを進める。 play / edit 共通で fixed step ごとに 1 度
-    if (m_brain)
-        m_brain->OnUpdate();
+    if (auto* brain = (cameras != nullptr) ? cameras->Brain() : nullptr)
+        brain->OnUpdate();
 
     SnapshotDisplayBlocks();
 
@@ -276,16 +263,19 @@ void LevelPlayScene::OnRenderScene()
     ctx.renderer = &app->Renderer();
     ctx.alpha = NS::Core::FrameTimer::Alpha();
 
-    if (m_brain == nullptr || m_mainCamera == nullptr)
+    auto* cameras = GetSubsystem<NS::Scene::CameraSubsystem>();
+    auto* brain = (cameras != nullptr) ? cameras->Brain() : nullptr;
+    auto* mainCamera = (cameras != nullptr) ? cameras->MainCamera() : nullptr;
+    if (brain == nullptr || mainCamera == nullptr)
         return;
 
     // 有効な vcam すなわち edit=free-fly / play=follow を選び、 alpha 補間で実カメラへ書く
     // follow は補間 target を追うのでここで alpha を渡す。 旧 ApplyCameraTransform 相当の補間
-    m_brain->Evaluate(ctx.alpha);
-    ctx.viewProjection = m_brain->ViewProjection();
+    brain->Evaluate(ctx.alpha);
+    ctx.viewProjection = brain->ViewProjection();
 
     // 半透明 back-to-front ソート用に実カメラの world 座標を渡す。 view 行列の逆変換の平行移動成分
-    ctx.cameraPosition = m_mainCamera->Camera().View().Invert().Translation();
+    ctx.cameraPosition = mainCamera->Camera().View().Invert().Translation();
 
     // 基底が BuildSceneOverride() を Resolve するので、 theme override が scene 解決値として ctx に載る
     // mesh 経路は ctx 経由で pull、 block 経路はこの解決値を FrameCB に詰めて同一値を流す
@@ -364,7 +354,7 @@ void LevelPlayScene::OnRenderScene()
             }
         }
 
-        const auto& cam = m_mainCamera->Camera();
+        const auto& cam = mainCamera->Camera();
         NS::Math::Matrix viewNoTranslate = cam.View();
         viewNoTranslate._41 = 0.0f;
         viewNoTranslate._42 = 0.0f;
@@ -443,28 +433,19 @@ void LevelPlayScene::OnShutdown()
     // 進行役は player / camera を非所有参照するだけなので先に畳む
     if (m_director)
         m_director->OnEndPlay();
-    if (m_cameraHost)
-        m_cameraHost->OnEndPlay();
-    if (m_cameraRig)
-        m_cameraRig->OnEndPlay();
-    // Brain は world の据え置きカメラを非所有参照する。 world を畳む前に外して無効参照を避ける
-    if (m_brain != nullptr)
-        for (auto* placed : m_world.PlacedCameras())
-            m_brain->RemoveVirtualCamera(placed);
-    // 配置物は逆順の OnEndPlay ごと LevelWorld が畳む
+    // Brain は world のカメラ配置物を非所有参照する。 world を畳む前に外して無効参照を避ける
+    auto* cameras = GetSubsystem<NS::Scene::CameraSubsystem>();
+    if (auto* brain = (cameras != nullptr) ? cameras->Brain() : nullptr)
+        for (auto* vcam : m_world.VirtualCameras())
+            brain->RemoveVirtualCamera(vcam);
+    // 参照照合窓口も world より先に空へ戻し、 畳み中の解決に宙参照を返さない
+    if (auto* refs = GetSubsystem<NS::Scene::ObjectRefSubsystem>())
+        refs->Clear();
+    // 配置物は逆順の OnEndPlay ごと LevelWorld が畳む。 実カメラ + Brain は CameraSubsystem が畳む
     m_world.Clear();
     if (m_player)
         m_player->OnEndPlay();
 
-    // brain 破棄前に service の参照を外し、 shutdown 中の消費者へ宙参照を渡さない
-    if (auto* cameras = GetSubsystem<NS::Scene::CameraSubsystem>())
-        cameras->SetBrain(nullptr);
-
-    // Brain は vcam を非所有参照するので、 rig より先に host を畳んで無効参照を避ける
-    m_cameraHost.reset();
-    m_mainCamera = nullptr;
-    m_brain = nullptr;
-    m_cameraRig.reset();
     m_player.reset();
     m_playerStarted = false;
 
@@ -477,19 +458,32 @@ void LevelPlayScene::OnShutdown()
 
 void LevelPlayScene::RebuildWorld()
 {
-    // 旧 world の据え置きカメラを Brain から外してから組み直す。 Brain の非所有参照を無効化させない
-    if (m_brain != nullptr)
-        for (auto* placed : m_world.PlacedCameras())
-            m_brain->RemoveVirtualCamera(placed);
+    // 旧 world のカメラ配置物を Brain から外してから組み直す。 Brain の非所有参照を無効化させない
+    auto* cameras = GetSubsystem<NS::Scene::CameraSubsystem>();
+    auto* brain = (cameras != nullptr) ? cameras->Brain() : nullptr;
+    if (brain != nullptr)
+        for (auto* vcam : m_world.VirtualCameras())
+            brain->RemoveVirtualCamera(vcam);
+
+    // 参照照合窓口を満たし直す。 world に組まれないプレイヤーは scene がここで登録し、
+    // world の配置物は Rebuild が組みながら登録する。 OnStart の参照解決より先に揃える
+    auto* refs = GetSubsystem<NS::Scene::ObjectRefSubsystem>();
+    if (refs != nullptr)
+    {
+        refs->Clear();
+        const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(m_level);
+        if (m_player && playerIndex != NS::Game::Level::kNoObjectIndex)
+            refs->Register(m_level.objects[playerIndex].objectId, m_player.get());
+    }
 
     // 構築は LevelWorld の一本道。 app 不在の起動前 / テストでは assets を渡さず何も組まない
     auto* app = NS::App::Application::Get();
     m_world.Rebuild(m_level, *this, Physics(), app ? &app->Assets() : nullptr);
 
-    // 組み直しで生まれた据え置きカメラを Brain へ登録し直す
-    if (m_brain != nullptr)
-        for (auto* placed : m_world.PlacedCameras())
-            m_brain->AddVirtualCamera(placed);
+    // 組み直しで生まれたカメラ配置物を Brain へ登録し直す。 追従と据え置きの両方が載る
+    if (brain != nullptr)
+        for (auto* vcam : m_world.VirtualCameras())
+            brain->AddVirtualCamera(vcam);
 
     // player object は world で組まれない代わりに、 components の値をここで live player へ適用する
     // pose は触らない。 プレイ中の組み直しで出現位置へ瞬間移動させないため、 pose 適用は編集側の経路が担う

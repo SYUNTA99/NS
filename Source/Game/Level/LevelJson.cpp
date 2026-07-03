@@ -26,7 +26,8 @@ namespace NS::Game::Level
         /// v3 で object へ永続 id、 root へ nextObjectId を追加した。 旧版は読込時に採番して移行する
         /// v4 で据え置きカメラを cameraVolumes の別リストから objects の配置物へ統合した
         /// v5 でプレイヤーを spawn 単一値から objects の実体へ統合した。 旧版は読込時に合成して移行する
-        constexpr int kFormatVersion = 5;
+        /// v6 で追従カメラを scene 直組みから objects の実体へ統合した。 旧版は読込時に合成して移行する
+        constexpr int kFormatVersion = 6;
 
         /// 読込時の上限。 巨大 size / 要素数による memory exhaustion を防ぐ。 binary 版から移植
         constexpr std::size_t kMaxLevelFileBytes = 16u * 1024u * 1024u;
@@ -471,6 +472,17 @@ namespace NS::Game::Level
         outLevel.nextObjectId = static_cast<std::uint32_t>(ReadInt(root, "nextObjectId", 1));
         // v2 以前は id 無しで全 object が未割当。読込直後に必ず一意化し、以降の経路は id を信頼できる
         EnsureUniqueObjectIds(outLevel);
+
+        // v5 以前の追従カメラは scene 直組みだった。プレイヤー同様、無ければプレイヤーを追う 1 台を
+        // 合成して「必ず 1 台」を読込の門で保証する。Target 参照が要るため採番の後に足す
+        if (FindFollowCameraObjectIndex(outLevel) == kNoObjectIndex)
+        {
+            const std::size_t playerIndex = FindPlayerObjectIndex(outLevel);
+            const std::uint32_t targetId =
+                (playerIndex != kNoObjectIndex) ? outLevel.objects[playerIndex].objectId : 0u;
+            outLevel.objects.push_back(MakeFollowCameraObject(targetId));
+            EnsureUniqueObjectIds(outLevel);
+        }
 
         // 手編集や参照先削除で宙に浮いた参照は入口で未設定へ戻す。実行時は id 照合の失敗を考えずに済む
         const std::size_t prunedRefs = PruneDanglingObjectRefs(outLevel);

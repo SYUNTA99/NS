@@ -5,20 +5,19 @@
 ///
 /// @details 永続の LevelData を value member で保有し、 一時の PlayState とルールの PlayMode は
 /// 進行役 PlayDirector 配下の PlayFlowComponent が所有する。 scene 自身は
-/// ブロック構築 / 描画 / Player / カメラ / 当たり判定 / area camera の所有と結線を担う
+/// ブロック構築 / 描画 / Player / 当たり判定の所有と結線を担う。 実カメラ + Brain は
+/// CameraSubsystem が、 追従 / 据え置きカメラは LevelWorld が配置物として所有する
 /// 出荷 / 開発ともこの 1 種類だけを起動 scene に使う。 cursor / palette / ギズモ /
 /// free-fly カメラ / モード切替の編集は scene の外側、 `LevelEditorController` が公開 API と
 /// LevelData 経由で本 scene を操作して実現する。 scene 自身は「編集されている」ことを知らない
 
 #include "Framework/Scene/SceneBase.h"
-#include "Game/CameraRig.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/LevelWorld.h"
 #include "Game/Level/PlayDirector.h"
 
 #include <filesystem>
 #include <memory>
-#include <vector>
 
 namespace NS::Graphics
 {
@@ -30,9 +29,6 @@ namespace NS::Scene
     class IRenderable;
     class GameObject;
     class Transform;
-    class CameraComponent;
-    class CameraBrainComponent;
-    class PlacedVirtualCamera;
     struct RenderContext;
 } // namespace NS::Scene
 
@@ -63,13 +59,10 @@ public:
     [[nodiscard]] NS::Game::Level::LevelWorld& World() noexcept { return m_world; }
 
     // brain / 実カメラの公開アクセサは持たない。 外の消費者は CameraSubsystem 経由で引く
-    // 据え置きカメラは通常の配置物として LevelWorld が所有し、 World().PlacedCameras() が走査 view を返す
+    // 据え置き / 追従カメラは通常の配置物として LevelWorld が所有し、 World() の走査 view が返す
 
     /// 実体プレイヤー。 起動前は nullptr
     [[nodiscard]] Player* PlayerRef() noexcept { return m_player.get(); }
-
-    /// 追従カメラの rig。 起動前は nullptr
-    [[nodiscard]] CameraRig* Rig() noexcept { return m_cameraRig.get(); }
 
     /// 直近 OnRenderScene で解決した scene 段の描画設定
     [[nodiscard]] const NS::Graphics::RenderSettings& LastResolvedSettings() const noexcept
@@ -111,18 +104,11 @@ private:
 
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
 
-    // CameraRig が Movement を借用するため m_cameraRig より前に宣言する
     std::unique_ptr<Player> m_player;
 
     // LevelData から組んだ runtime world。 配置物 / instanced 描画キャッシュ / hazard view / コヨーテ縁を所有する
+    // 実カメラ + Brain は CameraSubsystem が、 追従 / 据え置きカメラは world が配置物として所有する
     NS::Game::Level::LevelWorld m_world;
-
-    std::unique_ptr<CameraRig> m_cameraRig;
-
-    // 実カメラ 1 個 + Brain を載せる host。Brain が follow / free-fly vcam から選んで実カメラへ書く
-    std::unique_ptr<NS::Scene::GameObject> m_cameraHost;
-    NS::Scene::CameraComponent* m_mainCamera = nullptr;
-    NS::Scene::CameraBrainComponent* m_brain = nullptr;
 
     NS::Game::Level::LevelData m_level{};
 
