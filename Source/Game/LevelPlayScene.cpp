@@ -104,10 +104,6 @@ void LevelPlayScene::OnStart()
     // 組み込み mesh と共有 material は AssetManager がアプリ寿命で所有する。 ここは使う時に引くだけ
     auto& assets = app->Assets();
 
-    // 接地シャドウは Player が scene 寿命のあいだ参照を握る。 組み込み quad + 共有 shadow material を渡す
-    auto* shadowMesh = assets.Builtin("shadowQuad");
-    auto* shadowMaterial = assets.SharedMaterial("shadow");
-
     // 全テーマ block texture を Texture2DArray 1 本に集約。 アセット未取得のため cube_test.png を 40 slice 充填
     {
         NS::Graphics::TextureArrayDesc taDesc{};
@@ -144,24 +140,10 @@ void LevelPlayScene::OnStart()
         NS_LOG_ERROR(::NS::Core::LogCat::Game, "LevelPlayScene: Skybox 構築失敗 (Device 不在?)");
     }
 
-    m_player = std::make_unique<Player>(assets.Builtin("cube"), assets.SharedMaterial("player"));
-    m_player->AttachScene(this);
-    m_player->Root().SetPosition({0.0f, 1.0f, -4.0f});
-    // cube mesh の半サイズは 0.5 だが capsule collider は radius=0.4 / halfHeight=0.5
-    // すなわち AABB 半サイズ 0.4, 0.9, 0.4。両者が一致するよう scale で mesh を縮める
-    m_player->Root().SetScale({0.8f, 1.8f, 0.8f});
-    m_player->MeshComp().SetBaseColor(NS::Game::Blocks::kPlayerBaseColor);
-    m_player->Shadow().SetResources(shadowMesh, shadowMaterial);
-
-    // プレイヤーの構成と値の真実はレベルの player object。 RebuildWorld が components を、
-    // ApplyPlayerPoseFromLevel が pose を live へ適用する
-    // 実カメラ + Brain は CameraSubsystem 所有で、 追従カメラは world が配置物として組む
+    // プレイヤーの構成と値の真実はレベルの player object。 world が他の配置物と同じ一本道で組む
+    // 実カメラ + Brain は CameraSubsystem 所有で、 プレイヤー / 追従カメラは world が配置物として組む
     LoadInitialLevel();
     RebuildWorld();
-    ApplyPlayerPoseFromLevel();
-
-    m_player->OnStart();
-    m_playerStarted = true;
 
     // 初回描画から正しい縦横比で出す。 以降は OnUpdate が Renderer の現在 Size を毎フレーム引き写す
     if (auto* cameras = GetSubsystem<NS::Scene::CameraSubsystem>())
@@ -376,8 +358,8 @@ void LevelPlayScene::OnRenderScene()
         const NS::Math::Color ledgeColor{0.65f, 0.30f, 1.0f, 1.0f};
         const NS::Math::Color limitColor{1.0f, 0.20f, 0.90f, 1.0f};
         float coyoteReach = 0.0f;
-        if (m_player)
-            coyoteReach = m_player->Movement().MaxSpeed() * m_player->Movement().CoyoteTime();
+        if (auto* player = PlayerRef())
+            coyoteReach = player->Movement().MaxSpeed() * player->Movement().CoyoteTime();
         for (const NS::Game::Blocks::LedgeEdge& edge : m_world.LedgeEdges())
         {
             const NS::Math::Vector3 off{edge.outward.x * coyoteReach, 0.0f, edge.outward.z * coyoteReach};
@@ -396,10 +378,10 @@ void LevelPlayScene::OnRenderScene()
             }
         }
 
-        if (m_player)
+        if (auto* player = PlayerRef())
         {
-            auto& movement = m_player->Movement();
-            const NS::Math::Vector3 center = m_player->Root().Position();
+            auto& movement = player->Movement();
+            const NS::Math::Vector3 center = player->Root().Position();
 
             // 接地状態は頭上に浮かべた箱で示す。 カプセルはメッシュに埋もれて色が見えないため別表示にする
             // 接地=緑 / 空中=黄。 頭の上へ出して body に隠れさせない
@@ -441,13 +423,8 @@ void LevelPlayScene::OnShutdown()
     // 参照照合窓口も world より先に空へ戻し、 畳み中の解決に宙参照を返さない
     if (auto* refs = GetSubsystem<NS::Scene::ObjectRefSubsystem>())
         refs->Clear();
-    // 配置物は逆順の OnEndPlay ごと LevelWorld が畳む。 実カメラ + Brain は CameraSubsystem が畳む
+    // 配置物はプレイヤー込みで逆順の OnEndPlay ごと LevelWorld が畳む。 実カメラ + Brain は CameraSubsystem が畳む
     m_world.Clear();
-    if (m_player)
-        m_player->OnEndPlay();
-
-    m_player.reset();
-    m_playerStarted = false;
 
     // Skybox / InstanceBatcher は Renderer の DeviceContext を ComPtr で握るため、 Application の Renderer より
     // 先に破棄する。 組み込み / leaf / 共有 material / block TextureArray / skinned model は AssetManager が Clear
@@ -465,18 +442,8 @@ void LevelPlayScene::RebuildWorld()
         for (auto* vcam : m_world.VirtualCameras())
             brain->RemoveVirtualCamera(vcam);
 
-    // 参照照合窓口を満たし直す。 world に組まれないプレイヤーは scene がここで登録し、
-    // world の配置物は Rebuild が組みながら登録する。 OnStart の参照解決より先に揃える
-    auto* refs = GetSubsystem<NS::Scene::ObjectRefSubsystem>();
-    if (refs != nullptr)
-    {
-        refs->Clear();
-        const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(m_level);
-        if (m_player && playerIndex != NS::Game::Level::kNoObjectIndex)
-            refs->Register(m_level.objects[playerIndex].objectId, m_player.get());
-    }
-
-    // 構築は LevelWorld の一本道。 app 不在の起動前 / テストでは assets を渡さず何も組まない
+    // 構築は LevelWorld の一本道で、 参照照合窓口の張り替えとプレイヤーの組み立てもここに含む
+    // app 不在の起動前 / テストでは assets を渡さず何も組まない
     auto* app = NS::App::Application::Get();
     m_world.Rebuild(m_level, *this, Physics(), app ? &app->Assets() : nullptr);
 
@@ -484,46 +451,4 @@ void LevelPlayScene::RebuildWorld()
     if (brain != nullptr)
         for (auto* vcam : m_world.VirtualCameras())
             brain->AddVirtualCamera(vcam);
-
-    // player object は world で組まれない代わりに、 components の値をここで live player へ適用する
-    // pose は触らない。 プレイ中の組み直しで出現位置へ瞬間移動させないため、 pose 適用は編集側の経路が担う
-    if (m_player)
-    {
-        const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(m_level);
-        if (playerIndex != NS::Game::Level::kNoObjectIndex)
-            ApplyPlayerObjectComponents(*m_player, m_level.objects[playerIndex], m_playerStarted);
-    }
-
-    if (m_player)
-    {
-        // 接地シャドウは grid + 自由物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
-        std::vector<NS::Math::AABB> shadowReceivers(Physics().Aabbs().begin(), Physics().Aabbs().end());
-        const auto& objects = m_world.Objects();
-        for (std::size_t i = 0; i < objects.size(); ++i)
-        {
-            const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_world.SourceIndices()[i]];
-            if ((entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
-                continue;
-            if (auto aabb = NS::Game::Blocks::ColliderWorldAABB(*objects[i]))
-                shadowReceivers.push_back(*aabb);
-        }
-        m_player->Shadow().SetCollisionWorld(shadowReceivers);
-    }
-}
-
-void LevelPlayScene::ApplyPlayerPoseFromLevel() noexcept
-{
-    if (!m_player)
-        return;
-    const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(m_level);
-    if (playerIndex == NS::Game::Level::kNoObjectIndex)
-        return;
-
-    const NS::Game::Level::ObjectInstance& entry = m_level.objects[playerIndex];
-    NS::Scene::Transform& root = m_player->Root();
-    root.SetPosition({entry.positionX, entry.positionY, entry.positionZ});
-    root.SetRotation(NS::Math::Quaternion{entry.rotationX, entry.rotationY, entry.rotationZ, entry.rotationW});
-    root.SetScale({entry.scaleX, entry.scaleY, entry.scaleZ});
-    // 編集中の実プレイヤーは scene が Snapshot しないため、 previous=current に揃え補間ジッタを消す
-    root.Snapshot();
 }

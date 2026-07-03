@@ -6,20 +6,13 @@
 #include "Framework/Scene/Components/ShadowComponent.h"
 #include "Framework/Scene/GameObject.h"
 
-namespace NS::Graphics
-{
-    class Material;
-    class StaticMesh;
-} // namespace NS::Graphics
-
 /// プレイヤーキャラクタ。 Mesh / Movement / Input / Shadow の既定構成をコードで組み、
-/// 追加の component と値は PlayerTuning.json の読込が data から合成する
+/// 値と追加の component は player object のデータからファクトリが写す
 class Player : public NS::Scene::GameObject
 {
 public:
     /// 既定構成をデフォルト値で組む。 mesh / material / 影資源はファクトリが data と assets から注入する
     Player() noexcept;
-    Player(NS::Graphics::StaticMesh* mesh, NS::Graphics::Material* material) noexcept;
     ~Player() override = default;
 
     Player(const Player&) = delete;

@@ -18,6 +18,7 @@
 #include "Game/Blocks/AutoTile.h"
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Level/LevelData.h"
+#include "Game/Player.h"
 #include "Game/Theme/ThemeId.h"
 
 #include <cmath>
@@ -39,6 +40,11 @@ namespace NS::Game::Level
         // 衝突は build のたびに Clear -> Add* -> BuildBroadphase で満たし直す。 古い衝突を残さない
         physics.Clear();
 
+        // 参照照合窓口も同じ周期で空へ戻す。 旧 build の実体を指す登録を組み直しへ持ち越さない
+        auto* refs = scene.GetSubsystem<NS::Scene::ObjectRefSubsystem>();
+        if (refs != nullptr)
+            refs->Clear();
+
         m_objects.reserve(level.objects.size());
         physics.ReserveAabbs(level.objects.size());
 
@@ -48,14 +54,9 @@ namespace NS::Game::Level
 
         // 先に全 object を組んで永続 id を照合窓口へ登録し、 開始は後段でまとめて行う
         // OnStart で ObjectRef を解決する component が、 自分より後ろの object も引けるようにするため
-        auto* refs = scene.GetSubsystem<NS::Scene::ObjectRefSubsystem>();
         for (std::size_t objectIndex = 0; objectIndex < level.objects.size(); ++objectIndex)
         {
             const ObjectInstance& entry = level.objects[objectIndex];
-
-            // プレイヤー実体は scene 所有の実 player が演じるため world では組まない。 二重生成を防ぐ
-            if (IsPlayerObject(entry))
-                continue;
 
             auto obj = NS::Game::Blocks::BuildPlacedObject(entry, *assets, level.materialPaths);
             if (!obj)
@@ -64,6 +65,10 @@ namespace NS::Game::Level
             obj->AttachScene(&scene);
             if (refs != nullptr)
                 refs->Register(entry.objectId, obj.get());
+
+            // プレイヤーの型付き view を控える。 所有は他の配置物と同じく m_objects 側
+            if (auto* player = dynamic_cast<::Player*>(obj.get()))
+                m_playerView = player;
 
             m_objectSourceIndices.push_back(objectIndex);
             m_objects.push_back(std::move(obj));
@@ -159,6 +164,21 @@ namespace NS::Game::Level
 #endif
 
         physics.BuildBroadphase();
+
+        // 接地シャドウは grid + 自由物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
+        if (m_playerView != nullptr)
+        {
+            std::vector<NS::Math::AABB> shadowReceivers(physics.Aabbs().begin(), physics.Aabbs().end());
+            for (std::size_t i = 0; i < m_objects.size(); ++i)
+            {
+                const ObjectInstance& entry = level.objects[m_objectSourceIndices[i]];
+                if ((entry.flags & kObjectFlagGridAligned) != 0)
+                    continue;
+                if (auto aabb = NS::Game::Blocks::ColliderWorldAABB(*m_objects[i]))
+                    shadowReceivers.push_back(*aabb);
+            }
+            m_playerView->Shadow().SetCollisionWorld(shadowReceivers);
+        }
     }
 
     void LevelWorld::Clear()
@@ -173,6 +193,7 @@ namespace NS::Game::Level
         m_placedCameraView.clear();
         m_followCameraView.clear();
         m_virtualCameraView.clear();
+        m_playerView = nullptr;
     }
 
     void LevelWorld::CreateBatcher()

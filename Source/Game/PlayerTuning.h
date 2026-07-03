@@ -1,20 +1,15 @@
 #pragma once
 
 /// @file PlayerTuning.h
-/// @brief 新規プレイヤーの既定テンプレート取込と、 player object データの live 適用
+/// @brief 新規プレイヤーの既定テンプレート取込
 ///
 /// @details プレイヤーの構成と値の真実はレベルの player object が持つ。 PlayerTuning.json は
 /// 旧形式の移行や新規レベルでプレイヤーを合成する時にだけ使う既定テンプレートへ降格した
-/// テンプレートの取込はデータどうしの merge で、 live への反映は player object データからの適用で行う
+/// テンプレートの取込はデータどうしの merge で行い、 live への反映は world の組み直しが担う
 /// 保存は出荷不要なので Editor/PlayerTuningIO.h に分け、 パスだけ PlayerTuningPath() で共有する
 
 #include <filesystem>
 #include <string_view>
-
-namespace NS::Scene
-{
-    class GameObject;
-}
 
 namespace NS::Game::Level
 {
@@ -31,10 +26,3 @@ void MergePlayerTuningText(NS::Game::Level::ObjectInstance& playerObject, std::s
 
 /// 保存済みテンプレートがあれば MergePlayerTuningText で写す。 不在 / 破損時は既定のまま
 void MergeSavedPlayerTuning(NS::Game::Level::ObjectInstance& playerObject) noexcept;
-
-/// player object データの components を live player へ適用する。 型が player に無ければ登録 factory で
-/// 生成して構成へ加え、 あれば値だけ適用する。 未登録型は読み飛ばす
-/// startCreated は生成した component を即 OnStart するか。 player の OnStart 前の適用では false にする
-void ApplyPlayerObjectComponents(NS::Scene::GameObject& player,
-                                 const NS::Game::Level::ObjectInstance& playerObject,
-                                 bool startCreated) noexcept;

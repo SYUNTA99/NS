@@ -306,3 +306,25 @@ TEST_F(BuildPlacedObjectTest, PlayerObjectAppliesDataValuesToComponents)
     ASSERT_NE(player, nullptr);
     EXPECT_FLOAT_EQ(player->Movement().MaxSpeed(), 11.0f);
 }
+
+// 同型 component を重ねたデータは live でも同数立ち、 2 件目が 1 件目へ上書きされない
+// 当たりの重ね置きは複合形状として衝突へ効く前提の機能で、 貼り重ねの経路がこの形を作る
+TEST_F(BuildPlacedObjectTest, DuplicateColliderDataBuildsCompoundColliders)
+{
+    ObjectInstance object = MakeFreeCube(ShapeCollider::Box, Vector3{1.0f, 1.0f, 1.0f});
+    NS::Game::Level::ComponentData second;
+    second.typeName = "BoxColliderComponent";
+    second.fields.push_back(NS::Game::Level::FieldValue{"Half Extents", Vector3{2.0f, 2.0f, 2.0f}});
+    object.components.push_back(second);
+
+    auto obj = Build(object);
+    ASSERT_NE(obj, nullptr);
+
+    std::vector<NS::Scene::BoxColliderComponent*> boxes;
+    for (NS::Scene::Component* comp : obj->Components())
+        if (auto* box = dynamic_cast<NS::Scene::BoxColliderComponent*>(comp))
+            boxes.push_back(box);
+    ASSERT_EQ(boxes.size(), 2u);
+    EXPECT_FLOAT_EQ(boxes[0]->HalfExtents().x, 1.0f);
+    EXPECT_FLOAT_EQ(boxes[1]->HalfExtents().x, 2.0f);
+}

@@ -1,16 +1,22 @@
 #include <gtest/gtest.h>
 
+#include <Framework/Scene/AssetManager.h>
 #include <Framework/Scene/Component.h>
 #include <Framework/Scene/ComponentRegistry.h>
 #include <Framework/Scene/Components/SphereColliderComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/ReflectionJson.h>
+#include <Game/Blocks/BuildPlacedObject.h>
 #include <Game/Level/LevelData.h>
 #include <Game/Player.h>
 #include <Game/PlayerTuning.h>
 
 #include <cstddef>
+#include <filesystem>
+#include <memory>
+#include <string>
 #include <variant>
+#include <vector>
 
 namespace LevelNs = NS::Game::Level;
 
@@ -22,6 +28,14 @@ namespace
     LevelNs::ObjectInstance MakePlayer()
     {
         return LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{});
+    }
+
+    // device を確立しない AssetManager でもファクトリは落ちない。 tuning 済データから live を組む窓口
+    std::unique_ptr<NS::Scene::GameObject> BuildPlayer(const LevelNs::ObjectInstance& data)
+    {
+        NS::Scene::AssetManager assets{std::filesystem::path{"."}};
+        const std::vector<std::string> materialPaths;
+        return NS::Game::Blocks::BuildPlacedObject(data, assets, materialPaths);
     }
 
     const LevelNs::FieldValue* FindPlayerField(const LevelNs::ObjectInstance& player,
@@ -68,51 +82,53 @@ TEST(PlayerTuningTest, MergeBrokenJsonKeepsDefaults)
     EXPECT_EQ(player.components.size(), kDefaultComponentCount);
 }
 
-TEST(PlayerTuningTest, ApplyPlayerObjectComponentsUpdatesLivePlayer)
+TEST(PlayerTuningTest, TunedValuesReachBuiltPlayer)
 {
     LevelNs::ObjectInstance data = MakePlayer();
     MergePlayerTuningText(data,
                           R"({"components":[{"type":"CharacterMovementComponent","fields":{"Max Speed":11.0}}]})");
 
-    Player player(nullptr, nullptr);
-    ApplyPlayerObjectComponents(player, data, false);
+    auto obj = BuildPlayer(data);
+    ASSERT_NE(obj, nullptr);
+    auto* player = dynamic_cast<Player*>(obj.get());
+    ASSERT_NE(player, nullptr);
 
-    // 既存の同型へ値だけ適用し、構成は増えない
-    EXPECT_EQ(player.Components().size(), kDefaultComponentCount);
-    EXPECT_FLOAT_EQ(player.Movement().MaxSpeed(), 11.0f);
+    // 既存の同型へ値だけ写り、構成は増えない
+    EXPECT_EQ(player->Components().size(), kDefaultComponentCount);
+    EXPECT_FLOAT_EQ(player->Movement().MaxSpeed(), 11.0f);
 }
 
-TEST(PlayerTuningTest, ApplyPlayerObjectComponentsCreatesMissingComponent)
+TEST(PlayerTuningTest, TunedExtraComponentReachesBuiltPlayer)
 {
     LevelNs::ObjectInstance data = MakePlayer();
     MergePlayerTuningText(data, R"({"components":[{"type":"SphereColliderComponent","fields":{"Radius":2.5}}]})");
 
-    Player player(nullptr, nullptr);
-    ApplyPlayerObjectComponents(player, data, false);
+    auto obj = BuildPlayer(data);
+    ASSERT_NE(obj, nullptr);
 
     // 無い型は登録 factory で生成され、値も適用される
-    EXPECT_EQ(player.Components().size(), kDefaultComponentCount + 1);
-    auto* sphere = player.FindComponent<NS::Scene::SphereColliderComponent>();
+    EXPECT_EQ(obj->Components().size(), kDefaultComponentCount + 1);
+    auto* sphere = obj->FindComponent<NS::Scene::SphereColliderComponent>();
     ASSERT_NE(sphere, nullptr);
     EXPECT_FLOAT_EQ(sphere->Radius(), 2.5f);
 }
 
-TEST(PlayerTuningTest, ApplyPlayerObjectComponentsSkipsUnregisteredTypes)
+TEST(PlayerTuningTest, UnregisteredTypesSkippedOnBuild)
 {
     LevelNs::ObjectInstance data = MakePlayer();
     // editor 専用型と未知型は factory が弾くので構成へ入らない
     data.components.push_back(LevelNs::ComponentData{"EditorCameraComponent", {}});
     data.components.push_back(LevelNs::ComponentData{"Bogus", {}});
 
-    Player player(nullptr, nullptr);
-    ApplyPlayerObjectComponents(player, data, false);
-    EXPECT_EQ(player.Components().size(), kDefaultComponentCount);
+    auto obj = BuildPlayer(data);
+    ASSERT_NE(obj, nullptr);
+    EXPECT_EQ(obj->Components().size(), kDefaultComponentCount);
 }
 
-TEST(PlayerTuningTest, SerializedComponentsRoundTripIntoFreshPlayer)
+TEST(PlayerTuningTest, SerializedComponentsRoundTripIntoBuiltPlayer)
 {
-    // 保存側 SerializeComponent とテンプレート取込 + live 適用の噛み合わせを、ファイルを介さず往復で確かめる
-    Player source(nullptr, nullptr);
+    // 保存側 SerializeComponent とテンプレート取込 + live 組み立ての噛み合わせを、ファイルを介さず往復で確かめる
+    Player source{};
     NS::Scene::Component* sphere = NS::Scene::CreateComponent("SphereColliderComponent", source);
     ASSERT_NE(sphere, nullptr);
     static_cast<NS::Scene::SphereColliderComponent*>(sphere)->SetRadius(3.5f);
@@ -126,12 +142,12 @@ TEST(PlayerTuningTest, SerializedComponentsRoundTripIntoFreshPlayer)
     LevelNs::ObjectInstance data = MakePlayer();
     MergePlayerTuningText(data, json.dump());
 
-    Player restored(nullptr, nullptr);
-    ApplyPlayerObjectComponents(restored, data, false);
+    auto restored = BuildPlayer(data);
+    ASSERT_NE(restored, nullptr);
 
     // 追加した球 collider が構成ごと復元される
-    EXPECT_EQ(restored.Components().size(), kDefaultComponentCount + 1);
-    auto* restoredSphere = restored.FindComponent<NS::Scene::SphereColliderComponent>();
+    EXPECT_EQ(restored->Components().size(), kDefaultComponentCount + 1);
+    auto* restoredSphere = restored->FindComponent<NS::Scene::SphereColliderComponent>();
     ASSERT_NE(restoredSphere, nullptr);
     EXPECT_FLOAT_EQ(restoredSphere->Radius(), 3.5f);
 }

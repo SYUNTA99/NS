@@ -18,6 +18,7 @@
 #include "Game/Level/LevelJson.h"
 #include "Game/Player.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <optional>
 #include <variant>
@@ -53,12 +54,16 @@ namespace NS::Game::Blocks
             return ref == "player" || ref == "block" || ref == "water" || ref == "shadow";
         }
 
-        // 器に既に載る同型 component を反射型名で探す。 無ければ nullptr
-        NS::Scene::Component* FindExistingComponent(NS::Scene::GameObject& obj, const std::string& typeName)
+        // 器に既に載る同型 component を反射型名で探す。 適用済みの控えにある分は飛ばし、 無ければ nullptr
+        NS::Scene::Component* FindExistingComponent(NS::Scene::GameObject& obj,
+                                                    const std::string& typeName,
+                                                    const std::vector<NS::Scene::Component*>& applied)
         {
             for (NS::Scene::Component* comp : obj.Components())
             {
                 if (comp == nullptr)
+                    continue;
+                if (std::find(applied.begin(), applied.end(), comp) != applied.end())
                     continue;
                 const NS::Scene::ReflectionInfo* info = comp->GetReflection();
                 if (info != nullptr && typeName == info->typeName)
@@ -69,18 +74,21 @@ namespace NS::Game::Blocks
 
         // full SSOT 主経路: object.components を器の既存同型へ適用し、 無い型は ComponentRegistry で生成する
         // 素の器では同型が無く全生成になり、 Player の器では ctor の既定構成へ値だけが写って二重生成しない
+        // データと live は 1 対 1 で対応させ、 同型を重ねたデータは上書きせず重ねた数だけ立てる
         void ApplyComponentsFromData(NS::Scene::GameObject& obj,
                                      const NS::Game::Level::ObjectInstance& object,
                                      NS::Scene::AssetManager& assets,
                                      const std::vector<std::string>& materialPaths)
         {
+            std::vector<NS::Scene::Component*> applied;
             for (const auto& component : object.components)
             {
-                NS::Scene::Component* created = FindExistingComponent(obj, component.typeName);
+                NS::Scene::Component* created = FindExistingComponent(obj, component.typeName, applied);
                 if (created == nullptr)
                     created = NS::Scene::CreateComponent(component.typeName, obj);
                 if (created == nullptr)
                     continue; // allowlist 外 / 未知 type は読み飛ばす
+                applied.push_back(created);
 
                 const nlohmann::json fields = NS::Game::Level::ComponentFieldsToJson(component);
                 NS::Scene::ApplyJsonFields(*created, fields);

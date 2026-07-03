@@ -35,6 +35,8 @@ namespace NS::Scene
     class VirtualCameraComponent;
 } // namespace NS::Scene
 
+class Player;
+
 namespace NS::Game::Level
 {
     struct LevelData;
@@ -110,6 +112,10 @@ namespace NS::Game::Level
             return m_virtualCameraView;
         }
 
+        /// world が player object から組んだ実体プレイヤーの型付き view。 所有は Objects() 側で、
+        /// player object の無い level と組み直し前は nullptr
+        [[nodiscard]] ::Player* PlayerView() const noexcept { return m_playerView; }
+
         /// コヨーテ debug 用に焼いた踏み外せる縁の world 線分。 出荷では焼かれず常に空
         [[nodiscard]] const std::vector<NS::Game::Blocks::LedgeEdge>& LedgeEdges() const noexcept
         {
@@ -135,6 +141,7 @@ namespace NS::Game::Level
         std::vector<NS::Scene::ThirdPersonFollowComponent*> m_followCameraView;
         std::vector<NS::Scene::VirtualCameraComponent*> m_virtualCameraView;
         std::vector<NS::Game::Blocks::LedgeEdge> m_ledgeEdges;
+        ::Player* m_playerView = nullptr;
         std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
         std::vector<std::uint32_t> m_editIds;
         std::uint32_t m_nextEditId = 0;

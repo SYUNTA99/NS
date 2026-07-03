@@ -3,11 +3,6 @@
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
-#include "Framework/Scene/Component.h"
-#include "Framework/Scene/ComponentRegistry.h"
-#include "Framework/Scene/GameObject.h"
-#include "Framework/Scene/Reflection.h"
-#include "Framework/Scene/ReflectionJson.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/LevelJson.h"
 
@@ -94,40 +89,4 @@ void MergeSavedPlayerTuning(NS::Game::Level::ObjectInstance& playerObject) noexc
         return;
 
     MergePlayerTuningText(playerObject, std::string_view(reinterpret_cast<const char*>(bytes->data()), bytes->size()));
-}
-
-void ApplyPlayerObjectComponents(NS::Scene::GameObject& player,
-                                 const NS::Game::Level::ObjectInstance& playerObject,
-                                 bool startCreated) noexcept
-{
-    for (const NS::Game::Level::ComponentData& component : playerObject.components)
-    {
-        // 型名が一致する既存コンポーネントへ適用する。 同型は最初の 1 件だけが対象
-        NS::Scene::Component* target = nullptr;
-        for (NS::Scene::Component* comp : player.Components())
-        {
-            if (comp == nullptr)
-                continue;
-            const NS::Scene::ReflectionInfo* info = comp->GetReflection();
-            if (info != nullptr && component.typeName == info->typeName)
-            {
-                target = comp;
-                break;
-            }
-        }
-        // 無い型は登録 factory で生成して構成へ加える。 editor の Add Component がデータへ足した
-        // 追加分はこの経路で live へ現れる。 未登録型はここで読み飛ばされる
-        bool created = false;
-        if (target == nullptr)
-        {
-            target = NS::Scene::CreateComponent(component.typeName, player);
-            created = target != nullptr;
-        }
-        if (target == nullptr)
-            continue;
-        NS::Scene::ApplyJsonFields(*target, NS::Game::Level::ComponentFieldsToJson(component));
-        // player 稼働後にデータへ足された component は自分で開始する。 OnStart 前の適用は player 側がまとめて開始する
-        if (created && startCreated)
-            target->OnStart();
-    }
 }

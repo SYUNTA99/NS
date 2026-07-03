@@ -5,8 +5,8 @@
 ///
 /// @details 永続の LevelData を value member で保有し、 一時の PlayState とルールの PlayMode は
 /// 進行役 PlayDirector 配下の PlayFlowComponent が所有する。 scene 自身は
-/// ブロック構築 / 描画 / Player / 当たり判定の所有と結線を担う。 実カメラ + Brain は
-/// CameraSubsystem が、 追従 / 据え置きカメラは LevelWorld が配置物として所有する
+/// world の組み直しの号令と描画統括を担う。 実カメラ + Brain は CameraSubsystem が、
+/// プレイヤー / 追従 / 据え置きカメラを含む全配置物は LevelWorld が所有する
 /// 出荷 / 開発ともこの 1 種類だけを起動 scene に使う。 cursor / palette / ギズモ /
 /// free-fly カメラ / モード切替の編集は scene の外側、 `LevelEditorController` が公開 API と
 /// LevelData 経由で本 scene を操作して実現する。 scene 自身は「編集されている」ことを知らない
@@ -61,8 +61,8 @@ public:
     // brain / 実カメラの公開アクセサは持たない。 外の消費者は CameraSubsystem 経由で引く
     // 据え置き / 追従カメラは通常の配置物として LevelWorld が所有し、 World() の走査 view が返す
 
-    /// 実体プレイヤー。 起動前は nullptr
-    [[nodiscard]] Player* PlayerRef() noexcept { return m_player.get(); }
+    /// 実体プレイヤー。 world が player object から組む。 起動前と player object の無い level では nullptr
+    [[nodiscard]] Player* PlayerRef() noexcept { return m_world.PlayerView(); }
 
     /// 直近 OnRenderScene で解決した scene 段の描画設定
     [[nodiscard]] const NS::Graphics::RenderSettings& LastResolvedSettings() const noexcept
@@ -76,12 +76,7 @@ public:
 
     /// runtime world と衝突世界を LevelData から組み直す。 レベル編集後とプレイ突入時に呼ぶ
     /// 据え置きカメラの Brain 登録もここで面倒を見る。 Brain 構築前の OnStart 序盤は登録しない
-    /// player object は world で組まれない代わりに、 components の値を live player へ適用する
     void RebuildWorld();
-
-    /// レベルの player object の pose を live player へ適用する。 player object 不在なら何もしない
-    /// undo / redo / ロードでデータ側の pose が変わった直後に editor が呼ぶ。 プレイ中には呼ばない
-    void ApplyPlayerPoseFromLevel() noexcept;
 
 private:
     /// 基底 OnRender が scene 解決後に呼ぶ描画本体。 ワールドを描き編集ギズモ等は描かない
@@ -104,19 +99,14 @@ private:
 
     std::unique_ptr<NS::Graphics::Skybox> m_skybox;
 
-    std::unique_ptr<Player> m_player;
-
     // LevelData から組んだ runtime world。 配置物 / instanced 描画キャッシュ / hazard view / コヨーテ縁を所有する
-    // 実カメラ + Brain は CameraSubsystem が、 追従 / 据え置きカメラは world が配置物として所有する
+    // 実カメラ + Brain は CameraSubsystem が、 プレイヤー / 追従 / 据え置きカメラは world が配置物として所有する
     NS::Game::Level::LevelWorld m_world;
 
     NS::Game::Level::LevelData m_level{};
 
     // プレイ進行役。 PlayState / PlayMode と進行の分岐は配下の PlayFlowComponent が所有する
     std::unique_ptr<NS::Game::Level::PlayDirector> m_director;
-
-    // player の OnStart 済みか。 以降にデータへ足された component は適用時に自分で開始する
-    bool m_playerStarted = false;
 
     // コヨーテ debug 描画 すなわち 縁の紫線 / カプセル / コヨーテジャンプの赤線 の表示トグル。 F2 で切替える
     bool m_debugCoyoteDraw = true;

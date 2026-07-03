@@ -9,6 +9,7 @@
 #include <Framework/Scene/SceneBase.h>
 #include <Game/Level/LevelData.h>
 #include <Game/Level/LevelWorld.h>
+#include <Game/Player.h>
 
 #include <filesystem>
 #include <utility>
@@ -58,8 +59,8 @@ TEST(LevelWorldTest, ClearEmptiesEverything)
     EXPECT_TRUE(world.VirtualCameras().empty());
 }
 
-// プレイヤー実体は scene 所有の実 player が演じるため、Rebuild は runtime GameObject を組まない
-TEST(LevelWorldTest, RebuildSkipsPlayerObject)
+// プレイヤー実体も他の配置物と同じ一本道で組まれ、 型付き view から引ける
+TEST(LevelWorldTest, RebuildBuildsPlayerAndExposesView)
 {
     LevelData level;
     level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, 0));
@@ -72,10 +73,14 @@ TEST(LevelWorldTest, RebuildSkipsPlayerObject)
     LevelWorld world;
     world.Rebuild(level, scene, physics, &assets);
 
-    // grid block 1 個だけが組まれ、player object の添字は world に現れない
-    ASSERT_EQ(world.Objects().size(), 1u);
-    ASSERT_EQ(world.SourceIndices().size(), 1u);
-    EXPECT_EQ(world.SourceIndices()[0], 0u);
+    // grid block とプレイヤーの両方が組まれ、 view は所有リスト内の実体を指す
+    ASSERT_EQ(world.Objects().size(), 2u);
+    ASSERT_NE(world.PlayerView(), nullptr);
+    EXPECT_EQ(world.PlayerView(), dynamic_cast<Player*>(world.Objects()[1].get()));
+    EXPECT_FLOAT_EQ(world.PlayerView()->Root().Position().y, 1.41f);
+
+    world.Clear();
+    EXPECT_EQ(world.PlayerView(), nullptr);
 }
 
 // 追従カメラの配置物は Rebuild で休止のまま走査 view に載り、Target 参照が実体へ解決される

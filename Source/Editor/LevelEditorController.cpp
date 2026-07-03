@@ -286,10 +286,8 @@ void LevelEditorController::TickEdit()
     m_editor.Tick();
     if (m_editor.IsLevelDirty())
     {
-        // 据え置きカメラの Brain 登録も RebuildWorld が面倒を見る
+        // 据え置きカメラの Brain 登録もプレイヤーの組み直しも RebuildWorld が面倒を見る
         m_scene->RebuildWorld();
-        // player object は world で組まれないため、 undo / redo / ロードで変わった pose をここで live へ映す
-        m_scene->ApplyPlayerPoseFromLevel();
         // undo / redo / ロードは objects を作り直す。 ロードは id が振り直され旧 id が別物に化けるため、
         // ここで選択 id を解除する。 候補 span と gizmo の貼り直しは次フレーム頭の解決に委ねる
         m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
