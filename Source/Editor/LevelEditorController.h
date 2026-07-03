@@ -10,7 +10,6 @@
 
 #include "Editor/EditorMode.h"
 #include "Editor/GizmoEditor.h"
-#include "Editor/Undo/SetSpawnCommand.h"
 #include "Framework/Graphics/RenderSettings.h"
 #include "Framework/Math/Math.h"
 #include "Game/Level/EditTarget.h"
@@ -115,10 +114,10 @@ public:
     void AddObject();
 
     /// 選択中の配置物に対応する runtime GameObject。 未選択 / 未構築は nullptr
-    /// Inspector が Component の反射フィールドを描くのに使う
+    /// Inspector が Component の反射フィールドを描くのに使う。 player object は scene 所有の実 player を返す
     [[nodiscard]] NS::Scene::GameObject* SelectedObjectGameObject() noexcept;
-    /// Player の runtime GameObject。 未構築は nullptr。 操作感のライブ調整 Inspector に使う
-    [[nodiscard]] NS::Scene::GameObject* PlayerObject() noexcept;
+    /// 選択中の配置物がプレイヤー実体か。 テンプレート保存の表示と複製禁止の判定に使う
+    [[nodiscard]] bool SelectedIsPlayerObject() const noexcept;
     /// 選択中の自由オブジェクトの runtime 全コンポーネントを components データへ書き戻し、 保存と rebuild に乗せる
     /// Inspector で反射編集した後に呼ぶ。 grid / 非選択時は何もしない
     void SyncSelectedObjectComponentsFromComponent();
@@ -142,12 +141,8 @@ public:
     /// 編集中=free-fly / プレイ中=follow の現在 active な仮想カメラの GameObject。 無ければ nullptr
     [[nodiscard]] NS::Scene::GameObject* ActiveVirtualCameraObject() noexcept;
 
-    /// Hierarchy から Player を選択する。 配置物 / カメラ / ギズモ選択は解除する。 Player は gizmo 対象外
-    void SelectPlayer() noexcept;
-    /// Hierarchy から Brain + active vcam の Camera を選択する。 配置物 / カメラ / ギズモ選択は解除する
+    /// Hierarchy から Brain + active vcam の Camera を選択する。 配置物 / ギズモ選択は解除する
     void SelectCamera() noexcept;
-    /// Inspector / Hierarchy が Player 選択中か
-    [[nodiscard]] bool IsPlayerSelected() const noexcept { return m_specialSelection == SpecialSelection::Player; }
     /// Inspector / Hierarchy が Camera 選択中か
     [[nodiscard]] bool IsCameraSelected() const noexcept { return m_specialSelection == SpecialSelection::Camera; }
 
@@ -201,14 +196,8 @@ private:
     void PromoteGridBlockToFree(std::size_t objectIndex);
 
     /// ギズモで変形した自由オブジェクトの Transform を対応する ObjectInstance へ書き戻す
+    /// world に居ない実プレイヤーも player object のデータへ同様に書き戻す。 live Transform が真実の源
     void SyncFreeObjectTransforms();
-
-    /// Player 選択中、 ドラッグ中は実プレイヤー Transform → spawn、 非ドラッグ中は spawn → 実プレイヤー Transform
-    /// と双方向に同期する。 後者で undo / redo による spawn 変化も実プレイヤーへ反映される
-    void SyncPlayerSpawnFromTransform() noexcept;
-
-    /// 現在の LevelData の spawn 位置 + 向きを SpawnState として読む。 undo の before / after に使う
-    [[nodiscard]] NS::Editor::SetSpawnCommand::SpawnState CurrentSpawnState() const noexcept;
 
     /// ビューポートでギズモ選択が変わった時だけ、 選択 id と派生の添字を追従させる
     void CaptureSelectionFromGizmo() noexcept;
@@ -248,11 +237,10 @@ private:
     std::vector<NS::Scene::GameObject*> m_selectablePtrs;
     std::vector<NS::Math::Vector3> m_selectableHalfExtents;
 
-    // Player / Camera のような配置物でもエリアカメラでもない単一物の選択。 添字選択とは排他
+    // 編集カメラのような配置物でない単一物の選択。 添字選択とは排他
     enum class SpecialSelection : std::uint8_t
     {
         None,
-        Player,
         Camera
     };
     SpecialSelection m_specialSelection = SpecialSelection::None;
@@ -272,10 +260,6 @@ private:
     bool m_transformEditing = false;
     std::uint32_t m_editBaselineId = NS::Game::Level::kInvalidObjectId;
     NS::Game::Level::ObjectInstance m_editBaseline{};
-
-    // Player の spawn 変形編集を区別するフラグと baseline。 m_transformEditing と併用する
-    bool m_editingSpawn = false;
-    NS::Editor::SetSpawnCommand::SpawnState m_spawnEditBaseline{};
 
     // Debug provenance パネルの読み出し元。 書き込みは Render で毎フレーム行う
     NS::Graphics::RenderSettings m_debugResolvedSettings{};

@@ -18,7 +18,7 @@ TEST(BlockRegistry, FreeCubeAndMarkerAreNotRotatable)
     freeCube.components = NS::Game::Blocks::MakeFreeCubeComponents(freeCube);
     EXPECT_FALSE(NS::Game::Blocks::IsRotatableObject(freeCube));
 
-    // component を持たない spawn marker も回せない
+    // component を持たない空構成の object も回せない
     NS::Game::Level::ObjectInstance marker{};
     EXPECT_FALSE(NS::Game::Blocks::IsRotatableObject(marker));
 }

@@ -165,14 +165,6 @@ namespace NS::Game::Level
             crc = UpdateWithString(crc, materialPath);
         }
 
-        crc = UpdateWith(crc, spawnX);
-        crc = UpdateWith(crc, spawnY);
-        crc = UpdateWith(crc, spawnZ);
-        crc = UpdateWith(crc, spawnRotationX);
-        crc = UpdateWith(crc, spawnRotationY);
-        crc = UpdateWith(crc, spawnRotationZ);
-        crc = UpdateWith(crc, spawnRotationW);
-
         crc = UpdateWith(crc, themeId);
         crc = UpdateWith(crc, bgmId);
         crc = UpdateWith(crc, coinThreshold);
@@ -210,6 +202,40 @@ namespace NS::Game::Level
                 seen.insert(object.objectId);
             }
         }
+    }
+
+    bool IsPlayerObject(const ObjectInstance& object) noexcept
+    {
+        return FindComponentData(object, "PlayerInputComponent") != nullptr;
+    }
+
+    std::size_t FindPlayerObjectIndex(const LevelData& level) noexcept
+    {
+        for (std::size_t i = 0; i < level.objects.size(); ++i)
+        {
+            if (IsPlayerObject(level.objects[i]))
+                return i;
+        }
+        return kNoObjectIndex;
+    }
+
+    ObjectInstance MakePlayerObject(const NS::Math::Vector3& position, const NS::Math::Quaternion& rotation)
+    {
+        ObjectInstance object{};
+        object.positionX = position.x;
+        object.positionY = position.y;
+        object.positionZ = position.z;
+        object.rotationX = rotation.x;
+        object.rotationY = rotation.y;
+        object.rotationZ = rotation.z;
+        object.rotationW = rotation.w;
+        // cube mesh の半サイズ 0.5 を capsule 当たり radius 0.4 / 半高 0.9 の AABB に合わせる縮み
+        object.scaleX = 0.8f;
+        object.scaleY = 1.8f;
+        object.scaleZ = 0.8f;
+        object.materialIndex = -1;
+        object.components = NS::Game::Blocks::MakeDefaultPlayerComponents();
+        return object;
     }
 
     std::size_t PruneDanglingObjectRefs(LevelData& level)

@@ -25,7 +25,8 @@ namespace NS::Game::Level
         /// v2 で spawn をグリッドセル番号から capsule 中心の world 位置 + 向きへ変更した
         /// v3 で object へ永続 id、 root へ nextObjectId を追加した。 旧版は読込時に採番して移行する
         /// v4 で据え置きカメラを cameraVolumes の別リストから objects の配置物へ統合した
-        constexpr int kFormatVersion = 4;
+        /// v5 でプレイヤーを spawn 単一値から objects の実体へ統合した。 旧版は読込時に合成して移行する
+        constexpr int kFormatVersion = 5;
 
         /// 読込時の上限。 巨大 size / 要素数による memory exhaustion を防ぐ。 binary 版から移植
         constexpr std::size_t kMaxLevelFileBytes = 16u * 1024u * 1024u;
@@ -108,51 +109,6 @@ namespace NS::Game::Level
             default:
                 return nlohmann::json{};
             }
-        }
-
-        /// JSON 値から FieldValue の variant を推論する。 bool→bool / 小数→float / 整数→int / 配列3→Vector3 /
-        /// 文字列→string。 いずれにも合わなければ何も積まないで前方互換を保つ
-        bool JsonToFieldValue(const std::string& name, const nlohmann::json& value, FieldValue& out)
-        {
-            if (value.is_boolean())
-            {
-                out = FieldValue{name, value.get<bool>()};
-                return true;
-            }
-            if (value.is_number_float())
-            {
-                out = FieldValue{name, value.get<float>()};
-                return true;
-            }
-            if (value.is_number_integer() || value.is_number_unsigned())
-            {
-                out = FieldValue{name, value.get<int>()};
-                return true;
-            }
-            if (value.is_string())
-            {
-                out = FieldValue{name, value.get<std::string>()};
-                return true;
-            }
-            if (value.is_array() && value.size() == 3u && value[0].is_number() && value[1].is_number() &&
-                value[2].is_number())
-            {
-                out = FieldValue{
-                    name, NS::Math::Vector3{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()}};
-                return true;
-            }
-            if (value.is_object())
-            {
-                const auto refIt = value.find("ref");
-                // 負数は id として不正なので unsigned のみ受ける。 壊れた ref は積まずに前方互換へ倒す
-                if (refIt != value.end() && refIt->is_number_unsigned())
-                {
-                    out = FieldValue{name, NS::Scene::ObjectRef{refIt->get<std::uint32_t>()}};
-                    return true;
-                }
-                return false;
-            }
-            return false;
         }
 
         nlohmann::json SerializeComponentData(const ComponentData& component)
@@ -308,6 +264,49 @@ namespace NS::Game::Level
         return fields;
     }
 
+    bool JsonToFieldValue(const std::string& name, const nlohmann::json& value, FieldValue& out)
+    {
+        if (value.is_boolean())
+        {
+            out = FieldValue{name, value.get<bool>()};
+            return true;
+        }
+        if (value.is_number_float())
+        {
+            out = FieldValue{name, value.get<float>()};
+            return true;
+        }
+        if (value.is_number_integer() || value.is_number_unsigned())
+        {
+            out = FieldValue{name, value.get<int>()};
+            return true;
+        }
+        if (value.is_string())
+        {
+            out = FieldValue{name, value.get<std::string>()};
+            return true;
+        }
+        if (value.is_array() && value.size() == 3u && value[0].is_number() && value[1].is_number() &&
+            value[2].is_number())
+        {
+            out = FieldValue{name,
+                             NS::Math::Vector3{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()}};
+            return true;
+        }
+        if (value.is_object())
+        {
+            const auto refIt = value.find("ref");
+            // 負数は id として不正なので unsigned のみ受ける。 壊れた ref は積まずに前方互換へ倒す
+            if (refIt != value.end() && refIt->is_number_unsigned())
+            {
+                out = FieldValue{name, NS::Scene::ObjectRef{refIt->get<std::uint32_t>()}};
+                return true;
+            }
+            return false;
+        }
+        return false;
+    }
+
     std::string SerializeLevelToJson(const LevelData& level)
     {
         nlohmann::json root;
@@ -319,10 +318,6 @@ namespace NS::Game::Level
         meta["coinThreshold"] = static_cast<int>(level.coinThreshold);
         meta["timeLimitSeconds"] = static_cast<int>(level.timeLimitSeconds);
         root["meta"] = std::move(meta);
-
-        root["spawn"] = Vec3Json(level.spawnX, level.spawnY, level.spawnZ);
-        root["spawnRotation"] =
-            Vec4Json(level.spawnRotationX, level.spawnRotationY, level.spawnRotationZ, level.spawnRotationW);
 
         nlohmann::json objects = nlohmann::json::array();
         for (const auto& object : level.objects)
@@ -339,9 +334,11 @@ namespace NS::Game::Level
         return root.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
     }
 
-    bool DeserializeLevelFromJson(LevelData& outLevel, std::string_view jsonText)
+    bool DeserializeLevelFromJson(LevelData& outLevel, std::string_view jsonText, LevelLoadReport* outReport)
     {
         outLevel = LevelData{};
+        if (outReport != nullptr)
+            *outReport = LevelLoadReport{};
 
         const nlohmann::json root = nlohmann::json::parse(jsonText, nullptr, false);
         if (root.is_discarded())
@@ -420,21 +417,45 @@ namespace NS::Game::Level
                 outLevel.objects.push_back(MakeCameraObjectFromLegacyVolume(cameraJson));
         }
 
+        // v4 以前のプレイヤーは spawn 単一値だった。読込時に objects の実体へ変換して合流させる
+        // v5 以降でもプレイヤー欠落の手編集ファイルには既定位置で 1 体を合成し、「必ず 1 体」を読込の門で保証する
         const int loadedVersion = ReadInt(root, "formatVersion", 1);
-        ReadVec3(root, "spawn", outLevel.spawnX, outLevel.spawnY, outLevel.spawnZ);
-        ReadVec4(root,
-                 "spawnRotation",
-                 outLevel.spawnRotationX,
-                 outLevel.spawnRotationY,
-                 outLevel.spawnRotationZ,
-                 outLevel.spawnRotationW);
-        if (loadedVersion < 2 && root.contains("spawn"))
+        if (FindPlayerObjectIndex(outLevel) == kNoObjectIndex)
         {
-            // v1 までの spawn はグリッドセル番号で「そのセルに立つ」 意味だった。 v2 以降は capsule 中心の
-            // world 位置なので、 旧コードの床乗せ分を足して中心へ移す
-            constexpr float kLegacyStandLift = 0.41f; // capsule halfHeight 0.5 + radius 0.4 + 1cm - cell 半 0.5
-            outLevel.spawnY += kLegacyStandLift;
+            float spawnX = 0.0f;
+            float spawnY = kDefaultPlayerSpawnY;
+            float spawnZ = 0.0f;
+            float spawnRotationX = 0.0f;
+            float spawnRotationY = 0.0f;
+            float spawnRotationZ = 0.0f;
+            float spawnRotationW = 1.0f;
+            ReadVec3(root, "spawn", spawnX, spawnY, spawnZ);
+            ReadVec4(root, "spawnRotation", spawnRotationX, spawnRotationY, spawnRotationZ, spawnRotationW);
+            if (loadedVersion < 2 && root.contains("spawn"))
+            {
+                // v1 までの spawn はグリッドセル番号で「そのセルに立つ」 意味だった。 v2 以降は capsule 中心の
+                // world 位置なので、 旧コードの床乗せ分を足して中心へ移す
+                constexpr float kLegacyStandLift = 0.41f; // capsule halfHeight 0.5 + radius 0.4 + 1cm - cell 半 0.5
+                spawnY += kLegacyStandLift;
+            }
+            outLevel.objects.push_back(
+                MakePlayerObject(NS::Math::Vector3{spawnX, spawnY, spawnZ},
+                                 NS::Math::Quaternion{spawnRotationX, spawnRotationY, spawnRotationZ, spawnRotationW}));
+            if (outReport != nullptr)
+                outReport->playerObjectCreated = true;
         }
+
+        // プレイヤーは必ず 1 体。 余分は先頭を正として組まれず、 手編集の重複をここで知らせる
+        std::size_t playerCount = 0;
+        for (const ObjectInstance& object : outLevel.objects)
+        {
+            if (IsPlayerObject(object))
+                ++playerCount;
+        }
+        if (playerCount > 1)
+            NS_LOG_WARN(::NS::Core::LogCat::Game,
+                        "プレイヤーが {} 体ある。先頭の 1 体を正とし、残りは無効として扱う",
+                        playerCount);
 
         const auto metaIt = root.find("meta");
         if (metaIt != root.end() && metaIt->is_object())
@@ -512,7 +533,9 @@ namespace NS::Game::Level
         }
     }
 
-    bool LoadLevelFromJsonFile(LevelData& outLevel, const std::filesystem::path& path) noexcept
+    bool LoadLevelFromJsonFile(LevelData& outLevel,
+                               const std::filesystem::path& path,
+                               LevelLoadReport* outReport) noexcept
     {
         outLevel = LevelData{};
 
@@ -532,7 +555,7 @@ namespace NS::Game::Level
         // parse 後の json 操作 / LevelData 構築は bad_alloc を投げ得る。 noexcept 契約を守るため捕捉する
         try
         {
-            if (!DeserializeLevelFromJson(outLevel, *textOpt))
+            if (!DeserializeLevelFromJson(outLevel, *textOpt, outReport))
             {
                 outLevel = LevelData{};
                 return false;

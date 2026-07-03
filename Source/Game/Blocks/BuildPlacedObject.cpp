@@ -174,6 +174,16 @@ namespace NS::Game::Blocks
                 MakeComponentData("PickupComponent", {FieldValue{"Pickup Kind", 1}})};
     }
 
+    std::vector<NS::Game::Level::ComponentData> MakeDefaultPlayerComponents()
+    {
+        using namespace NS::Game::Level;
+        // mesh / material 参照は実プレイヤーの直組みと同じ cube + 共有 player 材質。 データ単体でも構成が読める
+        return {MeshRendererData("cube", "player", kPlayerBaseColor),
+                MakeComponentData("CharacterMovementComponent", {}),
+                MakeComponentData("PlayerInputComponent", {}),
+                MakeComponentData("ShadowComponent", {})};
+    }
+
     std::vector<NS::Game::Level::ComponentData> MakeFreeCubeComponents(const NS::Game::Level::ObjectInstance& object)
     {
         using namespace NS::Game::Level;
@@ -261,6 +271,8 @@ namespace NS::Game::Blocks
 
     const char* ObjectDisplayName(const NS::Game::Level::ObjectInstance& object)
     {
+        if (NS::Game::Level::IsPlayerObject(object))
+            return "Player";
         if (HasComponentType(object, "PlacedVirtualCamera"))
             return "Camera";
 

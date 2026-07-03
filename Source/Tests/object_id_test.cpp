@@ -70,6 +70,7 @@ TEST(ObjectIdTest, JsonRoundTripPreservesIdsAndCounter)
     LevelNs::LevelData level;
     level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
     level.objects.push_back(LevelNs::MakeGridObject(3, 1, 2, 1));
+    level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     LevelNs::EnsureUniqueObjectIds(level);
     const std::uint32_t id0 = level.objects[0].objectId;
     const std::uint32_t id1 = level.objects[1].objectId;
@@ -79,7 +80,7 @@ TEST(ObjectIdTest, JsonRoundTripPreservesIdsAndCounter)
     LevelNs::LevelData restored;
     ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(restored, text));
 
-    ASSERT_EQ(restored.objects.size(), 2u);
+    ASSERT_EQ(restored.objects.size(), 3u);
     EXPECT_EQ(restored.objects[0].objectId, id0);
     EXPECT_EQ(restored.objects[1].objectId, id1);
     EXPECT_EQ(restored.nextObjectId, counter);
@@ -98,7 +99,8 @@ TEST(ObjectIdTest, LegacyJsonWithoutIdsGetsAssignedOnLoad)
 
     LevelNs::LevelData restored;
     ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(restored, legacy));
-    ASSERT_EQ(restored.objects.size(), 2u);
+    // 旧形式なのでプレイヤー実体も合成され 3 件になる。 合成分にも一意 id が振られる
+    ASSERT_EQ(restored.objects.size(), 3u);
     EXPECT_TRUE(AllIdsUniqueAndAssigned(restored));
 }
 
@@ -164,6 +166,7 @@ TEST(ObjectIdTest, ObjectRefFieldSurvivesJsonRoundTrip)
     LevelNs::LevelData level;
     level.objects.push_back(LevelNs::ObjectInstance{});
     level.objects.push_back(LevelNs::ObjectInstance{});
+    level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     LevelNs::EnsureUniqueObjectIds(level);
     const std::uint32_t targetId = level.objects[0].objectId;
 
@@ -178,7 +181,7 @@ TEST(ObjectIdTest, ObjectRefFieldSurvivesJsonRoundTrip)
     ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(restored, text));
 
     EXPECT_EQ(restored.ComputeCrc32(), crc0);
-    ASSERT_EQ(restored.objects.size(), 2u);
+    ASSERT_EQ(restored.objects.size(), 3u);
     ASSERT_EQ(restored.objects[1].components.size(), 1u);
     const auto* field = LevelNs::FindField(restored.objects[1].components[0], "Target");
     ASSERT_NE(field, nullptr);
@@ -190,6 +193,7 @@ TEST(ObjectIdTest, DanglingObjectRefIsPrunedOnLoad)
 {
     LevelNs::LevelData level;
     level.objects.push_back(LevelNs::ObjectInstance{});
+    level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     LevelNs::EnsureUniqueObjectIds(level);
 
     // どの object も持たない id を指す参照を仕込むと、読込で未設定 0 へ戻る
@@ -202,7 +206,7 @@ TEST(ObjectIdTest, DanglingObjectRefIsPrunedOnLoad)
     LevelNs::LevelData restored;
     ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(restored, text));
 
-    ASSERT_EQ(restored.objects.size(), 1u);
+    ASSERT_EQ(restored.objects.size(), 2u);
     ASSERT_EQ(restored.objects[0].components.size(), 1u);
     const auto* field = LevelNs::FindField(restored.objects[0].components[0], "Target");
     ASSERT_NE(field, nullptr);

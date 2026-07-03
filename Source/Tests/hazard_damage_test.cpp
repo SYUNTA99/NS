@@ -35,9 +35,8 @@ TEST(HazardDamageTest, ContactDamageDoesNotModifyLevelData)
 {
     NS::Game::Level::LevelData level;
     level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, 0));
-    level.spawnX = 1;
-    level.spawnY = 2;
-    level.spawnZ = 3;
+    level.objects.push_back(
+        NS::Game::Level::MakePlayerObject(NS::Math::Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
     level.themeId = 4;
     const std::uint32_t crcBefore = level.ComputeCrc32();
 

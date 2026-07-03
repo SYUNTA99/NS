@@ -53,6 +53,26 @@ TEST(LevelWorldTest, ClearEmptiesEverything)
     EXPECT_TRUE(world.PlacedCameras().empty());
 }
 
+// プレイヤー実体は scene 所有の実 player が演じるため、Rebuild は runtime GameObject を組まない
+TEST(LevelWorldTest, RebuildSkipsPlayerObject)
+{
+    LevelData level;
+    level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, 0));
+    level.objects.push_back(
+        NS::Game::Level::MakePlayerObject(NS::Math::Vector3{0.0f, 1.41f, 0.0f}, NS::Math::Quaternion{}));
+
+    NS::Scene::SceneBase scene;
+    NS::Physics::PhysicsWorld physics;
+    NS::Scene::AssetManager assets{std::filesystem::path{"."}};
+    LevelWorld world;
+    world.Rebuild(level, scene, physics, &assets);
+
+    // grid block 1 個だけが組まれ、player object の添字は world に現れない
+    ASSERT_EQ(world.Objects().size(), 1u);
+    ASSERT_EQ(world.SourceIndices().size(), 1u);
+    EXPECT_EQ(world.SourceIndices()[0], 0u);
+}
+
 // 据え置きカメラの配置物は Rebuild で走査 view に載り、エリア外の非アクティブで組み上がる
 TEST(LevelWorldTest, RebuildBakesPlacedCamerasInactive)
 {

@@ -29,9 +29,20 @@ namespace NS::Game::Level
 
     void PlayMode::Enter(const LevelData& level, PlayState& play) noexcept
     {
-        // spawn はエディタで配置した実プレイヤーの capsule 中心 world 位置そのもの
+        // 出現位置はエディタで配置したプレイヤー実体の capsule 中心 world 位置そのもの
         // 床乗せの補正は配置時に決まっているのでここでは持たず、 焼かれた位置へそのまま置く
-        play.playerPosition = {level.spawnX, level.spawnY, level.spawnZ};
+        // 読込の門が 1 体を保証するが、 直組みの level にも既定位置で安全側に応える
+        const std::size_t playerIndex = FindPlayerObjectIndex(level);
+        if (playerIndex != kNoObjectIndex)
+        {
+            const ObjectInstance& playerObject = level.objects[playerIndex];
+            play.playerPosition =
+                NS::Math::Vector3{playerObject.positionX, playerObject.positionY, playerObject.positionZ};
+        }
+        else
+        {
+            play.playerPosition = NS::Math::Vector3{0.0f, kDefaultPlayerSpawnY, 0.0f};
+        }
         play.playerVelocity = {0.0f, 0.0f, 0.0f};
         play.coinCount = 0;
         play.remainingSeconds = static_cast<float>(level.timeLimitSeconds);

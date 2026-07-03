@@ -4,7 +4,7 @@
 /// @brief NS::Game::Level::PlayMode — Play 中のゲームルール bookkeeping を Enter/Tick/Exit で担う
 ///
 /// @details 物理すなわち移動 / 重力 / 衝突 / 掴まりは Player の CharacterMovementComponent が担う
-/// PlayMode は Play 開始時の spawn 配置 + counter リセットを Enter で行い、 毎フレームの
+/// PlayMode は Play 開始時のプレイヤー実体位置への配置 + counter リセットを Enter で行い、 毎フレームの
 /// 落下死 / coin / goal 取得判定を Tick で受け持つ
 /// `const LevelData&` を Tick 受取に強制することで、 PlayMode 経路では LevelData を
 /// 書き換えられないことを compile-time に保証する。 player 位置は LevelPlayScene が
@@ -43,7 +43,7 @@ namespace NS::Game::Level
         void SetActive(bool active) noexcept { m_active = active; }
         [[nodiscard]] bool IsActive() const noexcept { return m_active; }
 
-        /// Edit→Play 遷移。 player を spawn セル床上に再配置し velocity / flag を全リセット
+        /// Edit→Play 遷移。 player をプレイヤー実体の位置へ再配置し velocity / flag を全リセット
         void Enter(const LevelData& level, PlayState& play) noexcept;
 
         /// fixed step Tick。 落下死 / coin / power goal 接触判定。 paused 中は何もしない

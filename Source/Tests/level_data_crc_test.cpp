@@ -61,7 +61,8 @@ TEST(LevelDataCrcTest, PlayStateMutationDoesNotAffectLevelDataCrc)
 {
     LevelNs::LevelData level;
     level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
-    level.spawnX = 5;
+    level.objects.push_back(
+        LevelNs::MakePlayerObject(NS::Math::Vector3{5.0f, 0.0f, 0.0f}, NS::Math::Quaternion{}));
     const auto before = level.ComputeCrc32();
 
     LevelNs::PlayState play;

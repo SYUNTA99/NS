@@ -160,10 +160,11 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     obj.components.push_back(
         MakeComponent("CapsuleColliderComponent", {FieldValue{"Radius", 0.4f}, FieldValue{"Half Height", 0.9f}}));
     src.objects.push_back(std::move(obj));
+    src.objects.push_back(NS::Game::Level::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
     LevelData restored;
     ASSERT_TRUE(DeserializeLevelFromJson(restored, SerializeLevelToJson(src)));
-    ASSERT_EQ(restored.objects.size(), 1u);
+    ASSERT_EQ(restored.objects.size(), 2u);
     ASSERT_FALSE(restored.objects[0].components.empty()); // 往復後も新経路の components 駆動を通る
 
     NS::Scene::AssetManager assets{std::filesystem::path{"."}};

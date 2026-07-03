@@ -312,9 +312,8 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorController& editor) noexcept
 #if NS_EDITOR_ENABLED
     if (ImGui::Begin("Hierarchy"))
     {
-        // Player / Camera は配置物ではないが、 選んで Inspector に出せるよう先頭に常設する
-        if (ImGui::Selectable("Player", editor.IsPlayerSelected()))
-            editor.SelectPlayer();
+        // 編集カメラは配置物ではないが、 選んで Inspector に出せるよう先頭に常設する
+        // プレイヤーは objects の実体になったので下の一覧に "Player" として並ぶ
         if (ImGui::Selectable("Camera", editor.IsCameraSelected()))
             editor.SelectCamera();
         ImGui::Separator();
@@ -361,60 +360,6 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
 #if NS_EDITOR_ENABLED
     if (ImGui::Begin("Inspector"))
     {
-        if (editor.IsPlayerSelected())
-        {
-            ImGui::Text("Player");
-            ImGui::Separator();
-            // Player の Component を反射で一覧編集する。 操作感はライブで効き、 保存すると PlayerTuning.json へ
-            // 焼かれて次回起動や出荷ビルドでも同じ値で動く
-            if (auto* player = editor.PlayerObject())
-            {
-                (void)NS::Editor::DrawObjectComponents(*player);
-
-                // 構成の追加。選べる型は登録済みに限られ、保存すると構成ごと PlayerTuning.json へ
-                // 焼かれて次回起動時は読込が factory で復元する。player の構成は同型 1 個までなので
-                // 既に載っている型は選べない
-                if (ImGui::Button("+ Add Component"))
-                    ImGui::OpenPopup("PlayerAddComponentPopup");
-                if (ImGui::BeginPopup("PlayerAddComponentPopup"))
-                {
-                    for (const std::string& name : NS::Scene::RegisteredNames())
-                    {
-                        bool alreadyOnPlayer = false;
-                        for (const NS::Scene::Component* comp : player->Components())
-                        {
-                            const NS::Scene::ReflectionInfo* info = (comp != nullptr) ? comp->GetReflection() : nullptr;
-                            if (info != nullptr && name == info->typeName)
-                            {
-                                alreadyOnPlayer = true;
-                                break;
-                            }
-                        }
-                        if (alreadyOnPlayer)
-                            ImGui::BeginDisabled();
-                        if (ImGui::Selectable(name.c_str()))
-                        {
-                            // 起動時の読込経路と違い OnStart 済みの player へ足すので、ここで自分で開始する
-                            if (NS::Scene::Component* added = NS::Scene::CreateComponent(name, *player))
-                                added->OnStart();
-                        }
-                        if (alreadyOnPlayer)
-                            ImGui::EndDisabled();
-                    }
-                    ImGui::EndPopup();
-                }
-
-                ImGui::Separator();
-                if (ImGui::Button("チューニングを保存"))
-                    (void)NS::Editor::SavePlayerTuning(*player);
-            }
-            else
-                ImGui::TextDisabled("(no player)");
-
-            ImGui::End();
-            return;
-        }
-
         if (editor.IsCameraSelected())
         {
             ImGui::Text("Camera");
@@ -533,6 +478,9 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             {
                 for (const std::string& name : NS::Scene::RegisteredNames())
                 {
+                    // プレイヤーの印である入力 component は手で足させない。 プレイヤーは常に 1 体で system が管理する
+                    if (name == "PlayerInputComponent")
+                        continue;
                     if (ImGui::Selectable(name.c_str()))
                         editor.AddComponentToSelected(name);
                 }
@@ -553,7 +501,8 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
                 if (ImGui::SmallButton("Copy"))
                     editor.CopyComponentToClipboard(k);
                 // 最後の 1 個は消すと空構成のゴーストになるので Delete を出さない
-                if (obj.components.size() > 1)
+                // プレイヤーの印である入力 component も出現位置ごと壊れるため消させない
+                if (obj.components.size() > 1 && typeName != "PlayerInputComponent")
                 {
                     ImGui::SameLine();
                     if (ImGui::SmallButton("Delete"))
@@ -571,7 +520,15 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             }
 
             ImGui::Separator();
-            if (ImGui::Button("Duplicate Object"))
+            if (editor.SelectedIsPlayerObject())
+            {
+                // プレイヤーは必ず 1 体なので複製の代わりに、 手触りの現在値を新規レベル用の既定テンプレートへ
+                // 書き出すボタンを出す。 レベル保存とは別口
+                if (ImGui::Button("既定テンプレートへ保存"))
+                    if (auto* player = editor.SelectedObjectGameObject())
+                        (void)NS::Editor::SavePlayerTuning(*player);
+            }
+            else if (ImGui::Button("Duplicate Object"))
                 editor.DuplicateSelectedObject();
         }
     }

@@ -78,12 +78,17 @@ namespace NS::Game::Level
         {
             player->Movement().SetActive(false);
             player->InputComp().SetActive(false);
-            // 編集中も実プレイヤーを spawn 位置 / 向きに見せ、 ギズモで掴んで動かせるようにする
+            // 編集中も実プレイヤーをプレイヤー実体の pose に見せ、 ギズモで掴んで動かせるようにする
             player->MeshComp().SetActive(true);
-            auto& level = scene->Level();
-            player->Root().SetPosition({level.spawnX, level.spawnY, level.spawnZ});
-            player->Root().SetRotation(NS::Math::Quaternion{
-                level.spawnRotationX, level.spawnRotationY, level.spawnRotationZ, level.spawnRotationW});
+            const auto& level = scene->Level();
+            const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(level);
+            if (playerIndex != NS::Game::Level::kNoObjectIndex)
+            {
+                const auto& playerObject = level.objects[playerIndex];
+                player->Root().SetPosition({playerObject.positionX, playerObject.positionY, playerObject.positionZ});
+                player->Root().SetRotation(NS::Math::Quaternion{
+                    playerObject.rotationX, playerObject.rotationY, playerObject.rotationZ, playerObject.rotationW});
+            }
             player->Root().Snapshot();
         }
         if (auto* rig = scene->Rig())

@@ -30,9 +30,8 @@ namespace
 TEST(PlayModeCrc, RoundTripPreservesLevelData_PMODE_06)
 {
     LevelNs::LevelData level;
-    level.spawnX = 5;
-    level.spawnY = 1;
-    level.spawnZ = -3;
+    level.objects.push_back(
+        LevelNs::MakePlayerObject(NS::Math::Vector3{5.0f, 1.0f, -3.0f}, NS::Math::Quaternion{}));
     level.themeId = 7;
     level.coinThreshold = 30;
     level.timeLimitSeconds = 240;
@@ -56,9 +55,7 @@ TEST(PlayModeCrc, RoundTripPreservesLevelData_PMODE_06)
 TEST(PlayModeCrc, RoundTripWithCoinCollectionPreservesLevelData)
 {
     LevelNs::LevelData level;
-    level.spawnX = 0;
-    level.spawnY = 0;
-    level.spawnZ = 0;
+    level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     level.objects.push_back(MakePickup(0));
     const std::uint32_t before = level.ComputeCrc32();
 
@@ -71,15 +68,13 @@ TEST(PlayModeCrc, RoundTripWithCoinCollectionPreservesLevelData)
     mode.Exit(play);
 
     EXPECT_EQ(level.ComputeCrc32(), before) << "Coin 取得時に LevelData 変更";
-    EXPECT_EQ(level.objects.size(), 1u);
+    EXPECT_EQ(level.objects.size(), 2u);
 }
 
 TEST(PlayModeCrc, RoundTripWithGoalContactPreservesLevelData)
 {
     LevelNs::LevelData level;
-    level.spawnX = 0;
-    level.spawnY = 0;
-    level.spawnZ = 0;
+    level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     level.objects.push_back(MakePickup(1));
     const std::uint32_t before = level.ComputeCrc32();
 

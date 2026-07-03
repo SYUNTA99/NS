@@ -97,18 +97,17 @@ TEST(ModeToggle, QuitToEditWhilePausedResetsPausedFlag)
     EXPECT_FALSE(flow.Play().paused);
 }
 
-TEST(ModeToggle, EnterPlayInitializesPlayStateAtSpawn)
+TEST(ModeToggle, EnterPlayInitializesPlayStateAtPlayerObject)
 {
     LevelPlayScene scene;
     LevelEditorController editor(&scene);
     auto& flow = scene.Director().Flow();
-    scene.Level().spawnX = 7;
-    scene.Level().spawnY = 2;
-    scene.Level().spawnZ = -4;
+    scene.Level().objects.push_back(
+        NS::Game::Level::MakePlayerObject(NS::Math::Vector3{7.0f, 2.0f, -4.0f}, NS::Math::Quaternion{}));
     editor.EnterPlay();
 
     EXPECT_NEAR(flow.Play().playerPosition.x, 7.0f, 1e-4f);
-    // spawn は capsule 中心 world 位置そのものなので player はその座標へ正確に置かれる
+    // プレイヤー実体の位置は capsule 中心 world 位置そのものなので player はその座標へ正確に置かれる
     EXPECT_NEAR(flow.Play().playerPosition.y, 2.0f, 1e-4f);
     EXPECT_NEAR(flow.Play().playerPosition.z, -4.0f, 1e-4f);
 }

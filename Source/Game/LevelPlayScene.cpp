@@ -43,18 +43,19 @@ using namespace NS::Game::Theme;
 
 namespace
 {
-    constexpr NS::Math::Vector3 kPlayerColor{0.85f, 0.20f, 0.20f};
     constexpr NS::Math::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
 
-    /// 編集体験の起点となる最小床。 LevelData に grid block 1 個 + spawn を仕込んでおく
+    /// 編集体験の起点となる最小床。 LevelData に grid block 1 個 + プレイヤー実体を仕込んでおく
     void SeedInitialLevel(NS::Game::Level::LevelData& level)
     {
         level.objects.clear();
         level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, 0));
-        // spawn は capsule 中心の world 位置。 床ブロック上面 0.5 + capsule(radius 0.4 + halfHeight 0.5) + 1cm
-        level.spawnX = 0.0f;
-        level.spawnY = 1.41f;
-        level.spawnZ = 0.0f;
+        // プレイヤーは capsule 中心を床ブロック上面 0.5 + capsule 半径込み半高 0.9 + 1cm へ置く
+        level.objects.push_back(NS::Game::Level::MakePlayerObject(
+            NS::Math::Vector3{0.0f, NS::Game::Level::kDefaultPlayerSpawnY, 0.0f}, NS::Math::Quaternion{}));
+        // 新規プレイヤーには保存済みテンプレートの構成と値を写す
+        MergeSavedPlayerTuning(level.objects.back());
+        NS::Game::Level::EnsureUniqueObjectIds(level);
     }
 } // namespace
 
@@ -144,14 +145,14 @@ void LevelPlayScene::OnStart()
     // cube mesh の半サイズは 0.5 だが capsule collider は radius=0.4 / halfHeight=0.5
     // すなわち AABB 半サイズ 0.4, 0.9, 0.4。両者が一致するよう scale で mesh を縮める
     m_player->Root().SetScale({0.8f, 1.8f, 0.8f});
-    m_player->MeshComp().SetBaseColor(kPlayerColor);
+    m_player->MeshComp().SetBaseColor(NS::Game::Blocks::kPlayerBaseColor);
     m_player->Shadow().SetResources(shadowMesh, shadowMaterial);
 
-    // 保存済みチューニングがあればプレイヤーの全コンポーネントへ適用する。 無ければコード既定値のまま
-    LoadPlayerTuning(*m_player);
-
+    // プレイヤーの構成と値の真実はレベルの player object。 RebuildWorld が components を、
+    // ApplyPlayerPoseFromLevel が pose を live へ適用する
     LoadInitialLevel();
     RebuildWorld();
+    ApplyPlayerPoseFromLevel();
 
     m_cameraRig = std::make_unique<CameraRig>(&m_player->Root(), &m_player->Movement());
     m_cameraRig->AttachScene(this);
@@ -159,6 +160,7 @@ void LevelPlayScene::OnStart()
     m_cameraRig->Follow().SetFarPlane(100.0f);
 
     m_player->OnStart();
+    m_playerStarted = true;
     m_cameraRig->OnStart();
 
     // 実カメラ 1 個 + Brain を載せる host を作り、 follow vcam を登録する
@@ -464,6 +466,7 @@ void LevelPlayScene::OnShutdown()
     m_brain = nullptr;
     m_cameraRig.reset();
     m_player.reset();
+    m_playerStarted = false;
 
     // Skybox / InstanceBatcher は Renderer の DeviceContext を ComPtr で握るため、 Application の Renderer より
     // 先に破棄する。 組み込み / leaf / 共有 material / block TextureArray / skinned model は AssetManager が Clear
@@ -488,6 +491,15 @@ void LevelPlayScene::RebuildWorld()
         for (auto* placed : m_world.PlacedCameras())
             m_brain->AddVirtualCamera(placed);
 
+    // player object は world で組まれない代わりに、 components の値をここで live player へ適用する
+    // pose は触らない。 プレイ中の組み直しで出現位置へ瞬間移動させないため、 pose 適用は編集側の経路が担う
+    if (m_player)
+    {
+        const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(m_level);
+        if (playerIndex != NS::Game::Level::kNoObjectIndex)
+            ApplyPlayerObjectComponents(*m_player, m_level.objects[playerIndex], m_playerStarted);
+    }
+
     if (m_player)
     {
         // 接地シャドウは grid + 自由物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
@@ -503,4 +515,21 @@ void LevelPlayScene::RebuildWorld()
         }
         m_player->Shadow().SetCollisionWorld(shadowReceivers);
     }
+}
+
+void LevelPlayScene::ApplyPlayerPoseFromLevel() noexcept
+{
+    if (!m_player)
+        return;
+    const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(m_level);
+    if (playerIndex == NS::Game::Level::kNoObjectIndex)
+        return;
+
+    const NS::Game::Level::ObjectInstance& entry = m_level.objects[playerIndex];
+    NS::Scene::Transform& root = m_player->Root();
+    root.SetPosition({entry.positionX, entry.positionY, entry.positionZ});
+    root.SetRotation(NS::Math::Quaternion{entry.rotationX, entry.rotationY, entry.rotationZ, entry.rotationW});
+    root.SetScale({entry.scaleX, entry.scaleY, entry.scaleZ});
+    // 編集中の実プレイヤーは scene が Snapshot しないため、 previous=current に揃え補間ジッタを消す
+    root.Snapshot();
 }

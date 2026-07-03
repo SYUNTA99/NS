@@ -31,13 +31,12 @@ namespace
     }
 } // namespace
 
-TEST(PlayFlow, EnterPlacesPlayStateAtSpawn)
+TEST(PlayFlow, EnterPlacesPlayStateAtPlayerObject)
 {
     LevelPlayScene scene;
     auto& flow = scene.Director().Flow();
-    scene.Level().spawnX = 7.0f;
-    scene.Level().spawnY = 2.0f;
-    scene.Level().spawnZ = -4.0f;
+    scene.Level().objects.push_back(
+        LevelNs::MakePlayerObject(NS::Math::Vector3{7.0f, 2.0f, -4.0f}, NS::Math::Quaternion{}));
 
     flow.EnterPlay();
 
@@ -51,8 +50,9 @@ TEST(PlayFlow, FallDeathRestartsLevelOnSameTick)
 {
     LevelPlayScene scene;
     auto& flow = scene.Director().Flow();
-    // spawn 自体を落下死の閾値より下へ置くと、 player 無しでも Tick 1 回で死亡が立つ
-    scene.Level().spawnY = LevelNs::PlayMode::kFallDeathThreshold - 10.0f;
+    // プレイヤー実体を落下死の閾値より下へ置くと、 player 無しでも Tick 1 回で死亡が立つ
+    scene.Level().objects.push_back(LevelNs::MakePlayerObject(
+        NS::Math::Vector3{0.0f, LevelNs::PlayMode::kFallDeathThreshold - 10.0f, 0.0f}, NS::Math::Quaternion{}));
 
     flow.EnterPlay();
     // 体力を減らしておくと、 全回復していることが「リスタートで再 Enter が走った」証拠になる
@@ -67,10 +67,8 @@ TEST(PlayFlow, GoalContactSetsClearTriggered)
 {
     LevelPlayScene scene;
     auto& flow = scene.Director().Flow();
-    scene.Level().spawnX = 0.0f;
-    scene.Level().spawnY = 0.0f;
-    scene.Level().spawnZ = 0.0f;
-    // spawn と同じ位置にゴールを置くと中心距離 0 で必ず接触する
+    scene.Level().objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    // プレイヤー実体と同じ位置にゴールを置くと中心距離 0 で必ず接触する
     scene.Level().objects.push_back(MakePickup(0.0f, 0.0f, 0.0f, 1));
 
     flow.EnterPlay();
@@ -83,7 +81,8 @@ TEST(PlayFlow, PausedTickAdvancesNothing)
 {
     LevelPlayScene scene;
     auto& flow = scene.Director().Flow();
-    scene.Level().spawnY = LevelNs::PlayMode::kFallDeathThreshold - 10.0f;
+    scene.Level().objects.push_back(LevelNs::MakePlayerObject(
+        NS::Math::Vector3{0.0f, LevelNs::PlayMode::kFallDeathThreshold - 10.0f, 0.0f}, NS::Math::Quaternion{}));
 
     flow.EnterPlay();
     flow.Play().paused = true;
@@ -112,6 +111,7 @@ TEST(PlayFlow, ReEnterAfterClearResetsFlags)
 {
     LevelPlayScene scene;
     auto& flow = scene.Director().Flow();
+    scene.Level().objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     scene.Level().objects.push_back(MakePickup(0.0f, 0.0f, 0.0f, 1));
 
     flow.EnterPlay();

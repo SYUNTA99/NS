@@ -83,7 +83,12 @@ public:
 
     /// runtime world と衝突世界を LevelData から組み直す。 レベル編集後とプレイ突入時に呼ぶ
     /// 据え置きカメラの Brain 登録もここで面倒を見る。 Brain 構築前の OnStart 序盤は登録しない
+    /// player object は world で組まれない代わりに、 components の値を live player へ適用する
     void RebuildWorld();
+
+    /// レベルの player object の pose を live player へ適用する。 player object 不在なら何もしない
+    /// undo / redo / ロードでデータ側の pose が変わった直後に editor が呼ぶ。 プレイ中には呼ばない
+    void ApplyPlayerPoseFromLevel() noexcept;
 
 private:
     /// 基底 OnRender が scene 解決後に呼ぶ描画本体。 ワールドを描き編集ギズモ等は描かない
@@ -123,6 +128,9 @@ private:
 
     // プレイ進行役。 PlayState / PlayMode と進行の分岐は配下の PlayFlowComponent が所有する
     std::unique_ptr<NS::Game::Level::PlayDirector> m_director;
+
+    // player の OnStart 済みか。 以降にデータへ足された component は適用時に自分で開始する
+    bool m_playerStarted = false;
 
     // コヨーテ debug 描画 すなわち 縁の紫線 / カプセル / コヨーテジャンプの赤線 の表示トグル。 F2 で切替える
     bool m_debugCoyoteDraw = true;

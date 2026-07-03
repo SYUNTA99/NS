@@ -25,13 +25,13 @@ namespace NS::Game::Level
         [[nodiscard]] PlayState& Play() noexcept { return m_play; }
         [[nodiscard]] PlayMode& PlayModeSub() noexcept { return m_playMode; }
 
-        /// プレイ突入。 spawn を計算して player をそこへ置き、 物理 / 入力 / follow camera を有効化する
+        /// プレイ突入。 player をプレイヤー実体の位置へ置き、 物理 / 入力 / follow camera を有効化する
         void EnterPlay() noexcept;
 
         /// 編集モードへ。 paused / clear / death をリセットし player を凍結、 follow / area camera を休止する
         void ExitPlay() noexcept;
 
-        /// レベルを頭から組み直す。 spawn へ戻し health / coin / flag を全リセットして再開する
+        /// レベルを頭から組み直す。 出現位置へ戻し health / coin / flag を全リセットして再開する
         void RestartLevel() noexcept;
 
         /// プレイ進行を dt だけ進める: 入力 → 物理 → ルール → area camera → 死亡 / リスポーン → カメラ追従

@@ -110,16 +110,6 @@ namespace NS::Game::Level
         /// objects の materialIndex が参照する .mat 相対パス表
         std::vector<std::string> materialPaths;
 
-        /// プレイヤー出現時の capsule 中心 world 位置。 エディタで配置した実プレイヤーの Transform を焼く
-        float spawnX = 0.0f;
-        float spawnY = 0.0f;
-        float spawnZ = 0.0f;
-        /// プレイヤー出現時の向き quaternion。 既定は単位回転
-        float spawnRotationX = 0.0f;
-        float spawnRotationY = 0.0f;
-        float spawnRotationZ = 0.0f;
-        float spawnRotationW = 1.0f;
-
         std::uint16_t themeId = 0;
         std::uint16_t bgmId = 0;
         std::uint16_t coinThreshold = 0;
@@ -131,6 +121,22 @@ namespace NS::Game::Level
 
     /// objects 配列で「該当無し」を表す添字
     inline constexpr std::size_t kNoObjectIndex = static_cast<std::size_t>(-1);
+
+    /// 新規レベルでプレイヤーを置く既定の capsule 中心高さ。 床 block 上面 0.5 + capsule 半高 0.9 + 1cm
+    inline constexpr float kDefaultPlayerSpawnY = 1.41f;
+
+    /// プレイヤー実体か。 入力で動く能力そのものが種別の印なので、 専用マーカーを増やさず
+    /// PlayerInputComponent の有無で判定する
+    [[nodiscard]] bool IsPlayerObject(const ObjectInstance& object) noexcept;
+
+    /// objects からプレイヤー実体を探す。 最初の 1 件の添字、 無ければ kNoObjectIndex
+    /// 複数居ても先頭を正とする。 読込の門が 1 体を保証し、 余分は読込時に警告済み
+    [[nodiscard]] std::size_t FindPlayerObjectIndex(const LevelData& level) noexcept;
+
+    /// 指定 pose のプレイヤー実体 ObjectInstance を作る。 components は既定構成一式で、
+    /// scale は capsule 当たり 0.4/0.9/0.4 に cube mesh の見た目を合わせる値
+    [[nodiscard]] ObjectInstance MakePlayerObject(const NS::Math::Vector3& position,
+                                                  const NS::Math::Quaternion& rotation);
 
     /// 永続 object id を 1 個割り当ててカウンタを進める。生成経路が新規 object に振るのに使う
     [[nodiscard]] std::uint32_t AllocateObjectId(LevelData& level) noexcept;

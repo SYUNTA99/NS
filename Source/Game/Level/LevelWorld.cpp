@@ -47,6 +47,10 @@ namespace NS::Game::Level
         {
             const ObjectInstance& entry = level.objects[objectIndex];
 
+            // プレイヤー実体は scene 所有の実 player が演じるため world では組まない。 二重生成を防ぐ
+            if (IsPlayerObject(entry))
+                continue;
+
             auto obj = NS::Game::Blocks::BuildPlacedObject(entry, *assets, level.materialPaths);
             if (!obj)
                 continue; // 組み立てる component が無いオブジェクトはファクトリが nullptr を返す

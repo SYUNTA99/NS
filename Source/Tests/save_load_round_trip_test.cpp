@@ -22,9 +22,8 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
     ASSERT_TRUE(path.has_value());
 
     LevelNs::LevelData src;
-    src.spawnX = 1;
-    src.spawnY = 2;
-    src.spawnZ = 3;
+    src.objects.push_back(
+        LevelNs::MakePlayerObject(NS::Math::Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
     src.themeId = 4;
     src.coinThreshold = 10;
     src.timeLimitSeconds = 180;
@@ -65,12 +64,13 @@ TEST(SaveLoadRoundTrip, ShapeColliderAndDimensionsSurviveRoundTrip)
     obj.colliderHalfExtentsX = 0.3f; // capsule では半径
     obj.colliderHalfExtentsY = 0.7f; // capsule では半高
     src.objects.push_back(obj);
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
 
     LevelNs::LevelData dst;
     ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
-    ASSERT_EQ(dst.objects.size(), 1u);
+    ASSERT_EQ(dst.objects.size(), 2u);
     EXPECT_EQ(LevelNs::ObjectShapeCollider(dst.objects[0]), LevelNs::ShapeCollider::Capsule);
     EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsX, 0.3f);
     EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsY, 0.7f);
@@ -171,6 +171,7 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
     comp.fields.push_back(LevelNs::FieldValue{"fWhole", 4.0f}); // 整数値の float が int に化けないことを確かめる
     freeObject.components.push_back(std::move(comp));
     src.objects.push_back(std::move(freeObject));
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     // 正準 JSON 同士の比較なので、 読込側と同じく採番済の状態に揃えてから保存する
     LevelNs::EnsureUniqueObjectIds(src);
 
@@ -181,7 +182,7 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 
     EXPECT_EQ(LevelNs::SerializeLevelToJson(dst), LevelNs::SerializeLevelToJson(src));
 
-    ASSERT_EQ(dst.objects.size(), 1u);
+    ASSERT_EQ(dst.objects.size(), 2u);
     ASSERT_EQ(dst.objects[0].components.size(), 1u);
     const auto& fields = dst.objects[0].components[0].fields;
     EXPECT_EQ(dst.objects[0].components[0].typeName, "BoxColliderComponent");
@@ -264,6 +265,7 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     gridObject.materialIndex = -1;
     gridObject.flags = LevelNs::kObjectFlagGridAligned;
     src.objects.push_back(gridObject);
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
     // 編集中のレベルは常に採番済なので、 基準 CRC も採番後から取る
     LevelNs::EnsureUniqueObjectIds(src);
@@ -274,7 +276,7 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
     EXPECT_EQ(dst.ComputeCrc32(), crc0);
 
-    ASSERT_EQ(dst.objects.size(), 2u);
+    ASSERT_EQ(dst.objects.size(), 3u);
     ASSERT_EQ(dst.materialPaths.size(), 2u);
     EXPECT_EQ(dst.materialPaths[0], "Assets/Materials/stone.mat");
     EXPECT_EQ(dst.materialPaths[1], "Assets/Materials/grid.mat");
@@ -314,12 +316,13 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
             if (field.name == "Base Color")
                 field.value = baseColor;
     src.objects.push_back(solid);
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
     LevelNs::LevelData dst;
     ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
 
-    ASSERT_EQ(dst.objects.size(), 1u);
+    ASSERT_EQ(dst.objects.size(), 2u);
     bool found = false;
     for (const auto& component : dst.objects[0].components)
         for (const auto& field : component.fields)
@@ -334,28 +337,64 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
     EXPECT_TRUE(found) << "Base Color が往復で消えた";
 }
 
-// spawn が capsule 中心 world 位置 + 向き quaternion として save→load を往復で保持される
-TEST(SaveLoadRoundTrip, SpawnPositionAndRotationRoundTrip)
+// プレイヤー実体の pose が save→load を往復で保持され、 実体が居れば合成は走らない
+TEST(SaveLoadRoundTrip, PlayerObjectRoundTrip)
 {
     LevelNs::LevelData src;
-    src.spawnX = 1.25f;
-    src.spawnY = 3.5f;
-    src.spawnZ = -2.75f;
-    src.spawnRotationY = 0.70710677f;
-    src.spawnRotationW = 0.70710677f;
+    src.objects.push_back(LevelNs::MakePlayerObject(
+        NS::Math::Vector3{1.25f, 3.5f, -2.75f}, NS::Math::Quaternion{0.0f, 0.70710677f, 0.0f, 0.70710677f}));
+    LevelNs::EnsureUniqueObjectIds(src);
 
     const std::string json = LevelNs::SerializeLevelToJson(src);
     LevelNs::LevelData dst;
-    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json));
+    LevelNs::LevelLoadReport report;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json, &report));
 
-    EXPECT_FLOAT_EQ(dst.spawnX, 1.25f);
-    EXPECT_FLOAT_EQ(dst.spawnY, 3.5f);
-    EXPECT_FLOAT_EQ(dst.spawnZ, -2.75f);
-    EXPECT_FLOAT_EQ(dst.spawnRotationY, 0.70710677f);
-    EXPECT_FLOAT_EQ(dst.spawnRotationW, 0.70710677f);
+    EXPECT_FALSE(report.playerObjectCreated);
+    ASSERT_EQ(dst.objects.size(), 1u);
+    const std::size_t playerIndex = LevelNs::FindPlayerObjectIndex(dst);
+    ASSERT_NE(playerIndex, LevelNs::kNoObjectIndex);
+    const LevelNs::ObjectInstance& loaded = dst.objects[playerIndex];
+    EXPECT_FLOAT_EQ(loaded.positionX, 1.25f);
+    EXPECT_FLOAT_EQ(loaded.positionY, 3.5f);
+    EXPECT_FLOAT_EQ(loaded.positionZ, -2.75f);
+    EXPECT_FLOAT_EQ(loaded.rotationY, 0.70710677f);
+    EXPECT_FLOAT_EQ(loaded.rotationW, 0.70710677f);
 }
 
-// v1 までのレベルは spawn がグリッドセル番号だった。 load で capsule 中心の world 位置 (床乗せ +0.41) へ移行する
+// v4 以前は spawn 単一値だった。 load でプレイヤー実体へ変換され、 pose と既定構成を引き継ぐ
+TEST(SaveLoadRoundTrip, LegacySpawnMigratesToPlayerObject)
+{
+    const std::string legacyJson = R"({
+        "formatVersion": 4,
+        "spawn": [1.25, 3.5, -2.75],
+        "spawnRotation": [0, 0.70710677, 0, 0.70710677],
+        "objects": [],
+        "materialPaths": []
+    })";
+
+    LevelNs::LevelData dst;
+    LevelNs::LevelLoadReport report;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, legacyJson, &report));
+
+    EXPECT_TRUE(report.playerObjectCreated);
+    ASSERT_EQ(dst.objects.size(), 1u);
+    const LevelNs::ObjectInstance& player = dst.objects[0];
+    EXPECT_TRUE(LevelNs::IsPlayerObject(player));
+    EXPECT_NE(player.objectId, 0u); // 合成後の一意化で永続 id も振られる
+    EXPECT_FLOAT_EQ(player.positionX, 1.25f);
+    EXPECT_FLOAT_EQ(player.positionY, 3.5f);
+    EXPECT_FLOAT_EQ(player.positionZ, -2.75f);
+    EXPECT_FLOAT_EQ(player.rotationY, 0.70710677f);
+    EXPECT_FLOAT_EQ(player.rotationW, 0.70710677f);
+    // 既定構成 4 点。 mesh 描画 + 移動 + 入力 + 接地影
+    EXPECT_NE(LevelNs::FindComponentData(player, "MeshRendererComponent"), nullptr);
+    EXPECT_NE(LevelNs::FindComponentData(player, "CharacterMovementComponent"), nullptr);
+    EXPECT_NE(LevelNs::FindComponentData(player, "PlayerInputComponent"), nullptr);
+    EXPECT_NE(LevelNs::FindComponentData(player, "ShadowComponent"), nullptr);
+}
+
+// v1 までの spawn はグリッドセル番号だった。 load で capsule 中心の world 位置 (床乗せ +0.41) へ移行する
 TEST(SaveLoadRoundTrip, LegacyV1SpawnMigratesToCenter)
 {
     const std::string legacyJson = R"({
@@ -369,10 +408,50 @@ TEST(SaveLoadRoundTrip, LegacyV1SpawnMigratesToCenter)
     LevelNs::LevelData dst;
     ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, legacyJson));
 
-    EXPECT_FLOAT_EQ(dst.spawnX, 3.0f);
-    EXPECT_FLOAT_EQ(dst.spawnY, 5.41f); // セル 5 に立つ = 中心 5 + 床乗せ 0.41
-    EXPECT_FLOAT_EQ(dst.spawnZ, -2.0f);
-    EXPECT_FLOAT_EQ(dst.spawnRotationW, 1.0f); // 旧データに向きは無く単位回転
+    const std::size_t playerIndex = LevelNs::FindPlayerObjectIndex(dst);
+    ASSERT_NE(playerIndex, LevelNs::kNoObjectIndex);
+    const LevelNs::ObjectInstance& player = dst.objects[playerIndex];
+    EXPECT_FLOAT_EQ(player.positionX, 3.0f);
+    EXPECT_FLOAT_EQ(player.positionY, 5.41f); // セル 5 に立つ = 中心 5 + 床乗せ 0.41
+    EXPECT_FLOAT_EQ(player.positionZ, -2.0f);
+    EXPECT_FLOAT_EQ(player.rotationW, 1.0f); // 旧データに向きは無く単位回転
+}
+
+// プレイヤー実体が居ない v5 手編集ファイルにも既定位置で 1 体を合成し、「必ず 1 体」を保証する
+TEST(SaveLoadRoundTrip, MissingPlayerSynthesizedAtDefault)
+{
+    const std::string json = R"({
+        "formatVersion": 5,
+        "objects": [],
+        "materialPaths": []
+    })";
+
+    LevelNs::LevelData dst;
+    LevelNs::LevelLoadReport report;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json, &report));
+
+    EXPECT_TRUE(report.playerObjectCreated);
+    const std::size_t playerIndex = LevelNs::FindPlayerObjectIndex(dst);
+    ASSERT_NE(playerIndex, LevelNs::kNoObjectIndex);
+    EXPECT_FLOAT_EQ(dst.objects[playerIndex].positionY, LevelNs::kDefaultPlayerSpawnY);
+}
+
+// プレイヤーが複数居ても先頭を正とする。 手編集の重複でも読込は成立する
+TEST(SaveLoadRoundTrip, MultiplePlayersFirstWins)
+{
+    LevelNs::LevelData src;
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{1.0f, 0.0f, 0.0f}, NS::Math::Quaternion{}));
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{9.0f, 0.0f, 0.0f}, NS::Math::Quaternion{}));
+    LevelNs::EnsureUniqueObjectIds(src);
+
+    const std::string json = LevelNs::SerializeLevelToJson(src);
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json));
+
+    ASSERT_EQ(dst.objects.size(), 2u);
+    const std::size_t playerIndex = LevelNs::FindPlayerObjectIndex(dst);
+    ASSERT_EQ(playerIndex, 0u);
+    EXPECT_FLOAT_EQ(dst.objects[playerIndex].positionX, 1.0f);
 }
 
 // v3 までの据え置きカメラは別リストだった。 load で PlacedVirtualCamera 持ちの配置物へ変換される
@@ -396,7 +475,8 @@ TEST(SaveLoadRoundTrip, LegacyCameraVolumesMigrateToObjects)
     LevelNs::LevelData dst;
     ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, legacyJson));
 
-    ASSERT_EQ(dst.objects.size(), 1u);
+    // 旧形式なのでプレイヤー実体も合成され、 camera + player の 2 件になる
+    ASSERT_EQ(dst.objects.size(), 2u);
     const LevelNs::ObjectInstance& camera = dst.objects[0];
     EXPECT_NE(camera.objectId, 0u); // 移行後の一意化で永続 id も振られる
     EXPECT_FLOAT_EQ(camera.positionX, 8.0f);

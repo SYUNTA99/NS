@@ -85,7 +85,7 @@ namespace NS::Editor
         /// Object ツールモード中など、 設置 / 削除 / 回転 / undo の grid 編集入力を一時的に無視させる
         void SetInputSuppressed(bool suppressed) noexcept { m_inputSuppressed = suppressed; }
 
-        /// fixed step での Tick。 cursor 更新 + 入力 → Place / Delete / Rotate / Spawn / Undo / Redo を発火
+        /// fixed step での Tick。 cursor 更新 + 入力 → Place / Delete / Rotate / Undo / Redo を発火
         void Tick() noexcept;
 
         /// variable frame で cursor preview の `DebugDraw::AABB` を 1 frame 分蓄積する
