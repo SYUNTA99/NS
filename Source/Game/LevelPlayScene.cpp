@@ -8,6 +8,7 @@
 #include "Framework/Scene/CameraSubsystem.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/CameraComponent.h"
+#include "Framework/Scene/EnvironmentSubsystem.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/ObjectRefSubsystem.h"
 
@@ -20,12 +21,8 @@
 #include "Framework/Graphics/DebugDraw.h"
 #include "Framework/Graphics/InstanceBatcher.h"
 #include "Framework/Graphics/Material.h"
-#include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Graphics/Shader.h"
-#include "Framework/Graphics/Skybox.h"
-#include "Framework/Graphics/StaticMesh.h"
-#include "Framework/Graphics/Texture.h"
 #include "Framework/Graphics/TextureArray.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
@@ -116,11 +113,6 @@ void LevelPlayScene::OnStart()
 
     m_world.CreateBatcher();
 
-    // skybox は描画装置だけ作る。 cubemap のパスはテーマが持ち、 OnRenderScene の差分再読込が初回から入れる
-    m_skybox = NS::Graphics::Skybox::Create();
-    if (!m_skybox->IsValid())
-        NS_LOG_ERROR(::NS::Core::LogCat::Game, "LevelPlayScene: Skybox 構築失敗 (Device 不在?)");
-
     // プレイヤーの構成と値の真実はレベルの player object。 world が他の配置物と同じ一本道で組む
     // 実カメラ + Brain は CameraSubsystem 所有で、 プレイヤー / 追従カメラは world が配置物として組む
     LoadInitialLevel();
@@ -190,37 +182,26 @@ void LevelPlayScene::UpdateDisplayBlocks()
     }
 }
 
-NS::Graphics::RenderSettingsOverride LevelPlayScene::BuildSceneOverride()
-{
-    // 範囲外 themeId は NS::Game::Theme::Get 側で Grass にフォールバックされる
-    const ThemeData& theme = Get(m_level.themeId);
-
-    NS::Graphics::RenderSettingsOverride over{};
-    if (theme.lightDirection.LengthSquared() > 1e-6f)
-    {
-        over.lightDir = theme.lightDirection;
-    }
-    else
-    {
-        // zero ベクトルは normalize で拡散光が無言で消えるため override せず既定 lightDir に落とす
-        static bool s_warnedZeroLightDir = false;
-        if (!s_warnedZeroLightDir)
-        {
-            NS_LOG_WARN(::NS::Core::LogCat::Game,
-                        "LevelPlayScene: テーマの lightDirection が zero のため既定 lightDir で描画する");
-            s_warnedZeroLightDir = true;
-        }
-    }
-    over.lightColor = theme.lightColor;
-    over.ambientColor = theme.ambientColor;
-    return over;
-}
-
 void LevelPlayScene::OnRenderScene()
 {
     auto* app = NS::App::Application::Get();
     if (app == nullptr)
         return;
+
+    // テーマ swap は同一 frame 内で skybox / block / lighting に同じ ThemeData を反映させる必要がある
+    // 範囲外 themeId は NS::Game::Theme::Get 側で Grass にフォールバックされる
+    // 環境設定へ毎フレーム写すだけで、 上書き宣言の構築と skybox の差分再読込は EnvironmentSubsystem が担う
+    auto* environment = GetSubsystem<NS::Scene::EnvironmentSubsystem>();
+    if (environment != nullptr)
+    {
+        const ThemeData& theme = Get(m_level.themeId);
+        NS::Scene::EnvironmentSettings settings{};
+        settings.lightDirection = theme.lightDirection;
+        settings.lightColor = theme.lightColor;
+        settings.ambientColor = theme.ambientColor;
+        settings.skyboxCubemapPath = theme.skyboxCubemapPath;
+        environment->SetSettings(settings);
+    }
 
     NS::Scene::RenderContext ctx{};
     ctx.renderer = &app->Renderer();
@@ -240,15 +221,10 @@ void LevelPlayScene::OnRenderScene()
     // 半透明 back-to-front ソート用に実カメラの world 座標を渡す。 view 行列の逆変換の平行移動成分
     ctx.cameraPosition = mainCamera->Camera().View().Invert().Translation();
 
-    // 基底が BuildSceneOverride() を Resolve するので、 theme override が scene 解決値として ctx に載る
+    // 基底が BuildSceneOverride() を Resolve するので、 環境設定の上書きが scene 解決値として ctx に載る
     // mesh 経路は ctx 経由で pull、 block 経路はこの解決値を FrameCB に詰めて同一値を流す
+    // editor の由来表示が読む解決値の控えは基底が EnvironmentSubsystem へ格納する
     ctx.resolvedSettings = ResolveSceneSettings(ctx.renderer->Settings());
-    // editor の RenderSettings パネルが friend で読むため解決値を退避する
-    m_lastResolvedSettings = ctx.resolvedSettings;
-
-    // テーマ swap は同一 frame 内で skybox / block / lighting に同じ ThemeData を反映させる必要がある
-    // 範囲外 themeId は NS::Game::Theme::Get 側で Grass にフォールバックされる
-    const ThemeData& theme = Get(m_level.themeId);
 
     // Block 描画は InstanceBatcher bucket 経由に統一。 MeshRendererComponent が非アクティブなので旧 per-block
     // 経路は通らない
@@ -294,37 +270,9 @@ void LevelPlayScene::OnRenderScene()
     // 不透明 IRenderable。各 Draw が自分の Pipeline を set する。 基底が bucket 分類して登録順に呼ぶ
     DrawOpaque(ctx);
 
-    // Skybox は不透明描画後・半透明前。 view の translation 行 _41/_42/_43 を 0 化して camera 中心に固定する
-    if (m_skybox && m_skybox->IsValid())
-    {
-        // 毎フレーム LoadCubemap すると I/O が常時走るため、 前回パスと差分があるときだけ再ロードする
-        if (!theme.skyboxCubemapPath.empty() && theme.skyboxCubemapPath != m_loadedSkyboxPath)
-        {
-            const auto exeDir = NS::Core::FileSystem::ContentRoot();
-            const auto absPath =
-                theme.skyboxCubemapPath.is_absolute() ? theme.skyboxCubemapPath : exeDir / theme.skyboxCubemapPath;
-            if (m_skybox->LoadCubemap(absPath))
-            {
-                m_loadedSkyboxPath = theme.skyboxCubemapPath;
-            }
-            else
-            {
-                NS_LOG_WARN(::NS::Core::LogCat::Game,
-                            "LevelPlayScene: テーマ '{}' の cubemap 読込失敗 ({}), 既存を維持",
-                            theme.displayName,
-                            absPath.string());
-                // 失敗時は m_loadedSkyboxPath は更新しないので次フレームで再試行可能
-            }
-        }
-
-        const auto& cam = mainCamera->Camera();
-        NS::Math::Matrix viewNoTranslate = cam.View();
-        viewNoTranslate._41 = 0.0f;
-        viewNoTranslate._42 = 0.0f;
-        viewNoTranslate._43 = 0.0f;
-        const NS::Math::Matrix viewProjNoTranslate = viewNoTranslate * cam.Projection();
-        m_skybox->Render(*ctx.renderer, viewProjNoTranslate);
-    }
+    // Skybox は不透明描画後・半透明前。 cubemap の差分再読込と camera 中心固定は EnvironmentSubsystem が行う
+    if (environment != nullptr)
+        environment->DrawSky(*ctx.renderer, mainCamera->Camera());
 
     // 半透明 IRenderable は不透明 + skybox の後。カメラから遠い順に各 Draw が alpha/additive Pipeline を set する
     DrawTransparent(ctx);
@@ -407,11 +355,10 @@ void LevelPlayScene::OnShutdown()
     // 配置物はプレイヤー込みで逆順の OnEndPlay ごと LevelWorld が畳む。 実カメラ + Brain は CameraSubsystem が畳む
     m_world.Clear();
 
-    // Skybox / InstanceBatcher は Renderer の DeviceContext を ComPtr で握るため、 Application の Renderer より
+    // InstanceBatcher は Renderer の DeviceContext を ComPtr で握るため、 Application の Renderer より
     // 先に破棄する。 組み込み / leaf / 共有 material / block TextureArray / skinned model は AssetManager が Clear
-    // で解放する
+    // で解放し、 skybox 装置は EnvironmentSubsystem の Deinitialize が畳む
     m_world.ResetBatcher();
-    m_skybox.reset();
 }
 
 void LevelPlayScene::RebuildWorld()

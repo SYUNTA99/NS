@@ -25,6 +25,7 @@
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
+#include "Framework/Scene/EnvironmentSubsystem.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 #include "Framework/UI/ImGuiContext.h"
@@ -304,9 +305,12 @@ void LevelEditorController::Render()
         return;
 
     // Debug provenance パネルの入力を毎フレーム退避する。出所は has_value の突き合わせで逆算するので
-    // Resolve のホットパスに追跡を入れず、 scene の解決値と代表 object override をそのまま保持する
-    m_debugResolvedSettings = m_scene->LastResolvedSettings();
-    m_debugSceneOverride = m_scene->BuildSceneOverride();
+    // Resolve のホットパスに追跡を入れず、 環境 service の解決値と代表 object override をそのまま保持する
+    if (auto* environment = m_scene->GetSubsystem<NS::Scene::EnvironmentSubsystem>())
+    {
+        m_debugResolvedSettings = environment->LastResolved();
+        m_debugSceneOverride = environment->BuildOverride();
+    }
     if (m_scene->PlayerRef())
         m_debugPlayerObjectOverride = m_scene->PlayerRef()->MeshComp().RenderOverride();
 

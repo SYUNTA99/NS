@@ -16,13 +16,7 @@
 #include "Game/Level/LevelWorld.h"
 #include "Game/Level/PlayDirector.h"
 
-#include <filesystem>
 #include <memory>
-
-namespace NS::Graphics
-{
-    class Skybox;
-} // namespace NS::Graphics
 
 namespace NS::Scene
 {
@@ -64,16 +58,6 @@ public:
     /// 実体プレイヤー。 world が player object から組む。 起動前と player object の無い level では nullptr
     [[nodiscard]] Player* PlayerRef() noexcept { return m_world.PlayerView(); }
 
-    /// 直近 OnRenderScene で解決した scene 段の描画設定
-    [[nodiscard]] const NS::Graphics::RenderSettings& LastResolvedSettings() const noexcept
-    {
-        return m_lastResolvedSettings;
-    }
-
-    /// テーマの lighting をシーン単位の上書きとして宣言する。push は書かず override を返すだけ
-    /// 描画設定の由来表示が解決値と突き合わせて読むため公開する
-    NS::Graphics::RenderSettingsOverride BuildSceneOverride() override;
-
     /// runtime world と衝突世界を LevelData から組み直す。 レベル編集後とプレイ突入時に呼ぶ
     /// 据え置きカメラの Brain 登録もここで面倒を見る。 Brain 構築前の OnStart 序盤は登録しない
     void RebuildWorld();
@@ -93,8 +77,7 @@ private:
 
     // 組み込み mesh / 共有 material / block の TextureArray は Application 所有の AssetManager が持つ
     // scene は使う箇所で都度引く。 メンバとして控えず単一所有元は AssetManager のみ
-
-    std::unique_ptr<NS::Graphics::Skybox> m_skybox;
+    // skybox 装置と scene 段解決値の控えは EnvironmentSubsystem が持ち、 scene は毎フレーム設定を書くだけ
 
     // LevelData から組んだ runtime world。 配置物 / instanced 描画キャッシュ / hazard view / コヨーテ縁を所有する
     // 実カメラ + Brain は CameraSubsystem が、 プレイヤー / 追従 / 据え置きカメラは world が配置物として所有する
@@ -107,10 +90,4 @@ private:
 
     // コヨーテ debug 描画 すなわち 縁の紫線 / カプセル / コヨーテジャンプの赤線 の表示トグル。 F2 で切替える
     bool m_debugCoyoteDraw = true;
-
-    // 直近 OnRenderScene で解決した scene 段設定。 editor の RenderSettings パネルが LastResolvedSettings() で読む
-    NS::Graphics::RenderSettings m_lastResolvedSettings{};
-
-    /// 差分フレームのみ cubemap を再ロードするため前回パスを保持する
-    std::filesystem::path m_loadedSkyboxPath{};
 };
