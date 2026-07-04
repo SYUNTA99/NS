@@ -1,7 +1,9 @@
 #include "Game/Game.h"
 
 #include "Framework/App/Application.h"
+#include "Framework/Core/Filesystem.h"
 #include "Game/LevelPlayScene.h"
+#include "Game/Theme/ThemeRegistry.h"
 
 #include <memory>
 
@@ -20,6 +22,9 @@ Game::~Game()
 
 void Game::OnAttach()
 {
+    // テーマは scene 構築前に読む。 読めない分は組み込み既定値のままなので起動は止まらない
+    NS::Game::Theme::LoadThemesFromDirectory(NS::Core::FileSystem::ContentRoot() / "Assets" / "Themes");
+
     // scene は出荷 / 開発とも LevelPlayScene の 1 種類だけ。 編集機能は overlay の EditorLayer が乗せる
     m_scenes.LoadScene(std::make_unique<LevelPlayScene>());
 }

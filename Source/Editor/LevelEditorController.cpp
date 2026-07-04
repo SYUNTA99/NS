@@ -31,6 +31,7 @@
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Level/LevelData.h"
+#include "Game/Theme/ThemeRegistry.h"
 
 #include <cstring>
 #include <memory>
@@ -1106,4 +1107,12 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
     mesh->SetMaterial(loaded.material);
     mesh->SetBaseColor(loaded.baseColor);
     return true;
+}
+
+void LevelEditorController::ReloadThemes()
+{
+    NS::Game::Theme::LoadThemesFromDirectory(NS::Core::FileSystem::ContentRoot() / "Assets" / "Themes");
+    // lighting / skybox は毎フレームの設定写しで勝手に追従する。 block の slice は
+    // RebuildWorld の焼き直しでしか変わらないため、 ここで組み直しまで束ねる
+    m_scene->RebuildWorld();
 }

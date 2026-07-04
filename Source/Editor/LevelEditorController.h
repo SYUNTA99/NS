@@ -157,6 +157,10 @@ public:
     /// ギズモ選択中の自由オブジェクトに matPath の .mat を適用する。 適用できたら true
     bool ApplyMaterialToSelected(const std::filesystem::path& matPath);
 
+    /// `.theme` を読み直して world を組み直す。 lighting / skybox は次フレームの設定写しで、
+    /// block の slice は焼き直しで反映されるため、 このボタン 1 回で全部最新になる
+    void ReloadThemes();
+
     /// 最後に scene が解決した scene 段設定。 RenderSettings パネルの表示元
     [[nodiscard]] const NS::Graphics::RenderSettings& DebugResolvedSettings() const noexcept
     {

@@ -278,6 +278,10 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorController& editor) noexc
                     static_cast<double>(resolved.clearColor.A()),
                     provenance(sceneOver.clearColor.has_value(), objOver.clearColor.has_value()));
         ImGui::TextDisabled("clearColor / vsync のシーン上書きは非対応 (lighting 3 種のみ階層対応)");
+        ImGui::Separator();
+        // .theme を編集 → このボタンで再コンパイル無しに lighting / skybox / block slice を反映する
+        if (ImGui::Button("テーマ再読込 (.theme)"))
+            editor.ReloadThemes();
     }
     ImGui::End();
 #else
