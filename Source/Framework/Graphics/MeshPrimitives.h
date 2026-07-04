@@ -31,7 +31,4 @@ namespace NS::Graphics
 
     /// +Z 上昇スロープ付き楔形 5 面体。angleDegrees は傾斜角、extents.y は最大高さ上限。16 vertex + 24 index
     [[nodiscard]] MeshGeometry MakeWedge(float angleDegrees, const NS::Math::Vector3& extents);
-
-    /// 円柱メッシュ。中心原点・Y軸方向。top/bottom cap + side strip、per-segment flat shading
-    [[nodiscard]] MeshGeometry MakeCylinder(float radius, float height, int segments = 12);
 } // namespace NS::Graphics

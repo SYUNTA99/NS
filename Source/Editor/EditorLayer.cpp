@@ -2,6 +2,7 @@
 
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
+#include "Editor/PlayerTuningIO.h"
 #include "Framework/App/Application.h"
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
@@ -17,11 +18,15 @@
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Game.h"
+#include "Game/Level/LevelData.h"
+#include "Game/Theme/ThemeId.h"
+#include "Game/Theme/ThemeRegistry.h"
 
 #include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <string>
+#include <vector>
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -56,6 +61,10 @@ void EditorLayer::OnAttach()
 
     m_controller = std::make_unique<LevelEditorController>(scene);
     m_controller->Setup(m_imgui.get());
+
+    // 終了要求を握って保存確認を挟む。 出荷には EditorLayer が無いのでリリースは確認なしで終了する
+    app->SetQuitGuard([this]() { return OnQuitRequested(); });
+
     NS_LOG_INFO(::NS::Core::LogCat::App, "EditorLayer attached (Debug/Dev/GameDebug only)");
 }
 
@@ -69,6 +78,7 @@ void EditorLayer::OnDetach()
     // ImGui を畳む前に hook を外し、 WndProc から無効になった context を踏まないようにする
     if (auto* app = NS::App::Application::Get())
     {
+        app->SetQuitGuard(nullptr);
         app->Window().SetMessageHook(nullptr);
         app->Input().SetUiCapture(false, false);
     }
@@ -100,6 +110,9 @@ void EditorLayer::OnRender()
 
     // ギズモ / palette / 編集ビジュアルといった編集用の上乗せ描画と debug provenance 退避
     editor.Render();
+
+    // 終了確認は UI 非表示やプレイ中でも必ず出すため m_uiVisible のゲート外で描く
+    RenderQuitModal(editor);
 
     // プレイ中は F5 でエディタ UI を丸ごと隠せる。 隠している間も 3D 描画とゲーム進行はそのまま走る
     if (m_uiVisible)
@@ -268,6 +281,56 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorController& editor) noexc
                     static_cast<double>(resolved.clearColor.A()),
                     provenance(sceneOver.clearColor.has_value(), objOver.clearColor.has_value()));
         ImGui::TextDisabled("clearColor / vsync のシーン上書きは非対応 (lighting 3 種のみ階層対応)");
+        ImGui::Separator();
+
+        // シーンが所有する環境の直接編集。 lighting は毎フレームの設定写しで即反映されるので組み直し不要
+        NS::Game::Level::LevelEnvironment& env = editor.Level().environment;
+        ImGui::TextUnformatted("環境 (このシーンが所有)");
+        ImGui::DragFloat3("lightDir##env", &env.lightDirection.x, 0.01f, -1.0f, 1.0f);
+        ImGui::DragFloat3("lightColor##env", &env.lightColor.x, 0.01f, 0.0f, 4.0f);
+        ImGui::DragFloat3("ambient##env", &env.ambientColor.x, 0.01f, 0.0f, 2.0f);
+        ImGui::Text("skybox: %s", env.skyboxCubemapPath.empty() ? "(なし)" : env.skyboxCubemapPath.c_str());
+
+        // slice 帯だけは焼き直しが要るので controller 経由で変える
+        int baseSlice = static_cast<int>(env.blockTextureBaseSlice);
+        if (ImGui::InputInt("blockSlice##env", &baseSlice))
+        {
+            if (baseSlice < 0)
+                baseSlice = 0;
+            editor.SetEnvironmentBlockSlice(static_cast<std::uint16_t>(baseSlice));
+        }
+
+        ImGui::Separator();
+
+        // 雛形の適用。 選んだテーマの視覚値を environment へ写し込み slice 帯を焼き直す
+        constexpr NS::Game::Theme::ThemeId kThemeIds[] = {
+            NS::Game::Theme::ThemeId::Grass,
+            NS::Game::Theme::ThemeId::Cave,
+            NS::Game::Theme::ThemeId::Snow,
+            NS::Game::Theme::ThemeId::Lava,
+            NS::Game::Theme::ThemeId::Sky,
+        };
+        static int s_themeIndex = 0;
+        if (ImGui::BeginCombo("雛形##theme", NS::Game::Theme::Get(kThemeIds[s_themeIndex]).displayName.c_str()))
+        {
+            for (int i = 0; i < static_cast<int>(NS::Game::Theme::ThemeId::Count); ++i)
+            {
+                const bool selected = (i == s_themeIndex);
+                if (ImGui::Selectable(NS::Game::Theme::Get(kThemeIds[i]).displayName.c_str(), selected))
+                    s_themeIndex = i;
+                if (selected)
+                    ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("適用##theme"))
+            editor.ApplyTheme(kThemeIds[s_themeIndex]);
+
+        ImGui::Separator();
+        // .asset を編集したら雛形を読み直す。 シーンの絵は適用し直すまで変わらない
+        if (ImGui::Button("雛形再読込 (.asset)"))
+            editor.ReloadThemes();
     }
     ImGui::End();
 #else
@@ -303,9 +366,8 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorController& editor) noexcept
 #if NS_EDITOR_ENABLED
     if (ImGui::Begin("Hierarchy"))
     {
-        // Player / Camera は配置物ではないが、 選んで Inspector に出せるよう先頭に常設する
-        if (ImGui::Selectable("Player", editor.IsPlayerSelected()))
-            editor.SelectPlayer();
+        // 編集カメラは配置物ではないが、 選んで Inspector に出せるよう先頭に常設する
+        // プレイヤーは objects の実体になったので下の一覧に "Player" として並ぶ
         if (ImGui::Selectable("Camera", editor.IsCameraSelected()))
             editor.SelectCamera();
         ImGui::Separator();
@@ -336,27 +398,10 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorController& editor) noexcept
 
         if (ImGui::SmallButton("+ Add Object"))
             editor.AddObject();
-
-        ImGui::Separator();
-        const auto& cameras = editor.Level().cameraVolumes;
-        const std::size_t selectedCamera = editor.SelectedCameraIndex();
-        ImGui::Text("%zu area cameras", cameras.size());
+        ImGui::SameLine();
+        // 据え置きカメラも通常の配置物。 上の objects 一覧に "Camera" として並び、 選択・変形・削除も共通
         if (ImGui::SmallButton("+ Add Camera"))
-            editor.AddCameraVolume();
-
-        for (std::size_t i = 0; i < cameras.size(); ++i)
-        {
-            char label[64];
-            std::snprintf(label, sizeof(label), "[cam %zu] priority %d", i, cameras[i].priority);
-
-            ImGui::PushID(static_cast<int>(i) + 100000); // object 添字と ID 衝突しないようずらす
-            if (ImGui::Selectable(label, i == selectedCamera))
-                editor.SelectCameraByIndex(i);
-            ImGui::PopID();
-        }
-
-        if (cameras.empty())
-            ImGui::TextDisabled("(no area cameras)");
+            editor.AddCameraObject();
     }
     ImGui::End();
 #else
@@ -369,19 +414,20 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
 #if NS_EDITOR_ENABLED
     if (ImGui::Begin("Inspector"))
     {
-        if (editor.IsPlayerSelected())
+        // ObjectRef フィールドの参照先候補。 Hierarchy と同じ並びと表示名で全配置物を出す
+        std::vector<NS::Editor::ObjectRefOption> refOptions;
+        refOptions.reserve(editor.Level().objects.size());
+        for (std::size_t i = 0; i < editor.Level().objects.size(); ++i)
         {
-            ImGui::Text("Player");
-            ImGui::Separator();
-            // Player の Component を反射で一覧編集する。 操作感はライブで効き、 値は保存されない
-            // good な値が出たらコードの既定へ焼き戻す運用
-            if (auto* player = editor.PlayerObject())
-                (void)NS::Editor::DrawObjectComponents(*player);
-            else
-                ImGui::TextDisabled("(no player)");
-
-            ImGui::End();
-            return;
+            const NS::Game::Level::ObjectInstance& candidate = editor.Level().objects[i];
+            char label[96];
+            std::snprintf(label,
+                          sizeof(label),
+                          "[%zu] %s (id %u)",
+                          i,
+                          NS::Game::Blocks::ObjectDisplayName(candidate),
+                          candidate.objectId);
+            refOptions.push_back(NS::Editor::ObjectRefOption{candidate.objectId, label});
         }
 
         if (editor.IsCameraSelected())
@@ -395,29 +441,9 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             if (brain == nullptr && vcam == nullptr)
                 ImGui::TextDisabled("(no camera)");
             if (brain != nullptr)
-                (void)NS::Editor::DrawObjectComponents(*brain);
+                (void)NS::Editor::DrawObjectComponents(*brain, refOptions);
             if (vcam != nullptr && vcam != brain)
-                (void)NS::Editor::DrawObjectComponents(*vcam);
-
-            ImGui::End();
-            return;
-        }
-
-        if (editor.HasCameraSelection())
-        {
-            ImGui::Text("[cam %zu] area camera", editor.SelectedCameraIndex());
-            ImGui::Separator();
-
-            // PlacedVirtualCamera を反射フィールドから描き、 編集されたら CameraVolume へ書き戻す
-            if (auto* cam = editor.SelectedAreaCamera())
-            {
-                if (NS::Editor::DrawReflectedComponent(*cam))
-                    editor.SyncSelectedCameraVolumeFromComponent();
-            }
-
-            ImGui::Separator();
-            if (ImGui::Button("Delete Camera"))
-                editor.DeleteSelectedCamera();
+                (void)NS::Editor::DrawObjectComponents(*vcam, refOptions);
 
             ImGui::End();
             return;
@@ -501,12 +527,12 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             ImGui::TextDisabled("Material: default");
 
         // 選択オブジェクトの runtime Component を反射で一覧編集する
-        // collider は編集後に components データへ書き戻して保存・rebuild に乗せる。 色など他のフィールドはライブのみ
+        // 編集後に全コンポーネントを components データへ書き戻して保存・rebuild に乗せる
         if (auto* go = editor.SelectedObjectGameObject())
         {
             ImGui::Separator();
-            if (NS::Editor::DrawObjectComponents(*go))
-                editor.SyncSelectedObjectColliderFromComponent();
+            if (NS::Editor::DrawObjectComponents(*go, refOptions))
+                editor.SyncSelectedObjectComponentsFromComponent();
         }
 
         // 自由オブジェクトはコンポーネント構成をデータとして編集できる
@@ -522,6 +548,9 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             {
                 for (const std::string& name : NS::Scene::RegisteredNames())
                 {
+                    // プレイヤーの印である入力 component は手で足させない。 プレイヤーは常に 1 体で system が管理する
+                    if (name == "PlayerInputComponent")
+                        continue;
                     if (ImGui::Selectable(name.c_str()))
                         editor.AddComponentToSelected(name);
                 }
@@ -542,7 +571,8 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
                 if (ImGui::SmallButton("Copy"))
                     editor.CopyComponentToClipboard(k);
                 // 最後の 1 個は消すと空構成のゴーストになるので Delete を出さない
-                if (obj.components.size() > 1)
+                // プレイヤーの印である入力 component も出現位置ごと壊れるため消させない
+                if (obj.components.size() > 1 && typeName != "PlayerInputComponent")
                 {
                     ImGui::SameLine();
                     if (ImGui::SmallButton("Delete"))
@@ -560,7 +590,15 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             }
 
             ImGui::Separator();
-            if (ImGui::Button("Duplicate Object"))
+            if (editor.SelectedIsPlayerObject())
+            {
+                // プレイヤーは必ず 1 体なので複製の代わりに、 手触りの現在値を新規レベル用の既定テンプレートへ
+                // 書き出すボタンを出す。 レベル保存とは別口
+                if (ImGui::Button("既定テンプレートへ保存"))
+                    if (auto* player = editor.SelectedObjectGameObject())
+                        (void)NS::Editor::SavePlayerTuning(*player);
+            }
+            else if (ImGui::Button("Duplicate Object"))
                 editor.DuplicateSelectedObject();
         }
     }
@@ -669,6 +707,65 @@ void EditorLayer::RenderPauseModal(LevelEditorController& editor) noexcept
             editor.Play().paused = false;
         if (ImGui::Button("Quit to Edit", ImVec2(160.0f, 0.0f)))
             editor.EnterEdit();
+    }
+    ImGui::End();
+#else
+    (void)editor;
+#endif
+}
+
+bool EditorLayer::OnQuitRequested() noexcept
+{
+    if (m_quitConfirmed)
+        return true;
+    // まだ確認していない終了要求は modal を開いて握りつぶす。 取り下げを Application に返す
+    m_quitModalOpen = true;
+    m_quitSaveFailed = false;
+    return false;
+}
+
+void EditorLayer::RenderQuitModal(LevelEditorController& editor) noexcept
+{
+#if NS_EDITOR_ENABLED
+    if (!m_quitModalOpen)
+        return;
+    const auto vp = ImGui::GetMainViewport();
+    if (vp != nullptr)
+    {
+        ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x * 0.5f, vp->WorkPos.y + vp->WorkSize.y * 0.5f),
+                                ImGuiCond_Always,
+                                ImVec2(0.5f, 0.5f));
+    }
+    constexpr ImGuiWindowFlags kFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                                        ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize;
+    if (ImGui::Begin("終了の確認", nullptr, kFlags))
+    {
+        ImGui::TextUnformatted("変更を保存して終了しますか");
+        ImGui::Separator();
+        if (ImGui::Button("保存して終了", ImVec2(180.0f, 0.0f)))
+        {
+            // 保存成功でのみ終了する。 失敗時は modal を残しデータ消失を防ぐ
+            if (editor.Editor().SaveForQuit())
+            {
+                m_quitConfirmed = true;
+                m_quitModalOpen = false;
+                NS::App::Application::Quit();
+            }
+            else
+            {
+                m_quitSaveFailed = true;
+            }
+        }
+        if (ImGui::Button("保存せず終了", ImVec2(180.0f, 0.0f)))
+        {
+            m_quitConfirmed = true;
+            m_quitModalOpen = false;
+            NS::App::Application::Quit();
+        }
+        if (ImGui::Button("キャンセル", ImVec2(180.0f, 0.0f)))
+            m_quitModalOpen = false;
+        if (m_quitSaveFailed)
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "保存に失敗しました");
     }
     ImGui::End();
 #else

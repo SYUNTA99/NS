@@ -1,17 +1,32 @@
 #include "Framework/Scene/SceneBase.h"
 
 #include "Framework/Graphics/RenderSettings.h"
+#include "Framework/Scene/EnvironmentSubsystem.h"
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/RenderContext.h"
+#include "Framework/Scene/SubsystemRegistry.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace NS::Scene
 {
 
+    NS::Graphics::RenderSettingsOverride SceneBase::BuildSceneOverride()
+    {
+        // 環境 service が居ればその設定を scene 上書きに使う。派生がシーンごとに同じ変換を書かずに済む
+        if (auto* environment = GetSubsystem<EnvironmentSubsystem>())
+            return environment->BuildOverride();
+        return {};
+    }
+
     NS::Graphics::RenderSettings SceneBase::ResolveSceneSettings(const NS::Graphics::RenderSettings& projectDefaults)
     {
-        return NS::Graphics::Resolve(projectDefaults, BuildSceneOverride());
+        const NS::Graphics::RenderSettings resolved = NS::Graphics::Resolve(projectDefaults, BuildSceneOverride());
+        // editor の由来表示が読む控えをここで一元化する。service 不在なら控えも持たない
+        if (auto* environment = GetSubsystem<EnvironmentSubsystem>())
+            environment->SetLastResolved(resolved);
+        return resolved;
     }
 
     void SceneBase::OnRender()
@@ -71,6 +86,44 @@ namespace NS::Scene
 
         for (IRenderable* r : transparent)
             r->Draw(context);
+    }
+
+    void SceneBase::DrawOverlay(const RenderContext& context)
+    {
+        // 全画面の重ね物なので距離ソートは意味を持たず、登録順で安定させる
+        for (IRenderable* r : m_renderables)
+        {
+            if (r != nullptr && r->Bucket() == RenderBucket::Overlay)
+                r->Draw(context);
+        }
+    }
+
+    void SceneBase::CreateSceneSubsystems()
+    {
+        for (const SubsystemEntry& entry : SubsystemRegistry::Get().Entries())
+        {
+            if (entry.tier != SubsystemTier::Scene)
+                continue;
+            if (entry.shouldCreate != nullptr && !entry.shouldCreate(*this))
+                continue;
+            if (m_subsystems.find(entry.type) != m_subsystems.end())
+                continue;
+            std::unique_ptr<SceneSubsystem> sub = entry.factory();
+            sub->Initialize(*this);
+            m_subsystems.emplace(entry.type, std::move(sub));
+        }
+    }
+
+    void SceneBase::DeinitSceneSubsystems()
+    {
+        // 解放フックだけ回し、実体の破棄は scene と共に基底 collection に委ねる
+        // 借用元 (CMC 等) が生存中に service を消さず、派生メンバより後に service が死ぬ順序を保つ
+        for (auto& [type, sub] : m_subsystems)
+        {
+            (void)type;
+            if (sub)
+                sub->Deinitialize();
+        }
     }
 
 } // namespace NS::Scene

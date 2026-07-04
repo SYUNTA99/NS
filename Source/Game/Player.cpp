@@ -1,13 +1,12 @@
 #include "Game/Player.h"
-#include "Framework/Graphics/StaticMesh.h"
 
-Player::Player(NS::Graphics::StaticMesh* mesh, NS::Graphics::Material* material, NS::Platform::Input* input) noexcept
+Player::Player() noexcept
 {
-    // priority 順は m_input が 0 で m_movement が 200。 m_input が m_movement を参照するため movement を先に生成する
-    m_mesh = AddComponent<NS::Scene::MeshRendererComponent>(mesh, material);
-    m_movement = AddComponent<NS::Scene::CharacterMovementComponent>();
-    m_input = AddComponent<NS::Scene::PlayerInputComponent>(m_movement);
-    m_input->SetInput(input);
-    // 接地シャドウ。mesh / material / 衝突 world は LevelPlayScene が後から注入する
-    m_shadow = AddComponent<NS::Scene::ShadowComponent>();
+    // コード既定の構成。値と追加分はファクトリが player object のデータから写す
+    // input は OnStart で兄弟の movement を解決するため、参照目的の生成順の縛りは無い
+    AddComponent<NS::Scene::MeshRendererComponent>(nullptr, nullptr);
+    AddComponent<NS::Scene::CharacterMovementComponent>();
+    AddComponent<NS::Scene::PlayerInputComponent>();
+    // 接地シャドウ。mesh / material / 衝突 world は world の組み直しとファクトリが注入する
+    AddComponent<NS::Scene::ShadowComponent>();
 }

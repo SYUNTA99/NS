@@ -39,7 +39,8 @@ namespace NS::Editor
         LevelFileBrowser(LevelFileBrowser&&) = delete;
         LevelFileBrowser& operator=(LevelFileBrowser&&) = delete;
 
-        void OpenSaveModal() noexcept;
+        /// save modal を開く。 initialName が非空ならその名前を input に流し込む
+        void OpenSaveModal(std::string_view initialName = {}) noexcept;
         void OpenLoadModal() noexcept;
 
         /// EditorLayer::OnRender 内で呼ぶ。 active modal を 1 フレーム描画し、
@@ -48,9 +49,6 @@ namespace NS::Editor
 
         void NotifySaveResult(bool ok, std::string_view message) noexcept;
         void NotifyLoadResult(bool ok, std::string_view message) noexcept;
-
-        [[nodiscard]] bool IsSaveModalOpen() const noexcept { return m_saveModalOpen; }
-        [[nodiscard]] bool IsLoadModalOpen() const noexcept { return m_loadModalOpen; }
 
     private:
         bool m_saveModalOpen = false;

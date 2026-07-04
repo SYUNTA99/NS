@@ -96,7 +96,6 @@ TEST_F(AssetManagerTest, BuiltinReturnsSameNonNullPointer)
     EXPECT_NE(am.Builtin("cube"), nullptr);
     EXPECT_EQ(am.Builtin("cube"), am.Builtin("cube"));
     EXPECT_NE(am.Builtin("wedge45"), nullptr);
-    EXPECT_NE(am.Builtin("pole"), nullptr);
     EXPECT_NE(am.Builtin("shadowQuad"), nullptr);
     EXPECT_EQ(am.Builtin("nonexistent"), nullptr);
 }

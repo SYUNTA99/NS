@@ -2,6 +2,7 @@
 
 #include "Framework/Core/Clock.h"
 #include "Framework/Platform/Input.h"
+#include "Framework/Platform/Keyboard.h"
 
 #include <algorithm>
 #include <cmath>
@@ -12,11 +13,6 @@ namespace NS::Scene
     EditorCameraComponent::EditorCameraComponent() noexcept
         : VirtualCameraComponent(static_cast<int>(TickPriority::Camera))
     {}
-
-    void EditorCameraComponent::SetInput(NS::Platform::Input* input) noexcept
-    {
-        m_input = input;
-    }
 
     void EditorCameraComponent::SetYawPitch(float yaw, float pitch) noexcept
     {
@@ -63,6 +59,37 @@ namespace NS::Scene
         m_desiredDistance = std::clamp(m_desiredDistance * factor, kMinDistance, kMaxDistance);
     }
 
+    void EditorCameraComponent::ApplyLook(float yawDelta, float pitchDelta) noexcept
+    {
+        // eye を固定して回すため、 回転前後の eye 差を center へ戻す。 これで orbit でなくその場の見回しになる
+        const NS::Math::Vector3 eyeBefore = ComputeCameraPosition();
+        m_yaw += yawDelta;
+        m_pitch = std::clamp(m_pitch + pitchDelta, kPitchMin, kPitchMax);
+        const NS::Math::Vector3 eyeAfter = ComputeCameraPosition();
+        m_center.x += eyeBefore.x - eyeAfter.x;
+        m_center.y += eyeBefore.y - eyeAfter.y;
+        m_center.z += eyeBefore.z - eyeAfter.z;
+    }
+
+    void EditorCameraComponent::ApplyFlyMove(float forwardAxis, float strafeAxis, float verticalAxis, float dt) noexcept
+    {
+        if (forwardAxis == 0.0f && strafeAxis == 0.0f && verticalAxis == 0.0f)
+            return;
+
+        const float cosPitch = std::cos(m_pitch);
+        const float sinPitch = std::sin(m_pitch);
+        const float sinYaw = std::sin(m_yaw);
+        const float cosYaw = std::cos(m_yaw);
+        // 視線方向 forward = normalize(center - eye)。 LH look-at の前方で pitch を含むので見ている方向へ進める
+        const NS::Math::Vector3 forward{-cosPitch * sinYaw, -sinPitch, -cosPitch * cosYaw};
+        // 画面右 right = cross(worldUp, forward)。 LH なので yaw=0 で -X。 旧実装の +X とは逆で、 左右反転を解消する
+        const NS::Math::Vector3 right{-cosYaw, 0.0f, sinYaw};
+        const float step = m_keyMoveSpeed * m_distance * dt;
+        m_center.x += (forward.x * forwardAxis + right.x * strafeAxis) * step;
+        m_center.y += (forward.y * forwardAxis + verticalAxis) * step;
+        m_center.z += (forward.z * forwardAxis + right.z * strafeAxis) * step;
+    }
+
     NS::Math::Vector3 EditorCameraComponent::ComputeCameraPosition() const noexcept
     {
         const float cosPitch = std::cos(m_pitch);
@@ -82,16 +109,20 @@ namespace NS::Scene
             return;
 
         const float dt = NS::Core::FrameTimer::FixedDelta();
+        auto& input = NS::Platform::Input::Get();
 
         // Mouse 入力。 UI がフォーカス中なら無視する
-        const bool wantMouse = (m_input != nullptr) && m_input->UiWantsMouse();
-        if (m_input != nullptr && !wantMouse)
+        const bool wantMouse = input.UiWantsMouse();
+        bool flying = false;
+        if (!wantMouse)
         {
-            auto& mouse = m_input->Mouse();
-            if (mouse.IsHeld(NS::Platform::MouseButton::Right))
+            auto& mouse = input.Mouse();
+            // 右ドラッグ中はその場で見回すフライ視点。 eye 固定で回し、 WASD/QE の移動も許可する
+            flying = mouse.IsHeld(NS::Platform::MouseButton::Right);
+            if (flying)
             {
-                ApplyOrbit(static_cast<float>(mouse.GetDeltaX()) * m_mouseSensOrbit,
-                           static_cast<float>(mouse.GetDeltaY()) * m_mouseSensOrbit);
+                ApplyLook(static_cast<float>(mouse.GetDeltaX()) * m_mouseSensOrbit,
+                          static_cast<float>(mouse.GetDeltaY()) * m_mouseSensOrbit);
             }
             if (mouse.IsHeld(NS::Platform::MouseButton::Middle))
             {
@@ -102,10 +133,31 @@ namespace NS::Scene
             ApplyZoom(static_cast<float>(mouse.GetWheelDelta()) / 120.0f * m_mouseSensZoom);
         }
 
-        // Gamepad は ImGui キャプチャ対象外、 常に入力する
-        if (m_input != nullptr)
+        // 右ドラッグ中のみ WASD で視線方向へフライ、 Q E で world 上下する。 UI がキー入力中なら無視する
+        if (flying && !input.UiWantsKeyboard())
         {
-            auto& gp = m_input->Gamepad(0);
+            auto& kb = input.Keyboard();
+            float forwardAxis = 0.0f;
+            float strafeAxis = 0.0f;
+            float verticalAxis = 0.0f;
+            if (kb.IsHeld(NS::Platform::Key::W))
+                forwardAxis += 1.0f;
+            if (kb.IsHeld(NS::Platform::Key::S))
+                forwardAxis -= 1.0f;
+            if (kb.IsHeld(NS::Platform::Key::D))
+                strafeAxis += 1.0f;
+            if (kb.IsHeld(NS::Platform::Key::A))
+                strafeAxis -= 1.0f;
+            if (kb.IsHeld(NS::Platform::Key::E))
+                verticalAxis += 1.0f;
+            if (kb.IsHeld(NS::Platform::Key::Q))
+                verticalAxis -= 1.0f;
+            ApplyFlyMove(forwardAxis, strafeAxis, verticalAxis, dt);
+        }
+
+        // Gamepad は ImGui キャプチャ対象外、 常に入力する
+        {
+            auto& gp = input.Gamepad(0);
             if (gp.IsConnected())
             {
                 const auto rs = gp.RightStick();

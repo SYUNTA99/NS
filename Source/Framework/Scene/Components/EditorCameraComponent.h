@@ -4,20 +4,15 @@
 /// @brief NS::Scene::EditorCameraComponent — 編集モード用 free-fly カメラ Component
 ///
 /// @details Spherical 座標 yaw / pitch / distance に center pivot を加えた表現
-/// Mouse 右ドラッグ = Orbit、 中ドラッグ = Pan、 Wheel = Zoom
-/// Gamepad 右スティック = Orbit、 左スティック = Pan、 LT-RT = Zoom
-/// editor の UI がマウスを掴んでいる時は Mouse 入力を無視する。Input::UiWantsMouse で判定し UI 操作を優先する
-/// pitch / distance は clamp で有限範囲に強制、 NaN / 巨大値での render crash を防ぐ
+/// Mouse 右ドラッグ = その場で見回すフライ視点 (押している間 WASD で前後左右 / Q E で上下)、 中ドラッグ = Pan、 Wheel =
+/// Zoom Gamepad 右スティック = Orbit、 左スティック = Pan、 LT-RT = Zoom editor の UI がマウスを掴んでいる時は Mouse
+/// 入力を無視する。Input::UiWantsMouse で判定し UI 操作を優先する pitch / distance は clamp で有限範囲に強制、 NaN /
+/// 巨大値での render crash を防ぐ
 
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Components/VirtualCameraComponent.h"
 
 #include <cstdint>
-
-namespace NS::Platform
-{
-    class Input;
-}
 
 namespace NS::Scene
 {
@@ -29,8 +24,6 @@ namespace NS::Scene
     {
     public:
         EditorCameraComponent() noexcept;
-
-        void SetInput(NS::Platform::Input* input) noexcept;
 
         void OnUpdate() override;
         /// free-fly の現在姿勢を返す。alpha は使わない。Brain が選択時に実カメラへ書く
@@ -51,9 +44,13 @@ namespace NS::Scene
         void ApplyOrbit(float yawDelta, float pitchDelta) noexcept;
         void ApplyPan(float panX, float panY) noexcept;
         void ApplyZoom(float zoomDelta) noexcept;
+        /// eye を固定したまま yaw / pitch を回す その場の見回し。 右ドラッグのフライ視点で使う
+        void ApplyLook(float yawDelta, float pitchDelta) noexcept;
+        /// 視線方向へのフライ移動。 forward は視線(pitch込み)、 strafe は画面右、 vertical は world 上下。 各軸 -1..1
+        void ApplyFlyMove(float forwardAxis, float strafeAxis, float verticalAxis, float dt) noexcept;
 
         // free-fly の感触を Inspector へ公開する。 毎フレーム読まれるのでライブで効く
-        NS_REFLECT_BEGIN(EditorCameraComponent)
+        NS_REFLECT_BEGIN(EditorCameraComponent, VirtualCameraComponent)
         NS_REFLECT_FIELD(m_springOmega, "Spring Omega")
         NS_REFLECT_FIELD(m_mouseSensOrbit, "Mouse Orbit Sens")
         NS_REFLECT_FIELD(m_mouseSensPan, "Mouse Pan Sens")
@@ -61,18 +58,18 @@ namespace NS::Scene
         NS_REFLECT_FIELD(m_padSensOrbit, "Pad Orbit Sens")
         NS_REFLECT_FIELD(m_padSensPan, "Pad Pan Sens")
         NS_REFLECT_FIELD(m_padSensZoom, "Pad Zoom Sens")
+        NS_REFLECT_FIELD(m_keyMoveSpeed, "Key Move Speed")
         NS_REFLECT_END()
 
-        // 2m 未満: block 内側に入り描画破綻。30m 超: block が点になる
+        // 2m 未満は block 内側へ入り描画破綻するので下限は残す。 上限は広い地形を一望できるよう実質無制限まで
+        // 開け、 LevelEditorController の far plane と揃えて遠景も映す。 完全な無限は inf / far 越えで全消えを招く
         static constexpr float kMinDistance = 2.0f;
-        static constexpr float kMaxDistance = 30.0f;
+        static constexpr float kMaxDistance = 4000.0f;
         // ±90° は up/forward 平行で gimbal lock 寸前のため ±89° でクランプ
         static constexpr float kPitchMin = -1.553f; // -89°
         static constexpr float kPitchMax = +1.553f; // +89°
 
     private:
-        NS::Platform::Input* m_input = nullptr;
-
         NS::Math::Vector3 m_center{0.0f, 0.0f, 0.0f};
         float m_yaw = 0.0f;
         float m_pitch = -0.5236f;
@@ -88,6 +85,8 @@ namespace NS::Scene
         float m_padSensOrbit = 2.5f;
         float m_padSensPan = 8.0f;
         float m_padSensZoom = 4.0f;
+        // WASD の 1 秒あたり移動量 = この値 × distance。 distance 比例でズーム量に依らず体感速度を一定に保つ
+        float m_keyMoveSpeed = 0.6f;
     };
 
 } // namespace NS::Scene

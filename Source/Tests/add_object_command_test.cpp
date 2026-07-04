@@ -1,13 +1,10 @@
 #include "Editor/Undo/AddObjectCommand.h"
-#include "Game/Level/EditTarget.h"
 #include "Game/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
-#include <cstdint>
 #include <string>
 #include <utility>
-#include <vector>
 
 namespace EditorNs = NS::Editor;
 namespace LevelNs = NS::Game::Level;
@@ -27,17 +24,13 @@ namespace
 TEST(AddObjectCommandTest, DoAppendsFreeObjectAndId)
 {
     LevelNs::LevelData lv;
-    std::vector<std::uint32_t> ids;
-    std::uint32_t next = 0;
-    LevelNs::EditTarget t{lv, ids, next};
 
     EditorNs::AddObjectCommand cmd(MakeFree(1.0f, 2.0f, 3.0f));
-    cmd.Do(t);
+    cmd.Do(lv);
 
     ASSERT_EQ(lv.objects.size(), 1u);
-    ASSERT_EQ(ids.size(), lv.objects.size());
-    EXPECT_EQ(ids[0], 0u);
-    EXPECT_EQ(next, 1u);
+    EXPECT_NE(lv.objects[0].objectId, LevelNs::kNoObjectId);
+    EXPECT_EQ(lv.nextObjectId, lv.objects[0].objectId + 1);
     EXPECT_FLOAT_EQ(lv.objects[0].positionX, 1.0f);
     EXPECT_EQ(lv.objects[0].flags & LevelNs::kObjectFlagGridAligned, 0);
 }
@@ -45,20 +38,18 @@ TEST(AddObjectCommandTest, DoAppendsFreeObjectAndId)
 TEST(AddObjectCommandTest, UndoRemovesOnlyTheAddedObject)
 {
     LevelNs::LevelData lv;
-    // 既存の別 id 要素を 1 つ置き、 Undo が末尾 (追加分) だけを消すことを確かめる
+    // 既存の別 id 要素を 1 つ置き、 Undo が追加分だけを消すことを確かめる
     lv.objects.push_back(MakeFree(9.0f, 0.0f, 0.0f));
-    std::vector<std::uint32_t> ids{99u};
-    std::uint32_t next = 100;
-    LevelNs::EditTarget t{lv, ids, next};
+    lv.objects[0].objectId = 99;
+    lv.nextObjectId = 100;
 
     EditorNs::AddObjectCommand cmd(MakeFree(1.0f, 1.0f, 1.0f));
-    cmd.Do(t);
+    cmd.Do(lv);
     ASSERT_EQ(lv.objects.size(), 2u);
 
-    cmd.Undo(t);
+    cmd.Undo(lv);
     ASSERT_EQ(lv.objects.size(), 1u);
-    ASSERT_EQ(ids.size(), 1u);
-    EXPECT_EQ(ids[0], 99u);
+    EXPECT_EQ(lv.objects[0].objectId, 99u);
     EXPECT_FLOAT_EQ(lv.objects[0].positionX, 9.0f);
 }
 
@@ -81,18 +72,17 @@ TEST(AddObjectCommandTest, EstimatedBytesCountsComponentHeap)
 TEST(AddObjectCommandTest, RedoReusesSameIdWithoutBumpingNext)
 {
     LevelNs::LevelData lv;
-    std::vector<std::uint32_t> ids;
-    std::uint32_t next = 7;
-    LevelNs::EditTarget t{lv, ids, next};
+    lv.nextObjectId = 7;
 
     EditorNs::AddObjectCommand cmd(MakeFree(0.0f, 0.0f, 0.0f));
-    cmd.Do(t); // id 7 を採番
-    EXPECT_EQ(ids[0], 7u);
-    EXPECT_EQ(next, 8u);
+    cmd.Do(lv); // id 7 を採番
+    ASSERT_EQ(lv.objects.size(), 1u);
+    EXPECT_EQ(lv.objects[0].objectId, 7u);
+    EXPECT_EQ(lv.nextObjectId, 8u);
 
-    cmd.Undo(t);
-    cmd.Do(t); // redo: 同じ id 7 を再利用し next は増やさない
-    ASSERT_EQ(ids.size(), 1u);
-    EXPECT_EQ(ids[0], 7u);
-    EXPECT_EQ(next, 8u);
+    cmd.Undo(lv);
+    cmd.Do(lv); // redo: 同じ id 7 を再利用しカウンタは増やさない
+    ASSERT_EQ(lv.objects.size(), 1u);
+    EXPECT_EQ(lv.objects[0].objectId, 7u);
+    EXPECT_EQ(lv.nextObjectId, 8u);
 }

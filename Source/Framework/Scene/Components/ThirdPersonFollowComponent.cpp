@@ -4,8 +4,11 @@
 #include "Framework/Platform/Gamepad.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Mouse.h"
+#include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/Components/CharacterMovementComponent.h"
 #include "Framework/Scene/GameObject.h"
+#include "Framework/Scene/ObjectRefSubsystem.h"
+#include "Framework/Scene/SceneBase.h"
 #include "Framework/Scene/Transform.h"
 
 #include <cmath>
@@ -32,14 +35,23 @@ namespace NS::Scene
     {
         m_target = target;
     }
-    void ThirdPersonFollowComponent::SetInput(NS::Platform::Input* input) noexcept
-    {
-        m_input = input;
-    }
 
     void ThirdPersonFollowComponent::SetMovement(const CharacterMovementComponent* movement) noexcept
     {
         m_movement = movement;
+    }
+
+    void ThirdPersonFollowComponent::OnStart()
+    {
+        // 参照未設定はテスト / 直結線の構築なので触らない。解決不可も既存の結線を壊さず据え置く
+        if (!m_targetRef.IsSet() || Owner() == nullptr || Owner()->OwningScene() == nullptr)
+            return;
+        auto* refs = Owner()->OwningScene()->GetSubsystem<ObjectRefSubsystem>();
+        GameObject* target = (refs != nullptr) ? refs->Resolve(m_targetRef) : nullptr;
+        if (target == nullptr)
+            return;
+        m_target = &target->Root();
+        m_movement = target->FindComponent<CharacterMovementComponent>();
     }
 
     void ThirdPersonFollowComponent::SetSensX(float radPerPixel) noexcept
@@ -92,19 +104,17 @@ namespace NS::Scene
         if (!IsActive() || m_target == nullptr || dt <= 0.0f)
             return;
 
-        if (m_input != nullptr)
-        {
-            const auto& mouse = m_input->Mouse();
-            const float mxSign = m_invertX ? -1.0f : 1.0f;
-            const float mySign = m_invertY ? -1.0f : 1.0f;
-            m_yaw += static_cast<float>(mouse.GetDeltaX()) * m_sensX * mxSign;
-            m_pitch += static_cast<float>(mouse.GetDeltaY()) * m_sensY * mySign;
+        auto& input = NS::Platform::Input::Get();
+        const auto& mouse = input.Mouse();
+        const float mxSign = m_invertX ? -1.0f : 1.0f;
+        const float mySign = m_invertY ? -1.0f : 1.0f;
+        m_yaw += static_cast<float>(mouse.GetDeltaX()) * m_sensX * mxSign;
+        m_pitch += static_cast<float>(mouse.GetDeltaY()) * m_sensY * mySign;
 
-            const auto& pad = m_input->Gamepad(0);
-            const NS::Platform::Stick rstick = pad.RightStick();
-            m_yaw += rstick.x * m_stickSensX * dt * mxSign;
-            m_pitch += rstick.y * m_stickSensY * dt * mySign;
-        }
+        const auto& pad = input.Gamepad(0);
+        const NS::Platform::Stick rstick = pad.RightStick();
+        m_yaw += rstick.x * m_stickSensX * dt * mxSign;
+        m_pitch += rstick.y * m_stickSensY * dt * mySign;
 
         m_pitch = NS::Math::Clamp(m_pitch, m_pitchMin, m_pitchMax);
 
@@ -153,4 +163,7 @@ namespace NS::Scene
 
         return MakePose(camPos, headPos, NS::Math::Vector3{0.0f, 1.0f, 0.0f});
     }
+
+    // 追従対象はオブジェクト間参照なので data からは空で作り、配線は後から SetTarget で結ぶ
+    NS_REGISTER_COMPONENT(ThirdPersonFollowComponent, nullptr)
 } // namespace NS::Scene

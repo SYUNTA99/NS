@@ -28,15 +28,15 @@ namespace NS::Editor
         UndoStack(const UndoStack&) = delete;
         UndoStack& operator=(const UndoStack&) = delete;
 
-        /// `cmd->Do(target)` を実行 → m_undo に push_back → m_redo をクリア
+        /// `cmd->Do(level)` を実行 → m_undo に push_back → m_redo をクリア
         /// 200 op / 50 MB cap に達したら m_undo 先頭から oldest pop
-        void Push(std::unique_ptr<ICommand> cmd, NS::Game::Level::EditTarget& target) noexcept;
+        void Push(std::unique_ptr<ICommand> cmd, NS::Game::Level::LevelData& level) noexcept;
 
-        /// m_undo 末尾の Undo(target) を実行し、 m_redo に移動。 空なら false
-        bool Undo(NS::Game::Level::EditTarget& target) noexcept;
+        /// m_undo 末尾の Undo(level) を実行し、 m_redo に移動。 空なら false
+        bool Undo(NS::Game::Level::LevelData& level) noexcept;
 
-        /// m_redo 末尾の Do(target) を実行し、 m_undo に戻す。 空なら false
-        bool Redo(NS::Game::Level::EditTarget& target) noexcept;
+        /// m_redo 末尾の Do(level) を実行し、 m_undo に戻す。 空なら false
+        bool Redo(NS::Game::Level::LevelData& level) noexcept;
 
         /// 両 stack をクリア。 新 level open 時のみ呼ぶ
         void Clear() noexcept;
@@ -52,9 +52,6 @@ namespace NS::Editor
         std::size_t m_redoBytes = 0;
 
         void TrimOldest() noexcept;
-
-        /// ids と objects の lockstep が崩れていたら ResetEditIds で復旧する最終防衛線
-        void EnsureIdsConsistent(NS::Game::Level::EditTarget& target) noexcept;
     };
 
 } // namespace NS::Editor

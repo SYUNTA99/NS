@@ -10,15 +10,19 @@
 
 #include "Framework/Math/Math.h"
 
+#include <cstdint>
+
 namespace NS::Scene
 {
     struct RenderContext;
 
     /// 描画バケット。Opaque は登録順、Transparent はカメラ距離で back-to-front ソートされる
-    enum class RenderBucket
+    /// Overlay は全バケットの後に登録順で描かれ、暗転や HUD を最前面へ重ねる
+    enum class RenderBucket : std::uint8_t
     {
         Opaque,
-        Transparent
+        Transparent,
+        Overlay
     };
 
     /// 描画コールバックを持つ基底。Component との多重継承を想定

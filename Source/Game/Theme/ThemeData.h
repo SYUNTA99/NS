@@ -1,12 +1,13 @@
 #pragma once
 
 /// @file ThemeData.h
-/// @brief 1 テーマの全データ。 POD struct、 ThemeRegistry が 5 件を read-only で保持する
+/// @brief 1 テーマの全データ。 ThemeRegistry が 5 件を保持し `.asset` ファイル読込で上書きする
 ///
 /// @details 物理は全テーマ共通なので skybox と lighting の視覚フィールドのみを持つ純データ表現
 
 #include <cstdint>
 #include <filesystem>
+#include <string>
 
 #include "Framework/Math/Math.h"
 
@@ -15,8 +16,8 @@ namespace NS::Game::Theme
 
     struct ThemeData
     {
-        /// ImGui パレットや debug overlay で使うテーマ表示名。 文字列リテラルへの非所有ポインタ
-        const char* displayName = "";
+        /// ImGui パレットや debug overlay で使うテーマ表示名。 ファイル読込で差し替わるため所有する
+        std::string displayName{};
         /// block texture 配列の先頭 slice index。 テーマごとに 8 slice 帯を確保する想定
         std::uint16_t blockTextureArrayBaseSlice = 0;
         /// skybox cubemap のディレクトリ or .dds パス。 Skybox::LoadCubemap に渡す

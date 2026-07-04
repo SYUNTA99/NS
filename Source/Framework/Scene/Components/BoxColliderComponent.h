@@ -49,7 +49,7 @@ namespace NS::Scene
 
         // 当たり箱の形状の半径と Transform からの独立オフセット / 回転を Inspector へ公開する
         // 半径は負クランプ、 回転は Euler 度で受けるため全て setter 経由で書く
-        NS_REFLECT_BEGIN(BoxColliderComponent)
+        NS_REFLECT_BEGIN(BoxColliderComponent, Component)
         NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Half Extents", HalfExtents(), SetHalfExtents)
         NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Center Offset", CenterOffset(), SetCenterOffset)
         NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Rotation (deg)", RotationEulerDegrees(), SetRotationEulerDegrees)

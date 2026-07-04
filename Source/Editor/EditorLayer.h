@@ -45,6 +45,10 @@ private:
     /// プレイ中だけ F5 でエディタ UI 全体の表示/非表示をトグルする。 編集モードでは常に表示へ戻す
     void HandleUiVisibilityInput(LevelEditorController& editor) noexcept;
     static void RenderPauseModal(LevelEditorController& editor) noexcept;
+    /// 終了要求を握って保存確認を出す。 確認済みなら true で終了を通し、 未確認なら modal を開いて false
+    bool OnQuitRequested() noexcept;
+    /// 終了確認 modal を描く。 保存して終了 / 保存せず終了 / キャンセルの 3 択
+    void RenderQuitModal(LevelEditorController& editor) noexcept;
     /// 中央ノードを透過にした DockSpace を毎フレーム置き、 周囲パネルのドッキング先にする
     /// 中央は背景非描画 + 入力素通しなので、 全画面 3D とギズモがそのまま見え編集操作も届く
     static void RenderDockSpaceHost() noexcept;
@@ -74,4 +78,9 @@ private:
 
     // プレイ中に F5 でトグルするエディタ UI の表示フラグ。 編集モードでは毎フレーム true へ戻す
     bool m_uiVisible = true;
+
+    // 終了確認の状態。 modalOpen 中は「保存しますか」 を出し、 confirmed で実際に終了させる
+    bool m_quitModalOpen = false;
+    bool m_quitConfirmed = false;
+    bool m_quitSaveFailed = false;
 };

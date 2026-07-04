@@ -66,6 +66,10 @@ namespace NS::Platform
         /// UTF-8 入力でタイトル変更
         void SetTitle(std::string_view utf8Title) noexcept;
 
+        /// クライアント領域のマウスカーソル表示を切替える。 false でプレイ中などに消す
+        /// 即時反映し、 以降は WM_SETCURSOR が状態を維持する。 タイトルバー / 枠は常に既定カーソル
+        void SetCursorVisible(bool visible) noexcept;
+
         /// ×ボタンと同じ経路で WM_CLOSE を投げて閉じ要求を出す
         /// SetCloseCallback が登録されていればそこへ通知、未設定なら PostQuitMessage に落ちる
         void RequestClose() noexcept;

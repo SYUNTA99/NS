@@ -1,7 +1,7 @@
 // Block 用 PS。 Texture2DArray g_BlockTextures から VS が流した instSlice : SLICE で
 // 1 slice を選んで sampling し、 baseColor × (ambient + N.L * sun) のテーマ駆動ライティングを行う。
 // FrameCB のレイアウトは VS と完全一致。 Sampler は CommonStates::LinearWrap が s0 に bind 済前提。
-// g_lightColor / g_ambientColor は ThemeRegistry::Get(level.themeId) 由来で C++ 側から毎フレーム流し込む。
+// g_lightColor / g_ambientColor はシーンの environment 由来で C++ 側から毎フレーム流し込む。
 // VS 側で INSTANCE_COLOR.w → instSlice : SLICE を渡すので、 本 PS は必ず instanced.vs.hlsl とペアで使う。
 // Player 等の単一 Texture2D 描画は player.ps.hlsl 側を使う (本 PS は block 専用に統一)。
 

@@ -99,7 +99,7 @@ namespace NS::Scene
         /// インスタンス側が持つため skeleton / clips は複製で返す。 失敗時は valid=false。 相対 path は baseDir 基準
         [[nodiscard]] LoadedSkinnedModel GetOrLoadSkinnedModel(const std::filesystem::path& path);
 
-        /// 手続き生成の組み込み cube / wedge45 / wedge30 / wedge22 / wedge15 / pole / shadowQuad を一括登録する
+        /// 手続き生成の組み込み cube / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad を一括登録する
         /// device 確立後・最初の利用前に 1 度だけ呼ぶ。 既登録名は上書きしない
         void RegisterBuiltins();
         /// 名前鍵で組み込み StaticMesh を引く。 未登録は nullptr

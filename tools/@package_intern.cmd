@@ -10,6 +10,7 @@
 ::       Game.exe                  executable (GameRelease, editor excluded)
 ::       Assets\                 asset folder
 ::       Shaders\                runtime-compiled HLSL (required to run)
+::       Levels\                 new_level.scene (the level the game loads on start)
 ::       *.dll                   d3dcompiler_47 + VC++ runtime (exe-adjacent)
 ::     Source\                   own source only (ThirdParty excluded)
 ::       THIRD_PARTY_NOTICES.txt notices for third-party libs embedded in Game.exe
@@ -86,10 +87,16 @@ mkdir "%OUT%"
 mkdir "%GAMEDIR%"
 
 :: --- 5. exe + assets (into Game\ so exe sits next to its DLLs) -------------
-echo [4/8] Copying exe + Assets + Shaders into Game\ ...
+echo [4/8] Copying exe + Assets + Shaders + Levels into Game\ ...
 copy /y "%BIN%\Game.exe" "%GAMEDIR%\Game.exe" >nul
 xcopy /e /i /q /y "Assets"  "%GAMEDIR%\Assets\"  >nul
 xcopy /e /i /q /y "Shaders" "%GAMEDIR%\Shaders\" >nul
+:: Levels: repo is the source of truth. The game loads GetExeDirectory()\Levels\new_level.scene
+if exist "Levels" (
+    xcopy /e /i /q /y "Levels" "%GAMEDIR%\Levels\" >nul
+) else (
+    echo [WARN] Levels\ not found at repo root -- game will fall back to the seed floor
+)
 
 :: --- 6. runtime dependencies (DLLs) --------------------------------------
 echo [5/8] Bundling runtime dependencies ...
@@ -147,7 +154,7 @@ if errorlevel 1 (
 echo.
 echo ============================================
 echo  Done (uncompressed):  %OUT%\
-echo    [exec-env folder]  Game.exe + Assets + Shaders + DLLs
+echo    [exec-env folder]  Game.exe + Assets + Shaders + Levels + DLLs
 echo    [source folder]    own code + THIRD_PARTY_NOTICES.txt + Licenses\
 echo    README.txt
 echo ============================================

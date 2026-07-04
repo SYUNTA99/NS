@@ -42,6 +42,38 @@ TEST(NsCoreFileSystem, CreateDirectoryThenExistsReturnsTrue)
     std::filesystem::remove_all(root);
 }
 
+TEST(NsCoreFileSystem, ResolveUnderReturnsAbsoluteInsideBase)
+{
+    const std::filesystem::path base = "C:/content";
+    const auto resolved = NS::Core::FileSystem::ResolveUnder(base, "Assets/Skybox/kurt/");
+    ASSERT_TRUE(resolved.has_value());
+    EXPECT_EQ(*resolved, std::filesystem::path("C:/content/Assets/Skybox/kurt/").lexically_normal());
+}
+
+TEST(NsCoreFileSystem, ResolveUnderRejectsAbsolutePath)
+{
+    const std::filesystem::path base = "C:/content";
+    EXPECT_FALSE(NS::Core::FileSystem::ResolveUnder(base, "D:/evil/path").has_value());
+    EXPECT_FALSE(NS::Core::FileSystem::ResolveUnder(base, "C:/content/Assets").has_value());
+}
+
+TEST(NsCoreFileSystem, ResolveUnderRejectsEscapeAboveBase)
+{
+    const std::filesystem::path base = "C:/content";
+    EXPECT_FALSE(NS::Core::FileSystem::ResolveUnder(base, "../outside").has_value());
+    EXPECT_FALSE(NS::Core::FileSystem::ResolveUnder(base, "a/../../outside").has_value());
+    // ドライブ相対も base 配下を保証できないので拒否
+    EXPECT_FALSE(NS::Core::FileSystem::ResolveUnder(base, "C:evil").has_value());
+}
+
+TEST(NsCoreFileSystem, ResolveUnderAllowsInternalDotDot)
+{
+    const std::filesystem::path base = "C:/content";
+    const auto resolved = NS::Core::FileSystem::ResolveUnder(base, "a/../b");
+    ASSERT_TRUE(resolved.has_value());
+    EXPECT_EQ(*resolved, std::filesystem::path("C:/content/b"));
+}
+
 TEST(NsCoreFileSystem, WriteAndReadAllBytesRoundTrip)
 {
     const auto path = MakeTempPath("bytes.bin");
@@ -98,14 +130,14 @@ TEST(NsCoreFileSystem, ListFilesFiltersByExtension)
     ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(dir));
 
     const std::vector<std::byte> data = {std::byte{0x01}};
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(dir / "a.nslvl", data));
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(dir / "b.nslvl", data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(dir / "a.scene", data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(dir / "b.scene", data));
     ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(dir / "c.txt", data));
 
-    const auto levels = NS::Core::FileSystem::ListFiles(dir, ".nslvl");
+    const auto levels = NS::Core::FileSystem::ListFiles(dir, ".scene");
     EXPECT_EQ(levels.size(), 2u);
     for (const auto& p : levels)
-        EXPECT_EQ(p.extension(), ".nslvl");
+        EXPECT_EQ(p.extension(), ".scene");
 
     const auto all = NS::Core::FileSystem::ListFiles(dir);
     EXPECT_EQ(all.size(), 3u);
@@ -116,7 +148,7 @@ TEST(NsCoreFileSystem, ListFilesFiltersByExtension)
 TEST_F(FileSystemLoggerTest, ListFilesReturnsEmptyForMissingDirectory)
 {
     const auto dir = MakeTempPath("listdir_missing");
-    const auto files = NS::Core::FileSystem::ListFiles(dir, ".nslvl");
+    const auto files = NS::Core::FileSystem::ListFiles(dir, ".scene");
     EXPECT_TRUE(files.empty());
 }
 

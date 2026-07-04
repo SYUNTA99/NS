@@ -26,8 +26,8 @@ namespace NS::Scene
     public:
         CameraBrainComponent() noexcept;
 
-        /// 出力先の実カメラを注入する。Brain と同じ GameObject に乗せる想定
-        void SetCamera(CameraComponent* camera) noexcept { m_camera = camera; }
+        /// 同じ GameObject に乗る実カメラをここで解決する。見つからなければ Evaluate は何もしない
+        void OnStart() override;
 
         /// 候補 vcam を登録する。null と重複は無視する。寿命は呼出側が支配する非所有参照
         void AddVirtualCamera(VirtualCameraComponent* vcam);
@@ -56,7 +56,7 @@ namespace NS::Scene
         [[nodiscard]] CameraComponent* Camera() const noexcept { return m_camera; }
 
         // vcam 切替ブレンド秒を Inspector へ公開する。 負クランプを保つため setter 経由で書く
-        NS_REFLECT_BEGIN(CameraBrainComponent)
+        NS_REFLECT_BEGIN(CameraBrainComponent, Component)
         NS_REFLECT_ACCESSOR(float, "Blend Duration", BlendDuration(), SetBlendDuration)
         NS_REFLECT_END()
 

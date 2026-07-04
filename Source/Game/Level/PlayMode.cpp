@@ -18,7 +18,7 @@ namespace NS::Game::Level
             return PickupKindOf(object) == 0;
         }
 
-        bool ObjectIsStar(const ObjectInstance& object) noexcept
+        bool ObjectIsGoal(const ObjectInstance& object) noexcept
         {
             return PickupKindOf(object) == 1;
         }
@@ -29,13 +29,20 @@ namespace NS::Game::Level
 
     void PlayMode::Enter(const LevelData& level, PlayState& play) noexcept
     {
-        // cell 中心に置くと直下ブロックに 0.4m めり込み swept が toi=0 を返し続けて操作不能になる
-        // capsule 底端を spawn セル底面に乗せ、さらに 1cm 浮かせて浮動小数誤差の安全マージンを取る
-        constexpr float kCellHalfExtent = 0.5f;
-        constexpr float kSpawnLiftEpsilon = 0.01f;
-        const float playerCenterY = static_cast<float>(level.spawnY) - kCellHalfExtent + kPlayerCapsuleHalfHeight +
-                                    kPlayerCapsuleRadius + kSpawnLiftEpsilon;
-        play.playerPosition = {static_cast<float>(level.spawnX), playerCenterY, static_cast<float>(level.spawnZ)};
+        // 出現位置はエディタで配置したプレイヤー実体の capsule 中心 world 位置そのもの
+        // 床乗せの補正は配置時に決まっているのでここでは持たず、 焼かれた位置へそのまま置く
+        // 読込の門が 1 体を保証するが、 直組みの level にも既定位置で安全側に応える
+        const std::size_t playerIndex = FindPlayerObjectIndex(level);
+        if (playerIndex != kNoObjectIndex)
+        {
+            const ObjectInstance& playerObject = level.objects[playerIndex];
+            play.playerPosition =
+                NS::Math::Vector3{playerObject.positionX, playerObject.positionY, playerObject.positionZ};
+        }
+        else
+        {
+            play.playerPosition = NS::Math::Vector3{0.0f, kDefaultPlayerSpawnY, 0.0f};
+        }
         play.playerVelocity = {0.0f, 0.0f, 0.0f};
         play.coinCount = 0;
         play.remainingSeconds = static_cast<float>(level.timeLimitSeconds);
@@ -64,8 +71,8 @@ namespace NS::Game::Level
         {
             const auto& entry = level.objects[i];
             const bool isCoin = ObjectIsCoin(entry);
-            const bool isStar = ObjectIsStar(entry);
-            if (!isCoin && !isStar)
+            const bool isGoal = ObjectIsGoal(entry);
+            if (!isCoin && !isGoal)
                 continue;
 
             const float dx = entry.positionX - play.playerPosition.x;

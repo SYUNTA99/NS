@@ -57,7 +57,7 @@ namespace NS::Scene
         [[nodiscard]] static float ComputeFade(float dist, float maxDist) noexcept;
 
         // 接地シャドウの見た目を Inspector へ公開する。 毎 Draw 読まれるのでライブで効く
-        NS_REFLECT_BEGIN(ShadowComponent)
+        NS_REFLECT_BEGIN(ShadowComponent, Component)
         NS_REFLECT_FIELD(m_baseDiameter, "Base Diameter")
         NS_REFLECT_FIELD(m_maxDrop, "Max Drop")
         NS_REFLECT_FIELD(m_surfaceOffset, "Surface Offset")

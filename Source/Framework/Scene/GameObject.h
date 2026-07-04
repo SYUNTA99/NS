@@ -15,6 +15,7 @@
 ///
 /// 他 GameObject へのアクセスはコンストラクタ経由の明示的な生ポインタ注入のみで、 GetComponent<T>() は提供しない
 
+#include "Framework/Scene/Component.h"
 #include "Framework/Scene/Transform.h"
 
 #include <memory>
@@ -24,7 +25,6 @@
 
 namespace NS::Scene
 {
-    class Component;
     class SceneBase;
 
     /// 全 GameObject 派生の基底
@@ -49,6 +49,26 @@ namespace NS::Scene
         [[nodiscard]] const std::vector<GameObject*>& Children() const noexcept { return m_children; }
 
         [[nodiscard]] const std::vector<Component*>& Components() const noexcept { return m_components; }
+
+        /// Component 列から型 T の最初の一致を返す。無ければ nullptr。具象型を知らず兄弟 Component を引く読み窓口
+        /// 反射鎖の照合で一致を見るため T は反射宣言を持つこと。未宣言型はここがコンパイルエラーになり、
+        /// 実行時に静かに見つからない事故を塞ぐ。派生型の実体は基底型の検索にも一致する。読み取りのみで所有・順序には触れない
+        template <class T> [[nodiscard]] T* FindComponent() noexcept
+        {
+            const auto* target = T::StaticReflection();
+            for (Component* comp : m_components)
+                if (comp != nullptr && comp->IsA(target))
+                    return static_cast<T*>(comp);
+            return nullptr;
+        }
+        template <class T> [[nodiscard]] const T* FindComponent() const noexcept
+        {
+            const auto* target = T::StaticReflection();
+            for (const Component* comp : m_components)
+                if (comp != nullptr && comp->IsA(target))
+                    return static_cast<const T*>(comp);
+            return nullptr;
+        }
 
         /// Component を生成して寿命を所有し priority 昇順の tick 列へ登録する。戻り値は非所有の生ポインタ
         template <class T, class... Args> T* AddComponent(Args&&... args)

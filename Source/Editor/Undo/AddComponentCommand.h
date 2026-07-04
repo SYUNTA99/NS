@@ -13,7 +13,7 @@
 namespace NS::Editor
 {
 
-    /// id で再特定したオブジェクトの components へ ComponentData を 1 つ足す
+    /// 永続 id で再特定したオブジェクトの components へ ComponentData を 1 つ足す
     /// @details 型名のみの追加にも反射値ごとの貼り付けにも使えるよう payload を丸ごと持つ
     /// 同型がすでにあっても重ねて足せる。 足した位置を覚えておき Undo でその 1 つだけを取り除く
     /// 後入れ先出しの undo を前提とし、 Do と Undo の間に同じオブジェクトの components を別操作が変えると位置がずれる
@@ -22,8 +22,8 @@ namespace NS::Editor
     public:
         AddComponentCommand(std::uint32_t targetObjectId, NS::Game::Level::ComponentData payload) noexcept;
 
-        void Do(NS::Game::Level::EditTarget& target) noexcept override;
-        void Undo(NS::Game::Level::EditTarget& target) noexcept override;
+        void Do(NS::Game::Level::LevelData& level) noexcept override;
+        void Undo(NS::Game::Level::LevelData& level) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override;
 

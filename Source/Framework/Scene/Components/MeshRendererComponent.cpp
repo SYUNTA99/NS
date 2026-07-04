@@ -4,6 +4,7 @@
 #include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/Mesh.h"
 #include "Framework/Graphics/Renderer.h"
+#include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/SceneBase.h"
@@ -89,4 +90,7 @@ namespace NS::Scene
     {
         return (m_material != nullptr) ? m_material->RenderPriority() : 0;
     }
+
+    // 既定コンストラクタが無いので mesh / material 空で構築し、読み込み時に反射 / BuildPlacedObject が差し込む
+    NS_REGISTER_COMPONENT(MeshRendererComponent, nullptr, nullptr)
 } // namespace NS::Scene

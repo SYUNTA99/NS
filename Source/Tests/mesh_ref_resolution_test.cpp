@@ -72,7 +72,6 @@ TEST(MeshRefResolution, BuiltinNameResolvesToBuiltinMesh)
     ASSERT_NE(assets.Builtin("cube"), nullptr);
     EXPECT_EQ(ResolveMeshFromRef(assets, "cube"), assets.Builtin("cube"));
     EXPECT_EQ(ResolveMeshFromRef(assets, "wedge45"), assets.Builtin("wedge45"));
-    EXPECT_EQ(ResolveMeshFromRef(assets, "pole"), assets.Builtin("pole"));
 }
 
 // メッシュ参照が空の MeshRenderer は cube フォールバックへ解決される

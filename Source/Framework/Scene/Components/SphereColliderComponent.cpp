@@ -1,5 +1,6 @@
 #include "Framework/Scene/Components/SphereColliderComponent.h"
 
+#include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 
@@ -64,4 +65,6 @@ namespace NS::Scene
         const NS::Physics::Sphere s = WorldSphere();
         return NS::Math::AABB{s.center, NS::Math::Vector3{s.radius, s.radius, s.radius}};
     }
+
+    NS_REGISTER_COMPONENT(SphereColliderComponent)
 } // namespace NS::Scene

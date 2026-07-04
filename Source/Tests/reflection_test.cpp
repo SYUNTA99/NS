@@ -8,7 +8,6 @@
 #include <Framework/Scene/Components/EditorCameraComponent.h>
 #include <Framework/Scene/Components/MeshRendererComponent.h>
 #include <Framework/Scene/Components/PlacedVirtualCamera.h>
-#include <Framework/Scene/Components/PoleComponent.h>
 #include <Framework/Scene/Components/ShadowComponent.h>
 #include <Framework/Scene/Components/ThirdPersonFollowComponent.h>
 #include <Framework/Scene/GameObject.h>
@@ -32,7 +31,7 @@ namespace
     public:
         FakeReflectedComponent() noexcept : Component(0) {}
 
-        NS_REFLECT_BEGIN(FakeReflectedComponent)
+        NS_REFLECT_BEGIN(FakeReflectedComponent, Component)
         NS_REFLECT_FIELD(m_speed, "Speed")
         NS_REFLECT_FIELD(m_count, "Count")
         NS_REFLECT_FIELD(m_enabled, "Enabled")
@@ -57,7 +56,7 @@ namespace
     public:
         FakeStringComponent() noexcept : Component(0) {}
 
-        NS_REFLECT_BEGIN(FakeStringComponent)
+        NS_REFLECT_BEGIN(FakeStringComponent, Component)
         NS_REFLECT_FIELD(m_label, "Label")
         NS_REFLECT_END()
 
@@ -189,14 +188,14 @@ TEST(ReflectionTest, PlacedVirtualCameraReflectsSixFields)
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 6u);
 
-    EXPECT_NE(FindField(info, "Camera Pos"), nullptr);
     EXPECT_NE(FindField(info, "Look Target"), nullptr);
+    EXPECT_NE(FindField(info, "Up"), nullptr);
     EXPECT_NE(FindField(info, "Trigger Center"), nullptr);
     EXPECT_NE(FindField(info, "Trigger Extent"), nullptr);
     EXPECT_NE(FindField(info, "Look At Player"), nullptr);
     EXPECT_NE(FindField(info, "Priority"), nullptr);
-    // up は POD に枠が無いため反射しない
-    EXPECT_EQ(FindField(info, "Up"), nullptr);
+    // 視点位置は owner Transform 所有なので反射しない。transform 編集の経路と二重にしない
+    EXPECT_EQ(FindField(info, "Camera Pos"), nullptr);
 
     // Priority は基底 accessor 経由で書き戻る
     const FieldDesc* priority = FindField(info, "Priority");
@@ -220,7 +219,7 @@ TEST(ReflectionTest, CharacterMovementReflectsFeelFloats)
     NS::Scene::CharacterMovementComponent move;
     const ReflectionInfo* info = move.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 13u);
+    EXPECT_EQ(info->fieldCount, 16u);
 
     // 操作感の代表値が float として往復する (getter が無いので反射 get で確認する)
     const FieldDesc* jump = FindField(info, "Jump Impulse");
@@ -330,7 +329,7 @@ TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
     NS::Scene::ThirdPersonFollowComponent follow(nullptr);
     const ReflectionInfo* info = follow.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 14u);
+    EXPECT_EQ(info->fieldCount, 17u);
 
     const FieldDesc* jump = FindField(info, "Jump Distance");
     ASSERT_NE(jump, nullptr);
@@ -346,6 +345,16 @@ TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
     const FieldDesc* invertX = FindField(info, "Invert X");
     ASSERT_NE(invertX, nullptr);
     EXPECT_EQ(invertX->type, FieldType::Bool);
+
+    // 追従先はオブジェクト間参照としてデータ化される
+    const FieldDesc* target = FindField(info, "Target");
+    ASSERT_NE(target, nullptr);
+    EXPECT_EQ(target->type, FieldType::ObjectRef);
+
+    // プレイの遠景を抑える投影値も反射でデータ化される
+    const FieldDesc* farPlane = FindField(info, "Far Plane");
+    ASSERT_NE(farPlane, nullptr);
+    EXPECT_EQ(farPlane->type, FieldType::Float);
 }
 
 TEST(ReflectionTest, CameraBrainBlendDurationAccessorClampsNegative)
@@ -362,20 +371,6 @@ TEST(ReflectionTest, CameraBrainBlendDurationAccessorClampsNegative)
     EXPECT_FLOAT_EQ(brain.BlendDuration(), 0.0f); // ACCESSOR は setter 経由でクランプ
 }
 
-TEST(ReflectionTest, PoleReflectsRadiusAndHeight)
-{
-    NS::Scene::PoleComponent pole(0.15f, 2.0f);
-    const ReflectionInfo* info = pole.GetReflection();
-    ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 2u);
-
-    const FieldDesc* radius = FindField(info, "Radius");
-    ASSERT_NE(radius, nullptr);
-    float got = 0.0f;
-    radius->get(&pole, &got);
-    EXPECT_FLOAT_EQ(got, 0.15f);
-}
-
 TEST(ReflectionTest, ShadowReflectsAppearanceFields)
 {
     NS::Scene::ShadowComponent shadow;
@@ -390,7 +385,7 @@ TEST(ReflectionTest, EditorCameraReflectsSensitivityFields)
     NS::Scene::EditorCameraComponent cam;
     const ReflectionInfo* info = cam.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 7u);
+    EXPECT_EQ(info->fieldCount, 8u);
 }
 
 TEST(ReflectionTest, FieldTypeOfStringIsString)
@@ -419,4 +414,65 @@ TEST(ReflectionTest, StringFieldSetRoundTrips)
     std::string in = "world";
     f->set(&comp, &in);
     EXPECT_EQ(comp.Label(), "world");
+}
+
+TEST(ReflectionTest, FieldTypeOfObjectRefIsObjectRef)
+{
+    EXPECT_EQ(NS::Scene::FieldTypeOf<NS::Scene::ObjectRef>(), FieldType::ObjectRef);
+}
+
+TEST(ReflectionIsATest, MatchesSelfAndBaseChain)
+{
+    NS::Scene::ThirdPersonFollowComponent follow(nullptr);
+    EXPECT_TRUE(follow.IsA(NS::Scene::ThirdPersonFollowComponent::StaticReflection()));
+    EXPECT_TRUE(follow.IsA(NS::Scene::VirtualCameraComponent::StaticReflection()));
+}
+
+TEST(ReflectionIsATest, RejectsUnrelatedTypeAndNull)
+{
+    NS::Scene::ThirdPersonFollowComponent follow(nullptr);
+    EXPECT_FALSE(follow.IsA(NS::Scene::CameraBrainComponent::StaticReflection()));
+    EXPECT_FALSE(follow.IsA(nullptr));
+
+    // 反射を持たない素の派生はどの検索にも一致しない
+    BareComponent bare;
+    EXPECT_FALSE(bare.IsA(NS::Scene::CameraBrainComponent::StaticReflection()));
+}
+
+TEST(ReflectionIsATest, StaticAndVirtualShareOneInfo)
+{
+    // 静的窓口と仮想窓口が同じ実体を返す。二重定義があると is-a のアドレス比較が壊れる
+    NS::Scene::ThirdPersonFollowComponent follow(nullptr);
+    EXPECT_EQ(follow.GetReflection(), NS::Scene::ThirdPersonFollowComponent::StaticReflection());
+
+    NS::Scene::EditorCameraComponent cam;
+    EXPECT_EQ(cam.GetReflection(), NS::Scene::EditorCameraComponent::StaticReflection());
+}
+
+TEST(ReflectionComponentCastTest, CastsSelfAndBaseRejectsOthers)
+{
+    NS::Scene::ThirdPersonFollowComponent follow(nullptr);
+    Component* comp = &follow;
+    EXPECT_EQ(NS::Scene::ComponentCast<NS::Scene::ThirdPersonFollowComponent>(comp), &follow);
+    EXPECT_EQ(NS::Scene::ComponentCast<NS::Scene::VirtualCameraComponent>(comp),
+              static_cast<NS::Scene::VirtualCameraComponent*>(&follow));
+    EXPECT_EQ(NS::Scene::ComponentCast<NS::Scene::CameraBrainComponent>(comp), nullptr);
+    EXPECT_EQ(NS::Scene::ComponentCast<NS::Scene::ThirdPersonFollowComponent>(static_cast<Component*>(nullptr)),
+              nullptr);
+}
+
+TEST(ReflectionComponentCastTest, ConstOverloadMatchesNonConst)
+{
+    NS::Scene::ThirdPersonFollowComponent follow(nullptr);
+    const Component* comp = &follow;
+    EXPECT_EQ(NS::Scene::ComponentCast<NS::Scene::ThirdPersonFollowComponent>(comp), &follow);
+    EXPECT_EQ(NS::Scene::ComponentCast<NS::Scene::CameraBrainComponent>(comp), nullptr);
+}
+
+TEST(ReflectionComponentCastTest, CastsTypeWithRenderableSide)
+{
+    // Component + IRenderable の多重継承でも Component* からの下向き static_cast が成立する
+    NS::Scene::ShadowComponent shadow;
+    Component* comp = &shadow;
+    EXPECT_EQ(NS::Scene::ComponentCast<NS::Scene::ShadowComponent>(comp), &shadow);
 }

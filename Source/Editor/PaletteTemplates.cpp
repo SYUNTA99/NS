@@ -7,26 +7,30 @@
 
 namespace NS::Editor
 {
-    const std::array<PaletteTemplate, 2>& PaletteTemplateSlots() noexcept
+    const std::array<PaletteTemplate, kPaletteSlotCount>& PaletteTemplateSlots() noexcept
     {
-        static const std::array<PaletteTemplate, 2> slots = []() {
-            std::array<PaletteTemplate, 2> result{};
+        static const std::array<PaletteTemplate, kPaletteSlotCount> slots = []() {
+            std::array<PaletteTemplate, kPaletteSlotCount> result{};
 
             // slot0: grid に置く素の cube。 回転可否は組み上がった component から導く
             NS::Game::Level::ObjectInstance cube = NS::Game::Level::MakeGridObject(0, 0, 0, 0);
             result[0].name = "Cube";
-            result[0].isSpawn = false;
             result[0].rotatable = NS::Game::Blocks::IsRotatableObject(cube);
             result[0].prototype = std::move(cube);
 
-            // slot1: spawn は LevelData::spawnX/Y/Z を上書きする marker で grid object として積まない
-            NS::Game::Level::ObjectInstance marker{};
-            marker.materialIndex = -1;
-            marker.flags = 0;
-            result[1].name = "Spawn";
-            result[1].isSpawn = true;
-            result[1].rotatable = false;
-            result[1].prototype = std::move(marker);
+            // slot1: 45 度スロープ。 grid セルへ楔メッシュ + SlopeCollider を載せ、 向きは R で回せる
+            NS::Game::Level::ObjectInstance slope = NS::Game::Level::MakeGridObject(0, 0, 0, 0);
+            slope.components = NS::Game::Blocks::MakeGridSlopeComponents(45.0f);
+            result[1].name = "Slope 45";
+            result[1].rotatable = NS::Game::Blocks::IsRotatableObject(slope);
+            result[1].prototype = std::move(slope);
+
+            // slot2: ゴール。 接触でレベルクリアになる pickup。 向きは無関係なので回転不可
+            NS::Game::Level::ObjectInstance goal = NS::Game::Level::MakeGridObject(0, 0, 0, 0);
+            goal.components = NS::Game::Blocks::MakeGoalComponents();
+            result[2].name = "Goal";
+            result[2].rotatable = NS::Game::Blocks::IsRotatableObject(goal);
+            result[2].prototype = std::move(goal);
 
             return result;
         }();

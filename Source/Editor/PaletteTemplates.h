@@ -9,19 +9,22 @@
 #include "Game/Level/LevelData.h"
 
 #include <array>
+#include <cstddef>
 
 namespace NS::Editor
 {
     /// パレット 1 スロットの配置プロトタイプ
-    /// name は toolbar 表示名、 isSpawn は spawn marker か、 rotatable は R で回せるか、 prototype は複製元
+    /// name は toolbar 表示名、 rotatable は R で回せるか、 prototype は複製元
     struct PaletteTemplate
     {
         const char* name = nullptr;
-        bool isSpawn = false;
         bool rotatable = false;
         NS::Game::Level::ObjectInstance prototype;
     };
 
-    /// パレット 2 スロット。 slot0 は grid に置く素の cube、 slot1 は世界に 1 点の spawn marker
-    [[nodiscard]] const std::array<PaletteTemplate, 2>& PaletteTemplateSlots() noexcept;
+    /// パレットのブラシ数。 grid cube / 45 度スロープ / ゴールの 3 種
+    inline constexpr std::size_t kPaletteSlotCount = 3;
+
+    /// パレットの配置ブラシ一覧。 プレイヤー配置はギズモで実プレイヤーを動かすため別経路
+    [[nodiscard]] const std::array<PaletteTemplate, kPaletteSlotCount>& PaletteTemplateSlots() noexcept;
 } // namespace NS::Editor

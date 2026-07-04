@@ -5,7 +5,7 @@
 ///        capsule sweep / ground probe を提供する pure physics の衝突 world
 ///
 /// 依存: Math の AABB / Vector3、 Capsule、 Sphere、 SweptOBB の OBB、 SweptTriangle の Triangle、 CollisionGrid
-/// pole / hazard 等 Scene gameplay は層が違うため含めない。 NS::Physics は NS::Scene に依存しない
+/// hazard 等 Scene gameplay は層が違うため含めない。 NS::Physics は NS::Scene に依存しない
 /// collision 再構築時に Clear -> Add* -> BuildBroadphase で満たし、 SweepCapsule / ProbeGround で問い合わせる
 
 #include "Framework/Math/Math.h"
@@ -30,7 +30,7 @@ namespace NS::Physics
     };
 
     /// AABB / Triangle / OBB / Sphere / Capsule の静的衝突プリミティブ 5 channel と AABB 専用 broadphase
-    /// grid を所有する。 pole / hazard は gameplay 判定のため含めない
+    /// grid を所有する。 hazard は gameplay 判定のため含めない
     class PhysicsWorld
     {
     public:

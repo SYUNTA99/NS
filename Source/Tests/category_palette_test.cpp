@@ -10,18 +10,7 @@ TEST(CategoryPalette, InitialSlotIsCube)
     EditorNs::CategoryPalette palette;
     EXPECT_EQ(palette.ActiveSlot(), 0u);
     EXPECT_STREQ(palette.CurrentTemplateName(), "Cube");
-    EXPECT_FALSE(palette.CurrentIsSpawn());
     EXPECT_TRUE(palette.CurrentIsRotatable());
-}
-
-TEST(CategoryPalette, SecondSlotIsSpawn)
-{
-    EditorNs::CategoryPalette palette;
-    palette.SetActiveSlot(1);
-    EXPECT_EQ(palette.ActiveSlot(), 1u);
-    EXPECT_STREQ(palette.CurrentTemplateName(), "Spawn");
-    EXPECT_TRUE(palette.CurrentIsSpawn());
-    EXPECT_FALSE(palette.CurrentIsRotatable());
 }
 
 TEST(CategoryPalette, OutOfRangeSlotIsIgnored)
@@ -30,19 +19,6 @@ TEST(CategoryPalette, OutOfRangeSlotIsIgnored)
     palette.SetActiveSlot(0);
     palette.SetActiveSlot(99);
     EXPECT_EQ(palette.ActiveSlot(), 0u);
-}
-
-TEST(CategoryPalette, KeyboardNumSelectsSlot)
-{
-    NS::Platform::Input input;
-    EditorNs::CategoryPalette palette;
-
-    // 数字キー '2' edge で spawn の slot 1 が active になる
-    input.Keyboard().OnKeyDown(NS::Platform::Key::Num2);
-    palette.TickInput(&input, nullptr);
-
-    EXPECT_EQ(palette.ActiveSlot(), 1u);
-    EXPECT_STREQ(palette.CurrentTemplateName(), "Spawn");
 }
 
 TEST(CategoryPalette, CycleVariantIsNoOp)
@@ -65,4 +41,23 @@ TEST(CategoryPalette, KeyboardNumNotEdgeNoChange)
     palette.TickInput(&input, nullptr);
 
     EXPECT_EQ(palette.ActiveSlot(), 0u);
+}
+
+TEST(CategoryPalette, SlopeSlotIsRotatableWedge)
+{
+    EditorNs::CategoryPalette palette;
+    palette.SetActiveSlot(1);
+    EXPECT_STREQ(palette.CurrentTemplateName(), "Slope 45");
+    EXPECT_TRUE(palette.CurrentIsRotatable());
+    // cursor preview の wedge が prototype の SlopeCollider と同じ 45 度を指す
+    EXPECT_NEAR(palette.CurrentSlopeAngleDegrees(), 45.0f, 1e-3f);
+}
+
+TEST(CategoryPalette, GoalSlotIsNotRotatableAndHasNoSlope)
+{
+    EditorNs::CategoryPalette palette;
+    palette.SetActiveSlot(2);
+    EXPECT_STREQ(palette.CurrentTemplateName(), "Goal");
+    EXPECT_FALSE(palette.CurrentIsRotatable());
+    EXPECT_LT(palette.CurrentSlopeAngleDegrees(), 0.0f);
 }

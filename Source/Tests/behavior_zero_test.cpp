@@ -9,7 +9,6 @@
 #include <Framework/Scene/Components/BoxColliderComponent.h>
 #include <Framework/Scene/Components/CapsuleColliderComponent.h>
 #include <Framework/Scene/Components/HazardComponent.h>
-#include <Framework/Scene/Components/PoleComponent.h>
 #include <Framework/Scene/Components/SlopeColliderComponent.h>
 #include <Framework/Scene/Components/SphereColliderComponent.h>
 #include <Framework/Scene/GameObject.h>
@@ -52,7 +51,6 @@ namespace
         bool hasSphere = false;
         bool hasCapsule = false;
         bool hasSlope = false;
-        bool hasPole = false;
         bool hasHazard = false;
         NS::Math::AABB boxAabb{};
         NS::Physics::OBB boxObb;
@@ -60,8 +58,6 @@ namespace
         NS::Physics::Capsule capsule;
         float slopeAngle = 0.0f;
         std::array<NS::Physics::Triangle, 8> slopeTriangles{};
-        float poleRadius = 0.0f;
-        float poleHeight = 0.0f;
     };
 
     ColliderSignature ExtractColliderSignature(NS::Scene::GameObject& obj)
@@ -89,12 +85,6 @@ namespace
             sig.slopeAngle = slope->AngleDegrees();
             sig.slopeTriangles = slope->WorldTriangles();
         }
-        if (auto* pole = FindComponent<NS::Scene::PoleComponent>(obj))
-        {
-            sig.hasPole = true;
-            sig.poleRadius = pole->Radius();
-            sig.poleHeight = pole->Height();
-        }
         if (FindComponent<NS::Scene::HazardComponent>(obj))
             sig.hasHazard = true;
         return sig;
@@ -106,7 +96,6 @@ namespace
         EXPECT_EQ(expected.hasSphere, actual.hasSphere);
         EXPECT_EQ(expected.hasCapsule, actual.hasCapsule);
         EXPECT_EQ(expected.hasSlope, actual.hasSlope);
-        EXPECT_EQ(expected.hasPole, actual.hasPole);
         EXPECT_EQ(expected.hasHazard, actual.hasHazard);
 
         if (expected.hasBox && actual.hasBox)
@@ -141,11 +130,6 @@ namespace
                 ExpectVec3Near(expected.slopeTriangles[i].v2, actual.slopeTriangles[i].v2);
             }
         }
-        if (expected.hasPole && actual.hasPole)
-        {
-            EXPECT_NEAR(expected.poleRadius, actual.poleRadius, kTol);
-            EXPECT_NEAR(expected.poleHeight, actual.poleHeight, kTol);
-        }
     }
 
     ComponentData MakeComponent(std::string typeName, std::vector<FieldValue> fields)
@@ -176,10 +160,12 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     obj.components.push_back(
         MakeComponent("CapsuleColliderComponent", {FieldValue{"Radius", 0.4f}, FieldValue{"Half Height", 0.9f}}));
     src.objects.push_back(std::move(obj));
+    src.objects.push_back(NS::Game::Level::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
     LevelData restored;
     ASSERT_TRUE(DeserializeLevelFromJson(restored, SerializeLevelToJson(src)));
-    ASSERT_EQ(restored.objects.size(), 1u);
+    // 末尾に追従カメラが 1 台合成される
+    ASSERT_EQ(restored.objects.size(), 3u);
     ASSERT_FALSE(restored.objects[0].components.empty()); // 往復後も新経路の components 駆動を通る
 
     NS::Scene::AssetManager assets{std::filesystem::path{"."}};

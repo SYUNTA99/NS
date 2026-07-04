@@ -5,8 +5,8 @@
 ///
 /// GameObject::AddComponent<T>() で生成され、 GameObject が unique_ptr で寿命を所有する
 /// Component 自身は所有者 GameObject を生参照する。 owner は生成後に GameObject が注入する
-/// Component 間 / 他 GameObject へのアクセスはコンストラクタ経由の明示的な生ポインタ注入のみ許可する
-/// GetComponent<T>() のような動的検索 API は提供しない
+/// 兄弟 Component への参照は OnStart で Owner()->FindComponent<T>() により解決し、
+/// scene の service は OnStart で Owner()->OwningScene() 経由で借用する
 ///
 /// ライフサイクル:
 ///   - OnStart() — Scene attach 直後に 1 回
@@ -72,6 +72,9 @@ namespace NS::Scene
         /// このコンポーネント型の反射情報。未反射型は nullptr。エディタが Component* 越しに field を列挙する
         [[nodiscard]] virtual const ReflectionInfo* GetReflection() const noexcept { return nullptr; }
 
+        /// 自分の反射鎖に target が現れるか。反射照合による is-a 判定。target が nullptr なら常に false
+        [[nodiscard]] bool IsA(const ReflectionInfo* target) const noexcept;
+
     private:
         // owner 注入は AddComponent 経由のみ。Component から GameObject の非公開メンバへはアクセスしない
         friend class GameObject;
@@ -81,5 +84,21 @@ namespace NS::Scene
         int m_priority = static_cast<int>(TickPriority::Physics);
         bool m_active = true;
     };
+
+    /// 反射照合で通れば static_cast、外れれば nullptr を返す型分岐の窓口。comp が nullptr でも安全
+    template <class T> [[nodiscard]] T* ComponentCast(Component* comp) noexcept
+    {
+        if (comp != nullptr && comp->IsA(T::StaticReflection()))
+            return static_cast<T*>(comp);
+        return nullptr;
+    }
+
+    /// const 版。反射照合で通れば static_cast、外れれば nullptr
+    template <class T> [[nodiscard]] const T* ComponentCast(const Component* comp) noexcept
+    {
+        if (comp != nullptr && comp->IsA(T::StaticReflection()))
+            return static_cast<const T*>(comp);
+        return nullptr;
+    }
 
 } // namespace NS::Scene

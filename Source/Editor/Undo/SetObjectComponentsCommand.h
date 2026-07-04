@@ -13,7 +13,7 @@
 namespace NS::Editor
 {
 
-    /// id で再特定したオブジェクトの components を新しい一覧へ置き換える
+    /// 永続 id で再特定したオブジェクトの components を新しい一覧へ置き換える
     /// @details 複数の component 変更を 1 つの undo 単位へまとめる時に使う
     /// Do で旧一覧を退避し、 Undo で差し戻す
     class SetObjectComponentsCommand final : public ICommand
@@ -22,8 +22,8 @@ namespace NS::Editor
         SetObjectComponentsCommand(std::uint32_t targetObjectId,
                                    std::vector<NS::Game::Level::ComponentData> newComponents) noexcept;
 
-        void Do(NS::Game::Level::EditTarget& target) noexcept override;
-        void Undo(NS::Game::Level::EditTarget& target) noexcept override;
+        void Do(NS::Game::Level::LevelData& level) noexcept override;
+        void Undo(NS::Game::Level::LevelData& level) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override;
 

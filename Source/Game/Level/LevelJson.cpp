@@ -22,14 +22,21 @@ namespace NS::Game::Level
     namespace
     {
         /// セーブフォーマットのバージョン。 binary 時代の major/minor を 1 整数へ置換した
-        constexpr int kFormatVersion = 1;
+        /// v2 で spawn をグリッドセル番号から capsule 中心の world 位置 + 向きへ変更した
+        /// v3 で object へ永続 id、 root へ nextObjectId を追加した。 旧版は読込時に採番して移行する
+        /// v4 で据え置きカメラを cameraVolumes の別リストから objects の配置物へ統合した
+        /// v5 でプレイヤーを spawn 単一値から objects の実体へ統合した。 旧版は読込時に合成して移行する
+        /// v6 で追従カメラを scene 直組みから objects の実体へ統合した。 旧版は読込時に合成して移行する
+        /// v7 で環境をシーン所有の environment 欄へ統合し themeId を廃止した。 environment 欄が無い
+        /// 旧ファイルは中立の既定値で読む
+        constexpr int kFormatVersion = 7;
 
         /// 読込時の上限。 巨大 size / 要素数による memory exhaustion を防ぐ。 binary 版から移植
         constexpr std::size_t kMaxLevelFileBytes = 16u * 1024u * 1024u;
         constexpr std::size_t kMaxObjectCount = 100'000u;
         constexpr std::size_t kMaxMaterialPaths = 4'096u;
         constexpr std::size_t kMaxMaterialPathLength = 1'024u;
-        constexpr std::size_t kMaxCameraVolumeCount = 4'096u;
+        constexpr std::size_t kMaxLegacyCameraVolumeCount = 4'096u;
 
         nlohmann::json Vec3Json(float x, float y, float z)
         {
@@ -95,43 +102,16 @@ namespace NS::Game::Level
             }
             case 4:
                 return std::get<std::string>(field.value);
+            case 5:
+            {
+                // 素の数値だと load 時の推論で int に化けるため {"ref": id} の単キー object で書く
+                nlohmann::json ref;
+                ref["ref"] = std::get<NS::Scene::ObjectRef>(field.value).id;
+                return ref;
+            }
             default:
                 return nlohmann::json{};
             }
-        }
-
-        /// JSON 値から FieldValue の variant を推論する。 bool→bool / 小数→float / 整数→int / 配列3→Vector3 /
-        /// 文字列→string。 いずれにも合わなければ何も積まないで前方互換を保つ
-        bool JsonToFieldValue(const std::string& name, const nlohmann::json& value, FieldValue& out)
-        {
-            if (value.is_boolean())
-            {
-                out = FieldValue{name, value.get<bool>()};
-                return true;
-            }
-            if (value.is_number_float())
-            {
-                out = FieldValue{name, value.get<float>()};
-                return true;
-            }
-            if (value.is_number_integer() || value.is_number_unsigned())
-            {
-                out = FieldValue{name, value.get<int>()};
-                return true;
-            }
-            if (value.is_string())
-            {
-                out = FieldValue{name, value.get<std::string>()};
-                return true;
-            }
-            if (value.is_array() && value.size() == 3u && value[0].is_number() && value[1].is_number() &&
-                value[2].is_number())
-            {
-                out = FieldValue{
-                    name, NS::Math::Vector3{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()}};
-                return true;
-            }
-            return false;
         }
 
         nlohmann::json SerializeComponentData(const ComponentData& component)
@@ -183,6 +163,7 @@ namespace NS::Game::Level
                 components.push_back(SerializeComponentData(component));
 
             nlohmann::json out;
+            out["id"] = object.objectId;
             out["transform"] = std::move(transform);
             out["materialIndex"] = static_cast<int>(object.materialIndex);
             out["flags"] = static_cast<int>(object.flags);
@@ -206,6 +187,7 @@ namespace NS::Game::Level
                 ReadVec3(*transformIt, "scale", object.scaleX, object.scaleY, object.scaleZ);
             }
 
+            object.objectId = static_cast<std::uint32_t>(ReadInt(json, "id", 0));
             object.materialIndex = static_cast<std::int16_t>(ReadInt(json, "materialIndex", object.materialIndex));
             object.flags = static_cast<std::uint8_t>(ReadInt(json, "flags", object.flags));
             object.reserved1 = static_cast<std::uint16_t>(ReadInt(json, "reserved1", object.reserved1));
@@ -238,34 +220,42 @@ namespace NS::Game::Level
             return object;
         }
 
-        nlohmann::json SerializeCameraVolume(const CameraVolume& volume)
+        /// v3 以前の cameraVolumes 1 件を PlacedVirtualCamera 持ちの配置物へ変換する。読込移行専用
+        /// 視点位置は object の Transform、それ以外は component の反射フィールドに載せ替える
+        ObjectInstance MakeCameraObjectFromLegacyVolume(const nlohmann::json& json)
         {
-            nlohmann::json out;
-            out["cameraPosition"] = Vec3Json(volume.cameraPositionX, volume.cameraPositionY, volume.cameraPositionZ);
-            out["lookTarget"] = Vec3Json(volume.lookTargetX, volume.lookTargetY, volume.lookTargetZ);
-            out["triggerCenter"] = Vec3Json(volume.triggerCenterX, volume.triggerCenterY, volume.triggerCenterZ);
-            out["triggerExtent"] = Vec3Json(volume.triggerExtentX, volume.triggerExtentY, volume.triggerExtentZ);
-            out["priority"] = volume.priority;
-            out["lookAtPlayer"] = static_cast<int>(volume.lookAtPlayer);
-            out["reserved0"] = static_cast<int>(volume.reserved0);
-            out["reserved1"] = static_cast<int>(volume.reserved1);
-            return out;
-        }
-
-        CameraVolume DeserializeCameraVolume(const nlohmann::json& json)
-        {
-            CameraVolume volume{};
+            ObjectInstance object{};
+            object.materialIndex = -1;
             if (!json.is_object())
-                return volume;
-            ReadVec3(json, "cameraPosition", volume.cameraPositionX, volume.cameraPositionY, volume.cameraPositionZ);
-            ReadVec3(json, "lookTarget", volume.lookTargetX, volume.lookTargetY, volume.lookTargetZ);
-            ReadVec3(json, "triggerCenter", volume.triggerCenterX, volume.triggerCenterY, volume.triggerCenterZ);
-            ReadVec3(json, "triggerExtent", volume.triggerExtentX, volume.triggerExtentY, volume.triggerExtentZ);
-            volume.priority = ReadInt(json, "priority", volume.priority);
-            volume.lookAtPlayer = static_cast<std::uint8_t>(ReadInt(json, "lookAtPlayer", volume.lookAtPlayer));
-            volume.reserved0 = static_cast<std::uint8_t>(ReadInt(json, "reserved0", volume.reserved0));
-            volume.reserved1 = static_cast<std::uint16_t>(ReadInt(json, "reserved1", volume.reserved1));
-            return volume;
+                return object;
+
+            ReadVec3(json, "cameraPosition", object.positionX, object.positionY, object.positionZ);
+
+            float lookTargetX = 0.0f;
+            float lookTargetY = 0.0f;
+            float lookTargetZ = 0.0f;
+            ReadVec3(json, "lookTarget", lookTargetX, lookTargetY, lookTargetZ);
+            float triggerCenterX = 0.0f;
+            float triggerCenterY = 0.0f;
+            float triggerCenterZ = 0.0f;
+            ReadVec3(json, "triggerCenter", triggerCenterX, triggerCenterY, triggerCenterZ);
+            float triggerExtentX = 1.0f;
+            float triggerExtentY = 1.0f;
+            float triggerExtentZ = 1.0f;
+            ReadVec3(json, "triggerExtent", triggerExtentX, triggerExtentY, triggerExtentZ);
+
+            ComponentData camera;
+            camera.typeName = "PlacedVirtualCamera";
+            camera.fields.push_back(
+                FieldValue{"Look Target", NS::Math::Vector3{lookTargetX, lookTargetY, lookTargetZ}});
+            camera.fields.push_back(
+                FieldValue{"Trigger Center", NS::Math::Vector3{triggerCenterX, triggerCenterY, triggerCenterZ}});
+            camera.fields.push_back(
+                FieldValue{"Trigger Extent", NS::Math::Vector3{triggerExtentX, triggerExtentY, triggerExtentZ}});
+            camera.fields.push_back(FieldValue{"Look At Player", ReadInt(json, "lookAtPlayer", 0) != 0});
+            camera.fields.push_back(FieldValue{"Priority", ReadInt(json, "priority", 10)});
+            object.components.push_back(std::move(camera));
+            return object;
         }
     } // namespace
 
@@ -277,43 +267,91 @@ namespace NS::Game::Level
         return fields;
     }
 
+    bool JsonToFieldValue(const std::string& name, const nlohmann::json& value, FieldValue& out)
+    {
+        if (value.is_boolean())
+        {
+            out = FieldValue{name, value.get<bool>()};
+            return true;
+        }
+        if (value.is_number_float())
+        {
+            out = FieldValue{name, value.get<float>()};
+            return true;
+        }
+        if (value.is_number_integer() || value.is_number_unsigned())
+        {
+            out = FieldValue{name, value.get<int>()};
+            return true;
+        }
+        if (value.is_string())
+        {
+            out = FieldValue{name, value.get<std::string>()};
+            return true;
+        }
+        if (value.is_array() && value.size() == 3u && value[0].is_number() && value[1].is_number() &&
+            value[2].is_number())
+        {
+            out = FieldValue{name,
+                             NS::Math::Vector3{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()}};
+            return true;
+        }
+        if (value.is_object())
+        {
+            const auto refIt = value.find("ref");
+            // 負数は id として不正なので unsigned のみ受ける。 壊れた ref は積まずに前方互換へ倒す
+            if (refIt != value.end() && refIt->is_number_unsigned())
+            {
+                out = FieldValue{name, NS::Scene::ObjectRef{refIt->get<std::uint32_t>()}};
+                return true;
+            }
+            return false;
+        }
+        return false;
+    }
+
     std::string SerializeLevelToJson(const LevelData& level)
     {
         nlohmann::json root;
         root["formatVersion"] = kFormatVersion;
 
         nlohmann::json meta;
-        meta["themeId"] = static_cast<int>(level.themeId);
         meta["bgmId"] = static_cast<int>(level.bgmId);
         meta["coinThreshold"] = static_cast<int>(level.coinThreshold);
         meta["timeLimitSeconds"] = static_cast<int>(level.timeLimitSeconds);
         root["meta"] = std::move(meta);
 
-        root["spawn"] = nlohmann::json{
-            static_cast<int>(level.spawnX), static_cast<int>(level.spawnY), static_cast<int>(level.spawnZ)};
+        nlohmann::json environment;
+        environment["lightDirection"] = Vec3Json(
+            level.environment.lightDirection.x, level.environment.lightDirection.y, level.environment.lightDirection.z);
+        environment["lightColor"] =
+            Vec3Json(level.environment.lightColor.x, level.environment.lightColor.y, level.environment.lightColor.z);
+        environment["ambientColor"] = Vec3Json(
+            level.environment.ambientColor.x, level.environment.ambientColor.y, level.environment.ambientColor.z);
+        environment["skyboxCubemapPath"] = level.environment.skyboxCubemapPath;
+        environment["blockTextureBaseSlice"] = static_cast<int>(level.environment.blockTextureBaseSlice);
+        root["environment"] = std::move(environment);
 
         nlohmann::json objects = nlohmann::json::array();
         for (const auto& object : level.objects)
             objects.push_back(SerializeObject(object));
         root["objects"] = std::move(objects);
+        root["nextObjectId"] = level.nextObjectId;
 
         nlohmann::json materials = nlohmann::json::array();
         for (const auto& materialPath : level.materialPaths)
             materials.push_back(materialPath);
         root["materialPaths"] = std::move(materials);
 
-        nlohmann::json cameras = nlohmann::json::array();
-        for (const auto& camera : level.cameraVolumes)
-            cameras.push_back(SerializeCameraVolume(camera));
-        root["cameraVolumes"] = std::move(cameras);
-
         // 不正 UTF-8 は replace で握り、 dump が例外を投げないようにして noexcept 経路を保つ
         return root.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
     }
 
-    bool DeserializeLevelFromJson(LevelData& outLevel, std::string_view jsonText)
+    bool DeserializeLevelFromJson(LevelData& outLevel, std::string_view jsonText, LevelLoadReport* outReport)
     {
         outLevel = LevelData{};
+        if (outReport != nullptr)
+            *outReport = LevelLoadReport{};
 
         const nlohmann::json root = nlohmann::json::parse(jsonText, nullptr, false);
         if (root.is_discarded())
@@ -374,42 +412,119 @@ namespace NS::Game::Level
             }
         }
 
+        // v3 以前の据え置きカメラは別リストだった。読込時に配置物へ変換して objects へ合流させる
         const auto camerasIt = root.find("cameraVolumes");
         if (camerasIt != root.end() && camerasIt->is_array())
         {
-            if (camerasIt->size() > kMaxCameraVolumeCount)
+            if (camerasIt->size() > kMaxLegacyCameraVolumeCount)
             {
                 NS_LOG_ERROR(::NS::Core::LogCat::Game,
                              "DeserializeLevelFromJson: camera volume 数 {} が上限 {} を超過",
                              camerasIt->size(),
-                             kMaxCameraVolumeCount);
+                             kMaxLegacyCameraVolumeCount);
                 outLevel = LevelData{};
                 return false;
             }
-            outLevel.cameraVolumes.reserve(camerasIt->size());
+            outLevel.objects.reserve(outLevel.objects.size() + camerasIt->size());
             for (const auto& cameraJson : *camerasIt)
-                outLevel.cameraVolumes.push_back(DeserializeCameraVolume(cameraJson));
+                outLevel.objects.push_back(MakeCameraObjectFromLegacyVolume(cameraJson));
         }
 
-        const auto spawnIt = root.find("spawn");
-        if (spawnIt != root.end() && spawnIt->is_array() && spawnIt->size() == 3u && (*spawnIt)[0].is_number() &&
-            (*spawnIt)[1].is_number() && (*spawnIt)[2].is_number())
+        // v4 以前のプレイヤーは spawn 単一値だった。読込時に objects の実体へ変換して合流させる
+        // v5 以降でもプレイヤー欠落の手編集ファイルには既定位置で 1 体を合成し、「必ず 1 体」を読込の門で保証する
+        const int loadedVersion = ReadInt(root, "formatVersion", 1);
+        if (FindPlayerObjectIndex(outLevel) == kNoObjectIndex)
         {
-            outLevel.spawnX = static_cast<std::int16_t>((*spawnIt)[0].get<int>());
-            outLevel.spawnY = static_cast<std::int16_t>((*spawnIt)[1].get<int>());
-            outLevel.spawnZ = static_cast<std::int16_t>((*spawnIt)[2].get<int>());
+            float spawnX = 0.0f;
+            float spawnY = kDefaultPlayerSpawnY;
+            float spawnZ = 0.0f;
+            float spawnRotationX = 0.0f;
+            float spawnRotationY = 0.0f;
+            float spawnRotationZ = 0.0f;
+            float spawnRotationW = 1.0f;
+            ReadVec3(root, "spawn", spawnX, spawnY, spawnZ);
+            ReadVec4(root, "spawnRotation", spawnRotationX, spawnRotationY, spawnRotationZ, spawnRotationW);
+            if (loadedVersion < 2 && root.contains("spawn"))
+            {
+                // v1 までの spawn はグリッドセル番号で「そのセルに立つ」 意味だった。 v2 以降は capsule 中心の
+                // world 位置なので、 旧コードの床乗せ分を足して中心へ移す
+                constexpr float kLegacyStandLift = 0.41f; // capsule halfHeight 0.5 + radius 0.4 + 1cm - cell 半 0.5
+                spawnY += kLegacyStandLift;
+            }
+            outLevel.objects.push_back(
+                MakePlayerObject(NS::Math::Vector3{spawnX, spawnY, spawnZ},
+                                 NS::Math::Quaternion{spawnRotationX, spawnRotationY, spawnRotationZ, spawnRotationW}));
+            if (outReport != nullptr)
+                outReport->playerObjectCreated = true;
         }
+
+        // プレイヤーは必ず 1 体。 余分は先頭を正として組まれず、 手編集の重複をここで知らせる
+        std::size_t playerCount = 0;
+        for (const ObjectInstance& object : outLevel.objects)
+        {
+            if (IsPlayerObject(object))
+                ++playerCount;
+        }
+        if (playerCount > 1)
+            NS_LOG_WARN(::NS::Core::LogCat::Game,
+                        "プレイヤーが {} 体ある。先頭の 1 体を正とし、残りは無効として扱う",
+                        playerCount);
 
         const auto metaIt = root.find("meta");
         if (metaIt != root.end() && metaIt->is_object())
         {
-            outLevel.themeId = static_cast<std::uint16_t>(ReadInt(*metaIt, "themeId", outLevel.themeId));
             outLevel.bgmId = static_cast<std::uint16_t>(ReadInt(*metaIt, "bgmId", outLevel.bgmId));
             outLevel.coinThreshold =
                 static_cast<std::uint16_t>(ReadInt(*metaIt, "coinThreshold", outLevel.coinThreshold));
             outLevel.timeLimitSeconds =
                 static_cast<std::uint16_t>(ReadInt(*metaIt, "timeLimitSeconds", outLevel.timeLimitSeconds));
         }
+
+        // environment 欄がシーンの見た目を所有する。 中立の既定値の上に読めたキーだけ部分適用する
+        const auto environmentIt = root.find("environment");
+        if (environmentIt != root.end() && environmentIt->is_object())
+        {
+            ReadVec3(*environmentIt,
+                     "lightDirection",
+                     outLevel.environment.lightDirection.x,
+                     outLevel.environment.lightDirection.y,
+                     outLevel.environment.lightDirection.z);
+            ReadVec3(*environmentIt,
+                     "lightColor",
+                     outLevel.environment.lightColor.x,
+                     outLevel.environment.lightColor.y,
+                     outLevel.environment.lightColor.z);
+            ReadVec3(*environmentIt,
+                     "ambientColor",
+                     outLevel.environment.ambientColor.x,
+                     outLevel.environment.ambientColor.y,
+                     outLevel.environment.ambientColor.z);
+            const auto skyboxIt = environmentIt->find("skyboxCubemapPath");
+            if (skyboxIt != environmentIt->end() && skyboxIt->is_string())
+                outLevel.environment.skyboxCubemapPath = skyboxIt->get<std::string>();
+            outLevel.environment.blockTextureBaseSlice = static_cast<std::uint16_t>(
+                ReadInt(*environmentIt, "blockTextureBaseSlice", outLevel.environment.blockTextureBaseSlice));
+        }
+
+        outLevel.nextObjectId = static_cast<std::uint32_t>(ReadInt(root, "nextObjectId", 1));
+        // v2 以前は id 無しで全 object が未割当。読込直後に必ず一意化し、以降の経路は id を信頼できる
+        EnsureUniqueObjectIds(outLevel);
+
+        // v5 以前の追従カメラは scene 直組みだった。プレイヤー同様、無ければプレイヤーを追う 1 台を
+        // 合成して「必ず 1 台」を読込の門で保証する。Target 参照が要るため採番の後に足す
+        if (FindFollowCameraObjectIndex(outLevel) == kNoObjectIndex)
+        {
+            const std::size_t playerIndex = FindPlayerObjectIndex(outLevel);
+            const std::uint32_t targetId =
+                (playerIndex != kNoObjectIndex) ? outLevel.objects[playerIndex].objectId : 0u;
+            outLevel.objects.push_back(MakeFollowCameraObject(targetId));
+            EnsureUniqueObjectIds(outLevel);
+        }
+
+        // 手編集や参照先削除で宙に浮いた参照は入口で未設定へ戻す。実行時は id 照合の失敗を考えずに済む
+        const std::size_t prunedRefs = PruneDanglingObjectRefs(outLevel);
+        if (prunedRefs > 0)
+            NS_LOG_WARN(::NS::Core::LogCat::Game, "存在しない object を指す参照を {} 件未設定に戻した", prunedRefs);
 
         return true;
     }
@@ -444,15 +559,6 @@ namespace NS::Game::Level
                 return false;
             }
         }
-        if (level.cameraVolumes.size() > kMaxCameraVolumeCount)
-        {
-            NS_LOG_ERROR(::NS::Core::LogCat::Game,
-                         "SaveLevelToJsonFile: camera volume 数が上限超過 ({} > {})",
-                         level.cameraVolumes.size(),
-                         kMaxCameraVolumeCount);
-            return false;
-        }
-
         // json の構築 / dump は bad_alloc を投げ得る。 noexcept 契約を守るため捕捉して false に変換する
         try
         {
@@ -476,7 +582,9 @@ namespace NS::Game::Level
         }
     }
 
-    bool LoadLevelFromJsonFile(LevelData& outLevel, const std::filesystem::path& path) noexcept
+    bool LoadLevelFromJsonFile(LevelData& outLevel,
+                               const std::filesystem::path& path,
+                               LevelLoadReport* outReport) noexcept
     {
         outLevel = LevelData{};
 
@@ -496,7 +604,7 @@ namespace NS::Game::Level
         // parse 後の json 操作 / LevelData 構築は bad_alloc を投げ得る。 noexcept 契約を守るため捕捉する
         try
         {
-            if (!DeserializeLevelFromJson(outLevel, *textOpt))
+            if (!DeserializeLevelFromJson(outLevel, *textOpt, outReport))
             {
                 outLevel = LevelData{};
                 return false;

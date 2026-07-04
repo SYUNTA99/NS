@@ -6,6 +6,7 @@
 #include "Game/Level/detail/crc32.h"
 
 #include <cmath>
+#include <unordered_set>
 
 namespace NS::Game::Level
 {
@@ -50,6 +51,8 @@ namespace NS::Game::Level
                 return UpdateWith(crc, std::get<NS::Math::Vector3>(field.value));
             case 4:
                 return UpdateWithString(crc, std::get<std::string>(field.value));
+            case 5:
+                return UpdateWith(crc, std::get<NS::Scene::ObjectRef>(field.value).id);
             default:
                 // valueless_by_exception 等の想定外 index。 tag は hash 済なので値は足さない
                 return crc;
@@ -60,6 +63,7 @@ namespace NS::Game::Level
         /// component の field は名前順に hash するため、 名前昇順の save→load 正準化を跨いでも CRC が安定する
         std::uint32_t UpdateWithObject(std::uint32_t crc, const ObjectInstance& object) noexcept
         {
+            crc = UpdateWith(crc, object.objectId);
             crc = UpdateWith(crc, object.positionX);
             crc = UpdateWith(crc, object.positionY);
             crc = UpdateWith(crc, object.positionZ);
@@ -134,6 +138,8 @@ namespace NS::Game::Level
         }
         case 4:
             return std::get<std::string>(value) == std::get<std::string>(other.value);
+        case 5:
+            return std::get<NS::Scene::ObjectRef>(value) == std::get<NS::Scene::ObjectRef>(other.value);
         default:
             // 両者 index 一致を確認済なので、 valueless 同士など想定外 index は等しくないとみなす
             return false;
@@ -152,15 +158,6 @@ namespace NS::Game::Level
             crc = UpdateWithObject(crc, object);
         }
 
-        const std::uint64_t cameraVolumeCount = static_cast<std::uint64_t>(cameraVolumes.size());
-        crc = UpdateWith(crc, cameraVolumeCount);
-        if (!cameraVolumes.empty())
-        {
-            const auto* raw = reinterpret_cast<const std::byte*>(cameraVolumes.data());
-            const std::size_t size = cameraVolumes.size() * sizeof(CameraVolume);
-            crc = detail::Crc32Update(crc, std::span<const std::byte>(raw, size));
-        }
-
         const std::uint64_t materialCount = static_cast<std::uint64_t>(materialPaths.size());
         crc = UpdateWith(crc, materialCount);
         for (const auto& materialPath : materialPaths)
@@ -168,16 +165,143 @@ namespace NS::Game::Level
             crc = UpdateWithString(crc, materialPath);
         }
 
-        crc = UpdateWith(crc, spawnX);
-        crc = UpdateWith(crc, spawnY);
-        crc = UpdateWith(crc, spawnZ);
+        // 環境は見た目を確定する永続データなので、 変化が dirty 検知に必ず出るよう field 単位で hash する
+        crc = UpdateWith(crc, environment.lightDirection);
+        crc = UpdateWith(crc, environment.lightColor);
+        crc = UpdateWith(crc, environment.ambientColor);
+        crc = UpdateWithString(crc, environment.skyboxCubemapPath);
+        crc = UpdateWith(crc, environment.blockTextureBaseSlice);
 
-        crc = UpdateWith(crc, themeId);
         crc = UpdateWith(crc, bgmId);
         crc = UpdateWith(crc, coinThreshold);
         crc = UpdateWith(crc, timeLimitSeconds);
 
+        // nextObjectId は意図して hash しない。採番カウンタは undo で巻き戻さないため、入れると
+        // 「置いて undo しただけで dirty」が恒久化する。カウンタだけが進んだ状態は保存しなくても
+        // 未保存 object への参照が残らず整合が壊れないので、内容の変化検知からは外す
+
         return detail::Crc32Finalize(crc);
+    }
+
+    std::size_t FindObjectIndexById(const LevelData& level, std::uint32_t id) noexcept
+    {
+        if (id == kNoObjectId)
+            return kNoObjectIndex;
+        for (std::size_t i = 0; i < level.objects.size(); ++i)
+        {
+            if (level.objects[i].objectId == id)
+                return i;
+        }
+        return kNoObjectIndex;
+    }
+
+    std::uint32_t AllocateObjectId(LevelData& level) noexcept
+    {
+        return level.nextObjectId++;
+    }
+
+    void EnsureUniqueObjectIds(LevelData& level)
+    {
+        // 先にカウンタを既存最大 id の先へ進め、これから振る id が既存と衝突しないようにする
+        for (const ObjectInstance& object : level.objects)
+        {
+            if (object.objectId >= level.nextObjectId)
+                level.nextObjectId = object.objectId + 1;
+        }
+
+        // 未割当は旧版ファイルの全 object、重複は手編集や複製バグの防波堤。先勝ちで後続へ新 id を振る
+        std::unordered_set<std::uint32_t> seen;
+        seen.reserve(level.objects.size());
+        for (ObjectInstance& object : level.objects)
+        {
+            if (object.objectId == 0 || !seen.insert(object.objectId).second)
+            {
+                object.objectId = level.nextObjectId++;
+                seen.insert(object.objectId);
+            }
+        }
+    }
+
+    bool IsPlayerObject(const ObjectInstance& object) noexcept
+    {
+        return FindComponentData(object, "PlayerInputComponent") != nullptr;
+    }
+
+    std::size_t FindPlayerObjectIndex(const LevelData& level) noexcept
+    {
+        for (std::size_t i = 0; i < level.objects.size(); ++i)
+        {
+            if (IsPlayerObject(level.objects[i]))
+                return i;
+        }
+        return kNoObjectIndex;
+    }
+
+    ObjectInstance MakePlayerObject(const NS::Math::Vector3& position, const NS::Math::Quaternion& rotation)
+    {
+        ObjectInstance object{};
+        object.positionX = position.x;
+        object.positionY = position.y;
+        object.positionZ = position.z;
+        object.rotationX = rotation.x;
+        object.rotationY = rotation.y;
+        object.rotationZ = rotation.z;
+        object.rotationW = rotation.w;
+        // cube mesh の半サイズ 0.5 を capsule 当たり radius 0.4 / 半高 0.9 の AABB に合わせる縮み
+        object.scaleX = 0.8f;
+        object.scaleY = 1.8f;
+        object.scaleZ = 0.8f;
+        object.materialIndex = -1;
+        object.components = NS::Game::Blocks::MakeDefaultPlayerComponents();
+        return object;
+    }
+
+    bool IsFollowCameraObject(const ObjectInstance& object) noexcept
+    {
+        return FindComponentData(object, "ThirdPersonFollowComponent") != nullptr;
+    }
+
+    std::size_t FindFollowCameraObjectIndex(const LevelData& level) noexcept
+    {
+        for (std::size_t i = 0; i < level.objects.size(); ++i)
+        {
+            if (IsFollowCameraObject(level.objects[i]))
+                return i;
+        }
+        return kNoObjectIndex;
+    }
+
+    ObjectInstance MakeFollowCameraObject(std::uint32_t targetObjectId)
+    {
+        ObjectInstance object{};
+        object.materialIndex = -1;
+        object.components = NS::Game::Blocks::MakeFollowCameraComponents(targetObjectId);
+        return object;
+    }
+
+    std::size_t PruneDanglingObjectRefs(LevelData& level)
+    {
+        std::unordered_set<std::uint32_t> validIds;
+        validIds.reserve(level.objects.size());
+        for (const ObjectInstance& object : level.objects)
+            validIds.insert(object.objectId);
+
+        std::size_t prunedCount = 0;
+        for (ObjectInstance& object : level.objects)
+        {
+            for (ComponentData& component : object.components)
+            {
+                for (FieldValue& field : component.fields)
+                {
+                    auto* ref = std::get_if<NS::Scene::ObjectRef>(&field.value);
+                    if (ref == nullptr || !ref->IsSet() || validIds.contains(ref->id))
+                        continue;
+                    *ref = NS::Scene::ObjectRef{};
+                    ++prunedCount;
+                }
+            }
+        }
+        return prunedCount;
     }
 
     std::int16_t ObjectCellX(const ObjectInstance& object) noexcept

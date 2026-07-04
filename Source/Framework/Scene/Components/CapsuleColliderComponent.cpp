@@ -1,5 +1,6 @@
 #include "Framework/Scene/Components/CapsuleColliderComponent.h"
 
+#include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 
@@ -101,4 +102,6 @@ namespace NS::Scene
         const NS::Math::Vector3 hi = NS::Math::Vector3::Max(tip, base) + r;
         return NS::Math::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
     }
+
+    NS_REGISTER_COMPONENT(CapsuleColliderComponent)
 } // namespace NS::Scene

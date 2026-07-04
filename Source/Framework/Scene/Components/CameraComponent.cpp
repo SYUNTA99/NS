@@ -1,6 +1,7 @@
 #include "Framework/Scene/Components/CameraComponent.h"
 
 #include "Framework/Graphics/Renderer.h"
+#include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/GameObject.h"
 
 #include <cmath>
@@ -60,4 +61,6 @@ namespace NS::Scene
         const float invLen = 1.0f / std::sqrt(lenSq);
         return NS::Math::Vector3{d.x * invLen, 0.0f, d.z * invLen};
     }
+
+    NS_REGISTER_COMPONENT(CameraComponent)
 } // namespace NS::Scene

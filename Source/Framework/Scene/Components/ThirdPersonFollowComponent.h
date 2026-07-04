@@ -8,11 +8,7 @@
 
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Components/VirtualCameraComponent.h"
-
-namespace NS::Platform
-{
-    class Input;
-}
+#include "Framework/Scene/ObjectRef.h"
 
 namespace NS::Scene
 {
@@ -30,11 +26,16 @@ namespace NS::Scene
         void SetTarget(Transform* target) noexcept;
         [[nodiscard]] Transform* Target() const noexcept { return m_target; }
 
-        /// 右スティック / マウス回転の入力ソース。null では旋回 0
-        void SetInput(NS::Platform::Input* input) noexcept;
+        /// 追従対象の永続参照。データ経由の構築が反射 set で書き、OnStart が実体へ解決する
+        [[nodiscard]] ObjectRef TargetRef() const noexcept { return m_targetRef; }
+
+        /// 追従対象の参照を ObjectRefSubsystem で解決し、Transform と自動ズーム用の Movement を束ねる
+        /// 参照未設定 / 解決不可なら SetTarget 済みの直結線を保つ。直結線とデータ経由の両立の要
+        void OnStart() override;
 
         /// Dynamic zoom の判定に使い、grounded と horizontal velocity を見る。null で idle 距離固定
         void SetMovement(const CharacterMovementComponent* movement) noexcept;
+        [[nodiscard]] const CharacterMovementComponent* Movement() const noexcept { return m_movement; }
 
         /// 設定。将来 Settings UI から bridge する
         void SetSensX(float radPerPixel) noexcept;
@@ -68,7 +69,9 @@ namespace NS::Scene
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
         // 追従カメラの感触を Inspector へ公開する。 毎フレーム読まれるのでライブで効く
-        NS_REFLECT_BEGIN(ThirdPersonFollowComponent)
+        // Target は永続参照で、live への結線は次の rebuild すなわちプレイ突入時の OnStart で効く
+        NS_REFLECT_BEGIN(ThirdPersonFollowComponent, VirtualCameraComponent)
+        NS_REFLECT_FIELD(m_targetRef, "Target")
         NS_REFLECT_FIELD(m_springOmega, "Spring Omega")
         NS_REFLECT_FIELD(m_idleDistance, "Idle Distance")
         NS_REFLECT_FIELD(m_runDistance, "Run Distance")
@@ -83,12 +86,14 @@ namespace NS::Scene
         NS_REFLECT_FIELD(m_invertY, "Invert Y")
         NS_REFLECT_FIELD(m_pitchMin, "Pitch Min")
         NS_REFLECT_FIELD(m_pitchMax, "Pitch Max")
+        NS_REFLECT_ACCESSOR(float, "Far Plane", FarPlane(), SetFarPlane)
+        NS_REFLECT_ACCESSOR(int, "Priority", VcamPriority(), SetVcamPriority)
         NS_REFLECT_END()
 
     private:
         Transform* m_target = nullptr;
-        NS::Platform::Input* m_input = nullptr;
         const CharacterMovementComponent* m_movement = nullptr;
+        ObjectRef m_targetRef{};
 
         float m_yaw = 0.0f;
         float m_pitch = -0.2618f;

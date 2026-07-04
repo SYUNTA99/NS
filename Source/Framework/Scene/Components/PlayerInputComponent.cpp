@@ -3,6 +3,7 @@
 #include "Framework/Platform/Gamepad.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
+#include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/Components/CharacterMovementComponent.h"
 #include "Framework/Scene/GameObject.h"
 
@@ -23,8 +24,7 @@ namespace
 
 namespace NS::Scene
 {
-    PlayerInputComponent::PlayerInputComponent(CharacterMovementComponent* movement) noexcept
-        : Component(static_cast<int>(NS::Scene::TickPriority::Input)), m_movement(movement)
+    PlayerInputComponent::PlayerInputComponent() noexcept : Component(static_cast<int>(NS::Scene::TickPriority::Input))
     {}
 
     void PlayerInputComponent::SetCameraForward(const NS::Math::Vector3& cameraForwardHorizontal) noexcept
@@ -32,21 +32,22 @@ namespace NS::Scene
         m_cameraForward = NormalizeHorizontal(cameraForwardHorizontal);
     }
 
-    void PlayerInputComponent::SetInput(NS::Platform::Input* input) noexcept
+    void PlayerInputComponent::OnStart()
     {
-        m_input = input;
+        m_movement = (Owner() != nullptr) ? Owner()->FindComponent<CharacterMovementComponent>() : nullptr;
     }
 
     void PlayerInputComponent::OnUpdate()
     {
-        if (!IsActive() || m_movement == nullptr || m_input == nullptr)
+        if (!IsActive() || m_movement == nullptr)
             return;
 
-        const auto& kb = m_input->Keyboard();
-        const auto& pad = m_input->Gamepad(0);
+        auto& input = NS::Platform::Input::Get();
+        const auto& kb = input.Keyboard();
+        const auto& pad = input.Gamepad(0);
 
         // UI のテキスト入力中はキーボード由来の移動 / ジャンプを取り合わない。 gamepad は維持する
-        const bool wantKb = m_input->UiWantsKeyboard();
+        const bool wantKb = input.UiWantsKeyboard();
 
         float kbForward = 0.0f;
         float kbRight = 0.0f;
@@ -102,4 +103,6 @@ namespace NS::Scene
             m_movement->SetJumpPressed();
         m_movement->SetJumpHeld(jumpHeld);
     }
+
+    NS_REGISTER_COMPONENT(PlayerInputComponent)
 } // namespace NS::Scene

@@ -1,0 +1,9 @@
+{
+    "type": "theme",
+    "displayName": "Grass",
+    "blockTextureArrayBaseSlice": 0,
+    "skyboxCubemapPath": "Assets/Skybox/kurt/",
+    "lightDirection": [-0.3, -1.0, -0.2],
+    "lightColor": [1.0, 1.0, 0.95],
+    "ambientColor": [0.25, 0.30, 0.20]
+}

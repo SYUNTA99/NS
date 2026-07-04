@@ -66,8 +66,8 @@ namespace NS::App
             return;
         }
 
-        m_input = std::make_unique<NS::Platform::Input>();
-        m_window->AttachInput(m_input.get());
+        // 入力はプロセス全域の static。Application は所有せず Window の転送先として渡すだけ
+        m_window->AttachInput(&NS::Platform::Input::Get());
 
         // リサイズ購読は Renderer がコンストラクタで自己登録済。swapchain 再構築はレンダラの責務
 
@@ -104,7 +104,7 @@ namespace NS::App
 
     NS::Platform::Input& Application::Input() noexcept
     {
-        return *m_input;
+        return NS::Platform::Input::Get();
     }
 
     NS::Scene::AssetManager& Application::Assets() noexcept
@@ -157,17 +157,34 @@ namespace NS::App
             layer->OnAttach();
     }
 
+    bool Application::WantExit() noexcept
+    {
+        // window 破棄経由の WM_QUIT は guard で覆せないので即終了する
+        if (m_window->ShouldClose())
+            return true;
+        if (!m_quitRequested)
+            return false;
+        // 終了要求あり: guard に一度諮り、 拒否されたら取り下げてループを続ける
+        if (m_quitGuard && !m_quitGuard())
+        {
+            m_quitRequested = false;
+            return false;
+        }
+        return true;
+    }
+
     void Application::MainLoop()
     {
         auto& window = *m_window;
         auto& renderer = *m_renderer;
-        auto& input = *m_input;
+        auto& input = NS::Platform::Input::Get();
         auto& stack = m_layers;
 
-        while (!window.ShouldClose() && !m_quitRequested)
+        while (true)
         {
             window.PollMessages();
-            if (window.ShouldClose() || m_quitRequested)
+            // 終了判定は WantExit に集約する。 guard が拒めば要求を取り下げて継続する
+            if (WantExit())
                 break;
 
             NS::Core::FrameTimer::Tick();
@@ -197,12 +214,8 @@ namespace NS::App
                     }
                     // fixed step ごとに Update して edge 重複検出を防ぐ
                     input.Update();
-                    if (m_quitRequested)
-                        break;
                 }
             }
-            if (m_quitRequested)
-                break;
 
             renderer.BeginFrame();
 
@@ -226,6 +239,9 @@ namespace NS::App
         for (auto it = m_layers.rbegin(); it != m_layers.rend(); ++it)
             (*it)->OnDetach();
 
+        // guard が捕捉する Layer は OnDetach 済。 発火経路を断ってから subsystem を畳む
+        m_quitGuard = nullptr;
+
         // 破棄前に自分が登録したコールバックを解除し、Window 側の発火で無効ポインタを踏むのを防ぐ
         // リサイズ購読は Renderer 自身がデストラクタで解除する
         if (m_window)
@@ -238,7 +254,6 @@ namespace NS::App
         if (m_assets)
             m_assets->Clear();
         m_renderer.reset();
-        m_input.reset();
         m_window.reset();
     }
 
@@ -252,6 +267,11 @@ namespace NS::App
         if (s_instance == nullptr)
             return;
         s_instance->m_quitRequested = true;
+    }
+
+    void Application::SetQuitGuard(std::function<bool()> guard) noexcept
+    {
+        m_quitGuard = std::move(guard);
     }
 
 } // namespace NS::App

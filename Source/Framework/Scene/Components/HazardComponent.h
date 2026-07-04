@@ -19,6 +19,6 @@ namespace NS::Scene
         HazardComponent() noexcept;
 
         // 調整できるフィールドは無いが、 反射 typeName を持たせて type と空 fields で直列化できるようにする
-        NS_REFLECT_NONE(HazardComponent)
+        NS_REFLECT_NONE(HazardComponent, Component)
     };
 } // namespace NS::Scene

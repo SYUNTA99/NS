@@ -11,7 +11,7 @@ namespace LevelNs = NS::Game::Level;
 
 namespace
 {
-    // 視覚 / 当たりを持たず拾得の意味だけを持つ grid pickup を作る (コイン=0 / スター=1)
+    // 視覚 / 当たりを持たず拾得の意味だけを持つ grid pickup を作る (コイン=0 / ゴール=1)
     LevelNs::ObjectInstance MakePickup(int pickupKind)
     {
         LevelNs::ObjectInstance object{};
@@ -30,10 +30,8 @@ namespace
 TEST(PlayModeCrc, RoundTripPreservesLevelData_PMODE_06)
 {
     LevelNs::LevelData level;
-    level.spawnX = 5;
-    level.spawnY = 1;
-    level.spawnZ = -3;
-    level.themeId = 7;
+    level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{5.0f, 1.0f, -3.0f}, NS::Math::Quaternion{}));
+    level.environment.blockTextureBaseSlice = 24;
     level.coinThreshold = 30;
     level.timeLimitSeconds = 240;
     level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
@@ -56,9 +54,7 @@ TEST(PlayModeCrc, RoundTripPreservesLevelData_PMODE_06)
 TEST(PlayModeCrc, RoundTripWithCoinCollectionPreservesLevelData)
 {
     LevelNs::LevelData level;
-    level.spawnX = 0;
-    level.spawnY = 0;
-    level.spawnZ = 0;
+    level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     level.objects.push_back(MakePickup(0));
     const std::uint32_t before = level.ComputeCrc32();
 
@@ -71,15 +67,13 @@ TEST(PlayModeCrc, RoundTripWithCoinCollectionPreservesLevelData)
     mode.Exit(play);
 
     EXPECT_EQ(level.ComputeCrc32(), before) << "Coin 取得時に LevelData 変更";
-    EXPECT_EQ(level.objects.size(), 1u);
+    EXPECT_EQ(level.objects.size(), 2u);
 }
 
-TEST(PlayModeCrc, RoundTripWithStarContactPreservesLevelData)
+TEST(PlayModeCrc, RoundTripWithGoalContactPreservesLevelData)
 {
     LevelNs::LevelData level;
-    level.spawnX = 0;
-    level.spawnY = 0;
-    level.spawnZ = 0;
+    level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     level.objects.push_back(MakePickup(1));
     const std::uint32_t before = level.ComputeCrc32();
 
@@ -91,5 +85,5 @@ TEST(PlayModeCrc, RoundTripWithStarContactPreservesLevelData)
     EXPECT_TRUE(play.clearTriggered);
     mode.Exit(play);
 
-    EXPECT_EQ(level.ComputeCrc32(), before) << "Star 接触時に LevelData 変更";
+    EXPECT_EQ(level.ComputeCrc32(), before) << "ゴール 接触時に LevelData 変更";
 }

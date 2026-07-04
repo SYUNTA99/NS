@@ -21,20 +21,39 @@ namespace NS::Game::Level
 {
     struct LevelData;
     struct ComponentData;
+    struct FieldValue;
+
+    /// 読込時の移行で何が起きたかの報告。 呼出側がテンプレート適用などの後処理を判断する
+    struct LevelLoadReport
+    {
+        /// 旧形式の spawn 単一値やプレイヤー欠落から、 プレイヤー実体を合成して objects へ足したら true
+        bool playerObjectCreated = false;
+    };
 
     /// LevelData を正準 JSON ファイルへ書く。 要素数 / 出力 size が上限超過なら false + `NS_LOG_ERROR`
     [[nodiscard]] bool SaveLevelToJsonFile(const LevelData& level, const std::filesystem::path& path) noexcept;
 
     /// JSON ファイルを LevelData へ読む。 失敗時 false + `NS_LOG_ERROR`、 `outLevel` は空 LevelData に reset される
-    [[nodiscard]] bool LoadLevelFromJsonFile(LevelData& outLevel, const std::filesystem::path& path) noexcept;
+    /// outReport 非 null なら読込時移行の報告を書き込む
+    [[nodiscard]] bool LoadLevelFromJsonFile(LevelData& outLevel,
+                                             const std::filesystem::path& path,
+                                             LevelLoadReport* outReport = nullptr) noexcept;
 
     /// LevelData を正準 JSON 文字列へ直列化する。 テスト・ golden 比較に使う
     [[nodiscard]] std::string SerializeLevelToJson(const LevelData& level);
 
     /// JSON 文字列を LevelData へ復元する。 parse 失敗・上限超過で false、 `outLevel` は空に reset される
-    [[nodiscard]] bool DeserializeLevelFromJson(LevelData& outLevel, std::string_view jsonText);
+    /// outReport 非 null なら読込時移行の報告を書き込む
+    [[nodiscard]] bool DeserializeLevelFromJson(LevelData& outLevel,
+                                                std::string_view jsonText,
+                                                LevelLoadReport* outReport = nullptr);
 
     /// ComponentData の反射フィールドを {名前: 値} の JSON object へ写す
     /// 保存と BuildPlacedObject の ApplyJsonFields 入力が同じ変換を共有する唯一の経路
     [[nodiscard]] nlohmann::json ComponentFieldsToJson(const ComponentData& component);
+
+    /// JSON 値 1 個を FieldValue へ推論復元する。 bool→bool / 小数→float / 整数→int / 配列3→Vector3 /
+    /// 文字列→string / {"ref": id}→ObjectRef。 いずれにも合わなければ false で out は据え置き
+    /// レベル読込と PlayerTuning テンプレートの取込が同じ変換を共有する
+    [[nodiscard]] bool JsonToFieldValue(const std::string& name, const nlohmann::json& value, FieldValue& out);
 } // namespace NS::Game::Level

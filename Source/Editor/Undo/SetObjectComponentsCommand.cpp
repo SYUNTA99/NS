@@ -10,22 +10,22 @@ namespace NS::Editor
         : m_targetObjectId(targetObjectId), m_newComponents(std::move(newComponents))
     {}
 
-    void SetObjectComponentsCommand::Do(NS::Game::Level::EditTarget& target) noexcept
+    void SetObjectComponentsCommand::Do(NS::Game::Level::LevelData& level) noexcept
     {
-        const std::size_t index = NS::Game::Level::IndexOfId(target, m_targetObjectId);
+        const std::size_t index = NS::Game::Level::FindObjectIndexById(level, m_targetObjectId);
         if (index == NS::Game::Level::kNoObjectIndex)
             return;
-        std::vector<NS::Game::Level::ComponentData>& components = target.level.objects[index].components;
+        std::vector<NS::Game::Level::ComponentData>& components = level.objects[index].components;
         m_oldComponents = components; // 置換前を退避してから差し替える
         components = m_newComponents;
     }
 
-    void SetObjectComponentsCommand::Undo(NS::Game::Level::EditTarget& target) noexcept
+    void SetObjectComponentsCommand::Undo(NS::Game::Level::LevelData& level) noexcept
     {
-        const std::size_t index = NS::Game::Level::IndexOfId(target, m_targetObjectId);
+        const std::size_t index = NS::Game::Level::FindObjectIndexById(level, m_targetObjectId);
         if (index == NS::Game::Level::kNoObjectIndex)
             return;
-        target.level.objects[index].components = m_oldComponents;
+        level.objects[index].components = m_oldComponents;
     }
 
     std::size_t SetObjectComponentsCommand::EstimatedBytes() const noexcept

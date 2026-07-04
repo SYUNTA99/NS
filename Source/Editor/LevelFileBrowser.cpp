@@ -16,12 +16,14 @@ namespace NS::Editor
         constexpr std::size_t kInputBufferCapacity = 256;
     } // namespace
 
-    void LevelFileBrowser::OpenSaveModal() noexcept
+    void LevelFileBrowser::OpenSaveModal(std::string_view initialName) noexcept
     {
         m_saveModalOpen = true;
         m_lastMessage.clear();
         m_lastMessageError = false;
-        if (m_saveNameBuffer.empty())
+        if (!initialName.empty())
+            m_saveNameBuffer.assign(initialName.begin(), initialName.end());
+        else if (m_saveNameBuffer.empty())
             m_saveNameBuffer = "new_level";
         m_saveNameBuffer.reserve(kInputBufferCapacity);
     }

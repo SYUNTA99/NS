@@ -3,55 +3,34 @@
 /// @file LevelPlayScene.h
 /// @brief レベルを読み込んで遊べる状態にする root scene。 編集機能は一切持たない
 ///
-/// @details 永続の LevelData + 一時の PlayState + ルールの PlayMode を value member で保有し、
-/// ブロック構築 / 描画 / Player / カメラ / 当たり判定 / area camera を駆動する
+/// @details 永続の LevelData を value member で保有し、 一時の PlayState とルールの PlayMode は
+/// 進行役 PlayDirector 配下の PlayFlowComponent が所有する。 scene 自身は
+/// world の組み直しの号令と描画統括を担う。 実カメラ + Brain は CameraSubsystem が、
+/// プレイヤー / 追従 / 据え置きカメラを含む全配置物は LevelWorld が所有する
 /// 出荷 / 開発ともこの 1 種類だけを起動 scene に使う。 cursor / palette / ギズモ /
-/// free-fly カメラ / モード切替の編集は scene の外側、 `LevelEditorController` が friend 経由で
-/// 本 scene を操作して実現する。 scene 自身は「編集されている」ことを知らない
+/// free-fly カメラ / モード切替の編集は scene の外側、 `LevelEditorController` が公開 API と
+/// LevelData 経由で本 scene を操作して実現する。 scene 自身は「編集されている」ことを知らない
 
-#include "Framework/Core/EditorAccess.h"
-#include "Framework/Math/Math.h"
-#include "Framework/Physics/PhysicsWorld.h"
 #include "Framework/Scene/SceneBase.h"
-#include "Game/CameraRig.h"
 #include "Game/Level/LevelData.h"
-#include "Game/Level/PlayMode.h"
-#include "Game/Level/PlayState.h"
+#include "Game/Level/LevelWorld.h"
+#include "Game/Level/PlayDirector.h"
 
-#include <cstddef>
-#include <filesystem>
 #include <memory>
-#include <vector>
-
-namespace NS::Graphics
-{
-    class InstanceBatcher;
-    class Skybox;
-} // namespace NS::Graphics
 
 namespace NS::Scene
 {
     class IRenderable;
     class GameObject;
     class Transform;
-    class CameraComponent;
-    class CameraBrainComponent;
-    class PlacedVirtualCamera;
-    class PoleComponent;
     struct RenderContext;
 } // namespace NS::Scene
 
 class Player;
-class SkinnedDebugCharacter;
 
 /// レベルを遊ぶための root scene。 編集機能を持たず、 派生もしない単一の scene 型
 class LevelPlayScene : public NS::Scene::SceneBase
 {
-    // 編集ツールは scene 内部の runtime オブジェクト群 / camera brain / play 状態へ深く触れるため
-    // friend で許可する。 scene 側に編集専用の public API を生やさず、 編集の知識を外へ閉じ込める
-    // 出荷ビルドではマクロが空に展開され、 editor のクラス名ごとバイナリから消える
-    NS_EDITOR_FRIEND(LevelEditorController)
-
 public:
     LevelPlayScene();
     ~LevelPlayScene() override;
@@ -67,39 +46,25 @@ public:
 
     [[nodiscard]] NS::Game::Level::LevelData& Level() noexcept { return m_level; }
     [[nodiscard]] const NS::Game::Level::LevelData& Level() const noexcept { return m_level; }
-    [[nodiscard]] NS::Game::Level::PlayState& Play() noexcept { return m_play; }
-    [[nodiscard]] NS::Game::Level::PlayMode& PlayModeSub() noexcept { return m_playMode; }
+    /// プレイ進行役。 PlayState / PlayMode と進行の分岐は配下の PlayFlowComponent が担う。 scene 生成時から存在する
+    [[nodiscard]] NS::Game::Level::PlayDirector& Director() noexcept { return *m_director; }
 
-    /// プレイ更新すなわち player 物理 / ルール / カメラ追従が走っているか。 編集中は false
-    [[nodiscard]] bool IsPlaying() const noexcept { return m_playing; }
+    /// LevelData から組まれた runtime world。 editor の選択 / gizmo と描画がここから観測する
+    [[nodiscard]] NS::Game::Level::LevelWorld& World() noexcept { return m_world; }
+
+    // brain / 実カメラの公開アクセサは持たない。 外の消費者は CameraSubsystem 経由で引く
+    // 据え置き / 追従カメラは通常の配置物として LevelWorld が所有し、 World() の走査 view が返す
+
+    /// 実体プレイヤー。 world が player object から組む。 起動前と player object の無い level では nullptr
+    [[nodiscard]] Player* PlayerRef() noexcept { return m_world.PlayerView(); }
+
+    /// runtime world と衝突世界を LevelData から組み直す。 レベル編集後とプレイ突入時に呼ぶ
+    /// 据え置きカメラの Brain 登録もここで面倒を見る。 Brain 構築前の OnStart 序盤は登録しない
+    void RebuildWorld();
 
 private:
-    /// テーマの lighting をシーン単位の上書きとして宣言する。push は書かず override を返すだけ
-    NS::Graphics::RenderSettingsOverride BuildSceneOverride() override;
-
     /// 基底 OnRender が scene 解決後に呼ぶ描画本体。 ワールドを描き編集ギズモ等は描かない
     void OnRenderScene() override;
-
-    /// プレイ開始 / 停止を切替える。 true で spawn + player/follow camera 有効化、
-    /// false で player を凍結し follow / area camera を休止する editor の編集モード用
-    void SetPlaying(bool playing) noexcept;
-
-    /// dirty flag 検出時のみ m_objects と衝突世界を LevelData から再構築する
-    void RebuildBlocksFromLevelData();
-
-    /// m_objectIds を m_level.objects と同サイズの連番へ再構築する。 objects 全置換直後に呼ぶ
-    void RebuildObjectIds() noexcept;
-
-    /// m_level.cameraVolumes から area camera の PlacedVirtualCamera 群を作り直して Brain へ登録する
-    /// 旧 area camera は Brain から外して破棄する。 Brain 構築前の OnStart 序盤は何もしない
-    void RebuildAreaCamerasFromLevelData();
-
-    /// プレイ更新本体: 入力 → 物理 → ルール → area camera → 死亡/リスポーン → カメラ追従
-    void TickPlay();
-
-    /// 仮 skinned キャラの glTF を毎ステップ進めて描画する debug hook
-    /// F1 再生/停止、 F2 クリップ送り、 F3/F4 速度。 ImGui 入力中はキー無効
-    void UpdateAnimatedModel();
 
     /// 全表示ブロックの Snapshot を取る。 補間描画のため edit / play 共通で毎フレーム
     void SnapshotDisplayBlocks();
@@ -107,76 +72,22 @@ private:
     /// 全表示ブロックの OnUpdate を回す。 edit / play 共通
     void UpdateDisplayBlocks();
 
-    /// 起動時のレベル供給: 同梱 default `.nslvl` をロードし、 無ければ最小床を seed する
+    /// 起動時のレベル供給: 同梱の `new_level.scene` をロードし、 無ければ最小床を seed する
     void LoadInitialLevel();
 
     // 組み込み mesh / 共有 material / block の TextureArray は Application 所有の AssetManager が持つ
     // scene は使う箇所で都度引く。 メンバとして控えず単一所有元は AssetManager のみ
+    // skybox 装置と scene 段解決値の控えは EnvironmentSubsystem が持ち、 scene は毎フレーム設定を書くだけ
 
-    std::unique_ptr<NS::Graphics::Skybox> m_skybox;
-    std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
-
-    // 借用元なので m_player より前に宣言する。 player を先に破棄し CMC の無効参照を防ぐ
-    NS::Physics::PhysicsWorld m_physicsWorld;
-    std::unique_ptr<Player> m_player;
-
-    // 仮 skinned キャラ。 形 / 骨 / 材質は AssetManager 所有を参照し、 components を自分で合成する
-    std::unique_ptr<SkinnedDebugCharacter> m_animatedModel;
-
-    // 配置物の単一所有リスト。 grid / slope / pole / hazard / water / deco / 自由配置物すべてを
-    // generic GameObject として保持する。 RebuildBlocksFromLevelData がファクトリ経由で作り直す
-    std::vector<std::unique_ptr<NS::Scene::GameObject>> m_objects;
-    // m_objects[i] に対応する m_level.objects の添字で m_objects と同長・ 1:1
-    std::vector<std::size_t> m_objectSourceIndices;
-
-    // instanced 描画する grid solid block の静的属性キャッシュ。 instanceable 判定 / 近傍マスク / texture slice は
-    // level + theme が変わらない限り不変なので RebuildBlocksFromLevelData で 1 度だけ焼く。 描画ループは
-    // world matrix だけを毎フレーム読む。 theme は load 時のみ変わり必ず rebuild を伴うので stale にならない
-    struct InstancedBlock
-    {
-        std::size_t objectIndex = 0; // m_objects への添字。 補間 world matrix の取得に使う
-        float textureSlice = 0.0f;
-    };
-    std::vector<InstancedBlock> m_instancedBlocks;
-
-    std::unique_ptr<CameraRig> m_cameraRig;
-
-    // 実カメラ 1 個 + Brain を載せる host。Brain が follow / free-fly vcam から選んで実カメラへ書く
-    std::unique_ptr<NS::Scene::GameObject> m_cameraHost;
-    NS::Scene::CameraComponent* m_mainCamera = nullptr;
-    NS::Scene::CameraBrainComponent* m_brain = nullptr;
-
-    // CameraVolume 1 件に対応する area camera の runtime 実体。 host が PlacedVirtualCamera を所有し、
-    // vcam 自身が pose / トリガ / lookAtPlayer を持って自分で active 化する。 Brain は cam を非所有参照する
-    struct AreaCamera
-    {
-        std::unique_ptr<NS::Scene::GameObject> host;
-        NS::Scene::PlacedVirtualCamera* cam = nullptr;
-    };
-    std::vector<AreaCamera> m_areaCameras;
-
-    std::vector<NS::Scene::PoleComponent*> m_polePtrs;
+    // LevelData から組んだ runtime world。 配置物 / instanced 描画キャッシュ / hazard view / コヨーテ縁を所有する
+    // 実カメラ + Brain は CameraSubsystem が、 プレイヤー / 追従 / 据え置きカメラは world が配置物として所有する
+    NS::Game::Level::LevelWorld m_world;
 
     NS::Game::Level::LevelData m_level{};
 
-    // m_level.objects と 1:1 の編集セッション識別子。 undo 履歴が free オブジェクトを再特定するため
-    // 保持する。 非シリアライズで objects 全置換時は RebuildObjectIds で連番へ戻す
-    std::vector<std::uint32_t> m_objectIds;
-    std::uint32_t m_nextObjectId = 0;
+    // プレイ進行役。 PlayState / PlayMode と進行の分岐は配下の PlayFlowComponent が所有する
+    std::unique_ptr<NS::Game::Level::PlayDirector> m_director;
 
-    NS::Game::Level::PlayState m_play{};
-    NS::Game::Level::PlayMode m_playMode{};
-
-    // プレイ更新の有効フラグ。 編集モード中は false にして物理 / ルールを止める。 editor が SetPlaying で切替
-    bool m_playing = false;
-
-    // 直近 OnRenderScene で解決した scene 段設定。 editor の RenderSettings パネルが friend で読む
-    NS::Graphics::RenderSettings m_lastResolvedSettings{};
-
-    // hazard の damage 走査 view。 衝突応答とは別経路の芯線 vs AABB で per-frame に当てるため build 時に積む
-    // 所有は m_objects 側、 ここは観測のみ
-    std::vector<NS::Scene::GameObject*> m_hazardView;
-
-    /// 差分フレームのみ cubemap を再ロードするため前回パスを保持する
-    std::filesystem::path m_loadedSkyboxPath{};
+    // コヨーテ debug 描画 すなわち 縁の紫線 / カプセル / コヨーテジャンプの赤線 の表示トグル。 F2 で切替える
+    bool m_debugCoyoteDraw = true;
 };

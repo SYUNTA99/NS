@@ -1,10 +1,11 @@
 #include "Editor/LevelFilePaths.h"
 #include "Framework/Core/Filesystem.h"
-#include "Game/Level/ChunkIO.h"
 #include "Game/Level/LevelData.h"
+#include "Game/Level/LevelIO.h"
 #include "Game/Level/LevelJson.h"
 
 #include <cstring>
+#include <filesystem>
 #include <span>
 #include <string>
 #include <variant>
@@ -22,15 +23,18 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
     ASSERT_TRUE(path.has_value());
 
     LevelNs::LevelData src;
-    src.spawnX = 1;
-    src.spawnY = 2;
-    src.spawnZ = 3;
-    src.themeId = 4;
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
+    src.environment.blockTextureBaseSlice = 24;
     src.coinThreshold = 10;
     src.timeLimitSeconds = 180;
     src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
     src.objects.push_back(LevelNs::MakeGridObject(1, 0, 1, 1));
     src.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, 0));
+    // 編集中のレベルは読込採番か Command 採番で常に id を持つため、 基準 CRC も採番後から取る
+    LevelNs::EnsureUniqueObjectIds(src);
+    // 追従カメラが居ないと読込の門が 1 台を合成し CRC が動くため、 src 側にも実体を積んでおく
+    src.objects.push_back(LevelNs::MakeFollowCameraObject(src.objects[0].objectId));
+    LevelNs::EnsureUniqueObjectIds(src);
     const auto crc0 = src.ComputeCrc32();
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
@@ -63,12 +67,14 @@ TEST(SaveLoadRoundTrip, ShapeColliderAndDimensionsSurviveRoundTrip)
     obj.colliderHalfExtentsX = 0.3f; // capsule では半径
     obj.colliderHalfExtentsY = 0.7f; // capsule では半高
     src.objects.push_back(obj);
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
 
     LevelNs::LevelData dst;
     ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
-    ASSERT_EQ(dst.objects.size(), 1u);
+    // 追従カメラが読込の門で 1 台合成され末尾へ足される
+    ASSERT_EQ(dst.objects.size(), 3u);
     EXPECT_EQ(LevelNs::ObjectShapeCollider(dst.objects[0]), LevelNs::ShapeCollider::Capsule);
     EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsX, 0.3f);
     EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsY, 0.7f);
@@ -169,6 +175,11 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
     comp.fields.push_back(LevelNs::FieldValue{"fWhole", 4.0f}); // 整数値の float が int に化けないことを確かめる
     freeObject.components.push_back(std::move(comp));
     src.objects.push_back(std::move(freeObject));
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    // 正準 JSON 同士の比較なので、 読込側と同じく採番 + 追従カメラ済の状態に揃えてから保存する
+    LevelNs::EnsureUniqueObjectIds(src);
+    src.objects.push_back(LevelNs::MakeFollowCameraObject(src.objects[1].objectId));
+    LevelNs::EnsureUniqueObjectIds(src);
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
 
@@ -177,7 +188,7 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 
     EXPECT_EQ(LevelNs::SerializeLevelToJson(dst), LevelNs::SerializeLevelToJson(src));
 
-    ASSERT_EQ(dst.objects.size(), 1u);
+    ASSERT_EQ(dst.objects.size(), 3u);
     ASSERT_EQ(dst.objects[0].components.size(), 1u);
     const auto& fields = dst.objects[0].components[0].fields;
     EXPECT_EQ(dst.objects[0].components[0].typeName, "BoxColliderComponent");
@@ -260,7 +271,12 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     gridObject.materialIndex = -1;
     gridObject.flags = LevelNs::kObjectFlagGridAligned;
     src.objects.push_back(gridObject);
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
+    // 編集中のレベルは常に採番済なので、 基準 CRC も採番 + 追従カメラ済から取る
+    LevelNs::EnsureUniqueObjectIds(src);
+    src.objects.push_back(LevelNs::MakeFollowCameraObject(src.objects[2].objectId));
+    LevelNs::EnsureUniqueObjectIds(src);
     const auto crc0 = src.ComputeCrc32();
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
 
@@ -268,7 +284,7 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
     EXPECT_EQ(dst.ComputeCrc32(), crc0);
 
-    ASSERT_EQ(dst.objects.size(), 2u);
+    ASSERT_EQ(dst.objects.size(), 4u);
     ASSERT_EQ(dst.materialPaths.size(), 2u);
     EXPECT_EQ(dst.materialPaths[0], "Assets/Materials/stone.mat");
     EXPECT_EQ(dst.materialPaths[1], "Assets/Materials/grid.mat");
@@ -308,12 +324,14 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
             if (field.name == "Base Color")
                 field.value = baseColor;
     src.objects.push_back(solid);
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
     LevelNs::LevelData dst;
     ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
 
-    ASSERT_EQ(dst.objects.size(), 1u);
+    // solid + player + 合成された追従カメラ
+    ASSERT_EQ(dst.objects.size(), 3u);
     bool found = false;
     for (const auto& component : dst.objects[0].components)
         for (const auto& field : component.fields)
@@ -326,4 +344,282 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
                 found = true;
             }
     EXPECT_TRUE(found) << "Base Color が往復で消えた";
+}
+
+// プレイヤー実体の pose が save→load を往復で保持され、 実体が居れば合成は走らない
+TEST(SaveLoadRoundTrip, PlayerObjectRoundTrip)
+{
+    LevelNs::LevelData src;
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{1.25f, 3.5f, -2.75f},
+                                                    NS::Math::Quaternion{0.0f, 0.70710677f, 0.0f, 0.70710677f}));
+    LevelNs::EnsureUniqueObjectIds(src);
+
+    const std::string json = LevelNs::SerializeLevelToJson(src);
+    LevelNs::LevelData dst;
+    LevelNs::LevelLoadReport report;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json, &report));
+
+    EXPECT_FALSE(report.playerObjectCreated);
+    // player + 合成された追従カメラ
+    ASSERT_EQ(dst.objects.size(), 2u);
+    const std::size_t playerIndex = LevelNs::FindPlayerObjectIndex(dst);
+    ASSERT_NE(playerIndex, LevelNs::kNoObjectIndex);
+    const LevelNs::ObjectInstance& loaded = dst.objects[playerIndex];
+    EXPECT_FLOAT_EQ(loaded.positionX, 1.25f);
+    EXPECT_FLOAT_EQ(loaded.positionY, 3.5f);
+    EXPECT_FLOAT_EQ(loaded.positionZ, -2.75f);
+    EXPECT_FLOAT_EQ(loaded.rotationY, 0.70710677f);
+    EXPECT_FLOAT_EQ(loaded.rotationW, 0.70710677f);
+}
+
+// v4 以前は spawn 単一値だった。 load でプレイヤー実体へ変換され、 pose と既定構成を引き継ぐ
+TEST(SaveLoadRoundTrip, LegacySpawnMigratesToPlayerObject)
+{
+    const std::string legacyJson = R"({
+        "formatVersion": 4,
+        "spawn": [1.25, 3.5, -2.75],
+        "spawnRotation": [0, 0.70710677, 0, 0.70710677],
+        "objects": [],
+        "materialPaths": []
+    })";
+
+    LevelNs::LevelData dst;
+    LevelNs::LevelLoadReport report;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, legacyJson, &report));
+
+    EXPECT_TRUE(report.playerObjectCreated);
+    // 合成された player + 追従カメラ
+    ASSERT_EQ(dst.objects.size(), 2u);
+    const LevelNs::ObjectInstance& player = dst.objects[0];
+    EXPECT_TRUE(LevelNs::IsPlayerObject(player));
+    EXPECT_NE(player.objectId, 0u); // 合成後の一意化で永続 id も振られる
+    EXPECT_FLOAT_EQ(player.positionX, 1.25f);
+    EXPECT_FLOAT_EQ(player.positionY, 3.5f);
+    EXPECT_FLOAT_EQ(player.positionZ, -2.75f);
+    EXPECT_FLOAT_EQ(player.rotationY, 0.70710677f);
+    EXPECT_FLOAT_EQ(player.rotationW, 0.70710677f);
+    // 既定構成 4 点。 mesh 描画 + 移動 + 入力 + 接地影
+    EXPECT_NE(LevelNs::FindComponentData(player, "MeshRendererComponent"), nullptr);
+    EXPECT_NE(LevelNs::FindComponentData(player, "CharacterMovementComponent"), nullptr);
+    EXPECT_NE(LevelNs::FindComponentData(player, "PlayerInputComponent"), nullptr);
+    EXPECT_NE(LevelNs::FindComponentData(player, "ShadowComponent"), nullptr);
+}
+
+// v1 までの spawn はグリッドセル番号だった。 load で capsule 中心の world 位置 (床乗せ +0.41) へ移行する
+TEST(SaveLoadRoundTrip, LegacyV1SpawnMigratesToCenter)
+{
+    const std::string legacyJson = R"({
+        "formatVersion": 1,
+        "spawn": [3, 5, -2],
+        "objects": [],
+        "materialPaths": [],
+        "cameraVolumes": []
+    })";
+
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, legacyJson));
+
+    const std::size_t playerIndex = LevelNs::FindPlayerObjectIndex(dst);
+    ASSERT_NE(playerIndex, LevelNs::kNoObjectIndex);
+    const LevelNs::ObjectInstance& player = dst.objects[playerIndex];
+    EXPECT_FLOAT_EQ(player.positionX, 3.0f);
+    EXPECT_FLOAT_EQ(player.positionY, 5.41f); // セル 5 に立つ = 中心 5 + 床乗せ 0.41
+    EXPECT_FLOAT_EQ(player.positionZ, -2.0f);
+    EXPECT_FLOAT_EQ(player.rotationW, 1.0f); // 旧データに向きは無く単位回転
+}
+
+// プレイヤー実体が居ない v5 手編集ファイルにも既定位置で 1 体を合成し、「必ず 1 体」を保証する
+TEST(SaveLoadRoundTrip, MissingPlayerSynthesizedAtDefault)
+{
+    const std::string json = R"({
+        "formatVersion": 5,
+        "objects": [],
+        "materialPaths": []
+    })";
+
+    LevelNs::LevelData dst;
+    LevelNs::LevelLoadReport report;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json, &report));
+
+    EXPECT_TRUE(report.playerObjectCreated);
+    const std::size_t playerIndex = LevelNs::FindPlayerObjectIndex(dst);
+    ASSERT_NE(playerIndex, LevelNs::kNoObjectIndex);
+    EXPECT_FLOAT_EQ(dst.objects[playerIndex].positionY, LevelNs::kDefaultPlayerSpawnY);
+}
+
+// プレイヤーが複数居ても先頭を正とする。 手編集の重複でも読込は成立する
+TEST(SaveLoadRoundTrip, MultiplePlayersFirstWins)
+{
+    LevelNs::LevelData src;
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{1.0f, 0.0f, 0.0f}, NS::Math::Quaternion{}));
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{9.0f, 0.0f, 0.0f}, NS::Math::Quaternion{}));
+    LevelNs::EnsureUniqueObjectIds(src);
+
+    const std::string json = LevelNs::SerializeLevelToJson(src);
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json));
+
+    // player 2 体 + 合成された追従カメラ
+    ASSERT_EQ(dst.objects.size(), 3u);
+    const std::size_t playerIndex = LevelNs::FindPlayerObjectIndex(dst);
+    ASSERT_EQ(playerIndex, 0u);
+    EXPECT_FLOAT_EQ(dst.objects[playerIndex].positionX, 1.0f);
+}
+
+// v3 までの据え置きカメラは別リストだった。 load で PlacedVirtualCamera 持ちの配置物へ変換される
+TEST(SaveLoadRoundTrip, LegacyCameraVolumesMigrateToObjects)
+{
+    const std::string legacyJson = R"({
+        "formatVersion": 3,
+        "objects": [],
+        "cameraVolumes": [
+            {
+                "cameraPosition": [8.0, 4.0, -6.0],
+                "lookTarget": [8.0, 0.0, 0.0],
+                "triggerCenter": [8.0, 1.0, 0.0],
+                "triggerExtent": [2.0, 1.5, 2.0],
+                "priority": 20,
+                "lookAtPlayer": 1
+            }
+        ]
+    })";
+
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, legacyJson));
+
+    // 旧形式なのでプレイヤーと追従カメラも合成され、 camera + player + follow の 3 件になる
+    ASSERT_EQ(dst.objects.size(), 3u);
+    const LevelNs::ObjectInstance& camera = dst.objects[0];
+    EXPECT_NE(camera.objectId, 0u); // 移行後の一意化で永続 id も振られる
+    EXPECT_FLOAT_EQ(camera.positionX, 8.0f);
+    EXPECT_FLOAT_EQ(camera.positionY, 4.0f);
+    EXPECT_FLOAT_EQ(camera.positionZ, -6.0f);
+
+    const LevelNs::ComponentData* placed = LevelNs::FindComponentData(camera, "PlacedVirtualCamera");
+    ASSERT_NE(placed, nullptr);
+    const auto* lookTarget = LevelNs::FindField(*placed, "Look Target");
+    ASSERT_NE(lookTarget, nullptr);
+    EXPECT_FLOAT_EQ(std::get<NS::Math::Vector3>(lookTarget->value).x, 8.0f);
+    const auto* priority = LevelNs::FindField(*placed, "Priority");
+    ASSERT_NE(priority, nullptr);
+    EXPECT_EQ(std::get<int>(priority->value), 20);
+    const auto* lookAtPlayer = LevelNs::FindField(*placed, "Look At Player");
+    ASSERT_NE(lookAtPlayer, nullptr);
+    EXPECT_TRUE(std::get<bool>(lookAtPlayer->value));
+    const auto* extent = LevelNs::FindField(*placed, "Trigger Extent");
+    ASSERT_NE(extent, nullptr);
+    EXPECT_FLOAT_EQ(std::get<NS::Math::Vector3>(extent->value).y, 1.5f);
+}
+
+// v5 以前の追従カメラは scene 直組みだった。 load でプレイヤーを追う 1 台が合成される
+TEST(SaveLoadRoundTrip, LegacyFollowCameraSynthesizedTargetingPlayer)
+{
+    LevelNs::LevelData src;
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{2.0f, 1.41f, 0.0f}, NS::Math::Quaternion{}));
+    LevelNs::EnsureUniqueObjectIds(src);
+    const std::uint32_t playerId = src.objects[0].objectId;
+
+    const std::string json = LevelNs::SerializeLevelToJson(src);
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json));
+
+    const std::size_t followIndex = LevelNs::FindFollowCameraObjectIndex(dst);
+    ASSERT_NE(followIndex, LevelNs::kNoObjectIndex);
+    const LevelNs::ObjectInstance& follow = dst.objects[followIndex];
+    EXPECT_NE(follow.objectId, 0u); // 合成後の一意化で永続 id も振られる
+
+    const LevelNs::ComponentData* comp = LevelNs::FindComponentData(follow, "ThirdPersonFollowComponent");
+    ASSERT_NE(comp, nullptr);
+    // 追従先はプレイヤー実体への通常の ObjectRef
+    const auto* target = LevelNs::FindField(*comp, "Target");
+    ASSERT_NE(target, nullptr);
+    ASSERT_TRUE(std::holds_alternative<NS::Scene::ObjectRef>(target->value));
+    EXPECT_EQ(std::get<NS::Scene::ObjectRef>(target->value).id, playerId);
+    // プレイの遠景を抑える投影値も既定で焼かれる
+    const auto* farPlane = LevelNs::FindField(*comp, "Far Plane");
+    ASSERT_NE(farPlane, nullptr);
+    EXPECT_FLOAT_EQ(std::get<float>(farPlane->value), 100.0f);
+}
+
+// 環境欄が save→load で往復する。 シーンが環境を所有する保存形式 v7 の要
+TEST(SaveLoadRoundTrip, EnvironmentRoundTrip)
+{
+    LevelNs::LevelData src;
+    src.environment.lightDirection = NS::Math::Vector3{0.5f, -0.8f, 0.1f};
+    src.environment.lightColor = NS::Math::Vector3{1.0f, 0.9f, 0.8f};
+    src.environment.ambientColor = NS::Math::Vector3{0.1f, 0.2f, 0.3f};
+    src.environment.skyboxCubemapPath = "Assets/Skybox/kurt/";
+    src.environment.blockTextureBaseSlice = 24;
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    LevelNs::EnsureUniqueObjectIds(src);
+    src.objects.push_back(LevelNs::MakeFollowCameraObject(src.objects[0].objectId));
+    LevelNs::EnsureUniqueObjectIds(src);
+    const auto crc0 = src.ComputeCrc32();
+
+    const std::string json = LevelNs::SerializeLevelToJson(src);
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json));
+
+    EXPECT_FLOAT_EQ(dst.environment.lightDirection.x, 0.5f);
+    EXPECT_FLOAT_EQ(dst.environment.lightDirection.y, -0.8f);
+    EXPECT_FLOAT_EQ(dst.environment.lightDirection.z, 0.1f);
+    EXPECT_FLOAT_EQ(dst.environment.lightColor.x, 1.0f);
+    EXPECT_FLOAT_EQ(dst.environment.lightColor.y, 0.9f);
+    EXPECT_FLOAT_EQ(dst.environment.lightColor.z, 0.8f);
+    EXPECT_FLOAT_EQ(dst.environment.ambientColor.x, 0.1f);
+    EXPECT_FLOAT_EQ(dst.environment.ambientColor.y, 0.2f);
+    EXPECT_FLOAT_EQ(dst.environment.ambientColor.z, 0.3f);
+    EXPECT_EQ(dst.environment.skyboxCubemapPath, "Assets/Skybox/kurt/");
+    EXPECT_EQ(dst.environment.blockTextureBaseSlice, 24);
+    EXPECT_EQ(dst.ComputeCrc32(), crc0);
+}
+
+// 環境欄の欠落キーは中立既定値のまま読込が継続する。 欠けたキーだけ据え置く部分適用は雛形ファイルと同じ挙動
+TEST(SaveLoadRoundTrip, EnvironmentPartialKeysKeepNeutralDefaults)
+{
+    const std::string json = R"({
+        "formatVersion": 7,
+        "objects": [],
+        "materialPaths": [],
+        "environment": { "lightColor": [0.5, 0.6, 0.7] }
+    })";
+
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json));
+
+    EXPECT_FLOAT_EQ(dst.environment.lightColor.x, 0.5f);
+    EXPECT_FLOAT_EQ(dst.environment.lightColor.y, 0.6f);
+    EXPECT_FLOAT_EQ(dst.environment.lightColor.z, 0.7f);
+    // 書かれていないキーは中立の既定値のまま残る
+    const LevelNs::LevelEnvironment neutral{};
+    EXPECT_FLOAT_EQ(dst.environment.lightDirection.x, neutral.lightDirection.x);
+    EXPECT_FLOAT_EQ(dst.environment.lightDirection.y, neutral.lightDirection.y);
+    EXPECT_FLOAT_EQ(dst.environment.ambientColor.x, neutral.ambientColor.x);
+    EXPECT_EQ(dst.environment.skyboxCubemapPath, neutral.skyboxCubemapPath);
+    EXPECT_EQ(dst.environment.blockTextureBaseSlice, neutral.blockTextureBaseSlice);
+}
+
+// 追従カメラ実体が既に居れば合成は走らず、 Target 参照ごと往復で保持される
+TEST(SaveLoadRoundTrip, FollowCameraObjectRoundTrip)
+{
+    LevelNs::LevelData src;
+    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    LevelNs::EnsureUniqueObjectIds(src);
+    src.objects.push_back(LevelNs::MakeFollowCameraObject(src.objects[0].objectId));
+    LevelNs::EnsureUniqueObjectIds(src);
+    const auto crc0 = src.ComputeCrc32();
+
+    const std::string json = LevelNs::SerializeLevelToJson(src);
+    LevelNs::LevelData dst;
+    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json));
+
+    ASSERT_EQ(dst.objects.size(), 2u);
+    EXPECT_EQ(dst.ComputeCrc32(), crc0);
+    const std::size_t followIndex = LevelNs::FindFollowCameraObjectIndex(dst);
+    ASSERT_EQ(followIndex, 1u);
+    const LevelNs::ComponentData* comp = LevelNs::FindComponentData(dst.objects[1], "ThirdPersonFollowComponent");
+    ASSERT_NE(comp, nullptr);
+    const auto* target = LevelNs::FindField(*comp, "Target");
+    ASSERT_NE(target, nullptr);
+    EXPECT_EQ(std::get<NS::Scene::ObjectRef>(target->value).id, dst.objects[0].objectId);
 }

@@ -4,10 +4,13 @@
 #include <Framework/Scene/Components/BoxColliderComponent.h>
 #include <Framework/Scene/Components/CapsuleColliderComponent.h>
 #include <Framework/Scene/Components/MeshRendererComponent.h>
+#include <Framework/Scene/Components/PickupComponent.h>
+#include <Framework/Scene/Components/SlopeColliderComponent.h>
 #include <Framework/Scene/Components/SphereColliderComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Game/Blocks/BuildPlacedObject.h>
 #include <Game/Level/LevelData.h>
+#include <Game/Player.h>
 
 #include <filesystem>
 #include <vector>
@@ -233,4 +236,95 @@ TEST_F(BuildPlacedObjectTest, AssetPathTraversalRejectedFallsBackToDefault)
     ASSERT_NE(obj, nullptr);
     EXPECT_TRUE(Has<NS::Scene::MeshRendererComponent>(*obj));
     EXPECT_TRUE(Has<NS::Scene::BoxColliderComponent>(*obj));
+}
+
+// 45 度スロープ prototype は wedge メッシュ + 45 度 SlopeCollider を起こし、 R で回せる
+TEST_F(BuildPlacedObjectTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
+{
+    ObjectInstance slope = MakeGridObject(0, 0, 0, 0);
+    slope.components = NS::Game::Blocks::MakeGridSlopeComponents(45.0f);
+
+    EXPECT_STREQ(NS::Game::Blocks::ObjectDisplayName(slope), "Slope 45");
+    EXPECT_TRUE(NS::Game::Blocks::IsRotatableObject(slope));
+
+    auto obj = Build(slope);
+    ASSERT_NE(obj, nullptr);
+    EXPECT_TRUE(Has<NS::Scene::MeshRendererComponent>(*obj));
+    auto* collider = FindComponent<NS::Scene::SlopeColliderComponent>(*obj);
+    ASSERT_NE(collider, nullptr);
+    EXPECT_FLOAT_EQ(collider->AngleDegrees(), 45.0f);
+    EXPECT_FALSE(Has<NS::Scene::BoxColliderComponent>(*obj));
+}
+
+// ゴール prototype は接触クリア用の pickup を持ち、 表示名は Goal、 向きは無関係で回転不可
+TEST_F(BuildPlacedObjectTest, GoalHasPickupAndDisplaysAsGoal)
+{
+    ObjectInstance goal = MakeGridObject(0, 0, 0, 0);
+    goal.components = NS::Game::Blocks::MakeGoalComponents();
+
+    EXPECT_STREQ(NS::Game::Blocks::ObjectDisplayName(goal), "Goal");
+    EXPECT_FALSE(NS::Game::Blocks::IsRotatableObject(goal));
+
+    auto obj = Build(goal);
+    ASSERT_NE(obj, nullptr);
+    auto* pickup = FindComponent<NS::Scene::PickupComponent>(*obj);
+    ASSERT_NE(pickup, nullptr);
+    EXPECT_TRUE(pickup->IsGoal());
+}
+
+// プレイヤー実体は Player 派生の器に二重生成なしで組まれ、 移動と入力は休止で始まる
+TEST_F(BuildPlacedObjectTest, PlayerObjectBuildsDormantPlayerTyped)
+{
+    auto obj = Build(NS::Game::Level::MakePlayerObject(Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
+    ASSERT_NE(obj, nullptr);
+    auto* player = dynamic_cast<Player*>(obj.get());
+    ASSERT_NE(player, nullptr);
+
+    // ctor の既定構成へ data の値が写り、 同型の二重生成は起きない
+    EXPECT_EQ(player->Components().size(), 4u);
+
+    // 起こすのはプレイ突入の進行役。 組み立て直後は編集中と同じく動かず、 見た目だけ出る
+    EXPECT_FALSE(player->Movement().IsActive());
+    EXPECT_FALSE(player->InputComp().IsActive());
+    EXPECT_TRUE(player->MeshComp().IsActive());
+
+    // pose は他の配置物と同じく data から乗る
+    EXPECT_FLOAT_EQ(obj->Root().Position().y, 2.0f);
+}
+
+// data 側で焼いた値が既定構成の component へ反射適用される
+TEST_F(BuildPlacedObjectTest, PlayerObjectAppliesDataValuesToComponents)
+{
+    ObjectInstance data = NS::Game::Level::MakePlayerObject(Vector3{}, NS::Math::Quaternion{});
+    for (auto& component : data.components)
+        if (component.typeName == "CharacterMovementComponent")
+            component.fields.push_back(NS::Game::Level::FieldValue{"Max Speed", 11.0f});
+
+    auto obj = Build(data);
+    ASSERT_NE(obj, nullptr);
+    auto* player = dynamic_cast<Player*>(obj.get());
+    ASSERT_NE(player, nullptr);
+    EXPECT_FLOAT_EQ(player->Movement().MaxSpeed(), 11.0f);
+}
+
+// 同型 component を重ねたデータは live でも同数立ち、 2 件目が 1 件目へ上書きされない
+// 当たりの重ね置きは複合形状として衝突へ効く前提の機能で、 貼り重ねの経路がこの形を作る
+TEST_F(BuildPlacedObjectTest, DuplicateColliderDataBuildsCompoundColliders)
+{
+    ObjectInstance object = MakeFreeCube(ShapeCollider::Box, Vector3{1.0f, 1.0f, 1.0f});
+    NS::Game::Level::ComponentData second;
+    second.typeName = "BoxColliderComponent";
+    second.fields.push_back(NS::Game::Level::FieldValue{"Half Extents", Vector3{2.0f, 2.0f, 2.0f}});
+    object.components.push_back(second);
+
+    auto obj = Build(object);
+    ASSERT_NE(obj, nullptr);
+
+    std::vector<NS::Scene::BoxColliderComponent*> boxes;
+    for (NS::Scene::Component* comp : obj->Components())
+        if (auto* box = dynamic_cast<NS::Scene::BoxColliderComponent*>(comp))
+            boxes.push_back(box);
+    ASSERT_EQ(boxes.size(), 2u);
+    EXPECT_FLOAT_EQ(boxes[0]->HalfExtents().x, 1.0f);
+    EXPECT_FLOAT_EQ(boxes[1]->HalfExtents().x, 2.0f);
 }

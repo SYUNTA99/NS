@@ -1,6 +1,7 @@
 #include "Framework/Scene/Components/SlopeColliderComponent.h"
 
 #include "Framework/Physics/WedgeGeometry.h"
+#include "Framework/Scene/ComponentRegistry.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 
@@ -34,4 +35,7 @@ namespace NS::Scene
         }
         return tris;
     }
+
+    // 既定コンストラクタが無いので、読み込み時に反射 / BuildPlacedObject が上書きする placeholder 既定値で構築する
+    NS_REGISTER_COMPONENT(SlopeColliderComponent, 45.0f, NS::Math::Vector3{0.5f, 0.5f, 0.5f})
 } // namespace NS::Scene

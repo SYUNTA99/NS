@@ -55,6 +55,12 @@ namespace NS::Core
         /// 上位探索したリポジトリルートを返す。 これにより開発時はリポ直下の `Assets/`
         /// `Shaders/` を直接読み、 ビルド毎のコピーを不要にする。 ルート検出失敗時は exe 同階層へ fallback
         [[nodiscard]] static std::filesystem::path ContentRoot();
+
+        /// `base` 配下に収まる相対パスだけを正規化した絶対パスにして返す
+        /// 絶対パス・ドライブ相対・正規化後に `base` の外へ出るパスは nullopt
+        /// ユーザーが編集するファイル由来の資産パスを ContentRoot 配下へ閉じ込める入口ガードに使う
+        [[nodiscard]] static std::optional<std::filesystem::path> ResolveUnder(const std::filesystem::path& base,
+                                                                               const std::filesystem::path& relative);
     };
 
 } // namespace NS::Core

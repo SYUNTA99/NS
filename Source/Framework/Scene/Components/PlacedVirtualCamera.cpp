@@ -1,5 +1,8 @@
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
 
+#include "Framework/Scene/ComponentRegistry.h"
+#include "Framework/Scene/GameObject.h"
+
 #include <cmath>
 
 namespace NS::Scene
@@ -9,8 +12,16 @@ namespace NS::Scene
 
     void PlacedVirtualCamera::SetView(const NS::Math::Vector3& position, const NS::Math::Vector3& target) noexcept
     {
-        m_position = position;
+        if (Owner() != nullptr)
+            Owner()->Root().SetPosition(position);
         m_target = target;
+    }
+
+    NS::Math::Vector3 PlacedVirtualCamera::ViewPosition() const noexcept
+    {
+        if (Owner() != nullptr)
+            return Owner()->Root().Position();
+        return NS::Math::Vector3{0.0f, 5.0f, -10.0f};
     }
 
     void PlacedVirtualCamera::UpdateActivation(const NS::Math::Vector3& playerPosition) noexcept
@@ -25,6 +36,8 @@ namespace NS::Scene
 
     CameraPose PlacedVirtualCamera::EvaluatePose(float /*alpha*/) const noexcept
     {
-        return MakePose(m_position, m_target, m_up);
+        return MakePose(ViewPosition(), m_target, m_up);
     }
+
+    NS_REGISTER_COMPONENT(PlacedVirtualCamera)
 } // namespace NS::Scene

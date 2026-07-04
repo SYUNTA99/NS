@@ -7,9 +7,6 @@
 
 #include <gtest/gtest.h>
 
-#include <cstdint>
-#include <vector>
-
 /// Application 依存のない LevelPlayScene + LevelEditorController の組を相手に、
 /// mode toggle の enum / EditorMode / PlayMode の active 切替 / Undo 履歴保持を検証する
 /// Setup / OnStart は Application::Get() を要求するため呼ばない (player 等は nullptr のまま)
@@ -28,7 +25,7 @@ TEST(ModeToggle, EnterPlayDeactivatesEditor)
     editor.EnterPlay();
     EXPECT_EQ(editor.CurrentMode(), LevelEditorController::Mode::Play);
     EXPECT_FALSE(editor.Editor().IsActive());
-    EXPECT_TRUE(scene.PlayModeSub().IsActive());
+    EXPECT_TRUE(scene.Director().Flow().PlayModeSub().IsActive());
 }
 
 TEST(ModeToggle, EnterEditReactivatesEditor)
@@ -39,7 +36,7 @@ TEST(ModeToggle, EnterEditReactivatesEditor)
     editor.EnterEdit();
     EXPECT_EQ(editor.CurrentMode(), LevelEditorController::Mode::Edit);
     EXPECT_TRUE(editor.Editor().IsActive());
-    EXPECT_FALSE(scene.PlayModeSub().IsActive());
+    EXPECT_FALSE(scene.Director().Flow().PlayModeSub().IsActive());
 }
 
 TEST(ModeToggle, RedundantEnterIsNoOp)
@@ -57,10 +54,7 @@ TEST(ModeToggle, EditorStateIsPreservedAcrossToggle_PMODE_03)
 {
     LevelPlayScene scene;
     LevelEditorController editor(&scene);
-    std::vector<std::uint32_t> ids;
-    std::uint32_t nextId = 0;
     editor.Editor().SetLevel(&scene.Level());
-    editor.Editor().SetEditIds(&ids, &nextId);
     editor.Editor().PlaceUnderCursorProgrammatic(5, 0, 3);
     const auto undoSizeBefore = editor.Editor().Undo().UndoSize();
     ASSERT_GE(undoSizeBefore, 1u);
@@ -87,26 +81,27 @@ TEST(ModeToggle, QuitToEditWhilePausedResetsPausedFlag)
 {
     LevelPlayScene scene;
     LevelEditorController editor(&scene);
+    auto& flow = scene.Director().Flow();
     editor.EnterPlay();
-    scene.Play().paused = true;
+    flow.Play().paused = true;
     editor.EnterEdit();
-    EXPECT_FALSE(scene.Play().paused);
+    EXPECT_FALSE(flow.Play().paused);
 
     editor.EnterPlay();
-    EXPECT_FALSE(scene.Play().paused);
+    EXPECT_FALSE(flow.Play().paused);
 }
 
-TEST(ModeToggle, EnterPlayInitializesPlayStateAtSpawn)
+TEST(ModeToggle, EnterPlayInitializesPlayStateAtPlayerObject)
 {
     LevelPlayScene scene;
     LevelEditorController editor(&scene);
-    scene.Level().spawnX = 7;
-    scene.Level().spawnY = 2;
-    scene.Level().spawnZ = -4;
+    auto& flow = scene.Director().Flow();
+    scene.Level().objects.push_back(
+        NS::Game::Level::MakePlayerObject(NS::Math::Vector3{7.0f, 2.0f, -4.0f}, NS::Math::Quaternion{}));
     editor.EnterPlay();
 
-    EXPECT_NEAR(scene.Play().playerPosition.x, 7.0f, 1e-4f);
-    // y は spawn セル底面 + (capsule halfHeight + radius) + 1cm lift = spawnY + 0.41
-    EXPECT_NEAR(scene.Play().playerPosition.y, 2.41f, 1e-3f);
-    EXPECT_NEAR(scene.Play().playerPosition.z, -4.0f, 1e-4f);
+    EXPECT_NEAR(flow.Play().playerPosition.x, 7.0f, 1e-4f);
+    // プレイヤー実体の位置は capsule 中心 world 位置そのものなので player はその座標へ正確に置かれる
+    EXPECT_NEAR(flow.Play().playerPosition.y, 2.0f, 1e-4f);
+    EXPECT_NEAR(flow.Play().playerPosition.z, -4.0f, 1e-4f);
 }

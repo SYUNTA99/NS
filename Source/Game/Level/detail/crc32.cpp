@@ -41,9 +41,4 @@ namespace NS::Game::Level::detail
         return crc ^ 0xFFFFFFFFu;
     }
 
-    std::uint32_t Crc32(std::span<const std::byte> bytes) noexcept
-    {
-        return Crc32Finalize(Crc32Update(kCrc32Init, bytes));
-    }
-
 } // namespace NS::Game::Level::detail

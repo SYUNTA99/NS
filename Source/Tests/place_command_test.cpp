@@ -1,12 +1,10 @@
 #include "Editor/PaletteTemplates.h"
 #include "Editor/Undo/PlaceCommand.h"
-#include "Game/Level/EditTarget.h"
 #include "Game/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
-#include <vector>
 
 namespace EditorNs = NS::Editor;
 namespace LevelNs = NS::Game::Level;
@@ -14,13 +12,9 @@ namespace LevelNs = NS::Game::Level;
 TEST(PlaceCommandTest, DoAddsGridObject)
 {
     LevelNs::LevelData lv;
-    std::vector<std::uint32_t> ids;
-    std::uint32_t next = 0;
-    LevelNs::EditTarget t{lv, ids, next};
     EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 0), 5, 0, 3, 1);
-    cmd.Do(t);
+    cmd.Do(lv);
     ASSERT_EQ(lv.objects.size(), 1u);
-    EXPECT_EQ(ids.size(), lv.objects.size());
     const std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 5, 0, 3);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
     EXPECT_EQ(LevelNs::ObjectCellX(lv.objects[idx]), 5);
@@ -32,33 +26,25 @@ TEST(PlaceCommandTest, DoAddsGridObject)
 TEST(PlaceCommandTest, UndoRestoresEmptyState)
 {
     LevelNs::LevelData lv;
-    std::vector<std::uint32_t> ids;
-    std::uint32_t next = 0;
-    LevelNs::EditTarget t{lv, ids, next};
     const auto before = lv.ComputeCrc32();
     EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 0), 5, 0, 3, 1);
-    cmd.Do(t);
-    cmd.Undo(t);
+    cmd.Do(lv);
+    cmd.Undo(lv);
     EXPECT_EQ(lv.ComputeCrc32(), before);
     EXPECT_TRUE(lv.objects.empty());
-    EXPECT_TRUE(ids.empty());
 }
 
 TEST(PlaceCommandTest, ReplaceExistingBlockPreservesUndoRestore)
 {
     LevelNs::LevelData lv;
     lv.objects.push_back(LevelNs::MakeGridObject(5, 0, 3, 2));
-    std::vector<std::uint32_t> ids{0};
-    std::uint32_t next = 1;
-    LevelNs::EditTarget t{lv, ids, next};
     const auto before = lv.ComputeCrc32();
     EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 0), 5, 0, 3, 1);
-    cmd.Do(t);
+    cmd.Do(lv);
     std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 5, 0, 3);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
     EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 1u);
-    EXPECT_EQ(ids.size(), lv.objects.size());
-    cmd.Undo(t);
+    cmd.Undo(lv);
     idx = LevelNs::FindGridObjectAtCell(lv, 5, 0, 3);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
     EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 2u);
@@ -68,11 +54,8 @@ TEST(PlaceCommandTest, ReplaceExistingBlockPreservesUndoRestore)
 TEST(PlaceCommandTest, RotationIsMaskedToTwoBits)
 {
     LevelNs::LevelData lv;
-    std::vector<std::uint32_t> ids;
-    std::uint32_t next = 0;
-    LevelNs::EditTarget t{lv, ids, next};
     EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 0), 0, 0, 0, 5);
-    cmd.Do(t);
+    cmd.Do(lv);
     const std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 0, 0, 0);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
     EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 1u);
@@ -83,10 +66,7 @@ namespace
     LevelNs::ObjectInstance PlaceOneAndTake(EditorNs::PlaceCommand&& cmd) noexcept
     {
         LevelNs::LevelData lv;
-        std::vector<std::uint32_t> ids;
-        std::uint32_t next = 0;
-        LevelNs::EditTarget t{lv, ids, next};
-        cmd.Do(t);
+        cmd.Do(lv);
         return lv.objects.empty() ? LevelNs::ObjectInstance{} : lv.objects.front();
     }
 } // namespace
@@ -109,6 +89,9 @@ TEST(PlaceCommandTest, TemplateClonePlacesPrototypeWithBakedTransform)
 
     const LevelNs::ObjectInstance cloned =
         PlaceOneAndTake(EditorNs::PlaceCommand(tmpl.prototype, cx, cy, cz, rotation));
+    // 配置時に永続 id が採番されるため、 id を揃えた上で残り全メンバの複製一致を確かめる
+    EXPECT_NE(cloned.objectId, 0u);
+    expected.objectId = cloned.objectId;
     EXPECT_EQ(cloned, expected);
 }
 
@@ -121,9 +104,6 @@ TEST(PlaceCommandTest, AllPaletteSlotsClonePlacesPrototype)
     constexpr std::uint8_t kRotation = 2;
     for (const auto& slot : slots)
     {
-        if (slot.isSpawn)
-            continue; // spawn は世界に 1 点の marker で grid 配置物にならない
-
         LevelNs::ObjectInstance expected = slot.prototype;
         expected.positionX = static_cast<float>(cx);
         expected.positionY = static_cast<float>(cy);
@@ -132,6 +112,8 @@ TEST(PlaceCommandTest, AllPaletteSlotsClonePlacesPrototype)
 
         const LevelNs::ObjectInstance cloned =
             PlaceOneAndTake(EditorNs::PlaceCommand(slot.prototype, cx, cy, cz, kRotation));
+        EXPECT_NE(cloned.objectId, 0u) << "slot=" << slot.name;
+        expected.objectId = cloned.objectId;
         EXPECT_EQ(cloned, expected) << "slot=" << slot.name;
     }
 }

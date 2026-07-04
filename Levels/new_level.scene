@@ -1,0 +1,10317 @@
+{
+  "cameraVolumes": [],
+  "formatVersion": 2,
+  "materialPaths": [],
+  "meta": {
+    "bgmId": 0,
+    "coinThreshold": 0,
+    "themeId": 0,
+    "timeLimitSeconds": 0
+  },
+  "objects": [
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          -2.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          -2.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          -2.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          -1.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          -1.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          4.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          1.0,
+          -0.0,
+          -4.371138828673793e-08
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          4.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          4.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          5.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          5.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          5.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          6.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          6.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          6.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          10.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          10.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          10.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          11.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          11.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          11.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          14.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          14.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          14.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          15.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          15.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          15.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          18.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          18.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          18.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          19.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          19.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          19.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          20.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          20.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          20.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          22.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          22.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          22.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          23.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          23.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          26.0,
+          2.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          26.0,
+          2.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          26.0,
+          2.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          27.0,
+          2.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          27.0,
+          2.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          28.0,
+          2.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          28.0,
+          2.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          28.0,
+          2.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          29.0,
+          2.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          29.0,
+          2.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          30.0,
+          2.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          30.0,
+          2.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          30.0,
+          2.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          31.0,
+          2.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          31.0,
+          2.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          35.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          35.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          35.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          39.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          40.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          40.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          40.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          41.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          41.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          41.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          3.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          3.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          3.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          4.0,
+          1.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          4.0,
+          1.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          4.0,
+          1.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          7.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          -0.0,
+          -0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          7.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          -0.0,
+          -0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          7.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          -0.0,
+          -0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          6.0,
+          1.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          -0.0,
+          -0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          6.0,
+          1.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          -0.0,
+          -0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          6.0,
+          1.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          -0.0,
+          -0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          5.0,
+          1.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          -0.0,
+          -0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          5.0,
+          1.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          -0.0,
+          -0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          5.0,
+          1.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          -0.0,
+          -0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          19.0,
+          1.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          19.0,
+          1.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          19.0,
+          1.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          20.0,
+          1.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          20.0,
+          1.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          20.0,
+          1.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          20.0,
+          2.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          20.0,
+          2.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          20.0,
+          2.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          18.0,
+          1.0,
+          2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          18.0,
+          2.0,
+          2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          19.0,
+          1.0,
+          2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          19.0,
+          2.0,
+          2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          20.0,
+          1.0,
+          2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          20.0,
+          2.0,
+          2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          18.0,
+          0.0,
+          -2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          20.0,
+          0.0,
+          -2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          19.0,
+          0.0,
+          -2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          20.0,
+          1.0,
+          -2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          19.0,
+          1.0,
+          -2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          18.0,
+          1.0,
+          -2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          20.0,
+          2.0,
+          -2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          19.0,
+          2.0,
+          -2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          18.0,
+          2.0,
+          -2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          1.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          1.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          1.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          2.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          2.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          2.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          3.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          3.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "",
+            "Mesh": "wedge45"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Angle (deg)": 45.0,
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "SlopeColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          3.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          2.0,
+          -2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          3.0,
+          -2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          20.0,
+          3.0,
+          -2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          2.0,
+          2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          21.0,
+          3.0,
+          2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          22.0,
+          3.0,
+          2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          22.0,
+          3.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          22.0,
+          3.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          22.0,
+          3.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          22.0,
+          3.0,
+          -2.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          23.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          23.0,
+          3.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          32.0,
+          2.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          32.0,
+          2.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          32.0,
+          2.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          34.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          34.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          34.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          41.0,
+          -1.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          42.0,
+          -1.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          43.0,
+          -1.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          44.0,
+          -1.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          45.0,
+          -1.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          46.0,
+          -1.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          46.0,
+          -1.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          47.0,
+          -1.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          47.0,
+          -1.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          46.0,
+          -1.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          47.0,
+          -1.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              0.699999988079071,
+              0.699999988079071,
+              0.75
+            ],
+            "Material": "block",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Half Extents": [
+              0.5,
+              0.5,
+              0.5
+            ]
+          },
+          "type": "BoxColliderComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          48.0,
+          -1.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.7071067690849304,
+          0.0,
+          0.7071067094802856
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              1.0,
+              0.8399999737739563,
+              0.0
+            ],
+            "Material": "",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Pickup Kind": 1
+          },
+          "type": "PickupComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          46.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              1.0,
+              0.8399999737739563,
+              0.0
+            ],
+            "Material": "",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Pickup Kind": 1
+          },
+          "type": "PickupComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          46.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              1.0,
+              0.8399999737739563,
+              0.0
+            ],
+            "Material": "",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Pickup Kind": 1
+          },
+          "type": "PickupComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          46.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              1.0,
+              0.8399999737739563,
+              0.0
+            ],
+            "Material": "",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Pickup Kind": 1
+          },
+          "type": "PickupComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          47.0,
+          0.0,
+          -1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              1.0,
+              0.8399999737739563,
+              0.0
+            ],
+            "Material": "",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Pickup Kind": 1
+          },
+          "type": "PickupComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          47.0,
+          0.0,
+          0.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    },
+    {
+      "collider": {
+        "halfExtents": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "offset": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "shape": 0
+      },
+      "components": [
+        {
+          "fields": {
+            "Base Color": [
+              1.0,
+              0.8399999737739563,
+              0.0
+            ],
+            "Material": "",
+            "Mesh": "cube"
+          },
+          "type": "MeshRendererComponent"
+        },
+        {
+          "fields": {
+            "Pickup Kind": 1
+          },
+          "type": "PickupComponent"
+        }
+      ],
+      "flags": 1,
+      "materialIndex": -1,
+      "reserved1": 0,
+      "transform": {
+        "pos": [
+          47.0,
+          0.0,
+          1.0
+        ],
+        "rot": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      }
+    }
+  ],
+  "spawn": [
+    -1.1188983917236328,
+    2.4100000858306885,
+    0.0
+  ],
+  "spawnRotation": [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+  ]
+}

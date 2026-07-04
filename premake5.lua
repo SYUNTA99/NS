@@ -541,7 +541,7 @@ group ""
 
 --============================================================================
 -- GameCore (StaticLib) — ゲーム本体 (content / logic)
---   Player / Block / LevelPlayScene / Level / Theme / CameraRig 等。
+--   Player / Block / LevelPlayScene / Level / Theme 等。
 --   editor を一切知らない (依存の向きは Editor → GameCore の一方向)。 出荷を含む全構成でビルド。
 --   合成 Layer ::Game もここに置き、 editor から Game::Get() で参照できるようにする。
 --============================================================================
@@ -702,6 +702,10 @@ project "Game"
         "directxtk_simplemath"
     }
 
+    -- Scene の component 自己登録はどこからも参照されない TU の静的初期化に載っているため、
+    -- リンカの未参照 obj 除去で無言に欠け得る。Scene.lib は全 obj を強制で取り込んで防ぐ
+    linkoptions { "/WHOLEARCHIVE:Scene.lib" }
+
     -- 出荷 (GameRelease) のみ exe 隣へ Shaders/ Assets/ をコピーする (exe 相対で読込む配布レイアウト)
     -- 開発構成は FileSystem::ContentRoot() がリポ直下を直接読むためコピーしない (ビルド毎のコピーを排除)
     filter "configurations:GameRelease"
@@ -821,8 +825,9 @@ project "Tests"
         -- Tests から直接コンパイルしてリンクする。Game.cpp は Application や
         -- Window への依存があるので除外し、unit test で扱える範囲だけ取り込む。
         "Source/Game/Player.cpp",
+        -- PlayerTuning は LevelPlayScene(OnStart) と LevelEditorController が参照するので symbol 解決のため取り込む
+        "Source/Game/PlayerTuning.cpp",
         "Source/Game/Blocks/**.cpp",
-        "Source/Game/CameraRig.cpp",
         "Source/Editor/EditorCameraRig.cpp",
         -- LevelEditorController は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
         -- Setup は Application::Get() を要求するため test では呼ばないが、 ctor / EnterPlay /
@@ -832,7 +837,7 @@ project "Tests"
         -- LevelPlayScene が OnStart / UpdateAnimatedModel で参照するので symbol 解決のため併せて取り込む
         "Source/Game/SkinnedDebugCharacter.cpp",
         "Source/Editor/LevelEditorController.cpp",
-        -- Level data / ChunkIO / CRC32 / Undo Command / AutoTile は Application
+        -- Level data / LevelIO / CRC32 / Undo Command / AutoTile は Application
         -- 非依存の純粋ロジックなので Tests project から直接 compile する。
         "Source/Game/Level/**.cpp",
         "Source/Editor/Undo/**.cpp",
@@ -873,6 +878,9 @@ project "Tests"
         "Scene",
         "App"
     }
+
+    -- Game.exe と同じ理由で Scene の自己登録 TU をリンカ除去から守る
+    linkoptions { "/WHOLEARCHIVE:Scene.lib" }
 
     -- Debug / Development / GameDebug の Tests は editor / ImGui を呼ぶため UI + imgui を link する。
     -- GameRelease では UI 層が非ビルドのため link / include しない。

@@ -16,6 +16,7 @@ namespace NS::Scene
 {
 
     class SceneBase;
+    class ISubsystemProvider;
 
     /// SceneBase の生存期間を管理する単一 scene ホルダ。LoadScene で切り替える
     class SceneManager
@@ -29,7 +30,11 @@ namespace NS::Scene
         SceneManager(SceneManager&&) = delete;
         SceneManager& operator=(SceneManager&&) = delete;
 
+        /// app tier service の解決口を登録する。以降 LoadScene する scene へ引き継がれる
+        void SetSubsystemProvider(ISubsystemProvider* provider) noexcept;
+
         /// 現 scene を OnShutdown 後に新 scene を OnStart。nullptr で scene 無し状態へ
+        /// 新 scene は OnStart 直前に scene tier service を生成し、旧 scene は OnShutdown 後に破棄する
         void LoadScene(std::unique_ptr<SceneBase> scene);
 
         /// 現在 active な scene。 未ロードなら nullptr
@@ -46,6 +51,8 @@ namespace NS::Scene
 
     private:
         std::unique_ptr<SceneBase> m_current;
+        /// app tier service の解決口で非所有。LoadScene 時に新 scene へ渡す
+        ISubsystemProvider* m_provider = nullptr;
     };
 
 } // namespace NS::Scene

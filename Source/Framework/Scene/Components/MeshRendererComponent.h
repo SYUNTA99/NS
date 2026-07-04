@@ -99,7 +99,7 @@ namespace NS::Scene
         void OnEndPlay() override;
 
         // 個体色とメッシュ / material 参照を Inspector へ公開する。 lighting とは別系統の個体色 + 描く住み処
-        NS_REFLECT_BEGIN(MeshRendererComponent)
+        NS_REFLECT_BEGIN(MeshRendererComponent, Component)
         NS_REFLECT_FIELD(m_baseColor, "Base Color")
         NS_REFLECT_FIELD(m_meshRef, "Mesh")
         NS_REFLECT_FIELD(m_materialRef, "Material")

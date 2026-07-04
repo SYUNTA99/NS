@@ -45,6 +45,9 @@ namespace NS::Scene
         /// target-position を XZ 正規化した forward。距離0 / Y 方向のみなら world +Z。PlayerInput の camera 相対移動用
         [[nodiscard]] NS::Math::Vector3 ForwardHorizontal() const noexcept;
 
+        // pose は CameraBrain が毎フレーム上書きするので保存する調整値は無い。型名だけ登録する
+        NS_REFLECT_NONE(CameraComponent, Component)
+
     private:
         NS::Graphics::Camera m_camera;
     };

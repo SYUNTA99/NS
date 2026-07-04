@@ -94,7 +94,6 @@ namespace NS::Editor
 
         /// 変形座標系は Local / World。Move / Rotate のみ従い Scale は常に Local
         void SetSpace(GizmoSpace space) noexcept { m_space = space; }
-        [[nodiscard]] GizmoSpace Space() const noexcept { return m_space; }
         void ToggleSpace() noexcept
         {
             m_space = (m_space == GizmoSpace::Local) ? GizmoSpace::World : GizmoSpace::Local;

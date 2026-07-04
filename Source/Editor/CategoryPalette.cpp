@@ -5,6 +5,8 @@
 #include "Framework/UI/ImGuiContext.h"
 #include "Framework/UI/Panel.h"
 
+#include <variant>
+
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
 #endif
@@ -32,13 +34,21 @@ namespace NS::Editor
 
     float CategoryPalette::CurrentSlopeAngleDegrees() const noexcept
     {
-        // cube ブラシは wedge preview を持たない
+        // slope ブラシは prototype の SlopeCollider から角度を読み、 cursor preview の wedge と一致させる
+        // slope を持たない cube / goal ブラシは wedge preview を持たないので負値を返す
+        const NS::Game::Level::ComponentData* slope =
+            NS::Game::Level::FindComponentData(m_current.prototype, "SlopeColliderComponent");
+        if (slope == nullptr)
+            return -1.0f;
+        const NS::Game::Level::FieldValue* angle = NS::Game::Level::FindField(*slope, "Angle (deg)");
+        if (angle != nullptr && std::holds_alternative<float>(angle->value))
+            return std::get<float>(angle->value);
         return -1.0f;
     }
 
     void CategoryPalette::CycleActiveVariant() noexcept
     {
-        // cube / spawn には variant が無いので再選択しても何もしない
+        // cube には variant が無いので再選択しても何もしない
     }
 
     void CategoryPalette::TickInput(NS::Platform::Input* input, NS::UI::ImGuiContext* imgui) noexcept

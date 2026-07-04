@@ -5,7 +5,9 @@
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Reflection.h"
 
+#include <climits>
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <typeinfo>
 
@@ -36,7 +38,7 @@ namespace NS::Editor
         }
     } // namespace
 
-    bool DrawReflectedComponent(NS::Scene::Component& comp) noexcept
+    bool DrawReflectedComponent(NS::Scene::Component& comp, std::span<const ObjectRefOption> refOptions) noexcept
     {
         const NS::Scene::ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr)
@@ -109,12 +111,63 @@ namespace NS::Editor
                 }
                 break;
             }
+            case NS::Scene::FieldType::ObjectRef:
+            {
+                NS::Scene::ObjectRef value{};
+                field.get(&comp, &value);
+
+                // 候補が無い文脈では永続 id の数値入力に落とす
+                if (refOptions.empty())
+                {
+                    int id = static_cast<int>(value.id);
+                    if (ImGui::DragInt(field.name, &id, 1.0f, 0, INT_MAX, value.IsSet() ? "id %d" : "未設定"))
+                    {
+                        value.id = id <= 0 ? 0u : static_cast<std::uint32_t>(id);
+                        field.set(&comp, &value);
+                        changed = true;
+                    }
+                    break;
+                }
+
+                // レベル配置物から参照先を選ぶコンボ。現在値が候補に無い id なら消えた参照として明示する
+                const char* currentLabel = value.IsSet() ? "(消えた参照)" : "未設定";
+                for (const ObjectRefOption& option : refOptions)
+                {
+                    if (option.id == value.id)
+                    {
+                        currentLabel = option.label.c_str();
+                        break;
+                    }
+                }
+                if (ImGui::BeginCombo(field.name, currentLabel))
+                {
+                    if (ImGui::Selectable("未設定", !value.IsSet()))
+                    {
+                        value.id = 0;
+                        field.set(&comp, &value);
+                        changed = true;
+                    }
+                    for (const ObjectRefOption& option : refOptions)
+                    {
+                        ImGui::PushID(static_cast<int>(option.id));
+                        if (ImGui::Selectable(option.label.c_str(), option.id == value.id))
+                        {
+                            value.id = option.id;
+                            field.set(&comp, &value);
+                            changed = true;
+                        }
+                        ImGui::PopID();
+                    }
+                    ImGui::EndCombo();
+                }
+                break;
+            }
             }
         }
         return changed;
     }
 
-    bool DrawObjectComponents(NS::Scene::GameObject& obj) noexcept
+    bool DrawObjectComponents(NS::Scene::GameObject& obj, std::span<const ObjectRefOption> refOptions) noexcept
     {
         bool changed = false;
         int index = 0;
@@ -132,7 +185,7 @@ namespace NS::Editor
             {
                 if (info != nullptr)
                 {
-                    if (DrawReflectedComponent(*comp))
+                    if (DrawReflectedComponent(*comp, refOptions))
                         changed = true;
                 }
                 else
@@ -145,12 +198,12 @@ namespace NS::Editor
         return changed;
     }
 #else
-    bool DrawReflectedComponent(NS::Scene::Component&) noexcept
+    bool DrawReflectedComponent(NS::Scene::Component&, std::span<const ObjectRefOption>) noexcept
     {
         return false;
     }
 
-    bool DrawObjectComponents(NS::Scene::GameObject&) noexcept
+    bool DrawObjectComponents(NS::Scene::GameObject&, std::span<const ObjectRefOption>) noexcept
     {
         return false;
     }

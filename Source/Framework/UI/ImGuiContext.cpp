@@ -1,5 +1,6 @@
 #include "Framework/UI/ImGuiContext.h"
 
+#include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 #include "Framework/Framework.h"
@@ -48,6 +49,27 @@ namespace NS::UI
         ::ImGuiIO& io = ::ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         ::ImGui::StyleColorsDark();
+
+        // 既定フォントは ASCII のみで日本語が ??? になるため、 システムの日本語フォントを読み込む
+        // editor は dev 専用なので Windows のフォントパス直指定でよい。 見つからなければ ASCII 既定で続行する
+        {
+            constexpr const char* kFontCandidates[] = {
+                "C:/Windows/Fonts/YuGothM.ttc",
+                "C:/Windows/Fonts/meiryo.ttc",
+                "C:/Windows/Fonts/msgothic.ttc",
+            };
+            const ImWchar* ranges = io.Fonts->GetGlyphRangesJapanese();
+            for (const char* fontPath : kFontCandidates)
+            {
+                if (!NS::Core::FileSystem::Exists(fontPath))
+                    continue;
+                if (io.Fonts->AddFontFromFileTTF(fontPath, 18.0f, nullptr, ranges) != nullptr)
+                    break;
+            }
+            if (io.Fonts->Fonts.Size == 0)
+                NS_LOG_WARN(::NS::Core::LogCat::UI,
+                            "日本語フォントが見つからず ASCII 既定で続行、 日本語は ??? 表示になる");
+        }
 
         HWND hwnd = reinterpret_cast<HWND>(window.NativeHandle());
         if (hwnd == nullptr || !::ImGui_ImplWin32_Init(hwnd))

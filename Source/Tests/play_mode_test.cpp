@@ -10,7 +10,7 @@ namespace LevelNs = NS::Game::Level;
 
 namespace
 {
-    // 拾得物を PickupComponent で組む。 pickupKind 0=コイン / 1=ゴールスター
+    // 拾得物を PickupComponent で組む。 pickupKind 0=コイン / 1=ゴールゴール
     LevelNs::ObjectInstance MakePickup(float x, float y, float z, int pickupKind)
     {
         LevelNs::ObjectInstance object;
@@ -26,20 +26,18 @@ namespace
     }
 } // namespace
 
-TEST(PlayMode, EnterInitializesPlayerAtSpawn)
+TEST(PlayMode, EnterInitializesPlayerAtPlayerObject)
 {
     LevelNs::LevelData lv;
-    lv.spawnX = 5;
-    lv.spawnY = 2;
-    lv.spawnZ = 3;
+    lv.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{5.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;
 
     mode.Enter(lv, play);
 
     EXPECT_NEAR(play.playerPosition.x, 5.0f, 1e-4f);
-    // y は spawn セル底面 + (capsule halfHeight + radius) + 1cm lift = spawnY + 0.41
-    EXPECT_NEAR(play.playerPosition.y, 2.41f, 1e-3f);
+    // プレイヤー実体の位置は capsule 中心 world 位置そのものなので player はその座標へ正確に置かれる
+    EXPECT_NEAR(play.playerPosition.y, 2.0f, 1e-4f);
     EXPECT_NEAR(play.playerPosition.z, 3.0f, 1e-4f);
     EXPECT_EQ(play.coinCount, 0);
     EXPECT_FALSE(play.paused);
@@ -50,10 +48,8 @@ TEST(PlayMode, EnterInitializesPlayerAtSpawn)
 TEST(PlayMode, PausedTickDoesNotEvaluateRules)
 {
     LevelNs::LevelData lv;
-    lv.spawnX = 0;
-    lv.spawnY = 0;
-    lv.spawnZ = 0;
-    // spawn セル中心に coin を置くと中心距離が近く、 非 paused なら取得される位置
+    lv.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    // プレイヤー実体と同じ位置に coin を置くと中心距離が近く、 非 paused なら取得される位置
     lv.objects.push_back(MakePickup(0.0f, 0.0f, 0.0f, 0));
 
     LevelNs::PlayState play;
@@ -84,10 +80,8 @@ TEST(PlayMode, FallDeathTriggersWhenBelowThreshold)
 TEST(PlayMode, CoinContactIncrementsCounter)
 {
     LevelNs::LevelData lv;
-    lv.spawnX = 0;
-    lv.spawnY = 0;
-    lv.spawnZ = 0;
-    // player の spawn セル中心と同じ位置に coin を置くと中心距離 0 で必ず pickup
+    lv.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    // プレイヤー実体と同じ位置に coin を置くと中心距離 0 で必ず pickup
     lv.objects.push_back(MakePickup(0.0f, 0.0f, 0.0f, 0));
 
     LevelNs::PlayState play;
@@ -105,9 +99,7 @@ TEST(PlayMode, CoinContactIncrementsCounter)
 TEST(PlayMode, PowerStarTriggersClear)
 {
     LevelNs::LevelData lv;
-    lv.spawnX = 0;
-    lv.spawnY = 0;
-    lv.spawnZ = 0;
+    lv.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     lv.objects.push_back(MakePickup(0.0f, 0.0f, 0.0f, 1));
 
     LevelNs::PlayState play;
@@ -121,9 +113,7 @@ TEST(PlayMode, PowerStarTriggersClear)
 TEST(PlayMode, PickupComponentCoinIncrementsCounter)
 {
     LevelNs::LevelData lv;
-    lv.spawnX = 0;
-    lv.spawnY = 0;
-    lv.spawnZ = 0;
+    lv.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
     // 拾得は PickupComponent が駆動する (種別フィールドではなく component が表す)
     LevelNs::ObjectInstance coin;
@@ -148,20 +138,18 @@ TEST(PlayMode, PickupComponentCoinIncrementsCounter)
 TEST(PlayMode, PickupComponentStarTriggersClear)
 {
     LevelNs::LevelData lv;
-    lv.spawnX = 0;
-    lv.spawnY = 0;
-    lv.spawnZ = 0;
+    lv.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
-    LevelNs::ObjectInstance star;
-    star.flags = LevelNs::kObjectFlagGridAligned;
-    star.positionX = 0.0f;
-    star.positionY = 0.0f;
-    star.positionZ = 0.0f;
+    LevelNs::ObjectInstance goal;
+    goal.flags = LevelNs::kObjectFlagGridAligned;
+    goal.positionX = 0.0f;
+    goal.positionY = 0.0f;
+    goal.positionZ = 0.0f;
     LevelNs::ComponentData pickup;
     pickup.typeName = "PickupComponent";
     pickup.fields.push_back(LevelNs::FieldValue{"Pickup Kind", 1});
-    star.components.push_back(std::move(pickup));
-    lv.objects.push_back(std::move(star));
+    goal.components.push_back(std::move(pickup));
+    lv.objects.push_back(std::move(goal));
 
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;

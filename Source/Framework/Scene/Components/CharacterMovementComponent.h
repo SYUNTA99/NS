@@ -14,25 +14,23 @@
 #include "Framework/Scene/Component.h"
 
 #include <span>
+#include <vector>
 
 namespace NS::Scene
 {
-    class PoleComponent;
-
-    /// ClimbingPole / LedgeHanging / LedgeMantling の掴まり中は CharacterController を bypass して position
+    /// LedgeHanging / LedgeMantling の掴まり中は CharacterController を bypass して position
     /// を直更新する
     enum class MovementState
     {
         Walking,
         Jumping,
         Falling,
-        ClimbingPole,
         LedgeHanging,
         LedgeMantling,
     };
 
     /// Player の物理状態を管理する Component。Input→desired velocity は PlayerInputComponent、衝突 world は
-    /// SetPhysicsWorld で非所有借用する
+    /// OnStart で所属 scene から非所有借用する
     class CharacterMovementComponent : public Component
     {
     public:
@@ -46,18 +44,21 @@ namespace NS::Scene
         void SetJumpPressed() noexcept;
         void SetJumpHeld(bool held) noexcept;
 
-        /// pole 群を span で注入する。span のみ保存し、要素の寿命は呼出側の LevelPlayScene が保証する
-        void SetClimbables(std::span<PoleComponent* const> poles) noexcept;
-
-        /// 衝突 query 元の physics world を非所有で借用する。 非 null なら衝突計算をこの world へ委ねる
+        /// 衝突 query 元の physics world を非所有で借用する。 scene 無しで動かすテスト用の継ぎ目で、
+        /// 本編は OnStart が所属 scene の world を取る
         void SetPhysicsWorld(const NS::Physics::PhysicsWorld* world) noexcept { m_world = world; }
+
+        /// 未注入なら所属 scene の衝突 world を借用する。world は scene が所有する実体のため
+        /// level 再構築後もこの参照のまま有効
+        void OnStart() override;
 
         [[nodiscard]] MovementState State() const noexcept { return m_state; }
         /// テスト / 強制遷移用の setter。 通常は OnUpdate 内で遷移するため呼出不要
         void SetState(MovementState s) noexcept { m_state = s; }
-        [[nodiscard]] PoleComponent* AttachedPole() const noexcept { return m_attachedPole; }
 
         [[nodiscard]] NS::Math::Vector3 Velocity() const noexcept { return m_velocity; }
+        /// テスト / 外力用に速度を直接与える。 通常は OnUpdate 内で更新するため呼出不要
+        void SetVelocity(const NS::Math::Vector3& v) noexcept { m_velocity = v; }
         [[nodiscard]] bool IsGrounded() const noexcept { return m_isGrounded; }
         [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; }
 
@@ -66,9 +67,26 @@ namespace NS::Scene
         [[nodiscard]] float CapsuleRadius() const noexcept { return m_capsuleRadius; }
         [[nodiscard]] float CapsuleHalfHeight() const noexcept { return m_capsuleHalfHeight; }
 
+        /// debug 可視化が縁の外側へ伸ばすコヨーテ帯の寸法に使う。 ライブ調整した値をそのまま反映する
+        [[nodiscard]] float CoyoteTime() const noexcept { return m_coyoteTime; }
+        [[nodiscard]] float MaxSpeed() const noexcept { return m_maxSpeed; }
+
         /// Debug 可視化の on/off。default true。CI / unit test では false 推奨
         void SetDebugDrawEnabled(bool enabled) noexcept { m_debugDraw = enabled; }
         [[nodiscard]] bool IsDebugDrawEnabled() const noexcept { return m_debugDraw; }
+
+        /// コヨーテ窓内で跳んだ 1 件の記録。edge=最終接地位置, jump=跳躍位置, remaining=残り表示秒
+        struct CoyoteJumpMarker
+        {
+            NS::Math::Vector3 edge{0.0f, 0.0f, 0.0f};
+            NS::Math::Vector3 jump{0.0f, 0.0f, 0.0f};
+            float remaining = 0.0f;
+        };
+        /// 生存中のコヨーテジャンプ記録。debug 描画が縁→跳躍点の赤線を引くのに読む。寿命切れは除外済
+        [[nodiscard]] std::span<const CoyoteJumpMarker> CoyoteJumpMarkers() const noexcept
+        {
+            return m_coyoteJumpMarkers;
+        }
 
         /// 奈落落ち復活などで状態を初期化する。velocity / grounded / jump 関連 timer を全リセット
         void ResetState() noexcept;
@@ -76,7 +94,7 @@ namespace NS::Scene
         void OnUpdate() override;
 
         // 操作感の調整値を Inspector へ公開する。 プレイ中にライブで触って感触を詰める用途
-        NS_REFLECT_BEGIN(CharacterMovementComponent)
+        NS_REFLECT_BEGIN(CharacterMovementComponent, Component)
         NS_REFLECT_FIELD(m_jumpImpulse, "Jump Impulse")
         NS_REFLECT_FIELD(m_gravityUp, "Gravity Up")
         NS_REFLECT_FIELD(m_gravityDown, "Gravity Down")
@@ -90,6 +108,9 @@ namespace NS::Scene
         NS_REFLECT_FIELD(m_accelTau, "Accel Tau")
         NS_REFLECT_FIELD(m_decelTau, "Decel Tau")
         NS_REFLECT_FIELD(m_stickDeadzone, "Stick Deadzone")
+        NS_REFLECT_ACCESSOR(float, "Capsule Radius", CapsuleRadius(), SetCapsuleRadius)
+        NS_REFLECT_ACCESSOR(float, "Capsule Half Height", CapsuleHalfHeight(), SetCapsuleHalfHeight)
+        NS_REFLECT_FIELD(m_debugDraw, "Debug Draw")
         NS_REFLECT_END()
 
     private:
@@ -105,13 +126,16 @@ namespace NS::Scene
         /// 指定ぶら下がり位置で縁が同じ高さで続いているか。シミー先が端を越えていないか判定する
         [[nodiscard]] bool LedgeContinuesAt(const NS::Math::Vector3& hangPos) const noexcept;
 
+        /// コヨーテ窓内ジャンプを 1 件記録する。上限超過時は最古を捨てる
+        void PushCoyoteJumpMarker(const NS::Math::Vector3& edge, const NS::Math::Vector3& jump) noexcept;
+
         float m_gravityUp = -25.0f;
         float m_gravityDown = -35.0f;
         float m_apexHangVy = 1.0f;
         float m_apexHangScale = 0.5f;
         float m_jumpReleaseScale = 0.6f;
         float m_jumpImpulse = 12.0f;
-        float m_coyoteTime = 0.20f;
+        float m_coyoteTime = 0.025f;
         float m_jumpBufferTime = 0.25f;
         float m_maxSpeed = 8.0f;
         float m_walkSpeed = 4.0f;
@@ -139,13 +163,15 @@ namespace NS::Scene
 
         bool m_debugDraw = true;
 
+        // 最後に接地していた world 位置。 縁を踏み外した直後はここが踏み外し点 すなわち縁になる
+        NS::Math::Vector3 m_lastGroundedPosition{0.0f, 0.0f, 0.0f};
+        // 表示中のコヨーテジャンプ記録。 寿命付きで OnUpdate 冒頭に減衰させ、 切れたら除外する
+        std::vector<CoyoteJumpMarker> m_coyoteJumpMarkers;
+
         const NS::Physics::PhysicsWorld* m_world = nullptr;
         NS::Physics::CharacterController m_controller;
 
         MovementState m_state = MovementState::Walking;
-        std::span<PoleComponent* const> m_poles{};
-        PoleComponent* m_attachedPole = nullptr;
-        bool m_skipControllerLastFrame = false;
 
         float m_ledgeTopY = 0.0f;
         NS::Math::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f};

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file PlayState.h
-/// @brief PlayState — Play mode 中だけ存在する一時データ。 `.nslvl` には書かない
+/// @brief PlayState — Play mode 中だけ存在する一時データ。 `.scene` には書かない
 ///
 /// @details 永続の LevelData と物理的に別 struct にすることで「PlayMode が誤って
 /// LevelData を書き換える」 経路をコンパイル時に排除する。 PlayMode は

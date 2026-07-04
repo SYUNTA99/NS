@@ -66,7 +66,7 @@ namespace NS::Editor
         const auto safe = SanitizeLevelName(name);
         if (safe.empty())
             return std::nullopt;
-        return GetLevelsDirectory() / (safe + ".nslvl");
+        return GetLevelsDirectory() / (safe + ".scene");
     }
 
     bool EnsureLevelsDirectoryExists() noexcept
@@ -89,7 +89,7 @@ namespace NS::Editor
         if (!NS::Core::FileSystem::Exists(dir))
             return result;
 
-        for (const auto& path : NS::Core::FileSystem::ListFiles(dir, ".nslvl"))
+        for (const auto& path : NS::Core::FileSystem::ListFiles(dir, ".scene"))
         {
             auto stem = path.stem().string();
             if (!SanitizeLevelName(stem).empty())

@@ -12,9 +12,9 @@
 #include "Editor/GizmoEditor.h"
 #include "Framework/Graphics/RenderSettings.h"
 #include "Framework/Math/Math.h"
-#include "Game/Level/EditTarget.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
+#include "Game/Theme/ThemeId.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -28,7 +28,8 @@ namespace NS::Scene
 {
     class GameObject;
     class Transform;
-    class PlacedVirtualCamera;
+    class CameraBrainComponent;
+    class CameraComponent;
 } // namespace NS::Scene
 
 namespace NS::UI
@@ -75,7 +76,6 @@ public:
     void EnterEdit() noexcept;
 
     [[nodiscard]] NS::Editor::EditorMode& Editor() noexcept { return m_editor; }
-    [[nodiscard]] LevelPlayScene& Scene() noexcept { return *m_scene; }
     /// panel 利便のための pass-through。 編集対象の LevelData
     [[nodiscard]] NS::Game::Level::LevelData& Level() noexcept;
     /// panel 利便のための pass-through。 一時的な PlayState
@@ -114,13 +114,13 @@ public:
     void AddObject();
 
     /// 選択中の配置物に対応する runtime GameObject。 未選択 / 未構築は nullptr
-    /// Inspector が Component の反射フィールドを描くのに使う
+    /// Inspector が Component の反射フィールドを描くのに使う。 player object は scene 所有の実 player を返す
     [[nodiscard]] NS::Scene::GameObject* SelectedObjectGameObject() noexcept;
-    /// Player の runtime GameObject。 未構築は nullptr。 操作感のライブ調整 Inspector に使う
-    [[nodiscard]] NS::Scene::GameObject* PlayerObject() noexcept;
-    /// 選択中の自由オブジェクトの runtime collider を components データへ書き戻し、 保存と rebuild に乗せる
-    /// Inspector で collider を反射編集した後に呼ぶ。 grid / 非選択時は何もしない
-    void SyncSelectedObjectColliderFromComponent();
+    /// 選択中の配置物がプレイヤー実体か。 テンプレート保存の表示と複製禁止の判定に使う
+    [[nodiscard]] bool SelectedIsPlayerObject() const noexcept;
+    /// 選択中の自由オブジェクトの runtime 全コンポーネントを components データへ書き戻し、 保存と rebuild に乗せる
+    /// Inspector で反射編集した後に呼ぶ。 grid / 非選択時は何もしない
+    void SyncSelectedObjectComponentsFromComponent();
 
     /// 選択 object の末尾へ型名のみのコンポーネントを足す。 Undo 対応、 非選択時は何もしない
     void AddComponentToSelected(std::string_view typeName);
@@ -141,30 +141,14 @@ public:
     /// 編集中=free-fly / プレイ中=follow の現在 active な仮想カメラの GameObject。 無ければ nullptr
     [[nodiscard]] NS::Scene::GameObject* ActiveVirtualCameraObject() noexcept;
 
-    /// Hierarchy から Player を選択する。 配置物 / カメラ / ギズモ選択は解除する。 Player は gizmo 対象外
-    void SelectPlayer() noexcept;
-    /// Hierarchy から Brain + active vcam の Camera を選択する。 配置物 / カメラ / ギズモ選択は解除する
+    /// Hierarchy から Brain + active vcam の Camera を選択する。 配置物 / ギズモ選択は解除する
     void SelectCamera() noexcept;
-    /// Inspector / Hierarchy が Player 選択中か
-    [[nodiscard]] bool IsPlayerSelected() const noexcept { return m_specialSelection == SpecialSelection::Player; }
     /// Inspector / Hierarchy が Camera 選択中か
     [[nodiscard]] bool IsCameraSelected() const noexcept { return m_specialSelection == SpecialSelection::Camera; }
 
-    /// 現在選択中の area camera の cameraVolumes 添字。 未選択 / 範囲外は kNoObjectIndex
-    [[nodiscard]] std::size_t SelectedCameraIndex() const noexcept { return m_selectedCameraIndex; }
-    /// Hierarchy から添字で area camera を選択する。 オブジェクト / ギズモ選択は解除する
-    void SelectCameraByIndex(std::size_t index) noexcept;
-    /// Inspector が編集できる area camera の選択を持つか
-    [[nodiscard]] bool HasCameraSelection() const noexcept;
-    /// 選択中 area camera の runtime PlacedVirtualCamera。 未選択 / 範囲外は nullptr。 Inspector の反射編集対象
-    [[nodiscard]] NS::Scene::PlacedVirtualCamera* SelectedAreaCamera() noexcept;
-    /// 反射編集された PlacedVirtualCamera の値を選択中 CameraVolume へ書き戻し、 保存に乗せる。 非選択時は何もしない
-    /// トリガ半径は最小正値に clamp し component 側へも反映する
-    void SyncSelectedCameraVolumeFromComponent() noexcept;
-    /// 編集視点の中心あたりに新しい area camera を追加して選択する
-    void AddCameraVolume() noexcept;
-    /// 選択中の area camera を削除する。 非選択時は何もしない
-    void DeleteSelectedCamera() noexcept;
+    /// 編集視点の中心あたりに据え置きカメラの配置物を 1 個追加して選択する。 Undo 対応
+    /// カメラは通常の配置物なので、 選択・変形・削除・Inspector 編集は object の既存経路に乗る
+    void AddCameraObject();
 
     /// Object モードかつギズモで何か選択中なら true。 material 適用先がある状態
     [[nodiscard]] bool HasGizmoSelection() const noexcept
@@ -173,6 +157,17 @@ public:
     }
     /// ギズモ選択中の自由オブジェクトに matPath の .mat を適用する。 適用できたら true
     bool ApplyMaterialToSelected(const std::filesystem::path& matPath);
+
+    /// `.asset` の雛形を読み直すだけ。 雛形はシーンの見た目に影響しないため world は組み直さない
+    /// 編集した雛形をシーンに反映するには読み直したうえで ApplyTheme で適用し直す
+    void ReloadThemes();
+
+    /// 雛形 id の視覚値をシーンの環境欄へ写し込み、 slice 帯の焼き直しまで行う
+    /// lighting / skybox は次フレームの設定写しで、 block の slice は RebuildWorld の焼き直しで反映される
+    void ApplyTheme(NS::Game::Theme::ThemeId id);
+
+    /// 環境の block slice 帯を変えて world を焼き直す。 lighting と違い帯変更だけが組み直しを要する
+    void SetEnvironmentBlockSlice(std::uint16_t baseSlice);
 
     /// 最後に scene が解決した scene 段設定。 RenderSettings パネルの表示元
     [[nodiscard]] const NS::Graphics::RenderSettings& DebugResolvedSettings() const noexcept
@@ -212,13 +207,16 @@ private:
     void PromoteGridBlockToFree(std::size_t objectIndex);
 
     /// ギズモで変形した自由オブジェクトの Transform を対応する ObjectInstance へ書き戻す
+    /// world に居ない実プレイヤーも player object のデータへ同様に書き戻す。 live Transform が真実の源
     void SyncFreeObjectTransforms();
 
     /// ビューポートでギズモ選択が変わった時だけ、 選択 id と派生の添字を追従させる
     void CaptureSelectionFromGizmo() noexcept;
 
-    /// scene の level + 識別子ストアから編集対象 view を組む
-    [[nodiscard]] NS::Game::Level::EditTarget SceneEditTarget() noexcept;
+    /// 描画カメラの窓口。 scene の CameraSubsystem から brain を引く。 未登録は nullptr
+    [[nodiscard]] NS::Scene::CameraBrainComponent* Brain() const noexcept;
+    /// brain が駆動する実カメラ。 brain 未登録・実カメラ未解決は nullptr
+    [[nodiscard]] NS::Scene::CameraComponent* MainCamera() const noexcept;
 
     /// 識別子でギズモ選択を貼り直す。 対象が消えていれば選択解除する
     void ReselectFreeObjectById(std::uint32_t id) noexcept;
@@ -247,21 +245,18 @@ private:
     std::vector<NS::Scene::GameObject*> m_selectablePtrs;
     std::vector<NS::Math::Vector3> m_selectableHalfExtents;
 
-    // Player / Camera のような配置物でもエリアカメラでもない単一物の選択。 添字選択とは排他
+    // 編集カメラのような配置物でない単一物の選択。 添字選択とは排他
     enum class SpecialSelection : std::uint8_t
     {
         None,
-        Player,
         Camera
     };
     SpecialSelection m_specialSelection = SpecialSelection::None;
 
-    // 選択の真実は安定セッション識別子の id。 rebuild / delete / undo を跨いでも生ポインタや添字に依存しない
-    std::uint32_t m_selectedObjectId = NS::Game::Level::kInvalidObjectId;
+    // 選択の真実は永続 objectId。 rebuild / delete / undo を跨いでも生ポインタや添字に依存しない
+    std::uint32_t m_selectedObjectId = NS::Game::Level::kNoObjectId;
     // id から毎フレーム解決する派生の添字。 m_level.objects 用で、 ズレても crash しない安定 vector を指す
     std::size_t m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
-    // 選択中の area camera の cameraVolumes 添字。 オブジェクト選択とは排他
-    std::size_t m_selectedCameraIndex = NS::Game::Level::kNoObjectIndex;
     // ビューポート由来のギズモ選択変化だけを index へ反映するための前フレーム値
     NS::Scene::Transform* m_lastGizmoSelected = nullptr;
 
@@ -271,7 +266,7 @@ private:
     // ギズモドラッグ / Inspector パネルの変形編集を 1 undo 単位へ束ねる状態
     bool m_gizmoWasDragging = false;
     bool m_transformEditing = false;
-    std::uint32_t m_editBaselineId = NS::Game::Level::kInvalidObjectId;
+    std::uint32_t m_editBaselineId = NS::Game::Level::kNoObjectId;
     NS::Game::Level::ObjectInstance m_editBaseline{};
 
     // Debug provenance パネルの読み出し元。 書き込みは Render で毎フレーム行う
