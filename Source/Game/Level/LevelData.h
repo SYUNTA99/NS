@@ -98,6 +98,22 @@ namespace NS::Game::Level
         [[nodiscard]] bool operator==(const ObjectInstance& other) const = default;
     };
 
+    /// シーンが所有する環境値。 保存形式に入る永続データで、 描画は毎フレームこれを EnvironmentSubsystem へ写す
+    /// 既定値は中立の絵。 テーマは適用時にこの欄へ値を写し込む雛形で、 以降はシーンの値が正になる
+    struct LevelEnvironment
+    {
+        /// 平行光の向き。 正規化前でよく、 シェーダ側で normalize する
+        NS::Math::Vector3 lightDirection{-0.3f, -1.0f, -0.2f};
+        /// 平行光の色。 HDR 込みで 1.3 等を許容する
+        NS::Math::Vector3 lightColor{1.0f, 1.0f, 1.0f};
+        /// 環境光の色。 N.L = 0 の影側ベース色になる
+        NS::Math::Vector3 ambientColor{0.2f, 0.2f, 0.2f};
+        /// skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。 空文字なら skybox を描かない
+        std::string skyboxCubemapPath{};
+        /// block texture 配列の先頭 slice。 Rebuild 時の焼き込みが読む
+        std::uint16_t blockTextureBaseSlice = 0;
+    };
+
     /// `.nslvl` に書かれる永続データ。 PlayMode 中は const 参照でしか触らせない
     struct LevelData
     {
@@ -109,6 +125,9 @@ namespace NS::Game::Level
 
         /// objects の materialIndex が参照する .mat 相対パス表
         std::vector<std::string> materialPaths;
+
+        /// シーンの見た目を確定する環境値。 lighting と skybox と block の slice 帯
+        LevelEnvironment environment{};
 
         std::uint16_t themeId = 0;
         std::uint16_t bgmId = 0;

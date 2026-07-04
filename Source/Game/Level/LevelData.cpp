@@ -165,6 +165,13 @@ namespace NS::Game::Level
             crc = UpdateWithString(crc, materialPath);
         }
 
+        // 環境は見た目を確定する永続データなので、 変化が dirty 検知に必ず出るよう field 単位で hash する
+        crc = UpdateWith(crc, environment.lightDirection);
+        crc = UpdateWith(crc, environment.lightColor);
+        crc = UpdateWith(crc, environment.ambientColor);
+        crc = UpdateWithString(crc, environment.skyboxCubemapPath);
+        crc = UpdateWith(crc, environment.blockTextureBaseSlice);
+
         crc = UpdateWith(crc, themeId);
         crc = UpdateWith(crc, bgmId);
         crc = UpdateWith(crc, coinThreshold);

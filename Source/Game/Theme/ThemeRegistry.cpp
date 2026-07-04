@@ -124,4 +124,16 @@ namespace NS::Game::Theme
             MutableThemes()[i] = std::move(theme);
         }
     }
+
+    NS::Game::Level::LevelEnvironment MakeEnvironmentFromTheme(const ThemeData& theme)
+    {
+        NS::Game::Level::LevelEnvironment environment{};
+        environment.lightDirection = theme.lightDirection;
+        environment.lightColor = theme.lightColor;
+        environment.ambientColor = theme.ambientColor;
+        // skybox パスは JSON 素直な文字列で持つため '/' 区切りへ正規化して写す
+        environment.skyboxCubemapPath = theme.skyboxCubemapPath.generic_string();
+        environment.blockTextureBaseSlice = theme.blockTextureArrayBaseSlice;
+        return environment;
+    }
 } // namespace NS::Game::Theme

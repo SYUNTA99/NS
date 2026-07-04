@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <filesystem>
 
+#include "Game/Level/LevelData.h"
 #include "Game/Theme/ThemeData.h"
 #include "Game/Theme/ThemeId.h"
 
@@ -25,4 +26,8 @@ namespace NS::Game::Theme
     /// 呼ぶ度に中立の既定値 ThemeData{} へ戻してから読むため、 欠落・破損・値不正のテーマは中立のままになる
     /// 未知キーは無視する。 起動列と editor のテーマ再読込が呼ぶ
     void LoadThemesFromDirectory(const std::filesystem::path& directory);
+
+    /// テーマの視覚フィールドをシーンの環境値へ写して返す。 雛形からシーンへの写し込みの唯一の入口で、
+    /// 新規シーン・テーマ適用・旧形式の読込移行が使う。 skybox パスは '/' 区切りへ正規化する
+    [[nodiscard]] NS::Game::Level::LevelEnvironment MakeEnvironmentFromTheme(const ThemeData& theme);
 } // namespace NS::Game::Theme

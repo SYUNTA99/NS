@@ -140,6 +140,24 @@ namespace
         EXPECT_EQ(theme.displayName, "Lava");
     }
 
+    TEST_F(ThemeRegistryBundledTest, MakeEnvironmentFromThemeCopiesVisualFields)
+    {
+        const ThemeData& lava = Get(ThemeId::Lava);
+        const NS::Game::Level::LevelEnvironment environment = MakeEnvironmentFromTheme(lava);
+
+        EXPECT_FLOAT_EQ(environment.lightDirection.x, lava.lightDirection.x);
+        EXPECT_FLOAT_EQ(environment.lightDirection.y, lava.lightDirection.y);
+        EXPECT_FLOAT_EQ(environment.lightDirection.z, lava.lightDirection.z);
+        EXPECT_FLOAT_EQ(environment.lightColor.x, lava.lightColor.x);
+        EXPECT_FLOAT_EQ(environment.lightColor.y, lava.lightColor.y);
+        EXPECT_FLOAT_EQ(environment.lightColor.z, lava.lightColor.z);
+        EXPECT_FLOAT_EQ(environment.ambientColor.x, lava.ambientColor.x);
+        EXPECT_FLOAT_EQ(environment.ambientColor.y, lava.ambientColor.y);
+        EXPECT_FLOAT_EQ(environment.ambientColor.z, lava.ambientColor.z);
+        EXPECT_EQ(environment.skyboxCubemapPath, lava.skyboxCubemapPath.generic_string());
+        EXPECT_EQ(environment.blockTextureBaseSlice, lava.blockTextureArrayBaseSlice);
+    }
+
     /// ファイル読込の退避系。TearDown で存在しないディレクトリを読ませ、全テーマを中立既定値へ戻す
     class ThemeRegistryFileTest : public ::testing::Test
     {

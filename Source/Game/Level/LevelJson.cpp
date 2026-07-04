@@ -5,6 +5,7 @@
 #include "Framework/Core/Logger.h"
 #include "Framework/Math/Math.h"
 #include "Game/Level/LevelData.h"
+#include "Game/Theme/ThemeRegistry.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -27,7 +28,9 @@ namespace NS::Game::Level
         /// v4 で据え置きカメラを cameraVolumes の別リストから objects の配置物へ統合した
         /// v5 でプレイヤーを spawn 単一値から objects の実体へ統合した。 旧版は読込時に合成して移行する
         /// v6 で追従カメラを scene 直組みから objects の実体へ統合した。 旧版は読込時に合成して移行する
-        constexpr int kFormatVersion = 6;
+        /// v7 で環境をテーマ番号 themeId からシーン所有の environment 欄へ統合した。 旧版は themeId
+        /// から合成して移行する
+        constexpr int kFormatVersion = 7;
 
         /// 読込時の上限。 巨大 size / 要素数による memory exhaustion を防ぐ。 binary 版から移植
         constexpr std::size_t kMaxLevelFileBytes = 16u * 1024u * 1024u;
@@ -320,6 +323,17 @@ namespace NS::Game::Level
         meta["timeLimitSeconds"] = static_cast<int>(level.timeLimitSeconds);
         root["meta"] = std::move(meta);
 
+        nlohmann::json environment;
+        environment["lightDirection"] = Vec3Json(
+            level.environment.lightDirection.x, level.environment.lightDirection.y, level.environment.lightDirection.z);
+        environment["lightColor"] =
+            Vec3Json(level.environment.lightColor.x, level.environment.lightColor.y, level.environment.lightColor.z);
+        environment["ambientColor"] = Vec3Json(
+            level.environment.ambientColor.x, level.environment.ambientColor.y, level.environment.ambientColor.z);
+        environment["skyboxCubemapPath"] = level.environment.skyboxCubemapPath;
+        environment["blockTextureBaseSlice"] = static_cast<int>(level.environment.blockTextureBaseSlice);
+        root["environment"] = std::move(environment);
+
         nlohmann::json objects = nlohmann::json::array();
         for (const auto& object : level.objects)
             objects.push_back(SerializeObject(object));
@@ -467,6 +481,37 @@ namespace NS::Game::Level
                 static_cast<std::uint16_t>(ReadInt(*metaIt, "coinThreshold", outLevel.coinThreshold));
             outLevel.timeLimitSeconds =
                 static_cast<std::uint16_t>(ReadInt(*metaIt, "timeLimitSeconds", outLevel.timeLimitSeconds));
+        }
+
+        // v7 以降は environment 欄がシーンの見た目を所有する。 中立既定値の上に読めたキーだけ部分適用する
+        // v6 以前は themeId しか無いので、 対応する雛形値を写して従来と同じ見た目へ移行する
+        const auto environmentIt = root.find("environment");
+        if (environmentIt != root.end() && environmentIt->is_object())
+        {
+            ReadVec3(*environmentIt,
+                     "lightDirection",
+                     outLevel.environment.lightDirection.x,
+                     outLevel.environment.lightDirection.y,
+                     outLevel.environment.lightDirection.z);
+            ReadVec3(*environmentIt,
+                     "lightColor",
+                     outLevel.environment.lightColor.x,
+                     outLevel.environment.lightColor.y,
+                     outLevel.environment.lightColor.z);
+            ReadVec3(*environmentIt,
+                     "ambientColor",
+                     outLevel.environment.ambientColor.x,
+                     outLevel.environment.ambientColor.y,
+                     outLevel.environment.ambientColor.z);
+            const auto skyboxIt = environmentIt->find("skyboxCubemapPath");
+            if (skyboxIt != environmentIt->end() && skyboxIt->is_string())
+                outLevel.environment.skyboxCubemapPath = skyboxIt->get<std::string>();
+            outLevel.environment.blockTextureBaseSlice = static_cast<std::uint16_t>(
+                ReadInt(*environmentIt, "blockTextureBaseSlice", outLevel.environment.blockTextureBaseSlice));
+        }
+        else
+        {
+            outLevel.environment = NS::Game::Theme::MakeEnvironmentFromTheme(NS::Game::Theme::Get(outLevel.themeId));
         }
 
         outLevel.nextObjectId = static_cast<std::uint32_t>(ReadInt(root, "nextObjectId", 1));

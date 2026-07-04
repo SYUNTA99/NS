@@ -61,8 +61,7 @@ TEST(LevelDataCrcTest, PlayStateMutationDoesNotAffectLevelDataCrc)
 {
     LevelNs::LevelData level;
     level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
-    level.objects.push_back(
-        LevelNs::MakePlayerObject(NS::Math::Vector3{5.0f, 0.0f, 0.0f}, NS::Math::Quaternion{}));
+    level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{5.0f, 0.0f, 0.0f}, NS::Math::Quaternion{}));
     const auto before = level.ComputeCrc32();
 
     LevelNs::PlayState play;
@@ -107,6 +106,25 @@ TEST(LevelDataCrcTest, MetadataFieldsAreHashed)
     a.themeId = 1;
     b.themeId = 2;
     EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
+}
+
+// 環境欄は見た目を確定する永続データなので、 差があれば dirty 検知の CRC も必ず動く
+TEST(LevelDataCrcTest, EnvironmentIsHashed)
+{
+    LevelNs::LevelData a, b;
+    a.environment.ambientColor.x = 0.1f;
+    b.environment.ambientColor.x = 0.9f;
+    EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
+
+    LevelNs::LevelData c, d;
+    c.environment.skyboxCubemapPath = "Assets/Skybox/a/";
+    d.environment.skyboxCubemapPath = "Assets/Skybox/b/";
+    EXPECT_NE(c.ComputeCrc32(), d.ComputeCrc32());
+
+    LevelNs::LevelData e, f;
+    e.environment.blockTextureBaseSlice = 0;
+    f.environment.blockTextureBaseSlice = 8;
+    EXPECT_NE(e.ComputeCrc32(), f.ComputeCrc32());
 }
 
 TEST(LevelDataCrcTest, VectorCapacityDoesNotAffectCrc)
