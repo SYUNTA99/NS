@@ -1,12 +1,8 @@
 #include "Editor/LevelFilePaths.h"
 #include "Framework/Core/Filesystem.h"
-#include "Framework/Core/Logger.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/LevelIO.h"
 #include "Game/Level/LevelJson.h"
-#include "Game/Theme/ThemeData.h"
-#include "Game/Theme/ThemeId.h"
-#include "Game/Theme/ThemeRegistry.h"
 
 #include <cstring>
 #include <filesystem>
@@ -601,71 +597,6 @@ TEST(SaveLoadRoundTrip, EnvironmentPartialKeysKeepNeutralDefaults)
     EXPECT_FLOAT_EQ(dst.environment.ambientColor.x, neutral.ambientColor.x);
     EXPECT_EQ(dst.environment.skyboxCubemapPath, neutral.skyboxCubemapPath);
     EXPECT_EQ(dst.environment.blockTextureBaseSlice, neutral.blockTextureBaseSlice);
-}
-
-/// 旧形式の環境移行を検証する。 雛形の値が要るため同梱テーマを読み込んだ状態で行う
-class EnvironmentMigrationTest : public ::testing::Test
-{
-protected:
-    void SetUp() override
-    {
-        NS::Core::Logger::Init();
-        NS::Game::Theme::LoadThemesFromDirectory(NS::Core::FileSystem::ContentRoot() / "Assets" / "Themes");
-    }
-    void TearDown() override
-    {
-        // 次のテストが読込済み状態を仮定しないよう、存在しないディレクトリを読ませて中立へ戻す
-        NS::Game::Theme::LoadThemesFromDirectory(std::filesystem::temp_directory_path() /
-                                                 "ns_environment_restore_missing");
-        NS::Core::Logger::Shutdown();
-    }
-};
-
-// v6 以前は themeId しか持たない。 読込の門で雛形値が環境欄へ合成され、 従来と同じ見た目になる
-TEST_F(EnvironmentMigrationTest, V6ThemeIdSynthesizesEnvironment)
-{
-    const std::string legacyJson = R"({
-        "formatVersion": 6,
-        "objects": [],
-        "materialPaths": [],
-        "meta": { "themeId": 3 }
-    })";
-
-    LevelNs::LevelData dst;
-    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, legacyJson));
-
-    const NS::Game::Theme::ThemeData& lava = NS::Game::Theme::Get(NS::Game::Theme::ThemeId::Lava);
-    EXPECT_EQ(dst.environment.blockTextureBaseSlice, lava.blockTextureArrayBaseSlice);
-    EXPECT_EQ(dst.environment.skyboxCubemapPath, lava.skyboxCubemapPath.generic_string());
-    EXPECT_FLOAT_EQ(dst.environment.lightDirection.x, lava.lightDirection.x);
-    EXPECT_FLOAT_EQ(dst.environment.lightDirection.y, lava.lightDirection.y);
-    EXPECT_FLOAT_EQ(dst.environment.lightDirection.z, lava.lightDirection.z);
-    EXPECT_FLOAT_EQ(dst.environment.lightColor.x, lava.lightColor.x);
-    EXPECT_FLOAT_EQ(dst.environment.lightColor.y, lava.lightColor.y);
-    EXPECT_FLOAT_EQ(dst.environment.lightColor.z, lava.lightColor.z);
-    EXPECT_FLOAT_EQ(dst.environment.ambientColor.x, lava.ambientColor.x);
-    EXPECT_FLOAT_EQ(dst.environment.ambientColor.y, lava.ambientColor.y);
-    EXPECT_FLOAT_EQ(dst.environment.ambientColor.z, lava.ambientColor.z);
-}
-
-// 範囲外 themeId の旧ファイルは既存の退避どおり Grass 相当の雛形値で合成する
-TEST_F(EnvironmentMigrationTest, OutOfRangeThemeIdSynthesizesAsGrass)
-{
-    const std::string legacyJson = R"({
-        "formatVersion": 6,
-        "objects": [],
-        "materialPaths": [],
-        "meta": { "themeId": 999 }
-    })";
-
-    LevelNs::LevelData dst;
-    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, legacyJson));
-
-    const NS::Game::Theme::ThemeData& grass = NS::Game::Theme::Get(NS::Game::Theme::ThemeId::Grass);
-    EXPECT_EQ(dst.environment.blockTextureBaseSlice, grass.blockTextureArrayBaseSlice);
-    EXPECT_EQ(dst.environment.skyboxCubemapPath, grass.skyboxCubemapPath.generic_string());
-    EXPECT_FLOAT_EQ(dst.environment.lightColor.x, grass.lightColor.x);
-    EXPECT_FLOAT_EQ(dst.environment.ambientColor.x, grass.ambientColor.x);
 }
 
 // 追従カメラ実体が既に居れば合成は走らず、 Target 参照ごと往復で保持される

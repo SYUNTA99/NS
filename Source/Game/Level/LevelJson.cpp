@@ -5,7 +5,6 @@
 #include "Framework/Core/Logger.h"
 #include "Framework/Math/Math.h"
 #include "Game/Level/LevelData.h"
-#include "Game/Theme/ThemeRegistry.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -28,8 +27,8 @@ namespace NS::Game::Level
         /// v4 で据え置きカメラを cameraVolumes の別リストから objects の配置物へ統合した
         /// v5 でプレイヤーを spawn 単一値から objects の実体へ統合した。 旧版は読込時に合成して移行する
         /// v6 で追従カメラを scene 直組みから objects の実体へ統合した。 旧版は読込時に合成して移行する
-        /// v7 で環境をテーマ番号 themeId からシーン所有の environment 欄へ統合した。 旧版は themeId
-        /// から合成して移行する
+        /// v7 で環境をシーン所有の environment 欄へ統合し themeId を廃止した。 environment 欄が無い
+        /// 旧ファイルは中立の既定値で読む
         constexpr int kFormatVersion = 7;
 
         /// 読込時の上限。 巨大 size / 要素数による memory exhaustion を防ぐ。 binary 版から移植
@@ -471,12 +470,9 @@ namespace NS::Game::Level
                         "プレイヤーが {} 体ある。先頭の 1 体を正とし、残りは無効として扱う",
                         playerCount);
 
-        // 旧形式の environment 合成にだけ使う移行専用の読み。 シーンは themeId を保持しない
-        std::uint16_t legacyThemeId = 0;
         const auto metaIt = root.find("meta");
         if (metaIt != root.end() && metaIt->is_object())
         {
-            legacyThemeId = static_cast<std::uint16_t>(ReadInt(*metaIt, "themeId", legacyThemeId));
             outLevel.bgmId = static_cast<std::uint16_t>(ReadInt(*metaIt, "bgmId", outLevel.bgmId));
             outLevel.coinThreshold =
                 static_cast<std::uint16_t>(ReadInt(*metaIt, "coinThreshold", outLevel.coinThreshold));
@@ -484,8 +480,7 @@ namespace NS::Game::Level
                 static_cast<std::uint16_t>(ReadInt(*metaIt, "timeLimitSeconds", outLevel.timeLimitSeconds));
         }
 
-        // v7 以降は environment 欄がシーンの見た目を所有する。 中立既定値の上に読めたキーだけ部分適用する
-        // v6 以前は themeId しか無いので、 対応する雛形値を写して従来と同じ見た目へ移行する
+        // environment 欄がシーンの見た目を所有する。 中立の既定値の上に読めたキーだけ部分適用する
         const auto environmentIt = root.find("environment");
         if (environmentIt != root.end() && environmentIt->is_object())
         {
@@ -509,10 +504,6 @@ namespace NS::Game::Level
                 outLevel.environment.skyboxCubemapPath = skyboxIt->get<std::string>();
             outLevel.environment.blockTextureBaseSlice = static_cast<std::uint16_t>(
                 ReadInt(*environmentIt, "blockTextureBaseSlice", outLevel.environment.blockTextureBaseSlice));
-        }
-        else
-        {
-            outLevel.environment = NS::Game::Theme::MakeEnvironmentFromTheme(NS::Game::Theme::Get(legacyThemeId));
         }
 
         outLevel.nextObjectId = static_cast<std::uint32_t>(ReadInt(root, "nextObjectId", 1));

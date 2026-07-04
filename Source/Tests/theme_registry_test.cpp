@@ -65,10 +65,8 @@ namespace
         const ThemeData& grass = Get(ThemeId::Grass);
 
         const ThemeData& byEnum = Get(static_cast<ThemeId>(99));
-        const ThemeData& byUint16 = Get(static_cast<std::uint16_t>(999));
 
         EXPECT_EQ(&byEnum, &grass);
-        EXPECT_EQ(&byUint16, &grass);
     }
 
     /// 同梱の `.asset` を読み込んだ状態を検証する。値の出所はファイルが正
@@ -130,13 +128,6 @@ namespace
         EXPECT_TRUE(distinctTint(snow, lava));
         EXPECT_TRUE(distinctTint(snow, sky));
         EXPECT_TRUE(distinctTint(lava, sky));
-    }
-
-    TEST_F(ThemeRegistryBundledTest, Uint16ThemeIdMapsToTheme)
-    {
-        // 旧形式の themeId 移行が使う uint16_t 版の取得。 番号がテーマへ正しく写る
-        const ThemeData& theme = Get(static_cast<std::uint16_t>(3));
-        EXPECT_EQ(theme.displayName, "Lava");
     }
 
     TEST_F(ThemeRegistryBundledTest, MakeEnvironmentFromThemeCopiesVisualFields)

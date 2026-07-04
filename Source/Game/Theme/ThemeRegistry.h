@@ -19,9 +19,6 @@ namespace NS::Game::Theme
     /// Count 以上の範囲外なら入力境界の防御として ThemeId::Grass にフォールバックする
     [[nodiscard]] const ThemeData& Get(ThemeId id) noexcept;
 
-    /// uint16_t のテーマ番号からの取得。 旧形式の themeId を environment へ移行するときだけ使う。 範囲外は Grass
-    [[nodiscard]] const ThemeData& Get(std::uint16_t levelDataThemeId) noexcept;
-
     /// ディレクトリの `.asset` 雛形 5 件を ThemeId と 1:1 の固定名で読み、 registry を上書きする
     /// 呼ぶ度に中立の既定値 ThemeData{} へ戻してから読むため、 欠落・破損・種別違い・値不正のテーマは中立のままになる
     /// 種別欄 `"type"` が `"theme"` でないファイルは雛形として読まない。 未知キーは無視する。 起動列と editor

@@ -109,11 +109,6 @@ namespace NS::Game::Theme
         return MutableThemes()[index];
     }
 
-    const ThemeData& Get(std::uint16_t levelDataThemeId) noexcept
-    {
-        return Get(static_cast<ThemeId>(levelDataThemeId));
-    }
-
     void LoadThemesFromDirectory(const std::filesystem::path& directory)
     {
         for (std::size_t i = 0; i < kThemeFileNames.size(); ++i)
