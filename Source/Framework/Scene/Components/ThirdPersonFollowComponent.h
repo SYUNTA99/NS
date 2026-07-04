@@ -70,7 +70,7 @@ namespace NS::Scene
 
         // 追従カメラの感触を Inspector へ公開する。 毎フレーム読まれるのでライブで効く
         // Target は永続参照で、live への結線は次の rebuild すなわちプレイ突入時の OnStart で効く
-        NS_REFLECT_BEGIN(ThirdPersonFollowComponent)
+        NS_REFLECT_BEGIN(ThirdPersonFollowComponent, VirtualCameraComponent)
         NS_REFLECT_FIELD(m_targetRef, "Target")
         NS_REFLECT_FIELD(m_springOmega, "Spring Omega")
         NS_REFLECT_FIELD(m_idleDistance, "Idle Distance")

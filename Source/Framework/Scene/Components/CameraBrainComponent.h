@@ -56,7 +56,7 @@ namespace NS::Scene
         [[nodiscard]] CameraComponent* Camera() const noexcept { return m_camera; }
 
         // vcam 切替ブレンド秒を Inspector へ公開する。 負クランプを保つため setter 経由で書く
-        NS_REFLECT_BEGIN(CameraBrainComponent)
+        NS_REFLECT_BEGIN(CameraBrainComponent, Component)
         NS_REFLECT_ACCESSOR(float, "Blend Duration", BlendDuration(), SetBlendDuration)
         NS_REFLECT_END()
 

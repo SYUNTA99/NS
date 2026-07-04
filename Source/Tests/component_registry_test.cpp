@@ -204,3 +204,46 @@ TEST(ComponentRegistryTest, ReflectedFieldsMatchLedger)
         EXPECT_EQ(actual, entry->second) << name;
     }
 }
+
+TEST(ComponentRegistryTest, BaseChainMatchesLedger)
+{
+    // 基底鎖の台帳。空は Component 直下で鎖が終端することを表す
+    // 誤った基底を書いた宣言は typeName 一致では捕まらないため、期待基底を明示して突き合わせる
+    const std::map<std::string, std::vector<std::string>> kBaseLedger = {
+        {"BoxColliderComponent", {}},
+        {"CameraBrainComponent", {}},
+        {"CameraComponent", {}},
+        {"CapsuleColliderComponent", {}},
+        {"CharacterMovementComponent", {}},
+        {"HazardComponent", {}},
+        {"MeshColliderComponent", {}},
+        {"MeshRendererComponent", {}},
+        {"PickupComponent", {}},
+        {"PlacedVirtualCamera", {"VirtualCameraComponent"}},
+        {"PlayerInputComponent", {}},
+        {"ShadowComponent", {}},
+        {"SkeletalAnimationComponent", {}},
+        {"SlopeColliderComponent", {}},
+        {"SphereColliderComponent", {}},
+        {"ThirdPersonFollowComponent", {"VirtualCameraComponent"}},
+    };
+
+    const std::vector<std::string>& names = RegisteredNames();
+    ASSERT_EQ(names.size(), kBaseLedger.size());
+    for (const std::string& name : names)
+    {
+        const auto entry = kBaseLedger.find(name);
+        ASSERT_NE(entry, kBaseLedger.end()) << name << " が台帳に無い";
+
+        GameObject obj;
+        Component* comp = CreateComponent(name, obj);
+        ASSERT_NE(comp, nullptr) << name;
+        const ReflectionInfo* info = comp->GetReflection();
+        ASSERT_NE(info, nullptr) << name;
+
+        std::vector<std::string> actual;
+        for (const ReflectionInfo* base = info->base; base != nullptr; base = base->base)
+            actual.emplace_back(base->typeName);
+        EXPECT_EQ(actual, entry->second) << name;
+    }
+}

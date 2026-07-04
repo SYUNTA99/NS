@@ -41,6 +41,9 @@ namespace NS::Game::Level
         void OnStart() override;
         void OnUpdate() override;
 
+        // 進行状態は保存しない。live の型検索が反射照合で引けるよう型名だけ登録する
+        NS_REFLECT_NONE(PlayFlowComponent, NS::Scene::Component)
+
     private:
         /// 所有 scene を LevelPlayScene として返す。 未 attach なら nullptr。 初回参照で解決して控える
         [[nodiscard]] LevelPlayScene* OwnerScene() noexcept;

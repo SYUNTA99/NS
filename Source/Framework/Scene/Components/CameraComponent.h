@@ -46,7 +46,7 @@ namespace NS::Scene
         [[nodiscard]] NS::Math::Vector3 ForwardHorizontal() const noexcept;
 
         // pose は CameraBrain が毎フレーム上書きするので保存する調整値は無い。型名だけ登録する
-        NS_REFLECT_NONE(CameraComponent)
+        NS_REFLECT_NONE(CameraComponent, Component)
 
     private:
         NS::Graphics::Camera m_camera;

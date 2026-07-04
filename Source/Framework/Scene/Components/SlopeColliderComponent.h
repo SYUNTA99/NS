@@ -35,7 +35,7 @@ namespace NS::Scene
         [[nodiscard]] std::array<NS::Physics::Triangle, 8> WorldTriangles() const noexcept;
 
         // 角度・半サイズを Inspector / 直列化へ公開する。 WorldTriangles は member を都度読むため set で即反映する
-        NS_REFLECT_BEGIN(SlopeColliderComponent)
+        NS_REFLECT_BEGIN(SlopeColliderComponent, Component)
         NS_REFLECT_FIELD(m_angleDegrees, "Angle (deg)")
         NS_REFLECT_FIELD(m_halfExtents, "Half Extents")
         NS_REFLECT_END()

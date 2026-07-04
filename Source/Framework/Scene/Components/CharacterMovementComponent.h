@@ -94,7 +94,7 @@ namespace NS::Scene
         void OnUpdate() override;
 
         // 操作感の調整値を Inspector へ公開する。 プレイ中にライブで触って感触を詰める用途
-        NS_REFLECT_BEGIN(CharacterMovementComponent)
+        NS_REFLECT_BEGIN(CharacterMovementComponent, Component)
         NS_REFLECT_FIELD(m_jumpImpulse, "Jump Impulse")
         NS_REFLECT_FIELD(m_gravityUp, "Gravity Up")
         NS_REFLECT_FIELD(m_gravityDown, "Gravity Down")

@@ -53,6 +53,9 @@ namespace NS::Game::Level
             return NS::Scene::RenderBucket::Overlay;
         }
 
+        // 暗転状態は保存しない。live の型検索が反射照合で引けるよう型名だけ登録する
+        NS_REFLECT_NONE(ClearFadeComponent, NS::Scene::Component)
+
     private:
         // ゴール接触からレベル再開へ繋ぐ暗転の段階。 None は通常プレイ
         enum class Stage : std::uint8_t

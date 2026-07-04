@@ -34,7 +34,7 @@ namespace NS::Scene
         [[nodiscard]] std::vector<NS::Physics::Triangle> WorldTriangles() const;
 
         // 三角形群は反射で運べない。 兄弟 collider と揃えて型名だけ登録しておく
-        NS_REFLECT_NONE(MeshColliderComponent)
+        NS_REFLECT_NONE(MeshColliderComponent, Component)
 
     private:
         std::vector<NS::Physics::Triangle> m_localTriangles;

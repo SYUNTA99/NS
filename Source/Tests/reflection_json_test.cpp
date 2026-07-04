@@ -27,7 +27,7 @@ namespace
     public:
         FakeStringComponent() noexcept : Component(0) {}
 
-        NS_REFLECT_BEGIN(FakeStringComponent)
+        NS_REFLECT_BEGIN(FakeStringComponent, Component)
         NS_REFLECT_FIELD(m_label, "Label")
         NS_REFLECT_END()
 
@@ -43,7 +43,7 @@ namespace
     public:
         FakeRefComponent() noexcept : Component(0) {}
 
-        NS_REFLECT_BEGIN(FakeRefComponent)
+        NS_REFLECT_BEGIN(FakeRefComponent, Component)
         NS_REFLECT_FIELD(m_target, "Target")
         NS_REFLECT_END()
 

@@ -4,10 +4,12 @@
 /// @brief NS::Scene 反射コア — Component のフィールドをマクロ宣言し 名前 / 型 / get / set を公開する
 ///
 /// @details `NS_REFLECT_BEGIN/FIELD/ACCESSOR/END` をクラス本体に書くと、その型の
-/// `GetReflection()` が field 記述子配列を返すようになる。エディタはこれを `Component*` 越しに
-/// 列挙して編集 UI を自動生成する。get/set は型消去した関数ポインタで、Component が仮想関数を
-/// 持ち offsetof を使えないため static_cast で実装する。型タグはメンバ型から推論し、未対応型は
-/// static_assert で弾く
+/// `StaticReflection()` が field 記述子配列を返すようになり、仮想 `GetReflection()` は同じ実体へ
+/// 転送する。エディタはこれを `Component*` 越しに列挙して編集 UI を自動生成する。get/set は型消去
+/// した関数ポインタで、Component が仮想関数を持ち offsetof を使えないため static_cast で実装
+/// する。型タグはメンバ型から推論し、未対応型は static_assert で弾く。反射情報は基底型の反射への繋ぎを
+/// 持ち、基底を辿る鎖として is-a 判定にも使う。基底引数に省略時の既定は作らない。派生型が書き忘れて
+/// 黙って Component 直下扱いになる事故を型ごとの明示で塞ぐ
 /// 依存: NS::Math
 
 #include "Framework/Math/Math.h"
@@ -68,14 +70,26 @@ namespace NS::Scene
         const char* typeName;
         const FieldDesc* fields;
         std::size_t fieldCount;
+        /// 基底型の反射。Component 直下は鎖の終端 nullptr
+        const ReflectionInfo* base;
     };
+
+    /// 基底型の反射を返す。Component 直下の宣言は Component を渡し、鎖の終端 nullptr になる
+    template <class TBase> [[nodiscard]] const ReflectionInfo* ReflectionBaseOf() noexcept
+    {
+        if constexpr (std::is_same_v<TBase, Component>)
+            return nullptr;
+        else
+            return TBase::StaticReflection();
+    }
 } // namespace NS::Scene
 
-/// 直メンバ用フィールド宣言の開始。クラス本体に書く
-#define NS_REFLECT_BEGIN(ThisType)                                                                                     \
-    [[nodiscard]] const NS::Scene::ReflectionInfo* GetReflection() const noexcept override                             \
+/// 直メンバ用フィールド宣言の開始。クラス本体の public 節に、直接の基底型と並べて書く
+#define NS_REFLECT_BEGIN(ThisType, BaseType)                                                                           \
+    [[nodiscard]] static const NS::Scene::ReflectionInfo* StaticReflection() noexcept                                  \
     {                                                                                                                  \
         using Self = ThisType;                                                                                         \
+        using ReflectBase = BaseType;                                                                                  \
         static constexpr const char* kTypeName = #ThisType;                                                            \
         static const NS::Scene::FieldDesc kFields[] = {
 
@@ -101,18 +115,27 @@ namespace NS::Scene
                              static_cast<Self*>(c)->setterCall(*static_cast<const ValueType*>(in));                    \
                          }},
 
-/// フィールド宣言の終了。反射情報を組み立てて返す
+/// フィールド宣言の終了。静的実体を組み立てて返し、仮想窓口はそこへ転送する
 #define NS_REFLECT_END()                                                                                               \
     }                                                                                                                  \
     ;                                                                                                                  \
-    static const NS::Scene::ReflectionInfo kInfo{kTypeName, kFields, sizeof(kFields) / sizeof(kFields[0])};            \
+    static const NS::Scene::ReflectionInfo kInfo{                                                                      \
+        kTypeName, kFields, sizeof(kFields) / sizeof(kFields[0]), NS::Scene::ReflectionBaseOf<ReflectBase>()};         \
     return &kInfo;                                                                                                     \
-    }
-
-/// 調整フィールドを持たない型用。typeName だけの反射情報を返す。空配列は ill-formed なので fields は nullptr
-#define NS_REFLECT_NONE(ThisType)                                                                                      \
+    }                                                                                                                  \
     [[nodiscard]] const NS::Scene::ReflectionInfo* GetReflection() const noexcept override                             \
     {                                                                                                                  \
-        static constexpr NS::Scene::ReflectionInfo kInfo{#ThisType, nullptr, 0};                                       \
+        return StaticReflection();                                                                                     \
+    }
+
+/// 調整フィールドを持たない型用。typeName と基底だけの反射情報を返す。空配列は ill-formed なので fields は nullptr
+#define NS_REFLECT_NONE(ThisType, BaseType)                                                                            \
+    [[nodiscard]] static const NS::Scene::ReflectionInfo* StaticReflection() noexcept                                  \
+    {                                                                                                                  \
+        static const NS::Scene::ReflectionInfo kInfo{#ThisType, nullptr, 0, NS::Scene::ReflectionBaseOf<BaseType>()};  \
         return &kInfo;                                                                                                 \
+    }                                                                                                                  \
+    [[nodiscard]] const NS::Scene::ReflectionInfo* GetReflection() const noexcept override                             \
+    {                                                                                                                  \
+        return StaticReflection();                                                                                     \
     }

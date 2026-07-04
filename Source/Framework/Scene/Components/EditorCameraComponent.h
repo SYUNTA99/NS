@@ -50,7 +50,7 @@ namespace NS::Scene
         void ApplyFlyMove(float forwardAxis, float strafeAxis, float verticalAxis, float dt) noexcept;
 
         // free-fly の感触を Inspector へ公開する。 毎フレーム読まれるのでライブで効く
-        NS_REFLECT_BEGIN(EditorCameraComponent)
+        NS_REFLECT_BEGIN(EditorCameraComponent, VirtualCameraComponent)
         NS_REFLECT_FIELD(m_springOmega, "Spring Omega")
         NS_REFLECT_FIELD(m_mouseSensOrbit, "Mouse Orbit Sens")
         NS_REFLECT_FIELD(m_mouseSensPan, "Mouse Pan Sens")

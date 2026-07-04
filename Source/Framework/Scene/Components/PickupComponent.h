@@ -23,7 +23,7 @@ namespace NS::Scene
         [[nodiscard]] bool IsCoin() const noexcept { return m_pickupKind == 0; }
 
         // 拾得種別を Inspector / 直列化へ公開する。 0=コイン / 1=ゴール
-        NS_REFLECT_BEGIN(PickupComponent)
+        NS_REFLECT_BEGIN(PickupComponent, Component)
         NS_REFLECT_FIELD(m_pickupKind, "Pickup Kind")
         NS_REFLECT_END()
 

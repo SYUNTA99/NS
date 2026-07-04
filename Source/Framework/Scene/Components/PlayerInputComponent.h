@@ -30,7 +30,7 @@ namespace NS::Scene
         void OnUpdate() override;
 
         // 入力の橋渡しだけで保存する調整値は無い。型名だけ登録する
-        NS_REFLECT_NONE(PlayerInputComponent)
+        NS_REFLECT_NONE(PlayerInputComponent, Component)
 
     private:
         CharacterMovementComponent* m_movement = nullptr;

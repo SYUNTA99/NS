@@ -31,7 +31,7 @@ namespace
     public:
         FakeReflectedComponent() noexcept : Component(0) {}
 
-        NS_REFLECT_BEGIN(FakeReflectedComponent)
+        NS_REFLECT_BEGIN(FakeReflectedComponent, Component)
         NS_REFLECT_FIELD(m_speed, "Speed")
         NS_REFLECT_FIELD(m_count, "Count")
         NS_REFLECT_FIELD(m_enabled, "Enabled")
@@ -56,7 +56,7 @@ namespace
     public:
         FakeStringComponent() noexcept : Component(0) {}
 
-        NS_REFLECT_BEGIN(FakeStringComponent)
+        NS_REFLECT_BEGIN(FakeStringComponent, Component)
         NS_REFLECT_FIELD(m_label, "Label")
         NS_REFLECT_END()
 
