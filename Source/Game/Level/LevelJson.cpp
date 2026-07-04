@@ -317,7 +317,6 @@ namespace NS::Game::Level
         root["formatVersion"] = kFormatVersion;
 
         nlohmann::json meta;
-        meta["themeId"] = static_cast<int>(level.themeId);
         meta["bgmId"] = static_cast<int>(level.bgmId);
         meta["coinThreshold"] = static_cast<int>(level.coinThreshold);
         meta["timeLimitSeconds"] = static_cast<int>(level.timeLimitSeconds);
@@ -472,10 +471,12 @@ namespace NS::Game::Level
                         "プレイヤーが {} 体ある。先頭の 1 体を正とし、残りは無効として扱う",
                         playerCount);
 
+        // 旧形式の environment 合成にだけ使う移行専用の読み。 シーンは themeId を保持しない
+        std::uint16_t legacyThemeId = 0;
         const auto metaIt = root.find("meta");
         if (metaIt != root.end() && metaIt->is_object())
         {
-            outLevel.themeId = static_cast<std::uint16_t>(ReadInt(*metaIt, "themeId", outLevel.themeId));
+            legacyThemeId = static_cast<std::uint16_t>(ReadInt(*metaIt, "themeId", legacyThemeId));
             outLevel.bgmId = static_cast<std::uint16_t>(ReadInt(*metaIt, "bgmId", outLevel.bgmId));
             outLevel.coinThreshold =
                 static_cast<std::uint16_t>(ReadInt(*metaIt, "coinThreshold", outLevel.coinThreshold));
@@ -511,7 +512,7 @@ namespace NS::Game::Level
         }
         else
         {
-            outLevel.environment = NS::Game::Theme::MakeEnvironmentFromTheme(NS::Game::Theme::Get(outLevel.themeId));
+            outLevel.environment = NS::Game::Theme::MakeEnvironmentFromTheme(NS::Game::Theme::Get(legacyThemeId));
         }
 
         outLevel.nextObjectId = static_cast<std::uint32_t>(ReadInt(root, "nextObjectId", 1));

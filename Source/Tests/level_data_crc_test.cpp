@@ -103,8 +103,8 @@ TEST(LevelDataCrcTest, MaterialPathsAreHashed)
 TEST(LevelDataCrcTest, MetadataFieldsAreHashed)
 {
     LevelNs::LevelData a, b;
-    a.themeId = 1;
-    b.themeId = 2;
+    a.bgmId = 1;
+    b.bgmId = 2;
     EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
 }
 

@@ -132,11 +132,10 @@ namespace
         EXPECT_TRUE(distinctTint(lava, sky));
     }
 
-    TEST_F(ThemeRegistryBundledTest, LevelDataThemeIdRoundTrip)
+    TEST_F(ThemeRegistryBundledTest, Uint16ThemeIdMapsToTheme)
     {
-        NS::Game::Level::LevelData level{};
-        level.themeId = 3;
-        const ThemeData& theme = Get(level.themeId);
+        // 旧形式の themeId 移行が使う uint16_t 版の取得。 番号がテーマへ正しく写る
+        const ThemeData& theme = Get(static_cast<std::uint16_t>(3));
         EXPECT_EQ(theme.displayName, "Lava");
     }
 

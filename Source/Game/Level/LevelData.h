@@ -129,7 +129,6 @@ namespace NS::Game::Level
         /// シーンの見た目を確定する環境値。 lighting と skybox と block の slice 帯
         LevelEnvironment environment{};
 
-        std::uint16_t themeId = 0;
         std::uint16_t bgmId = 0;
         std::uint16_t coinThreshold = 0;
         std::uint16_t timeLimitSeconds = 0;

@@ -37,7 +37,7 @@ TEST(HazardDamageTest, ContactDamageDoesNotModifyLevelData)
     level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, 0));
     level.objects.push_back(
         NS::Game::Level::MakePlayerObject(NS::Math::Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
-    level.themeId = 4;
+    level.environment.blockTextureBaseSlice = 8;
     const std::uint32_t crcBefore = level.ComputeCrc32();
 
     NS::Game::Level::PlayState play;

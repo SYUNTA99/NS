@@ -19,7 +19,7 @@ namespace NS::Game::Theme
     /// Count 以上の範囲外なら入力境界の防御として ThemeId::Grass にフォールバックする
     [[nodiscard]] const ThemeData& Get(ThemeId id) noexcept;
 
-    /// uint16_t の LevelData::themeId からの取得。 範囲外は Grass にフォールバックする
+    /// uint16_t のテーマ番号からの取得。 旧形式の themeId を environment へ移行するときだけ使う。 範囲外は Grass
     [[nodiscard]] const ThemeData& Get(std::uint16_t levelDataThemeId) noexcept;
 
     /// ディレクトリの `.theme` 5 件を ThemeId と 1:1 の固定名で読み、 registry を上書きする

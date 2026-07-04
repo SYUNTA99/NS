@@ -28,7 +28,7 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
 
     LevelNs::LevelData src;
     src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
-    src.themeId = 4;
+    src.environment.blockTextureBaseSlice = 24;
     src.coinThreshold = 10;
     src.timeLimitSeconds = 180;
     src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
@@ -646,7 +646,6 @@ TEST_F(EnvironmentMigrationTest, V6ThemeIdSynthesizesEnvironment)
     EXPECT_FLOAT_EQ(dst.environment.ambientColor.x, lava.ambientColor.x);
     EXPECT_FLOAT_EQ(dst.environment.ambientColor.y, lava.ambientColor.y);
     EXPECT_FLOAT_EQ(dst.environment.ambientColor.z, lava.ambientColor.z);
-    EXPECT_EQ(dst.themeId, 3);
 }
 
 // 範囲外 themeId の旧ファイルは既存の退避どおり Grass 相当の雛形値で合成する
