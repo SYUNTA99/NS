@@ -1111,8 +1111,19 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
 
 void LevelEditorController::ReloadThemes()
 {
+    // 雛形を読み直すだけ。 シーンの見た目は environment が持つので、 適用し直すまで絵は変わらない
     NS::Game::Theme::LoadThemesFromDirectory(NS::Core::FileSystem::ContentRoot() / "Assets" / "Themes");
-    // lighting / skybox は毎フレームの設定写しで勝手に追従する。 block の slice は
-    // RebuildWorld の焼き直しでしか変わらないため、 ここで組み直しまで束ねる
+}
+
+void LevelEditorController::ApplyTheme(NS::Game::Theme::ThemeId id)
+{
+    m_scene->Level().environment = NS::Game::Theme::MakeEnvironmentFromTheme(NS::Game::Theme::Get(id));
+    // lighting / skybox は次フレームの設定写しで追従する。 block の slice 帯は焼き直しが要る
+    m_scene->RebuildWorld();
+}
+
+void LevelEditorController::SetEnvironmentBlockSlice(std::uint16_t baseSlice)
+{
+    m_scene->Level().environment.blockTextureBaseSlice = baseSlice;
     m_scene->RebuildWorld();
 }

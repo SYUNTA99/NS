@@ -14,6 +14,7 @@
 #include "Framework/Math/Math.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Level/PlayState.h"
+#include "Game/Theme/ThemeId.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -157,9 +158,16 @@ public:
     /// ギズモ選択中の自由オブジェクトに matPath の .mat を適用する。 適用できたら true
     bool ApplyMaterialToSelected(const std::filesystem::path& matPath);
 
-    /// `.asset` の雛形を読み直して world を組み直す。 lighting / skybox は次フレームの設定写しで、
-    /// block の slice は焼き直しで反映されるため、 このボタン 1 回で全部最新になる
+    /// `.asset` の雛形を読み直すだけ。 雛形はシーンの見た目に影響しないため world は組み直さない
+    /// 編集した雛形をシーンに反映するには読み直したうえで ApplyTheme で適用し直す
     void ReloadThemes();
+
+    /// 雛形 id の視覚値をシーンの環境欄へ写し込み、 slice 帯の焼き直しまで行う
+    /// lighting / skybox は次フレームの設定写しで、 block の slice は RebuildWorld の焼き直しで反映される
+    void ApplyTheme(NS::Game::Theme::ThemeId id);
+
+    /// 環境の block slice 帯を変えて world を焼き直す。 lighting と違い帯変更だけが組み直しを要する
+    void SetEnvironmentBlockSlice(std::uint16_t baseSlice);
 
     /// 最後に scene が解決した scene 段設定。 RenderSettings パネルの表示元
     [[nodiscard]] const NS::Graphics::RenderSettings& DebugResolvedSettings() const noexcept

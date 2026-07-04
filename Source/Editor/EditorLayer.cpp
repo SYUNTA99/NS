@@ -18,6 +18,9 @@
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Game.h"
+#include "Game/Level/LevelData.h"
+#include "Game/Theme/ThemeId.h"
+#include "Game/Theme/ThemeRegistry.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -279,8 +282,54 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorController& editor) noexc
                     provenance(sceneOver.clearColor.has_value(), objOver.clearColor.has_value()));
         ImGui::TextDisabled("clearColor / vsync のシーン上書きは非対応 (lighting 3 種のみ階層対応)");
         ImGui::Separator();
-        // .asset を編集 → このボタンで再コンパイル無しに lighting / skybox / block slice を反映する
-        if (ImGui::Button("テーマ再読込 (.asset)"))
+
+        // シーンが所有する環境の直接編集。 lighting は毎フレームの設定写しで即反映されるので組み直し不要
+        NS::Game::Level::LevelEnvironment& env = editor.Level().environment;
+        ImGui::TextUnformatted("環境 (このシーンが所有)");
+        ImGui::DragFloat3("lightDir##env", &env.lightDirection.x, 0.01f, -1.0f, 1.0f);
+        ImGui::DragFloat3("lightColor##env", &env.lightColor.x, 0.01f, 0.0f, 4.0f);
+        ImGui::DragFloat3("ambient##env", &env.ambientColor.x, 0.01f, 0.0f, 2.0f);
+        ImGui::Text("skybox: %s", env.skyboxCubemapPath.empty() ? "(なし)" : env.skyboxCubemapPath.c_str());
+
+        // slice 帯だけは焼き直しが要るので controller 経由で変える
+        int baseSlice = static_cast<int>(env.blockTextureBaseSlice);
+        if (ImGui::InputInt("blockSlice##env", &baseSlice))
+        {
+            if (baseSlice < 0)
+                baseSlice = 0;
+            editor.SetEnvironmentBlockSlice(static_cast<std::uint16_t>(baseSlice));
+        }
+
+        ImGui::Separator();
+
+        // 雛形の適用。 選んだテーマの視覚値を environment へ写し込み slice 帯を焼き直す
+        constexpr NS::Game::Theme::ThemeId kThemeIds[] = {
+            NS::Game::Theme::ThemeId::Grass,
+            NS::Game::Theme::ThemeId::Cave,
+            NS::Game::Theme::ThemeId::Snow,
+            NS::Game::Theme::ThemeId::Lava,
+            NS::Game::Theme::ThemeId::Sky,
+        };
+        static int s_themeIndex = 0;
+        if (ImGui::BeginCombo("雛形##theme", NS::Game::Theme::Get(kThemeIds[s_themeIndex]).displayName.c_str()))
+        {
+            for (int i = 0; i < static_cast<int>(NS::Game::Theme::ThemeId::Count); ++i)
+            {
+                const bool selected = (i == s_themeIndex);
+                if (ImGui::Selectable(NS::Game::Theme::Get(kThemeIds[i]).displayName.c_str(), selected))
+                    s_themeIndex = i;
+                if (selected)
+                    ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("適用##theme"))
+            editor.ApplyTheme(kThemeIds[s_themeIndex]);
+
+        ImGui::Separator();
+        // .asset を編集したら雛形を読み直す。 シーンの絵は適用し直すまで変わらない
+        if (ImGui::Button("雛形再読込 (.asset)"))
             editor.ReloadThemes();
     }
     ImGui::End();
