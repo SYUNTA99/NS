@@ -72,6 +72,9 @@ namespace NS::Scene
         /// このコンポーネント型の反射情報。未反射型は nullptr。エディタが Component* 越しに field を列挙する
         [[nodiscard]] virtual const ReflectionInfo* GetReflection() const noexcept { return nullptr; }
 
+        /// 自分の反射鎖に target が現れるか。反射照合による is-a 判定。target が nullptr なら常に false
+        [[nodiscard]] bool IsA(const ReflectionInfo* target) const noexcept;
+
     private:
         // owner 注入は AddComponent 経由のみ。Component から GameObject の非公開メンバへはアクセスしない
         friend class GameObject;
@@ -81,5 +84,21 @@ namespace NS::Scene
         int m_priority = static_cast<int>(TickPriority::Physics);
         bool m_active = true;
     };
+
+    /// 反射照合で通れば static_cast、外れれば nullptr を返す型分岐の窓口。comp が nullptr でも安全
+    template <class T> [[nodiscard]] T* ComponentCast(Component* comp) noexcept
+    {
+        if (comp != nullptr && comp->IsA(T::StaticReflection()))
+            return static_cast<T*>(comp);
+        return nullptr;
+    }
+
+    /// const 版。反射照合で通れば static_cast、外れれば nullptr
+    template <class T> [[nodiscard]] const T* ComponentCast(const Component* comp) noexcept
+    {
+        if (comp != nullptr && comp->IsA(T::StaticReflection()))
+            return static_cast<const T*>(comp);
+        return nullptr;
+    }
 
 } // namespace NS::Scene

@@ -95,7 +95,7 @@ namespace NS::Game::Blocks
 
                 // material 参照が共有名なら共有 material、 空なら materialIndex / 既定へ倒す。 mesh はメッシュ参照を
                 // 参照優先で解決し、 空 / 解決不可なら cube へフォールバックする
-                if (auto* mesh = dynamic_cast<NS::Scene::MeshRendererComponent*>(created))
+                if (auto* mesh = NS::Scene::ComponentCast<NS::Scene::MeshRendererComponent>(created))
                 {
                     const std::string& matRef = mesh->MaterialRef();
                     mesh->SetMaterial(IsSharedMaterialName(matRef)
@@ -107,7 +107,7 @@ namespace NS::Game::Blocks
                     mesh->SetMesh(resolved != nullptr ? resolved : assets.Builtin("cube"));
                 }
                 // 接地影の共有資源はファクトリが賄う。 影は常に組み込み quad + 共有 shadow 材質で描く
-                else if (auto* shadow = dynamic_cast<NS::Scene::ShadowComponent*>(created))
+                else if (auto* shadow = NS::Scene::ComponentCast<NS::Scene::ShadowComponent>(created))
                     shadow->SetResources(assets.Builtin("shadowQuad"), assets.SharedMaterial("shadow"));
             }
         }

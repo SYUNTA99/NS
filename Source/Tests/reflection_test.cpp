@@ -420,3 +420,59 @@ TEST(ReflectionTest, FieldTypeOfObjectRefIsObjectRef)
 {
     EXPECT_EQ(NS::Scene::FieldTypeOf<NS::Scene::ObjectRef>(), FieldType::ObjectRef);
 }
+
+TEST(ReflectionIsATest, MatchesSelfAndBaseChain)
+{
+    NS::Scene::ThirdPersonFollowComponent follow(nullptr);
+    EXPECT_TRUE(follow.IsA(NS::Scene::ThirdPersonFollowComponent::StaticReflection()));
+    EXPECT_TRUE(follow.IsA(NS::Scene::VirtualCameraComponent::StaticReflection()));
+}
+
+TEST(ReflectionIsATest, RejectsUnrelatedTypeAndNull)
+{
+    NS::Scene::ThirdPersonFollowComponent follow(nullptr);
+    EXPECT_FALSE(follow.IsA(NS::Scene::CameraBrainComponent::StaticReflection()));
+    EXPECT_FALSE(follow.IsA(nullptr));
+
+    // 反射を持たない素の派生はどの検索にも一致しない
+    BareComponent bare;
+    EXPECT_FALSE(bare.IsA(NS::Scene::CameraBrainComponent::StaticReflection()));
+}
+
+TEST(ReflectionIsATest, StaticAndVirtualShareOneInfo)
+{
+    // 静的窓口と仮想窓口が同じ実体を返す。二重定義があると is-a のアドレス比較が壊れる
+    NS::Scene::ThirdPersonFollowComponent follow(nullptr);
+    EXPECT_EQ(follow.GetReflection(), NS::Scene::ThirdPersonFollowComponent::StaticReflection());
+
+    NS::Scene::EditorCameraComponent cam;
+    EXPECT_EQ(cam.GetReflection(), NS::Scene::EditorCameraComponent::StaticReflection());
+}
+
+TEST(ReflectionComponentCastTest, CastsSelfAndBaseRejectsOthers)
+{
+    NS::Scene::ThirdPersonFollowComponent follow(nullptr);
+    Component* comp = &follow;
+    EXPECT_EQ(NS::Scene::ComponentCast<NS::Scene::ThirdPersonFollowComponent>(comp), &follow);
+    EXPECT_EQ(NS::Scene::ComponentCast<NS::Scene::VirtualCameraComponent>(comp),
+              static_cast<NS::Scene::VirtualCameraComponent*>(&follow));
+    EXPECT_EQ(NS::Scene::ComponentCast<NS::Scene::CameraBrainComponent>(comp), nullptr);
+    EXPECT_EQ(NS::Scene::ComponentCast<NS::Scene::ThirdPersonFollowComponent>(static_cast<Component*>(nullptr)),
+              nullptr);
+}
+
+TEST(ReflectionComponentCastTest, ConstOverloadMatchesNonConst)
+{
+    NS::Scene::ThirdPersonFollowComponent follow(nullptr);
+    const Component* comp = &follow;
+    EXPECT_EQ(NS::Scene::ComponentCast<NS::Scene::ThirdPersonFollowComponent>(comp), &follow);
+    EXPECT_EQ(NS::Scene::ComponentCast<NS::Scene::CameraBrainComponent>(comp), nullptr);
+}
+
+TEST(ReflectionComponentCastTest, CastsTypeWithRenderableSide)
+{
+    // Component + IRenderable の多重継承でも Component* からの下向き static_cast が成立する
+    NS::Scene::ShadowComponent shadow;
+    Component* comp = &shadow;
+    EXPECT_EQ(NS::Scene::ComponentCast<NS::Scene::ShadowComponent>(comp), &shadow);
+}

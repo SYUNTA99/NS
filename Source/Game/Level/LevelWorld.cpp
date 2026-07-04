@@ -92,11 +92,11 @@ namespace NS::Game::Level
             bool hazardRegistered = false;
             for (NS::Scene::Component* comp : obj->Components())
             {
-                if (auto* sphere = dynamic_cast<NS::Scene::SphereColliderComponent*>(comp))
+                if (auto* sphere = NS::Scene::ComponentCast<NS::Scene::SphereColliderComponent>(comp))
                     physics.AddSphere(sphere->WorldSphere());
-                else if (auto* capsule = dynamic_cast<NS::Scene::CapsuleColliderComponent*>(comp))
+                else if (auto* capsule = NS::Scene::ComponentCast<NS::Scene::CapsuleColliderComponent>(comp))
                     physics.AddCapsule(capsule->WorldCapsule());
-                else if (auto* box = dynamic_cast<NS::Scene::BoxColliderComponent*>(comp))
+                else if (auto* box = NS::Scene::ComponentCast<NS::Scene::BoxColliderComponent>(comp))
                 {
                     // 同じ Box でも gridAligned なら軸並行 AABB、 自由配置なら回転込み OBB
                     if (gridAligned)
@@ -104,10 +104,10 @@ namespace NS::Game::Level
                     else
                         physics.AddObb(box->WorldOBB());
                 }
-                else if (auto* slope = dynamic_cast<NS::Scene::SlopeColliderComponent*>(comp))
+                else if (auto* slope = NS::Scene::ComponentCast<NS::Scene::SlopeColliderComponent>(comp))
                     for (const auto& tri : slope->WorldTriangles())
                         physics.AddTriangle(tri);
-                else if (dynamic_cast<NS::Scene::HazardComponent*>(comp) != nullptr)
+                else if (NS::Scene::ComponentCast<NS::Scene::HazardComponent>(comp) != nullptr)
                 {
                     // hazard の damage は固形 AABB とは別経路の毎フレーム重なり判定で効くため view にも積む
                     if (!hazardRegistered)

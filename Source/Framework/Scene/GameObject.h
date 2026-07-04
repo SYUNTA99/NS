@@ -15,6 +15,7 @@
 ///
 /// 他 GameObject へのアクセスはコンストラクタ経由の明示的な生ポインタ注入のみで、 GetComponent<T>() は提供しない
 
+#include "Framework/Scene/Component.h"
 #include "Framework/Scene/Transform.h"
 
 #include <memory>
@@ -24,7 +25,6 @@
 
 namespace NS::Scene
 {
-    class Component;
     class SceneBase;
 
     /// 全 GameObject 派生の基底
@@ -51,19 +51,22 @@ namespace NS::Scene
         [[nodiscard]] const std::vector<Component*>& Components() const noexcept { return m_components; }
 
         /// Component 列から型 T の最初の一致を返す。無ければ nullptr。具象型を知らず兄弟 Component を引く読み窓口
-        /// dynamic_cast で一致を見るため T は呼出側で完全型であること。読み取りのみで所有・順序には触れない
+        /// 反射鎖の照合で一致を見るため T は反射宣言を持つこと。未宣言型はここがコンパイルエラーになり、
+        /// 実行時に静かに見つからない事故を塞ぐ。派生型の実体は基底型の検索にも一致する。読み取りのみで所有・順序には触れない
         template <class T> [[nodiscard]] T* FindComponent() noexcept
         {
+            const auto* target = T::StaticReflection();
             for (Component* comp : m_components)
-                if (T* typed = dynamic_cast<T*>(comp))
-                    return typed;
+                if (comp != nullptr && comp->IsA(target))
+                    return static_cast<T*>(comp);
             return nullptr;
         }
         template <class T> [[nodiscard]] const T* FindComponent() const noexcept
         {
+            const auto* target = T::StaticReflection();
             for (const Component* comp : m_components)
-                if (const T* typed = dynamic_cast<const T*>(comp))
-                    return typed;
+                if (comp != nullptr && comp->IsA(target))
+                    return static_cast<const T*>(comp);
             return nullptr;
         }
 
