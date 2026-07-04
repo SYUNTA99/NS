@@ -33,6 +33,11 @@ namespace
         out << text;
     }
 
+    std::filesystem::path BundledThemesDir()
+    {
+        return NS::Core::FileSystem::ContentRoot() / "Assets" / "Themes";
+    }
+
     /// 全フィールドの一致を表明する。float は EXPECT_FLOAT_EQ で JSON 往復の丸めを許容する
     void ExpectThemeEq(const ThemeData& actual, const ThemeData& expected)
     {
@@ -55,31 +60,57 @@ namespace
         EXPECT_EQ(static_cast<int>(ThemeId::Count), 5);
     }
 
-    TEST(ThemeRegistryTest, AllThemesDistinct)
+    TEST(ThemeRegistryTest, OutOfRangeFallsBackToGrass)
+    {
+        const ThemeData& grass = Get(ThemeId::Grass);
+
+        const ThemeData& byEnum = Get(static_cast<ThemeId>(99));
+        const ThemeData& byUint16 = Get(static_cast<std::uint16_t>(999));
+
+        EXPECT_EQ(&byEnum, &grass);
+        EXPECT_EQ(&byUint16, &grass);
+    }
+
+    /// 同梱の `.theme` を読み込んだ状態を検証する。値の出所はファイルが正
+    class ThemeRegistryBundledTest : public ::testing::Test
+    {
+    protected:
+        void SetUp() override
+        {
+            NS::Core::Logger::Init();
+            LoadThemesFromDirectory(BundledThemesDir());
+        }
+        void TearDown() override
+        {
+            // 次のテストが読込済み状態を仮定しないよう中立へ戻す
+            LoadThemesFromDirectory(MakeTempDir("restore_missing"));
+            NS::Core::Logger::Shutdown();
+        }
+    };
+
+    TEST_F(ThemeRegistryBundledTest, BundledThemesShipExpectedIdentity)
+    {
+        // 同梱ファイルの表示名と block slice 帯を固定する。band は RebuildWorld の焼き込みが依存する
+        EXPECT_EQ(Get(ThemeId::Grass).displayName, "Grass");
+        EXPECT_EQ(Get(ThemeId::Cave).displayName, "Cave");
+        EXPECT_EQ(Get(ThemeId::Snow).displayName, "Snow");
+        EXPECT_EQ(Get(ThemeId::Lava).displayName, "Lava");
+        EXPECT_EQ(Get(ThemeId::Sky).displayName, "Sky");
+
+        EXPECT_EQ(Get(ThemeId::Grass).blockTextureArrayBaseSlice, 0);
+        EXPECT_EQ(Get(ThemeId::Cave).blockTextureArrayBaseSlice, 8);
+        EXPECT_EQ(Get(ThemeId::Snow).blockTextureArrayBaseSlice, 16);
+        EXPECT_EQ(Get(ThemeId::Lava).blockTextureArrayBaseSlice, 24);
+        EXPECT_EQ(Get(ThemeId::Sky).blockTextureArrayBaseSlice, 32);
+    }
+
+    TEST_F(ThemeRegistryBundledTest, AllThemesDistinct)
     {
         const ThemeData& grass = Get(ThemeId::Grass);
         const ThemeData& cave = Get(ThemeId::Cave);
         const ThemeData& snow = Get(ThemeId::Snow);
         const ThemeData& lava = Get(ThemeId::Lava);
         const ThemeData& sky = Get(ThemeId::Sky);
-
-        // 表示名は全て異なる文字列であること
-        ASSERT_FALSE(grass.displayName.empty());
-        ASSERT_FALSE(cave.displayName.empty());
-        ASSERT_FALSE(snow.displayName.empty());
-        ASSERT_FALSE(lava.displayName.empty());
-        ASSERT_FALSE(sky.displayName.empty());
-
-        EXPECT_NE(grass.displayName, cave.displayName);
-        EXPECT_NE(grass.displayName, snow.displayName);
-        EXPECT_NE(grass.displayName, lava.displayName);
-        EXPECT_NE(grass.displayName, sky.displayName);
-        EXPECT_NE(cave.displayName, snow.displayName);
-        EXPECT_NE(cave.displayName, lava.displayName);
-        EXPECT_NE(cave.displayName, sky.displayName);
-        EXPECT_NE(snow.displayName, lava.displayName);
-        EXPECT_NE(snow.displayName, sky.displayName);
-        EXPECT_NE(lava.displayName, sky.displayName);
 
         // theme tint (lightColor or ambientColor) が片方でも違えば視覚差異が出る
         auto distinctTint = [](const ThemeData& a, const ThemeData& b) {
@@ -101,20 +132,7 @@ namespace
         EXPECT_TRUE(distinctTint(lava, sky));
     }
 
-    TEST(ThemeRegistryTest, OutOfRangeFallsBackToGrass)
-    {
-        const ThemeData& grass = Get(ThemeId::Grass);
-
-        const ThemeData& byEnum = Get(static_cast<ThemeId>(99));
-        const ThemeData& byUint16 = Get(static_cast<std::uint16_t>(999));
-
-        EXPECT_EQ(&byEnum, &grass);
-        EXPECT_EQ(&byUint16, &grass);
-        EXPECT_EQ(byEnum.displayName, grass.displayName);
-        EXPECT_EQ(byUint16.displayName, grass.displayName);
-    }
-
-    TEST(ThemeRegistryTest, LevelDataThemeIdRoundTrip)
+    TEST_F(ThemeRegistryBundledTest, LevelDataThemeIdRoundTrip)
     {
         NS::Game::Level::LevelData level{};
         level.themeId = 3;
@@ -122,7 +140,7 @@ namespace
         EXPECT_EQ(theme.displayName, "Lava");
     }
 
-    /// ファイル読込系。TearDown で存在しないディレクトリを読ませ、全テーマを組み込み既定値へ戻す
+    /// ファイル読込の退避系。TearDown で存在しないディレクトリを読ませ、全テーマを中立既定値へ戻す
     class ThemeRegistryFileTest : public ::testing::Test
     {
     protected:
@@ -160,54 +178,49 @@ namespace
         std::filesystem::remove_all(dir);
     }
 
-    TEST_F(ThemeRegistryFileTest, MissingFileKeepsBuiltinDefaults)
+    TEST_F(ThemeRegistryFileTest, MissingFileFallsToNeutralDefault)
     {
-        // 読込前 = 組み込み既定値の写しを取り、grass だけのディレクトリを読ませる
-        const ThemeData builtinCave = Get(ThemeId::Cave);
-
+        // grass だけのディレクトリを読ませると、無い cave は中立の既定値 ThemeData{} になる
         const auto dir = MakeTempDir("missing");
         WriteTextFile(dir / "grass.theme", R"({"displayName": "Meadow"})");
 
         LoadThemesFromDirectory(dir);
 
-        ExpectThemeEq(Get(ThemeId::Cave), builtinCave);
+        ExpectThemeEq(Get(ThemeId::Cave), ThemeData{});
         EXPECT_EQ(Get(ThemeId::Grass).displayName, "Meadow");
 
         std::filesystem::remove_all(dir);
     }
 
-    TEST_F(ThemeRegistryFileTest, BrokenFileFallsBackToBuiltin)
+    TEST_F(ThemeRegistryFileTest, BrokenFileFallsToNeutralDefault)
     {
-        const ThemeData builtinGrass = Get(ThemeId::Grass);
-
         const auto dir = MakeTempDir("broken");
         WriteTextFile(dir / "grass.theme", "{ this is not json ,,,");
 
         LoadThemesFromDirectory(dir);
 
-        ExpectThemeEq(Get(ThemeId::Grass), builtinGrass);
+        ExpectThemeEq(Get(ThemeId::Grass), ThemeData{});
 
         std::filesystem::remove_all(dir);
     }
 
-    TEST_F(ThemeRegistryFileTest, PartialFileKeepsDefaultsForMissingKeys)
+    TEST_F(ThemeRegistryFileTest, PartialFileKeepsNeutralDefaultsForMissingKeys)
     {
-        const ThemeData builtinGrass = Get(ThemeId::Grass);
-
         const auto dir = MakeTempDir("partial");
         WriteTextFile(dir / "grass.theme", R"({"lightColor": [0.1, 0.2, 0.3]})");
 
         LoadThemesFromDirectory(dir);
 
+        const ThemeData neutral{};
         const ThemeData& grass = Get(ThemeId::Grass);
         EXPECT_FLOAT_EQ(grass.lightColor.x, 0.1f);
         EXPECT_FLOAT_EQ(grass.lightColor.y, 0.2f);
         EXPECT_FLOAT_EQ(grass.lightColor.z, 0.3f);
-        // 書かれていないキーは組み込み既定値のまま残る
-        EXPECT_EQ(grass.displayName, builtinGrass.displayName);
-        EXPECT_EQ(grass.blockTextureArrayBaseSlice, builtinGrass.blockTextureArrayBaseSlice);
-        EXPECT_FLOAT_EQ(grass.lightDirection.x, builtinGrass.lightDirection.x);
-        EXPECT_FLOAT_EQ(grass.ambientColor.x, builtinGrass.ambientColor.x);
+        // 書かれていないキーは中立の既定値のまま残る
+        EXPECT_EQ(grass.displayName, neutral.displayName);
+        EXPECT_EQ(grass.blockTextureArrayBaseSlice, neutral.blockTextureArrayBaseSlice);
+        EXPECT_FLOAT_EQ(grass.lightDirection.x, neutral.lightDirection.x);
+        EXPECT_FLOAT_EQ(grass.ambientColor.x, neutral.ambientColor.x);
 
         std::filesystem::remove_all(dir);
     }
@@ -228,18 +241,18 @@ namespace
         std::filesystem::remove_all(dir);
     }
 
-    TEST_F(ThemeRegistryFileTest, BundledThemeFilesMatchBuiltinDefaults)
+    TEST_F(ThemeRegistryFileTest, ReloadRecoversAfterBrokenFileIsFixed)
     {
-        // 同梱ファイルと組み込み既定値が同値なら、ファイル欠落時も見た目が変わらない保証になる
-        const ThemeData builtin[5] = {
-            Get(ThemeId::Grass), Get(ThemeId::Cave), Get(ThemeId::Snow), Get(ThemeId::Lava), Get(ThemeId::Sky)};
+        // 壊れたファイルを直して再読込すれば、プロセスを跨がずファイル値へ戻れる
+        const auto dir = MakeTempDir("recover");
+        WriteTextFile(dir / "grass.theme", "{ broken ,,,");
+        LoadThemesFromDirectory(dir);
+        ExpectThemeEq(Get(ThemeId::Grass), ThemeData{});
 
-        LoadThemesFromDirectory(NS::Core::FileSystem::ContentRoot() / "Assets" / "Themes");
+        WriteTextFile(dir / "grass.theme", R"({"displayName": "Meadow"})");
+        LoadThemesFromDirectory(dir);
+        EXPECT_EQ(Get(ThemeId::Grass).displayName, "Meadow");
 
-        ExpectThemeEq(Get(ThemeId::Grass), builtin[0]);
-        ExpectThemeEq(Get(ThemeId::Cave), builtin[1]);
-        ExpectThemeEq(Get(ThemeId::Snow), builtin[2]);
-        ExpectThemeEq(Get(ThemeId::Lava), builtin[3]);
-        ExpectThemeEq(Get(ThemeId::Sky), builtin[4]);
+        std::filesystem::remove_all(dir);
     }
 } // namespace

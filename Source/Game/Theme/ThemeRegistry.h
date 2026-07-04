@@ -22,7 +22,7 @@ namespace NS::Game::Theme
     [[nodiscard]] const ThemeData& Get(std::uint16_t levelDataThemeId) noexcept;
 
     /// ディレクトリの `.theme` 5 件を ThemeId と 1:1 の固定名で読み、 registry を上書きする
-    /// 呼ぶ度に組み込み既定値へ戻してから読むため、 欠落・破損・値不正のテーマは既定値のままになる
+    /// 呼ぶ度に中立の既定値 ThemeData{} へ戻してから読むため、 欠落・破損・値不正のテーマは中立のままになる
     /// 未知キーは無視する。 起動列と editor のテーマ再読込が呼ぶ
     void LoadThemesFromDirectory(const std::filesystem::path& directory);
 } // namespace NS::Game::Theme
