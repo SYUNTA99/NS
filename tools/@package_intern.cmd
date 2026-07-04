@@ -10,7 +10,7 @@
 ::       Game.exe                  executable (GameRelease, editor excluded)
 ::       Assets\                 asset folder
 ::       Shaders\                runtime-compiled HLSL (required to run)
-::       Levels\                 new_level.nslvl (the level the game loads on start)
+::       Levels\                 new_level.scene (the level the game loads on start)
 ::       *.dll                   d3dcompiler_47 + VC++ runtime (exe-adjacent)
 ::     Source\                   own source only (ThirdParty excluded)
 ::       THIRD_PARTY_NOTICES.txt notices for third-party libs embedded in Game.exe
@@ -91,7 +91,7 @@ echo [4/8] Copying exe + Assets + Shaders + Levels into Game\ ...
 copy /y "%BIN%\Game.exe" "%GAMEDIR%\Game.exe" >nul
 xcopy /e /i /q /y "Assets"  "%GAMEDIR%\Assets\"  >nul
 xcopy /e /i /q /y "Shaders" "%GAMEDIR%\Shaders\" >nul
-:: Levels: repo is the source of truth. The game loads GetExeDirectory()\Levels\new_level.nslvl
+:: Levels: repo is the source of truth. The game loads GetExeDirectory()\Levels\new_level.scene
 if exist "Levels" (
     xcopy /e /i /q /y "Levels" "%GAMEDIR%\Levels\" >nul
 ) else (

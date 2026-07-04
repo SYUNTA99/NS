@@ -71,7 +71,7 @@ namespace
         EXPECT_EQ(&byUint16, &grass);
     }
 
-    /// 同梱の `.theme` を読み込んだ状態を検証する。値の出所はファイルが正
+    /// 同梱の `.asset` を読み込んだ状態を検証する。値の出所はファイルが正
     class ThemeRegistryBundledTest : public ::testing::Test
     {
     protected:
@@ -172,7 +172,8 @@ namespace
     TEST_F(ThemeRegistryFileTest, LoadAppliesFileValues)
     {
         const auto dir = MakeTempDir("apply");
-        WriteTextFile(dir / "grass.theme", R"({
+        WriteTextFile(dir / "grass.asset", R"({
+            "type": "theme",
             "displayName": "Meadow",
             "blockTextureArrayBaseSlice": 4,
             "skyboxCubemapPath": "Assets/Skybox/other/",
@@ -199,7 +200,7 @@ namespace
     {
         // grass だけのディレクトリを読ませると、無い cave は中立の既定値 ThemeData{} になる
         const auto dir = MakeTempDir("missing");
-        WriteTextFile(dir / "grass.theme", R"({"displayName": "Meadow"})");
+        WriteTextFile(dir / "grass.asset", R"({"type": "theme", "displayName": "Meadow"})");
 
         LoadThemesFromDirectory(dir);
 
@@ -212,7 +213,7 @@ namespace
     TEST_F(ThemeRegistryFileTest, BrokenFileFallsToNeutralDefault)
     {
         const auto dir = MakeTempDir("broken");
-        WriteTextFile(dir / "grass.theme", "{ this is not json ,,,");
+        WriteTextFile(dir / "grass.asset", "{ this is not json ,,,");
 
         LoadThemesFromDirectory(dir);
 
@@ -224,7 +225,7 @@ namespace
     TEST_F(ThemeRegistryFileTest, PartialFileKeepsNeutralDefaultsForMissingKeys)
     {
         const auto dir = MakeTempDir("partial");
-        WriteTextFile(dir / "grass.theme", R"({"lightColor": [0.1, 0.2, 0.3]})");
+        WriteTextFile(dir / "grass.asset", R"({"type": "theme", "lightColor": [0.1, 0.2, 0.3]})");
 
         LoadThemesFromDirectory(dir);
 
@@ -245,7 +246,8 @@ namespace
     TEST_F(ThemeRegistryFileTest, UnknownKeysAreIgnored)
     {
         const auto dir = MakeTempDir("unknown");
-        WriteTextFile(dir / "grass.theme", R"({
+        WriteTextFile(dir / "grass.asset", R"({
+            "type": "theme",
             "displayName": "Meadow",
             "futureKey": {"nested": 1},
             "anotherUnknown": [1, 2, 3]
@@ -262,13 +264,39 @@ namespace
     {
         // 壊れたファイルを直して再読込すれば、プロセスを跨がずファイル値へ戻れる
         const auto dir = MakeTempDir("recover");
-        WriteTextFile(dir / "grass.theme", "{ broken ,,,");
+        WriteTextFile(dir / "grass.asset", "{ broken ,,,");
         LoadThemesFromDirectory(dir);
         ExpectThemeEq(Get(ThemeId::Grass), ThemeData{});
 
-        WriteTextFile(dir / "grass.theme", R"({"displayName": "Meadow"})");
+        WriteTextFile(dir / "grass.asset", R"({"type": "theme", "displayName": "Meadow"})");
         LoadThemesFromDirectory(dir);
         EXPECT_EQ(Get(ThemeId::Grass).displayName, "Meadow");
+
+        std::filesystem::remove_all(dir);
+    }
+
+    TEST_F(ThemeRegistryFileTest, NonThemeTypeIsIgnored)
+    {
+        // 種別欄が theme でない .asset は雛形として読まず、 その枠は中立の既定値のまま
+        const auto dir = MakeTempDir("wrongtype");
+        WriteTextFile(dir / "grass.asset", R"({"type": "material", "displayName": "Meadow"})");
+
+        LoadThemesFromDirectory(dir);
+
+        ExpectThemeEq(Get(ThemeId::Grass), ThemeData{});
+
+        std::filesystem::remove_all(dir);
+    }
+
+    TEST_F(ThemeRegistryFileTest, MissingTypeIsIgnored)
+    {
+        // 種別欄が無い .asset も雛形として読まない。 種別欄は必須
+        const auto dir = MakeTempDir("notype");
+        WriteTextFile(dir / "grass.asset", R"({"displayName": "Meadow"})");
+
+        LoadThemesFromDirectory(dir);
+
+        ExpectThemeEq(Get(ThemeId::Grass), ThemeData{});
 
         std::filesystem::remove_all(dir);
     }

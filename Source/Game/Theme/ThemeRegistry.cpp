@@ -10,13 +10,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <utility>
 
 using namespace NS::Game::Theme;
 
 namespace
 {
-    /// Get が返す実体。値の出所は `.theme` ファイルだけで、読込前と読込失敗分は中立の ThemeData{} のまま
+    /// Get が返す実体。値の出所は `.asset` ファイルだけで、読込前と読込失敗分は中立の ThemeData{} のまま
     std::array<ThemeData, 5>& MutableThemes()
     {
         static std::array<ThemeData, 5> s_themes{};
@@ -25,12 +26,15 @@ namespace
 
     /// ThemeId と 1:1 の固定ファイル名。並びは ThemeId の値順
     constexpr std::array<const char*, 5> kThemeFileNames = {
-        "grass.theme",
-        "cave.theme",
-        "snow.theme",
-        "lava.theme",
-        "sky.theme",
+        "grass.asset",
+        "cave.asset",
+        "snow.asset",
+        "lava.asset",
+        "sky.asset",
     };
+
+    /// 汎用データ資産の種別欄。 雛形はこの値でないと無視して中立の既定値に倒す
+    constexpr std::string_view kThemeAssetType = "theme";
 
     /// key が数値 3 要素の配列なら outValue へ写す。無ければ何もせず、型不正は警告して既定値のまま
     void ReadVector3(const nlohmann::json& json, const char* key, NS::Math::Vector3& outValue, const char* fileName)
@@ -45,6 +49,21 @@ namespace
             return;
         }
         outValue = NS::Math::Vector3{(*it)[0].get<float>(), (*it)[1].get<float>(), (*it)[2].get<float>()};
+    }
+
+    /// 種別欄が雛形のものか。 `.asset` は先頭に `"type"` を要求し、 欠落や不一致は雛形として扱わない
+    [[nodiscard]] bool IsThemeAsset(const nlohmann::json& json, const char* fileName)
+    {
+        const auto it = json.find("type");
+        if (it == json.end() || !it->is_string() || it->get<std::string>() != kThemeAssetType)
+        {
+            NS_LOG_WARN(::NS::Core::LogCat::Game,
+                        "{}: 'type' が \"{}\" でないため雛形として読まず中立の既定値を使う",
+                        fileName,
+                        kThemeAssetType);
+            return false;
+        }
+        return true;
     }
 
     /// 解析済み JSON の既知キーだけを theme へ写す。未知キーは前方互換のため無視する
@@ -117,7 +136,7 @@ namespace NS::Game::Theme
                     NS_LOG_WARN(::NS::Core::LogCat::Game,
                                 "テーマファイルの JSON 解析に失敗したため中立の既定値を使う: {}",
                                 filePath.string());
-                else
+                else if (IsThemeAsset(json, kThemeFileNames[i]))
                     ApplyThemeJson(json, theme, kThemeFileNames[i]);
             }
 

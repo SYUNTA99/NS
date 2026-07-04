@@ -1,4 +1,5 @@
 {
+    "type": "theme",
     "displayName": "Sky",
     "blockTextureArrayBaseSlice": 32,
     "skyboxCubemapPath": "Assets/Skybox/kurt/",

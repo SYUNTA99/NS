@@ -23,12 +23,12 @@ namespace NS::Editor
     /// `<exe>/Levels/` の絶対 path。 exe 起動 directory に依存
     [[nodiscard]] std::filesystem::path GetLevelsDirectory() noexcept;
 
-    /// sanitize 済 name から `<exe>/Levels/<name>.nslvl` を構築。 失敗時は `std::nullopt`
+    /// sanitize 済 name から `<exe>/Levels/<name>.scene` を構築。 失敗時は `std::nullopt`
     [[nodiscard]] std::optional<std::filesystem::path> BuildLevelPath(std::string_view name) noexcept;
 
     /// `Levels/` を必要なら作成。 既存なら何もしない。 作成失敗時は false + `NS_LOG_ERROR`
     [[nodiscard]] bool EnsureLevelsDirectoryExists() noexcept;
 
-    /// `<exe>/Levels/*.nslvl` を列挙しソート済 stem を返す。 例外時は部分リスト + `NS_LOG_ERROR`
+    /// `<exe>/Levels/*.scene` を列挙しソート済 stem を返す。 例外時は部分リスト + `NS_LOG_ERROR`
     [[nodiscard]] std::vector<std::string> EnumerateLevelFiles() noexcept;
 } // namespace NS::Editor

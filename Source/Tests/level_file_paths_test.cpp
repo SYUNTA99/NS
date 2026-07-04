@@ -72,7 +72,7 @@ TEST(LevelFilePaths, BuildLevelPathProducesExpectedShape)
 {
     auto p = EditorNs::BuildLevelPath("MyLevel");
     ASSERT_TRUE(p.has_value());
-    EXPECT_EQ(p->extension(), ".nslvl");
+    EXPECT_EQ(p->extension(), ".scene");
     EXPECT_EQ(p->stem(), "MyLevel");
     EXPECT_EQ(p->parent_path().filename(), "Levels");
 }

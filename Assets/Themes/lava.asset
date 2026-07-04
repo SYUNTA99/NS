@@ -1,4 +1,5 @@
 {
+    "type": "theme",
     "displayName": "Lava",
     "blockTextureArrayBaseSlice": 24,
     "skyboxCubemapPath": "Assets/Skybox/kurt/",

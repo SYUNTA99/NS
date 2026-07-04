@@ -3,7 +3,7 @@
 /// @file crc32.h
 /// @brief CRC32 polynomial 0xEDB88320 の 256-entry lookup table 実装
 ///
-/// @details `.nslvl` footer の整合性検証専用。 LevelData の CRC32 と save format で同じアルゴリズムを使う
+/// @details `.scene` footer の整合性検証専用。 LevelData の CRC32 と save format で同じアルゴリズムを使う
 /// polynomial は 0xEDB88320 固定で IEEE 802.3 / zlib 互換
 
 #include <cstddef>

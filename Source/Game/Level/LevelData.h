@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file LevelData.h
-/// @brief LevelData — `.nslvl` に書く永続データ。 PlayMode は const 参照のみで受ける
+/// @brief LevelData — `.scene` に書く永続データ。 PlayMode は const 参照のみで受ける
 ///
 /// @details Strict 分離: 永続フィールドはここに、 runtime mutable な playerPosition /
 /// coinCount 等は `PlayState` に置く。 `PlayMode` 側で `const LevelData&` を要求する
@@ -114,7 +114,7 @@ namespace NS::Game::Level
         std::uint16_t blockTextureBaseSlice = 0;
     };
 
-    /// `.nslvl` に書かれる永続データ。 PlayMode 中は const 参照でしか触らせない
+    /// `.scene` に書かれる永続データ。 PlayMode 中は const 参照でしか触らせない
     struct LevelData
     {
         /// grid block も自由配置物も含む唯一の配置物リスト。 grid かどうかは各要素の flags で判別する

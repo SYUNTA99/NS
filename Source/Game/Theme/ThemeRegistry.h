@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file ThemeRegistry.h
-/// @brief 視覚フィールドを保有する 5 テーマの lookup。 `.theme` ファイル読込で値を差し替えられる
+/// @brief 視覚フィールドを保有する 5 テーマの lookup。 `.asset` ファイル読込で値を差し替えられる
 ///
 /// @details `NS::Game::Theme::Get(id)` は 5 件の `ThemeData` への const 参照を返し、 範囲外は Grass
 /// にフォールバックする 静的 storage 上に並ぶので参照は frame 越しに有効、 再読込で中身だけ変わる
@@ -22,9 +22,10 @@ namespace NS::Game::Theme
     /// uint16_t のテーマ番号からの取得。 旧形式の themeId を environment へ移行するときだけ使う。 範囲外は Grass
     [[nodiscard]] const ThemeData& Get(std::uint16_t levelDataThemeId) noexcept;
 
-    /// ディレクトリの `.theme` 5 件を ThemeId と 1:1 の固定名で読み、 registry を上書きする
-    /// 呼ぶ度に中立の既定値 ThemeData{} へ戻してから読むため、 欠落・破損・値不正のテーマは中立のままになる
-    /// 未知キーは無視する。 起動列と editor のテーマ再読込が呼ぶ
+    /// ディレクトリの `.asset` 雛形 5 件を ThemeId と 1:1 の固定名で読み、 registry を上書きする
+    /// 呼ぶ度に中立の既定値 ThemeData{} へ戻してから読むため、 欠落・破損・種別違い・値不正のテーマは中立のままになる
+    /// 種別欄 `"type"` が `"theme"` でないファイルは雛形として読まない。 未知キーは無視する。 起動列と editor
+    /// の雛形再読込が呼ぶ
     void LoadThemesFromDirectory(const std::filesystem::path& directory);
 
     /// テーマの視覚フィールドをシーンの環境値へ写して返す。 雛形からシーンへの写し込みの唯一の入口で、

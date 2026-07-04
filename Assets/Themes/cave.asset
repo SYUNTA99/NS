@@ -1,4 +1,5 @@
 {
+    "type": "theme",
     "displayName": "Cave",
     "blockTextureArrayBaseSlice": 8,
     "skyboxCubemapPath": "Assets/Skybox/kurt/",

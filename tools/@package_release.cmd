@@ -11,7 +11,7 @@
 ::   NS.exe
 ::   Assets\
 ::   Shaders\
-::   Levels\        new_level.nslvl (the level the game loads on start)
+::   Levels\        new_level.scene (the level the game loads on start)
 ::   Source\        (git-tracked files only, ThirdParty excluded)
 ::   premake5.lua
 ::
@@ -61,7 +61,7 @@ copy /y "%BIN%\Game.exe" "%OUT%\NS.exe" >nul
 echo [4/5] Copying Assets / Shaders / Levels ...
 xcopy /e /i /q /y "Assets" "%OUT%\Assets\" >nul
 xcopy /e /i /q /y "Shaders" "%OUT%\Shaders\" >nul
-:: Levels: repo is the source of truth. The game loads GetExeDirectory()\Levels\new_level.nslvl
+:: Levels: repo is the source of truth. The game loads GetExeDirectory()\Levels\new_level.scene
 if exist "Levels" (
     xcopy /e /i /q /y "Levels" "%OUT%\Levels\" >nul
 ) else (

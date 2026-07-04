@@ -72,7 +72,7 @@ private:
     /// 全表示ブロックの OnUpdate を回す。 edit / play 共通
     void UpdateDisplayBlocks();
 
-    /// 起動時のレベル供給: 同梱の `new_level.nslvl` をロードし、 無ければ最小床を seed する
+    /// 起動時のレベル供給: 同梱の `new_level.scene` をロードし、 無ければ最小床を seed する
     void LoadInitialLevel();
 
     // 組み込み mesh / 共有 material / block の TextureArray は Application 所有の AssetManager が持つ

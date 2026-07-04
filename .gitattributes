@@ -10,4 +10,4 @@
 
 # レベルファイルは EOL 変換禁止。 CRLF 化するとバイト数 / CRC が変わり読み込みが壊れる
 # 属性は後勝ちなので `* text=auto` より後に置く。 前に置くと text=auto に上書きされる
-*.nslvl binary
+*.scene binary

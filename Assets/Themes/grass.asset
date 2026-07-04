@@ -1,4 +1,5 @@
 {
+    "type": "theme",
     "displayName": "Grass",
     "blockTextureArrayBaseSlice": 0,
     "skyboxCubemapPath": "Assets/Skybox/kurt/",

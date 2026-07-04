@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file ThemeData.h
-/// @brief 1 テーマの全データ。 ThemeRegistry が 5 件を保持し `.theme` ファイル読込で上書きする
+/// @brief 1 テーマの全データ。 ThemeRegistry が 5 件を保持し `.asset` ファイル読込で上書きする
 ///
 /// @details 物理は全テーマ共通なので skybox と lighting の視覚フィールドのみを持つ純データ表現
 
