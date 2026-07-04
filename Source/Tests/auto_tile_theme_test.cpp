@@ -2,68 +2,52 @@
 
 #include <cstdint>
 
-#include <Framework/Core/Filesystem.h>
-#include <Framework/Core/Logger.h>
 #include <Framework/Graphics/TextureArray.h>
 #include <Game/Blocks/AutoTile.h>
-#include <Game/Theme/ThemeId.h>
-#include <Game/Theme/ThemeRegistry.h>
-
-using namespace NS::Game::Theme;
 
 namespace
 {
     constexpr std::uint16_t kTotalSlices = NS::Graphics::TextureArray::kTotalSlices;
 
-    /// slice 帯はテーマ値なので、同梱の `.theme` を読み込んだ状態で検証する
-    class AutoTileThemeTest : public ::testing::Test
-    {
-    protected:
-        void SetUp() override
-        {
-            NS::Core::Logger::Init();
-            LoadThemesFromDirectory(NS::Core::FileSystem::ContentRoot() / "Assets" / "Themes");
-        }
-        void TearDown() override { NS::Core::Logger::Shutdown(); }
-    };
+    // 同梱テーマが使う 5 本の slice 帯先頭。 焼き込みはこの帯からのオフセットで slice を引く
+    constexpr std::uint16_t kThemeBaseSlices[5] = {0, 8, 16, 24, 32};
 
-    TEST_F(AutoTileThemeTest, AllBitmasksMapToValidSlice)
+    TEST(AutoTileSliceTest, AllBitmasksMapToValidSlice)
     {
-        // 5 theme x 64 bitmask = 320 通り。 全て kTotalSlices (64) 未満の有効 slice index に丸まる事を確認
-        for (std::uint16_t themeIdx = 0; themeIdx < static_cast<std::uint16_t>(ThemeId::Count); ++themeIdx)
+        // 5 帯 x 64 bitmask = 320 通り。 全て kTotalSlices 未満の有効 slice index に丸まる事を確認
+        for (const std::uint16_t baseSlice : kThemeBaseSlices)
         {
-            const ThemeId theme = static_cast<ThemeId>(themeIdx);
             for (std::uint16_t mask = 0; mask < 64; ++mask)
             {
                 const std::uint16_t slice =
-                    NS::Game::Blocks::LookupTextureSlice(theme, static_cast<std::uint8_t>(mask));
+                    NS::Game::Blocks::LookupTextureSlice(baseSlice, static_cast<std::uint8_t>(mask));
                 EXPECT_LT(slice, kTotalSlices)
-                    << "theme=" << themeIdx << " mask=" << mask << " は kTotalSlices 未満に収まるべき";
+                    << "baseSlice=" << baseSlice << " mask=" << mask << " は kTotalSlices 未満に収まるべき";
             }
         }
     }
 
-    TEST_F(AutoTileThemeTest, OutOfRangeThemeFallsBackToGrassSlice)
+    TEST(AutoTileSliceTest, OutOfRangeBaseSliceFallsBackToSliceZero)
     {
-        // ThemeId 99 のような範囲外指定でも crash せず、 Grass と同じ slice に丸まる
-        const std::uint16_t grassSlice = NS::Game::Blocks::LookupTextureSlice(ThemeId::Grass, 0u);
-        const std::uint16_t outOfRangeSlice = NS::Game::Blocks::LookupTextureSlice(static_cast<ThemeId>(99), 0u);
-        EXPECT_EQ(outOfRangeSlice, grassSlice);
+        // 総 slice 数以上の帯先頭を渡しても crash せず 0 に倒れる。 variant 加算側も mask>=64 の直接返し側も
+        const std::uint16_t withVariant = NS::Game::Blocks::LookupTextureSlice(kTotalSlices, 0u);
+        const std::uint16_t withoutVariant = NS::Game::Blocks::LookupTextureSlice(kTotalSlices, 255u);
+        EXPECT_EQ(withVariant, 0u);
+        EXPECT_EQ(withoutVariant, 0u);
     }
 
-    TEST_F(AutoTileThemeTest, OutOfRangeMaskFallsBackToSliceZero)
+    TEST(AutoTileSliceTest, OutOfRangeMaskFallsBackToBaseSlice)
     {
-        // bitmask は 6bit (上限 63) のはずだが、 ノイズが乗った 255 を渡しても落ちずに base slice にフォールバック
-        const std::uint16_t slice =
-            NS::Game::Blocks::LookupTextureSlice(ThemeId::Grass, static_cast<std::uint8_t>(255));
-        EXPECT_EQ(slice, 0u);
+        // bitmask は 6bit (上限 63) のはずだが、 ノイズが乗った 255 を渡しても落ちず variant 加算なしの帯先頭を返す
+        const std::uint16_t slice = NS::Game::Blocks::LookupTextureSlice(8u, static_cast<std::uint8_t>(255));
+        EXPECT_EQ(slice, 8u);
     }
 
-    TEST_F(AutoTileThemeTest, ThemesUseDifferentBaseSlices)
+    TEST(AutoTileSliceTest, DifferentBaseSlicesProduceDifferentSlice)
     {
-        // mask=0 (孤立 block) は variant offset 0、 theme 別 base slice 値の違いがそのまま slice 番号差になる
-        const std::uint16_t grassSlice = NS::Game::Blocks::LookupTextureSlice(ThemeId::Grass, 0u);
-        const std::uint16_t caveSlice = NS::Game::Blocks::LookupTextureSlice(ThemeId::Cave, 0u);
-        EXPECT_NE(grassSlice, caveSlice) << "Grass と Cave は別の base slice を持つはず";
+        // mask=0 (孤立 block) は variant offset 0 なので、 帯先頭の違いがそのまま slice 番号差になる
+        const std::uint16_t grassSlice = NS::Game::Blocks::LookupTextureSlice(0u, 0u);
+        const std::uint16_t caveSlice = NS::Game::Blocks::LookupTextureSlice(8u, 0u);
+        EXPECT_NE(grassSlice, caveSlice) << "別の帯先頭は別の slice を指すはず";
     }
 } // namespace

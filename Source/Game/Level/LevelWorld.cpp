@@ -19,7 +19,6 @@
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Level/LevelData.h"
 #include "Game/Player.h"
-#include "Game/Theme/ThemeId.h"
 
 #include <cmath>
 #include <cstdint>
@@ -154,7 +153,7 @@ namespace NS::Game::Level
             const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
             const std::uint8_t mask = NS::Game::Blocks::ComputeNeighborMask(level, x, y, z);
             const std::uint16_t slice =
-                NS::Game::Blocks::LookupTextureSlice(static_cast<NS::Game::Theme::ThemeId>(level.themeId), mask);
+                NS::Game::Blocks::LookupTextureSlice(level.environment.blockTextureBaseSlice, mask);
             m_instancedBlocks.push_back(InstancedBlock{i, static_cast<float>(slice)});
         }
 

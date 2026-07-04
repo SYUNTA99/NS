@@ -2,13 +2,10 @@
 
 #include "Framework/Graphics/TextureArray.h"
 #include "Game/Level/LevelData.h"
-#include "Game/Theme/ThemeRegistry.h"
 
 #include <cstddef>
 #include <string>
 #include <variant>
-
-using namespace NS::Game::Theme;
 
 namespace NS::Game::Blocks
 {
@@ -64,30 +61,21 @@ namespace NS::Game::Blocks
         }
     } // namespace
 
-    std::uint16_t LookupTextureSlice(ThemeId theme, std::uint8_t neighborMask) noexcept
+    std::uint16_t LookupTextureSlice(std::uint16_t baseSlice, std::uint8_t neighborMask) noexcept
     {
-        // theme 範囲外は入力境界の fallback として Grass
-        if (static_cast<std::size_t>(theme) >= static_cast<std::size_t>(ThemeId::Count))
-        {
-            theme = ThemeId::Grass;
-        }
-        // bitmask が 64 以上なら base slice つまり offset 0 にフォールバック
+        // bitmask が 64 以上なら variant 加算せず slice 帯の先頭をそのまま、 範囲外の帯は 0 にフォールバック
         if (neighborMask >= 64)
         {
-            const ThemeData& td0 = Get(theme);
-            const std::uint16_t base0 = td0.blockTextureArrayBaseSlice;
-            return base0 < NS::Graphics::TextureArray::kTotalSlices ? base0 : static_cast<std::uint16_t>(0);
+            return baseSlice < NS::Graphics::TextureArray::kTotalSlices ? baseSlice : static_cast<std::uint16_t>(0);
         }
 
-        const ThemeData& td = Get(theme);
-        const std::uint16_t base = td.blockTextureArrayBaseSlice;
         const std::uint8_t variant = kBitmaskToVariant[neighborMask];
         // variant が 8 を超えないテーブルを書いてあるが、 念のため clamp する
         const std::uint8_t safeVariant = variant < kVariantsPerTheme ? variant : static_cast<std::uint8_t>(0);
-        const std::uint32_t slice = static_cast<std::uint32_t>(base) + static_cast<std::uint32_t>(safeVariant);
+        const std::uint32_t slice = static_cast<std::uint32_t>(baseSlice) + static_cast<std::uint32_t>(safeVariant);
         if (slice >= NS::Graphics::TextureArray::kTotalSlices)
         {
-            return 0; // 念のため範囲外 clamp
+            return 0; // 帯の先頭 + variant が総 slice 数を超える範囲外は 0 に倒す
         }
         return static_cast<std::uint16_t>(slice);
     }

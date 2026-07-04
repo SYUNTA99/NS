@@ -45,6 +45,9 @@ namespace
     void SeedInitialLevel(NS::Game::Level::LevelData& level)
     {
         level.objects.clear();
+        // 新規シーンの既定の見た目は Grass 雛形を写し込む。 以降はシーンの環境欄が正になる
+        level.environment =
+            NS::Game::Theme::MakeEnvironmentFromTheme(NS::Game::Theme::Get(NS::Game::Theme::ThemeId::Grass));
         level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, 0));
         // プレイヤーは capsule 中心を床ブロック上面 0.5 + capsule 半径込み半高 0.9 + 1cm へ置く
         level.objects.push_back(NS::Game::Level::MakePlayerObject(
@@ -188,18 +191,16 @@ void LevelPlayScene::OnRenderScene()
     if (app == nullptr)
         return;
 
-    // テーマ swap は同一 frame 内で skybox / block / lighting に同じ ThemeData を反映させる必要がある
-    // 範囲外 themeId は NS::Game::Theme::Get 側で Grass にフォールバックされる
+    // シーンが所有する環境をそのまま skybox / block / lighting の出所にする
     // 環境設定へ毎フレーム写すだけで、 上書き宣言の構築と skybox の差分再読込は EnvironmentSubsystem が担う
     auto* environment = GetSubsystem<NS::Scene::EnvironmentSubsystem>();
     if (environment != nullptr)
     {
-        const ThemeData& theme = Get(m_level.themeId);
         NS::Scene::EnvironmentSettings settings{};
-        settings.lightDirection = theme.lightDirection;
-        settings.lightColor = theme.lightColor;
-        settings.ambientColor = theme.ambientColor;
-        settings.skyboxCubemapPath = theme.skyboxCubemapPath;
+        settings.lightDirection = m_level.environment.lightDirection;
+        settings.lightColor = m_level.environment.lightColor;
+        settings.ambientColor = m_level.environment.ambientColor;
+        settings.skyboxCubemapPath = m_level.environment.skyboxCubemapPath;
         environment->SetSettings(settings);
     }
 
