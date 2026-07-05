@@ -834,8 +834,6 @@ project "Tests"
         -- EnterEdit / 値メンバ accessor の symbol が要るので .cpp を Tests に取り込む。
         -- 操作対象の LevelPlayScene も ctor / dtor / vtable / SetPlaying symbol のため併せて取り込む。
         "Source/GameCore/LevelPlayScene.cpp",
-        -- LevelPlayScene が OnStart / UpdateAnimatedModel で参照するので symbol 解決のため併せて取り込む
-        "Source/GameCore/SkinnedDebugCharacter.cpp",
         "Source/Editor/LevelEditorController.cpp",
         -- Level data / LevelIO / CRC32 / Undo Command / AutoTile は Application
         -- 非依存の純粋ロジックなので Tests project から直接 compile する。
