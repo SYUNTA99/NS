@@ -39,6 +39,13 @@ namespace NS::Editor
         // world でのハンドル軸の長さ。 origin から各軸方向にこの距離だけ伸ばした端点を picking に使う
         constexpr float kHandleLength = 1.0f;
 
+        // この投影深度までは kHandleLength をそのまま使い、 これより遠い選択物は深度に比例してハンドルを
+        // 伸ばす。 近距離を固定長に据え置くのは、 手前のオブジェクトでハンドルが画面を覆わないようにするため
+        constexpr float kHandleReferenceDepth = 10.0f;
+
+        // clip.w がこの値以下、 つまりカメラ至近や背面で深度が信頼できない時は深度で割らず固定長へ退避する
+        constexpr float kHandleMinClipW = 1.0e-3f;
+
         // px 単位の screen 上のヒット許容半径。 これ未満の最近接軸を採用する
         constexpr float kPickThresholdPixels = 12.0f;
 
@@ -161,6 +168,19 @@ namespace NS::Editor
             return true;
         }
 
+        // 選択物がカメラから遠いほどハンドルの world 長を伸ばし、 screen 上の見かけ寸法を一定に近づける
+        // screen 寸法は world 長 / clip.w に比例するので、 world 長を clip.w に比例させると相殺されて一定になる
+        // 近距離は kHandleLength を下限に据え、 遠距離だけ伸ばす
+        [[nodiscard]] float HandleWorldLength(const NS::Math::Vector3& origin, const NS::Math::Matrix& vp) noexcept
+        {
+            const NS::Math::Vector4 clip =
+                NS::Math::Vector4::Transform(NS::Math::Vector4{origin.x, origin.y, origin.z, 1.0f}, vp);
+            if (clip.w <= kHandleMinClipW)
+                return kHandleLength;
+            const float scale = clip.w / kHandleReferenceDepth;
+            return kHandleLength * ((scale > 1.0f) ? scale : 1.0f);
+        }
+
         // 点 p から線分 a-b への px 単位の最短距離。 線分が a==b に縮退したら点 a への距離
         [[nodiscard]] float DistancePointToSegment(NS::Math::Vector2 p,
                                                    NS::Math::Vector2 a,
@@ -255,7 +275,8 @@ namespace NS::Editor
         [[nodiscard]] NS::Math::Vector3 RingPoint(GizmoAxis axis,
                                                   const NS::Math::Vector3& center,
                                                   float t,
-                                                  const NS::Math::Quaternion& rotation) noexcept
+                                                  const NS::Math::Quaternion& rotation,
+                                                  float radius) noexcept
         {
             NS::Math::Vector3 u{};
             NS::Math::Vector3 v{};
@@ -278,8 +299,8 @@ namespace NS::Editor
             }
             u = NS::Math::Vector3::Transform(u, rotation);
             v = NS::Math::Vector3::Transform(v, rotation);
-            const float c = std::cos(t) * kHandleLength;
-            const float s = std::sin(t) * kHandleLength;
+            const float c = std::cos(t) * radius;
+            const float s = std::sin(t) * radius;
             return center + u * c + v * s;
         }
 
@@ -292,6 +313,7 @@ namespace NS::Editor
                                            NS::Math::Vector2 mouse2d) noexcept
         {
             constexpr int kSegments = 32;
+            const float radius = HandleWorldLength(center, vp);
             float best = 1.0e30f;
             NS::Math::Vector2 prev{};
             bool prevValid = false;
@@ -299,7 +321,7 @@ namespace NS::Editor
             {
                 const float t = (2.0f * NS::Math::kPi * static_cast<float>(i)) / static_cast<float>(kSegments);
                 NS::Math::Vector2 screen{};
-                const bool ok = ProjectToScreen(RingPoint(axis, center, t, rotation), vp, viewport, screen);
+                const bool ok = ProjectToScreen(RingPoint(axis, center, t, rotation, radius), vp, viewport, screen);
                 if (ok && prevValid)
                 {
                     const float d = DistancePointToSegment(mouse2d, prev, screen);
@@ -456,6 +478,9 @@ namespace NS::Editor
         };
         const GizmoAxis axes[3] = {GizmoAxis::X, GizmoAxis::Y, GizmoAxis::Z};
 
+        // 遠距離でもハンドルの見かけ寸法を保つ world 長。 描画とピックで同じ値を使い両者を一致させる
+        const float handleLength = HandleWorldLength(origin, viewProjection);
+
         // 回転は軸に直交するリングで表す。 picking の DistanceToRing と同じ平面/半径で見た目と掴みを一致させる
         if (m_tool == GizmoTool::Rotate)
         {
@@ -468,8 +493,8 @@ namespace NS::Editor
                 {
                     const float t = (2.0f * NS::Math::kPi * static_cast<float>(i)) / static_cast<float>(kSegments);
                     NS::Math::Vector2 screen{};
-                    const bool ok =
-                        ProjectToScreen(RingPoint(axes[a], origin, t, rotation), viewProjection, viewport, screen);
+                    const bool ok = ProjectToScreen(
+                        RingPoint(axes[a], origin, t, rotation, handleLength), viewProjection, viewport, screen);
                     const ImVec2 cur{screen.x, screen.y};
                     if (ok && prevValid)
                         dl->AddLine(prev, cur, axisColors[a], 2.0f);
@@ -485,9 +510,9 @@ namespace NS::Editor
         {
             const NS::Math::Vector3 dir = OrientedAxis(axes[i], rotation);
             const NS::Math::Vector3 endWorld{
-                origin.x + dir.x * kHandleLength,
-                origin.y + dir.y * kHandleLength,
-                origin.z + dir.z * kHandleLength,
+                origin.x + dir.x * handleLength,
+                origin.y + dir.y * handleLength,
+                origin.z + dir.z * handleLength,
             };
             NS::Math::Vector2 end2d{};
             if (!ProjectToScreen(endWorld, viewProjection, viewport, end2d))
@@ -780,6 +805,7 @@ namespace NS::Editor
                 return GizmoAxis::Uniform;
         }
 
+        const float handleLength = HandleWorldLength(gizmoOrigin, viewProjection);
         const GizmoAxis axisEnum[3] = {GizmoAxis::X, GizmoAxis::Y, GizmoAxis::Z};
 
         GizmoAxis best = GizmoAxis::None;
@@ -788,9 +814,9 @@ namespace NS::Editor
         {
             const NS::Math::Vector3 dir = OrientedAxis(axisEnum[i], rotation);
             const NS::Math::Vector3 endWorld{
-                gizmoOrigin.x + dir.x * kHandleLength,
-                gizmoOrigin.y + dir.y * kHandleLength,
-                gizmoOrigin.z + dir.z * kHandleLength,
+                gizmoOrigin.x + dir.x * handleLength,
+                gizmoOrigin.y + dir.y * handleLength,
+                gizmoOrigin.z + dir.z * handleLength,
             };
             NS::Math::Vector2 end2d{};
             // 端点が背面に回った軸はその軸だけスキップする
