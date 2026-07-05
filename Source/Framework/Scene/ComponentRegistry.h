@@ -6,7 +6,7 @@
 /// @details 各 Component は自身の .cpp で NS_REGISTER_COMPONENT を書くと、型名をキーに
 /// 生成関数がこのテーブルへ静的初期化時に積まれる。中央の手書き列挙は持たない
 /// JSON の type 文字列や Add Component パレットから Component を生成する唯一の経路で、
-/// 登録マクロを書いた型しか生成できない。player / editor 専用コンポは登録しないので、
+/// 登録マクロを書いた型しか生成できない。editor 専用コンポと抽象基底は登録しないので、
 /// 信頼できない type 名でも不正なコンポを生成できない
 /// StaticLib では自己登録 TU がリンカに除去され得るため、実行体側で除去対策を要する
 /// 依存: NS::Scene::GameObject / Component、 前方宣言のみで各 Component の重いヘッダは露出しない
