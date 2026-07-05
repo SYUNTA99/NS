@@ -329,7 +329,7 @@ TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
     NS::Scene::ThirdPersonFollowComponent follow(nullptr);
     const ReflectionInfo* info = follow.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 17u);
+    EXPECT_EQ(info->fieldCount, 19u);
 
     const FieldDesc* jump = FindField(info, "Jump Distance");
     ASSERT_NE(jump, nullptr);
@@ -355,6 +355,11 @@ TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
     const FieldDesc* farPlane = FindField(info, "Far Plane");
     ASSERT_NE(farPlane, nullptr);
     EXPECT_EQ(farPlane->type, FieldType::Float);
+
+    // プレイ開始時の向きは editor のギズモ / Inspector が data 保存し、 OnStart で現在 yaw へ写る
+    const FieldDesc* initialYaw = FindField(info, "Initial Yaw");
+    ASSERT_NE(initialYaw, nullptr);
+    EXPECT_EQ(initialYaw->type, FieldType::Float);
 }
 
 TEST(ReflectionTest, CameraBrainBlendDurationAccessorClampsNegative)

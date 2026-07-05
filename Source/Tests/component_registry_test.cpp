@@ -166,6 +166,8 @@ TEST(ComponentRegistryTest, ReflectedFieldsMatchLedger)
         {"SphereColliderComponent", {"Radius", "Center Offset"}},
         {"ThirdPersonFollowComponent",
          {"Target",
+          "Initial Yaw",
+          "Initial Pitch",
           "Spring Omega",
           "Idle Distance",
           "Run Distance",

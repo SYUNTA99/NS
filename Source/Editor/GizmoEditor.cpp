@@ -314,10 +314,12 @@ namespace NS::Editor
     } // namespace
 
     void GizmoEditor::SetSelectableObjects(std::span<NS::Scene::GameObject* const> objects,
-                                           std::span<const NS::Math::Vector3> localHalfExtents) noexcept
+                                           std::span<const NS::Math::Vector3> localHalfExtents,
+                                           std::span<const std::uint8_t> pickable) noexcept
     {
         m_objects = objects;
         m_halfExtents = localHalfExtents;
+        m_pickable = pickable;
     }
 
     void GizmoEditor::Tick(const NS::Math::Matrix& viewProjection, NS::Math::Size2D viewport) noexcept
@@ -405,7 +407,11 @@ namespace NS::Editor
         for (const NS::Scene::GameObject* obj : m_objects)
             worldMatrices.push_back(obj->Root().WorldMatrix());
 
-        const int hit = PickNearestObb(ray, worldMatrices, m_halfExtents);
+        // まず見える実体だけで拾う。 見えないマーカー (メッシュを持たないカメラ等) が、 重なった
+        // ブロックの手前でクリックを奪わないよう、 可視ヒットが無いときだけ全体を対象にもう一度撃つ
+        int hit = PickNearestObb(ray, worldMatrices, m_halfExtents, m_pickable);
+        if (hit < 0)
+            hit = PickNearestObb(ray, worldMatrices, m_halfExtents);
         m_selected = (hit >= 0) ? &m_objects[static_cast<std::size_t>(hit)]->Root() : nullptr;
     }
 
@@ -557,7 +563,8 @@ namespace NS::Editor
 
     int GizmoEditor::PickNearestObb(const NS::Math::Ray& ray,
                                     std::span<const NS::Math::Matrix> worldMatrices,
-                                    std::span<const NS::Math::Vector3> localHalfExtents) noexcept
+                                    std::span<const NS::Math::Vector3> localHalfExtents,
+                                    std::span<const std::uint8_t> pickMask) noexcept
     {
         // size 不一致は短い方まで。 アフィン逆変換は ray パラメータ t を保つので、 各 box の
         // ローカル交差 t をそのままワールド ray の t として object 間で大小比較できる
@@ -566,6 +573,9 @@ namespace NS::Editor
         float bestT = 0.0f;
         for (std::size_t i = 0; i < count; ++i)
         {
+            // mask を渡した場合は 0 の要素を対象外にする。 空 mask は全対象
+            if (!pickMask.empty() && (i >= pickMask.size() || pickMask[i] == 0))
+                continue;
             const NS::Math::Matrix inv = worldMatrices[i].Invert();
             const NS::Math::Vector3 localOrigin = NS::Math::Vector3::Transform(ray.position, inv);
             // 方向は w=0 の線形部のみ変換し、 正規化しない。 正規化すると t がローカル長さに巻き込まれ比較が壊れる

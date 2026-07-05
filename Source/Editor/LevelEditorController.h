@@ -30,6 +30,7 @@ namespace NS::Scene
     class Transform;
     class CameraBrainComponent;
     class CameraComponent;
+    class ThirdPersonFollowComponent;
 } // namespace NS::Scene
 
 namespace NS::UI
@@ -185,8 +186,8 @@ private:
     /// edit モードの fixed step: free-fly カメラ / ギズモ / EditorMode の入力処理と dirty rebuild
     void TickEdit();
 
-    /// edit 中、 area camera のトリガ AABB とカメラ位置 → 注視点を DebugDraw で可視化する
-    void RenderAreaCameraGizmos() noexcept;
+    /// edit 中、 各カメラの視錐台を点線の四角錐で、 視点位置を小箱で DebugDraw で可視化する。 据え置きはトリガ AABB も
+    void RenderCameraGizmos() noexcept;
 
     /// edit 中、 各オブジェクトの当たり形状を DebugDraw で可視化する。 自由配置=OBB / grid solid=AABB
     void RenderColliderWireframes() noexcept;
@@ -205,6 +206,15 @@ private:
     /// ギズモで変形した自由オブジェクトの Transform を対応する ObjectInstance へ書き戻す
     /// world に居ない実プレイヤーも player object のデータへ同様に書き戻す。 live Transform が真実の源
     void SyncFreeObjectTransforms();
+
+    /// 選択中のオブジェクトが持つ追従カメラ component。 無ければ nullptr。 ギズモ逆算と undo 分岐が使う
+    [[nodiscard]] NS::Scene::ThirdPersonFollowComponent* SelectedFollowCamera() noexcept;
+
+    /// 追従カメラの Root を実プレイ視点位置へ同期する。 位置を持たない追従カメラを edit で掴めるようにする
+    void SyncFollowCameraPoses();
+
+    /// ドラッグ中の追従カメラの Root 位置から初期姿勢を逆算し、 components データへ書き戻す
+    void ApplyFollowCameraGizmoDrag();
 
     /// ビューポートでギズモ選択が変わった時だけ、 選択 id と派生の添字を追従させる
     void CaptureSelectionFromGizmo() noexcept;
@@ -240,6 +250,8 @@ private:
     // ギズモへ渡す選択候補の安定ストレージ。 自由オブジェクトと grid solid ブロックを連結した span の実体
     std::vector<NS::Scene::GameObject*> m_selectablePtrs;
     std::vector<NS::Math::Vector3> m_selectableHalfExtents;
+    // 各候補が可視メッシュを持つか。 見えないカメラ等が重なった可視ブロックの pick を奪わないための優先フラグ
+    std::vector<std::uint8_t> m_selectablePickable;
 
     // 編集カメラのような配置物でない単一物の選択。 添字選択とは排他
     enum class SpecialSelection : std::uint8_t

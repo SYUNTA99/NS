@@ -84,9 +84,12 @@ namespace NS::Editor
         void SetInput(NS::Platform::Input* input) noexcept { m_input = input; }
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
 
-        /// 選択候補。objects と localHalfExtents は同一 index で対応する非所有 view
+        /// 選択候補。objects / localHalfExtents / pickable は同一 index で対応する非所有 view
+        /// pickable[i]==0 のオブジェクトは、pickable な候補にヒットが無いときだけ拾う。空 span は全候補を対等に扱う
+        /// メッシュを持たないカメラ等の不可視マーカーに 0 を渡すと、重なった可視ブロックの pick を奪わない
         void SetSelectableObjects(std::span<NS::Scene::GameObject* const> objects,
-                                  std::span<const NS::Math::Vector3> localHalfExtents) noexcept;
+                                  std::span<const NS::Math::Vector3> localHalfExtents,
+                                  std::span<const std::uint8_t> pickable = {}) noexcept;
 
         /// Object モード時のみ true。false の間は Tick / Render が何もしない
         void SetActive(bool active) noexcept { m_active = active; }
@@ -127,9 +130,11 @@ namespace NS::Editor
         [[nodiscard]] bool IsDragging() const noexcept { return m_dragging; }
 
         /// ray とローカル AABB の OBB 判定で最近ヒットの index を返す。無ヒットは -1
+        /// pickMask を渡すと mask[i]==0 の候補を対象外にする。空 span は全候補を対象にする
         [[nodiscard]] static int PickNearestObb(const NS::Math::Ray& ray,
                                                 std::span<const NS::Math::Matrix> worldMatrices,
-                                                std::span<const NS::Math::Vector3> localHalfExtents) noexcept;
+                                                std::span<const NS::Math::Vector3> localHalfExtents,
+                                                std::span<const std::uint8_t> pickMask = {}) noexcept;
 
         /// rotation で回した方向の選択物 local 軸を含む平面と ray の交点から、軸成分のみ反映した新 position を返す
         [[nodiscard]] static NS::Math::Vector3 ComputeAxisMove(const NS::Math::Vector3& startPos,
@@ -199,6 +204,7 @@ namespace NS::Editor
         NS::UI::ImGuiContext* m_imgui = nullptr;
         std::span<NS::Scene::GameObject* const> m_objects{};
         std::span<const NS::Math::Vector3> m_halfExtents{};
+        std::span<const std::uint8_t> m_pickable{};
         bool m_active = false;
         GizmoTool m_tool = GizmoTool::Select;
         GizmoSpace m_space = GizmoSpace::Local;

@@ -43,6 +43,15 @@ namespace NS::Scene
 
     void ThirdPersonFollowComponent::OnStart()
     {
+        // プレイ開始 / rebuild ごとに初期姿勢へ戻す。 editor で置いた向きからプレイを始め、 手動回転はここから積む
+        m_yaw = m_initialYaw;
+        m_pitch = m_initialPitch;
+        if (!m_manualDistance)
+        {
+            m_distance = m_idleDistance;
+            m_desiredDistance = m_idleDistance;
+        }
+
         // 参照未設定はテスト / 直結線の構築なので触らない。解決不可も既存の結線を壊さず据え置く
         if (!m_targetRef.IsSet() || Owner() == nullptr || Owner()->OwningScene() == nullptr)
             return;
@@ -96,6 +105,34 @@ namespace NS::Scene
     void ThirdPersonFollowComponent::ClearManualDistance() noexcept
     {
         m_manualDistance = false;
+    }
+
+    void ThirdPersonFollowComponent::SetInitialPoseFromCameraPosition(const NS::Math::Vector3& cameraPosition) noexcept
+    {
+        if (m_target == nullptr)
+            return;
+        const NS::Math::Vector3 tgtPos = m_target->Position();
+        const NS::Math::Vector3 headPos{tgtPos.x, tgtPos.y + m_headHeight, tgtPos.z};
+        const NS::Math::Vector3 toHead = headPos - cameraPosition; // = forward * distance
+        const float distance = toHead.Length();
+        if (distance < 1e-3f)
+            return;
+        const NS::Math::Vector3 forward = toHead * (1.0f / distance);
+
+        // EvaluatePose の forward = (sin(yaw)cos(pitch), sin(pitch), cos(yaw)cos(pitch)) を解く
+        // pitch は仰角の可動域に収める。 clamp した分だけギズモ位置と厳密には一致しないが範囲外へは向けない
+        const float pitch = NS::Math::Clamp(std::asin(NS::Math::Clamp(forward.y, -1.0f, 1.0f)), m_pitchMin, m_pitchMax);
+        const float yaw = std::atan2(forward.x, forward.z);
+
+        m_initialYaw = yaw;
+        m_initialPitch = pitch;
+        m_idleDistance = distance;
+
+        // 編集中は OnUpdate が走らないので現在値も直接書き、 EvaluatePose 表示をその場で追従させる
+        m_yaw = yaw;
+        m_pitch = pitch;
+        m_distance = distance;
+        m_desiredDistance = distance;
     }
 
     void ThirdPersonFollowComponent::OnUpdate()

@@ -320,6 +320,45 @@ namespace
         EXPECT_EQ(picked, 0); // 手前 (z=5) の box を選ぶ
     }
 
+    TEST(GizmoEditor, PickNearestObbMaskSkipsNearerBoxSoFartherWins)
+    {
+        using NS::Math::Matrix;
+        using NS::Math::Ray;
+        using NS::Math::Vector3;
+
+        // 手前 z=5 と奥 z=15 の箱。 mask で手前を対象外にすると、 手前が最近でも奥を拾う
+        // 見えないカメラが重なった可視ブロックの pick を奪わない 2 パス目相当の検証
+        const std::array<Matrix, 2> worlds = {
+            Matrix::CreateTranslation(0.0f, 0.0f, 5.0f),
+            Matrix::CreateTranslation(0.0f, 0.0f, 15.0f),
+        };
+        const std::array<Vector3, 2> halfExtents = {
+            Vector3{1.0f, 1.0f, 1.0f},
+            Vector3{1.0f, 1.0f, 1.0f},
+        };
+        const std::array<std::uint8_t, 2> mask = {0, 1};
+
+        const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
+        EXPECT_EQ(GizmoEditor::PickNearestObb(ray, worlds, halfExtents, mask), 1);
+        // mask 無し (空 span) なら従来通り手前を拾う
+        EXPECT_EQ(GizmoEditor::PickNearestObb(ray, worlds, halfExtents), 0);
+    }
+
+    TEST(GizmoEditor, PickNearestObbReturnsMinusOneWhenMaskExcludesAllHits)
+    {
+        using NS::Math::Matrix;
+        using NS::Math::Ray;
+        using NS::Math::Vector3;
+
+        // 全候補を mask=0 にすると、 ray が当たっても無ヒット扱い。 controller はこの後 2 パス目で全体を撃つ
+        const std::array<Matrix, 1> worlds = {Matrix::CreateTranslation(0.0f, 0.0f, 5.0f)};
+        const std::array<Vector3, 1> halfExtents = {Vector3{1.0f, 1.0f, 1.0f}};
+        const std::array<std::uint8_t, 1> mask = {0};
+
+        const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
+        EXPECT_EQ(GizmoEditor::PickNearestObb(ray, worlds, halfExtents, mask), -1);
+    }
+
     TEST(GizmoEditor, PickNearestObbReturnsMinusOneWhenRayMisses)
     {
         using NS::Math::Matrix;

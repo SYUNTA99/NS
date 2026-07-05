@@ -61,6 +61,15 @@ namespace NS::Scene
         [[nodiscard]] float Yaw() const noexcept { return m_yaw; }
         [[nodiscard]] float Pitch() const noexcept { return m_pitch; }
 
+        /// プレイ開始時の向き。OnStart で現在 yaw/pitch へ写し、以降はプレイ中の手動回転で動く
+        [[nodiscard]] float InitialYaw() const noexcept { return m_initialYaw; }
+        [[nodiscard]] float InitialPitch() const noexcept { return m_initialPitch; }
+
+        /// editor のギズモで置いたカメラ world 位置から、target 頭を基準に yaw/pitch/距離を逆算し初期姿勢へ書く
+        /// target 未解決や距離ほぼ 0 の縮退では何もしない。初期姿勢は data 保存され、プレイ開始時の向きになる
+        /// 逆算後の yaw/pitch/distance を現在値にも即反映し、edit 中の EvaluatePose 表示をその場で追従させる
+        void SetInitialPoseFromCameraPosition(const NS::Math::Vector3& cameraPosition) noexcept;
+
         /// fixed step で yaw/pitch・distance spring を更新。最終姿勢は EvaluatePose が返してガタつきを避ける
         void OnUpdate() override;
 
@@ -72,6 +81,8 @@ namespace NS::Scene
         // Target は永続参照で、live への結線は次の rebuild すなわちプレイ突入時の OnStart で効く
         NS_REFLECT_BEGIN(ThirdPersonFollowComponent, VirtualCameraComponent)
         NS_REFLECT_FIELD(m_targetRef, "Target")
+        NS_REFLECT_FIELD(m_initialYaw, "Initial Yaw")
+        NS_REFLECT_FIELD(m_initialPitch, "Initial Pitch")
         NS_REFLECT_FIELD(m_springOmega, "Spring Omega")
         NS_REFLECT_FIELD(m_idleDistance, "Idle Distance")
         NS_REFLECT_FIELD(m_runDistance, "Run Distance")
@@ -97,6 +108,10 @@ namespace NS::Scene
 
         float m_yaw = 0.0f;
         float m_pitch = -0.2618f;
+
+        // プレイ開始時の初期姿勢。 editor のギズモ / Inspector が書き、 OnStart で m_yaw/m_pitch へ写す
+        float m_initialYaw = 0.0f;
+        float m_initialPitch = -0.2618f;
 
         float m_distance = 6.0f;
         float m_desiredDistance = 6.0f;

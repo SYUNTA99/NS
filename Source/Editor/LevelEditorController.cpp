@@ -25,6 +25,8 @@
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
+#include "Framework/Scene/Components/ThirdPersonFollowComponent.h"
+#include "Framework/Scene/Components/VirtualCameraComponent.h"
 #include "Framework/Scene/EnvironmentSubsystem.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
@@ -33,6 +35,7 @@
 #include "GameCore/Level/LevelData.h"
 #include "GameCore/Theme/ThemeRegistry.h"
 
+#include <cmath>
 #include <cstring>
 #include <memory>
 #include <string>
@@ -40,6 +43,54 @@
 namespace
 {
     constexpr NS::Math::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
+
+    // カメラ frustum 可視化の見た目定数。 aspect は画面目安の 16:9、 far は錐台が巨大化しないよう近くで切る
+    constexpr float kCameraGizmoAspect = 16.0f / 9.0f;
+    constexpr float kCameraGizmoFar = 8.0f;
+
+    // a→b を等分し 1 区間おきに線を引いて点線にする。 DebugDraw に dashed が無いので描画側で間引く
+    void DrawDashedLine(const NS::Math::Vector3& a, const NS::Math::Vector3& b, const NS::Math::Color& color) noexcept
+    {
+        constexpr int kSegments = 12;
+        for (int i = 0; i < kSegments; i += 2)
+        {
+            const float t0 = static_cast<float>(i) / static_cast<float>(kSegments);
+            const float t1 = static_cast<float>(i + 1) / static_cast<float>(kSegments);
+            NS::Graphics::DebugDraw::Line(NS::Math::Vector3::Lerp(a, b, t0), NS::Math::Vector3::Lerp(a, b, t1), color);
+        }
+    }
+
+    // カメラ pose の視錐台を四角錐の点線で描く。 視点から far 面 4 隅へ 4 本 + far 面の 4 辺で、 向きと画角を見せる
+    // target==position や up と視線が平行な縮退では基底が作れないので何も描かない
+    void DrawCameraFrustum(const NS::Scene::CameraPose& pose, const NS::Math::Color& color) noexcept
+    {
+        NS::Math::Vector3 forward = pose.target - pose.position;
+        if (forward.LengthSquared() < 1e-6f)
+            return;
+        forward.Normalize();
+        NS::Math::Vector3 right = pose.up.Cross(forward);
+        if (right.LengthSquared() < 1e-6f)
+            return;
+        right.Normalize();
+        const NS::Math::Vector3 up = forward.Cross(right);
+
+        const float halfHeight = std::tan(pose.fovY.value * 0.5f) * kCameraGizmoFar;
+        const float halfWidth = halfHeight * kCameraGizmoAspect;
+        const NS::Math::Vector3 farCenter = pose.position + forward * kCameraGizmoFar;
+        const NS::Math::Vector3 topLeft = farCenter + up * halfHeight - right * halfWidth;
+        const NS::Math::Vector3 topRight = farCenter + up * halfHeight + right * halfWidth;
+        const NS::Math::Vector3 bottomLeft = farCenter - up * halfHeight - right * halfWidth;
+        const NS::Math::Vector3 bottomRight = farCenter - up * halfHeight + right * halfWidth;
+
+        DrawDashedLine(pose.position, topLeft, color);
+        DrawDashedLine(pose.position, topRight, color);
+        DrawDashedLine(pose.position, bottomLeft, color);
+        DrawDashedLine(pose.position, bottomRight, color);
+        DrawDashedLine(topLeft, topRight, color);
+        DrawDashedLine(topRight, bottomRight, color);
+        DrawDashedLine(bottomRight, bottomLeft, color);
+        DrawDashedLine(bottomLeft, topLeft, color);
+    }
 } // namespace
 
 LevelEditorController::LevelEditorController(LevelPlayScene* scene) noexcept : m_scene(scene) {}
@@ -140,6 +191,7 @@ void LevelEditorController::Teardown()
     m_editorCameraRig.reset();
     m_selectablePtrs.clear();
     m_selectableHalfExtents.clear();
+    m_selectablePickable.clear();
 }
 
 void LevelEditorController::EnterPlay() noexcept
@@ -237,6 +289,9 @@ void LevelEditorController::TickEdit()
 
     if (objectMode && m_editorCameraRig && Brain())
     {
+        // 追従カメラの Root を実プレイ視点位置へ寄せてから候補を作る。 pick 箱 / ギズモがその位置に出る
+        SyncFollowCameraPoses();
+
         // 毎フレーム live な scene から候補 span を作り直し、 選択を id → 実体へ解決し直す
         // Play 突入 / undo / promote の rebuild を跨いでも生ポインタが残らない fail-safe の要
         RefreshGizmoSelectables();
@@ -265,16 +320,23 @@ void LevelEditorController::TickEdit()
         // ビューポートでのギズモ選択変化を選択 id と Inspector が見る派生添字へ追従させる
         CaptureSelectionFromGizmo();
 
+        // 追従カメラを掴んでいたら Root 位置を初期姿勢へ逆算し components へ保存する。 位置の書き戻しはこちら
+        ApplyFollowCameraGizmoDrag();
+
         // ギズモ変形の結果を live → model で ObjectInstance へ反映する。 begin/commit はこの model を基準にする
         // world に居ない実プレイヤーの player object への書き戻しも同じ関数が担う
         SyncFreeObjectTransforms();
 
         // ドラッグ開始で baseline 退避、 終了で TransformCommand を 1 つ確定する。 grid undo と同じ履歴
+        // 追従カメラは Root でなく初期姿勢を変えるので、 Root PRS ベースの TransformCommand は積まない
         const bool nowDragging = m_gizmo.IsDragging();
-        if (!wasDragging && nowDragging)
-            BeginTransformEdit();
-        else if (wasDragging && !nowDragging)
-            CommitTransformEdit();
+        if (SelectedFollowCamera() == nullptr)
+        {
+            if (!wasDragging && nowDragging)
+                BeginTransformEdit();
+            else if (wasDragging && !nowDragging)
+                CommitTransformEdit();
+        }
         m_gizmoWasDragging = nowDragging;
     }
     else if (m_transformEditing)
@@ -319,7 +381,7 @@ void LevelEditorController::Render()
         return;
 
     m_editor.RenderCursorPreview();
-    RenderAreaCameraGizmos();
+    RenderCameraGizmos();
     RenderColliderWireframes();
     // 蓄積した DebugDraw 線をシーン描画後・ ImGui 前にまとめて 1 描画する
     if (Brain())
@@ -419,8 +481,19 @@ void LevelEditorController::RefreshGizmoSelectables()
 {
     m_selectablePtrs.clear();
     m_selectableHalfExtents.clear();
+    m_selectablePickable.clear();
     m_selectablePtrs.reserve(m_scene->World().Objects().size());
     m_selectableHalfExtents.reserve(m_scene->World().Objects().size());
+    m_selectablePickable.reserve(m_scene->World().Objects().size());
+
+    // 可視メッシュを持つ候補は 1、 見えないカメラ等は 0。 ギズモは 1 の候補を優先して pick する
+    const auto pushSelectable = [this](NS::Scene::GameObject* object) {
+        m_selectablePtrs.push_back(object);
+        m_selectableHalfExtents.push_back(kCellHalfExtents);
+        const bool hasVisual =
+            NS::GameCore::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*object) != nullptr;
+        m_selectablePickable.push_back(hasVisual ? std::uint8_t{1} : std::uint8_t{0});
+    };
 
     // free / grid の別は ObjectInstance の flags で決まる。 runtime list は 1 本
     // 自由配置物を先に積む。 pick OBB は Root().WorldMatrix() が scale 込みで持ち、 判定は
@@ -432,8 +505,7 @@ void LevelEditorController::RefreshGizmoSelectables()
             m_scene->Level().objects[m_scene->World().SourceIndices()[i]];
         if ((entry.flags & NS::GameCore::Level::kObjectFlagGridAligned) != 0)
             continue;
-        m_selectablePtrs.push_back(m_scene->World().Objects()[i].get());
-        m_selectableHalfExtents.push_back(kCellHalfExtents);
+        pushSelectable(m_scene->World().Objects()[i].get());
     }
 
     // grid solid も掴める。 掴むと PromoteGridBlockToFree で自由オブジェクトに変わる。 slope 等は対象外
@@ -443,20 +515,16 @@ void LevelEditorController::RefreshGizmoSelectables()
             m_scene->Level().objects[m_scene->World().SourceIndices()[i]];
         if (!NS::GameCore::Blocks::IsGridSolidObject(entry))
             continue;
-        m_selectablePtrs.push_back(m_scene->World().Objects()[i].get());
-        m_selectableHalfExtents.push_back(kCellHalfExtents);
+        pushSelectable(m_scene->World().Objects()[i].get());
     }
 
     // 実プレイヤーも掴める。 player object は world で組まれないため、 live の実 player を候補に積み
     // ビューポート直クリックを player object の通常選択へ流す
     // pick OBB は player の cube mesh と同じ unit 半径。 world scale 0.8/1.8/0.8 は Root().WorldMatrix() が持つ
     if (m_scene->PlayerRef())
-    {
-        m_selectablePtrs.push_back(m_scene->PlayerRef());
-        m_selectableHalfExtents.push_back(kCellHalfExtents);
-    }
+        pushSelectable(m_scene->PlayerRef());
 
-    m_gizmo.SetSelectableObjects(m_selectablePtrs, m_selectableHalfExtents);
+    m_gizmo.SetSelectableObjects(m_selectablePtrs, m_selectableHalfExtents, m_selectablePickable);
 }
 
 void LevelEditorController::SyncFreeObjectTransforms()
@@ -469,6 +537,9 @@ void LevelEditorController::SyncFreeObjectTransforms()
         NS::GameCore::Level::ObjectInstance& object = m_scene->Level().objects[objectIndex];
         // grid は cell 固定なので Transform を ObjectInstance へ書き戻さない。 自由配置物のみ
         if ((object.flags & NS::GameCore::Level::kObjectFlagGridAligned) != 0)
+            continue;
+        // 追従カメラの Transform は実プレイ視点位置の同期先で真実の源でない。 位置は初期姿勢へ逆算して持つ
+        if (m_scene->World().Objects()[i]->FindComponent<NS::Scene::ThirdPersonFollowComponent>() != nullptr)
             continue;
 
         const NS::Scene::Transform& root = m_scene->World().Objects()[i]->Root();
@@ -510,6 +581,45 @@ void LevelEditorController::SyncFreeObjectTransforms()
         // edit 中の実プレイヤーは scene が Snapshot しないため、 ここで previous=current に揃え補間ジッタを消す
         root.Snapshot();
     }
+}
+
+NS::Scene::ThirdPersonFollowComponent* LevelEditorController::SelectedFollowCamera() noexcept
+{
+    if (NS::Scene::GameObject* go = SelectedObjectGameObject())
+        return go->FindComponent<NS::Scene::ThirdPersonFollowComponent>();
+    return nullptr;
+}
+
+void LevelEditorController::SyncFollowCameraPoses()
+{
+    // 追従カメラは位置を持たないので、 edit 中は実プレイの視点位置へ Root を寄せて frustum / pick / ギズモを出す
+    // ドラッグ中の選択カメラだけは gizmo が Root を握るため触らず、 その位置を初期姿勢へ逆算する側に任せる
+    const auto& world = m_scene->World();
+    for (std::size_t i = 0; i < world.Objects().size(); ++i)
+    {
+        auto* follow = world.Objects()[i]->FindComponent<NS::Scene::ThirdPersonFollowComponent>();
+        if (follow == nullptr)
+            continue;
+        if (m_gizmo.IsDragging() && world.SourceIndices()[i] == m_selectedObjectIndex)
+            continue;
+        world.Objects()[i]->Root().SetPosition(follow->EvaluatePose(1.0f).position);
+    }
+}
+
+void LevelEditorController::ApplyFollowCameraGizmoDrag()
+{
+    // ドラッグ中の追従カメラは、 gizmo が動かした Root 位置から初期姿勢 (yaw/pitch/距離) を逆算して data へ書き戻す
+    // 位置は初期姿勢由来なので SyncFreeObjectTransforms でなくここで components 経由に保存する
+    if (!m_gizmo.IsDragging())
+        return;
+    NS::Scene::ThirdPersonFollowComponent* follow = SelectedFollowCamera();
+    if (follow == nullptr)
+        return;
+    NS::Scene::GameObject* go = SelectedObjectGameObject();
+    if (go == nullptr || m_selectedObjectIndex >= m_scene->Level().objects.size())
+        return;
+    follow->SetInitialPoseFromCameraPosition(go->Root().Position());
+    NS::Editor::WriteBackComponentEdits(*go, m_scene->Level().objects[m_selectedObjectIndex]);
 }
 
 void LevelEditorController::SelectObjectByIndex(std::size_t index) noexcept
@@ -563,29 +673,32 @@ void LevelEditorController::SelectCamera() noexcept
     m_specialSelection = SpecialSelection::Camera;
 }
 
-void LevelEditorController::RenderAreaCameraGizmos() noexcept
+void LevelEditorController::RenderCameraGizmos() noexcept
 {
-    // edit 中、 各据え置きカメラのトリガ範囲 AABB とカメラ位置 → 注視点を線で可視化する
-    // 選択中のカメラは強調色にする
+    // edit 中、 各カメラの視錐台を点線の四角錐で、 視点位置を小箱で可視化する。 据え置きは進入トリガ AABB も出す
+    // 選択中は強調色にする。 追従カメラは pose がプレイヤー基準なので、 錐台はプレイ中に居る視点位置へ出る
     const auto& world = m_scene->World();
     for (std::size_t i = 0; i < world.Objects().size(); ++i)
     {
-        auto* placed = world.Objects()[i]->FindComponent<NS::Scene::PlacedVirtualCamera>();
-        if (placed == nullptr)
+        auto* vcam = world.Objects()[i]->FindComponent<NS::Scene::VirtualCameraComponent>();
+        if (vcam == nullptr)
             continue;
         const bool selected = (world.SourceIndices()[i] == m_selectedObjectIndex);
+        const NS::Math::Color camColor =
+            selected ? NS::Math::Color{1.0f, 0.55f, 0.10f, 1.0f} : NS::Math::Color{1.0f, 0.85f, 0.10f, 1.0f};
 
-        const NS::Math::Color triggerColor =
-            selected ? NS::Math::Color{1.0f, 0.55f, 0.10f, 1.0f} : NS::Math::Color{0.20f, 0.70f, 1.0f, 1.0f};
-        const NS::Math::AABB trigger{placed->TriggerCenter(), placed->TriggerExtent()};
-        NS::Graphics::DebugDraw::AABB(trigger, triggerColor);
+        const NS::Scene::CameraPose pose = vcam->EvaluatePose(1.0f);
+        DrawCameraFrustum(pose, camColor);
+        NS::Graphics::DebugDraw::AABB(NS::Math::AABB{pose.position, NS::Math::Vector3{0.3f, 0.3f, 0.3f}}, camColor);
 
-        const NS::Math::Vector3 camPos = placed->ViewPosition();
-        const NS::Math::Vector3 lookAt = placed->ViewTarget();
-        const NS::Math::Color camColor{1.0f, 0.85f, 0.10f, 1.0f};
-        const NS::Math::AABB camMarker{camPos, NS::Math::Vector3{0.3f, 0.3f, 0.3f}};
-        NS::Graphics::DebugDraw::AABB(camMarker, camColor);
-        NS::Graphics::DebugDraw::Line(camPos, lookAt, camColor);
+        // 据え置きカメラだけ進入トリガ範囲を出す。 追従には無い
+        if (auto* placed = world.Objects()[i]->FindComponent<NS::Scene::PlacedVirtualCamera>())
+        {
+            const NS::Math::Color triggerColor =
+                selected ? NS::Math::Color{1.0f, 0.55f, 0.10f, 1.0f} : NS::Math::Color{0.20f, 0.70f, 1.0f, 1.0f};
+            NS::Graphics::DebugDraw::AABB(NS::Math::AABB{placed->TriggerCenter(), placed->TriggerExtent()},
+                                          triggerColor);
+        }
     }
 }
 
