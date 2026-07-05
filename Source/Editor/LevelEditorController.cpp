@@ -428,7 +428,8 @@ void LevelEditorController::RefreshGizmoSelectables()
     // 拡大した配置物の判定箱が scale^2 に膨らんで近くの grid クリックを先に奪うので unit のまま渡す
     for (std::size_t i = 0; i < m_scene->World().Objects().size(); ++i)
     {
-        const NS::GameCore::Level::ObjectInstance& entry = m_scene->Level().objects[m_scene->World().SourceIndices()[i]];
+        const NS::GameCore::Level::ObjectInstance& entry =
+            m_scene->Level().objects[m_scene->World().SourceIndices()[i]];
         if ((entry.flags & NS::GameCore::Level::kObjectFlagGridAligned) != 0)
             continue;
         m_selectablePtrs.push_back(m_scene->World().Objects()[i].get());
@@ -438,7 +439,8 @@ void LevelEditorController::RefreshGizmoSelectables()
     // grid solid も掴める。 掴むと PromoteGridBlockToFree で自由オブジェクトに変わる。 slope 等は対象外
     for (std::size_t i = 0; i < m_scene->World().Objects().size(); ++i)
     {
-        const NS::GameCore::Level::ObjectInstance& entry = m_scene->Level().objects[m_scene->World().SourceIndices()[i]];
+        const NS::GameCore::Level::ObjectInstance& entry =
+            m_scene->Level().objects[m_scene->World().SourceIndices()[i]];
         if (!NS::GameCore::Blocks::IsGridSolidObject(entry))
             continue;
         m_selectablePtrs.push_back(m_scene->World().Objects()[i].get());
@@ -561,36 +563,6 @@ void LevelEditorController::SelectCamera() noexcept
     m_specialSelection = SpecialSelection::Camera;
 }
 
-void LevelEditorController::AddCameraObject()
-{
-    // 新規カメラは編集視点の中心あたりを見る位置に置き、 トリガも中心へ重ねるデフォルトにする
-    // free-fly カメラ不在の退避は原点。 編集中は常に rig が居るため実質使われない
-    NS::Math::Vector3 center{0.0f, 0.0f, 0.0f};
-    if (m_editorCameraRig)
-        center = m_editorCameraRig->EditorCam().Center();
-
-    NS::GameCore::Level::ObjectInstance object{};
-    object.positionX = center.x;
-    object.positionY = center.y + 5.0f;
-    object.positionZ = center.z - 10.0f;
-
-    NS::GameCore::Level::ComponentData camera;
-    camera.typeName = "PlacedVirtualCamera";
-    camera.fields.push_back(NS::GameCore::Level::FieldValue{"Look Target", center});
-    camera.fields.push_back(NS::GameCore::Level::FieldValue{"Trigger Center", center});
-    camera.fields.push_back(NS::GameCore::Level::FieldValue{"Trigger Extent", NS::Math::Vector3{3.0f, 3.0f, 3.0f}});
-    camera.fields.push_back(NS::GameCore::Level::FieldValue{"Look At Player", false});
-    camera.fields.push_back(NS::GameCore::Level::FieldValue{"Priority", 10});
-    object.components.push_back(std::move(camera));
-
-    // 通常の配置物と同じ undo 履歴へ載せ、 追加した末尾のカメラを選択する
-    m_editor.Undo().Push(std::make_unique<NS::Editor::AddObjectCommand>(object), m_scene->Level());
-
-    m_scene->RebuildWorld();
-    RefreshGizmoSelectables();
-    SelectObjectByIndex(m_scene->Level().objects.size() - 1);
-}
-
 void LevelEditorController::RenderAreaCameraGizmos() noexcept
 {
     // edit 中、 各据え置きカメラのトリガ範囲 AABB とカメラ位置 → 注視点を線で可視化する
@@ -627,12 +599,13 @@ void LevelEditorController::RenderColliderWireframes() noexcept
     // free / grid の別は ObjectInstance の flags で決まる。 runtime list は 1 本
     for (std::size_t i = 0; i < m_scene->World().Objects().size(); ++i)
     {
-        const NS::GameCore::Level::ObjectInstance& entry = m_scene->Level().objects[m_scene->World().SourceIndices()[i]];
+        const NS::GameCore::Level::ObjectInstance& entry =
+            m_scene->Level().objects[m_scene->World().SourceIndices()[i]];
         if ((entry.flags & NS::GameCore::Level::kObjectFlagGridAligned) == 0)
         {
             // 自由配置物は Box があれば回転込み OBB、 球 / カプセルは collider 由来の AABB で出す
-            if (auto* box =
-                    NS::GameCore::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_scene->World().Objects()[i]))
+            if (auto* box = NS::GameCore::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(
+                    *m_scene->World().Objects()[i]))
             {
                 const NS::Physics::OBB obb = box->WorldOBB();
                 NS::Graphics::DebugDraw::OBB(obb.center, obb.axisX, obb.axisY, obb.axisZ, obb.halfExtents, freeColor);
@@ -644,8 +617,8 @@ void LevelEditorController::RenderColliderWireframes() noexcept
         }
         else if (NS::GameCore::Blocks::IsGridSolidObject(entry))
         {
-            if (auto* box =
-                    NS::GameCore::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*m_scene->World().Objects()[i]))
+            if (auto* box = NS::GameCore::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(
+                    *m_scene->World().Objects()[i]))
                 NS::Graphics::DebugDraw::AABB(box->WorldAABB(), gridColor);
         }
         // hazard 等の grid の非 solid は当たり形状を出さない
@@ -725,7 +698,8 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
             if (m_scene->World().SourceIndices()[i] != m_selectedObjectIndex)
                 continue;
             // grid solid は掴むと自由化されるため gizmo に貼り直さない
-            if ((m_scene->Level().objects[m_selectedObjectIndex].flags & NS::GameCore::Level::kObjectFlagGridAligned) != 0)
+            if ((m_scene->Level().objects[m_selectedObjectIndex].flags & NS::GameCore::Level::kObjectFlagGridAligned) !=
+                0)
                 break;
             NS::Scene::Transform* root = &m_scene->World().Objects()[i]->Root();
             if (m_gizmo.Selected() != root)
@@ -862,7 +836,8 @@ void LevelEditorController::RemoveComponentFromSelected(std::size_t componentInd
 
     // 空構成は build で消えるゴーストになるので最後の 1 個 / 範囲外は消さない。 no-op command を積まず undo
     // 履歴も汚さない
-    const std::vector<NS::GameCore::Level::ComponentData>& components = m_scene->Level().objects[objectIndex].components;
+    const std::vector<NS::GameCore::Level::ComponentData>& components =
+        m_scene->Level().objects[objectIndex].components;
     if (componentIndex >= components.size() || components.size() <= 1)
         return;
 
@@ -1074,7 +1049,8 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
     if (slot >= m_scene->World().Objects().size())
         return false;
 
-    auto* mesh = NS::GameCore::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*m_scene->World().Objects()[slot]);
+    auto* mesh =
+        NS::GameCore::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*m_scene->World().Objects()[slot]);
     if (mesh == nullptr)
         return false;
 

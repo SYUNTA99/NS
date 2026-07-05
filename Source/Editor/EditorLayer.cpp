@@ -398,10 +398,6 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorController& editor) noexcept
 
         if (ImGui::SmallButton("+ Add Object"))
             editor.AddObject();
-        ImGui::SameLine();
-        // 据え置きカメラも通常の配置物。 上の objects 一覧に "Camera" として並び、 選択・変形・削除も共通
-        if (ImGui::SmallButton("+ Add Camera"))
-            editor.AddCameraObject();
     }
     ImGui::End();
 #else

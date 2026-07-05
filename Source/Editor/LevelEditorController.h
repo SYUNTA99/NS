@@ -146,10 +146,6 @@ public:
     /// Inspector / Hierarchy が Camera 選択中か
     [[nodiscard]] bool IsCameraSelected() const noexcept { return m_specialSelection == SpecialSelection::Camera; }
 
-    /// 編集視点の中心あたりに据え置きカメラの配置物を 1 個追加して選択する。 Undo 対応
-    /// カメラは通常の配置物なので、 選択・変形・削除・Inspector 編集は object の既存経路に乗る
-    void AddCameraObject();
-
     /// Object モードかつギズモで何か選択中なら true。 material 適用先がある状態
     [[nodiscard]] bool HasGizmoSelection() const noexcept
     {
