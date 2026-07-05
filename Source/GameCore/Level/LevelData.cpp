@@ -1,14 +1,14 @@
-#include "Game/Level/LevelData.h"
+#include "GameCore/Level/LevelData.h"
 
 #include "Framework/Math/Math.h"
-#include "Game/Blocks/BlockRegistry.h"
-#include "Game/Blocks/BuildPlacedObject.h"
-#include "Game/Level/detail/crc32.h"
+#include "GameCore/Blocks/BlockRegistry.h"
+#include "GameCore/Blocks/BuildPlacedObject.h"
+#include "GameCore/Level/detail/crc32.h"
 
 #include <cmath>
 #include <unordered_set>
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
     namespace
     {
@@ -252,7 +252,7 @@ namespace NS::Game::Level
         object.scaleY = 1.8f;
         object.scaleZ = 0.8f;
         object.materialIndex = -1;
-        object.components = NS::Game::Blocks::MakeDefaultPlayerComponents();
+        object.components = NS::GameCore::Blocks::MakeDefaultPlayerComponents();
         return object;
     }
 
@@ -275,7 +275,7 @@ namespace NS::Game::Level
     {
         ObjectInstance object{};
         object.materialIndex = -1;
-        object.components = NS::Game::Blocks::MakeFollowCameraComponents(targetObjectId);
+        object.components = NS::GameCore::Blocks::MakeFollowCameraComponents(targetObjectId);
         return object;
     }
 
@@ -362,7 +362,7 @@ namespace NS::Game::Level
         float bestDot = -2.0f;
         for (std::uint8_t step = 0; step < 4; ++step)
         {
-            const float yaw = NS::Game::Blocks::BlockRotationToYaw(step);
+            const float yaw = NS::GameCore::Blocks::BlockRotationToYaw(step);
             const NS::Math::Quaternion candidate = NS::Math::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
             const float dot = std::fabs(current.x * candidate.x + current.y * candidate.y + current.z * candidate.z +
                                         current.w * candidate.w);
@@ -377,7 +377,7 @@ namespace NS::Game::Level
 
     void SetGridRotationStep(ObjectInstance& object, std::uint8_t rotationStep) noexcept
     {
-        const float yaw = NS::Game::Blocks::BlockRotationToYaw(static_cast<std::uint8_t>(rotationStep & 0x03));
+        const float yaw = NS::GameCore::Blocks::BlockRotationToYaw(static_cast<std::uint8_t>(rotationStep & 0x03));
         const NS::Math::Quaternion rotation = NS::Math::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
         object.rotationX = rotation.x;
         object.rotationY = rotation.y;
@@ -394,7 +394,7 @@ namespace NS::Game::Level
         object.materialIndex = -1;
         object.flags = kObjectFlagGridAligned;
         SetGridRotationStep(object, rotationStep);
-        object.components = NS::Game::Blocks::MakeGridCubeComponents();
+        object.components = NS::GameCore::Blocks::MakeGridCubeComponents();
         return object;
     }
 
@@ -441,4 +441,4 @@ namespace NS::Game::Level
         return 0; // PickupComponent はあるが field 欠損 → コイン既定
     }
 
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

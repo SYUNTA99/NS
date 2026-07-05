@@ -4,10 +4,10 @@
 /// @brief プレイ進行役の GameObject。 進行の振る舞いは配下 Component が担う
 
 #include "Framework/Scene/GameObject.h"
-#include "Game/Level/ClearFadeComponent.h"
-#include "Game/Level/PlayFlowComponent.h"
+#include "GameCore/Level/ClearFadeComponent.h"
+#include "GameCore/Level/PlayFlowComponent.h"
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
     /// プレイ進行を束ねる進行役。 scene が 1 体所有し、 編集中は Component を寝かせて止める
     class PlayDirector : public NS::Scene::GameObject
@@ -29,4 +29,4 @@ namespace NS::Game::Level
         ClearFadeComponent* m_fade = nullptr;
     };
 
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

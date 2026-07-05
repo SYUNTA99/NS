@@ -6,7 +6,7 @@
 #include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/GameObject.h"
-#include "Game/Level/LevelData.h"
+#include "GameCore/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
@@ -15,7 +15,7 @@
 #include <vector>
 
 namespace EditorNs = NS::Editor;
-namespace LevelNs = NS::Game::Level;
+namespace LevelNs = NS::GameCore::Level;
 namespace SceneNs = NS::Scene;
 
 TEST(ComponentClipboard, CaptureCopiesTypeAndLiveFieldValues)

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file PlayMode.h
-/// @brief NS::Game::Level::PlayMode — Play 中のゲームルール bookkeeping を Enter/Tick/Exit で担う
+/// @brief NS::GameCore::Level::PlayMode — Play 中のゲームルール bookkeeping を Enter/Tick/Exit で担う
 ///
 /// @details 物理すなわち移動 / 重力 / 衝突 / 掴まりは Player の CharacterMovementComponent が担う
 /// PlayMode は Play 開始時のプレイヤー実体位置への配置 + counter リセットを Enter で行い、 毎フレームの
@@ -18,7 +18,7 @@
 #include <cstddef>
 #include <vector>
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
     struct LevelData;
     struct PlayState;
@@ -61,4 +61,4 @@ namespace NS::Game::Level
 
     /// 接触ダメージを 1 与える。 health 下限は 0、 0 到達で deathTriggered を立てる
     void ApplyContactDamage(PlayState& play) noexcept;
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

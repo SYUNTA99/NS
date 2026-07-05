@@ -1,11 +1,11 @@
-#include "Game/Level/LevelData.h"
-#include "Game/Level/PlayState.h"
+#include "GameCore/Level/LevelData.h"
+#include "GameCore/Level/PlayState.h"
 
 #include "Framework/Math/Math.h"
 
 #include <gtest/gtest.h>
 
-namespace LevelNs = NS::Game::Level;
+namespace LevelNs = NS::GameCore::Level;
 
 namespace
 {

@@ -1,9 +1,9 @@
 #include "Editor/EditorMode.h"
 #include "Editor/LevelEditorController.h"
-#include "Game/Level/LevelData.h"
-#include "Game/Level/PlayMode.h"
-#include "Game/Level/PlayState.h"
-#include "Game/LevelPlayScene.h"
+#include "GameCore/Level/LevelData.h"
+#include "GameCore/Level/PlayMode.h"
+#include "GameCore/Level/PlayState.h"
+#include "GameCore/LevelPlayScene.h"
 
 #include <gtest/gtest.h>
 
@@ -97,7 +97,7 @@ TEST(ModeToggle, EnterPlayInitializesPlayStateAtPlayerObject)
     LevelEditorController editor(&scene);
     auto& flow = scene.Director().Flow();
     scene.Level().objects.push_back(
-        NS::Game::Level::MakePlayerObject(NS::Math::Vector3{7.0f, 2.0f, -4.0f}, NS::Math::Quaternion{}));
+        NS::GameCore::Level::MakePlayerObject(NS::Math::Vector3{7.0f, 2.0f, -4.0f}, NS::Math::Quaternion{}));
     editor.EnterPlay();
 
     EXPECT_NEAR(flow.Play().playerPosition.x, 7.0f, 1e-4f);

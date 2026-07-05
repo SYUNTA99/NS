@@ -11,12 +11,12 @@
 
 #include <vector>
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
     struct LevelData;
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level
 
-namespace NS::Game::Blocks
+namespace NS::GameCore::Blocks
 {
     /// 天面の縁辺 1 本。 a, b は world 端点で y は天面高さ
     /// outward は空セル側 すなわちコヨーテ猶予が伸びる向きの水平単位ベクトル
@@ -29,5 +29,5 @@ namespace NS::Game::Blocks
 
     /// level の grid 固形から、 歩ける天面の踏み外せる縁辺を world 線分列で返す
     /// 真上が固形のセルは天面が塞がれて立てないので対象外。 側方の隣が固形なら共有面に縁は出ない
-    [[nodiscard]] std::vector<LedgeEdge> ComputeTopLedgeEdges(const NS::Game::Level::LevelData& level);
-} // namespace NS::Game::Blocks
+    [[nodiscard]] std::vector<LedgeEdge> ComputeTopLedgeEdges(const NS::GameCore::Level::LevelData& level);
+} // namespace NS::GameCore::Blocks

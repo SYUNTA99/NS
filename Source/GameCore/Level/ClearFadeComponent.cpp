@@ -1,4 +1,4 @@
-#include "Game/Level/ClearFadeComponent.h"
+#include "GameCore/Level/ClearFadeComponent.h"
 
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -6,13 +6,13 @@
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/SceneBase.h"
-#include "Game/Level/PlayFlowComponent.h"
-#include "Game/LevelPlayScene.h"
-#include "Game/Player.h"
+#include "GameCore/Level/PlayFlowComponent.h"
+#include "GameCore/LevelPlayScene.h"
+#include "GameCore/Player.h"
 
 #include <algorithm>
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
     ClearFadeComponent::ClearFadeComponent() noexcept = default;
     ClearFadeComponent::~ClearFadeComponent() noexcept = default;
@@ -98,4 +98,4 @@ namespace NS::Game::Level
         m_screenFade->Render(*context.renderer, NS::Math::Color{0.0f, 0.0f, 0.0f, m_alpha});
     }
 
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

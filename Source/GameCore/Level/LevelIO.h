@@ -8,7 +8,7 @@
 
 #include <filesystem>
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
 
     struct LevelData;
@@ -20,4 +20,4 @@ namespace NS::Game::Level
     /// `outLevel` は default-constructed の空 LevelData に reset される
     [[nodiscard]] bool LoadLevelFromFile(LevelData& outLevel, const std::filesystem::path& path) noexcept;
 
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

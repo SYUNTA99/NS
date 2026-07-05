@@ -4,7 +4,7 @@
 /// @brief 対象オブジェクトの components 一覧を丸ごと置き換える Command。 Undo で元の一覧へ戻す
 
 #include "Editor/Undo/ICommand.h"
-#include "Game/Level/LevelData.h"
+#include "GameCore/Level/LevelData.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -20,17 +20,17 @@ namespace NS::Editor
     {
     public:
         SetObjectComponentsCommand(std::uint32_t targetObjectId,
-                                   std::vector<NS::Game::Level::ComponentData> newComponents) noexcept;
+                                   std::vector<NS::GameCore::Level::ComponentData> newComponents) noexcept;
 
-        void Do(NS::Game::Level::LevelData& level) noexcept override;
-        void Undo(NS::Game::Level::LevelData& level) noexcept override;
+        void Do(NS::GameCore::Level::LevelData& level) noexcept override;
+        void Undo(NS::GameCore::Level::LevelData& level) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override;
 
     private:
         std::uint32_t m_targetObjectId;
-        std::vector<NS::Game::Level::ComponentData> m_newComponents;
-        std::vector<NS::Game::Level::ComponentData> m_oldComponents; // Do で退避した置換前の一覧
+        std::vector<NS::GameCore::Level::ComponentData> m_newComponents;
+        std::vector<NS::GameCore::Level::ComponentData> m_oldComponents; // Do で退避した置換前の一覧
     };
 
 } // namespace NS::Editor

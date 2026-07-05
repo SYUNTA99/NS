@@ -1,10 +1,10 @@
-#include "Game/Blocks/LedgeEdges.h"
-#include "Game/Level/LevelData.h"
+#include "GameCore/Blocks/LedgeEdges.h"
+#include "GameCore/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
-namespace LevelNs = NS::Game::Level;
-namespace BlocksNs = NS::Game::Blocks;
+namespace LevelNs = NS::GameCore::Level;
+namespace BlocksNs = NS::GameCore::Blocks;
 
 TEST(LedgeEdgesTest, SingleBlockHasFourTopEdges)
 {

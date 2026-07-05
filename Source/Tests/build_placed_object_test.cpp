@@ -8,22 +8,22 @@
 #include <Framework/Scene/Components/SlopeColliderComponent.h>
 #include <Framework/Scene/Components/SphereColliderComponent.h>
 #include <Framework/Scene/GameObject.h>
-#include <Game/Blocks/BuildPlacedObject.h>
-#include <Game/Level/LevelData.h>
-#include <Game/Player.h>
+#include <GameCore/Blocks/BuildPlacedObject.h>
+#include <GameCore/Level/LevelData.h>
+#include <GameCore/Player.h>
 
 #include <filesystem>
 #include <vector>
 
 namespace
 {
-    using NS::Game::Blocks::BuildPlacedObject;
-    using NS::Game::Blocks::FindComponent;
-    using NS::Game::Blocks::MakeFreeCubeComponents;
-    using NS::Game::Level::MakeGridObject;
-    using NS::Game::Level::ObjectInstance;
-    using NS::Game::Level::SetObjectShapeCollider;
-    using NS::Game::Level::ShapeCollider;
+    using NS::GameCore::Blocks::BuildPlacedObject;
+    using NS::GameCore::Blocks::FindComponent;
+    using NS::GameCore::Blocks::MakeFreeCubeComponents;
+    using NS::GameCore::Level::MakeGridObject;
+    using NS::GameCore::Level::ObjectInstance;
+    using NS::GameCore::Level::SetObjectShapeCollider;
+    using NS::GameCore::Level::ShapeCollider;
     using NS::Math::Vector3;
 
     // device を確立しない AssetManager。 Builtin / SharedMaterial は nullptr を返すが、 ファクトリは落ちない
@@ -200,9 +200,9 @@ TEST_F(BuildPlacedObjectTest, ComponentsDriveBuild)
     ObjectInstance object;
     object.flags = 0;
 
-    NS::Game::Level::ComponentData box;
+    NS::GameCore::Level::ComponentData box;
     box.typeName = "BoxColliderComponent";
-    box.fields.push_back(NS::Game::Level::FieldValue{"Half Extents", Vector3{1.0f, 2.0f, 3.0f}});
+    box.fields.push_back(NS::GameCore::Level::FieldValue{"Half Extents", Vector3{1.0f, 2.0f, 3.0f}});
     object.components.push_back(std::move(box));
 
     auto obj = Build(object);
@@ -219,7 +219,7 @@ TEST_F(BuildPlacedObjectTest, ComponentsDriveBuild)
 TEST_F(BuildPlacedObjectTest, EmptyComponentsBuildsNothing)
 {
     ObjectInstance object;
-    object.flags = NS::Game::Level::kObjectFlagGridAligned;
+    object.flags = NS::GameCore::Level::kObjectFlagGridAligned;
     ASSERT_TRUE(object.components.empty());
 
     EXPECT_EQ(Build(object), nullptr);
@@ -242,10 +242,10 @@ TEST_F(BuildPlacedObjectTest, AssetPathTraversalRejectedFallsBackToDefault)
 TEST_F(BuildPlacedObjectTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
 {
     ObjectInstance slope = MakeGridObject(0, 0, 0, 0);
-    slope.components = NS::Game::Blocks::MakeGridSlopeComponents(45.0f);
+    slope.components = NS::GameCore::Blocks::MakeGridSlopeComponents(45.0f);
 
-    EXPECT_STREQ(NS::Game::Blocks::ObjectDisplayName(slope), "Slope 45");
-    EXPECT_TRUE(NS::Game::Blocks::IsRotatableObject(slope));
+    EXPECT_STREQ(NS::GameCore::Blocks::ObjectDisplayName(slope), "Slope 45");
+    EXPECT_TRUE(NS::GameCore::Blocks::IsRotatableObject(slope));
 
     auto obj = Build(slope);
     ASSERT_NE(obj, nullptr);
@@ -260,10 +260,10 @@ TEST_F(BuildPlacedObjectTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
 TEST_F(BuildPlacedObjectTest, GoalHasPickupAndDisplaysAsGoal)
 {
     ObjectInstance goal = MakeGridObject(0, 0, 0, 0);
-    goal.components = NS::Game::Blocks::MakeGoalComponents();
+    goal.components = NS::GameCore::Blocks::MakeGoalComponents();
 
-    EXPECT_STREQ(NS::Game::Blocks::ObjectDisplayName(goal), "Goal");
-    EXPECT_FALSE(NS::Game::Blocks::IsRotatableObject(goal));
+    EXPECT_STREQ(NS::GameCore::Blocks::ObjectDisplayName(goal), "Goal");
+    EXPECT_FALSE(NS::GameCore::Blocks::IsRotatableObject(goal));
 
     auto obj = Build(goal);
     ASSERT_NE(obj, nullptr);
@@ -275,7 +275,7 @@ TEST_F(BuildPlacedObjectTest, GoalHasPickupAndDisplaysAsGoal)
 // プレイヤー実体は Player 派生の器に二重生成なしで組まれ、 移動と入力は休止で始まる
 TEST_F(BuildPlacedObjectTest, PlayerObjectBuildsDormantPlayerTyped)
 {
-    auto obj = Build(NS::Game::Level::MakePlayerObject(Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
+    auto obj = Build(NS::GameCore::Level::MakePlayerObject(Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
     ASSERT_NE(obj, nullptr);
     auto* player = dynamic_cast<Player*>(obj.get());
     ASSERT_NE(player, nullptr);
@@ -295,10 +295,10 @@ TEST_F(BuildPlacedObjectTest, PlayerObjectBuildsDormantPlayerTyped)
 // data 側で焼いた値が既定構成の component へ反射適用される
 TEST_F(BuildPlacedObjectTest, PlayerObjectAppliesDataValuesToComponents)
 {
-    ObjectInstance data = NS::Game::Level::MakePlayerObject(Vector3{}, NS::Math::Quaternion{});
+    ObjectInstance data = NS::GameCore::Level::MakePlayerObject(Vector3{}, NS::Math::Quaternion{});
     for (auto& component : data.components)
         if (component.typeName == "CharacterMovementComponent")
-            component.fields.push_back(NS::Game::Level::FieldValue{"Max Speed", 11.0f});
+            component.fields.push_back(NS::GameCore::Level::FieldValue{"Max Speed", 11.0f});
 
     auto obj = Build(data);
     ASSERT_NE(obj, nullptr);
@@ -312,9 +312,9 @@ TEST_F(BuildPlacedObjectTest, PlayerObjectAppliesDataValuesToComponents)
 TEST_F(BuildPlacedObjectTest, DuplicateColliderDataBuildsCompoundColliders)
 {
     ObjectInstance object = MakeFreeCube(ShapeCollider::Box, Vector3{1.0f, 1.0f, 1.0f});
-    NS::Game::Level::ComponentData second;
+    NS::GameCore::Level::ComponentData second;
     second.typeName = "BoxColliderComponent";
-    second.fields.push_back(NS::Game::Level::FieldValue{"Half Extents", Vector3{2.0f, 2.0f, 2.0f}});
+    second.fields.push_back(NS::GameCore::Level::FieldValue{"Half Extents", Vector3{2.0f, 2.0f, 2.0f}});
     object.components.push_back(second);
 
     auto obj = Build(object);

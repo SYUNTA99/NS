@@ -1,4 +1,4 @@
-#include "Game/SkinnedDebugCharacter.h"
+#include "GameCore/SkinnedDebugCharacter.h"
 
 #include "Framework/App/Application.h"
 #include "Framework/Core/Filesystem.h"

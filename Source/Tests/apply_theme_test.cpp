@@ -1,11 +1,11 @@
 #include "Editor/LevelEditorController.h"
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/Logger.h"
-#include "Game/Level/LevelData.h"
-#include "Game/LevelPlayScene.h"
-#include "Game/Theme/ThemeData.h"
-#include "Game/Theme/ThemeId.h"
-#include "Game/Theme/ThemeRegistry.h"
+#include "GameCore/Level/LevelData.h"
+#include "GameCore/LevelPlayScene.h"
+#include "GameCore/Theme/ThemeData.h"
+#include "GameCore/Theme/ThemeId.h"
+#include "GameCore/Theme/ThemeRegistry.h"
 
 #include <filesystem>
 
@@ -21,12 +21,12 @@ namespace
         void SetUp() override
         {
             NS::Core::Logger::Init();
-            NS::Game::Theme::LoadThemesFromDirectory(NS::Core::FileSystem::ContentRoot() / "Assets" / "Themes");
+            NS::GameCore::Theme::LoadThemesFromDirectory(NS::Core::FileSystem::ContentRoot() / "Assets" / "Themes");
         }
         void TearDown() override
         {
             // 次のテストが読込済み状態を仮定しないよう、存在しないディレクトリを読ませて中立へ戻す
-            NS::Game::Theme::LoadThemesFromDirectory(std::filesystem::temp_directory_path() / "ns_apply_theme_restore");
+            NS::GameCore::Theme::LoadThemesFromDirectory(std::filesystem::temp_directory_path() / "ns_apply_theme_restore");
             NS::Core::Logger::Shutdown();
         }
     };
@@ -36,10 +36,10 @@ namespace
         LevelPlayScene scene;
         LevelEditorController editor(&scene);
 
-        editor.ApplyTheme(NS::Game::Theme::ThemeId::Lava);
+        editor.ApplyTheme(NS::GameCore::Theme::ThemeId::Lava);
 
-        const NS::Game::Theme::ThemeData& lava = NS::Game::Theme::Get(NS::Game::Theme::ThemeId::Lava);
-        const NS::Game::Level::LevelEnvironment& env = scene.Level().environment;
+        const NS::GameCore::Theme::ThemeData& lava = NS::GameCore::Theme::Get(NS::GameCore::Theme::ThemeId::Lava);
+        const NS::GameCore::Level::LevelEnvironment& env = scene.Level().environment;
         EXPECT_EQ(env.blockTextureBaseSlice, lava.blockTextureArrayBaseSlice);
         EXPECT_EQ(env.skyboxCubemapPath, lava.skyboxCubemapPath.generic_string());
         EXPECT_FLOAT_EQ(env.lightDirection.x, lava.lightDirection.x);
@@ -55,10 +55,10 @@ namespace
         LevelPlayScene scene;
         LevelEditorController editor(&scene);
 
-        editor.ApplyTheme(NS::Game::Theme::ThemeId::Grass);
+        editor.ApplyTheme(NS::GameCore::Theme::ThemeId::Grass);
         EXPECT_EQ(scene.Level().environment.blockTextureBaseSlice, 0);
 
-        editor.ApplyTheme(NS::Game::Theme::ThemeId::Cave);
+        editor.ApplyTheme(NS::GameCore::Theme::ThemeId::Cave);
         EXPECT_EQ(scene.Level().environment.blockTextureBaseSlice, 8);
     }
 } // namespace

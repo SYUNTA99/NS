@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <span>
 
-namespace NS::Game::Level::detail
+namespace NS::GameCore::Level::detail
 {
 
     constexpr std::uint32_t kCrc32Init = 0xFFFFFFFFu;
@@ -22,4 +22,4 @@ namespace NS::Game::Level::detail
     /// Update 連結の最終値。 `crc ^ 0xFFFFFFFFu` を 1 回かけて返す
     [[nodiscard]] std::uint32_t Crc32Finalize(std::uint32_t crc) noexcept;
 
-} // namespace NS::Game::Level::detail
+} // namespace NS::GameCore::Level::detail

@@ -12,9 +12,9 @@
 
 namespace NS::Editor
 {
-    NS::Game::Level::ComponentData CaptureComponentData(const NS::Scene::Component& comp)
+    NS::GameCore::Level::ComponentData CaptureComponentData(const NS::Scene::Component& comp)
     {
-        NS::Game::Level::ComponentData data;
+        NS::GameCore::Level::ComponentData data;
         const NS::Scene::ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr)
             return data;
@@ -24,7 +24,7 @@ namespace NS::Editor
         for (std::size_t i = 0; i < info->fieldCount; ++i)
         {
             const NS::Scene::FieldDesc& field = info->fields[i];
-            NS::Game::Level::FieldValue value;
+            NS::GameCore::Level::FieldValue value;
             value.name = field.name;
             switch (field.type)
             {
@@ -79,7 +79,7 @@ namespace NS::Editor
         return data;
     }
 
-    void WriteBackComponentEdits(NS::Scene::GameObject& runtime, NS::Game::Level::ObjectInstance& object)
+    void WriteBackComponentEdits(NS::Scene::GameObject& runtime, NS::GameCore::Level::ObjectInstance& object)
     {
         for (NS::Scene::Component* comp : runtime.Components())
         {
@@ -89,8 +89,8 @@ namespace NS::Editor
             if (info == nullptr)
                 continue;
 
-            NS::Game::Level::ComponentData captured = CaptureComponentData(*comp);
-            for (NS::Game::Level::ComponentData& data : object.components)
+            NS::GameCore::Level::ComponentData captured = CaptureComponentData(*comp);
+            for (NS::GameCore::Level::ComponentData& data : object.components)
             {
                 if (data.typeName != captured.typeName)
                     continue;

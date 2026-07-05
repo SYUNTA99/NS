@@ -1,13 +1,13 @@
-#include "Game/Blocks/AutoTile.h"
+#include "GameCore/Blocks/AutoTile.h"
 
 #include "Framework/Graphics/TextureArray.h"
-#include "Game/Level/LevelData.h"
+#include "GameCore/Level/LevelData.h"
 
 #include <cstddef>
 #include <string>
 #include <variant>
 
-namespace NS::Game::Blocks
+namespace NS::GameCore::Blocks
 {
 
     namespace
@@ -43,18 +43,18 @@ namespace NS::Game::Blocks
 
         // object の視覚キーを導く。 MeshRenderer の反射 "Mesh" / "Material" 値とマテリアル添字で連結同一性を決める
         // MeshRenderer を持たない coin / goal 等の object は空メッシュキーになり solid と連結しない
-        VisualTileKey ComputeVisualKey(const NS::Game::Level::ObjectInstance& object)
+        VisualTileKey ComputeVisualKey(const NS::GameCore::Level::ObjectInstance& object)
         {
             VisualTileKey key;
             key.materialIndex = object.materialIndex;
-            const NS::Game::Level::ComponentData* renderer =
-                NS::Game::Level::FindComponentData(object, "MeshRendererComponent");
+            const NS::GameCore::Level::ComponentData* renderer =
+                NS::GameCore::Level::FindComponentData(object, "MeshRendererComponent");
             if (renderer == nullptr)
                 return key; // MeshRenderer 無しの coin / goal 等は空メッシュキーで solid と連結しない
-            if (const NS::Game::Level::FieldValue* mesh = NS::Game::Level::FindField(*renderer, "Mesh"))
+            if (const NS::GameCore::Level::FieldValue* mesh = NS::GameCore::Level::FindField(*renderer, "Mesh"))
                 if (const auto* meshName = std::get_if<std::string>(&mesh->value))
                     key.mesh = *meshName;
-            if (const NS::Game::Level::FieldValue* material = NS::Game::Level::FindField(*renderer, "Material"))
+            if (const NS::GameCore::Level::FieldValue* material = NS::GameCore::Level::FindField(*renderer, "Material"))
                 if (const auto* matRef = std::get_if<std::string>(&material->value))
                     key.materialRef = *matRef;
             return key;
@@ -80,7 +80,7 @@ namespace NS::Game::Blocks
         return static_cast<std::uint16_t>(slice);
     }
 
-    std::uint8_t ComputeNeighborMask(const NS::Game::Level::LevelData& level,
+    std::uint8_t ComputeNeighborMask(const NS::GameCore::Level::LevelData& level,
                                      std::int16_t x,
                                      std::int16_t y,
                                      std::int16_t z) noexcept
@@ -95,8 +95,8 @@ namespace NS::Game::Blocks
             {0, 0, -1},
         };
 
-        const std::size_t center = NS::Game::Level::FindGridObjectAtCell(level, x, y, z);
-        if (center == NS::Game::Level::kNoObjectIndex)
+        const std::size_t center = NS::GameCore::Level::FindGridObjectAtCell(level, x, y, z);
+        if (center == NS::GameCore::Level::kNoObjectIndex)
             return 0;
         const VisualTileKey centerKey = ComputeVisualKey(level.objects[center]);
 
@@ -106,8 +106,8 @@ namespace NS::Game::Blocks
             const std::int16_t nx = static_cast<std::int16_t>(x + kOffsets[i][0]);
             const std::int16_t ny = static_cast<std::int16_t>(y + kOffsets[i][1]);
             const std::int16_t nz = static_cast<std::int16_t>(z + kOffsets[i][2]);
-            const std::size_t neighbor = NS::Game::Level::FindGridObjectAtCell(level, nx, ny, nz);
-            if (neighbor != NS::Game::Level::kNoObjectIndex && ComputeVisualKey(level.objects[neighbor]) == centerKey)
+            const std::size_t neighbor = NS::GameCore::Level::FindGridObjectAtCell(level, nx, ny, nz);
+            if (neighbor != NS::GameCore::Level::kNoObjectIndex && ComputeVisualKey(level.objects[neighbor]) == centerKey)
             {
                 mask = static_cast<std::uint8_t>(mask | (1u << i));
             }
@@ -115,4 +115,4 @@ namespace NS::Game::Blocks
         return mask;
     }
 
-} // namespace NS::Game::Blocks
+} // namespace NS::GameCore::Blocks

@@ -1,7 +1,7 @@
 #include "Editor/Undo/PlaceCommand.h"
 #include "Editor/Undo/TransformCommand.h"
 #include "Editor/Undo/UndoStack.h"
-#include "Game/Level/LevelData.h"
+#include "GameCore/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
@@ -9,7 +9,7 @@
 #include <memory>
 
 namespace EditorNs = NS::Editor;
-namespace LevelNs = NS::Game::Level;
+namespace LevelNs = NS::GameCore::Level;
 
 TEST(UndoStackTest, EmptyStackUndoRedoReturnFalse)
 {

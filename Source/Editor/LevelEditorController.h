@@ -3,8 +3,8 @@
 /// @file LevelEditorController.h
 /// @brief LevelPlayScene を編集する開発用コントローラ。Debug / Development 限定
 ///
-/// @details scene 自身は「編集されている」ことを知らない。 本クラスが LevelPlayScene の friend として
-/// runtime オブジェクト群 / camera brain / play 状態といった内部を操作し、 cursor / palette / undo の EditorMode ・
+/// @details scene 自身は「編集されている」ことを知らない。 本クラスが LevelPlayScene の公開 API を通して
+/// runtime オブジェクト群 / camera / プレイ状態を操作し、 cursor / palette / undo の EditorMode ・
 /// ギズモ変形・free-fly カメラ・編集 ↔ プレイのモード切替を実現する。 EditorLayer が所有し、
 /// Setup / Tick / Render / Teardown を駆動する。 出荷 build には本クラスも EditorLayer も含めない
 
@@ -12,9 +12,9 @@
 #include "Editor/GizmoEditor.h"
 #include "Framework/Graphics/RenderSettings.h"
 #include "Framework/Math/Math.h"
-#include "Game/Level/LevelData.h"
-#include "Game/Level/PlayState.h"
-#include "Game/Theme/ThemeId.h"
+#include "GameCore/Level/LevelData.h"
+#include "GameCore/Level/PlayState.h"
+#include "GameCore/Theme/ThemeId.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -77,9 +77,9 @@ public:
 
     [[nodiscard]] NS::Editor::EditorMode& Editor() noexcept { return m_editor; }
     /// panel 利便のための pass-through。 編集対象の LevelData
-    [[nodiscard]] NS::Game::Level::LevelData& Level() noexcept;
+    [[nodiscard]] NS::GameCore::Level::LevelData& Level() noexcept;
     /// panel 利便のための pass-through。 一時的な PlayState
-    [[nodiscard]] NS::Game::Level::PlayState& Play() noexcept;
+    [[nodiscard]] NS::GameCore::Level::PlayState& Play() noexcept;
 
     /// ギズモ変形の Object ツールが有効か。 false はグリッド設置の Build
     [[nodiscard]] bool ObjectToolActive() const noexcept { return m_editorToolMode == EditorToolMode::Object; }
@@ -96,7 +96,7 @@ public:
     /// 選択中の配置物が gridAligned か。 未選択は false
     [[nodiscard]] bool SelectedIsGridAligned() const noexcept;
     /// Inspector 表示用に選択中 ObjectInstance のコピーを返す。 未選択は既定値
-    [[nodiscard]] NS::Game::Level::ObjectInstance SelectedObjectSnapshot() const noexcept;
+    [[nodiscard]] NS::GameCore::Level::ObjectInstance SelectedObjectSnapshot() const noexcept;
     /// 選択中の自由オブジェクトの位置を設定する。 gridAligned / 非選択時は何もしない
     void SetSelectedFreePosition(NS::Math::Vector3 position) noexcept;
     /// 選択中の自由オブジェクトの回転を設定する。 gridAligned / 非選択時は何もしない
@@ -164,7 +164,7 @@ public:
 
     /// 雛形 id の視覚値をシーンの環境欄へ写し込み、 slice 帯の焼き直しまで行う
     /// lighting / skybox は次フレームの設定写しで、 block の slice は RebuildWorld の焼き直しで反映される
-    void ApplyTheme(NS::Game::Theme::ThemeId id);
+    void ApplyTheme(NS::GameCore::Theme::ThemeId id);
 
     /// 環境の block slice 帯を変えて world を焼き直す。 lighting と違い帯変更だけが組み直しを要する
     void SetEnvironmentBlockSlice(std::uint16_t baseSlice);
@@ -254,20 +254,20 @@ private:
     SpecialSelection m_specialSelection = SpecialSelection::None;
 
     // 選択の真実は永続 objectId。 rebuild / delete / undo を跨いでも生ポインタや添字に依存しない
-    std::uint32_t m_selectedObjectId = NS::Game::Level::kNoObjectId;
+    std::uint32_t m_selectedObjectId = NS::GameCore::Level::kNoObjectId;
     // id から毎フレーム解決する派生の添字。 m_level.objects 用で、 ズレても crash しない安定 vector を指す
-    std::size_t m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+    std::size_t m_selectedObjectIndex = NS::GameCore::Level::kNoObjectIndex;
     // ビューポート由来のギズモ選択変化だけを index へ反映するための前フレーム値
     NS::Scene::Transform* m_lastGizmoSelected = nullptr;
 
     // コンポ単位 copy/paste の退避先。 型名 + 反射値を 1 つ保持する
-    std::optional<NS::Game::Level::ComponentData> m_componentClipboard;
+    std::optional<NS::GameCore::Level::ComponentData> m_componentClipboard;
 
     // ギズモドラッグ / Inspector パネルの変形編集を 1 undo 単位へ束ねる状態
     bool m_gizmoWasDragging = false;
     bool m_transformEditing = false;
-    std::uint32_t m_editBaselineId = NS::Game::Level::kNoObjectId;
-    NS::Game::Level::ObjectInstance m_editBaseline{};
+    std::uint32_t m_editBaselineId = NS::GameCore::Level::kNoObjectId;
+    NS::GameCore::Level::ObjectInstance m_editBaseline{};
 
     // Debug provenance パネルの読み出し元。 書き込みは Render で毎フレーム行う
     NS::Graphics::RenderSettings m_debugResolvedSettings{};

@@ -1,4 +1,4 @@
-#include "Game/Level/PlayFlowComponent.h"
+#include "GameCore/Level/PlayFlowComponent.h"
 
 #include "Framework/App/Application.h"
 #include "Framework/Core/Clock.h"
@@ -13,12 +13,12 @@
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
 #include "Framework/Scene/Components/ThirdPersonFollowComponent.h"
 #include "Framework/Scene/GameObject.h"
-#include "Game/Blocks/BuildPlacedObject.h"
-#include "Game/Level/ClearFadeComponent.h"
-#include "Game/LevelPlayScene.h"
-#include "Game/Player.h"
+#include "GameCore/Blocks/BuildPlacedObject.h"
+#include "GameCore/Level/ClearFadeComponent.h"
+#include "GameCore/LevelPlayScene.h"
+#include "GameCore/Player.h"
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
     LevelPlayScene* PlayFlowComponent::OwnerScene() noexcept
     {
@@ -82,8 +82,8 @@ namespace NS::Game::Level
             // 編集中も実プレイヤーをプレイヤー実体の pose に見せ、 ギズモで掴んで動かせるようにする
             player->MeshComp().SetActive(true);
             const auto& level = scene->Level();
-            const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(level);
-            if (playerIndex != NS::Game::Level::kNoObjectIndex)
+            const std::size_t playerIndex = NS::GameCore::Level::FindPlayerObjectIndex(level);
+            if (playerIndex != NS::GameCore::Level::kNoObjectIndex)
             {
                 const auto& playerObject = level.objects[playerIndex];
                 player->Root().SetPosition({playerObject.positionX, playerObject.positionY, playerObject.positionZ});
@@ -200,10 +200,10 @@ namespace NS::Game::Level
                 if (!hazard)
                     continue;
                 // damage は衝突応答とは別経路の per-frame overlap なので collider と hazard を component で引く
-                auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*hazard);
-                auto* damage = NS::Game::Blocks::FindComponent<NS::Scene::HazardComponent>(*hazard);
+                auto* box = NS::GameCore::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*hazard);
+                auto* damage = NS::GameCore::Blocks::FindComponent<NS::Scene::HazardComponent>(*hazard);
                 if (box && damage && NS::Physics::IntersectsCapsuleAabb(playerCapsule, box->WorldAABB()))
-                    NS::Game::Level::ApplyContactDamage(m_play);
+                    NS::GameCore::Level::ApplyContactDamage(m_play);
             }
         }
 
@@ -234,4 +234,4 @@ namespace NS::Game::Level
             follow->OnUpdate();
     }
 
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

@@ -16,11 +16,11 @@
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/UI/ImGuiContext.h"
-#include "Game/Blocks/BuildPlacedObject.h"
-#include "Game/Game.h"
-#include "Game/Level/LevelData.h"
-#include "Game/Theme/ThemeId.h"
-#include "Game/Theme/ThemeRegistry.h"
+#include "GameCore/Blocks/BuildPlacedObject.h"
+#include "GameCore/Game.h"
+#include "GameCore/Level/LevelData.h"
+#include "GameCore/Theme/ThemeId.h"
+#include "GameCore/Theme/ThemeRegistry.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -284,7 +284,7 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorController& editor) noexc
         ImGui::Separator();
 
         // シーンが所有する環境の直接編集。 lighting は毎フレームの設定写しで即反映されるので組み直し不要
-        NS::Game::Level::LevelEnvironment& env = editor.Level().environment;
+        NS::GameCore::Level::LevelEnvironment& env = editor.Level().environment;
         ImGui::TextUnformatted("環境 (このシーンが所有)");
         ImGui::DragFloat3("lightDir##env", &env.lightDirection.x, 0.01f, -1.0f, 1.0f);
         ImGui::DragFloat3("lightColor##env", &env.lightColor.x, 0.01f, 0.0f, 4.0f);
@@ -303,20 +303,20 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorController& editor) noexc
         ImGui::Separator();
 
         // 雛形の適用。 選んだテーマの視覚値を environment へ写し込み slice 帯を焼き直す
-        constexpr NS::Game::Theme::ThemeId kThemeIds[] = {
-            NS::Game::Theme::ThemeId::Grass,
-            NS::Game::Theme::ThemeId::Cave,
-            NS::Game::Theme::ThemeId::Snow,
-            NS::Game::Theme::ThemeId::Lava,
-            NS::Game::Theme::ThemeId::Sky,
+        constexpr NS::GameCore::Theme::ThemeId kThemeIds[] = {
+            NS::GameCore::Theme::ThemeId::Grass,
+            NS::GameCore::Theme::ThemeId::Cave,
+            NS::GameCore::Theme::ThemeId::Snow,
+            NS::GameCore::Theme::ThemeId::Lava,
+            NS::GameCore::Theme::ThemeId::Sky,
         };
         static int s_themeIndex = 0;
-        if (ImGui::BeginCombo("雛形##theme", NS::Game::Theme::Get(kThemeIds[s_themeIndex]).displayName.c_str()))
+        if (ImGui::BeginCombo("雛形##theme", NS::GameCore::Theme::Get(kThemeIds[s_themeIndex]).displayName.c_str()))
         {
-            for (int i = 0; i < static_cast<int>(NS::Game::Theme::ThemeId::Count); ++i)
+            for (int i = 0; i < static_cast<int>(NS::GameCore::Theme::ThemeId::Count); ++i)
             {
                 const bool selected = (i == s_themeIndex);
-                if (ImGui::Selectable(NS::Game::Theme::Get(kThemeIds[i]).displayName.c_str(), selected))
+                if (ImGui::Selectable(NS::GameCore::Theme::Get(kThemeIds[i]).displayName.c_str(), selected))
                     s_themeIndex = i;
                 if (selected)
                     ImGui::SetItemDefaultFocus();
@@ -380,9 +380,9 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorController& editor) noexcept
 
         for (std::size_t i = 0; i < objects.size(); ++i)
         {
-            const NS::Game::Level::ObjectInstance& object = objects[i];
-            const bool grid = (object.flags & NS::Game::Level::kObjectFlagGridAligned) != 0;
-            const char* name = NS::Game::Blocks::ObjectDisplayName(object);
+            const NS::GameCore::Level::ObjectInstance& object = objects[i];
+            const bool grid = (object.flags & NS::GameCore::Level::kObjectFlagGridAligned) != 0;
+            const char* name = NS::GameCore::Blocks::ObjectDisplayName(object);
 
             char label[96];
             std::snprintf(label, sizeof(label), "[%zu] %s (%s)", i, name, grid ? "grid" : "free");
@@ -419,13 +419,13 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
         refOptions.reserve(editor.Level().objects.size());
         for (std::size_t i = 0; i < editor.Level().objects.size(); ++i)
         {
-            const NS::Game::Level::ObjectInstance& candidate = editor.Level().objects[i];
+            const NS::GameCore::Level::ObjectInstance& candidate = editor.Level().objects[i];
             char label[96];
             std::snprintf(label,
                           sizeof(label),
                           "[%zu] %s (id %u)",
                           i,
-                          NS::Game::Blocks::ObjectDisplayName(candidate),
+                          NS::GameCore::Blocks::ObjectDisplayName(candidate),
                           candidate.objectId);
             refOptions.push_back(NS::Editor::ObjectRefOption{candidate.objectId, label});
         }
@@ -456,21 +456,21 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             return;
         }
 
-        const NS::Game::Level::ObjectInstance obj = editor.SelectedObjectSnapshot();
+        const NS::GameCore::Level::ObjectInstance obj = editor.SelectedObjectSnapshot();
         const bool grid = editor.SelectedIsGridAligned();
         ImGui::Text("[%zu] %s (%s)",
                     editor.SelectedObjectIndex(),
-                    NS::Game::Blocks::ObjectDisplayName(obj),
+                    NS::GameCore::Blocks::ObjectDisplayName(obj),
                     grid ? "grid" : "free");
         ImGui::Separator();
 
         if (grid)
         {
             ImGui::Text("Cell: (%d, %d, %d)",
-                        static_cast<int>(NS::Game::Level::ObjectCellX(obj)),
-                        static_cast<int>(NS::Game::Level::ObjectCellY(obj)),
-                        static_cast<int>(NS::Game::Level::ObjectCellZ(obj)));
-            if (NS::Game::Blocks::IsGridSolidObject(obj))
+                        static_cast<int>(NS::GameCore::Level::ObjectCellX(obj)),
+                        static_cast<int>(NS::GameCore::Level::ObjectCellY(obj)),
+                        static_cast<int>(NS::GameCore::Level::ObjectCellZ(obj)));
+            if (NS::GameCore::Blocks::IsGridSolidObject(obj))
             {
                 ImGui::TextDisabled("Promote to free to edit transform");
                 if (ImGui::Button("Promote to Free"))

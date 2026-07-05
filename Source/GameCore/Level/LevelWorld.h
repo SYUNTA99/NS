@@ -8,7 +8,7 @@
 /// scene は公開読み口からの観測と描画だけを行う
 /// 依存: NS::Scene::GameObject, NS::Physics::PhysicsWorld, NS::Graphics::InstanceBatcher
 
-#include "Game/Blocks/LedgeEdges.h"
+#include "GameCore/Blocks/LedgeEdges.h"
 
 #include <cstddef>
 #include <memory>
@@ -36,7 +36,7 @@ namespace NS::Scene
 
 class Player;
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
     struct LevelData;
 
@@ -116,7 +116,7 @@ namespace NS::Game::Level
         [[nodiscard]] ::Player* PlayerView() const noexcept { return m_playerView; }
 
         /// コヨーテ debug 用に焼いた踏み外せる縁の world 線分。 出荷では焼かれず常に空
-        [[nodiscard]] const std::vector<NS::Game::Blocks::LedgeEdge>& LedgeEdges() const noexcept
+        [[nodiscard]] const std::vector<NS::GameCore::Blocks::LedgeEdge>& LedgeEdges() const noexcept
         {
             return m_ledgeEdges;
         }
@@ -132,9 +132,9 @@ namespace NS::Game::Level
         std::vector<NS::Scene::PlacedVirtualCamera*> m_placedCameraView;
         std::vector<NS::Scene::ThirdPersonFollowComponent*> m_followCameraView;
         std::vector<NS::Scene::VirtualCameraComponent*> m_virtualCameraView;
-        std::vector<NS::Game::Blocks::LedgeEdge> m_ledgeEdges;
+        std::vector<NS::GameCore::Blocks::LedgeEdge> m_ledgeEdges;
         ::Player* m_playerView = nullptr;
         std::unique_ptr<NS::Graphics::InstanceBatcher> m_instanceBatcher;
     };
 
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

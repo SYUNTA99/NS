@@ -11,7 +11,7 @@
 
 #include <cstdint>
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
 
     /// Play mode の runtime state。 Tick で mutation され、 mode exit で破棄
@@ -29,4 +29,4 @@ namespace NS::Game::Level
         std::int8_t playerHealth = 8;
     };
 
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

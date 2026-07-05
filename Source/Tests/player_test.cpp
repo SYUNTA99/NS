@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <Game/Player.h>
+#include <GameCore/Player.h>
 
 TEST(PlayerTest, ConstructsWithDefaultComposition)
 {

@@ -12,9 +12,9 @@
 /// LevelData 経由で本 scene を操作して実現する。 scene 自身は「編集されている」ことを知らない
 
 #include "Framework/Scene/SceneBase.h"
-#include "Game/Level/LevelData.h"
-#include "Game/Level/LevelWorld.h"
-#include "Game/Level/PlayDirector.h"
+#include "GameCore/Level/LevelData.h"
+#include "GameCore/Level/LevelWorld.h"
+#include "GameCore/Level/PlayDirector.h"
 
 #include <memory>
 
@@ -44,13 +44,13 @@ public:
     void OnUpdate() override;
     void OnShutdown() override;
 
-    [[nodiscard]] NS::Game::Level::LevelData& Level() noexcept { return m_level; }
-    [[nodiscard]] const NS::Game::Level::LevelData& Level() const noexcept { return m_level; }
+    [[nodiscard]] NS::GameCore::Level::LevelData& Level() noexcept { return m_level; }
+    [[nodiscard]] const NS::GameCore::Level::LevelData& Level() const noexcept { return m_level; }
     /// プレイ進行役。 PlayState / PlayMode と進行の分岐は配下の PlayFlowComponent が担う。 scene 生成時から存在する
-    [[nodiscard]] NS::Game::Level::PlayDirector& Director() noexcept { return *m_director; }
+    [[nodiscard]] NS::GameCore::Level::PlayDirector& Director() noexcept { return *m_director; }
 
     /// LevelData から組まれた runtime world。 editor の選択 / gizmo と描画がここから観測する
-    [[nodiscard]] NS::Game::Level::LevelWorld& World() noexcept { return m_world; }
+    [[nodiscard]] NS::GameCore::Level::LevelWorld& World() noexcept { return m_world; }
 
     // brain / 実カメラの公開アクセサは持たない。 外の消費者は CameraSubsystem 経由で引く
     // 据え置き / 追従カメラは通常の配置物として LevelWorld が所有し、 World() の走査 view が返す
@@ -81,12 +81,12 @@ private:
 
     // LevelData から組んだ runtime world。 配置物 / instanced 描画キャッシュ / hazard view / コヨーテ縁を所有する
     // 実カメラ + Brain は CameraSubsystem が、 プレイヤー / 追従 / 据え置きカメラは world が配置物として所有する
-    NS::Game::Level::LevelWorld m_world;
+    NS::GameCore::Level::LevelWorld m_world;
 
-    NS::Game::Level::LevelData m_level{};
+    NS::GameCore::Level::LevelData m_level{};
 
     // プレイ進行役。 PlayState / PlayMode と進行の分岐は配下の PlayFlowComponent が所有する
-    std::unique_ptr<NS::Game::Level::PlayDirector> m_director;
+    std::unique_ptr<NS::GameCore::Level::PlayDirector> m_director;
 
     // コヨーテ debug 描画 すなわち 縁の紫線 / カプセル / コヨーテジャンプの赤線 の表示トグル。 F2 で切替える
     bool m_debugCoyoteDraw = true;

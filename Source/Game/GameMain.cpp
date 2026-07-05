@@ -1,5 +1,5 @@
 #include "Framework/App/Application.h"
-#include "Game/Game.h"
+#include "GameCore/Game.h"
 
 #if NS_EDITOR_ENABLED
 #include "Editor/EditorLayer.h"
@@ -23,7 +23,6 @@ namespace NS::App
         auto app = std::make_unique<Application>(desc);
 
         // 合成ルート。 ゲーム本体 GameCore は常時、 overlay の editor は editor 構成のみ積む
-        // NS::App スコープ内では非修飾 Game が NS::Game 名前空間に解決されるため global の ::Game を明示する
         app->AddLayer(std::make_unique<::Game>());
 #if NS_EDITOR_ENABLED
         app->AddOverlay(std::make_unique<::EditorLayer>());

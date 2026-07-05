@@ -7,7 +7,7 @@
 /// 1 つの JSON へ書く。 nlohmann 素の `json` が object キーを辞書順・ float を shortest round-trip で
 /// 出力するため、 同一 LevelData の 2 回保存は byte-identical になる。 読込は信頼できないローカルファイルを
 /// 例外なく parse し、 要素数・ file size の上限ガードで memory exhaustion を防ぐ
-/// 依存: NS::Game::Level::LevelData、 nlohmann::json は実装内でのみ使う
+/// 依存: NS::GameCore::Level::LevelData、 nlohmann::json は実装内でのみ使う
 
 #include <filesystem>
 #include <string>
@@ -17,7 +17,7 @@
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
     struct LevelData;
     struct ComponentData;
@@ -56,4 +56,4 @@ namespace NS::Game::Level
     /// 文字列→string / {"ref": id}→ObjectRef。 いずれにも合わなければ false で out は据え置き
     /// レベル読込と PlayerTuning テンプレートの取込が同じ変換を共有する
     [[nodiscard]] bool JsonToFieldValue(const std::string& name, const nlohmann::json& value, FieldValue& out);
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

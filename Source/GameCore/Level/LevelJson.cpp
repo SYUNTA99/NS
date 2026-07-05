@@ -1,10 +1,10 @@
-#include "Game/Level/LevelJson.h"
+#include "GameCore/Level/LevelJson.h"
 
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 #include "Framework/Math/Math.h"
-#include "Game/Level/LevelData.h"
+#include "GameCore/Level/LevelData.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -17,7 +17,7 @@
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
     namespace
     {
@@ -618,4 +618,4 @@ namespace NS::Game::Level
         }
         return true;
     }
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

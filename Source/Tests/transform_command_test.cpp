@@ -1,12 +1,12 @@
 #include "Editor/Undo/TransformCommand.h"
-#include "Game/Level/LevelData.h"
+#include "GameCore/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
 
 namespace EditorNs = NS::Editor;
-namespace LevelNs = NS::Game::Level;
+namespace LevelNs = NS::GameCore::Level;
 
 namespace
 {

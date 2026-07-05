@@ -1,6 +1,6 @@
-#include "Game/Level/PlayDirector.h"
+#include "GameCore/Level/PlayDirector.h"
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
     PlayDirector::PlayDirector()
     {
@@ -8,4 +8,4 @@ namespace NS::Game::Level
         m_fade = AddComponent<ClearFadeComponent>();
     }
 
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

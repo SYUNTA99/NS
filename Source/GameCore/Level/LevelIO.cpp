@@ -1,10 +1,10 @@
-#include "Game/Level/LevelIO.h"
+#include "GameCore/Level/LevelIO.h"
 
-#include "Game/Level/LevelData.h"
-#include "Game/Level/LevelJson.h"
-#include "Game/PlayerTuning.h"
+#include "GameCore/Level/LevelData.h"
+#include "GameCore/Level/LevelJson.h"
+#include "GameCore/PlayerTuning.h"
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
     bool SaveLevelToFile(const LevelData& level, const std::filesystem::path& path) noexcept
     {
@@ -26,4 +26,4 @@ namespace NS::Game::Level
         }
         return true;
     }
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

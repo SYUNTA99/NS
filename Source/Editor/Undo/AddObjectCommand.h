@@ -4,7 +4,7 @@
 /// @brief 自由配置オブジェクトを 1 個追加する Command。 Undo で同じ永続 id の要素を削除する
 
 #include "Editor/Undo/ICommand.h"
-#include "Game/Level/LevelData.h"
+#include "GameCore/Level/LevelData.h"
 
 namespace NS::Editor
 {
@@ -14,18 +14,18 @@ namespace NS::Editor
     class AddObjectCommand final : public ICommand
     {
     public:
-        explicit AddObjectCommand(const NS::Game::Level::ObjectInstance& object) noexcept;
+        explicit AddObjectCommand(const NS::GameCore::Level::ObjectInstance& object) noexcept;
 
-        void Do(NS::Game::Level::LevelData& level) noexcept override;
-        void Undo(NS::Game::Level::LevelData& level) noexcept override;
+        void Do(NS::GameCore::Level::LevelData& level) noexcept override;
+        void Undo(NS::GameCore::Level::LevelData& level) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override
         {
-            return sizeof(AddObjectCommand) + NS::Game::Level::EstimatedHeapBytes(m_object);
+            return sizeof(AddObjectCommand) + NS::GameCore::Level::EstimatedHeapBytes(m_object);
         }
 
     private:
-        NS::Game::Level::ObjectInstance m_object;
+        NS::GameCore::Level::ObjectInstance m_object;
     };
 
 } // namespace NS::Editor

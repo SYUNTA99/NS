@@ -8,7 +8,7 @@
 
 #include <cstdint>
 
-namespace NS::Game::Blocks
+namespace NS::GameCore::Blocks
 {
     /// grid 配置物の向きの分解能。 0..3 を Y 軸 90° 刻みの 4 方向へ割り当てる
     inline constexpr std::uint16_t kBlockRotationSteps = 4;
@@ -16,4 +16,4 @@ namespace NS::Game::Blocks
     /// 0..3 の回転値を Y 軸 yaw ラジアンに変換する
     /// 描画と当たり判定が同じ向きになるよう全経路でこれを使う
     [[nodiscard]] float BlockRotationToYaw(std::uint8_t rotation) noexcept;
-} // namespace NS::Game::Blocks
+} // namespace NS::GameCore::Blocks

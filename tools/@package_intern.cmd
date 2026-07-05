@@ -124,7 +124,7 @@ echo       + VC++ runtime (vcruntime140, vcruntime140_1, msvcp140)
 
 :: --- 7. own source (ThirdParty excluded) + docs + license texts -----------
 echo [6/8] Exporting own source (ThirdParty excluded) ...
-git archive -o "%OUT%\_src.tar" HEAD Source/Framework Source/Game Source/Editor
+git archive -o "%OUT%\_src.tar" HEAD Source/Framework Source/GameCore Source/Game Source/Editor
 if errorlevel 1 (
     echo [ERROR] git archive failed
     exit /b 1

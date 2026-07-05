@@ -6,7 +6,7 @@
 #include "Framework/Scene/Component.h"
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/ReflectionJson.h"
-#include "Game/PlayerTuning.h"
+#include "GameCore/PlayerTuning.h"
 
 #pragma warning(push, 0)
 #include "ThirdParty/nlohmann/json.hpp"

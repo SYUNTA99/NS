@@ -7,12 +7,12 @@
 /// 解決して player / camera / level を読む。 編集モード中は SetActive(false) で寝かせて止める
 
 #include "Framework/Scene/Component.h"
-#include "Game/Level/PlayMode.h"
-#include "Game/Level/PlayState.h"
+#include "GameCore/Level/PlayMode.h"
+#include "GameCore/Level/PlayState.h"
 
 class LevelPlayScene;
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
     class ClearFadeComponent;
 
@@ -61,4 +61,4 @@ namespace NS::Game::Level
         ClearFadeComponent* m_fade = nullptr;
     };
 
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

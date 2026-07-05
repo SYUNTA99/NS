@@ -11,7 +11,7 @@
 
 #include "Framework/Math/Math.h"
 
-namespace NS::Game::Theme
+namespace NS::GameCore::Theme
 {
 
     struct ThemeData
@@ -30,4 +30,4 @@ namespace NS::Game::Theme
         NS::Math::Vector3 ambientColor{0.2f, 0.2f, 0.2f};
     };
 
-} // namespace NS::Game::Theme
+} // namespace NS::GameCore::Theme

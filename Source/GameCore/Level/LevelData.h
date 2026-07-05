@@ -19,7 +19,7 @@
 #include <variant>
 #include <vector>
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
 
     /// `ObjectInstance::flags` の bit。 グリッド配置物は bit0 を立て instancing / オートタイル対象にする
@@ -229,4 +229,4 @@ namespace NS::Game::Level
     /// 0=コイン / 1=ゴール。 Blocks の配置物の表示・固形判定と PlayMode のプレイ拾得判定が同じ契約を読む
     [[nodiscard]] int PickupKindOf(const ObjectInstance& object) noexcept;
 
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

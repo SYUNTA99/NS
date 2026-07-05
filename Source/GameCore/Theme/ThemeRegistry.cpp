@@ -1,4 +1,4 @@
-#include "Game/Theme/ThemeRegistry.h"
+#include "GameCore/Theme/ThemeRegistry.h"
 
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
@@ -13,7 +13,7 @@
 #include <string_view>
 #include <utility>
 
-using namespace NS::Game::Theme;
+using namespace NS::GameCore::Theme;
 
 namespace
 {
@@ -99,7 +99,7 @@ namespace
     }
 } // namespace
 
-namespace NS::Game::Theme
+namespace NS::GameCore::Theme
 {
     const ThemeData& Get(ThemeId id) noexcept
     {
@@ -139,9 +139,9 @@ namespace NS::Game::Theme
         }
     }
 
-    NS::Game::Level::LevelEnvironment MakeEnvironmentFromTheme(const ThemeData& theme)
+    NS::GameCore::Level::LevelEnvironment MakeEnvironmentFromTheme(const ThemeData& theme)
     {
-        NS::Game::Level::LevelEnvironment environment{};
+        NS::GameCore::Level::LevelEnvironment environment{};
         environment.lightDirection = theme.lightDirection;
         environment.lightColor = theme.lightColor;
         environment.ambientColor = theme.ambientColor;
@@ -150,4 +150,4 @@ namespace NS::Game::Theme
         environment.blockTextureBaseSlice = theme.blockTextureArrayBaseSlice;
         return environment;
     }
-} // namespace NS::Game::Theme
+} // namespace NS::GameCore::Theme

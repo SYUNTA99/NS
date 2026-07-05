@@ -5,7 +5,7 @@
 
 #include <cstdint>
 
-namespace NS::Game::Theme
+namespace NS::GameCore::Theme
 {
 
     enum class ThemeId : std::uint16_t
@@ -18,4 +18,4 @@ namespace NS::Game::Theme
         Count = 5,
     };
 
-} // namespace NS::Game::Theme
+} // namespace NS::GameCore::Theme

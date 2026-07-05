@@ -17,7 +17,7 @@ namespace NS::Graphics
     class ScreenFade;
 } // namespace NS::Graphics
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
     /// ゴール接触からレベル再開へ繋ぐ暗転 / 明転。 全黒到達で PlayFlowComponent のリスタートを呼ぶ
     class ClearFadeComponent : public NS::Scene::Component, public NS::Scene::IRenderable
@@ -75,4 +75,4 @@ namespace NS::Game::Level
         std::unique_ptr<NS::Graphics::ScreenFade> m_screenFade;
     };
 
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

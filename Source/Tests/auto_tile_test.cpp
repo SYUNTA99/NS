@@ -1,5 +1,5 @@
-#include "Game/Blocks/AutoTile.h"
-#include "Game/Level/LevelData.h"
+#include "GameCore/Blocks/AutoTile.h"
+#include "GameCore/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
@@ -7,8 +7,8 @@
 #include <string>
 #include <utility>
 
-namespace LevelNs = NS::Game::Level;
-namespace BlocksNs = NS::Game::Blocks;
+namespace LevelNs = NS::GameCore::Level;
+namespace BlocksNs = NS::GameCore::Blocks;
 
 namespace
 {

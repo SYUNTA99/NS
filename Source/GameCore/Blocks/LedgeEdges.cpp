@@ -1,38 +1,38 @@
-#include "Game/Blocks/LedgeEdges.h"
+#include "GameCore/Blocks/LedgeEdges.h"
 
-#include "Game/Blocks/BuildPlacedObject.h"
-#include "Game/Level/LevelData.h"
+#include "GameCore/Blocks/BuildPlacedObject.h"
+#include "GameCore/Level/LevelData.h"
 
 #include <cstddef>
 #include <cstdint>
 
-namespace NS::Game::Blocks
+namespace NS::GameCore::Blocks
 {
     namespace
     {
         // cell が grid 固形か。 範囲外 / 非固形は false。 固形性のみ見て見た目は問わない
-        [[nodiscard]] bool IsSolidCell(const NS::Game::Level::LevelData& level,
+        [[nodiscard]] bool IsSolidCell(const NS::GameCore::Level::LevelData& level,
                                        std::int16_t x,
                                        std::int16_t y,
                                        std::int16_t z) noexcept
         {
-            const std::size_t idx = NS::Game::Level::FindGridObjectAtCell(level, x, y, z);
-            if (idx == NS::Game::Level::kNoObjectIndex)
+            const std::size_t idx = NS::GameCore::Level::FindGridObjectAtCell(level, x, y, z);
+            if (idx == NS::GameCore::Level::kNoObjectIndex)
                 return false;
             return IsGridSolidObject(level.objects[idx]);
         }
     } // namespace
 
-    std::vector<LedgeEdge> ComputeTopLedgeEdges(const NS::Game::Level::LevelData& level)
+    std::vector<LedgeEdge> ComputeTopLedgeEdges(const NS::GameCore::Level::LevelData& level)
     {
         std::vector<LedgeEdge> edges;
-        for (const NS::Game::Level::ObjectInstance& object : level.objects)
+        for (const NS::GameCore::Level::ObjectInstance& object : level.objects)
         {
             if (!IsGridSolidObject(object))
                 continue;
-            const std::int16_t x = NS::Game::Level::ObjectCellX(object);
-            const std::int16_t y = NS::Game::Level::ObjectCellY(object);
-            const std::int16_t z = NS::Game::Level::ObjectCellZ(object);
+            const std::int16_t x = NS::GameCore::Level::ObjectCellX(object);
+            const std::int16_t y = NS::GameCore::Level::ObjectCellY(object);
+            const std::int16_t z = NS::GameCore::Level::ObjectCellZ(object);
 
             // 真上が固形なら天面が塞がれ立てないので縁を出さない
             if (IsSolidCell(level, x, static_cast<std::int16_t>(y + 1), z))
@@ -66,4 +66,4 @@ namespace NS::Game::Blocks
         }
         return edges;
     }
-} // namespace NS::Game::Blocks
+} // namespace NS::GameCore::Blocks

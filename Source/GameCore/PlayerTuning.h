@@ -11,7 +11,7 @@
 #include <filesystem>
 #include <string_view>
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
     struct ObjectInstance;
 }
@@ -22,7 +22,7 @@ namespace NS::Game::Level
 /// テンプレート JSON の components を player object データへ写す。 既存型は同名フィールドの値を
 /// 上書きし、 無い型は構成ごと追加する。 解析失敗 / 不正値は読み飛ばして既定を保つ
 /// ファイル取込とテストが共有する本体
-void MergePlayerTuningText(NS::Game::Level::ObjectInstance& playerObject, std::string_view jsonText) noexcept;
+void MergePlayerTuningText(NS::GameCore::Level::ObjectInstance& playerObject, std::string_view jsonText) noexcept;
 
 /// 保存済みテンプレートがあれば MergePlayerTuningText で写す。 不在 / 破損時は既定のまま
-void MergeSavedPlayerTuning(NS::Game::Level::ObjectInstance& playerObject) noexcept;
+void MergeSavedPlayerTuning(NS::GameCore::Level::ObjectInstance& playerObject) noexcept;

@@ -1,8 +1,8 @@
-#include "Game/LevelPlayScene.h"
+#include "GameCore/LevelPlayScene.h"
 
-#include "Game/Blocks/BuildPlacedObject.h"
-#include "Game/Player.h"
-#include "Game/PlayerTuning.h"
+#include "GameCore/Blocks/BuildPlacedObject.h"
+#include "GameCore/Player.h"
+#include "GameCore/PlayerTuning.h"
 
 #include "Framework/Scene/AssetManager.h"
 #include "Framework/Scene/CameraSubsystem.h"
@@ -31,42 +31,42 @@
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/Transform.h"
-#include "Game/Blocks/AutoTile.h"
-#include "Game/Level/LevelIO.h"
-#include "Game/Theme/ThemeRegistry.h"
+#include "GameCore/Blocks/AutoTile.h"
+#include "GameCore/Level/LevelIO.h"
+#include "GameCore/Theme/ThemeRegistry.h"
 
-using namespace NS::Game::Theme;
+using namespace NS::GameCore::Theme;
 
 namespace
 {
     constexpr NS::Math::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
 
     /// 編集体験の起点となる最小床。 LevelData に grid block 1 個 + プレイヤー実体を仕込んでおく
-    void SeedInitialLevel(NS::Game::Level::LevelData& level)
+    void SeedInitialLevel(NS::GameCore::Level::LevelData& level)
     {
         level.objects.clear();
         // 新規シーンの既定の見た目は Grass 雛形を写し込む。 以降はシーンの環境欄が正になる
         level.environment =
-            NS::Game::Theme::MakeEnvironmentFromTheme(NS::Game::Theme::Get(NS::Game::Theme::ThemeId::Grass));
-        level.objects.push_back(NS::Game::Level::MakeGridObject(0, 0, 0, 0));
+            NS::GameCore::Theme::MakeEnvironmentFromTheme(NS::GameCore::Theme::Get(NS::GameCore::Theme::ThemeId::Grass));
+        level.objects.push_back(NS::GameCore::Level::MakeGridObject(0, 0, 0, 0));
         // プレイヤーは capsule 中心を床ブロック上面 0.5 + capsule 半径込み半高 0.9 + 1cm へ置く
-        level.objects.push_back(NS::Game::Level::MakePlayerObject(
-            NS::Math::Vector3{0.0f, NS::Game::Level::kDefaultPlayerSpawnY, 0.0f}, NS::Math::Quaternion{}));
+        level.objects.push_back(NS::GameCore::Level::MakePlayerObject(
+            NS::Math::Vector3{0.0f, NS::GameCore::Level::kDefaultPlayerSpawnY, 0.0f}, NS::Math::Quaternion{}));
         // 新規プレイヤーには保存済みテンプレートの構成と値を写す
         MergeSavedPlayerTuning(level.objects.back());
-        NS::Game::Level::EnsureUniqueObjectIds(level);
+        NS::GameCore::Level::EnsureUniqueObjectIds(level);
         // 追従カメラも配置物。 プレイヤーへの Target 参照が要るため採番の後に足し、 増分をもう一度採番する
-        const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(level);
-        level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(
-            (playerIndex != NS::Game::Level::kNoObjectIndex) ? level.objects[playerIndex].objectId : 0u));
-        NS::Game::Level::EnsureUniqueObjectIds(level);
+        const std::size_t playerIndex = NS::GameCore::Level::FindPlayerObjectIndex(level);
+        level.objects.push_back(NS::GameCore::Level::MakeFollowCameraObject(
+            (playerIndex != NS::GameCore::Level::kNoObjectIndex) ? level.objects[playerIndex].objectId : 0u));
+        NS::GameCore::Level::EnsureUniqueObjectIds(level);
     }
 } // namespace
 
 LevelPlayScene::LevelPlayScene()
 {
     // 進行役は OnStart を待たず生成する。 起動前でも editor / テストがプレイ切替と PlayState 参照を回せる
-    m_director = std::make_unique<NS::Game::Level::PlayDirector>();
+    m_director = std::make_unique<NS::GameCore::Level::PlayDirector>();
     m_director->AttachScene(this);
 }
 
@@ -77,7 +77,7 @@ void LevelPlayScene::LoadInitialLevel()
     // 同梱の起動レベルがあればそれを、 無ければ最小床を seed する
     const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
     const auto levelPath = exeDir / "Levels" / "new_level.scene";
-    if (!NS::Game::Level::LoadLevelFromFile(m_level, levelPath))
+    if (!NS::GameCore::Level::LoadLevelFromFile(m_level, levelPath))
         SeedInitialLevel(m_level);
 }
 
@@ -179,8 +179,8 @@ void LevelPlayScene::UpdateDisplayBlocks()
     const auto& objects = m_world.Objects();
     for (std::size_t i = 0; i < objects.size(); ++i)
     {
-        const NS::Game::Level::ObjectInstance& entry = m_level.objects[m_world.SourceIndices()[i]];
-        if ((entry.flags & NS::Game::Level::kObjectFlagGridAligned) != 0)
+        const NS::GameCore::Level::ObjectInstance& entry = m_level.objects[m_world.SourceIndices()[i]];
+        if ((entry.flags & NS::GameCore::Level::kObjectFlagGridAligned) != 0)
             objects[i]->OnUpdate();
     }
 }
@@ -256,7 +256,7 @@ void LevelPlayScene::OnRenderScene()
         {
             NS::Graphics::BlockInstance inst{};
             inst.worldMatrix = m_world.Objects()[block.objectIndex]->Root().InterpolatedWorldMatrix(ctx.alpha);
-            inst.baseColor = NS::Game::Blocks::kSolidBaseColor;
+            inst.baseColor = NS::GameCore::Blocks::kSolidBaseColor;
             inst.textureSlice = block.textureSlice;
             batcher->Submit(cubeMesh, blockMat, inst);
         }
@@ -290,7 +290,7 @@ void LevelPlayScene::OnRenderScene()
         float coyoteReach = 0.0f;
         if (auto* player = PlayerRef())
             coyoteReach = player->Movement().MaxSpeed() * player->Movement().CoyoteTime();
-        for (const NS::Game::Blocks::LedgeEdge& edge : m_world.LedgeEdges())
+        for (const NS::GameCore::Blocks::LedgeEdge& edge : m_world.LedgeEdges())
         {
             const NS::Math::Vector3 off{edge.outward.x * coyoteReach, 0.0f, edge.outward.z * coyoteReach};
             const NS::Math::Vector3 outerA{edge.a.x + off.x, edge.a.y, edge.a.z + off.z};

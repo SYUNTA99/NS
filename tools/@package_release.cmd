@@ -69,7 +69,7 @@ if exist "Levels" (
 )
 
 echo [5/5] Exporting tracked source, ThirdParty excluded ...
-git archive -o "%OUT%\_src.tar" HEAD Source/Framework Source/Game Source/Editor Source/Tests premake5.lua
+git archive -o "%OUT%\_src.tar" HEAD Source/Framework Source/GameCore Source/Game Source/Editor Source/Tests premake5.lua
 if errorlevel 1 (
     echo [ERROR] git archive failed
     exit /b 1

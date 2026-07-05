@@ -1,13 +1,13 @@
-#include "Game/Level/PlayMode.h"
+#include "GameCore/Level/PlayMode.h"
 
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
-#include "Game/Level/LevelData.h"
-#include "Game/Level/PlayState.h"
+#include "GameCore/Level/LevelData.h"
+#include "GameCore/Level/PlayState.h"
 
 #include <algorithm>
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
     namespace
     {
@@ -120,4 +120,4 @@ namespace NS::Game::Level
         }
     }
 
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level

@@ -553,8 +553,8 @@ project "GameCore"
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/Game/**.h",
-        "Source/Game/**.cpp"
+        "Source/GameCore/**.h",
+        "Source/GameCore/**.cpp"
     }
     -- GameMain.cpp (CreateApplication = 合成ルート) は exe 側。 GameCore からは除外する
     removefiles { "Source/Game/GameMain.cpp" }
@@ -584,11 +584,11 @@ project "GameCore"
     }
 
     -- Game / Editor 共通の安定 Framework API を全 .cpp へ /FI 強制 include する。
-    -- GamePch.cpp は Source/Game/**.cpp の glob で既に拾われる。 GamePch.h は
+    -- GamePch.cpp は Source/GameCore/**.cpp の glob で既に拾われる。 GamePch.h は
     -- include root (Source) 経由で全 .cpp から一意に解決できる論理名で渡す。
-    pchheader "Game/GamePch.h"
-    pchsource "Source/Game/GamePch.cpp"
-    buildoptions { "/FI\"Game/GamePch.h\"" }
+    pchheader "GameCore/GamePch.h"
+    pchsource "Source/GameCore/GamePch.cpp"
+    buildoptions { "/FI\"GameCore/GamePch.h\"" }
 
     applyCommonBuildOptions()
 
@@ -610,7 +610,7 @@ project "Editor"
         "Source/Editor/**.h",
         "Source/Editor/**.cpp",
         -- Game 側 PCH を共有するため pchsource 用に取り込む (Editor は GameCore に依存済)
-        "Source/Game/GamePch.cpp"
+        "Source/GameCore/GamePch.cpp"
     }
 
     includedirs {
@@ -648,9 +648,9 @@ project "Editor"
     filter {}
 
     -- GameCore と同じ Game 側 PCH を共有する (GamePch.cpp は files に追加済)
-    pchheader "Game/GamePch.h"
-    pchsource "Source/Game/GamePch.cpp"
-    buildoptions { "/FI\"Game/GamePch.h\"" }
+    pchheader "GameCore/GamePch.h"
+    pchsource "Source/GameCore/GamePch.cpp"
+    buildoptions { "/FI\"GameCore/GamePch.h\"" }
 
     applyCommonBuildOptions()
 
@@ -674,7 +674,7 @@ project "Game"
     files {
         "Source/Game/GameMain.cpp",
         -- Game 側 PCH を共有するため pchsource 用に取り込む
-        "Source/Game/GamePch.cpp"
+        "Source/GameCore/GamePch.cpp"
     }
 
     includedirs {
@@ -728,9 +728,9 @@ project "Game"
     filter {}
 
     -- GameCore と同じ Game 側 PCH を共有する (GamePch.cpp は files に追加済)
-    pchheader "Game/GamePch.h"
-    pchsource "Source/Game/GamePch.cpp"
-    buildoptions { "/FI\"Game/GamePch.h\"" }
+    pchheader "GameCore/GamePch.h"
+    pchsource "Source/GameCore/GamePch.cpp"
+    buildoptions { "/FI\"GameCore/GamePch.h\"" }
 
     applyCommonBuildOptions()
 
@@ -824,22 +824,22 @@ project "Tests"
         -- Game 側 GameObject 派生 (Player) は Application 依存を持たないので
         -- Tests から直接コンパイルしてリンクする。Game.cpp は Application や
         -- Window への依存があるので除外し、unit test で扱える範囲だけ取り込む。
-        "Source/Game/Player.cpp",
+        "Source/GameCore/Player.cpp",
         -- PlayerTuning は LevelPlayScene(OnStart) と LevelEditorController が参照するので symbol 解決のため取り込む
-        "Source/Game/PlayerTuning.cpp",
-        "Source/Game/Blocks/**.cpp",
+        "Source/GameCore/PlayerTuning.cpp",
+        "Source/GameCore/Blocks/**.cpp",
         "Source/Editor/EditorCameraRig.cpp",
         -- LevelEditorController は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
         -- Setup は Application::Get() を要求するため test では呼ばないが、 ctor / EnterPlay /
         -- EnterEdit / 値メンバ accessor の symbol が要るので .cpp を Tests に取り込む。
         -- 操作対象の LevelPlayScene も ctor / dtor / vtable / SetPlaying symbol のため併せて取り込む。
-        "Source/Game/LevelPlayScene.cpp",
+        "Source/GameCore/LevelPlayScene.cpp",
         -- LevelPlayScene が OnStart / UpdateAnimatedModel で参照するので symbol 解決のため併せて取り込む
-        "Source/Game/SkinnedDebugCharacter.cpp",
+        "Source/GameCore/SkinnedDebugCharacter.cpp",
         "Source/Editor/LevelEditorController.cpp",
         -- Level data / LevelIO / CRC32 / Undo Command / AutoTile は Application
         -- 非依存の純粋ロジックなので Tests project から直接 compile する。
-        "Source/Game/Level/**.cpp",
+        "Source/GameCore/Level/**.cpp",
         "Source/Editor/Undo/**.cpp",
         -- editor のうち Application 非依存なものだけ取り込む (EditorLayer は Application 依存のため除外)
         "Source/Editor/ComponentClipboard.cpp",
@@ -850,7 +850,7 @@ project "Tests"
         "Source/Editor/PaletteTemplates.cpp",
         "Source/Editor/LevelFileBrowser.cpp",
         "Source/Editor/LevelFilePaths.cpp",
-        "Source/Game/Theme/**.cpp"
+        "Source/GameCore/Theme/**.cpp"
     }
 
     includedirs {

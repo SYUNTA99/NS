@@ -1,4 +1,4 @@
-#include "Game/Player.h"
+#include "GameCore/Player.h"
 
 Player::Player() noexcept
 {

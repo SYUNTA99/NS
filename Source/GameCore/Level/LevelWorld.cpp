@@ -1,4 +1,4 @@
-#include "Game/Level/LevelWorld.h"
+#include "GameCore/Level/LevelWorld.h"
 
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -15,15 +15,15 @@
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/ObjectRefSubsystem.h"
 #include "Framework/Scene/SceneBase.h"
-#include "Game/Blocks/AutoTile.h"
-#include "Game/Blocks/BuildPlacedObject.h"
-#include "Game/Level/LevelData.h"
-#include "Game/Player.h"
+#include "GameCore/Blocks/AutoTile.h"
+#include "GameCore/Blocks/BuildPlacedObject.h"
+#include "GameCore/Level/LevelData.h"
+#include "GameCore/Player.h"
 
 #include <cmath>
 #include <cstdint>
 
-namespace NS::Game::Level
+namespace NS::GameCore::Level
 {
 
     LevelWorld::LevelWorld() = default;
@@ -57,7 +57,7 @@ namespace NS::Game::Level
         {
             const ObjectInstance& entry = level.objects[objectIndex];
 
-            auto obj = NS::Game::Blocks::BuildPlacedObject(entry, *assets, level.materialPaths);
+            auto obj = NS::GameCore::Blocks::BuildPlacedObject(entry, *assets, level.materialPaths);
             if (!obj)
                 continue; // 組み立てる component が無いオブジェクトはファクトリが nullptr を返す
 
@@ -83,8 +83,8 @@ namespace NS::Game::Level
 
             // grid solid は個別 Draw を殺して InstanceBatcher へ委ねる。 描画段が Objects() を直読みして instanceable
             // 判定 OnStart で RegisterRenderable 済なので MeshRenderer を非アクティブにするだけでよい
-            if (NS::Game::Blocks::IsGridSolidObject(entry))
-                if (auto* mesh = NS::Game::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*obj))
+            if (NS::GameCore::Blocks::IsGridSolidObject(entry))
+                if (auto* mesh = NS::GameCore::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*obj))
                     mesh->SetActive(false);
 
             // collider component を全部登録する。 同型を重ねれば複合形状として当たりに効く
@@ -145,21 +145,21 @@ namespace NS::Game::Level
         for (std::size_t i = 0; i < m_objects.size(); ++i)
         {
             const ObjectInstance& entry = level.objects[m_objectSourceIndices[i]];
-            if (!NS::Game::Blocks::IsGridSolidObject(entry))
+            if (!NS::GameCore::Blocks::IsGridSolidObject(entry))
                 continue;
             const NS::Math::Vector3 wp = m_objects[i]->Root().Position();
             const std::int16_t x = static_cast<std::int16_t>(std::lround(wp.x));
             const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
             const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
-            const std::uint8_t mask = NS::Game::Blocks::ComputeNeighborMask(level, x, y, z);
+            const std::uint8_t mask = NS::GameCore::Blocks::ComputeNeighborMask(level, x, y, z);
             const std::uint16_t slice =
-                NS::Game::Blocks::LookupTextureSlice(level.environment.blockTextureBaseSlice, mask);
+                NS::GameCore::Blocks::LookupTextureSlice(level.environment.blockTextureBaseSlice, mask);
             m_instancedBlocks.push_back(InstancedBlock{i, static_cast<float>(slice)});
         }
 
 #if !defined(NS_SHIPPING)
         // コヨーテ debug 用に踏み外せる縁を焼く。 level が変わらない限り不変なのでここで 1 度だけ
-        m_ledgeEdges = NS::Game::Blocks::ComputeTopLedgeEdges(level);
+        m_ledgeEdges = NS::GameCore::Blocks::ComputeTopLedgeEdges(level);
 #endif
 
         physics.BuildBroadphase();
@@ -173,7 +173,7 @@ namespace NS::Game::Level
                 const ObjectInstance& entry = level.objects[m_objectSourceIndices[i]];
                 if ((entry.flags & kObjectFlagGridAligned) != 0)
                     continue;
-                if (auto aabb = NS::Game::Blocks::ColliderWorldAABB(*m_objects[i]))
+                if (auto aabb = NS::GameCore::Blocks::ColliderWorldAABB(*m_objects[i]))
                     shadowReceivers.push_back(*aabb);
             }
             m_playerView->Shadow().SetCollisionWorld(shadowReceivers);
@@ -207,4 +207,4 @@ namespace NS::Game::Level
         m_instanceBatcher.reset();
     }
 
-} // namespace NS::Game::Level
+} // namespace NS::GameCore::Level
