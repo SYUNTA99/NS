@@ -46,8 +46,8 @@ namespace
     {
         level.objects.clear();
         // 新規シーンの既定の見た目は Grass 雛形を写し込む。 以降はシーンの環境欄が正になる
-        level.environment =
-            NS::GameCore::Theme::MakeEnvironmentFromTheme(NS::GameCore::Theme::Get(NS::GameCore::Theme::ThemeId::Grass));
+        level.environment = NS::GameCore::Theme::MakeEnvironmentFromTheme(
+            NS::GameCore::Theme::Get(NS::GameCore::Theme::ThemeId::Grass));
         level.objects.push_back(NS::GameCore::Level::MakeGridObject(0, 0, 0, 0));
         // プレイヤーは capsule 中心を床ブロック上面 0.5 + capsule 半径込み半高 0.9 + 1cm へ置く
         level.objects.push_back(NS::GameCore::Level::MakePlayerObject(
