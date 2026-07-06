@@ -1108,11 +1108,18 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
         m_scene->Level().materialPaths.push_back(stored);
         materialIndex = static_cast<int>(m_scene->Level().materialPaths.size() - 1);
     }
-    m_scene->Level().objects[m_scene->World().SourceIndices()[slot]].materialIndex =
-        static_cast<std::int16_t>(materialIndex);
+
+    NS::GameCore::Level::ObjectInstance& object = m_scene->Level().objects[m_scene->World().SourceIndices()[slot]];
+    // 差替前を退避して materialIndex 変更を TransformCommand 1 つとして undo 履歴へ載せる
+    // undo で materialIndex が戻り、 dirty rebuild が旧材質を焼き直す
+    const NS::GameCore::Level::ObjectInstance before = object;
+    object.materialIndex = static_cast<std::int16_t>(materialIndex);
 
     mesh->SetMaterial(loaded.material);
     mesh->SetBaseColor(loaded.baseColor);
+
+    m_editor.Undo().Push(std::make_unique<NS::Editor::TransformCommand>(before.objectId, before, object),
+                         m_scene->Level());
     return true;
 }
 
