@@ -47,7 +47,9 @@ namespace NS::Scene
         /// eye を固定したまま yaw / pitch を回す その場の見回し。 右ドラッグのフライ視点で使う
         void ApplyLook(float yawDelta, float pitchDelta) noexcept;
         /// 視線方向へのフライ移動。 forward は視線(pitch込み)、 strafe は画面右、 vertical は world 上下。 各軸 -1..1
-        void ApplyFlyMove(float forwardAxis, float strafeAxis, float verticalAxis, float dt) noexcept;
+        /// speedScale は移動量の倍率で Shift 押下時の加速に使う。 既定 1.0 は従来速度
+        void ApplyFlyMove(
+            float forwardAxis, float strafeAxis, float verticalAxis, float dt, float speedScale = 1.0f) noexcept;
 
         // free-fly の感触を Inspector へ公開する。 毎フレーム読まれるのでライブで効く
         NS_REFLECT_BEGIN(EditorCameraComponent, VirtualCameraComponent)

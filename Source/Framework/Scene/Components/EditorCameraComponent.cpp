@@ -71,7 +71,8 @@ namespace NS::Scene
         m_center.z += eyeBefore.z - eyeAfter.z;
     }
 
-    void EditorCameraComponent::ApplyFlyMove(float forwardAxis, float strafeAxis, float verticalAxis, float dt) noexcept
+    void EditorCameraComponent::ApplyFlyMove(
+        float forwardAxis, float strafeAxis, float verticalAxis, float dt, float speedScale) noexcept
     {
         if (forwardAxis == 0.0f && strafeAxis == 0.0f && verticalAxis == 0.0f)
             return;
@@ -84,7 +85,7 @@ namespace NS::Scene
         const NS::Math::Vector3 forward{-cosPitch * sinYaw, -sinPitch, -cosPitch * cosYaw};
         // 画面右 right = cross(worldUp, forward)。 LH なので yaw=0 で -X。 旧実装の +X とは逆で、 左右反転を解消する
         const NS::Math::Vector3 right{-cosYaw, 0.0f, sinYaw};
-        const float step = m_keyMoveSpeed * m_distance * dt;
+        const float step = m_keyMoveSpeed * m_distance * dt * speedScale;
         m_center.x += (forward.x * forwardAxis + right.x * strafeAxis) * step;
         m_center.y += (forward.y * forwardAxis + verticalAxis) * step;
         m_center.z += (forward.z * forwardAxis + right.z * strafeAxis) * step;
@@ -152,7 +153,9 @@ namespace NS::Scene
                 verticalAxis += 1.0f;
             if (kb.IsHeld(NS::Platform::Key::Q))
                 verticalAxis -= 1.0f;
-            ApplyFlyMove(forwardAxis, strafeAxis, verticalAxis, dt);
+            // Shift 押下中は 4 倍速で移動する。 通常は等倍で寄せて微調整し、 Shift で広い地形を一気に移動する
+            const float speedScale = kb.IsHeld(NS::Platform::Key::Shift) ? 4.0f : 1.0f;
+            ApplyFlyMove(forwardAxis, strafeAxis, verticalAxis, dt, speedScale);
         }
 
         // Gamepad は ImGui キャプチャ対象外、 常に入力する
