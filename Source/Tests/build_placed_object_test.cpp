@@ -269,6 +269,23 @@ TEST_F(BuildPlacedObjectTest, GoalHasPickupAndDisplaysAsGoal)
     EXPECT_TRUE(pickup->IsGoal());
 }
 
+// grid に置く cube は固形なので R で 90° 回せる
+TEST_F(BuildPlacedObjectTest, GridCubeIsRotatable)
+{
+    EXPECT_TRUE(NS::GameCore::Blocks::IsRotatableObject(MakeGridObject(0, 0, 0, 0)));
+}
+
+// 自由配置の cube も固形 box なので回せる。 固形判定は BoxCollider の有無で決まり、 空構成の marker は回せない
+TEST_F(BuildPlacedObjectTest, FreeCubeRotatableButEmptyMarkerNot)
+{
+    ObjectInstance freeCube;
+    freeCube.components = MakeFreeCubeComponents(freeCube);
+    EXPECT_TRUE(NS::GameCore::Blocks::IsRotatableObject(freeCube));
+
+    ObjectInstance marker;
+    EXPECT_FALSE(NS::GameCore::Blocks::IsRotatableObject(marker));
+}
+
 // プレイヤー実体は Player 派生の器に二重生成なしで組まれ、 移動と入力は休止で始まる
 TEST_F(BuildPlacedObjectTest, PlayerObjectBuildsDormantPlayerTyped)
 {

@@ -1,7 +1,6 @@
 #include "GameCore/Level/LevelData.h"
 
 #include "Framework/Math/Math.h"
-#include "GameCore/Blocks/BlockRegistry.h"
 #include "GameCore/Blocks/BuildPlacedObject.h"
 #include "GameCore/Level/detail/crc32.h"
 
@@ -12,6 +11,9 @@ namespace NS::GameCore::Level
 {
     namespace
     {
+        // cell ブラシの回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す。 描画 / 当たり / 往復が同じ向き基準を共有する
+        constexpr float kQuarterTurnYaw = 1.5707963267948966f;
+
         /// POD 値を std::byte span として view し CRC32 に流す helper
         template <typename T> std::uint32_t UpdateWith(std::uint32_t crc, const T& value) noexcept
         {
@@ -361,13 +363,13 @@ namespace NS::GameCore::Level
 
     std::uint8_t GridRotationStep(const ObjectInstance& object) noexcept
     {
-        // q と -q は同一回転なので fabs で符号を無視し 4 候補の最近接を選ぶ。 BlockRotationToYaw の符号規約に依存しない
+        // q と -q は同一回転なので fabs で符号を無視し 4 候補の最近接を選ぶ。 四半回転の向き規約に依存しない
         const NS::Math::Quaternion current{object.rotationX, object.rotationY, object.rotationZ, object.rotationW};
         std::uint8_t best = 0;
         float bestDot = -2.0f;
         for (std::uint8_t step = 0; step < 4; ++step)
         {
-            const float yaw = NS::GameCore::Blocks::BlockRotationToYaw(step);
+            const float yaw = static_cast<float>(step) * kQuarterTurnYaw;
             const NS::Math::Quaternion candidate = NS::Math::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
             const float dot = std::fabs(current.x * candidate.x + current.y * candidate.y + current.z * candidate.z +
                                         current.w * candidate.w);
@@ -382,7 +384,7 @@ namespace NS::GameCore::Level
 
     void SetGridRotationStep(ObjectInstance& object, std::uint8_t rotationStep) noexcept
     {
-        const float yaw = NS::GameCore::Blocks::BlockRotationToYaw(static_cast<std::uint8_t>(rotationStep & 0x03));
+        const float yaw = static_cast<float>(rotationStep & 0x03) * kQuarterTurnYaw;
         const NS::Math::Quaternion rotation = NS::Math::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
         object.rotationX = rotation.x;
         object.rotationY = rotation.y;

@@ -13,7 +13,6 @@
 #include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/Scene/Components/EditorCameraComponent.h"
 #include "Framework/UI/ImGuiContext.h"
-#include "GameCore/Blocks/BlockRegistry.h"
 #include "GameCore/Blocks/BuildPlacedObject.h"
 #include "GameCore/Level/LevelData.h"
 #include "GameCore/Level/LevelIO.h"
@@ -32,6 +31,9 @@ namespace NS::Editor
     namespace
     {
         constexpr float kCellHalfExtent = 0.5f;
+
+        // cursor の回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す
+        constexpr float kQuarterTurnYaw = 1.5707963267948966f;
 
         const NS::Math::Color kCursorOkColor{0.1f, 1.0f, 0.1f, 1.0f};
         const NS::Math::Color kCursorBlockedColor{1.0f, 0.1f, 0.1f, 1.0f};
@@ -67,7 +69,7 @@ namespace NS::Editor
 
         // 表示用 yaw quaternion を「現在の cursor rotation」 に Slerp で寄せて回転方向を視覚化する
         const auto targetQuat = NS::Math::Quaternion::CreateFromAxisAngle(
-            {0.0f, 1.0f, 0.0f}, NS::GameCore::Blocks::BlockRotationToYaw(m_currentRotation));
+            {0.0f, 1.0f, 0.0f}, static_cast<float>(m_currentRotation) * kQuarterTurnYaw);
         constexpr float kRotationSpringRate = 12.0f;
         const float dt = NS::Core::FrameTimer::FixedDelta();
         const float t = std::min(1.0f, kRotationSpringRate * dt);
