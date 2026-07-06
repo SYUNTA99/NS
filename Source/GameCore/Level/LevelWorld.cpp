@@ -15,13 +15,9 @@
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/ObjectRefSubsystem.h"
 #include "Framework/Scene/SceneBase.h"
-#include "GameCore/Blocks/AutoTile.h"
 #include "GameCore/Blocks/BuildPlacedObject.h"
 #include "GameCore/Level/LevelData.h"
 #include "GameCore/Player.h"
-
-#include <cmath>
-#include <cstdint>
 
 namespace NS::GameCore::Level
 {
@@ -140,21 +136,13 @@ namespace NS::GameCore::Level
         for (auto& obj : m_objects)
             obj->Root().Snapshot();
 
-        // instanced block の静的属性を焼く。 描画ループの per-frame 文字列走査と近傍マスクの O(N^2) を畳む
-        // instancing は描画段の判断で、 grid 固形だけを instanced bucket へ流す。 position は Snapshot 後で確定済
+        // grid 固形をまとめ描きへ流す。 テクスチャ番号は環境の既定値に固定し、 近傍からの自動選択は廃止
         for (std::size_t i = 0; i < m_objects.size(); ++i)
         {
             const ObjectInstance& entry = level.objects[m_objectSourceIndices[i]];
             if (!NS::GameCore::Blocks::IsGridSolidObject(entry))
                 continue;
-            const NS::Math::Vector3 wp = m_objects[i]->Root().Position();
-            const std::int16_t x = static_cast<std::int16_t>(std::lround(wp.x));
-            const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
-            const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
-            const std::uint8_t mask = NS::GameCore::Blocks::ComputeNeighborMask(level, x, y, z);
-            const std::uint16_t slice =
-                NS::GameCore::Blocks::LookupTextureSlice(level.environment.blockTextureBaseSlice, mask);
-            m_instancedBlocks.push_back(InstancedBlock{i, static_cast<float>(slice)});
+            m_instancedBlocks.push_back(InstancedBlock{i, static_cast<float>(level.environment.blockTextureBaseSlice)});
         }
 
 #if !defined(NS_SHIPPING)

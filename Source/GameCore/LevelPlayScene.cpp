@@ -31,7 +31,6 @@
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/Transform.h"
-#include "GameCore/Blocks/AutoTile.h"
 #include "GameCore/Level/LevelIO.h"
 #include "GameCore/Theme/ThemeRegistry.h"
 

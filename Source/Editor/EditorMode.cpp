@@ -13,7 +13,6 @@
 #include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/Scene/Components/EditorCameraComponent.h"
 #include "Framework/UI/ImGuiContext.h"
-#include "GameCore/Blocks/AutoTile.h"
 #include "GameCore/Blocks/BlockRegistry.h"
 #include "GameCore/Blocks/BuildPlacedObject.h"
 #include "GameCore/Level/LevelData.h"
