@@ -5,7 +5,6 @@
 ///
 /// @details 物理は全テーマ共通なので skybox と lighting の視覚フィールドのみを持つ純データ表現
 
-#include <cstdint>
 #include <filesystem>
 #include <string>
 
@@ -18,8 +17,6 @@ namespace NS::GameCore::Theme
     {
         /// ImGui パレットや debug overlay で使うテーマ表示名。 ファイル読込で差し替わるため所有する
         std::string displayName{};
-        /// block texture 配列の先頭 slice index。 テーマごとに 8 slice 帯を確保する想定
-        std::uint16_t blockTextureArrayBaseSlice = 0;
         /// skybox cubemap のディレクトリ or .dds パス。 Skybox::LoadCubemap に渡す
         std::filesystem::path skyboxCubemapPath{};
         /// directional sun の向き。 正規化前でよく、 シェーダ側で normalize する

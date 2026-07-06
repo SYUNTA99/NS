@@ -30,7 +30,6 @@ TEST(PlayModeCrc, RoundTripPreservesLevelData_PMODE_06)
 {
     LevelNs::LevelData level;
     level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{5.0f, 1.0f, -3.0f}, NS::Math::Quaternion{}));
-    level.environment.blockTextureBaseSlice = 24;
     level.coinThreshold = 30;
     level.timeLimitSeconds = 240;
     level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));

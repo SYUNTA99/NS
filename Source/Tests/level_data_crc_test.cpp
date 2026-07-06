@@ -119,11 +119,6 @@ TEST(LevelDataCrcTest, EnvironmentIsHashed)
     c.environment.skyboxCubemapPath = "Assets/Skybox/a/";
     d.environment.skyboxCubemapPath = "Assets/Skybox/b/";
     EXPECT_NE(c.ComputeCrc32(), d.ComputeCrc32());
-
-    LevelNs::LevelData e, f;
-    e.environment.blockTextureBaseSlice = 0;
-    f.environment.blockTextureBaseSlice = 8;
-    EXPECT_NE(e.ComputeCrc32(), f.ComputeCrc32());
 }
 
 TEST(LevelDataCrcTest, VectorCapacityDoesNotAffectCrc)

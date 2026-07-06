@@ -106,8 +106,6 @@ namespace NS::GameCore::Level
         NS::Math::Vector3 ambientColor{0.2f, 0.2f, 0.2f};
         /// skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。 空文字なら skybox を描かない
         std::string skyboxCubemapPath{};
-        /// block texture 配列の先頭 slice。 Rebuild 時の焼き込みが読む
-        std::uint16_t blockTextureBaseSlice = 0;
     };
 
     /// `.scene` に書かれる永続データ。 PlayMode 中は const 参照でしか触らせない
@@ -122,7 +120,7 @@ namespace NS::GameCore::Level
         /// objects の materialIndex が参照する .mat 相対パス表
         std::vector<std::string> materialPaths;
 
-        /// シーンの見た目を確定する環境値。 lighting と skybox と block の slice 帯
+        /// シーンの見た目を確定する環境値。 lighting と skybox
         LevelEnvironment environment{};
 
         std::uint16_t bgmId = 0;

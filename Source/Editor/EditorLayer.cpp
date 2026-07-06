@@ -291,15 +291,6 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorController& editor) noexc
         ImGui::DragFloat3("ambient##env", &env.ambientColor.x, 0.01f, 0.0f, 2.0f);
         ImGui::Text("skybox: %s", env.skyboxCubemapPath.empty() ? "(なし)" : env.skyboxCubemapPath.c_str());
 
-        // slice 帯だけは焼き直しが要るので controller 経由で変える
-        int baseSlice = static_cast<int>(env.blockTextureBaseSlice);
-        if (ImGui::InputInt("blockSlice##env", &baseSlice))
-        {
-            if (baseSlice < 0)
-                baseSlice = 0;
-            editor.SetEnvironmentBlockSlice(static_cast<std::uint16_t>(baseSlice));
-        }
-
         ImGui::Separator();
 
         // 雛形の適用。 選んだテーマの視覚値を environment へ写し込み slice 帯を焼き直す

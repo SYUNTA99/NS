@@ -169,7 +169,6 @@ namespace NS::GameCore::Level
         crc = UpdateWith(crc, environment.lightColor);
         crc = UpdateWith(crc, environment.ambientColor);
         crc = UpdateWithString(crc, environment.skyboxCubemapPath);
-        crc = UpdateWith(crc, environment.blockTextureBaseSlice);
 
         crc = UpdateWith(crc, bgmId);
         crc = UpdateWith(crc, coinThreshold);

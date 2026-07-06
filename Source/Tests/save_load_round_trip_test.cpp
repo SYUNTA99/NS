@@ -24,7 +24,6 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
 
     LevelNs::LevelData src;
     src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
-    src.environment.blockTextureBaseSlice = 24;
     src.coinThreshold = 10;
     src.timeLimitSeconds = 180;
     src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
@@ -545,7 +544,6 @@ TEST(SaveLoadRoundTrip, EnvironmentRoundTrip)
     src.environment.lightColor = NS::Math::Vector3{1.0f, 0.9f, 0.8f};
     src.environment.ambientColor = NS::Math::Vector3{0.1f, 0.2f, 0.3f};
     src.environment.skyboxCubemapPath = "Assets/Skybox/kurt/";
-    src.environment.blockTextureBaseSlice = 24;
     src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     LevelNs::EnsureUniqueObjectIds(src);
     src.objects.push_back(LevelNs::MakeFollowCameraObject(src.objects[0].objectId));
@@ -566,7 +564,6 @@ TEST(SaveLoadRoundTrip, EnvironmentRoundTrip)
     EXPECT_FLOAT_EQ(dst.environment.ambientColor.y, 0.2f);
     EXPECT_FLOAT_EQ(dst.environment.ambientColor.z, 0.3f);
     EXPECT_EQ(dst.environment.skyboxCubemapPath, "Assets/Skybox/kurt/");
-    EXPECT_EQ(dst.environment.blockTextureBaseSlice, 24);
     EXPECT_EQ(dst.ComputeCrc32(), crc0);
 }
 
@@ -592,7 +589,6 @@ TEST(SaveLoadRoundTrip, EnvironmentPartialKeysKeepNeutralDefaults)
     EXPECT_FLOAT_EQ(dst.environment.lightDirection.y, neutral.lightDirection.y);
     EXPECT_FLOAT_EQ(dst.environment.ambientColor.x, neutral.ambientColor.x);
     EXPECT_EQ(dst.environment.skyboxCubemapPath, neutral.skyboxCubemapPath);
-    EXPECT_EQ(dst.environment.blockTextureBaseSlice, neutral.blockTextureBaseSlice);
 }
 
 // 追従カメラ実体が既に居れば合成は走らず、 Target 参照ごと往復で保持される

@@ -1129,12 +1129,5 @@ void LevelEditorController::ReloadThemes()
 void LevelEditorController::ApplyTheme(NS::GameCore::Theme::ThemeId id)
 {
     m_scene->Level().environment = NS::GameCore::Theme::MakeEnvironmentFromTheme(NS::GameCore::Theme::Get(id));
-    // lighting / skybox は次フレームの設定写しで追従する。 block の slice 帯は焼き直しが要る
-    m_scene->RebuildWorld();
-}
-
-void LevelEditorController::SetEnvironmentBlockSlice(std::uint16_t baseSlice)
-{
-    m_scene->Level().environment.blockTextureBaseSlice = baseSlice;
-    m_scene->RebuildWorld();
+    // lighting / skybox は次フレームの設定写しで追従するため即時の組み直しは要らない
 }

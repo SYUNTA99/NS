@@ -1,7 +1,6 @@
 {
     "type": "theme",
     "displayName": "Sky",
-    "blockTextureArrayBaseSlice": 32,
     "skyboxCubemapPath": "Assets/Skybox/kurt/",
     "lightDirection": [-0.3, -1.0, -0.2],
     "lightColor": [1.1, 1.0, 1.0],
