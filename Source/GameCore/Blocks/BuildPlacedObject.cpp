@@ -48,10 +48,11 @@ namespace NS::GameCore::Blocks
             return material;
         }
 
-        // player / block / water / shadow の共有 material 名なら true。 これ以外は .mat パス / 既定へ倒す
+        // player / water / shadow の共有 material 名なら true。 これ以外 (旧 block 含む) は .mat パス /
+        // 既定の自由材質へ倒す
         bool IsSharedMaterialName(const std::string& ref) noexcept
         {
-            return ref == "player" || ref == "block" || ref == "water" || ref == "shadow";
+            return ref == "player" || ref == "water" || ref == "shadow";
         }
 
         // 器に既に載る同型 component を反射型名で探す。 適用済みの控えにある分は飛ばし、 無ければ nullptr
