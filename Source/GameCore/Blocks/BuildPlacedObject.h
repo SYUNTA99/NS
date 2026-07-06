@@ -69,16 +69,16 @@ namespace NS::GameCore::Blocks
 
     /// 追従カメラ実体の component 一覧を組む。 ThirdPersonFollowComponent 1 点で、 追従先の
     /// 永続 id を Target 参照へ、 プレイの遠景 100 を Far Plane へ焼く。 感触値はコード既定に任せる
-    [[nodiscard]] std::vector<NS::GameCore::Level::ComponentData> MakeFollowCameraComponents(std::uint32_t targetObjectId);
+    [[nodiscard]] std::vector<NS::GameCore::Level::ComponentData> MakeFollowCameraComponents(
+        std::uint32_t targetObjectId);
 
     /// 自由配置の cube 1 個分の component 一覧を組む。 cube メッシュ + shapeCollider に応じた Box/Sphere/Capsule 当たり
     /// 当たり寸法 / offset / 回転は object の collider フィールドから読む
     [[nodiscard]] std::vector<NS::GameCore::Level::ComponentData> MakeFreeCubeComponents(
         const NS::GameCore::Level::ObjectInstance& object);
 
-    /// grid 配置された固形 block か。 gridAligned かつ BoxCollider 持ちで
-    /// slope / hazard / 拾得を持たないことを components から判定する。 instancing / 昇格 /
-    /// 当たり可視化の「固形」判定窓口
+    /// 固形 block か。 BoxCollider を持ち slope / hazard / 拾得を持たないことを components から判定する
+    /// 当たり可視化 / コヨーテ縁 / R 回転対象の「固形」判定窓口
     [[nodiscard]] bool IsGridSolidObject(const NS::GameCore::Level::ObjectInstance& object);
 
     /// R で 90° 回す対象か。 SlopeCollider を持つか grid 固形なら true。 水 / 装飾は false

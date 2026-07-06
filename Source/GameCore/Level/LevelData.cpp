@@ -340,12 +340,19 @@ namespace NS::GameCore::Level
         object.shapeCollider = static_cast<std::uint8_t>(shape);
     }
 
+    bool IsCellBrushObject(const ObjectInstance& object) noexcept
+    {
+        // プレイヤーとカメラはギズモ / 別経路で扱うため cell ブラシの対象から外す
+        return !IsPlayerObject(object) && !IsFollowCameraObject(object) &&
+               FindComponentData(object, "PlacedVirtualCamera") == nullptr;
+    }
+
     std::size_t FindGridObjectAtCell(const LevelData& level, std::int16_t x, std::int16_t y, std::int16_t z) noexcept
     {
         for (std::size_t i = 0; i < level.objects.size(); ++i)
         {
             const auto& object = level.objects[i];
-            if ((object.flags & kObjectFlagGridAligned) != 0 && ObjectCellX(object) == x && ObjectCellY(object) == y &&
+            if (IsCellBrushObject(object) && ObjectCellX(object) == x && ObjectCellY(object) == y &&
                 ObjectCellZ(object) == z)
             {
                 return i;

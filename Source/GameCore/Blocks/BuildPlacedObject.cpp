@@ -294,8 +294,6 @@ namespace NS::GameCore::Blocks
     bool IsGridSolidObject(const NS::GameCore::Level::ObjectInstance& object)
     {
         using namespace NS::GameCore::Level;
-        if ((object.flags & kObjectFlagGridAligned) == 0)
-            return false;
         // 拾得 / slope / hazard は固形でない。 残る BoxCollider 持ちだけが固形 block
         if (PickupKindOf(object) >= 0)
             return false;

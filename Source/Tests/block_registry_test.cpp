@@ -10,15 +10,15 @@ TEST(BlockRegistry, GridCubeIsRotatable)
     EXPECT_TRUE(NS::GameCore::Blocks::IsRotatableObject(NS::GameCore::Level::MakeGridObject(0, 0, 0, 0)));
 }
 
-TEST(BlockRegistry, FreeCubeAndMarkerAreNotRotatable)
+TEST(BlockRegistry, FreeCubeRotatableMarkerNot)
 {
-    // 自由配置の cube は grid 固形でないため回せない
+    // 自由配置の cube も固形 box なので R で 90° 回せる。 固形判定は flags でなく BoxCollider の有無で決まる
     NS::GameCore::Level::ObjectInstance freeCube{};
     freeCube.flags = 0;
     freeCube.components = NS::GameCore::Blocks::MakeFreeCubeComponents(freeCube);
-    EXPECT_FALSE(NS::GameCore::Blocks::IsRotatableObject(freeCube));
+    EXPECT_TRUE(NS::GameCore::Blocks::IsRotatableObject(freeCube));
 
-    // component を持たない空構成の object も回せない
+    // component を持たない空構成の object は固形でないので回せない
     NS::GameCore::Level::ObjectInstance marker{};
     EXPECT_FALSE(NS::GameCore::Blocks::IsRotatableObject(marker));
 }

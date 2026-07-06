@@ -389,8 +389,8 @@ namespace NS::Editor
 
         for (const auto& object : m_level->objects)
         {
-            // grid カーソルの pick 対象は gridAligned のみで、 自由配置物はギズモが拾う
-            if ((object.flags & NS::GameCore::Level::kObjectFlagGridAligned) == 0)
+            // cursor の pick 対象は cell ブラシ配置物。 プレイヤーとカメラはギズモが拾うため除く
+            if (!NS::GameCore::Level::IsCellBrushObject(object))
                 continue;
             const std::int16_t cx = NS::GameCore::Level::ObjectCellX(object);
             const std::int16_t cy = NS::GameCore::Level::ObjectCellY(object);

@@ -189,12 +189,15 @@ namespace NS::GameCore::Level
     /// object の collider 形状を設定する
     void SetObjectShapeCollider(ObjectInstance& object, ShapeCollider shape) noexcept;
 
-    /// gridAligned object の cell 座標 = position を最近接整数へ丸めた値
+    /// 配置物の cell 座標 = position を最近接整数へ丸めた値
     [[nodiscard]] std::int16_t ObjectCellX(const ObjectInstance& object) noexcept;
     [[nodiscard]] std::int16_t ObjectCellY(const ObjectInstance& object) noexcept;
     [[nodiscard]] std::int16_t ObjectCellZ(const ObjectInstance& object) noexcept;
 
-    /// gridAligned かつ cell の x, y, z に一致する最初の object の添字。 無ければ kNoObjectIndex
+    /// cell ブラシが置換 / 削除できる配置物か。 プレイヤーとカメラは別経路で扱うため除く
+    [[nodiscard]] bool IsCellBrushObject(const ObjectInstance& object) noexcept;
+
+    /// cell の x, y, z に一致する最初の cell ブラシ配置物の添字。 プレイヤー / カメラは除く。 無ければ kNoObjectIndex
     [[nodiscard]] std::size_t FindGridObjectAtCell(const LevelData& level,
                                                    std::int16_t x,
                                                    std::int16_t y,
