@@ -39,13 +39,6 @@ namespace NS::Editor
         // world でのハンドル軸の長さ。 origin から各軸方向にこの距離だけ伸ばした端点を picking に使う
         constexpr float kHandleLength = 1.0f;
 
-        // この投影深度までは kHandleLength をそのまま使い、 これより遠い選択物は深度に比例してハンドルを
-        // 伸ばす。 近距離を固定長に据え置くのは、 手前のオブジェクトでハンドルが画面を覆わないようにするため
-        constexpr float kHandleReferenceDepth = 10.0f;
-
-        // clip.w がこの値以下、 つまりカメラ至近や背面で深度が信頼できない時は深度で割らず固定長へ退避する
-        constexpr float kHandleMinClipW = 1.0e-3f;
-
         // px 単位の screen 上のヒット許容半径。 これ未満の最近接軸を採用する
         constexpr float kPickThresholdPixels = 12.0f;
 
@@ -175,9 +168,11 @@ namespace NS::Editor
         {
             const NS::Math::Vector4 clip =
                 NS::Math::Vector4::Transform(NS::Math::Vector4{origin.x, origin.y, origin.z, 1.0f}, vp);
-            if (clip.w <= kHandleMinClipW)
+            // clip.w がほぼ 0、 カメラ至近や背面で深度が信頼できない時は深度で割らず固定長へ退避する
+            if (clip.w <= 1.0e-3f)
                 return kHandleLength;
-            const float scale = clip.w / kHandleReferenceDepth;
+            // 深度 10 までは kHandleLength のまま、 これより遠い選択物ほど深度に比例して伸ばし画面上一定に近づける
+            const float scale = clip.w / 10.0f;
             return kHandleLength * ((scale > 1.0f) ? scale : 1.0f);
         }
 
