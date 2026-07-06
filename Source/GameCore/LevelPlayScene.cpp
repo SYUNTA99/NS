@@ -21,7 +21,6 @@
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
-#include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/Transform.h"
@@ -130,8 +129,6 @@ void LevelPlayScene::OnUpdate()
     // 編集中はプレイ更新を止める。 free-fly カメラ / 編集入力は overlay layer の editor 側が回す
     // 進行の分岐は配下の PlayFlowComponent が担い、 編集モード中は寝ているため素通りする
     m_director->OnUpdate();
-
-    UpdateDisplayBlocks();
 }
 
 void LevelPlayScene::SnapshotDisplayBlocks()
@@ -139,18 +136,6 @@ void LevelPlayScene::SnapshotDisplayBlocks()
     // 各配置物 GameObject の Snapshot は edit / play 共通。 静的 display object なので常時
     for (auto& obj : m_world.Objects())
         obj->Root().Snapshot();
-}
-
-void LevelPlayScene::UpdateDisplayBlocks()
-{
-    // gridAligned な配置物のみ OnUpdate する。 自由配置物は旧挙動を保つため OnUpdate 対象外
-    const auto& objects = m_world.Objects();
-    for (std::size_t i = 0; i < objects.size(); ++i)
-    {
-        const NS::GameCore::Level::ObjectInstance& entry = m_level.objects[m_world.SourceIndices()[i]];
-        if ((entry.flags & NS::GameCore::Level::kObjectFlagGridAligned) != 0)
-            objects[i]->OnUpdate();
-    }
 }
 
 void LevelPlayScene::OnRenderScene()

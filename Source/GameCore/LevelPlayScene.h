@@ -69,9 +69,6 @@ private:
     /// 全表示ブロックの Snapshot を取る。 補間描画のため edit / play 共通で毎フレーム
     void SnapshotDisplayBlocks();
 
-    /// 全表示ブロックの OnUpdate を回す。 edit / play 共通
-    void UpdateDisplayBlocks();
-
     /// 起動時のレベル供給: 同梱の `new_level.scene` をロードし、 無ければ最小床を seed する
     void LoadInitialLevel();
 

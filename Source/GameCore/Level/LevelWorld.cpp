@@ -1,6 +1,7 @@
 #include "GameCore/Level/LevelWorld.h"
 
 #include "Framework/Physics/PhysicsWorld.h"
+#include "Framework/Physics/SweptOBB.h"
 #include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/CapsuleColliderComponent.h"
 #include "Framework/Scene/Components/HazardComponent.h"
@@ -15,8 +16,26 @@
 #include "GameCore/Level/LevelData.h"
 #include "GameCore/Player.h"
 
+#include <algorithm>
+#include <cmath>
+
 namespace NS::GameCore::Level
 {
+    namespace
+    {
+        // OBB の 3 軸が座標軸に十分沿っていれば軸並行とみなす。 90° 刻みの回転はここに落ちる
+        // 各軸は単位ベクトルなので最大成分が 1 に届けば残り 2 成分はほぼ 0 になる
+        // しきい 1e-4 は 90° を quaternion 経由で組んだ時の float 誤差を確実に飲み込み、 1° 以上の傾きは OBB へ回す
+        [[nodiscard]] bool IsAxisAligned(const NS::Physics::OBB& obb) noexcept
+        {
+            constexpr float kAlignEpsilon = 1e-4f;
+            const auto alignedAxis = [](const NS::Math::Vector3& axis) noexcept {
+                const float maxComponent = std::max({std::abs(axis.x), std::abs(axis.y), std::abs(axis.z)});
+                return maxComponent >= 1.0f - kAlignEpsilon;
+            };
+            return alignedAxis(obb.axisX) && alignedAxis(obb.axisY) && alignedAxis(obb.axisZ);
+        }
+    } // namespace
 
     LevelWorld::LevelWorld() = default;
     LevelWorld::~LevelWorld() = default;
@@ -65,13 +84,10 @@ namespace NS::GameCore::Level
             m_objects.push_back(std::move(obj));
         }
 
-        for (std::size_t i = 0; i < m_objects.size(); ++i)
+        for (auto& objPtr : m_objects)
         {
-            const ObjectInstance& entry = level.objects[m_objectSourceIndices[i]];
-            NS::Scene::GameObject* obj = m_objects[i].get();
+            NS::Scene::GameObject* obj = objPtr.get();
             obj->OnStart();
-
-            const bool gridAligned = (entry.flags & kObjectFlagGridAligned) != 0;
 
             // collider component を全部登録する。 同型を重ねれば複合形状として当たりに効く
             bool hazardRegistered = false;
@@ -83,11 +99,13 @@ namespace NS::GameCore::Level
                     physics.AddCapsule(capsule->WorldCapsule());
                 else if (auto* box = NS::Scene::ComponentCast<NS::Scene::BoxColliderComponent>(comp))
                 {
-                    // 同じ Box でも gridAligned なら軸並行 AABB、 自由配置なら回転込み OBB
-                    if (gridAligned)
+                    // 軸並行すなわち回転が 90° 刻みなら従来通り AABB、 傾いた箱だけ OBB
+                    // 旧 grid は必ず軸並行なので AABB に落ち、 上を走る / 角に当たる手触りは不変
+                    const NS::Physics::OBB obb = box->WorldOBB();
+                    if (IsAxisAligned(obb))
                         physics.AddAabb(box->WorldAABB());
                     else
-                        physics.AddObb(box->WorldOBB());
+                        physics.AddObb(obb);
                 }
                 else if (auto* slope = NS::Scene::ComponentCast<NS::Scene::SlopeColliderComponent>(comp))
                     for (const auto& tri : slope->WorldTriangles())
@@ -133,18 +151,14 @@ namespace NS::GameCore::Level
 
         physics.BuildBroadphase();
 
-        // 接地シャドウは grid + 自由物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
+        // 接地シャドウは各配置物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
         if (m_playerView != nullptr)
         {
-            std::vector<NS::Math::AABB> shadowReceivers(physics.Aabbs().begin(), physics.Aabbs().end());
-            for (std::size_t i = 0; i < m_objects.size(); ++i)
-            {
-                const ObjectInstance& entry = level.objects[m_objectSourceIndices[i]];
-                if ((entry.flags & kObjectFlagGridAligned) != 0)
-                    continue;
-                if (auto aabb = NS::GameCore::Blocks::ColliderWorldAABB(*m_objects[i]))
+            std::vector<NS::Math::AABB> shadowReceivers;
+            shadowReceivers.reserve(m_objects.size());
+            for (auto& obj : m_objects)
+                if (auto aabb = NS::GameCore::Blocks::ColliderWorldAABB(*obj))
                     shadowReceivers.push_back(*aabb);
-            }
             m_playerView->Shadow().SetCollisionWorld(shadowReceivers);
         }
     }
