@@ -22,10 +22,8 @@ TEST(LevelWorldTest, InitialStateIsEmpty)
     LevelWorld world;
     EXPECT_TRUE(world.Objects().empty());
     EXPECT_TRUE(world.SourceIndices().empty());
-    EXPECT_TRUE(world.InstancedBlocks().empty());
     EXPECT_TRUE(world.HazardView().empty());
     EXPECT_TRUE(world.LedgeEdges().empty());
-    EXPECT_EQ(world.Batcher(), nullptr);
 }
 
 TEST(LevelWorldTest, RebuildClearsStalePhysicsAndBuildsNothingWithoutAssets)
@@ -52,7 +50,6 @@ TEST(LevelWorldTest, ClearEmptiesEverything)
     world.Clear();
     EXPECT_TRUE(world.Objects().empty());
     EXPECT_TRUE(world.SourceIndices().empty());
-    EXPECT_TRUE(world.InstancedBlocks().empty());
     EXPECT_TRUE(world.HazardView().empty());
     EXPECT_TRUE(world.PlacedCameras().empty());
     EXPECT_TRUE(world.FollowCameras().empty());

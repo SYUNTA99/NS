@@ -122,7 +122,7 @@ namespace NS::GameCore::Blocks
         }
 
         NS::GameCore::Level::ComponentData MakeComponentData(std::string typeName,
-                                                         std::vector<NS::GameCore::Level::FieldValue> fields)
+                                                             std::vector<NS::GameCore::Level::FieldValue> fields)
         {
             NS::GameCore::Level::ComponentData component;
             component.typeName = std::move(typeName);
@@ -131,8 +131,8 @@ namespace NS::GameCore::Blocks
         }
 
         NS::GameCore::Level::ComponentData MeshRendererData(std::string meshName,
-                                                        std::string materialName,
-                                                        const NS::Math::Vector3& baseColor)
+                                                            std::string materialName,
+                                                            const NS::Math::Vector3& baseColor)
         {
             return MakeComponentData("MeshRendererComponent",
                                      {NS::GameCore::Level::FieldValue{"Mesh", std::move(meshName)},
@@ -176,7 +176,7 @@ namespace NS::GameCore::Blocks
     std::vector<NS::GameCore::Level::ComponentData> MakeGridCubeComponents()
     {
         using namespace NS::GameCore::Level;
-        return {MeshRendererData("cube", "block", kSolidBaseColor),
+        return {MeshRendererData("cube", "", kSolidBaseColor),
                 MakeComponentData("BoxColliderComponent", {FieldValue{"Half Extents", kCellHalfExtents}})};
     }
 
@@ -225,7 +225,8 @@ namespace NS::GameCore::Blocks
             {FieldValue{"Target", NS::Scene::ObjectRef{targetObjectId}}, FieldValue{"Far Plane", 100.0f}})};
     }
 
-    std::vector<NS::GameCore::Level::ComponentData> MakeFreeCubeComponents(const NS::GameCore::Level::ObjectInstance& object)
+    std::vector<NS::GameCore::Level::ComponentData> MakeFreeCubeComponents(
+        const NS::GameCore::Level::ObjectInstance& object)
     {
         using namespace NS::GameCore::Level;
         std::vector<ComponentData> result;

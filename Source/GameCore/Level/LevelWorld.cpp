@@ -1,13 +1,9 @@
 #include "GameCore/Level/LevelWorld.h"
 
-#include "Framework/Core/LogCategories.h"
-#include "Framework/Core/Logger.h"
-#include "Framework/Graphics/InstanceBatcher.h"
 #include "Framework/Physics/PhysicsWorld.h"
 #include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/CapsuleColliderComponent.h"
 #include "Framework/Scene/Components/HazardComponent.h"
-#include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
 #include "Framework/Scene/Components/SlopeColliderComponent.h"
 #include "Framework/Scene/Components/SphereColliderComponent.h"
@@ -77,12 +73,6 @@ namespace NS::GameCore::Level
 
             const bool gridAligned = (entry.flags & kObjectFlagGridAligned) != 0;
 
-            // grid solid は個別 Draw を殺して InstanceBatcher へ委ねる。 描画段が Objects() を直読みして instanceable
-            // 判定 OnStart で RegisterRenderable 済なので MeshRenderer を非アクティブにするだけでよい
-            if (NS::GameCore::Blocks::IsGridSolidObject(entry))
-                if (auto* mesh = NS::GameCore::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*obj))
-                    mesh->SetActive(false);
-
             // collider component を全部登録する。 同型を重ねれば複合形状として当たりに効く
             bool hazardRegistered = false;
             for (NS::Scene::Component* comp : obj->Components())
@@ -136,15 +126,6 @@ namespace NS::GameCore::Level
         for (auto& obj : m_objects)
             obj->Root().Snapshot();
 
-        // grid 固形をまとめ描きへ流す。 テクスチャ番号は環境の既定値に固定し、 近傍からの自動選択は廃止
-        for (std::size_t i = 0; i < m_objects.size(); ++i)
-        {
-            const ObjectInstance& entry = level.objects[m_objectSourceIndices[i]];
-            if (!NS::GameCore::Blocks::IsGridSolidObject(entry))
-                continue;
-            m_instancedBlocks.push_back(InstancedBlock{i, static_cast<float>(level.environment.blockTextureBaseSlice)});
-        }
-
 #if !defined(NS_SHIPPING)
         // コヨーテ debug 用に踏み外せる縁を焼く。 level が変わらない限り不変なのでここで 1 度だけ
         m_ledgeEdges = NS::GameCore::Blocks::ComputeTopLedgeEdges(level);
@@ -175,24 +156,11 @@ namespace NS::GameCore::Level
             (*it)->OnEndPlay();
         m_objects.clear();
         m_objectSourceIndices.clear();
-        m_instancedBlocks.clear();
         m_hazardView.clear();
         m_placedCameraView.clear();
         m_followCameraView.clear();
         m_virtualCameraView.clear();
         m_playerView = nullptr;
-    }
-
-    void LevelWorld::CreateBatcher()
-    {
-        m_instanceBatcher = NS::Graphics::InstanceBatcher::Create();
-        if (!m_instanceBatcher->IsValid())
-            NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelWorld: InstanceBatcher 構築失敗、 block 描画はスキップされる");
-    }
-
-    void LevelWorld::ResetBatcher() noexcept
-    {
-        m_instanceBatcher.reset();
     }
 
 } // namespace NS::GameCore::Level

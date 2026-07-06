@@ -13,7 +13,6 @@
 #include "Framework/App/Application.h"
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Graphics/DebugDraw.h"
-#include "Framework/Graphics/InstanceBatcher.h"
 #include "Framework/Physics/SweptOBB.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
@@ -270,9 +269,6 @@ void LevelEditorController::TickEdit()
     if (!app->Input().UiWantsKeyboard() && app->Input().Keyboard().IsPressed(NS::Platform::Key::F5))
     {
         app->Assets().ReloadAllShaders();
-        // block 描画の instanced shader は AssetManager 管理外で自前コンパイルなので個別に reload する
-        if (auto* batcher = m_scene->World().Batcher())
-            batcher->ReloadShaders();
     }
 
     // Esc: Object モードで選択中ならまず選択解除に使い終了させない
