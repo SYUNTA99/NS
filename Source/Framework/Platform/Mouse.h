@@ -41,9 +41,9 @@ namespace NS::Platform
         [[nodiscard]] int GetX() const noexcept { return m_x; }
         [[nodiscard]] int GetY() const noexcept { return m_y; }
 
-        /// 前フレーム位置からの差分
-        [[nodiscard]] int GetDeltaX() const noexcept { return m_x - m_prevX; }
-        [[nodiscard]] int GetDeltaY() const noexcept { return m_y - m_prevY; }
+        /// 前フレーム位置からの差分。 相対モード中は OnRawMove で積んだ物理移動量を返す
+        [[nodiscard]] int GetDeltaX() const noexcept { return m_relativeMode ? m_rawDeltaX : (m_x - m_prevX); }
+        [[nodiscard]] int GetDeltaY() const noexcept { return m_relativeMode ? m_rawDeltaY : (m_y - m_prevY); }
 
         /// WHEEL_DELTA=120 単位の縦ホイールデルタ。Update() で 0 リセット
         [[nodiscard]] int GetWheelDelta() const noexcept { return m_wheel; }
@@ -56,6 +56,15 @@ namespace NS::Platform
         void OnButtonDown(MouseButton b) noexcept;
         void OnButtonUp(MouseButton b) noexcept;
         void OnWheel(int delta) noexcept;
+
+        /// 相対マウスモードの切替。 プレイ中にカーソルを消して視点操作する時 true にする
+        /// true の間 GetDeltaX/Y はカーソル位置差でなく OnRawMove で積んだ物理移動量を返すため
+        /// カーソルが窓の端に張り付いても視点が止まらない
+        void SetRelativeMode(bool enabled) noexcept;
+        [[nodiscard]] bool IsRelativeMode() const noexcept { return m_relativeMode; }
+
+        /// Raw Input の相対移動量を積む。 WndProc の WM_INPUT 経由で呼ばれる。 Update() で 0 リセット
+        void OnRawMove(int dx, int dy) noexcept;
 
         /// フォーカス喪失時に呼ぶ。ボタン状態とホイールをクリアし位置は維持する
         void ClearState() noexcept;
@@ -71,6 +80,9 @@ namespace NS::Platform
         int m_prevX = 0;
         int m_prevY = 0;
         int m_wheel = 0;
+        int m_rawDeltaX = 0;
+        int m_rawDeltaY = 0;
+        bool m_relativeMode = false;
     };
 
 } // namespace NS::Platform

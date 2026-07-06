@@ -60,10 +60,14 @@ namespace NS::GameCore::Level
         for (auto* follow : scene->World().FollowCameras())
             follow->SetActive(true);
 
-        // プレイ突入はカーソルを消す。 Esc で出すまで非表示のまま
+        // プレイ突入はカーソルを消し、 マウスを相対モードにして視点操作をカーソル位置から切り離す
+        // Esc で出すまで非表示のまま
         m_playCursorShown = false;
         if (auto* app = NS::App::Application::Get())
+        {
             app->Window().SetCursorVisible(false);
+            app->Input().Mouse().SetRelativeMode(true);
+        }
     }
 
     void PlayFlowComponent::ExitPlay() noexcept
@@ -97,9 +101,12 @@ namespace NS::GameCore::Level
         for (auto* placed : scene->World().PlacedCameras())
             placed->SetActive(false);
 
-        // 編集モードはカーソルを出す
+        // 編集モードはカーソルを出し、 相対モードも解いてカーソル位置ベースの操作へ戻す
         if (auto* app = NS::App::Application::Get())
+        {
             app->Window().SetCursorVisible(true);
+            app->Input().Mouse().SetRelativeMode(false);
+        }
     }
 
     void PlayFlowComponent::RestartLevel() noexcept
@@ -128,8 +135,10 @@ namespace NS::GameCore::Level
         {
             if (!m_playCursorShown)
             {
+                // カーソルを出すなら相対モードも解く。 見えるカーソルと相対モードの併存は挙動が矛盾する
                 m_playCursorShown = true;
                 app->Window().SetCursorVisible(true);
+                app->Input().Mouse().SetRelativeMode(false);
             }
             else
             {

@@ -137,6 +137,19 @@ namespace NS::Platform
                 }
                 break;
             }
+            case WM_INPUT:
+            {
+                // Raw Input はカーソル位置に依らない相対移動量。 ImGui とは無関係なので UI ゲートを通さず
+                // 直接 Input へ流す。 GetRawInputData の詳細は input_win32 側に閉じる
+                if (impl->input != nullptr)
+                {
+                    DispatchWin32MessageToInput(*impl->input,
+                                                static_cast<unsigned int>(msg),
+                                                static_cast<std::uintptr_t>(wparam),
+                                                static_cast<std::intptr_t>(lparam));
+                }
+                break;
+            }
             case WM_CLOSE:
             {
                 if (impl->onClose)
@@ -220,6 +233,20 @@ namespace NS::Platform
             m_pImpl->classAtom = 0;
             s_instance = nullptr;
             return;
+        }
+
+        // Raw Input のマウスを登録する。 カーソル位置に依存しない物理移動量を WM_INPUT で受け取り
+        // プレイ中にカーソルを消したまま視点を回すために使う。 hwndTarget 指定でフォアグラウンド時のみ受信する
+        RAWINPUTDEVICE rid{};
+        rid.usUsagePage = 0x01;
+        rid.usUsage = 0x02;
+        rid.dwFlags = 0;
+        rid.hwndTarget = m_pImpl->hwnd;
+        if (::RegisterRawInputDevices(&rid, 1, sizeof(rid)) == FALSE)
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Platform,
+                         "RegisterRawInputDevices 失敗、 相対マウスは無効 (GetLastError={})",
+                         ::GetLastError());
         }
 
         ::ShowWindow(m_pImpl->hwnd, desc.visible ? SW_SHOW : SW_HIDE);

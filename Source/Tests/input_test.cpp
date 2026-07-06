@@ -176,6 +176,54 @@ TEST(NsPlatformMouse, PositionAndDelta)
     EXPECT_EQ(m.GetDeltaY(), 10);
 }
 
+TEST(NsPlatformMouse, RelativeModeReturnsRawDelta)
+{
+    Mouse m;
+    m.SetRelativeMode(true);
+    EXPECT_TRUE(m.IsRelativeMode());
+
+    // カーソル絶対位置は動かさず raw 移動だけ積む。 相対モードではこれが差分になる
+    m.OnRawMove(3, -4);
+    m.OnRawMove(2, 1);
+    EXPECT_EQ(m.GetDeltaX(), 5);
+    EXPECT_EQ(m.GetDeltaY(), -3);
+}
+
+TEST(NsPlatformMouse, RelativeDeltaResetsOnUpdate)
+{
+    Mouse m;
+    m.SetRelativeMode(true);
+    m.OnRawMove(7, 9);
+    EXPECT_EQ(m.GetDeltaX(), 7);
+    EXPECT_EQ(m.GetDeltaY(), 9);
+
+    m.Update();
+    EXPECT_EQ(m.GetDeltaX(), 0);
+    EXPECT_EQ(m.GetDeltaY(), 0);
+}
+
+TEST(NsPlatformMouse, NonRelativeModeIgnoresRawMove)
+{
+    Mouse m;
+    m.OnMove(10, 20);
+    m.Update();
+    m.OnMove(15, 30);
+    // 相対モード OFF では OnRawMove を積んでも位置差だけが差分になる
+    m.OnRawMove(100, 100);
+    EXPECT_EQ(m.GetDeltaX(), 5);
+    EXPECT_EQ(m.GetDeltaY(), 10);
+}
+
+TEST(NsPlatformMouse, ClearStateResetsRawDelta)
+{
+    Mouse m;
+    m.SetRelativeMode(true);
+    m.OnRawMove(4, 4);
+    m.ClearState();
+    EXPECT_EQ(m.GetDeltaX(), 0);
+    EXPECT_EQ(m.GetDeltaY(), 0);
+}
+
 TEST(NsPlatformMouse, WheelAccumulatesAndResetsOnUpdate)
 {
     Mouse m;

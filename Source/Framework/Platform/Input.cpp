@@ -173,6 +173,8 @@ namespace NS::Platform
         m_prevX = m_x;
         m_prevY = m_y;
         m_wheel = 0;
+        m_rawDeltaX = 0;
+        m_rawDeltaY = 0;
     }
 
     void Mouse::OnMove(int x, int y) noexcept
@@ -204,10 +206,26 @@ namespace NS::Platform
         m_wheel += delta;
     }
 
+    void Mouse::SetRelativeMode(bool enabled) noexcept
+    {
+        m_relativeMode = enabled;
+        // モード切替時に積み残しの相対量を捨て、 切替直後の 1 フレームが暴れないようにする
+        m_rawDeltaX = 0;
+        m_rawDeltaY = 0;
+    }
+
+    void Mouse::OnRawMove(int dx, int dy) noexcept
+    {
+        m_rawDeltaX += dx;
+        m_rawDeltaY += dy;
+    }
+
     void Mouse::ClearState() noexcept
     {
         m_current.fill(false);
         m_wheel = 0;
+        m_rawDeltaX = 0;
+        m_rawDeltaY = 0;
     }
 
     Gamepad::Gamepad(int userIndex) noexcept : m_userIndex(userIndex) {}
@@ -469,6 +487,26 @@ namespace NS::Platform
         {
             const int delta = GET_WHEEL_DELTA_WPARAM(wparam);
             input.Mouse().OnWheel(delta);
+            break;
+        }
+        case WM_INPUT:
+        {
+            RAWINPUT raw{};
+            UINT size = sizeof(raw);
+            if (::GetRawInputData(reinterpret_cast<HRAWINPUT>(static_cast<LPARAM>(lparam)),
+                                  RID_INPUT,
+                                  &raw,
+                                  &size,
+                                  sizeof(RAWINPUTHEADER)) == static_cast<UINT>(-1))
+            {
+                break;
+            }
+            // 通常マウスは相対移動。 リモートデスクトップやタブレットの絶対座標は WM_MOUSEMOVE 側に任せて無視する
+            if (raw.header.dwType == RIM_TYPEMOUSE && (raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) == 0)
+            {
+                input.Mouse().OnRawMove(static_cast<int>(raw.data.mouse.lLastX),
+                                        static_cast<int>(raw.data.mouse.lLastY));
+            }
             break;
         }
         default:
