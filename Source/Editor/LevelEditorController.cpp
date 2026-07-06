@@ -44,25 +44,27 @@ namespace
 {
     constexpr NS::Math::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
 
-    // カメラ frustum 可視化の見た目定数。 aspect は画面目安の 16:9、 far は錐台が巨大化しないよう近くで切る
-    constexpr float kCameraGizmoAspect = 16.0f / 9.0f;
+    // カメラ frustum の far は実カメラだと 1000 で錐台が画面外になるため表示用に近くで切る
     constexpr float kCameraGizmoFar = 8.0f;
 
-    // a→b を等分し 1 区間おきに線を引いて点線にする。 DebugDraw に dashed が無いので描画側で間引く
+    // a→b を 0.5m 刻みで等分し 1 区間おきに線を引いて点線にする。 DebugDraw に dashed が無いので描画側で
+    // 間引く。 辺長からセグメント数を出すので、 長い辺も短い辺も破線ピッチが揃う
     void DrawDashedLine(const NS::Math::Vector3& a, const NS::Math::Vector3& b, const NS::Math::Color& color) noexcept
     {
-        constexpr int kSegments = 12;
-        for (int i = 0; i < kSegments; i += 2)
+        const float length = (b - a).Length();
+        const int rawSegments = static_cast<int>(length / 0.5f);
+        const int segments = (rawSegments < 2) ? 2 : rawSegments;
+        for (int i = 0; i < segments; i += 2)
         {
-            const float t0 = static_cast<float>(i) / static_cast<float>(kSegments);
-            const float t1 = static_cast<float>(i + 1) / static_cast<float>(kSegments);
+            const float t0 = static_cast<float>(i) / static_cast<float>(segments);
+            const float t1 = static_cast<float>(i + 1) / static_cast<float>(segments);
             NS::Graphics::DebugDraw::Line(NS::Math::Vector3::Lerp(a, b, t0), NS::Math::Vector3::Lerp(a, b, t1), color);
         }
     }
 
     // カメラ pose の視錐台を四角錐の点線で描く。 視点から far 面 4 隅へ 4 本 + far 面の 4 辺で、 向きと画角を見せる
     // target==position や up と視線が平行な縮退では基底が作れないので何も描かない
-    void DrawCameraFrustum(const NS::Scene::CameraPose& pose, const NS::Math::Color& color) noexcept
+    void DrawCameraFrustum(const NS::Scene::CameraPose& pose, float aspect, const NS::Math::Color& color) noexcept
     {
         NS::Math::Vector3 forward = pose.target - pose.position;
         if (forward.LengthSquared() < 1e-6f)
@@ -75,7 +77,7 @@ namespace
         const NS::Math::Vector3 up = forward.Cross(right);
 
         const float halfHeight = std::tan(pose.fovY.value * 0.5f) * kCameraGizmoFar;
-        const float halfWidth = halfHeight * kCameraGizmoAspect;
+        const float halfWidth = halfHeight * aspect;
         const NS::Math::Vector3 farCenter = pose.position + forward * kCameraGizmoFar;
         const NS::Math::Vector3 topLeft = farCenter + up * halfHeight - right * halfWidth;
         const NS::Math::Vector3 topRight = farCenter + up * halfHeight + right * halfWidth;
@@ -90,6 +92,23 @@ namespace
         DrawDashedLine(topRight, bottomRight, color);
         DrawDashedLine(bottomRight, bottomLeft, color);
         DrawDashedLine(bottomLeft, topLeft, color);
+    }
+
+    // 視点マーカーの world 半径。 カメラから遠いほど半径を伸ばし、 画面上の見かけサイズを一定に近づける
+    // 見かけ寸法は world 半径 / clip.w に比例するので、 半径を clip.w に比例させると相殺されて一定になる
+    // 近距離は基準半径を下限に据え、 遠距離だけ伸ばす
+    [[nodiscard]] float CameraMarkerHalf(const NS::Math::Vector3& center, const NS::Math::Matrix& vp) noexcept
+    {
+        // 基準半径。 遠いカメラほど深度に比例して伸ばし、 近距離はこの値を下限に据える
+        const float baseHalf = 0.3f;
+        const NS::Math::Vector4 clip =
+            NS::Math::Vector4::Transform(NS::Math::Vector4{center.x, center.y, center.z, 1.0f}, vp);
+        // clip.w がほぼ 0、 カメラ至近や背面では深度で割らず基準半径へ退避する
+        if (clip.w <= 1.0e-3f)
+            return baseHalf;
+        // 深度 10 までは基準半径、 これより遠いほど深度に比例して伸ばし画面上一定に近づける
+        const float scale = clip.w / 10.0f;
+        return baseHalf * ((scale > 1.0f) ? scale : 1.0f);
     }
 } // namespace
 
@@ -381,7 +400,8 @@ void LevelEditorController::Render()
         return;
 
     m_editor.RenderCursorPreview();
-    RenderCameraGizmos();
+    if (Brain())
+        RenderCameraGizmos(Brain()->ViewProjection(), app->Window().Size());
     RenderColliderWireframes();
     // 蓄積した DebugDraw 線をシーン描画後・ ImGui 前にまとめて 1 描画する
     if (Brain())
@@ -673,11 +693,15 @@ void LevelEditorController::SelectCamera() noexcept
     m_specialSelection = SpecialSelection::Camera;
 }
 
-void LevelEditorController::RenderCameraGizmos() noexcept
+void LevelEditorController::RenderCameraGizmos(const NS::Math::Matrix& viewProjection,
+                                               NS::Math::Size2D viewport) noexcept
 {
     // edit 中、 各カメラの視錐台を点線の四角錐で、 視点位置を小箱で可視化する。 据え置きは進入トリガ AABB も出す
     // 選択中は強調色にする。 追従カメラは pose がプレイヤー基準なので、 錐台はプレイ中に居る視点位置へ出る
     const auto& world = m_scene->World();
+    // 錐台の横幅は実ビューポート比で出す。 viewport が潰れている時だけ 16:9 目安へ退避する
+    const float aspect =
+        (viewport.height > 0) ? static_cast<float>(viewport.width) / static_cast<float>(viewport.height) : 16.0f / 9.0f;
     for (std::size_t i = 0; i < world.Objects().size(); ++i)
     {
         auto* vcam = world.Objects()[i]->FindComponent<NS::Scene::VirtualCameraComponent>();
@@ -688,8 +712,11 @@ void LevelEditorController::RenderCameraGizmos() noexcept
             selected ? NS::Math::Color{1.0f, 0.55f, 0.10f, 1.0f} : NS::Math::Color{1.0f, 0.85f, 0.10f, 1.0f};
 
         const NS::Scene::CameraPose pose = vcam->EvaluatePose(1.0f);
-        DrawCameraFrustum(pose, camColor);
-        NS::Graphics::DebugDraw::AABB(NS::Math::AABB{pose.position, NS::Math::Vector3{0.3f, 0.3f, 0.3f}}, camColor);
+        DrawCameraFrustum(pose, aspect, camColor);
+        // 視点マーカーは遠いカメラでも潰れないよう、 深度に応じて world 半径を伸ばし画面上一定サイズに近づける
+        const float markerHalf = CameraMarkerHalf(pose.position, viewProjection);
+        NS::Graphics::DebugDraw::AABB(
+            NS::Math::AABB{pose.position, NS::Math::Vector3{markerHalf, markerHalf, markerHalf}}, camColor);
 
         // 据え置きカメラだけ進入トリガ範囲を出す。 追従には無い
         if (auto* placed = world.Objects()[i]->FindComponent<NS::Scene::PlacedVirtualCamera>())

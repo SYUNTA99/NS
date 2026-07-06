@@ -187,7 +187,7 @@ private:
     void TickEdit();
 
     /// edit 中、 各カメラの視錐台を点線の四角錐で、 視点位置を小箱で DebugDraw で可視化する。 据え置きはトリガ AABB も
-    void RenderCameraGizmos() noexcept;
+    void RenderCameraGizmos(const NS::Math::Matrix& viewProjection, NS::Math::Size2D viewport) noexcept;
 
     /// edit 中、 各オブジェクトの当たり形状を DebugDraw で可視化する。 自由配置=OBB / grid solid=AABB
     void RenderColliderWireframes() noexcept;
