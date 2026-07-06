@@ -14,7 +14,6 @@ namespace
     LevelNs::ObjectInstance MakePickup(float x, float y, float z, int pickupKind)
     {
         LevelNs::ObjectInstance object;
-        object.flags = LevelNs::kObjectFlagGridAligned;
         object.positionX = x;
         object.positionY = y;
         object.positionZ = z;
@@ -117,7 +116,6 @@ TEST(PlayMode, PickupComponentCoinIncrementsCounter)
 
     // 拾得は PickupComponent が駆動する (種別フィールドではなく component が表す)
     LevelNs::ObjectInstance coin;
-    coin.flags = LevelNs::kObjectFlagGridAligned;
     coin.positionX = 0.0f;
     coin.positionY = 0.0f;
     coin.positionZ = 0.0f;
@@ -141,7 +139,6 @@ TEST(PlayMode, PickupComponentStarTriggersClear)
     lv.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
     LevelNs::ObjectInstance goal;
-    goal.flags = LevelNs::kObjectFlagGridAligned;
     goal.positionX = 0.0f;
     goal.positionY = 0.0f;
     goal.positionZ = 0.0f;

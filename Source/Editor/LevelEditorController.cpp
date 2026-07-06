@@ -844,7 +844,7 @@ void LevelEditorController::AddObject()
     if (m_editorCameraRig)
         center = m_editorCameraRig->EditorCam().Center();
 
-    // flags は 0 のまま = 非 gridAligned の自由配置物。 scale / rotation / collider は既定値
+    // 既定姿勢の自由配置物。 scale / rotation / collider は既定値のまま
     NS::GameCore::Level::ObjectInstance object{};
     object.positionX = center.x;
     object.positionY = center.y;
@@ -997,7 +997,7 @@ void LevelEditorController::CommitTransformEdit() noexcept
     if (index == NS::GameCore::Level::kNoObjectIndex)
         return;
 
-    // 非 PRS の flags / material は model から、 PRS は live Transform から取る
+    // 位置・回転・スケールは live Transform から、 材質など残りは model から取る
     // パネル編集は Sync が 1 フレーム遅れるため model 直読みだと取りこぼす
     NS::GameCore::Level::ObjectInstance after = m_scene->Level().objects[index];
     const NS::Scene::Transform* liveRoot = nullptr;

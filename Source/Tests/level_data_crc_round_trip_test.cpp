@@ -11,11 +11,10 @@ namespace LevelNs = NS::GameCore::Level;
 
 namespace
 {
-    // 視覚 / 当たりを持たず拾得の意味だけを持つ grid pickup を作る (コイン=0 / ゴール=1)
+    // 視覚 / 当たりを持たず拾得の意味だけを持つ pickup を作る (コイン=0 / ゴール=1)
     LevelNs::ObjectInstance MakePickup(int pickupKind)
     {
         LevelNs::ObjectInstance object{};
-        object.flags = LevelNs::kObjectFlagGridAligned;
         LevelNs::ComponentData pickup;
         pickup.typeName = "PickupComponent";
         pickup.fields.push_back(LevelNs::FieldValue{"Pickup Kind", pickupKind});

@@ -75,7 +75,6 @@ namespace NS::GameCore::Level
             crc = UpdateWith(crc, object.scaleY);
             crc = UpdateWith(crc, object.scaleZ);
             crc = UpdateWith(crc, object.materialIndex);
-            crc = UpdateWith(crc, object.flags);
             crc = UpdateWith(crc, object.shapeCollider);
             crc = UpdateWith(crc, object.reserved1);
             crc = UpdateWith(crc, object.colliderHalfExtentsX);
@@ -399,7 +398,6 @@ namespace NS::GameCore::Level
         object.positionY = static_cast<float>(y);
         object.positionZ = static_cast<float>(z);
         object.materialIndex = -1;
-        object.flags = kObjectFlagGridAligned;
         SetGridRotationStep(object, rotationStep);
         object.components = NS::GameCore::Blocks::MakeGridCubeComponents();
         return object;

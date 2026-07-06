@@ -9,11 +9,10 @@ namespace LevelNs = NS::GameCore::Level;
 
 namespace
 {
-    // 拾得種別だけが異なる grid object を作る。 種別は components が表すので CRC も components で決まる
+    // 拾得種別だけが異なる object を作る。 種別は components が表すので CRC も components で決まる
     LevelNs::ObjectInstance MakePickupObject(int pickupKind)
     {
         LevelNs::ObjectInstance object{};
-        object.flags = LevelNs::kObjectFlagGridAligned;
         object.components.push_back(
             LevelNs::ComponentData{"PickupComponent", {LevelNs::FieldValue{"Pickup Kind", pickupKind}}});
         return object;

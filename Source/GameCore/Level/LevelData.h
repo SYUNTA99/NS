@@ -22,9 +22,6 @@
 namespace NS::GameCore::Level
 {
 
-    /// `ObjectInstance::flags` の bit。 グリッド配置物は bit0 を立て instancing / オートタイル対象にする
-    inline constexpr std::uint8_t kObjectFlagGridAligned = 0x01;
-
     /// 当たり判定の形状種別。 `ObjectInstance::shapeCollider` に格納する。 既定 / 旧データは Box
     enum class ShapeCollider : std::uint8_t
     {
@@ -56,7 +53,7 @@ namespace NS::GameCore::Level
     };
 
     /// 配置物の永続表現。 コンポーネント一覧を内包する full SSOT 表現
-    /// grid block も自由配置物も同じ型で 1 リストに格納する。 grid かどうかは flags の bit0 で区別する
+    /// 配置物は種別を問わず同じ型で 1 リストに格納する
     /// position / rotation すなわち quaternion / scale をフル保持し、 種別は components が表す
     /// materialIndex は `LevelData::materialPaths` への添字、 -1 は既定マテリアルを表す
     /// colliderHalfExtents は Transform と独立した当たり箱の local 半径で既定 0.5。 world では Transform.scale が乗る
@@ -78,7 +75,6 @@ namespace NS::GameCore::Level
         float scaleY = 1.0f;
         float scaleZ = 1.0f;
         std::int16_t materialIndex = -1;
-        std::uint8_t flags = 0;
         std::uint8_t shapeCollider = 0;
         std::uint16_t reserved1 = 0;
         float colliderHalfExtentsX = 0.5f;
@@ -117,7 +113,7 @@ namespace NS::GameCore::Level
     /// `.scene` に書かれる永続データ。 PlayMode 中は const 参照でしか触らせない
     struct LevelData
     {
-        /// grid block も自由配置物も含む唯一の配置物リスト。 grid かどうかは各要素の flags で判別する
+        /// grid block も自由配置物も含む唯一の配置物リスト
         std::vector<ObjectInstance> objects;
 
         /// 次に割り当てる永続 object id。単調増加で欠番は再利用せず、削除済み id が別物を指す事故を防ぐ
@@ -203,17 +199,17 @@ namespace NS::GameCore::Level
                                                    std::int16_t y,
                                                    std::int16_t z) noexcept;
 
-    /// cell の x, y, z と rotationStep 0..3 から gridAligned な既定 solid の ObjectInstance を作る
+    /// cell の x, y, z と rotationStep 0..3 から既定 solid の ObjectInstance を作る
     /// 既定 solid 一式すなわち cube 描画 + Box 当たりを component として積む
     [[nodiscard]] ObjectInstance MakeGridObject(std::int16_t x,
                                                 std::int16_t y,
                                                 std::int16_t z,
                                                 std::uint8_t rotationStep);
 
-    /// gridAligned object の現在の 90° 回転 step を quaternion から最近接で復元する
+    /// object の現在の 90° 回転 step を quaternion から最近接で復元する
     [[nodiscard]] std::uint8_t GridRotationStep(const ObjectInstance& object) noexcept;
 
-    /// gridAligned object の回転を rotationStep に対応する Y 軸 yaw quaternion に設定する
+    /// object の回転を rotationStep に対応する Y 軸 yaw quaternion に設定する
     void SetGridRotationStep(ObjectInstance& object, std::uint8_t rotationStep) noexcept;
 
     /// undo の概算メモリに使う sizeof 外の heap 量。 反射値の文字列ヒープは概算に含めない

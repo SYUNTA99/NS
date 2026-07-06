@@ -99,18 +99,16 @@ TEST(UndoStackTest, InterleavedGridAndTransformUndoInLifoOrder)
     const std::uint32_t id0 = lv.objects[0].objectId;
     ASSERT_NE(id0, LevelNs::kNoObjectId);
 
-    // 同じ object を昇格 + 移動した想定の full-instance 変形
+    // 同じ object を移動した想定の full-instance 変形
     LevelNs::ObjectInstance before = lv.objects[0];
     LevelNs::ObjectInstance after = before;
     after.positionX = 9.0f;
-    after.flags = static_cast<std::uint8_t>(before.flags & ~LevelNs::kObjectFlagGridAligned);
     stack.Push(std::make_unique<EditorNs::TransformCommand>(id0, before, after), lv);
     EXPECT_FLOAT_EQ(lv.objects[0].positionX, 9.0f);
 
-    // LIFO: 先に変形を戻すと grid 状態 + 元位置へ復帰する
+    // LIFO: 先に変形を戻すと元位置へ復帰する
     ASSERT_TRUE(stack.Undo(lv));
     EXPECT_FLOAT_EQ(lv.objects[0].positionX, 0.0f);
-    EXPECT_EQ(lv.objects[0].flags & LevelNs::kObjectFlagGridAligned, LevelNs::kObjectFlagGridAligned);
 
     // 次に配置を戻すと空になる
     ASSERT_TRUE(stack.Undo(lv));

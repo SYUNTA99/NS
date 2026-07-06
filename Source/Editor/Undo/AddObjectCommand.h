@@ -9,7 +9,7 @@
 namespace NS::Editor
 {
 
-    /// 非 gridAligned な配置物を objects 末尾へ追加する。 grid block と違い cell を持たないため
+    /// 配置物を objects 末尾へ追加する。 cell に紐付かない自由配置なので
     /// 初回 Do で採番した永続 objectId で Undo / Redo の対象を再特定する
     class AddObjectCommand final : public ICommand
     {

@@ -51,7 +51,6 @@ namespace
                                 const Vector3& offset = Vector3{0.0f, 0.0f, 0.0f})
     {
         ObjectInstance object;
-        object.flags = 0;
         SetObjectShapeCollider(object, shape);
         object.colliderHalfExtentsX = half.x;
         object.colliderHalfExtentsY = half.y;
@@ -198,7 +197,6 @@ TEST_F(BuildPlacedObjectTest, FreeBoxWorldAabbReflectsPositionAndHalfExtents)
 TEST_F(BuildPlacedObjectTest, ComponentsDriveBuild)
 {
     ObjectInstance object;
-    object.flags = 0;
 
     NS::GameCore::Level::ComponentData box;
     box.typeName = "BoxColliderComponent";
@@ -219,7 +217,6 @@ TEST_F(BuildPlacedObjectTest, ComponentsDriveBuild)
 TEST_F(BuildPlacedObjectTest, EmptyComponentsBuildsNothing)
 {
     ObjectInstance object;
-    object.flags = NS::GameCore::Level::kObjectFlagGridAligned;
     ASSERT_TRUE(object.components.empty());
 
     EXPECT_EQ(Build(object), nullptr);

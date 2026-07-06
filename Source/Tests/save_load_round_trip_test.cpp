@@ -61,7 +61,7 @@ TEST(SaveLoadRoundTrip, ShapeColliderAndDimensionsSurviveRoundTrip)
     ASSERT_TRUE(path.has_value());
 
     LevelNs::LevelData src;
-    LevelNs::ObjectInstance obj{}; // 自由配置物 (gridAligned は立てない)
+    LevelNs::ObjectInstance obj{}; // 自由配置物
     obj.positionX = 2.0f;
     LevelNs::SetObjectShapeCollider(obj, LevelNs::ShapeCollider::Capsule);
     obj.colliderHalfExtentsX = 0.3f; // capsule では半径
@@ -256,7 +256,6 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     freeObject.scaleY = 0.5f;
     freeObject.scaleZ = 1.0f;
     freeObject.materialIndex = 1;
-    freeObject.flags = 0;
     freeObject.colliderHalfExtentsX = 0.3f;
     freeObject.colliderHalfExtentsY = 1.25f;
     freeObject.colliderHalfExtentsZ = 0.8f;
@@ -269,7 +268,6 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
 
     LevelNs::ObjectInstance gridObject{};
     gridObject.materialIndex = -1;
-    gridObject.flags = LevelNs::kObjectFlagGridAligned;
     src.objects.push_back(gridObject);
     src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
@@ -294,7 +292,6 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     EXPECT_FLOAT_EQ(dst.objects[0].rotationW, 0.70710677f);
     EXPECT_FLOAT_EQ(dst.objects[0].scaleX, 2.0f);
     EXPECT_EQ(dst.objects[0].materialIndex, 1);
-    EXPECT_EQ(dst.objects[0].flags, 0u);
     EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsX, 0.3f);
     EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsY, 1.25f);
     EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsZ, 0.8f);
@@ -305,7 +302,6 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     EXPECT_FLOAT_EQ(dst.objects[0].colliderRotationW, 0.70710677f);
 
     EXPECT_EQ(dst.objects[1].materialIndex, -1);
-    EXPECT_EQ(dst.objects[1].flags, LevelNs::kObjectFlagGridAligned);
 }
 
 // 配置物の "Base Color" 反射値が save→reload を往復で保持される
