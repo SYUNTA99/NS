@@ -293,6 +293,11 @@ namespace NS::Platform
         ::SetCursor(visible ? ::LoadCursorW(nullptr, IDC_ARROW) : nullptr);
     }
 
+    bool Window::IsCursorVisible() const noexcept
+    {
+        return m_pImpl->cursorVisible;
+    }
+
     void Window::RequestClose() noexcept
     {
         if (m_pImpl->hwnd != nullptr)

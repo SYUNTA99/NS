@@ -30,6 +30,7 @@ namespace NS::UI
         bool fallback = true;
 #if NS_UI_IMGUI_ENABLED
         ::ImGuiContext* context = nullptr;
+        NS::Platform::Window* window = nullptr;
 #endif
     };
 
@@ -38,6 +39,7 @@ namespace NS::UI
     {
 #if NS_UI_IMGUI_ENABLED
         IMGUI_CHECKVERSION();
+        m_pImpl->window = &window;
 
         m_pImpl->context = ::ImGui::CreateContext();
         if (m_pImpl->context == nullptr)
@@ -128,6 +130,13 @@ namespace NS::UI
 #if NS_UI_IMGUI_ENABLED
         if (!IsValid())
             return;
+        // カーソル非表示中は ImGui に OS カーソルを触らせず、 Window の SetCursor(nullptr) を保つ
+        // これをしないと backend が毎フレーム矢印へ戻し、 プレイ中もカーソルが消えない
+        ::ImGuiIO& io = ::ImGui::GetIO();
+        if (m_pImpl->window != nullptr && !m_pImpl->window->IsCursorVisible())
+            io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
+        else
+            io.ConfigFlags &= ~ImGuiConfigFlags_NoMouseCursorChange;
         ::ImGui_ImplDX11_NewFrame();
         ::ImGui_ImplWin32_NewFrame();
         ::ImGui::NewFrame();

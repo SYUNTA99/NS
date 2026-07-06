@@ -70,6 +70,9 @@ namespace NS::Platform
         /// 即時反映し、 以降は WM_SETCURSOR が状態を維持する。 タイトルバー / 枠は常に既定カーソル
         void SetCursorVisible(bool visible) noexcept;
 
+        /// SetCursorVisible の現在値。 UI 層がカーソル制御を Window に合わせるために参照する
+        [[nodiscard]] bool IsCursorVisible() const noexcept;
+
         /// ×ボタンと同じ経路で WM_CLOSE を投げて閉じ要求を出す
         /// SetCloseCallback が登録されていればそこへ通知、未設定なら PostQuitMessage に落ちる
         void RequestClose() noexcept;
