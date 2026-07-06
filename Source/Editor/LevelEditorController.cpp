@@ -510,9 +510,6 @@ void LevelEditorController::SyncFreeObjectTransforms()
         if (objectIndex >= m_scene->Level().objects.size())
             continue;
         NS::GameCore::Level::ObjectInstance& object = m_scene->Level().objects[objectIndex];
-        // grid は cell 固定なので Transform を ObjectInstance へ書き戻さない。 自由配置物のみ
-        if ((object.flags & NS::GameCore::Level::kObjectFlagGridAligned) != 0)
-            continue;
         // 追従カメラの Transform は実プレイ視点位置の同期先で真実の源でない。 位置は初期姿勢へ逆算して持つ
         if (m_scene->World().Objects()[i]->FindComponent<NS::Scene::ThirdPersonFollowComponent>() != nullptr)
             continue;
