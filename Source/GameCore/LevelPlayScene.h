@@ -66,13 +66,13 @@ private:
     /// 基底 OnRender が scene 解決後に呼ぶ描画本体。 ワールドを描き編集ギズモ等は描かない
     void OnRenderScene() override;
 
-    /// 全表示ブロックの Snapshot を取る。 補間描画のため edit / play 共通で毎フレーム
+    /// 全表示オブジェクトの Snapshot を取る。 補間描画のため edit / play 共通で毎フレーム
     void SnapshotDisplayObjects();
 
     /// 起動時のレベル供給: 同梱の `new_level.scene` をロードし、 無ければ最小床を seed する
     void LoadInitialLevel();
 
-    // 組み込み mesh / 共有 material / block の TextureArray は Application 所有の AssetManager が持つ
+    // 組み込み mesh / 共有 material は Application 所有の AssetManager が持つ
     // scene は使う箇所で都度引く。 メンバとして控えず単一所有元は AssetManager のみ
     // skybox 装置と scene 段解決値の控えは EnvironmentSubsystem が持ち、 scene は毎フレーム設定を書くだけ
 

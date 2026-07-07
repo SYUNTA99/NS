@@ -12,7 +12,7 @@ namespace NS::GameCore::Level
     namespace
     {
         // cell ブラシの回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す。 描画 / 当たり / 往復が同じ向き基準を共有する
-        constexpr float kQuarterTurnYaw = 1.5707963267948966f;
+        constexpr float kQuarterTurnYaw = NS::Math::kPi * 0.5f;
 
         /// POD 値を std::byte span として view し CRC32 に流す helper
         template <typename T> std::uint32_t UpdateWith(std::uint32_t crc, const T& value) noexcept

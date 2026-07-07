@@ -33,7 +33,7 @@ namespace NS::Editor
         constexpr float kCellHalfExtent = 0.5f;
 
         // cursor の回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す
-        constexpr float kQuarterTurnYaw = 1.5707963267948966f;
+        constexpr float kQuarterTurnYaw = NS::Math::kPi * 0.5f;
 
         const NS::Math::Color kCursorOkColor{0.1f, 1.0f, 0.1f, 1.0f};
         const NS::Math::Color kCursorBlockedColor{1.0f, 0.1f, 0.1f, 1.0f};
@@ -42,9 +42,9 @@ namespace NS::Editor
         constexpr float kStatusToastSeconds = 2.5f;
 
         [[nodiscard]] bool HasObjectAtCell(const NS::GameCore::Level::LevelData& level,
-                                          std::int16_t x,
-                                          std::int16_t y,
-                                          std::int16_t z) noexcept
+                                           std::int16_t x,
+                                           std::int16_t y,
+                                           std::int16_t z) noexcept
         {
             return NS::GameCore::Level::FindObjectAtCell(level, x, y, z) != NS::GameCore::Level::kNoObjectIndex;
         }
