@@ -375,8 +375,7 @@ namespace NS::Graphics
         else
         {
             // ディレクトリとして 6 face PNG を試す。 ファイルパスが渡された場合は不存在として fallback へ
-            std::error_code ec;
-            if (std::filesystem::is_directory(path, ec))
+            if (::NS::Core::FileSystem::IsDirectory(path))
             {
                 auto* context = Gpu().context;
                 loaded = (context != nullptr) && LoadSixFacePngCubemap(m_device.Get(), context, path, newSrv);

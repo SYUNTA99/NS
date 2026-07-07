@@ -25,6 +25,18 @@ namespace NS::Core
         return result;
     }
 
+    bool FileSystem::IsDirectory(const std::filesystem::path& path) noexcept
+    {
+        std::error_code ec;
+        const bool result = std::filesystem::is_directory(path, ec);
+        if (ec)
+        {
+            NS_LOG_ERROR(LogCat::Core, "FileSystem::IsDirectory failed: {} ({})", path.string(), ec.message());
+            return false;
+        }
+        return result;
+    }
+
     std::optional<std::vector<std::byte>> FileSystem::ReadAllBytes(const std::filesystem::path& path)
     {
         std::ifstream stream(path, std::ios::binary | std::ios::ate);
