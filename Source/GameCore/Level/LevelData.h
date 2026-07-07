@@ -192,23 +192,23 @@ namespace NS::GameCore::Level
     [[nodiscard]] bool IsCellBrushObject(const ObjectInstance& object) noexcept;
 
     /// cell の x, y, z に一致する最初の cell ブラシ配置物の添字。 プレイヤー / カメラは除く。 無ければ kNoObjectIndex
-    [[nodiscard]] std::size_t FindGridObjectAtCell(const LevelData& level,
+    [[nodiscard]] std::size_t FindObjectAtCell(const LevelData& level,
                                                    std::int16_t x,
                                                    std::int16_t y,
                                                    std::int16_t z) noexcept;
 
     /// cell の x, y, z と rotationStep 0..3 から既定 solid の ObjectInstance を作る
     /// 既定 solid 一式すなわち cube 描画 + Box 当たりを component として積む
-    [[nodiscard]] ObjectInstance MakeGridObject(std::int16_t x,
+    [[nodiscard]] ObjectInstance MakeCellObject(std::int16_t x,
                                                 std::int16_t y,
                                                 std::int16_t z,
                                                 std::uint8_t rotationStep);
 
     /// object の現在の 90° 回転 step を quaternion から最近接で復元する
-    [[nodiscard]] std::uint8_t GridRotationStep(const ObjectInstance& object) noexcept;
+    [[nodiscard]] std::uint8_t CellRotationStep(const ObjectInstance& object) noexcept;
 
     /// object の回転を rotationStep に対応する Y 軸 yaw quaternion に設定する
-    void SetGridRotationStep(ObjectInstance& object, std::uint8_t rotationStep) noexcept;
+    void SetCellRotationStep(ObjectInstance& object, std::uint8_t rotationStep) noexcept;
 
     /// undo の概算メモリに使う sizeof 外の heap 量。 反射値の文字列ヒープは概算に含めない
     /// component vector / typeName / field 名の確保分を数える。 配置・変形系 Command の EstimatedBytes が使う

@@ -32,8 +32,8 @@ TEST(PlayModeCrc, RoundTripPreservesLevelData_PMODE_06)
     level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{5.0f, 1.0f, -3.0f}, NS::Math::Quaternion{}));
     level.coinThreshold = 30;
     level.timeLimitSeconds = 240;
-    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
-    level.objects.push_back(LevelNs::MakeGridObject(1, 0, 0, 1));
+    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeCellObject(1, 0, 0, 1));
     level.objects.push_back(MakePickup(0));
     level.objects.push_back(MakePickup(1));
 

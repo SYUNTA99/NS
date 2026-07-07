@@ -347,7 +347,7 @@ namespace NS::GameCore::Level
                FindComponentData(object, "PlacedVirtualCamera") == nullptr;
     }
 
-    std::size_t FindGridObjectAtCell(const LevelData& level, std::int16_t x, std::int16_t y, std::int16_t z) noexcept
+    std::size_t FindObjectAtCell(const LevelData& level, std::int16_t x, std::int16_t y, std::int16_t z) noexcept
     {
         for (std::size_t i = 0; i < level.objects.size(); ++i)
         {
@@ -361,7 +361,7 @@ namespace NS::GameCore::Level
         return kNoObjectIndex;
     }
 
-    std::uint8_t GridRotationStep(const ObjectInstance& object) noexcept
+    std::uint8_t CellRotationStep(const ObjectInstance& object) noexcept
     {
         // q と -q は同一回転なので fabs で符号を無視し 4 候補の最近接を選ぶ。 四半回転の向き規約に依存しない
         const NS::Math::Quaternion current{object.rotationX, object.rotationY, object.rotationZ, object.rotationW};
@@ -382,7 +382,7 @@ namespace NS::GameCore::Level
         return best;
     }
 
-    void SetGridRotationStep(ObjectInstance& object, std::uint8_t rotationStep) noexcept
+    void SetCellRotationStep(ObjectInstance& object, std::uint8_t rotationStep) noexcept
     {
         const float yaw = static_cast<float>(rotationStep & 0x03) * kQuarterTurnYaw;
         const NS::Math::Quaternion rotation = NS::Math::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
@@ -392,15 +392,15 @@ namespace NS::GameCore::Level
         object.rotationW = rotation.w;
     }
 
-    ObjectInstance MakeGridObject(std::int16_t x, std::int16_t y, std::int16_t z, std::uint8_t rotationStep)
+    ObjectInstance MakeCellObject(std::int16_t x, std::int16_t y, std::int16_t z, std::uint8_t rotationStep)
     {
         ObjectInstance object{};
         object.positionX = static_cast<float>(x);
         object.positionY = static_cast<float>(y);
         object.positionZ = static_cast<float>(z);
         object.materialIndex = -1;
-        SetGridRotationStep(object, rotationStep);
-        object.components = NS::GameCore::Blocks::MakeGridCubeComponents();
+        SetCellRotationStep(object, rotationStep);
+        object.components = NS::GameCore::Blocks::MakeCellCubeComponents();
         return object;
     }
 

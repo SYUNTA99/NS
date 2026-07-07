@@ -40,7 +40,7 @@ namespace
         // 新規シーンの既定の見た目は Grass 雛形を写し込む。 以降はシーンの環境欄が正になる
         level.environment = NS::GameCore::Theme::MakeEnvironmentFromTheme(
             NS::GameCore::Theme::Get(NS::GameCore::Theme::ThemeId::Grass));
-        level.objects.push_back(NS::GameCore::Level::MakeGridObject(0, 0, 0, 0));
+        level.objects.push_back(NS::GameCore::Level::MakeCellObject(0, 0, 0, 0));
         // プレイヤーは capsule 中心を床ブロック上面 0.5 + capsule 半径込み半高 0.9 + 1cm へ置く
         level.objects.push_back(NS::GameCore::Level::MakePlayerObject(
             NS::Math::Vector3{0.0f, NS::GameCore::Level::kDefaultPlayerSpawnY, 0.0f}, NS::Math::Quaternion{}));
@@ -124,14 +124,14 @@ void LevelPlayScene::OnUpdate()
     if (auto* brain = (cameras != nullptr) ? cameras->Brain() : nullptr)
         brain->OnUpdate();
 
-    SnapshotDisplayBlocks();
+    SnapshotDisplayObjects();
 
     // 編集中はプレイ更新を止める。 free-fly カメラ / 編集入力は overlay layer の editor 側が回す
     // 進行の分岐は配下の PlayFlowComponent が担い、 編集モード中は寝ているため素通りする
     m_director->OnUpdate();
 }
 
-void LevelPlayScene::SnapshotDisplayBlocks()
+void LevelPlayScene::SnapshotDisplayObjects()
 {
     // 各配置物 GameObject の Snapshot は edit / play 共通。 静的 display object なので常時
     for (auto& obj : m_world.Objects())

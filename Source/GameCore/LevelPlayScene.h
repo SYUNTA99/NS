@@ -67,7 +67,7 @@ private:
     void OnRenderScene() override;
 
     /// 全表示ブロックの Snapshot を取る。 補間描画のため edit / play 共通で毎フレーム
-    void SnapshotDisplayBlocks();
+    void SnapshotDisplayObjects();
 
     /// 起動時のレベル供給: 同梱の `new_level.scene` をロードし、 無ければ最小床を seed する
     void LoadInitialLevel();

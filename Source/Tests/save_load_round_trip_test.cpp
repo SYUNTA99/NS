@@ -26,9 +26,9 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
     src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
     src.coinThreshold = 10;
     src.timeLimitSeconds = 180;
-    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
-    src.objects.push_back(LevelNs::MakeGridObject(1, 0, 1, 1));
-    src.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, 0));
+    src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
+    src.objects.push_back(LevelNs::MakeCellObject(1, 0, 1, 1));
+    src.objects.push_back(LevelNs::MakeCellObject(2, 0, 0, 0));
     // 編集中のレベルは読込採番か Command 採番で常に id を持つため、 基準 CRC も採番後から取る
     LevelNs::EnsureUniqueObjectIds(src);
     // 追従カメラが居ないと読込の門が 1 台を合成し CRC が動くため、 src 側にも実体を積んでおく
@@ -90,7 +90,7 @@ TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
     ASSERT_TRUE(path2);
 
     LevelNs::LevelData src;
-    src.objects.push_back(LevelNs::MakeGridObject(5, 5, 5, 0));
+    src.objects.push_back(LevelNs::MakeCellObject(5, 5, 5, 0));
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path1));
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path2));
@@ -110,7 +110,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     ASSERT_TRUE(path.has_value());
 
     LevelNs::LevelData src;
-    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
 
     auto bytes = NS::Core::FileSystem::ReadAllBytes(*path);
@@ -312,7 +312,7 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
     ASSERT_TRUE(path.has_value());
 
     LevelNs::LevelData src;
-    LevelNs::ObjectInstance solid = LevelNs::MakeGridObject(0, 0, 0, 0);
+    LevelNs::ObjectInstance solid = LevelNs::MakeCellObject(0, 0, 0, 0);
     const NS::Math::Vector3 baseColor{0.2f, 0.6f, 0.9f};
     for (auto& component : solid.components)
         for (auto& field : component.fields)

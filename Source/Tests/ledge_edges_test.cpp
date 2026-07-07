@@ -9,7 +9,7 @@ namespace BlocksNs = NS::GameCore::Blocks;
 TEST(LedgeEdgesTest, SingleBlockHasFourTopEdges)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    lv.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     const auto edges = BlocksNs::ComputeTopLedgeEdges(lv);
     ASSERT_EQ(edges.size(), 4u);
     for (const auto& e : edges)
@@ -22,8 +22,8 @@ TEST(LedgeEdgesTest, SingleBlockHasFourTopEdges)
 TEST(LedgeEdgesTest, TwoInRowShareNoInteriorEdge)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
-    lv.objects.push_back(LevelNs::MakeGridObject(1, 0, 0, 0));
+    lv.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
+    lv.objects.push_back(LevelNs::MakeCellObject(1, 0, 0, 0));
     const auto edges = BlocksNs::ComputeTopLedgeEdges(lv);
     // 各セル 4 縁から共有面の 2 縁を引いた外周のみ
     EXPECT_EQ(edges.size(), 6u);
@@ -38,8 +38,8 @@ TEST(LedgeEdgesTest, TwoInRowShareNoInteriorEdge)
 TEST(LedgeEdgesTest, CoveredTopHasNoEdges)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 1, 0, 0)); // 真上に固形を載せ天面を塞ぐ
+    lv.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
+    lv.objects.push_back(LevelNs::MakeCellObject(0, 1, 0, 0)); // 真上に固形を載せ天面を塞ぐ
     const auto edges = BlocksNs::ComputeTopLedgeEdges(lv);
     // 下のセルは天面が塞がれ縁ゼロ。 上のセルだけが 4 縁を出す
     ASSERT_EQ(edges.size(), 4u);
@@ -50,8 +50,8 @@ TEST(LedgeEdgesTest, CoveredTopHasNoEdges)
 TEST(LedgeEdgesTest, SolidNeighborWithDifferentMaterialStillConnects)
 {
     LevelNs::LevelData lv;
-    LevelNs::ObjectInstance a = LevelNs::MakeGridObject(0, 0, 0, 0);
-    LevelNs::ObjectInstance b = LevelNs::MakeGridObject(1, 0, 0, 0);
+    LevelNs::ObjectInstance a = LevelNs::MakeCellObject(0, 0, 0, 0);
+    LevelNs::ObjectInstance b = LevelNs::MakeCellObject(1, 0, 0, 0);
     b.materialIndex = 7; // 見た目は違うが固形性は同じ
     lv.objects.push_back(a);
     lv.objects.push_back(b);

@@ -12,22 +12,22 @@ namespace LevelNs = NS::GameCore::Level;
 TEST(PlaceCommandTest, DoAddsGridObject)
 {
     LevelNs::LevelData lv;
-    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 0), 5, 0, 3, 1);
+    EditorNs::PlaceCommand cmd(LevelNs::MakeCellObject(0, 0, 0, 0), 5, 0, 3, 1);
     cmd.Do(lv);
     ASSERT_EQ(lv.objects.size(), 1u);
-    const std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 5, 0, 3);
+    const std::size_t idx = LevelNs::FindObjectAtCell(lv, 5, 0, 3);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
     EXPECT_EQ(LevelNs::ObjectCellX(lv.objects[idx]), 5);
     EXPECT_EQ(LevelNs::ObjectCellY(lv.objects[idx]), 0);
     EXPECT_EQ(LevelNs::ObjectCellZ(lv.objects[idx]), 3);
-    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 1u);
+    EXPECT_EQ(LevelNs::CellRotationStep(lv.objects[idx]), 1u);
 }
 
 TEST(PlaceCommandTest, UndoRestoresEmptyState)
 {
     LevelNs::LevelData lv;
     const auto before = lv.ComputeCrc32();
-    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 0), 5, 0, 3, 1);
+    EditorNs::PlaceCommand cmd(LevelNs::MakeCellObject(0, 0, 0, 0), 5, 0, 3, 1);
     cmd.Do(lv);
     cmd.Undo(lv);
     EXPECT_EQ(lv.ComputeCrc32(), before);
@@ -37,28 +37,28 @@ TEST(PlaceCommandTest, UndoRestoresEmptyState)
 TEST(PlaceCommandTest, ReplaceExistingBlockPreservesUndoRestore)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(5, 0, 3, 2));
+    lv.objects.push_back(LevelNs::MakeCellObject(5, 0, 3, 2));
     const auto before = lv.ComputeCrc32();
-    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 0), 5, 0, 3, 1);
+    EditorNs::PlaceCommand cmd(LevelNs::MakeCellObject(0, 0, 0, 0), 5, 0, 3, 1);
     cmd.Do(lv);
-    std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 5, 0, 3);
+    std::size_t idx = LevelNs::FindObjectAtCell(lv, 5, 0, 3);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
-    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 1u);
+    EXPECT_EQ(LevelNs::CellRotationStep(lv.objects[idx]), 1u);
     cmd.Undo(lv);
-    idx = LevelNs::FindGridObjectAtCell(lv, 5, 0, 3);
+    idx = LevelNs::FindObjectAtCell(lv, 5, 0, 3);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
-    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 2u);
+    EXPECT_EQ(LevelNs::CellRotationStep(lv.objects[idx]), 2u);
     EXPECT_EQ(lv.ComputeCrc32(), before);
 }
 
 TEST(PlaceCommandTest, RotationIsMaskedToTwoBits)
 {
     LevelNs::LevelData lv;
-    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 0), 0, 0, 0, 5);
+    EditorNs::PlaceCommand cmd(LevelNs::MakeCellObject(0, 0, 0, 0), 0, 0, 0, 5);
     cmd.Do(lv);
-    const std::size_t idx = LevelNs::FindGridObjectAtCell(lv, 0, 0, 0);
+    const std::size_t idx = LevelNs::FindObjectAtCell(lv, 0, 0, 0);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
-    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[idx]), 1u);
+    EXPECT_EQ(LevelNs::CellRotationStep(lv.objects[idx]), 1u);
 }
 
 namespace
@@ -85,7 +85,7 @@ TEST(PlaceCommandTest, TemplateClonePlacesPrototypeWithBakedTransform)
     expected.positionX = static_cast<float>(cx);
     expected.positionY = static_cast<float>(cy);
     expected.positionZ = static_cast<float>(cz);
-    LevelNs::SetGridRotationStep(expected, rotation);
+    LevelNs::SetCellRotationStep(expected, rotation);
 
     const LevelNs::ObjectInstance cloned =
         PlaceOneAndTake(EditorNs::PlaceCommand(tmpl.prototype, cx, cy, cz, rotation));
@@ -108,7 +108,7 @@ TEST(PlaceCommandTest, AllPaletteSlotsClonePlacesPrototype)
         expected.positionX = static_cast<float>(cx);
         expected.positionY = static_cast<float>(cy);
         expected.positionZ = static_cast<float>(cz);
-        LevelNs::SetGridRotationStep(expected, kRotation);
+        LevelNs::SetCellRotationStep(expected, kRotation);
 
         const LevelNs::ObjectInstance cloned =
             PlaceOneAndTake(EditorNs::PlaceCommand(slot.prototype, cx, cy, cz, kRotation));

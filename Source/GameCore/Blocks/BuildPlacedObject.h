@@ -52,12 +52,12 @@ namespace NS::GameCore::Blocks
     inline constexpr NS::Math::Vector3 kPlayerBaseColor{0.85f, 0.20f, 0.20f};
 
     /// grid セルに置く cube 1 個分の component 一覧を組む。 cube メッシュ + block 材質 + 半径 0.5 の Box 当たり
-    /// MakeGridObject と editor の grid 配置が同じ cube を起こす窓口
-    [[nodiscard]] std::vector<NS::GameCore::Level::ComponentData> MakeGridCubeComponents();
+    /// MakeCellObject と editor の grid 配置が同じ cube を起こす窓口
+    [[nodiscard]] std::vector<NS::GameCore::Level::ComponentData> MakeCellCubeComponents();
 
     /// grid セルに置く楔スロープ 1 個分の component 一覧を組む。 角度に対応する wedge メッシュ + SlopeCollider
     /// angleDegrees は 45 / 30 / 22.5 / 15 度を想定し、 メッシュと当たりの傾斜を一致させる
-    [[nodiscard]] std::vector<NS::GameCore::Level::ComponentData> MakeGridSlopeComponents(float angleDegrees);
+    [[nodiscard]] std::vector<NS::GameCore::Level::ComponentData> MakeCellSlopeComponents(float angleDegrees);
 
     /// 接触でレベルクリアになるゴール 1 個分の component 一覧を組む。 視覚を持たない goal pickup に
     /// editor で見える金色 cube を載せる。 PlayMode が PickupComponent の種別を読んでクリアを判定する
@@ -79,7 +79,7 @@ namespace NS::GameCore::Blocks
 
     /// 固形 block か。 BoxCollider を持ち slope / hazard / 拾得を持たないことを components から判定する
     /// 当たり可視化 / コヨーテ縁 / R 回転対象の「固形」判定窓口
-    [[nodiscard]] bool IsGridSolidObject(const NS::GameCore::Level::ObjectInstance& object);
+    [[nodiscard]] bool IsSolidObject(const NS::GameCore::Level::ObjectInstance& object);
 
     /// R で 90° 回す対象か。 SlopeCollider を持つか grid 固形なら true。 水 / 装飾は false
     [[nodiscard]] bool IsRotatableObject(const NS::GameCore::Level::ObjectInstance& object);

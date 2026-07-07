@@ -60,7 +60,7 @@ TEST(LevelWorldTest, ClearEmptiesEverything)
 TEST(LevelWorldTest, RebuildBuildsPlayerAndExposesView)
 {
     LevelData level;
-    level.objects.push_back(NS::GameCore::Level::MakeGridObject(0, 0, 0, 0));
+    level.objects.push_back(NS::GameCore::Level::MakeCellObject(0, 0, 0, 0));
     level.objects.push_back(
         NS::GameCore::Level::MakePlayerObject(NS::Math::Vector3{0.0f, 1.41f, 0.0f}, NS::Math::Quaternion{}));
 
@@ -86,7 +86,7 @@ TEST(LevelWorldTest, RebuildBakesFollowCameraAndResolvesTarget)
 {
     LevelData level;
     level.objects.push_back(NS::GameCore::Level::MakeFollowCameraObject(0u));
-    level.objects.push_back(NS::GameCore::Level::MakeGridObject(0, 0, 0, 0));
+    level.objects.push_back(NS::GameCore::Level::MakeCellObject(0, 0, 0, 0));
     NS::GameCore::Level::EnsureUniqueObjectIds(level);
     // 追従先は自分より後ろに並ぶ grid block。Target 参照を採番後の実 id へ差し替える
     for (auto& component : level.objects[0].components)

@@ -59,7 +59,7 @@ TEST(LevelDataCrcTest, DifferentComponentsProduceDifferentCrc)
 TEST(LevelDataCrcTest, PlayStateMutationDoesNotAffectLevelDataCrc)
 {
     LevelNs::LevelData level;
-    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{5.0f, 0.0f, 0.0f}, NS::Math::Quaternion{}));
     const auto before = level.ComputeCrc32();
 
@@ -77,17 +77,17 @@ TEST(LevelDataCrcTest, PlayStateMutationDoesNotAffectLevelDataCrc)
 TEST(LevelDataCrcTest, ObjectsSizeIsHashed)
 {
     LevelNs::LevelData a, b;
-    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
-    a.objects.push_back(LevelNs::MakeGridObject(1, 0, 0, 0));
-    b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    a.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
+    a.objects.push_back(LevelNs::MakeCellObject(1, 0, 0, 0));
+    b.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
 TEST(LevelDataCrcTest, RotationStepIsHashed)
 {
     LevelNs::LevelData a, b;
-    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
-    b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1));
+    a.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
+    b.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 1));
     EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
@@ -124,9 +124,9 @@ TEST(LevelDataCrcTest, EnvironmentIsHashed)
 TEST(LevelDataCrcTest, VectorCapacityDoesNotAffectCrc)
 {
     LevelNs::LevelData a, b;
-    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    a.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     b.objects.reserve(1000);
-    b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    b.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     EXPECT_EQ(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
@@ -158,9 +158,9 @@ TEST(LevelDataComponents, ObjectInstanceCopyIsDeep)
 TEST(LevelDataComponents, Crc32ChangesWhenComponentAdded)
 {
     LevelNs::LevelData a, b;
-    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    a.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
 
-    LevelNs::ObjectInstance withComponent = LevelNs::MakeGridObject(0, 0, 0, 0);
+    LevelNs::ObjectInstance withComponent = LevelNs::MakeCellObject(0, 0, 0, 0);
     withComponent.components.push_back(LevelNs::ComponentData{"HazardComponent", {}});
     b.objects.push_back(withComponent);
 

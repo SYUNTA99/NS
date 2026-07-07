@@ -174,14 +174,14 @@ namespace NS::GameCore::Blocks
         }
     } // namespace
 
-    std::vector<NS::GameCore::Level::ComponentData> MakeGridCubeComponents()
+    std::vector<NS::GameCore::Level::ComponentData> MakeCellCubeComponents()
     {
         using namespace NS::GameCore::Level;
         return {MeshRendererData("cube", "", kSolidBaseColor),
                 MakeComponentData("BoxColliderComponent", {FieldValue{"Half Extents", kCellHalfExtents}})};
     }
 
-    std::vector<NS::GameCore::Level::ComponentData> MakeGridSlopeComponents(float angleDegrees)
+    std::vector<NS::GameCore::Level::ComponentData> MakeCellSlopeComponents(float angleDegrees)
     {
         using namespace NS::GameCore::Level;
         // 角度に対応する楔 builtin メッシュを選び、 見た目の傾斜と当たりの傾斜を一致させる
@@ -291,7 +291,7 @@ namespace NS::GameCore::Blocks
         return std::nullopt;
     }
 
-    bool IsGridSolidObject(const NS::GameCore::Level::ObjectInstance& object)
+    bool IsSolidObject(const NS::GameCore::Level::ObjectInstance& object)
     {
         using namespace NS::GameCore::Level;
         // 拾得 / slope / hazard は固形でない。 残る BoxCollider 持ちだけが固形 block
@@ -307,7 +307,7 @@ namespace NS::GameCore::Blocks
     bool IsRotatableObject(const NS::GameCore::Level::ObjectInstance& object)
     {
         // R で 90° 回す対象。 向きが意味を持つ slope と固形 block。 水 / 装飾は除く
-        return SlopeAngleOf(object) >= 0.0f || IsGridSolidObject(object);
+        return SlopeAngleOf(object) >= 0.0f || IsSolidObject(object);
     }
 
     const char* ObjectDisplayName(const NS::GameCore::Level::ObjectInstance& object)

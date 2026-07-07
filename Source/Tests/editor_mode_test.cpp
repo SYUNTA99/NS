@@ -16,18 +16,18 @@ TEST(EditorMode, ProgrammaticPlaceAddsBlock)
     editor.PlaceUnderCursorProgrammatic(5, 0, 3);
 
     ASSERT_EQ(lv.objects.size(), 1u);
-    const auto idx = LevelNs::FindGridObjectAtCell(lv, 5, 0, 3);
+    const auto idx = LevelNs::FindObjectAtCell(lv, 5, 0, 3);
     ASSERT_NE(idx, LevelNs::kNoObjectIndex);
     EXPECT_EQ(LevelNs::ObjectCellX(lv.objects[idx]), 5);
     EXPECT_EQ(LevelNs::ObjectCellY(lv.objects[idx]), 0);
     EXPECT_EQ(LevelNs::ObjectCellZ(lv.objects[idx]), 3);
-    EXPECT_TRUE(NS::GameCore::Blocks::IsGridSolidObject(lv.objects[idx]));
+    EXPECT_TRUE(NS::GameCore::Blocks::IsSolidObject(lv.objects[idx]));
 }
 
 TEST(EditorMode, ProgrammaticDeleteRemovesBlock)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(2, 0, 4, 0));
+    lv.objects.push_back(LevelNs::MakeCellObject(2, 0, 4, 0));
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
 
@@ -39,18 +39,18 @@ TEST(EditorMode, ProgrammaticDeleteRemovesBlock)
 TEST(EditorMode, ProgrammaticRotateCycles)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    lv.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
 
     editor.RotateAtProgrammatic(0, 0, 0);
-    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 1);
+    EXPECT_EQ(LevelNs::CellRotationStep(lv.objects[0]), 1);
     editor.RotateAtProgrammatic(0, 0, 0);
-    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 2);
+    EXPECT_EQ(LevelNs::CellRotationStep(lv.objects[0]), 2);
     editor.RotateAtProgrammatic(0, 0, 0);
-    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 3);
+    EXPECT_EQ(LevelNs::CellRotationStep(lv.objects[0]), 3);
     editor.RotateAtProgrammatic(0, 0, 0);
-    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 0);
+    EXPECT_EQ(LevelNs::CellRotationStep(lv.objects[0]), 0);
 }
 
 TEST(EditorMode, UndoStackIntegration)
@@ -88,14 +88,14 @@ TEST(EditorMode, LevelDirtyFlagSetByMutation)
 TEST(EditorMode, CellRotationViaProgrammaticOnExistingBlock)
 {
     LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    lv.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
 
     editor.RotateAtProgrammatic(0, 0, 0);
-    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 1);
+    EXPECT_EQ(LevelNs::CellRotationStep(lv.objects[0]), 1);
     EXPECT_TRUE(editor.IsLevelDirty());
 
     ASSERT_TRUE(editor.Undo().Undo(lv));
-    EXPECT_EQ(LevelNs::GridRotationStep(lv.objects[0]), 0);
+    EXPECT_EQ(LevelNs::CellRotationStep(lv.objects[0]), 0);
 }

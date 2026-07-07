@@ -16,10 +16,10 @@ namespace NS::GameCore::Blocks
                                        std::int16_t y,
                                        std::int16_t z) noexcept
         {
-            const std::size_t idx = NS::GameCore::Level::FindGridObjectAtCell(level, x, y, z);
+            const std::size_t idx = NS::GameCore::Level::FindObjectAtCell(level, x, y, z);
             if (idx == NS::GameCore::Level::kNoObjectIndex)
                 return false;
-            return IsGridSolidObject(level.objects[idx]);
+            return IsSolidObject(level.objects[idx]);
         }
     } // namespace
 
@@ -28,7 +28,7 @@ namespace NS::GameCore::Blocks
         std::vector<LedgeEdge> edges;
         for (const NS::GameCore::Level::ObjectInstance& object : level.objects)
         {
-            if (!IsGridSolidObject(object))
+            if (!IsSolidObject(object))
                 continue;
             const std::int16_t x = NS::GameCore::Level::ObjectCellX(object);
             const std::int16_t y = NS::GameCore::Level::ObjectCellY(object);

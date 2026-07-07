@@ -34,7 +34,7 @@ TEST(HazardDamageTest, HealthClampsAtZero)
 TEST(HazardDamageTest, ContactDamageDoesNotModifyLevelData)
 {
     NS::GameCore::Level::LevelData level;
-    level.objects.push_back(NS::GameCore::Level::MakeGridObject(0, 0, 0, 0));
+    level.objects.push_back(NS::GameCore::Level::MakeCellObject(0, 0, 0, 0));
     level.objects.push_back(
         NS::GameCore::Level::MakePlayerObject(NS::Math::Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
     const std::uint32_t crcBefore = level.ComputeCrc32();
