@@ -76,7 +76,7 @@ private:
     // scene は使う箇所で都度引く。 メンバとして控えず単一所有元は AssetManager のみ
     // skybox 装置と scene 段解決値の控えは EnvironmentSubsystem が持ち、 scene は毎フレーム設定を書くだけ
 
-    // LevelData から組んだ runtime world。 配置物 / instanced 描画キャッシュ / hazard view / コヨーテ縁を所有する
+    // LevelData から組んだ runtime world。 配置物 / instanced 描画キャッシュ / hazard view を所有する
     // 実カメラ + Brain は CameraSubsystem が、 プレイヤー / 追従 / 据え置きカメラは world が配置物として所有する
     NS::GameCore::Level::LevelWorld m_world;
 

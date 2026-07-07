@@ -144,11 +144,6 @@ namespace NS::GameCore::Level
         for (auto& obj : m_objects)
             obj->Root().Snapshot();
 
-#if !defined(NS_SHIPPING)
-        // コヨーテ debug 用に踏み外せる縁を焼く。 level が変わらない限り不変なのでここで 1 度だけ
-        m_ledgeEdges = NS::GameCore::Blocks::ComputeTopLedgeEdges(level);
-#endif
-
         physics.BuildBroadphase();
 
         // 接地シャドウは各配置物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない

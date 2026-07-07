@@ -7,7 +7,9 @@
 #include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/CapsuleColliderComponent.h"
 #include "Framework/Scene/Components/CharacterMovementComponent.h"
+#include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
+#include "Framework/Scene/Components/PickupComponent.h"
 #include "Framework/Scene/Components/PlayerInputComponent.h"
 #include "Framework/Scene/Components/ShadowComponent.h"
 #include "Framework/Scene/Components/SlopeColliderComponent.h"
@@ -289,6 +291,21 @@ namespace NS::GameCore::Blocks
             return NS::Math::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
         }
         return std::nullopt;
+    }
+
+    std::optional<NS::Physics::OBB> SolidBoxWorldOBB(NS::Scene::GameObject& obj) noexcept
+    {
+        auto* box = FindComponent<NS::Scene::BoxColliderComponent>(obj);
+        if (box == nullptr)
+            return std::nullopt;
+        // slope / hazard / 拾得を兼ねる箱は歩ける固形でないので除く
+        if (FindComponent<NS::Scene::SlopeColliderComponent>(obj) != nullptr)
+            return std::nullopt;
+        if (FindComponent<NS::Scene::HazardComponent>(obj) != nullptr)
+            return std::nullopt;
+        if (FindComponent<NS::Scene::PickupComponent>(obj) != nullptr)
+            return std::nullopt;
+        return box->WorldOBB();
     }
 
     bool IsSolidObject(const NS::GameCore::Level::ObjectInstance& object)

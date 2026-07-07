@@ -1,6 +1,7 @@
 #include "GameCore/LevelPlayScene.h"
 
 #include "GameCore/Blocks/BuildPlacedObject.h"
+#include "GameCore/Blocks/LedgeEdges.h"
 #include "GameCore/Player.h"
 #include "GameCore/PlayerTuning.h"
 
@@ -202,7 +203,13 @@ void LevelPlayScene::OnRenderScene()
         float coyoteReach = 0.0f;
         if (auto* player = PlayerRef())
             coyoteReach = player->Movement().MaxSpeed() * player->Movement().CoyoteTime();
-        for (const NS::GameCore::Blocks::LedgeEdge& edge : m_world.LedgeEdges())
+        // 縁は固形箱の実 world AABB 天面から毎フレーム引き直す。 gizmo の移動 / 拡大へその場で追従させるため
+        std::vector<NS::Physics::OBB> solidBoxes;
+        solidBoxes.reserve(m_world.Objects().size());
+        for (const auto& obj : m_world.Objects())
+            if (auto obb = NS::GameCore::Blocks::SolidBoxWorldOBB(*obj))
+                solidBoxes.push_back(*obb);
+        for (const NS::GameCore::Blocks::LedgeEdge& edge : NS::GameCore::Blocks::ComputeTopLedgeEdges(solidBoxes))
         {
             const NS::Math::Vector3 off{edge.outward.x * coyoteReach, 0.0f, edge.outward.z * coyoteReach};
             const NS::Math::Vector3 outerA{edge.a.x + off.x, edge.a.y, edge.a.z + off.z};

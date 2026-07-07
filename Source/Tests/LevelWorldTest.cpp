@@ -23,7 +23,6 @@ TEST(LevelWorldTest, InitialStateIsEmpty)
     EXPECT_TRUE(world.Objects().empty());
     EXPECT_TRUE(world.SourceIndices().empty());
     EXPECT_TRUE(world.HazardView().empty());
-    EXPECT_TRUE(world.LedgeEdges().empty());
 }
 
 TEST(LevelWorldTest, RebuildClearsStalePhysicsAndBuildsNothingWithoutAssets)

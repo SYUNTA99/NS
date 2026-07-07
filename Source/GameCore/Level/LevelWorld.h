@@ -3,12 +3,10 @@
 /// @file LevelWorld.h
 /// @brief LevelWorld — LevelData から組む runtime world 表現の所有と構築
 ///
-/// @details 配置物 GameObject / 衝突プリミティブ / hazard 走査 view /
-/// コヨーテ縁を LevelData から一括で組み直す。 runtime も editor も同じ Rebuild 経路を通り、
+/// @details 配置物 GameObject / 衝突プリミティブ / hazard 走査 view を
+/// LevelData から一括で組み直す。 runtime も editor も同じ Rebuild 経路を通り、
 /// scene は公開読み口からの観測と描画だけを行う
 /// 依存: NS::Scene::GameObject, NS::Physics::PhysicsWorld
-
-#include "GameCore/Blocks/LedgeEdges.h"
 
 #include <cstddef>
 #include <memory>
@@ -92,12 +90,6 @@ namespace NS::GameCore::Level
         /// player object の無い level と組み直し前は nullptr
         [[nodiscard]] ::Player* PlayerView() const noexcept { return m_playerView; }
 
-        /// コヨーテ debug 用に焼いた踏み外せる縁の world 線分。 出荷では焼かれず常に空
-        [[nodiscard]] const std::vector<NS::GameCore::Blocks::LedgeEdge>& LedgeEdges() const noexcept
-        {
-            return m_ledgeEdges;
-        }
-
     private:
         std::vector<std::unique_ptr<NS::Scene::GameObject>> m_objects;
         std::vector<std::size_t> m_objectSourceIndices;
@@ -105,7 +97,6 @@ namespace NS::GameCore::Level
         std::vector<NS::Scene::PlacedVirtualCamera*> m_placedCameraView;
         std::vector<NS::Scene::ThirdPersonFollowComponent*> m_followCameraView;
         std::vector<NS::Scene::VirtualCameraComponent*> m_virtualCameraView;
-        std::vector<NS::GameCore::Blocks::LedgeEdge> m_ledgeEdges;
         ::Player* m_playerView = nullptr;
     };
 

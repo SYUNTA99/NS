@@ -9,6 +9,7 @@
 /// 依存: NS::Scene::GameObject / AssetManager, NS::GameCore::Level::ObjectInstance
 
 #include "Framework/Math/Math.h"
+#include "Framework/Physics/SweptOBB.h"
 #include "Framework/Scene/Component.h"
 #include "Framework/Scene/GameObject.h"
 
@@ -99,6 +100,11 @@ namespace NS::GameCore::Blocks
     /// obj の collider を Box / Sphere / Capsule / Slope の順に見て最初に見つかった世界 AABB を返す
     /// 影の受け皿と当たり可視化が collider 種別に依存せず世界境界を 1 つ取る窓口。 collider が無ければ nullopt
     [[nodiscard]] std::optional<NS::Math::AABB> ColliderWorldAABB(NS::Scene::GameObject& obj) noexcept;
+
+    /// 固形箱すなわち BoxCollider を持ち slope / hazard / 拾得でない obj の box world OBB を返す
+    /// コヨーテ縁の debug 収集が、 歩ける天面を持つ配置物だけを回転込みで拾う窓口。 IsSolidObject と同じ線引きで
+    /// 該当しなければ nullopt
+    [[nodiscard]] std::optional<NS::Physics::OBB> SolidBoxWorldOBB(NS::Scene::GameObject& obj) noexcept;
 
     /// obj の Component 列から型 T の最初の一致を返す。 無ければ nullptr
     /// 描画 / 衝突 / editor が具象型を知らずに Component を取り出す共通窓口
