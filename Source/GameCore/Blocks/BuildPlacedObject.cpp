@@ -149,6 +149,13 @@ namespace NS::GameCore::Blocks
             return NS::GameCore::Level::FindComponentData(object, typeName) != nullptr;
         }
 
+        // 固形箱の線引き。 BoxCollider を持ち slope / hazard / 拾得を兼ねない箱だけを歩ける固形とする
+        // data 側 IsSolidObject と live 側 SolidBoxWorldOBB が同じ規則を 1 箇所で共有する
+        bool IsSolidBoxRule(bool hasBox, bool hasSlope, bool hasHazard, bool hasPickup) noexcept
+        {
+            return hasBox && !hasSlope && !hasHazard && !hasPickup;
+        }
+
         // SlopeColliderComponent の "Angle (deg)" を返す。 SlopeCollider 無しは -1
         float SlopeAngleOf(const NS::GameCore::Level::ObjectInstance& object) noexcept
         {
@@ -296,29 +303,21 @@ namespace NS::GameCore::Blocks
     std::optional<NS::Physics::OBB> SolidBoxWorldOBB(NS::Scene::GameObject& obj) noexcept
     {
         auto* box = FindComponent<NS::Scene::BoxColliderComponent>(obj);
-        if (box == nullptr)
-            return std::nullopt;
-        // slope / hazard / 拾得を兼ねる箱は歩ける固形でないので除く
-        if (FindComponent<NS::Scene::SlopeColliderComponent>(obj) != nullptr)
-            return std::nullopt;
-        if (FindComponent<NS::Scene::HazardComponent>(obj) != nullptr)
-            return std::nullopt;
-        if (FindComponent<NS::Scene::PickupComponent>(obj) != nullptr)
+        const bool hasSlope = FindComponent<NS::Scene::SlopeColliderComponent>(obj) != nullptr;
+        const bool hasHazard = FindComponent<NS::Scene::HazardComponent>(obj) != nullptr;
+        const bool hasPickup = FindComponent<NS::Scene::PickupComponent>(obj) != nullptr;
+        if (!IsSolidBoxRule(box != nullptr, hasSlope, hasHazard, hasPickup))
             return std::nullopt;
         return box->WorldOBB();
     }
 
     bool IsSolidObject(const NS::GameCore::Level::ObjectInstance& object)
     {
-        using namespace NS::GameCore::Level;
-        // 拾得 / slope / hazard は固形でない。 残る BoxCollider 持ちだけが固形 block
-        if (PickupKindOf(object) >= 0)
-            return false;
-        if (HasComponentType(object, "SlopeColliderComponent"))
-            return false;
-        if (HasComponentType(object, "HazardComponent"))
-            return false;
-        return HasComponentType(object, "BoxColliderComponent");
+        const bool hasBox = HasComponentType(object, "BoxColliderComponent");
+        const bool hasSlope = HasComponentType(object, "SlopeColliderComponent");
+        const bool hasHazard = HasComponentType(object, "HazardComponent");
+        const bool hasPickup = PickupKindOf(object) >= 0;
+        return IsSolidBoxRule(hasBox, hasSlope, hasHazard, hasPickup);
     }
 
     bool IsRotatableObject(const NS::GameCore::Level::ObjectInstance& object)

@@ -52,7 +52,7 @@ namespace NS::GameCore::Blocks
     /// 実プレイヤーの mesh に与える基準色。 データ既定と scene 側の直組みが同じ赤を共有する
     inline constexpr NS::Math::Vector3 kPlayerBaseColor{0.85f, 0.20f, 0.20f};
 
-    /// grid セルに置く cube 1 個分の component 一覧を組む。 cube メッシュ + block 材質 + 半径 0.5 の Box 当たり
+    /// grid セルに置く cube 1 個分の component 一覧を組む。 cube メッシュ + 半径 0.5 の Box 当たりで material は空参照
     /// MakeCellObject と editor の grid 配置が同じ cube を起こす窓口
     [[nodiscard]] std::vector<NS::GameCore::Level::ComponentData> MakeCellCubeComponents();
 
@@ -82,7 +82,7 @@ namespace NS::GameCore::Blocks
     /// 当たり可視化 / コヨーテ縁 / R 回転対象の「固形」判定窓口
     [[nodiscard]] bool IsSolidObject(const NS::GameCore::Level::ObjectInstance& object);
 
-    /// R で 90° 回す対象か。 SlopeCollider を持つか grid 固形なら true。 水 / 装飾は false
+    /// R で 90° 回す対象か。 SlopeCollider を持つか固形箱なら true。 水 / 装飾は false
     [[nodiscard]] bool IsRotatableObject(const NS::GameCore::Level::ObjectInstance& object);
 
     /// components から種別の表示名を導く ASCII 固定文字列。 Player / Camera / Solid / Coin / Goal /

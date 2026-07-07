@@ -9,7 +9,7 @@
 namespace EditorNs = NS::Editor;
 namespace LevelNs = NS::GameCore::Level;
 
-TEST(PlaceCommandTest, DoAddsGridObject)
+TEST(PlaceCommandTest, DoAddsCellObject)
 {
     LevelNs::LevelData lv;
     EditorNs::PlaceCommand cmd(LevelNs::MakeCellObject(0, 0, 0, 0), 5, 0, 3, 1);
@@ -34,7 +34,7 @@ TEST(PlaceCommandTest, UndoRestoresEmptyState)
     EXPECT_TRUE(lv.objects.empty());
 }
 
-TEST(PlaceCommandTest, ReplaceExistingBlockPreservesUndoRestore)
+TEST(PlaceCommandTest, ReplaceExistingCellObjectPreservesUndoRestore)
 {
     LevelNs::LevelData lv;
     lv.objects.push_back(LevelNs::MakeCellObject(5, 0, 3, 2));
