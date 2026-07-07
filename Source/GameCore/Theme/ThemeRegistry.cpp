@@ -8,7 +8,6 @@
 
 #include <array>
 #include <cstddef>
-#include <cstdint>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -76,15 +75,6 @@ namespace
             else
                 NS_LOG_WARN(::NS::Core::LogCat::Game, "{}: 'displayName' は文字列でないため既定値のまま", fileName);
         }
-        if (const auto it = json.find("blockTextureArrayBaseSlice"); it != json.end())
-        {
-            if (it->is_number_unsigned() && it->get<std::uint64_t>() <= UINT16_MAX)
-                theme.blockTextureArrayBaseSlice = static_cast<std::uint16_t>(it->get<std::uint64_t>());
-            else
-                NS_LOG_WARN(::NS::Core::LogCat::Game,
-                            "{}: 'blockTextureArrayBaseSlice' は 0..65535 の整数でないため既定値のまま",
-                            fileName);
-        }
         if (const auto it = json.find("skyboxCubemapPath"); it != json.end())
         {
             if (it->is_string())
@@ -147,7 +137,6 @@ namespace NS::GameCore::Theme
         environment.ambientColor = theme.ambientColor;
         // skybox パスは JSON 素直な文字列で持つため '/' 区切りへ正規化して写す
         environment.skyboxCubemapPath = theme.skyboxCubemapPath.generic_string();
-        environment.blockTextureBaseSlice = theme.blockTextureArrayBaseSlice;
         return environment;
     }
 } // namespace NS::GameCore::Theme

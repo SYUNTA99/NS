@@ -1,13 +1,10 @@
 #include "GameCore/Level/LevelWorld.h"
 
-#include "Framework/Core/LogCategories.h"
-#include "Framework/Core/Logger.h"
-#include "Framework/Graphics/InstanceBatcher.h"
 #include "Framework/Physics/PhysicsWorld.h"
+#include "Framework/Physics/SweptOBB.h"
 #include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/CapsuleColliderComponent.h"
 #include "Framework/Scene/Components/HazardComponent.h"
-#include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/Components/PlacedVirtualCamera.h"
 #include "Framework/Scene/Components/SlopeColliderComponent.h"
 #include "Framework/Scene/Components/SphereColliderComponent.h"
@@ -15,16 +12,30 @@
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/ObjectRefSubsystem.h"
 #include "Framework/Scene/SceneBase.h"
-#include "GameCore/Blocks/AutoTile.h"
 #include "GameCore/Blocks/BuildPlacedObject.h"
 #include "GameCore/Level/LevelData.h"
 #include "GameCore/Player.h"
 
+#include <algorithm>
 #include <cmath>
-#include <cstdint>
 
 namespace NS::GameCore::Level
 {
+    namespace
+    {
+        // OBB の 3 軸が座標軸に十分沿っていれば軸並行とみなす。 90° 刻みの回転はここに落ちる
+        // 各軸は単位ベクトルなので最大成分が 1 に届けば残り 2 成分はほぼ 0 になる
+        // しきい 1e-4 は 90° を quaternion 経由で組んだ時の float 誤差を確実に飲み込み、 1° 以上の傾きは OBB へ回す
+        [[nodiscard]] bool IsAxisAligned(const NS::Physics::OBB& obb) noexcept
+        {
+            constexpr float kAlignEpsilon = 1e-4f;
+            const auto alignedAxis = [](const NS::Math::Vector3& axis) noexcept {
+                const float maxComponent = std::max({std::abs(axis.x), std::abs(axis.y), std::abs(axis.z)});
+                return maxComponent >= 1.0f - kAlignEpsilon;
+            };
+            return alignedAxis(obb.axisX) && alignedAxis(obb.axisY) && alignedAxis(obb.axisZ);
+        }
+    } // namespace
 
     LevelWorld::LevelWorld() = default;
     LevelWorld::~LevelWorld() = default;
@@ -73,19 +84,10 @@ namespace NS::GameCore::Level
             m_objects.push_back(std::move(obj));
         }
 
-        for (std::size_t i = 0; i < m_objects.size(); ++i)
+        for (auto& objPtr : m_objects)
         {
-            const ObjectInstance& entry = level.objects[m_objectSourceIndices[i]];
-            NS::Scene::GameObject* obj = m_objects[i].get();
+            NS::Scene::GameObject* obj = objPtr.get();
             obj->OnStart();
-
-            const bool gridAligned = (entry.flags & kObjectFlagGridAligned) != 0;
-
-            // grid solid は個別 Draw を殺して InstanceBatcher へ委ねる。 描画段が Objects() を直読みして instanceable
-            // 判定 OnStart で RegisterRenderable 済なので MeshRenderer を非アクティブにするだけでよい
-            if (NS::GameCore::Blocks::IsGridSolidObject(entry))
-                if (auto* mesh = NS::GameCore::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*obj))
-                    mesh->SetActive(false);
 
             // collider component を全部登録する。 同型を重ねれば複合形状として当たりに効く
             bool hazardRegistered = false;
@@ -97,11 +99,13 @@ namespace NS::GameCore::Level
                     physics.AddCapsule(capsule->WorldCapsule());
                 else if (auto* box = NS::Scene::ComponentCast<NS::Scene::BoxColliderComponent>(comp))
                 {
-                    // 同じ Box でも gridAligned なら軸並行 AABB、 自由配置なら回転込み OBB
-                    if (gridAligned)
+                    // 軸並行すなわち回転が 90° 刻みなら従来通り AABB、 傾いた箱だけ OBB
+                    // 旧 grid は必ず軸並行なので AABB に落ち、 上を走る / 角に当たる手触りは不変
+                    const NS::Physics::OBB obb = box->WorldOBB();
+                    if (IsAxisAligned(obb))
                         physics.AddAabb(box->WorldAABB());
                     else
-                        physics.AddObb(box->WorldOBB());
+                        physics.AddObb(obb);
                 }
                 else if (auto* slope = NS::Scene::ComponentCast<NS::Scene::SlopeColliderComponent>(comp))
                     for (const auto& tri : slope->WorldTriangles())
@@ -140,42 +144,16 @@ namespace NS::GameCore::Level
         for (auto& obj : m_objects)
             obj->Root().Snapshot();
 
-        // instanced block の静的属性を焼く。 描画ループの per-frame 文字列走査と近傍マスクの O(N^2) を畳む
-        // instancing は描画段の判断で、 grid 固形だけを instanced bucket へ流す。 position は Snapshot 後で確定済
-        for (std::size_t i = 0; i < m_objects.size(); ++i)
-        {
-            const ObjectInstance& entry = level.objects[m_objectSourceIndices[i]];
-            if (!NS::GameCore::Blocks::IsGridSolidObject(entry))
-                continue;
-            const NS::Math::Vector3 wp = m_objects[i]->Root().Position();
-            const std::int16_t x = static_cast<std::int16_t>(std::lround(wp.x));
-            const std::int16_t y = static_cast<std::int16_t>(std::lround(wp.y));
-            const std::int16_t z = static_cast<std::int16_t>(std::lround(wp.z));
-            const std::uint8_t mask = NS::GameCore::Blocks::ComputeNeighborMask(level, x, y, z);
-            const std::uint16_t slice =
-                NS::GameCore::Blocks::LookupTextureSlice(level.environment.blockTextureBaseSlice, mask);
-            m_instancedBlocks.push_back(InstancedBlock{i, static_cast<float>(slice)});
-        }
-
-#if !defined(NS_SHIPPING)
-        // コヨーテ debug 用に踏み外せる縁を焼く。 level が変わらない限り不変なのでここで 1 度だけ
-        m_ledgeEdges = NS::GameCore::Blocks::ComputeTopLedgeEdges(level);
-#endif
-
         physics.BuildBroadphase();
 
-        // 接地シャドウは grid + 自由物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
+        // 接地シャドウは各配置物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
         if (m_playerView != nullptr)
         {
-            std::vector<NS::Math::AABB> shadowReceivers(physics.Aabbs().begin(), physics.Aabbs().end());
-            for (std::size_t i = 0; i < m_objects.size(); ++i)
-            {
-                const ObjectInstance& entry = level.objects[m_objectSourceIndices[i]];
-                if ((entry.flags & kObjectFlagGridAligned) != 0)
-                    continue;
-                if (auto aabb = NS::GameCore::Blocks::ColliderWorldAABB(*m_objects[i]))
+            std::vector<NS::Math::AABB> shadowReceivers;
+            shadowReceivers.reserve(m_objects.size());
+            for (auto& obj : m_objects)
+                if (auto aabb = NS::GameCore::Blocks::ColliderWorldAABB(*obj))
                     shadowReceivers.push_back(*aabb);
-            }
             m_playerView->Shadow().SetCollisionWorld(shadowReceivers);
         }
     }
@@ -187,24 +165,11 @@ namespace NS::GameCore::Level
             (*it)->OnEndPlay();
         m_objects.clear();
         m_objectSourceIndices.clear();
-        m_instancedBlocks.clear();
         m_hazardView.clear();
         m_placedCameraView.clear();
         m_followCameraView.clear();
         m_virtualCameraView.clear();
         m_playerView = nullptr;
-    }
-
-    void LevelWorld::CreateBatcher()
-    {
-        m_instanceBatcher = NS::Graphics::InstanceBatcher::Create();
-        if (!m_instanceBatcher->IsValid())
-            NS_LOG_WARN(::NS::Core::LogCat::Game, "LevelWorld: InstanceBatcher 構築失敗、 block 描画はスキップされる");
-    }
-
-    void LevelWorld::ResetBatcher() noexcept
-    {
-        m_instanceBatcher.reset();
     }
 
 } // namespace NS::GameCore::Level

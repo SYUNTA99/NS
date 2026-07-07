@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
-#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -42,7 +41,6 @@ namespace
     void ExpectThemeEq(const ThemeData& actual, const ThemeData& expected)
     {
         EXPECT_EQ(actual.displayName, expected.displayName);
-        EXPECT_EQ(actual.blockTextureArrayBaseSlice, expected.blockTextureArrayBaseSlice);
         EXPECT_EQ(actual.skyboxCubemapPath, expected.skyboxCubemapPath);
         EXPECT_FLOAT_EQ(actual.lightDirection.x, expected.lightDirection.x);
         EXPECT_FLOAT_EQ(actual.lightDirection.y, expected.lightDirection.y);
@@ -88,18 +86,12 @@ namespace
 
     TEST_F(ThemeRegistryBundledTest, BundledThemesShipExpectedIdentity)
     {
-        // 同梱ファイルの表示名と block slice 帯を固定する。band は RebuildWorld の焼き込みが依存する
+        // 同梱ファイルの表示名を固定する
         EXPECT_EQ(Get(ThemeId::Grass).displayName, "Grass");
         EXPECT_EQ(Get(ThemeId::Cave).displayName, "Cave");
         EXPECT_EQ(Get(ThemeId::Snow).displayName, "Snow");
         EXPECT_EQ(Get(ThemeId::Lava).displayName, "Lava");
         EXPECT_EQ(Get(ThemeId::Sky).displayName, "Sky");
-
-        EXPECT_EQ(Get(ThemeId::Grass).blockTextureArrayBaseSlice, 0);
-        EXPECT_EQ(Get(ThemeId::Cave).blockTextureArrayBaseSlice, 8);
-        EXPECT_EQ(Get(ThemeId::Snow).blockTextureArrayBaseSlice, 16);
-        EXPECT_EQ(Get(ThemeId::Lava).blockTextureArrayBaseSlice, 24);
-        EXPECT_EQ(Get(ThemeId::Sky).blockTextureArrayBaseSlice, 32);
     }
 
     TEST_F(ThemeRegistryBundledTest, AllThemesDistinct)
@@ -145,7 +137,6 @@ namespace
         EXPECT_FLOAT_EQ(environment.ambientColor.y, lava.ambientColor.y);
         EXPECT_FLOAT_EQ(environment.ambientColor.z, lava.ambientColor.z);
         EXPECT_EQ(environment.skyboxCubemapPath, lava.skyboxCubemapPath.generic_string());
-        EXPECT_EQ(environment.blockTextureBaseSlice, lava.blockTextureArrayBaseSlice);
     }
 
     /// ファイル読込の退避系。TearDown で存在しないディレクトリを読ませ、全テーマを中立既定値へ戻す
@@ -166,7 +157,6 @@ namespace
         WriteTextFile(dir / "grass.asset", R"({
             "type": "theme",
             "displayName": "Meadow",
-            "blockTextureArrayBaseSlice": 4,
             "skyboxCubemapPath": "Assets/Skybox/other/",
             "lightDirection": [0.5, -1.0, 0.25],
             "lightColor": [0.5, 0.6, 0.7],
@@ -177,7 +167,6 @@ namespace
 
         const ThemeData& grass = Get(ThemeId::Grass);
         EXPECT_EQ(grass.displayName, "Meadow");
-        EXPECT_EQ(grass.blockTextureArrayBaseSlice, 4);
         EXPECT_EQ(grass.skyboxCubemapPath, std::filesystem::path("Assets/Skybox/other/"));
         EXPECT_FLOAT_EQ(grass.lightDirection.x, 0.5f);
         EXPECT_FLOAT_EQ(grass.lightDirection.z, 0.25f);
@@ -227,7 +216,6 @@ namespace
         EXPECT_FLOAT_EQ(grass.lightColor.z, 0.3f);
         // 書かれていないキーは中立の既定値のまま残る
         EXPECT_EQ(grass.displayName, neutral.displayName);
-        EXPECT_EQ(grass.blockTextureArrayBaseSlice, neutral.blockTextureArrayBaseSlice);
         EXPECT_FLOAT_EQ(grass.lightDirection.x, neutral.lightDirection.x);
         EXPECT_FLOAT_EQ(grass.ambientColor.x, neutral.ambientColor.x);
 

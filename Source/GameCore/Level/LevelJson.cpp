@@ -29,7 +29,9 @@ namespace NS::GameCore::Level
         /// v6 で追従カメラを scene 直組みから objects の実体へ統合した。 旧版は読込時に合成して移行する
         /// v7 で環境をシーン所有の environment 欄へ統合し themeId を廃止した。 environment 欄が無い
         /// 旧ファイルは中立の既定値で読む
-        constexpr int kFormatVersion = 7;
+        /// v8 で gridAligned フラグを廃止した。 旧ファイルの flags キーは読み飛ばす
+        /// v9 で blockTextureBaseSlice を廃止した。 旧ファイルの当該キーは読み飛ばす
+        constexpr int kFormatVersion = 9;
 
         /// 読込時の上限。 巨大 size / 要素数による memory exhaustion を防ぐ。 binary 版から移植
         constexpr std::size_t kMaxLevelFileBytes = 16u * 1024u * 1024u;
@@ -166,7 +168,6 @@ namespace NS::GameCore::Level
             out["id"] = object.objectId;
             out["transform"] = std::move(transform);
             out["materialIndex"] = static_cast<int>(object.materialIndex);
-            out["flags"] = static_cast<int>(object.flags);
             out["reserved1"] = static_cast<int>(object.reserved1);
             out["collider"] = std::move(collider);
             out["components"] = std::move(components);
@@ -189,7 +190,6 @@ namespace NS::GameCore::Level
 
             object.objectId = static_cast<std::uint32_t>(ReadInt(json, "id", 0));
             object.materialIndex = static_cast<std::int16_t>(ReadInt(json, "materialIndex", object.materialIndex));
-            object.flags = static_cast<std::uint8_t>(ReadInt(json, "flags", object.flags));
             object.reserved1 = static_cast<std::uint16_t>(ReadInt(json, "reserved1", object.reserved1));
 
             const auto colliderIt = json.find("collider");
@@ -329,7 +329,6 @@ namespace NS::GameCore::Level
         environment["ambientColor"] = Vec3Json(
             level.environment.ambientColor.x, level.environment.ambientColor.y, level.environment.ambientColor.z);
         environment["skyboxCubemapPath"] = level.environment.skyboxCubemapPath;
-        environment["blockTextureBaseSlice"] = static_cast<int>(level.environment.blockTextureBaseSlice);
         root["environment"] = std::move(environment);
 
         nlohmann::json objects = nlohmann::json::array();
@@ -502,8 +501,6 @@ namespace NS::GameCore::Level
             const auto skyboxIt = environmentIt->find("skyboxCubemapPath");
             if (skyboxIt != environmentIt->end() && skyboxIt->is_string())
                 outLevel.environment.skyboxCubemapPath = skyboxIt->get<std::string>();
-            outLevel.environment.blockTextureBaseSlice = static_cast<std::uint16_t>(
-                ReadInt(*environmentIt, "blockTextureBaseSlice", outLevel.environment.blockTextureBaseSlice));
         }
 
         outLevel.nextObjectId = static_cast<std::uint32_t>(ReadInt(root, "nextObjectId", 1));

@@ -239,7 +239,7 @@ TEST_F(AssetManagerTest, LoadMaterialDedupReturnsSamePointer)
     EXPECT_EQ(first.material, second.material);
 }
 
-// RegisterSharedMaterials 後、 player/block/water/shadow が非 null かつ同一アクセサが同一ポインタ
+// RegisterSharedMaterials 後、 player/water/shadow が非 null かつ同一アクセサが同一ポインタ
 TEST_F(AssetManagerTest, SharedMaterialsNonNullAfterRegister)
 {
     Window window(MakeWindowDesc("ns_am_shared"));
@@ -253,7 +253,6 @@ TEST_F(AssetManagerTest, SharedMaterialsNonNullAfterRegister)
     am.RegisterSharedMaterials();
 
     EXPECT_NE(am.SharedMaterial("player"), nullptr);
-    EXPECT_NE(am.SharedMaterial("block"), nullptr);
     EXPECT_NE(am.SharedMaterial("water"), nullptr);
     EXPECT_NE(am.SharedMaterial("shadow"), nullptr);
     EXPECT_EQ(am.SharedMaterial("player"), am.SharedMaterial("player"));

@@ -27,8 +27,6 @@ namespace NS::Graphics
     class Texture;
     class Mesh;
     class StaticMesh;
-    class TextureArray;
-    struct TextureArrayDesc;
 } // namespace NS::Graphics
 
 namespace NS::Scene
@@ -110,19 +108,11 @@ namespace NS::Scene
         /// 相対 path は構築時の baseDir 基準で解決する
         [[nodiscard]] LoadedMaterial LoadMaterial(const std::filesystem::path& matPath);
 
-        /// 共有 material である player / block / water / shadow を組み込み shader + texture から一括組み立てする
+        /// 共有 material である player / water / shadow を組み込み shader + texture から一括組み立てする
         /// device + RegisterBuiltins 後・最初の利用前に 1 度呼ぶ。 既登録名は上書きしない
         void RegisterSharedMaterials();
-        /// 名前鍵で共有 material を引く。 鍵は "player" / "block" / "water" / "shadow"。 未登録は nullptr
+        /// 名前鍵で共有 material を引く。 鍵は "player" / "water" / "shadow"。 未登録は nullptr
         [[nodiscard]] NS::Graphics::Material* SharedMaterial(std::string_view name) const noexcept;
-
-        /// 名前鍵で Texture2DArray を保持する。 初回は desc から生成して所有、 2 回目以降は name で cache hit し
-        /// desc は無視する。 slice path リストから組む theme atlas のような app 寿命で 1 本の array 向け。 失敗時も
-        /// 非 null でフォールバックを返す
-        [[nodiscard]] NS::Graphics::TextureArray* GetOrCreateTextureArray(std::string_view name,
-                                                                          const NS::Graphics::TextureArrayDesc& desc);
-        /// 名前鍵で TextureArray を引く。 描画パスの毎フレーム取得用。 未登録は nullptr
-        [[nodiscard]] NS::Graphics::TextureArray* TextureArrayByName(std::string_view name) const noexcept;
 
         /// path 鍵 leaf を引き reload-in-place する。 現状 Shader のみ。 成功で true、 未キャッシュ / 失敗で false
         [[nodiscard]] bool Reload(const std::filesystem::path& path);
@@ -153,10 +143,9 @@ namespace NS::Scene
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Shader>> m_shaders;
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Texture>> m_textures;
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Mesh>> m_meshes;
-        std::map<std::string, std::unique_ptr<NS::Graphics::StaticMesh>> m_builtins;        // path 無し、 leaf と別容器
-        std::map<std::filesystem::path, MaterialRecord> m_materials;                        // .mat composite
-        std::map<std::string, std::unique_ptr<NS::Graphics::Material>> m_sharedMaterials;   // 手続き共有 material
-        std::map<std::string, std::unique_ptr<NS::Graphics::TextureArray>> m_textureArrays; // 名前鍵 Texture2DArray
+        std::map<std::string, std::unique_ptr<NS::Graphics::StaticMesh>> m_builtins;      // path 無し、 leaf と別容器
+        std::map<std::filesystem::path, MaterialRecord> m_materials;                      // .mat composite
+        std::map<std::string, std::unique_ptr<NS::Graphics::Material>> m_sharedMaterials; // 手続き共有 material
         std::map<std::filesystem::path, SkinnedModelRecord>
             m_skinnedModels; // skinned glTF、 mesh 所有 + skeleton/clips テンプレ
     };

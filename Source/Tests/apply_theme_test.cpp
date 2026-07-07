@@ -26,7 +26,8 @@ namespace
         void TearDown() override
         {
             // 次のテストが読込済み状態を仮定しないよう、存在しないディレクトリを読ませて中立へ戻す
-            NS::GameCore::Theme::LoadThemesFromDirectory(std::filesystem::temp_directory_path() / "ns_apply_theme_restore");
+            NS::GameCore::Theme::LoadThemesFromDirectory(std::filesystem::temp_directory_path() /
+                                                         "ns_apply_theme_restore");
             NS::Core::Logger::Shutdown();
         }
     };
@@ -40,25 +41,11 @@ namespace
 
         const NS::GameCore::Theme::ThemeData& lava = NS::GameCore::Theme::Get(NS::GameCore::Theme::ThemeId::Lava);
         const NS::GameCore::Level::LevelEnvironment& env = scene.Level().environment;
-        EXPECT_EQ(env.blockTextureBaseSlice, lava.blockTextureArrayBaseSlice);
         EXPECT_EQ(env.skyboxCubemapPath, lava.skyboxCubemapPath.generic_string());
         EXPECT_FLOAT_EQ(env.lightDirection.x, lava.lightDirection.x);
         EXPECT_FLOAT_EQ(env.lightDirection.y, lava.lightDirection.y);
         EXPECT_FLOAT_EQ(env.lightDirection.z, lava.lightDirection.z);
         EXPECT_FLOAT_EQ(env.lightColor.x, lava.lightColor.x);
         EXPECT_FLOAT_EQ(env.ambientColor.z, lava.ambientColor.z);
-    }
-
-    TEST_F(ApplyThemeTest, DifferentThemesWriteDifferentSliceBand)
-    {
-        // 適用で slice 帯の先頭が environment へ焼き込まれる。 帯は RebuildWorld の焼き込みが読む
-        LevelPlayScene scene;
-        LevelEditorController editor(&scene);
-
-        editor.ApplyTheme(NS::GameCore::Theme::ThemeId::Grass);
-        EXPECT_EQ(scene.Level().environment.blockTextureBaseSlice, 0);
-
-        editor.ApplyTheme(NS::GameCore::Theme::ThemeId::Cave);
-        EXPECT_EQ(scene.Level().environment.blockTextureBaseSlice, 8);
     }
 } // namespace

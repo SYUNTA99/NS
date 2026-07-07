@@ -1,10 +1,10 @@
 #include "GameCore/LevelPlayScene.h"
 
 #include "GameCore/Blocks/BuildPlacedObject.h"
+#include "GameCore/Blocks/LedgeEdges.h"
 #include "GameCore/Player.h"
 #include "GameCore/PlayerTuning.h"
 
-#include "Framework/Scene/AssetManager.h"
 #include "Framework/Scene/CameraSubsystem.h"
 #include "Framework/Scene/Components/CameraBrainComponent.h"
 #include "Framework/Scene/Components/CameraComponent.h"
@@ -17,21 +17,14 @@
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
-#include "Framework/Graphics/CommandList.h"
 #include "Framework/Graphics/DebugDraw.h"
-#include "Framework/Graphics/InstanceBatcher.h"
-#include "Framework/Graphics/Material.h"
 #include "Framework/Graphics/Renderer.h"
-#include "Framework/Graphics/Shader.h"
-#include "Framework/Graphics/TextureArray.h"
 #include "Framework/Platform/Input.h"
 #include "Framework/Platform/Keyboard.h"
 #include "Framework/Platform/Window.h"
-#include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/IRenderable.h"
 #include "Framework/Scene/RenderContext.h"
 #include "Framework/Scene/Transform.h"
-#include "GameCore/Blocks/AutoTile.h"
 #include "GameCore/Level/LevelIO.h"
 #include "GameCore/Theme/ThemeRegistry.h"
 
@@ -48,7 +41,7 @@ namespace
         // 新規シーンの既定の見た目は Grass 雛形を写し込む。 以降はシーンの環境欄が正になる
         level.environment = NS::GameCore::Theme::MakeEnvironmentFromTheme(
             NS::GameCore::Theme::Get(NS::GameCore::Theme::ThemeId::Grass));
-        level.objects.push_back(NS::GameCore::Level::MakeGridObject(0, 0, 0, 0));
+        level.objects.push_back(NS::GameCore::Level::MakeCellObject(0, 0, 0, 0));
         // プレイヤーは capsule 中心を床ブロック上面 0.5 + capsule 半径込み半高 0.9 + 1cm へ置く
         level.objects.push_back(NS::GameCore::Level::MakePlayerObject(
             NS::Math::Vector3{0.0f, NS::GameCore::Level::kDefaultPlayerSpawnY, 0.0f}, NS::Math::Quaternion{}));
@@ -91,31 +84,6 @@ void LevelPlayScene::OnStart()
     }
 
     auto& renderer = app->Renderer();
-    const auto exeDir = NS::Core::FileSystem::ContentRoot();
-
-    // 組み込み mesh と共有 material は AssetManager がアプリ寿命で所有する。 ここは使う時に引くだけ
-    auto& assets = app->Assets();
-
-    // 全テーマ block texture を Texture2DArray 1 本に集約。 アセット未取得のため cube_test.png を 40 slice 充填
-    {
-        NS::Graphics::TextureArrayDesc taDesc{};
-        const auto placeholderSlice = exeDir / "Assets" / "Textures" / "cube_test.png";
-        constexpr std::size_t kPlaceholderSliceCount = 40; // 5 theme x 8 variant
-        taDesc.slicePaths.reserve(kPlaceholderSliceCount);
-        for (std::size_t i = 0; i < kPlaceholderSliceCount; ++i)
-        {
-            taDesc.slicePaths.push_back(placeholderSlice);
-        }
-        taDesc.generateMipmaps = true;
-        taDesc.sRGB = false;
-        auto* blockTextures = assets.GetOrCreateTextureArray("block", taDesc);
-        if (blockTextures->IsUsingFallback())
-            NS_LOG_WARN(::NS::Core::LogCat::Game,
-                        "LevelPlayScene: block 用 TextureArray の slice 読込で失敗あり、 magenta fallback で続行");
-    }
-
-    m_world.CreateBatcher();
-
     // プレイヤーの構成と値の真実はレベルの player object。 world が他の配置物と同じ一本道で組む
     // 実カメラ + Brain は CameraSubsystem 所有で、 プレイヤー / 追従カメラは world が配置物として組む
     LoadInitialLevel();
@@ -157,32 +125,18 @@ void LevelPlayScene::OnUpdate()
     if (auto* brain = (cameras != nullptr) ? cameras->Brain() : nullptr)
         brain->OnUpdate();
 
-    SnapshotDisplayBlocks();
+    SnapshotDisplayObjects();
 
     // 編集中はプレイ更新を止める。 free-fly カメラ / 編集入力は overlay layer の editor 側が回す
     // 進行の分岐は配下の PlayFlowComponent が担い、 編集モード中は寝ているため素通りする
     m_director->OnUpdate();
-
-    UpdateDisplayBlocks();
 }
 
-void LevelPlayScene::SnapshotDisplayBlocks()
+void LevelPlayScene::SnapshotDisplayObjects()
 {
     // 各配置物 GameObject の Snapshot は edit / play 共通。 静的 display object なので常時
     for (auto& obj : m_world.Objects())
         obj->Root().Snapshot();
-}
-
-void LevelPlayScene::UpdateDisplayBlocks()
-{
-    // gridAligned な配置物のみ OnUpdate する。 自由配置物は旧挙動を保つため OnUpdate 対象外
-    const auto& objects = m_world.Objects();
-    for (std::size_t i = 0; i < objects.size(); ++i)
-    {
-        const NS::GameCore::Level::ObjectInstance& entry = m_level.objects[m_world.SourceIndices()[i]];
-        if ((entry.flags & NS::GameCore::Level::kObjectFlagGridAligned) != 0)
-            objects[i]->OnUpdate();
-    }
 }
 
 void LevelPlayScene::OnRenderScene()
@@ -227,47 +181,6 @@ void LevelPlayScene::OnRenderScene()
     // editor の由来表示が読む解決値の控えは基底が EnvironmentSubsystem へ格納する
     ctx.resolvedSettings = ResolveSceneSettings(ctx.renderer->Settings());
 
-    // Block 描画は InstanceBatcher bucket 経由に統一。 MeshRendererComponent が非アクティブなので旧 per-block
-    // 経路は通らない
-    auto* batcher = m_world.Batcher();
-    if (batcher && batcher->IsValid())
-    {
-        // 組み込み cube と共有 block material は AssetManager 所有。 毎フレームここで 1 度だけ引く
-        auto& assets = app->Assets();
-        auto* cubeMesh = assets.Builtin("cube");
-        auto* blockMat = assets.SharedMaterial("block");
-
-        // scene 解決値を block 全体の FrameCB に流す。 baseColor は per-instance で個体色を別途乗算する
-        NS::Scene::FrameCB blockCB{};
-        blockCB.viewProj = ctx.viewProjection;
-        blockCB.lightDir = ctx.resolvedSettings.lightDir;
-        blockCB.lightDir.Normalize();
-        blockCB.baseColor = NS::Math::Vector3{1.0f, 1.0f, 1.0f}; // per-instance baseColor と乗算するので 1 に固定
-        blockCB.lightColor = ctx.resolvedSettings.lightColor;
-        blockCB.ambientColor = ctx.resolvedSettings.ambientColor;
-        if (blockMat)
-            blockMat->SetParams(*ctx.renderer, blockCB);
-
-        // instanceable 判定 / 近傍マスク / slice は RebuildWorld で焼き済。 ここは焼いた slice と
-        // 補間 world matrix だけを読み、 毎フレームの文字列走査と近傍マスク O(N^2) を持ち込まない
-        batcher->BeginFrame();
-        // 個体色は全 instanced block 共通の solid 色。 theme tint は FrameCB の lightColor/ambientColor で行う
-        for (const auto& block : m_world.InstancedBlocks())
-        {
-            NS::Graphics::BlockInstance inst{};
-            inst.worldMatrix = m_world.Objects()[block.objectIndex]->Root().InterpolatedWorldMatrix(ctx.alpha);
-            inst.baseColor = NS::GameCore::Blocks::kSolidBaseColor;
-            inst.textureSlice = block.textureSlice;
-            batcher->Submit(cubeMesh, blockMat, inst);
-        }
-
-        // TextureArray を t0 に bind してから FlushAll。 Material::Bind では slot 0 を触っていない
-        // SetTexture せず構築したため、 ここで bind した SRV が bucket 描画まで残る
-        if (auto* blockTextures = assets.TextureArrayByName("block"))
-            ctx.renderer->Commands().SetTextureArray(*blockTextures, 0u, NS::Graphics::ShaderType::Pixel);
-        batcher->FlushAll(*ctx.renderer);
-    }
-
     // 不透明 IRenderable。各 Draw が自分の Pipeline を set する。 基底が bucket 分類して登録順に呼ぶ
     DrawOpaque(ctx);
 
@@ -290,7 +203,13 @@ void LevelPlayScene::OnRenderScene()
         float coyoteReach = 0.0f;
         if (auto* player = PlayerRef())
             coyoteReach = player->Movement().MaxSpeed() * player->Movement().CoyoteTime();
-        for (const NS::GameCore::Blocks::LedgeEdge& edge : m_world.LedgeEdges())
+        // 縁は固形箱の実 world AABB 天面から毎フレーム引き直す。 gizmo の移動 / 拡大へその場で追従させるため
+        std::vector<NS::Physics::OBB> solidBoxes;
+        solidBoxes.reserve(m_world.Objects().size());
+        for (const auto& obj : m_world.Objects())
+            if (auto obb = NS::GameCore::Blocks::SolidBoxWorldOBB(*obj))
+                solidBoxes.push_back(*obb);
+        for (const NS::GameCore::Blocks::LedgeEdge& edge : NS::GameCore::Blocks::ComputeTopLedgeEdges(solidBoxes))
         {
             const NS::Math::Vector3 off{edge.outward.x * coyoteReach, 0.0f, edge.outward.z * coyoteReach};
             const NS::Math::Vector3 outerA{edge.a.x + off.x, edge.a.y, edge.a.z + off.z};
@@ -355,11 +274,6 @@ void LevelPlayScene::OnShutdown()
         refs->Clear();
     // 配置物はプレイヤー込みで逆順の OnEndPlay ごと LevelWorld が畳む。 実カメラ + Brain は CameraSubsystem が畳む
     m_world.Clear();
-
-    // InstanceBatcher は Renderer の DeviceContext を ComPtr で握るため、 Application の Renderer より
-    // 先に破棄する。 組み込み / leaf / 共有 material / block TextureArray / skinned model は AssetManager が Clear
-    // で解放し、 skybox 装置は EnvironmentSubsystem の Deinitialize が畳む
-    m_world.ResetBatcher();
 }
 
 void LevelPlayScene::RebuildWorld()

@@ -291,15 +291,6 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorController& editor) noexc
         ImGui::DragFloat3("ambient##env", &env.ambientColor.x, 0.01f, 0.0f, 2.0f);
         ImGui::Text("skybox: %s", env.skyboxCubemapPath.empty() ? "(なし)" : env.skyboxCubemapPath.c_str());
 
-        // slice 帯だけは焼き直しが要るので controller 経由で変える
-        int baseSlice = static_cast<int>(env.blockTextureBaseSlice);
-        if (ImGui::InputInt("blockSlice##env", &baseSlice))
-        {
-            if (baseSlice < 0)
-                baseSlice = 0;
-            editor.SetEnvironmentBlockSlice(static_cast<std::uint16_t>(baseSlice));
-        }
-
         ImGui::Separator();
 
         // 雛形の適用。 選んだテーマの視覚値を environment へ写し込み slice 帯を焼き直す
@@ -381,11 +372,10 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorController& editor) noexcept
         for (std::size_t i = 0; i < objects.size(); ++i)
         {
             const NS::GameCore::Level::ObjectInstance& object = objects[i];
-            const bool grid = (object.flags & NS::GameCore::Level::kObjectFlagGridAligned) != 0;
             const char* name = NS::GameCore::Blocks::ObjectDisplayName(object);
 
             char label[96];
-            std::snprintf(label, sizeof(label), "[%zu] %s (%s)", i, name, grid ? "grid" : "free");
+            std::snprintf(label, sizeof(label), "[%zu] %s", i, name);
 
             ImGui::PushID(static_cast<int>(i));
             if (ImGui::Selectable(label, i == selected))
@@ -453,66 +443,44 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
         }
 
         const NS::GameCore::Level::ObjectInstance obj = editor.SelectedObjectSnapshot();
-        const bool grid = editor.SelectedIsGridAligned();
-        ImGui::Text("[%zu] %s (%s)",
-                    editor.SelectedObjectIndex(),
-                    NS::GameCore::Blocks::ObjectDisplayName(obj),
-                    grid ? "grid" : "free");
+        ImGui::Text("[%zu] %s", editor.SelectedObjectIndex(), NS::GameCore::Blocks::ObjectDisplayName(obj));
         ImGui::Separator();
 
-        if (grid)
-        {
-            ImGui::Text("Cell: (%d, %d, %d)",
-                        static_cast<int>(NS::GameCore::Level::ObjectCellX(obj)),
-                        static_cast<int>(NS::GameCore::Level::ObjectCellY(obj)),
-                        static_cast<int>(NS::GameCore::Level::ObjectCellZ(obj)));
-            if (NS::GameCore::Blocks::IsGridSolidObject(obj))
-            {
-                ImGui::TextDisabled("Promote to free to edit transform");
-                if (ImGui::Button("Promote to Free"))
-                    editor.PromoteSelectedToFree();
-            }
-            else
-                ImGui::TextDisabled("grid object (no gizmo/edit in v1)");
-        }
-        else
-        {
-            // free オブジェクトは runtime Transform が真実の源なので即反映し、 SyncFreeObjectTransforms が永続化する
-            ImGui::SeparatorText("Transform");
+        // Transform は runtime が真実の源なので即反映し、 SyncFreeObjectTransforms が永続化する
+        ImGui::SeparatorText("Transform");
 
-            float pos[3] = {obj.positionX, obj.positionY, obj.positionZ};
-            if (ImGui::DragFloat3("Position", pos, 0.05f))
-                editor.SetSelectedFreePosition(NS::Math::Vector3{pos[0], pos[1], pos[2]});
-            if (ImGui::IsItemActivated())
-                editor.BeginTransformEdit();
-            if (ImGui::IsItemDeactivatedAfterEdit())
-                editor.CommitTransformEdit();
+        float pos[3] = {obj.positionX, obj.positionY, obj.positionZ};
+        if (ImGui::DragFloat3("Position", pos, 0.05f))
+            editor.SetSelectedFreePosition(NS::Math::Vector3{pos[0], pos[1], pos[2]});
+        if (ImGui::IsItemActivated())
+            editor.BeginTransformEdit();
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            editor.CommitTransformEdit();
 
-            // 回転は内部 quaternion を度の Euler に直して編集し、 入力を quaternion へ戻す
-            // 滑らかに回し続けるならギズモ R が向く。 ここは角度の直接入力 / 微調整用
-            const NS::Math::Quaternion q{obj.rotationX, obj.rotationY, obj.rotationZ, obj.rotationW};
-            const NS::Math::Vector3 euler = q.ToEuler();
-            float rot[3] = {NS::Math::RadiansToDegrees(euler.x),
-                            NS::Math::RadiansToDegrees(euler.y),
-                            NS::Math::RadiansToDegrees(euler.z)};
-            if (ImGui::DragFloat3("Rotation", rot, 0.5f))
-                editor.SetSelectedFreeRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(
-                    NS::Math::Vector3{NS::Math::DegreesToRadians(rot[0]),
-                                      NS::Math::DegreesToRadians(rot[1]),
-                                      NS::Math::DegreesToRadians(rot[2])}));
-            if (ImGui::IsItemActivated())
-                editor.BeginTransformEdit();
-            if (ImGui::IsItemDeactivatedAfterEdit())
-                editor.CommitTransformEdit();
+        // 回転は内部 quaternion を度の Euler に直して編集し、 入力を quaternion へ戻す
+        // 滑らかに回し続けるならギズモ R が向く。 ここは角度の直接入力 / 微調整用
+        const NS::Math::Quaternion q{obj.rotationX, obj.rotationY, obj.rotationZ, obj.rotationW};
+        const NS::Math::Vector3 euler = q.ToEuler();
+        float rot[3] = {NS::Math::RadiansToDegrees(euler.x),
+                        NS::Math::RadiansToDegrees(euler.y),
+                        NS::Math::RadiansToDegrees(euler.z)};
+        if (ImGui::DragFloat3("Rotation", rot, 0.5f))
+            editor.SetSelectedFreeRotation(
+                NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::Vector3{NS::Math::DegreesToRadians(rot[0]),
+                                                                               NS::Math::DegreesToRadians(rot[1]),
+                                                                               NS::Math::DegreesToRadians(rot[2])}));
+        if (ImGui::IsItemActivated())
+            editor.BeginTransformEdit();
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            editor.CommitTransformEdit();
 
-            float scl[3] = {obj.scaleX, obj.scaleY, obj.scaleZ};
-            if (ImGui::DragFloat3("Scale", scl, 0.05f))
-                editor.SetSelectedFreeScale(NS::Math::Vector3{scl[0], scl[1], scl[2]});
-            if (ImGui::IsItemActivated())
-                editor.BeginTransformEdit();
-            if (ImGui::IsItemDeactivatedAfterEdit())
-                editor.CommitTransformEdit();
-        }
+        float scl[3] = {obj.scaleX, obj.scaleY, obj.scaleZ};
+        if (ImGui::DragFloat3("Scale", scl, 0.05f))
+            editor.SetSelectedFreeScale(NS::Math::Vector3{scl[0], scl[1], scl[2]});
+        if (ImGui::IsItemActivated())
+            editor.BeginTransformEdit();
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            editor.CommitTransformEdit();
 
         ImGui::Separator();
         // 材質の適用は Assets パネルのドロップ / クリック。 ここでは現在値の表示のみ
@@ -531,9 +499,8 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
                 editor.SyncSelectedObjectComponentsFromComponent();
         }
 
-        // 自由オブジェクトはコンポーネント構成をデータとして編集できる
+        // コンポーネント構成をデータとして編集する
         // 反射編集は上の一覧、 ここは構成そのものの 追加 / 複製 / コピー / 削除 を担う
-        if (!grid)
         {
             ImGui::SeparatorText("Components");
 

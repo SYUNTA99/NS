@@ -27,6 +27,9 @@ namespace NS::Core
         /// `path` が存在するか
         [[nodiscard]] static bool Exists(const std::filesystem::path& path) noexcept;
 
+        /// `path` がディレクトリとして存在するか。不存在・失敗は false
+        [[nodiscard]] static bool IsDirectory(const std::filesystem::path& path) noexcept;
+
         /// バイナリ読み込み。失敗時 nullopt + NS_LOG_ERROR。空ファイルは空 vector
         [[nodiscard]] static std::optional<std::vector<std::byte>> ReadAllBytes(const std::filesystem::path& path);
 

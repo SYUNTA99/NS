@@ -1,7 +1,6 @@
 {
     "type": "theme",
     "displayName": "Cave",
-    "blockTextureArrayBaseSlice": 8,
     "skyboxCubemapPath": "Assets/Skybox/kurt/",
     "lightDirection": [-0.2, -1.0, 0.1],
     "lightColor": [0.4, 0.45, 0.6],

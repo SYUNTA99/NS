@@ -17,7 +17,7 @@ namespace
         o.positionX = x;
         o.positionY = y;
         o.positionZ = z;
-        return o; // flags 0 のまま = 非 gridAligned
+        return o;
     }
 } // namespace
 
@@ -32,7 +32,6 @@ TEST(AddObjectCommandTest, DoAppendsFreeObjectAndId)
     EXPECT_NE(lv.objects[0].objectId, LevelNs::kNoObjectId);
     EXPECT_EQ(lv.nextObjectId, lv.objects[0].objectId + 1);
     EXPECT_FLOAT_EQ(lv.objects[0].positionX, 1.0f);
-    EXPECT_EQ(lv.objects[0].flags & LevelNs::kObjectFlagGridAligned, 0);
 }
 
 TEST(AddObjectCommandTest, UndoRemovesOnlyTheAddedObject)

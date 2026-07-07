@@ -9,11 +9,10 @@ namespace LevelNs = NS::GameCore::Level;
 
 namespace
 {
-    // 拾得種別だけが異なる grid object を作る。 種別は components が表すので CRC も components で決まる
+    // 拾得種別だけが異なる object を作る。 種別は components が表すので CRC も components で決まる
     LevelNs::ObjectInstance MakePickupObject(int pickupKind)
     {
         LevelNs::ObjectInstance object{};
-        object.flags = LevelNs::kObjectFlagGridAligned;
         object.components.push_back(
             LevelNs::ComponentData{"PickupComponent", {LevelNs::FieldValue{"Pickup Kind", pickupKind}}});
         return object;
@@ -60,7 +59,7 @@ TEST(LevelDataCrcTest, DifferentComponentsProduceDifferentCrc)
 TEST(LevelDataCrcTest, PlayStateMutationDoesNotAffectLevelDataCrc)
 {
     LevelNs::LevelData level;
-    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{5.0f, 0.0f, 0.0f}, NS::Math::Quaternion{}));
     const auto before = level.ComputeCrc32();
 
@@ -78,17 +77,17 @@ TEST(LevelDataCrcTest, PlayStateMutationDoesNotAffectLevelDataCrc)
 TEST(LevelDataCrcTest, ObjectsSizeIsHashed)
 {
     LevelNs::LevelData a, b;
-    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
-    a.objects.push_back(LevelNs::MakeGridObject(1, 0, 0, 0));
-    b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    a.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
+    a.objects.push_back(LevelNs::MakeCellObject(1, 0, 0, 0));
+    b.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
 TEST(LevelDataCrcTest, RotationStepIsHashed)
 {
     LevelNs::LevelData a, b;
-    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
-    b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 1));
+    a.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
+    b.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 1));
     EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
@@ -120,19 +119,14 @@ TEST(LevelDataCrcTest, EnvironmentIsHashed)
     c.environment.skyboxCubemapPath = "Assets/Skybox/a/";
     d.environment.skyboxCubemapPath = "Assets/Skybox/b/";
     EXPECT_NE(c.ComputeCrc32(), d.ComputeCrc32());
-
-    LevelNs::LevelData e, f;
-    e.environment.blockTextureBaseSlice = 0;
-    f.environment.blockTextureBaseSlice = 8;
-    EXPECT_NE(e.ComputeCrc32(), f.ComputeCrc32());
 }
 
 TEST(LevelDataCrcTest, VectorCapacityDoesNotAffectCrc)
 {
     LevelNs::LevelData a, b;
-    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    a.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     b.objects.reserve(1000);
-    b.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    b.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     EXPECT_EQ(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
@@ -164,9 +158,9 @@ TEST(LevelDataComponents, ObjectInstanceCopyIsDeep)
 TEST(LevelDataComponents, Crc32ChangesWhenComponentAdded)
 {
     LevelNs::LevelData a, b;
-    a.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    a.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
 
-    LevelNs::ObjectInstance withComponent = LevelNs::MakeGridObject(0, 0, 0, 0);
+    LevelNs::ObjectInstance withComponent = LevelNs::MakeCellObject(0, 0, 0, 0);
     withComponent.components.push_back(LevelNs::ComponentData{"HazardComponent", {}});
     b.objects.push_back(withComponent);
 

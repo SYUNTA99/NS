@@ -24,12 +24,11 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
 
     LevelNs::LevelData src;
     src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
-    src.environment.blockTextureBaseSlice = 24;
     src.coinThreshold = 10;
     src.timeLimitSeconds = 180;
-    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
-    src.objects.push_back(LevelNs::MakeGridObject(1, 0, 1, 1));
-    src.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, 0));
+    src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
+    src.objects.push_back(LevelNs::MakeCellObject(1, 0, 1, 1));
+    src.objects.push_back(LevelNs::MakeCellObject(2, 0, 0, 0));
     // 編集中のレベルは読込採番か Command 採番で常に id を持つため、 基準 CRC も採番後から取る
     LevelNs::EnsureUniqueObjectIds(src);
     // 追従カメラが居ないと読込の門が 1 台を合成し CRC が動くため、 src 側にも実体を積んでおく
@@ -61,7 +60,7 @@ TEST(SaveLoadRoundTrip, ShapeColliderAndDimensionsSurviveRoundTrip)
     ASSERT_TRUE(path.has_value());
 
     LevelNs::LevelData src;
-    LevelNs::ObjectInstance obj{}; // 自由配置物 (gridAligned は立てない)
+    LevelNs::ObjectInstance obj{}; // 自由配置物
     obj.positionX = 2.0f;
     LevelNs::SetObjectShapeCollider(obj, LevelNs::ShapeCollider::Capsule);
     obj.colliderHalfExtentsX = 0.3f; // capsule では半径
@@ -91,7 +90,7 @@ TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
     ASSERT_TRUE(path2);
 
     LevelNs::LevelData src;
-    src.objects.push_back(LevelNs::MakeGridObject(5, 5, 5, 0));
+    src.objects.push_back(LevelNs::MakeCellObject(5, 5, 5, 0));
 
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path1));
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path2));
@@ -111,7 +110,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     ASSERT_TRUE(path.has_value());
 
     LevelNs::LevelData src;
-    src.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
 
     auto bytes = NS::Core::FileSystem::ReadAllBytes(*path);
@@ -256,7 +255,6 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     freeObject.scaleY = 0.5f;
     freeObject.scaleZ = 1.0f;
     freeObject.materialIndex = 1;
-    freeObject.flags = 0;
     freeObject.colliderHalfExtentsX = 0.3f;
     freeObject.colliderHalfExtentsY = 1.25f;
     freeObject.colliderHalfExtentsZ = 0.8f;
@@ -269,7 +267,6 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
 
     LevelNs::ObjectInstance gridObject{};
     gridObject.materialIndex = -1;
-    gridObject.flags = LevelNs::kObjectFlagGridAligned;
     src.objects.push_back(gridObject);
     src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
@@ -294,7 +291,6 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     EXPECT_FLOAT_EQ(dst.objects[0].rotationW, 0.70710677f);
     EXPECT_FLOAT_EQ(dst.objects[0].scaleX, 2.0f);
     EXPECT_EQ(dst.objects[0].materialIndex, 1);
-    EXPECT_EQ(dst.objects[0].flags, 0u);
     EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsX, 0.3f);
     EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsY, 1.25f);
     EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsZ, 0.8f);
@@ -305,7 +301,6 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     EXPECT_FLOAT_EQ(dst.objects[0].colliderRotationW, 0.70710677f);
 
     EXPECT_EQ(dst.objects[1].materialIndex, -1);
-    EXPECT_EQ(dst.objects[1].flags, LevelNs::kObjectFlagGridAligned);
 }
 
 // 配置物の "Base Color" 反射値が save→reload を往復で保持される
@@ -317,7 +312,7 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
     ASSERT_TRUE(path.has_value());
 
     LevelNs::LevelData src;
-    LevelNs::ObjectInstance solid = LevelNs::MakeGridObject(0, 0, 0, 0);
+    LevelNs::ObjectInstance solid = LevelNs::MakeCellObject(0, 0, 0, 0);
     const NS::Math::Vector3 baseColor{0.2f, 0.6f, 0.9f};
     for (auto& component : solid.components)
         for (auto& field : component.fields)
@@ -549,7 +544,6 @@ TEST(SaveLoadRoundTrip, EnvironmentRoundTrip)
     src.environment.lightColor = NS::Math::Vector3{1.0f, 0.9f, 0.8f};
     src.environment.ambientColor = NS::Math::Vector3{0.1f, 0.2f, 0.3f};
     src.environment.skyboxCubemapPath = "Assets/Skybox/kurt/";
-    src.environment.blockTextureBaseSlice = 24;
     src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     LevelNs::EnsureUniqueObjectIds(src);
     src.objects.push_back(LevelNs::MakeFollowCameraObject(src.objects[0].objectId));
@@ -570,7 +564,6 @@ TEST(SaveLoadRoundTrip, EnvironmentRoundTrip)
     EXPECT_FLOAT_EQ(dst.environment.ambientColor.y, 0.2f);
     EXPECT_FLOAT_EQ(dst.environment.ambientColor.z, 0.3f);
     EXPECT_EQ(dst.environment.skyboxCubemapPath, "Assets/Skybox/kurt/");
-    EXPECT_EQ(dst.environment.blockTextureBaseSlice, 24);
     EXPECT_EQ(dst.ComputeCrc32(), crc0);
 }
 
@@ -596,7 +589,6 @@ TEST(SaveLoadRoundTrip, EnvironmentPartialKeysKeepNeutralDefaults)
     EXPECT_FLOAT_EQ(dst.environment.lightDirection.y, neutral.lightDirection.y);
     EXPECT_FLOAT_EQ(dst.environment.ambientColor.x, neutral.ambientColor.x);
     EXPECT_EQ(dst.environment.skyboxCubemapPath, neutral.skyboxCubemapPath);
-    EXPECT_EQ(dst.environment.blockTextureBaseSlice, neutral.blockTextureBaseSlice);
 }
 
 // 追従カメラ実体が既に居れば合成は走らず、 Target 参照ごと往復で保持される

@@ -22,9 +22,6 @@
 namespace NS::GameCore::Level
 {
 
-    /// `ObjectInstance::flags` の bit。 グリッド配置物は bit0 を立て instancing / オートタイル対象にする
-    inline constexpr std::uint8_t kObjectFlagGridAligned = 0x01;
-
     /// 当たり判定の形状種別。 `ObjectInstance::shapeCollider` に格納する。 既定 / 旧データは Box
     enum class ShapeCollider : std::uint8_t
     {
@@ -56,7 +53,7 @@ namespace NS::GameCore::Level
     };
 
     /// 配置物の永続表現。 コンポーネント一覧を内包する full SSOT 表現
-    /// grid block も自由配置物も同じ型で 1 リストに格納する。 grid かどうかは flags の bit0 で区別する
+    /// 配置物は種別を問わず同じ型で 1 リストに格納する
     /// position / rotation すなわち quaternion / scale をフル保持し、 種別は components が表す
     /// materialIndex は `LevelData::materialPaths` への添字、 -1 は既定マテリアルを表す
     /// colliderHalfExtents は Transform と独立した当たり箱の local 半径で既定 0.5。 world では Transform.scale が乗る
@@ -78,7 +75,6 @@ namespace NS::GameCore::Level
         float scaleY = 1.0f;
         float scaleZ = 1.0f;
         std::int16_t materialIndex = -1;
-        std::uint8_t flags = 0;
         std::uint8_t shapeCollider = 0;
         std::uint16_t reserved1 = 0;
         float colliderHalfExtentsX = 0.5f;
@@ -110,14 +106,12 @@ namespace NS::GameCore::Level
         NS::Math::Vector3 ambientColor{0.2f, 0.2f, 0.2f};
         /// skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。 空文字なら skybox を描かない
         std::string skyboxCubemapPath{};
-        /// block texture 配列の先頭 slice。 Rebuild 時の焼き込みが読む
-        std::uint16_t blockTextureBaseSlice = 0;
     };
 
     /// `.scene` に書かれる永続データ。 PlayMode 中は const 参照でしか触らせない
     struct LevelData
     {
-        /// grid block も自由配置物も含む唯一の配置物リスト。 grid かどうかは各要素の flags で判別する
+        /// grid block も自由配置物も含む唯一の配置物リスト
         std::vector<ObjectInstance> objects;
 
         /// 次に割り当てる永続 object id。単調増加で欠番は再利用せず、削除済み id が別物を指す事故を防ぐ
@@ -126,7 +120,7 @@ namespace NS::GameCore::Level
         /// objects の materialIndex が参照する .mat 相対パス表
         std::vector<std::string> materialPaths;
 
-        /// シーンの見た目を確定する環境値。 lighting と skybox と block の slice 帯
+        /// シーンの見た目を確定する環境値。 lighting と skybox
         LevelEnvironment environment{};
 
         std::uint16_t bgmId = 0;
@@ -189,29 +183,32 @@ namespace NS::GameCore::Level
     /// object の collider 形状を設定する
     void SetObjectShapeCollider(ObjectInstance& object, ShapeCollider shape) noexcept;
 
-    /// gridAligned object の cell 座標 = position を最近接整数へ丸めた値
+    /// 配置物の cell 座標 = position を最近接整数へ丸めた値
     [[nodiscard]] std::int16_t ObjectCellX(const ObjectInstance& object) noexcept;
     [[nodiscard]] std::int16_t ObjectCellY(const ObjectInstance& object) noexcept;
     [[nodiscard]] std::int16_t ObjectCellZ(const ObjectInstance& object) noexcept;
 
-    /// gridAligned かつ cell の x, y, z に一致する最初の object の添字。 無ければ kNoObjectIndex
-    [[nodiscard]] std::size_t FindGridObjectAtCell(const LevelData& level,
+    /// cell ブラシが置換 / 削除できる配置物か。 プレイヤーとカメラは別経路で扱うため除く
+    [[nodiscard]] bool IsCellBrushObject(const ObjectInstance& object) noexcept;
+
+    /// cell の x, y, z に一致する最初の cell ブラシ配置物の添字。 プレイヤー / カメラは除く。 無ければ kNoObjectIndex
+    [[nodiscard]] std::size_t FindObjectAtCell(const LevelData& level,
                                                    std::int16_t x,
                                                    std::int16_t y,
                                                    std::int16_t z) noexcept;
 
-    /// cell の x, y, z と rotationStep 0..3 から gridAligned な既定 solid の ObjectInstance を作る
+    /// cell の x, y, z と rotationStep 0..3 から既定 solid の ObjectInstance を作る
     /// 既定 solid 一式すなわち cube 描画 + Box 当たりを component として積む
-    [[nodiscard]] ObjectInstance MakeGridObject(std::int16_t x,
+    [[nodiscard]] ObjectInstance MakeCellObject(std::int16_t x,
                                                 std::int16_t y,
                                                 std::int16_t z,
                                                 std::uint8_t rotationStep);
 
-    /// gridAligned object の現在の 90° 回転 step を quaternion から最近接で復元する
-    [[nodiscard]] std::uint8_t GridRotationStep(const ObjectInstance& object) noexcept;
+    /// object の現在の 90° 回転 step を quaternion から最近接で復元する
+    [[nodiscard]] std::uint8_t CellRotationStep(const ObjectInstance& object) noexcept;
 
-    /// gridAligned object の回転を rotationStep に対応する Y 軸 yaw quaternion に設定する
-    void SetGridRotationStep(ObjectInstance& object, std::uint8_t rotationStep) noexcept;
+    /// object の回転を rotationStep に対応する Y 軸 yaw quaternion に設定する
+    void SetCellRotationStep(ObjectInstance& object, std::uint8_t rotationStep) noexcept;
 
     /// undo の概算メモリに使う sizeof 外の heap 量。 反射値の文字列ヒープは概算に含めない
     /// component vector / typeName / field 名の確保分を数える。 配置・変形系 Command の EstimatedBytes が使う

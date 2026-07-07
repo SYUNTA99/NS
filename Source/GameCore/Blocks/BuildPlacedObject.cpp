@@ -7,7 +7,9 @@
 #include "Framework/Scene/Components/BoxColliderComponent.h"
 #include "Framework/Scene/Components/CapsuleColliderComponent.h"
 #include "Framework/Scene/Components/CharacterMovementComponent.h"
+#include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
+#include "Framework/Scene/Components/PickupComponent.h"
 #include "Framework/Scene/Components/PlayerInputComponent.h"
 #include "Framework/Scene/Components/ShadowComponent.h"
 #include "Framework/Scene/Components/SlopeColliderComponent.h"
@@ -48,10 +50,11 @@ namespace NS::GameCore::Blocks
             return material;
         }
 
-        // player / block / water / shadow の共有 material 名なら true。 これ以外は .mat パス / 既定へ倒す
+        // player / water / shadow の共有 material 名なら true。 これ以外 (旧 block 含む) は .mat パス /
+        // 既定の自由材質へ倒す
         bool IsSharedMaterialName(const std::string& ref) noexcept
         {
-            return ref == "player" || ref == "block" || ref == "water" || ref == "shadow";
+            return ref == "player" || ref == "water" || ref == "shadow";
         }
 
         // 器に既に載る同型 component を反射型名で探す。 適用済みの控えにある分は飛ばし、 無ければ nullptr
@@ -122,7 +125,7 @@ namespace NS::GameCore::Blocks
         }
 
         NS::GameCore::Level::ComponentData MakeComponentData(std::string typeName,
-                                                         std::vector<NS::GameCore::Level::FieldValue> fields)
+                                                             std::vector<NS::GameCore::Level::FieldValue> fields)
         {
             NS::GameCore::Level::ComponentData component;
             component.typeName = std::move(typeName);
@@ -131,8 +134,8 @@ namespace NS::GameCore::Blocks
         }
 
         NS::GameCore::Level::ComponentData MeshRendererData(std::string meshName,
-                                                        std::string materialName,
-                                                        const NS::Math::Vector3& baseColor)
+                                                            std::string materialName,
+                                                            const NS::Math::Vector3& baseColor)
         {
             return MakeComponentData("MeshRendererComponent",
                                      {NS::GameCore::Level::FieldValue{"Mesh", std::move(meshName)},
@@ -144,6 +147,13 @@ namespace NS::GameCore::Blocks
         bool HasComponentType(const NS::GameCore::Level::ObjectInstance& object, const char* typeName) noexcept
         {
             return NS::GameCore::Level::FindComponentData(object, typeName) != nullptr;
+        }
+
+        // 固形箱の線引き。 BoxCollider を持ち slope / hazard / 拾得を兼ねない箱だけを歩ける固形とする
+        // data 側 IsSolidObject と live 側 SolidBoxWorldOBB が同じ規則を 1 箇所で共有する
+        bool IsSolidBoxRule(bool hasBox, bool hasSlope, bool hasHazard, bool hasPickup) noexcept
+        {
+            return hasBox && !hasSlope && !hasHazard && !hasPickup;
         }
 
         // SlopeColliderComponent の "Angle (deg)" を返す。 SlopeCollider 無しは -1
@@ -173,14 +183,14 @@ namespace NS::GameCore::Blocks
         }
     } // namespace
 
-    std::vector<NS::GameCore::Level::ComponentData> MakeGridCubeComponents()
+    std::vector<NS::GameCore::Level::ComponentData> MakeCellCubeComponents()
     {
         using namespace NS::GameCore::Level;
-        return {MeshRendererData("cube", "block", kSolidBaseColor),
+        return {MeshRendererData("cube", "", kSolidBaseColor),
                 MakeComponentData("BoxColliderComponent", {FieldValue{"Half Extents", kCellHalfExtents}})};
     }
 
-    std::vector<NS::GameCore::Level::ComponentData> MakeGridSlopeComponents(float angleDegrees)
+    std::vector<NS::GameCore::Level::ComponentData> MakeCellSlopeComponents(float angleDegrees)
     {
         using namespace NS::GameCore::Level;
         // 角度に対応する楔 builtin メッシュを選び、 見た目の傾斜と当たりの傾斜を一致させる
@@ -225,7 +235,8 @@ namespace NS::GameCore::Blocks
             {FieldValue{"Target", NS::Scene::ObjectRef{targetObjectId}}, FieldValue{"Far Plane", 100.0f}})};
     }
 
-    std::vector<NS::GameCore::Level::ComponentData> MakeFreeCubeComponents(const NS::GameCore::Level::ObjectInstance& object)
+    std::vector<NS::GameCore::Level::ComponentData> MakeFreeCubeComponents(
+        const NS::GameCore::Level::ObjectInstance& object)
     {
         using namespace NS::GameCore::Level;
         std::vector<ComponentData> result;
@@ -289,25 +300,30 @@ namespace NS::GameCore::Blocks
         return std::nullopt;
     }
 
-    bool IsGridSolidObject(const NS::GameCore::Level::ObjectInstance& object)
+    std::optional<NS::Physics::OBB> SolidBoxWorldOBB(NS::Scene::GameObject& obj) noexcept
     {
-        using namespace NS::GameCore::Level;
-        if ((object.flags & kObjectFlagGridAligned) == 0)
-            return false;
-        // 拾得 / slope / hazard は固形でない。 残る BoxCollider 持ちだけが固形 block
-        if (PickupKindOf(object) >= 0)
-            return false;
-        if (HasComponentType(object, "SlopeColliderComponent"))
-            return false;
-        if (HasComponentType(object, "HazardComponent"))
-            return false;
-        return HasComponentType(object, "BoxColliderComponent");
+        auto* box = FindComponent<NS::Scene::BoxColliderComponent>(obj);
+        const bool hasSlope = FindComponent<NS::Scene::SlopeColliderComponent>(obj) != nullptr;
+        const bool hasHazard = FindComponent<NS::Scene::HazardComponent>(obj) != nullptr;
+        const bool hasPickup = FindComponent<NS::Scene::PickupComponent>(obj) != nullptr;
+        if (!IsSolidBoxRule(box != nullptr, hasSlope, hasHazard, hasPickup))
+            return std::nullopt;
+        return box->WorldOBB();
+    }
+
+    bool IsSolidObject(const NS::GameCore::Level::ObjectInstance& object)
+    {
+        const bool hasBox = HasComponentType(object, "BoxColliderComponent");
+        const bool hasSlope = HasComponentType(object, "SlopeColliderComponent");
+        const bool hasHazard = HasComponentType(object, "HazardComponent");
+        const bool hasPickup = PickupKindOf(object) >= 0;
+        return IsSolidBoxRule(hasBox, hasSlope, hasHazard, hasPickup);
     }
 
     bool IsRotatableObject(const NS::GameCore::Level::ObjectInstance& object)
     {
         // R で 90° 回す対象。 向きが意味を持つ slope と固形 block。 水 / 装飾は除く
-        return SlopeAngleOf(object) >= 0.0f || IsGridSolidObject(object);
+        return SlopeAngleOf(object) >= 0.0f || IsSolidObject(object);
     }
 
     const char* ObjectDisplayName(const NS::GameCore::Level::ObjectInstance& object)

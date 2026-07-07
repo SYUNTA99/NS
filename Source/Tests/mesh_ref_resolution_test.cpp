@@ -23,7 +23,6 @@ namespace
     using NS::GameCore::Blocks::ResolveMeshFromRef;
     using NS::GameCore::Level::ComponentData;
     using NS::GameCore::Level::FieldValue;
-    using NS::GameCore::Level::kObjectFlagGridAligned;
     using NS::GameCore::Level::ObjectInstance;
     using NS::Scene::AssetManager;
     using NS::Scene::MeshRendererComponent;
@@ -81,7 +80,6 @@ TEST(MeshRefResolution, EmptyMeshRefFallsBackToCube)
     const std::vector<std::string> noPaths;
 
     ObjectInstance obj;
-    obj.flags = kObjectFlagGridAligned;
     obj.components.push_back(MakeMeshRenderer(""));
 
     auto built = BuildPlacedObject(obj, assets, noPaths);
@@ -121,7 +119,6 @@ TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
     const std::vector<std::string> noPaths;
 
     ObjectInstance compObj;
-    compObj.flags = kObjectFlagGridAligned;
     compObj.components.push_back(MakeMeshRenderer(""));
 
     auto compBuilt = BuildPlacedObject(compObj, assets, noPaths);

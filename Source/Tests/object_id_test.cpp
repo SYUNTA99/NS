@@ -33,9 +33,9 @@ namespace
 TEST(ObjectIdTest, EnsureUniqueAssignsMissingIds)
 {
     LevelNs::LevelData level;
-    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
-    level.objects.push_back(LevelNs::MakeGridObject(1, 0, 0, 0));
-    level.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeCellObject(1, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeCellObject(2, 0, 0, 0));
 
     LevelNs::EnsureUniqueObjectIds(level);
 
@@ -48,9 +48,9 @@ TEST(ObjectIdTest, EnsureUniqueAssignsMissingIds)
 TEST(ObjectIdTest, EnsureUniqueReassignsDuplicatesKeepingFirst)
 {
     LevelNs::LevelData level;
-    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
-    level.objects.push_back(LevelNs::MakeGridObject(1, 0, 0, 0));
-    level.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeCellObject(1, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeCellObject(2, 0, 0, 0));
     level.objects[0].objectId = 5;
     level.objects[1].objectId = 5;
     level.objects[2].objectId = 2;
@@ -67,8 +67,8 @@ TEST(ObjectIdTest, EnsureUniqueReassignsDuplicatesKeepingFirst)
 TEST(ObjectIdTest, JsonRoundTripPreservesIdsAndCounter)
 {
     LevelNs::LevelData level;
-    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
-    level.objects.push_back(LevelNs::MakeGridObject(3, 1, 2, 1));
+    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeCellObject(3, 1, 2, 1));
     level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     // 追従カメラも積んでおく。 読込の門の合成で採番カウンタが動くと counter 比較が成り立たないため
     level.objects.push_back(LevelNs::MakeFollowCameraObject(0u));
@@ -108,9 +108,9 @@ TEST(ObjectIdTest, LegacyJsonWithoutIdsGetsAssignedOnLoad)
 TEST(ObjectIdTest, FindObjectIndexByIdReturnsMatchingIndex)
 {
     LevelNs::LevelData level;
-    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
-    level.objects.push_back(LevelNs::MakeGridObject(1, 0, 0, 0));
-    level.objects.push_back(LevelNs::MakeGridObject(2, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeCellObject(1, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeCellObject(2, 0, 0, 0));
     LevelNs::EnsureUniqueObjectIds(level);
 
     const std::uint32_t id = level.objects[1].objectId;
@@ -120,7 +120,7 @@ TEST(ObjectIdTest, FindObjectIndexByIdReturnsMatchingIndex)
 TEST(ObjectIdTest, FindObjectIndexByIdReturnsNoIndexForUnknownOrUnset)
 {
     LevelNs::LevelData level;
-    level.objects.push_back(LevelNs::MakeGridObject(0, 0, 0, 0));
+    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     LevelNs::EnsureUniqueObjectIds(level);
 
     EXPECT_EQ(LevelNs::FindObjectIndexById(level, 9999u), LevelNs::kNoObjectIndex);
@@ -166,12 +166,12 @@ TEST(ObjectIdTest, DuplicateObjectCommandAssignsFreshId)
 TEST(ObjectIdTest, PlaceCommandReplaceKeepsPersistentId)
 {
     LevelNs::LevelData level;
-    level.objects.push_back(LevelNs::MakeGridObject(5, 0, 3, 0));
+    level.objects.push_back(LevelNs::MakeCellObject(5, 0, 3, 0));
     LevelNs::EnsureUniqueObjectIds(level);
     const std::uint32_t original = level.objects[0].objectId;
 
     // 同じ cell への配置は置換になり、同じ場所の物として永続 id を引き継ぐ
-    EditorNs::PlaceCommand cmd(LevelNs::MakeGridObject(0, 0, 0, 0), 5, 0, 3, 1);
+    EditorNs::PlaceCommand cmd(LevelNs::MakeCellObject(0, 0, 0, 0), 5, 0, 3, 1);
     cmd.Do(level);
 
     ASSERT_EQ(level.objects.size(), 1u);

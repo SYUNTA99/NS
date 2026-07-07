@@ -1,7 +1,6 @@
 #include "GameCore/Level/LevelData.h"
 
 #include "Framework/Math/Math.h"
-#include "GameCore/Blocks/BlockRegistry.h"
 #include "GameCore/Blocks/BuildPlacedObject.h"
 #include "GameCore/Level/detail/crc32.h"
 
@@ -12,6 +11,9 @@ namespace NS::GameCore::Level
 {
     namespace
     {
+        // cell ブラシの回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す。 描画 / 当たり / 往復が同じ向き基準を共有する
+        constexpr float kQuarterTurnYaw = NS::Math::kPi * 0.5f;
+
         /// POD 値を std::byte span として view し CRC32 に流す helper
         template <typename T> std::uint32_t UpdateWith(std::uint32_t crc, const T& value) noexcept
         {
@@ -75,7 +77,6 @@ namespace NS::GameCore::Level
             crc = UpdateWith(crc, object.scaleY);
             crc = UpdateWith(crc, object.scaleZ);
             crc = UpdateWith(crc, object.materialIndex);
-            crc = UpdateWith(crc, object.flags);
             crc = UpdateWith(crc, object.shapeCollider);
             crc = UpdateWith(crc, object.reserved1);
             crc = UpdateWith(crc, object.colliderHalfExtentsX);
@@ -170,7 +171,6 @@ namespace NS::GameCore::Level
         crc = UpdateWith(crc, environment.lightColor);
         crc = UpdateWith(crc, environment.ambientColor);
         crc = UpdateWithString(crc, environment.skyboxCubemapPath);
-        crc = UpdateWith(crc, environment.blockTextureBaseSlice);
 
         crc = UpdateWith(crc, bgmId);
         crc = UpdateWith(crc, coinThreshold);
@@ -340,12 +340,19 @@ namespace NS::GameCore::Level
         object.shapeCollider = static_cast<std::uint8_t>(shape);
     }
 
-    std::size_t FindGridObjectAtCell(const LevelData& level, std::int16_t x, std::int16_t y, std::int16_t z) noexcept
+    bool IsCellBrushObject(const ObjectInstance& object) noexcept
+    {
+        // プレイヤーとカメラはギズモ / 別経路で扱うため cell ブラシの対象から外す
+        return !IsPlayerObject(object) && !IsFollowCameraObject(object) &&
+               FindComponentData(object, "PlacedVirtualCamera") == nullptr;
+    }
+
+    std::size_t FindObjectAtCell(const LevelData& level, std::int16_t x, std::int16_t y, std::int16_t z) noexcept
     {
         for (std::size_t i = 0; i < level.objects.size(); ++i)
         {
             const auto& object = level.objects[i];
-            if ((object.flags & kObjectFlagGridAligned) != 0 && ObjectCellX(object) == x && ObjectCellY(object) == y &&
+            if (IsCellBrushObject(object) && ObjectCellX(object) == x && ObjectCellY(object) == y &&
                 ObjectCellZ(object) == z)
             {
                 return i;
@@ -354,15 +361,15 @@ namespace NS::GameCore::Level
         return kNoObjectIndex;
     }
 
-    std::uint8_t GridRotationStep(const ObjectInstance& object) noexcept
+    std::uint8_t CellRotationStep(const ObjectInstance& object) noexcept
     {
-        // q と -q は同一回転なので fabs で符号を無視し 4 候補の最近接を選ぶ。 BlockRotationToYaw の符号規約に依存しない
+        // q と -q は同一回転なので fabs で符号を無視し 4 候補の最近接を選ぶ。 四半回転の向き規約に依存しない
         const NS::Math::Quaternion current{object.rotationX, object.rotationY, object.rotationZ, object.rotationW};
         std::uint8_t best = 0;
         float bestDot = -2.0f;
         for (std::uint8_t step = 0; step < 4; ++step)
         {
-            const float yaw = NS::GameCore::Blocks::BlockRotationToYaw(step);
+            const float yaw = static_cast<float>(step) * kQuarterTurnYaw;
             const NS::Math::Quaternion candidate = NS::Math::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
             const float dot = std::fabs(current.x * candidate.x + current.y * candidate.y + current.z * candidate.z +
                                         current.w * candidate.w);
@@ -375,9 +382,9 @@ namespace NS::GameCore::Level
         return best;
     }
 
-    void SetGridRotationStep(ObjectInstance& object, std::uint8_t rotationStep) noexcept
+    void SetCellRotationStep(ObjectInstance& object, std::uint8_t rotationStep) noexcept
     {
-        const float yaw = NS::GameCore::Blocks::BlockRotationToYaw(static_cast<std::uint8_t>(rotationStep & 0x03));
+        const float yaw = static_cast<float>(rotationStep & 0x03) * kQuarterTurnYaw;
         const NS::Math::Quaternion rotation = NS::Math::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
         object.rotationX = rotation.x;
         object.rotationY = rotation.y;
@@ -385,16 +392,15 @@ namespace NS::GameCore::Level
         object.rotationW = rotation.w;
     }
 
-    ObjectInstance MakeGridObject(std::int16_t x, std::int16_t y, std::int16_t z, std::uint8_t rotationStep)
+    ObjectInstance MakeCellObject(std::int16_t x, std::int16_t y, std::int16_t z, std::uint8_t rotationStep)
     {
         ObjectInstance object{};
         object.positionX = static_cast<float>(x);
         object.positionY = static_cast<float>(y);
         object.positionZ = static_cast<float>(z);
         object.materialIndex = -1;
-        object.flags = kObjectFlagGridAligned;
-        SetGridRotationStep(object, rotationStep);
-        object.components = NS::GameCore::Blocks::MakeGridCubeComponents();
+        SetCellRotationStep(object, rotationStep);
+        object.components = NS::GameCore::Blocks::MakeCellCubeComponents();
         return object;
     }
 

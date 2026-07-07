@@ -21,25 +21,25 @@ namespace NS::Editor
 
     void RotateCommand::Do(NS::GameCore::Level::LevelData& level) noexcept
     {
-        const std::size_t index = NS::GameCore::Level::FindGridObjectAtCell(level, m_x, m_y, m_z);
+        const std::size_t index = NS::GameCore::Level::FindObjectAtCell(level, m_x, m_y, m_z);
         if (index == NS::GameCore::Level::kNoObjectIndex)
         {
             m_prevRotation.reset();
             return;
         }
-        const std::uint8_t step = NS::GameCore::Level::GridRotationStep(level.objects[index]);
+        const std::uint8_t step = NS::GameCore::Level::CellRotationStep(level.objects[index]);
         m_prevRotation = step;
-        NS::GameCore::Level::SetGridRotationStep(level.objects[index], RotateMod4(step, m_delta));
+        NS::GameCore::Level::SetCellRotationStep(level.objects[index], RotateMod4(step, m_delta));
     }
 
     void RotateCommand::Undo(NS::GameCore::Level::LevelData& level) noexcept
     {
         if (!m_prevRotation)
             return;
-        const std::size_t index = NS::GameCore::Level::FindGridObjectAtCell(level, m_x, m_y, m_z);
+        const std::size_t index = NS::GameCore::Level::FindObjectAtCell(level, m_x, m_y, m_z);
         if (index == NS::GameCore::Level::kNoObjectIndex)
             return;
-        NS::GameCore::Level::SetGridRotationStep(level.objects[index], *m_prevRotation);
+        NS::GameCore::Level::SetCellRotationStep(level.objects[index], *m_prevRotation);
     }
 
 } // namespace NS::Editor

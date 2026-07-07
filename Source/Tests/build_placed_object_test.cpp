@@ -20,7 +20,7 @@ namespace
     using NS::GameCore::Blocks::BuildPlacedObject;
     using NS::GameCore::Blocks::FindComponent;
     using NS::GameCore::Blocks::MakeFreeCubeComponents;
-    using NS::GameCore::Level::MakeGridObject;
+    using NS::GameCore::Level::MakeCellObject;
     using NS::GameCore::Level::ObjectInstance;
     using NS::GameCore::Level::SetObjectShapeCollider;
     using NS::GameCore::Level::ShapeCollider;
@@ -42,7 +42,7 @@ namespace
     // grid に置く素の cube
     ObjectInstance MakeGridCube()
     {
-        return MakeGridObject(0, 0, 0, 0);
+        return MakeCellObject(0, 0, 0, 0);
     }
 
     // 自由配置の cube。 当たり寸法 / offset は component を起こす前に焼く
@@ -51,7 +51,6 @@ namespace
                                 const Vector3& offset = Vector3{0.0f, 0.0f, 0.0f})
     {
         ObjectInstance object;
-        object.flags = 0;
         SetObjectShapeCollider(object, shape);
         object.colliderHalfExtentsX = half.x;
         object.colliderHalfExtentsY = half.y;
@@ -198,7 +197,6 @@ TEST_F(BuildPlacedObjectTest, FreeBoxWorldAabbReflectsPositionAndHalfExtents)
 TEST_F(BuildPlacedObjectTest, ComponentsDriveBuild)
 {
     ObjectInstance object;
-    object.flags = 0;
 
     NS::GameCore::Level::ComponentData box;
     box.typeName = "BoxColliderComponent";
@@ -219,7 +217,6 @@ TEST_F(BuildPlacedObjectTest, ComponentsDriveBuild)
 TEST_F(BuildPlacedObjectTest, EmptyComponentsBuildsNothing)
 {
     ObjectInstance object;
-    object.flags = NS::GameCore::Level::kObjectFlagGridAligned;
     ASSERT_TRUE(object.components.empty());
 
     EXPECT_EQ(Build(object), nullptr);
@@ -241,8 +238,8 @@ TEST_F(BuildPlacedObjectTest, AssetPathTraversalRejectedFallsBackToDefault)
 // 45 度スロープ prototype は wedge メッシュ + 45 度 SlopeCollider を起こし、 R で回せる
 TEST_F(BuildPlacedObjectTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
 {
-    ObjectInstance slope = MakeGridObject(0, 0, 0, 0);
-    slope.components = NS::GameCore::Blocks::MakeGridSlopeComponents(45.0f);
+    ObjectInstance slope = MakeCellObject(0, 0, 0, 0);
+    slope.components = NS::GameCore::Blocks::MakeCellSlopeComponents(45.0f);
 
     EXPECT_STREQ(NS::GameCore::Blocks::ObjectDisplayName(slope), "Slope 45");
     EXPECT_TRUE(NS::GameCore::Blocks::IsRotatableObject(slope));
@@ -259,7 +256,7 @@ TEST_F(BuildPlacedObjectTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
 // ゴール prototype は接触クリア用の pickup を持ち、 表示名は Goal、 向きは無関係で回転不可
 TEST_F(BuildPlacedObjectTest, GoalHasPickupAndDisplaysAsGoal)
 {
-    ObjectInstance goal = MakeGridObject(0, 0, 0, 0);
+    ObjectInstance goal = MakeCellObject(0, 0, 0, 0);
     goal.components = NS::GameCore::Blocks::MakeGoalComponents();
 
     EXPECT_STREQ(NS::GameCore::Blocks::ObjectDisplayName(goal), "Goal");
@@ -270,6 +267,23 @@ TEST_F(BuildPlacedObjectTest, GoalHasPickupAndDisplaysAsGoal)
     auto* pickup = FindComponent<NS::Scene::PickupComponent>(*obj);
     ASSERT_NE(pickup, nullptr);
     EXPECT_TRUE(pickup->IsGoal());
+}
+
+// grid に置く cube は固形なので R で 90° 回せる
+TEST_F(BuildPlacedObjectTest, GridCubeIsRotatable)
+{
+    EXPECT_TRUE(NS::GameCore::Blocks::IsRotatableObject(MakeCellObject(0, 0, 0, 0)));
+}
+
+// 自由配置の cube も固形 box なので回せる。 固形判定は BoxCollider の有無で決まり、 空構成の marker は回せない
+TEST_F(BuildPlacedObjectTest, FreeCubeRotatableButEmptyMarkerNot)
+{
+    ObjectInstance freeCube;
+    freeCube.components = MakeFreeCubeComponents(freeCube);
+    EXPECT_TRUE(NS::GameCore::Blocks::IsRotatableObject(freeCube));
+
+    ObjectInstance marker;
+    EXPECT_FALSE(NS::GameCore::Blocks::IsRotatableObject(marker));
 }
 
 // プレイヤー実体は Player 派生の器に二重生成なしで組まれ、 移動と入力は休止で始まる

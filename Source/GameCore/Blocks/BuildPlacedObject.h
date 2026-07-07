@@ -9,6 +9,7 @@
 /// 依存: NS::Scene::GameObject / AssetManager, NS::GameCore::Level::ObjectInstance
 
 #include "Framework/Math/Math.h"
+#include "Framework/Physics/SweptOBB.h"
 #include "Framework/Scene/Component.h"
 #include "Framework/Scene/GameObject.h"
 
@@ -51,13 +52,13 @@ namespace NS::GameCore::Blocks
     /// 実プレイヤーの mesh に与える基準色。 データ既定と scene 側の直組みが同じ赤を共有する
     inline constexpr NS::Math::Vector3 kPlayerBaseColor{0.85f, 0.20f, 0.20f};
 
-    /// grid セルに置く cube 1 個分の component 一覧を組む。 cube メッシュ + block 材質 + 半径 0.5 の Box 当たり
-    /// MakeGridObject と editor の grid 配置が同じ cube を起こす窓口
-    [[nodiscard]] std::vector<NS::GameCore::Level::ComponentData> MakeGridCubeComponents();
+    /// grid セルに置く cube 1 個分の component 一覧を組む。 cube メッシュ + 半径 0.5 の Box 当たりで material は空参照
+    /// MakeCellObject と editor の grid 配置が同じ cube を起こす窓口
+    [[nodiscard]] std::vector<NS::GameCore::Level::ComponentData> MakeCellCubeComponents();
 
     /// grid セルに置く楔スロープ 1 個分の component 一覧を組む。 角度に対応する wedge メッシュ + SlopeCollider
     /// angleDegrees は 45 / 30 / 22.5 / 15 度を想定し、 メッシュと当たりの傾斜を一致させる
-    [[nodiscard]] std::vector<NS::GameCore::Level::ComponentData> MakeGridSlopeComponents(float angleDegrees);
+    [[nodiscard]] std::vector<NS::GameCore::Level::ComponentData> MakeCellSlopeComponents(float angleDegrees);
 
     /// 接触でレベルクリアになるゴール 1 個分の component 一覧を組む。 視覚を持たない goal pickup に
     /// editor で見える金色 cube を載せる。 PlayMode が PickupComponent の種別を読んでクリアを判定する
@@ -69,19 +70,19 @@ namespace NS::GameCore::Blocks
 
     /// 追従カメラ実体の component 一覧を組む。 ThirdPersonFollowComponent 1 点で、 追従先の
     /// 永続 id を Target 参照へ、 プレイの遠景 100 を Far Plane へ焼く。 感触値はコード既定に任せる
-    [[nodiscard]] std::vector<NS::GameCore::Level::ComponentData> MakeFollowCameraComponents(std::uint32_t targetObjectId);
+    [[nodiscard]] std::vector<NS::GameCore::Level::ComponentData> MakeFollowCameraComponents(
+        std::uint32_t targetObjectId);
 
     /// 自由配置の cube 1 個分の component 一覧を組む。 cube メッシュ + shapeCollider に応じた Box/Sphere/Capsule 当たり
     /// 当たり寸法 / offset / 回転は object の collider フィールドから読む
     [[nodiscard]] std::vector<NS::GameCore::Level::ComponentData> MakeFreeCubeComponents(
         const NS::GameCore::Level::ObjectInstance& object);
 
-    /// grid 配置された固形 block か。 gridAligned かつ BoxCollider 持ちで
-    /// slope / hazard / 拾得を持たないことを components から判定する。 instancing / 昇格 /
-    /// 当たり可視化の「固形」判定窓口
-    [[nodiscard]] bool IsGridSolidObject(const NS::GameCore::Level::ObjectInstance& object);
+    /// 固形 block か。 BoxCollider を持ち slope / hazard / 拾得を持たないことを components から判定する
+    /// 当たり可視化 / コヨーテ縁 / R 回転対象の「固形」判定窓口
+    [[nodiscard]] bool IsSolidObject(const NS::GameCore::Level::ObjectInstance& object);
 
-    /// R で 90° 回す対象か。 SlopeCollider を持つか grid 固形なら true。 水 / 装飾は false
+    /// R で 90° 回す対象か。 SlopeCollider を持つか固形箱なら true。 水 / 装飾は false
     [[nodiscard]] bool IsRotatableObject(const NS::GameCore::Level::ObjectInstance& object);
 
     /// components から種別の表示名を導く ASCII 固定文字列。 Player / Camera / Solid / Coin / Goal /
@@ -99,6 +100,11 @@ namespace NS::GameCore::Blocks
     /// obj の collider を Box / Sphere / Capsule / Slope の順に見て最初に見つかった世界 AABB を返す
     /// 影の受け皿と当たり可視化が collider 種別に依存せず世界境界を 1 つ取る窓口。 collider が無ければ nullopt
     [[nodiscard]] std::optional<NS::Math::AABB> ColliderWorldAABB(NS::Scene::GameObject& obj) noexcept;
+
+    /// 固形箱すなわち BoxCollider を持ち slope / hazard / 拾得でない obj の box world OBB を返す
+    /// コヨーテ縁の debug 収集が、 歩ける天面を持つ配置物だけを回転込みで拾う窓口。 IsSolidObject と同じ線引きで
+    /// 該当しなければ nullopt
+    [[nodiscard]] std::optional<NS::Physics::OBB> SolidBoxWorldOBB(NS::Scene::GameObject& obj) noexcept;
 
     /// obj の Component 列から型 T の最初の一致を返す。 無ければ nullptr
     /// 描画 / 衝突 / editor が具象型を知らずに Component を取り出す共通窓口

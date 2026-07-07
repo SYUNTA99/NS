@@ -66,20 +66,17 @@ private:
     /// 基底 OnRender が scene 解決後に呼ぶ描画本体。 ワールドを描き編集ギズモ等は描かない
     void OnRenderScene() override;
 
-    /// 全表示ブロックの Snapshot を取る。 補間描画のため edit / play 共通で毎フレーム
-    void SnapshotDisplayBlocks();
-
-    /// 全表示ブロックの OnUpdate を回す。 edit / play 共通
-    void UpdateDisplayBlocks();
+    /// 全表示オブジェクトの Snapshot を取る。 補間描画のため edit / play 共通で毎フレーム
+    void SnapshotDisplayObjects();
 
     /// 起動時のレベル供給: 同梱の `new_level.scene` をロードし、 無ければ最小床を seed する
     void LoadInitialLevel();
 
-    // 組み込み mesh / 共有 material / block の TextureArray は Application 所有の AssetManager が持つ
+    // 組み込み mesh / 共有 material は Application 所有の AssetManager が持つ
     // scene は使う箇所で都度引く。 メンバとして控えず単一所有元は AssetManager のみ
     // skybox 装置と scene 段解決値の控えは EnvironmentSubsystem が持ち、 scene は毎フレーム設定を書くだけ
 
-    // LevelData から組んだ runtime world。 配置物 / instanced 描画キャッシュ / hazard view / コヨーテ縁を所有する
+    // LevelData から組んだ runtime world。 配置物 / instanced 描画キャッシュ / hazard view を所有する
     // 実カメラ + Brain は CameraSubsystem が、 プレイヤー / 追従 / 据え置きカメラは world が配置物として所有する
     NS::GameCore::Level::LevelWorld m_world;
 

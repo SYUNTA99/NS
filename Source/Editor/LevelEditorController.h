@@ -89,27 +89,23 @@ public:
 
     /// 現在選択中の配置物の objects 添字。 未選択 / 範囲外は kNoObjectIndex
     [[nodiscard]] std::size_t SelectedObjectIndex() const noexcept { return m_selectedObjectIndex; }
-    /// Hierarchy から添字で配置物を選択する。 Object ツールへ切替え、 free / grid solid はギズモ選択も貼る
+    /// Hierarchy から添字で配置物を選択する。 Object ツールへ切替え、 ギズモ選択も貼る
     void SelectObjectByIndex(std::size_t index) noexcept;
 
     /// Inspector が編集 / 表示できる選択を持つか
     [[nodiscard]] bool HasInspectableSelection() const noexcept;
-    /// 選択中の配置物が gridAligned か。 未選択は false
-    [[nodiscard]] bool SelectedIsGridAligned() const noexcept;
     /// Inspector 表示用に選択中 ObjectInstance のコピーを返す。 未選択は既定値
     [[nodiscard]] NS::GameCore::Level::ObjectInstance SelectedObjectSnapshot() const noexcept;
-    /// 選択中の自由オブジェクトの位置を設定する。 gridAligned / 非選択時は何もしない
+    /// 選択中の配置物の位置を設定する。 非選択時は何もしない
     void SetSelectedFreePosition(NS::Math::Vector3 position) noexcept;
-    /// 選択中の自由オブジェクトの回転を設定する。 gridAligned / 非選択時は何もしない
+    /// 選択中の配置物の回転を設定する。 非選択時は何もしない
     void SetSelectedFreeRotation(NS::Math::Quaternion rotation) noexcept;
-    /// 選択中の自由オブジェクトのスケールを設定する。 最小正値に clamp する。 gridAligned / 非選択時は何もしない
+    /// 選択中の配置物のスケールを設定する。 最小正値に clamp する。 非選択時は何もしない
     void SetSelectedFreeScale(NS::Math::Vector3 scale) noexcept;
     /// 選択中自由オブジェクトの変形編集を開始し baseline を退避する。 gizmo ドラッグ / パネル入力の開始で呼ぶ
     void BeginTransformEdit() noexcept;
     /// 進行中の変形編集を 1 つの undo 単位として確定する。 無変化なら積まない
     void CommitTransformEdit() noexcept;
-    /// 選択中の grid solid ブロックを自由オブジェクトへ昇格する。 grid solid 以外は何もしない
-    void PromoteSelectedToFree() noexcept;
 
     /// 編集視点の中心あたりに新しい自由オブジェクトを 1 個追加して選択する。 Undo 対応
     void AddObject();
@@ -119,8 +115,8 @@ public:
     [[nodiscard]] NS::Scene::GameObject* SelectedObjectGameObject() noexcept;
     /// 選択中の配置物がプレイヤー実体か。 テンプレート保存の表示と複製禁止の判定に使う
     [[nodiscard]] bool SelectedIsPlayerObject() const noexcept;
-    /// 選択中の自由オブジェクトの runtime 全コンポーネントを components データへ書き戻し、 保存と rebuild に乗せる
-    /// Inspector で反射編集した後に呼ぶ。 grid / 非選択時は何もしない
+    /// 選択中の配置物の runtime 全コンポーネントを components データへ書き戻し、 保存と rebuild に乗せる
+    /// Inspector で反射編集した後に呼ぶ。 非選択時は何もしない
     void SyncSelectedObjectComponentsFromComponent();
 
     /// 選択 object の末尾へ型名のみのコンポーネントを足す。 Undo 対応、 非選択時は何もしない
@@ -159,12 +155,8 @@ public:
     /// 編集した雛形をシーンに反映するには読み直したうえで ApplyTheme で適用し直す
     void ReloadThemes();
 
-    /// 雛形 id の視覚値をシーンの環境欄へ写し込み、 slice 帯の焼き直しまで行う
-    /// lighting / skybox は次フレームの設定写しで、 block の slice は RebuildWorld の焼き直しで反映される
+    /// 雛形 id の視覚値をシーンの環境欄へ写し込む。 lighting / skybox は次フレームの設定写しで反映される
     void ApplyTheme(NS::GameCore::Theme::ThemeId id);
-
-    /// 環境の block slice 帯を変えて world を焼き直す。 lighting と違い帯変更だけが組み直しを要する
-    void SetEnvironmentBlockSlice(std::uint16_t baseSlice);
 
     /// 最後に scene が解決した scene 段設定。 RenderSettings パネルの表示元
     [[nodiscard]] const NS::Graphics::RenderSettings& DebugResolvedSettings() const noexcept
@@ -189,19 +181,15 @@ private:
     /// edit 中、 各カメラの視錐台を点線の四角錐で、 視点位置を小箱で DebugDraw で可視化する。 据え置きはトリガ AABB も
     void RenderCameraGizmos(const NS::Math::Matrix& viewProjection, NS::Math::Size2D viewport) noexcept;
 
-    /// edit 中、 各オブジェクトの当たり形状を DebugDraw で可視化する。 自由配置=OBB / grid solid=AABB
+    /// edit 中、 各オブジェクトの当たり形状を DebugDraw で可視化する。 Box は OBB / その他 collider は AABB
     void RenderColliderWireframes() noexcept;
 
-    /// 自由オブジェクト + grid solid ブロックのギズモ選択候補を連結し直して注入する
+    /// 全配置物のギズモ選択候補を作り直して注入する
     void RefreshGizmoSelectables();
 
     /// 選択 id から現在の runtime 実体を解決し、 派生添字の更新と gizmo への貼り直しを行う
     /// rebuild を跨いでも生ポインタを持ち越さない fail-safe の要。 ドラッグ中は gizmo 貼り直しを抑止する
     void ResolveSelectionFromId() noexcept;
-
-    /// objects 添字の ObjectInstance から gridAligned ビットを落として自由オブジェクト化する。 grid solid 掴み /
-    /// Promote が渡す
-    void PromoteGridBlockToFree(std::size_t objectIndex);
 
     /// ギズモで変形した自由オブジェクトの Transform を対応する ObjectInstance へ書き戻す
     /// world に居ない実プレイヤーも player object のデータへ同様に書き戻す。 live Transform が真実の源

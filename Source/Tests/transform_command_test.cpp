@@ -3,8 +3,6 @@
 
 #include <gtest/gtest.h>
 
-#include <cstdint>
-
 namespace EditorNs = NS::Editor;
 namespace LevelNs = NS::GameCore::Level;
 
@@ -37,24 +35,25 @@ TEST(TransformCommandTest, DoReplacesWithAfterUndoRestoresBefore)
     EXPECT_FLOAT_EQ(lv.objects[0].positionX, 0.0f);
 }
 
-TEST(TransformCommandTest, FlagChangeRoundTripsForPromotion)
+TEST(TransformCommandTest, MaterialAndPositionRoundTrip)
 {
+    // 材質のドロップ適用は TransformCommand で undo する。 位置以外の欄も full-instance 差替で往復する
     LevelNs::LevelData lv;
-    LevelNs::ObjectInstance grid = MakeFree(2, 0, 2);
-    grid.flags = LevelNs::kObjectFlagGridAligned;
-    grid.objectId = 3;
-    lv.objects.push_back(grid);
+    LevelNs::ObjectInstance object = MakeFree(2, 0, 2);
+    object.materialIndex = -1;
+    object.objectId = 3;
+    lv.objects.push_back(object);
 
-    auto freed = grid;
-    freed.flags = static_cast<std::uint8_t>(grid.flags & ~LevelNs::kObjectFlagGridAligned);
-    freed.positionX = 6.0f;
+    auto after = object;
+    after.materialIndex = 4;
+    after.positionX = 6.0f;
 
-    EditorNs::TransformCommand cmd(3, grid, freed);
+    EditorNs::TransformCommand cmd(3, object, after);
     cmd.Do(lv);
-    EXPECT_EQ(lv.objects[0].flags & LevelNs::kObjectFlagGridAligned, 0);
+    EXPECT_EQ(lv.objects[0].materialIndex, 4);
     EXPECT_FLOAT_EQ(lv.objects[0].positionX, 6.0f);
     cmd.Undo(lv);
-    EXPECT_EQ(lv.objects[0].flags & LevelNs::kObjectFlagGridAligned, LevelNs::kObjectFlagGridAligned);
+    EXPECT_EQ(lv.objects[0].materialIndex, -1);
     EXPECT_FLOAT_EQ(lv.objects[0].positionX, 2.0f);
 }
 

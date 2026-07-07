@@ -15,13 +15,13 @@ namespace NS::Editor
 
     void PlaceCommand::Do(NS::GameCore::Level::LevelData& level) noexcept
     {
-        const std::size_t index = NS::GameCore::Level::FindGridObjectAtCell(level, m_x, m_y, m_z);
+        const std::size_t index = NS::GameCore::Level::FindObjectAtCell(level, m_x, m_y, m_z);
         // プロトタイプを複製し cell 座標と回転 step だけ焼く。 回転対象外は呼び元が rotation=0 を渡す
         NS::GameCore::Level::ObjectInstance placed = m_prototype;
         placed.positionX = static_cast<float>(m_x);
         placed.positionY = static_cast<float>(m_y);
         placed.positionZ = static_cast<float>(m_z);
-        NS::GameCore::Level::SetGridRotationStep(placed, m_rotation);
+        NS::GameCore::Level::SetCellRotationStep(placed, m_rotation);
         if (index != NS::GameCore::Level::kNoObjectIndex)
         {
             // 既存 cell の置換は in-place なので永続 id を同じ場所の物として引き継ぐ
@@ -42,7 +42,7 @@ namespace NS::Editor
 
     void PlaceCommand::Undo(NS::GameCore::Level::LevelData& level) noexcept
     {
-        const std::size_t index = NS::GameCore::Level::FindGridObjectAtCell(level, m_x, m_y, m_z);
+        const std::size_t index = NS::GameCore::Level::FindObjectAtCell(level, m_x, m_y, m_z);
         if (index == NS::GameCore::Level::kNoObjectIndex)
             return;
         if (m_replaced)

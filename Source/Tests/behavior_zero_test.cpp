@@ -146,7 +146,6 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
 {
     LevelData src;
     ObjectInstance obj;
-    obj.flags = 0;
     obj.positionX = 2.0f;
     obj.positionY = 1.0f;
     obj.positionZ = 3.0f;

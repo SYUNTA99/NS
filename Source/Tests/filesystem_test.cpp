@@ -173,3 +173,18 @@ TEST_F(FileSystemLoggerTest, ListDirectoriesReturnsEmptyForMissingDirectory)
     const auto dir = MakeTempPath("listdirs_missing");
     EXPECT_TRUE(NS::Core::FileSystem::ListDirectories(dir).empty());
 }
+
+TEST(NsCoreFileSystem, IsDirectoryDistinguishesDirectoryFromFileAndMissing)
+{
+    const auto root = MakeTempPath("isdir");
+    ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(root));
+    const std::vector<std::byte> data = {std::byte{0x01}};
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(root / "file.txt", data));
+
+    EXPECT_TRUE(NS::Core::FileSystem::IsDirectory(root));
+    // 通常ファイルと不存在はともに false。 後者は Skybox が fallback へ落ちる経路を保証する
+    EXPECT_FALSE(NS::Core::FileSystem::IsDirectory(root / "file.txt"));
+    EXPECT_FALSE(NS::Core::FileSystem::IsDirectory(root / "missing"));
+
+    std::filesystem::remove_all(root);
+}

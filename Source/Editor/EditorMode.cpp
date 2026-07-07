@@ -13,8 +13,6 @@
 #include "Framework/Scene/Components/CameraComponent.h"
 #include "Framework/Scene/Components/EditorCameraComponent.h"
 #include "Framework/UI/ImGuiContext.h"
-#include "GameCore/Blocks/AutoTile.h"
-#include "GameCore/Blocks/BlockRegistry.h"
 #include "GameCore/Blocks/BuildPlacedObject.h"
 #include "GameCore/Level/LevelData.h"
 #include "GameCore/Level/LevelIO.h"
@@ -34,18 +32,21 @@ namespace NS::Editor
     {
         constexpr float kCellHalfExtent = 0.5f;
 
+        // cursor の回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す
+        constexpr float kQuarterTurnYaw = NS::Math::kPi * 0.5f;
+
         const NS::Math::Color kCursorOkColor{0.1f, 1.0f, 0.1f, 1.0f};
         const NS::Math::Color kCursorBlockedColor{1.0f, 0.1f, 0.1f, 1.0f};
 
         // 上書き保存などモーダル外通知を画面に出す秒数
         constexpr float kStatusToastSeconds = 2.5f;
 
-        [[nodiscard]] bool HasBlockAtCell(const NS::GameCore::Level::LevelData& level,
-                                          std::int16_t x,
-                                          std::int16_t y,
-                                          std::int16_t z) noexcept
+        [[nodiscard]] bool HasObjectAtCell(const NS::GameCore::Level::LevelData& level,
+                                           std::int16_t x,
+                                           std::int16_t y,
+                                           std::int16_t z) noexcept
         {
-            return NS::GameCore::Level::FindGridObjectAtCell(level, x, y, z) != NS::GameCore::Level::kNoObjectIndex;
+            return NS::GameCore::Level::FindObjectAtCell(level, x, y, z) != NS::GameCore::Level::kNoObjectIndex;
         }
 
         [[nodiscard]] std::int16_t RoundToCell(float v) noexcept
@@ -68,7 +69,7 @@ namespace NS::Editor
 
         // 表示用 yaw quaternion を「現在の cursor rotation」 に Slerp で寄せて回転方向を視覚化する
         const auto targetQuat = NS::Math::Quaternion::CreateFromAxisAngle(
-            {0.0f, 1.0f, 0.0f}, NS::GameCore::Blocks::BlockRotationToYaw(m_currentRotation));
+            {0.0f, 1.0f, 0.0f}, static_cast<float>(m_currentRotation) * kQuarterTurnYaw);
         constexpr float kRotationSpringRate = 12.0f;
         const float dt = NS::Core::FrameTimer::FixedDelta();
         const float t = std::min(1.0f, kRotationSpringRate * dt);
@@ -390,8 +391,8 @@ namespace NS::Editor
 
         for (const auto& object : m_level->objects)
         {
-            // grid カーソルの pick 対象は gridAligned のみで、 自由配置物はギズモが拾う
-            if ((object.flags & NS::GameCore::Level::kObjectFlagGridAligned) == 0)
+            // cursor の pick 対象は cell ブラシ配置物。 プレイヤーとカメラはギズモが拾うため除く
+            if (!NS::GameCore::Level::IsCellBrushObject(object))
                 continue;
             const std::int16_t cx = NS::GameCore::Level::ObjectCellX(object);
             const std::int16_t cy = NS::GameCore::Level::ObjectCellY(object);
@@ -447,7 +448,7 @@ namespace NS::Editor
             m_cursor.placeY = placeY;
             m_cursor.placeZ = placeZ;
             m_cursor.hitNormal = hitNormal;
-            m_cursor.placementBlocked = HasBlockAtCell(*m_level, m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
+            m_cursor.placementBlocked = HasObjectAtCell(*m_level, m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
             return;
         }
 
@@ -465,7 +466,7 @@ namespace NS::Editor
         m_cursor.hitZ = m_cursor.placeZ;
         m_cursor.hitNormal = NS::Math::Vector3{0.0f, 1.0f, 0.0f};
         m_cursor.deleteCenter = cellCenter;
-        m_cursor.placementBlocked = HasBlockAtCell(*m_level, m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
+        m_cursor.placementBlocked = HasObjectAtCell(*m_level, m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
     }
 
     void EditorMode::HandlePlaceDeleteInput() noexcept
@@ -485,7 +486,7 @@ namespace NS::Editor
             PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
         }
         if (mouse.IsPressed(NS::Platform::MouseButton::Right) &&
-            HasBlockAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
+            HasObjectAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
         {
             DeleteAtProgrammatic(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
         }
@@ -497,7 +498,7 @@ namespace NS::Editor
         if (gp.IsPressed(NS::Platform::GamepadButton::A) && !m_cursor.placementBlocked)
             PlaceUnderCursorProgrammatic(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
         if (gp.IsPressed(NS::Platform::GamepadButton::B) &&
-            HasBlockAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
+            HasObjectAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
             DeleteAtProgrammatic(m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
     }
 
@@ -518,11 +519,11 @@ namespace NS::Editor
         if (!rotate || !m_cursor.valid)
             return;
 
-        if (HasBlockAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
+        if (HasObjectAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ))
         {
             // cursor 直下の既存 block を 90° 回す。 回転対象外の block は無視する
             const std::size_t index =
-                NS::GameCore::Level::FindGridObjectAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
+                NS::GameCore::Level::FindObjectAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
             if (index != NS::GameCore::Level::kNoObjectIndex &&
                 NS::GameCore::Blocks::IsRotatableObject(m_level->objects[index]))
             {

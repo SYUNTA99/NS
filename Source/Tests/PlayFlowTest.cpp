@@ -19,7 +19,6 @@ namespace
     LevelNs::ObjectInstance MakePickup(float x, float y, float z, int pickupKind)
     {
         LevelNs::ObjectInstance object;
-        object.flags = LevelNs::kObjectFlagGridAligned;
         object.positionX = x;
         object.positionY = y;
         object.positionZ = z;

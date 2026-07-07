@@ -6,7 +6,7 @@ namespace NS::Editor
 
     void DeleteCommand::Do(NS::GameCore::Level::LevelData& level) noexcept
     {
-        const std::size_t index = NS::GameCore::Level::FindGridObjectAtCell(level, m_x, m_y, m_z);
+        const std::size_t index = NS::GameCore::Level::FindObjectAtCell(level, m_x, m_y, m_z);
         if (index == NS::GameCore::Level::kNoObjectIndex)
         {
             m_deleted.reset();
