@@ -11,7 +11,6 @@
 #include "Framework/Graphics/SkeletalMesh.h"
 #include "Framework/Graphics/StaticMesh.h"
 #include "Framework/Graphics/Texture.h"
-#include "Framework/Graphics/TextureArray.h"
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 
@@ -35,7 +34,6 @@ namespace NS::Scene
         constexpr const char* kBuiltinShadowQuad = "shadowQuad";
 
         constexpr const char* kSharedPlayer = "player";
-        constexpr const char* kSharedBlock = "block";
         constexpr const char* kSharedWater = "water";
         constexpr const char* kSharedShadow = "shadow";
 
@@ -330,12 +328,6 @@ namespace NS::Scene
             mat->SetTexture(0, baseTexture);
             m_sharedMaterials.emplace(kSharedPlayer, std::move(mat));
         }
-        // block: player と同じ VS/PS/CB を共有する CB 搬入路。 実 VS/PS/Texture は InstanceBatcher が上書きする
-        // slot0 は外側で TextureArray を bind するため SetTexture 禁止 — 呼ぶと Material::Bind が SRV を上書きする
-        {
-            auto mat = NS::Graphics::Material::Create(base);
-            m_sharedMaterials.emplace(kSharedBlock, std::move(mat));
-        }
         // water: alpha<1 を出す water.ps + Alpha ブレンドの専用 material
         {
             NS::Graphics::MaterialDesc desc = base;
@@ -358,24 +350,6 @@ namespace NS::Scene
     {
         const auto it = m_sharedMaterials.find(std::string(name));
         return it != m_sharedMaterials.end() ? it->second.get() : nullptr;
-    }
-
-    NS::Graphics::TextureArray* AssetManager::GetOrCreateTextureArray(std::string_view name,
-                                                                      const NS::Graphics::TextureArrayDesc& desc)
-    {
-        const std::string key(name);
-        if (const auto it = m_textureArrays.find(key); it != m_textureArrays.end())
-            return it->second.get();
-        auto array = NS::Graphics::TextureArray::Create(desc);
-        NS::Graphics::TextureArray* raw = array.get();
-        m_textureArrays.emplace(key, std::move(array));
-        return raw;
-    }
-
-    NS::Graphics::TextureArray* AssetManager::TextureArrayByName(std::string_view name) const noexcept
-    {
-        const auto it = m_textureArrays.find(std::string(name));
-        return it != m_textureArrays.end() ? it->second.get() : nullptr;
     }
 
     bool AssetManager::Reload(const std::filesystem::path& path)
@@ -405,7 +379,6 @@ namespace NS::Scene
         // material は leaf である shader / texture を参照するので先に解放する
         m_sharedMaterials.clear();
         m_materials.clear();
-        m_textureArrays.clear();
         m_textures.clear();
         m_shaders.clear();
         m_meshes.clear();
