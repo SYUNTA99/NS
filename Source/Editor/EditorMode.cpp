@@ -6,9 +6,9 @@
 #include "Editor/Undo/PlaceCommand.h"
 #include "Editor/Undo/RotateCommand.h"
 #include "Framework/UI/ImGuiContext.h"
-#include "GameCore/Blocks/BuildPlacedObject.h"
-#include "GameCore/Level/LevelData.h"
-#include "GameCore/Level/LevelIO.h"
+#include "Game/Blocks/BuildPlacedObject.h"
+#include "Game/Level/LevelData.h"
+#include "Game/Level/LevelIO.h"
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -31,12 +31,12 @@ namespace NS::Editor
         // 上書き保存などモーダル外通知を画面に出す秒数
         constexpr float kStatusToastSeconds = 2.5f;
 
-        [[nodiscard]] bool HasObjectAtCell(const NS::GameCore::Level::LevelData& level,
+        [[nodiscard]] bool HasObjectAtCell(const NS::Game::Level::LevelData& level,
                                            std::int16_t x,
                                            std::int16_t y,
                                            std::int16_t z) noexcept
         {
-            return NS::GameCore::Level::FindObjectAtCell(level, x, y, z) != NS::GameCore::Level::kNoObjectIndex;
+            return NS::Game::Level::FindObjectAtCell(level, x, y, z) != NS::Game::Level::kNoObjectIndex;
         }
 
         [[nodiscard]] std::int16_t RoundToCell(float v) noexcept
@@ -99,7 +99,7 @@ namespace NS::Editor
         if (safe.empty() || !path)
             return false;
         (void)EnsureLevelsDirectoryExists();
-        const bool ok = NS::GameCore::Level::SaveLevelToFile(*m_level, *path);
+        const bool ok = NS::Game::Level::SaveLevelToFile(*m_level, *path);
         if (ok)
             m_currentLevelName = safe;
         return ok;
@@ -152,8 +152,8 @@ namespace NS::Editor
                 m_fileBrowser.NotifyLoadResult(false, "不正な level name");
                 break;
             }
-            NS::GameCore::Level::LevelData fresh;
-            const bool ok = NS::GameCore::Level::LoadLevelFromFile(fresh, *path);
+            NS::Game::Level::LevelData fresh;
+            const bool ok = NS::Game::Level::LoadLevelFromFile(fresh, *path);
             if (ok)
             {
                 // 新 level open で UndoStack 履歴は破棄する。 古い level 用 Command が
@@ -346,7 +346,7 @@ namespace NS::Editor
         if (m_level == nullptr)
             return;
         // 現在のブラシ = 複製元テンプレート。 配置は複製で行う
-        const NS::GameCore::Level::ObjectInstance& tmpl = m_palette.CurrentTemplate();
+        const NS::Game::Level::ObjectInstance& tmpl = m_palette.CurrentTemplate();
         // water 等の回転対象でない block は m_currentRotation が非ゼロでも 0 で焼き込む
         const std::uint8_t rotation = [this]() -> std::uint8_t {
             if (m_palette.CurrentIsRotatable())
@@ -404,11 +404,11 @@ namespace NS::Editor
         for (const auto& object : m_level->objects)
         {
             // cursor の pick 対象は cell ブラシ配置物。 プレイヤーとカメラはギズモが拾うため除く
-            if (!NS::GameCore::Level::IsCellBrushObject(object))
+            if (!NS::Game::Level::IsCellBrushObject(object))
                 continue;
-            const std::int16_t cx = NS::GameCore::Level::ObjectCellX(object);
-            const std::int16_t cy = NS::GameCore::Level::ObjectCellY(object);
-            const std::int16_t cz = NS::GameCore::Level::ObjectCellZ(object);
+            const std::int16_t cx = NS::Game::Level::ObjectCellX(object);
+            const std::int16_t cy = NS::Game::Level::ObjectCellY(object);
+            const std::int16_t cz = NS::Game::Level::ObjectCellZ(object);
             const NS::Math::Vector3 center{static_cast<float>(cx), static_cast<float>(cy), static_cast<float>(cz)};
             const NS::Math::AABB box(center, {kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
             float t = 0.0f;
@@ -550,9 +550,9 @@ namespace NS::Editor
         {
             // cursor 直下の既存 block を 90° 回す。 回転対象外の block は無視する
             const std::size_t index =
-                NS::GameCore::Level::FindObjectAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
-            if (index != NS::GameCore::Level::kNoObjectIndex &&
-                NS::GameCore::Blocks::IsRotatableObject(m_level->objects[index]))
+                NS::Game::Level::FindObjectAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
+            if (index != NS::Game::Level::kNoObjectIndex &&
+                NS::Game::Blocks::IsRotatableObject(m_level->objects[index]))
             {
                 m_undo.Push(std::make_unique<NS::Editor::RotateCommand>(
                                 m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ, std::int8_t{1}),

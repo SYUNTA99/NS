@@ -1,8 +1,8 @@
 #include "Editor/LevelFilePaths.h"
 #include "Framework/Core/Filesystem.h"
-#include "GameCore/Level/LevelData.h"
-#include "GameCore/Level/LevelIO.h"
-#include "GameCore/Level/LevelJson.h"
+#include "Game/Level/LevelData.h"
+#include "Game/Level/LevelIO.h"
+#include "Game/Level/LevelJson.h"
 
 #include <cstring>
 #include <filesystem>
@@ -13,7 +13,7 @@
 
 #include <gtest/gtest.h>
 
-namespace LevelNs = NS::GameCore::Level;
+namespace LevelNs = NS::Game::Level;
 namespace EditorNs = NS::Editor;
 
 TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)

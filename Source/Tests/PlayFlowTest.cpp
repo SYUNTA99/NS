@@ -1,12 +1,12 @@
-#include "GameCore/Level/PlayFlowComponent.h"
-#include "GameCore/Level/PlayMode.h"
-#include "GameCore/LevelPlayScene.h"
+#include "Game/Level/PlayFlowComponent.h"
+#include "Game/Level/PlayMode.h"
+#include "Game/LevelPlayScene.h"
 
 #include <gtest/gtest.h>
 
 #include <utility>
 
-namespace LevelNs = NS::GameCore::Level;
+namespace LevelNs = NS::Game::Level;
 
 /// Application 依存のない LevelPlayScene を器に、 PlayFlowComponent の進行を player 無しで検証する
 /// OnStart は Application::Get() を要求するため呼ばず、 Tick へ dt を直接渡して進める

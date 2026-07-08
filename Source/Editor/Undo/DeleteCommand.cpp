@@ -4,10 +4,10 @@ namespace NS::Editor
 {
     DeleteCommand::DeleteCommand(std::int16_t x, std::int16_t y, std::int16_t z) noexcept : m_x(x), m_y(y), m_z(z) {}
 
-    void DeleteCommand::Do(NS::GameCore::Level::LevelData& level) noexcept
+    void DeleteCommand::Do(NS::Game::Level::LevelData& level) noexcept
     {
-        const std::size_t index = NS::GameCore::Level::FindObjectAtCell(level, m_x, m_y, m_z);
-        if (index == NS::GameCore::Level::kNoObjectIndex)
+        const std::size_t index = NS::Game::Level::FindObjectAtCell(level, m_x, m_y, m_z);
+        if (index == NS::Game::Level::kNoObjectIndex)
         {
             m_deleted.reset();
             return;
@@ -16,7 +16,7 @@ namespace NS::Editor
         level.objects.erase(level.objects.begin() + static_cast<std::ptrdiff_t>(index));
     }
 
-    void DeleteCommand::Undo(NS::GameCore::Level::LevelData& level) noexcept
+    void DeleteCommand::Undo(NS::Game::Level::LevelData& level) noexcept
     {
         if (!m_deleted)
             return;

@@ -1,10 +1,10 @@
 #include "Editor/Undo/DeleteCommand.h"
-#include "GameCore/Level/LevelData.h"
+#include "Game/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
 namespace EditorNs = NS::Editor;
-namespace LevelNs = NS::GameCore::Level;
+namespace LevelNs = NS::Game::Level;
 
 TEST(DeleteCommandTest, DoRemovesExistingBlock)
 {

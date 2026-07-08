@@ -1,10 +1,10 @@
-#include "GameCore/Level/ClearFadeComponent.h"
-#include "GameCore/Level/PlayFlowComponent.h"
-#include "GameCore/LevelPlayScene.h"
+#include "Game/Level/ClearFadeComponent.h"
+#include "Game/Level/PlayFlowComponent.h"
+#include "Game/LevelPlayScene.h"
 
 #include <gtest/gtest.h>
 
-namespace LevelNs = NS::GameCore::Level;
+namespace LevelNs = NS::Game::Level;
 
 /// Application 依存のない LevelPlayScene を器に、 暗転状態機械を dt 駆動で検証する
 /// OnStart を呼ばないため ScreenFade は生成されず、 状態機械だけが進む

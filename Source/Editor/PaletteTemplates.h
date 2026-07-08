@@ -6,7 +6,7 @@
 /// @details パレットで何を置くかを実 component を持つプロトタイプの配置物として持つ
 /// 各スロットは複製元の ObjectInstance を 1 つ抱え、 配置時はこれを複製して座標 / 回転を焼く
 
-#include "GameCore/Level/LevelData.h"
+#include "Game/Level/LevelData.h"
 
 namespace NS::Editor
 {
@@ -16,7 +16,7 @@ namespace NS::Editor
     {
         const char* name = nullptr;
         bool rotatable = false;
-        NS::GameCore::Level::ObjectInstance prototype;
+        NS::Game::Level::ObjectInstance prototype;
     };
 
     /// パレットのブラシ数。 grid cube / 45 度スロープ / ゴールの 3 種

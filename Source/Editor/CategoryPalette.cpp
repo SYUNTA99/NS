@@ -33,11 +33,11 @@ namespace NS::Editor
     {
         // slope ブラシは prototype の SlopeCollider から角度を読み、 cursor preview の wedge と一致させる
         // slope を持たない cube / goal ブラシは wedge preview を持たないので負値を返す
-        const NS::GameCore::Level::ComponentData* slope =
-            NS::GameCore::Level::FindComponentData(m_current.prototype, "SlopeColliderComponent");
+        const NS::Game::Level::ComponentData* slope =
+            NS::Game::Level::FindComponentData(m_current.prototype, "SlopeColliderComponent");
         if (slope == nullptr)
             return -1.0f;
-        const NS::GameCore::Level::FieldValue* angle = NS::GameCore::Level::FindField(*slope, "Angle (deg)");
+        const NS::Game::Level::FieldValue* angle = NS::Game::Level::FindField(*slope, "Angle (deg)");
         if (angle != nullptr && std::holds_alternative<float>(angle->value))
             return std::get<float>(angle->value);
         return -1.0f;

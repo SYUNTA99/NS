@@ -12,9 +12,9 @@
 #include <Framework/Scene/Components/SlopeColliderComponent.h>
 #include <Framework/Scene/Components/SphereColliderComponent.h>
 #include <Framework/Scene/GameObject.h>
-#include <GameCore/Blocks/BuildPlacedObject.h>
-#include <GameCore/Level/LevelData.h>
-#include <GameCore/Level/LevelJson.h>
+#include <Game/Blocks/BuildPlacedObject.h>
+#include <Game/Level/LevelData.h>
+#include <Game/Level/LevelJson.h>
 
 #include <array>
 #include <cstddef>
@@ -25,14 +25,14 @@
 
 namespace
 {
-    using NS::GameCore::Blocks::BuildPlacedObject;
-    using NS::GameCore::Blocks::FindComponent;
-    using NS::GameCore::Level::ComponentData;
-    using NS::GameCore::Level::DeserializeLevelFromJson;
-    using NS::GameCore::Level::FieldValue;
-    using NS::GameCore::Level::LevelData;
-    using NS::GameCore::Level::ObjectInstance;
-    using NS::GameCore::Level::SerializeLevelToJson;
+    using NS::Game::Blocks::BuildPlacedObject;
+    using NS::Game::Blocks::FindComponent;
+    using NS::Game::Level::ComponentData;
+    using NS::Game::Level::DeserializeLevelFromJson;
+    using NS::Game::Level::FieldValue;
+    using NS::Game::Level::LevelData;
+    using NS::Game::Level::ObjectInstance;
+    using NS::Game::Level::SerializeLevelToJson;
     using NS::Math::Vector3;
 
     constexpr float kTol = 1e-4f;
@@ -159,7 +159,7 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     obj.components.push_back(
         MakeComponent("CapsuleColliderComponent", {FieldValue{"Radius", 0.4f}, FieldValue{"Half Height", 0.9f}}));
     src.objects.push_back(std::move(obj));
-    src.objects.push_back(NS::GameCore::Level::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    src.objects.push_back(NS::Game::Level::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
     LevelData restored;
     ASSERT_TRUE(DeserializeLevelFromJson(restored, SerializeLevelToJson(src)));

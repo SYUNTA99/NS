@@ -4,7 +4,7 @@
 /// @brief 指定 cell の block を削除する Command。 削除前 entry を保存し Undo で push_back 復元
 
 #include "Editor/Undo/ICommand.h"
-#include "GameCore/Level/LevelData.h"
+#include "Game/Level/LevelData.h"
 
 namespace NS::Editor
 {
@@ -14,8 +14,8 @@ namespace NS::Editor
     public:
         DeleteCommand(std::int16_t x, std::int16_t y, std::int16_t z) noexcept;
 
-        void Do(NS::GameCore::Level::LevelData& level) noexcept override;
-        void Undo(NS::GameCore::Level::LevelData& level) noexcept override;
+        void Do(NS::Game::Level::LevelData& level) noexcept override;
+        void Undo(NS::Game::Level::LevelData& level) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override { return sizeof(DeleteCommand); }
 
@@ -23,7 +23,7 @@ namespace NS::Editor
         std::int16_t m_x;
         std::int16_t m_y;
         std::int16_t m_z;
-        std::optional<NS::GameCore::Level::ObjectInstance> m_deleted;
+        std::optional<NS::Game::Level::ObjectInstance> m_deleted;
     };
 
 } // namespace NS::Editor

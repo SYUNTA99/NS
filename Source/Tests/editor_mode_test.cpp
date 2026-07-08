@@ -1,11 +1,11 @@
 #include "Editor/EditorMode.h"
-#include "GameCore/Blocks/BuildPlacedObject.h"
-#include "GameCore/Level/LevelData.h"
+#include "Game/Blocks/BuildPlacedObject.h"
+#include "Game/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
 namespace EditorNs = NS::Editor;
-namespace LevelNs = NS::GameCore::Level;
+namespace LevelNs = NS::Game::Level;
 
 TEST(EditorMode, ProgrammaticPlaceAddsBlock)
 {
@@ -21,7 +21,7 @@ TEST(EditorMode, ProgrammaticPlaceAddsBlock)
     EXPECT_EQ(LevelNs::ObjectCellX(lv.objects[idx]), 5);
     EXPECT_EQ(LevelNs::ObjectCellY(lv.objects[idx]), 0);
     EXPECT_EQ(LevelNs::ObjectCellZ(lv.objects[idx]), 3);
-    EXPECT_TRUE(NS::GameCore::Blocks::IsSolidObject(lv.objects[idx]));
+    EXPECT_TRUE(NS::Game::Blocks::IsSolidObject(lv.objects[idx]));
 }
 
 TEST(EditorMode, ProgrammaticDeleteRemovesBlock)

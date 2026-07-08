@@ -540,23 +540,23 @@ project "App"
 group ""
 
 --============================================================================
--- GameCore (StaticLib) — ゲーム本体 (content / logic)
+-- Game (StaticLib) — ゲーム本体 (content / logic)
 --   Player / Block / LevelPlayScene / Level / Theme 等。
---   editor を一切知らない (依存の向きは Editor → GameCore の一方向)。 出荷を含む全構成でビルド。
+--   editor を一切知らない (依存の向きは Editor → Game の一方向)。 出荷を含む全構成でビルド。
 --   合成 Layer ::Game もここに置き、 editor から Game::Get() で参照できるようにする。
 --============================================================================
-project "GameCore"
+project "Game"
     kind "StaticLib"
-    location "build/GameCore"
+    location "build/Game"
 
     targetdir (bindir .. "/%{prj.name}")
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/GameCore/**.h",
-        "Source/GameCore/**.cpp"
+        "Source/Game/**.h",
+        "Source/Game/**.cpp"
     }
-    -- GameMain.cpp (CreateApplication = 合成ルート) は exe 側。 GameCore からは除外する
+    -- GameMain.cpp (CreateApplication = 合成ルート) は exe 側。 Game からは除外する
     removefiles { "Source/Game/GameMain.cpp" }
 
     includedirs {
@@ -584,11 +584,11 @@ project "GameCore"
     }
 
     -- Game / Editor 共通の安定 Framework API を全 .cpp へ /FI 強制 include する。
-    -- GamePch.cpp は Source/GameCore/**.cpp の glob で既に拾われる。 GamePch.h は
+    -- GamePch.cpp は Source/Game/**.cpp の glob で既に拾われる。 GamePch.h は
     -- include root (Source) 経由で全 .cpp から一意に解決できる論理名で渡す。
-    pchheader "GameCore/GamePch.h"
-    pchsource "Source/GameCore/GamePch.cpp"
-    buildoptions { "/FI\"GameCore/GamePch.h\"" }
+    pchheader "Game/GamePch.h"
+    pchsource "Source/Game/GamePch.cpp"
+    buildoptions { "/FI\"Game/GamePch.h\"" }
 
     applyCommonBuildOptions()
 
@@ -596,7 +596,7 @@ project "GameCore"
 -- Editor (StaticLib) — エディタモジュール (NS::Editor)
 --   EditorLayer / LevelEditorController / EditorCameraRig / EditorMode /
 --   GizmoEditor / CategoryPalette / LevelFileBrowser / LevelFilePaths。
---   GameCore + UI(ImGui) に依存。 GameRelease では kind None で出荷から物理排除し、
+--   Game + UI(ImGui) に依存。 GameRelease では kind None で出荷から物理排除し、
 --   「ゲーム本体は editor を知らない」をリンカで強制する。
 --============================================================================
 project "Editor"
@@ -609,8 +609,8 @@ project "Editor"
     files {
         "Source/Editor/**.h",
         "Source/Editor/**.cpp",
-        -- Game 側 PCH を共有するため pchsource 用に取り込む (Editor は GameCore に依存済)
-        "Source/GameCore/GamePch.cpp"
+        -- Game 側 PCH を共有するため pchsource 用に取り込む (Editor は Game に依存済)
+        "Source/Game/GamePch.cpp"
     }
 
     includedirs {
@@ -628,7 +628,7 @@ project "Editor"
     }
 
     links {
-        "GameCore",
+        "Game",
         "Math",
         "Core",
         "Platform",
@@ -647,10 +647,10 @@ project "Editor"
         kind "None"
     filter {}
 
-    -- GameCore と同じ Game 側 PCH を共有する (GamePch.cpp は files に追加済)
-    pchheader "GameCore/GamePch.h"
-    pchsource "Source/GameCore/GamePch.cpp"
-    buildoptions { "/FI\"GameCore/GamePch.h\"" }
+    -- Game と同じ Game 側 PCH を共有する (GamePch.cpp は files に追加済)
+    pchheader "Game/GamePch.h"
+    pchsource "Source/Game/GamePch.cpp"
+    buildoptions { "/FI\"Game/GamePch.h\"" }
 
     applyCommonBuildOptions()
 
@@ -661,12 +661,13 @@ group ""
 
 --============================================================================
 -- Game 実行ファイル (WindowedApp) — 薄い合成ルート
---   GameMain.cpp (CreateApplication) のみ。 GameCore を常時、 Editor を editor 構成のみリンクし、
+--   GameMain.cpp (CreateApplication) のみ。 Game を常時、 Editor を editor 構成のみリンクし、
 --   出荷 (GameRelease) には editor / UI / imgui を一切積まない。
 --============================================================================
-project "Game"
+project "GameApp"
     kind "WindowedApp"
-    location "build/Game"
+    location "build/GameApp"
+    targetname "Game"
 
     targetdir (bindir)        -- exe は build/bin/<Config>/ 直下
     objdir (objdir_base .. "/%{prj.name}")
@@ -674,7 +675,7 @@ project "Game"
     files {
         "Source/Game/GameMain.cpp",
         -- Game 側 PCH を共有するため pchsource 用に取り込む
-        "Source/GameCore/GamePch.cpp"
+        "Source/Game/GamePch.cpp"
     }
 
     includedirs {
@@ -690,7 +691,7 @@ project "Game"
     }
 
     links {
-        "GameCore",
+        "Game",
         "Math",
         "Core",
         "Platform",
@@ -727,10 +728,10 @@ project "Game"
         optimize "Off"
     filter {}
 
-    -- GameCore と同じ Game 側 PCH を共有する (GamePch.cpp は files に追加済)
-    pchheader "GameCore/GamePch.h"
-    pchsource "Source/GameCore/GamePch.cpp"
-    buildoptions { "/FI\"GameCore/GamePch.h\"" }
+    -- Game と同じ Game 側 PCH を共有する (GamePch.cpp は files に追加済)
+    pchheader "Game/GamePch.h"
+    pchsource "Source/Game/GamePch.cpp"
+    buildoptions { "/FI\"Game/GamePch.h\"" }
 
     applyCommonBuildOptions()
 
@@ -824,20 +825,20 @@ project "Tests"
         -- Game 側 GameObject 派生 (Player) は Application 依存を持たないので
         -- Tests から直接コンパイルしてリンクする。Game.cpp は Application や
         -- Window への依存があるので除外し、unit test で扱える範囲だけ取り込む。
-        "Source/GameCore/Player.cpp",
+        "Source/Game/Player.cpp",
         -- PlayerTuning は LevelPlayScene(OnStart) と LevelEditorController が参照するので symbol 解決のため取り込む
-        "Source/GameCore/PlayerTuning.cpp",
-        "Source/GameCore/Blocks/**.cpp",
+        "Source/Game/PlayerTuning.cpp",
+        "Source/Game/Blocks/**.cpp",
         "Source/Editor/EditorCameraRig.cpp",
         -- LevelEditorController は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
         -- Setup は Application::Get() を要求するため test では呼ばないが、 ctor / EnterPlay /
         -- EnterEdit / 値メンバ accessor の symbol が要るので .cpp を Tests に取り込む。
         -- 操作対象の LevelPlayScene も ctor / dtor / vtable / SetPlaying symbol のため併せて取り込む。
-        "Source/GameCore/LevelPlayScene.cpp",
+        "Source/Game/LevelPlayScene.cpp",
         "Source/Editor/LevelEditorController.cpp",
         -- Level data / LevelIO / CRC32 / Undo Command は Application
         -- 非依存の純粋ロジックなので Tests project から直接 compile する。
-        "Source/GameCore/Level/**.cpp",
+        "Source/Game/Level/**.cpp",
         "Source/Editor/Undo/**.cpp",
         -- editor のうち Application 非依存なものだけ取り込む (EditorLayer は Application 依存のため除外)
         "Source/Editor/ComponentClipboard.cpp",
@@ -848,10 +849,10 @@ project "Tests"
         "Source/Editor/PaletteTemplates.cpp",
         "Source/Editor/LevelFileBrowser.cpp",
         "Source/Editor/LevelFilePaths.cpp",
-        "Source/GameCore/Theme/**.cpp",
-        -- Editor / GameCore の各 .cpp は GamePch の /FI 前提で Framework include を持たない。
+        "Source/Game/Theme/**.cpp",
+        -- Editor / Game の各 .cpp は GamePch の /FI 前提で Framework include を持たない。
         -- 同じソースを直接コンパイルする Tests でも同一 prelude を与えるため GamePch を共有する
-        "Source/GameCore/GamePch.cpp"
+        "Source/Game/GamePch.cpp"
     }
 
     includedirs {
@@ -868,10 +869,10 @@ project "Tests"
         "SPDLOG_NO_EXCEPTIONS"
     }
 
-    -- GameCore / Editor と同じ GamePch を共有し、 strip 済ソースへ /FI で prelude を与える
-    pchheader "GameCore/GamePch.h"
-    pchsource "Source/GameCore/GamePch.cpp"
-    buildoptions { "/FI\"GameCore/GamePch.h\"" }
+    -- Game / Editor と同じ GamePch を共有し、 strip 済ソースへ /FI で prelude を与える
+    pchheader "Game/GamePch.h"
+    pchsource "Source/Game/GamePch.cpp"
+    buildoptions { "/FI\"Game/GamePch.h\"" }
 
     links {
         "googletest",

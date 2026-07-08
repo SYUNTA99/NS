@@ -2,8 +2,8 @@
 #include "Editor/Undo/DuplicateObjectCommand.h"
 #include "Editor/Undo/PlaceCommand.h"
 #include "Framework/Scene/ObjectRef.h"
-#include "GameCore/Level/LevelData.h"
-#include "GameCore/Level/LevelJson.h"
+#include "Game/Level/LevelData.h"
+#include "Game/Level/LevelJson.h"
 
 #include <gtest/gtest.h>
 
@@ -14,7 +14,7 @@
 #include <vector>
 
 namespace EditorNs = NS::Editor;
-namespace LevelNs = NS::GameCore::Level;
+namespace LevelNs = NS::Game::Level;
 
 namespace
 {

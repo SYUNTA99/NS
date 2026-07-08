@@ -1,5 +1,5 @@
 #include "Editor/Undo/AddObjectCommand.h"
-#include "GameCore/Level/LevelData.h"
+#include "Game/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
@@ -7,7 +7,7 @@
 #include <utility>
 
 namespace EditorNs = NS::Editor;
-namespace LevelNs = NS::GameCore::Level;
+namespace LevelNs = NS::Game::Level;
 
 namespace
 {

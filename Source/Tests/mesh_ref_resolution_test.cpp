@@ -8,8 +8,8 @@
 #include <Framework/Scene/AssetManager.h>
 #include <Framework/Scene/Components/MeshRendererComponent.h>
 #include <Framework/Scene/GameObject.h>
-#include <GameCore/Blocks/BuildPlacedObject.h>
-#include <GameCore/Level/LevelData.h>
+#include <Game/Blocks/BuildPlacedObject.h>
+#include <Game/Level/LevelData.h>
 
 #include <filesystem>
 #include <string>
@@ -17,13 +17,13 @@
 
 namespace
 {
-    using NS::GameCore::Blocks::BuildPlacedObject;
-    using NS::GameCore::Blocks::FindComponent;
-    using NS::GameCore::Blocks::ResolveContentPath;
-    using NS::GameCore::Blocks::ResolveMeshFromRef;
-    using NS::GameCore::Level::ComponentData;
-    using NS::GameCore::Level::FieldValue;
-    using NS::GameCore::Level::ObjectInstance;
+    using NS::Game::Blocks::BuildPlacedObject;
+    using NS::Game::Blocks::FindComponent;
+    using NS::Game::Blocks::ResolveContentPath;
+    using NS::Game::Blocks::ResolveMeshFromRef;
+    using NS::Game::Level::ComponentData;
+    using NS::Game::Level::FieldValue;
+    using NS::Game::Level::ObjectInstance;
     using NS::Scene::AssetManager;
     using NS::Scene::MeshRendererComponent;
 

@@ -15,8 +15,8 @@ namespace NS::Editor
     public:
         explicit DuplicateObjectCommand(std::uint32_t sourceObjectId) noexcept;
 
-        void Do(NS::GameCore::Level::LevelData& level) noexcept override;
-        void Undo(NS::GameCore::Level::LevelData& level) noexcept override;
+        void Do(NS::Game::Level::LevelData& level) noexcept override;
+        void Undo(NS::Game::Level::LevelData& level) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override { return sizeof(DuplicateObjectCommand); }
 

@@ -7,15 +7,15 @@
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/ObjectRefSubsystem.h>
 #include <Framework/Scene/SceneBase.h>
-#include <GameCore/Level/LevelData.h>
-#include <GameCore/Level/LevelWorld.h>
-#include <GameCore/Player.h>
+#include <Game/Level/LevelData.h>
+#include <Game/Level/LevelWorld.h>
+#include <Game/Player.h>
 
 #include <filesystem>
 #include <utility>
 
-using NS::GameCore::Level::LevelData;
-using NS::GameCore::Level::LevelWorld;
+using NS::Game::Level::LevelData;
+using NS::Game::Level::LevelWorld;
 
 TEST(LevelWorldTest, InitialStateIsEmpty)
 {
@@ -59,9 +59,9 @@ TEST(LevelWorldTest, ClearEmptiesEverything)
 TEST(LevelWorldTest, RebuildBuildsPlayerAndExposesView)
 {
     LevelData level;
-    level.objects.push_back(NS::GameCore::Level::MakeCellObject(0, 0, 0, 0));
+    level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0, 0));
     level.objects.push_back(
-        NS::GameCore::Level::MakePlayerObject(NS::Math::Vector3{0.0f, 1.41f, 0.0f}, NS::Math::Quaternion{}));
+        NS::Game::Level::MakePlayerObject(NS::Math::Vector3{0.0f, 1.41f, 0.0f}, NS::Math::Quaternion{}));
 
     NS::Scene::SceneBase scene;
     NS::Physics::PhysicsWorld physics;
@@ -84,9 +84,9 @@ TEST(LevelWorldTest, RebuildBuildsPlayerAndExposesView)
 TEST(LevelWorldTest, RebuildBakesFollowCameraAndResolvesTarget)
 {
     LevelData level;
-    level.objects.push_back(NS::GameCore::Level::MakeFollowCameraObject(0u));
-    level.objects.push_back(NS::GameCore::Level::MakeCellObject(0, 0, 0, 0));
-    NS::GameCore::Level::EnsureUniqueObjectIds(level);
+    level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
+    level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0, 0));
+    NS::Game::Level::EnsureUniqueObjectIds(level);
     // 追従先は自分より後ろに並ぶ grid block。Target 参照を採番後の実 id へ差し替える
     for (auto& component : level.objects[0].components)
         for (auto& field : component.fields)
@@ -118,11 +118,11 @@ TEST(LevelWorldTest, RebuildBakesFollowCameraAndResolvesTarget)
 TEST(LevelWorldTest, RebuildBakesPlacedCamerasInactive)
 {
     LevelData level;
-    NS::GameCore::Level::ObjectInstance cameraObject{};
+    NS::Game::Level::ObjectInstance cameraObject{};
     cameraObject.positionX = 8.0f;
-    NS::GameCore::Level::ComponentData comp;
+    NS::Game::Level::ComponentData comp;
     comp.typeName = "PlacedVirtualCamera";
-    comp.fields.push_back(NS::GameCore::Level::FieldValue{"Priority", 20});
+    comp.fields.push_back(NS::Game::Level::FieldValue{"Priority", 20});
     cameraObject.components.push_back(std::move(comp));
     level.objects.push_back(std::move(cameraObject));
 

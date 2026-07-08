@@ -4,7 +4,7 @@
 /// @brief 対象オブジェクトから添字指定のコンポーネントを除く Command。 除去値を保持し Undo で復元する
 
 #include "Editor/Undo/ICommand.h"
-#include "GameCore/Level/LevelData.h"
+#include "Game/Level/LevelData.h"
 
 namespace NS::Editor
 {
@@ -19,15 +19,15 @@ namespace NS::Editor
     public:
         RemoveComponentCommand(std::uint32_t targetObjectId, std::size_t componentIndex) noexcept;
 
-        void Do(NS::GameCore::Level::LevelData& level) noexcept override;
-        void Undo(NS::GameCore::Level::LevelData& level) noexcept override;
+        void Do(NS::Game::Level::LevelData& level) noexcept override;
+        void Undo(NS::Game::Level::LevelData& level) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override;
 
     private:
         std::uint32_t m_targetObjectId;
         std::size_t m_componentIndex;                            // 除去する components の添字
-        std::optional<NS::GameCore::Level::ComponentData> m_removed; // 除去した反射値ごとの退避。 Undo 復元で使う
+        std::optional<NS::Game::Level::ComponentData> m_removed; // 除去した反射値ごとの退避。 Undo 復元で使う
         std::size_t m_removedIndex = 0;                          // 除去前の添字。 Undo で同じ位置へ戻す
     };
 

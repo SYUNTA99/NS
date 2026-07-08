@@ -8,7 +8,7 @@
 /// 対象は ObjectInstance の永続 objectId で再特定するので、間に Place / Delete で添字がずれても追従する
 
 #include "Editor/Undo/ICommand.h"
-#include "GameCore/Level/LevelData.h"
+#include "Game/Level/LevelData.h"
 
 namespace NS::Editor
 {
@@ -18,22 +18,22 @@ namespace NS::Editor
     public:
         /// 永続 id `id` の objects を `after` へ置く Command。 Undo で `before` へ戻す
         TransformCommand(std::uint32_t id,
-                         const NS::GameCore::Level::ObjectInstance& before,
-                         const NS::GameCore::Level::ObjectInstance& after) noexcept;
+                         const NS::Game::Level::ObjectInstance& before,
+                         const NS::Game::Level::ObjectInstance& after) noexcept;
 
-        void Do(NS::GameCore::Level::LevelData& level) noexcept override;
-        void Undo(NS::GameCore::Level::LevelData& level) noexcept override;
+        void Do(NS::Game::Level::LevelData& level) noexcept override;
+        void Undo(NS::Game::Level::LevelData& level) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override
         {
-            return sizeof(TransformCommand) + NS::GameCore::Level::EstimatedHeapBytes(m_before) +
-                   NS::GameCore::Level::EstimatedHeapBytes(m_after);
+            return sizeof(TransformCommand) + NS::Game::Level::EstimatedHeapBytes(m_before) +
+                   NS::Game::Level::EstimatedHeapBytes(m_after);
         }
 
     private:
         std::uint32_t m_id;
-        NS::GameCore::Level::ObjectInstance m_before;
-        NS::GameCore::Level::ObjectInstance m_after;
+        NS::Game::Level::ObjectInstance m_before;
+        NS::Game::Level::ObjectInstance m_after;
     };
 
 } // namespace NS::Editor

@@ -1,6 +1,6 @@
 #include "Framework/Graphics/DebugDraw.h"
 #include "Editor/EditorMode.h"
-#include "GameCore/Level/LevelData.h"
+#include "Game/Level/LevelData.h"
 
 #include <gtest/gtest.h>
 
@@ -8,7 +8,7 @@ namespace EditorNs = NS::Editor;
 
 TEST(CursorPreview, RendersAABBToDebugDrawWhenCursorValid)
 {
-    NS::GameCore::Level::LevelData lv;
+    NS::Game::Level::LevelData lv;
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
     editor.SetActive(true);
@@ -27,7 +27,7 @@ TEST(CursorPreview, RendersAABBToDebugDrawWhenCursorValid)
 
 TEST(CursorPreview, DoesNothingWhenCursorInvalid)
 {
-    NS::GameCore::Level::LevelData lv;
+    NS::Game::Level::LevelData lv;
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
     editor.SetActive(true);
@@ -44,7 +44,7 @@ TEST(CursorPreview, DoesNothingWhenCursorInvalid)
 
 TEST(CursorPreview, DoesNothingWhenInactive)
 {
-    NS::GameCore::Level::LevelData lv;
+    NS::Game::Level::LevelData lv;
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
     editor.SetActive(false);

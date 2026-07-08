@@ -1,7 +1,7 @@
 #include "Framework/Scene/SceneBase.h"
 #include "Framework/Scene/SceneManager.h"
-#include "GameCore/Level/PlayFlowComponent.h"
-#include "GameCore/LevelPlayScene.h"
+#include "Game/Level/PlayFlowComponent.h"
+#include "Game/LevelPlayScene.h"
 
 #include <gtest/gtest.h>
 

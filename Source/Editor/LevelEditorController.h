@@ -10,9 +10,9 @@
 
 #include "Editor/EditorMode.h"
 #include "Editor/GizmoEditor.h"
-#include "GameCore/Level/LevelData.h"
-#include "GameCore/Level/PlayState.h"
-#include "GameCore/Theme/ThemeId.h"
+#include "Game/Level/LevelData.h"
+#include "Game/Level/PlayState.h"
+#include "Game/Theme/ThemeId.h"
 
 namespace NS::Scene
 {
@@ -68,9 +68,9 @@ public:
 
     [[nodiscard]] NS::Editor::EditorMode& Editor() noexcept { return m_editor; }
     /// panel 利便のための pass-through。 編集対象の LevelData
-    [[nodiscard]] NS::GameCore::Level::LevelData& Level() noexcept;
+    [[nodiscard]] NS::Game::Level::LevelData& Level() noexcept;
     /// panel 利便のための pass-through。 一時的な PlayState
-    [[nodiscard]] NS::GameCore::Level::PlayState& Play() noexcept;
+    [[nodiscard]] NS::Game::Level::PlayState& Play() noexcept;
 
     /// ギズモ変形の Object ツールが有効か。 false はグリッド設置の Build
     [[nodiscard]] bool ObjectToolActive() const noexcept { return m_editorToolMode == EditorToolMode::Object; }
@@ -85,7 +85,7 @@ public:
     /// Inspector が編集 / 表示できる選択を持つか
     [[nodiscard]] bool HasInspectableSelection() const noexcept;
     /// Inspector 表示用に選択中 ObjectInstance のコピーを返す。 未選択は既定値
-    [[nodiscard]] NS::GameCore::Level::ObjectInstance SelectedObjectSnapshot() const noexcept;
+    [[nodiscard]] NS::Game::Level::ObjectInstance SelectedObjectSnapshot() const noexcept;
     /// 選択中の配置物の位置を設定する。 非選択時は何もしない
     void SetSelectedFreePosition(NS::Math::Vector3 position) noexcept;
     /// 選択中の配置物の回転を設定する。 非選択時は何もしない
@@ -146,7 +146,7 @@ public:
     void ReloadThemes();
 
     /// 雛形 id の視覚値をシーンの環境欄へ写し込む。 lighting / skybox は次フレームの設定写しで反映される
-    void ApplyTheme(NS::GameCore::Theme::ThemeId id);
+    void ApplyTheme(NS::Game::Theme::ThemeId id);
 
     /// 最後に scene が解決した scene 段設定。 RenderSettings パネルの表示元
     [[nodiscard]] const NS::Graphics::RenderSettings& DebugResolvedSettings() const noexcept
@@ -240,20 +240,20 @@ private:
     SpecialSelection m_specialSelection = SpecialSelection::None;
 
     // 選択の真実は永続 objectId。 rebuild / delete / undo を跨いでも生ポインタや添字に依存しない
-    std::uint32_t m_selectedObjectId = NS::GameCore::Level::kNoObjectId;
+    std::uint32_t m_selectedObjectId = NS::Game::Level::kNoObjectId;
     // id から毎フレーム解決する派生の添字。 m_level.objects 用で、 ズレても crash しない安定 vector を指す
-    std::size_t m_selectedObjectIndex = NS::GameCore::Level::kNoObjectIndex;
+    std::size_t m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
     // ビューポート由来のギズモ選択変化だけを index へ反映するための前フレーム値
     NS::Scene::Transform* m_lastGizmoSelected = nullptr;
 
     // コンポ単位 copy/paste の退避先。 型名 + 反射値を 1 つ保持する
-    std::optional<NS::GameCore::Level::ComponentData> m_componentClipboard;
+    std::optional<NS::Game::Level::ComponentData> m_componentClipboard;
 
     // ギズモドラッグ / Inspector パネルの変形編集を 1 undo 単位へ束ねる状態
     bool m_gizmoWasDragging = false;
     bool m_transformEditing = false;
-    std::uint32_t m_editBaselineId = NS::GameCore::Level::kNoObjectId;
-    NS::GameCore::Level::ObjectInstance m_editBaseline{};
+    std::uint32_t m_editBaselineId = NS::Game::Level::kNoObjectId;
+    NS::Game::Level::ObjectInstance m_editBaseline{};
 
     // Debug provenance パネルの読み出し元。 書き込みは Render で毎フレーム行う
     NS::Graphics::RenderSettings m_debugResolvedSettings{};

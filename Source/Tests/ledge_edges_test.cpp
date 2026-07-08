@@ -1,11 +1,11 @@
-#include "GameCore/Blocks/LedgeEdges.h"
+#include "Game/Blocks/LedgeEdges.h"
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <cmath>
 
-namespace BlocksNs = NS::GameCore::Blocks;
+namespace BlocksNs = NS::Game::Blocks;
 
 namespace
 {

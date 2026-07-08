@@ -1,6 +1,6 @@
 #include "Editor/PlayerTuningIO.h"
 
-#include "GameCore/PlayerTuning.h"
+#include "Game/PlayerTuning.h"
 
 #pragma warning(push, 0)
 #include "ThirdParty/nlohmann/json.hpp"

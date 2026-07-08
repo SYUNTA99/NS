@@ -10,7 +10,7 @@
 /// LevelData の変更を観測して再構築する責務で、 所有関係を分離する
 /// `EstimatedBytes()` は UndoStack が 50 MB cap を回すためのメモリ使用量見積り
 
-#include "GameCore/Level/LevelData.h"
+#include "Game/Level/LevelData.h"
 
 namespace NS::Editor
 {
@@ -25,8 +25,8 @@ namespace NS::Editor
         ICommand(ICommand&&) = delete;
         ICommand& operator=(ICommand&&) = delete;
 
-        virtual void Do(NS::GameCore::Level::LevelData& level) noexcept = 0;
-        virtual void Undo(NS::GameCore::Level::LevelData& level) noexcept = 0;
+        virtual void Do(NS::Game::Level::LevelData& level) noexcept = 0;
+        virtual void Undo(NS::Game::Level::LevelData& level) noexcept = 0;
 
         [[nodiscard]] virtual std::size_t EstimatedBytes() const noexcept = 0;
 

@@ -4,11 +4,11 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlayerTuningIO.h"
 #include "Framework/UI/ImGuiContext.h"
-#include "GameCore/Blocks/BuildPlacedObject.h"
-#include "GameCore/Game.h"
-#include "GameCore/Level/LevelData.h"
-#include "GameCore/Theme/ThemeId.h"
-#include "GameCore/Theme/ThemeRegistry.h"
+#include "Game/Blocks/BuildPlacedObject.h"
+#include "Game/Game.h"
+#include "Game/Level/LevelData.h"
+#include "Game/Theme/ThemeId.h"
+#include "Game/Theme/ThemeRegistry.h"
 
 #include <cstdio>
 
@@ -273,7 +273,7 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorController& editor) noexc
         ImGui::Separator();
 
         // シーンが所有する環境の直接編集。 lighting は毎フレームの設定写しで即反映されるので組み直し不要
-        NS::GameCore::Level::LevelEnvironment& env = editor.Level().environment;
+        NS::Game::Level::LevelEnvironment& env = editor.Level().environment;
         ImGui::TextUnformatted("環境 (このシーンが所有)");
         ImGui::DragFloat3("lightDir##env", &env.lightDirection.x, 0.01f, -1.0f, 1.0f);
         ImGui::DragFloat3("lightColor##env", &env.lightColor.x, 0.01f, 0.0f, 4.0f);
@@ -286,20 +286,20 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorController& editor) noexc
         ImGui::Separator();
 
         // 雛形の適用。 選んだテーマの視覚値を environment へ写し込み slice 帯を焼き直す
-        constexpr NS::GameCore::Theme::ThemeId kThemeIds[] = {
-            NS::GameCore::Theme::ThemeId::Grass,
-            NS::GameCore::Theme::ThemeId::Cave,
-            NS::GameCore::Theme::ThemeId::Snow,
-            NS::GameCore::Theme::ThemeId::Lava,
-            NS::GameCore::Theme::ThemeId::Sky,
+        constexpr NS::Game::Theme::ThemeId kThemeIds[] = {
+            NS::Game::Theme::ThemeId::Grass,
+            NS::Game::Theme::ThemeId::Cave,
+            NS::Game::Theme::ThemeId::Snow,
+            NS::Game::Theme::ThemeId::Lava,
+            NS::Game::Theme::ThemeId::Sky,
         };
         static int s_themeIndex = 0;
-        if (ImGui::BeginCombo("雛形##theme", NS::GameCore::Theme::Get(kThemeIds[s_themeIndex]).displayName.c_str()))
+        if (ImGui::BeginCombo("雛形##theme", NS::Game::Theme::Get(kThemeIds[s_themeIndex]).displayName.c_str()))
         {
-            for (int i = 0; i < static_cast<int>(NS::GameCore::Theme::ThemeId::Count); ++i)
+            for (int i = 0; i < static_cast<int>(NS::Game::Theme::ThemeId::Count); ++i)
             {
                 const bool selected = (i == s_themeIndex);
-                if (ImGui::Selectable(NS::GameCore::Theme::Get(kThemeIds[i]).displayName.c_str(), selected))
+                if (ImGui::Selectable(NS::Game::Theme::Get(kThemeIds[i]).displayName.c_str(), selected))
                     s_themeIndex = i;
                 if (selected)
                     ImGui::SetItemDefaultFocus();
@@ -363,8 +363,8 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorController& editor) noexcept
 
         for (std::size_t i = 0; i < objects.size(); ++i)
         {
-            const NS::GameCore::Level::ObjectInstance& object = objects[i];
-            const char* name = NS::GameCore::Blocks::ObjectDisplayName(object);
+            const NS::Game::Level::ObjectInstance& object = objects[i];
+            const char* name = NS::Game::Blocks::ObjectDisplayName(object);
 
             char label[96];
             std::snprintf(label, sizeof(label), "[%zu] %s", i, name);
@@ -397,13 +397,13 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
         refOptions.reserve(editor.Level().objects.size());
         for (std::size_t i = 0; i < editor.Level().objects.size(); ++i)
         {
-            const NS::GameCore::Level::ObjectInstance& candidate = editor.Level().objects[i];
+            const NS::Game::Level::ObjectInstance& candidate = editor.Level().objects[i];
             char label[96];
             std::snprintf(label,
                           sizeof(label),
                           "[%zu] %s (id %u)",
                           i,
-                          NS::GameCore::Blocks::ObjectDisplayName(candidate),
+                          NS::Game::Blocks::ObjectDisplayName(candidate),
                           candidate.objectId);
             refOptions.push_back(NS::Editor::ObjectRefOption{candidate.objectId, label});
         }
@@ -434,8 +434,8 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             return;
         }
 
-        const NS::GameCore::Level::ObjectInstance obj = editor.SelectedObjectSnapshot();
-        ImGui::Text("[%zu] %s", editor.SelectedObjectIndex(), NS::GameCore::Blocks::ObjectDisplayName(obj));
+        const NS::Game::Level::ObjectInstance obj = editor.SelectedObjectSnapshot();
+        ImGui::Text("[%zu] %s", editor.SelectedObjectIndex(), NS::Game::Blocks::ObjectDisplayName(obj));
         ImGui::Separator();
 
         // Transform は runtime が真実の源なので即反映し、 SyncFreeObjectTransforms が永続化する

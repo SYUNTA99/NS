@@ -6,10 +6,10 @@
 #include <Framework/Scene/Components/SphereColliderComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/ReflectionJson.h>
-#include <GameCore/Blocks/BuildPlacedObject.h>
-#include <GameCore/Level/LevelData.h>
-#include <GameCore/Player.h>
-#include <GameCore/PlayerTuning.h>
+#include <Game/Blocks/BuildPlacedObject.h>
+#include <Game/Level/LevelData.h>
+#include <Game/Player.h>
+#include <Game/PlayerTuning.h>
 
 #include <cstddef>
 #include <filesystem>
@@ -18,7 +18,7 @@
 #include <variant>
 #include <vector>
 
-namespace LevelNs = NS::GameCore::Level;
+namespace LevelNs = NS::Game::Level;
 
 namespace
 {
@@ -35,7 +35,7 @@ namespace
     {
         NS::Scene::AssetManager assets{std::filesystem::path{"."}};
         const std::vector<std::string> materialPaths;
-        return NS::GameCore::Blocks::BuildPlacedObject(data, assets, materialPaths);
+        return NS::Game::Blocks::BuildPlacedObject(data, assets, materialPaths);
     }
 
     const LevelNs::FieldValue* FindPlayerField(const LevelNs::ObjectInstance& player,
