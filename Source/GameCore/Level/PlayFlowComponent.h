@@ -6,7 +6,6 @@
 /// @details 依存はコンストラクタで受け取らず、 所有 GameObject の scene を LevelPlayScene として
 /// 解決して player / camera / level を読む。 編集モード中は SetActive(false) で寝かせて止める
 
-#include "Framework/Scene/Component.h"
 #include "GameCore/Level/PlayMode.h"
 #include "GameCore/Level/PlayState.h"
 

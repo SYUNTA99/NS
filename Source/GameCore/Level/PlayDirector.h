@@ -3,7 +3,6 @@
 /// @file PlayDirector.h
 /// @brief プレイ進行役の GameObject。 進行の振る舞いは配下 Component が担う
 
-#include "Framework/Scene/GameObject.h"
 #include "GameCore/Level/ClearFadeComponent.h"
 #include "GameCore/Level/PlayFlowComponent.h"
 

@@ -15,12 +15,6 @@
 #include <d3dcompiler.h>
 
 #include <algorithm>
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
-#include <string>
-#include <utility>
-#include <vector>
 
 namespace NS::Graphics
 {

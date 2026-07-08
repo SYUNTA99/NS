@@ -14,17 +14,7 @@
 #include "cgltf.h"
 #pragma warning(pop)
 
-#include <array>
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
-#include <functional>
-#include <optional>
-#include <string>
-#include <unordered_map>
 #include <unordered_set>
-#include <utility>
-#include <vector>
 
 namespace NS::Graphics
 {

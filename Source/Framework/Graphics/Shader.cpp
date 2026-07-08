@@ -10,11 +10,7 @@
 
 #include <d3dcompiler.h>
 
-#include <cstddef>
 #include <filesystem>
-#include <span>
-#include <string>
-#include <string_view>
 
 namespace NS::Graphics
 {

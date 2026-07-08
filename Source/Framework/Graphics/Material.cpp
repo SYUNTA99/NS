@@ -13,7 +13,6 @@
 #include "Framework/Core/Logger.h"
 
 #include <map>
-#include <utility>
 
 namespace NS::Graphics
 {

@@ -6,7 +6,6 @@
 /// @details Component ではなく自由関数として NS::Editor 直下に置く。 出荷ビルドに載らない
 /// editor 専用の計算で、 マウスの ray 化と grid snap、 回転値の quaternion 変換を担う
 
-#include "Framework/Math/Math.h"
 
 #include <cstdint>
 

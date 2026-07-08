@@ -3,8 +3,6 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 
-#include <utility>
-
 namespace NS::Graphics
 {
     namespace

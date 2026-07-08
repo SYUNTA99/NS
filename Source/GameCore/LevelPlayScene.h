@@ -11,7 +11,6 @@
 /// free-fly カメラ / モード切替の編集は scene の外側、 `LevelEditorController` が公開 API と
 /// LevelData 経由で本 scene を操作して実現する。 scene 自身は「編集されている」ことを知らない
 
-#include "Framework/Scene/SceneBase.h"
 #include "GameCore/Level/LevelData.h"
 #include "GameCore/Level/LevelWorld.h"
 #include "GameCore/Level/PlayDirector.h"

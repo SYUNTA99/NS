@@ -9,9 +9,6 @@
 /// `ComputeCrc32()` は field 単位の明示 update なので vector capacity 等の内部 padding
 /// に依存せず、 同一データに対して常に同じ値を返す
 
-#include "Framework/Math/Math.h"
-#include "Framework/Scene/ObjectRef.h"
-
 #include <cstddef>
 #include <cstdint>
 #include <string>

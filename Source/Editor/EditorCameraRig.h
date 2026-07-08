@@ -8,8 +8,6 @@
 /// レベル側の追従カメラ配置物と並列に LevelEditorController が所有し、
 /// mode toggle で active な側を切替える
 
-#include "Framework/Scene/Components/EditorCameraComponent.h"
-#include "Framework/Scene/GameObject.h"
 
 class EditorCameraRig : public NS::Scene::GameObject
 {

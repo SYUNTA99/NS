@@ -8,8 +8,6 @@
 #include <filesystem>
 #include <string>
 
-#include "Framework/Math/Math.h"
-
 namespace NS::GameCore::Theme
 {
 

@@ -11,7 +11,6 @@
 /// GameDebug / GameRelease では CreateApplication が本 Layer を AddOverlay しないため、
 /// 編集 UI が shipping ビルドに紛れ込まない。起動 scene は LevelPlayScene のまま
 
-#include "Framework/App/Layer.h"
 
 #include <filesystem>
 #include <memory>

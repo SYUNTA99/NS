@@ -12,8 +12,6 @@
 #include <WICTextureLoader.h>
 
 #include <algorithm>
-#include <cstdint>
-#include <string>
 
 namespace NS::Graphics
 {

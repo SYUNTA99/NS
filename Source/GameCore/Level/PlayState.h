@@ -7,8 +7,6 @@
 /// LevelData を書き換える」 経路をコンパイル時に排除する。 PlayMode は
 /// `const LevelData&` と `PlayState&` を分けて受け取る
 
-#include "Framework/Math/Math.h"
-
 #include <cstdint>
 
 namespace NS::GameCore::Level

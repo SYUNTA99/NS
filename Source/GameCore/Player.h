@@ -1,10 +1,5 @@
 #pragma once
 
-#include "Framework/Scene/Components/CharacterMovementComponent.h"
-#include "Framework/Scene/Components/MeshRendererComponent.h"
-#include "Framework/Scene/Components/PlayerInputComponent.h"
-#include "Framework/Scene/Components/ShadowComponent.h"
-#include "Framework/Scene/GameObject.h"
 
 /// プレイヤーキャラクタ。 Mesh / Movement / Input / Shadow の既定構成をコードで組み、
 /// 値と追加の component は player object のデータからファクトリが写す

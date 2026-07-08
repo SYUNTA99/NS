@@ -3,7 +3,6 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 
-#include <array>
 #include <fstream>
 #include <sstream>
 #include <system_error>

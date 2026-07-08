@@ -11,8 +11,6 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 
-#include <cstring>
-
 namespace NS::Graphics
 {
     namespace

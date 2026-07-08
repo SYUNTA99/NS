@@ -10,8 +10,6 @@
 
 #include "Editor/EditorMode.h"
 #include "Editor/GizmoEditor.h"
-#include "Framework/Graphics/RenderSettings.h"
-#include "Framework/Math/Math.h"
 #include "GameCore/Level/LevelData.h"
 #include "GameCore/Level/PlayState.h"
 #include "GameCore/Theme/ThemeId.h"

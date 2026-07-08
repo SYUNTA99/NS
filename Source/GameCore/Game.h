@@ -7,8 +7,6 @@
 /// 現時点では SceneManager へのパス・スルーのみだが、
 /// クロス scene の共有状態として設定 / セーブデータを持つ場所になる
 
-#include "Framework/App/Layer.h"
-#include "Framework/Scene/SceneManager.h"
 
 class LevelPlayScene;
 

@@ -14,9 +14,6 @@
 #include "Framework/Core/Logger.h"
 
 #include <cmath>
-#include <cstddef>
-#include <memory>
-#include <vector>
 
 namespace
 {

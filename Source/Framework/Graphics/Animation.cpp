@@ -1,7 +1,6 @@
 #include "Framework/Graphics/Animation.h"
 
 #include <algorithm>
-#include <cstddef>
 
 namespace NS::Graphics
 {

@@ -7,7 +7,6 @@
 #include <Xinput.h>
 
 #include <cmath>
-#include <cstdint>
 
 namespace NS::Platform
 {

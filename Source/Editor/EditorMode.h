@@ -11,7 +11,6 @@
 #include "Editor/CategoryPalette.h"
 #include "Editor/LevelFileBrowser.h"
 #include "Editor/Undo/UndoStack.h"
-#include "Framework/Math/Math.h"
 
 #include <cstdint>
 #include <string>

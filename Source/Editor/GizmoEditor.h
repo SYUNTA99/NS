@@ -10,8 +10,6 @@
 /// grid 系の UndoStack とは別の TransformHistory で持ち、入力はツールモードで grid 系と排他にする
 /// 依存: NS::Math, NS::Scene::Transform / GameObject, NS::Platform::Input / Key, NS::UI::ImGuiContext
 
-#include "Framework/Math/Math.h"
-#include "Framework/Platform/Keyboard.h"
 
 #include <cstddef>
 #include <cstdint>

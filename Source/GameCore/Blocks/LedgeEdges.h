@@ -7,9 +7,6 @@
 /// 真上を塞がれず側方へ同じ高さの固形が接していない辺を線分にする。 コヨーテタイムが効く境界の debug 可視化に使う
 /// OBB を入力に取ることで配置物の位置・スケール・回転にそのまま追従し、 セルや軸並行を前提しない
 
-#include "Framework/Math/Math.h"
-#include "Framework/Physics/SweptOBB.h"
-
 #include <vector>
 
 namespace NS::GameCore::Blocks
