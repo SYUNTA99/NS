@@ -20,7 +20,7 @@ namespace NS::Scene
         /// 半径を指定して構築する。 負は 0 にクランプ
         explicit SphereColliderComponent(float radius) noexcept;
 
-        /// 半径を設定 / 取得する。 負は 0 にクランプ
+        /// 負は 0 にクランプ
         void SetRadius(float radius) noexcept;
         [[nodiscard]] float Radius() const noexcept;
 

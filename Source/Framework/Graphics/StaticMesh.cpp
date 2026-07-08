@@ -21,7 +21,6 @@ namespace NS::Graphics
         // fallback Cube は player と大きさを揃えた 1m 立方、 default Cube として描画
         constexpr float kFallbackCubeHalfExtent = 0.5f;
 
-        // 生の頂点 / index から VB + IB を構築。 両方 valid なら true を返し out に move する
         bool BuildBuffers(const StaticVertex* vertices,
                           std::size_t vertexCount,
                           const std::uint32_t* indices,

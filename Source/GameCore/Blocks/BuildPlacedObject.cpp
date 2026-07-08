@@ -50,7 +50,7 @@ namespace NS::GameCore::Blocks
             return material;
         }
 
-        // player / water / shadow の共有 material 名なら true。 これ以外 (旧 block 含む) は .mat パス /
+        // player / water / shadow の共有 material 名なら true、 それ以外は旧 block 含め .mat パス /
         // 既定の自由材質へ倒す
         bool IsSharedMaterialName(const std::string& ref) noexcept
         {
@@ -104,7 +104,7 @@ namespace NS::GameCore::Blocks
                     mesh->SetMaterial(IsSharedMaterialName(matRef)
                                           ? assets.SharedMaterial(matRef)
                                           : ResolveFreeMaterial(object, assets, materialPaths));
-                    // メッシュ参照を解決し、 空 / 解決不可なら cube へ倒す。 移行済データは必ず参照を持つ
+                    // 移行済データは必ず参照を持つ
                     NS::Graphics::Mesh* resolved =
                         mesh->MeshRef().empty() ? nullptr : ResolveMeshFromRef(assets, mesh->MeshRef());
                     mesh->SetMesh(resolved != nullptr ? resolved : assets.Builtin("cube"));
@@ -143,7 +143,6 @@ namespace NS::GameCore::Blocks
                                       NS::GameCore::Level::FieldValue{"Base Color", baseColor}});
         }
 
-        // object が指定 typeName の component を持つか
         bool HasComponentType(const NS::GameCore::Level::ObjectInstance& object, const char* typeName) noexcept
         {
             return NS::GameCore::Level::FindComponentData(object, typeName) != nullptr;

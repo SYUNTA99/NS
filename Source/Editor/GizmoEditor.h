@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file GizmoEditor.h
-/// @brief NS::Editor::GizmoEditor — Object モードの選択 + Maya 風変形ギズモ
+/// @brief NS::Editor::GizmoEditor — Object モードの選択 + 変形ギズモ
 ///
 /// @details LevelData に属さない自由 Transform オブジェクトを Q/W/E/R の 4 ツールで
 /// 選択・移動・回転・スケールする。変形軸は選択物の local 座標系に追従し、ハンドルの向き・

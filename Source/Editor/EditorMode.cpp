@@ -214,7 +214,6 @@ namespace NS::Editor
         NS::Graphics::DebugDraw::AABB(placeBox, m_cursor.placementBlocked ? kCursorBlockedColor : kCursorOkColor);
 
 #if NS_EDITOR_ENABLED
-        // ImGui の background DrawList に 8 頂点を view-projection で screen 投影して 12 辺を線描画する
         if (m_camera == nullptr)
             return;
         auto* app = NS::App::Application::Get();
@@ -234,7 +233,7 @@ namespace NS::Editor
         if (dl == nullptr)
             return;
 
-        // world -> screen 投影。 clip.w<=0 のカメラ背後は描画しない
+        // clip.w<=0 はカメラ背後なので描画しない
         const auto project = [&](const NS::Math::Vector3& world, ImVec2& out) -> bool {
             const NS::Math::Vector4 worldH{world.x, world.y, world.z, 1.0f};
             const NS::Math::Vector4 clip = NS::Math::Vector4::Transform(worldH, vp);

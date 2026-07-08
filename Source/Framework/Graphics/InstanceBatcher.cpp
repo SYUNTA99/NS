@@ -31,7 +31,7 @@ namespace NS::Graphics
         // 5x safety で 5000 まで確保しておく。 超えた場合は描画 skip + ERROR ログ
         constexpr std::size_t kInitialPerBucketCapacity = 5000;
 
-        // .hlsl をオンメモリ compile して bytecode blob を返す。 entryPoint / target は VS / PS 両用
+        // entryPoint / target を差し替えて VS / PS 両方のコンパイルに使う
         [[nodiscard]] bool CompileHlsl(const std::filesystem::path& path,
                                        const char* entryPoint,
                                        const char* target,
@@ -257,7 +257,7 @@ namespace NS::Graphics
         const bool canDraw = m_valid && !m_countOnlyMode;
         auto* context = Gpu().context;
 
-        // ブロックは不透明。描画する者が自分の Pipeline を set する不変条件で、前 submitter の残留 state を断つ
+        // block は不透明固定、前の描画者が残した state を断つため毎回 Pipeline を set し直す
         if (canDraw && context != nullptr)
             renderer.Commands().SetPipeline(renderer.CommonPipeline(BlendMode::Opaque));
 

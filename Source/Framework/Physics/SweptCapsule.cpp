@@ -31,7 +31,6 @@ namespace
         return Vector3{axis.x * inv, axis.y * inv, axis.z * inv};
     }
 
-    /// 線分 [a,b] 上で点 p に最も近い点を返す
     [[nodiscard]] Vector3 ClosestOnSegment(const Vector3& p, const Vector3& a, const Vector3& b) noexcept
     {
         const Vector3 ab = b - a;

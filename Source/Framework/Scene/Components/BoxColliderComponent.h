@@ -21,10 +21,8 @@ namespace NS::Scene
         /// halfExtents を指定して構築する。 ClampNonNegative で負を 0 にクランプ
         explicit BoxColliderComponent(const NS::Math::Vector3& halfExtents) noexcept;
 
-        /// 半サイズを設定
         void SetHalfExtents(const NS::Math::Vector3& halfExtents) noexcept;
 
-        /// 現在の半サイズ
         [[nodiscard]] NS::Math::Vector3 HalfExtents() const noexcept;
 
         /// owner local 空間での中心オフセットを設定 / 取得する。 当たり箱を視覚と独立にずらすのに使う

@@ -23,7 +23,7 @@ namespace NS::Platform
         }
 
         /// MouseButton 用の境界チェック。Key と同じ理由で必要
-        /// MouseButton::Left = 0 始まりなので i >= 0 && i < Count で判定
+        /// MouseButton は 0 始まりで Unknown が無いため上限のみ判定する
         [[nodiscard]] constexpr bool IsValidButton(MouseButton b) noexcept
         {
             const auto i = static_cast<std::size_t>(b);

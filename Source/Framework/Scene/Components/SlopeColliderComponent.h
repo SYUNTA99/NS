@@ -26,9 +26,7 @@ namespace NS::Scene
         /// @param halfExtents      wedge の半サイズ。 デフォルトは 1m cell に合わせた 0.5・0.5・0.5
         SlopeColliderComponent(float angleDegrees, const NS::Math::Vector3& halfExtents) noexcept;
 
-        /// 角度を度数法で返す
         [[nodiscard]] float AngleDegrees() const noexcept { return m_angleDegrees; }
-        /// 半サイズ
         [[nodiscard]] NS::Math::Vector3 HalfExtents() const noexcept { return m_halfExtents; }
 
         /// world 座標の wedge 三角形 8 個、 内訳は斜面2・底2・裏壁2・側面各1。 Owner 未登録なら local 座標版

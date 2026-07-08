@@ -191,7 +191,6 @@ namespace NS::Scene
             return;
         }
 
-        // 通常の Walking / Jumping / Falling: 既存の物理ロジック
         if (m_ledgeRegrabCooldown > 0.0f)
             m_ledgeRegrabCooldown -= dt;
 

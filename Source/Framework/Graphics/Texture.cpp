@@ -56,7 +56,7 @@ namespace NS::Graphics
             return ::NS::Math::Size2D{static_cast<int>(d.Width), static_cast<int>(d.Height)};
         }
 
-        // bindFlags に応じて要求された view だけを生成する。 失敗した view は致命ではないので null のまま
+        // 失敗した view は致命ではないので null のまま
         void CreateRequestedViews(ID3D11Device* device,
                                   ID3D11Texture2D* tex2d,
                                   UINT bindFlags,

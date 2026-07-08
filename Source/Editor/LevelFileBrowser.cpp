@@ -59,7 +59,6 @@ namespace NS::Editor
 #if NS_EDITOR_ENABLED
         if (m_saveModalOpen)
         {
-            // 中央寄せの auto-resize modal。 input + Save / Cancel + 直前結果 message
             const auto vp = ImGui::GetMainViewport();
             if (vp != nullptr)
             {

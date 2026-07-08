@@ -3,9 +3,7 @@
 /// @file CommonStates.h
 /// @brief NS::Graphics::CommonStates — DirectXTK CommonStates のラッパ
 ///
-/// @details 公開セットは Blend 2 / Depth 2 / Rasterizer 2 / Sampler 4 の 10 getter
-/// 戻り値は型付き D3D11 state ポインタを直接返し、 Material 等の利用側はキャスト無しで
-/// そのまま bind する。 構築は friend である `Renderer` のみが行い、 外部から直接コンストラクタは呼べない
+/// @details 構築は friend である `Renderer` のみが行い、外部から直接コンストラクタは呼べない
 
 #include <memory>
 

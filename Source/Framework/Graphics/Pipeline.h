@@ -25,14 +25,13 @@ namespace NS::Graphics
         Front
     };
 
-    /// 塗りつぶし方式
     enum class FillMode
     {
         Solid,
         Wireframe
     };
 
-    /// ブレンド方式。Alpha は通常半透明、Additive は加算合成
+    /// Alpha は半透明、Additive は加算合成
     enum class BlendMode
     {
         Opaque,
@@ -40,7 +39,7 @@ namespace NS::Graphics
         Additive
     };
 
-    /// 深度の扱い。ReadOnly は比較 LESS_EQUAL + 書込 OFF で z=1 張り付きの skybox / 半透明用
+    /// ReadOnly は比較 LESS_EQUAL + 書込 OFF で z=1 張り付きの skybox / 半透明用
     enum class DepthMode
     {
         ReadWrite,

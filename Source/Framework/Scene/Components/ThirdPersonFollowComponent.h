@@ -20,7 +20,6 @@ namespace NS::Scene
     class ThirdPersonFollowComponent : public VirtualCameraComponent
     {
     public:
-        /// target を受け取って構築する
         explicit ThirdPersonFollowComponent(Transform* target) noexcept;
 
         void SetTarget(Transform* target) noexcept;
@@ -37,7 +36,7 @@ namespace NS::Scene
         void SetMovement(const CharacterMovementComponent* movement) noexcept;
         [[nodiscard]] const CharacterMovementComponent* Movement() const noexcept { return m_movement; }
 
-        /// 設定。将来 Settings UI から bridge する
+        /// 将来 Settings UI から bridge する
         void SetSensX(float radPerPixel) noexcept;
         [[nodiscard]] float SensX() const noexcept { return m_sensX; }
         void SetSensY(float radPerPixel) noexcept;
@@ -73,8 +72,7 @@ namespace NS::Scene
         /// fixed step で yaw/pitch・distance spring を更新。最終姿勢は EvaluatePose が返してガタつきを避ける
         void OnUpdate() override;
 
-        /// alpha で補間した target を追う最終姿勢を返す。Brain が選択時に実カメラへ書く。旧 ApplyCameraTransform
-        /// に相当する
+        /// alpha で補間した target を追う最終姿勢を返す。Brain が選択時に実カメラへ書く
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
         // 追従カメラの感触を Inspector へ公開する。 毎フレーム読まれるのでライブで効く

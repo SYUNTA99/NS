@@ -20,15 +20,15 @@ namespace NS::Scene
         /// 半径 / 半高を指定して構築する。 負は最小値にクランプ
         CapsuleColliderComponent(float radius, float halfHeight) noexcept;
 
-        /// 半径を設定 / 取得する。 負は 0 にクランプ
+        /// 負は 0 にクランプ
         void SetRadius(float radius) noexcept;
         [[nodiscard]] float Radius() const noexcept;
 
-        /// 芯の半分の長さ、 すなわち半球を除く円柱部の半長を設定 / 取得する。 負は 0 にクランプ
+        /// 芯の半分の長さ、 半球を除く円柱部の半長。 負は 0 にクランプ
         void SetHalfHeight(float halfHeight) noexcept;
         [[nodiscard]] float HalfHeight() const noexcept;
 
-        /// owner local 空間での中心オフセットを設定 / 取得する
+        /// owner local 空間での中心オフセット
         void SetCenterOffset(const NS::Math::Vector3& offset) noexcept;
         [[nodiscard]] NS::Math::Vector3 CenterOffset() const noexcept;
 

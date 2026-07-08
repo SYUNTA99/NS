@@ -15,7 +15,7 @@ namespace NS::Editor
         m_undoBytes += bytes;
         m_undo.push_back(std::move(cmd));
 
-        // branch on edit: 編集が走った瞬間に redo 履歴は無効になる
+        // 編集が走った瞬間に redo 履歴は無効になる
         m_redo.clear();
         m_redoBytes = 0;
 

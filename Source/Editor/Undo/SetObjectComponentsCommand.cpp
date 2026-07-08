@@ -16,7 +16,7 @@ namespace NS::Editor
         if (index == NS::GameCore::Level::kNoObjectIndex)
             return;
         std::vector<NS::GameCore::Level::ComponentData>& components = level.objects[index].components;
-        m_oldComponents = components; // 置換前を退避してから差し替える
+        m_oldComponents = components;
         components = m_newComponents;
     }
 

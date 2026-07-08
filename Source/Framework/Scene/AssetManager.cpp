@@ -37,7 +37,7 @@ namespace NS::Scene
         constexpr const char* kSharedWater = "water";
         constexpr const char* kSharedShadow = "shadow";
 
-        // MeshGeometry を MeshDesc へ詰めて StaticMesh を生成する。 geom はこの呼出中のみ参照される
+        // geom はこの呼出中のみ参照される
         [[nodiscard]] std::unique_ptr<NS::Graphics::StaticMesh> MakeStaticMesh(const NS::Graphics::MeshGeometry& geom)
         {
             NS::Graphics::MeshDesc desc{};
@@ -73,7 +73,6 @@ namespace NS::Scene
             return false;
         }
 
-        // vs / ps は必須。 これが無いと Material を作れない
         if (!j.contains("vs") || !j["vs"].is_string() || !j.contains("ps") || !j["ps"].is_string())
         {
             outError = "vs / ps (string) が必要";
@@ -149,7 +148,6 @@ namespace NS::Scene
         if (const auto it = m_meshes.find(key); it != m_meshes.end())
             return it->second.get();
 
-        // 静的 glTF を読み StaticMesh を生成して path 鍵で dedupe 所有する
         const NS::Graphics::MeshGeometry geom = NS::Graphics::LoadGltfMesh(key.string());
         if (geom.vertices.empty() || geom.indices.empty())
         {

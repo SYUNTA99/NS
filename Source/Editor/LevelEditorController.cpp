@@ -98,7 +98,6 @@ namespace
     // 近距離は基準半径を下限に据え、 遠距離だけ伸ばす
     [[nodiscard]] float CameraMarkerHalf(const NS::Math::Vector3& center, const NS::Math::Matrix& vp) noexcept
     {
-        // 基準半径。 遠いカメラほど深度に比例して伸ばし、 近距離はこの値を下限に据える
         const float baseHalf = 0.3f;
         const NS::Math::Vector4 clip =
             NS::Math::Vector4::Transform(NS::Math::Vector4{center.x, center.y, center.z, 1.0f}, vp);
@@ -146,7 +145,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_imgui = imgui;
 
     // 編集モード専用の free-fly カメラを Player / follow camera と並列で立ち上げる
-    // MB64 の freecam に相当し mouse + gamepad で Orbit / Pan / Zoom する
+    // mouse + gamepad で Orbit / Pan / Zoom する
     m_editorCameraRig = std::make_unique<EditorCameraRig>();
     m_editorCameraRig->AttachScene(m_scene);
 
@@ -174,7 +173,6 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     if (Brain())
         Brain()->AddVirtualCamera(&m_editorCameraRig->EditorCam());
 
-    // EditorMode に依存先を注入する
     m_editor.SetLevel(&m_scene->Level());
     m_editor.SetInput(&app->Input());
     m_editor.SetImGui(imgui);
@@ -285,7 +283,6 @@ void LevelEditorController::TickEdit()
         return;
     }
 
-    // free-fly camera を駆動
     if (m_editorCameraRig)
     {
         m_editorCameraRig->Root().Snapshot();
@@ -580,7 +577,7 @@ void LevelEditorController::SyncFollowCameraPoses()
 
 void LevelEditorController::ApplyFollowCameraGizmoDrag()
 {
-    // ドラッグ中の追従カメラは、 gizmo が動かした Root 位置から初期姿勢 (yaw/pitch/距離) を逆算して data へ書き戻す
+    // ドラッグ中の追従カメラは、 gizmo が動かした Root 位置から初期姿勢の yaw/pitch/距離を逆算して data へ書き戻す
     // 位置は初期姿勢由来なので SyncFreeObjectTransforms でなくここで components 経由に保存する
     if (!m_gizmo.IsDragging())
         return;
@@ -709,7 +706,7 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
     {
         m_selectedObjectId = NS::GameCore::Level::kNoObjectId;
         m_selectedObjectIndex = NS::GameCore::Level::kNoObjectIndex;
-        // ギズモが外れた (空クリック等) ら特殊選択も解除し、 再貼り付けで掴み続けないようにする
+        // ギズモが空クリック等で外れたら特殊選択も解除し、 再貼り付けで掴み続けないようにする
         m_specialSelection = SpecialSelection::None;
         return;
     }
@@ -888,8 +885,8 @@ void LevelEditorController::RemoveComponentFromSelected(std::size_t componentInd
     if (objectIndex == NS::GameCore::Level::kNoObjectIndex)
         return;
 
-    // 空構成は build で消えるゴーストになるので最後の 1 個 / 範囲外は消さない。 no-op command を積まず undo
-    // 履歴も汚さない
+    // 空構成は build で消えるゴーストになるので最後の 1 個 / 範囲外は消さない。 何もしないコマンドを積まず
+    // undo 履歴も汚さない
     const std::vector<NS::GameCore::Level::ComponentData>& components =
         m_scene->Level().objects[objectIndex].components;
     if (componentIndex >= components.size() || components.size() <= 1)
@@ -1065,7 +1062,6 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
     if (selected == nullptr)
         return false;
 
-    // ギズモ選択の Transform を持つ配置物を探す
     std::size_t slot = m_scene->World().Objects().size();
     for (std::size_t i = 0; i < m_scene->World().Objects().size(); ++i)
     {

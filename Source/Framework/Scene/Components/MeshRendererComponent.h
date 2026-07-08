@@ -64,19 +64,19 @@ namespace NS::Scene
 
         /// 描くメッシュの参照。 builtin 名または ContentRoot 配下の相対パス。 空なら build が kind から解決する
         [[nodiscard]] const std::string& MeshRef() const noexcept { return m_meshRef; }
-        /// 描くメッシュの参照を設定する。 build 時にこの文字列から mesh を解決する
+        /// build 時にこの文字列から mesh を解決する
         void SetMeshRef(std::string ref) noexcept { m_meshRef = std::move(ref); }
 
         /// 描画 material の参照。 player / block / water / shadow といった共有 material 名または .mat 相対パス
         /// 空なら build が materialIndex / 既定 material へ倒す
         [[nodiscard]] const std::string& MaterialRef() const noexcept { return m_materialRef; }
-        /// 描画 material の参照を設定する。 build 時にこの文字列から material を解決する
+        /// build 時にこの文字列から material を解決する
         void SetMaterialRef(std::string ref) noexcept { m_materialRef = std::move(ref); }
 
         /// 個体段の lighting 上書き。空なら scene 解決値の ctx.resolvedSettings がそのまま使われる
         /// 描画時に Resolve(ctx.resolvedSettings, m_objectOverride) で個体段を解決する
         void SetRenderOverride(const NS::Graphics::RenderSettingsOverride& over) noexcept { m_objectOverride = over; }
-        /// 現在の個体段 override を返す。 出所表示や編集に使う
+        /// 出所表示や編集に使う
         [[nodiscard]] const NS::Graphics::RenderSettingsOverride& RenderOverride() const noexcept
         {
             return m_objectOverride;
@@ -98,7 +98,7 @@ namespace NS::Scene
         /// Owner の OwningScene から self を解除する。無効ポインタを残さないよう SceneBase 破棄前に呼ぶ
         void OnEndPlay() override;
 
-        // 個体色とメッシュ / material 参照を Inspector へ公開する。 lighting とは別系統の個体色 + 描く住み処
+        // lighting とは別系統の個体色 + 描く住み処
         NS_REFLECT_BEGIN(MeshRendererComponent, Component)
         NS_REFLECT_FIELD(m_baseColor, "Base Color")
         NS_REFLECT_FIELD(m_meshRef, "Mesh")

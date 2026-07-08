@@ -12,20 +12,20 @@ namespace NS::Editor
         static const std::array<PaletteTemplate, kPaletteSlotCount> slots = []() {
             std::array<PaletteTemplate, kPaletteSlotCount> result{};
 
-            // slot0: grid に置く素の cube。 回転可否は組み上がった component から導く
+            // slot0: grid に置く素の cube
             NS::GameCore::Level::ObjectInstance cube = NS::GameCore::Level::MakeCellObject(0, 0, 0, 0);
             result[0].name = "Cube";
             result[0].rotatable = NS::GameCore::Blocks::IsRotatableObject(cube);
             result[0].prototype = std::move(cube);
 
-            // slot1: 45 度スロープ。 grid セルへ楔メッシュ + SlopeCollider を載せ、 向きは R で回せる
+            // slot1: 45 度スロープ、 向きは R で回せる
             NS::GameCore::Level::ObjectInstance slope = NS::GameCore::Level::MakeCellObject(0, 0, 0, 0);
             slope.components = NS::GameCore::Blocks::MakeCellSlopeComponents(45.0f);
             result[1].name = "Slope 45";
             result[1].rotatable = NS::GameCore::Blocks::IsRotatableObject(slope);
             result[1].prototype = std::move(slope);
 
-            // slot2: ゴール。 接触でレベルクリアになる pickup。 向きは無関係なので回転不可
+            // slot2: ゴール、 接触でレベルクリアになる pickup
             NS::GameCore::Level::ObjectInstance goal = NS::GameCore::Level::MakeCellObject(0, 0, 0, 0);
             goal.components = NS::GameCore::Blocks::MakeGoalComponents();
             result[2].name = "Goal";

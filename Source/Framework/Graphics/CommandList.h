@@ -3,13 +3,9 @@
 /// @file CommandList.h
 /// @brief NS::Graphics::CommandList — ID3D11DeviceContext の薄ラッパ。bind / clear / draw を集約
 ///
-/// @details context は Renderer が所有し、 CommandList は非所有ポインタとして借用する。 描画リソースである
-/// Buffer / Texture / TextureArray / Shader を `Native()` / `Srv()` / `Type()` 等の public アクセサ
-/// 経由で参照し、 `IASetVertexBuffers` 等の D3D11 呼び出しをここに集約する。 取得は `Renderer::Commands()` で、
-/// 呼び出し側は得た CommandList の bind / draw / update を直接呼ぶ
-/// 値変換や複数ステージへの一括設定を持つ操作のみラップし、 それ以外の D3D 呼び出しは `operator->` で生 context
-/// を直接叩く 依存: context の所有・寿命は Renderer。 本型は context を破棄しない 注: InstanceBatcher の instanced 描画
-/// は 2-stream など専用要件のため独自の context 経路を維持する
+/// @details 値変換や複数ステージへの一括設定を伴う操作のみラップし、それ以外の D3D 呼び出しは `operator->` で生 context
+/// を直接叩く 依存: context の所有・寿命は Renderer、本型は破棄しない 注: InstanceBatcher の instanced 描画は 2-stream
+/// 等の専用要件のため独自の context 経路を維持する
 
 #include <cstddef>
 
@@ -86,7 +82,7 @@ namespace NS::Graphics
         [[nodiscard]] ID3D11DeviceContext* operator->() const noexcept;
 
     private:
-        ID3D11DeviceContext* m_context; // 非所有で Renderer が所有する
+        ID3D11DeviceContext* m_context; // 非所有、所有は Renderer
     };
 
 } // namespace NS::Graphics

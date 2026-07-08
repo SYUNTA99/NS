@@ -112,7 +112,6 @@ namespace NS::Scene
         const float dt = NS::Core::FrameTimer::FixedDelta();
         auto& input = NS::Platform::Input::Get();
 
-        // Mouse 入力。 UI がフォーカス中なら無視する
         const bool wantMouse = input.UiWantsMouse();
         bool flying = false;
         if (!wantMouse)

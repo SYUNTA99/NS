@@ -23,9 +23,9 @@ namespace NS::Graphics
     {
         struct ShaderTypeInfo
         {
-            const char* infix;  // ファイル名に含まれる識別子
-            const char* entry;  // 全 HLSL でステージ名 + Main に統一したエントリポイント
-            const char* target; // コンパイルターゲットプロファイル
+            const char* infix;
+            const char* entry; // 全 HLSL でステージ名 + Main に統一したエントリポイント
+            const char* target;
             ShaderType stage;
         };
 
@@ -38,7 +38,7 @@ namespace NS::Graphics
             {".cs.", "CSMain", "cs_5_0", ShaderType::Compute},
         };
 
-        // ファイル名の `.vs.` 等でステージを判定する。 どれも含まなければ nullptr
+        // 該当するステージが無ければ nullptr
         [[nodiscard]] const ShaderTypeInfo* DetectStage(const std::filesystem::path& path) noexcept
         {
             const std::string name = path.filename().string();
@@ -131,7 +131,6 @@ float4 PSMain() : SV_Target
             return blob;
         }
 
-        // magenta fallback HLSL から 1 ステージをコンパイルする
         [[nodiscard]] ComPtr<ID3DBlob> CompileFallbackStage(const char* entryPoint, const char* target) noexcept
         {
             constexpr std::string_view kFallback{kFallbackHlsl};
@@ -140,7 +139,7 @@ float4 PSMain() : SV_Target
             return blob;
         }
 
-        // ステージごとの Create*Shader を呼び、 共通基底 ComPtr に格納する。 失敗で false
+        // stage 別の Create*Shader 結果を共通基底 ComPtr に格納する
         [[nodiscard]] bool CreateStageObject(ID3D11Device* device,
                                              ShaderType stage,
                                              const ComPtr<ID3DBlob>& blob,

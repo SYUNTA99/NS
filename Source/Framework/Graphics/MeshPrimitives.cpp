@@ -97,7 +97,6 @@ namespace NS::Graphics
         geom.vertices.reserve(18);
 
         // Slope top quad: 4 vertex、 normal (0, c, -s)
-        // 順序: lowLeft(-ex,yBottom,-ez) → lowRight(ex,yBottom,-ez) → highRight(ex,yTop,ez) → highLeft(-ex,yTop,ez)
         geom.vertices.push_back({{-ex, yBottom, -ez}, {0.0f, 1.0f}, {0.0f, c, -s}});
         geom.vertices.push_back({{ex, yBottom, -ez}, {1.0f, 1.0f}, {0.0f, c, -s}});
         geom.vertices.push_back({{ex, yTop, ez}, {1.0f, 0.0f}, {0.0f, c, -s}});
@@ -116,7 +115,6 @@ namespace NS::Graphics
         geom.vertices.push_back({{ex, yBottom, ez}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}});
 
         // Left -X triangle: 3 vertex、 normal (-1, 0, 0)
-        // 頂点: lowBack (-ex, yBottom, -ez), lowFront (-ex, yBottom, ez), highFront (-ex, yTop, ez)
         geom.vertices.push_back({{-ex, yBottom, -ez}, {0.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}});
         geom.vertices.push_back({{-ex, yBottom, ez}, {1.0f, 1.0f}, {-1.0f, 0.0f, 0.0f}});
         geom.vertices.push_back({{-ex, yTop, ez}, {1.0f, 0.0f}, {-1.0f, 0.0f, 0.0f}});
@@ -129,37 +127,33 @@ namespace NS::Graphics
         // インデックス: 四角形 3 × 6 + 三角形 2 × 3 = 24 個
         // CW = front 外向き。MakeCube の convention を踏襲
         geom.indices = {
-            // Slope quad の vertex 0..3: 外向きは +Y, -Z 方向 — 上面から見て winding CW
-            // 順序 lowLeft → highLeft → highRight、 lowLeft → highRight → lowRight
+            // Slope quad の vertex 0..3 は外向き +Y, -Z 方向、 上面から見て winding CW
             0,
             3,
             2,
             0,
             2,
             1,
-            // Bottom quad の vertex 4..7: 法線 -Y。下から見ると 4→5→6→7 が CCW のため
-            // CW になるよう 4,7,6,4,6,5 で張る
+            // Bottom quad の vertex 4..7 は法線 -Y、 下から見ると 4→5→6→7 が CCW なので CW になるよう 4,7,6,4,6,5
+            // で張る
             4,
             7,
             6,
             4,
             6,
             5,
-            // Back +Z quad の vertex 8..11: 外向き +Z で見える winding
-            // 8=(-ex,yBottom,ez), 9=(-ex,yTop,ez), 10=(ex,yTop,ez), 11=(ex,yBottom,ez)
+            // Back +Z quad の vertex 8..11 は外向き +Z で見える winding
             8,
             10,
             9,
             8,
             11,
             10,
-            // Left -X triangle の vertex 12..14: 外向き -X で見える winding
-            // 12=(-ex,yBottom,-ez), 13=(-ex,yBottom,ez), 14=(-ex,yTop,ez)
+            // Left -X triangle の vertex 12..14 は外向き -X で見える winding
             12,
             13,
             14,
-            // Right +X triangle の vertex 15..17: 外向き +X、 +X 側から見て CW
-            // 15=(ex,yBottom,-ez), 16=(ex,yTop,ez), 17=(ex,yBottom,ez)
+            // Right +X triangle の vertex 15..17 は外向き +X、 +X 側から見て CW
             15,
             16,
             17,

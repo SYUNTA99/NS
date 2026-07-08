@@ -30,7 +30,6 @@ namespace NS::Graphics
 {
     namespace
     {
-        // cgltf_data の解放を保証する
         struct CgltfGuard
         {
             cgltf_data* data = nullptr;
@@ -131,7 +130,7 @@ namespace NS::Graphics
             return normals;
         }
 
-        // 1 primitive ぶんの頂点 / index を world 変換しつつ geom に連結する。POSITION 必須で三角形前提
+        // POSITION 必須、三角形以外は呼出元で弾き済み
         void AppendPrimitive(const cgltf_primitive& prim,
                              const float world[16],
                              const std::string& path,
@@ -149,7 +148,6 @@ namespace NS::Graphics
             const std::uint32_t baseVertex = static_cast<std::uint32_t>(geom.vertices.size());
             const cgltf_size vertexCount = posAcc->count;
 
-            // NORMAL 属性が無ければ面法線から RH ローカル空間で smooth normal を自前計算する
             std::vector<std::array<float, 3>> computedNormals;
             if (normalAcc == nullptr)
             {
@@ -217,7 +215,7 @@ namespace NS::Graphics
                 std::swap(geom.indices[t + 1], geom.indices[t + 2]);
         }
 
-        // 1 mesh の全 primitive を処理する。 三角形以外 / Draco 圧縮 primitive は skip
+        // 三角形以外 / Draco 圧縮 primitive は skip
         void AppendMesh(const cgltf_mesh& mesh, const float world[16], const std::string& path, MeshGeometry& geom)
         {
             for (cgltf_size p = 0; p < mesh.primitives_count; ++p)
@@ -282,7 +280,6 @@ namespace NS::Graphics
             return geom;
         }
 
-        // シーングラフのノードを辿り、 mesh を持つノードの world 変換でジオメトリを連結する
         bool anyNodeMesh = false;
         for (cgltf_size n = 0; n < model.nodes_count; ++n)
         {
@@ -423,7 +420,7 @@ namespace NS::Graphics
             return NS::Math::Matrix::Identity;
         }
 
-        // 1 skinned primitive を連結し node 変換は焼き込まない。重みのある joint index が範囲外なら false
+        // node 変換は焼き込まない。重みのある joint index が範囲外なら false
         bool AppendSkinnedPrimitive(const cgltf_primitive& prim,
                                     cgltf_size jointsCount,
                                     const std::string& path,
@@ -839,7 +836,6 @@ namespace NS::Graphics
             return data;
         }
 
-        // ボーンを親が先の順へ整列し、 頂点 joint index を新 index へ張り替える
         const std::vector<std::uint32_t> remap = detail::TopologicalSortBones(bones);
         for (SkinnedVertex& v : vertices)
             for (int k = 0; k < 4; ++k)

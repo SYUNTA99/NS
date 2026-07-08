@@ -62,11 +62,11 @@ namespace NS::Graphics
                             std::vector<NS::Math::Matrix>& out,
                             bool applyRootTransform = true) const;
 
-        /// root ボーンの親ワールド変換 (アーマチュア変換等を skinned 出力へ反映するために使う)
+        /// root ボーンの親ワールド変換。 アーマチュア変換等を skinned 出力へ反映するために使う
         void SetRootTransform(const NS::Math::Matrix& transform) noexcept;
         [[nodiscard]] const NS::Math::Matrix& RootTransform() const noexcept;
 
-        /// CPU 参照 LBS。Σ weights[i] * (position * palette[joints[i]]) を返す (範囲外 joint と weight 0 は無視)
+        /// CPU 参照 LBS。Σ weights[i] * (position * palette[joints[i]]) を返す。 範囲外 joint と weight 0 は無視する
         [[nodiscard]] static NS::Math::Vector3 SkinPositionReference(
             const SkinnedVertex& vertex, std::span<const NS::Math::Matrix> palette) noexcept;
 

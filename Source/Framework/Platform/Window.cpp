@@ -129,7 +129,7 @@ namespace NS::Platform
             }
             case WM_SETCURSOR:
             {
-                // クライアント領域でカーソル非表示中なら null を当てて消す。 枠 / タイトルは既定へ流す
+                // 枠 / タイトルは既定カーソルへ流すため HTCLIENT のみ判定
                 if (LOWORD(lparam) == HTCLIENT && !impl->cursorVisible)
                 {
                     ::SetCursor(nullptr);

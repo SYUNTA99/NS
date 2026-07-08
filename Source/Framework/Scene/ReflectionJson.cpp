@@ -12,7 +12,7 @@ namespace NS::Scene
 {
     namespace
     {
-        // 1 つの反射 field を get で読み出し JSON 値へ変換する。 Vector3 は [x,y,z] 配列
+        // field を JSON 値へ変換する。Vector3 は [x,y,z] 配列
         nlohmann::json FieldToJson(const Component& comp, const FieldDesc& field)
         {
             switch (field.type)
@@ -60,7 +60,7 @@ namespace NS::Scene
             return nlohmann::json{};
         }
 
-        // JSON 値を field 型に合わせて取り出し set で書き戻す。 型が合わなければ前方互換のため何もしない
+        // 型が合わなければ前方互換のため何もしない
         void JsonToField(Component& comp, const FieldDesc& field, const nlohmann::json& value)
         {
             switch (field.type)

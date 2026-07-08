@@ -8,15 +8,13 @@
 /// Windows.h などの重い OS / SDK ヘッダを公開 API に巻き込まないため、
 /// 層 PCH (<Layer>Pch.h) と detail/*.cpp のみがこのヘッダを参照する
 
-// NOMINMAX 等の前提 define は premake5.lua で global 伝搬 (サードパーティ経由の漏れ込み回避)
+// NOMINMAX 等の前提 define は premake5.lua でグローバルに伝搬させ、サードパーティ経由の漏れ込みを避けている
 #include <windows.h>
 
-// C 標準ライブラリ
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 
-// C++ 標準ライブラリ (使用頻度の高いもの)
 #include <array>
 #include <chrono>
 #include <functional>

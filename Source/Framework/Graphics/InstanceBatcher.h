@@ -81,7 +81,7 @@ namespace NS::Graphics
         /// instanced VS/PS をコンパイルし InputLayout を作って member へ commit する。 全段成功時のみ差し替える
         [[nodiscard]] bool BuildShaders() noexcept;
 
-        // mesh と material を bucket key にする。 同一性は 2 つのアドレスで判定
+        // アドレス一致で同一 bucket とみなす
         struct BucketKey
         {
             StaticMesh* mesh = nullptr;

@@ -37,7 +37,7 @@ namespace NS::App
         if (s_instance != nullptr)
         {
             // assert は Release で消えるため、本制約は Release ビルドでも fatal で
-            // 落とし、単一保持を Shipping でも保証する
+            // 落とし、単一保持を出荷ビルドでも保証する
             NS_LOG_FATAL(::NS::Core::LogCat::App, "Application 多重起動禁止");
         }
         s_instance = this;
@@ -164,7 +164,6 @@ namespace NS::App
             return true;
         if (!m_quitRequested)
             return false;
-        // 終了要求あり: guard に一度諮り、 拒否されたら取り下げてループを続ける
         if (m_quitGuard && !m_quitGuard())
         {
             m_quitRequested = false;
@@ -183,7 +182,7 @@ namespace NS::App
         while (true)
         {
             window.PollMessages();
-            // 終了判定は WantExit に集約する。 guard が拒めば要求を取り下げて継続する
+            // 終了判定は WantExit に集約する
             if (WantExit())
                 break;
 

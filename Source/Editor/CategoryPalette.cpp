@@ -105,7 +105,6 @@ namespace NS::Editor
             const char* label = PaletteTemplateSlots()[i].name;
             const bool isActive = (i == m_activeSlot);
 
-            // active slot は色を変えて視覚的に区別する
             if (isActive)
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.50f, 0.80f, 1.0f));
 

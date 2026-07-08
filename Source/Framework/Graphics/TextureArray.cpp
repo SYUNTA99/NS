@@ -158,7 +158,6 @@ namespace NS::Graphics
             return;
         }
 
-        // slice 数を上限 kTotalSlices で clamp する。 超過分は WARN を出して捨てる
         std::vector<std::filesystem::path> paths = desc.slicePaths;
         if (paths.size() > static_cast<std::size_t>(kTotalSlices))
         {

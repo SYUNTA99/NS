@@ -21,16 +21,12 @@ namespace NS::Editor
 {
     namespace
     {
-        // ワールド単位の移動スナップの刻み
         constexpr float kMoveSnapStep = 0.5f;
 
         // 回転スナップの刻みで 15 度 = π/12 rad
         constexpr float kRotateSnapStep = NS::Math::kPi / 12.0f;
 
-        // スケールスナップの刻み
         constexpr float kScaleSnapStep = 0.25f;
-
-        // ドラッグ 1px あたりのスケール変化量
         constexpr float kScaleSensitivity = 0.01f;
 
         // 0 以下に潰れると mesh が反転/消失するので下限を張る
@@ -108,8 +104,7 @@ namespace NS::Editor
         }
 
         // ray と中心原点 AABB のスラブ判定。 返す t は ray パラメータで方向のスケールを保つので
-        // object 間でそのまま大小比較できる。 SimpleMath の Ray::Intersects は方向が単位ベクトル
-        // である assert を持つが、 ここは逆変換後の非単位方向を渡すので自前で判定する
+        // object 間でそのまま大小比較できる。 逆変換後の direction は正規化されていないため自前で判定する
         [[nodiscard]] bool IntersectRayCenteredAabb(const NS::Math::Vector3& origin,
                                                     const NS::Math::Vector3& direction,
                                                     const NS::Math::Vector3& halfExtents,
@@ -198,7 +193,6 @@ namespace NS::Editor
             return std::sqrt(dx * dx + dy * dy);
         }
 
-        // PRS を Transform へ書き戻す
         void ApplyState(NS::Scene::Transform& target, const TransformState& state) noexcept
         {
             target.SetPosition(state.position);
@@ -394,7 +388,6 @@ namespace NS::Editor
             return;
         }
 
-        // 新規プレス。 ImGui ウィンドウ上では開始しない
         if (!mouse.IsPressed(NS::Platform::MouseButton::Left) || imguiWantsMouse)
             return;
 
@@ -424,7 +417,7 @@ namespace NS::Editor
         for (const NS::Scene::GameObject* obj : m_objects)
             worldMatrices.push_back(obj->Root().WorldMatrix());
 
-        // まず見える実体だけで拾う。 見えないマーカー (メッシュを持たないカメラ等) が、 重なった
+        // まず見える実体だけで拾う。 メッシュを持たないカメラ等の見えないマーカーが、 重なった
         // ブロックの手前でクリックを奪わないよう、 可視ヒットが無いときだけ全体を対象にもう一度撃つ
         int hit = PickNearestObb(ray, worldMatrices, m_halfExtents, m_pickable);
         if (hit < 0)

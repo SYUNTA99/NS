@@ -1,14 +1,14 @@
 #pragma once
 
 /// @file ICommand.h
-/// @brief Undo/Redo Command パターンの抽象基底
+/// @brief Undo/Redo 操作の抽象基底
 ///
 /// @details `Do(level)` で編集操作を実行し、 `Undo(level)` で逆操作する
 /// 対象オブジェクトの再特定は ObjectInstance の永続 objectId か cell 座標で行う
-/// 派生は座標 + blockId + rotation 等のデータのみを保持し、 描画用 entity
-/// つまり MeshRendererComponent / Renderer ハンドル等を抱えない。 描画は EditorMode が
-/// LevelData の変更を観測して再構築する責務で、 Command と描画の所有関係を分離する
-/// `EstimatedBytes()` は UndoStack が 50 MB cap を回すための memory accounting
+/// 派生は座標 + blockId + rotation 等のデータのみを保持し、 描画用ハンドル
+/// つまり MeshRendererComponent / Renderer 等は抱えない。 描画は EditorMode が
+/// LevelData の変更を観測して再構築する責務で、 所有関係を分離する
+/// `EstimatedBytes()` は UndoStack が 50 MB cap を回すためのメモリ使用量見積り
 
 #include "GameCore/Level/LevelData.h"
 

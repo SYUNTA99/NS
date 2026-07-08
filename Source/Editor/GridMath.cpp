@@ -33,7 +33,7 @@ namespace NS::Editor
 
     NS::Math::Vector3 SnapWorldPointToGrid(NS::Math::Vector3 p, float g) noexcept
     {
-        // 最近接 cell 中心へ snap する。 0.5 を足してから floor で四捨五入相当
+        // 0.5 を足してから floor で四捨五入相当
         const float gx = std::floor(p.x / g + 0.5f) * g;
         const float gy = std::floor(p.y / g + 0.5f) * g;
         const float gz = std::floor(p.z / g + 0.5f) * g;

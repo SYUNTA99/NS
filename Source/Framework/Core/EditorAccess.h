@@ -3,10 +3,9 @@
 /// @file EditorAccess.h
 /// @brief 編集ツールへ private を開放する friend 宣言を、 editor 構成でだけ有効にするマクロ
 ///
-/// @details `NS_EDITOR_FRIEND(Cls)` は `NS_EDITOR_ENABLED == 1` の editor を含むビルドでは
-/// `friend class Cls;` に展開し、 `NS_EDITOR_ENABLED == 0` の出荷ビルドでは空に展開する
-/// これにより runtime クラスは editor のクラス名すら出荷バイナリへ載せずに、 開発時だけ
-/// 編集ツールへ内部を開放できる
+/// @details `NS_EDITOR_FRIEND(Cls)` は editor ビルド (`NS_EDITOR_ENABLED == 1`) では
+/// `friend class Cls;` に展開し、 出荷ビルド (`== 0`) では空に展開する
+/// runtime クラスは editor のクラス名すら出荷バイナリへ載せず、 開発時だけ内部を開放できる
 ///
 /// @code
 /// class LevelPlayScene : public NS::Scene::SceneBase

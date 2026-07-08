@@ -78,7 +78,6 @@ namespace
                 if (separation > radius)
                     return false;
             }
-            // sphere 中心を triangle 平面に射影した点が三角形内か確認する
             const Vector3 projected = center - normal * signedDist;
             if (!PointInTriangle(projected, tri))
                 return false;

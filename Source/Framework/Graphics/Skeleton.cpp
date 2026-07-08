@@ -55,7 +55,7 @@ namespace NS::Graphics
             else
             {
                 // root、 または topological 順を満たさない前方参照は root 扱いに落とす
-                // root には skeleton 上位ノード変換 (アーマチュア) を親ワールドとして掛ける
+                // root には skeleton 上位のアーマチュア変換を親ワールドとして掛ける
                 jointWorld[i] = local * m_rootTransform;
             }
             out[i] = m_bones[i].inverseBind * jointWorld[i];

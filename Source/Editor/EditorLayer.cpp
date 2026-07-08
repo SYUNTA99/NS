@@ -52,7 +52,7 @@ void EditorLayer::OnAttach()
     if (!m_imgui->IsValid())
         NS_LOG_ERROR(::NS::Core::LogCat::App, "ImGuiContext 構築失敗、 編集 UI は機能しない");
 
-    // 生 Win32 メッセージを ImGui へ転送するフックを Window に登録する。 Platform は中身を知らない
+    // Platform は UI 実装を知らないので、 転送は hook 経由にする
     app->Window().SetMessageHook(
         [imgui = m_imgui.get()](void* hwnd, std::uint32_t msg, std::uintptr_t wParam, std::intptr_t lParam) {
             if (imgui != nullptr)
@@ -92,7 +92,6 @@ void EditorLayer::OnUpdate()
     if (!IsActive() || !m_controller)
         return;
 
-    // free-fly カメラ / ギズモ / EditorMode / クリア監視の編集ロジックを先に回す
     m_controller->Tick();
     HandleModeToggleInput(*m_controller);
     HandlePauseInput(*m_controller);
@@ -490,8 +489,7 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
         else
             ImGui::TextDisabled("Material: default");
 
-        // 選択オブジェクトの runtime Component を反射で一覧編集する
-        // 編集後に全コンポーネントを components データへ書き戻して保存・rebuild に乗せる
+        // 編集後は全コンポーネントを components データへ書き戻し、 保存・rebuild に乗せる
         if (auto* go = editor.SelectedObjectGameObject())
         {
             ImGui::Separator();
@@ -499,7 +497,6 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
                 editor.SyncSelectedObjectComponentsFromComponent();
         }
 
-        // コンポーネント構成をデータとして編集する
         // 反射編集は上の一覧、 ここは構成そのものの 追加 / 複製 / コピー / 削除 を担う
         {
             ImGui::SeparatorText("Components");
@@ -523,7 +520,6 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             if (obj.components.empty())
                 ImGui::TextDisabled("コンポーネント無し。 足すと表示・当たりが付く");
 
-            // データ上のコンポーネント 1 件ずつに Copy / Delete を出す
             // 添字で狙うので同型が複数あっても選んだ 1 つだけを取り違えずに扱える
             for (std::size_t k = 0; k < obj.components.size(); ++k)
             {
@@ -597,7 +593,7 @@ void EditorLayer::RenderMaterialsPanel(LevelEditorController& editor) noexcept
         }
 
         ImGui::Separator();
-        // Assets/ 以下をフォルダツリーで表示する。 .mat はクリック適用 / ドラッグ可
+        // .mat はクリック適用 / ドラッグ可
         RenderAssetTree(NS::Core::FileSystem::ContentRoot() / "Assets", editor);
     }
     ImGui::End();
@@ -611,7 +607,7 @@ void EditorLayer::RenderAssetTree(const std::filesystem::path& dir, LevelEditorC
 #if NS_EDITOR_ENABLED
     const bool hasSelection = editor.HasGizmoSelection();
 
-    // サブフォルダを TreeNode で再帰表示する。 open 時のみ中身を走査する遅延読み
+    // open 時のみ中身を走査する遅延読み
     for (const auto& sub : NS::Core::FileSystem::ListDirectories(dir))
     {
         const std::string label = sub.filename().string();
