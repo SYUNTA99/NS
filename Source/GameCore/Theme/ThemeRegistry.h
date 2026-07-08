@@ -6,9 +6,6 @@
 /// @details `NS::GameCore::Theme::Get(id)` は 5 件の `ThemeData` への const 参照を返し、 範囲外は Grass
 /// にフォールバックする 静的 storage 上に並ぶので参照は frame 越しに有効、 再読込で中身だけ変わる
 
-#include <cstdint>
-#include <filesystem>
-
 #include "GameCore/Level/LevelData.h"
 #include "GameCore/Theme/ThemeData.h"
 #include "GameCore/Theme/ThemeId.h"

@@ -2,9 +2,6 @@
 
 #include "GameCore/Blocks/BuildPlacedObject.h"
 
-#include <array>
-#include <utility>
-
 namespace NS::Editor
 {
     const std::array<PaletteTemplate, kPaletteSlotCount>& PaletteTemplateSlots() noexcept

@@ -11,10 +11,6 @@
 /// 依存: NS::Math, NS::Scene::Transform / GameObject, NS::Platform::Input / Key, NS::UI::ImGuiContext
 
 
-#include <cstddef>
-#include <cstdint>
-#include <span>
-#include <vector>
 
 namespace NS::Platform
 {

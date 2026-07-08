@@ -10,11 +10,7 @@
 #include "GameCore/Theme/ThemeId.h"
 #include "GameCore/Theme/ThemeRegistry.h"
 
-#include <cstdint>
 #include <cstdio>
-#include <filesystem>
-#include <string>
-#include <vector>
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>

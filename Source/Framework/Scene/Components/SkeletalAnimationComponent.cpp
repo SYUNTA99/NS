@@ -5,8 +5,6 @@
 #include "Framework/Scene/GameObject.h"
 
 #include <cmath>
-#include <span>
-#include <utility>
 
 namespace NS::Scene
 {

@@ -6,10 +6,6 @@
 #include "Editor/Undo/ICommand.h"
 #include "GameCore/Level/LevelData.h"
 
-#include <cstddef>
-#include <cstdint>
-#include <vector>
-
 namespace NS::Editor
 {
 

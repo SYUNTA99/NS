@@ -2,8 +2,6 @@
 
 #include "GameCore/Level/LevelData.h"
 
-#include <utility>
-
 namespace NS::Editor
 {
     DuplicateObjectCommand::DuplicateObjectCommand(std::uint32_t sourceObjectId) noexcept

@@ -2,7 +2,7 @@
 
 #include "Framework/Platform/detail/input_win32.h"
 
-#include "Framework/Framework.h"
+#include <windows.h>
 
 #include <Xinput.h>
 

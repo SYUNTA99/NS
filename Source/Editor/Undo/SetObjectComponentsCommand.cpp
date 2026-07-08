@@ -1,8 +1,5 @@
 #include "Editor/Undo/SetObjectComponentsCommand.h"
 
-#include <utility>
-#include <vector>
-
 namespace NS::Editor
 {
     SetObjectComponentsCommand::SetObjectComponentsCommand(

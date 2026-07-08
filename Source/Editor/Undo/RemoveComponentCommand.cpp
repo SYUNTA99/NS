@@ -1,8 +1,5 @@
 #include "Editor/Undo/RemoveComponentCommand.h"
 
-#include <algorithm>
-#include <vector>
-
 namespace NS::Editor
 {
     RemoveComponentCommand::RemoveComponentCommand(std::uint32_t targetObjectId, std::size_t componentIndex) noexcept

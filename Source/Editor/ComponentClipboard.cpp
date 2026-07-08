@@ -1,10 +1,5 @@
 #include "Editor/ComponentClipboard.h"
 
-#include <cstddef>
-#include <string>
-#include <utility>
-#include <vector>
-
 namespace NS::Editor
 {
     NS::GameCore::Level::ComponentData CaptureComponentData(const NS::Scene::Component& comp)

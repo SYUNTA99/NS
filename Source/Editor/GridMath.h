@@ -7,7 +7,6 @@
 /// editor 専用の計算で、 マウスの ray 化と grid snap、 回転値の quaternion 変換を担う
 
 
-#include <cstdint>
 
 namespace NS::Editor
 {

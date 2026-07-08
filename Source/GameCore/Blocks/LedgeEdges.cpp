@@ -1,8 +1,5 @@
 #include "GameCore/Blocks/LedgeEdges.h"
 
-#include <cmath>
-#include <cstddef>
-
 namespace NS::GameCore::Blocks
 {
     namespace

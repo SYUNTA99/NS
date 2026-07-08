@@ -120,10 +120,19 @@ local function applyCommonBuildOptions()
     linkoptions { "/ignore:4006" }
 end
 
--- Framework 層共通定義 (現状は空、 PCH 再導入時にここへ pchheader 等を集約予定)
+-- Framework 層共通定義。 各層の <Layer>Pch.h を /FI で全 .cpp へ強制 include し、
+-- Framework.h (windows.h + 定番 stdlib) と層固有の重いヘッダを PCH で償却する。
+-- forceincludes はパスを project 相対へ rebase するが、 層により .cpp の深さが異なり
+-- 相対 /FI が破綻するため、 include root (Source) から一意に解決できる論理名を渡す。
 local function applyFrameworkLayerDefaults(layerName)
-    -- placeholder: layer 名引数は PCH 再導入時に利用する
-    _ = layerName
+    -- Math は依存ゼロの最下層リーフ。 windows.h を持ち込まないため PCH 対象外
+    if layerName == "Math" then
+        return
+    end
+    local pchLogical = "Framework/" .. layerName .. "/" .. layerName .. "Pch.h"
+    pchheader(pchLogical)
+    pchsource("Source/Framework/" .. layerName .. "/" .. layerName .. "Pch.cpp")
+    buildoptions { "/FI\"" .. pchLogical .. "\"" }
 end
 
 --============================================================================
@@ -314,16 +323,7 @@ project "Graphics"
         "d3dcompiler"
     }
 
-    -- 公開ヘッダに d3d を出す lean 設計のため、 各 .cpp の d3d11.h / dxgi /
-    -- SimpleMath の cold parse を PCH で償却する。 /FI で全 .cpp に GraphicsPch.h を
-    -- 強制 include する (各 .cpp 側に #include を書かなくて済む)。 premake の
-    -- forceincludes はパスを project 相対へ rebase するが、 Graphics の .cpp は
-    -- Graphics/ と Graphics/detail/ で深さが異なり相対 /FI が破綻するため、 include
-    -- root (Source) 経由で全 .cpp から一意に解決できる論理名を /FI に直接渡す。
-    pchheader "Framework/Graphics/GraphicsPch.h"
-    pchsource "Source/Framework/Graphics/GraphicsPch.cpp"
-    buildoptions { "/FI\"Framework/Graphics/GraphicsPch.h\"" }
-
+    -- Graphics は GraphicsPch.h で D3D11 / SimpleMath の cold parse も償却する
     applyFrameworkLayerDefaults("Graphics")
     applyCommonBuildOptions()
 

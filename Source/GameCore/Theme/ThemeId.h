@@ -3,8 +3,6 @@
 /// @file ThemeId.h
 /// @brief ThemeId — Grass / Cave / Snow / Lava / Sky の 5 テーマを識別する enum class
 
-#include <cstdint>
-
 namespace NS::GameCore::Theme
 {
 

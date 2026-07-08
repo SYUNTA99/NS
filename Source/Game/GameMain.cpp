@@ -4,8 +4,6 @@
 #include "Editor/EditorLayer.h"
 #endif
 
-#include <memory>
-
 namespace NS::App
 {
 

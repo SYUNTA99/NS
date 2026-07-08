@@ -15,8 +15,6 @@
 #include "GameCore/Level/LevelWorld.h"
 #include "GameCore/Level/PlayDirector.h"
 
-#include <memory>
-
 namespace NS::Scene
 {
     class IRenderable;

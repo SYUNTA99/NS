@@ -2,7 +2,6 @@
 
 #include "Framework/Scene/SceneBase.h"
 
-#include <utility>
 
 namespace NS::Scene
 {

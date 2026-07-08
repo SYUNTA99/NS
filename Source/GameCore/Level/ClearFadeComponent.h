@@ -6,9 +6,6 @@
 /// @details 暗転 Out → 全黒でリスタート → 明転 In → None の一方向で進み、 進行中の再開始は無視する
 /// 進行は PlayFlowComponent が dt を渡して駆動し、 描画は scene の Overlay 描画から呼び戻される
 
-#include <cstdint>
-#include <memory>
-
 namespace NS::Graphics
 {
     class ScreenFade;

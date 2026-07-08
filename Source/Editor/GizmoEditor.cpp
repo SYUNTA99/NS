@@ -3,10 +3,7 @@
 #include "Editor/GridMath.h"
 #include "Framework/UI/ImGuiContext.h"
 
-#include <algorithm>
-#include <cmath>
 #include <limits>
-#include <vector>
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>

@@ -3,8 +3,6 @@
 #include "GameCore/LevelPlayScene.h"
 #include "GameCore/Theme/ThemeRegistry.h"
 
-#include <memory>
-
 Game* Game::s_instance = nullptr;
 
 Game::Game() : NS::App::Layer("Game")

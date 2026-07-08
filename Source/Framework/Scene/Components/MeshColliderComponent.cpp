@@ -4,7 +4,6 @@
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 
-#include <utility>
 
 namespace NS::Scene
 {

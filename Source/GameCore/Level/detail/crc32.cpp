@@ -1,7 +1,5 @@
 #include "GameCore/Level/detail/crc32.h"
 
-#include <array>
-
 namespace NS::GameCore::Level::detail
 {
     namespace

@@ -2,7 +2,7 @@
 
 #include "Framework/Platform/Window.h"
 
-#include "Framework/Framework.h"
+#include <windows.h>
 
 #include <functional>
 #include <string>

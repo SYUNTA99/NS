@@ -1,7 +1,7 @@
 #include "Framework/Core/Logger.h"
 
 #include "Framework/Core/Filesystem.h"
-#include "Framework/Framework.h"
+#include <windows.h>
 
 #include <spdlog/sinks/msvc_sink.h>
 #include <spdlog/sinks/rotating_file_sink.h>

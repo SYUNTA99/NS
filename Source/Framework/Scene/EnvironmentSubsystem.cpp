@@ -8,7 +8,6 @@
 #include "Framework/Scene/SceneBase.h"
 #include "Framework/Scene/SubsystemRegistry.h"
 
-#include <utility>
 
 namespace NS::Scene
 {

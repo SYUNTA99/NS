@@ -4,8 +4,6 @@
 #include "GameCore/LevelPlayScene.h"
 #include "GameCore/Player.h"
 
-#include <algorithm>
-
 namespace NS::GameCore::Level
 {
     ClearFadeComponent::ClearFadeComponent() noexcept = default;

@@ -13,9 +13,6 @@
 /// 落下死: `playerPosition.y < kFallDeathThreshold` で deathTriggered
 /// coin/goal 接触: kPickupRadius を使う中心間距離の単純比較
 
-#include <cstddef>
-#include <vector>
-
 namespace NS::GameCore::Level
 {
     struct LevelData;

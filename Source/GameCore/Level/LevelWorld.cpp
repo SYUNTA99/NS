@@ -4,9 +4,6 @@
 #include "GameCore/Level/LevelData.h"
 #include "GameCore/Player.h"
 
-#include <algorithm>
-#include <cmath>
-
 namespace NS::GameCore::Level
 {
     namespace

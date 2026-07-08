@@ -3,7 +3,7 @@
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
-#include "Framework/Framework.h"
+#include <windows.h>
 #include "Framework/Graphics/GraphicObject.h"
 #include "Framework/Graphics/Renderer.h"
 #include "Framework/Platform/Window.h"

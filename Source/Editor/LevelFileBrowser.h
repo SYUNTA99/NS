@@ -9,10 +9,6 @@
 /// `LoadLevelFromFile` は caller の EditorMode 側が責任を持つ
 /// 責任分離: 本クラスは UI と一時 buffer のみ管理、 LevelData / filesystem には触れない
 
-#include <cstdint>
-#include <string>
-#include <string_view>
-#include <vector>
 
 namespace NS::Editor
 {

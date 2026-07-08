@@ -3,7 +3,6 @@
 #include "Framework/App/Layer.h"
 
 #include <algorithm>
-#include <utility>
 
 namespace NS::App
 {

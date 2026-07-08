@@ -6,10 +6,6 @@
 /// @details `.scene` footer の整合性検証専用。 LevelData の CRC32 と save format で同じアルゴリズムを使う
 /// polynomial は 0xEDB88320 固定で IEEE 802.3 / zlib 互換
 
-#include <cstddef>
-#include <cstdint>
-#include <span>
-
 namespace NS::GameCore::Level::detail
 {
 

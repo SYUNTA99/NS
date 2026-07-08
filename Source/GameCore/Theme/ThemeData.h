@@ -5,9 +5,6 @@
 ///
 /// @details 物理は全テーマ共通なので skybox と lighting の視覚フィールドのみを持つ純データ表現
 
-#include <filesystem>
-#include <string>
-
 namespace NS::GameCore::Theme
 {
 

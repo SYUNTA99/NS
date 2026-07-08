@@ -1,6 +1,5 @@
 #include "Editor/GridMath.h"
 
-#include <cmath>
 
 namespace NS::Editor
 {

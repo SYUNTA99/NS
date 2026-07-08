@@ -7,7 +7,6 @@
 #define NS_UI_IMGUI_ENABLED 0
 #endif
 
-#include <string>
 
 namespace NS::UI
 {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Framework/Framework.h"
+#include "Framework/CommonStl.h"
 
 #include <DirectXMath.h>
 #include <SimpleMath.h>

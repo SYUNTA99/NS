@@ -8,10 +8,6 @@
 /// scene は公開読み口からの観測と描画だけを行う
 /// 依存: NS::Scene::GameObject, NS::Physics::PhysicsWorld
 
-#include <cstddef>
-#include <memory>
-#include <vector>
-
 namespace NS::Physics
 {
     class PhysicsWorld;

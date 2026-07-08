@@ -8,12 +8,6 @@
 /// 構築のみを担い、 SceneBase への attach / OnStart / 衝突世界への登録は呼出側が行う
 /// 依存: NS::Scene::GameObject / AssetManager, NS::GameCore::Level::ObjectInstance
 
-#include <filesystem>
-#include <memory>
-#include <optional>
-#include <string>
-#include <vector>
-
 namespace NS::Graphics
 {
     class Mesh;

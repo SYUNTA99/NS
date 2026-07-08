@@ -8,9 +8,6 @@
 
 #include "GameCore/Level/LevelData.h"
 
-#include <array>
-#include <cstddef>
-
 namespace NS::Editor
 {
     /// パレット 1 スロットの配置プロトタイプ

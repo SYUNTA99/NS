@@ -16,14 +16,10 @@
 #include "Framework/Platform/Platform.h"
 #include "Framework/Scene/Scene.h"
 
-#include <array>
-#include <cstddef>
-#include <cstdint>
-#include <functional>
-#include <memory>
-#include <optional>
-#include <string>
-#include <string_view>
-#include <unordered_map>
-#include <variant>
-#include <vector>
+// 標準ライブラリは CommonStl.h に一元化し Framework.h と同じセットを共有する
+#include "Framework/CommonStl.h"
+
+// GameCore / Editor が多用する重めの標準ライブラリも集約する
+#include <algorithm>
+#include <cmath>
+#include <filesystem>

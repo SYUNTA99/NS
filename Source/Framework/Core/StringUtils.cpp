@@ -5,7 +5,7 @@
 
 #include <limits>
 
-#include "Framework/Framework.h"
+#include <windows.h>
 
 namespace NS::Core
 {

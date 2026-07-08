@@ -12,8 +12,6 @@
 /// 編集 UI が shipping ビルドに紛れ込まない。起動 scene は LevelPlayScene のまま
 
 
-#include <filesystem>
-#include <memory>
 
 namespace NS::UI
 {

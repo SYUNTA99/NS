@@ -8,9 +8,6 @@
 /// テンプレートの取込はデータどうしの merge で行い、 live への反映は world の組み直しが担う
 /// 保存は出荷不要なので Editor/PlayerTuningIO.h に分け、 パスだけ PlayerTuningPath() で共有する
 
-#include <filesystem>
-#include <string_view>
-
 namespace NS::GameCore::Level
 {
     struct ObjectInstance;

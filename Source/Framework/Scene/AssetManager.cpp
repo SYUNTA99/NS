@@ -14,8 +14,6 @@
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 
-#include <string>
-#include <utility>
 
 // json.hpp は /W4 で警告が出るため、 この翻訳単位でだけ警告を抑止して取り込む
 #pragma warning(push, 0)

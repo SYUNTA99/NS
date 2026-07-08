@@ -3,7 +3,6 @@
 #include "GameCore/Blocks/BuildPlacedObject.h"
 #include "GameCore/Level/detail/crc32.h"
 
-#include <cmath>
 #include <unordered_set>
 
 namespace NS::GameCore::Level

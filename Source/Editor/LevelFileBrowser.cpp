@@ -6,7 +6,6 @@
 #include <imgui.h>
 #endif
 
-#include <algorithm>
 
 namespace NS::Editor
 {

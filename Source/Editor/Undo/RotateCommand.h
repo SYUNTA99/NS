@@ -5,9 +5,6 @@
 
 #include "Editor/Undo/ICommand.h"
 
-#include <cstdint>
-#include <optional>
-
 namespace NS::Editor
 {
 

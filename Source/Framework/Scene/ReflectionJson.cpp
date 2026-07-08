@@ -5,8 +5,6 @@
 #include "Framework/Math/Math.h"
 #include "Framework/Scene/Reflection.h"
 
-#include <cstddef>
-#include <string>
 
 namespace NS::Scene
 {

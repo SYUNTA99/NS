@@ -2,7 +2,7 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 
-#include "Framework/Framework.h"
+#include <windows.h>
 
 namespace
 {

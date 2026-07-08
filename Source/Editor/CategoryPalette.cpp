@@ -4,8 +4,6 @@
 #include "Framework/UI/ImGuiContext.h"
 #include "Framework/UI/Panel.h"
 
-#include <variant>
-
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
 #endif

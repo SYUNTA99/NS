@@ -2,9 +2,6 @@
 
 #include "GameCore/Level/LevelData.h"
 
-#include <utility>
-#include <vector>
-
 namespace NS::Editor
 {
     AddComponentCommand::AddComponentCommand(std::uint32_t targetObjectId,

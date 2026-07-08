@@ -4,8 +4,6 @@
 #include "Framework/Physics/SweptCapsule.h"
 
 #include <algorithm>
-#include <cstdint>
-#include <vector>
 
 namespace NS::Physics
 {

@@ -11,8 +11,6 @@
 #include "Editor/PaletteTemplates.h"
 #include "GameCore/Level/LevelData.h"
 
-#include <cstddef>
-
 namespace NS::Platform
 {
     class Input;

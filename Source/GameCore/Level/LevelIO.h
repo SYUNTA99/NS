@@ -6,8 +6,6 @@
 /// @details 呼出側の editor / play scene が保存形式を知らずに済むよう、 形式非依存の
 /// `SaveLevelToFile` / `LoadLevelFromFile` だけを公開する
 
-#include <filesystem>
-
 namespace NS::GameCore::Level
 {
 

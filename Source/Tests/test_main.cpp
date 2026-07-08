@@ -1,6 +1,6 @@
 #include "Framework/Core/Logger.h"
 
-#include "Framework/Framework.h"
+#include <windows.h>
 
 #include <gtest/gtest.h>
 

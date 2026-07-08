@@ -9,7 +9,7 @@
 #include "Framework/Platform/Input.h"
 #include "Framework/Scene/AssetManager.h"
 
-#include "Framework/Framework.h"
+#include <windows.h>
 
 
 namespace

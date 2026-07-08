@@ -7,7 +7,6 @@
 #include "Framework/Scene/SubsystemRegistry.h"
 
 #include <algorithm>
-#include <utility>
 
 namespace NS::Scene
 {

@@ -7,9 +7,6 @@
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
 
-#include <string>
-#include <utility>
-
 std::filesystem::path PlayerTuningPath()
 {
     // Assets 配下に置けば出荷パッケージにも同梱され、 開発時はリポジトリ直下、 出荷時は実行ファイル隣を

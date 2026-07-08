@@ -9,11 +9,6 @@
 /// 構造的に閉じる。 file 名構築は `BuildLevelPath` のみが正規ルートで、
 /// 内部で sanitize した name しか accept しない
 
-#include <filesystem>
-#include <optional>
-#include <string>
-#include <string_view>
-#include <vector>
 
 namespace NS::Editor
 {

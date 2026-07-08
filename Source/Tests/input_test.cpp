@@ -6,7 +6,7 @@
 #include <Framework/Platform/Mouse.h>
 #include <Framework/Platform/detail/input_win32.h>
 
-#include "Framework/Framework.h"
+#include <windows.h>
 
 namespace
 {

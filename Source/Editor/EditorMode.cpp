@@ -14,10 +14,7 @@
 #include <imgui.h>
 #endif
 
-#include <algorithm>
-#include <cmath>
 #include <limits>
-#include <memory>
 
 namespace NS::Editor
 {
