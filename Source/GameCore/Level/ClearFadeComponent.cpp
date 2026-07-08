@@ -1,11 +1,5 @@
 #include "GameCore/Level/ClearFadeComponent.h"
 
-#include "Framework/Core/LogCategories.h"
-#include "Framework/Core/Logger.h"
-#include "Framework/Graphics/ScreenFade.h"
-#include "Framework/Scene/GameObject.h"
-#include "Framework/Scene/RenderContext.h"
-#include "Framework/Scene/SceneBase.h"
 #include "GameCore/Level/PlayFlowComponent.h"
 #include "GameCore/LevelPlayScene.h"
 #include "GameCore/Player.h"

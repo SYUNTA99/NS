@@ -1,7 +1,5 @@
 #include "GameCore/Game.h"
 
-#include "Framework/App/Application.h"
-#include "Framework/Core/Filesystem.h"
 #include "GameCore/LevelPlayScene.h"
 #include "GameCore/Theme/ThemeRegistry.h"
 

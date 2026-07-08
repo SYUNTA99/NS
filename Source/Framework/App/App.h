@@ -1,10 +1,7 @@
 #pragma once
 
 /// @file App.h
-/// @brief App 層の一括 include ヘッダ — Application / Layer
-///
-/// @details `#include "Framework/App/App.h"` のみで App 層公開 API 全体を取り込める
-/// 個別 include も引き続き利用可能
+/// @brief App 層の公開ヘッダをまとめて取り込む umbrella
 
 #include "Framework/App/Application.h"
 #include "Framework/App/Layer.h"

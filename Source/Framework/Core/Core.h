@@ -1,14 +1,14 @@
 #pragma once
 
 /// @file Core.h
-/// @brief Core 層一括 include ヘッダ — Logger / Math / Clock / Filesystem / StringUtils
-///
-/// @details `#include "Framework/Core/Core.h"` のみで Core 層公開 API 全体を取り込める
-/// `Framework/Core/Logger.h` 等の個別 include も引き続き利用可能
+/// @brief Core 層の公開ヘッダをまとめて取り込む umbrella
+
+#include "Framework/Math/Math.h"
 
 #include "Framework/Core/Clock.h"
+#include "Framework/Core/EditorAccess.h"
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
+#include "Framework/Core/NonCopyable.h"
 #include "Framework/Core/StringUtils.h"
-#include "Framework/Math/Math.h"

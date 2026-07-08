@@ -1,9 +1,5 @@
 #include "GameCore/Theme/ThemeRegistry.h"
 
-#include "Framework/Core/Filesystem.h"
-#include "Framework/Core/LogCategories.h"
-#include "Framework/Core/Logger.h"
-
 #include "ThirdParty/nlohmann/json.hpp"
 
 #include <array>

@@ -1,13 +1,14 @@
 #pragma once
 
 /// @file Graphics.h
-/// @brief Graphics 層一括 include ヘッダ — D3D11 ベースの描画 API
+/// @brief Graphics 層の公開ヘッダをまとめて取り込む umbrella
 
 #include "Framework/Graphics/Animation.h"
 #include "Framework/Graphics/Buffer.h"
 #include "Framework/Graphics/Camera.h"
 #include "Framework/Graphics/CommandList.h"
 #include "Framework/Graphics/CommonStates.h"
+#include "Framework/Graphics/D3dCommon.h"
 #include "Framework/Graphics/DebugDraw.h"
 #include "Framework/Graphics/GltfLoader.h"
 #include "Framework/Graphics/GraphicObject.h"
@@ -16,7 +17,9 @@
 #include "Framework/Graphics/Mesh.h"
 #include "Framework/Graphics/MeshPrimitives.h"
 #include "Framework/Graphics/Pipeline.h"
+#include "Framework/Graphics/RenderSettings.h"
 #include "Framework/Graphics/Renderer.h"
+#include "Framework/Graphics/ScreenFade.h"
 #include "Framework/Graphics/Shader.h"
 #include "Framework/Graphics/SkeletalMesh.h"
 #include "Framework/Graphics/Skeleton.h"

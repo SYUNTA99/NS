@@ -1,9 +1,5 @@
 #include "Editor/InspectorReflection.h"
 
-#include "Framework/Math/Math.h"
-#include "Framework/Scene/Component.h"
-#include "Framework/Scene/GameObject.h"
-#include "Framework/Scene/Reflection.h"
 
 #include <climits>
 #include <cstddef>

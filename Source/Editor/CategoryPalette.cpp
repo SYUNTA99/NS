@@ -1,7 +1,6 @@
 #include "Editor/CategoryPalette.h"
 
 #include "Editor/PaletteTemplates.h"
-#include "Framework/Platform/Input.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Framework/UI/Panel.h"
 

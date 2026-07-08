@@ -1,11 +1,6 @@
 #include "Editor/GizmoEditor.h"
 
 #include "Editor/GridMath.h"
-#include "Framework/Platform/Input.h"
-#include "Framework/Platform/Mouse.h"
-#include "Framework/Scene/Components/EditorCameraComponent.h"
-#include "Framework/Scene/GameObject.h"
-#include "Framework/Scene/Transform.h"
 #include "Framework/UI/ImGuiContext.h"
 
 #include <algorithm>

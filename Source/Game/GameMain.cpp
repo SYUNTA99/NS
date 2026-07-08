@@ -1,4 +1,3 @@
-#include "Framework/App/Application.h"
 #include "GameCore/Game.h"
 
 #if NS_EDITOR_ENABLED

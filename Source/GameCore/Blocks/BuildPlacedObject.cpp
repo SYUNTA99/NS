@@ -1,21 +1,5 @@
 #include "GameCore/Blocks/BuildPlacedObject.h"
 
-#include "Framework/Core/Filesystem.h"
-#include "Framework/Graphics/StaticMesh.h"
-#include "Framework/Scene/AssetManager.h"
-#include "Framework/Scene/ComponentRegistry.h"
-#include "Framework/Scene/Components/BoxColliderComponent.h"
-#include "Framework/Scene/Components/CapsuleColliderComponent.h"
-#include "Framework/Scene/Components/CharacterMovementComponent.h"
-#include "Framework/Scene/Components/HazardComponent.h"
-#include "Framework/Scene/Components/MeshRendererComponent.h"
-#include "Framework/Scene/Components/PickupComponent.h"
-#include "Framework/Scene/Components/PlayerInputComponent.h"
-#include "Framework/Scene/Components/ShadowComponent.h"
-#include "Framework/Scene/Components/SlopeColliderComponent.h"
-#include "Framework/Scene/Components/SphereColliderComponent.h"
-#include "Framework/Scene/Reflection.h"
-#include "Framework/Scene/ReflectionJson.h"
 #include "GameCore/Level/LevelData.h"
 #include "GameCore/Level/LevelJson.h"
 #include "GameCore/Player.h"
@@ -101,9 +85,12 @@ namespace NS::GameCore::Blocks
                 if (auto* mesh = NS::Scene::ComponentCast<NS::Scene::MeshRendererComponent>(created))
                 {
                     const std::string& matRef = mesh->MaterialRef();
-                    mesh->SetMaterial(IsSharedMaterialName(matRef)
-                                          ? assets.SharedMaterial(matRef)
-                                          : ResolveFreeMaterial(object, assets, materialPaths));
+                    NS::Graphics::Material* material = nullptr;
+                    if (IsSharedMaterialName(matRef))
+                        material = assets.SharedMaterial(matRef);
+                    else
+                        material = ResolveFreeMaterial(object, assets, materialPaths);
+                    mesh->SetMaterial(material);
                     // 移行済データは必ず参照を持つ
                     NS::Graphics::Mesh* resolved = nullptr;
                     if (!mesh->MeshRef().empty())

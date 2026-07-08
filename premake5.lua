@@ -848,7 +848,10 @@ project "Tests"
         "Source/Editor/PaletteTemplates.cpp",
         "Source/Editor/LevelFileBrowser.cpp",
         "Source/Editor/LevelFilePaths.cpp",
-        "Source/GameCore/Theme/**.cpp"
+        "Source/GameCore/Theme/**.cpp",
+        -- Editor / GameCore の各 .cpp は GamePch の /FI 前提で Framework include を持たない。
+        -- 同じソースを直接コンパイルする Tests でも同一 prelude を与えるため GamePch を共有する
+        "Source/GameCore/GamePch.cpp"
     }
 
     includedirs {
@@ -864,6 +867,11 @@ project "Tests"
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
+
+    -- GameCore / Editor と同じ GamePch を共有し、 strip 済ソースへ /FI で prelude を与える
+    pchheader "GameCore/GamePch.h"
+    pchsource "Source/GameCore/GamePch.cpp"
+    buildoptions { "/FI\"GameCore/GamePch.h\"" }
 
     links {
         "googletest",

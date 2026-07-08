@@ -1,7 +1,5 @@
 #include "GameCore/Level/PlayMode.h"
 
-#include "Framework/Core/LogCategories.h"
-#include "Framework/Core/Logger.h"
 #include "GameCore/Level/LevelData.h"
 #include "GameCore/Level/PlayState.h"
 
