@@ -21,7 +21,7 @@ namespace
         float maxY = -std::numeric_limits<float>::infinity();
         for (const auto& t : tris)
             for (const auto* v : {&t.v0, &t.v1, &t.v2})
-                maxY = (v->y > maxY) ? v->y : maxY;
+                maxY = std::max(v->y, maxY);
 
         std::vector<Vector3> unique;
         for (const auto& t : tris)
@@ -102,6 +102,6 @@ TEST(WedgeGeometryTest, CenterOffsetsAllVertices)
     float minY = std::numeric_limits<float>::infinity();
     for (const auto& t : tris)
         for (const auto* v : {&t.v0, &t.v1, &t.v2})
-            minY = (v->y < minY) ? v->y : minY;
+            minY = std::min(v->y, minY);
     EXPECT_NEAR(minY, c.y - 0.5f, 1e-4f);
 }

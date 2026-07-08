@@ -175,24 +175,36 @@ namespace NS::Graphics
                         ComPtr<ID3D11Resource>& outResource,
                         ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
         {
-            const DirectX::WIC_LOADER_FLAGS loadFlags =
-                sRGB ? DirectX::WIC_LOADER_FORCE_SRGB : DirectX::WIC_LOADER_IGNORE_SRGB;
+            const DirectX::WIC_LOADER_FLAGS loadFlags = [&]() -> DirectX::WIC_LOADER_FLAGS {
+                if (sRGB)
+                    return DirectX::WIC_LOADER_FORCE_SRGB;
+                return DirectX::WIC_LOADER_IGNORE_SRGB;
+            }();
 
-            ID3D11DeviceContext* ctxForMipmap = generateMipmaps ? context : nullptr;
+            ID3D11DeviceContext* ctxForMipmap = nullptr;
+            if (generateMipmaps)
+                ctxForMipmap = context;
 
-            const HRESULT hr = DirectX::CreateWICTextureFromMemoryEx(
-                device,
-                ctxForMipmap,
-                bytes,
-                size,
-                0u,
-                D3D11_USAGE_DEFAULT,
-                D3D11_BIND_SHADER_RESOURCE | (generateMipmaps ? D3D11_BIND_RENDER_TARGET : 0u),
-                0u,
-                generateMipmaps ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0u,
-                loadFlags,
-                outResource.GetAddressOf(),
-                outSrv.GetAddressOf());
+            UINT mipmapBindFlag = 0u;
+            if (generateMipmaps)
+                mipmapBindFlag = D3D11_BIND_RENDER_TARGET;
+
+            UINT mipmapMiscFlag = 0u;
+            if (generateMipmaps)
+                mipmapMiscFlag = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+
+            const HRESULT hr = DirectX::CreateWICTextureFromMemoryEx(device,
+                                                                     ctxForMipmap,
+                                                                     bytes,
+                                                                     size,
+                                                                     0u,
+                                                                     D3D11_USAGE_DEFAULT,
+                                                                     D3D11_BIND_SHADER_RESOURCE | mipmapBindFlag,
+                                                                     0u,
+                                                                     mipmapMiscFlag,
+                                                                     loadFlags,
+                                                                     outResource.GetAddressOf(),
+                                                                     outSrv.GetAddressOf());
 
             if (FAILED(hr))
             {

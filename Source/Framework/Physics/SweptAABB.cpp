@@ -32,11 +32,26 @@ namespace
             const float py = ey - std::abs(d.y);
             const float pz = ez - std::abs(d.z);
             if (px <= py && px <= pz)
-                outNormal = {d.x >= 0.0f ? 1.0f : -1.0f, 0.0f, 0.0f};
+            {
+                float nx = -1.0f;
+                if (d.x >= 0.0f)
+                    nx = 1.0f;
+                outNormal = {nx, 0.0f, 0.0f};
+            }
             else if (py <= pz)
-                outNormal = {0.0f, d.y >= 0.0f ? 1.0f : -1.0f, 0.0f};
+            {
+                float ny = -1.0f;
+                if (d.y >= 0.0f)
+                    ny = 1.0f;
+                outNormal = {0.0f, ny, 0.0f};
+            }
             else
-                outNormal = {0.0f, 0.0f, d.z >= 0.0f ? 1.0f : -1.0f};
+            {
+                float nz = -1.0f;
+                if (d.z >= 0.0f)
+                    nz = 1.0f;
+                outNormal = {0.0f, 0.0f, nz};
+            }
             return true;
         }
 

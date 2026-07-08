@@ -30,7 +30,9 @@ namespace
 
         [[nodiscard]] NS::Scene::SceneSubsystem* FindAppSubsystem(std::type_index type) const noexcept override
         {
-            return (type == m_targetType) ? m_target : nullptr;
+            if (type == m_targetType)
+                return m_target;
+            return nullptr;
         }
 
     private:

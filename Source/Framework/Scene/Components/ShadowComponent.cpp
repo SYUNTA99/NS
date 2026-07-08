@@ -82,7 +82,11 @@ namespace NS::Scene
         if (maxDist <= 0.0f)
             return 0.0f;
         const float f = 1.0f - dist / maxDist;
-        return (f < 0.0f) ? 0.0f : (f > 1.0f ? 1.0f : f);
+        if (f < 0.0f)
+            return 0.0f;
+        if (f > 1.0f)
+            return 1.0f;
+        return f;
     }
 
     void ShadowComponent::Draw(const RenderContext& context)

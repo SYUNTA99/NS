@@ -77,7 +77,13 @@ namespace NS::Graphics
             return;
         }
 
-        const NS::Math::Matrix rootParent = applyRootTransform ? m_rootTransform : NS::Math::Matrix::Identity;
+        const NS::Math::Matrix rootParent = [&]() -> NS::Math::Matrix {
+            if (applyRootTransform)
+            {
+                return m_rootTransform;
+            }
+            return NS::Math::Matrix::Identity;
+        }();
         for (std::size_t i = 0; i < boneCount; ++i)
         {
             const NS::Math::Matrix local = LocalMatrix(pose[i]);

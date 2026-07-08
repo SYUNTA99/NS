@@ -94,8 +94,13 @@ float4 PSMain() : SV_Target
                                           errorBlob.GetAddressOf());
             if (FAILED(hr))
             {
-                const char* msg =
-                    errorBlob ? static_cast<const char*>(errorBlob->GetBufferPointer()) : "(no error blob)";
+                const char* msg = [&]() -> const char* {
+                    if (errorBlob)
+                    {
+                        return static_cast<const char*>(errorBlob->GetBufferPointer());
+                    }
+                    return "(no error blob)";
+                }();
                 NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
                              "Shader compile failed: target={}, entry={}, hr=0x{:X}, msg={}",
                              target,

@@ -47,11 +47,26 @@ namespace
             const float pz = ez - std::abs(p.z);
             Vector3 localN{};
             if (px <= py && px <= pz)
-                localN = Vector3{p.x >= 0.0f ? 1.0f : -1.0f, 0.0f, 0.0f};
+            {
+                float nx = -1.0f;
+                if (p.x >= 0.0f)
+                    nx = 1.0f;
+                localN = Vector3{nx, 0.0f, 0.0f};
+            }
             else if (py <= pz)
-                localN = Vector3{0.0f, p.y >= 0.0f ? 1.0f : -1.0f, 0.0f};
+            {
+                float ny = -1.0f;
+                if (p.y >= 0.0f)
+                    ny = 1.0f;
+                localN = Vector3{0.0f, ny, 0.0f};
+            }
             else
-                localN = Vector3{0.0f, 0.0f, p.z >= 0.0f ? 1.0f : -1.0f};
+            {
+                float nz = -1.0f;
+                if (p.z >= 0.0f)
+                    nz = 1.0f;
+                localN = Vector3{0.0f, 0.0f, nz};
+            }
             outNormal = obb.axisX * localN.x + obb.axisY * localN.y + obb.axisZ * localN.z;
             return true;
         }

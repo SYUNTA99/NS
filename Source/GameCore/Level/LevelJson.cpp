@@ -512,8 +512,11 @@ namespace NS::GameCore::Level
         if (FindFollowCameraObjectIndex(outLevel) == kNoObjectIndex)
         {
             const std::size_t playerIndex = FindPlayerObjectIndex(outLevel);
-            const std::uint32_t targetId =
-                (playerIndex != kNoObjectIndex) ? outLevel.objects[playerIndex].objectId : 0u;
+            const std::uint32_t targetId = [&]() -> std::uint32_t {
+                if (playerIndex != kNoObjectIndex)
+                    return outLevel.objects[playerIndex].objectId;
+                return 0u;
+            }();
             outLevel.objects.push_back(MakeFollowCameraObject(targetId));
             EnsureUniqueObjectIds(outLevel);
         }

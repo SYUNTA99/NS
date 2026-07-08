@@ -34,7 +34,10 @@ namespace NS::Scene
 
     void PlayerInputComponent::OnStart()
     {
-        m_movement = (Owner() != nullptr) ? Owner()->FindComponent<CharacterMovementComponent>() : nullptr;
+        if (Owner() != nullptr)
+            m_movement = Owner()->FindComponent<CharacterMovementComponent>();
+        else
+            m_movement = nullptr;
     }
 
     void PlayerInputComponent::OnUpdate()

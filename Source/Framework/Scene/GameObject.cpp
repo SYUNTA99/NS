@@ -36,7 +36,10 @@ namespace NS::Scene
         if (m_parent != nullptr)
             m_parent->m_children.push_back(this);
 
-        m_root.SetParent(parent != nullptr ? &parent->m_root : nullptr);
+        Transform* parentRoot = nullptr;
+        if (parent != nullptr)
+            parentRoot = &parent->m_root;
+        m_root.SetParent(parentRoot);
     }
 
     void GameObject::DetachFromParent() noexcept

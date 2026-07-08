@@ -68,8 +68,11 @@ namespace NS::Graphics
             }
             else
             {
-                const DirectX::WIC_LOADER_FLAGS loadFlags =
-                    sRGB ? DirectX::WIC_LOADER_FORCE_SRGB : DirectX::WIC_LOADER_IGNORE_SRGB;
+                const DirectX::WIC_LOADER_FLAGS loadFlags = [&]() -> DirectX::WIC_LOADER_FLAGS {
+                    if (sRGB)
+                        return DirectX::WIC_LOADER_FORCE_SRGB;
+                    return DirectX::WIC_LOADER_IGNORE_SRGB;
+                }();
                 const HRESULT hr = DirectX::CreateWICTextureFromMemoryEx(device,
                                                                          nullptr,
                                                                          data,
@@ -223,7 +226,11 @@ namespace NS::Graphics
 
         // mipmap を GenerateMips で作るには RENDER_TARGET + GENERATE_MIPS が要る
         // 1024x1024 の log2 = 10 + 1 = 11 levels。 0 を渡すと自動算出
-        const UINT mipLevels = desc.generateMipmaps ? 0u : 1u;
+        const UINT mipLevels = [&]() -> UINT {
+            if (desc.generateMipmaps)
+                return 0u;
+            return 1u;
+        }();
 
         D3D11_TEXTURE2D_DESC arrayDesc{};
         arrayDesc.Width = sliceWidth;

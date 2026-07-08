@@ -67,9 +67,15 @@ namespace NS::GameCore::Level
             {
                 // 全黒の裏でレベルを頭から組み直し、 spawn へ戻してから明転へ移る
                 auto* owner = Owner();
-                if (auto* flow = owner ? owner->FindComponent<PlayFlowComponent>() : nullptr)
+                PlayFlowComponent* flow = nullptr;
+                if (owner != nullptr)
+                    flow = owner->FindComponent<PlayFlowComponent>();
+                if (flow != nullptr)
                     flow->RestartLevel();
-                if (auto* scene = owner ? dynamic_cast<LevelPlayScene*>(owner->OwningScene()) : nullptr)
+                LevelPlayScene* scene = nullptr;
+                if (owner != nullptr)
+                    scene = dynamic_cast<LevelPlayScene*>(owner->OwningScene());
+                if (scene != nullptr)
                 {
                     if (auto* player = scene->PlayerRef())
                         player->Root().Snapshot();

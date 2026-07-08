@@ -118,7 +118,10 @@ namespace NS::Editor
     void EditorMode::OverwriteCurrentLevel() noexcept
     {
         const bool ok = SaveLevelToName(m_currentLevelName);
-        m_statusMessage = (ok ? "上書き保存: " : "保存失敗: ") + m_currentLevelName;
+        const char* prefix = "保存失敗: ";
+        if (ok)
+            prefix = "上書き保存: ";
+        m_statusMessage = prefix + m_currentLevelName;
         m_statusError = !ok;
         m_statusTimer = kStatusToastSeconds;
     }
@@ -126,8 +129,11 @@ namespace NS::Editor
     bool EditorMode::SaveForQuit() noexcept
     {
         // 現在名が無ければ起動時に読まれる new_level へ落として、 次回起動の表示と一致させる
-        const std::string_view name =
-            m_currentLevelName.empty() ? std::string_view{"new_level"} : std::string_view{m_currentLevelName};
+        const std::string_view name = [this]() -> std::string_view {
+            if (m_currentLevelName.empty())
+                return std::string_view{"new_level"};
+            return std::string_view{m_currentLevelName};
+        }();
         return SaveLevelToName(name);
     }
 
@@ -142,7 +148,10 @@ namespace NS::Editor
         {
             // 保存 I/O は SaveLevelToName に集約する。 名前は browser 側で sanitize 済
             const bool ok = SaveLevelToName(result.targetName);
-            m_fileBrowser.NotifySaveResult(ok, ok ? "保存成功" : "保存失敗");
+            const char* message = "保存失敗";
+            if (ok)
+                message = "保存成功";
+            m_fileBrowser.NotifySaveResult(ok, message);
             break;
         }
         case LevelFileBrowser::Action::RequestLoad:
@@ -193,8 +202,11 @@ namespace NS::Editor
                     ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings;
                 if (ImGui::Begin("##save_toast", nullptr, kFlags))
                 {
-                    const ImVec4 color =
-                        m_statusError ? ImVec4(1.0f, 0.4f, 0.4f, 1.0f) : ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
+                    const ImVec4 color = [this]() -> ImVec4 {
+                        if (m_statusError)
+                            return ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
+                        return ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
+                    }();
                     ImGui::TextColored(color, "%s", m_statusMessage.c_str());
                 }
                 ImGui::End();
@@ -211,7 +223,10 @@ namespace NS::Editor
         // DebugDraw への蓄積は維持し、 GPU 描画 path が整ったら自動表示される
         const NS::Math::AABB placeBox(m_cursor.placementCenter,
                                       NS::Math::Vector3{kCellHalfExtent, kCellHalfExtent, kCellHalfExtent});
-        NS::Graphics::DebugDraw::AABB(placeBox, m_cursor.placementBlocked ? kCursorBlockedColor : kCursorOkColor);
+        NS::Math::Color cursorColor = kCursorOkColor;
+        if (m_cursor.placementBlocked)
+            cursorColor = kCursorBlockedColor;
+        NS::Graphics::DebugDraw::AABB(placeBox, cursorColor);
 
 #if NS_EDITOR_ENABLED
         if (m_camera == nullptr)
@@ -274,7 +289,11 @@ namespace NS::Editor
             {2, 6},
             {3, 7},
         };
-        const ImU32 boxColor = m_cursor.placementBlocked ? IM_COL32(255, 64, 64, 255) : IM_COL32(64, 255, 64, 255);
+        const ImU32 boxColor = [this]() -> ImU32 {
+            if (m_cursor.placementBlocked)
+                return IM_COL32(255, 64, 64, 255);
+            return IM_COL32(64, 255, 64, 255);
+        }();
         for (const auto& e : kBoxEdges)
         {
             if (boxFront[e[0]] && boxFront[e[1]])
@@ -289,7 +308,7 @@ namespace NS::Editor
             constexpr float kPi = 3.14159265358979323846f;
             const float angle = slopeAngle;
             const float rawHeight = std::tan(angle * (kPi / 180.0f)) * (2.0f * h);
-            const float height = (rawHeight > 2.0f * h) ? 2.0f * h : rawHeight;
+            const float height = std::min(rawHeight, 2.0f * h);
             const float yBot = -h;
             const float yTop = -h + height;
 
@@ -339,7 +358,11 @@ namespace NS::Editor
         // 現在のブラシ = 複製元テンプレート。 配置は複製で行う
         const NS::GameCore::Level::ObjectInstance& tmpl = m_palette.CurrentTemplate();
         // water 等の回転対象でない block は m_currentRotation が非ゼロでも 0 で焼き込む
-        const std::uint8_t rotation = m_palette.CurrentIsRotatable() ? m_currentRotation : std::uint8_t{0};
+        const std::uint8_t rotation = [this]() -> std::uint8_t {
+            if (m_palette.CurrentIsRotatable())
+                return m_currentRotation;
+            return std::uint8_t{0};
+        }();
         m_undo.Push(std::make_unique<NS::Editor::PlaceCommand>(tmpl, x, y, z, rotation), *m_level);
         m_levelDirty = true;
     }
@@ -416,11 +439,26 @@ namespace NS::Editor
                 const float ay = std::fabs(d.y);
                 const float az = std::fabs(d.z);
                 if (ax > ay && ax > az)
-                    hitNormal = NS::Math::Vector3{d.x > 0.0f ? 1.0f : -1.0f, 0.0f, 0.0f};
+                {
+                    float signX = -1.0f;
+                    if (d.x > 0.0f)
+                        signX = 1.0f;
+                    hitNormal = NS::Math::Vector3{signX, 0.0f, 0.0f};
+                }
                 else if (ay > az)
-                    hitNormal = NS::Math::Vector3{0.0f, d.y > 0.0f ? 1.0f : -1.0f, 0.0f};
+                {
+                    float signY = -1.0f;
+                    if (d.y > 0.0f)
+                        signY = 1.0f;
+                    hitNormal = NS::Math::Vector3{0.0f, signY, 0.0f};
+                }
                 else
-                    hitNormal = NS::Math::Vector3{0.0f, 0.0f, d.z > 0.0f ? 1.0f : -1.0f};
+                {
+                    float signZ = -1.0f;
+                    if (d.z > 0.0f)
+                        signZ = 1.0f;
+                    hitNormal = NS::Math::Vector3{0.0f, 0.0f, signZ};
+                }
             }
         }
 

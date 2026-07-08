@@ -50,8 +50,10 @@ namespace
         NS::GameCore::Level::EnsureUniqueObjectIds(level);
         // 追従カメラも配置物。 プレイヤーへの Target 参照が要るため採番の後に足し、 増分をもう一度採番する
         const std::size_t playerIndex = NS::GameCore::Level::FindPlayerObjectIndex(level);
-        level.objects.push_back(NS::GameCore::Level::MakeFollowCameraObject(
-            (playerIndex != NS::GameCore::Level::kNoObjectIndex) ? level.objects[playerIndex].objectId : 0u));
+        std::uint32_t followTargetId = 0u;
+        if (playerIndex != NS::GameCore::Level::kNoObjectIndex)
+            followTargetId = level.objects[playerIndex].objectId;
+        level.objects.push_back(NS::GameCore::Level::MakeFollowCameraObject(followTargetId));
         NS::GameCore::Level::EnsureUniqueObjectIds(level);
     }
 } // namespace
@@ -117,11 +119,17 @@ void LevelPlayScene::OnUpdate()
     // Application が Renderer::Resize を排他で握っているため、 Camera の aspect ratio は
     // Renderer の現在 Size から毎フレーム pull する。 callback 上書きで競合させない
     auto* cameras = GetSubsystem<NS::Scene::CameraSubsystem>();
-    if (auto* mainCamera = (cameras != nullptr) ? cameras->MainCamera() : nullptr)
+    NS::Scene::CameraComponent* mainCamera = nullptr;
+    if (cameras != nullptr)
+        mainCamera = cameras->MainCamera();
+    if (mainCamera != nullptr)
         mainCamera->SetAspectRatioFromRenderer(app->Renderer());
 
     // active vcam が入れ替わったらブレンドを進める。 play / edit 共通で fixed step ごとに 1 度
-    if (auto* brain = (cameras != nullptr) ? cameras->Brain() : nullptr)
+    NS::Scene::CameraBrainComponent* brain = nullptr;
+    if (cameras != nullptr)
+        brain = cameras->Brain();
+    if (brain != nullptr)
         brain->OnUpdate();
 
     SnapshotDisplayObjects();
@@ -162,8 +170,12 @@ void LevelPlayScene::OnRenderScene()
     ctx.alpha = NS::Core::FrameTimer::Alpha();
 
     auto* cameras = GetSubsystem<NS::Scene::CameraSubsystem>();
-    auto* brain = (cameras != nullptr) ? cameras->Brain() : nullptr;
-    auto* mainCamera = (cameras != nullptr) ? cameras->MainCamera() : nullptr;
+    NS::Scene::CameraBrainComponent* brain = nullptr;
+    if (cameras != nullptr)
+        brain = cameras->Brain();
+    NS::Scene::CameraComponent* mainCamera = nullptr;
+    if (cameras != nullptr)
+        mainCamera = cameras->MainCamera();
     if (brain == nullptr || mainCamera == nullptr)
         return;
 
@@ -234,8 +246,11 @@ void LevelPlayScene::OnRenderScene()
             // 接地状態は頭上に浮かべた箱で示す。 カプセルはメッシュに埋もれて色が見えないため別表示にする
             // 接地=緑 / 空中=黄。 頭の上へ出して body に隠れさせない
             const float headTop = center.y + movement.CapsuleHalfHeight() + movement.CapsuleRadius();
-            const NS::Math::Color groundedColor = movement.IsGrounded() ? NS::Math::Color{0.2f, 1.0f, 0.2f, 1.0f}
-                                                                        : NS::Math::Color{1.0f, 1.0f, 0.2f, 1.0f};
+            const NS::Math::Color groundedColor = [&]() -> NS::Math::Color {
+                if (movement.IsGrounded())
+                    return NS::Math::Color{0.2f, 1.0f, 0.2f, 1.0f};
+                return NS::Math::Color{1.0f, 1.0f, 0.2f, 1.0f};
+            }();
             const NS::Math::AABB groundedMarker(NS::Math::Vector3{center.x, headTop + 0.45f, center.z},
                                                 NS::Math::Vector3{0.18f, 0.18f, 0.18f});
             NS::Graphics::DebugDraw::AABB(groundedMarker, groundedColor);
@@ -265,7 +280,10 @@ void LevelPlayScene::OnShutdown()
         m_director->OnEndPlay();
     // Brain は world のカメラ配置物を非所有参照する。 world を畳む前に外して無効参照を避ける
     auto* cameras = GetSubsystem<NS::Scene::CameraSubsystem>();
-    if (auto* brain = (cameras != nullptr) ? cameras->Brain() : nullptr)
+    NS::Scene::CameraBrainComponent* brain = nullptr;
+    if (cameras != nullptr)
+        brain = cameras->Brain();
+    if (brain != nullptr)
         for (auto* vcam : m_world.VirtualCameras())
             brain->RemoveVirtualCamera(vcam);
     // 参照照合窓口も world より先に空へ戻し、 畳み中の解決に宙参照を返さない
@@ -279,7 +297,9 @@ void LevelPlayScene::RebuildWorld()
 {
     // 旧 world のカメラ配置物を Brain から外してから組み直す。 Brain の非所有参照を無効化させない
     auto* cameras = GetSubsystem<NS::Scene::CameraSubsystem>();
-    auto* brain = (cameras != nullptr) ? cameras->Brain() : nullptr;
+    NS::Scene::CameraBrainComponent* brain = nullptr;
+    if (cameras != nullptr)
+        brain = cameras->Brain();
     if (brain != nullptr)
         for (auto* vcam : m_world.VirtualCameras())
             brain->RemoveVirtualCamera(vcam);
@@ -287,7 +307,10 @@ void LevelPlayScene::RebuildWorld()
     // 構築は LevelWorld の一本道で、 参照照合窓口の張り替えとプレイヤーの組み立てもここに含む
     // app 不在の起動前 / テストでは assets を渡さず何も組まない
     auto* app = NS::App::Application::Get();
-    m_world.Rebuild(m_level, *this, Physics(), app ? &app->Assets() : nullptr);
+    NS::Scene::AssetManager* assets = nullptr;
+    if (app != nullptr)
+        assets = &app->Assets();
+    m_world.Rebuild(m_level, *this, Physics(), assets);
 
     // 組み直しで生まれたカメラ配置物を Brain へ登録し直す。 追従と据え置きの両方が載る
     if (brain != nullptr)

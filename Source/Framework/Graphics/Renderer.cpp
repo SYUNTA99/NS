@@ -301,7 +301,13 @@ namespace NS::Graphics
             return;
         }
 
-        const UINT sync = m_vsync ? 1 : 0;
+        const UINT sync = [&]() -> UINT {
+            if (m_vsync)
+            {
+                return 1;
+            }
+            return 0;
+        }();
         m_swapchain->Present(sync, 0);
     }
 

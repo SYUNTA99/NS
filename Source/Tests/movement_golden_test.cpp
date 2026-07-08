@@ -7,6 +7,7 @@
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/Transform.h>
 
+#include <algorithm>
 #include <bit>
 #include <cstdint>
 #include <sstream>
@@ -55,7 +56,10 @@ namespace
             hash = FoldFnv1a(hash, std::bit_cast<uint32_t>(s.velocity.x));
             hash = FoldFnv1a(hash, std::bit_cast<uint32_t>(s.velocity.y));
             hash = FoldFnv1a(hash, std::bit_cast<uint32_t>(s.velocity.z));
-            hash = FoldFnv1a(hash, s.grounded ? 1u : 0u);
+            uint32_t groundedBit = 0u;
+            if (s.grounded)
+                groundedBit = 1u;
+            hash = FoldFnv1a(hash, groundedBit);
         }
         return hash;
     }
@@ -78,7 +82,7 @@ namespace
     {
         float peak = -1000.0f;
         for (const StepRecord& s : trajectory)
-            peak = (s.position.y > peak) ? s.position.y : peak;
+            peak = std::max(s.position.y, peak);
         return peak;
     }
 
@@ -264,7 +268,7 @@ TEST_F(MovementGolden, FlatWalkMatchesGoldenTrace)
 
     float maxVx = 0.0f;
     for (const StepRecord& s : trajectory)
-        maxVx = (s.velocity.x > maxVx) ? s.velocity.x : maxVx;
+        maxVx = std::max(s.velocity.x, maxVx);
     EXPECT_GT(maxVx, 6.0f) << "巡航速度が最大速度 8 に届いていない";
     EXPECT_LT(maxVx, 9.0f) << "最大速度 8 を大きく超えている";
     EXPECT_GT(trajectory.back().position.x, 8.0f) << "速度が出ているのに位置が前進していない";

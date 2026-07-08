@@ -17,7 +17,10 @@ namespace NS::Physics
     void CollisionGrid::Build(const std::vector<NS::Math::AABB>& boxes, float cellSize) noexcept
     {
         m_cells.clear();
-        m_cellSize = (cellSize > 1e-4f) ? cellSize : 1.0f;
+        if (cellSize > 1e-4f)
+            m_cellSize = cellSize;
+        else
+            m_cellSize = 1.0f;
 
         for (std::uint32_t i = 0; i < static_cast<std::uint32_t>(boxes.size()); ++i)
         {

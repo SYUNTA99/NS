@@ -34,6 +34,7 @@
 #include "GameCore/Level/LevelData.h"
 #include "GameCore/Theme/ThemeRegistry.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <memory>
@@ -52,7 +53,7 @@ namespace
     {
         const float length = (b - a).Length();
         const int rawSegments = static_cast<int>(length / 0.5f);
-        const int segments = (rawSegments < 2) ? 2 : rawSegments;
+        const int segments = std::max(rawSegments, 2);
         for (int i = 0; i < segments; i += 2)
         {
             const float t0 = static_cast<float>(i) / static_cast<float>(segments);
@@ -106,7 +107,7 @@ namespace
             return baseHalf;
         // 深度 10 までは基準半径、 これより遠いほど深度に比例して伸ばし画面上一定に近づける
         const float scale = clip.w / 10.0f;
-        return baseHalf * ((scale > 1.0f) ? scale : 1.0f);
+        return baseHalf * std::max(scale, 1.0f);
     }
 } // namespace
 
@@ -126,14 +127,22 @@ NS::GameCore::Level::PlayState& LevelEditorController::Play() noexcept
 
 NS::Scene::CameraBrainComponent* LevelEditorController::Brain() const noexcept
 {
-    auto* cameras = (m_scene != nullptr) ? m_scene->GetSubsystem<NS::Scene::CameraSubsystem>() : nullptr;
-    return (cameras != nullptr) ? cameras->Brain() : nullptr;
+    NS::Scene::CameraSubsystem* cameras = nullptr;
+    if (m_scene != nullptr)
+        cameras = m_scene->GetSubsystem<NS::Scene::CameraSubsystem>();
+    if (cameras != nullptr)
+        return cameras->Brain();
+    return nullptr;
 }
 
 NS::Scene::CameraComponent* LevelEditorController::MainCamera() const noexcept
 {
-    auto* cameras = (m_scene != nullptr) ? m_scene->GetSubsystem<NS::Scene::CameraSubsystem>() : nullptr;
-    return (cameras != nullptr) ? cameras->MainCamera() : nullptr;
+    NS::Scene::CameraSubsystem* cameras = nullptr;
+    if (m_scene != nullptr)
+        cameras = m_scene->GetSubsystem<NS::Scene::CameraSubsystem>();
+    if (cameras != nullptr)
+        return cameras->MainCamera();
+    return nullptr;
 }
 
 void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
@@ -393,7 +402,11 @@ void LevelEditorController::Render()
 
 void LevelEditorController::SetObjectToolActive(bool active) noexcept
 {
-    const EditorToolMode next = active ? EditorToolMode::Object : EditorToolMode::Build;
+    const EditorToolMode next = [active]() -> EditorToolMode {
+        if (active)
+            return EditorToolMode::Object;
+        return EditorToolMode::Build;
+    }();
     if (next == m_editorToolMode)
         return;
     m_editorToolMode = next;
@@ -455,7 +468,9 @@ void LevelEditorController::SyncSelectedObjectComponentsFromComponent()
 
 NS::Scene::GameObject* LevelEditorController::CameraBrainObject() noexcept
 {
-    return Brain() ? Brain()->Owner() : nullptr;
+    if (Brain())
+        return Brain()->Owner();
+    return nullptr;
 }
 
 NS::Scene::GameObject* LevelEditorController::ActiveVirtualCameraObject() noexcept
@@ -463,7 +478,9 @@ NS::Scene::GameObject* LevelEditorController::ActiveVirtualCameraObject() noexce
     if (Brain() == nullptr)
         return nullptr;
     NS::Scene::VirtualCameraComponent* active = Brain()->ActiveVirtualCamera();
-    return active ? active->Owner() : nullptr;
+    if (active != nullptr)
+        return active->Owner();
+    return nullptr;
 }
 
 void LevelEditorController::RefreshGizmoSelectables()
@@ -481,7 +498,10 @@ void LevelEditorController::RefreshGizmoSelectables()
         m_selectableHalfExtents.push_back(kCellHalfExtents);
         const bool hasVisual =
             NS::GameCore::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*object) != nullptr;
-        m_selectablePickable.push_back(hasVisual ? std::uint8_t{1} : std::uint8_t{0});
+        std::uint8_t pickable = std::uint8_t{0};
+        if (hasVisual)
+            pickable = std::uint8_t{1};
+        m_selectablePickable.push_back(pickable);
     };
 
     // runtime list は 1 本。 全配置物をギズモ候補に積む。 pick OBB は Root().WorldMatrix() が scale 込みで
@@ -646,16 +666,22 @@ void LevelEditorController::RenderCameraGizmos(const NS::Math::Matrix& viewProje
     // 選択中は強調色にする。 追従カメラは pose がプレイヤー基準なので、 錐台はプレイ中に居る視点位置へ出る
     const auto& world = m_scene->World();
     // 錐台の横幅は実ビューポート比で出す。 viewport が潰れている時だけ 16:9 目安へ退避する
-    const float aspect =
-        (viewport.height > 0) ? static_cast<float>(viewport.width) / static_cast<float>(viewport.height) : 16.0f / 9.0f;
+    const float aspect = [viewport]() -> float {
+        if (viewport.height > 0)
+            return static_cast<float>(viewport.width) / static_cast<float>(viewport.height);
+        return 16.0f / 9.0f;
+    }();
     for (std::size_t i = 0; i < world.Objects().size(); ++i)
     {
         auto* vcam = world.Objects()[i]->FindComponent<NS::Scene::VirtualCameraComponent>();
         if (vcam == nullptr)
             continue;
         const bool selected = (world.SourceIndices()[i] == m_selectedObjectIndex);
-        const NS::Math::Color camColor =
-            selected ? NS::Math::Color{1.0f, 0.55f, 0.10f, 1.0f} : NS::Math::Color{1.0f, 0.85f, 0.10f, 1.0f};
+        const NS::Math::Color camColor = [selected]() -> NS::Math::Color {
+            if (selected)
+                return NS::Math::Color{1.0f, 0.55f, 0.10f, 1.0f};
+            return NS::Math::Color{1.0f, 0.85f, 0.10f, 1.0f};
+        }();
 
         const NS::Scene::CameraPose pose = vcam->EvaluatePose(1.0f);
         DrawCameraFrustum(pose, aspect, camColor);
@@ -667,8 +693,11 @@ void LevelEditorController::RenderCameraGizmos(const NS::Math::Matrix& viewProje
         // 据え置きカメラだけ進入トリガ範囲を出す。 追従には無い
         if (auto* placed = world.Objects()[i]->FindComponent<NS::Scene::PlacedVirtualCamera>())
         {
-            const NS::Math::Color triggerColor =
-                selected ? NS::Math::Color{1.0f, 0.55f, 0.10f, 1.0f} : NS::Math::Color{0.20f, 0.70f, 1.0f, 1.0f};
+            const NS::Math::Color triggerColor = [selected]() -> NS::Math::Color {
+                if (selected)
+                    return NS::Math::Color{1.0f, 0.55f, 0.10f, 1.0f};
+                return NS::Math::Color{0.20f, 0.70f, 1.0f, 1.0f};
+            }();
             NS::Graphics::DebugDraw::AABB(NS::Math::AABB{placed->TriggerCenter(), placed->TriggerExtent()},
                                           triggerColor);
         }
@@ -817,9 +846,9 @@ void LevelEditorController::SetSelectedFreeScale(NS::Math::Vector3 scale) noexce
 {
     // ImGui の入力で 0 / 負になると描画と当たり判定が壊れるため最小正値で止める
     constexpr float kMinScale = 0.01f;
-    scale.x = scale.x < kMinScale ? kMinScale : scale.x;
-    scale.y = scale.y < kMinScale ? kMinScale : scale.y;
-    scale.z = scale.z < kMinScale ? kMinScale : scale.z;
+    scale.x = std::max(scale.x, kMinScale);
+    scale.y = std::max(scale.y, kMinScale);
+    scale.z = std::max(scale.z, kMinScale);
     if (SelectedIsPlayerObject() && m_scene->PlayerRef())
     {
         m_scene->PlayerRef()->Root().SetScale(scale);
@@ -1085,7 +1114,11 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
     // .mat パスを ContentRoot 相対で材質表に登録して重複は再利用し、 ObjectInstance.materialIndex を更新して永続化する
     const auto exeDir = NS::Core::FileSystem::ContentRoot();
     const std::filesystem::path relative = matPath.lexically_relative(exeDir);
-    const std::string stored = relative.empty() ? matPath.generic_string() : relative.generic_string();
+    const std::string stored = [&]() -> std::string {
+        if (relative.empty())
+            return matPath.generic_string();
+        return relative.generic_string();
+    }();
 
     int materialIndex = -1;
     for (std::size_t k = 0; k < m_scene->Level().materialPaths.size(); ++k)

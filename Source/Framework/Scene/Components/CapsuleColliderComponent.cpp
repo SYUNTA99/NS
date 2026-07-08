@@ -4,6 +4,7 @@
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace NS::Scene
@@ -11,12 +12,24 @@ namespace NS::Scene
     CapsuleColliderComponent::CapsuleColliderComponent() noexcept {}
 
     CapsuleColliderComponent::CapsuleColliderComponent(float radius, float halfHeight) noexcept
-        : m_radius(radius < 0.0f ? 0.0f : radius), m_halfHeight(halfHeight < 0.0f ? 0.0f : halfHeight)
+        : m_radius([&]() -> float {
+              if (radius < 0.0f)
+                  return 0.0f;
+              return radius;
+          }()),
+          m_halfHeight([&]() -> float {
+              if (halfHeight < 0.0f)
+                  return 0.0f;
+              return halfHeight;
+          }())
     {}
 
     void CapsuleColliderComponent::SetRadius(float radius) noexcept
     {
-        m_radius = radius < 0.0f ? 0.0f : radius;
+        if (radius < 0.0f)
+            m_radius = 0.0f;
+        else
+            m_radius = radius;
     }
 
     float CapsuleColliderComponent::Radius() const noexcept
@@ -26,7 +39,10 @@ namespace NS::Scene
 
     void CapsuleColliderComponent::SetHalfHeight(float halfHeight) noexcept
     {
-        m_halfHeight = halfHeight < 0.0f ? 0.0f : halfHeight;
+        if (halfHeight < 0.0f)
+            m_halfHeight = 0.0f;
+        else
+            m_halfHeight = halfHeight;
     }
 
     float CapsuleColliderComponent::HalfHeight() const noexcept
@@ -75,14 +91,18 @@ namespace NS::Scene
         const GameObject* owner = Owner();
         const NS::Math::Matrix local = NS::Math::Matrix::CreateFromQuaternion(m_localRotation) *
                                        NS::Math::Matrix::CreateTranslation(m_centerOffset);
-        NS::Math::Matrix combined = (owner != nullptr) ? local * owner->Root().WorldMatrix() : local;
+        NS::Math::Matrix combined = [&]() -> NS::Math::Matrix {
+            if (owner != nullptr)
+                return local * owner->Root().WorldMatrix();
+            return local;
+        }();
 
         NS::Math::Vector3 scale{1.0f, 1.0f, 1.0f};
         NS::Math::Quaternion rotation = NS::Math::Quaternion::Identity;
         NS::Math::Vector3 translation{0.0f, 0.0f, 0.0f};
         combined.Decompose(scale, rotation, translation);
 
-        const float radiusScale = std::abs(scale.x) > std::abs(scale.z) ? std::abs(scale.x) : std::abs(scale.z);
+        const float radiusScale = std::max(std::abs(scale.x), std::abs(scale.z));
 
         NS::Physics::Capsule capsule;
         capsule.center = translation;

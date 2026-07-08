@@ -185,7 +185,10 @@ namespace NS::GameCore::Level
         {
             NS::Math::Vector3 camForward{0.0f, 0.0f, 1.0f};
             auto* cameras = scene->GetSubsystem<NS::Scene::CameraSubsystem>();
-            if (auto* brain = (cameras != nullptr) ? cameras->Brain() : nullptr)
+            NS::Scene::CameraBrainComponent* brain = nullptr;
+            if (cameras != nullptr)
+                brain = cameras->Brain();
+            if (brain != nullptr)
                 camForward = brain->ForwardHorizontal();
             player->InputComp().SetCameraForward(camForward);
             player->OnUpdate();

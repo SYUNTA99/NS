@@ -1,5 +1,6 @@
 #include "Editor/Undo/RemoveComponentCommand.h"
 
+#include <algorithm>
 #include <vector>
 
 namespace NS::Editor
@@ -34,7 +35,7 @@ namespace NS::Editor
         if (index == NS::GameCore::Level::kNoObjectIndex)
             return;
         std::vector<NS::GameCore::Level::ComponentData>& components = level.objects[index].components;
-        const std::size_t at = m_removedIndex < components.size() ? m_removedIndex : components.size();
+        const std::size_t at = std::min(m_removedIndex, components.size());
         components.insert(components.begin() + static_cast<std::ptrdiff_t>(at), *m_removed);
     }
 

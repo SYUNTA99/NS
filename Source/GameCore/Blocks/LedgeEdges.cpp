@@ -63,7 +63,9 @@ namespace NS::GameCore::Blocks
                     topAxis = k;
                 }
             }
-            const float topSign = Dot(axes[topAxis], worldUp) >= 0.0f ? 1.0f : -1.0f;
+            float topSign = 1.0f;
+            if (Dot(axes[topAxis], worldUp) < 0.0f)
+                topSign = -1.0f;
             const Vector3 up{axes[topAxis].x * topSign, axes[topAxis].y * topSign, axes[topAxis].z * topSign};
             const float upHalf = halfByAxis[topAxis];
             const int inA = (topAxis + 1) % 3;

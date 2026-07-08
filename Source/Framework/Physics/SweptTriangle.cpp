@@ -142,7 +142,11 @@ namespace NS::Physics
         if (!hitTop && !hitBottom)
             return false;
 
-        const float toi = (hitTop && (!hitBottom || toiTop <= toiBottom)) ? toiTop : toiBottom;
+        const float toi = [&]() -> float {
+            if (hitTop && (!hitBottom || toiTop <= toiBottom))
+                return toiTop;
+            return toiBottom;
+        }();
         outToi = toi;
         outNormal = normal;
         return true;

@@ -128,7 +128,11 @@ namespace NS::Math
     /// `value` を `[lo, hi]` の範囲にクランプする
     template <typename T> [[nodiscard]] constexpr T Clamp(T value, T lo, T hi) noexcept
     {
-        return (value < lo) ? lo : (value > hi) ? hi : value;
+        if (value < lo)
+            return lo;
+        if (value > hi)
+            return hi;
+        return value;
     }
 
     /// 線形補間。t=0 で a、t=1 で b。範囲外は外挿

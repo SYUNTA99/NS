@@ -34,7 +34,10 @@ namespace NS::Editor
         m_lastMessage.clear();
         m_lastMessageError = false;
         m_loadFileList = EnumerateLevelFiles();
-        m_loadSelection = m_loadFileList.empty() ? -1 : 0;
+        if (m_loadFileList.empty())
+            m_loadSelection = -1;
+        else
+            m_loadSelection = 0;
     }
 
     void LevelFileBrowser::NotifySaveResult(bool ok, std::string_view message) noexcept

@@ -62,8 +62,20 @@ namespace NS::Scene
         [[nodiscard]] bool IsGrounded() const noexcept { return m_isGrounded; }
         [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; }
 
-        void SetCapsuleRadius(float r) noexcept { m_capsuleRadius = (r < 0.001f) ? 0.001f : r; }
-        void SetCapsuleHalfHeight(float h) noexcept { m_capsuleHalfHeight = (h < 0.001f) ? 0.001f : h; }
+        void SetCapsuleRadius(float r) noexcept
+        {
+            if (r < 0.001f)
+                m_capsuleRadius = 0.001f;
+            else
+                m_capsuleRadius = r;
+        }
+        void SetCapsuleHalfHeight(float h) noexcept
+        {
+            if (h < 0.001f)
+                m_capsuleHalfHeight = 0.001f;
+            else
+                m_capsuleHalfHeight = h;
+        }
         [[nodiscard]] float CapsuleRadius() const noexcept { return m_capsuleRadius; }
         [[nodiscard]] float CapsuleHalfHeight() const noexcept { return m_capsuleHalfHeight; }
 

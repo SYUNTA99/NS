@@ -1,5 +1,6 @@
 #include "Framework/Physics/WedgeGeometry.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace NS::Physics
@@ -15,7 +16,7 @@ namespace NS::Physics
 
         constexpr float kPi = 3.14159265358979323846f;
         const float rawHeight = std::tan(angleDegrees * (kPi / 180.0f)) * (2.0f * ez);
-        const float height = (rawHeight > 2.0f * ey) ? 2.0f * ey : rawHeight;
+        const float height = std::min(rawHeight, 2.0f * ey);
         const float yBottom = -ey;
         const float yTop = -ey + height;
 

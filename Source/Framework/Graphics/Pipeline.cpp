@@ -25,7 +25,11 @@ namespace NS::Graphics
 
         D3D11_FILL_MODE ToD3d(FillMode fill) noexcept
         {
-            return (fill == FillMode::Wireframe) ? D3D11_FILL_WIREFRAME : D3D11_FILL_SOLID;
+            if (fill == FillMode::Wireframe)
+            {
+                return D3D11_FILL_WIREFRAME;
+            }
+            return D3D11_FILL_SOLID;
         }
 
         bool CreateRasterizer(ID3D11Device* device,

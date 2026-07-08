@@ -21,8 +21,16 @@ namespace NS::Editor
         const NS::Math::Vector4 wNearH = NS::Math::Vector4::Transform(nearH, inv);
         const NS::Math::Vector4 wFarH = NS::Math::Vector4::Transform(farH, inv);
 
-        const float invWNear = (std::abs(wNearH.w) > 1e-6f) ? (1.0f / wNearH.w) : 0.0f;
-        const float invWFar = (std::abs(wFarH.w) > 1e-6f) ? (1.0f / wFarH.w) : 0.0f;
+        const float invWNear = [&]() -> float {
+            if (std::abs(wNearH.w) > 1e-6f)
+                return 1.0f / wNearH.w;
+            return 0.0f;
+        }();
+        const float invWFar = [&]() -> float {
+            if (std::abs(wFarH.w) > 1e-6f)
+                return 1.0f / wFarH.w;
+            return 0.0f;
+        }();
 
         NS::Math::Vector3 wNear{wNearH.x * invWNear, wNearH.y * invWNear, wNearH.z * invWNear};
         NS::Math::Vector3 wFar{wFarH.x * invWFar, wFarH.y * invWFar, wFarH.z * invWFar};

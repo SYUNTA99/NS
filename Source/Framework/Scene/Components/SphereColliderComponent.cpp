@@ -4,6 +4,7 @@
 #include "Framework/Scene/GameObject.h"
 #include "Framework/Scene/Transform.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace NS::Scene
@@ -15,17 +16,17 @@ namespace NS::Scene
             const float ax = std::abs(v.x);
             const float ay = std::abs(v.y);
             const float az = std::abs(v.z);
-            return ax > ay ? (ax > az ? ax : az) : (ay > az ? ay : az);
+            return std::max(ax, std::max(ay, az));
         }
     } // namespace
 
     SphereColliderComponent::SphereColliderComponent() noexcept {}
 
-    SphereColliderComponent::SphereColliderComponent(float radius) noexcept : m_radius(radius < 0.0f ? 0.0f : radius) {}
+    SphereColliderComponent::SphereColliderComponent(float radius) noexcept : m_radius(std::max(radius, 0.0f)) {}
 
     void SphereColliderComponent::SetRadius(float radius) noexcept
     {
-        m_radius = radius < 0.0f ? 0.0f : radius;
+        m_radius = std::max(radius, 0.0f);
     }
 
     float SphereColliderComponent::Radius() const noexcept

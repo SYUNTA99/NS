@@ -12,11 +12,16 @@ namespace NS::Scene
     {
         [[nodiscard]] NS::Math::Vector3 ClampNonNegative(const NS::Math::Vector3& v) noexcept
         {
-            return NS::Math::Vector3{
-                v.x < 0.0f ? 0.0f : v.x,
-                v.y < 0.0f ? 0.0f : v.y,
-                v.z < 0.0f ? 0.0f : v.z,
-            };
+            float x = v.x;
+            if (x < 0.0f)
+                x = 0.0f;
+            float y = v.y;
+            if (y < 0.0f)
+                y = 0.0f;
+            float z = v.z;
+            if (z < 0.0f)
+                z = 0.0f;
+            return NS::Math::Vector3{x, y, z};
         }
     } // namespace
 
@@ -83,8 +88,11 @@ namespace NS::Scene
         const GameObject* owner = Owner();
         // 原点中心 + 半径の local box に、 当たり箱の local offset / 回転 → owner の world 変換の順で重ねる
         // offset 0・回転単位・scale 1・整数位置の grid では結果が従来と一致する。 回転時は内包する軸並行 AABB になる
-        const NS::Math::Matrix combined =
-            (owner != nullptr) ? LocalMatrix() * owner->Root().WorldMatrix() : LocalMatrix();
+        const NS::Math::Matrix combined = [&]() -> NS::Math::Matrix {
+            if (owner != nullptr)
+                return LocalMatrix() * owner->Root().WorldMatrix();
+            return LocalMatrix();
+        }();
         const NS::Math::AABB local(NS::Math::Vector3{0.0f, 0.0f, 0.0f}, m_halfExtents);
         NS::Math::AABB world;
         local.Transform(world, combined);
@@ -95,7 +103,11 @@ namespace NS::Scene
     {
         const GameObject* owner = Owner();
         // Decompose は非 const のためローカルは mutable で持つ
-        NS::Math::Matrix combined = (owner != nullptr) ? LocalMatrix() * owner->Root().WorldMatrix() : LocalMatrix();
+        NS::Math::Matrix combined = [&]() -> NS::Math::Matrix {
+            if (owner != nullptr)
+                return LocalMatrix() * owner->Root().WorldMatrix();
+            return LocalMatrix();
+        }();
 
         NS::Math::Vector3 scale{1.0f, 1.0f, 1.0f};
         NS::Math::Quaternion rotation = NS::Math::Quaternion::Identity;

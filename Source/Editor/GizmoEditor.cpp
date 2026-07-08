@@ -53,7 +53,9 @@ namespace NS::Editor
         // 最近接の step 倍へ丸める。 step<=0 は素通し
         [[nodiscard]] float SnapTo(float value, float step) noexcept
         {
-            return (step <= 0.0f) ? value : std::round(value / step) * step;
+            if (step <= 0.0f)
+                return value;
+            return std::round(value / step) * step;
         }
 
         [[nodiscard]] NS::Math::Vector3 AxisVector(GizmoAxis axis) noexcept
@@ -86,7 +88,9 @@ namespace NS::Editor
         {
             if (tool == GizmoTool::Scale)
                 return objectRotation;
-            return (space == GizmoSpace::World) ? NS::Math::Quaternion::Identity : objectRotation;
+            if (space == GizmoSpace::World)
+                return NS::Math::Quaternion::Identity;
+            return objectRotation;
         }
 
         // startPos を通り axis を含む法線 planeNormal の平面と ray の交点。 交差不能なら false
@@ -129,15 +133,19 @@ namespace NS::Editor
                 float t2 = (he[axis] - o[axis]) * invD;
                 if (t1 > t2)
                     std::swap(t1, t2);
-                tMin = (t1 > tMin) ? t1 : tMin;
-                tMax = (t2 < tMax) ? t2 : tMax;
+                tMin = std::max(t1, tMin);
+                tMax = std::min(t2, tMax);
                 if (tMin > tMax)
                     return false;
             }
             if (tMax < 0.0f)
                 return false; // box は ray の後方
 
-            outT = (tMin >= 0.0f) ? tMin : tMax; // origin が box 外なら入口、 内なら出口
+            // origin が box 外なら入口、 内なら出口
+            if (tMin >= 0.0f)
+                outT = tMin;
+            else
+                outT = tMax;
             return true;
         }
 
@@ -168,7 +176,7 @@ namespace NS::Editor
                 return kHandleLength;
             // 深度 10 までは kHandleLength のまま、 これより遠い選択物ほど深度に比例して伸ばし画面上一定に近づける
             const float scale = clip.w / 10.0f;
-            return kHandleLength * ((scale > 1.0f) ? scale : 1.0f);
+            return kHandleLength * std::max(scale, 1.0f);
         }
 
         // 点 p から線分 a-b への px 単位の最短距離。 線分が a==b に縮退したら点 a への距離
@@ -181,7 +189,9 @@ namespace NS::Editor
             const float apx = p.x - a.x;
             const float apy = p.y - a.y;
             const float lenSq = abx * abx + aby * aby;
-            float t = (lenSq > 1e-12f) ? ((apx * abx + apy * aby) / lenSq) : 0.0f;
+            float t = 0.0f;
+            if (lenSq > 1e-12f)
+                t = (apx * abx + apy * aby) / lenSq;
             if (t < 0.0f)
                 t = 0.0f;
             else if (t > 1.0f)
@@ -422,7 +432,10 @@ namespace NS::Editor
         int hit = PickNearestObb(ray, worldMatrices, m_halfExtents, m_pickable);
         if (hit < 0)
             hit = PickNearestObb(ray, worldMatrices, m_halfExtents);
-        m_selected = (hit >= 0) ? &m_objects[static_cast<std::size_t>(hit)]->Root() : nullptr;
+        if (hit >= 0)
+            m_selected = &m_objects[static_cast<std::size_t>(hit)]->Root();
+        else
+            m_selected = nullptr;
     }
 
     void GizmoEditor::Render(const NS::Math::Matrix& viewProjection, NS::Math::Size2D viewport) noexcept
@@ -455,9 +468,10 @@ namespace NS::Editor
 
         // 現在の座標系を原点脇に出す。 Scale は常に Local 固定なので Local 表示
         const bool worldEffective = (m_tool != GizmoTool::Scale) && (m_space == GizmoSpace::World);
-        dl->AddText(ImVec2{originPx.x + 12.0f, originPx.y + 8.0f},
-                    IM_COL32(235, 235, 235, 255),
-                    worldEffective ? "World" : "Local");
+        const char* spaceLabel = "Local";
+        if (worldEffective)
+            spaceLabel = "World";
+        dl->AddText(ImVec2{originPx.x + 12.0f, originPx.y + 8.0f}, IM_COL32(235, 235, 235, 255), spaceLabel);
 
         const ImU32 axisColors[3] = {
             IM_COL32(230, 70, 70, 255),
@@ -681,10 +695,18 @@ namespace NS::Editor
         if (axis != GizmoAxis::X && axis != GizmoAxis::Y && axis != GizmoAxis::Z)
             return startRot;
 
-        const float angle = snap ? SnapTo(angleRad, kRotateSnapStep) : angleRad;
+        const float angle = [&]() -> float {
+            if (snap)
+                return SnapTo(angleRad, kRotateSnapStep);
+            return angleRad;
+        }();
         // 回転軸 n は world ならそのまま world 軸、 local なら startRot で回した選択物の local 軸。 リング描画と
         // 角度計測も同じ n を使うので見た目と一致する
-        const NS::Math::Vector3 n = worldSpace ? AxisVector(axis) : OrientedAxis(axis, startRot);
+        const NS::Math::Vector3 n = [&]() -> NS::Math::Vector3 {
+            if (worldSpace)
+                return AxisVector(axis);
+            return OrientedAxis(axis, startRot);
+        }();
         const NS::Math::Quaternion delta = NS::Math::Quaternion::CreateFromAxisAngle(n, angle);
 
         // q1*q2 は「q1 を先に、 続けて q2」 の合成。 startRot を効かせた後に world 軸 n 周りで delta を
@@ -699,7 +721,11 @@ namespace NS::Editor
         const float axisLen = axisDir2d.Length();
         if (axisLen <= 1.0e-6f)
         {
-            const float sign = (dragPixels.x < 0.0f) ? -1.0f : 1.0f;
+            const float sign = [&]() -> float {
+                if (dragPixels.x < 0.0f)
+                    return -1.0f;
+                return 1.0f;
+            }();
             return dragPixels.Length() * kScaleSensitivity * sign;
         }
 
@@ -742,9 +768,9 @@ namespace NS::Editor
         }
 
         // snap が 0 に丸めたケースも含め、 ここで最小正値へ押し上げる
-        result.x = (result.x < kScaleMin) ? kScaleMin : result.x;
-        result.y = (result.y < kScaleMin) ? kScaleMin : result.y;
-        result.z = (result.z < kScaleMin) ? kScaleMin : result.z;
+        result.x = std::max(result.x, kScaleMin);
+        result.y = std::max(result.y, kScaleMin);
+        result.z = std::max(result.z, kScaleMin);
         return result;
     }
 

@@ -32,7 +32,9 @@ namespace NS::Scene
 
     CameraComponent* CameraSubsystem::MainCamera() const noexcept
     {
-        return (m_brain != nullptr) ? m_brain->Camera() : nullptr;
+        if (m_brain != nullptr)
+            return m_brain->Camera();
+        return nullptr;
     }
 
     // カメラはどのシーンにも 1 系統あるため常時生成する

@@ -93,14 +93,28 @@ namespace NS::Graphics
                 cgltf_accessor_read_float(&posAcc, i, positions[i].data(), 3);
 
             std::vector<std::array<float, 3>> normals(vertexCount, {0.0f, 0.0f, 0.0f});
-            const cgltf_size count = (prim.indices != nullptr) ? prim.indices->count : vertexCount;
+            const cgltf_size count = [&]() -> cgltf_size {
+                if (prim.indices != nullptr)
+                    return prim.indices->count;
+                return vertexCount;
+            }();
             for (cgltf_size t = 0; t + 2 < count; t += 3)
             {
-                const cgltf_size i0 = (prim.indices != nullptr) ? cgltf_accessor_read_index(prim.indices, t) : t;
-                const cgltf_size i1 =
-                    (prim.indices != nullptr) ? cgltf_accessor_read_index(prim.indices, t + 1) : t + 1;
-                const cgltf_size i2 =
-                    (prim.indices != nullptr) ? cgltf_accessor_read_index(prim.indices, t + 2) : t + 2;
+                const cgltf_size i0 = [&]() -> cgltf_size {
+                    if (prim.indices != nullptr)
+                        return cgltf_accessor_read_index(prim.indices, t);
+                    return t;
+                }();
+                const cgltf_size i1 = [&]() -> cgltf_size {
+                    if (prim.indices != nullptr)
+                        return cgltf_accessor_read_index(prim.indices, t + 1);
+                    return t + 1;
+                }();
+                const cgltf_size i2 = [&]() -> cgltf_size {
+                    if (prim.indices != nullptr)
+                        return cgltf_accessor_read_index(prim.indices, t + 2);
+                    return t + 2;
+                }();
                 if (i0 >= vertexCount || i1 >= vertexCount || i2 >= vertexCount)
                     continue;
                 const std::array<float, 3>& a = positions[i0];
@@ -388,7 +402,10 @@ namespace NS::Graphics
             {
                 const cgltf_node* jointNode = skin.joints[i];
                 Bone& bone = outBones[i];
-                bone.parentIndex = FindJointIndex(skin, jointNode != nullptr ? jointNode->parent : nullptr);
+                const cgltf_node* parentNode = nullptr;
+                if (jointNode != nullptr)
+                    parentNode = jointNode->parent;
+                bone.parentIndex = FindJointIndex(skin, parentNode);
                 float ibm[16] = {};
                 cgltf_accessor_read_float(skin.inverse_bind_matrices, i, ibm, 16);
                 bone.inverseBind = detail::ConjugateZMatrix(detail::ReadColumnMajorMatrix(ibm));
@@ -555,7 +572,10 @@ namespace NS::Graphics
             {
                 const cgltf_animation& anim = model.animations[a];
                 AnimationClip clip;
-                clip.name = (anim.name != nullptr) ? anim.name : "";
+                if (anim.name != nullptr)
+                    clip.name = anim.name;
+                else
+                    clip.name = "";
                 float duration = 0.0f;
                 std::vector<BoneTrack> tracks;
 
@@ -595,8 +615,16 @@ namespace NS::Graphics
                                     "glTF animation: CUBICSPLINE は未対応のため線形で代替 (path={})",
                                     path);
                     const Interpolation interp = MapInterpolation(sampler.interpolation);
-                    const cgltf_size stride = cubic ? 3 : 1;
-                    const cgltf_size valueOffset = cubic ? 1 : 0; // cubic は inTangent, value, outTangent の中央
+                    const cgltf_size stride = [cubic]() -> cgltf_size {
+                        if (cubic)
+                            return 3;
+                        return 1;
+                    }();
+                    const cgltf_size valueOffset = [cubic]() -> cgltf_size {
+                        if (cubic)
+                            return 1;
+                        return 0;
+                    }(); // cubic は inTangent, value, outTangent の中央
 
                     std::vector<float> times(keyCount, 0.0f);
                     for (cgltf_size i = 0; i < keyCount; ++i)
@@ -687,7 +715,10 @@ namespace NS::Graphics
                 outNodeToBone.emplace(node, index);
                 Bone bone;
                 const cgltf_node* parent = node->parent;
-                bone.parentIndex = (parent != nullptr && included.count(parent) != 0) ? outNodeToBone.at(parent) : -1;
+                if (parent != nullptr && included.count(parent) != 0)
+                    bone.parentIndex = outNodeToBone.at(parent);
+                else
+                    bone.parentIndex = -1;
                 bone.bindLocal = ReadJointLocalPose(*node);
                 if (node->name != nullptr)
                     bone.name = node->name;
@@ -849,7 +880,9 @@ namespace NS::Graphics
             model,
             [&](const cgltf_node* node) -> int {
                 const int joint = FindJointIndex(skin, node);
-                return (joint < 0) ? -1 : static_cast<int>(remap[static_cast<std::size_t>(joint)]);
+                if (joint < 0)
+                    return -1;
+                return static_cast<int>(remap[static_cast<std::size_t>(joint)]);
             },
             path,
             data.animations);
@@ -904,7 +937,9 @@ namespace NS::Graphics
             model,
             [&](const cgltf_node* node) -> int {
                 const auto it = nodeToBone.find(node);
-                return (it == nodeToBone.end()) ? -1 : it->second;
+                if (it == nodeToBone.end())
+                    return -1;
+                return it->second;
             },
             path,
             source.animations);

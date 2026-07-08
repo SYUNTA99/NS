@@ -73,8 +73,9 @@ namespace NS::Scene
     {
         if (m_material == nullptr)
             return RenderBucket::Opaque;
-        return (m_material->Blend() == NS::Graphics::BlendMode::Opaque) ? RenderBucket::Opaque
-                                                                        : RenderBucket::Transparent;
+        if (m_material->Blend() == NS::Graphics::BlendMode::Opaque)
+            return RenderBucket::Opaque;
+        return RenderBucket::Transparent;
     }
 
     NS::Math::Vector3 MeshRendererComponent::SortCenter() const noexcept
@@ -88,7 +89,9 @@ namespace NS::Scene
 
     int MeshRendererComponent::SortPriority() const noexcept
     {
-        return (m_material != nullptr) ? m_material->RenderPriority() : 0;
+        if (m_material != nullptr)
+            return m_material->RenderPriority();
+        return 0;
     }
 
     // 既定コンストラクタが無いので mesh / material 空で構築し、読み込み時に反射 / BuildPlacedObject が差し込む

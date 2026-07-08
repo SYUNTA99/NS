@@ -249,7 +249,10 @@ namespace NS::Platform
                          ::GetLastError());
         }
 
-        ::ShowWindow(m_pImpl->hwnd, desc.visible ? SW_SHOW : SW_HIDE);
+        int showCommand = SW_HIDE;
+        if (desc.visible)
+            showCommand = SW_SHOW;
+        ::ShowWindow(m_pImpl->hwnd, showCommand);
         ::UpdateWindow(m_pImpl->hwnd);
     }
 
@@ -317,7 +320,10 @@ namespace NS::Platform
     {
         m_pImpl->cursorVisible = visible;
         // 次の WM_SETCURSOR を待たず即時反映する。 マウスが動かなくても切替わる
-        ::SetCursor(visible ? ::LoadCursorW(nullptr, IDC_ARROW) : nullptr);
+        HCURSOR cursor = nullptr;
+        if (visible)
+            cursor = ::LoadCursorW(nullptr, IDC_ARROW);
+        ::SetCursor(cursor);
     }
 
     bool Window::IsCursorVisible() const noexcept

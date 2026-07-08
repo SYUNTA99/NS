@@ -1,4 +1,4 @@
-#include "Framework/Core/Filesystem.h"
+﻿#include "Framework/Core/Filesystem.h"
 
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
@@ -223,7 +223,7 @@ namespace NS::Core
 #if defined(NS_SHIPPING)
         return GetExeDirectory();
 #else
-        // exe から premake5.lua / .git を上位へ辿りリポジトリルートを返す。 Logger のログ出力先探索と同方針
+        // exe から premake5.lua / .git を上位へ辿りリポジトリルートを返す
         for (auto dir = GetExeDirectory(); !dir.empty();)
         {
             std::error_code ec;

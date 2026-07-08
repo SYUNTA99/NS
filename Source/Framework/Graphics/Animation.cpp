@@ -33,7 +33,11 @@ namespace NS::Graphics
                 ++i;
             }
             const float span = times[i + 1] - times[i];
-            const float f = (span > 0.0f) ? (t - times[i]) / span : 0.0f;
+            const float f = [&]() -> float {
+                if (span > 0.0f)
+                    return (t - times[i]) / span;
+                return 0.0f;
+            }();
             return {i, i + 1, f};
         }
     } // namespace

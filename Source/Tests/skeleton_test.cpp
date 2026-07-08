@@ -33,7 +33,10 @@ namespace
         {
             for (int c = 0; c < 4; ++c)
             {
-                EXPECT_NEAR(m.m[r][c], (r == c) ? 1.0f : 0.0f, eps) << "m[" << r << "][" << c << "]";
+                float expected = 0.0f;
+                if (r == c)
+                    expected = 1.0f;
+                EXPECT_NEAR(m.m[r][c], expected, eps) << "m[" << r << "][" << c << "]";
             }
         }
     }

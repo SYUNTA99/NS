@@ -153,7 +153,11 @@ namespace NS::Scene
             if (kb.IsHeld(NS::Platform::Key::Q))
                 verticalAxis -= 1.0f;
             // Shift 押下中は 4 倍速で移動する。 通常は等倍で寄せて微調整し、 Shift で広い地形を一気に移動する
-            const float speedScale = kb.IsHeld(NS::Platform::Key::Shift) ? 4.0f : 1.0f;
+            const float speedScale = [&kb]() {
+                if (kb.IsHeld(NS::Platform::Key::Shift))
+                    return 4.0f;
+                return 1.0f;
+            }();
             ApplyFlyMove(forwardAxis, strafeAxis, verticalAxis, dt, speedScale);
         }
 

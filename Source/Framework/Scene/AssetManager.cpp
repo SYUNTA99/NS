@@ -251,7 +251,9 @@ namespace NS::Scene
     NS::Graphics::StaticMesh* AssetManager::Builtin(std::string_view name) const noexcept
     {
         const auto it = m_builtins.find(std::string(name));
-        return it != m_builtins.end() ? it->second.get() : nullptr;
+        if (it != m_builtins.end())
+            return it->second.get();
+        return nullptr;
     }
 
     LoadedMaterial AssetManager::LoadMaterial(const std::filesystem::path& matPath)
@@ -277,7 +279,11 @@ namespace NS::Scene
         }
 
         // 相対 path は構築時の baseDir 基準で解決する
-        const auto resolve = [this](const std::filesystem::path& p) { return p.is_absolute() ? p : (m_baseDir / p); };
+        const auto resolve = [this](const std::filesystem::path& p) -> std::filesystem::path {
+            if (p.is_absolute())
+                return p;
+            return m_baseDir / p;
+        };
 
         NS::Graphics::Shader* vertexShader = GetOrLoadShader(resolve(fileDesc.vertexShader));
         NS::Graphics::Shader* pixelShader = GetOrLoadShader(resolve(fileDesc.pixelShader));
@@ -347,7 +353,9 @@ namespace NS::Scene
     NS::Graphics::Material* AssetManager::SharedMaterial(std::string_view name) const noexcept
     {
         const auto it = m_sharedMaterials.find(std::string(name));
-        return it != m_sharedMaterials.end() ? it->second.get() : nullptr;
+        if (it != m_sharedMaterials.end())
+            return it->second.get();
+        return nullptr;
     }
 
     bool AssetManager::Reload(const std::filesystem::path& path)

@@ -105,9 +105,12 @@ namespace NS::GameCore::Blocks
                                           ? assets.SharedMaterial(matRef)
                                           : ResolveFreeMaterial(object, assets, materialPaths));
                     // 移行済データは必ず参照を持つ
-                    NS::Graphics::Mesh* resolved =
-                        mesh->MeshRef().empty() ? nullptr : ResolveMeshFromRef(assets, mesh->MeshRef());
-                    mesh->SetMesh(resolved != nullptr ? resolved : assets.Builtin("cube"));
+                    NS::Graphics::Mesh* resolved = nullptr;
+                    if (!mesh->MeshRef().empty())
+                        resolved = ResolveMeshFromRef(assets, mesh->MeshRef());
+                    if (resolved == nullptr)
+                        resolved = assets.Builtin("cube");
+                    mesh->SetMesh(resolved);
                 }
                 // 接地影の共有資源はファクトリが賄う。 影は常に組み込み quad + 共有 shadow 材質で描く
                 else if (auto* shadow = NS::Scene::ComponentCast<NS::Scene::ShadowComponent>(created))

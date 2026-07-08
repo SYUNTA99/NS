@@ -120,9 +120,15 @@ namespace NS::Editor
                 if (refOptions.empty())
                 {
                     int id = static_cast<int>(value.id);
-                    if (ImGui::DragInt(field.name, &id, 1.0f, 0, INT_MAX, value.IsSet() ? "id %d" : "未設定"))
+                    const char* format = "未設定";
+                    if (value.IsSet())
+                        format = "id %d";
+                    if (ImGui::DragInt(field.name, &id, 1.0f, 0, INT_MAX, format))
                     {
-                        value.id = id <= 0 ? 0u : static_cast<std::uint32_t>(id);
+                        if (id <= 0)
+                            value.id = 0u;
+                        else
+                            value.id = static_cast<std::uint32_t>(id);
                         field.set(&comp, &value);
                         changed = true;
                     }
@@ -130,7 +136,9 @@ namespace NS::Editor
                 }
 
                 // レベル配置物から参照先を選ぶコンボ。現在値が候補に無い id なら消えた参照として明示する
-                const char* currentLabel = value.IsSet() ? "(消えた参照)" : "未設定";
+                const char* currentLabel = "未設定";
+                if (value.IsSet())
+                    currentLabel = "(消えた参照)";
                 for (const ObjectRefOption& option : refOptions)
                 {
                     if (option.id == value.id)
@@ -180,7 +188,9 @@ namespace NS::Editor
             // 反射が無い Component も見出しは必ず出す。何が乗っているか一覧できることを優先する
             // 反射ありは既定で開いて編集 UI を見せ、反射なしは畳んだ見出しだけにして雑然とさせない
             ImGui::PushID(index++);
-            const ImGuiTreeNodeFlags flags = (info != nullptr) ? ImGuiTreeNodeFlags_DefaultOpen : 0;
+            ImGuiTreeNodeFlags flags = 0;
+            if (info != nullptr)
+                flags = ImGuiTreeNodeFlags_DefaultOpen;
             if (ImGui::CollapsingHeader(DisplayTypeName(*comp, info), flags))
             {
                 if (info != nullptr)

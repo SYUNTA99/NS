@@ -39,7 +39,11 @@ namespace NS::Graphics
                                    DXGI_FORMAT format,
                                    D3D11_USAGE usage) noexcept
     {
-        const std::size_t elementSize = (format == DXGI_FORMAT_R16_UINT) ? 2u : 4u;
+        const std::size_t elementSize = [format]() -> std::size_t {
+            if (format == DXGI_FORMAT_R16_UINT)
+                return 2u;
+            return 4u;
+        }();
         BufferDesc desc{};
         desc.initialData = data;
         desc.byteSize = indexCount * elementSize;
@@ -66,8 +70,11 @@ namespace NS::Graphics
     Buffer::Buffer(const BufferDesc& desc)
     {
         const bool isConstant = (desc.bindFlags & D3D11_BIND_CONSTANT_BUFFER) != 0u;
-        const std::size_t bytes =
-            isConstant ? RoundUpToAlignment(desc.byteSize, kConstantBufferAlignment) : desc.byteSize;
+        const std::size_t bytes = [&]() -> std::size_t {
+            if (isConstant)
+                return RoundUpToAlignment(desc.byteSize, kConstantBufferAlignment);
+            return desc.byteSize;
+        }();
 
         m_stride = desc.stride;
         m_byteSize = bytes;

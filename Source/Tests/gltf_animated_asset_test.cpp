@@ -70,8 +70,11 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
         NS::Math::Vector3 mx{-1e9f, -1e9f, -1e9f};
         for (const NS::Graphics::SkinnedVertex& v : data.vertices)
         {
-            const NS::Math::Vector3 p =
-                palette.empty() ? v.position : NS::Graphics::Skeleton::SkinPositionReference(v, sp);
+            const NS::Math::Vector3 p = [&]() -> NS::Math::Vector3 {
+                if (palette.empty())
+                    return v.position;
+                return NS::Graphics::Skeleton::SkinPositionReference(v, sp);
+            }();
             mn = NS::Math::Vector3::Min(mn, p);
             mx = NS::Math::Vector3::Max(mx, p);
         }

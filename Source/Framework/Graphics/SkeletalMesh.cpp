@@ -9,6 +9,7 @@
 #include "Framework/Core/LogCategories.h"
 #include "Framework/Core/Logger.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -100,7 +101,7 @@ namespace NS::Graphics
                          desc.boneCount,
                          kMaxBones);
         }
-        m_boneCount = (desc.boneCount < kMaxBones) ? desc.boneCount : kMaxBones;
+        m_boneCount = std::min(desc.boneCount, kMaxBones);
 
         // 既定は恒等パレットで初期化し、 pose 未指定でも bind pose 相当で描画できるようにする
         FillIdentity(m_palette);
@@ -124,7 +125,7 @@ namespace NS::Graphics
             return;
 
         FillIdentity(m_palette);
-        const std::size_t count = (palette.size() < kMaxBones) ? palette.size() : kMaxBones;
+        const std::size_t count = std::min(palette.size(), kMaxBones);
         for (std::size_t i = 0; i < count; ++i)
         {
             m_palette.bones[i] = palette[i];

@@ -56,7 +56,9 @@ namespace NS::Scene
         if (!m_targetRef.IsSet() || Owner() == nullptr || Owner()->OwningScene() == nullptr)
             return;
         auto* refs = Owner()->OwningScene()->GetSubsystem<ObjectRefSubsystem>();
-        GameObject* target = (refs != nullptr) ? refs->Resolve(m_targetRef) : nullptr;
+        GameObject* target = nullptr;
+        if (refs != nullptr)
+            target = refs->Resolve(m_targetRef);
         if (target == nullptr)
             return;
         m_target = &target->Root();
@@ -143,8 +145,12 @@ namespace NS::Scene
 
         auto& input = NS::Platform::Input::Get();
         const auto& mouse = input.Mouse();
-        const float mxSign = m_invertX ? -1.0f : 1.0f;
-        const float mySign = m_invertY ? -1.0f : 1.0f;
+        float mxSign = 1.0f;
+        if (m_invertX)
+            mxSign = -1.0f;
+        float mySign = 1.0f;
+        if (m_invertY)
+            mySign = -1.0f;
         m_yaw += static_cast<float>(mouse.GetDeltaX()) * m_sensX * mxSign;
         m_pitch += static_cast<float>(mouse.GetDeltaY()) * m_sensY * mySign;
 
@@ -168,7 +174,10 @@ namespace NS::Scene
                 {
                     const auto v = m_movement->Velocity();
                     const float horiz = std::sqrt(v.x * v.x + v.z * v.z);
-                    desired = (horiz > m_runSpeedThreshold) ? m_runDistance : m_idleDistance;
+                    if (horiz > m_runSpeedThreshold)
+                        desired = m_runDistance;
+                    else
+                        desired = m_idleDistance;
                 }
             }
             m_desiredDistance = desired;

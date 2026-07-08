@@ -14,7 +14,10 @@ namespace NS::Scene
 
     void CameraBrainComponent::OnStart()
     {
-        m_camera = (Owner() != nullptr) ? Owner()->FindComponent<CameraComponent>() : nullptr;
+        if (Owner() != nullptr)
+            m_camera = Owner()->FindComponent<CameraComponent>();
+        else
+            m_camera = nullptr;
     }
 
     void CameraBrainComponent::AddVirtualCamera(VirtualCameraComponent* vcam)
@@ -37,7 +40,10 @@ namespace NS::Scene
 
     void CameraBrainComponent::SetBlendDuration(float seconds) noexcept
     {
-        m_blendDuration = (seconds > 0.0f) ? seconds : 0.0f;
+        if (seconds > 0.0f)
+            m_blendDuration = seconds;
+        else
+            m_blendDuration = 0.0f;
     }
 
     VirtualCameraComponent* CameraBrainComponent::SelectActive() const noexcept
@@ -102,12 +108,16 @@ namespace NS::Scene
 
     NS::Math::Matrix CameraBrainComponent::ViewProjection() const noexcept
     {
-        return (m_camera != nullptr) ? m_camera->ViewProjection() : NS::Math::Matrix::Identity;
+        if (m_camera != nullptr)
+            return m_camera->ViewProjection();
+        return NS::Math::Matrix::Identity;
     }
 
     NS::Math::Vector3 CameraBrainComponent::ForwardHorizontal() const noexcept
     {
-        return (m_camera != nullptr) ? m_camera->ForwardHorizontal() : NS::Math::Vector3{0.0f, 0.0f, 1.0f};
+        if (m_camera != nullptr)
+            return m_camera->ForwardHorizontal();
+        return NS::Math::Vector3{0.0f, 0.0f, 1.0f};
     }
 
     NS_REGISTER_COMPONENT(CameraBrainComponent)

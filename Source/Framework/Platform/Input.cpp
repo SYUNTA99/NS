@@ -40,13 +40,24 @@ namespace NS::Platform
         /// 軸別なのは Mario 系の縦横独立操作向け。deadzone は符号なしで持ち負値での誤判定を防ぐ
         [[nodiscard]] Stick NormalizeStick(short rawX, short rawY, unsigned short deadzone) noexcept
         {
-            const float fx = (rawX < 0) ? static_cast<float>(rawX) / 32768.0f : static_cast<float>(rawX) / 32767.0f;
-            const float fy = (rawY < 0) ? static_cast<float>(rawY) / 32768.0f : static_cast<float>(rawY) / 32767.0f;
+            const float fx = [&]() -> float {
+                if (rawX < 0)
+                    return static_cast<float>(rawX) / 32768.0f;
+                return static_cast<float>(rawX) / 32767.0f;
+            }();
+            const float fy = [&]() -> float {
+                if (rawY < 0)
+                    return static_cast<float>(rawY) / 32768.0f;
+                return static_cast<float>(rawY) / 32767.0f;
+            }();
             const float dz = static_cast<float>(deadzone) / 32767.0f;
-            return Stick{
-                std::fabs(fx) < dz ? 0.0f : fx,
-                std::fabs(fy) < dz ? 0.0f : fy,
-            };
+            float clampedX = fx;
+            if (std::fabs(fx) < dz)
+                clampedX = 0.0f;
+            float clampedY = fy;
+            if (std::fabs(fy) < dz)
+                clampedY = 0.0f;
+            return Stick{clampedX, clampedY};
         }
 
         /// 0〜255 の BYTE トリガー生値を 0.0〜1.0 に正規化、スレッショルド未満は 0.0

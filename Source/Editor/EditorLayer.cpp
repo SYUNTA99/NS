@@ -40,7 +40,9 @@ void EditorLayer::OnAttach()
     // SceneManager::LoadScene が同期実行するので起動 scene は Game レイヤが既に load + OnStart 済
     auto* app = NS::App::Application::Get();
     auto* game = Game::Get();
-    auto* scene = game ? game->CurrentPlayScene() : nullptr;
+    decltype(game->CurrentPlayScene()) scene = nullptr;
+    if (game != nullptr)
+        scene = game->CurrentPlayScene();
     if (app == nullptr || scene == nullptr)
     {
         NS_LOG_ERROR(::NS::Core::LogCat::App, "EditorLayer::OnAttach: app / play scene 不在のため編集を起動できない");
@@ -232,7 +234,11 @@ void EditorLayer::RenderFpsOverlay() noexcept
     {
         const ImGuiIO& io = ImGui::GetIO();
         const float fps = io.Framerate;
-        const float ms = (fps > 0.0f) ? (1000.0f / fps) : 0.0f;
+        const float ms = [fps]() -> float {
+            if (fps > 0.0f)
+                return 1000.0f / fps;
+            return 0.0f;
+        }();
         ImGui::Text("%.1f FPS (%.2f ms)", static_cast<double>(fps), static_cast<double>(ms));
     }
     ImGui::End();
@@ -288,7 +294,10 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorController& editor) noexc
         ImGui::DragFloat3("lightDir##env", &env.lightDirection.x, 0.01f, -1.0f, 1.0f);
         ImGui::DragFloat3("lightColor##env", &env.lightColor.x, 0.01f, 0.0f, 4.0f);
         ImGui::DragFloat3("ambient##env", &env.ambientColor.x, 0.01f, 0.0f, 2.0f);
-        ImGui::Text("skybox: %s", env.skyboxCubemapPath.empty() ? "(なし)" : env.skyboxCubemapPath.c_str());
+        const char* skyboxLabel = "(なし)";
+        if (!env.skyboxCubemapPath.empty())
+            skyboxLabel = env.skyboxCubemapPath.c_str();
+        ImGui::Text("skybox: %s", skyboxLabel);
 
         ImGui::Separator();
 
@@ -577,11 +586,16 @@ void EditorLayer::RenderMaterialsPanel(LevelEditorController& editor) noexcept
     if (ImGui::Begin("Assets"))
     {
         const bool hasSelection = editor.HasGizmoSelection();
-        ImGui::TextUnformatted(hasSelection ? "Selected object: yes" : "Select an object first (click it)");
+        const char* selectionLabel = "Select an object first (click it)";
+        if (hasSelection)
+            selectionLabel = "Selected object: yes";
+        ImGui::TextUnformatted(selectionLabel);
 
         // ドロップ枠: ツリーの .mat をここへドラッグすると選択中の物体へ適用する
-        ImGui::Button(hasSelection ? "Drop .mat here -> apply to selected" : "Drop target (needs selection)",
-                      ImVec2(-1.0f, 32.0f));
+        const char* dropLabel = "Drop target (needs selection)";
+        if (hasSelection)
+            dropLabel = "Drop .mat here -> apply to selected";
+        ImGui::Button(dropLabel, ImVec2(-1.0f, 32.0f));
         if (ImGui::BeginDragDropTarget())
         {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("NS_MATERIAL"))

@@ -67,7 +67,13 @@ namespace NS::Graphics
                                           errBlob.GetAddressOf());
             if (FAILED(hr))
             {
-                const char* err = errBlob ? static_cast<const char*>(errBlob->GetBufferPointer()) : "<no err blob>";
+                const char* err = [&]() -> const char* {
+                    if (errBlob)
+                    {
+                        return static_cast<const char*>(errBlob->GetBufferPointer());
+                    }
+                    return "<no err blob>";
+                }();
                 NS_LOG_ERROR(::NS::Core::LogCat::Graphics,
                              "InstanceBatcher: hlsl コンパイル失敗 ({} / {}, hr=0x{:08X}): {}",
                              sourceName,
@@ -290,8 +296,16 @@ namespace NS::Graphics
 
                 const Buffer* meshVBuf = key.mesh->VertexBuffer();
                 const Buffer* meshIBuf = key.mesh->IndexBuffer();
-                ID3D11Buffer* meshVB = meshVBuf ? meshVBuf->Native() : nullptr;
-                ID3D11Buffer* meshIB = meshIBuf ? meshIBuf->Native() : nullptr;
+                ID3D11Buffer* meshVB = nullptr;
+                if (meshVBuf)
+                {
+                    meshVB = meshVBuf->Native();
+                }
+                ID3D11Buffer* meshIB = nullptr;
+                if (meshIBuf)
+                {
+                    meshIB = meshIBuf->Native();
+                }
                 ID3D11Buffer* instanceVB = m_instanceVB->Native();
                 if (meshVB == nullptr || meshIB == nullptr || instanceVB == nullptr)
                 {

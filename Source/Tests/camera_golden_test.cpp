@@ -207,8 +207,10 @@ TEST_F(CameraGolden, FollowWalkJumpMatchesGoldenTrace)
     for (const CameraStepRecord& s : trajectory)
     {
         const float d = DistanceBetween(s.position, s.target);
-        minDistance = (d < minDistance) ? d : minDistance;
-        maxDistance = (d > maxDistance) ? d : maxDistance;
+        if (d < minDistance)
+            minDistance = d;
+        if (d > maxDistance)
+            maxDistance = d;
     }
     EXPECT_LT(minDistance, 5.5f) << "idle 距離へ寄っていない";
     EXPECT_GT(maxDistance, 6.5f) << "ジャンプ距離へ引いていない";

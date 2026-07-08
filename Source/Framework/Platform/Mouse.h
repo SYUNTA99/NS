@@ -42,8 +42,18 @@ namespace NS::Platform
         [[nodiscard]] int GetY() const noexcept { return m_y; }
 
         /// 前フレーム位置からの差分。 相対モード中は OnRawMove で積んだ物理移動量を返す
-        [[nodiscard]] int GetDeltaX() const noexcept { return m_relativeMode ? m_rawDeltaX : (m_x - m_prevX); }
-        [[nodiscard]] int GetDeltaY() const noexcept { return m_relativeMode ? m_rawDeltaY : (m_y - m_prevY); }
+        [[nodiscard]] int GetDeltaX() const noexcept
+        {
+            if (m_relativeMode)
+                return m_rawDeltaX;
+            return m_x - m_prevX;
+        }
+        [[nodiscard]] int GetDeltaY() const noexcept
+        {
+            if (m_relativeMode)
+                return m_rawDeltaY;
+            return m_y - m_prevY;
+        }
 
         /// WHEEL_DELTA=120 単位の縦ホイールデルタ。Update() で 0 リセット
         [[nodiscard]] int GetWheelDelta() const noexcept { return m_wheel; }

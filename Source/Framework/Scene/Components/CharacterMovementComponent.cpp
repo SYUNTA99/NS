@@ -205,13 +205,20 @@ namespace NS::Scene
         float targetSpeed = 0.0f;
         if (m_desiredSpeedScale >= m_stickDeadzone)
         {
-            targetSpeed = (m_desiredSpeedScale < 0.5f) ? m_walkSpeed : (m_maxSpeed * m_desiredSpeedScale);
+            if (m_desiredSpeedScale < 0.5f)
+                targetSpeed = m_walkSpeed;
+            else
+                targetSpeed = m_maxSpeed * m_desiredSpeedScale;
         }
 
         NS::Math::Vector3 targetHoriz{m_desiredDir.x * targetSpeed, 0.0f, m_desiredDir.z * targetSpeed};
 
         const float currHorizMag = std::sqrt(m_velocity.x * m_velocity.x + m_velocity.z * m_velocity.z);
-        const float tau = (targetSpeed > currHorizMag + kHorizontalSpeedEpsilon) ? m_accelTau : m_decelTau;
+        const float tau = [&]() -> float {
+            if (targetSpeed > currHorizMag + kHorizontalSpeedEpsilon)
+                return m_accelTau;
+            return m_decelTau;
+        }();
         m_velocity = HorizontalSmooth(m_velocity, targetHoriz, tau, dt);
 
         const bool canGroundJump = (m_isGrounded || m_coyoteTimer > 0.0f) && m_jumpsRemaining > 0;
@@ -233,8 +240,16 @@ namespace NS::Scene
             m_velocity.y *= m_jumpReleaseScale;
 
         const bool apex = std::abs(m_velocity.y) < m_apexHangVy;
-        const float baseG = (m_velocity.y > 0.0f) ? m_gravityUp : m_gravityDown;
-        const float g = apex ? baseG * m_apexHangScale : baseG;
+        const float baseG = [&]() -> float {
+            if (m_velocity.y > 0.0f)
+                return m_gravityUp;
+            return m_gravityDown;
+        }();
+        const float g = [&]() -> float {
+            if (apex)
+                return baseG * m_apexHangScale;
+            return baseG;
+        }();
         m_velocity.y += g * dt;
 
         NS::Physics::CharacterControllerInput in{};
@@ -315,7 +330,11 @@ namespace NS::Scene
             NS::Math::Vector3 hang = pos;
             if (std::abs(dir.x) >= std::abs(dir.z))
             {
-                const float sgn = (dir.x >= 0.0f) ? 1.0f : -1.0f;
+                const float sgn = [&]() -> float {
+                    if (dir.x >= 0.0f)
+                        return 1.0f;
+                    return -1.0f;
+                }();
                 const float faceX = box.Center.x - sgn * box.Extents.x;
                 faceNormal = NS::Math::Vector3{-sgn, 0.0f, 0.0f};
                 hang.x = faceX - sgn * m_capsuleRadius;
@@ -323,7 +342,11 @@ namespace NS::Scene
             }
             else
             {
-                const float sgn = (dir.z >= 0.0f) ? 1.0f : -1.0f;
+                const float sgn = [&]() -> float {
+                    if (dir.z >= 0.0f)
+                        return 1.0f;
+                    return -1.0f;
+                }();
                 const float faceZ = box.Center.z - sgn * box.Extents.z;
                 faceNormal = NS::Math::Vector3{0.0f, 0.0f, -sgn};
                 hang.z = faceZ - sgn * m_capsuleRadius;

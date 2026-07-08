@@ -19,52 +19,72 @@ namespace NS::Graphics
 
     ID3D11BlendState* CommonStates::Opaque() const noexcept
     {
-        return m_states ? m_states->Opaque() : nullptr;
+        if (m_states)
+            return m_states->Opaque();
+        return nullptr;
     }
 
     ID3D11BlendState* CommonStates::AlphaBlend() const noexcept
     {
-        return m_states ? m_states->AlphaBlend() : nullptr;
+        if (m_states)
+            return m_states->AlphaBlend();
+        return nullptr;
     }
 
     ID3D11DepthStencilState* CommonStates::DepthDefault() const noexcept
     {
-        return m_states ? m_states->DepthDefault() : nullptr;
+        if (m_states)
+            return m_states->DepthDefault();
+        return nullptr;
     }
 
     ID3D11DepthStencilState* CommonStates::DepthNone() const noexcept
     {
-        return m_states ? m_states->DepthNone() : nullptr;
+        if (m_states)
+            return m_states->DepthNone();
+        return nullptr;
     }
 
     ID3D11RasterizerState* CommonStates::CullCounterClockwise() const noexcept
     {
-        return m_states ? m_states->CullCounterClockwise() : nullptr;
+        if (m_states)
+            return m_states->CullCounterClockwise();
+        return nullptr;
     }
 
     ID3D11RasterizerState* CommonStates::CullClockwise() const noexcept
     {
-        return m_states ? m_states->CullClockwise() : nullptr;
+        if (m_states)
+            return m_states->CullClockwise();
+        return nullptr;
     }
 
     ID3D11SamplerState* CommonStates::LinearWrap() const noexcept
     {
-        return m_states ? m_states->LinearWrap() : nullptr;
+        if (m_states)
+            return m_states->LinearWrap();
+        return nullptr;
     }
 
     ID3D11SamplerState* CommonStates::LinearClamp() const noexcept
     {
-        return m_states ? m_states->LinearClamp() : nullptr;
+        if (m_states)
+            return m_states->LinearClamp();
+        return nullptr;
     }
 
     ID3D11SamplerState* CommonStates::PointWrap() const noexcept
     {
-        return m_states ? m_states->PointWrap() : nullptr;
+        if (m_states)
+            return m_states->PointWrap();
+        return nullptr;
     }
 
     ID3D11SamplerState* CommonStates::PointClamp() const noexcept
     {
-        return m_states ? m_states->PointClamp() : nullptr;
+        if (m_states)
+            return m_states->PointClamp();
+        return nullptr;
     }
 
 } // namespace NS::Graphics

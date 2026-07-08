@@ -16,7 +16,10 @@ namespace NS::GameCore::Level::detail
                 std::uint32_t c = i;
                 for (int k = 0; k < 8; ++k)
                 {
-                    c = (c & 1u) ? (kPolynomial ^ (c >> 1)) : (c >> 1);
+                    if ((c & 1u) != 0u)
+                        c = kPolynomial ^ (c >> 1);
+                    else
+                        c = c >> 1;
                 }
                 table[i] = c;
             }

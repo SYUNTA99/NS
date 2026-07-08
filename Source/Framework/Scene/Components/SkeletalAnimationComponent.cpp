@@ -35,7 +35,10 @@ namespace NS::Scene
 
     void SkeletalAnimationComponent::SetSpeed(float speed) noexcept
     {
-        m_speed = (speed > 0.0f) ? speed : 0.0f;
+        if (speed > 0.0f)
+            m_speed = speed;
+        else
+            m_speed = 0.0f;
     }
 
     void SkeletalAnimationComponent::SetLooping(bool looping) noexcept
@@ -90,7 +93,9 @@ namespace NS::Scene
 
     float SkeletalAnimationComponent::Duration() const noexcept
     {
-        return (m_current < m_clips.size()) ? m_clips[m_current].duration : 0.0f;
+        if (m_current < m_clips.size())
+            return m_clips[m_current].duration;
+        return 0.0f;
     }
 
     bool SkeletalAnimationComponent::IsPlaying() const noexcept

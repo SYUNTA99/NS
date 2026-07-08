@@ -17,7 +17,9 @@ namespace NS::Scene
         if (!ref.IsSet())
             return nullptr;
         const auto it = m_objects.find(ref.id);
-        return (it != m_objects.end()) ? it->second : nullptr;
+        if (it != m_objects.end())
+            return it->second;
+        return nullptr;
     }
 
     // オブジェクト間参照はどのシーンでも使い得るため常時生成する
