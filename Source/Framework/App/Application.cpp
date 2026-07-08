@@ -1,6 +1,7 @@
 #include "Framework/App/Application.h"
 
 #include "Framework/App/Layer.h"
+#include "Framework/Core/Assert.h"
 #include "Framework/Core/Clock.h"
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/LogCategories.h"
@@ -10,7 +11,6 @@
 
 #include "Framework/Framework.h"
 
-#include <cassert>
 #include <chrono>
 #include <utility>
 
@@ -109,7 +109,7 @@ namespace NS::App
 
     NS::Scene::AssetManager& Application::Assets() noexcept
     {
-        assert(m_assets && "Init 前 / Shutdown 後に Assets() を呼んでいる");
+        NS_ASSERT(::NS::Core::LogCat::App, m_assets, "Init 前 / Shutdown 後に Assets() を呼んでいる");
         return *m_assets;
     }
 
