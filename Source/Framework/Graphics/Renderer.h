@@ -46,7 +46,7 @@ namespace NS::Graphics
     class Renderer : public NS::Core::NonCopyable
     {
     public:
-        Renderer(const RendererDesc& desc, ::NS::Platform::Window& window);
+        Renderer(const RendererDesc& desc, ::NS::Platform::Window& window) noexcept;
         ~Renderer();
 
         /// 構築成功判定。D3D11CreateDevice / SwapChain 作成失敗時に false

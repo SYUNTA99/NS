@@ -15,6 +15,7 @@
 
 #include <cassert>
 #include <iterator>
+#include <new>
 
 namespace NS::Graphics
 {
@@ -146,7 +147,7 @@ namespace NS::Graphics
         }
     } // namespace
 
-    Renderer::Renderer(const RendererDesc& desc, ::NS::Platform::Window& window)
+    Renderer::Renderer(const RendererDesc& desc, ::NS::Platform::Window& window) noexcept
     {
         m_window = &window;
         m_vsync = desc.vsync;
@@ -203,8 +204,14 @@ namespace NS::Graphics
             return;
         }
 
-        // CommonStates のコンストラクタは friend Renderer 限定の private で make_unique が呼べないため new で構築する
-        m_states.reset(new CommonStates(m_device.Get()));
+        // CommonStates の private ctor は make_unique から呼べない。 例外を使わず nothrow new で構築し確保失敗は null
+        // 判定で扱う
+        m_states.reset(new (std::nothrow) CommonStates(m_device.Get()));
+        if (!m_states)
+        {
+            NS_LOG_ERROR(::NS::Core::LogCat::Graphics, "CommonStates の確保失敗");
+            return;
+        }
 
         // 共通 Pipeline を1回だけ生成しキャッシュする。Gpu() は上で公開済で、描画する者が毎回 set する
         m_commonPipelines[0] = Pipeline::Create(PipelineDesc{});
@@ -308,7 +315,17 @@ namespace NS::Graphics
             }
             return 0;
         }();
-        m_swapchain->Present(sync, 0);
+        const HRESULT hr = m_swapchain->Present(sync, 0);
+        if (FAILED(hr))
+        {
+            NS_LOG_ERROR(
+                ::NS::Core::LogCat::Graphics, "SwapChain::Present 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+            // device 喪失は復帰不能。 以降の描画を止め、 毎フレームのログ洪水も防ぐ
+            if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
+            {
+                m_valid = false;
+            }
+        }
     }
 
     void Renderer::Resize(::NS::Math::Size2D size) noexcept

@@ -30,6 +30,9 @@ namespace NS::Graphics
     public:
         ~CommonStates();
 
+        /// 構築成功判定。DirectXTK CommonStates の生成に失敗すると false を返し、各 getter は nullptr を返す
+        [[nodiscard]] bool IsValid() const noexcept;
+
         [[nodiscard]] ID3D11BlendState* Opaque() const noexcept;
         [[nodiscard]] ID3D11BlendState* AlphaBlend() const noexcept;
 
@@ -48,7 +51,7 @@ namespace NS::Graphics
         std::unique_ptr<DirectX::CommonStates> m_states;
 
         friend class Renderer;
-        explicit CommonStates(ID3D11Device* device);
+        explicit CommonStates(ID3D11Device* device) noexcept;
     };
 
 } // namespace NS::Graphics
