@@ -479,8 +479,7 @@ void LevelEditorController::RefreshGizmoSelectables()
     const auto pushSelectable = [this](NS::Scene::GameObject* object) {
         m_selectablePtrs.push_back(object);
         m_selectableHalfExtents.push_back(kCellHalfExtents);
-        const bool hasVisual =
-            NS::Game::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*object) != nullptr;
+        const bool hasVisual = NS::Game::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*object) != nullptr;
         std::uint8_t pickable = std::uint8_t{0};
         if (hasVisual)
             pickable = std::uint8_t{1};
@@ -859,7 +858,7 @@ void LevelEditorController::AddObject()
     object.positionY = center.y;
     object.positionZ = center.z;
     // 既定の素の cube を自由配置物として実 component で起こす
-    object.components = NS::Game::Blocks::MakeFreeCubeComponents(object);
+    object.components = NS::Game::Blocks::MakeFreeCubeComponents();
 
     // grid 設置と同じ undo 履歴へ載せる。 Do が objects 末尾へ append する
     m_editor.Undo().Push(std::make_unique<NS::Editor::AddObjectCommand>(object), m_scene->Level());
@@ -899,8 +898,7 @@ void LevelEditorController::RemoveComponentFromSelected(std::size_t componentInd
 
     // 空構成は build で消えるゴーストになるので最後の 1 個 / 範囲外は消さない。 何もしないコマンドを積まず
     // undo 履歴も汚さない
-    const std::vector<NS::Game::Level::ComponentData>& components =
-        m_scene->Level().objects[objectIndex].components;
+    const std::vector<NS::Game::Level::ComponentData>& components = m_scene->Level().objects[objectIndex].components;
     if (componentIndex >= components.size() || components.size() <= 1)
         return;
 
@@ -1085,8 +1083,7 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
     if (slot >= m_scene->World().Objects().size())
         return false;
 
-    auto* mesh =
-        NS::Game::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*m_scene->World().Objects()[slot]);
+    auto* mesh = NS::Game::Blocks::FindComponent<NS::Scene::MeshRendererComponent>(*m_scene->World().Objects()[slot]);
     if (mesh == nullptr)
         return false;
 

@@ -20,10 +20,10 @@ namespace
     using NS::Game::Blocks::BuildPlacedObject;
     using NS::Game::Blocks::FindComponent;
     using NS::Game::Blocks::MakeFreeCubeComponents;
+    using NS::Game::Level::ComponentData;
+    using NS::Game::Level::FieldValue;
     using NS::Game::Level::MakeCellObject;
     using NS::Game::Level::ObjectInstance;
-    using NS::Game::Level::SetObjectShapeCollider;
-    using NS::Game::Level::ShapeCollider;
     using NS::Math::Vector3;
 
     // device を確立しない AssetManager。 Builtin / SharedMaterial は nullptr を返すが、 ファクトリは落ちない
@@ -45,21 +45,42 @@ namespace
         return MakeCellObject(0, 0, 0, 0);
     }
 
-    // 自由配置の cube。 当たり寸法 / offset は component を起こす前に焼く
-    ObjectInstance MakeFreeCube(ShapeCollider shape,
-                                const Vector3& half = Vector3{0.5f, 0.5f, 0.5f},
-                                const Vector3& offset = Vector3{0.0f, 0.0f, 0.0f})
+    // 自由配置物のデータ。 見た目の cube と渡された collider を component 直書きで積む
+    ObjectInstance MakeFreeObject(ComponentData collider)
     {
         ObjectInstance object;
-        SetObjectShapeCollider(object, shape);
-        object.colliderHalfExtentsX = half.x;
-        object.colliderHalfExtentsY = half.y;
-        object.colliderHalfExtentsZ = half.z;
-        object.colliderOffsetX = offset.x;
-        object.colliderOffsetY = offset.y;
-        object.colliderOffsetZ = offset.z;
-        object.components = MakeFreeCubeComponents(object);
+        ComponentData mesh;
+        mesh.typeName = "MeshRendererComponent";
+        mesh.fields.push_back(FieldValue{"Mesh", std::string{"cube"}});
+        object.components.push_back(std::move(mesh));
+        object.components.push_back(std::move(collider));
         return object;
+    }
+
+    ComponentData BoxColliderData(const Vector3& half)
+    {
+        ComponentData data;
+        data.typeName = "BoxColliderComponent";
+        data.fields.push_back(FieldValue{"Half Extents", half});
+        return data;
+    }
+
+    ComponentData SphereColliderData(float radius, const Vector3& offset)
+    {
+        ComponentData data;
+        data.typeName = "SphereColliderComponent";
+        data.fields.push_back(FieldValue{"Radius", radius});
+        data.fields.push_back(FieldValue{"Center Offset", offset});
+        return data;
+    }
+
+    ComponentData CapsuleColliderData(float radius, float halfHeight)
+    {
+        ComponentData data;
+        data.typeName = "CapsuleColliderComponent";
+        data.fields.push_back(FieldValue{"Radius", radius});
+        data.fields.push_back(FieldValue{"Half Height", halfHeight});
+        return data;
     }
 
     template <class T> bool Has(NS::Scene::GameObject& obj)
@@ -78,9 +99,25 @@ TEST_F(BuildPlacedObjectTest, GridCubeHasMeshAndBoxCollider)
     EXPECT_FALSE(Has<NS::Scene::CapsuleColliderComponent>(*obj));
 }
 
+TEST_F(BuildPlacedObjectTest, DefaultFreeCubeComponentsAreCubeWithBoxCollider)
+{
+    ObjectInstance object;
+    object.components = MakeFreeCubeComponents();
+
+    auto obj = Build(object);
+    ASSERT_NE(obj, nullptr);
+    EXPECT_TRUE(Has<NS::Scene::MeshRendererComponent>(*obj));
+    auto* box = FindComponent<NS::Scene::BoxColliderComponent>(*obj);
+    ASSERT_NE(box, nullptr);
+    const Vector3 half = box->HalfExtents();
+    EXPECT_FLOAT_EQ(half.x, 0.5f);
+    EXPECT_FLOAT_EQ(half.y, 0.5f);
+    EXPECT_FLOAT_EQ(half.z, 0.5f);
+}
+
 TEST_F(BuildPlacedObjectTest, FreeBoxHasBoxColliderWithSavedHalfExtents)
 {
-    auto obj = Build(MakeFreeCube(ShapeCollider::Box, Vector3{1.0f, 2.0f, 3.0f}));
+    auto obj = Build(MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f})));
     ASSERT_NE(obj, nullptr);
     auto* box = FindComponent<NS::Scene::BoxColliderComponent>(*obj);
     ASSERT_NE(box, nullptr);
@@ -94,7 +131,7 @@ TEST_F(BuildPlacedObjectTest, FreeBoxHasBoxColliderWithSavedHalfExtents)
 
 TEST_F(BuildPlacedObjectTest, FreeSphereHasOnlySphereCollider)
 {
-    auto obj = Build(MakeFreeCube(ShapeCollider::Sphere, Vector3{0.7f, 0.5f, 0.5f}, Vector3{0.0f, 1.0f, 0.0f}));
+    auto obj = Build(MakeFreeObject(SphereColliderData(0.7f, Vector3{0.0f, 1.0f, 0.0f})));
     ASSERT_NE(obj, nullptr);
     EXPECT_FALSE(Has<NS::Scene::BoxColliderComponent>(*obj));
     auto* sphere = FindComponent<NS::Scene::SphereColliderComponent>(*obj);
@@ -108,7 +145,7 @@ TEST_F(BuildPlacedObjectTest, FreeSphereHasOnlySphereCollider)
 
 TEST_F(BuildPlacedObjectTest, SphereColliderWorldAabbEnclosesSphere)
 {
-    auto obj = Build(MakeFreeCube(ShapeCollider::Sphere, Vector3{0.7f, 0.5f, 0.5f}, Vector3{0.0f, 1.0f, 0.0f}));
+    auto obj = Build(MakeFreeObject(SphereColliderData(0.7f, Vector3{0.0f, 1.0f, 0.0f})));
     ASSERT_NE(obj, nullptr);
     auto* sphere = FindComponent<NS::Scene::SphereColliderComponent>(*obj);
     ASSERT_NE(sphere, nullptr);
@@ -121,7 +158,7 @@ TEST_F(BuildPlacedObjectTest, SphereColliderWorldAabbEnclosesSphere)
 
 TEST_F(BuildPlacedObjectTest, FreeCapsuleHasOnlyCapsuleCollider)
 {
-    auto obj = Build(MakeFreeCube(ShapeCollider::Capsule, Vector3{0.4f, 0.9f, 0.5f}));
+    auto obj = Build(MakeFreeObject(CapsuleColliderData(0.4f, 0.9f)));
     ASSERT_NE(obj, nullptr);
     EXPECT_FALSE(Has<NS::Scene::BoxColliderComponent>(*obj));
     auto* capsule = FindComponent<NS::Scene::CapsuleColliderComponent>(*obj);
@@ -135,7 +172,7 @@ TEST_F(BuildPlacedObjectTest, FreeCapsuleHasOnlyCapsuleCollider)
 
 TEST_F(BuildPlacedObjectTest, CapsuleColliderWorldAabbEnclosesCapsule)
 {
-    auto obj = Build(MakeFreeCube(ShapeCollider::Capsule, Vector3{0.4f, 0.9f, 0.5f}));
+    auto obj = Build(MakeFreeObject(CapsuleColliderData(0.4f, 0.9f)));
     ASSERT_NE(obj, nullptr);
     auto* capsule = FindComponent<NS::Scene::CapsuleColliderComponent>(*obj);
     ASSERT_NE(capsule, nullptr);
@@ -177,7 +214,7 @@ TEST_F(BuildPlacedObjectTest, GridCubeWorldAabbMatchesCellHalfExtents)
 
 TEST_F(BuildPlacedObjectTest, FreeBoxWorldAabbReflectsPositionAndHalfExtents)
 {
-    ObjectInstance object = MakeFreeCube(ShapeCollider::Box, Vector3{1.0f, 2.0f, 3.0f});
+    ObjectInstance object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
     object.positionX = 2.0f;
 
     auto obj = Build(object);
@@ -225,7 +262,7 @@ TEST_F(BuildPlacedObjectTest, EmptyComponentsBuildsNothing)
 // material asset path に .. を含む値は ContentRoot 外解決を拒否し、 共有 fallback へ倒れてクラッシュしない
 TEST_F(BuildPlacedObjectTest, AssetPathTraversalRejectedFallsBackToDefault)
 {
-    ObjectInstance object = MakeFreeCube(ShapeCollider::Box);
+    ObjectInstance object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
     object.materialIndex = 0;
     std::vector<std::string> traversalPaths = {"../evil.mat"};
 
@@ -279,7 +316,7 @@ TEST_F(BuildPlacedObjectTest, GridCubeIsRotatable)
 TEST_F(BuildPlacedObjectTest, FreeCubeRotatableButEmptyMarkerNot)
 {
     ObjectInstance freeCube;
-    freeCube.components = MakeFreeCubeComponents(freeCube);
+    freeCube.components = MakeFreeCubeComponents();
     EXPECT_TRUE(NS::Game::Blocks::IsRotatableObject(freeCube));
 
     ObjectInstance marker;
@@ -325,7 +362,7 @@ TEST_F(BuildPlacedObjectTest, PlayerObjectAppliesDataValuesToComponents)
 // 当たりの重ね置きは複合形状として衝突へ効く前提の機能で、 貼り重ねの経路がこの形を作る
 TEST_F(BuildPlacedObjectTest, DuplicateColliderDataBuildsCompoundColliders)
 {
-    ObjectInstance object = MakeFreeCube(ShapeCollider::Box, Vector3{1.0f, 1.0f, 1.0f});
+    ObjectInstance object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 1.0f, 1.0f}));
     NS::Game::Level::ComponentData second;
     second.typeName = "BoxColliderComponent";
     second.fields.push_back(NS::Game::Level::FieldValue{"Half Extents", Vector3{2.0f, 2.0f, 2.0f}});

@@ -100,17 +100,8 @@ namespace NS::Game::Blocks
             }
         }
 
-        // 当たり箱の quaternion を反射 "Rotation (deg)" が受ける Euler 度へ写す。 SetRotationEulerDegrees の逆変換
-        NS::Math::Vector3 QuaternionToEulerDegrees(const NS::Math::Quaternion& q) noexcept
-        {
-            const NS::Math::Vector3 euler = q.ToEuler();
-            return NS::Math::Vector3{NS::Math::RadiansToDegrees(euler.x),
-                                     NS::Math::RadiansToDegrees(euler.y),
-                                     NS::Math::RadiansToDegrees(euler.z)};
-        }
-
         NS::Game::Level::ComponentData MakeComponentData(std::string typeName,
-                                                             std::vector<NS::Game::Level::FieldValue> fields)
+                                                         std::vector<NS::Game::Level::FieldValue> fields)
         {
             NS::Game::Level::ComponentData component;
             component.typeName = std::move(typeName);
@@ -119,8 +110,8 @@ namespace NS::Game::Blocks
         }
 
         NS::Game::Level::ComponentData MeshRendererData(std::string meshName,
-                                                            std::string materialName,
-                                                            const NS::Math::Vector3& baseColor)
+                                                        std::string materialName,
+                                                        const NS::Math::Vector3& baseColor)
         {
             return MakeComponentData("MeshRendererComponent",
                                      {NS::Game::Level::FieldValue{"Mesh", std::move(meshName)},
@@ -219,45 +210,10 @@ namespace NS::Game::Blocks
             {FieldValue{"Target", NS::Scene::ObjectRef{targetObjectId}}, FieldValue{"Far Plane", 100.0f}})};
     }
 
-    std::vector<NS::Game::Level::ComponentData> MakeFreeCubeComponents(
-        const NS::Game::Level::ObjectInstance& object)
+    std::vector<NS::Game::Level::ComponentData> MakeFreeCubeComponents()
     {
-        using namespace NS::Game::Level;
-        std::vector<ComponentData> result;
-
-        const NS::Math::Vector3 offset{object.colliderOffsetX, object.colliderOffsetY, object.colliderOffsetZ};
-        const NS::Math::Vector3 half{
-            object.colliderHalfExtentsX, object.colliderHalfExtentsY, object.colliderHalfExtentsZ};
-        const NS::Math::Quaternion rotation{
-            object.colliderRotationX, object.colliderRotationY, object.colliderRotationZ, object.colliderRotationW};
-        const NS::Math::Vector3 rotationEuler = QuaternionToEulerDegrees(rotation);
-
-        result.push_back(MeshRendererData("cube", "", kSolidBaseColor));
-
-        const ShapeCollider shape = ObjectShapeCollider(object);
-        if (shape == ShapeCollider::Sphere)
-        {
-            result.push_back(MakeComponentData(
-                "SphereColliderComponent",
-                {FieldValue{"Radius", object.colliderHalfExtentsX}, FieldValue{"Center Offset", offset}}));
-        }
-        else if (shape == ShapeCollider::Capsule)
-        {
-            result.push_back(MakeComponentData("CapsuleColliderComponent",
-                                               {FieldValue{"Radius", object.colliderHalfExtentsX},
-                                                FieldValue{"Half Height", object.colliderHalfExtentsY},
-                                                FieldValue{"Center Offset", offset},
-                                                FieldValue{"Rotation (deg)", rotationEuler}}));
-        }
-        else
-        {
-            // Box / Mesh 形状は回転込み当たり箱で受ける
-            result.push_back(MakeComponentData("BoxColliderComponent",
-                                               {FieldValue{"Half Extents", half},
-                                                FieldValue{"Center Offset", offset},
-                                                FieldValue{"Rotation (deg)", rotationEuler}}));
-        }
-        return result;
+        // 自由配置の既定は cell の素 cube と同じ構成。 寸法・形状は配置後の component 編集で変える
+        return MakeCellCubeComponents();
     }
 
     std::optional<NS::Math::AABB> ColliderWorldAABB(NS::Scene::GameObject& obj) noexcept
