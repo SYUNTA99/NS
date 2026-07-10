@@ -14,22 +14,11 @@ namespace NS::Scene
 namespace NS::Game::Level
 {
 
-
-    /// 読込時の移行で何が起きたかの報告。 テンプレート適用などの後処理は呼出側 (editor) が判断する
-    struct LevelLoadReport
-    {
-        /// 旧形式の spawn 単一値やプレイヤー欠落から、 プレイヤー実体を合成して objects へ足したら true
-        bool playerObjectCreated = false;
-    };
-
     /// 1 関数で NS::Scene::SceneData を保存する。 失敗時は false + `NS_LOG_ERROR`
     [[nodiscard]] bool SaveLevelToFile(const NS::Scene::SceneData& level, const std::filesystem::path& path) noexcept;
 
     /// 1 関数で NS::Scene::SceneData を読み込む。 失敗時は false + `NS_LOG_ERROR`、
     /// `outLevel` は default-constructed の空 NS::Scene::SceneData に reset される
-    /// outReport 非 null なら読込時移行の報告を書き込む
-    [[nodiscard]] bool LoadLevelFromFile(NS::Scene::SceneData& outLevel,
-                                         const std::filesystem::path& path,
-                                         LevelLoadReport* outReport = nullptr) noexcept;
+    [[nodiscard]] bool LoadLevelFromFile(NS::Scene::SceneData& outLevel, const std::filesystem::path& path) noexcept;
 
 } // namespace NS::Game::Level

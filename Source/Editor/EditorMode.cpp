@@ -8,8 +8,8 @@
 #include "Editor/Undo/RotateCommand.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/BuildPlacedObject.h"
-#include "Game/Level/LevelObjects.h"
 #include "Game/Level/LevelIO.h"
+#include "Game/Level/LevelObjects.h"
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -154,12 +154,11 @@ namespace NS::Editor
                 break;
             }
             NS::Scene::SceneData fresh;
-            NS::Game::Level::LevelLoadReport report{};
-            const bool ok = NS::Game::Level::LoadLevelFromFile(fresh, *path, &report);
+            const bool ok = NS::Game::Level::LoadLevelFromFile(fresh, *path);
             if (ok)
             {
-                // 旧形式から合成したプレイヤーには保存済みテンプレートの構成と値を写し、 移行前の手触りを保つ
-                if (report.playerObjectCreated)
+                // 読込の門で合成したプレイヤーには保存済みテンプレートの構成と値を写し、 編集中の手触りを保つ
+                if (NS::Game::Level::EnsureLevelSeedObjects(fresh))
                 {
                     const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(fresh);
                     if (playerIndex != NS::Scene::kNoObjectIndex)
@@ -560,8 +559,7 @@ namespace NS::Editor
             // cursor 直下の既存 block を 90° 回す。 回転対象外の block は無視する
             const std::size_t index =
                 NS::Game::Level::FindObjectAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
-            if (index != NS::Scene::kNoObjectIndex &&
-                NS::Game::Blocks::IsRotatableObject(m_level->objects[index]))
+            if (index != NS::Scene::kNoObjectIndex && NS::Game::Blocks::IsRotatableObject(m_level->objects[index]))
             {
                 m_undo.Push(std::make_unique<NS::Editor::RotateCommand>(
                                 m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ, std::int8_t{1}),

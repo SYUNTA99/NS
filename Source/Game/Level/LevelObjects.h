@@ -38,6 +38,12 @@ namespace NS::Game::Level
     /// pose は追従で毎フレーム決まるため Transform は既定のまま。 視覚と当たりは持たない
     [[nodiscard]] NS::Scene::ObjectData MakeFollowCameraObject(std::uint32_t targetObjectId);
 
+    /// 読込の門。 プレイヤーが無ければ既定位置に 1 体、 追従カメラが無ければプレイヤーを追う 1 台を
+    /// 合成し、 プレイ可能な最小構成を必ず満たす。 合成分の永続 id 採番まで面倒を見る
+    /// 読込直後と新規シーン作成時に通す。 戻り値はプレイヤーを合成したかで、
+    /// エディタが保存済みテンプレートを写すかの判断に使う
+    [[nodiscard]] bool EnsureLevelSeedObjects(NS::Scene::SceneData& level);
+
     /// 配置物の cell 座標 = position を最近接整数へ丸めた値
     [[nodiscard]] std::int16_t ObjectCellX(const NS::Scene::ObjectData& object) noexcept;
     [[nodiscard]] std::int16_t ObjectCellY(const NS::Scene::ObjectData& object) noexcept;

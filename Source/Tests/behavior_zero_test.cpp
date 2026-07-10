@@ -13,8 +13,8 @@
 #include <Framework/Scene/Components/SphereColliderComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Game/Blocks/BuildPlacedObject.h>
-#include <Game/Level/LevelObjects.h>
 #include <Game/Level/LevelJson.h>
+#include <Game/Level/LevelObjects.h>
 
 #include <array>
 #include <cstddef>
@@ -163,8 +163,7 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
 
     SceneData restored;
     ASSERT_TRUE(DeserializeLevelFromJson(restored, SerializeLevelToJson(src)));
-    // 末尾に追従カメラが 1 台合成される
-    ASSERT_EQ(restored.objects.size(), 3u);
+    ASSERT_EQ(restored.objects.size(), 2u);
     ASSERT_FALSE(restored.objects[0].components.empty()); // 往復後も新経路の components 駆動を通る
 
     NS::Scene::AssetManager assets{std::filesystem::path{"."}};

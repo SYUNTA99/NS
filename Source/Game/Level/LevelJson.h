@@ -22,26 +22,20 @@ namespace NS::Scene
 
 namespace NS::Game::Level
 {
-    // 読込時移行の報告。 定義は呼び出し窓口の LevelIO.h (ここではポインタ受け渡しのみ)
-    struct LevelLoadReport;
-
     /// NS::Scene::SceneData を正準 JSON ファイルへ書く。 要素数 / 出力 size が上限超過なら false + `NS_LOG_ERROR`
-    [[nodiscard]] bool SaveLevelToJsonFile(const NS::Scene::SceneData& level, const std::filesystem::path& path) noexcept;
+    [[nodiscard]] bool SaveLevelToJsonFile(const NS::Scene::SceneData& level,
+                                           const std::filesystem::path& path) noexcept;
 
-    /// JSON ファイルを NS::Scene::SceneData へ読む。 失敗時 false + `NS_LOG_ERROR`、 `outLevel` は空 NS::Scene::SceneData に reset される
-    /// outReport 非 null なら読込時移行の報告を書き込む
+    /// JSON ファイルを NS::Scene::SceneData へ読む。 失敗時 false + `NS_LOG_ERROR`、 `outLevel` は空
+    /// NS::Scene::SceneData に reset される
     [[nodiscard]] bool LoadLevelFromJsonFile(NS::Scene::SceneData& outLevel,
-                                             const std::filesystem::path& path,
-                                             LevelLoadReport* outReport = nullptr) noexcept;
+                                             const std::filesystem::path& path) noexcept;
 
     /// NS::Scene::SceneData を正準 JSON 文字列へ直列化する。 テスト・ golden 比較に使う
     [[nodiscard]] std::string SerializeLevelToJson(const NS::Scene::SceneData& level);
 
     /// JSON 文字列を NS::Scene::SceneData へ復元する。 parse 失敗・上限超過で false、 `outLevel` は空に reset される
-    /// outReport 非 null なら読込時移行の報告を書き込む
-    [[nodiscard]] bool DeserializeLevelFromJson(NS::Scene::SceneData& outLevel,
-                                                std::string_view jsonText,
-                                                LevelLoadReport* outReport = nullptr);
+    [[nodiscard]] bool DeserializeLevelFromJson(NS::Scene::SceneData& outLevel, std::string_view jsonText);
 
     /// NS::Scene::ComponentData の反射フィールドを {名前: 値} の JSON object へ写す
     /// 保存と BuildPlacedObject の ApplyJsonFields 入力が同じ変換を共有する唯一の経路
@@ -50,5 +44,7 @@ namespace NS::Game::Level
     /// JSON 値 1 個を NS::Scene::FieldValue へ推論復元する。 bool→bool / 小数→float / 整数→int / 配列3→Vector3 /
     /// 文字列→string / {"ref": id}→ObjectRef。 いずれにも合わなければ false で out は据え置き
     /// レベル読込と PlayerTuning テンプレートの取込が同じ変換を共有する
-    [[nodiscard]] bool JsonToFieldValue(const std::string& name, const nlohmann::json& value, NS::Scene::FieldValue& out);
+    [[nodiscard]] bool JsonToFieldValue(const std::string& name,
+                                        const nlohmann::json& value,
+                                        NS::Scene::FieldValue& out);
 } // namespace NS::Game::Level

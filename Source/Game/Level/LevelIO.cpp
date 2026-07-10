@@ -9,8 +9,8 @@ namespace NS::Game::Level
         return SaveLevelToJsonFile(level, path);
     }
 
-    bool LoadLevelFromFile(NS::Scene::SceneData& outLevel, const std::filesystem::path& path, LevelLoadReport* outReport) noexcept
+    bool LoadLevelFromFile(NS::Scene::SceneData& outLevel, const std::filesystem::path& path) noexcept
     {
-        return LoadLevelFromJsonFile(outLevel, path, outReport);
+        return LoadLevelFromJsonFile(outLevel, path);
     }
 } // namespace NS::Game::Level

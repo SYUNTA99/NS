@@ -1,7 +1,6 @@
 #include "Game/Level/LevelJson.h"
 
-#include "Game/Level/LevelObjects.h"
-#include "Game/Level/LevelIO.h" // LevelLoadReport の完全型
+#include "Framework/Scene/SceneData.h"
 
 // json.hpp は /W4 で警告が出るため、 この翻訳単位でだけ警告を抑止して取り込む
 #pragma warning(push, 0)
@@ -16,8 +15,8 @@ namespace NS::Game::Level
         /// v2 で spawn をグリッドセル番号から capsule 中心の world 位置 + 向きへ変更した
         /// v3 で object へ永続 id、 root へ nextObjectId を追加した。 旧版は読込時に採番して移行する
         /// v4 で据え置きカメラを cameraVolumes の別リストから objects の配置物へ統合した
-        /// v5 でプレイヤーを spawn 単一値から objects の実体へ統合した。 旧版は読込時に合成して移行する
-        /// v6 で追従カメラを scene 直組みから objects の実体へ統合した。 旧版は読込時に合成して移行する
+        /// v5 でプレイヤーを spawn 単一値から objects の実体へ統合した
+        /// v6 で追従カメラを scene 直組みから objects の実体へ統合した
         /// v7 で環境をシーン所有の environment 欄へ統合し themeId を廃止した。 environment 欄が無い
         /// 旧ファイルは中立の既定値で読む
         /// v8 で gridAligned フラグを廃止した。 旧ファイルの flags キーは読み飛ばす
@@ -77,7 +76,8 @@ namespace NS::Game::Level
             return it->get<int>();
         }
 
-        /// NS::Scene::FieldValue の variant を JSON 値へ。 float と int は JSON の数値種別で区別され load 時に変種が復元される
+        /// NS::Scene::FieldValue の variant を JSON 値へ。 float と int は JSON の数値種別で区別され load
+        /// 時に変種が復元される
         nlohmann::json FieldValueToJson(const NS::Scene::FieldValue& field)
         {
             switch (field.value.index())
@@ -210,10 +210,10 @@ namespace NS::Game::Level
             camera.typeName = "PlacedVirtualCamera";
             camera.fields.push_back(
                 NS::Scene::FieldValue{"Look Target", NS::Math::Vector3{lookTargetX, lookTargetY, lookTargetZ}});
-            camera.fields.push_back(
-                NS::Scene::FieldValue{"Trigger Center", NS::Math::Vector3{triggerCenterX, triggerCenterY, triggerCenterZ}});
-            camera.fields.push_back(
-                NS::Scene::FieldValue{"Trigger Extent", NS::Math::Vector3{triggerExtentX, triggerExtentY, triggerExtentZ}});
+            camera.fields.push_back(NS::Scene::FieldValue{
+                "Trigger Center", NS::Math::Vector3{triggerCenterX, triggerCenterY, triggerCenterZ}});
+            camera.fields.push_back(NS::Scene::FieldValue{
+                "Trigger Extent", NS::Math::Vector3{triggerExtentX, triggerExtentY, triggerExtentZ}});
             camera.fields.push_back(NS::Scene::FieldValue{"Look At Player", ReadInt(json, "lookAtPlayer", 0) != 0});
             camera.fields.push_back(NS::Scene::FieldValue{"Priority", ReadInt(json, "priority", 10)});
             object.components.push_back(std::move(camera));
@@ -254,8 +254,8 @@ namespace NS::Game::Level
         if (value.is_array() && value.size() == 3u && value[0].is_number() && value[1].is_number() &&
             value[2].is_number())
         {
-            out = NS::Scene::FieldValue{name,
-                             NS::Math::Vector3{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()}};
+            out = NS::Scene::FieldValue{
+                name, NS::Math::Vector3{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()}};
             return true;
         }
         if (value.is_object())
@@ -302,11 +302,9 @@ namespace NS::Game::Level
         return root.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
     }
 
-    bool DeserializeLevelFromJson(NS::Scene::SceneData& outLevel, std::string_view jsonText, LevelLoadReport* outReport)
+    bool DeserializeLevelFromJson(NS::Scene::SceneData& outLevel, std::string_view jsonText)
     {
         outLevel = NS::Scene::SceneData{};
-        if (outReport != nullptr)
-            *outReport = LevelLoadReport{};
 
         const nlohmann::json root = nlohmann::json::parse(jsonText, nullptr, false);
         if (root.is_discarded())
@@ -385,46 +383,6 @@ namespace NS::Game::Level
                 outLevel.objects.push_back(MakeCameraObjectFromLegacyVolume(cameraJson));
         }
 
-        // v4 以前のプレイヤーは spawn 単一値だった。読込時に objects の実体へ変換して合流させる
-        // v5 以降でもプレイヤー欠落の手編集ファイルには既定位置で 1 体を合成し、「必ず 1 体」を読込の門で保証する
-        const int loadedVersion = ReadInt(root, "formatVersion", 1);
-        if (FindPlayerObjectIndex(outLevel) == NS::Scene::kNoObjectIndex)
-        {
-            float spawnX = 0.0f;
-            float spawnY = kDefaultPlayerSpawnY;
-            float spawnZ = 0.0f;
-            float spawnRotationX = 0.0f;
-            float spawnRotationY = 0.0f;
-            float spawnRotationZ = 0.0f;
-            float spawnRotationW = 1.0f;
-            ReadVec3(root, "spawn", spawnX, spawnY, spawnZ);
-            ReadVec4(root, "spawnRotation", spawnRotationX, spawnRotationY, spawnRotationZ, spawnRotationW);
-            if (loadedVersion < 2 && root.contains("spawn"))
-            {
-                // v1 までの spawn はグリッドセル番号で「そのセルに立つ」 意味だった。 v2 以降は capsule 中心の
-                // world 位置なので、 旧コードの床乗せ分を足して中心へ移す
-                constexpr float kLegacyStandLift = 0.41f; // capsule halfHeight 0.5 + radius 0.4 + 1cm - cell 半 0.5
-                spawnY += kLegacyStandLift;
-            }
-            outLevel.objects.push_back(
-                MakePlayerObject(NS::Math::Vector3{spawnX, spawnY, spawnZ},
-                                 NS::Math::Quaternion{spawnRotationX, spawnRotationY, spawnRotationZ, spawnRotationW}));
-            if (outReport != nullptr)
-                outReport->playerObjectCreated = true;
-        }
-
-        // プレイヤーは必ず 1 体。 余分は先頭を正として組まれず、 手編集の重複をここで知らせる
-        std::size_t playerCount = 0;
-        for (const NS::Scene::ObjectData& object : outLevel.objects)
-        {
-            if (IsPlayerObject(object))
-                ++playerCount;
-        }
-        if (playerCount > 1)
-            NS_LOG_WARN(::NS::Core::LogCat::Game,
-                        "プレイヤーが {} 体ある。先頭の 1 体を正とし、残りは無効として扱う",
-                        playerCount);
-
         // environment 欄がシーンの見た目を所有する。 中立の既定値の上に読めたキーだけ部分適用する
         const auto environmentIt = root.find("environment");
         if (environmentIt != root.end() && environmentIt->is_object())
@@ -450,22 +408,8 @@ namespace NS::Game::Level
         }
 
         outLevel.nextObjectId = static_cast<std::uint32_t>(ReadInt(root, "nextObjectId", 1));
-        // v2 以前は id 無しで全 object が未割当。読込直後に必ず一意化し、以降の経路は id を信頼できる
+        // 手編集ファイルは id 未割当・重複があり得る。読込直後に必ず一意化し、以降の経路は id を信頼できる
         EnsureUniqueObjectIds(outLevel);
-
-        // v5 以前の追従カメラは scene 直組みだった。プレイヤー同様、無ければプレイヤーを追う 1 台を
-        // 合成して「必ず 1 台」を読込の門で保証する。Target 参照が要るため採番の後に足す
-        if (FindFollowCameraObjectIndex(outLevel) == NS::Scene::kNoObjectIndex)
-        {
-            const std::size_t playerIndex = FindPlayerObjectIndex(outLevel);
-            const std::uint32_t targetId = [&]() -> std::uint32_t {
-                if (playerIndex != NS::Scene::kNoObjectIndex)
-                    return outLevel.objects[playerIndex].objectId;
-                return 0u;
-            }();
-            outLevel.objects.push_back(MakeFollowCameraObject(targetId));
-            EnsureUniqueObjectIds(outLevel);
-        }
 
         // 手編集や参照先削除で宙に浮いた参照は入口で未設定へ戻す。実行時は id 照合の失敗を考えずに済む
         const std::size_t prunedRefs = PruneDanglingObjectRefs(outLevel);
@@ -528,9 +472,7 @@ namespace NS::Game::Level
         }
     }
 
-    bool LoadLevelFromJsonFile(NS::Scene::SceneData& outLevel,
-                               const std::filesystem::path& path,
-                               LevelLoadReport* outReport) noexcept
+    bool LoadLevelFromJsonFile(NS::Scene::SceneData& outLevel, const std::filesystem::path& path) noexcept
     {
         outLevel = NS::Scene::SceneData{};
 
@@ -550,7 +492,7 @@ namespace NS::Game::Level
         // parse 後の json 操作 / NS::Scene::SceneData 構築は bad_alloc を投げ得る。 noexcept 契約を守るため捕捉する
         try
         {
-            if (!DeserializeLevelFromJson(outLevel, *textOpt, outReport))
+            if (!DeserializeLevelFromJson(outLevel, *textOpt))
             {
                 outLevel = NS::Scene::SceneData{};
                 return false;

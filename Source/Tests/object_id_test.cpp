@@ -2,8 +2,8 @@
 #include "Editor/Undo/DuplicateObjectCommand.h"
 #include "Editor/Undo/PlaceCommand.h"
 #include "Framework/Scene/ObjectRef.h"
-#include "Game/Level/LevelObjects.h"
 #include "Game/Level/LevelJson.h"
+#include "Game/Level/LevelObjects.h"
 
 #include <gtest/gtest.h>
 
@@ -101,8 +101,7 @@ TEST(ObjectIdTest, LegacyJsonWithoutIdsGetsAssignedOnLoad)
 
     SceneNs::SceneData restored;
     ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(restored, legacy));
-    // 旧形式なのでプレイヤーと追従カメラも合成され 4 件になる。 合成分にも一意 id が振られる
-    ASSERT_EQ(restored.objects.size(), 4u);
+    ASSERT_EQ(restored.objects.size(), 2u);
     EXPECT_TRUE(AllIdsUniqueAndAssigned(restored));
 }
 
@@ -226,8 +225,7 @@ TEST(ObjectIdTest, DanglingObjectRefIsPrunedOnLoad)
     SceneNs::SceneData restored;
     ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(restored, text));
 
-    // 末尾に追従カメラが 1 台合成される
-    ASSERT_EQ(restored.objects.size(), 3u);
+    ASSERT_EQ(restored.objects.size(), 2u);
     ASSERT_EQ(restored.objects[0].components.size(), 1u);
     const auto* field = SceneNs::FindField(restored.objects[0].components[0], "Target");
     ASSERT_NE(field, nullptr);

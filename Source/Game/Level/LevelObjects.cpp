@@ -67,6 +67,43 @@ namespace NS::Game::Level
         return object;
     }
 
+    bool EnsureLevelSeedObjects(NS::Scene::SceneData& level)
+    {
+        bool playerCreated = false;
+        if (FindPlayerObjectIndex(level) == NS::Scene::kNoObjectIndex)
+        {
+            level.objects.push_back(
+                MakePlayerObject(NS::Math::Vector3{0.0f, kDefaultPlayerSpawnY, 0.0f}, NS::Math::Quaternion{}));
+            playerCreated = true;
+        }
+
+        // プレイヤーは必ず 1 体。 余分は先頭を正として組まれず、 手編集の重複をここで知らせる
+        std::size_t playerCount = 0;
+        for (const NS::Scene::ObjectData& object : level.objects)
+        {
+            if (IsPlayerObject(object))
+                ++playerCount;
+        }
+        if (playerCount > 1)
+            NS_LOG_WARN(::NS::Core::LogCat::Game,
+                        "プレイヤーが {} 体ある。先頭の 1 体を正とし、残りは無効として扱う",
+                        playerCount);
+
+        // 追従カメラの Target 参照にプレイヤーの永続 id が要るため、 合成分の採番を先に済ませる
+        NS::Scene::EnsureUniqueObjectIds(level);
+
+        if (FindFollowCameraObjectIndex(level) == NS::Scene::kNoObjectIndex)
+        {
+            const std::size_t playerIndex = FindPlayerObjectIndex(level);
+            std::uint32_t targetId = NS::Scene::kNoObjectId;
+            if (playerIndex != NS::Scene::kNoObjectIndex)
+                targetId = level.objects[playerIndex].objectId;
+            level.objects.push_back(MakeFollowCameraObject(targetId));
+            NS::Scene::EnsureUniqueObjectIds(level);
+        }
+        return playerCreated;
+    }
+
     std::int16_t ObjectCellX(const NS::Scene::ObjectData& object) noexcept
     {
         return static_cast<std::int16_t>(std::lround(object.positionX));
@@ -89,7 +126,10 @@ namespace NS::Game::Level
                FindComponentData(object, "PlacedVirtualCamera") == nullptr;
     }
 
-    std::size_t FindObjectAtCell(const NS::Scene::SceneData& level, std::int16_t x, std::int16_t y, std::int16_t z) noexcept
+    std::size_t FindObjectAtCell(const NS::Scene::SceneData& level,
+                                 std::int16_t x,
+                                 std::int16_t y,
+                                 std::int16_t z) noexcept
     {
         for (std::size_t i = 0; i < level.objects.size(); ++i)
         {

@@ -19,8 +19,8 @@ namespace
     {
         level.objects.clear();
         // 新規シーンの既定の見た目は Grass 雛形を写し込む。 以降はシーンの環境欄が正になる
-        level.environment = NS::Game::Theme::MakeEnvironmentFromTheme(
-            NS::Game::Theme::Get(NS::Game::Theme::ThemeId::Grass));
+        level.environment =
+            NS::Game::Theme::MakeEnvironmentFromTheme(NS::Game::Theme::Get(NS::Game::Theme::ThemeId::Grass));
         level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0, 0));
         // プレイヤーは capsule 中心を床ブロック上面 0.5 + capsule 半径込み半高 0.9 + 1cm へ置く
         // 構成は code 既定のまま。 保存済みテンプレートの適用は合成の報告を見た editor が行う
@@ -50,10 +50,9 @@ void LevelPlayScene::LoadInitialLevel()
 {
     const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
     const auto levelPath = exeDir / "Levels" / "new_level.scene";
-    NS::Game::Level::LevelLoadReport report{};
-    if (NS::Game::Level::LoadLevelFromFile(m_level, levelPath, &report))
+    if (NS::Game::Level::LoadLevelFromFile(m_level, levelPath))
     {
-        m_playerObjectSynthesized = report.playerObjectCreated;
+        m_playerObjectSynthesized = NS::Game::Level::EnsureLevelSeedObjects(m_level);
     }
     else
     {
