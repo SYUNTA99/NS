@@ -119,9 +119,9 @@ namespace NS::Game::Theme
         }
     }
 
-    NS::Game::Level::LevelEnvironment MakeEnvironmentFromTheme(const ThemeData& theme)
+    NS::Scene::SceneEnvironment MakeEnvironmentFromTheme(const ThemeData& theme)
     {
-        NS::Game::Level::LevelEnvironment environment{};
+        NS::Scene::SceneEnvironment environment{};
         environment.lightDirection = theme.lightDirection;
         environment.lightColor = theme.lightColor;
         environment.ambientColor = theme.ambientColor;

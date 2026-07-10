@@ -7,7 +7,7 @@
 /// 次の OnRender で modal が描画される。 modal 内で OK が押されたら `Render()` の
 /// 戻り値 `Result::action` で要求を caller に通知し、 実 I/O の `SaveLevelToFile` /
 /// `LoadLevelFromFile` は caller の EditorMode 側が責任を持つ
-/// 責任分離: 本クラスは UI と一時 buffer のみ管理、 LevelData / filesystem には触れない
+/// 責任分離: 本クラスは UI と一時 buffer のみ管理、 SceneData / filesystem には触れない
 
 
 namespace NS::Editor

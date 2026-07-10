@@ -1,12 +1,12 @@
 #pragma once
 
 /// @file BuildPlacedObject.h
-/// @brief ObjectInstance 1 件から配置物 GameObject を組み立てる単一ファクトリ
+/// @brief ObjectData 1 件から配置物 GameObject を組み立てる単一ファクトリ
 ///
 /// @details object.components を ComponentRegistry で生成し反射 set で値を入れて 1 箇所へ集約する
 /// mesh / material は AssetManager から借り、 collider / 挙動 Component を合成する
 /// 構築のみを担い、 SceneBase への attach / OnStart / 衝突世界への登録は呼出側が行う
-/// 依存: NS::Scene::GameObject / AssetManager, NS::Game::Level::ObjectInstance
+/// 依存: NS::Scene::GameObject / AssetManager, NS::Scene::ObjectData
 
 namespace NS::Graphics
 {
@@ -16,27 +16,17 @@ namespace NS::Graphics
 namespace NS::Scene
 {
     class AssetManager;
-} // namespace NS::Scene
-
-namespace NS::Scene
-{
     struct ComponentData;
     struct ObjectData;
 } // namespace NS::Scene
 
-namespace NS::Game::Level
-{
-    using ObjectInstance = NS::Scene::ObjectData;
-    using ComponentData = NS::Scene::ComponentData;
-} // namespace NS::Game::Level
-
 namespace NS::Game::Blocks
 {
-    /// ObjectInstance から配置物を組み立てて返す。 mesh / material は assets から借り、 free 配置物の .mat は
+    /// ObjectData から配置物を組み立てて返す。 mesh / material は assets から借り、 free 配置物の .mat は
     /// materialPaths を介して解決する。 component を持たない object は nullptr を返し呼出側が読み飛ばす
     /// assets が deviceless つまり Builtin / SharedMaterial が nullptr でも落ちない
     [[nodiscard]] std::unique_ptr<NS::Scene::GameObject> BuildPlacedObject(
-        const NS::Game::Level::ObjectInstance& object,
+        const NS::Scene::ObjectData& object,
         NS::Scene::AssetManager& assets,
         const std::vector<std::string>& materialPaths);
 
@@ -48,38 +38,38 @@ namespace NS::Game::Blocks
 
     /// grid セルに置く cube 1 個分の component 一覧を組む。 cube メッシュ + 半径 0.5 の Box 当たりで material は空参照
     /// MakeCellObject と editor の grid 配置が同じ cube を起こす窓口
-    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeCellCubeComponents();
+    [[nodiscard]] std::vector<NS::Scene::ComponentData> MakeCellCubeComponents();
 
     /// grid セルに置く楔スロープ 1 個分の component 一覧を組む。 角度に対応する wedge メッシュ + SlopeCollider
     /// angleDegrees は 45 / 30 / 22.5 / 15 度を想定し、 メッシュと当たりの傾斜を一致させる
-    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeCellSlopeComponents(float angleDegrees);
+    [[nodiscard]] std::vector<NS::Scene::ComponentData> MakeCellSlopeComponents(float angleDegrees);
 
     /// 接触でレベルクリアになるゴール 1 個分の component 一覧を組む。 視覚を持たない goal pickup に
     /// editor で見える金色 cube を載せる。 PlayMode が PickupComponent の種別を読んでクリアを判定する
-    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeGoalComponents();
+    [[nodiscard]] std::vector<NS::Scene::ComponentData> MakeGoalComponents();
 
     /// プレイヤー実体の既定 component 一覧を組む。 実プレイヤーの直組み構成と同じ
     /// mesh 描画 + 移動 + 入力 + 接地影の 4 点。 値の細部は component のコード既定に任せる
-    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeDefaultPlayerComponents();
+    [[nodiscard]] std::vector<NS::Scene::ComponentData> MakeDefaultPlayerComponents();
 
     /// 追従カメラ実体の component 一覧を組む。 ThirdPersonFollowComponent 1 点で、 追従先の
     /// 永続 id を Target 参照へ、 プレイの遠景 100 を Far Plane へ焼く。 感触値はコード既定に任せる
-    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeFollowCameraComponents(std::uint32_t targetObjectId);
+    [[nodiscard]] std::vector<NS::Scene::ComponentData> MakeFollowCameraComponents(std::uint32_t targetObjectId);
 
     /// 自由配置の既定 cube 1 個分の component 一覧を組む。 構成は cell の素 cube と同一で、
     /// 寸法・形状の調整は配置後の component 編集で行う
-    [[nodiscard]] std::vector<NS::Game::Level::ComponentData> MakeFreeCubeComponents();
+    [[nodiscard]] std::vector<NS::Scene::ComponentData> MakeFreeCubeComponents();
 
     /// 固形 block か。 BoxCollider を持ち slope / hazard / 拾得を持たないことを components から判定する
     /// 当たり可視化 / コヨーテ縁 / R 回転対象の「固形」判定窓口
-    [[nodiscard]] bool IsSolidObject(const NS::Game::Level::ObjectInstance& object);
+    [[nodiscard]] bool IsSolidObject(const NS::Scene::ObjectData& object);
 
     /// R で 90° 回す対象か。 SlopeCollider を持つか固形箱なら true。 水 / 装飾は false
-    [[nodiscard]] bool IsRotatableObject(const NS::Game::Level::ObjectInstance& object);
+    [[nodiscard]] bool IsRotatableObject(const NS::Scene::ObjectData& object);
 
     /// components から種別の表示名を導く ASCII 固定文字列。 Player / Camera / Solid / Coin / Goal /
     /// Slope NN / Hazard / Water / Decoration のいずれか。 Hierarchy / Inspector の見出しに使う。 未知構成は "?"
-    [[nodiscard]] const char* ObjectDisplayName(const NS::Game::Level::ObjectInstance& object);
+    [[nodiscard]] const char* ObjectDisplayName(const NS::Scene::ObjectData& object);
 
     /// asset 相対パスを ContentRoot 配下へ正規化して返す。 `..` で外へ出るパスは nullopt にし任意ファイル読込を防ぐ
     /// path 型メソッドのみで判定し、 実在確認の filesystem 操作系は呼ばない

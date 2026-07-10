@@ -8,13 +8,13 @@ namespace NS::Game::Level
     namespace
     {
         // 拾得種別は PickupComponent だけで決まる。 読込時移行でどの拾得物も PickupComponent を持つ
-        // 種別判定は LevelData の共有 PickupKindOf に一本化し、 配置物の表示・固形判定と同じ契約を読む
-        bool ObjectIsCoin(const ObjectInstance& object) noexcept
+        // 種別判定は NS::Scene::SceneData の共有 PickupKindOf に一本化し、 配置物の表示・固形判定と同じ契約を読む
+        bool ObjectIsCoin(const NS::Scene::ObjectData& object) noexcept
         {
             return PickupKindOf(object) == 0;
         }
 
-        bool ObjectIsGoal(const ObjectInstance& object) noexcept
+        bool ObjectIsGoal(const NS::Scene::ObjectData& object) noexcept
         {
             return PickupKindOf(object) == 1;
         }
@@ -23,15 +23,15 @@ namespace NS::Game::Level
     PlayMode::PlayMode() noexcept = default;
     PlayMode::~PlayMode() noexcept = default;
 
-    void PlayMode::Enter(const LevelData& level, PlayState& play) noexcept
+    void PlayMode::Enter(const NS::Scene::SceneData& level, PlayState& play) noexcept
     {
         // 出現位置はエディタで配置したプレイヤー実体の capsule 中心 world 位置そのもの
         // 床乗せの補正は配置時に決まっているのでここでは持たず、 焼かれた位置へそのまま置く
         // 読込の門が 1 体を保証するが、 直組みの level にも既定位置で安全側に応える
         const std::size_t playerIndex = FindPlayerObjectIndex(level);
-        if (playerIndex != kNoObjectIndex)
+        if (playerIndex != NS::Scene::kNoObjectIndex)
         {
-            const ObjectInstance& playerObject = level.objects[playerIndex];
+            const NS::Scene::ObjectData& playerObject = level.objects[playerIndex];
             play.playerPosition =
                 NS::Math::Vector3{playerObject.positionX, playerObject.positionY, playerObject.positionZ};
         }
@@ -49,7 +49,7 @@ namespace NS::Game::Level
         m_collectedCoinIndices.clear();
     }
 
-    void PlayMode::Tick(const LevelData& level, PlayState& play, float dt) noexcept
+    void PlayMode::Tick(const NS::Scene::SceneData& level, PlayState& play, float dt) noexcept
     {
         if (play.paused)
             return;

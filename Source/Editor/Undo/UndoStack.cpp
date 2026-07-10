@@ -3,7 +3,7 @@
 namespace NS::Editor
 {
 
-    void UndoStack::Push(std::unique_ptr<ICommand> cmd, NS::Game::Level::LevelData& level) noexcept
+    void UndoStack::Push(std::unique_ptr<ICommand> cmd, NS::Scene::SceneData& level) noexcept
     {
         if (!cmd)
             return;
@@ -20,7 +20,7 @@ namespace NS::Editor
         TrimOldest();
     }
 
-    bool UndoStack::Undo(NS::Game::Level::LevelData& level) noexcept
+    bool UndoStack::Undo(NS::Scene::SceneData& level) noexcept
     {
         if (m_undo.empty())
             return false;
@@ -34,7 +34,7 @@ namespace NS::Editor
         return true;
     }
 
-    bool UndoStack::Redo(NS::Game::Level::LevelData& level) noexcept
+    bool UndoStack::Redo(NS::Scene::SceneData& level) noexcept
     {
         if (m_redo.empty())
             return false;

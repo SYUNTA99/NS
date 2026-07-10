@@ -5,7 +5,7 @@
 ///
 /// @details `LevelEditorController` の value member として保有され、
 /// mode toggle 用に SetActive(false) で Tick / Render が何もしない
-/// LevelData への変更は **全て** `UndoStack::Push` 経由で発火し、
+/// SceneData への変更は **全て** `UndoStack::Push` 経由で発火し、
 /// PlayMode 側との変更経路衝突を防ぐ
 
 #include "Editor/CategoryPalette.h"
@@ -25,11 +25,6 @@ namespace NS::Scene
     class CameraComponent;
     struct SceneData;
 } // namespace NS::Scene
-namespace NS::Game::Level
-{
-    using LevelData = NS::Scene::SceneData;
-}
-
 namespace NS::Editor
 {
     /// 編集モード本体。 入力 / cursor / palette / UndoStack を 1 か所に集約する
@@ -64,7 +59,7 @@ namespace NS::Editor
         EditorMode(EditorMode&&) = delete;
         EditorMode& operator=(EditorMode&&) = delete;
 
-        void SetLevel(NS::Game::Level::LevelData* level) noexcept { m_level = level; }
+        void SetLevel(NS::Scene::SceneData* level) noexcept { m_level = level; }
         void SetInput(NS::Platform::Input* input) noexcept { m_input = input; }
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
         void SetCameraComponent(NS::Scene::CameraComponent* camera) noexcept { m_camera = camera; }
@@ -109,7 +104,7 @@ namespace NS::Editor
         [[nodiscard]] bool SaveForQuit() noexcept;
 
     private:
-        NS::Game::Level::LevelData* m_level = nullptr;
+        NS::Scene::SceneData* m_level = nullptr;
         NS::Platform::Input* m_input = nullptr;
         NS::UI::ImGuiContext* m_imgui = nullptr;
         NS::Scene::CameraComponent* m_camera = nullptr;

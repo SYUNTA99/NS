@@ -7,19 +7,20 @@
 #include <utility>
 
 namespace LevelNs = NS::Game::Level;
+namespace SceneNs = NS::Scene;
 
 namespace
 {
     // 拾得物を PickupComponent で組む。 pickupKind 0=コイン / 1=ゴールゴール
-    LevelNs::ObjectInstance MakePickup(float x, float y, float z, int pickupKind)
+    SceneNs::ObjectData MakePickup(float x, float y, float z, int pickupKind)
     {
-        LevelNs::ObjectInstance object;
+        SceneNs::ObjectData object;
         object.positionX = x;
         object.positionY = y;
         object.positionZ = z;
-        LevelNs::ComponentData pickup;
+        SceneNs::ComponentData pickup;
         pickup.typeName = "PickupComponent";
-        pickup.fields.push_back(LevelNs::FieldValue{"Pickup Kind", pickupKind});
+        pickup.fields.push_back(SceneNs::FieldValue{"Pickup Kind", pickupKind});
         object.components.push_back(std::move(pickup));
         return object;
     }
@@ -27,7 +28,7 @@ namespace
 
 TEST(PlayMode, EnterInitializesPlayerAtPlayerObject)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{5.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;
@@ -46,7 +47,7 @@ TEST(PlayMode, EnterInitializesPlayerAtPlayerObject)
 
 TEST(PlayMode, PausedTickDoesNotEvaluateRules)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     // プレイヤー実体と同じ位置に coin を置くと中心距離が近く、 非 paused なら取得される位置
     lv.objects.push_back(MakePickup(0.0f, 0.0f, 0.0f, 0));
@@ -63,7 +64,7 @@ TEST(PlayMode, PausedTickDoesNotEvaluateRules)
 
 TEST(PlayMode, FallDeathTriggersWhenBelowThreshold)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;
 
@@ -78,7 +79,7 @@ TEST(PlayMode, FallDeathTriggersWhenBelowThreshold)
 
 TEST(PlayMode, CoinContactIncrementsCounter)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     // プレイヤー実体と同じ位置に coin を置くと中心距離 0 で必ず pickup
     lv.objects.push_back(MakePickup(0.0f, 0.0f, 0.0f, 0));
@@ -97,7 +98,7 @@ TEST(PlayMode, CoinContactIncrementsCounter)
 
 TEST(PlayMode, PowerStarTriggersClear)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
     lv.objects.push_back(MakePickup(0.0f, 0.0f, 0.0f, 1));
 
@@ -111,17 +112,17 @@ TEST(PlayMode, PowerStarTriggersClear)
 
 TEST(PlayMode, PickupComponentCoinIncrementsCounter)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
     // 拾得は PickupComponent が駆動する (種別フィールドではなく component が表す)
-    LevelNs::ObjectInstance coin;
+    SceneNs::ObjectData coin;
     coin.positionX = 0.0f;
     coin.positionY = 0.0f;
     coin.positionZ = 0.0f;
-    LevelNs::ComponentData pickup;
+    SceneNs::ComponentData pickup;
     pickup.typeName = "PickupComponent";
-    pickup.fields.push_back(LevelNs::FieldValue{"Pickup Kind", 0});
+    pickup.fields.push_back(SceneNs::FieldValue{"Pickup Kind", 0});
     coin.components.push_back(std::move(pickup));
     lv.objects.push_back(std::move(coin));
 
@@ -135,16 +136,16 @@ TEST(PlayMode, PickupComponentCoinIncrementsCounter)
 
 TEST(PlayMode, PickupComponentStarTriggersClear)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
-    LevelNs::ObjectInstance goal;
+    SceneNs::ObjectData goal;
     goal.positionX = 0.0f;
     goal.positionY = 0.0f;
     goal.positionZ = 0.0f;
-    LevelNs::ComponentData pickup;
+    SceneNs::ComponentData pickup;
     pickup.typeName = "PickupComponent";
-    pickup.fields.push_back(LevelNs::FieldValue{"Pickup Kind", 1});
+    pickup.fields.push_back(SceneNs::FieldValue{"Pickup Kind", 1});
     goal.components.push_back(std::move(pickup));
     lv.objects.push_back(std::move(goal));
 
@@ -158,7 +159,7 @@ TEST(PlayMode, PickupComponentStarTriggersClear)
 
 TEST(PlayMode, ExitResetsTransientFlags)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     LevelNs::PlayState play;
     LevelNs::PlayMode mode;
     mode.Enter(lv, play);

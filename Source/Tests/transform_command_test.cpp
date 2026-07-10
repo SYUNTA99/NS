@@ -1,16 +1,16 @@
 #include "Editor/Undo/TransformCommand.h"
-#include "Game/Level/LevelData.h"
+#include "Framework/Scene/SceneData.h"
 
 #include <gtest/gtest.h>
 
 namespace EditorNs = NS::Editor;
-namespace LevelNs = NS::Game::Level;
+namespace SceneNs = NS::Scene;
 
 namespace
 {
-    LevelNs::ObjectInstance MakeFree(float x, float y, float z)
+    SceneNs::ObjectData MakeFree(float x, float y, float z)
     {
-        LevelNs::ObjectInstance o;
+        SceneNs::ObjectData o;
         o.positionX = x;
         o.positionY = y;
         o.positionZ = z;
@@ -20,7 +20,7 @@ namespace
 
 TEST(TransformCommandTest, DoReplacesWithAfterUndoRestoresBefore)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(MakeFree(0, 0, 0));
     lv.objects[0].objectId = 7;
 
@@ -38,8 +38,8 @@ TEST(TransformCommandTest, DoReplacesWithAfterUndoRestoresBefore)
 TEST(TransformCommandTest, MaterialAndPositionRoundTrip)
 {
     // 材質のドロップ適用は TransformCommand で undo する。 位置以外の欄も full-instance 差替で往復する
-    LevelNs::LevelData lv;
-    LevelNs::ObjectInstance object = MakeFree(2, 0, 2);
+    SceneNs::SceneData lv;
+    SceneNs::ObjectData object = MakeFree(2, 0, 2);
     object.materialIndex = -1;
     object.objectId = 3;
     lv.objects.push_back(object);
@@ -59,7 +59,7 @@ TEST(TransformCommandTest, MaterialAndPositionRoundTrip)
 
 TEST(TransformCommandTest, ResolvesByIdAfterIndexShift)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(MakeFree(0, 0, 0));
     lv.objects.push_back(MakeFree(1, 1, 1));
     lv.objects[0].objectId = 10;
@@ -74,14 +74,14 @@ TEST(TransformCommandTest, ResolvesByIdAfterIndexShift)
     lv.objects.erase(lv.objects.begin());
 
     cmd.Do(lv);
-    const std::size_t idx = LevelNs::FindObjectIndexById(lv, 11);
-    ASSERT_NE(idx, LevelNs::kNoObjectIndex);
+    const std::size_t idx = SceneNs::FindObjectIndexById(lv, 11);
+    ASSERT_NE(idx, SceneNs::kNoObjectIndex);
     EXPECT_FLOAT_EQ(lv.objects[idx].positionY, 9.0f);
 }
 
 TEST(TransformCommandTest, MissingIdIsNoOp)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(MakeFree(0, 0, 0));
     lv.objects[0].objectId = 1;
 

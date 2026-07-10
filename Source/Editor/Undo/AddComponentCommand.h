@@ -4,7 +4,7 @@
 /// @brief 対象オブジェクトへコンポーネントを 1 つ追加する Command。 Undo で足した 1 つを取り除く
 
 #include "Editor/Undo/ICommand.h"
-#include "Game/Level/LevelData.h"
+#include "Framework/Scene/SceneData.h"
 
 namespace NS::Editor
 {
@@ -16,16 +16,16 @@ namespace NS::Editor
     class AddComponentCommand final : public ICommand
     {
     public:
-        AddComponentCommand(std::uint32_t targetObjectId, NS::Game::Level::ComponentData payload) noexcept;
+        AddComponentCommand(std::uint32_t targetObjectId, NS::Scene::ComponentData payload) noexcept;
 
-        void Do(NS::Game::Level::LevelData& level) noexcept override;
-        void Undo(NS::Game::Level::LevelData& level) noexcept override;
+        void Do(NS::Scene::SceneData& level) noexcept override;
+        void Undo(NS::Scene::SceneData& level) noexcept override;
 
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override;
 
     private:
         std::uint32_t m_targetObjectId;
-        NS::Game::Level::ComponentData m_payload;
+        NS::Scene::ComponentData m_payload;
         std::optional<std::size_t> m_addedIndex; // Do で足した位置。 値があれば Undo がその 1 つを取り除く
     };
 

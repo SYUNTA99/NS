@@ -1,6 +1,6 @@
 #include "Editor/PlayerTuning.h"
 
-#include "Game/Level/LevelData.h"
+#include "Framework/Scene/SceneData.h"
 #include "Game/Level/LevelJson.h"
 
 #pragma warning(push, 0)
@@ -14,7 +14,7 @@ std::filesystem::path PlayerTuningPath()
     return ::NS::Core::FileSystem::ContentRoot() / "Assets" / "PlayerTuning.json";
 }
 
-void MergePlayerTuningText(NS::Game::Level::ObjectInstance& playerObject, std::string_view jsonText) noexcept
+void MergePlayerTuningText(NS::Scene::ObjectData& playerObject, std::string_view jsonText) noexcept
 {
     const nlohmann::json json = nlohmann::json::parse(jsonText, nullptr, false);
     if (json.is_discarded())
@@ -36,8 +36,8 @@ void MergePlayerTuningText(NS::Game::Level::ObjectInstance& playerObject, std::s
         const std::string typeName = typeIt->get<std::string>();
 
         // 型名が一致する既存データへ写す。 同型は最初の 1 件だけが対象で、 無い型は構成ごと追加する
-        NS::Game::Level::ComponentData* target = nullptr;
-        for (NS::Game::Level::ComponentData& component : playerObject.components)
+        NS::Scene::ComponentData* target = nullptr;
+        for (NS::Scene::ComponentData& component : playerObject.components)
         {
             if (component.typeName == typeName)
             {
@@ -47,17 +47,17 @@ void MergePlayerTuningText(NS::Game::Level::ObjectInstance& playerObject, std::s
         }
         if (target == nullptr)
         {
-            playerObject.components.push_back(NS::Game::Level::ComponentData{typeName, {}});
+            playerObject.components.push_back(NS::Scene::ComponentData{typeName, {}});
             target = &playerObject.components.back();
         }
 
         for (const auto& [name, value] : fieldsIt->items())
         {
-            NS::Game::Level::FieldValue parsed;
+            NS::Scene::FieldValue parsed;
             if (!NS::Game::Level::JsonToFieldValue(name, value, parsed))
                 continue;
             bool replaced = false;
-            for (NS::Game::Level::FieldValue& field : target->fields)
+            for (NS::Scene::FieldValue& field : target->fields)
             {
                 if (field.name == parsed.name)
                 {
@@ -72,7 +72,7 @@ void MergePlayerTuningText(NS::Game::Level::ObjectInstance& playerObject, std::s
     }
 }
 
-void MergeSavedPlayerTuning(NS::Game::Level::ObjectInstance& playerObject) noexcept
+void MergeSavedPlayerTuning(NS::Scene::ObjectData& playerObject) noexcept
 {
     const auto path = PlayerTuningPath();
     if (!::NS::Core::FileSystem::Exists(path))

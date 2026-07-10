@@ -67,8 +67,8 @@ public:
     void EnterEdit() noexcept;
 
     [[nodiscard]] NS::Editor::EditorMode& Editor() noexcept { return m_editor; }
-    /// panel 利便のための pass-through。 編集対象の LevelData
-    [[nodiscard]] NS::Game::Level::LevelData& Level() noexcept;
+    /// panel 利便のための pass-through。 編集対象の SceneData
+    [[nodiscard]] NS::Scene::SceneData& Level() noexcept;
     /// panel 利便のための pass-through。 一時的な PlayState
     [[nodiscard]] NS::Game::Level::PlayState& Play() noexcept;
 
@@ -84,8 +84,8 @@ public:
 
     /// Inspector が編集 / 表示できる選択を持つか
     [[nodiscard]] bool HasInspectableSelection() const noexcept;
-    /// Inspector 表示用に選択中 ObjectInstance のコピーを返す。 未選択は既定値
-    [[nodiscard]] NS::Game::Level::ObjectInstance SelectedObjectSnapshot() const noexcept;
+    /// Inspector 表示用に選択中 ObjectData のコピーを返す。 未選択は既定値
+    [[nodiscard]] NS::Scene::ObjectData SelectedObjectSnapshot() const noexcept;
     /// 選択中の配置物の位置を設定する。 非選択時は何もしない
     void SetSelectedFreePosition(NS::Math::Vector3 position) noexcept;
     /// 選択中の配置物の回転を設定する。 非選択時は何もしない
@@ -181,7 +181,7 @@ private:
     /// rebuild を跨いでも生ポインタを持ち越さない fail-safe の要。 ドラッグ中は gizmo 貼り直しを抑止する
     void ResolveSelectionFromId() noexcept;
 
-    /// ギズモで変形した自由オブジェクトの Transform を対応する ObjectInstance へ書き戻す
+    /// ギズモで変形した自由オブジェクトの Transform を対応する ObjectData へ書き戻す
     /// world に居ない実プレイヤーも player object のデータへ同様に書き戻す。 live Transform が真実の源
     void SyncFreeObjectTransforms();
 
@@ -240,20 +240,20 @@ private:
     SpecialSelection m_specialSelection = SpecialSelection::None;
 
     // 選択の真実は永続 objectId。 rebuild / delete / undo を跨いでも生ポインタや添字に依存しない
-    std::uint32_t m_selectedObjectId = NS::Game::Level::kNoObjectId;
+    std::uint32_t m_selectedObjectId = NS::Scene::kNoObjectId;
     // id から毎フレーム解決する派生の添字。 m_level.objects 用で、 ズレても crash しない安定 vector を指す
-    std::size_t m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+    std::size_t m_selectedObjectIndex = NS::Scene::kNoObjectIndex;
     // ビューポート由来のギズモ選択変化だけを index へ反映するための前フレーム値
     NS::Scene::Transform* m_lastGizmoSelected = nullptr;
 
     // コンポ単位 copy/paste の退避先。 型名 + 反射値を 1 つ保持する
-    std::optional<NS::Game::Level::ComponentData> m_componentClipboard;
+    std::optional<NS::Scene::ComponentData> m_componentClipboard;
 
     // ギズモドラッグ / Inspector パネルの変形編集を 1 undo 単位へ束ねる状態
     bool m_gizmoWasDragging = false;
     bool m_transformEditing = false;
-    std::uint32_t m_editBaselineId = NS::Game::Level::kNoObjectId;
-    NS::Game::Level::ObjectInstance m_editBaseline{};
+    std::uint32_t m_editBaselineId = NS::Scene::kNoObjectId;
+    NS::Scene::ObjectData m_editBaseline{};
 
     // Debug provenance パネルの読み出し元。 書き込みは Render で毎フレーム行う
     NS::Graphics::RenderSettings m_debugResolvedSettings{};

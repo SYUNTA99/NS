@@ -77,8 +77,8 @@ namespace NS::Game::Level
             return it->get<int>();
         }
 
-        /// FieldValue の variant を JSON 値へ。 float と int は JSON の数値種別で区別され load 時に変種が復元される
-        nlohmann::json FieldValueToJson(const FieldValue& field)
+        /// NS::Scene::FieldValue の variant を JSON 値へ。 float と int は JSON の数値種別で区別され load 時に変種が復元される
+        nlohmann::json FieldValueToJson(const NS::Scene::FieldValue& field)
         {
             switch (field.value.index())
             {
@@ -107,7 +107,7 @@ namespace NS::Game::Level
             }
         }
 
-        nlohmann::json SerializeComponentData(const ComponentData& component)
+        nlohmann::json SerializeComponentData(const NS::Scene::ComponentData& component)
         {
             nlohmann::json out;
             out["type"] = component.typeName;
@@ -115,9 +115,9 @@ namespace NS::Game::Level
             return out;
         }
 
-        ComponentData DeserializeComponentData(const nlohmann::json& json)
+        NS::Scene::ComponentData DeserializeComponentData(const nlohmann::json& json)
         {
-            ComponentData component;
+            NS::Scene::ComponentData component;
             if (!json.is_object())
                 return component;
             const auto typeIt = json.find("type");
@@ -128,7 +128,7 @@ namespace NS::Game::Level
             {
                 for (const auto& [name, value] : fieldsIt->items())
                 {
-                    FieldValue parsed;
+                    NS::Scene::FieldValue parsed;
                     if (JsonToFieldValue(name, value, parsed))
                         component.fields.push_back(std::move(parsed));
                 }
@@ -136,7 +136,7 @@ namespace NS::Game::Level
             return component;
         }
 
-        nlohmann::json SerializeObject(const ObjectInstance& object)
+        nlohmann::json SerializeObject(const NS::Scene::ObjectData& object)
         {
             nlohmann::json transform;
             transform["pos"] = Vec3Json(object.positionX, object.positionY, object.positionZ);
@@ -155,9 +155,9 @@ namespace NS::Game::Level
             return out;
         }
 
-        ObjectInstance DeserializeObject(const nlohmann::json& json)
+        NS::Scene::ObjectData DeserializeObject(const nlohmann::json& json)
         {
-            ObjectInstance object{};
+            NS::Scene::ObjectData object{};
             if (!json.is_object())
                 return object;
 
@@ -184,9 +184,9 @@ namespace NS::Game::Level
 
         /// v3 以前の cameraVolumes 1 件を PlacedVirtualCamera 持ちの配置物へ変換する。読込移行専用
         /// 視点位置は object の Transform、それ以外は component の反射フィールドに載せ替える
-        ObjectInstance MakeCameraObjectFromLegacyVolume(const nlohmann::json& json)
+        NS::Scene::ObjectData MakeCameraObjectFromLegacyVolume(const nlohmann::json& json)
         {
-            ObjectInstance object{};
+            NS::Scene::ObjectData object{};
             object.materialIndex = -1;
             if (!json.is_object())
                 return object;
@@ -206,22 +206,22 @@ namespace NS::Game::Level
             float triggerExtentZ = 1.0f;
             ReadVec3(json, "triggerExtent", triggerExtentX, triggerExtentY, triggerExtentZ);
 
-            ComponentData camera;
+            NS::Scene::ComponentData camera;
             camera.typeName = "PlacedVirtualCamera";
             camera.fields.push_back(
-                FieldValue{"Look Target", NS::Math::Vector3{lookTargetX, lookTargetY, lookTargetZ}});
+                NS::Scene::FieldValue{"Look Target", NS::Math::Vector3{lookTargetX, lookTargetY, lookTargetZ}});
             camera.fields.push_back(
-                FieldValue{"Trigger Center", NS::Math::Vector3{triggerCenterX, triggerCenterY, triggerCenterZ}});
+                NS::Scene::FieldValue{"Trigger Center", NS::Math::Vector3{triggerCenterX, triggerCenterY, triggerCenterZ}});
             camera.fields.push_back(
-                FieldValue{"Trigger Extent", NS::Math::Vector3{triggerExtentX, triggerExtentY, triggerExtentZ}});
-            camera.fields.push_back(FieldValue{"Look At Player", ReadInt(json, "lookAtPlayer", 0) != 0});
-            camera.fields.push_back(FieldValue{"Priority", ReadInt(json, "priority", 10)});
+                NS::Scene::FieldValue{"Trigger Extent", NS::Math::Vector3{triggerExtentX, triggerExtentY, triggerExtentZ}});
+            camera.fields.push_back(NS::Scene::FieldValue{"Look At Player", ReadInt(json, "lookAtPlayer", 0) != 0});
+            camera.fields.push_back(NS::Scene::FieldValue{"Priority", ReadInt(json, "priority", 10)});
             object.components.push_back(std::move(camera));
             return object;
         }
     } // namespace
 
-    nlohmann::json ComponentFieldsToJson(const ComponentData& component)
+    nlohmann::json ComponentFieldsToJson(const NS::Scene::ComponentData& component)
     {
         nlohmann::json fields = nlohmann::json::object();
         for (const auto& field : component.fields)
@@ -229,32 +229,32 @@ namespace NS::Game::Level
         return fields;
     }
 
-    bool JsonToFieldValue(const std::string& name, const nlohmann::json& value, FieldValue& out)
+    bool JsonToFieldValue(const std::string& name, const nlohmann::json& value, NS::Scene::FieldValue& out)
     {
         if (value.is_boolean())
         {
-            out = FieldValue{name, value.get<bool>()};
+            out = NS::Scene::FieldValue{name, value.get<bool>()};
             return true;
         }
         if (value.is_number_float())
         {
-            out = FieldValue{name, value.get<float>()};
+            out = NS::Scene::FieldValue{name, value.get<float>()};
             return true;
         }
         if (value.is_number_integer() || value.is_number_unsigned())
         {
-            out = FieldValue{name, value.get<int>()};
+            out = NS::Scene::FieldValue{name, value.get<int>()};
             return true;
         }
         if (value.is_string())
         {
-            out = FieldValue{name, value.get<std::string>()};
+            out = NS::Scene::FieldValue{name, value.get<std::string>()};
             return true;
         }
         if (value.is_array() && value.size() == 3u && value[0].is_number() && value[1].is_number() &&
             value[2].is_number())
         {
-            out = FieldValue{name,
+            out = NS::Scene::FieldValue{name,
                              NS::Math::Vector3{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()}};
             return true;
         }
@@ -264,7 +264,7 @@ namespace NS::Game::Level
             // 負数は id として不正なので unsigned のみ受ける。 壊れた ref は積まずに前方互換へ倒す
             if (refIt != value.end() && refIt->is_number_unsigned())
             {
-                out = FieldValue{name, NS::Scene::ObjectRef{refIt->get<std::uint32_t>()}};
+                out = NS::Scene::FieldValue{name, NS::Scene::ObjectRef{refIt->get<std::uint32_t>()}};
                 return true;
             }
             return false;
@@ -272,7 +272,7 @@ namespace NS::Game::Level
         return false;
     }
 
-    std::string SerializeLevelToJson(const LevelData& level)
+    std::string SerializeLevelToJson(const NS::Scene::SceneData& level)
     {
         nlohmann::json root;
         root["formatVersion"] = kFormatVersion;
@@ -302,9 +302,9 @@ namespace NS::Game::Level
         return root.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
     }
 
-    bool DeserializeLevelFromJson(LevelData& outLevel, std::string_view jsonText, LevelLoadReport* outReport)
+    bool DeserializeLevelFromJson(NS::Scene::SceneData& outLevel, std::string_view jsonText, LevelLoadReport* outReport)
     {
-        outLevel = LevelData{};
+        outLevel = NS::Scene::SceneData{};
         if (outReport != nullptr)
             *outReport = LevelLoadReport{};
 
@@ -329,7 +329,7 @@ namespace NS::Game::Level
                              "DeserializeLevelFromJson: object 数 {} が上限 {} を超過",
                              objectsIt->size(),
                              kMaxObjectCount);
-                outLevel = LevelData{};
+                outLevel = NS::Scene::SceneData{};
                 return false;
             }
             outLevel.objects.reserve(objectsIt->size());
@@ -346,7 +346,7 @@ namespace NS::Game::Level
                              "DeserializeLevelFromJson: material path 数 {} が上限 {} を超過",
                              materialsIt->size(),
                              kMaxMaterialPaths);
-                outLevel = LevelData{};
+                outLevel = NS::Scene::SceneData{};
                 return false;
             }
             for (const auto& materialJson : *materialsIt)
@@ -360,7 +360,7 @@ namespace NS::Game::Level
                                  "DeserializeLevelFromJson: material path が長すぎる ({} > {} byte)",
                                  materialPath.size(),
                                  kMaxMaterialPathLength);
-                    outLevel = LevelData{};
+                    outLevel = NS::Scene::SceneData{};
                     return false;
                 }
                 outLevel.materialPaths.push_back(std::move(materialPath));
@@ -377,7 +377,7 @@ namespace NS::Game::Level
                              "DeserializeLevelFromJson: camera volume 数 {} が上限 {} を超過",
                              camerasIt->size(),
                              kMaxLegacyCameraVolumeCount);
-                outLevel = LevelData{};
+                outLevel = NS::Scene::SceneData{};
                 return false;
             }
             outLevel.objects.reserve(outLevel.objects.size() + camerasIt->size());
@@ -388,7 +388,7 @@ namespace NS::Game::Level
         // v4 以前のプレイヤーは spawn 単一値だった。読込時に objects の実体へ変換して合流させる
         // v5 以降でもプレイヤー欠落の手編集ファイルには既定位置で 1 体を合成し、「必ず 1 体」を読込の門で保証する
         const int loadedVersion = ReadInt(root, "formatVersion", 1);
-        if (FindPlayerObjectIndex(outLevel) == kNoObjectIndex)
+        if (FindPlayerObjectIndex(outLevel) == NS::Scene::kNoObjectIndex)
         {
             float spawnX = 0.0f;
             float spawnY = kDefaultPlayerSpawnY;
@@ -415,7 +415,7 @@ namespace NS::Game::Level
 
         // プレイヤーは必ず 1 体。 余分は先頭を正として組まれず、 手編集の重複をここで知らせる
         std::size_t playerCount = 0;
-        for (const ObjectInstance& object : outLevel.objects)
+        for (const NS::Scene::ObjectData& object : outLevel.objects)
         {
             if (IsPlayerObject(object))
                 ++playerCount;
@@ -455,11 +455,11 @@ namespace NS::Game::Level
 
         // v5 以前の追従カメラは scene 直組みだった。プレイヤー同様、無ければプレイヤーを追う 1 台を
         // 合成して「必ず 1 台」を読込の門で保証する。Target 参照が要るため採番の後に足す
-        if (FindFollowCameraObjectIndex(outLevel) == kNoObjectIndex)
+        if (FindFollowCameraObjectIndex(outLevel) == NS::Scene::kNoObjectIndex)
         {
             const std::size_t playerIndex = FindPlayerObjectIndex(outLevel);
             const std::uint32_t targetId = [&]() -> std::uint32_t {
-                if (playerIndex != kNoObjectIndex)
+                if (playerIndex != NS::Scene::kNoObjectIndex)
                     return outLevel.objects[playerIndex].objectId;
                 return 0u;
             }();
@@ -475,7 +475,7 @@ namespace NS::Game::Level
         return true;
     }
 
-    bool SaveLevelToJsonFile(const LevelData& level, const std::filesystem::path& path) noexcept
+    bool SaveLevelToJsonFile(const NS::Scene::SceneData& level, const std::filesystem::path& path) noexcept
     {
         if (level.objects.size() > kMaxObjectCount)
         {
@@ -528,11 +528,11 @@ namespace NS::Game::Level
         }
     }
 
-    bool LoadLevelFromJsonFile(LevelData& outLevel,
+    bool LoadLevelFromJsonFile(NS::Scene::SceneData& outLevel,
                                const std::filesystem::path& path,
                                LevelLoadReport* outReport) noexcept
     {
-        outLevel = LevelData{};
+        outLevel = NS::Scene::SceneData{};
 
         auto textOpt = ::NS::Core::FileSystem::ReadAllText(path);
         if (!textOpt.has_value())
@@ -547,19 +547,19 @@ namespace NS::Game::Level
             return false;
         }
 
-        // parse 後の json 操作 / LevelData 構築は bad_alloc を投げ得る。 noexcept 契約を守るため捕捉する
+        // parse 後の json 操作 / NS::Scene::SceneData 構築は bad_alloc を投げ得る。 noexcept 契約を守るため捕捉する
         try
         {
             if (!DeserializeLevelFromJson(outLevel, *textOpt, outReport))
             {
-                outLevel = LevelData{};
+                outLevel = NS::Scene::SceneData{};
                 return false;
             }
         }
         catch (...)
         {
             NS_LOG_ERROR(::NS::Core::LogCat::Game, "LoadLevelFromJsonFile: 読込中に例外を捕捉");
-            outLevel = LevelData{};
+            outLevel = NS::Scene::SceneData{};
             return false;
         }
         return true;

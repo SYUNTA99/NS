@@ -27,11 +27,11 @@ namespace
 {
     using NS::Game::Blocks::BuildPlacedObject;
     using NS::Game::Blocks::FindComponent;
-    using NS::Game::Level::ComponentData;
+    using NS::Scene::ComponentData;
     using NS::Game::Level::DeserializeLevelFromJson;
-    using NS::Game::Level::FieldValue;
-    using NS::Game::Level::LevelData;
-    using NS::Game::Level::ObjectInstance;
+    using NS::Scene::FieldValue;
+    using NS::Scene::SceneData;
+    using NS::Scene::ObjectData;
     using NS::Game::Level::SerializeLevelToJson;
     using NS::Math::Vector3;
 
@@ -144,8 +144,8 @@ namespace
 // components 駆動 object を JSON 往復しても新経路で同一 channel を組み、 反射 set が値を復元する
 TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
 {
-    LevelData src;
-    ObjectInstance obj;
+    SceneData src;
+    ObjectData obj;
     obj.positionX = 2.0f;
     obj.positionY = 1.0f;
     obj.positionZ = 3.0f;
@@ -161,7 +161,7 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     src.objects.push_back(std::move(obj));
     src.objects.push_back(NS::Game::Level::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
-    LevelData restored;
+    SceneData restored;
     ASSERT_TRUE(DeserializeLevelFromJson(restored, SerializeLevelToJson(src)));
     // 末尾に追従カメラが 1 台合成される
     ASSERT_EQ(restored.objects.size(), 3u);

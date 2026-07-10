@@ -1,23 +1,23 @@
 #include "Editor/Undo/AddObjectCommand.h"
 
-#include "Game/Level/LevelData.h"
+#include "Framework/Scene/SceneData.h"
 
 namespace NS::Editor
 {
-    AddObjectCommand::AddObjectCommand(const NS::Game::Level::ObjectInstance& object) noexcept : m_object(object) {}
+    AddObjectCommand::AddObjectCommand(const NS::Scene::ObjectData& object) noexcept : m_object(object) {}
 
-    void AddObjectCommand::Do(NS::Game::Level::LevelData& level) noexcept
+    void AddObjectCommand::Do(NS::Scene::SceneData& level) noexcept
     {
         // 永続 id は初回だけ採番して m_object に焼き、redo で別の id にならないようにする
-        if (m_object.objectId == NS::Game::Level::kNoObjectId)
-            m_object.objectId = NS::Game::Level::AllocateObjectId(level);
+        if (m_object.objectId == NS::Scene::kNoObjectId)
+            m_object.objectId = NS::Scene::AllocateObjectId(level);
         level.objects.push_back(m_object);
     }
 
-    void AddObjectCommand::Undo(NS::Game::Level::LevelData& level) noexcept
+    void AddObjectCommand::Undo(NS::Scene::SceneData& level) noexcept
     {
-        const std::size_t index = NS::Game::Level::FindObjectIndexById(level, m_object.objectId);
-        if (index == NS::Game::Level::kNoObjectIndex)
+        const std::size_t index = NS::Scene::FindObjectIndexById(level, m_object.objectId);
+        if (index == NS::Scene::kNoObjectIndex)
             return;
         level.objects.erase(level.objects.begin() + static_cast<std::ptrdiff_t>(index));
     }

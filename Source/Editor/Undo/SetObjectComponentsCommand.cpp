@@ -3,24 +3,24 @@
 namespace NS::Editor
 {
     SetObjectComponentsCommand::SetObjectComponentsCommand(
-        std::uint32_t targetObjectId, std::vector<NS::Game::Level::ComponentData> newComponents) noexcept
+        std::uint32_t targetObjectId, std::vector<NS::Scene::ComponentData> newComponents) noexcept
         : m_targetObjectId(targetObjectId), m_newComponents(std::move(newComponents))
     {}
 
-    void SetObjectComponentsCommand::Do(NS::Game::Level::LevelData& level) noexcept
+    void SetObjectComponentsCommand::Do(NS::Scene::SceneData& level) noexcept
     {
-        const std::size_t index = NS::Game::Level::FindObjectIndexById(level, m_targetObjectId);
-        if (index == NS::Game::Level::kNoObjectIndex)
+        const std::size_t index = NS::Scene::FindObjectIndexById(level, m_targetObjectId);
+        if (index == NS::Scene::kNoObjectIndex)
             return;
-        std::vector<NS::Game::Level::ComponentData>& components = level.objects[index].components;
+        std::vector<NS::Scene::ComponentData>& components = level.objects[index].components;
         m_oldComponents = components;
         components = m_newComponents;
     }
 
-    void SetObjectComponentsCommand::Undo(NS::Game::Level::LevelData& level) noexcept
+    void SetObjectComponentsCommand::Undo(NS::Scene::SceneData& level) noexcept
     {
-        const std::size_t index = NS::Game::Level::FindObjectIndexById(level, m_targetObjectId);
-        if (index == NS::Game::Level::kNoObjectIndex)
+        const std::size_t index = NS::Scene::FindObjectIndexById(level, m_targetObjectId);
+        if (index == NS::Scene::kNoObjectIndex)
             return;
         level.objects[index].components = m_oldComponents;
     }
@@ -29,10 +29,10 @@ namespace NS::Editor
     {
         // 反射値の文字列が確保するヒープは概算に含めない
         std::size_t bytes = sizeof(SetObjectComponentsCommand);
-        for (const NS::Game::Level::ComponentData& comp : m_newComponents)
-            bytes += NS::Game::Level::EstimatedHeapBytes(comp);
-        for (const NS::Game::Level::ComponentData& comp : m_oldComponents)
-            bytes += NS::Game::Level::EstimatedHeapBytes(comp);
+        for (const NS::Scene::ComponentData& comp : m_newComponents)
+            bytes += NS::Scene::EstimatedHeapBytes(comp);
+        for (const NS::Scene::ComponentData& comp : m_oldComponents)
+            bytes += NS::Scene::EstimatedHeapBytes(comp);
         return bytes;
     }
 

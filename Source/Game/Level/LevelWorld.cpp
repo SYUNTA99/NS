@@ -1,7 +1,7 @@
 #include "Game/Level/LevelWorld.h"
 
 #include "Game/Blocks/BuildPlacedObject.h"
-#include "Game/Level/LevelData.h"
+#include "Framework/Scene/SceneData.h"
 #include "Game/Player.h"
 
 namespace NS::Game::Level
@@ -25,7 +25,7 @@ namespace NS::Game::Level
     LevelWorld::LevelWorld() = default;
     LevelWorld::~LevelWorld() = default;
 
-    void LevelWorld::Rebuild(const LevelData& level,
+    void LevelWorld::Rebuild(const NS::Scene::SceneData& level,
                              NS::Scene::SceneBase& scene,
                              NS::Physics::PhysicsWorld& physics,
                              NS::Scene::AssetManager* assets)
@@ -51,7 +51,7 @@ namespace NS::Game::Level
         // OnStart で ObjectRef を解決する component が、 自分より後ろの object も引けるようにするため
         for (std::size_t objectIndex = 0; objectIndex < level.objects.size(); ++objectIndex)
         {
-            const ObjectInstance& entry = level.objects[objectIndex];
+            const NS::Scene::ObjectData& entry = level.objects[objectIndex];
 
             auto obj = NS::Game::Blocks::BuildPlacedObject(entry, *assets, level.materialPaths);
             if (!obj)

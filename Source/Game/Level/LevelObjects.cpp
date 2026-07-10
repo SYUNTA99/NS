@@ -10,24 +10,24 @@ namespace NS::Game::Level
         constexpr float kQuarterTurnYaw = NS::Math::kPi * 0.5f;
     } // namespace
 
-    bool IsPlayerObject(const ObjectInstance& object) noexcept
+    bool IsPlayerObject(const NS::Scene::ObjectData& object) noexcept
     {
         return FindComponentData(object, "PlayerInputComponent") != nullptr;
     }
 
-    std::size_t FindPlayerObjectIndex(const LevelData& level) noexcept
+    std::size_t FindPlayerObjectIndex(const NS::Scene::SceneData& level) noexcept
     {
         for (std::size_t i = 0; i < level.objects.size(); ++i)
         {
             if (IsPlayerObject(level.objects[i]))
                 return i;
         }
-        return kNoObjectIndex;
+        return NS::Scene::kNoObjectIndex;
     }
 
-    ObjectInstance MakePlayerObject(const NS::Math::Vector3& position, const NS::Math::Quaternion& rotation)
+    NS::Scene::ObjectData MakePlayerObject(const NS::Math::Vector3& position, const NS::Math::Quaternion& rotation)
     {
-        ObjectInstance object{};
+        NS::Scene::ObjectData object{};
         object.positionX = position.x;
         object.positionY = position.y;
         object.positionZ = position.z;
@@ -44,52 +44,52 @@ namespace NS::Game::Level
         return object;
     }
 
-    bool IsFollowCameraObject(const ObjectInstance& object) noexcept
+    bool IsFollowCameraObject(const NS::Scene::ObjectData& object) noexcept
     {
         return FindComponentData(object, "ThirdPersonFollowComponent") != nullptr;
     }
 
-    std::size_t FindFollowCameraObjectIndex(const LevelData& level) noexcept
+    std::size_t FindFollowCameraObjectIndex(const NS::Scene::SceneData& level) noexcept
     {
         for (std::size_t i = 0; i < level.objects.size(); ++i)
         {
             if (IsFollowCameraObject(level.objects[i]))
                 return i;
         }
-        return kNoObjectIndex;
+        return NS::Scene::kNoObjectIndex;
     }
 
-    ObjectInstance MakeFollowCameraObject(std::uint32_t targetObjectId)
+    NS::Scene::ObjectData MakeFollowCameraObject(std::uint32_t targetObjectId)
     {
-        ObjectInstance object{};
+        NS::Scene::ObjectData object{};
         object.materialIndex = -1;
         object.components = NS::Game::Blocks::MakeFollowCameraComponents(targetObjectId);
         return object;
     }
 
-    std::int16_t ObjectCellX(const ObjectInstance& object) noexcept
+    std::int16_t ObjectCellX(const NS::Scene::ObjectData& object) noexcept
     {
         return static_cast<std::int16_t>(std::lround(object.positionX));
     }
 
-    std::int16_t ObjectCellY(const ObjectInstance& object) noexcept
+    std::int16_t ObjectCellY(const NS::Scene::ObjectData& object) noexcept
     {
         return static_cast<std::int16_t>(std::lround(object.positionY));
     }
 
-    std::int16_t ObjectCellZ(const ObjectInstance& object) noexcept
+    std::int16_t ObjectCellZ(const NS::Scene::ObjectData& object) noexcept
     {
         return static_cast<std::int16_t>(std::lround(object.positionZ));
     }
 
-    bool IsCellBrushObject(const ObjectInstance& object) noexcept
+    bool IsCellBrushObject(const NS::Scene::ObjectData& object) noexcept
     {
         // プレイヤーとカメラはギズモ / 別経路で扱うため cell ブラシの対象から外す
         return !IsPlayerObject(object) && !IsFollowCameraObject(object) &&
                FindComponentData(object, "PlacedVirtualCamera") == nullptr;
     }
 
-    std::size_t FindObjectAtCell(const LevelData& level, std::int16_t x, std::int16_t y, std::int16_t z) noexcept
+    std::size_t FindObjectAtCell(const NS::Scene::SceneData& level, std::int16_t x, std::int16_t y, std::int16_t z) noexcept
     {
         for (std::size_t i = 0; i < level.objects.size(); ++i)
         {
@@ -100,10 +100,10 @@ namespace NS::Game::Level
                 return i;
             }
         }
-        return kNoObjectIndex;
+        return NS::Scene::kNoObjectIndex;
     }
 
-    std::uint8_t CellRotationStep(const ObjectInstance& object) noexcept
+    std::uint8_t CellRotationStep(const NS::Scene::ObjectData& object) noexcept
     {
         // q と -q は同一回転なので fabs で符号を無視し 4 候補の最近接を選ぶ。 四半回転の向き規約に依存しない
         const NS::Math::Quaternion current{object.rotationX, object.rotationY, object.rotationZ, object.rotationW};
@@ -124,7 +124,7 @@ namespace NS::Game::Level
         return best;
     }
 
-    void SetCellRotationStep(ObjectInstance& object, std::uint8_t rotationStep) noexcept
+    void SetCellRotationStep(NS::Scene::ObjectData& object, std::uint8_t rotationStep) noexcept
     {
         const float yaw = static_cast<float>(rotationStep & 0x03) * kQuarterTurnYaw;
         const NS::Math::Quaternion rotation = NS::Math::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
@@ -134,9 +134,9 @@ namespace NS::Game::Level
         object.rotationW = rotation.w;
     }
 
-    ObjectInstance MakeCellObject(std::int16_t x, std::int16_t y, std::int16_t z, std::uint8_t rotationStep)
+    NS::Scene::ObjectData MakeCellObject(std::int16_t x, std::int16_t y, std::int16_t z, std::uint8_t rotationStep)
     {
-        ObjectInstance object{};
+        NS::Scene::ObjectData object{};
         object.positionX = static_cast<float>(x);
         object.positionY = static_cast<float>(y);
         object.positionZ = static_cast<float>(z);
@@ -146,12 +146,12 @@ namespace NS::Game::Level
         return object;
     }
 
-    int PickupKindOf(const ObjectInstance& object) noexcept
+    int PickupKindOf(const NS::Scene::ObjectData& object) noexcept
     {
-        const ComponentData* pickup = FindComponentData(object, "PickupComponent");
+        const NS::Scene::ComponentData* pickup = FindComponentData(object, "PickupComponent");
         if (pickup == nullptr)
             return -1;
-        const FieldValue* field = FindField(*pickup, "Pickup Kind");
+        const NS::Scene::FieldValue* field = FindField(*pickup, "Pickup Kind");
         if (field != nullptr && std::holds_alternative<int>(field->value))
             return std::get<int>(field->value);
         return 0; // PickupComponent はあるが field 欠損 → コイン既定

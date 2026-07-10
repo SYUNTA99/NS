@@ -33,7 +33,7 @@ TEST(HazardDamageTest, HealthClampsAtZero)
 
 TEST(HazardDamageTest, ContactDamageDoesNotModifyLevelData)
 {
-    NS::Game::Level::LevelData level;
+    NS::Scene::SceneData level;
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0, 0));
     level.objects.push_back(
         NS::Game::Level::MakePlayerObject(NS::Math::Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));

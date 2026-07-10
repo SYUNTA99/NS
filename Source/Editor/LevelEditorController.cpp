@@ -91,7 +91,7 @@ LevelEditorController::LevelEditorController(LevelPlayScene* scene) noexcept : m
 
 LevelEditorController::~LevelEditorController() = default;
 
-NS::Game::Level::LevelData& LevelEditorController::Level() noexcept
+NS::Scene::SceneData& LevelEditorController::Level() noexcept
 {
     return m_scene->Level();
 }
@@ -134,7 +134,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     if (m_scene->PlayerObjectSynthesized())
     {
         const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(m_scene->Level());
-        if (playerIndex != NS::Game::Level::kNoObjectIndex)
+        if (playerIndex != NS::Scene::kNoObjectIndex)
         {
             MergeSavedPlayerTuning(m_scene->Level().objects[playerIndex]);
             m_scene->RebuildWorld();
@@ -155,9 +155,9 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     // 初期視点はプレイヤー実体の位置を中心に少し引いた位置から見下ろす。 不在なら原点
     NS::Math::Vector3 startCenter{0.0f, 0.0f, 0.0f};
     const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(m_scene->Level());
-    if (playerIndex != NS::Game::Level::kNoObjectIndex)
+    if (playerIndex != NS::Scene::kNoObjectIndex)
     {
-        const NS::Game::Level::ObjectInstance& playerObject = m_scene->Level().objects[playerIndex];
+        const NS::Scene::ObjectData& playerObject = m_scene->Level().objects[playerIndex];
         startCenter = NS::Math::Vector3{playerObject.positionX, playerObject.positionY, playerObject.positionZ};
     }
     m_editorCameraRig->EditorCam().SetCenter(startCenter);
@@ -312,7 +312,7 @@ void LevelEditorController::TickEdit()
         // 追従カメラを掴んでいたら Root 位置を初期姿勢へ逆算し components へ保存する。 位置の書き戻しはこちら
         ApplyFollowCameraGizmoDrag();
 
-        // ギズモ変形の結果を live → model で ObjectInstance へ反映する。 begin/commit はこの model を基準にする
+        // ギズモ変形の結果を live → model で ObjectData へ反映する。 begin/commit はこの model を基準にする
         // world に居ない実プレイヤーの player object への書き戻しも同じ関数が担う
         SyncFreeObjectTransforms();
 
@@ -342,8 +342,8 @@ void LevelEditorController::TickEdit()
         m_scene->RebuildWorld();
         // undo / redo / ロードは objects を作り直す。 ロードは id が振り直され旧 id が別物に化けるため、
         // ここで選択 id を解除する。 候補 span と gizmo の貼り直しは次フレーム頭の解決に委ねる
-        m_selectedObjectId = NS::Game::Level::kNoObjectId;
-        m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+        m_selectedObjectId = NS::Scene::kNoObjectId;
+        m_selectedObjectIndex = NS::Scene::kNoObjectIndex;
         m_gizmo.ClearSelection();
         m_lastGizmoSelected = nullptr;
         m_editor.ClearLevelDirty();
@@ -396,8 +396,8 @@ void LevelEditorController::SetObjectToolActive(bool active) noexcept
     if (!active)
     {
         m_gizmo.ClearSelection();
-        m_selectedObjectId = NS::Game::Level::kNoObjectId;
-        m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+        m_selectedObjectId = NS::Scene::kNoObjectId;
+        m_selectedObjectIndex = NS::Scene::kNoObjectIndex;
         m_lastGizmoSelected = nullptr;
     }
 }
@@ -407,11 +407,11 @@ bool LevelEditorController::HasInspectableSelection() const noexcept
     return m_selectedObjectIndex < m_scene->Level().objects.size();
 }
 
-NS::Game::Level::ObjectInstance LevelEditorController::SelectedObjectSnapshot() const noexcept
+NS::Scene::ObjectData LevelEditorController::SelectedObjectSnapshot() const noexcept
 {
     if (m_selectedObjectIndex < m_scene->Level().objects.size())
         return m_scene->Level().objects[m_selectedObjectIndex];
-    return NS::Game::Level::ObjectInstance{};
+    return NS::Scene::ObjectData{};
 }
 
 NS::Scene::GameObject* LevelEditorController::SelectedObjectGameObject() noexcept
@@ -423,7 +423,7 @@ NS::Scene::GameObject* LevelEditorController::SelectedObjectGameObject() noexcep
     if (SelectedIsPlayerObject())
         return m_scene->PlayerRef();
 
-    // objects 添字 → runtime インスタンスの逆引き。 free / grid の別は ObjectInstance が握り runtime list は 1 本
+    // objects 添字 → runtime インスタンスの逆引き。 free / grid の別は ObjectData が握り runtime list は 1 本
     for (std::size_t i = 0; i < m_scene->World().Objects().size(); ++i)
         if (m_scene->World().SourceIndices()[i] == m_selectedObjectIndex)
             return m_scene->World().Objects()[i].get();
@@ -441,7 +441,7 @@ void LevelEditorController::SyncSelectedObjectComponentsFromComponent()
     if (m_selectedObjectIndex >= m_scene->Level().objects.size())
         return;
 
-    NS::Game::Level::ObjectInstance& object = m_scene->Level().objects[m_selectedObjectIndex];
+    NS::Scene::ObjectData& object = m_scene->Level().objects[m_selectedObjectIndex];
 
     // 反射編集で更新済の runtime コンポーネントを components データへ書き戻す。 BuildFromComponents が読むのは
     // components 側で、 ここを更新しないと次の rebuild で編集が失われる
@@ -508,7 +508,7 @@ void LevelEditorController::SyncFreeObjectTransforms()
         const std::size_t objectIndex = m_scene->World().SourceIndices()[i];
         if (objectIndex >= m_scene->Level().objects.size())
             continue;
-        NS::Game::Level::ObjectInstance& object = m_scene->Level().objects[objectIndex];
+        NS::Scene::ObjectData& object = m_scene->Level().objects[objectIndex];
         // 追従カメラの Transform は実プレイ視点位置の同期先で真実の源でない。 位置は初期姿勢へ逆算して持つ
         if (m_scene->World().Objects()[i]->FindComponent<NS::Scene::ThirdPersonFollowComponent>() != nullptr)
             continue;
@@ -532,9 +532,9 @@ void LevelEditorController::SyncFreeObjectTransforms()
 
     // player object は world に居ないため、 scene 所有の実 player から別途書き戻す
     const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(m_scene->Level());
-    if (playerIndex != NS::Game::Level::kNoObjectIndex && m_scene->PlayerRef())
+    if (playerIndex != NS::Scene::kNoObjectIndex && m_scene->PlayerRef())
     {
-        NS::Game::Level::ObjectInstance& playerObject = m_scene->Level().objects[playerIndex];
+        NS::Scene::ObjectData& playerObject = m_scene->Level().objects[playerIndex];
         NS::Scene::Transform& root = m_scene->PlayerRef()->Root();
         const NS::Math::Vector3 position = root.Position();
         const NS::Math::Quaternion rotation = root.Rotation();
@@ -600,8 +600,8 @@ void LevelEditorController::SelectObjectByIndex(std::size_t index) noexcept
 
     if (index >= m_scene->Level().objects.size())
     {
-        m_selectedObjectId = NS::Game::Level::kNoObjectId;
-        m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+        m_selectedObjectId = NS::Scene::kNoObjectId;
+        m_selectedObjectIndex = NS::Scene::kNoObjectIndex;
         return;
     }
     // 選択の真実は id。 索引が動いても id から引き直せる
@@ -634,8 +634,8 @@ void LevelEditorController::SelectObjectByIndex(std::size_t index) noexcept
 
 void LevelEditorController::SelectCamera() noexcept
 {
-    m_selectedObjectId = NS::Game::Level::kNoObjectId;
-    m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+    m_selectedObjectId = NS::Scene::kNoObjectId;
+    m_selectedObjectIndex = NS::Scene::kNoObjectIndex;
     m_gizmo.ClearSelection();
     m_lastGizmoSelected = nullptr;
     m_specialSelection = SpecialSelection::Camera;
@@ -715,8 +715,8 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
     m_lastGizmoSelected = selected;
     if (selected == nullptr)
     {
-        m_selectedObjectId = NS::Game::Level::kNoObjectId;
-        m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+        m_selectedObjectId = NS::Scene::kNoObjectId;
+        m_selectedObjectIndex = NS::Scene::kNoObjectIndex;
         // ギズモが空クリック等で外れたら特殊選択も解除し、 再貼り付けで掴み続けないようにする
         m_specialSelection = SpecialSelection::None;
         return;
@@ -726,15 +726,15 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
     {
         const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(m_scene->Level());
         m_specialSelection = SpecialSelection::None;
-        if (playerIndex != NS::Game::Level::kNoObjectIndex)
+        if (playerIndex != NS::Scene::kNoObjectIndex)
         {
             m_selectedObjectIndex = playerIndex;
             m_selectedObjectId = m_scene->Level().objects[playerIndex].objectId;
         }
         else
         {
-            m_selectedObjectId = NS::Game::Level::kNoObjectId;
-            m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+            m_selectedObjectId = NS::Scene::kNoObjectId;
+            m_selectedObjectIndex = NS::Scene::kNoObjectIndex;
         }
         return;
     }
@@ -749,21 +749,21 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
             return;
         }
     }
-    m_selectedObjectId = NS::Game::Level::kNoObjectId;
-    m_selectedObjectIndex = NS::Game::Level::kNoObjectIndex;
+    m_selectedObjectId = NS::Scene::kNoObjectId;
+    m_selectedObjectIndex = NS::Scene::kNoObjectIndex;
 }
 
 void LevelEditorController::ResolveSelectionFromId() noexcept
 {
     // id → 現在の objects 添字。 delete / undo で添字はズレるので毎フレーム引き直す
-    m_selectedObjectIndex = NS::Game::Level::FindObjectIndexById(m_scene->Level(), m_selectedObjectId);
+    m_selectedObjectIndex = NS::Scene::FindObjectIndexById(m_scene->Level(), m_selectedObjectId);
 
     // SetSelected が進行中ドラッグを切ってしまうのでドラッグ中は gizmo の選択を貼り直さない
     if (m_gizmo.IsDragging())
         return;
 
     // 選択 id が自由オブジェクトを指すなら gizmo に貼り直す。 grid / 不在 / 特殊選択は gizmo を外す
-    if (m_specialSelection == SpecialSelection::None && m_selectedObjectIndex != NS::Game::Level::kNoObjectIndex)
+    if (m_specialSelection == SpecialSelection::None && m_selectedObjectIndex != NS::Scene::kNoObjectIndex)
     {
         // player object は world に居ないため、 実プレイヤーへ貼り直す。 rebuild を跨いでも掴める状態を保つ
         if (SelectedIsPlayerObject() && m_scene->PlayerRef())
@@ -853,7 +853,7 @@ void LevelEditorController::AddObject()
         center = m_editorCameraRig->EditorCam().Center();
 
     // 既定姿勢の自由配置物。 scale / rotation / collider は既定値のまま
-    NS::Game::Level::ObjectInstance object{};
+    NS::Scene::ObjectData object{};
     object.positionX = center.x;
     object.positionY = center.y;
     object.positionZ = center.z;
@@ -872,12 +872,12 @@ void LevelEditorController::AddObject()
 void LevelEditorController::AddComponentToSelected(std::string_view typeName)
 {
     const std::uint32_t id = m_selectedObjectId;
-    if (id == NS::Game::Level::kNoObjectId)
+    if (id == NS::Scene::kNoObjectId)
         return;
-    if (NS::Game::Level::FindObjectIndexById(m_scene->Level(), id) == NS::Game::Level::kNoObjectIndex)
+    if (NS::Scene::FindObjectIndexById(m_scene->Level(), id) == NS::Scene::kNoObjectIndex)
         return;
 
-    NS::Game::Level::ComponentData payload;
+    NS::Scene::ComponentData payload;
     payload.typeName = std::string(typeName);
     m_editor.Undo().Push(std::make_unique<NS::Editor::AddComponentCommand>(id, std::move(payload)), m_scene->Level());
 
@@ -890,15 +890,15 @@ void LevelEditorController::AddComponentToSelected(std::string_view typeName)
 void LevelEditorController::RemoveComponentFromSelected(std::size_t componentIndex)
 {
     const std::uint32_t id = m_selectedObjectId;
-    if (id == NS::Game::Level::kNoObjectId)
+    if (id == NS::Scene::kNoObjectId)
         return;
-    const std::size_t objectIndex = NS::Game::Level::FindObjectIndexById(m_scene->Level(), id);
-    if (objectIndex == NS::Game::Level::kNoObjectIndex)
+    const std::size_t objectIndex = NS::Scene::FindObjectIndexById(m_scene->Level(), id);
+    if (objectIndex == NS::Scene::kNoObjectIndex)
         return;
 
     // 空構成は build で消えるゴーストになるので最後の 1 個 / 範囲外は消さない。 何もしないコマンドを積まず
     // undo 履歴も汚さない
-    const std::vector<NS::Game::Level::ComponentData>& components = m_scene->Level().objects[objectIndex].components;
+    const std::vector<NS::Scene::ComponentData>& components = m_scene->Level().objects[objectIndex].components;
     if (componentIndex >= components.size() || components.size() <= 1)
         return;
 
@@ -919,9 +919,9 @@ void LevelEditorController::DuplicateSelectedObject()
     if (SelectedIsPlayerObject())
         return;
     const std::uint32_t id = m_selectedObjectId;
-    if (id == NS::Game::Level::kNoObjectId)
+    if (id == NS::Scene::kNoObjectId)
         return;
-    if (NS::Game::Level::FindObjectIndexById(m_scene->Level(), id) == NS::Game::Level::kNoObjectIndex)
+    if (NS::Scene::FindObjectIndexById(m_scene->Level(), id) == NS::Scene::kNoObjectIndex)
         return;
 
     // 複製は objects 末尾へ積まれる。 組み直してから末尾を新しい選択にする
@@ -936,12 +936,12 @@ void LevelEditorController::DuplicateSelectedObject()
 void LevelEditorController::CopyComponentToClipboard(std::size_t componentIndex)
 {
     const std::uint32_t id = m_selectedObjectId;
-    if (id == NS::Game::Level::kNoObjectId)
+    if (id == NS::Scene::kNoObjectId)
         return;
-    const std::size_t objectIndex = NS::Game::Level::FindObjectIndexById(m_scene->Level(), id);
-    if (objectIndex == NS::Game::Level::kNoObjectIndex)
+    const std::size_t objectIndex = NS::Scene::FindObjectIndexById(m_scene->Level(), id);
+    if (objectIndex == NS::Scene::kNoObjectIndex)
         return;
-    const std::vector<NS::Game::Level::ComponentData>& dataComponents =
+    const std::vector<NS::Scene::ComponentData>& dataComponents =
         m_scene->Level().objects[objectIndex].components;
     if (componentIndex >= dataComponents.size())
         return;
@@ -953,7 +953,7 @@ void LevelEditorController::CopyComponentToClipboard(std::size_t componentIndex)
         const std::vector<NS::Scene::Component*>& runtime = go->Components();
         if (componentIndex < runtime.size() && runtime[componentIndex] != nullptr)
         {
-            NS::Game::Level::ComponentData captured = NS::Editor::CaptureComponentData(*runtime[componentIndex]);
+            NS::Scene::ComponentData captured = NS::Editor::CaptureComponentData(*runtime[componentIndex]);
             if (captured.typeName == dataComponents[componentIndex].typeName)
             {
                 m_componentClipboard = std::move(captured);
@@ -969,9 +969,9 @@ void LevelEditorController::PasteClipboardComponentToSelected()
     if (!m_componentClipboard)
         return;
     const std::uint32_t id = m_selectedObjectId;
-    if (id == NS::Game::Level::kNoObjectId)
+    if (id == NS::Scene::kNoObjectId)
         return;
-    if (NS::Game::Level::FindObjectIndexById(m_scene->Level(), id) == NS::Game::Level::kNoObjectIndex)
+    if (NS::Scene::FindObjectIndexById(m_scene->Level(), id) == NS::Scene::kNoObjectIndex)
         return;
 
     // 同型がすでにあっても末尾へ重ねて貼り、 上書きはしない
@@ -1000,13 +1000,13 @@ void LevelEditorController::CommitTransformEdit() noexcept
         return;
     m_transformEditing = false;
 
-    const std::size_t index = NS::Game::Level::FindObjectIndexById(m_scene->Level(), m_editBaselineId);
-    if (index == NS::Game::Level::kNoObjectIndex)
+    const std::size_t index = NS::Scene::FindObjectIndexById(m_scene->Level(), m_editBaselineId);
+    if (index == NS::Scene::kNoObjectIndex)
         return;
 
     // 位置・回転・スケールは live Transform から、 材質など残りは model から取る
     // パネル編集は Sync が 1 フレーム遅れるため model 直読みだと取りこぼす
-    NS::Game::Level::ObjectInstance after = m_scene->Level().objects[index];
+    NS::Scene::ObjectData after = m_scene->Level().objects[index];
     const NS::Scene::Transform* liveRoot = nullptr;
     if (index == NS::Game::Level::FindPlayerObjectIndex(m_scene->Level()) && m_scene->PlayerRef())
     {
@@ -1051,7 +1051,7 @@ void LevelEditorController::CommitTransformEdit() noexcept
 
 void LevelEditorController::ReselectFreeObjectById(std::uint32_t id) noexcept
 {
-    const std::size_t index = NS::Game::Level::FindObjectIndexById(m_scene->Level(), id);
+    const std::size_t index = NS::Scene::FindObjectIndexById(m_scene->Level(), id);
     for (std::size_t i = 0; i < m_scene->World().Objects().size(); ++i)
     {
         if (m_scene->World().SourceIndices()[i] != index)
@@ -1091,7 +1091,7 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
     if (loaded.material == nullptr)
         return false;
 
-    // .mat パスを ContentRoot 相対で材質表に登録して重複は再利用し、 ObjectInstance.materialIndex を更新して永続化する
+    // .mat パスを ContentRoot 相対で材質表に登録して重複は再利用し、 ObjectData.materialIndex を更新して永続化する
     const auto exeDir = NS::Core::FileSystem::ContentRoot();
     const std::filesystem::path relative = matPath.lexically_relative(exeDir);
     const std::string stored = [&]() -> std::string {
@@ -1115,10 +1115,10 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
         materialIndex = static_cast<int>(m_scene->Level().materialPaths.size() - 1);
     }
 
-    NS::Game::Level::ObjectInstance& object = m_scene->Level().objects[m_scene->World().SourceIndices()[slot]];
+    NS::Scene::ObjectData& object = m_scene->Level().objects[m_scene->World().SourceIndices()[slot]];
     // 差替前を退避して materialIndex 変更を TransformCommand 1 つとして undo 履歴へ載せる
     // undo で materialIndex が戻り、 dirty rebuild が旧材質を焼き直す
-    const NS::Game::Level::ObjectInstance before = object;
+    const NS::Scene::ObjectData before = object;
     object.materialIndex = static_cast<std::int16_t>(materialIndex);
 
     mesh->SetMaterial(loaded.material);

@@ -12,7 +12,7 @@ namespace NS::Game::Blocks
         constexpr NS::Math::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
 
         // free 配置物の material を解決する。 materialIndex 無効 / traversal は共有 player material に倒す
-        NS::Graphics::Material* ResolveFreeMaterial(const NS::Game::Level::ObjectInstance& object,
+        NS::Graphics::Material* ResolveFreeMaterial(const NS::Scene::ObjectData& object,
                                                     NS::Scene::AssetManager& assets,
                                                     const std::vector<std::string>& materialPaths)
         {
@@ -58,7 +58,7 @@ namespace NS::Game::Blocks
         // 素の器では同型が無く全生成になり、 Player の器では ctor の既定構成へ値だけが写って二重生成しない
         // データと live は 1 対 1 で対応させ、 同型を重ねたデータは上書きせず重ねた数だけ立てる
         void ApplyComponentsFromData(NS::Scene::GameObject& obj,
-                                     const NS::Game::Level::ObjectInstance& object,
+                                     const NS::Scene::ObjectData& object,
                                      NS::Scene::AssetManager& assets,
                                      const std::vector<std::string>& materialPaths)
         {
@@ -100,28 +100,28 @@ namespace NS::Game::Blocks
             }
         }
 
-        NS::Game::Level::ComponentData MakeComponentData(std::string typeName,
-                                                         std::vector<NS::Game::Level::FieldValue> fields)
+        NS::Scene::ComponentData MakeComponentData(std::string typeName,
+                                                         std::vector<NS::Scene::FieldValue> fields)
         {
-            NS::Game::Level::ComponentData component;
+            NS::Scene::ComponentData component;
             component.typeName = std::move(typeName);
             component.fields = std::move(fields);
             return component;
         }
 
-        NS::Game::Level::ComponentData MeshRendererData(std::string meshName,
+        NS::Scene::ComponentData MeshRendererData(std::string meshName,
                                                         std::string materialName,
                                                         const NS::Math::Vector3& baseColor)
         {
             return MakeComponentData("MeshRendererComponent",
-                                     {NS::Game::Level::FieldValue{"Mesh", std::move(meshName)},
-                                      NS::Game::Level::FieldValue{"Material", std::move(materialName)},
-                                      NS::Game::Level::FieldValue{"Base Color", baseColor}});
+                                     {NS::Scene::FieldValue{"Mesh", std::move(meshName)},
+                                      NS::Scene::FieldValue{"Material", std::move(materialName)},
+                                      NS::Scene::FieldValue{"Base Color", baseColor}});
         }
 
-        bool HasComponentType(const NS::Game::Level::ObjectInstance& object, const char* typeName) noexcept
+        bool HasComponentType(const NS::Scene::ObjectData& object, const char* typeName) noexcept
         {
-            return NS::Game::Level::FindComponentData(object, typeName) != nullptr;
+            return NS::Scene::FindComponentData(object, typeName) != nullptr;
         }
 
         // 固形箱の線引き。 BoxCollider を持ち slope / hazard / 拾得を兼ねない箱だけを歩ける固形とする
@@ -132,42 +132,40 @@ namespace NS::Game::Blocks
         }
 
         // SlopeColliderComponent の "Angle (deg)" を返す。 SlopeCollider 無しは -1
-        float SlopeAngleOf(const NS::Game::Level::ObjectInstance& object) noexcept
+        float SlopeAngleOf(const NS::Scene::ObjectData& object) noexcept
         {
-            const NS::Game::Level::ComponentData* slope =
-                NS::Game::Level::FindComponentData(object, "SlopeColliderComponent");
+            const NS::Scene::ComponentData* slope =
+                NS::Scene::FindComponentData(object, "SlopeColliderComponent");
             if (slope == nullptr)
                 return -1.0f;
-            const NS::Game::Level::FieldValue* angle = NS::Game::Level::FindField(*slope, "Angle (deg)");
+            const NS::Scene::FieldValue* angle = NS::Scene::FindField(*slope, "Angle (deg)");
             if (angle != nullptr && std::holds_alternative<float>(angle->value))
                 return std::get<float>(angle->value);
             return 0.0f;
         }
 
         // MeshRenderer の "Material" 参照を返す。 MeshRenderer / フィールド無しは nullptr
-        const std::string* MaterialRefOf(const NS::Game::Level::ObjectInstance& object) noexcept
+        const std::string* MaterialRefOf(const NS::Scene::ObjectData& object) noexcept
         {
-            const NS::Game::Level::ComponentData* renderer =
-                NS::Game::Level::FindComponentData(object, "MeshRendererComponent");
+            const NS::Scene::ComponentData* renderer =
+                NS::Scene::FindComponentData(object, "MeshRendererComponent");
             if (renderer == nullptr)
                 return nullptr;
-            const NS::Game::Level::FieldValue* material = NS::Game::Level::FindField(*renderer, "Material");
+            const NS::Scene::FieldValue* material = NS::Scene::FindField(*renderer, "Material");
             if (material != nullptr && std::holds_alternative<std::string>(material->value))
                 return &std::get<std::string>(material->value);
             return nullptr;
         }
     } // namespace
 
-    std::vector<NS::Game::Level::ComponentData> MakeCellCubeComponents()
+    std::vector<NS::Scene::ComponentData> MakeCellCubeComponents()
     {
-        using namespace NS::Game::Level;
         return {MeshRendererData("cube", "", kSolidBaseColor),
-                MakeComponentData("BoxColliderComponent", {FieldValue{"Half Extents", kCellHalfExtents}})};
+                MakeComponentData("BoxColliderComponent", {NS::Scene::FieldValue{"Half Extents", kCellHalfExtents}})};
     }
 
-    std::vector<NS::Game::Level::ComponentData> MakeCellSlopeComponents(float angleDegrees)
+    std::vector<NS::Scene::ComponentData> MakeCellSlopeComponents(float angleDegrees)
     {
-        using namespace NS::Game::Level;
         // 角度に対応する楔 builtin メッシュを選び、 見た目の傾斜と当たりの傾斜を一致させる
         const char* meshName = "wedge45";
         if (angleDegrees < 18.75f)
@@ -180,20 +178,18 @@ namespace NS::Game::Blocks
         return {
             MeshRendererData(meshName, "", kSolidBaseColor),
             MakeComponentData("SlopeColliderComponent",
-                              {FieldValue{"Angle (deg)", angleDegrees}, FieldValue{"Half Extents", kCellHalfExtents}})};
+                              {NS::Scene::FieldValue{"Angle (deg)", angleDegrees}, NS::Scene::FieldValue{"Half Extents", kCellHalfExtents}})};
     }
 
-    std::vector<NS::Game::Level::ComponentData> MakeGoalComponents()
+    std::vector<NS::Scene::ComponentData> MakeGoalComponents()
     {
-        using namespace NS::Game::Level;
         // goal pickup は視覚を持たないため、 editor で識別できるよう金色 cube を載せる
         return {MeshRendererData("cube", "", NS::Math::Vector3{1.0f, 0.84f, 0.0f}),
-                MakeComponentData("PickupComponent", {FieldValue{"Pickup Kind", 1}})};
+                MakeComponentData("PickupComponent", {NS::Scene::FieldValue{"Pickup Kind", 1}})};
     }
 
-    std::vector<NS::Game::Level::ComponentData> MakeDefaultPlayerComponents()
+    std::vector<NS::Scene::ComponentData> MakeDefaultPlayerComponents()
     {
-        using namespace NS::Game::Level;
         // mesh / material 参照は実プレイヤーの直組みと同じ cube + 共有 player 材質。 データ単体でも構成が読める
         return {MeshRendererData("cube", "player", kPlayerBaseColor),
                 MakeComponentData("CharacterMovementComponent", {}),
@@ -201,16 +197,15 @@ namespace NS::Game::Blocks
                 MakeComponentData("ShadowComponent", {})};
     }
 
-    std::vector<NS::Game::Level::ComponentData> MakeFollowCameraComponents(std::uint32_t targetObjectId)
+    std::vector<NS::Scene::ComponentData> MakeFollowCameraComponents(std::uint32_t targetObjectId)
     {
-        using namespace NS::Game::Level;
         // Far Plane 100 はプレイの遠景を抑える投影値。 感触の距離 / 感度はコード既定に任せる
         return {MakeComponentData(
             "ThirdPersonFollowComponent",
-            {FieldValue{"Target", NS::Scene::ObjectRef{targetObjectId}}, FieldValue{"Far Plane", 100.0f}})};
+            {NS::Scene::FieldValue{"Target", NS::Scene::ObjectRef{targetObjectId}}, NS::Scene::FieldValue{"Far Plane", 100.0f}})};
     }
 
-    std::vector<NS::Game::Level::ComponentData> MakeFreeCubeComponents()
+    std::vector<NS::Scene::ComponentData> MakeFreeCubeComponents()
     {
         // 自由配置の既定は cell の素 cube と同じ構成。 寸法・形状は配置後の component 編集で変える
         return MakeCellCubeComponents();
@@ -251,7 +246,7 @@ namespace NS::Game::Blocks
         return box->WorldOBB();
     }
 
-    bool IsSolidObject(const NS::Game::Level::ObjectInstance& object)
+    bool IsSolidObject(const NS::Scene::ObjectData& object)
     {
         const bool hasBox = HasComponentType(object, "BoxColliderComponent");
         const bool hasSlope = HasComponentType(object, "SlopeColliderComponent");
@@ -260,13 +255,13 @@ namespace NS::Game::Blocks
         return IsSolidBoxRule(hasBox, hasSlope, hasHazard, hasPickup);
     }
 
-    bool IsRotatableObject(const NS::Game::Level::ObjectInstance& object)
+    bool IsRotatableObject(const NS::Scene::ObjectData& object)
     {
         // R で 90° 回す対象。 向きが意味を持つ slope と固形 block。 水 / 装飾は除く
         return SlopeAngleOf(object) >= 0.0f || IsSolidObject(object);
     }
 
-    const char* ObjectDisplayName(const NS::Game::Level::ObjectInstance& object)
+    const char* ObjectDisplayName(const NS::Scene::ObjectData& object)
     {
         if (NS::Game::Level::IsPlayerObject(object))
             return "Player";
@@ -333,7 +328,7 @@ namespace NS::Game::Blocks
         return assets.GetOrLoadMesh(*resolved);
     }
 
-    std::unique_ptr<NS::Scene::GameObject> BuildPlacedObject(const NS::Game::Level::ObjectInstance& object,
+    std::unique_ptr<NS::Scene::GameObject> BuildPlacedObject(const NS::Scene::ObjectData& object,
                                                              NS::Scene::AssetManager& assets,
                                                              const std::vector<std::string>& materialPaths)
     {

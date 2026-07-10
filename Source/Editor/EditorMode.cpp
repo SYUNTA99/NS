@@ -32,12 +32,12 @@ namespace NS::Editor
         // 上書き保存などモーダル外通知を画面に出す秒数
         constexpr float kStatusToastSeconds = 2.5f;
 
-        [[nodiscard]] bool HasObjectAtCell(const NS::Game::Level::LevelData& level,
+        [[nodiscard]] bool HasObjectAtCell(const NS::Scene::SceneData& level,
                                            std::int16_t x,
                                            std::int16_t y,
                                            std::int16_t z) noexcept
         {
-            return NS::Game::Level::FindObjectAtCell(level, x, y, z) != NS::Game::Level::kNoObjectIndex;
+            return NS::Game::Level::FindObjectAtCell(level, x, y, z) != NS::Scene::kNoObjectIndex;
         }
 
         [[nodiscard]] std::int16_t RoundToCell(float v) noexcept
@@ -153,7 +153,7 @@ namespace NS::Editor
                 m_fileBrowser.NotifyLoadResult(false, "不正な level name");
                 break;
             }
-            NS::Game::Level::LevelData fresh;
+            NS::Scene::SceneData fresh;
             NS::Game::Level::LevelLoadReport report{};
             const bool ok = NS::Game::Level::LoadLevelFromFile(fresh, *path, &report);
             if (ok)
@@ -162,11 +162,11 @@ namespace NS::Editor
                 if (report.playerObjectCreated)
                 {
                     const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(fresh);
-                    if (playerIndex != NS::Game::Level::kNoObjectIndex)
+                    if (playerIndex != NS::Scene::kNoObjectIndex)
                         MergeSavedPlayerTuning(fresh.objects[playerIndex]);
                 }
                 // 新 level open で UndoStack 履歴は破棄する。 古い level 用 Command が
-                // 別 LevelData を pointer で持つため、 そのまま undo すると use-after-free 的 mismatch
+                // 別 SceneData を pointer で持つため、 そのまま undo すると use-after-free 的 mismatch
                 *m_level = std::move(fresh);
                 m_undo.Clear();
                 m_levelDirty = true;
@@ -355,7 +355,7 @@ namespace NS::Editor
         if (m_level == nullptr)
             return;
         // 現在のブラシ = 複製元テンプレート。 配置は複製で行う
-        const NS::Game::Level::ObjectInstance& tmpl = m_palette.CurrentTemplate();
+        const NS::Scene::ObjectData& tmpl = m_palette.CurrentTemplate();
         // water 等の回転対象でない block は m_currentRotation が非ゼロでも 0 で焼き込む
         const std::uint8_t rotation = [this]() -> std::uint8_t {
             if (m_palette.CurrentIsRotatable())
@@ -560,7 +560,7 @@ namespace NS::Editor
             // cursor 直下の既存 block を 90° 回す。 回転対象外の block は無視する
             const std::size_t index =
                 NS::Game::Level::FindObjectAtCell(*m_level, m_cursor.hitX, m_cursor.hitY, m_cursor.hitZ);
-            if (index != NS::Game::Level::kNoObjectIndex &&
+            if (index != NS::Scene::kNoObjectIndex &&
                 NS::Game::Blocks::IsRotatableObject(m_level->objects[index]))
             {
                 m_undo.Push(std::make_unique<NS::Editor::RotateCommand>(

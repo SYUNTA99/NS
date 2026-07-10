@@ -9,7 +9,7 @@
 #include <Framework/Scene/Components/MeshRendererComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Game/Blocks/BuildPlacedObject.h>
-#include <Game/Level/LevelData.h>
+#include <Framework/Scene/SceneData.h>
 
 #include <filesystem>
 #include <string>
@@ -21,9 +21,9 @@ namespace
     using NS::Game::Blocks::FindComponent;
     using NS::Game::Blocks::ResolveContentPath;
     using NS::Game::Blocks::ResolveMeshFromRef;
-    using NS::Game::Level::ComponentData;
-    using NS::Game::Level::FieldValue;
-    using NS::Game::Level::ObjectInstance;
+    using NS::Scene::ComponentData;
+    using NS::Scene::FieldValue;
+    using NS::Scene::ObjectData;
     using NS::Scene::AssetManager;
     using NS::Scene::MeshRendererComponent;
 
@@ -79,7 +79,7 @@ TEST(MeshRefResolution, EmptyMeshRefFallsBackToCube)
     AssetManager assets{std::filesystem::path{"."}};
     const std::vector<std::string> noPaths;
 
-    ObjectInstance obj;
+    ObjectData obj;
     obj.components.push_back(MakeMeshRenderer(""));
 
     auto built = BuildPlacedObject(obj, assets, noPaths);
@@ -118,7 +118,7 @@ TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
     AssetManager assets{std::filesystem::path{"."}};
     const std::vector<std::string> noPaths;
 
-    ObjectInstance compObj;
+    ObjectData compObj;
     compObj.components.push_back(MakeMeshRenderer(""));
 
     auto compBuilt = BuildPlacedObject(compObj, assets, noPaths);

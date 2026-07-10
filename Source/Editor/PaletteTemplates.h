@@ -1,12 +1,12 @@
 #pragma once
 
 /// @file PaletteTemplates.h
-/// @brief パレットの配置プロトタイプ ObjectInstance テンプレート
+/// @brief パレットの配置プロトタイプ ObjectData テンプレート
 ///
 /// @details パレットで何を置くかを実 component を持つプロトタイプの配置物として持つ
-/// 各スロットは複製元の ObjectInstance を 1 つ抱え、 配置時はこれを複製して座標 / 回転を焼く
+/// 各スロットは複製元の ObjectData を 1 つ抱え、 配置時はこれを複製して座標 / 回転を焼く
 
-#include "Game/Level/LevelData.h"
+#include "Framework/Scene/SceneData.h"
 
 namespace NS::Editor
 {
@@ -16,7 +16,7 @@ namespace NS::Editor
     {
         const char* name = nullptr;
         bool rotatable = false;
-        NS::Game::Level::ObjectInstance prototype;
+        NS::Scene::ObjectData prototype;
     };
 
     /// パレットのブラシ数。 grid cube / 45 度スロープ / ゴールの 3 種

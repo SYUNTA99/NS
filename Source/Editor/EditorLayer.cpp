@@ -273,7 +273,7 @@ void EditorLayer::RenderRenderSettingsPanel(LevelEditorController& editor) noexc
         ImGui::Separator();
 
         // シーンが所有する環境の直接編集。 lighting は毎フレームの設定写しで即反映されるので組み直し不要
-        NS::Game::Level::LevelEnvironment& env = editor.Level().environment;
+        NS::Scene::SceneEnvironment& env = editor.Level().environment;
         ImGui::TextUnformatted("環境 (このシーンが所有)");
         ImGui::DragFloat3("lightDir##env", &env.lightDirection.x, 0.01f, -1.0f, 1.0f);
         ImGui::DragFloat3("lightColor##env", &env.lightColor.x, 0.01f, 0.0f, 4.0f);
@@ -363,7 +363,7 @@ void EditorLayer::RenderHierarchyPanel(LevelEditorController& editor) noexcept
 
         for (std::size_t i = 0; i < objects.size(); ++i)
         {
-            const NS::Game::Level::ObjectInstance& object = objects[i];
+            const NS::Scene::ObjectData& object = objects[i];
             const char* name = NS::Game::Blocks::ObjectDisplayName(object);
 
             char label[96];
@@ -397,7 +397,7 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
         refOptions.reserve(editor.Level().objects.size());
         for (std::size_t i = 0; i < editor.Level().objects.size(); ++i)
         {
-            const NS::Game::Level::ObjectInstance& candidate = editor.Level().objects[i];
+            const NS::Scene::ObjectData& candidate = editor.Level().objects[i];
             char label[96];
             std::snprintf(label,
                           sizeof(label),
@@ -434,7 +434,7 @@ void EditorLayer::RenderInspectorPanel(LevelEditorController& editor) noexcept
             return;
         }
 
-        const NS::Game::Level::ObjectInstance obj = editor.SelectedObjectSnapshot();
+        const NS::Scene::ObjectData obj = editor.SelectedObjectSnapshot();
         ImGui::Text("[%zu] %s", editor.SelectedObjectIndex(), NS::Game::Blocks::ObjectDisplayName(obj));
         ImGui::Separator();
 

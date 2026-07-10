@@ -14,7 +14,7 @@
 #include <filesystem>
 #include <utility>
 
-using NS::Game::Level::LevelData;
+using NS::Scene::SceneData;
 using NS::Game::Level::LevelWorld;
 
 TEST(LevelWorldTest, InitialStateIsEmpty)
@@ -35,7 +35,7 @@ TEST(LevelWorldTest, RebuildClearsStalePhysicsAndBuildsNothingWithoutAssets)
     ASSERT_FALSE(physics.IsEmpty());
 
     LevelWorld world;
-    const LevelData level{};
+    const SceneData level{};
     world.Rebuild(level, scene, physics, nullptr);
 
     EXPECT_TRUE(physics.IsEmpty());
@@ -58,7 +58,7 @@ TEST(LevelWorldTest, ClearEmptiesEverything)
 // プレイヤー実体も他の配置物と同じ一本道で組まれ、 型付き view から引ける
 TEST(LevelWorldTest, RebuildBuildsPlayerAndExposesView)
 {
-    LevelData level;
+    SceneData level;
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0, 0));
     level.objects.push_back(
         NS::Game::Level::MakePlayerObject(NS::Math::Vector3{0.0f, 1.41f, 0.0f}, NS::Math::Quaternion{}));
@@ -83,10 +83,10 @@ TEST(LevelWorldTest, RebuildBuildsPlayerAndExposesView)
 // 参照先より前に並ぶ前方参照でも、組み立てを先に済ませてから開始する二段組みで解決できる
 TEST(LevelWorldTest, RebuildBakesFollowCameraAndResolvesTarget)
 {
-    LevelData level;
+    SceneData level;
     level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0, 0));
-    NS::Game::Level::EnsureUniqueObjectIds(level);
+    NS::Scene::EnsureUniqueObjectIds(level);
     // 追従先は自分より後ろに並ぶ grid block。Target 参照を採番後の実 id へ差し替える
     for (auto& component : level.objects[0].components)
         for (auto& field : component.fields)
@@ -117,12 +117,12 @@ TEST(LevelWorldTest, RebuildBakesFollowCameraAndResolvesTarget)
 // 据え置きカメラの配置物は Rebuild で走査 view に載り、エリア外の非アクティブで組み上がる
 TEST(LevelWorldTest, RebuildBakesPlacedCamerasInactive)
 {
-    LevelData level;
-    NS::Game::Level::ObjectInstance cameraObject{};
+    SceneData level;
+    NS::Scene::ObjectData cameraObject{};
     cameraObject.positionX = 8.0f;
-    NS::Game::Level::ComponentData comp;
+    NS::Scene::ComponentData comp;
     comp.typeName = "PlacedVirtualCamera";
-    comp.fields.push_back(NS::Game::Level::FieldValue{"Priority", 20});
+    comp.fields.push_back(NS::Scene::FieldValue{"Priority", 20});
     cameraObject.components.push_back(std::move(comp));
     level.objects.push_back(std::move(cameraObject));
 

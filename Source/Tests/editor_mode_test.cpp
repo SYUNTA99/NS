@@ -6,10 +6,11 @@
 
 namespace EditorNs = NS::Editor;
 namespace LevelNs = NS::Game::Level;
+namespace SceneNs = NS::Scene;
 
 TEST(EditorMode, ProgrammaticPlaceAddsBlock)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
 
@@ -17,7 +18,7 @@ TEST(EditorMode, ProgrammaticPlaceAddsBlock)
 
     ASSERT_EQ(lv.objects.size(), 1u);
     const auto idx = LevelNs::FindObjectAtCell(lv, 5, 0, 3);
-    ASSERT_NE(idx, LevelNs::kNoObjectIndex);
+    ASSERT_NE(idx, SceneNs::kNoObjectIndex);
     EXPECT_EQ(LevelNs::ObjectCellX(lv.objects[idx]), 5);
     EXPECT_EQ(LevelNs::ObjectCellY(lv.objects[idx]), 0);
     EXPECT_EQ(LevelNs::ObjectCellZ(lv.objects[idx]), 3);
@@ -26,7 +27,7 @@ TEST(EditorMode, ProgrammaticPlaceAddsBlock)
 
 TEST(EditorMode, ProgrammaticDeleteRemovesBlock)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(LevelNs::MakeCellObject(2, 0, 4, 0));
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
@@ -38,7 +39,7 @@ TEST(EditorMode, ProgrammaticDeleteRemovesBlock)
 
 TEST(EditorMode, ProgrammaticRotateCycles)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
@@ -55,7 +56,7 @@ TEST(EditorMode, ProgrammaticRotateCycles)
 
 TEST(EditorMode, UndoStackIntegration)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
 
@@ -70,7 +71,7 @@ TEST(EditorMode, UndoStackIntegration)
 
 TEST(EditorMode, LevelDirtyFlagSetByMutation)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);
 
@@ -87,7 +88,7 @@ TEST(EditorMode, LevelDirtyFlagSetByMutation)
 
 TEST(EditorMode, CellRotationViaProgrammaticOnExistingBlock)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     EditorNs::EditorMode editor;
     editor.SetLevel(&lv);

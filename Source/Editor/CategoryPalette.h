@@ -9,7 +9,7 @@
 /// 実体があり、 Shipping では何もしない
 
 #include "Editor/PaletteTemplates.h"
-#include "Game/Level/LevelData.h"
+#include "Framework/Scene/SceneData.h"
 
 namespace NS::Platform
 {
@@ -46,7 +46,7 @@ namespace NS::Editor
         [[nodiscard]] std::size_t ActiveSlot() const noexcept { return m_activeSlot; }
 
         /// 配置に複製する現在のプロトタイプ。 active slot のテンプレート
-        [[nodiscard]] const NS::Game::Level::ObjectInstance& CurrentTemplate() const noexcept
+        [[nodiscard]] const NS::Scene::ObjectData& CurrentTemplate() const noexcept
         {
             return m_current.prototype;
         }

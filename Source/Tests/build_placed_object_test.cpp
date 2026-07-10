@@ -20,10 +20,10 @@ namespace
     using NS::Game::Blocks::BuildPlacedObject;
     using NS::Game::Blocks::FindComponent;
     using NS::Game::Blocks::MakeFreeCubeComponents;
-    using NS::Game::Level::ComponentData;
-    using NS::Game::Level::FieldValue;
+    using NS::Scene::ComponentData;
+    using NS::Scene::FieldValue;
     using NS::Game::Level::MakeCellObject;
-    using NS::Game::Level::ObjectInstance;
+    using NS::Scene::ObjectData;
     using NS::Math::Vector3;
 
     // device を確立しない AssetManager。 Builtin / SharedMaterial は nullptr を返すが、 ファクトリは落ちない
@@ -33,22 +33,22 @@ namespace
         NS::Scene::AssetManager m_assets{std::filesystem::path{"."}};
         std::vector<std::string> m_materialPaths;
 
-        std::unique_ptr<NS::Scene::GameObject> Build(const ObjectInstance& object)
+        std::unique_ptr<NS::Scene::GameObject> Build(const ObjectData& object)
         {
             return BuildPlacedObject(object, m_assets, m_materialPaths);
         }
     };
 
     // grid に置く素の cube
-    ObjectInstance MakeGridCube()
+    ObjectData MakeGridCube()
     {
         return MakeCellObject(0, 0, 0, 0);
     }
 
     // 自由配置物のデータ。 見た目の cube と渡された collider を component 直書きで積む
-    ObjectInstance MakeFreeObject(ComponentData collider)
+    ObjectData MakeFreeObject(ComponentData collider)
     {
-        ObjectInstance object;
+        ObjectData object;
         ComponentData mesh;
         mesh.typeName = "MeshRendererComponent";
         mesh.fields.push_back(FieldValue{"Mesh", std::string{"cube"}});
@@ -101,7 +101,7 @@ TEST_F(BuildPlacedObjectTest, GridCubeHasMeshAndBoxCollider)
 
 TEST_F(BuildPlacedObjectTest, DefaultFreeCubeComponentsAreCubeWithBoxCollider)
 {
-    ObjectInstance object;
+    ObjectData object;
     object.components = MakeFreeCubeComponents();
 
     auto obj = Build(object);
@@ -184,7 +184,7 @@ TEST_F(BuildPlacedObjectTest, CapsuleColliderWorldAabbEnclosesCapsule)
 
 TEST_F(BuildPlacedObjectTest, TransformAppliedToRoot)
 {
-    ObjectInstance object = MakeGridCube();
+    ObjectData object = MakeGridCube();
     object.positionX = 3.0f;
     object.positionY = 4.0f;
     object.positionZ = 5.0f;
@@ -214,7 +214,7 @@ TEST_F(BuildPlacedObjectTest, GridCubeWorldAabbMatchesCellHalfExtents)
 
 TEST_F(BuildPlacedObjectTest, FreeBoxWorldAabbReflectsPositionAndHalfExtents)
 {
-    ObjectInstance object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
+    ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
     object.positionX = 2.0f;
 
     auto obj = Build(object);
@@ -233,11 +233,11 @@ TEST_F(BuildPlacedObjectTest, FreeBoxWorldAabbReflectsPositionAndHalfExtents)
 // components 一覧を持つ object は registry でコンポを生成し、 反射 set でフィールドが入る
 TEST_F(BuildPlacedObjectTest, ComponentsDriveBuild)
 {
-    ObjectInstance object;
+    ObjectData object;
 
-    NS::Game::Level::ComponentData box;
+    NS::Scene::ComponentData box;
     box.typeName = "BoxColliderComponent";
-    box.fields.push_back(NS::Game::Level::FieldValue{"Half Extents", Vector3{1.0f, 2.0f, 3.0f}});
+    box.fields.push_back(NS::Scene::FieldValue{"Half Extents", Vector3{1.0f, 2.0f, 3.0f}});
     object.components.push_back(std::move(box));
 
     auto obj = Build(object);
@@ -253,7 +253,7 @@ TEST_F(BuildPlacedObjectTest, ComponentsDriveBuild)
 // components を持たない object は配置物として組まれず nullptr が返る
 TEST_F(BuildPlacedObjectTest, EmptyComponentsBuildsNothing)
 {
-    ObjectInstance object;
+    ObjectData object;
     ASSERT_TRUE(object.components.empty());
 
     EXPECT_EQ(Build(object), nullptr);
@@ -262,7 +262,7 @@ TEST_F(BuildPlacedObjectTest, EmptyComponentsBuildsNothing)
 // material asset path に .. を含む値は ContentRoot 外解決を拒否し、 共有 fallback へ倒れてクラッシュしない
 TEST_F(BuildPlacedObjectTest, AssetPathTraversalRejectedFallsBackToDefault)
 {
-    ObjectInstance object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
+    ObjectData object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
     object.materialIndex = 0;
     std::vector<std::string> traversalPaths = {"../evil.mat"};
 
@@ -275,7 +275,7 @@ TEST_F(BuildPlacedObjectTest, AssetPathTraversalRejectedFallsBackToDefault)
 // 45 度スロープ prototype は wedge メッシュ + 45 度 SlopeCollider を起こし、 R で回せる
 TEST_F(BuildPlacedObjectTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
 {
-    ObjectInstance slope = MakeCellObject(0, 0, 0, 0);
+    ObjectData slope = MakeCellObject(0, 0, 0, 0);
     slope.components = NS::Game::Blocks::MakeCellSlopeComponents(45.0f);
 
     EXPECT_STREQ(NS::Game::Blocks::ObjectDisplayName(slope), "Slope 45");
@@ -293,7 +293,7 @@ TEST_F(BuildPlacedObjectTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
 // ゴール prototype は接触クリア用の pickup を持ち、 表示名は Goal、 向きは無関係で回転不可
 TEST_F(BuildPlacedObjectTest, GoalHasPickupAndDisplaysAsGoal)
 {
-    ObjectInstance goal = MakeCellObject(0, 0, 0, 0);
+    ObjectData goal = MakeCellObject(0, 0, 0, 0);
     goal.components = NS::Game::Blocks::MakeGoalComponents();
 
     EXPECT_STREQ(NS::Game::Blocks::ObjectDisplayName(goal), "Goal");
@@ -315,11 +315,11 @@ TEST_F(BuildPlacedObjectTest, GridCubeIsRotatable)
 // 自由配置の cube も固形 box なので回せる。 固形判定は BoxCollider の有無で決まり、 空構成の marker は回せない
 TEST_F(BuildPlacedObjectTest, FreeCubeRotatableButEmptyMarkerNot)
 {
-    ObjectInstance freeCube;
+    ObjectData freeCube;
     freeCube.components = MakeFreeCubeComponents();
     EXPECT_TRUE(NS::Game::Blocks::IsRotatableObject(freeCube));
 
-    ObjectInstance marker;
+    ObjectData marker;
     EXPECT_FALSE(NS::Game::Blocks::IsRotatableObject(marker));
 }
 
@@ -346,10 +346,10 @@ TEST_F(BuildPlacedObjectTest, PlayerObjectBuildsDormantPlayerTyped)
 // data 側で焼いた値が既定構成の component へ反射適用される
 TEST_F(BuildPlacedObjectTest, PlayerObjectAppliesDataValuesToComponents)
 {
-    ObjectInstance data = NS::Game::Level::MakePlayerObject(Vector3{}, NS::Math::Quaternion{});
+    ObjectData data = NS::Game::Level::MakePlayerObject(Vector3{}, NS::Math::Quaternion{});
     for (auto& component : data.components)
         if (component.typeName == "CharacterMovementComponent")
-            component.fields.push_back(NS::Game::Level::FieldValue{"Max Speed", 11.0f});
+            component.fields.push_back(NS::Scene::FieldValue{"Max Speed", 11.0f});
 
     auto obj = Build(data);
     ASSERT_NE(obj, nullptr);
@@ -362,10 +362,10 @@ TEST_F(BuildPlacedObjectTest, PlayerObjectAppliesDataValuesToComponents)
 // 当たりの重ね置きは複合形状として衝突へ効く前提の機能で、 貼り重ねの経路がこの形を作る
 TEST_F(BuildPlacedObjectTest, DuplicateColliderDataBuildsCompoundColliders)
 {
-    ObjectInstance object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 1.0f, 1.0f}));
-    NS::Game::Level::ComponentData second;
+    ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 1.0f, 1.0f}));
+    NS::Scene::ComponentData second;
     second.typeName = "BoxColliderComponent";
-    second.fields.push_back(NS::Game::Level::FieldValue{"Half Extents", Vector3{2.0f, 2.0f, 2.0f}});
+    second.fields.push_back(NS::Scene::FieldValue{"Half Extents", Vector3{2.0f, 2.0f, 2.0f}});
     object.components.push_back(second);
 
     auto obj = Build(object);

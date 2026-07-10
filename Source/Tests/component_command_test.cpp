@@ -2,7 +2,7 @@
 #include "Editor/Undo/DuplicateObjectCommand.h"
 #include "Editor/Undo/RemoveComponentCommand.h"
 #include "Editor/Undo/SetObjectComponentsCommand.h"
-#include "Game/Level/LevelData.h"
+#include "Framework/Scene/SceneData.h"
 
 #include <gtest/gtest.h>
 
@@ -12,35 +12,35 @@
 #include <vector>
 
 namespace EditorNs = NS::Editor;
-namespace LevelNs = NS::Game::Level;
+namespace SceneNs = NS::Scene;
 
 namespace
 {
     // components を持たない自由オブジェクトを 1 つ作る
-    LevelNs::ObjectInstance MakeObject()
+    SceneNs::ObjectData MakeObject()
     {
-        LevelNs::ObjectInstance o{};
+        SceneNs::ObjectData o{};
         return o;
     }
 
     // 反射値を 1 つ持つ当たり箱コンポーネント。 Undo 復元で値まで戻ることを確かめる種にする
-    LevelNs::ComponentData MakeBoxCollider(float halfExtent)
+    SceneNs::ComponentData MakeBoxCollider(float halfExtent)
     {
-        LevelNs::ComponentData component;
+        SceneNs::ComponentData component;
         component.typeName = "BoxCollider";
-        component.fields.push_back(LevelNs::FieldValue{"halfExtent", halfExtent});
+        component.fields.push_back(SceneNs::FieldValue{"halfExtent", halfExtent});
         return component;
     }
 } // namespace
 
 TEST(ComponentCommand, AddComponentDoAddsOneTypeUndoRemoves)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(MakeObject());
-    LevelNs::EnsureUniqueObjectIds(lv);
+    SceneNs::EnsureUniqueObjectIds(lv);
 
     const std::uint32_t id = lv.objects[0].objectId;
-    EditorNs::AddComponentCommand cmd(id, LevelNs::ComponentData{"HazardComponent"});
+    EditorNs::AddComponentCommand cmd(id, SceneNs::ComponentData{"HazardComponent"});
 
     cmd.Do(lv);
     ASSERT_EQ(lv.objects[0].components.size(), 1u);
@@ -52,13 +52,13 @@ TEST(ComponentCommand, AddComponentDoAddsOneTypeUndoRemoves)
 
 TEST(ComponentCommand, AddComponentAllowsDuplicateType)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(MakeObject());
-    lv.objects[0].components.push_back(LevelNs::ComponentData{"HazardComponent"});
-    LevelNs::EnsureUniqueObjectIds(lv);
+    lv.objects[0].components.push_back(SceneNs::ComponentData{"HazardComponent"});
+    SceneNs::EnsureUniqueObjectIds(lv);
 
     const std::uint32_t id = lv.objects[0].objectId;
-    EditorNs::AddComponentCommand cmd(id, LevelNs::ComponentData{"HazardComponent"});
+    EditorNs::AddComponentCommand cmd(id, SceneNs::ComponentData{"HazardComponent"});
 
     cmd.Do(lv); // 同型でも重ねて足せる
     EXPECT_EQ(lv.objects[0].components.size(), 2u);
@@ -70,11 +70,11 @@ TEST(ComponentCommand, AddComponentAllowsDuplicateType)
 
 TEST(ComponentCommand, RemoveComponentUndoRestoresFieldValues)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(MakeObject());
-    lv.objects[0].components.push_back(LevelNs::ComponentData{"HazardComponent"});
+    lv.objects[0].components.push_back(SceneNs::ComponentData{"HazardComponent"});
     lv.objects[0].components.push_back(MakeBoxCollider(2.5f));
-    LevelNs::EnsureUniqueObjectIds(lv);
+    SceneNs::EnsureUniqueObjectIds(lv);
 
     const std::uint32_t id = lv.objects[0].objectId;
     EditorNs::RemoveComponentCommand cmd(id, 1); // BoxCollider は添字 1
@@ -86,7 +86,7 @@ TEST(ComponentCommand, RemoveComponentUndoRestoresFieldValues)
     cmd.Undo(lv);
     ASSERT_EQ(lv.objects[0].components.size(), 2u);
     // 元の位置と反射値ごと戻ることを確かめる
-    const LevelNs::ComponentData& restored = lv.objects[0].components[1];
+    const SceneNs::ComponentData& restored = lv.objects[0].components[1];
     EXPECT_EQ(restored.typeName, "BoxCollider");
     ASSERT_EQ(restored.fields.size(), 1u);
     EXPECT_EQ(restored.fields[0].name, "halfExtent");
@@ -96,11 +96,11 @@ TEST(ComponentCommand, RemoveComponentUndoRestoresFieldValues)
 
 TEST(ComponentCommand, RemoveComponentRedoRemovesAgain)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(MakeObject());
-    lv.objects[0].components.push_back(LevelNs::ComponentData{"HazardComponent"});
+    lv.objects[0].components.push_back(SceneNs::ComponentData{"HazardComponent"});
     lv.objects[0].components.push_back(MakeBoxCollider(3.0f));
-    LevelNs::EnsureUniqueObjectIds(lv);
+    SceneNs::EnsureUniqueObjectIds(lv);
 
     const std::uint32_t id = lv.objects[0].objectId;
     EditorNs::RemoveComponentCommand cmd(id, 1); // BoxCollider は添字 1
@@ -119,13 +119,13 @@ TEST(ComponentCommand, RemoveComponentRedoRemovesAgain)
 
 TEST(ComponentCommand, DuplicateObjectDeepCopiesComponentsUndoRemoves)
 {
-    LevelNs::LevelData lv;
-    LevelNs::ObjectInstance src = MakeObject();
+    SceneNs::SceneData lv;
+    SceneNs::ObjectData src = MakeObject();
     src.positionX = 3.0f;
-    src.components.push_back(LevelNs::ComponentData{"HazardComponent"});
+    src.components.push_back(SceneNs::ComponentData{"HazardComponent"});
     src.components.push_back(MakeBoxCollider(1.5f));
     lv.objects.push_back(src);
-    LevelNs::EnsureUniqueObjectIds(lv);
+    SceneNs::EnsureUniqueObjectIds(lv);
 
     const std::uint32_t id = lv.objects[0].objectId;
     EditorNs::DuplicateObjectCommand cmd(id);
@@ -133,7 +133,7 @@ TEST(ComponentCommand, DuplicateObjectDeepCopiesComponentsUndoRemoves)
     cmd.Do(lv);
     ASSERT_EQ(lv.objects.size(), 2u);
     EXPECT_NE(lv.objects[1].objectId, lv.objects[0].objectId); // 複製は別の永続 id を持つ
-    const LevelNs::ObjectInstance& dup = lv.objects[1];
+    const SceneNs::ObjectData& dup = lv.objects[1];
     EXPECT_FLOAT_EQ(dup.positionX, 3.0f);
     ASSERT_EQ(dup.components.size(), 2u);
     EXPECT_EQ(dup.components[0].typeName, "HazardComponent");
@@ -149,9 +149,9 @@ TEST(ComponentCommand, DuplicateObjectDeepCopiesComponentsUndoRemoves)
 
 TEST(ComponentCommand, DuplicateObjectRedoReusesSameId)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(MakeObject());
-    LevelNs::EnsureUniqueObjectIds(lv);
+    SceneNs::EnsureUniqueObjectIds(lv);
 
     const std::uint32_t srcId = lv.objects[0].objectId;
     EditorNs::DuplicateObjectCommand cmd(srcId);
@@ -172,14 +172,14 @@ TEST(ComponentCommand, DuplicateObjectRedoReusesSameId)
 
 TEST(ComponentCommand, CommandsOnUnknownIdAreNoOp)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(MakeObject());
     lv.objects[0].components.push_back(MakeBoxCollider(1.0f));
-    LevelNs::EnsureUniqueObjectIds(lv);
+    SceneNs::EnsureUniqueObjectIds(lv);
 
     const std::uint32_t unknownId = 999u;
 
-    EditorNs::AddComponentCommand add(unknownId, LevelNs::ComponentData{"HazardComponent"});
+    EditorNs::AddComponentCommand add(unknownId, SceneNs::ComponentData{"HazardComponent"});
     add.Do(lv);
     add.Undo(lv);
     EXPECT_EQ(lv.objects[0].components.size(), 1u); // 対象が居ないので増減しない
@@ -198,10 +198,10 @@ TEST(ComponentCommand, CommandsOnUnknownIdAreNoOp)
 
 TEST(ComponentCommand, RemoveLastComponentIsRefusedToAvoidGhost)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(MakeObject());
-    lv.objects[0].components.push_back(LevelNs::ComponentData{"MeshRendererComponent"});
-    LevelNs::EnsureUniqueObjectIds(lv);
+    lv.objects[0].components.push_back(SceneNs::ComponentData{"MeshRendererComponent"});
+    SceneNs::EnsureUniqueObjectIds(lv);
 
     const std::uint32_t id = lv.objects[0].objectId;
     EditorNs::RemoveComponentCommand cmd(id, 0); // 唯一の component を消そうとする
@@ -217,16 +217,16 @@ TEST(ComponentCommand, RemoveLastComponentIsRefusedToAvoidGhost)
 
 TEST(ComponentCommand, SetObjectComponentsReplacesWholeListUndoRestores)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(MakeObject());
-    lv.objects[0].components.push_back(LevelNs::ComponentData{"MeshRendererComponent"});
-    LevelNs::EnsureUniqueObjectIds(lv);
+    lv.objects[0].components.push_back(SceneNs::ComponentData{"MeshRendererComponent"});
+    SceneNs::EnsureUniqueObjectIds(lv);
 
     const std::uint32_t id = lv.objects[0].objectId;
-    std::vector<LevelNs::ComponentData> replacement;
-    replacement.push_back(LevelNs::ComponentData{"MeshRendererComponent"});
+    std::vector<SceneNs::ComponentData> replacement;
+    replacement.push_back(SceneNs::ComponentData{"MeshRendererComponent"});
     replacement.push_back(MakeBoxCollider(0.5f));
-    replacement.push_back(LevelNs::ComponentData{"HazardComponent"});
+    replacement.push_back(SceneNs::ComponentData{"HazardComponent"});
     EditorNs::SetObjectComponentsCommand cmd(id, replacement);
 
     cmd.Do(lv);

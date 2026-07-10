@@ -8,6 +8,7 @@
 #include <utility>
 
 namespace LevelNs = NS::Game::Level;
+namespace SceneNs = NS::Scene;
 
 /// Application 依存のない LevelPlayScene を器に、 PlayFlowComponent の進行を player 無しで検証する
 /// OnStart は Application::Get() を要求するため呼ばず、 Tick へ dt を直接渡して進める
@@ -17,15 +18,15 @@ namespace
     constexpr float kDt = 1.0f / 60.0f;
 
     // 拾得物を PickupComponent で組む。 pickupKind 0=コイン / 1=ゴール
-    LevelNs::ObjectInstance MakePickup(float x, float y, float z, int pickupKind)
+    SceneNs::ObjectData MakePickup(float x, float y, float z, int pickupKind)
     {
-        LevelNs::ObjectInstance object;
+        SceneNs::ObjectData object;
         object.positionX = x;
         object.positionY = y;
         object.positionZ = z;
-        LevelNs::ComponentData pickup;
+        SceneNs::ComponentData pickup;
         pickup.typeName = "PickupComponent";
-        pickup.fields.push_back(LevelNs::FieldValue{"Pickup Kind", pickupKind});
+        pickup.fields.push_back(SceneNs::FieldValue{"Pickup Kind", pickupKind});
         object.components.push_back(std::move(pickup));
         return object;
     }

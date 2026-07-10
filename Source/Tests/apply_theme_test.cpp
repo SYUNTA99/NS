@@ -1,7 +1,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Framework/Core/Filesystem.h"
 #include "Framework/Core/Logger.h"
-#include "Game/Level/LevelData.h"
+#include "Framework/Scene/SceneData.h"
 #include "Game/LevelPlayScene.h"
 #include "Game/Theme/ThemeData.h"
 #include "Game/Theme/ThemeId.h"
@@ -40,7 +40,7 @@ namespace
         editor.ApplyTheme(NS::Game::Theme::ThemeId::Lava);
 
         const NS::Game::Theme::ThemeData& lava = NS::Game::Theme::Get(NS::Game::Theme::ThemeId::Lava);
-        const NS::Game::Level::LevelEnvironment& env = scene.Level().environment;
+        const NS::Scene::SceneEnvironment& env = scene.Level().environment;
         EXPECT_EQ(env.skyboxCubemapPath, lava.skyboxCubemapPath.generic_string());
         EXPECT_FLOAT_EQ(env.lightDirection.x, lava.lightDirection.x);
         EXPECT_FLOAT_EQ(env.lightDirection.y, lava.lightDirection.y);

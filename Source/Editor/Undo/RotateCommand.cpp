@@ -19,10 +19,10 @@ namespace NS::Editor
         : m_x(x), m_y(y), m_z(z), m_delta(delta)
     {}
 
-    void RotateCommand::Do(NS::Game::Level::LevelData& level) noexcept
+    void RotateCommand::Do(NS::Scene::SceneData& level) noexcept
     {
         const std::size_t index = NS::Game::Level::FindObjectAtCell(level, m_x, m_y, m_z);
-        if (index == NS::Game::Level::kNoObjectIndex)
+        if (index == NS::Scene::kNoObjectIndex)
         {
             m_prevRotation.reset();
             return;
@@ -32,12 +32,12 @@ namespace NS::Editor
         NS::Game::Level::SetCellRotationStep(level.objects[index], RotateMod4(step, m_delta));
     }
 
-    void RotateCommand::Undo(NS::Game::Level::LevelData& level) noexcept
+    void RotateCommand::Undo(NS::Scene::SceneData& level) noexcept
     {
         if (!m_prevRotation)
             return;
         const std::size_t index = NS::Game::Level::FindObjectAtCell(level, m_x, m_y, m_z);
-        if (index == NS::Game::Level::kNoObjectIndex)
+        if (index == NS::Scene::kNoObjectIndex)
             return;
         NS::Game::Level::SetCellRotationStep(level.objects[index], *m_prevRotation);
     }

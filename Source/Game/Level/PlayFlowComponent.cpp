@@ -78,7 +78,7 @@ namespace NS::Game::Level
             player->MeshComp().SetActive(true);
             const auto& level = scene->Level();
             const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(level);
-            if (playerIndex != NS::Game::Level::kNoObjectIndex)
+            if (playerIndex != NS::Scene::kNoObjectIndex)
             {
                 const auto& playerObject = level.objects[playerIndex];
                 player->Root().SetPosition({playerObject.positionX, playerObject.positionY, playerObject.positionZ});

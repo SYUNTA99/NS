@@ -14,8 +14,8 @@ namespace
 {
     constexpr NS::Math::Vector3 kCellHalfExtents{0.5f, 0.5f, 0.5f};
 
-    /// 編集体験の起点となる最小床。 LevelData に grid block 1 個 + プレイヤー実体を仕込んでおく
-    void SeedInitialLevel(NS::Game::Level::LevelData& level)
+    /// 編集体験の起点となる最小床。 SceneData に grid block 1 個 + プレイヤー実体を仕込んでおく
+    void SeedInitialLevel(NS::Scene::SceneData& level)
     {
         level.objects.clear();
         // 新規シーンの既定の見た目は Grass 雛形を写し込む。 以降はシーンの環境欄が正になる
@@ -26,14 +26,14 @@ namespace
         // 構成は code 既定のまま。 保存済みテンプレートの適用は合成の報告を見た editor が行う
         level.objects.push_back(NS::Game::Level::MakePlayerObject(
             NS::Math::Vector3{0.0f, NS::Game::Level::kDefaultPlayerSpawnY, 0.0f}, NS::Math::Quaternion{}));
-        NS::Game::Level::EnsureUniqueObjectIds(level);
+        NS::Scene::EnsureUniqueObjectIds(level);
         // 追従カメラも配置物。 プレイヤーへの Target 参照が要るため採番の後に足し、 増分をもう一度採番する
         const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(level);
         std::uint32_t followTargetId = 0u;
-        if (playerIndex != NS::Game::Level::kNoObjectIndex)
+        if (playerIndex != NS::Scene::kNoObjectIndex)
             followTargetId = level.objects[playerIndex].objectId;
         level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(followTargetId));
-        NS::Game::Level::EnsureUniqueObjectIds(level);
+        NS::Scene::EnsureUniqueObjectIds(level);
     }
 } // namespace
 

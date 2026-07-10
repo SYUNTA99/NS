@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file LevelWorld.h
-/// @brief LevelWorld — LevelData から組む runtime world 表現の所有と構築
+/// @brief LevelWorld — NS::Scene::SceneData から組む runtime world 表現の所有と構築
 ///
 /// @details 配置物 GameObject / 衝突プリミティブ / hazard 走査 view を
-/// LevelData から一括で組み直す。 runtime も editor も同じ Rebuild 経路を通り、
+/// NS::Scene::SceneData から一括で組み直す。 runtime も editor も同じ Rebuild 経路を通り、
 /// scene は公開読み口からの観測と描画だけを行う
 /// 依存: NS::Scene::GameObject, NS::Physics::PhysicsWorld
 
@@ -28,9 +28,8 @@ class Player;
 
 namespace NS::Game::Level
 {
-    using LevelData = NS::Scene::SceneData;
 
-    /// LevelData から組まれる runtime world。 所有と構築を一手に担う
+    /// NS::Scene::SceneData から組まれる runtime world。 所有と構築を一手に担う
     class LevelWorld
     {
     public:
@@ -44,7 +43,7 @@ namespace NS::Game::Level
 
         /// level の objects から全 runtime 表現を組み直す。 既存の配置物と衝突 world は必ず先に空へ戻す
         /// assets が nullptr の起動前 / テストでは物を組まず、 衝突 world も空のまま返る
-        void Rebuild(const LevelData& level,
+        void Rebuild(const NS::Scene::SceneData& level,
                      NS::Scene::SceneBase& scene,
                      NS::Physics::PhysicsWorld& physics,
                      NS::Scene::AssetManager* assets);

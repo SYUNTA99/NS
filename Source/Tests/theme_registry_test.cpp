@@ -7,7 +7,7 @@
 
 #include <Framework/Core/Filesystem.h>
 #include <Framework/Core/Logger.h>
-#include <Game/Level/LevelData.h>
+#include <Framework/Scene/SceneData.h>
 #include <Game/Theme/ThemeData.h>
 #include <Game/Theme/ThemeId.h>
 #include <Game/Theme/ThemeRegistry.h>
@@ -125,7 +125,7 @@ namespace
     TEST_F(ThemeRegistryBundledTest, MakeEnvironmentFromThemeCopiesVisualFields)
     {
         const ThemeData& lava = Get(ThemeId::Lava);
-        const NS::Game::Level::LevelEnvironment environment = MakeEnvironmentFromTheme(lava);
+        const NS::Scene::SceneEnvironment environment = MakeEnvironmentFromTheme(lava);
 
         EXPECT_FLOAT_EQ(environment.lightDirection.x, lava.lightDirection.x);
         EXPECT_FLOAT_EQ(environment.lightDirection.y, lava.lightDirection.y);

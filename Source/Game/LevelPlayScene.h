@@ -3,15 +3,15 @@
 /// @file LevelPlayScene.h
 /// @brief レベルを読み込んで遊べる状態にする root scene。 編集機能は一切持たない
 ///
-/// @details 永続の LevelData を value member で保有し、 一時の PlayState とルールの PlayMode は
+/// @details 永続の SceneData を value member で保有し、 一時の PlayState とルールの PlayMode は
 /// 進行役 PlayDirector 配下の PlayFlowComponent が所有する。 scene 自身は
 /// world の組み直しの号令と描画統括を担う。 実カメラ + Brain は CameraSubsystem が、
 /// プレイヤー / 追従 / 据え置きカメラを含む全配置物は LevelWorld が所有する
 /// 出荷 / 開発ともこの 1 種類だけを起動 scene に使う。 cursor / palette / ギズモ /
 /// free-fly カメラ / モード切替の編集は scene の外側、 `LevelEditorController` が公開 API と
-/// LevelData 経由で本 scene を操作して実現する。 scene 自身は「編集されている」ことを知らない
+/// SceneData 経由で本 scene を操作して実現する。 scene 自身は「編集されている」ことを知らない
 
-#include "Game/Level/LevelData.h"
+#include "Framework/Scene/SceneData.h"
 #include "Game/Level/LevelWorld.h"
 #include "Game/Level/PlayDirector.h"
 
@@ -41,12 +41,12 @@ public:
     void OnUpdate() override;
     void OnShutdown() override;
 
-    [[nodiscard]] NS::Game::Level::LevelData& Level() noexcept { return m_level; }
-    [[nodiscard]] const NS::Game::Level::LevelData& Level() const noexcept { return m_level; }
+    [[nodiscard]] NS::Scene::SceneData& Level() noexcept { return m_level; }
+    [[nodiscard]] const NS::Scene::SceneData& Level() const noexcept { return m_level; }
     /// プレイ進行役。 PlayState / PlayMode と進行の分岐は配下の PlayFlowComponent が担う。 scene 生成時から存在する
     [[nodiscard]] NS::Game::Level::PlayDirector& Director() noexcept { return *m_director; }
 
-    /// LevelData から組まれた runtime world。 editor の選択 / gizmo と描画がここから観測する
+    /// SceneData から組まれた runtime world。 editor の選択 / gizmo と描画がここから観測する
     [[nodiscard]] NS::Game::Level::LevelWorld& World() noexcept { return m_world; }
 
     // brain / 実カメラの公開アクセサは持たない。 外の消費者は CameraSubsystem 経由で引く
@@ -55,7 +55,7 @@ public:
     /// 実体プレイヤー。 world が player object から組む。 起動前と player object の無い level では nullptr
     [[nodiscard]] Player* PlayerRef() noexcept { return m_world.PlayerView(); }
 
-    /// runtime world と衝突世界を LevelData から組み直す。 レベル編集後とプレイ突入時に呼ぶ
+    /// runtime world と衝突世界を SceneData から組み直す。 レベル編集後とプレイ突入時に呼ぶ
     /// 据え置きカメラの Brain 登録もここで面倒を見る。 Brain 構築前の OnStart 序盤は登録しない
     void RebuildWorld();
 
@@ -77,11 +77,11 @@ private:
     // scene は使う箇所で都度引く。 メンバとして控えず単一所有元は AssetManager のみ
     // skybox 装置と scene 段解決値の控えは EnvironmentSubsystem が持ち、 scene は毎フレーム設定を書くだけ
 
-    // LevelData から組んだ runtime world。 配置物 / instanced 描画キャッシュ / hazard view を所有する
+    // SceneData から組んだ runtime world。 配置物 / instanced 描画キャッシュ / hazard view を所有する
     // 実カメラ + Brain は CameraSubsystem が、 プレイヤー / 追従 / 据え置きカメラは world が配置物として所有する
     NS::Game::Level::LevelWorld m_world;
 
-    NS::Game::Level::LevelData m_level{};
+    NS::Scene::SceneData m_level{};
 
     // プレイ進行役。 PlayState / PlayMode と進行の分岐は配下の PlayFlowComponent が所有する
     std::unique_ptr<NS::Game::Level::PlayDirector> m_director;

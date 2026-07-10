@@ -5,21 +5,22 @@
 
 namespace EditorNs = NS::Editor;
 namespace LevelNs = NS::Game::Level;
+namespace SceneNs = NS::Scene;
 
 TEST(RotateCommandTest, DoIncrementsRotation)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     EditorNs::RotateCommand cmd(0, 0, 0, +1);
     cmd.Do(lv);
     const std::size_t idx = LevelNs::FindObjectAtCell(lv, 0, 0, 0);
-    ASSERT_NE(idx, LevelNs::kNoObjectIndex);
+    ASSERT_NE(idx, SceneNs::kNoObjectIndex);
     EXPECT_EQ(LevelNs::CellRotationStep(lv.objects[idx]), 1u);
 }
 
 TEST(RotateCommandTest, FourDoesCycleBackToZero)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     EditorNs::RotateCommand cmd1(0, 0, 0, +1);
     EditorNs::RotateCommand cmd2(0, 0, 0, +1);
@@ -30,39 +31,39 @@ TEST(RotateCommandTest, FourDoesCycleBackToZero)
     cmd3.Do(lv);
     cmd4.Do(lv);
     const std::size_t idx = LevelNs::FindObjectAtCell(lv, 0, 0, 0);
-    ASSERT_NE(idx, LevelNs::kNoObjectIndex);
+    ASSERT_NE(idx, SceneNs::kNoObjectIndex);
     EXPECT_EQ(LevelNs::CellRotationStep(lv.objects[idx]), 0u);
 }
 
 TEST(RotateCommandTest, NegativeDeltaWrapsToThree)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     EditorNs::RotateCommand cmd(0, 0, 0, -1);
     cmd.Do(lv);
     const std::size_t idx = LevelNs::FindObjectAtCell(lv, 0, 0, 0);
-    ASSERT_NE(idx, LevelNs::kNoObjectIndex);
+    ASSERT_NE(idx, SceneNs::kNoObjectIndex);
     EXPECT_EQ(LevelNs::CellRotationStep(lv.objects[idx]), 3u);
 }
 
 TEST(RotateCommandTest, UndoRestoresPreviousRotation)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     lv.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 2));
     EditorNs::RotateCommand cmd(0, 0, 0, +1);
     cmd.Do(lv);
     std::size_t idx = LevelNs::FindObjectAtCell(lv, 0, 0, 0);
-    ASSERT_NE(idx, LevelNs::kNoObjectIndex);
+    ASSERT_NE(idx, SceneNs::kNoObjectIndex);
     EXPECT_EQ(LevelNs::CellRotationStep(lv.objects[idx]), 3u);
     cmd.Undo(lv);
     idx = LevelNs::FindObjectAtCell(lv, 0, 0, 0);
-    ASSERT_NE(idx, LevelNs::kNoObjectIndex);
+    ASSERT_NE(idx, SceneNs::kNoObjectIndex);
     EXPECT_EQ(LevelNs::CellRotationStep(lv.objects[idx]), 2u);
 }
 
 TEST(RotateCommandTest, NonExistentCellIsNoOp)
 {
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     const auto before = lv.ComputeCrc32();
     EditorNs::RotateCommand cmd(7, 7, 7, +1);
     cmd.Do(lv);
@@ -78,7 +79,7 @@ TEST(CellRotationTest, SetCellRotationStepBakesQuarterTurns)
     constexpr float kHalfPi = 1.57079632679489661923f;
     for (std::uint8_t step = 0; step < 4; ++step)
     {
-        LevelNs::ObjectInstance obj;
+        SceneNs::ObjectData obj;
         LevelNs::SetCellRotationStep(obj, step);
         const NS::Math::Quaternion expected =
             NS::Math::Quaternion::CreateFromYawPitchRoll(static_cast<float>(step) * kHalfPi, 0.0f, 0.0f);

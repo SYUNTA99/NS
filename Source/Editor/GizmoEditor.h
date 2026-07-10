@@ -3,7 +3,7 @@
 /// @file GizmoEditor.h
 /// @brief NS::Editor::GizmoEditor — Object モードの選択 + 変形ギズモ
 ///
-/// @details LevelData に属さない自由 Transform オブジェクトを Q/W/E/R の 4 ツールで
+/// @details SceneData に属さない自由 Transform オブジェクトを Q/W/E/R の 4 ツールで
 /// 選択・移動・回転・スケールする。変形軸は選択物の local 座標系に追従し、ハンドルの向き・
 /// 移動方向・回転リング・スケール方向すべて選択物の回転で回す。描画から独立して検証できるよう
 /// view-projection 行列と viewport を Tick / Render に注入し、変形算出は静的純関数へ切り出す。undo は

@@ -10,11 +10,12 @@
 
 namespace EditorNs = NS::Editor;
 namespace LevelNs = NS::Game::Level;
+namespace SceneNs = NS::Scene;
 
 TEST(UndoStackTest, EmptyStackUndoRedoReturnFalse)
 {
     EditorNs::UndoStack stack;
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     EXPECT_FALSE(stack.Undo(lv));
     EXPECT_FALSE(stack.Redo(lv));
 }
@@ -22,7 +23,7 @@ TEST(UndoStackTest, EmptyStackUndoRedoReturnFalse)
 TEST(UndoStackTest, PushExecutesDoAndStoresInUndoStack)
 {
     EditorNs::UndoStack stack;
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     stack.Push(std::make_unique<EditorNs::PlaceCommand>(LevelNs::MakeCellObject(0, 0, 0, 0), 0, 0, 0, 0), lv);
     EXPECT_EQ(stack.UndoSize(), 1u);
     EXPECT_EQ(stack.RedoSize(), 0u);
@@ -32,7 +33,7 @@ TEST(UndoStackTest, PushExecutesDoAndStoresInUndoStack)
 TEST(UndoStackTest, UndoRedoRoundTripPreservesState)
 {
     EditorNs::UndoStack stack;
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     const auto before = lv.ComputeCrc32();
 
     stack.Push(std::make_unique<EditorNs::PlaceCommand>(LevelNs::MakeCellObject(0, 0, 0, 0), 0, 0, 0, 0), lv);
@@ -52,7 +53,7 @@ TEST(UndoStackTest, UndoRedoRoundTripPreservesState)
 TEST(UndoStackTest, MaxOpsCapPopsOldest)
 {
     EditorNs::UndoStack stack;
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     for (std::size_t i = 0; i < EditorNs::UndoStack::kMaxOps + 5; ++i)
     {
         stack.Push(std::make_unique<EditorNs::PlaceCommand>(
@@ -65,7 +66,7 @@ TEST(UndoStackTest, MaxOpsCapPopsOldest)
 TEST(UndoStackTest, PushAfterUndoClearsRedoStack)
 {
     EditorNs::UndoStack stack;
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     stack.Push(std::make_unique<EditorNs::PlaceCommand>(LevelNs::MakeCellObject(0, 0, 0, 0), 0, 0, 0, 0), lv);
     stack.Undo(lv);
     EXPECT_EQ(stack.RedoSize(), 1u);
@@ -77,7 +78,7 @@ TEST(UndoStackTest, PushAfterUndoClearsRedoStack)
 TEST(UndoStackTest, ClearEmptiesBothStacks)
 {
     EditorNs::UndoStack stack;
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
     stack.Push(std::make_unique<EditorNs::PlaceCommand>(LevelNs::MakeCellObject(0, 0, 0, 0), 0, 0, 0, 0), lv);
     stack.Push(std::make_unique<EditorNs::PlaceCommand>(LevelNs::MakeCellObject(0, 0, 0, 0), 1, 0, 0, 0), lv);
     stack.Undo(lv);
@@ -91,17 +92,17 @@ TEST(UndoStackTest, ClearEmptiesBothStacks)
 TEST(UndoStackTest, InterleavedGridAndTransformUndoInLifoOrder)
 {
     EditorNs::UndoStack stack;
-    LevelNs::LevelData lv;
+    SceneNs::SceneData lv;
 
     // grid block を置く (append、 永続 id 採番)
     stack.Push(std::make_unique<EditorNs::PlaceCommand>(LevelNs::MakeCellObject(0, 0, 0, 0), 0, 0, 0, 0), lv);
     ASSERT_EQ(lv.objects.size(), 1u);
     const std::uint32_t id0 = lv.objects[0].objectId;
-    ASSERT_NE(id0, LevelNs::kNoObjectId);
+    ASSERT_NE(id0, SceneNs::kNoObjectId);
 
     // 同じ object を移動した想定の full-instance 変形
-    LevelNs::ObjectInstance before = lv.objects[0];
-    LevelNs::ObjectInstance after = before;
+    SceneNs::ObjectData before = lv.objects[0];
+    SceneNs::ObjectData after = before;
     after.positionX = 9.0f;
     stack.Push(std::make_unique<EditorNs::TransformCommand>(id0, before, after), lv);
     EXPECT_FLOAT_EQ(lv.objects[0].positionX, 9.0f);

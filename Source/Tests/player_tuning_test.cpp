@@ -19,45 +19,46 @@
 #include <vector>
 
 namespace LevelNs = NS::Game::Level;
+namespace SceneNs = NS::Scene;
 
 namespace
 {
     // 既定構成は mesh / movement / input / shadow の 4 つ
     constexpr std::size_t kDefaultComponentCount = 4;
 
-    LevelNs::ObjectInstance MakePlayer()
+    SceneNs::ObjectData MakePlayer()
     {
         return LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{});
     }
 
     // device を確立しない AssetManager でもファクトリは落ちない。 tuning 済データから live を組む窓口
-    std::unique_ptr<NS::Scene::GameObject> BuildPlayer(const LevelNs::ObjectInstance& data)
+    std::unique_ptr<NS::Scene::GameObject> BuildPlayer(const SceneNs::ObjectData& data)
     {
         NS::Scene::AssetManager assets{std::filesystem::path{"."}};
         const std::vector<std::string> materialPaths;
         return NS::Game::Blocks::BuildPlacedObject(data, assets, materialPaths);
     }
 
-    const LevelNs::FieldValue* FindPlayerField(const LevelNs::ObjectInstance& player,
+    const SceneNs::FieldValue* FindPlayerField(const SceneNs::ObjectData& player,
                                                const char* typeName,
                                                const char* fieldName)
     {
-        const LevelNs::ComponentData* component = LevelNs::FindComponentData(player, typeName);
+        const SceneNs::ComponentData* component = SceneNs::FindComponentData(player, typeName);
         if (component == nullptr)
             return nullptr;
-        return LevelNs::FindField(*component, fieldName);
+        return SceneNs::FindField(*component, fieldName);
     }
 } // namespace
 
 TEST(PlayerTuningTest, MergeOverwritesExistingComponentData)
 {
-    LevelNs::ObjectInstance player = MakePlayer();
+    SceneNs::ObjectData player = MakePlayer();
     MergePlayerTuningText(player,
                           R"({"components":[{"type":"CharacterMovementComponent","fields":{"Max Speed":11.0}}]})");
 
     // 既存の同型へ値だけ写し、構成は増えない
     EXPECT_EQ(player.components.size(), kDefaultComponentCount);
-    const LevelNs::FieldValue* maxSpeed = FindPlayerField(player, "CharacterMovementComponent", "Max Speed");
+    const SceneNs::FieldValue* maxSpeed = FindPlayerField(player, "CharacterMovementComponent", "Max Speed");
     ASSERT_NE(maxSpeed, nullptr);
     ASSERT_TRUE(std::holds_alternative<float>(maxSpeed->value));
     EXPECT_FLOAT_EQ(std::get<float>(maxSpeed->value), 11.0f);
@@ -65,26 +66,26 @@ TEST(PlayerTuningTest, MergeOverwritesExistingComponentData)
 
 TEST(PlayerTuningTest, MergeAddsMissingComponentData)
 {
-    LevelNs::ObjectInstance player = MakePlayer();
+    SceneNs::ObjectData player = MakePlayer();
     MergePlayerTuningText(player, R"({"components":[{"type":"SphereColliderComponent","fields":{"Radius":2.5}}]})");
 
     // 無い型は構成ごと追加される
     EXPECT_EQ(player.components.size(), kDefaultComponentCount + 1);
-    const LevelNs::FieldValue* radius = FindPlayerField(player, "SphereColliderComponent", "Radius");
+    const SceneNs::FieldValue* radius = FindPlayerField(player, "SphereColliderComponent", "Radius");
     ASSERT_NE(radius, nullptr);
     EXPECT_FLOAT_EQ(std::get<float>(radius->value), 2.5f);
 }
 
 TEST(PlayerTuningTest, MergeBrokenJsonKeepsDefaults)
 {
-    LevelNs::ObjectInstance player = MakePlayer();
+    SceneNs::ObjectData player = MakePlayer();
     MergePlayerTuningText(player, "{broken");
     EXPECT_EQ(player.components.size(), kDefaultComponentCount);
 }
 
 TEST(PlayerTuningTest, TunedValuesReachBuiltPlayer)
 {
-    LevelNs::ObjectInstance data = MakePlayer();
+    SceneNs::ObjectData data = MakePlayer();
     MergePlayerTuningText(data,
                           R"({"components":[{"type":"CharacterMovementComponent","fields":{"Max Speed":11.0}}]})");
 
@@ -100,7 +101,7 @@ TEST(PlayerTuningTest, TunedValuesReachBuiltPlayer)
 
 TEST(PlayerTuningTest, TunedExtraComponentReachesBuiltPlayer)
 {
-    LevelNs::ObjectInstance data = MakePlayer();
+    SceneNs::ObjectData data = MakePlayer();
     MergePlayerTuningText(data, R"({"components":[{"type":"SphereColliderComponent","fields":{"Radius":2.5}}]})");
 
     auto obj = BuildPlayer(data);
@@ -115,10 +116,10 @@ TEST(PlayerTuningTest, TunedExtraComponentReachesBuiltPlayer)
 
 TEST(PlayerTuningTest, UnregisteredTypesSkippedOnBuild)
 {
-    LevelNs::ObjectInstance data = MakePlayer();
+    SceneNs::ObjectData data = MakePlayer();
     // editor 専用型と未知型は factory が弾くので構成へ入らない
-    data.components.push_back(LevelNs::ComponentData{"EditorCameraComponent", {}});
-    data.components.push_back(LevelNs::ComponentData{"Bogus", {}});
+    data.components.push_back(SceneNs::ComponentData{"EditorCameraComponent", {}});
+    data.components.push_back(SceneNs::ComponentData{"Bogus", {}});
 
     auto obj = BuildPlayer(data);
     ASSERT_NE(obj, nullptr);
@@ -139,7 +140,7 @@ TEST(PlayerTuningTest, SerializedComponentsRoundTripIntoBuiltPlayer)
     nlohmann::json json;
     json["components"] = std::move(components);
 
-    LevelNs::ObjectInstance data = MakePlayer();
+    SceneNs::ObjectData data = MakePlayer();
     MergePlayerTuningText(data, json.dump());
 
     auto restored = BuildPlayer(data);

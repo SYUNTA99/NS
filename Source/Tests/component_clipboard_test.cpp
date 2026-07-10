@@ -6,7 +6,7 @@
 #include "Framework/Scene/Components/HazardComponent.h"
 #include "Framework/Scene/Components/MeshRendererComponent.h"
 #include "Framework/Scene/GameObject.h"
-#include "Game/Level/LevelData.h"
+#include "Framework/Scene/SceneData.h"
 
 #include <gtest/gtest.h>
 
@@ -15,7 +15,6 @@
 #include <vector>
 
 namespace EditorNs = NS::Editor;
-namespace LevelNs = NS::Game::Level;
 namespace SceneNs = NS::Scene;
 
 TEST(ComponentClipboard, CaptureCopiesTypeAndLiveFieldValues)
@@ -23,7 +22,7 @@ TEST(ComponentClipboard, CaptureCopiesTypeAndLiveFieldValues)
     SceneNs::GameObject obj;
     auto* capsule = obj.AddComponent<SceneNs::CapsuleColliderComponent>(0.5f, 4.0f);
 
-    const LevelNs::ComponentData captured = EditorNs::CaptureComponentData(*capsule);
+    const SceneNs::ComponentData captured = EditorNs::CaptureComponentData(*capsule);
 
     EXPECT_EQ(captured.typeName, "CapsuleColliderComponent");
     ASSERT_EQ(captured.fields.size(), 4u);
@@ -40,7 +39,7 @@ TEST(ComponentClipboard, CaptureOfFieldlessComponentKeepsTypeWithEmptyFields)
     SceneNs::GameObject obj;
     auto* hazard = obj.AddComponent<SceneNs::HazardComponent>();
 
-    const LevelNs::ComponentData captured = EditorNs::CaptureComponentData(*hazard);
+    const SceneNs::ComponentData captured = EditorNs::CaptureComponentData(*hazard);
 
     EXPECT_EQ(captured.typeName, "HazardComponent");
     EXPECT_TRUE(captured.fields.empty());
@@ -50,18 +49,18 @@ TEST(ComponentClipboard, PasteAddsCapturedComponentWithSameValues)
 {
     SceneNs::GameObject obj;
     auto* capsule = obj.AddComponent<SceneNs::CapsuleColliderComponent>(0.75f, 6.0f);
-    const LevelNs::ComponentData captured = EditorNs::CaptureComponentData(*capsule);
+    const SceneNs::ComponentData captured = EditorNs::CaptureComponentData(*capsule);
 
-    LevelNs::LevelData lv;
-    lv.objects.push_back(LevelNs::ObjectInstance{});
-    LevelNs::EnsureUniqueObjectIds(lv);
+    SceneNs::SceneData lv;
+    lv.objects.push_back(SceneNs::ObjectData{});
+    SceneNs::EnsureUniqueObjectIds(lv);
 
     const std::uint32_t id = lv.objects[0].objectId;
     EditorNs::AddComponentCommand paste(id, captured);
     paste.Do(lv);
 
     ASSERT_EQ(lv.objects[0].components.size(), 1u);
-    const LevelNs::ComponentData& pasted = lv.objects[0].components[0];
+    const SceneNs::ComponentData& pasted = lv.objects[0].components[0];
     EXPECT_EQ(pasted.typeName, "CapsuleColliderComponent");
     ASSERT_EQ(pasted.fields.size(), 4u);
     EXPECT_FLOAT_EQ(std::get<float>(pasted.fields[0].value), 0.75f);
@@ -73,8 +72,8 @@ TEST(ComponentClipboard, PasteAddsCapturedComponentWithSameValues)
 
 TEST(ComponentClipboard, WriteBackComponentEditsUpdatesAllMatchingComponentData)
 {
-    auto findVec3 = [](const LevelNs::ComponentData& data, const char* name) -> const NS::Math::Vector3* {
-        for (const LevelNs::FieldValue& field : data.fields)
+    auto findVec3 = [](const SceneNs::ComponentData& data, const char* name) -> const NS::Math::Vector3* {
+        for (const SceneNs::FieldValue& field : data.fields)
             if (field.name == name && std::holds_alternative<NS::Math::Vector3>(field.value))
                 return &std::get<NS::Math::Vector3>(field.value);
         return nullptr;
@@ -88,12 +87,12 @@ TEST(ComponentClipboard, WriteBackComponentEditsUpdatesAllMatchingComponentData)
     mesh->SetBaseColor(NS::Math::Vector3{0.1f, 0.2f, 0.3f});
 
     // data 側は旧値の BoxCollider と、 空の MeshRenderer
-    LevelNs::ObjectInstance object;
-    LevelNs::ComponentData boxData;
+    SceneNs::ObjectData object;
+    SceneNs::ComponentData boxData;
     boxData.typeName = "BoxColliderComponent";
-    boxData.fields.push_back(LevelNs::FieldValue{"Half Extents", NS::Math::Vector3{0.5f, 0.5f, 0.5f}});
+    boxData.fields.push_back(SceneNs::FieldValue{"Half Extents", NS::Math::Vector3{0.5f, 0.5f, 0.5f}});
     object.components.push_back(boxData);
-    object.components.push_back(LevelNs::ComponentData{"MeshRendererComponent"});
+    object.components.push_back(SceneNs::ComponentData{"MeshRendererComponent"});
 
     EditorNs::WriteBackComponentEdits(go, object);
 

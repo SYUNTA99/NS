@@ -4,7 +4,7 @@
 /// @brief 接触ダメージ Component
 ///
 /// @details 触れている間プレイヤーへダメージを与える trigger marker。 削り量や死亡判定の
-/// ルールは Play 側が持ち、 本 Component は印として存在するだけにする。 LevelData は
+/// ルールは Play 側が持ち、 本 Component は印として存在するだけにする。 SceneData は
 /// 一切変更せず CRC32 round-trip 互換を保つ
 
 #include "Framework/Scene/Component.h"

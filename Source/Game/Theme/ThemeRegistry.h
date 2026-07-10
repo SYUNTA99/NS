@@ -6,7 +6,7 @@
 /// @details `NS::Game::Theme::Get(id)` は 5 件の `ThemeData` への const 参照を返し、 範囲外は Grass
 /// にフォールバックする 静的 storage 上に並ぶので参照は frame 越しに有効、 再読込で中身だけ変わる
 
-#include "Game/Level/LevelData.h"
+#include "Framework/Scene/SceneData.h"
 #include "Game/Theme/ThemeData.h"
 #include "Game/Theme/ThemeId.h"
 
@@ -24,5 +24,5 @@ namespace NS::Game::Theme
 
     /// テーマの視覚フィールドをシーンの環境値へ写して返す。 雛形からシーンへの写し込みの唯一の入口で、
     /// 新規シーン・テーマ適用・旧形式の読込移行が使う。 skybox パスは '/' 区切りへ正規化する
-    [[nodiscard]] NS::Game::Level::LevelEnvironment MakeEnvironmentFromTheme(const ThemeData& theme);
+    [[nodiscard]] NS::Scene::SceneEnvironment MakeEnvironmentFromTheme(const ThemeData& theme);
 } // namespace NS::Game::Theme
