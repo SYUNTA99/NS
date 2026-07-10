@@ -1,6 +1,8 @@
-#include "Game/Level/detail/crc32.h"
+#include "Framework/Scene/detail/crc32.h"
 
-namespace NS::Game::Level::detail
+#include <array>
+
+namespace NS::Scene::detail
 {
     namespace
     {
@@ -42,4 +44,4 @@ namespace NS::Game::Level::detail
         return crc ^ 0xFFFFFFFFu;
     }
 
-} // namespace NS::Game::Level::detail
+} // namespace NS::Scene::detail

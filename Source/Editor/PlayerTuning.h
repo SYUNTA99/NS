@@ -9,9 +9,14 @@
 /// テンプレートの取込はデータどうしの merge で行い、 live への反映は world の組み直しが担う
 /// 保存は Editor/PlayerTuningIO.h、 パスだけ PlayerTuningPath() で共有する
 
+namespace NS::Scene
+{
+    struct ObjectData;
+}
+
 namespace NS::Game::Level
 {
-    struct ObjectInstance;
+    using ObjectInstance = NS::Scene::ObjectData;
 }
 
 /// テンプレートファイルの絶対パス。 取込と保存で同じ場所を指すよう共有する

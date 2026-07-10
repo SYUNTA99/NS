@@ -13,11 +13,18 @@
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
 
-namespace NS::Game::Level
+namespace NS::Scene
 {
-    struct LevelData;
     struct ComponentData;
     struct FieldValue;
+    struct SceneData;
+} // namespace NS::Scene
+
+namespace NS::Game::Level
+{
+    using LevelData = NS::Scene::SceneData;
+    using ComponentData = NS::Scene::ComponentData;
+    using FieldValue = NS::Scene::FieldValue;
     // 読込時移行の報告。 定義は呼び出し窓口の LevelIO.h (ここではポインタ受け渡しのみ)
     struct LevelLoadReport;
 

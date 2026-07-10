@@ -13,9 +13,14 @@
 /// 落下死: `playerPosition.y < kFallDeathThreshold` で deathTriggered
 /// coin/goal 接触: kPickupRadius を使う中心間距離の単純比較
 
+namespace NS::Scene
+{
+    struct SceneData;
+} // namespace NS::Scene
+
 namespace NS::Game::Level
 {
-    struct LevelData;
+    using LevelData = NS::Scene::SceneData;
     struct PlayState;
 
     /// Play 中の simulation。 EditorMode と value member で並列保有、 mode flag flip で active を切替える

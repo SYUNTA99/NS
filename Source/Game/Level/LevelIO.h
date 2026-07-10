@@ -6,10 +6,15 @@
 /// @details 呼出側の editor / play scene が保存形式を知らずに済むよう、 形式非依存の
 /// `SaveLevelToFile` / `LoadLevelFromFile` だけを公開する
 
+namespace NS::Scene
+{
+    struct SceneData;
+} // namespace NS::Scene
+
 namespace NS::Game::Level
 {
 
-    struct LevelData;
+    using LevelData = NS::Scene::SceneData;
 
     /// 読込時の移行で何が起きたかの報告。 テンプレート適用などの後処理は呼出側 (editor) が判断する
     struct LevelLoadReport

@@ -18,11 +18,16 @@ namespace NS::Scene
     class AssetManager;
 } // namespace NS::Scene
 
+namespace NS::Scene
+{
+    struct ComponentData;
+    struct ObjectData;
+} // namespace NS::Scene
+
 namespace NS::Game::Level
 {
-    struct ObjectInstance;
-    struct ComponentData;
-    struct LevelData;
+    using ObjectInstance = NS::Scene::ObjectData;
+    using ComponentData = NS::Scene::ComponentData;
 } // namespace NS::Game::Level
 
 namespace NS::Game::Blocks

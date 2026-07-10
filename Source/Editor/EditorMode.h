@@ -23,10 +23,11 @@ namespace NS::UI
 namespace NS::Scene
 {
     class CameraComponent;
+    struct SceneData;
 } // namespace NS::Scene
 namespace NS::Game::Level
 {
-    struct LevelData;
+    using LevelData = NS::Scene::SceneData;
 }
 
 namespace NS::Editor

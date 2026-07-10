@@ -256,7 +256,7 @@ namespace NS::Game::Blocks
         const bool hasBox = HasComponentType(object, "BoxColliderComponent");
         const bool hasSlope = HasComponentType(object, "SlopeColliderComponent");
         const bool hasHazard = HasComponentType(object, "HazardComponent");
-        const bool hasPickup = PickupKindOf(object) >= 0;
+        const bool hasPickup = NS::Game::Level::PickupKindOf(object) >= 0;
         return IsSolidBoxRule(hasBox, hasSlope, hasHazard, hasPickup);
     }
 
@@ -275,7 +275,7 @@ namespace NS::Game::Blocks
         if (HasComponentType(object, "PlacedVirtualCamera"))
             return "Camera";
 
-        const int pickupKind = PickupKindOf(object);
+        const int pickupKind = NS::Game::Level::PickupKindOf(object);
         if (pickupKind == 0)
             return "Coin";
         if (pickupKind == 1)

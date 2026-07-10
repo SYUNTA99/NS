@@ -19,6 +19,7 @@ namespace NS::Scene
     class GameObject;
     class PlacedVirtualCamera;
     class SceneBase;
+    struct SceneData;
     class ThirdPersonFollowComponent;
     class VirtualCameraComponent;
 } // namespace NS::Scene
@@ -27,7 +28,7 @@ class Player;
 
 namespace NS::Game::Level
 {
-    struct LevelData;
+    using LevelData = NS::Scene::SceneData;
 
     /// LevelData から組まれる runtime world。 所有と構築を一手に担う
     class LevelWorld
