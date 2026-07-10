@@ -41,42 +41,6 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
     EXPECT_EQ(dst.ComputeCrc32(), crc0);
 }
 
-TEST(SaveLoadRoundTrip, DefaultObjectShapeColliderIsBox)
-{
-    LevelNs::ObjectInstance obj{};
-    EXPECT_EQ(LevelNs::ObjectShapeCollider(obj), LevelNs::ShapeCollider::Box);
-
-    LevelNs::SetObjectShapeCollider(obj, LevelNs::ShapeCollider::Sphere);
-    EXPECT_EQ(LevelNs::ObjectShapeCollider(obj), LevelNs::ShapeCollider::Sphere);
-    EXPECT_EQ(obj.shapeCollider, static_cast<std::uint8_t>(1));
-}
-
-TEST(SaveLoadRoundTrip, ShapeColliderAndDimensionsSurviveRoundTrip)
-{
-    EditorNs::EnsureLevelsDirectoryExists();
-    auto path = EditorNs::BuildLevelPath("test_collider_shape");
-    ASSERT_TRUE(path.has_value());
-
-    LevelNs::LevelData src;
-    LevelNs::ObjectInstance obj{}; // 自由配置物
-    obj.positionX = 2.0f;
-    LevelNs::SetObjectShapeCollider(obj, LevelNs::ShapeCollider::Capsule);
-    obj.colliderHalfExtentsX = 0.3f; // capsule では半径
-    obj.colliderHalfExtentsY = 0.7f; // capsule では半高
-    src.objects.push_back(obj);
-    src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
-
-    ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
-
-    LevelNs::LevelData dst;
-    ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
-    // 追従カメラが読込の門で 1 台合成され末尾へ足される
-    ASSERT_EQ(dst.objects.size(), 3u);
-    EXPECT_EQ(LevelNs::ObjectShapeCollider(dst.objects[0]), LevelNs::ShapeCollider::Capsule);
-    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsX, 0.3f);
-    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsY, 0.7f);
-}
-
 // 正準 JSON は object キーが辞書順・float が shortest round-trip なので、 同一データの 2 回保存は
 // バイト一致する。 これがレベル差分の決定性 (git diff の安定) を担保する
 TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
@@ -253,14 +217,6 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     freeObject.scaleY = 0.5f;
     freeObject.scaleZ = 1.0f;
     freeObject.materialIndex = 1;
-    freeObject.colliderHalfExtentsX = 0.3f;
-    freeObject.colliderHalfExtentsY = 1.25f;
-    freeObject.colliderHalfExtentsZ = 0.8f;
-    freeObject.colliderOffsetX = 0.1f;
-    freeObject.colliderOffsetY = -0.4f;
-    freeObject.colliderOffsetZ = 0.6f;
-    freeObject.colliderRotationY = 0.70710677f;
-    freeObject.colliderRotationW = 0.70710677f;
     src.objects.push_back(freeObject);
 
     LevelNs::ObjectInstance gridObject{};
@@ -289,14 +245,6 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     EXPECT_FLOAT_EQ(dst.objects[0].rotationW, 0.70710677f);
     EXPECT_FLOAT_EQ(dst.objects[0].scaleX, 2.0f);
     EXPECT_EQ(dst.objects[0].materialIndex, 1);
-    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsX, 0.3f);
-    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsY, 1.25f);
-    EXPECT_FLOAT_EQ(dst.objects[0].colliderHalfExtentsZ, 0.8f);
-    EXPECT_FLOAT_EQ(dst.objects[0].colliderOffsetX, 0.1f);
-    EXPECT_FLOAT_EQ(dst.objects[0].colliderOffsetY, -0.4f);
-    EXPECT_FLOAT_EQ(dst.objects[0].colliderOffsetZ, 0.6f);
-    EXPECT_FLOAT_EQ(dst.objects[0].colliderRotationY, 0.70710677f);
-    EXPECT_FLOAT_EQ(dst.objects[0].colliderRotationW, 0.70710677f);
 
     EXPECT_EQ(dst.objects[1].materialIndex, -1);
 }

@@ -12,15 +12,6 @@
 namespace NS::Game::Level
 {
 
-    /// 当たり判定の形状種別。 `ObjectInstance::shapeCollider` に格納する。 既定 / 旧データは Box
-    enum class ShapeCollider : std::uint8_t
-    {
-        Box = 0,
-        Sphere = 1,
-        Capsule = 2,
-        Mesh = 3,
-    };
-
     /// 反射 1 フィールドの永続値。 name は反射フィールド名、 value の代替型は FieldType と 1:1
     struct FieldValue
     {
@@ -42,14 +33,10 @@ namespace NS::Game::Level
         [[nodiscard]] bool operator==(const ComponentData& other) const = default;
     };
 
-    /// 配置物の永続表現。 コンポーネント一覧を内包する full SSOT 表現
+    /// 配置物の永続表現。 コンポーネント一覧を内包し、 当たりも見た目も components が唯一の出所
     /// 配置物は種別を問わず同じ型で 1 リストに格納する
     /// position / rotation すなわち quaternion / scale をフル保持し、 種別は components が表す
     /// materialIndex は `LevelData::materialPaths` への添字、 -1 は既定マテリアルを表す
-    /// colliderHalfExtents は Transform と独立した当たり箱の local 半径で既定 0.5。 world では Transform.scale が乗る
-    /// colliderOffset / colliderRotation は当たり箱を視覚と独立に owner local 空間でずらす / 回す。 既定は 0 / 単位
-    /// shapeCollider は当たり判定形状 Box/Sphere/Capsule/Mesh で既定 / 旧データは Box
-    /// colliderHalfExtents は形状で解釈が変わる: Box=各半径 / Sphere=x が半径 / Capsule=x 半径・y 半高 / Mesh=未使用
     /// objectId はレベル内で一意な永続 id で 0 は未割当。並べ替えや改名に耐えるオブジェクト参照のキーになる
     struct ObjectInstance
     {
@@ -65,18 +52,6 @@ namespace NS::Game::Level
         float scaleY = 1.0f;
         float scaleZ = 1.0f;
         std::int16_t materialIndex = -1;
-        std::uint8_t shapeCollider = 0;
-        std::uint16_t reserved1 = 0;
-        float colliderHalfExtentsX = 0.5f;
-        float colliderHalfExtentsY = 0.5f;
-        float colliderHalfExtentsZ = 0.5f;
-        float colliderOffsetX = 0.0f;
-        float colliderOffsetY = 0.0f;
-        float colliderOffsetZ = 0.0f;
-        float colliderRotationX = 0.0f;
-        float colliderRotationY = 0.0f;
-        float colliderRotationZ = 0.0f;
-        float colliderRotationW = 1.0f;
 
         /// このオブジェクトが持つコンポーネント一覧。 full SSOT のコンポ構成
         std::vector<ComponentData> components;
@@ -163,11 +138,6 @@ namespace NS::Game::Level
     /// 存在しない object を指す ObjectRef フィールドを未設定 0 へ戻し、直した件数を返す
     /// 手編集や参照先削除で宙に浮いた参照を読込直後に浄化し、実行時の照合失敗を入口で断つ
     [[nodiscard]] std::size_t PruneDanglingObjectRefs(LevelData& level);
-
-    /// object の collider 形状を返す。 未知値は安全側で Box に倒す
-    [[nodiscard]] ShapeCollider ObjectShapeCollider(const ObjectInstance& object) noexcept;
-    /// object の collider 形状を設定する
-    void SetObjectShapeCollider(ObjectInstance& object, ShapeCollider shape) noexcept;
 
     /// 配置物の cell 座標 = position を最近接整数へ丸めた値
     [[nodiscard]] std::int16_t ObjectCellX(const ObjectInstance& object) noexcept;

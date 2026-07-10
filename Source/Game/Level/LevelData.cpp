@@ -75,18 +75,6 @@ namespace NS::Game::Level
             crc = UpdateWith(crc, object.scaleY);
             crc = UpdateWith(crc, object.scaleZ);
             crc = UpdateWith(crc, object.materialIndex);
-            crc = UpdateWith(crc, object.shapeCollider);
-            crc = UpdateWith(crc, object.reserved1);
-            crc = UpdateWith(crc, object.colliderHalfExtentsX);
-            crc = UpdateWith(crc, object.colliderHalfExtentsY);
-            crc = UpdateWith(crc, object.colliderHalfExtentsZ);
-            crc = UpdateWith(crc, object.colliderOffsetX);
-            crc = UpdateWith(crc, object.colliderOffsetY);
-            crc = UpdateWith(crc, object.colliderOffsetZ);
-            crc = UpdateWith(crc, object.colliderRotationX);
-            crc = UpdateWith(crc, object.colliderRotationY);
-            crc = UpdateWith(crc, object.colliderRotationZ);
-            crc = UpdateWith(crc, object.colliderRotationW);
 
             for (const auto& component : object.components)
             {
@@ -311,27 +299,6 @@ namespace NS::Game::Level
     std::int16_t ObjectCellZ(const ObjectInstance& object) noexcept
     {
         return static_cast<std::int16_t>(std::lround(object.positionZ));
-    }
-
-    ShapeCollider ObjectShapeCollider(const ObjectInstance& object) noexcept
-    {
-        switch (object.shapeCollider)
-        {
-        case static_cast<std::uint8_t>(ShapeCollider::Sphere):
-            return ShapeCollider::Sphere;
-        case static_cast<std::uint8_t>(ShapeCollider::Capsule):
-            return ShapeCollider::Capsule;
-        case static_cast<std::uint8_t>(ShapeCollider::Mesh):
-            return ShapeCollider::Mesh;
-        default:
-            // 新しい shape を旧コードで読む等の未知値は安全側で Box に倒す
-            return ShapeCollider::Box;
-        }
-    }
-
-    void SetObjectShapeCollider(ObjectInstance& object, ShapeCollider shape) noexcept
-    {
-        object.shapeCollider = static_cast<std::uint8_t>(shape);
     }
 
     bool IsCellBrushObject(const ObjectInstance& object) noexcept

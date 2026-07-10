@@ -143,14 +143,6 @@ namespace NS::Game::Level
             transform["rot"] = Vec4Json(object.rotationX, object.rotationY, object.rotationZ, object.rotationW);
             transform["scale"] = Vec3Json(object.scaleX, object.scaleY, object.scaleZ);
 
-            nlohmann::json collider;
-            collider["shape"] = static_cast<int>(object.shapeCollider);
-            collider["halfExtents"] =
-                Vec3Json(object.colliderHalfExtentsX, object.colliderHalfExtentsY, object.colliderHalfExtentsZ);
-            collider["offset"] = Vec3Json(object.colliderOffsetX, object.colliderOffsetY, object.colliderOffsetZ);
-            collider["rotation"] = Vec4Json(
-                object.colliderRotationX, object.colliderRotationY, object.colliderRotationZ, object.colliderRotationW);
-
             nlohmann::json components = nlohmann::json::array();
             for (const auto& component : object.components)
                 components.push_back(SerializeComponentData(component));
@@ -159,8 +151,6 @@ namespace NS::Game::Level
             out["id"] = object.objectId;
             out["transform"] = std::move(transform);
             out["materialIndex"] = static_cast<int>(object.materialIndex);
-            out["reserved1"] = static_cast<int>(object.reserved1);
-            out["collider"] = std::move(collider);
             out["components"] = std::move(components);
             return out;
         }
@@ -181,25 +171,6 @@ namespace NS::Game::Level
 
             object.objectId = static_cast<std::uint32_t>(ReadInt(json, "id", 0));
             object.materialIndex = static_cast<std::int16_t>(ReadInt(json, "materialIndex", object.materialIndex));
-            object.reserved1 = static_cast<std::uint16_t>(ReadInt(json, "reserved1", object.reserved1));
-
-            const auto colliderIt = json.find("collider");
-            if (colliderIt != json.end() && colliderIt->is_object())
-            {
-                object.shapeCollider = static_cast<std::uint8_t>(ReadInt(*colliderIt, "shape", object.shapeCollider));
-                ReadVec3(*colliderIt,
-                         "halfExtents",
-                         object.colliderHalfExtentsX,
-                         object.colliderHalfExtentsY,
-                         object.colliderHalfExtentsZ);
-                ReadVec3(*colliderIt, "offset", object.colliderOffsetX, object.colliderOffsetY, object.colliderOffsetZ);
-                ReadVec4(*colliderIt,
-                         "rotation",
-                         object.colliderRotationX,
-                         object.colliderRotationY,
-                         object.colliderRotationZ,
-                         object.colliderRotationW);
-            }
 
             const auto componentsIt = json.find("components");
             if (componentsIt != json.end() && componentsIt->is_array())
