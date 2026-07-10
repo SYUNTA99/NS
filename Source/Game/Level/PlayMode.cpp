@@ -41,7 +41,6 @@ namespace NS::Game::Level
         }
         play.playerVelocity = {0.0f, 0.0f, 0.0f};
         play.coinCount = 0;
-        play.remainingSeconds = static_cast<float>(level.timeLimitSeconds);
         play.paused = false;
         play.clearTriggered = false;
         play.deathTriggered = false;

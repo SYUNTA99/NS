@@ -113,10 +113,6 @@ namespace NS::Game::Level
         /// シーンの見た目を確定する環境値。 lighting と skybox
         LevelEnvironment environment{};
 
-        std::uint16_t bgmId = 0;
-        std::uint16_t coinThreshold = 0;
-        std::uint16_t timeLimitSeconds = 0;
-
         /// field 単位の明示 update で計算。 vector は `data()+size()*sizeof(element)` のみ対象で capacity は除外
         [[nodiscard]] std::uint32_t ComputeCrc32() const noexcept;
     };
@@ -183,9 +179,9 @@ namespace NS::Game::Level
 
     /// cell の x, y, z に一致する最初の cell ブラシ配置物の添字。 プレイヤー / カメラは除く。 無ければ kNoObjectIndex
     [[nodiscard]] std::size_t FindObjectAtCell(const LevelData& level,
-                                                   std::int16_t x,
-                                                   std::int16_t y,
-                                                   std::int16_t z) noexcept;
+                                               std::int16_t x,
+                                               std::int16_t y,
+                                               std::int16_t z) noexcept;
 
     /// cell の x, y, z と rotationStep 0..3 から既定 solid の ObjectInstance を作る
     /// 既定 solid 一式すなわち cube 描画 + Box 当たりを component として積む

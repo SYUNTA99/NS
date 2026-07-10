@@ -17,7 +17,6 @@ namespace NS::Game::Level
         NS::Math::Vector3 playerPosition{};
         NS::Math::Vector3 playerVelocity{};
         std::int32_t coinCount = 0;
-        float remainingSeconds = 0.0f;
         bool paused = false;
         bool clearTriggered = false;
         bool deathTriggered = false;

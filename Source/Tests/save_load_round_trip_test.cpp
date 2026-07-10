@@ -24,8 +24,6 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
 
     LevelNs::LevelData src;
     src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
-    src.coinThreshold = 10;
-    src.timeLimitSeconds = 180;
     src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
     src.objects.push_back(LevelNs::MakeCellObject(1, 0, 1, 1));
     src.objects.push_back(LevelNs::MakeCellObject(2, 0, 0, 0));

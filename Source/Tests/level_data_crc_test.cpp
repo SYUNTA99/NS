@@ -99,14 +99,6 @@ TEST(LevelDataCrcTest, MaterialPathsAreHashed)
     EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
-TEST(LevelDataCrcTest, MetadataFieldsAreHashed)
-{
-    LevelNs::LevelData a, b;
-    a.bgmId = 1;
-    b.bgmId = 2;
-    EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
-}
-
 // 環境欄は見た目を確定する永続データなので、 差があれば dirty 検知の CRC も必ず動く
 TEST(LevelDataCrcTest, EnvironmentIsHashed)
 {

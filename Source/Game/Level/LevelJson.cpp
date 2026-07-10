@@ -306,12 +306,6 @@ namespace NS::Game::Level
         nlohmann::json root;
         root["formatVersion"] = kFormatVersion;
 
-        nlohmann::json meta;
-        meta["bgmId"] = static_cast<int>(level.bgmId);
-        meta["coinThreshold"] = static_cast<int>(level.coinThreshold);
-        meta["timeLimitSeconds"] = static_cast<int>(level.timeLimitSeconds);
-        root["meta"] = std::move(meta);
-
         nlohmann::json environment;
         environment["lightDirection"] = Vec3Json(
             level.environment.lightDirection.x, level.environment.lightDirection.y, level.environment.lightDirection.z);
@@ -459,16 +453,6 @@ namespace NS::Game::Level
             NS_LOG_WARN(::NS::Core::LogCat::Game,
                         "プレイヤーが {} 体ある。先頭の 1 体を正とし、残りは無効として扱う",
                         playerCount);
-
-        const auto metaIt = root.find("meta");
-        if (metaIt != root.end() && metaIt->is_object())
-        {
-            outLevel.bgmId = static_cast<std::uint16_t>(ReadInt(*metaIt, "bgmId", outLevel.bgmId));
-            outLevel.coinThreshold =
-                static_cast<std::uint16_t>(ReadInt(*metaIt, "coinThreshold", outLevel.coinThreshold));
-            outLevel.timeLimitSeconds =
-                static_cast<std::uint16_t>(ReadInt(*metaIt, "timeLimitSeconds", outLevel.timeLimitSeconds));
-        }
 
         // environment 欄がシーンの見た目を所有する。 中立の既定値の上に読めたキーだけ部分適用する
         const auto environmentIt = root.find("environment");

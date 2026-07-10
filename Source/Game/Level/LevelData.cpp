@@ -170,10 +170,6 @@ namespace NS::Game::Level
         crc = UpdateWith(crc, environment.ambientColor);
         crc = UpdateWithString(crc, environment.skyboxCubemapPath);
 
-        crc = UpdateWith(crc, bgmId);
-        crc = UpdateWith(crc, coinThreshold);
-        crc = UpdateWith(crc, timeLimitSeconds);
-
         // nextObjectId は意図して hash しない。採番カウンタは undo で巻き戻さないため、入れると
         // 「置いて undo しただけで dirty」が恒久化する。カウンタだけが進んだ状態は保存しなくても
         // 未保存 object への参照が残らず整合が壊れないので、内容の変化検知からは外す
