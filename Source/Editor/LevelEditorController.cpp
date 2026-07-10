@@ -5,6 +5,7 @@
 #include "Game/Player.h"
 
 #include "Editor/ComponentClipboard.h"
+#include "Editor/PlayerTuning.h"
 #include "Editor/Undo/AddComponentCommand.h"
 #include "Editor/Undo/AddObjectCommand.h"
 #include "Editor/Undo/DuplicateObjectCommand.h"
@@ -127,6 +128,18 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
         return;
 
     m_imgui = imgui;
+
+    // 起動読込がプレイヤーを既定構成で合成していたら (新規 seed / 旧形式移行)、 保存済みテンプレートを
+    // 写してから world を組み直す。 テンプレートは編集の道具なので取込は Game の読込ではなくここで行う
+    if (m_scene->PlayerObjectSynthesized())
+    {
+        const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(m_scene->Level());
+        if (playerIndex != NS::Game::Level::kNoObjectIndex)
+        {
+            MergeSavedPlayerTuning(m_scene->Level().objects[playerIndex]);
+            m_scene->RebuildWorld();
+        }
+    }
 
     // 編集モード専用の free-fly カメラを Player / follow camera と並列で立ち上げる
     // mouse + gamepad で Orbit / Pan / Zoom する

@@ -826,8 +826,6 @@ project "Tests"
         -- Tests から直接コンパイルしてリンクする。Game.cpp は Application や
         -- Window への依存があるので除外し、unit test で扱える範囲だけ取り込む。
         "Source/Game/Player.cpp",
-        -- PlayerTuning は LevelPlayScene(OnStart) と LevelEditorController が参照するので symbol 解決のため取り込む
-        "Source/Game/PlayerTuning.cpp",
         "Source/Game/Blocks/**.cpp",
         "Source/Editor/EditorCameraRig.cpp",
         -- LevelEditorController は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
@@ -841,6 +839,8 @@ project "Tests"
         "Source/Game/Level/**.cpp",
         "Source/Editor/Undo/**.cpp",
         -- editor のうち Application 非依存なものだけ取り込む (EditorLayer は Application 依存のため除外)
+        -- PlayerTuning は EditorMode / LevelEditorController / player_tuning_test が参照する
+        "Source/Editor/PlayerTuning.cpp",
         "Source/Editor/ComponentClipboard.cpp",
         "Source/Editor/EditorMode.cpp",
         "Source/Editor/GizmoEditor.cpp",

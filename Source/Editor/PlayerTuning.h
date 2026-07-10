@@ -1,12 +1,13 @@
 #pragma once
 
 /// @file PlayerTuning.h
-/// @brief 新規プレイヤーの既定テンプレート取込
+/// @brief 新規プレイヤーの既定テンプレート取込 (エディタ専用)
 ///
 /// @details プレイヤーの構成と値の真実はレベルの player object が持つ。 PlayerTuning.json は
-/// 旧形式の移行や新規レベルでプレイヤーを合成する時にだけ使う既定テンプレートへ降格した
+/// 旧形式の移行や新規レベルでプレイヤーを合成した時にだけ写す既定テンプレートで、 開発イテレーションの
+/// 道具なので取込 / 保存ともエディタの持ち物。 Game は合成が起きた事実だけを報告し、 テンプレートを知らない
 /// テンプレートの取込はデータどうしの merge で行い、 live への反映は world の組み直しが担う
-/// 保存は出荷不要なので Editor/PlayerTuningIO.h に分け、 パスだけ PlayerTuningPath() で共有する
+/// 保存は Editor/PlayerTuningIO.h、 パスだけ PlayerTuningPath() で共有する
 
 namespace NS::Game::Level
 {

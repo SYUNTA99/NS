@@ -18,13 +18,8 @@ namespace NS::Game::Level
     struct LevelData;
     struct ComponentData;
     struct FieldValue;
-
-    /// 読込時の移行で何が起きたかの報告。 呼出側がテンプレート適用などの後処理を判断する
-    struct LevelLoadReport
-    {
-        /// 旧形式の spawn 単一値やプレイヤー欠落から、 プレイヤー実体を合成して objects へ足したら true
-        bool playerObjectCreated = false;
-    };
+    // 読込時移行の報告。 定義は呼び出し窓口の LevelIO.h (ここではポインタ受け渡しのみ)
+    struct LevelLoadReport;
 
     /// LevelData を正準 JSON ファイルへ書く。 要素数 / 出力 size が上限超過なら false + `NS_LOG_ERROR`
     [[nodiscard]] bool SaveLevelToJsonFile(const LevelData& level, const std::filesystem::path& path) noexcept;

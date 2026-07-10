@@ -3,7 +3,7 @@
 /// @file PlayerTuningIO.h
 /// @brief プレイヤー全コンポーネント値をチューニングファイルへ書き出すエディタ専用の保存
 ///
-/// @details 保存はエディタからしか呼ばれず出荷不要なので、 出荷でも要る読込 Game/PlayerTuning.h と分ける
+/// @details 読込 merge は Editor/PlayerTuning.h、 保存はここ。 どちらもエディタ専用で出荷には積まない
 /// 直列化は SerializeComponent、 保存先は PlayerTuningPath() を共有して読込と一致させる
 
 namespace NS::Scene

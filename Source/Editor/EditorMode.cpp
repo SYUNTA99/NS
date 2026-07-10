@@ -2,6 +2,7 @@
 
 #include "Editor/GridMath.h"
 #include "Editor/LevelFilePaths.h"
+#include "Editor/PlayerTuning.h"
 #include "Editor/Undo/DeleteCommand.h"
 #include "Editor/Undo/PlaceCommand.h"
 #include "Editor/Undo/RotateCommand.h"
@@ -153,9 +154,17 @@ namespace NS::Editor
                 break;
             }
             NS::Game::Level::LevelData fresh;
-            const bool ok = NS::Game::Level::LoadLevelFromFile(fresh, *path);
+            NS::Game::Level::LevelLoadReport report{};
+            const bool ok = NS::Game::Level::LoadLevelFromFile(fresh, *path, &report);
             if (ok)
             {
+                // 旧形式から合成したプレイヤーには保存済みテンプレートの構成と値を写し、 移行前の手触りを保つ
+                if (report.playerObjectCreated)
+                {
+                    const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(fresh);
+                    if (playerIndex != NS::Game::Level::kNoObjectIndex)
+                        MergeSavedPlayerTuning(fresh.objects[playerIndex]);
+                }
                 // 新 level open で UndoStack 履歴は破棄する。 古い level 用 Command が
                 // 別 LevelData を pointer で持つため、 そのまま undo すると use-after-free 的 mismatch
                 *m_level = std::move(fresh);

@@ -59,6 +59,10 @@ public:
     /// 据え置きカメラの Brain 登録もここで面倒を見る。 Brain 構築前の OnStart 序盤は登録しない
     void RebuildWorld();
 
+    /// 起動読込がプレイヤー実体を既定構成で合成したら true (新規 seed / 旧形式移行)
+    /// 呼出側がテンプレート適用などの後処理を判断する。 scene 自身は既定構成のまま進める
+    [[nodiscard]] bool PlayerObjectSynthesized() const noexcept { return m_playerObjectSynthesized; }
+
 private:
     /// 基底 OnRender が scene 解決後に呼ぶ描画本体。 ワールドを描き編集ギズモ等は描かない
     void OnRenderScene() override;
@@ -84,4 +88,7 @@ private:
 
     // コヨーテ debug 描画 すなわち 縁の紫線 / カプセル / コヨーテジャンプの赤線 の表示トグル。 F2 で切替える
     bool m_debugCoyoteDraw = true;
+
+    // 起動読込でプレイヤー実体を既定構成で合成したか。 PlayerObjectSynthesized() の実体
+    bool m_playerObjectSynthesized = false;
 };

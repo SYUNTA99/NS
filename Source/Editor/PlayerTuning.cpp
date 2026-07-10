@@ -1,4 +1,4 @@
-#include "Game/PlayerTuning.h"
+#include "Editor/PlayerTuning.h"
 
 #include "Game/Level/LevelData.h"
 #include "Game/Level/LevelJson.h"
@@ -9,8 +9,8 @@
 
 std::filesystem::path PlayerTuningPath()
 {
-    // Assets 配下に置けば出荷パッケージにも同梱され、 開発時はリポジトリ直下、 出荷時は実行ファイル隣を
-    // 同じ相対パスで解決できる
+    // 読み書きともエディタ専用だが、 レベルと違い「その PC での手触りの好み」なので Assets 配下の
+    // ContentRoot() 相対で解決し、 リポジトリごと持ち歩けるようにする
     return ::NS::Core::FileSystem::ContentRoot() / "Assets" / "PlayerTuning.json";
 }
 

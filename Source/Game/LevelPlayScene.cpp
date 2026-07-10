@@ -3,7 +3,6 @@
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Blocks/LedgeEdges.h"
 #include "Game/Player.h"
-#include "Game/PlayerTuning.h"
 
 #include "Game/Level/LevelIO.h"
 #include "Game/Theme/ThemeRegistry.h"
@@ -23,10 +22,9 @@ namespace
             NS::Game::Theme::Get(NS::Game::Theme::ThemeId::Grass));
         level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0, 0));
         // プレイヤーは capsule 中心を床ブロック上面 0.5 + capsule 半径込み半高 0.9 + 1cm へ置く
+        // 構成は code 既定のまま。 保存済みテンプレートの適用は合成の報告を見た editor が行う
         level.objects.push_back(NS::Game::Level::MakePlayerObject(
             NS::Math::Vector3{0.0f, NS::Game::Level::kDefaultPlayerSpawnY, 0.0f}, NS::Math::Quaternion{}));
-        // 新規プレイヤーには保存済みテンプレートの構成と値を写す
-        MergeSavedPlayerTuning(level.objects.back());
         NS::Game::Level::EnsureUniqueObjectIds(level);
         // 追従カメラも配置物。 プレイヤーへの Target 参照が要るため採番の後に足し、 増分をもう一度採番する
         const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(level);
@@ -51,8 +49,16 @@ void LevelPlayScene::LoadInitialLevel()
 {
     const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
     const auto levelPath = exeDir / "Levels" / "new_level.scene";
-    if (!NS::Game::Level::LoadLevelFromFile(m_level, levelPath))
+    NS::Game::Level::LevelLoadReport report{};
+    if (NS::Game::Level::LoadLevelFromFile(m_level, levelPath, &report))
+    {
+        m_playerObjectSynthesized = report.playerObjectCreated;
+    }
+    else
+    {
         SeedInitialLevel(m_level);
+        m_playerObjectSynthesized = true;
+    }
 }
 
 void LevelPlayScene::OnStart()

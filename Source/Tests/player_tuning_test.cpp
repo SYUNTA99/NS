@@ -6,10 +6,10 @@
 #include <Framework/Scene/Components/SphereColliderComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/ReflectionJson.h>
+#include <Editor/PlayerTuning.h>
 #include <Game/Blocks/BuildPlacedObject.h>
 #include <Game/Level/LevelData.h>
 #include <Game/Player.h>
-#include <Game/PlayerTuning.h>
 
 #include <cstddef>
 #include <filesystem>

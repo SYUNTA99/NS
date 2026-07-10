@@ -1,6 +1,7 @@
 #include "Game/Level/LevelJson.h"
 
 #include "Game/Level/LevelData.h"
+#include "Game/Level/LevelIO.h" // LevelLoadReport の完全型
 
 // json.hpp は /W4 で警告が出るため、 この翻訳単位でだけ警告を抑止して取り込む
 #pragma warning(push, 0)
