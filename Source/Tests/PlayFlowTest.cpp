@@ -1,4 +1,5 @@
 #include "Game/Level/PlayFlowComponent.h"
+#include "Game/Level/LevelObjects.h"
 #include "Game/Level/PlayMode.h"
 #include "Game/LevelPlayScene.h"
 

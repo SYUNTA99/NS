@@ -8,7 +8,7 @@
 #include <Framework/Scene/ReflectionJson.h>
 #include <Editor/PlayerTuning.h>
 #include <Game/Blocks/BuildPlacedObject.h>
-#include <Game/Level/LevelData.h>
+#include <Game/Level/LevelObjects.h>
 #include <Game/Player.h>
 
 #include <cstddef>

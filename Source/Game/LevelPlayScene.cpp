@@ -5,6 +5,7 @@
 #include "Game/Player.h"
 
 #include "Game/Level/LevelIO.h"
+#include "Game/Level/LevelObjects.h"
 #include "Game/Theme/ThemeRegistry.h"
 
 using namespace NS::Game::Theme;

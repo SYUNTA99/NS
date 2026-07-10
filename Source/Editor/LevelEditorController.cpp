@@ -13,7 +13,7 @@
 #include "Editor/Undo/TransformCommand.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/BuildPlacedObject.h"
-#include "Game/Level/LevelData.h"
+#include "Game/Level/LevelObjects.h"
 #include "Game/Theme/ThemeRegistry.h"
 
 namespace

@@ -9,7 +9,7 @@
 #include <Framework/Scene/Components/SphereColliderComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Game/Blocks/BuildPlacedObject.h>
-#include <Game/Level/LevelData.h>
+#include <Game/Level/LevelObjects.h>
 #include <Game/Player.h>
 
 #include <filesystem>

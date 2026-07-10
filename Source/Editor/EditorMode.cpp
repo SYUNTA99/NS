@@ -8,7 +8,7 @@
 #include "Editor/Undo/RotateCommand.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/BuildPlacedObject.h"
-#include "Game/Level/LevelData.h"
+#include "Game/Level/LevelObjects.h"
 #include "Game/Level/LevelIO.h"
 
 #if NS_EDITOR_ENABLED

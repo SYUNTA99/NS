@@ -1,5 +1,7 @@
 #include "Editor/Undo/PlaceCommand.h"
 
+#include "Game/Level/LevelObjects.h"
+
 namespace NS::Editor
 {
     PlaceCommand::PlaceCommand(NS::Game::Level::ObjectInstance prototype,

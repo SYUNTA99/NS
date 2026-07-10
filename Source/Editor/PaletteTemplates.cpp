@@ -1,6 +1,7 @@
 #include "Editor/PaletteTemplates.h"
 
 #include "Game/Blocks/BuildPlacedObject.h"
+#include "Game/Level/LevelObjects.h"
 
 namespace NS::Editor
 {

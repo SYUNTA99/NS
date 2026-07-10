@@ -7,7 +7,7 @@
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/ObjectRefSubsystem.h>
 #include <Framework/Scene/SceneBase.h>
-#include <Game/Level/LevelData.h>
+#include <Game/Level/LevelObjects.h>
 #include <Game/Level/LevelWorld.h>
 #include <Game/Player.h>
 

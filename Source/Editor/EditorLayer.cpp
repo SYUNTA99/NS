@@ -6,7 +6,7 @@
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Game.h"
-#include "Game/Level/LevelData.h"
+#include "Game/Level/LevelObjects.h"
 #include "Game/Theme/ThemeId.h"
 #include "Game/Theme/ThemeRegistry.h"
 

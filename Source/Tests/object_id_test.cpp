@@ -2,7 +2,7 @@
 #include "Editor/Undo/DuplicateObjectCommand.h"
 #include "Editor/Undo/PlaceCommand.h"
 #include "Framework/Scene/ObjectRef.h"
-#include "Game/Level/LevelData.h"
+#include "Game/Level/LevelObjects.h"
 #include "Game/Level/LevelJson.h"
 
 #include <gtest/gtest.h>

@@ -1,6 +1,6 @@
 #include "Editor/PaletteTemplates.h"
 #include "Editor/Undo/PlaceCommand.h"
-#include "Game/Level/LevelData.h"
+#include "Game/Level/LevelObjects.h"
 
 #include <gtest/gtest.h>
 

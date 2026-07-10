@@ -1,5 +1,7 @@
 #include "Editor/Undo/DeleteCommand.h"
 
+#include "Game/Level/LevelObjects.h"
+
 namespace NS::Editor
 {
     DeleteCommand::DeleteCommand(std::int16_t x, std::int16_t y, std::int16_t z) noexcept : m_x(x), m_y(y), m_z(z) {}

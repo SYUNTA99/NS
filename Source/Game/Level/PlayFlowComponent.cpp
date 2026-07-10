@@ -2,6 +2,7 @@
 
 #include "Game/Blocks/BuildPlacedObject.h"
 #include "Game/Level/ClearFadeComponent.h"
+#include "Game/Level/LevelObjects.h"
 #include "Game/LevelPlayScene.h"
 #include "Game/Player.h"
 

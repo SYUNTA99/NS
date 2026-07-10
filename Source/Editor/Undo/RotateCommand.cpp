@@ -1,6 +1,6 @@
 #include "Editor/Undo/RotateCommand.h"
 
-#include "Game/Level/LevelData.h"
+#include "Game/Level/LevelObjects.h"
 
 namespace NS::Editor
 {

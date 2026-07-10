@@ -1,6 +1,6 @@
 #include "Game/Level/PlayMode.h"
 
-#include "Game/Level/LevelData.h"
+#include "Game/Level/LevelObjects.h"
 #include "Game/Level/PlayState.h"
 
 namespace NS::Game::Level

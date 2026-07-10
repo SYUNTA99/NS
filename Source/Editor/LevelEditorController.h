@@ -10,7 +10,7 @@
 
 #include "Editor/EditorMode.h"
 #include "Editor/GizmoEditor.h"
-#include "Game/Level/LevelData.h"
+#include "Game/Level/LevelObjects.h"
 #include "Game/Level/PlayState.h"
 #include "Game/Theme/ThemeId.h"
 
