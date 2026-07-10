@@ -229,15 +229,10 @@ void LevelEditorController::EnterEdit() noexcept
 
 void LevelEditorController::Tick()
 {
+    // プレイ中のクリア / 死亡は PlayFlowComponent が出荷と同じ暗転リスタートで完結させる。
+    // editor は割り込まず、 編集へ戻るのは Tab / Pause modal の明示操作だけ
     if (m_mode == Mode::Edit)
-    {
         TickEdit();
-    }
-    else if (Play().clearTriggered)
-    {
-        // クリア成立で編集へ戻す。 出荷にはこの controller が無いためクリア演出は別途必要
-        EnterEdit();
-    }
 }
 
 void LevelEditorController::TickEdit()

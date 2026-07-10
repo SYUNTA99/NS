@@ -47,6 +47,24 @@ TEST(ClearFade, FullBlackRestartsLevelThenFadesIn)
     EXPECT_NEAR(fade.Alpha(), 0.0f, 1e-6f);
 }
 
+TEST(ClearFade, ExitPlayCancelsInFlightFade)
+{
+    LevelPlayScene scene;
+    auto& flow = scene.Director().Flow();
+    auto& fade = scene.Director().Fade();
+
+    flow.EnterPlay();
+    fade.Begin();
+    fade.Advance(LevelNs::ClearFadeComponent::kFadeOutSeconds * 0.5f);
+    ASSERT_TRUE(fade.IsFading());
+
+    // 編集へ戻る (ExitPlay) と進行中の暗転は破棄され、 次のプレイ開始へ持ち越さない
+    flow.ExitPlay();
+
+    EXPECT_FALSE(fade.IsFading());
+    EXPECT_NEAR(fade.Alpha(), 0.0f, 1e-6f);
+}
+
 TEST(ClearFade, ReentryIsIgnoredWhileFading)
 {
     LevelPlayScene scene;

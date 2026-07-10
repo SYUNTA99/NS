@@ -46,7 +46,7 @@ public:
     /// scene の OnStart 完了後に呼ぶ。 free-fly カメラ / EditorMode / ギズモを立ち上げ編集モードへ入る
     /// imgui は EditorLayer 所有の context。EditorMode / ギズモの入力ゲートへ非所有で橋渡しする
     void Setup(NS::UI::ImGuiContext* imgui);
-    /// fixed step 更新。 編集中は free-fly カメラ / ギズモ / EditorMode を回す。 プレイ中はクリア監視のみ
+    /// fixed step 更新。 編集中は free-fly カメラ / ギズモ / EditorMode を回す。 プレイ中は何もしない
     void Tick();
     /// ギズモ / palette / 編集ビジュアルといった render フレームの上乗せ描画と debug provenance 退避
     void Render();

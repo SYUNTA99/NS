@@ -46,6 +46,13 @@ namespace NS::Game::Level
         m_alpha = 0.0f;
     }
 
+    void ClearFadeComponent::Cancel() noexcept
+    {
+        m_stage = Stage::None;
+        m_timer = 0.0f;
+        m_alpha = 0.0f;
+    }
+
     void ClearFadeComponent::Advance(float dt) noexcept
     {
         if (m_stage == Stage::None)

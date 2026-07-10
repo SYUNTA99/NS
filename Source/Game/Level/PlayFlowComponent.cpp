@@ -66,6 +66,9 @@ namespace NS::Game::Level
         // free-fly カメラは editor が握るためここでは触らない
         m_playMode.Exit(m_play);
         m_playMode.SetActive(false);
+        // 進行中の暗転はプレイの持ち物なのでここで破棄する。 残すと次のプレイ開始で前回の暗転が突然発火する
+        if (auto* fade = FadeComp())
+            fade->Cancel();
         if (auto* player = scene->PlayerRef())
         {
             player->Movement().SetActive(false);
@@ -211,20 +214,18 @@ namespace NS::Game::Level
         for (auto* placed : scene->World().PlacedCameras())
             placed->UpdateActivation(m_play.playerPosition);
 
-        // 落下死は即リスタート、 ゴール接触は出荷のみ暗転で仕切り直してループを閉じる
+        // 落下死は即リスタート、 ゴール接触は暗転で仕切り直してループを閉じる。 エディタ / 出荷で挙動は同一で、
         // どちらも RestartLevel が spawn へ戻し health / coin / flag を全リセットするのでループが続く
-        // 開発ビルドは editor が clearTriggered を観測して編集モードへ戻すためここでは扱わない
+        // エディタで編集へ戻るのは Tab / Pause modal の明示操作だけ (クリアでの自動復帰はしない)
         if (m_play.deathTriggered)
         {
             RestartLevel();
         }
-#if !NS_EDITOR_ENABLED
         else if (m_play.clearTriggered)
         {
             if (fade != nullptr)
                 fade->Begin();
         }
-#endif
 
         if (auto* player = scene->PlayerRef())
             player->Root().Snapshot();

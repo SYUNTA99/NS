@@ -29,6 +29,9 @@ namespace NS::Game::Level
         /// 暗転を開始する。 進行中の再呼び出しは無視する
         void Begin() noexcept;
 
+        /// 進行中の暗転 / 明転を破棄して通常へ戻す。 プレイ終了を跨いで演出が残らないようにする
+        void Cancel() noexcept;
+
         /// 暗転を dt だけ進める。 暗転しきった瞬間にレベルを頭から再開し、 明転しきったら通常へ戻す
         void Advance(float dt) noexcept;
 
