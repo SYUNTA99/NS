@@ -1,7 +1,7 @@
 #include "Game/Blocks/BuildPlacedObject.h"
 
+#include "Framework/Scene/ObjectBuilder.h"
 #include "Game/Level/LevelObjects.h"
-#include "Framework/Scene/SceneJson.h"
 #include "Game/Player.h"
 
 namespace NS::Game::Blocks
@@ -36,72 +36,37 @@ namespace NS::Game::Blocks
             return ref == "player" || ref == "water" || ref == "shadow";
         }
 
-        // 器に既に載る同型 component を反射型名で探す。 適用済みの控えにある分は飛ばし、 無ければ nullptr
-        NS::Scene::Component* FindExistingComponent(NS::Scene::GameObject& obj,
-                                                    const std::string& typeName,
-                                                    const std::vector<NS::Scene::Component*>& applied)
+        // 資産解決の仕上げ。 mesh / material / 影資源はゲームの資産都合なので、 汎用構築から切り離しここに残す
+        void ResolveComponentAssets(NS::Scene::Component& created,
+                                    const NS::Scene::ObjectData& object,
+                                    NS::Scene::AssetManager& assets,
+                                    const std::vector<std::string>& materialPaths)
         {
-            for (NS::Scene::Component* comp : obj.Components())
+            // material 参照が共有名なら共有 material、 空なら materialIndex / 既定へ倒す。 mesh はメッシュ参照を
+            // 参照優先で解決し、 空 / 解決不可なら cube へフォールバックする
+            if (auto* mesh = NS::Scene::ComponentCast<NS::Scene::MeshRendererComponent>(&created))
             {
-                if (comp == nullptr)
-                    continue;
-                if (std::find(applied.begin(), applied.end(), comp) != applied.end())
-                    continue;
-                const NS::Scene::ReflectionInfo* info = comp->GetReflection();
-                if (info != nullptr && typeName == info->typeName)
-                    return comp;
+                const std::string& matRef = mesh->MaterialRef();
+                NS::Graphics::Material* material = nullptr;
+                if (IsSharedMaterialName(matRef))
+                    material = assets.SharedMaterial(matRef);
+                else
+                    material = ResolveFreeMaterial(object, assets, materialPaths);
+                mesh->SetMaterial(material);
+                // 移行済データは必ず参照を持つ
+                NS::Graphics::Mesh* resolved = nullptr;
+                if (!mesh->MeshRef().empty())
+                    resolved = ResolveMeshFromRef(assets, mesh->MeshRef());
+                if (resolved == nullptr)
+                    resolved = assets.Builtin("cube");
+                mesh->SetMesh(resolved);
             }
-            return nullptr;
+            // 接地影の共有資源はファクトリが賄う。 影は常に組み込み quad + 共有 shadow 材質で描く
+            else if (auto* shadow = NS::Scene::ComponentCast<NS::Scene::ShadowComponent>(&created))
+                shadow->SetResources(assets.Builtin("shadowQuad"), assets.SharedMaterial("shadow"));
         }
 
-        // full SSOT 主経路: object.components を器の既存同型へ適用し、 無い型は ComponentRegistry で生成する
-        // 素の器では同型が無く全生成になり、 Player の器では ctor の既定構成へ値だけが写って二重生成しない
-        // データと live は 1 対 1 で対応させ、 同型を重ねたデータは上書きせず重ねた数だけ立てる
-        void ApplyComponentsFromData(NS::Scene::GameObject& obj,
-                                     const NS::Scene::ObjectData& object,
-                                     NS::Scene::AssetManager& assets,
-                                     const std::vector<std::string>& materialPaths)
-        {
-            std::vector<NS::Scene::Component*> applied;
-            for (const auto& component : object.components)
-            {
-                NS::Scene::Component* created = FindExistingComponent(obj, component.typeName, applied);
-                if (created == nullptr)
-                    created = NS::Scene::CreateComponent(component.typeName, obj);
-                if (created == nullptr)
-                    continue; // allowlist 外 / 未知 type は読み飛ばす
-                applied.push_back(created);
-
-                const nlohmann::json fields = NS::Scene::ComponentFieldsToJson(component);
-                NS::Scene::ApplyJsonFields(*created, fields);
-
-                // material 参照が共有名なら共有 material、 空なら materialIndex / 既定へ倒す。 mesh はメッシュ参照を
-                // 参照優先で解決し、 空 / 解決不可なら cube へフォールバックする
-                if (auto* mesh = NS::Scene::ComponentCast<NS::Scene::MeshRendererComponent>(created))
-                {
-                    const std::string& matRef = mesh->MaterialRef();
-                    NS::Graphics::Material* material = nullptr;
-                    if (IsSharedMaterialName(matRef))
-                        material = assets.SharedMaterial(matRef);
-                    else
-                        material = ResolveFreeMaterial(object, assets, materialPaths);
-                    mesh->SetMaterial(material);
-                    // 移行済データは必ず参照を持つ
-                    NS::Graphics::Mesh* resolved = nullptr;
-                    if (!mesh->MeshRef().empty())
-                        resolved = ResolveMeshFromRef(assets, mesh->MeshRef());
-                    if (resolved == nullptr)
-                        resolved = assets.Builtin("cube");
-                    mesh->SetMesh(resolved);
-                }
-                // 接地影の共有資源はファクトリが賄う。 影は常に組み込み quad + 共有 shadow 材質で描く
-                else if (auto* shadow = NS::Scene::ComponentCast<NS::Scene::ShadowComponent>(created))
-                    shadow->SetResources(assets.Builtin("shadowQuad"), assets.SharedMaterial("shadow"));
-            }
-        }
-
-        NS::Scene::ComponentData MakeComponentData(std::string typeName,
-                                                         std::vector<NS::Scene::FieldValue> fields)
+        NS::Scene::ComponentData MakeComponentData(std::string typeName, std::vector<NS::Scene::FieldValue> fields)
         {
             NS::Scene::ComponentData component;
             component.typeName = std::move(typeName);
@@ -110,8 +75,8 @@ namespace NS::Game::Blocks
         }
 
         NS::Scene::ComponentData MeshRendererData(std::string meshName,
-                                                        std::string materialName,
-                                                        const NS::Math::Vector3& baseColor)
+                                                  std::string materialName,
+                                                  const NS::Math::Vector3& baseColor)
         {
             return MakeComponentData("MeshRendererComponent",
                                      {NS::Scene::FieldValue{"Mesh", std::move(meshName)},
@@ -134,8 +99,7 @@ namespace NS::Game::Blocks
         // SlopeColliderComponent の "Angle (deg)" を返す。 SlopeCollider 無しは -1
         float SlopeAngleOf(const NS::Scene::ObjectData& object) noexcept
         {
-            const NS::Scene::ComponentData* slope =
-                NS::Scene::FindComponentData(object, "SlopeColliderComponent");
+            const NS::Scene::ComponentData* slope = NS::Scene::FindComponentData(object, "SlopeColliderComponent");
             if (slope == nullptr)
                 return -1.0f;
             const NS::Scene::FieldValue* angle = NS::Scene::FindField(*slope, "Angle (deg)");
@@ -147,8 +111,7 @@ namespace NS::Game::Blocks
         // MeshRenderer の "Material" 参照を返す。 MeshRenderer / フィールド無しは nullptr
         const std::string* MaterialRefOf(const NS::Scene::ObjectData& object) noexcept
         {
-            const NS::Scene::ComponentData* renderer =
-                NS::Scene::FindComponentData(object, "MeshRendererComponent");
+            const NS::Scene::ComponentData* renderer = NS::Scene::FindComponentData(object, "MeshRendererComponent");
             if (renderer == nullptr)
                 return nullptr;
             const NS::Scene::FieldValue* material = NS::Scene::FindField(*renderer, "Material");
@@ -175,10 +138,10 @@ namespace NS::Game::Blocks
         else if (angleDegrees < 37.5f)
             meshName = "wedge30";
         // grid 固形でなく per-object 描画なので material は free 経路と同じ空参照に倒す
-        return {
-            MeshRendererData(meshName, "", kSolidBaseColor),
-            MakeComponentData("SlopeColliderComponent",
-                              {NS::Scene::FieldValue{"Angle (deg)", angleDegrees}, NS::Scene::FieldValue{"Half Extents", kCellHalfExtents}})};
+        return {MeshRendererData(meshName, "", kSolidBaseColor),
+                MakeComponentData("SlopeColliderComponent",
+                                  {NS::Scene::FieldValue{"Angle (deg)", angleDegrees},
+                                   NS::Scene::FieldValue{"Half Extents", kCellHalfExtents}})};
     }
 
     std::vector<NS::Scene::ComponentData> MakeGoalComponents()
@@ -200,9 +163,9 @@ namespace NS::Game::Blocks
     std::vector<NS::Scene::ComponentData> MakeFollowCameraComponents(std::uint32_t targetObjectId)
     {
         // Far Plane 100 はプレイの遠景を抑える投影値。 感触の距離 / 感度はコード既定に任せる
-        return {MakeComponentData(
-            "ThirdPersonFollowComponent",
-            {NS::Scene::FieldValue{"Target", NS::Scene::ObjectRef{targetObjectId}}, NS::Scene::FieldValue{"Far Plane", 100.0f}})};
+        return {MakeComponentData("ThirdPersonFollowComponent",
+                                  {NS::Scene::FieldValue{"Target", NS::Scene::ObjectRef{targetObjectId}},
+                                   NS::Scene::FieldValue{"Far Plane", 100.0f}})};
     }
 
     std::vector<NS::Scene::ComponentData> MakeFreeCubeComponents()
@@ -345,7 +308,10 @@ namespace NS::Game::Blocks
         else
             obj = std::make_unique<NS::Scene::GameObject>();
 
-        ApplyComponentsFromData(*obj, object, assets, materialPaths);
+        NS::Scene::ApplyObjectComponents(
+            *obj, object, [&](NS::Scene::Component& created, const NS::Scene::ComponentData&) {
+                ResolveComponentAssets(created, object, assets, materialPaths);
+            });
 
         // プレイヤーの移動と入力は休止で組む。 起こすのはプレイ突入の進行役で、 編集中は寝たまま見た目だけ出る
         if (isPlayer)
@@ -356,10 +322,7 @@ namespace NS::Game::Blocks
                 input->SetActive(false);
         }
 
-        obj->Root().SetPosition(NS::Math::Vector3{object.positionX, object.positionY, object.positionZ});
-        obj->Root().SetRotation(
-            NS::Math::Quaternion{object.rotationX, object.rotationY, object.rotationZ, object.rotationW});
-        obj->Root().SetScale(NS::Math::Vector3{object.scaleX, object.scaleY, object.scaleZ});
+        NS::Scene::ApplyObjectTransform(*obj, object);
 
         return obj;
     }
