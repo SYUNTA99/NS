@@ -8,7 +8,7 @@
 #include "Editor/Undo/RotateCommand.h"
 #include "Framework/UI/ImGuiContext.h"
 #include "Game/Blocks/BuildPlacedObject.h"
-#include "Game/Level/LevelIO.h"
+#include "Framework/Scene/SceneJson.h"
 #include "Game/Level/LevelObjects.h"
 
 #if NS_EDITOR_ENABLED
@@ -100,7 +100,7 @@ namespace NS::Editor
         if (safe.empty() || !path)
             return false;
         (void)EnsureLevelsDirectoryExists();
-        const bool ok = NS::Game::Level::SaveLevelToFile(*m_level, *path);
+        const bool ok = NS::Scene::SaveSceneToJsonFile(*m_level, *path);
         if (ok)
             m_currentLevelName = safe;
         return ok;
@@ -154,7 +154,7 @@ namespace NS::Editor
                 break;
             }
             NS::Scene::SceneData fresh;
-            const bool ok = NS::Game::Level::LoadLevelFromFile(fresh, *path);
+            const bool ok = NS::Scene::LoadSceneFromJsonFile(fresh, *path);
             if (ok)
             {
                 // 読込の門で合成したプレイヤーには保存済みテンプレートの構成と値を写し、 編集中の手触りを保つ

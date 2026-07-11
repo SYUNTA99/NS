@@ -834,8 +834,8 @@ project "Tests"
         -- 操作対象の LevelPlayScene も ctor / dtor / vtable / SetPlaying symbol のため併せて取り込む。
         "Source/Game/LevelPlayScene.cpp",
         "Source/Editor/LevelEditorController.cpp",
-        -- Level data / LevelIO / CRC32 / Undo Command は Application
-        -- 非依存の純粋ロジックなので Tests project から直接 compile する。
+        -- Level 配下と Undo Command は Application 非依存の純粋ロジックなので
+        -- Tests project から直接 compile する。
         "Source/Game/Level/**.cpp",
         "Source/Editor/Undo/**.cpp",
         -- editor のうち Application 非依存なものだけ取り込む (EditorLayer は Application 依存のため除外)

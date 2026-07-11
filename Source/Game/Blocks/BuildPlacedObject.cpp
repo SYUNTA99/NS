@@ -1,7 +1,7 @@
 #include "Game/Blocks/BuildPlacedObject.h"
 
 #include "Game/Level/LevelObjects.h"
-#include "Game/Level/LevelJson.h"
+#include "Framework/Scene/SceneJson.h"
 #include "Game/Player.h"
 
 namespace NS::Game::Blocks
@@ -72,7 +72,7 @@ namespace NS::Game::Blocks
                     continue; // allowlist 外 / 未知 type は読み飛ばす
                 applied.push_back(created);
 
-                const nlohmann::json fields = NS::Game::Level::ComponentFieldsToJson(component);
+                const nlohmann::json fields = NS::Scene::ComponentFieldsToJson(component);
                 NS::Scene::ApplyJsonFields(*created, fields);
 
                 // material 参照が共有名なら共有 material、 空なら materialIndex / 既定へ倒す。 mesh はメッシュ参照を

@@ -26,7 +26,7 @@ namespace NS::Scene
     struct FieldValue
     {
         std::string name;
-        /// 変種の宣言順に ComputeCrc32 と operator== の switch が依存する。 増減・並べ替え時は両方を直す
+        /// 変種の宣言順に ComputeCrc32 / operator== / SceneJson の変換が依存する。 増減・並べ替え時は全て直す
         std::variant<float, int, bool, NS::Math::Vector3, std::string, ObjectRef> value;
 
         /// variant の Vector3 代替が operator== を持たないため代替ごとに明示比較する

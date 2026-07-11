@@ -4,7 +4,7 @@
 #include "Game/Blocks/LedgeEdges.h"
 #include "Game/Player.h"
 
-#include "Game/Level/LevelIO.h"
+#include "Framework/Scene/SceneJson.h"
 #include "Game/Level/LevelObjects.h"
 #include "Game/Theme/ThemeRegistry.h"
 
@@ -50,7 +50,7 @@ void LevelPlayScene::LoadInitialLevel()
 {
     const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
     const auto levelPath = exeDir / "Levels" / "new_level.scene";
-    if (NS::Game::Level::LoadLevelFromFile(m_level, levelPath))
+    if (NS::Scene::LoadSceneFromJsonFile(m_level, levelPath))
     {
         m_playerObjectSynthesized = NS::Game::Level::EnsureLevelSeedObjects(m_level);
     }

@@ -2,7 +2,7 @@
 #include "Editor/Undo/DuplicateObjectCommand.h"
 #include "Editor/Undo/PlaceCommand.h"
 #include "Framework/Scene/ObjectRef.h"
-#include "Game/Level/LevelJson.h"
+#include "Framework/Scene/SceneJson.h"
 #include "Game/Level/LevelObjects.h"
 
 #include <gtest/gtest.h>
@@ -78,9 +78,9 @@ TEST(ObjectIdTest, JsonRoundTripPreservesIdsAndCounter)
     const std::uint32_t id1 = level.objects[1].objectId;
     const std::uint32_t counter = level.nextObjectId;
 
-    const std::string text = LevelNs::SerializeLevelToJson(level);
+    const std::string text = SceneNs::SerializeSceneToJson(level);
     SceneNs::SceneData restored;
-    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(restored, text));
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(restored, text));
 
     ASSERT_EQ(restored.objects.size(), 4u);
     EXPECT_EQ(restored.objects[0].objectId, id0);
@@ -88,19 +88,19 @@ TEST(ObjectIdTest, JsonRoundTripPreservesIdsAndCounter)
     EXPECT_EQ(restored.nextObjectId, counter);
 }
 
-TEST(ObjectIdTest, LegacyJsonWithoutIdsGetsAssignedOnLoad)
+TEST(ObjectIdTest, JsonWithoutIdsGetsAssignedOnLoad)
 {
-    // v2 相当の最小 JSON。id と nextObjectId が無い旧ファイルを読むと採番される
-    const std::string legacy = R"({
-        "formatVersion": 2,
+    // id と nextObjectId を欠いた手編集ファイルを読むと採番される
+    const std::string handEdited = R"({
+        "version": 1,
         "objects": [
-            {"transform": {"pos": [0.0, 0.0, 0.0]}, "flags": 1, "components": []},
-            {"transform": {"pos": [1.0, 0.0, 0.0]}, "flags": 1, "components": []}
+            {"position": [0.0, 0.0, 0.0], "components": []},
+            {"position": [1.0, 0.0, 0.0], "components": []}
         ]
     })";
 
     SceneNs::SceneData restored;
-    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(restored, legacy));
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(restored, handEdited));
     ASSERT_EQ(restored.objects.size(), 2u);
     EXPECT_TRUE(AllIdsUniqueAndAssigned(restored));
 }
@@ -195,9 +195,9 @@ TEST(ObjectIdTest, ObjectRefFieldSurvivesJsonRoundTrip)
     level.objects[1].components.push_back(std::move(comp));
 
     const std::uint32_t crc0 = level.ComputeCrc32();
-    const std::string text = LevelNs::SerializeLevelToJson(level);
+    const std::string text = SceneNs::SerializeSceneToJson(level);
     SceneNs::SceneData restored;
-    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(restored, text));
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(restored, text));
 
     EXPECT_EQ(restored.ComputeCrc32(), crc0);
     ASSERT_EQ(restored.objects.size(), 4u);
@@ -221,9 +221,9 @@ TEST(ObjectIdTest, DanglingObjectRefIsPrunedOnLoad)
     comp.fields.push_back(SceneNs::FieldValue{"Target", NS::Scene::ObjectRef{9999u}});
     level.objects[0].components.push_back(std::move(comp));
 
-    const std::string text = LevelNs::SerializeLevelToJson(level);
+    const std::string text = SceneNs::SerializeSceneToJson(level);
     SceneNs::SceneData restored;
-    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(restored, text));
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(restored, text));
 
     ASSERT_EQ(restored.objects.size(), 2u);
     ASSERT_EQ(restored.objects[0].components.size(), 1u);

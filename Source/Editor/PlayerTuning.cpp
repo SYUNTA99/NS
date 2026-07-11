@@ -1,7 +1,7 @@
 #include "Editor/PlayerTuning.h"
 
 #include "Framework/Scene/SceneData.h"
-#include "Game/Level/LevelJson.h"
+#include "Framework/Scene/SceneJson.h"
 
 #pragma warning(push, 0)
 #include "ThirdParty/nlohmann/json.hpp"
@@ -54,7 +54,7 @@ void MergePlayerTuningText(NS::Scene::ObjectData& playerObject, std::string_view
         for (const auto& [name, value] : fieldsIt->items())
         {
             NS::Scene::FieldValue parsed;
-            if (!NS::Game::Level::JsonToFieldValue(name, value, parsed))
+            if (!NS::Scene::JsonToFieldValue(name, value, parsed))
                 continue;
             bool replaced = false;
             for (NS::Scene::FieldValue& field : target->fields)

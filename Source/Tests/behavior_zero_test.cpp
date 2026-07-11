@@ -13,7 +13,7 @@
 #include <Framework/Scene/Components/SphereColliderComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Game/Blocks/BuildPlacedObject.h>
-#include <Game/Level/LevelJson.h>
+#include <Framework/Scene/SceneJson.h>
 #include <Game/Level/LevelObjects.h>
 
 #include <array>
@@ -28,11 +28,11 @@ namespace
     using NS::Game::Blocks::BuildPlacedObject;
     using NS::Game::Blocks::FindComponent;
     using NS::Scene::ComponentData;
-    using NS::Game::Level::DeserializeLevelFromJson;
+    using NS::Scene::DeserializeSceneFromJson;
     using NS::Scene::FieldValue;
     using NS::Scene::SceneData;
     using NS::Scene::ObjectData;
-    using NS::Game::Level::SerializeLevelToJson;
+    using NS::Scene::SerializeSceneToJson;
     using NS::Math::Vector3;
 
     constexpr float kTol = 1e-4f;
@@ -162,7 +162,7 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     src.objects.push_back(NS::Game::Level::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
     SceneData restored;
-    ASSERT_TRUE(DeserializeLevelFromJson(restored, SerializeLevelToJson(src)));
+    ASSERT_TRUE(DeserializeSceneFromJson(restored, SerializeSceneToJson(src)));
     ASSERT_EQ(restored.objects.size(), 2u);
     ASSERT_FALSE(restored.objects[0].components.empty()); // 往復後も新経路の components 駆動を通る
 

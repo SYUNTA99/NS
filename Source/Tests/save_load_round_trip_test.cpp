@@ -1,7 +1,6 @@
 #include "Editor/LevelFilePaths.h"
 #include "Framework/Core/Filesystem.h"
-#include "Game/Level/LevelIO.h"
-#include "Game/Level/LevelJson.h"
+#include "Framework/Scene/SceneJson.h"
 #include "Game/Level/LevelObjects.h"
 
 #include <cstring>
@@ -34,10 +33,10 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
     SceneNs::EnsureUniqueObjectIds(src);
     const auto crc0 = src.ComputeCrc32();
 
-    ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
+    ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
 
     SceneNs::SceneData dst;
-    ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
+    ASSERT_TRUE(SceneNs::LoadSceneFromJsonFile(dst, *path));
     EXPECT_EQ(dst.ComputeCrc32(), crc0);
 }
 
@@ -54,8 +53,8 @@ TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
     SceneNs::SceneData src;
     src.objects.push_back(LevelNs::MakeCellObject(5, 5, 5, 0));
 
-    ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path1));
-    ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path2));
+    ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path1));
+    ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path2));
 
     auto b1 = NS::Core::FileSystem::ReadAllBytes(*path1);
     auto b2 = NS::Core::FileSystem::ReadAllBytes(*path2);
@@ -73,7 +72,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
 
     SceneNs::SceneData src;
     src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
-    ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
+    ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
 
     auto bytes = NS::Core::FileSystem::ReadAllBytes(*path);
     ASSERT_TRUE(bytes.has_value());
@@ -83,7 +82,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(*path, std::span<const std::byte>(*bytes)));
 
     SceneNs::SceneData dst;
-    EXPECT_FALSE(LevelNs::LoadLevelFromFile(dst, *path));
+    EXPECT_FALSE(SceneNs::LoadSceneFromJsonFile(dst, *path));
     EXPECT_TRUE(dst.objects.empty());
 }
 
@@ -97,7 +96,7 @@ TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
     SceneNs::SceneData huge;
     huge.objects.resize(100'001); // 上限 100'000 を 1 件超過させる
 
-    EXPECT_FALSE(LevelNs::SaveLevelToFile(huge, *path));
+    EXPECT_FALSE(SceneNs::SaveSceneToJsonFile(huge, *path));
 }
 
 // material path が 1 件でも上限長を超えるレベルは保存段で false を返す
@@ -111,7 +110,7 @@ TEST(SaveLoadRoundTrip, RejectsOversizedMaterialPathLength)
     SceneNs::SceneData level;
     level.materialPaths.push_back(std::string(1'025u, 'a')); // 上限 1'024 byte を 1 byte 超過
 
-    EXPECT_FALSE(LevelNs::SaveLevelToFile(level, *path));
+    EXPECT_FALSE(SceneNs::SaveSceneToJsonFile(level, *path));
 }
 
 // 型名 + 反射フィールド値 (全 5 変種) を持つコンポ一覧が save→load で復元される (full SSOT の往復)
@@ -142,12 +141,12 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
     src.objects.push_back(LevelNs::MakeFollowCameraObject(src.objects[1].objectId));
     SceneNs::EnsureUniqueObjectIds(src);
 
-    ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
+    ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
 
     SceneNs::SceneData dst;
-    ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
+    ASSERT_TRUE(SceneNs::LoadSceneFromJsonFile(dst, *path));
 
-    EXPECT_EQ(LevelNs::SerializeLevelToJson(dst), LevelNs::SerializeLevelToJson(src));
+    EXPECT_EQ(SceneNs::SerializeSceneToJson(dst), SceneNs::SerializeSceneToJson(src));
 
     ASSERT_EQ(dst.objects.size(), 3u);
     ASSERT_EQ(dst.objects[0].components.size(), 1u);
@@ -229,10 +228,10 @@ TEST(SaveLoadRoundTrip, ObjectsAndMaterialsRoundTrip)
     src.objects.push_back(LevelNs::MakeFollowCameraObject(src.objects[2].objectId));
     SceneNs::EnsureUniqueObjectIds(src);
     const auto crc0 = src.ComputeCrc32();
-    ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
+    ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
 
     SceneNs::SceneData dst;
-    ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
+    ASSERT_TRUE(SceneNs::LoadSceneFromJsonFile(dst, *path));
     EXPECT_EQ(dst.ComputeCrc32(), crc0);
 
     ASSERT_EQ(dst.objects.size(), 4u);
@@ -267,9 +266,9 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
     src.objects.push_back(solid);
     src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
-    ASSERT_TRUE(LevelNs::SaveLevelToFile(src, *path));
+    ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
     SceneNs::SceneData dst;
-    ASSERT_TRUE(LevelNs::LoadLevelFromFile(dst, *path));
+    ASSERT_TRUE(SceneNs::LoadSceneFromJsonFile(dst, *path));
 
     // solid + player
     ASSERT_EQ(dst.objects.size(), 2u);
@@ -295,9 +294,9 @@ TEST(SaveLoadRoundTrip, PlayerObjectRoundTrip)
                                                     NS::Math::Quaternion{0.0f, 0.70710677f, 0.0f, 0.70710677f}));
     SceneNs::EnsureUniqueObjectIds(src);
 
-    const std::string json = LevelNs::SerializeLevelToJson(src);
+    const std::string json = SceneNs::SerializeSceneToJson(src);
     SceneNs::SceneData dst;
-    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json));
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
 
     ASSERT_EQ(dst.objects.size(), 1u);
     const std::size_t playerIndex = LevelNs::FindPlayerObjectIndex(dst);
@@ -347,59 +346,15 @@ TEST(SaveLoadRoundTrip, MultiplePlayersFirstWins)
     src.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{9.0f, 0.0f, 0.0f}, NS::Math::Quaternion{}));
     SceneNs::EnsureUniqueObjectIds(src);
 
-    const std::string json = LevelNs::SerializeLevelToJson(src);
+    const std::string json = SceneNs::SerializeSceneToJson(src);
     SceneNs::SceneData dst;
-    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json));
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
 
     ASSERT_EQ(dst.objects.size(), 2u);
     EXPECT_FALSE(LevelNs::EnsureLevelSeedObjects(dst)); // プレイヤーが居るので合成しない
     const std::size_t playerIndex = LevelNs::FindPlayerObjectIndex(dst);
     ASSERT_EQ(playerIndex, 0u);
     EXPECT_FLOAT_EQ(dst.objects[playerIndex].positionX, 1.0f);
-}
-
-// v3 までの据え置きカメラは別リストだった。 load で PlacedVirtualCamera 持ちの配置物へ変換される
-TEST(SaveLoadRoundTrip, LegacyCameraVolumesMigrateToObjects)
-{
-    const std::string legacyJson = R"({
-        "formatVersion": 3,
-        "objects": [],
-        "cameraVolumes": [
-            {
-                "cameraPosition": [8.0, 4.0, -6.0],
-                "lookTarget": [8.0, 0.0, 0.0],
-                "triggerCenter": [8.0, 1.0, 0.0],
-                "triggerExtent": [2.0, 1.5, 2.0],
-                "priority": 20,
-                "lookAtPlayer": 1
-            }
-        ]
-    })";
-
-    SceneNs::SceneData dst;
-    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, legacyJson));
-
-    ASSERT_EQ(dst.objects.size(), 1u);
-    const SceneNs::ObjectData& camera = dst.objects[0];
-    EXPECT_NE(camera.objectId, 0u); // 移行後の一意化で永続 id も振られる
-    EXPECT_FLOAT_EQ(camera.positionX, 8.0f);
-    EXPECT_FLOAT_EQ(camera.positionY, 4.0f);
-    EXPECT_FLOAT_EQ(camera.positionZ, -6.0f);
-
-    const SceneNs::ComponentData* placed = SceneNs::FindComponentData(camera, "PlacedVirtualCamera");
-    ASSERT_NE(placed, nullptr);
-    const auto* lookTarget = SceneNs::FindField(*placed, "Look Target");
-    ASSERT_NE(lookTarget, nullptr);
-    EXPECT_FLOAT_EQ(std::get<NS::Math::Vector3>(lookTarget->value).x, 8.0f);
-    const auto* priority = SceneNs::FindField(*placed, "Priority");
-    ASSERT_NE(priority, nullptr);
-    EXPECT_EQ(std::get<int>(priority->value), 20);
-    const auto* lookAtPlayer = SceneNs::FindField(*placed, "Look At Player");
-    ASSERT_NE(lookAtPlayer, nullptr);
-    EXPECT_TRUE(std::get<bool>(lookAtPlayer->value));
-    const auto* extent = SceneNs::FindField(*placed, "Trigger Extent");
-    ASSERT_NE(extent, nullptr);
-    EXPECT_FLOAT_EQ(std::get<NS::Math::Vector3>(extent->value).y, 1.5f);
 }
 
 // プレイヤーだけのシーンには読込の門がプレイヤーを追う 1 台を合成し、「必ず 1 台」を保証する
@@ -444,9 +399,9 @@ TEST(SaveLoadRoundTrip, EnvironmentRoundTrip)
     SceneNs::EnsureUniqueObjectIds(src);
     const auto crc0 = src.ComputeCrc32();
 
-    const std::string json = LevelNs::SerializeLevelToJson(src);
+    const std::string json = SceneNs::SerializeSceneToJson(src);
     SceneNs::SceneData dst;
-    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json));
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
 
     EXPECT_FLOAT_EQ(dst.environment.lightDirection.x, 0.5f);
     EXPECT_FLOAT_EQ(dst.environment.lightDirection.y, -0.8f);
@@ -465,14 +420,14 @@ TEST(SaveLoadRoundTrip, EnvironmentRoundTrip)
 TEST(SaveLoadRoundTrip, EnvironmentPartialKeysKeepNeutralDefaults)
 {
     const std::string json = R"({
-        "formatVersion": 7,
+        "version": 1,
         "objects": [],
-        "materialPaths": [],
+        "materials": [],
         "environment": { "lightColor": [0.5, 0.6, 0.7] }
     })";
 
     SceneNs::SceneData dst;
-    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json));
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
 
     EXPECT_FLOAT_EQ(dst.environment.lightColor.x, 0.5f);
     EXPECT_FLOAT_EQ(dst.environment.lightColor.y, 0.6f);
@@ -495,9 +450,9 @@ TEST(SaveLoadRoundTrip, FollowCameraObjectRoundTrip)
     SceneNs::EnsureUniqueObjectIds(src);
     const auto crc0 = src.ComputeCrc32();
 
-    const std::string json = LevelNs::SerializeLevelToJson(src);
+    const std::string json = SceneNs::SerializeSceneToJson(src);
     SceneNs::SceneData dst;
-    ASSERT_TRUE(LevelNs::DeserializeLevelFromJson(dst, json));
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
 
     ASSERT_EQ(dst.objects.size(), 2u);
     EXPECT_EQ(dst.ComputeCrc32(), crc0);
