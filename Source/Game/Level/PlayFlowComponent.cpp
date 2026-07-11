@@ -8,24 +8,11 @@
 
 namespace NS::Game::Level
 {
-    LevelPlayScene* PlayFlowComponent::OwnerScene() noexcept
-    {
-        if (m_scene == nullptr && Owner() != nullptr)
-            m_scene = dynamic_cast<LevelPlayScene*>(Owner()->OwningScene());
-        return m_scene;
-    }
-
     ClearFadeComponent* PlayFlowComponent::FadeComp() noexcept
     {
         if (m_fade == nullptr && Owner() != nullptr)
             m_fade = Owner()->FindComponent<ClearFadeComponent>();
         return m_fade;
-    }
-
-    void PlayFlowComponent::OnStart()
-    {
-        // 進行のたびに引き直さないよう scene をここで解決して控える
-        static_cast<void>(OwnerScene());
     }
 
     void PlayFlowComponent::EnterPlay() noexcept
@@ -45,8 +32,8 @@ namespace NS::Game::Level
             player->Movement().ResetState();
         }
         // 追従カメラは world のカメラ配置物。 プレイの間だけ起こす
-        for (auto* follow : scene->World().FollowCameras())
-            follow->SetActive(true);
+        scene->World().ForEachComponent<NS::Scene::ThirdPersonFollowComponent>(
+            [](NS::Scene::ThirdPersonFollowComponent& follow) { follow.SetActive(true); });
 
         // プレイ突入はカーソルを消し、 マウスを相対モードにして視点操作をカーソル位置から切り離す
         // Esc で出すまで非表示のまま
@@ -87,10 +74,10 @@ namespace NS::Game::Level
             }
             player->Root().Snapshot();
         }
-        for (auto* follow : scene->World().FollowCameras())
-            follow->SetActive(false);
-        for (auto* placed : scene->World().PlacedCameras())
-            placed->SetActive(false);
+        scene->World().ForEachComponent<NS::Scene::ThirdPersonFollowComponent>(
+            [](NS::Scene::ThirdPersonFollowComponent& follow) { follow.SetActive(false); });
+        scene->World().ForEachComponent<NS::Scene::PlacedVirtualCamera>(
+            [](NS::Scene::PlacedVirtualCamera& placed) { placed.SetActive(false); });
 
         // 編集モードはカーソルを出し、 相対モードも解いてカーソル位置ベースの操作へ戻す
         if (auto* app = NS::App::Application::Get())
@@ -165,8 +152,8 @@ namespace NS::Game::Level
             fade->Advance(dt);
             if (auto* player = scene->PlayerRef())
                 player->Root().Snapshot();
-            for (auto* follow : scene->World().FollowCameras())
-                follow->OnUpdate();
+            scene->World().ForEachComponent<NS::Scene::ThirdPersonFollowComponent>(
+                [](NS::Scene::ThirdPersonFollowComponent& follow) { follow.OnUpdate(); });
             return;
         }
 
@@ -198,22 +185,18 @@ namespace NS::Game::Level
             playerCapsule.center = player->Root().Position();
             playerCapsule.radius = player->Movement().CapsuleRadius();
             playerCapsule.halfHeight = player->Movement().CapsuleHalfHeight();
-            for (auto* hazard : scene->World().HazardView())
-            {
-                if (!hazard)
-                    continue;
-                // damage は衝突応答とは別経路の per-frame overlap なので collider と hazard を component で引く
-                auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*hazard);
-                auto* damage = NS::Game::Blocks::FindComponent<NS::Scene::HazardComponent>(*hazard);
-                if (box && damage && NS::Physics::IntersectsCapsuleAabb(playerCapsule, box->WorldAABB()))
+            // damage は衝突応答とは別経路の per-frame overlap なので、 hazard を型で訪ねて collider を引く
+            scene->World().ForEachComponent<NS::Scene::HazardComponent>([&](NS::Scene::HazardComponent& damage) {
+                auto* box = NS::Game::Blocks::FindComponent<NS::Scene::BoxColliderComponent>(*damage.Owner());
+                if (box && NS::Physics::IntersectsCapsuleAabb(playerCapsule, box->WorldAABB()))
                     NS::Game::Level::ApplyContactDamage(m_play);
-            }
+            });
         }
 
         // area camera: 各 vcam が自分のトリガ AABB でプレイヤー進入を判定し、自分を active 化する
         // active / 解除の切替は Brain が優先度で選びブレンドする
-        for (auto* placed : scene->World().PlacedCameras())
-            placed->UpdateActivation(m_play.playerPosition);
+        scene->World().ForEachComponent<NS::Scene::PlacedVirtualCamera>(
+            [this](NS::Scene::PlacedVirtualCamera& placed) { placed.UpdateActivation(m_play.playerPosition); });
 
         // 落下死は即リスタート、 ゴール接触は暗転で仕切り直してループを閉じる。 エディタ / 出荷で挙動は同一で、
         // どちらも RestartLevel が spawn へ戻し health / coin / flag を全リセットするのでループが続く
@@ -231,8 +214,8 @@ namespace NS::Game::Level
         if (auto* player = scene->PlayerRef())
             player->Root().Snapshot();
         // 追従の spring は player 確定後に進める。 camera 配置物の Root Snapshot は scene が毎フレーム面倒を見る
-        for (auto* follow : scene->World().FollowCameras())
-            follow->OnUpdate();
+        scene->World().ForEachComponent<NS::Scene::ThirdPersonFollowComponent>(
+            [](NS::Scene::ThirdPersonFollowComponent& follow) { follow.OnUpdate(); });
     }
 
 } // namespace NS::Game::Level

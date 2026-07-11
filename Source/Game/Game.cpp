@@ -22,11 +22,14 @@ void Game::OnAttach()
     NS::Game::Theme::LoadThemesFromDirectory(NS::Core::FileSystem::ContentRoot() / "Assets" / "Themes");
 
     // scene は出荷 / 開発とも LevelPlayScene の 1 種類だけ。 編集機能は overlay の EditorLayer が乗せる
-    m_scenes.LoadScene(std::make_unique<LevelPlayScene>());
+    auto playScene = std::make_unique<LevelPlayScene>();
+    m_playScene = playScene.get();
+    m_scenes.LoadScene(std::move(playScene));
 }
 
 void Game::OnDetach()
 {
+    m_playScene = nullptr;
     m_scenes.LoadScene(nullptr);
 }
 
@@ -42,6 +45,9 @@ void Game::OnRender()
 
 LevelPlayScene* Game::CurrentPlayScene() noexcept
 {
-    // 別の SceneBase 派生が load されても未定義動作にせず nullptr へ倒すため検査付きの動的キャストを使う
-    return dynamic_cast<LevelPlayScene*>(m_scenes.Current());
+    // 自分で載せた 1 体が現役かを識別で照合する。 別 scene に差し替わっていれば nullptr へ倒れ、
+    // 実行時型情報に頼らず型付きの控えを安全に返せる
+    if (m_scenes.Current() == m_playScene)
+        return m_playScene;
+    return nullptr;
 }

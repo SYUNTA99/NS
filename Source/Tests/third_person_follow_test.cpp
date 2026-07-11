@@ -25,7 +25,8 @@ TEST_F(ThirdPersonFollowTest, ConstructsWithNullTarget)
 {
     ThirdPersonFollowComponent follow(nullptr);
     EXPECT_EQ(follow.Target(), nullptr);
-    EXPECT_TRUE(follow.IsActive());
+    // 休止で生まれるのが契約。起こすのはプレイ進行役
+    EXPECT_FALSE(follow.IsActive());
 }
 
 TEST_F(ThirdPersonFollowTest, OnUpdateRunsWhenActive)

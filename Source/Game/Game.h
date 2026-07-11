@@ -7,7 +7,6 @@
 /// 現時点では SceneManager へのパス・スルーのみだが、
 /// クロス scene の共有状態として設定 / セーブデータを持つ場所になる
 
-
 class LevelPlayScene;
 
 class Game : public NS::App::Layer
@@ -26,8 +25,8 @@ public:
     void OnUpdate() override;
     void OnRender() override;
 
-    /// 現在 active な scene を play scene として返す。 boot scene は常に LevelPlayScene か派生なので
-    /// 出荷 / 開発の両 build で使える。 scene 未 load なら nullptr
+    /// 現在 active な scene を play scene として返す。 自分で載せた LevelPlayScene が現役の間だけ
+    /// 実体を返し、 未 load / 別 scene への差し替え後は nullptr
     [[nodiscard]] LevelPlayScene* CurrentPlayScene() noexcept;
 
     /// プロセス内の単一インスタンス取得。 Application は Layer を型不知で保持するため、
@@ -36,5 +35,9 @@ public:
 
 private:
     NS::Scene::SceneManager m_scenes;
+
+    // 自分で載せた play scene の型付き控え。 所有は m_scenes 側で、 現役かどうかは識別で照合する
+    LevelPlayScene* m_playScene = nullptr;
+
     static Game* s_instance;
 };

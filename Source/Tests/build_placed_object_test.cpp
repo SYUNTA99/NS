@@ -328,8 +328,9 @@ TEST_F(BuildPlacedObjectTest, PlayerObjectBuildsDormantPlayerTyped)
 {
     auto obj = Build(NS::Game::Level::MakePlayerObject(Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
     ASSERT_NE(obj, nullptr);
-    auto* player = dynamic_cast<Player*>(obj.get());
-    ASSERT_NE(player, nullptr);
+    // IsPlayerObject のデータは Player の器で組まれる約束 (BuildPlacedObject の型選択)
+    // 実行時型情報は切っているため、約束を前提に器の API で振る舞いを確かめる
+    auto* player = static_cast<Player*>(obj.get());
 
     // ctor の既定構成へ data の値が写り、 同型の二重生成は起きない
     EXPECT_EQ(player->Components().size(), 4u);
@@ -353,8 +354,7 @@ TEST_F(BuildPlacedObjectTest, PlayerObjectAppliesDataValuesToComponents)
 
     auto obj = Build(data);
     ASSERT_NE(obj, nullptr);
-    auto* player = dynamic_cast<Player*>(obj.get());
-    ASSERT_NE(player, nullptr);
+    auto* player = static_cast<Player*>(obj.get());
     EXPECT_FLOAT_EQ(player->Movement().MaxSpeed(), 11.0f);
 }
 
@@ -373,7 +373,7 @@ TEST_F(BuildPlacedObjectTest, DuplicateColliderDataBuildsCompoundColliders)
 
     std::vector<NS::Scene::BoxColliderComponent*> boxes;
     for (NS::Scene::Component* comp : obj->Components())
-        if (auto* box = dynamic_cast<NS::Scene::BoxColliderComponent*>(comp))
+        if (auto* box = NS::Scene::ComponentCast<NS::Scene::BoxColliderComponent>(comp))
             boxes.push_back(box);
     ASSERT_EQ(boxes.size(), 2u);
     EXPECT_FLOAT_EQ(boxes[0]->HalfExtents().x, 1.0f);

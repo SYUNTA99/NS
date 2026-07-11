@@ -46,11 +46,14 @@ TEST(SceneSwap, LevelPlaySceneSwapsIntoNewSceneType)
     manager.Update();
 
     std::string log;
-    manager.LoadScene(std::make_unique<DummyTitleScene>(&log));
+    auto title = std::make_unique<DummyTitleScene>(&log);
+    auto* titlePtr = title.get();
+    manager.LoadScene(std::move(title));
     manager.Update();
 
     EXPECT_EQ(log, "Start;Update;");
-    EXPECT_NE(dynamic_cast<DummyTitleScene*>(manager.Current()), nullptr);
+    // 実行時型情報は切っているため、載せた実体そのものが現役かを識別で確かめる
+    EXPECT_EQ(manager.Current(), titlePtr);
 }
 
 TEST(SceneSwap, SwapBackReturnsWorkingLevelPlayScene)
@@ -59,11 +62,12 @@ TEST(SceneSwap, SwapBackReturnsWorkingLevelPlayScene)
     std::string log;
     manager.LoadScene(std::make_unique<DummyTitleScene>(&log));
 
-    manager.LoadScene(std::make_unique<LevelPlayScene>());
+    auto play = std::make_unique<LevelPlayScene>();
+    auto* scene = play.get();
+    manager.LoadScene(std::move(play));
 
     EXPECT_EQ(log, "Start;Shutdown;");
-    auto* scene = dynamic_cast<LevelPlayScene*>(manager.Current());
-    ASSERT_NE(scene, nullptr);
+    ASSERT_EQ(manager.Current(), scene);
 
     // 差し替え後の実シーンが器として生きていることをプレイ突入で確かめる
     scene->Director().Flow().EnterPlay();

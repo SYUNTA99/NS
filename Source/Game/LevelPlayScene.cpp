@@ -4,6 +4,7 @@
 #include "Game/Blocks/LedgeEdges.h"
 #include "Game/Player.h"
 
+#include "Framework/Scene/Components/VirtualCameraComponent.h"
 #include "Framework/Scene/SceneJson.h"
 #include "Game/Level/LevelObjects.h"
 #include "Game/Theme/ThemeRegistry.h"
@@ -42,6 +43,9 @@ LevelPlayScene::LevelPlayScene()
     // 進行役は OnStart を待たず生成する。 起動前でも editor / テストがプレイ切替と PlayState 参照を回せる
     m_director = std::make_unique<NS::Game::Level::PlayDirector>();
     m_director->AttachScene(this);
+    // 進行役の component は所有 scene を型付きで知る必要がある。 実行時型情報は使わないためここで注入する
+    m_director->Flow().SetScene(this);
+    m_director->Fade().SetScene(this);
 }
 
 LevelPlayScene::~LevelPlayScene() = default;
@@ -270,13 +274,14 @@ void LevelPlayScene::OnShutdown()
     if (cameras != nullptr)
         brain = cameras->Brain();
     if (brain != nullptr)
-        for (auto* vcam : m_world.VirtualCameras())
-            brain->RemoveVirtualCamera(vcam);
+        m_world.ForEachComponent<NS::Scene::VirtualCameraComponent>(
+            [brain](NS::Scene::VirtualCameraComponent& vcam) { brain->RemoveVirtualCamera(&vcam); });
     // 参照照合窓口も world より先に空へ戻し、 畳み中の解決に宙参照を返さない
     if (auto* refs = GetSubsystem<NS::Scene::ObjectRefSubsystem>())
         refs->Clear();
-    // 配置物はプレイヤー込みで逆順の OnEndPlay ごと LevelWorld が畳む。 実カメラ + Brain は CameraSubsystem が畳む
+    // 配置物はプレイヤー込みで逆順の OnEndPlay ごと SceneWorld が畳む。 実カメラ + Brain は CameraSubsystem が畳む
     m_world.Clear();
+    m_playerRef = nullptr;
 }
 
 void LevelPlayScene::RebuildWorld()
@@ -287,19 +292,47 @@ void LevelPlayScene::RebuildWorld()
     if (cameras != nullptr)
         brain = cameras->Brain();
     if (brain != nullptr)
-        for (auto* vcam : m_world.VirtualCameras())
-            brain->RemoveVirtualCamera(vcam);
+        m_world.ForEachComponent<NS::Scene::VirtualCameraComponent>(
+            [brain](NS::Scene::VirtualCameraComponent& vcam) { brain->RemoveVirtualCamera(&vcam); });
 
-    // 構築は LevelWorld の一本道で、 参照照合窓口の張り替えとプレイヤーの組み立てもここに含む
-    // app 不在の起動前 / テストでは assets を渡さず何も組まない
+    // 構築は SceneWorld の一本道で、 参照照合窓口の張り替えとプレイヤーの組み立てもここに含む
+    // 配置物 1 件の組み方はゲームの知識なので、 ファクトリとしてここから渡す
+    // app 不在の起動前 / テストではファクトリを渡さず何も組まない
     auto* app = NS::App::Application::Get();
-    NS::Scene::AssetManager* assets = nullptr;
+    NS::Scene::ObjectFactoryFn factory;
     if (app != nullptr)
-        assets = &app->Assets();
-    m_world.Rebuild(m_level, *this, Physics(), assets);
+    {
+        NS::Scene::AssetManager& assets = app->Assets();
+        factory = [&assets, this](const NS::Scene::ObjectData& entry) {
+            return NS::Game::Blocks::BuildPlacedObject(entry, assets, m_level.materialPaths);
+        };
+    }
+    m_world.Rebuild(m_level, *this, Physics(), factory);
+
+    // 実体プレイヤーの控えはここで取り直す。 組み直し口はこの 1 箇所だけで、 古い控えが残る隙間は無い
+    // どれがプレイヤーかはデータが決め、 実体はカメラの Target と同じく参照照合窓口が id から引く
+    m_playerRef = nullptr;
+    const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(m_level);
+    auto* refs = GetSubsystem<NS::Scene::ObjectRefSubsystem>();
+    if (playerIndex != NS::Scene::kNoObjectIndex && refs != nullptr)
+    {
+        // IsPlayerObject のデータは BuildPlacedObject が必ず Player の器で組むため static_cast で足りる
+        m_playerRef = static_cast<Player*>(refs->Resolve(NS::Scene::ObjectRef{m_level.objects[playerIndex].objectId}));
+    }
+
+    // 接地シャドウは各配置物の内包 AABB を下方向 ray で拾う。 blob なので OBB 精度は要らない
+    if (m_playerRef != nullptr)
+    {
+        std::vector<NS::Math::AABB> shadowReceivers;
+        shadowReceivers.reserve(m_world.Objects().size());
+        for (auto& obj : m_world.Objects())
+            if (auto aabb = NS::Game::Blocks::ColliderWorldAABB(*obj))
+                shadowReceivers.push_back(*aabb);
+        m_playerRef->Shadow().SetCollisionWorld(shadowReceivers);
+    }
 
     // 組み直しで生まれたカメラ配置物を Brain へ登録し直す。 追従と据え置きの両方が載る
     if (brain != nullptr)
-        for (auto* vcam : m_world.VirtualCameras())
-            brain->AddVirtualCamera(vcam);
+        m_world.ForEachComponent<NS::Scene::VirtualCameraComponent>(
+            [brain](NS::Scene::VirtualCameraComponent& vcam) { brain->AddVirtualCamera(&vcam); });
 }

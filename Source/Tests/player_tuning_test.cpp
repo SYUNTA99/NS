@@ -1,12 +1,12 @@
 #include <gtest/gtest.h>
 
+#include <Editor/PlayerTuning.h>
 #include <Framework/Scene/AssetManager.h>
 #include <Framework/Scene/Component.h>
 #include <Framework/Scene/ComponentRegistry.h>
 #include <Framework/Scene/Components/SphereColliderComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/ReflectionJson.h>
-#include <Editor/PlayerTuning.h>
 #include <Game/Blocks/BuildPlacedObject.h>
 #include <Game/Level/LevelObjects.h>
 #include <Game/Player.h>
@@ -91,8 +91,8 @@ TEST(PlayerTuningTest, TunedValuesReachBuiltPlayer)
 
     auto obj = BuildPlayer(data);
     ASSERT_NE(obj, nullptr);
-    auto* player = dynamic_cast<Player*>(obj.get());
-    ASSERT_NE(player, nullptr);
+    // プレイヤーのデータは Player の器で組まれる約束。実行時型情報は切っているため約束を前提に読む
+    auto* player = static_cast<Player*>(obj.get());
 
     // 既存の同型へ値だけ写り、構成は増えない
     EXPECT_EQ(player->Components().size(), kDefaultComponentCount);

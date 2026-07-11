@@ -1,8 +1,6 @@
 #include "Editor/InspectorReflection.h"
 
-
 #include <climits>
-#include <typeinfo>
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -13,21 +11,12 @@ namespace NS::Editor
 #if NS_EDITOR_ENABLED
     namespace
     {
-        // 見出しに使う型名。反射があればその typeName、無ければ RTTI 名から名前空間を剥がして使う
-        // typeid はエディタ build 限定のここでしか触らないので、出荷ビルドへ RTTI 依存が漏れない
-        const char* DisplayTypeName(const NS::Scene::Component& comp, const NS::Scene::ReflectionInfo* info) noexcept
+        // 見出しに使う型名。実行時型情報はビルド設定で切っているため、反射の無い component は総称で出す
+        const char* DisplayTypeName(const NS::Scene::ReflectionInfo* info) noexcept
         {
             if (info != nullptr)
                 return info->typeName;
-
-            const char* raw = typeid(comp).name(); // MSVC は "class NS::Scene::HazardComponent" を返す
-            const char* name = raw;
-            for (const char* p = raw; *p != '\0'; ++p)
-            {
-                if (p[0] == ':' && p[1] == ':')
-                    name = p + 2;
-            }
-            return name;
+            return "Component";
         }
     } // namespace
 
@@ -184,7 +173,7 @@ namespace NS::Editor
             ImGuiTreeNodeFlags flags = 0;
             if (info != nullptr)
                 flags = ImGuiTreeNodeFlags_DefaultOpen;
-            if (ImGui::CollapsingHeader(DisplayTypeName(*comp, info), flags))
+            if (ImGui::CollapsingHeader(DisplayTypeName(info), flags))
             {
                 if (info != nullptr)
                 {

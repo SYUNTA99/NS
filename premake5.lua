@@ -116,6 +116,9 @@ objdir_base = "build/obj/" .. outputdir
 local function applyCommonBuildOptions()
     warnings "Extra"
     -- flags { "FatalWarnings" }  -- build 安定後に有効化
+    -- 実行時型情報は使わない方針。 /GR- で切り、 dynamic_cast / 多態 typeid の使用 (C4541) は error で弾く
+    rtti "Off"
+    fatalwarnings { "4541" }
     buildoptions { "/utf-8", "/permissive-", "/FS" }
     linkoptions { "/ignore:4006" }
 end
@@ -806,6 +809,8 @@ project "googletest"
 
     -- Google Testの警告を無視
     warnings "Off"
+    -- Tests 側 (/GR-) と実行時型情報の有無を揃え、 header と lib で経路が食い違わないようにする
+    rtti "Off"
     buildoptions { "/utf-8", "/FS" }
 
 --============================================================================

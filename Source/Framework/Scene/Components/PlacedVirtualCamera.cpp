@@ -8,7 +8,10 @@
 namespace NS::Scene
 {
     PlacedVirtualCamera::PlacedVirtualCamera() noexcept : VirtualCameraComponent(static_cast<int>(TickPriority::Camera))
-    {}
+    {
+        // エリア外の休止で生まれる。 起こすのは進入判定 UpdateActivation 自身
+        SetActive(false);
+    }
 
     void PlacedVirtualCamera::SetView(const NS::Math::Vector3& position, const NS::Math::Vector3& target) noexcept
     {

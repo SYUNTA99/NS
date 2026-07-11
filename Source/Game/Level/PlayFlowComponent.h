@@ -3,8 +3,8 @@
 /// @file PlayFlowComponent.h
 /// @brief プレイ進行の本体。 PlayState / PlayMode を所有し fixed step の進行を駆動する
 ///
-/// @details 依存はコンストラクタで受け取らず、 所有 GameObject の scene を LevelPlayScene として
-/// 解決して player / camera / level を読む。 編集モード中は SetActive(false) で寝かせて止める
+/// @details scene は所有側 LevelPlayScene が生成時に SetScene で注入し、 そこから
+/// player / camera / level を読む。 編集モード中は SetActive(false) で寝かせて止める
 
 #include "Game/Level/PlayMode.h"
 #include "Game/Level/PlayState.h"
@@ -37,15 +37,17 @@ namespace NS::Game::Level
         /// 入力とカーソルは OnUpdate 側が扱うため、 Application 不在でも進められる
         void Tick(float dt);
 
-        void OnStart() override;
+        /// 所有 scene を注入する。 進行役を生成する LevelPlayScene 自身が呼ぶ
+        void SetScene(LevelPlayScene* scene) noexcept { m_scene = scene; }
+
         void OnUpdate() override;
 
         // 進行状態は保存しない。live の型検索が反射照合で引けるよう型名だけ登録する
         NS_REFLECT_NONE(PlayFlowComponent, NS::Scene::Component)
 
     private:
-        /// 所有 scene を LevelPlayScene として返す。 未 attach なら nullptr。 初回参照で解決して控える
-        [[nodiscard]] LevelPlayScene* OwnerScene() noexcept;
+        /// 所有 scene。 注入前は nullptr
+        [[nodiscard]] LevelPlayScene* OwnerScene() noexcept { return m_scene; }
 
         /// 同じ進行役に載る暗転 Component を返す。 無ければ nullptr。 初回参照で解決して控える
         [[nodiscard]] ClearFadeComponent* FadeComp() noexcept;

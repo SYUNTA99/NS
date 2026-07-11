@@ -29,7 +29,10 @@ namespace NS::Scene
 
     ThirdPersonFollowComponent::ThirdPersonFollowComponent(Transform* target) noexcept
         : VirtualCameraComponent(static_cast<int>(NS::Scene::TickPriority::Camera)), m_target(target)
-    {}
+    {
+        // 休止で生まれ、 起こすのはプレイ突入の進行役。 編集中は free-fly が主役のまま
+        SetActive(false);
+    }
 
     void ThirdPersonFollowComponent::SetTarget(Transform* target) noexcept
     {

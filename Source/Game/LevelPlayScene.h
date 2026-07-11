@@ -6,13 +6,13 @@
 /// @details 永続の SceneData を value member で保有し、 一時の PlayState とルールの PlayMode は
 /// 進行役 PlayDirector 配下の PlayFlowComponent が所有する。 scene 自身は
 /// world の組み直しの号令と描画統括を担う。 実カメラ + Brain は CameraSubsystem が、
-/// プレイヤー / 追従 / 据え置きカメラを含む全配置物は LevelWorld が所有する
+/// プレイヤー / 追従 / 据え置きカメラを含む全配置物は SceneWorld が所有する
 /// 出荷 / 開発ともこの 1 種類だけを起動 scene に使う。 cursor / palette / ギズモ /
 /// free-fly カメラ / モード切替の編集は scene の外側、 `LevelEditorController` が公開 API と
 /// SceneData 経由で本 scene を操作して実現する。 scene 自身は「編集されている」ことを知らない
 
 #include "Framework/Scene/SceneData.h"
-#include "Game/Level/LevelWorld.h"
+#include "Framework/Scene/SceneWorld.h"
 #include "Game/Level/PlayDirector.h"
 
 namespace NS::Scene
@@ -47,13 +47,13 @@ public:
     [[nodiscard]] NS::Game::Level::PlayDirector& Director() noexcept { return *m_director; }
 
     /// SceneData から組まれた runtime world。 editor の選択 / gizmo と描画がここから観測する
-    [[nodiscard]] NS::Game::Level::LevelWorld& World() noexcept { return m_world; }
+    [[nodiscard]] NS::Scene::SceneWorld& World() noexcept { return m_world; }
 
     // brain / 実カメラの公開アクセサは持たない。 外の消費者は CameraSubsystem 経由で引く
-    // 据え置き / 追従カメラは通常の配置物として LevelWorld が所有し、 World() の走査 view が返す
+    // 据え置き / 追従カメラは通常の配置物として SceneWorld が所有し、 読み手は World() へ型で問い合わせる
 
-    /// 実体プレイヤー。 world が player object から組む。 起動前と player object の無い level では nullptr
-    [[nodiscard]] Player* PlayerRef() noexcept { return m_world.PlayerView(); }
+    /// 実体プレイヤー。 world の組み直しごとに控え直す。 起動前と player object の無い level では nullptr
+    [[nodiscard]] Player* PlayerRef() noexcept { return m_playerRef; }
 
     /// runtime world と衝突世界を SceneData から組み直す。 レベル編集後とプレイ突入時に呼ぶ
     /// 据え置きカメラの Brain 登録もここで面倒を見る。 Brain 構築前の OnStart 序盤は登録しない
@@ -77,9 +77,12 @@ private:
     // scene は使う箇所で都度引く。 メンバとして控えず単一所有元は AssetManager のみ
     // skybox 装置と scene 段解決値の控えは EnvironmentSubsystem が持ち、 scene は毎フレーム設定を書くだけ
 
-    // SceneData から組んだ runtime world。 配置物 / instanced 描画キャッシュ / hazard view を所有する
+    // SceneData から組んだ runtime world。 全配置物を generic に所有し、 型付きの控えは持たない
     // 実カメラ + Brain は CameraSubsystem が、 プレイヤー / 追従 / 据え置きカメラは world が配置物として所有する
-    NS::Game::Level::LevelWorld m_world;
+    NS::Scene::SceneWorld m_world;
+
+    // 実体プレイヤーの控え。 唯一の組み直し口 RebuildWorld で取り直し、 world を畳む時に null へ戻す
+    Player* m_playerRef = nullptr;
 
     NS::Scene::SceneData m_level{};
 

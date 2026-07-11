@@ -5,11 +5,14 @@
 ///
 /// @details 暗転 Out → 全黒でリスタート → 明転 In → None の一方向で進み、 進行中の再開始は無視する
 /// 進行は PlayFlowComponent が dt を渡して駆動し、 描画は scene の Overlay 描画から呼び戻される
+/// scene は所有側 LevelPlayScene が生成時に SetScene で注入する
 
 namespace NS::Graphics
 {
     class ScreenFade;
 } // namespace NS::Graphics
+
+class LevelPlayScene;
 
 namespace NS::Game::Level
 {
@@ -25,6 +28,9 @@ namespace NS::Game::Level
         // ScreenFade を前方宣言のまま unique_ptr で持つため、 ctor / dtor は cpp 側で定義する
         ClearFadeComponent() noexcept;
         ~ClearFadeComponent() noexcept override;
+
+        /// 所有 scene を注入する。 進行役を生成する LevelPlayScene 自身が呼ぶ
+        void SetScene(::LevelPlayScene* scene) noexcept { m_scene = scene; }
 
         /// 暗転を開始する。 進行中の再呼び出しは無視する
         void Begin() noexcept;
@@ -61,6 +67,9 @@ namespace NS::Game::Level
             Out,
             In
         };
+
+        // 所有 scene。 全黒到達時のプレイヤー姿勢の写しに使う。 注入前は nullptr
+        ::LevelPlayScene* m_scene = nullptr;
 
         Stage m_stage = Stage::None;
         // 現在の暗転段階の経過秒。 段階の開始ごとに 0 へ戻す

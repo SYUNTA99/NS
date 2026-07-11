@@ -71,12 +71,9 @@ namespace NS::Game::Level
                     flow = owner->FindComponent<PlayFlowComponent>();
                 if (flow != nullptr)
                     flow->RestartLevel();
-                LevelPlayScene* scene = nullptr;
-                if (owner != nullptr)
-                    scene = dynamic_cast<LevelPlayScene*>(owner->OwningScene());
-                if (scene != nullptr)
+                if (m_scene != nullptr)
                 {
-                    if (auto* player = scene->PlayerRef())
+                    if (auto* player = m_scene->PlayerRef())
                         player->Root().Snapshot();
                 }
                 m_stage = Stage::In;

@@ -4,28 +4,49 @@
 #include <Framework/Scene/AssetManager.h>
 #include <Framework/Scene/Components/PlacedVirtualCamera.h>
 #include <Framework/Scene/Components/ThirdPersonFollowComponent.h>
+#include <Framework/Scene/Components/VirtualCameraComponent.h>
 #include <Framework/Scene/GameObject.h>
 #include <Framework/Scene/ObjectRefSubsystem.h>
 #include <Framework/Scene/SceneBase.h>
+#include <Framework/Scene/SceneWorld.h>
+#include <Game/Blocks/BuildPlacedObject.h>
 #include <Game/Level/LevelObjects.h>
-#include <Game/Level/LevelWorld.h>
 #include <Game/Player.h>
 
 #include <filesystem>
 #include <utility>
+#include <vector>
 
 using NS::Scene::SceneData;
-using NS::Game::Level::LevelWorld;
+using NS::Scene::SceneWorld;
 
-TEST(LevelWorldTest, InitialStateIsEmpty)
+namespace
 {
-    LevelWorld world;
+    // world は型付き控えを持たないので、テストも本番の読み手と同じ問い合わせ口から集める
+    template <class T> std::vector<T*> Collect(const SceneWorld& world)
+    {
+        std::vector<T*> result;
+        world.ForEachComponent<T>([&result](T& comp) { result.push_back(&comp); });
+        return result;
+    }
+
+    // 本番 LevelPlayScene と同じ組み方: ゲームのファクトリを SceneWorld へ渡す
+    NS::Scene::ObjectFactoryFn MakeFactory(NS::Scene::AssetManager& assets, const SceneData& level)
+    {
+        return [&assets, &level](const NS::Scene::ObjectData& entry) {
+            return NS::Game::Blocks::BuildPlacedObject(entry, assets, level.materialPaths);
+        };
+    }
+} // namespace
+
+TEST(SceneWorldTest, InitialStateIsEmpty)
+{
+    SceneWorld world;
     EXPECT_TRUE(world.Objects().empty());
     EXPECT_TRUE(world.SourceIndices().empty());
-    EXPECT_TRUE(world.HazardView().empty());
 }
 
-TEST(LevelWorldTest, RebuildClearsStalePhysicsAndBuildsNothingWithoutAssets)
+TEST(SceneWorldTest, RebuildClearsStalePhysicsAndBuildsNothingWithoutFactory)
 {
     NS::Scene::SceneBase scene;
     NS::Physics::PhysicsWorld physics;
@@ -34,54 +55,53 @@ TEST(LevelWorldTest, RebuildClearsStalePhysicsAndBuildsNothingWithoutAssets)
     physics.BuildBroadphase();
     ASSERT_FALSE(physics.IsEmpty());
 
-    LevelWorld world;
+    SceneWorld world;
     const SceneData level{};
     world.Rebuild(level, scene, physics, nullptr);
 
     EXPECT_TRUE(physics.IsEmpty());
     EXPECT_TRUE(world.Objects().empty());
-    EXPECT_TRUE(world.HazardView().empty());
 }
 
-TEST(LevelWorldTest, ClearEmptiesEverything)
+TEST(SceneWorldTest, ClearEmptiesEverything)
 {
-    LevelWorld world;
+    SceneWorld world;
     world.Clear();
     EXPECT_TRUE(world.Objects().empty());
     EXPECT_TRUE(world.SourceIndices().empty());
-    EXPECT_TRUE(world.HazardView().empty());
-    EXPECT_TRUE(world.PlacedCameras().empty());
-    EXPECT_TRUE(world.FollowCameras().empty());
-    EXPECT_TRUE(world.VirtualCameras().empty());
 }
 
-// プレイヤー実体も他の配置物と同じ一本道で組まれ、 型付き view から引ける
-TEST(LevelWorldTest, RebuildBuildsPlayerAndExposesView)
+// プレイヤー実体も他の配置物と同じ一本道で組まれ、 データが決めた id の解決で実体が引ける
+TEST(SceneWorldTest, RebuildBuildsPlayerAndResolvesItById)
 {
     SceneData level;
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0, 0));
     level.objects.push_back(
         NS::Game::Level::MakePlayerObject(NS::Math::Vector3{0.0f, 1.41f, 0.0f}, NS::Math::Quaternion{}));
+    NS::Scene::EnsureUniqueObjectIds(level);
 
     NS::Scene::SceneBase scene;
+    scene.CreateSceneSubsystems();
     NS::Physics::PhysicsWorld physics;
     NS::Scene::AssetManager assets{std::filesystem::path{"."}};
-    LevelWorld world;
-    world.Rebuild(level, scene, physics, &assets);
+    SceneWorld world;
+    world.Rebuild(level, scene, physics, MakeFactory(assets, level));
 
-    // grid block とプレイヤーの両方が組まれ、 view は所有リスト内の実体を指す
+    // grid block とプレイヤーの両方が組まれ、 id 解決は所有リスト内の実体を指す
     ASSERT_EQ(world.Objects().size(), 2u);
-    ASSERT_NE(world.PlayerView(), nullptr);
-    EXPECT_EQ(world.PlayerView(), dynamic_cast<Player*>(world.Objects()[1].get()));
-    EXPECT_FLOAT_EQ(world.PlayerView()->Root().Position().y, 1.41f);
-
-    world.Clear();
-    EXPECT_EQ(world.PlayerView(), nullptr);
+    auto* refs = scene.GetSubsystem<NS::Scene::ObjectRefSubsystem>();
+    ASSERT_NE(refs, nullptr);
+    const std::size_t playerIndex = NS::Game::Level::FindPlayerObjectIndex(level);
+    ASSERT_NE(playerIndex, NS::Scene::kNoObjectIndex);
+    NS::Scene::GameObject* resolved = refs->Resolve(NS::Scene::ObjectRef{level.objects[playerIndex].objectId});
+    ASSERT_NE(resolved, nullptr);
+    EXPECT_EQ(resolved, world.Objects()[1].get());
+    EXPECT_FLOAT_EQ(resolved->Root().Position().y, 1.41f);
 }
 
-// 追従カメラの配置物は Rebuild で休止のまま走査 view に載り、Target 参照が実体へ解決される
+// 追従カメラの配置物は Rebuild 後も休止のまま問い合わせで引け、Target 参照が実体へ解決される
 // 参照先より前に並ぶ前方参照でも、組み立てを先に済ませてから開始する二段組みで解決できる
-TEST(LevelWorldTest, RebuildBakesFollowCameraAndResolvesTarget)
+TEST(SceneWorldTest, RebuildBakesFollowCameraAndResolvesTarget)
 {
     SceneData level;
     level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
@@ -97,15 +117,17 @@ TEST(LevelWorldTest, RebuildBakesFollowCameraAndResolvesTarget)
     scene.CreateSceneSubsystems();
     NS::Physics::PhysicsWorld physics;
     NS::Scene::AssetManager assets{std::filesystem::path{"."}};
-    LevelWorld world;
-    world.Rebuild(level, scene, physics, &assets);
+    SceneWorld world;
+    world.Rebuild(level, scene, physics, MakeFactory(assets, level));
 
-    ASSERT_EQ(world.FollowCameras().size(), 1u);
-    auto* follow = world.FollowCameras()[0];
+    const auto follows = Collect<NS::Scene::ThirdPersonFollowComponent>(world);
+    ASSERT_EQ(follows.size(), 1u);
+    auto* follow = follows[0];
     EXPECT_FALSE(follow->IsActive());
-    // Brain 登録用の束ね view にも同じ実体が載る
-    ASSERT_EQ(world.VirtualCameras().size(), 1u);
-    EXPECT_EQ(world.VirtualCameras()[0], follow);
+    // Brain 登録が使う抽象基底の問い合わせでも同じ実体が引ける
+    const auto vcams = Collect<NS::Scene::VirtualCameraComponent>(world);
+    ASSERT_EQ(vcams.size(), 1u);
+    EXPECT_EQ(vcams[0], follow);
     // データの Far Plane 100 が反射 set で効いている
     EXPECT_FLOAT_EQ(follow->FarPlane(), 100.0f);
 
@@ -114,8 +136,8 @@ TEST(LevelWorldTest, RebuildBakesFollowCameraAndResolvesTarget)
     EXPECT_EQ(follow->Target(), &world.Objects()[1]->Root());
 }
 
-// 据え置きカメラの配置物は Rebuild で走査 view に載り、エリア外の非アクティブで組み上がる
-TEST(LevelWorldTest, RebuildBakesPlacedCamerasInactive)
+// 据え置きカメラの配置物は問い合わせで引け、エリア外の非アクティブで組み上がる
+TEST(SceneWorldTest, RebuildBakesPlacedCamerasInactive)
 {
     SceneData level;
     NS::Scene::ObjectData cameraObject{};
@@ -129,11 +151,12 @@ TEST(LevelWorldTest, RebuildBakesPlacedCamerasInactive)
     NS::Scene::SceneBase scene;
     NS::Physics::PhysicsWorld physics;
     NS::Scene::AssetManager assets{std::filesystem::path{"."}};
-    LevelWorld world;
-    world.Rebuild(level, scene, physics, &assets);
+    SceneWorld world;
+    world.Rebuild(level, scene, physics, MakeFactory(assets, level));
 
-    ASSERT_EQ(world.PlacedCameras().size(), 1u);
-    auto* placed = world.PlacedCameras()[0];
+    const auto placedCameras = Collect<NS::Scene::PlacedVirtualCamera>(world);
+    ASSERT_EQ(placedCameras.size(), 1u);
+    auto* placed = placedCameras[0];
     EXPECT_FALSE(placed->IsActive());
     EXPECT_EQ(placed->VcamPriority(), 20);
     // 視点位置は object の Transform から来る

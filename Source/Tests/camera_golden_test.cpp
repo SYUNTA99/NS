@@ -109,6 +109,8 @@ namespace
 
         GameObject rig;
         auto& follow = *rig.AddComponent<ThirdPersonFollowComponent>(&player.Root());
+        // 休止で生まれる契約なので、進行役の代わりにテストが起こす
+        follow.SetActive(true);
         follow.SetMovement(&movement);
 
         std::vector<CameraStepRecord> trajectory;
@@ -148,6 +150,8 @@ namespace
 
         GameObject rig;
         auto& follow = *rig.AddComponent<ThirdPersonFollowComponent>(&player.Root());
+        // 休止で生まれる契約なので、進行役の代わりにテストが起こす
+        follow.SetActive(true);
 
         GameObject areaHost;
         auto& placed = *areaHost.AddComponent<PlacedVirtualCamera>();
