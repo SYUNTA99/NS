@@ -13,6 +13,7 @@
 #include <Game/Player.h>
 
 #include <filesystem>
+#include <string_view>
 #include <vector>
 
 namespace
@@ -342,6 +343,50 @@ TEST_F(BuildPlacedObjectTest, PlayerObjectBuildsDormantPlayerTyped)
 
     // pose は他の配置物と同じく data から乗る
     EXPECT_FLOAT_EQ(obj->Root().Position().y, 2.0f);
+}
+
+// プレイヤーのデータ構成は Player の ctor から吸い出した型名だけの疎な一覧で、 値の重複記載を持たない
+TEST_F(BuildPlacedObjectTest, PlayerObjectDataIsSparseTypeListFromClass)
+{
+    const ObjectData data = NS::Game::Level::MakePlayerObject(Vector3{}, NS::Math::Quaternion{});
+
+    ASSERT_EQ(data.components.size(), 4u);
+    EXPECT_NE(NS::Scene::FindComponentData(data, "MeshRendererComponent"), nullptr);
+    EXPECT_NE(NS::Scene::FindComponentData(data, "CharacterMovementComponent"), nullptr);
+    EXPECT_NE(NS::Scene::FindComponentData(data, "PlayerInputComponent"), nullptr);
+    EXPECT_NE(NS::Scene::FindComponentData(data, "ShadowComponent"), nullptr);
+    for (const ComponentData& component : data.components)
+        EXPECT_TRUE(component.fields.empty()) << component.typeName;
+    // 種別判定は疎なデータでも成立する
+    EXPECT_TRUE(NS::Game::Level::IsPlayerObject(data));
+}
+
+// 疎なデータで組んでも見た目の既定 (cube + 共有 player 材質 + 赤の個体色) は ctor が供給する
+TEST_F(BuildPlacedObjectTest, PlayerDefaultLookComesFromClassNotData)
+{
+    auto obj = Build(NS::Game::Level::MakePlayerObject(Vector3{}, NS::Math::Quaternion{}));
+    ASSERT_NE(obj, nullptr);
+    auto* player = static_cast<Player*>(obj.get());
+
+    EXPECT_EQ(player->MeshComp().MeshRef(), "cube");
+    EXPECT_EQ(player->MeshComp().MaterialRef(), "player");
+
+    // 個体色は getter が無いので反射フィールド越しに読む
+    const NS::Scene::ReflectionInfo* info = NS::Scene::MeshRendererComponent::StaticReflection();
+    NS::Math::Vector3 baseColor{};
+    bool found = false;
+    for (std::size_t i = 0; i < info->fieldCount; ++i)
+    {
+        if (std::string_view{info->fields[i].name} == "Base Color")
+        {
+            info->fields[i].get(&player->MeshComp(), &baseColor);
+            found = true;
+        }
+    }
+    ASSERT_TRUE(found);
+    EXPECT_FLOAT_EQ(baseColor.x, 0.85f);
+    EXPECT_FLOAT_EQ(baseColor.y, 0.20f);
+    EXPECT_FLOAT_EQ(baseColor.z, 0.20f);
 }
 
 // data 側で焼いた値が既定構成の component へ反射適用される

@@ -23,7 +23,8 @@ namespace NS::Game::Level
     /// 複数居ても先頭を正とする。 読込の門が 1 体を保証し、 余分は読込時に警告済み
     [[nodiscard]] std::size_t FindPlayerObjectIndex(const NS::Scene::SceneData& level) noexcept;
 
-    /// 指定 pose のプレイヤー実体 ObjectData を作る。 components は既定構成一式で、
+    /// 指定 pose のプレイヤー実体 ObjectData を作る。 components は Player のコンストラクタ構成を
+    /// 型名だけ写した疎な一覧で、 値はコード既定に倒す
     /// scale は capsule 当たり 0.4/0.9/0.4 に cube mesh の見た目を合わせる値
     [[nodiscard]] NS::Scene::ObjectData MakePlayerObject(const NS::Math::Vector3& position,
                                                          const NS::Math::Quaternion& rotation);

@@ -33,9 +33,6 @@ namespace NS::Game::Blocks
     /// テクスチャが揃うまで cube 配置物に与える基準色
     inline constexpr NS::Math::Vector3 kSolidBaseColor{0.70f, 0.70f, 0.75f};
 
-    /// 実プレイヤーの mesh に与える基準色。 データ既定と scene 側の直組みが同じ赤を共有する
-    inline constexpr NS::Math::Vector3 kPlayerBaseColor{0.85f, 0.20f, 0.20f};
-
     /// grid セルに置く cube 1 個分の component 一覧を組む。 cube メッシュ + 半径 0.5 の Box 当たりで material は空参照
     /// MakeCellObject と editor の grid 配置が同じ cube を起こす窓口
     [[nodiscard]] std::vector<NS::Scene::ComponentData> MakeCellCubeComponents();
@@ -47,10 +44,6 @@ namespace NS::Game::Blocks
     /// 接触でレベルクリアになるゴール 1 個分の component 一覧を組む。 視覚を持たない goal pickup に
     /// editor で見える金色 cube を載せる。 PlayMode が PickupComponent の種別を読んでクリアを判定する
     [[nodiscard]] std::vector<NS::Scene::ComponentData> MakeGoalComponents();
-
-    /// プレイヤー実体の既定 component 一覧を組む。 実プレイヤーの直組み構成と同じ
-    /// mesh 描画 + 移動 + 入力 + 接地影の 4 点。 値の細部は component のコード既定に任せる
-    [[nodiscard]] std::vector<NS::Scene::ComponentData> MakeDefaultPlayerComponents();
 
     /// 追従カメラ実体の component 一覧を組む。 ThirdPersonFollowComponent 1 点で、 追従先の
     /// 永続 id を Target 参照へ、 プレイの遠景 100 を Far Plane へ焼く。 感触値はコード既定に任せる

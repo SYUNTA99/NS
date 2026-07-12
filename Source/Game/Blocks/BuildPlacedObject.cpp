@@ -151,15 +151,6 @@ namespace NS::Game::Blocks
                 MakeComponentData("PickupComponent", {NS::Scene::FieldValue{"Pickup Kind", 1}})};
     }
 
-    std::vector<NS::Scene::ComponentData> MakeDefaultPlayerComponents()
-    {
-        // mesh / material 参照は実プレイヤーの直組みと同じ cube + 共有 player 材質。 データ単体でも構成が読める
-        return {MeshRendererData("cube", "player", kPlayerBaseColor),
-                MakeComponentData("CharacterMovementComponent", {}),
-                MakeComponentData("PlayerInputComponent", {}),
-                MakeComponentData("ShadowComponent", {})};
-    }
-
     std::vector<NS::Scene::ComponentData> MakeFollowCameraComponents(std::uint32_t targetObjectId)
     {
         // Far Plane 100 はプレイの遠景を抑える投影値。 感触の距離 / 感度はコード既定に任せる

@@ -64,4 +64,22 @@ namespace NS::Scene
             NS::Math::Quaternion{object.rotationX, object.rotationY, object.rotationZ, object.rotationW});
         obj.Root().SetScale(NS::Math::Vector3{object.scaleX, object.scaleY, object.scaleZ});
     }
+
+    ObjectData MakeObjectData(const GameObject& obj)
+    {
+        ObjectData data{};
+        data.components.reserve(obj.Components().size());
+        for (const Component* comp : obj.Components())
+        {
+            if (comp == nullptr)
+                continue;
+            const ReflectionInfo* info = comp->GetReflection();
+            if (info == nullptr)
+                continue;
+            ComponentData component;
+            component.typeName = info->typeName;
+            data.components.push_back(std::move(component));
+        }
+        return data;
+    }
 } // namespace NS::Scene

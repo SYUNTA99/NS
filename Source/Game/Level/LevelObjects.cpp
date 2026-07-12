@@ -1,6 +1,8 @@
 #include "Game/Level/LevelObjects.h"
 
+#include "Framework/Scene/ObjectBuilder.h"
 #include "Game/Blocks/BuildPlacedObject.h"
+#include "Game/Player.h"
 
 namespace NS::Game::Level
 {
@@ -27,7 +29,8 @@ namespace NS::Game::Level
 
     NS::Scene::ObjectData MakePlayerObject(const NS::Math::Vector3& position, const NS::Math::Quaternion& rotation)
     {
-        NS::Scene::ObjectData object{};
+        // 構成は Player のコンストラクタが唯一の出所。データは型名だけ持ち、値はコード既定に倒す
+        NS::Scene::ObjectData object = NS::Scene::MakeObjectData<Player>();
         object.positionX = position.x;
         object.positionY = position.y;
         object.positionZ = position.z;
@@ -40,7 +43,6 @@ namespace NS::Game::Level
         object.scaleY = 1.8f;
         object.scaleZ = 0.8f;
         object.materialIndex = -1;
-        object.components = NS::Game::Blocks::MakeDefaultPlayerComponents();
         return object;
     }
 
