@@ -1,10 +1,14 @@
 @echo off
 ::============================================================================
 :: @run_tests.cmd
-:: テストをビルドして実行
+:: Build the tests, then run them.
 ::
-:: 使用方法: tools\@run_tests.cmd [Debug|Development|GameDebug|GameRelease]
-::   省略時は Debug
+:: Usage: tools\@run_tests.cmd [Debug|Development|GameDebug|GameRelease]
+::   Defaults to Debug when omitted.
+::
+:: NOTE: this header must be ASCII. It is parsed before chcp 65001 (line below)
+::       takes effect, and cmd.exe misparses UTF-8 multibyte here
+::       (a trailing byte eats the CR and a comment fragment gets executed).
 ::============================================================================
 setlocal
 chcp 65001 >nul

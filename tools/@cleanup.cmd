@@ -1,11 +1,15 @@
 @echo off
 ::============================================================================
 :: @cleanup.cmd
-:: ビルド成果物をクリーンアップするスクリプト
+:: Remove build artifacts.
 ::
-:: 削除対象:
-::   - build/     (ソリューション、オブジェクトファイル、実行ファイル)
-::   - .vs/       (Visual Studio設定キャッシュ)
+:: Deletes:
+::   - build/     (solution, object files, executables)
+::   - .vs/       (Visual Studio settings cache)
+::
+:: NOTE: this header must be ASCII. It is parsed before chcp 65001 takes effect
+::       (via _common.cmd :init), and cmd.exe misparses UTF-8 multibyte here
+::       (a trailing byte eats the CR and a comment fragment gets executed).
 ::============================================================================
 call "%~dp0_common.cmd" :init
 

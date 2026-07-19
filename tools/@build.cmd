@@ -1,10 +1,14 @@
 @echo off
 ::============================================================================
 :: @build.cmd
-:: Premake5 で VS ソリューションを生成 → MSBuild で指定構成をビルド
+:: Generate the VS solution via Premake5, then build the given config w/ MSBuild.
 ::
-:: 使用方法: tools\@build.cmd [Debug|Development|GameDebug|GameRelease]
-::   省略時は Debug
+:: Usage: tools\@build.cmd [Debug|Development|GameDebug|GameRelease]
+::   Defaults to Debug when omitted.
+::
+:: NOTE: this header must be ASCII. It is parsed before chcp 65001 (line below)
+::       takes effect, and cmd.exe misparses UTF-8 multibyte here
+::       (a trailing byte eats the CR and a comment fragment gets executed).
 ::============================================================================
 setlocal
 chcp 65001 >nul

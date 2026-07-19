@@ -1,11 +1,15 @@
 @echo off
 ::============================================================================
 :: @gen_compile_commands.cmd
-:: compile_commands.json を生成 (clangd / エディタの IntelliSense 用)
+:: Generate compile_commands.json (for the editor IntelliSense / clangd).
 ::
-:: 実体は _common.cmd の :gen_compile_commands に集約。
-:: 通常ビルド (@build.cmd) では自動で呼ばれるため、 手動実行は
-:: ビルドせずにインデックスだけ更新したい場合に使う。
+:: The real work lives in _common.cmd :gen_compile_commands. A normal build
+:: (@build.cmd) calls it automatically, so run this by hand only when you want
+:: to refresh the index without building.
+::
+:: NOTE: this header must be ASCII. It is parsed before chcp 65001 (line below)
+::       takes effect, and cmd.exe misparses UTF-8 multibyte here
+::       (a trailing byte eats the CR and a comment fragment gets executed).
 ::============================================================================
 setlocal
 chcp 65001 >nul

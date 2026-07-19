@@ -1,16 +1,19 @@
 @echo off
 ::============================================================================
 :: @open_project.cmd
-:: 必要に応じてビルドし、Visual Studioを起動するスクリプト
+:: Build if needed, then launch Visual Studio.
 ::
-:: 処理内容:
-::   1. UTF-8モード設定 & 作業ディレクトリ移動 (:init)
-::   2. ソリューションが無ければ生成 (:generate_project)
-::   3. tests.exeが無ければDebugビルド実行
-::   4. Visual Studioでソリューションを開く
+:: Steps:
+::   1. Set codepage, cd to repo root (:init)
+::   2. Generate the solution if missing (:generate_project)
+::   3. Build Debug if tests.exe is missing
+::   4. Open the solution in Visual Studio
 ::
-:: 用途:
-::   開発開始時にダブルクリックで環境を準備
+:: Use: double-click at the start of a dev session to prepare the environment.
+::
+:: NOTE: this header must be ASCII. It is parsed before chcp 65001 takes effect
+::       (via _common.cmd :init), and cmd.exe misparses UTF-8 multibyte here
+::       (a trailing byte eats the CR and a comment fragment gets executed).
 ::============================================================================
 call "%~dp0_common.cmd" :init
 

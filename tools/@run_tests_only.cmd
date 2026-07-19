@@ -1,13 +1,17 @@
 @echo off
 ::============================================================================
 :: @run_tests_only.cmd
-:: ビルドせず、 既存のテスト実行ファイルをそのまま走らせる (PC への負荷を抑える)
+:: Run the existing tests.exe as-is without building (keeps the PC load low).
 ::
-:: 使用方法: tools\@run_tests_only.cmd [Config] [gtest_filter]
-::   Config    省略時は Debug
-::   filter    省略時は全テスト。 例: CameraBrainTest.*:ChunkIOTest.*
+:: Usage: tools\@run_tests_only.cmd [Config] [gtest_filter]
+::   Config    defaults to Debug when omitted
+::   filter    defaults to all tests. e.g. CameraBrainTest.*:ChunkIOTest.*
 ::
-:: 事前に tools\@run_tests.cmd か tools\@build.cmd でビルドしておくこと。
+:: Build first with tools\@run_tests.cmd or tools\@build.cmd.
+::
+:: NOTE: this header must be ASCII. It is parsed before chcp 65001 (line below)
+::       takes effect, and cmd.exe misparses UTF-8 multibyte here
+::       (a trailing byte eats the CR and a comment fragment gets executed).
 ::============================================================================
 setlocal
 chcp 65001 >nul

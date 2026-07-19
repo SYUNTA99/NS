@@ -1,18 +1,25 @@
 @echo off
 ::============================================================================
 :: @make_project.cmd
-:: プロジェクト生成 + Debugビルドを一括実行するスクリプト
+:: Generate the VS2022 solution then run a full Debug build in one shot.
 ::
-:: 処理内容:
-::   1. UTF-8モード設定 & 作業ディレクトリ移動 (:init)
-::   2. build/ フォルダを削除（クリーンアップ）
-::   3. Premake5でVisual Studio 2022ソリューション生成 (:generate_project)
-::   4. VsDevCmd.batでMSBuild環境をセットアップ (:setup_msbuild)
-::   5. MSBuildでDebugビルド実行
+:: Usage:
+::   tools\@make_project.cmd
 ::
-:: 出力:
-::   - build/NS.sln (Visual Studioソリューション)
-::   - build/bin/Debug-windows-x86_64/tests/tests.exe (テスト実行ファイル)
+:: Steps:
+::   1. Set codepage, cd to repo root (:init)
+::   2. Remove build/ (clean)
+::   3. Generate the VS2022 solution via Premake5 (:generate_project)
+::   4. Set up the MSBuild environment via VsDevCmd.bat (:setup_msbuild)
+::   5. Build Debug with MSBuild
+::
+:: Output:
+::   build\NS.sln
+::   build\bin\Debug-windows-x86_64\tests\tests.exe
+::
+:: NOTE: this header must be ASCII. It is parsed before chcp 65001 takes effect
+::       (via _common.cmd :init), and cmd.exe misparses UTF-8 multibyte here
+::       (a trailing byte eats the CR and a comment fragment gets executed).
 ::============================================================================
 call "%~dp0_common.cmd" :init
 

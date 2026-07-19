@@ -1,9 +1,13 @@
 @echo off
 ::============================================================================
 :: @regen_project.cmd
-:: Visual Studio ソリューションを再生成するスクリプト
+:: Regenerate the Visual Studio solution.
 ::
-:: 使用方法: tools\@regen_project.cmd
+:: Usage: tools\@regen_project.cmd
+::
+:: NOTE: this header must be ASCII. It is parsed before chcp 65001 (line below)
+::       takes effect, and cmd.exe misparses UTF-8 multibyte here
+::       (a trailing byte eats the CR and a comment fragment gets executed).
 ::============================================================================
 chcp 65001 >nul
 call "%~dp0_common.cmd" :generate_project
