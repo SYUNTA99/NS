@@ -1,18 +1,16 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Core/Clock.h>
-#include <Framework/Math/Math.h>
-#include <Framework/Physics/PhysicsWorld.h>
-#include <Framework/Scene/Components/CameraBrainComponent.h>
-#include <Framework/Scene/Components/CameraComponent.h>
-#include <Framework/Scene/Components/CharacterMovementComponent.h>
-#include <Framework/Scene/Components/PlacedVirtualCamera.h>
-#include <Framework/Scene/Components/ThirdPersonFollowComponent.h>
-#include <Framework/Scene/GameObject.h>
-#include <Framework/Scene/Transform.h>
-
-#include <bit>
+﻿#include <bit>
 #include <cstdint>
+#include <gtest/gtest.h>
+#include <Runtime/Core/Clock.h>
+#include <Runtime/Math/Math.h>
+#include <Runtime/Object/Components/CameraBrainComponent.h>
+#include <Runtime/Object/Components/CameraComponent.h>
+#include <Runtime/Object/Components/CharacterMovementComponent.h>
+#include <Runtime/Object/Components/PlacedVirtualCamera.h>
+#include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
+#include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Transform.h>
+#include <Runtime/Physics/PhysicsWorld.h>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -21,17 +19,17 @@ namespace
 {
     using NS::Math::AABB;
     using NS::Math::Vector3;
-    using NS::Scene::CameraBrainComponent;
-    using NS::Scene::CameraComponent;
-    using NS::Scene::CameraPose;
-    using NS::Scene::CharacterMovementComponent;
-    using NS::Scene::GameObject;
-    using NS::Scene::PlacedVirtualCamera;
-    using NS::Scene::ThirdPersonFollowComponent;
+    using NS::Object::CameraBrainComponent;
+    using NS::Object::CameraComponent;
+    using NS::Object::CameraPose;
+    using NS::Object::CharacterMovementComponent;
+    using NS::Object::GameObject;
+    using NS::Object::PlacedVirtualCamera;
+    using NS::Object::ThirdPersonFollowComponent;
 
-    constexpr float kFixedDt = 1.0f / 60.0f;
+    constexpr float k_FixedDt = 1.0f / 60.0f;
 
-    /// 1 step ごとのカメラ姿勢。位置 / 注視点 / 画角でカメラの見えは一意に決まる
+    /// 1 step ごとのカメラ姿勢。見えはこの 3 つで決まる
     struct CameraStepRecord
     {
         Vector3 position;
@@ -50,8 +48,7 @@ namespace
         return hash;
     }
 
-    /// 軌跡全 step を 1 つのハッシュへ畳み込む。float は bit 表現のまま
-    /// 投入するため、1 bit でもカメラの動きが変われば必ず値が変わる
+    /// 軌跡全 step を 1 つのハッシュへ畳み込む。float は bit 表現のまま入れるので 1 bit の差も逃さない
     uint64_t HashTrajectory(const std::vector<CameraStepRecord>& trajectory) noexcept
     {
         uint64_t hash = 0xCBF29CE484222325ULL;
@@ -68,7 +65,7 @@ namespace
         return hash;
     }
 
-    /// ハッシュ不一致時の一次診断。実測ハッシュと 20 step ごとの要約を返す
+    /// ハッシュ不一致時の手がかり用。実測ハッシュと 20 step ごとの要約を返す
     std::string DescribeTrajectory(const std::vector<CameraStepRecord>& trajectory, uint64_t hash)
     {
         std::ostringstream out;
@@ -93,14 +90,13 @@ namespace
         return CameraStepRecord{pose.position, pose.target, pose.fovY.value};
     }
 
-    /// 実プレイヤー相当の移動体を床上へ立てて走らせ、追従カメラの姿勢を毎 step 記録する
-    /// 加速で idle→run ズーム、ジャンプで jump ズーム、停止で idle へ戻る自動距離の全遷移と
-    /// spring の収束、render 補間 (alpha=0.5) の姿勢を 1 本の軌跡に焼く
+    /// プレイヤー相当を床上で走らせ、追従カメラの姿勢を毎 step 記録する
+    /// 加速・ジャンプ・停止の自動ズーム全遷移と render 補間 (alpha=0.5) を 1 本の軌跡に焼く
     std::vector<CameraStepRecord> RunFollowWalkJump()
     {
         GameObject player;
         NS::Physics::PhysicsWorld world;
-        world.AddAabb(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 8.0f}});
+        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 8.0f}});
         auto& movement = *player.AddComponent<CharacterMovementComponent>();
         player.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
         world.BuildBroadphase();
@@ -108,8 +104,9 @@ namespace
         movement.SetDebugDrawEnabled(false);
 
         GameObject rig;
-        auto& follow = *rig.AddComponent<ThirdPersonFollowComponent>(&player.Root());
-        // 休止で生まれる契約なので、進行役の代わりにテストが起こす
+        auto& follow = *rig.AddComponent<ThirdPersonFollowComponent>();
+        follow.SetTarget(&player.Root());
+        // 生成直後は休止なのでテスト側で起こす
         follow.SetActive(true);
         follow.SetMovement(&movement);
 
@@ -134,9 +131,8 @@ namespace
         return trajectory;
     }
 
-    /// 追従カメラで歩くプレイヤーが据え置きカメラのトリガへ進入 → 滞在 → 退出する
-    /// Brain の優先度選択・進入時の 0.3 秒ブレンド・lookAtPlayer の追視・退出時の
-    /// 追従カメラへの戻りブレンドを、実カメラへ書かれた姿勢として記録する
+    /// 歩くプレイヤーが据え置きカメラのトリガへ進入 → 滞在 → 退出する
+    /// 進入時のブレンド・lookAtPlayer の追視・退出時の戻りブレンドを実カメラの姿勢として記録する
     std::vector<CameraStepRecord> RunAreaCameraBlend()
     {
         GameObject host;
@@ -149,8 +145,9 @@ namespace
         player.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
 
         GameObject rig;
-        auto& follow = *rig.AddComponent<ThirdPersonFollowComponent>(&player.Root());
-        // 休止で生まれる契約なので、進行役の代わりにテストが起こす
+        auto& follow = *rig.AddComponent<ThirdPersonFollowComponent>();
+        follow.SetTarget(&player.Root());
+        // 生成直後は休止なのでテスト側で起こす
         follow.SetActive(true);
 
         GameObject areaHost;
@@ -182,19 +179,18 @@ namespace
         return trajectory;
     }
 
-    // 基準ハッシュ。カメラの手触りに触る改修の前後で軌跡の bit 一致を守る門番で、
-    // 意図してカメラの感触を変えた時だけ実測値で更新する
-    constexpr uint64_t kFollowWalkJumpGolden = 0x6C68A644E4D28AAEULL;
-    constexpr uint64_t kAreaCameraBlendGolden = 0xDF21CBDB3D18F8D1ULL;
+    // 基準ハッシュ。意図してカメラの感触を変えた時だけ実測値で更新する
+    constexpr uint64_t k_FollowWalkJumpGolden = 0x6C68A644E4D28AAEULL;
+    constexpr uint64_t k_AreaCameraBlendGolden = 0xDF21CBDB3D18F8D1ULL;
 } // namespace
 
 class CameraGolden : public ::testing::Test
 {
 protected:
-    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(kFixedDt); }
+    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_FixedDt); }
 };
 
-/// ハッシュ方式の前提検証: 同一 build 内の 2 run が bit 一致すること
+/// 同一 build 内の 2 run が bit 一致する前提を確かめる
 TEST_F(CameraGolden, HashIsStableAcrossTwoRuns)
 {
     EXPECT_EQ(HashTrajectory(RunFollowWalkJump()), HashTrajectory(RunFollowWalkJump()));
@@ -205,7 +201,7 @@ TEST_F(CameraGolden, FollowWalkJumpMatchesGoldenTrace)
 {
     const auto trajectory = RunFollowWalkJump();
 
-    // 自動ズームの全遷移が通っていることの表面検証。距離 = |カメラ - 注視点|
+    // 自動ズームの全遷移が通ったかを距離 = |カメラ - 注視点| でざっくり確かめる
     float minDistance = 1000.0f;
     float maxDistance = 0.0f;
     for (const CameraStepRecord& s : trajectory)
@@ -221,14 +217,14 @@ TEST_F(CameraGolden, FollowWalkJumpMatchesGoldenTrace)
     EXPECT_NEAR(trajectory.back().target.y, 1.0f + 1.2f, 0.2f) << "注視点が頭高さに載っていない";
 
     const uint64_t hash = HashTrajectory(trajectory);
-    EXPECT_EQ(hash, kFollowWalkJumpGolden) << DescribeTrajectory(trajectory, hash);
+    EXPECT_EQ(hash, k_FollowWalkJumpGolden) << DescribeTrajectory(trajectory, hash);
 }
 
 TEST_F(CameraGolden, AreaCameraBlendMatchesGoldenTrace)
 {
     const auto trajectory = RunAreaCameraBlend();
 
-    // トリガ滞在が安定した頃の i=180 すなわち x 9.05 では据え置き位置へ完全に到達している
+    // 滞在が安定した i=180 (x=9.05) では据え置き位置へ到達している
     const CameraStepRecord& inside = trajectory[180];
     EXPECT_NEAR(inside.position.x, 8.0f, 0.05f) << "滞在中に据え置きカメラ位置へ到達していない";
     EXPECT_NEAR(inside.position.y, 4.0f, 0.05f);
@@ -240,5 +236,5 @@ TEST_F(CameraGolden, AreaCameraBlendMatchesGoldenTrace)
     EXPECT_NEAR(last.target.y, 1.0f + 1.2f, 0.2f) << "退出後の注視点が頭高さに戻っていない";
 
     const uint64_t hash = HashTrajectory(trajectory);
-    EXPECT_EQ(hash, kAreaCameraBlendGolden) << DescribeTrajectory(trajectory, hash);
+    EXPECT_EQ(hash, k_AreaCameraBlendGolden) << DescribeTrajectory(trajectory, hash);
 }

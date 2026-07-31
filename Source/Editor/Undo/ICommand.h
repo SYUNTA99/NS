@@ -1,32 +1,25 @@
 #pragma once
 
-/// @file ICommand.h
-/// @brief Undo/Redo 操作の抽象基底
-///
-/// @details `Do(level)` で編集操作を実行し、 `Undo(level)` で逆操作する
-/// 対象オブジェクトの再特定は ObjectData の永続 objectId か cell 座標で行う
-/// 派生は座標 + blockId + rotation 等のデータのみを保持し、 描画用ハンドル
-/// つまり MeshRendererComponent / Renderer 等は抱えない。 描画は EditorMode が
-/// SceneData の変更を観測して再構築する責務で、 所有関係を分離する
-/// `EstimatedBytes()` は UndoStack が 50 MB cap を回すためのメモリ使用量見積り
+#include "Runtime/Core/NonCopyable.h"
 
-#include "Framework/Scene/SceneData.h"
+#include <cstddef>
 
 namespace NS::Editor
 {
+    class IObjectSnapshotApplier;
 
-    class ICommand
+    //! @brief Undo/Redo コマンドの基底
+    //!
+    //! @note live 実体を唯一の authored 表現とし、 編集は objectId 単位の before/after スナップショットで表す
+    //! @note Do/Undo は IObjectSnapshotApplier 越しに 1 体を組み直すだけ。 描画リソースは保持禁止
+    //! @note 50MB のメモリ上限管理のため、EstimatedBytes() で使用量を見積もること
+    class ICommand : public NS::Core::NonCopyable
     {
     public:
         virtual ~ICommand() = default;
 
-        ICommand(const ICommand&) = delete;
-        ICommand& operator=(const ICommand&) = delete;
-        ICommand(ICommand&&) = delete;
-        ICommand& operator=(ICommand&&) = delete;
-
-        virtual void Do(NS::Scene::SceneData& level) noexcept = 0;
-        virtual void Undo(NS::Scene::SceneData& level) noexcept = 0;
+        virtual void Do(IObjectSnapshotApplier& target) noexcept = 0;
+        virtual void Undo(IObjectSnapshotApplier& target) noexcept = 0;
 
         [[nodiscard]] virtual std::size_t EstimatedBytes() const noexcept = 0;
 

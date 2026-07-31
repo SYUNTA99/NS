@@ -1,27 +1,17 @@
 #pragma once
 
-/// @file PlayState.h
-/// @brief PlayState — Play mode 中だけ存在する一時データ。 `.scene` には書かない
-///
-/// @details 永続の SceneData と物理的に別 struct にすることで「PlayMode が誤って
-/// SceneData を書き換える」 経路をコンパイル時に排除する。 PlayMode は
-/// `const SceneData&` と `PlayState&` を分けて受け取る
-
 namespace NS::Game::Level
 {
 
-    /// Play mode の runtime state。 Tick で mutation され、 mode exit で破棄
-    /// 永続化対象は SceneData に分離してあるためここに置かれた値は CRC32 に影響しない
+    /// @brief プレイ中だけ使う一時データ。.scene には書かない
+    /// @details Tick で書き換わり、プレイ終了で破棄する。保存する値は SceneData 側にある
+    /// SceneData と別 struct に分け、プレイ進行が誤ってレベルを書き換える経路をコンパイル時に塞ぐ
     struct PlayState
     {
-        NS::Math::Vector3 playerPosition{};
-        NS::Math::Vector3 playerVelocity{};
-        std::int32_t coinCount = 0;
-        bool paused = false;
-        bool clearTriggered = false;
-        bool deathTriggered = false;
-        /// HazardComponent が overlap で 1 ずつ減算する 8 段階ヘルス
-        std::int8_t playerHealth = 8;
+        NS::Math::Vector3 playerPosition{}; // 出現位置 (capsule 中心)。 プレイ突入時に baseline から写す
+        bool paused = false;                // 時間停止中か
+        std::int32_t stepFrames = 0;        // コマ送り残り fixed step 数。 paused でもこの数だけは進める
+        bool clearTriggered = false;        // ゴール接触でクリアへ入ったか。 ヘルスは player の HealthComponent が持つ
     };
 
 } // namespace NS::Game::Level

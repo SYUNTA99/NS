@@ -1,6 +1,13 @@
 #include "Editor/InspectorReflection.h"
 
+#include "Editor/EditorUi.h"
+#include "Runtime/Object/Component.h"
+#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Reflection/Reflection.h"
+#include "Runtime/Object/Reflection/TypeRegistry.h"
+
 #include <climits>
+#include <cstring>
 
 #if NS_EDITOR_ENABLED
 #include <imgui.h>
@@ -8,119 +15,237 @@
 
 namespace NS::Editor
 {
+    namespace
+    {
+        // 同じ欄を 2 体から読んで見比べる
+        template <class T>
+        bool SameValue(const NS::Object::Component& a,
+                       const NS::Object::Component& b,
+                       const NS::Object::FieldDesc& field)
+        {
+            T lhs{};
+            T rhs{};
+            field.get(&a, &lhs);
+            field.get(&b, &rhs);
+            return lhs == rhs;
+        }
+
+        // 同じ欄を src から dst へ写す
+        template <class T>
+        void CopyValue(NS::Object::Component& dst, const NS::Object::Component& src, const NS::Object::FieldDesc& field)
+        {
+            T value{};
+            field.get(&src, &value);
+            field.set(&dst, &value);
+        }
+    } // namespace
+
+    ComponentDefaults::ComponentDefaults() noexcept = default;
+    ComponentDefaults::~ComponentDefaults() noexcept = default;
+
+    const NS::Object::Component* ComponentDefaults::Find(std::string_view typeName)
+    {
+        for (const auto& [name, comp] : m_byType)
+        {
+            if (name == typeName)
+                return comp;
+        }
+        if (!m_holder)
+            m_holder = std::make_unique<NS::Object::GameObject>();
+
+        // 既定コンストラクタで起こしただけの 1 体。 未登録の型は nullptr が返り、 その答も控えて再試行しない
+        NS::Object::Component* created = NS::Object::CreateComponent(typeName, *m_holder);
+        m_byType.emplace_back(std::string(typeName), created);
+        return created;
+    }
+
+    bool FieldDiffersFromDefault(const NS::Object::Component& comp,
+                                 const NS::Object::Component* defaults,
+                                 const NS::Object::FieldDesc& field) noexcept
+    {
+        if (defaults == nullptr)
+            return false;
+        switch (field.type)
+        {
+        case NS::Object::FieldType::Float:
+            return !SameValue<float>(comp, *defaults, field);
+        case NS::Object::FieldType::Int:
+            return !SameValue<int>(comp, *defaults, field);
+        case NS::Object::FieldType::Bool:
+            return !SameValue<bool>(comp, *defaults, field);
+        case NS::Object::FieldType::Vector3:
+            return !SameValue<NS::Math::Vector3>(comp, *defaults, field);
+        case NS::Object::FieldType::String:
+            return !SameValue<std::string>(comp, *defaults, field);
+        case NS::Object::FieldType::ObjectRef:
+            return !SameValue<NS::Object::ObjectRef>(comp, *defaults, field);
+        }
+        return false;
+    }
+
+    void RevertFieldToDefault(NS::Object::Component& comp,
+                              const NS::Object::Component& defaults,
+                              const NS::Object::FieldDesc& field) noexcept
+    {
+        switch (field.type)
+        {
+        case NS::Object::FieldType::Float:
+            CopyValue<float>(comp, defaults, field);
+            break;
+        case NS::Object::FieldType::Int:
+            CopyValue<int>(comp, defaults, field);
+            break;
+        case NS::Object::FieldType::Bool:
+            CopyValue<bool>(comp, defaults, field);
+            break;
+        case NS::Object::FieldType::Vector3:
+            CopyValue<NS::Math::Vector3>(comp, defaults, field);
+            break;
+        case NS::Object::FieldType::String:
+            CopyValue<std::string>(comp, defaults, field);
+            break;
+        case NS::Object::FieldType::ObjectRef:
+            CopyValue<NS::Object::ObjectRef>(comp, defaults, field);
+            break;
+        }
+    }
+
 #if NS_EDITOR_ENABLED
     namespace
     {
-        // 見出しに使う型名。実行時型情報はビルド設定で切っているため、反射の無い component は総称で出す
-        const char* DisplayTypeName(const NS::Scene::ReflectionInfo* info) noexcept
+        // コンポーネントの表示名を解決する
+        const char* DisplayTypeName(const NS::Object::ReflectionInfo* info) noexcept
         {
             if (info != nullptr)
+            {
                 return info->typeName;
+            }
             return "Component";
         }
     } // namespace
 
-    bool DrawReflectedComponent(NS::Scene::Component& comp, std::span<const ObjectRefOption> refOptions) noexcept
+    ComponentEditResult DrawReflectedComponent(NS::Object::Component& comp,
+                                               std::span<const ObjectRefOption> refOptions,
+                                               const NS::Object::Component* defaults) noexcept
     {
-        const NS::Scene::ReflectionInfo* info = comp.GetReflection();
-        if (info == nullptr)
-            return false;
+        const NS::Object::ReflectionInfo* info = comp.GetReflection();
+        if (info == nullptr || info->fieldCount == 0)
+        {
+            return ComponentEditResult{};
+        }
+        if (!BeginFieldTable("##fields"))
+        {
+            return ComponentEditResult{};
+        }
 
-        bool changed = false;
+        ComponentEditResult result;
+        // リフレクション情報に基づき、各フィールドに対応したImGuiウィジェットを描画する
         for (std::size_t i = 0; i < info->fieldCount; ++i)
         {
-            const NS::Scene::FieldDesc& field = info->fields[i];
+            const NS::Object::FieldDesc& field = info->fields[i];
+            const bool changed = FieldDiffersFromDefault(comp, defaults, field);
+            ImGui::PushID(static_cast<int>(i));
+            FieldRow(field.name);
+
             switch (field.type)
             {
-            case NS::Scene::FieldType::Float:
+            case NS::Object::FieldType::Float:
             {
                 float value = 0.0f;
                 field.get(&comp, &value);
-                if (ImGui::DragFloat(field.name, &value, 0.05f))
+                if (ImGui::DragFloat("##value", &value, 0.05f))
                 {
                     field.set(&comp, &value);
-                    changed = true;
+                    result.changed = true;
                 }
                 break;
             }
-            case NS::Scene::FieldType::Int:
+            case NS::Object::FieldType::Int:
             {
                 int value = 0;
                 field.get(&comp, &value);
-                if (ImGui::DragInt(field.name, &value))
+                if (ImGui::DragInt("##value", &value))
                 {
                     field.set(&comp, &value);
-                    changed = true;
+                    result.changed = true;
                 }
                 break;
             }
-            case NS::Scene::FieldType::Bool:
+            case NS::Object::FieldType::Bool:
             {
                 bool value = false;
                 field.get(&comp, &value);
-                if (ImGui::Checkbox(field.name, &value))
+                if (ImGui::Checkbox("##value", &value))
                 {
                     field.set(&comp, &value);
-                    changed = true;
+                    result.changed = true;
                 }
                 break;
             }
-            case NS::Scene::FieldType::Vector3:
+            case NS::Object::FieldType::Vector3:
             {
                 NS::Math::Vector3 value{};
                 field.get(&comp, &value);
                 float xyz[3] = {value.x, value.y, value.z};
-                if (ImGui::DragFloat3(field.name, xyz, 0.05f))
+                if (ImGui::DragFloat3("##value", xyz, 0.05f))
                 {
                     value = NS::Math::Vector3{xyz[0], xyz[1], xyz[2]};
                     field.set(&comp, &value);
-                    changed = true;
+                    result.changed = true;
                 }
                 break;
             }
-            case NS::Scene::FieldType::String:
+            case NS::Object::FieldType::String:
             {
                 std::string value;
                 field.get(&comp, &value);
                 char buf[256];
                 const std::size_t copied = value.copy(buf, sizeof(buf) - 1);
                 buf[copied] = '\0';
-                if (ImGui::InputText(field.name, buf, sizeof(buf)))
+                if (ImGui::InputText("##value", buf, sizeof(buf)))
                 {
                     std::string edited(buf);
                     field.set(&comp, &edited);
-                    changed = true;
+                    result.changed = true;
                 }
                 break;
             }
-            case NS::Scene::FieldType::ObjectRef:
+            case NS::Object::FieldType::ObjectRef:
             {
-                NS::Scene::ObjectRef value{};
+                NS::Object::ObjectRef value{};
                 field.get(&comp, &value);
 
-                // 候補が無い文脈では永続 id の数値入力に落とす
+                // 参照候補リストがない場合は、IDの直接入力UIを表示する
                 if (refOptions.empty())
                 {
                     int id = static_cast<int>(value.id);
                     const char* format = "未設定";
                     if (value.IsSet())
+                    {
                         format = "id %d";
-                    if (ImGui::DragInt(field.name, &id, 1.0f, 0, INT_MAX, format))
+                    }
+                    if (ImGui::DragInt("##value", &id, 1.0f, 0, INT_MAX, format))
                     {
                         if (id <= 0)
+                        {
                             value.id = 0u;
+                        }
                         else
+                        {
                             value.id = static_cast<std::uint32_t>(id);
+                        }
                         field.set(&comp, &value);
-                        changed = true;
+                        result.changed = true;
                     }
                     break;
                 }
 
-                // レベル配置物から参照先を選ぶコンボ。現在値が候補に無い id なら消えた参照として明示する
+                // 参照候補リストから選択するためのコンボボックスを描画する
                 const char* currentLabel = "未設定";
                 if (value.IsSet())
+                {
                     currentLabel = "(消えた参照)";
+                }
                 for (const ObjectRefOption& option : refOptions)
                 {
                     if (option.id == value.id)
@@ -129,13 +254,13 @@ namespace NS::Editor
                         break;
                     }
                 }
-                if (ImGui::BeginCombo(field.name, currentLabel))
+                if (ImGui::BeginCombo("##value", currentLabel))
                 {
                     if (ImGui::Selectable("未設定", !value.IsSet()))
                     {
                         value.id = 0;
                         field.set(&comp, &value);
-                        changed = true;
+                        result.changed = true;
                     }
                     for (const ObjectRefOption& option : refOptions)
                     {
@@ -144,7 +269,7 @@ namespace NS::Editor
                         {
                             value.id = option.id;
                             field.set(&comp, &value);
-                            changed = true;
+                            result.changed = true;
                         }
                         ImGui::PopID();
                     }
@@ -153,32 +278,75 @@ namespace NS::Editor
                 break;
             }
             }
+
+            result.activated |= ImGui::IsItemActivated();
+            // 編集無しのクリックでもラッチを解くため、 確定ではなく非活性化で committed を立てる
+            // 空編集は CommitComponentEdit が before==after で弾くので履歴は汚れない
+            result.committed |= ImGui::IsItemDeactivated();
+
+            if (RevertButton(changed) && defaults != nullptr)
+            {
+                result.revertTarget = &comp;
+                result.revertField = &field;
+            }
+            ImGui::PopID();
         }
-        return changed;
+        EndFieldTable();
+        return result;
     }
 
-    bool DrawObjectComponents(NS::Scene::GameObject& obj, std::span<const ObjectRefOption> refOptions) noexcept
+    ComponentEditResult DrawObjectComponents(NS::Object::GameObject& obj,
+                                             std::span<const ObjectRefOption> refOptions,
+                                             ComponentDefaults* defaults) noexcept
     {
-        bool changed = false;
+        ComponentEditResult result;
         int index = 0;
-        for (NS::Scene::Component* comp : obj.Components())
+        for (NS::Object::Component* comp : obj.Components())
         {
             if (comp == nullptr)
+            {
                 continue;
-            const NS::Scene::ReflectionInfo* info = comp->GetReflection();
+            }
+            const NS::Object::ReflectionInfo* info = comp->GetReflection();
 
-            // 反射が無い Component も見出しは必ず出す。何が乗っているか一覧できることを優先する
-            // 反射ありは既定で開いて編集 UI を見せ、反射なしは畳んだ見出しだけにして雑然とさせない
+            // Transform は Inspector 上部の専用パネルが編集するので、 反射一覧では重複させない
+            if (info != nullptr && std::strcmp(info->typeName, "TransformComponent") == 0)
+            {
+                continue;
+            }
+
             ImGui::PushID(index++);
             ImGuiTreeNodeFlags flags = 0;
             if (info != nullptr)
+            {
                 flags = ImGuiTreeNodeFlags_DefaultOpen;
-            if (ImGui::CollapsingHeader(DisplayTypeName(info), flags))
+            }
+
+            // コンポーネントごとのヘッダを描画する
+            ImGui::PushStyleColor(ImGuiCol_Header, k_ComponentHeaderColor);
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, k_ComponentHeaderHoveredColor);
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, k_ComponentHeaderActiveColor);
+            const bool open = ImGui::CollapsingHeader(DisplayTypeName(info), flags);
+            ImGui::PopStyleColor(3);
+
+            if (open)
             {
                 if (info != nullptr)
                 {
-                    if (DrawReflectedComponent(*comp, refOptions))
-                        changed = true;
+                    const NS::Object::Component* baseline = nullptr;
+                    if (defaults != nullptr)
+                    {
+                        baseline = defaults->Find(info->typeName);
+                    }
+                    const ComponentEditResult r = DrawReflectedComponent(*comp, refOptions, baseline);
+                    result.changed |= r.changed;
+                    result.activated |= r.activated;
+                    result.committed |= r.committed;
+                    if (r.revertField != nullptr)
+                    {
+                        result.revertTarget = r.revertTarget;
+                        result.revertField = r.revertField;
+                    }
                 }
                 else
                 {
@@ -187,17 +355,21 @@ namespace NS::Editor
             }
             ImGui::PopID();
         }
-        return changed;
+        return result;
     }
 #else
-    bool DrawReflectedComponent(NS::Scene::Component&, std::span<const ObjectRefOption>) noexcept
+    ComponentEditResult DrawReflectedComponent(NS::Object::Component&,
+                                               std::span<const ObjectRefOption>,
+                                               const NS::Object::Component*) noexcept
     {
-        return false;
+        return ComponentEditResult{};
     }
 
-    bool DrawObjectComponents(NS::Scene::GameObject&, std::span<const ObjectRefOption>) noexcept
+    ComponentEditResult DrawObjectComponents(NS::Object::GameObject&,
+                                             std::span<const ObjectRefOption>,
+                                             ComponentDefaults*) noexcept
     {
-        return false;
+        return ComponentEditResult{};
     }
 #endif
 } // namespace NS::Editor

@@ -1,41 +1,61 @@
-#pragma once
+﻿#pragma once
 
-/// @file GridMath.h
-/// @brief 編集モード用の grid 数学 helper。 EditorMode やギズモ、 各種 Command が再利用する
-///
-/// @details Component ではなく自由関数として NS::Editor 直下に置く。 出荷ビルドに載らない
-/// editor 専用の計算で、 マウスの ray 化と grid snap、 回転値の quaternion 変換を担う
+#include "Runtime/Math/Math.h"
 
+#include <cstdint>
 
+//! @brief エディタでのグリッド計算やレイキャスト判定を補助する数学ユーティリティ
 
 namespace NS::Editor
 {
-    /// 1 grid サイズ。 世界座標で 1.0 m に対応する
-    constexpr float kGridSize = 1.0f;
+    //! グリッドの基本サイズ
+    inline constexpr float k_GridSize = 1.0f;
 
-    /// マウスの screen 座標から world ray を生成する
-    /// `viewProjection` は camera の VP matrix、 viewport は backbuffer サイズ
+    //! @brief ゲーム画面を映すパネルの矩形（スクリーン座標）。編集入力の座標変換と入りの判定に使う
+    struct ViewRect
+    {
+        int x = 0;      //!< 左上のスクリーン X 座標
+        int y = 0;      //!< 左上のスクリーン Y 座標
+        int width = 0;  //!< 幅（ピクセル）
+        int height = 0; //!< 高さ（ピクセル）
+    };
+
+    //! スクリーン座標が矩形内かを返す。右端 (x+width) と下端 (y+height) は外側扱い
+    [[nodiscard]] bool ViewRectContains(const ViewRect& rect, int screenX, int screenY) noexcept;
+
+    //! 矩形の幅と高さを返す
+    [[nodiscard]] NS::Math::Size2D ViewRectSize(const ViewRect& rect) noexcept;
+
+    //! @brief スクリーン座標を矩形原点基準のローカル座標へ変換する
+    //! @note 矩形外でも変換自体は返す。範囲判定は ViewRectContains が担う
+    void ViewRectToLocal(const ViewRect& rect, int screenX, int screenY, int& outX, int& outY) noexcept;
+
+    //! @brief ウィンドウ内座標のマウスを、パネル矩形と同じ空間へ移す
+    //! @details パネルを別窓へ出せる設定では矩形が OS の画面座標で来る。ウィンドウ内座標のまま
+    //! 引き算するとタイトルバーと枠のぶんずれるので、ここで足して揃える
+    void WindowMouseToViewSpace(int mouseX, int mouseY, int& outX, int& outY) noexcept;
+
+    //! @brief スクリーンの2D座標からワールド空間へ向かう Ray を生成する。
     [[nodiscard]] NS::Math::Ray ScreenToWorldRay(const NS::Math::Matrix& viewProjection,
                                                  NS::Math::Size2D viewport,
                                                  int mouseX,
                                                  int mouseY) noexcept;
 
-    /// world 座標を最近接 cell 中心へ snap する
+    //! ワールド座標を最も近いグリッドセルの中心座標に丸める
     [[nodiscard]] NS::Math::Vector3 SnapWorldPointToGrid(NS::Math::Vector3 worldPoint,
-                                                         float gridSize = kGridSize) noexcept;
+                                                         float gridSize = k_GridSize) noexcept;
 
-    /// AABB hit 結果から、 hit 面の法線方向に 1 grid offset した cell 中心を返す
-    /// `hitNormal` は ±X / ±Y / ±Z のいずれか
+    //! @brief 衝突点の座標と法線ベクトルから、隣接する配置先セルの中心座標を算出する
     [[nodiscard]] NS::Math::Vector3 SnapHitToPlacementCell(NS::Math::Vector3 hitPoint,
                                                            NS::Math::Vector3 hitNormal,
-                                                           float gridSize = kGridSize) noexcept;
+                                                           float gridSize = k_GridSize) noexcept;
 
-    /// ray が y = 0 の ground plane と交わる点を grid snap して返す
-    /// 上向き ray や後方ヒットなら false を返し `outCellCenter` は変更しない
+    //! @brief レイと水平な地面との交点を算出し、グリッドにスナップした座標を取得する
+    //! @return 交差しない場合はfalseを返す
     [[nodiscard]] bool TryGroundPlaneFallback(const NS::Math::Ray& ray,
                                               NS::Math::Vector3& outCellCenter,
-                                              float gridSize = kGridSize) noexcept;
+                                              float gridSize = k_GridSize) noexcept;
 
-    /// 0..3 の回転値を Y 軸 90 度単位の quaternion に変換する
+    //! 0〜3の段階的な回転値を、Y軸周りの90度刻みのクォータニオンに変換する
     [[nodiscard]] NS::Math::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept;
 } // namespace NS::Editor

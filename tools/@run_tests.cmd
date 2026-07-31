@@ -36,10 +36,10 @@ echo [2/3] テストビルド中...
 call "%~dp0_common.cmd" :setup_msbuild
 if errorlevel 1 exit /b 1
 
-msbuild build\NS.sln /p:Configuration=%CONFIG% /p:Platform=x64 /m:%MSBUILD_CPUS% /v:minimal
+msbuild build\NS.sln /p:Configuration=%CONFIG% /p:Platform=x64 /m:%MSBUILD_CPUS% -nodeReuse:false /v:minimal
 if errorlevel 1 (
     echo [WARN] 並列ビルド失敗。 /m:1 で再試行します...
-    msbuild build\NS.sln /p:Configuration=%CONFIG% /p:Platform=x64 /m:1 /v:minimal
+    msbuild build\NS.sln /p:Configuration=%CONFIG% /p:Platform=x64 /m:1 -nodeReuse:false /v:minimal
     if errorlevel 1 (
         echo [ERROR] ビルド失敗
         exit /b 1

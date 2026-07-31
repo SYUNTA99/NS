@@ -1,10 +1,7 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Core/Filesystem.h>
-#include <Framework/Graphics/GltfLoader.h>
-
-#include <cstddef>
 #include <filesystem>
+#include <gtest/gtest.h>
+#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Graphics/GltfLoader.h>
 #include <span>
 #include <string>
 #include <string_view>
@@ -12,17 +9,18 @@
 namespace
 {
     // 単一三角形 buffer (102 byte): pos v0(1,2,3) v1(4,5,6) v2(7,8,9) / normal / uv / idx[0,1,2]
-    const char* kTriBase64 = "AACAPwAAAEAAAEBAAACAQAAAoEAAAMBAAADgQAAAAEEAABBBAAAAAAAAAAAAAIA/"
-                             "AAAAAAAAgD8AAAAAAACAPwAAAAAAAAAAzczMPc3MTD6amZk"
-                             "+zczMPgAAAD+amRk/AAABAAIA";
+    const char* k_TriBase64 = "AACAPwAAAEAAAEBAAACAQAAAoEAAAMBAAADgQAAAAEEAABBBAAAAAAAAAAAAAIA/"
+                              "AAAAAAAAgD8AAAAAAACAPwAAAAAAAAAAzczMPc3MTD6amZk"
+                              "+zczMPgAAAD+amRk/AAABAAIA";
 
     // 2 primitive buffer (204 byte): prim0 pos(1..9)/n(0,0,1)/uv(0)/idx[0,1,2],
     //                                prim1 pos(10..18)/n(0,1,0)/uv(1)/idx[0,1,2]
-    const char* kMultiBase64 = "AACAPwAAAEAAAEBAAACAQAAAoEAAAMBAAADgQAAAAEEAABBBAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/"
-                               "AAAAAAAAAAAAAIA/AAAAAAAAAAAAAAA"
-                               "AAAAAAAAAAAAAAAAAAAABAAIAAAAgQQAAMEEAAEBBAABQQQAAYEEAAHBBAACAQQAAiEEAAJBBAAAAAAAAgD8AAA"
-                               "AAAAAAAAAAgD8AAAAAAAAAAA"
-                               "AAgD8AAAAAAACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AAABAAIA";
+    const char* k_MultiBase64 =
+        "AACAPwAAAEAAAEBAAACAQAAAoEAAAMBAAADgQAAAAEEAABBBAAAAAAAAAAAAAIA/AAAAAAAAAAAAAIA/"
+        "AAAAAAAAAAAAAIA/AAAAAAAAAAAAAAA"
+        "AAAAAAAAAAAAAAAAAAAABAAIAAAAgQQAAMEEAAEBBAABQQQAAYEEAAHBBAACAQQAAiEEAAJBBAAAAAAAAgD8AAA"
+        "AAAAAAAAAAgD8AAAAAAAAAAA"
+        "AAgD8AAAAAAACAPwAAgD8AAIA/AACAPwAAgD8AAIA/AAABAAIA";
 
     // node translation [100,0,0] 配下に 2 primitive を持つ mesh
     std::string MultiPrimGltf()
@@ -31,7 +29,7 @@ namespace
                R"("nodes":[{"mesh":0,"translation":[100,0,0]}],)" + R"("meshes":[{"primitives":[)" +
                R"({"attributes":{"POSITION":0,"NORMAL":1,"TEXCOORD_0":2},"indices":3},)" +
                R"({"attributes":{"POSITION":4,"NORMAL":5,"TEXCOORD_0":6},"indices":7}]}],)" +
-               R"("buffers":[{"byteLength":204,"uri":"data:application/octet-stream;base64,)" + kMultiBase64 +
+               R"("buffers":[{"byteLength":204,"uri":"data:application/octet-stream;base64,)" + k_MultiBase64 +
                R"("}],)" + R"("bufferViews":[)" + R"({"buffer":0,"byteOffset":0,"byteLength":36,"target":34962},)" +
                R"({"buffer":0,"byteOffset":36,"byteLength":36,"target":34962},)" +
                R"({"buffer":0,"byteOffset":72,"byteLength":24,"target":34962},)" +
@@ -55,8 +53,8 @@ namespace
     {
         return std::string{R"({"asset":{"version":"2.0"},"extensionsRequired":["KHR_draco_mesh_compression"],)"} +
                R"("meshes":[{"primitives":[{"attributes":{"POSITION":0},"indices":1}]}],)" +
-               R"("buffers":[{"byteLength":102,"uri":"data:application/octet-stream;base64,)" + kTriBase64 + R"("}],)" +
-               R"("bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36,"target":34962},)" +
+               R"("buffers":[{"byteLength":102,"uri":"data:application/octet-stream;base64,)" + k_TriBase64 +
+               R"("}],)" + R"("bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36,"target":34962},)" +
                R"({"buffer":0,"byteOffset":96,"byteLength":6,"target":34963}],)" +
                R"("accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[1,2,3],"max":[7,8,9]},)" +
                R"({"bufferView":1,"componentType":5123,"count":3,"type":"SCALAR"}]})";
@@ -67,21 +65,21 @@ namespace
     {
         return std::string{R"({"asset":{"version":"2.0"},)"} +
                R"("meshes":[{"primitives":[{"attributes":{"POSITION":0},"indices":1,"mode":1}]}],)" +
-               R"("buffers":[{"byteLength":102,"uri":"data:application/octet-stream;base64,)" + kTriBase64 + R"("}],)" +
-               R"("bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36,"target":34962},)" +
+               R"("buffers":[{"byteLength":102,"uri":"data:application/octet-stream;base64,)" + k_TriBase64 +
+               R"("}],)" + R"("bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36,"target":34962},)" +
                R"({"buffer":0,"byteOffset":96,"byteLength":6,"target":34963}],)" +
                R"("accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[1,2,3],"max":[7,8,9]},)" +
                R"({"bufferView":1,"componentType":5123,"count":3,"type":"SCALAR"}]})";
     }
 
     // 法線なし三角形 (42 byte): pos v0(0,0,0) v1(1,0,0) v2(0,1,0) / idx[0,1,2]、 NORMAL 属性なし
-    const char* kNoNormalBase64 = "AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAAAAABAAIA";
+    const char* k_NoNormalBase64 = "AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAAAAABAAIA";
 
     std::string NoNormalGltf()
     {
         return std::string{R"({"asset":{"version":"2.0"},)"} +
                R"("meshes":[{"primitives":[{"attributes":{"POSITION":0},"indices":1}]}],)" +
-               R"("buffers":[{"byteLength":42,"uri":"data:application/octet-stream;base64,)" + kNoNormalBase64 +
+               R"("buffers":[{"byteLength":42,"uri":"data:application/octet-stream;base64,)" + k_NoNormalBase64 +
                R"("}],)" + R"("bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36,"target":34962},)" +
                R"({"buffer":0,"byteOffset":36,"byteLength":6,"target":34963}],)" +
                R"("accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[0,0,0],"max":[1,1,0]},)" +

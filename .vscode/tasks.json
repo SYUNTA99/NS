@@ -1,0 +1,108 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build-debug",
+            "type": "shell",
+            "command": "cmd",
+            "args": [
+                "/c",
+                "tools\\@build.cmd",
+                "Debug"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$msCompile"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
+        },
+        {
+            "label": "build-release",
+            "type": "shell",
+            "command": "cmd",
+            "args": [
+                "/c",
+                "tools\\@build.cmd",
+                "Release"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "build",
+            "problemMatcher": [
+                "$msCompile"
+            ],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
+        },
+        {
+            "label": "regen-project",
+            "type": "shell",
+            "command": "cmd",
+            "args": [
+                "/c",
+                "tools\\@regen_project.cmd"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
+        },
+        {
+            "label": "run-tests",
+            "type": "shell",
+            "command": "cmd",
+            "args": [
+                "/c",
+                "tools\\@run_tests.cmd"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "clear": true
+            }
+        },
+        {
+            "label": "run-game",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/bin/Debug-windows-x86_64/Game.exe",
+            "options": {
+                "cwd": "${workspaceFolder}/build/bin/Debug-windows-x86_64"
+            },
+            "dependsOn": [
+                "build-debug"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        }
+    ]
+}

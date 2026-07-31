@@ -1,15 +1,13 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Core/Clock.h>
-#include <Framework/Math/Math.h>
-#include <Framework/Physics/PhysicsWorld.h>
-#include <Framework/Scene/Components/CharacterMovementComponent.h>
-#include <Framework/Scene/GameObject.h>
-#include <Framework/Scene/Transform.h>
-
-#include <algorithm>
+﻿#include <algorithm>
 #include <bit>
 #include <cstdint>
+#include <gtest/gtest.h>
+#include <Runtime/Core/Clock.h>
+#include <Runtime/Math/Math.h>
+#include <Runtime/Object/Components/CharacterMovementComponent.h>
+#include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Transform.h>
+#include <Runtime/Physics/PhysicsWorld.h>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -18,10 +16,10 @@ namespace
 {
     using NS::Math::AABB;
     using NS::Math::Vector3;
-    using NS::Scene::CharacterMovementComponent;
-    using NS::Scene::GameObject;
+    using NS::Object::CharacterMovementComponent;
+    using NS::Object::GameObject;
 
-    constexpr float kFixedDt = 1.0f / 60.0f;
+    constexpr float k_FixedDt = 1.0f / 60.0f;
 
     /// 1 fixed step ごとの表面状態。coyote / jump buffer 等の内部 timer は
     /// 必ず位置・速度・接地の変化として表面に出るため、この 3 つだけで足りる
@@ -123,7 +121,7 @@ namespace
     {
         GameObject owner;
         NS::Physics::PhysicsWorld world;
-        world.AddAabb(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{16.0f, 0.5f, 8.0f}});
+        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{16.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 1.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
@@ -146,7 +144,7 @@ namespace
     {
         GameObject owner;
         NS::Physics::PhysicsWorld world;
-        world.AddAabb(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{32.0f, 0.5f, 8.0f}});
+        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{32.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 1.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
@@ -168,7 +166,7 @@ namespace
     {
         GameObject owner;
         NS::Physics::PhysicsWorld world;
-        world.AddAabb(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{2.0f, 0.5f, 8.0f}});
+        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{2.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 1.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
@@ -202,7 +200,7 @@ namespace
     {
         GameObject owner;
         NS::Physics::PhysicsWorld world;
-        world.AddAabb(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
+        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 3.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
@@ -227,8 +225,8 @@ namespace
     {
         GameObject owner;
         NS::Physics::PhysicsWorld world;
-        world.AddAabb(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
-        world.AddAabb(AABB{Vector3{6.0f, 1.5f, 0.0f}, Vector3{0.5f, 2.0f, 8.0f}});
+        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
+        world.AddAABB(AABB{Vector3{6.0f, 1.5f, 0.0f}, Vector3{0.5f, 2.0f, 8.0f}});
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 1.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
@@ -243,20 +241,20 @@ namespace
 
     // 基準ハッシュ。手触りに触る改修の前後で軌跡の bit 一致を守る門番で、
     // 意図して手触りを変えた時だけ実測値で更新する
-    constexpr uint64_t kFlatWalkGolden = 0x4FA4FA4FCFB0F728ULL;
-    constexpr uint64_t kSingleJumpGolden = 0xC15864A95E5EDFCDULL;
-    constexpr uint64_t kCoyoteJumpGolden = 0xE363FC53420CB70DULL;
-    constexpr uint64_t kJumpBufferGolden = 0xFC63ACD2279A8321ULL;
-    constexpr uint64_t kWallCollisionGolden = 0xE38F47F9986195ACULL;
+    constexpr uint64_t k_FlatWalkGolden = 0x4FA4FA4FCFB0F728ULL;
+    constexpr uint64_t k_SingleJumpGolden = 0xC15864A95E5EDFCDULL;
+    constexpr uint64_t k_CoyoteJumpGolden = 0xE363FC53420CB70DULL;
+    constexpr uint64_t k_JumpBufferGolden = 0xFC63ACD2279A8321ULL;
+    constexpr uint64_t k_WallCollisionGolden = 0xE38F47F9986195ACULL;
 } // namespace
 
 class MovementGolden : public ::testing::Test
 {
 protected:
-    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(kFixedDt); }
+    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_FixedDt); }
 };
 
-/// ハッシュ方式の前提検証: 同一 build 内の 2 run が bit 一致すること
+/// ハッシュ方式の前提として、同じビルドで 2 回走らせた結果が bit 一致すること
 TEST_F(MovementGolden, HashIsStableAcrossTwoRuns)
 {
     EXPECT_EQ(HashTrajectory(RunSingleJump()), HashTrajectory(RunSingleJump()));
@@ -276,7 +274,7 @@ TEST_F(MovementGolden, FlatWalkMatchesGoldenTrace)
     EXPECT_TRUE(trajectory.back().grounded);
 
     const uint64_t hash = HashTrajectory(trajectory);
-    EXPECT_EQ(hash, kFlatWalkGolden) << DescribeTrajectory(trajectory, hash);
+    EXPECT_EQ(hash, k_FlatWalkGolden) << DescribeTrajectory(trajectory, hash);
 }
 
 TEST_F(MovementGolden, SingleJumpMatchesGoldenTrace)
@@ -288,7 +286,7 @@ TEST_F(MovementGolden, SingleJumpMatchesGoldenTrace)
     EXPECT_TRUE(trajectory.back().grounded) << "着地して終わっていない";
 
     const uint64_t hash = HashTrajectory(trajectory);
-    EXPECT_EQ(hash, kSingleJumpGolden) << DescribeTrajectory(trajectory, hash);
+    EXPECT_EQ(hash, k_SingleJumpGolden) << DescribeTrajectory(trajectory, hash);
 }
 
 TEST_F(MovementGolden, CoyoteJumpMatchesGoldenTrace)
@@ -298,7 +296,7 @@ TEST_F(MovementGolden, CoyoteJumpMatchesGoldenTrace)
     EXPECT_TRUE(HasUpwardBurst(trajectory)) << "踏み外し後の猶予ジャンプが発動していない";
 
     const uint64_t hash = HashTrajectory(trajectory);
-    EXPECT_EQ(hash, kCoyoteJumpGolden) << DescribeTrajectory(trajectory, hash);
+    EXPECT_EQ(hash, k_CoyoteJumpGolden) << DescribeTrajectory(trajectory, hash);
 }
 
 TEST_F(MovementGolden, JumpBufferMatchesGoldenTrace)
@@ -308,7 +306,7 @@ TEST_F(MovementGolden, JumpBufferMatchesGoldenTrace)
     EXPECT_TRUE(HasUpwardBurst(trajectory)) << "着地時に先行入力ジャンプが発動していない";
 
     const uint64_t hash = HashTrajectory(trajectory);
-    EXPECT_EQ(hash, kJumpBufferGolden) << DescribeTrajectory(trajectory, hash);
+    EXPECT_EQ(hash, k_JumpBufferGolden) << DescribeTrajectory(trajectory, hash);
 }
 
 TEST_F(MovementGolden, WallCollisionMatchesGoldenTrace)
@@ -320,5 +318,5 @@ TEST_F(MovementGolden, WallCollisionMatchesGoldenTrace)
     EXPECT_LT(trajectory.back().velocity.x, 0.5f) << "壁に当たり続けているのに速度が残っている";
 
     const uint64_t hash = HashTrajectory(trajectory);
-    EXPECT_EQ(hash, kWallCollisionGolden) << DescribeTrajectory(trajectory, hash);
+    EXPECT_EQ(hash, k_WallCollisionGolden) << DescribeTrajectory(trajectory, hash);
 }

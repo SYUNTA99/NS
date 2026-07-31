@@ -1,15 +1,13 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Core/Logger.h>
-#include <Framework/Graphics/Buffer.h>
-#include <Framework/Graphics/CommandList.h>
-#include <Framework/Graphics/Renderer.h>
-#include <Framework/Graphics/Shader.h>
-#include <Framework/Platform/Window.h>
-
-#include <array>
+﻿#include <array>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <memory>
+#include <Runtime/Core/Logger.h>
+#include <Runtime/Graphics/Buffer.h>
+#include <Runtime/Graphics/CommandList.h>
+#include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Graphics/Shader.h>
+#include <Runtime/Platform/Window.h>
 
 namespace
 {
@@ -96,11 +94,11 @@ TEST_F(BufferLoggerTest, VertexBufferDynamicUpdateDoesNotCrash)
     ASSERT_TRUE(vb.IsValid());
 
     verts[0].pos[0] = 5.0f;
-    renderer.Commands().UpdateBuffer(vb, verts.data(), verts.size() * sizeof(TestVertex));
+    renderer.Commands().UpdateSubresource(vb, verts.data(), verts.size() * sizeof(TestVertex));
     SUCCEED();
 }
 
-TEST_F(BufferLoggerTest, VertexBufferStaticUpdateIsNoop)
+TEST_F(BufferLoggerTest, VertexBufferDefaultUpdateDoesNotCrash)
 {
     Window window(MakeWindowDesc("ns_vb_static_update"));
     ASSERT_TRUE(window.IsValid());
@@ -113,7 +111,7 @@ TEST_F(BufferLoggerTest, VertexBufferStaticUpdateIsNoop)
     Buffer& vb = *vbHolder;
     ASSERT_TRUE(vb.IsValid());
 
-    renderer.Commands().UpdateBuffer(vb, verts.data(), verts.size() * sizeof(TestVertex));
+    renderer.Commands().UpdateSubresource(vb, verts.data(), verts.size() * sizeof(TestVertex));
     SUCCEED();
 }
 
@@ -194,7 +192,7 @@ TEST_F(BufferLoggerTest, ConstantBufferUpdate)
     data.values[1] = 2.0f;
     data.values[2] = 3.0f;
     data.values[3] = 4.0f;
-    renderer.Commands().UpdateBuffer(cb, &data, sizeof(data));
+    renderer.Commands().UpdateSubresource(cb, &data, sizeof(data));
     SUCCEED();
 }
 
@@ -224,7 +222,7 @@ TEST_F(BufferLoggerTest, BufferBindsDoNotCrash)
 
     renderer.Commands().SetVertexBuffer(vb, 0);
     renderer.Commands().SetIndexBuffer(ib);
-    renderer.Commands().SetConstantBuffer(cb, 0, ShaderType::Vertex);
-    renderer.Commands().SetConstantBuffer(cb, 0, ShaderType::Pixel);
+    renderer.Commands().VSSetConstantBuffer(cb, 0);
+    renderer.Commands().PSSetConstantBuffer(cb, 0);
     SUCCEED();
 }

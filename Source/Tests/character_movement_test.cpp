@@ -1,20 +1,19 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Core/Clock.h>
-#include <Framework/Math/Math.h>
-#include <Framework/Physics/PhysicsWorld.h>
-#include <Framework/Scene/Components/CharacterMovementComponent.h>
-#include <Framework/Scene/GameObject.h>
-#include <Framework/Scene/Transform.h>
+﻿#include <gtest/gtest.h>
+#include <Runtime/Core/Clock.h>
+#include <Runtime/Math/Math.h>
+#include <Runtime/Object/Components/CharacterMovementComponent.h>
+#include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Transform.h>
+#include <Runtime/Physics/PhysicsWorld.h>
 
 namespace
 {
     using NS::Math::AABB;
     using NS::Math::Vector3;
-    using NS::Scene::CharacterMovementComponent;
-    using NS::Scene::GameObject;
+    using NS::Object::CharacterMovementComponent;
+    using NS::Object::GameObject;
 
-    constexpr float kFixedDt = 1.0f / 60.0f;
+    constexpr float k_FixedDt = 1.0f / 60.0f;
 
     /// 衝突なしの環境で N 回 OnUpdate を呼ぶ。debug draw は false 固定
     void StepN(CharacterMovementComponent& mov, int n)
@@ -29,7 +28,7 @@ namespace
     CharacterMovementComponent& MakeGrounded(GameObject& owner, NS::Physics::PhysicsWorld& world)
     {
         auto& mov = *owner.AddComponent<CharacterMovementComponent>();
-        world.AddAabb(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
+        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
         world.BuildBroadphase();
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
         mov.SetPhysicsWorld(&world);
@@ -43,7 +42,7 @@ namespace
 class CharacterMovementTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(kFixedDt); }
+    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_FixedDt); }
 };
 
 TEST_F(CharacterMovementTest, GravityReducesVerticalVelocityWhenAirborne)

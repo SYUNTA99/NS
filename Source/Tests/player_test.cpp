@@ -1,31 +1,48 @@
-#include <gtest/gtest.h>
-
+#include <Game/Level/HealthComponent.h>
 #include <Game/Player.h>
+#include <gtest/gtest.h>
+#include <Runtime/Object/Components/CharacterMovementComponent.h>
+#include <Runtime/Object/Components/MeshRendererComponent.h>
+#include <Runtime/Object/Components/PlayerInputComponent.h>
+#include <Runtime/Object/Components/ShadowComponent.h>
+#include <Runtime/Object/Components/TransformComponent.h>
 
 TEST(PlayerTest, ConstructsWithDefaultComposition)
 {
     Player player{};
-    // 4 つの Component (mesh / movement / input / shadow) が AddComponent 経由で登録されている
-    EXPECT_EQ(player.Components().size(), 4u);
+    // 器が積む transform に素の 5 つ (mesh / movement / input / health / shadow) と判定への応答 4 つ
+    // (fade / respawner / finisher / area camera) を足した 10 つ。 デバッグ表示は出荷では積まれない
+    std::size_t expected = 10u;
+#if !defined(NS_SHIPPING)
+    expected += 1u; // コヨーテ時間のデバッグ描画
+#endif
+    EXPECT_EQ(player.Components().size(), expected);
 }
 
-TEST(PlayerTest, ComponentAccessorsReturnInternalReferences)
+TEST(PlayerTest, DefaultComponentsResolveByType)
 {
     Player player{};
     // priority 昇順 + 同 priority 内は declaration 順:
-    //   [0] m_input    (Input,   0)
-    //   [1] m_mesh     (Physics, 200) — Player.h で m_movement より前に宣言
-    //   [2] m_movement (Physics, 200)
-    //   [3] m_shadow   (Physics, 200) — 同 priority 内で最後に登録
-    EXPECT_EQ(&player.InputComp(), player.Components()[0]);
-    EXPECT_EQ(&player.MeshComp(), player.Components()[1]);
-    EXPECT_EQ(&player.Movement(), player.Components()[2]);
-    EXPECT_EQ(&player.Shadow(), player.Components()[3]);
+    //   [0] input     (Input,      0)
+    //   [1] transform (Update,   200) — 器のコンストラクタが最初に積む
+    //   [2] mesh      (Update,   200) — ctor で movement より前に登録
+    //   [3] movement  (Update,   200)
+    //   [4] health    (Update,   200) — movement の後に登録
+    //   [5] shadow    (Update,   200) — 同 priority 内で最後に登録
+    // 応答はこの後ろの LateUpdate 帯に並ぶ (fade +5、 respawner / finisher / area camera +10)
+    EXPECT_EQ(player.FindComponent<NS::Object::PlayerInputComponent>(), player.Components()[0]);
+    EXPECT_EQ(player.FindComponent<NS::Object::TransformComponent>(), player.Components()[1]);
+    EXPECT_EQ(player.FindComponent<NS::Object::MeshRendererComponent>(), player.Components()[2]);
+    EXPECT_EQ(player.FindComponent<NS::Object::CharacterMovementComponent>(), player.Components()[3]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::HealthComponent>(), player.Components()[4]);
+    EXPECT_EQ(player.FindComponent<NS::Object::ShadowComponent>(), player.Components()[5]);
 }
 
 TEST(PlayerTest, InputComponentResolvesMovementOnStart)
 {
     Player player{};
     player.OnStart();
-    EXPECT_EQ(player.InputComp().Movement(), &player.Movement());
+    auto* input = player.FindComponent<NS::Object::PlayerInputComponent>();
+    ASSERT_NE(input, nullptr);
+    EXPECT_EQ(input->Movement(), player.FindComponent<NS::Object::CharacterMovementComponent>());
 }

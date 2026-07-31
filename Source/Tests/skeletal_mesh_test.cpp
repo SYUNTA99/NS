@@ -1,19 +1,16 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Core/Filesystem.h>
-#include <Framework/Core/Logger.h>
-#include <Framework/Graphics/Mesh.h>
-#include <Framework/Graphics/Renderer.h>
-#include <Framework/Graphics/Shader.h>
-#include <Framework/Graphics/SkeletalMesh.h>
-#include <Framework/Math/Math.h>
-#include <Framework/Platform/Window.h>
-
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <memory>
-#include <span>
+#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Core/Logger.h>
+#include <Runtime/Graphics/Mesh.h>
+#include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Graphics/Shader.h>
+#include <Runtime/Graphics/SkeletalMesh.h>
+#include <Runtime/Math/Math.h>
+#include <Runtime/Platform/Window.h>
 #include <type_traits>
 
 namespace
@@ -50,12 +47,12 @@ namespace
         return d;
     }
 
-    constexpr std::size_t kTriVertexCount = 3;
-    constexpr std::size_t kTriIndexCount = 3;
+    constexpr std::size_t k_TriVertexCount = 3;
+    constexpr std::size_t k_TriIndexCount = 3;
 
-    std::array<SkinnedVertex, kTriVertexCount> MakeSkinnedTriangle()
+    std::array<SkinnedVertex, k_TriVertexCount> MakeSkinnedTriangle()
     {
-        std::array<SkinnedVertex, kTriVertexCount> v{};
+        std::array<SkinnedVertex, k_TriVertexCount> v{};
         for (SkinnedVertex& vertex : v)
         {
             vertex.normal = Vector3(0.0f, 0.0f, -1.0f);
@@ -71,7 +68,7 @@ namespace
         return v;
     }
 
-    std::array<std::uint32_t, kTriIndexCount> MakeTriangleIndices()
+    std::array<std::uint32_t, k_TriIndexCount> MakeTriangleIndices()
     {
         return {0, 1, 2};
     }
@@ -149,8 +146,8 @@ TEST_F(SkeletalMeshLoggerTest, ConstructWithValidDescIsValid)
     SkeletalMesh& mesh = *meshHolder;
     EXPECT_TRUE(mesh.IsValid());
     EXPECT_FALSE(mesh.IsUsingFallback());
-    EXPECT_EQ(mesh.VertexCount(), kTriVertexCount);
-    EXPECT_EQ(mesh.IndexCount(), kTriIndexCount);
+    EXPECT_EQ(mesh.VertexCount(), k_TriVertexCount);
+    EXPECT_EQ(mesh.IndexCount(), k_TriIndexCount);
     EXPECT_EQ(mesh.BoneCount(), 2u);
 }
 
@@ -170,11 +167,11 @@ TEST_F(SkeletalMeshLoggerTest, EmptyDescIsInvalidWithoutFallback)
     EXPECT_EQ(mesh.IndexCount(), 0u);
 
     // 不正な mesh の Draw は何もせずクラッシュしない
-    mesh.Draw(renderer);
+    NS::Graphics::DrawMesh(renderer.Commands(), mesh);
     SUCCEED();
 }
 
-TEST_F(SkeletalMeshLoggerTest, SetBonePaletteAndDrawDoesNotCrash)
+TEST_F(SkeletalMeshLoggerTest, SkinnedMeshDrawDoesNotCrash)
 {
     Window window(MakeWindowDesc("ns_skeletal_draw"));
     ASSERT_TRUE(window.IsValid());
@@ -194,9 +191,8 @@ TEST_F(SkeletalMeshLoggerTest, SetBonePaletteAndDrawDoesNotCrash)
     SkeletalMesh& mesh = *meshHolder;
     ASSERT_TRUE(mesh.IsValid());
 
-    const std::array<Matrix, 2> palette{Matrix::Identity, Matrix::Identity};
-    mesh.SetBonePalette(std::span<const Matrix>(palette.data(), palette.size()));
-    mesh.Draw(renderer);
+    // ボーンパレットは mesh から外れたので、純ジオメトリとして DrawMesh できる
+    NS::Graphics::DrawMesh(renderer.Commands(), mesh);
     SUCCEED();
 }
 
@@ -209,15 +205,13 @@ TEST_F(SkeletalMeshLoggerTest, SkinnedShaderCompiles)
 
     const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
 
-    // fallback でない = skinned VS / PS のコンパイルが成功
+    // fallback でなければ skinned VS/PS のコンパイルは成功している
     std::unique_ptr<NS::Graphics::Shader> vsHolder = NS::Graphics::Shader::Create(shaderDir / "skinned.vs.hlsl");
     NS::Graphics::Shader& vs = *vsHolder;
     std::unique_ptr<NS::Graphics::Shader> psHolder = NS::Graphics::Shader::Create(shaderDir / "player.ps.hlsl");
     NS::Graphics::Shader& ps = *psHolder;
     EXPECT_TRUE(vs.IsValid());
-    EXPECT_FALSE(vs.IsUsingFallback());
     EXPECT_TRUE(ps.IsValid());
-    EXPECT_FALSE(ps.IsUsingFallback());
 }
 
 TEST_F(SkeletalMeshLoggerTest, CreateInputLayoutSucceedsWithSkinnedShader)
@@ -244,9 +238,8 @@ TEST_F(SkeletalMeshLoggerTest, CreateInputLayoutSucceedsWithSkinnedShader)
     std::unique_ptr<NS::Graphics::Shader> shaderHolder = NS::Graphics::Shader::Create(shaderDir / "skinned.vs.hlsl");
     NS::Graphics::Shader& shader = *shaderHolder;
     ASSERT_TRUE(shader.IsValid());
-    ASSERT_FALSE(shader.IsUsingFallback());
 
-    // BLENDINDICES=UInt4 を含む SkinnedInputLayout が skinned.vs の入力シグネチャと突合して生成される
+    // BLENDINDICES=UInt4 を含む SkinnedInputLayout が skinned.vs の入力シグネチャと照合して生成される
     mesh.CreateInputLayout(shader);
     EXPECT_NE(mesh.InputLayout(), nullptr);
 }

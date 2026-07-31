@@ -1,9 +1,7 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Graphics/Animation.h>
-#include <Framework/Graphics/Skeleton.h>
-#include <Framework/Math/Math.h>
-
+#include <Runtime/Graphics/Animation.h>
+#include <Runtime/Graphics/Skeleton.h>
+#include <Runtime/Math/Math.h>
 #include <vector>
 
 namespace
@@ -20,9 +18,9 @@ namespace
     using NS::Math::Quaternion;
     using NS::Math::Vector3;
 
-    constexpr float kEps = 1e-4f;
+    constexpr float k_Eps = 1e-4f;
 
-    void ExpectVec3Near(const Vector3& actual, const Vector3& expected, float eps = kEps)
+    void ExpectVec3Near(const Vector3& actual, const Vector3& expected, float eps = k_Eps)
     {
         EXPECT_NEAR(actual.x, expected.x, eps);
         EXPECT_NEAR(actual.y, expected.y, eps);
@@ -77,7 +75,7 @@ TEST(AnimationSampleTest, QuatSlerpMidpointIs45Degrees)
 
 TEST(AnimationSampleTest, QuatSlerpTakesShortestPath)
 {
-    // 終端を負反転 (同じ回転の遠い表現) しても最短経路で 45°Z になる
+    // 終端を同じ回転の遠い表現へ負反転しても最短経路で 45°Z になる
     const Quaternion rot90 = RotZ(90.0f);
     const Quaternion negated{-rot90.x, -rot90.y, -rot90.z, -rot90.w};
     const std::vector<float> times{0.0f, 1.0f};

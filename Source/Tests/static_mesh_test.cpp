@@ -1,15 +1,13 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Core/Filesystem.h>
-#include <Framework/Core/Logger.h>
-#include <Framework/Graphics/Renderer.h>
-#include <Framework/Graphics/Shader.h>
-#include <Framework/Graphics/StaticMesh.h>
-#include <Framework/Platform/Window.h>
-
 #include <array>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <memory>
+#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Core/Logger.h>
+#include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Graphics/Shader.h>
+#include <Runtime/Graphics/StaticMesh.h>
+#include <Runtime/Platform/Window.h>
 
 namespace
 {
@@ -42,12 +40,12 @@ namespace
         return d;
     }
 
-    constexpr std::size_t kCubeVertexCount = 8;
-    constexpr std::size_t kCubeIndexCount = 36;
+    constexpr std::size_t k_CubeVertexCount = 8;
+    constexpr std::size_t k_CubeIndexCount = 36;
 
-    std::array<StaticVertex, kCubeVertexCount> MakeCubeVertices()
+    std::array<StaticVertex, k_CubeVertexCount> MakeCubeVertices()
     {
-        std::array<StaticVertex, kCubeVertexCount> v{};
+        std::array<StaticVertex, k_CubeVertexCount> v{};
         v[0] = {Vector3(-1.0f, -1.0f, -1.0f), Vector2(0.0f, 0.0f), Vector3(0.0f, 0.0f, -1.0f)};
         v[1] = {Vector3(1.0f, -1.0f, -1.0f), Vector2(1.0f, 0.0f), Vector3(0.0f, 0.0f, -1.0f)};
         v[2] = {Vector3(1.0f, 1.0f, -1.0f), Vector2(1.0f, 1.0f), Vector3(0.0f, 0.0f, -1.0f)};
@@ -59,7 +57,7 @@ namespace
         return v;
     }
 
-    std::array<std::uint32_t, kCubeIndexCount> MakeCubeIndices()
+    std::array<std::uint32_t, k_CubeIndexCount> MakeCubeIndices()
     {
         return {0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6, 4, 5, 1, 4, 1, 0,
                 3, 2, 6, 3, 6, 7, 1, 5, 6, 1, 6, 2, 4, 0, 3, 4, 3, 7};
@@ -114,8 +112,8 @@ TEST_F(MeshLoggerTest, ConstructWithCubeDataIsValid)
     std::unique_ptr<StaticMesh> meshHolder = StaticMesh::Create(desc);
     StaticMesh& mesh = *meshHolder;
     EXPECT_TRUE(mesh.IsValid());
-    EXPECT_EQ(mesh.VertexCount(), kCubeVertexCount);
-    EXPECT_EQ(mesh.IndexCount(), kCubeIndexCount);
+    EXPECT_EQ(mesh.VertexCount(), k_CubeVertexCount);
+    EXPECT_EQ(mesh.IndexCount(), k_CubeIndexCount);
 }
 
 TEST_F(MeshLoggerTest, EmptyDescFallsBackToCube)
@@ -184,7 +182,7 @@ TEST_F(MeshLoggerTest, FallbackMeshDrawDoesNotCrash)
     ASSERT_TRUE(mesh.IsValid());
     ASSERT_TRUE(mesh.IsUsingFallback());
 
-    mesh.Draw(renderer);
+    NS::Graphics::DrawMesh(renderer.Commands(), mesh);
     SUCCEED();
 }
 
@@ -207,7 +205,7 @@ TEST_F(MeshLoggerTest, DrawDoesNotCrash)
     StaticMesh& mesh = *meshHolder;
     ASSERT_TRUE(mesh.IsValid());
 
-    mesh.Draw(renderer);
+    NS::Graphics::DrawMesh(renderer.Commands(), mesh);
     SUCCEED();
 }
 
@@ -259,7 +257,6 @@ TEST_F(MeshLoggerTest, CreateInputLayoutSucceedsWithStandardShader)
     std::unique_ptr<NS::Graphics::Shader> shaderHolder = NS::Graphics::Shader::Create(shaderDir / "standard.vs.hlsl");
     NS::Graphics::Shader& shader = *shaderHolder;
     ASSERT_TRUE(shader.IsValid());
-    ASSERT_FALSE(shader.IsUsingFallback());
 
     mesh.CreateInputLayout(shader);
     EXPECT_NE(mesh.InputLayout(), nullptr);

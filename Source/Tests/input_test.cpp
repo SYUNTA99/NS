@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 
-#include <Framework/Platform/Gamepad.h>
-#include <Framework/Platform/Input.h>
-#include <Framework/Platform/Keyboard.h>
-#include <Framework/Platform/Mouse.h>
-#include <Framework/Platform/detail/input_win32.h>
+#include <Runtime/Platform/Gamepad.h>
+#include <Runtime/Platform/Input.h>
+#include <Runtime/Platform/Keyboard.h>
+#include <Runtime/Platform/Mouse.h>
+#include <Runtime/Platform/detail/InputWin32.h>
 
 #include <windows.h>
 
@@ -182,7 +182,7 @@ TEST(NsPlatformMouse, RelativeModeReturnsRawDelta)
     m.SetRelativeMode(true);
     EXPECT_TRUE(m.IsRelativeMode());
 
-    // カーソル絶対位置は動かさず raw 移動だけ積む。 相対モードではこれが差分になる
+    // カーソル絶対位置は動かさず生の移動量だけ積む。相対モードではこれが差分になる
     m.OnRawMove(3, -4);
     m.OnRawMove(2, 1);
     EXPECT_EQ(m.GetDeltaX(), 5);
@@ -208,7 +208,7 @@ TEST(NsPlatformMouse, NonRelativeModeIgnoresRawMove)
     m.OnMove(10, 20);
     m.Update();
     m.OnMove(15, 30);
-    // 相対モード OFF では OnRawMove を積んでも位置差だけが差分になる
+    // 相対モードオフでは OnRawMove を積んでも位置差だけが差分になる
     m.OnRawMove(100, 100);
     EXPECT_EQ(m.GetDeltaX(), 5);
     EXPECT_EQ(m.GetDeltaY(), 10);

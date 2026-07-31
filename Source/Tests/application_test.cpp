@@ -1,15 +1,11 @@
 #include <gtest/gtest.h>
-
-#include <Framework/App/Application.h>
-#include <Framework/App/Layer.h>
-#include <Framework/Core/Clock.h>
-#include <Framework/Core/Logger.h>
-#include <Framework/Graphics/Renderer.h>
-#include <Framework/Platform/Input.h>
-#include <Framework/Platform/Window.h>
-
 #include <memory>
-#include <utility>
+#include <Runtime/App/Application.h>
+#include <Runtime/App/Layer.h>
+#include <Runtime/Core/Clock.h>
+#include <Runtime/Core/Logger.h>
+#include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Platform/Window.h>
 
 namespace
 {
@@ -29,8 +25,8 @@ namespace
         d.renderer.enableDebugLayer = false;
 #endif
         d.renderer.vsync = false;
-        // テスト時間内で確実に複数 fixed step が発生するよう極小化 (default 1/60 だと
-        // Debug layer ON の重い 1 frame 内に 1 step も入らないケースがある)
+        // 既定 (1/60) だと Debug layer 有効時の重い 1 frame に fixed step が入らないことがあるため、
+        // テスト時間内で確実に複数回発生するよう極小化する
         d.fixedDelta = 0.0005f;
         return d;
     }

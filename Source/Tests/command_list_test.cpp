@@ -1,16 +1,14 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Core/Logger.h>
-#include <Framework/Graphics/Buffer.h>
-#include <Framework/Graphics/CommandList.h>
-#include <Framework/Graphics/Renderer.h>
-#include <Framework/Graphics/Shader.h>
-#include <Framework/Graphics/Texture.h>
-#include <Framework/Platform/Window.h>
-
-#include <array>
+﻿#include <array>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <memory>
+#include <Runtime/Core/Logger.h>
+#include <Runtime/Graphics/Buffer.h>
+#include <Runtime/Graphics/CommandList.h>
+#include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Graphics/Shader.h>
+#include <Runtime/Graphics/Texture.h>
+#include <Runtime/Platform/Window.h>
 
 namespace
 {
@@ -104,19 +102,19 @@ TEST_F(CommandListLoggerTest, SetAndDrawDoNotCrash)
     ASSERT_TRUE(tex.IsValid());
 
     CommandList& cmd = renderer.Commands();
-    cmd.SetShader(vs);
-    cmd.SetShader(ps);
+    cmd.VSSetShader(vs);
+    cmd.PSSetShader(ps);
     cmd.SetInputLayout(nullptr); // nullptr は何もしない (実レイアウト経路は mesh テストがカバー)
     cmd.SetVertexBuffer(vb, 0);
     cmd.SetIndexBuffer(ib);
-    cmd.SetConstantBuffer(cb, 0, ShaderType::Vertex);
-    cmd.SetConstantBuffer(cb, 0, ShaderType::Pixel);
-    cmd.SetTexture(tex, 0, ShaderType::Pixel);
+    cmd.VSSetConstantBuffer(cb, 0);
+    cmd.PSSetConstantBuffer(cb, 0);
+    cmd.PSSetShaderResource(tex, 0);
     cmd.DrawIndexed(3);
     SUCCEED();
 }
 
-TEST_F(CommandListLoggerTest, UpdateBufferDynamicWorksStaticIsNoop)
+TEST_F(CommandListLoggerTest, UpdateHandlesDynamicAndDefaultBuffers)
 {
     Window window(MakeWindowDesc("ns_cmd_update"));
     ASSERT_TRUE(window.IsValid());
@@ -135,9 +133,31 @@ TEST_F(CommandListLoggerTest, UpdateBufferDynamicWorksStaticIsNoop)
 
     CommandList& cmd = renderer.Commands();
     verts[0].pos[0] = 1.0f;
-    cmd.UpdateBuffer(dyn, verts.data(), verts.size() * sizeof(TestVertex));
-    // Static への Update は何もしない (ERROR ログのみ、 crash しない)
-    cmd.UpdateBuffer(stat, verts.data(), verts.size() * sizeof(TestVertex));
+    cmd.UpdateSubresource(dyn, verts.data(), verts.size() * sizeof(TestVertex));
+    // DEFAULT は UpdateSubresource で更新される (crash しない)
+    cmd.UpdateSubresource(stat, verts.data(), verts.size() * sizeof(TestVertex));
+    SUCCEED();
+}
+
+TEST_F(CommandListLoggerTest, UpdateTextureDefaultUsesUpdateSubresource)
+{
+    Window window(MakeWindowDesc("ns_cmd_tex_update"));
+    ASSERT_TRUE(window.IsValid());
+    Renderer renderer(MakeRendererDesc(), window);
+    ASSERT_TRUE(renderer.IsValid());
+
+    TextureCreateDesc texDesc{};
+    texDesc.width = 2;
+    texDesc.height = 2;
+    texDesc.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    texDesc.bindFlags = D3D11_BIND_SHADER_RESOURCE;
+    std::unique_ptr<Texture> texHolder = Texture::Create(texDesc);
+    Texture& tex = *texHolder;
+    ASSERT_TRUE(tex.IsValid());
+
+    // DEFAULT texture は UpdateSubresource 経路。rowPitch = width * 4 byte
+    const std::array<unsigned int, 4> pixels{0xFFFFFFFFu, 0xFF000000u, 0xFF000000u, 0xFFFFFFFFu};
+    renderer.Commands().UpdateSubresource(tex, pixels.data(), 2u * sizeof(unsigned int));
     SUCCEED();
 }
 

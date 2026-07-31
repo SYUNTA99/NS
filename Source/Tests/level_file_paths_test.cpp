@@ -1,8 +1,7 @@
 #include "Editor/LevelFilePaths.h"
 
-#include <string>
-
 #include <gtest/gtest.h>
+#include <string>
 
 namespace EditorNs = NS::Editor;
 
@@ -74,13 +73,13 @@ TEST(LevelFilePaths, BuildLevelPathProducesExpectedShape)
     ASSERT_TRUE(p.has_value());
     EXPECT_EQ(p->extension(), ".scene");
     EXPECT_EQ(p->stem(), "MyLevel");
-    EXPECT_EQ(p->parent_path().filename(), "Levels");
+    EXPECT_EQ(p->parent_path().filename(), "Scenes");
 }
 
 TEST(LevelFilePaths, EnsureDirectoryCreatesAndIsIdempotent)
 {
-    EXPECT_TRUE(EditorNs::EnsureLevelsDirectoryExists());
-    EXPECT_TRUE(EditorNs::EnsureLevelsDirectoryExists());
+    EXPECT_TRUE(EditorNs::EnsureScenesDirectoryExists());
+    EXPECT_TRUE(EditorNs::EnsureScenesDirectoryExists());
 }
 
 TEST(LevelFilePaths, EnumerateReturnsSortedSafeNames)

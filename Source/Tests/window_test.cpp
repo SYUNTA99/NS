@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Core/Logger.h>
-#include <Framework/Platform/Window.h>
+#include <Runtime/Core/Logger.h>
+#include <Runtime/Platform/Window.h>
 
 namespace
 {

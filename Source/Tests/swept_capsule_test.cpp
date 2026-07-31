@@ -1,8 +1,7 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Math/Math.h>
-#include <Framework/Physics/Capsule.h>
-#include <Framework/Physics/SweptAABB.h>
+#include <Runtime/Math/Math.h>
+#include <Runtime/Physics/Capsule.h>
+#include <Runtime/Physics/SweptAABB.h>
 
 namespace
 {

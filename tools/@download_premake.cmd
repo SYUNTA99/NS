@@ -1,16 +1,20 @@
 @echo off
 ::============================================================================
 :: @download_premake.cmd
-:: Premake5 を GitHub Releases から取得して tools\premake5.exe に配置
+:: Fetch Premake5 from GitHub Releases into tools\premake5\premake5.exe.
 ::
-:: 使用方法: tools\@download_premake.cmd
+:: Usage: tools\@download_premake.cmd
 ::
-:: 依存: curl.exe / tar.exe (Windows 10 1803 以降標準搭載)
+:: Requires: curl.exe / tar.exe (bundled since Windows 10 1803)
+::
+:: NOTE: this header must be ASCII. It is parsed before chcp 65001 (line below)
+::       takes effect, and cmd.exe misparses UTF-8 multibyte here
+::       (a trailing byte eats the CR and a comment fragment gets executed).
 ::============================================================================
 setlocal
 chcp 65001 >nul
 
-set "EXE=%~dp0premake5.exe"
+set "EXE=%~dp0premake5\premake5.exe"
 if exist "%EXE%" (
     echo [OK] premake5.exe は既に存在します
     pause
@@ -30,7 +34,8 @@ if errorlevel 1 (
 )
 
 echo 展開中...
-tar.exe -xf "%ZIP%" -C "%~dp0"
+if not exist "%~dp0premake5" mkdir "%~dp0premake5"
+tar.exe -xf "%ZIP%" -C "%~dp0premake5"
 if errorlevel 1 (
     echo [ERROR] 展開失敗
     del "%ZIP%" 2>nul

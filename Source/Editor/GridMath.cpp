@@ -1,8 +1,48 @@
-#include "Editor/GridMath.h"
+﻿#include "Editor/GridMath.h"
 
+#include "Runtime/Math/Math.h"
+
+#include <cstdint>
+
+#if NS_EDITOR_ENABLED
+#include <imgui.h>
+#endif
 
 namespace NS::Editor
 {
+
+    bool ViewRectContains(const ViewRect& rect, int screenX, int screenY) noexcept
+    {
+        return screenX >= rect.x && screenX < rect.x + rect.width && screenY >= rect.y &&
+               screenY < rect.y + rect.height;
+    }
+
+    NS::Math::Size2D ViewRectSize(const ViewRect& rect) noexcept
+    {
+        return NS::Math::Size2D{rect.width, rect.height};
+    }
+
+    void ViewRectToLocal(const ViewRect& rect, int screenX, int screenY, int& outX, int& outY) noexcept
+    {
+        outX = screenX - rect.x;
+        outY = screenY - rect.y;
+    }
+
+    void WindowMouseToViewSpace(int mouseX, int mouseY, int& outX, int& outY) noexcept
+    {
+        outX = mouseX;
+        outY = mouseY;
+#if NS_EDITOR_ENABLED
+        if (ImGui::GetCurrentContext() == nullptr)
+            return;
+        const ImGuiViewport* main = ImGui::GetMainViewport();
+        if (main == nullptr)
+            return;
+        // 別窓を出さない設定なら Pos は原点なので、この足し算は何も動かさない
+        outX += static_cast<int>(main->Pos.x);
+        outY += static_cast<int>(main->Pos.y);
+#endif
+    }
 
     NS::Math::Ray ScreenToWorldRay(const NS::Math::Matrix& viewProjection,
                                    NS::Math::Size2D viewport,
@@ -40,7 +80,7 @@ namespace NS::Editor
 
     NS::Math::Vector3 SnapWorldPointToGrid(NS::Math::Vector3 p, float g) noexcept
     {
-        // 0.5 を足してから floor で四捨五入相当
+        // 最も近い整数に丸める
         const float gx = std::floor(p.x / g + 0.5f) * g;
         const float gy = std::floor(p.y / g + 0.5f) * g;
         const float gz = std::floor(p.z / g + 0.5f) * g;
@@ -55,7 +95,7 @@ namespace NS::Editor
 
     bool TryGroundPlaneFallback(const NS::Math::Ray& ray, NS::Math::Vector3& outCenter, float g) noexcept
     {
-        // 上向き ray / 水平 ray は地面に当たらない
+        // 水平または上向きのレイは交差対象外とする
         if (ray.direction.y > -1e-4f)
             return false;
         const float t = -ray.position.y / ray.direction.y;
@@ -74,8 +114,8 @@ namespace NS::Editor
     NS::Math::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept
     {
         const std::uint8_t r = static_cast<std::uint8_t>(rotation & 0x03);
-        constexpr float kQuarter = 1.5707963267948966f;
-        const float angle = static_cast<float>(r) * kQuarter;
+        // 90 度刻み = π/2 ラジアン
+        const float angle = static_cast<float>(r) * (NS::Math::k_Pi * 0.5f);
         return NS::Math::Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, angle);
     }
 

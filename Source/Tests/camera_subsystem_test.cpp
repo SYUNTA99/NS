@@ -1,26 +1,25 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Scene/CameraSubsystem.h>
-#include <Framework/Scene/Components/CameraBrainComponent.h>
-#include <Framework/Scene/Components/CameraComponent.h>
-#include <Framework/Scene/GameObject.h>
-#include <Framework/Scene/SceneBase.h>
+#include <Runtime/Object/CameraSubsystem.h>
+#include <Runtime/Object/Components/CameraBrainComponent.h>
+#include <Runtime/Object/Components/CameraComponent.h>
+#include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Scene/Scene.h>
 
 namespace
 {
-    using NS::Scene::CameraBrainComponent;
-    using NS::Scene::CameraComponent;
-    using NS::Scene::CameraSubsystem;
-    using NS::Scene::GameObject;
-    using NS::Scene::SceneBase;
+    using NS::Object::CameraBrainComponent;
+    using NS::Object::CameraComponent;
+    using NS::Object::CameraSubsystem;
+    using NS::Object::GameObject;
+    using NS::Object::Scene;
 } // namespace
 
 TEST(CameraSubsystemTest, CreatedOnAnyScene)
 {
-    SceneBase scene;
+    Scene scene;
     scene.CreateSceneSubsystems();
 
-    // どのシーンにもカメラ 1 系統。生成と同時に実カメラ + Brain の host が立ち上がる
+    // どのシーンでも生成と同時に実カメラ + Brain の host が立ち上がる
     CameraSubsystem* subsystem = scene.GetSubsystem<CameraSubsystem>();
     ASSERT_NE(subsystem, nullptr);
     EXPECT_NE(subsystem->Brain(), nullptr);
@@ -29,12 +28,12 @@ TEST(CameraSubsystemTest, CreatedOnAnyScene)
 
 TEST(CameraSubsystemTest, MainCameraResolvesThroughBrain)
 {
-    SceneBase scene;
+    Scene scene;
     scene.CreateSceneSubsystems();
     auto* subsystem = scene.GetSubsystem<CameraSubsystem>();
     ASSERT_NE(subsystem, nullptr);
 
-    // 実カメラは Brain と同じ host に載り、窓口の 2 つが同じ実体系を指す
+    // MainCamera と Brain の 2 窓口が同じ host 上のカメラを指す
     ASSERT_NE(subsystem->Brain(), nullptr);
     EXPECT_EQ(subsystem->MainCamera(), subsystem->Brain()->Camera());
     EXPECT_EQ(subsystem->Brain()->Owner(), subsystem->MainCamera()->Owner());
@@ -42,13 +41,13 @@ TEST(CameraSubsystemTest, MainCameraResolvesThroughBrain)
 
 TEST(CameraSubsystemTest, DeinitializeReleasesHost)
 {
-    SceneBase scene;
+    Scene scene;
     scene.CreateSceneSubsystems();
     auto* subsystem = scene.GetSubsystem<CameraSubsystem>();
     ASSERT_NE(subsystem, nullptr);
     ASSERT_NE(subsystem->Brain(), nullptr);
 
-    // シーン破棄経路で host ごと畳まれ、窓口は無カメラを返す
+    // シーン破棄で host ごと畳まれ、窓口は nullptr を返す
     subsystem->Deinitialize();
     EXPECT_EQ(subsystem->Brain(), nullptr);
     EXPECT_EQ(subsystem->MainCamera(), nullptr);

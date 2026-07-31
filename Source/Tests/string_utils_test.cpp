@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Core/Logger.h>
-#include <Framework/Core/StringUtils.h>
+#include <Runtime/Core/Logger.h>
+#include <Runtime/Core/StringUtils.h>
 
 class StringUtilsLoggerTest : public ::testing::Test
 {

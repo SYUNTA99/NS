@@ -1,13 +1,11 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Core/Filesystem.h>
-#include <Framework/Core/Logger.h>
-#include <Framework/Graphics/CommandList.h>
-#include <Framework/Graphics/Renderer.h>
-#include <Framework/Graphics/Shader.h>
-#include <Framework/Platform/Window.h>
-
 #include <memory>
+#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Core/Logger.h>
+#include <Runtime/Graphics/CommandList.h>
+#include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Graphics/Shader.h>
+#include <Runtime/Platform/Window.h>
 
 namespace
 {
@@ -101,7 +99,7 @@ TEST_F(ShaderLoggerTest, RealVertexShaderCompiles)
     EXPECT_FALSE(vs.VertexShaderBytecode().empty());
     EXPECT_FALSE(NS::Graphics::detail::GetVertexShaderBytecode(vs).empty());
 
-    renderer.Commands().SetShader(vs);
+    renderer.Commands().VSSetShader(vs);
     SUCCEED();
 }
 
@@ -124,6 +122,6 @@ TEST_F(ShaderLoggerTest, RealPixelShaderCompiles)
     EXPECT_TRUE(ps.VertexShaderBytecode().empty());
     EXPECT_TRUE(NS::Graphics::detail::GetVertexShaderBytecode(ps).empty());
 
-    renderer.Commands().SetShader(ps);
+    renderer.Commands().PSSetShader(ps);
     SUCCEED();
 }

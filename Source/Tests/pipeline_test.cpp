@@ -1,10 +1,9 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Core/Logger.h>
-#include <Framework/Graphics/CommandList.h>
-#include <Framework/Graphics/Pipeline.h>
-#include <Framework/Graphics/Renderer.h>
-#include <Framework/Platform/Window.h>
+#include <Runtime/Core/Logger.h>
+#include <Runtime/Graphics/CommandList.h>
+#include <Runtime/Graphics/Pipeline.h>
+#include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Platform/Window.h>
 
 namespace
 {
@@ -79,7 +78,7 @@ TEST_F(PipelineTest, DescRoundTripKeepsIntent)
 
 TEST_F(PipelineTest, CreateWithoutDeviceIsInvalid)
 {
-    // Renderer を作らない = Gpu().device が空。失敗しても非 null + IsValid()==false の規約を検証する
+    // Renderer が無く device が空でも、 Pipeline::Create は非 null を返し IsValid() は false になる
     const auto pipeline = Pipeline::Create(PipelineDesc{});
     ASSERT_NE(pipeline, nullptr);
     EXPECT_FALSE(pipeline->IsValid());

@@ -1,12 +1,11 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Physics/SweptCapsule.h>
+#include <Runtime/Physics/SweptCapsule.h>
 
 namespace
 {
     using NS::Math::Vector3;
     using NS::Physics::Capsule;
-    using NS::Physics::Sphere;
+    using NS::Math::Sphere;
 
     // 芯が縦 (axis Y) の標準プレイヤー capsule を返す
     Capsule MakeVerticalCapsule(const Vector3& center, float halfHeight, float radius)

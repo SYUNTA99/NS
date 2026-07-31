@@ -1,7 +1,7 @@
-#include "Framework/Graphics/Renderer.h"
-#include "Framework/Platform/Window.h"
-#include "Framework/UI/ImGuiContext.h"
-#include "Framework/UI/Panel.h"
+#include "Runtime/Graphics/Renderer.h"
+#include "Runtime/Platform/Window.h"
+#include "Runtime/UI/ImGuiContext.h"
+#include "Runtime/UI/Panel.h"
 
 #include <gtest/gtest.h>
 

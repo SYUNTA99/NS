@@ -1,5 +1,5 @@
 #include "Editor/CategoryPalette.h"
-#include "Framework/Platform/Input.h"
+#include "Runtime/Platform/Input.h"
 
 #include <gtest/gtest.h>
 

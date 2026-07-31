@@ -1,11 +1,10 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Core/Clock.h>
-#include <Framework/Scene/SceneBase.h>
+#include <Runtime/Core/Clock.h>
+#include <Runtime/Object/Scene/Scene.h>
 
 namespace
 {
-    class MockScene : public NS::Scene::SceneBase
+    class MockScene : public NS::Object::Scene
     {
     public:
         int startCount = 0;
@@ -64,7 +63,7 @@ TEST(SceneTest, LifecycleOrderIsIndependent)
 
 TEST(SceneTest, BaseClassDefaultsAreNoop)
 {
-    NS::Scene::SceneBase scene;
+    NS::Object::Scene scene;
     scene.OnStart();
     scene.OnUpdate();
     scene.OnRender();
@@ -75,14 +74,14 @@ TEST(SceneTest, BaseClassDefaultsAreNoop)
 TEST(SceneTest, PolymorphicDeleteCallsDerivedDtor)
 {
     bool dtorCalled = false;
-    struct TrackedScene : public NS::Scene::SceneBase
+    struct TrackedScene : public NS::Object::Scene
     {
         bool* flag;
         explicit TrackedScene(bool* f) : flag(f) {}
         ~TrackedScene() override { *flag = true; }
     };
     {
-        std::unique_ptr<NS::Scene::SceneBase> scene = std::make_unique<TrackedScene>(&dtorCalled);
+        std::unique_ptr<NS::Object::Scene> scene = std::make_unique<TrackedScene>(&dtorCalled);
     }
     EXPECT_TRUE(dtorCalled);
 }

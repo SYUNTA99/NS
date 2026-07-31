@@ -1,75 +1,61 @@
-#include "Framework/Scene/SceneBase.h"
-#include "Framework/Scene/SceneManager.h"
-#include "Game/Level/PlayFlowComponent.h"
-#include "Game/LevelPlayScene.h"
+#include "Game/Level/BlockObject.h"
+#include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/Scene/SceneManager.h"
+#include "Runtime/Object/World.h"
 
+#include <cstdint>
 #include <gtest/gtest.h>
 
-#include <memory>
-#include <string>
-
-/// 既存型へ手を入れず SceneBase 派生を足すだけで、 SceneManager の差し替えに乗って動くことを検証する
-/// LevelPlayScene は Application 不在でもライフサイクルが安全に戻るため、 実シーンとの相互差し替えも回す
+/// レベルの切り替えがシーンデータの差し替えだけで済むことを検証する
+/// 差し替えた先が器として生きていることまで見る
 
 namespace
 {
-    /// タイトル画面に相当する新シーン種別の代役。 ライフサイクルの呼出だけ記録する
-    class DummyTitleScene : public NS::Scene::SceneBase
+    // 地形ブロックを指定数だけ並べたレベルデータ
+    NS::Object::SceneData MakeLevel(std::int16_t cellCount)
     {
-    public:
-        explicit DummyTitleScene(std::string* log) : m_log(log) {}
-
-        void OnStart() override { m_log->append("Start;"); }
-        void OnUpdate() override { m_log->append("Update;"); }
-        void OnShutdown() override { m_log->append("Shutdown;"); }
-
-    private:
-        std::string* m_log;
-    };
+        NS::Object::SceneData data;
+        for (std::int16_t i = 0; i < cellCount; ++i)
+        {
+            data.objects.push_back(NS::Game::Level::MakeCellObject(i, 0, 0));
+        }
+        return data;
+    }
 } // namespace
 
-TEST(SceneSwap, NewSceneTypeRunsThroughManagerAlone)
+TEST(SceneSwap, SwapReplacesWorldContents)
 {
-    NS::Scene::SceneManager manager;
-    std::string log;
+    NS::Object::SceneManager manager;
+    manager.LoadScene(MakeLevel(3));
 
-    manager.LoadScene(std::make_unique<DummyTitleScene>(&log));
-    manager.Update();
+    NS::Object::Scene& swapped = manager.LoadScene(MakeLevel(1));
 
-    EXPECT_EQ(log, "Start;Update;");
+    EXPECT_EQ(&swapped, manager.Current());
+    EXPECT_EQ(swapped.World().ObjectCount(), 1u);
 }
 
-TEST(SceneSwap, LevelPlaySceneSwapsIntoNewSceneType)
+TEST(SceneSwap, SwappedSceneKeepsRunning)
 {
-    NS::Scene::SceneManager manager;
-    manager.LoadScene(std::make_unique<LevelPlayScene>());
+    NS::Object::SceneManager manager;
+    manager.LoadScene(MakeLevel(1));
+
+    NS::Object::Scene& swapped = manager.LoadScene(MakeLevel(2));
+
+    // 差し替え後の scene が器として生きていることを、世界を 1 tick 回して確かめる
+    EXPECT_TRUE(swapped.IsSimulationEnabled());
+    (void)swapped.BeginPlayBaseline();
     manager.Update();
 
-    std::string log;
-    auto title = std::make_unique<DummyTitleScene>(&log);
-    auto* titlePtr = title.get();
-    manager.LoadScene(std::move(title));
-    manager.Update();
-
-    EXPECT_EQ(log, "Start;Update;");
-    // 実行時型情報は切っているため、載せた実体そのものが現役かを識別で確かめる
-    EXPECT_EQ(manager.Current(), titlePtr);
+    EXPECT_EQ(swapped.World().ObjectCount(), 2u);
 }
 
-TEST(SceneSwap, SwapBackReturnsWorkingLevelPlayScene)
+TEST(SceneSwap, SwapAfterUnloadStartsFresh)
 {
-    NS::Scene::SceneManager manager;
-    std::string log;
-    manager.LoadScene(std::make_unique<DummyTitleScene>(&log));
+    NS::Object::SceneManager manager;
+    manager.LoadScene(MakeLevel(3));
+    manager.UnloadScene();
 
-    auto play = std::make_unique<LevelPlayScene>();
-    auto* scene = play.get();
-    manager.LoadScene(std::move(play));
-
-    EXPECT_EQ(log, "Start;Shutdown;");
-    ASSERT_EQ(manager.Current(), scene);
-
-    // 差し替え後の実シーンが器として生きていることをプレイ突入で確かめる
-    scene->Director().Flow().EnterPlay();
-    EXPECT_TRUE(scene->Director().Flow().PlayModeSub().IsActive());
+    NS::Object::Scene& reloaded = manager.LoadScene(MakeLevel(1));
+    EXPECT_EQ(reloaded.World().ObjectCount(), 1u);
 }

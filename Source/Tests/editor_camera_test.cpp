@@ -1,11 +1,9 @@
-#include "Framework/Scene/Components/EditorCameraComponent.h"
-#include "Framework/Scene/GameObject.h"
+#include "Runtime/Object/Components/EditorCameraComponent.h"
+#include "Runtime/Object/GameObject.h"
 
 #include <gtest/gtest.h>
 
-#include <cmath>
-
-namespace SceneNs = NS::Scene;
+namespace SceneNs = NS::Object;
 
 TEST(EditorCameraTest, InitialStateMatchesDefaults)
 {
@@ -34,9 +32,9 @@ TEST(EditorCameraTest, PitchClampedToLimits)
     auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
 
     cam.ApplyOrbit(0.0f, +10.0f);
-    EXPECT_NEAR(cam.Pitch(), SceneNs::EditorCameraComponent::kPitchMax, 1e-4f);
+    EXPECT_NEAR(cam.Pitch(), SceneNs::EditorCameraComponent::k_PitchMax, 1e-4f);
     cam.ApplyOrbit(0.0f, -100.0f);
-    EXPECT_NEAR(cam.Pitch(), SceneNs::EditorCameraComponent::kPitchMin, 1e-4f);
+    EXPECT_NEAR(cam.Pitch(), SceneNs::EditorCameraComponent::k_PitchMin, 1e-4f);
 }
 
 TEST(EditorCameraTest, DistanceClampedViaSetDistance)
@@ -44,10 +42,10 @@ TEST(EditorCameraTest, DistanceClampedViaSetDistance)
     SceneNs::GameObject obj;
     auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
 
-    cam.SetDistance(SceneNs::EditorCameraComponent::kMaxDistance + 1000.0f);
-    EXPECT_NEAR(cam.Distance(), SceneNs::EditorCameraComponent::kMaxDistance, 1e-4f);
+    cam.SetDistance(SceneNs::EditorCameraComponent::k_MaxDistance + 1000.0f);
+    EXPECT_NEAR(cam.Distance(), SceneNs::EditorCameraComponent::k_MaxDistance, 1e-4f);
     cam.SetDistance(-50.0f);
-    EXPECT_NEAR(cam.Distance(), SceneNs::EditorCameraComponent::kMinDistance, 1e-4f);
+    EXPECT_NEAR(cam.Distance(), SceneNs::EditorCameraComponent::k_MinDistance, 1e-4f);
 }
 
 TEST(EditorCameraTest, FlyMoveForwardFollowsLookDirection)
@@ -63,6 +61,21 @@ TEST(EditorCameraTest, FlyMoveForwardFollowsLookDirection)
     EXPECT_NEAR(cam.Center().z, -6.0f, 1e-4f);
     EXPECT_NEAR(cam.Center().x, 0.0f, 1e-4f);
     EXPECT_NEAR(cam.Center().y, 0.0f, 1e-4f);
+}
+
+// 立方体 1 個へ寄せた距離でも WASD の速さが残る
+// 距離比例のままだと注視した途端に歩くより遅くなり、 別の場所へ移るのに時間がかかる
+TEST(EditorCameraTest, FlyMoveKeepsSpeedWhenZoomedIn)
+{
+    SceneNs::GameObject obj;
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
+    cam.SetYawPitch(0.0f, 0.0f);
+    cam.SetDistance(SceneNs::EditorCameraComponent::k_MinDistance);
+    cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+
+    // 下限 6 × KeyMoveSpeed 0.6 × dt 1 = 3.6。 素の距離 2 だと 1.2 しか進まない
+    cam.ApplyFlyMove(1.0f, 0.0f, 0.0f, 1.0f);
+    EXPECT_NEAR(cam.Center().z, -3.6f, 1e-4f);
 }
 
 TEST(EditorCameraTest, FlyMoveForwardIncludesPitch)
@@ -188,4 +201,97 @@ TEST(EditorCameraTest, OnUpdateSkippedWhenInactive)
     cam.SetYawPitch(1.0f, -0.5f);
     cam.OnUpdate();
     EXPECT_FLOAT_EQ(cam.Yaw(), 1.0f); // 変化なし (Apply* 呼ばれず)
+}
+
+TEST(EditorCameraTest, ApplyFreeFlightInputFlyingLooksAndKeepsEyeFixed)
+{
+    SceneNs::GameObject obj;
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
+    cam.SetCenter(NS::Math::Vector3{1.0f, 2.0f, 3.0f});
+    cam.SetDistance(10.0f);
+    const auto eyeBefore = cam.ComputeCameraPosition();
+
+    SceneNs::FreeFlightInput input{};
+    input.flying = true;
+    input.lookYawPixels = 100.0f;
+    cam.ApplyFreeFlightInput(input);
+
+    // 既定感度 m_mouseSensOrbit = 0.003
+    EXPECT_NEAR(cam.Yaw(), 100.0f * 0.003f, 1e-4f);
+    const auto eyeAfter = cam.ComputeCameraPosition();
+    EXPECT_NEAR(eyeAfter.x, eyeBefore.x, 1e-3f);
+    EXPECT_NEAR(eyeAfter.y, eyeBefore.y, 1e-3f);
+    EXPECT_NEAR(eyeAfter.z, eyeBefore.z, 1e-3f);
+}
+
+TEST(EditorCameraTest, ApplyFreeFlightInputIgnoresLookAndMoveWhenNotFlying)
+{
+    SceneNs::GameObject obj;
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
+    cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+    const auto centerBefore = cam.Center();
+
+    SceneNs::FreeFlightInput input{};
+    input.flying = false;
+    input.lookYawPixels = 100.0f;
+    input.forwardAxis = 1.0f;
+    input.deltaSeconds = 1.0f;
+    cam.ApplyFreeFlightInput(input);
+
+    EXPECT_FLOAT_EQ(cam.Yaw(), 0.0f);
+    EXPECT_NEAR(cam.Center().x, centerBefore.x, 1e-4f);
+    EXPECT_NEAR(cam.Center().y, centerBefore.y, 1e-4f);
+    EXPECT_NEAR(cam.Center().z, centerBefore.z, 1e-4f);
+}
+
+TEST(EditorCameraTest, ApplyFreeFlightInputFlyingMovesForward)
+{
+    SceneNs::GameObject obj;
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
+    cam.SetYawPitch(0.0f, 0.0f);
+    cam.SetDistance(10.0f);
+    cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+
+    SceneNs::FreeFlightInput input{};
+    input.flying = true;
+    input.forwardAxis = 1.0f;
+    input.deltaSeconds = 1.0f;
+    cam.ApplyFreeFlightInput(input);
+
+    // yaw=0/pitch=0 の前進は -Z 方向 (FlyMoveForwardFollowsLookDirection と同じ期待)
+    EXPECT_LT(cam.Center().z, 0.0f);
+}
+
+TEST(EditorCameraTest, ApplyFreeFlightInputWheelZoomsInOverSpringSteps)
+{
+    SceneNs::GameObject obj;
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
+    cam.SetDistance(10.0f);
+    const float before = cam.Distance();
+
+    SceneNs::FreeFlightInput input{};
+    input.flying = false;
+    input.wheelNotches = 1.0f;
+    input.deltaSeconds = 0.1f;
+    for (int i = 0; i < 10; ++i)
+    {
+        cam.ApplyFreeFlightInput(input);
+    }
+
+    EXPECT_LT(cam.Distance(), before);
+}
+
+TEST(EditorCameraTest, ApplyFreeFlightInputPanShiftsCenterWhenNotFlying)
+{
+    SceneNs::GameObject obj;
+    auto& cam = *obj.AddComponent<SceneNs::EditorCameraComponent>();
+    const auto before = cam.Center();
+
+    SceneNs::FreeFlightInput input{};
+    input.flying = false;
+    input.panXPixels = 1.0f;
+    cam.ApplyFreeFlightInput(input);
+
+    const auto after = cam.Center();
+    EXPECT_NEAR(after.x - before.x, 1.0f * cam.Distance() * 0.1f * 0.02f, 1e-3f);
 }

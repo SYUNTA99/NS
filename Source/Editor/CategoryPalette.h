@@ -1,15 +1,9 @@
-#pragma once
+﻿#pragma once
 
-/// @file CategoryPalette.h
-/// @brief 配置ブラシを選ぶ toolbar。 cube / 45 度スロープ / ゴールの 3 スロット
-///
-/// @details 状態は active slot index のみ
-/// Gamepad LB/RB、 Keyboard 数字キーの入力ハンドリングは TickInput、
-/// ImGui 描画は Render で行う。 Render は Debug / Development build 時のみ
-/// 実体があり、 Shipping では何もしない
-
+#include "Editor/GridMath.h"
 #include "Editor/PaletteTemplates.h"
-#include "Framework/Scene/SceneData.h"
+#include "Runtime/Core/NonCopyable.h"
+#include "Runtime/Object/Scene/SceneData.h"
 
 namespace NS::Platform
 {
@@ -22,57 +16,55 @@ namespace NS::UI
 
 namespace NS::Editor
 {
-    /// toolbar の状態保持と入力ハンドラ
-    class CategoryPalette
+    //! @brief 配置するオブジェクト（ブラシ）を選択するツールバーを管理するクラス。
+    //! @details 現在選択されているブラシの状態を保持し、入力による切り替えやUIの描画処理を担う。
+    class CategoryPalette : public NS::Core::NonCopyable
     {
     public:
-        static constexpr std::size_t kSlotCount = kPaletteSlotCount;
+        static constexpr std::size_t k_SlotCount = k_PaletteSlotCount;
 
         CategoryPalette() noexcept;
         ~CategoryPalette() noexcept = default;
 
-        CategoryPalette(const CategoryPalette&) = delete;
-        CategoryPalette& operator=(const CategoryPalette&) = delete;
-        CategoryPalette(CategoryPalette&&) = delete;
-        CategoryPalette& operator=(CategoryPalette&&) = delete;
-
-        /// Gamepad LB/RB / Keyboard 1-2 で active slot を切替える
-        /// imgui が WantCaptureKeyboard true を返す時は数字キー入力を無視する
+        //! @brief 入力を受け取り、アクティブなスロット（ブラシ）を切り替える
+        //! @note UI側がキーボード入力を要求している場合は、誤操作を防ぐためショートカット入力は無視される
         void TickInput(NS::Platform::Input* input, NS::UI::ImGuiContext* imgui) noexcept;
 
-        /// ImGui で toolbar を描画する。 ImGui 非搭載 build では何もしない
-        void Render() noexcept;
+        //! @brief ツールバーのUIを描画する（UI機能が無効な環境では何もしない）
+        //! @param viewRect Scene ビューのスクリーン矩形。ツールバーはこの矩形の外へ出ないよう毎フレーム位置を固定する
+        void Render(const NS::Editor::ViewRect& viewRect) noexcept;
 
+        //! 現在アクティブなスロット番号を取得する
         [[nodiscard]] std::size_t ActiveSlot() const noexcept { return m_activeSlot; }
 
-        /// 配置に複製する現在のプロトタイプ。 active slot のテンプレート
-        [[nodiscard]] const NS::Scene::ObjectData& CurrentTemplate() const noexcept
-        {
-            return m_current.prototype;
-        }
+        //! 選択中のブラシの元となるデータ（配置用テンプレート）を取得する
+        [[nodiscard]] const NS::Object::ObjectData& CurrentTemplate() const noexcept { return m_current.prototype; }
 
-        /// active slot の表示名
+        //! 選択中のブラシの表示名を取得する
         [[nodiscard]] const char* CurrentTemplateName() const noexcept { return m_current.name; }
 
-        /// 現在のブラシが R で 90° 回せる種別か
+        //! 選択中のブラシが回転可能なオブジェクトかどうかを返す
         [[nodiscard]] bool CurrentIsRotatable() const noexcept { return m_current.rotatable; }
 
-        /// cursor preview 用の slope 角度。 cube ブラシは wedge を持たないので常に -1
+        //! @brief 配置プレビュー用のスロープ角度を返す
+        //! @note 角度を持たない形状（キューブなど）の場合は負の値が返る
         [[nodiscard]] float CurrentSlopeAngleDegrees() const noexcept;
 
-        /// 範囲外指定は無視する
+        //! アクティブなスロットを指定した番号に変更する
         void SetActiveSlot(std::size_t slot) noexcept;
 
-        /// active slot を再選択した時の variant 切替。 cube には variant が無く何もしない
+        //! 同じスロットが再度選択された際の、形状のバリエーション切り替え処理を行う
         void CycleActiveVariant() noexcept;
 
     private:
-        /// active slot から m_current を組み直す。 slot を変えた直後に呼ぶ
         void RefreshCurrentTemplate() noexcept;
 
         std::size_t m_activeSlot = 0;
-
-        // active slot に対応する配置テンプレート。 表示名 / 回転可否 / 複製元を持つ
         PaletteTemplate m_current{};
+
+        float m_toolbarX = 0.0f;        // ツールバー窓の左上X。Scene ビュー内で自前ドラッグする管理値
+        float m_toolbarY = 0.0f;        // 同Y
+        bool m_toolbarPlaced = false;   // 初回に Scene 上端中央へ置いたか
+        bool m_toolbarDragging = false; // 余白ドラッグで移動中か
     };
 } // namespace NS::Editor

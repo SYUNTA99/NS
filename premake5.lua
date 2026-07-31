@@ -43,7 +43,7 @@ workspace "NS"
 
     --------------------------------------------------------------------------
     -- 構成別設定
-    --   - Framework 層列の最適化を構成デフォルトとし、Game.exe 固有調整は
+    --   - Runtime 層列の最適化を構成デフォルトとし、Game.exe 固有調整は
     --     Game プロジェクト側で filter override する
     --------------------------------------------------------------------------
     filter "configurations:Debug"
@@ -112,7 +112,7 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 bindir = "build/bin/" .. outputdir
 objdir_base = "build/obj/" .. outputdir
 
--- 共通 build options (全 Framework 層 / Game / Tests project で使用)
+-- 共通 build options (全 Runtime 層 / Game / Tests project で使用)
 local function applyCommonBuildOptions()
     warnings "Extra"
     -- flags { "FatalWarnings" }  -- build 安定後に有効化
@@ -123,18 +123,18 @@ local function applyCommonBuildOptions()
     linkoptions { "/ignore:4006" }
 end
 
--- Framework 層共通定義。 各層の <Layer>Pch.h を /FI で全 .cpp へ強制 include し、
--- Framework.h (windows.h + 定番 stdlib) と層固有の重いヘッダを PCH で償却する。
+-- Runtime 層共通定義。 各層の <Layer>Pch.h を /FI で全 .cpp へ強制 include し、
+-- CommonStl.h (windows.h + 定番 stdlib) と層固有の重いヘッダを PCH で償却する。
 -- forceincludes はパスを project 相対へ rebase するが、 層により .cpp の深さが異なり
 -- 相対 /FI が破綻するため、 include root (Source) から一意に解決できる論理名を渡す。
-local function applyFrameworkLayerDefaults(layerName)
+local function applyRuntimeLayerDefaults(layerName)
     -- Math は依存ゼロの最下層リーフ。 windows.h を持ち込まないため PCH 対象外
     if layerName == "Math" then
         return
     end
-    local pchLogical = "Framework/" .. layerName .. "/" .. layerName .. "Pch.h"
+    local pchLogical = "Runtime/" .. layerName .. "/" .. layerName .. "Pch.h"
     pchheader(pchLogical)
-    pchsource("Source/Framework/" .. layerName .. "/" .. layerName .. "Pch.cpp")
+    pchsource("Source/Runtime/" .. layerName .. "/" .. layerName .. "Pch.cpp")
     buildoptions { "/FI\"" .. pchLogical .. "\"" }
 end
 
@@ -182,12 +182,12 @@ project "directxtk_simplemath"
     buildoptions { "/utf-8", "/FS" }
 
 --============================================================================
--- Framework 層 (Solution Folder)
---   8 層 (Core / Platform / Physics / Graphics / Audio / Scene / UI / App) を
+-- Runtime 層 (Solution Folder)
+--   8 層 (Core / Platform / Physics / Graphics / Audio / Object / UI / App) を
 --   Visual Studio Solution Explorer 上で 1 つのフォルダにまとめる。
 --   ルート直下は Game / directxtk_simplemath、 Tests / 3rd party は別 group。
 --============================================================================
-group "Framework"
+group "Runtime"
 
 --============================================================================
 -- Math 層 (StaticLib) — 依存ゼロの最下層リーフ
@@ -200,14 +200,14 @@ project "Math"
     targetdir (bindir .. "/%{prj.name}")
     objdir (objdir_base .. "/%{prj.name}")
     files {
-        "Source/Framework/Math/**.h",
-        "Source/Framework/Math/**.cpp"
+        "Source/Runtime/Math/**.h",
+        "Source/Runtime/Math/**.cpp"
     }
     includedirs {
         "Source/ThirdParty/DirectXTK/Inc"
     }
     links { "directxtk_simplemath" }
-    applyFrameworkLayerDefaults("Math")
+    applyRuntimeLayerDefaults("Math")
     applyCommonBuildOptions()
 
 --============================================================================
@@ -222,8 +222,8 @@ project "Core"
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/Framework/Core/**.h",
-        "Source/Framework/Core/**.cpp"
+        "Source/Runtime/Core/**.h",
+        "Source/Runtime/Core/**.cpp"
     }
 
     -- NS::Core::Math は SimpleMath の using-alias、Logger は spdlog/magic_enum を使用
@@ -237,12 +237,11 @@ project "Core"
     links { "Math" }
 
     defines {
-        "SPDLOG_HEADER_ONLY",             -- header-only モード
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
 
-    applyFrameworkLayerDefaults("Core")
+    applyRuntimeLayerDefaults("Core")
     applyCommonBuildOptions()
 
 --============================================================================
@@ -257,8 +256,8 @@ project "Platform"
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/Framework/Platform/**.h",
-        "Source/Framework/Platform/**.cpp"
+        "Source/Runtime/Platform/**.h",
+        "Source/Runtime/Platform/**.cpp"
     }
 
     -- WindowDesc 等が NS::Core::Size2D (Math.h 経由で SimpleMath) を保持するため DirectXTK が必要
@@ -269,7 +268,6 @@ project "Platform"
     }
 
     defines {
-        "SPDLOG_HEADER_ONLY",
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
@@ -281,7 +279,7 @@ project "Platform"
         links { "Xinput" }
     filter {}
 
-    applyFrameworkLayerDefaults("Platform")
+    applyRuntimeLayerDefaults("Platform")
     applyCommonBuildOptions()
 
 --============================================================================
@@ -297,8 +295,8 @@ project "Graphics"
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/Framework/Graphics/**.h",
-        "Source/Framework/Graphics/**.cpp"
+        "Source/Runtime/Graphics/**.h",
+        "Source/Runtime/Graphics/**.cpp"
     }
 
     includedirs {
@@ -310,7 +308,6 @@ project "Graphics"
     }
 
     defines {
-        "SPDLOG_HEADER_ONLY",
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
@@ -327,7 +324,7 @@ project "Graphics"
     }
 
     -- Graphics は GraphicsPch.h で D3D11 / SimpleMath の cold parse も償却する
-    applyFrameworkLayerDefaults("Graphics")
+    applyRuntimeLayerDefaults("Graphics")
     applyCommonBuildOptions()
 
 --============================================================================
@@ -343,8 +340,8 @@ project "Physics"
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/Framework/Physics/**.h",
-        "Source/Framework/Physics/**.cpp"
+        "Source/Runtime/Physics/**.h",
+        "Source/Runtime/Physics/**.cpp"
     }
 
     -- NS::Core::Vector3 / BoundingBox / Ray (SimpleMath) を使う
@@ -355,14 +352,13 @@ project "Physics"
     }
 
     defines {
-        "SPDLOG_HEADER_ONLY",
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
 
     links { "Math", "Core" }
 
-    applyFrameworkLayerDefaults("Physics")
+    applyRuntimeLayerDefaults("Physics")
     applyCommonBuildOptions()
 
 --============================================================================
@@ -378,8 +374,8 @@ project "Audio"
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/Framework/Audio/**.h",
-        "Source/Framework/Audio/**.cpp"
+        "Source/Runtime/Audio/**.h",
+        "Source/Runtime/Audio/**.cpp"
     }
 
     includedirs {
@@ -388,32 +384,31 @@ project "Audio"
     }
 
     defines {
-        "SPDLOG_HEADER_ONLY",
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
 
     links { "Math", "Core" }
 
-    applyFrameworkLayerDefaults("Audio")
+    applyRuntimeLayerDefaults("Audio")
     applyCommonBuildOptions()
 
 --============================================================================
--- Scene 層 (StaticLib)
+-- Object 層 (StaticLib)
 --   GameObject / Component / Transform / IRenderable / RenderContext +
 --   各種 Component (MeshRendererComponent / CharacterMovement / Camera / 他)
---   UE5 風 OOP の合成主体。 Framework Library として 7 層目に配置。
+--   UE5 風 OOP の合成主体。 Runtime Library として 7 層目に配置。
 --============================================================================
-project "Scene"
+project "Object"
     kind "StaticLib"
-    location "build/Scene"
+    location "build/Object"
 
     targetdir (bindir .. "/%{prj.name}")
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/Framework/Scene/**.h",
-        "Source/Framework/Scene/**.cpp"
+        "Source/Runtime/Object/**.h",
+        "Source/Runtime/Object/**.cpp"
     }
 
     includedirs {
@@ -423,7 +418,6 @@ project "Scene"
     }
 
     defines {
-        "SPDLOG_HEADER_ONLY",
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
@@ -437,11 +431,11 @@ project "Scene"
         "Audio"
     }
 
-    applyFrameworkLayerDefaults("Scene")
+    applyRuntimeLayerDefaults("Object")
     applyCommonBuildOptions()
 
 --============================================================================
--- UI 層 (StaticLib、 Framework 8 層目)
+-- UI 層 (StaticLib、 Runtime 8 層目)
 --   ImGui ラッパ (GameRelease では非ビルド、 Debug / Development / GameDebug でのみビルド)。
 --   ImGui 型はヘッダから露出させず detail/ 配下にのみ取り込む (header pollution rule)。
 --============================================================================
@@ -453,8 +447,8 @@ project "UI"
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/Framework/UI/**.h",
-        "Source/Framework/UI/**.cpp"
+        "Source/Runtime/UI/**.h",
+        "Source/Runtime/UI/**.cpp"
     }
 
     includedirs {
@@ -464,7 +458,6 @@ project "UI"
     }
 
     defines {
-        "SPDLOG_HEADER_ONLY",
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
@@ -485,17 +478,15 @@ project "UI"
         links { "imgui" }
     filter {}
 
-    -- GameRelease では UI 層を丸ごとビルドしない。Framework が UI へ依存しないため出荷から物理排除できる
-    filter "configurations:GameRelease"
-        kind "None"
-    filter {}
+    -- ゲーム UI (Widget / UISystem) は出荷対象なので全構成でビルドする。
+    -- ImGui まわり (ImGuiContext / Panel) は NS_EDITOR_ENABLED ガードで GameRelease では空になる
 
-    applyFrameworkLayerDefaults("UI")
+    applyRuntimeLayerDefaults("UI")
     applyCommonBuildOptions()
 
 --============================================================================
 -- App 層 (StaticLib)
---   Application / WinMain (SceneBase は Scene 層に昇格、 T1 2026-05-23)
+--   Application / WinMain (基盤は Object 層に同居)
 --   DD7: フォルダ・ namespace ・ premake project 全て短縮命名 `App` で統一
 --============================================================================
 project "App"
@@ -506,8 +497,8 @@ project "App"
     objdir (objdir_base .. "/%{prj.name}")
 
     files {
-        "Source/Framework/App/**.h",
-        "Source/Framework/App/**.cpp"
+        "Source/Runtime/App/**.h",
+        "Source/Runtime/App/**.cpp"
     }
 
     -- WindowDesc 等が NS::Core::Size2D (Math.h 経由で SimpleMath) を保持するため DirectXTK が必要
@@ -519,7 +510,6 @@ project "App"
     }
 
     defines {
-        "SPDLOG_HEADER_ONLY",
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
@@ -531,10 +521,10 @@ project "App"
         "Physics",
         "Graphics",
         "Audio",
-        "Scene"
+        "Object"
     }
 
-    applyFrameworkLayerDefaults("App")
+    applyRuntimeLayerDefaults("App")
     applyCommonBuildOptions()
 
 --============================================================================
@@ -569,7 +559,6 @@ project "Game"
     }
 
     defines {
-        "SPDLOG_HEADER_ONLY",
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
@@ -581,12 +570,13 @@ project "Game"
         "Physics",
         "Graphics",
         "Audio",
-        "Scene",
+        "Object",
         "App",
+        "UI",
         "directxtk_simplemath"
     }
 
-    -- Game / Editor 共通の安定 Framework API を全 .cpp へ /FI 強制 include する。
+    -- Game / Editor 共通の安定 Runtime API を全 .cpp へ /FI 強制 include する。
     -- GamePch.cpp は Source/Game/**.cpp の glob で既に拾われる。 GamePch.h は
     -- include root (Source) 経由で全 .cpp から一意に解決できる論理名で渡す。
     pchheader "Game/GamePch.h"
@@ -597,7 +587,7 @@ project "Game"
 
 --============================================================================
 -- Editor (StaticLib) — エディタモジュール (NS::Editor)
---   EditorLayer / LevelEditorController / EditorCameraRig / EditorMode /
+--   Editor / LevelEditorController / EditorCameraRig / EditorMode /
 --   GizmoEditor / CategoryPalette / LevelFileBrowser / LevelFilePaths。
 --   Game + UI(ImGui) に依存。 GameRelease では kind None で出荷から物理排除し、
 --   「ゲーム本体は editor を知らない」をリンカで強制する。
@@ -625,7 +615,6 @@ project "Editor"
     }
 
     defines {
-        "SPDLOG_HEADER_ONLY",
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
@@ -638,7 +627,7 @@ project "Editor"
         "Physics",
         "Graphics",
         "Audio",
-        "Scene",
+        "Object",
         "App",
         "UI",
         "imgui",
@@ -665,7 +654,7 @@ group ""
 --============================================================================
 -- Game 実行ファイル (WindowedApp) — 薄い合成ルート
 --   GameMain.cpp (CreateApplication) のみ。 Game を常時、 Editor を editor 構成のみリンクし、
---   出荷 (GameRelease) には editor / UI / imgui を一切積まない。
+--   出荷 (GameRelease) には editor / imgui を一切積まない (ゲーム UI の UI 層は積む)。
 --============================================================================
 project "GameApp"
     kind "WindowedApp"
@@ -688,7 +677,6 @@ project "GameApp"
     }
 
     defines {
-        "SPDLOG_HEADER_ONLY",
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
@@ -701,14 +689,15 @@ project "GameApp"
         "Physics",
         "Graphics",
         "Audio",
-        "Scene",
+        "Object",
         "App",
+        "UI",
         "directxtk_simplemath"
     }
 
-    -- Scene の component 自己登録はどこからも参照されない TU の静的初期化に載っているため、
-    -- リンカの未参照 obj 除去で無言に欠け得る。Scene.lib は全 obj を強制で取り込んで防ぐ
-    linkoptions { "/WHOLEARCHIVE:Scene.lib" }
+    -- Object の component 自己登録はどこからも参照されない TU の静的初期化に載っているため、
+    -- リンカの未参照 obj 除去で無言に欠け得る。Object.lib は全 obj を強制で取り込んで防ぐ
+    linkoptions { "/WHOLEARCHIVE:Object.lib" }
 
     -- 出荷 (GameRelease) のみ exe 隣へ Shaders/ Assets/ をコピーする (exe 相対で読込む配布レイアウト)
     -- 開発構成は FileSystem::ContentRoot() がリポ直下を直接読むためコピーしない (ビルド毎のコピーを排除)
@@ -721,9 +710,9 @@ project "GameApp"
         }
     filter {}
 
-    -- editor 構成のみ Editor モジュール (+UI/imgui) をリンクする。 GameRelease では積まない
+    -- editor 構成のみ Editor モジュール (+imgui) をリンクする。 GameRelease では積まない
     filter "configurations:Debug or Development or GameDebug"
-        links { "Editor", "UI", "imgui" }
+        links { "Editor", "imgui" }
     filter {}
 
     -- GameDebug: Game.exe のみ -O0 + symbols フル
@@ -775,6 +764,9 @@ project "imgui"
     includedirs {
         "Source/ThirdParty/imgui",
         "Source/ThirdParty/imgui/backends",
+        -- imconfig.h が NS の Assert / Logger を取り込むので spdlog / magic_enum が要る
+        "Source/ThirdParty/spdlog/include",
+        "Source/ThirdParty/magic_enum/include",
     }
 
     warnings "Off"
@@ -815,7 +807,7 @@ project "googletest"
 
 --============================================================================
 -- Tests 実行ファイル (ConsoleApp)
---   GoogleTest ベース、 Framework 各層をリンクして個別モジュールをテスト
+--   GoogleTest ベース、 Runtime 各層をリンクして個別モジュールをテスト
 --============================================================================
 project "Tests"
     kind "ConsoleApp"
@@ -831,31 +823,28 @@ project "Tests"
         -- Tests から直接コンパイルしてリンクする。Game.cpp は Application や
         -- Window への依存があるので除外し、unit test で扱える範囲だけ取り込む。
         "Source/Game/Player.cpp",
-        "Source/Game/Blocks/**.cpp",
         "Source/Editor/EditorCameraRig.cpp",
         -- LevelEditorController は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
         -- Setup は Application::Get() を要求するため test では呼ばないが、 ctor / EnterPlay /
         -- EnterEdit / 値メンバ accessor の symbol が要るので .cpp を Tests に取り込む。
-        -- 操作対象の LevelPlayScene も ctor / dtor / vtable / SetPlaying symbol のため併せて取り込む。
-        "Source/Game/LevelPlayScene.cpp",
         "Source/Editor/LevelEditorController.cpp",
         -- Level 配下と Undo Command は Application 非依存の純粋ロジックなので
         -- Tests project から直接 compile する。
         "Source/Game/Level/**.cpp",
         "Source/Editor/Undo/**.cpp",
-        -- editor のうち Application 非依存なものだけ取り込む (EditorLayer は Application 依存のため除外)
-        -- PlayerTuning は EditorMode / LevelEditorController / player_tuning_test が参照する
-        "Source/Editor/PlayerTuning.cpp",
-        "Source/Editor/ComponentClipboard.cpp",
+        -- editor のうち Application 非依存なものだけ取り込む (Editor は Application 依存のため除外)
+        "Source/Editor/EditorObjects.cpp",
         "Source/Editor/EditorMode.cpp",
+        "Source/Editor/InspectorReflection.cpp",
         "Source/Editor/GizmoEditor.cpp",
         "Source/Editor/GridMath.cpp",
         "Source/Editor/CategoryPalette.cpp",
         "Source/Editor/PaletteTemplates.cpp",
         "Source/Editor/LevelFileBrowser.cpp",
         "Source/Editor/LevelFilePaths.cpp",
-        "Source/Game/Theme/**.cpp",
-        -- Editor / Game の各 .cpp は GamePch の /FI 前提で Framework include を持たない。
+        "Source/Editor/PlayControls.cpp",
+        "Source/Editor/Theme/**.cpp",
+        -- Editor / Game の各 .cpp は GamePch の /FI 前提で Runtime include を持たない。
         -- 同じソースを直接コンパイルする Tests でも同一 prelude を与えるため GamePch を共有する
         "Source/Game/GamePch.cpp"
     }
@@ -869,7 +858,6 @@ project "Tests"
     }
 
     defines {
-        "SPDLOG_HEADER_ONLY",
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
         "SPDLOG_NO_EXCEPTIONS"
     }
@@ -887,12 +875,12 @@ project "Tests"
         "Physics",
         "Graphics",
         "Audio",
-        "Scene",
+        "Object",
         "App"
     }
 
-    -- Game.exe と同じ理由で Scene の自己登録 TU をリンカ除去から守る
-    linkoptions { "/WHOLEARCHIVE:Scene.lib" }
+    -- Game.exe と同じ理由で Object の自己登録 TU をリンカ除去から守る
+    linkoptions { "/WHOLEARCHIVE:Object.lib" }
 
     -- Debug / Development / GameDebug の Tests は editor / ImGui を呼ぶため UI + imgui を link する。
     -- GameRelease では UI 層が非ビルドのため link / include しない。

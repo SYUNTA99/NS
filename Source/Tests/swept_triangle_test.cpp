@@ -1,10 +1,8 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Math/Math.h>
-#include <Framework/Physics/Capsule.h>
-#include <Framework/Physics/SweptTriangle.h>
-
 #include <cmath>
+#include <gtest/gtest.h>
+#include <Runtime/Math/Math.h>
+#include <Runtime/Physics/Capsule.h>
+#include <Runtime/Physics/SweptTriangle.h>
 
 namespace
 {
@@ -13,7 +11,7 @@ namespace
     using NS::Physics::SweptCapsuleVsTriangle;
     using NS::Physics::Triangle;
 
-    constexpr float kPi = 3.14159265358979323846f;
+    constexpr float k_Pi = 3.14159265358979323846f;
 
     Capsule MakeCapsule(const Vector3& center, float radius = 0.4f, float halfHeight = 0.5f) noexcept
     {
@@ -29,7 +27,7 @@ namespace
     /// CCW winding で計算した normal は (0, cos(angle), -sin(angle)) になる
     Triangle MakeWedgeSlopeTriangle(float angleDeg) noexcept
     {
-        const float t = std::tan(angleDeg * kPi / 180.0f);
+        const float t = std::tan(angleDeg * k_Pi / 180.0f);
         const float height = t * 1.0f;
         Triangle tri;
         tri.v0 = {-1.0f, 0.0f, -0.5f};
@@ -52,7 +50,7 @@ TEST(SweptTriangleTest, FortyFiveDegreeAscent)
     EXPECT_TRUE(hit);
     EXPECT_GE(toi, 0.0f);
     EXPECT_LT(toi, 1.0f);
-    const float expectedY = std::cos(45.0f * kPi / 180.0f);
+    const float expectedY = std::cos(45.0f * k_Pi / 180.0f);
     EXPECT_NEAR(normal.y, expectedY, 5e-3f);
 }
 
@@ -69,7 +67,7 @@ TEST(SweptTriangleTest, ThirtyDegreeAscent)
     EXPECT_TRUE(hit);
     EXPECT_GE(toi, 0.0f);
     EXPECT_LT(toi, 1.0f);
-    const float expectedY = std::cos(30.0f * kPi / 180.0f);
+    const float expectedY = std::cos(30.0f * k_Pi / 180.0f);
     EXPECT_NEAR(normal.y, expectedY, 5e-3f);
 }
 
@@ -86,7 +84,7 @@ TEST(SweptTriangleTest, TwentyTwoDegreeAscent)
     EXPECT_TRUE(hit);
     EXPECT_GE(toi, 0.0f);
     EXPECT_LT(toi, 1.0f);
-    const float expectedY = std::cos(22.5f * kPi / 180.0f);
+    const float expectedY = std::cos(22.5f * k_Pi / 180.0f);
     EXPECT_NEAR(normal.y, expectedY, 5e-3f);
 }
 
@@ -103,7 +101,7 @@ TEST(SweptTriangleTest, FifteenDegreeAscent)
     EXPECT_TRUE(hit);
     EXPECT_GE(toi, 0.0f);
     EXPECT_LT(toi, 1.0f);
-    const float expectedY = std::cos(15.0f * kPi / 180.0f);
+    const float expectedY = std::cos(15.0f * k_Pi / 180.0f);
     EXPECT_NEAR(normal.y, expectedY, 5e-3f);
 }
 
@@ -125,7 +123,7 @@ TEST(SweptTriangleTest, NoIntersectReturnsToi1)
 TEST(SweptTriangleTest, FloorVsWallClassification)
 {
     // contactNormal.y > 0.7 を floor、 それ以下を wall とする境界判定
-    // CharacterController 側の判定なので、 ここでは normal.y の値そのものを assert する
+    // CapsuleMover 側の判定なので、 ここでは normal.y の値そのものを assert する
     {
         const Triangle tri = MakeWedgeSlopeTriangle(45.0f);
         const Capsule c = MakeCapsule({0.0f, 1.0f, -1.0f});

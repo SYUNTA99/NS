@@ -1,11 +1,8 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Graphics/Camera.h>
-#include <Framework/Math/Math.h>
-
-#include <DirectXMath.h>
-
 #include <cmath>
+#include <DirectXMath.h>
+#include <gtest/gtest.h>
+#include <Runtime/Graphics/Camera.h>
+#include <Runtime/Math/Math.h>
 
 namespace
 {

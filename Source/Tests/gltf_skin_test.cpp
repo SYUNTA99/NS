@@ -1,16 +1,14 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Core/Filesystem.h>
-#include <Framework/Graphics/Animation.h>
-#include <Framework/Graphics/GltfLoader.h>
-#include <Framework/Graphics/Skeleton.h>
-#include <Framework/Graphics/detail/gltf_skin_helpers.h>
-#include <Framework/Math/Math.h>
-
 #include <array>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <gtest/gtest.h>
+#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Graphics/Animation.h>
+#include <Runtime/Graphics/detail/GltfSkinHelpers.h>
+#include <Runtime/Graphics/GltfLoader.h>
+#include <Runtime/Graphics/Skeleton.h>
+#include <Runtime/Math/Math.h>
 #include <span>
 #include <string>
 #include <vector>
@@ -28,7 +26,7 @@ namespace
     using NS::Math::Quaternion;
     using NS::Math::Vector3;
 
-    constexpr float kEps = 1e-5f;
+    constexpr float k_Eps = 1e-5f;
 
     void AppendFloat(std::vector<unsigned char>& buf, float v)
     {
@@ -179,10 +177,10 @@ TEST(GltfSkinHelperTest, NormalizeWeightsSumsToOne)
     std::array<std::uint32_t, 4> joints{0, 1, 2, 3};
     std::array<float, 4> weights{1.0f, 1.0f, 0.0f, 0.0f};
     NormalizeJointWeights(joints, weights);
-    EXPECT_NEAR(weights[0], 0.5f, kEps);
-    EXPECT_NEAR(weights[1], 0.5f, kEps);
-    EXPECT_NEAR(weights[2], 0.0f, kEps);
-    EXPECT_NEAR(weights[3], 0.0f, kEps);
+    EXPECT_NEAR(weights[0], 0.5f, k_Eps);
+    EXPECT_NEAR(weights[1], 0.5f, k_Eps);
+    EXPECT_NEAR(weights[2], 0.0f, k_Eps);
+    EXPECT_NEAR(weights[3], 0.0f, k_Eps);
 }
 
 TEST(GltfSkinHelperTest, NormalizeAllZeroWeightsFallsBackToFirstBone)
@@ -191,27 +189,27 @@ TEST(GltfSkinHelperTest, NormalizeAllZeroWeightsFallsBackToFirstBone)
     std::array<float, 4> weights{0.0f, 0.0f, 0.0f, 0.0f};
     NormalizeJointWeights(joints, weights);
     EXPECT_EQ(joints[0], 0u);
-    EXPECT_NEAR(weights[0], 1.0f, kEps);
-    EXPECT_NEAR(weights[1], 0.0f, kEps);
-    EXPECT_NEAR(weights[2], 0.0f, kEps);
-    EXPECT_NEAR(weights[3], 0.0f, kEps);
+    EXPECT_NEAR(weights[0], 1.0f, k_Eps);
+    EXPECT_NEAR(weights[1], 0.0f, k_Eps);
+    EXPECT_NEAR(weights[2], 0.0f, k_Eps);
+    EXPECT_NEAR(weights[3], 0.0f, k_Eps);
 }
 
 TEST(GltfSkinHelperTest, MirrorZNegatesZComponent)
 {
     const Vector3 r = MirrorZ(Vector3(1.0f, 2.0f, 3.0f));
-    EXPECT_NEAR(r.x, 1.0f, kEps);
-    EXPECT_NEAR(r.y, 2.0f, kEps);
-    EXPECT_NEAR(r.z, -3.0f, kEps);
+    EXPECT_NEAR(r.x, 1.0f, k_Eps);
+    EXPECT_NEAR(r.y, 2.0f, k_Eps);
+    EXPECT_NEAR(r.z, -3.0f, k_Eps);
 }
 
 TEST(GltfSkinHelperTest, MirrorQuaternionZNegatesXY)
 {
     const Quaternion r = MirrorQuaternionZ(Quaternion(0.1f, 0.2f, 0.3f, 0.4f));
-    EXPECT_NEAR(r.x, -0.1f, kEps);
-    EXPECT_NEAR(r.y, -0.2f, kEps);
-    EXPECT_NEAR(r.z, 0.3f, kEps);
-    EXPECT_NEAR(r.w, 0.4f, kEps);
+    EXPECT_NEAR(r.x, -0.1f, k_Eps);
+    EXPECT_NEAR(r.y, -0.2f, k_Eps);
+    EXPECT_NEAR(r.z, 0.3f, k_Eps);
+    EXPECT_NEAR(r.w, 0.4f, k_Eps);
 }
 
 TEST(GltfSkinHelperTest, ReadColumnMajorMatrixPlacesTranslationInRow3)
@@ -221,23 +219,23 @@ TEST(GltfSkinHelperTest, ReadColumnMajorMatrixPlacesTranslationInRow3)
         1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 5.0f, 6.0f, 7.0f, 1.0f};
     const Matrix n = ReadColumnMajorMatrix(m);
     // 行ベクトル規約では translation は _41/_42/_43 に入る
-    EXPECT_NEAR(n._41, 5.0f, kEps);
-    EXPECT_NEAR(n._42, 6.0f, kEps);
-    EXPECT_NEAR(n._43, 7.0f, kEps);
+    EXPECT_NEAR(n._41, 5.0f, k_Eps);
+    EXPECT_NEAR(n._42, 6.0f, k_Eps);
+    EXPECT_NEAR(n._43, 7.0f, k_Eps);
     const Vector3 origin = Vector3::Transform(Vector3(0.0f, 0.0f, 0.0f), n);
-    EXPECT_NEAR(origin.x, 5.0f, kEps);
-    EXPECT_NEAR(origin.y, 6.0f, kEps);
-    EXPECT_NEAR(origin.z, 7.0f, kEps);
+    EXPECT_NEAR(origin.x, 5.0f, k_Eps);
+    EXPECT_NEAR(origin.y, 6.0f, k_Eps);
+    EXPECT_NEAR(origin.z, 7.0f, k_Eps);
 }
 
 TEST(GltfSkinHelperTest, ConjugateZMatrixFlipsTranslationZ)
 {
     const Matrix conjugated = ConjugateZMatrix(Matrix::CreateTranslation(1.0f, 2.0f, 3.0f));
-    EXPECT_NEAR(conjugated._41, 1.0f, kEps);
-    EXPECT_NEAR(conjugated._42, 2.0f, kEps);
-    EXPECT_NEAR(conjugated._43, -3.0f, kEps);
+    EXPECT_NEAR(conjugated._41, 1.0f, k_Eps);
+    EXPECT_NEAR(conjugated._42, 2.0f, k_Eps);
+    EXPECT_NEAR(conjugated._43, -3.0f, k_Eps);
     const Vector3 origin = Vector3::Transform(Vector3(0.0f, 0.0f, 0.0f), conjugated);
-    EXPECT_NEAR(origin.z, -3.0f, kEps);
+    EXPECT_NEAR(origin.z, -3.0f, k_Eps);
 }
 
 TEST(GltfSkinHelperTest, TopologicalSortPutsParentsBeforeChildren)
@@ -284,13 +282,13 @@ TEST(GltfSkinLoadTest, LoadsSkinnedTriangleWithLeftHandedConversion)
     EXPECT_EQ(data.skeleton.BoneCount(), 1u);
 
     // 重み正規化済 + 単一ボーンなので joint index は remap 後も 0
-    EXPECT_NEAR(data.vertices[0].weights[0], 1.0f, kEps);
+    EXPECT_NEAR(data.vertices[0].weights[0], 1.0f, k_Eps);
     EXPECT_EQ(data.vertices[0].joints[0], 0u);
 
     // v2(0,1,2) は Z 反転で z=-2
-    EXPECT_NEAR(data.vertices[2].position.x, 0.0f, kEps);
-    EXPECT_NEAR(data.vertices[2].position.y, 1.0f, kEps);
-    EXPECT_NEAR(data.vertices[2].position.z, -2.0f, kEps);
+    EXPECT_NEAR(data.vertices[2].position.x, 0.0f, k_Eps);
+    EXPECT_NEAR(data.vertices[2].position.y, 1.0f, k_Eps);
+    EXPECT_NEAR(data.vertices[2].position.z, -2.0f, k_Eps);
 
     // winding 反転で [0,1,2] -> [0,2,1]
     EXPECT_EQ(data.indices[0], 0u);
@@ -309,7 +307,7 @@ TEST(GltfSkinLoadTest, LoadsAnimationClip)
 
     const NS::Graphics::AnimationClip& clip = data.animations[0];
     EXPECT_EQ(clip.name, "spin");
-    EXPECT_NEAR(clip.duration, 1.0f, kEps);
+    EXPECT_NEAR(clip.duration, 1.0f, k_Eps);
     ASSERT_EQ(clip.tracks.size(), 1u);
     EXPECT_EQ(clip.tracks[0].boneIndex, 0); // 単一ボーン remap[0]=0
     ASSERT_EQ(clip.tracks[0].rotationValues.size(), 2u);
@@ -319,7 +317,7 @@ TEST(GltfSkinLoadTest, LoadsAnimationClip)
     NS::Graphics::SampleClipPose(clip, data.skeleton, 1.0f, pose);
     ASSERT_EQ(pose.size(), 1u);
     const Vector3 r = Vector3::Transform(Vector3(1.0f, 0.0f, 0.0f), pose[0].rotation);
-    EXPECT_NEAR(r.x, 0.0f, kEps);
-    EXPECT_NEAR(r.y, 1.0f, kEps);
-    EXPECT_NEAR(r.z, 0.0f, kEps);
+    EXPECT_NEAR(r.x, 0.0f, k_Eps);
+    EXPECT_NEAR(r.y, 1.0f, k_Eps);
+    EXPECT_NEAR(r.z, 0.0f, k_Eps);
 }

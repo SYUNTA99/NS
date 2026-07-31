@@ -146,7 +146,15 @@ local function execute()
                 cfgCmds[cfgKey] = table.join(cfgCmds[cfgKey], m.getProjectCommands(prj, cfg))
             end
         end
-        for cfgKey, cmds in pairs(cfgCmds) do
+        -- 全構成が同じ 1 枚を上書きするので Debug だけ選ぶ。
+        -- 出荷構成が残ると NS_EDITOR_ENABLED=0 になり、エディタのコードが丸ごと解析対象から外れる
+        local cmds = nil
+        for cfgKey, cfgValue in pairs(cfgCmds) do
+            if string.sub(string.lower(cfgKey), 1, 5) == 'debug' then
+                cmds = cfgValue
+            end
+        end
+        if cmds then
             local outfile = 'premake/compile_commands.json'
             p.generate(wks, outfile, function(wks)
                 p.w('[')

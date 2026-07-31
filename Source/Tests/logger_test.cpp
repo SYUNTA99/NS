@@ -1,11 +1,7 @@
-#include <Framework/Core/LogCategories.h>
-#include <Framework/Core/Logger.h>
-
-#include <gtest/gtest.h>
-
+﻿#include <gtest/gtest.h>
 #include <magic_enum/magic_enum.hpp>
-
-#include <string_view>
+#include <Runtime/Core/LogCategories.h>
+#include <Runtime/Core/Logger.h>
 
 namespace
 {
@@ -33,28 +29,28 @@ namespace
 
     TEST_F(LoggerLifecycleTest, BasicMacrosDoNotCrash)
     {
-        NS_LOG_TRACE(NS::Core::LogCat::Core, "trace {}", 1);
-        NS_LOG_DEBUG(NS::Core::LogCat::Core, "debug {}", 2);
-        NS_LOG_INFO(NS::Core::LogCat::Core, "info {} {}", 3, "msg");
-        NS_LOG_WARN(NS::Core::LogCat::Core, "warn {}", 4.5);
-        NS_LOG_ERROR(NS::Core::LogCat::Core, "error {}", "string");
+        NS_LOG_TRACE(Core, "trace {}", 1);
+        NS_LOG_DEBUG(Core, "debug {}", 2);
+        NS_LOG_INFO(Core, "info {} {}", 3, "msg");
+        NS_LOG_WARN(Core, "warn {}", 4.5);
+        NS_LOG_ERROR(Core, "error {}", "string");
     }
 
     TEST_F(LoggerLifecycleTest, AllCategoriesProduceDistinctNames)
     {
-        using ::NS::Core::LogCat;
+        using ::NS::Core::LogCategory;
 
-        constexpr auto names = magic_enum::enum_names<LogCat>();
+        constexpr auto names = magic_enum::enum_names<LogCategory>();
         EXPECT_EQ(names.size(), 8u);
 
-        EXPECT_EQ(magic_enum::enum_name(LogCat::Core), "Core");
-        EXPECT_EQ(magic_enum::enum_name(LogCat::Platform), "Platform");
-        EXPECT_EQ(magic_enum::enum_name(LogCat::Physics), "Physics");
-        EXPECT_EQ(magic_enum::enum_name(LogCat::Graphics), "Graphics");
-        EXPECT_EQ(magic_enum::enum_name(LogCat::Scene), "Scene");
-        EXPECT_EQ(magic_enum::enum_name(LogCat::App), "App");
-        EXPECT_EQ(magic_enum::enum_name(LogCat::Game), "Game");
-        EXPECT_EQ(magic_enum::enum_name(LogCat::UI), "UI");
+        EXPECT_EQ(magic_enum::enum_name(LogCategory::Core), "Core");
+        EXPECT_EQ(magic_enum::enum_name(LogCategory::Platform), "Platform");
+        EXPECT_EQ(magic_enum::enum_name(LogCategory::Physics), "Physics");
+        EXPECT_EQ(magic_enum::enum_name(LogCategory::Graphics), "Graphics");
+        EXPECT_EQ(magic_enum::enum_name(LogCategory::Scene), "Scene");
+        EXPECT_EQ(magic_enum::enum_name(LogCategory::App), "App");
+        EXPECT_EQ(magic_enum::enum_name(LogCategory::Game), "Game");
+        EXPECT_EQ(magic_enum::enum_name(LogCategory::UI), "UI");
     }
 
     TEST(LoggerLevel, EnumValuesMatchSpec)

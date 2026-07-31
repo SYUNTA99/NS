@@ -1,32 +1,30 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Math/Math.h>
-
+#include <Runtime/Math/Math.h>
 #include <type_traits>
 
 namespace
 {
-    constexpr float kEpsilon = 1e-5f;
+    constexpr float k_Epsilon = 1e-5f;
 }
 
 TEST(NsMath, DegreesToRadiansConvertsKnownAngles)
 {
-    EXPECT_NEAR(NS::Math::DegreesToRadians(0.0f), 0.0f, kEpsilon);
-    EXPECT_NEAR(NS::Math::DegreesToRadians(180.0f), NS::Math::kPi, kEpsilon);
-    EXPECT_NEAR(NS::Math::DegreesToRadians(90.0f), NS::Math::kPi * 0.5f, kEpsilon);
+    EXPECT_NEAR(NS::Math::DegreesToRadians(0.0f), 0.0f, k_Epsilon);
+    EXPECT_NEAR(NS::Math::DegreesToRadians(180.0f), NS::Math::k_Pi, k_Epsilon);
+    EXPECT_NEAR(NS::Math::DegreesToRadians(90.0f), NS::Math::k_Pi * 0.5f, k_Epsilon);
 }
 
 TEST(NsMath, RadiansToDegreesInvertsDegreesToRadians)
 {
-    EXPECT_NEAR(NS::Math::RadiansToDegrees(NS::Math::kPi), 180.0f, 1e-3f);
+    EXPECT_NEAR(NS::Math::RadiansToDegrees(NS::Math::k_Pi), 180.0f, 1e-3f);
     EXPECT_NEAR(NS::Math::RadiansToDegrees(NS::Math::DegreesToRadians(45.0f)), 45.0f, 1e-3f);
 }
 
 TEST(NsMath, ToRadiansFromDegreesKnownAngles)
 {
-    EXPECT_NEAR(NS::Math::ToRadians(NS::Math::Degrees{0.0f}).value, 0.0f, kEpsilon);
-    EXPECT_NEAR(NS::Math::ToRadians(NS::Math::Degrees{180.0f}).value, NS::Math::kPi, kEpsilon);
-    EXPECT_NEAR(NS::Math::ToRadians(NS::Math::Degrees{90.0f}).value, NS::Math::kPi * 0.5f, kEpsilon);
+    EXPECT_NEAR(NS::Math::ToRadians(NS::Math::Degrees{0.0f}).value, 0.0f, k_Epsilon);
+    EXPECT_NEAR(NS::Math::ToRadians(NS::Math::Degrees{180.0f}).value, NS::Math::k_Pi, k_Epsilon);
+    EXPECT_NEAR(NS::Math::ToRadians(NS::Math::Degrees{90.0f}).value, NS::Math::k_Pi * 0.5f, k_Epsilon);
 }
 
 TEST(NsMath, ToDegreesInvertsToRadians)
@@ -42,8 +40,7 @@ TEST(NsMath, RadiansEqualityComparesValue)
     EXPECT_TRUE(NS::Math::Degrees{45.0f} == NS::Math::Degrees{45.0f});
 }
 
-// 暗黙変換禁止 — 以下が compile error にならない場合は型システムが壊れている
-// 安全のための static_assert で型不一致を assert する
+// 暗黙変換の禁止を static_assert で確認する
 static_assert(!std::is_convertible_v<float, NS::Math::Radians>, "float から Radians への暗黙変換は禁止");
 static_assert(!std::is_convertible_v<NS::Math::Degrees, NS::Math::Radians>,
               "Degrees から Radians への暗黙変換は禁止 (ToRadians 経由のみ)");
@@ -57,7 +54,7 @@ static_assert(NS::Math::Radians{1.0f} == NS::Math::Radians{1.0f});
 
 TEST(NsMath, Size2DEqualityComparesBothDimensions)
 {
-    // brace 内のコンマで EXPECT_TRUE マクロが分裂しないよう extra paren で 1 引数にまとめる
+    // 波括弧内のコンマで EXPECT_TRUE マクロが分裂しないよう括弧でくくって1引数にする
     EXPECT_TRUE((NS::Math::Size2D{1280, 720} == NS::Math::Size2D{1280, 720}));
     EXPECT_TRUE((NS::Math::Size2D{1280, 720} != NS::Math::Size2D{1920, 720}));
     EXPECT_TRUE((NS::Math::Size2D{1280, 720} != NS::Math::Size2D{1280, 1080}));
@@ -118,7 +115,7 @@ TEST(NsMath, Vector3NormalizeProducesUnitLength)
 {
     NS::Math::Vector3 v(3.0f, 0.0f, 4.0f);
     v.Normalize();
-    EXPECT_NEAR(v.Length(), 1.0f, kEpsilon);
+    EXPECT_NEAR(v.Length(), 1.0f, k_Epsilon);
 }
 
 TEST(NsMath, MatrixIdentityActsAsMultiplicativeUnit)

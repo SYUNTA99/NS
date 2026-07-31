@@ -1,0 +1,143 @@
+#include <filesystem>
+#include <gtest/gtest.h>
+#include <Runtime/Core/Logger.h>
+#include <Runtime/Graphics/Camera.h>
+#include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Graphics/RenderSettings.h>
+#include <Runtime/Object/Components/DirectionalLightComponent.h>
+#include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Reflection/Reflection.h>
+#include <Runtime/Object/Scene/Scene.h>
+#include <Runtime/Object/SkyboxSubsystem.h>
+#include <Runtime/Platform/Window.h>
+
+namespace
+{
+    using NS::Object::DirectionalLightComponent;
+    using NS::Object::SkyboxSubsystem;
+    using NS::Object::GameObject;
+    using NS::Object::Scene;
+
+    constexpr float k_Epsilon = 1e-5f;
+
+    /// protected の ResolveSceneSettings をテスト用に公開する最小派生
+    class ResolveProbeScene : public Scene
+    {
+    public:
+        NS::Graphics::RenderSettings CallResolve(const NS::Graphics::RenderSettings& defaults)
+        {
+            return ResolveSceneSettings(defaults);
+        }
+    };
+
+    /// 反射フィールド越しに平行光の値を書く。照明はデータ駆動で、公開の設定関数を持たない
+    void SetLightField(DirectionalLightComponent& light, const char* name, const NS::Math::Vector3& value)
+    {
+        const NS::Object::FieldDesc* field =
+            NS::Object::FindField(DirectionalLightComponent::StaticReflection(), name);
+        ASSERT_NE(field, nullptr) << name;
+        field->set(&light, &value);
+    }
+
+    /// world に平行光を 1 本置いて返す
+    DirectionalLightComponent* SpawnLight(Scene& scene)
+    {
+        GameObject* obj = scene.World().Spawn<GameObject>();
+        return obj->AddComponent<DirectionalLightComponent>();
+    }
+} // namespace
+
+class SkyboxSubsystemTest : public ::testing::Test
+{
+protected:
+    void SetUp() override { NS::Core::Logger::Init(); }
+    void TearDown() override { NS::Core::Logger::Shutdown(); }
+};
+
+TEST_F(SkyboxSubsystemTest, NoLightKeepsProjectDefaults)
+{
+    ResolveProbeScene scene;
+    scene.CreateSceneSubsystems();
+
+    // 平行光が無ければ上書きを宣言せず、project 既定値がそのまま残る
+    NS::Graphics::RenderSettings defaults{};
+    defaults.lightColor = NS::Math::Vector3{0.5f, 0.6f, 0.7f};
+    const NS::Graphics::RenderSettings resolved = scene.CallResolve(defaults);
+
+    EXPECT_NEAR(resolved.lightColor.x, 0.5f, k_Epsilon);
+    EXPECT_FALSE(scene.LastSceneOverride().lightDir.has_value());
+    EXPECT_FALSE(scene.LastSceneOverride().lightColor.has_value());
+    EXPECT_FALSE(scene.LastSceneOverride().ambientColor.has_value());
+    EXPECT_FALSE(scene.LastSceneOverride().clearColor.has_value());
+}
+
+TEST_F(SkyboxSubsystemTest, PlacedLightOverridesResolve)
+{
+    ResolveProbeScene scene;
+    scene.CreateSceneSubsystems();
+
+    DirectionalLightComponent* light = SpawnLight(scene);
+    ASSERT_NE(light, nullptr);
+    SetLightField(*light, "Direction", NS::Math::Vector3{0.0f, -1.0f, 0.5f});
+    SetLightField(*light, "Color", NS::Math::Vector3{0.9f, 0.8f, 0.7f});
+    SetLightField(*light, "Ambient", NS::Math::Vector3{0.1f, 0.2f, 0.3f});
+
+    const NS::Graphics::RenderSettings resolved = scene.CallResolve(NS::Graphics::RenderSettings{});
+
+    // 配置された平行光がシーン上書きになり、解決値と控えの両方に映る
+    EXPECT_NEAR(resolved.lightDir.z, 0.5f, k_Epsilon);
+    EXPECT_NEAR(resolved.lightColor.x, 0.9f, k_Epsilon);
+    EXPECT_NEAR(resolved.ambientColor.z, 0.3f, k_Epsilon);
+    ASSERT_TRUE(scene.LastSceneOverride().lightDir.has_value());
+    EXPECT_NEAR(scene.LastSceneOverride().lightDir->z, 0.5f, k_Epsilon);
+    EXPECT_NEAR(scene.LastResolvedSettings().lightColor.x, resolved.lightColor.x, k_Epsilon);
+    // clearColor は照明の語彙に無く、project 既定値のまま残す
+    EXPECT_FALSE(scene.LastSceneOverride().clearColor.has_value());
+}
+
+TEST_F(SkyboxSubsystemTest, ZeroLightDirectionFallsToDefault)
+{
+    ResolveProbeScene scene;
+    scene.CreateSceneSubsystems();
+
+    DirectionalLightComponent* light = SpawnLight(scene);
+    ASSERT_NE(light, nullptr);
+    SetLightField(*light, "Direction", NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+    SetLightField(*light, "Color", NS::Math::Vector3{0.9f, 0.8f, 0.7f});
+
+    NS::Graphics::RenderSettings defaults{};
+    const NS::Graphics::RenderSettings resolved = scene.CallResolve(defaults);
+
+    // zero ベクトルは normalize で拡散光が無言で消えるため上書きせず既定 lightDir に落とす
+    EXPECT_FALSE(scene.LastSceneOverride().lightDir.has_value());
+    EXPECT_NEAR(resolved.lightDir.x, defaults.lightDir.x, k_Epsilon);
+    // 色は有効なので上書きされる
+    EXPECT_NEAR(resolved.lightColor.x, 0.9f, k_Epsilon);
+}
+
+TEST_F(SkyboxSubsystemTest, DrawSkyWithoutDeviceDoesNotCrash)
+{
+    // device 不在のまま Initialize された環境は skybox 装置を持たない
+    Scene scene;
+    scene.CreateSceneSubsystems();
+    auto* environment = scene.GetSubsystem<SkyboxSubsystem>();
+    ASSERT_NE(environment, nullptr);
+
+    // 呼出用の renderer と camera を後から立てても、装置無しの DrawSky は何もしない
+    NS::Platform::WindowDesc wd{};
+    wd.title = "ns_env_drawsky";
+    wd.size = NS::Math::Size2D{320, 240};
+    wd.visible = false;
+    NS::Platform::Window window(wd);
+    ASSERT_TRUE(window.IsValid());
+
+    NS::Graphics::RendererDesc rd{};
+    rd.vsync = false;
+    rd.enableDebugLayer = false;
+    NS::Graphics::Renderer renderer(rd, window);
+    ASSERT_TRUE(renderer.IsValid());
+
+    NS::Graphics::Camera camera{};
+    environment->DrawSky(renderer, camera, std::filesystem::path{"Assets/Skybox/kurt/"});
+    SUCCEED();
+}

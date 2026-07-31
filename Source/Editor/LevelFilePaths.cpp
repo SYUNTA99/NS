@@ -1,18 +1,19 @@
-#include "Editor/LevelFilePaths.h"
+﻿#include "Editor/LevelFilePaths.h"
 
+#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Core/Logger.h"
 
+#include <array>
 #include <cctype>
 
 namespace NS::Editor
 {
     namespace
     {
-        constexpr std::size_t kMinNameLen = 1;
-        constexpr std::size_t kMaxNameLen = 200;
+        constexpr std::size_t k_MinNameLen = 1;
+        constexpr std::size_t k_MaxNameLen = 200;
 
-        // CON / PRN / AUX / NUL / COM1-9 / LPT1-9。 拡張子付きでも CON.txt 等が reject される
-        // のが Windows API の振る舞いに準じた安全側設定
-        constexpr std::array<std::string_view, 22> kReservedNames = {
+        constexpr std::array<std::string_view, 22> k_ReservedNames = {
             "CON",  "PRN",  "AUX",  "NUL",  "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
             "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"};
 
@@ -22,7 +23,7 @@ namespace NS::Editor
             upper.reserve(name.size());
             for (char c : name)
                 upper.push_back(static_cast<char>(std::toupper(static_cast<unsigned char>(c))));
-            for (const auto& r : kReservedNames)
+            for (const auto& r : k_ReservedNames)
             {
                 if (upper == r)
                     return true;
@@ -33,7 +34,7 @@ namespace NS::Editor
 
     std::string SanitizeLevelName(std::string_view name) noexcept
     {
-        if (name.size() < kMinNameLen || name.size() > kMaxNameLen)
+        if (name.size() < k_MinNameLen || name.size() > k_MaxNameLen)
             return "";
         for (char c : name)
         {
@@ -51,9 +52,9 @@ namespace NS::Editor
         return std::string{name};
     }
 
-    std::filesystem::path GetLevelsDirectory() noexcept
+    std::filesystem::path GetScenesDirectory() noexcept
     {
-        return NS::Core::FileSystem::GetExeDirectory() / "Levels";
+        return NS::Core::FileSystem::ContentRoot() / "Scenes";
     }
 
     std::optional<std::filesystem::path> BuildLevelPath(std::string_view name) noexcept
@@ -61,17 +62,17 @@ namespace NS::Editor
         const auto safe = SanitizeLevelName(name);
         if (safe.empty())
             return std::nullopt;
-        return GetLevelsDirectory() / (safe + ".scene");
+        return GetScenesDirectory() / (safe + ".scene");
     }
 
-    bool EnsureLevelsDirectoryExists() noexcept
+    bool EnsureScenesDirectoryExists() noexcept
     {
-        const auto dir = GetLevelsDirectory();
+        const auto dir = GetScenesDirectory();
         if (NS::Core::FileSystem::Exists(dir))
             return true;
         if (!NS::Core::FileSystem::CreateDirectories(dir))
         {
-            NS_LOG_ERROR(::NS::Core::LogCat::App, "Levels/ ディレクトリ作成失敗");
+            NS_LOG_ERROR(App, "Scenes/ ディレクトリ作成失敗");
             return false;
         }
         return true;
@@ -80,7 +81,7 @@ namespace NS::Editor
     std::vector<std::string> EnumerateLevelFiles() noexcept
     {
         std::vector<std::string> result;
-        const auto dir = GetLevelsDirectory();
+        const auto dir = GetScenesDirectory();
         if (!NS::Core::FileSystem::Exists(dir))
             return result;
 

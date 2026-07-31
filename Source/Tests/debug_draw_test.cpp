@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Graphics/DebugDraw.h>
-#include <Framework/Math/Math.h>
+#include <Runtime/Graphics/DebugDraw.h>
+#include <Runtime/Math/Math.h>
 
 namespace
 {
@@ -36,11 +35,13 @@ TEST(DebugDrawTest, AABBAdds24Vertices)
 TEST(DebugDrawTest, ObbAdds24Vertices)
 {
     Reset();
-    DD::OBB(Vector3{0.0f, 0.0f, 0.0f},
-            Vector3{1.0f, 0.0f, 0.0f},
-            Vector3{0.0f, 1.0f, 0.0f},
-            Vector3{0.0f, 0.0f, 1.0f},
-            Vector3{1.0f, 1.0f, 1.0f},
+    DD::OBB(NS::Math::OBB{Vector3{0.0f, 0.0f, 0.0f},
+                          Vector3{1.0f, 0.0f, 0.0f},
+                          Vector3{0.0f, 1.0f, 0.0f},
+                          Vector3{0.0f, 0.0f, 1.0f},
+                          1.0f,
+                          1.0f,
+                          1.0f},
             Color{0.0f, 1.0f, 0.0f, 1.0f});
     EXPECT_EQ(DD::VertexCount(), std::size_t{24}); // 12 lines × 2 vertices
 }

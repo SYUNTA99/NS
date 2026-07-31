@@ -38,7 +38,7 @@ echo Debug ビルド中...
 call "%~dp0_common.cmd" :setup_msbuild
 if errorlevel 1 exit /b 1
 
-msbuild build\NS.sln -p:Configuration=Debug -p:Platform=x64 -m -v:minimal
+msbuild build\NS.sln -p:Configuration=Debug -p:Platform=x64 -m -nodeReuse:false -v:minimal
 if errorlevel 1 (
     echo [ERROR] ビルド失敗
     exit /b 1

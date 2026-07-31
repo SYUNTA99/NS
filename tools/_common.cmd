@@ -75,15 +75,15 @@ goto %~1
 :: Creates junction to workaround non-ASCII path issues with Premake5
 ::----------------------------------------------------------------------------
 :generate_project
-    if not exist "%~dp0premake5.exe" (
-        echo [ERROR] tools\premake5.exe が見つかりません。
+    if not exist "%~dp0premake5\premake5.exe" (
+        echo [ERROR] tools\premake5\premake5.exe が見つかりません。
         echo         初回セットアップは tools\@download_premake.cmd を実行してください。
         exit /b 1
     )
     for /f %%a in ('powershell -command "[guid]::NewGuid().ToString()"') do set "GUID=%%a"
     mklink /j "%TEMP%\%GUID%" "%~dp0.." >nul
     pushd "%TEMP%\%GUID%"
-    tools\premake5.exe vs2022
+    tools\premake5\premake5.exe vs2022
     set "PREMAKE_RESULT=%errorlevel%"
     popd
     rmdir "%TEMP%\%GUID%"
@@ -102,8 +102,8 @@ goto %~1
 :: Creates junction to workaround non-ASCII path issues with Premake5
 ::----------------------------------------------------------------------------
 :gen_compile_commands
-    if not exist "%~dp0premake5.exe" (
-        echo [ERROR] tools\premake5.exe が見つかりません。
+    if not exist "%~dp0premake5\premake5.exe" (
+        echo [ERROR] tools\premake5\premake5.exe が見つかりません。
         exit /b 1
     )
     cd /d "%~dp0.."
@@ -111,7 +111,7 @@ goto %~1
     set "JUNCTION_PATH=%TEMP%\%GUID%"
     mklink /j "%JUNCTION_PATH%" "%~dp0.." >nul
     pushd "%JUNCTION_PATH%"
-    tools\premake5.exe export-compile-commands
+    tools\premake5\premake5.exe export-compile-commands
     set "PREMAKE_RESULT=%errorlevel%"
     popd
     if %PREMAKE_RESULT% neq 0 (

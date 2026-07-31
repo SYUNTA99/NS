@@ -1,86 +1,47 @@
-#include "Game/Level/LevelObjects.h"
-#include "Game/Level/PlayMode.h"
-#include "Game/Level/PlayState.h"
+#include "Game/Level/BlockObject.h"
+#include "Game/Player.h"
+#include "Runtime/Object/Components/TransformComponent.h"
+#include "Runtime/Object/Reflection/ComponentEntry.h"
+#include "Runtime/Object/Scene/Scene.h"
 
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <utility>
 
-#include <gtest/gtest.h>
-
 namespace LevelNs = NS::Game::Level;
-namespace SceneNs = NS::Scene;
+namespace SceneNs = NS::Object;
 
 namespace
 {
-    // 視覚 / 当たりを持たず拾得の意味だけを持つ pickup を作る (コイン=0 / ゴール=1)
-    SceneNs::ObjectData MakePickup(int pickupKind)
+    // 視覚 / 当たりを持たず接触クリアの意味だけを持つゴールを作る
+    SceneNs::ObjectData MakeGoal()
     {
         SceneNs::ObjectData object{};
-        SceneNs::ComponentData pickup;
-        pickup.typeName = "PickupComponent";
-        pickup.fields.push_back(SceneNs::FieldValue{"Pickup Kind", pickupKind});
-        object.components.push_back(std::move(pickup));
+        object.components.push_back(SceneNs::MakeComponentEntry("GoalComponent"));
         return object;
     }
 } // namespace
 
-/// Play 中の SceneData 書込禁止保証。 600 tick (10 秒 @60Hz) を回した後の
-/// CRC32 が Enter 前と一致することで、 PlayMode 経路で SceneData が変更されないことを
+/// Play 中の凍結スナップショット書込禁止保証。 600 tick (10 秒 @60Hz) を回した後の
+/// CRC32 が突入直後と一致することで、 プレイ進行の経路が凍結を変更しないことを
 /// runtime にも検証する (compile-time の const& 受取と二段防御)
-TEST(PlayModeCrc, RoundTripPreservesSceneData_PMODE_06)
+TEST(PlayBaselineCrc, TickDoesNotTouchPlayBaseline)
 {
+    SceneNs::Scene scene;
     SceneNs::SceneData level;
-    level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{5.0f, 1.0f, -3.0f}, NS::Math::Quaternion{}));
-    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0, 0));
-    level.objects.push_back(LevelNs::MakeCellObject(1, 0, 0, 1));
-    level.objects.push_back(MakePickup(0));
-    level.objects.push_back(MakePickup(1));
+    level.objects.push_back(MakePlayerObject(NS::Math::Vector3{5.0f, 1.0f, -3.0f}, NS::Math::Quaternion{}));
+    level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
+    SceneNs::ObjectData rotated = LevelNs::MakeCellObject(1, 0, 0);
+    SceneNs::SetObjectRotation(rotated,
+                               NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::k_Pi * 0.5f, 0.0f, 0.0f));
+    level.objects.push_back(rotated);
+    level.objects.push_back(MakeGoal());
+    scene.LoadFromData(std::move(level));
 
-    const std::uint32_t before = level.ComputeCrc32();
-
-    LevelNs::PlayState play;
-    LevelNs::PlayMode mode;
-    mode.Enter(level, play);
+    (void)scene.BeginPlayBaseline();
+    const std::uint32_t frozen = scene.PlayBaseline().ComputeCrc32();
     for (int i = 0; i < 600; ++i)
-        mode.Tick(level, play, 1.0f / 60.0f);
-    mode.Exit(play);
+        scene.OnUpdate();
 
-    EXPECT_EQ(level.ComputeCrc32(), before) << "PlayMode が SceneData を変更";
-}
-
-TEST(PlayModeCrc, RoundTripWithCoinCollectionPreservesLevelData)
-{
-    SceneNs::SceneData level;
-    level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
-    level.objects.push_back(MakePickup(0));
-    const std::uint32_t before = level.ComputeCrc32();
-
-    LevelNs::PlayState play;
-    LevelNs::PlayMode mode;
-    mode.Enter(level, play);
-    for (int i = 0; i < 60; ++i)
-        mode.Tick(level, play, 1.0f / 60.0f);
-    EXPECT_GE(play.coinCount, 1);
-    mode.Exit(play);
-
-    EXPECT_EQ(level.ComputeCrc32(), before) << "Coin 取得時に SceneData 変更";
-    EXPECT_EQ(level.objects.size(), 2u);
-}
-
-TEST(PlayModeCrc, RoundTripWithGoalContactPreservesLevelData)
-{
-    SceneNs::SceneData level;
-    level.objects.push_back(LevelNs::MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
-    level.objects.push_back(MakePickup(1));
-    const std::uint32_t before = level.ComputeCrc32();
-
-    LevelNs::PlayState play;
-    LevelNs::PlayMode mode;
-    mode.Enter(level, play);
-    for (int i = 0; i < 60; ++i)
-        mode.Tick(level, play, 1.0f / 60.0f);
-    EXPECT_TRUE(play.clearTriggered);
-    mode.Exit(play);
-
-    EXPECT_EQ(level.ComputeCrc32(), before) << "ゴール 接触時に SceneData 変更";
+    EXPECT_EQ(scene.PlayBaseline().ComputeCrc32(), frozen) << "プレイ進行が凍結スナップショットを変更";
 }

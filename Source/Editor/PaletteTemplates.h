@@ -1,27 +1,28 @@
-#pragma once
+﻿#pragma once
 
-/// @file PaletteTemplates.h
-/// @brief パレットの配置プロトタイプ ObjectData テンプレート
-///
-/// @details パレットで何を置くかを実 component を持つプロトタイプの配置物として持つ
-/// 各スロットは複製元の ObjectData を 1 つ抱え、 配置時はこれを複製して座標 / 回転を焼く
+#include "Runtime/Object/Scene/SceneData.h"
 
-#include "Framework/Scene/SceneData.h"
+#include <array>
 
 namespace NS::Editor
 {
-    /// パレット 1 スロットの配置プロトタイプ
-    /// name は toolbar 表示名、 rotatable は R で回せるか、 prototype は複製元
+    //! @brief 配置用オブジェクトのテンプレート情報
     struct PaletteTemplate
     {
+        //! ツールバーなどのUIに表示する名称
         const char* name = nullptr;
+
+        //! 配置時に回転操作を許可するかどうか
         bool rotatable = false;
-        NS::Scene::ObjectData prototype;
+
+        //! 配置時に複製して使用するオブジェクトデータ
+        NS::Object::ObjectData prototype;
     };
 
-    /// パレットのブラシ数。 grid cube / 45 度スロープ / ゴールの 3 種
-    inline constexpr std::size_t kPaletteSlotCount = 3;
+    //! パレットに含まれるブラシ（テンプレート）の総数
+    inline constexpr std::size_t k_PaletteSlotCount = 3;
 
-    /// パレットの配置ブラシ一覧。 プレイヤー配置はギズモで実プレイヤーを動かすため別経路
-    [[nodiscard]] const std::array<PaletteTemplate, kPaletteSlotCount>& PaletteTemplateSlots() noexcept;
+    //! @brief 利用可能な配置テンプレートの一覧を取得する
+    [[nodiscard]] const std::array<PaletteTemplate, k_PaletteSlotCount>& PaletteTemplateSlots() noexcept;
+
 } // namespace NS::Editor

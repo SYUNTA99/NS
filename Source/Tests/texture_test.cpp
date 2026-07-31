@@ -1,13 +1,11 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Core/Logger.h>
-#include <Framework/Graphics/CommandList.h>
-#include <Framework/Graphics/Renderer.h>
-#include <Framework/Graphics/Shader.h>
-#include <Framework/Graphics/Texture.h>
-#include <Framework/Platform/Window.h>
-
 #include <memory>
+#include <Runtime/Core/Logger.h>
+#include <Runtime/Graphics/CommandList.h>
+#include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Graphics/Shader.h>
+#include <Runtime/Graphics/Texture.h>
+#include <Runtime/Platform/Window.h>
 
 namespace
 {
@@ -89,9 +87,9 @@ TEST_F(TextureLoggerTest, FallbackBindDoesNotCrash)
     Texture& tex = *texHolder;
     ASSERT_TRUE(tex.IsValid());
 
-    renderer.Commands().SetTexture(tex, 0, ShaderType::Pixel);
-    renderer.Commands().SetTexture(tex, 1, ShaderType::Pixel);
-    renderer.Commands().SetTexture(tex, 0, ShaderType::Vertex);
+    renderer.Commands().PSSetShaderResource(tex, 0);
+    renderer.Commands().PSSetShaderResource(tex, 1);
+    renderer.Commands().VSSetShaderResource(tex, 0);
     SUCCEED();
 }
 

@@ -1,11 +1,9 @@
 #include "Editor/GizmoEditor.h"
-
-#include "Framework/Scene/Transform.h"
-
-#include <gtest/gtest.h>
+#include "Runtime/Object/Transform.h"
 
 #include <array>
 #include <cmath>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -14,10 +12,10 @@ namespace
     using NS::Editor::GizmoSpace;
     using NS::Editor::GizmoTool;
 
-    TEST(GizmoEditor, DefaultToolIsSelect)
+    TEST(GizmoEditor, DefaultToolIsMove)
     {
         GizmoEditor gizmo;
-        EXPECT_EQ(gizmo.Tool(), GizmoTool::Select);
+        EXPECT_EQ(gizmo.Tool(), GizmoTool::Move);
     }
 
     TEST(GizmoEditor, NotActiveByDefault)
@@ -120,7 +118,7 @@ namespace
         EXPECT_NEAR(out.z, start.z, 1e-4f);
     }
 
-    constexpr float kPi = 3.14159265358979323846f;
+    constexpr float k_Pi = 3.14159265358979323846f;
 
     // クォータニオン q が既知ベクトルに与える回転を成分比較する (quat 直接比較は ±符号曖昧を含むため避ける)
     void ExpectRotatesSame(const NS::Math::Quaternion& a, const NS::Math::Quaternion& b, float tol)
@@ -153,7 +151,7 @@ namespace
                                                           viewport,
                                                           NS::Math::Vector2{600.0f, 300.0f},
                                                           NS::Math::Vector2{400.0f, 150.0f});
-        EXPECT_NEAR(angle, kPi / 2.0f, 1e-3f);
+        EXPECT_NEAR(angle, k_Pi / 2.0f, 1e-3f);
     }
 
     // 掴み点と運び先を入れ替えると逆回り
@@ -168,7 +166,7 @@ namespace
                                                           viewport,
                                                           NS::Math::Vector2{400.0f, 150.0f},
                                                           NS::Math::Vector2{600.0f, 300.0f});
-        EXPECT_NEAR(angle, -kPi / 2.0f, 1e-3f);
+        EXPECT_NEAR(angle, -k_Pi / 2.0f, 1e-3f);
     }
 
     TEST(GizmoEditorWorldDragToAngle, NonAxisReturnsZero)
@@ -247,8 +245,8 @@ namespace
     {
         const NS::Math::Quaternion identity = NS::Math::Quaternion::Identity;
         // 20 度相当 -> 最近接 15 度刻みは 15 度
-        const float twentyDeg = kPi / 9.0f;
-        const float fifteenDeg = kPi / 12.0f;
+        const float twentyDeg = k_Pi / 9.0f;
+        const float fifteenDeg = k_Pi / 12.0f;
         const auto out = GizmoEditor::ComputeAxisRotate(identity, GizmoAxis::Z, twentyDeg, true);
         const auto expected = NS::Math::Quaternion::CreateFromAxisAngle({0.0f, 0.0f, 1.0f}, fifteenDeg);
         ExpectRotatesSame(out, expected, 1e-5f);
@@ -259,7 +257,7 @@ namespace
     TEST(GizmoEditorComputeAxisRotate, LocalRotateLeavesLocalAxisFixed)
     {
         const auto startRot = NS::Math::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.5f);
-        const float theta = kPi / 2.0f;
+        const float theta = k_Pi / 2.0f;
         const auto out = GizmoEditor::ComputeAxisRotate(startRot, GizmoAxis::Y, theta, false);
 
         const auto localYBefore = NS::Math::Vector3::Transform({0.0f, 1.0f, 0.0f}, startRot);
@@ -274,7 +272,7 @@ namespace
     TEST(GizmoEditorComputeAxisRotate, LocalAxisCompositionOrder)
     {
         const auto startRot = NS::Math::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.5f);
-        const float theta = kPi / 2.0f;
+        const float theta = k_Pi / 2.0f;
         const auto out = GizmoEditor::ComputeAxisRotate(startRot, GizmoAxis::Y, theta, false);
 
         NS::Math::Quaternion startConj = startRot;
@@ -289,7 +287,7 @@ namespace
     TEST(GizmoEditorComputeAxisRotate, WorldRotateUsesWorldAxis)
     {
         const auto startRot = NS::Math::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.5f);
-        const float theta = kPi / 2.0f;
+        const float theta = k_Pi / 2.0f;
         const auto out = GizmoEditor::ComputeAxisRotate(startRot, GizmoAxis::Y, theta, false, /*worldSpace=*/true);
 
         NS::Math::Quaternion startConj = startRot;
@@ -381,8 +379,8 @@ namespace
 
         // box1: ローカル X に長い薄箱を Y 軸 45° 回転。 box0 はぶつからない遠方ダミー
         const std::array<Matrix, 2> worlds = {
-            Matrix::CreateTranslation(0.0f, 50.0f, 0.0f),   // 遠方 (ヒットしない)
-            Matrix::CreateRotationY(NS::Math::kPi * 0.25f), // 原点で 45° 回転
+            Matrix::CreateTranslation(0.0f, 50.0f, 0.0f),    // 遠方 (ヒットしない)
+            Matrix::CreateRotationY(NS::Math::k_Pi * 0.25f), // 原点で 45° 回転
         };
         const std::array<Vector3, 2> halfExtents = {
             Vector3{1.0f, 1.0f, 1.0f}, Vector3{3.0f, 1.0f, 1.0f}, // ローカル X に長い
@@ -390,8 +388,8 @@ namespace
 
         // ローカル点 (2,0,0) は回転後ワールド (2cos45, 0, -2sin45) ≈ (1.414, 0, -1.414)
         // ここを通す鉛直下向き ray を撃つ
-        constexpr float kSqrt2Half = 1.41421356f;
-        const Ray ray(Vector3{kSqrt2Half, 10.0f, -kSqrt2Half}, Vector3{0.0f, -1.0f, 0.0f});
+        constexpr float k_Sqrt2Half = 1.41421356f;
+        const Ray ray(Vector3{k_Sqrt2Half, 10.0f, -k_Sqrt2Half}, Vector3{0.0f, -1.0f, 0.0f});
 
         // 軸平行 AABB {3,1,1} なら z=-1.414 が [-1,1] 外で外すが、 回転考慮なら box1 を拾う
         const int picked = GizmoEditor::PickNearestObb(ray, worlds, halfExtents);
@@ -627,7 +625,7 @@ namespace
         const NS::Math::Matrix vp;
         const NS::Math::Size2D viewport{800, 600};
         const NS::Math::Vector3 origin{0.0f, 0.0f, 0.0f};
-        const auto rotation = NS::Math::Quaternion::CreateFromAxisAngle({0.0f, 0.0f, 1.0f}, kPi / 2.0f);
+        const auto rotation = NS::Math::Quaternion::CreateFromAxisAngle({0.0f, 0.0f, 1.0f}, k_Pi / 2.0f);
         // (402,150) は identity なら world Y 軸線上だが、 local X がそこを向くので X になる
         const auto axis = GizmoEditor::ToolHandlePick(
             origin, rotation, GizmoTool::Move, NS::Math::Vector2{402.0f, 150.0f}, vp, viewport);
@@ -638,7 +636,7 @@ namespace
     // screen x 差 Δpx の X 軸移動が world Δx = 2*Δpx/width に対応する
     TEST(GizmoEditorDrag, MoveDragChangesOnlyAxis)
     {
-        NS::Scene::Transform t;
+        NS::Object::Transform t;
         GizmoEditor gizmo;
         gizmo.SelectForTest(&t);
         gizmo.SetToolForTest(GizmoTool::Move);
@@ -656,8 +654,8 @@ namespace
     // 選択物を Z 90° 回した状態で local X をドラッグすると、 world では X でなく Y 方向へ動く
     TEST(GizmoEditorDrag, MoveFollowsLocalAxisWhenRotated)
     {
-        NS::Scene::Transform t;
-        t.SetRotation(NS::Math::Quaternion::CreateFromAxisAngle({0.0f, 0.0f, 1.0f}, kPi / 2.0f));
+        NS::Object::Transform t;
+        t.SetRotation(NS::Math::Quaternion::CreateFromAxisAngle({0.0f, 0.0f, 1.0f}, k_Pi / 2.0f));
         GizmoEditor gizmo;
         gizmo.SelectForTest(&t);
         gizmo.SetToolForTest(GizmoTool::Move);
@@ -676,8 +674,8 @@ namespace
     // World 空間では Z 90° 回しても local X ハンドル = world X。 横ドラッグで world X が動く (local 化の逆)
     TEST(GizmoEditorDrag, MoveUsesWorldAxisInWorldSpace)
     {
-        NS::Scene::Transform t;
-        t.SetRotation(NS::Math::Quaternion::CreateFromAxisAngle({0.0f, 0.0f, 1.0f}, kPi / 2.0f));
+        NS::Object::Transform t;
+        t.SetRotation(NS::Math::Quaternion::CreateFromAxisAngle({0.0f, 0.0f, 1.0f}, k_Pi / 2.0f));
         GizmoEditor gizmo;
         gizmo.SelectForTest(&t);
         gizmo.SetToolForTest(GizmoTool::Move);
@@ -694,7 +692,7 @@ namespace
 
     TEST(GizmoEditorDrag, NoOpDragLeavesPositionUnchanged)
     {
-        NS::Scene::Transform t;
+        NS::Object::Transform t;
         GizmoEditor gizmo;
         gizmo.SelectForTest(&t);
         gizmo.SetToolForTest(GizmoTool::Move);
@@ -708,7 +706,7 @@ namespace
 
     TEST(GizmoEditorDrag, RotateDragChangesRotation)
     {
-        NS::Scene::Transform t;
+        NS::Object::Transform t;
         const NS::Math::Quaternion identity = t.Rotation();
 
         GizmoEditor gizmo;
@@ -732,7 +730,7 @@ namespace
     {
         const NS::Math::Size2D viewport{800, 600};
         const float aspect = 800.0f / 600.0f;
-        const auto proj = NS::Math::Matrix::CreatePerspectiveFieldOfView(kPi / 3.0f, aspect, 0.1f, 100.0f);
+        const auto proj = NS::Math::Matrix::CreatePerspectiveFieldOfView(k_Pi / 3.0f, aspect, 0.1f, 100.0f);
         const auto viewFront =
             NS::Math::Matrix::CreateLookAt({0.0f, 0.0f, -5.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f});
         const auto viewBack =
@@ -750,7 +748,7 @@ namespace
         };
 
         // Z 軸リングを「+X 点を掴んで +Y 点へ」 運ぶ。 これはどちらの視点でも同じワールド操作
-        NS::Scene::Transform tFront;
+        NS::Object::Transform tFront;
         GizmoEditor gFront;
         gFront.SelectForTest(&tFront);
         gFront.SetToolForTest(GizmoTool::Rotate);
@@ -760,7 +758,7 @@ namespace
                                 projectToScreen(vpFront, viewport, {1.0f, 0.0f, 0.0f}),
                                 projectToScreen(vpFront, viewport, {0.0f, 1.0f, 0.0f}));
 
-        NS::Scene::Transform tBack;
+        NS::Object::Transform tBack;
         GizmoEditor gBack;
         gBack.SelectForTest(&tBack);
         gBack.SetToolForTest(GizmoTool::Rotate);
@@ -775,7 +773,7 @@ namespace
 
     TEST(GizmoEditorDrag, UniformScaleDragGrowsAllAxesUniformly)
     {
-        NS::Scene::Transform t;
+        NS::Object::Transform t;
         GizmoEditor gizmo;
         gizmo.SelectForTest(&t);
         gizmo.SetToolForTest(GizmoTool::Scale);
@@ -794,9 +792,9 @@ namespace
     {
         GizmoEditor gizmo;
         const NS::Math::Matrix vp;
-        const NS::Math::Size2D viewport{100, 100};
-        gizmo.Tick(vp, viewport);
-        EXPECT_EQ(gizmo.Tool(), GizmoTool::Select);
+        const NS::Editor::ViewRect view{0, 0, 100, 100};
+        gizmo.Tick(vp, view);
+        EXPECT_EQ(gizmo.Tool(), GizmoTool::Move);
         EXPECT_EQ(gizmo.Selected(), nullptr);
     }
 
@@ -805,8 +803,209 @@ namespace
         GizmoEditor gizmo;
         gizmo.SetActive(true);
         const NS::Math::Matrix vp;
-        const NS::Math::Size2D viewport{100, 100};
-        gizmo.Tick(vp, viewport);
+        const NS::Editor::ViewRect view{0, 0, 100, 100};
+        gizmo.Tick(vp, view);
         EXPECT_EQ(gizmo.Selected(), nullptr);
+    }
+
+    constexpr int k_ViewWidth = 1280;
+    constexpr int k_ViewHeight = 720;
+
+    // 実機の編集視点に近い、 斜め見下ろしの view projection
+    NS::Math::Matrix MakeOrbitViewProjection(const NS::Math::Vector3& eye, const NS::Math::Vector3& target)
+    {
+        NS::Math::Matrix view;
+        DirectX::XMStoreFloat4x4(&view,
+                                 DirectX::XMMatrixLookAtLH(DirectX::XMLoadFloat3(&eye),
+                                                           DirectX::XMLoadFloat3(&target),
+                                                           DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f)));
+        NS::Math::Matrix proj;
+        const float aspect = static_cast<float>(k_ViewWidth) / static_cast<float>(k_ViewHeight);
+        DirectX::XMStoreFloat4x4(&proj, DirectX::XMMatrixPerspectiveFovLH(60.0f * k_Pi / 180.0f, aspect, 0.1f, 500.0f));
+        return view * proj;
+    }
+
+    // ScreenToWorldRay と同じ画面座標の取り方で world 点を落とす
+    bool ProjectPoint(const NS::Math::Matrix& vp, const NS::Math::Vector3& world, NS::Math::Vector2& out)
+    {
+        const NS::Math::Vector4 clip =
+            NS::Math::Vector4::Transform(NS::Math::Vector4{world.x, world.y, world.z, 1.0f}, vp);
+        if (clip.w <= 1.0e-4f)
+            return false;
+        const float ndcX = clip.x / clip.w;
+        const float ndcY = clip.y / clip.w;
+        out = NS::Math::Vector2{(ndcX * 0.5f + 0.5f) * static_cast<float>(k_ViewWidth),
+                                (1.0f - (ndcY * 0.5f + 0.5f)) * static_cast<float>(k_ViewHeight)};
+        return true;
+    }
+
+    // 矢印の途中を掴んで画面上で引く。 掴めた軸と、 その軸に沿って動いた量を見る
+    void ExpectArrowGrabAndDrag(GizmoAxis axis, const NS::Math::Vector3& axisDir)
+    {
+        const NS::Math::Vector3 origin{0.0f, 0.0f, 0.0f};
+        const NS::Math::Matrix vp = MakeOrbitViewProjection(NS::Math::Vector3{6.0f, 5.0f, -7.0f}, origin);
+        const NS::Math::Size2D viewport{k_ViewWidth, k_ViewHeight};
+
+        NS::Math::Vector2 origin2d{};
+        NS::Math::Vector2 grab2d{};
+        ASSERT_TRUE(ProjectPoint(vp, origin, origin2d));
+        ASSERT_TRUE(ProjectPoint(vp, origin + axisDir * 0.6f, grab2d));
+
+        const GizmoAxis picked =
+            GizmoEditor::ToolHandlePick(origin, NS::Math::Quaternion::Identity, GizmoTool::Move, grab2d, vp, viewport);
+        EXPECT_EQ(picked, axis);
+
+        // 掴んだ点から矢印の伸びる向きへ 60 px 引く
+        NS::Math::Vector2 screenDir{grab2d.x - origin2d.x, grab2d.y - origin2d.y};
+        const float length = std::sqrt(screenDir.x * screenDir.x + screenDir.y * screenDir.y);
+        ASSERT_GT(length, 1.0f);
+        screenDir.x = (screenDir.x / length) * 60.0f;
+        screenDir.y = (screenDir.y / length) * 60.0f;
+
+        const NS::Math::Ray rayStart =
+            NS::Editor::ScreenToWorldRay(vp, viewport, static_cast<int>(grab2d.x), static_cast<int>(grab2d.y));
+        const NS::Math::Ray rayNow = NS::Editor::ScreenToWorldRay(
+            vp, viewport, static_cast<int>(grab2d.x + screenDir.x), static_cast<int>(grab2d.y + screenDir.y));
+
+        const NS::Math::Vector3 moved =
+            GizmoEditor::ComputeAxisMove(origin, axis, NS::Math::Quaternion::Identity, rayStart, rayNow, false);
+        EXPECT_GT((moved - origin).Dot(axisDir), 0.1f);
+    }
+
+    // 点から線分までの画面上の距離
+    float PixelDistanceToSegment(NS::Math::Vector2 p, NS::Math::Vector2 a, NS::Math::Vector2 b)
+    {
+        const float abx = b.x - a.x;
+        const float aby = b.y - a.y;
+        const float lengthSq = abx * abx + aby * aby;
+        float t = 0.0f;
+        if (lengthSq > 1e-6f)
+            t = NS::Math::Clamp(((p.x - a.x) * abx + (p.y - a.y) * aby) / lengthSq, 0.0f, 1.0f);
+        const float dx = p.x - (a.x + abx * t);
+        const float dy = p.y - (a.y + aby * t);
+        return std::sqrt(dx * dx + dy * dy);
+    }
+
+    // 視点の向きを一周させて、 掴めるだけの長さで描かれている矢印が全部引けるか
+    // 別の矢印が重なって描かれる角度は、 どちらを採るかの取り決めの話なので別のテストで見る
+    TEST(GizmoEditorArrow, SweepViewAngles)
+    {
+        const NS::Math::Vector3 axes[3] = {
+            {1.0f, 0.0f, 0.0f},
+            {0.0f, 1.0f, 0.0f},
+            {0.0f, 0.0f, 1.0f},
+        };
+        const GizmoAxis axisEnum[3] = {GizmoAxis::X, GizmoAxis::Y, GizmoAxis::Z};
+        const NS::Math::Vector3 origin{0.0f, 0.0f, 0.0f};
+        const NS::Math::Size2D viewport{k_ViewWidth, k_ViewHeight};
+
+        for (int pitchDeg = 10; pitchDeg <= 80; pitchDeg += 10)
+        {
+            for (int yawDeg = 0; yawDeg < 360; yawDeg += 30)
+            {
+                const float pitch = static_cast<float>(pitchDeg) * k_Pi / 180.0f;
+                const float yaw = static_cast<float>(yawDeg) * k_Pi / 180.0f;
+                const NS::Math::Vector3 eye{10.0f * std::cos(pitch) * std::sin(yaw),
+                                            10.0f * std::sin(pitch),
+                                            10.0f * std::cos(pitch) * std::cos(yaw)};
+                const NS::Math::Matrix vp = MakeOrbitViewProjection(eye, origin);
+
+                NS::Math::Vector2 origin2d{};
+                ASSERT_TRUE(ProjectPoint(vp, origin, origin2d));
+
+                for (int i = 0; i < 3; ++i)
+                {
+                    NS::Math::Vector2 grab2d{};
+                    ASSERT_TRUE(ProjectPoint(vp, origin + axes[i] * 0.4f, grab2d));
+                    NS::Math::Vector2 dir{grab2d.x - origin2d.x, grab2d.y - origin2d.y};
+                    const float pixels = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+                    // 画面で潰れている矢印は掴めなくて当然なので飛ばす
+                    if (pixels < 20.0f)
+                        continue;
+
+                    // 別の矢印が同じ所に重なっているなら、 どちらが勝つかは取り決め次第なので飛ばす
+                    bool overlapped = false;
+                    for (int j = 0; j < 3; ++j)
+                    {
+                        if (j == i)
+                            continue;
+                        NS::Math::Vector2 otherEnd2d{};
+                        if (!ProjectPoint(vp, origin + axes[j], otherEnd2d))
+                            continue;
+                        if (PixelDistanceToSegment(grab2d, origin2d, otherEnd2d) < 6.0f)
+                            overlapped = true;
+                    }
+                    if (overlapped)
+                        continue;
+
+                    SCOPED_TRACE(::testing::Message() << "pitch=" << pitchDeg << " yaw=" << yawDeg << " axis=" << i);
+
+                    const GizmoAxis picked = GizmoEditor::ToolHandlePick(
+                        origin, NS::Math::Quaternion::Identity, GizmoTool::Move, grab2d, vp, viewport);
+                    EXPECT_EQ(picked, axisEnum[i]);
+
+                    dir.x = (dir.x / pixels) * 60.0f;
+                    dir.y = (dir.y / pixels) * 60.0f;
+                    const NS::Math::Ray rayStart = NS::Editor::ScreenToWorldRay(
+                        vp, viewport, static_cast<int>(grab2d.x), static_cast<int>(grab2d.y));
+                    const NS::Math::Ray rayNow = NS::Editor::ScreenToWorldRay(
+                        vp, viewport, static_cast<int>(grab2d.x + dir.x), static_cast<int>(grab2d.y + dir.y));
+                    const NS::Math::Vector3 moved = GizmoEditor::ComputeAxisMove(
+                        origin, axisEnum[i], NS::Math::Quaternion::Identity, rayStart, rayNow, false);
+                    EXPECT_GT((moved - origin).Dot(axes[i]), 0.05f);
+                }
+            }
+        }
+    }
+
+    // 編集カメラの初期姿勢 (方位 0 / 見下ろし 30 度) は Z の矢印が Y の矢印に重なって描かれる
+    // 重なりの手前は短い Z、 その先は Y と、 どちらにも手が届くこと
+    TEST(GizmoEditorArrow, OverlappedArrowsStayReachable)
+    {
+        const NS::Math::Vector3 origin{0.0f, 0.0f, 0.0f};
+        const float pitch = 30.0f * k_Pi / 180.0f;
+        const NS::Math::Vector3 eye{0.0f, 15.0f * std::sin(pitch), -15.0f * std::cos(pitch)};
+        const NS::Math::Matrix vp = MakeOrbitViewProjection(eye, origin);
+        const NS::Math::Size2D viewport{k_ViewWidth, k_ViewHeight};
+
+        // 掴み判定が使う矢印の長さ。 深さ 15 では 1.5 になる
+        const float handleLength = 1.5f;
+
+        NS::Math::Vector2 origin2d{};
+        NS::Math::Vector2 yTip2d{};
+        NS::Math::Vector2 zTip2d{};
+        ASSERT_TRUE(ProjectPoint(vp, origin, origin2d));
+        ASSERT_TRUE(ProjectPoint(vp, origin + NS::Math::Vector3{0.0f, handleLength, 0.0f}, yTip2d));
+        ASSERT_TRUE(ProjectPoint(vp, origin + NS::Math::Vector3{0.0f, 0.0f, handleLength}, zTip2d));
+
+        // 前提として 2 本が重なっている
+        ASSERT_LT(PixelDistanceToSegment(zTip2d, origin2d, yTip2d), 4.0f);
+
+        const NS::Math::Vector2 onZ{(origin2d.x + zTip2d.x) * 0.5f, (origin2d.y + zTip2d.y) * 0.5f};
+        EXPECT_EQ(
+            GizmoEditor::ToolHandlePick(origin, NS::Math::Quaternion::Identity, GizmoTool::Move, onZ, vp, viewport),
+            GizmoAxis::Z);
+
+        // Z の先端より外は Y だけが居る
+        const NS::Math::Vector2 beyondZ{zTip2d.x + (yTip2d.x - zTip2d.x) * 0.7f,
+                                        zTip2d.y + (yTip2d.y - zTip2d.y) * 0.7f};
+        EXPECT_EQ(
+            GizmoEditor::ToolHandlePick(origin, NS::Math::Quaternion::Identity, GizmoTool::Move, beyondZ, vp, viewport),
+            GizmoAxis::Y);
+    }
+
+    TEST(GizmoEditorArrow, XArrowGrabsAndMoves)
+    {
+        ExpectArrowGrabAndDrag(GizmoAxis::X, NS::Math::Vector3{1.0f, 0.0f, 0.0f});
+    }
+
+    TEST(GizmoEditorArrow, YArrowGrabsAndMoves)
+    {
+        ExpectArrowGrabAndDrag(GizmoAxis::Y, NS::Math::Vector3{0.0f, 1.0f, 0.0f});
+    }
+
+    TEST(GizmoEditorArrow, ZArrowGrabsAndMoves)
+    {
+        ExpectArrowGrabAndDrag(GizmoAxis::Z, NS::Math::Vector3{0.0f, 0.0f, 1.0f});
     }
 } // namespace

@@ -1,80 +1,79 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Math/Math.h>
-#include <Framework/Physics/CharacterController.h>
-#include <Framework/Physics/PhysicsWorld.h>
-#include <Framework/Physics/SweptOBB.h>
+﻿#include <gtest/gtest.h>
+#include <Runtime/Math/Math.h>
+#include <Runtime/Physics/CapsuleMover.h>
+#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/SweptOBB.h>
 
 namespace
 {
     using NS::Math::Quaternion;
     using NS::Math::Vector3;
-    using NS::Physics::CharacterController;
-    using NS::Physics::CharacterControllerInput;
-    using NS::Physics::CharacterControllerResult;
+    using NS::Physics::CapsuleMover;
+    using NS::Physics::CapsuleMoverInput;
+    using NS::Physics::CapsuleMoverResult;
     using NS::Physics::MakeObb;
     using NS::Physics::PhysicsWorld;
 
-    constexpr float kPi = 3.14159265358979323846f;
+    constexpr float k_Pi = 3.14159265358979323846f;
 } // namespace
 
 // 平らな OBB 床へ落下すると接地する
 TEST(ObbCollisionTest, CapsuleLandsOnFlatObb)
 {
-    CharacterController cc;
+    CapsuleMover cc;
     PhysicsWorld world;
-    world.AddObb(MakeObb({0.0f, 0.0f, 0.0f}, Quaternion::Identity, {2.0f, 0.5f, 2.0f}));
+    world.AddOBB(MakeObb({0.0f, 0.0f, 0.0f}, Quaternion::Identity, {2.0f, 0.5f, 2.0f}));
     world.BuildBroadphase();
 
-    CharacterControllerInput input;
+    CapsuleMoverInput input;
     input.position = Vector3{0.0f, 1.5f, 0.0f};
     input.velocity = Vector3{0.0f, -8.0f, 0.0f};
     input.dt = 0.1f;
     input.physicsWorld = &world;
 
-    const CharacterControllerResult r = cc.Update(input);
+    const CapsuleMoverResult r = cc.Update(input);
     EXPECT_TRUE(r.grounded);
     EXPECT_GT(r.contactNormal.y, 0.7f);
 }
 
-// 平らな OBB 床に静止していると接地判定が維持される (grounded probe の OBB パス)
+// 平らな OBB 床に静止していても接地判定が続く。grounded probe の OBB 経路を通す
 TEST(ObbCollisionTest, CapsuleRestingOnObbStaysGrounded)
 {
-    CharacterController cc;
+    CapsuleMover cc;
     PhysicsWorld world;
-    world.AddObb(MakeObb({0.0f, 0.0f, 0.0f}, Quaternion::Identity, {2.0f, 0.5f, 2.0f}));
+    world.AddOBB(MakeObb({0.0f, 0.0f, 0.0f}, Quaternion::Identity, {2.0f, 0.5f, 2.0f}));
     world.BuildBroadphase();
 
     // capsule 底端 (center.y - halfHeight = 0.9) が床上面 0.5 から radius 内に収まる静止姿勢
-    CharacterControllerInput input;
+    CapsuleMoverInput input;
     input.position = Vector3{0.0f, 1.4f, 0.0f};
     input.velocity = Vector3{0.0f, 0.0f, 0.0f};
     input.dt = 1.0f / 60.0f;
     input.physicsWorld = &world;
 
-    const CharacterControllerResult r = cc.Update(input);
+    const CapsuleMoverResult r = cc.Update(input);
     EXPECT_TRUE(r.grounded);
 }
 
 // Y 回転した薄い壁を貫通せず手前で止まる
 TEST(ObbCollisionTest, CapsuleStopsAtRotatedWall)
 {
-    CharacterController cc;
-    const Quaternion rot = Quaternion::CreateFromAxisAngle(Vector3::UnitY, kPi / 4.0f);
+    CapsuleMover cc;
+    const Quaternion rot = Quaternion::CreateFromAxisAngle(Vector3::UnitY, k_Pi / 4.0f);
     PhysicsWorld world;
-    world.AddObb(MakeObb({0.0f, 0.0f, 0.0f}, rot, {0.1f, 2.0f, 2.0f}));
+    world.AddOBB(MakeObb({0.0f, 0.0f, 0.0f}, rot, {0.1f, 2.0f, 2.0f}));
     world.BuildBroadphase();
 
     Vector3 position{-3.0f, 0.0f, 0.0f};
     const float dt = 1.0f / 60.0f;
     for (int i = 0; i < 30; ++i)
     {
-        CharacterControllerInput in;
+        CapsuleMoverInput in;
         in.position = position;
         in.velocity = Vector3{10.0f, 0.0f, 0.0f};
         in.dt = dt;
         in.physicsWorld = &world;
-        const CharacterControllerResult r = cc.Update(in);
+        const CapsuleMoverResult r = cc.Update(in);
         position = r.position;
     }
 

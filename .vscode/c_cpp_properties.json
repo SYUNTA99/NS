@@ -1,0 +1,31 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "compileCommands": "${workspaceFolder}/compile_commands.json",
+            "includePath": [
+                "${workspaceFolder}/Source",
+                "${workspaceFolder}/Source/ThirdParty/DirectXTK/Inc",
+                "${workspaceFolder}/Source/ThirdParty/DirectXTex/DirectXTex",
+                "${workspaceFolder}/Source/ThirdParty/spdlog/include",
+                "${workspaceFolder}/Source/ThirdParty/magic_enum/include",
+                "${workspaceFolder}/Source/ThirdParty/cgltf",
+                "${workspaceFolder}/Source/ThirdParty/nlohmann"
+            ],
+            "defines": [
+                "_WIN32_WINNT=0x0A00",
+                "WIN32_LEAN_AND_MEAN",
+                "NOMINMAX",
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "windowsSdkVersion": "10.0.22621.0",
+            "compilerPath": "cl.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "windows-msvc-x64"
+        }
+    ],
+    "version": 4
+}

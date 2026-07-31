@@ -1,16 +1,13 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Physics/SweptOBB.h>
-#include <Framework/Scene/Components/BoxColliderComponent.h>
-#include <Framework/Scene/GameObject.h>
-#include <Framework/Scene/Transform.h>
-
 #include <cmath>
+#include <gtest/gtest.h>
+#include <Runtime/Object/Components/BoxColliderComponent.h>
+#include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Transform.h>
 
 namespace
 {
-    using NS::Scene::GameObject;
-    using NS::Scene::BoxColliderComponent;
+    using NS::Object::GameObject;
+    using NS::Object::BoxColliderComponent;
 } // namespace
 
 TEST(BoxColliderTest, DefaultHalfExtentsAreHalfMeterCube)
@@ -56,7 +53,7 @@ TEST(BoxColliderTest, WorldAABBWithoutOwnerIsOriginCentered)
     EXPECT_FLOAT_EQ(box.Center.z, 0.0f);
 }
 
-// 自由配置物の非一様 scale が当たりの extents へ反映される (grid と同経路で処理する保証)
+// 自由配置物の非一様 scale が当たりの extents へ反映される
 TEST(BoxColliderTest, WorldAABBReflectsOwnerScale)
 {
     GameObject obj;
@@ -76,7 +73,7 @@ TEST(BoxColliderTest, WorldAABBNinetyDegreeYawKeepsCubeExtents)
 {
     GameObject obj;
     auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
-    obj.Root().SetRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::kPi * 0.5f, 0.0f, 0.0f));
+    obj.Root().SetRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::k_Pi * 0.5f, 0.0f, 0.0f));
 
     const NS::Math::AABB box = sc.WorldAABB();
     EXPECT_NEAR(box.Extents.x, 0.5f, 1e-4f);
@@ -84,20 +81,20 @@ TEST(BoxColliderTest, WorldAABBNinetyDegreeYawKeepsCubeExtents)
     EXPECT_NEAR(box.Extents.z, 0.5f, 1e-4f);
 }
 
-// owner の位置と halfExtents が OBB に反映される (回転なしは world 軸と一致)
+// owner の位置と halfExtents が OBB に載る。 無回転なら軸は world と一致
 TEST(BoxColliderTest, WorldOBBReflectsOwnerPositionAndExtents)
 {
     GameObject obj;
     auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{1.0f, 0.5f, 2.0f});
     obj.Root().SetPosition({10.0f, 3.0f, -5.0f});
 
-    const NS::Physics::OBB obb = sc.WorldOBB();
+    const NS::Math::OBB obb = sc.WorldOBB();
     EXPECT_FLOAT_EQ(obb.center.x, 10.0f);
     EXPECT_FLOAT_EQ(obb.center.y, 3.0f);
     EXPECT_FLOAT_EQ(obb.center.z, -5.0f);
-    EXPECT_NEAR(obb.halfExtents.x, 1.0f, 1e-4f);
-    EXPECT_NEAR(obb.halfExtents.y, 0.5f, 1e-4f);
-    EXPECT_NEAR(obb.halfExtents.z, 2.0f, 1e-4f);
+    EXPECT_NEAR(obb.halfExtentX, 1.0f, 1e-4f);
+    EXPECT_NEAR(obb.halfExtentY, 0.5f, 1e-4f);
+    EXPECT_NEAR(obb.halfExtentZ, 2.0f, 1e-4f);
     EXPECT_NEAR(obb.axisX.x, 1.0f, 1e-4f);
     EXPECT_NEAR(obb.axisY.y, 1.0f, 1e-4f);
     EXPECT_NEAR(obb.axisZ.z, 1.0f, 1e-4f);
@@ -110,20 +107,20 @@ TEST(BoxColliderTest, WorldOBBReflectsOwnerScale)
     auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
     obj.Root().SetScale({4.0f, 2.0f, 6.0f});
 
-    const NS::Physics::OBB obb = sc.WorldOBB();
-    EXPECT_NEAR(obb.halfExtents.x, 2.0f, 1e-4f);
-    EXPECT_NEAR(obb.halfExtents.y, 1.0f, 1e-4f);
-    EXPECT_NEAR(obb.halfExtents.z, 3.0f, 1e-4f);
+    const NS::Math::OBB obb = sc.WorldOBB();
+    EXPECT_NEAR(obb.halfExtentX, 2.0f, 1e-4f);
+    EXPECT_NEAR(obb.halfExtentY, 1.0f, 1e-4f);
+    EXPECT_NEAR(obb.halfExtentZ, 3.0f, 1e-4f);
 }
 
-// Y 軸 90° 回転で OBB 軸が world X と直交する (AABB と違い回転を畳まない)
+// Y 軸 90° 回転で OBB 軸が world X と直交する。 AABB と違い回転を畳まない
 TEST(BoxColliderTest, WorldOBBRotationProducesRotatedAxes)
 {
     GameObject obj;
     auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
-    obj.Root().SetRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::kPi * 0.5f, 0.0f, 0.0f));
+    obj.Root().SetRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::k_Pi * 0.5f, 0.0f, 0.0f));
 
-    const NS::Physics::OBB obb = sc.WorldOBB();
+    const NS::Math::OBB obb = sc.WorldOBB();
     EXPECT_NEAR(obb.axisX.x, 0.0f, 1e-4f);
     EXPECT_NEAR(obb.axisX.Dot(obb.axisY), 0.0f, 1e-4f);
     EXPECT_NEAR(obb.axisX.Dot(obb.axisX), 1.0f, 1e-4f);
@@ -133,13 +130,13 @@ TEST(BoxColliderTest, WorldOBBRotationProducesRotatedAxes)
 TEST(BoxColliderTest, WorldOBBWithoutOwnerIsOriginIdentity)
 {
     BoxColliderComponent sc(NS::Math::Vector3{1.0f, 1.0f, 1.0f});
-    const NS::Physics::OBB obb = sc.WorldOBB();
+    const NS::Math::OBB obb = sc.WorldOBB();
     EXPECT_FLOAT_EQ(obb.center.x, 0.0f);
-    EXPECT_NEAR(obb.halfExtents.x, 1.0f, 1e-4f);
+    EXPECT_NEAR(obb.halfExtentX, 1.0f, 1e-4f);
     EXPECT_NEAR(obb.axisX.x, 1.0f, 1e-4f);
 }
 
-// 当たり箱の中心オフセットが owner 位置へ足された world 中心になる (回転 / scale 無し)
+// 回転も scale も無ければ中心オフセットが owner 位置へそのまま足される
 TEST(BoxColliderTest, CenterOffsetShiftsWorldCenter)
 {
     GameObject obj;
@@ -147,7 +144,7 @@ TEST(BoxColliderTest, CenterOffsetShiftsWorldCenter)
     obj.Root().SetPosition({10.0f, 0.0f, 0.0f});
     sc.SetCenterOffset({0.0f, 2.0f, 0.0f});
 
-    const NS::Physics::OBB obb = sc.WorldOBB();
+    const NS::Math::OBB obb = sc.WorldOBB();
     EXPECT_NEAR(obb.center.x, 10.0f, 1e-4f);
     EXPECT_NEAR(obb.center.y, 2.0f, 1e-4f);
     EXPECT_NEAR(obb.center.z, 0.0f, 1e-4f);
@@ -161,37 +158,37 @@ TEST(BoxColliderTest, CenterOffsetScalesWithOwner)
     obj.Root().SetScale({3.0f, 3.0f, 3.0f});
     sc.SetCenterOffset({1.0f, 0.0f, 0.0f});
 
-    const NS::Physics::OBB obb = sc.WorldOBB();
+    const NS::Math::OBB obb = sc.WorldOBB();
     EXPECT_NEAR(obb.center.x, 3.0f, 1e-4f); // 1.0 * scale 3
 }
 
-// オフセットは親 local 基準なので owner の回転で向きが回る (Y 90° で local +X が world XZ 平面で 90° 回る)
+// オフセットは親 local 基準なので owner の回転で向きが回る
 TEST(BoxColliderTest, CenterOffsetRotatesWithOwner)
 {
     GameObject obj;
     auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
-    obj.Root().SetRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::kPi * 0.5f, 0.0f, 0.0f));
+    obj.Root().SetRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::k_Pi * 0.5f, 0.0f, 0.0f));
     sc.SetCenterOffset({1.0f, 0.0f, 0.0f});
 
-    const NS::Physics::OBB obb = sc.WorldOBB();
+    const NS::Math::OBB obb = sc.WorldOBB();
     EXPECT_NEAR(obb.center.x, 0.0f, 1e-4f);
     EXPECT_NEAR(obb.center.y, 0.0f, 1e-4f);
     EXPECT_NEAR(std::abs(obb.center.z), 1.0f, 1e-4f);
 }
 
-// 当たり箱の local 回転だけで OBB 軸が回る (owner は無回転)
+// owner が無回転でも当たり箱の local 回転だけで OBB 軸が回る
 TEST(BoxColliderTest, LocalRotationRotatesObbAxes)
 {
     GameObject obj;
     auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
-    sc.SetLocalRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::kPi * 0.5f, 0.0f, 0.0f));
+    sc.SetLocalRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::k_Pi * 0.5f, 0.0f, 0.0f));
 
-    const NS::Physics::OBB obb = sc.WorldOBB();
+    const NS::Math::OBB obb = sc.WorldOBB();
     EXPECT_NEAR(obb.axisX.x, 0.0f, 1e-4f);
     EXPECT_NEAR(obb.axisX.Dot(obb.axisX), 1.0f, 1e-4f);
 }
 
-// Euler(度) で設定し Euler(度) で読み戻すと往復一致する (Inspector 窓口の往復保証)
+// Euler(度) で設定して読み戻すと同じ値に戻る。 Inspector の窓口用
 TEST(BoxColliderTest, RotationEulerDegreesRoundTrips)
 {
     BoxColliderComponent sc;

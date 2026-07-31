@@ -1,9 +1,7 @@
+﻿#include <chrono>
 #include <gtest/gtest.h>
-
-#include <Framework/Core/Clock.h>
-#include <Framework/Core/Logger.h>
-
-#include <chrono>
+#include <Runtime/Core/Clock.h>
+#include <Runtime/Core/Logger.h>
 #include <thread>
 
 class ClockLoggerTest : public ::testing::Test
@@ -63,7 +61,7 @@ TEST(NsCoreFrameTimer, FixedStepsAccumulate)
 TEST_F(ClockLoggerTest, ScopedTimerLogsOnDestruction)
 {
     {
-        NS_SCOPED_TIMER(NS::Core::LogCat::Core, "test_label");
+        NS_SCOPED_TIMER(Core, "test_label");
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     SUCCEED();

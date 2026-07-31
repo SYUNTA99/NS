@@ -1,0 +1,42 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Game (Run, no build)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/Debug-windows-x86_64/Game.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/bin/Debug-windows-x86_64",
+            "environment": [],
+            "console": "internalConsole"
+        },
+        {
+            "name": "Game (Build + Debug)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/Debug-windows-x86_64/Game.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/bin/Debug-windows-x86_64",
+            "environment": [],
+            "console": "internalConsole",
+            "preLaunchTask": "build-debug"
+        },
+        {
+            "name": "Tests (Build + Debug)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/bin/Debug-windows-x86_64/Tests/Tests.exe",
+            "args": [
+                "--gtest_brief=1"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build/bin/Debug-windows-x86_64/Tests",
+            "environment": [],
+            "console": "integratedTerminal",
+            "preLaunchTask": "build-debug"
+        }
+    ]
+}

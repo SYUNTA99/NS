@@ -1,60 +1,107 @@
+#include "Game/Level/BlockObject.h"
+#include "Game/Player.h"
+
+#include <Game/Level/HealthComponent.h>
 #include <gtest/gtest.h>
+#include <Runtime/Object/Reflection/ComponentEntry.h>
+#include <Runtime/Object/Scene/Scene.h>
+#include <utility>
 
-#include <Game/Level/LevelObjects.h>
-#include <Game/Level/PlayMode.h>
-#include <Game/Level/PlayState.h>
+namespace LevelNs = NS::Game::Level;
+namespace SceneNs = NS::Object;
 
-TEST(HazardDamageTest, PlayStateInitializesHealthTo8)
+/// 命の増減の能力と、hazard 配置物が LateUpdate 帯で自分から削ってくる自走を検証する
+
+TEST(HealthTest, StartsFullAt8)
 {
-    NS::Game::Level::PlayState play;
-    EXPECT_EQ(play.playerHealth, 8);
+    SceneNs::GameObject owner;
+    auto* health = owner.AddComponent<LevelNs::HealthComponent>();
+
+    EXPECT_EQ(health->Current(), 8);
+    EXPECT_FALSE(health->IsDead());
 }
 
-TEST(HazardDamageTest, ContactDamageDecrementsHealth)
+TEST(HealthTest, ApplyDamageDecrements)
 {
-    NS::Game::Level::PlayState play;
+    SceneNs::GameObject owner;
+    auto* health = owner.AddComponent<LevelNs::HealthComponent>();
 
-    NS::Game::Level::ApplyContactDamage(play);
+    health->ApplyDamage(1);
 
-    EXPECT_EQ(play.playerHealth, 7);
-    EXPECT_FALSE(play.deathTriggered);
+    EXPECT_EQ(health->Current(), 7);
+    EXPECT_FALSE(health->IsDead());
 }
 
-TEST(HazardDamageTest, HealthClampsAtZero)
+TEST(HealthTest, DamageClampsAtZeroAndFlagsDead)
 {
-    NS::Game::Level::PlayState play;
+    SceneNs::GameObject owner;
+    auto* health = owner.AddComponent<LevelNs::HealthComponent>();
 
     for (int i = 0; i < 10; ++i)
-        NS::Game::Level::ApplyContactDamage(play);
+        health->ApplyDamage(1);
 
-    EXPECT_EQ(play.playerHealth, 0);
-    EXPECT_GE(play.playerHealth, 0);
+    EXPECT_EQ(health->Current(), 0);
+    EXPECT_TRUE(health->IsDead());
 }
 
-TEST(HazardDamageTest, ContactDamageDoesNotModifyLevelData)
+TEST(HealthTest, KillDropsToZero)
 {
-    NS::Scene::SceneData level;
-    level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0, 0));
-    level.objects.push_back(
-        NS::Game::Level::MakePlayerObject(NS::Math::Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
-    const std::uint32_t crcBefore = level.ComputeCrc32();
+    SceneNs::GameObject owner;
+    auto* health = owner.AddComponent<LevelNs::HealthComponent>();
 
-    NS::Game::Level::PlayState play;
-    for (int i = 0; i < 5; ++i)
-        NS::Game::Level::ApplyContactDamage(play);
+    health->Kill();
 
-    const std::uint32_t crcAfter = level.ComputeCrc32();
-    EXPECT_EQ(crcBefore, crcAfter);
-    EXPECT_LT(play.playerHealth, 8);
+    EXPECT_EQ(health->Current(), 0);
+    EXPECT_TRUE(health->IsDead());
 }
 
-TEST(HazardDamageTest, HealthZeroFlagsDeath)
+TEST(HealthTest, ResetRestoresFull)
 {
-    NS::Game::Level::PlayState play;
+    SceneNs::GameObject owner;
+    auto* health = owner.AddComponent<LevelNs::HealthComponent>();
 
-    for (int i = 0; i < 8; ++i)
-        NS::Game::Level::ApplyContactDamage(play);
+    health->Kill();
+    health->Reset();
 
-    EXPECT_EQ(play.playerHealth, 0);
-    EXPECT_TRUE(play.deathTriggered);
+    EXPECT_EQ(health->Current(), 8);
+    EXPECT_FALSE(health->IsDead());
+}
+
+TEST(HazardTest, DrainsPlayerHealthThroughLateUpdateBand)
+{
+    SceneNs::Scene scene;
+    SceneNs::SceneData data;
+    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    // プレイヤーと同じ位置の cell に hazard の印を足すと、カプセルと箱が必ず重なる
+    SceneNs::ObjectData hazard = LevelNs::MakeCellObject(0, 0, 0);
+    hazard.components.push_back(SceneNs::MakeComponentEntry("HazardComponent"));
+    data.objects.push_back(hazard);
+    scene.LoadFromData(std::move(data));
+
+    auto* player = FindPlayer(scene.World());
+    ASSERT_NE(player, nullptr);
+
+    // LateUpdate 帯が回るたび、hazard が自分で重なりを判定して 1 ずつ削る
+    scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
+    EXPECT_EQ(player->Health(), 7);
+    scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
+    EXPECT_EQ(player->Health(), 6);
+}
+
+TEST(HazardTest, NoOverlapNoDamage)
+{
+    SceneNs::Scene scene;
+    SceneNs::SceneData data;
+    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    SceneNs::ObjectData hazard = LevelNs::MakeCellObject(10, 0, 0);
+    hazard.components.push_back(SceneNs::MakeComponentEntry("HazardComponent"));
+    data.objects.push_back(hazard);
+    scene.LoadFromData(std::move(data));
+
+    auto* player = FindPlayer(scene.World());
+    ASSERT_NE(player, nullptr);
+
+    scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
+
+    EXPECT_EQ(player->Health(), 8);
 }

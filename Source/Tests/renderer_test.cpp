@@ -1,10 +1,9 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Core/Logger.h>
-#include <Framework/Graphics/CommonStates.h>
-#include <Framework/Graphics/Pipeline.h>
-#include <Framework/Graphics/Renderer.h>
-#include <Framework/Platform/Window.h>
+#include <Runtime/Core/Logger.h>
+#include <Runtime/Graphics/CommonStates.h>
+#include <Runtime/Graphics/Pipeline.h>
+#include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Platform/Window.h>
 
 namespace
 {

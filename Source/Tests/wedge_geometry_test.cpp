@@ -1,10 +1,8 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Physics/WedgeGeometry.h>
-
 #include <algorithm>
 #include <array>
+#include <gtest/gtest.h>
 #include <limits>
+#include <Runtime/Physics/WedgeGeometry.h>
 #include <vector>
 
 namespace
@@ -54,8 +52,8 @@ namespace
 // 既定 (quadrant=0): 高い辺は +Z 側 (z>0、 x はほぼ 0)
 namespace
 {
-    constexpr float kHalfPi = 1.5707963267948966f;
-    constexpr float kQuarterPi = 0.7853981633974483f;
+    constexpr float k_HalfPi = 1.5707963267948966f;
+    constexpr float k_QuarterPi = 0.7853981633974483f;
 } // namespace
 
 TEST(WedgeGeometryTest, DefaultFacesPositiveZ)
@@ -69,7 +67,7 @@ TEST(WedgeGeometryTest, DefaultFacesPositiveZ)
 // 回帰: yaw=90° で高い辺が +X 側へ回る。 rotation を無視する実装では FAIL する
 TEST(WedgeGeometryTest, Rotation90FacesPositiveX)
 {
-    const auto tris = BuildWedgeTriangles(Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}, 45.0f, kHalfPi);
+    const auto tris = BuildWedgeTriangles(Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}, 45.0f, k_HalfPi);
     const Vector3 high = HighEdgeCentroid(tris);
     EXPECT_GT(high.x, 0.4f);
     EXPECT_NEAR(high.z, 0.0f, 1e-3f);
@@ -78,7 +76,7 @@ TEST(WedgeGeometryTest, Rotation90FacesPositiveX)
 // 連続回転: yaw=45° で高い辺が +X +Z の対角を向く (90° スナップではない自由角を検証)
 TEST(WedgeGeometryTest, Rotation45FacesDiagonal)
 {
-    const auto tris = BuildWedgeTriangles(Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}, 45.0f, kQuarterPi);
+    const auto tris = BuildWedgeTriangles(Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}, 45.0f, k_QuarterPi);
     const Vector3 high = HighEdgeCentroid(tris);
     EXPECT_GT(high.x, 0.2f);
     EXPECT_GT(high.z, 0.2f);
@@ -89,7 +87,7 @@ TEST(WedgeGeometryTest, Rotation45FacesDiagonal)
 TEST(WedgeGeometryTest, RotationPreservesHeight)
 {
     const auto t0 = BuildWedgeTriangles(Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}, 45.0f, 0.0f);
-    const auto t1 = BuildWedgeTriangles(Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}, 45.0f, kQuarterPi);
+    const auto t1 = BuildWedgeTriangles(Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}, 45.0f, k_QuarterPi);
     EXPECT_NEAR(HighEdgeCentroid(t0).y, HighEdgeCentroid(t1).y, 1e-4f);
 }
 

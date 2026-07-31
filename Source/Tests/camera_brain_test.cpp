@@ -1,29 +1,30 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Core/Clock.h>
-#include <Framework/Scene/Components/CameraBrainComponent.h>
-#include <Framework/Scene/Components/CameraComponent.h>
-#include <Framework/Scene/Components/PlacedVirtualCamera.h>
-#include <Framework/Scene/Components/VirtualCameraComponent.h>
-#include <Framework/Scene/GameObject.h>
+#include <Runtime/Core/Clock.h>
+#include <Runtime/Object/Components/CameraBrainComponent.h>
+#include <Runtime/Object/Components/CameraComponent.h>
+#include <Runtime/Object/Components/PlacedVirtualCamera.h>
+#include <Runtime/Object/Components/VirtualCameraComponent.h>
+#include <Runtime/Object/GameObject.h>
 
 namespace
 {
-    using NS::Scene::CameraBrainComponent;
-    using NS::Scene::CameraComponent;
-    using NS::Scene::CameraPose;
-    using NS::Scene::GameObject;
-    using NS::Scene::PlacedVirtualCamera;
-    using NS::Scene::TickPriority;
-    using NS::Scene::VirtualCameraComponent;
+    using NS::Object::CameraBrainComponent;
+    using NS::Object::CameraComponent;
+    using NS::Object::CameraPose;
+    using NS::Object::GameObject;
+    using NS::Object::PlacedVirtualCamera;
+    using NS::Object::TickPriority;
+    using NS::Object::VirtualCameraComponent;
 
-    constexpr float kDt = 1.0f / 60.0f;
+    constexpr float k_Dt = 1.0f / 60.0f;
 
     // 固定 pose を返すだけのテスト用 vcam。 X 座標だけずらして補間が見えるようにする
     class FixedVcam : public VirtualCameraComponent
     {
     public:
-        explicit FixedVcam(float x) noexcept : VirtualCameraComponent(static_cast<int>(TickPriority::Camera)), m_x(x) {}
+        explicit FixedVcam(float x) noexcept
+            : VirtualCameraComponent(TickPriority::LateUpdate + 50), m_x(x)
+        {}
         [[nodiscard]] CameraPose EvaluatePose(float) const noexcept override
         {
             return MakePose({m_x, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f});
@@ -37,7 +38,7 @@ namespace
 class CameraBrainTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(kDt); }
+    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_Dt); }
 };
 
 TEST_F(CameraBrainTest, PoseLerpInterpolatesEachField)
@@ -123,7 +124,7 @@ TEST_F(CameraBrainTest, BlendSweepsFromOldToNewOverDuration)
     brain->AddVirtualCamera(a);
     brain->AddVirtualCamera(b);
 
-    // 初回は a が active (旧 pose 無し)。 カットで確定する
+    // 初回は旧 pose が無いのでカットで a に確定する
     brain->OnUpdate();
     brain->Evaluate(1.0f);
     EXPECT_FLOAT_EQ(cam->Position().x, 0.0f);

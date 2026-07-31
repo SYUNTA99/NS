@@ -1,0 +1,9 @@
+<Project>
+  <!-- NS は vcpkg を使わず Source/ThirdParty を直接ベンダするため、システム全体の vcpkg MSBuild 統合を無効化する。
+       これで applocal 配備が pwsh.exe を探して失敗しシステム PowerShell へ退避するビルド時の警告も消える。
+       msbuild が全 vcxproj に自動取込し、premake の再生成でも上書きされない -->
+  <PropertyGroup>
+    <VcpkgEnabled>false</VcpkgEnabled>
+    <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
+  </PropertyGroup>
+</Project>

@@ -1,54 +1,60 @@
 #pragma once
 
-/// @file UndoStack.h
-/// @brief Command スタック。 std::deque 管理で 200 op / 50 MB の oldest pop_front cap
-///
-/// @details `Push` 時に redo stack をクリアして編集で履歴を分岐させる
-/// `Clear()` は新 level open 時のみ呼び、 mode toggle では呼ばない
-/// 50 MB の hard cap は `ICommand::EstimatedBytes()` を合算して判定する
-
 #include "Editor/Undo/ICommand.h"
+#include "Runtime/Core/NonCopyable.h"
 
+#include <cstdint>
 #include <deque>
+#include <memory>
 
 namespace NS::Editor
 {
+    class IObjectSnapshotApplier;
 
-    class UndoStack
+    //! @brief Undo/Redo 履歴管理スタック
+    //! @note 上限 (200 操作 / 50 MB) を超えた場合、古い履歴から自動的に破棄する
+    //! @note 適用は live 実体を触る IObjectSnapshotApplier 越し。 コマンドは objectId の before/after を往復させる
+    class UndoStack : public NS::Core::NonCopyable
     {
     public:
-        static constexpr std::size_t kMaxOps = 200;
-        static constexpr std::size_t kMaxBytes = 50ull * 1024ull * 1024ull;
+        static constexpr std::size_t k_MaxOps = 200;
+        static constexpr std::size_t k_MaxBytes = 50ull * 1024ull * 1024ull;
 
         UndoStack() = default;
         ~UndoStack() = default;
 
-        UndoStack(const UndoStack&) = delete;
-        UndoStack& operator=(const UndoStack&) = delete;
+        //! @brief コマンドを実行し、Undo 履歴へ追加する（Redo 履歴はクリアされる）
+        void Push(std::unique_ptr<ICommand> cmd, IObjectSnapshotApplier& target) noexcept;
 
-        /// `cmd->Do(level)` を実行 → m_undo に push_back → m_redo をクリア
-        /// 200 op / 50 MB cap に達したら m_undo 先頭から oldest pop
-        void Push(std::unique_ptr<ICommand> cmd, NS::Scene::SceneData& level) noexcept;
+        //! @brief 既に適用済みの編集を Do を呼ばずに履歴へ積む。 ドラッグ確定など live を先に動かした編集用
+        void Record(std::unique_ptr<ICommand> cmd) noexcept;
 
-        /// m_undo 末尾の Undo(level) を実行し、 m_redo に移動。 空なら false
-        bool Undo(NS::Scene::SceneData& level) noexcept;
+        //! @brief 最新の Undo 操作を戻し、Redo 履歴へ移動する
+        bool Undo(IObjectSnapshotApplier& target) noexcept;
 
-        /// m_redo 末尾の Do(level) を実行し、 m_undo に戻す。 空なら false
-        bool Redo(NS::Scene::SceneData& level) noexcept;
+        //! @brief 最新の Redo 操作を実行し、Undo 履歴へ移動する
+        bool Redo(IObjectSnapshotApplier& target) noexcept;
 
-        /// 両 stack をクリア。 新 level open 時のみ呼ぶ
+        //! @brief 履歴を全消去する。レベル遷移時に使用
         void Clear() noexcept;
+
+        //! @brief 履歴が動いた通算回数
+        //! @details 保存時の値と突き合わせて未保存かどうかを見る。 戻して同じ内容に帰っても値は進むので、
+        //! 保存済みを未保存と誤る側にだけ倒れる
+        [[nodiscard]] std::uint64_t Version() const noexcept { return m_version; }
 
         [[nodiscard]] std::size_t UndoSize() const noexcept { return m_undo.size(); }
         [[nodiscard]] std::size_t RedoSize() const noexcept { return m_redo.size(); }
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept { return m_undoBytes + m_redoBytes; }
 
     private:
-        std::deque<std::unique_ptr<ICommand>> m_undo;
-        std::deque<std::unique_ptr<ICommand>> m_redo;
-        std::size_t m_undoBytes = 0;
-        std::size_t m_redoBytes = 0;
+        std::deque<std::unique_ptr<ICommand>> m_undo; // Undo 待ちの Command 列
+        std::deque<std::unique_ptr<ICommand>> m_redo; // Redo 待ちの Command 列
+        std::size_t m_undoBytes = 0;                  // Undo 履歴の概算メモリ使用量
+        std::size_t m_redoBytes = 0;                  // Redo 履歴の概算メモリ使用量
+        std::uint64_t m_version = 0;                  // 履歴が動いた通算回数
 
+        void PushRecorded(std::unique_ptr<ICommand> cmd) noexcept;
         void TrimOldest() noexcept;
     };
 

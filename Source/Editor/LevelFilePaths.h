@@ -1,29 +1,30 @@
-#pragma once
+﻿#pragma once
 
-/// @file LevelFilePaths.h
-/// @brief `Levels/` ディレクトリ管理 + level name sanitization
-///
-/// @details ImGui save dialog の入力をそのまま `std::filesystem::path` に流すと
-/// `..` / 絶対 path / Windows 予約名 経由で exe 外への書込ができてしまう
-/// 本ヘッダの `SanitizeLevelName` を必ず経由させることで、 path traversal 経路を
-/// 構造的に閉じる。 file 名構築は `BuildLevelPath` のみが正規ルートで、
-/// 内部で sanitize した name しか accept しない
-
+#include <filesystem>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace NS::Editor
 {
-    /// ASCII 英数字+`_`/`-`/空白、1〜200 char、`..`なし、Windows 予約名なし。 失敗時は空文字列
+    //! @brief レベル名がパス操作として安全かどうかを検証し、正規化する
+    //! @details ASCII英数字、'_'、'-'、空白のみを許可し、パス移動（".."）や予約名を排除する
+    //! @return 検証に失敗した場合は空文字列を返す
     [[nodiscard]] std::string SanitizeLevelName(std::string_view name) noexcept;
 
-    /// `<exe>/Levels/` の絶対 path。 exe 起動 directory に依存
-    [[nodiscard]] std::filesystem::path GetLevelsDirectory() noexcept;
+    //! @brief レベルデータの格納ディレクトリ（絶対パス）を取得する
+    [[nodiscard]] std::filesystem::path GetScenesDirectory() noexcept;
 
-    /// sanitize 済 name から `<exe>/Levels/<name>.scene` を構築。 失敗時は `std::nullopt`
+    //! @brief 指定されたレベル名から、フルパス（Scenes/<name>.scene）を構築する
+    //! @return 構築に失敗した場合は std::nullopt を返す
     [[nodiscard]] std::optional<std::filesystem::path> BuildLevelPath(std::string_view name) noexcept;
 
-    /// `Levels/` を必要なら作成。 既存なら何もしない。 作成失敗時は false + `NS_LOG_ERROR`
-    [[nodiscard]] bool EnsureLevelsDirectoryExists() noexcept;
+    //! @brief レベル保存用ディレクトリが存在することを確認し、なければ作成する
+    //! @return 作成に失敗した場合は false を返す
+    [[nodiscard]] bool EnsureScenesDirectoryExists() noexcept;
 
-    /// `<exe>/Levels/*.scene` を列挙しソート済 stem を返す。 例外時は部分リスト + `NS_LOG_ERROR`
+    //! @brief ディレクトリ内のすべてのレベルファイル（*.scene）を検索し、ファイル名をリストアップする
+    //! @return ファイル名のリスト。列挙中に問題が発生した場合はその時点でのリストを返す
     [[nodiscard]] std::vector<std::string> EnumerateLevelFiles() noexcept;
 } // namespace NS::Editor

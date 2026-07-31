@@ -1,39 +1,32 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Core/Filesystem.h>
-#include <Framework/Graphics/Mesh.h>
-#include <Framework/Graphics/Renderer.h>
-#include <Framework/Graphics/StaticMesh.h>
-#include <Framework/Platform/Window.h>
-#include <Framework/Scene/AssetManager.h>
-#include <Framework/Scene/Components/MeshRendererComponent.h>
-#include <Framework/Scene/GameObject.h>
-#include <Game/Blocks/BuildPlacedObject.h>
-#include <Framework/Scene/SceneData.h>
-
+#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Graphics/StaticMesh.h>
+#include <Runtime/Object/AssetManager.h>
+#include <Runtime/Object/Components/MeshRendererComponent.h>
+#include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Reflection/ComponentEntry.h>
+#include <Runtime/Object/Reflection/ObjectBuilder.h>
+#include <Runtime/Object/Scene/SceneData.h>
+#include <Runtime/Platform/Window.h>
 #include <filesystem>
+#include <gtest/gtest.h>
 #include <string>
-#include <vector>
 
 namespace
 {
-    using NS::Game::Blocks::BuildPlacedObject;
-    using NS::Game::Blocks::FindComponent;
-    using NS::Game::Blocks::ResolveContentPath;
-    using NS::Game::Blocks::ResolveMeshFromRef;
-    using NS::Scene::ComponentData;
-    using NS::Scene::FieldValue;
-    using NS::Scene::ObjectData;
-    using NS::Scene::AssetManager;
-    using NS::Scene::MeshRendererComponent;
+    using NS::Object::AssetManager;
+    using NS::Object::BuildSceneObject;
+    using NS::Object::MeshRendererComponent;
+    using NS::Object::ObjectData;
+    using NS::Object::ResolveContentPath;
+    using NS::Object::ResolveMeshFromRef;
 
-    // MeshRendererComponent を 1 つ持つ component 表現。 meshRef が非空なら反射 "Mesh" フィールドに載せる
-    ComponentData MakeMeshRenderer(const std::string& meshRef)
+    // MeshRendererComponent 1 件分を作る。meshRef が空でなければ "Mesh" フィールドに入れる
+    nlohmann::json MakeMeshRenderer(const std::string& meshRef)
     {
-        ComponentData c;
-        c.typeName = "MeshRendererComponent";
+        nlohmann::json c = NS::Object::MakeComponentEntry("MeshRendererComponent");
         if (!meshRef.empty())
-            c.fields.push_back(FieldValue{"Mesh", meshRef});
+            NS::Object::SetField(c, "Mesh", meshRef);
         return c;
     }
 
@@ -55,8 +48,8 @@ namespace
     }
 } // namespace
 
-// builtin 名は AssetManager::Builtin の先引きへ解決される。 builtin は device 確立後にしか登録できないので headless は
-// skip
+// builtin 名は AssetManager::Builtin のメッシュへ解決される
+// builtin 登録には device が要るので headless では飛ばす
 TEST(MeshRefResolution, BuiltinNameResolvesToBuiltinMesh)
 {
     NS::Platform::Window window(MakeWindowDesc("ns_meshref_builtin"));
@@ -73,26 +66,25 @@ TEST(MeshRefResolution, BuiltinNameResolvesToBuiltinMesh)
     EXPECT_EQ(ResolveMeshFromRef(assets, "wedge45"), assets.Builtin("wedge45"));
 }
 
-// メッシュ参照が空の MeshRenderer は cube フォールバックへ解決される
+// メッシュ参照が空なら cube へフォールバックする
 TEST(MeshRefResolution, EmptyMeshRefFallsBackToCube)
 {
     AssetManager assets{std::filesystem::path{"."}};
-    const std::vector<std::string> noPaths;
 
     ObjectData obj;
     obj.components.push_back(MakeMeshRenderer(""));
 
-    auto built = BuildPlacedObject(obj, assets, noPaths);
+    auto built = BuildSceneObject(obj, &assets);
     ASSERT_NE(built, nullptr);
-    auto* mr = FindComponent<MeshRendererComponent>(*built);
+    auto* mr = built->FindComponent<MeshRendererComponent>();
     ASSERT_NE(mr, nullptr);
-    // headless では Builtin("cube") も nullptr で cube 比較が vacuous になる。 解決器が空参照で nullptr を
-    // 返すこと自体を headless でも縛り、 空参照が未解決のまま残る退行を捕まえる
+    // headless では Builtin("cube") も nullptr になり cube 比較は素通りする
+    // ResolveMeshFromRef が空参照で nullptr を返すことだけは headless でも確認できる
     EXPECT_EQ(ResolveMeshFromRef(assets, ""), nullptr);
     EXPECT_EQ(mr->GetMesh(), assets.Builtin("cube"));
 }
 
-// ".." で ContentRoot の外へ出る参照は path 解決で弾かれ、 任意ファイル読込にならない
+// ".." で ContentRoot の外へ出る参照は弾かれる
 TEST(MeshRefResolution, TraversalRefIsRejected)
 {
     EXPECT_FALSE(ResolveContentPath("../secret.gltf").has_value());
@@ -101,32 +93,31 @@ TEST(MeshRefResolution, TraversalRefIsRejected)
     EXPECT_EQ(ResolveMeshFromRef(assets, "../secret.gltf"), nullptr);
 }
 
-// 非 traversal の相対 path は受理され、 builtin でなく ContentRoot 配下の GetOrLoadMesh 経路へ委譲される
+// 普通の相対パスは ContentRoot 配下の GetOrLoadMesh に回る
 TEST(MeshRefResolution, RelativePathAttemptsContentRootLoad)
 {
     const auto resolved = ResolveContentPath("meshes/foo.gltf");
     ASSERT_TRUE(resolved.has_value());
 
     AssetManager assets{std::filesystem::path{"."}};
-    // 実ファイル不在では両者 nullptr。 解決パスの GetOrLoadMesh へ委譲されることを示す
+    // ファイルが無いのでどちらも nullptr。GetOrLoadMesh に回っていることだけ見る
     EXPECT_EQ(ResolveMeshFromRef(assets, "meshes/foo.gltf"), assets.GetOrLoadMesh(*resolved));
 }
 
-// メッシュ参照が空の component 駆動 grid cube は cube に解決される
+// メッシュ参照が空の grid cube も cube に解決される
 TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
 {
     AssetManager assets{std::filesystem::path{"."}};
-    const std::vector<std::string> noPaths;
 
     ObjectData compObj;
     compObj.components.push_back(MakeMeshRenderer(""));
 
-    auto compBuilt = BuildPlacedObject(compObj, assets, noPaths);
+    auto compBuilt = BuildSceneObject(compObj, &assets);
     ASSERT_NE(compBuilt, nullptr);
 
-    auto* compMesh = FindComponent<MeshRendererComponent>(*compBuilt);
+    auto* compMesh = compBuilt->FindComponent<MeshRendererComponent>();
     ASSERT_NE(compMesh, nullptr);
-    // 上と同じく headless でも意味を持つ解決器の判定を縛る。 cube 比較は device 上でのみ非 vacuous
+    // 上と同じく ResolveMeshFromRef の nullptr だけ headless で確認する。cube 比較は device がある時だけ効く
     EXPECT_EQ(ResolveMeshFromRef(assets, ""), nullptr);
     EXPECT_EQ(compMesh->GetMesh(), assets.Builtin("cube"));
 }

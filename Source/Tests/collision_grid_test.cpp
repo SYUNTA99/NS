@@ -1,10 +1,8 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Math/Math.h>
-#include <Framework/Physics/CollisionGrid.h>
-
 #include <algorithm>
 #include <cstdint>
+#include <gtest/gtest.h>
+#include <Runtime/Math/Math.h>
+#include <Runtime/Physics/CollisionGrid.h>
 #include <vector>
 
 namespace

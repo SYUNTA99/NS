@@ -1,14 +1,13 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Scene/Components/CharacterMovementComponent.h>
-#include <Framework/Scene/Components/PlayerInputComponent.h>
-#include <Framework/Scene/GameObject.h>
+#include <Runtime/Object/Components/CharacterMovementComponent.h>
+#include <Runtime/Object/Components/PlayerInputComponent.h>
+#include <Runtime/Object/GameObject.h>
 
 namespace
 {
-    using NS::Scene::CharacterMovementComponent;
-    using NS::Scene::GameObject;
-    using NS::Scene::PlayerInputComponent;
+    using NS::Object::CharacterMovementComponent;
+    using NS::Object::GameObject;
+    using NS::Object::PlayerInputComponent;
 } // namespace
 
 TEST(PlayerInputTest, ConstructsWithoutMovementResolved)

@@ -1,13 +1,11 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Math/Math.h>
-#include <Framework/Scene/Components/ShadowComponent.h>
-
+#include <Runtime/Math/Math.h>
+#include <Runtime/Object/Components/ShadowComponent.h>
 #include <vector>
 
 namespace
 {
-    using NS::Scene::ShadowComponent;
+    using NS::Object::ShadowComponent;
 
     NS::Math::AABB MakeBox(float cx, float cy, float cz, float half = 0.5f)
     {

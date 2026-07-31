@@ -1,18 +1,16 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Math/Math.h>
-#include <Framework/Physics/CharacterController.h>
-#include <Framework/Physics/PhysicsWorld.h>
-
+﻿#include <gtest/gtest.h>
+#include <Runtime/Math/Math.h>
+#include <Runtime/Physics/CapsuleMover.h>
+#include <Runtime/Physics/PhysicsWorld.h>
 #include <vector>
 
 namespace
 {
     using NS::Math::AABB;
     using NS::Math::Vector3;
-    using NS::Physics::CharacterController;
-    using NS::Physics::CharacterControllerInput;
-    using NS::Physics::CharacterControllerResult;
+    using NS::Physics::CapsuleMover;
+    using NS::Physics::CapsuleMoverInput;
+    using NS::Physics::CapsuleMoverResult;
     using NS::Physics::PhysicsWorld;
 
     AABB MakeBox(const Vector3& c, const Vector3& e)
@@ -33,27 +31,27 @@ namespace
         return world;
     }
 
-    // useGrid=true は BuildBroadphase 済 (grid 候補駆動)、 false は未 build (総当たり)
+    // useGrid=true は BuildBroadphase を通した grid 候補、 false は総当たり
     Vector3 RunSim(const std::vector<AABB>& world, bool useGrid)
     {
         PhysicsWorld pw;
         for (const AABB& b : world)
-            pw.AddAabb(b);
+            pw.AddAABB(b);
         if (useGrid)
             pw.BuildBroadphase();
 
-        CharacterController cc;
+        CapsuleMover cc;
         Vector3 pos{0.0f, 3.0f, 0.0f};
         Vector3 vel{4.0f, 0.0f, 2.0f};
         for (int i = 0; i < 120; ++i)
         {
             vel.y -= 20.0f * (1.0f / 60.0f);
-            CharacterControllerInput in;
+            CapsuleMoverInput in;
             in.position = pos;
             in.velocity = vel;
             in.dt = 1.0f / 60.0f;
             in.physicsWorld = &pw;
-            const CharacterControllerResult r = cc.Update(in);
+            const CapsuleMoverResult r = cc.Update(in);
             pos = r.position;
             vel = r.velocity;
         }
@@ -61,7 +59,7 @@ namespace
     }
 } // namespace
 
-// grid 候補駆動と総当たりで最終 position が一致する (ブロードフェーズが当たりを変えない)
+// grid 候補と総当たりで最終 position が一致する
 TEST(BroadphaseTest, GridResultMatchesBruteForce)
 {
     const std::vector<AABB> world = MakeScene();
@@ -74,7 +72,7 @@ TEST(BroadphaseTest, GridResultMatchesBruteForce)
     EXPECT_NEAR(withGrid.z, bruteForce.z, 1e-4f);
 }
 
-// broadphase 未構築でも従来どおり床に乗る (フォールバック回帰防止)
+// broadphase 未構築でも総当たりへ落ちて床に乗る
 TEST(BroadphaseTest, NoBroadphaseFallsBackToBruteForce)
 {
     const std::vector<AABB> world = MakeScene();

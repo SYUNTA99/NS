@@ -4,5 +4,5 @@ reviews:
     base_branches:
       - develop
   path_instructions:
-    - path: "Source/Framework/**"
-      instructions: "Framework 層ライブラリコード。 パフォーマンスとメモリ管理に注意。"
+    - path: "Source/Runtime/**"
+      instructions: "Runtime 層ライブラリコード。 パフォーマンスとメモリ管理に注意。"

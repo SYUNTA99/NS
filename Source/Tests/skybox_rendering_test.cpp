@@ -1,12 +1,11 @@
 #include <gtest/gtest.h>
 
-#include <Framework/Core/Logger.h>
-#include <Framework/Graphics/Pipeline.h>
-#include <Framework/Graphics/Renderer.h>
-#include <Framework/Graphics/Skybox.h>
-#include <Framework/Platform/Window.h>
+#include <Runtime/Core/Logger.h>
+#include <Runtime/Graphics/Pipeline.h>
+#include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Graphics/Skybox.h>
+#include <Runtime/Platform/Window.h>
 
-#include <d3d11.h>
 
 namespace
 {
@@ -90,8 +89,8 @@ TEST_F(SkyboxRenderingTest, RenderWithFallbackDoesNotCrash)
     Skybox& skybox = *skyboxHolder;
     ASSERT_TRUE(skybox.IsValid());
 
-    // LoadCubemap を呼ばずに Render() しても fallback が描かれてクラッシュしないこと
+    // LoadCubemap を呼ばずに発行しても fallback が描かれてクラッシュしないこと
     NS::Math::Matrix vpNoTranslate = NS::Math::Matrix::Identity;
-    skybox.Render(renderer, vpNoTranslate);
+    NS::Graphics::IssueSkybox(renderer, skybox, vpNoTranslate);
     SUCCEED();
 }

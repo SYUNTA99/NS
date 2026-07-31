@@ -1,11 +1,10 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Math/Math.h>
-#include <Framework/Scene/Components/CameraComponent.h>
+#include <Runtime/Math/Math.h>
+#include <Runtime/Object/Components/CameraComponent.h>
 
 namespace
 {
-    using NS::Scene::CameraComponent;
+    using NS::Object::CameraComponent;
 } // namespace
 
 TEST(CameraComponentTest, DefaultsMatchCameraDefaults)

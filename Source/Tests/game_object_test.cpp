@@ -1,15 +1,13 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Scene/Component.h>
-#include <Framework/Scene/GameObject.h>
-#include <Framework/Scene/Transform.h>
-
+#include <Runtime/Object/Component.h>
+#include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Transform.h>
 #include <vector>
 
 namespace
 {
-    using NS::Scene::Component;
-    using NS::Scene::GameObject;
+    using NS::Object::Component;
+    using NS::Object::GameObject;
 
     class MockComponent : public Component
     {
@@ -43,8 +41,9 @@ TEST(GameObjectTest, AddComponentAttachesOwnerAndAppendsToList)
     auto& comp = *obj.AddComponent<MockComponent>();
 
     EXPECT_EQ(comp.Owner(), &obj);
-    ASSERT_EQ(obj.Components().size(), std::size_t{1});
-    EXPECT_EQ(obj.Components().front(), &comp);
+    // 器が先に transform を積むので、 既定 priority の後入れは末尾に来る
+    ASSERT_EQ(obj.Components().size(), std::size_t{2});
+    EXPECT_EQ(obj.Components().back(), &comp);
 }
 
 TEST(GameObjectTest, OnUpdatePropagatesToActiveComponents)
@@ -108,57 +107,59 @@ TEST(GameObjectTest, SetParentLinksHierarchyAndSyncsTransform)
     EXPECT_EQ(child.Root().Parent(), nullptr);
 }
 
-TEST(GameObjectTest, MarkPendingKillFlipsIsAlive)
+TEST(GameObjectTest, DestroyFlipsIsAlive)
 {
     GameObject obj;
     EXPECT_TRUE(obj.IsAlive());
-    obj.MarkPendingKill();
+    obj.Destroy();
     EXPECT_FALSE(obj.IsAlive());
 }
 
 namespace
 {
-    class HighPrioComponent : public NS::Scene::Component
+    class HighPrioComponent : public NS::Object::Component
     {
     public:
-        HighPrioComponent() noexcept : Component(static_cast<int>(NS::Scene::TickPriority::Input)) {}
+        HighPrioComponent() noexcept : Component(NS::Object::TickPriority::EarlyUpdate) {}
     };
 
-    class LowPrioComponent : public NS::Scene::Component
+    class LowPrioComponent : public NS::Object::Component
     {
     public:
-        LowPrioComponent() noexcept : Component(static_cast<int>(NS::Scene::TickPriority::Camera)) {}
+        LowPrioComponent() noexcept : Component(NS::Object::TickPriority::LateUpdate) {}
     };
 } // namespace
 
 TEST(GameObjectPriorityTest, AddComponentSortsByPriority)
 {
-    NS::Scene::GameObject obj;
-    auto& low = *obj.AddComponent<LowPrioComponent>();   // 先に追加 (Camera, 400)
+    NS::Object::GameObject obj;
+    auto& low = *obj.AddComponent<LowPrioComponent>();   // 先に追加 (LateUpdate, 400)
     auto& high = *obj.AddComponent<HighPrioComponent>(); // 後に追加 (Input, 0)
 
-    ASSERT_EQ(obj.Components().size(), std::size_t{2});
-    EXPECT_EQ(obj.Components()[0], &high); // priority 昇順で high 先
-    EXPECT_EQ(obj.Components()[1], &low);
+    // Input 0 の high、 器が積む transform (Update 200)、 LateUpdate 400 の low の順
+    ASSERT_EQ(obj.Components().size(), std::size_t{3});
+    EXPECT_EQ(obj.Components()[0], &high);
+    EXPECT_EQ(obj.Components()[2], &low);
 }
 
 TEST(GameObjectPriorityTest, SamePriorityPreservesInsertionOrder)
 {
-    NS::Scene::GameObject obj;
+    NS::Object::GameObject obj;
     auto& a = *obj.AddComponent<HighPrioComponent>();
     auto& b = *obj.AddComponent<HighPrioComponent>();
 
-    ASSERT_EQ(obj.Components().size(), std::size_t{2});
+    // Input 0 の 2 つが登録順のまま先頭に並び、 器が積む transform (Update 200) は後ろ
+    ASSERT_EQ(obj.Components().size(), std::size_t{3});
     EXPECT_EQ(obj.Components()[0], &a);
     EXPECT_EQ(obj.Components()[1], &b);
 }
 
 TEST(GameObjectAddComponentTest, OwnsLifetimeInjectsOwnerAndOrdersByPriority)
 {
-    NS::Scene::GameObject obj;
-    auto* low = obj.AddComponent<LowPrioComponent>();   // Camera 400
+    NS::Object::GameObject obj;
+    auto* low = obj.AddComponent<LowPrioComponent>();   // LateUpdate 400
     auto* high = obj.AddComponent<HighPrioComponent>(); // Input 0
-    auto* mock = obj.AddComponent<MockComponent>();     // 既定 Physics 200
+    auto* mock = obj.AddComponent<MockComponent>();     // 既定 Update 200
 
     ASSERT_NE(low, nullptr);
     ASSERT_NE(high, nullptr);
@@ -166,13 +167,76 @@ TEST(GameObjectAddComponentTest, OwnsLifetimeInjectsOwnerAndOrdersByPriority)
     EXPECT_EQ(low->Owner(), &obj);
     EXPECT_EQ(high->Owner(), &obj);
 
-    // 寿命は GameObject 所有: stack に持たなくても tick が伝播する
+    // 寿命は GameObject が持つので、ローカル変数が無くても tick は伝わる
     obj.OnUpdate();
     EXPECT_EQ(mock->updateCount, 1);
 
-    // priority 昇順 (Input 0 < Physics 200 < Camera 400)
-    ASSERT_EQ(obj.Components().size(), std::size_t{3});
+    // priority 昇順 (Input 0 < Update 200 < LateUpdate 400)。 200 帯は器が積む transform が先
+    ASSERT_EQ(obj.Components().size(), std::size_t{4});
     EXPECT_EQ(obj.Components()[0], high);
-    EXPECT_EQ(obj.Components()[1], mock);
-    EXPECT_EQ(obj.Components()[2], low);
+    EXPECT_EQ(obj.Components()[2], mock);
+    EXPECT_EQ(obj.Components()[3], low);
+}
+
+TEST(GameObjectTest, OwnerFlagGatesItsComponents)
+{
+    GameObject obj;
+    auto* comp = obj.AddComponent<MockComponent>();
+    ASSERT_NE(comp, nullptr);
+    EXPECT_TRUE(comp->IsActive());
+
+    obj.SetActive(false);
+    EXPECT_FALSE(comp->IsActive());
+    // component 自身の札は触られないので、持ち主を戻せばそのまま効く
+    EXPECT_TRUE(comp->IsActiveSelf());
+
+    obj.SetActive(true);
+    EXPECT_TRUE(comp->IsActive());
+}
+
+TEST(GameObjectTest, AncestorFlagGatesDescendantComponents)
+{
+    GameObject root;
+    GameObject child;
+    GameObject grandChild;
+    child.SetParent(&root);
+    grandChild.SetParent(&child);
+    auto* comp = grandChild.AddComponent<MockComponent>();
+    ASSERT_NE(comp, nullptr);
+
+    root.SetActive(false);
+    EXPECT_FALSE(grandChild.IsActiveInHierarchy());
+    EXPECT_TRUE(grandChild.IsActiveSelf());
+    EXPECT_FALSE(comp->IsActive());
+
+    root.SetActive(true);
+    EXPECT_TRUE(comp->IsActive());
+}
+
+TEST(GameObjectTest, ChildKeepsItsOwnFlagWhileParentIsOff)
+{
+    GameObject parent;
+    GameObject child;
+    child.SetParent(&parent);
+    child.SetActive(false);
+
+    parent.SetActive(false);
+    parent.SetActive(true);
+    // 親を戻しても、自分で切った子は切れたまま
+    EXPECT_FALSE(child.IsActiveInHierarchy());
+}
+
+TEST(GameObjectTest, InactiveOwnerSkipsUpdate)
+{
+    GameObject obj;
+    auto* comp = obj.AddComponent<MockComponent>();
+    ASSERT_NE(comp, nullptr);
+
+    obj.SetActive(false);
+    obj.OnUpdate();
+    EXPECT_EQ(comp->updateCount, 0);
+
+    obj.SetActive(true);
+    obj.OnUpdate();
+    EXPECT_EQ(comp->updateCount, 1);
 }

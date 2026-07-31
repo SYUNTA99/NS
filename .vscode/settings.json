@@ -1,0 +1,194 @@
+{
+    "editor.formatOnSave": false,
+
+    // IntelliSense は clangd 一本に統一する。 MS C/C++ 拡張の IntelliSense を切り、
+    // clangd との二重解析で出る誤った赤波線を止める。 デバッガ (launch.json の
+    // cppvsdbg) は IntelliSense と独立なので引き続き使える。
+    "C_Cpp.intelliSenseEngine": "disabled",
+
+    // Visual Studio 2022 Dark テーマの実際の配色に合わせる。
+    // 値は Roslyn 本体の VisualStudio2019.xml (Dark テーマ定義) を典拠とする。
+    //   ・組み込み型 (void/float/int 等)・通常キーワード = #569CD6 (青) … clangd は "type"/"keyword" を付ける
+    //   ・制御構文キーワード (if/for/while/return 等) = #D8A0DF (紫)
+    //   ・ライブラリ型 (ComPtr / std::string 等) = #4EC9B0 (teal) … clangd は "type.defaultLibrary" を付ける
+    //   ・class = #4EC9B0 (teal)、 struct = #86C691、 enum/interface/型引数 = #B8D7A3 (緑系)
+    //   ・ローカル変数・引数 (parameter) = #9CDCFE (水色) … VS では両者同色
+    //   ・関数・メソッド = #DCDCAA (黄)
+    //   ・マクロ = #C586C0 (紫)
+    "editor.semanticHighlighting.enabled": true,
+    "editor.semanticTokenColorCustomizations": {
+        "enabled": true,
+        "rules": {
+            "class": "#4EC9B0",
+            "class.defaultLibrary": "#4EC9B0",
+            "struct": "#86C691",
+            "struct.defaultLibrary": "#86C691",
+            "enum": "#B8D7A3",
+            "enumMember": "#B8D7A3",
+            "interface": "#B8D7A3",
+            "typeParameter": "#B8D7A3",
+            "type": "#569CD6",
+            "type.defaultLibrary": "#4EC9B0",
+            "namespace": "#DCDCDC",
+            "parameter": "#9CDCFE",
+            "variable": "#9CDCFE",
+            "variable.defaultLibrary": "#9CDCFE",
+            "property": "#9CDCFE",
+            "function": "#DCDCAA",
+            "method": "#DCDCAA",
+            "macro": "#C586C0",
+            "keyword": "#569CD6",
+            "modifier": "#569CD6",
+            "operator": "#DCDCDC",
+            "comment": "#57A64A",
+            "*": "#DCDCDC"
+        }
+    },
+    // clangd が semantic token を出さない箇所 (TextMate 文法 + テーマ任せの部分) を固定する。
+    //   storage.type/modifier … class/struct/enum、 void/int/bool 等の組込み型、 public/private/const 等の修飾子
+    //   keyword.control       … if/else/for/while/return 等の制御フロー
+    //   keyword               … new/delete、 演算子キーワード等それ以外
+    // このリポは C++ 専用なので scope は言語非限定で問題ない。
+    "editor.tokenColorCustomizations": {
+        "textMateRules": [
+            {
+                "scope": [
+                    "storage.type",
+                    "storage.modifier"
+                ],
+                "settings": {
+                    "foreground": "#569CD6"
+                }
+            },
+            {
+                "scope": "keyword.control",
+                "settings": {
+                    "foreground": "#D8A0DF"
+                }
+            },
+            {
+                "scope": "keyword",
+                "settings": {
+                    "foreground": "#569CD6"
+                }
+            },
+            {
+                "scope": "comment",
+                "settings": {
+                    "foreground": "#57A64A"
+                }
+            },
+            {
+                "scope": "string",
+                "settings": {
+                    "foreground": "#D69D85"
+                }
+            }
+        ]
+    },
+    // 地の文字 (token の付かない区切り記号等) は VS Dark の identifier/plaintext 色に合わせる。
+    "workbench.colorCustomizations": {
+        "editor.foreground": "#DCDCDC"
+    },
+    "dotnet.defaultSolution": "disable",
+    "files.exclude": {
+        "Source/ThirdParty/DirectXTK/MakeSpriteFont/**": true,
+        "Source/ThirdParty/**/*.csproj": true,
+        "Source/ThirdParty/**/*.sln": true
+    },
+    "search.exclude": {
+        "Source/ThirdParty/DirectXTK/MakeSpriteFont/**": true
+    },
+    "files.watcherExclude": {
+        "**/Source/ThirdParty/**": true
+    },
+    "files.associations": {
+        "algorithm": "cpp",
+        "cmath": "cpp",
+        "array": "cpp",
+        "atomic": "cpp",
+        "bit": "cpp",
+        "cctype": "cpp",
+        "charconv": "cpp",
+        "chrono": "cpp",
+        "clocale": "cpp",
+        "codecvt": "cpp",
+        "compare": "cpp",
+        "concepts": "cpp",
+        "condition_variable": "cpp",
+        "cstddef": "cpp",
+        "cstdint": "cpp",
+        "cstdio": "cpp",
+        "cstdlib": "cpp",
+        "cstring": "cpp",
+        "ctime": "cpp",
+        "cwchar": "cpp",
+        "deque": "cpp",
+        "exception": "cpp",
+        "coroutine": "cpp",
+        "resumable": "cpp",
+        "filesystem": "cpp",
+        "format": "cpp",
+        "forward_list": "cpp",
+        "fstream": "cpp",
+        "functional": "cpp",
+        "future": "cpp",
+        "initializer_list": "cpp",
+        "iomanip": "cpp",
+        "ios": "cpp",
+        "iosfwd": "cpp",
+        "iostream": "cpp",
+        "istream": "cpp",
+        "iterator": "cpp",
+        "limits": "cpp",
+        "list": "cpp",
+        "locale": "cpp",
+        "map": "cpp",
+        "memory": "cpp",
+        "mutex": "cpp",
+        "new": "cpp",
+        "optional": "cpp",
+        "ostream": "cpp",
+        "queue": "cpp",
+        "ratio": "cpp",
+        "shared_mutex": "cpp",
+        "source_location": "cpp",
+        "span": "cpp",
+        "sstream": "cpp",
+        "stdexcept": "cpp",
+        "stop_token": "cpp",
+        "streambuf": "cpp",
+        "string": "cpp",
+        "system_error": "cpp",
+        "thread": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "typeinfo": "cpp",
+        "unordered_map": "cpp",
+        "utility": "cpp",
+        "vector": "cpp",
+        "xfacet": "cpp",
+        "xhash": "cpp",
+        "xiosbase": "cpp",
+        "xlocale": "cpp",
+        "xlocbuf": "cpp",
+        "xlocinfo": "cpp",
+        "xlocmes": "cpp",
+        "xlocmon": "cpp",
+        "xlocnum": "cpp",
+        "xloctime": "cpp",
+        "xmemory": "cpp",
+        "xstring": "cpp",
+        "xtr1common": "cpp",
+        "xtree": "cpp",
+        "xutility": "cpp"
+    },
+    "cmake.ignoreCMakeListsMissing": true,
+
+    // clangd のメモリ・CPU 負荷を抑える。 バックグラウンド索引作成の優先度を下げ、
+    // ワーカースレッド数を絞ることで、 エディタを開いている間の常駐コストを軽くする。
+    "clangd.arguments": [
+        "--background-index-priority=background",
+        "-j=2"
+    ]
+}

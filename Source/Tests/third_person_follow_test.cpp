@@ -1,29 +1,26 @@
 #include <gtest/gtest.h>
-
-#include <Framework/Core/Clock.h>
-#include <Framework/Scene/Components/ThirdPersonFollowComponent.h>
-#include <Framework/Scene/GameObject.h>
-#include <Framework/Scene/Transform.h>
-
-#include <cmath>
+#include <Runtime/Core/Clock.h>
+#include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
+#include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Transform.h>
 
 namespace
 {
-    using NS::Scene::GameObject;
-    using NS::Scene::ThirdPersonFollowComponent;
+    using NS::Object::GameObject;
+    using NS::Object::ThirdPersonFollowComponent;
 
-    constexpr float kDt = 1.0f / 60.0f;
+    constexpr float k_Dt = 1.0f / 60.0f;
 } // namespace
 
 class ThirdPersonFollowTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(kDt); }
+    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_Dt); }
 };
 
 TEST_F(ThirdPersonFollowTest, ConstructsWithNullTarget)
 {
-    ThirdPersonFollowComponent follow(nullptr);
+    ThirdPersonFollowComponent follow;
     EXPECT_EQ(follow.Target(), nullptr);
     // 休止で生まれるのが契約。起こすのはプレイ進行役
     EXPECT_FALSE(follow.IsActive());
@@ -32,14 +29,15 @@ TEST_F(ThirdPersonFollowTest, ConstructsWithNullTarget)
 TEST_F(ThirdPersonFollowTest, OnUpdateRunsWhenActive)
 {
     GameObject obj;
-    auto& follow = *obj.AddComponent<ThirdPersonFollowComponent>(&obj.Root());
+    auto& follow = *obj.AddComponent<ThirdPersonFollowComponent>();
+    follow.SetTarget(&obj.Root());
     follow.OnUpdate();
     SUCCEED();
 }
 
 TEST_F(ThirdPersonFollowTest, EvaluatePoseFallbackWhenTargetIsNull)
 {
-    ThirdPersonFollowComponent follow(nullptr);
+    ThirdPersonFollowComponent follow;
     follow.OnUpdate();
     // target が無い時は EvaluatePose が既定 pose を返す (実カメラは動かない)
     const auto pose = follow.EvaluatePose(1.0f);
@@ -51,7 +49,8 @@ TEST_F(ThirdPersonFollowTest, EvaluatePosePlacesCameraBehindTarget)
     GameObject obj;
     obj.Root().SetPosition({0.0f, 0.0f, 0.0f});
 
-    auto& follow = *obj.AddComponent<ThirdPersonFollowComponent>(&obj.Root());
+    auto& follow = *obj.AddComponent<ThirdPersonFollowComponent>();
+    follow.SetTarget(&obj.Root());
     follow.SetDistance(5.0f);
 
     for (int i = 0; i < 60; ++i)
@@ -68,7 +67,7 @@ TEST_F(ThirdPersonFollowTest, EvaluatePosePlacesCameraBehindTarget)
 
 TEST_F(ThirdPersonFollowTest, SensitivityAndInvertSettersPersist)
 {
-    ThirdPersonFollowComponent follow(nullptr);
+    ThirdPersonFollowComponent follow;
     follow.SetSensX(0.01f);
     follow.SetSensY(0.02f);
     follow.SetInvertX(true);
@@ -82,7 +81,7 @@ TEST_F(ThirdPersonFollowTest, SensitivityAndInvertSettersPersist)
 
 TEST_F(ThirdPersonFollowTest, SetDistanceSyncsCurrentAndDesired)
 {
-    ThirdPersonFollowComponent follow(nullptr);
+    ThirdPersonFollowComponent follow;
     follow.SetDistance(8.0f);
     EXPECT_FLOAT_EQ(follow.Distance(), 8.0f);
 }
@@ -90,7 +89,8 @@ TEST_F(ThirdPersonFollowTest, SetDistanceSyncsCurrentAndDesired)
 TEST_F(ThirdPersonFollowTest, PitchIsClampedAfterUpdate)
 {
     GameObject obj;
-    auto& follow = *obj.AddComponent<ThirdPersonFollowComponent>(&obj.Root());
+    auto& follow = *obj.AddComponent<ThirdPersonFollowComponent>();
+    follow.SetTarget(&obj.Root());
 
     for (int i = 0; i < 200; ++i)
         follow.OnUpdate();

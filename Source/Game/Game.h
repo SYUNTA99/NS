@@ -1,14 +1,17 @@
 #pragma once
 
-/// @file Game.h
-/// @brief Game — NS::App::Layer 継承の Game content layer。 SceneManager を所有し scene 群を駆動する
-///
-/// @details Application と Scene の間に位置する Layer
-/// 現時点では SceneManager へのパス・スルーのみだが、
-/// クロス scene の共有状態として設定 / セーブデータを持つ場所になる
+#include "Runtime/App/Layer.h"
+#include "Runtime/Object/Scene/SceneManager.h"
+#include "Runtime/UI/UISystem.h"
 
-class LevelPlayScene;
+#include <string_view>
 
+namespace NS::Object
+{
+    class Scene;
+} // namespace NS::Object
+
+//! @brief アプリケーション層とシーン管理層を仲介するメインゲームレイヤー
 class Game : public NS::App::Layer
 {
 public:
@@ -25,19 +28,24 @@ public:
     void OnUpdate() override;
     void OnRender() override;
 
-    /// 現在 active な scene を play scene として返す。 自分で載せた LevelPlayScene が現役の間だけ
-    /// 実体を返し、 未 load / 別 scene への差し替え後は nullptr
-    [[nodiscard]] LevelPlayScene* CurrentPlayScene() noexcept;
+    //! @brief シーン名を指定してシーンを読み込み、立て直す
+    //! @details 名前は Scenes/<name>.scene に対応する。パス区切りや ".." を含む名前は受け付けない
+    //! @return 読めなければ false を返し、その時は今のシーンをそのまま保つ
+    bool LoadScene(std::string_view sceneName);
 
-    /// プロセス内の単一インスタンス取得。 Application は Layer を型不知で保持するため、
-    /// Game 型を直接取得するには Game::Get() を使う
+    //! @brief 現在ロードされているシーンを取得する
+    //! @return シーン未ロードなら nullptr を返す
+    [[nodiscard]] NS::Object::Scene* CurrentScene() noexcept;
+
+    //! @brief ゲーム画面へ重ねる UI。HUD やメニューはこの Root() の下に組む
+    [[nodiscard]] NS::UI::UISystem& Ui() noexcept { return m_ui; }
+
+    //! @brief シングルトンインスタンスを取得する
     [[nodiscard]] static Game* Get() noexcept { return s_instance; }
 
 private:
-    NS::Scene::SceneManager m_scenes;
-
-    // 自分で載せた play scene の型付き控え。 所有は m_scenes 側で、 現役かどうかは識別で照合する
-    LevelPlayScene* m_playScene = nullptr;
+    NS::Object::SceneManager m_scenes; // シーンの所有と遷移管理
+    NS::UI::UISystem m_ui;              // ゲーム画面の UI。world 描画の後に重ねる
 
     static Game* s_instance;
 };

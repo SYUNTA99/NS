@@ -1,13 +1,13 @@
-#include "Framework/Graphics/Renderer.h"
-#include "Framework/Platform/Window.h"
-#include "Framework/UI/ImGuiContext.h"
+#include "Runtime/Graphics/Renderer.h"
+#include "Runtime/Platform/Window.h"
+#include "Runtime/UI/ImGuiContext.h"
 
 #include <gtest/gtest.h>
 
 namespace
 {
-    /// hidden window + Debug layer 無効化で軽量に Renderer を立ち上げる
-    /// headless CI でも fail せず GTEST_SKIP に落とせるよう IsValid を後で確認する
+    /// hidden window + Debug layer 無効化で軽量に Renderer を作る
+    /// headless 環境では IsValid を確認して GTEST_SKIP に落とす
     NS::Platform::WindowDesc MakeHiddenWindowDesc()
     {
         NS::Platform::WindowDesc desc{};
@@ -37,7 +37,7 @@ TEST(ImGuiContextTest, ValidModeWithRealWindowAndRenderer)
     EXPECT_TRUE(imgui.IsValid());
     EXPECT_FALSE(imgui.IsUsingFallback());
 
-    // BeginFrame / EndFrame ペアが crash しないことを確認
+    // BeginFrame / EndFrame を対で呼んでも落ちないか確認
     renderer.BeginFrame(0.0f, 0.0f, 0.0f, 1.0f);
     imgui.BeginFrame();
     imgui.EndFrame();
@@ -61,7 +61,7 @@ TEST(ImGuiContextTest, WantCaptureSafeBeforeNewFrame)
     if (!imgui.IsValid())
         GTEST_SKIP();
 
-    // NewFrame 未呼出でも crash しないこと (初期値は false 想定だが ImGui 内部に依存)
+    // NewFrame 未呼出でも落ちないか確認、初期値は false 想定だが ImGui 内部依存
     (void)imgui.WantCaptureMouse();
     (void)imgui.WantCaptureKeyboard();
     SUCCEED();

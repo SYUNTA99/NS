@@ -1,9 +1,8 @@
 #include "Editor/GridMath.h"
-#include "Framework/Math/Math.h"
-
-#include <gtest/gtest.h>
+#include "Runtime/Math/Math.h"
 
 #include <cmath>
+#include <gtest/gtest.h>
 
 TEST(EditorGridTest, SnapWorldPointToGridRoundsToNearestCell)
 {
@@ -82,4 +81,52 @@ TEST(EditorGridTest, ScreenToWorldRayDirectionIsUnitLength)
     const float len = std::sqrt(ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y +
                                 ray.direction.z * ray.direction.z);
     EXPECT_NEAR(len, 1.0f, 1e-3f);
+}
+
+TEST(EditorGridTest, ViewRectContainsInteriorAndTopLeftEdge)
+{
+    const NS::Editor::ViewRect rect{100, 50, 800, 600};
+    EXPECT_TRUE(NS::Editor::ViewRectContains(rect, 500, 350)); // 内点
+    EXPECT_TRUE(NS::Editor::ViewRectContains(rect, 100, 50));  // 左上端は内側
+}
+
+TEST(EditorGridTest, ViewRectContainsExcludesRightBottomEdgeAndOutside)
+{
+    const NS::Editor::ViewRect rect{100, 50, 800, 600};
+    EXPECT_FALSE(NS::Editor::ViewRectContains(rect, 900, 350)); // 右端 (x+width) は外側
+    EXPECT_FALSE(NS::Editor::ViewRectContains(rect, 500, 650)); // 下端 (y+height) は外側
+    EXPECT_FALSE(NS::Editor::ViewRectContains(rect, -1, -1));   // 負座標
+}
+
+TEST(EditorGridTest, ViewRectToLocalSubtractsOrigin)
+{
+    const NS::Editor::ViewRect rect{100, 50, 800, 600};
+    int lx = 0;
+    int ly = 0;
+    NS::Editor::ViewRectToLocal(rect, 500, 350, lx, ly);
+    EXPECT_EQ(lx, 400);
+    EXPECT_EQ(ly, 300);
+}
+
+TEST(EditorGridTest, ViewRectSizeReturnsWidthHeight)
+{
+    const NS::Editor::ViewRect rect{100, 50, 800, 600};
+    EXPECT_EQ(NS::Editor::ViewRectSize(rect), (NS::Math::Size2D{800, 600}));
+}
+
+// パネル基準のローカル化を通した ray が、原点置きの同サイズ viewport と同じ方向を返すこと
+TEST(EditorGridTest, LocalizedRayMatchesOriginViewportRay)
+{
+    const NS::Editor::ViewRect rect{100, 50, 800, 600};
+    int lx = 0;
+    int ly = 0;
+    NS::Editor::ViewRectToLocal(rect, 500, 350, lx, ly);
+
+    NS::Math::Matrix identity = NS::Math::Matrix::Identity;
+    const auto localized = NS::Editor::ScreenToWorldRay(identity, NS::Editor::ViewRectSize(rect), lx, ly);
+    const auto reference = NS::Editor::ScreenToWorldRay(identity, NS::Math::Size2D{800, 600}, 400, 300);
+
+    EXPECT_NEAR(localized.direction.x, reference.direction.x, 1e-5f);
+    EXPECT_NEAR(localized.direction.y, reference.direction.y, 1e-5f);
+    EXPECT_NEAR(localized.direction.z, reference.direction.z, 1e-5f);
 }

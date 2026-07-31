@@ -1,13 +1,11 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Core/Filesystem.h>
-#include <Framework/Graphics/Animation.h>
-#include <Framework/Graphics/GltfLoader.h>
-#include <Framework/Graphics/Skeleton.h>
-#include <Framework/Math/Math.h>
-
 #include <filesystem>
+#include <gtest/gtest.h>
 #include <iostream>
+#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Graphics/Animation.h>
+#include <Runtime/Graphics/GltfLoader.h>
+#include <Runtime/Graphics/Skeleton.h>
+#include <Runtime/Math/Math.h>
 #include <span>
 #include <string>
 #include <vector>

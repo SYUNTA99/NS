@@ -14,8 +14,10 @@ cbuffer FrameCB : register(b0)
     float  pad1;
     float3 g_lightColor;          // テーマ駆動 sun color (PS 側で使う、 VS は素通し)
     float  pad2;
-    float3 g_ambientColor;        // テーマ駆動 ambient (PS 側で使う、 VS は素通し)
+    float3 g_ambientColor;        // 空側の環境光 (PS 側で使う、 VS は素通し)
     float  pad3;
+    float3 g_groundColor;         // 地面側の環境光 (PS 側で使う、 VS は素通し)
+    float  g_exposure;            // 画面へ出す前の露出 (PS 側で使う、 VS は素通し)
 };
 
 struct VSIn

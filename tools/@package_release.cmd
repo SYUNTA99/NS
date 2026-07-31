@@ -7,11 +7,11 @@
 ::   tools\@package_release.cmd              - build then package
 ::   tools\@package_release.cmd --skip-build - reuse existing build
 ::
-:: Output dist\NS\ (exe / Assets / Shaders / Levels / Source at the same level):
+:: Output dist\NS\ (exe / Assets / Shaders / Scenes / Source at the same level):
 ::   NS.exe
 ::   Assets\
 ::   Shaders\
-::   Levels\        new_level.scene (the level the game loads on start)
+::   Scenes\        new_scene.scene (the scene the game loads on start)
 ::   Source\        (git-tracked files only, ThirdParty excluded)
 ::   premake5.lua
 ::
@@ -58,18 +58,18 @@ if not exist "%BIN%\Game.exe" (
 )
 copy /y "%BIN%\Game.exe" "%OUT%\NS.exe" >nul
 
-echo [4/5] Copying Assets / Shaders / Levels ...
+echo [4/5] Copying Assets / Shaders / Scenes ...
 xcopy /e /i /q /y "Assets" "%OUT%\Assets\" >nul
 xcopy /e /i /q /y "Shaders" "%OUT%\Shaders\" >nul
-:: Levels: repo is the source of truth. The game loads GetExeDirectory()\Levels\new_level.scene
-if exist "Levels" (
-    xcopy /e /i /q /y "Levels" "%OUT%\Levels\" >nul
+:: Scenes: repo is the source of truth. The game loads GetExeDirectory()\Scenes\new_scene.scene
+if exist "Scenes" (
+    xcopy /e /i /q /y "Scenes" "%OUT%\Scenes\" >nul
 ) else (
-    echo [WARN] Levels\ not found at repo root -- game will fall back to the seed floor
+    echo [WARN] Scenes\ not found at repo root -- game will fall back to the seed floor
 )
 
 echo [5/5] Exporting tracked source, ThirdParty excluded ...
-git archive -o "%OUT%\_src.tar" HEAD Source/Framework Source/GameCore Source/Game Source/Editor Source/Tests premake5.lua
+git archive -o "%OUT%\_src.tar" HEAD Source/Runtime Source/Game Source/Editor Source/Tests premake5.lua
 if errorlevel 1 (
     echo [ERROR] git archive failed
     exit /b 1
@@ -80,7 +80,7 @@ del /q "%OUT%\_src.tar"
 echo.
 echo ============================================
 echo  Output: %OUT%\
-echo    NS.exe / Assets\ / Shaders\ / Levels\ / Source\ / premake5.lua
+echo    NS.exe / Assets\ / Shaders\ / Scenes\ / Source\ / premake5.lua
 echo ============================================
 echo  Note: runtime needs d3dcompiler_47.dll for runtime shader compile
 echo        and the VC++ redistributable, both shipped with Windows 10/11.

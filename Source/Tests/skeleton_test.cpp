@@ -1,10 +1,8 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Graphics/SkeletalMesh.h>
-#include <Framework/Graphics/Skeleton.h>
-#include <Framework/Math/Math.h>
-
 #include <array>
+#include <gtest/gtest.h>
+#include <Runtime/Graphics/SkeletalMesh.h>
+#include <Runtime/Graphics/Skeleton.h>
+#include <Runtime/Math/Math.h>
 #include <span>
 #include <vector>
 
@@ -18,16 +16,16 @@ namespace
     using NS::Math::Quaternion;
     using NS::Math::Vector3;
 
-    constexpr float kEps = 1e-4f;
+    constexpr float k_Eps = 1e-4f;
 
-    void ExpectVec3Near(const Vector3& actual, const Vector3& expected, float eps = kEps)
+    void ExpectVec3Near(const Vector3& actual, const Vector3& expected, float eps = k_Eps)
     {
         EXPECT_NEAR(actual.x, expected.x, eps);
         EXPECT_NEAR(actual.y, expected.y, eps);
         EXPECT_NEAR(actual.z, expected.z, eps);
     }
 
-    void ExpectMatrixNearIdentity(const Matrix& m, float eps = kEps)
+    void ExpectMatrixNearIdentity(const Matrix& m, float eps = k_Eps)
     {
         for (int r = 0; r < 4; ++r)
         {

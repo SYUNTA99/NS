@@ -1,21 +1,19 @@
+﻿#include <cmath>
 #include <gtest/gtest.h>
-
-#include <Framework/Core/Clock.h>
-#include <Framework/Physics/PhysicsWorld.h>
-#include <Framework/Scene/Components/CharacterMovementComponent.h>
-#include <Framework/Scene/GameObject.h>
-#include <Framework/Scene/Transform.h>
-
-#include <cmath>
+#include <Runtime/Core/Clock.h>
+#include <Runtime/Object/Components/CharacterMovementComponent.h>
+#include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Transform.h>
+#include <Runtime/Physics/PhysicsWorld.h>
 #include <span>
 
 namespace
 {
-    using NS::Scene::CharacterMovementComponent;
-    using NS::Scene::GameObject;
-    using NS::Scene::MovementState;
+    using NS::Object::CharacterMovementComponent;
+    using NS::Object::GameObject;
+    using NS::Object::MovementState;
 
-    constexpr float kFixedDt = 1.0f / 60.0f;
+    constexpr float k_FixedDt = 1.0f / 60.0f;
 
     /// 中心 (cx,cy,cz)・ 1m 立方の固形 block を表す AABB
     NS::Math::AABB MakeBlock(float cx, float cy, float cz)
@@ -28,7 +26,7 @@ namespace
     {
         NS::Physics::PhysicsWorld world;
         for (const NS::Math::AABB& b : boxes)
-            world.AddAabb(b);
+            world.AddAABB(b);
         world.BuildBroadphase();
         return world;
     }
@@ -43,7 +41,7 @@ namespace
 class LedgeGrabStateTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(kFixedDt); }
+    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_FixedDt); }
 };
 
 TEST_F(LedgeGrabStateTest, GrabsLedgeWhenDescendingIntoEdge)

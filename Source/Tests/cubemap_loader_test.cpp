@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 
-#include <Framework/Core/Filesystem.h>
-#include <Framework/Core/Logger.h>
-#include <Framework/Graphics/Renderer.h>
-#include <Framework/Graphics/Skybox.h>
-#include <Framework/Platform/Window.h>
+#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Core/Logger.h>
+#include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Graphics/Skybox.h>
+#include <Runtime/Platform/Window.h>
 
 #include <d3d11.h>
 

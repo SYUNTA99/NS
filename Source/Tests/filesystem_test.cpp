@@ -1,10 +1,8 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Core/Filesystem.h>
-#include <Framework/Core/Logger.h>
-
 #include <chrono>
 #include <fstream>
+#include <gtest/gtest.h>
+#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Core/Logger.h>
 #include <string>
 #include <vector>
 
@@ -182,7 +180,7 @@ TEST(NsCoreFileSystem, IsDirectoryDistinguishesDirectoryFromFileAndMissing)
     ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(root / "file.txt", data));
 
     EXPECT_TRUE(NS::Core::FileSystem::IsDirectory(root));
-    // 通常ファイルと不存在はともに false。 後者は Skybox が fallback へ落ちる経路を保証する
+    // 通常ファイルと不存在はともに false。後者は Skybox が退避先へ落ちる経路を保証する
     EXPECT_FALSE(NS::Core::FileSystem::IsDirectory(root / "file.txt"));
     EXPECT_FALSE(NS::Core::FileSystem::IsDirectory(root / "missing"));
 

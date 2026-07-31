@@ -1,10 +1,8 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Math/Math.h>
-#include <Framework/Physics/Capsule.h>
-#include <Framework/Physics/SweptOBB.h>
-
 #include <cmath>
+#include <gtest/gtest.h>
+#include <Runtime/Math/Math.h>
+#include <Runtime/Physics/Capsule.h>
+#include <Runtime/Physics/SweptOBB.h>
 
 namespace
 {
@@ -12,10 +10,10 @@ namespace
     using NS::Math::Vector3;
     using NS::Physics::Capsule;
     using NS::Physics::MakeObb;
-    using NS::Physics::OBB;
+    using NS::Math::OBB;
     using NS::Physics::SweptCapsuleVsOBB;
 
-    constexpr float kPi = 3.14159265358979323846f;
+    constexpr float k_Pi = 3.14159265358979323846f;
 
     Capsule MakeCapsule(const Vector3& center, float radius = 0.4f, float halfHeight = 0.5f)
     {
@@ -67,7 +65,7 @@ TEST(SweptObbTest, NoHitWhenMotionPointsAway)
 // 45 度 Y 回転した箱: 法線は world X と直交側を向く (回転が当たりに反映される)
 TEST(SweptObbTest, RotatedObbProducesRotatedNormal)
 {
-    const Quaternion rot = Quaternion::CreateFromAxisAngle(Vector3::UnitY, kPi / 4.0f);
+    const Quaternion rot = Quaternion::CreateFromAxisAngle(Vector3::UnitY, k_Pi / 4.0f);
     OBB obb = MakeObb({0.0f, 0.0f, 0.0f}, rot, {0.5f, 0.5f, 0.5f});
     Capsule c = MakeCapsule({-3.0f, 0.0f, 0.0f});
     Vector3 motion{4.0f, 0.0f, 0.0f};
@@ -99,7 +97,7 @@ TEST(SweptObbTest, NonUniformScaleExtendsHitFace)
 // MakeObb は quaternion から正規直交な軸を作る
 TEST(SweptObbTest, MakeObbBuildsOrthonormalAxes)
 {
-    const Quaternion rot = Quaternion::CreateFromAxisAngle(Vector3::UnitY, kPi / 2.0f);
+    const Quaternion rot = Quaternion::CreateFromAxisAngle(Vector3::UnitY, k_Pi / 2.0f);
     OBB obb = MakeObb({1.0f, 2.0f, 3.0f}, rot, {0.5f, 0.5f, 0.5f});
 
     EXPECT_NEAR(Dot(obb.axisX, obb.axisX), 1.0f, 1e-4f);

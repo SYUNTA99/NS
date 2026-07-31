@@ -1,12 +1,10 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Core/Filesystem.h>
-#include <Framework/Core/Logger.h>
-#include <Framework/Graphics/Renderer.h>
-#include <Framework/Platform/Window.h>
-#include <Framework/Scene/AssetManager.h>
-
 #include <filesystem>
+#include <gtest/gtest.h>
+#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Core/Logger.h>
+#include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Object/AssetManager.h>
+#include <Runtime/Platform/Window.h>
 #include <string>
 
 namespace
@@ -15,9 +13,9 @@ namespace
     using NS::Graphics::RendererDesc;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
-    using NS::Scene::AssetManager;
-    using NS::Scene::MaterialFileDesc;
-    using NS::Scene::ParseMaterialJson;
+    using NS::Object::AssetManager;
+    using NS::Object::MaterialFileDesc;
+    using NS::Object::ParseMaterialJson;
 
     WindowDesc MakeWindowDesc(const char* title)
     {
@@ -100,7 +98,7 @@ TEST_F(AssetManagerTest, BuiltinReturnsSameNonNullPointer)
     EXPECT_EQ(am.Builtin("nonexistent"), nullptr);
 }
 
-// 読込失敗した mesh path は負キャッシュされ、 2 度目以降は再読込せず即 nullptr を返す (device 不要)
+// device 無しでも読込失敗した mesh path は負キャッシュされ、 2 度目以降は再読込せず即 nullptr を返す
 TEST_F(AssetManagerTest, FailedMeshLoadIsNegativeCached)
 {
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
@@ -112,7 +110,7 @@ TEST_F(AssetManagerTest, FailedMeshLoadIsNegativeCached)
     EXPECT_EQ(am.MeshCacheSize(), 1u); // 2 度目は再読込せず件数が増えない
 }
 
-// Reload は path 鍵の Shader を reload-in-place するのでキャッシュのポインタが不変
+// Reload は path 鍵の Shader をその場で置き換えるのでキャッシュのポインタが不変
 TEST_F(AssetManagerTest, ReloadShaderInPlaceKeepsIdentity)
 {
     Window window(MakeWindowDesc("ns_am_reload"));

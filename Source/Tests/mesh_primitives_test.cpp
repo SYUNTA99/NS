@@ -1,10 +1,8 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Math/Math.h>
-#include <Framework/Graphics/MeshPrimitives.h>
-
 #include <algorithm>
 #include <cmath>
+#include <gtest/gtest.h>
+#include <Runtime/Graphics/MeshPrimitives.h>
+#include <Runtime/Math/Math.h>
 
 namespace
 {

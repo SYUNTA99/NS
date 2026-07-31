@@ -1,18 +1,15 @@
-#include <gtest/gtest.h>
-
-#include <Framework/Graphics/RenderSettings.h>
-#include <Framework/Scene/RenderContext.h>
-#include <Framework/Scene/SceneBase.h>
-
 #include <cmath>
+#include <gtest/gtest.h>
+#include <Runtime/Graphics/RenderSettings.h>
+#include <Runtime/Object/Scene/Scene.h>
 
 namespace
 {
-    constexpr float kEpsilon = 1e-5f;
+    constexpr float k_Epsilon = 1e-5f;
 
-    /// scene 段解決の hook だけを差し替えた最小 SceneBase 派生
+    /// scene 段解決の hook だけを差し替えた最小 Scene 派生
     /// BuildSceneOverride が返す override を ResolveSceneSettings に流して結果を観測する
-    class FakeSceneWithOverride : public NS::Scene::SceneBase
+    class FakeSceneWithOverride : public NS::Object::Scene
     {
     public:
         NS::Graphics::RenderSettingsOverride m_over{};
@@ -32,12 +29,12 @@ TEST(RenderSettingsAuto, EmptySceneOverrideKeepsDefaults)
     FakeSceneWithOverride scene;
     const NS::Graphics::RenderSettings projDefaults{};
     const NS::Graphics::RenderSettings r = scene.CallResolve(projDefaults);
-    EXPECT_NEAR(r.lightDir.x, projDefaults.lightDir.x, kEpsilon);
-    EXPECT_NEAR(r.lightDir.y, projDefaults.lightDir.y, kEpsilon);
-    EXPECT_NEAR(r.lightDir.z, projDefaults.lightDir.z, kEpsilon);
-    EXPECT_NEAR(r.lightColor.x, projDefaults.lightColor.x, kEpsilon);
-    EXPECT_NEAR(r.ambientColor.x, projDefaults.ambientColor.x, kEpsilon);
-    EXPECT_NEAR(r.clearColor.B(), projDefaults.clearColor.B(), kEpsilon);
+    EXPECT_NEAR(r.lightDir.x, projDefaults.lightDir.x, k_Epsilon);
+    EXPECT_NEAR(r.lightDir.y, projDefaults.lightDir.y, k_Epsilon);
+    EXPECT_NEAR(r.lightDir.z, projDefaults.lightDir.z, k_Epsilon);
+    EXPECT_NEAR(r.lightColor.x, projDefaults.lightColor.x, k_Epsilon);
+    EXPECT_NEAR(r.ambientColor.x, projDefaults.ambientColor.x, k_Epsilon);
+    EXPECT_NEAR(r.clearColor.B(), projDefaults.clearColor.B(), k_Epsilon);
 }
 
 TEST(RenderSettingsAuto, SceneOverrideAppliesToContext)
@@ -46,13 +43,13 @@ TEST(RenderSettingsAuto, SceneOverrideAppliesToContext)
     scene.m_over.lightDir = NS::Math::Vector3{1.0f, 0.0f, 0.0f};
     const NS::Graphics::RenderSettings projDefaults{};
     const NS::Graphics::RenderSettings r = scene.CallResolve(projDefaults);
-    EXPECT_NEAR(r.lightDir.x, 1.0f, kEpsilon);
-    EXPECT_NEAR(r.lightDir.y, 0.0f, kEpsilon);
-    EXPECT_NEAR(r.lightDir.z, 0.0f, kEpsilon);
+    EXPECT_NEAR(r.lightDir.x, 1.0f, k_Epsilon);
+    EXPECT_NEAR(r.lightDir.y, 0.0f, k_Epsilon);
+    EXPECT_NEAR(r.lightDir.z, 0.0f, k_Epsilon);
     // 未指定フィールドは project 既定値のまま残る
-    EXPECT_NEAR(r.lightColor.x, projDefaults.lightColor.x, kEpsilon);
-    EXPECT_NEAR(r.ambientColor.x, projDefaults.ambientColor.x, kEpsilon);
-    EXPECT_NEAR(r.clearColor.B(), projDefaults.clearColor.B(), kEpsilon);
+    EXPECT_NEAR(r.lightColor.x, projDefaults.lightColor.x, k_Epsilon);
+    EXPECT_NEAR(r.ambientColor.x, projDefaults.ambientColor.x, k_Epsilon);
+    EXPECT_NEAR(r.clearColor.B(), projDefaults.clearColor.B(), k_Epsilon);
 }
 
 TEST(RenderSettingsAuto, ZeroLightDirOverrideFallsBackToDefault)
@@ -61,9 +58,9 @@ TEST(RenderSettingsAuto, ZeroLightDirOverrideFallsBackToDefault)
     FakeSceneWithOverride scene;
     const NS::Graphics::RenderSettings projDefaults{};
     const NS::Graphics::RenderSettings r = scene.CallResolve(projDefaults);
-    EXPECT_NEAR(r.lightDir.x, -0.3f, kEpsilon);
-    EXPECT_NEAR(r.lightDir.y, -1.0f, kEpsilon);
-    EXPECT_NEAR(r.lightDir.z, -0.2f, kEpsilon);
+    EXPECT_NEAR(r.lightDir.x, -0.3f, k_Epsilon);
+    EXPECT_NEAR(r.lightDir.y, -1.0f, k_Epsilon);
+    EXPECT_NEAR(r.lightDir.z, -0.2f, k_Epsilon);
 }
 
 TEST(RenderSettingsAuto, ObjectOverrideChainsOnScene)
@@ -79,10 +76,10 @@ TEST(RenderSettingsAuto, ObjectOverrideChainsOnScene)
     objOver.lightDir = NS::Math::Vector3{0.0f, -1.0f, 0.0f};
     const NS::Graphics::RenderSettings finalSettings = NS::Graphics::Resolve(sceneResolved, objOver);
 
-    EXPECT_NEAR(finalSettings.lightColor.x, 0.5f, kEpsilon);
-    EXPECT_NEAR(finalSettings.lightColor.y, 0.5f, kEpsilon);
-    EXPECT_NEAR(finalSettings.lightColor.z, 0.5f, kEpsilon);
-    EXPECT_NEAR(finalSettings.lightDir.y, -1.0f, kEpsilon);
+    EXPECT_NEAR(finalSettings.lightColor.x, 0.5f, k_Epsilon);
+    EXPECT_NEAR(finalSettings.lightColor.y, 0.5f, k_Epsilon);
+    EXPECT_NEAR(finalSettings.lightColor.z, 0.5f, k_Epsilon);
+    EXPECT_NEAR(finalSettings.lightDir.y, -1.0f, k_Epsilon);
 }
 
 TEST(RenderSettingsAuto, NoObjectOverrideUsesSceneResolved)
@@ -97,11 +94,11 @@ TEST(RenderSettingsAuto, NoObjectOverrideUsesSceneResolved)
     const NS::Graphics::RenderSettingsOverride emptyObj{};
     const NS::Graphics::RenderSettings finalSettings = NS::Graphics::Resolve(sceneResolved, emptyObj);
 
-    EXPECT_NEAR(finalSettings.lightDir.x, sceneResolved.lightDir.x, kEpsilon);
-    EXPECT_NEAR(finalSettings.lightDir.y, sceneResolved.lightDir.y, kEpsilon);
-    EXPECT_NEAR(finalSettings.lightColor.x, sceneResolved.lightColor.x, kEpsilon);
-    EXPECT_NEAR(finalSettings.ambientColor.x, sceneResolved.ambientColor.x, kEpsilon);
-    EXPECT_NEAR(finalSettings.clearColor.B(), sceneResolved.clearColor.B(), kEpsilon);
+    EXPECT_NEAR(finalSettings.lightDir.x, sceneResolved.lightDir.x, k_Epsilon);
+    EXPECT_NEAR(finalSettings.lightDir.y, sceneResolved.lightDir.y, k_Epsilon);
+    EXPECT_NEAR(finalSettings.lightColor.x, sceneResolved.lightColor.x, k_Epsilon);
+    EXPECT_NEAR(finalSettings.ambientColor.x, sceneResolved.ambientColor.x, k_Epsilon);
+    EXPECT_NEAR(finalSettings.clearColor.B(), sceneResolved.clearColor.B(), k_Epsilon);
 }
 
 TEST(RenderSettingsAuto, ObjectStageBaseIsSceneNotProjectDefault)
@@ -119,7 +116,7 @@ TEST(RenderSettingsAuto, ObjectStageBaseIsSceneNotProjectDefault)
     const NS::Graphics::RenderSettings finalSettings = NS::Graphics::Resolve(sceneResolved, objOver);
 
     // project 既定の lightColor は {1,1,1}。それに引きずられていないこと
-    EXPECT_NEAR(finalSettings.lightColor.x, 0.25f, kEpsilon);
-    EXPECT_FALSE(std::abs(finalSettings.lightColor.x - proj.lightColor.x) < kEpsilon);
-    EXPECT_NEAR(finalSettings.lightDir.z, -1.0f, kEpsilon);
+    EXPECT_NEAR(finalSettings.lightColor.x, 0.25f, k_Epsilon);
+    EXPECT_FALSE(std::abs(finalSettings.lightColor.x - proj.lightColor.x) < k_Epsilon);
+    EXPECT_NEAR(finalSettings.lightDir.z, -1.0f, k_Epsilon);
 }
