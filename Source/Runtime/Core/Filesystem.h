@@ -39,6 +39,10 @@ namespace NS::Core
         [[nodiscard]] static std::vector<std::filesystem::path> ListFiles(const std::filesystem::path& dir,
                                                                           std::string_view extension = {});
 
+        /// ListFiles の再帰版。サブディレクトリも辿る。戻り値の並び順は未規定
+        [[nodiscard]] static std::vector<std::filesystem::path> ListFilesRecursive(const std::filesystem::path& dir,
+                                                                                   std::string_view extension = {});
+
         /// 戻り値の並び順は保証しない。ディレクトリが存在しない場合は空の配列を返す
         [[nodiscard]] static std::vector<std::filesystem::path> ListDirectories(const std::filesystem::path& dir);
 

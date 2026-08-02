@@ -69,10 +69,53 @@ TEST(LevelFilePaths, BuildLevelPathReturnsNulloptOnSanitizeFail)
 
 TEST(LevelFilePaths, BuildLevelPathProducesExpectedShape)
 {
-    auto p = EditorNs::BuildLevelPath("MyLevel");
+    auto p = EditorNs::BuildLevelPath("Scenes/MyLevel");
     ASSERT_TRUE(p.has_value());
     EXPECT_EQ(p->extension(), ".scene");
     EXPECT_EQ(p->stem(), "MyLevel");
+    EXPECT_EQ(p->parent_path().filename(), "Scenes");
+}
+
+TEST(LevelFilePaths, SanitizeLevelPathAcceptsSubfolders)
+{
+    EXPECT_EQ(EditorNs::SanitizeLevelPath("Scenes/new_scene"), "Scenes/new_scene");
+    EXPECT_EQ(EditorNs::SanitizeLevelPath("a/b/c"), "a/b/c");
+    EXPECT_EQ(EditorNs::SanitizeLevelPath("MyLevel"), "MyLevel");
+}
+
+TEST(LevelFilePaths, SanitizeLevelPathRejectsTraversal)
+{
+    EXPECT_EQ(EditorNs::SanitizeLevelPath("a/../b"), "");
+    EXPECT_EQ(EditorNs::SanitizeLevelPath("../escape"), "");
+    EXPECT_EQ(EditorNs::SanitizeLevelPath(".."), "");
+    EXPECT_EQ(EditorNs::SanitizeLevelPath("a/../../b"), "");
+}
+
+TEST(LevelFilePaths, SanitizeLevelPathRejectsAbsoluteAndBackslash)
+{
+    EXPECT_EQ(EditorNs::SanitizeLevelPath("/etc/passwd"), "");
+    EXPECT_EQ(EditorNs::SanitizeLevelPath("C:/Windows"), "");
+    EXPECT_EQ(EditorNs::SanitizeLevelPath("a\\b"), "");
+}
+
+TEST(LevelFilePaths, SanitizeLevelPathRejectsEmptySegments)
+{
+    EXPECT_EQ(EditorNs::SanitizeLevelPath("a//b"), "");
+    EXPECT_EQ(EditorNs::SanitizeLevelPath("/foo"), "");
+    EXPECT_EQ(EditorNs::SanitizeLevelPath("foo/"), "");
+    EXPECT_EQ(EditorNs::SanitizeLevelPath(""), "");
+}
+
+TEST(LevelFilePaths, SanitizeLevelPathRejectsReservedSegment)
+{
+    EXPECT_EQ(EditorNs::SanitizeLevelPath("Scenes/CON"), "");
+}
+
+TEST(LevelFilePaths, BuildLevelPathAcceptsSubfolder)
+{
+    auto p = EditorNs::BuildLevelPath("Scenes/foo");
+    ASSERT_TRUE(p.has_value());
+    EXPECT_EQ(p->stem(), "foo");
     EXPECT_EQ(p->parent_path().filename(), "Scenes");
 }
 
@@ -89,5 +132,5 @@ TEST(LevelFilePaths, EnumerateReturnsSortedSafeNames)
     for (std::size_t i = 1; i < names.size(); ++i)
         EXPECT_LE(names[i - 1], names[i]);
     for (const auto& n : names)
-        EXPECT_FALSE(EditorNs::SanitizeLevelName(n).empty());
+        EXPECT_FALSE(EditorNs::SanitizeLevelPath(n).empty());
 }

@@ -268,7 +268,9 @@ TEST(SaveLoadRoundTrip, BuildLevelPathRejectsTraversal)
     // path traversal が path 構築層で構造的に止まることを検証する
     EXPECT_FALSE(EditorNs::BuildLevelPath("../etc/passwd").has_value());
     EXPECT_FALSE(EditorNs::BuildLevelPath("..").has_value());
-    EXPECT_FALSE(EditorNs::BuildLevelPath("a/b").has_value());
+    EXPECT_FALSE(EditorNs::BuildLevelPath("a/../b").has_value());
+    // サブフォルダ区切りは有効
+    EXPECT_TRUE(EditorNs::BuildLevelPath("a/b").has_value());
 }
 
 // 統一配置物 (ObjectData) の transform と className が round-trip で完全復元できることを検証する

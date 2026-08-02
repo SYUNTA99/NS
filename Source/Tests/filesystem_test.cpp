@@ -1,8 +1,8 @@
+#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Core/Logger.h>
 #include <chrono>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <Runtime/Core/Filesystem.h>
-#include <Runtime/Core/Logger.h>
 #include <string>
 #include <vector>
 
@@ -148,6 +148,31 @@ TEST_F(FileSystemLoggerTest, ListFilesReturnsEmptyForMissingDirectory)
     const auto dir = MakeTempPath("listdir_missing");
     const auto files = NS::Core::FileSystem::ListFiles(dir, ".scene");
     EXPECT_TRUE(files.empty());
+}
+
+TEST(NsCoreFileSystem, ListFilesRecursiveFindsNestedFiles)
+{
+    const auto root = MakeTempPath("recurdir");
+    ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(root / "sub" / "deep"));
+
+    const std::vector<std::byte> data = {std::byte{0x01}};
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(root / "top.scene", data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(root / "sub" / "mid.scene", data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(root / "sub" / "deep" / "low.scene", data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(root / "sub" / "note.txt", data));
+
+    const auto scenes = NS::Core::FileSystem::ListFilesRecursive(root, ".scene");
+    EXPECT_EQ(scenes.size(), 3u);
+    for (const auto& p : scenes)
+        EXPECT_EQ(p.extension(), ".scene");
+
+    std::filesystem::remove_all(root);
+}
+
+TEST_F(FileSystemLoggerTest, ListFilesRecursiveReturnsEmptyForMissingDirectory)
+{
+    const auto dir = MakeTempPath("recurdir_missing");
+    EXPECT_TRUE(NS::Core::FileSystem::ListFilesRecursive(dir, ".scene").empty());
 }
 
 TEST(NsCoreFileSystem, ListDirectoriesReturnsOnlySubdirectories)

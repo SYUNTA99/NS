@@ -141,7 +141,7 @@ namespace NS::Editor
             return false;
         }
 
-        const auto safe = SanitizeLevelName(name);
+        const auto safe = SanitizeLevelPath(name);
         const auto path = BuildLevelPath(safe);
         if (safe.empty() || !path)
         {
@@ -186,20 +186,20 @@ namespace NS::Editor
         // 起動レベルが実在するのに読めず seed で立ち上がった時は、 元ファイルを潰さないよう退避名へ逃がす
         if (m_bootLevelLoadFailed)
         {
-            const bool ok = SaveLevelToName("recovered_level");
+            const bool ok = SaveLevelToName("Scenes/recovered_level");
             const char* prefix = "退避保存失敗: ";
             if (ok)
             {
                 prefix = "退避保存: ";
             }
-            m_statusMessage = std::string(prefix) + "recovered_level";
+            m_statusMessage = std::string(prefix) + "Scenes/recovered_level";
             m_statusError = !ok;
             m_statusTimer = k_StatusToastSeconds;
             return ok;
         }
 
         // 通常起動 / 新規は同梱シーンへ書き戻す
-        return SaveLevelToName("new_scene");
+        return SaveLevelToName("Scenes/new_scene");
     }
 
     void EditorMode::RenderFileBrowser() noexcept

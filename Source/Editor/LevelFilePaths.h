@@ -13,6 +13,11 @@ namespace NS::Editor
     //! @return 検証に失敗した場合は空文字列を返す
     [[nodiscard]] std::string SanitizeLevelName(std::string_view name) noexcept;
 
+    //! @brief Assets からの相対パス（'/' 区切り）を検証・正規化する
+    //! @details 各セグメントを SanitizeLevelName で検証し、'..'・絶対パス・'\'・空セグメントを排除する
+    //! @return 検証に失敗した場合は空文字列を返す
+    [[nodiscard]] std::string SanitizeLevelPath(std::string_view relativePath) noexcept;
+
     //! @brief レベルデータの格納ディレクトリ（絶対パス）を取得する
     [[nodiscard]] std::filesystem::path GetScenesDirectory() noexcept;
 

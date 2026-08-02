@@ -177,6 +177,38 @@ namespace NS::Core
         return result;
     }
 
+    std::vector<std::filesystem::path> FileSystem::ListFilesRecursive(const std::filesystem::path& dir,
+                                                                      std::string_view extension)
+    {
+        std::vector<std::filesystem::path> result;
+
+        std::error_code ec;
+        std::filesystem::recursive_directory_iterator it(dir, ec);
+        if (ec)
+        {
+            NS_LOG_ERROR(Core, "FileSystem::ListFilesRecursive failed to open: {} ({})", dir.string(), ec.message());
+            return result;
+        }
+
+        const std::filesystem::recursive_directory_iterator end;
+        for (; it != end; it.increment(ec))
+        {
+            if (ec)
+            {
+                NS_LOG_ERROR(
+                    Core, "FileSystem::ListFilesRecursive iteration failed: {} ({})", dir.string(), ec.message());
+                break;
+            }
+            std::error_code entryEc;
+            if (!it->is_regular_file(entryEc) || entryEc)
+                continue;
+            if (!extension.empty() && it->path().extension() != extension)
+                continue;
+            result.push_back(it->path());
+        }
+        return result;
+    }
+
     std::vector<std::filesystem::path> FileSystem::ListDirectories(const std::filesystem::path& dir)
     {
         std::vector<std::filesystem::path> result;

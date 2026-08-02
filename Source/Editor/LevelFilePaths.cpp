@@ -52,17 +52,41 @@ namespace NS::Editor
         return std::string{name};
     }
 
+    std::string SanitizeLevelPath(std::string_view relativePath) noexcept
+    {
+        if (relativePath.empty())
+            return "";
+
+        std::string result;
+        std::size_t start = 0;
+        for (;;)
+        {
+            const std::size_t slash = relativePath.find('/', start);
+            const std::size_t end = (slash == std::string_view::npos) ? relativePath.size() : slash;
+            const std::string_view segment = relativePath.substr(start, end - start);
+            if (SanitizeLevelName(segment).empty())
+                return "";
+            if (!result.empty())
+                result.push_back('/');
+            result.append(segment);
+            if (slash == std::string_view::npos)
+                break;
+            start = slash + 1;
+        }
+        return result;
+    }
+
     std::filesystem::path GetScenesDirectory() noexcept
     {
-        return NS::Core::FileSystem::ContentRoot() / "Scenes";
+        return NS::Core::FileSystem::ContentRoot() / "Assets" / "Scenes";
     }
 
     std::optional<std::filesystem::path> BuildLevelPath(std::string_view name) noexcept
     {
-        const auto safe = SanitizeLevelName(name);
+        const auto safe = SanitizeLevelPath(name);
         if (safe.empty())
             return std::nullopt;
-        return GetScenesDirectory() / (safe + ".scene");
+        return NS::Core::FileSystem::ResolveUnder(NS::Core::FileSystem::ContentRoot() / "Assets", safe + ".scene");
     }
 
     bool EnsureScenesDirectoryExists() noexcept
@@ -81,15 +105,17 @@ namespace NS::Editor
     std::vector<std::string> EnumerateLevelFiles() noexcept
     {
         std::vector<std::string> result;
-        const auto dir = GetScenesDirectory();
-        if (!NS::Core::FileSystem::Exists(dir))
+        const auto assetsDir = NS::Core::FileSystem::ContentRoot() / "Assets";
+        if (!NS::Core::FileSystem::Exists(assetsDir))
             return result;
 
-        for (const auto& path : NS::Core::FileSystem::ListFiles(dir, ".scene"))
+        for (const auto& path : NS::Core::FileSystem::ListFilesRecursive(assetsDir, ".scene"))
         {
-            auto stem = path.stem().string();
-            if (!SanitizeLevelName(stem).empty())
-                result.push_back(std::move(stem));
+            auto rel = path.lexically_relative(assetsDir);
+            rel.replace_extension();
+            std::string relStr = rel.generic_string();
+            if (!SanitizeLevelPath(relStr).empty())
+                result.push_back(std::move(relStr));
         }
         std::sort(result.begin(), result.end());
         return result;

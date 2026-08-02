@@ -7,11 +7,10 @@
 ::   tools\@package_release.cmd              - build then package
 ::   tools\@package_release.cmd --skip-build - reuse existing build
 ::
-:: Output dist\NS\ (exe / Assets / Shaders / Scenes / Source at the same level):
+:: Output dist\NS\ (exe / Assets / Shaders / Source at the same level):
 ::   NS.exe
-::   Assets\
+::   Assets\        includes Assets\Scenes\new_scene.scene (loaded on start)
 ::   Shaders\
-::   Scenes\        new_scene.scene (the scene the game loads on start)
 ::   Source\        (git-tracked files only, ThirdParty excluded)
 ::   premake5.lua
 ::
@@ -58,15 +57,11 @@ if not exist "%BIN%\Game.exe" (
 )
 copy /y "%BIN%\Game.exe" "%OUT%\NS.exe" >nul
 
-echo [4/5] Copying Assets / Shaders / Scenes ...
+echo [4/5] Copying Assets / Shaders ...
 xcopy /e /i /q /y "Assets" "%OUT%\Assets\" >nul
 xcopy /e /i /q /y "Shaders" "%OUT%\Shaders\" >nul
-:: Scenes: repo is the source of truth. The game loads GetExeDirectory()\Scenes\new_scene.scene
-if exist "Scenes" (
-    xcopy /e /i /q /y "Scenes" "%OUT%\Scenes\" >nul
-) else (
-    echo [WARN] Scenes\ not found at repo root -- game will fall back to the seed floor
-)
+:: Scenes now live under Assets\Scenes and are copied by the Assets xcopy above.
+:: The game loads GetExeDirectory()\Assets\Scenes\new_scene.scene
 
 echo [5/5] Exporting tracked source, ThirdParty excluded ...
 git archive -o "%OUT%\_src.tar" HEAD Source/Runtime Source/Game Source/Editor Source/Tests premake5.lua
@@ -80,7 +75,7 @@ del /q "%OUT%\_src.tar"
 echo.
 echo ============================================
 echo  Output: %OUT%\
-echo    NS.exe / Assets\ / Shaders\ / Scenes\ / Source\ / premake5.lua
+echo    NS.exe / Assets\ / Shaders\ / Source\ / premake5.lua
 echo ============================================
 echo  Note: runtime needs d3dcompiler_47.dll for runtime shader compile
 echo        and the VC++ redistributable, both shipped with Windows 10/11.

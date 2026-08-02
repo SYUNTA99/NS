@@ -27,7 +27,7 @@ namespace
         if (sceneName.find('\\') != std::string_view::npos)
             return std::nullopt;
 
-        std::filesystem::path path = NS::Core::FileSystem::ContentRoot() / "Scenes";
+        std::filesystem::path path = NS::Core::FileSystem::ContentRoot() / "Assets" / "Scenes";
         path /= std::string{sceneName} + ".scene";
         return path;
     }

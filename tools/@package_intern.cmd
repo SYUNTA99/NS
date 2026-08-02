@@ -8,9 +8,8 @@
 ::   <OUT>\
 ::     Game\                     runnable set (run Game.exe from here)
 ::       Game.exe                  executable (GameRelease, editor excluded)
-::       Assets\                 asset folder
+::       Assets\                 asset folder (includes Assets\Scenes\new_scene.scene)
 ::       Shaders\                runtime-compiled HLSL (required to run)
-::       Scenes\                 new_scene.scene (the scene the game loads on start)
 ::       *.dll                   d3dcompiler_47 + VC++ runtime (exe-adjacent)
 ::     Source\                   own source only (ThirdParty excluded)
 ::       THIRD_PARTY_NOTICES.txt notices for third-party libs embedded in Game.exe
@@ -87,16 +86,12 @@ mkdir "%OUT%"
 mkdir "%GAMEDIR%"
 
 :: --- 5. exe + assets (into Game\ so exe sits next to its DLLs) -------------
-echo [4/8] Copying exe + Assets + Shaders + Scenes into Game\ ...
+echo [4/8] Copying exe + Assets + Shaders into Game\ ...
 copy /y "%BIN%\Game.exe" "%GAMEDIR%\Game.exe" >nul
 xcopy /e /i /q /y "Assets"  "%GAMEDIR%\Assets\"  >nul
 xcopy /e /i /q /y "Shaders" "%GAMEDIR%\Shaders\" >nul
-:: Scenes: repo is the source of truth. The game loads GetExeDirectory()\Scenes\new_scene.scene
-if exist "Scenes" (
-    xcopy /e /i /q /y "Scenes" "%GAMEDIR%\Scenes\" >nul
-) else (
-    echo [WARN] Scenes\ not found at repo root -- game will fall back to the seed floor
-)
+:: Scenes now live under Assets\Scenes and are copied by the Assets xcopy above.
+:: The game loads GetExeDirectory()\Assets\Scenes\new_scene.scene
 
 :: --- 6. runtime dependencies (DLLs) --------------------------------------
 echo [5/8] Bundling runtime dependencies ...
@@ -154,7 +149,7 @@ if errorlevel 1 (
 echo.
 echo ============================================
 echo  Done (uncompressed):  %OUT%\
-echo    [exec-env folder]  Game.exe + Assets + Shaders + Scenes + DLLs
+echo    [exec-env folder]  Game.exe + Assets + Shaders + DLLs
 echo    [source folder]    own code + THIRD_PARTY_NOTICES.txt + Licenses\
 echo    README.txt
 echo ============================================

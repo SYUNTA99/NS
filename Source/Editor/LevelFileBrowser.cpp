@@ -26,7 +26,7 @@ namespace NS::Editor
         }
         else if (m_saveNameBuffer.empty())
         {
-            m_saveNameBuffer = "new_scene";
+            m_saveNameBuffer = "Scenes/new_scene";
         }
         m_saveNameBuffer.reserve(k_InputBufferCapacity);
     }
@@ -87,17 +87,17 @@ namespace NS::Editor
                 ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize;
             if (ImGui::Begin("Save Level", &m_saveModalOpen, k_SaveModalFlags))
             {
-                ImGui::TextUnformatted("Level name (A-Za-z0-9 _-)");
+                ImGui::TextUnformatted("Level path (A-Za-z0-9 _-, / for subfolders)");
                 m_saveNameBuffer.reserve(k_InputBufferCapacity);
                 ImGui::InputText("##name", m_saveNameBuffer.data(), m_saveNameBuffer.capacity());
                 m_saveNameBuffer.resize(std::strlen(m_saveNameBuffer.c_str()));
 
                 if (ImGui::Button("Save", ImVec2(120.0f, 0.0f)))
                 {
-                    const auto sanitized = SanitizeLevelName(m_saveNameBuffer);
+                    const auto sanitized = SanitizeLevelPath(m_saveNameBuffer);
                     if (sanitized.empty())
                     {
-                        m_lastMessage = "不正な name (英数字/空白/_-、 200 char 以内)";
+                        m_lastMessage = "不正な path (英数字/空白/_-/、 各階層 200 char 以内)";
                         m_lastMessageError = true;
                     }
                     else
@@ -145,7 +145,7 @@ namespace NS::Editor
             {
                 if (m_loadFileList.empty())
                 {
-                    ImGui::TextUnformatted("Scenes/ に file がありません");
+                    ImGui::TextUnformatted("Assets/ に scene がありません");
                 }
                 else
                 {
