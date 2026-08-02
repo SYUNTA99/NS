@@ -1,8 +1,0 @@
-{
-    "type": "theme",
-    "displayName": "Lava",
-    "skyboxCubemapPath": "Assets/Skybox/kurt/",
-    "lightDirection": [-0.2, -1.0, 0.0],
-    "lightColor": [1.3, 0.8, 0.4],
-    "ambientColor": [0.35, 0.15, 0.10]
-}

@@ -1,8 +1,0 @@
-{
-    "type": "theme",
-    "displayName": "Snow",
-    "skyboxCubemapPath": "Assets/Skybox/kurt/",
-    "lightDirection": [-0.3, -1.0, -0.2],
-    "lightColor": [1.0, 1.0, 1.1],
-    "ambientColor": [0.40, 0.45, 0.55]
-}
