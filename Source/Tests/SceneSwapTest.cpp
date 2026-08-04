@@ -8,7 +8,7 @@
 #include <gtest/gtest.h>
 
 /// レベルの切り替えがシーンデータの差し替えだけで済むことを検証する
-/// 差し替えた先が器として生きていることまで見る
+/// 差し替えた先の scene が動くことまで見る
 
 namespace
 {
@@ -42,7 +42,7 @@ TEST(SceneSwap, SwappedSceneKeepsRunning)
 
     NS::Object::Scene& swapped = manager.LoadScene(MakeLevel(2));
 
-    // 差し替え後の scene が器として生きていることを、世界を 1 tick 回して確かめる
+    // 差し替え後の scene が動くことを、世界を 1 tick 回して確かめる
     EXPECT_TRUE(swapped.IsSimulationEnabled());
     (void)swapped.BeginPlayBaseline();
     manager.Update();

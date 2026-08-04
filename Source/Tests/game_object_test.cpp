@@ -41,7 +41,7 @@ TEST(GameObjectTest, AddComponentAttachesOwnerAndAppendsToList)
     auto& comp = *obj.AddComponent<MockComponent>();
 
     EXPECT_EQ(comp.Owner(), &obj);
-    // 器が先に transform を積むので、 既定 priority の後入れは末尾に来る
+    // GameObject が先に transform を積むので、 既定 priority の後入れは末尾に来る
     ASSERT_EQ(obj.Components().size(), std::size_t{2});
     EXPECT_EQ(obj.Components().back(), &comp);
 }
@@ -136,7 +136,7 @@ TEST(GameObjectPriorityTest, AddComponentSortsByPriority)
     auto& low = *obj.AddComponent<LowPrioComponent>();   // 先に追加 (LateUpdate, 400)
     auto& high = *obj.AddComponent<HighPrioComponent>(); // 後に追加 (Input, 0)
 
-    // Input 0 の high、 器が積む transform (Update 200)、 LateUpdate 400 の low の順
+    // Input 0 の high、 GameObject が積む transform (Update 200)、 LateUpdate 400 の low の順
     ASSERT_EQ(obj.Components().size(), std::size_t{3});
     EXPECT_EQ(obj.Components()[0], &high);
     EXPECT_EQ(obj.Components()[2], &low);
@@ -148,7 +148,7 @@ TEST(GameObjectPriorityTest, SamePriorityPreservesInsertionOrder)
     auto& a = *obj.AddComponent<HighPrioComponent>();
     auto& b = *obj.AddComponent<HighPrioComponent>();
 
-    // Input 0 の 2 つが登録順のまま先頭に並び、 器が積む transform (Update 200) は後ろ
+    // Input 0 の 2 つが登録順のまま先頭に並び、 GameObject が積む transform (Update 200) は後ろ
     ASSERT_EQ(obj.Components().size(), std::size_t{3});
     EXPECT_EQ(obj.Components()[0], &a);
     EXPECT_EQ(obj.Components()[1], &b);
@@ -171,7 +171,7 @@ TEST(GameObjectAddComponentTest, OwnsLifetimeInjectsOwnerAndOrdersByPriority)
     obj.OnUpdate();
     EXPECT_EQ(mock->updateCount, 1);
 
-    // priority 昇順 (Input 0 < Update 200 < LateUpdate 400)。 200 帯は器が積む transform が先
+    // priority 昇順 (Input 0 < Update 200 < LateUpdate 400)。 200 帯は GameObject が積む transform が先
     ASSERT_EQ(obj.Components().size(), std::size_t{4});
     EXPECT_EQ(obj.Components()[0], high);
     EXPECT_EQ(obj.Components()[2], mock);
@@ -187,7 +187,7 @@ TEST(GameObjectTest, OwnerFlagGatesItsComponents)
 
     obj.SetActive(false);
     EXPECT_FALSE(comp->IsActive());
-    // component 自身の札は触られないので、持ち主を戻せばそのまま効く
+    // component 自身の active は触られないので、持ち主を戻せばそのまま効く
     EXPECT_TRUE(comp->IsActiveSelf());
 
     obj.SetActive(true);

@@ -53,7 +53,7 @@ private:
     //! 全面化中のパネルだけをワークエリア全面へ描く。ドックと他パネルは発行しない
     void RenderMaximizedPanel(LevelEditorController& editor, float topOffset) noexcept;
 
-    //! 編集モードのキー操作を捌く。Delete = 削除、Ctrl+D = 複製、F = 選択物へ寄る
+    //! 編集モードのキー操作を処理する。Delete = 削除、Ctrl+D = 複製、F = 選択物へ寄る
     static void HandleEditShortcuts(LevelEditorController& editor) noexcept;
 
     std::unique_ptr<NS::UI::ImGuiContext> m_imgui;

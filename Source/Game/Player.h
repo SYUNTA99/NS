@@ -10,7 +10,7 @@ namespace NS::Object
 
 /// @brief プレイヤーキャラクタ。Mesh / Movement / Input / Health / Shadow の既定構成をコードで組む
 /// @details 値と追加の component はファクトリが player object のデータから写す
-/// 能力の動詞はここに窓口として生え、実装は各 Component が持つ
+/// 移動やつかみ等の能力 API はここに置き、実装は各 Component が持つ
 /// hazard / KillZone 等のルール配置物は FindPlayer で得た Player* へ能力を呼ぶ。プレイヤーはルールを知らない
 class Player : public NS::Object::GameObject
 {
@@ -27,7 +27,7 @@ public:
     Player(Player&&) = delete;
     Player& operator=(Player&&) = delete;
 
-    /// 保存形式と TypeRegistry の登録名。 読込はこの名前で器を選ぶ
+    /// 保存形式と TypeRegistry の登録名。 読込はこの名前で GameObject の型を選ぶ
     [[nodiscard]] const char* ClassName() const noexcept override { return "Player"; }
 
     /// 命を amount 削る。下限 0
@@ -44,7 +44,7 @@ public:
 };
 
 /// live world からプレイヤーを引く。無ければ nullptr
-/// 型名の照合で見つける。能力は Player の窓口を呼び、細部が要る側だけ FindComponent で引く
+/// 型名の照合で見つける。能力は Player の公開関数を呼び、細部が要る側だけ FindComponent で引く
 [[nodiscard]] Player* FindPlayer(const NS::Object::World& world) noexcept;
 
 /// プレイヤーの配置物か。live の FindPlayer と同じく型名で照合する
@@ -54,7 +54,7 @@ public:
 /// 複数居ても先頭を正とする。余分は読込時に警告済み
 [[nodiscard]] std::size_t FindPlayerObjectIndex(const NS::Object::SceneData& level) noexcept;
 
-/// 指定の位置と向きでプレイヤーの ObjectData を作る。components は型名だけ持ち、値はコード既定に倒す
+/// 指定の位置と向きでプレイヤーの ObjectData を作る。components は型名だけ持ち、値はコード既定を使う
 /// scale は capsule 当たり 0.4/0.9/0.4 に cube mesh の見た目を合わせる値
 [[nodiscard]] NS::Object::ObjectData MakePlayerObject(const NS::Math::Vector3& position,
                                                        const NS::Math::Quaternion& rotation);

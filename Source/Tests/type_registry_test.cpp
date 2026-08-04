@@ -93,7 +93,7 @@ TEST(TypeRegistryTest, CreatedTypeNameMatchesReflection)
     }
 }
 
-// TransformComponent は器が必ず 1 つ持つので登録しない
+// TransformComponent は GameObject が必ず 1 つ持つので登録しない
 TEST(TypeRegistryTest, ExcludedTypesReturnNull)
 {
     // editor 専用と抽象基底は登録しないので、信頼できない type 名から生成できない
@@ -117,7 +117,7 @@ TEST(TypeRegistryTest, UnknownTypeReturnsNull)
 
 TEST(TypeRegistryTest, GameObjectClassIsNotAComponent)
 {
-    // 器の登録名から中身は作れない。1 表でも器と中身の生成経路は交わらない
+    // GameObject 側の登録名から Component は作れない。1 表でも両者の生成経路は交わらない
     GameObject obj;
     EXPECT_EQ(CreateComponent("Player", obj), nullptr);
     EXPECT_FALSE(IsRegistered("Player"));
@@ -145,8 +145,8 @@ TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 
 TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
 {
-    // 反射フィールドの台帳。ここに載ったフィールドだけが Inspector 編集とシリアライズの対象になる
-    // 増減が意図か事故かをこの台帳との突き合わせで判定する。抜けは無言のデータ欠損になる
+    // 反射フィールドの期待一覧。ここに載ったフィールドだけが Inspector 編集とシリアライズの対象になる
+    // 増減が意図か事故かをこの一覧との突き合わせで判定する。抜けは無言のデータ欠損になる
     const std::map<std::string, std::vector<std::string>> k_Ledger = {
         {"BoxColliderComponent", {"Half Extents", "Center Offset", "Rotation (deg)", "Is Trigger"}},
         {"CameraBrainComponent", {"Blend Duration"}},
@@ -229,7 +229,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
 
 TEST(TypeRegistryTest, BaseChainMatchesLedger)
 {
-    // 基底鎖の台帳。空は Component 直下で鎖が終端することを表す
+    // 基底鎖の期待一覧。空は Component 直下で鎖が終端することを表す
     // 誤った基底を書いた宣言は typeName 一致では捕まらないため、期待基底を明示して突き合わせる
     const std::map<std::string, std::vector<std::string>> k_BaseLedger = {
         {"BoxColliderComponent", {"ColliderComponent"}},

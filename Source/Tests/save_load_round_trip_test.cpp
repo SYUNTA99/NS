@@ -312,7 +312,7 @@ TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
     EXPECT_NEAR(SceneNs::ObjectRotation(dst.objects[0]).w, 0.70710677f, 1e-5f);
     EXPECT_FLOAT_EQ(SceneNs::ObjectScale(dst.objects[0]).x, 2.0f);
 
-    // 器のクラス名は書いた object だけ載って戻り、 素の object は空のまま
+    // クラス名は書いた object だけ載って戻り、 素の object は空のまま
     EXPECT_EQ(dst.objects[0].className, "");
     EXPECT_EQ(dst.objects[2].className, "Player");
 }
@@ -377,7 +377,7 @@ TEST(SaveLoadRoundTrip, PlayerObjectRoundTrip)
     EXPECT_NEAR(SceneNs::ObjectRotation(loaded).w, 0.70710677f, 1e-5f);
 }
 
-// 空のシーンには読込の門がプレイヤーと追従カメラを既定構成で合成し、 プレイ可能な最小構成を保証する
+// 空のシーンには読込時の補完がプレイヤーと追従カメラを既定構成で合成し、 プレイ可能な最小構成を保証する
 TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
 {
     SceneNs::SceneData level;
@@ -405,7 +405,7 @@ TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
     ASSERT_TRUE(SceneNs::HasField(*comp, "Target"));
     EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "Target").id, player.objectId);
 
-    // 落下死の受け皿も 1 つ敷かれる
+    // 落下死体積も 1 つ敷かれる
     bool hasKillZone = false;
     for (const SceneNs::ObjectData& object : level.objects)
     {
@@ -415,7 +415,7 @@ TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
     EXPECT_TRUE(hasKillZone);
 }
 
-// プレイヤーが複数居ても先頭を正とする。 手編集の重複でも読込と門は成立する
+// プレイヤーが複数居ても先頭を正とする。 手編集の重複でも読込と補完は成立する
 TEST(SaveLoadRoundTrip, MultiplePlayersFirstWins)
 {
     SceneNs::SceneData src;
@@ -434,7 +434,7 @@ TEST(SaveLoadRoundTrip, MultiplePlayersFirstWins)
     EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(dst.objects[playerIndex]).x, 1.0f);
 }
 
-// プレイヤーだけのシーンには読込の門がプレイヤーを追う 1 台を合成し、「必ず 1 台」を保証する
+// プレイヤーだけのシーンには読込時の補完がプレイヤーを追う 1 台を合成し、「必ず 1 台」を保証する
 TEST(EnsurePlayableObjects, SynthesizesFollowCameraTargetingExistingPlayer)
 {
     SceneNs::SceneData dst;
@@ -455,7 +455,7 @@ TEST(EnsurePlayableObjects, SynthesizesFollowCameraTargetingExistingPlayer)
     // 追従先はプレイヤー実体への通常の ObjectRef
     ASSERT_TRUE(SceneNs::HasField(*comp, "Target"));
     EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "Target").id, playerId);
-    // データが持つのは誰を追うかだけ。 遠景を抑える投影値は component のコード既定に倒す
+    // データが持つのは誰を追うかだけ。 遠景を抑える投影値は component のコード既定を使う
     EXPECT_FALSE(SceneNs::HasField(*comp, "Far Plane"));
     NS::Object::ThirdPersonFollowComponent live;
     EXPECT_FLOAT_EQ(live.FarPlane(), 100.0f);

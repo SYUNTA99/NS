@@ -40,7 +40,7 @@ namespace NS::Editor
 
         //! @brief 履歴が動いた通算回数
         //! @details 保存時の値と突き合わせて未保存かどうかを見る。 戻して同じ内容に帰っても値は進むので、
-        //! 保存済みを未保存と誤る側にだけ倒れる
+        //! 保存済みを未保存と誤る側にしか外れない
         [[nodiscard]] std::uint64_t Version() const noexcept { return m_version; }
 
         [[nodiscard]] std::size_t UndoSize() const noexcept { return m_undo.size(); }

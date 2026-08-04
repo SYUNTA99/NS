@@ -16,7 +16,7 @@ namespace NS::Object
     {
         if (!m_enabled || !m_active)
             return false;
-        // 持ち主に着く前は自分の札だけで答える。 組み立て途中の問い合わせをここで落とさない
+        // 持ち主に着く前は IsActiveSelf の値だけで答える。 組み立て途中の問い合わせをここで落とさない
         if (m_owner == nullptr)
             return true;
         return m_owner->IsActiveInHierarchy();

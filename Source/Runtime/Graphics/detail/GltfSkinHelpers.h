@@ -14,7 +14,7 @@
 
 namespace NS::Graphics::detail
 {
-    /// joint weights を合計 1 へ正規化する。 合計が極小なら joints[0]=0, weights={1,0,0,0} に倒す
+    /// joint weights を合計 1 へ正規化する。 合計が極小なら joints[0]=0, weights={1,0,0,0} にする
     inline void NormalizeJointWeights(std::array<std::uint32_t, 4>& joints, std::array<float, 4>& weights) noexcept
     {
         const float sum = weights[0] + weights[1] + weights[2] + weights[3];

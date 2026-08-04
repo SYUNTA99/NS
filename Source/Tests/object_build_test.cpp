@@ -250,7 +250,7 @@ TEST_F(ObjectBuildTest, EmptyComponentsBuildsNothing)
     EXPECT_EQ(Build(object), nullptr);
 }
 
-// material 参照に .. を含む値は ContentRoot 外解決を拒否し、 共有 fallback へ倒れてクラッシュしない
+// material 参照に .. を含む値は ContentRoot 外解決を拒否し、 共有の代替に切り替わってクラッシュしない
 TEST_F(ObjectBuildTest, AssetPathTraversalRejectedFallsBackToDefault)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
@@ -314,7 +314,7 @@ TEST_F(ObjectBuildTest, FreeCubeRotatableButEmptyMarkerNot)
     EXPECT_FALSE(NS::Editor::IsRotatableObject(marker));
 }
 
-// プレイヤー実体は className から Player 派生の器に二重生成なしで組まれる
+// プレイヤー実体は className から Player 派生の GameObject に二重生成なしで組まれる
 TEST_F(ObjectBuildTest, PlayerObjectBuildsPlayerTyped)
 {
     const ObjectData data = MakePlayerObject(Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{});
@@ -322,10 +322,10 @@ TEST_F(ObjectBuildTest, PlayerObjectBuildsPlayerTyped)
 
     auto obj = Build(data);
     ASSERT_NE(obj, nullptr);
-    // 実行時型情報は切っているため、器のクラス名で型選択を確かめてから器の API で見る
+    // 実行時型情報は切っているため、クラス名で型選択を確かめてから GameObject の API で見る
     ASSERT_STREQ(obj->ClassName(), "Player");
 
-    // コンストラクタが積む分と同じ数。 transform も器が持つので二重には生えない
+    // コンストラクタが積む分と同じ数。 transform も GameObject が持つので二重にはならない
     EXPECT_EQ(obj->Components().size(), Player{}.Components().size());
 
     // pose は他の配置物と同じく data から乗る
@@ -436,7 +436,7 @@ TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
     for (const auto& compJson : components)
     {
         const std::string typeName = compJson.at("type").get<std::string>();
-        // transform は登録簿に無く器が最初から 1 つ持っているので、 生成せずそれへ書き戻す
+        // transform は登録一覧に無く GameObject が最初から 1 つ持っているので、 生成せずそれへ書き戻す
         NS::Object::Component* fresh = nullptr;
         if (typeName == NS::Object::k_TransformTypeName)
             fresh = rebuilt.FindComponent<NS::Object::TransformComponent>();
@@ -448,8 +448,8 @@ TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
     }
 }
 
-// 統合 C-2: 実体を CaptureObjectData で値の器へ忠実に写し、 素の器へ ApplyObjectComponents で復元すると
-// 元 live と component JSON が一致する。 undo とプレイ防火壁が退避・復元に使う機構の芯を直接確かめる
+// 統合 C-2: 実体を CaptureObjectData で値データへ忠実に写し、 素の GameObject へ ApplyObjectComponents で復元すると
+// 元 live と component JSON が一致する。 undo とプレイ↔編集の退避・復元に使う機構を直接確かめる
 TEST_F(ObjectBuildTest, CaptureObjectDataRestoresFaithfully)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
@@ -467,7 +467,7 @@ TEST_F(ObjectBuildTest, CaptureObjectDataRestoresFaithfully)
     EXPECT_EQ(NS::Object::SerializeGameObjectComponents(restored), NS::Object::SerializeGameObjectComponents(*live));
 }
 
-// データの札は保存の往復で残り、 読み直した実体にも下りたまま乗る
+// データの active は保存の往復で残り、 読み直した実体にも false のまま乗る
 TEST_F(ObjectBuildTest, DisabledComponentSurvivesRoundTrip)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));

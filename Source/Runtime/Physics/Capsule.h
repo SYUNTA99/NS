@@ -22,7 +22,7 @@ namespace NS::Physics
     };
 
     /// @brief カプセルの芯線分の両端点を返す
-    /// @details axis を正規化してから center ± axis*halfHeight を計算する。零ベクトルは Y 軸へ倒す
+    /// @details axis を正規化してから center ± axis*halfHeight を計算する。零ベクトルは Y 軸にする
     [[nodiscard]] CapsuleSegment CapsuleEndpoints(const NS::Physics::Capsule& capsule) noexcept;
 
     /// 縦 capsule と AABB の重なり判定。芯線分と box の最短距離が radius 以下なら true

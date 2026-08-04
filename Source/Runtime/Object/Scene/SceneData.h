@@ -26,7 +26,7 @@ namespace NS::Object
     {
         std::uint32_t objectId = 0;
 
-        /// 器のクラス名。 空は素の GameObject。 TypeRegistry の登録名と一致させ、 保存にもこの名で書く
+        /// 生成する GameObject のクラス名。 空は素の GameObject。 TypeRegistry の登録名と一致させ、 保存にもこの名で書く
         std::string className;
 
         /// 編集側が付ける表示名。 空なら型と component から名前を導出する
@@ -38,8 +38,8 @@ namespace NS::Object
         /// 親の中での並び順。 一覧の表示順で、 組み立てもこの順に並べる。 同値は書かれた順のまま残る
         std::uint32_t order = 0;
 
-        /// この配置物自身の札。 false なら配下 component が更新も描画も当たりも止まる
-        /// 子の札は独立で、 親を戻せば子も一緒に戻る
+        /// この配置物自身の active 値。 false なら配下 component が更新も描画も当たりも止まる
+        /// 子の値は独立で、 親を戻せば子も一緒に戻る
         bool active = true;
 
         /// このオブジェクトが持つコンポーネント一覧
@@ -56,13 +56,13 @@ namespace NS::Object
         std::string skyboxCubemapPath{};
     };
 
-    /// @brief シーンの姿を値として持つ器。配置物一覧とシーン付随プロパティを収める
+    /// @brief シーンの姿を値として持つデータ。配置物一覧とシーン付随プロパティを収める
     /// @details 用途は 3 つあり、ファイル保存はそのうちの 1 つでしかない
     /// - `.scene` の読み書き
     /// - プレイ突入時の凍結 (Scene::BeginPlayBaseline)。やり直しはここから姿を戻す
     /// - エディタの 1 手戻し
     /// live な GameObject は所有と実行時状態を抱えていて複製できないので、
-    /// 「後で元へ戻す」には姿を値へ落とすこの器が要る
+    /// 「後で元へ戻す」には姿を値へ落とすこのデータが要る
     /// 配置物は transform + 反射コンポーネント一覧の ObjectData に統一し、
     /// 当たりも見た目も components が唯一の出所になる
     /// プレイ経路には const 参照でしか渡さない
@@ -93,7 +93,7 @@ namespace NS::Object
     [[nodiscard]] std::size_t FindObjectIndexById(const SceneData& scene, std::uint32_t id) noexcept;
 
     /// 全 object と全 component の永続 id を「非 0 かつ一意」へ整える。未割当と重複には新 id を振り、
-    /// nextObjectId を既存最大 id より先へ進める。手編集のファイルを読込直後に通す整合の門
+    /// nextObjectId を既存最大 id より先へ進める。手編集のファイルを読込直後に通す整合処理
     /// 番号の空間は object と component で共通なので、id 1 個で世界の誰か 1 人が決まる
     void EnsureUniqueObjectIds(SceneData& scene);
 
@@ -113,7 +113,7 @@ namespace NS::Object
         std::string fieldName;      // ObjectRef フィールド名
     };
 
-    /// `targetId` を指す ObjectRef フィールドを全 object から集める。 削除前に何が参照しているかを知る窓口
+    /// `targetId` を指す ObjectRef フィールドを全 object から集める。 削除前に何が参照しているかを調べる関数
     /// k_NoObjectId は未設定の印なので空を返す。 自分自身を指す参照も含める
     [[nodiscard]] std::vector<ObjectRefLocation> FindReferencesTo(const SceneData& scene, std::uint32_t targetId);
 

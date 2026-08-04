@@ -27,7 +27,7 @@ namespace NS::Game::Level
     /// 奈落用の即死体積の ObjectData を作る。落下死をレベルのデータとして持たせる
     [[nodiscard]] NS::Object::ObjectData MakeKillZoneObject();
 
-    /// 即死体積が 1 つも無ければ奈落の受け皿を敷き、永続 id まで振る
+    /// 即死体積が 1 つも無ければ既定の落下死体積を敷き、永続 id まで振る
     /// 無いレベルは奈落で死ねず落ち続けてしまうので、読込のたびに通す
     [[nodiscard]] bool EnsureKillZoneObject(NS::Object::SceneData& level);
 } // namespace NS::Game::Level

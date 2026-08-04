@@ -150,7 +150,7 @@ TEST(TransformComponentTest, WithoutOwnerReadsAndWritesOwnTransform)
     EXPECT_FLOAT_EQ(orphan.Root().Position().x, 9.0f);
 }
 
-// どの器も TransformComponent をちょうど 1 つ持ち、 Root() はその実体を指す
+// どの GameObject も TransformComponent をちょうど 1 つ持ち、 Root() はその実体を指す
 TEST(TransformComponentTest, EveryObjectCarriesExactlyOne)
 {
     GameObject obj;
@@ -161,7 +161,7 @@ TEST(TransformComponentTest, EveryObjectCarriesExactlyOne)
     EXPECT_EQ(&obj.Root(), &tc->Root());
 }
 
-// データに transform エントリが無くても器の 1 つは残り、 pose は既定のまま
+// データに transform エントリが無くても GameObject の 1 つは残り、 pose は既定のまま
 TEST(TransformComponentTest, DataWithoutTransformEntryKeepsOneAtDefaults)
 {
     ObjectData object = MakeMinimalObject();

@@ -28,7 +28,7 @@ namespace NS::Game::Level
 
     ObjectData MakeFollowCameraObject(std::uint32_t targetObjectId)
     {
-        // 値はコード既定に倒し、データが持つのは誰を追うかだけ
+        // 値はコード既定を使い、データが持つのは誰を追うかだけ
         nlohmann::json follow = NS::Object::MakeComponentEntry("ThirdPersonFollowComponent");
         NS::Object::SetField(follow, "Target", NS::Object::ObjectRef{targetObjectId});
 

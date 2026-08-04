@@ -31,7 +31,7 @@ namespace NS::Editor
             return NS::Object::FindComponentEntry(object, typeName) != nullptr;
         }
 
-        // Transform しか持たない = 中身が無い器。 データ側は Transform も component 列に居る
+        // Transform しか持たない = 中身が無い GameObject。 データ側は Transform も component 列に居る
         bool HasOnlyTransform(const NS::Object::ObjectData& object) noexcept
         {
             for (const nlohmann::json& entry : object.components)
@@ -316,7 +316,7 @@ namespace NS::Editor
             return "Solid";
         if (mesh != nullptr)
             return "Decoration";
-        // 器が必ず持つ TransformComponent 1 つだけなら中身が無い
+        // GameObject が必ず持つ TransformComponent 1 つだけなら中身が無い
         if (object.Components().size() == 1)
             return "Empty";
 

@@ -112,7 +112,7 @@ std::size_t FindPlayerObjectIndex(const NS::Object::SceneData& level) noexcept
 
 NS::Object::ObjectData MakePlayerObject(const NS::Math::Vector3& position, const NS::Math::Quaternion& rotation)
 {
-    // 構成は Player のコンストラクタが決める。データは型名だけ持ち、値はコード既定に倒す
+    // 構成は Player のコンストラクタが決める。データは型名だけ持ち、値はコード既定を使う
     NS::Object::ObjectData object = NS::Object::MakeObjectData<Player>();
     NS::Object::SetObjectPosition(object, position);
     NS::Object::SetObjectRotation(object, rotation);

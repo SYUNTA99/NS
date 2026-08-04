@@ -243,7 +243,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     // 保存は live 実体から起こし、読込は取込関数がデータを実体へ写して用済みにする
     m_editor.SetCaptureLevelFn([this]() { return m_scene->CaptureLiveToSceneData(); });
     m_editor.SetLoadLevelFn([this](NS::Object::SceneData&& fresh) { m_scene->LoadFromData(std::move(fresh)); });
-    // grid 編集・undo は適用口を通して live へ写す。セル照会・採番は live 側から引く
+    // grid 編集・undo は適用経路を通して live へ写す。セル照会・採番は live 側から引く
     m_editor.SetApplier(&m_applier);
     m_editor.SetFindCellObjectFn([this](std::int16_t x, std::int16_t y, std::int16_t z) {
         return NS::Editor::FindObjectIdAtCell(m_scene->World(), x, y, z);
@@ -327,7 +327,7 @@ void LevelEditorController::EnterPlay() noexcept
         if (auto* shadow = player->FindComponent<NS::Object::ShadowComponent>())
             shadow->RefreshReceivers();
     }
-    // 走行を頭から。手順は出荷と同じ respawner の持ち物
+    // 走行を最初から。手順は出荷と同じ respawner の持ち物
     m_scene->World().ForEachComponent<NS::Game::Level::RespawnerComponent>(
         [](NS::Game::Level::RespawnerComponent& respawner) { respawner.RestartRun(); });
     // 追従カメラは world のカメラ配置物。プレイの間だけ起こす
@@ -695,7 +695,7 @@ bool LevelEditorController::HasInspectableSelection() const noexcept
 
 NS::Object::ObjectData LevelEditorController::SelectedObjectSnapshot() const noexcept
 {
-    // live の忠実な写し。UI 表示用のその場限りの一時器で、どこにも常駐しない
+    // live の忠実な写し。UI 表示用のその場限りの一時データで、どこにも常駐しない
     if (std::optional<NS::Object::ObjectData> captured = m_applier.CaptureObject(m_selectedObjectId))
         return std::move(*captured);
     return NS::Object::ObjectData{};
@@ -761,7 +761,7 @@ void LevelEditorController::RefreshGizmoSelectables()
 
     // runtime list は 1 本。全配置物をギズモ候補に積む。pick OBB は Root().WorldMatrix() が scale 込みで
     // 持ち、逆変換した unit ローカル空間で判定する。ここで halfExtents に scale を乗せると二重適用になり、
-    // 拡大した配置物の判定箱が scale^2 に膨らんで近くのクリックを先に奪うので unit のまま渡す
+    // 拡大した配置物の判定箱が scale^2 に膨らんで近くのクリックを先に取ってしまうので unit のまま渡す
     for (NS::Object::GameObject* object : m_scene->World())
     {
         if (object->IsTransient())
@@ -1140,7 +1140,7 @@ void LevelEditorController::AddObjectWithMesh(const std::filesystem::path& meshP
 
 void LevelEditorController::PushCreateObject(NS::Object::ObjectData object)
 {
-    // 新規配置物に永続 id を 1 個振る。これが object 生成の唯一の採番口
+    // 新規配置物に永続 id を 1 個振る。object 生成の採番はここだけで行う
     const std::uint32_t id = m_scene->World().AllocateObjectId();
     object.objectId = id;
 

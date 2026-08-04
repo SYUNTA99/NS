@@ -13,7 +13,7 @@ namespace NS::Object
 {
     TypeRegistry& TypeRegistry::Get() noexcept
     {
-        // 関数内 static で初期化順を確定させ、他の翻訳単位の静的登録より先に器を用意する
+        // 関数内 static で初期化順を確定させ、他の翻訳単位の静的登録より先に一覧の実体を用意する
         static TypeRegistry instance;
         return instance;
     }
@@ -49,7 +49,7 @@ namespace NS::Object
 
     std::unique_ptr<GameObject> CreateRegisteredObject(const ObjectData& object)
     {
-        // className が正。 一致登録があればその器で作る
+        // className が正。 一致登録があればその型で作る
         if (!object.className.empty())
         {
             const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(object.className);
@@ -65,7 +65,7 @@ namespace NS::Object
         const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(typeName);
         if (entry != nullptr && entry->attach != nullptr)
             return entry->attach(obj);
-        // 未登録の type 名は生成せず読み飛ばす。 不正な型注入を構造的に防ぐ第一の門
+        // 未登録の type 名は生成せず読み飛ばす。 不正な型注入をここで止める
         NS_LOG_WARN(Scene, "未登録のコンポーネント型 {} を読み飛ばす", typeName);
         return nullptr;
     }

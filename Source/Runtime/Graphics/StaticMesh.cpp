@@ -70,7 +70,7 @@ namespace NS::Graphics
         if (descValid && BuildBuffers(desc.vertices, desc.vertexCount, desc.indices, desc.indexCount, vb, ib))
         {
             SetGeometry(std::move(vb), std::move(ib), desc.vertexCount, desc.indexCount, false);
-            // ローダーが構築時に境界を育てていればそれを使い、無ければ頂点から算出する
+            // ローダーが構築時に境界を求めていればそれを使い、無ければ頂点から算出する
             if (desc.precomputedBounds != nullptr)
                 SetLocalBounds(*desc.precomputedBounds);
             else

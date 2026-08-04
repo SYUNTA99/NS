@@ -67,7 +67,7 @@ namespace NS::Object
         {
             nlohmann::json out;
             out["id"] = object.objectId;
-            // 器のクラス名。 素の GameObject は書かず、 読込側は不在を空として扱う
+            // GameObject のクラス名。 素の GameObject は書かず、 読込側は不在を空として扱う
             if (!object.className.empty())
                 out["class"] = object.className;
             // 表示名は付いている物だけ書き、 未設定は型からの導出に任せる
@@ -168,7 +168,7 @@ namespace NS::Object
             return false;
         }
 
-        // 小数の version が切り捨てで一致に化けないよう、 形式契約の門だけは整数のみ受ける
+        // 小数の version が切り捨てで一致に化けないよう、 version の形式検査だけは整数のみ受ける
         const auto versionIt = root.find("version");
         if (versionIt == root.end() || !versionIt->is_number_integer() || versionIt->get<int>() != k_FormatVersion)
         {
@@ -230,7 +230,7 @@ namespace NS::Object
                 Scene, "SaveSceneToJsonFile: object 数が上限超過 ({} > {})", scene.objects.size(), k_MaxObjectCount);
             return false;
         }
-        // json の構築 / dump は bad_alloc を投げ得る。 noexcept 契約を守るため捕捉して false に変換する
+        // json の構築 / dump は bad_alloc を投げ得る。 noexcept を守るため捕捉して false に変換する
         try
         {
             const std::string text = SerializeSceneToJson(scene);
@@ -257,7 +257,7 @@ namespace NS::Object
     {
         outScene = SceneData{};
 
-        // 全文読み・parse・SceneData 構築のいずれも bad_alloc を投げ得る。 noexcept 契約を守るため捕捉する
+        // 全文読み・parse・SceneData 構築のいずれも bad_alloc を投げ得る。 noexcept を守るため捕捉する
         try
         {
             auto textOpt = ::NS::Core::FileSystem::ReadAllText(path);

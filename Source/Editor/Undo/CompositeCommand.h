@@ -8,7 +8,7 @@
 namespace NS::Editor
 {
 
-    /// @brief 複数のコマンドを 1 回の undo で往復させる器
+    /// @brief 複数のコマンドを 1 回の undo で往復させる入れ物
     /// @details Do は積んだ順、 Undo は逆順に流す
     /// 親ごと子孫をまとめて消すような 1 操作 = 複数オブジェクトの編集で使う
     class CompositeCommand final : public ICommand

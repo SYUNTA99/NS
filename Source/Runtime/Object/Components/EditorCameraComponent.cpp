@@ -132,7 +132,7 @@ namespace NS::Object
         const float dt = NS::Core::FrameTimer::FixedDelta();
         auto& input = NS::Platform::Input::Get();
 
-        // Platform Input から 1 フレーム分の free-fly 入力を組む。 感度適用とバネは注入口へ任せる
+        // Platform Input から 1 フレーム分の free-fly 入力を組む。 感度適用とバネは注入する側に任せる
         FreeFlightInput frameInput{};
         frameInput.deltaSeconds = dt;
 

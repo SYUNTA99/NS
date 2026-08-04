@@ -11,10 +11,10 @@ namespace NS::Object
     class GameObject;
     class Scene;
 
-    /// @brief 実カメラ 1 個 + Brain を所有する「いまどのカメラで描くか」の窓口。vcam は非所有
+    /// @brief 実カメラ 1 個 + Brain を所有し「いまどのカメラで描くか」を決める。vcam は非所有
     /// @details 描画と入力の camera 相対処理が camera メンバの在り処を知らずに済むよう、
     /// 実 `CameraComponent` と `CameraBrainComponent` を載せた host を所有・公開する
-    /// 消費者は Brain() 経由で vcam を登録する。vcam そのものの寿命は登録側が握る
+    /// 利用側は Brain() 経由で vcam を登録する。vcam そのものの寿命は登録側が握る
     /// Scene が直接所有し、Initialize 前は Brain() / MainCamera() とも nullptr を返す
     /// 依存: NS::Object::GameObject
     class CameraSubsystem final : public NS::Core::NonCopyable

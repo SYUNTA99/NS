@@ -11,7 +11,7 @@ namespace NS::Object
 
     /// OnUpdate 実行順を制御する priority。値が小さいほど先、同 priority 内は登録順
     /// 1 体の中の並びに加え、 World::UpdateObjects が配置物を帯ごとに横断して回す時の単位にも使う
-    /// どの段階を名乗るかは component を書く人が決める。 段階の間の値 (+10 等) も自由に使える
+    /// どの段階を使うかは component を書く人が決める。 段階の間の値 (+10 等) も自由に使える
     struct TickPriority
     {
         /// Update より先に走らせたい物
@@ -53,18 +53,18 @@ namespace NS::Object
         [[nodiscard]] const Transform& RootTransform() const noexcept;
 
         /// @brief この Component が効いているか
-        /// @details 自分の札に加えて、 持ち主が階層ごと生きているかまで見る
-        /// 更新・ 描画・ 当たりは全てこの問いを使う。 生の札だけが要る編集 UI は IsActiveSelf を使う
+        /// @details 自分の active に加えて、 持ち主の階層全体の active まで見る
+        /// 更新・ 描画・ 当たりは全てこの問いを使う。 自身の値だけが要る編集 UI は IsActiveSelf を使う
         [[nodiscard]] bool IsActive() const noexcept;
 
-        /// この Component 自身に付いた札。 持ち主の状態は含まない
+        /// この Component 自身の active 値。 持ち主の状態は含まない
         [[nodiscard]] bool IsActiveSelf() const noexcept { return m_active; }
-        /// 自分の札を立て / 下ろす。 設定できるのは自分の札だけで、 階層は見ない
+        /// 自分の active を切り替える。 設定できるのは自分の分だけで、 階層は見ない
         void SetActive(bool active) noexcept { m_active = active; }
 
-        /// データに書かれた札。 下ろすと保存にも残り、 読み直しても下りたまま
+        /// データに書かれた active 値。 false は保存にも残り、 読み直しても false のまま
         [[nodiscard]] bool IsEnabled() const noexcept { return m_enabled; }
-        /// データの札を切り替える。 モード切替で寝かせる SetActive とは別の口で、 互いを上書きしない
+        /// データの active を切り替える。 モード切替で使う SetActive とは別系統で、 互いを上書きしない
         void SetEnabled(bool enabled) noexcept { m_enabled = enabled; }
 
         virtual void OnStart() {}
@@ -72,7 +72,7 @@ namespace NS::Object
         virtual void OnEndPlay() {}
 
         /// 反射で運んだ参照文字列 (mesh / material 等) を資産の実体へ引き当てる。 既定は何もしない
-        /// world の組み立てが値の適用後に呼ぶ。 資産の窓口が無い間 (テスト等) は呼ばれない
+        /// world の組み立てが値の適用後に呼ぶ。 AssetManager が無い間 (テスト等) は呼ばれない
         virtual void ResolveAssets(AssetManager&) {}
 
         /// このコンポーネント型の反射情報。未反射型は nullptr。エディタが Component* 越しに field を列挙する
@@ -98,10 +98,10 @@ namespace NS::Object
         GameObject* m_owner = nullptr;         // 所有 GameObject、 attach 前は nullptr
         int m_priority = TickPriority::Update; // OnUpdate 実行順
         bool m_active = true;                  // false なら OnUpdate を skip
-        bool m_enabled = true;                 // データの札、 false なら OnUpdate を skip
+        bool m_enabled = true;                 // データの active 値、 false なら OnUpdate を飛ばす
     };
 
-    /// 反射照合で通れば static_cast、外れれば nullptr を返す型分岐の窓口。comp が nullptr でも安全
+    /// 反射照合で通れば static_cast、外れれば nullptr を返す。comp が nullptr でも安全
     template <class T> [[nodiscard]] T* ComponentCast(Component* comp) noexcept
     {
         if (comp != nullptr && comp->IsA(T::StaticReflection()))

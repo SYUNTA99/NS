@@ -30,7 +30,7 @@ namespace NS::Object
         /// が再確保されても無効参照にならない
         void SetCollisionWorld(std::span<const NS::Math::AABB> world);
 
-        /// 住んでいる world の collider から地面探索用の AABB を集め直す
+        /// 所属 world の collider から地面探索用の AABB を集め直す
         /// OnStart が呼ぶので組み直しには自動で追従する。 編集で当たりが動いた後に呼び直す
         void RefreshReceivers();
 

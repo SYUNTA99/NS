@@ -52,7 +52,7 @@ namespace NS::Object
         [[nodiscard]] std::optional<CameraPose> EvaluatePoseExcluding(const VirtualCameraComponent* exclude,
                                                                       float alpha) const noexcept;
 
-        /// 実カメラへの素通し窓口。描画 / 半透明ソート / PlayerInput forward の接続先
+        /// 実カメラへの素通しアクセサ。描画 / 半透明ソート / PlayerInput forward の接続先
         [[nodiscard]] NS::Math::Matrix ViewProjection() const noexcept;
         [[nodiscard]] NS::Math::Vector3 ForwardHorizontal() const noexcept;
         [[nodiscard]] CameraComponent* Camera() const noexcept { return m_camera; }

@@ -26,8 +26,8 @@ TEST(SceneDataCrcTest, EmptyLevelIsDeterministic)
     EXPECT_EQ(a.ComputeCrc32(), b.ComputeCrc32());
 }
 
-// 共有アクセサ FindComponentEntry / HasField / IsGoalObject の契約 (発見 / 不在) を縛る
-// 編集とプレイ進行が同じ窓口を読むので、 ここが種別判定の単一の真実になる
+// 共有アクセサ FindComponentEntry / HasField / IsGoalObject の挙動 (発見 / 不在) を縛る
+// 編集とプレイ進行が同じアクセサを読むので、 ここが種別判定の唯一の判定点になる
 TEST(SceneDataAccessors, FindComponentFieldAndGoalRule)
 {
     SceneNs::ObjectData goal = MakeGoalObject();

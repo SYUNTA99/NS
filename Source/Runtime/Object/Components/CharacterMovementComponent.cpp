@@ -196,7 +196,7 @@ namespace NS::Object
         }
 
 #if !defined(NS_SHIPPING)
-        // コヨーテジャンプ記録を寿命で減衰させる。 ledge 系の状態でも確実に老化させるため状態を回す前に処理する
+        // コヨーテジャンプ記録を寿命で減衰させる。 ledge 系の状態でも確実に進むよう状態を回す前に処理する
         for (CoyoteJumpMarker& marker : m_coyoteJumpMarkers)
             marker.remaining -= dt;
         std::erase_if(m_coyoteJumpMarkers, [](const CoyoteJumpMarker& m) { return m.remaining <= 0.0f; });
@@ -207,7 +207,7 @@ namespace NS::Object
             BuildStates();
         m_machine.Step(*this, dt);
 
-        // 1 フレーム札の消費は、 どの状態でも通るここで行う
+        // 1 フレームだけ有効な入力フラグの消費は、 どの状態でも通るここで行う
         m_prevJumpHeld = m_jumpHeld;
         m_jumpPressedThisFrame = false;
     }

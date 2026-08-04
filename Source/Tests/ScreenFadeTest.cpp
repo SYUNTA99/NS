@@ -123,7 +123,7 @@ TEST(ScreenFade, OnlyOverlayRendererIsPickedUp)
                   static_cast<NS::Object::Component*>(transform)),
               nullptr);
 
-    // 中間基底を挟んでも名乗る帯は変わらない
+    // 中間基底を挟んでも宣言する帯は変わらない
     EXPECT_EQ(fade->Priority(), NS::Object::TickPriority::LateUpdate + 5);
 }
 
@@ -141,7 +141,7 @@ TEST(ScreenFade, PlacedObjectFadeIsPickedUp)
     EXPECT_EQ(found, 1);
 }
 
-// 札を下ろした暗転は描かない。 更新・ 当たりと同じ問いで揃える
+// active を切った暗転は描かない。 更新・ 当たりと同じ問いで揃える
 TEST(ScreenFade, InactiveFadeIsSkipped)
 {
     NS::Object::GameObject obj;

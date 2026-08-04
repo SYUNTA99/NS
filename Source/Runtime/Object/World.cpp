@@ -169,7 +169,7 @@ namespace NS::Object
         physics.Clear();
         physics.ReserveAabbs(m_objects.size());
         ForEachComponent<ColliderComponent>([&physics](const ColliderComponent& collider) {
-            // 札の下りた component は当たりも持たない。 更新・ 描画と同じ問いで揃える
+            // active を切った component は当たりも持たない。 更新・ 描画と同じ問いで揃える
             if (collider.IsActive())
                 collider.AddToPhysics(physics);
         });
@@ -207,7 +207,7 @@ namespace NS::Object
             return a->Priority() < b->Priority();
         });
 
-        // 札はこの場で見る。 先に回った component が後ろを SetActive(false) で寝かせても効く
+        // active はこの場で見る。 先に回った component が後ろを SetActive(false) にしても効く
         for (Component* comp : scheduled)
         {
             if (comp->IsActive())

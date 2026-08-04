@@ -79,7 +79,7 @@ TEST_F(AssetManagerTest, SamePathReturnsSamePointer)
     EXPECT_EQ(texA, texB);
 }
 
-// 組み込み名前鍵は同一の非 null StaticMesh を返し、 未登録名は nullptr
+// 組み込み名前キーは同一の非 null StaticMesh を返し、 未登録名は nullptr
 TEST_F(AssetManagerTest, BuiltinReturnsSameNonNullPointer)
 {
     Window window(MakeWindowDesc("ns_am_builtin"));
@@ -110,7 +110,7 @@ TEST_F(AssetManagerTest, FailedMeshLoadIsNegativeCached)
     EXPECT_EQ(am.MeshCacheSize(), 1u); // 2 度目は再読込せず件数が増えない
 }
 
-// Reload は path 鍵の Shader をその場で置き換えるのでキャッシュのポインタが不変
+// Reload は path キーの Shader をその場で置き換えるのでキャッシュのポインタが不変
 TEST_F(AssetManagerTest, ReloadShaderInPlaceKeepsIdentity)
 {
     Window window(MakeWindowDesc("ns_am_reload"));

@@ -45,7 +45,7 @@ namespace NS::Game::Level
         if (auto* health = Owner()->FindComponent<HealthComponent>())
             health->Reset();
 
-        // ルール配置物の旗も頭から。前のプレイの旗が残ると開始直後に再クリアしてしまう
+        // ルール配置物の旗も初期状態へ戻す。前のプレイの旗が残ると開始直後に再クリアしてしまう
         scene->World().ForEachComponent<GoalComponent>([](GoalComponent& goal) { goal.ResetReached(); });
     }
 } // namespace NS::Game::Level

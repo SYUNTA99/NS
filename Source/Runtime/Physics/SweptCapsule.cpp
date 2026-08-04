@@ -19,7 +19,7 @@ namespace
         return Vector3{v.x * inv, v.y * inv, v.z * inv};
     }
 
-    /// 非単位入力でも芯端点が歪まないよう axis を正規化する。 零ベクトルは Y 軸へ倒す
+    /// 非単位入力でも芯端点が歪まないよう axis を正規化する。 零ベクトルは Y 軸にする
     [[nodiscard]] Vector3 NormalizeAxis(const Vector3& axis) noexcept
     {
         const float lenSq = Dot(axis, axis);

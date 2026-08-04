@@ -54,12 +54,12 @@ TEST(ComponentTest, EnabledAndActiveAreSeparateFlags)
 {
     CountingComponent c;
 
-    // モード切替の休止はデータの札を触らない
+    // モード切替の休止はデータの active を触らない
     c.SetActive(false);
     EXPECT_TRUE(c.IsEnabled());
     EXPECT_FALSE(c.IsActive());
 
-    // データの札を下ろした側は、 休止を解いても効かないまま
+    // データの active を切った側は、 休止を解いても効かないまま
     c.SetEnabled(false);
     c.SetActive(true);
     EXPECT_TRUE(c.IsActiveSelf());
@@ -101,7 +101,7 @@ TEST(ComponentOwnershipTest, AddComponentRegistersAndInjectsOwner)
     NS::Object::GameObject obj;
     auto* c = obj.AddComponent<CountingComponent>();
 
-    // 器が先に transform を積むので、 同 priority の後入れは末尾に来る
+    // GameObject が先に transform を積むので、 同 priority の後入れは末尾に来る
     ASSERT_EQ(obj.Components().size(), std::size_t{2});
     EXPECT_EQ(obj.Components().back(), c);
     EXPECT_EQ(c->Owner(), &obj);

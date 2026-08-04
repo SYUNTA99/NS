@@ -55,7 +55,7 @@ void Game::OnAttach()
         return;
     }
 
-    // 資産とレンダラーの窓口を預ける。 立てるシーンがここから受け取る
+    // AssetManager とレンダラーを預ける。 立てるシーンがここから受け取る
     // ※編集機能は Editor がオーバーレイとして乗せる想定
     m_scenes.SetAssets(&app->Assets());
     m_scenes.SetRenderer(&app->Renderer());
@@ -83,7 +83,7 @@ void Game::OnAttach()
         [](NS::Object::ThirdPersonFollowComponent& follow) { follow.SetActive(true); });
 
     // カーソルを消し、 マウスを相対モードにして視点操作をカーソル位置から切り離す
-    // Esc で出すまで非表示のまま。 出し直しは OnUpdate の Esc 捌きが行う
+    // Esc で出すまで非表示のまま。 出し直しは OnUpdate の Esc 処理が行う
     app->Window().SetCursorVisible(false);
     app->Input().Mouse().SetRelativeMode(true);
 }
@@ -96,7 +96,7 @@ void Game::OnDetach()
 void Game::OnUpdate()
 {
     // プレイ中の Esc は 2 段階。 1 回目で隠したカーソルを出し、 出ている状態の 2 回目で終了する
-    // カーソルの状態がそのまま段階の記録になる。 世界が止まっている編集モードの Esc はエディタが捌く
+    // カーソルの状態がそのまま段階の記録になる。 世界が止まっている編集モードの Esc はエディタが処理する
     const NS::Object::Scene* scene = m_scenes.Current();
     if (scene != nullptr && scene->IsSimulationEnabled())
     {

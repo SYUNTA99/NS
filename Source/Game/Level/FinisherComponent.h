@@ -9,7 +9,7 @@ namespace NS::Game::Level
 
     /// @brief ゴール接触に応えてクリアの台本を流す。プレイヤーに載せる
     /// @details LateUpdate の判定が出そろった後、同じ tick 内で旗を見て台本を始める: 入力を切る → 暗転 →
-    /// 全黒の裏でやり直す → 明転 → 入力を返す。世界は止めず操作だけを奪う
+    /// 全黒の裏でやり直す → 明転 → 入力を返す。世界は止めず入力だけを切る
     /// 台本の駆動も自分の OnUpdate が持つ。編集へ戻る破棄はエディタが Cancel を呼ぶ
     class FinisherComponent : public NS::Object::Component
     {
@@ -39,9 +39,9 @@ namespace NS::Game::Level
         /// クリアの台本: 暗転 → 全黒の裏でレベルを組み直す → 明転
         [[nodiscard]] NS::Core::Coroutine ClearSequence();
 
-        /// プレイヤー入力の札を切り替える。台本の間だけ操作を奪うのに使う
+        /// プレイヤー入力の active を切り替える。台本の間だけ入力を切るのに使う
         void SetPlayerInputActive(bool active) noexcept;
 
-        NS::Core::CoroutineRunner m_sequences; // 演出台本の駆動役
+        NS::Core::CoroutineRunner m_sequences; // 演出台本の実行器
     };
 } // namespace NS::Game::Level

@@ -325,7 +325,7 @@ namespace
         using NS::Math::Vector3;
 
         // 手前 z=5 と奥 z=15 の箱。 mask で手前を対象外にすると、 手前が最近でも奥を拾う
-        // 見えないカメラが重なった可視ブロックの pick を奪わない 2 パス目相当の検証
+        // 見えないカメラが重なった可視ブロックの pick を取らない 2 パス目相当の検証
         const std::array<Matrix, 2> worlds = {
             Matrix::CreateTranslation(0.0f, 0.0f, 5.0f),
             Matrix::CreateTranslation(0.0f, 0.0f, 15.0f),
@@ -471,7 +471,7 @@ namespace
 
     TEST(GizmoEditor, ComputeScaleSnapToZeroRescuedByMinimum)
     {
-        // 1.0 + (-0.9) = 0.1 -> SnapTo(0.1, 0.25)=0 -> 下限 0.01 へ救済
+        // 1.0 + (-0.9) = 0.1 -> SnapTo(0.1, 0.25)=0 -> 下限 0.01 へクランプ
         const NS::Math::Vector3 start{1.0f, 1.0f, 1.0f};
         const NS::Math::Vector3 result = GizmoEditor::ComputeScale(start, GizmoAxis::X, -0.9f, true);
         EXPECT_NEAR(result.x, 0.01f, 1.0e-5f);

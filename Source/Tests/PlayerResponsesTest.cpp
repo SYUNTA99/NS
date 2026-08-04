@@ -13,7 +13,7 @@
 namespace LevelNs = NS::Game::Level;
 namespace SceneNs = NS::Object;
 
-/// Application 依存のない Scene を器に、 走行のやり直しと応答 component の挙動を検証する
+/// Application 依存のない Scene で、 走行のやり直しと応答 component の挙動を検証する
 /// 応答部品はプレイヤーに載るので、 プレイヤーを 1 体置けば揃う
 /// 世界の駆動は Scene::OnUpdate で、 dt は FrameTimer::FixedDelta の既定 1/60 が使われる
 /// 判定と応答 (respawner / finisher) は同じ tick の LateUpdate 帯の並びで済む
@@ -39,7 +39,7 @@ namespace
         return object;
     }
 
-    // 応答部品の器に載った暗転を引く。 器は無名なので component 検索で見つける
+    // 応答 component を載せた GameObject から暗転を引く。 GameObject は無名なので component 検索で見つける
     LevelNs::ScreenFadeComponent* FindFade(SceneNs::Scene& scene)
     {
         LevelNs::ScreenFadeComponent* found = nullptr;
@@ -210,7 +210,7 @@ TEST(PlayerResponses, ClearFadesOutRestartsAtBlackThenFadesIn)
     ASSERT_NE(fade, nullptr);
     ASSERT_TRUE(fade->IsFading());
 
-    // 台本の間は世界を止めず操作だけ奪う
+    // 台本の間は世界を止めず入力だけ切る
     auto* input = player->FindComponent<SceneNs::PlayerInputComponent>();
     ASSERT_NE(input, nullptr);
     EXPECT_FALSE(input->IsActiveSelf());

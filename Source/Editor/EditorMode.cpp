@@ -231,7 +231,7 @@ namespace NS::Editor
             const bool ok = NS::Object::LoadSceneFromJsonFile(fresh, *path);
             if (ok)
             {
-                // プレイヤー / 追従カメラ / 落下死の受け皿が欠けたレベルには既定の 1 体を補う
+                // プレイヤー / 追従カメラ / 落下死体積が欠けたレベルには既定の 1 体を補う
                 // 追従カメラの Target にプレイヤーの id が要るので、 揃える順はこの並びで決まる
                 (void)EnsurePlayerObject(fresh);
                 (void)NS::Game::Level::EnsureFollowCameraObject(fresh, PlayerObjectId(fresh));
@@ -455,7 +455,7 @@ namespace NS::Editor
             return;
         }
 
-        // 回転対象外は回転 step を 0 に倒す
+        // 回転対象外は回転 step を 0 にする
         const std::uint8_t rotation = [this]() -> std::uint8_t {
             if (m_palette.CurrentIsRotatable())
             {

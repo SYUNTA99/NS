@@ -62,7 +62,7 @@ namespace NS::Editor
     void GameViewPanel::UpdateMouseLatch() noexcept
     {
 #if NS_EDITOR_ENABLED
-        // 全マウスボタン解放中だけ hover に追従し、 パネル発のドラッグは離すまで門を開いたままにする
+        // 全マウスボタン解放中だけ hover に追従し、 パネル発のドラッグ中は離すまで追従を維持する
         if (!ImGui::IsAnyMouseDown())
             m_mouseLatch = m_hovered;
 #endif

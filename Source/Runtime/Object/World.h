@@ -29,7 +29,7 @@ namespace NS::Object
     /// @brief SceneData から組む runtime world の所有と構築を一手に担う
     /// @details 配置物 GameObject と衝突プリミティブを SceneData から一括で組み直す
     /// runtime も editor も同じ Rebuild 経路を通り、scene は公開読み口から観測して描画するだけ
-    /// 配置物 1 件の組み立ては呼出側のファクトリに委ね、器の型選択や資産解決は持たない
+    /// 配置物 1 件の組み立ては呼出側のファクトリに委ね、GameObject の型選択や資産解決は持たない
     /// 機能別の型付き控えも持たず、欲しい component 型は ForEachComponent で問い合わせる
     /// 特定の 1 体は永続 id の解決で引く
     /// 依存: NS::Object::GameObject / ObjectData, NS::Physics::PhysicsWorld
@@ -61,7 +61,7 @@ namespace NS::Object
         }
 
         /// 組み上がった配置物を 1 体 world へ加える。 scene attach と objectId 焼きは呼出側が済ませて渡す
-        /// 型が実行時にしか決まらない工場経由の組み立て用。 型が分かっているなら Spawn<T> を使う
+        /// 型が実行時にしか決まらないファクトリ経由の組み立て用。 型が分かっているなら Spawn<T> を使う
         GameObject* Append(std::unique_ptr<GameObject> obj);
 
         /// objectId 一致の配置物を畳んで world から外す。 居なければ何もしない
@@ -85,8 +85,8 @@ namespace NS::Object
         /// 帯の一部だけ回したい呼び出し側が使う。 一時オブジェクトも同じ帯に乗る
         void UpdateObjects(int firstPriority, int lastPriority = std::numeric_limits<int>::max());
 
-        /// 全配置物の Component を priority の昇順で一括で回し、 最後に SnapshotObjects で補間の帳尻を合わせる
-        /// 並びの登録簿は別に持たない。 各 component がコンストラクタで名乗る priority が並びの唯一の真実
+        /// 全配置物の Component を priority の昇順で一括で回し、 最後に SnapshotObjects で補間用の前回値を揃える
+        /// 並び順の一覧は別に持たない。 各 component がコンストラクタで指定する priority だけで並びが決まる
         void UpdateAllObjects();
 
         /// 全配置物の Root を Snapshot する (previous を current へ揃える)
@@ -143,7 +143,7 @@ namespace NS::Object
     };
 
     /// `targetId` を指す ObjectRef フィールドを live の全配置物から反射で集める
-    /// 削除前に何が参照しているかを知る窓口。 k_NoObjectId 相当の 0 は未設定の印なので空を返す
+    /// 削除前に何が参照しているかを調べる関数。 k_NoObjectId 相当の 0 は未設定の印なので空を返す
     [[nodiscard]] std::vector<ObjectRefLocation> FindReferencesTo(const World& world, std::uint32_t targetId);
 
 } // namespace NS::Object

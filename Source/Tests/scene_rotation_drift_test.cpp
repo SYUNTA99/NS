@@ -110,7 +110,7 @@ TEST(SceneRotationDrift, SaveDropsQuatFieldKeepsEuler)
     EXPECT_EQ(json.find("Rotation (quat)"), std::string::npos);
     EXPECT_NE(json.find("Rotation (deg)"), std::string::npos);
 
-    // version 2 の門を通って読み戻せる
+    // version 2 の形式検査を通って読み戻せる
     SceneNs::SceneData reloaded;
     EXPECT_TRUE(SceneNs::DeserializeSceneFromJson(reloaded, json));
 }

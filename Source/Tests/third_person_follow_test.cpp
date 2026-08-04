@@ -22,7 +22,7 @@ TEST_F(ThirdPersonFollowTest, ConstructsWithNullTarget)
 {
     ThirdPersonFollowComponent follow;
     EXPECT_EQ(follow.Target(), nullptr);
-    // 休止で生まれるのが契約。起こすのはプレイ進行役
+    // 生成直後の休止は仕様。有効化はプレイ開始側が行う
     EXPECT_FALSE(follow.IsActive());
 }
 

@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-/// 機構単体の検証。所有者は呼ばれた儀式を記録するだけの器で、状態はテスト内で登録する
+/// 機構単体の検証。所有者は呼ばれた OnEnter / OnExit を記録するだけで、状態はテスト内で登録する
 
 namespace
 {
@@ -103,7 +103,7 @@ TEST(StateMachineTest, ChangeToUnknownOrSameDoesNothing)
     EXPECT_FALSE(machine.Change(rig, "Nope"));
     EXPECT_STREQ(machine.CurrentName(), "Alpha");
 
-    // 同じ状態への Change は儀式を繰り返さない
+    // 同じ状態への Change は OnExit / OnEnter を呼び直さない
     EXPECT_TRUE(machine.Change(rig, "Alpha"));
     EXPECT_TRUE(rig.log.empty());
 }

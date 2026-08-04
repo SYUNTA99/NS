@@ -22,7 +22,7 @@ namespace NS::Editor
     /// cell ブラシが置換 / 削除できる配置物か。プレイヤーとカメラは別経路で扱うため除く
     [[nodiscard]] bool IsCellBrushObject(const NS::Object::ObjectData& object) noexcept;
 
-    /// live 実体版。判定はデータ版と同じ契約で、component の有無を実体から見る
+    /// live 実体版。判定はデータ版と同じ基準で、component の有無を実体から見る
     [[nodiscard]] bool IsCellBrushObject(NS::Object::GameObject& object) noexcept;
 
     /// live 実体の cell 座標 = Root 位置を最近接整数へ丸めた値
@@ -54,7 +54,7 @@ namespace NS::Editor
     /// ヒエラルキーの右クリックから足せる基本形
     enum class PrimitiveKind
     {
-        Empty,  ///< 何も持たない器。 子をぶら下げる支点や目印に使う
+        Empty,  ///< 何も持たない GameObject。 子をぶら下げる支点や目印に使う
         Cube,   ///< 1m 立方の固形ブロック
         Sphere, ///< 半径 0.5 の球。 当たりも球
         Slope,  ///< 45 度の坂
@@ -75,7 +75,7 @@ namespace NS::Editor
     /// コンポーネント構成から UI 表示用の分類名（ASCII 固定文字列）を判定して返す
     [[nodiscard]] const char* ObjectDisplayName(const NS::Object::ObjectData& object);
 
-    /// live 実体版。判定はデータ版と同じ契約で、component の有無と値を実体から見る
+    /// live 実体版。判定はデータ版と同じ基準で、component の有無と値を実体から見る
     [[nodiscard]] const char* ObjectDisplayName(NS::Object::GameObject& object);
 
 } // namespace NS::Editor

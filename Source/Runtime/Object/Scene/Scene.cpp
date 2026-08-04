@@ -59,7 +59,7 @@ namespace NS::Object
 
     const SceneData& Scene::BeginPlayBaseline()
     {
-        // プレイ規則の判定と編集復帰の姿はこの凍結を読む。 プレイ中の変化は凍結に映らないのが防火壁
+        // プレイ規則の判定と編集復帰の姿はこの凍結を読む。 プレイ中の変化は凍結に映らず、編集へ持ち込まれない
         if (!m_playBaselineInjected)
         {
             m_playBaseline = CaptureLiveToSceneData();
@@ -139,7 +139,7 @@ namespace NS::Object
                 [brain](auto& vcam) { brain->RemoveVirtualCamera(&vcam); });
         }
 
-        // Worldの再構築。 器の選択は登録簿、 参照の実体化は各 component の ResolveAssets が担う
+        // Worldの再構築。 GameObject の型選択は登録一覧、 参照の実体化は各 component の ResolveAssets が担う
         m_world.Rebuild(
             data, *this, Physics(), [this](const ObjectData& entry) { return BuildSceneObject(entry, m_assets); });
 
@@ -424,7 +424,7 @@ namespace NS::Object
             for (Component* comp : obj->Components())
             {
                 auto* overlay = ComponentCast<OverlayRendererComponent>(comp);
-                // 札の下りた component は描かない。 更新・ 当たりと同じ問いで揃える
+                // active を切った component は描かない。 更新・ 当たりと同じ問いで揃える
                 if (overlay != nullptr && overlay->IsActive())
                     overlay->OnRenderOverlay(*ctx);
             }

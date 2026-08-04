@@ -51,7 +51,7 @@ namespace NS::Game::Level
 
     NS::Core::Coroutine FinisherComponent::ClearSequence()
     {
-        // 世界は止めず操作だけ奪う。暗転の間も重力とカメラは生きたまま
+        // 世界は止めず入力だけ切る。暗転の間も重力とカメラは動いたまま
         SetPlayerInputActive(false);
 
         Fade()->BeginOut(k_FadeOutSeconds);

@@ -16,7 +16,7 @@ namespace SceneNs = NS::Object;
 
 namespace
 {
-    // 実 world を持たずに grid 編集を検証する適用口。 EditorMode が読むのと同じ SceneData を直接いじる
+    // 実 world を持たずに grid 編集を検証する適用経路。 EditorMode が読むのと同じ SceneData を直接いじる
     // ObjectSnapshotApplier の差し替え/新規/除去だけを再現する (組み直しは無し)
     class RefApplier final : public EditorNs::IObjectSnapshotApplier
     {
@@ -53,7 +53,7 @@ namespace
         SceneNs::SceneData& data;
     };
 
-    // live 照会と採番を肩代わりする配線。 実行中の scene 配線と同じ契約
+    // live 照会と採番を代行する配線。 実行中の scene 配線と同じ取り決め
     void WireLevel(EditorNs::EditorMode& editor, SceneNs::SceneData& lv, SceneNs::World& world)
     {
         editor.SetFindCellObjectFn([&lv](std::int16_t x, std::int16_t y, std::int16_t z) {

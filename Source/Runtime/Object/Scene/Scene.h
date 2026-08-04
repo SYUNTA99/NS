@@ -40,8 +40,8 @@ namespace NS::Object
     /// @brief SceneData から組んだ World を運転する scene
     /// @details world と環境値の所有、読込/保存/プレイ凍結の出入口、標準の world 描画パスを担う
     /// Application から OnStart / OnUpdate / OnRender / OnShutdown を順に呼び戻される
-    /// fixed timestep + variable render で駆動し、IRenderable の自己登録窓口も兼ねる
-    /// live な GameObject/Component が唯一の表現で、SceneData は境界でだけ使う一時器
+    /// fixed timestep + variable render で駆動し、IRenderable の自己登録先も兼ねる
+    /// live な GameObject/Component が唯一の表現で、SceneData は境界でだけ使う一時データ
     /// 配置物は TypeRegistry と ResolveAssets で自力で組む。組み直し後の参照解決だけ派生が hook で埋める
     /// 寿命は SceneManager が unique_ptr で所有する
     /// 依存: World / SceneData / ObjectBuilder / TypeRegistry
@@ -85,7 +85,7 @@ namespace NS::Object
         /// CharacterMovementComponent 等の借用元は OnStart で所属 scene から取りに来る
         [[nodiscard]] NS::Physics::PhysicsWorld& Physics() noexcept { return m_physicsWorld; }
 
-        /// 資産の窓口を非所有で差す。組み立て時の参照実体化が使う。未設定 (テスト等) は解決を跳ばす
+        /// AssetManager を非所有で差す。組み立て時の参照実体化が使う。未設定 (テスト等) は解決を跳ばす
         void SetAssets(AssetManager* assets) noexcept { m_assets = assets; }
 
         /// レンダラーを非所有で差す。標準の OnRenderScene が使う。未設定 (テスト等) は描かない
@@ -110,7 +110,7 @@ namespace NS::Object
         /// 取得子と型が同じ綴りなので、 このクラスの中では型を完全修飾しないと関数名として解決される
         [[nodiscard]] NS::Object::World& World() noexcept { return m_world; }
 
-        /// @brief 読み込んだシーンデータを取り込み world を組み直す。 データは取込後に用済みになる一時器
+        /// @brief 読み込んだシーンデータを取り込み world を組み直す。 データは取込後に用済みになる一時データ
         void LoadFromData(SceneData&& data);
 
         /// @brief 編集で動いた live の当たりを張り直し、 組み直し後 hook を呼ぶ。 object は作り直さない
@@ -193,7 +193,7 @@ namespace NS::Object
         /// @brief world の組み直し・当たりの張り直しの後に呼ばれる。 派生は live への参照をここで取り直す
         virtual void OnWorldChanged() {}
 
-        /// @brief 渡されたシーンデータから world と衝突判定世界を組み直す。 データはその場限りの一時器
+        /// @brief 渡されたシーンデータから world と衝突判定世界を組み直す。 データはその場限りの一時データ
         void RebuildWorldFrom(const SceneData& data);
 
         /// @brief 標準の world 描画パス。 環境同期→カメラ評価→不透明→空→半透明
@@ -223,7 +223,7 @@ namespace NS::Object
         /// 描画物の登録簿と視錐台カリングを持つレンダラ側の描画シーン
         NS::Graphics::RenderScene m_renderScene;
 
-        CameraSubsystem m_cameraSubsystem;    // 実カメラ + Brain の窓口。scene と生成・破棄を共にする
+        CameraSubsystem m_cameraSubsystem;    // 実カメラ + Brain を持つ CameraSubsystem。scene と生成・破棄を共にする
         SkyboxSubsystem m_skyboxSubsystem;    // skybox 装置。scene と生成・破棄を共にする
         bool m_subsystemsInitialized = false; // CreateSceneSubsystems の二度目を何もしないための印
 
@@ -237,7 +237,7 @@ namespace NS::Object
         NS::Graphics::RenderSettingsOverride m_lastSceneOverride{}; // 直近のシーン上書きの控え
         NS::Graphics::RenderSettings m_lastResolvedSettings{};      // 直近の scene 段解決値の控え
         bool m_warnedZeroLightDirection = false;                    // 平行光 zero 警告の 1 回制御
-        AssetManager* m_assets = nullptr;             // 資産の窓口、 非所有。 未設定なら参照の実体化を跳ばす
+        AssetManager* m_assets = nullptr;             // AssetManager、 非所有。 未設定なら参照の実体化を跳ばす
         NS::Graphics::Renderer* m_renderer = nullptr; // レンダラー、 非所有。 未設定なら描かない
 
         SceneData m_playBaseline;            // プレイ突入時の凍結スナップショット

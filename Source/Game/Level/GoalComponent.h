@@ -30,6 +30,6 @@ namespace NS::Game::Level
         bool m_reached = false; // 触れたら立つ。保存しない
     };
 
-    /// ゴールの印を持つ配置物か。表示と固形判定が同じ契約を読む
+    /// ゴールの印を持つ配置物か。表示と固形判定が同じ判定を読む
     [[nodiscard]] bool IsGoalObject(const NS::Object::ObjectData& object) noexcept;
 } // namespace NS::Game::Level

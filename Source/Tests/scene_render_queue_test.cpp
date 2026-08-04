@@ -22,7 +22,7 @@ namespace
             m_bounds = NS::Math::AABB{center, NS::Math::Vector3{1.0e6f, 1.0e6f, 1.0e6f}};
         }
 
-        // カリングを検証するテストが視錐台内外へ置き直すための差替口
+        // カリングを検証するテストが視錐台内外へ置き直すための差し替え手段
         void SetWorldBounds(const NS::Math::AABB& bounds) noexcept { m_bounds = bounds; }
 
         void Collect(const RenderContext&, std::vector<NS::Graphics::DrawItem>&) override { m_log->push_back(m_id); }

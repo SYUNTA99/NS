@@ -20,7 +20,7 @@ namespace NS::Editor
         //! 描画先の初期目標サイズを窓サイズに合わせる
         void SetInitialSize(const NS::Math::Size2D& size) noexcept { m_surface.SetInitialSize(size); }
 
-        //! フレーム頭で可視状態を倒す。 描画パス (通常 / 全面化) が立て直す
+        //! フレーム先頭で可視状態を false にする。 描画パス (通常 / 全面化) が立て直す
         void ResetVisibility() noexcept { m_surface.ResetVisibility(); }
 
         //! Game パネルを 1 枚描く。 プレイ中は入力矩形と hover を controller へ渡す

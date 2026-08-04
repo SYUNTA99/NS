@@ -27,7 +27,7 @@ namespace NS::Object
         SceneManager();
         ~SceneManager();
 
-        /// 立てる scene へ引き継ぐ資産の窓口を非所有で差す。以降 LoadScene する scene が受け取る
+        /// 立てる scene へ引き継ぐ AssetManager を非所有で差す。以降 LoadScene する scene が受け取る
         void SetAssets(AssetManager* assets) noexcept;
 
         /// 立てる scene へ引き継ぐレンダラーを非所有で差す。以降 LoadScene する scene が受け取る
@@ -35,7 +35,7 @@ namespace NS::Object
 
         /// データから scene を立てる。現 scene は畳んでから作り直す
         /// サブシステムの生成は OnStart より先、world の組み立ては OnStart より後に行う
-        /// データは取込後に用済みになる一時器で、以降の出所は live 実体になる
+        /// データは取込後に用済みになる一時データで、以降の出所は live 実体になる
         Scene& LoadScene(SceneData&& data);
 
         /// 現 scene を畳んで scene 無し状態にする。未ロードなら何もしない
@@ -55,7 +55,7 @@ namespace NS::Object
 
     private:
         std::unique_ptr<Scene> m_current;
-        /// 立てる scene へ引き継ぐ窓口で非所有。未設定なら scene 側が未設定のまま動く
+        /// 立てる scene へ引き継ぐ参照で非所有。未設定なら scene 側が未設定のまま動く
         AssetManager* m_assets = nullptr;
         NS::Graphics::Renderer* m_renderer = nullptr;
     };

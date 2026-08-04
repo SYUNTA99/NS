@@ -24,7 +24,7 @@ namespace NS::Editor
 #if NS_EDITOR_ENABLED
     namespace
     {
-        // ヒエラルキー内で配置物をドラッグする時の荷札
+        // ヒエラルキー内で配置物をドラッグする時の受け渡しデータ
         constexpr const char* k_HierarchyDragType = "NS_HIERARCHY_OBJECT";
     } // namespace
 #endif
@@ -95,7 +95,7 @@ namespace NS::Editor
             if (ImGui::SmallButton("+ オブジェクトを追加"))
                 editor.AddObject();
 
-            // 余白へ落としたら root へ戻す受け皿
+            // 余白へ落としたら root へ戻すドロップ先
             ImVec2 rest = ImGui::GetContentRegionAvail();
             rest.x = std::max(rest.x, 1.0f);
             rest.y = std::max(rest.y, ImGui::GetTextLineHeight());

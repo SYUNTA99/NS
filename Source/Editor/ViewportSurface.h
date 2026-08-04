@@ -39,7 +39,7 @@ namespace NS::Editor
         //! @details ゲーム画面はパネルの形で見え方が変わると手触りを詰める基準が動くので、 出荷と同じ比率で固定する
         void SetFixedAspect(float aspect) noexcept { m_fixedAspect = aspect; }
 
-        //! フレーム頭で可視状態を倒す。 このフレームに BeginView されなければ不可視のままになる
+        //! フレーム先頭で可視状態を false にする。 このフレームに BeginView されなければ不可視のままになる
         void ResetVisibility() noexcept { m_visible = false; }
 
         //! @brief windowName のパネルを Begin し、 content 領域があれば目標サイズを更新して RT を貼る

@@ -36,7 +36,7 @@ namespace
         return object;
     }
 
-    // 応答部品の器に載った暗転を引く
+    // 応答 component を載せた GameObject から暗転を引く
     NS::Game::Level::ScreenFadeComponent* FindFade(NS::Object::Scene& scene)
     {
         NS::Game::Level::ScreenFadeComponent* found = nullptr;
@@ -92,7 +92,7 @@ TEST(ModeToggle, EditorStateIsPreservedAcrossToggle)
 {
     NS::Object::Scene scene;
     LevelEditorController editor(&scene);
-    // 適用口を grid 編集へ差す。 照会と採番は実行時と同じ live 配線
+    // 適用経路を grid 編集へ差す。 照会と採番は実行時と同じ live 配線
     NS::Editor::ObjectSnapshotApplier applier{&scene};
     editor.Editor().SetApplier(&applier);
     editor.Editor().SetFindCellObjectFn([&scene](std::int16_t x, std::int16_t y, std::int16_t z) {

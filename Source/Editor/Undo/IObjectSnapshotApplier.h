@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <optional>
 
-// live 実体を唯一の正データとして編集するための、 objectId 単位の捕捉・適用の窓口
+// live 実体を唯一の正データとして編集するための、 objectId 単位の捕捉・適用の経路
 // undo コマンドはこの抽象越しに 1 体の before/after スナップショットを往復させる
 
 namespace NS::Object
@@ -13,7 +13,7 @@ namespace NS::Object
 
 namespace NS::Editor
 {
-    /// @brief objectId 1 体の状態を値スナップショットで捕捉・適用する窓口
+    /// @brief objectId 1 体の状態を値スナップショットで捕捉・適用する経路
     /// @details live な world を持つシーンへ写す側が実装する。 編集・undo はこの 2 口だけを叩く
     /// ApplyObjectSnapshot は「desired があれば組み直して差し替え/新規、 無ければ除去」の一手で、
     /// 物理・参照・カメラ等の派生状態の同期まで実装側が面倒を見る

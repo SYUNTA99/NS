@@ -90,7 +90,7 @@ public:
     [[nodiscard]] bool GameViewHidden() const noexcept { return m_gameViewHidden; }
 
     //! @brief Scene パネルが映っているフレームで真を渡す
-    //! @details プレイ中の当たり表示の門。 Scene が映っていない間は線を積まず、 ゲーム画面へ出さない
+    //! @details プレイ中の当たり表示の条件。 Scene が映っていない間は線を積まず、 ゲーム画面へ出さない
     void SetSceneViewVisible(bool visible) noexcept { m_sceneViewVisible = visible; }
 
     //! プレイ中に Scene タブへ自由視点を映すフレームで毎回呼ぶ。入力を free-fly カメラへ流す
@@ -109,7 +109,7 @@ public:
 
     [[nodiscard]] NS::Editor::EditorMode& Editor() noexcept { return m_editor; }
 
-    //! プレイの時間停止。実体はシーンの時間停止スイッチで、ここはエディタ操作の窓口
+    //! プレイの時間停止。実体はシーンの時間停止スイッチで、ここはエディタ操作の入口
     [[nodiscard]] bool PlayPaused() const noexcept;
     void TogglePlayPause() noexcept;
 
@@ -166,7 +166,7 @@ public:
     void AddObject();
 
     //! @brief 基本形を 1 個、編集視点の中心あたりへ追加して選択する。Undo 対応
-    //! @param kind 立方体 / 球 / 坂 / 空の器
+    //! @param kind 立方体 / 球 / 坂 / 空の GameObject
     void AddPrimitive(NS::Editor::PrimitiveKind kind);
 
     //! @brief メッシュ資産を 1 体として編集視点の中心あたりへ置く。Undo 対応
@@ -197,8 +197,8 @@ public:
     void AddComponentToSelected(std::string_view typeName);
     void RemoveComponentFromSelected(std::size_t componentIndex);
 
-    //! @brief 選択中の配置物のコンポーネント 1 個について、 データの札を立て / 下ろす
-    //! @details 下ろした札は保存に残り、 読み直しても下りたまま。 player の入力と transform は守って何もしない
+    //! @brief 選択中の配置物のコンポーネント 1 個について、 データの active を切り替える
+    //! @details false は保存に残り、 読み直しても false のまま。 player の入力と transform は守って何もしない
     void SetComponentEnabledOnSelected(std::size_t componentIndex, bool enabled);
 
     void DuplicateSelectedObject();
@@ -286,7 +286,7 @@ private:
     bool m_gameViewRectValid = false;
     bool m_gameViewHovered = false;
     bool m_gameViewHidden = false;   // UI 表示中に生きたパネルが裏へ隠れているか
-    bool m_sceneViewVisible = false; // Scene パネルが映っているか。 プレイ中の当たり表示の門
+    bool m_sceneViewVisible = false; // Scene パネルが映っているか。 プレイ中の当たり表示の条件
 
     NS::UI::ImGuiContext* m_imgui = nullptr;            // UI描画用コンテキスト、非所有
     std::unique_ptr<EditorCameraRig> m_editorCameraRig; // 編集用自由視点カメラ
@@ -314,7 +314,7 @@ private:
     };
     SpecialSelection m_specialSelection = SpecialSelection::None; // 特別な選択状態
 
-    std::uint32_t m_selectedObjectId = NS::Object::k_NoObjectId; // 主対象の永続ID (選択の唯一の真実)
+    std::uint32_t m_selectedObjectId = NS::Object::k_NoObjectId; // 主対象の永続ID (選択の一次情報)
     std::vector<std::uint32_t> m_selectionIds;                   // 選択中の全配置物。主対象も含む
     NS::Object::Transform* m_lastGizmoSelected = nullptr;        // 前フレームの選択対象
 

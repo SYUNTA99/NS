@@ -33,7 +33,7 @@ TEST(CameraSubsystemTest, MainCameraResolvesThroughBrain)
     auto* subsystem = scene.GetSubsystem<CameraSubsystem>();
     ASSERT_NE(subsystem, nullptr);
 
-    // MainCamera と Brain の 2 窓口が同じ host 上のカメラを指す
+    // MainCamera と Brain の 2 つの取得関数が同じ host 上のカメラを指す
     ASSERT_NE(subsystem->Brain(), nullptr);
     EXPECT_EQ(subsystem->MainCamera(), subsystem->Brain()->Camera());
     EXPECT_EQ(subsystem->Brain()->Owner(), subsystem->MainCamera()->Owner());
@@ -47,7 +47,7 @@ TEST(CameraSubsystemTest, DeinitializeReleasesHost)
     ASSERT_NE(subsystem, nullptr);
     ASSERT_NE(subsystem->Brain(), nullptr);
 
-    // シーン破棄で host ごと畳まれ、窓口は nullptr を返す
+    // シーン破棄で host ごと畳まれ、取得関数は nullptr を返す
     subsystem->Deinitialize();
     EXPECT_EQ(subsystem->Brain(), nullptr);
     EXPECT_EQ(subsystem->MainCamera(), nullptr);

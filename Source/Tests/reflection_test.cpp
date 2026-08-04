@@ -319,7 +319,7 @@ TEST(ReflectionTest, BoxColliderExposesCenterOffsetAndRotation)
     EXPECT_FLOAT_EQ(collider.CenterOffset().y, -2.0f);
     EXPECT_FLOAT_EQ(collider.CenterOffset().z, 3.0f);
 
-    // 回転は Euler(度) 窓口で読み書きし、 往復で一致する
+    // 回転は Euler(度) アクセサで読み書きし、 往復で一致する
     const FieldDesc* rot = FindField(info, "Rotation (deg)");
     ASSERT_NE(rot, nullptr);
     NS::Math::Vector3 setRot{0.0f, 90.0f, 0.0f};
@@ -477,7 +477,7 @@ TEST(ReflectionIsATest, RejectsUnrelatedTypeAndNull)
 
 TEST(ReflectionIsATest, StaticAndVirtualShareOneInfo)
 {
-    // 静的窓口と仮想窓口が同じ実体を返す。二重定義があると is-a のアドレス比較が壊れる
+    // 静的関数と仮想関数が同じ実体を返す。二重定義があると is-a のアドレス比較が壊れる
     NS::Object::ThirdPersonFollowComponent follow;
     EXPECT_EQ(follow.GetReflection(), NS::Object::ThirdPersonFollowComponent::StaticReflection());
 

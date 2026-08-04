@@ -30,7 +30,7 @@ namespace NS::Object
         virtual void OnExit(TOwner&) {}
     };
 
-    /// @brief 所有者型ごとの状態の名簿。名前 → 生成の対応を自己登録 (NS_STATE) で集める
+    /// @brief 所有者型ごとの状態の登録一覧。名前 → 生成の対応を自己登録 (NS_STATE) で集める
     template <typename TOwner> class StateRegistry
     {
     public:
@@ -92,7 +92,7 @@ namespace NS::Object
             return all;
         }
 
-        /// 儀式なしで初期状態 (先頭) へ戻す。リスポーン等のハードリセット用で OnExit / OnEnter は呼ばない
+        /// OnExit / OnEnter を呼ばずに初期状態 (先頭) へ戻す。リスポーン等のハードリセット用
         void Reset() noexcept
         {
             if (m_states.empty())
@@ -153,7 +153,7 @@ namespace NS::Object
 
 } // namespace NS::Object
 
-/// 状態を名簿へ登録する。状態クラスを定義した cpp の namespace スコープに置く
+/// 状態を一覧へ登録する。状態クラスを定義した cpp の namespace スコープに置く
 #define NS_STATE(StateClass, OwnerClass)                                                                               \
     namespace                                                                                                          \
     {                                                                                                                  \

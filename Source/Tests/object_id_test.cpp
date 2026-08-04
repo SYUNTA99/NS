@@ -69,7 +69,7 @@ TEST(ObjectIdTest, JsonRoundTripPreservesIdsAndCounter)
     level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
     level.objects.push_back(LevelNs::MakeCellObject(3, 1, 2));
     level.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
-    // 追従カメラも積んでおく。 読込の門の合成で採番カウンタが動くと counter 比較が成り立たないため
+    // 追従カメラも積んでおく。 読込時の既定合成で採番カウンタが動くと counter 比較が成り立たないため
     level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
     SceneNs::EnsureUniqueObjectIds(level);
     const std::uint32_t id0 = level.objects[0].objectId;
@@ -134,7 +134,7 @@ TEST(ObjectIdTest, ObjectRefFieldSurvivesJsonRoundTrip)
     level.objects.push_back(SceneNs::ObjectData{});
     level.objects.push_back(SceneNs::ObjectData{});
     level.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
-    // 追従カメラも積んでおく。 読込の門の合成が CRC を動かさないようにするため
+    // 追従カメラも積んでおく。 読込時の既定合成が CRC を動かさないようにするため
     level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
     SceneNs::EnsureUniqueObjectIds(level);
     const std::uint32_t targetId = level.objects[0].objectId;
@@ -146,7 +146,7 @@ TEST(ObjectIdTest, ObjectRefFieldSurvivesJsonRoundTrip)
     // 読込が全 object に transform を保証するため、 基準 CRC も transform 込みで取る
     SceneNs::EnsureTransformComponent(level.objects[0]);
     SceneNs::EnsureTransformComponent(level.objects[1]);
-    // 後から足した component は未採番。 読込の門が番号を振るので、 基準 CRC も採番済から取る
+    // 後から足した component は未採番。 読込時の採番が番号を振るので、 基準 CRC も採番済から取る
     SceneNs::EnsureUniqueObjectIds(level);
 
     const std::uint32_t crc0 = level.ComputeCrc32();

@@ -111,7 +111,7 @@ TEST(UIWidgetTest, ConsumesPointerHonorsBlocksInputAndVisibility)
     panel->SetVisible(false);
     EXPECT_FALSE(system.ConsumesPointer(50.0f, 50.0f));
 
-    // 吸う札が無い Widget も素通しになる
+    // 入力を吸うフラグが無い Widget も素通しになる
     panel->SetVisible(true);
     panel->SetBlocksInput(false);
     EXPECT_FALSE(system.ConsumesPointer(50.0f, 50.0f));

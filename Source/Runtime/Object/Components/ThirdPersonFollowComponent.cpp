@@ -30,7 +30,7 @@ namespace NS::Object
     ThirdPersonFollowComponent::ThirdPersonFollowComponent() noexcept
         : VirtualCameraComponent(NS::Object::TickPriority::LateUpdate + 50)
     {
-        // 生成直後は非 active でプレイ突入時に起こされる。 編集中は free-fly が主役のまま
+        // 生成直後は非 active でプレイ突入時に有効化される。 編集中は free-fly が active のまま
         SetActive(false);
         // 追う相手を中心に見るので遠景は要らない。 編集カメラの 5000 と違いプレイ視点は 100 で足りる
         SetFarPlane(100.0f);

@@ -188,7 +188,7 @@ TEST(BoxColliderTest, LocalRotationRotatesObbAxes)
     EXPECT_NEAR(obb.axisX.Dot(obb.axisX), 1.0f, 1e-4f);
 }
 
-// Euler(度) で設定して読み戻すと同じ値に戻る。 Inspector の窓口用
+// Euler(度) で設定して読み戻すと同じ値に戻る。 Inspector のアクセサ用
 TEST(BoxColliderTest, RotationEulerDegreesRoundTrips)
 {
     BoxColliderComponent sc;

@@ -71,7 +71,7 @@ namespace NS::Object
         bool valid = false;
     };
 
-    /// アプリ寿命でアセットを重複なく所有する単一キャッシュ。 leaf は path 鍵、 組み込みは名前鍵
+    /// アプリ寿命でアセットを重複なく所有する単一キャッシュ。 leaf は path キー、 組み込みは名前キー
     /// Material 内蔵 CB は MeshRenderer が流す FrameCB に合わせるため本クラスは Scene 層に置く
     class AssetManager : public NS::Core::NonCopyable
     {
@@ -80,22 +80,22 @@ namespace NS::Object
         explicit AssetManager(std::filesystem::path baseDir) noexcept;
         ~AssetManager();
 
-        /// path 鍵で Shader を共有して返す。 同一 path は同一インスタンス。 失敗時も非 null で fallback を返す
+        /// path キーで Shader を共有して返す。 同一 path は同一インスタンス。 失敗時も非 null で fallback を返す
         [[nodiscard]] NS::Graphics::Shader* GetOrLoadShader(const std::filesystem::path& path);
-        /// path 鍵で Texture を共有して返す。 同一 path は同一インスタンス
+        /// path キーで Texture を共有して返す。 同一 path は同一インスタンス
         [[nodiscard]] NS::Graphics::Texture* GetOrLoadTexture(const std::filesystem::path& path);
-        /// path 鍵で Mesh を共有して返す。 読込 / GPU 生成に失敗した path も負キャッシュし、 以後は再読込せず
+        /// path キーで Mesh を共有して返す。 読込 / GPU 生成に失敗した path も負キャッシュし、 以後は再読込せず
         /// 即 nullptr を返す。 修正した file の再試行は Clear() でキャッシュを解いてから
         [[nodiscard]] NS::Graphics::Mesh* GetOrLoadMesh(const std::filesystem::path& path);
         /// 現在キャッシュしている mesh エントリ数。 読込失敗を負キャッシュした path も 1 件として数える
         [[nodiscard]] std::size_t MeshCacheSize() const noexcept;
 
-        /// skinned glTF を読み SkeletalMesh を path 鍵で重複なく所有して返す。 skeleton / clips は
+        /// skinned glTF を読み SkeletalMesh を path キーで重複なく所有して返す。 skeleton / clips は
         /// キャッシュ record への参照で返し、 再生状態だけをインスタンス側が持つ。 失敗時は valid=false
         /// 相対 path は baseDir 基準
         [[nodiscard]] LoadedSkinnedModel GetOrLoadSkinnedModel(const std::filesystem::path& path);
 
-        /// アニメーション専用 glTF を path 鍵で重複なく所有して返す。 読込失敗の path は負キャッシュし
+        /// アニメーション専用 glTF を path キーで重複なく所有して返す。 読込失敗の path は負キャッシュし
         /// 以後は再読込せず nullptr を返す。 修正した file の再試行は Clear() でキャッシュを解いてから
         [[nodiscard]] const NS::Graphics::AnimationSource* GetOrLoadAnimationSource(const std::filesystem::path& path);
 
@@ -109,7 +109,7 @@ namespace NS::Object
         /// 手続き生成の組み込み cube / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad を一括登録する
         /// device 確立後・最初の利用前に 1 度だけ呼ぶ。 既登録名は上書きしない
         void RegisterBuiltins();
-        /// 名前鍵で組み込み StaticMesh を引く。 未登録は nullptr
+        /// 名前キーで組み込み StaticMesh を引く。 未登録は nullptr
         [[nodiscard]] NS::Graphics::StaticMesh* Builtin(std::string_view name) const noexcept;
 
         /// matPath の .mat を読み込み composite Material を組んで返す。 shader / texture は内部 leaf を借りて共有
@@ -120,10 +120,10 @@ namespace NS::Object
         /// 共有 material である player / water / shadow を組み込み shader + texture から一括組み立てする
         /// device + RegisterBuiltins 後・最初の利用前に 1 度呼ぶ。 既登録名は上書きしない
         void RegisterSharedMaterials();
-        /// 名前鍵で共有 material を引く。 鍵は "player" / "water" / "shadow"。 未登録は nullptr
+        /// 名前キーで共有 material を引く。 キーは "player" / "water" / "shadow"。 未登録は nullptr
         [[nodiscard]] NS::Graphics::Material* SharedMaterial(std::string_view name) const noexcept;
 
-        /// path 鍵 leaf を引き reload-in-place する。 現状 Shader のみ。 成功で true、 未キャッシュ / 失敗で false
+        /// path キー leaf を引き reload-in-place する。 現状 Shader のみ。 成功で true、 未キャッシュ / 失敗で false
         [[nodiscard]] bool Reload(const std::filesystem::path& path);
 
         /// キャッシュ済み全 Shader を reload-in-place する。 reload 成功本数を返す。 HLSL 編集の即時反映トリガ用
@@ -149,11 +149,11 @@ namespace NS::Object
         };
 
         std::filesystem::path m_baseDir; // 相対 path 解決の基準ディレクトリ
-        std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Shader>> m_shaders; // path 鍵の Shader キャッシュ
+        std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Shader>> m_shaders; // path キーの Shader キャッシュ
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Texture>>
-            m_textures; // path 鍵の Texture キャッシュ
+            m_textures; // path キーの Texture キャッシュ
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Mesh>>
-            m_meshes; // path 鍵の Mesh キャッシュ、 null は負キャッシュ
+            m_meshes; // path キーの Mesh キャッシュ、 null は負キャッシュ
         std::map<std::string, std::unique_ptr<NS::Graphics::StaticMesh>> m_builtins;      // path 無し、 leaf と別容器
         std::map<std::filesystem::path, MaterialRecord> m_materials;                      // .mat composite
         std::map<std::string, std::unique_ptr<NS::Graphics::Material>> m_sharedMaterials; // 手続き共有 material
@@ -163,6 +163,6 @@ namespace NS::Object
             m_animationSources; // アニメ専用 glTF、 null は負キャッシュ
         std::map<std::pair<std::filesystem::path, std::filesystem::path>,
                  std::unique_ptr<std::vector<NS::Graphics::AnimationClip>>>
-            m_boundClips; // clip と model の path 組が鍵の結合済クリップ、 null は負キャッシュ
+            m_boundClips; // clip と model の path 組がキーの結合済クリップ、 null は負キャッシュ
     };
 } // namespace NS::Object

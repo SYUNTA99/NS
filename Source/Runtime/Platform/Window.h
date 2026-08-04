@@ -27,7 +27,7 @@ namespace NS::Platform
     };
 
     //! @brief OSウィンドウを管理するクラス。
-    //! @details 内部実装（OS固有のAPIなど）を隠蔽し、イベント処理や状態管理の窓口を提供する
+    //! @details 内部実装（OS固有のAPIなど）を隠蔽し、イベント処理や状態管理の入口を提供する
     class Window : public NS::Core::NonCopyable
     {
     public:

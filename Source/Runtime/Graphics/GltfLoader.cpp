@@ -163,7 +163,7 @@ namespace NS::Graphics
             // 頂点を world 変換して LH で積む
             // 頂点を world 変換して LH で積む
             geom.vertices.reserve(geom.vertices.size() + vertexCount);
-            // 頂点を積むついでに軸並行境界を育て、StaticMesh 側の二度目の全走査を省く
+            // 頂点を積むついでに軸並行境界を広げ、StaticMesh 側の二度目の全走査を省く
             NS::Math::Vector3 pmin{0.0f, 0.0f, 0.0f};
             NS::Math::Vector3 pmax{0.0f, 0.0f, 0.0f};
             for (cgltf_size i = 0; i < vertexCount; ++i)
@@ -521,7 +521,7 @@ namespace NS::Graphics
                 std::array<float, 4> weights{rawWeights[0], rawWeights[1], rawWeights[2], rawWeights[3]};
                 for (int k = 0; k < 4; ++k)
                 {
-                    // 重み 0 の枠は index を 0 に倒して GPU の範囲外参照を避ける
+                    // 重み 0 の枠は index を 0 にして GPU の範囲外参照を避ける
                     if (weights[k] == 0.0f)
                     {
                         joints[k] = 0u;

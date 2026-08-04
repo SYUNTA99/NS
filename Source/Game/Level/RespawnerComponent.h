@@ -5,7 +5,7 @@
 namespace NS::Game::Level
 {
     /// @brief 命が尽きた持ち主を出現位置へ戻す。プレイヤーに載せる
-    /// @details LateUpdate の判定が出そろった後、同じ tick 内で走行を頭からやり直す
+    /// @details LateUpdate の判定が出そろった後、同じ tick 内で走行を最初からやり直す
     /// 何で死んだかは知らない。リスタートへ演出を挟みたくなったらここに台本を足す
     class RespawnerComponent : public NS::Object::Component
     {
@@ -14,7 +14,7 @@ namespace NS::Game::Level
 
         void OnUpdate() override;
 
-        /// 走行を頭からやり直す。出現位置は凍結スナップショットからその都度読む
+        /// 走行を最初からやり直す。出現位置は凍結スナップショットからその都度読む
         /// クリア台本の finisher も全黒の裏でこれを呼ぶ
         void RestartRun() noexcept;
 

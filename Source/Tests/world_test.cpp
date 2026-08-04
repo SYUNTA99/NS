@@ -148,7 +148,7 @@ TEST(WorldTest, InactiveObjectHasNoCollision)
 
     ASSERT_EQ(world.ObjectCount(), std::size_t{1});
     EXPECT_FALSE(world.ObjectAt(0)->IsActiveSelf());
-    // 札の下りた配置物はすり抜ける
+    // active を切った配置物はすり抜ける
     EXPECT_TRUE(physics.IsEmpty());
 }
 
@@ -458,7 +458,7 @@ TEST(WorldTest, BandUpdatesIncludeTransientObjects)
     EXPECT_EQ(order, (std::vector<int>{1}));
 }
 
-// 札の下りた component は帯の横断更新でも呼ばれない
+// active を切った component は帯の横断更新でも呼ばれない
 TEST(WorldTest, BandUpdatesSkipInactiveComponents)
 {
     World world;
@@ -472,7 +472,7 @@ TEST(WorldTest, BandUpdatesSkipInactiveComponents)
     EXPECT_TRUE(order.empty());
 }
 
-// 通常プレイが通る一括更新。 札の下りた component はここでも回らない
+// 通常プレイが通る一括更新。 active を切った component はここでも回らない
 TEST(WorldTest, UpdateAllObjectsSkipsInactiveComponent)
 {
     World world;
@@ -487,7 +487,7 @@ TEST(WorldTest, UpdateAllObjectsSkipsInactiveComponent)
     EXPECT_EQ(counter->Count(), 1);
 }
 
-// 持ち主の札を下ろすと配下 component が一括更新から外れ、 戻せばまた回る
+// 持ち主の active を切ると配下 component が一括更新から外れ、 戻せばまた回る
 TEST(WorldTest, UpdateAllObjectsFollowsOwnerActiveFlag)
 {
     World world;

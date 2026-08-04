@@ -49,7 +49,7 @@ namespace NS::Object
 
         [[nodiscard]] const std::vector<Component*>& Components() const noexcept { return m_components; }
 
-        /// Component 列から型 T の最初の一致を返す。無ければ nullptr。具象型を知らず兄弟 Component を引く読み窓口
+        /// Component 列から型 T の最初の一致を返す。無ければ nullptr。具象型を知らずに同じ object の Component を引く読み取り経路
         /// 反射鎖の照合で一致を見るため T は反射宣言を持つこと。未宣言型はここがコンパイルエラーになり、
         /// 実行時に静かに見つからない事故を塞ぐ。派生型は基底型の検索にも一致する。読み取りのみで所有・順序には触れない
         template <class T> [[nodiscard]] T* FindComponent() noexcept
@@ -93,14 +93,14 @@ namespace NS::Object
         /// 即時破棄ではなく、次フレーム以降 Scene 側で安全に回収される
         void Destroy() noexcept { m_alive = false; }
 
-        /// この配置物自身に付いた札。親の状態は含まない
+        /// この配置物自身の active 値。親の状態は含まない
         [[nodiscard]] bool IsActiveSelf() const noexcept { return m_activeSelf; }
 
         /// @brief 自分と全ての祖先が生きているか
         /// @details Component::IsActive がこれを見るので、偽の間は配下 Component が更新も描画も当たりも止まる
         [[nodiscard]] bool IsActiveInHierarchy() const noexcept;
 
-        /// 札を切り替える。子の札は触らないので、親を戻せば子も一緒に戻る
+        /// active を切り替える。子の値は触らないので、親を戻せば子も一緒に戻る
         void SetActive(bool active) noexcept { m_activeSelf = active; }
 
         /// 親の中での並び順。ヒエラルキーの表示順で、組み立てはこの順に並べる
@@ -125,7 +125,7 @@ namespace NS::Object
             return raw;
         }
 
-        Transform* m_transform = nullptr;                          // TransformComponent が持つ実体、器が必ず 1 つ積む
+        Transform* m_transform = nullptr;                          // TransformComponent が持つ実体、GameObject が必ず 1 つ積む
         std::vector<Component*> m_components;                      // priority 昇順の tick 列、 非所有
         std::vector<std::unique_ptr<Component>> m_ownedComponents; // 所有権保持用。 tick 順序は m_components が担う
         std::vector<GameObject*> m_children;                       // 子 GameObject、 非所有

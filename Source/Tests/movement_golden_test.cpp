@@ -239,7 +239,7 @@ namespace
         return trajectory;
     }
 
-    // 基準ハッシュ。手触りに触る改修の前後で軌跡の bit 一致を守る門番で、
+    // 基準ハッシュ。手触りに触る改修の前後で軌跡の bit 一致を検証する物で、
     // 意図して手触りを変えた時だけ実測値で更新する
     constexpr uint64_t k_FlatWalkGolden = 0x4FA4FA4FCFB0F728ULL;
     constexpr uint64_t k_SingleJumpGolden = 0xC15864A95E5EDFCDULL;

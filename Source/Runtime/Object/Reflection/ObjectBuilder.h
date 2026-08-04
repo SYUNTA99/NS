@@ -16,14 +16,14 @@ namespace NS::Object
     class GameObject;
 
     /// component 1 個の生成と値適用が済むたびに呼ばれる。 第 2 引数は {"type", "fields"} のコンポーネント 1 件で、
-    /// 資産解決など器へ載せた後の仕上げは呼出側が担う
+    /// 資産解決など GameObject へ載せた後の仕上げは呼出側が担う
     using ComponentBuiltFn = std::function<void(Component&, const nlohmann::json&)>;
 
-    /// object.components を obj へ適用する。 器の既存同型には値だけを写し、 無い型は登録簿で生成する
+    /// object.components を obj へ適用する。 GameObject の既存同型には値だけを写し、 無い型は登録一覧から生成する
     /// 同型を重ねたデータは上書きせず重ねた数だけ立て、 許可リスト外の型は読み飛ばす。 onBuilt は空でもよい
     void ApplyObjectComponents(GameObject& obj, const ObjectData& object, const ComponentBuiltFn& onBuilt);
 
-    /// object 1 件から配置物を組む唯一の汎用経路。 器は TypeRegistry の className で選び、
+    /// object 1 件から配置物を組む唯一の汎用経路。 GameObject の型は TypeRegistry の className で選び、
     /// components を適用し、 assets があれば各 component の ResolveAssets で参照を実体化する
     /// components が空の object は配置物でないため nullptr。 assets=nullptr (テスト等) は解決だけ跳ばす
     [[nodiscard]] std::unique_ptr<GameObject> BuildSceneObject(const ObjectData& object, AssetManager* assets);
@@ -34,7 +34,7 @@ namespace NS::Object
     [[nodiscard]] ObjectData MakeObjectData(const GameObject& obj);
 
     /// obj の全 component を反射で読み、 型名と全フィールド値を写した忠実な ObjectData を返す
-    /// 疎な MakeObjectData と違い既定と同値の欄も含めて丸ごと写す、 undo とプレイ↔編集防火壁の値退避に使う
+    /// 疎な MakeObjectData と違い既定と同値の欄も含めて丸ごと写す、 undo とプレイ中の変化を編集へ持ち込まないための値退避に使う
     /// 反射の無い component は型名を持てないため写らない。 復元は ApplyObjectComponents が担う
     [[nodiscard]] ObjectData CaptureObjectData(const GameObject& obj);
 

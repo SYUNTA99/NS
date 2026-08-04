@@ -486,7 +486,7 @@ namespace NS::Graphics
         if (FAILED(hr))
         {
             NS_LOG_ERROR(Graphics, "SwapChain::Present 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
-            // device 喪失は復帰不能。 以降の描画を止め、 毎フレームのログ洪水も防ぐ
+            // device 喪失は復帰不能。 以降の描画を止め、 毎フレームのログ連発も防ぐ
             if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
             {
                 m_valid = false;

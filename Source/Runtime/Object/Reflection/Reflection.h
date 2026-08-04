@@ -126,7 +126,7 @@ namespace NS::Object
                                static_cast<Self*>(c)->setterCall(*static_cast<const ValueType*>(in));                  \
                            }},
 
-/// フィールド宣言の終了。static な反射情報を組み立てて返し、仮想窓口はそこへ転送する
+/// フィールド宣言の終了。static な反射情報を組み立てて返し、仮想の GetReflection はそこへ転送する
 #define NS_REFLECT_END()                                                                                               \
     }                                                                                                                  \
     ;                                                                                                                  \
@@ -139,7 +139,7 @@ namespace NS::Object
         return StaticReflection();                                                                                     \
     }
 
-/// 値型用のフィールド宣言終了。Component を継承しない型向けに、仮想窓口 (GetReflection) を出さず静的窓口だけ生やす
+/// 値型用のフィールド宣言終了。Component を継承しない型向けに、仮想の GetReflection を出さず静的関数だけ定義する
 #define NS_REFLECT_END_VALUE()                                                                                         \
     }                                                                                                                  \
     ;                                                                                                                  \

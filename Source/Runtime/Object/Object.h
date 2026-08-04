@@ -43,7 +43,7 @@ namespace NS::Object
         std::string m_name;     // 表示名、空は未設定
     };
 
-    /// @brief Component へ永続 id を焼くための限定口。組み立て経路だけが使う
+    /// @brief Component へ永続 id を書くための専用経路。組み立て経路だけが使う
     /// @details 配置物の id は World が焼くので、こちらは Component 用
     struct ObjectIdAccess
     {

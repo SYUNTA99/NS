@@ -45,13 +45,13 @@ namespace NS::Object
         /// build 時に解決された実体 Mesh を返す。 未解決なら nullptr
         [[nodiscard]] const NS::Graphics::Mesh* GetMesh() const noexcept { return m_mesh; }
 
-        /// 描くメッシュの参照。 builtin 名または ContentRoot 配下の相対パス。 空 / 解決不可なら構築側が既定へ倒す
+        /// 描くメッシュの参照。 builtin 名または ContentRoot 配下の相対パス。 空 / 解決不可なら構築側が既定にする
         [[nodiscard]] const std::string& MeshRef() const noexcept { return m_meshRef; }
         /// build 時にこの文字列から mesh を解決する
         void SetMeshRef(std::string ref) noexcept { m_meshRef = std::move(ref); }
 
         /// 描画 material の参照。 player / water / shadow といった共有 material 名または .mat 相対パス
-        /// 空・解決不可は ResolveAssets が既定 material へ倒す
+        /// 空・解決不可は ResolveAssets が既定 material にする
         [[nodiscard]] const std::string& MaterialRef() const noexcept { return m_materialRef; }
         /// build 時にこの文字列から material を解決する
         void SetMaterialRef(std::string ref) noexcept { m_materialRef = std::move(ref); }
@@ -99,10 +99,10 @@ namespace NS::Object
         void OnEndPlay() override;
 
         /// meshRef / matRef の参照文字列から実体の Mesh / Material を引き当てる
-        /// 共有 material 名を先に引き、 外れたら .mat 相対パスとして読む。 解決不可は cube と既定 material へ倒す
+        /// 共有 material 名を先に引き、 外れたら .mat 相対パスとして読む。 解決不可は cube と既定 material にする
         void ResolveAssets(AssetManager& assets) override;
 
-        // lighting とは別系統の個体色 + 描く住み処
+        // lighting とは別系統の個体色 + 描画の登録先
         NS_REFLECT_BEGIN(MeshRendererComponent, Component)
         NS_REFLECT_FIELD(m_baseColor, "Base Color")
         NS_REFLECT_FIELD(m_meshRef, "Mesh")

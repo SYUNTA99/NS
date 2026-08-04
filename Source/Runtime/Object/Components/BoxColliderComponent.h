@@ -30,7 +30,7 @@ namespace NS::Object
         void SetLocalRotation(const NS::Math::Quaternion& rotation) noexcept;
         [[nodiscard]] NS::Math::Quaternion LocalRotation() const noexcept;
 
-        /// local 回転を pitch/yaw/roll の Euler 角 (度) で読み書きする Inspector 窓口。 内部は quaternion 保持
+        /// local 回転を pitch/yaw/roll の Euler 角 (度) で読み書きする Inspector 用アクセサ。 内部は quaternion 保持
         void SetRotationEulerDegrees(const NS::Math::Vector3& eulerDegrees) noexcept;
         [[nodiscard]] NS::Math::Vector3 RotationEulerDegrees() const noexcept;
 

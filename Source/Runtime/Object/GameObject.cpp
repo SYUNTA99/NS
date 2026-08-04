@@ -27,7 +27,7 @@ namespace NS::Object
 
     bool GameObject::IsActiveInHierarchy() const noexcept
     {
-        // 1 つでも札が下りていれば効かない。 循環は SetParent が作らせないので必ず root で止まる
+        // 1 つでも active が false なら効かない。 循環は SetParent が作らせないので必ず root で止まる
         for (const GameObject* node = this; node != nullptr; node = node->m_parent)
         {
             if (!node->m_activeSelf)

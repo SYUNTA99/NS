@@ -28,9 +28,9 @@ namespace NS::Editor
         std::string label;    // UI表示用のラベル
     };
 
-    //! @brief 型ごとの既定インスタンスを控える器
+    //! @brief 型ごとの既定インスタンスを控える置き場
     //! @details 反射欄の「既定と違う」印と戻すボタンが、 今の値と比べる相手として引く
-    //! 控えは 1 体の器へまとめて attach するだけで、 world に入らないので更新も描画も走らない
+    //! 控えは 1 体の GameObject へまとめて attach するだけで、 world に入らないので更新も描画も走らない
     class ComponentDefaults : public NS::Core::NonCopyable
     {
     public:

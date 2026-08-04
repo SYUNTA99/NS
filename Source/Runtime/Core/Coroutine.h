@@ -103,7 +103,7 @@ namespace NS::Core
         void await_resume() const noexcept {}
     };
 
-    /// @brief 台本の駆動役。所有する台本の待ちを進め、明けた物を再開する
+    /// @brief 台本の実行器。所有する台本の待ちを進め、明けた物を再開する
     /// @details いつ Tick するかは持ち主が決める。止めている間は全台本が止まる (pause はこれで効く)
     /// CancelAll は台本を途中のまま破棄する (フレーム内の破棄処理は走る)。破棄後の再開は無い
     class CoroutineRunner

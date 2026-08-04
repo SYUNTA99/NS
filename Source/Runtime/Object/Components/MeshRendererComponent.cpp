@@ -26,7 +26,7 @@ namespace NS::Object
     void MeshRendererComponent::ResolveAssets(AssetManager& assets)
     {
         // 共有 material 名 (player / water / shadow) を先に引き、 外れたら .mat 相対パスとして読む
-        // 空・トラバーサル・読込失敗は既定の共有 player material へ倒し、 描けない状態を作らない
+        // 空・トラバーサル・読込失敗は既定の共有 player material にして、 描けない状態を作らない
         NS::Graphics::Material* material = assets.SharedMaterial(m_materialRef);
         if (material == nullptr)
         {

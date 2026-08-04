@@ -205,7 +205,7 @@ namespace NS::Editor
 
                 ImGui::PushID(static_cast<int>(k));
 
-                // プレイヤーの印の入力 component は下ろすと player でなくなるので札を触らせない
+                // プレイヤーの目印になる入力 component は無効にすると player でなくなるので active を触らせない
                 const bool lockedComponent = (typeName == "PlayerInputComponent");
                 bool enabled = NS::Object::ComponentEntryEnabled(obj.components[k]);
                 ImGui::BeginDisabled(lockedComponent);

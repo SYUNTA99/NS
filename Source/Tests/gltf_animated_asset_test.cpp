@@ -87,7 +87,7 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
     EXPECT_GT(bindExtent.y, bindExtent.x) << "bind ポーズで Y が最長でない (寝ている可能性)";
     EXPECT_GT(bindExtent.y, bindExtent.z) << "bind ポーズで Y が最長でない (寝ている可能性)";
 
-    // 骨に node 名が入っている (リターゲットの対応づけ鍵)
+    // 骨に node 名が入っている (リターゲットの対応づけキー)
     std::size_t namedBones = 0;
     for (const NS::Graphics::Bone& bone : data.skeleton.Bones())
         if (!bone.name.empty())

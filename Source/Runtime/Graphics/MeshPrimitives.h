@@ -12,7 +12,7 @@ namespace NS::Graphics
     {
         std::vector<StaticVertex> vertices; // 頂点データ
         std::vector<std::uint32_t> indices; // index データ
-        NS::Math::AABB bounds{};            // 頂点構築時に育てた軸並行境界
+        NS::Math::AABB bounds{};            // 頂点構築時に広げた軸並行境界
         bool hasBounds = false;             // 有効なら StaticMesh がこれを使い、無ければ頂点から算出
     };
 
