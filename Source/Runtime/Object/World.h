@@ -86,7 +86,7 @@ namespace NS::Object
         void UpdateObjects(int firstPriority, int lastPriority = std::numeric_limits<int>::max());
 
         /// 全配置物の Component を priority の昇順で一括で回し、 最後に SnapshotObjects で補間の帳尻を合わせる
-        /// 並びの登録簿は別に持たない。 各 component が ctor で名乗る priority が並びの唯一の真実
+        /// 並びの登録簿は別に持たない。 各 component がコンストラクタで名乗る priority が並びの唯一の真実
         void UpdateAllObjects();
 
         /// 全配置物の Root を Snapshot する (previous を current へ揃える)

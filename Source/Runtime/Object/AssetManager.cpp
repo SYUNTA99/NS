@@ -150,7 +150,7 @@ namespace NS::Object
 
     NS::Graphics::Shader* AssetManager::GetOrLoadShader(const std::filesystem::path& path)
     {
-        // 区切り文字や . / .. の表記揺れで同一ファイルが別キー扱いにならないよう正規化してから dedupe する
+        // 区切り文字や . / .. の表記揺れで同一ファイルが別キー扱いにならないよう正規化してから重複をまとめる
         const std::filesystem::path key = path.lexically_normal();
         if (const auto it = m_shaders.find(key); it != m_shaders.end())
             return it->second.get();

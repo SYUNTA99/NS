@@ -132,7 +132,7 @@ TEST(SweptTriangleTest, FloorVsWallClassification)
         Vector3 normal{};
         const bool hit = SweptCapsuleVsTriangle(c, motion, tri, toi, normal);
         EXPECT_TRUE(hit);
-        // 45 度は cos(45) ≈ 0.707、 0.7 を超える → walkable floor
+        // 45 度は cos(45) ≈ 0.707、 0.7 を超える → 歩ける床
         EXPECT_GT(normal.y, 0.7f);
     }
     {

@@ -22,10 +22,10 @@ TEST(PlayerTest, ConstructsWithDefaultComposition)
 TEST(PlayerTest, DefaultComponentsResolveByType)
 {
     Player player{};
-    // priority 昇順 + 同 priority 内は declaration 順:
+    // priority 昇順 + 同 priority 内は宣言順:
     //   [0] input     (Input,      0)
     //   [1] transform (Update,   200) — 器のコンストラクタが最初に積む
-    //   [2] mesh      (Update,   200) — ctor で movement より前に登録
+    //   [2] mesh      (Update,   200) — コンストラクタで movement より前に登録
     //   [3] movement  (Update,   200)
     //   [4] health    (Update,   200) — movement の後に登録
     //   [5] shadow    (Update,   200) — 同 priority 内で最後に登録

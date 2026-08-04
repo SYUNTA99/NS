@@ -47,7 +47,7 @@ namespace NS::Object
     /// TransformComponent の反射型名。 transform エントリの照合に使う共有定数
     inline constexpr std::string_view k_TransformTypeName = "TransformComponent";
 
-    /// faithful capture が root 回転を exact quaternion で運ぶ控え欄。 保存時は落として Euler だけ残す
+    /// 忠実な捕捉が root 回転を厳密なクォータニオンで運ぶ控え欄。 保存時は落として Euler だけ残す
     inline constexpr std::string_view k_RotationQuatFieldName = "Rotation (quat)";
 
     /// ObjectData の transform を読み書きする唯一の窓口。 実体は components 内の TransformComponent エントリで、

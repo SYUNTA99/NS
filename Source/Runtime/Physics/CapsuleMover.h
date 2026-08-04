@@ -35,7 +35,7 @@ namespace NS::Physics
         CapsuleMover() noexcept = default;
 
         /// 1 フレーム分の物理を進めて新しい状態を返す
-        /// 結果を毎回同じにするため `NS::Core::FrameTimer::DeltaSeconds()` 等の可変 delta は使わない
+        /// 結果を毎回同じにするため `NS::Core::FrameTimer::DeltaSeconds()` 等の可変フレーム時間は使わない
         [[nodiscard]] CapsuleMoverResult Update(const CapsuleMoverInput& input) noexcept;
     };
 } // namespace NS::Physics

@@ -46,7 +46,7 @@ namespace
     }
 } // namespace
 
-// 登録カバレッジの一覧。自己登録 TU がリンカに落とされたり登録マクロが消えたりすると、
+// 登録カバレッジの一覧。自己登録の翻訳単位がリンカに落とされたり登録マクロが消えたりすると、
 // この型の生成が失敗して露見する
 TEST(TypeRegistryTest, CreatesEachRegisteredType)
 {

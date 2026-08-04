@@ -228,7 +228,7 @@ namespace NS::Object
         bool m_subsystemsInitialized = false; // CreateSceneSubsystems の二度目を何もしないための印
 
         /// 衝突 world。当たりの有る scene だけが build で満たし、無ければ空のまま
-        /// 借用する CMC は先に死ぬので、これは常に借用元より後まで生存する
+        /// 借用する CharacterMovementComponent は先に死ぬので、これは常に借用元より後まで生存する
         NS::Physics::PhysicsWorld m_physicsWorld;
 
         NS::Object::World m_world;     // ランタイムワールド

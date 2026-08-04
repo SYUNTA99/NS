@@ -99,7 +99,7 @@ namespace NS::Object
     {
         WriteTransformVec3(object, k_RotationFieldName, NS::Math::QuaternionToEulerDegrees(rotation));
 
-        // exact 控えが載っている間は組み立てでそちらが勝つので、置き去りにすると回転が戻る
+        // 厳密回転の控えが載っている間は組み立てでそちらが勝つので、置き去りにすると回転が戻る
         nlohmann::json* transform = FindComponentEntry(object, k_TransformTypeName);
         if (transform == nullptr)
             return;

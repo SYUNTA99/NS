@@ -14,7 +14,7 @@ namespace NS::Object
     /// @brief Player 移動の細分ラベル
     /// @details 実行の単位は States のデータで組む状態機械 (Locomotion / LedgeHang / LedgeMantle) で、
     /// この enum は Locomotion 内の歩き / ジャンプ / 落下まで割った読み取り用の細分。判定や演出が読む
-    /// LedgeHanging / LedgeMantling の掴まり中は CapsuleMover を bypass して position を直更新する
+    /// LedgeHanging / LedgeMantling の掴まり中は CapsuleMover を通さず position を直更新する
     enum class MovementState
     {
         Walking,

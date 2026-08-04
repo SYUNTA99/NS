@@ -619,7 +619,7 @@ void LevelEditorController::Render()
     if (app == nullptr)
         return;
 
-    // Debug provenance パネルの入力を毎フレーム退避する。出所は has_value の突き合わせで逆算するので
+    // 出所デバッグパネルの入力を毎フレーム退避する。出所は has_value の突き合わせで逆算するので
     // Resolve のホットパスに追跡を入れず、scene が控えた解決値と代表 object override をそのまま保持する
     m_debugResolvedSettings = m_scene->LastResolvedSettings();
     m_debugSceneOverride = m_scene->LastSceneOverride();
@@ -1652,7 +1652,7 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
     if (loaded.material == nullptr)
         return false;
 
-    // .mat パスは ContentRoot 相対で持つ。材質の authored 値は matRef なので live component へ焼く
+    // .mat パスは ContentRoot 相対で持つ。材質の正データは matRef なので live component へ焼く
     const auto exeDir = NS::Core::FileSystem::ContentRoot();
     const std::filesystem::path relative = matPath.lexically_relative(exeDir);
     const std::string stored = [&]() -> std::string {

@@ -132,7 +132,7 @@ void Editor::OnRender()
     // ImGui の 1 フレームを Layer が囲う。Renderer::BeginFrame 済の RT へ EndFrame の Render が描く
     m_imgui->BeginFrame();
 
-    // ギズモ / palette / 編集ビジュアルといった編集用の上乗せ描画と debug provenance 退避
+    // ギズモ / palette / 編集ビジュアルといった編集用の上乗せ描画と 出所デバッグ入力の退避
     editor.Render();
 
     // 終了確認は UI 非表示やプレイ中でも必ず出すため m_uiVisible のゲート外で描く
@@ -188,7 +188,7 @@ void Editor::OnRender()
         }
         else
         {
-            // 全面化中はドックも他パネルも submit せず、対象 1 枚だけをワークエリア全面へ描く
+            // 全面化中はドックも他パネルも発行せず、対象 1 枚だけをワークエリア全面へ描く
             RenderMaximizedPanel(editor, toolbarHeight);
         }
 

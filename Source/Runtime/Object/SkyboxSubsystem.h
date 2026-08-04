@@ -16,7 +16,7 @@ namespace NS::Object
 {
     class Scene;
 
-    /// @brief skybox 装置を所有するシーン service
+    /// @brief skybox 装置を所有するシーン Subsystem
     /// @details 装置は Initialize で生成し、device 不在なら持たないまま各操作が何もしない
     /// 照明のシーン上書きは Scene が配置された平行光から直接組むので、ここは空の描画だけを担う
     /// Scene が直接所有する

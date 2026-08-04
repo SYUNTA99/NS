@@ -153,7 +153,7 @@ namespace NS::Object
                 frameInput.panXPixels = static_cast<float>(mouse.GetDeltaX());
                 frameInput.panYPixels = static_cast<float>(mouse.GetDeltaY());
             }
-            // GetWheelDelta は WHEEL_DELTA=120 単位なので /120 で 1 notch=1.0 に正規化
+            // GetWheelDelta は WHEEL_DELTA=120 単位なので /120 で 1 刻み=1.0 に正規化
             frameInput.wheelNotches = static_cast<float>(mouse.GetWheelDelta()) / 120.0f;
         }
 

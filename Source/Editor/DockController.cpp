@@ -61,7 +61,7 @@ namespace NS::Editor
             ImGui::DockBuilderDockWindow(k_PanelScene, centerId);
             ImGui::DockBuilderDockWindow(k_PanelGame, centerId);
 
-            // ドック順や submit 順に前面タブを委ねると Edit Mode / RenderSettings が出てくるので明示する
+            // ドック順や発行順に前面タブを委ねると Edit Mode / RenderSettings が出てくるので明示する
             SelectDefaultTab(leftId, k_PanelHierarchy);
             SelectDefaultTab(rightId, k_PanelInspector);
             SelectDefaultTab(bottomId, k_PanelAssets);
@@ -133,7 +133,7 @@ namespace NS::Editor
         {
             // ini に保存済みのユーザー配置が無い時だけ既定レイアウトを組む
             BuildDefaultDockLayout(dockspaceId, hostPos, hostSize);
-            // このフレームは組むだけ。焦点を渡すのは全パネルが submit された次のフレーム
+            // このフレームは組むだけ。焦点を渡すのは全パネルが発行された次のフレーム
             m_dockFocusPending = 2;
         }
         ImGui::DockSpace(dockspaceId, ImVec2{0.0f, 0.0f}, ImGuiDockNodeFlags_None);
@@ -229,7 +229,7 @@ namespace NS::Editor
     {
 #if NS_EDITOR_ENABLED
         // レイアウトを組んだフレームに焦点を渡しても DockBuilder の既定選択に負けるので、
-        // 全パネルが 1 度 submit された次のフレームで前面タブを確定させる
+        // 全パネルが 1 度発行された次のフレームで前面タブを確定させる
         if (m_dockFocusPending > 0)
         {
             --m_dockFocusPending;

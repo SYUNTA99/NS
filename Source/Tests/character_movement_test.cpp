@@ -23,7 +23,7 @@ namespace
             mov.OnUpdate();
     }
 
-    /// owner と world に床 1 枚を仕込み、 接地するまで step した CMC を返す。 接地 / コヨーテ経路の
+    /// owner と world に床 1 枚を仕込み、 接地するまで step した CharacterMovementComponent を返す。 接地 / コヨーテ経路の
     /// ジャンプを試す土台。 物理世界なしだと永遠に空中なので、 接地ジャンプの検証にはこれで地面を与える
     CharacterMovementComponent& MakeGrounded(GameObject& owner, NS::Physics::PhysicsWorld& world)
     {

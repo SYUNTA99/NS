@@ -8,7 +8,7 @@ namespace NS::Editor
     class ConsolePanel : public NS::Core::NonCopyable
     {
     public:
-        //! FPS と delta / fixed step を 1 枚描く
+        //! FPS とフレーム時間 / fixed step を 1 枚描く
         void Render() noexcept;
     };
 } // namespace NS::Editor

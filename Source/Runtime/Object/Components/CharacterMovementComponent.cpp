@@ -98,7 +98,7 @@ namespace NS::Object
     };
     NS_STATE(LocomotionState, CharacterMovementComponent)
 
-    /// 縁ぶら下がり。controller を bypass して position を直更新する
+    /// 縁ぶら下がり。controller を通さず position を直更新する
     class LedgeHangState final : public State<CharacterMovementComponent>
     {
     public:
@@ -333,7 +333,7 @@ namespace NS::Object
         if (m_isGrounded)
             m_lastGroundedPosition = out.position;
 
-        // Walking / Jumping / Falling のサブ分類は high-level state の参考にする。 controller bypass はしない
+        // Walking / Jumping / Falling のサブ分類は 上位状態の参考にする。 controller は通したまま
         if (m_isGrounded)
             m_state = MovementState::Walking;
         else if (m_velocity.y > 0.0f)

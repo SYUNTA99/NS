@@ -15,7 +15,7 @@ namespace
     constexpr float k_Skin = 0.01f;
     // 着地直後に player.y が跳ねて grounded がちらつくのを抑えるため raycast をこの分だけ下へ延ばす
     constexpr float k_GroundProbeDistance = 0.2f;
-    // walkable 床とみなす normal.y の閾値。cos 45 ≈ 0.707、45° 含むため 0.7
+    // 歩ける床とみなす normal.y の閾値。cos 45 ≈ 0.707、45° 含むため 0.7
     constexpr float k_FloorNormalY = 0.7f;
 } // namespace
 

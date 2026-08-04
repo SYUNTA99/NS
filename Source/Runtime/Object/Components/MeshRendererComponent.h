@@ -65,7 +65,7 @@ namespace NS::Object
             return m_objectOverride;
         }
 
-        /// skinned のボーンパレット等、オブジェクト単位の追加 VS 定数を差す。sibling component が OnStart で配線する
+        /// skinned のボーンパレット等、オブジェクト単位の追加 VS 定数を差す。同じ object 上の別 component が OnStart で配線する
         /// cpuData 非 null なら描画側が毎描画 buffer へ upload してから bind する
         void SetPerObjectVsConstant(const NS::Graphics::Buffer* cb,
                                     const void* cpuData,
@@ -118,7 +118,7 @@ namespace NS::Object
         std::string m_materialRef{};
         NS::Graphics::RenderSettingsOverride m_objectOverride{}; // 個体段の lighting 上書き
 
-        // オブジェクト単位の追加 VS 定数 (skinned のボーンパレット)。sibling が SetPerObjectVsConstant で差す
+        // オブジェクト単位の追加 VS 定数 (skinned のボーンパレット)。同じ object 上の別 component が SetPerObjectVsConstant で差す
         const NS::Graphics::Buffer* m_perObjectVsCb = nullptr;
         const void* m_perObjectVsData = nullptr;
         std::size_t m_perObjectVsSize = 0;

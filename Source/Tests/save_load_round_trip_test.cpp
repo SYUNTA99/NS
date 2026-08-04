@@ -148,7 +148,7 @@ TEST(SaveLoadRoundTrip, ObjectParentSurvivesJsonRoundTrip)
     EXPECT_NE(src.ComputeCrc32(), parentedCrc);
 }
 
-// 正準 JSON は object キーが辞書順・float が shortest round-trip なので、 同一データの 2 回保存は
+// 正準 JSON は object キーが辞書順・float が最短往復表現なので、 同一データの 2 回保存は
 // バイト一致する。 これがレベル差分の決定性 (git diff の安定) を担保する
 TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
 {
@@ -194,7 +194,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     EXPECT_TRUE(dst.objects.empty());
 }
 
-// object 数が上限を超えるレベルは保存段でクラッシュせず false を返す (memory exhaustion の DoS 防御)
+// object 数が上限を超えるレベルは保存段でクラッシュせず false を返す (メモリ枯渇による DoS の防御)
 TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
 {
     EditorNs::EnsureScenesDirectoryExists();
@@ -207,7 +207,7 @@ TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
     EXPECT_FALSE(SceneNs::SaveSceneToJsonFile(huge, *path));
 }
 
-// 型名 + 反射フィールド値 (全 5 種の値) を持つコンポ一覧が save→load で復元される (full SSOT の往復)
+// 型名 + 反射フィールド値 (全 5 種の値) を持つコンポ一覧が save→load で復元される (全コンポ一覧を持つ形式の往復)
 // 並びは正準化 (名前昇順) されるため等価判定は CRC ではなく正準 JSON の一致で行う
 TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 {
@@ -273,7 +273,7 @@ TEST(SaveLoadRoundTrip, BuildLevelPathRejectsTraversal)
     EXPECT_TRUE(EditorNs::BuildLevelPath("a/b").has_value());
 }
 
-// 統一配置物 (ObjectData) の transform と className が round-trip で完全復元できることを検証する
+// 統一配置物 (ObjectData) の transform と className が 保存・再読込の往復で完全復元できることを検証する
 TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
 {
     EditorNs::EnsureScenesDirectoryExists();

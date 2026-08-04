@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <optional>
 
-// live 実体を唯一の authored 表現として編集するための、 objectId 単位の捕捉・適用の窓口
+// live 実体を唯一の正データとして編集するための、 objectId 単位の捕捉・適用の窓口
 // undo コマンドはこの抽象越しに 1 体の before/after スナップショットを往復させる
 
 namespace NS::Object

@@ -26,7 +26,7 @@ namespace NS::Object
     /// @details GameObject::AddComponent<T>() で生成され、 GameObject が unique_ptr で寿命を所有する
     /// Component 自身は所有者 GameObject を生参照する。 owner は生成後に GameObject が注入する
     /// 兄弟 Component への参照は OnStart で Owner()->FindComponent<T>() により解決する
-    /// scene の service は OnStart で Owner()->OwningScene() 経由で借用する
+    /// scene の Subsystem は OnStart で Owner()->OwningScene() 経由で借用する
     /// ライフサイクル:
     ///   - OnStart() — Scene attach 直後に 1 回
     ///   - OnUpdate() — fixed step 内で毎回。 `IsActive()==false` なら skip する

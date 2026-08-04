@@ -17,7 +17,7 @@ namespace NS::Object
         /// 保存形式のバージョン。 形式を変えたら上げ、 読込は一致のみ受け付ける
         constexpr int k_FormatVersion = 2;
 
-        /// 読込時の上限。 巨大 size / 要素数による memory exhaustion を防ぐ
+        /// 読込時の上限。 巨大 size / 要素数による メモリ枯渇を防ぐ
         constexpr std::size_t k_MaxSceneFileBytes = 16u * 1024u * 1024u;
         constexpr std::size_t k_MaxObjectCount = 100'000u;
 
@@ -83,7 +83,7 @@ namespace NS::Object
                 out["active"] = false;
             // components はメモリ上も保存形式と同じ {type, fields} の JSON 配列なのでそのまま書く
             out["components"] = object.components;
-            // メモリ上は exact quaternion を控えるが、 ファイルは version 2 の Euler 表現だけにして byte 安定を保つ
+            // メモリ上は厳密なクォータニオンを控えるが、 ファイルは version 2 の Euler 表現だけにして byte 安定を保つ
             StripRotationQuatField(out["components"]);
             return out;
         }

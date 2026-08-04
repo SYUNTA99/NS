@@ -57,7 +57,7 @@ protected:
     void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
-// 同一 path は dedupe され同一の非 null インスタンスが返る
+// 同一 path は共有され同一の非 null インスタンスが返る
 TEST_F(AssetManagerTest, SamePathReturnsSamePointer)
 {
     Window window(MakeWindowDesc("ns_am_dedup"));
@@ -141,7 +141,7 @@ TEST_F(AssetManagerTest, ReloadMissReturnsFalse)
     EXPECT_FALSE(am.Reload("C:/nonexistent/__ns_am_missing.vs.hlsl"));
 }
 
-// .mat JSON 解析 (deviceless): 全フィールド
+// .mat JSON 解析 (device 無し): 全フィールド
 TEST(AssetManagerParseTest, FullValidJsonParsesAllFields)
 {
     const std::string json = R"({

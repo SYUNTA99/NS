@@ -376,7 +376,7 @@ namespace NS::Object
     void Scene::DeinitSceneSubsystems()
     {
         // 解放フックだけ回し、本体の破棄は scene と共に行う
-        // CMC 等の借用元より後に死ぬ順序はメンバの宣言順が保つ
+        // CharacterMovementComponent 等の借用元より後に死ぬ順序はメンバの宣言順が保つ
         m_skyboxSubsystem.Deinitialize();
         m_cameraSubsystem.Deinitialize();
         m_subsystemsInitialized = false;

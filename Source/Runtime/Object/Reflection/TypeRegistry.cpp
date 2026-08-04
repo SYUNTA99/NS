@@ -13,7 +13,7 @@ namespace NS::Object
 {
     TypeRegistry& TypeRegistry::Get() noexcept
     {
-        // 関数内 static で初期化順を確定させ、他 TU の静的登録より先に器を用意する
+        // 関数内 static で初期化順を確定させ、他の翻訳単位の静的登録より先に器を用意する
         static TypeRegistry instance;
         return instance;
     }

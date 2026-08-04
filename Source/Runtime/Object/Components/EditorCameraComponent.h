@@ -101,8 +101,8 @@ namespace NS::Object
 
         float m_mouseSensOrbit = 0.003f;
         float m_mouseSensPan = 0.02f;
-        // 1 wheel notch あたりの zoomDelta 倍率。 ApplyZoom が log scale なので
-        // 1.0 で 1 notch = 10% 距離変化、 2.0 で 19%、 0.5 で 5% と直感的に効く
+        // ホイール 1 刻みあたりの zoomDelta 倍率。 ApplyZoom が log scale なので
+        // 1.0 で 1 刻み = 10% 距離変化、 2.0 で 19%、 0.5 で 5% と直感的に効く
         float m_mouseSensZoom = 1.0f;
         float m_padSensOrbit = 2.5f;
         float m_padSensPan = 8.0f;

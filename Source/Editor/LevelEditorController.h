@@ -52,7 +52,7 @@ public:
     //! fixed step 更新。編集中は free-fly カメラ / ギズモ / EditorMode を回す。プレイ中は何もしない
     void Tick();
 
-    //! ギズモ / palette / 編集ビジュアルといった render フレームの上乗せ描画と debug provenance 退避
+    //! ギズモ / palette / 編集ビジュアルといった render フレームの上乗せ描画と出所デバッグ入力の退避
     void Render();
 
     //! scene 破棄の前に呼ぶ。ギズモ選択解除と free-fly カメラの後始末

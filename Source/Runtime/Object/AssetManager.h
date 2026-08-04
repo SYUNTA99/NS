@@ -36,7 +36,7 @@ namespace NS::Object
     /// 空文字・トラバーサル・読込失敗は nullptr
     [[nodiscard]] NS::Graphics::Mesh* ResolveMeshFromRef(AssetManager& assets, const std::string& meshRef);
 
-    /// .mat の JSON 解析結果。 GPU 非依存なので deviceless でテストできる
+    /// .mat の JSON 解析結果。 GPU 非依存なので device 無しでテストできる
     struct MaterialFileDesc
     {
         std::filesystem::path vertexShader;
@@ -71,7 +71,7 @@ namespace NS::Object
         bool valid = false;
     };
 
-    /// アプリ寿命でアセットを dedupe 所有する単一キャッシュ。 leaf は path 鍵、 組み込みは名前鍵
+    /// アプリ寿命でアセットを重複なく所有する単一キャッシュ。 leaf は path 鍵、 組み込みは名前鍵
     /// Material 内蔵 CB は MeshRenderer が流す FrameCB に合わせるため本クラスは Scene 層に置く
     class AssetManager : public NS::Core::NonCopyable
     {
@@ -80,26 +80,26 @@ namespace NS::Object
         explicit AssetManager(std::filesystem::path baseDir) noexcept;
         ~AssetManager();
 
-        /// path 鍵で Shader を dedupe して返す。 同一 path は同一インスタンス。 失敗時も非 null で fallback を返す
+        /// path 鍵で Shader を共有して返す。 同一 path は同一インスタンス。 失敗時も非 null で fallback を返す
         [[nodiscard]] NS::Graphics::Shader* GetOrLoadShader(const std::filesystem::path& path);
-        /// path 鍵で Texture を dedupe して返す。 同一 path は同一インスタンス
+        /// path 鍵で Texture を共有して返す。 同一 path は同一インスタンス
         [[nodiscard]] NS::Graphics::Texture* GetOrLoadTexture(const std::filesystem::path& path);
-        /// path 鍵で Mesh を dedupe して返す。 読込 / GPU 生成に失敗した path も負キャッシュし、 以後は再読込せず
+        /// path 鍵で Mesh を共有して返す。 読込 / GPU 生成に失敗した path も負キャッシュし、 以後は再読込せず
         /// 即 nullptr を返す。 修正した file の再試行は Clear() でキャッシュを解いてから
         [[nodiscard]] NS::Graphics::Mesh* GetOrLoadMesh(const std::filesystem::path& path);
         /// 現在キャッシュしている mesh エントリ数。 読込失敗を負キャッシュした path も 1 件として数える
         [[nodiscard]] std::size_t MeshCacheSize() const noexcept;
 
-        /// skinned glTF を読み SkeletalMesh を path 鍵で dedupe 所有して返す。 skeleton / clips は
+        /// skinned glTF を読み SkeletalMesh を path 鍵で重複なく所有して返す。 skeleton / clips は
         /// キャッシュ record への参照で返し、 再生状態だけをインスタンス側が持つ。 失敗時は valid=false
         /// 相対 path は baseDir 基準
         [[nodiscard]] LoadedSkinnedModel GetOrLoadSkinnedModel(const std::filesystem::path& path);
 
-        /// アニメーション専用 glTF を path 鍵で dedupe 所有して返す。 読込失敗の path は負キャッシュし
+        /// アニメーション専用 glTF を path 鍵で重複なく所有して返す。 読込失敗の path は負キャッシュし
         /// 以後は再読込せず nullptr を返す。 修正した file の再試行は Clear() でキャッシュを解いてから
         [[nodiscard]] const NS::Graphics::AnimationSource* GetOrLoadAnimationSource(const std::filesystem::path& path);
 
-        /// clipPath のアニメーションを modelPath の骨格へ骨名で結合した結果を両 path の組で dedupe 所有して
+        /// clipPath のアニメーションを modelPath の骨格へ骨名で結合した結果を両 path の組で重複なく所有して
         /// 返す。 クリップ側の読込失敗は負キャッシュして nullptr、 model 側の失敗はキャッシュせず nullptr を
         /// 返し後で再試行できる。 結合できるトラックが 1 本も無ければ空の一覧を非 null で返す
         /// 同じ組で呼ぶ全インスタンスが結果を共有する
@@ -112,7 +112,7 @@ namespace NS::Object
         /// 名前鍵で組み込み StaticMesh を引く。 未登録は nullptr
         [[nodiscard]] NS::Graphics::StaticMesh* Builtin(std::string_view name) const noexcept;
 
-        /// matPath の .mat を読み込み composite Material を組んで返す。 shader / texture は内部 leaf を借りて dedupe
+        /// matPath の .mat を読み込み composite Material を組んで返す。 shader / texture は内部 leaf を借りて共有
         /// 既読なら cache を返す。 読込 / 解析失敗時は material=nullptr の LoadedMaterial を返す
         /// 相対 path は構築時の baseDir 基準で解決する
         [[nodiscard]] LoadedMaterial LoadMaterial(const std::filesystem::path& matPath);

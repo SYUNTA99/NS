@@ -24,7 +24,7 @@ namespace NS::Object
     /// 保存は ObjectData.className にクラス名を書き、読込は CreateRegisteredObject / CreateComponent がここから引く
     /// 登録マクロを書いた型しか生成できないので、信頼できない型名でも不正な生成はできない
     /// editor 専用コンポと抽象基底は登録しない
-    /// StaticLib では自己登録 TU がリンカに除去され得るため、実行体側で除去対策を要する
+    /// StaticLib では自己登録の翻訳単位がリンカに除去され得るため、実行体側で除去対策を要する
     class TypeRegistry
     {
     public:

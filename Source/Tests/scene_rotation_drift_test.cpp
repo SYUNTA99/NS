@@ -28,7 +28,7 @@ namespace
 } // namespace
 
 // 編集中の capture→rebuild 往復を重ねても root 回転が初回 rebuild 後の値と bit 一致する (ドリフトゼロ)
-// pitch を singularity 付近に置き、 Euler を経由する旧経路なら誤差が積もる条件で確かめる
+// pitch を特異点付近に置き、 Euler を経由する旧経路なら誤差が積もる条件で確かめる
 TEST(SceneRotationDrift, RepeatedCaptureRebuildKeepsExactQuaternion)
 {
     // device 無しでも汎用構築は落ちない。 参照は文字列のまま持つ
@@ -87,7 +87,7 @@ TEST(SceneRotationDrift, LegacyEulerFileLoadsToExpectedQuaternion)
     EXPECT_NEAR(q.w, 0.70710677f, 1e-5f);
 }
 
-// faithful 捕捉はメモリ上に quat 控えを乗せるが、 保存文字列には Euler だけが載り version は 2 のまま
+// 忠実な捕捉はメモリ上に quat 控えを乗せるが、 保存文字列には Euler だけが載り version は 2 のまま
 TEST(SceneRotationDrift, SaveDropsQuatFieldKeepsEuler)
 {
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
@@ -100,7 +100,7 @@ TEST(SceneRotationDrift, SaveDropsQuatFieldKeepsEuler)
     data.objects.push_back(SceneNs::CaptureObjectData(*live));
     data.objects[0].objectId = 1;
 
-    // メモリ上の控えには exact quaternion が乗っている
+    // メモリ上の控えには厳密なクォータニオンが乗っている
     const nlohmann::json* transform = SceneNs::FindComponentEntry(data.objects[0], "TransformComponent");
     ASSERT_NE(transform, nullptr);
     EXPECT_TRUE(SceneNs::HasField(*transform, "Rotation (quat)"));

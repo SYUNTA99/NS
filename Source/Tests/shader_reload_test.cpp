@@ -86,7 +86,7 @@ TEST_F(ShaderReloadTest, ReloadSucceedsForValidShader)
     EXPECT_TRUE(ps->IsValid());
 }
 
-// 再コンパイル失敗 (読込不可) では旧 GPU リソースを保持し false を返す (編集中の typo で画面を壊さない)
+// 再コンパイル失敗 (読込不可) では旧 GPU リソースを保持し false を返す (編集中の打ち間違いで画面を壊さない)
 TEST_F(ShaderReloadTest, ReloadFailureKeepsPreviousObject)
 {
     Window window(MakeWindowDesc("ns_reload_fail"));
