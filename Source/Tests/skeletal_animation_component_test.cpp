@@ -481,10 +481,10 @@ TEST_F(SkeletalAnimationMeshTest, BuildSceneObjectOverridesMeshRendererWithSkinn
 
     ObjectData data;
     nlohmann::json meshEntry = NS::Object::MakeComponentEntry("MeshRendererComponent");
-    NS::Object::SetField(meshEntry, "Mesh", std::string("cube"));
+    NS::Object::SetField(meshEntry, "メッシュ", std::string("cube"));
     data.components.push_back(meshEntry);
     nlohmann::json animEntry = NS::Object::MakeComponentEntry("SkeletalAnimationComponent");
-    NS::Object::SetField(animEntry, "Model", std::string("Assets/Models/CesiumMan.glb"));
+    NS::Object::SetField(animEntry, "モデル", std::string("Assets/Models/CesiumMan.glb"));
     data.components.push_back(animEntry);
 
     auto built = BuildSceneObject(data, &am);

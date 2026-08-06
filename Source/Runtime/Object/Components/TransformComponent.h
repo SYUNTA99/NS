@@ -33,9 +33,9 @@ namespace NS::Object
         [[nodiscard]] NS::Math::Vector3 Scale() const noexcept;
 
         NS_REFLECT_BEGIN(TransformComponent, Component)
-        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Position", Position(), SetPosition)
-        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Rotation (deg)", RotationEulerDegrees(), SetRotationEulerDegrees)
-        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Scale", Scale(), SetScale)
+        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "位置", Position(), SetPosition)
+        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "回転 (度)", RotationEulerDegrees(), SetRotationEulerDegrees)
+        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "スケール", Scale(), SetScale)
         NS_REFLECT_END()
 
     private:
@@ -48,7 +48,7 @@ namespace NS::Object
     inline constexpr std::string_view k_TransformTypeName = "TransformComponent";
 
     /// 忠実な捕捉が root 回転を厳密なクォータニオンで運ぶ控え欄。 保存時は落として Euler だけ残す
-    inline constexpr std::string_view k_RotationQuatFieldName = "Rotation (quat)";
+    inline constexpr std::string_view k_RotationQuatFieldName = "回転 (クォータニオン)";
 
     /// ObjectData の transform を読み書きする唯一の経路。 実体は components 内の TransformComponent エントリで、
     /// 回転は Euler 度で持つが、 ここでは quaternion で受け渡して消費側を無改変に保つ

@@ -51,9 +51,9 @@ namespace NS::Game::Level
         // 上面 y=-50 は従来の落下死の高さ。厚み 10m と 2km 四方は固定ステップの移動量では突き抜けられない
         NS::Object::ObjectData object{};
         nlohmann::json box = NS::Object::MakeComponentEntry("BoxColliderComponent");
-        NS::Object::SetField(box, "Half Extents", NS::Math::Vector3{1000.0f, 5.0f, 1000.0f});
+        NS::Object::SetField(box, "半径", NS::Math::Vector3{1000.0f, 5.0f, 1000.0f});
         // トリガにしないと落ちてきたプレイヤーが上面に着地してしまう
-        NS::Object::SetField(box, "Is Trigger", true);
+        NS::Object::SetField(box, "トリガー", true);
         object.components =
             nlohmann::json::array({std::move(box), NS::Object::MakeComponentEntry("KillZoneComponent")});
         NS::Object::SetObjectPosition(object, NS::Math::Vector3{0.0f, -55.0f, 0.0f});

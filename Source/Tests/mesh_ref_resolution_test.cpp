@@ -21,12 +21,12 @@ namespace
     using NS::Object::ResolveContentPath;
     using NS::Object::ResolveMeshFromRef;
 
-    // MeshRendererComponent 1 件分を作る。meshRef が空でなければ "Mesh" フィールドに入れる
+    // MeshRendererComponent 1 件分を作る。meshRef が空でなければ "メッシュ" フィールドに入れる
     nlohmann::json MakeMeshRenderer(const std::string& meshRef)
     {
         nlohmann::json c = NS::Object::MakeComponentEntry("MeshRendererComponent");
         if (!meshRef.empty())
-            NS::Object::SetField(c, "Mesh", meshRef);
+            NS::Object::SetField(c, "メッシュ", meshRef);
         return c;
     }
 

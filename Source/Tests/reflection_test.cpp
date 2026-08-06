@@ -30,7 +30,7 @@ namespace
         FakeReflectedComponent() noexcept : Component(0) {}
 
         NS_REFLECT_BEGIN(FakeReflectedComponent, Component)
-        NS_REFLECT_FIELD(m_speed, "Speed")
+        NS_REFLECT_FIELD(m_speed, "再生速度")
         NS_REFLECT_FIELD(m_count, "Count")
         NS_REFLECT_FIELD(m_enabled, "Enabled")
         NS_REFLECT_FIELD(m_offset, "Offset")
@@ -75,7 +75,7 @@ namespace
     struct FakeValueType
     {
         NS_REFLECT_BEGIN(FakeValueType, void)
-        NS_REFLECT_FIELD(speed, "Speed")
+        NS_REFLECT_FIELD(speed, "再生速度")
         NS_REFLECT_FIELD(name, "Name")
         NS_REFLECT_END_VALUE()
 
@@ -91,7 +91,7 @@ TEST(ReflectionTest, GetReflectionListsAllFields)
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 4u);
 
-    const FieldDesc* speed = FindField(info, "Speed");
+    const FieldDesc* speed = FindField(info, "再生速度");
     const FieldDesc* count = FindField(info, "Count");
     const FieldDesc* enabled = FindField(info, "Enabled");
     const FieldDesc* offset = FindField(info, "Offset");
@@ -106,13 +106,13 @@ TEST(ReflectionTest, GetReflectionListsAllFields)
 
     // 不在名と null info は nullptr
     EXPECT_EQ(FindField(info, "Nope"), nullptr);
-    EXPECT_EQ(FindField(nullptr, "Speed"), nullptr);
+    EXPECT_EQ(FindField(nullptr, "再生速度"), nullptr);
 }
 
 TEST(ReflectionTest, GetSetRoundTripsFloat)
 {
     FakeReflectedComponent comp;
-    const FieldDesc* f = FindField(comp.GetReflection(), "Speed");
+    const FieldDesc* f = FindField(comp.GetReflection(), "再生速度");
     ASSERT_NE(f, nullptr);
 
     float got = 0.0f;
@@ -192,24 +192,24 @@ TEST(ReflectionTest, PlacedVirtualCameraReflectsSixFields)
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 6u);
 
-    EXPECT_NE(FindField(info, "Look Target"), nullptr);
-    EXPECT_NE(FindField(info, "Up"), nullptr);
-    EXPECT_NE(FindField(info, "Trigger Center"), nullptr);
-    EXPECT_NE(FindField(info, "Trigger Extent"), nullptr);
-    EXPECT_NE(FindField(info, "Look At Player"), nullptr);
-    EXPECT_NE(FindField(info, "Priority"), nullptr);
+    EXPECT_NE(FindField(info, "注視点"), nullptr);
+    EXPECT_NE(FindField(info, "上方向"), nullptr);
+    EXPECT_NE(FindField(info, "トリガー中心"), nullptr);
+    EXPECT_NE(FindField(info, "トリガー半径"), nullptr);
+    EXPECT_NE(FindField(info, "プレイヤー追視"), nullptr);
+    EXPECT_NE(FindField(info, "優先度"), nullptr);
     // 視点位置は owner Transform 所有なのでリフレクションしない。transform 編集の経路と二重にしない
     EXPECT_EQ(FindField(info, "Camera Pos"), nullptr);
 
     // Priority は基底 accessor 経由で書き戻る
-    const FieldDesc* priority = FindField(info, "Priority");
+    const FieldDesc* priority = FindField(info, "優先度");
     ASSERT_NE(priority, nullptr);
     int newPriority = 7;
     priority->set(cam, &newPriority);
     EXPECT_EQ(cam->VcamPriority(), 7);
 
     // Trigger Center は直メンバ経由で書き戻る
-    const FieldDesc* center = FindField(info, "Trigger Center");
+    const FieldDesc* center = FindField(info, "トリガー中心");
     ASSERT_NE(center, nullptr);
     NS::Math::Vector3 newCenter{20.0f, 21.0f, 22.0f};
     center->set(cam, &newCenter);
@@ -226,7 +226,7 @@ TEST(ReflectionTest, CharacterMovementReflectsFeelFloats)
     EXPECT_EQ(info->fieldCount, 17u);
 
     // 操作感の代表値が float として往復する (getter が無いのでリフレクション get で確認する)
-    const FieldDesc* jump = FindField(info, "Jump Impulse");
+    const FieldDesc* jump = FindField(info, "ジャンプ初速");
     ASSERT_NE(jump, nullptr);
     EXPECT_EQ(jump->type, FieldType::Float);
 
@@ -247,7 +247,7 @@ TEST(ReflectionTest, MeshRendererReflectsBaseColorMeshAndMaterialRef)
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 3u);
 
-    const FieldDesc* color = FindField(info, "Base Color");
+    const FieldDesc* color = FindField(info, "基本色");
     ASSERT_NE(color, nullptr);
     EXPECT_EQ(color->type, FieldType::Vector3);
 
@@ -259,7 +259,7 @@ TEST(ReflectionTest, MeshRendererReflectsBaseColorMeshAndMaterialRef)
     EXPECT_FLOAT_EQ(got.y, 0.3f);
     EXPECT_FLOAT_EQ(got.z, 0.4f);
 
-    const FieldDesc* mesh = FindField(info, "Mesh");
+    const FieldDesc* mesh = FindField(info, "メッシュ");
     ASSERT_NE(mesh, nullptr);
     EXPECT_EQ(mesh->type, FieldType::String);
 
@@ -269,7 +269,7 @@ TEST(ReflectionTest, MeshRendererReflectsBaseColorMeshAndMaterialRef)
     mesh->get(&renderer, &meshGot);
     EXPECT_EQ(meshGot, "cube");
 
-    const FieldDesc* material = FindField(info, "Material");
+    const FieldDesc* material = FindField(info, "マテリアル");
     ASSERT_NE(material, nullptr);
     EXPECT_EQ(material->type, FieldType::String);
 
@@ -287,7 +287,7 @@ TEST(ReflectionTest, BoxColliderHalfExtentsAccessorClampsNegative)
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 4u);
 
-    const FieldDesc* he = FindField(info, "Half Extents");
+    const FieldDesc* he = FindField(info, "半径");
     ASSERT_NE(he, nullptr);
 
     NS::Math::Vector3 set{2.0f, 3.0f, 4.0f};
@@ -310,7 +310,7 @@ TEST(ReflectionTest, BoxColliderExposesCenterOffsetAndRotation)
     const ReflectionInfo* info = collider.GetReflection();
     ASSERT_NE(info, nullptr);
 
-    const FieldDesc* offset = FindField(info, "Center Offset");
+    const FieldDesc* offset = FindField(info, "中心オフセット");
     ASSERT_NE(offset, nullptr);
     NS::Math::Vector3 setOffset{1.0f, -2.0f, 3.0f};
     offset->set(&collider, &setOffset);
@@ -319,7 +319,7 @@ TEST(ReflectionTest, BoxColliderExposesCenterOffsetAndRotation)
     EXPECT_FLOAT_EQ(collider.CenterOffset().z, 3.0f);
 
     // 回転は Euler(度) アクセサで読み書きし、 往復で一致する
-    const FieldDesc* rot = FindField(info, "Rotation (deg)");
+    const FieldDesc* rot = FindField(info, "回転 (度)");
     ASSERT_NE(rot, nullptr);
     NS::Math::Vector3 setRot{0.0f, 90.0f, 0.0f};
     rot->set(&collider, &setRot);
@@ -335,7 +335,7 @@ TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 19u);
 
-    const FieldDesc* jump = FindField(info, "Jump Distance");
+    const FieldDesc* jump = FindField(info, "ジャンプ時距離");
     ASSERT_NE(jump, nullptr);
     EXPECT_EQ(jump->type, FieldType::Float);
     float got = 0.0f;
@@ -346,22 +346,22 @@ TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
     jump->get(&follow, &got);
     EXPECT_FLOAT_EQ(got, 9.0f);
 
-    const FieldDesc* invertX = FindField(info, "Invert X");
+    const FieldDesc* invertX = FindField(info, "反転 X");
     ASSERT_NE(invertX, nullptr);
     EXPECT_EQ(invertX->type, FieldType::Bool);
 
     // 追従先はオブジェクト間参照としてデータ化される
-    const FieldDesc* target = FindField(info, "Target");
+    const FieldDesc* target = FindField(info, "追従対象");
     ASSERT_NE(target, nullptr);
     EXPECT_EQ(target->type, FieldType::ObjectRef);
 
     // プレイの遠景を抑える投影値もリフレクションでデータ化される
-    const FieldDesc* farPlane = FindField(info, "Far Plane");
+    const FieldDesc* farPlane = FindField(info, "ファークリップ");
     ASSERT_NE(farPlane, nullptr);
     EXPECT_EQ(farPlane->type, FieldType::Float);
 
     // プレイ開始時の向きは editor のギズモ / Inspector が data 保存し、 OnStart で現在 yaw へ写る
-    const FieldDesc* initialYaw = FindField(info, "Initial Yaw");
+    const FieldDesc* initialYaw = FindField(info, "初期ヨー");
     ASSERT_NE(initialYaw, nullptr);
     EXPECT_EQ(initialYaw->type, FieldType::Float);
 }
@@ -373,7 +373,7 @@ TEST(ReflectionTest, CameraBrainBlendDurationAccessorClampsNegative)
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 1u);
 
-    const FieldDesc* blend = FindField(info, "Blend Duration");
+    const FieldDesc* blend = FindField(info, "ブレンド秒数");
     ASSERT_NE(blend, nullptr);
     float set = -1.0f;
     blend->set(&brain, &set);
@@ -386,7 +386,7 @@ TEST(ReflectionTest, ShadowReflectsAppearanceFields)
     const ReflectionInfo* info = shadow.GetReflection();
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 4u);
-    EXPECT_NE(FindField(info, "Base Alpha"), nullptr);
+    EXPECT_NE(FindField(info, "基本不透明度"), nullptr);
 }
 
 TEST(ReflectionTest, FieldTypeOfStringIsString)
@@ -430,7 +430,7 @@ TEST(ReflectionValueTypeTest, ReflectsNonComponentStruct)
     EXPECT_EQ(info->fieldCount, 2u);
     EXPECT_EQ(info->base, nullptr); // void 基底は鎖の終端
 
-    const FieldDesc* speed = FindField(info, "Speed");
+    const FieldDesc* speed = FindField(info, "再生速度");
     ASSERT_NE(speed, nullptr);
     EXPECT_EQ(speed->type, FieldType::Float);
     float got = 0.0f;

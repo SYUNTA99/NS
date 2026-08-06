@@ -1096,7 +1096,7 @@ void LevelEditorController::AddObjectWithMesh(const std::filesystem::path& meshP
     {
         if (NS::Object::ComponentEntryType(entry) == "MeshRendererComponent")
         {
-            NS::Object::SetField(entry, "Mesh", meshRef);
+            NS::Object::SetField(entry, "メッシュ", meshRef);
             break;
         }
     }

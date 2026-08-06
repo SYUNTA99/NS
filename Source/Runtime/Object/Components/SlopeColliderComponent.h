@@ -31,8 +31,8 @@ namespace NS::Object
 
         // 角度・半サイズを Inspector / 直列化へ公開する。 WorldTriangles は member を都度読むため set で即反映する
         NS_REFLECT_BEGIN(SlopeColliderComponent, ColliderComponent)
-        NS_REFLECT_FIELD(m_angleDegrees, "Angle (deg)")
-        NS_REFLECT_FIELD(m_halfExtents, "Half Extents")
+        NS_REFLECT_FIELD(m_angleDegrees, "角度 (度)")
+        NS_REFLECT_FIELD(m_halfExtents, "半径")
         NS_REFLECT_END()
 
     private:

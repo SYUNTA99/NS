@@ -207,8 +207,8 @@ TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
     EXPECT_FALSE(SceneNs::SaveSceneToJsonFile(huge, *path));
 }
 
-// 型名 + リフレクションフィールド値 (全 5 種の値) を持つコンポ一覧が save→load で復元される (全コンポ一覧を持つ形式の往復)
-// 並びは正準化 (名前昇順) されるため等価判定は CRC ではなく正準 JSON の一致で行う
+// 型名 + リフレクションフィールド値 (全 5 種の値) を持つコンポ一覧が save→load で復元される
+// (全コンポ一覧を持つ形式の往復) 並びは正準化 (名前昇順) されるため等価判定は CRC ではなく正準 JSON の一致で行う
 TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 {
     EditorNs::EnsureScenesDirectoryExists();
@@ -317,7 +317,7 @@ TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
     EXPECT_EQ(dst.objects[2].className, "Player");
 }
 
-// 配置物の "Base Color" リフレクション値が save→reload を往復で保持される
+// 配置物の "基本色" リフレクション値が save→reload を往復で保持される
 // 種別固定の色上書きが消え、 色は component 経由で永続することの担保
 TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
 {
@@ -329,8 +329,8 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
     SceneNs::ObjectData solid = LevelNs::MakeCellObject(0, 0, 0);
     const NS::Math::Vector3 baseColor{0.2f, 0.6f, 0.9f};
     for (nlohmann::json& component : solid.components)
-        if (SceneNs::HasField(component, "Base Color"))
-            SceneNs::SetField(component, "Base Color", baseColor);
+        if (SceneNs::HasField(component, "基本色"))
+            SceneNs::SetField(component, "基本色", baseColor);
     src.objects.push_back(solid);
     src.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
 
@@ -343,9 +343,9 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
     bool found = false;
     for (const nlohmann::json& component : dst.objects[0].components)
     {
-        if (!SceneNs::HasField(component, "Base Color"))
+        if (!SceneNs::HasField(component, "基本色"))
             continue;
-        const NS::Math::Vector3 v = SceneNs::FieldVector3(component, "Base Color", {});
+        const NS::Math::Vector3 v = SceneNs::FieldVector3(component, "基本色", {});
         EXPECT_FLOAT_EQ(v.x, 0.2f);
         EXPECT_FLOAT_EQ(v.y, 0.6f);
         EXPECT_FLOAT_EQ(v.z, 0.9f);
@@ -397,13 +397,13 @@ TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
     EXPECT_NE(SceneNs::FindComponentEntry(player, "HealthComponent"), nullptr);
     EXPECT_NE(SceneNs::FindComponentEntry(player, "ShadowComponent"), nullptr);
 
-    // 追従カメラも 1 台合成され、 Target は合成したプレイヤーを指す
+    // 追従カメラも 1 台合成され、 追従対象は合成したプレイヤーを指す
     const std::size_t followIndex = NS::Game::Level::FindFollowCameraObjectIndex(level);
     ASSERT_NE(followIndex, SceneNs::k_NoObjectIndex);
     const nlohmann::json* comp = SceneNs::FindComponentEntry(level.objects[followIndex], "ThirdPersonFollowComponent");
     ASSERT_NE(comp, nullptr);
-    ASSERT_TRUE(SceneNs::HasField(*comp, "Target"));
-    EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "Target").id, player.objectId);
+    ASSERT_TRUE(SceneNs::HasField(*comp, "追従対象"));
+    EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "追従対象").id, player.objectId);
 
     // 落下死体積も 1 つ敷かれる
     bool hasKillZone = false;
@@ -453,10 +453,10 @@ TEST(EnsurePlayableObjects, SynthesizesFollowCameraTargetingExistingPlayer)
     const nlohmann::json* comp = SceneNs::FindComponentEntry(follow, "ThirdPersonFollowComponent");
     ASSERT_NE(comp, nullptr);
     // 追従先はプレイヤー実体への通常の ObjectRef
-    ASSERT_TRUE(SceneNs::HasField(*comp, "Target"));
-    EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "Target").id, playerId);
+    ASSERT_TRUE(SceneNs::HasField(*comp, "追従対象"));
+    EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "追従対象").id, playerId);
     // データが持つのは誰を追うかだけ。 遠景を抑える投影値は component のコード既定を使う
-    EXPECT_FALSE(SceneNs::HasField(*comp, "Far Plane"));
+    EXPECT_FALSE(SceneNs::HasField(*comp, "ファークリップ"));
     NS::Object::ThirdPersonFollowComponent live;
     EXPECT_FLOAT_EQ(live.FarPlane(), 100.0f);
 }
@@ -516,6 +516,6 @@ TEST(SaveLoadRoundTrip, FollowCameraObjectRoundTrip)
     ASSERT_EQ(followIndex, 1u);
     const nlohmann::json* comp = SceneNs::FindComponentEntry(dst.objects[1], "ThirdPersonFollowComponent");
     ASSERT_NE(comp, nullptr);
-    ASSERT_TRUE(SceneNs::HasField(*comp, "Target"));
-    EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "Target").id, dst.objects[0].objectId);
+    ASSERT_TRUE(SceneNs::HasField(*comp, "追従対象"));
+    EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "追従対象").id, dst.objects[0].objectId);
 }

@@ -41,9 +41,9 @@ namespace NS::Object
 
     namespace
     {
-        constexpr std::string_view k_PositionFieldName = "Position";
-        constexpr std::string_view k_RotationFieldName = "Rotation (deg)";
-        constexpr std::string_view k_ScaleFieldName = "Scale";
+        constexpr std::string_view k_PositionFieldName = "位置";
+        constexpr std::string_view k_RotationFieldName = "回転 (度)";
+        constexpr std::string_view k_ScaleFieldName = "スケール";
 
         NS::Math::Vector3 ReadTransformVec3(const ObjectData& object,
                                             std::string_view fieldName,

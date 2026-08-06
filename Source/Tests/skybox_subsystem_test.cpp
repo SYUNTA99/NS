@@ -78,9 +78,9 @@ TEST_F(SkyboxSubsystemTest, PlacedLightOverridesResolve)
 
     DirectionalLightComponent* light = SpawnLight(scene);
     ASSERT_NE(light, nullptr);
-    SetLightField(*light, "Direction", NS::Math::Vector3{0.0f, -1.0f, 0.5f});
-    SetLightField(*light, "Color", NS::Math::Vector3{0.9f, 0.8f, 0.7f});
-    SetLightField(*light, "Ambient", NS::Math::Vector3{0.1f, 0.2f, 0.3f});
+    SetLightField(*light, "方向", NS::Math::Vector3{0.0f, -1.0f, 0.5f});
+    SetLightField(*light, "色", NS::Math::Vector3{0.9f, 0.8f, 0.7f});
+    SetLightField(*light, "環境光", NS::Math::Vector3{0.1f, 0.2f, 0.3f});
 
     const NS::Graphics::RenderSettings resolved = scene.CallResolve(NS::Graphics::RenderSettings{});
 
@@ -102,8 +102,8 @@ TEST_F(SkyboxSubsystemTest, ZeroLightDirectionFallsToDefault)
 
     DirectionalLightComponent* light = SpawnLight(scene);
     ASSERT_NE(light, nullptr);
-    SetLightField(*light, "Direction", NS::Math::Vector3{0.0f, 0.0f, 0.0f});
-    SetLightField(*light, "Color", NS::Math::Vector3{0.9f, 0.8f, 0.7f});
+    SetLightField(*light, "方向", NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+    SetLightField(*light, "色", NS::Math::Vector3{0.9f, 0.8f, 0.7f});
 
     NS::Graphics::RenderSettings defaults{};
     const NS::Graphics::RenderSettings resolved = scene.CallResolve(defaults);

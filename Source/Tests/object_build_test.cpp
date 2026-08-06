@@ -51,7 +51,7 @@ namespace
     {
         ObjectData object;
         nlohmann::json mesh = NS::Object::MakeComponentEntry("MeshRendererComponent");
-        NS::Object::SetField(mesh, "Mesh", "cube");
+        NS::Object::SetField(mesh, "メッシュ", "cube");
         object.components.push_back(std::move(mesh));
         object.components.push_back(std::move(collider));
         return object;
@@ -60,23 +60,23 @@ namespace
     nlohmann::json BoxColliderData(const Vector3& half)
     {
         nlohmann::json data = NS::Object::MakeComponentEntry("BoxColliderComponent");
-        NS::Object::SetField(data, "Half Extents", half);
+        NS::Object::SetField(data, "半径", half);
         return data;
     }
 
     nlohmann::json SphereColliderData(float radius, const Vector3& offset)
     {
         nlohmann::json data = NS::Object::MakeComponentEntry("SphereColliderComponent");
-        NS::Object::SetField(data, "Radius", radius);
-        NS::Object::SetField(data, "Center Offset", offset);
+        NS::Object::SetField(data, "半径", radius);
+        NS::Object::SetField(data, "中心オフセット", offset);
         return data;
     }
 
     nlohmann::json CapsuleColliderData(float radius, float halfHeight)
     {
         nlohmann::json data = NS::Object::MakeComponentEntry("CapsuleColliderComponent");
-        NS::Object::SetField(data, "Radius", radius);
-        NS::Object::SetField(data, "Half Height", halfHeight);
+        NS::Object::SetField(data, "半径", radius);
+        NS::Object::SetField(data, "半分の高さ", halfHeight);
         return data;
     }
 
@@ -254,10 +254,10 @@ TEST_F(ObjectBuildTest, EmptyComponentsBuildsNothing)
 TEST_F(ObjectBuildTest, AssetPathTraversalRejectedFallsBackToDefault)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
-    NS::Object::SetField(object.components[0], "Material", "../evil.mat");
+    NS::Object::SetField(object.components[0], "マテリアル", "../evil.mat");
 
     // const char* が string_view 版へ解決され、 bool でなく文字列として書かれていること
-    ASSERT_TRUE(object.components[0]["fields"]["Material"].is_string());
+    ASSERT_TRUE(object.components[0]["fields"]["マテリアル"].is_string());
 
     auto obj = Build(object);
     ASSERT_NE(obj, nullptr);
@@ -371,7 +371,7 @@ TEST_F(ObjectBuildTest, PlayerDefaultLookComesFromClassNotData)
     bool found = false;
     for (std::size_t i = 0; i < info->fieldCount; ++i)
     {
-        if (std::string_view{info->fields[i].name} == "Base Color")
+        if (std::string_view{info->fields[i].name} == "基本色")
         {
             info->fields[i].get(mesh, &baseColor);
             found = true;
@@ -389,7 +389,7 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataValuesToComponents)
     ObjectData data = MakePlayerObject(Vector3{}, NS::Math::Quaternion{});
     for (nlohmann::json& entry : data.components)
         if (NS::Object::ComponentEntryType(entry) == "CharacterMovementComponent")
-            NS::Object::SetField(entry, "Max Speed", 11.0f);
+            NS::Object::SetField(entry, "最高速度", 11.0f);
 
     auto obj = Build(data);
     ASSERT_NE(obj, nullptr);

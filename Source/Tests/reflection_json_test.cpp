@@ -60,8 +60,8 @@ TEST(ReflectionJsonTest, SerializeWritesTypeAndFields)
     const nlohmann::json j = SerializeComponent(*box);
     EXPECT_EQ(j["type"], "BoxColliderComponent");
     ASSERT_TRUE(j["fields"].is_object());
-    EXPECT_TRUE(j["fields"].contains("Half Extents"));
-    EXPECT_TRUE(j["fields"].contains("Center Offset"));
+    EXPECT_TRUE(j["fields"].contains("半径"));
+    EXPECT_TRUE(j["fields"].contains("中心オフセット"));
 }
 
 TEST(ReflectionJsonTest, RoundTripVector3Fields)
@@ -122,10 +122,10 @@ TEST(ReflectionJsonTest, SlopeReflectsAngleAndRoundTrips)
 
     nlohmann::json j = SerializeComponent(slope);
     EXPECT_EQ(j["type"], "SlopeColliderComponent");
-    EXPECT_FLOAT_EQ(j["fields"]["Angle (deg)"].get<float>(), 45.0f);
+    EXPECT_FLOAT_EQ(j["fields"]["角度 (度)"].get<float>(), 45.0f);
 
     // 角度を変えた JSON を適用すると set で書き戻る
-    j["fields"]["Angle (deg)"] = 30.0f;
+    j["fields"]["角度 (度)"] = 30.0f;
     NS::Object::SlopeColliderComponent dst;
     ApplyJsonFields(dst, j["fields"]);
     EXPECT_FLOAT_EQ(dst.AngleDegrees(), 30.0f);
@@ -140,7 +140,7 @@ TEST(ReflectionJsonTest, UnknownAndMissingKeysAreIgnored)
     // 未知キー + 欠損 (Half Extents を含まない) + 型不一致を混ぜても落ちず、 既定/現状値が保たれる
     nlohmann::json fields;
     fields["No Such Field"] = 123;
-    fields["Center Offset"] = "not an array";
+    fields["中心オフセット"] = "not an array";
     ApplyJsonFields(*box, fields);
 
     EXPECT_FLOAT_EQ(box->HalfExtents().x, 2.0f);

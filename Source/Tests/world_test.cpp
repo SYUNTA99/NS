@@ -5,12 +5,6 @@
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 
-#include <algorithm>
-#include <chrono>
-#include <cstdio>
-#include <filesystem>
-#include <gtest/gtest.h>
-#include <memory>
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/MeshColliderComponent.h>
@@ -23,6 +17,12 @@
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/World.h>
 #include <Runtime/Physics/PhysicsWorld.h>
+#include <algorithm>
+#include <chrono>
+#include <cstdio>
+#include <filesystem>
+#include <gtest/gtest.h>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -157,7 +157,7 @@ TEST(WorldTest, TriggerBoxHasNoSolidCollision)
     SceneData level;
     NS::Object::ObjectData object{};
     nlohmann::json box = NS::Object::MakeComponentEntry("BoxColliderComponent");
-    NS::Object::SetField(box, "Is Trigger", true);
+    NS::Object::SetField(box, "トリガー", true);
     object.components = nlohmann::json::array({std::move(box)});
     level.objects.push_back(std::move(object));
     NS::Object::EnsureUniqueObjectIds(level);
@@ -231,10 +231,10 @@ TEST(WorldTest, RebuildBakesFollowCameraAndResolvesTarget)
     level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
     NS::Object::EnsureUniqueObjectIds(level);
-    // 追従先は自分より後ろに並ぶ grid block。Target 参照を採番後の実 id へ差し替える
+    // 追従先は自分より後ろに並ぶ grid block。追従対象の参照を採番後の実 id へ差し替える
     for (nlohmann::json& component : level.objects[0].components)
-        if (NS::Object::HasField(component, "Target"))
-            NS::Object::SetField(component, "Target", NS::Object::ObjectRef{level.objects[1].objectId});
+        if (NS::Object::HasField(component, "追従対象"))
+            NS::Object::SetField(component, "追従対象", NS::Object::ObjectRef{level.objects[1].objectId});
 
     NS::Object::Scene scene;
     scene.CreateSceneSubsystems();
@@ -381,7 +381,7 @@ TEST(WorldTest, RebuildBakesPlacedCamerasInactive)
     NS::Object::ObjectData cameraObject{};
     NS::Object::SetObjectPosition(cameraObject, NS::Math::Vector3{8.0f, 0.0f, 0.0f});
     nlohmann::json comp = NS::Object::MakeComponentEntry("PlacedVirtualCamera");
-    NS::Object::SetField(comp, "Priority", 20);
+    NS::Object::SetField(comp, "優先度", 20);
     cameraObject.components.push_back(std::move(comp));
     level.objects.push_back(std::move(cameraObject));
 

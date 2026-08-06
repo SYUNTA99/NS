@@ -25,7 +25,7 @@ namespace NS::Game::Level
         [[nodiscard]] int Current() const noexcept { return m_current; }
 
         NS_REFLECT_BEGIN(HealthComponent, NS::Object::Component)
-        NS_REFLECT_FIELD(m_maxHealth, "Health")
+        NS_REFLECT_FIELD(m_maxHealth, "体力")
         NS_REFLECT_END()
 
     private:

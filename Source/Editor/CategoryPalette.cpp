@@ -43,7 +43,7 @@ namespace NS::Editor
         {
             return -1.0f;
         }
-        return NS::Object::FieldFloat(*slope, "Angle (deg)", -1.0f);
+        return NS::Object::FieldFloat(*slope, "角度 (度)", -1.0f);
     }
 
     void CategoryPalette::CycleActiveVariant() noexcept

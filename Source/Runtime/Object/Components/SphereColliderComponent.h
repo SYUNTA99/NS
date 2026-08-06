@@ -36,8 +36,8 @@ namespace NS::Object
         void AddToPhysics(NS::Physics::PhysicsWorld& physics) const override;
 
         NS_REFLECT_BEGIN(SphereColliderComponent, ColliderComponent)
-        NS_REFLECT_ACCESSOR(float, "Radius", Radius(), SetRadius)
-        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Center Offset", CenterOffset(), SetCenterOffset)
+        NS_REFLECT_ACCESSOR(float, "半径", Radius(), SetRadius)
+        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)
         NS_REFLECT_END()
 
     private:

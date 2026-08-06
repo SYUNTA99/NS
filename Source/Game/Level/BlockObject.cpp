@@ -16,16 +16,16 @@ namespace NS::Game::Level
                                          const NS::Math::Vector3& baseColor)
     {
         nlohmann::json entry = NS::Object::MakeComponentEntry("MeshRendererComponent");
-        NS::Object::SetField(entry, "Mesh", meshName);
-        NS::Object::SetField(entry, "Material", materialName);
-        NS::Object::SetField(entry, "Base Color", baseColor);
+        NS::Object::SetField(entry, "メッシュ", meshName);
+        NS::Object::SetField(entry, "マテリアル", materialName);
+        NS::Object::SetField(entry, "基本色", baseColor);
         return entry;
     }
 
     nlohmann::json MakeCellCubeComponents()
     {
         nlohmann::json box = NS::Object::MakeComponentEntry("BoxColliderComponent");
-        NS::Object::SetField(box, "Half Extents", k_CellHalfExtents);
+        NS::Object::SetField(box, "半径", k_CellHalfExtents);
         return nlohmann::json::array({MakeMeshRendererEntry("cube", "", k_SolidBaseColor), std::move(box)});
     }
 

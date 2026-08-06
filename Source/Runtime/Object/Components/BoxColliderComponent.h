@@ -53,10 +53,10 @@ namespace NS::Object
         // 当たり箱の形状の半径と Transform からの独立オフセット / 回転を Inspector へ公開する
         // 半径は負クランプ、 回転は Euler 度で受けるため全て setter 経由で書く
         NS_REFLECT_BEGIN(BoxColliderComponent, ColliderComponent)
-        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Half Extents", HalfExtents(), SetHalfExtents)
-        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Center Offset", CenterOffset(), SetCenterOffset)
-        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Rotation (deg)", RotationEulerDegrees(), SetRotationEulerDegrees)
-        NS_REFLECT_FIELD(m_isTrigger, "Is Trigger")
+        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "半径", HalfExtents(), SetHalfExtents)
+        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)
+        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "回転 (度)", RotationEulerDegrees(), SetRotationEulerDegrees)
+        NS_REFLECT_FIELD(m_isTrigger, "トリガー")
         NS_REFLECT_END()
 
     private:

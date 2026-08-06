@@ -75,10 +75,10 @@ namespace NS::Object
 
         // 再生速度 / ループを Inspector へ公開する。 毎ステップ読まれるのでライブで効き、 負速度なら逆再生になる
         NS_REFLECT_BEGIN(SkeletalAnimationComponent, Component)
-        NS_REFLECT_FIELD(m_speed, "Speed")
-        NS_REFLECT_FIELD(m_looping, "Looping")
-        NS_REFLECT_FIELD(m_modelRef, "Model")
-        NS_REFLECT_FIELD(m_clipsRef, "Clips")
+        NS_REFLECT_FIELD(m_speed, "再生速度")
+        NS_REFLECT_FIELD(m_looping, "ループ再生")
+        NS_REFLECT_FIELD(m_modelRef, "モデル")
+        NS_REFLECT_FIELD(m_clipsRef, "クリップ")
         NS_REFLECT_END()
 
     private:

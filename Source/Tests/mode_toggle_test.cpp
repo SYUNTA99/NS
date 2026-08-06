@@ -31,7 +31,7 @@ namespace
     {
         NS::Object::ObjectData object;
         nlohmann::json box = NS::Object::MakeComponentEntry("BoxColliderComponent");
-        NS::Object::SetField(box, "Is Trigger", true);
+        NS::Object::SetField(box, "トリガー", true);
         object.components = nlohmann::json::array({std::move(box), NS::Object::MakeComponentEntry("HazardComponent")});
         return object;
     }

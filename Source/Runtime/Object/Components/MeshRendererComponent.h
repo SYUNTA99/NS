@@ -104,9 +104,9 @@ namespace NS::Object
 
         // lighting とは別系統の個体色 + 描画の登録先
         NS_REFLECT_BEGIN(MeshRendererComponent, Component)
-        NS_REFLECT_FIELD(m_baseColor, "Base Color")
-        NS_REFLECT_FIELD(m_meshRef, "Mesh")
-        NS_REFLECT_FIELD(m_materialRef, "Material")
+        NS_REFLECT_FIELD(m_baseColor, "基本色")
+        NS_REFLECT_FIELD(m_meshRef, "メッシュ")
+        NS_REFLECT_FIELD(m_materialRef, "マテリアル")
         NS_REFLECT_END()
 
     private:

@@ -64,10 +64,10 @@ namespace NS::Object
 
         // 接地シャドウの見た目を Inspector へ公開する。 毎 Draw 読まれるのでライブで効く
         NS_REFLECT_BEGIN(ShadowComponent, Component)
-        NS_REFLECT_FIELD(m_baseDiameter, "Base Diameter")
-        NS_REFLECT_FIELD(m_maxDrop, "Max Drop")
-        NS_REFLECT_FIELD(m_surfaceOffset, "Surface Offset")
-        NS_REFLECT_FIELD(m_baseAlpha, "Base Alpha")
+        NS_REFLECT_FIELD(m_baseDiameter, "基本直径")
+        NS_REFLECT_FIELD(m_maxDrop, "最大投影距離")
+        NS_REFLECT_FIELD(m_surfaceOffset, "表面オフセット")
+        NS_REFLECT_FIELD(m_baseAlpha, "基本不透明度")
         NS_REFLECT_END()
 
     private:

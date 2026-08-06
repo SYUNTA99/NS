@@ -34,7 +34,7 @@ namespace
     {
         SceneNs::ObjectData object;
         nlohmann::json box = SceneNs::MakeComponentEntry("BoxColliderComponent");
-        SceneNs::SetField(box, "Is Trigger", true);
+        SceneNs::SetField(box, "トリガー", true);
         object.components = nlohmann::json::array({std::move(box), SceneNs::MakeComponentEntry("HazardComponent")});
         return object;
     }

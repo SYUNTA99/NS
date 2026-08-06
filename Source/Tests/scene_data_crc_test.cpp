@@ -37,8 +37,8 @@ TEST(SceneDataAccessors, FindComponentFieldAndGoalRule)
     EXPECT_EQ(SceneNs::FindComponentEntry(goal, "BoxColliderComponent"), nullptr); // 不在は nullptr
 
     nlohmann::json box = SceneNs::MakeComponentEntry("BoxColliderComponent");
-    SceneNs::SetField(box, "Half Extents", NS::Math::Vector3{1.0f, 1.0f, 1.0f});
-    EXPECT_TRUE(SceneNs::HasField(box, "Half Extents"));
+    SceneNs::SetField(box, "半径", NS::Math::Vector3{1.0f, 1.0f, 1.0f});
+    EXPECT_TRUE(SceneNs::HasField(box, "半径"));
     EXPECT_FALSE(SceneNs::HasField(box, "Missing")); // 欠損 field は無し
 
     EXPECT_TRUE(LevelNs::IsGoalObject(goal));
@@ -51,10 +51,10 @@ TEST(SceneDataCrcTest, DifferentComponentsProduceDifferentCrc)
     SceneNs::SceneData a, b;
     SceneNs::ObjectData boxA{}, boxB{};
     nlohmann::json entryA = SceneNs::MakeComponentEntry("BoxColliderComponent");
-    SceneNs::SetField(entryA, "Half Extents", NS::Math::Vector3{1.0f, 1.0f, 1.0f});
+    SceneNs::SetField(entryA, "半径", NS::Math::Vector3{1.0f, 1.0f, 1.0f});
     boxA.components.push_back(std::move(entryA));
     nlohmann::json entryB = SceneNs::MakeComponentEntry("BoxColliderComponent");
-    SceneNs::SetField(entryB, "Half Extents", NS::Math::Vector3{2.0f, 1.0f, 1.0f});
+    SceneNs::SetField(entryB, "半径", NS::Math::Vector3{2.0f, 1.0f, 1.0f});
     boxB.components.push_back(std::move(entryB));
     a.objects.push_back(std::move(boxA));
     b.objects.push_back(std::move(boxB));
@@ -111,13 +111,13 @@ TEST(SceneDataCrcTest, VectorCapacityDoesNotAffectCrc)
 TEST(SceneDataComponents, ComponentEntryHoldsTypeAndFields)
 {
     nlohmann::json entry = SceneNs::MakeComponentEntry("BoxColliderComponent");
-    SceneNs::SetField(entry, "Half Extents", NS::Math::Vector3{0.5f, 0.5f, 0.5f});
-    SceneNs::SetField(entry, "Radius", 1.0f);
+    SceneNs::SetField(entry, "半径", NS::Math::Vector3{0.5f, 0.5f, 0.5f});
+    SceneNs::SetField(entry, "中心オフセット", NS::Math::Vector3{0.0f, 1.0f, 0.0f});
 
     EXPECT_EQ(SceneNs::ComponentEntryType(entry), "BoxColliderComponent");
     ASSERT_EQ(entry.at("fields").size(), 2u);
-    EXPECT_TRUE(SceneNs::HasField(entry, "Half Extents"));
-    EXPECT_TRUE(SceneNs::HasField(entry, "Radius"));
+    EXPECT_TRUE(SceneNs::HasField(entry, "半径"));
+    EXPECT_TRUE(SceneNs::HasField(entry, "中心オフセット"));
 }
 
 TEST(SceneDataComponents, ObjectDataCopyIsDeep)

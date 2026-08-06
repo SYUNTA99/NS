@@ -30,7 +30,7 @@ namespace NS::Game::Level
     {
         // 値はコード既定を使い、データが持つのは誰を追うかだけ
         nlohmann::json follow = NS::Object::MakeComponentEntry("ThirdPersonFollowComponent");
-        NS::Object::SetField(follow, "Target", NS::Object::ObjectRef{targetObjectId});
+        NS::Object::SetField(follow, "追従対象", NS::Object::ObjectRef{targetObjectId});
 
         ObjectData object{};
         object.components = nlohmann::json::array({std::move(follow)});

@@ -47,7 +47,7 @@ namespace NS::Editor
             const nlohmann::json* slope = NS::Object::FindComponentEntry(object, "SlopeColliderComponent");
             if (!slope)
                 return -1.0f;
-            return NS::Object::FieldFloat(*slope, "Angle (deg)", 0.0f);
+            return NS::Object::FieldFloat(*slope, "角度 (度)", 0.0f);
         }
 
         std::string MaterialRefOf(const NS::Object::ObjectData& object)
@@ -55,7 +55,7 @@ namespace NS::Editor
             const nlohmann::json* renderer = NS::Object::FindComponentEntry(object, "MeshRendererComponent");
             if (!renderer)
                 return {};
-            return NS::Object::FieldString(*renderer, "Material", {});
+            return NS::Object::FieldString(*renderer, "マテリアル", {});
         }
     } // namespace
 
@@ -177,8 +177,8 @@ namespace NS::Editor
             meshName = "wedge30";
 
         nlohmann::json slope = NS::Object::MakeComponentEntry("SlopeColliderComponent");
-        NS::Object::SetField(slope, "Angle (deg)", angleDegrees);
-        NS::Object::SetField(slope, "Half Extents", NS::Game::Level::k_CellHalfExtents);
+        NS::Object::SetField(slope, "角度 (度)", angleDegrees);
+        NS::Object::SetField(slope, "半径", NS::Game::Level::k_CellHalfExtents);
         return nlohmann::json::array(
             {NS::Game::Level::MakeMeshRendererEntry(meshName, "", NS::Game::Level::k_SolidBaseColor),
              std::move(slope)});
@@ -193,7 +193,7 @@ namespace NS::Editor
         case PrimitiveKind::Sphere:
         {
             nlohmann::json sphere = NS::Object::MakeComponentEntry("SphereColliderComponent");
-            NS::Object::SetField(sphere, "Radius", NS::Game::Level::k_CellHalfExtents.y);
+            NS::Object::SetField(sphere, "半径", NS::Game::Level::k_CellHalfExtents.y);
             return nlohmann::json::array(
                 {NS::Game::Level::MakeMeshRendererEntry("sphere", "", NS::Game::Level::k_SolidBaseColor),
                  std::move(sphere)});

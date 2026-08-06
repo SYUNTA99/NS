@@ -23,11 +23,11 @@ namespace NS::Object
         [[nodiscard]] float Exposure() const noexcept { return m_exposure; }
 
         NS_REFLECT_BEGIN(DirectionalLightComponent, Component)
-        NS_REFLECT_FIELD(m_direction, "Direction")
-        NS_REFLECT_FIELD(m_color, "Color")
-        NS_REFLECT_FIELD(m_ambient, "Ambient")
-        NS_REFLECT_FIELD(m_ground, "Ground Ambient")
-        NS_REFLECT_FIELD(m_exposure, "Exposure")
+        NS_REFLECT_FIELD(m_direction, "方向")
+        NS_REFLECT_FIELD(m_color, "色")
+        NS_REFLECT_FIELD(m_ambient, "環境光")
+        NS_REFLECT_FIELD(m_ground, "地面環境光")
+        NS_REFLECT_FIELD(m_exposure, "露出")
         NS_REFLECT_END()
 
     private:

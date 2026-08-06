@@ -50,12 +50,12 @@ namespace NS::Object
 
         // 視点位置は owner Transform 所有なのでリフレクションしない。transform 編集の経路と二重にしない
         NS_REFLECT_BEGIN(PlacedVirtualCamera, VirtualCameraComponent)
-        NS_REFLECT_FIELD(m_target, "Look Target")
-        NS_REFLECT_FIELD(m_up, "Up")
-        NS_REFLECT_FIELD(m_triggerCenter, "Trigger Center")
-        NS_REFLECT_FIELD(m_triggerExtent, "Trigger Extent")
-        NS_REFLECT_FIELD(m_lookAtPlayer, "Look At Player")
-        NS_REFLECT_ACCESSOR(int, "Priority", VcamPriority(), SetVcamPriority)
+        NS_REFLECT_FIELD(m_target, "注視点")
+        NS_REFLECT_FIELD(m_up, "上方向")
+        NS_REFLECT_FIELD(m_triggerCenter, "トリガー中心")
+        NS_REFLECT_FIELD(m_triggerExtent, "トリガー半径")
+        NS_REFLECT_FIELD(m_lookAtPlayer, "プレイヤー追視")
+        NS_REFLECT_ACCESSOR(int, "優先度", VcamPriority(), SetVcamPriority)
         NS_REFLECT_END()
 
     private:

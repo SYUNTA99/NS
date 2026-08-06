@@ -22,7 +22,7 @@ namespace
     {
         SceneNs::ObjectData object = LevelNs::MakeCellObject(0, 0, 0);
         nlohmann::json& transform = SceneNs::EnsureTransformComponent(object);
-        SceneNs::SetField(transform, "Rotation (deg)", eulerDegrees);
+        SceneNs::SetField(transform, "回転 (度)", eulerDegrees);
         return object;
     }
 } // namespace
@@ -54,7 +54,7 @@ TEST(SceneRotationDrift, RepeatedCaptureRebuildKeepsExactQuaternion)
     EXPECT_EQ(after.w, reference.w);
 }
 
-// version 2 の手書きファイル (Euler の "Rotation (deg)" のみ・ quat 控え欄なし) が従来どおり読める
+// version 2 の手書きファイル (Euler の "回転 (度)" のみ・ quat 控え欄なし) が従来どおり読める
 TEST(SceneRotationDrift, LegacyEulerFileLoadsToExpectedQuaternion)
 {
     // JSON のキーに ) と " が隣接するため、 生文字列は衝突しない独自区切りで囲う
@@ -66,9 +66,9 @@ TEST(SceneRotationDrift, LegacyEulerFileLoadsToExpectedQuaternion)
                 "id": 1,
                 "components": [
                     { "type": "TransformComponent", "fields": {
-                        "Position": [0.0, 0.0, 0.0],
-                        "Rotation (deg)": [0.0, 90.0, 0.0],
-                        "Scale": [1.0, 1.0, 1.0]
+                        "位置": [0.0, 0.0, 0.0],
+                        "回転 (度)": [0.0, 90.0, 0.0],
+                        "スケール": [1.0, 1.0, 1.0]
                     } }
                 ]
             }
@@ -103,12 +103,12 @@ TEST(SceneRotationDrift, SaveDropsQuatFieldKeepsEuler)
     // メモリ上の控えには厳密なクォータニオンが乗っている
     const nlohmann::json* transform = SceneNs::FindComponentEntry(data.objects[0], "TransformComponent");
     ASSERT_NE(transform, nullptr);
-    EXPECT_TRUE(SceneNs::HasField(*transform, "Rotation (quat)"));
+    EXPECT_TRUE(SceneNs::HasField(*transform, "回転 (クォータニオン)"));
 
     // 保存文字列は Euler だけ・ quat 控えは落ちる
     const std::string json = SceneNs::SerializeSceneToJson(data);
-    EXPECT_EQ(json.find("Rotation (quat)"), std::string::npos);
-    EXPECT_NE(json.find("Rotation (deg)"), std::string::npos);
+    EXPECT_EQ(json.find("回転 (クォータニオン)"), std::string::npos);
+    EXPECT_NE(json.find("回転 (度)"), std::string::npos);
 
     // version 2 の形式検査を通って読み戻せる
     SceneNs::SceneData reloaded;

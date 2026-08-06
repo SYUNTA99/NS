@@ -1,4 +1,3 @@
-#include <gtest/gtest.h>
 #include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
 #include <Runtime/Object/GameObject.h>
@@ -7,6 +6,7 @@
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/World.h>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -23,13 +23,13 @@ namespace
         ASSERT_NE(info, nullptr);
         for (std::size_t i = 0; i < info->fieldCount; ++i)
         {
-            if (std::string_view{info->fields[i].name} != "Target")
+            if (std::string_view{info->fields[i].name} != "追従対象")
                 continue;
             const ObjectRef ref{id};
             info->fields[i].set(&comp, &ref);
             return;
         }
-        FAIL() << "Target フィールドがリフレクションに無い";
+        FAIL() << "追従対象フィールドがリフレクションに無い";
     }
 } // namespace
 

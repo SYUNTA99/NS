@@ -75,9 +75,9 @@ TEST(TransformComponentTest, ReflectsPositionRotationScale)
     const ReflectionInfo* info = tc->GetReflection();
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 3u);
-    EXPECT_NE(FindField(info, "Position"), nullptr);
-    EXPECT_NE(FindField(info, "Rotation (deg)"), nullptr);
-    EXPECT_NE(FindField(info, "Scale"), nullptr);
+    EXPECT_NE(FindField(info, "位置"), nullptr);
+    EXPECT_NE(FindField(info, "回転 (度)"), nullptr);
+    EXPECT_NE(FindField(info, "スケール"), nullptr);
 }
 
 // リフレクション set が owner の root Transform を動かし、 root を直接動かすとリフレクション get が追う
@@ -86,7 +86,7 @@ TEST(TransformComponentTest, PositionReflectionBridgesOwnerRootTransform)
     GameObject obj;
     auto* tc = obj.FindComponent<TransformComponent>();
     ASSERT_NE(tc, nullptr);
-    const FieldDesc* pos = FindField(tc->GetReflection(), "Position");
+    const FieldDesc* pos = FindField(tc->GetReflection(), "位置");
     ASSERT_NE(pos, nullptr);
 
     NS::Math::Vector3 set{3.0f, 4.0f, 5.0f};
@@ -108,7 +108,7 @@ TEST(TransformComponentTest, ScaleReflectionRoundTrips)
     GameObject obj;
     auto* tc = obj.FindComponent<TransformComponent>();
     ASSERT_NE(tc, nullptr);
-    const FieldDesc* scale = FindField(tc->GetReflection(), "Scale");
+    const FieldDesc* scale = FindField(tc->GetReflection(), "スケール");
     ASSERT_NE(scale, nullptr);
 
     NS::Math::Vector3 set{2.0f, 3.0f, 4.0f};
@@ -127,7 +127,7 @@ TEST(TransformComponentTest, RotationEulerDegreesRoundTrips)
     GameObject obj;
     auto* tc = obj.FindComponent<TransformComponent>();
     ASSERT_NE(tc, nullptr);
-    const FieldDesc* rot = FindField(tc->GetReflection(), "Rotation (deg)");
+    const FieldDesc* rot = FindField(tc->GetReflection(), "回転 (度)");
     ASSERT_NE(rot, nullptr);
 
     NS::Math::Vector3 set{0.0f, 45.0f, 0.0f};
@@ -206,9 +206,9 @@ TEST(TransformComponentTest, DuplicateEntriesBuildOnlyOne)
 {
     ObjectData object = MakeMinimalObject();
     nlohmann::json first = NS::Object::MakeComponentEntry(NS::Object::k_TransformTypeName);
-    NS::Object::SetField(first, "Position", NS::Math::Vector3{1.0f, 2.0f, 3.0f});
+    NS::Object::SetField(first, "位置", NS::Math::Vector3{1.0f, 2.0f, 3.0f});
     nlohmann::json second = NS::Object::MakeComponentEntry(NS::Object::k_TransformTypeName);
-    NS::Object::SetField(second, "Position", NS::Math::Vector3{-8.0f, -8.0f, -8.0f});
+    NS::Object::SetField(second, "位置", NS::Math::Vector3{-8.0f, -8.0f, -8.0f});
     object.components.push_back(std::move(first));
     object.components.push_back(std::move(second));
     ASSERT_EQ(CountTransformEntries(object), std::size_t{2});

@@ -48,7 +48,7 @@ namespace NS::Object
             return it->get<int>();
         }
 
-        /// transform エントリから内部の回転控えを落とす。 ファイルは Euler の "Rotation (deg)" だけ残す
+        /// transform エントリから内部の回転控えを落とす。 ファイルは Euler の「回転 (度)」だけ残す
         void StripRotationQuatField(nlohmann::json& components)
         {
             if (!components.is_array())

@@ -50,10 +50,10 @@ namespace NS::Object
         void AddToPhysics(NS::Physics::PhysicsWorld& physics) const override;
 
         NS_REFLECT_BEGIN(CapsuleColliderComponent, ColliderComponent)
-        NS_REFLECT_ACCESSOR(float, "Radius", Radius(), SetRadius)
-        NS_REFLECT_ACCESSOR(float, "Half Height", HalfHeight(), SetHalfHeight)
-        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Center Offset", CenterOffset(), SetCenterOffset)
-        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "Rotation (deg)", RotationEulerDegrees(), SetRotationEulerDegrees)
+        NS_REFLECT_ACCESSOR(float, "半径", Radius(), SetRadius)
+        NS_REFLECT_ACCESSOR(float, "半分の高さ", HalfHeight(), SetHalfHeight)
+        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)
+        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "回転 (度)", RotationEulerDegrees(), SetRotationEulerDegrees)
         NS_REFLECT_END()
 
     private:
