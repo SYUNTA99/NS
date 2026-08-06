@@ -1,16 +1,15 @@
-#include <gtest/gtest.h>
 #include <Runtime/Math/Math.h>
 #include <Runtime/Object/Component.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/CameraBrainComponent.h>
 #include <Runtime/Object/Components/CharacterMovementComponent.h>
-#include <Runtime/Object/Components/EditorCameraComponent.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/Components/ShadowComponent.h>
 #include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/Reflection.h>
+#include <gtest/gtest.h>
 #include <string>
 #include <string_view>
 
@@ -24,7 +23,7 @@ namespace
     using NS::Object::PlacedVirtualCamera;
     using NS::Object::ReflectionInfo;
 
-    // float / int / bool / Vector3 を private に持ち、 4 フィールドを反射するテスト用 Component
+    // float / int / bool / Vector3 を private に持ち、 4 フィールドをリフレクションするテスト用 Component
     class FakeReflectedComponent : public Component
     {
     public:
@@ -49,7 +48,7 @@ namespace
         NS::Math::Vector3 m_offset{1.0f, 2.0f, 3.0f};
     };
 
-    // std::string を反射するテスト用 Component
+    // std::string をリフレクションするテスト用 Component
     class FakeStringComponent : public Component
     {
     public:
@@ -65,14 +64,14 @@ namespace
         std::string m_label{"hello"};
     };
 
-    // 反射宣言を持たない素の Component 派生
+    // リフレクション宣言を持たない素の Component 派生
     class BareComponent : public Component
     {
     public:
         BareComponent() noexcept : Component(0) {}
     };
 
-    // Component を継承しない素の値型。反射がベース非依存で効くことを確かめる
+    // Component を継承しない素の値型。リフレクションがベース非依存で効くことを確かめる
     struct FakeValueType
     {
         NS_REFLECT_BEGIN(FakeValueType, void)
@@ -199,7 +198,7 @@ TEST(ReflectionTest, PlacedVirtualCameraReflectsSixFields)
     EXPECT_NE(FindField(info, "Trigger Extent"), nullptr);
     EXPECT_NE(FindField(info, "Look At Player"), nullptr);
     EXPECT_NE(FindField(info, "Priority"), nullptr);
-    // 視点位置は owner Transform 所有なので反射しない。transform 編集の経路と二重にしない
+    // 視点位置は owner Transform 所有なのでリフレクションしない。transform 編集の経路と二重にしない
     EXPECT_EQ(FindField(info, "Camera Pos"), nullptr);
 
     // Priority は基底 accessor 経由で書き戻る
@@ -226,7 +225,7 @@ TEST(ReflectionTest, CharacterMovementReflectsFeelFloats)
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 17u);
 
-    // 操作感の代表値が float として往復する (getter が無いので反射 get で確認する)
+    // 操作感の代表値が float として往復する (getter が無いのでリフレクション get で確認する)
     const FieldDesc* jump = FindField(info, "Jump Impulse");
     ASSERT_NE(jump, nullptr);
     EXPECT_EQ(jump->type, FieldType::Float);
@@ -356,7 +355,7 @@ TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
     ASSERT_NE(target, nullptr);
     EXPECT_EQ(target->type, FieldType::ObjectRef);
 
-    // プレイの遠景を抑える投影値も反射でデータ化される
+    // プレイの遠景を抑える投影値もリフレクションでデータ化される
     const FieldDesc* farPlane = FindField(info, "Far Plane");
     ASSERT_NE(farPlane, nullptr);
     EXPECT_EQ(farPlane->type, FieldType::Float);
@@ -388,14 +387,6 @@ TEST(ReflectionTest, ShadowReflectsAppearanceFields)
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 4u);
     EXPECT_NE(FindField(info, "Base Alpha"), nullptr);
-}
-
-TEST(ReflectionTest, EditorCameraReflectsSensitivityFields)
-{
-    NS::Object::EditorCameraComponent cam;
-    const ReflectionInfo* info = cam.GetReflection();
-    ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 8u);
 }
 
 TEST(ReflectionTest, FieldTypeOfStringIsString)
@@ -470,7 +461,7 @@ TEST(ReflectionIsATest, RejectsUnrelatedTypeAndNull)
     EXPECT_FALSE(follow.IsA(NS::Object::CameraBrainComponent::StaticReflection()));
     EXPECT_FALSE(follow.IsA(nullptr));
 
-    // 反射を持たない素の派生はどの検索にも一致しない
+    // リフレクションを持たない素の派生はどの検索にも一致しない
     BareComponent bare;
     EXPECT_FALSE(bare.IsA(NS::Object::CameraBrainComponent::StaticReflection()));
 }
@@ -481,8 +472,8 @@ TEST(ReflectionIsATest, StaticAndVirtualShareOneInfo)
     NS::Object::ThirdPersonFollowComponent follow;
     EXPECT_EQ(follow.GetReflection(), NS::Object::ThirdPersonFollowComponent::StaticReflection());
 
-    NS::Object::EditorCameraComponent cam;
-    EXPECT_EQ(cam.GetReflection(), NS::Object::EditorCameraComponent::StaticReflection());
+    PlacedVirtualCamera cam;
+    EXPECT_EQ(cam.GetReflection(), PlacedVirtualCamera::StaticReflection());
 }
 
 TEST(ReflectionComponentCastTest, CastsSelfAndBaseRejectsOthers)

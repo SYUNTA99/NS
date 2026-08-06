@@ -21,7 +21,6 @@
 #include "Runtime/Object/Components/CapsuleColliderComponent.h"
 #include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/Components/ColliderComponent.h"
-#include "Runtime/Object/Components/EditorCameraComponent.h"
 #include "Runtime/Object/Components/MeshColliderComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/Components/OverlayRendererComponent.h"

@@ -1,6 +1,5 @@
 #include "Editor/LevelEditorController.h"
 
-#include "Editor/EditorCameraRig.h"
 #include "Editor/EditorObjects.h"
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
@@ -22,7 +21,6 @@
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CapsuleColliderComponent.h"
 #include "Runtime/Object/Components/CharacterMovementComponent.h"
-#include "Runtime/Object/Components/EditorCameraComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/Components/PlacedVirtualCamera.h"
 #include "Runtime/Object/Components/PlayerInputComponent.h"
@@ -215,32 +213,22 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
 
     m_imgui = imgui;
 
-    // 編集モード専用の free-fly カメラを Player / follow camera と並列で立ち上げる
-    // mouse + gamepad で Orbit / Pan / Zoom する
-    m_editorCameraRig = std::make_unique<EditorCameraRig>();
-
-    // free-fly vcam の投影設定で、編集は遠景を 5000 まで見せ near 0.1 は既定
-    // far は EditorCameraComponent の k_MaxDistance より広く取り、最大ズームアウトでも地形を映す
-    m_editorCameraRig->EditorCam().SetNearPlane(0.1f);
-    m_editorCameraRig->EditorCam().SetFarPlane(5000.0f);
-    m_editorCameraRig->EditorCam().SetFovY(NS::Math::ToRadians(NS::Math::Degrees{60.0f}));
+    // 編集の投影設定で、遠景を 5000 まで見せ near 0.1 は既定
+    // far は EditorCamera の k_MaxDistance より広く取り、最大ズームアウトでも地形を映す
+    m_editorCamera.SetNearPlane(0.1f);
+    m_editorCamera.SetFarPlane(5000.0f);
+    m_editorCamera.SetFovY(NS::Math::ToRadians(NS::Math::Degrees{60.0f}));
 
     // 初期視点はプレイヤーの位置を中心に少し引いた位置から見下ろす。不在なら原点
     NS::Object::GameObject* bootPlayer = FindPlayer(m_scene->World());
     NS::Math::Vector3 startCenter{0.0f, 0.0f, 0.0f};
     if (bootPlayer != nullptr)
         startCenter = bootPlayer->Root().Position();
-    m_editorCameraRig->EditorCam().SetCenter(startCenter);
+    m_editorCamera.SetCenter(startCenter);
     // 起動直後は出現地点の block を真ん中近めに見せる距離。1m cube が画面の十数 % を占める
-    m_editorCameraRig->EditorCam().SetDistance(5.0f);
+    m_editorCamera.SetDistance(5.0f);
 
-    m_editorCameraRig->OnStart();
-
-    // free-fly vcam を Brain へ登録する。follow / area camera は scene が登録済
-    if (Brain())
-        Brain()->AddVirtualCamera(&m_editorCameraRig->EditorCam());
-
-    // 保存は live 実体から起こし、読込は取込関数がデータを実体へ写して用済みにする
+    // 保存は live 実体から作り、読込は取込関数がデータを実体へ写して用済みにする
     m_editor.SetCaptureLevelFn([this]() { return m_scene->CaptureLiveToSceneData(); });
     m_editor.SetLoadLevelFn([this](NS::Object::SceneData&& fresh) { m_scene->LoadFromData(std::move(fresh)); });
     // grid 編集・undo は適用経路を通して live へ写す。セル照会・採番は live 側から引く
@@ -274,9 +262,8 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     m_gizmo.SetImGui(imgui);
     RefreshGizmoSelectables();
 
-    // scene は OnStart でプレイ開始済。プレイを終えて player 凍結 / free-fly camera 有効の編集モードへ切替える
+    // scene は OnStart でプレイ開始済。プレイを終えて player 凍結の編集モードへ切替える
     LeavePlayForEdit();
-    m_editorCameraRig->EditorCam().SetActive(true);
     m_mode = Mode::Edit;
 }
 
@@ -284,14 +271,6 @@ void LevelEditorController::Teardown()
 {
     // ギズモは free オブジェクトの Transform を非所有参照するので、scene 破棄前に選択を外す
     m_gizmo.ClearSelection();
-    if (m_editorCameraRig)
-    {
-        // Brain は free-fly vcam を非所有参照する。vcam を畳む前に Brain から外して dangling を避ける
-        if (m_scene != nullptr && Brain())
-            Brain()->RemoveVirtualCamera(&m_editorCameraRig->EditorCam());
-        m_editorCameraRig->OnEndPlay();
-    }
-    m_editorCameraRig.reset();
     m_selectablePtrs.clear();
     m_selectableHalfExtents.clear();
     m_selectablePickable.clear();
@@ -303,7 +282,7 @@ void LevelEditorController::EnterPlay() noexcept
         return;
     m_mode = Mode::Play;
     // UI がキーを掴んでいた間に押されたキーは、離した通知がゲームへ届かず押しっぱなしで残る。
-    // モード遷移で持ち越さないよう掃除する
+    // モード遷移で持ち越さないよう消す
     if (auto* app = NS::App::Application::Get())
     {
         app->Input().Keyboard().ClearState();
@@ -316,7 +295,7 @@ void LevelEditorController::EnterPlay() noexcept
     (void)m_scene->BeginPlayBaseline();
     if (auto* player = FindPlayer(m_scene->World()))
     {
-        // 編集で寝かせた部品を起こす。寝かせる側は LeavePlayForEdit
+        // 編集で休止させた部品を有効化する。休止させる側は LeavePlayForEdit
         if (auto* mesh = player->FindComponent<NS::Object::MeshRendererComponent>())
             mesh->SetActive(true);
         if (auto* movement = player->FindComponent<NS::Object::CharacterMovementComponent>())
@@ -330,7 +309,7 @@ void LevelEditorController::EnterPlay() noexcept
     // 走行を最初から。手順は出荷と同じ respawner の持ち物
     m_scene->World().ForEachComponent<NS::Game::Level::RespawnerComponent>(
         [](NS::Game::Level::RespawnerComponent& respawner) { respawner.RestartRun(); });
-    // 追従カメラは world のカメラ配置物。プレイの間だけ起こす
+    // 追従カメラは world のカメラ配置物。プレイの間だけ有効化する
     m_scene->World().ForEachComponent<NS::Object::ThirdPersonFollowComponent>(
         [](NS::Object::ThirdPersonFollowComponent& follow) { follow.SetActive(true); });
     // 世界を回す。止まっているのは編集モードの間だけ
@@ -346,8 +325,6 @@ void LevelEditorController::EnterPlay() noexcept
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
     m_editor.SetActive(false);
-    if (m_editorCameraRig)
-        m_editorCameraRig->EditorCam().SetActive(false);
 }
 
 void LevelEditorController::EnterEdit() noexcept
@@ -356,7 +333,7 @@ void LevelEditorController::EnterEdit() noexcept
         return;
     m_mode = Mode::Edit;
     // UI がキーを掴んでいた間に押されたキーは、離した通知がゲームへ届かず押しっぱなしで残る。
-    // モード遷移で持ち越さないよう掃除する
+    // モード遷移で持ち越さないよう消す
     if (auto* app = NS::App::Application::Get())
     {
         app->Input().Keyboard().ClearState();
@@ -368,8 +345,6 @@ void LevelEditorController::EnterEdit() noexcept
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
     m_editor.SetActive(true);
-    if (m_editorCameraRig)
-        m_editorCameraRig->EditorCam().SetActive(true);
 }
 
 void LevelEditorController::RequestStepFrame() noexcept
@@ -387,8 +362,8 @@ void LevelEditorController::LeavePlayForEdit() noexcept
     // 編集モードの間は世界を止める
     m_scene->SetSimulationEnabled(false);
 
-    // 進行中のクリア台本と暗転はプレイの持ち物なのでここで破棄する
-    // 残すと次のプレイ開始で前回の演出が突然発火する。ゴールの旗も戻す
+    // 進行中のクリアシーケンスと暗転はプレイの持ち物なのでここで破棄する
+    // 残すと次のプレイ開始で前回の演出が突然発火する。ゴールのフラグも戻す
     m_scene->World().ForEachComponent<NS::Game::Level::FinisherComponent>(
         [](NS::Game::Level::FinisherComponent& finisher) { finisher.Cancel(); });
     m_scene->World().ForEachComponent<NS::Game::Level::ScreenFadeComponent>(
@@ -451,7 +426,7 @@ void LevelEditorController::ClearGameView() noexcept
 
 void LevelEditorController::HideGameView() noexcept
 {
-    // 生きたパネルが裏へ隠れた。配置カーソルと編集オーバーレイを止める
+    // 前面のパネルが裏へ隠れた。配置カーソルと編集オーバーレイを止める
     m_gameViewHidden = true;
     m_gameViewHovered = false;
     m_editor.SetViewHovered(false);
@@ -472,29 +447,29 @@ NS::Editor::ViewRect LevelEditorController::CurrentViewRect() const noexcept
     return full;
 }
 
-void LevelEditorController::TickPlaySceneView(const NS::Object::FreeFlightInput& input) noexcept
+void LevelEditorController::TickPlaySceneView(const NS::Editor::EditorCameraInput& input) noexcept
 {
     // プレイ中に Scene タブへ自由視点を映すフレームだけ効かせる。編集モード中は実カメラを触らない
-    // 描画視点は SceneViewPose が EditorCam の pose を渡すので、ここは入力適用だけでよい
-    if (m_mode != Mode::Play || !m_editorCameraRig)
+    // 描画視点は SceneViewPose が free-fly の pose を渡すので、ここは入力適用だけでよい
+    if (m_mode != Mode::Play)
         return;
-    m_editorCameraRig->EditorCam().ApplyFreeFlightInput(input);
+    m_editorCamera.ApplyInput(input);
 }
 
 std::optional<NS::Object::CameraPose> LevelEditorController::SceneViewPose() noexcept
 {
-    // 編集中は Brain (編集カメラ) 任せ。プレイ中だけ自由視点を上書きする
-    if (m_mode != Mode::Play || !m_editorCameraRig)
+    // 編集中は実カメラ (TickEdit が free-fly の pose を書く) 任せ。プレイ中だけ自由視点を上書きする
+    if (m_mode != Mode::Play)
         return std::nullopt;
-    return m_editorCameraRig->EditorCam().EvaluatePose(1.0f);
+    return m_editorCamera.Pose();
 }
 
 std::optional<NS::Object::CameraPose> LevelEditorController::GameViewPose() noexcept
 {
     // プレイ中は Brain (follow・ブレンド維持) 任せ。編集中だけゲームカメラを上書きする
-    if (m_mode == Mode::Play || Brain() == nullptr || !m_editorCameraRig)
+    if (m_mode == Mode::Play || Brain() == nullptr)
         return std::nullopt;
-    return Brain()->EvaluatePoseExcluding(&m_editorCameraRig->EditorCam(), 1.0f);
+    return Brain()->EvaluateTopPose(1.0f);
 }
 
 void LevelEditorController::SetSceneViews(std::vector<NS::Object::SceneView> views)
@@ -536,15 +511,20 @@ void LevelEditorController::TickEdit()
         return;
     }
 
-    if (m_editorCameraRig)
-    {
-        m_editorCameraRig->Root().Snapshot();
-        m_editorCameraRig->OnUpdate();
-    }
+    m_editorCamera.Tick();
 
     // free-fly 更新後に実カメラへ反映し、ギズモ / 編集の ray-pick が当フレームの視点を使えるようにする
-    if (Brain())
-        Brain()->Evaluate(1.0f);
+    // 編集中は active な vcam が無く Brain は実カメラに触れないので、この書き込みが上書きされずに残る
+    if (auto* camera = MainCamera())
+    {
+        const NS::Object::CameraPose pose = m_editorCamera.Pose();
+        camera->SetPosition(pose.position);
+        camera->SetTarget(pose.target);
+        camera->SetUp(pose.up);
+        camera->SetFovY(pose.fovY);
+        camera->SetNearPlane(pose.nearPlane);
+        camera->SetFarPlane(pose.farPlane);
+    }
 
     // 同時に 1 モードだけが LMB/R/Ctrl+Z を消費する。Object 中は grid 入力を抑制しギズモへ回す
     // モード切替は Editor の UI ボタンが SetObjectToolActive で入れる。Tab は Edit↔Play 専用
@@ -552,7 +532,7 @@ void LevelEditorController::TickEdit()
     m_gizmo.SetActive(objectMode);
     m_editor.SetInputSuppressed(objectMode);
 
-    if (objectMode && m_editorCameraRig && Brain())
+    if (objectMode && Brain())
     {
         // 追従カメラの Root を実プレイ視点位置へ寄せてから候補を作る。pick 箱 / ギズモがその位置に出る
         SyncFollowCameraPoses();
@@ -981,14 +961,6 @@ void LevelEditorController::RenderSelectionOutlines() noexcept
     }
 }
 
-std::optional<NS::Object::CameraPose> LevelEditorController::CurrentViewPose() noexcept
-{
-    if (Brain() == nullptr)
-        return std::nullopt;
-    // 除外なしで今の active vcam の姿勢を引く
-    return Brain()->EvaluatePoseExcluding(nullptr, 1.0f);
-}
-
 void LevelEditorController::RenderColliderWireframes(bool all) noexcept
 {
     const NS::Math::Color color{0.35f, 1.0f, 0.45f, 1.0f};
@@ -1096,11 +1068,9 @@ void LevelEditorController::AddObject()
 void LevelEditorController::AddPrimitive(NS::Editor::PrimitiveKind kind)
 {
     // 新規オブジェクトは編集視点の中心あたりへ置く
-    NS::Math::Vector3 center{0.0f, 0.0f, 0.0f};
-    if (m_editorCameraRig)
-        center = m_editorCameraRig->EditorCam().Center();
+    const NS::Math::Vector3 center = m_editorCamera.Center();
 
-    // 構成を先に確定してから transform を焼く。採番・履歴・選択は PushCreateObject が担う
+    // 構成を先に確定してから transform を書き込む。採番・履歴・選択は PushCreateObject が担う
     NS::Object::ObjectData object{};
     object.components = NS::Editor::MakePrimitiveComponents(kind);
     NS::Object::SetObjectPosition(object, center);
@@ -1117,9 +1087,7 @@ void LevelEditorController::AddObjectWithMesh(const std::filesystem::path& meshP
         return relative.generic_string();
     }();
 
-    NS::Math::Vector3 center{0.0f, 0.0f, 0.0f};
-    if (m_editorCameraRig)
-        center = m_editorCameraRig->EditorCam().Center();
+    const NS::Math::Vector3 center = m_editorCamera.Center();
 
     // 既定の cube 構成から描画だけ差し替える。 当たりは cell 大の箱のまま置く
     NS::Object::ObjectData object{};
@@ -1293,7 +1261,7 @@ void LevelEditorController::SetComponentEnabledOnSelected(std::size_t componentI
         return;
     if (componentIndex >= before->components.size())
         return;
-    // プレイヤーの印の入力 component を寝かせると player が動かなくなる。transform は root なので同様に守る
+    // プレイヤーの印の入力 component を休止させると player が動かなくなる。transform は root なので同様に守る
     const std::string_view typeName = NS::Object::ComponentEntryType(before->components[componentIndex]);
     if (typeName == "PlayerInputComponent" || typeName == "TransformComponent")
         return;
@@ -1423,7 +1391,7 @@ void LevelEditorController::DeleteSelectedObject()
 
 void LevelEditorController::FocusSelectedInView() noexcept
 {
-    if (!m_editorCameraRig || m_selectionIds.empty())
+    if (m_selectionIds.empty())
         return;
 
     // 選んだ分を全部収める。 中心は重心、 距離は一番外側までの広がりで決める
@@ -1453,11 +1421,10 @@ void LevelEditorController::FocusSelectedInView() noexcept
     for (const NS::Math::Vector3& each : centers)
         extent = std::max(extent, (each - center).Length());
 
-    const float distance = std::max(extent * 4.0f, NS::Object::EditorCameraComponent::k_MinDistance);
+    const float distance = std::max(extent * 4.0f, NS::Editor::EditorCamera::k_MinDistance);
 
-    auto& camera = m_editorCameraRig->EditorCam();
-    camera.SetCenter(center);
-    camera.SetDistance(distance);
+    m_editorCamera.SetCenter(center);
+    m_editorCamera.SetDistance(distance);
 }
 
 void LevelEditorController::CaptureDragFollowers() noexcept
@@ -1622,7 +1589,7 @@ void LevelEditorController::CommitComponentEdit() noexcept
         return;
     m_componentEditing = false;
 
-    // 反射編集は live component へ直接入っている。after は live の忠実な写しで、baseline と同じなら積まない
+    // リフレクション編集は live component へ直接入っている。after は live の忠実な写しで、baseline と同じなら積まない
     std::optional<NS::Object::ObjectData> after = m_applier.CaptureObject(m_componentEditBaselineId);
     if (!after || *after == m_componentEditBaseline)
         return;
@@ -1652,7 +1619,7 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
     if (loaded.material == nullptr)
         return false;
 
-    // .mat パスは ContentRoot 相対で持つ。材質の正データは matRef なので live component へ焼く
+    // .mat パスは ContentRoot 相対で持つ。材質の正データは matRef なので live component へ書き込む
     const auto exeDir = NS::Core::FileSystem::ContentRoot();
     const std::filesystem::path relative = matPath.lexically_relative(exeDir);
     const std::string stored = [&]() -> std::string {
@@ -1661,7 +1628,7 @@ bool LevelEditorController::ApplyMaterialToSelected(const std::filesystem::path&
         return relative.generic_string();
     }();
 
-    // 差替前を忠実に写す。matRef を live へ焼き、差替後との差分を undo 履歴へ積む
+    // 差替前を忠実に写す。matRef を live へ書き込み、差替後との差分を undo 履歴へ積む
     std::optional<NS::Object::ObjectData> before = m_applier.CaptureObject(m_selectedObjectId);
 
     mesh->SetMaterial(loaded.material);

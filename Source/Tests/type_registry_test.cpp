@@ -80,7 +80,7 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
 
 TEST(TypeRegistryTest, CreatedTypeNameMatchesReflection)
 {
-    // 登録済み全型で反射 typeName が登録キーと一致する (JSON の type キーと整合)
+    // 登録済み全型でリフレクション typeName が登録キーと一致する (JSON の type キーと整合)
     // 登録が増えても手直し不要なよう、一覧は registry 自身から取る
     for (const std::string& name : RegisteredNames())
     {
@@ -96,10 +96,9 @@ TEST(TypeRegistryTest, CreatedTypeNameMatchesReflection)
 // TransformComponent は GameObject が必ず 1 つ持つので登録しない
 TEST(TypeRegistryTest, ExcludedTypesReturnNull)
 {
-    // editor 専用と抽象基底は登録しないので、信頼できない type 名から生成できない
+    // 抽象基底と必ず持つ基盤は登録しないので、信頼できない type 名から生成できない
     GameObject obj;
     const std::size_t before = obj.Components().size();
-    EXPECT_EQ(CreateComponent("EditorCameraComponent", obj), nullptr);
     EXPECT_EQ(CreateComponent("VirtualCameraComponent", obj), nullptr);
     EXPECT_EQ(CreateComponent("ColliderComponent", obj), nullptr);
     EXPECT_EQ(CreateComponent("TransformComponent", obj), nullptr);
@@ -127,7 +126,6 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 {
     EXPECT_TRUE(IsRegistered("BoxColliderComponent"));
     EXPECT_TRUE(IsRegistered("CharacterMovementComponent"));
-    EXPECT_FALSE(IsRegistered("EditorCameraComponent"));
     EXPECT_FALSE(IsRegistered("Bogus"));
 }
 
@@ -138,14 +136,13 @@ TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
     EXPECT_TRUE(Contains(names, "BoxColliderComponent"));
     EXPECT_TRUE(Contains(names, "MeshRendererComponent"));
     EXPECT_TRUE(Contains(names, "CharacterMovementComponent"));
-    EXPECT_FALSE(Contains(names, "EditorCameraComponent"));
     // パレット表示が実行ごとに揺れない保証。一覧は名前順に揃えてある
     EXPECT_TRUE(std::is_sorted(names.begin(), names.end()));
 }
 
 TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
 {
-    // 反射フィールドの期待一覧。ここに載ったフィールドだけが Inspector 編集とシリアライズの対象になる
+    // リフレクションフィールドの期待一覧。ここに載ったフィールドだけが Inspector 編集とシリアライズの対象になる
     // 増減が意図か事故かをこの一覧との突き合わせで判定する。抜けは無言のデータ欠損になる
     const std::map<std::string, std::vector<std::string>> k_Ledger = {
         {"BoxColliderComponent", {"Half Extents", "Center Offset", "Rotation (deg)", "Is Trigger"}},

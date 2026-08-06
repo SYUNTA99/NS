@@ -1,9 +1,9 @@
 #include "Editor/SceneViewPanel.h"
 
 #include "Editor/DragTypes.h"
+#include "Editor/EditorCamera.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
-#include "Runtime/Object/Components/EditorCameraComponent.h"
 #include "Runtime/Object/Scene/Scene.h"
 
 #include <filesystem>
@@ -114,7 +114,7 @@ namespace NS::Editor
 
     bool SceneViewPanel::ConsumeFreeFlyReleased() noexcept
     {
-        // 見回しドラッグの立ち下がりで押しっぱなしのキーが残らないよう掃除させる
+        // 見回しドラッグの立ち下がりで押しっぱなしのキーが残らないよう解除させる
         const bool released = m_wasFreeFlying && !m_freeFlying;
         m_wasFreeFlying = m_freeFlying;
         return released;
@@ -139,7 +139,7 @@ namespace NS::Editor
         const bool flying = m_freeViewLatch && ImGui::IsMouseDown(ImGuiMouseButton_Right);
         const bool panning = m_freeViewLatch && ImGui::IsMouseDown(ImGuiMouseButton_Middle);
 
-        NS::Object::FreeFlightInput input{};
+        NS::Editor::EditorCameraInput input{};
         input.deltaSeconds = io.DeltaTime;
         input.flying = flying;
         if (flying)

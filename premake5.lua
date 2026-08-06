@@ -587,7 +587,7 @@ project "Game"
 
 --============================================================================
 -- Editor (StaticLib) — エディタモジュール (NS::Editor)
---   Editor / LevelEditorController / EditorCameraRig / EditorMode /
+--   Editor / LevelEditorController / EditorCamera / EditorMode /
 --   GizmoEditor / CategoryPalette / LevelFileBrowser / LevelFilePaths。
 --   Game + UI(ImGui) に依存。 GameRelease では kind None で出荷から物理排除し、
 --   「ゲーム本体は editor を知らない」をリンカで強制する。
@@ -823,7 +823,7 @@ project "Tests"
         -- Tests から直接コンパイルしてリンクする。Game.cpp は Application や
         -- Window への依存があるので除外し、unit test で扱える範囲だけ取り込む。
         "Source/Game/Player.cpp",
-        "Source/Editor/EditorCameraRig.cpp",
+        "Source/Editor/EditorCamera.cpp",
         -- LevelEditorController は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
         -- Setup は Application::Get() を要求するため test では呼ばないが、 ctor / EnterPlay /
         -- EnterEdit / 値メンバ accessor の symbol が要るので .cpp を Tests に取り込む。

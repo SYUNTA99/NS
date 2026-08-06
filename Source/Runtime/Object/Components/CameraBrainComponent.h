@@ -47,10 +47,9 @@ namespace NS::Object
         /// Evaluate 後に有効。選ばれている vcam を返し、無ければ nullptr
         [[nodiscard]] VirtualCameraComponent* ActiveVirtualCamera() const noexcept { return m_active; }
 
-        /// @brief 指定 vcam を除いて priority 最高の vcam の pose を返す (候補無しは nullopt)
-        /// @details active は問わず選ぶ。編集カメラを除きゲーム視点を別ビューへ映す用で実カメラには触れない
-        [[nodiscard]] std::optional<CameraPose> EvaluatePoseExcluding(const VirtualCameraComponent* exclude,
-                                                                      float alpha) const noexcept;
+        /// @brief 登録済みから priority 最高の vcam の pose を返します。(候補無しは nullopt)
+        /// @details active は問わず選ぶ。ゲーム視点を別ビューへ映す用で実カメラには触れない
+        [[nodiscard]] std::optional<CameraPose> EvaluateTopPose(float alpha) const noexcept;
 
         /// 実カメラへの素通しアクセサ。描画 / 半透明ソート / PlayerInput forward の接続先
         [[nodiscard]] NS::Math::Matrix ViewProjection() const noexcept;

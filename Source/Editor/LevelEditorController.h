@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Editor/EditorCamera.h"
 #include "Editor/EditorMode.h"
 #include "Editor/EditorObjects.h"
 #include "Editor/GizmoEditor.h"
@@ -25,7 +26,6 @@ namespace NS::Object
     class World;
     class ThirdPersonFollowComponent;
     class Scene;
-    struct FreeFlightInput;
     struct SceneView;
 } // namespace NS::Object
 
@@ -33,8 +33,6 @@ namespace NS::UI
 {
     class ImGuiContext;
 }
-
-class EditorCameraRig;
 
 //! @brief レベル編集機能およびプレイモードの切り替えを統括するコントローラ
 //! @details Scene 上の live な配置物 / カメラ / プレイ進行を操作し、cursor / palette / undo の
@@ -76,17 +74,17 @@ public:
     //! プレイ中に 1 fixed step だけコマ送りする。 自動で一時停止に入り、 手触り検証で 1 コマずつ観察する
     void RequestStepFrame() noexcept;
 
-    //! 生きたパネル (編集= Scene / プレイ= Game) が image を描いたフレームで矩形と hover を渡す
+    //! 前面のパネル (編集= Scene / プレイ= Game) が image を描いたフレームで矩形と hover を渡す
     void SetGameView(int x, int y, int width, int height, bool hovered) noexcept;
     //! F5 の全画面直描き用。予備の全画面矩形 + hover 真を立てる
     void ClearGameView() noexcept;
-    //! UI 表示中に生きたパネルが裏へ隠れたフレームで呼ぶ。編集入力とオーバーレイを止める
+    //! UI 表示中に前面のパネルが裏へ隠れたフレームで呼ぶ。編集入力とオーバーレイを止める
     void HideGameView() noexcept;
     //! 現在の表示矩形。未設定時は全画面の予備矩形を返す
     [[nodiscard]] NS::Editor::ViewRect CurrentViewRect() const noexcept;
-    //! 生きたパネルの画像上にマウスが居るか。非表示フレームは偽
+    //! 前面のパネルの画像上にマウスが居るか。非表示フレームは偽
     [[nodiscard]] bool GameViewHovered() const noexcept { return m_gameViewHovered; }
-    //! 生きたパネルが裏へ隠れているか
+    //! 前面のパネルが裏へ隠れているか
     [[nodiscard]] bool GameViewHidden() const noexcept { return m_gameViewHidden; }
 
     //! @brief Scene パネルが映っているフレームで真を渡す
@@ -95,7 +93,7 @@ public:
 
     //! プレイ中に Scene タブへ自由視点を映すフレームで毎回呼ぶ。入力を free-fly カメラへ流す
     //! 編集モード中は何もしない
-    void TickPlaySceneView(const NS::Object::FreeFlightInput& input) noexcept;
+    void TickPlaySceneView(const NS::Editor::EditorCameraInput& input) noexcept;
 
     //! @brief Scene パネルに映す視点。プレイ中は自由視点を上書き、編集中は Brain 任せ (nullopt)
     [[nodiscard]] std::optional<NS::Object::CameraPose> SceneViewPose() noexcept;
@@ -103,9 +101,6 @@ public:
     [[nodiscard]] std::optional<NS::Object::CameraPose> GameViewPose() noexcept;
     //! @brief 可視な中央ビュー列を world へ流す。空なら現描画先へ 1 回だけ描く従来動作
     void SetSceneViews(std::vector<NS::Object::SceneView> views);
-
-    //! @brief 今の描画視点。カメラ不在なら nullopt。Scene ビューの向き表示が読む
-    [[nodiscard]] std::optional<NS::Object::CameraPose> CurrentViewPose() noexcept;
 
     [[nodiscard]] NS::Editor::EditorMode& Editor() noexcept { return m_editor; }
 
@@ -158,7 +153,7 @@ public:
     void BeginTransformEdit() noexcept;
     void CommitTransformEdit() noexcept;
 
-    //! コンポーネント反射編集（ドラッグ操作）の開始および確定処理を行う
+    //! コンポーネントリフレクション編集（ドラッグ操作）の開始および確定処理を行う
     void BeginComponentEdit() noexcept;
     void CommitComponentEdit() noexcept;
 
@@ -245,8 +240,8 @@ public:
 private:
     void TickEdit();
 
-    //! プレイを終えて編集の姿へ戻す。部品を寝かせ pose を凍結時の姿へ復元し、カーソルを出す
-    //! 編集モードでしか要らない遷移なのでエディタが持つ。演出破棄とゴール旗は CancelPlayEffects に任せる
+    //! プレイを終えて編集の姿へ戻す。部品を休止させ pose を凍結時の姿へ復元し、カーソルを出す
+    //! 編集モードでしか要らない遷移なのでエディタが持つ。演出破棄とゴールのフラグ戻しは CancelPlayEffects に任せる
     void LeavePlayForEdit() noexcept;
 
     //! 配置物を新しい永続 id で 1 体追加する唯一の経路。採番・履歴登録・選択をまとめて面倒を見る
@@ -281,15 +276,15 @@ private:
     NS::Object::Scene* m_scene = nullptr;        // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
     NS::Editor::ObjectSnapshotApplier m_applier; // 編集を live へ写す口。 undo コマンドが叩く適用先
 
-    // 生きたパネルの表示矩形。未設定時は CurrentViewRect が全画面の予備矩形を返す
+    // 前面のパネルの表示矩形。未設定時は CurrentViewRect が全画面の予備矩形を返す
     NS::Editor::ViewRect m_gameViewRect{};
     bool m_gameViewRectValid = false;
     bool m_gameViewHovered = false;
-    bool m_gameViewHidden = false;   // UI 表示中に生きたパネルが裏へ隠れているか
+    bool m_gameViewHidden = false;   // UI 表示中に前面のパネルが裏へ隠れているか
     bool m_sceneViewVisible = false; // Scene パネルが映っているか。 プレイ中の当たり表示の条件
 
-    NS::UI::ImGuiContext* m_imgui = nullptr;            // UI描画用コンテキスト、非所有
-    std::unique_ptr<EditorCameraRig> m_editorCameraRig; // 編集用自由視点カメラ
+    NS::UI::ImGuiContext* m_imgui = nullptr; // UI描画用コンテキスト、非所有
+    NS::Editor::EditorCamera m_editorCamera; // 編集用自由視点カメラ
 
     NS::Editor::EditorMode m_editor{}; // 編集モード管理（カーソル・Undo等）
     Mode m_mode = Mode::Edit;          // 現在の実行モード

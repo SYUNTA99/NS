@@ -10,8 +10,7 @@
 
 namespace NS::Object
 {
-    CameraBrainComponent::CameraBrainComponent() noexcept : Component(TickPriority::LateUpdate + 50)
-    {}
+    CameraBrainComponent::CameraBrainComponent() noexcept : Component(TickPriority::LateUpdate + 50) {}
 
     void CameraBrainComponent::OnStart()
     {
@@ -60,13 +59,12 @@ namespace NS::Object
         return best;
     }
 
-    std::optional<CameraPose> CameraBrainComponent::EvaluatePoseExcluding(const VirtualCameraComponent* exclude,
-                                                                          float alpha) const noexcept
+    std::optional<CameraPose> CameraBrainComponent::EvaluateTopPose(float alpha) const noexcept
     {
         VirtualCameraComponent* best = nullptr;
         for (auto* vcam : m_vcams)
         {
-            if (vcam == nullptr || vcam == exclude)
+            if (vcam == nullptr)
                 continue;
             if (best == nullptr || vcam->VcamPriority() > best->VcamPriority())
                 best = vcam;
