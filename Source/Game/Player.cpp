@@ -29,7 +29,7 @@ namespace
 Player::Player() noexcept
 {
     // 構成と見た目のコード既定。値と追加分はファクトリが player object のデータから写す
-    // input は OnStart で兄弟の movement を解決するので生成順に縛りは無い
+    // input は OnStart で同じ object の movement を解決するので生成順に縛りは無い
     auto* mesh = AddComponent<NS::Object::MeshRendererComponent>();
     // 参照はファクトリが cube mesh と共有 player 材質へ解決する
     mesh->SetMeshRef("cube");
@@ -42,8 +42,8 @@ Player::Player() noexcept
     // 接地シャドウ。mesh / material / 衝突 world は後から注入される
     AddComponent<NS::Object::ShadowComponent>();
 
-    // ルール判定への応答。死んだらやり直す・ゴールでクリアする・自分の位置を area camera へ配る、は
-    // どれもプレイヤーの振る舞いなのでここに積む。暗転はクリア台本が使う道具として隣に置く
+    // ルール判定への応答。死んだらやり直す・ゴールでクリアする・自分の位置を area camera へ渡す、は
+    // どれもプレイヤーの振る舞いなのでここに積む。暗転はクリアシーケンスが使う部品として隣に置く
     AddComponent<NS::Game::Level::ScreenFadeComponent>();
     AddComponent<NS::Game::Level::RespawnerComponent>();
     AddComponent<NS::Game::Level::FinisherComponent>();
@@ -148,7 +148,7 @@ bool EnsurePlayerObject(NS::Object::SceneData& level)
     if (count > 1)
         NS_LOG_WARN(Game, "プレイヤーが {} 体ある。先頭の 1 体を正とし、残りは無効として扱う", count);
 
-    // 追従カメラが Target へ焼く id が要るので、ここで採番まで済ませる
+    // 追従カメラが Target へ書き込む id が要るので、ここで採番まで済ませる
     NS::Object::EnsureUniqueObjectIds(level);
     return created;
 }

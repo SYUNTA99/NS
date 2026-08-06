@@ -282,7 +282,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsDoesNothingWhenModelFileMissing)
     comp.SetModelRef("__ns_sac_missing_model__.glb");
     comp.ResolveAssets(am);
     EXPECT_EQ(comp.ClipCount(), 0u);
-    // 失敗時は兄弟の mesh に触らない
+    // 失敗時は同じ object の mesh に触らない
     EXPECT_EQ(renderer.GetMesh(), nullptr);
 }
 

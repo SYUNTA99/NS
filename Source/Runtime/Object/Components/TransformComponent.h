@@ -10,9 +10,9 @@
 
 namespace NS::Object
 {
-    /// @brief 位置・回転・スケールの実体を持ち、反射経路 (Inspector / undo / 直列化) へ載せるコンポーネント
+    /// @brief 位置・回転・スケールの実体を持ち、リフレクション経路 (Inspector / undo / 直列化) へ載せるコンポーネント
     /// @details GameObject はコンストラクタでこれを 1 つ積み、Root() はここが持つ Transform を指す
-    /// 回転は Transform が quaternion で持ち、反射欄だけ Euler 度で読み書きする
+    /// 回転は Transform が quaternion で持ち、リフレクション欄だけ Euler 度で読み書きする
     /// 依存: NS::Math
     class TransformComponent : public Component
     {
@@ -44,7 +44,7 @@ namespace NS::Object
 
     // 配置物データに書かれた transform も同じ物を指すので、 live クラスと同じ場所に置く
 
-    /// TransformComponent の反射型名。 transform エントリの照合に使う共有定数
+    /// TransformComponent のリフレクション型名。 transform エントリの照合に使う共有定数
     inline constexpr std::string_view k_TransformTypeName = "TransformComponent";
 
     /// 忠実な捕捉が root 回転を厳密なクォータニオンで運ぶ控え欄。 保存時は落として Euler だけ残す
@@ -52,7 +52,7 @@ namespace NS::Object
 
     /// ObjectData の transform を読み書きする唯一の経路。 実体は components 内の TransformComponent エントリで、
     /// 回転は Euler 度で持つが、 ここでは quaternion で受け渡して消費側を無改変に保つ
-    /// Set は対象エントリが無ければ EnsureTransformComponent で 1 つ起こす
+    /// Set は対象エントリが無ければ EnsureTransformComponent で 1 つ作る
     [[nodiscard]] NS::Math::Vector3 ObjectPosition(const ObjectData& object) noexcept;
     void SetObjectPosition(ObjectData& object, const NS::Math::Vector3& position) noexcept;
     [[nodiscard]] NS::Math::Quaternion ObjectRotation(const ObjectData& object) noexcept;

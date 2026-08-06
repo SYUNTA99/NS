@@ -225,7 +225,7 @@ TEST_F(ObjectBuildTest, FreeBoxWorldAabbReflectsPositionAndHalfExtents)
     EXPECT_NEAR(aabb.Extents.z, 3.0f, 1e-4f);
 }
 
-// components 一覧を持つ object は registry でコンポを生成し、 反射 set でフィールドが入る
+// components 一覧を持つ object は registry でコンポを生成し、 リフレクション set でフィールドが入る
 TEST_F(ObjectBuildTest, ComponentsDriveBuild)
 {
     ObjectData object;
@@ -265,7 +265,7 @@ TEST_F(ObjectBuildTest, AssetPathTraversalRejectedFallsBackToDefault)
     EXPECT_TRUE(Has<NS::Object::BoxColliderComponent>(*obj));
 }
 
-// 45 度スロープ prototype は wedge メッシュ + 45 度 SlopeCollider を起こし、 R で回せる
+// 45 度スロープ prototype は wedge メッシュ + 45 度 SlopeCollider を作り、 R で回せる
 TEST_F(ObjectBuildTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
 {
     ObjectData slope = MakeCellObject(0, 0, 0);
@@ -365,7 +365,7 @@ TEST_F(ObjectBuildTest, PlayerDefaultLookComesFromClassNotData)
     EXPECT_EQ(mesh->MeshRef(), "cube");
     EXPECT_EQ(mesh->MaterialRef(), "player");
 
-    // 個体色は getter が無いので反射フィールド越しに読む
+    // 個体色は getter が無いのでリフレクションフィールド越しに読む
     const NS::Object::ReflectionInfo* info = NS::Object::MeshRendererComponent::StaticReflection();
     NS::Math::Vector3 baseColor{};
     bool found = false;
@@ -383,7 +383,7 @@ TEST_F(ObjectBuildTest, PlayerDefaultLookComesFromClassNotData)
     EXPECT_FLOAT_EQ(baseColor.z, 0.20f);
 }
 
-// data 側で焼いた値が既定構成の component へ反射適用される
+// data 側で書き込んだ値が既定構成の component へリフレクション適用される
 TEST_F(ObjectBuildTest, PlayerObjectAppliesDataValuesToComponents)
 {
     ObjectData data = MakePlayerObject(Vector3{}, NS::Math::Quaternion{});
@@ -417,8 +417,8 @@ TEST_F(ObjectBuildTest, DuplicateColliderDataBuildsCompoundColliders)
     EXPECT_FLOAT_EQ(boxes[1]->HalfExtents().x, 2.0f);
 }
 
-// 統合 C-1: 実体を反射 serialize → 既定 component へ apply → 再 serialize で一致する (live→JSON→live の忠実性)
-// 保存を data でなく実体から起こす統合の前提。 registry で組める component だけを対象にする
+// 統合 C-1: 実体をリフレクション serialize → 既定 component へ apply → 再 serialize で一致する (live→JSON→live の忠実性)
+// 保存を data でなく実体から作る統合の前提。 registry で組める component だけを対象にする
 TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
@@ -485,7 +485,7 @@ TEST_F(ObjectBuildTest, DisabledComponentSurvivesRoundTrip)
     EXPECT_FALSE(NS::Object::ComponentEntryEnabled(*entry));
 }
 
-// モード切替で寝かせただけの component は保存に持ち込まない。 焼くと読み直しでも動かなくなる
+// モード切替で休止させただけの component は保存に持ち込まない。 書き込むと読み直しでも動かなくなる
 TEST_F(ObjectBuildTest, SleepingComponentIsSavedAsEnabled)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));

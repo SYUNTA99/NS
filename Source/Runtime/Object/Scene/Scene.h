@@ -78,7 +78,7 @@ namespace NS::Object
         void CreateSceneSubsystems();
 
         /// サブシステムを Deinitialize する。SceneManager が OnShutdown 後に呼ぶ
-        /// 本体の破棄は scene と共に行い、借用元より後に死ぬ順序はメンバの宣言順が保つ
+        /// 本体の破棄は scene と共に行い、借用元より後に破棄される順序はメンバの宣言順が保つ
         void DeinitSceneSubsystems();
 
         /// 衝突 world への可変ハンドル。build 時に満たし、
@@ -152,7 +152,7 @@ namespace NS::Object
         }
 
         /// @brief 実行時の一時オブジェクトを world へ入れる。 一時オブジェクトの印はここで立てる
-        /// @details 保存・凍結に写らず、 データからの組み直しを生き残る。 更新は配置物と同じ帯に乗る
+        /// @details 保存・凍結に写らず、 データからの組み直し後も残る。 更新は配置物と同じ帯に乗る
         /// 型が実行時にしか決まらない時の受け口。 型が分かっているなら SpawnTransient<T> を使う
         GameObject* SpawnTransient(std::unique_ptr<GameObject> obj);
 
@@ -161,8 +161,8 @@ namespace NS::Object
         /// 子は根として残る。 まとめて消したい呼び出し側が並びを決めて 1 体ずつ呼ぶ
         void DestroyObject(std::uint32_t objectId);
 
-        /// @brief live な配置物から SceneData を起こす。 保存の出所を実体に一本化するための捕捉
-        /// @details 反射で全 component の値を忠実に写す
+        /// @brief live な配置物から SceneData を作る。 保存の出所を実体に一本化するための捕捉
+        /// @details リフレクションで全 component の値を忠実に写す
         [[nodiscard]] SceneData CaptureLiveToSceneData() const;
 
         /// カメラブレンドの更新・補間スナップショット・帯の一括更新。 世界の駆動はここが持つ
@@ -228,7 +228,7 @@ namespace NS::Object
         bool m_subsystemsInitialized = false; // CreateSceneSubsystems の二度目を何もしないための印
 
         /// 衝突 world。当たりの有る scene だけが build で満たし、無ければ空のまま
-        /// 借用する CharacterMovementComponent は先に死ぬので、これは常に借用元より後まで生存する
+        /// 借用する CharacterMovementComponent が先に破棄されるので、これは常に借用元より後まで生存する
         NS::Physics::PhysicsWorld m_physicsWorld;
 
         NS::Object::World m_world;     // ランタイムワールド

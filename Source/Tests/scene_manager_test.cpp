@@ -47,7 +47,7 @@ TEST(NsSceneManager, LoadSceneReplacesPreviousWorld)
     mgr.LoadScene(MakeLevel(3));
 
     NS::Object::Scene& second = mgr.LoadScene(MakeLevel(1));
-    // 前の scene が畳まれていれば、残るのは新しいデータの分だけ
+    // 前の scene が破棄されていれば、残るのは新しいデータの分だけ
     EXPECT_EQ(second.World().ObjectCount(), 1u);
 }
 

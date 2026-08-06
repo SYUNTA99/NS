@@ -150,7 +150,7 @@ namespace NS::Editor
 
         (void)EnsureScenesDirectoryExists();
 
-        // 保存の出所は live 実体。 捕捉関数で実体から SceneData を起こして書く
+        // 保存の出所は live 実体。 捕捉関数で実体から SceneData を作って書く
         const NS::Object::SceneData snapshot = m_captureLevel();
         const bool ok = NS::Object::SaveSceneToJsonFile(snapshot, *path);
         if (ok)
@@ -464,7 +464,7 @@ namespace NS::Editor
             return std::uint8_t{0};
         }();
 
-        // パレット雛形を cell 座標と回転 step だけ焼いて 1 体分の姿を作る
+        // パレット雛形を cell 座標と回転 step だけ書き込んで 1 体分の姿を作る
         NS::Object::ObjectData placed = m_palette.CurrentTemplate();
         NS::Object::SetObjectPosition(
             placed, NS::Math::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});

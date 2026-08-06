@@ -24,7 +24,7 @@ namespace NS::Game::Level
         auto* scene = Owner()->OwningScene();
         if (scene == nullptr)
             return;
-        // 待ちまたぎの生ポインタを避けるため毎ステップ引き直す。組み直しで古い参照を掴む事故を塞ぐ
+        // 待ちまたぎの生ポインタを避けるため毎ステップ引き直す。組み直しで古い参照を掴む事故を防ぐ
         auto* player = FindPlayer(scene->World());
         if (player == nullptr)
             return;
@@ -32,7 +32,7 @@ namespace NS::Game::Level
         if (movement == nullptr)
             return;
 
-        // 固形の衝突応答で capsule 中心は表面外に留まるため、芯線分から AABB の最近距離で重なりを見る
+        // 固形の衝突応答で capsule 中心は表面外に留まるため、軸線分から AABB の最近距離で重なりを見る
         NS::Physics::Capsule capsule{};
         capsule.center = player->Root().Position();
         capsule.radius = movement->CapsuleRadius();

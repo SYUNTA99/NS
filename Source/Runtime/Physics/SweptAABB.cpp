@@ -132,7 +132,7 @@ namespace NS::Physics
                             float& outToi,
                             NS::Math::Vector3& outNormal) noexcept
     {
-        // 上下 2 endpoint を sphere swept する近似。芯端点は共通ヘルパで求める
+        // 上下 2 endpoint を sphere swept する近似。軸端点は共通ヘルパで求める
         const auto [top, bottom] = CapsuleEndpoints(capsule);
 
         float toiTop = 1.0f;

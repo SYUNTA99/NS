@@ -10,7 +10,7 @@
 
 namespace NS::Game::Level
 {
-    // ルール判定 (LateUpdate) が出そろった後、カメラ追従 (+50) の前に同じ tick で応える
+    // 判定の後、カメラ追従の前。同じ LateUpdate でやり直す
     RespawnerComponent::RespawnerComponent() noexcept
         : NS::Object::Component(NS::Object::TickPriority::LateUpdate + 10)
     {}
@@ -26,7 +26,7 @@ namespace NS::Game::Level
 
     void RespawnerComponent::RestartRun() noexcept
     {
-        // プレイヤーに載る component なので、 戻す相手は自分の持ち主
+        // プレイヤーに載る component なので、 戻す相手は自分の owner
         auto* scene = static_cast<NS::Object::Scene*>(Owner()->OwningScene());
         if (scene == nullptr)
             return;
@@ -45,7 +45,7 @@ namespace NS::Game::Level
         if (auto* health = Owner()->FindComponent<HealthComponent>())
             health->Reset();
 
-        // ルール配置物の旗も初期状態へ戻す。前のプレイの旗が残ると開始直後に再クリアしてしまう
+        // ルール配置物のフラグも初期状態へ戻す。前のプレイのフラグが残ると開始直後に再クリアしてしまう
         scene->World().ForEachComponent<GoalComponent>([](GoalComponent& goal) { goal.ResetReached(); });
     }
 } // namespace NS::Game::Level

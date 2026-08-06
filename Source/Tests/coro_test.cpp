@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-/// 台本実行器の単体検証。待ちの明け方・破棄・複数本の独立を dt 駆動で確かめる
+/// シーケンス実行器の単体検証。待ちの明け方・破棄・複数本の独立を dt 駆動で確かめる
 
 namespace
 {
@@ -36,7 +36,7 @@ namespace
         co_return;
     }
 
-    // 台本フレームの破棄で立つ旗。CancelAll が中の破棄処理を走らせる証拠に使う
+    // シーケンスフレームの破棄で立つフラグ。CancelAll が中の破棄処理を走らせる証拠に使う
     struct DtorFlag
     {
         bool* flag = nullptr;
@@ -106,7 +106,7 @@ TEST(CoroTest, WaitUntilAlreadyTrueContinuesWithoutSuspending)
     const bool gate = true;
     NS::Core::CoroRunner runner;
 
-    // 最初から真の条件は待たず、台本は Start の中で最後まで走り切る
+    // 最初から真の条件は待たず、シーケンスは Start の中で最後まで走り切る
     runner.Start(WaitGateScript(log, gate));
 
     EXPECT_FALSE(runner.IsRunning());
@@ -146,7 +146,7 @@ TEST(CoroTest, CancelAllDestroysFramesWithoutResuming)
 
     runner.CancelAll();
 
-    // 続きは走らないが、台本フレーム内の破棄処理は走る
+    // 続きは走らないが、シーケンスフレーム内の破棄処理は走る
     EXPECT_FALSE(runner.IsRunning());
     EXPECT_TRUE(destroyed);
     EXPECT_EQ(log, (std::vector<std::string>{"before"}));

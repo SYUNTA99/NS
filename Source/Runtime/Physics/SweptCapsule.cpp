@@ -19,7 +19,7 @@ namespace
         return Vector3{v.x * inv, v.y * inv, v.z * inv};
     }
 
-    /// 非単位入力でも芯端点が歪まないよう axis を正規化する。 零ベクトルは Y 軸にする
+    /// 非単位入力でも軸端点が歪まないよう axis を正規化する。 零ベクトルは Y 軸にする
     [[nodiscard]] Vector3 NormalizeAxis(const Vector3& axis) noexcept
     {
         const float lenSq = Dot(axis, axis);
@@ -71,8 +71,8 @@ namespace
         return false;
     }
 
-    /// 芯線分 [A,B] と半径 R の capsule に、 t が [0,1] の ray P(t)=O+tD が最初に入る t と、
-    /// その時の芯上の最近点 Q を返す。 既に内部なら t=0。 当たらなければ false
+    /// 軸線分 [A,B] と半径 R の capsule に、 t が [0,1] の ray P(t)=O+tD が最初に入る t と、
+    /// その時の軸上の最近点 Q を返す。 既に内部なら t=0。 当たらなければ false
     /// 軸直交成分の二次式の無限円柱 + 端 cap 球 2 個 の最小 t を採る
     [[nodiscard]] bool RayVsCapsule(const Vector3& O,
                                     const Vector3& D,

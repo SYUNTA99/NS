@@ -20,7 +20,7 @@ namespace NS::Object
                         NS::Physics::PhysicsWorld& physics,
                         const ObjectFactoryFn& factory)
     {
-        // 実行時の一時オブジェクトはデータ由来でないため、 退避して組み直しを生き残らせる
+        // 実行時の一時オブジェクトはデータ由来でないため、 退避して組み直し後も残す
         std::vector<std::unique_ptr<GameObject>> transients;
         for (auto& obj : m_objects)
         {
@@ -75,7 +75,7 @@ namespace NS::Object
 
             // 親子は全 object が揃ってから結ぶ。 子が親より前に並ぶファイルでも同じ形に組める
             // 循環は読込の PruneInvalidParents が落とし済みで、 ここへは届かない
-            // id 引きを線形で回すと体数の二乗に効くので、 組み立ての間だけ生きる対応表で引く
+            // id 引きを線形で回すと体数の二乗に効くので、 組み立ての間だけ使う対応表で引く
             // 索引として持ち越さないのは、 所有リストと同期を保つ手間を抱え込まないため
             std::unordered_map<std::uint32_t, GameObject*> byObjectId;
             byObjectId.reserve(m_objects.size());
@@ -217,7 +217,7 @@ namespace NS::Object
 
     void World::Clear()
     {
-        // 配置物は生成の逆順で畳む。 依存し合う component の OnEndPlay 順序を生成時と対称に保つ
+        // 配置物は生成の逆順で破棄する。 依存し合う component の OnEndPlay 順序を生成時と対称に保つ
         for (auto it = m_objects.rbegin(); it != m_objects.rend(); ++it)
             (*it)->OnEndPlay();
         m_objects.clear();

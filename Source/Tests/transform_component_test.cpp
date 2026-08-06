@@ -18,7 +18,7 @@ namespace
     using NS::Object::ReflectionInfo;
     using NS::Object::TransformComponent;
 
-    // live 側の TransformComponent の数を反射型名で数える
+    // live 側の TransformComponent の数をリフレクション型名で数える
     [[nodiscard]] std::size_t CountTransformComponents(const GameObject& obj)
     {
         std::size_t count = 0;
@@ -80,7 +80,7 @@ TEST(TransformComponentTest, ReflectsPositionRotationScale)
     EXPECT_NE(FindField(info, "Scale"), nullptr);
 }
 
-// 反射 set が owner の root Transform を動かし、 root を直接動かすと反射 get が追う
+// リフレクション set が owner の root Transform を動かし、 root を直接動かすとリフレクション get が追う
 TEST(TransformComponentTest, PositionReflectionBridgesOwnerRootTransform)
 {
     GameObject obj;
@@ -139,7 +139,7 @@ TEST(TransformComponentTest, RotationEulerDegreesRoundTrips)
     EXPECT_NEAR(got.z, 0.0f, 1e-2f);
 }
 
-// 実体を自分で持つので、 持ち主に着いていなくても読み書きできる
+// 実体を自分で持つので、 owner に着いていなくても読み書きできる
 TEST(TransformComponentTest, WithoutOwnerReadsAndWritesOwnTransform)
 {
     TransformComponent orphan;
@@ -179,7 +179,7 @@ TEST(TransformComponentTest, DataWithoutTransformEntryKeepsOneAtDefaults)
     EXPECT_FLOAT_EQ(obj.Root().Scale().z, 1.0f);
 }
 
-// エントリを消せば効果も消える。 焼いた位置は組み直しで原点へ戻る
+// エントリを消せば効果も消える。 書き込んだ位置は組み直しで原点へ戻る
 TEST(TransformComponentTest, ErasingTransformEntryDropsThePose)
 {
     ObjectData object = MakeMinimalObject();

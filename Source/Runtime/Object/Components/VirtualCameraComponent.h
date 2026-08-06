@@ -61,7 +61,7 @@ namespace NS::Object
         void SetFarPlane(float farPlane) noexcept { m_farPlane = farPlane; }
         [[nodiscard]] float FarPlane() const noexcept { return m_farPlane; }
 
-        // 姿勢は派生と Brain が決めるので保存する調整値は無い。派生の反射鎖の中継点として型名だけ登録する
+        // 姿勢は派生と Brain が決めるので保存する調整値は無い。派生のリフレクション鎖の中継点として型名だけ登録する
         NS_REFLECT_NONE(VirtualCameraComponent, Component)
 
     protected:

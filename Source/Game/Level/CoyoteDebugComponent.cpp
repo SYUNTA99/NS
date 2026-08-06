@@ -124,7 +124,7 @@ namespace NS::Game::Level
         {
             return;
         }
-        // プレイヤーに載る component なので、 描く相手は自分の持ち主
+        // プレイヤーに載る component なので、 描く相手は自分の owner
         DrawCoyoteDebugInfo(scene->World(), Owner());
     }
 

@@ -10,7 +10,7 @@
 namespace LevelNs = NS::Game::Level;
 namespace SceneNs = NS::Object;
 
-/// ゴール配置物が LateUpdate 帯で自分から接触を判定し、旗を保持することを検証する
+/// ゴール配置物が LateUpdate 帯で自分から接触を判定し、フラグを保持することを検証する
 
 namespace
 {
@@ -75,7 +75,7 @@ TEST(GoalTest, ReachedLatchesUntilReset)
     scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
     ASSERT_TRUE(goal->Reached());
 
-    // 触れた後に離れても旗は立ったまま
+    // 触れた後に離れてもフラグは立ったまま
     auto* player = FindPlayer(scene.World());
     ASSERT_NE(player, nullptr);
     player->Root().SetPosition(NS::Math::Vector3{10.0f, 0.0f, 0.0f});

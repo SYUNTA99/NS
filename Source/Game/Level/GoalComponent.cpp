@@ -25,7 +25,7 @@ namespace NS::Game::Level
         if (player == nullptr)
             return;
 
-        // 中心間距離の単純比較。触れた事実は旗として保持し、離れても下ろさない
+        // 中心間距離の単純比較。触れた事実はフラグとして保持し、離れても下ろさない
         const NS::Math::Vector3 toPlayer = player->Root().Position() - RootTransform().Position();
         if (toPlayer.LengthSquared() < k_GoalRadius * k_GoalRadius)
             m_reached = true;

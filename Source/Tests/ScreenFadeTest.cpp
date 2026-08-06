@@ -108,7 +108,7 @@ TEST(ScreenFade, ZeroSecondsJumpsToEndState)
     EXPECT_NEAR(fade.Alpha(), 0.0f, 1e-6f);
 }
 
-// 重ね描きの口を持つのは専用基底の派生だけ。 本番の呼び出しと同じ反射照合で確かめる
+// 重ね描きの口を持つのは専用基底の派生だけ。 本番の呼び出しと同じリフレクション照合で確かめる
 TEST(ScreenFade, OnlyOverlayRendererIsPickedUp)
 {
     NS::Object::GameObject obj;

@@ -33,7 +33,7 @@ TEST(CapsuleAabbTest, CenterOutsideButTouchingFromSideOverlaps)
         NS::Physics::IntersectsCapsuleAABB(MakePlayerCapsule(0.85f, 0.0f, 0.0f), MakeCellAabb(0.0f, 0.0f, 0.0f)));
 }
 
-// 上に乗っている状態: capsule 芯の下端が box 天面付近に来る。 中心は box の遥か上だが芯線分が接触
+// 上に乗っている状態: capsule 軸の下端が box 天面付近に来る。 中心は box の遥か上だが軸線分が接触
 TEST(CapsuleAabbTest, StandingOnTopOverlaps)
 {
     EXPECT_TRUE(

@@ -28,14 +28,14 @@ namespace NS::Object
     /// components が空の object は配置物でないため nullptr。 assets=nullptr (テスト等) は解決だけ跳ばす
     [[nodiscard]] std::unique_ptr<GameObject> BuildSceneObject(const ObjectData& object, AssetManager* assets);
 
-    /// obj の component 構成を型名だけの components に写し、 transform を TransformComponent エントリへ焼いた
+    /// obj の component 構成を型名だけの components に写し、 transform を TransformComponent エントリへ書き込んだ
     /// ObjectData を返す。 transform 以外の値は写さずコード既定に任せる疎な写しで、
-    /// 参照や配置などデータでしか決まらない値は呼出側が焼く。 反射の無い component は型名を持てないため写らない
+    /// 参照や配置などデータでしか決まらない値は呼出側が書き込む。 リフレクションの無い component は型名を持てないため写らない
     [[nodiscard]] ObjectData MakeObjectData(const GameObject& obj);
 
-    /// obj の全 component を反射で読み、 型名と全フィールド値を写した忠実な ObjectData を返す
+    /// obj の全 component をリフレクションで読み、 型名と全フィールド値を写した忠実な ObjectData を返す
     /// 疎な MakeObjectData と違い既定と同値の欄も含めて丸ごと写す、 undo とプレイ中の変化を編集へ持ち込まないための値退避に使う
-    /// 反射の無い component は型名を持てないため写らない。 復元は ApplyObjectComponents が担う
+    /// リフレクションの無い component は型名を持てないため写らない。 復元は ApplyObjectComponents が担う
     [[nodiscard]] ObjectData CaptureObjectData(const GameObject& obj);
 
     /// GameObject 派生 T の既定構成すなわちコンストラクタが積む component 構成から ObjectData を作る

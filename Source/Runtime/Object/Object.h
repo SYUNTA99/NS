@@ -22,7 +22,7 @@ namespace NS::Object
         Object() noexcept = default;
         virtual ~Object() noexcept = default;
 
-        /// クラス名。素の GameObject と未反射 Component は空を返す
+        /// クラス名。素の GameObject と未リフレクション Component は空を返す
         [[nodiscard]] virtual const char* ClassName() const noexcept { return ""; }
 
         /// 永続 id。0 は未採番
@@ -32,7 +32,7 @@ namespace NS::Object
         [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
 
     private:
-        // id と表示名の書き込みは data を焼く経路だけに絞る
+        // id と表示名の書き込みは data 適用の経路だけに絞る
         // 配置物は World::Rebuild、Component は組み立て側が ObjectIdAccess 越しに書く
         friend class World;
         friend struct ObjectIdAccess;
@@ -44,7 +44,7 @@ namespace NS::Object
     };
 
     /// @brief Component へ永続 id を書くための専用経路。組み立て経路だけが使う
-    /// @details 配置物の id は World が焼くので、こちらは Component 用
+    /// @details 配置物の id は World が書くので、こちらは Component 用
     struct ObjectIdAccess
     {
         static void SetId(Object& object, std::uint32_t id) noexcept { object.SetId(id); }

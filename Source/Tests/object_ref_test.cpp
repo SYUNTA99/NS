@@ -16,7 +16,7 @@ namespace
     using NS::Object::Scene;
     using NS::Object::World;
 
-    /// 反射フィールド名で ObjectRef を書き込む。 データ経由の構築と同じ set 経路を通す
+    /// リフレクションフィールド名で ObjectRef を書き込む。 データ経由の構築と同じ set 経路を通す
     void SetTargetRef(NS::Object::Component& comp, std::uint32_t id)
     {
         const NS::Object::ReflectionInfo* info = comp.GetReflection();
@@ -29,7 +29,7 @@ namespace
             info->fields[i].set(&comp, &ref);
             return;
         }
-        FAIL() << "Target フィールドが反射に無い";
+        FAIL() << "Target フィールドがリフレクションに無い";
     }
 } // namespace
 
@@ -44,7 +44,7 @@ TEST(ObjectRefTest, ResolvesByPersistentId)
     EXPECT_EQ(world.FindObject(ObjectRef{}), nullptr);
     EXPECT_EQ(world.FindObject(ObjectRef{8u}), nullptr);
 
-    // 索引は所有リストそのものなので、 畳めば参照は引けなくなる
+    // 索引は所有リストそのものなので、 破棄すれば参照は引けなくなる
     world.Clear();
     EXPECT_EQ(world.FindObject(ObjectRef{7u}), nullptr);
 }

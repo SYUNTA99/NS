@@ -27,7 +27,7 @@ namespace NS::Object
     {
     public:
         /// Mesh / Material は非所有の生ポインタ。空で作り、後から SetMesh / SetMaterial で入れる
-        /// 寿命は AssetManager 等の持ち主が保証する
+        /// 寿命は AssetManager 等の所有側が保証する
         MeshRendererComponent() noexcept = default;
 
         /// Material instance ごとの色味で Player は赤系 Block は灰色系に色分けする。lighting とは別系統の個体色
@@ -40,7 +40,7 @@ namespace NS::Object
         [[nodiscard]] NS::Graphics::Material* GetMaterial() const noexcept { return m_material; }
 
         /// 描画に使う Mesh を差し替える。mesh=nullptr で Draw は何もしなくなる
-        /// 反射では Mesh を運べないので、 MeshRef から解決したものをここで差す
+        /// リフレクションでは Mesh を運べないので、 MeshRef から解決したものをここで差す
         void SetMesh(NS::Graphics::Mesh* mesh) noexcept { m_mesh = mesh; }
         /// build 時に解決された実体 Mesh を返す。 未解決なら nullptr
         [[nodiscard]] const NS::Graphics::Mesh* GetMesh() const noexcept { return m_mesh; }
@@ -72,7 +72,7 @@ namespace NS::Object
                                     std::size_t cpuDataSize,
                                     unsigned slot) noexcept;
 
-        /// skinned など mesh 固定の LocalBounds では現在ポーズを包めない時に、兄弟が毎フレーム
+        /// skinned など mesh 固定の LocalBounds では現在ポーズを包めない時に、同じ object の component が毎フレーム
         /// 現在ポーズの局所境界を差す。差された間は WorldBounds がこれを world 変換して使う
         void SetLocalBoundsOverride(const NS::Math::AABB& localBounds) noexcept
         {
@@ -124,7 +124,7 @@ namespace NS::Object
         std::size_t m_perObjectVsSize = 0;
         unsigned m_perObjectVsSlot = 1;
 
-        // skinned の現在ポーズ境界。兄弟 SkeletalAnimationComponent が毎フレーム差す
+        // skinned の現在ポーズ境界。同じ object の SkeletalAnimationComponent が毎フレーム差す
         NS::Math::AABB m_localBoundsOverride{};
         bool m_hasLocalBoundsOverride = false;
     };

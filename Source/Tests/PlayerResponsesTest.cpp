@@ -16,7 +16,7 @@ namespace SceneNs = NS::Object;
 /// Application 依存のない Scene で、 走行のやり直しと応答 component の挙動を検証する
 /// 応答部品はプレイヤーに載るので、 プレイヤーを 1 体置けば揃う
 /// 世界の駆動は Scene::OnUpdate で、 dt は FrameTimer::FixedDelta の既定 1/60 が使われる
-/// 判定と応答 (respawner / finisher) は同じ tick の LateUpdate 帯の並びで済む
+/// 判定と応答 (respawner / finisher) は同じ LateUpdate 帯の並びで済む
 
 namespace
 {
@@ -85,7 +85,7 @@ TEST(PlayerResponses, FallIntoKillZoneRestartsSameTick)
     // 体力を減らしておくと、 全回復が「リスタートが走った」証拠になる
     player->ApplyDamage(5);
 
-    // 奈落へ落とすと LateUpdate 帯の即死判定が立ち、 同じ tick の respawner がリスタートさせる
+    // 奈落へ落とすと LateUpdate 帯の即死判定が立ち、 同じ LateUpdate の respawner がリスタートさせる
     player->Root().SetPosition(NS::Math::Vector3{0.0f, -55.0f, 0.0f});
     scene.OnUpdate();
 
@@ -124,7 +124,7 @@ TEST(PlayerResponses, GoalContactStartsClearFadeSameTick)
 
     scene.OnUpdate();
 
-    // 接触の旗が判定で立ち、 同じ tick の finisher が台本を始める
+    // 接触のフラグが判定で立ち、 同じ LateUpdate の finisher がシーケンスを始める
     auto* fade = FindFade(scene);
     ASSERT_NE(fade, nullptr);
     EXPECT_TRUE(fade->IsFading());
@@ -210,7 +210,7 @@ TEST(PlayerResponses, ClearFadesOutRestartsAtBlackThenFadesIn)
     ASSERT_NE(fade, nullptr);
     ASSERT_TRUE(fade->IsFading());
 
-    // 台本の間は世界を止めず入力だけ切る
+    // シーケンスの間は世界を止めず入力だけ切る
     auto* input = player->FindComponent<SceneNs::PlayerInputComponent>();
     ASSERT_NE(input, nullptr);
     EXPECT_FALSE(input->IsActiveSelf());

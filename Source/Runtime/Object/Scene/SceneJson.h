@@ -25,7 +25,7 @@ namespace NS::Object
     [[nodiscard]] std::string SerializeSceneToJson(const SceneData& scene);
 
     /// JSON 文字列を SceneData へ復元する。 parse 失敗・version 不一致・上限超過で false、 `outScene` は空に reset
-    /// される 読込成功時は object id の一意化と宙に浮いた ObjectRef の掃除まで済ませて返す
+    /// される 読込成功時は object id の一意化と宙に浮いた ObjectRef の除去まで済ませて返す
     [[nodiscard]] bool DeserializeSceneFromJson(SceneData& outScene, std::string_view jsonText);
 
 } // namespace NS::Object

@@ -252,7 +252,7 @@ TEST(WorldTest, RebuildBakesFollowCameraAndResolvesTarget)
     const auto vcams = Collect<NS::Object::VirtualCameraComponent>(world);
     ASSERT_EQ(vcams.size(), 1u);
     EXPECT_EQ(vcams[0], follow);
-    // データの Far Plane 100 が反射 set で効いている
+    // データの Far Plane 100 がリフレクション set で効いている
     EXPECT_FLOAT_EQ(follow->FarPlane(), 100.0f);
 
     // 追従先の解決: world が組んだ grid block の Root を指す
@@ -285,7 +285,7 @@ TEST(WorldTest, EnsureUniqueObjectIdsNumbersComponents)
     EXPECT_EQ(std::adjacent_find(ids.begin(), ids.end()), ids.end());
 }
 
-// データの id が実体へ焼かれ、保存で往復しても同じ番号のまま
+// データの id が実体へ書き込まれ、保存で往復しても同じ番号のまま
 TEST(WorldTest, ComponentIdSurvivesBuildAndCapture)
 {
     SceneData level;
@@ -487,7 +487,7 @@ TEST(WorldTest, UpdateAllObjectsSkipsInactiveComponent)
     EXPECT_EQ(counter->Count(), 1);
 }
 
-// 持ち主の active を切ると配下 component が一括更新から外れ、 戻せばまた回る
+// owner の active を切ると配下 component が一括更新から外れ、 戻せばまた回る
 TEST(WorldTest, UpdateAllObjectsFollowsOwnerActiveFlag)
 {
     World world;

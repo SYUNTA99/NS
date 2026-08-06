@@ -15,7 +15,7 @@ namespace NS::Graphics
 
     /// @brief クリップの各トラックを、source の骨名と正規化名が一致する target の骨 index へ張替える
     /// @details 一致する骨が無いトラックは落とす。全トラックが落ちたクリップは結果に含めず警告だけ出す
-    /// トラックが空のクリップを返すと IsValid() が false で bind ポーズに戻るだけの死にデータになり、
+    /// トラックが空のクリップを返すと IsValid() が false で bind ポーズに戻るだけの無効データになり、
     /// クリップ数の水増しで添字選択もずれるため
     /// target 側で正規化後の名前が重複したときは先の骨へ張り、警告する
     [[nodiscard]] std::vector<AnimationClip> BindClipsByName(const std::vector<AnimationClip>& sourceClips,

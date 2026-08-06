@@ -7,7 +7,7 @@ namespace
     using NS::Physics::Capsule;
     using NS::Math::Sphere;
 
-    // 芯が縦 (axis Y) の標準プレイヤー capsule を返す
+    // 軸が縦 (axis Y) の標準プレイヤー capsule を返す
     Capsule MakeVerticalCapsule(const Vector3& center, float halfHeight, float radius)
     {
         Capsule c;
@@ -65,7 +65,7 @@ TEST(SweptCapsuleVsSphereTest, MissReturnsFalse)
 TEST(SweptCapsuleVsSphereTest, AlreadyOverlappingReturnsZeroToi)
 {
     const Capsule capsule = MakeVerticalCapsule(Vector3{0.0f, 1.0f, 0.0f}, 0.5f, 0.4f);
-    const Sphere sphere{Vector3{0.5f, 1.0f, 0.0f}, 0.4f}; // 芯までの距離 0.5 < R 0.8
+    const Sphere sphere{Vector3{0.5f, 1.0f, 0.0f}, 0.4f}; // 軸までの距離 0.5 < R 0.8
     const Vector3 motion{0.0f, 0.0f, 1.0f};
 
     float toi = 1.0f;

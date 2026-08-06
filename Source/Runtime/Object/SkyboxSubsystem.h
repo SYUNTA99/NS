@@ -30,7 +30,7 @@ namespace NS::Object
         /// skybox 装置を生成する。device 不在なら装置を持たず DrawSky は何もしない
         void Initialize(Scene& scene) noexcept;
 
-        /// skybox 装置と読込済みパスの控えを畳む
+        /// skybox 装置と読込済みパスの控えごと破棄する
         void Deinitialize() noexcept;
 
         /// 渡されたパスが前回と違えば cubemap を読み直し、camera 中心固定で空を描く

@@ -20,7 +20,7 @@ namespace NS::Object
     /// @brief クリップを時間再生して SkeletalMesh のボーンパレットを更新する
     /// @details fixed step ごとに再生時刻を進める。AnimationClip をサンプリングしたポーズを
     /// Skeleton でボーンパレット化し、SkeletalMesh に渡す。再生 / 停止 / 速度 / ループ / クリップ選択を制御できる
-    /// mesh / skeleton / clips は全て非所有で、AssetManager 等の持ち主が寿命を保証する。priority は Update 帯の後方
+    /// mesh / skeleton / clips は全て非所有で、AssetManager 等の所有側が寿命を保証する。priority は Update 帯の後方
     /// (+100、移動の後に骨を追従させる)
     class SkeletalAnimationComponent : public Component
     {
@@ -35,7 +35,7 @@ namespace NS::Object
 
         /// この Component が表す skinned モデルの参照。 ContentRoot 配下の glTF 相対パス
         [[nodiscard]] const std::string& ModelRef() const noexcept { return m_modelRef; }
-        /// build 時にこの文字列から mesh / skeleton / clips を解決する。 兄弟 MeshRendererComponent の mesh も
+        /// build 時にこの文字列から mesh / skeleton / clips を解決する。 同じ object の MeshRendererComponent の mesh も
         /// こちらが差すので、 skinned の配置物は MeshRenderer 側の Mesh 参照を空のままにする
         void SetModelRef(std::string ref) noexcept { m_modelRef = std::move(ref); }
 
@@ -69,7 +69,7 @@ namespace NS::Object
         void OnStart() override;
         void OnUpdate() override;
 
-        /// modelRef から skinned glTF を解決し mesh / skeleton / clips を差す。 兄弟 MeshRendererComponent があれば
+        /// modelRef から skinned glTF を解決し mesh / skeleton / clips を差す。 同じ object の MeshRendererComponent があれば
         /// 同じ mesh を差す。 空 / 解決不可はそのまま何もしない (SetMesh 等の手動配線を壊さない)
         void ResolveAssets(AssetManager& assets) override;
 
@@ -101,7 +101,7 @@ namespace NS::Object
         std::unique_ptr<NS::Graphics::Buffer> m_bonePaletteCB; // VS b1 用の定数バッファ
         NS::Graphics::BonePaletteCB m_palette;                 // CPU 側パレット、描画側が毎描画 GPU へ上げる
 
-        MeshRendererComponent* m_renderer = nullptr; // 兄弟の描画。パレットと境界の差し先 (非所有)
+        MeshRendererComponent* m_renderer = nullptr; // 同じ object の描画 component。パレットと境界の差し先 (非所有)
     };
 
 } // namespace NS::Object

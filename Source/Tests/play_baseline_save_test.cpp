@@ -14,7 +14,7 @@ namespace SceneNs = NS::Object;
 namespace LevelNs = NS::Game::Level;
 
 // プレイ突入時に凍結した控えは、 プレイ中の live 移動を映さず突入時の姿を保つ
-// プレイ中の保存はこの控えを書くため、 プレイの一時状態がレベルファイルへ焼き込まれない
+// プレイ中の保存はこの控えを書くため、 プレイの一時状態がレベルファイルへ書き込まれない
 TEST(PlayBaselineSave, FrozenBaselineIgnoresPlayMovement)
 {
     NS::Object::Scene scene;

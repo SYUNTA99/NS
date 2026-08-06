@@ -57,7 +57,7 @@ namespace NS::Editor
             // Assets と Console は下段でタブに重ねる。後にドックした Assets が既定の前面タブ
             ImGui::DockBuilderDockWindow(k_PanelConsole, bottomId);
             ImGui::DockBuilderDockWindow(k_PanelAssets, bottomId);
-            // 中央ノードは窓を割り当てず、Scene / Game の両方をドックする (生きた側だけが映像を持つ)
+            // 中央ノードは窓を割り当てず、Scene / Game の両方をドックする (前面の側だけが映像を持つ)
             ImGui::DockBuilderDockWindow(k_PanelScene, centerId);
             ImGui::DockBuilderDockWindow(k_PanelGame, centerId);
 

@@ -26,13 +26,13 @@ namespace NS::Editor
         //! Game パネルを 1 枚描く。 プレイ中は入力矩形と hover を controller へ渡す
         void Render(LevelEditorController& editor) noexcept;
 
-        //! 中央以外を全面化する間、 生きた矩形と hover を無効化する
+        //! 中央以外を全面化する間、 前面の矩形と hover を無効化する
         void Suppress(LevelEditorController& editor) noexcept;
 
         //! @return 可視なら {RT, ゲーム視点} のビュー。 不可視なら nullopt
         [[nodiscard]] std::optional<NS::Object::SceneView> CollectView(LevelEditorController& editor) noexcept;
 
-        //! 描画先を畳む。 Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
+        //! 描画先を破棄する。 Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
         void ReleaseTarget() noexcept { m_surface.Release(); }
 
         //! 全マウス解放中だけ hover に追従してラッチを更新する

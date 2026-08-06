@@ -78,7 +78,7 @@ TEST(ObbCollisionTest, CapsuleStopsAtRotatedWall)
     }
 
     // 衝突無しなら 10×(1/60)×30frame で x は +2 付近まで抜ける。 OBB が効けば貫通せず
-    // 接触法線 (-0.707,0,+0.707) で +Z へ滑る。 z への偏向は回転を畳んだ AABB では起きない
+    // 接触法線 (-0.707,0,+0.707) で +Z へ滑る。 z への偏向は回転を丸めた AABB では起きない
     EXPECT_LT(position.x, 1.5f);
     EXPECT_GT(position.z, 0.3f);
 }

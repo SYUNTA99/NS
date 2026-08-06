@@ -42,7 +42,7 @@ namespace NS::Object
 
     void Scene::SyncPhysics()
     {
-        // ギズモで動いた live の当たりを張り直す。 object を作り直さないので選択・参照はそのまま生きる
+        // ギズモで動いた live の当たりを張り直す。 object を作り直さないので選択・参照はそのまま保たれる
         m_world.RebuildPhysics(Physics());
         OnWorldChanged();
         NotifyTransientsWorldChanged();
@@ -376,7 +376,7 @@ namespace NS::Object
     void Scene::DeinitSceneSubsystems()
     {
         // 解放フックだけ回し、本体の破棄は scene と共に行う
-        // CharacterMovementComponent 等の借用元より後に死ぬ順序はメンバの宣言順が保つ
+        // CharacterMovementComponent 等の借用元より後に破棄される順序はメンバの宣言順が保つ
         m_skyboxSubsystem.Deinitialize();
         m_cameraSubsystem.Deinitialize();
         m_subsystemsInitialized = false;

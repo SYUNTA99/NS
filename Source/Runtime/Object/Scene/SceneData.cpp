@@ -33,7 +33,7 @@ namespace NS::Object
         }
 
         /// JSON 木を「型 tag + 値」の順で再帰 hash する。 object はキー昇順で並ぶので決定的
-        /// 整数は符号付き / 無しを同一視して 1 つの tag に畳む。 保存 (符号付きで組む) → 読込 (非負は
+        /// 整数は符号付き / 無しを同一視して 1 つの tag にまとめる。 保存 (符号付きで組む) → 読込 (非負は
         /// 符号無しで返る) の往復で CRC が変わり「読込直後から dirty」になる事故を防ぐ
         std::uint32_t UpdateWithJson(std::uint32_t crc, const nlohmann::json& value) noexcept
         {

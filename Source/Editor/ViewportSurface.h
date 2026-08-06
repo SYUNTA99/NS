@@ -28,7 +28,7 @@ namespace NS::Editor
     {
     public:
         //! RenderTarget を不完全型のまま持つので、 実体は両方 .cpp 側に置く
-        //! コンストラクタも対象で、 例外時の巻き戻しで unique_ptr を畳むため完全型が要る
+        //! コンストラクタも対象で、 例外時の巻き戻しで unique_ptr が破棄されるため完全型が要る
         ViewportSurface();
         ~ViewportSurface();
 
@@ -55,7 +55,7 @@ namespace NS::Editor
         [[nodiscard]] std::optional<NS::Object::SceneView> CollectView(
             std::optional<NS::Object::CameraPose> pose) noexcept;
 
-        //! 描画先を畳む。 Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
+        //! 描画先を破棄する。 Renderer が非所有ポインタを踏まないよう外した後に呼ぶ
         void Release() noexcept;
 
         //! このフレームにパネルが可視 (サイズを持つ) だったか

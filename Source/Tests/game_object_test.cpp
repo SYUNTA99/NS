@@ -187,7 +187,7 @@ TEST(GameObjectTest, OwnerFlagGatesItsComponents)
 
     obj.SetActive(false);
     EXPECT_FALSE(comp->IsActive());
-    // component 自身の active は触られないので、持ち主を戻せばそのまま効く
+    // component 自身の active は触られないので、owner を戻せばそのまま効く
     EXPECT_TRUE(comp->IsActiveSelf());
 
     obj.SetActive(true);

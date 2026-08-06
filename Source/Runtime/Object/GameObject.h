@@ -33,7 +33,7 @@ namespace NS::Object
         [[nodiscard]] const Transform& Root() const noexcept { return *m_transform; }
 
         /// 実行時にコードが足す一時オブジェクトか。 true は保存・凍結・作業データに写らず、
-        /// データからの組み直しを生き残る
+        /// データからの組み直し後も残る
         [[nodiscard]] bool IsTransient() const noexcept { return m_transient; }
 
         /// 一時オブジェクトの印。 Scene::SpawnTransient が立てる。 テストは直接立ててよい
@@ -50,8 +50,8 @@ namespace NS::Object
         [[nodiscard]] const std::vector<Component*>& Components() const noexcept { return m_components; }
 
         /// Component 列から型 T の最初の一致を返す。無ければ nullptr。具象型を知らずに同じ object の Component を引く読み取り経路
-        /// 反射鎖の照合で一致を見るため T は反射宣言を持つこと。未宣言型はここがコンパイルエラーになり、
-        /// 実行時に静かに見つからない事故を塞ぐ。派生型は基底型の検索にも一致する。読み取りのみで所有・順序には触れない
+        /// リフレクション鎖の照合で一致を見るため T はリフレクション宣言を持つこと。未宣言型はここがコンパイルエラーになり、
+        /// 実行時に静かに見つからない事故を防ぐ。派生型は基底型の検索にも一致する。読み取りのみで所有・順序には触れない
         template <class T> [[nodiscard]] T* FindComponent() noexcept
         {
             const auto* target = T::StaticReflection();
@@ -96,7 +96,7 @@ namespace NS::Object
         /// この配置物自身の active 値。親の状態は含まない
         [[nodiscard]] bool IsActiveSelf() const noexcept { return m_activeSelf; }
 
-        /// @brief 自分と全ての祖先が生きているか
+        /// @brief 自分と全ての祖先が有効か
         /// @details Component::IsActive がこれを見るので、偽の間は配下 Component が更新も描画も当たりも止まる
         [[nodiscard]] bool IsActiveInHierarchy() const noexcept;
 
@@ -107,7 +107,7 @@ namespace NS::Object
         [[nodiscard]] std::uint32_t Order() const noexcept { return m_order; }
 
     private:
-        // 並び順の書き込みは World::Rebuild が data を焼く経路だけに絞る
+        // 並び順の書き込みは World::Rebuild の data 適用経路だけに絞る
         friend class World;
         void SetOrder(std::uint32_t order) noexcept { m_order = order; }
 

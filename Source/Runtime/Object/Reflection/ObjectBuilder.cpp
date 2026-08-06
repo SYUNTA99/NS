@@ -17,7 +17,7 @@ namespace NS::Object
 {
     namespace
     {
-        // GameObject に既に載る同型 component を反射型名で探す。 適用済みの控えにある分は飛ばし、 無ければ nullptr
+        // GameObject に既に載る同型 component をリフレクション型名で探す。 適用済みの控えにある分は飛ばし、 無ければ nullptr
         Component* FindExistingComponent(GameObject& obj,
                                          std::string_view typeName,
                                          const std::vector<Component*>& applied)
@@ -35,7 +35,7 @@ namespace NS::Object
             return nullptr;
         }
 
-        // transform エントリへ root 回転を 4 要素配列で控える。 反射の Euler と別に厳密なクォータニオンを運ぶ
+        // transform エントリへ root 回転を 4 要素配列で控える。 リフレクションの Euler と別に厳密なクォータニオンを運ぶ
         void WriteRotationQuatField(nlohmann::json& transformEntry, const NS::Math::Quaternion& rotation)
         {
             transformEntry["fields"][std::string(k_RotationQuatFieldName)] =
@@ -80,7 +80,7 @@ namespace NS::Object
                 continue; // 許可リスト外 / 未知の型は読み飛ばす
             applied.push_back(created);
 
-            // data の id を実体へ焼く。以降この component は並び順でなく id で名指しできる
+            // data の id を実体へ書く。以降この component は並び順でなく id で名指しできる
             ObjectIdAccess::SetId(*created, ComponentEntryId(entry));
             created->SetEnabled(ComponentEntryEnabled(entry));
 
@@ -88,7 +88,7 @@ namespace NS::Object
             if (fieldsIt != entry.end())
                 ApplyJsonFields(*created, *fieldsIt);
 
-            // Euler の反射適用で丸まった root 回転を、 控えの厳密なクォータニオンで戻して往復ドリフトを断つ
+            // Euler のリフレクション適用で丸まった root 回転を、 控えの厳密なクォータニオンで戻して往復ドリフトを断つ
             if (typeName == k_TransformTypeName)
                 ApplyRotationQuatOverride(obj, entry);
 

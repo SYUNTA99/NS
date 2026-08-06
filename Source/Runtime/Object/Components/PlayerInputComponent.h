@@ -23,7 +23,7 @@ namespace NS::Object
 
         [[nodiscard]] CharacterMovementComponent* Movement() const noexcept { return m_movement; }
 
-        /// 兄弟の movement をここで解決する。見つからなければ OnUpdate は何もしない
+        /// 同じ object の movement をここで解決する。見つからなければ OnUpdate は何もしない
         void OnStart() override;
         void OnUpdate() override;
 

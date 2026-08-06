@@ -63,7 +63,7 @@ namespace NS::Object
     /// - エディタの 1 手戻し
     /// live な GameObject は所有と実行時状態を抱えていて複製できないので、
     /// 「後で元へ戻す」には姿を値へ落とすこのデータが要る
-    /// 配置物は transform + 反射コンポーネント一覧の ObjectData に統一し、
+    /// 配置物は transform + リフレクションコンポーネント一覧の ObjectData に統一し、
     /// 当たりも見た目も components が唯一の出所になる
     /// プレイ経路には const 参照でしか渡さない
     /// 依存: NS::Math, NS::Object::ObjectRef
@@ -98,7 +98,7 @@ namespace NS::Object
     void EnsureUniqueObjectIds(SceneData& scene);
 
     /// 存在しない object を指す ObjectRef フィールドを未設定 0 へ戻し、直した件数を返す
-    /// 手編集や参照先削除で宙に浮いた参照を読込直後に掃除し、実行時の照合失敗を入口で断つ
+    /// 手編集や参照先削除で宙に浮いた参照を読込直後に除去し、実行時の照合失敗を入口で断つ
     [[nodiscard]] std::size_t PruneDanglingObjectRefs(SceneData& scene);
 
     /// 辿れない parentId を root の 0 へ戻し、直した件数を返す。自分自身・不在の親・循環が対象

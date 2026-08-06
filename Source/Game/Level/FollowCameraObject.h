@@ -13,7 +13,7 @@ namespace NS::Game::Level
     /// objects から追従カメラを探す。最初の 1 件の添字、無ければ k_NoObjectIndex
     [[nodiscard]] std::size_t FindFollowCameraObjectIndex(const NS::Object::SceneData& scene) noexcept;
 
-    /// 追従カメラの ObjectData を作る。追従先の id を Target 参照へ焼く。0 は未設定
+    /// 追従カメラの ObjectData を作る。追従先の id を Target 参照へ書き込む。0 は未設定
     /// 位置は追従で毎フレーム決まるため Transform は既定のまま
     [[nodiscard]] NS::Object::ObjectData MakeFollowCameraObject(std::uint32_t targetObjectId);
 

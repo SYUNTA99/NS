@@ -8,7 +8,7 @@ namespace NS::Object
 {
     /// @brief 箱型 collider を Scene に登録する Component
     /// @details owner の world 変換を重ねた当たり箱を返し、scene の collision world 構築に使う
-    /// WorldAABB は回転時に内包軸並行ボックスへ畳むが、 WorldOBB は回転・非一様 scale を厳密に保持する
+    /// WorldAABB は回転時に内包する軸並行ボックスにするが、 WorldOBB は回転・非一様 scale を厳密に保持する
     /// Mesh と分離し、 視覚と衝突を独立に調整できるようにする
     class BoxColliderComponent : public ColliderComponent
     {
@@ -39,7 +39,7 @@ namespace NS::Object
         void SetTrigger(bool isTrigger) noexcept;
         [[nodiscard]] bool IsTrigger() const noexcept;
 
-        /// Owner の world 変換に当たり箱の local offset / 回転を重ねた AABB を返す。 回転時は内包軸並行へ畳む
+        /// Owner の world 変換に当たり箱の local offset / 回転を重ねた AABB を返す。 回転時は内包する軸並行にする
         /// Owner が未登録の場合は local offset / 回転だけを反映した AABB を返す。 例外は投げない
         [[nodiscard]] NS::Math::AABB WorldAABB() const noexcept;
 

@@ -450,7 +450,7 @@ namespace NS::Graphics
             return NS::Math::Matrix::Identity;
         }
 
-        // node 変換は焼き込まない。重みのある joint index が範囲外なら false
+        // node 変換は頂点へ適用しない。重みのある joint index が範囲外なら false
         bool AppendSkinnedPrimitive(const cgltf_primitive& prim,
                                     cgltf_size jointsCount,
                                     const std::string& path,

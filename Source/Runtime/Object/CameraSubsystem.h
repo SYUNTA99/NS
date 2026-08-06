@@ -26,7 +26,7 @@ namespace NS::Object
         /// 実カメラ + Brain を載せた host を組んで開始する。以降 Brain() / MainCamera() が有効になる
         void Initialize(Scene& scene) noexcept;
 
-        /// host を畳んで破棄する。登録されたままの vcam 参照も host ごと消える
+        /// host を解体して破棄する。登録されたままの vcam 参照も host ごと消える
         void Deinitialize() noexcept;
 
         /// シーンの描画を駆動する brain。Initialize 前は nullptr

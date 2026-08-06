@@ -47,11 +47,11 @@ namespace NS::Object
                      NS::Physics::PhysicsWorld& physics,
                      const ObjectFactoryFn& factory);
 
-        /// 配置物を逆順に畳んで所有物を空へ戻す。 scene の OnShutdown と Rebuild 冒頭が呼ぶ
+        /// 配置物を逆順に破棄して所有物を空へ戻す。 scene の OnShutdown と Rebuild 冒頭が呼ぶ
         void Clear();
 
         /// 型 T の配置物を world の中で作って加える。 所有は world が握り、 呼出側へは生ポインタだけ返す
-        /// scene attach と objectId 焼きは呼出側が返り値へ済ませる
+        /// scene attach と objectId の書き込みは呼出側が返り値へ済ませる
         template <class T, class... Args> T* Spawn(Args&&... args)
         {
             auto obj = std::make_unique<T>(std::forward<Args>(args)...);
@@ -60,13 +60,13 @@ namespace NS::Object
             return raw;
         }
 
-        /// 組み上がった配置物を 1 体 world へ加える。 scene attach と objectId 焼きは呼出側が済ませて渡す
+        /// 組み上がった配置物を 1 体 world へ加える。 scene attach と objectId の書き込みは呼出側が済ませて渡す
         /// 型が実行時にしか決まらないファクトリ経由の組み立て用。 型が分かっているなら Spawn<T> を使う
         GameObject* Append(std::unique_ptr<GameObject> obj);
 
-        /// objectId 一致の配置物を畳んで world から外す。 居なければ何もしない
+        /// objectId 一致の配置物を破棄して world から外す。 居なければ何もしない
         /// 当たり箱もここで揃えるので、 組み直さずに 1 体だけ消せる
-        /// 子は根として残る (親子の切り離しは GameObject の畳みが行う)
+        /// 子は根として残る (親子の切り離しは GameObject の破棄が行う)
         void RemoveByObjectId(std::uint32_t objectId, NS::Physics::PhysicsWorld& physics);
 
         /// objectId 一致の配置物を返す。 居なければ nullptr。 選択・編集の live 索引
@@ -74,7 +74,7 @@ namespace NS::Object
         [[nodiscard]] GameObject* FindByObjectId(std::uint32_t objectId) noexcept;
 
         /// ObjectRef の指す配置物を返す。 未設定と該当なしは nullptr
-        /// 索引は所有リストそのものなので、 畳んだ相手を指す参照は必ず nullptr になる
+        /// 索引は所有リストそのものなので、 破棄した相手を指す参照は必ず nullptr になる
         [[nodiscard]] GameObject* FindObject(ObjectRef ref) noexcept;
 
         /// 全配置物の collider を physics へ入れ直し broadphase を張り直す。 object は作り直さない
@@ -127,7 +127,7 @@ namespace NS::Object
         [[nodiscard]] Iterator begin() const noexcept { return Iterator{m_objects.data()}; }
         [[nodiscard]] Iterator end() const noexcept { return Iterator{m_objects.data() + m_objects.size()}; }
 
-        /// 全配置物から型 T の component を訪ねる。 反射の is-a 照合なので抽象基底型でも派生を引ける
+        /// 全配置物から型 T の component を訪ねる。 リフレクションの is-a 照合なので抽象基底型でも派生を引ける
         /// 型付き控えの代わりの問い合わせ口で、 寿命は world が握ったまま
         template <class T, class Fn> void ForEachComponent(Fn&& fn) const
         {
@@ -142,7 +142,7 @@ namespace NS::Object
         std::uint32_t m_nextObjectId = 1;                   // 次に割り当てる永続 id。 単調増加で欠番は再利用しない
     };
 
-    /// `targetId` を指す ObjectRef フィールドを live の全配置物から反射で集める
+    /// `targetId` を指す ObjectRef フィールドを live の全配置物からリフレクションで集める
     /// 削除前に何が参照しているかを調べる関数。 k_NoObjectId 相当の 0 は未設定の印なので空を返す
     [[nodiscard]] std::vector<ObjectRefLocation> FindReferencesTo(const World& world, std::uint32_t targetId);
 

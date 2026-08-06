@@ -9,17 +9,17 @@
 
 namespace NS::Core
 {
-    /// @brief 複数フレームにまたがる演出手順の台本。co_await で待ちを挟みつつ上から下へ書く
-    /// @details CoroutineRunner が所有と駆動を持つ。台本の中で待ちをまたいで生ポインタを持たないこと
-    /// (待っている間に持ち主が破棄され得る)。破棄はフレームごと捨てる方式で、途中再開はしない
+    /// @brief 複数フレームにまたがる演出手順のシーケンス。co_await で待ちを挟みつつ上から下へ書く
+    /// @details CoroutineRunner が所有と駆動を持つ。シーケンスの中で待ちをまたいで生ポインタを持たないこと
+    /// (待っている間に所有側が破棄され得る)。破棄はフレームごと捨てる方式で、途中再開はしない
     class Coroutine
     {
     public:
         struct promise_type
         {
-            float waitSeconds = 0.0f;            // 残り待ち秒。正の間は眠る
+            float waitSeconds = 0.0f;            // 残り待ち秒。正の間は待つ
             std::function<bool()> waitPredicate; // 条件待ち。真を返したら起きる
-            bool waitNextFrame = false;          // 次の Tick まで眠る印
+            bool waitNextFrame = false;          // 次の Tick まで待つ印
 
             Coroutine get_return_object()
             {
@@ -62,7 +62,7 @@ namespace NS::Core
         Handle m_handle{};
     };
 
-    /// @brief 指定秒だけ眠る待ち。時間は駆動側が Tick へ渡す dt で進む
+    /// @brief 指定秒の待ち。時間は駆動側が Tick へ渡す dt で進む
     struct WaitSeconds
     {
         float seconds = 0.0f;
@@ -75,7 +75,7 @@ namespace NS::Core
         void await_resume() const noexcept {}
     };
 
-    /// @brief 条件が真になるまで眠る待ち。条件は毎 Tick 評価される
+    /// @brief 条件が真になるまでの待ち。条件は毎 Tick 評価される
     struct WaitUntil
     {
         std::function<bool()> condition;
@@ -92,7 +92,7 @@ namespace NS::Core
         void await_resume() const noexcept {}
     };
 
-    /// @brief 次の Tick まで眠る待ち
+    /// @brief 次の Tick までの待ち
     struct NextFrame
     {
         [[nodiscard]] bool await_ready() const noexcept { return false; }
@@ -103,9 +103,9 @@ namespace NS::Core
         void await_resume() const noexcept {}
     };
 
-    /// @brief 台本の実行器。所有する台本の待ちを進め、明けた物を再開する
-    /// @details いつ Tick するかは持ち主が決める。止めている間は全台本が止まる (pause はこれで効く)
-    /// CancelAll は台本を途中のまま破棄する (フレーム内の破棄処理は走る)。破棄後の再開は無い
+    /// @brief シーケンスの実行器。所有するシーケンスの待ちを進め、明けた物を再開する
+    /// @details いつ Tick するかは所有側が決める。止めている間は全シーケンスが止まる (pause はこれで効く)
+    /// CancelAll はシーケンスを途中のまま破棄する (フレーム内の破棄処理は走る)。破棄後の再開は無い
     class CoroutineRunner
     {
     public:
@@ -117,7 +117,7 @@ namespace NS::Core
         CoroutineRunner(CoroutineRunner&&) = delete;
         CoroutineRunner& operator=(CoroutineRunner&&) = delete;
 
-        /// 台本を先頭から最初の待ちまで即時に走らせ、続きを預かる。待ち無しで終わればその場で捨てる
+        /// シーケンスを先頭から最初の待ちまで即時に走らせ、続きを預かる。待ち無しで終わればその場で捨てる
         void Start(Coroutine&& coroutine)
         {
             Coroutine::Handle handle = coroutine.Release();
@@ -132,7 +132,7 @@ namespace NS::Core
             m_handles.push_back(handle);
         }
 
-        /// 待ちを dt だけ進め、明けた台本を再開する。終わった台本はここで捨てる
+        /// 待ちを dt だけ進め、明けたシーケンスを再開する。終わったシーケンスはここで捨てる
         void Tick(float dt)
         {
             for (std::size_t i = 0; i < m_handles.size();)
@@ -180,7 +180,7 @@ namespace NS::Core
             }
         }
 
-        /// 全台本を途中のまま破棄する。モード離脱やレベル破棄の前に呼ぶ
+        /// 全シーケンスを途中のまま破棄する。モード離脱やレベル破棄の前に呼ぶ
         void CancelAll() noexcept
         {
             for (Coroutine::Handle handle : m_handles)
@@ -191,7 +191,7 @@ namespace NS::Core
         [[nodiscard]] bool IsRunning() const noexcept { return !m_handles.empty(); }
 
     private:
-        std::vector<Coroutine::Handle> m_handles; // 進行中の台本。done になったら即座に外す
+        std::vector<Coroutine::Handle> m_handles; // 進行中のシーケンス。done になったら即座に外す
     };
 
 } // namespace NS::Core

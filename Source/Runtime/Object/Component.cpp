@@ -16,7 +16,7 @@ namespace NS::Object
     {
         if (!m_enabled || !m_active)
             return false;
-        // 持ち主に着く前は IsActiveSelf の値だけで答える。 組み立て途中の問い合わせをここで落とさない
+        // owner に着く前は IsActiveSelf の値だけで答える。 組み立て途中の問い合わせをここで落とさない
         if (m_owner == nullptr)
             return true;
         return m_owner->IsActiveInHierarchy();
@@ -26,7 +26,7 @@ namespace NS::Object
     {
         if (target == nullptr)
             return false;
-        // 反射情報は型ごとに 1 つだけなのでアドレス比較で足りる。鎖は現状深さ 2 が最大
+        // リフレクション情報は型ごとに 1 つだけなのでアドレス比較で足りる。鎖は現状深さ 2 が最大
         for (const ReflectionInfo* info = GetReflection(); info != nullptr; info = info->base)
         {
             if (info == target)

@@ -113,7 +113,7 @@ TEST(BoxColliderTest, WorldOBBReflectsOwnerScale)
     EXPECT_NEAR(obb.halfExtentZ, 3.0f, 1e-4f);
 }
 
-// Y 軸 90° 回転で OBB 軸が world X と直交する。 AABB と違い回転を畳まない
+// Y 軸 90° 回転で OBB 軸が world X と直交する。 AABB と違い回転を丸めない
 TEST(BoxColliderTest, WorldOBBRotationProducesRotatedAxes)
 {
     GameObject obj;

@@ -14,7 +14,7 @@ namespace NS::Editor
         Game
     };
 
-    //! 生きた映像を映すタブを返す。編集中は Scene、プレイ中は Game
+    //! 前面の映像を映すタブを返す。編集中は Scene、プレイ中は Game
     [[nodiscard]] CenterTab LiveCenterTab(bool playMode) noexcept;
 
     //! @brief ツールバー状態の入力。現在のモードと一時停止フラグの写し
@@ -50,7 +50,7 @@ namespace NS::Editor
     enum class CenterPanelRole : std::uint8_t
     {
         Placeholder, // 説明文だけ
-        LiveView,    // 生きた映像。マウスはゲームへ通す
+        LiveView,    // 前面の映像。マウスはゲームへ通す
         FreeView     // 自由カメラ映像。マウスは UI が持ち自由カメラが使う
     };
 

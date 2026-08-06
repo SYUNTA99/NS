@@ -9,7 +9,7 @@
 namespace NS::Game::Level
 {
     ScreenFadeComponent::ScreenFadeComponent() noexcept
-        // 応答 (+10) より先に進める。全黒に達した tick のうちに応答が動き、やり直しが必ず全黒の裏に隠れる
+        // 応答より先の帯。やり直しが必ず全黒の裏に隠れる
         : NS::Object::OverlayRendererComponent(NS::Object::TickPriority::LateUpdate + 5)
     {}
 

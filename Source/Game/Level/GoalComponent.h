@@ -6,8 +6,8 @@
 namespace NS::Game::Level
 {
     /// @brief 触れたらクリアになるゴールの配置物
-    /// @details プレイヤーとの中心距離を LateUpdate 帯で自分で判定し、触れたら旗を立てて保持する
-    /// 旗を読んでどう応答するかは FinisherComponent が決める。旗は走行のやり直しと編集復帰で戻される
+    /// @details プレイヤーとの中心距離を LateUpdate 帯で自分で判定し、触れたらフラグを立てて保持する
+    /// フラグを読んでどう応答するかは FinisherComponent が決める。フラグは走行のやり直しと編集復帰で戻される
     class GoalComponent : public NS::Object::Component
     {
     public:
@@ -20,10 +20,10 @@ namespace NS::Game::Level
 
         [[nodiscard]] bool Reached() const noexcept { return m_reached; }
 
-        /// 旗を戻す。走行のやり直し (respawner) と編集へ戻る時 (エディタ) に呼ばれる
+        /// フラグを戻す。走行のやり直し (respawner) と編集へ戻る時 (エディタ) に呼ばれる
         void ResetReached() noexcept { m_reached = false; }
 
-        // 調整できるフィールドは無いが、 反射 typeName を持たせて type と空 fields で直列化できるようにする
+        // 調整できるフィールドは無いが、 リフレクション typeName を持たせて type と空 fields で直列化できるようにする
         NS_REFLECT_NONE(GoalComponent, NS::Object::Component)
 
     private:

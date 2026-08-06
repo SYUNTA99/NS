@@ -22,7 +22,7 @@ namespace NS::Object
         void SetRadius(float radius) noexcept;
         [[nodiscard]] float Radius() const noexcept;
 
-        /// 芯の半分の長さ、 半球を除く円柱部の半長。 負は 0 にクランプ
+        /// 軸線分の半分の長さ、 半球を除く円柱部の半長。 負は 0 にクランプ
         void SetHalfHeight(float halfHeight) noexcept;
         [[nodiscard]] float HalfHeight() const noexcept;
 

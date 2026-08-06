@@ -25,7 +25,7 @@ namespace NS::Object
     /// @brief 振る舞いを表現する再利用ブロック。通常は派生して使う
     /// @details GameObject::AddComponent<T>() で生成され、 GameObject が unique_ptr で寿命を所有する
     /// Component 自身は所有者 GameObject を生参照する。 owner は生成後に GameObject が注入する
-    /// 兄弟 Component への参照は OnStart で Owner()->FindComponent<T>() により解決する
+    /// 同じ object 上の Component への参照は OnStart で Owner()->FindComponent<T>() により解決する
     /// scene の Subsystem は OnStart で Owner()->OwningScene() 経由で借用する
     /// ライフサイクル:
     ///   - OnStart() — Scene attach 直後に 1 回
@@ -53,11 +53,11 @@ namespace NS::Object
         [[nodiscard]] const Transform& RootTransform() const noexcept;
 
         /// @brief この Component が効いているか
-        /// @details 自分の active に加えて、 持ち主の階層全体の active まで見る
+        /// @details 自分の active に加えて、 owner の階層全体の active まで見る
         /// 更新・ 描画・ 当たりは全てこの問いを使う。 自身の値だけが要る編集 UI は IsActiveSelf を使う
         [[nodiscard]] bool IsActive() const noexcept;
 
-        /// この Component 自身の active 値。 持ち主の状態は含まない
+        /// この Component 自身の active 値。 owner の状態は含まない
         [[nodiscard]] bool IsActiveSelf() const noexcept { return m_active; }
         /// 自分の active を切り替える。 設定できるのは自分の分だけで、 階層は見ない
         void SetActive(bool active) noexcept { m_active = active; }
@@ -71,14 +71,14 @@ namespace NS::Object
         virtual void OnUpdate() {}
         virtual void OnEndPlay() {}
 
-        /// 反射で運んだ参照文字列 (mesh / material 等) を資産の実体へ引き当てる。 既定は何もしない
+        /// リフレクションで運んだ参照文字列 (mesh / material 等) を資産の実体へ引き当てる。 既定は何もしない
         /// world の組み立てが値の適用後に呼ぶ。 AssetManager が無い間 (テスト等) は呼ばれない
         virtual void ResolveAssets(AssetManager&) {}
 
-        /// このコンポーネント型の反射情報。未反射型は nullptr。エディタが Component* 越しに field を列挙する
+        /// このコンポーネント型のリフレクション情報。未リフレクション型は nullptr。エディタが Component* 越しに field を列挙する
         [[nodiscard]] virtual const ReflectionInfo* GetReflection() const noexcept { return nullptr; }
 
-        /// 反射の typeName をクラス名として返す。名前の出所を反射 1 本に保つため派生で個別に返さない
+        /// リフレクションの typeName をクラス名として返す。名前の出所をリフレクション 1 本に保つため派生で個別に返さない
         [[nodiscard]] const char* ClassName() const noexcept override
         {
             const ReflectionInfo* info = GetReflection();
@@ -87,7 +87,7 @@ namespace NS::Object
             return "";
         }
 
-        /// 自分の反射鎖に target が現れるか。反射照合による is-a 判定。target が nullptr なら常に false
+        /// 自分のリフレクション鎖に target が現れるか。リフレクション照合による is-a 判定。target が nullptr なら常に false
         [[nodiscard]] bool IsA(const ReflectionInfo* target) const noexcept;
 
     private:
@@ -101,7 +101,7 @@ namespace NS::Object
         bool m_enabled = true;                 // データの active 値、 false なら OnUpdate を飛ばす
     };
 
-    /// 反射照合で通れば static_cast、外れれば nullptr を返す。comp が nullptr でも安全
+    /// リフレクション照合で通れば static_cast、外れれば nullptr を返す。comp が nullptr でも安全
     template <class T> [[nodiscard]] T* ComponentCast(Component* comp) noexcept
     {
         if (comp != nullptr && comp->IsA(T::StaticReflection()))
@@ -109,7 +109,7 @@ namespace NS::Object
         return nullptr;
     }
 
-    /// const 版。反射照合で通れば static_cast、外れれば nullptr
+    /// const 版。リフレクション照合で通れば static_cast、外れれば nullptr
     template <class T> [[nodiscard]] const T* ComponentCast(const Component* comp) noexcept
     {
         if (comp != nullptr && comp->IsA(T::StaticReflection()))

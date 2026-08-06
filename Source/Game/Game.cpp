@@ -78,7 +78,7 @@ void Game::OnAttach()
     // 走行のやり直しが読む凍結スナップショットをここで捕まえる。 世界はシーンが読み込みから回している
     (void)scene->BeginPlayBaseline();
 
-    // 追従カメラは生成直後は寝ている。 出荷はプレイしかないので起動で起こす
+    // 追従カメラは生成直後は休止している。 出荷はプレイしかないので起動で有効化する
     scene->World().ForEachComponent<NS::Object::ThirdPersonFollowComponent>(
         [](NS::Object::ThirdPersonFollowComponent& follow) { follow.SetActive(true); });
 

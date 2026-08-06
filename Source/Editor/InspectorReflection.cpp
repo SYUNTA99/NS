@@ -53,7 +53,7 @@ namespace NS::Editor
         if (!m_holder)
             m_holder = std::make_unique<NS::Object::GameObject>();
 
-        // 既定コンストラクタで起こしただけの 1 体。 未登録の型は nullptr が返り、 その答も控えて再試行しない
+        // 既定コンストラクタで作っただけの 1 体。 未登録の型は nullptr が返り、 その答も控えて再試行しない
         NS::Object::Component* created = NS::Object::CreateComponent(typeName, *m_holder);
         m_byType.emplace_back(std::string(typeName), created);
         return created;
@@ -309,7 +309,7 @@ namespace NS::Editor
             }
             const NS::Object::ReflectionInfo* info = comp->GetReflection();
 
-            // Transform は Inspector 上部の専用パネルが編集するので、 反射一覧では重複させない
+            // Transform は Inspector 上部の専用パネルが編集するので、 リフレクション一覧では重複させない
             if (info != nullptr && std::strcmp(info->typeName, "TransformComponent") == 0)
             {
                 continue;

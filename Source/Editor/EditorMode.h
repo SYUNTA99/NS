@@ -58,7 +58,7 @@ namespace NS::Editor
         EditorMode() noexcept = default;
         ~EditorMode() noexcept = default;
 
-        //! @brief 保存時に live 実体から SceneData を起こす捕捉関数を差す。 未設定なら保存できない
+        //! @brief 保存時に live 実体から SceneData を作る捕捉関数を差す。 未設定なら保存できない
         void SetCaptureLevelFn(std::function<NS::Object::SceneData()> fn) noexcept { m_captureLevel = std::move(fn); }
 
         //! @brief grid 編集・ undo を live へ通す適用経路を差す。 未設定なら grid 編集は何もしない
@@ -153,7 +153,7 @@ namespace NS::Editor
         void OpenLoadModal() noexcept { m_fileBrowser.OpenLoadModal(); }
 
     private:
-        std::function<NS::Object::SceneData()> m_captureLevel;    // 保存時に live から SceneData を起こす
+        std::function<NS::Object::SceneData()> m_captureLevel;    // 保存時に live から SceneData を作る
         IObjectSnapshotApplier* m_applier = nullptr;               // grid 編集・ undo を live へ通す適用経路
         std::function<void(NS::Object::SceneData&&)> m_loadLevel; // 読込済みデータを実体側へ取り込む
         std::function<std::uint32_t(std::int16_t, std::int16_t, std::int16_t)>

@@ -47,7 +47,7 @@ TEST(CameraSubsystemTest, DeinitializeReleasesHost)
     ASSERT_NE(subsystem, nullptr);
     ASSERT_NE(subsystem->Brain(), nullptr);
 
-    // シーン破棄で host ごと畳まれ、取得関数は nullptr を返す
+    // シーン破棄で host ごと破棄され、取得関数は nullptr を返す
     subsystem->Deinitialize();
     EXPECT_EQ(subsystem->Brain(), nullptr);
     EXPECT_EQ(subsystem->MainCamera(), nullptr);

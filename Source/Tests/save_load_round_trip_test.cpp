@@ -207,7 +207,7 @@ TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
     EXPECT_FALSE(SceneNs::SaveSceneToJsonFile(huge, *path));
 }
 
-// 型名 + 反射フィールド値 (全 5 種の値) を持つコンポ一覧が save→load で復元される (全コンポ一覧を持つ形式の往復)
+// 型名 + リフレクションフィールド値 (全 5 種の値) を持つコンポ一覧が save→load で復元される (全コンポ一覧を持つ形式の往復)
 // 並びは正準化 (名前昇順) されるため等価判定は CRC ではなく正準 JSON の一致で行う
 TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 {
@@ -317,7 +317,7 @@ TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
     EXPECT_EQ(dst.objects[2].className, "Player");
 }
 
-// 配置物の "Base Color" 反射値が save→reload を往復で保持される
+// 配置物の "Base Color" リフレクション値が save→reload を往復で保持される
 // 種別固定の色上書きが消え、 色は component 経由で永続することの担保
 TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
 {

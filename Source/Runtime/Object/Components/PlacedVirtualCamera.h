@@ -48,7 +48,7 @@ namespace NS::Object
 
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
-        // 視点位置は owner Transform 所有なので反射しない。transform 編集の経路と二重にしない
+        // 視点位置は owner Transform 所有なのでリフレクションしない。transform 編集の経路と二重にしない
         NS_REFLECT_BEGIN(PlacedVirtualCamera, VirtualCameraComponent)
         NS_REFLECT_FIELD(m_target, "Look Target")
         NS_REFLECT_FIELD(m_up, "Up")

@@ -30,7 +30,7 @@ namespace
         }
     };
 
-    /// 反射フィールド越しに平行光の値を書く。照明はデータ駆動で、公開の設定関数を持たない
+    /// リフレクションフィールド越しに平行光の値を書く。照明はデータ駆動で、公開の設定関数を持たない
     void SetLightField(DirectionalLightComponent& light, const char* name, const NS::Math::Vector3& value)
     {
         const NS::Object::FieldDesc* field =

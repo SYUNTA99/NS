@@ -97,7 +97,7 @@ namespace NS::Graphics
         explicit SkeletalMesh(const SkinnedMeshDesc& desc);
 
         std::size_t m_boneCount = 0;
-        std::vector<BoneSphere> m_boneSpheres; // ボーンごとの影響球、Create 時に頂点から焼く
+        std::vector<BoneSphere> m_boneSpheres; // ボーンごとの影響球、Create 時に頂点から求める
     };
 
 } // namespace NS::Graphics

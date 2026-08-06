@@ -74,7 +74,7 @@ namespace NS::Editor
             {
                 ImGui::Text("カメラ");
                 ImGui::Separator();
-                // ブレンド秒の Brain と編集中=free-fly / プレイ中=follow の現在 active な vcam を反射で出す
+                // ブレンド秒の Brain と編集中=free-fly / プレイ中=follow の現在 active な vcam をリフレクションで出す
                 // 値はライブで効き保存はしない
                 auto* brain = editor.CameraBrainObject();
                 auto* vcam = editor.ActiveVirtualCameraObject();
@@ -186,14 +186,14 @@ namespace NS::Editor
                 NS::Editor::EndFieldTable();
             }
 
-            // MeshRendererComponent の Material フィールドは反射一覧に出る。 適用は Assets パネルのドロップ /
+            // MeshRendererComponent の Material フィールドはリフレクション一覧に出る。 適用は Assets パネルのドロップ /
             // クリックから
             ImGui::Separator();
 
             if (obj.components.empty())
                 ImGui::TextDisabled("コンポーネント無し。 足すと表示・当たりが付く");
 
-            // 反射編集は live component へ直接入る。 live は priority 順なので data の並びへ型と出現番号で対応づける
+            // リフレクション編集は live component へ直接入る。 live は priority 順なので data の並びへ型と出現番号で対応づける
             NS::Object::GameObject* go = editor.SelectedObjectGameObject();
             NS::Editor::ComponentEditResult componentEdit{};
             for (std::size_t k = 0; k < obj.components.size(); ++k)

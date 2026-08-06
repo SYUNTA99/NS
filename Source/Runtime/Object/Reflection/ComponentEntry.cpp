@@ -20,7 +20,7 @@ namespace NS::Object
             return nullptr;
         }
 
-        /// entry の fields object を返し、 無ければ起こす。 SetField の書き込み先
+        /// entry の fields object を返し、 無ければ作る。 SetField の書き込み先
         nlohmann::json& EnsureFields(nlohmann::json& entry)
         {
             if (!entry.is_object())

@@ -12,7 +12,7 @@ namespace NS::Object
 {
     class Component;
 
-    /// 反射が扱うフィールド型タグ。Radians / enum は後続で追加する
+    /// リフレクションが扱うフィールド型タグ。Radians / enum は後続で追加する
     enum class FieldType
     {
         Float,
@@ -44,8 +44,8 @@ namespace NS::Object
             return FieldType::Vector3;
     }
 
-    /// @brief 反射された 1 フィールドの記述子
-    /// @details get/set は型消去した関数ポインタ。obj は反射対象そのものへの生ポインタで、
+    /// @brief リフレクションされた 1 フィールドの記述子
+    /// @details get/set は型消去した関数ポインタ。obj はリフレクション対象そのものへの生ポインタで、
     /// Component でも素の値型でもよい。マクロが宣言時の具象型へ static_cast して読み書きする
     struct FieldDesc
     {
@@ -55,19 +55,19 @@ namespace NS::Object
         void (*set)(void* obj, const void* inValue) noexcept;  // inValue を obj へ書き込む
     };
 
-    /// @brief 1 コンポーネント型の反射情報。マクロで宣言したフィールドの名前 / 型 / get / set を束ねる
+    /// @brief 1 コンポーネント型のリフレクション情報。マクロで宣言したフィールドの名前 / 型 / get / set を束ねる
     /// @details エディタは Component* 越しに fields を列挙して編集 UI を自動生成する
-    /// base は基底型の反射を指し、辿る鎖で is-a も判定する
+    /// base は基底型のリフレクションを指し、辿る鎖で is-a も判定する
     /// 依存: NS::Math
     struct ReflectionInfo
     {
-        const char* typeName;       // 反射する型名
+        const char* typeName;       // リフレクションする型名
         const FieldDesc* fields;    // フィールド記述子配列 (static 寿命)
         std::size_t fieldCount;     // fields の要素数
-        const ReflectionInfo* base; // 基底型の反射 (Component 直下は鎖の終端 nullptr)
+        const ReflectionInfo* base; // 基底型のリフレクション (Component 直下は鎖の終端 nullptr)
     };
 
-    /// 基底型の反射を返す。Component 直下は Component、素の値型は void を渡し、いずれも鎖の終端 nullptr になる
+    /// 基底型のリフレクションを返す。Component 直下は Component、素の値型は void を渡し、いずれも鎖の終端 nullptr になる
     template <class TBase> [[nodiscard]] const ReflectionInfo* ReflectionBaseOf() noexcept
     {
         if constexpr (std::is_same_v<TBase, Component> || std::is_same_v<TBase, void>)
@@ -77,7 +77,7 @@ namespace NS::Object
     }
 
     /// info->fields から name 一致の最初の 1 件を返す。無ければ nullptr、info が nullptr でも nullptr
-    /// 基底鎖は辿らない。反射欄は継承分も accessor で平坦に並べる約束に合わせる
+    /// 基底鎖は辿らない。リフレクション欄は継承分も accessor で平坦に並べる約束に合わせる
     [[nodiscard]] inline const FieldDesc* FindField(const ReflectionInfo* info, std::string_view name) noexcept
     {
         if (info == nullptr)
@@ -126,7 +126,7 @@ namespace NS::Object
                                static_cast<Self*>(c)->setterCall(*static_cast<const ValueType*>(in));                  \
                            }},
 
-/// フィールド宣言の終了。static な反射情報を組み立てて返し、仮想の GetReflection はそこへ転送する
+/// フィールド宣言の終了。static なリフレクション情報を組み立てて返し、仮想の GetReflection はそこへ転送する
 #define NS_REFLECT_END()                                                                                               \
     }                                                                                                                  \
     ;                                                                                                                  \
@@ -148,7 +148,7 @@ namespace NS::Object
     return &k_Info;                                                                                                    \
     }
 
-/// 調整フィールドを持たない型用。typeName と基底だけの反射情報を返す。空配列は宣言できないため fields は nullptr
+/// 調整フィールドを持たない型用。typeName と基底だけのリフレクション情報を返す。空配列は宣言できないため fields は nullptr
 #define NS_REFLECT_NONE(ThisType, BaseType)                                                                            \
     [[nodiscard]] static const NS::Object::ReflectionInfo* StaticReflection() noexcept                                \
     {                                                                                                                  \

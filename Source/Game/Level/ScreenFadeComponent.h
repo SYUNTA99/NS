@@ -9,7 +9,7 @@ namespace NS::Game::Level
     /// @brief 画面の最前面へ黒を重ねる暗転と明転。何のための暗転かは知らない
     /// @details 黒の全画面塗りはフェードのやり方の 1 つで、演出としてゲーム側に置く
     /// 暗転しきったら BeginIn まで全黒を保持する。自分の OnUpdate が fixed step ぶん進み、
-    /// 台本側は全黒 (IsBlack) を見て次の手を打つ。描画は world 描画の後に scene が OnRenderOverlay で呼ぶ
+    /// シーケンス側は全黒 (IsBlack) を見て次の手を打つ。描画は world 描画の後に scene が OnRenderOverlay で呼ぶ
     class ScreenFadeComponent : public NS::Object::OverlayRendererComponent
     {
     public:

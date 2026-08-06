@@ -13,11 +13,11 @@ namespace NS::Object
     /// 左右側面の三角形を 8 三角形に分割した世界座標版 Triangle 配列を返す
     /// 斜面のみだと側面 / 裏 / 底から capsule がめり込むため全面を登録する
     /// world の組み直し時に physics へ登録され、CapsuleMover が読む
-    /// 角度・半サイズは反射 set で編集でき、WorldTriangles が member を都度読むため形状の再生成は要らない
+    /// 角度・半サイズはリフレクション set で編集でき、WorldTriangles が member を都度読むため形状の再生成は要らない
     class SlopeColliderComponent : public ColliderComponent
     {
     public:
-        /// 1m cell に合わせた 45 度・半サイズ 0.5 の既定で組む。角度・半サイズは反射 set で入る
+        /// 1m cell に合わせた 45 度・半サイズ 0.5 の既定で組む。角度・半サイズはリフレクション set で入る
         SlopeColliderComponent() noexcept = default;
 
         [[nodiscard]] float AngleDegrees() const noexcept { return m_angleDegrees; }

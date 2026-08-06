@@ -132,7 +132,7 @@ namespace NS::Object
 
     void BoxColliderComponent::AddToPhysics(NS::Physics::PhysicsWorld& physics) const
     {
-        // トリガの箱は通り抜ける体積。 固形に入れず、 重なりは持ち主の component が自分で調べる
+        // トリガの箱は通り抜ける体積。 固形に入れず、 重なりは owner の component が自分で調べる
         if (m_isTrigger)
             return;
 

@@ -218,7 +218,7 @@ TEST(ModeToggle, CancelledClearDoesNotRefireAfterReenter)
     ASSERT_NE(fade, nullptr);
     ASSERT_TRUE(fade->IsFading());
 
-    // 編集へ戻ってもう一度プレイへ。 前のプレイで立ったゴールの旗は戻っているので開始直後に再クリアしない
+    // 編集へ戻ってもう一度プレイへ。 前のプレイで立ったゴールのフラグは戻っているので開始直後に再クリアしない
     editor.EnterEdit();
     editor.EnterPlay();
     scene.OnUpdate();

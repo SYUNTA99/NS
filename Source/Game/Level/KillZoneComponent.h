@@ -17,7 +17,7 @@ namespace NS::Game::Level
 
         void OnUpdate() override;
 
-        // 調整できるフィールドは無いが、 反射 typeName を持たせて type と空 fields で直列化できるようにする
+        // 調整できるフィールドは無いが、 リフレクション typeName を持たせて type と空 fields で直列化できるようにする
         NS_REFLECT_NONE(KillZoneComponent, NS::Object::Component)
     };
 

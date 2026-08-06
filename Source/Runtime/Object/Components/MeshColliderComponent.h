@@ -32,7 +32,7 @@ namespace NS::Object
         /// 取り込んだ三角形群を physics へ入れる。 空なら何も入れない
         void AddToPhysics(NS::Physics::PhysicsWorld& physics) const override;
 
-        // 三角形群は反射で運べない。 兄弟 collider と揃えて型名だけ登録しておく
+        // 三角形群はリフレクションで運べない。 同じ object の collider と揃えて型名だけ登録しておく
         NS_REFLECT_NONE(MeshColliderComponent, ColliderComponent)
 
     private:

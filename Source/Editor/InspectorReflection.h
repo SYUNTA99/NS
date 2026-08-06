@@ -29,7 +29,7 @@ namespace NS::Editor
     };
 
     //! @brief 型ごとの既定インスタンスを控える置き場
-    //! @details 反射欄の「既定と違う」印と戻すボタンが、 今の値と比べる相手として引く
+    //! @details リフレクション欄の「既定と違う」印と戻すボタンが、 今の値と比べる相手として引く
     //! 控えは 1 体の GameObject へまとめて attach するだけで、 world に入らないので更新も描画も走らない
     class ComponentDefaults : public NS::Core::NonCopyable
     {
@@ -42,7 +42,7 @@ namespace NS::Editor
         [[nodiscard]] const NS::Object::Component* Find(std::string_view typeName);
 
     private:
-        std::unique_ptr<NS::Object::GameObject> m_holder;                     // 既定インスタンスの持ち主
+        std::unique_ptr<NS::Object::GameObject> m_holder;                     // 既定インスタンスを持つ GameObject
         std::vector<std::pair<std::string, NS::Object::Component*>> m_byType; // 型名から引く索引
     };
 
@@ -60,13 +60,13 @@ namespace NS::Editor
         const NS::Object::FieldDesc* revertField = nullptr;
     };
 
-    //! @brief 反射欄 1 つの値が既定と違うか
+    //! @brief リフレクション欄 1 つの値が既定と違うか
     //! @param defaults 既定インスタンス。 nullptr なら常に false
     [[nodiscard]] bool FieldDiffersFromDefault(const NS::Object::Component& comp,
                                                const NS::Object::Component* defaults,
                                                const NS::Object::FieldDesc& field) noexcept;
 
-    //! @brief 反射欄 1 つを既定値へ戻す
+    //! @brief リフレクション欄 1 つを既定値へ戻す
     void RevertFieldToDefault(NS::Object::Component& comp,
                               const NS::Object::Component& defaults,
                               const NS::Object::FieldDesc& field) noexcept;

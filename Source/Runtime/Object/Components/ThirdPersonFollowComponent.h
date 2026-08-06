@@ -24,7 +24,7 @@ namespace NS::Object
         void SetTarget(Transform* target) noexcept;
         [[nodiscard]] Transform* Target() const noexcept { return m_target; }
 
-        /// 追従対象の永続参照。データ経由の構築が反射 set で書き、OnStart が live へ解決する
+        /// 追従対象の永続参照。データ経由の構築がリフレクション set で書き、OnStart が live へ解決する
         [[nodiscard]] ObjectRef TargetRef() const noexcept { return m_targetRef; }
 
         /// 追従対象の参照を world の永続 id 解決で引き、Transform と自動ズーム用の Movement を束ねる

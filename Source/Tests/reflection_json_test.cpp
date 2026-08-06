@@ -19,7 +19,7 @@ namespace
     using NS::Object::ReflectionInfo;
     using NS::Object::SerializeComponent;
 
-    // std::string を反射するテスト用 Component、curated に string 型がまだ無いので自前で用意
+    // std::string をリフレクションするテスト用 Component、curated に string 型がまだ無いので自前で用意
     class FakeStringComponent : public Component
     {
     public:
@@ -35,7 +35,7 @@ namespace
         std::string m_label{"hello"};
     };
 
-    // ObjectRef を反射するテスト用 Component、curated に ObjectRef 型がまだ無いので自前で用意
+    // ObjectRef をリフレクションするテスト用 Component、curated に ObjectRef 型がまだ無いので自前で用意
     class FakeRefComponent : public Component
     {
     public:

@@ -262,7 +262,7 @@ namespace NS::Object
             it = m_skinnedModels.emplace(key, std::move(record)).first;
         }
 
-        // record への参照を配る。 record は挿入後に書き換えないので、 参照は Clear() まで有効
+        // record への参照を渡す。 record は挿入後に書き換えないので、 参照は Clear() まで有効
         LoadedSkinnedModel out{};
         out.mesh = it->second.mesh.get();
         out.skeleton = &it->second.skeleton;
@@ -318,7 +318,7 @@ namespace NS::Object
             return nullptr;
         }
 
-        // 結合で index を焼き直した複製は避けられない派生データだが、 所有はこちら側なので
+        // 結合で index を振り直した複製は避けられない派生データだが、 所有はこちら側なので
         // 同じ組で解決する全インスタンスがこの 1 本を共有する
         auto bound = std::make_unique<std::vector<NS::Graphics::AnimationClip>>(
             NS::Graphics::BindClipsByName(source->animations, source->skeleton, *model.skeleton));

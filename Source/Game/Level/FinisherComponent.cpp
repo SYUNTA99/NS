@@ -11,14 +11,14 @@
 
 namespace NS::Game::Level
 {
-    // ゴール旗が立つ判定 (LateUpdate) の後、同じ tick で台本を始める
+    // 判定より後の帯。接触と同じ LateUpdate で演出を始める
     FinisherComponent::FinisherComponent() noexcept
         : NS::Object::Component(NS::Object::TickPriority::LateUpdate + 10)
     {}
 
     ScreenFadeComponent* FinisherComponent::Fade() noexcept
     {
-        // 同じ持ち主に載った兄弟。台本の待ちをまたぐので毎回引き直す
+        // 同じ owner に載った別 component。シーケンスの待ちをまたぐので毎回引き直す
         return Owner()->FindComponent<ScreenFadeComponent>();
     }
 
@@ -57,7 +57,7 @@ namespace NS::Game::Level
         Fade()->BeginOut(k_FadeOutSeconds);
         co_await NS::Core::WaitUntil{[this] { return Fade()->IsBlack(); }};
 
-        // 全黒の裏でやり直すので、出現位置への瞬間移動が黒に隠れる。手順は兄弟の respawner が持つ
+        // 全黒の裏でやり直すので、出現位置への瞬間移動が黒に隠れる。手順は同じ object の respawner が持つ
         if (auto* respawner = Owner()->FindComponent<RespawnerComponent>())
             respawner->RestartRun();
         Fade()->BeginIn(k_FadeInSeconds);

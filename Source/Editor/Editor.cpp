@@ -87,19 +87,19 @@ void Editor::OnDetach()
     // scene 破棄の Game::OnDetach より先に呼ばれる順序で、 overlay は逆順で OnDetach されるので安全に片付く
     if (m_controller)
     {
-        // world が抱えるビュー列を空にしてから、 その参照先ターゲットを畳む
+        // world が抱えるビュー列を空にしてから、 その参照先ターゲットを破棄する
         m_controller->SetSceneViews({});
         m_controller->Teardown();
     }
     m_controller.reset();
 
-    // ImGui を畳む前に hook を外し、 WndProc から無効になった context を踏まないようにする
+    // ImGui を破棄する前に hook を外し、 WndProc から無効になった context を踏まないようにする
     if (auto* app = NS::App::Application::Get())
     {
         app->SetQuitGuard(nullptr);
         app->Window().SetMessageHook(nullptr);
         app->Input().SetUiCapture(false, false);
-        // Renderer が非所有ポインタを宙吊りにしないよう、 ターゲットを畳む前に必ず外す
+        // Renderer が非所有ポインタを宙吊りにしないよう、 ターゲットを破棄する前に必ず外す
         app->Renderer().SetSceneTarget(nullptr);
     }
     m_sceneView.ReleaseTarget();
@@ -172,7 +172,7 @@ void Editor::OnRender()
             m_console.Render();
             m_renderSettings.Render(editor);
 
-            // モードが変わったフレームだけ生きたタブへ自動フォーカスする。 Tab / ボタン / Quit to Edit のどこから
+            // モードが変わったフレームだけ前面のタブへ自動フォーカスする。 Tab / ボタン / Quit to Edit のどこから
             // 切替わっても CurrentMode の変化検知で一律に効く
             const auto tabFocus =
                 NS::Editor::TabFocusOnModeChange({.wasPlayMode = m_lastModeWasPlay, .playMode = playMode});
@@ -233,7 +233,7 @@ void Editor::OnRender()
     app->Input().SetUiCapture(m_imgui->WantCaptureMouse() && !ownerLatched,
                               m_imgui->WantCaptureKeyboard() || m_sceneView.IsFreeFlying());
 
-    // 見回しドラッグの立ち下がりで押しっぱなしのキーが残らないよう掃除する。 WM_KEYUP も UI 捕捉中は届かない
+    // 見回しドラッグの立ち下がりで押しっぱなしのキーが残らないよう解除する。 WM_KEYUP も UI 捕捉中は届かない
     if (m_sceneView.ConsumeFreeFlyReleased())
         app->Input().Keyboard().ClearState();
 }
@@ -449,7 +449,7 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
         return;
     }
 
-    // 中央以外は映像を持たないので、生きた矩形を無効化してから対象パネルを描く
+    // 中央以外は映像を持たないので、前面の矩形を無効化してから対象パネルを描く
     m_sceneView.Suppress(editor);
     m_gameView.Suppress(editor);
     if (name == k_PanelHierarchy)

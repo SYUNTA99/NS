@@ -11,15 +11,15 @@ namespace NS::Core
 {
     /// @brief 途中で止まり、次のフレームに続きから再開できる関数。演出手順を co_await の待ちを挟んで上から下へ書く
     /// @details CoroRunner が所有と駆動を持つ。待ちをまたいで生ポインタを持たないこと
-    /// (待っている間に持ち主が破棄され得る)。破棄はフレームごと捨てる方式で、途中再開はしない
+    /// (待っている間に所有側が破棄され得る)。破棄はフレームごと捨てる方式で、途中再開はしない
     class Coro
     {
     public:
         struct promise_type
         {
-            float waitSeconds = 0.0f;            // 残り待ち秒。正の間は眠る
+            float waitSeconds = 0.0f;            // 残り待ち秒。正の間は待つ
             std::function<bool()> waitPredicate; // 条件待ち。真を返したら起きる
-            bool waitNextFrame = false;          // 次の Tick まで眠る印
+            bool waitNextFrame = false;          // 次の Tick まで待つ印
 
             Coro get_return_object() { return Coro{std::coroutine_handle<promise_type>::from_promise(*this)}; }
             std::suspend_always initial_suspend() noexcept { return {}; }
@@ -59,7 +59,7 @@ namespace NS::Core
         Handle m_handle{};
     };
 
-    /// @brief 指定秒だけ眠る待ち。時間は駆動側が Tick へ渡す dt で進む
+    /// @brief 指定秒の待ち。時間は駆動側が Tick へ渡す dt で進む
     struct WaitSeconds
     {
         float seconds = 0.0f;
@@ -72,7 +72,7 @@ namespace NS::Core
         void await_resume() const noexcept {}
     };
 
-    /// @brief 条件が真になるまで眠る待ち。条件は毎 Tick 評価される
+    /// @brief 条件が真になるまでの待ち。条件は毎 Tick 評価される
     struct WaitUntil
     {
         std::function<bool()> condition;
@@ -89,7 +89,7 @@ namespace NS::Core
         void await_resume() const noexcept {}
     };
 
-    /// @brief 次の Tick まで眠る待ち
+    /// @brief 次の Tick までの待ち
     struct WaitNextFrame
     {
         [[nodiscard]] bool await_ready() const noexcept { return false; }
@@ -100,9 +100,9 @@ namespace NS::Core
         void await_resume() const noexcept {}
     };
 
-    /// @brief 台本の実行器。所有する台本の待ちを進め、明けた物を再開する
-    /// @details いつ Tick するかは持ち主が決める。止めている間は全台本が止まる (pause はこれで効く)
-    /// CancelAll は台本を途中のまま破棄する (フレーム内の破棄処理は走る)。破棄後の再開は無い
+    /// @brief シーケンスの実行器。所有するシーケンスの待ちを進め、明けた物を再開する
+    /// @details いつ Tick するかは所有側が決める。止めている間は全シーケンスが止まる (pause はこれで効く)
+    /// CancelAll はシーケンスを途中のまま破棄する (フレーム内の破棄処理は走る)。破棄後の再開は無い
     class CoroRunner
     {
     public:
@@ -114,7 +114,7 @@ namespace NS::Core
         CoroRunner(CoroRunner&&) = delete;
         CoroRunner& operator=(CoroRunner&&) = delete;
 
-        /// 台本を先頭から最初の待ちまで即時に走らせ、続きを預かる。待ち無しで終わればその場で捨てる
+        /// シーケンスを先頭から最初の待ちまで即時に走らせ、続きを預かる。待ち無しで終わればその場で捨てる
         void Start(Coro&& coro)
         {
             Coro::Handle handle = coro.Release();
@@ -129,7 +129,7 @@ namespace NS::Core
             m_handles.push_back(handle);
         }
 
-        /// 待ちを dt だけ進め、明けた台本を再開する。終わった台本はここで捨てる
+        /// 待ちを dt だけ進め、明けたシーケンスを再開する。終わったシーケンスはここで捨てる
         void Tick(float dt)
         {
             for (std::size_t i = 0; i < m_handles.size();)
@@ -177,7 +177,7 @@ namespace NS::Core
             }
         }
 
-        /// 全台本を途中のまま破棄する。モード離脱やレベル破棄の前に呼ぶ
+        /// 全シーケンスを途中のまま破棄する。モード離脱やレベル破棄の前に呼ぶ
         void CancelAll() noexcept
         {
             for (Coro::Handle handle : m_handles)
@@ -188,7 +188,7 @@ namespace NS::Core
         [[nodiscard]] bool IsRunning() const noexcept { return !m_handles.empty(); }
 
     private:
-        std::vector<Coro::Handle> m_handles; // 進行中の台本。done になったら即座に外す
+        std::vector<Coro::Handle> m_handles; // 進行中のシーケンス。done になったら即座に外す
     };
 
 } // namespace NS::Core

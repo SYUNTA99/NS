@@ -24,7 +24,7 @@ TEST(KillZoneTest, KillsPlayerInsideVolume)
     ASSERT_NE(player, nullptr);
     ASSERT_FALSE(player->IsDead());
 
-    // 同じ帯に居る respawner を切って判定だけを見る。 起こしたままだと同じ tick で復活する
+    // 同じ帯に居る respawner を切って判定だけを見る。 有効なままだと同じ LateUpdate で復活する
     player->FindComponent<LevelNs::RespawnerComponent>()->SetActive(false);
     scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
 

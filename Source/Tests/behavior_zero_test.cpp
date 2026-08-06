@@ -167,7 +167,7 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     EXPECT_TRUE(beforeSig.hasBox && beforeSig.hasSphere && beforeSig.hasCapsule);
     ExpectSignatureEqual(beforeSig, ExtractColliderSignature(*after));
 
-    // 反射 set が効いたか box の寸法で直接確かめる
+    // リフレクション set が効いたか box の寸法で直接確かめる
     auto* box = before->FindComponent<NS::Object::BoxColliderComponent>();
     ASSERT_NE(box, nullptr);
     const Vector3 half = box->HalfExtents();

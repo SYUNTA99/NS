@@ -91,7 +91,7 @@ namespace
     }
 
     /// プレイヤー相当を床上で走らせ、追従カメラの姿勢を毎 step 記録する
-    /// 加速・ジャンプ・停止の自動ズーム全遷移と render 補間 (alpha=0.5) を 1 本の軌跡に焼く
+    /// 加速・ジャンプ・停止の自動ズーム全遷移と render 補間 (alpha=0.5) を 1 本の軌跡に記録する
     std::vector<CameraStepRecord> RunFollowWalkJump()
     {
         GameObject player;
@@ -106,7 +106,7 @@ namespace
         GameObject rig;
         auto& follow = *rig.AddComponent<ThirdPersonFollowComponent>();
         follow.SetTarget(&player.Root());
-        // 生成直後は休止なのでテスト側で起こす
+        // 生成直後は休止なのでテスト側で有効化する
         follow.SetActive(true);
         follow.SetMovement(&movement);
 
@@ -124,7 +124,7 @@ namespace
             movement.OnUpdate();
             follow.OnUpdate();
 
-            // fixed step の確定姿勢と render 補間の中間姿勢の両方を焼く
+            // fixed step の確定姿勢と render 補間の中間姿勢の両方を記録する
             trajectory.push_back(RecordPose(follow.EvaluatePose(1.0f)));
             trajectory.push_back(RecordPose(follow.EvaluatePose(0.5f)));
         }
@@ -147,7 +147,7 @@ namespace
         GameObject rig;
         auto& follow = *rig.AddComponent<ThirdPersonFollowComponent>();
         follow.SetTarget(&player.Root());
-        // 生成直後は休止なのでテスト側で起こす
+        // 生成直後は休止なのでテスト側で有効化する
         follow.SetActive(true);
 
         GameObject areaHost;
