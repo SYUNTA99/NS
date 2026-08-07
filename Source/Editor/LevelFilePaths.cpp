@@ -3,6 +3,7 @@
 #include "Runtime/Core/Filesystem.h"
 #include "Runtime/Core/Logger.h"
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 
@@ -62,7 +63,8 @@ namespace NS::Editor
         for (;;)
         {
             const std::size_t slash = relativePath.find('/', start);
-            const std::size_t end = (slash == std::string_view::npos) ? relativePath.size() : slash;
+            // 末尾セグメントは区切りが無いので文字列末尾まで
+            const std::size_t end = std::min(slash, relativePath.size());
             const std::string_view segment = relativePath.substr(start, end - start);
             if (SanitizeLevelName(segment).empty())
                 return "";
@@ -81,12 +83,20 @@ namespace NS::Editor
         return NS::Core::FileSystem::ContentRoot() / "Assets" / "Scenes";
     }
 
+    std::string QualifyLevelPath(std::string_view sanitizedPath) noexcept
+    {
+        if (sanitizedPath.empty() || sanitizedPath.find('/') != std::string_view::npos)
+            return std::string{sanitizedPath};
+        return "Scenes/" + std::string{sanitizedPath};
+    }
+
     std::optional<std::filesystem::path> BuildLevelPath(std::string_view name) noexcept
     {
         const auto safe = SanitizeLevelPath(name);
         if (safe.empty())
             return std::nullopt;
-        return NS::Core::FileSystem::ResolveUnder(NS::Core::FileSystem::ContentRoot() / "Assets", safe + ".scene");
+        return NS::Core::FileSystem::ResolveUnder(NS::Core::FileSystem::ContentRoot() / "Assets",
+                                                  QualifyLevelPath(safe) + ".scene");
     }
 
     bool EnsureScenesDirectoryExists() noexcept
@@ -115,7 +125,14 @@ namespace NS::Editor
             rel.replace_extension();
             std::string relStr = rel.generic_string();
             if (!SanitizeLevelPath(relStr).empty())
+            {
                 result.push_back(std::move(relStr));
+            }
+            else
+            {
+                // 黙って落とすとレベル消失に見える。除外したことをログに残す
+                NS_LOG_WARN(App, "レベル一覧から除外: {} (パスに使えない文字か長さ超過)", relStr);
+            }
         }
         std::sort(result.begin(), result.end());
         return result;

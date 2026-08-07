@@ -119,6 +119,24 @@ TEST(LevelFilePaths, BuildLevelPathAcceptsSubfolder)
     EXPECT_EQ(p->parent_path().filename(), "Scenes");
 }
 
+TEST(LevelFilePaths, QualifyLevelPathAddsScenesOnlyToBareName)
+{
+    EXPECT_EQ(EditorNs::QualifyLevelPath("MyLevel"), "Scenes/MyLevel");
+    EXPECT_EQ(EditorNs::QualifyLevelPath("Scenes/MyLevel"), "Scenes/MyLevel");
+    EXPECT_EQ(EditorNs::QualifyLevelPath("TestOutput/foo"), "TestOutput/foo");
+    EXPECT_EQ(EditorNs::QualifyLevelPath(""), "");
+}
+
+TEST(LevelFilePaths, BuildLevelPathDefaultsBareNameToScenes)
+{
+    // 素の名前は Scenes/ 配下に解決され、起動読込と保存が同じファイルを指す
+    auto bare = EditorNs::BuildLevelPath("MyLevel");
+    auto qualified = EditorNs::BuildLevelPath("Scenes/MyLevel");
+    ASSERT_TRUE(bare.has_value());
+    ASSERT_TRUE(qualified.has_value());
+    EXPECT_EQ(*bare, *qualified);
+}
+
 TEST(LevelFilePaths, EnsureDirectoryCreatesAndIsIdempotent)
 {
     EXPECT_TRUE(EditorNs::EnsureScenesDirectoryExists());

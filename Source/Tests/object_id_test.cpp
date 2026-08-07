@@ -90,7 +90,7 @@ TEST(ObjectIdTest, JsonWithoutIdsGetsAssignedOnLoad)
 {
     // id と nextObjectId を欠いた手編集ファイルを読むと採番される
     const std::string handEdited = R"({
-        "version": 2,
+        "version": 3,
         "objects": [
             {"position": [0.0, 0.0, 0.0], "components": []},
             {"position": [1.0, 0.0, 0.0], "components": []}

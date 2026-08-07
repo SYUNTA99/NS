@@ -150,6 +150,22 @@ TEST_F(FileSystemLoggerTest, ListFilesReturnsEmptyForMissingDirectory)
     EXPECT_TRUE(files.empty());
 }
 
+TEST(NsCoreFileSystem, ListFilesMatchesExtensionCaseInsensitive)
+{
+    const auto dir = MakeTempPath("listdir_case");
+    ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(dir));
+
+    const std::vector<std::byte> data = {std::byte{0x01}};
+    // Windows のファイルシステムは大文字小文字を区別しないので、列挙の絞り込みも区別しない
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(dir / "upper.SCENE", data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(dir / "mixed.Scene", data));
+
+    EXPECT_EQ(NS::Core::FileSystem::ListFiles(dir, ".scene").size(), 2u);
+    EXPECT_EQ(NS::Core::FileSystem::ListFilesRecursive(dir, ".scene").size(), 2u);
+
+    std::filesystem::remove_all(dir);
+}
+
 TEST(NsCoreFileSystem, ListFilesRecursiveFindsNestedFiles)
 {
     const auto root = MakeTempPath("recurdir");

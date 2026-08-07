@@ -141,7 +141,8 @@ namespace NS::Editor
             return false;
         }
 
-        const auto safe = SanitizeLevelPath(name);
+        // 素の名前は Scenes/ 配下に直してから控える。保存先と現在名の指すファイルを一致させる
+        const auto safe = QualifyLevelPath(SanitizeLevelPath(name));
         const auto path = BuildLevelPath(safe);
         if (safe.empty() || !path)
         {

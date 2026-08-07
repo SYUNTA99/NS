@@ -35,7 +35,8 @@ namespace NS::Core
         /// @note Win32 API のマクロとの名前衝突を避けるため複数形にしている
         [[nodiscard]] static bool CreateDirectories(const std::filesystem::path& path) noexcept;
 
-        /// extension に先頭ドット込みの拡張子を指定して絞り込みができる。戻り値の並び順は未規定
+        /// extension に先頭ドット込みの拡張子を指定して絞り込みができる。大文字小文字は区別しない。
+        /// 戻り値の並び順は未規定
         [[nodiscard]] static std::vector<std::filesystem::path> ListFiles(const std::filesystem::path& dir,
                                                                           std::string_view extension = {});
 

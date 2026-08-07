@@ -92,6 +92,9 @@ xcopy /e /i /q /y "Assets"  "%GAMEDIR%\Assets\"  >nul
 xcopy /e /i /q /y "Shaders" "%GAMEDIR%\Shaders\" >nul
 :: Scenes now live under Assets\Scenes and are copied by the Assets xcopy above.
 :: The game loads GetExeDirectory()\Assets\Scenes\new_scene.scene
+if not exist "%GAMEDIR%\Assets\Scenes\new_scene.scene" (
+    echo [WARN] Assets\Scenes\new_scene.scene missing -- game will boot into an empty scene
+)
 
 :: --- 6. runtime dependencies (DLLs) --------------------------------------
 echo [5/8] Bundling runtime dependencies ...

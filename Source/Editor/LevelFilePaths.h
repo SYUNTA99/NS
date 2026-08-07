@@ -21,7 +21,13 @@ namespace NS::Editor
     //! @brief レベルデータの格納ディレクトリ（絶対パス）を取得する
     [[nodiscard]] std::filesystem::path GetScenesDirectory() noexcept;
 
-    //! @brief 指定されたレベル名から、フルパス（Scenes/<name>.scene）を構築する
+    //! @brief 区切りの無い素の名前を Scenes/ 配下の識別子に直す
+    //! @details 保存と起動読込が同じファイルを指すよう、素の名前の置き場を Scenes/ に固定する
+    //! @return 区切り付きの相対パスと空文字列はそのまま返す
+    [[nodiscard]] std::string QualifyLevelPath(std::string_view sanitizedPath) noexcept;
+
+    //! @brief 指定されたレベル名から、フルパス（Assets/<相対パス>.scene）を構築する
+    //! @details 区切りの無い素の名前は Scenes/ 配下として解決する
     //! @return 構築に失敗した場合は std::nullopt を返す
     [[nodiscard]] std::optional<std::filesystem::path> BuildLevelPath(std::string_view name) noexcept;
 

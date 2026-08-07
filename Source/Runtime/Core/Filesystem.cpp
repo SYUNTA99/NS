@@ -3,6 +3,7 @@
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 
+#include <cctype>
 #include <fstream>
 #include <sstream>
 #include <system_error>
@@ -146,67 +147,76 @@ namespace NS::Core
         return true;
     }
 
+    namespace
+    {
+        // 拡張子は ASCII の大文字小文字を区別せず比べる。Windows のファイルシステムの扱いに合わせる
+        // wide→narrow の文字コード変換は変換不能文字で例外を投げ得るので、native のまま比べる
+        [[nodiscard]] bool ExtensionMatches(const std::filesystem::path& file, std::string_view extension) noexcept
+        {
+            if (extension.empty())
+                return true;
+            // extension() の戻りは一時なので値で受ける。native() の参照だけ残すと宙づりになる
+            const std::filesystem::path extPath = file.extension();
+            const std::filesystem::path::string_type& ext = extPath.native();
+            if (ext.size() != extension.size())
+                return false;
+            for (std::size_t i = 0; i < ext.size(); ++i)
+            {
+                const wchar_t wc = ext[i];
+                if (wc > 127)
+                    return false; // 比較対象の拡張子は ASCII 前提
+                const int a = std::tolower(static_cast<int>(wc));
+                const int b = std::tolower(static_cast<unsigned char>(extension[i]));
+                if (a != b)
+                    return false;
+            }
+            return true;
+        }
+
+        // directory_iterator / recursive_directory_iterator 共通の走査。開けない dir は空を返す
+        template <typename Iterator>
+        [[nodiscard]] std::vector<std::filesystem::path> CollectFiles(const std::filesystem::path& dir,
+                                                                      std::string_view extension,
+                                                                      const char* callerName)
+        {
+            std::vector<std::filesystem::path> result;
+
+            std::error_code ec;
+            Iterator it(dir, ec);
+            if (ec)
+            {
+                NS_LOG_ERROR(Core, "{} failed to open: {} ({})", callerName, dir.string(), ec.message());
+                return result;
+            }
+
+            const Iterator end;
+            for (; it != end; it.increment(ec))
+            {
+                std::error_code entryEc;
+                if (!it->is_regular_file(entryEc) || entryEc)
+                    continue;
+                if (!ExtensionMatches(it->path(), extension))
+                    continue;
+                result.push_back(it->path());
+            }
+            // increment の失敗はイテレータを end にするので、エラーはループを抜けてから確認する
+            if (ec)
+                NS_LOG_ERROR(Core, "{} iteration failed: {} ({})", callerName, dir.string(), ec.message());
+            return result;
+        }
+    } // namespace
+
     std::vector<std::filesystem::path> FileSystem::ListFiles(const std::filesystem::path& dir,
                                                              std::string_view extension)
     {
-        std::vector<std::filesystem::path> result;
-
-        std::error_code ec;
-        std::filesystem::directory_iterator it(dir, ec);
-        if (ec)
-        {
-            NS_LOG_ERROR(Core, "FileSystem::ListFiles failed to open: {} ({})", dir.string(), ec.message());
-            return result;
-        }
-
-        const std::filesystem::directory_iterator end;
-        for (; it != end; it.increment(ec))
-        {
-            if (ec)
-            {
-                NS_LOG_ERROR(Core, "FileSystem::ListFiles iteration failed: {} ({})", dir.string(), ec.message());
-                break;
-            }
-            std::error_code entryEc;
-            if (!it->is_regular_file(entryEc) || entryEc)
-                continue;
-            if (!extension.empty() && it->path().extension() != extension)
-                continue;
-            result.push_back(it->path());
-        }
-        return result;
+        return CollectFiles<std::filesystem::directory_iterator>(dir, extension, "FileSystem::ListFiles");
     }
 
     std::vector<std::filesystem::path> FileSystem::ListFilesRecursive(const std::filesystem::path& dir,
                                                                       std::string_view extension)
     {
-        std::vector<std::filesystem::path> result;
-
-        std::error_code ec;
-        std::filesystem::recursive_directory_iterator it(dir, ec);
-        if (ec)
-        {
-            NS_LOG_ERROR(Core, "FileSystem::ListFilesRecursive failed to open: {} ({})", dir.string(), ec.message());
-            return result;
-        }
-
-        const std::filesystem::recursive_directory_iterator end;
-        for (; it != end; it.increment(ec))
-        {
-            if (ec)
-            {
-                NS_LOG_ERROR(
-                    Core, "FileSystem::ListFilesRecursive iteration failed: {} ({})", dir.string(), ec.message());
-                break;
-            }
-            std::error_code entryEc;
-            if (!it->is_regular_file(entryEc) || entryEc)
-                continue;
-            if (!extension.empty() && it->path().extension() != extension)
-                continue;
-            result.push_back(it->path());
-        }
-        return result;
+        return CollectFiles<std::filesystem::recursive_directory_iterator>(
+            dir, extension, "FileSystem::ListFilesRecursive");
     }
 
     std::vector<std::filesystem::path> FileSystem::ListDirectories(const std::filesystem::path& dir)
@@ -224,16 +234,14 @@ namespace NS::Core
         const std::filesystem::directory_iterator end;
         for (; it != end; it.increment(ec))
         {
-            if (ec)
-            {
-                NS_LOG_ERROR(Core, "FileSystem::ListDirectories iteration failed: {} ({})", dir.string(), ec.message());
-                break;
-            }
             std::error_code entryEc;
             if (!it->is_directory(entryEc) || entryEc)
                 continue;
             result.push_back(it->path());
         }
+        // increment の失敗はイテレータを end にするので、エラーはループを抜けてから確認する
+        if (ec)
+            NS_LOG_ERROR(Core, "FileSystem::ListDirectories iteration failed: {} ({})", dir.string(), ec.message());
         return result;
     }
 

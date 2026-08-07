@@ -19,10 +19,18 @@ namespace LevelNs = NS::Game::Level;
 namespace SceneNs = NS::Object;
 namespace EditorNs = NS::Editor;
 
+namespace
+{
+    // テストの吐くシーンは TestOutput/ 配下に隔離する。.gitignore はこの置き場だけを除外する
+    std::optional<std::filesystem::path> TestScenePath(const std::string& name)
+    {
+        return EditorNs::BuildLevelPath("TestOutput/" + name);
+    }
+} // namespace
+
 TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
 {
-    EditorNs::EnsureScenesDirectoryExists();
-    auto path = EditorNs::BuildLevelPath("test_roundtrip");
+    auto path = TestScenePath("test_roundtrip");
     ASSERT_TRUE(path.has_value());
 
     SceneNs::SceneData src;
@@ -152,9 +160,8 @@ TEST(SaveLoadRoundTrip, ObjectParentSurvivesJsonRoundTrip)
 // バイト一致する。 これがレベル差分の決定性 (git diff の安定) を担保する
 TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
 {
-    EditorNs::EnsureScenesDirectoryExists();
-    auto path1 = EditorNs::BuildLevelPath("test_byteid_a");
-    auto path2 = EditorNs::BuildLevelPath("test_byteid_b");
+    auto path1 = TestScenePath("test_byteid_a");
+    auto path2 = TestScenePath("test_byteid_b");
     ASSERT_TRUE(path1);
     ASSERT_TRUE(path2);
 
@@ -174,8 +181,7 @@ TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
 
 TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
 {
-    EditorNs::EnsureScenesDirectoryExists();
-    auto path = EditorNs::BuildLevelPath("test_corrupted");
+    auto path = TestScenePath("test_corrupted");
     ASSERT_TRUE(path.has_value());
 
     SceneNs::SceneData src;
@@ -197,8 +203,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
 // object 数が上限を超えるレベルは保存段でクラッシュせず false を返す (メモリ枯渇による DoS の防御)
 TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
 {
-    EditorNs::EnsureScenesDirectoryExists();
-    auto path = EditorNs::BuildLevelPath("test_oversized");
+    auto path = TestScenePath("test_oversized");
     ASSERT_TRUE(path.has_value());
 
     SceneNs::SceneData huge;
@@ -211,8 +216,7 @@ TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
 // (全コンポ一覧を持つ形式の往復) 並びは正準化 (名前昇順) されるため等価判定は CRC ではなく正準 JSON の一致で行う
 TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 {
-    EditorNs::EnsureScenesDirectoryExists();
-    auto path = EditorNs::BuildLevelPath("test_components");
+    auto path = TestScenePath("test_components");
     ASSERT_TRUE(path.has_value());
 
     SceneNs::SceneData src;
@@ -276,8 +280,7 @@ TEST(SaveLoadRoundTrip, BuildLevelPathRejectsTraversal)
 // 統一配置物 (ObjectData) の transform と className が 保存・再読込の往復で完全復元できることを検証する
 TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
 {
-    EditorNs::EnsureScenesDirectoryExists();
-    auto path = EditorNs::BuildLevelPath("test_objects_roundtrip");
+    auto path = TestScenePath("test_objects_roundtrip");
     ASSERT_TRUE(path.has_value());
 
     SceneNs::SceneData src;
@@ -321,8 +324,7 @@ TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
 // 種別固定の色上書きが消え、 色は component 経由で永続することの担保
 TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
 {
-    EditorNs::EnsureScenesDirectoryExists();
-    auto path = EditorNs::BuildLevelPath("test_basecolor");
+    auto path = TestScenePath("test_basecolor");
     ASSERT_TRUE(path.has_value());
 
     SceneNs::SceneData src;
@@ -480,11 +482,19 @@ TEST(SaveLoadRoundTrip, EnvironmentRoundTrip)
     EXPECT_EQ(dst.ComputeCrc32(), crc0);
 }
 
+// 旧版のファイルは黙って既定値で読まず、 読込自体を拒否する。 欄名が違う旧データの静かな破壊を防ぐ
+TEST(SaveLoadRoundTrip, RejectsOldFormatVersion)
+{
+    const std::string json = R"({ "version": 2, "objects": [] })";
+    SceneNs::SceneData dst;
+    EXPECT_FALSE(SceneNs::DeserializeSceneFromJson(dst, json));
+}
+
 // 旧形式の照明キーは照明が Component へ移った今、 読み飛ばされる。 skybox だけが environment から読める
 TEST(SaveLoadRoundTrip, LegacyLightingKeysAreIgnored)
 {
     const std::string json = R"({
-        "version": 2,
+        "version": 3,
         "objects": [],
         "environment": { "skybox": "Assets/Skybox/kurt/", "lightColor": [0.5, 0.6, 0.7] }
     })";

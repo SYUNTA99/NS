@@ -62,6 +62,9 @@ xcopy /e /i /q /y "Assets" "%OUT%\Assets\" >nul
 xcopy /e /i /q /y "Shaders" "%OUT%\Shaders\" >nul
 :: Scenes now live under Assets\Scenes and are copied by the Assets xcopy above.
 :: The game loads GetExeDirectory()\Assets\Scenes\new_scene.scene
+if not exist "%OUT%\Assets\Scenes\new_scene.scene" (
+    echo [WARN] Assets\Scenes\new_scene.scene missing -- game will boot into an empty scene
+)
 
 echo [5/5] Exporting tracked source, ThirdParty excluded ...
 git archive -o "%OUT%\_src.tar" HEAD Source/Runtime Source/Game Source/Editor Source/Tests premake5.lua

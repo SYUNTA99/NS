@@ -15,21 +15,13 @@
 namespace
 {
     /// @brief シーン名からファイルパスを組む
-    /// @details 名前は Scenes フォルダ直下の 1 枚を指す。区切りや ".." が混ざる名前は外へ抜けるので弾く
+    /// @details Assets/Scenes 配下に収まる相対パスだけを受け、".." 等で外へ抜ける名前は ResolveUnder が弾く
     std::optional<std::filesystem::path> BuildScenePath(std::string_view sceneName)
     {
         if (sceneName.empty())
             return std::nullopt;
-        if (sceneName.find("..") != std::string_view::npos)
-            return std::nullopt;
-        if (sceneName.find('/') != std::string_view::npos)
-            return std::nullopt;
-        if (sceneName.find('\\') != std::string_view::npos)
-            return std::nullopt;
-
-        std::filesystem::path path = NS::Core::FileSystem::ContentRoot() / "Assets" / "Scenes";
-        path /= std::string{sceneName} + ".scene";
-        return path;
+        return NS::Core::FileSystem::ResolveUnder(NS::Core::FileSystem::ContentRoot() / "Assets" / "Scenes",
+                                                  std::string{sceneName} + ".scene");
     }
 } // namespace
 

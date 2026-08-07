@@ -1,8 +1,5 @@
 #include "Game/Level/BlockObject.h"
 
-#include <filesystem>
-#include <gtest/gtest.h>
-#include <memory>
 #include <Runtime/Math/Math.h>
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Components/TransformComponent.h>
@@ -11,6 +8,9 @@
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Scene/SceneData.h>
 #include <Runtime/Object/Scene/SceneJson.h>
+#include <filesystem>
+#include <gtest/gtest.h>
+#include <memory>
 #include <string>
 
 namespace SceneNs = NS::Object;
@@ -54,12 +54,12 @@ TEST(SceneRotationDrift, RepeatedCaptureRebuildKeepsExactQuaternion)
     EXPECT_EQ(after.w, reference.w);
 }
 
-// version 2 の手書きファイル (Euler の "回転 (度)" のみ・ quat 控え欄なし) が従来どおり読める
+// 手書きファイル (Euler の "回転 (度)" のみ・ quat 控え欄なし) が従来どおり読める
 TEST(SceneRotationDrift, LegacyEulerFileLoadsToExpectedQuaternion)
 {
     // JSON のキーに ) と " が隣接するため、 生文字列は衝突しない独自区切りで囲う
     const std::string json = R"lvl({
-        "version": 2,
+        "version": 3,
         "nextObjectId": 2,
         "objects": [
             {
@@ -87,7 +87,7 @@ TEST(SceneRotationDrift, LegacyEulerFileLoadsToExpectedQuaternion)
     EXPECT_NEAR(q.w, 0.70710677f, 1e-5f);
 }
 
-// 忠実な捕捉はメモリ上に quat 控えを乗せるが、 保存文字列には Euler だけが載り version は 2 のまま
+// 忠実な捕捉はメモリ上に quat 控えを乗せるが、 保存文字列には Euler だけが載る
 TEST(SceneRotationDrift, SaveDropsQuatFieldKeepsEuler)
 {
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
