@@ -6,7 +6,6 @@
 #include "Runtime/Object/CameraSubsystem.h"
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 #include "Runtime/Object/Scene/SceneData.h"
-#include "Runtime/Object/SkyboxSubsystem.h"
 #include "Runtime/Object/World.h"
 #include "Runtime/Physics/PhysicsWorld.h"
 
@@ -63,13 +62,11 @@ namespace NS::Object
         /// IRenderable Component の自己解除。MeshRendererComponent 等が OnEndPlay で呼ぶ
         virtual void UnregisterRenderable(IRenderable* renderable);
 
-        /// 型でサブシステムを取得する。scene が直接所有する 2 つのどちらかを返し、他の型は nullptr
+        /// 型でサブシステムを取得する。scene が直接所有する CameraSubsystem だけを返し、他の型は nullptr
         template <class T> [[nodiscard]] T* GetSubsystem() noexcept
         {
             if constexpr (std::is_same_v<T, CameraSubsystem>)
                 return &m_cameraSubsystem;
-            else if constexpr (std::is_same_v<T, SkyboxSubsystem>)
-                return &m_skyboxSubsystem;
             else
                 return nullptr;
         }
@@ -210,7 +207,6 @@ namespace NS::Object
         NS::Graphics::RenderScene m_renderScene;
 
         CameraSubsystem m_cameraSubsystem;    // 実カメラ + Brain を持つ CameraSubsystem。scene と生成・破棄を共にする
-        SkyboxSubsystem m_skyboxSubsystem;    // skybox 装置。scene と生成・破棄を共にする
         bool m_subsystemsInitialized = false; // CreateSceneSubsystems の二度目を何もしないための印
 
         /// 衝突 world。当たりの有る scene だけが build で満たし、無ければ空のまま

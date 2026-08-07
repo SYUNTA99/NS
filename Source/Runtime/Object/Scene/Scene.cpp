@@ -14,7 +14,6 @@
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 #include "Runtime/Object/IRenderable.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
-#include "Runtime/Object/SkyboxSubsystem.h"
 
 namespace NS::Object
 {
@@ -258,7 +257,7 @@ namespace NS::Object
 
         // レンダリングパス
         DrawOpaque(ctx);
-        m_skyboxSubsystem.DrawSky(renderer, *skyCamera, m_environment.skyboxCubemapPath);
+        renderer.DrawSky(*skyCamera, m_environment.skyboxCubemapPath);
         DrawTransparent(ctx);
         return ctx;
     }
@@ -361,7 +360,6 @@ namespace NS::Object
         if (m_subsystemsInitialized)
             return;
         m_cameraSubsystem.Initialize(*this);
-        m_skyboxSubsystem.Initialize(*this);
         m_subsystemsInitialized = true;
     }
 
@@ -369,7 +367,6 @@ namespace NS::Object
     {
         // 解放フックだけ回し、本体の破棄は scene と共に行う
         // CharacterMovementComponent 等の借用元より後に破棄される順序はメンバの宣言順が保つ
-        m_skyboxSubsystem.Deinitialize();
         m_cameraSubsystem.Deinitialize();
         m_subsystemsInitialized = false;
     }

@@ -1,20 +1,14 @@
 #include <Runtime/Core/Logger.h>
-#include <Runtime/Graphics/Camera.h>
 #include <Runtime/Graphics/RenderSettings.h>
-#include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Object/Components/DirectionalLightComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Scene/Scene.h>
-#include <Runtime/Object/SkyboxSubsystem.h>
-#include <Runtime/Platform/Window.h>
-#include <filesystem>
 #include <gtest/gtest.h>
 
 namespace
 {
     using NS::Object::DirectionalLightComponent;
-    using NS::Object::SkyboxSubsystem;
     using NS::Object::GameObject;
     using NS::Object::Scene;
 
@@ -46,14 +40,14 @@ namespace
     }
 } // namespace
 
-class SkyboxSubsystemTest : public ::testing::Test
+class SceneLightResolveTest : public ::testing::Test
 {
 protected:
     void SetUp() override { NS::Core::Logger::Init(); }
     void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
-TEST_F(SkyboxSubsystemTest, NoLightKeepsProjectDefaults)
+TEST_F(SceneLightResolveTest, NoLightKeepsProjectDefaults)
 {
     ResolveProbeScene scene;
     scene.CreateSceneSubsystems();
@@ -69,7 +63,7 @@ TEST_F(SkyboxSubsystemTest, NoLightKeepsProjectDefaults)
     EXPECT_NEAR(resolved.clearColor.B(), defaults.clearColor.B(), k_Epsilon);
 }
 
-TEST_F(SkyboxSubsystemTest, PlacedLightOverridesResolve)
+TEST_F(SceneLightResolveTest, PlacedLightOverridesResolve)
 {
     ResolveProbeScene scene;
     scene.CreateSceneSubsystems();
@@ -90,7 +84,7 @@ TEST_F(SkyboxSubsystemTest, PlacedLightOverridesResolve)
     EXPECT_NEAR(resolved.clearColor.B(), NS::Graphics::RenderSettings{}.clearColor.B(), k_Epsilon);
 }
 
-TEST_F(SkyboxSubsystemTest, ZeroLightDirectionFallsToDefault)
+TEST_F(SceneLightResolveTest, ZeroLightDirectionFallsToDefault)
 {
     ResolveProbeScene scene;
     scene.CreateSceneSubsystems();
@@ -107,31 +101,4 @@ TEST_F(SkyboxSubsystemTest, ZeroLightDirectionFallsToDefault)
     EXPECT_NEAR(resolved.lightDir.x, defaults.lightDir.x, k_Epsilon);
     // 色は有効なので上書きされる
     EXPECT_NEAR(resolved.lightColor.x, 0.9f, k_Epsilon);
-}
-
-TEST_F(SkyboxSubsystemTest, DrawSkyWithoutDeviceDoesNotCrash)
-{
-    // device 不在のまま Initialize された環境は skybox 装置を持たない
-    Scene scene;
-    scene.CreateSceneSubsystems();
-    auto* environment = scene.GetSubsystem<SkyboxSubsystem>();
-    ASSERT_NE(environment, nullptr);
-
-    // 呼出用の renderer と camera を後から立てても、装置無しの DrawSky は何もしない
-    NS::Platform::WindowDesc wd{};
-    wd.title = "ns_env_drawsky";
-    wd.size = NS::Core::Size2D{320, 240};
-    wd.visible = false;
-    NS::Platform::Window window(wd);
-    ASSERT_TRUE(window.IsValid());
-
-    NS::Graphics::RendererDesc rd{};
-    rd.vsync = false;
-    rd.enableDebugLayer = false;
-    NS::Graphics::Renderer renderer(rd, window);
-    ASSERT_TRUE(renderer.IsValid());
-
-    NS::Graphics::Camera camera{};
-    environment->DrawSky(renderer, camera, std::filesystem::path{"Assets/Skybox/kurt/"});
-    SUCCEED();
 }

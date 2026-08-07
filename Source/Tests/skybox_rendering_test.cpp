@@ -1,11 +1,12 @@
 #include <gtest/gtest.h>
 
 #include <Runtime/Core/Logger.h>
+#include <Runtime/Graphics/Camera.h>
 #include <Runtime/Graphics/Pipeline.h>
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/Skybox.h>
 #include <Runtime/Platform/Window.h>
-
+#include <filesystem>
 
 namespace
 {
@@ -92,5 +93,34 @@ TEST_F(SkyboxRenderingTest, RenderWithFallbackDoesNotCrash)
     // LoadCubemap を呼ばずに発行しても fallback が描かれてクラッシュしないこと
     NS::Core::Matrix vpNoTranslate = NS::Core::Matrix::Identity;
     NS::Graphics::IssueSkybox(renderer, skybox, vpNoTranslate);
+    SUCCEED();
+}
+
+TEST_F(SkyboxRenderingTest, DrawSkyWithEmptyPathDrawsNothing)
+{
+    Window window(MakeWindowDesc("ns_skybox_drawsky_empty"));
+    ASSERT_TRUE(window.IsValid());
+    Renderer renderer(MakeRendererDesc(), window);
+    ASSERT_TRUE(renderer.IsValid());
+
+    // cubemap を指定していないシーンは空を描かない。装置の構築にも入らない
+    NS::Graphics::Camera camera{};
+    renderer.DrawSky(camera, std::filesystem::path{});
+    renderer.DrawSky(camera, std::filesystem::path{});
+    SUCCEED();
+}
+
+TEST_F(SkyboxRenderingTest, DrawSkyIgnoresPathOutsideContentRoot)
+{
+    Window window(MakeWindowDesc("ns_skybox_drawsky_outside"));
+    ASSERT_TRUE(window.IsValid());
+    Renderer renderer(MakeRendererDesc(), window);
+    ASSERT_TRUE(renderer.IsValid());
+
+    // ContentRoot の外を指すパスは読まずに拒否し、二度目は警告も出さない
+    NS::Graphics::Camera camera{};
+    const std::filesystem::path outside{"../outside/sky"};
+    renderer.DrawSky(camera, outside);
+    renderer.DrawSky(camera, outside);
     SUCCEED();
 }

@@ -4,6 +4,7 @@
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Buffer.h"
+#include "Runtime/Graphics/Camera.h"
 #include "Runtime/Graphics/CommandList.h"
 #include "Runtime/Graphics/CommonStates.h"
 #include "Runtime/Graphics/D3dCommon.h"
@@ -12,6 +13,7 @@
 #include "Runtime/Graphics/Pipeline.h"
 #include "Runtime/Graphics/RenderTarget.h"
 #include "Runtime/Graphics/Shader.h"
+#include "Runtime/Graphics/Skybox.h"
 #include "Runtime/Graphics/Texture.h"
 
 #include <cassert>
@@ -424,6 +426,67 @@ namespace NS::Graphics
         cmd->IASetInputLayout(nullptr);
         cmd.SetTopology(Topology::TriangleList);
         cmd.Draw(6);
+    }
+
+    void Renderer::EnsureSkyboxResources() noexcept
+    {
+        if (m_skyboxTried)
+            return;
+        m_skyboxTried = true;
+
+        if (m_device == nullptr)
+            return;
+
+        auto skybox = Skybox::Create();
+        if (!skybox || !skybox->IsValid())
+        {
+            NS_LOG_WARN(Graphics, "Renderer: skybox 装置の構築失敗のため空を描かない");
+            return;
+        }
+        m_skybox = std::move(skybox);
+    }
+
+    void Renderer::DrawSky(const Camera& camera, const std::filesystem::path& cubemapPath) noexcept
+    {
+        // cubemap を指定していないシーンは空を持たない。装置の構築もしない
+        if (cubemapPath.empty())
+            return;
+
+        EnsureSkyboxResources();
+        if (!m_skybox)
+            return;
+
+        // 毎フレーム LoadCubemap すると I/O が常時走るため、前回パスと差分があるときだけ再ロードする
+        if (cubemapPath != m_loadedSkyboxPath)
+        {
+            // ユーザー編集ファイル由来のパスを ContentRoot 配下へ閉じ込める。外を指す値は読み込まない
+            const auto absPath =
+                ::NS::Core::FileSystem::ResolveUnder(::NS::Core::FileSystem::ContentRoot(), cubemapPath);
+            if (!absPath.has_value())
+            {
+                NS_LOG_WARN(Graphics,
+                            "Renderer: cubemap パス '{}' は ContentRoot 配下でないため読み込まない",
+                            cubemapPath.string());
+                // 拒否はパスを直すまで変わらないので、覚えて警告の連打を止める
+                m_loadedSkyboxPath = cubemapPath;
+            }
+            else if (m_skybox->LoadCubemap(*absPath))
+            {
+                m_loadedSkyboxPath = cubemapPath;
+            }
+            else
+            {
+                NS_LOG_WARN(Graphics, "Renderer: cubemap 読込失敗 ({}), 既存を維持", absPath->string());
+                // 失敗時は前回パスを更新しないので次フレームで再試行できる
+            }
+        }
+
+        // view の平行移動成分を 0 化して camera 中心に空を固定する
+        NS::Core::Matrix viewNoTranslate = camera.View();
+        viewNoTranslate._41 = 0.0f;
+        viewNoTranslate._42 = 0.0f;
+        viewNoTranslate._43 = 0.0f;
+        IssueSkybox(*this, *m_skybox, viewNoTranslate * camera.Projection());
     }
 
     void Renderer::BeginFrame(float r, float g, float b, float a) noexcept
