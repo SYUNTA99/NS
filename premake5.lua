@@ -142,7 +142,10 @@ end
 --   pch.h が Windows.h まで巻き込むため、 本体に汚染を持ち込まないように
 --   隔離した独立プロジェクトとしてビルドする。
 --   project 名は consumer の links { } 互換のため `directxtk_simplemath` を維持。
+--   Solution Explorer では _ThirdParty フォルダへ畳み、自作の層と混ざらないようにする。
 --============================================================================
+group "_ThirdParty"
+
 project "directxtk_simplemath"
     kind "StaticLib"
     location "build/directxtk_simplemath"
