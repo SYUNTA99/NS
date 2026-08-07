@@ -11,6 +11,5 @@ namespace NS::Editor
     inline constexpr const char* k_PanelInspector = "インスペクター###Inspector";
     inline constexpr const char* k_PanelConsole = "Console";
     inline constexpr const char* k_PanelAssets = "Assets";
-    inline constexpr const char* k_PanelRenderSettings = "RenderSettings";
     inline constexpr const char* k_PanelEditMode = "Edit Mode";
 } // namespace NS::Editor

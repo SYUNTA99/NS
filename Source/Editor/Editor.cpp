@@ -30,7 +30,6 @@ namespace
     using NS::Editor::k_PanelGame;
     using NS::Editor::k_PanelHierarchy;
     using NS::Editor::k_PanelInspector;
-    using NS::Editor::k_PanelRenderSettings;
     using NS::Editor::k_PanelScene;
 
     // メニューバーだけ明るい帯＋濃い文字にする。 他のポップアップは暗いテーマ任せ
@@ -170,7 +169,6 @@ void Editor::OnRender()
             // Assets はプレイ中も出し続け Console と同じタブに重ねる
             m_assets.Render(editor);
             m_console.Render();
-            m_renderSettings.Render(editor);
 
             // モードが変わったフレームだけ前面のタブへ自動フォーカスする。 Tab / ボタン / Quit to Edit のどこから
             // 切替わっても CurrentMode の変化検知で一律に効く
@@ -460,8 +458,6 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
         m_console.Render();
     else if (name == k_PanelAssets)
         m_assets.Render(editor);
-    else if (name == k_PanelRenderSettings)
-        m_renderSettings.Render(editor);
     else if (name == k_PanelEditMode)
         m_toolMode.Render(editor);
     else

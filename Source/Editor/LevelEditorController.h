@@ -6,7 +6,6 @@
 #include "Editor/GizmoEditor.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "Runtime/Core/NonCopyable.h"
-#include "Runtime/Graphics/RenderSettings.h"
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 
 #include <cstdint>
@@ -223,20 +222,6 @@ public:
     }
     bool ApplyMaterialToSelected(const std::filesystem::path& matPath);
 
-    //! デバッグ用のレンダリング設定を取得する
-    [[nodiscard]] const NS::Graphics::RenderSettings& DebugResolvedSettings() const noexcept
-    {
-        return m_debugResolvedSettings;
-    }
-    [[nodiscard]] const NS::Graphics::RenderSettingsOverride& DebugSceneOverride() const noexcept
-    {
-        return m_debugSceneOverride;
-    }
-    [[nodiscard]] const NS::Graphics::RenderSettingsOverride& DebugPlayerObjectOverride() const noexcept
-    {
-        return m_debugPlayerObjectOverride;
-    }
-
 private:
     void TickEdit();
 
@@ -334,8 +319,4 @@ private:
     bool m_componentEditing = false;                                    // コンポーネント編集の開始状態
     std::uint32_t m_componentEditBaselineId = NS::Object::k_NoObjectId; // 編集開始時の対象ID
     NS::Object::ObjectData m_componentEditBaseline{};                   // 編集開始時の状態スナップショット
-
-    NS::Graphics::RenderSettings m_debugResolvedSettings{};             // 解決済みレンダリング設定
-    NS::Graphics::RenderSettingsOverride m_debugSceneOverride{};        // シーン単位の設定オーバーライド
-    NS::Graphics::RenderSettingsOverride m_debugPlayerObjectOverride{}; // プレイヤー単位の設定オーバーライド
 };

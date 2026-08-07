@@ -599,16 +599,6 @@ void LevelEditorController::Render()
     if (app == nullptr)
         return;
 
-    // 出所デバッグパネルの入力を毎フレーム退避する。出所は has_value の突き合わせで逆算するので
-    // Resolve のホットパスに追跡を入れず、scene が控えた解決値と代表 object override をそのまま保持する
-    m_debugResolvedSettings = m_scene->LastResolvedSettings();
-    m_debugSceneOverride = m_scene->LastSceneOverride();
-    if (auto* player = FindPlayer(m_scene->World()))
-    {
-        if (auto* mesh = player->FindComponent<NS::Object::MeshRendererComponent>())
-            m_debugPlayerObjectOverride = mesh->RenderOverride();
-    }
-
     if (m_mode != Mode::Edit)
     {
         // プレイ中も Scene には当たりを見せる。 動いている形をそのまま追えるよう選択に関わらず全部出す

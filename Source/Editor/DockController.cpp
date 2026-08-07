@@ -51,8 +51,6 @@ namespace NS::Editor
             // 後にドックした方が既定の前面タブになるので Hierarchy を最後に置く
             ImGui::DockBuilderDockWindow(k_PanelEditMode, leftId);
             ImGui::DockBuilderDockWindow(k_PanelHierarchy, leftId);
-            // 同じ理由で Inspector を最後に置く
-            ImGui::DockBuilderDockWindow(k_PanelRenderSettings, rightId);
             ImGui::DockBuilderDockWindow(k_PanelInspector, rightId);
             // Assets と Console は下段でタブに重ねる。後にドックした Assets が既定の前面タブ
             ImGui::DockBuilderDockWindow(k_PanelConsole, bottomId);
@@ -61,9 +59,8 @@ namespace NS::Editor
             ImGui::DockBuilderDockWindow(k_PanelScene, centerId);
             ImGui::DockBuilderDockWindow(k_PanelGame, centerId);
 
-            // ドック順や発行順に前面タブを委ねると Edit Mode / RenderSettings が出てくるので明示する
+            // ドック順や発行順に前面タブを委ねると Edit Mode が出てくるので明示する
             SelectDefaultTab(leftId, k_PanelHierarchy);
-            SelectDefaultTab(rightId, k_PanelInspector);
             SelectDefaultTab(bottomId, k_PanelAssets);
             SelectDefaultTab(centerId, k_PanelScene);
 
@@ -205,7 +202,6 @@ namespace NS::Editor
                                                k_PanelInspector,
                                                k_PanelConsole,
                                                k_PanelAssets,
-                                               k_PanelRenderSettings,
                                                k_PanelEditMode};
         for (int i = 0; i < IM_ARRAYSIZE(k_Panels); ++i)
         {

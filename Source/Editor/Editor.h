@@ -7,7 +7,6 @@
 #include "Editor/HierarchyPanel.h"
 #include "Editor/InspectorPanel.h"
 #include "Editor/QuitModal.h"
-#include "Editor/RenderSettingsPanel.h"
 #include "Editor/SceneViewPanel.h"
 #include "Editor/ToolModePanel.h"
 #include "Runtime/App/Layer.h"
@@ -59,16 +58,15 @@ private:
     std::unique_ptr<NS::UI::ImGuiContext> m_imgui;
     std::unique_ptr<LevelEditorController> m_controller;
 
-    NS::Editor::HierarchyPanel m_hierarchy;           // 配置物ツリーのパネル。UI 状態を自分で持つ
-    NS::Editor::InspectorPanel m_inspector;           // 選択物の編集パネル。名前欄の状態を自分で持つ
-    NS::Editor::ConsolePanel m_console;               // フレーム統計パネル
-    NS::Editor::RenderSettingsPanel m_renderSettings; // 描画設定と環境・テーマのパネル
-    NS::Editor::ToolModePanel m_toolMode;             // 編集モード切替パネル
-    NS::Editor::AssetsPanel m_assets;                 // アセットツリーと適用パネル
-    NS::Editor::QuitModal m_quitModal;                // 終了時の保存確認モーダル
-    NS::Editor::DockController m_dock;                // ドックホストとパネル全面化の状態
-    NS::Editor::SceneViewPanel m_sceneView;           // 編集 / 自由視点ビュー
-    NS::Editor::GameViewPanel m_gameView;             // ゲーム視点ビュー
+    NS::Editor::HierarchyPanel m_hierarchy; // 配置物ツリーのパネル。UI 状態を自分で持つ
+    NS::Editor::InspectorPanel m_inspector; // 選択物の編集パネル。名前欄の状態を自分で持つ
+    NS::Editor::ConsolePanel m_console;     // フレーム統計パネル
+    NS::Editor::ToolModePanel m_toolMode;   // 編集モード切替パネル
+    NS::Editor::AssetsPanel m_assets;       // アセットツリーと適用パネル
+    NS::Editor::QuitModal m_quitModal;      // 終了時の保存確認モーダル
+    NS::Editor::DockController m_dock;      // ドックホストとパネル全面化の状態
+    NS::Editor::SceneViewPanel m_sceneView; // 編集 / 自由視点ビュー
+    NS::Editor::GameViewPanel m_gameView;   // ゲーム視点ビュー
 
     bool m_uiVisible = true;
     bool m_lastModeWasPlay = false; // 前フレームがプレイモードだったか。タブ自動フォーカスの切替検知に使う
