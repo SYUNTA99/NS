@@ -1,6 +1,7 @@
 #include "Editor/LevelEditorController.h"
 
 #include "Editor/EditorObjects.h"
+#include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
 #include "Game/Level/BlockObject.h"
@@ -10,6 +11,7 @@
 #include "Game/Level/ScreenFadeComponent.h"
 #include "Game/Player.h"
 #include "Runtime/App/Application.h"
+#include "Runtime/Core/Clock.h"
 #include "Runtime/Core/Filesystem.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/DebugDraw.h"
@@ -43,6 +45,9 @@ namespace
 {
     // カメラ frustum の far は実カメラだと 1000 で錐台が画面外になるため表示用に近くで切る
     constexpr float k_CameraGizmoFar = 8.0f;
+
+    // 編集復帰の視点ブレンド秒。Brain の vcam 切替の既定 0.35 秒と揃え、モード切替の繋ぎを同じ感触にする
+    constexpr float k_EditBlendSeconds = 0.35f;
 
     // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球 / カプセル / slope は collider 由来の AABB
     void DrawColliderWireframe(NS::Object::GameObject& object, const NS::Math::Color& color) noexcept
@@ -257,6 +262,17 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     // scene が OnStart で rebuild 済なので、初回 Tick の二重 rebuild を抑制
     m_editor.ClearLevelDirty();
 
+    // 起動シーンが実在するのに読めていない時は印す。終了保存が元ファイルを潰さず退避名へ逃げる
+    if (const auto bootPath = NS::Editor::BuildLevelPath("Scenes/new_scene"))
+    {
+        if (NS::Core::FileSystem::Exists(*bootPath))
+        {
+            NS::Object::SceneData probe;
+            if (!NS::Object::LoadSceneFromJsonFile(probe, *bootPath))
+                m_editor.MarkBootLevelLoadFailed();
+        }
+    }
+
     // ギズモに依存先を注入する。選択候補は自由オブジェクト + grid solid ブロックを連結して渡す
     m_gizmo.SetInput(&app->Input());
     m_gizmo.SetImGui(imgui);
@@ -312,6 +328,9 @@ void LevelEditorController::EnterPlay() noexcept
     // 追従カメラは world のカメラ配置物。プレイの間だけ有効化する
     m_scene->World().ForEachComponent<NS::Object::ThirdPersonFollowComponent>(
         [](NS::Object::ThirdPersonFollowComponent& follow) { follow.SetActive(true); });
+    // 編集の自由視点からプレイ視点へ、vcam 切替と同じブレンドで繋ぐ
+    if (auto* brain = Brain())
+        brain->BeginBlendFrom(m_editorCamera.Pose());
     // 世界を回す。止まっているのは編集モードの間だけ
     m_scene->SetSimulationEnabled(true);
 
@@ -341,6 +360,13 @@ void LevelEditorController::EnterEdit() noexcept
     }
     // プレイを終えて player 凍結 / follow・area camera 休止 / 演出破棄を行う
     LeavePlayForEdit();
+    // プレイ視点から自由視点へ繋ぐ。始点は直前まで実カメラに書かれていた pose
+    if (auto* brain = Brain())
+    {
+        m_editBlendFrom = brain->LastPose();
+        m_editBlendElapsed = 0.0f;
+        m_editBlending = true;
+    }
     // Play 中の rebuild を跨いだ選択を、id から現在のオブジェクトへ貼り直してから編集へ戻る
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
@@ -517,13 +543,17 @@ void LevelEditorController::TickEdit()
     // 編集中は active な vcam が無く Brain は実カメラに触れないので、この書き込みが上書きされずに残る
     if (auto* camera = MainCamera())
     {
-        const NS::Object::CameraPose pose = m_editorCamera.Pose();
-        camera->SetPosition(pose.position);
-        camera->SetTarget(pose.target);
-        camera->SetUp(pose.up);
-        camera->SetFovY(pose.fovY);
-        camera->SetNearPlane(pose.nearPlane);
-        camera->SetFarPlane(pose.farPlane);
+        NS::Object::CameraPose pose = m_editorCamera.Pose();
+        if (m_editBlending)
+        {
+            m_editBlendElapsed += NS::Core::FrameTimer::FixedDelta();
+            const float t = std::min(m_editBlendElapsed / k_EditBlendSeconds, 1.0f);
+            const float eased = t * t * (3.0f - 2.0f * t); // smoothstep で ease-in-out
+            pose = NS::Object::CameraPose::Lerp(m_editBlendFrom, pose, eased);
+            if (t >= 1.0f)
+                m_editBlending = false;
+        }
+        camera->ApplyPose(pose);
     }
 
     // 同時に 1 モードだけが LMB/R/Ctrl+Z を消費する。Object 中は grid 入力を抑制しギズモへ回す

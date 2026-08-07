@@ -11,6 +11,8 @@ namespace NS::Graphics
 
 namespace NS::Object
 {
+    struct CameraPose;
+
     /// @brief NS::Graphics::Camera を value member で内包する Component
     /// @details Getter / Setter は内包 Camera への薄いラッパー
     /// view forward の XZ 成分は PlayerInput が camera 相対移動入力の参照に使う
@@ -28,6 +30,9 @@ namespace NS::Object
         void SetAspectRatioFromRenderer(const NS::Graphics::Renderer& renderer) noexcept;
         void SetNearPlane(float nearPlane) noexcept;
         void SetFarPlane(float farPlane) noexcept;
+
+        /// pose の位置 / 注視点 / up と投影設定をまとめて書く。Brain の Evaluate と editor の視点反映が使う
+        void ApplyPose(const CameraPose& pose) noexcept;
 
         [[nodiscard]] const NS::Math::Vector3& Position() const noexcept { return m_camera.Position(); }
         [[nodiscard]] const NS::Math::Vector3& Target() const noexcept { return m_camera.Target(); }

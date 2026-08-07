@@ -74,7 +74,7 @@ namespace NS::Editor
             {
                 ImGui::Text("カメラ");
                 ImGui::Separator();
-                // ブレンド秒の Brain と編集中=free-fly / プレイ中=follow の現在 active な vcam をリフレクションで出す
+                // ブレンド秒の Brain と、プレイ中は active な vcam をリフレクションで出す
                 // 値はライブで効き保存はしない
                 auto* brain = editor.CameraBrainObject();
                 auto* vcam = editor.ActiveVirtualCameraObject();
@@ -84,6 +84,21 @@ namespace NS::Editor
                     (void)NS::Editor::DrawObjectComponents(*brain, refOptions);
                 if (vcam != nullptr && vcam != brain)
                     (void)NS::Editor::DrawObjectComponents(*vcam, refOptions);
+
+                // 編集中の自由視点は vcam ではないので、感度はここで直接編集する。ライブで効き保存はしない
+                if (editor.CurrentMode() == LevelEditorController::Mode::Edit)
+                {
+                    ImGui::SeparatorText("自由視点");
+                    auto& tuning = editor.EditorFreeCamera().Tuning();
+                    ImGui::DragFloat("ズームバネ角速度", &tuning.springOmega, 0.1f, 0.5f, 30.0f);
+                    ImGui::DragFloat("マウス見回し感度", &tuning.mouseSensOrbit, 0.0005f, 0.0005f, 0.02f, "%.4f");
+                    ImGui::DragFloat("マウス平行移動感度", &tuning.mouseSensPan, 0.001f, 0.001f, 0.2f, "%.3f");
+                    ImGui::DragFloat("マウスズーム感度", &tuning.mouseSensZoom, 0.05f, 0.1f, 5.0f);
+                    ImGui::DragFloat("パッド見回し感度", &tuning.padSensOrbit, 0.05f, 0.1f, 10.0f);
+                    ImGui::DragFloat("パッド平行移動感度", &tuning.padSensPan, 0.1f, 0.5f, 30.0f);
+                    ImGui::DragFloat("パッドズーム感度", &tuning.padSensZoom, 0.05f, 0.5f, 15.0f);
+                    ImGui::DragFloat("キー移動速度", &tuning.keyMoveSpeed, 0.02f, 0.05f, 3.0f);
+                }
 
                 ImGui::End();
                 return;
@@ -193,7 +208,8 @@ namespace NS::Editor
             if (obj.components.empty())
                 ImGui::TextDisabled("コンポーネント無し。 足すと表示・当たりが付く");
 
-            // リフレクション編集は live component へ直接入る。 live は priority 順なので data の並びへ型と出現番号で対応づける
+            // リフレクション編集は live component へ直接入る。 live は priority 順なので data
+            // の並びへ型と出現番号で対応づける
             NS::Object::GameObject* go = editor.SelectedObjectGameObject();
             NS::Editor::ComponentEditResult componentEdit{};
             for (std::size_t k = 0; k < obj.components.size(); ++k)

@@ -47,6 +47,13 @@ namespace NS::Object
         /// Evaluate 後に有効。選ばれている vcam を返し、無ければ nullptr
         [[nodiscard]] VirtualCameraComponent* ActiveVirtualCamera() const noexcept { return m_active; }
 
+        /// 指定 pose を旧 pose としてブレンドを開始する。active な vcam が居ない状態からの切替も繋がる
+        /// editor がプレイ突入時に自由視点の pose から追従カメラへ繋ぐのに使う
+        void BeginBlendFrom(const CameraPose& pose) noexcept;
+
+        /// 直近 Evaluate が実カメラへ書いた pose。editor が編集復帰時のブレンド始点に読む
+        [[nodiscard]] const CameraPose& LastPose() const noexcept { return m_lastPose; }
+
         /// @brief 登録済みから priority 最高の vcam の pose を返します。(候補無しは nullopt)
         /// @details active は問わず選ぶ。ゲーム視点を別ビューへ映す用で実カメラには触れない
         [[nodiscard]] std::optional<CameraPose> EvaluateTopPose(float alpha) const noexcept;

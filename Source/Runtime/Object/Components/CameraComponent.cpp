@@ -1,15 +1,14 @@
 #include "Runtime/Object/Components/CameraComponent.h"
 
 #include "Runtime/Graphics/Renderer.h"
+#include "Runtime/Object/Components/VirtualCameraComponent.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 
 #include <cmath>
 
 namespace NS::Object
 {
-    CameraComponent::CameraComponent() noexcept
-        : Component(NS::Object::TickPriority::LateUpdate + 50)
-    {}
+    CameraComponent::CameraComponent() noexcept : Component(NS::Object::TickPriority::LateUpdate + 50) {}
 
     void CameraComponent::SetPosition(const NS::Math::Vector3& position) noexcept
     {
@@ -55,6 +54,16 @@ namespace NS::Object
     void CameraComponent::SetFarPlane(float farPlane) noexcept
     {
         m_camera.SetFarPlane(farPlane);
+    }
+
+    void CameraComponent::ApplyPose(const CameraPose& pose) noexcept
+    {
+        m_camera.SetPosition(pose.position);
+        m_camera.SetTarget(pose.target);
+        m_camera.SetUp(pose.up);
+        m_camera.SetFovY(pose.fovY);
+        m_camera.SetNearPlane(pose.nearPlane);
+        m_camera.SetFarPlane(pose.farPlane);
     }
 
     NS::Math::Vector3 CameraComponent::ForwardHorizontal() const noexcept

@@ -84,25 +84,35 @@ namespace NS::Editor
         static constexpr float k_PitchMin = -1.553f; // -89°
         static constexpr float k_PitchMax = +1.553f; // +89°
 
+        //! @brief free-fly の操作感度と距離バネの調整値
+        //! @details Inspector がライブで直接編集する。保存はしない
+        struct FeelTuning
+        {
+            float springOmega = 6.0f; // 距離バネの角速度
+            float mouseSensOrbit = 0.003f;
+            float mouseSensPan = 0.02f;
+            // ホイール 1 刻みあたりの zoomDelta 倍率。 ApplyZoom が log scale なので
+            // 1.0 で 1 刻み = 10% 距離変化、 2.0 で 19%、 0.5 で 5% と直感的に効く
+            float mouseSensZoom = 1.0f;
+            float padSensOrbit = 2.5f;
+            float padSensPan = 8.0f;
+            float padSensZoom = 4.0f;
+            // WASD の 1 秒あたり移動量 = この値 × distance。 distance 比例でズーム量に依らず体感速度を一定に保つ
+            // ただし距離は k_MinMoveDistance で下支えするので、 寄り切っても速さは残る
+            float keyMoveSpeed = 0.6f;
+        };
+
+        [[nodiscard]] FeelTuning& Tuning() noexcept { return m_tuning; }
+        [[nodiscard]] const FeelTuning& Tuning() const noexcept { return m_tuning; }
+
     private:
         NS::Math::Vector3 m_center{0.0f, 0.0f, 0.0f}; // orbit の中心 pivot
         float m_yaw = 0.0f;                           // 方位角 (ラジアン)
         float m_pitch = -0.5236f;                     // 仰角 (ラジアン)
         float m_distance = 15.0f;                     // center からの現在距離
         float m_desiredDistance = 15.0f;              // ズームの目標距離、バネで寄せる
-        float m_springOmega = 6.0f;                   // 距離バネの角速度
 
-        float m_mouseSensOrbit = 0.003f;
-        float m_mouseSensPan = 0.02f;
-        // ホイール 1 刻みあたりの zoomDelta 倍率。 ApplyZoom が log scale なので
-        // 1.0 で 1 刻み = 10% 距離変化、 2.0 で 19%、 0.5 で 5% と直感的に効く
-        float m_mouseSensZoom = 1.0f;
-        float m_padSensOrbit = 2.5f;
-        float m_padSensPan = 8.0f;
-        float m_padSensZoom = 4.0f;
-        // WASD の 1 秒あたり移動量 = この値 × distance。 distance 比例でズーム量に依らず体感速度を一定に保つ
-        // ただし距離は k_MinMoveDistance で下支えするので、 寄り切っても速さは残る
-        float m_keyMoveSpeed = 0.6f;
+        FeelTuning m_tuning{}; // free-fly の感触。Inspector がライブで書く
 
         NS::Math::Radians m_fovY{NS::Math::ToRadians(NS::Math::Degrees{60.0f})}; // 垂直視野角
         float m_nearPlane = 0.1f;                                                // ニアクリップ距離

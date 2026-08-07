@@ -83,7 +83,7 @@ namespace NS::Editor
         const NS::Math::Vector3 right{-cosYaw, 0.0f, sinYaw};
         // 速さは distance 比例のままだが、 寄った時に動けなくならないよう距離に下限を置く
         // 立方体 1 個へ注視すると distance は下限の 2m まで落ち、 比例のままでは 1.2m/s と歩くより遅い
-        const float step = m_keyMoveSpeed * std::max(m_distance, k_MinMoveDistance) * dt * speedScale;
+        const float step = m_tuning.keyMoveSpeed * std::max(m_distance, k_MinMoveDistance) * dt * speedScale;
         m_center.x += (forward.x * forwardAxis + right.x * strafeAxis) * step;
         m_center.y += (forward.y * forwardAxis + verticalAxis) * step;
         m_center.z += (forward.z * forwardAxis + right.z * strafeAxis) * step;
@@ -93,20 +93,20 @@ namespace NS::Editor
     {
         if (input.flying)
         {
-            ApplyLook(input.lookYawPixels * m_mouseSensOrbit, input.lookPitchPixels * m_mouseSensOrbit);
+            ApplyLook(input.lookYawPixels * m_tuning.mouseSensOrbit, input.lookPitchPixels * m_tuning.mouseSensOrbit);
         }
         if (input.panXPixels != 0.0f || input.panYPixels != 0.0f)
         {
-            ApplyPan(input.panXPixels * m_mouseSensPan, input.panYPixels * m_mouseSensPan);
+            ApplyPan(input.panXPixels * m_tuning.mouseSensPan, input.panYPixels * m_tuning.mouseSensPan);
         }
-        ApplyZoom(input.wheelNotches * m_mouseSensZoom);
+        ApplyZoom(input.wheelNotches * m_tuning.mouseSensZoom);
         if (input.flying)
         {
             ApplyFlyMove(input.forwardAxis, input.strafeAxis, input.verticalAxis, input.deltaSeconds, input.speedScale);
         }
 
         // distance を臨界減衰バネで目標距離へ滑らかに寄せる
-        m_distance += (m_desiredDistance - m_distance) * std::min(1.0f, m_springOmega * input.deltaSeconds);
+        m_distance += (m_desiredDistance - m_distance) * std::min(1.0f, m_tuning.springOmega * input.deltaSeconds);
     }
 
     NS::Math::Vector3 EditorCamera::ComputeCameraPosition() const noexcept
@@ -182,9 +182,9 @@ namespace NS::Editor
             {
                 const auto rs = gp.RightStick();
                 const auto ls = gp.LeftStick();
-                ApplyOrbit(rs.x * m_padSensOrbit * dt, -rs.y * m_padSensOrbit * dt);
-                ApplyPan(ls.x * m_padSensPan * dt, -ls.y * m_padSensPan * dt);
-                ApplyZoom((gp.RightTrigger() - gp.LeftTrigger()) * m_padSensZoom * dt);
+                ApplyOrbit(rs.x * m_tuning.padSensOrbit * dt, -rs.y * m_tuning.padSensOrbit * dt);
+                ApplyPan(ls.x * m_tuning.padSensPan * dt, -ls.y * m_tuning.padSensPan * dt);
+                ApplyZoom((gp.RightTrigger() - gp.LeftTrigger()) * m_tuning.padSensZoom * dt);
             }
         }
 

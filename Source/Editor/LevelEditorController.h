@@ -103,6 +103,9 @@ public:
 
     [[nodiscard]] NS::Editor::EditorMode& Editor() noexcept { return m_editor; }
 
+    //! 編集の自由視点カメラ。Inspector が感度をライブ編集する
+    [[nodiscard]] NS::Editor::EditorCamera& EditorFreeCamera() noexcept { return m_editorCamera; }
+
     //! プレイの時間停止。実体はシーンの時間停止スイッチで、ここはエディタ操作の入口
     [[nodiscard]] bool PlayPaused() const noexcept;
     void TogglePlayPause() noexcept;
@@ -270,6 +273,11 @@ private:
 
     NS::UI::ImGuiContext* m_imgui = nullptr; // UI描画用コンテキスト、非所有
     NS::Editor::EditorCamera m_editorCamera; // 編集用自由視点カメラ
+
+    // 編集復帰時にプレイ視点から自由視点へ繋ぐブレンド。TickEdit が進める
+    NS::Object::CameraPose m_editBlendFrom{};
+    float m_editBlendElapsed = 0.0f;
+    bool m_editBlending = false;
 
     NS::Editor::EditorMode m_editor{}; // 編集モード管理（カーソル・Undo等）
     Mode m_mode = Mode::Edit;          // 現在の実行モード

@@ -206,7 +206,7 @@ TEST(EditorCameraTest, ApplyInputFlyingLooksAndKeepsEyeFixed)
     input.lookYawPixels = 100.0f;
     cam.ApplyInput(input);
 
-    // 既定感度 m_mouseSensOrbit = 0.003
+    // 既定感度 FeelTuning::mouseSensOrbit = 0.003
     EXPECT_NEAR(cam.Yaw(), 100.0f * 0.003f, 1e-4f);
     const auto eyeAfter = cam.ComputeCameraPosition();
     EXPECT_NEAR(eyeAfter.x, eyeBefore.x, 1e-3f);

@@ -46,6 +46,16 @@ namespace NS::Object
             m_blendDuration = 0.0f;
     }
 
+    void CameraBrainComponent::BeginBlendFrom(const CameraPose& pose) noexcept
+    {
+        if (m_blendDuration <= 0.0f)
+            return;
+        m_lastPose = pose;
+        m_blendFrom = pose;
+        m_blendElapsed = 0.0f;
+        m_blending = true;
+    }
+
     VirtualCameraComponent* CameraBrainComponent::SelectActive() const noexcept
     {
         VirtualCameraComponent* best = nullptr;
@@ -113,12 +123,7 @@ namespace NS::Object
         }
 
         m_lastPose = pose;
-        m_camera->SetPosition(pose.position);
-        m_camera->SetTarget(pose.target);
-        m_camera->SetUp(pose.up);
-        m_camera->SetFovY(pose.fovY);
-        m_camera->SetNearPlane(pose.nearPlane);
-        m_camera->SetFarPlane(pose.farPlane);
+        m_camera->ApplyPose(pose);
     }
 
     NS::Math::Matrix CameraBrainComponent::ViewProjection() const noexcept
