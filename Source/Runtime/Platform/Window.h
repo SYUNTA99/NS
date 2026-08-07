@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Runtime/Core/NonCopyable.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <cstdint>
 #include <functional>
@@ -20,7 +20,7 @@ namespace NS::Platform
         std::string title = "NS";
 
         //! クライアント領域のサイズ。
-        NS::Math::Size2D size{1280, 720};
+        NS::Core::Size2D size{1280, 720};
 
         //! ウィンドウ生成時の初期表示フラグ
         bool visible = true;
@@ -53,7 +53,7 @@ namespace NS::Platform
         [[nodiscard]] bool ShouldClose() const noexcept;
 
         //! @brief 現在のクライアント領域のサイズを取得する
-        [[nodiscard]] NS::Math::Size2D Size() const noexcept;
+        [[nodiscard]] NS::Core::Size2D Size() const noexcept;
 
         //! @brief ネイティブのウィンドウハンドルを取得する
         //! @note 利用側（Graphics層など）で適切な型（HWND等）にキャストして使用する
@@ -73,7 +73,7 @@ namespace NS::Platform
 
         //! @brief リサイズ時に呼び出されるコールバックを設定する
         //! @note 最小化時はコールバックの呼び出しがスキップされる
-        void SetResizeCallback(std::function<void(NS::Math::Size2D)> cb);
+        void SetResizeCallback(std::function<void(NS::Core::Size2D)> cb);
 
         //! @brief ウィンドウの閉じる要求を受け取った際のコールバックを設定する
         //! @note 独自の終了処理や、終了をキャンセルする処理をここで挟むことができる

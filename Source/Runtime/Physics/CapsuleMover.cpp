@@ -30,7 +30,7 @@ namespace NS::Physics
         result.position = input.position;
         result.velocity = input.velocity;
         result.grounded = false;
-        result.contactNormal = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+        result.contactNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
 
         if (!std::isfinite(input.dt) || input.dt <= 0.0f || !std::isfinite(input.capsuleRadius) ||
             input.capsuleRadius < 0.0f || !std::isfinite(input.capsuleHalfHeight) || input.capsuleHalfHeight < 0.0f)
@@ -47,19 +47,19 @@ namespace NS::Physics
 
             for (int slideIter = 0; slideIter < k_MaxSlideIters && remainingTime > 0.0f; ++slideIter)
             {
-                NS::Math::Vector3 motion = result.velocity * (subDt * remainingTime);
+                NS::Core::Vector3 motion = result.velocity * (subDt * remainingTime);
 
                 if (std::abs(motion.x) < 1e-9f && std::abs(motion.y) < 1e-9f && std::abs(motion.z) < 1e-9f)
                     break;
 
                 Capsule cap;
                 cap.center = result.position;
-                cap.axis = NS::Math::Vector3{0.0f, 1.0f, 0.0f};
+                cap.axis = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
                 cap.halfHeight = input.capsuleHalfHeight;
                 cap.radius = input.capsuleRadius;
 
                 float earliestToi = 1.0f;
-                NS::Math::Vector3 hitNormal{0.0f, 0.0f, 0.0f};
+                NS::Core::Vector3 hitNormal{0.0f, 0.0f, 0.0f};
                 bool anyHit = false;
 
                 if (input.physicsWorld != nullptr)
@@ -101,7 +101,7 @@ namespace NS::Physics
         // で補足する
         if (!result.grounded)
         {
-            const NS::Math::Vector3 bottomCenter{
+            const NS::Core::Vector3 bottomCenter{
                 result.position.x, result.position.y - input.capsuleHalfHeight, result.position.z};
 
             if (input.physicsWorld != nullptr)

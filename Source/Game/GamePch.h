@@ -6,7 +6,7 @@
 #include "Runtime/App/App.h"
 #include "Runtime/Core/Core.h"
 #include "Runtime/Graphics/Graphics.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Physics/Physics.h"
 #include "Runtime/Platform/Platform.h"
 

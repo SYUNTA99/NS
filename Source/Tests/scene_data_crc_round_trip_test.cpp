@@ -29,11 +29,11 @@ TEST(PlayBaselineCrc, TickDoesNotTouchPlayBaseline)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData level;
-    level.objects.push_back(MakePlayerObject(NS::Math::Vector3{5.0f, 1.0f, -3.0f}, NS::Math::Quaternion{}));
+    level.objects.push_back(MakePlayerObject(NS::Core::Vector3{5.0f, 1.0f, -3.0f}, NS::Core::Quaternion{}));
     level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
     SceneNs::ObjectData rotated = LevelNs::MakeCellObject(1, 0, 0);
     SceneNs::SetObjectRotation(rotated,
-                               NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::k_Pi * 0.5f, 0.0f, 0.0f));
+                               NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.5f, 0.0f, 0.0f));
     level.objects.push_back(rotated);
     level.objects.push_back(MakeGoal());
     scene.LoadFromData(std::move(level));

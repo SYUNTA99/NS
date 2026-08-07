@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Physics/SweptTriangle.h"
 

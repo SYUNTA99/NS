@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/StateMachine.h"
 #include "Runtime/Physics/CapsuleMover.h"
@@ -37,7 +37,7 @@ namespace NS::Object
     public:
         CharacterMovementComponent() noexcept;
 
-        void SetDesiredMove(const NS::Math::Vector3& worldDir, float speedScale01) noexcept;
+        void SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept;
 
         /// 掴まり中の生ローカル入力で各成分は -1..1。SetDesiredMove と別チャンネル、前=登る マップ用
         void SetClimbMove(float localRight, float localForward) noexcept;
@@ -55,9 +55,9 @@ namespace NS::Object
 
         [[nodiscard]] MovementState State() const noexcept { return m_state; }
 
-        [[nodiscard]] NS::Math::Vector3 Velocity() const noexcept { return m_velocity; }
+        [[nodiscard]] NS::Core::Vector3 Velocity() const noexcept { return m_velocity; }
         /// テスト / 外力用に速度を直接与える。 通常は OnUpdate 内で更新するため呼出不要
-        void SetVelocity(const NS::Math::Vector3& v) noexcept { m_velocity = v; }
+        void SetVelocity(const NS::Core::Vector3& v) noexcept { m_velocity = v; }
         [[nodiscard]] bool IsGrounded() const noexcept { return m_isGrounded; }
         [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; }
 
@@ -89,8 +89,8 @@ namespace NS::Object
         /// コヨーテ窓内で跳んだ 1 件の記録。edge=最終接地位置, jump=跳躍位置, remaining=残り表示秒
         struct CoyoteJumpMarker
         {
-            NS::Math::Vector3 edge{0.0f, 0.0f, 0.0f};
-            NS::Math::Vector3 jump{0.0f, 0.0f, 0.0f};
+            NS::Core::Vector3 edge{0.0f, 0.0f, 0.0f};
+            NS::Core::Vector3 jump{0.0f, 0.0f, 0.0f};
             float remaining = 0.0f;
         };
         /// 生存中のコヨーテジャンプ記録。debug 描画が縁→跳躍点の赤線を引くのに読む。寿命切れは除外済
@@ -136,7 +136,7 @@ namespace NS::Object
         /// 通常移動の 1 歩。歩き / ジャンプ / 落下を 1 本の物理パイプラインで進め、下降中に縁を探す
         void UpdateLocomotion(float dt) noexcept;
         /// 空中下降中に進行方向の block 縁を検出し、掴めれば LedgeHanging へ遷移して true を返す
-        bool TryGrabLedge(const NS::Math::Vector3& pos) noexcept;
+        bool TryGrabLedge(const NS::Core::Vector3& pos) noexcept;
 
         /// LedgeHanging 中の毎フレーム更新。jump/後入力で即 mantle/drop、k_LedgeMinHangTime 後のみ前入力で自動登り
         void UpdateLedgeHang(float dt) noexcept;
@@ -145,10 +145,10 @@ namespace NS::Object
         void UpdateLedgeMantle(float dt) noexcept;
 
         /// 指定ぶら下がり位置で縁が同じ高さで続いているか。シミー先が端を越えていないか判定する
-        [[nodiscard]] bool LedgeContinuesAt(const NS::Math::Vector3& hangPos) const noexcept;
+        [[nodiscard]] bool LedgeContinuesAt(const NS::Core::Vector3& hangPos) const noexcept;
 
         /// コヨーテ窓内ジャンプを 1 件記録する。上限超過時は最古を捨てる
-        void PushCoyoteJumpMarker(const NS::Math::Vector3& edge, const NS::Math::Vector3& jump) noexcept;
+        void PushCoyoteJumpMarker(const NS::Core::Vector3& edge, const NS::Core::Vector3& jump) noexcept;
 
         float m_gravityUp = -25.0f;      // 上昇中の重力
         float m_gravityDown = -35.0f;    // 下降中の重力、上昇より強い
@@ -167,8 +167,8 @@ namespace NS::Object
         float m_capsuleRadius = 0.4f;     // capsule 半径
         float m_capsuleHalfHeight = 0.5f; // capsule 半高
 
-        NS::Math::Vector3 m_velocity{0.0f, 0.0f, 0.0f};   // 現在の速度
-        NS::Math::Vector3 m_desiredDir{0.0f, 0.0f, 0.0f}; // 入力から作る world 空間の目標移動方向
+        NS::Core::Vector3 m_velocity{0.0f, 0.0f, 0.0f};   // 現在の速度
+        NS::Core::Vector3 m_desiredDir{0.0f, 0.0f, 0.0f}; // 入力から作る world 空間の目標移動方向
         float m_desiredSpeedScale = 0.0f;                 // 目標速度スケール 0..1
         float m_climbRight = 0.0f;                        // 掴まり中の左右入力 -1..1
         float m_climbForward = 0.0f;                      // 掴まり中の前後入力 -1..1
@@ -185,7 +185,7 @@ namespace NS::Object
         bool m_debugDraw = true; // debug 可視化の on/off
 
         // 最後に接地していた world 位置。 縁を踏み外した直後はここが踏み外し点 すなわち縁になる
-        NS::Math::Vector3 m_lastGroundedPosition{0.0f, 0.0f, 0.0f};
+        NS::Core::Vector3 m_lastGroundedPosition{0.0f, 0.0f, 0.0f};
         // 表示中のコヨーテジャンプ記録。 寿命付きで OnUpdate 冒頭に減衰させ、 切れたら除外する
         std::vector<CoyoteJumpMarker> m_coyoteJumpMarkers;
 
@@ -199,12 +199,12 @@ namespace NS::Object
         MovementState m_state = MovementState::Walking; // 細分ラベルの現在値
 
         float m_ledgeTopY = 0.0f;                              // 掴んだ縁の上端 Y
-        NS::Math::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f}; // 掴んだ面の法線
+        NS::Core::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f}; // 掴んだ面の法線
         float m_ledgeRegrabCooldown = 0.0f;                    // 再掴み禁止の残り秒
         float m_ledgeHangTimer = 0.0f;                         // ぶら下がりの経過秒
 
-        NS::Math::Vector3 m_ledgeMantleStart{0.0f, 0.0f, 0.0f}; // mantle 補間の始点
-        NS::Math::Vector3 m_ledgeMantleEnd{0.0f, 0.0f, 0.0f};   // mantle 補間の終点
+        NS::Core::Vector3 m_ledgeMantleStart{0.0f, 0.0f, 0.0f}; // mantle 補間の始点
+        NS::Core::Vector3 m_ledgeMantleEnd{0.0f, 0.0f, 0.0f};   // mantle 補間の終点
         float m_ledgeMantleTimer = 0.0f;                        // mantle の経過秒
     };
 } // namespace NS::Object

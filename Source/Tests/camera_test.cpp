@@ -2,13 +2,13 @@
 #include <DirectXMath.h>
 #include <gtest/gtest.h>
 #include <Runtime/Graphics/Camera.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 
 namespace
 {
-    using NS::Math::DegreesToRadians;
-    using NS::Math::Matrix;
-    using NS::Math::Vector3;
+    using NS::Core::DegreesToRadians;
+    using NS::Core::Matrix;
+    using NS::Core::Vector3;
     using NS::Graphics::Camera;
 
     bool MatricesNear(const Matrix& a, const Matrix& b, float eps = 1e-4f)
@@ -100,7 +100,7 @@ TEST(CameraTest, ViewUsesLeftHanded)
 TEST(CameraTest, ProjectionUsesLeftHanded)
 {
     Camera camera;
-    camera.SetFovY(NS::Math::ToRadians(NS::Math::Degrees{45.0f}));
+    camera.SetFovY(NS::Core::ToRadians(NS::Core::Degrees{45.0f}));
     camera.SetAspectRatio(1.6f);
     camera.SetNearPlane(0.5f);
     camera.SetFarPlane(500.0f);
@@ -156,7 +156,7 @@ TEST(CameraTest, AccessorsReturnSetValues)
     camera.SetPosition(Vector3(1.0f, 2.0f, 3.0f));
     camera.SetTarget(Vector3(4.0f, 5.0f, 6.0f));
     camera.SetUp(Vector3(0.0f, 0.0f, 1.0f));
-    camera.SetFovY(NS::Math::Radians{0.5f});
+    camera.SetFovY(NS::Core::Radians{0.5f});
     camera.SetAspectRatio(2.0f);
     camera.SetNearPlane(0.25f);
     camera.SetFarPlane(750.0f);
@@ -176,7 +176,7 @@ TEST(CameraTest, CameraDescCtorAppliesAllFieldsAtomically)
         .position = Vector3(7.0f, 8.0f, 9.0f),
         .target = Vector3(1.0f, 2.0f, 3.0f),
         .up = Vector3(0.0f, 0.0f, 1.0f),
-        .fovY = NS::Math::Radians{0.6f},
+        .fovY = NS::Core::Radians{0.6f},
         .aspectRatio = 1.25f,
         .nearPlane = 0.2f,
         .farPlane = 500.0f,

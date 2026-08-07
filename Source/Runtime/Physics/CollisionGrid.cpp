@@ -14,7 +14,7 @@ namespace NS::Physics
         return (ux << 42) | (uy << 21) | uz;
     }
 
-    void CollisionGrid::Build(const std::vector<NS::Math::AABB>& boxes, float cellSize) noexcept
+    void CollisionGrid::Build(const std::vector<NS::Core::AABB>& boxes, float cellSize) noexcept
     {
         m_cells.clear();
         if (cellSize > 1e-4f)
@@ -28,7 +28,7 @@ namespace NS::Physics
 
         for (std::uint32_t i = 0; i < static_cast<std::uint32_t>(boxes.size()); ++i)
         {
-            const NS::Math::AABB& b = boxes[i];
+            const NS::Core::AABB& b = boxes[i];
             const int minX = static_cast<int>(std::floor((b.Center.x - b.Extents.x) / m_cellSize));
             const int minY = static_cast<int>(std::floor((b.Center.y - b.Extents.y) / m_cellSize));
             const int minZ = static_cast<int>(std::floor((b.Center.z - b.Extents.z) / m_cellSize));
@@ -48,7 +48,7 @@ namespace NS::Physics
         }
     }
 
-    void CollisionGrid::Query(const NS::Math::AABB& queryBox, std::vector<std::uint32_t>& out) const noexcept
+    void CollisionGrid::Query(const NS::Core::AABB& queryBox, std::vector<std::uint32_t>& out) const noexcept
     {
         out.clear();
         const int minX = static_cast<int>(std::floor((queryBox.Center.x - queryBox.Extents.x) / m_cellSize));

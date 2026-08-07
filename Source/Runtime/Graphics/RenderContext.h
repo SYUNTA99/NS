@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Runtime/Graphics/RenderSettings.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 namespace NS::Graphics
 {
@@ -14,10 +14,10 @@ namespace NS::Graphics
         Renderer* renderer = nullptr;
 
         //! カメラのビュープロジェクション（VP）行列
-        NS::Math::Matrix viewProjection{};
+        NS::Core::Matrix viewProjection{};
 
         //! カメラのワールド座標。
-        NS::Math::Vector3 cameraPosition{};
+        NS::Core::Vector3 cameraPosition{};
 
         //! 固定ステップ更新と描画のズレを埋めるための補間係数（0.0 〜 1.0）
         float alpha = 1.0f;

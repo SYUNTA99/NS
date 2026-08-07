@@ -144,12 +144,12 @@ namespace NS::Graphics
         return m_indexCount;
     }
 
-    const NS::Math::AABB& Mesh::LocalBounds() const noexcept
+    const NS::Core::AABB& Mesh::LocalBounds() const noexcept
     {
         return m_localBounds;
     }
 
-    void Mesh::SetLocalBounds(const NS::Math::AABB& bounds) noexcept
+    void Mesh::SetLocalBounds(const NS::Core::AABB& bounds) noexcept
     {
         m_localBounds = bounds;
     }

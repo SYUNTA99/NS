@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/ColliderComponent.h"
 
 namespace NS::Object
@@ -22,26 +22,26 @@ namespace NS::Object
         [[nodiscard]] float Radius() const noexcept;
 
         /// owner local 空間での中心オフセットを設定 / 取得する
-        void SetCenterOffset(const NS::Math::Vector3& offset) noexcept;
-        [[nodiscard]] NS::Math::Vector3 CenterOffset() const noexcept;
+        void SetCenterOffset(const NS::Core::Vector3& offset) noexcept;
+        [[nodiscard]] NS::Core::Vector3 CenterOffset() const noexcept;
 
         /// owner の world 変換に offset を重ねた球を返す。 半径は owner scale 最大成分で拡縮する
         /// Owner 未登録時は local offset / radius だけを反映する。 例外は投げない
-        [[nodiscard]] NS::Math::Sphere WorldSphere() const noexcept;
+        [[nodiscard]] NS::Core::Sphere WorldSphere() const noexcept;
 
         /// owner の world 変換を反映した世界軸並行 AABB を返す。 Owner 未登録時は local だけを反映する
-        [[nodiscard]] NS::Math::AABB WorldAABB() const noexcept;
+        [[nodiscard]] NS::Core::AABB WorldAABB() const noexcept;
 
         /// world 座標の球を physics へ入れる
         void AddToPhysics(NS::Physics::PhysicsWorld& physics) const override;
 
         NS_REFLECT_BEGIN(SphereColliderComponent, ColliderComponent)
         NS_REFLECT_ACCESSOR(float, "半径", Radius(), SetRadius)
-        NS_REFLECT_ACCESSOR(NS::Math::Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)
+        NS_REFLECT_ACCESSOR(NS::Core::Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)
         NS_REFLECT_END()
 
     private:
         float m_radius = 0.5f;                              // 球の半径 (owner scale 前)
-        NS::Math::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f}; // owner local 空間での中心オフセット
+        NS::Core::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f}; // owner local 空間での中心オフセット
     };
 } // namespace NS::Object

@@ -16,7 +16,7 @@ TEST(KillZoneTest, KillsPlayerInsideVolume)
     SceneNs::Scene scene;
     SceneNs::SceneData data;
     // 体積の中心と同じ位置に置けば必ず重なる
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{0.0f, -55.0f, 0.0f}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{0.0f, -55.0f, 0.0f}, NS::Core::Quaternion{}));
     data.objects.push_back(LevelNs::MakeKillZoneObject());
     scene.LoadFromData(std::move(data));
 
@@ -36,7 +36,7 @@ TEST(KillZoneTest, DoesNotKillPlayerAboveVolume)
     SceneNs::Scene scene;
     SceneNs::SceneData data;
     // 上面 y=-50 より十分上に居れば重ならない
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     data.objects.push_back(LevelNs::MakeKillZoneObject());
     scene.LoadFromData(std::move(data));
 

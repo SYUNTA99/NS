@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Runtime/Core/NonCopyable.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <memory>
 #include <optional>
@@ -33,7 +33,7 @@ namespace NS::Editor
         ~ViewportSurface();
 
         //! 描画先の初期目標サイズを窓サイズに合わせ、 初回フレームから映せるようにする
-        void SetInitialSize(const NS::Math::Size2D& size) noexcept { m_size = size; }
+        void SetInitialSize(const NS::Core::Size2D& size) noexcept { m_size = size; }
 
         //! @brief 画角を固定する縦横比を決める。 0 以下ならパネルの形に追従する
         //! @details ゲーム画面はパネルの形で見え方が変わると手触りを詰める基準が動くので、 出荷と同じ比率で固定する
@@ -63,7 +63,7 @@ namespace NS::Editor
 
     private:
         std::unique_ptr<NS::Graphics::RenderTarget> m_target;
-        NS::Math::Size2D m_size{0, 0}; // content 領域。 次フレームの描画先サイズ
+        NS::Core::Size2D m_size{0, 0}; // content 領域。 次フレームの描画先サイズ
         float m_fixedAspect = 0.0f;    // 固定する縦横比。 0 以下はパネルの形に追従
         bool m_visible = false;        // このフレームにパネルが可視だったか
     };

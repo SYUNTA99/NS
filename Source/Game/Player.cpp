@@ -23,7 +23,7 @@ NS_CLASS(Player)
 namespace
 {
     // テクスチャが揃うまでプレイヤーを block と見分ける個体色
-    constexpr NS::Math::Vector3 k_PlayerBaseColor{0.85f, 0.20f, 0.20f};
+    constexpr NS::Core::Vector3 k_PlayerBaseColor{0.85f, 0.20f, 0.20f};
 } // namespace
 
 Player::Player() noexcept
@@ -110,14 +110,14 @@ std::size_t FindPlayerObjectIndex(const NS::Object::SceneData& level) noexcept
     return NS::Object::k_NoObjectIndex;
 }
 
-NS::Object::ObjectData MakePlayerObject(const NS::Math::Vector3& position, const NS::Math::Quaternion& rotation)
+NS::Object::ObjectData MakePlayerObject(const NS::Core::Vector3& position, const NS::Core::Quaternion& rotation)
 {
     // 構成は Player のコンストラクタが決める。データは型名だけ持ち、値はコード既定を使う
     NS::Object::ObjectData object = NS::Object::MakeObjectData<Player>();
     NS::Object::SetObjectPosition(object, position);
     NS::Object::SetObjectRotation(object, rotation);
     // cube mesh の半サイズ 0.5 を capsule 当たり radius 0.4 / 半高 0.9 に合わせる縮小
-    NS::Object::SetObjectScale(object, NS::Math::Vector3{0.8f, 1.8f, 0.8f});
+    NS::Object::SetObjectScale(object, NS::Core::Vector3{0.8f, 1.8f, 0.8f});
     return object;
 }
 
@@ -135,7 +135,7 @@ bool EnsurePlayerObject(NS::Object::SceneData& level)
     if (FindPlayerObjectIndex(level) == NS::Object::k_NoObjectIndex)
     {
         level.objects.push_back(
-            MakePlayerObject(NS::Math::Vector3{0.0f, Player::k_DefaultSpawnY, 0.0f}, NS::Math::Quaternion{}));
+            MakePlayerObject(NS::Core::Vector3{0.0f, Player::k_DefaultSpawnY, 0.0f}, NS::Core::Quaternion{}));
         created = true;
     }
 

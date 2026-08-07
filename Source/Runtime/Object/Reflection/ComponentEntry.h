@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
 
 #pragma warning(push, 0)
@@ -48,9 +48,9 @@ namespace NS::Object
     /// entry の fields から値を型付きで読む。 不在・型不一致は fallback
     [[nodiscard]] float FieldFloat(const nlohmann::json& entry, std::string_view name, float fallback) noexcept;
     [[nodiscard]] int FieldInt(const nlohmann::json& entry, std::string_view name, int fallback) noexcept;
-    [[nodiscard]] NS::Math::Vector3 FieldVector3(const nlohmann::json& entry,
+    [[nodiscard]] NS::Core::Vector3 FieldVector3(const nlohmann::json& entry,
                                                  std::string_view name,
-                                                 const NS::Math::Vector3& fallback) noexcept;
+                                                 const NS::Core::Vector3& fallback) noexcept;
     [[nodiscard]] std::string FieldString(const nlohmann::json& entry,
                                           std::string_view name,
                                           std::string_view fallback);
@@ -62,7 +62,7 @@ namespace NS::Object
     void SetField(nlohmann::json& entry, std::string_view name, float value);
     void SetField(nlohmann::json& entry, std::string_view name, int value);
     void SetField(nlohmann::json& entry, std::string_view name, bool value);
-    void SetField(nlohmann::json& entry, std::string_view name, const NS::Math::Vector3& value);
+    void SetField(nlohmann::json& entry, std::string_view name, const NS::Core::Vector3& value);
     void SetField(nlohmann::json& entry, std::string_view name, std::string_view value);
     /// 文字列リテラル (const char*) を string_view 版へ通す。 無いと bool 版へ落ちて true が書かれる
     void SetField(nlohmann::json& entry, std::string_view name, const char* value);

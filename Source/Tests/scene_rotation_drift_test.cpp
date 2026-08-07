@@ -1,6 +1,6 @@
 #include "Game/Level/BlockObject.h"
 
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Components/TransformComponent.h>
 #include <Runtime/Object/GameObject.h>
@@ -18,7 +18,7 @@ namespace LevelNs = NS::Game::Level;
 
 namespace
 {
-    SceneNs::ObjectData MakeRotatedCube(const NS::Math::Vector3& eulerDegrees)
+    SceneNs::ObjectData MakeRotatedCube(const NS::Core::Vector3& eulerDegrees)
     {
         SceneNs::ObjectData object = LevelNs::MakeCellObject(0, 0, 0);
         nlohmann::json& transform = SceneNs::EnsureTransformComponent(object);
@@ -34,11 +34,11 @@ TEST(SceneRotationDrift, RepeatedCaptureRebuildKeepsExactQuaternion)
     // device 無しでも汎用構築は落ちない。 参照は文字列のまま持つ
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
 
-    const SceneNs::ObjectData object = MakeRotatedCube(NS::Math::Vector3{89.9f, 40.0f, 20.0f});
+    const SceneNs::ObjectData object = MakeRotatedCube(NS::Core::Vector3{89.9f, 40.0f, 20.0f});
     std::unique_ptr<NS::Object::GameObject> live = SceneNs::BuildSceneObject(object, &assets);
     ASSERT_NE(live, nullptr);
 
-    const NS::Math::Quaternion reference = live->Root().Rotation();
+    const NS::Core::Quaternion reference = live->Root().Rotation();
 
     for (int i = 0; i < 20; ++i)
     {
@@ -47,7 +47,7 @@ TEST(SceneRotationDrift, RepeatedCaptureRebuildKeepsExactQuaternion)
         ASSERT_NE(live, nullptr);
     }
 
-    const NS::Math::Quaternion after = live->Root().Rotation();
+    const NS::Core::Quaternion after = live->Root().Rotation();
     EXPECT_EQ(after.x, reference.x);
     EXPECT_EQ(after.y, reference.y);
     EXPECT_EQ(after.z, reference.z);
@@ -80,7 +80,7 @@ TEST(SceneRotationDrift, LegacyEulerFileLoadsToExpectedQuaternion)
     ASSERT_EQ(dst.objects.size(), 1u);
 
     // yaw 90 度は Y 軸まわりの回転で quaternion (0, sin45, 0, cos45)
-    const NS::Math::Quaternion q = SceneNs::ObjectRotation(dst.objects[0]);
+    const NS::Core::Quaternion q = SceneNs::ObjectRotation(dst.objects[0]);
     EXPECT_NEAR(q.x, 0.0f, 1e-5f);
     EXPECT_NEAR(q.y, 0.70710677f, 1e-5f);
     EXPECT_NEAR(q.z, 0.0f, 1e-5f);
@@ -92,7 +92,7 @@ TEST(SceneRotationDrift, SaveDropsQuatFieldKeepsEuler)
 {
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
 
-    const SceneNs::ObjectData object = MakeRotatedCube(NS::Math::Vector3{30.0f, 45.0f, 60.0f});
+    const SceneNs::ObjectData object = MakeRotatedCube(NS::Core::Vector3{30.0f, 45.0f, 60.0f});
     std::unique_ptr<NS::Object::GameObject> live = SceneNs::BuildSceneObject(object, &assets);
     ASSERT_NE(live, nullptr);
 

@@ -25,7 +25,7 @@ namespace NS::Graphics
         // シェーダに渡す定数データ（64バイト境界に配置する）
         struct alignas(16) SkyboxCB
         {
-            NS::Math::Matrix viewProj;
+            NS::Core::Matrix viewProj;
         };
         static_assert(sizeof(SkyboxCB) == 64, "SkyboxCB は HLSL 側 cbuffer (b0) と byte 一致が必要");
 
@@ -374,7 +374,7 @@ namespace NS::Graphics
         return false;
     }
 
-    void IssueSkybox(Renderer& renderer, const Skybox& skybox, const NS::Math::Matrix& viewProjNoTranslate) noexcept
+    void IssueSkybox(Renderer& renderer, const Skybox& skybox, const NS::Core::Matrix& viewProjNoTranslate) noexcept
     {
         if (!skybox.IsValid())
             return;

@@ -41,15 +41,15 @@ namespace NS::Graphics
             return tex2d;
         }
 
-        [[nodiscard]] ::NS::Math::Size2D Texture2DSize(ID3D11Texture2D* tex2d) noexcept
+        [[nodiscard]] ::NS::Core::Size2D Texture2DSize(ID3D11Texture2D* tex2d) noexcept
         {
             if (tex2d == nullptr)
             {
-                return ::NS::Math::Size2D{0, 0};
+                return ::NS::Core::Size2D{0, 0};
             }
             D3D11_TEXTURE2D_DESC d{};
             tex2d->GetDesc(&d);
-            return ::NS::Math::Size2D{static_cast<int>(d.Width), static_cast<int>(d.Height)};
+            return ::NS::Core::Size2D{static_cast<int>(d.Width), static_cast<int>(d.Height)};
         }
 
         // 指定された用途（バインドフラグ）に応じて、必要なビューだけを生成する
@@ -270,7 +270,7 @@ namespace NS::Graphics
         {
             return;
         }
-        m_size = ::NS::Math::Size2D{1, 1};
+        m_size = ::NS::Core::Size2D{1, 1};
         m_fallback = true;
     }
 
@@ -308,7 +308,7 @@ namespace NS::Graphics
         }
 
         CreateRequestedViews(device, m_tex.Get(), desc.bindFlags, m_srv, m_rtv, m_dsv);
-        m_size = ::NS::Math::Size2D{static_cast<int>(desc.width), static_cast<int>(desc.height)};
+        m_size = ::NS::Core::Size2D{static_cast<int>(desc.width), static_cast<int>(desc.height)};
     }
 
     Texture::Texture(ComPtr<ID3D11Texture2D> existing, UINT bindFlags)
@@ -330,7 +330,7 @@ namespace NS::Graphics
     {
         return m_srv || m_rtv || m_dsv;
     }
-    ::NS::Math::Size2D Texture::Size() const noexcept
+    ::NS::Core::Size2D Texture::Size() const noexcept
     {
         return m_size;
     }

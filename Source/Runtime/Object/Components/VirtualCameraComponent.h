@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 
 namespace NS::Object
@@ -8,10 +8,10 @@ namespace NS::Object
     /// 仮想カメラが返す 1 フレーム分のカメラ姿勢 + 投影設定。Brain が実 Camera へそのまま書く
     struct CameraPose
     {
-        NS::Math::Vector3 position{0.0f, 0.0f, -5.0f};                         // カメラ位置
-        NS::Math::Vector3 target{0.0f, 0.0f, 0.0f};                            // 注視点
-        NS::Math::Vector3 up{0.0f, 1.0f, 0.0f};                                // アップベクトル
-        NS::Math::Radians fovY{NS::Math::ToRadians(NS::Math::Degrees{60.0f})}; // 垂直視野角
+        NS::Core::Vector3 position{0.0f, 0.0f, -5.0f};                         // カメラ位置
+        NS::Core::Vector3 target{0.0f, 0.0f, 0.0f};                            // 注視点
+        NS::Core::Vector3 up{0.0f, 1.0f, 0.0f};                                // アップベクトル
+        NS::Core::Radians fovY{NS::Core::ToRadians(NS::Core::Degrees{60.0f})}; // 垂直視野角
         float nearPlane = 0.1f;                                                // ニアクリップ距離
         float farPlane = 1000.0f;                                              // ファークリップ距離
 
@@ -19,14 +19,14 @@ namespace NS::Object
         [[nodiscard]] static CameraPose Lerp(const CameraPose& a, const CameraPose& b, float t) noexcept
         {
             CameraPose pose{};
-            pose.position = NS::Math::Vector3::Lerp(a.position, b.position, t);
-            pose.target = NS::Math::Vector3::Lerp(a.target, b.target, t);
-            NS::Math::Vector3 up = NS::Math::Vector3::Lerp(a.up, b.up, t);
+            pose.position = NS::Core::Vector3::Lerp(a.position, b.position, t);
+            pose.target = NS::Core::Vector3::Lerp(a.target, b.target, t);
+            NS::Core::Vector3 up = NS::Core::Vector3::Lerp(a.up, b.up, t);
             up.Normalize();
             pose.up = up;
-            pose.fovY = NS::Math::Radians{NS::Math::Lerp(a.fovY.value, b.fovY.value, t)};
-            pose.nearPlane = NS::Math::Lerp(a.nearPlane, b.nearPlane, t);
-            pose.farPlane = NS::Math::Lerp(a.farPlane, b.farPlane, t);
+            pose.fovY = NS::Core::Radians{NS::Core::Lerp(a.fovY.value, b.fovY.value, t)};
+            pose.nearPlane = NS::Core::Lerp(a.nearPlane, b.nearPlane, t);
+            pose.farPlane = NS::Core::Lerp(a.farPlane, b.farPlane, t);
             return pose;
         }
     };
@@ -37,7 +37,7 @@ namespace NS::Object
     /// vcam から最高優先度の active なものを選び、その pose を 1 個の実 CameraComponent へ書く
     /// 状態は fixed step の OnUpdate で進め、最終姿勢は EvaluatePose で返す。follow 系は
     /// render 時に alpha で補間 target を追うため、姿勢決定を pose 返却へ分離する
-    /// 依存: NS::Math, NS::Object::Component
+    /// 依存: NS::Core, NS::Object::Component
     class VirtualCameraComponent : public Component
     {
     public:
@@ -54,8 +54,8 @@ namespace NS::Object
         [[nodiscard]] int VcamPriority() const noexcept { return m_vcamPriority; }
 
         /// 投影設定。vcam ごとに保持し EvaluatePose の pose へ載せる。play=far100 / editor=far200 等の差を吸収する
-        void SetFovY(NS::Math::Radians fov) noexcept { m_fovY = fov; }
-        [[nodiscard]] NS::Math::Radians FovY() const noexcept { return m_fovY; }
+        void SetFovY(NS::Core::Radians fov) noexcept { m_fovY = fov; }
+        [[nodiscard]] NS::Core::Radians FovY() const noexcept { return m_fovY; }
         void SetNearPlane(float nearPlane) noexcept { m_nearPlane = nearPlane; }
         [[nodiscard]] float NearPlane() const noexcept { return m_nearPlane; }
         void SetFarPlane(float farPlane) noexcept { m_farPlane = farPlane; }
@@ -66,9 +66,9 @@ namespace NS::Object
 
     protected:
         /// 派生が position/target/up を渡すと、保持中の投影設定を載せた CameraPose を返す
-        [[nodiscard]] CameraPose MakePose(const NS::Math::Vector3& position,
-                                          const NS::Math::Vector3& target,
-                                          const NS::Math::Vector3& up) const noexcept
+        [[nodiscard]] CameraPose MakePose(const NS::Core::Vector3& position,
+                                          const NS::Core::Vector3& target,
+                                          const NS::Core::Vector3& up) const noexcept
         {
             CameraPose pose{};
             pose.position = position;
@@ -82,7 +82,7 @@ namespace NS::Object
 
     private:
         int m_vcamPriority = 0;                                                  // Brain の選択優先度
-        NS::Math::Radians m_fovY{NS::Math::ToRadians(NS::Math::Degrees{60.0f})}; // 垂直視野角
+        NS::Core::Radians m_fovY{NS::Core::ToRadians(NS::Core::Degrees{60.0f})}; // 垂直視野角
         float m_nearPlane = 0.1f;                                                // ニアクリップ距離
         float m_farPlane = 1000.0f;                                              // ファークリップ距離
     };

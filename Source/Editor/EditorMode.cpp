@@ -11,7 +11,7 @@
 #include "Game/Player.h"
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Scene/SceneJson.h"
@@ -35,10 +35,10 @@ namespace NS::Editor
         constexpr float k_CellHalfExtent = 0.5f;
 
         // 90度（ラジアン）の定数
-        constexpr float k_QuarterTurnYaw = NS::Math::k_Pi * 0.5f;
+        constexpr float k_QuarterTurnYaw = NS::Core::k_Pi * 0.5f;
 
-        constexpr NS::Math::Color k_CursorOkColor{0.1f, 1.0f, 0.1f, 1.0f};
-        constexpr NS::Math::Color k_CursorBlockedColor{1.0f, 0.1f, 0.1f, 1.0f};
+        constexpr NS::Core::Color k_CursorOkColor{0.1f, 1.0f, 0.1f, 1.0f};
+        constexpr NS::Core::Color k_CursorBlockedColor{1.0f, 0.1f, 0.1f, 1.0f};
 
         constexpr float k_StatusToastSeconds = 2.5f;
 
@@ -76,12 +76,12 @@ namespace NS::Editor
         m_palette.TickInput(m_input, m_imgui);
 
         // カーソルの回転状態に合わせて、表示用のヨー角を滑らかに追従させる
-        const auto targetQuat = NS::Math::Quaternion::CreateFromAxisAngle(
+        const auto targetQuat = NS::Core::Quaternion::CreateFromAxisAngle(
             {0.0f, 1.0f, 0.0f}, static_cast<float>(m_currentRotation) * k_QuarterTurnYaw);
         constexpr float k_RotationSpringRate = 12.0f;
         const float dt = NS::Core::FrameTimer::FixedDelta();
         const float t = std::min(1.0f, k_RotationSpringRate * dt);
-        m_displayedYawQuat = NS::Math::Quaternion::Slerp(m_displayedYawQuat, targetQuat, t);
+        m_displayedYawQuat = NS::Core::Quaternion::Slerp(m_displayedYawQuat, targetQuat, t);
     }
 
     void EditorMode::HandleSaveLoadInput() noexcept
@@ -296,9 +296,9 @@ namespace NS::Editor
             return;
         }
 
-        const NS::Math::AABB placeBox(m_cursor.placementCenter,
-                                      NS::Math::Vector3{k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});
-        NS::Math::Color cursorColor = k_CursorOkColor;
+        const NS::Core::AABB placeBox(m_cursor.placementCenter,
+                                      NS::Core::Vector3{k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});
+        NS::Core::Color cursorColor = k_CursorOkColor;
 
         if (m_cursor.placementBlocked)
         {
@@ -320,7 +320,7 @@ namespace NS::Editor
         }
 
         const auto vp = m_camera->ViewProjection();
-        const NS::Math::Vector3 c = m_cursor.placementCenter;
+        const NS::Core::Vector3 c = m_cursor.placementCenter;
         constexpr float h = k_CellHalfExtent;
         const float vpW = static_cast<float>(view.width);
         const float vpH = static_cast<float>(view.height);
@@ -335,9 +335,9 @@ namespace NS::Editor
         }
         dl->PushClipRect(ImVec2{originX, originY}, ImVec2{originX + vpW, originY + vpH}, true);
 
-        const auto project = [&](const NS::Math::Vector3& world, ImVec2& out) -> bool {
-            const NS::Math::Vector4 worldH{world.x, world.y, world.z, 1.0f};
-            const NS::Math::Vector4 clip = NS::Math::Vector4::Transform(worldH, vp);
+        const auto project = [&](const NS::Core::Vector3& world, ImVec2& out) -> bool {
+            const NS::Core::Vector4 worldH{world.x, world.y, world.z, 1.0f};
+            const NS::Core::Vector4 clip = NS::Core::Vector4::Transform(worldH, vp);
             if (clip.w <= 0.0f)
             {
                 return false;
@@ -348,7 +348,7 @@ namespace NS::Editor
         };
 
         // 選択セルの境界ボックスを描画する
-        const NS::Math::Vector3 boxCorners[8] = {
+        const NS::Core::Vector3 boxCorners[8] = {
             {c.x - h, c.y - h, c.z - h},
             {c.x + h, c.y - h, c.z - h},
             {c.x + h, c.y + h, c.z - h},
@@ -401,12 +401,12 @@ namespace NS::Editor
         if (slopeAngle >= 0.0f)
         {
             const float angle = slopeAngle;
-            const float rawHeight = std::tan(NS::Math::DegreesToRadians(angle)) * (2.0f * h);
+            const float rawHeight = std::tan(NS::Core::DegreesToRadians(angle)) * (2.0f * h);
             const float height = std::min(rawHeight, 2.0f * h);
             const float yBot = -h;
             const float yTop = -h + height;
 
-            const NS::Math::Vector3 wedgeLocal[6] = {
+            const NS::Core::Vector3 wedgeLocal[6] = {
                 {-h, yBot, -h},
                 {+h, yBot, -h},
                 {-h, yBot, +h},
@@ -419,8 +419,8 @@ namespace NS::Editor
             bool wedgeFront[6]{};
             for (int i = 0; i < 6; ++i)
             {
-                const auto r = NS::Math::Vector3::Transform(wedgeLocal[i], m_displayedYawQuat);
-                wedgeFront[i] = project(NS::Math::Vector3{c.x + r.x, c.y + r.y, c.z + r.z}, wedgeScreen[i]);
+                const auto r = NS::Core::Vector3::Transform(wedgeLocal[i], m_displayedYawQuat);
+                wedgeFront[i] = project(NS::Core::Vector3{c.x + r.x, c.y + r.y, c.z + r.z}, wedgeScreen[i]);
             }
 
             static constexpr int k_WedgeEdges[9][2] = {
@@ -468,7 +468,7 @@ namespace NS::Editor
         // パレット雛形を cell 座標と回転 step だけ書き込んで 1 体分の姿を作る
         NS::Object::ObjectData placed = m_palette.CurrentTemplate();
         NS::Object::SetObjectPosition(
-            placed, NS::Math::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
+            placed, NS::Core::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
         NS::Editor::SetCellRotationStep(placed, rotation);
 
         // 既存 cell は同じ永続 id で置換、 空 cell は新規採番
@@ -571,15 +571,15 @@ namespace NS::Editor
         ViewRectToLocal(view, mouseX, mouseY, localX, localY);
 
         const auto vp = m_camera->ViewProjection();
-        const NS::Math::Ray ray = NS::Editor::ScreenToWorldRay(vp, ViewRectSize(view), localX, localY);
+        const NS::Core::Ray ray = NS::Editor::ScreenToWorldRay(vp, ViewRectSize(view), localX, localY);
 
         float bestT = std::numeric_limits<float>::max();
         bool hit = false;
         std::int16_t hitX = 0;
         std::int16_t hitY = 0;
         std::int16_t hitZ = 0;
-        NS::Math::Vector3 hitPoint{};
-        NS::Math::Vector3 hitNormal{0.0f, 1.0f, 0.0f};
+        NS::Core::Vector3 hitPoint{};
+        NS::Core::Vector3 hitNormal{0.0f, 1.0f, 0.0f};
 
         std::vector<CellCoord> cells;
         if (m_collectCells)
@@ -591,8 +591,8 @@ namespace NS::Editor
             const std::int16_t cx = cell.x;
             const std::int16_t cy = cell.y;
             const std::int16_t cz = cell.z;
-            const NS::Math::Vector3 center{static_cast<float>(cx), static_cast<float>(cy), static_cast<float>(cz)};
-            const NS::Math::AABB box(center, {k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});
+            const NS::Core::Vector3 center{static_cast<float>(cx), static_cast<float>(cy), static_cast<float>(cz)};
+            const NS::Core::AABB box(center, {k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});
 
             float t = 0.0f;
             if (ray.Intersects(box, t) && t < bestT)
@@ -602,11 +602,11 @@ namespace NS::Editor
                 hitX = cx;
                 hitY = cy;
                 hitZ = cz;
-                hitPoint = NS::Math::Vector3(ray.position.x + ray.direction.x * t,
+                hitPoint = NS::Core::Vector3(ray.position.x + ray.direction.x * t,
                                              ray.position.y + ray.direction.y * t,
                                              ray.position.z + ray.direction.z * t);
 
-                const NS::Math::Vector3 d = hitPoint - center;
+                const NS::Core::Vector3 d = hitPoint - center;
                 const float ax = std::fabs(d.x);
                 const float ay = std::fabs(d.y);
                 const float az = std::fabs(d.z);
@@ -618,7 +618,7 @@ namespace NS::Editor
                     {
                         signX = 1.0f;
                     }
-                    hitNormal = NS::Math::Vector3{signX, 0.0f, 0.0f};
+                    hitNormal = NS::Core::Vector3{signX, 0.0f, 0.0f};
                 }
                 else if (ay > az)
                 {
@@ -627,7 +627,7 @@ namespace NS::Editor
                     {
                         signY = 1.0f;
                     }
-                    hitNormal = NS::Math::Vector3{0.0f, signY, 0.0f};
+                    hitNormal = NS::Core::Vector3{0.0f, signY, 0.0f};
                 }
                 else
                 {
@@ -636,7 +636,7 @@ namespace NS::Editor
                     {
                         signZ = 1.0f;
                     }
-                    hitNormal = NS::Math::Vector3{0.0f, 0.0f, signZ};
+                    hitNormal = NS::Core::Vector3{0.0f, 0.0f, signZ};
                 }
             }
         }
@@ -656,9 +656,9 @@ namespace NS::Editor
             m_cursor.hitY = hitY;
             m_cursor.hitZ = hitZ;
             m_cursor.deleteCenter =
-                NS::Math::Vector3{static_cast<float>(hitX), static_cast<float>(hitY), static_cast<float>(hitZ)};
+                NS::Core::Vector3{static_cast<float>(hitX), static_cast<float>(hitY), static_cast<float>(hitZ)};
             m_cursor.placementCenter =
-                NS::Math::Vector3{static_cast<float>(placeX), static_cast<float>(placeY), static_cast<float>(placeZ)};
+                NS::Core::Vector3{static_cast<float>(placeX), static_cast<float>(placeY), static_cast<float>(placeZ)};
             m_cursor.placeX = placeX;
             m_cursor.placeY = placeY;
             m_cursor.placeZ = placeZ;
@@ -667,7 +667,7 @@ namespace NS::Editor
             return;
         }
 
-        NS::Math::Vector3 cellCenter{};
+        NS::Core::Vector3 cellCenter{};
         if (!NS::Editor::TryGroundPlaneFallback(ray, cellCenter))
         {
             return;
@@ -681,7 +681,7 @@ namespace NS::Editor
         m_cursor.hitX = m_cursor.placeX;
         m_cursor.hitY = m_cursor.placeY;
         m_cursor.hitZ = m_cursor.placeZ;
-        m_cursor.hitNormal = NS::Math::Vector3{0.0f, 1.0f, 0.0f};
+        m_cursor.hitNormal = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
         m_cursor.deleteCenter = cellCenter;
         m_cursor.placementBlocked = HasObjectAtCell(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
     }

@@ -1,13 +1,13 @@
 #include <cmath>
 #include <gtest/gtest.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Object/Transform.h>
 
 namespace
 {
-    using NS::Math::Matrix;
-    using NS::Math::Quaternion;
-    using NS::Math::Vector3;
+    using NS::Core::Matrix;
+    using NS::Core::Quaternion;
+    using NS::Core::Vector3;
     using NS::Object::Transform;
 
     bool MatricesNear(const Matrix& a, const Matrix& b, float eps = 1e-4f)

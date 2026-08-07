@@ -42,11 +42,11 @@ namespace NS::Graphics
         }
     } // namespace
 
-    NS::Math::Vector3 SampleVec3(std::span<const float> times,
-                                 std::span<const NS::Math::Vector3> values,
+    NS::Core::Vector3 SampleVec3(std::span<const float> times,
+                                 std::span<const NS::Core::Vector3> values,
                                  Interpolation interp,
                                  float t,
-                                 const NS::Math::Vector3& fallback) noexcept
+                                 const NS::Core::Vector3& fallback) noexcept
     {
         if (times.empty() || values.empty())
         {
@@ -59,14 +59,14 @@ namespace NS::Graphics
         {
             return values[i0];
         }
-        return NS::Math::Vector3::Lerp(values[i0], values[i1], seg.f);
+        return NS::Core::Vector3::Lerp(values[i0], values[i1], seg.f);
     }
 
-    NS::Math::Quaternion SampleQuat(std::span<const float> times,
-                                    std::span<const NS::Math::Quaternion> values,
+    NS::Core::Quaternion SampleQuat(std::span<const float> times,
+                                    std::span<const NS::Core::Quaternion> values,
                                     Interpolation interp,
                                     float t,
-                                    const NS::Math::Quaternion& fallback) noexcept
+                                    const NS::Core::Quaternion& fallback) noexcept
     {
         if (times.empty() || values.empty())
         {
@@ -79,14 +79,14 @@ namespace NS::Graphics
         {
             return values[i0];
         }
-        NS::Math::Quaternion a = values[i0];
-        NS::Math::Quaternion b = values[i1];
+        NS::Core::Quaternion a = values[i0];
+        NS::Core::Quaternion b = values[i1];
         // 内積が負なら一方を反転して同じ回転の近い表現へ揃える
         if (a.Dot(b) < 0.0f)
         {
-            b = NS::Math::Quaternion{-b.x, -b.y, -b.z, -b.w};
+            b = NS::Core::Quaternion{-b.x, -b.y, -b.z, -b.w};
         }
-        return NS::Math::Quaternion::Slerp(a, b, seg.f);
+        return NS::Core::Quaternion::Slerp(a, b, seg.f);
     }
 
     void SampleClipPose(const AnimationClip& clip, const Skeleton& skeleton, float t, std::vector<BonePose>& outPose)

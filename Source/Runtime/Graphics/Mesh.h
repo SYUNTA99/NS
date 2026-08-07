@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/D3dCommon.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <memory>
 #include <string>
@@ -60,7 +60,7 @@ namespace NS::Graphics
 
         /// @brief モデル空間の軸並行境界ボックス。カリングで world 変換して視錐台に掛ける
         /// @details 派生が build 時に頂点から算出して登録する。未登録なら原点の単位ボックス
-        [[nodiscard]] const NS::Math::AABB& LocalBounds() const noexcept;
+        [[nodiscard]] const NS::Core::AABB& LocalBounds() const noexcept;
 
         /// @brief 頂点シェーダーを利用して入力レイアウトを生成する
         /// @param vertexShader 入力レイアウトの生成元となる頂点シェーダー
@@ -101,7 +101,7 @@ namespace NS::Graphics
         void SetTopology(Topology topology) noexcept;
 
         /// @brief 派生クラスが頂点から算出したモデル空間境界ボックスを登録する
-        void SetLocalBounds(const NS::Math::AABB& bounds) noexcept;
+        void SetLocalBounds(const NS::Core::AABB& bounds) noexcept;
 
     private:
         std::unique_ptr<Buffer> m_vb;
@@ -111,7 +111,7 @@ namespace NS::Graphics
         Topology m_topology = Topology::TriangleList;
         std::size_t m_vertexCount = 0;
         std::size_t m_indexCount = 0;
-        NS::Math::AABB m_localBounds{}; // モデル空間の境界。派生が build 時に頂点から満たす
+        NS::Core::AABB m_localBounds{}; // モデル空間の境界。派生が build 時に頂点から満たす
         bool m_valid = false;
         bool m_usingFallback = false;
     };

@@ -15,11 +15,11 @@ namespace
     constexpr float k_HorizontalSpeedEpsilon = 0.01f;
 
     /// ledge grab が走査する AABB 群を world から借りる。 world 未設定時は空で掴めない
-    [[nodiscard]] std::span<const NS::Math::AABB> WorldAabbs(const NS::Physics::PhysicsWorld* world) noexcept
+    [[nodiscard]] std::span<const NS::Core::AABB> WorldAabbs(const NS::Physics::PhysicsWorld* world) noexcept
     {
         if (world == nullptr)
             return {};
-        return std::span<const NS::Math::AABB>(world->Aabbs());
+        return std::span<const NS::Core::AABB>(world->Aabbs());
     }
 
     /// 一次遅れの離散化。tau は時定数で値が大きいほど鈍い、dt は step。0 < tau で安定
@@ -31,12 +31,12 @@ namespace
         return current + (target - current) * a;
     }
 
-    [[nodiscard]] NS::Math::Vector3 HorizontalSmooth(const NS::Math::Vector3& curr,
-                                                     const NS::Math::Vector3& target,
+    [[nodiscard]] NS::Core::Vector3 HorizontalSmooth(const NS::Core::Vector3& curr,
+                                                     const NS::Core::Vector3& target,
                                                      float tau,
                                                      float dt) noexcept
     {
-        return NS::Math::Vector3{
+        return NS::Core::Vector3{
             SmoothApproach(curr.x, target.x, tau, dt),
             curr.y,
             SmoothApproach(curr.z, target.z, tau, dt),
@@ -78,7 +78,7 @@ namespace
     /// 即再掴みを防ぐ
     constexpr float k_LedgeRegrabCooldownTime = 0.3f;
 
-    [[nodiscard]] bool AabbContainsPoint(const NS::Math::AABB& box, const NS::Math::Vector3& p) noexcept
+    [[nodiscard]] bool AabbContainsPoint(const NS::Core::AABB& box, const NS::Core::Vector3& p) noexcept
     {
         return p.x >= box.Center.x - box.Extents.x && p.x <= box.Center.x + box.Extents.x &&
                p.y >= box.Center.y - box.Extents.y && p.y <= box.Center.y + box.Extents.y &&
@@ -120,16 +120,16 @@ namespace NS::Object
 
     CharacterMovementComponent::CharacterMovementComponent() noexcept {}
 
-    void CharacterMovementComponent::SetDesiredMove(const NS::Math::Vector3& worldDir, float speedScale01) noexcept
+    void CharacterMovementComponent::SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept
     {
         m_desiredDir = worldDir;
-        m_desiredSpeedScale = NS::Math::Clamp(speedScale01, 0.0f, 1.0f);
+        m_desiredSpeedScale = NS::Core::Clamp(speedScale01, 0.0f, 1.0f);
     }
 
     void CharacterMovementComponent::SetClimbMove(float localRight, float localForward) noexcept
     {
-        m_climbRight = NS::Math::Clamp(localRight, -1.0f, 1.0f);
-        m_climbForward = NS::Math::Clamp(localForward, -1.0f, 1.0f);
+        m_climbRight = NS::Core::Clamp(localRight, -1.0f, 1.0f);
+        m_climbForward = NS::Core::Clamp(localForward, -1.0f, 1.0f);
     }
 
     void CharacterMovementComponent::SetJumpPressed() noexcept
@@ -144,8 +144,8 @@ namespace NS::Object
 
     void CharacterMovementComponent::ResetState() noexcept
     {
-        m_velocity = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
-        m_desiredDir = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+        m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_desiredDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         m_desiredSpeedScale = 0.0f;
         m_climbRight = 0.0f;
         m_climbForward = 0.0f;
@@ -160,11 +160,11 @@ namespace NS::Object
         m_state = MovementState::Walking;
         m_machine.Reset();
         m_ledgeTopY = 0.0f;
-        m_ledgeFaceNormal = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+        m_ledgeFaceNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         m_ledgeRegrabCooldown = 0.0f;
         m_ledgeHangTimer = 0.0f;
         m_ledgeMantleTimer = 0.0f;
-        m_lastGroundedPosition = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+        m_lastGroundedPosition = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         m_coyoteJumpMarkers.clear();
     }
 
@@ -174,8 +174,8 @@ namespace NS::Object
             m_world = &Owner()->OwningScene()->Physics();
     }
 
-    void CharacterMovementComponent::PushCoyoteJumpMarker(const NS::Math::Vector3& edge,
-                                                          const NS::Math::Vector3& jump) noexcept
+    void CharacterMovementComponent::PushCoyoteJumpMarker(const NS::Core::Vector3& edge,
+                                                          const NS::Core::Vector3& jump) noexcept
     {
         if (m_coyoteJumpMarkers.size() >= k_MaxCoyoteJumpMarkers)
             m_coyoteJumpMarkers.erase(m_coyoteJumpMarkers.begin());
@@ -263,7 +263,7 @@ namespace NS::Object
                 targetSpeed = m_maxSpeed * m_desiredSpeedScale;
         }
 
-        NS::Math::Vector3 targetHoriz{m_desiredDir.x * targetSpeed, 0.0f, m_desiredDir.z * targetSpeed};
+        NS::Core::Vector3 targetHoriz{m_desiredDir.x * targetSpeed, 0.0f, m_desiredDir.z * targetSpeed};
 
         const float currHorizMag = std::sqrt(m_velocity.x * m_velocity.x + m_velocity.z * m_velocity.z);
         const float tau = [&]() -> float {
@@ -345,7 +345,7 @@ namespace NS::Object
         TryGrabLedge(out.position);
     }
 
-    bool CharacterMovementComponent::TryGrabLedge(const NS::Math::Vector3& pos) noexcept
+    bool CharacterMovementComponent::TryGrabLedge(const NS::Core::Vector3& pos) noexcept
     {
         // 空中で下降中、 かつ前方入力がある時だけ掴む。 cooldown 中は無効
         if (m_ledgeRegrabCooldown > 0.0f || m_isGrounded || m_velocity.y > 0.0f)
@@ -353,7 +353,7 @@ namespace NS::Object
         if (m_desiredSpeedScale <= m_stickDeadzone)
             return false;
 
-        NS::Math::Vector3 dir{m_desiredDir.x, 0.0f, m_desiredDir.z};
+        NS::Core::Vector3 dir{m_desiredDir.x, 0.0f, m_desiredDir.z};
         const float dirLen = std::sqrt(dir.x * dir.x + dir.z * dir.z);
         if (dirLen < 1e-4f)
             return false;
@@ -363,13 +363,13 @@ namespace NS::Object
         // 手の高さ = capsule 上端。 そこから前方へ伸ばした probe 点が block の XZ 内に入り、
         // かつ block 上端が手の高さの帯に収まれば縁とみなす
         const float handY = pos.y + m_capsuleHalfHeight;
-        const NS::Math::Vector3 probe{
+        const NS::Core::Vector3 probe{
             pos.x + dir.x * (m_capsuleRadius + k_LedgeReach),
             handY,
             pos.z + dir.z * (m_capsuleRadius + k_LedgeReach),
         };
 
-        for (const NS::Math::AABB& box : WorldAabbs(m_world))
+        for (const NS::Core::AABB& box : WorldAabbs(m_world))
         {
             const float top = box.Center.y + box.Extents.y;
             if (top < handY - k_LedgeGrabBandLow || top > handY + k_LedgeGrabBandHigh)
@@ -380,8 +380,8 @@ namespace NS::Object
                 continue;
 
             // 接近軸の優勢成分で掴む手前面を決め、 その外側に capsule を寄せた hang 位置を出す
-            NS::Math::Vector3 faceNormal{0.0f, 0.0f, 0.0f};
-            NS::Math::Vector3 hang = pos;
+            NS::Core::Vector3 faceNormal{0.0f, 0.0f, 0.0f};
+            NS::Core::Vector3 hang = pos;
             if (std::abs(dir.x) >= std::abs(dir.z))
             {
                 const float sgn = [&]() -> float {
@@ -390,9 +390,9 @@ namespace NS::Object
                     return -1.0f;
                 }();
                 const float faceX = box.Center.x - sgn * box.Extents.x;
-                faceNormal = NS::Math::Vector3{-sgn, 0.0f, 0.0f};
+                faceNormal = NS::Core::Vector3{-sgn, 0.0f, 0.0f};
                 hang.x = faceX - sgn * m_capsuleRadius;
-                hang.z = NS::Math::Clamp(pos.z, box.Center.z - box.Extents.z, box.Center.z + box.Extents.z);
+                hang.z = NS::Core::Clamp(pos.z, box.Center.z - box.Extents.z, box.Center.z + box.Extents.z);
             }
             else
             {
@@ -402,21 +402,21 @@ namespace NS::Object
                     return -1.0f;
                 }();
                 const float faceZ = box.Center.z - sgn * box.Extents.z;
-                faceNormal = NS::Math::Vector3{0.0f, 0.0f, -sgn};
+                faceNormal = NS::Core::Vector3{0.0f, 0.0f, -sgn};
                 hang.z = faceZ - sgn * m_capsuleRadius;
-                hang.x = NS::Math::Clamp(pos.x, box.Center.x - box.Extents.x, box.Center.x + box.Extents.x);
+                hang.x = NS::Core::Clamp(pos.x, box.Center.x - box.Extents.x, box.Center.x + box.Extents.x);
             }
             hang.y = top - m_capsuleHalfHeight;
 
             // 上面手前の mantle 先が別 block で塞がっているなら縁ではない。 掴まない
             const float mantleStep = 2.0f * m_capsuleRadius + k_LedgeMantleInset;
-            const NS::Math::Vector3 mantleCheck{
+            const NS::Core::Vector3 mantleCheck{
                 hang.x - faceNormal.x * mantleStep,
                 top + m_capsuleHalfHeight,
                 hang.z - faceNormal.z * mantleStep,
             };
             bool blocked = false;
-            for (const NS::Math::AABB& other : WorldAabbs(m_world))
+            for (const NS::Core::AABB& other : WorldAabbs(m_world))
             {
                 if (AabbContainsPoint(other, mantleCheck))
                 {
@@ -428,7 +428,7 @@ namespace NS::Object
                 continue;
 
             RootTransform().SetPosition(hang);
-            m_velocity = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+            m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
             m_ledgeTopY = top;
             m_ledgeFaceNormal = faceNormal;
             m_ledgeHangTimer = 0.0f;
@@ -442,7 +442,7 @@ namespace NS::Object
     void CharacterMovementComponent::UpdateLedgeHang(float dt) noexcept
     {
         m_ledgeHangTimer += dt;
-        NS::Math::Vector3 pos = RootTransform().Position();
+        NS::Core::Vector3 pos = RootTransform().Position();
 
         // 登る: jump は即時、 前入力での自動登りは最小ぶら下がり時間だけ一瞬ぶら下がりを見せてから
         // 面の内側へ押し込み block 上面に立たせて Walking へ
@@ -451,7 +451,7 @@ namespace NS::Object
         {
             const float mantleStep = 2.0f * m_capsuleRadius + k_LedgeMantleInset;
             m_ledgeMantleStart = pos;
-            m_ledgeMantleEnd = NS::Math::Vector3{
+            m_ledgeMantleEnd = NS::Core::Vector3{
                 pos.x - m_ledgeFaceNormal.x * mantleStep,
                 m_ledgeTopY + m_capsuleHalfHeight + m_capsuleRadius + k_LedgeMantleLift,
                 pos.z - m_ledgeFaceNormal.z * mantleStep,
@@ -459,7 +459,7 @@ namespace NS::Object
             m_ledgeMantleTimer = 0.0f;
             m_state = MovementState::LedgeMantling;
             m_machine.Change(*this, LedgeMantleState::k_Name);
-            m_velocity = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+            m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
             return;
         }
 
@@ -471,7 +471,7 @@ namespace NS::Object
             RootTransform().SetPosition(pos);
             m_state = MovementState::Falling;
             m_machine.Change(*this, LocomotionState::k_Name);
-            m_velocity = NS::Math::Vector3{
+            m_velocity = NS::Core::Vector3{
                 m_ledgeFaceNormal.x * k_LedgeDropOutwardSpeed, 0.0f, m_ledgeFaceNormal.z * k_LedgeDropOutwardSpeed};
             m_isGrounded = false;
             m_ledgeRegrabCooldown = k_LedgeRegrabCooldownTime;
@@ -483,8 +483,8 @@ namespace NS::Object
         if (std::abs(m_climbRight) > k_LedgeShimmyDeadzone)
         {
             // 面法線に水平直交する縁方向。 移動しても面からの距離は変わらない
-            const NS::Math::Vector3 alongDir{-m_ledgeFaceNormal.z, 0.0f, m_ledgeFaceNormal.x};
-            NS::Math::Vector3 shimmied = pos;
+            const NS::Core::Vector3 alongDir{-m_ledgeFaceNormal.z, 0.0f, m_ledgeFaceNormal.x};
+            NS::Core::Vector3 shimmied = pos;
             shimmied.x += alongDir.x * m_climbRight * k_LedgeShimmySpeed * dt;
             shimmied.z += alongDir.z * m_climbRight * k_LedgeShimmySpeed * dt;
             // 移動先にも同じ高さの縁が続いている時だけ動く。 端なら止めて落とさない
@@ -492,16 +492,16 @@ namespace NS::Object
                 pos = shimmied;
         }
         RootTransform().SetPosition(pos);
-        m_velocity = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+        m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
     }
 
     void CharacterMovementComponent::UpdateLedgeMantle(float dt) noexcept
     {
         m_ledgeMantleTimer += dt;
-        const float t = NS::Math::Clamp(m_ledgeMantleTimer / k_LedgeMantleDuration, 0.0f, 1.0f);
+        const float t = NS::Core::Clamp(m_ledgeMantleTimer / k_LedgeMantleDuration, 0.0f, 1.0f);
 
         // 前半で縁の高さまで上昇、 後半で上面へ前進する 2 段モーション。 角への食い込みを避ける
-        NS::Math::Vector3 pos;
+        NS::Core::Vector3 pos;
         if (t < 0.5f)
         {
             const float u = t / 0.5f;
@@ -517,7 +517,7 @@ namespace NS::Object
             pos.y = m_ledgeMantleEnd.y;
         }
         RootTransform().SetPosition(pos);
-        m_velocity = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+        m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
 
         if (t >= 1.0f)
         {
@@ -532,17 +532,17 @@ namespace NS::Object
         }
     }
 
-    bool CharacterMovementComponent::LedgeContinuesAt(const NS::Math::Vector3& hangPos) const noexcept
+    bool CharacterMovementComponent::LedgeContinuesAt(const NS::Core::Vector3& hangPos) const noexcept
     {
-        const NS::Math::Vector3 inward{-m_ledgeFaceNormal.x, 0.0f, -m_ledgeFaceNormal.z};
+        const NS::Core::Vector3 inward{-m_ledgeFaceNormal.x, 0.0f, -m_ledgeFaceNormal.z};
         const float handY = hangPos.y + m_capsuleHalfHeight;
-        const NS::Math::Vector3 probe{
+        const NS::Core::Vector3 probe{
             hangPos.x + inward.x * (m_capsuleRadius + k_LedgeReach),
             handY,
             hangPos.z + inward.z * (m_capsuleRadius + k_LedgeReach),
         };
 
-        for (const NS::Math::AABB& box : WorldAabbs(m_world))
+        for (const NS::Core::AABB& box : WorldAabbs(m_world))
         {
             const float top = box.Center.y + box.Extents.y;
             if (std::abs(top - m_ledgeTopY) > k_LedgeContinueTopTol)
@@ -554,13 +554,13 @@ namespace NS::Object
 
             // 乗り上がり先が別 block で塞がっていたら縁とみなさない。 オーバーハングの下では掴めない
             const float mantleStep = 2.0f * m_capsuleRadius + k_LedgeMantleInset;
-            const NS::Math::Vector3 mantleCheck{
+            const NS::Core::Vector3 mantleCheck{
                 hangPos.x - m_ledgeFaceNormal.x * mantleStep,
                 m_ledgeTopY + m_capsuleHalfHeight,
                 hangPos.z - m_ledgeFaceNormal.z * mantleStep,
             };
             bool blocked = false;
-            for (const NS::Math::AABB& other : WorldAabbs(m_world))
+            for (const NS::Core::AABB& other : WorldAabbs(m_world))
             {
                 if (AabbContainsPoint(other, mantleCheck))
                 {

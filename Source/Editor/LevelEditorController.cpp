@@ -15,7 +15,7 @@
 #include "Runtime/Core/Filesystem.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/AssetManager.h"
 #include "Runtime/Object/CameraSubsystem.h"
 #include "Runtime/Object/Components/BoxColliderComponent.h"
@@ -50,7 +50,7 @@ namespace
     constexpr float k_EditBlendSeconds = 0.35f;
 
     // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球 / カプセル / slope は collider 由来の AABB
-    void DrawColliderWireframe(NS::Object::GameObject& object, const NS::Math::Color& color) noexcept
+    void DrawColliderWireframe(NS::Object::GameObject& object, const NS::Core::Color& color) noexcept
     {
         if (auto* box = object.FindComponent<NS::Object::BoxColliderComponent>())
         {
@@ -68,23 +68,23 @@ namespace
         {
             // 斜面は三角の集まりなので、包む箱を出して面の広がりを見せる
             const auto tris = slope->WorldTriangles();
-            NS::Math::Vector3 lo = tris[0].v0;
-            NS::Math::Vector3 hi = tris[0].v0;
+            NS::Core::Vector3 lo = tris[0].v0;
+            NS::Core::Vector3 hi = tris[0].v0;
             for (const auto& tri : tris)
             {
-                for (const NS::Math::Vector3& v : {tri.v0, tri.v1, tri.v2})
+                for (const NS::Core::Vector3& v : {tri.v0, tri.v1, tri.v2})
                 {
-                    lo = NS::Math::Vector3::Min(lo, v);
-                    hi = NS::Math::Vector3::Max(hi, v);
+                    lo = NS::Core::Vector3::Min(lo, v);
+                    hi = NS::Core::Vector3::Max(hi, v);
                 }
             }
-            NS::Graphics::DebugDraw::AABB(NS::Math::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f}, color);
+            NS::Graphics::DebugDraw::AABB(NS::Core::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f}, color);
         }
     }
 
     // a→b を 0.5m 刻みで等分し 1 区間おきに線を引いて点線にする。DebugDraw に dashed が無いので描画側で
     // 間引く。辺長からセグメント数を出すので、長い辺も短い辺も破線ピッチが揃う
-    void DrawDashedLine(const NS::Math::Vector3& a, const NS::Math::Vector3& b, const NS::Math::Color& color) noexcept
+    void DrawDashedLine(const NS::Core::Vector3& a, const NS::Core::Vector3& b, const NS::Core::Color& color) noexcept
     {
         const float length = (b - a).Length();
         const int rawSegments = static_cast<int>(length / 0.5f);
@@ -93,31 +93,31 @@ namespace
         {
             const float t0 = static_cast<float>(i) / static_cast<float>(segments);
             const float t1 = static_cast<float>(i + 1) / static_cast<float>(segments);
-            NS::Graphics::DebugDraw::Line(NS::Math::Vector3::Lerp(a, b, t0), NS::Math::Vector3::Lerp(a, b, t1), color);
+            NS::Graphics::DebugDraw::Line(NS::Core::Vector3::Lerp(a, b, t0), NS::Core::Vector3::Lerp(a, b, t1), color);
         }
     }
 
     // カメラ pose の視錐台を四角錐の点線で描く。視点から far 面 4 隅へ 4 本 + far 面の 4 辺で、向きと画角を見せる
     // target==position や up と視線が平行な縮退では基底が作れないので何も描かない
-    void DrawCameraFrustum(const NS::Object::CameraPose& pose, float aspect, const NS::Math::Color& color) noexcept
+    void DrawCameraFrustum(const NS::Object::CameraPose& pose, float aspect, const NS::Core::Color& color) noexcept
     {
-        NS::Math::Vector3 forward = pose.target - pose.position;
+        NS::Core::Vector3 forward = pose.target - pose.position;
         if (forward.LengthSquared() < 1e-6f)
             return;
         forward.Normalize();
-        NS::Math::Vector3 right = pose.up.Cross(forward);
+        NS::Core::Vector3 right = pose.up.Cross(forward);
         if (right.LengthSquared() < 1e-6f)
             return;
         right.Normalize();
-        const NS::Math::Vector3 up = forward.Cross(right);
+        const NS::Core::Vector3 up = forward.Cross(right);
 
         const float halfHeight = std::tan(pose.fovY.value * 0.5f) * k_CameraGizmoFar;
         const float halfWidth = halfHeight * aspect;
-        const NS::Math::Vector3 farCenter = pose.position + forward * k_CameraGizmoFar;
-        const NS::Math::Vector3 topLeft = farCenter + up * halfHeight - right * halfWidth;
-        const NS::Math::Vector3 topRight = farCenter + up * halfHeight + right * halfWidth;
-        const NS::Math::Vector3 bottomLeft = farCenter - up * halfHeight - right * halfWidth;
-        const NS::Math::Vector3 bottomRight = farCenter - up * halfHeight + right * halfWidth;
+        const NS::Core::Vector3 farCenter = pose.position + forward * k_CameraGizmoFar;
+        const NS::Core::Vector3 topLeft = farCenter + up * halfHeight - right * halfWidth;
+        const NS::Core::Vector3 topRight = farCenter + up * halfHeight + right * halfWidth;
+        const NS::Core::Vector3 bottomLeft = farCenter - up * halfHeight - right * halfWidth;
+        const NS::Core::Vector3 bottomRight = farCenter - up * halfHeight + right * halfWidth;
 
         DrawDashedLine(pose.position, topLeft, color);
         DrawDashedLine(pose.position, topRight, color);
@@ -132,11 +132,11 @@ namespace
     // 視点マーカーの world 半径。カメラから遠いほど半径を伸ばし、画面上の見かけサイズを一定に近づける
     // 見かけ寸法は world 半径 / clip.w に比例するので、半径を clip.w に比例させると相殺されて一定になる
     // 近距離は基準半径を下限に据え、遠距離だけ伸ばす
-    [[nodiscard]] float CameraMarkerHalf(const NS::Math::Vector3& center, const NS::Math::Matrix& vp) noexcept
+    [[nodiscard]] float CameraMarkerHalf(const NS::Core::Vector3& center, const NS::Core::Matrix& vp) noexcept
     {
         const float baseHalf = 0.3f;
-        const NS::Math::Vector4 clip =
-            NS::Math::Vector4::Transform(NS::Math::Vector4{center.x, center.y, center.z, 1.0f}, vp);
+        const NS::Core::Vector4 clip =
+            NS::Core::Vector4::Transform(NS::Core::Vector4{center.x, center.y, center.z, 1.0f}, vp);
         // clip.w がほぼ 0、カメラ至近や背面では深度で割らず基準半径へ退避する
         if (clip.w <= 1.0e-3f)
             return baseHalf;
@@ -222,11 +222,11 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     // far は EditorCamera の k_MaxDistance より広く取り、最大ズームアウトでも地形を映す
     m_editorCamera.SetNearPlane(0.1f);
     m_editorCamera.SetFarPlane(5000.0f);
-    m_editorCamera.SetFovY(NS::Math::ToRadians(NS::Math::Degrees{60.0f}));
+    m_editorCamera.SetFovY(NS::Core::ToRadians(NS::Core::Degrees{60.0f}));
 
     // 初期視点はプレイヤーの位置を中心に少し引いた位置から見下ろす。不在なら原点
     NS::Object::GameObject* bootPlayer = FindPlayer(m_scene->World());
-    NS::Math::Vector3 startCenter{0.0f, 0.0f, 0.0f};
+    NS::Core::Vector3 startCenter{0.0f, 0.0f, 0.0f};
     if (bootPlayer != nullptr)
         startCenter = bootPlayer->Root().Position();
     m_editorCamera.SetCenter(startCenter);
@@ -466,7 +466,7 @@ NS::Editor::ViewRect LevelEditorController::CurrentViewRect() const noexcept
     NS::Editor::ViewRect full{};
     if (auto* app = NS::App::Application::Get())
     {
-        const NS::Math::Size2D size = app->Window().Size();
+        const NS::Core::Size2D size = app->Window().Size();
         full.width = size.width;
         full.height = size.height;
     }
@@ -904,8 +904,8 @@ void LevelEditorController::SelectCamera() noexcept
     m_specialSelection = SpecialSelection::Camera;
 }
 
-void LevelEditorController::RenderCameraGizmos(const NS::Math::Matrix& viewProjection,
-                                               NS::Math::Size2D viewport) noexcept
+void LevelEditorController::RenderCameraGizmos(const NS::Core::Matrix& viewProjection,
+                                               NS::Core::Size2D viewport) noexcept
 {
     // edit 中、各カメラの視錐台を点線の四角錐で、視点位置を小箱で可視化する。据え置きは進入トリガ AABB も出す
     // 選択中は強調色にする。追従カメラは pose がプレイヤー基準なので、錐台はプレイ中に居る視点位置へ出る
@@ -922,10 +922,10 @@ void LevelEditorController::RenderCameraGizmos(const NS::Math::Matrix& viewProje
         if (vcam == nullptr)
             continue;
         const bool selected = (object->Id() == m_selectedObjectId);
-        const NS::Math::Color camColor = [selected]() -> NS::Math::Color {
+        const NS::Core::Color camColor = [selected]() -> NS::Core::Color {
             if (selected)
-                return NS::Math::Color{1.0f, 0.55f, 0.10f, 1.0f};
-            return NS::Math::Color{1.0f, 0.85f, 0.10f, 1.0f};
+                return NS::Core::Color{1.0f, 0.55f, 0.10f, 1.0f};
+            return NS::Core::Color{1.0f, 0.85f, 0.10f, 1.0f};
         }();
 
         const NS::Object::CameraPose pose = vcam->EvaluatePose(1.0f);
@@ -933,17 +933,17 @@ void LevelEditorController::RenderCameraGizmos(const NS::Math::Matrix& viewProje
         // 視点マーカーは遠いカメラでも潰れないよう、深度に応じて world 半径を伸ばし画面上一定サイズに近づける
         const float markerHalf = CameraMarkerHalf(pose.position, viewProjection);
         NS::Graphics::DebugDraw::AABB(
-            NS::Math::AABB{pose.position, NS::Math::Vector3{markerHalf, markerHalf, markerHalf}}, camColor);
+            NS::Core::AABB{pose.position, NS::Core::Vector3{markerHalf, markerHalf, markerHalf}}, camColor);
 
         // 据え置きカメラだけ進入トリガ範囲を出す。追従には無い
         if (auto* placed = object->FindComponent<NS::Object::PlacedVirtualCamera>())
         {
-            const NS::Math::Color triggerColor = [selected]() -> NS::Math::Color {
+            const NS::Core::Color triggerColor = [selected]() -> NS::Core::Color {
                 if (selected)
-                    return NS::Math::Color{1.0f, 0.55f, 0.10f, 1.0f};
-                return NS::Math::Color{0.20f, 0.70f, 1.0f, 1.0f};
+                    return NS::Core::Color{1.0f, 0.55f, 0.10f, 1.0f};
+                return NS::Core::Color{0.20f, 0.70f, 1.0f, 1.0f};
             }();
-            NS::Graphics::DebugDraw::AABB(NS::Math::AABB{placed->TriggerCenter(), placed->TriggerExtent()},
+            NS::Graphics::DebugDraw::AABB(NS::Core::AABB{placed->TriggerCenter(), placed->TriggerExtent()},
                                           triggerColor);
         }
     }
@@ -955,22 +955,22 @@ void LevelEditorController::RenderSelectionOutlines() noexcept
     if (m_selectionIds.size() < 2)
         return;
 
-    const NS::Math::Color color{1.0f, 0.65f, 0.15f, 1.0f};
+    const NS::Core::Color color{1.0f, 0.65f, 0.15f, 1.0f};
     for (const std::uint32_t id : m_selectionIds)
     {
         NS::Object::GameObject* object = m_scene->World().FindByObjectId(id);
         if (object == nullptr)
             continue;
 
-        const NS::Math::Matrix world = object->Root().WorldMatrix();
-        const NS::Math::Vector3 scale = object->Root().Scale();
+        const NS::Core::Matrix world = object->Root().WorldMatrix();
+        const NS::Core::Vector3 scale = object->Root().Scale();
 
         // 行の基底が各軸の向き。 正規化して大きさは halfExtent へ回す
-        NS::Math::OBB obb{};
-        obb.center = NS::Math::Vector3{world._41, world._42, world._43};
-        obb.axisX = NS::Math::Vector3{world._11, world._12, world._13};
-        obb.axisY = NS::Math::Vector3{world._21, world._22, world._23};
-        obb.axisZ = NS::Math::Vector3{world._31, world._32, world._33};
+        NS::Core::OBB obb{};
+        obb.center = NS::Core::Vector3{world._41, world._42, world._43};
+        obb.axisX = NS::Core::Vector3{world._11, world._12, world._13};
+        obb.axisY = NS::Core::Vector3{world._21, world._22, world._23};
+        obb.axisZ = NS::Core::Vector3{world._31, world._32, world._33};
         obb.axisX.Normalize();
         obb.axisY.Normalize();
         obb.axisZ.Normalize();
@@ -983,7 +983,7 @@ void LevelEditorController::RenderSelectionOutlines() noexcept
 
 void LevelEditorController::RenderColliderWireframes(bool all) noexcept
 {
-    const NS::Math::Color color{0.35f, 1.0f, 0.45f, 1.0f};
+    const NS::Core::Color color{0.35f, 1.0f, 0.45f, 1.0f};
 
     // プレイ中は動いている形を追えるよう全部出す
     if (all)
@@ -1056,20 +1056,20 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
     m_lastGizmoSelected = nullptr;
 }
 
-void LevelEditorController::SetSelectedFreePosition(NS::Math::Vector3 position) noexcept
+void LevelEditorController::SetSelectedFreePosition(NS::Core::Vector3 position) noexcept
 {
     // live の Root を直接動かす。永続化は CommitTransformEdit / SyncPhysics 経路が担う
     if (NS::Object::GameObject* go = SelectedObjectGameObject())
         go->Root().SetPosition(position);
 }
 
-void LevelEditorController::SetSelectedFreeRotation(NS::Math::Quaternion rotation) noexcept
+void LevelEditorController::SetSelectedFreeRotation(NS::Core::Quaternion rotation) noexcept
 {
     if (NS::Object::GameObject* go = SelectedObjectGameObject())
         go->Root().SetRotation(rotation);
 }
 
-void LevelEditorController::SetSelectedFreeScale(NS::Math::Vector3 scale) noexcept
+void LevelEditorController::SetSelectedFreeScale(NS::Core::Vector3 scale) noexcept
 {
     // ImGui の入力で 0 / 負になると描画と当たり判定が壊れるため最小正値で止める
     constexpr float k_MinScale = 0.01f;
@@ -1088,7 +1088,7 @@ void LevelEditorController::AddObject()
 void LevelEditorController::AddPrimitive(NS::Editor::PrimitiveKind kind)
 {
     // 新規オブジェクトは編集視点の中心あたりへ置く
-    const NS::Math::Vector3 center = m_editorCamera.Center();
+    const NS::Core::Vector3 center = m_editorCamera.Center();
 
     // 構成を先に確定してから transform を書き込む。採番・履歴・選択は PushCreateObject が担う
     NS::Object::ObjectData object{};
@@ -1107,7 +1107,7 @@ void LevelEditorController::AddObjectWithMesh(const std::filesystem::path& meshP
         return relative.generic_string();
     }();
 
-    const NS::Math::Vector3 center = m_editorCamera.Center();
+    const NS::Core::Vector3 center = m_editorCamera.Center();
 
     // 既定の cube 構成から描画だけ差し替える。 当たりは cell 大の箱のまま置く
     NS::Object::ObjectData object{};
@@ -1193,16 +1193,16 @@ bool LevelEditorController::SetObjectParent(std::uint32_t id, std::uint32_t pare
         return false;
 
     // 親空間が変わっても見た目が動かないよう、今の world から新しい local を割り出す
-    NS::Math::Matrix local = child->Root().WorldMatrix();
+    NS::Core::Matrix local = child->Root().WorldMatrix();
     if (parent != nullptr)
         local *= parent->Root().WorldMatrix().Invert();
 
     NS::Object::ObjectData after = *before;
     after.parentId = parentId;
 
-    NS::Math::Vector3 scale{};
-    NS::Math::Quaternion rotation{};
-    NS::Math::Vector3 position{};
+    NS::Core::Vector3 scale{};
+    NS::Core::Quaternion rotation{};
+    NS::Core::Vector3 position{};
     if (local.Decompose(scale, rotation, position))
     {
         NS::Object::SetObjectPosition(after, position);
@@ -1415,8 +1415,8 @@ void LevelEditorController::FocusSelectedInView() noexcept
         return;
 
     // 選んだ分を全部収める。 中心は重心、 距離は一番外側までの広がりで決める
-    NS::Math::Vector3 sum{0.0f, 0.0f, 0.0f};
-    std::vector<NS::Math::Vector3> centers;
+    NS::Core::Vector3 sum{0.0f, 0.0f, 0.0f};
+    std::vector<NS::Core::Vector3> centers;
     float extent = 0.0f;
     centers.reserve(m_selectionIds.size());
     for (const std::uint32_t id : m_selectionIds)
@@ -1424,12 +1424,12 @@ void LevelEditorController::FocusSelectedInView() noexcept
         NS::Object::GameObject* object = m_scene->World().FindByObjectId(id);
         if (object == nullptr)
             continue;
-        const NS::Math::Matrix world = object->Root().WorldMatrix();
-        const NS::Math::Vector3 center{world._41, world._42, world._43};
+        const NS::Core::Matrix world = object->Root().WorldMatrix();
+        const NS::Core::Vector3 center{world._41, world._42, world._43};
         centers.push_back(center);
         sum += center;
 
-        const NS::Math::Vector3 scale = object->Root().Scale();
+        const NS::Core::Vector3 scale = object->Root().Scale();
         const float half =
             std::max({std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)}) * NS::Game::Level::k_CellHalfExtents.y;
         extent = std::max(extent, half);
@@ -1437,8 +1437,8 @@ void LevelEditorController::FocusSelectedInView() noexcept
     if (centers.empty())
         return;
 
-    const NS::Math::Vector3 center = sum / static_cast<float>(centers.size());
-    for (const NS::Math::Vector3& each : centers)
+    const NS::Core::Vector3 center = sum / static_cast<float>(centers.size());
+    for (const NS::Core::Vector3& each : centers)
         extent = std::max(extent, (each - center).Length());
 
     const float distance = std::max(extent * 4.0f, NS::Editor::EditorCamera::k_MinDistance);
@@ -1495,20 +1495,20 @@ void LevelEditorController::ApplyDragToFollowers() noexcept
         return;
 
     // 主対象が動いた分を world 空間の差分として取り、 残りへ同じだけ効かせる
-    const NS::Math::Matrix delta = m_dragPrimaryWorld.Invert() * primary->Root().WorldMatrix();
+    const NS::Core::Matrix delta = m_dragPrimaryWorld.Invert() * primary->Root().WorldMatrix();
     for (const DragFollower& follower : m_dragFollowers)
     {
         NS::Object::GameObject* object = m_scene->World().FindByObjectId(follower.id);
         if (object == nullptr)
             continue;
 
-        NS::Math::Matrix local = follower.world * delta;
+        NS::Core::Matrix local = follower.world * delta;
         if (const NS::Object::GameObject* parent = object->Parent())
             local *= parent->Root().WorldMatrix().Invert();
 
-        NS::Math::Vector3 scale{};
-        NS::Math::Quaternion rotation{};
-        NS::Math::Vector3 position{};
+        NS::Core::Vector3 scale{};
+        NS::Core::Quaternion rotation{};
+        NS::Core::Vector3 position{};
         if (!local.Decompose(scale, rotation, position))
             continue;
         object->Root().SetPosition(position);

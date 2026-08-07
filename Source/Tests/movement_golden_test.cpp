@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <Runtime/Core/Clock.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
@@ -14,8 +14,8 @@
 
 namespace
 {
-    using NS::Math::AABB;
-    using NS::Math::Vector3;
+    using NS::Core::AABB;
+    using NS::Core::Vector3;
     using NS::Object::CharacterMovementComponent;
     using NS::Object::GameObject;
 

@@ -15,12 +15,12 @@ namespace NS::Object
 
         if (const GameObject* owner = Owner(); owner != nullptr)
         {
-            const NS::Math::Matrix world = owner->Root().WorldMatrix();
+            const NS::Core::Matrix world = owner->Root().WorldMatrix();
             for (auto& tri : tris)
             {
-                tri.v0 = NS::Math::Vector3::Transform(tri.v0, world);
-                tri.v1 = NS::Math::Vector3::Transform(tri.v1, world);
-                tri.v2 = NS::Math::Vector3::Transform(tri.v2, world);
+                tri.v0 = NS::Core::Vector3::Transform(tri.v0, world);
+                tri.v1 = NS::Core::Vector3::Transform(tri.v1, world);
+                tri.v2 = NS::Core::Vector3::Transform(tri.v2, world);
             }
         }
         return tris;

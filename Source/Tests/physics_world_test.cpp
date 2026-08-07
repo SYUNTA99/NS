@@ -1,17 +1,17 @@
 ﻿#include <cmath>
 #include <gtest/gtest.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 
 namespace
 {
-    using NS::Math::AABB;
-    using NS::Math::Quaternion;
-    using NS::Math::Vector3;
+    using NS::Core::AABB;
+    using NS::Core::Quaternion;
+    using NS::Core::Vector3;
     using NS::Physics::Capsule;
     using NS::Physics::MakeObb;
     using NS::Physics::PhysicsWorld;
-    using NS::Math::Sphere;
+    using NS::Core::Sphere;
     using NS::Physics::SweepHit;
 
     constexpr float k_Pi = 3.14159265358979323846f;

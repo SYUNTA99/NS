@@ -3,7 +3,7 @@
 #include "Runtime/Graphics/Animation.h"
 #include "Runtime/Graphics/SkeletalMesh.h"
 #include "Runtime/Graphics/Skeleton.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 
 #include <cstddef>
@@ -95,7 +95,7 @@ namespace NS::Object
         bool m_playing = true;                                   // 再生中か
         bool m_looping = true;                                   // 末尾でループするか
         std::vector<NS::Graphics::BonePose> m_poseScratch;       // サンプリング結果の一時ポーズ
-        std::vector<NS::Math::Matrix> m_paletteScratch;          // ボーンパレットの一時バッファ
+        std::vector<NS::Core::Matrix> m_paletteScratch;          // ボーンパレットの一時バッファ
 
         // ボーンパレットはオブジェクト単位の状態なので mesh でなく本 component が所有する
         std::unique_ptr<NS::Graphics::Buffer> m_bonePaletteCB; // VS b1 用の定数バッファ

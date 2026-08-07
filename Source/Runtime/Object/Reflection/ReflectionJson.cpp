@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 
@@ -35,7 +35,7 @@ namespace NS::Object
             }
             case FieldType::Vector3:
             {
-                NS::Math::Vector3 value{};
+                NS::Core::Vector3 value{};
                 field.get(&comp, &value);
                 return nlohmann::json{value.x, value.y, value.z};
             }
@@ -94,7 +94,7 @@ namespace NS::Object
                     return;
                 if (!value[0].is_number() || !value[1].is_number() || !value[2].is_number())
                     return;
-                NS::Math::Vector3 v{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
+                NS::Core::Vector3 v{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
                 field.set(&comp, &v);
                 return;
             }

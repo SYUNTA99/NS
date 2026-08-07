@@ -24,13 +24,13 @@ namespace
         logger->log->push_back(logger->id);
     }
 
-    NS::Math::AABB MakeBox(NS::Math::Vector3 center, float halfExtent)
+    NS::Core::AABB MakeBox(NS::Core::Vector3 center, float halfExtent)
     {
-        return NS::Math::AABB{center, NS::Math::Vector3{halfExtent, halfExtent, halfExtent}};
+        return NS::Core::AABB{center, NS::Core::Vector3{halfExtent, halfExtent, halfExtent}};
     }
 
     // 既定 bounds は全域相当でカリングに引っかからない。順序/バケット検証用
-    RenderProxyDesc MakeDesc(Logger* logger, bool transparent, NS::Math::Vector3 sortCenter, int priority)
+    RenderProxyDesc MakeDesc(Logger* logger, bool transparent, NS::Core::Vector3 sortCenter, int priority)
     {
         RenderProxyDesc d{};
         d.bounds = MakeBox({0.0f, 0.0f, 0.0f}, 1.0e6f);

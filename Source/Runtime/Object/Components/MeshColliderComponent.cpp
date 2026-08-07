@@ -29,15 +29,15 @@ namespace NS::Object
         if (owner == nullptr)
             return m_localTriangles;
 
-        const NS::Math::Matrix world = owner->Root().WorldMatrix();
+        const NS::Core::Matrix world = owner->Root().WorldMatrix();
         std::vector<NS::Physics::Triangle> result;
         result.reserve(m_localTriangles.size());
         for (const NS::Physics::Triangle& tri : m_localTriangles)
         {
             NS::Physics::Triangle worldTri;
-            worldTri.v0 = NS::Math::Vector3::Transform(tri.v0, world);
-            worldTri.v1 = NS::Math::Vector3::Transform(tri.v1, world);
-            worldTri.v2 = NS::Math::Vector3::Transform(tri.v2, world);
+            worldTri.v0 = NS::Core::Vector3::Transform(tri.v0, world);
+            worldTri.v1 = NS::Core::Vector3::Transform(tri.v1, world);
+            worldTri.v2 = NS::Core::Vector3::Transform(tri.v2, world);
             result.push_back(worldTri);
         }
         return result;

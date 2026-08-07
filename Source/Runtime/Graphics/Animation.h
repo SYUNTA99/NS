@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Runtime/Graphics/Skeleton.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <span>
 #include <string>
@@ -23,15 +23,15 @@ namespace NS::Graphics
         int boneIndex = -1; ///< ボーン番号（-1は未割り当て）
 
         std::vector<float> positionTimes;                     ///< 位置キーの時刻列 (秒)
-        std::vector<NS::Math::Vector3> positionValues;        ///< 位置キーの値
+        std::vector<NS::Core::Vector3> positionValues;        ///< 位置キーの値
         Interpolation positionInterp = Interpolation::Linear; ///< 位置の補間方式
 
         std::vector<float> rotationTimes;                     ///< 回転キーの時刻列 (秒)
-        std::vector<NS::Math::Quaternion> rotationValues;     ///< 回転キーの値
+        std::vector<NS::Core::Quaternion> rotationValues;     ///< 回転キーの値
         Interpolation rotationInterp = Interpolation::Linear; ///< 回転の補間方式
 
         std::vector<float> scaleTimes;                     ///< スケールキーの時刻列 (秒)
-        std::vector<NS::Math::Vector3> scaleValues;        ///< スケールキーの値
+        std::vector<NS::Core::Vector3> scaleValues;        ///< スケールキーの値
         Interpolation scaleInterp = Interpolation::Linear; ///< スケールの補間方式
     };
 
@@ -53,11 +53,11 @@ namespace NS::Graphics
     /// @param t       評価する時刻（秒）
     /// @param fallback times が空のとき返す値
     /// @return 補間された値。範囲外は端点クランプ
-    [[nodiscard]] NS::Math::Vector3 SampleVec3(std::span<const float> times,
-                                               std::span<const NS::Math::Vector3> values,
+    [[nodiscard]] NS::Core::Vector3 SampleVec3(std::span<const float> times,
+                                               std::span<const NS::Core::Vector3> values,
                                                Interpolation interp,
                                                float t,
-                                               const NS::Math::Vector3& fallback) noexcept;
+                                               const NS::Core::Vector3& fallback) noexcept;
 
     /// @brief Quaternion トラックを時刻 t で評価する
     /// @details Linear=最短経路 slerp、Step=左キー保持、範囲外=端点クランプ。
@@ -67,11 +67,11 @@ namespace NS::Graphics
     /// @param t        評価する時刻（秒）
     /// @param fallback times が空のとき返す値
     /// @return 時刻 t における回転。範囲外は端点にクランプ
-    [[nodiscard]] NS::Math::Quaternion SampleQuat(std::span<const float> times,
-                                                  std::span<const NS::Math::Quaternion> values,
+    [[nodiscard]] NS::Core::Quaternion SampleQuat(std::span<const float> times,
+                                                  std::span<const NS::Core::Quaternion> values,
                                                   Interpolation interp,
                                                   float t,
-                                                  const NS::Math::Quaternion& fallback) noexcept;
+                                                  const NS::Core::Quaternion& fallback) noexcept;
 
     /// @brief clip を時刻 t で評価し pose を埋める
     /// @details トラックを持たないボーンは skeleton の bindLocal を使う。

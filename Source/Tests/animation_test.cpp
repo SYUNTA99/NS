@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <Runtime/Graphics/Animation.h>
 #include <Runtime/Graphics/Skeleton.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <vector>
 
 namespace
@@ -15,8 +15,8 @@ namespace
     using NS::Graphics::SampleQuat;
     using NS::Graphics::SampleVec3;
     using NS::Graphics::Skeleton;
-    using NS::Math::Quaternion;
-    using NS::Math::Vector3;
+    using NS::Core::Quaternion;
+    using NS::Core::Vector3;
 
     constexpr float k_Eps = 1e-4f;
 
@@ -29,7 +29,7 @@ namespace
 
     Quaternion RotZ(float degrees)
     {
-        return Quaternion::CreateFromAxisAngle(Vector3(0.0f, 0.0f, 1.0f), NS::Math::DegreesToRadians(degrees));
+        return Quaternion::CreateFromAxisAngle(Vector3(0.0f, 0.0f, 1.0f), NS::Core::DegreesToRadians(degrees));
     }
 } // namespace
 

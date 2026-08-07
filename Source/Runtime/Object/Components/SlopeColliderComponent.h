@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Physics/SweptTriangle.h"
 
@@ -21,7 +21,7 @@ namespace NS::Object
         SlopeColliderComponent() noexcept = default;
 
         [[nodiscard]] float AngleDegrees() const noexcept { return m_angleDegrees; }
-        [[nodiscard]] NS::Math::Vector3 HalfExtents() const noexcept { return m_halfExtents; }
+        [[nodiscard]] NS::Core::Vector3 HalfExtents() const noexcept { return m_halfExtents; }
 
         /// world 座標の wedge 三角形 8 個、 内訳は斜面2・底2・裏壁2・側面各1。 Owner 未登録なら local 座標版
         [[nodiscard]] std::array<NS::Physics::Triangle, 8> WorldTriangles() const noexcept;
@@ -37,6 +37,6 @@ namespace NS::Object
 
     private:
         float m_angleDegrees = 45.0f;                      // 斜面の傾斜角
-        NS::Math::Vector3 m_halfExtents{0.5f, 0.5f, 0.5f}; // wedge の半サイズ
+        NS::Core::Vector3 m_halfExtents{0.5f, 0.5f, 0.5f}; // wedge の半サイズ
     };
 } // namespace NS::Object

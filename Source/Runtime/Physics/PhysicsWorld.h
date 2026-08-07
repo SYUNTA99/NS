@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Physics/Capsule.h"
 #include "Runtime/Physics/CollisionGrid.h"
 #include "Runtime/Physics/SweptOBB.h"
@@ -12,7 +12,7 @@ namespace NS::Physics
     struct SweepHit
     {
         float toi = 1.0f;
-        NS::Math::Vector3 normal{0.0f, 0.0f, 0.0f};
+        NS::Core::Vector3 normal{0.0f, 0.0f, 0.0f};
         bool hit = false;
     };
 
@@ -33,16 +33,16 @@ namespace NS::Physics
         void ReserveAabbs(std::size_t count);
 
         /// grid solid の軸並行 box を AABB channel へ追加する
-        void AddAABB(const NS::Math::AABB& box);
+        void AddAABB(const NS::Core::AABB& box);
 
         /// slope の world 空間三角形を Triangle channel へ追加する
         void AddTriangle(const Triangle& triangle);
 
         /// 回転 / scale 込みの自由配置物を OBB channel へ追加する
-        void AddOBB(const NS::Math::OBB& obb);
+        void AddOBB(const NS::Core::OBB& obb);
 
         /// 球 collider を Sphere channel へ追加する
-        void AddSphere(const NS::Math::Sphere& sphere);
+        void AddSphere(const NS::Core::Sphere& sphere);
 
         /// capsule collider を Capsule channel へ追加する
         void AddCapsule(const NS::Physics::Capsule& capsule);
@@ -56,24 +56,24 @@ namespace NS::Physics
         /// AABB は grid 候補、grid が無ければ総当たり
         /// 評価順は AABB -> Triangle -> OBB -> Sphere -> Capsule、同 TOI は先勝ち
         [[nodiscard]] SweepHit SweepCapsule(const NS::Physics::Capsule& cap,
-                                            const NS::Math::Vector3& motion) const noexcept;
+                                            const NS::Core::Vector3& motion) const noexcept;
 
         /// bottomCenter から下方向へ reach 以内に AABB / OBB の床があれば true。接地判定の補助に使う
-        [[nodiscard]] bool ProbeGround(const NS::Math::Vector3& bottomCenter, float reach) const noexcept;
+        [[nodiscard]] bool ProbeGround(const NS::Core::Vector3& bottomCenter, float reach) const noexcept;
 
         // アクセサ
 
         /// AABB channel への読み取り専用の参照。ledge grab の走査が使う
-        [[nodiscard]] const std::vector<NS::Math::AABB>& Aabbs() const noexcept { return m_aabbs; }
+        [[nodiscard]] const std::vector<NS::Core::AABB>& Aabbs() const noexcept { return m_aabbs; }
 
         /// 全 channel が空かどうか。未 Build かプリミティブ無しなら空
         [[nodiscard]] bool IsEmpty() const noexcept;
 
     private:
-        std::vector<NS::Math::AABB> m_aabbs;
+        std::vector<NS::Core::AABB> m_aabbs;
         std::vector<Triangle> m_triangles;
-        std::vector<NS::Math::OBB> m_obbs;
-        std::vector<NS::Math::Sphere> m_spheres;
+        std::vector<NS::Core::OBB> m_obbs;
+        std::vector<NS::Core::Sphere> m_spheres;
         std::vector<NS::Physics::Capsule> m_capsules;
         CollisionGrid m_grid;
 

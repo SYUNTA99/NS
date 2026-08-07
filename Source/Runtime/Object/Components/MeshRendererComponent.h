@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Runtime/Graphics/DrawItem.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/IRenderable.h"
 
@@ -30,7 +30,7 @@ namespace NS::Object
         MeshRendererComponent() noexcept = default;
 
         /// Material instance ごとの色味で Player は赤系 Block は灰色系に色分けする。lighting とは別系統の個体色
-        void SetBaseColor(const NS::Math::Vector3& color) noexcept { m_baseColor = color; }
+        void SetBaseColor(const NS::Core::Vector3& color) noexcept { m_baseColor = color; }
 
         /// 描画に使う Material を差し替える。material=nullptr で Draw は何もしなくなる
         /// bucket は Draw 時に Material::Blend() から都度判定するため opaque↔transparent も即反映される
@@ -64,7 +64,7 @@ namespace NS::Object
 
         /// skinned など mesh 固定の LocalBounds では現在ポーズを包めない時に、同じ object の component が毎フレーム
         /// 現在ポーズの局所境界を差す。差された間は WorldBounds がこれを world 変換して使う
-        void SetLocalBoundsOverride(const NS::Math::AABB& localBounds) noexcept
+        void SetLocalBoundsOverride(const NS::Core::AABB& localBounds) noexcept
         {
             m_localBoundsOverride = localBounds;
             m_hasLocalBoundsOverride = true;
@@ -76,12 +76,12 @@ namespace NS::Object
         /// Material の BlendMode から bucket を返し、 Opaque 以外は Transparent。Material 不在は Opaque
         [[nodiscard]] RenderBucket Bucket() const noexcept override;
         /// Owner の world 行列の平行移動成分で半透明ソート用の中心
-        [[nodiscard]] NS::Math::Vector3 SortCenter() const noexcept override;
+        [[nodiscard]] NS::Core::Vector3 SortCenter() const noexcept override;
         /// Material の renderPriority で距離同値時のタイブレークに使う
         [[nodiscard]] int SortPriority() const noexcept override;
 
         /// mesh の局所 AABB を owner の world 行列で包んだワールド AABB。mesh / owner 不在なら原点の点
-        [[nodiscard]] NS::Math::AABB WorldBounds() const noexcept override;
+        [[nodiscard]] NS::Core::AABB WorldBounds() const noexcept override;
 
         /// OwningScene に self を IRenderable として登録する。Owner/Scene が null なら何もしない
         void OnStart() override;
@@ -102,7 +102,7 @@ namespace NS::Object
     private:
         NS::Graphics::Mesh* m_mesh = nullptr;            // 描画する Mesh (非所有)
         NS::Graphics::Material* m_material = nullptr;    // 描画に使う Material (非所有)
-        NS::Math::Vector3 m_baseColor{1.0f, 1.0f, 1.0f}; // 個体色、lighting と別系統
+        NS::Core::Vector3 m_baseColor{1.0f, 1.0f, 1.0f}; // 個体色、lighting と別系統
         // 保存・編集される参照文字列。 build 時に解決して m_mesh / m_material へ実体を当てる二層構造
         std::string m_meshRef{};
         std::string m_materialRef{};
@@ -115,7 +115,7 @@ namespace NS::Object
         unsigned m_perObjectVsSlot = 1;
 
         // skinned の現在ポーズ境界。同じ object の SkeletalAnimationComponent が毎フレーム差す
-        NS::Math::AABB m_localBoundsOverride{};
+        NS::Core::AABB m_localBoundsOverride{};
         bool m_hasLocalBoundsOverride = false;
     };
 } // namespace NS::Object

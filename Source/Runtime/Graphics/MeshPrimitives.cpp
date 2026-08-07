@@ -4,7 +4,7 @@
 
 namespace NS::Graphics
 {
-    MeshGeometry MakeCube(const NS::Math::Vector3& extents)
+    MeshGeometry MakeCube(const NS::Core::Vector3& extents)
     {
         const float ex = extents.x;
         const float ey = extents.y;
@@ -56,7 +56,7 @@ namespace NS::Graphics
         return geom;
     }
 
-    MeshGeometry MakePlane(const NS::Math::Vector2& extents)
+    MeshGeometry MakePlane(const NS::Core::Vector2& extents)
     {
         const float ex = extents.x;
         const float ez = extents.y;
@@ -73,14 +73,14 @@ namespace NS::Graphics
         return geom;
     }
 
-    MeshGeometry MakeSlope(float angleDegrees, const NS::Math::Vector3& extents)
+    MeshGeometry MakeSlope(float angleDegrees, const NS::Core::Vector3& extents)
     {
         const float ex = extents.x;
         const float ey = extents.y;
         const float ez = extents.z;
 
         // スロープの高さを求め、 指定の最大高さで上限クランプする
-        const float angleRad = NS::Math::DegreesToRadians(angleDegrees);
+        const float angleRad = NS::Core::DegreesToRadians(angleDegrees);
         const float rawHeight = std::tan(angleRad) * (2.0f * ez);
         const float height = std::min(rawHeight, 2.0f * ey);
 
@@ -142,14 +142,14 @@ namespace NS::Graphics
         for (std::uint32_t ring = 0; ring <= rings; ++ring)
         {
             const float v = static_cast<float>(ring) / static_cast<float>(rings);
-            const float phi = v * NS::Math::k_Pi;
+            const float phi = v * NS::Core::k_Pi;
             const float y = std::cos(phi);
             const float ringRadius = std::sin(phi);
             for (std::uint32_t segment = 0; segment <= segments; ++segment)
             {
                 const float u = static_cast<float>(segment) / static_cast<float>(segments);
-                const float theta = u * NS::Math::k_Pi * 2.0f;
-                const NS::Math::Vector3 normal{ringRadius * std::sin(theta), y, ringRadius * std::cos(theta)};
+                const float theta = u * NS::Core::k_Pi * 2.0f;
+                const NS::Core::Vector3 normal{ringRadius * std::sin(theta), y, ringRadius * std::cos(theta)};
                 geom.vertices.push_back({{normal.x * radius, normal.y * radius, normal.z * radius}, {u, v}, normal});
             }
         }

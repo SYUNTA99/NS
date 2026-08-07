@@ -17,12 +17,12 @@ namespace NS::Platform
         ATOM classAtom = 0; // RegisterClassExW の戻り
         HINSTANCE hInstance = nullptr;
 
-        ::NS::Math::Size2D size{0, 0};
+        ::NS::Core::Size2D size{0, 0};
         bool shouldClose = false; // WM_QUIT を受けたか
 
         std::wstring className;
 
-        std::function<void(::NS::Math::Size2D)> onResize;
+        std::function<void(::NS::Core::Size2D)> onResize;
         std::function<void()> onClose;
 
         Input* input = nullptr; // 入力転送先 (非所有)

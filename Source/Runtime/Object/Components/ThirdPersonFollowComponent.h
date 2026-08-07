@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
 #include "Runtime/Object/Scene/SceneData.h"
@@ -66,7 +66,7 @@ namespace NS::Object
         /// editor のギズモで置いたカメラ world 位置から、target 頭を基準に yaw/pitch/距離を逆算し初期姿勢へ書く
         /// target 未解決や距離ほぼ 0 なら何もしない。初期姿勢は data 保存され、プレイ開始時の向きになる
         /// 逆算後の yaw/pitch/distance を現在値にも即反映し、edit 中の EvaluatePose 表示をその場で追従させる
-        void SetInitialPoseFromCameraPosition(const NS::Math::Vector3& cameraPosition) noexcept;
+        void SetInitialPoseFromCameraPosition(const NS::Core::Vector3& cameraPosition) noexcept;
 
         /// fixed step で yaw/pitch・distance spring を更新。最終姿勢は EvaluatePose が返してガタつきを避ける
         void OnUpdate() override;

@@ -8,7 +8,7 @@
 
 namespace
 {
-    using NS::Math::Vector3;
+    using NS::Core::Vector3;
 } // namespace
 
 TEST(SphereColliderTest, DefaultRadiusIsHalfMeter)
@@ -16,7 +16,7 @@ TEST(SphereColliderTest, DefaultRadiusIsHalfMeter)
     NS::Object::SphereColliderComponent sc;
     EXPECT_FLOAT_EQ(sc.Radius(), 0.5f);
 
-    const NS::Math::Sphere s = sc.WorldSphere();
+    const NS::Core::Sphere s = sc.WorldSphere();
     EXPECT_FLOAT_EQ(s.center.x, 0.0f);
     EXPECT_FLOAT_EQ(s.radius, 0.5f);
 }
@@ -28,7 +28,7 @@ TEST(SphereColliderTest, WorldSphereReflectsOwnerPositionAndScale)
     obj.Root().SetScale(Vector3{2.0f, 2.0f, 2.0f});
     auto& sc = *obj.AddComponent<NS::Object::SphereColliderComponent>(0.5f);
 
-    const NS::Math::Sphere s = sc.WorldSphere();
+    const NS::Core::Sphere s = sc.WorldSphere();
     EXPECT_FLOAT_EQ(s.center.x, 1.0f);
     EXPECT_FLOAT_EQ(s.center.y, 2.0f);
     EXPECT_FLOAT_EQ(s.center.z, 3.0f);
@@ -42,7 +42,7 @@ TEST(SphereColliderTest, CenterOffsetShiftsAndScalesWithOwner)
     auto& sc = *obj.AddComponent<NS::Object::SphereColliderComponent>(0.5f);
     sc.SetCenterOffset(Vector3{1.0f, 0.0f, 0.0f});
 
-    const NS::Math::Sphere s = sc.WorldSphere();
+    const NS::Core::Sphere s = sc.WorldSphere();
     EXPECT_FLOAT_EQ(s.center.x, 2.0f); // offset 1 * scale 2
 }
 

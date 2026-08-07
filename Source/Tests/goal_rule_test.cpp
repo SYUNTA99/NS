@@ -17,7 +17,7 @@ namespace
     SceneNs::ObjectData MakeGoal(float x, float y, float z)
     {
         SceneNs::ObjectData object;
-        SceneNs::SetObjectPosition(object, NS::Math::Vector3{x, y, z});
+        SceneNs::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
         object.components.push_back(SceneNs::MakeComponentEntry("GoalComponent"));
         return object;
     }
@@ -34,7 +34,7 @@ TEST(GoalTest, ReachedWhenPlayerWithinRadius)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
 
@@ -51,7 +51,7 @@ TEST(GoalTest, NotReachedWhenFar)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     data.objects.push_back(MakeGoal(10.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
 
@@ -66,7 +66,7 @@ TEST(GoalTest, ReachedLatchesUntilReset)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
 
@@ -78,7 +78,7 @@ TEST(GoalTest, ReachedLatchesUntilReset)
     // 触れた後に離れてもフラグは立ったまま
     auto* player = FindPlayer(scene.World());
     ASSERT_NE(player, nullptr);
-    player->Root().SetPosition(NS::Math::Vector3{10.0f, 0.0f, 0.0f});
+    player->Root().SetPosition(NS::Core::Vector3{10.0f, 0.0f, 0.0f});
     scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
     EXPECT_TRUE(goal->Reached());
 

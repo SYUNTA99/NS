@@ -1,6 +1,6 @@
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
@@ -36,7 +36,7 @@ namespace NS::Object
         }
 
         // transform エントリへ root 回転を 4 要素配列で控える。 リフレクションの Euler と別に厳密なクォータニオンを運ぶ
-        void WriteRotationQuatField(nlohmann::json& transformEntry, const NS::Math::Quaternion& rotation)
+        void WriteRotationQuatField(nlohmann::json& transformEntry, const NS::Core::Quaternion& rotation)
         {
             transformEntry["fields"][std::string(k_RotationQuatFieldName)] =
                 nlohmann::json{rotation.x, rotation.y, rotation.z, rotation.w};
@@ -55,7 +55,7 @@ namespace NS::Object
             if (!q[0].is_number() || !q[1].is_number() || !q[2].is_number() || !q[3].is_number())
                 return;
             obj.Root().SetRotation(
-                NS::Math::Quaternion{q[0].get<float>(), q[1].get<float>(), q[2].get<float>(), q[3].get<float>()});
+                NS::Core::Quaternion{q[0].get<float>(), q[1].get<float>(), q[2].get<float>(), q[3].get<float>()});
         }
     } // namespace
 

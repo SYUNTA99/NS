@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Physics/Capsule.h"
 
 namespace NS::Physics
@@ -13,8 +13,8 @@ namespace NS::Physics
     /// @param outNormal capsule 表面外向きの接触法線。当たらなければ零ベクトル
     /// @retresult true = 接触あり / false = 接触なし
     [[nodiscard]] bool SweptCapsuleVsAABB(const NS::Physics::Capsule& capsule,
-                                          const NS::Math::Vector3& motion,
-                                          const NS::Math::AABB& box,
+                                          const NS::Core::Vector3& motion,
+                                          const NS::Core::AABB& box,
                                           float& outToi,
-                                          NS::Math::Vector3& outNormal) noexcept;
+                                          NS::Core::Vector3& outNormal) noexcept;
 } // namespace NS::Physics

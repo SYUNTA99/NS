@@ -52,7 +52,7 @@ namespace
     [[nodiscard]] SceneNs::ObjectData MakeObjectAt(std::uint32_t id, float x)
     {
         SceneNs::ObjectData obj;
-        SceneNs::SetObjectPosition(obj, NS::Math::Vector3{x, 0.0f, 0.0f});
+        SceneNs::SetObjectPosition(obj, NS::Core::Vector3{x, 0.0f, 0.0f});
         obj.objectId = id;
         return obj;
     }

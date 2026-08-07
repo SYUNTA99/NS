@@ -17,7 +17,7 @@ namespace
     {
         ApplicationDesc d{};
         d.window.title = title;
-        d.window.size = NS::Math::Size2D{width, height};
+        d.window.size = NS::Core::Size2D{width, height};
         d.window.visible = false;
 #ifdef NS_BUILD_DEBUG
         d.renderer.enableDebugLayer = true;

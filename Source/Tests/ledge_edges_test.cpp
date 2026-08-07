@@ -1,5 +1,5 @@
 #include "Game/Level/LedgeEdges.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Physics/SweptOBB.h"
 
 #include <algorithm>
@@ -11,10 +11,10 @@ namespace LevelNs = NS::Game::Level;
 namespace
 {
     // 軸並行の固形箱を OBB で組む。 axisX/Y/Z は既定の単位基底のまま
-    NS::Math::OBB AaBox(float cx, float cy, float cz, float ex = 0.5f, float ey = 0.5f, float ez = 0.5f)
+    NS::Core::OBB AaBox(float cx, float cy, float cz, float ex = 0.5f, float ey = 0.5f, float ez = 0.5f)
     {
-        NS::Math::OBB obb;
-        obb.center = NS::Math::Vector3{cx, cy, cz};
+        NS::Core::OBB obb;
+        obb.center = NS::Core::Vector3{cx, cy, cz};
         obb.halfExtentX = ex;
         obb.halfExtentY = ey;
         obb.halfExtentZ = ez;
@@ -103,10 +103,10 @@ TEST(LedgeEdgesTest, YawRotatedBoxEdgesFollowOrientation)
 {
     // yaw 45° に回した箱の天面は 45° 回った正方形。 縁の隅が軸並行の 0.5 でなく √2/2 まで張り出す
     constexpr float k_QuarterPi = 0.78539816339744830961f;
-    const NS::Math::OBB obb = NS::Physics::MakeObb(
-        NS::Math::Vector3{0.0f, 0.0f, 0.0f},
-        NS::Math::Quaternion::CreateFromAxisAngle(NS::Math::Vector3{0.0f, 1.0f, 0.0f}, k_QuarterPi),
-        NS::Math::Vector3{0.5f, 0.5f, 0.5f});
+    const NS::Core::OBB obb = NS::Physics::MakeObb(
+        NS::Core::Vector3{0.0f, 0.0f, 0.0f},
+        NS::Core::Quaternion::CreateFromAxisAngle(NS::Core::Vector3{0.0f, 1.0f, 0.0f}, k_QuarterPi),
+        NS::Core::Vector3{0.5f, 0.5f, 0.5f});
     const auto edges = LevelNs::ComputeTopLedgeEdges({obb});
     ASSERT_EQ(edges.size(), 4u);
 
@@ -127,10 +127,10 @@ TEST(LedgeEdgesTest, UpsideDownBoxEdgesStayOnTop)
     // X 軸まわり 180° で上下反転しても、 縁は実際に上を向く面 = 天面(y=+0.5) に出る
     // axisY 決め打ちだと反転で axisY が真下を向き、 縁が底面(y=-0.5) に出てしまう
     constexpr float k_Pi = 3.14159265358979323846f;
-    const NS::Math::OBB obb =
-        NS::Physics::MakeObb(NS::Math::Vector3{0.0f, 0.0f, 0.0f},
-                             NS::Math::Quaternion::CreateFromAxisAngle(NS::Math::Vector3{1.0f, 0.0f, 0.0f}, k_Pi),
-                             NS::Math::Vector3{0.5f, 0.5f, 0.5f});
+    const NS::Core::OBB obb =
+        NS::Physics::MakeObb(NS::Core::Vector3{0.0f, 0.0f, 0.0f},
+                             NS::Core::Quaternion::CreateFromAxisAngle(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, k_Pi),
+                             NS::Core::Vector3{0.5f, 0.5f, 0.5f});
     const auto edges = LevelNs::ComputeTopLedgeEdges({obb});
     ASSERT_EQ(edges.size(), 4u);
     for (const auto& e : edges)

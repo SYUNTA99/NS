@@ -3,7 +3,7 @@
 #include <Runtime/Graphics/Animation.h>
 #include <Runtime/Graphics/Retarget.h>
 #include <Runtime/Graphics/Skeleton.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <string>
 #include <utility>
 #include <vector>
@@ -17,8 +17,8 @@ namespace
     using NS::Graphics::Interpolation;
     using NS::Graphics::NormalizeBoneName;
     using NS::Graphics::Skeleton;
-    using NS::Math::Quaternion;
-    using NS::Math::Vector3;
+    using NS::Core::Quaternion;
+    using NS::Core::Vector3;
 
     Skeleton MakeSkeleton(const std::vector<std::string>& names)
     {
@@ -33,7 +33,7 @@ namespace
 
     Quaternion RotZ(float degrees)
     {
-        return Quaternion::CreateFromAxisAngle(Vector3(0.0f, 0.0f, 1.0f), NS::Math::DegreesToRadians(degrees));
+        return Quaternion::CreateFromAxisAngle(Vector3(0.0f, 0.0f, 1.0f), NS::Core::DegreesToRadians(degrees));
     }
 
     BoneTrack MakeRotationTrack(int boneIndex, float lastTime, float lastDegrees)

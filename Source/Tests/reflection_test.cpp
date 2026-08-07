@@ -1,4 +1,4 @@
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Object/Component.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/CameraBrainComponent.h>
@@ -39,13 +39,13 @@ namespace
         [[nodiscard]] float Speed() const noexcept { return m_speed; }
         [[nodiscard]] int Count() const noexcept { return m_count; }
         [[nodiscard]] bool Enabled() const noexcept { return m_enabled; }
-        [[nodiscard]] const NS::Math::Vector3& Offset() const noexcept { return m_offset; }
+        [[nodiscard]] const NS::Core::Vector3& Offset() const noexcept { return m_offset; }
 
     private:
         float m_speed = 1.5f;
         int m_count = 3;
         bool m_enabled = true;
-        NS::Math::Vector3 m_offset{1.0f, 2.0f, 3.0f};
+        NS::Core::Vector3 m_offset{1.0f, 2.0f, 3.0f};
     };
 
     // std::string をリフレクションするテスト用 Component
@@ -160,13 +160,13 @@ TEST(ReflectionTest, GetSetRoundTripsVector3)
     const FieldDesc* f = FindField(comp.GetReflection(), "Offset");
     ASSERT_NE(f, nullptr);
 
-    NS::Math::Vector3 got{};
+    NS::Core::Vector3 got{};
     f->get(&comp, &got);
     EXPECT_FLOAT_EQ(got.x, 1.0f);
     EXPECT_FLOAT_EQ(got.y, 2.0f);
     EXPECT_FLOAT_EQ(got.z, 3.0f);
 
-    NS::Math::Vector3 set{4.0f, 5.0f, 6.0f};
+    NS::Core::Vector3 set{4.0f, 5.0f, 6.0f};
     f->set(&comp, &set);
     EXPECT_FLOAT_EQ(comp.Offset().x, 4.0f);
     EXPECT_FLOAT_EQ(comp.Offset().y, 5.0f);
@@ -211,7 +211,7 @@ TEST(ReflectionTest, PlacedVirtualCameraReflectsSixFields)
     // Trigger Center は直メンバ経由で書き戻る
     const FieldDesc* center = FindField(info, "トリガー中心");
     ASSERT_NE(center, nullptr);
-    NS::Math::Vector3 newCenter{20.0f, 21.0f, 22.0f};
+    NS::Core::Vector3 newCenter{20.0f, 21.0f, 22.0f};
     center->set(cam, &newCenter);
     EXPECT_FLOAT_EQ(cam->TriggerCenter().x, 20.0f);
     EXPECT_FLOAT_EQ(cam->TriggerCenter().y, 21.0f);
@@ -251,9 +251,9 @@ TEST(ReflectionTest, MeshRendererReflectsBaseColorMeshAndMaterialRef)
     ASSERT_NE(color, nullptr);
     EXPECT_EQ(color->type, FieldType::Vector3);
 
-    NS::Math::Vector3 set{0.2f, 0.3f, 0.4f};
+    NS::Core::Vector3 set{0.2f, 0.3f, 0.4f};
     color->set(&renderer, &set);
-    NS::Math::Vector3 got{};
+    NS::Core::Vector3 got{};
     color->get(&renderer, &got);
     EXPECT_FLOAT_EQ(got.x, 0.2f);
     EXPECT_FLOAT_EQ(got.y, 0.3f);
@@ -290,14 +290,14 @@ TEST(ReflectionTest, BoxColliderHalfExtentsAccessorClampsNegative)
     const FieldDesc* he = FindField(info, "半径");
     ASSERT_NE(he, nullptr);
 
-    NS::Math::Vector3 set{2.0f, 3.0f, 4.0f};
+    NS::Core::Vector3 set{2.0f, 3.0f, 4.0f};
     he->set(&collider, &set);
     EXPECT_FLOAT_EQ(collider.HalfExtents().x, 2.0f);
     EXPECT_FLOAT_EQ(collider.HalfExtents().y, 3.0f);
     EXPECT_FLOAT_EQ(collider.HalfExtents().z, 4.0f);
 
     // ACCESSOR は setter 経由なので負は 0 にクランプされる (直 FIELD では起きない保証)
-    NS::Math::Vector3 negative{-1.0f, 5.0f, -2.0f};
+    NS::Core::Vector3 negative{-1.0f, 5.0f, -2.0f};
     he->set(&collider, &negative);
     EXPECT_FLOAT_EQ(collider.HalfExtents().x, 0.0f);
     EXPECT_FLOAT_EQ(collider.HalfExtents().y, 5.0f);
@@ -312,7 +312,7 @@ TEST(ReflectionTest, BoxColliderExposesCenterOffsetAndRotation)
 
     const FieldDesc* offset = FindField(info, "中心オフセット");
     ASSERT_NE(offset, nullptr);
-    NS::Math::Vector3 setOffset{1.0f, -2.0f, 3.0f};
+    NS::Core::Vector3 setOffset{1.0f, -2.0f, 3.0f};
     offset->set(&collider, &setOffset);
     EXPECT_FLOAT_EQ(collider.CenterOffset().x, 1.0f);
     EXPECT_FLOAT_EQ(collider.CenterOffset().y, -2.0f);
@@ -321,9 +321,9 @@ TEST(ReflectionTest, BoxColliderExposesCenterOffsetAndRotation)
     // 回転は Euler(度) アクセサで読み書きし、 往復で一致する
     const FieldDesc* rot = FindField(info, "回転 (度)");
     ASSERT_NE(rot, nullptr);
-    NS::Math::Vector3 setRot{0.0f, 90.0f, 0.0f};
+    NS::Core::Vector3 setRot{0.0f, 90.0f, 0.0f};
     rot->set(&collider, &setRot);
-    NS::Math::Vector3 readRot{};
+    NS::Core::Vector3 readRot{};
     rot->get(&collider, &readRot);
     EXPECT_NEAR(readRot.y, 90.0f, 1e-3f);
 }

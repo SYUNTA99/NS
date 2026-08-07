@@ -179,7 +179,7 @@ TEST(WorldTest, RebuildClearsStalePhysicsAndBuildsNothingWithoutFactory)
     NS::Object::Scene scene;
     NS::Physics::PhysicsWorld physics;
     // 古い衝突が Rebuild 後に残ると、 編集で消した block へ当たり続ける。 必ず Clear から始まる仕様を固定する
-    physics.AddAABB(NS::Math::AABB{NS::Math::Vector3{0.0f, 0.0f, 0.0f}, NS::Math::Vector3{1.0f, 1.0f, 1.0f}});
+    physics.AddAABB(NS::Core::AABB{NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Vector3{1.0f, 1.0f, 1.0f}});
     physics.BuildBroadphase();
     ASSERT_FALSE(physics.IsEmpty());
 
@@ -203,7 +203,7 @@ TEST(WorldTest, RebuildBuildsPlayerAndResolvesItById)
 {
     SceneData level;
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
-    level.objects.push_back(MakePlayerObject(NS::Math::Vector3{0.0f, 1.41f, 0.0f}, NS::Math::Quaternion{}));
+    level.objects.push_back(MakePlayerObject(NS::Core::Vector3{0.0f, 1.41f, 0.0f}, NS::Core::Quaternion{}));
     NS::Object::EnsureUniqueObjectIds(level);
 
     NS::Object::Scene scene;
@@ -379,7 +379,7 @@ TEST(WorldTest, RebuildBakesPlacedCamerasInactive)
 {
     SceneData level;
     NS::Object::ObjectData cameraObject{};
-    NS::Object::SetObjectPosition(cameraObject, NS::Math::Vector3{8.0f, 0.0f, 0.0f});
+    NS::Object::SetObjectPosition(cameraObject, NS::Core::Vector3{8.0f, 0.0f, 0.0f});
     nlohmann::json comp = NS::Object::MakeComponentEntry("PlacedVirtualCamera");
     NS::Object::SetField(comp, "優先度", 20);
     cameraObject.components.push_back(std::move(comp));
@@ -507,9 +507,9 @@ TEST(WorldTest, UpdateAllObjectsFollowsOwnerActiveFlag)
 TEST(WorldTest, MeshColliderTrianglesReachPhysics)
 {
     // CCW 並びで法線が上を向く床の三角形。 斜辺を x+z=4 まで押し出し、 原点を縁でなく内側に置く
-    std::vector<NS::Physics::Triangle> tris = {NS::Physics::Triangle{NS::Math::Vector3{-4.0f, 0.0f, -4.0f},
-                                                                     NS::Math::Vector3{-4.0f, 0.0f, 8.0f},
-                                                                     NS::Math::Vector3{8.0f, 0.0f, -4.0f}}};
+    std::vector<NS::Physics::Triangle> tris = {NS::Physics::Triangle{NS::Core::Vector3{-4.0f, 0.0f, -4.0f},
+                                                                     NS::Core::Vector3{-4.0f, 0.0f, 8.0f},
+                                                                     NS::Core::Vector3{8.0f, 0.0f, -4.0f}}};
 
     World world;
     auto* floor = world.Spawn<NS::Object::GameObject>();
@@ -520,8 +520,8 @@ TEST(WorldTest, MeshColliderTrianglesReachPhysics)
     ASSERT_FALSE(physics.IsEmpty());
 
     NS::Physics::Capsule cap;
-    cap.center = NS::Math::Vector3{0.0f, 2.0f, 0.0f};
-    const NS::Physics::SweepHit hit = physics.SweepCapsule(cap, NS::Math::Vector3{0.0f, -3.0f, 0.0f});
+    cap.center = NS::Core::Vector3{0.0f, 2.0f, 0.0f};
+    const NS::Physics::SweepHit hit = physics.SweepCapsule(cap, NS::Core::Vector3{0.0f, -3.0f, 0.0f});
     EXPECT_TRUE(hit.hit);
     EXPECT_GT(hit.normal.y, 0.7f);
 }
@@ -538,7 +538,7 @@ TEST(WorldTest, BoxColliderRoutesByRotation)
 
     World tilted;
     auto* box = tilted.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
-    box->SetRotationEulerDegrees(NS::Math::Vector3{0.0f, 30.0f, 0.0f});
+    box->SetRotationEulerDegrees(NS::Core::Vector3{0.0f, 30.0f, 0.0f});
 
     NS::Physics::PhysicsWorld tiltedPhysics;
     tilted.RebuildPhysics(tiltedPhysics);

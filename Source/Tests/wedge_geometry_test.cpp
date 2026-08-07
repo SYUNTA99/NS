@@ -7,7 +7,7 @@
 
 namespace
 {
-    using NS::Math::Vector3;
+    using NS::Core::Vector3;
     using NS::Physics::BuildWedgeTriangles;
     using NS::Physics::Triangle;
 

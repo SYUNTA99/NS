@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 
 namespace NS::Object
@@ -19,7 +19,7 @@ namespace NS::Object
 
         /// camera 相対移動用の水平 forward を注入し、 XZ 平面で Y=0 とする。未注入時は world +Z
         /// Brain の居る scene では OnUpdate が毎ステップ上書きする。 Brain 不在 (テスト等) では直接設定に使う
-        void SetCameraForward(const NS::Math::Vector3& cameraForwardHorizontal) noexcept;
+        void SetCameraForward(const NS::Core::Vector3& cameraForwardHorizontal) noexcept;
 
         [[nodiscard]] CharacterMovementComponent* Movement() const noexcept { return m_movement; }
 
@@ -32,6 +32,6 @@ namespace NS::Object
 
     private:
         CharacterMovementComponent* m_movement = nullptr;    // 橋渡し先の移動 Component (非所有)
-        NS::Math::Vector3 m_cameraForward{0.0f, 0.0f, 1.0f}; // camera 相対移動用の水平 forward
+        NS::Core::Vector3 m_cameraForward{0.0f, 0.0f, 1.0f}; // camera 相対移動用の水平 forward
     };
 } // namespace NS::Object

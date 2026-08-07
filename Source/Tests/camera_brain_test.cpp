@@ -44,12 +44,12 @@ protected:
 TEST_F(CameraBrainTest, PoseLerpInterpolatesEachField)
 {
     CameraPose a{};
-    a.position = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
-    a.fovY = NS::Math::Radians{1.0f};
+    a.position = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+    a.fovY = NS::Core::Radians{1.0f};
     a.farPlane = 100.0f;
     CameraPose b{};
-    b.position = NS::Math::Vector3{10.0f, 0.0f, 0.0f};
-    b.fovY = NS::Math::Radians{3.0f};
+    b.position = NS::Core::Vector3{10.0f, 0.0f, 0.0f};
+    b.fovY = NS::Core::Radians{3.0f};
     b.farPlane = 200.0f;
 
     const auto mid = CameraPose::Lerp(a, b, 0.5f);

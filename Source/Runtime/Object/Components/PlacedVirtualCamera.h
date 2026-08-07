@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 
@@ -12,18 +12,18 @@ namespace NS::Object
     /// `UpdateActivation(playerPos)` がトリガ内なら自分を active 化し、lookAtPlayer 時は注視点を
     /// プレイヤーへ向ける。`SetVcamPriority` を follow より高くしておけば、active な間だけ
     /// CameraBrain がこれを選んでブレンドする。`EvaluatePose` は alpha 無視で固定 pose を返す
-    /// 依存: NS::Math, NS::Object::VirtualCameraComponent
+    /// 依存: NS::Core, NS::Object::VirtualCameraComponent
     class PlacedVirtualCamera : public VirtualCameraComponent
     {
     public:
         PlacedVirtualCamera() noexcept;
 
         /// 据え置き位置と注視点を設定する。位置は owner の Transform へ書く。owner 不在なら注視点のみ
-        void SetView(const NS::Math::Vector3& position, const NS::Math::Vector3& target) noexcept;
-        void SetUpDirection(const NS::Math::Vector3& up) noexcept { m_up = up; }
+        void SetView(const NS::Core::Vector3& position, const NS::Core::Vector3& target) noexcept;
+        void SetUpDirection(const NS::Core::Vector3& up) noexcept { m_up = up; }
 
         /// 進入判定用のトリガ AABB を中心と半径で設定する。 半径成分は呼出側が正値に保つ
-        void SetTrigger(const NS::Math::Vector3& center, const NS::Math::Vector3& extent) noexcept
+        void SetTrigger(const NS::Core::Vector3& center, const NS::Core::Vector3& extent) noexcept
         {
             m_triggerCenter = center;
             m_triggerExtent = extent;
@@ -33,16 +33,16 @@ namespace NS::Object
 
         /// プレイヤー位置がトリガ AABB 内なら自分を active 化し、外なら非 active にする
         /// lookAtPlayer 時は進入中の注視点をプレイヤーへ更新する。play 中に毎ステップ呼ぶ
-        void UpdateActivation(const NS::Math::Vector3& playerPosition) noexcept;
+        void UpdateActivation(const NS::Core::Vector3& playerPosition) noexcept;
 
         /// 視点の world 位置。owner の Transform から読む。owner 不在は既定位置
-        [[nodiscard]] NS::Math::Vector3 ViewPosition() const noexcept;
-        [[nodiscard]] const NS::Math::Vector3& ViewTarget() const noexcept { return m_target; }
+        [[nodiscard]] NS::Core::Vector3 ViewPosition() const noexcept;
+        [[nodiscard]] const NS::Core::Vector3& ViewTarget() const noexcept { return m_target; }
 
         /// 進入判定トリガ AABB の中心
-        [[nodiscard]] const NS::Math::Vector3& TriggerCenter() const noexcept { return m_triggerCenter; }
+        [[nodiscard]] const NS::Core::Vector3& TriggerCenter() const noexcept { return m_triggerCenter; }
         /// 進入判定トリガ AABB の半径成分
-        [[nodiscard]] const NS::Math::Vector3& TriggerExtent() const noexcept { return m_triggerExtent; }
+        [[nodiscard]] const NS::Core::Vector3& TriggerExtent() const noexcept { return m_triggerExtent; }
         /// 進入中にプレイヤーを追視するか
         [[nodiscard]] bool LooksAtPlayer() const noexcept { return m_lookAtPlayer; }
 
@@ -59,10 +59,10 @@ namespace NS::Object
         NS_REFLECT_END()
 
     private:
-        NS::Math::Vector3 m_target{0.0f, 0.0f, 0.0f};        // 注視点
-        NS::Math::Vector3 m_up{0.0f, 1.0f, 0.0f};            // アップベクトル
-        NS::Math::Vector3 m_triggerCenter{0.0f, 0.0f, 0.0f}; // 進入判定トリガ AABB の中心
-        NS::Math::Vector3 m_triggerExtent{1.0f, 1.0f, 1.0f}; // トリガ AABB の半径成分
+        NS::Core::Vector3 m_target{0.0f, 0.0f, 0.0f};        // 注視点
+        NS::Core::Vector3 m_up{0.0f, 1.0f, 0.0f};            // アップベクトル
+        NS::Core::Vector3 m_triggerCenter{0.0f, 0.0f, 0.0f}; // 進入判定トリガ AABB の中心
+        NS::Core::Vector3 m_triggerExtent{1.0f, 1.0f, 1.0f}; // トリガ AABB の半径成分
         bool m_lookAtPlayer = false;                         // 進入中にプレイヤーを追視するか
     };
 } // namespace NS::Object

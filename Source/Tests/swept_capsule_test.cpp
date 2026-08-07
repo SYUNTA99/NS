@@ -1,12 +1,12 @@
 #include <gtest/gtest.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Physics/Capsule.h>
 #include <Runtime/Physics/SweptAABB.h>
 
 namespace
 {
-    using NS::Math::AABB;
-    using NS::Math::Vector3;
+    using NS::Core::AABB;
+    using NS::Core::Vector3;
     using NS::Physics::Capsule;
     using NS::Physics::SweptCapsuleVsAABB;
 

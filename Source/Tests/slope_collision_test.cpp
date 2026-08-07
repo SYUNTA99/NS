@@ -1,14 +1,14 @@
 #include <array>
 #include <cmath>
 #include <gtest/gtest.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Physics/CapsuleMover.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 #include <Runtime/Physics/SweptTriangle.h>
 
 namespace
 {
-    using NS::Math::Vector3;
+    using NS::Core::Vector3;
     using NS::Physics::CapsuleMover;
     using NS::Physics::CapsuleMoverInput;
     using NS::Physics::CapsuleMoverResult;

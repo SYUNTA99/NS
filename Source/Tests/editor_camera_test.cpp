@@ -49,7 +49,7 @@ TEST(EditorCameraTest, FlyMoveForwardFollowsLookDirection)
     EditorCamera cam;
     cam.SetYawPitch(0.0f, 0.0f); // 水平で -Z を向く
     cam.SetDistance(10.0f);
-    cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+    cam.SetCenter(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
 
     // yaw=0/pitch=0 で前進(W)は視線方向 -Z。 移動量は KeyMoveSpeed 0.6 × distance 10 × dt 1 = 6
     cam.ApplyFlyMove(1.0f, 0.0f, 0.0f, 1.0f);
@@ -65,7 +65,7 @@ TEST(EditorCameraTest, FlyMoveKeepsSpeedWhenZoomedIn)
     EditorCamera cam;
     cam.SetYawPitch(0.0f, 0.0f);
     cam.SetDistance(EditorCamera::k_MinDistance);
-    cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+    cam.SetCenter(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
 
     // 下限 6 × KeyMoveSpeed 0.6 × dt 1 = 3.6。 素の距離 2 だと 1.2 しか進まない
     cam.ApplyFlyMove(1.0f, 0.0f, 0.0f, 1.0f);
@@ -77,7 +77,7 @@ TEST(EditorCameraTest, FlyMoveForwardIncludesPitch)
     EditorCamera cam;
     cam.SetYawPitch(0.0f, -0.5f); // 上を向く
     cam.SetDistance(10.0f);
-    cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+    cam.SetCenter(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
 
     // pitch を含むので W は見上げた方向、 すなわち高さも上がる (旧 ApplyKeyMove は水平のみだった)
     cam.ApplyFlyMove(1.0f, 0.0f, 0.0f, 1.0f);
@@ -90,7 +90,7 @@ TEST(EditorCameraTest, FlyMoveStrafeGoesScreenRight)
     EditorCamera cam;
     cam.SetYawPitch(0.0f, 0.0f);
     cam.SetDistance(10.0f);
-    cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+    cam.SetCenter(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
 
     // LH view では yaw=0 の画面右は -X。 D(strafe +1) はそちらへ動く (左右反転バグの回帰防止)
     cam.ApplyFlyMove(0.0f, 1.0f, 0.0f, 1.0f);
@@ -104,7 +104,7 @@ TEST(EditorCameraTest, FlyMoveVerticalUsesWorldUp)
     EditorCamera cam;
     cam.SetYawPitch(0.7f, -0.3f); // 向きに依らず上下は world 軸
     cam.SetDistance(10.0f);
-    cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+    cam.SetCenter(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
 
     cam.ApplyFlyMove(0.0f, 0.0f, 1.0f, 1.0f); // E 相当
     EXPECT_NEAR(cam.Center().y, 6.0f, 1e-4f);
@@ -117,7 +117,7 @@ TEST(EditorCameraTest, LookKeepsEyeFixed)
     EditorCamera cam;
     cam.SetYawPitch(0.0f, -0.2f);
     cam.SetDistance(10.0f);
-    cam.SetCenter(NS::Math::Vector3{1.0f, 2.0f, 3.0f});
+    cam.SetCenter(NS::Core::Vector3{1.0f, 2.0f, 3.0f});
 
     // その場の見回し: yaw/pitch は変わるが eye は不変 (orbit ではない)
     const auto eyeBefore = cam.ComputeCameraPosition();
@@ -176,7 +176,7 @@ TEST(EditorCameraTest, PoseCarriesProjectionSettings)
     EditorCamera cam;
     cam.SetNearPlane(0.5f);
     cam.SetFarPlane(3000.0f);
-    cam.SetCenter(NS::Math::Vector3{1.0f, 2.0f, 3.0f});
+    cam.SetCenter(NS::Core::Vector3{1.0f, 2.0f, 3.0f});
 
     const NS::Object::CameraPose pose = cam.Pose();
     EXPECT_FLOAT_EQ(pose.nearPlane, 0.5f);
@@ -197,7 +197,7 @@ TEST(EditorCameraTest, TickDoesNotCrashHeadless)
 TEST(EditorCameraTest, ApplyInputFlyingLooksAndKeepsEyeFixed)
 {
     EditorCamera cam;
-    cam.SetCenter(NS::Math::Vector3{1.0f, 2.0f, 3.0f});
+    cam.SetCenter(NS::Core::Vector3{1.0f, 2.0f, 3.0f});
     cam.SetDistance(10.0f);
     const auto eyeBefore = cam.ComputeCameraPosition();
 
@@ -217,7 +217,7 @@ TEST(EditorCameraTest, ApplyInputFlyingLooksAndKeepsEyeFixed)
 TEST(EditorCameraTest, ApplyInputIgnoresLookAndMoveWhenNotFlying)
 {
     EditorCamera cam;
-    cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+    cam.SetCenter(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
     const auto centerBefore = cam.Center();
 
     EditorCameraInput input{};
@@ -238,7 +238,7 @@ TEST(EditorCameraTest, ApplyInputFlyingMovesForward)
     EditorCamera cam;
     cam.SetYawPitch(0.0f, 0.0f);
     cam.SetDistance(10.0f);
-    cam.SetCenter(NS::Math::Vector3{0.0f, 0.0f, 0.0f});
+    cam.SetCenter(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
 
     EditorCameraInput input{};
     input.flying = true;

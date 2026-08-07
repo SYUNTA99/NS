@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 
@@ -17,7 +17,7 @@ namespace NS::Object
     /// EvaluatePose(alpha) を実カメラへ書く
     /// 描画 / aspect 設定 / PlayerInput の forward 取得もこの Brain 経由に集約する
     /// active 切替は SetBlendDuration 秒の ease-in-out で旧 pose から繋ぎ、0 で即時カット
-    /// 依存: NS::Math, NS::Object::Component / CameraComponent / VirtualCameraComponent
+    /// 依存: NS::Core, NS::Object::Component / CameraComponent / VirtualCameraComponent
     class CameraBrainComponent : public Component
     {
     public:
@@ -59,8 +59,8 @@ namespace NS::Object
         [[nodiscard]] std::optional<CameraPose> EvaluateTopPose(float alpha) const noexcept;
 
         /// 実カメラへの素通しアクセサ。描画 / 半透明ソート / PlayerInput forward の接続先
-        [[nodiscard]] NS::Math::Matrix ViewProjection() const noexcept;
-        [[nodiscard]] NS::Math::Vector3 ForwardHorizontal() const noexcept;
+        [[nodiscard]] NS::Core::Matrix ViewProjection() const noexcept;
+        [[nodiscard]] NS::Core::Vector3 ForwardHorizontal() const noexcept;
         [[nodiscard]] CameraComponent* Camera() const noexcept { return m_camera; }
 
         // vcam 切替ブレンド秒を Inspector へ公開する。 負クランプを保つため setter 経由で書く

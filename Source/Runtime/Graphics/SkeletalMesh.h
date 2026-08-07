@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Runtime/Graphics/Mesh.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <cstddef>
 #include <memory>
@@ -18,9 +18,9 @@ namespace NS::Graphics
     //! @details 頂点の基本情報に加え、最大4つのボーンからインデックスとウェイトを保持する
     struct SkinnedVertex
     {
-        NS::Math::Vector3 position;
-        NS::Math::Vector2 uv;
-        NS::Math::Vector3 normal;
+        NS::Core::Vector3 position;
+        NS::Core::Vector2 uv;
+        NS::Core::Vector3 normal;
         std::uint32_t joints[4];
         float weights[4];
     };
@@ -41,7 +41,7 @@ namespace NS::Graphics
     //! シェーダへ転送するボーンの姿勢データ（ボーンパレット）
     struct BonePaletteCB
     {
-        NS::Math::Matrix bones[k_MaxBones];
+        NS::Core::Matrix bones[k_MaxBones];
     };
     static_assert((sizeof(BonePaletteCB) % 16) == 0, "定数バッファのサイズは16バイトの倍数である必要があります。");
 
@@ -53,7 +53,7 @@ namespace NS::Graphics
     //! 中心だけ動かし半径そのままの箱にすると、回転しても半径が変わらずポーズ追従の境界になる
     struct BoneSphere
     {
-        NS::Math::Vector3 center{0.0f, 0.0f, 0.0f}; // バインド空間での影響頂点の中心
+        NS::Core::Vector3 center{0.0f, 0.0f, 0.0f}; // バインド空間での影響頂点の中心
         float radius = 0.0f;                        // 中心から最遠の影響頂点までの距離、負なら影響頂点なし
     };
 
@@ -67,10 +67,10 @@ namespace NS::Graphics
     //! @brief ボーン球とボーンパレットから現在ポーズのモデル空間境界を組む
     //! @details 各球の中心を palette[i] で動かし半径そのままの箱にして全ボーン分を包む。
     //! 影響球が1つも無ければ fallback を返す。手足が箱を割る過小を作らない保守的な包み方
-    [[nodiscard]] NS::Math::AABB MergeSkinnedBounds(const std::vector<BoneSphere>& spheres,
-                                                    const NS::Math::Matrix* palette,
+    [[nodiscard]] NS::Core::AABB MergeSkinnedBounds(const std::vector<BoneSphere>& spheres,
+                                                    const NS::Core::Matrix* palette,
                                                     std::size_t paletteCount,
-                                                    const NS::Math::AABB& fallback);
+                                                    const NS::Core::AABB& fallback);
 
     //! @brief スキンメッシュの形状データを管理するクラス。
     //! @details アニメーションに必要な特殊な頂点データを保持し、描画処理へ渡す。

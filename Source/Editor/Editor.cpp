@@ -71,7 +71,7 @@ void Editor::OnAttach()
     m_controller->Setup(m_imgui.get());
 
     // 初回フレームからオフスクリーンで描けるよう、ウィンドウサイズを初期の目標サイズにしておく
-    const NS::Math::Size2D viewSize = app->Window().Size();
+    const NS::Core::Size2D viewSize = app->Window().Size();
     m_sceneView.SetInitialSize(viewSize);
     m_gameView.SetInitialSize(viewSize);
 

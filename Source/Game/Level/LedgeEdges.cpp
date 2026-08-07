@@ -1,6 +1,6 @@
 ﻿#include "Game/Level/LedgeEdges.h"
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <cmath>
 
@@ -8,9 +8,9 @@ namespace NS::Game::Level
 {
     namespace
     {
-        using NS::Math::Dot;
-        using NS::Math::Vector3;
-        using NS::Math::OBB;
+        using NS::Core::Dot;
+        using NS::Core::Vector3;
+        using NS::Core::OBB;
 
         // -------------------------------------------------------------------------
         // 内部ヘルパー数学関数
@@ -36,7 +36,7 @@ namespace NS::Game::Level
         }
     } // namespace
 
-    std::vector<LedgeEdge> ComputeTopLedgeEdges(const std::vector<NS::Math::OBB>& solidBoxes)
+    std::vector<LedgeEdge> ComputeTopLedgeEdges(const std::vector<NS::Core::OBB>& solidBoxes)
     {
         constexpr float k_ContainEps = 1.0e-3f; // 面上も内側と判定する許容誤差
         constexpr float k_ProbeDist = 0.05f;    // 隣接判定で縁の外側を調べる距離（これ未満の隙間は地続き）

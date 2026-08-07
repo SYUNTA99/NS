@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <memory>
 #include <utility>
@@ -57,13 +57,13 @@ namespace NS::UI
         [[nodiscard]] bool HasChildren() const noexcept { return !m_children.empty(); }
 
         //! 親矩形内の基準点 (0..1)。(0,0)=左上、(1,1)=右下
-        void SetAnchor(const NS::Math::Vector2& anchor) noexcept { m_anchor = anchor; }
+        void SetAnchor(const NS::Core::Vector2& anchor) noexcept { m_anchor = anchor; }
         //! 自分の矩形のどこを anchor に合わせるか (0..1)
-        void SetPivot(const NS::Math::Vector2& pivot) noexcept { m_pivot = pivot; }
+        void SetPivot(const NS::Core::Vector2& pivot) noexcept { m_pivot = pivot; }
         //! anchor からのずらし量 (基準解像度ピクセル)
-        void SetOffset(const NS::Math::Vector2& offset) noexcept { m_offset = offset; }
+        void SetOffset(const NS::Core::Vector2& offset) noexcept { m_offset = offset; }
         //! 自分の矩形の大きさ (基準解像度ピクセル)
-        void SetSize(const NS::Math::Vector2& size) noexcept { m_size = size; }
+        void SetSize(const NS::Core::Vector2& size) noexcept { m_size = size; }
         //! true なら親矩形いっぱいに広がり、anchor / offset / size を無視する。全画面の覆いに使う
         void SetStretch(bool stretch) noexcept { m_stretch = stretch; }
         //! false の間は自分ごと子も描かず、当たり判定からも消える
@@ -99,10 +99,10 @@ namespace NS::UI
         //! 組み上がった子を受け取って所有する。AddChild<T> だけが通る
         void Adopt(std::unique_ptr<Widget> child);
 
-        NS::Math::Vector2 m_anchor{0.0f, 0.0f}; // 親矩形内の基準点 (0..1)
-        NS::Math::Vector2 m_pivot{0.0f, 0.0f};  // 自分の矩形の合わせ点 (0..1)
-        NS::Math::Vector2 m_offset{0.0f, 0.0f}; // anchor からのずらし (基準解像度ピクセル)
-        NS::Math::Vector2 m_size{0.0f, 0.0f};   // 大きさ (基準解像度ピクセル)
+        NS::Core::Vector2 m_anchor{0.0f, 0.0f}; // 親矩形内の基準点 (0..1)
+        NS::Core::Vector2 m_pivot{0.0f, 0.0f};  // 自分の矩形の合わせ点 (0..1)
+        NS::Core::Vector2 m_offset{0.0f, 0.0f}; // anchor からのずらし (基準解像度ピクセル)
+        NS::Core::Vector2 m_size{0.0f, 0.0f};   // 大きさ (基準解像度ピクセル)
         bool m_stretch = false;                 // 親いっぱいに広がるか
         bool m_visible = true;
         float m_alpha = 1.0f;

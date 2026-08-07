@@ -22,7 +22,7 @@ namespace
     {
         WindowDesc d{};
         d.title = title;
-        d.size = NS::Math::Size2D{320, 240};
+        d.size = NS::Core::Size2D{320, 240};
         d.visible = false;
         return d;
     }
@@ -57,7 +57,7 @@ TEST_F(TextureLoggerTest, MissingFileFallsBackToMagenta)
     Texture& tex = *texHolder;
     EXPECT_TRUE(tex.IsValid());
     EXPECT_TRUE(tex.IsUsingFallback());
-    EXPECT_EQ(tex.Size(), (NS::Math::Size2D{1, 1}));
+    EXPECT_EQ(tex.Size(), (NS::Core::Size2D{1, 1}));
 }
 
 TEST_F(TextureLoggerTest, EmptyPathFallsBack)
@@ -142,7 +142,7 @@ TEST_F(TextureLoggerTest, RenderTargetHasRtvOnly)
     EXPECT_EQ(tex.Srv(), nullptr);
     EXPECT_EQ(tex.Dsv(), nullptr);
     EXPECT_FALSE(tex.IsUsingFallback());
-    EXPECT_EQ(tex.Size(), (NS::Math::Size2D{64, 64}));
+    EXPECT_EQ(tex.Size(), (NS::Core::Size2D{64, 64}));
 }
 
 TEST_F(TextureLoggerTest, RenderToTextureHasRtvAndSrv)

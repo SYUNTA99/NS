@@ -56,8 +56,8 @@ public:
 
 /// 指定の位置と向きでプレイヤーの ObjectData を作る。components は型名だけ持ち、値はコード既定を使う
 /// scale は capsule 当たり 0.4/0.9/0.4 に cube mesh の見た目を合わせる値
-[[nodiscard]] NS::Object::ObjectData MakePlayerObject(const NS::Math::Vector3& position,
-                                                       const NS::Math::Quaternion& rotation);
+[[nodiscard]] NS::Object::ObjectData MakePlayerObject(const NS::Core::Vector3& position,
+                                                       const NS::Core::Quaternion& rotation);
 
 /// プレイヤーの永続 id。居なければ k_NoObjectId。追従カメラの追従先を結ぶのに使う
 [[nodiscard]] std::uint32_t PlayerObjectId(const NS::Object::SceneData& level) noexcept;

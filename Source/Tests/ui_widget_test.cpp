@@ -157,7 +157,7 @@ TEST(UIWidgetTest, RenderDrawsScaledRectAndCascadedAlpha)
     // alpha は木を掛け算で降り、矩形は実ピクセルへ拡縮されて届く
     ASSERT_EQ(probe->drawCount, 1);
     EXPECT_FLOAT_EQ(probe->lastAlpha, 0.25f);
-    const NS::Math::Size2D size = renderer.Size();
+    const NS::Core::Size2D size = renderer.Size();
     EXPECT_NEAR(probe->lastRectPx.width, static_cast<float>(size.width), 0.01f);
     EXPECT_NEAR(probe->lastRectPx.height, static_cast<float>(size.height), 0.01f);
 }

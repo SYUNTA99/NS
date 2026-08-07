@@ -15,17 +15,17 @@ namespace NS::Object
         }
     }
 
-    void Transform::SetPosition(const NS::Math::Vector3& position) noexcept
+    void Transform::SetPosition(const NS::Core::Vector3& position) noexcept
     {
         m_position = position;
     }
 
-    void Transform::SetRotation(const NS::Math::Quaternion& rotation) noexcept
+    void Transform::SetRotation(const NS::Core::Quaternion& rotation) noexcept
     {
         m_rotation = rotation;
     }
 
-    void Transform::SetScale(const NS::Math::Vector3& scale) noexcept
+    void Transform::SetScale(const NS::Core::Vector3& scale) noexcept
     {
         m_scale = scale;
     }
@@ -37,34 +37,34 @@ namespace NS::Object
         m_previousScale = m_scale;
     }
 
-    NS::Math::Matrix Transform::LocalMatrix() const noexcept
+    NS::Core::Matrix Transform::LocalMatrix() const noexcept
     {
-        const NS::Math::Matrix scale = NS::Math::Matrix::CreateScale(m_scale);
-        const NS::Math::Matrix rotate = NS::Math::Matrix::CreateFromQuaternion(m_rotation);
-        const NS::Math::Matrix translate = NS::Math::Matrix::CreateTranslation(m_position);
+        const NS::Core::Matrix scale = NS::Core::Matrix::CreateScale(m_scale);
+        const NS::Core::Matrix rotate = NS::Core::Matrix::CreateFromQuaternion(m_rotation);
+        const NS::Core::Matrix translate = NS::Core::Matrix::CreateTranslation(m_position);
         return scale * rotate * translate;
     }
 
-    NS::Math::Matrix Transform::WorldMatrix() const noexcept
+    NS::Core::Matrix Transform::WorldMatrix() const noexcept
     {
         if (m_parent == nullptr)
             return LocalMatrix();
         return LocalMatrix() * m_parent->WorldMatrix();
     }
 
-    NS::Math::Matrix Transform::InterpolatedLocalMatrix(float alpha) const noexcept
+    NS::Core::Matrix Transform::InterpolatedLocalMatrix(float alpha) const noexcept
     {
-        const NS::Math::Vector3 position = NS::Math::Vector3::Lerp(m_previousPosition, m_position, alpha);
-        const NS::Math::Quaternion rotation = NS::Math::Quaternion::Slerp(m_previousRotation, m_rotation, alpha);
-        const NS::Math::Vector3 scale = NS::Math::Vector3::Lerp(m_previousScale, m_scale, alpha);
+        const NS::Core::Vector3 position = NS::Core::Vector3::Lerp(m_previousPosition, m_position, alpha);
+        const NS::Core::Quaternion rotation = NS::Core::Quaternion::Slerp(m_previousRotation, m_rotation, alpha);
+        const NS::Core::Vector3 scale = NS::Core::Vector3::Lerp(m_previousScale, m_scale, alpha);
 
-        const NS::Math::Matrix scaleM = NS::Math::Matrix::CreateScale(scale);
-        const NS::Math::Matrix rotateM = NS::Math::Matrix::CreateFromQuaternion(rotation);
-        const NS::Math::Matrix translateM = NS::Math::Matrix::CreateTranslation(position);
+        const NS::Core::Matrix scaleM = NS::Core::Matrix::CreateScale(scale);
+        const NS::Core::Matrix rotateM = NS::Core::Matrix::CreateFromQuaternion(rotation);
+        const NS::Core::Matrix translateM = NS::Core::Matrix::CreateTranslation(position);
         return scaleM * rotateM * translateM;
     }
 
-    NS::Math::Matrix Transform::InterpolatedWorldMatrix(float alpha) const noexcept
+    NS::Core::Matrix Transform::InterpolatedWorldMatrix(float alpha) const noexcept
     {
         if (m_parent == nullptr)
             return InterpolatedLocalMatrix(alpha);

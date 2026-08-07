@@ -164,8 +164,8 @@ namespace NS::Graphics
             // 頂点を world 変換して LH で積む
             geom.vertices.reserve(geom.vertices.size() + vertexCount);
             // 頂点を積むついでに軸並行境界を広げ、StaticMesh 側の二度目の全走査を省く
-            NS::Math::Vector3 pmin{0.0f, 0.0f, 0.0f};
-            NS::Math::Vector3 pmax{0.0f, 0.0f, 0.0f};
+            NS::Core::Vector3 pmin{0.0f, 0.0f, 0.0f};
+            NS::Core::Vector3 pmax{0.0f, 0.0f, 0.0f};
             for (cgltf_size i = 0; i < vertexCount; ++i)
             {
                 float p[3] = {0.0f, 0.0f, 0.0f};
@@ -176,7 +176,7 @@ namespace NS::Graphics
                 const float wz = world[2] * p[0] + world[6] * p[1] + world[10] * p[2] + world[14];
 
                 StaticVertex v{};
-                v.position = NS::Math::Vector3{wx, wy, -wz};
+                v.position = NS::Core::Vector3{wx, wy, -wz};
                 if (i == 0)
                 {
                     pmin = v.position;
@@ -184,14 +184,14 @@ namespace NS::Graphics
                 }
                 else
                 {
-                    pmin = NS::Math::Vector3::Min(pmin, v.position);
-                    pmax = NS::Math::Vector3::Max(pmax, v.position);
+                    pmin = NS::Core::Vector3::Min(pmin, v.position);
+                    pmax = NS::Core::Vector3::Max(pmax, v.position);
                 }
 
                 float uv[2] = {0.0f, 0.0f};
                 if (uvAcc != nullptr)
                     cgltf_accessor_read_float(uvAcc, i, uv, 2);
-                v.uv = NS::Math::Vector2{uv[0], uv[1]};
+                v.uv = NS::Core::Vector2{uv[0], uv[1]};
 
                 float n[3] = {0.0f, 0.0f, 1.0f};
                 if (normalAcc != nullptr)
@@ -205,7 +205,7 @@ namespace NS::Graphics
                 const float nx = nm[0] * n[0] + nm[1] * n[1] + nm[2] * n[2];
                 const float ny = nm[3] * n[0] + nm[4] * n[1] + nm[5] * n[2];
                 const float nz = nm[6] * n[0] + nm[7] * n[1] + nm[8] * n[2];
-                NS::Math::Vector3 normal{nx, ny, -nz};
+                NS::Core::Vector3 normal{nx, ny, -nz};
                 normal.Normalize();
                 v.normal = normal;
 
@@ -214,9 +214,9 @@ namespace NS::Graphics
 
             if (vertexCount > 0)
             {
-                const NS::Math::Vector3 center = (pmin + pmax) * 0.5f;
-                const NS::Math::Vector3 extents = (pmax - pmin) * 0.5f;
-                const NS::Math::AABB primBox{center, extents};
+                const NS::Core::Vector3 center = (pmin + pmax) * 0.5f;
+                const NS::Core::Vector3 extents = (pmax - pmin) * 0.5f;
+                const NS::Core::AABB primBox{center, extents};
                 if (!geom.hasBounds)
                 {
                     geom.bounds = primBox;
@@ -224,7 +224,7 @@ namespace NS::Graphics
                 }
                 else
                 {
-                    NS::Math::AABB::CreateMerged(geom.bounds, geom.bounds, primBox);
+                    NS::Core::AABB::CreateMerged(geom.bounds, geom.bounds, primBox);
                 }
             }
 
@@ -353,10 +353,10 @@ namespace NS::Graphics
             BonePose pose;
             if (node.has_matrix)
             {
-                NS::Math::Vector3 scale;
-                NS::Math::Quaternion rotation;
-                NS::Math::Vector3 translation;
-                NS::Math::Matrix local = detail::ReadColumnMajorMatrix(node.matrix);
+                NS::Core::Vector3 scale;
+                NS::Core::Quaternion rotation;
+                NS::Core::Vector3 translation;
+                NS::Core::Matrix local = detail::ReadColumnMajorMatrix(node.matrix);
                 local.Decompose(scale, rotation, translation);
                 pose.translation = detail::MirrorZ(translation);
                 pose.rotation = detail::MirrorQuaternionZ(rotation);
@@ -365,12 +365,12 @@ namespace NS::Graphics
             else
             {
                 if (node.has_translation)
-                    pose.translation = NS::Math::Vector3{node.translation[0], node.translation[1], node.translation[2]};
+                    pose.translation = NS::Core::Vector3{node.translation[0], node.translation[1], node.translation[2]};
                 if (node.has_rotation)
                     pose.rotation =
-                        NS::Math::Quaternion{node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]};
+                        NS::Core::Quaternion{node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]};
                 if (node.has_scale)
-                    pose.scale = NS::Math::Vector3{node.scale[0], node.scale[1], node.scale[2]};
+                    pose.scale = NS::Core::Vector3{node.scale[0], node.scale[1], node.scale[2]};
                 pose.translation = detail::MirrorZ(pose.translation);
                 pose.rotation = detail::MirrorQuaternionZ(pose.rotation);
             }
@@ -433,7 +433,7 @@ namespace NS::Graphics
         }
 
         // root joint の親ノード world 変換を LH で返しアーマチュア変換を skinned 出力へ反映。親なしは恒等
-        NS::Math::Matrix ComputeSkeletonRootTransform(const cgltf_skin& skin)
+        NS::Core::Matrix ComputeSkeletonRootTransform(const cgltf_skin& skin)
         {
             for (cgltf_size i = 0; i < skin.joints_count; ++i)
             {
@@ -442,12 +442,12 @@ namespace NS::Graphics
                     continue;
                 const cgltf_node* armature = jointNode->parent;
                 if (armature == nullptr)
-                    return NS::Math::Matrix::Identity;
+                    return NS::Core::Matrix::Identity;
                 float world[16];
                 cgltf_node_transform_world(armature, world);
                 return detail::ConjugateZMatrix(detail::ReadColumnMajorMatrix(world));
             }
-            return NS::Math::Matrix::Identity;
+            return NS::Core::Matrix::Identity;
         }
 
         // node 変換は頂点へ適用しない。重みのある joint index が範囲外なら false
@@ -492,12 +492,12 @@ namespace NS::Graphics
                 float p[3] = {0.0f, 0.0f, 0.0f};
                 cgltf_accessor_read_float(posAcc, i, p, 3);
                 SkinnedVertex v{};
-                v.position = detail::MirrorZ(NS::Math::Vector3{p[0], p[1], p[2]});
+                v.position = detail::MirrorZ(NS::Core::Vector3{p[0], p[1], p[2]});
 
                 float uv[2] = {0.0f, 0.0f};
                 if (uvAcc != nullptr)
                     cgltf_accessor_read_float(uvAcc, i, uv, 2);
-                v.uv = NS::Math::Vector2{uv[0], uv[1]};
+                v.uv = NS::Core::Vector2{uv[0], uv[1]};
 
                 float n[3] = {0.0f, 0.0f, 1.0f};
                 if (normalAcc != nullptr)
@@ -508,7 +508,7 @@ namespace NS::Graphics
                     n[1] = computedNormals[i][1];
                     n[2] = computedNormals[i][2];
                 }
-                NS::Math::Vector3 normal = detail::MirrorZ(NS::Math::Vector3{n[0], n[1], n[2]});
+                NS::Core::Vector3 normal = detail::MirrorZ(NS::Core::Vector3{n[0], n[1], n[2]});
                 normal.Normalize();
                 v.normal = normal;
 
@@ -652,7 +652,7 @@ namespace NS::Graphics
                         {
                             float v[3] = {0.0f, 0.0f, 0.0f};
                             cgltf_accessor_read_float(sampler.output, i * stride + valueOffset, v, 3);
-                            track.positionValues[i] = detail::MirrorZ(NS::Math::Vector3{v[0], v[1], v[2]});
+                            track.positionValues[i] = detail::MirrorZ(NS::Core::Vector3{v[0], v[1], v[2]});
                         }
                     }
                     else if (channel.target_path == cgltf_animation_path_type_rotation)
@@ -665,7 +665,7 @@ namespace NS::Graphics
                             float q[4] = {0.0f, 0.0f, 0.0f, 1.0f};
                             cgltf_accessor_read_float(sampler.output, i * stride + valueOffset, q, 4);
                             track.rotationValues[i] =
-                                detail::MirrorQuaternionZ(NS::Math::Quaternion{q[0], q[1], q[2], q[3]});
+                                detail::MirrorQuaternionZ(NS::Core::Quaternion{q[0], q[1], q[2], q[3]});
                         }
                     }
                     else if (channel.target_path == cgltf_animation_path_type_scale)
@@ -677,7 +677,7 @@ namespace NS::Graphics
                         {
                             float v[3] = {1.0f, 1.0f, 1.0f};
                             cgltf_accessor_read_float(sampler.output, i * stride + valueOffset, v, 3);
-                            track.scaleValues[i] = NS::Math::Vector3{v[0], v[1], v[2]};
+                            track.scaleValues[i] = NS::Core::Vector3{v[0], v[1], v[2]};
                         }
                     }
                 }
@@ -694,7 +694,7 @@ namespace NS::Graphics
                                  const std::string& path,
                                  std::vector<Bone>& outBones,
                                  std::unordered_map<const cgltf_node*, int>& outNodeToBone,
-                                 NS::Math::Matrix& outRootXf)
+                                 NS::Core::Matrix& outRootXf)
         {
             // animation 対象 node を集める
             std::unordered_set<const cgltf_node*> animated;
@@ -738,7 +738,7 @@ namespace NS::Graphics
                         visit(node->children[i]);
             };
 
-            outRootXf = NS::Math::Matrix::Identity;
+            outRootXf = NS::Core::Matrix::Identity;
             bool rootXfSet = false;
             for (cgltf_size n = 0; n < model.nodes_count; ++n)
             {
@@ -928,7 +928,7 @@ namespace NS::Graphics
 
         std::vector<Bone> bones;
         std::unordered_map<const cgltf_node*, int> nodeToBone;
-        NS::Math::Matrix rootXf = NS::Math::Matrix::Identity;
+        NS::Core::Matrix rootXf = NS::Core::Matrix::Identity;
         if (!BuildSourceSkeleton(model, path, bones, nodeToBone, rootXf))
             return source;
 

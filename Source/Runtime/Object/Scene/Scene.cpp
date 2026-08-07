@@ -235,13 +235,13 @@ namespace NS::Object
             overrideCamera.SetFarPlane(viewOverride->farPlane);
 
             // aspect は実カメラと同じ規則で renderer から取る (0 以下は 16:9 へ退避)
-            const NS::Math::Size2D size = renderer.Size();
+            const NS::Core::Size2D size = renderer.Size();
             const float aspect = [&]() -> float {
                 if (size.width <= 0 || size.height <= 0)
                 {
                     return 16.0f / 9.0f;
                 }
-                return NS::Math::AspectRatio(size);
+                return NS::Core::AspectRatio(size);
             }();
             overrideCamera.SetAspectRatio(aspect);
 

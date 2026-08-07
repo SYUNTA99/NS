@@ -10,7 +10,7 @@
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/SkeletalMesh.h>
 #include <Runtime/Graphics/Skeleton.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/Components/SkeletalAnimationComponent.h>
@@ -29,8 +29,8 @@ namespace
     using NS::Graphics::BoneTrack;
     using NS::Graphics::Interpolation;
     using NS::Graphics::Skeleton;
-    using NS::Math::Quaternion;
-    using NS::Math::Vector3;
+    using NS::Core::Quaternion;
+    using NS::Core::Vector3;
     using NS::Object::AssetManager;
     using NS::Object::BuildSceneObject;
     using NS::Object::GameObject;
@@ -40,7 +40,7 @@ namespace
 
     Quaternion RotZ(float degrees)
     {
-        return Quaternion::CreateFromAxisAngle(Vector3(0.0f, 0.0f, 1.0f), NS::Math::DegreesToRadians(degrees));
+        return Quaternion::CreateFromAxisAngle(Vector3(0.0f, 0.0f, 1.0f), NS::Core::DegreesToRadians(degrees));
     }
 
     AnimationClip MakeClip(const std::string& name, float duration)
@@ -208,7 +208,7 @@ TEST_F(SkeletalAnimationMeshTest, DrivesMeshPaletteWithoutCrash)
 {
     NS::Platform::WindowDesc wd{};
     wd.title = "ns_anim_comp";
-    wd.size = NS::Math::Size2D{320, 240};
+    wd.size = NS::Core::Size2D{320, 240};
     wd.visible = false;
     NS::Platform::Window window(wd);
     ASSERT_TRUE(window.IsValid());
@@ -294,7 +294,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsWiresRealSkinnedModelAndSiblingMe
 
     NS::Platform::WindowDesc wd{};
     wd.title = "ns_anim_resolve";
-    wd.size = NS::Math::Size2D{320, 240};
+    wd.size = NS::Core::Size2D{320, 240};
     wd.visible = false;
     NS::Platform::Window window(wd);
     ASSERT_TRUE(window.IsValid());
@@ -337,7 +337,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsAddsClipsFromClipsRef)
 
     NS::Platform::WindowDesc wd{};
     wd.title = "ns_anim_clips_ref";
-    wd.size = NS::Math::Size2D{320, 240};
+    wd.size = NS::Core::Size2D{320, 240};
     wd.visible = false;
     NS::Platform::Window window(wd);
     ASSERT_TRUE(window.IsValid());
@@ -385,7 +385,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSkipsBadClipEntriesIndependently)
 
     NS::Platform::WindowDesc wd{};
     wd.title = "ns_anim_clips_bad";
-    wd.size = NS::Math::Size2D{320, 240};
+    wd.size = NS::Core::Size2D{320, 240};
     wd.visible = false;
     NS::Platform::Window window(wd);
     ASSERT_TRUE(window.IsValid());
@@ -421,7 +421,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSharesBoundClipsBetweenInstances)
 
     NS::Platform::WindowDesc wd{};
     wd.title = "ns_anim_clips_share";
-    wd.size = NS::Math::Size2D{320, 240};
+    wd.size = NS::Core::Size2D{320, 240};
     wd.visible = false;
     NS::Platform::Window window(wd);
     ASSERT_TRUE(window.IsValid());
@@ -464,7 +464,7 @@ TEST_F(SkeletalAnimationMeshTest, BuildSceneObjectOverridesMeshRendererWithSkinn
 
     NS::Platform::WindowDesc wd{};
     wd.title = "ns_anim_build_order";
-    wd.size = NS::Math::Size2D{320, 240};
+    wd.size = NS::Core::Size2D{320, 240};
     wd.visible = false;
     NS::Platform::Window window(wd);
     ASSERT_TRUE(window.IsValid());

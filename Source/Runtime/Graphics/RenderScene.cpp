@@ -41,8 +41,8 @@ namespace NS::Graphics
     }
 
     void RenderScene::Update(RenderHandle handle,
-                             const NS::Math::AABB& bounds,
-                             const NS::Math::Vector3& sortCenter,
+                             const NS::Core::AABB& bounds,
+                             const NS::Core::Vector3& sortCenter,
                              int sortPriority,
                              bool transparent) noexcept
     {
@@ -59,7 +59,7 @@ namespace NS::Graphics
 
     void RenderScene::DrawBucket(const RenderContext& context, bool transparent)
     {
-        const NS::Math::Frustum frustum = NS::Math::Frustum::FromViewProjection(context.viewProjection);
+        const NS::Core::Frustum frustum = NS::Core::Frustum::FromViewProjection(context.viewProjection);
 
         m_visibleScratch.clear();
         for (std::uint32_t slot = 0; slot < m_proxies.size(); ++slot)
@@ -78,7 +78,7 @@ namespace NS::Graphics
 
         if (transparent)
         {
-            const NS::Math::Vector3 camPos = context.cameraPosition;
+            const NS::Core::Vector3 camPos = context.cameraPosition;
             // stable_sort を使う理由: 距離・優先度が同キーの場合に収集順を保つため
             std::stable_sort(m_visibleScratch.begin(),
                              m_visibleScratch.end(),

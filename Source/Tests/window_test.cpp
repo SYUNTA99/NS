@@ -8,7 +8,7 @@ namespace
     {
         NS::Platform::WindowDesc d{};
         d.title = title;
-        d.size = NS::Math::Size2D{width, height};
+        d.size = NS::Core::Size2D{width, height};
         d.visible = false;
         return d;
     }
@@ -34,7 +34,7 @@ TEST_F(WindowLoggerTest, SizeMatchesDesc)
 {
     NS::Platform::Window window(MakeDesc("ns_test_size", 640, 480));
     ASSERT_TRUE(window.IsValid());
-    EXPECT_EQ(window.Size(), (NS::Math::Size2D{640, 480}));
+    EXPECT_EQ(window.Size(), (NS::Core::Size2D{640, 480}));
 }
 
 TEST_F(WindowLoggerTest, ShouldCloseIsFalseInitially)

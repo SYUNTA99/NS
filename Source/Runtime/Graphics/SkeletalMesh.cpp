@@ -48,8 +48,8 @@ namespace NS::Graphics
             return spheres;
 
         constexpr float k_Big = std::numeric_limits<float>::max();
-        std::vector<NS::Math::Vector3> mn(boneCount, NS::Math::Vector3{k_Big, k_Big, k_Big});
-        std::vector<NS::Math::Vector3> mx(boneCount, NS::Math::Vector3{-k_Big, -k_Big, -k_Big});
+        std::vector<NS::Core::Vector3> mn(boneCount, NS::Core::Vector3{k_Big, k_Big, k_Big});
+        std::vector<NS::Core::Vector3> mx(boneCount, NS::Core::Vector3{-k_Big, -k_Big, -k_Big});
         std::vector<bool> hit(boneCount, false);
 
         // 各頂点を weight>0 の全影響ボーンへ算入し、ボーンごとの軸並行範囲を取る
@@ -63,8 +63,8 @@ namespace NS::Graphics
                 const std::uint32_t j = v.joints[k];
                 if (j >= boneCount)
                     continue;
-                mn[j] = NS::Math::Vector3::Min(mn[j], v.position);
-                mx[j] = NS::Math::Vector3::Max(mx[j], v.position);
+                mn[j] = NS::Core::Vector3::Min(mn[j], v.position);
+                mx[j] = NS::Core::Vector3::Max(mx[j], v.position);
                 hit[j] = true;
             }
         }
@@ -84,7 +84,7 @@ namespace NS::Graphics
                 const std::uint32_t j = v.joints[k];
                 if (j >= boneCount)
                     continue;
-                const float d2 = NS::Math::Vector3::DistanceSquared(v.position, spheres[j].center);
+                const float d2 = NS::Core::Vector3::DistanceSquared(v.position, spheres[j].center);
                 if (d2 > maxD2[j])
                     maxD2[j] = d2;
             }
@@ -95,15 +95,15 @@ namespace NS::Graphics
         return spheres;
     }
 
-    NS::Math::AABB MergeSkinnedBounds(const std::vector<BoneSphere>& spheres,
-                                      const NS::Math::Matrix* palette,
+    NS::Core::AABB MergeSkinnedBounds(const std::vector<BoneSphere>& spheres,
+                                      const NS::Core::Matrix* palette,
                                       std::size_t paletteCount,
-                                      const NS::Math::AABB& fallback)
+                                      const NS::Core::AABB& fallback)
     {
         if (palette == nullptr)
             return fallback;
 
-        NS::Math::AABB merged{};
+        NS::Core::AABB merged{};
         bool any = false;
         const std::size_t count = std::min(spheres.size(), paletteCount);
         for (std::size_t i = 0; i < count; ++i)
@@ -111,9 +111,9 @@ namespace NS::Graphics
             if (spheres[i].radius < 0.0f)
                 continue; // 影響頂点なしのボーンは飛ばす
             // 球中心だけ現在ポーズへ動かし半径そのままの箱にする。剛体変換なら半径は変わらない
-            const NS::Math::Vector3 c = NS::Math::Vector3::Transform(spheres[i].center, palette[i]);
+            const NS::Core::Vector3 c = NS::Core::Vector3::Transform(spheres[i].center, palette[i]);
             const float r = spheres[i].radius;
-            const NS::Math::AABB box{c, NS::Math::Vector3{r, r, r}};
+            const NS::Core::AABB box{c, NS::Core::Vector3{r, r, r}};
             if (!any)
             {
                 merged = box;
@@ -121,7 +121,7 @@ namespace NS::Graphics
             }
             else
             {
-                NS::Math::AABB::CreateMerged(merged, merged, box);
+                NS::Core::AABB::CreateMerged(merged, merged, box);
             }
         }
         if (!any)
@@ -171,7 +171,7 @@ namespace NS::Graphics
         SetGeometry(std::move(vb), std::move(ib), desc.vertexCount, desc.indexCount, false);
 
         // バインドポーズ実測箱。アニメ非再生時のフォールバック境界に使う
-        NS::Math::AABB bounds{};
+        NS::Core::AABB bounds{};
         DirectX::BoundingBox::CreateFromPoints(bounds,
                                                desc.vertexCount,
                                                static_cast<const DirectX::XMFLOAT3*>(&desc.vertices[0].position),

@@ -68,7 +68,7 @@ TEST(ObjectIdTest, JsonRoundTripPreservesIdsAndCounter)
     SceneNs::SceneData level;
     level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
     level.objects.push_back(LevelNs::MakeCellObject(3, 1, 2));
-    level.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    level.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     // 追従カメラも積んでおく。 読込時の既定合成で採番カウンタが動くと counter 比較が成り立たないため
     level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
     SceneNs::EnsureUniqueObjectIds(level);
@@ -133,7 +133,7 @@ TEST(ObjectIdTest, ObjectRefFieldSurvivesJsonRoundTrip)
     SceneNs::SceneData level;
     level.objects.push_back(SceneNs::ObjectData{});
     level.objects.push_back(SceneNs::ObjectData{});
-    level.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    level.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     // 追従カメラも積んでおく。 読込時の既定合成が CRC を動かさないようにするため
     level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
     SceneNs::EnsureUniqueObjectIds(level);
@@ -166,7 +166,7 @@ TEST(ObjectIdTest, DanglingObjectRefIsPrunedOnLoad)
 {
     SceneNs::SceneData level;
     level.objects.push_back(SceneNs::ObjectData{});
-    level.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    level.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     SceneNs::EnsureUniqueObjectIds(level);
 
     // どの object も持たない id を指す参照を仕込むと、読込で未設定 0 へ戻る

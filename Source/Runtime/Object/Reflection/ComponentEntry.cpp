@@ -146,9 +146,9 @@ namespace NS::Object
         return value->get<int>();
     }
 
-    NS::Math::Vector3 FieldVector3(const nlohmann::json& entry,
+    NS::Core::Vector3 FieldVector3(const nlohmann::json& entry,
                                    std::string_view name,
-                                   const NS::Math::Vector3& fallback) noexcept
+                                   const NS::Core::Vector3& fallback) noexcept
     {
         const nlohmann::json* value = FindFieldValue(entry, name);
         if (value == nullptr || !value->is_array() || value->size() != 3u)
@@ -158,7 +158,7 @@ namespace NS::Object
         const nlohmann::json& z = (*value)[2];
         if (!x.is_number() || !y.is_number() || !z.is_number())
             return fallback;
-        return NS::Math::Vector3{x.get<float>(), y.get<float>(), z.get<float>()};
+        return NS::Core::Vector3{x.get<float>(), y.get<float>(), z.get<float>()};
     }
 
     std::string FieldString(const nlohmann::json& entry, std::string_view name, std::string_view fallback)
@@ -200,7 +200,7 @@ namespace NS::Object
         EnsureFields(entry)[std::string(name)] = value;
     }
 
-    void SetField(nlohmann::json& entry, std::string_view name, const NS::Math::Vector3& value)
+    void SetField(nlohmann::json& entry, std::string_view name, const NS::Core::Vector3& value)
     {
         EnsureFields(entry)[std::string(name)] = nlohmann::json{value.x, value.y, value.z};
     }

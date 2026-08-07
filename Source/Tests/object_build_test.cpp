@@ -26,7 +26,7 @@ namespace
     using NS::Game::Level::MakeCellCubeComponents;
     using NS::Game::Level::MakeCellObject;
     using NS::Object::ObjectData;
-    using NS::Math::Vector3;
+    using NS::Core::Vector3;
 
     // device を確立しない AssetManager。 Builtin / SharedMaterial は nullptr を返すが、 汎用構築は落ちない
     class ObjectBuildTest : public ::testing::Test
@@ -135,7 +135,7 @@ TEST_F(ObjectBuildTest, FreeSphereHasOnlySphereCollider)
     ASSERT_NE(sphere, nullptr);
     EXPECT_FALSE(Has<NS::Object::CapsuleColliderComponent>(*obj));
 
-    const NS::Math::Sphere world = sphere->WorldSphere();
+    const NS::Core::Sphere world = sphere->WorldSphere();
     EXPECT_NEAR(world.radius, 0.7f, 1e-4f);
     EXPECT_NEAR(world.center.y, 1.0f, 1e-4f);
 }
@@ -146,7 +146,7 @@ TEST_F(ObjectBuildTest, SphereColliderWorldAabbEnclosesSphere)
     ASSERT_NE(obj, nullptr);
     auto* sphere = obj->FindComponent<NS::Object::SphereColliderComponent>();
     ASSERT_NE(sphere, nullptr);
-    const NS::Math::AABB aabb = sphere->WorldAABB();
+    const NS::Core::AABB aabb = sphere->WorldAABB();
     EXPECT_NEAR(aabb.Center.y, 1.0f, 1e-4f);
     EXPECT_NEAR(aabb.Extents.x, 0.7f, 1e-4f);
     EXPECT_NEAR(aabb.Extents.y, 0.7f, 1e-4f);
@@ -173,7 +173,7 @@ TEST_F(ObjectBuildTest, CapsuleColliderWorldAabbEnclosesCapsule)
     ASSERT_NE(obj, nullptr);
     auto* capsule = obj->FindComponent<NS::Object::CapsuleColliderComponent>();
     ASSERT_NE(capsule, nullptr);
-    const NS::Math::AABB aabb = capsule->WorldAABB();
+    const NS::Core::AABB aabb = capsule->WorldAABB();
     EXPECT_NEAR(aabb.Extents.x, 0.4f, 1e-4f);
     EXPECT_NEAR(aabb.Extents.y, 1.3f, 1e-4f);
     EXPECT_NEAR(aabb.Extents.z, 0.4f, 1e-4f);
@@ -198,7 +198,7 @@ TEST_F(ObjectBuildTest, GridCubeWorldAabbMatchesCellHalfExtents)
     ASSERT_NE(obj, nullptr);
     auto* box = obj->FindComponent<NS::Object::BoxColliderComponent>();
     ASSERT_NE(box, nullptr);
-    const NS::Math::AABB aabb = box->WorldAABB();
+    const NS::Core::AABB aabb = box->WorldAABB();
     EXPECT_NEAR(aabb.Center.x, 0.0f, 1e-4f);
     EXPECT_NEAR(aabb.Center.y, 0.0f, 1e-4f);
     EXPECT_NEAR(aabb.Center.z, 0.0f, 1e-4f);
@@ -216,7 +216,7 @@ TEST_F(ObjectBuildTest, FreeBoxWorldAabbReflectsPositionAndHalfExtents)
     ASSERT_NE(obj, nullptr);
     auto* box = obj->FindComponent<NS::Object::BoxColliderComponent>();
     ASSERT_NE(box, nullptr);
-    const NS::Math::AABB aabb = box->WorldAABB();
+    const NS::Core::AABB aabb = box->WorldAABB();
     EXPECT_NEAR(aabb.Center.x, 2.0f, 1e-4f);
     EXPECT_NEAR(aabb.Center.y, 0.0f, 1e-4f);
     EXPECT_NEAR(aabb.Center.z, 0.0f, 1e-4f);
@@ -317,7 +317,7 @@ TEST_F(ObjectBuildTest, FreeCubeRotatableButEmptyMarkerNot)
 // プレイヤー実体は className から Player 派生の GameObject に二重生成なしで組まれる
 TEST_F(ObjectBuildTest, PlayerObjectBuildsPlayerTyped)
 {
-    const ObjectData data = MakePlayerObject(Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{});
+    const ObjectData data = MakePlayerObject(Vector3{1.0f, 2.0f, 3.0f}, NS::Core::Quaternion{});
     EXPECT_EQ(data.className, "Player");
 
     auto obj = Build(data);
@@ -335,7 +335,7 @@ TEST_F(ObjectBuildTest, PlayerObjectBuildsPlayerTyped)
 // プレイヤーのデータ構成は Player のコンストラクタから吸い出した型名だけの疎な一覧。 値は書かない
 TEST_F(ObjectBuildTest, PlayerObjectDataIsSparseTypeListFromClass)
 {
-    const ObjectData data = MakePlayerObject(Vector3{}, NS::Math::Quaternion{});
+    const ObjectData data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
 
     ASSERT_EQ(data.components.size(), Player{}.Components().size());
     EXPECT_NE(NS::Object::FindComponentEntry(data, "MeshRendererComponent"), nullptr);
@@ -357,7 +357,7 @@ TEST_F(ObjectBuildTest, PlayerObjectDataIsSparseTypeListFromClass)
 // 疎なデータで組んでも、 cube と共有 player 材質と赤の個体色はコンストラクタが与える
 TEST_F(ObjectBuildTest, PlayerDefaultLookComesFromClassNotData)
 {
-    auto obj = Build(MakePlayerObject(Vector3{}, NS::Math::Quaternion{}));
+    auto obj = Build(MakePlayerObject(Vector3{}, NS::Core::Quaternion{}));
     ASSERT_NE(obj, nullptr);
     auto* mesh = obj->FindComponent<NS::Object::MeshRendererComponent>();
     ASSERT_NE(mesh, nullptr);
@@ -367,7 +367,7 @@ TEST_F(ObjectBuildTest, PlayerDefaultLookComesFromClassNotData)
 
     // 個体色は getter が無いのでリフレクションフィールド越しに読む
     const NS::Object::ReflectionInfo* info = NS::Object::MeshRendererComponent::StaticReflection();
-    NS::Math::Vector3 baseColor{};
+    NS::Core::Vector3 baseColor{};
     bool found = false;
     for (std::size_t i = 0; i < info->fieldCount; ++i)
     {
@@ -386,7 +386,7 @@ TEST_F(ObjectBuildTest, PlayerDefaultLookComesFromClassNotData)
 // data 側で書き込んだ値が既定構成の component へリフレクション適用される
 TEST_F(ObjectBuildTest, PlayerObjectAppliesDataValuesToComponents)
 {
-    ObjectData data = MakePlayerObject(Vector3{}, NS::Math::Quaternion{});
+    ObjectData data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
     for (nlohmann::json& entry : data.components)
         if (NS::Object::ComponentEntryType(entry) == "CharacterMovementComponent")
             NS::Object::SetField(entry, "最高速度", 11.0f);

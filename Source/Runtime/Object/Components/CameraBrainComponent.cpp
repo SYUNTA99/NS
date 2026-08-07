@@ -117,7 +117,7 @@ namespace NS::Object
         CameraPose pose = m_active->EvaluatePose(alpha);
         if (m_blending && m_blendDuration > 0.0f)
         {
-            const float t = NS::Math::Clamp(m_blendElapsed / m_blendDuration, 0.0f, 1.0f);
+            const float t = NS::Core::Clamp(m_blendElapsed / m_blendDuration, 0.0f, 1.0f);
             const float eased = t * t * (3.0f - 2.0f * t); // smoothstep で ease-in-out
             pose = CameraPose::Lerp(m_blendFrom, pose, eased);
         }
@@ -126,18 +126,18 @@ namespace NS::Object
         m_camera->ApplyPose(pose);
     }
 
-    NS::Math::Matrix CameraBrainComponent::ViewProjection() const noexcept
+    NS::Core::Matrix CameraBrainComponent::ViewProjection() const noexcept
     {
         if (m_camera != nullptr)
             return m_camera->ViewProjection();
-        return NS::Math::Matrix::Identity;
+        return NS::Core::Matrix::Identity;
     }
 
-    NS::Math::Vector3 CameraBrainComponent::ForwardHorizontal() const noexcept
+    NS::Core::Vector3 CameraBrainComponent::ForwardHorizontal() const noexcept
     {
         if (m_camera != nullptr)
             return m_camera->ForwardHorizontal();
-        return NS::Math::Vector3{0.0f, 0.0f, 1.0f};
+        return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
     }
 
     NS_CLASS(CameraBrainComponent)

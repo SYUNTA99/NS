@@ -21,7 +21,7 @@ namespace
     NS::Object::ObjectData MakeGoal(float x, float y, float z)
     {
         NS::Object::ObjectData object;
-        NS::Object::SetObjectPosition(object, NS::Math::Vector3{x, y, z});
+        NS::Object::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
         object.components.push_back(NS::Object::MakeComponentEntry("GoalComponent"));
         return object;
     }
@@ -144,11 +144,11 @@ TEST(ModeToggle, EditModeRebuildKeepsWorldStill)
     editor.EnterEdit();
 
     // 編集中の構造編集で世界が組み直っても、 止めた世界は動き出さない
-    NS::Object::ObjectData player = MakePlayerObject(NS::Math::Vector3{0.0f, 2.0f, 0.0f}, NS::Math::Quaternion{});
+    NS::Object::ObjectData player = MakePlayerObject(NS::Core::Vector3{0.0f, 2.0f, 0.0f}, NS::Core::Quaternion{});
     const std::uint32_t playerId = scene.World().AllocateObjectId();
     applier.ApplyObjectSnapshot(playerId, player);
     NS::Object::ObjectData hazard = MakeTriggerHazard();
-    NS::Object::SetObjectPosition(hazard, NS::Math::Vector3{0.0f, 2.0f, 0.0f});
+    NS::Object::SetObjectPosition(hazard, NS::Core::Vector3{0.0f, 2.0f, 0.0f});
     const std::uint32_t hazardId = scene.World().AllocateObjectId();
     applier.ApplyObjectSnapshot(hazardId, hazard);
 
@@ -164,10 +164,10 @@ TEST(ModeToggle, EnterPlayPlacesPlayerAtBaselinePosition)
     NS::Object::Scene scene;
     LevelEditorController editor(&scene);
     NS::Object::SceneData live;
-    live.objects.push_back(MakePlayerObject(NS::Math::Vector3{1.0f, 1.0f, 1.0f}, NS::Math::Quaternion{}));
+    live.objects.push_back(MakePlayerObject(NS::Core::Vector3{1.0f, 1.0f, 1.0f}, NS::Core::Quaternion{}));
     scene.LoadFromData(std::move(live));
     NS::Object::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{7.0f, 2.0f, -4.0f}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{7.0f, 2.0f, -4.0f}, NS::Core::Quaternion{}));
     scene.SetPlayBaselineForTest(std::move(data));
     editor.EnterPlay();
 
@@ -184,7 +184,7 @@ TEST(ModeToggle, EnterEditCancelsInFlightFade)
     NS::Object::Scene scene;
     LevelEditorController editor(&scene);
     NS::Object::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
     editor.EnterPlay();
@@ -205,14 +205,14 @@ TEST(ModeToggle, CancelledClearDoesNotRefireAfterReenter)
     NS::Object::Scene scene;
     LevelEditorController editor(&scene);
     NS::Object::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     data.objects.push_back(MakeGoal(5.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
     editor.EnterPlay();
 
     Player* player = FindPlayer(scene.World());
     ASSERT_NE(player, nullptr);
-    player->Root().SetPosition(NS::Math::Vector3{5.0f, 0.0f, 0.0f});
+    player->Root().SetPosition(NS::Core::Vector3{5.0f, 0.0f, 0.0f});
     scene.OnUpdate();
     auto* fade = FindFade(scene);
     ASSERT_NE(fade, nullptr);

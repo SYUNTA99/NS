@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <cstdint>
 #include <unordered_map>
@@ -17,10 +17,10 @@ namespace NS::Physics
     {
     public:
         /// world AABB 群を cellSize 刻みの一様グリッドへ登録する。index は boxes の添字
-        void Build(const std::vector<NS::Math::AABB>& boxes, float cellSize) noexcept;
+        void Build(const std::vector<NS::Core::AABB>& boxes, float cellSize) noexcept;
 
         /// queryBox が重なるセルに登録された候補 index を昇順・重複なしで out へ集める
-        void Query(const NS::Math::AABB& queryBox, std::vector<std::uint32_t>& out) const noexcept;
+        void Query(const NS::Core::AABB& queryBox, std::vector<std::uint32_t>& out) const noexcept;
 
         /// 空かどうか。未 Build かプリミティブ無しなら空
         [[nodiscard]] bool IsEmpty() const noexcept;

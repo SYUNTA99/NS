@@ -9,7 +9,7 @@ namespace NS::Physics
     CapsuleSegment CapsuleEndpoints(const Capsule& capsule) noexcept
     {
         // Capsule 型は axis の単位長を強制しないため、非単位入力で端点が歪まないよう正規化する
-        NS::Math::Vector3 axis = capsule.axis;
+        NS::Core::Vector3 axis = capsule.axis;
         const float lenSq = axis.x * axis.x + axis.y * axis.y + axis.z * axis.z;
         if (lenSq > 1e-12f)
         {
@@ -20,7 +20,7 @@ namespace NS::Physics
         }
         else
         {
-            axis = NS::Math::Vector3{0.0f, 1.0f, 0.0f};
+            axis = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
         }
 
         CapsuleSegment seg;
@@ -29,7 +29,7 @@ namespace NS::Physics
         return seg;
     }
 
-    bool IntersectsCapsuleAABB(const Capsule& capsule, const NS::Math::AABB& box) noexcept
+    bool IntersectsCapsuleAABB(const Capsule& capsule, const NS::Core::AABB& box) noexcept
     {
         const float minX = box.Center.x - box.Extents.x;
         const float maxX = box.Center.x + box.Extents.x;

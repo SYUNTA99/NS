@@ -71,7 +71,7 @@ TEST(HazardTest, DrainsPlayerHealthThroughLateUpdateBand)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     // プレイヤーと同じ位置の cell に hazard の印を足すと、カプセルと箱が必ず重なる
     SceneNs::ObjectData hazard = LevelNs::MakeCellObject(0, 0, 0);
     hazard.components.push_back(SceneNs::MakeComponentEntry("HazardComponent"));
@@ -92,7 +92,7 @@ TEST(HazardTest, NoOverlapNoDamage)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     SceneNs::ObjectData hazard = LevelNs::MakeCellObject(10, 0, 0);
     hazard.components.push_back(SceneNs::MakeComponentEntry("HazardComponent"));
     data.objects.push_back(hazard);

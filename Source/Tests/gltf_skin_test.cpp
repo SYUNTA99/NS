@@ -8,7 +8,7 @@
 #include <Runtime/Graphics/detail/GltfSkinHelpers.h>
 #include <Runtime/Graphics/GltfLoader.h>
 #include <Runtime/Graphics/Skeleton.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <span>
 #include <string>
 #include <vector>
@@ -22,9 +22,9 @@ namespace
     using NS::Graphics::detail::NormalizeJointWeights;
     using NS::Graphics::detail::ReadColumnMajorMatrix;
     using NS::Graphics::detail::TopologicalSortBones;
-    using NS::Math::Matrix;
-    using NS::Math::Quaternion;
-    using NS::Math::Vector3;
+    using NS::Core::Matrix;
+    using NS::Core::Quaternion;
+    using NS::Core::Vector3;
 
     constexpr float k_Eps = 1e-5f;
 

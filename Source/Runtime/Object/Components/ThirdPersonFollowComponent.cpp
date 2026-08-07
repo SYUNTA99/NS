@@ -111,21 +111,21 @@ namespace NS::Object
         m_manualDistance = false;
     }
 
-    void ThirdPersonFollowComponent::SetInitialPoseFromCameraPosition(const NS::Math::Vector3& cameraPosition) noexcept
+    void ThirdPersonFollowComponent::SetInitialPoseFromCameraPosition(const NS::Core::Vector3& cameraPosition) noexcept
     {
         if (m_target == nullptr)
             return;
-        const NS::Math::Vector3 tgtPos = m_target->Position();
-        const NS::Math::Vector3 headPos{tgtPos.x, tgtPos.y + m_headHeight, tgtPos.z};
-        const NS::Math::Vector3 toHead = headPos - cameraPosition; // = forward * distance
+        const NS::Core::Vector3 tgtPos = m_target->Position();
+        const NS::Core::Vector3 headPos{tgtPos.x, tgtPos.y + m_headHeight, tgtPos.z};
+        const NS::Core::Vector3 toHead = headPos - cameraPosition; // = forward * distance
         const float distance = toHead.Length();
         if (distance < 1e-3f)
             return;
-        const NS::Math::Vector3 forward = toHead * (1.0f / distance);
+        const NS::Core::Vector3 forward = toHead * (1.0f / distance);
 
         // EvaluatePose の forward = (sin(yaw)cos(pitch), sin(pitch), cos(yaw)cos(pitch)) を解く
         // pitch は仰角の可動域に収める。 clamp した分だけギズモ位置と厳密には一致しないが範囲外へは向けない
-        const float pitch = NS::Math::Clamp(std::asin(NS::Math::Clamp(forward.y, -1.0f, 1.0f)), m_pitchMin, m_pitchMax);
+        const float pitch = NS::Core::Clamp(std::asin(NS::Core::Clamp(forward.y, -1.0f, 1.0f)), m_pitchMin, m_pitchMax);
         const float yaw = std::atan2(forward.x, forward.z);
 
         m_initialYaw = yaw;
@@ -162,7 +162,7 @@ namespace NS::Object
         m_yaw += rstick.x * m_stickSensX * dt * mxSign;
         m_pitch += rstick.y * m_stickSensY * dt * mySign;
 
-        m_pitch = NS::Math::Clamp(m_pitch, m_pitchMin, m_pitchMax);
+        m_pitch = NS::Core::Clamp(m_pitch, m_pitchMin, m_pitchMax);
 
         // 接地と速度で決める自動ズーム距離
         if (!m_manualDistance)
@@ -192,26 +192,26 @@ namespace NS::Object
     CameraPose ThirdPersonFollowComponent::EvaluatePose(float alpha) const noexcept
     {
         if (m_target == nullptr)
-            return MakePose(NS::Math::Vector3{0.0f, 0.0f, -5.0f},
-                            NS::Math::Vector3{0.0f, 0.0f, 0.0f},
-                            NS::Math::Vector3{0.0f, 1.0f, 0.0f});
+            return MakePose(NS::Core::Vector3{0.0f, 0.0f, -5.0f},
+                            NS::Core::Vector3{0.0f, 0.0f, 0.0f},
+                            NS::Core::Vector3{0.0f, 1.0f, 0.0f});
 
         const float cy = std::cos(m_yaw);
         const float sy = std::sin(m_yaw);
         const float cp = std::cos(m_pitch);
         const float sp = std::sin(m_pitch);
-        const NS::Math::Vector3 forward{sy * cp, sp, cy * cp};
+        const NS::Core::Vector3 forward{sy * cp, sp, cy * cp};
 
         // Player Mesh の補間と整合させ、相対位置のガタつきを防ぐ
-        const NS::Math::Vector3 tgtPos = m_target->InterpolatedWorldMatrix(alpha).Translation();
-        const NS::Math::Vector3 headPos{tgtPos.x, tgtPos.y + m_headHeight, tgtPos.z};
-        const NS::Math::Vector3 camPos{
+        const NS::Core::Vector3 tgtPos = m_target->InterpolatedWorldMatrix(alpha).Translation();
+        const NS::Core::Vector3 headPos{tgtPos.x, tgtPos.y + m_headHeight, tgtPos.z};
+        const NS::Core::Vector3 camPos{
             headPos.x - forward.x * m_distance,
             headPos.y - forward.y * m_distance,
             headPos.z - forward.z * m_distance,
         };
 
-        return MakePose(camPos, headPos, NS::Math::Vector3{0.0f, 1.0f, 0.0f});
+        return MakePose(camPos, headPos, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
     }
 
     // 追従対象はオブジェクト間参照なので data からは空で作り、配線は後から SetTarget で結ぶ

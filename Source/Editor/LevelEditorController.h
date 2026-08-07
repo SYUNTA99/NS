@@ -147,9 +147,9 @@ public:
     [[nodiscard]] NS::Object::ObjectData SelectedObjectSnapshot() const noexcept;
 
     //! 選択中の配置物の位置 / 回転 / スケールを live へ直接設定する。非選択時は何もしない
-    void SetSelectedFreePosition(NS::Math::Vector3 position) noexcept;
-    void SetSelectedFreeRotation(NS::Math::Quaternion rotation) noexcept;
-    void SetSelectedFreeScale(NS::Math::Vector3 scale) noexcept;
+    void SetSelectedFreePosition(NS::Core::Vector3 position) noexcept;
+    void SetSelectedFreeRotation(NS::Core::Quaternion rotation) noexcept;
+    void SetSelectedFreeScale(NS::Core::Vector3 scale) noexcept;
 
     //! 変形編集（ドラッグ操作）の開始および確定処理を行う
     void BeginTransformEdit() noexcept;
@@ -235,7 +235,7 @@ private:
     //! 配置物を新しい永続 id で 1 体追加する唯一の経路。採番・履歴登録・選択をまとめて面倒を見る
     void PushCreateObject(NS::Object::ObjectData object);
 
-    void RenderCameraGizmos(const NS::Math::Matrix& viewProjection, NS::Math::Size2D viewport) noexcept;
+    void RenderCameraGizmos(const NS::Core::Matrix& viewProjection, NS::Core::Size2D viewport) noexcept;
     //! @brief 当たり形状を線で描く
     //! @param all 真なら全配置物、 偽なら選んでいる分だけ
     void RenderColliderWireframes(bool all) noexcept;
@@ -292,7 +292,7 @@ private:
     NS::Editor::GizmoEditor m_gizmo{}; // 変形ギズモ管理
 
     std::vector<NS::Object::GameObject*> m_selectablePtrs;  // 選択可能なオブジェクト
-    std::vector<NS::Math::Vector3> m_selectableHalfExtents; // 各オブジェクトのサイズ
+    std::vector<NS::Core::Vector3> m_selectableHalfExtents; // 各オブジェクトのサイズ
     std::vector<std::uint8_t> m_selectablePickable;         // 選択可否フラグ
 
     enum class SpecialSelection : std::uint8_t
@@ -310,10 +310,10 @@ private:
     struct DragFollower
     {
         std::uint32_t id = 0;
-        NS::Math::Matrix world{};
+        NS::Core::Matrix world{};
     };
     std::vector<DragFollower> m_dragFollowers; // 主対象に付いて動く残りの選択
-    NS::Math::Matrix m_dragPrimaryWorld{};     // ドラッグ開始時の主対象の world 変換
+    NS::Core::Matrix m_dragPrimaryWorld{};     // ドラッグ開始時の主対象の world 変換
     bool m_dragFollowersValid = false;         // 控えが有効か。単体選択なら偽
 
     std::optional<nlohmann::json> m_componentClipboard; // コンポーネントのクリップボード ({type, fields} 1 件)

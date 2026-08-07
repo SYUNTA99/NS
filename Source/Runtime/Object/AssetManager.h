@@ -4,7 +4,7 @@
 #include "Runtime/Graphics/Animation.h"
 #include "Runtime/Graphics/Material.h"
 #include "Runtime/Graphics/Skeleton.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <filesystem>
 #include <map>
@@ -42,7 +42,7 @@ namespace NS::Object
         std::filesystem::path vertexShader;
         std::filesystem::path pixelShader;
         std::vector<std::filesystem::path> textures;
-        NS::Math::Vector3 baseColor{1.0f, 1.0f, 1.0f};
+        NS::Core::Vector3 baseColor{1.0f, 1.0f, 1.0f};
         NS::Graphics::BlendMode blend = NS::Graphics::BlendMode::Opaque;
     };
 
@@ -55,7 +55,7 @@ namespace NS::Object
     {
         /// AssetManager 所有、 キャッシュ寿命中のみ有効
         NS::Graphics::Material* material = nullptr;
-        NS::Math::Vector3 baseColor{1.0f, 1.0f, 1.0f};
+        NS::Core::Vector3 baseColor{1.0f, 1.0f, 1.0f};
     };
 
     /// 読み込んだ skinned model。 mesh / skeleton / clips 全て AssetManager 所有でキャッシュ寿命中のみ有効
@@ -66,8 +66,8 @@ namespace NS::Object
         const NS::Graphics::Skeleton* skeleton = nullptr;                // AssetManager 所有
         const std::vector<NS::Graphics::AnimationClip>* clips = nullptr; // AssetManager 所有
         /// bind ポーズ頂点の境界。 配置スケール計算に使う
-        NS::Math::Vector3 boundsMin{};
-        NS::Math::Vector3 boundsMax{};
+        NS::Core::Vector3 boundsMin{};
+        NS::Core::Vector3 boundsMax{};
         bool valid = false;
     };
 
@@ -136,7 +136,7 @@ namespace NS::Object
         struct MaterialRecord
         {
             std::unique_ptr<NS::Graphics::Material> material;
-            NS::Math::Vector3 baseColor{1.0f, 1.0f, 1.0f};
+            NS::Core::Vector3 baseColor{1.0f, 1.0f, 1.0f};
         };
 
         struct SkinnedModelRecord
@@ -144,8 +144,8 @@ namespace NS::Object
             std::unique_ptr<NS::Graphics::SkeletalMesh> mesh;
             NS::Graphics::Skeleton skeleton;
             std::vector<NS::Graphics::AnimationClip> clips;
-            NS::Math::Vector3 boundsMin{};
-            NS::Math::Vector3 boundsMax{};
+            NS::Core::Vector3 boundsMin{};
+            NS::Core::Vector3 boundsMax{};
         };
 
         std::filesystem::path m_baseDir; // 相対 path 解決の基準ディレクトリ

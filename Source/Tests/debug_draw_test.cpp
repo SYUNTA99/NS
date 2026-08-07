@@ -1,12 +1,12 @@
 #include <gtest/gtest.h>
 #include <Runtime/Graphics/DebugDraw.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 
 namespace
 {
-    using NS::Math::AABB;
-    using NS::Math::Color;
-    using NS::Math::Vector3;
+    using NS::Core::AABB;
+    using NS::Core::Color;
+    using NS::Core::Vector3;
     namespace DD = NS::Graphics::DebugDraw;
 
     void Reset() noexcept
@@ -35,7 +35,7 @@ TEST(DebugDrawTest, AABBAdds24Vertices)
 TEST(DebugDrawTest, ObbAdds24Vertices)
 {
     Reset();
-    DD::OBB(NS::Math::OBB{Vector3{0.0f, 0.0f, 0.0f},
+    DD::OBB(NS::Core::OBB{Vector3{0.0f, 0.0f, 0.0f},
                           Vector3{1.0f, 0.0f, 0.0f},
                           Vector3{0.0f, 1.0f, 0.0f},
                           Vector3{0.0f, 0.0f, 1.0f},

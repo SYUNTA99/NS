@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
 
 #pragma warning(push, 0)
@@ -66,7 +66,7 @@ namespace NS::Object
     /// 配置物は transform + リフレクションコンポーネント一覧の ObjectData に統一し、
     /// 当たりも見た目も components が唯一の出所になる
     /// プレイ経路には const 参照でしか渡さない
-    /// 依存: NS::Math, NS::Object::ObjectRef
+    /// 依存: NS::Core, NS::Object::ObjectRef
     struct SceneData
     {
         /// 全配置物の唯一のリスト

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 
 namespace NS::Editor
@@ -42,8 +42,8 @@ namespace NS::Editor
         [[nodiscard]] NS::Object::CameraPose Pose() const noexcept;
 
         //! 投影設定。Pose() が返す pose に載せる
-        void SetFovY(NS::Math::Radians fov) noexcept { m_fovY = fov; }
-        [[nodiscard]] NS::Math::Radians FovY() const noexcept { return m_fovY; }
+        void SetFovY(NS::Core::Radians fov) noexcept { m_fovY = fov; }
+        [[nodiscard]] NS::Core::Radians FovY() const noexcept { return m_fovY; }
         void SetNearPlane(float nearPlane) noexcept { m_nearPlane = nearPlane; }
         [[nodiscard]] float NearPlane() const noexcept { return m_nearPlane; }
         void SetFarPlane(float farPlane) noexcept { m_farPlane = farPlane; }
@@ -51,14 +51,14 @@ namespace NS::Editor
 
         // プログラム制御用。テストやモード切替で状態を保存・復元するのに使う
         void SetYawPitch(float yaw, float pitch) noexcept;
-        void SetCenter(NS::Math::Vector3 center) noexcept;
+        void SetCenter(NS::Core::Vector3 center) noexcept;
         void SetDistance(float distance) noexcept;
 
         [[nodiscard]] float Yaw() const noexcept { return m_yaw; }
         [[nodiscard]] float Pitch() const noexcept { return m_pitch; }
         [[nodiscard]] float Distance() const noexcept { return m_distance; }
-        [[nodiscard]] NS::Math::Vector3 Center() const noexcept { return m_center; }
-        [[nodiscard]] NS::Math::Vector3 ComputeCameraPosition() const noexcept;
+        [[nodiscard]] NS::Core::Vector3 Center() const noexcept { return m_center; }
+        [[nodiscard]] NS::Core::Vector3 ComputeCameraPosition() const noexcept;
 
         // 入力を直接注入する。テスト経路や Tick に頼らない外部制御で使う
         void ApplyOrbit(float yawDelta, float pitchDelta) noexcept;
@@ -106,7 +106,7 @@ namespace NS::Editor
         [[nodiscard]] const FeelTuning& Tuning() const noexcept { return m_tuning; }
 
     private:
-        NS::Math::Vector3 m_center{0.0f, 0.0f, 0.0f}; // orbit の中心 pivot
+        NS::Core::Vector3 m_center{0.0f, 0.0f, 0.0f}; // orbit の中心 pivot
         float m_yaw = 0.0f;                           // 方位角 (ラジアン)
         float m_pitch = -0.5236f;                     // 仰角 (ラジアン)
         float m_distance = 15.0f;                     // center からの現在距離
@@ -114,7 +114,7 @@ namespace NS::Editor
 
         FeelTuning m_tuning{}; // free-fly の感触。Inspector がライブで書く
 
-        NS::Math::Radians m_fovY{NS::Math::ToRadians(NS::Math::Degrees{60.0f})}; // 垂直視野角
+        NS::Core::Radians m_fovY{NS::Core::ToRadians(NS::Core::Degrees{60.0f})}; // 垂直視野角
         float m_nearPlane = 0.1f;                                                // ニアクリップ距離
         float m_farPlane = 1000.0f;                                              // ファークリップ距離
     };

@@ -1,5 +1,5 @@
 #include "Editor/GridMath.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <cmath>
 #include <gtest/gtest.h>
@@ -33,8 +33,8 @@ TEST(EditorGridTest, SnapHitToPlacementCellOffsetsByNormalMinusY)
 
 TEST(EditorGridTest, GroundFallbackHitsYZeroPlane)
 {
-    NS::Math::Ray ray{{0.3f, 5.0f, 0.7f}, {0.0f, -1.0f, 0.0f}};
-    NS::Math::Vector3 out;
+    NS::Core::Ray ray{{0.3f, 5.0f, 0.7f}, {0.0f, -1.0f, 0.0f}};
+    NS::Core::Vector3 out;
     ASSERT_TRUE(NS::Editor::TryGroundPlaneFallback(ray, out, 1.0f));
     EXPECT_FLOAT_EQ(out.y, 0.0f);
     EXPECT_FLOAT_EQ(out.x, 0.0f); // 0.3 → 0
@@ -43,8 +43,8 @@ TEST(EditorGridTest, GroundFallbackHitsYZeroPlane)
 
 TEST(EditorGridTest, GroundFallbackFailsForUpwardRay)
 {
-    NS::Math::Ray ray{{0.0f, 5.0f, 0.0f}, {0.0f, 1.0f, 0.0f}};
-    NS::Math::Vector3 out{99.0f, 99.0f, 99.0f};
+    NS::Core::Ray ray{{0.0f, 5.0f, 0.0f}, {0.0f, 1.0f, 0.0f}};
+    NS::Core::Vector3 out{99.0f, 99.0f, 99.0f};
     EXPECT_FALSE(NS::Editor::TryGroundPlaneFallback(ray, out, 1.0f));
     // out は未変更
     EXPECT_FLOAT_EQ(out.x, 99.0f);
@@ -75,8 +75,8 @@ TEST(EditorGridTest, RotationU8WrapsAtModulo4)
 
 TEST(EditorGridTest, ScreenToWorldRayDirectionIsUnitLength)
 {
-    NS::Math::Matrix identity = NS::Math::Matrix::Identity;
-    NS::Math::Size2D vp{1280, 720};
+    NS::Core::Matrix identity = NS::Core::Matrix::Identity;
+    NS::Core::Size2D vp{1280, 720};
     auto ray = NS::Editor::ScreenToWorldRay(identity, vp, 640, 360);
     const float len = std::sqrt(ray.direction.x * ray.direction.x + ray.direction.y * ray.direction.y +
                                 ray.direction.z * ray.direction.z);
@@ -111,7 +111,7 @@ TEST(EditorGridTest, ViewRectToLocalSubtractsOrigin)
 TEST(EditorGridTest, ViewRectSizeReturnsWidthHeight)
 {
     const NS::Editor::ViewRect rect{100, 50, 800, 600};
-    EXPECT_EQ(NS::Editor::ViewRectSize(rect), (NS::Math::Size2D{800, 600}));
+    EXPECT_EQ(NS::Editor::ViewRectSize(rect), (NS::Core::Size2D{800, 600}));
 }
 
 // パネル基準のローカル化を通した ray が、原点置きの同サイズ viewport と同じ方向を返すこと
@@ -122,9 +122,9 @@ TEST(EditorGridTest, LocalizedRayMatchesOriginViewportRay)
     int ly = 0;
     NS::Editor::ViewRectToLocal(rect, 500, 350, lx, ly);
 
-    NS::Math::Matrix identity = NS::Math::Matrix::Identity;
+    NS::Core::Matrix identity = NS::Core::Matrix::Identity;
     const auto localized = NS::Editor::ScreenToWorldRay(identity, NS::Editor::ViewRectSize(rect), lx, ly);
-    const auto reference = NS::Editor::ScreenToWorldRay(identity, NS::Math::Size2D{800, 600}, 400, 300);
+    const auto reference = NS::Editor::ScreenToWorldRay(identity, NS::Core::Size2D{800, 600}, 400, 300);
 
     EXPECT_NEAR(localized.direction.x, reference.direction.x, 1e-5f);
     EXPECT_NEAR(localized.direction.y, reference.direction.y, 1e-5f);

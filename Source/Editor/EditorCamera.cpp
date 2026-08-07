@@ -16,7 +16,7 @@ namespace NS::Editor
         m_pitch = std::clamp(pitch, k_PitchMin, k_PitchMax);
     }
 
-    void EditorCamera::SetCenter(NS::Math::Vector3 center) noexcept
+    void EditorCamera::SetCenter(NS::Core::Vector3 center) noexcept
     {
         m_center = center;
     }
@@ -38,8 +38,8 @@ namespace NS::Editor
         // View space の right / up 軸に沿った平行移動。 感度は distance に比例
         const float sinYaw = std::sin(m_yaw);
         const float cosYaw = std::cos(m_yaw);
-        const NS::Math::Vector3 right{cosYaw, 0.0f, -sinYaw};
-        const NS::Math::Vector3 up{0.0f, 1.0f, 0.0f};
+        const NS::Core::Vector3 right{cosYaw, 0.0f, -sinYaw};
+        const NS::Core::Vector3 up{0.0f, 1.0f, 0.0f};
         const float scale = m_distance * 0.1f;
         m_center.x += (right.x * panX + up.x * panY) * scale;
         m_center.y += (right.y * panX + up.y * panY) * scale;
@@ -58,10 +58,10 @@ namespace NS::Editor
     void EditorCamera::ApplyLook(float yawDelta, float pitchDelta) noexcept
     {
         // eye を固定して回すため、 回転前後の eye 差を center へ戻す。 これで orbit でなくその場の見回しになる
-        const NS::Math::Vector3 eyeBefore = ComputeCameraPosition();
+        const NS::Core::Vector3 eyeBefore = ComputeCameraPosition();
         m_yaw += yawDelta;
         m_pitch = std::clamp(m_pitch + pitchDelta, k_PitchMin, k_PitchMax);
-        const NS::Math::Vector3 eyeAfter = ComputeCameraPosition();
+        const NS::Core::Vector3 eyeAfter = ComputeCameraPosition();
         m_center.x += eyeBefore.x - eyeAfter.x;
         m_center.y += eyeBefore.y - eyeAfter.y;
         m_center.z += eyeBefore.z - eyeAfter.z;
@@ -78,9 +78,9 @@ namespace NS::Editor
         const float sinYaw = std::sin(m_yaw);
         const float cosYaw = std::cos(m_yaw);
         // 視線方向 forward = normalize(center - eye)。 LH look-at の前方で pitch を含むので見ている方向へ進める
-        const NS::Math::Vector3 forward{-cosPitch * sinYaw, -sinPitch, -cosPitch * cosYaw};
+        const NS::Core::Vector3 forward{-cosPitch * sinYaw, -sinPitch, -cosPitch * cosYaw};
         // 画面右 right = cross(worldUp, forward)。 LH なので yaw=0 で -X。 旧実装の +X とは逆で、 左右反転を解消する
-        const NS::Math::Vector3 right{-cosYaw, 0.0f, sinYaw};
+        const NS::Core::Vector3 right{-cosYaw, 0.0f, sinYaw};
         // 速さは distance 比例のままだが、 寄った時に動けなくならないよう距離に下限を置く
         // 立方体 1 個へ注視すると distance は下限の 2m まで落ち、 比例のままでは 1.2m/s と歩くより遅い
         const float step = m_tuning.keyMoveSpeed * std::max(m_distance, k_MinMoveDistance) * dt * speedScale;
@@ -109,7 +109,7 @@ namespace NS::Editor
         m_distance += (m_desiredDistance - m_distance) * std::min(1.0f, m_tuning.springOmega * input.deltaSeconds);
     }
 
-    NS::Math::Vector3 EditorCamera::ComputeCameraPosition() const noexcept
+    NS::Core::Vector3 EditorCamera::ComputeCameraPosition() const noexcept
     {
         const float cosPitch = std::cos(m_pitch);
         const float sinPitch = std::sin(m_pitch);
@@ -196,7 +196,7 @@ namespace NS::Editor
         NS::Object::CameraPose pose{};
         pose.position = ComputeCameraPosition();
         pose.target = m_center;
-        pose.up = NS::Math::Vector3{0.0f, 1.0f, 0.0f};
+        pose.up = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
         pose.fovY = m_fovY;
         pose.nearPlane = m_nearPlane;
         pose.farPlane = m_farPlane;

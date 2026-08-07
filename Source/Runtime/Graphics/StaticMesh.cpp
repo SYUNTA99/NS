@@ -37,9 +37,9 @@ namespace NS::Graphics
         }
 
         // 頂点位置データから、モデルのAABBを算出する
-        NS::Math::AABB ComputeLocalBounds(const StaticVertex* vertices, std::size_t count)
+        NS::Core::AABB ComputeLocalBounds(const StaticVertex* vertices, std::size_t count)
         {
-            NS::Math::AABB box{};
+            NS::Core::AABB box{};
             if (vertices != nullptr && count > 0u)
                 DirectX::BoundingBox::CreateFromPoints(
                     box, count, static_cast<const DirectX::XMFLOAT3*>(&vertices[0].position), sizeof(StaticVertex));
@@ -93,7 +93,7 @@ namespace NS::Graphics
                          desc.indexCount);
 
         const MeshGeometry geom =
-            MakeCube(NS::Math::Vector3{k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent});
+            MakeCube(NS::Core::Vector3{k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent});
         if (BuildBuffers(geom.vertices.data(), geom.vertices.size(), geom.indices.data(), geom.indices.size(), vb, ib))
         {
             SetGeometry(std::move(vb), std::move(ib), geom.vertices.size(), geom.indices.size(), true);

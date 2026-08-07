@@ -5,8 +5,8 @@
 
 namespace
 {
-    using NS::Math::AABB;
-    using NS::Math::Vector3;
+    using NS::Core::AABB;
+    using NS::Core::Vector3;
     using NS::Physics::Capsule;
 
     /// Capsule の片端である sphere を motion だけ swept した時に AABB と最初に当たる TOI を返す
@@ -127,18 +127,18 @@ namespace
 namespace NS::Physics
 {
     bool SweptCapsuleVsAABB(const Capsule& capsule,
-                            const NS::Math::Vector3& motion,
-                            const NS::Math::AABB& box,
+                            const NS::Core::Vector3& motion,
+                            const NS::Core::AABB& box,
                             float& outToi,
-                            NS::Math::Vector3& outNormal) noexcept
+                            NS::Core::Vector3& outNormal) noexcept
     {
         // 上下 2 endpoint を sphere swept する近似。軸端点は共通ヘルパで求める
         const auto [top, bottom] = CapsuleEndpoints(capsule);
 
         float toiTop = 1.0f;
         float toiBottom = 1.0f;
-        NS::Math::Vector3 normalTop{};
-        NS::Math::Vector3 normalBottom{};
+        NS::Core::Vector3 normalTop{};
+        NS::Core::Vector3 normalBottom{};
 
         const bool hitTop = SweptSphereVsAABB(top, motion, box, capsule.radius, toiTop, normalTop);
         const bool hitBottom = SweptSphereVsAABB(bottom, motion, box, capsule.radius, toiBottom, normalBottom);
@@ -146,7 +146,7 @@ namespace NS::Physics
         if (!hitTop && !hitBottom)
         {
             outToi = 1.0f;
-            outNormal = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+            outNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
             return false;
         }
 

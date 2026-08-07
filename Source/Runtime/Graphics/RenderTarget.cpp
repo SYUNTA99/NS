@@ -7,19 +7,19 @@
 namespace NS::Graphics
 {
 
-    std::unique_ptr<RenderTarget> RenderTarget::Create(::NS::Math::Size2D size)
+    std::unique_ptr<RenderTarget> RenderTarget::Create(::NS::Core::Size2D size)
     {
         return std::unique_ptr<RenderTarget>(new RenderTarget(size));
     }
 
-    RenderTarget::RenderTarget(::NS::Math::Size2D size)
+    RenderTarget::RenderTarget(::NS::Core::Size2D size)
     {
         Build(size);
     }
 
     RenderTarget::~RenderTarget() = default;
 
-    void RenderTarget::Build(::NS::Math::Size2D size) noexcept
+    void RenderTarget::Build(::NS::Core::Size2D size) noexcept
     {
         if (size.width <= 0 || size.height <= 0)
         {
@@ -63,16 +63,16 @@ namespace NS::Graphics
         return m_color != nullptr && m_depth != nullptr;
     }
 
-    ::NS::Math::Size2D RenderTarget::Size() const noexcept
+    ::NS::Core::Size2D RenderTarget::Size() const noexcept
     {
         if (!m_color)
         {
-            return ::NS::Math::Size2D{0, 0};
+            return ::NS::Core::Size2D{0, 0};
         }
         return m_color->Size();
     }
 
-    void RenderTarget::Resize(::NS::Math::Size2D size) noexcept
+    void RenderTarget::Resize(::NS::Core::Size2D size) noexcept
     {
         if (size.width <= 0 || size.height <= 0)
         {

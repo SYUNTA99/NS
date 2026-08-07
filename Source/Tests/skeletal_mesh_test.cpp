@@ -9,7 +9,7 @@
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/Shader.h>
 #include <Runtime/Graphics/SkeletalMesh.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Platform/Window.h>
 #include <type_traits>
 
@@ -22,9 +22,9 @@ namespace
     using NS::Graphics::SkeletalMesh;
     using NS::Graphics::SkinnedMeshDesc;
     using NS::Graphics::SkinnedVertex;
-    using NS::Math::Matrix;
-    using NS::Math::Vector2;
-    using NS::Math::Vector3;
+    using NS::Core::Matrix;
+    using NS::Core::Vector2;
+    using NS::Core::Vector3;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 
@@ -34,7 +34,7 @@ namespace
     {
         WindowDesc d{};
         d.title = title;
-        d.size = NS::Math::Size2D{320, 240};
+        d.size = NS::Core::Size2D{320, 240};
         d.visible = false;
         return d;
     }

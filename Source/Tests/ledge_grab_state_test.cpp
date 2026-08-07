@@ -16,16 +16,16 @@ namespace
     constexpr float k_FixedDt = 1.0f / 60.0f;
 
     /// 中心 (cx,cy,cz)・ 1m 立方の固形 block を表す AABB
-    NS::Math::AABB MakeBlock(float cx, float cy, float cz)
+    NS::Core::AABB MakeBlock(float cx, float cy, float cz)
     {
-        return NS::Math::AABB(NS::Math::Vector3{cx, cy, cz}, NS::Math::Vector3{0.5f, 0.5f, 0.5f});
+        return NS::Core::AABB(NS::Core::Vector3{cx, cy, cz}, NS::Core::Vector3{0.5f, 0.5f, 0.5f});
     }
 
     /// AABB 群を積んで broadphase まで作った physics world を返す
-    NS::Physics::PhysicsWorld MakeWorld(std::span<const NS::Math::AABB> boxes)
+    NS::Physics::PhysicsWorld MakeWorld(std::span<const NS::Core::AABB> boxes)
     {
         NS::Physics::PhysicsWorld world;
-        for (const NS::Math::AABB& b : boxes)
+        for (const NS::Core::AABB& b : boxes)
             world.AddAABB(b);
         world.BuildBroadphase();
         return world;
@@ -50,7 +50,7 @@ TEST_F(LedgeGrabStateTest, GrabsLedgeWhenDescendingIntoEdge)
     auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
-    const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
     NS::Physics::PhysicsWorld pw = MakeWorld(world);
     mov.SetPhysicsWorld(&pw);
 
@@ -71,7 +71,7 @@ TEST_F(LedgeGrabStateTest, ClimbInputMantlesOntoBlockTop)
     auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
-    const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
     NS::Physics::PhysicsWorld pw = MakeWorld(world);
     mov.SetPhysicsWorld(&pw);
 
@@ -102,7 +102,7 @@ TEST_F(LedgeGrabStateTest, JumpMantlesOntoBlockTop)
     auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
-    const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
     NS::Physics::PhysicsWorld pw = MakeWorld(world);
     mov.SetPhysicsWorld(&pw);
 
@@ -130,7 +130,7 @@ TEST_F(LedgeGrabStateTest, MantleRisesGraduallyNotInstant)
     auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
-    const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
     NS::Physics::PhysicsWorld pw = MakeWorld(world);
     mov.SetPhysicsWorld(&pw);
 
@@ -161,7 +161,7 @@ TEST_F(LedgeGrabStateTest, BackInputDropsAndDoesNotReGrabImmediately)
     auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
-    const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
     NS::Physics::PhysicsWorld pw = MakeWorld(world);
     mov.SetPhysicsWorld(&pw);
 
@@ -188,7 +188,7 @@ TEST_F(LedgeGrabStateTest, DoesNotGrabWhileAscending)
     auto& mov = *playerObj.AddComponent<CharacterMovementComponent>();
     mov.SetDebugDrawEnabled(false);
 
-    const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
     NS::Physics::PhysicsWorld pw = MakeWorld(world);
     mov.SetPhysicsWorld(&pw);
 
@@ -211,7 +211,7 @@ TEST_F(LedgeGrabStateTest, ShimmyMovesAlongLedge)
     mov.SetDebugDrawEnabled(false);
 
     // -x 面の縁が z 方向に 3 マス続く壁。 左右どちらへでも縁が続く
-    const NS::Math::AABB world[] = {
+    const NS::Core::AABB world[] = {
         MakeBlock(0.0f, 0.0f, 0.0f),
         MakeBlock(0.0f, 0.0f, 1.0f),
         MakeBlock(0.0f, 0.0f, -1.0f),
@@ -241,7 +241,7 @@ TEST_F(LedgeGrabStateTest, ShimmyStopsAtLedgeEnd)
     mov.SetDebugDrawEnabled(false);
 
     // 1 マスだけの縁。 端まで来たらそれ以上シミーできず、 落ちもしない
-    const NS::Math::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
+    const NS::Core::AABB world[] = {MakeBlock(0.0f, 0.0f, 0.0f)};
     NS::Physics::PhysicsWorld pw = MakeWorld(world);
     mov.SetPhysicsWorld(&pw);
 

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Runtime/Graphics/DrawItem.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <cstdint>
 #include <vector>
@@ -25,10 +25,10 @@ namespace NS::Graphics
     struct RenderProxyDesc
     {
         //! カリング判定に用いるワールド空間のAABB
-        NS::Math::AABB bounds{};
+        NS::Core::AABB bounds{};
 
         //! 深度ソート用の中心座標
-        NS::Math::Vector3 sortCenter{};
+        NS::Core::Vector3 sortCenter{};
 
         //! ソート優先度（値が小さいほど手前に優先される）
         int sortPriority = 0;
@@ -54,8 +54,8 @@ namespace NS::Graphics
 
         //! @brief 登録済みオブジェクトの境界領域やソート情報を更新する
         void Update(RenderHandle handle,
-                    const NS::Math::AABB& bounds,
-                    const NS::Math::Vector3& sortCenter,
+                    const NS::Core::AABB& bounds,
+                    const NS::Core::Vector3& sortCenter,
                     int sortPriority,
                     bool transparent) noexcept;
 

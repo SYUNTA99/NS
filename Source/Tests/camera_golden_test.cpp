@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <Runtime/Core/Clock.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/CameraBrainComponent.h>
 #include <Runtime/Object/Components/CameraComponent.h>
 #include <Runtime/Object/Components/CharacterMovementComponent.h>
@@ -17,8 +17,8 @@
 
 namespace
 {
-    using NS::Math::AABB;
-    using NS::Math::Vector3;
+    using NS::Core::AABB;
+    using NS::Core::Vector3;
     using NS::Object::CameraBrainComponent;
     using NS::Object::CameraComponent;
     using NS::Object::CameraPose;
@@ -156,7 +156,7 @@ namespace
         placed.SetTrigger(Vector3{8.0f, 1.0f, 0.0f}, Vector3{2.0f, 1.5f, 2.0f});
         placed.SetLookAtPlayer(true);
         placed.SetVcamPriority(20);
-        placed.SetFovY(NS::Math::ToRadians(NS::Math::Degrees{50.0f}));
+        placed.SetFovY(NS::Core::ToRadians(NS::Core::Degrees{50.0f}));
 
         brain->AddVirtualCamera(&follow);
         brain->AddVirtualCamera(&placed);

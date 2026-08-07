@@ -74,7 +74,7 @@ namespace NS::Editor
         case NS::Object::FieldType::Bool:
             return !SameValue<bool>(comp, *defaults, field);
         case NS::Object::FieldType::Vector3:
-            return !SameValue<NS::Math::Vector3>(comp, *defaults, field);
+            return !SameValue<NS::Core::Vector3>(comp, *defaults, field);
         case NS::Object::FieldType::String:
             return !SameValue<std::string>(comp, *defaults, field);
         case NS::Object::FieldType::ObjectRef:
@@ -99,7 +99,7 @@ namespace NS::Editor
             CopyValue<bool>(comp, defaults, field);
             break;
         case NS::Object::FieldType::Vector3:
-            CopyValue<NS::Math::Vector3>(comp, defaults, field);
+            CopyValue<NS::Core::Vector3>(comp, defaults, field);
             break;
         case NS::Object::FieldType::String:
             CopyValue<std::string>(comp, defaults, field);
@@ -184,12 +184,12 @@ namespace NS::Editor
             }
             case NS::Object::FieldType::Vector3:
             {
-                NS::Math::Vector3 value{};
+                NS::Core::Vector3 value{};
                 field.get(&comp, &value);
                 float xyz[3] = {value.x, value.y, value.z};
                 if (ImGui::DragFloat3("##value", xyz, 0.05f))
                 {
-                    value = NS::Math::Vector3{xyz[0], xyz[1], xyz[2]};
+                    value = NS::Core::Vector3{xyz[0], xyz[1], xyz[2]};
                     field.set(&comp, &value);
                     result.changed = true;
                 }

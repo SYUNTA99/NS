@@ -27,7 +27,7 @@ namespace NS::Graphics
         // 全画面塗り shader (fade.ps) の cbuffer b0 とバイト一致させる
         struct alignas(16) FullscreenColorCB
         {
-            NS::Math::Color color;
+            NS::Core::Color color;
         };
         static_assert(sizeof(FullscreenColorCB) == 16, "FullscreenColorCB は HLSL の cbuffer b0 とバイト一致が必要");
 
@@ -35,7 +35,7 @@ namespace NS::Graphics
         struct alignas(16) ScreenRectCB
         {
             float rect[4]; // clip 空間の左上 x, y と幅, 高さ (高さは画面下方向の量)
-            NS::Math::Color color;
+            NS::Core::Color color;
         };
         static_assert(sizeof(ScreenRectCB) == 32, "ScreenRectCB は HLSL の cbuffer b0 とバイト一致が必要");
 
@@ -143,7 +143,7 @@ namespace NS::Graphics
                 return false;
             }
 
-            const ::NS::Math::Size2D size = backbuffer->Size();
+            const ::NS::Core::Size2D size = backbuffer->Size();
             TextureCreateDesc depthDesc{};
             depthDesc.width = static_cast<UINT>(size.width);
             depthDesc.height = static_cast<UINT>(size.height);
@@ -176,7 +176,7 @@ namespace NS::Graphics
         }
 
         HWND hwnd = reinterpret_cast<HWND>(window.NativeHandle());
-        const ::NS::Math::Size2D winSize = window.Size();
+        const ::NS::Core::Size2D winSize = window.Size();
         const int w = winSize.width;
         const int h = winSize.height;
 
@@ -233,7 +233,7 @@ namespace NS::Graphics
         m_commonPipelines[2] =
             Pipeline::Create(PipelineDesc{.blend = BlendMode::Additive, .depth = DepthMode::ReadOnly});
 
-        window.SetResizeCallback([this](::NS::Math::Size2D rs) { this->Resize(rs); });
+        window.SetResizeCallback([this](::NS::Core::Size2D rs) { this->Resize(rs); });
         m_resizeCallbackRegistered = true;
 
         m_valid = true;
@@ -323,7 +323,7 @@ namespace NS::Graphics
         m_fullscreenReady = true;
     }
 
-    void Renderer::DrawFullscreenColor(const NS::Math::Color& color) noexcept
+    void Renderer::DrawFullscreenColor(const NS::Core::Color& color) noexcept
     {
         EnsureFullscreenResources();
         if (!m_fullscreenReady || !m_commands)
@@ -389,7 +389,7 @@ namespace NS::Graphics
         m_screenRectReady = true;
     }
 
-    void Renderer::DrawScreenRect(float x, float y, float width, float height, const NS::Math::Color& color) noexcept
+    void Renderer::DrawScreenRect(float x, float y, float width, float height, const NS::Core::Color& color) noexcept
     {
         EnsureScreenRectResources();
         if (!m_screenRectReady || !m_commands)
@@ -399,7 +399,7 @@ namespace NS::Graphics
         if (cmd.Native() == nullptr)
             return;
 
-        const ::NS::Math::Size2D targetSize = Size();
+        const ::NS::Core::Size2D targetSize = Size();
         if (targetSize.width <= 0 || targetSize.height <= 0)
             return;
         const float targetWidth = static_cast<float>(targetSize.width);
@@ -447,19 +447,19 @@ namespace NS::Graphics
             cmd.ClearRenderTarget(sceneRtv, r, g, b, a);
             cmd.ClearDepth(sceneDsv, 1.0f);
             cmd.SetRenderTarget(sceneRtv, sceneDsv);
-            const ::NS::Math::Size2D sceneSize = m_sceneTarget->Size();
+            const ::NS::Core::Size2D sceneSize = m_sceneTarget->Size();
             cmd.SetViewport(static_cast<float>(sceneSize.width), static_cast<float>(sceneSize.height));
             return;
         }
 
         cmd.SetRenderTarget(rtv, dsv);
-        const ::NS::Math::Size2D size = m_backbuffer->Size();
+        const ::NS::Core::Size2D size = m_backbuffer->Size();
         cmd.SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
     }
 
     void Renderer::BeginFrame() noexcept
     {
-        const ::NS::Math::Color& c = m_settings.clearColor;
+        const ::NS::Core::Color& c = m_settings.clearColor;
         BeginFrame(c.R(), c.G(), c.B(), c.A());
     }
 
@@ -494,7 +494,7 @@ namespace NS::Graphics
         }
     }
 
-    void Renderer::Resize(::NS::Math::Size2D size) noexcept
+    void Renderer::Resize(::NS::Core::Size2D size) noexcept
     {
         if (!IsValid())
         {
@@ -542,7 +542,7 @@ namespace NS::Graphics
         // Size() が今のビューを返すよう描画先を差し替える。RenderWorld のアスペクト比計算がこれを読む
         m_sceneTarget = target;
         CommandList& cmd = *m_commands;
-        const ::NS::Math::Color& c = m_settings.clearColor;
+        const ::NS::Core::Color& c = m_settings.clearColor;
         if (target != nullptr && target->IsValid())
         {
             ID3D11RenderTargetView* rtv = target->Color()->Rtv();
@@ -550,7 +550,7 @@ namespace NS::Graphics
             cmd.ClearRenderTarget(rtv, c.R(), c.G(), c.B(), c.A());
             cmd.ClearDepth(dsv, 1.0f);
             cmd.SetRenderTarget(rtv, dsv);
-            const ::NS::Math::Size2D size = target->Size();
+            const ::NS::Core::Size2D size = target->Size();
             cmd.SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
             return;
         }
@@ -559,7 +559,7 @@ namespace NS::Graphics
             return;
         }
         cmd.SetRenderTarget(m_backbuffer->Rtv(), m_depth->Dsv());
-        const ::NS::Math::Size2D size = m_backbuffer->Size();
+        const ::NS::Core::Size2D size = m_backbuffer->Size();
         cmd.SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
     }
 
@@ -571,11 +571,11 @@ namespace NS::Graphics
         }
         CommandList& cmd = *m_commands;
         cmd.SetRenderTarget(m_backbuffer->Rtv(), m_depth->Dsv());
-        const ::NS::Math::Size2D size = m_backbuffer->Size();
+        const ::NS::Core::Size2D size = m_backbuffer->Size();
         cmd.SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
     }
 
-    ::NS::Math::Size2D Renderer::Size() const noexcept
+    ::NS::Core::Size2D Renderer::Size() const noexcept
     {
         if (m_sceneTarget != nullptr && m_sceneTarget->IsValid())
         {
@@ -583,7 +583,7 @@ namespace NS::Graphics
         }
         if (!m_backbuffer)
         {
-            return ::NS::Math::Size2D{0, 0};
+            return ::NS::Core::Size2D{0, 0};
         }
         return m_backbuffer->Size();
     }

@@ -13,7 +13,7 @@
 #include "Runtime/Graphics/SkeletalMesh.h"
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Graphics/Texture.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 
 #include <memory>
@@ -128,12 +128,12 @@ namespace NS::Object
         }
 
         // baseColor は任意の 3 要素
-        out.baseColor = NS::Math::Vector3{1.0f, 1.0f, 1.0f};
+        out.baseColor = NS::Core::Vector3{1.0f, 1.0f, 1.0f};
         if (j.contains("baseColor") && j["baseColor"].is_array() && j["baseColor"].size() == 3)
         {
             const auto& c = j["baseColor"];
             if (c[0].is_number() && c[1].is_number() && c[2].is_number())
-                out.baseColor = NS::Math::Vector3{c[0].get<float>(), c[1].get<float>(), c[2].get<float>()};
+                out.baseColor = NS::Core::Vector3{c[0].get<float>(), c[1].get<float>(), c[2].get<float>()};
         }
 
         // blend は任意
@@ -254,8 +254,8 @@ namespace NS::Object
             record.boundsMax = record.boundsMin;
             for (const NS::Graphics::SkinnedVertex& v : data.vertices)
             {
-                record.boundsMin = NS::Math::Vector3::Min(record.boundsMin, v.position);
-                record.boundsMax = NS::Math::Vector3::Max(record.boundsMax, v.position);
+                record.boundsMin = NS::Core::Vector3::Min(record.boundsMin, v.position);
+                record.boundsMax = NS::Core::Vector3::Max(record.boundsMax, v.position);
             }
             record.skeleton = std::move(data.skeleton);
             record.clips = std::move(data.animations);
@@ -329,14 +329,14 @@ namespace NS::Object
 
     void AssetManager::RegisterBuiltins()
     {
-        const NS::Math::Vector3 half{0.5f, 0.5f, 0.5f};
+        const NS::Core::Vector3 half{0.5f, 0.5f, 0.5f};
         m_builtins.emplace(k_BuiltinCube, MakeStaticMesh(NS::Graphics::MakeCube(half)));
         m_builtins.emplace(k_BuiltinSphere, MakeStaticMesh(NS::Graphics::MakeSphere(half.x)));
         m_builtins.emplace(k_BuiltinWedge45, MakeStaticMesh(NS::Graphics::MakeSlope(45.0f, half)));
         m_builtins.emplace(k_BuiltinWedge30, MakeStaticMesh(NS::Graphics::MakeSlope(30.0f, half)));
         m_builtins.emplace(k_BuiltinWedge22, MakeStaticMesh(NS::Graphics::MakeSlope(22.5f, half)));
         m_builtins.emplace(k_BuiltinWedge15, MakeStaticMesh(NS::Graphics::MakeSlope(15.0f, half)));
-        m_builtins.emplace(k_BuiltinShadowQuad, MakeStaticMesh(NS::Graphics::MakePlane(NS::Math::Vector2{0.5f, 0.5f})));
+        m_builtins.emplace(k_BuiltinShadowQuad, MakeStaticMesh(NS::Graphics::MakePlane(NS::Core::Vector2{0.5f, 0.5f})));
     }
 
     NS::Graphics::StaticMesh* AssetManager::Builtin(std::string_view name) const noexcept
@@ -400,7 +400,7 @@ namespace NS::Object
         record.material = std::move(material);
         record.baseColor = fileDesc.baseColor;
         NS::Graphics::Material* rawMaterial = record.material.get();
-        const NS::Math::Vector3 color = record.baseColor;
+        const NS::Core::Vector3 color = record.baseColor;
         m_materials.emplace(matKey, std::move(record));
         return LoadedMaterial{rawMaterial, color};
     }

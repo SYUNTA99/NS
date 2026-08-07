@@ -2,7 +2,7 @@
 
 // Core 層の公開ヘッダをまとめて取り込む umbrella
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Core/EditorAccess.h"

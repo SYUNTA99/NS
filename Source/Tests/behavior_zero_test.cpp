@@ -5,7 +5,7 @@
 #include <filesystem>
 #include <Game/Level/HazardComponent.h>
 #include <gtest/gtest.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/CapsuleColliderComponent.h>
@@ -27,7 +27,7 @@ namespace
     using NS::Object::SceneData;
     using NS::Object::ObjectData;
     using NS::Object::SerializeSceneToJson;
-    using NS::Math::Vector3;
+    using NS::Core::Vector3;
 
     constexpr float k_Tol = 1e-4f;
 
@@ -46,9 +46,9 @@ namespace
         bool hasCapsule = false;
         bool hasSlope = false;
         bool hasHazard = false;
-        NS::Math::AABB boxAabb{};
-        NS::Math::OBB boxObb;
-        NS::Math::Sphere sphere;
+        NS::Core::AABB boxAabb{};
+        NS::Core::OBB boxObb;
+        NS::Core::Sphere sphere;
         NS::Physics::Capsule capsule;
         float slopeAngle = 0.0f;
         std::array<NS::Physics::Triangle, 8> slopeTriangles{};
@@ -150,7 +150,7 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     NS::Object::SetField(capsule, "半分の高さ", 0.9f);
     obj.components.push_back(std::move(capsule));
     src.objects.push_back(std::move(obj));
-    src.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
 
     SceneData restored;
     ASSERT_TRUE(DeserializeSceneFromJson(restored, SerializeSceneToJson(src)));

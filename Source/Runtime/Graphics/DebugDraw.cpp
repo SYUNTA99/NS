@@ -19,8 +19,8 @@ namespace
 
     struct DebugVertex
     {
-        NS::Math::Vector3 position;
-        NS::Math::Color color;
+        NS::Core::Vector3 position;
+        NS::Core::Color color;
     };
 
     static_assert(sizeof(DebugVertex) == 28, "DebugVertex は POSITION(12) + COLOR(16) の 28 byte 前提");
@@ -89,7 +89,7 @@ namespace
         // 動的頂点バッファと定数バッファを確保
         b.vb = NS::Graphics::Buffer::Create(
             NS::Graphics::MakeVertexBufferDesc(nullptr, k_MaxVertices, sizeof(DebugVertex), D3D11_USAGE_DYNAMIC));
-        b.cb = NS::Graphics::Buffer::Create(NS::Graphics::MakeConstantBufferDesc(sizeof(NS::Math::Matrix)));
+        b.cb = NS::Graphics::Buffer::Create(NS::Graphics::MakeConstantBufferDesc(sizeof(NS::Core::Matrix)));
         if (!b.vb->IsValid() || !b.cb->IsValid())
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: VB / CB 構築失敗");
@@ -101,7 +101,7 @@ namespace
     }
 
     // 頂点を追加する
-    void PushLine(const NS::Math::Vector3& a, const NS::Math::Vector3& b, const NS::Math::Color& color) noexcept
+    void PushLine(const NS::Core::Vector3& a, const NS::Core::Vector3& b, const NS::Core::Color& color) noexcept
     {
         auto& v = Storage();
         if (v.size() + 2 > k_MaxVertices) // 最大容量を超える場合は最も古い線を破棄する
@@ -115,12 +115,12 @@ namespace
 
 namespace NS::Graphics::DebugDraw
 {
-    void Line(const NS::Math::Vector3& a, const NS::Math::Vector3& b, const NS::Math::Color& color) noexcept
+    void Line(const NS::Core::Vector3& a, const NS::Core::Vector3& b, const NS::Core::Color& color) noexcept
     {
         PushLine(a, b, color);
     }
 
-    void AABB(const NS::Math::AABB& box, const NS::Math::Color& color) noexcept
+    void AABB(const NS::Core::AABB& box, const NS::Core::Color& color) noexcept
     {
         const float cx = box.Center.x;
         const float cy = box.Center.y;
@@ -129,14 +129,14 @@ namespace NS::Graphics::DebugDraw
         const float ey = box.Extents.y;
         const float ez = box.Extents.z;
 
-        const NS::Math::Vector3 c000{cx - ex, cy - ey, cz - ez};
-        const NS::Math::Vector3 c100{cx + ex, cy - ey, cz - ez};
-        const NS::Math::Vector3 c110{cx + ex, cy + ey, cz - ez};
-        const NS::Math::Vector3 c010{cx - ex, cy + ey, cz - ez};
-        const NS::Math::Vector3 c001{cx - ex, cy - ey, cz + ez};
-        const NS::Math::Vector3 c101{cx + ex, cy - ey, cz + ez};
-        const NS::Math::Vector3 c111{cx + ex, cy + ey, cz + ez};
-        const NS::Math::Vector3 c011{cx - ex, cy + ey, cz + ez};
+        const NS::Core::Vector3 c000{cx - ex, cy - ey, cz - ez};
+        const NS::Core::Vector3 c100{cx + ex, cy - ey, cz - ez};
+        const NS::Core::Vector3 c110{cx + ex, cy + ey, cz - ez};
+        const NS::Core::Vector3 c010{cx - ex, cy + ey, cz - ez};
+        const NS::Core::Vector3 c001{cx - ex, cy - ey, cz + ez};
+        const NS::Core::Vector3 c101{cx + ex, cy - ey, cz + ez};
+        const NS::Core::Vector3 c111{cx + ex, cy + ey, cz + ez};
+        const NS::Core::Vector3 c011{cx - ex, cy + ey, cz + ez};
 
         // 底面
         PushLine(c000, c100, color);
@@ -157,21 +157,21 @@ namespace NS::Graphics::DebugDraw
         PushLine(c001, c011, color);
     }
 
-    void OBB(const NS::Math::OBB& obb, const NS::Math::Color& color) noexcept
+    void OBB(const NS::Core::OBB& obb, const NS::Core::Color& color) noexcept
     {
-        const NS::Math::Vector3 ex = obb.axisX * obb.halfExtentX;
-        const NS::Math::Vector3 ey = obb.axisY * obb.halfExtentY;
-        const NS::Math::Vector3 ez = obb.axisZ * obb.halfExtentZ;
+        const NS::Core::Vector3 ex = obb.axisX * obb.halfExtentX;
+        const NS::Core::Vector3 ey = obb.axisY * obb.halfExtentY;
+        const NS::Core::Vector3 ez = obb.axisZ * obb.halfExtentZ;
 
         // 8つの頂点座標を計算する。
-        const NS::Math::Vector3 c000 = obb.center - ex - ey - ez;
-        const NS::Math::Vector3 c100 = obb.center + ex - ey - ez;
-        const NS::Math::Vector3 c110 = obb.center + ex + ey - ez;
-        const NS::Math::Vector3 c010 = obb.center - ex + ey - ez;
-        const NS::Math::Vector3 c001 = obb.center - ex - ey + ez;
-        const NS::Math::Vector3 c101 = obb.center + ex - ey + ez;
-        const NS::Math::Vector3 c111 = obb.center + ex + ey + ez;
-        const NS::Math::Vector3 c011 = obb.center - ex + ey + ez;
+        const NS::Core::Vector3 c000 = obb.center - ex - ey - ez;
+        const NS::Core::Vector3 c100 = obb.center + ex - ey - ez;
+        const NS::Core::Vector3 c110 = obb.center + ex + ey - ez;
+        const NS::Core::Vector3 c010 = obb.center - ex + ey - ez;
+        const NS::Core::Vector3 c001 = obb.center - ex - ey + ez;
+        const NS::Core::Vector3 c101 = obb.center + ex - ey + ez;
+        const NS::Core::Vector3 c111 = obb.center + ex + ey + ez;
+        const NS::Core::Vector3 c011 = obb.center - ex + ey + ez;
 
         // 前面
         PushLine(c000, c100, color);
@@ -192,17 +192,17 @@ namespace NS::Graphics::DebugDraw
         PushLine(c010, c011, color);
     }
 
-    void Capsule(const NS::Math::Vector3& base,
-                 const NS::Math::Vector3& axis,
+    void Capsule(const NS::Core::Vector3& base,
+                 const NS::Core::Vector3& axis,
                  float radius,
-                 const NS::Math::Color& color) noexcept
+                 const NS::Core::Color& color) noexcept
     {
         // 上下端の基準点
-        const NS::Math::Vector3 top = base + axis;
-        const NS::Math::Vector3 bottom = base - axis;
+        const NS::Core::Vector3 top = base + axis;
+        const NS::Core::Vector3 bottom = base - axis;
 
         // 軸に対して垂直な2つのベクトルを計算する
-        NS::Math::Vector3 axisN = axis;
+        NS::Core::Vector3 axisN = axis;
         const float axisLen = std::sqrt(axisN.x * axisN.x + axisN.y * axisN.y + axisN.z * axisN.z);
         if (axisLen > 1e-6f)
         {
@@ -210,8 +210,8 @@ namespace NS::Graphics::DebugDraw
             axisN.y /= axisLen;
             axisN.z /= axisLen;
         }
-        NS::Math::Vector3 perpA =
-            (std::abs(axisN.y) < 0.99f) ? NS::Math::Vector3{0.0f, 1.0f, 0.0f} : NS::Math::Vector3{1.0f, 0.0f, 0.0f};
+        NS::Core::Vector3 perpA =
+            (std::abs(axisN.y) < 0.99f) ? NS::Core::Vector3{0.0f, 1.0f, 0.0f} : NS::Core::Vector3{1.0f, 0.0f, 0.0f};
         perpA = {perpA.y * axisN.z - perpA.z * axisN.y,
                  perpA.z * axisN.x - perpA.x * axisN.z,
                  perpA.x * axisN.y - perpA.y * axisN.x};
@@ -222,22 +222,22 @@ namespace NS::Graphics::DebugDraw
             perpA.y /= plen;
             perpA.z /= plen;
         }
-        const NS::Math::Vector3 perpB{axisN.y * perpA.z - axisN.z * perpA.y,
+        const NS::Core::Vector3 perpB{axisN.y * perpA.z - axisN.z * perpA.y,
                                       axisN.z * perpA.x - axisN.x * perpA.z,
                                       axisN.x * perpA.y - axisN.y * perpA.x};
 
         // 上下の円を描画する
         const float twoPi = 6.2831853f;
-        NS::Math::Vector3 prevTop{}, prevBot{};
+        NS::Core::Vector3 prevTop{}, prevBot{};
         for (int i = 0; i <= k_CapsuleSegments; ++i)
         {
             const float t = (static_cast<float>(i) / k_CapsuleSegments) * twoPi;
             const float ca = std::cos(t) * radius;
             const float sa = std::sin(t) * radius;
-            const NS::Math::Vector3 offset{
+            const NS::Core::Vector3 offset{
                 perpA.x * ca + perpB.x * sa, perpA.y * ca + perpB.y * sa, perpA.z * ca + perpB.z * sa};
-            const NS::Math::Vector3 ptTop = top + offset;
-            const NS::Math::Vector3 ptBot = bottom + offset;
+            const NS::Core::Vector3 ptTop = top + offset;
+            const NS::Core::Vector3 ptBot = bottom + offset;
             if (i > 0)
             {
                 PushLine(prevTop, ptTop, color);
@@ -248,7 +248,7 @@ namespace NS::Graphics::DebugDraw
         }
 
         // 円柱部分の側面の辺を描画する
-        const NS::Math::Vector3 dirs[4] = {{perpA.x * radius, perpA.y * radius, perpA.z * radius},
+        const NS::Core::Vector3 dirs[4] = {{perpA.x * radius, perpA.y * radius, perpA.z * radius},
                                            {-perpA.x * radius, -perpA.y * radius, -perpA.z * radius},
                                            {perpB.x * radius, perpB.y * radius, perpB.z * radius},
                                            {-perpB.x * radius, -perpB.y * radius, -perpB.z * radius}};
@@ -258,7 +258,7 @@ namespace NS::Graphics::DebugDraw
         }
     }
 
-    void Flush(Renderer& renderer, const NS::Math::Matrix& viewProjection) noexcept
+    void Flush(Renderer& renderer, const NS::Core::Matrix& viewProjection) noexcept
     {
         std::vector<DebugVertex>& store = Storage();
         if (store.empty())

@@ -1,6 +1,6 @@
 #include <Game/Level/HazardComponent.h>
 #include <gtest/gtest.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Object/Component.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/SlopeColliderComponent.h>
@@ -68,8 +68,8 @@ TEST(ReflectionJsonTest, RoundTripVector3Fields)
 {
     GameObject src;
     auto* box = src.AddComponent<NS::Object::BoxColliderComponent>();
-    box->SetHalfExtents(NS::Math::Vector3{2.0f, 3.0f, 4.0f});
-    box->SetCenterOffset(NS::Math::Vector3{1.0f, -2.0f, 0.5f});
+    box->SetHalfExtents(NS::Core::Vector3{2.0f, 3.0f, 4.0f});
+    box->SetCenterOffset(NS::Core::Vector3{1.0f, -2.0f, 0.5f});
 
     const nlohmann::json j = SerializeComponent(*box);
 
@@ -135,7 +135,7 @@ TEST(ReflectionJsonTest, UnknownAndMissingKeysAreIgnored)
 {
     GameObject obj;
     auto* box = obj.AddComponent<NS::Object::BoxColliderComponent>();
-    box->SetHalfExtents(NS::Math::Vector3{2.0f, 2.0f, 2.0f});
+    box->SetHalfExtents(NS::Core::Vector3{2.0f, 2.0f, 2.0f});
 
     // 未知キー + 欠損 (Half Extents を含まない) + 型不一致を混ぜても落ちず、 既定/現状値が保たれる
     nlohmann::json fields;

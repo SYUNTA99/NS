@@ -13,7 +13,7 @@ namespace NS::Game::Level
 {
     nlohmann::json MakeMeshRendererEntry(std::string_view meshName,
                                          std::string_view materialName,
-                                         const NS::Math::Vector3& baseColor)
+                                         const NS::Core::Vector3& baseColor)
     {
         nlohmann::json entry = NS::Object::MakeComponentEntry("MeshRendererComponent");
         NS::Object::SetField(entry, "メッシュ", meshName);
@@ -35,7 +35,7 @@ namespace NS::Game::Level
         object.components = MakeCellCubeComponents();
         // components を確定した後に transform を書き込む。 先に書くと components 代入が TransformComponent を消す
         NS::Object::SetObjectPosition(
-            object, NS::Math::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
+            object, NS::Core::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
         return object;
     }
 
@@ -44,7 +44,7 @@ namespace NS::Game::Level
         return hasBox && !hasSlope && !hasHazard && !hasGoal && !hasKillZone;
     }
 
-    std::optional<NS::Math::OBB> SolidBoxWorldOBB(NS::Object::GameObject& obj) noexcept
+    std::optional<NS::Core::OBB> SolidBoxWorldOBB(NS::Object::GameObject& obj) noexcept
     {
         auto* box = obj.FindComponent<NS::Object::BoxColliderComponent>();
         const bool hasSlope = obj.FindComponent<NS::Object::SlopeColliderComponent>() != nullptr;

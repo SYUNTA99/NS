@@ -1,6 +1,6 @@
 #include <cstddef>
 #include <gtest/gtest.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Object/Component.h>
 #include <Runtime/Object/Components/TransformComponent.h>
 #include <Runtime/Object/GameObject.h>
@@ -89,14 +89,14 @@ TEST(TransformComponentTest, PositionReflectionBridgesOwnerRootTransform)
     const FieldDesc* pos = FindField(tc->GetReflection(), "位置");
     ASSERT_NE(pos, nullptr);
 
-    NS::Math::Vector3 set{3.0f, 4.0f, 5.0f};
+    NS::Core::Vector3 set{3.0f, 4.0f, 5.0f};
     pos->set(tc, &set);
     EXPECT_FLOAT_EQ(obj.Root().Position().x, 3.0f);
     EXPECT_FLOAT_EQ(obj.Root().Position().y, 4.0f);
     EXPECT_FLOAT_EQ(obj.Root().Position().z, 5.0f);
 
-    obj.Root().SetPosition(NS::Math::Vector3{-1.0f, -2.0f, -3.0f});
-    NS::Math::Vector3 got{};
+    obj.Root().SetPosition(NS::Core::Vector3{-1.0f, -2.0f, -3.0f});
+    NS::Core::Vector3 got{};
     pos->get(tc, &got);
     EXPECT_FLOAT_EQ(got.x, -1.0f);
     EXPECT_FLOAT_EQ(got.y, -2.0f);
@@ -111,9 +111,9 @@ TEST(TransformComponentTest, ScaleReflectionRoundTrips)
     const FieldDesc* scale = FindField(tc->GetReflection(), "スケール");
     ASSERT_NE(scale, nullptr);
 
-    NS::Math::Vector3 set{2.0f, 3.0f, 4.0f};
+    NS::Core::Vector3 set{2.0f, 3.0f, 4.0f};
     scale->set(tc, &set);
-    NS::Math::Vector3 got{};
+    NS::Core::Vector3 got{};
     scale->get(tc, &got);
     EXPECT_FLOAT_EQ(got.x, 2.0f);
     EXPECT_FLOAT_EQ(got.y, 3.0f);
@@ -130,9 +130,9 @@ TEST(TransformComponentTest, RotationEulerDegreesRoundTrips)
     const FieldDesc* rot = FindField(tc->GetReflection(), "回転 (度)");
     ASSERT_NE(rot, nullptr);
 
-    NS::Math::Vector3 set{0.0f, 45.0f, 0.0f};
+    NS::Core::Vector3 set{0.0f, 45.0f, 0.0f};
     rot->set(tc, &set);
-    NS::Math::Vector3 got{};
+    NS::Core::Vector3 got{};
     rot->get(tc, &got);
     EXPECT_NEAR(got.x, 0.0f, 1e-2f);
     EXPECT_NEAR(got.y, 45.0f, 1e-2f);
@@ -145,7 +145,7 @@ TEST(TransformComponentTest, WithoutOwnerReadsAndWritesOwnTransform)
     TransformComponent orphan;
     EXPECT_FLOAT_EQ(orphan.Position().x, 0.0f);
     EXPECT_FLOAT_EQ(orphan.Scale().x, 1.0f);
-    orphan.SetPosition(NS::Math::Vector3{9.0f, 9.0f, 9.0f});
+    orphan.SetPosition(NS::Core::Vector3{9.0f, 9.0f, 9.0f});
     EXPECT_FLOAT_EQ(orphan.Position().x, 9.0f);
     EXPECT_FLOAT_EQ(orphan.Root().Position().x, 9.0f);
 }
@@ -183,7 +183,7 @@ TEST(TransformComponentTest, DataWithoutTransformEntryKeepsOneAtDefaults)
 TEST(TransformComponentTest, ErasingTransformEntryDropsThePose)
 {
     ObjectData object = MakeMinimalObject();
-    NS::Object::SetObjectPosition(object, NS::Math::Vector3{5.0f, 6.0f, 7.0f});
+    NS::Object::SetObjectPosition(object, NS::Core::Vector3{5.0f, 6.0f, 7.0f});
     ASSERT_EQ(CountTransformEntries(object), std::size_t{1});
 
     GameObject placed;
@@ -206,9 +206,9 @@ TEST(TransformComponentTest, DuplicateEntriesBuildOnlyOne)
 {
     ObjectData object = MakeMinimalObject();
     nlohmann::json first = NS::Object::MakeComponentEntry(NS::Object::k_TransformTypeName);
-    NS::Object::SetField(first, "位置", NS::Math::Vector3{1.0f, 2.0f, 3.0f});
+    NS::Object::SetField(first, "位置", NS::Core::Vector3{1.0f, 2.0f, 3.0f});
     nlohmann::json second = NS::Object::MakeComponentEntry(NS::Object::k_TransformTypeName);
-    NS::Object::SetField(second, "位置", NS::Math::Vector3{-8.0f, -8.0f, -8.0f});
+    NS::Object::SetField(second, "位置", NS::Core::Vector3{-8.0f, -8.0f, -8.0f});
     object.components.push_back(std::move(first));
     object.components.push_back(std::move(second));
     ASSERT_EQ(CountTransformEntries(object), std::size_t{2});

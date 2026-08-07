@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Runtime/Core/NonCopyable.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <memory>
 
@@ -19,19 +19,19 @@ namespace NS::Graphics
         //! @brief 指定サイズのオフスクリーン描画先を生成する
         //! @param size 幅と高さ。0 以下の成分があると無効なインスタンスを返す
         //! @return 生成失敗時も非nullのインスタンスを返す（IsValid で判定する）
-        [[nodiscard]] static std::unique_ptr<RenderTarget> Create(NS::Math::Size2D size);
+        [[nodiscard]] static std::unique_ptr<RenderTarget> Create(NS::Core::Size2D size);
 
         ~RenderTarget();
 
         [[nodiscard]] bool IsValid() const noexcept;
 
         //! カラーと深度のサイズを取得する
-        [[nodiscard]] NS::Math::Size2D Size() const noexcept;
+        [[nodiscard]] NS::Core::Size2D Size() const noexcept;
 
         //! @brief 描画先のサイズを変更する
         //! @note 同サイズ、または 0 以下の指定は何もしない。旧テクスチャは即座に手放すため、
         //! SRV を参照する描画が終わった位置で呼ぶこと
-        void Resize(NS::Math::Size2D size) noexcept;
+        void Resize(NS::Core::Size2D size) noexcept;
 
         //! 描画先となるカラーテクスチャ (RTV+SRV)。無効時は nullptr
         [[nodiscard]] Texture* Color() const noexcept;
@@ -44,10 +44,10 @@ namespace NS::Graphics
         [[nodiscard]] void* UiTextureHandle() const noexcept;
 
     private:
-        explicit RenderTarget(NS::Math::Size2D size);
+        explicit RenderTarget(NS::Core::Size2D size);
 
         //! カラーと深度を組で作り直す。片方でも失敗したら両方とも持たない
-        void Build(NS::Math::Size2D size) noexcept;
+        void Build(NS::Core::Size2D size) noexcept;
 
         std::unique_ptr<Texture> m_color; // カラー (RTV+SRV)
         std::unique_ptr<Texture> m_depth; // 深度 (DSV)

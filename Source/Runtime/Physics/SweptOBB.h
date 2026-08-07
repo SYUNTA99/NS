@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Physics/Capsule.h"
 
 namespace NS::Physics
@@ -10,9 +10,9 @@ namespace NS::Physics
     /// @param center      world 空間での OBB の中心
     /// @param rotation    正規直交軸の保証に必要な単位 quaternion 前提
     /// @param halfExtents scale 込みの半サイズ。各成分の絶対値を取る
-    [[nodiscard]] NS::Math::OBB MakeObb(const NS::Math::Vector3& center,
-                                        const NS::Math::Quaternion& rotation,
-                                        const NS::Math::Vector3& halfExtents) noexcept;
+    [[nodiscard]] NS::Core::OBB MakeObb(const NS::Core::Vector3& center,
+                                        const NS::Core::Quaternion& rotation,
+                                        const NS::Core::Vector3& halfExtents) noexcept;
 
     /// @brief Capsule が motion だけ移動した時の OBB との最初の接触を返す
     /// @details 単一 TRS 由来の OBB は軸が直交を保つので、sphere の始点と motion を local 軸へ射影すれば
@@ -24,8 +24,8 @@ namespace NS::Physics
     /// @param outNormal world の OBB 表面外向きの接触法線。当たらなければ零ベクトル
     /// @retresult true = 接触あり / false = 接触なし
     [[nodiscard]] bool SweptCapsuleVsOBB(const NS::Physics::Capsule& capsule,
-                                         const NS::Math::Vector3& motion,
-                                         const NS::Math::OBB& obb,
+                                         const NS::Core::Vector3& motion,
+                                         const NS::Core::OBB& obb,
                                          float& outToi,
-                                         NS::Math::Vector3& outNormal) noexcept;
+                                         NS::Core::Vector3& outNormal) noexcept;
 } // namespace NS::Physics

@@ -69,7 +69,7 @@ namespace NS::Graphics
     {
         if (m_alpha <= 0.0f)
             return;
-        renderer.DrawFullscreenColor(NS::Math::Color{0.0f, 0.0f, 0.0f, m_alpha});
+        renderer.DrawFullscreenColor(NS::Core::Color{0.0f, 0.0f, 0.0f, m_alpha});
     }
 
 } // namespace NS::Graphics

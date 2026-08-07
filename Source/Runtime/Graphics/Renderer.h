@@ -3,7 +3,7 @@
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/D3dCommon.h"
 #include "Runtime/Graphics/RenderSettings.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Platform/Window.h"
 
 namespace NS::Graphics
@@ -66,11 +66,11 @@ namespace NS::Graphics
         //! @brief ウィンドウのサイズ変更に合わせて描画領域を再構築する
         //! @param size 新しい描画領域のサイズ
         //! @note 指定された幅や高さが0以下の場合は、ウィンドウの最小化として扱われ何も行わない
-        void Resize(NS::Math::Size2D size) noexcept;
+        void Resize(NS::Core::Size2D size) noexcept;
 
         //! @brief 現在のシーン描画先サイズを取得する
         //! @details SetSceneTarget 設定中はその描画先、未設定時は backbuffer のサイズを返す
-        [[nodiscard]] NS::Math::Size2D Size() const noexcept;
+        [[nodiscard]] NS::Core::Size2D Size() const noexcept;
 
         //! @brief シーンの描画先をオフスクリーンへ切り替える
         //! @param target 非所有の描画先。null で backbuffer へ戻す
@@ -101,12 +101,12 @@ namespace NS::Graphics
         /// @brief 画面全体を指定色（アルファ込み）で塗る。描画済みシーンの上へ半透明合成で重ねる
         /// @details 全画面三角形を1枚描く engine 共通の描画能力。暗転・フラッシュ等、色の意味は呼び出し側が決める
         /// 資源は初回呼び出し時に一度だけ構築し、失敗時は以後何もしない。最前面に出すため全描画の最後に呼ぶ
-        void DrawFullscreenColor(const NS::Math::Color& color) noexcept;
+        void DrawFullscreenColor(const NS::Core::Color& color) noexcept;
 
         /// @brief 現在の描画先へ色付き矩形を 1 枚重ねる。座標は描画先のピクセルで左上原点
         /// @details 画面 UI の下地・板・ゲージを描く engine 共通の描画能力。何を表すかは呼び出し側が決める
         /// 半透明合成で最前面に出すため全描画の後に呼ぶ。資源は初回呼び出し時に一度だけ構築し、失敗時は以後何もしない
-        void DrawScreenRect(float x, float y, float width, float height, const NS::Math::Color& color) noexcept;
+        void DrawScreenRect(float x, float y, float width, float height, const NS::Core::Color& color) noexcept;
 
     private:
         // 全画面塗り資源を初回だけ構築する

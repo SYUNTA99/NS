@@ -2,12 +2,12 @@
 #include <cmath>
 #include <gtest/gtest.h>
 #include <Runtime/Graphics/MeshPrimitives.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 
 namespace
 {
-    using NS::Math::Vector2;
-    using NS::Math::Vector3;
+    using NS::Core::Vector2;
+    using NS::Core::Vector3;
     using NS::Graphics::MakeCube;
     using NS::Graphics::MakePlane;
 

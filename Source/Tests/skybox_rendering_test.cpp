@@ -19,7 +19,7 @@ namespace
     {
         WindowDesc d{};
         d.title = title;
-        d.size = NS::Math::Size2D{320, 240};
+        d.size = NS::Core::Size2D{320, 240};
         d.visible = false;
         return d;
     }
@@ -90,7 +90,7 @@ TEST_F(SkyboxRenderingTest, RenderWithFallbackDoesNotCrash)
     ASSERT_TRUE(skybox.IsValid());
 
     // LoadCubemap を呼ばずに発行しても fallback が描かれてクラッシュしないこと
-    NS::Math::Matrix vpNoTranslate = NS::Math::Matrix::Identity;
+    NS::Core::Matrix vpNoTranslate = NS::Core::Matrix::Identity;
     NS::Graphics::IssueSkybox(renderer, skybox, vpNoTranslate);
     SUCCEED();
 }

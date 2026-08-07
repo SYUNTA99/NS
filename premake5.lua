@@ -128,10 +128,6 @@ end
 -- forceincludes はパスを project 相対へ rebase するが、 層により .cpp の深さが異なり
 -- 相対 /FI が破綻するため、 include root (Source) から一意に解決できる論理名を渡す。
 local function applyRuntimeLayerDefaults(layerName)
-    -- Math は依存ゼロの最下層リーフ。 windows.h を持ち込まないため PCH 対象外
-    if layerName == "Math" then
-        return
-    end
     local pchLogical = "Runtime/" .. layerName .. "/" .. layerName .. "Pch.h"
     pchheader(pchLogical)
     pchsource("Source/Runtime/" .. layerName .. "/" .. layerName .. "Pch.cpp")
@@ -190,27 +186,6 @@ project "directxtk_simplemath"
 group "Runtime"
 
 --============================================================================
--- Math 層 (StaticLib) — 依存ゼロの最下層リーフ
---   Vector / Matrix / Quaternion / Plane / Ray / AABB / Size2D / 角度型
---   段1: SimpleMath using-alias。段2: scalar 自作に置換し SimpleMath 排除
---============================================================================
-project "Math"
-    kind "StaticLib"
-    location "build/Math"
-    targetdir (bindir .. "/%{prj.name}")
-    objdir (objdir_base .. "/%{prj.name}")
-    files {
-        "Source/Runtime/Math/**.h",
-        "Source/Runtime/Math/**.cpp"
-    }
-    includedirs {
-        "Source/ThirdParty/DirectXTK/Inc"
-    }
-    links { "directxtk_simplemath" }
-    applyRuntimeLayerDefaults("Math")
-    applyCommonBuildOptions()
-
---============================================================================
 -- Core 層 (StaticLib)
 --   Logger / Math / StringUtils / Clock / Filesystem
 --============================================================================
@@ -233,8 +208,8 @@ project "Core"
         "Source/ThirdParty/magic_enum/include",
     }
 
-    -- Math 層経由で SimpleMath の静的定数 TU をリンク伝播させる
-    links { "Math" }
+    -- Math.h の型は SimpleMath の using-alias なので、静的定数 TU をここでリンクへ伝播させる
+    links { "directxtk_simplemath" }
 
     defines {
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
@@ -272,7 +247,7 @@ project "Platform"
         "SPDLOG_NO_EXCEPTIONS"
     }
 
-    links { "Math", "Core" }
+    links { "Core" }
 
     -- XInput リンク
     filter "system:windows"
@@ -313,7 +288,6 @@ project "Graphics"
     }
 
     links {
-        "Math",
         "Core",
         "Platform",
         -- D3D11 system libs
@@ -356,7 +330,7 @@ project "Physics"
         "SPDLOG_NO_EXCEPTIONS"
     }
 
-    links { "Math", "Core" }
+    links { "Core" }
 
     applyRuntimeLayerDefaults("Physics")
     applyCommonBuildOptions()
@@ -388,7 +362,7 @@ project "Audio"
         "SPDLOG_NO_EXCEPTIONS"
     }
 
-    links { "Math", "Core" }
+    links { "Core" }
 
     applyRuntimeLayerDefaults("Audio")
     applyCommonBuildOptions()
@@ -423,7 +397,6 @@ project "Object"
     }
 
     links {
-        "Math",
         "Core",
         "Platform",
         "Graphics",
@@ -463,7 +436,6 @@ project "UI"
     }
 
     links {
-        "Math",
         "Core",
         "Platform",
         "Graphics"
@@ -515,7 +487,6 @@ project "App"
     }
 
     links {
-        "Math",
         "Core",
         "Platform",
         "Physics",
@@ -564,7 +535,6 @@ project "Game"
     }
 
     links {
-        "Math",
         "Core",
         "Platform",
         "Physics",
@@ -621,7 +591,6 @@ project "Editor"
 
     links {
         "Game",
-        "Math",
         "Core",
         "Platform",
         "Physics",
@@ -683,7 +652,6 @@ project "GameApp"
 
     links {
         "Game",
-        "Math",
         "Core",
         "Platform",
         "Physics",
@@ -869,7 +837,6 @@ project "Tests"
 
     links {
         "googletest",
-        "Math",
         "Core",
         "Platform",
         "Physics",

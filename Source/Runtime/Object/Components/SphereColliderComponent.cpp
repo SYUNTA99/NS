@@ -12,7 +12,7 @@ namespace NS::Object
 {
     namespace
     {
-        [[nodiscard]] float MaxAbsComponent(const NS::Math::Vector3& v) noexcept
+        [[nodiscard]] float MaxAbsComponent(const NS::Core::Vector3& v) noexcept
         {
             const float ax = std::abs(v.x);
             const float ay = std::abs(v.y);
@@ -35,33 +35,33 @@ namespace NS::Object
         return m_radius;
     }
 
-    void SphereColliderComponent::SetCenterOffset(const NS::Math::Vector3& offset) noexcept
+    void SphereColliderComponent::SetCenterOffset(const NS::Core::Vector3& offset) noexcept
     {
         m_centerOffset = offset;
     }
 
-    NS::Math::Vector3 SphereColliderComponent::CenterOffset() const noexcept
+    NS::Core::Vector3 SphereColliderComponent::CenterOffset() const noexcept
     {
         return m_centerOffset;
     }
 
-    NS::Math::Sphere SphereColliderComponent::WorldSphere() const noexcept
+    NS::Core::Sphere SphereColliderComponent::WorldSphere() const noexcept
     {
         const GameObject* owner = Owner();
         if (owner == nullptr)
-            return NS::Math::Sphere{m_centerOffset, m_radius};
+            return NS::Core::Sphere{m_centerOffset, m_radius};
 
-        const NS::Math::Matrix world = owner->Root().WorldMatrix();
-        const NS::Math::Vector3 center = NS::Math::Vector3::Transform(m_centerOffset, world);
+        const NS::Core::Matrix world = owner->Root().WorldMatrix();
+        const NS::Core::Vector3 center = NS::Core::Vector3::Transform(m_centerOffset, world);
 
-        const NS::Math::Vector3 scale = NS::Math::DecomposeAffine(world).scale;
-        return NS::Math::Sphere{center, m_radius * MaxAbsComponent(scale)};
+        const NS::Core::Vector3 scale = NS::Core::DecomposeAffine(world).scale;
+        return NS::Core::Sphere{center, m_radius * MaxAbsComponent(scale)};
     }
 
-    NS::Math::AABB SphereColliderComponent::WorldAABB() const noexcept
+    NS::Core::AABB SphereColliderComponent::WorldAABB() const noexcept
     {
-        const NS::Math::Sphere s = WorldSphere();
-        return NS::Math::AABB{s.center, NS::Math::Vector3{s.radius, s.radius, s.radius}};
+        const NS::Core::Sphere s = WorldSphere();
+        return NS::Core::AABB{s.center, NS::Core::Vector3{s.radius, s.radius, s.radius}};
     }
 
     void SphereColliderComponent::AddToPhysics(NS::Physics::PhysicsWorld& physics) const

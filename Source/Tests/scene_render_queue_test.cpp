@@ -15,29 +15,29 @@ namespace
     class FakeRenderable : public IRenderable
     {
     public:
-        FakeRenderable(int id, RenderBucket bucket, NS::Math::Vector3 center, int priority, std::vector<int>* log)
+        FakeRenderable(int id, RenderBucket bucket, NS::Core::Vector3 center, int priority, std::vector<int>* log)
             : m_id(id), m_bucket(bucket), m_center(center), m_priority(priority), m_log(log)
         {
             // 既定は全域相当。順序・バケット検証のテストがカリングに邪魔されないようにする
-            m_bounds = NS::Math::AABB{center, NS::Math::Vector3{1.0e6f, 1.0e6f, 1.0e6f}};
+            m_bounds = NS::Core::AABB{center, NS::Core::Vector3{1.0e6f, 1.0e6f, 1.0e6f}};
         }
 
         // カリングを検証するテストが視錐台内外へ置き直すための差し替え手段
-        void SetWorldBounds(const NS::Math::AABB& bounds) noexcept { m_bounds = bounds; }
+        void SetWorldBounds(const NS::Core::AABB& bounds) noexcept { m_bounds = bounds; }
 
         void Collect(const RenderContext&, std::vector<NS::Graphics::DrawItem>&) override { m_log->push_back(m_id); }
         [[nodiscard]] RenderBucket Bucket() const noexcept override { return m_bucket; }
-        [[nodiscard]] NS::Math::Vector3 SortCenter() const noexcept override { return m_center; }
+        [[nodiscard]] NS::Core::Vector3 SortCenter() const noexcept override { return m_center; }
         [[nodiscard]] int SortPriority() const noexcept override { return m_priority; }
-        [[nodiscard]] NS::Math::AABB WorldBounds() const noexcept override { return m_bounds; }
+        [[nodiscard]] NS::Core::AABB WorldBounds() const noexcept override { return m_bounds; }
 
     private:
         int m_id;
         RenderBucket m_bucket;
-        NS::Math::Vector3 m_center;
+        NS::Core::Vector3 m_center;
         int m_priority;
         std::vector<int>* m_log;
-        NS::Math::AABB m_bounds{};
+        NS::Core::AABB m_bounds{};
     };
 
     // protected の DrawOpaque / DrawTransparent を test から叩くための公開サブクラス
@@ -135,9 +135,9 @@ TEST(SceneRenderQueue, TransparentTieBreakByPriorityThenRegistration)
 namespace
 {
     // identity viewProj の視錐台は [-1,1]x[-1,1]x[0,1]。その内外に AABB を置いて検証する
-    NS::Math::AABB MakeBox(NS::Math::Vector3 center, float halfExtent)
+    NS::Core::AABB MakeBox(NS::Core::Vector3 center, float halfExtent)
     {
-        return NS::Math::AABB{center, NS::Math::Vector3{halfExtent, halfExtent, halfExtent}};
+        return NS::Core::AABB{center, NS::Core::Vector3{halfExtent, halfExtent, halfExtent}};
     }
 } // namespace
 

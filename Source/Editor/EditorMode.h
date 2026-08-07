@@ -35,8 +35,8 @@ namespace NS::Editor
         struct CursorState
         {
             bool valid = false;                  //!< 有効な対象（ブロック面や地面）にヒットしたかどうか
-            NS::Math::Vector3 placementCenter{}; //!< 配置先セルの中心ワールド座標
-            NS::Math::Vector3 deleteCenter{};    //!< 削除対象セルの中心ワールド座標
+            NS::Core::Vector3 placementCenter{}; //!< 配置先セルの中心ワールド座標
+            NS::Core::Vector3 deleteCenter{};    //!< 削除対象セルの中心ワールド座標
             bool placementBlocked = false;       //!< 配置予定地にすでにブロックが存在するかどうか
             std::int16_t hitX = 0;               //!< ヒットしたセルのX座標
             std::int16_t hitY = 0;               //!< ヒットしたセルのY座標
@@ -44,7 +44,7 @@ namespace NS::Editor
             std::int16_t placeX = 0;             //!< 配置先セルのX座標
             std::int16_t placeY = 0;             //!< 配置先セルのY座標
             std::int16_t placeZ = 0;             //!< 配置先セルのZ座標
-            NS::Math::Vector3 hitNormal{};       //!< ヒットした面の法線ベクトル
+            NS::Core::Vector3 hitNormal{};       //!< ヒットした面の法線ベクトル
         };
 
         //! @brief cell 1 個分の整数座標。 live 照会の受け渡しに使う
@@ -186,7 +186,7 @@ namespace NS::Editor
         float m_statusTimer = 0.0f;
 
         // プレビュー表示用の滑らかな回転状態
-        NS::Math::Quaternion m_displayedYawQuat{NS::Math::Quaternion::Identity};
+        NS::Core::Quaternion m_displayedYawQuat{NS::Core::Quaternion::Identity};
 
         void UpdateCursorFromInput() noexcept;
         void HandlePlaceDeleteInput() noexcept;

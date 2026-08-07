@@ -16,7 +16,7 @@ namespace NS::Editor
     {
     public:
         //! 描画先の初期目標サイズを窓サイズに合わせる
-        void SetInitialSize(const NS::Math::Size2D& size) noexcept { m_surface.SetInitialSize(size); }
+        void SetInitialSize(const NS::Core::Size2D& size) noexcept { m_surface.SetInitialSize(size); }
 
         //! フレーム先頭で可視状態を false にする。 描画パス (通常 / 全面化) が立て直す
         void ResetVisibility() noexcept { m_surface.ResetVisibility(); }

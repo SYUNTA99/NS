@@ -5,7 +5,7 @@
 #include <Runtime/Graphics/Animation.h>
 #include <Runtime/Graphics/GltfLoader.h>
 #include <Runtime/Graphics/Skeleton.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <span>
 #include <string>
 #include <vector>
@@ -51,7 +51,7 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
     for (std::size_t i = 0; i < poseStart.size(); ++i)
     {
         const float rotDot = poseStart[i].rotation.Dot(poseMid[i].rotation);
-        const NS::Math::Vector3 posDelta = poseStart[i].translation - poseMid[i].translation;
+        const NS::Core::Vector3 posDelta = poseStart[i].translation - poseMid[i].translation;
         if (rotDot < 0.9999f || posDelta.Length() > 1e-4f)
         {
             anyDifference = true;
@@ -62,25 +62,25 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
 
     // skinned 頂点 AABB の最長軸で向きを判定する。 人型が立っていれば Y (身長) が最長
     // root 上位ノード変換 (アーマチュア Z-up→Y-up) を取りこぼすと Z 最長 = 寝た状態になる
-    auto extentOf = [&](const std::vector<NS::Math::Matrix>& palette) {
-        const std::span<const NS::Math::Matrix> sp(palette.data(), palette.size());
-        NS::Math::Vector3 mn{1e9f, 1e9f, 1e9f};
-        NS::Math::Vector3 mx{-1e9f, -1e9f, -1e9f};
+    auto extentOf = [&](const std::vector<NS::Core::Matrix>& palette) {
+        const std::span<const NS::Core::Matrix> sp(palette.data(), palette.size());
+        NS::Core::Vector3 mn{1e9f, 1e9f, 1e9f};
+        NS::Core::Vector3 mx{-1e9f, -1e9f, -1e9f};
         for (const NS::Graphics::SkinnedVertex& v : data.vertices)
         {
-            const NS::Math::Vector3 p = [&]() -> NS::Math::Vector3 {
+            const NS::Core::Vector3 p = [&]() -> NS::Core::Vector3 {
                 if (palette.empty())
                     return v.position;
                 return NS::Graphics::Skeleton::SkinPositionReference(v, sp);
             }();
-            mn = NS::Math::Vector3::Min(mn, p);
-            mx = NS::Math::Vector3::Max(mx, p);
+            mn = NS::Core::Vector3::Min(mn, p);
+            mx = NS::Core::Vector3::Max(mx, p);
         }
-        return NS::Math::Vector3{mx.x - mn.x, mx.y - mn.y, mx.z - mn.z};
+        return NS::Core::Vector3{mx.x - mn.x, mx.y - mn.y, mx.z - mn.z};
     };
-    std::vector<NS::Math::Matrix> bindPalette;
+    std::vector<NS::Core::Matrix> bindPalette;
     data.skeleton.ComputeBindPalette(bindPalette);
-    const NS::Math::Vector3 bindExtent = extentOf(bindPalette);
+    const NS::Core::Vector3 bindExtent = extentOf(bindPalette);
     std::cout << "[CesiumMan] bind extent x=" << bindExtent.x << " y=" << bindExtent.y << " z=" << bindExtent.z << "\n";
 
     // 立っている = 身長 (Y) が幅 (X) と奥行 (Z) より大きい

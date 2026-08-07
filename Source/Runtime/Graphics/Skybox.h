@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/D3dCommon.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <filesystem>
 
@@ -70,6 +70,6 @@ namespace NS::Graphics
     //! @param skybox 描画リソースを持つスカイボックス
     //! @param viewProjNoTranslate カメラの移動成分を排除したビュー・プロジェクション行列
     //! @note 描画順序の仕様上、不透明なオブジェクトを描画した後、かつ半透明なオブジェクトを描画する前に呼び出すこと
-    void IssueSkybox(Renderer& renderer, const Skybox& skybox, const NS::Math::Matrix& viewProjNoTranslate) noexcept;
+    void IssueSkybox(Renderer& renderer, const Skybox& skybox, const NS::Core::Matrix& viewProjNoTranslate) noexcept;
 
 } // namespace NS::Graphics

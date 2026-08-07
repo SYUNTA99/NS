@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Runtime/Graphics/Camera.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 
 namespace NS::Graphics
@@ -22,10 +22,10 @@ namespace NS::Object
         /// priority は LateUpdate 帯の後方 (+50)。全ての更新が終わった後に追う
         CameraComponent() noexcept;
 
-        void SetPosition(const NS::Math::Vector3& position) noexcept;
-        void SetTarget(const NS::Math::Vector3& target) noexcept;
-        void SetUp(const NS::Math::Vector3& up) noexcept;
-        void SetFovY(NS::Math::Radians fov) noexcept;
+        void SetPosition(const NS::Core::Vector3& position) noexcept;
+        void SetTarget(const NS::Core::Vector3& target) noexcept;
+        void SetUp(const NS::Core::Vector3& up) noexcept;
+        void SetFovY(NS::Core::Radians fov) noexcept;
         void SetAspectRatio(float aspect) noexcept;
         void SetAspectRatioFromRenderer(const NS::Graphics::Renderer& renderer) noexcept;
         void SetNearPlane(float nearPlane) noexcept;
@@ -34,19 +34,19 @@ namespace NS::Object
         /// pose の位置 / 注視点 / up と投影設定をまとめて書く。Brain の Evaluate と editor の視点反映が使う
         void ApplyPose(const CameraPose& pose) noexcept;
 
-        [[nodiscard]] const NS::Math::Vector3& Position() const noexcept { return m_camera.Position(); }
-        [[nodiscard]] const NS::Math::Vector3& Target() const noexcept { return m_camera.Target(); }
-        [[nodiscard]] const NS::Math::Vector3& Up() const noexcept { return m_camera.Up(); }
-        [[nodiscard]] NS::Math::Radians FovY() const noexcept { return m_camera.FovY(); }
+        [[nodiscard]] const NS::Core::Vector3& Position() const noexcept { return m_camera.Position(); }
+        [[nodiscard]] const NS::Core::Vector3& Target() const noexcept { return m_camera.Target(); }
+        [[nodiscard]] const NS::Core::Vector3& Up() const noexcept { return m_camera.Up(); }
+        [[nodiscard]] NS::Core::Radians FovY() const noexcept { return m_camera.FovY(); }
 
         /// 内包 Camera への変更不可参照。skybox 描画とカメラ位置を読むのに使う
         [[nodiscard]] const NS::Graphics::Camera& Camera() const noexcept { return m_camera; }
         [[nodiscard]] NS::Graphics::Camera& Camera() noexcept { return m_camera; }
 
-        [[nodiscard]] NS::Math::Matrix ViewProjection() const noexcept { return m_camera.ViewProjection(); }
+        [[nodiscard]] NS::Core::Matrix ViewProjection() const noexcept { return m_camera.ViewProjection(); }
 
         /// target-position を XZ 正規化した forward。距離0 / Y 方向のみなら world +Z。PlayerInput の camera 相対移動用
-        [[nodiscard]] NS::Math::Vector3 ForwardHorizontal() const noexcept;
+        [[nodiscard]] NS::Core::Vector3 ForwardHorizontal() const noexcept;
 
         // pose は CameraBrain が毎フレーム上書きするので保存する調整値は無い。型名だけ登録する
         NS_REFLECT_NONE(CameraComponent, Component)

@@ -1,6 +1,6 @@
 ﻿#include "Editor/GridMath.h"
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <cstdint>
 
@@ -17,9 +17,9 @@ namespace NS::Editor
                screenY < rect.y + rect.height;
     }
 
-    NS::Math::Size2D ViewRectSize(const ViewRect& rect) noexcept
+    NS::Core::Size2D ViewRectSize(const ViewRect& rect) noexcept
     {
-        return NS::Math::Size2D{rect.width, rect.height};
+        return NS::Core::Size2D{rect.width, rect.height};
     }
 
     void ViewRectToLocal(const ViewRect& rect, int screenX, int screenY, int& outX, int& outY) noexcept
@@ -44,21 +44,21 @@ namespace NS::Editor
 #endif
     }
 
-    NS::Math::Ray ScreenToWorldRay(const NS::Math::Matrix& viewProjection,
-                                   NS::Math::Size2D viewport,
+    NS::Core::Ray ScreenToWorldRay(const NS::Core::Matrix& viewProjection,
+                                   NS::Core::Size2D viewport,
                                    int mouseX,
                                    int mouseY) noexcept
     {
         const float ndcX = (2.0f * static_cast<float>(mouseX)) / static_cast<float>(viewport.width) - 1.0f;
         const float ndcY = 1.0f - (2.0f * static_cast<float>(mouseY)) / static_cast<float>(viewport.height);
 
-        NS::Math::Matrix inv = viewProjection.Invert();
+        NS::Core::Matrix inv = viewProjection.Invert();
 
-        const NS::Math::Vector4 nearH{ndcX, ndcY, 0.0f, 1.0f};
-        const NS::Math::Vector4 farH{ndcX, ndcY, 1.0f, 1.0f};
+        const NS::Core::Vector4 nearH{ndcX, ndcY, 0.0f, 1.0f};
+        const NS::Core::Vector4 farH{ndcX, ndcY, 1.0f, 1.0f};
 
-        const NS::Math::Vector4 wNearH = NS::Math::Vector4::Transform(nearH, inv);
-        const NS::Math::Vector4 wFarH = NS::Math::Vector4::Transform(farH, inv);
+        const NS::Core::Vector4 wNearH = NS::Core::Vector4::Transform(nearH, inv);
+        const NS::Core::Vector4 wFarH = NS::Core::Vector4::Transform(farH, inv);
 
         const float invWNear = [&]() -> float {
             if (std::abs(wNearH.w) > 1e-6f)
@@ -71,14 +71,14 @@ namespace NS::Editor
             return 0.0f;
         }();
 
-        NS::Math::Vector3 wNear{wNearH.x * invWNear, wNearH.y * invWNear, wNearH.z * invWNear};
-        NS::Math::Vector3 wFar{wFarH.x * invWFar, wFarH.y * invWFar, wFarH.z * invWFar};
-        NS::Math::Vector3 dir = wFar - wNear;
+        NS::Core::Vector3 wNear{wNearH.x * invWNear, wNearH.y * invWNear, wNearH.z * invWNear};
+        NS::Core::Vector3 wFar{wFarH.x * invWFar, wFarH.y * invWFar, wFarH.z * invWFar};
+        NS::Core::Vector3 dir = wFar - wNear;
         dir.Normalize();
-        return NS::Math::Ray{wNear, dir};
+        return NS::Core::Ray{wNear, dir};
     }
 
-    NS::Math::Vector3 SnapWorldPointToGrid(NS::Math::Vector3 p, float g) noexcept
+    NS::Core::Vector3 SnapWorldPointToGrid(NS::Core::Vector3 p, float g) noexcept
     {
         // 最も近い整数に丸める
         const float gx = std::floor(p.x / g + 0.5f) * g;
@@ -87,13 +87,13 @@ namespace NS::Editor
         return {gx, gy, gz};
     }
 
-    NS::Math::Vector3 SnapHitToPlacementCell(NS::Math::Vector3 hit, NS::Math::Vector3 normal, float g) noexcept
+    NS::Core::Vector3 SnapHitToPlacementCell(NS::Core::Vector3 hit, NS::Core::Vector3 normal, float g) noexcept
     {
-        const NS::Math::Vector3 base = SnapWorldPointToGrid(hit, g);
+        const NS::Core::Vector3 base = SnapWorldPointToGrid(hit, g);
         return {base.x + normal.x * g, base.y + normal.y * g, base.z + normal.z * g};
     }
 
-    bool TryGroundPlaneFallback(const NS::Math::Ray& ray, NS::Math::Vector3& outCenter, float g) noexcept
+    bool TryGroundPlaneFallback(const NS::Core::Ray& ray, NS::Core::Vector3& outCenter, float g) noexcept
     {
         // 水平または上向きのレイは交差対象外とする
         if (ray.direction.y > -1e-4f)
@@ -101,7 +101,7 @@ namespace NS::Editor
         const float t = -ray.position.y / ray.direction.y;
         if (t < 0.0f)
             return false;
-        const NS::Math::Vector3 hit{
+        const NS::Core::Vector3 hit{
             ray.position.x + ray.direction.x * t,
             0.0f,
             ray.position.z + ray.direction.z * t,
@@ -111,12 +111,12 @@ namespace NS::Editor
         return true;
     }
 
-    NS::Math::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept
+    NS::Core::Quaternion RotationToQuaternion(std::uint8_t rotation) noexcept
     {
         const std::uint8_t r = static_cast<std::uint8_t>(rotation & 0x03);
         // 90 度刻み = π/2 ラジアン
-        const float angle = static_cast<float>(r) * (NS::Math::k_Pi * 0.5f);
-        return NS::Math::Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, angle);
+        const float angle = static_cast<float>(r) * (NS::Core::k_Pi * 0.5f);
+        return NS::Core::Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, angle);
     }
 
 } // namespace NS::Editor

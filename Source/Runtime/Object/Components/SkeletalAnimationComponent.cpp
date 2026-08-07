@@ -208,7 +208,7 @@ namespace NS::Object
         NS::Graphics::BufferDesc cbDesc = NS::Graphics::MakeConstantBufferDesc(sizeof(NS::Graphics::BonePaletteCB));
         m_bonePaletteCB = NS::Graphics::Buffer::Create(cbDesc);
         for (std::size_t i = 0; i < NS::Graphics::k_MaxBones; ++i)
-            m_palette.bones[i] = NS::Math::Matrix::Identity;
+            m_palette.bones[i] = NS::Core::Matrix::Identity;
 
         // 描画する MeshRendererComponent にパレットを差す。現在ポーズ境界は ApplyPose が毎フレーム差す
         if (GameObject* owner = Owner())
@@ -273,13 +273,13 @@ namespace NS::Object
             if (i < count)
                 m_palette.bones[i] = m_paletteScratch[i];
             else
-                m_palette.bones[i] = NS::Math::Matrix::Identity;
+                m_palette.bones[i] = NS::Core::Matrix::Identity;
         }
 
         // 現在ポーズの締まった境界を描画側へ差し、カリングをポーズ追従させる
         if (m_renderer != nullptr)
         {
-            const NS::Math::AABB localBounds = NS::Graphics::MergeSkinnedBounds(
+            const NS::Core::AABB localBounds = NS::Graphics::MergeSkinnedBounds(
                 m_mesh->BoneSpheres(), m_palette.bones, m_mesh->BoneCount(), m_mesh->LocalBounds());
             m_renderer->SetLocalBoundsOverride(localBounds);
         }

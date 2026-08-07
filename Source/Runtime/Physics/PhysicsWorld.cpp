@@ -7,8 +7,8 @@
 
 namespace NS::Physics
 {
-    using NS::Math::OBB;
-    using NS::Math::Sphere;
+    using NS::Core::OBB;
+    using NS::Core::Sphere;
 
     namespace
     {
@@ -17,22 +17,22 @@ namespace NS::Physics
 
         // capsule が motion だけ動く間に占有する swept AABB。 grid 候補絞り込みの query box に使う
         // axis=Y の縦 capsule 前提で XZ は radius、 Y は radius + halfHeight 膨張させる
-        [[nodiscard]] NS::Math::AABB CapsuleSweptAABB(const Capsule& cap, const NS::Math::Vector3& motion) noexcept
+        [[nodiscard]] NS::Core::AABB CapsuleSweptAABB(const Capsule& cap, const NS::Core::Vector3& motion) noexcept
         {
             const float rx = cap.radius;
             const float ry = cap.radius + cap.halfHeight;
             const float rz = cap.radius;
-            const NS::Math::Vector3 a = cap.center;
-            const NS::Math::Vector3 b = cap.center + motion;
+            const NS::Core::Vector3 a = cap.center;
+            const NS::Core::Vector3 b = cap.center + motion;
             const float minX = std::min(a.x, b.x) - rx;
             const float maxX = std::max(a.x, b.x) + rx;
             const float minY = std::min(a.y, b.y) - ry;
             const float maxY = std::max(a.y, b.y) + ry;
             const float minZ = std::min(a.z, b.z) - rz;
             const float maxZ = std::max(a.z, b.z) + rz;
-            NS::Math::AABB q;
-            q.Center = NS::Math::Vector3{(minX + maxX) * 0.5f, (minY + maxY) * 0.5f, (minZ + maxZ) * 0.5f};
-            q.Extents = NS::Math::Vector3{(maxX - minX) * 0.5f, (maxY - minY) * 0.5f, (maxZ - minZ) * 0.5f};
+            NS::Core::AABB q;
+            q.Center = NS::Core::Vector3{(minX + maxX) * 0.5f, (minY + maxY) * 0.5f, (minZ + maxZ) * 0.5f};
+            q.Extents = NS::Core::Vector3{(maxX - minX) * 0.5f, (maxY - minY) * 0.5f, (maxZ - minZ) * 0.5f};
             return q;
         }
     } // namespace
@@ -53,7 +53,7 @@ namespace NS::Physics
         m_aabbs.reserve(count);
     }
 
-    void PhysicsWorld::AddAABB(const NS::Math::AABB& box)
+    void PhysicsWorld::AddAABB(const NS::Core::AABB& box)
     {
         m_aabbs.push_back(box);
     }
@@ -83,15 +83,15 @@ namespace NS::Physics
         m_grid.Build(m_aabbs, k_GridCellSize);
     }
 
-    SweepHit PhysicsWorld::SweepCapsule(const Capsule& cap, const NS::Math::Vector3& motion) const noexcept
+    SweepHit PhysicsWorld::SweepCapsule(const Capsule& cap, const NS::Core::Vector3& motion) const noexcept
     {
         float earliestToi = 1.0f;
-        NS::Math::Vector3 hitNormal{0.0f, 0.0f, 0.0f};
+        NS::Core::Vector3 hitNormal{0.0f, 0.0f, 0.0f};
         bool anyHit = false;
 
-        const auto considerAabb = [&](const NS::Math::AABB& box) {
+        const auto considerAabb = [&](const NS::Core::AABB& box) {
             float toi = 1.0f;
-            NS::Math::Vector3 n{};
+            NS::Core::Vector3 n{};
             if (SweptCapsuleVsAABB(cap, motion, box, toi, n) && toi < earliestToi)
             {
                 earliestToi = toi;
@@ -103,21 +103,21 @@ namespace NS::Physics
         // AABB channel: grid があれば swept AABB 近傍の候補だけ、 無ければ総当たり
         if (!m_grid.IsEmpty())
         {
-            const NS::Math::AABB queryBox = CapsuleSweptAABB(cap, motion);
+            const NS::Core::AABB queryBox = CapsuleSweptAABB(cap, motion);
             m_grid.Query(queryBox, m_candidates);
             for (const std::uint32_t index : m_candidates)
                 considerAabb(m_aabbs[index]);
         }
         else
         {
-            for (const NS::Math::AABB& box : m_aabbs)
+            for (const NS::Core::AABB& box : m_aabbs)
                 considerAabb(box);
         }
 
         for (const Triangle& tri : m_triangles)
         {
             float toi = 1.0f;
-            NS::Math::Vector3 n{};
+            NS::Core::Vector3 n{};
             if (SweptCapsuleVsTriangle(cap, motion, tri, toi, n) && toi < earliestToi)
             {
                 earliestToi = toi;
@@ -129,7 +129,7 @@ namespace NS::Physics
         for (const OBB& obb : m_obbs)
         {
             float toi = 1.0f;
-            NS::Math::Vector3 n{};
+            NS::Core::Vector3 n{};
             if (SweptCapsuleVsOBB(cap, motion, obb, toi, n) && toi < earliestToi)
             {
                 earliestToi = toi;
@@ -141,7 +141,7 @@ namespace NS::Physics
         for (const Sphere& sphere : m_spheres)
         {
             float toi = 1.0f;
-            NS::Math::Vector3 n{};
+            NS::Core::Vector3 n{};
             if (SweptCapsuleVsSphere(cap, motion, sphere, toi, n) && toi < earliestToi)
             {
                 earliestToi = toi;
@@ -153,7 +153,7 @@ namespace NS::Physics
         for (const Capsule& other : m_capsules)
         {
             float toi = 1.0f;
-            NS::Math::Vector3 n{};
+            NS::Core::Vector3 n{};
             if (SweptCapsuleVsCapsule(cap, motion, other, toi, n) && toi < earliestToi)
             {
                 earliestToi = toi;
@@ -169,10 +169,10 @@ namespace NS::Physics
         return result;
     }
 
-    bool PhysicsWorld::ProbeGround(const NS::Math::Vector3& bottomCenter, float reach) const noexcept
+    bool PhysicsWorld::ProbeGround(const NS::Core::Vector3& bottomCenter, float reach) const noexcept
     {
-        const NS::Math::Ray ray(bottomCenter, NS::Math::Vector3{0.0f, -1.0f, 0.0f});
-        for (const NS::Math::AABB& box : m_aabbs)
+        const NS::Core::Ray ray(bottomCenter, NS::Core::Vector3{0.0f, -1.0f, 0.0f});
+        for (const NS::Core::AABB& box : m_aabbs)
         {
             float dist = 0.0f;
             if (ray.Intersects(box, dist) && dist <= reach)
@@ -182,13 +182,13 @@ namespace NS::Physics
         // OBB は ray を local 軸へ移し、 原点中心の local AABB へ ray test する
         for (const OBB& obb : m_obbs)
         {
-            const NS::Math::Vector3 d = bottomCenter - obb.center;
-            const NS::Math::Vector3 localOrigin{d.Dot(obb.axisX), d.Dot(obb.axisY), d.Dot(obb.axisZ)};
-            const NS::Math::Vector3 down{0.0f, -1.0f, 0.0f};
-            const NS::Math::Vector3 localDir{down.Dot(obb.axisX), down.Dot(obb.axisY), down.Dot(obb.axisZ)};
-            const NS::Math::Ray localRay(localOrigin, localDir);
-            const NS::Math::AABB localBox(NS::Math::Vector3{0.0f, 0.0f, 0.0f},
-                                          NS::Math::Vector3{obb.halfExtentX, obb.halfExtentY, obb.halfExtentZ});
+            const NS::Core::Vector3 d = bottomCenter - obb.center;
+            const NS::Core::Vector3 localOrigin{d.Dot(obb.axisX), d.Dot(obb.axisY), d.Dot(obb.axisZ)};
+            const NS::Core::Vector3 down{0.0f, -1.0f, 0.0f};
+            const NS::Core::Vector3 localDir{down.Dot(obb.axisX), down.Dot(obb.axisY), down.Dot(obb.axisZ)};
+            const NS::Core::Ray localRay(localOrigin, localDir);
+            const NS::Core::AABB localBox(NS::Core::Vector3{0.0f, 0.0f, 0.0f},
+                                          NS::Core::Vector3{obb.halfExtentX, obb.halfExtentY, obb.halfExtentZ});
             float dist = 0.0f;
             if (localRay.Intersects(localBox, dist) && dist <= reach)
                 return true;

@@ -15,17 +15,17 @@ namespace NS::Object
         // OBB の 3 軸が座標軸に十分沿っていれば軸並行とみなす。 90° 刻みの回転はここに落ちる
         // 各軸は単位ベクトルなので最大成分が 1 に届けば残り 2 成分はほぼ 0 になる
         // しきい 1e-4 は 90° を quaternion 経由で組んだ時の float 誤差を確実に飲み込み、 1° 以上の傾きは OBB へ回す
-        [[nodiscard]] bool IsAxisAligned(const NS::Math::OBB& obb) noexcept
+        [[nodiscard]] bool IsAxisAligned(const NS::Core::OBB& obb) noexcept
         {
             constexpr float k_AlignEpsilon = 1e-4f;
-            const auto alignedAxis = [](const NS::Math::Vector3& axis) noexcept {
+            const auto alignedAxis = [](const NS::Core::Vector3& axis) noexcept {
                 const float maxComponent = std::max({std::abs(axis.x), std::abs(axis.y), std::abs(axis.z)});
                 return maxComponent >= 1.0f - k_AlignEpsilon;
             };
             return alignedAxis(obb.axisX) && alignedAxis(obb.axisY) && alignedAxis(obb.axisZ);
         }
 
-        [[nodiscard]] NS::Math::Vector3 ClampNonNegative(const NS::Math::Vector3& v) noexcept
+        [[nodiscard]] NS::Core::Vector3 ClampNonNegative(const NS::Core::Vector3& v) noexcept
         {
             float x = v.x;
             if (x < 0.0f)
@@ -36,54 +36,54 @@ namespace NS::Object
             float z = v.z;
             if (z < 0.0f)
                 z = 0.0f;
-            return NS::Math::Vector3{x, y, z};
+            return NS::Core::Vector3{x, y, z};
         }
     } // namespace
 
     BoxColliderComponent::BoxColliderComponent() noexcept {}
 
-    BoxColliderComponent::BoxColliderComponent(const NS::Math::Vector3& halfExtents) noexcept
+    BoxColliderComponent::BoxColliderComponent(const NS::Core::Vector3& halfExtents) noexcept
         : m_halfExtents(ClampNonNegative(halfExtents))
     {}
 
-    void BoxColliderComponent::SetHalfExtents(const NS::Math::Vector3& halfExtents) noexcept
+    void BoxColliderComponent::SetHalfExtents(const NS::Core::Vector3& halfExtents) noexcept
     {
         m_halfExtents = ClampNonNegative(halfExtents);
     }
 
-    NS::Math::Vector3 BoxColliderComponent::HalfExtents() const noexcept
+    NS::Core::Vector3 BoxColliderComponent::HalfExtents() const noexcept
     {
         return m_halfExtents;
     }
 
-    void BoxColliderComponent::SetCenterOffset(const NS::Math::Vector3& offset) noexcept
+    void BoxColliderComponent::SetCenterOffset(const NS::Core::Vector3& offset) noexcept
     {
         m_centerOffset = offset;
     }
 
-    NS::Math::Vector3 BoxColliderComponent::CenterOffset() const noexcept
+    NS::Core::Vector3 BoxColliderComponent::CenterOffset() const noexcept
     {
         return m_centerOffset;
     }
 
-    void BoxColliderComponent::SetLocalRotation(const NS::Math::Quaternion& rotation) noexcept
+    void BoxColliderComponent::SetLocalRotation(const NS::Core::Quaternion& rotation) noexcept
     {
         m_localRotation = rotation;
     }
 
-    NS::Math::Quaternion BoxColliderComponent::LocalRotation() const noexcept
+    NS::Core::Quaternion BoxColliderComponent::LocalRotation() const noexcept
     {
         return m_localRotation;
     }
 
-    void BoxColliderComponent::SetRotationEulerDegrees(const NS::Math::Vector3& eulerDegrees) noexcept
+    void BoxColliderComponent::SetRotationEulerDegrees(const NS::Core::Vector3& eulerDegrees) noexcept
     {
-        m_localRotation = NS::Math::EulerDegreesToQuaternion(eulerDegrees);
+        m_localRotation = NS::Core::EulerDegreesToQuaternion(eulerDegrees);
     }
 
-    NS::Math::Vector3 BoxColliderComponent::RotationEulerDegrees() const noexcept
+    NS::Core::Vector3 BoxColliderComponent::RotationEulerDegrees() const noexcept
     {
-        return NS::Math::QuaternionToEulerDegrees(m_localRotation);
+        return NS::Core::QuaternionToEulerDegrees(m_localRotation);
     }
 
     void BoxColliderComponent::SetTrigger(bool isTrigger) noexcept
@@ -96,13 +96,13 @@ namespace NS::Object
         return m_isTrigger;
     }
 
-    NS::Math::Matrix BoxColliderComponent::LocalMatrix() const noexcept
+    NS::Core::Matrix BoxColliderComponent::LocalMatrix() const noexcept
     {
-        return NS::Math::Matrix::CreateFromQuaternion(m_localRotation) *
-               NS::Math::Matrix::CreateTranslation(m_centerOffset);
+        return NS::Core::Matrix::CreateFromQuaternion(m_localRotation) *
+               NS::Core::Matrix::CreateTranslation(m_centerOffset);
     }
 
-    NS::Math::Matrix BoxColliderComponent::CombinedWorldMatrix() const noexcept
+    NS::Core::Matrix BoxColliderComponent::CombinedWorldMatrix() const noexcept
     {
         const GameObject* owner = Owner();
         if (owner != nullptr)
@@ -110,21 +110,21 @@ namespace NS::Object
         return LocalMatrix();
     }
 
-    NS::Math::AABB BoxColliderComponent::WorldAABB() const noexcept
+    NS::Core::AABB BoxColliderComponent::WorldAABB() const noexcept
     {
         // 原点中心 + 半径の local box に、 当たり箱の local offset / 回転 → owner の world 変換の順で重ねる
         // offset 0・回転単位・scale 1・整数位置の grid では結果が従来と一致する。 回転時は内包する軸並行 AABB になる
-        const NS::Math::Matrix combined = CombinedWorldMatrix();
-        const NS::Math::AABB local(NS::Math::Vector3{0.0f, 0.0f, 0.0f}, m_halfExtents);
-        NS::Math::AABB world;
+        const NS::Core::Matrix combined = CombinedWorldMatrix();
+        const NS::Core::AABB local(NS::Core::Vector3{0.0f, 0.0f, 0.0f}, m_halfExtents);
+        NS::Core::AABB world;
         local.Transform(world, combined);
         return world;
     }
 
-    NS::Math::OBB BoxColliderComponent::WorldOBB() const noexcept
+    NS::Core::OBB BoxColliderComponent::WorldOBB() const noexcept
     {
-        const auto [scale, rotation, translation] = NS::Math::DecomposeAffine(CombinedWorldMatrix());
-        const NS::Math::Vector3 half{m_halfExtents.x * std::abs(scale.x),
+        const auto [scale, rotation, translation] = NS::Core::DecomposeAffine(CombinedWorldMatrix());
+        const NS::Core::Vector3 half{m_halfExtents.x * std::abs(scale.x),
                                      m_halfExtents.y * std::abs(scale.y),
                                      m_halfExtents.z * std::abs(scale.z)};
         return NS::Physics::MakeObb(translation, rotation, half);
@@ -136,7 +136,7 @@ namespace NS::Object
         if (m_isTrigger)
             return;
 
-        const NS::Math::OBB obb = WorldOBB();
+        const NS::Core::OBB obb = WorldOBB();
         if (IsAxisAligned(obb))
             physics.AddAABB(WorldAABB());
         else

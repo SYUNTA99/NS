@@ -14,21 +14,21 @@ namespace NS::Object
         SetActive(false);
     }
 
-    void PlacedVirtualCamera::SetView(const NS::Math::Vector3& position, const NS::Math::Vector3& target) noexcept
+    void PlacedVirtualCamera::SetView(const NS::Core::Vector3& position, const NS::Core::Vector3& target) noexcept
     {
         if (Owner() != nullptr)
             Owner()->Root().SetPosition(position);
         m_target = target;
     }
 
-    NS::Math::Vector3 PlacedVirtualCamera::ViewPosition() const noexcept
+    NS::Core::Vector3 PlacedVirtualCamera::ViewPosition() const noexcept
     {
         if (Owner() != nullptr)
             return Owner()->Root().Position();
-        return NS::Math::Vector3{0.0f, 5.0f, -10.0f};
+        return NS::Core::Vector3{0.0f, 5.0f, -10.0f};
     }
 
-    void PlacedVirtualCamera::UpdateActivation(const NS::Math::Vector3& playerPosition) noexcept
+    void PlacedVirtualCamera::UpdateActivation(const NS::Core::Vector3& playerPosition) noexcept
     {
         const bool inside = std::abs(playerPosition.x - m_triggerCenter.x) <= m_triggerExtent.x &&
                             std::abs(playerPosition.y - m_triggerCenter.y) <= m_triggerExtent.y &&

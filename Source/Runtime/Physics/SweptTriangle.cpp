@@ -4,9 +4,9 @@
 
 namespace
 {
-    using NS::Math::Cross;
-    using NS::Math::Dot;
-    using NS::Math::Vector3;
+    using NS::Core::Cross;
+    using NS::Core::Dot;
+    using NS::Core::Vector3;
     using NS::Physics::Capsule;
     using NS::Physics::Triangle;
 
@@ -98,15 +98,15 @@ namespace
 namespace NS::Physics
 {
     bool SweptCapsuleVsTriangle(const Capsule& capsule,
-                                const NS::Math::Vector3& motion,
+                                const NS::Core::Vector3& motion,
                                 const Triangle& tri,
                                 float& outToi,
-                                NS::Math::Vector3& outNormal) noexcept
+                                NS::Core::Vector3& outNormal) noexcept
     {
         outToi = 1.0f;
-        outNormal = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+        outNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
 
-        const NS::Math::Vector3 normal = NormalizeSafe(Cross(tri.v1 - tri.v0, tri.v2 - tri.v0));
+        const NS::Core::Vector3 normal = NormalizeSafe(Cross(tri.v1 - tri.v0, tri.v2 - tri.v0));
 
         const auto [top, bottom] = CapsuleEndpoints(capsule);
 

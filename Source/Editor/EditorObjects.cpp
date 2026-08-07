@@ -24,7 +24,7 @@ namespace NS::Editor
     namespace
     {
         // cell ブラシの回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す係数
-        constexpr float k_QuarterTurnYaw = NS::Math::k_Pi * 0.5f;
+        constexpr float k_QuarterTurnYaw = NS::Core::k_Pi * 0.5f;
 
         bool HasComponentType(const NS::Object::ObjectData& object, const char* typeName) noexcept
         {
@@ -141,13 +141,13 @@ namespace NS::Editor
     std::uint8_t CellRotationStep(const NS::Object::ObjectData& object) noexcept
     {
         // q と -q は同じ回転なので fabs で符号を無視し、4 候補から一番近いものを選ぶ
-        const NS::Math::Quaternion current = NS::Object::ObjectRotation(object);
+        const NS::Core::Quaternion current = NS::Object::ObjectRotation(object);
         std::uint8_t best = 0;
         float bestDot = -2.0f;
         for (std::uint8_t step = 0; step < 4; ++step)
         {
             const float yaw = static_cast<float>(step) * k_QuarterTurnYaw;
-            const NS::Math::Quaternion candidate = NS::Math::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
+            const NS::Core::Quaternion candidate = NS::Core::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
             const float dot = std::fabs(current.x * candidate.x + current.y * candidate.y + current.z * candidate.z +
                                         current.w * candidate.w);
             if (dot > bestDot)
@@ -162,7 +162,7 @@ namespace NS::Editor
     void SetCellRotationStep(NS::Object::ObjectData& object, std::uint8_t rotationStep) noexcept
     {
         const float yaw = static_cast<float>(rotationStep & 0x03) * k_QuarterTurnYaw;
-        const NS::Math::Quaternion rotation = NS::Math::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
+        const NS::Core::Quaternion rotation = NS::Core::Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
         NS::Object::SetObjectRotation(object, rotation);
     }
 
@@ -210,7 +210,7 @@ namespace NS::Editor
     {
         // 視覚用マーカーとして金色のキューブを付与する
         return nlohmann::json::array(
-            {NS::Game::Level::MakeMeshRendererEntry("cube", "", NS::Math::Vector3{1.0f, 0.84f, 0.0f}),
+            {NS::Game::Level::MakeMeshRendererEntry("cube", "", NS::Core::Vector3{1.0f, 0.84f, 0.0f}),
              NS::Object::MakeComponentEntry("GoalComponent")});
     }
 

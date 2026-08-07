@@ -51,67 +51,67 @@ namespace NS::Object
         return m_halfHeight;
     }
 
-    void CapsuleColliderComponent::SetCenterOffset(const NS::Math::Vector3& offset) noexcept
+    void CapsuleColliderComponent::SetCenterOffset(const NS::Core::Vector3& offset) noexcept
     {
         m_centerOffset = offset;
     }
 
-    NS::Math::Vector3 CapsuleColliderComponent::CenterOffset() const noexcept
+    NS::Core::Vector3 CapsuleColliderComponent::CenterOffset() const noexcept
     {
         return m_centerOffset;
     }
 
-    void CapsuleColliderComponent::SetLocalRotation(const NS::Math::Quaternion& rotation) noexcept
+    void CapsuleColliderComponent::SetLocalRotation(const NS::Core::Quaternion& rotation) noexcept
     {
         m_localRotation = rotation;
     }
 
-    NS::Math::Quaternion CapsuleColliderComponent::LocalRotation() const noexcept
+    NS::Core::Quaternion CapsuleColliderComponent::LocalRotation() const noexcept
     {
         return m_localRotation;
     }
 
-    void CapsuleColliderComponent::SetRotationEulerDegrees(const NS::Math::Vector3& eulerDegrees) noexcept
+    void CapsuleColliderComponent::SetRotationEulerDegrees(const NS::Core::Vector3& eulerDegrees) noexcept
     {
-        m_localRotation = NS::Math::EulerDegreesToQuaternion(eulerDegrees);
+        m_localRotation = NS::Core::EulerDegreesToQuaternion(eulerDegrees);
     }
 
-    NS::Math::Vector3 CapsuleColliderComponent::RotationEulerDegrees() const noexcept
+    NS::Core::Vector3 CapsuleColliderComponent::RotationEulerDegrees() const noexcept
     {
-        return NS::Math::QuaternionToEulerDegrees(m_localRotation);
+        return NS::Core::QuaternionToEulerDegrees(m_localRotation);
     }
 
     NS::Physics::Capsule CapsuleColliderComponent::WorldCapsule() const noexcept
     {
         const GameObject* owner = Owner();
-        const NS::Math::Matrix local = NS::Math::Matrix::CreateFromQuaternion(m_localRotation) *
-                                       NS::Math::Matrix::CreateTranslation(m_centerOffset);
-        const NS::Math::Matrix combined = [&]() -> NS::Math::Matrix {
+        const NS::Core::Matrix local = NS::Core::Matrix::CreateFromQuaternion(m_localRotation) *
+                                       NS::Core::Matrix::CreateTranslation(m_centerOffset);
+        const NS::Core::Matrix combined = [&]() -> NS::Core::Matrix {
             if (owner != nullptr)
                 return local * owner->Root().WorldMatrix();
             return local;
         }();
 
-        const auto [scale, rotation, translation] = NS::Math::DecomposeAffine(combined);
+        const auto [scale, rotation, translation] = NS::Core::DecomposeAffine(combined);
         const float radiusScale = std::max(std::abs(scale.x), std::abs(scale.z));
 
         NS::Physics::Capsule capsule;
         capsule.center = translation;
-        capsule.axis = NS::Math::Vector3::Transform(NS::Math::Vector3::UnitY, rotation);
+        capsule.axis = NS::Core::Vector3::Transform(NS::Core::Vector3::UnitY, rotation);
         capsule.radius = m_radius * radiusScale;
         capsule.halfHeight = m_halfHeight * std::abs(scale.y);
         return capsule;
     }
 
-    NS::Math::AABB CapsuleColliderComponent::WorldAABB() const noexcept
+    NS::Core::AABB CapsuleColliderComponent::WorldAABB() const noexcept
     {
         const NS::Physics::Capsule c = WorldCapsule();
-        const NS::Math::Vector3 tip = c.center + c.axis * c.halfHeight;
-        const NS::Math::Vector3 base = c.center - c.axis * c.halfHeight;
-        const NS::Math::Vector3 r{c.radius, c.radius, c.radius};
-        const NS::Math::Vector3 lo = NS::Math::Vector3::Min(tip, base) - r;
-        const NS::Math::Vector3 hi = NS::Math::Vector3::Max(tip, base) + r;
-        return NS::Math::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
+        const NS::Core::Vector3 tip = c.center + c.axis * c.halfHeight;
+        const NS::Core::Vector3 base = c.center - c.axis * c.halfHeight;
+        const NS::Core::Vector3 r{c.radius, c.radius, c.radius};
+        const NS::Core::Vector3 lo = NS::Core::Vector3::Min(tip, base) - r;
+        const NS::Core::Vector3 hi = NS::Core::Vector3::Max(tip, base) + r;
+        return NS::Core::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
     }
 
     void CapsuleColliderComponent::AddToPhysics(NS::Physics::PhysicsWorld& physics) const

@@ -9,11 +9,11 @@ namespace NS::Graphics
 {
     namespace
     {
-        [[nodiscard]] NS::Math::Matrix LocalMatrix(const BonePose& pose) noexcept
+        [[nodiscard]] NS::Core::Matrix LocalMatrix(const BonePose& pose) noexcept
         {
-            const NS::Math::Matrix scale = NS::Math::Matrix::CreateScale(pose.scale);
-            const NS::Math::Matrix rotate = NS::Math::Matrix::CreateFromQuaternion(pose.rotation);
-            const NS::Math::Matrix translate = NS::Math::Matrix::CreateTranslation(pose.translation);
+            const NS::Core::Matrix scale = NS::Core::Matrix::CreateScale(pose.scale);
+            const NS::Core::Matrix rotate = NS::Core::Matrix::CreateFromQuaternion(pose.rotation);
+            const NS::Core::Matrix translate = NS::Core::Matrix::CreateTranslation(pose.translation);
             return scale * rotate * translate;
         }
     } // namespace
@@ -30,10 +30,10 @@ namespace NS::Graphics
         return m_bones;
     }
 
-    void Skeleton::ComputePalette(std::span<const BonePose> pose, std::vector<NS::Math::Matrix>& out) const
+    void Skeleton::ComputePalette(std::span<const BonePose> pose, std::vector<NS::Core::Matrix>& out) const
     {
         const std::size_t boneCount = m_bones.size();
-        out.assign(boneCount, NS::Math::Matrix::Identity);
+        out.assign(boneCount, NS::Core::Matrix::Identity);
         if (pose.size() != boneCount)
         {
             NS_LOG_ERROR(
@@ -41,10 +41,10 @@ namespace NS::Graphics
             return;
         }
 
-        std::vector<NS::Math::Matrix> jointWorld(boneCount, NS::Math::Matrix::Identity);
+        std::vector<NS::Core::Matrix> jointWorld(boneCount, NS::Core::Matrix::Identity);
         for (std::size_t i = 0; i < boneCount; ++i)
         {
-            const NS::Math::Matrix local = LocalMatrix(pose[i]);
+            const NS::Core::Matrix local = LocalMatrix(pose[i]);
             const int parent = m_bones[i].parentIndex;
             if (parent >= 0 && static_cast<std::size_t>(parent) < i)
             {
@@ -60,11 +60,11 @@ namespace NS::Graphics
     }
 
     void Skeleton::ComputeGlobals(std::span<const BonePose> pose,
-                                  std::vector<NS::Math::Matrix>& out,
+                                  std::vector<NS::Core::Matrix>& out,
                                   bool applyRootTransform) const
     {
         const std::size_t boneCount = m_bones.size();
-        out.assign(boneCount, NS::Math::Matrix::Identity);
+        out.assign(boneCount, NS::Core::Matrix::Identity);
         if (pose.size() != boneCount)
         {
             NS_LOG_ERROR(
@@ -72,16 +72,16 @@ namespace NS::Graphics
             return;
         }
 
-        const NS::Math::Matrix rootParent = [&]() -> NS::Math::Matrix {
+        const NS::Core::Matrix rootParent = [&]() -> NS::Core::Matrix {
             if (applyRootTransform)
             {
                 return m_rootTransform;
             }
-            return NS::Math::Matrix::Identity;
+            return NS::Core::Matrix::Identity;
         }();
         for (std::size_t i = 0; i < boneCount; ++i)
         {
-            const NS::Math::Matrix local = LocalMatrix(pose[i]);
+            const NS::Core::Matrix local = LocalMatrix(pose[i]);
             const int parent = m_bones[i].parentIndex;
             if (parent >= 0 && static_cast<std::size_t>(parent) < i)
                 out[i] = local * out[parent];
@@ -90,7 +90,7 @@ namespace NS::Graphics
         }
     }
 
-    void Skeleton::ComputeBindPalette(std::vector<NS::Math::Matrix>& out) const
+    void Skeleton::ComputeBindPalette(std::vector<NS::Core::Matrix>& out) const
     {
         std::vector<BonePose> bindPose;
         bindPose.reserve(m_bones.size());
@@ -101,20 +101,20 @@ namespace NS::Graphics
         ComputePalette(bindPose, out);
     }
 
-    void Skeleton::SetRootTransform(const NS::Math::Matrix& transform) noexcept
+    void Skeleton::SetRootTransform(const NS::Core::Matrix& transform) noexcept
     {
         m_rootTransform = transform;
     }
 
-    const NS::Math::Matrix& Skeleton::RootTransform() const noexcept
+    const NS::Core::Matrix& Skeleton::RootTransform() const noexcept
     {
         return m_rootTransform;
     }
 
-    NS::Math::Vector3 Skeleton::SkinPositionReference(const SkinnedVertex& vertex,
-                                                      std::span<const NS::Math::Matrix> palette) noexcept
+    NS::Core::Vector3 Skeleton::SkinPositionReference(const SkinnedVertex& vertex,
+                                                      std::span<const NS::Core::Matrix> palette) noexcept
     {
-        NS::Math::Vector3 result(0.0f, 0.0f, 0.0f);
+        NS::Core::Vector3 result(0.0f, 0.0f, 0.0f);
         for (int i = 0; i < 4; ++i)
         {
             const float weight = vertex.weights[i];
@@ -127,7 +127,7 @@ namespace NS::Graphics
             {
                 continue;
             }
-            result += weight * NS::Math::Vector3::Transform(vertex.position, palette[joint]);
+            result += weight * NS::Core::Vector3::Transform(vertex.position, palette[joint]);
         }
         return result;
     }

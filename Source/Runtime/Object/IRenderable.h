@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/DrawItem.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <cstdint>
 #include <vector>
@@ -38,13 +38,13 @@ namespace NS::Object
 
         /// @brief カリング用のワールド空間 AABB。Scene が視錐台の外を Collect 前に間引く
         /// @details 全描画物が必ず境界を返す。常に描きたいものは全域を覆う AABB を返して自ら申告する
-        [[nodiscard]] virtual NS::Math::AABB WorldBounds() const noexcept = 0;
+        [[nodiscard]] virtual NS::Core::AABB WorldBounds() const noexcept = 0;
 
         /// 自分の描画バケット。既定は Opaque。 透明を持たない既存 Renderable は無改変で従来どおり
         [[nodiscard]] virtual RenderBucket Bucket() const noexcept { return RenderBucket::Opaque; }
 
         /// 半透明ソート用のワールド空間中心座標。既定は原点で Opaque は未使用
-        [[nodiscard]] virtual NS::Math::Vector3 SortCenter() const noexcept { return {}; }
+        [[nodiscard]] virtual NS::Core::Vector3 SortCenter() const noexcept { return {}; }
 
         /// 半透明ソートで距離が同じときの優先度。小さいほど先。既定 0
         [[nodiscard]] virtual int SortPriority() const noexcept { return 0; }

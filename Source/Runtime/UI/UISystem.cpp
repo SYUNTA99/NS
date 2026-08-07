@@ -30,7 +30,7 @@ namespace NS::UI
         if (!m_root.HasChildren())
             return;
 
-        const NS::Math::Size2D size = renderer.Size();
+        const NS::Core::Size2D size = renderer.Size();
         Layout(static_cast<float>(size.width), static_cast<float>(size.height));
         m_root.Draw(renderer, 1.0f, m_scale);
     }

@@ -1,6 +1,6 @@
 #include "Game/Level/BlockObject.h"
 #include "Game/Level/GoalComponent.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 
@@ -37,7 +37,7 @@ TEST(SceneDataAccessors, FindComponentFieldAndGoalRule)
     EXPECT_EQ(SceneNs::FindComponentEntry(goal, "BoxColliderComponent"), nullptr); // 不在は nullptr
 
     nlohmann::json box = SceneNs::MakeComponentEntry("BoxColliderComponent");
-    SceneNs::SetField(box, "半径", NS::Math::Vector3{1.0f, 1.0f, 1.0f});
+    SceneNs::SetField(box, "半径", NS::Core::Vector3{1.0f, 1.0f, 1.0f});
     EXPECT_TRUE(SceneNs::HasField(box, "半径"));
     EXPECT_FALSE(SceneNs::HasField(box, "Missing")); // 欠損 field は無し
 
@@ -51,10 +51,10 @@ TEST(SceneDataCrcTest, DifferentComponentsProduceDifferentCrc)
     SceneNs::SceneData a, b;
     SceneNs::ObjectData boxA{}, boxB{};
     nlohmann::json entryA = SceneNs::MakeComponentEntry("BoxColliderComponent");
-    SceneNs::SetField(entryA, "半径", NS::Math::Vector3{1.0f, 1.0f, 1.0f});
+    SceneNs::SetField(entryA, "半径", NS::Core::Vector3{1.0f, 1.0f, 1.0f});
     boxA.components.push_back(std::move(entryA));
     nlohmann::json entryB = SceneNs::MakeComponentEntry("BoxColliderComponent");
-    SceneNs::SetField(entryB, "半径", NS::Math::Vector3{2.0f, 1.0f, 1.0f});
+    SceneNs::SetField(entryB, "半径", NS::Core::Vector3{2.0f, 1.0f, 1.0f});
     boxB.components.push_back(std::move(entryB));
     a.objects.push_back(std::move(boxA));
     b.objects.push_back(std::move(boxB));
@@ -76,7 +76,7 @@ TEST(SceneDataCrcTest, RotationIsHashed)
     a.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
     SceneNs::ObjectData rotated = LevelNs::MakeCellObject(0, 0, 0);
     SceneNs::SetObjectRotation(rotated,
-                               NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::k_Pi * 0.5f, 0.0f, 0.0f));
+                               NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.5f, 0.0f, 0.0f));
     b.objects.push_back(rotated);
     EXPECT_NE(a.ComputeCrc32(), b.ComputeCrc32());
 }
@@ -111,8 +111,8 @@ TEST(SceneDataCrcTest, VectorCapacityDoesNotAffectCrc)
 TEST(SceneDataComponents, ComponentEntryHoldsTypeAndFields)
 {
     nlohmann::json entry = SceneNs::MakeComponentEntry("BoxColliderComponent");
-    SceneNs::SetField(entry, "半径", NS::Math::Vector3{0.5f, 0.5f, 0.5f});
-    SceneNs::SetField(entry, "中心オフセット", NS::Math::Vector3{0.0f, 1.0f, 0.0f});
+    SceneNs::SetField(entry, "半径", NS::Core::Vector3{0.5f, 0.5f, 0.5f});
+    SceneNs::SetField(entry, "中心オフセット", NS::Core::Vector3{0.0f, 1.0f, 0.0f});
 
     EXPECT_EQ(SceneNs::ComponentEntryType(entry), "BoxColliderComponent");
     ASSERT_EQ(entry.at("fields").size(), 2u);

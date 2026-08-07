@@ -5,9 +5,9 @@
 
 namespace
 {
-    using NS::Math::Dot;
-    using NS::Math::Vector3;
-    using NS::Math::OBB;
+    using NS::Core::Dot;
+    using NS::Core::Vector3;
+    using NS::Core::OBB;
     using NS::Physics::Capsule;
 
     /// 回転のみで平行移動なしに world ベクトルを OBB local 軸へ射影する
@@ -125,15 +125,15 @@ namespace
 
 namespace NS::Physics
 {
-    OBB MakeObb(const NS::Math::Vector3& center,
-                const NS::Math::Quaternion& rotation,
-                const NS::Math::Vector3& halfExtents) noexcept
+    OBB MakeObb(const NS::Core::Vector3& center,
+                const NS::Core::Quaternion& rotation,
+                const NS::Core::Vector3& halfExtents) noexcept
     {
         OBB obb;
         obb.center = center;
-        obb.axisX = NS::Math::Vector3::Transform(NS::Math::Vector3::UnitX, rotation);
-        obb.axisY = NS::Math::Vector3::Transform(NS::Math::Vector3::UnitY, rotation);
-        obb.axisZ = NS::Math::Vector3::Transform(NS::Math::Vector3::UnitZ, rotation);
+        obb.axisX = NS::Core::Vector3::Transform(NS::Core::Vector3::UnitX, rotation);
+        obb.axisY = NS::Core::Vector3::Transform(NS::Core::Vector3::UnitY, rotation);
+        obb.axisZ = NS::Core::Vector3::Transform(NS::Core::Vector3::UnitZ, rotation);
         obb.halfExtentX = std::abs(halfExtents.x);
         obb.halfExtentY = std::abs(halfExtents.y);
         obb.halfExtentZ = std::abs(halfExtents.z);
@@ -141,20 +141,20 @@ namespace NS::Physics
     }
 
     bool SweptCapsuleVsOBB(const Capsule& capsule,
-                           const NS::Math::Vector3& motion,
+                           const NS::Core::Vector3& motion,
                            const OBB& obb,
                            float& outToi,
-                           NS::Math::Vector3& outNormal) noexcept
+                           NS::Core::Vector3& outNormal) noexcept
     {
         outToi = 1.0f;
-        outNormal = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+        outNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
 
         const auto [top, bottom] = CapsuleEndpoints(capsule);
 
         float toiTop = 1.0f;
         float toiBottom = 1.0f;
-        NS::Math::Vector3 normalTop{};
-        NS::Math::Vector3 normalBottom{};
+        NS::Core::Vector3 normalTop{};
+        NS::Core::Vector3 normalBottom{};
         const bool hitTop = SweptSphereVsObb(top, motion, obb, capsule.radius, toiTop, normalTop);
         const bool hitBottom = SweptSphereVsObb(bottom, motion, obb, capsule.radius, toiBottom, normalBottom);
 

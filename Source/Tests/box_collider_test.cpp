@@ -32,10 +32,10 @@ TEST(BoxColliderTest, HalfExtentsSetterPersists)
 TEST(BoxColliderTest, WorldAABBReflectsOwnerPosition)
 {
     GameObject obj;
-    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{1.0f, 0.5f, 2.0f});
+    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Core::Vector3{1.0f, 0.5f, 2.0f});
     obj.Root().SetPosition({10.0f, 3.0f, -5.0f});
 
-    const NS::Math::AABB box = sc.WorldAABB();
+    const NS::Core::AABB box = sc.WorldAABB();
     EXPECT_FLOAT_EQ(box.Center.x, 10.0f);
     EXPECT_FLOAT_EQ(box.Center.y, 3.0f);
     EXPECT_FLOAT_EQ(box.Center.z, -5.0f);
@@ -46,8 +46,8 @@ TEST(BoxColliderTest, WorldAABBReflectsOwnerPosition)
 
 TEST(BoxColliderTest, WorldAABBWithoutOwnerIsOriginCentered)
 {
-    BoxColliderComponent sc(NS::Math::Vector3{1.0f, 1.0f, 1.0f});
-    const NS::Math::AABB box = sc.WorldAABB();
+    BoxColliderComponent sc(NS::Core::Vector3{1.0f, 1.0f, 1.0f});
+    const NS::Core::AABB box = sc.WorldAABB();
     EXPECT_FLOAT_EQ(box.Center.x, 0.0f);
     EXPECT_FLOAT_EQ(box.Center.y, 0.0f);
     EXPECT_FLOAT_EQ(box.Center.z, 0.0f);
@@ -57,11 +57,11 @@ TEST(BoxColliderTest, WorldAABBWithoutOwnerIsOriginCentered)
 TEST(BoxColliderTest, WorldAABBReflectsOwnerScale)
 {
     GameObject obj;
-    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
+    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Core::Vector3{0.5f, 0.5f, 0.5f});
     obj.Root().SetPosition({10.0f, 0.0f, 0.0f});
     obj.Root().SetScale({4.0f, 2.0f, 6.0f});
 
-    const NS::Math::AABB box = sc.WorldAABB();
+    const NS::Core::AABB box = sc.WorldAABB();
     EXPECT_FLOAT_EQ(box.Center.x, 10.0f);
     EXPECT_FLOAT_EQ(box.Extents.x, 2.0f); // 0.5 * 4
     EXPECT_FLOAT_EQ(box.Extents.y, 1.0f); // 0.5 * 2
@@ -72,10 +72,10 @@ TEST(BoxColliderTest, WorldAABBReflectsOwnerScale)
 TEST(BoxColliderTest, WorldAABBNinetyDegreeYawKeepsCubeExtents)
 {
     GameObject obj;
-    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
-    obj.Root().SetRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::k_Pi * 0.5f, 0.0f, 0.0f));
+    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Core::Vector3{0.5f, 0.5f, 0.5f});
+    obj.Root().SetRotation(NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.5f, 0.0f, 0.0f));
 
-    const NS::Math::AABB box = sc.WorldAABB();
+    const NS::Core::AABB box = sc.WorldAABB();
     EXPECT_NEAR(box.Extents.x, 0.5f, 1e-4f);
     EXPECT_NEAR(box.Extents.y, 0.5f, 1e-4f);
     EXPECT_NEAR(box.Extents.z, 0.5f, 1e-4f);
@@ -85,10 +85,10 @@ TEST(BoxColliderTest, WorldAABBNinetyDegreeYawKeepsCubeExtents)
 TEST(BoxColliderTest, WorldOBBReflectsOwnerPositionAndExtents)
 {
     GameObject obj;
-    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{1.0f, 0.5f, 2.0f});
+    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Core::Vector3{1.0f, 0.5f, 2.0f});
     obj.Root().SetPosition({10.0f, 3.0f, -5.0f});
 
-    const NS::Math::OBB obb = sc.WorldOBB();
+    const NS::Core::OBB obb = sc.WorldOBB();
     EXPECT_FLOAT_EQ(obb.center.x, 10.0f);
     EXPECT_FLOAT_EQ(obb.center.y, 3.0f);
     EXPECT_FLOAT_EQ(obb.center.z, -5.0f);
@@ -104,10 +104,10 @@ TEST(BoxColliderTest, WorldOBBReflectsOwnerPositionAndExtents)
 TEST(BoxColliderTest, WorldOBBReflectsOwnerScale)
 {
     GameObject obj;
-    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
+    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Core::Vector3{0.5f, 0.5f, 0.5f});
     obj.Root().SetScale({4.0f, 2.0f, 6.0f});
 
-    const NS::Math::OBB obb = sc.WorldOBB();
+    const NS::Core::OBB obb = sc.WorldOBB();
     EXPECT_NEAR(obb.halfExtentX, 2.0f, 1e-4f);
     EXPECT_NEAR(obb.halfExtentY, 1.0f, 1e-4f);
     EXPECT_NEAR(obb.halfExtentZ, 3.0f, 1e-4f);
@@ -117,10 +117,10 @@ TEST(BoxColliderTest, WorldOBBReflectsOwnerScale)
 TEST(BoxColliderTest, WorldOBBRotationProducesRotatedAxes)
 {
     GameObject obj;
-    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
-    obj.Root().SetRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::k_Pi * 0.5f, 0.0f, 0.0f));
+    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Core::Vector3{0.5f, 0.5f, 0.5f});
+    obj.Root().SetRotation(NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.5f, 0.0f, 0.0f));
 
-    const NS::Math::OBB obb = sc.WorldOBB();
+    const NS::Core::OBB obb = sc.WorldOBB();
     EXPECT_NEAR(obb.axisX.x, 0.0f, 1e-4f);
     EXPECT_NEAR(obb.axisX.Dot(obb.axisY), 0.0f, 1e-4f);
     EXPECT_NEAR(obb.axisX.Dot(obb.axisX), 1.0f, 1e-4f);
@@ -129,8 +129,8 @@ TEST(BoxColliderTest, WorldOBBRotationProducesRotatedAxes)
 // owner 無しは原点・単位回転・素の halfExtents
 TEST(BoxColliderTest, WorldOBBWithoutOwnerIsOriginIdentity)
 {
-    BoxColliderComponent sc(NS::Math::Vector3{1.0f, 1.0f, 1.0f});
-    const NS::Math::OBB obb = sc.WorldOBB();
+    BoxColliderComponent sc(NS::Core::Vector3{1.0f, 1.0f, 1.0f});
+    const NS::Core::OBB obb = sc.WorldOBB();
     EXPECT_FLOAT_EQ(obb.center.x, 0.0f);
     EXPECT_NEAR(obb.halfExtentX, 1.0f, 1e-4f);
     EXPECT_NEAR(obb.axisX.x, 1.0f, 1e-4f);
@@ -140,11 +140,11 @@ TEST(BoxColliderTest, WorldOBBWithoutOwnerIsOriginIdentity)
 TEST(BoxColliderTest, CenterOffsetShiftsWorldCenter)
 {
     GameObject obj;
-    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
+    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Core::Vector3{0.5f, 0.5f, 0.5f});
     obj.Root().SetPosition({10.0f, 0.0f, 0.0f});
     sc.SetCenterOffset({0.0f, 2.0f, 0.0f});
 
-    const NS::Math::OBB obb = sc.WorldOBB();
+    const NS::Core::OBB obb = sc.WorldOBB();
     EXPECT_NEAR(obb.center.x, 10.0f, 1e-4f);
     EXPECT_NEAR(obb.center.y, 2.0f, 1e-4f);
     EXPECT_NEAR(obb.center.z, 0.0f, 1e-4f);
@@ -154,11 +154,11 @@ TEST(BoxColliderTest, CenterOffsetShiftsWorldCenter)
 TEST(BoxColliderTest, CenterOffsetScalesWithOwner)
 {
     GameObject obj;
-    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
+    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Core::Vector3{0.5f, 0.5f, 0.5f});
     obj.Root().SetScale({3.0f, 3.0f, 3.0f});
     sc.SetCenterOffset({1.0f, 0.0f, 0.0f});
 
-    const NS::Math::OBB obb = sc.WorldOBB();
+    const NS::Core::OBB obb = sc.WorldOBB();
     EXPECT_NEAR(obb.center.x, 3.0f, 1e-4f); // 1.0 * scale 3
 }
 
@@ -166,11 +166,11 @@ TEST(BoxColliderTest, CenterOffsetScalesWithOwner)
 TEST(BoxColliderTest, CenterOffsetRotatesWithOwner)
 {
     GameObject obj;
-    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
-    obj.Root().SetRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::k_Pi * 0.5f, 0.0f, 0.0f));
+    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Core::Vector3{0.5f, 0.5f, 0.5f});
+    obj.Root().SetRotation(NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.5f, 0.0f, 0.0f));
     sc.SetCenterOffset({1.0f, 0.0f, 0.0f});
 
-    const NS::Math::OBB obb = sc.WorldOBB();
+    const NS::Core::OBB obb = sc.WorldOBB();
     EXPECT_NEAR(obb.center.x, 0.0f, 1e-4f);
     EXPECT_NEAR(obb.center.y, 0.0f, 1e-4f);
     EXPECT_NEAR(std::abs(obb.center.z), 1.0f, 1e-4f);
@@ -180,10 +180,10 @@ TEST(BoxColliderTest, CenterOffsetRotatesWithOwner)
 TEST(BoxColliderTest, LocalRotationRotatesObbAxes)
 {
     GameObject obj;
-    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Math::Vector3{0.5f, 0.5f, 0.5f});
-    sc.SetLocalRotation(NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::k_Pi * 0.5f, 0.0f, 0.0f));
+    auto& sc = *obj.AddComponent<BoxColliderComponent>(NS::Core::Vector3{0.5f, 0.5f, 0.5f});
+    sc.SetLocalRotation(NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.5f, 0.0f, 0.0f));
 
-    const NS::Math::OBB obb = sc.WorldOBB();
+    const NS::Core::OBB obb = sc.WorldOBB();
     EXPECT_NEAR(obb.axisX.x, 0.0f, 1e-4f);
     EXPECT_NEAR(obb.axisX.Dot(obb.axisX), 1.0f, 1e-4f);
 }
@@ -193,7 +193,7 @@ TEST(BoxColliderTest, RotationEulerDegreesRoundTrips)
 {
     BoxColliderComponent sc;
     sc.SetRotationEulerDegrees({0.0f, 90.0f, 0.0f});
-    const NS::Math::Vector3 deg = sc.RotationEulerDegrees();
+    const NS::Core::Vector3 deg = sc.RotationEulerDegrees();
     EXPECT_NEAR(deg.x, 0.0f, 1e-3f);
     EXPECT_NEAR(deg.y, 90.0f, 1e-3f);
     EXPECT_NEAR(deg.z, 0.0f, 1e-3f);

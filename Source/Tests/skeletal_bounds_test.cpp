@@ -1,5 +1,5 @@
 #include "Runtime/Graphics/SkeletalMesh.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <cstdint>
 #include <gtest/gtest.h>
@@ -11,9 +11,9 @@ namespace
     using NS::Graphics::ComputeBoneSpheres;
     using NS::Graphics::MergeSkinnedBounds;
     using NS::Graphics::SkinnedVertex;
-    using NS::Math::AABB;
-    using NS::Math::Matrix;
-    using NS::Math::Vector3;
+    using NS::Core::AABB;
+    using NS::Core::Matrix;
+    using NS::Core::Vector3;
 
     SkinnedVertex MakeVertex(const Vector3& pos, std::uint32_t joint)
     {

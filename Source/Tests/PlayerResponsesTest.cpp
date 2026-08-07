@@ -24,7 +24,7 @@ namespace
     SceneNs::ObjectData MakeGoal(float x, float y, float z)
     {
         SceneNs::ObjectData object;
-        SceneNs::SetObjectPosition(object, NS::Math::Vector3{x, y, z});
+        SceneNs::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
         object.components.push_back(SceneNs::MakeComponentEntry("GoalComponent"));
         return object;
     }
@@ -55,10 +55,10 @@ TEST(PlayerResponses, RestartRunPlacesPlayerAtBaseline)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData live;
-    live.objects.push_back(MakePlayerObject(NS::Math::Vector3{1.0f, 1.0f, 1.0f}, NS::Math::Quaternion{}));
+    live.objects.push_back(MakePlayerObject(NS::Core::Vector3{1.0f, 1.0f, 1.0f}, NS::Core::Quaternion{}));
     scene.LoadFromData(std::move(live));
     SceneNs::SceneData baseline;
-    baseline.objects.push_back(MakePlayerObject(NS::Math::Vector3{7.0f, 2.0f, -4.0f}, NS::Math::Quaternion{}));
+    baseline.objects.push_back(MakePlayerObject(NS::Core::Vector3{7.0f, 2.0f, -4.0f}, NS::Core::Quaternion{}));
     scene.SetPlayBaselineForTest(std::move(baseline));
 
     auto* player = FindPlayer(scene.World());
@@ -75,7 +75,7 @@ TEST(PlayerResponses, FallIntoKillZoneRestartsSameTick)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     data.objects.push_back(LevelNs::MakeKillZoneObject());
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();
@@ -86,7 +86,7 @@ TEST(PlayerResponses, FallIntoKillZoneRestartsSameTick)
     player->ApplyDamage(5);
 
     // 奈落へ落とすと LateUpdate 帯の即死判定が立ち、 同じ LateUpdate の respawner がリスタートさせる
-    player->Root().SetPosition(NS::Math::Vector3{0.0f, -55.0f, 0.0f});
+    player->Root().SetPosition(NS::Core::Vector3{0.0f, -55.0f, 0.0f});
     scene.OnUpdate();
 
     EXPECT_FALSE(player->IsDead());
@@ -99,7 +99,7 @@ TEST(PlayerResponses, HazardDrainsExactlyOncePerTick)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     data.objects.push_back(MakeTriggerHazard());
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();
@@ -116,7 +116,7 @@ TEST(PlayerResponses, GoalContactStartsClearFadeSameTick)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     // プレイヤー実体と同じ位置にゴールを置くと中心距離 0 で必ず接触する
     data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
@@ -134,7 +134,7 @@ TEST(PlayerResponses, PausedTickAdvancesNothing)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     data.objects.push_back(MakeTriggerHazard());
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();
@@ -153,7 +153,7 @@ TEST(PlayerResponses, StepFrameAdvancesExactlyOneTick)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     data.objects.push_back(MakeTriggerHazard());
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();
@@ -173,7 +173,7 @@ TEST(PlayerResponses, DisabledSimulationSkipsWorld)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     data.objects.push_back(MakeTriggerHazard());
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();
@@ -196,7 +196,7 @@ TEST(PlayerResponses, ClearFadesOutRestartsAtBlackThenFadesIn)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData data;
-    data.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();

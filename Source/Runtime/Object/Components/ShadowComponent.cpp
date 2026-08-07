@@ -24,7 +24,7 @@ namespace NS::Object
         m_material = material;
     }
 
-    void ShadowComponent::SetCollisionWorld(std::span<const NS::Math::AABB> world)
+    void ShadowComponent::SetCollisionWorld(std::span<const NS::Core::AABB> world)
     {
         m_collisionWorld.assign(world.begin(), world.end());
     }
@@ -32,7 +32,7 @@ namespace NS::Object
     namespace
     {
         // object が持つ最初の collider のワールド AABB。 影の地面探索は形の別を問わず箱で受ける
-        std::optional<NS::Math::AABB> ColliderAABB(GameObject& obj) noexcept
+        std::optional<NS::Core::AABB> ColliderAABB(GameObject& obj) noexcept
         {
             if (auto* box = obj.FindComponent<BoxColliderComponent>())
                 return box->WorldAABB();
@@ -43,17 +43,17 @@ namespace NS::Object
             if (auto* slope = obj.FindComponent<SlopeColliderComponent>())
             {
                 const auto tris = slope->WorldTriangles();
-                NS::Math::Vector3 lo = tris[0].v0;
-                NS::Math::Vector3 hi = tris[0].v0;
+                NS::Core::Vector3 lo = tris[0].v0;
+                NS::Core::Vector3 hi = tris[0].v0;
                 for (const auto& t : tris)
                 {
-                    for (const NS::Math::Vector3& v : {t.v0, t.v1, t.v2})
+                    for (const NS::Core::Vector3& v : {t.v0, t.v1, t.v2})
                     {
-                        lo = NS::Math::Vector3::Min(lo, v);
-                        hi = NS::Math::Vector3::Max(hi, v);
+                        lo = NS::Core::Vector3::Min(lo, v);
+                        hi = NS::Core::Vector3::Max(hi, v);
                     }
                 }
-                return NS::Math::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
+                return NS::Core::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
             }
             return std::nullopt;
         }
@@ -104,34 +104,34 @@ namespace NS::Object
         scene->UnregisterRenderable(this);
     }
 
-    NS::Math::Vector3 ShadowComponent::SortCenter() const noexcept
+    NS::Core::Vector3 ShadowComponent::SortCenter() const noexcept
     {
         const GameObject* owner = Owner();
         if (owner == nullptr)
             return {};
-        const NS::Math::Matrix m = owner->Root().WorldMatrix();
-        return NS::Math::Vector3{m._41, m._42, m._43};
+        const NS::Core::Matrix m = owner->Root().WorldMatrix();
+        return NS::Core::Vector3{m._41, m._42, m._43};
     }
 
-    NS::Math::AABB ShadowComponent::WorldBounds() const noexcept
+    NS::Core::AABB ShadowComponent::WorldBounds() const noexcept
     {
         const GameObject* owner = Owner();
         if (owner == nullptr)
             return {};
-        const NS::Math::Matrix world = owner->Root().WorldMatrix();
-        const NS::Math::Vector3 origin{world._41, world._42, world._43};
+        const NS::Core::Matrix world = owner->Root().WorldMatrix();
+        const NS::Core::Vector3 origin{world._41, world._42, world._43};
         // 影は owner 直下 [-maxDrop, 0] のどこかに baseDiameter 幅で落ちる。その可動域を全部覆う
-        const NS::Math::Vector3 center{origin.x, origin.y - m_maxDrop * 0.5f, origin.z};
-        const NS::Math::Vector3 extents{m_baseDiameter, m_maxDrop * 0.5f, m_baseDiameter};
-        return NS::Math::AABB{center, extents};
+        const NS::Core::Vector3 center{origin.x, origin.y - m_maxDrop * 0.5f, origin.z};
+        const NS::Core::Vector3 extents{m_baseDiameter, m_maxDrop * 0.5f, m_baseDiameter};
+        return NS::Core::AABB{center, extents};
     }
 
-    bool ShadowComponent::GroundBelow(const NS::Math::Vector3& origin,
-                                      std::span<const NS::Math::AABB> world,
+    bool ShadowComponent::GroundBelow(const NS::Core::Vector3& origin,
+                                      std::span<const NS::Core::AABB> world,
                                       float maxDist,
                                       float& outDist) noexcept
     {
-        const NS::Math::Ray ray(origin, NS::Math::Vector3{0.0f, -1.0f, 0.0f});
+        const NS::Core::Ray ray(origin, NS::Core::Vector3{0.0f, -1.0f, 0.0f});
         float nearest = maxDist;
         bool hit = false;
         for (const auto& box : world)
@@ -166,8 +166,8 @@ namespace NS::Object
         if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr || m_collisionWorld.empty())
             return;
 
-        const NS::Math::Matrix ownerWorld = owner->Root().InterpolatedWorldMatrix(context.alpha);
-        const NS::Math::Vector3 origin{ownerWorld._41, ownerWorld._42, ownerWorld._43};
+        const NS::Core::Matrix ownerWorld = owner->Root().InterpolatedWorldMatrix(context.alpha);
+        const NS::Core::Vector3 origin{ownerWorld._41, ownerWorld._42, ownerWorld._43};
 
         // 真下の地面探索とフェード算出
         float dist = 0.0f;
@@ -183,9 +183,9 @@ namespace NS::Object
         const float groundY = origin.y - dist;
 
         // 影クアッドの world 行列
-        const NS::Math::Matrix world =
-            NS::Math::Matrix::CreateScale(scale, 1.0f, scale) *
-            NS::Math::Matrix::CreateTranslation(origin.x, groundY + m_surfaceOffset, origin.z);
+        const NS::Core::Matrix world =
+            NS::Core::Matrix::CreateScale(scale, 1.0f, scale) *
+            NS::Core::Matrix::CreateTranslation(origin.x, groundY + m_surfaceOffset, origin.z);
 
         NS::Graphics::DrawItem item{};
         item.mesh = m_mesh;
@@ -193,7 +193,7 @@ namespace NS::Object
         item.blend = NS::Graphics::BlendMode::Alpha; // 深度書込OFF の半透明として手前に遮蔽される
         item.constants.world = world;
         item.constants.viewProj = context.viewProjection;
-        item.constants.baseColor = NS::Math::Vector3{alpha, 0.0f, 0.0f}; // x = 高さフェードアルファで shadow.ps が読む
+        item.constants.baseColor = NS::Core::Vector3{alpha, 0.0f, 0.0f}; // x = 高さフェードアルファで shadow.ps が読む
         out.push_back(item);
     }
 

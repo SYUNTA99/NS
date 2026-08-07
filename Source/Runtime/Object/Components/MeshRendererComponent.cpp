@@ -110,13 +110,13 @@ namespace NS::Object
         return RenderBucket::Transparent;
     }
 
-    NS::Math::Vector3 MeshRendererComponent::SortCenter() const noexcept
+    NS::Core::Vector3 MeshRendererComponent::SortCenter() const noexcept
     {
         const GameObject* owner = Owner();
         if (owner == nullptr)
             return {};
-        const NS::Math::Matrix world = owner->Root().WorldMatrix();
-        return NS::Math::Vector3{world._41, world._42, world._43};
+        const NS::Core::Matrix world = owner->Root().WorldMatrix();
+        return NS::Core::Vector3{world._41, world._42, world._43};
     }
 
     int MeshRendererComponent::SortPriority() const noexcept
@@ -126,12 +126,12 @@ namespace NS::Object
         return 0;
     }
 
-    NS::Math::AABB MeshRendererComponent::WorldBounds() const noexcept
+    NS::Core::AABB MeshRendererComponent::WorldBounds() const noexcept
     {
         const GameObject* owner = Owner();
         if (m_mesh == nullptr || owner == nullptr)
             return {}; // 描くものが無い。間引かれても Collect が何も積まず結果は変わらない
-        NS::Math::AABB out{};
+        NS::Core::AABB out{};
         // skinned は現在ポーズの override を優先、無ければ mesh 固定のバインド箱
         if (m_hasLocalBoundsOverride)
             m_localBoundsOverride.Transform(out, owner->Root().WorldMatrix());

@@ -14,7 +14,7 @@ namespace NS::UI
                                 rectPx.y,
                                 rectPx.width,
                                 rectPx.height,
-                                NS::Math::Color{m_color.R(), m_color.G(), m_color.B(), effective});
+                                NS::Core::Color{m_color.R(), m_color.G(), m_color.B(), effective});
     }
 
 } // namespace NS::UI

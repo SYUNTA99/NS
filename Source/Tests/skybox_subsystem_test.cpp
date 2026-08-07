@@ -31,7 +31,7 @@ namespace
     };
 
     /// リフレクションフィールド越しに平行光の値を書く。照明はデータ駆動で、公開の設定関数を持たない
-    void SetLightField(DirectionalLightComponent& light, const char* name, const NS::Math::Vector3& value)
+    void SetLightField(DirectionalLightComponent& light, const char* name, const NS::Core::Vector3& value)
     {
         const NS::Object::FieldDesc* field = NS::Object::FindField(DirectionalLightComponent::StaticReflection(), name);
         ASSERT_NE(field, nullptr) << name;
@@ -60,7 +60,7 @@ TEST_F(SkyboxSubsystemTest, NoLightKeepsProjectDefaults)
 
     // 平行光が無ければ project 既定値がそのまま残る
     NS::Graphics::RenderSettings defaults{};
-    defaults.lightColor = NS::Math::Vector3{0.5f, 0.6f, 0.7f};
+    defaults.lightColor = NS::Core::Vector3{0.5f, 0.6f, 0.7f};
     const NS::Graphics::RenderSettings resolved = scene.CallResolve(defaults);
 
     EXPECT_NEAR(resolved.lightColor.x, 0.5f, k_Epsilon);
@@ -76,9 +76,9 @@ TEST_F(SkyboxSubsystemTest, PlacedLightOverridesResolve)
 
     DirectionalLightComponent* light = SpawnLight(scene);
     ASSERT_NE(light, nullptr);
-    SetLightField(*light, "方向", NS::Math::Vector3{0.0f, -1.0f, 0.5f});
-    SetLightField(*light, "色", NS::Math::Vector3{0.9f, 0.8f, 0.7f});
-    SetLightField(*light, "環境光", NS::Math::Vector3{0.1f, 0.2f, 0.3f});
+    SetLightField(*light, "方向", NS::Core::Vector3{0.0f, -1.0f, 0.5f});
+    SetLightField(*light, "色", NS::Core::Vector3{0.9f, 0.8f, 0.7f});
+    SetLightField(*light, "環境光", NS::Core::Vector3{0.1f, 0.2f, 0.3f});
 
     const NS::Graphics::RenderSettings resolved = scene.CallResolve(NS::Graphics::RenderSettings{});
 
@@ -97,8 +97,8 @@ TEST_F(SkyboxSubsystemTest, ZeroLightDirectionFallsToDefault)
 
     DirectionalLightComponent* light = SpawnLight(scene);
     ASSERT_NE(light, nullptr);
-    SetLightField(*light, "方向", NS::Math::Vector3{0.0f, 0.0f, 0.0f});
-    SetLightField(*light, "色", NS::Math::Vector3{0.9f, 0.8f, 0.7f});
+    SetLightField(*light, "方向", NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+    SetLightField(*light, "色", NS::Core::Vector3{0.9f, 0.8f, 0.7f});
 
     NS::Graphics::RenderSettings defaults{};
     const NS::Graphics::RenderSettings resolved = scene.CallResolve(defaults);
@@ -120,7 +120,7 @@ TEST_F(SkyboxSubsystemTest, DrawSkyWithoutDeviceDoesNotCrash)
     // 呼出用の renderer と camera を後から立てても、装置無しの DrawSky は何もしない
     NS::Platform::WindowDesc wd{};
     wd.title = "ns_env_drawsky";
-    wd.size = NS::Math::Size2D{320, 240};
+    wd.size = NS::Core::Size2D{320, 240};
     wd.visible = false;
     NS::Platform::Window window(wd);
     ASSERT_TRUE(window.IsValid());

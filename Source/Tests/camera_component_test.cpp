@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/CameraComponent.h>
 
 namespace

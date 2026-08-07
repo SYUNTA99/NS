@@ -5,9 +5,9 @@
 
 namespace
 {
-    using NS::Math::Dot;
-    using NS::Math::Vector3;
-    using NS::Math::Sphere;
+    using NS::Core::Dot;
+    using NS::Core::Vector3;
+    using NS::Core::Sphere;
     using NS::Physics::Capsule;
 
     [[nodiscard]] Vector3 Normalized(const Vector3& v) noexcept
@@ -146,13 +146,13 @@ namespace
 namespace NS::Physics
 {
     bool SweptCapsuleVsSphere(const Capsule& capsule,
-                              const NS::Math::Vector3& motion,
+                              const NS::Core::Vector3& motion,
                               const Sphere& sphere,
                               float& outToi,
-                              NS::Math::Vector3& outNormal) noexcept
+                              NS::Core::Vector3& outNormal) noexcept
     {
         outToi = 1.0f;
-        outNormal = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+        outNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
 
         const Vector3 axis = NormalizeAxis(capsule.axis);
         const Vector3 a = capsule.center - axis * capsule.halfHeight;
@@ -173,13 +173,13 @@ namespace NS::Physics
     }
 
     bool SweptCapsuleVsCapsule(const Capsule& capsule,
-                               const NS::Math::Vector3& motion,
+                               const NS::Core::Vector3& motion,
                                const Capsule& other,
                                float& outToi,
-                               NS::Math::Vector3& outNormal) noexcept
+                               NS::Core::Vector3& outNormal) noexcept
     {
         outToi = 1.0f;
-        outNormal = NS::Math::Vector3{0.0f, 0.0f, 0.0f};
+        outNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
 
         const Vector3 axisSelf = NormalizeAxis(capsule.axis);
         const Vector3 selfBottom = capsule.center - axisSelf * capsule.halfHeight;

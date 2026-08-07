@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 namespace NS::Physics
 {
@@ -10,8 +10,8 @@ namespace NS::Physics
     /// 衝突は physicsWorld への capsule sweep で解決する。nullptr なら衝突なしで motion を進める
     struct CapsuleMoverInput
     {
-        NS::Math::Vector3 position{0.0f, 0.0f, 0.0f};
-        NS::Math::Vector3 velocity{0.0f, 0.0f, 0.0f};
+        NS::Core::Vector3 position{0.0f, 0.0f, 0.0f};
+        NS::Core::Vector3 velocity{0.0f, 0.0f, 0.0f};
         float dt = 0.0f;
         float capsuleRadius = 0.4f;
         float capsuleHalfHeight = 0.5f;
@@ -21,9 +21,9 @@ namespace NS::Physics
     /// Update の戻り値。新 position / velocity と接触情報
     struct CapsuleMoverResult
     {
-        NS::Math::Vector3 position{0.0f, 0.0f, 0.0f};
-        NS::Math::Vector3 velocity{0.0f, 0.0f, 0.0f};
-        NS::Math::Vector3 contactNormal{0.0f, 0.0f, 0.0f};
+        NS::Core::Vector3 position{0.0f, 0.0f, 0.0f};
+        NS::Core::Vector3 velocity{0.0f, 0.0f, 0.0f};
+        NS::Core::Vector3 contactNormal{0.0f, 0.0f, 0.0f};
         bool grounded = false;
     };
 

@@ -3,9 +3,9 @@
 
 namespace
 {
-    using NS::Math::Vector3;
+    using NS::Core::Vector3;
     using NS::Physics::Capsule;
-    using NS::Math::Sphere;
+    using NS::Core::Sphere;
 
     // 軸が縦 (axis Y) の標準プレイヤー capsule を返す
     Capsule MakeVerticalCapsule(const Vector3& center, float halfHeight, float radius)

@@ -65,7 +65,7 @@ namespace NS::Object
         }
 
         // view の平行移動成分を 0 化して camera 中心に空を固定する
-        NS::Math::Matrix viewNoTranslate = camera.View();
+        NS::Core::Matrix viewNoTranslate = camera.View();
         viewNoTranslate._41 = 0.0f;
         viewNoTranslate._42 = 0.0f;
         viewNoTranslate._43 = 0.0f;

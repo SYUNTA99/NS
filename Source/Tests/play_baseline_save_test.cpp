@@ -1,7 +1,7 @@
 #include "Game/Level/BlockObject.h"
 
 #include <gtest/gtest.h>
-#include <Runtime/Math/Math.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/TransformComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Scene/Scene.h>
@@ -21,7 +21,7 @@ TEST(PlayBaselineSave, FrozenBaselineIgnoresPlayMovement)
 
     SceneNs::SceneData level;
     SceneNs::ObjectData cube = LevelNs::MakeCellObject(0, 0, 0);
-    SceneNs::SetObjectPosition(cube, NS::Math::Vector3{1.0f, 2.0f, 3.0f});
+    SceneNs::SetObjectPosition(cube, NS::Core::Vector3{1.0f, 2.0f, 3.0f});
     level.objects.push_back(std::move(cube));
     SceneNs::EnsureUniqueObjectIds(level);
     scene.LoadFromData(std::move(level));
@@ -31,12 +31,12 @@ TEST(PlayBaselineSave, FrozenBaselineIgnoresPlayMovement)
 
     // プレイ中の変化相当。 live object を別位置へ動かす
     ASSERT_GT(scene.World().ObjectCount(), 0u);
-    scene.World().ObjectAt(0)->Root().SetPosition(NS::Math::Vector3{50.0f, 60.0f, 70.0f});
+    scene.World().ObjectAt(0)->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
 
     // 控えは突入時の位置を保ち、 動かした後の位置は映らない
     const SceneNs::SceneData& baseline = scene.PlayBaseline();
     ASSERT_EQ(baseline.objects.size(), 1u);
-    const NS::Math::Vector3 frozen = SceneNs::ObjectPosition(baseline.objects[0]);
+    const NS::Core::Vector3 frozen = SceneNs::ObjectPosition(baseline.objects[0]);
     EXPECT_FLOAT_EQ(frozen.x, 1.0f);
     EXPECT_FLOAT_EQ(frozen.y, 2.0f);
     EXPECT_FLOAT_EQ(frozen.z, 3.0f);
@@ -46,7 +46,7 @@ TEST(PlayBaselineSave, FrozenBaselineIgnoresPlayMovement)
     SceneNs::SceneData reloaded;
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(reloaded, json));
     ASSERT_EQ(reloaded.objects.size(), 1u);
-    const NS::Math::Vector3 saved = SceneNs::ObjectPosition(reloaded.objects[0]);
+    const NS::Core::Vector3 saved = SceneNs::ObjectPosition(reloaded.objects[0]);
     EXPECT_FLOAT_EQ(saved.x, 1.0f);
     EXPECT_FLOAT_EQ(saved.y, 2.0f);
     EXPECT_FLOAT_EQ(saved.z, 3.0f);

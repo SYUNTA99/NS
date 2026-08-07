@@ -4,7 +4,7 @@
 #include <DirectXCollision.h>
 #include <SimpleMath.h>
 
-namespace NS::Math
+namespace NS::Core
 {
 
     //! 2次元ベクトル
@@ -240,4 +240,4 @@ namespace NS::Math
         return a + (b - a) * t;
     }
 
-} // namespace NS::Math
+} // namespace NS::Core

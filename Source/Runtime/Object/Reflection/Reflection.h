@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
 
 #include <cstddef>
@@ -27,7 +27,7 @@ namespace NS::Object
     template <class T> constexpr FieldType FieldTypeOf() noexcept
     {
         static_assert(std::is_same_v<T, float> || std::is_same_v<T, int> || std::is_same_v<T, bool> ||
-                          std::is_same_v<T, NS::Math::Vector3> || std::is_same_v<T, std::string> ||
+                          std::is_same_v<T, NS::Core::Vector3> || std::is_same_v<T, std::string> ||
                           std::is_same_v<T, ObjectRef>,
                       "reflection: 未対応のフィールド型 (Float / Int / Bool / Vector3 / String / ObjectRef のみ)");
         if constexpr (std::is_same_v<T, float>)
@@ -58,7 +58,7 @@ namespace NS::Object
     /// @brief 1 コンポーネント型のリフレクション情報。マクロで宣言したフィールドの名前 / 型 / get / set を束ねる
     /// @details エディタは Component* 越しに fields を列挙して編集 UI を自動生成する
     /// base は基底型のリフレクションを指し、辿る鎖で is-a も判定する
-    /// 依存: NS::Math
+    /// 依存: NS::Core
     struct ReflectionInfo
     {
         const char* typeName;       // リフレクションする型名

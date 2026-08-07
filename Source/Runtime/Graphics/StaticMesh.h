@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Runtime/Graphics/Mesh.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <memory>
 #include <type_traits>
@@ -11,9 +11,9 @@ namespace NS::Graphics
     //! アニメーションを持たない静的モデル用の頂点データ構造。
     struct StaticVertex
     {
-        NS::Math::Vector3 position;
-        NS::Math::Vector2 uv;
-        NS::Math::Vector3 normal;
+        NS::Core::Vector3 position;
+        NS::Core::Vector2 uv;
+        NS::Core::Vector3 normal;
     };
     static_assert(sizeof(StaticVertex) == 32, "頂点レイアウトの制約上、StaticVertexは32バイトである必要があります。");
     static_assert(std::is_standard_layout_v<StaticVertex>,
@@ -26,7 +26,7 @@ namespace NS::Graphics
         std::size_t vertexCount = 0;
         const std::uint32_t* indices = nullptr;
         std::size_t indexCount = 0;
-        const NS::Math::AABB* precomputedBounds = nullptr; // あれば頂点走査を省いて局所境界に使う
+        const NS::Core::AABB* precomputedBounds = nullptr; // あれば頂点走査を省いて局所境界に使う
     };
 
     //! @brief アニメーションを持たない静的な3Dモデルの形状データを管理するクラス。

@@ -3,7 +3,7 @@
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Graphics/D3dCommon.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 
 #include <filesystem>
 
@@ -57,7 +57,7 @@ namespace NS::Graphics
         [[nodiscard]] bool IsValid() const noexcept;
 
         //! テクスチャの幅と高さを取得する
-        [[nodiscard]] NS::Math::Size2D Size() const noexcept;
+        [[nodiscard]] NS::Core::Size2D Size() const noexcept;
 
         //! 画像の読み込みに失敗し、代替表示（ピンク色）が適用されているか
         [[nodiscard]] bool IsUsingFallback() const noexcept;
@@ -84,7 +84,7 @@ namespace NS::Graphics
         ComPtr<ID3D11ShaderResourceView> m_srv;
         ComPtr<ID3D11RenderTargetView> m_rtv;
         ComPtr<ID3D11DepthStencilView> m_dsv;
-        NS::Math::Size2D m_size{0, 0};
+        NS::Core::Size2D m_size{0, 0};
         bool m_fallback = false;
     };
 

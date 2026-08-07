@@ -2,7 +2,7 @@
 
 #include "Runtime/App/Application.h"
 #include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/Keyboard.h"
 
@@ -21,8 +21,8 @@ namespace NS::Game::Level
     {
         void DrawCoyoteDebugInfo(NS::Object::World& world, NS::Object::GameObject* player)
         {
-            const NS::Math::Color ledgeColor{0.65f, 0.30f, 1.0f, 1.0f};
-            const NS::Math::Color limitColor{1.0f, 0.20f, 0.90f, 1.0f};
+            const NS::Core::Color ledgeColor{0.65f, 0.30f, 1.0f, 1.0f};
+            const NS::Core::Color limitColor{1.0f, 0.20f, 0.90f, 1.0f};
 
             NS::Object::CharacterMovementComponent* movement = nullptr;
             if (player != nullptr)
@@ -37,7 +37,7 @@ namespace NS::Game::Level
             }
 
             // コヨーテ猶予範囲の描画 (縁のAABB天面ベース)
-            std::vector<NS::Math::OBB> solidBoxes;
+            std::vector<NS::Core::OBB> solidBoxes;
             solidBoxes.reserve(world.ObjectCount());
             for (NS::Object::GameObject* obj : world)
             {
@@ -49,9 +49,9 @@ namespace NS::Game::Level
 
             for (const LedgeEdge& edge : ComputeTopLedgeEdges(solidBoxes))
             {
-                const NS::Math::Vector3 off{edge.outward.x * coyoteReach, 0.0f, edge.outward.z * coyoteReach};
-                const NS::Math::Vector3 outerA{edge.a.x + off.x, edge.a.y, edge.a.z + off.z};
-                const NS::Math::Vector3 outerB{edge.b.x + off.x, edge.b.y, edge.b.z + off.z};
+                const NS::Core::Vector3 off{edge.outward.x * coyoteReach, 0.0f, edge.outward.z * coyoteReach};
+                const NS::Core::Vector3 outerA{edge.a.x + off.x, edge.a.y, edge.a.z + off.z};
+                const NS::Core::Vector3 outerB{edge.b.x + off.x, edge.b.y, edge.b.z + off.z};
 
                 NS::Graphics::DebugDraw::Line(edge.a, edge.b, ledgeColor);
                 NS::Graphics::DebugDraw::Line(edge.a, outerA, ledgeColor);
@@ -61,8 +61,8 @@ namespace NS::Game::Level
                 for (int hatch = 1; hatch <= 2; ++hatch)
                 {
                     const float t = static_cast<float>(hatch) / 3.0f;
-                    const NS::Math::Vector3 ha{edge.a.x + off.x * t, edge.a.y, edge.a.z + off.z * t};
-                    const NS::Math::Vector3 hb{edge.b.x + off.x * t, edge.b.y, edge.b.z + off.z * t};
+                    const NS::Core::Vector3 ha{edge.a.x + off.x * t, edge.a.y, edge.a.z + off.z * t};
+                    const NS::Core::Vector3 hb{edge.b.x + off.x * t, edge.b.y, edge.b.z + off.z * t};
                     NS::Graphics::DebugDraw::Line(ha, hb, ledgeColor);
                 }
             }
@@ -73,29 +73,29 @@ namespace NS::Game::Level
             }
 
             // プレイヤー状態のデバッグ描画
-            const NS::Math::Vector3 center = player->Root().Position();
+            const NS::Core::Vector3 center = player->Root().Position();
 
             // 接地判定マーカー (頭上にボックス表示)
             const float headTop = center.y + movement->CapsuleHalfHeight() + movement->CapsuleRadius();
-            const NS::Math::Color groundedColor = [movement]() -> NS::Math::Color {
+            const NS::Core::Color groundedColor = [movement]() -> NS::Core::Color {
                 if (movement->IsGrounded())
                 {
-                    return NS::Math::Color{0.2f, 1.0f, 0.2f, 1.0f};
+                    return NS::Core::Color{0.2f, 1.0f, 0.2f, 1.0f};
                 }
-                return NS::Math::Color{1.0f, 1.0f, 0.2f, 1.0f};
+                return NS::Core::Color{1.0f, 1.0f, 0.2f, 1.0f};
             }();
 
-            const NS::Math::AABB groundedMarker(NS::Math::Vector3{center.x, headTop + 0.45f, center.z},
-                                                NS::Math::Vector3{0.18f, 0.18f, 0.18f});
+            const NS::Core::AABB groundedMarker(NS::Core::Vector3{center.x, headTop + 0.45f, center.z},
+                                                NS::Core::Vector3{0.18f, 0.18f, 0.18f});
 
             NS::Graphics::DebugDraw::AABB(groundedMarker, groundedColor);
 
             // ジャンプ実行点のマーカー
-            const NS::Math::Color coyoteColor{1.0f, 0.15f, 0.15f, 1.0f};
+            const NS::Core::Color coyoteColor{1.0f, 0.15f, 0.15f, 1.0f};
             for (const auto& marker : movement->CoyoteJumpMarkers())
             {
                 NS::Graphics::DebugDraw::Line(marker.edge, marker.jump, coyoteColor);
-                const NS::Math::Vector3 tickTop{marker.jump.x, marker.jump.y + 0.6f, marker.jump.z};
+                const NS::Core::Vector3 tickTop{marker.jump.x, marker.jump.y + 0.6f, marker.jump.z};
                 NS::Graphics::DebugDraw::Line(marker.jump, tickTop, coyoteColor);
             }
         }

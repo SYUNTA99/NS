@@ -81,7 +81,7 @@ namespace NS::Game::Level
     {
         if (m_alpha <= 0.0f)
             return;
-        ctx.renderer->DrawFullscreenColor(NS::Math::Color{0.0f, 0.0f, 0.0f, m_alpha});
+        ctx.renderer->DrawFullscreenColor(NS::Core::Color{0.0f, 0.0f, 0.0f, m_alpha});
     }
 
 } // namespace NS::Game::Level

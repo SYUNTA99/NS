@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Runtime/Math/Math.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/IRenderable.h"
 
@@ -28,7 +28,7 @@ namespace NS::Object
 
         /// 地面探索に使う衝突 AABB を内部 vector にコピーして保持する。 呼出側 vector
         /// が再確保されても無効参照にならない
-        void SetCollisionWorld(std::span<const NS::Math::AABB> world);
+        void SetCollisionWorld(std::span<const NS::Core::AABB> world);
 
         /// 所属 world の collider から地面探索用の AABB を集め直す
         /// OnStart が呼ぶので組み直しには自動で追従する。 編集で当たりが動いた後に呼び直す
@@ -39,10 +39,10 @@ namespace NS::Object
         /// 半透明バケットに分類させる
         [[nodiscard]] RenderBucket Bucket() const noexcept override { return RenderBucket::Transparent; }
         /// 半透明ソート用の中心で owner world 位置を返す
-        [[nodiscard]] NS::Math::Vector3 SortCenter() const noexcept override;
+        [[nodiscard]] NS::Core::Vector3 SortCenter() const noexcept override;
 
         /// owner 直下の落下可動域を丸ごと覆う保守 AABB。影がどこに落ちても視錐台判定で外さない
-        [[nodiscard]] NS::Math::AABB WorldBounds() const noexcept override;
+        [[nodiscard]] NS::Core::AABB WorldBounds() const noexcept override;
 
         /// OwningScene に自分を IRenderable として登録する
         void OnStart() override;
@@ -54,8 +54,8 @@ namespace NS::Object
 
         /// origin から真下の -Y 方向へ maxDist まで衝突 AABB を探し、最近傍命中距離を outDist に返す
         /// 命中があれば true。GPU 非依存の純関数なのでテスト可能
-        [[nodiscard]] static bool GroundBelow(const NS::Math::Vector3& origin,
-                                              std::span<const NS::Math::AABB> world,
+        [[nodiscard]] static bool GroundBelow(const NS::Core::Vector3& origin,
+                                              std::span<const NS::Core::AABB> world,
                                               float maxDist,
                                               float& outDist) noexcept;
 
@@ -73,7 +73,7 @@ namespace NS::Object
     private:
         NS::Graphics::StaticMesh* m_mesh = nullptr;   // 共有 quad mesh (非所有)
         NS::Graphics::Material* m_material = nullptr; // 共有 shadow material (非所有)
-        std::vector<NS::Math::AABB> m_collisionWorld; // 地面探索用の衝突 AABB コピー
+        std::vector<NS::Core::AABB> m_collisionWorld; // 地面探索用の衝突 AABB コピー
 
         float m_baseDiameter = 1.2f;   // 接地時の影の直径
         float m_maxDrop = 12.0f;       // 影が消える最大落下距離

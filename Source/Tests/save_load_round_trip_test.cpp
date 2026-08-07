@@ -34,11 +34,11 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
     ASSERT_TRUE(path.has_value());
 
     SceneNs::SceneData src;
-    src.objects.push_back(MakePlayerObject(NS::Math::Vector3{1.0f, 2.0f, 3.0f}, NS::Math::Quaternion{}));
+    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{1.0f, 2.0f, 3.0f}, NS::Core::Quaternion{}));
     src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
     SceneNs::ObjectData rotated = LevelNs::MakeCellObject(1, 0, 1);
     SceneNs::SetObjectRotation(rotated,
-                               NS::Math::Quaternion::CreateFromYawPitchRoll(NS::Math::k_Pi * 0.5f, 0.0f, 0.0f));
+                               NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.5f, 0.0f, 0.0f));
     src.objects.push_back(rotated);
     src.objects.push_back(LevelNs::MakeCellObject(2, 0, 0));
     // 編集中のレベルは読込採番か Command 採番で常に id を持つため、 基準 CRC も採番後から取る
@@ -221,17 +221,17 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 
     SceneNs::SceneData src;
     SceneNs::ObjectData freeObject{};
-    SceneNs::SetObjectPosition(freeObject, NS::Math::Vector3{1.5f, 0.0f, 0.0f});
+    SceneNs::SetObjectPosition(freeObject, NS::Core::Vector3{1.5f, 0.0f, 0.0f});
 
     nlohmann::json comp = SceneNs::MakeComponentEntry("BoxColliderComponent");
-    SceneNs::SetField(comp, "vHalf", NS::Math::Vector3{1.0f, 2.0f, 3.0f});
+    SceneNs::SetField(comp, "vHalf", NS::Core::Vector3{1.0f, 2.0f, 3.0f});
     SceneNs::SetField(comp, "iCount", 7);
     SceneNs::SetField(comp, "bOn", true);
     SceneNs::SetField(comp, "fSpeed", 1.5f);
     SceneNs::SetField(comp, "fWhole", 4.0f); // 整数値の float が int に化けないことを確かめる
     freeObject.components.push_back(std::move(comp));
     src.objects.push_back(std::move(freeObject));
-    src.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     // 正準 JSON 同士の比較なので、 読込側と同じく採番 + 追従カメラ済の状態に揃えてから保存する
     SceneNs::EnsureUniqueObjectIds(src);
     src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[1].objectId));
@@ -286,16 +286,16 @@ TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
     SceneNs::SceneData src;
 
     SceneNs::ObjectData freeObject{};
-    SceneNs::SetObjectPosition(freeObject, NS::Math::Vector3{1.5f, 2.25f, -3.75f});
-    SceneNs::SetObjectRotation(freeObject, NS::Math::Quaternion{0.0f, 0.70710677f, 0.0f, 0.70710677f});
-    SceneNs::SetObjectScale(freeObject, NS::Math::Vector3{2.0f, 0.5f, 1.0f});
+    SceneNs::SetObjectPosition(freeObject, NS::Core::Vector3{1.5f, 2.25f, -3.75f});
+    SceneNs::SetObjectRotation(freeObject, NS::Core::Quaternion{0.0f, 0.70710677f, 0.0f, 0.70710677f});
+    SceneNs::SetObjectScale(freeObject, NS::Core::Vector3{2.0f, 0.5f, 1.0f});
     src.objects.push_back(freeObject);
 
     SceneNs::ObjectData gridObject{};
     // 読込は全 object に transform を保証するため、 基準 CRC を合わせるよう src 側にも 1 つ持たせる
     SceneNs::EnsureTransformComponent(gridObject);
     src.objects.push_back(gridObject);
-    src.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
 
     // 編集中のレベルは常に採番済なので、 基準 CRC も採番 + 追従カメラ済から取る
     SceneNs::EnsureUniqueObjectIds(src);
@@ -329,12 +329,12 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
 
     SceneNs::SceneData src;
     SceneNs::ObjectData solid = LevelNs::MakeCellObject(0, 0, 0);
-    const NS::Math::Vector3 baseColor{0.2f, 0.6f, 0.9f};
+    const NS::Core::Vector3 baseColor{0.2f, 0.6f, 0.9f};
     for (nlohmann::json& component : solid.components)
         if (SceneNs::HasField(component, "基本色"))
             SceneNs::SetField(component, "基本色", baseColor);
     src.objects.push_back(solid);
-    src.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
 
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
     SceneNs::SceneData dst;
@@ -347,7 +347,7 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
     {
         if (!SceneNs::HasField(component, "基本色"))
             continue;
-        const NS::Math::Vector3 v = SceneNs::FieldVector3(component, "基本色", {});
+        const NS::Core::Vector3 v = SceneNs::FieldVector3(component, "基本色", {});
         EXPECT_FLOAT_EQ(v.x, 0.2f);
         EXPECT_FLOAT_EQ(v.y, 0.6f);
         EXPECT_FLOAT_EQ(v.z, 0.9f);
@@ -360,8 +360,8 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
 TEST(SaveLoadRoundTrip, PlayerObjectRoundTrip)
 {
     SceneNs::SceneData src;
-    src.objects.push_back(MakePlayerObject(NS::Math::Vector3{1.25f, 3.5f, -2.75f},
-                                           NS::Math::Quaternion{0.0f, 0.70710677f, 0.0f, 0.70710677f}));
+    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{1.25f, 3.5f, -2.75f},
+                                           NS::Core::Quaternion{0.0f, 0.70710677f, 0.0f, 0.70710677f}));
     SceneNs::EnsureUniqueObjectIds(src);
 
     const std::string json = SceneNs::SerializeSceneToJson(src);
@@ -421,8 +421,8 @@ TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
 TEST(SaveLoadRoundTrip, MultiplePlayersFirstWins)
 {
     SceneNs::SceneData src;
-    src.objects.push_back(MakePlayerObject(NS::Math::Vector3{1.0f, 0.0f, 0.0f}, NS::Math::Quaternion{}));
-    src.objects.push_back(MakePlayerObject(NS::Math::Vector3{9.0f, 0.0f, 0.0f}, NS::Math::Quaternion{}));
+    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, NS::Core::Quaternion{}));
+    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{9.0f, 0.0f, 0.0f}, NS::Core::Quaternion{}));
     SceneNs::EnsureUniqueObjectIds(src);
 
     const std::string json = SceneNs::SerializeSceneToJson(src);
@@ -440,7 +440,7 @@ TEST(SaveLoadRoundTrip, MultiplePlayersFirstWins)
 TEST(EnsurePlayableObjects, SynthesizesFollowCameraTargetingExistingPlayer)
 {
     SceneNs::SceneData dst;
-    dst.objects.push_back(MakePlayerObject(NS::Math::Vector3{2.0f, 1.41f, 0.0f}, NS::Math::Quaternion{}));
+    dst.objects.push_back(MakePlayerObject(NS::Core::Vector3{2.0f, 1.41f, 0.0f}, NS::Core::Quaternion{}));
     SceneNs::EnsureUniqueObjectIds(dst);
     const std::uint32_t playerId = dst.objects[0].objectId;
 
@@ -468,7 +468,7 @@ TEST(SaveLoadRoundTrip, EnvironmentRoundTrip)
 {
     SceneNs::SceneData src;
     src.environment.skyboxCubemapPath = "Assets/Skybox/kurt/";
-    src.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     SceneNs::EnsureUniqueObjectIds(src);
     src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[0].objectId));
     SceneNs::EnsureUniqueObjectIds(src);
@@ -510,7 +510,7 @@ TEST(SaveLoadRoundTrip, LegacyLightingKeysAreIgnored)
 TEST(SaveLoadRoundTrip, FollowCameraObjectRoundTrip)
 {
     SceneNs::SceneData src;
-    src.objects.push_back(MakePlayerObject(NS::Math::Vector3{}, NS::Math::Quaternion{}));
+    src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     SceneNs::EnsureUniqueObjectIds(src);
     src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[0].objectId));
     SceneNs::EnsureUniqueObjectIds(src);
