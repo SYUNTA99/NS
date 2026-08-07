@@ -95,17 +95,6 @@ namespace NS::Object
         [[nodiscard]] SceneEnvironment& Environment() noexcept { return m_environment; }
         [[nodiscard]] const SceneEnvironment& Environment() const noexcept { return m_environment; }
 
-        /// @brief 直近のシーン上書きの控え。エディタの由来表示が読む
-        [[nodiscard]] const NS::Graphics::RenderSettingsOverride& LastSceneOverride() const noexcept
-        {
-            return m_lastSceneOverride;
-        }
-        /// @brief 直近の scene 段解決値の控え。エディタの由来表示が読む
-        [[nodiscard]] const NS::Graphics::RenderSettings& LastResolvedSettings() const noexcept
-        {
-            return m_lastResolvedSettings;
-        }
-
         /// @brief シーンデータから構築されたランタイムワールド
         /// 取得子と型が同じ綴りなので、 このクラスの中では型を完全修飾しないと関数名として解決される
         [[nodiscard]] NS::Object::World& World() noexcept { return m_world; }
@@ -182,12 +171,9 @@ namespace NS::Object
         /// @brief 標準の描画。 world 描画パス→デバッグ描画の吐き出し→一時オブジェクトの重ね描き
         virtual void OnRenderScene();
 
-        /// @brief シーン単位の描画上書きを返す。既定は配置された平行光から照明 3 種を組む
-        /// 平行光が無ければ空を返し、project 既定値がそのまま残る
-        virtual NS::Graphics::RenderSettingsOverride BuildSceneOverride();
-
-        /// @brief project 既定値に BuildSceneOverride() を Resolve し、上書きと解決値を控えに残す
-        [[nodiscard]] virtual NS::Graphics::RenderSettings ResolveSceneSettings(
+        /// @brief project 既定値から scene 段の描画設定を作る。配置された平行光があれば照明を上書きする
+        /// 平行光が無ければ project 既定値がそのまま残る
+        [[nodiscard]] NS::Graphics::RenderSettings ResolveSceneSettings(
             const NS::Graphics::RenderSettings& projectDefaults);
 
         /// @brief world の組み直し・当たりの張り直しの後に呼ばれる。 派生は live への参照をここで取り直す
@@ -231,12 +217,10 @@ namespace NS::Object
         /// 借用する CharacterMovementComponent が先に破棄されるので、これは常に借用元より後まで生存する
         NS::Physics::PhysicsWorld m_physicsWorld;
 
-        NS::Object::World m_world;     // ランタイムワールド
+        NS::Object::World m_world;      // ランタイムワールド
         SceneEnvironment m_environment; // シーンの環境値。 実体側の唯一の出所
 
-        NS::Graphics::RenderSettingsOverride m_lastSceneOverride{}; // 直近のシーン上書きの控え
-        NS::Graphics::RenderSettings m_lastResolvedSettings{};      // 直近の scene 段解決値の控え
-        bool m_warnedZeroLightDirection = false;                    // 平行光 zero 警告の 1 回制御
+        bool m_warnedZeroLightDirection = false;      // 平行光 zero 警告の 1 回制御
         AssetManager* m_assets = nullptr;             // AssetManager、 非所有。 未設定なら参照の実体化を跳ばす
         NS::Graphics::Renderer* m_renderer = nullptr; // レンダラー、 非所有。 未設定なら描かない
 

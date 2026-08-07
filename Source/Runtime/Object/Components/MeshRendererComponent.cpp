@@ -78,9 +78,8 @@ namespace NS::Object
         if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
             return;
 
-        // ctx.resolvedSettings は project 既定 ← scene override まで解決済。ここに個体段 override を載せる
-        const NS::Graphics::RenderSettings finalSettings =
-            NS::Graphics::Resolve(context.resolvedSettings, m_objectOverride);
+        // context.resolvedSettings は project 既定に配置された平行光まで解決済
+        const NS::Graphics::RenderSettings& settings = context.resolvedSettings;
 
         NS::Graphics::DrawItem item{};
         item.mesh = m_mesh;
@@ -88,13 +87,13 @@ namespace NS::Object
         item.blend = m_material->Blend();
         item.constants.world = owner->Root().InterpolatedWorldMatrix(context.alpha);
         item.constants.viewProj = context.viewProjection;
-        item.constants.lightDir = finalSettings.lightDir;
+        item.constants.lightDir = settings.lightDir;
         item.constants.lightDir.Normalize();
         item.constants.baseColor = m_baseColor; // 個体色は lighting と別系統
-        item.constants.lightColor = finalSettings.lightColor;
-        item.constants.ambientColor = finalSettings.ambientColor;
-        item.constants.groundColor = finalSettings.groundColor;
-        item.constants.exposure = finalSettings.exposure;
+        item.constants.lightColor = settings.lightColor;
+        item.constants.ambientColor = settings.ambientColor;
+        item.constants.groundColor = settings.groundColor;
+        item.constants.exposure = settings.exposure;
         item.extraVsCb = m_perObjectVsCb;
         item.extraVsData = m_perObjectVsData;
         item.extraVsSize = m_perObjectVsSize;

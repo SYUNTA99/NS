@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Runtime/Graphics/DrawItem.h"
-#include "Runtime/Graphics/RenderSettings.h"
 #include "Runtime/Math/Math.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/IRenderable.h"
@@ -56,17 +55,8 @@ namespace NS::Object
         /// build 時にこの文字列から material を解決する
         void SetMaterialRef(std::string ref) noexcept { m_materialRef = std::move(ref); }
 
-        /// 個体段の lighting 上書き。空なら scene 解決値の ctx.resolvedSettings がそのまま使われる
-        /// 描画時に Resolve(ctx.resolvedSettings, m_objectOverride) で個体段を解決する
-        void SetRenderOverride(const NS::Graphics::RenderSettingsOverride& over) noexcept { m_objectOverride = over; }
-        /// 出所表示や編集に使う
-        [[nodiscard]] const NS::Graphics::RenderSettingsOverride& RenderOverride() const noexcept
-        {
-            return m_objectOverride;
-        }
-
-        /// skinned のボーンパレット等、オブジェクト単位の追加 VS 定数を差す。同じ object 上の別 component が OnStart で配線する
-        /// cpuData 非 null なら描画側が毎描画 buffer へ upload してから bind する
+        /// skinned のボーンパレット等、オブジェクト単位の追加 VS 定数を差す。同じ object 上の別 component が OnStart
+        /// で配線する cpuData 非 null なら描画側が毎描画 buffer へ upload してから bind する
         void SetPerObjectVsConstant(const NS::Graphics::Buffer* cb,
                                     const void* cpuData,
                                     std::size_t cpuDataSize,
@@ -116,9 +106,9 @@ namespace NS::Object
         // 保存・編集される参照文字列。 build 時に解決して m_mesh / m_material へ実体を当てる二層構造
         std::string m_meshRef{};
         std::string m_materialRef{};
-        NS::Graphics::RenderSettingsOverride m_objectOverride{}; // 個体段の lighting 上書き
 
-        // オブジェクト単位の追加 VS 定数 (skinned のボーンパレット)。同じ object 上の別 component が SetPerObjectVsConstant で差す
+        // オブジェクト単位の追加 VS 定数 (skinned のボーンパレット)。同じ object 上の別 component が
+        // SetPerObjectVsConstant で差す
         const NS::Graphics::Buffer* m_perObjectVsCb = nullptr;
         const void* m_perObjectVsData = nullptr;
         std::size_t m_perObjectVsSize = 0;

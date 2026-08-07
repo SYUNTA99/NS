@@ -2,12 +2,10 @@
 
 #include "Runtime/Math/Math.h"
 
-#include <optional>
-
 namespace NS::Graphics
 {
     //! @brief プロジェクト全体の標準となる描画設定
-    //! @details 描画システムが保持し、各シーンは必要に応じてこの設定をオーバーライドして使用する
+    //! @details 描画システムが保持し、シーンは配置された平行光の値で照明を上書きした複製を描画に使う
     struct RenderSettings
     {
         NS::Math::Color clearColor{0.10f, 0.10f, 0.15f, 1.0f}; //!< 画面のクリア色
@@ -20,20 +18,4 @@ namespace NS::Graphics
         //! 画面へ出す前の露出。 S 字で潰す前に掛けるので、 上げても明部は飛ばず暗部だけ持ち上がる
         float exposure = 1.35f;
     };
-
-    //! @brief 描画設定のうち、特定の項目だけを上書きするための構造体
-    //! @details 値が未設定の項目は、標準の設定値がそのまま引き継がれる
-    struct RenderSettingsOverride
-    {
-        std::optional<NS::Math::Color> clearColor;
-        std::optional<NS::Math::Vector3> lightDir;
-        std::optional<NS::Math::Vector3> lightColor;
-        std::optional<NS::Math::Vector3> ambientColor;
-        std::optional<NS::Math::Vector3> groundColor;
-        std::optional<float> exposure;
-    };
-
-    //! @brief 描画設定のうち、特定の項目だけを上書きするための構造体
-    //! @details 値が未設定の項目は、標準の設定値がそのまま引き継がれる
-    [[nodiscard]] RenderSettings Resolve(const RenderSettings& defaults, const RenderSettingsOverride& over) noexcept;
 } // namespace NS::Graphics

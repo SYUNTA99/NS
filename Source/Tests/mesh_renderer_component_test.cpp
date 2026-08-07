@@ -1,10 +1,10 @@
-#include <gtest/gtest.h>
 #include <Runtime/Graphics/RenderContext.h>
 #include <Runtime/Graphics/RenderSettings.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/IRenderable.h>
 #include <Runtime/Object/Scene/Scene.h>
+#include <gtest/gtest.h>
 #include <vector>
 
 namespace
@@ -54,15 +54,10 @@ TEST(MeshRendererComponentTest, CollectIsNoOpWhenMeshOrMaterialIsNull)
     EXPECT_TRUE(out.empty());
 }
 
-TEST(MeshRendererComponentTest, SetRenderOverrideAndBaseColorDoNotCrash)
+TEST(MeshRendererComponentTest, SetBaseColorDoesNotAffectActive)
 {
     MeshRendererComponent mc;
-    NS::Graphics::RenderSettingsOverride over{};
-    over.lightDir = NS::Math::Vector3{1.0f, 0.0f, 0.0f};
-    mc.SetRenderOverride(over);
     mc.SetBaseColor({0.5f, 0.5f, 0.5f});
-    // override が保持され、IsActive が変わらないこと
-    EXPECT_TRUE(mc.RenderOverride().lightDir.has_value());
     EXPECT_TRUE(mc.IsActive());
 }
 

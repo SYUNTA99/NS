@@ -1,15 +1,15 @@
-#include <filesystem>
-#include <gtest/gtest.h>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Graphics/Camera.h>
-#include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/RenderSettings.h>
+#include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Object/Components/DirectionalLightComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/SkyboxSubsystem.h>
 #include <Runtime/Platform/Window.h>
+#include <filesystem>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -33,8 +33,7 @@ namespace
     /// リフレクションフィールド越しに平行光の値を書く。照明はデータ駆動で、公開の設定関数を持たない
     void SetLightField(DirectionalLightComponent& light, const char* name, const NS::Math::Vector3& value)
     {
-        const NS::Object::FieldDesc* field =
-            NS::Object::FindField(DirectionalLightComponent::StaticReflection(), name);
+        const NS::Object::FieldDesc* field = NS::Object::FindField(DirectionalLightComponent::StaticReflection(), name);
         ASSERT_NE(field, nullptr) << name;
         field->set(&light, &value);
     }
@@ -59,16 +58,15 @@ TEST_F(SkyboxSubsystemTest, NoLightKeepsProjectDefaults)
     ResolveProbeScene scene;
     scene.CreateSceneSubsystems();
 
-    // 平行光が無ければ上書きを宣言せず、project 既定値がそのまま残る
+    // 平行光が無ければ project 既定値がそのまま残る
     NS::Graphics::RenderSettings defaults{};
     defaults.lightColor = NS::Math::Vector3{0.5f, 0.6f, 0.7f};
     const NS::Graphics::RenderSettings resolved = scene.CallResolve(defaults);
 
     EXPECT_NEAR(resolved.lightColor.x, 0.5f, k_Epsilon);
-    EXPECT_FALSE(scene.LastSceneOverride().lightDir.has_value());
-    EXPECT_FALSE(scene.LastSceneOverride().lightColor.has_value());
-    EXPECT_FALSE(scene.LastSceneOverride().ambientColor.has_value());
-    EXPECT_FALSE(scene.LastSceneOverride().clearColor.has_value());
+    EXPECT_NEAR(resolved.lightDir.x, defaults.lightDir.x, k_Epsilon);
+    EXPECT_NEAR(resolved.ambientColor.x, defaults.ambientColor.x, k_Epsilon);
+    EXPECT_NEAR(resolved.clearColor.B(), defaults.clearColor.B(), k_Epsilon);
 }
 
 TEST_F(SkyboxSubsystemTest, PlacedLightOverridesResolve)
@@ -84,15 +82,12 @@ TEST_F(SkyboxSubsystemTest, PlacedLightOverridesResolve)
 
     const NS::Graphics::RenderSettings resolved = scene.CallResolve(NS::Graphics::RenderSettings{});
 
-    // 配置された平行光がシーン上書きになり、解決値と控えの両方に映る
+    // 配置された平行光の値が解決値に映る
     EXPECT_NEAR(resolved.lightDir.z, 0.5f, k_Epsilon);
     EXPECT_NEAR(resolved.lightColor.x, 0.9f, k_Epsilon);
     EXPECT_NEAR(resolved.ambientColor.z, 0.3f, k_Epsilon);
-    ASSERT_TRUE(scene.LastSceneOverride().lightDir.has_value());
-    EXPECT_NEAR(scene.LastSceneOverride().lightDir->z, 0.5f, k_Epsilon);
-    EXPECT_NEAR(scene.LastResolvedSettings().lightColor.x, resolved.lightColor.x, k_Epsilon);
     // clearColor は照明の語彙に無く、project 既定値のまま残す
-    EXPECT_FALSE(scene.LastSceneOverride().clearColor.has_value());
+    EXPECT_NEAR(resolved.clearColor.B(), NS::Graphics::RenderSettings{}.clearColor.B(), k_Epsilon);
 }
 
 TEST_F(SkyboxSubsystemTest, ZeroLightDirectionFallsToDefault)
@@ -109,7 +104,6 @@ TEST_F(SkyboxSubsystemTest, ZeroLightDirectionFallsToDefault)
     const NS::Graphics::RenderSettings resolved = scene.CallResolve(defaults);
 
     // zero ベクトルは normalize で拡散光が無言で消えるため上書きせず既定 lightDir に落とす
-    EXPECT_FALSE(scene.LastSceneOverride().lightDir.has_value());
     EXPECT_NEAR(resolved.lightDir.x, defaults.lightDir.x, k_Epsilon);
     // 色は有効なので上書きされる
     EXPECT_NEAR(resolved.lightColor.x, 0.9f, k_Epsilon);

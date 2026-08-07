@@ -263,17 +263,17 @@ namespace NS::Object
         return ctx;
     }
 
-    NS::Graphics::RenderSettingsOverride Scene::BuildSceneOverride()
+    NS::Graphics::RenderSettings Scene::ResolveSceneSettings(const NS::Graphics::RenderSettings& projectDefaults)
     {
-        NS::Graphics::RenderSettingsOverride over{};
-        // 照明は配置された平行光から取る。無ければ空のままで project 既定値が残る
+        NS::Graphics::RenderSettings resolved = projectDefaults;
+        // 照明は配置された平行光から取る。無ければ project 既定値がそのまま残る
         // 複数置かれた場合は多灯合成せず、走査順で最後の有効な 1 本が勝つ
-        m_world.ForEachComponent<DirectionalLightComponent>([&over, this](DirectionalLightComponent& light) {
+        m_world.ForEachComponent<DirectionalLightComponent>([&resolved, this](DirectionalLightComponent& light) {
             if (!light.IsActive())
                 return;
             if (light.Direction().LengthSquared() > 1e-6f)
             {
-                over.lightDir = light.Direction();
+                resolved.lightDir = light.Direction();
             }
             else if (!m_warnedZeroLightDirection)
             {
@@ -281,20 +281,12 @@ namespace NS::Object
                 NS_LOG_WARN(Graphics, "Scene: 平行光の Direction が zero のため既定 lightDir で描画する");
                 m_warnedZeroLightDirection = true;
             }
-            over.lightColor = light.Color();
-            over.ambientColor = light.Ambient();
-            over.groundColor = light.Ground();
-            over.exposure = light.Exposure();
+            resolved.lightColor = light.Color();
+            resolved.ambientColor = light.Ambient();
+            resolved.groundColor = light.Ground();
+            resolved.exposure = light.Exposure();
         });
-        return over;
-    }
-
-    NS::Graphics::RenderSettings Scene::ResolveSceneSettings(const NS::Graphics::RenderSettings& projectDefaults)
-    {
-        // エディタの由来表示が読むので、上書きと解決値の両方を控えに残す
-        m_lastSceneOverride = BuildSceneOverride();
-        m_lastResolvedSettings = NS::Graphics::Resolve(projectDefaults, m_lastSceneOverride);
-        return m_lastResolvedSettings;
+        return resolved;
     }
 
     void Scene::OnRender()
