@@ -50,7 +50,6 @@ protected:
 TEST_F(SceneLightResolveTest, NoLightKeepsProjectDefaults)
 {
     ResolveProbeScene scene;
-    scene.CreateSceneSubsystems();
 
     // 平行光が無ければ project 既定値がそのまま残る
     NS::Graphics::RenderSettings defaults{};
@@ -66,7 +65,6 @@ TEST_F(SceneLightResolveTest, NoLightKeepsProjectDefaults)
 TEST_F(SceneLightResolveTest, PlacedLightOverridesResolve)
 {
     ResolveProbeScene scene;
-    scene.CreateSceneSubsystems();
 
     DirectionalLightComponent* light = SpawnLight(scene);
     ASSERT_NE(light, nullptr);
@@ -87,7 +85,6 @@ TEST_F(SceneLightResolveTest, PlacedLightOverridesResolve)
 TEST_F(SceneLightResolveTest, ZeroLightDirectionFallsToDefault)
 {
     ResolveProbeScene scene;
-    scene.CreateSceneSubsystems();
 
     DirectionalLightComponent* light = SpawnLight(scene);
     ASSERT_NE(light, nullptr);

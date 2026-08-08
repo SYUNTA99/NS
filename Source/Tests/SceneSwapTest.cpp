@@ -32,7 +32,8 @@ TEST(SceneSwap, SwapReplacesWorldContents)
     NS::Object::Scene& swapped = manager.LoadScene(MakeLevel(1));
 
     EXPECT_EQ(&swapped, manager.Current());
-    EXPECT_EQ(swapped.World().ObjectCount(), 1u);
+    // データの分 + world に常駐するカメラ 1 体
+    EXPECT_EQ(swapped.World().ObjectCount(), 2u);
 }
 
 TEST(SceneSwap, SwappedSceneKeepsRunning)
@@ -47,7 +48,7 @@ TEST(SceneSwap, SwappedSceneKeepsRunning)
     (void)swapped.BeginPlayBaseline();
     manager.Update();
 
-    EXPECT_EQ(swapped.World().ObjectCount(), 2u);
+    EXPECT_EQ(swapped.World().ObjectCount(), 3u);
 }
 
 TEST(SceneSwap, SwapAfterUnloadStartsFresh)
@@ -57,5 +58,5 @@ TEST(SceneSwap, SwapAfterUnloadStartsFresh)
     manager.UnloadScene();
 
     NS::Object::Scene& reloaded = manager.LoadScene(MakeLevel(1));
-    EXPECT_EQ(reloaded.World().ObjectCount(), 1u);
+    EXPECT_EQ(reloaded.World().ObjectCount(), 2u);
 }

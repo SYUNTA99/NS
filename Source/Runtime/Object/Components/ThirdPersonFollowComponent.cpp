@@ -48,6 +48,9 @@ namespace NS::Object
 
     void ThirdPersonFollowComponent::OnStart()
     {
+        // 基底が brain へ自分を登録する
+        VirtualCameraComponent::OnStart();
+
         // プレイ開始 / rebuild ごとに初期姿勢へ戻す。 editor で置いた向きからプレイを始め、 手動回転はここから積む
         m_yaw = m_initialYaw;
         m_pitch = m_initialPitch;

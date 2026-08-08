@@ -10,7 +10,8 @@
 
 namespace NS::Object
 {
-    CameraBrainComponent::CameraBrainComponent() noexcept : Component(TickPriority::LateUpdate + 50) {}
+    // vcam を供給する follow / placed が LateUpdate + 50 なので、 選び直しはその後ろに置く
+    CameraBrainComponent::CameraBrainComponent() noexcept : Component(TickPriority::LateUpdate + 60) {}
 
     void CameraBrainComponent::OnStart()
     {
@@ -109,8 +110,9 @@ namespace NS::Object
 
     void CameraBrainComponent::Evaluate(float alpha) noexcept
     {
-        if (m_active == nullptr)
-            m_active = SelectActive(); // OnUpdate より先に render が来た初回フレーム用の保険
+        // 非 active になった vcam の pose は書かない。 編集モードのように OnUpdate が回らない間も選び直す
+        if (m_active == nullptr || !m_active->IsActive())
+            m_active = SelectActive();
         if (m_active == nullptr || m_camera == nullptr)
             return;
 

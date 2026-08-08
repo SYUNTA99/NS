@@ -3,7 +3,6 @@
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/RenderScene.h"
 #include "Runtime/Graphics/RenderSettings.h"
-#include "Runtime/Object/CameraSubsystem.h"
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 #include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Object/World.h"
@@ -12,7 +11,6 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -26,6 +24,8 @@ namespace NS::Graphics
 namespace NS::Object
 {
     class AssetManager;
+    class CameraBrainComponent;
+    class CameraComponent;
     class IRenderable;
 
     /// @brief 1 つのシーンビュー。 指定の描画先へ指定の視点で world を描く単位
@@ -62,21 +62,11 @@ namespace NS::Object
         /// IRenderable Component の自己解除。MeshRendererComponent 等が OnEndPlay で呼ぶ
         virtual void UnregisterRenderable(IRenderable* renderable);
 
-        /// 型でサブシステムを取得する。scene が直接所有する CameraSubsystem だけを返し、他の型は nullptr
-        template <class T> [[nodiscard]] T* GetSubsystem() noexcept
-        {
-            if constexpr (std::is_same_v<T, CameraSubsystem>)
-                return &m_cameraSubsystem;
-            else
-                return nullptr;
-        }
+        /// シーンの描画を駆動する brain。 シーンの破棄後は nullptr
+        [[nodiscard]] CameraBrainComponent* CameraBrain() noexcept;
 
-        /// 所有するサブシステムを Initialize する。SceneManager が OnStart 直前に呼ぶ。二度目は何もしない
-        void CreateSceneSubsystems();
-
-        /// サブシステムを Deinitialize する。SceneManager が OnShutdown 後に呼ぶ
-        /// 本体の破棄は scene と共に行い、借用元より後に破棄される順序はメンバの宣言順が保つ
-        void DeinitSceneSubsystems();
+        /// brain が駆動する実カメラ。 シーンの破棄後は nullptr
+        [[nodiscard]] CameraComponent* MainCamera() noexcept;
 
         /// 衝突 world への可変ハンドル。build 時に満たし、
         /// CharacterMovementComponent 等の借用元は OnStart で所属 scene から取りに来る
@@ -155,7 +145,7 @@ namespace NS::Object
         /// 読み込んだら回り続けるのが既定で、 止める口は SetSimulationEnabled / SetSimulationPaused
         virtual void OnUpdate();
 
-        /// カメラ登録の解除と world の破棄。 派生の OnShutdown はここを呼ぶ
+        /// world の破棄。 派生の OnShutdown はここを呼ぶ
         virtual void OnShutdown();
 
     protected:
@@ -206,15 +196,13 @@ namespace NS::Object
         /// 描画物の登録簿と視錐台カリングを持つレンダラ側の描画シーン
         NS::Graphics::RenderScene m_renderScene;
 
-        CameraSubsystem m_cameraSubsystem;    // 実カメラ + Brain を持つ CameraSubsystem。scene と生成・破棄を共にする
-        bool m_subsystemsInitialized = false; // CreateSceneSubsystems の二度目を何もしないための印
-
         /// 衝突 world。当たりの有る scene だけが build で満たし、無ければ空のまま
         /// 借用する CharacterMovementComponent が先に破棄されるので、これは常に借用元より後まで生存する
         NS::Physics::PhysicsWorld m_physicsWorld;
 
-        NS::Object::World m_world;      // ランタイムワールド
-        SceneEnvironment m_environment; // シーンの環境値。 実体側の唯一の出所
+        NS::Object::World m_world;               // ランタイムワールド
+        CameraBrainComponent* m_brain = nullptr; // 常駐するカメラ配置物の brain。所有は m_world、これは控え
+        SceneEnvironment m_environment;          // シーンの環境値。 実体側の唯一の出所
 
         bool m_warnedZeroLightDirection = false;      // 平行光 zero 警告の 1 回制御
         AssetManager* m_assets = nullptr;             // AssetManager、 非所有。 未設定なら参照の実体化を跳ばす

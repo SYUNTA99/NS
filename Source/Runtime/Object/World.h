@@ -67,6 +67,7 @@ namespace NS::Object
         /// objectId 一致の配置物を破棄して world から外す。 居なければ何もしない
         /// 当たり箱もここで揃えるので、 組み直さずに 1 体だけ消せる
         /// 子は根として残る (親子の切り離しは GameObject の破棄が行う)
+        /// 0 は未採番の印なので何もしない
         void RemoveByObjectId(std::uint32_t objectId, NS::Physics::PhysicsWorld& physics);
 
         /// objectId 一致の配置物を返す。 居なければ nullptr。 選択・編集の live 索引

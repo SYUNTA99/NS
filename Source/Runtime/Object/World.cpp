@@ -127,6 +127,9 @@ namespace NS::Object
 
     void World::RemoveByObjectId(std::uint32_t objectId, NS::Physics::PhysicsWorld& physics)
     {
+        // 0 は未採番の印。 一時オブジェクトは id を持たないので、 素通しすると先頭の一時が消える
+        if (objectId == k_NoObjectId)
+            return;
         for (auto it = m_objects.begin(); it != m_objects.end(); ++it)
         {
             if ((*it)->Id() != objectId)

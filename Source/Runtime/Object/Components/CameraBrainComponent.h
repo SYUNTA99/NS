@@ -17,6 +17,7 @@ namespace NS::Object
     /// EvaluatePose(alpha) を実カメラへ書く
     /// 描画 / aspect 設定 / PlayerInput の forward 取得もこの Brain 経由に集約する
     /// active 切替は SetBlendDuration 秒の ease-in-out で旧 pose から繋ぎ、0 で即時カット
+    /// 帯は LateUpdate + 60。vcam を供給する follow / placed の LateUpdate + 50 より後ろで選び直す
     /// 依存: NS::Core, NS::Object::Component / CameraComponent / VirtualCameraComponent
     class CameraBrainComponent : public Component
     {

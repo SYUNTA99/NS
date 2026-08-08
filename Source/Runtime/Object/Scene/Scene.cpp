@@ -6,12 +6,10 @@
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/Renderer.h"
-#include "Runtime/Object/CameraSubsystem.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/DirectionalLightComponent.h"
 #include "Runtime/Object/Components/OverlayRendererComponent.h"
-#include "Runtime/Object/Components/VirtualCameraComponent.h"
 #include "Runtime/Object/IRenderable.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 
@@ -28,7 +26,18 @@ namespace NS::Object
         }
     } // namespace
 
-    Scene::Scene() = default;
+    Scene::Scene()
+    {
+        // 描くには実カメラが 1 個要る。 配置物ではないがシーンには必ず居るので、 ここで world へ入れる
+        // 保存・凍結・編集 UI に出ない一時オブジェクトで、 データからの組み直しも跨いで残る
+        // 描画 component は積まない。 RegisterRenderable は virtual で、 基底コンストラクタからは派生へ落ちない
+        auto host = std::make_unique<GameObject>();
+        CameraComponent* camera = host->AddComponent<CameraComponent>();
+        camera->SetUp({0.0f, 1.0f, 0.0f});
+        m_brain = host->AddComponent<CameraBrainComponent>();
+        SpawnTransient(std::move(host));
+    }
+
     Scene::~Scene() = default;
 
     void Scene::LoadFromData(SceneData&& data)
@@ -124,48 +133,17 @@ namespace NS::Object
 
     void Scene::RebuildWorldFrom(const SceneData& data)
     {
-        auto* cameras = GetSubsystem<CameraSubsystem>();
-        CameraBrainComponent* brain = nullptr;
-        if (cameras != nullptr)
-        {
-            brain = cameras->Brain();
-        }
-
-        // 既存のカメラ参照を解除
-        if (brain)
-        {
-            m_world.ForEachComponent<VirtualCameraComponent>(
-                [brain](auto& vcam) { brain->RemoveVirtualCamera(&vcam); });
-        }
-
         // Worldの再構築。 GameObject の型選択は登録一覧、 参照の実体化は各 component の ResolveAssets が担う
+        // vcam の brain への付け外しは VirtualCameraComponent が OnStart / OnEndPlay で自分で行う
         m_world.Rebuild(
             data, *this, Physics(), [this](const ObjectData& entry) { return BuildSceneObject(entry, m_assets); });
 
         OnWorldChanged();
         NotifyTransientsWorldChanged();
-
-        // 新しいカメラの登録
-        if (brain)
-        {
-            m_world.ForEachComponent<VirtualCameraComponent>([brain](auto& vcam) { brain->AddVirtualCamera(&vcam); });
-        }
     }
 
     void Scene::OnUpdate()
     {
-        // カメラブレンドの更新
-        auto* cameras = GetSubsystem<CameraSubsystem>();
-        CameraBrainComponent* brain = nullptr;
-        if (cameras != nullptr)
-        {
-            brain = cameras->Brain();
-        }
-        if (brain != nullptr)
-        {
-            brain->OnUpdate();
-        }
-
         // 補間描画用。 全表示オブジェクトの状態をスナップショットする
         for (GameObject* obj : m_world)
         {
@@ -187,25 +165,17 @@ namespace NS::Object
 
     void Scene::OnShutdown()
     {
-        // Worldを破棄する前に、Brainからカメラへの参照を外す
-        if (auto* cameras = GetSubsystem<CameraSubsystem>())
-        {
-            if (auto* brain = cameras->Brain())
-            {
-                m_world.ForEachComponent<VirtualCameraComponent>(
-                    [brain](auto& vcam) { brain->RemoveVirtualCamera(&vcam); });
-            }
-        }
-
         m_world.Clear();
+        // host も world と一緒に消えた。 控えを残すと破棄済みを指し続ける
+        m_brain = nullptr;
     }
 
     std::optional<NS::Graphics::RenderContext> Scene::RenderWorld(NS::Graphics::Renderer& renderer,
                                                                   const std::optional<CameraPose>& viewOverride)
     {
         // 描画コンテキストの準備
-        CameraBrainComponent* brain = m_cameraSubsystem.Brain();
-        CameraComponent* mainCamera = m_cameraSubsystem.MainCamera();
+        CameraBrainComponent* brain = CameraBrain();
+        CameraComponent* mainCamera = MainCamera();
         if (brain == nullptr || mainCamera == nullptr)
         {
             return std::nullopt;
@@ -355,20 +325,16 @@ namespace NS::Object
         m_renderScene.DrawBucket(context, true);
     }
 
-    void Scene::CreateSceneSubsystems()
+    CameraBrainComponent* Scene::CameraBrain() noexcept
     {
-        if (m_subsystemsInitialized)
-            return;
-        m_cameraSubsystem.Initialize(*this);
-        m_subsystemsInitialized = true;
+        return m_brain;
     }
 
-    void Scene::DeinitSceneSubsystems()
+    CameraComponent* Scene::MainCamera() noexcept
     {
-        // 解放フックだけ回し、本体の破棄は scene と共に行う
-        // CharacterMovementComponent 等の借用元より後に破棄される順序はメンバの宣言順が保つ
-        m_cameraSubsystem.Deinitialize();
-        m_subsystemsInitialized = false;
+        if (m_brain == nullptr)
+            return nullptr;
+        return m_brain->Camera();
     }
 
     void Scene::OnRenderScene()

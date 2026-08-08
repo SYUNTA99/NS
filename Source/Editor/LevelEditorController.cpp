@@ -17,7 +17,6 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/CameraSubsystem.h"
 #include "Runtime/Object/Components/BoxColliderComponent.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/Components/CameraComponent.h"
@@ -191,22 +190,16 @@ const NS::Object::World& LevelEditorController::World() const noexcept
 
 NS::Object::CameraBrainComponent* LevelEditorController::Brain() const noexcept
 {
-    NS::Object::CameraSubsystem* cameras = nullptr;
-    if (m_scene != nullptr)
-        cameras = m_scene->GetSubsystem<NS::Object::CameraSubsystem>();
-    if (cameras != nullptr)
-        return cameras->Brain();
-    return nullptr;
+    if (m_scene == nullptr)
+        return nullptr;
+    return m_scene->CameraBrain();
 }
 
 NS::Object::CameraComponent* LevelEditorController::MainCamera() const noexcept
 {
-    NS::Object::CameraSubsystem* cameras = nullptr;
-    if (m_scene != nullptr)
-        cameras = m_scene->GetSubsystem<NS::Object::CameraSubsystem>();
-    if (cameras != nullptr)
-        return cameras->MainCamera();
-    return nullptr;
+    if (m_scene == nullptr)
+        return nullptr;
+    return m_scene->MainCamera();
 }
 
 void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)

@@ -37,6 +37,7 @@ namespace NS::Object
     /// vcam から最高優先度の active なものを選び、その pose を 1 個の実 CameraComponent へ書く
     /// 状態は fixed step の OnUpdate で進め、最終姿勢は EvaluatePose で返す。follow 系は
     /// render 時に alpha で補間 target を追うため、姿勢決定を pose 返却へ分離する
+    /// 所属 scene の brain へ OnStart で自分を登録し、OnEndPlay で外す
     /// 依存: NS::Core, NS::Object::Component
     class VirtualCameraComponent : public Component
     {
@@ -45,6 +46,12 @@ namespace NS::Object
         /// が設定する
         explicit VirtualCameraComponent(int tickPriority) noexcept : Component(tickPriority) {}
         ~VirtualCameraComponent() noexcept override;
+
+        /// 所属 scene の brain へ自分を登録します。 派生が上書きする場合は基底のこれを呼びます。
+        void OnStart() override;
+
+        /// 所属 scene の brain から自分を外します。 派生が上書きする場合は基底のこれを呼びます。
+        void OnEndPlay() override;
 
         /// この vcam の最終姿勢を返す。alpha は補間係数で、follow 系が補間 target に使い free-fly は無視してよい
         [[nodiscard]] virtual CameraPose EvaluatePose(float alpha) const noexcept = 0;

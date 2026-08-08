@@ -95,7 +95,6 @@ TEST(WorldTest, BuildFollowsObjectOrderNotArrayOrder)
     level.objects[2].order = 1;
 
     NS::Object::Scene scene;
-    scene.CreateSceneSubsystems();
     NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
@@ -121,7 +120,6 @@ TEST(WorldTest, EqualOrderKeepsWrittenSequence)
     const std::uint32_t second = level.objects[1].objectId;
 
     NS::Object::Scene scene;
-    scene.CreateSceneSubsystems();
     NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
@@ -140,7 +138,6 @@ TEST(WorldTest, InactiveObjectHasNoCollision)
     level.objects[0].active = false;
 
     NS::Object::Scene scene;
-    scene.CreateSceneSubsystems();
     NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
@@ -163,7 +160,6 @@ TEST(WorldTest, TriggerBoxHasNoSolidCollision)
     NS::Object::EnsureUniqueObjectIds(level);
 
     NS::Object::Scene scene;
-    scene.CreateSceneSubsystems();
     NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
@@ -207,7 +203,6 @@ TEST(WorldTest, RebuildBuildsPlayerAndResolvesItById)
     NS::Object::EnsureUniqueObjectIds(level);
 
     NS::Object::Scene scene;
-    scene.CreateSceneSubsystems();
     NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
@@ -237,7 +232,6 @@ TEST(WorldTest, RebuildBakesFollowCameraAndResolvesTarget)
             NS::Object::SetField(component, "追従対象", NS::Object::ObjectRef{level.objects[1].objectId});
 
     NS::Object::Scene scene;
-    scene.CreateSceneSubsystems();
     NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     // 参照の解決は scene 越しに world へ届くので、 組むのは scene 自身の world
@@ -256,7 +250,8 @@ TEST(WorldTest, RebuildBakesFollowCameraAndResolvesTarget)
     EXPECT_FLOAT_EQ(follow->FarPlane(), 100.0f);
 
     // 追従先の解決: world が組んだ grid block の Root を指す
-    ASSERT_EQ(world.ObjectCount(), 2u);
+    // データの分 + world に常駐するカメラ 1 体。 一時オブジェクトは末尾へ回るので添字は動かない
+    ASSERT_EQ(world.ObjectCount(), 3u);
     EXPECT_EQ(follow->Target(), &world.ObjectAt(1)->Root());
 }
 
@@ -293,7 +288,6 @@ TEST(WorldTest, ComponentIdSurvivesBuildAndCapture)
     NS::Object::EnsureUniqueObjectIds(level);
 
     NS::Object::Scene scene;
-    scene.CreateSceneSubsystems();
     NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
@@ -336,7 +330,6 @@ TEST(WorldTest, RemoveByObjectIdDropsIdResolution)
     const std::uint32_t victimId = level.objects[1].objectId;
 
     NS::Object::Scene scene;
-    scene.CreateSceneSubsystems();
     NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
@@ -360,7 +353,6 @@ TEST(WorldTest, RemoveByObjectIdDropsCollider)
     const std::uint32_t victimId = level.objects[1].objectId;
 
     NS::Object::Scene scene;
-    scene.CreateSceneSubsystems();
     NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;

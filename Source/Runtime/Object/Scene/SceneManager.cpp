@@ -33,11 +33,7 @@ namespace NS::Object
         m_current->SetAssets(m_assets);
         m_current->SetRenderer(m_renderer);
 
-        // OnStart 中に GetSubsystem を解決できるよう、Subsystem は OnStart より先に用意する
-        m_current->CreateSceneSubsystems();
         m_current->OnStart();
-
-        // subsystem が揃ってから world を組む。逆にすると vcam の Brain 登録と objectId 登録が丸ごと飛ぶ
         m_current->LoadFromData(std::move(data));
         return *m_current;
     }
@@ -48,8 +44,6 @@ namespace NS::Object
             return;
 
         m_current->OnShutdown();
-        // OnShutdown 中に解決できる状態を保つため、GameObject の OnEndPlay より後に Subsystem を落とす
-        m_current->DeinitSceneSubsystems();
         m_current.reset();
     }
 

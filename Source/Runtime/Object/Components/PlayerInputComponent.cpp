@@ -1,6 +1,5 @@
 #include "Runtime/Object/Components/PlayerInputComponent.h"
 
-#include "Runtime/Object/CameraSubsystem.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/GameObject.h"
@@ -27,9 +26,7 @@ namespace
 
 namespace NS::Object
 {
-    PlayerInputComponent::PlayerInputComponent() noexcept
-        : Component(NS::Object::TickPriority::EarlyUpdate)
-    {}
+    PlayerInputComponent::PlayerInputComponent() noexcept : Component(NS::Object::TickPriority::EarlyUpdate) {}
 
     void PlayerInputComponent::SetCameraForward(const NS::Core::Vector3& cameraForwardHorizontal) noexcept
     {
@@ -52,11 +49,8 @@ namespace NS::Object
         // camera 相対移動の基準 forward は Brain から自分で読む。 Brain 不在 (テスト等) は注入値のまま
         if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
         {
-            if (auto* cameras = Owner()->OwningScene()->GetSubsystem<CameraSubsystem>())
-            {
-                if (CameraBrainComponent* brain = cameras->Brain())
-                    m_cameraForward = NormalizeHorizontal(brain->ForwardHorizontal());
-            }
+            if (CameraBrainComponent* brain = Owner()->OwningScene()->CameraBrain())
+                m_cameraForward = NormalizeHorizontal(brain->ForwardHorizontal());
         }
 
         auto& input = NS::Platform::Input::Get();
