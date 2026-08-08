@@ -1,5 +1,6 @@
 ﻿#include "Runtime/Graphics/Renderer.h"
 
+#include "Runtime/Core/Assert.h"
 #include "Runtime/Core/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
@@ -16,7 +17,6 @@
 #include "Runtime/Graphics/Skybox.h"
 #include "Runtime/Graphics/Texture.h"
 
-#include <cassert>
 #include <iterator>
 #include <memory>
 #include <new>
@@ -653,13 +653,13 @@ namespace NS::Graphics
 
     CommonStates& Renderer::States() noexcept
     {
-        assert(m_states && "Renderer が無効な状態で States() を呼んでいる");
+        NS_ASSERT(Graphics, m_states, "Renderer が無効な状態で States() を呼んでいる");
         return *m_states;
     }
 
     CommandList& Renderer::Commands() noexcept
     {
-        assert(m_commands && "Renderer が無効な状態で Commands() を呼んでいる");
+        NS_ASSERT(Graphics, m_commands, "Renderer が無効な状態で Commands() を呼んでいる");
         return *m_commands;
     }
 

@@ -1,9 +1,8 @@
 #include "Runtime/Object/Component.h"
 
+#include "Runtime/Core/Assert.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Transform.h"
-
-#include <cassert>
 
 namespace NS::Object
 {
@@ -37,13 +36,13 @@ namespace NS::Object
 
     Transform& Component::RootTransform() noexcept
     {
-        assert(m_owner != nullptr && "Component is not registered to any GameObject");
+        NS_ASSERT(Scene, m_owner != nullptr, "owner の居ない Component から RootTransform() を呼んでいる");
         return m_owner->Root();
     }
 
     const Transform& Component::RootTransform() const noexcept
     {
-        assert(m_owner != nullptr && "Component is not registered to any GameObject");
+        NS_ASSERT(Scene, m_owner != nullptr, "owner の居ない Component から RootTransform() を呼んでいる");
         return m_owner->Root();
     }
 
