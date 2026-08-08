@@ -5,6 +5,5 @@
 
 namespace NS::Audio
 {
-    /// @brief Audio 層が初期化されたことを示す仮のマーカ
-    inline constexpr bool k_Placeholder = true;
+
 } // namespace NS::Audio
