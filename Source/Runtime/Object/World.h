@@ -108,6 +108,8 @@ namespace NS::Object
 
         /// 範囲 for 用の反復子。 辿ると生ポインタが出るので、 所有の入れ物を外へ見せずに全配置物を回せる
         /// 添字が要る呼び出し側は ObjectCount / ObjectAt を使う
+        /// std::vector<GameObject*> を返す関数は作らない。 毎回確保になる
+        /// 生ポインタの配列もメンバに持たない。 m_objects と食い違う
         class Iterator
         {
         public:
