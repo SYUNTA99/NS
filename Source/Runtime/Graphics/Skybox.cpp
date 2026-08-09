@@ -13,9 +13,9 @@
 #include "Runtime/Graphics/Shader.h"
 #include "Runtime/Graphics/StaticMesh.h"
 
-#include <algorithm>
 #include <DDSTextureLoader.h>
 #include <WICTextureLoader.h>
+#include <algorithm>
 
 namespace NS::Graphics
 {
@@ -30,13 +30,14 @@ namespace NS::Graphics
         static_assert(sizeof(SkyboxCB) == 64, "SkyboxCB は HLSL 側 cbuffer (b0) と byte 一致が必要");
 
         // キューブマップのテクスチャファイル名
+        // 素材の ft/bk/lf/rt 命名は D3D の軸から水平 90° ずれている。継ぎ目が合う並びで置く
         constexpr std::array<const char*, 6> k_KurtFaceFileNames = {
-            "space_rt.png", // 右
-            "space_lf.png", // 左
+            "space_ft.png", // 右
+            "space_bk.png", // 左
             "space_up.png", // 上
             "space_dn.png", // 下
-            "space_ft.png", // 奥
-            "space_bk.png", // 前
+            "space_rt.png", // 奥
+            "space_lf.png", // 手前
         };
 
         [[nodiscard]] bool IsDdsExtension(const std::filesystem::path& path)
