@@ -80,7 +80,7 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
 
 TEST(TypeRegistryTest, CreatedTypeNameMatchesReflection)
 {
-    // 登録済み全型でリフレクション typeName が登録キーと一致する (JSON の type キーと整合)
+    // 登録済み全型でリフレクション typeName が登録キーと一致する。JSON の type キーと整合する
     // 登録が増えても手直し不要なよう、一覧は registry 自身から取る
     for (const std::string& name : RegisteredNames())
     {
@@ -174,8 +174,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
         {"MeshColliderComponent", {}},
         {"MeshRendererComponent", {"基本色", "メッシュ", "マテリアル"}},
         {"GoalComponent", {}},
-        {"PlacedVirtualCamera",
-         {"注視点", "上方向", "トリガー中心", "トリガー半径", "プレイヤー追視", "優先度"}},
+        {"PlacedVirtualCamera", {"注視点", "上方向", "トリガー中心", "トリガー半径", "プレイヤー追視", "優先度"}},
         {"PlayerInputComponent", {}},
         {"ShadowComponent", {"基本直径", "最大投影距離", "表面オフセット", "基本不透明度"}},
         {"SkeletalAnimationComponent", {"再生速度", "ループ再生", "モデル", "クリップ"}},

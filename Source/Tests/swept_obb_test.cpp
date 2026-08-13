@@ -1,8 +1,8 @@
-#include <cmath>
-#include <gtest/gtest.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Physics/Capsule.h>
 #include <Runtime/Physics/SweptOBB.h>
+#include <cmath>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -31,7 +31,7 @@ namespace
     }
 } // namespace
 
-// 単位回転の OBB は AABB と同じ挙動 (X+ へ動いて手前の面に当たる)
+// 単位回転の OBB は AABB と同じ挙動。X+ へ動いて手前の面に当たる
 TEST(SweptObbTest, IdentityObbBehavesLikeAabb)
 {
     OBB obb = MakeObb({0.0f, 0.0f, 0.0f}, Quaternion::Identity, {0.5f, 0.5f, 0.5f});
@@ -62,7 +62,7 @@ TEST(SweptObbTest, NoHitWhenMotionPointsAway)
     EXPECT_FLOAT_EQ(toi, 1.0f);
 }
 
-// 45 度 Y 回転した箱: 法線は world X と直交側を向く (回転が当たりに反映される)
+// 45 度 Y 回転した箱: 法線は world X と直交側を向く。回転が当たりに反映される
 TEST(SweptObbTest, RotatedObbProducesRotatedNormal)
 {
     const Quaternion rot = Quaternion::CreateFromAxisAngle(Vector3::UnitY, k_Pi / 4.0f);

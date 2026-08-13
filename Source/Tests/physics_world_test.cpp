@@ -1,7 +1,7 @@
-﻿#include <cmath>
-#include <gtest/gtest.h>
-#include <Runtime/Core/Math.h>
+﻿#include <Runtime/Core/Math.h>
 #include <Runtime/Physics/PhysicsWorld.h>
+#include <cmath>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -129,7 +129,7 @@ TEST(PhysicsWorldTest, SweepCapsulePicksEarliestAabb)
     EXPECT_NEAR(h.toi, 2.1f / 10.0f, 1e-3f);
 }
 
-// grid 有無で同一結果 (broadphase は答えを変えない)
+// grid 有無で同一結果。broadphase は答えを変えない
 TEST(PhysicsWorldTest, SweepCapsuleGridMatchesBruteForce)
 {
     PhysicsWorld brute;
@@ -193,7 +193,7 @@ TEST(PhysicsWorldTest, SweepCapsuleHitsCapsule)
 }
 
 // 開始時に AABB 内部へ貫通している capsule は、 motion で外へ抜けるほど動かしても
-// 初期貫通が優先され toi=0 + 最寄り面の押し戻し法線を返す (退化ケースを貫通させない)
+// 初期貫通が優先され toi=0 + 最寄り面の押し戻し法線を返す。退化ケースを貫通させない
 TEST(PhysicsWorldTest, SweepCapsuleOverlappingAabbReturnsZeroToi)
 {
     PhysicsWorld world;

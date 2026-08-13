@@ -157,13 +157,16 @@ namespace NS::Object
         float m_apexHangScale = 0.5f;    // apex 付近で重力に掛ける倍率
         float m_jumpReleaseScale = 0.6f; // 上昇中に離した時の縦速度倍率
         float m_jumpImpulse = 12.0f;     // ジャンプ初速
-        float m_coyoteTime = 0.025f;     // 接地を離れてもジャンプを受ける猶予秒
-        float m_jumpBufferTime = 0.25f;  // 着地前の先行ジャンプ入力を覚える秒
-        float m_maxSpeed = 8.0f;         // 最大移動速度
-        float m_walkSpeed = 4.0f;        // 歩き速度
-        float m_stickDeadzone = 0.3f;    // スティック入力のデッドゾーン
-        float m_accelTau = 0.10f;        // 加速の時定数
-        float m_decelTau = 0.10f;        // 減速の時定数
+        // 接地を離れてもジャンプを受ける猶予秒。実機プレイで詰めた約 1.5 フレームで、踏み外し直後のごく短い救済だけ残す
+        float m_coyoteTime = 0.025f;
+        // 着地前の先行ジャンプ入力を覚える秒
+        // TODO(syunta): 暫定値。人の早押し誤差は概ね 100ms なので目標は 0.1 秒、体感で詰める
+        float m_jumpBufferTime = 0.25f;
+        float m_maxSpeed = 8.0f;      // 最大移動速度
+        float m_walkSpeed = 4.0f;     // 歩き速度
+        float m_stickDeadzone = 0.3f; // スティック入力のデッドゾーン
+        float m_accelTau = 0.10f;     // 加速の時定数
+        float m_decelTau = 0.10f;     // 減速の時定数
 
         float m_capsuleRadius = 0.4f;     // capsule 半径
         float m_capsuleHalfHeight = 0.5f; // capsule 半高

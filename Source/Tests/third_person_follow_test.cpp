@@ -1,8 +1,8 @@
-#include <gtest/gtest.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -39,7 +39,7 @@ TEST_F(ThirdPersonFollowTest, EvaluatePoseFallbackWhenTargetIsNull)
 {
     ThirdPersonFollowComponent follow;
     follow.OnUpdate();
-    // target が無い時は EvaluatePose が既定 pose を返す (実カメラは動かない)
+    // target が無い時は EvaluatePose が既定 pose を返す。実カメラは動かない
     const auto pose = follow.EvaluatePose(1.0f);
     EXPECT_FLOAT_EQ(pose.position.z, -5.0f);
 }
@@ -56,7 +56,7 @@ TEST_F(ThirdPersonFollowTest, EvaluatePosePlacesCameraBehindTarget)
     for (int i = 0; i < 60; ++i)
         follow.OnUpdate();
 
-    // OnUpdate は state mutation のみ (yaw/pitch/distance)、 最終姿勢は EvaluatePose が返す (jitter 回避)
+    // OnUpdate は state mutation のみ (yaw/pitch/distance)、 最終姿勢は EvaluatePose が返す。揺れを避ける
     const auto pose = follow.EvaluatePose(1.0f);
 
     EXPECT_NEAR(pose.position.x, 0.0f, 0.1f);

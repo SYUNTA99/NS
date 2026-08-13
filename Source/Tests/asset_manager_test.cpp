@@ -141,7 +141,7 @@ TEST_F(AssetManagerTest, ReloadMissReturnsFalse)
     EXPECT_FALSE(am.Reload("C:/nonexistent/__ns_am_missing.vs.hlsl"));
 }
 
-// .mat JSON 解析 (device 無し): 全フィールド
+// device 無しの .mat JSON 解析: 全フィールド
 TEST(AssetManagerParseTest, FullValidJsonParsesAllFields)
 {
     const std::string json = R"({

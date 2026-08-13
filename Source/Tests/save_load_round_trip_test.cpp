@@ -157,7 +157,7 @@ TEST(SaveLoadRoundTrip, ObjectParentSurvivesJsonRoundTrip)
 }
 
 // 正準 JSON は object キーが辞書順・float が最短往復表現なので、 同一データの 2 回保存は
-// バイト一致する。 これがレベル差分の決定性 (git diff の安定) を担保する
+// バイト一致する。 これがレベル差分の決定性を担保し、 git diff が安定する
 TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
 {
     auto path1 = TestScenePath("test_byteid_a");
@@ -213,7 +213,7 @@ TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
 }
 
 // 型名 + リフレクションフィールド値 (全 5 種の値) を持つコンポ一覧が save→load で復元される
-// (全コンポ一覧を持つ形式の往復) 並びは正準化 (名前昇順) されるため等価判定は CRC ではなく正準 JSON の一致で行う
+// 全コンポ一覧を持つ形式の往復。 並びは正準化 (名前昇順) されるため等価判定は CRC ではなく正準 JSON の一致で行う
 TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 {
     auto path = TestScenePath("test_components");

@@ -1,10 +1,10 @@
-﻿#include <cmath>
-#include <gtest/gtest.h>
-#include <Runtime/Core/Clock.h>
+﻿#include <Runtime/Core/Clock.h>
 #include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
+#include <cmath>
+#include <gtest/gtest.h>
 #include <span>
 
 namespace
@@ -254,7 +254,7 @@ TEST_F(LedgeGrabStateTest, ShimmyStopsAtLedgeEnd)
     mov.SetClimbMove(1.0f, 0.0f);
     StepN(mov, 60);
 
-    // 縁に留まったまま (落ちていない)、 block の z 範囲 (±0.5) を大きく超えない
+    // 縁に留まって落ちず、 block の z 範囲 (±0.5) を大きく超えない
     EXPECT_EQ(mov.State(), MovementState::LedgeHanging);
     EXPECT_LE(std::abs(playerObj.Root().Position().z), 0.55f);
 }

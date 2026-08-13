@@ -8,7 +8,7 @@
 
 namespace
 {
-    //! テスト用にユニークな一時パスを生成する (実時刻ナノ秒 + テスト名)
+    //! 実時刻ナノ秒とテスト名からテスト用のユニークな一時パスを生成する
     std::filesystem::path MakeTempPath(const std::string& suffix)
     {
         const auto ns =
@@ -221,7 +221,7 @@ TEST(NsCoreFileSystem, IsDirectoryDistinguishesDirectoryFromFileAndMissing)
     ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(root / "file.txt", data));
 
     EXPECT_TRUE(NS::Core::FileSystem::IsDirectory(root));
-    // 通常ファイルと不存在はともに false。後者は Skybox が退避先へ落ちる経路を保証する
+    // 通常ファイルと不存在はともに false。後者は Skybox がフォールバックへ落ちる経路
     EXPECT_FALSE(NS::Core::FileSystem::IsDirectory(root / "file.txt"));
     EXPECT_FALSE(NS::Core::FileSystem::IsDirectory(root / "missing"));
 

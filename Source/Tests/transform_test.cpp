@@ -1,7 +1,7 @@
-#include <cmath>
-#include <gtest/gtest.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Transform.h>
+#include <cmath>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -98,7 +98,7 @@ TEST(TransformTest, InterpolatedLocalMatrixAtAlphaOneEqualsCurrent)
 TEST(TransformTest, FreshTransformWithoutSnapshotInterpolatesFromOrigin)
 {
     // Snapshot 未実行の新規 Transform は previous が default(原点/単位回転)のまま
-    // この状態で alpha<1 を補間すると配置先ではなく原点へ振れる(編集再構築バグの再現)
+    // この状態で alpha<1 を補間すると配置先ではなく原点へ振れる。編集再構築バグの再現
     Transform t;
     t.SetPosition({10.0f, 20.0f, 30.0f});
     t.SetRotation(Quaternion::CreateFromYawPitchRoll(1.0f, 0.0f, 0.0f));
@@ -115,7 +115,7 @@ TEST(TransformTest, FreshTransformWithoutSnapshotInterpolatesFromOrigin)
 TEST(TransformTest, SnapshotAfterPlacementStopsOriginSwing)
 {
     // 生成直後に配置値で Snapshot しておけば previous==current となり
-    // 全 alpha で WorldMatrix と一致して原点へ振れなくなる(修正後の不変条件)
+    // 全 alpha で WorldMatrix と一致して原点へ振れなくなる。修正後の不変条件
     Transform t;
     t.SetPosition({10.0f, 20.0f, 30.0f});
     t.SetRotation(Quaternion::CreateFromYawPitchRoll(1.0f, 0.0f, 0.0f));

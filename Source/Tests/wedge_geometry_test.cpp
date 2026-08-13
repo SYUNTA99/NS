@@ -1,8 +1,8 @@
+#include <Runtime/Physics/WedgeGeometry.h>
 #include <algorithm>
 #include <array>
 #include <gtest/gtest.h>
 #include <limits>
-#include <Runtime/Physics/WedgeGeometry.h>
 #include <vector>
 
 namespace
@@ -73,7 +73,7 @@ TEST(WedgeGeometryTest, Rotation90FacesPositiveX)
     EXPECT_NEAR(high.z, 0.0f, 1e-3f);
 }
 
-// 連続回転: yaw=45° で高い辺が +X +Z の対角を向く (90° スナップではない自由角を検証)
+// 連続回転: yaw=45° で高い辺が +X +Z の対角を向く。90° スナップではない自由角を検証する
 TEST(WedgeGeometryTest, Rotation45FacesDiagonal)
 {
     const auto tris = BuildWedgeTriangles(Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}, 45.0f, k_QuarterPi);
@@ -91,7 +91,7 @@ TEST(WedgeGeometryTest, RotationPreservesHeight)
     EXPECT_NEAR(HighEdgeCentroid(t0).y, HighEdgeCentroid(t1).y, 1e-4f);
 }
 
-// center 指定が反映される (world 配置)
+// center 指定が world 配置に反映される
 TEST(WedgeGeometryTest, CenterOffsetsAllVertices)
 {
     const Vector3 c{10.0f, 2.0f, -3.0f};
