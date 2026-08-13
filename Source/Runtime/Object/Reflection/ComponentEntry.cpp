@@ -6,7 +6,7 @@ namespace NS::Object
 {
     namespace
     {
-        /// fields から name 一致の値を返す。 キー照合は alloc 無しで string_view 比較する
+        //! fields から name 一致の値を返す。 キー照合は文字列を確保せず string_view で比べる
         const nlohmann::json* FindFieldValue(const nlohmann::json& entry, std::string_view name) noexcept
         {
             const nlohmann::json* fields = ComponentEntryFields(entry);
@@ -20,7 +20,7 @@ namespace NS::Object
             return nullptr;
         }
 
-        /// entry の fields object を返し、 無ければ作る。 SetField の書き込み先
+        //! entry の fields object を返し、 無ければ作る。 SetField の書き込み先
         nlohmann::json& EnsureFields(nlohmann::json& entry)
         {
             if (!entry.is_object())

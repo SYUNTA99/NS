@@ -18,9 +18,9 @@ namespace NS::Graphics
 namespace NS::UI
 {
 
-    //! @brief デバッグ・エディタ用UI（Dear ImGui）のライフサイクルを管理するクラス。
-    //! @details ウィンドウと描画システムに紐付き、UIの初期化から毎フレームの描画処理までを担う。
-    //! リリースビルド時など、UI機能がシステムから除外されている場合は自動的にスタブとして振る舞う。
+    //! @brief デバッグ・エディタ用の ImGui の寿命
+    //! @details ウィンドウと Renderer に紐付き、初期化から毎フレームの描画までを持つ
+    //! ImGui を外したビルドでは何もしないスタブになる
     class ImGuiContext : public NS::Core::NonCopyable
     {
     public:
@@ -32,28 +32,28 @@ namespace NS::UI
 
         [[nodiscard]] bool IsValid() const noexcept;
 
-        //! リリースビルドや初期化失敗により、UI機能が無効化（スタブ化）されていればtrueを返す
+        //! リリースビルドか初期化失敗でスタブになっている場合 true、それ以外の場合は false
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
         //! @brief 新しいUIフレームの構築を開始する
-        //! @note 描画システムのフレーム開始（Renderer::BeginFrame）の直後に呼び出すこと
+        //! @note Renderer::BeginFrame の直後に呼ぶこと
         void BeginFrame() noexcept;
 
         //! @brief UIの構築を終了し、描画コマンドを発行する
-        //! @note 描画システムのフレーム終了（Renderer::EndFrame）の直前に呼び出すこと
+        //! @note Renderer::EndFrame の直前に呼ぶこと
         void EndFrame() noexcept;
 
         //! @brief OSからのウィンドウメッセージをUI側へ転送して処理する
-        //! @return UIがメッセージを消費した場合（ゲーム側で入力を無視すべき場合）はtrueを返す
+        //! @return UI がメッセージを消費した場合 true、それ以外の場合は false。true ならゲーム側は入力を無視する
         [[nodiscard]] bool ForwardWndProc(void* hwnd,
                                           std::uint32_t msg,
                                           std::uintptr_t wParam,
                                           std::intptr_t lParam) noexcept;
 
-        //! UIがマウス入力を要求しているか（UIウィンドウの操作中など）を返す
+        //! UI ウィンドウを操作中などで、UI がマウス入力を要求しているかを返す
         [[nodiscard]] bool WantCaptureMouse() const noexcept;
 
-        //! UIがキーボード入力を要求しているか（テキストボックスへの入力中など）を返す
+        //! テキストボックスへの入力中などで、UI がキーボード入力を要求しているかを返す
         [[nodiscard]] bool WantCaptureKeyboard() const noexcept;
 
     private:

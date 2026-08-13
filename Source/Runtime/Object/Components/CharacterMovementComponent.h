@@ -11,10 +11,10 @@
 
 namespace NS::Object
 {
-    /// @brief Player 移動の細分ラベル
-    /// @details 実行の単位は States のデータで組む状態機械 (Locomotion / LedgeHang / LedgeMantle) で、
-    /// この enum は Locomotion 内の歩き / ジャンプ / 落下まで割った読み取り用の細分。判定や演出が読む
-    /// LedgeHanging / LedgeMantling の掴まり中は CapsuleMover を通さず position を直更新する
+    //! @brief Player 移動の細分ラベル
+    //! @details 実行の単位は States のデータで組む状態機械 (Locomotion / LedgeHang / LedgeMantle) で、
+    //! この enum は Locomotion 内の歩き / ジャンプ / 落下まで割った読み取り用の細分。判定や演出が読む
+    //! LedgeHanging / LedgeMantling の掴まり中は CapsuleMover を通さず position を直更新する
     enum class MovementState
     {
         Walking,
@@ -24,39 +24,40 @@ namespace NS::Object
         LedgeMantling,
     };
 
-    /// @brief Player の物理状態を管理する Component
-    /// @details Capsule + シングルジャンプ + coyote/buffer + 非対称重力 + apex hang を保持する
-    /// NS::Physics::CapsuleMover を value member として内包する
-    /// 毎 OnUpdate で desired velocity と dt を渡して結果を Root へ適用する
-    /// gravity / jump など gameplay 値はここが持ち、CapsuleMover には数値計算だけ任せる
-    /// Input→desired velocity は PlayerInputComponent が作る
-    /// 衝突 world は OnStart で所属 scene から非所有借用する
-    /// dt は NS::Core::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
+    //! @brief Player の物理状態を管理する Component
+    //! @details カプセル + 1 段ジャンプ + コヨーテ時間と先行入力 + 非対称重力 + 頂点滞空を保持する
+    //! NS::Physics::CapsuleMover を value member として内包する
+    //! 毎 OnUpdate で desired velocity と dt を渡して結果を Root へ適用する
+    //! 重力やジャンプの調整値はここが持ち、CapsuleMover には数値計算だけ任せる
+    //! Input→desired velocity は PlayerInputComponent が作る
+    //! 衝突 world は OnStart で所属 scene から非所有借用する
+    //! dt は NS::Core::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
     class CharacterMovementComponent : public Component
     {
     public:
         CharacterMovementComponent() noexcept;
 
+        //! world 空間の目標移動方向と速度スケールを渡す。 スケールは 0..1 に丸める
         void SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept;
 
-        /// 掴まり中の生ローカル入力で各成分は -1..1。SetDesiredMove と別チャンネル、前=登る マップ用
+        //! 掴まり中の生ローカル入力で各成分は -1..1。SetDesiredMove と別チャンネル、前=登る マップ用
         void SetClimbMove(float localRight, float localForward) noexcept;
 
         void SetJumpPressed() noexcept;
         void SetJumpHeld(bool held) noexcept;
 
-        /// 衝突 query 元の physics world を非所有で借用する。 scene 無しで動かすテスト用の継ぎ目で、
-        /// 本編は OnStart が所属 scene の world を取る
+        //! 衝突 query 元の physics world を非所有で借用する。 scene 無しで動かすテスト用の継ぎ目で、
+        //! 本編は OnStart が所属 scene の world を取る
         void SetPhysicsWorld(const NS::Physics::PhysicsWorld* world) noexcept { m_world = world; }
 
-        /// 未注入なら所属 scene の衝突 world を借用する。world は scene が所有する実体のため
-        /// level 再構築後もこの参照のまま有効
+        //! 未注入なら所属 scene の衝突 world を借用する。world は scene が所有する実体のため
+        //! level 再構築後もこの参照のまま有効
         void OnStart() override;
 
         [[nodiscard]] MovementState State() const noexcept { return m_state; }
 
         [[nodiscard]] NS::Core::Vector3 Velocity() const noexcept { return m_velocity; }
-        /// テスト / 外力用に速度を直接与える。 通常は OnUpdate 内で更新するため呼出不要
+        //! テスト / 外力用に速度を直接与える。 通常は OnUpdate 内で更新するため呼出不要
         void SetVelocity(const NS::Core::Vector3& v) noexcept { m_velocity = v; }
         [[nodiscard]] bool IsGrounded() const noexcept { return m_isGrounded; }
         [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; }
@@ -78,28 +79,28 @@ namespace NS::Object
         [[nodiscard]] float CapsuleRadius() const noexcept { return m_capsuleRadius; }
         [[nodiscard]] float CapsuleHalfHeight() const noexcept { return m_capsuleHalfHeight; }
 
-        /// debug 可視化が縁の外側へ伸ばすコヨーテ帯の寸法に使う。 ライブ調整した値をそのまま反映する
+        //! debug 可視化が縁の外側へ伸ばすコヨーテ帯の寸法に使う。 ライブ調整した値をそのまま反映する
         [[nodiscard]] float CoyoteTime() const noexcept { return m_coyoteTime; }
         [[nodiscard]] float MaxSpeed() const noexcept { return m_maxSpeed; }
 
-        /// Debug 可視化の on/off。default true。CI / unit test では false 推奨
+        //! デバッグ可視化を切り替える。既定は true、テストでは false にする
         void SetDebugDrawEnabled(bool enabled) noexcept { m_debugDraw = enabled; }
         [[nodiscard]] bool IsDebugDrawEnabled() const noexcept { return m_debugDraw; }
 
-        /// コヨーテ窓内で跳んだ 1 件の記録。edge=最終接地位置, jump=跳躍位置, remaining=残り表示秒
+        //! コヨーテ窓内で跳んだ 1 件の記録。edge=最終接地位置, jump=跳躍位置, remaining=残り表示秒
         struct CoyoteJumpMarker
         {
             NS::Core::Vector3 edge{0.0f, 0.0f, 0.0f};
             NS::Core::Vector3 jump{0.0f, 0.0f, 0.0f};
             float remaining = 0.0f;
         };
-        /// 生存中のコヨーテジャンプ記録。debug 描画が縁→跳躍点の赤線を引くのに読む。寿命切れは除外済
+        //! 生存中のコヨーテジャンプ記録。debug 描画が縁→跳躍点の赤線を引くのに読む。寿命切れは除外済
         [[nodiscard]] std::span<const CoyoteJumpMarker> CoyoteJumpMarkers() const noexcept
         {
             return m_coyoteJumpMarkers;
         }
 
-        /// 奈落落ち復活などで状態を初期化する。velocity / grounded / jump 関連 timer を全リセット
+        //! 奈落落ち復活などで状態を初期化する。velocity / grounded / jump 関連 timer を全リセット
         void ResetState() noexcept;
 
         void OnUpdate() override;
@@ -130,24 +131,24 @@ namespace NS::Object
         friend class LedgeHangState;
         friend class LedgeMantleState;
 
-        /// States のセミコロン区切りから状態機械を組む。全滅時は既定の並びへ退避する
+        //! States のセミコロン区切りから状態機械を組む。全滅時は既定の並びへ退避する
         void BuildStates();
 
-        /// 通常移動の 1 歩。歩き / ジャンプ / 落下を 1 本の物理パイプラインで進め、下降中に縁を探す
+        //! 通常移動の 1 歩。歩き / ジャンプ / 落下を 1 本の物理パイプラインで進め、下降中に縁を探す
         void UpdateLocomotion(float dt) noexcept;
-        /// 空中下降中に進行方向の block 縁を検出し、掴めれば LedgeHanging へ遷移して true を返す
+        //! 空中下降中に進行方向の block 縁を検出し、掴めれば LedgeHanging へ遷移して true を返す
         bool TryGrabLedge(const NS::Core::Vector3& pos) noexcept;
 
-        /// LedgeHanging 中の毎フレーム更新。jump/後入力で即 mantle/drop、k_LedgeMinHangTime 後のみ前入力で自動登り
+        //! LedgeHanging 中の毎フレーム更新。jump/後入力で即 mantle/drop、k_LedgeMinHangTime 後のみ前入力で自動登り
         void UpdateLedgeHang(float dt) noexcept;
 
-        /// LedgeMantling 中の毎フレーム更新。前半上昇/後半前進の 2 段補間で上面へ移動し、完了で Walking へ遷移
+        //! LedgeMantling 中の毎フレーム更新。前半上昇/後半前進の 2 段補間で上面へ移動し、完了で Walking へ遷移
         void UpdateLedgeMantle(float dt) noexcept;
 
-        /// 指定ぶら下がり位置で縁が同じ高さで続いているか。シミー先が端を越えていないか判定する
+        //! 指定ぶら下がり位置で縁が同じ高さで続いているか。シミー先が端を越えていないか判定する
         [[nodiscard]] bool LedgeContinuesAt(const NS::Core::Vector3& hangPos) const noexcept;
 
-        /// コヨーテ窓内ジャンプを 1 件記録する。上限超過時は最古を捨てる
+        //! コヨーテ窓内ジャンプを 1 件記録する。上限超過時は最古を捨てる
         void PushCoyoteJumpMarker(const NS::Core::Vector3& edge, const NS::Core::Vector3& jump) noexcept;
 
         float m_gravityUp = -25.0f;      // 上昇中の重力
@@ -182,7 +183,7 @@ namespace NS::Object
         bool m_wasGrounded = false;          // 前フレームの接地状態
         bool m_isGrounded = false;           // 現在の接地状態
 
-        bool m_debugDraw = true; // debug 可視化の on/off
+        bool m_debugDraw = true; // デバッグ可視化を出すか
 
         // 最後に接地していた world 位置。 縁を踏み外した直後はここが踏み外し点 すなわち縁になる
         NS::Core::Vector3 m_lastGroundedPosition{0.0f, 0.0f, 0.0f};

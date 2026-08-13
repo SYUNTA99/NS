@@ -14,7 +14,7 @@ namespace
 {
     constexpr float k_HorizontalSpeedEpsilon = 0.01f;
 
-    /// ledge grab が走査する AABB 群を world から借りる。 world 未設定時は空で掴めない
+    //! ledge grab が走査する AABB 群を world から借りる。 world 未設定時は空で掴めない
     [[nodiscard]] std::span<const NS::Core::AABB> WorldAabbs(const NS::Physics::PhysicsWorld* world) noexcept
     {
         if (world == nullptr)
@@ -22,7 +22,7 @@ namespace
         return std::span<const NS::Core::AABB>(world->Aabbs());
     }
 
-    /// 一次遅れの離散化。tau は時定数で値が大きいほど鈍い、dt は step。0 < tau で安定
+    //! 一次遅れの離散化。tau は時定数で値が大きいほど鈍い、dt は step。0 < tau で安定
     [[nodiscard]] float SmoothApproach(float current, float target, float tau, float dt) noexcept
     {
         if (tau <= 0.0f)
@@ -43,39 +43,39 @@ namespace
         };
     }
 
-    /// 縁掴み: capsule 上端を手とみなし、 block 上端との高さ差の許容下幅 / 上幅で単位は m。 この帯に
-    /// block 上端が入ると掴める。 GUI playtest で詰める初期値
+    //! 縁掴み: capsule 上端を手とみなし、 block 上端との高さ差の許容下幅 / 上幅で単位は m。 この帯に
+    //! block 上端が入ると掴める。 GUI playtest で詰める初期値
     constexpr float k_LedgeGrabBandLow = 0.5f;
     constexpr float k_LedgeGrabBandHigh = 0.5f;
-    /// 縁掴み: capsule 表面から前方へ手を伸ばす追加距離。 単位は m
+    //! 縁掴み: capsule 表面から前方へ手を伸ばす追加距離。 単位は m
     constexpr float k_LedgeReach = 0.3f;
-    /// 縁掴み: mantle 時に面の内側へ押し込む余白で単位は m。 2*radius に上乗せして上面へ確実に乗せる
+    //! 縁掴み: mantle 時に面の内側へ押し込む余白で単位は m。 2*radius に上乗せして上面へ確実に乗せる
     constexpr float k_LedgeMantleInset = 0.1f;
-    /// 縁掴み: mantle 後に block 上面から浮かせる安全マージンで単位は m。 spawn lift と同趣旨
+    //! 縁掴み: mantle 後に block 上面から浮かせる安全マージンで単位は m
     constexpr float k_LedgeMantleLift = 0.02f;
-    /// 縁掴み: mantle / drop を起動する climb 前後入力のしきい値
+    //! 縁掴み: mantle / drop を起動する climb 前後入力のしきい値
     constexpr float k_LedgeInputThreshold = 0.5f;
-    /// 縁掴み: つかんだ後、 前入力での自動登りを許すまでの最小ぶら下がり時間で単位は s。 壁に向かう
-    /// 入力のまま即登り切ってつかみが見えない問題を防ぐ。 jump / drop はこの待ちを受けない
+    //! 縁掴み: つかんだ後、 前入力での自動登りを許すまでの最小ぶら下がり時間で単位は s。 壁に向かう
+    //! 入力のまま即登り切ってつかみが見えない問題を防ぐ。 jump / drop はこの待ちを受けない
     constexpr float k_LedgeMinHangTime = 0.3f;
 
-    /// コヨーテジャンプ記録の表示寿命で単位は s。 直近の数試行を見比べられる長さ
+    //! コヨーテジャンプ記録の表示寿命で単位は s。 直近の数試行を見比べられる長さ
     constexpr float k_CoyoteJumpMarkerLifetime = 3.0f;
-    /// 同時に保持するコヨーテジャンプ記録の上限。 画面が赤線で埋まらない数
+    //! 同時に保持するコヨーテジャンプ記録の上限。 画面が赤線で埋まらない数
     constexpr std::size_t k_MaxCoyoteJumpMarkers = 16;
-    /// 縁掴み: ぶら下がりから上面へよじ登る mantle モーションの所要時間で単位は s。 瞬間移動を避けて
-    /// 登りを視認できるようにする。 前半で上昇、 後半で前進の 2 段に割る
+    //! 縁掴み: ぶら下がりから上面へよじ登る mantle モーションの所要時間で単位は s。 瞬間移動を避けて
+    //! 登りを視認できるようにする。 前半で上昇、 後半で前進の 2 段に割る
     constexpr float k_LedgeMantleDuration = 0.25f;
-    /// 縁掴み: 縁に沿った左右移動シミーの速度と入力デッドゾーン、 速度の単位は m/s
+    //! 縁掴み: 縁に沿った左右移動シミーの速度と入力デッドゾーン、 速度の単位は m/s
     constexpr float k_LedgeShimmySpeed = 2.0f;
     constexpr float k_LedgeShimmyDeadzone = 0.3f;
-    /// 縁掴み: シミー継続判定で「同じ高さの縁」とみなす上端の許容差。 単位は m
+    //! 縁掴み: シミー継続判定で「同じ高さの縁」とみなす上端の許容差。 単位は m
     constexpr float k_LedgeContinueTopTol = 0.1f;
-    /// 縁掴み: drop 時に面法線方向へ離す距離と初速で、 単位はそれぞれ m と m/s
+    //! 縁掴み: drop 時に面法線方向へ離す距離と初速で、 単位はそれぞれ m と m/s
     constexpr float k_LedgeDropOutward = 0.2f;
     constexpr float k_LedgeDropOutwardSpeed = 2.0f;
-    /// 縁掴み: drop / mantle 直後に再掴みを禁止する時間で単位は s。 放しても入力を倒し続けた時の
-    /// 即再掴みを防ぐ
+    //! 縁掴み: drop / mantle 直後に再掴みを禁止する時間で単位は s。 放しても入力を倒し続けた時の
+    //! 即再掴みを防ぐ
     constexpr float k_LedgeRegrabCooldownTime = 0.3f;
 
     [[nodiscard]] bool AabbContainsPoint(const NS::Core::AABB& box, const NS::Core::Vector3& p) noexcept
@@ -88,7 +88,7 @@ namespace
 
 namespace NS::Object
 {
-    /// 通常移動。歩き / ジャンプ / 落下を 1 本の物理パイプラインで進める
+    //! 通常移動。歩き / ジャンプ / 落下を 1 本の物理パイプラインで進める
     class LocomotionState final : public State<CharacterMovementComponent>
     {
     public:
@@ -98,7 +98,7 @@ namespace NS::Object
     };
     NS_STATE(LocomotionState, CharacterMovementComponent)
 
-    /// 縁ぶら下がり。controller を通さず position を直更新する
+    //! 縁ぶら下がり。controller を通さず position を直更新する
     class LedgeHangState final : public State<CharacterMovementComponent>
     {
     public:
@@ -108,7 +108,7 @@ namespace NS::Object
     };
     NS_STATE(LedgeHangState, CharacterMovementComponent)
 
-    /// 縁のよじ登り。2 段補間で上面へ移動する
+    //! 縁のよじ登り。2 段補間で上面へ移動する
     class LedgeMantleState final : public State<CharacterMovementComponent>
     {
     public:

@@ -1,10 +1,10 @@
-#include <filesystem>
-#include <gtest/gtest.h>
 #include <Runtime/Core/Filesystem.h>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Platform/Window.h>
+#include <filesystem>
+#include <gtest/gtest.h>
 #include <string>
 
 namespace
@@ -217,7 +217,7 @@ TEST(AssetManagerParseTest, BlendStringMapsToEnum)
     EXPECT_EQ(blend, NS::Graphics::BlendMode::Opaque);
 }
 
-// 同一 .mat path の LoadMaterial は同一 Material* を返す (dedup)、 内部 leaf を借りて組む
+// 同一 .mat path の LoadMaterial は重複除去され同一 Material* を返す。 内部 leaf を借りて組む
 TEST_F(AssetManagerTest, LoadMaterialDedupReturnsSamePointer)
 {
     Window window(MakeWindowDesc("ns_am_loadmat"));

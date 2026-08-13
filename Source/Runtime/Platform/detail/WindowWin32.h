@@ -10,7 +10,7 @@
 namespace NS::Platform
 {
 
-    /// @brief Window の内部状態。win32 依存のシンボルはこのヘッダ以下にのみ存在する
+    //! @brief Window の内部状態。win32 依存のシンボルはこのヘッダ以下にのみ存在する
     struct Window::Impl
     {
         HWND hwnd = nullptr;
@@ -28,7 +28,7 @@ namespace NS::Platform
         Input* input = nullptr; // 入力転送先 (非所有)
         Window::MessageHook messageHook;
 
-        // false の間はクライアント領域のカーソルを消す。 WM_SETCURSOR が毎フレームこれを見て適用する
+        // false の間はクライアント領域のカーソルを消す。 WM_SETCURSOR がこの値を見て適用する
         bool cursorVisible = true;
     };
 

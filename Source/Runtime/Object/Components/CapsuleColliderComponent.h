@@ -6,47 +6,47 @@
 
 namespace NS::Object
 {
-    /// @brief カプセル collider を Scene に登録する Component
-    /// @details owner の world 変換から中心・軸・半径・半高を備えた WorldCapsule を返す
-    /// 既定は縦向き Y 軸の capsule。 local 回転で寝かせられる。 半径は X/Z scale の最大、 半高は Y scale で拡縮する
-    /// 回転と非一様 scale を併用すると近似になる
+    //! @brief カプセル collider を Scene に登録する Component
+    //! @details owner の world 変換から中心・軸・半径・半高を備えた WorldCapsule を返す
+    //! 既定は縦向き Y 軸の capsule。 local 回転で寝かせられる。 半径は X/Z scale の最大、 半高は Y scale で拡縮する
+    //! 回転と非一様 scale を併用すると近似になる
     class CapsuleColliderComponent : public ColliderComponent
     {
     public:
-        /// 既定 半径 0.4 / 半高 0.5 の縦 capsule で構築する
+        //! 既定 半径 0.4 / 半高 0.5 の縦 capsule で構築する
         CapsuleColliderComponent() noexcept;
-        /// 半径 / 半高を指定して構築する。 負は最小値にクランプ
+        //! 半径 / 半高を指定して構築する。 負は最小値にクランプ
         CapsuleColliderComponent(float radius, float halfHeight) noexcept;
 
-        /// 負は 0 にクランプ
+        //! 負は 0 にクランプ
         void SetRadius(float radius) noexcept;
         [[nodiscard]] float Radius() const noexcept;
 
-        /// 軸線分の半分の長さ、 半球を除く円柱部の半長。 負は 0 にクランプ
+        //! 軸線分の半分の長さ、 半球を除く円柱部の半長。 負は 0 にクランプ
         void SetHalfHeight(float halfHeight) noexcept;
         [[nodiscard]] float HalfHeight() const noexcept;
 
-        /// owner local 空間での中心オフセット
+        //! owner local 空間での中心オフセット
         void SetCenterOffset(const NS::Core::Vector3& offset) noexcept;
         [[nodiscard]] NS::Core::Vector3 CenterOffset() const noexcept;
 
-        /// local 回転を quaternion で直接設定 / 取得する。 保存値の復元に使う
+        //! local 回転を quaternion で直接設定 / 取得する。 保存値の復元に使う
         void SetLocalRotation(const NS::Core::Quaternion& rotation) noexcept;
         [[nodiscard]] NS::Core::Quaternion LocalRotation() const noexcept;
 
-        /// local 回転を pitch/yaw/roll の Euler 角 (度) で読み書きする。 寝かせ用に内部は quaternion 保持
+        //! local 回転を pitch/yaw/roll の Euler 角 (度) で読み書きする。 寝かせ用に内部は quaternion 保持
         void SetRotationEulerDegrees(const NS::Core::Vector3& eulerDegrees) noexcept;
         [[nodiscard]] NS::Core::Vector3 RotationEulerDegrees() const noexcept;
 
-        /// owner の world 変換に local offset / 回転を重ねた capsule を返す
-        /// axis は local 回転で回した Y 軸、 半径は X/Z scale 最大、 半高は Y scale で拡縮する
-        /// Owner 未登録時は local offset / 回転だけを反映する。 例外は投げない
+        //! owner の world 変換に local offset / 回転を重ねた capsule を返す
+        //! axis は local 回転で回した Y 軸、 半径は X/Z scale 最大、 半高は Y scale で拡縮する
+        //! Owner 未登録時は local offset / 回転だけを反映する。 例外は投げない
         [[nodiscard]] NS::Physics::Capsule WorldCapsule() const noexcept;
 
-        /// owner の world 変換を反映した世界軸並行 AABB を返す。 Owner 未登録時は local だけを反映する
+        //! owner の world 変換を反映した世界軸並行 AABB を返す。 Owner 未登録時は local だけを反映する
         [[nodiscard]] NS::Core::AABB WorldAABB() const noexcept;
 
-        /// world 座標の capsule を physics へ入れる
+        //! world 座標の capsule を physics へ入れる
         void AddToPhysics(NS::Physics::PhysicsWorld& physics) const override;
 
         NS_REFLECT_BEGIN(CapsuleColliderComponent, ColliderComponent)

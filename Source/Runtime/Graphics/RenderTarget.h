@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Core/NonCopyable.h"
 
 #include <memory>
 
@@ -17,8 +17,8 @@ namespace NS::Graphics
     {
     public:
         //! @brief 指定サイズのオフスクリーン描画先を生成する
-        //! @param size 幅と高さ。0 以下の成分があると無効なインスタンスを返す
-        //! @return 生成失敗時も非nullのインスタンスを返す（IsValid で判定する）
+        //! @param[in] size 幅と高さ。0 以下の成分があると無効なインスタンスを返す
+        //! @return 生成に失敗しても非 null を返す。成否は IsValid で見る
         [[nodiscard]] static std::unique_ptr<RenderTarget> Create(NS::Core::Size2D size);
 
         ~RenderTarget();

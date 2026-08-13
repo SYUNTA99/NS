@@ -217,6 +217,5 @@ namespace NS::Object
         return MakePose(camPos, headPos, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
     }
 
-    // 追従対象はオブジェクト間参照なので data からは空で作り、配線は後から SetTarget で結ぶ
     NS_CLASS(ThirdPersonFollowComponent)
 } // namespace NS::Object

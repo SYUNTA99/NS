@@ -197,6 +197,5 @@ namespace NS::Object
         out.push_back(item);
     }
 
-    // 共有 quad / material は scene が SetResources で注入する。未注入の間 Draw は何もしない
     NS_CLASS(ShadowComponent)
 } // namespace NS::Object

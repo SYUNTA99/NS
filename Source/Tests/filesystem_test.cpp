@@ -8,7 +8,7 @@
 
 namespace
 {
-    /// テスト用にユニークな一時パスを生成する (実時刻ナノ秒 + テスト名)
+    //! テスト用にユニークな一時パスを生成する (実時刻ナノ秒 + テスト名)
     std::filesystem::path MakeTempPath(const std::string& suffix)
     {
         const auto ns =

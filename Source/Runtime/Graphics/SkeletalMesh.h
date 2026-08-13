@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include "Runtime/Graphics/Mesh.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Graphics/Mesh.h"
 
 #include <cstddef>
 #include <memory>
@@ -11,10 +11,10 @@ namespace NS::Graphics
 {
     class Buffer;
 
-    //! スキンメッシュアニメーションで使用できるボーン（骨）の最大数
+    //! スキンメッシュで使えるボーンの最大数
     inline constexpr std::size_t k_MaxBones = 128;
 
-    //! @brief スキンメッシュ用の頂点データ構造。
+    //! @brief スキンメッシュ用の頂点データ構造
     //! @details 頂点の基本情報に加え、最大4つのボーンからインデックスとウェイトを保持する
     struct SkinnedVertex
     {
@@ -38,7 +38,7 @@ namespace NS::Graphics
         std::size_t boneCount = 0;
     };
 
-    //! シェーダへ転送するボーンの姿勢データ（ボーンパレット）
+    //! シェーダへ転送するボーンパレット
     struct BonePaletteCB
     {
         NS::Core::Matrix bones[k_MaxBones];
@@ -65,17 +65,17 @@ namespace NS::Graphics
                                                              std::size_t boneCount);
 
     //! @brief ボーン球とボーンパレットから現在ポーズのモデル空間境界を組む
-    //! @details 各球の中心を palette[i] で動かし半径そのままの箱にして全ボーン分を包む。
+    //! @details 各球の中心を palette[i] で動かし半径そのままの箱にして全ボーン分を包む
     //! 影響球が1つも無ければ fallback を返す。手足が箱を割る過小を作らない保守的な包み方
     [[nodiscard]] NS::Core::AABB MergeSkinnedBounds(const std::vector<BoneSphere>& spheres,
                                                     const NS::Core::Matrix* palette,
                                                     std::size_t paletteCount,
                                                     const NS::Core::AABB& fallback);
 
-    //! @brief スキンメッシュの形状データを管理するクラス。
-    //! @details アニメーションに必要な特殊な頂点データを保持し、描画処理へ渡す。
-    //! @note
-    //! 現在の姿勢（ボーンパレット）は描画する各キャラクター自身が管理する状態であるため、このメッシュクラス自体は姿勢データを保持しない。
+    //! @brief スキンメッシュの形状
+    //! @details ボーン番号と重みを持つ頂点データを保持し、描画へ渡す
+    //! @note 姿勢は持たない。同じメッシュを複数のキャラクターが別々のポーズで使うため、
+    //! ボーンパレットは描画する側が持つ
     class SkeletalMesh : public Mesh
     {
     public:
@@ -84,10 +84,10 @@ namespace NS::Graphics
 
         ~SkeletalMesh() override;
 
-        //! スキンメッシュ用の頂点入力レイアウト（シェーダへのデータ構造の渡し方）を取得する
+        //! スキンメッシュ用の頂点入力レイアウトを返す
         [[nodiscard]] static std::vector<InputElement> SkinnedInputLayout();
 
-        //! 実際に構築された有効なボーン数（最大数で制限済み）
+        //! 実際に構築されたボーン数 (k_MaxBones で頭打ち)
         [[nodiscard]] std::size_t BoneCount() const noexcept;
 
         //! ボーンごとの影響球。実行時に現在ポーズの境界を組むのに使う。要素数は BoneCount

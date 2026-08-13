@@ -17,10 +17,10 @@ namespace
 
     constexpr float k_Pi = 3.14159265358979323846f;
 
-    /// 1×1 wedge slope の 2 三角形 (slope quad を 2 三角に分割)
-    /// 底面サイズ 1×1 (X が水平、 Z が depth)、 高さは tan(angle)
-    /// +Z 方向に上昇する slope (normal は (0, cos(angle), -sin(angle)) で xy=0)
-    /// CCW winding は外側 (+Y, -Z 寄り) から見て反時計回り
+    //! 1×1 wedge slope の 2 三角形 (slope quad を 2 三角に分割)
+    //! 底面サイズ 1×1 (X が水平、 Z が depth)、 高さは tan(angle)
+    //! +Z 方向に上昇する slope (normal は (0, cos(angle), -sin(angle)) で xy=0)
+    //! CCW winding は外側 (+Y, -Z 寄り) から見て反時計回り
     std::array<Triangle, 2> MakeWedgeSlope(float angleDeg) noexcept
     {
         const float h = std::tan(angleDeg * k_Pi / 180.0f);
@@ -36,7 +36,7 @@ namespace
         return result;
     }
 
-    /// wedge slope 三角群を積んで broadphase まで作った physics world を返す
+    //! wedge slope 三角群を積んで broadphase まで作った physics world を返す
     PhysicsWorld MakeSlopeWorld(float angleDeg)
     {
         PhysicsWorld world;

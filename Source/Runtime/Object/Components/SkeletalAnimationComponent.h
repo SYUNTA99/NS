@@ -1,9 +1,9 @@
 #pragma once
 
+#include "Runtime/Core/Math.h"
 #include "Runtime/Graphics/Animation.h"
 #include "Runtime/Graphics/SkeletalMesh.h"
 #include "Runtime/Graphics/Skeleton.h"
-#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 
 #include <cstddef>
@@ -17,60 +17,62 @@ namespace NS::Object
 {
     class MeshRendererComponent;
 
-    /// @brief クリップを時間再生して SkeletalMesh のボーンパレットを更新する
-    /// @details fixed step ごとに再生時刻を進める。AnimationClip をサンプリングしたポーズを
-    /// Skeleton でボーンパレット化し、SkeletalMesh に渡す。再生 / 停止 / 速度 / ループ / クリップ選択を制御できる
-    /// mesh / skeleton / clips は全て非所有で、AssetManager 等の所有側が寿命を保証する。priority は Update 帯の後方
-    /// (+100、移動の後に骨を追従させる)
+    //! @brief クリップを時間再生して SkeletalMesh のボーンパレットを更新する
+    //! @details fixed step ごとに再生時刻を進める。AnimationClip をサンプリングしたポーズを
+    //! Skeleton でボーンパレット化し、SkeletalMesh に渡す。再生 / 停止 / 速度 / ループ / クリップ選択を制御できる
+    //! mesh / skeleton / clips は全て非所有で、AssetManager 等の所有側が寿命を保証する。priority は Update 帯の後方
+    //! (+100、移動の後に骨を追従させる)
     class SkeletalAnimationComponent : public Component
     {
     public:
         SkeletalAnimationComponent() noexcept;
         ~SkeletalAnimationComponent();
 
-        /// 更新先の SkeletalMesh を差し替える。非所有で null の間 ApplyPose は何もしない
+        //! 更新先の SkeletalMesh を差し替える。非所有で null の間 ApplyPose は何もしない
         void SetMesh(NS::Graphics::SkeletalMesh* mesh) noexcept;
-        /// ボーンパレット計算用の骨格を差し替える。非所有で呼出側が寿命を保証する。null の間 ApplyPose は何もしない
+        //! ボーンパレット計算用の骨格を差し替える。非所有で呼出側が寿命を保証する。null の間 ApplyPose は何もしない
         void SetSkeleton(const NS::Graphics::Skeleton* skeleton) noexcept;
 
-        /// この Component が表す skinned モデルの参照。 ContentRoot 配下の glTF 相対パス
+        //! この Component が表す skinned モデルの参照。 ContentRoot 配下の glTF 相対パス
         [[nodiscard]] const std::string& ModelRef() const noexcept { return m_modelRef; }
-        /// build 時にこの文字列から mesh / skeleton / clips を解決する。 同じ object の MeshRendererComponent の mesh も
-        /// こちらが差すので、 skinned の配置物は MeshRenderer 側の Mesh 参照を空のままにする
+        //! build 時にこの文字列から mesh / skeleton / clips を解決する。 同じ object の MeshRendererComponent の mesh
+        //! も こちらが差すので、 skinned の配置物は MeshRenderer 側の Mesh 参照を空のままにする
         void SetModelRef(std::string ref) noexcept { m_modelRef = std::move(ref); }
 
-        /// 追加で読むアニメーション glTF の参照一覧。 セミコロン区切りの ContentRoot 相対パス
+        //! 追加で読むアニメーション glTF の参照一覧。 セミコロン区切りの ContentRoot 相対パス
         [[nodiscard]] const std::string& ClipsRef() const noexcept { return m_clipsRef; }
-        /// 各エントリのクリップを骨名で model の骨格へ結合して後ろに足す。 空エントリと前後の空白は無視し、
-        /// 解決できないエントリは読み飛ばして残りを続ける
+        //! 各エントリのクリップを骨名で model の骨格へ結合して後ろに足す。 空エントリと前後の空白は無視し、
+        //! 解決できないエントリは読み飛ばして残りを続ける
         void SetClipsRef(std::string ref) noexcept { m_clipsRef = std::move(ref); }
 
         void Play() noexcept;
         void Pause() noexcept;
-        /// 再生時刻を 0 に戻して停止する
+        //! 再生時刻を 0 に戻して停止する
         void Stop() noexcept;
-        /// 負値は 0 にクランプする
+        //! 負値は 0 にクランプする
         void SetSpeed(float speed) noexcept;
         void SetLooping(bool looping) noexcept;
+        //! 添字でクリップを選び再生時刻を 0 へ戻す。 範囲外は false で選択を変えない
         bool SelectClip(std::size_t index) noexcept;
+        //! 名前一致のクリップを選ぶ。 一致が無ければ false で選択を変えない
         bool SelectClip(std::string_view name) noexcept;
 
-        /// クリップを後から追加する。既存の選択・再生位置は維持
-        /// 各要素のアドレスを控えるだけなので、格納元の寿命は呼出側が保証する。右辺値の vector を渡すと参照が宙に浮く
+        //! クリップを後から追加する。既存の選択・再生位置は維持
+        //! 各要素のアドレスを控えるだけなので、格納元の寿命は呼出側が保証する。右辺値の vector を渡すと参照が宙に浮く
         void AddClips(std::span<const NS::Graphics::AnimationClip> clips);
 
         [[nodiscard]] std::size_t ClipCount() const noexcept;
         [[nodiscard]] std::size_t CurrentClip() const noexcept;
         [[nodiscard]] float Time() const noexcept;
-        /// 現在クリップの尺。 無ければ 0
+        //! 現在クリップの尺。 無ければ 0
         [[nodiscard]] float Duration() const noexcept;
         [[nodiscard]] bool IsPlaying() const noexcept;
 
         void OnStart() override;
         void OnUpdate() override;
 
-        /// modelRef から skinned glTF を解決し mesh / skeleton / clips を差す。 同じ object の MeshRendererComponent があれば
-        /// 同じ mesh を差す。 空 / 解決不可はそのまま何もしない (SetMesh 等の手動配線を壊さない)
+        //! modelRef から skinned glTF を解決し mesh / skeleton / clips を差す。 同じ object の MeshRendererComponent
+        //! があれば 同じ mesh を差す。 空 / 解決不可はそのまま何もしない (SetMesh 等の手動配線を壊さない)
         void ResolveAssets(AssetManager& assets) override;
 
         // 再生速度 / ループを Inspector へ公開する。 毎ステップ読まれるのでライブで効き、 負速度なら逆再生になる

@@ -140,6 +140,6 @@ namespace NS::Object
         return out;
     }
 
-    // 既定コンストラクタが無いので mesh / material 空で構築し、読み込み時にリフレクション / ResolveAssets が差し込む
+    // mesh / material は空で構築し、読み込み時にリフレクションと ResolveAssets が差し込む
     NS_CLASS(MeshRendererComponent)
 } // namespace NS::Object

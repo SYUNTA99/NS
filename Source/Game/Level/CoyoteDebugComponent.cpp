@@ -1,8 +1,8 @@
 #include "Game/Level/CoyoteDebugComponent.h"
 
 #include "Runtime/App/Application.h"
-#include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/Keyboard.h"
 
@@ -36,7 +36,7 @@ namespace NS::Game::Level
                 coyoteReach = movement->MaxSpeed() * movement->CoyoteTime();
             }
 
-            // コヨーテ猶予範囲の描画 (縁のAABB天面ベース)
+            // 固形ブロック天面の縁から、コヨーテ猶予の届く範囲を描く
             std::vector<NS::Core::OBB> solidBoxes;
             solidBoxes.reserve(world.ObjectCount());
             for (NS::Object::GameObject* obj : world)
@@ -75,7 +75,7 @@ namespace NS::Game::Level
             // プレイヤー状態のデバッグ描画
             const NS::Core::Vector3 center = player->Root().Position();
 
-            // 接地判定マーカー (頭上にボックス表示)
+            // 接地判定のマーカーを頭上へボックスで出す
             const float headTop = center.y + movement->CapsuleHalfHeight() + movement->CapsuleRadius();
             const NS::Core::Color groundedColor = [movement]() -> NS::Core::Color {
                 if (movement->IsGrounded())

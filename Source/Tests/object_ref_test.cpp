@@ -16,7 +16,7 @@ namespace
     using NS::Object::Scene;
     using NS::Object::World;
 
-    /// リフレクションフィールド名で ObjectRef を書き込む。 データ経由の構築と同じ set 経路を通す
+    //! リフレクションフィールド名で ObjectRef を書き込む。 データ経由の構築と同じ set 経路を通す
     void SetTargetRef(NS::Object::Component& comp, std::uint32_t id)
     {
         const NS::Object::ReflectionInfo* info = comp.GetReflection();

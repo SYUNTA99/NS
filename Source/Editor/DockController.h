@@ -6,14 +6,14 @@
 
 namespace NS::Editor
 {
-    //! @brief ドックホストとパネル全面化を受け持つ。 レイアウトと全面化の状態を持ち、 controller には触れない
-    //! @details 各パネルの中身は描かない。 ホストの設置・ 全面化の出入り・ タブ焦点の確定だけを担い、
+    //! @brief ドックホストとパネル全面化。 レイアウトと全面化の状態を持ち、 controller には触れない
+    //! @details 各パネルの中身は描かない。 描くのはホストの設置・ 全面化の出入り・ タブ焦点の確定だけで、
     //! 全面化中にどのパネルを描くかは呼び出し側が MaximizedPanel() を見て振り分ける
     class DockController : public NS::Core::NonCopyable
     {
     public:
         //! @brief ツールバー帯の下にドックホストを 1 枚置く
-        //! @param topOffset ツールバー帯の高さ分だけ上端を空ける
+        //! @param[in] topOffset ツールバー帯の高さ分だけ上端を空ける
         //! @details ini に配置が無ければ既定レイアウトを組み、 次フレームで前面タブを確定させる
         void RenderDockSpaceHost(float topOffset) noexcept;
 

@@ -200,7 +200,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     EXPECT_TRUE(dst.objects.empty());
 }
 
-// object 数が上限を超えるレベルは保存段でクラッシュせず false を返す (メモリ枯渇による DoS の防御)
+// object 数が上限を超えるレベルは保存段でクラッシュせず false を返す。 メモリ枯渇まで走らせない
 TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
 {
     auto path = TestScenePath("test_oversized");

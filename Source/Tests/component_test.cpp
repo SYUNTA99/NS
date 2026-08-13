@@ -80,7 +80,7 @@ TEST(ComponentTest, RootTransformReturnsOwnerRoot)
 
 namespace
 {
-    /// 破棄回数を外部カウンタへ記録する Component。 GameObject 所有の寿命検証に使う
+    //! 破棄回数を外部カウンタへ記録する Component。 GameObject 所有の寿命検証に使う
     class LifetimeComponent : public NS::Object::Component
     {
     public:

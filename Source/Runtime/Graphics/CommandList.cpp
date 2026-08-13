@@ -228,7 +228,7 @@ namespace NS::Graphics
     }
 
     // 頂点シェーダー
-    // 実型は生成時のステージで決まっているので Type 検証後の static_cast は安全
+    // 実型は生成時のステージで決まる。Type を検証してから static_cast で下ろす
     void CommandList::VSSetShader(const Shader& shader) noexcept
     {
         if (m_context == nullptr)
@@ -272,7 +272,7 @@ namespace NS::Graphics
         m_context->VSSetShaderResources(slot, 1u, srvs);
     }
 
-    // サンプラーは NS にラッパ型が無いため CommonStates の生 ID3D11SamplerState* をそのまま受ける
+    // サンプラーは NS にラッパ型が無いため生の ID3D11SamplerState* をそのまま受ける
     void CommandList::VSSetSampler(ID3D11SamplerState* sampler, unsigned slot) noexcept
     {
         if (m_context == nullptr || sampler == nullptr)

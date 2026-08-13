@@ -161,7 +161,6 @@ namespace NS::Graphics
             }
 
             // 頂点を world 変換して LH で積む
-            // 頂点を world 変換して LH で積む
             geom.vertices.reserve(geom.vertices.size() + vertexCount);
             // 頂点を積むついでに軸並行境界を広げ、StaticMesh 側の二度目の全走査を省く
             NS::Core::Vector3 pmin{0.0f, 0.0f, 0.0f};
@@ -250,7 +249,7 @@ namespace NS::Graphics
                 std::swap(geom.indices[t + 1], geom.indices[t + 2]);
         }
 
-        // 三角形以外 / Draco 圧縮 primitive は skip
+        // 三角形以外と Draco 圧縮の primitive は飛ばす
         void AppendMesh(const cgltf_mesh& mesh, const float world[16], const std::string& path, MeshGeometry& geom)
         {
             for (cgltf_size p = 0; p < mesh.primitives_count; ++p)
@@ -485,7 +484,6 @@ namespace NS::Graphics
             }
 
             // 頂点を LH で積みつつ joint / weight を正規化
-            // 頂点を LH で積みつつ joint/weight を正規化
             vertices.reserve(vertices.size() + vertexCount);
             for (cgltf_size i = 0; i < vertexCount; ++i)
             {

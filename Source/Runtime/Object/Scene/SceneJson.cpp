@@ -14,11 +14,11 @@ namespace NS::Object
 {
     namespace
     {
-        /// 保存形式のバージョン。 形式を変えたら上げ、 読込は一致のみ受け付ける
-        /// 3: リフレクション欄名を日本語化。 旧欄名のファイルを黙って既定値で読まないための引き上げ
+        //! 保存形式のバージョン。 形式を変えたら上げ、 読込は一致のみ受け付ける
+        //! 3: リフレクション欄名を日本語化。 旧欄名のファイルを黙って既定値で読まないための引き上げ
         constexpr int k_FormatVersion = 3;
 
-        /// 読込時の上限。 巨大 size / 要素数による メモリ枯渇を防ぐ
+        //! 読込時の上限。 巨大 size / 要素数による メモリ枯渇を防ぐ
         constexpr std::size_t k_MaxSceneFileBytes = 16u * 1024u * 1024u;
         constexpr std::size_t k_MaxObjectCount = 100'000u;
 
@@ -27,7 +27,7 @@ namespace NS::Object
             return nlohmann::json{x, y, z};
         }
 
-        /// parent[key] が長さ 3 の数値配列なら x/y/z へ書き込む。 不在 / 型不一致は据え置きで前方互換を保つ
+        //! parent[key] が長さ 3 の数値配列なら x/y/z へ書き込む。 不在 / 型不一致は据え置きで前方互換を保つ
         void ReadVec3(const nlohmann::json& parent, const char* key, float& x, float& y, float& z)
         {
             const auto it = parent.find(key);
@@ -40,7 +40,7 @@ namespace NS::Object
             z = (*it)[2].get<float>();
         }
 
-        /// parent[key] が数値なら int で返す。 不在 / 型不一致は fallback。 手編集の 1.0 形式も拾う
+        //! parent[key] が数値なら int で返す。 不在 / 型不一致は fallback。 手編集の 1.0 形式も拾う
         int ReadInt(const nlohmann::json& parent, const char* key, int fallback)
         {
             const auto it = parent.find(key);
@@ -49,7 +49,7 @@ namespace NS::Object
             return it->get<int>();
         }
 
-        /// transform エントリから内部の回転控えを落とす。 ファイルは Euler の「回転 (度)」だけ残す
+        //! transform エントリから内部の回転控えを落とす。 ファイルは Euler の「回転 (度)」だけ残す
         void StripRotationQuatField(nlohmann::json& components)
         {
             if (!components.is_array())

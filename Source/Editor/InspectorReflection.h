@@ -61,7 +61,7 @@ namespace NS::Editor
     };
 
     //! @brief リフレクション欄 1 つの値が既定と違うか
-    //! @param defaults 既定インスタンス。 nullptr なら常に false
+    //! @param[in] defaults 既定インスタンス。 nullptr なら常に false
     [[nodiscard]] bool FieldDiffersFromDefault(const NS::Object::Component& comp,
                                                const NS::Object::Component* defaults,
                                                const NS::Object::FieldDesc& field) noexcept;
@@ -72,18 +72,18 @@ namespace NS::Editor
                               const NS::Object::FieldDesc& field) noexcept;
 
     //! @brief コンポーネントのフィールドをImGuiウィジェットとして描画する
-    //! @param comp 編集対象のコンポーネント
-    //! @param refOptions 参照先候補のリスト。指定しない場合は数値入力となる
-    //! @param defaults 既定インスタンス。 渡すと既定と違う欄に印と戻すボタンが付く
+    //! @param[in,out] comp 編集対象のコンポーネント
+    //! @param[in] refOptions 参照先候補のリスト。指定しない場合は数値入力となる
+    //! @param[in] defaults 既定インスタンス。 渡すと既定と違う欄に印と戻すボタンが付く
     //! @return 値の編集有無と、編集の開始・確定フレームを集約した結果
     [[nodiscard]] ComponentEditResult DrawReflectedComponent(NS::Object::Component& comp,
                                                              std::span<const ObjectRefOption> refOptions = {},
                                                              const NS::Object::Component* defaults = nullptr) noexcept;
 
     //! @brief ゲームオブジェクトが持つ全コンポーネントの編集UIを描画する
-    //! @param obj 編集対象のゲームオブジェクト
-    //! @param refOptions 参照先候補のリスト
-    //! @param defaults 既定インスタンスの控え。 渡すと既定と違う欄に印と戻すボタンが付く
+    //! @param[in,out] obj 編集対象のゲームオブジェクト
+    //! @param[in] refOptions 参照先候補のリスト
+    //! @param[in] defaults 既定インスタンスの控え。 渡すと既定と違う欄に印と戻すボタンが付く
     //! @return 全コンポーネント分を集約した編集結果
     [[nodiscard]] ComponentEditResult DrawObjectComponents(NS::Object::GameObject& obj,
                                                            std::span<const ObjectRefOption> refOptions = {},

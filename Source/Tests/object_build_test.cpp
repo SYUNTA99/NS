@@ -2,9 +2,7 @@
 #include "Game/Player.h"
 
 #include <Editor/EditorObjects.h>
-#include <filesystem>
 #include <Game/Level/GoalComponent.h>
-#include <gtest/gtest.h>
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/CapsuleColliderComponent.h>
@@ -18,6 +16,8 @@
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Reflection/ReflectionJson.h>
 #include <Runtime/Object/Reflection/TypeRegistry.h>
+#include <filesystem>
+#include <gtest/gtest.h>
 #include <string_view>
 #include <vector>
 
@@ -417,8 +417,8 @@ TEST_F(ObjectBuildTest, DuplicateColliderDataBuildsCompoundColliders)
     EXPECT_FLOAT_EQ(boxes[1]->HalfExtents().x, 2.0f);
 }
 
-// 統合 C-1: 実体をリフレクション serialize → 既定 component へ apply → 再 serialize で一致する (live→JSON→live の忠実性)
-// 保存を data でなく実体から作る統合の前提。 registry で組める component だけを対象にする
+// 実体をリフレクション serialize → 既定 component へ apply → 再 serialize で一致する
+// 保存を data でなく実体から作る前提。 registry で組める component だけを対象にする
 TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
@@ -448,7 +448,7 @@ TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
     }
 }
 
-// 統合 C-2: 実体を CaptureObjectData で値データへ忠実に写し、 素の GameObject へ ApplyObjectComponents で復元すると
+// 実体を CaptureObjectData で値データへ忠実に写し、 素の GameObject へ ApplyObjectComponents で復元すると
 // 元 live と component JSON が一致する。 undo とプレイ↔編集の退避・復元に使う機構を直接確かめる
 TEST_F(ObjectBuildTest, CaptureObjectDataRestoresFaithfully)
 {

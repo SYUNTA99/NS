@@ -1,10 +1,10 @@
-﻿#include <gtest/gtest.h>
-#include <Runtime/Core/Clock.h>
+﻿#include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -15,7 +15,7 @@ namespace
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
 
-    /// 衝突なしの環境で N 回 OnUpdate を呼ぶ。debug draw は false 固定
+    //! 衝突なしの環境で N 回 OnUpdate を呼ぶ。debug draw は false 固定
     void StepN(CharacterMovementComponent& mov, int n)
     {
         mov.SetDebugDrawEnabled(false);
@@ -23,8 +23,8 @@ namespace
             mov.OnUpdate();
     }
 
-    /// owner と world に床 1 枚を仕込み、 接地するまで step した CharacterMovementComponent を返す。 接地 / コヨーテ経路の
-    /// ジャンプを試す土台。 物理世界なしだと永遠に空中なので、 接地ジャンプの検証にはこれで地面を与える
+    //! owner と world に床 1 枚を仕込み、 接地するまで step した CharacterMovementComponent を返す
+    //! 物理世界なしだと永遠に空中なので、 接地ジャンプとコヨーテ猶予の検証にはこれで地面を与える
     CharacterMovementComponent& MakeGrounded(GameObject& owner, NS::Physics::PhysicsWorld& world)
     {
         auto& mov = *owner.AddComponent<CharacterMovementComponent>();

@@ -63,10 +63,8 @@ namespace NS::App
             return;
         }
 
-        // ウィンドウに入力処理を登録する
         m_window->AttachInput(&NS::Platform::Input::Get());
 
-        // ウィンドウが閉じられたら終了フラグを立てる
         m_window->SetCloseCallback([this]() { m_quitRequested = true; });
 
         m_valid = true;
@@ -151,7 +149,6 @@ namespace NS::App
 
     bool Application::WantExit() noexcept
     {
-        // ウィンドウが閉じられていたら終了する
         if (m_window->ShouldClose())
             return true;
         if (!m_quitRequested)
@@ -169,7 +166,7 @@ namespace NS::App
             }
             catch (...)
             {
-                // 例外が飛んだらログを出して、安全のため終了処理自体を一旦キャンセル（ループ継続）する
+                // 例外が飛んだら終了要求を取り下げてループを続ける
                 NS_LOG_ERROR(App, "コールバック内で例外が発生しました");
                 m_quitRequested = false;
                 return false;
@@ -189,7 +186,6 @@ namespace NS::App
         {
             window.PollMessages();
 
-            // 終了すべきかチェックする
             if (WantExit())
                 break;
 
@@ -219,7 +215,8 @@ namespace NS::App
                         if (layer->IsActive())
                             layer->OnUpdate();
                     }
-                    // 入力状態を更新する
+                    // 固定更新のたびに基準を進める。描画フレーム単位だと、
+                    // 1 フレームに 2 回更新が入った時に 2 回とも「押した瞬間」になる
                     input.Update();
                 }
             }
@@ -247,7 +244,6 @@ namespace NS::App
         for (auto it = m_layers.rbegin(); it != m_layers.rend(); ++it)
             (*it)->OnDetach();
 
-        // 終了ガードをクリアする
         m_quitGuard = nullptr;
 
         // エラーを防ぐために登録したコールバックを解除しておく

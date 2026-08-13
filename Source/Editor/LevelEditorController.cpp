@@ -289,7 +289,7 @@ void LevelEditorController::EnterPlay() noexcept
     if (m_mode == Mode::Play)
         return;
     m_mode = Mode::Play;
-    // UI がキーを掴んでいた間に押されたキーは、離した通知がゲームへ届かず押しっぱなしで残る。
+    // UI がキーを掴んでいた間に押されたキーは、離した通知がゲームへ届かず押しっぱなしで残る
     // モード遷移で持ち越さないよう消す
     if (auto* app = NS::App::Application::Get())
     {
@@ -343,14 +343,14 @@ void LevelEditorController::EnterEdit() noexcept
     if (m_mode == Mode::Edit)
         return;
     m_mode = Mode::Edit;
-    // UI がキーを掴んでいた間に押されたキーは、離した通知がゲームへ届かず押しっぱなしで残る。
+    // UI がキーを掴んでいた間に押されたキーは、離した通知がゲームへ届かず押しっぱなしで残る
     // モード遷移で持ち越さないよう消す
     if (auto* app = NS::App::Application::Get())
     {
         app->Input().Keyboard().ClearState();
         app->Input().Mouse().ClearState();
     }
-    // プレイを終えて player 凍結 / follow・area camera 休止 / 演出破棄を行う
+    // プレイを終える。player を凍結し、follow と area camera を休ませ、演出を捨てる
     LeavePlayForEdit();
     // プレイ視点から自由視点へ繋ぐ。始点は直前まで実カメラに書かれていた pose
     if (auto* brain = Brain())
@@ -560,7 +560,7 @@ void LevelEditorController::TickEdit()
         SyncFollowCameraPoses();
 
         // 毎フレーム live な scene から候補 span を作り直し、選択を id から今のオブジェクトへ引き直す
-        // Play 突入 / undo の rebuild を跨いでも生ポインタを残さないための要
+        // 作り直さないと Play 突入 / undo の rebuild で破棄された実体を指したままになる
         RefreshGizmoSelectables();
         ResolveSelectionFromId();
 

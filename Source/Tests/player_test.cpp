@@ -1,17 +1,17 @@
 #include <Game/Level/HealthComponent.h>
 #include <Game/Player.h>
-#include <gtest/gtest.h>
 #include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/Components/PlayerInputComponent.h>
 #include <Runtime/Object/Components/ShadowComponent.h>
 #include <Runtime/Object/Components/TransformComponent.h>
+#include <gtest/gtest.h>
 
 TEST(PlayerTest, ConstructsWithDefaultComposition)
 {
     Player player{};
     // GameObject が積む transform に素の 5 つ (mesh / movement / input / health / shadow) と判定への応答 4 つ
-    // (fade / respawner / finisher / area camera) を足した 10 つ。 デバッグ表示は出荷では積まれない
+    // (fade / respawner / finisher / area camera) を足した 10 個。 デバッグ表示は出荷では積まれない
     std::size_t expected = 10u;
 #if !defined(NS_SHIPPING)
     expected += 1u; // コヨーテ時間のデバッグ描画
@@ -23,7 +23,7 @@ TEST(PlayerTest, DefaultComponentsResolveByType)
 {
     Player player{};
     // priority 昇順 + 同 priority 内は宣言順:
-    //   [0] input     (Input,      0)
+    //   [0] input     (EarlyUpdate, 0)
     //   [1] transform (Update,   200) — GameObject のコンストラクタが最初に積む
     //   [2] mesh      (Update,   200) — コンストラクタで movement より前に登録
     //   [3] movement  (Update,   200)

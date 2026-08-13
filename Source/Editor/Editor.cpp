@@ -83,7 +83,7 @@ void Editor::OnAttach()
 
 void Editor::OnDetach()
 {
-    // scene 破棄の Game::OnDetach より先に呼ばれる順序で、 overlay は逆順で OnDetach されるので安全に片付く
+    // overlay は逆順で OnDetach されるので、 scene を破棄する Game::OnDetach より先にここが走る
     if (m_controller)
     {
         // world が抱えるビュー列を空にしてから、 その参照先ターゲットを破棄する
@@ -131,7 +131,7 @@ void Editor::OnRender()
     // ImGui の 1 フレームを Layer が囲う。Renderer::BeginFrame 済の RT へ EndFrame の Render が描く
     m_imgui->BeginFrame();
 
-    // ギズモ / palette / 編集ビジュアルといった編集用の上乗せ描画と 出所デバッグ入力の退避
+    // 編集用の上乗せ描画。カーソルプレビュー / カメラギズモ / 当たり線 / 選択枠 / ツールバー / ギズモ
     editor.Render();
 
     // 終了確認は UI 非表示やプレイ中でも必ず出すため m_uiVisible のゲート外で描く

@@ -139,7 +139,7 @@ namespace NS::Editor
         }
 
         ComponentEditResult result;
-        // リフレクション情報に基づき、各フィールドに対応したImGuiウィジェットを描画する
+        // リフレクションの欄を 1 つずつ ImGui ウィジェットへ落とす
         for (std::size_t i = 0; i < info->fieldCount; ++i)
         {
             const NS::Object::FieldDesc& field = info->fields[i];
@@ -215,7 +215,7 @@ namespace NS::Editor
                 NS::Object::ObjectRef value{};
                 field.get(&comp, &value);
 
-                // 参照候補リストがない場合は、IDの直接入力UIを表示する
+                // 参照候補が無ければ id を直接打たせる
                 if (refOptions.empty())
                 {
                     int id = static_cast<int>(value.id);

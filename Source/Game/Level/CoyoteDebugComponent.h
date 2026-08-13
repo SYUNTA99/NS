@@ -9,9 +9,9 @@
 
 namespace NS::Game::Level
 {
-    /// @brief コヨーテ猶予のデバッグ線を毎フレーム積む
-    /// @details 線は DebugDraw に溜まり、 scene の標準描画が吐き出す
-    /// プレイヤーに載せる。描く相手は自分の owner
+    //! @brief コヨーテ猶予のデバッグ線を毎フレーム積む
+    //! @details 線は DebugDraw に溜まり、 scene の標準描画が吐き出す
+    //! プレイヤーに載せる。描く相手は自分の owner
     class CoyoteDebugComponent : public NS::Object::Component
     {
     public:

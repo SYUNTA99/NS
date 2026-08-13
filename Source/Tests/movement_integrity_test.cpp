@@ -20,14 +20,14 @@ namespace
     constexpr int k_JumpReleaseStep = 20;
     constexpr float k_DeterministicEpsilon = 1.0e-5f;
 
-    /// 床 1 枚 (center y=-0.5, half y=0.5、 上面が y=0) のみ。 壁なし
+    //! 床 1 枚 (center y=-0.5, half y=0.5、 上面が y=0) のみ。 壁なし
     AABB MakeFloorOnly() noexcept
     {
         return AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}};
     }
 
-    /// 毎回同じ入力列で走らせて軌跡を返す
-    /// X+ へ全開で歩く。k_JumpPressStep でジャンプを押して k_JumpReleaseStep で離す (保持 10 step)
+    //! 毎回同じ入力列で走らせて軌跡を返す
+    //! X+ へ全開で歩く。k_JumpPressStep でジャンプを押して k_JumpReleaseStep で離す (保持 10 step)
     std::vector<Vector3> RunDeterministicSim()
     {
         const AABB floor = MakeFloorOnly();
@@ -65,8 +65,8 @@ protected:
     void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_FixedDt); }
 };
 
-/// 固定ステップ物理が DeltaTime や乱数を使っていなければ、同条件で 2 回走らせた軌跡は一致する
-/// std::exp を使うので EXPECT_NEAR (1e-5) で誤差を許す
+//! 固定ステップ物理が DeltaTime や乱数を使っていなければ、同条件で 2 回走らせた軌跡は一致する
+//! std::exp を使うので EXPECT_NEAR (1e-5) で誤差を許す
 TEST_F(MovementIntegrity, JumpTrajectoryIsDeterministicAcrossTwoRuns)
 {
     const auto traj1 = RunDeterministicSim();
@@ -83,8 +83,8 @@ TEST_F(MovementIntegrity, JumpTrajectoryIsDeterministicAcrossTwoRuns)
     }
 }
 
-/// ジャンプ頂点が妥当な高さ (jumpImpulse=12, gravity 25〜35) に収まること
-/// 非対称重力や頂点の重力緩和、jumpReleaseScale が絡んで厳密値は出ないので範囲は広めにとる
+//! ジャンプ頂点が妥当な高さ (jumpImpulse=12, gravity 25〜35) に収まること
+//! 非対称重力や頂点の重力緩和、jumpReleaseScale が絡んで厳密値は出ないので範囲は広めにとる
 TEST_F(MovementIntegrity, JumpReachesExpectedPeakHeightRange)
 {
     const auto trajectory = RunDeterministicSim();
@@ -100,8 +100,8 @@ TEST_F(MovementIntegrity, JumpReachesExpectedPeakHeightRange)
     EXPECT_LT(peakY, 6.0f) << "jump peak unreasonably high";
 }
 
-/// walkTau = 0.10s なら 1 秒 (60 step) でほぼ maxSpeed=8 に届く
-/// ジャンプ中は非対称重力や着地の substep で x 速度が揺れるので、ジャンプ無しの歩行だけで見る
+//! walkTau = 0.10s なら 1 秒 (60 step) でほぼ maxSpeed=8 に届く
+//! ジャンプ中は非対称重力や着地の substep で x 速度が揺れるので、ジャンプ無しの歩行だけで見る
 TEST_F(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
 {
     const AABB floor = MakeFloorOnly();

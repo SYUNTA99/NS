@@ -21,8 +21,8 @@ namespace
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
 
-    /// 1 fixed step ごとの表面状態。coyote / jump buffer 等の内部 timer は
-    /// 必ず位置・速度・接地の変化として表面に出るため、この 3 つだけで足りる
+    //! 1 fixed step ごとの表面状態。coyote / jump buffer 等の内部 timer は
+    //! 必ず位置・速度・接地の変化として表面に出るため、この 3 つだけで足りる
     struct StepRecord
     {
         Vector3 position;
@@ -30,7 +30,7 @@ namespace
         bool grounded = false;
     };
 
-    /// FNV-1a 64bit へ 4 byte を畳み込む
+    //! FNV-1a 64bit へ 4 byte を畳み込む
     uint64_t FoldFnv1a(uint64_t hash, uint32_t value) noexcept
     {
         for (int shift = 0; shift < 32; shift += 8)
@@ -41,8 +41,8 @@ namespace
         return hash;
     }
 
-    /// 軌跡全 step を 1 つのハッシュへ畳み込む。float は bit 表現のまま
-    /// 投入するため、1 bit でも挙動が変われば必ず値が変わる
+    //! 軌跡全 step を 1 つのハッシュへ畳み込む。float は bit 表現のまま
+    //! 投入するため、1 bit でも挙動が変われば必ず値が変わる
     uint64_t HashTrajectory(const std::vector<StepRecord>& trajectory) noexcept
     {
         uint64_t hash = 0xCBF29CE484222325ULL;
@@ -62,7 +62,7 @@ namespace
         return hash;
     }
 
-    /// ハッシュ不一致時の一次診断。実測ハッシュと 10 step ごとの要約を返す
+    //! ハッシュ不一致時の一次診断。実測ハッシュと 10 step ごとの要約を返す
     std::string DescribeTrajectory(const std::vector<StepRecord>& trajectory, uint64_t hash)
     {
         std::ostringstream out;
@@ -84,7 +84,7 @@ namespace
         return peak;
     }
 
-    /// ジャンプ発動の検出。impulse 12 の上向き速度は自由落下では絶対に出ない
+    //! ジャンプ発動の検出。impulse 12 の上向き速度は自由落下では絶対に出ない
     bool HasUpwardBurst(const std::vector<StepRecord>& trajectory) noexcept
     {
         for (const StepRecord& s : trajectory)
@@ -95,9 +95,9 @@ namespace
         return false;
     }
 
-    /// owner に移動 component を載せ物理 world を繋ぐ。開始位置は空中に取り、
-    /// 数 step の自然落下で着地させる。床上へ直置きすると capsule が床へめり込み、
-    /// 衝突解決が移動を丸ごと拒否して位置が固定されてしまう
+    //! owner に移動 component を載せ物理 world を繋ぐ。開始位置は空中に取り、
+    //! 数 step の自然落下で着地させる。床上へ直置きすると capsule が床へめり込み、
+    //! 衝突解決が移動を丸ごと拒否して位置が固定されてしまう
     CharacterMovementComponent& SetUpMovement(GameObject& owner,
                                               NS::Physics::PhysicsWorld& world,
                                               const Vector3& startPosition)
@@ -115,8 +115,8 @@ namespace
         return StepRecord{owner.Root().Position(), movement.Velocity(), movement.IsGrounded()};
     }
 
-    /// 平地を X+ へ全開で走り、90 step 目から入力を切って停止する
-    /// 加速の立ち上がり・最大速度巡航・減速の 3 経路を通す
+    //! 平地を X+ へ全開で走り、90 step 目から入力を切って停止する
+    //! 加速の立ち上がり・最大速度巡航・減速の 3 経路を通す
     std::vector<StepRecord> RunFlatWalk()
     {
         GameObject owner;
@@ -137,9 +137,9 @@ namespace
         return trajectory;
     }
 
-    /// 走りながらジャンプ 1 回。20 step 保持してから離すことで
-    /// 上昇の弱い重力・離し減速・頂点の重力緩和・落下の強い重力を全て通す
-    /// 床は 3 秒間の全力走行で走り抜けない長さにする
+    //! 走りながらジャンプ 1 回。20 step 保持してから離すことで
+    //! 上昇の弱い重力・離し減速・頂点の重力緩和・落下の強い重力を全て通す
+    //! 床は 3 秒間の全力走行で走り抜けない長さにする
     std::vector<StepRecord> RunSingleJump()
     {
         GameObject owner;
@@ -160,8 +160,8 @@ namespace
         return trajectory;
     }
 
-    /// 短い床を走り抜けて踏み外し、その次の step で jump press する
-    /// press 時点で空中 1 step ぶんの時間が経過しており、coyote 窓の内側を踏む
+    //! 短い床を走り抜けて踏み外し、その次の step で jump press する
+    //! press 時点で空中 1 step ぶんの時間が経過しており、coyote 窓の内側を踏む
     std::vector<StepRecord> RunCoyoteJump()
     {
         GameObject owner;
@@ -194,8 +194,8 @@ namespace
         return trajectory;
     }
 
-    /// 高所から自由落下し、着地前の空中で jump press を先行入力する
-    /// 着地の瞬間に buffer が消費されて即ジャンプする経路を固定する
+    //! 高所から自由落下し、着地前の空中で jump press を先行入力する
+    //! 着地の瞬間に buffer が消費されて即ジャンプする経路を固定する
     std::vector<StepRecord> RunJumpBuffer()
     {
         GameObject owner;
@@ -220,7 +220,7 @@ namespace
         return trajectory;
     }
 
-    /// 壁へ向かって走り続け、衝突解決で壁面手前に止まる押し戻しを固定する
+    //! 壁へ向かって走り続け、衝突解決で壁面手前に止まる押し戻しを固定する
     std::vector<StepRecord> RunWallCollision()
     {
         GameObject owner;
@@ -254,7 +254,7 @@ protected:
     void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_FixedDt); }
 };
 
-/// ハッシュ方式の前提として、同じビルドで 2 回走らせた結果が bit 一致すること
+//! ハッシュ方式の前提として、同じビルドで 2 回走らせた結果が bit 一致すること
 TEST_F(MovementGolden, HashIsStableAcrossTwoRuns)
 {
     EXPECT_EQ(HashTrajectory(RunSingleJump()), HashTrajectory(RunSingleJump()));

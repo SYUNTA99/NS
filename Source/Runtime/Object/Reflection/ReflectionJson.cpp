@@ -128,7 +128,7 @@ namespace NS::Object
         const ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr)
         {
-            // リフレクションの無いコンポは type を復元できない。 登録簿への追加漏れを黙って握り潰さず警告する
+            // リフレクションの無いコンポは type を復元できない。 宣言の書き忘れに気付けるよう警告する
             NS_LOG_WARN(Game, "リフレクションの無い Component を直列化しようとした (type 復元不可)");
             out["type"] = "";
             out["fields"] = nlohmann::json::object();

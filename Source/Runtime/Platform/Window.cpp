@@ -3,9 +3,9 @@
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/StringUtils.h"
+#include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/detail/InputWin32.h"
 #include "Runtime/Platform/detail/WindowWin32.h"
-#include "Runtime/Platform/Input.h"
 
 #include <memory>
 
@@ -17,7 +17,7 @@ namespace NS::Platform
         // Window は単一インスタンス
         Window::Impl* s_instance = nullptr;
 
-        /// Inputクラス に送る Win32 メッセージ判定
+        // Input へ送る Win32 メッセージの判定
         [[nodiscard]] constexpr bool IsInputMessage(UINT msg) noexcept
         {
             switch (msg)
@@ -112,8 +112,8 @@ namespace NS::Platform
             {
             case WM_ERASEBKGND:
             {
-                // D3Dが毎フレームPresentするため、GDI背景消去は不要。
-                // これを通すと初回Present前に白フラッシュが発生するため明示的に1を返す
+                // DX11 が毎フレーム Present するので GDI の背景消去は要らない
+                // 通すと初回 Present の前に白く光るため 1 を返して止める
                 return 1;
             }
             case WM_SIZE:

@@ -22,7 +22,7 @@ namespace NS::Graphics
         Wireframe
     };
 
-    //! 描画する色と背景色をどのように合成するか。
+    //! 描画する色と背景色をどのように合成するか
     enum class BlendMode
     {
         Opaque,
@@ -30,9 +30,8 @@ namespace NS::Graphics
         Additive
     };
 
-    //! @brief 奥行き（深度）の読み書き設定
-    //! @details
-    //! 読み取り専用（ReadOnly）は、手前にあるかどうかの判定は行うが深度情報の更新はしない設定で、半透明オブジェクトや背景の描画に使用する
+    //! @brief 深度の読み書き設定
+    //! @details ReadOnly は手前かどうかを判定するが深度を書かない。半透明と背景に使う
     enum class DepthMode
     {
         ReadWrite,
@@ -40,7 +39,7 @@ namespace NS::Graphics
         Disabled
     };
 
-    /// Pipeline 構築パラメータ
+    //! Pipeline 構築パラメータ
     struct PipelineDesc
     {
         CullMode cull = CullMode::Back;
@@ -50,13 +49,13 @@ namespace NS::Graphics
     };
 
     //! @brief ラスタライザやブレンドなどの描画ステートを一括管理するクラス
-    //! @details 描画システムにまとめて適用することで、描画設定を効率的に切り替えるために使用する
+    //! @details CommandList::SetPipeline へ渡すと 3 つのステートをまとめて適用できる
     class Pipeline : public NS::Core::NonCopyable
     {
     public:
-        //! @brief パイプラインを生成する。
-        //! @param desc 初期化パラメータ。
-        //! @return 生成失敗時も非nullのインスタンスを返すが、無効な状態となる。
+        //! @brief パイプラインを生成する
+        //! @param[in] desc 初期化パラメータ
+        //! @return 生成失敗時も非nullのインスタンスを返すが、無効な状態となる
         [[nodiscard]] static std::unique_ptr<Pipeline> Create(const PipelineDesc& desc);
 
         ~Pipeline();

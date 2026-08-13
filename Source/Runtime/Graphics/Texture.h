@@ -1,9 +1,9 @@
 ﻿#pragma once
 
+#include "Runtime/Core/Math.h"
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Graphics/D3dCommon.h"
-#include "Runtime/Core/Math.h"
 
 #include <filesystem>
 
@@ -31,16 +31,15 @@ namespace NS::Graphics
         UINT bindFlags = D3D11_BIND_SHADER_RESOURCE;
     };
 
-    //! @brief 2Dテクスチャを管理するクラス。
-    //! @details
-    //! 画像ファイルからの読み込み、空のテクスチャ（描画先など）の生成、既存リソースのラップという3つの役割を担う。
-    //! 指定された用途に応じて、必要なリソースビュー（SRV / RTV / DSV）が自動的に構築される。
-    //! @note 画像の読み込みに失敗した場合は、エラーを示す代替画像（ピンク色）が適用される。
+    //! @brief 2D テクスチャ
+    //! @details 作り方は 3 通り。画像ファイルから読む、描画先などの空のテクスチャを作る、既存リソースを包む
+    //! bindFlags に応じて SRV / RTV / DSV のうち要る物だけを作る
+    //! @note 画像の読み込みに失敗するとピンク一色のフォールバックへ差し替わる
     class Texture : public NS::Core::NonCopyable
     {
     public:
-        //! @brief ファイルからテクスチャを生成する。
-        //! @return 生成失敗時も非nullのインスタンスを返す（代替画像が適用される）
+        //! @brief ファイルからテクスチャを生成する
+        //! @return 生成に失敗しても非 null を返す。中身はフォールバックになる
         [[nodiscard]] static std::unique_ptr<Texture> Create(const TextureDesc& desc);
 
         //! ファイルパスを指定してテクスチャを生成する
@@ -54,24 +53,25 @@ namespace NS::Graphics
 
         ~Texture();
 
+        //! SRV / RTV / DSV のいずれかを作れているか
         [[nodiscard]] bool IsValid() const noexcept;
 
         //! テクスチャの幅と高さを取得する
         [[nodiscard]] NS::Core::Size2D Size() const noexcept;
 
-        //! 画像の読み込みに失敗し、代替表示（ピンク色）が適用されているか
+        //! 読み込みに失敗してピンクのフォールバックへ差し替わっているか
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-        //! 内部のグラフィックスAPI用テクスチャオブジェクトを取得する
+        //! DX11 のテクスチャを取得する
         [[nodiscard]] ID3D11Texture2D* Native() const noexcept;
 
-        //! シェーダに渡すためのリソースビューを取得する
+        //! シェーダへ渡すリソースビューを取得する
         [[nodiscard]] ID3D11ShaderResourceView* Srv() const noexcept;
 
-        //! 描画先として使用するためのレンダーターゲットビューを取得する
+        //! 描画先にするレンダーターゲットビューを取得する
         [[nodiscard]] ID3D11RenderTargetView* Rtv() const noexcept;
 
-        //! 深度テストに使用するための深度ステンシルビューを取得する
+        //! 深度テストに使う深度ステンシルビューを取得する
         [[nodiscard]] ID3D11DepthStencilView* Dsv() const noexcept;
 
     private:

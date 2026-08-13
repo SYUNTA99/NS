@@ -15,13 +15,13 @@ namespace
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
 
-    /// 中心 (cx,cy,cz)・ 1m 立方の固形 block を表す AABB
+    //! 中心 (cx,cy,cz)・ 1m 立方の固形 block を表す AABB
     NS::Core::AABB MakeBlock(float cx, float cy, float cz)
     {
         return NS::Core::AABB(NS::Core::Vector3{cx, cy, cz}, NS::Core::Vector3{0.5f, 0.5f, 0.5f});
     }
 
-    /// AABB 群を積んで broadphase まで作った physics world を返す
+    //! AABB 群を積んで broadphase まで作った physics world を返す
     NS::Physics::PhysicsWorld MakeWorld(std::span<const NS::Core::AABB> boxes)
     {
         NS::Physics::PhysicsWorld world;

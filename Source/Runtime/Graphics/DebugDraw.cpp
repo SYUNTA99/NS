@@ -163,7 +163,7 @@ namespace NS::Graphics::DebugDraw
         const NS::Core::Vector3 ey = obb.axisY * obb.halfExtentY;
         const NS::Core::Vector3 ez = obb.axisZ * obb.halfExtentZ;
 
-        // 8つの頂点座標を計算する。
+        // 8つの頂点座標を計算する
         const NS::Core::Vector3 c000 = obb.center - ex - ey - ez;
         const NS::Core::Vector3 c100 = obb.center + ex - ey - ez;
         const NS::Core::Vector3 c110 = obb.center + ex + ey - ez;

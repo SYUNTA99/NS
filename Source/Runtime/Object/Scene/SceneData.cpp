@@ -1,7 +1,7 @@
 #include "Runtime/Object/Scene/SceneData.h"
 
-#include "Runtime/Object/detail/Crc32.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
+#include "Runtime/Object/detail/Crc32.h"
 
 #include <span>
 #include <type_traits>
@@ -12,7 +12,7 @@ namespace NS::Object
 {
     namespace
     {
-        /// POD 値を std::byte span に見立てて CRC32 に流す
+        //! POD 値を std::byte span に見立てて CRC32 に流す
         template <typename T> std::uint32_t UpdateWith(std::uint32_t crc, const T& value) noexcept
         {
             static_assert(std::is_trivially_copyable_v<T>, "UpdateWith expects trivially copyable type");
@@ -20,7 +20,7 @@ namespace NS::Object
             return detail::Crc32Update(crc, std::span<const std::byte>(raw, sizeof(T)));
         }
 
-        /// 長さ + 中身バイトの順で文字列を hash する
+        //! 長さ + 中身バイトの順で文字列を hash する
         std::uint32_t UpdateWithString(std::uint32_t crc, const std::string& text) noexcept
         {
             crc = UpdateWith(crc, static_cast<std::uint64_t>(text.size()));
@@ -32,9 +32,9 @@ namespace NS::Object
             return crc;
         }
 
-        /// JSON 木を「型 tag + 値」の順で再帰 hash する。 object はキー昇順で並ぶので決定的
-        /// 整数は符号付き / 無しを同一視して 1 つの tag にまとめる。 保存 (符号付きで組む) → 読込 (非負は
-        /// 符号無しで返る) の往復で CRC が変わり「読込直後から dirty」になる事故を防ぐ
+        //! JSON 木を「型のタグ + 値」の順で再帰 hash する。 object はキー昇順で並ぶので決定的
+        //! 整数は符号付きと符号無しを 1 つのタグにまとめる。 保存は符号付きで組み読込は非負を符号無しで返すので、
+        //! 分けると往復で CRC が変わり読込直後から dirty になる
         std::uint32_t UpdateWithJson(std::uint32_t crc, const nlohmann::json& value) noexcept
         {
             if (value.is_object())
@@ -81,7 +81,7 @@ namespace NS::Object
             return UpdateWith(crc, static_cast<std::uint8_t>(0));
         }
 
-        /// ObjectData のスカラ部を宣言順で hash し、 続けて components を hash する
+        //! ObjectData のスカラ部を宣言順で hash し、 続けて components を hash する
         std::uint32_t UpdateWithObject(std::uint32_t crc, const ObjectData& object) noexcept
         {
             // スカラ部を宣言順で hash。 transform は components 内の TransformComponent として混ざる
@@ -100,7 +100,7 @@ namespace NS::Object
     {
         std::uint32_t crc = detail::k_Crc32Init;
 
-        // objects の論理 size を先に hash しておくと「append したら CRC 必ず変わる」 を保証できる
+        // objects の要素数を先に流す。 末尾へ足しただけでも CRC が変わる
         const std::uint64_t objectCount = static_cast<std::uint64_t>(objects.size());
         crc = UpdateWith(crc, objectCount);
         for (const auto& object : objects)

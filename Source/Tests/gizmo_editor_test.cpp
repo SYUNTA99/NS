@@ -108,7 +108,7 @@ namespace
     TEST(GizmoEditorComputeAxisMove, SnapRoundsToHalf)
     {
         const NS::Core::Vector3 start{2.0f, 3.0f, 4.0f};
-        // delta=1.3 -> newX=3.3 -> snap(0.5) -> 3.5
+        // 1.3 動かすと 3.3、 0.5 刻みで丸めて 3.5
         const auto r0 = MakeAxisProbeRayZ(0.0f, start.z);
         const auto r1 = MakeAxisProbeRayZ(1.3f, start.z);
         const auto out =

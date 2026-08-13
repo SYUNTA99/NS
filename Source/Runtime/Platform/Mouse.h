@@ -6,7 +6,7 @@
 namespace NS::Platform
 {
 
-    //! @brief マウスボタンの識別子。
+    //! @brief マウスボタンの識別子
     enum class MouseButton : int
     {
         Left = 0,
@@ -42,8 +42,7 @@ namespace NS::Platform
         [[nodiscard]] int GetY() const noexcept { return m_y; }
 
         //! @brief 前フレームからのX軸の移動差分を取得する
-        //! @note 相対マウスモードが有効な場合は、カーソルの画面座標差分ではなく、デバイスからの物理的な移動量（Raw
-        //! Input）を返す
+        //! @note 相対マウスモード中は画面座標の差分でなく Raw Input の物理的な移動量を返す
         [[nodiscard]] int GetDeltaX() const noexcept
         {
             if (m_relativeMode)
@@ -54,8 +53,7 @@ namespace NS::Platform
         }
 
         //! @brief 前フレームからのY軸の移動差分を取得する
-        //! @note 相対マウスモードが有効な場合は、カーソルの画面座標差分ではなく、デバイスからの物理的な移動量（Raw
-        //! Input）を返す
+        //! @note 相対マウスモード中は画面座標の差分でなく Raw Input の物理的な移動量を返す
         [[nodiscard]] int GetDeltaY() const noexcept
         {
             if (m_relativeMode)
@@ -65,7 +63,7 @@ namespace NS::Platform
             return m_y - m_prevY;
         }
 
-        //! @brief 縦方向のホイール移動量を取得する（1ステップにつき WHEEL_DELTA = 120 単位）
+        //! @brief 縦方向のホイール移動量を取得する (1 目盛りで WHEEL_DELTA = 120)
         [[nodiscard]] int GetWheelDelta() const noexcept { return m_wheel; }
 
         //! @brief 入力状態のフレーム境界を更新し、差分判定の基準を進める
@@ -83,16 +81,16 @@ namespace NS::Platform
         //! @brief OSのホイールスクロールイベントを受け取る内部API
         void OnWheel(int delta) noexcept;
 
-        //! @brief 相対マウスモードの有効/無効を切り替える。
+        //! @brief 相対マウスモードの有効/無効を切り替える
         //! @note プレイ中の視点操作など、マウスポインタが画面端に到達しても操作を継続させたい場合に有効化する
         void SetRelativeMode(bool enabled) noexcept;
 
         [[nodiscard]] bool IsRelativeMode() const noexcept { return m_relativeMode; }
 
-        //! @brief 相対マウスモード用に、OSからの生のマウス移動量（Raw Input）を蓄積する内部API
+        //! @brief 相対マウスモード用に、OS からの Raw Input の移動量を蓄積する内部 API
         void OnRawMove(int dx, int dy) noexcept;
 
-        //! @brief すべてのマウス入力状態（ボタンおよびホイール）を強制的にリセットする
+        //! @brief ボタンとホイールの入力状態を強制的にリセットする
         //! @note
         //! ウィンドウのフォーカス消失時など、ボタンが押されたまま内部で固着するバグを防ぐために利用する。座標は維持される
         void ClearState() noexcept;

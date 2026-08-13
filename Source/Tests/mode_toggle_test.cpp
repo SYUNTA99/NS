@@ -11,9 +11,9 @@
 #include <gtest/gtest.h>
 #include <utility>
 
-/// Application に依存しない Scene + LevelEditorController でモード切替と Undo 履歴の保持を確かめる
-/// Setup / OnStart は Application::Get() が要るので呼ばない。player 等は nullptr のまま
-/// 世界を回す / 止める / 一時停止の実体はシーンのスイッチで、controller はそれを操作する
+//! Application に依存しない Scene + LevelEditorController でモード切替と Undo 履歴の保持を確かめる
+//! Setup / OnStart は Application::Get() が要るので呼ばない。player 等は nullptr のまま
+//! 世界を回す / 止める / 一時停止の実体はシーンのスイッチで、controller はそれを操作する
 
 namespace
 {

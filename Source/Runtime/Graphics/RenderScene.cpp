@@ -15,7 +15,7 @@ namespace NS::Graphics
             Proxy& p = m_proxies[slot];
             p.desc = desc;
             p.alive = true;
-            // 備考: generation は Unregister で進めた値をそのまま使い回すことで、古いハンドルを無効化する
+            // generation は Unregister で進めた値を使い回し、古いハンドルを無効にする
             return RenderHandle{slot, p.generation};
         }
 
@@ -35,7 +35,7 @@ namespace NS::Graphics
         }
         Proxy& p = m_proxies[handle.slot];
         p.alive = false;
-        ++p.generation; // 世代を進めることで、外部に残存している古いハンドルを世代不一致で安全に弾く
+        ++p.generation; // 外に残った古いハンドルを世代不一致で弾く
         p.desc = RenderProxyDesc{};
         m_freeSlots.push_back(handle.slot);
     }

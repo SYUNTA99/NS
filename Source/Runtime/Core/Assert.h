@@ -5,11 +5,11 @@
 
 #if defined(NS_ENABLE_ASSERT) && NS_ENABLE_ASSERT
 
-/// @brief バグチェック用。変な値が来たらここで落とす
-/// @details リリース版だとこのマクロごと綺麗に消えるので、条件式の中に計算とか処理を書いちゃダメ
-/// @param cat ログのカテゴリ
-/// @param cond これが false だとクラッシュする
-/// @param ... 落ちたときに出すエラーメッセージ
+//! @brief 条件が偽なら Fatal ログを出してプロセスを止める
+//! @details アサートを無効にした構成ではマクロごと消えるので、条件式に処理を書かない
+//! @param[in] cat ログのカテゴリ
+//! @param[in] cond 偽の場合に停止する条件式
+//! @param[in] ... 停止時に出力するメッセージ
 #define NS_ASSERT(cat, cond, ...)                                                                                      \
     do                                                                                                                 \
     {                                                                                                                  \

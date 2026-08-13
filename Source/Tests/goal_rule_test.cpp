@@ -10,7 +10,7 @@
 namespace LevelNs = NS::Game::Level;
 namespace SceneNs = NS::Object;
 
-/// ゴール配置物が LateUpdate 帯で自分から接触を判定し、フラグを保持することを検証する
+//! ゴール配置物が LateUpdate 帯で自分から接触を判定し、フラグを保持することを検証する
 
 namespace
 {

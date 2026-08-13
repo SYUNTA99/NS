@@ -29,7 +29,7 @@ namespace
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
 
-    /// 1 step ごとのカメラ姿勢。見えはこの 3 つで決まる
+    //! 1 step ごとのカメラ姿勢。見えはこの 3 つで決まる
     struct CameraStepRecord
     {
         Vector3 position;
@@ -37,7 +37,7 @@ namespace
         float fovY = 0.0f;
     };
 
-    /// FNV-1a 64bit へ 4 byte を畳み込む
+    //! FNV-1a 64bit へ 4 byte を畳み込む
     uint64_t FoldFnv1a(uint64_t hash, uint32_t value) noexcept
     {
         for (int shift = 0; shift < 32; shift += 8)
@@ -48,7 +48,7 @@ namespace
         return hash;
     }
 
-    /// 軌跡全 step を 1 つのハッシュへ畳み込む。float は bit 表現のまま入れるので 1 bit の差も逃さない
+    //! 軌跡全 step を 1 つのハッシュへ畳み込む。float は bit 表現のまま入れるので 1 bit の差も逃さない
     uint64_t HashTrajectory(const std::vector<CameraStepRecord>& trajectory) noexcept
     {
         uint64_t hash = 0xCBF29CE484222325ULL;
@@ -65,7 +65,7 @@ namespace
         return hash;
     }
 
-    /// ハッシュ不一致時の手がかり用。実測ハッシュと 20 step ごとの要約を返す
+    //! ハッシュ不一致時の手がかり用。実測ハッシュと 20 step ごとの要約を返す
     std::string DescribeTrajectory(const std::vector<CameraStepRecord>& trajectory, uint64_t hash)
     {
         std::ostringstream out;
@@ -90,8 +90,8 @@ namespace
         return CameraStepRecord{pose.position, pose.target, pose.fovY.value};
     }
 
-    /// プレイヤー相当を床上で走らせ、追従カメラの姿勢を毎 step 記録する
-    /// 加速・ジャンプ・停止の自動ズーム全遷移と render 補間 (alpha=0.5) を 1 本の軌跡に記録する
+    //! プレイヤー相当を床上で走らせ、追従カメラの姿勢を毎 step 記録する
+    //! 加速・ジャンプ・停止の自動ズーム全遷移と render 補間 (alpha=0.5) を 1 本の軌跡に記録する
     std::vector<CameraStepRecord> RunFollowWalkJump()
     {
         GameObject player;
@@ -131,8 +131,8 @@ namespace
         return trajectory;
     }
 
-    /// 歩くプレイヤーが据え置きカメラのトリガへ進入 → 滞在 → 退出する
-    /// 進入時のブレンド・lookAtPlayer の追視・退出時の戻りブレンドを実カメラの姿勢として記録する
+    //! 歩くプレイヤーが据え置きカメラのトリガへ進入 → 滞在 → 退出する
+    //! 進入時のブレンド・lookAtPlayer の追視・退出時の戻りブレンドを実カメラの姿勢として記録する
     std::vector<CameraStepRecord> RunAreaCameraBlend()
     {
         GameObject host;
@@ -190,7 +190,7 @@ protected:
     void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_FixedDt); }
 };
 
-/// 同一 build 内の 2 run が bit 一致する前提を確かめる
+//! 同一 build 内の 2 run が bit 一致する前提を確かめる
 TEST_F(CameraGolden, HashIsStableAcrossTwoRuns)
 {
     EXPECT_EQ(HashTrajectory(RunFollowWalkJump()), HashTrajectory(RunFollowWalkJump()));

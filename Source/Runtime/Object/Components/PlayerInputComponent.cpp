@@ -13,7 +13,7 @@
 
 namespace
 {
-    /// 水平 forward を XZ 平面正規化。長さ 0 の入力は world +Z にフォールバック
+    //! 水平 forward を XZ 平面正規化。長さ 0 の入力は world +Z にフォールバック
     [[nodiscard]] NS::Core::Vector3 NormalizeHorizontal(const NS::Core::Vector3& v) noexcept
     {
         const float lenSq = v.x * v.x + v.z * v.z;

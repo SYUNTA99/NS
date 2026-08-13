@@ -15,9 +15,9 @@ namespace NS::Graphics
     class Mesh;
     class Buffer;
 
-    //! @brief マテリアルの初期構築用パラメータ。
-    //! @details 2つのシェーダーは非所有の参照として扱うため、本マテリアルの寿命中は有効に保つ必要がある。
-    //! 定数バッファサイズを0に指定した場合、内部バッファは構築されずパラメータ更新関数は機能しない。
+    //! @brief マテリアルの初期構築用パラメータ
+    //! @details 2つのシェーダーは非所有の参照として扱うため、本マテリアルの寿命中は有効に保つ必要がある
+    //! 定数バッファサイズを0に指定した場合、内部バッファは構築されずパラメータ更新関数は機能しない
     struct MaterialDesc
     {
         Shader* vertexShader = nullptr;      //!< 頂点シェーダー
@@ -28,9 +28,9 @@ namespace NS::Graphics
         int renderPriority = 0;              //!< 半透明描画時のソート優先度
     };
 
-    //! @brief シェーダー、テクスチャ、および内蔵の定数バッファを管理する汎用マテリアル。
-    //! @details シェーダーは非所有の参照として保持するため、本クラスの寿命が尽きるまで外部で有効に保つ必要がある。
-    //! サンプラは線形ラップ設定に固定されている。描画システム経由でのバインド処理を想定する。
+    //! @brief シェーダー、テクスチャ、および内蔵の定数バッファを管理する汎用マテリアル
+    //! @details シェーダーは非所有の参照として保持するため、本クラスの寿命が尽きるまで外部で有効に保つ必要がある
+    //! サンプラは線形ラップ設定に固定されている。描画システム経由でのバインド処理を想定する
     class Material : public NS::Core::NonCopyable
     {
     public:
@@ -55,8 +55,8 @@ namespace NS::Graphics
         void ClearTexture(unsigned slot) noexcept;
 
         //! @brief 定数バッファのパラメータを更新する
-        //! @details 初期化時に定数バッファサイズが0として構築された場合は何も行わない
-        //! @note 型Tは16バイトアライメント（alignas(16)）および16の倍数サイズであることが必須となる
+        //! @details 定数バッファを持たない Material では何もしない
+        //! @note T は alignas(16) で、サイズも 16 の倍数であること
         template <typename T> void SetParams(Renderer& renderer, const T& params) noexcept
         {
             static_assert((sizeof(T) % 16) == 0,

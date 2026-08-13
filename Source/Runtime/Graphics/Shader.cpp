@@ -47,7 +47,7 @@ namespace NS::Graphics
             return nullptr;
         }
 
-        // 読み込み失敗時に表示する代替シェーダ（ピンク色）
+        // 読み込みに失敗した時のピンク一色のシェーダ
         constexpr const char* k_FallbackHlsl =
             R"HLSL(struct VSInput  { float3 position : POSITION; };
         struct VSOutput { float4 position : SV_Position; };

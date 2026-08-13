@@ -24,11 +24,11 @@ namespace NS::Core
 
         constexpr const char* k_LoggerName = "ns";
         constexpr std::size_t k_RotatingMaxBytes = 5 * 1024 * 1024;
-        // ログファイルのバックアップ数 (2にすると最新＋過去2回の合計3ファイル残る)
+        // ログファイルのバックアップ数。2 なら最新と過去 2 回の 3 ファイルが残る
         constexpr std::size_t k_RotatingMaxFiles = 2;
 
         std::atomic<bool> g_initialized{false};
-        // ログのファイル名（SetLogNameで変えられる）
+        // ログのファイル名。SetLogName で変える
         std::string g_logName{"ns"};
         // 起動するたびにファイルを新しくするかどうか
         bool g_rotateOnOpen{false};
@@ -67,7 +67,6 @@ namespace NS::Core
 #if !defined(NS_SHIPPING)
             const auto logsDir = NS::Core::FileSystem::ContentRoot() / "logs";
             const std::string logFilePath = (logsDir / (g_logName + ".log")).string();
-            // ゲーム本体なら起動ごとにファイルを分ける、テスト用なら1つのファイルにまとめる設定
             auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
                 logFilePath, k_RotatingMaxBytes, k_RotatingMaxFiles, g_rotateOnOpen);
             file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread:%t] [%s:%#] %v");
@@ -99,7 +98,7 @@ namespace NS::Core
 
     void Logger::SetLogName(std::string_view name) noexcept
     {
-        // 空文字なら無視 (既にInit済みだとすぐには反映されないけど一応保存しとく)
+        // 空文字は無視する。Init 済みの間は反映されず、Shutdown 後の Init から効く
         if (name.empty())
             return;
         g_logName.assign(name);
@@ -124,7 +123,6 @@ namespace NS::Core
 
         try
         {
-            // ログファイルが作れなくてエラーになるのを防ぐため、先に logs フォルダを作っておく
 #if !defined(NS_SHIPPING)
             (void)NS::Core::FileSystem::CreateDirectories(NS::Core::FileSystem::ContentRoot() / "logs");
 #endif
@@ -143,7 +141,7 @@ namespace NS::Core
         }
         catch (const std::exception& e)
         {
-            // spdlog 構築失敗で logger がまだ無く NS_LOG_ERROR が使えないため、 標準エラー出力へ直接出す
+            // ロガー自身の構築に失敗した箇所なので、 ログ経路へは流さず標準エラー出力へ直接出す
             std::fprintf(stderr, "Logger::Init failed: %s\n", e.what());
             g_initialized.store(false);
         }

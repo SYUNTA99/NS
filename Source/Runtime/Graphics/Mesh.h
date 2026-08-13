@@ -1,8 +1,8 @@
 ﻿#pragma once
 
+#include "Runtime/Core/Math.h"
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/D3dCommon.h"
-#include "Runtime/Core/Math.h"
 
 #include <memory>
 #include <string>
@@ -14,7 +14,7 @@ namespace NS::Graphics
     class Mesh;
     class CommandList;
 
-    /// 公開 InputElement 用フォーマット。頂点属性として受け付けるフォーマットの閉集合
+    //! 公開 InputElement 用フォーマット。頂点属性として受け付けるフォーマットの閉集合
     enum class InputElementFormat
     {
         Float2, //!< R32G32_FLOAT
@@ -24,9 +24,9 @@ namespace NS::Graphics
         UInt4,  //!< R32G32B32A32_UINT
     };
 
-    /// @brief 入力レイアウトの1要素。
-    /// @details セマンティックインデックスは常に0とし、単一の入力ストリーム（スロット0）を前提とする。
-    /// オフセット値は派生クラス側で構造体のメモリ配置から算出して設定する。
+    //! @brief 入力レイアウトの1要素
+    //! @details セマンティックインデックスは常に 0、入力ストリームもスロット 0 の 1 本だけを前提とする
+    //! オフセット値は派生クラス側で構造体のメモリ配置から算出して設定する
     struct InputElement
     {
         std::string semanticName;
@@ -34,73 +34,74 @@ namespace NS::Graphics
         unsigned byteOffset = 0;
     };
 
-    /// インデックスバッファの解釈方法を表すプリミティブ形状
+    //! インデックスバッファの解釈方法を表すプリミティブ形状
     enum class Topology
     {
         TriangleList,
         LineList
     };
 
-    /// @brief 描画可能なジオメトリを表すデータの基底クラス
-    /// @details 頂点バッファ、インデックスバッファ、入力レイアウトを管理する。描画発行は自身では行わず、
-    /// 公開したデータを `DrawMesh` が読んでバインドと DrawIndexed を行う
-    /// 頂点フォーマットの決定やバッファの構築は派生クラス側で行う
+    //! @brief 描けるジオメトリの基底
+    //! @details 頂点バッファ・インデックスバッファ・入力レイアウトを持つ。自分では描かず、
+    //! 公開したデータを DrawMesh が読んでバインドと DrawIndexed を出す。
+    //! 頂点フォーマットとバッファの構築は派生が決める
     class Mesh : public NS::Core::NonCopyable
     {
     public:
         virtual ~Mesh();
 
+        //! 頂点バッファとインデックスバッファが揃っているか
         [[nodiscard]] bool IsValid() const noexcept;
 
-        /// 構築失敗でフォールバックジオメトリに切替わっているか
+        //! 構築失敗でフォールバックジオメトリに切替わっているか
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
         [[nodiscard]] std::size_t VertexCount() const noexcept;
         [[nodiscard]] std::size_t IndexCount() const noexcept;
 
-        /// @brief モデル空間の軸並行境界ボックス。カリングで world 変換して視錐台に掛ける
-        /// @details 派生が build 時に頂点から算出して登録する。未登録なら原点の単位ボックス
+        //! @brief モデル空間の軸並行境界ボックス。カリングで world 変換して視錐台に掛ける
+        //! @details 派生が build 時に頂点から算出して登録する。未登録なら原点の単位ボックス
         [[nodiscard]] const NS::Core::AABB& LocalBounds() const noexcept;
 
-        /// @brief 頂点シェーダーを利用して入力レイアウトを生成する
-        /// @param vertexShader 入力レイアウトの生成元となる頂点シェーダー
-        /// @note 生成済みの場合や、グラフィックスデバイスが無効な場合は何もしない
+        //! @brief 頂点シェーダーを利用して入力レイアウトを生成する
+        //! @param[in] vertexShader 入力レイアウトの生成元となる頂点シェーダー
+        //! @note 生成済みの場合や、グラフィックスデバイスが無効な場合は何もしない
         void CreateInputLayout(const Shader& vertexShader) noexcept;
 
-        /// 頂点バッファを返す
+        //! 頂点バッファを返す
         [[nodiscard]] const Buffer* VertexBuffer() const noexcept;
-        /// インデックスバッファを返す
+        //! インデックスバッファを返す
         [[nodiscard]] const Buffer* IndexBuffer() const noexcept;
-        /// 入力レイアウトを返す
+        //! 入力レイアウトを返す
         [[nodiscard]] ID3D11InputLayout* InputLayout() const noexcept;
-        /// プリミティブ形状を返す
+        //! プリミティブ形状を返す
         [[nodiscard]] Topology GetTopology() const noexcept;
 
     protected:
         Mesh();
 
-        /// @brief 派生クラスで構築したバッファを基底クラスに登録する
-        /// @param vertexBuffer 登録する頂点バッファ
-        /// @param indexBuffer 登録するインデックスバッファ
-        /// @param vertexCount 頂点数
-        /// @param indexCount インデックス数
-        /// @param usingFallback 代替ジオメトリとして構築されたかどうかのフラグ
-        /// @note どちらかのバッファが未割り当ての場合は無効な状態として扱われる
+        //! @brief 派生クラスで構築したバッファを基底クラスに登録する
+        //! @param[in] vertexBuffer 登録する頂点バッファ
+        //! @param[in] indexBuffer 登録するインデックスバッファ
+        //! @param[in] vertexCount 頂点数
+        //! @param[in] indexCount インデックス数
+        //! @param[in] usingFallback 代替ジオメトリとして構築されたかどうかのフラグ
+        //! @note どちらかのバッファが未割り当ての場合は無効な状態として扱われる
         void SetGeometry(std::unique_ptr<Buffer> vertexBuffer,
                          std::unique_ptr<Buffer> indexBuffer,
                          std::size_t vertexCount,
                          std::size_t indexCount,
                          bool usingFallback) noexcept;
 
-        /// @brief 派生クラスで定義した頂点フォーマットのレイアウト要素を登録する
-        /// @param elements 登録する入力レイアウトの要素配列
+        //! @brief 派生クラスで定義した頂点フォーマットのレイアウト要素を登録する
+        //! @param[in] elements 登録する入力レイアウトの要素配列
         void SetVertexLayout(std::vector<InputElement> elements) noexcept;
 
-        /// @brief 派生クラスで定義したプリミティブ形状を登録する
-        /// @param topology 登録するプリミティブ形状
+        //! @brief 派生クラスで定義したプリミティブ形状を登録する
+        //! @param[in] topology 登録するプリミティブ形状
         void SetTopology(Topology topology) noexcept;
 
-        /// @brief 派生クラスが頂点から算出したモデル空間境界ボックスを登録する
+        //! @brief 派生クラスが頂点から算出したモデル空間境界ボックスを登録する
         void SetLocalBounds(const NS::Core::AABB& bounds) noexcept;
 
     private:
@@ -116,7 +117,7 @@ namespace NS::Graphics
         bool m_usingFallback = false;
     };
 
-    /// Mesh のデータを読んで bind + DrawIndexed を発行する。Shader/Material の Bind は呼出側責任
+    //! Mesh のデータを読んで bind + DrawIndexed を発行する。Shader/Material の Bind は呼出側責任
     void DrawMesh(CommandList& commands, const Mesh& mesh) noexcept;
 
 } // namespace NS::Graphics

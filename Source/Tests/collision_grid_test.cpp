@@ -1,8 +1,8 @@
+#include <Runtime/Core/Math.h>
+#include <Runtime/Physics/CollisionGrid.h>
 #include <algorithm>
 #include <cstdint>
 #include <gtest/gtest.h>
-#include <Runtime/Core/Math.h>
-#include <Runtime/Physics/CollisionGrid.h>
 #include <vector>
 
 namespace
@@ -72,7 +72,7 @@ TEST(CollisionGridTest, QueryCoveringAllReturnsEveryIndexOnce)
         EXPECT_TRUE(Contains(out, i));
 }
 
-// 複数セルにまたがる箱は query 結果で 1 度だけ現れる (dedup)
+// 複数セルにまたがる箱は重複除去され query 結果で 1 度だけ現れる
 TEST(CollisionGridTest, LargeBoxSpanningCellsDeduped)
 {
     std::vector<AABB> boxes;

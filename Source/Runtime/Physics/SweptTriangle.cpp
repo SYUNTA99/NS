@@ -19,8 +19,8 @@ namespace
         return Vector3{v.x * inv, v.y * inv, v.z * inv};
     }
 
-    /// 接触点 `p` が三角形 `tri` 内に含まれるかを barycentric coordinate で判定する
-    /// u, v, w の 3 軸成分が全て [0, 1] 範囲内、 かつ合計 1 で内部接触とみなす
+    //! 接触点 p が三角形 tri 内に含まれるかを barycentric coordinate で判定する
+    //! u, v, w の 3 軸成分が全て [0, 1] 範囲内、 かつ合計 1 で内部接触とみなす
     [[nodiscard]] bool PointInTriangle(const Vector3& p, const Triangle& tri) noexcept
     {
         const Vector3 v0 = tri.v1 - tri.v0;
@@ -42,8 +42,8 @@ namespace
         return (u >= -k_EdgeEpsilon) && (v >= -k_EdgeEpsilon) && (w >= -k_EdgeEpsilon);
     }
 
-    /// `center` 中心、 `radius` 半径の単一 sphere が `motion` だけ移動したときに
-    /// triangle と最初に接触する TOI を返す。 非接触 / 平行 / 離反は false
+    //! center 中心、 radius 半径の単一 sphere が motion だけ移動したときに
+    //! triangle と最初に接触する TOI を返す。 非接触 / 平行 / 離反は false
     [[nodiscard]] bool SweptSphereVsTriangle(const Vector3& center,
                                              float radius,
                                              const Vector3& motion,
@@ -63,7 +63,7 @@ namespace
         // 動きが離反方向でない限り、 motion 開始時に既に接触して TOI = 0 と扱う
         if (signedDist <= radius)
         {
-            // denom > 0 の離反方向で 1 frame で plane を抜けるなら、 これ以上接触しないので skip
+            // denom > 0 の離反方向で 1 フレームのうちに plane を抜けるなら、 これ以上接触しないので飛ばす
             if (denom > 0.0f)
             {
                 const float separation = signedDist + denom;
@@ -77,7 +77,7 @@ namespace
             return true;
         }
 
-        // 通常の swept 検出: 平面と平行 / 離反する motion は no hit
+        // 通常の swept 検出: 平面と平行 / 離反する motion は当たらない
         if (denom >= -1e-9f)
             return false;
 

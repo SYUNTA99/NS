@@ -11,13 +11,13 @@ namespace NS::Editor
     //! グリッドの基本サイズ
     inline constexpr float k_GridSize = 1.0f;
 
-    //! @brief ゲーム画面を映すパネルの矩形（スクリーン座標）。編集入力の座標変換と入りの判定に使う
+    //! @brief ゲーム画面を映すパネルの矩形。スクリーン座標で、編集入力の変換と内外の判定に使う
     struct ViewRect
     {
         int x = 0;      //!< 左上のスクリーン X 座標
         int y = 0;      //!< 左上のスクリーン Y 座標
-        int width = 0;  //!< 幅（ピクセル）
-        int height = 0; //!< 高さ（ピクセル）
+        int width = 0;  //!< 幅 (ピクセル)
+        int height = 0; //!< 高さ (ピクセル)
     };
 
     //! スクリーン座標が矩形内かを返す。右端 (x+width) と下端 (y+height) は外側扱い
@@ -35,7 +35,7 @@ namespace NS::Editor
     //! 引き算するとタイトルバーと枠のぶんずれるので、ここで足して揃える
     void WindowMouseToViewSpace(int mouseX, int mouseY, int& outX, int& outY) noexcept;
 
-    //! @brief スクリーンの2D座標からワールド空間へ向かう Ray を生成する。
+    //! @brief スクリーンの2D座標からワールド空間へ向かう Ray を生成する
     [[nodiscard]] NS::Core::Ray ScreenToWorldRay(const NS::Core::Matrix& viewProjection,
                                                  NS::Core::Size2D viewport,
                                                  int mouseX,
@@ -51,7 +51,8 @@ namespace NS::Editor
                                                            float gridSize = k_GridSize) noexcept;
 
     //! @brief レイと水平な地面との交点を算出し、グリッドにスナップした座標を取得する
-    //! @return 交差しない場合はfalseを返す
+    //! @param[out] outCellCenter スナップ後のセル中心。交差した時だけ書く
+    //! @return 交差した場合 true、それ以外の場合は false
     [[nodiscard]] bool TryGroundPlaneFallback(const NS::Core::Ray& ray,
                                               NS::Core::Vector3& outCellCenter,
                                               float gridSize = k_GridSize) noexcept;

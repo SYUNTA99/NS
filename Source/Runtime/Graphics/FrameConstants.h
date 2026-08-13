@@ -1,17 +1,17 @@
 #pragma once
 
-#include "Runtime/Graphics/RenderSettings.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Graphics/RenderSettings.h"
 
 namespace NS::Graphics
 {
-    /// @brief per-draw 定数バッファ。standard.{vs,ps} と完全一致で sizeof=192、row_major LH
-    /// @details world / viewProj のオブジェクト単位値に lighting を束ねる。Material の内蔵 CB へ流す
+    //! @brief 描画 1 回ごとの定数バッファ。standard.{vs,ps} と完全一致で sizeof=208、row_major LH
+    //! @details world / viewProj のオブジェクト単位値に照明を束ねる。Material の内蔵 CB へ流す
     struct alignas(16) FrameCB
     {
         NS::Core::Matrix world{};
         NS::Core::Matrix viewProj{};
-        // lighting の既定値はプロジェクト描画既定値の RenderSettings と共有し、値の二重管理を避ける
+        // 照明の既定値はプロジェクト描画既定値の RenderSettings と共有し、値の二重管理を避ける
         NS::Core::Vector3 lightDir = NS::Graphics::RenderSettings{}.lightDir;
         float pad0 = 0.0f;
         NS::Core::Vector3 baseColor{1.0f, 1.0f, 1.0f};

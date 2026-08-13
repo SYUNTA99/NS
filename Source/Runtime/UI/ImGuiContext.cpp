@@ -41,7 +41,7 @@ namespace NS::UI
     namespace
     {
         // エディタ用の暗い配色に整える。 中間グレー地・角を落としたフラット・青の選択色へ寄せる
-        // 明るいメニューバーとドロップダウンは描画時に個別上書きするので、 ここでは触れない
+        // 明るいメニューバーとメニューのドロップダウンは Editor が描画時に上書きする
         void ApplyEditorStyle() noexcept
         {
             ImGuiStyle& style = ::ImGui::GetStyle();
@@ -64,9 +64,9 @@ namespace NS::UI
             style.ScrollbarSize = 13.0f;
             style.GrabMinSize = 8.0f;
 
-            const ImVec4 panel{0.22f, 0.22f, 0.22f, 1.0f};  // パネル地
-            const ImVec4 dark{0.16f, 0.16f, 0.16f, 1.0f};   // 入力欄・見出し・タブ地
-            const ImVec4 hover{0.28f, 0.28f, 0.28f, 1.0f};  // hover
+            const ImVec4 panel{0.22f, 0.22f, 0.22f, 1.0f}; // パネル地
+            const ImVec4 dark{0.16f, 0.16f, 0.16f, 1.0f};  // 入力欄・見出し・タブ地
+            const ImVec4 hover{0.28f, 0.28f, 0.28f, 1.0f};
             const ImVec4 accent{0.22f, 0.42f, 0.65f, 1.0f}; // 選択の青
             const ImVec4 accentDim{0.19f, 0.33f, 0.48f, 1.0f};
             const ImVec4 text{0.83f, 0.83f, 0.83f, 1.0f};
@@ -141,7 +141,7 @@ namespace NS::UI
             ::ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 1.0f;
 
         // 既定フォントは ASCII のみで日本語が ??? になるため、 システムの日本語フォントを読み込む
-        // エディタは dev 専用なので Windows のフォントパス直指定でよい。 見つからなければ ASCII 既定で続行する
+        // エディタは開発専用なので Windows のフォントパス直指定でよい。 見つからなければ ASCII 既定で続行する
         {
             constexpr const char* k_FontCandidates[] = {
                 "C:/Windows/Fonts/YuGothM.ttc",
@@ -246,7 +246,7 @@ namespace NS::UI
             return;
         ::ImGui::Render();
         ::ImGui_ImplDX11_RenderDrawData(::ImGui::GetDrawData());
-        // メインウィンドウの外へ出たパネルを、各 OS ウィンドウへ描画・present する
+        // メインウィンドウの外へ出たパネルを、各 OS ウィンドウへ描画して表示する
         if (::ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
             ::ImGui::UpdatePlatformWindows();

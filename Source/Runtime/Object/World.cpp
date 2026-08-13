@@ -74,7 +74,7 @@ namespace NS::Object
             }
 
             // 親子は全 object が揃ってから結ぶ。 子が親より前に並ぶファイルでも同じ形に組める
-            // 循環は読込の PruneInvalidParents が落とし済みで、 ここへは届かない
+            // 循環は SetParent が輪を閉じる結び付けを拒むので、 手編集のデータでも組み上がる
             // id 引きを線形で回すと体数の二乗に効くので、 組み立ての間だけ使う対応表で引く
             // 索引として持ち越さないのは、 所有リストと同期を保つ手間を抱え込まないため
             std::unordered_map<std::uint32_t, GameObject*> byObjectId;
@@ -220,7 +220,7 @@ namespace NS::Object
 
     void World::Clear()
     {
-        // 配置物は生成の逆順で破棄する。 依存し合う component の OnEndPlay 順序を生成時と対称に保つ
+        // OnEndPlay は生成の逆順で呼ぶ。 依存し合う component の後始末を生成と対称にする
         for (auto it = m_objects.rbegin(); it != m_objects.rend(); ++it)
             (*it)->OnEndPlay();
         m_objects.clear();

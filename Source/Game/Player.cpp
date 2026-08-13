@@ -116,7 +116,7 @@ NS::Object::ObjectData MakePlayerObject(const NS::Core::Vector3& position, const
     NS::Object::ObjectData object = NS::Object::MakeObjectData<Player>();
     NS::Object::SetObjectPosition(object, position);
     NS::Object::SetObjectRotation(object, rotation);
-    // cube mesh の半サイズ 0.5 を capsule 当たり radius 0.4 / 半高 0.9 に合わせる縮小
+    // cube mesh の半サイズ 0.5 を capsule 当たり radius 0.4 / 半高 0.9 に合わせる倍率
     NS::Object::SetObjectScale(object, NS::Core::Vector3{0.8f, 1.8f, 0.8f});
     return object;
 }

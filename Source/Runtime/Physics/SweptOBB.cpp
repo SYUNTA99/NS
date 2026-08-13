@@ -10,14 +10,14 @@ namespace
     using NS::Core::OBB;
     using NS::Physics::Capsule;
 
-    /// 回転のみで平行移動なしに world ベクトルを OBB local 軸へ射影する
+    //! 回転のみで平行移動なしに world ベクトルを OBB local 軸へ射影する
     [[nodiscard]] Vector3 ToLocalDir(const Vector3& v, const OBB& obb) noexcept
     {
         return Vector3{Dot(v, obb.axisX), Dot(v, obb.axisY), Dot(v, obb.axisZ)};
     }
 
-    /// start と radius の sphere が motion だけ動いた時に OBB と最初に当たる TOI を返す
-    /// 始点と変位を OBB local 軸へ移し、 原点中心の膨張 box への slab test へ帰着する
+    //! start と radius の sphere が motion だけ動いた時に OBB と最初に当たる TOI を返す
+    //! 始点と変位を OBB local 軸へ移し、 原点中心の膨張 box への slab test へ帰着する
     [[nodiscard]] bool SweptSphereVsObb(const Vector3& start,
                                         const Vector3& motion,
                                         const OBB& obb,

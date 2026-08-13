@@ -44,7 +44,7 @@ namespace NS::Physics
         m_obbs.clear();
         m_spheres.clear();
         m_capsules.clear();
-        // 空になった AABB で grid を作り直して stale セルを残さない
+        // 空になった AABB で grid を作り直して古いセルを残さない
         m_grid.Build(m_aabbs, k_GridCellSize);
     }
 
