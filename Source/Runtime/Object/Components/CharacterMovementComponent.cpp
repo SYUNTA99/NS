@@ -126,6 +126,18 @@ namespace NS::Object
         m_desiredSpeedScale = NS::Core::Clamp(speedScale01, 0.0f, 1.0f);
     }
 
+    void CharacterMovementComponent::SetMaxSpeed(float speed) noexcept
+    {
+        // 非有限値は入口で捨てる。CapsuleMover は速度を検査しないので位置まで NaN が伝わる
+        if (!std::isfinite(speed))
+            return;
+
+        if (speed < 0.0f)
+            m_maxSpeed = 0.0f;
+        else
+            m_maxSpeed = speed;
+    }
+
     void CharacterMovementComponent::SetClimbMove(float localRight, float localForward) noexcept
     {
         m_climbRight = NS::Core::Clamp(localRight, -1.0f, 1.0f);
@@ -196,7 +208,7 @@ namespace NS::Object
         }
 
 #if !defined(NS_SHIPPING)
-        // コヨーテジャンプ記録を寿命で減衰させる。 ledge 系の状態でも確実に進むよう状態を回す前に処理する
+        // コヨーテジャンプ記録を寿命で減衰させる。 ledge 系の状態は UpdateLocomotion を通らないので状態機械の外に置く
         for (CoyoteJumpMarker& marker : m_coyoteJumpMarkers)
             marker.remaining -= dt;
         std::erase_if(m_coyoteJumpMarkers, [](const CoyoteJumpMarker& m) { return m.remaining <= 0.0f; });

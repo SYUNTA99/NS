@@ -303,7 +303,7 @@ TEST_F(ObjectBuildTest, GridCubeIsRotatable)
     EXPECT_TRUE(NS::Editor::IsRotatableObject(MakeCellObject(0, 0, 0)));
 }
 
-// 自由配置の cube も固形 box なので回せる。 固形判定は BoxCollider の有無で決まり、 空構成の marker は回せない
+// 自由配置の cube も固形 box なので回せる。 固形判定には BoxCollider が要るので、 空構成の marker は回せない
 TEST_F(ObjectBuildTest, FreeCubeRotatableButEmptyMarkerNot)
 {
     ObjectData freeCube;
@@ -389,13 +389,13 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataValuesToComponents)
     ObjectData data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
     for (nlohmann::json& entry : data.components)
         if (NS::Object::ComponentEntryType(entry) == "CharacterMovementComponent")
-            NS::Object::SetField(entry, "最高速度", 11.0f);
+            NS::Object::SetField(entry, "コヨーテ時間", 0.125f);
 
     auto obj = Build(data);
     ASSERT_NE(obj, nullptr);
     auto* movement = obj->FindComponent<NS::Object::CharacterMovementComponent>();
     ASSERT_NE(movement, nullptr);
-    EXPECT_FLOAT_EQ(movement->MaxSpeed(), 11.0f);
+    EXPECT_FLOAT_EQ(movement->CoyoteTime(), 0.125f);
 }
 
 // 同型 component を重ねたデータは live でも同数立ち、 2 件目が 1 件目へ上書きされない

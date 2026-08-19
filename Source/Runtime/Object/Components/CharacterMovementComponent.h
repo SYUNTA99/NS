@@ -40,10 +40,18 @@ namespace NS::Object
         //! world 空間の目標移動方向と速度スケールを渡す。 スケールは 0..1 に丸める
         void SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept;
 
+        //! 直近に渡された目標速度スケール 0..1。走行入力が出ているかの判定に使う
+        [[nodiscard]] float DesiredSpeedScale() const noexcept { return m_desiredSpeedScale; }
+
+        //! 直近に渡された world 空間の目標移動方向。長さは入力の強さのままで正規化されていない
+        [[nodiscard]] NS::Core::Vector3 DesiredDirection() const noexcept { return m_desiredDir; }
+
         //! 掴まり中の生ローカル入力で各成分は -1..1。SetDesiredMove と別チャンネル、前=登る マップ用
         void SetClimbMove(float localRight, float localForward) noexcept;
 
+        //! ジャンプの押下を 1 回ぶん立てる。OnUpdate の最後に落ちるので次のステップには残らない
         void SetJumpPressed() noexcept;
+        //! ジャンプボタンの長押し状態を渡す。上昇中に離すと縦速度を縮めて上昇を切る
         void SetJumpHeld(bool held) noexcept;
 
         //! 衝突 query 元の physics world を非所有で借用する。 scene 無しで動かすテスト用の継ぎ目で、
@@ -83,6 +91,9 @@ namespace NS::Object
         [[nodiscard]] float CoyoteTime() const noexcept { return m_coyoteTime; }
         [[nodiscard]] float MaxSpeed() const noexcept { return m_maxSpeed; }
 
+        //! 最高速度を外から差し替える。負は 0 へ丸め、非有限値は書き込まない
+        void SetMaxSpeed(float speed) noexcept;
+
         //! デバッグ可視化を切り替える。既定は true、テストでは false にする
         void SetDebugDrawEnabled(bool enabled) noexcept { m_debugDraw = enabled; }
         [[nodiscard]] bool IsDebugDrawEnabled() const noexcept { return m_debugDraw; }
@@ -115,7 +126,6 @@ namespace NS::Object
         NS_REFLECT_FIELD(m_jumpReleaseScale, "ジャンプ離し倍率")
         NS_REFLECT_FIELD(m_coyoteTime, "コヨーテ時間")
         NS_REFLECT_FIELD(m_jumpBufferTime, "先行入力時間")
-        NS_REFLECT_FIELD(m_maxSpeed, "最高速度")
         NS_REFLECT_FIELD(m_walkSpeed, "歩き速度")
         NS_REFLECT_FIELD(m_accelTau, "加速時定数")
         NS_REFLECT_FIELD(m_decelTau, "減速時定数")

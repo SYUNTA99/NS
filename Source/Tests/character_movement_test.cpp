@@ -6,6 +6,8 @@
 #include <Runtime/Physics/PhysicsWorld.h>
 #include <gtest/gtest.h>
 
+#include <limits>
+
 namespace
 {
     using NS::Core::AABB;
@@ -15,7 +17,7 @@ namespace
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
 
-    //! 衝突なしの環境で N 回 OnUpdate を呼ぶ。debug draw は false 固定
+    //! デバッグ描画を切って N 回 OnUpdate を呼ぶ
     void StepN(CharacterMovementComponent& mov, int n)
     {
         mov.SetDebugDrawEnabled(false);
@@ -179,4 +181,46 @@ TEST_F(CharacterMovementTest, OnUpdateNoOpWhenInactive)
     mov.OnUpdate();
 
     EXPECT_FLOAT_EQ(mov.Velocity().y, 0.0f);
+}
+
+TEST_F(CharacterMovementTest, SetMaxSpeedPersists)
+{
+    CharacterMovementComponent mov;
+    mov.SetMaxSpeed(20.0f);
+    EXPECT_FLOAT_EQ(mov.MaxSpeed(), 20.0f);
+}
+
+TEST_F(CharacterMovementTest, SetMaxSpeedClampsNegativeToZero)
+{
+    CharacterMovementComponent mov;
+    mov.SetMaxSpeed(-1.0f);
+    EXPECT_FLOAT_EQ(mov.MaxSpeed(), 0.0f);
+}
+
+TEST_F(CharacterMovementTest, SetMaxSpeedIgnoresNonFinite)
+{
+    CharacterMovementComponent mov;
+    mov.SetMaxSpeed(20.0f);
+    mov.SetMaxSpeed(std::numeric_limits<float>::quiet_NaN());
+    EXPECT_FLOAT_EQ(mov.MaxSpeed(), 20.0f);
+
+    mov.SetMaxSpeed(std::numeric_limits<float>::infinity());
+    EXPECT_FLOAT_EQ(mov.MaxSpeed(), 20.0f);
+}
+
+TEST_F(CharacterMovementTest, DesiredSpeedScaleReadsBackLastInput)
+{
+    CharacterMovementComponent mov;
+    mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 0.8f);
+    EXPECT_FLOAT_EQ(mov.DesiredSpeedScale(), 0.8f);
+}
+
+TEST_F(CharacterMovementTest, DesiredDirectionReadsBackLastInput)
+{
+    CharacterMovementComponent mov;
+    mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 0.8f);
+    const Vector3 dir = mov.DesiredDirection();
+    EXPECT_FLOAT_EQ(dir.x, 1.0f);
+    EXPECT_FLOAT_EQ(dir.y, 0.0f);
+    EXPECT_FLOAT_EQ(dir.z, 0.0f);
 }

@@ -60,6 +60,7 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
         "HealthComponent",
         "KillZoneComponent",
         "MeshRendererComponent",
+        "MomentumComponent",
         "GoalComponent",
         "CameraComponent",
         "PlacedVirtualCamera",
@@ -132,7 +133,7 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 19u);
+    EXPECT_EQ(names.size(), 20u);
     EXPECT_TRUE(Contains(names, "BoxColliderComponent"));
     EXPECT_TRUE(Contains(names, "MeshRendererComponent"));
     EXPECT_TRUE(Contains(names, "CharacterMovementComponent"));
@@ -158,7 +159,6 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "ジャンプ離し倍率",
           "コヨーテ時間",
           "先行入力時間",
-          "最高速度",
           "歩き速度",
           "加速時定数",
           "減速時定数",
@@ -173,6 +173,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
         {"KillZoneComponent", {}},
         {"MeshColliderComponent", {}},
         {"MeshRendererComponent", {"基本色", "メッシュ", "マテリアル"}},
+        {"MomentumComponent", {"通常速度", "ダッシュ速度", "最高ダッシュ速度", "ダッシュ昇格秒", "最高ダッシュ昇格秒"}},
         {"GoalComponent", {}},
         {"PlacedVirtualCamera", {"注視点", "上方向", "トリガー中心", "トリガー半径", "プレイヤー追視", "優先度"}},
         {"PlayerInputComponent", {}},
@@ -239,6 +240,7 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
         {"KillZoneComponent", {}},
         {"MeshColliderComponent", {"ColliderComponent"}},
         {"MeshRendererComponent", {}},
+        {"MomentumComponent", {}},
         {"GoalComponent", {}},
         {"PlacedVirtualCamera", {"VirtualCameraComponent"}},
         {"PlayerInputComponent", {}},
