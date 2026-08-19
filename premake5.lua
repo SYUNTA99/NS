@@ -668,7 +668,10 @@ project "GameApp"
 
     -- Object の component 自己登録はどこからも参照されない TU の静的初期化に載っているため、
     -- リンカの未参照 obj 除去で無言に欠け得る。Object.lib は全 obj を強制で取り込んで防ぐ
-    linkoptions { "/WHOLEARCHIVE:Object.lib" }
+    -- Game 層の配置物 Component も同じ理由で落ちる。Source/Game/Level/ に足した Component は
+    -- 他のコードから型を参照されない限り Game.lib の中で未参照のまま残り、
+    -- 対策が無いと登録ごと捨てられてエディタのコンポーネント追加一覧に出ない
+    linkoptions { "/WHOLEARCHIVE:Object.lib", "/WHOLEARCHIVE:Game.lib" }
 
     -- 出荷 (GameRelease) のみ exe 隣へ Shaders/ Assets/ をコピーする (exe 相対で読込む配布レイアウト)
     -- 開発構成は FileSystem::ContentRoot() がリポ直下を直接読むためコピーしない (ビルド毎のコピーを排除)
@@ -850,6 +853,8 @@ project "Tests"
     }
 
     -- Game.exe と同じ理由で Object の自己登録 TU をリンカ除去から守る
+    -- Game 層は Source/Game/Level/**.cpp を直接コンパイルしていて Game.lib を link しないため、
+    -- Game.lib 側の指定は要らない。ここで守れているのは Tests が自分でコンパイルした obj だから
     linkoptions { "/WHOLEARCHIVE:Object.lib" }
 
     -- Debug / Development / GameDebug の Tests は editor / ImGui を呼ぶため UI + imgui を link する。
