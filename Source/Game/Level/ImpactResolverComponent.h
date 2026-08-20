@@ -43,7 +43,7 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_reboundUpSpeed, "反発の上向き初速")
         NS_REFLECT_FIELD(m_launchSpeed, "押し飛ばし基準初速")
         NS_REFLECT_FIELD(m_launchUpScale, "押し飛ばしの浮き上がり")
-        NS_REFLECT_FIELD(m_hitStopScale, "ヒットストップ基準歩数")
+        NS_REFLECT_FIELD(m_hitStopBaseSeconds, "ヒットストップ基準秒")
         NS_REFLECT_FIELD(m_pushInDistance, "食い込み距離")
         NS_REFLECT_FIELD(m_shakeAmplitude, "振動の振幅")
         NS_REFLECT_FIELD(m_cameraShakeScale, "カメラ揺れの強さ")
@@ -63,14 +63,15 @@ namespace NS::Game::Level
         // 勢いの比と質量から止める歩数を出す。0 なら止めない
         [[nodiscard]] int ComputeHitStopSteps(float ratio, float mass) const noexcept;
 
-        float m_reboundSpeed = 9.0f;      // 動かない壁に通常速度で当たった時の返りの速さ
-        float m_reboundUpSpeed = 3.0f;    // 反発の上向き初速
-        float m_launchSpeed = 14.0f;      // 通常速度で質量 1 の物に与える水平初速
-        float m_launchUpScale = 0.35f;    // 水平初速に対する上向きの比
-        float m_hitStopScale = 4.0f;      // 質量 1 へ通常速度で当てた時に止める歩数
-        float m_pushInDistance = 0.06f;   // 凍結の頭で相手を発射方向へ食い込ませる距離
-        float m_shakeAmplitude = 0.05f;   // 凍結中の往復の振れ幅。質量 1 で半分になる
-        float m_cameraShakeScale = 0.06f; // カメラ揺れの上下振れ幅の基準
+        float m_reboundSpeed = 9.0f;   // 動かない壁に通常速度で当たった時の返りの速さ
+        float m_reboundUpSpeed = 3.0f; // 反発の上向き初速
+        float m_launchSpeed = 14.0f;   // 通常速度で質量 1 の物に与える水平初速
+        float m_launchUpScale = 0.35f; // 水平初速に対する上向きの比
+        // 既定の固定ステップ (1/60 秒) の 4 歩ぶん
+        float m_hitStopBaseSeconds = 4.0f / 60.0f; // 質量 1 へ通常速度で当てた時に止める秒
+        float m_pushInDistance = 0.06f;            // 凍結の頭で相手を発射方向へ食い込ませる距離
+        float m_shakeAmplitude = 0.05f;            // 凍結中の往復の振れ幅。質量 1 で半分になる
+        float m_cameraShakeScale = 0.06f;          // カメラ揺れの上下振れ幅の基準
 
         int m_hitStopRemaining = 0;                                  // 止まっている残り歩数。0 は止まっていない
         int m_hitStopTotal = 0;                                      // 止め始めの歩数。振動の減衰の分母

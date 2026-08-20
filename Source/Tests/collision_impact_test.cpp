@@ -111,7 +111,7 @@ namespace
     // ヒットストップを 0 にして、衝突の結果をその歩のうちに適用させる
     void SetInstantImpact(Rig& rig)
     {
-        SetFloatField(*rig.impact, "ヒットストップ基準歩数", 0.0f);
+        SetFloatField(*rig.impact, "ヒットストップ基準秒", 0.0f);
     }
 
     // 自機の移動が起きるまで回して掛かった歩数を返す。起きなければ maxSteps を返す
@@ -637,6 +637,22 @@ TEST(CollisionImpact, HitStopDefersGraceUntilRelease)
 
     Step(scene);
     EXPECT_FLOAT_EQ(rig.momentum->GraceSeconds(), k_FixedDt);
+}
+
+// 基準は秒で指定し、内部で歩数へ換算して凍結の長さを決める
+TEST(CollisionImpact, HitStopBaseSecondsDrivesFreezeLength)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    SetFloatField(*rig.impact, "ヒットストップ基準秒", 8.0f / 60.0f);
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+    ASSERT_TRUE(rig.impact->DidRebound());
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+
+    // 質量 1 × 勢いの比 1 なので、秒 ÷ 固定ステップ = 8 歩ちょうど止まる
+    EXPECT_EQ(StepsUntilMovementActive(scene, rig, 60), 8);
 }
 
 // 凍結の頭で岩が発射方向へ食い込む。physics 側の当たりは動かない

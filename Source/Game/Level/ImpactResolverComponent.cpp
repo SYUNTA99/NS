@@ -239,7 +239,7 @@ namespace NS::Game::Level
     int ImpactResolverComponent::ComputeHitStopSteps(float ratio, float mass) const noexcept
     {
         // 質量差をそのまま歩数に出すと停止が伸びすぎるので平方根で圧縮する
-        const float raw = m_hitStopScale * ratio * std::sqrt(mass);
+        const float raw = m_hitStopBaseSeconds * ratio * std::sqrt(mass) / NS::Core::FrameTimer::FixedDelta();
         if (!std::isfinite(raw))
             return 0;
         const int steps = static_cast<int>(std::lround(raw));
