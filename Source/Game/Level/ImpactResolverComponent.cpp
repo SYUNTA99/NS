@@ -1,6 +1,7 @@
 #include "Game/Level/ImpactResolverComponent.h"
 
 #include "Game/Level/BreakableComponent.h"
+#include "Game/Level/LaunchedBodyComponent.h"
 #include "Game/Level/MomentumComponent.h"
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Core/LogCategories.h"
@@ -22,6 +23,16 @@ namespace NS::Game::Level
     {
         // 向きと言える下限 0.0001 の 2 乗。完全に重なると正規化が 0 除算になり、NaN が速度へ流れる
         constexpr float k_MinDirectionLengthSq = 1e-8f;
+
+        // 質量の下限 0.01 で割ると初速が 100 倍まで跳ねる。画面の外へ消える前に頭打ちにする
+        constexpr float k_MaxLaunchSpeed = 60.0f;
+
+        // 反発の頭打ち。最高ダッシュ 16 の 1.5 倍。質量因子は 1 未満に飽和するので通常の遊びでは届かず、
+        // 基準初速に桁違いの値を入れた時に操作の成立を守る
+        constexpr float k_MaxReboundSpeed = 24.0f;
+
+        // 止める歩数の上限 12 歩 (0.2 秒)。これより長い停止は衝突の重さではなく処理落ちに見える
+        constexpr int k_MaxHitStopSteps = 12;
     } // namespace
 
     // MomentumComponent の 50 より後。先に走ると BeginGrace した猶予がその固定ステップのうちに解ける
@@ -88,6 +99,15 @@ namespace NS::Game::Level
         if (m_movement == nullptr || m_momentum == nullptr)
             return;
 
+        // 止まっている間は新しい衝突を見ない。凍った自機は重なったままなので、見ると毎歩検知し直す
+        if (m_hitStopRemaining > 0)
+        {
+            --m_hitStopRemaining;
+            if (m_hitStopRemaining == 0)
+                ReleaseHitStop();
+            return;
+        }
+
         BreakableComponent* hit = FindOverlapped();
         if (hit == nullptr)
             return;
@@ -121,10 +141,71 @@ namespace NS::Game::Level
         if (velocity.x * awayX + velocity.z * awayZ >= 0.0f)
             return;
 
-        m_movement->SetVelocity(NS::Core::Vector3{awayX * m_reboundSpeed, m_reboundUpSpeed, awayZ * m_reboundSpeed});
-        m_momentum->BeginGrace();
+        // 当たった瞬間の水平速度を通常速度で割った比が勢いの強さ。反発も発射もこの 1 つの比から作る
+        const float impactSpeed = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+        const float normalSpeed = m_momentum->SpeedForLevel(MomentumLevel::Normal);
+        float ratio = 0.0f;
+        if (normalSpeed > 0.0f)
+            ratio = impactSpeed / normalSpeed;
+        const float mass = hit->Mass();
+
+        // 質量因子 mass/(mass+1) は質量が大きいほど 1 へ寄る。重い物は入った速さがほぼそのまま返り、
+        // 軽い物は勢いを持っていくのでほとんど返らない
+        float rebound = m_reboundSpeed * ratio * (mass / (mass + 1.0f));
+        rebound = NS::Core::Clamp(rebound, 0.0f, k_MaxReboundSpeed);
+
+        // 質量で割ると重い物ほど飛ばない
+        float launch = m_launchSpeed * ratio / mass;
+        launch = NS::Core::Clamp(launch, 0.0f, k_MaxLaunchSpeed);
+
+        m_pendingSelfVelocity = NS::Core::Vector3{awayX * rebound, m_reboundUpSpeed, awayZ * rebound};
+        m_pendingLaunchVelocity = NS::Core::Vector3{-awayX * launch, launch * m_launchUpScale, -awayZ * launch};
+        m_pendingTargetId = hit->Owner()->Id();
         m_didRebound = true;
-        NS_LOG_INFO(Game, "反発: 質量 {} 耐久 {}", hit->Mass(), hit->Toughness());
+        NS_LOG_INFO(Game, "衝突: 質量 {} 耐久 {} 返り {} 押し飛ばし {}", mass, hit->Toughness(), rebound, launch);
+
+        const int stopSteps = ComputeHitStopSteps(ratio, mass);
+        if (stopSteps <= 0)
+        {
+            ReleaseHitStop();
+            return;
+        }
+
+        // 自機を寝かせて凍らせる。World::UpdateObjects は active をその場で見るので同じ歩から効く
+        m_hitStopRemaining = stopSteps;
+        m_movement->SetActive(false);
+        NS_LOG_INFO(Game, "ヒットストップ: {} 歩", stopSteps);
+    }
+
+    void ImpactResolverComponent::ReleaseHitStop()
+    {
+        m_movement->SetActive(true);
+        m_movement->SetVelocity(m_pendingSelfVelocity);
+        // 猶予はここから数え始める。止まっている間に数えると、操作できないまま猶予が減る
+        m_momentum->BeginGrace();
+
+        NS::Object::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+            return;
+        // 相手は id で引き直す。止まっている数歩の間に消されていたら発射だけ諦める
+        NS::Object::GameObject* target = scene->World().FindByObjectId(m_pendingTargetId);
+        if (target == nullptr)
+            return;
+        // 積み忘れた配置物でも押し飛ばせるよう、無ければその場で足す
+        auto* body = target->FindComponent<LaunchedBodyComponent>();
+        if (body == nullptr)
+            body = target->AddComponent<LaunchedBodyComponent>();
+        body->Launch(m_pendingLaunchVelocity);
+    }
+
+    int ImpactResolverComponent::ComputeHitStopSteps(float ratio, float mass) const noexcept
+    {
+        // 質量は平方根で圧縮する。質量の幅は 100 倍あるが、停止は 1 秒の何分の一かに収めたい
+        const float raw = m_hitStopScale * ratio * std::sqrt(mass);
+        if (!std::isfinite(raw))
+            return 0;
+        const int steps = static_cast<int>(std::lround(raw));
+        return NS::Core::Clamp(steps, 0, k_MaxHitStopSteps);
     }
 
     NS_CLASS(ImpactResolverComponent)

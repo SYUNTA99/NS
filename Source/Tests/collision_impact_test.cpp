@@ -3,19 +3,24 @@
 
 #include <Game/Level/BreakableComponent.h>
 #include <Game/Level/ImpactResolverComponent.h>
+#include <Game/Level/LaunchedBodyComponent.h>
 #include <Game/Level/MomentumComponent.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/CharacterMovementComponent.h>
+#include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Reflection/TypeRegistry.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/World.h>
+#include <Runtime/Physics/PhysicsWorld.h>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <gtest/gtest.h>
+#include <limits>
 #include <string_view>
 #include <utility>
 
@@ -30,6 +35,9 @@ namespace
     constexpr float k_ReboundSpeed = 9.0f;
     constexpr float k_ReboundUpSpeed = 3.0f;
     constexpr float k_RunSpeed = 8.0f;
+    constexpr float k_MaxDashSpeed = 16.0f;
+    constexpr float k_LaunchSpeedCap = 60.0f;
+    constexpr float k_ReboundSpeedCap = 24.0f;
 
     struct Rig
     {
@@ -37,6 +45,7 @@ namespace
         LevelNs::MomentumComponent* momentum = nullptr;
         LevelNs::ImpactResolverComponent* impact = nullptr;
         SceneNs::BoxColliderComponent* targetBox = nullptr;
+        LevelNs::BreakableComponent* breakable = nullptr;
     };
 
     Rig Build(
@@ -67,7 +76,16 @@ namespace
         }
         scene.World().ForEachComponent<SceneNs::BoxColliderComponent>(
             [&rig](SceneNs::BoxColliderComponent& box) { rig.targetBox = &box; });
+        scene.World().ForEachComponent<LevelNs::BreakableComponent>(
+            [&rig](LevelNs::BreakableComponent& breakable) { rig.breakable = &breakable; });
         return rig;
+    }
+
+    LevelNs::LaunchedBodyComponent* HitBody(const Rig& rig)
+    {
+        if (rig.targetBox == nullptr)
+            return nullptr;
+        return rig.targetBox->Owner()->FindComponent<LevelNs::LaunchedBodyComponent>();
     }
 
     void Step(SceneNs::Scene& scene)
@@ -86,6 +104,83 @@ namespace
         ASSERT_NE(field, nullptr);
         field->set(&comp, &value);
     }
+
+    // ヒットストップを 0 にして、衝突の結果をその歩のうちに適用させる
+    void SetInstantImpact(Rig& rig)
+    {
+        SetFloatField(*rig.impact, "ヒットストップ基準歩数", 0.0f);
+    }
+
+    // 自機の移動が起きるまで回して掛かった歩数を返す。起きなければ maxSteps を返す
+    int StepsUntilMovementActive(SceneNs::Scene& scene, const Rig& rig, int maxSteps)
+    {
+        for (int i = 0; i < maxSteps; ++i)
+        {
+            Step(scene);
+            if (rig.movement->IsActiveSelf())
+                return i + 1;
+        }
+        return maxSteps;
+    }
+
+    // 飛んで着地して滑り切るまでの道。狭いと端から落ちて停止の検証にならない
+    constexpr std::int16_t k_FloorFirstX = -2;
+    constexpr std::int16_t k_FloorLastX = 8;
+    constexpr float k_BodyRestY = 1.0f; // 床の上面 0.5 に半分の高さ 0.5 を足した静止の高さ
+    constexpr float k_LaunchGravity = -25.0f;
+    constexpr int k_RestStepLimit = 600;
+
+    struct BodyRig
+    {
+        SceneNs::GameObject* object = nullptr;
+        LevelNs::LaunchedBodyComponent* body = nullptr;
+        SceneNs::BoxColliderComponent* box = nullptr;
+        std::size_t restingAabbs = 0;
+    };
+
+    // 床を 1 列並べ、その上へ飛ばされる物を 1 個置く検証台。自機は要らない
+    BodyRig BuildBody(SceneNs::Scene& scene)
+    {
+        NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+
+        SceneNs::SceneData data;
+        for (std::int16_t x = k_FloorFirstX; x <= k_FloorLastX; ++x)
+            data.objects.push_back(LevelNs::MakeCellObject(x, 0, 0));
+
+        SceneNs::ObjectData target = LevelNs::MakeCellObject(0, 1, 0);
+        target.components.push_back(SceneNs::MakeComponentEntry("LaunchedBodyComponent"));
+        data.objects.push_back(target);
+        scene.LoadFromData(std::move(data));
+
+        BodyRig rig;
+        scene.World().ForEachComponent<LevelNs::LaunchedBodyComponent>(
+            [&rig](LevelNs::LaunchedBodyComponent& body) { rig.body = &body; });
+        if (rig.body != nullptr)
+        {
+            rig.object = rig.body->Owner();
+            rig.box = rig.object->FindComponent<SceneNs::BoxColliderComponent>();
+        }
+        rig.restingAabbs = scene.Physics().Aabbs().size();
+        return rig;
+    }
+
+    // 飛ばされる物が乗る帯だけを回す
+    void StepBody(SceneNs::Scene& scene)
+    {
+        scene.World().UpdateObjects(SceneNs::TickPriority::Update, SceneNs::TickPriority::LateUpdate);
+    }
+
+    // 止まるまで回して掛かった歩数を返す。止まらなければ maxSteps を返す
+    int RunUntilRest(SceneNs::Scene& scene, LevelNs::LaunchedBodyComponent& body, int maxSteps)
+    {
+        for (int i = 0; i < maxSteps; ++i)
+        {
+            StepBody(scene);
+            if (!body.IsFlying())
+                return i + 1;
+        }
+        return maxSteps;
+    }
 } // namespace
 
 TEST(CollisionImpact, ReboundsAwayFromApproachedBox)
@@ -94,6 +189,7 @@ TEST(CollisionImpact, ReboundsAwayFromApproachedBox)
     Rig rig = Build(scene, Vector3{}, 1, 0, true);
     ASSERT_NE(rig.movement, nullptr);
     ASSERT_NE(rig.impact, nullptr);
+    SetInstantImpact(rig);
     rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
 
     Step(scene);
@@ -104,21 +200,73 @@ TEST(CollisionImpact, ReboundsAwayFromApproachedBox)
     EXPECT_FLOAT_EQ(rig.movement->Velocity().z, 0.0f);
 }
 
-TEST(CollisionImpact, ReboundHorizontalSpeedMatchesReboundSpeed)
+// 入りが速いほど返りも速い。速く行くほど損になると、勢いを作る意味が消える
+TEST(CollisionImpact, FasterImpactReboundsFaster)
+{
+    SceneNs::Scene normalScene;
+    Rig normal = Build(normalScene, Vector3{}, 1, 0, true);
+    SetInstantImpact(normal);
+    normal.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    Step(normalScene);
+
+    SceneNs::Scene maxScene;
+    Rig maxDash = Build(maxScene, Vector3{}, 1, 0, true);
+    SetInstantImpact(maxDash);
+    maxDash.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+    Step(maxScene);
+
+    ASSERT_TRUE(normal.impact->DidRebound());
+    ASSERT_TRUE(maxDash.impact->DidRebound());
+    const float slow = HorizontalSpeed(normal.movement->Velocity());
+    const float fast = HorizontalSpeed(maxDash.movement->Velocity());
+    EXPECT_GT(slow, 0.0f);
+    EXPECT_GT(fast, slow);
+}
+
+// 重い物ほど壁として返す。軽い物は勢いを持っていくので返りが弱い
+TEST(CollisionImpact, HeavierTargetReboundsHarder)
+{
+    SceneNs::Scene lightScene;
+    Rig light = Build(lightScene, Vector3{}, 1, 0, true);
+    SetInstantImpact(light);
+    ASSERT_NE(light.breakable, nullptr);
+    light.breakable->SetMass(1.0f);
+    light.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    Step(lightScene);
+
+    SceneNs::Scene heavyScene;
+    Rig heavy = Build(heavyScene, Vector3{}, 1, 0, true);
+    SetInstantImpact(heavy);
+    ASSERT_NE(heavy.breakable, nullptr);
+    heavy.breakable->SetMass(8.0f);
+    heavy.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    Step(heavyScene);
+
+    const float weak = HorizontalSpeed(light.movement->Velocity());
+    const float strong = HorizontalSpeed(heavy.movement->Velocity());
+    EXPECT_GT(weak, 0.0f);
+    EXPECT_GT(strong, weak);
+}
+
+TEST(CollisionImpact, ReboundSpeedIsCapped)
 {
     SceneNs::Scene scene;
     Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    SetInstantImpact(rig);
+    SetFloatField(*rig.impact, "反発基準初速", 100.0f);
     rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
 
     Step(scene);
 
-    EXPECT_FLOAT_EQ(HorizontalSpeed(rig.movement->Velocity()), k_ReboundSpeed);
+    ASSERT_TRUE(rig.impact->DidRebound());
+    EXPECT_FLOAT_EQ(HorizontalSpeed(rig.movement->Velocity()), k_ReboundSpeedCap);
 }
 
 TEST(CollisionImpact, ReboundAddsUpSpeed)
 {
     SceneNs::Scene scene;
     Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    SetInstantImpact(rig);
     rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
 
     Step(scene);
@@ -131,6 +279,7 @@ TEST(CollisionImpact, ReboundStartsMomentumGrace)
     SceneNs::Scene scene;
     Rig rig = Build(scene, Vector3{}, 1, 0, true);
     ASSERT_NE(rig.momentum, nullptr);
+    SetInstantImpact(rig);
     rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
     ASSERT_FALSE(rig.movement->IsGrounded());
 
@@ -147,25 +296,27 @@ TEST(CollisionImpact, ReboundDirectionFollowsBoxAxis)
 {
     SceneNs::Scene scene;
     Rig rig = Build(scene, Vector3{}, 0, 1, true);
+    SetInstantImpact(rig);
     rig.movement->SetVelocity(Vector3{0.0f, 0.0f, k_RunSpeed});
 
     Step(scene);
 
     EXPECT_TRUE(rig.impact->DidRebound());
     EXPECT_FLOAT_EQ(rig.movement->Velocity().x, 0.0f);
-    EXPECT_FLOAT_EQ(rig.movement->Velocity().z, -k_ReboundSpeed);
+    EXPECT_LT(rig.movement->Velocity().z, 0.0f);
 }
 
 TEST(CollisionImpact, ReboundsFromDeepOverlapWhenApproaching)
 {
     SceneNs::Scene scene;
     Rig rig = Build(scene, Vector3{0.55f, 0.0f, 0.0f}, 1, 0, true);
+    SetInstantImpact(rig);
     rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
 
     Step(scene);
 
     EXPECT_TRUE(rig.impact->DidRebound());
-    EXPECT_FLOAT_EQ(rig.movement->Velocity().x, -k_ReboundSpeed);
+    EXPECT_LT(rig.movement->Velocity().x, 0.0f);
 }
 
 TEST(CollisionImpact, DoesNotReapplyWhileSeparating)
@@ -231,13 +382,15 @@ TEST(CollisionImpact, ReboundFieldsDriveVelocity)
 {
     SceneNs::Scene scene;
     Rig rig = Build(scene, Vector3{}, 1, 0, true);
-    SetFloatField(*rig.impact, "反発初速", 5.0f);
+    SetInstantImpact(rig);
+    SetFloatField(*rig.impact, "反発基準初速", 5.0f);
     SetFloatField(*rig.impact, "反発の上向き初速", 1.0f);
     rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
 
     Step(scene);
 
-    EXPECT_FLOAT_EQ(rig.movement->Velocity().x, -5.0f);
+    // 返り = 基準 5 × 勢いの比 1 × 質量因子 1/(1+1)
+    EXPECT_FLOAT_EQ(rig.movement->Velocity().x, -2.5f);
     EXPECT_FLOAT_EQ(rig.movement->Velocity().y, 1.0f);
 }
 
@@ -249,4 +402,383 @@ TEST(CollisionImpact, IsCreatableFromTypeName)
     ASSERT_NE(comp->GetReflection(), nullptr);
     EXPECT_STREQ(comp->GetReflection()->typeName, "ImpactResolverComponent");
     EXPECT_EQ(obj.FindComponent<LevelNs::ImpactResolverComponent>(), comp);
+}
+
+TEST(CollisionImpact, ReboundLaunchesHitBody)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    ASSERT_EQ(HitBody(rig), nullptr);
+    SetInstantImpact(rig);
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+
+    ASSERT_TRUE(rig.impact->DidRebound());
+    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    ASSERT_NE(body, nullptr);
+    EXPECT_TRUE(body->IsFlying());
+}
+
+TEST(CollisionImpact, LaunchDirectionFollowsApproach)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    SetInstantImpact(rig);
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+
+    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    ASSERT_NE(body, nullptr);
+    const Vector3 toBox = rig.targetBox->WorldAABB().Center - Vector3{};
+    const Vector3 launch = body->Velocity();
+    EXPECT_GT(launch.x * toBox.x + launch.z * toBox.z, 0.0f);
+}
+
+TEST(CollisionImpact, LaunchLiftsHitBody)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    SetInstantImpact(rig);
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+
+    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    ASSERT_NE(body, nullptr);
+    EXPECT_GT(body->Velocity().y, 0.0f);
+    EXPECT_LT(body->Velocity().y, HorizontalSpeed(body->Velocity()));
+}
+
+TEST(CollisionImpact, HeavierBodyLaunchesSlower)
+{
+    SceneNs::Scene lightScene;
+    Rig light = Build(lightScene, Vector3{}, 1, 0, true);
+    SetInstantImpact(light);
+    ASSERT_NE(light.breakable, nullptr);
+    light.breakable->SetMass(1.0f);
+    light.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    Step(lightScene);
+
+    SceneNs::Scene heavyScene;
+    Rig heavy = Build(heavyScene, Vector3{}, 1, 0, true);
+    SetInstantImpact(heavy);
+    ASSERT_NE(heavy.breakable, nullptr);
+    heavy.breakable->SetMass(4.0f);
+    heavy.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    Step(heavyScene);
+
+    LevelNs::LaunchedBodyComponent* lightBody = HitBody(light);
+    LevelNs::LaunchedBodyComponent* heavyBody = HitBody(heavy);
+    ASSERT_NE(lightBody, nullptr);
+    ASSERT_NE(heavyBody, nullptr);
+    EXPECT_LT(HorizontalSpeed(heavyBody->Velocity()), HorizontalSpeed(lightBody->Velocity()));
+}
+
+TEST(CollisionImpact, FasterImpactLaunchesFarther)
+{
+    SceneNs::Scene normalScene;
+    Rig normal = Build(normalScene, Vector3{}, 1, 0, true);
+    SetInstantImpact(normal);
+    normal.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    Step(normalScene);
+
+    SceneNs::Scene maxScene;
+    Rig maxDash = Build(maxScene, Vector3{}, 1, 0, true);
+    SetInstantImpact(maxDash);
+    maxDash.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+    Step(maxScene);
+
+    LevelNs::LaunchedBodyComponent* normalBody = HitBody(normal);
+    LevelNs::LaunchedBodyComponent* maxBody = HitBody(maxDash);
+    ASSERT_NE(normalBody, nullptr);
+    ASSERT_NE(maxBody, nullptr);
+    EXPECT_GT(HorizontalSpeed(maxBody->Velocity()), HorizontalSpeed(normalBody->Velocity()));
+}
+
+TEST(CollisionImpact, LaunchFieldsDriveLaunchVelocity)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    SetInstantImpact(rig);
+    SetFloatField(*rig.impact, "押し飛ばし基準初速", 20.0f);
+    SetFloatField(*rig.impact, "押し飛ばしの浮き上がり", 0.5f);
+    ASSERT_NE(rig.breakable, nullptr);
+    rig.breakable->SetMass(2.0f);
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+
+    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    ASSERT_NE(body, nullptr);
+    EXPECT_FLOAT_EQ(HorizontalSpeed(body->Velocity()), 10.0f);
+    EXPECT_FLOAT_EQ(body->Velocity().y, 5.0f);
+}
+
+// 質量の下限 0.01 で割ると 100 倍になる。頭打ちが無いと画面の外へ消える
+TEST(CollisionImpact, TinyMassCannotBlowLaunchSpeedUp)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    SetInstantImpact(rig);
+    ASSERT_NE(rig.breakable, nullptr);
+    rig.breakable->SetMass(0.0f);
+    ASSERT_FLOAT_EQ(rig.breakable->Mass(), 0.01f);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+
+    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    ASSERT_NE(body, nullptr);
+    EXPECT_FLOAT_EQ(HorizontalSpeed(body->Velocity()), k_LaunchSpeedCap);
+}
+
+// 衝突の瞬間に自機が数歩止まる。止まっている間は反発も発射も適用されず、明けた歩にまとめて掛かる
+TEST(CollisionImpact, HitStopFreezesPlayerAndDefersLaunch)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    ASSERT_NE(rig.breakable, nullptr);
+    rig.breakable->SetMass(4.0f);
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+
+    ASSERT_TRUE(rig.impact->DidRebound());
+    EXPECT_FALSE(rig.movement->IsActiveSelf());
+    EXPECT_EQ(HitBody(rig), nullptr);
+    EXPECT_FLOAT_EQ(rig.movement->Velocity().x, k_RunSpeed);
+
+    for (int i = 0; i < 3; ++i)
+        Step(scene);
+    EXPECT_FALSE(rig.movement->IsActiveSelf());
+    EXPECT_EQ(HitBody(rig), nullptr);
+    EXPECT_FLOAT_EQ(rig.movement->Velocity().x, k_RunSpeed);
+
+    const int steps = StepsUntilMovementActive(scene, rig, 60);
+    EXPECT_LT(steps, 60);
+    EXPECT_LT(rig.movement->Velocity().x, 0.0f);
+    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    ASSERT_NE(body, nullptr);
+    EXPECT_TRUE(body->IsFlying());
+}
+
+// 重さは飛距離より止められた時間で出る。重い物ほど長く止まる
+TEST(CollisionImpact, HeavierTargetStopsLonger)
+{
+    SceneNs::Scene lightScene;
+    Rig light = Build(lightScene, Vector3{}, 1, 0, true);
+    ASSERT_NE(light.breakable, nullptr);
+    light.breakable->SetMass(1.0f);
+    light.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    Step(lightScene);
+    ASSERT_FALSE(light.movement->IsActiveSelf());
+    const int lightSteps = StepsUntilMovementActive(lightScene, light, 60);
+
+    SceneNs::Scene heavyScene;
+    Rig heavy = Build(heavyScene, Vector3{}, 1, 0, true);
+    ASSERT_NE(heavy.breakable, nullptr);
+    heavy.breakable->SetMass(8.0f);
+    heavy.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    Step(heavyScene);
+    ASSERT_FALSE(heavy.movement->IsActiveSelf());
+    const int heavySteps = StepsUntilMovementActive(heavyScene, heavy, 60);
+
+    EXPECT_GT(lightSteps, 0);
+    EXPECT_LT(lightSteps, 60);
+    EXPECT_LT(lightSteps, heavySteps);
+}
+
+TEST(CollisionImpact, FasterImpactStopsLonger)
+{
+    SceneNs::Scene normalScene;
+    Rig normal = Build(normalScene, Vector3{}, 1, 0, true);
+    normal.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    Step(normalScene);
+    ASSERT_FALSE(normal.movement->IsActiveSelf());
+    const int normalSteps = StepsUntilMovementActive(normalScene, normal, 60);
+
+    SceneNs::Scene maxScene;
+    Rig maxDash = Build(maxScene, Vector3{}, 1, 0, true);
+    maxDash.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+    Step(maxScene);
+    ASSERT_FALSE(maxDash.movement->IsActiveSelf());
+    const int maxSteps = StepsUntilMovementActive(maxScene, maxDash, 60);
+
+    EXPECT_GT(normalSteps, 0);
+    EXPECT_LT(normalSteps, maxSteps);
+}
+
+// 猶予は明けた歩から数え始める。止まっている間に数えると、操作できないまま猶予が減る
+TEST(CollisionImpact, HitStopDefersGraceUntilRelease)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    ASSERT_NE(rig.momentum, nullptr);
+    ASSERT_NE(rig.breakable, nullptr);
+    rig.breakable->SetMass(4.0f);
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+    ASSERT_TRUE(rig.impact->DidRebound());
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+
+    for (int i = 0; i < 4; ++i)
+        Step(scene);
+    EXPECT_FLOAT_EQ(rig.momentum->GraceSeconds(), 0.0f);
+
+    const int rest = StepsUntilMovementActive(scene, rig, 60);
+    ASSERT_LT(rest, 60);
+    EXPECT_FLOAT_EQ(rig.momentum->GraceSeconds(), 0.0f);
+
+    Step(scene);
+    EXPECT_FLOAT_EQ(rig.momentum->GraceSeconds(), k_FixedDt);
+}
+
+TEST(LaunchedBody, LaunchSleepsColliderAndDropsItFromPhysics)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    ASSERT_NE(rig.box, nullptr);
+    ASSERT_TRUE(rig.box->IsActiveSelf());
+
+    rig.body->Launch(Vector3{10.0f, 4.0f, 0.0f});
+
+    EXPECT_TRUE(rig.body->IsFlying());
+    EXPECT_FALSE(rig.box->IsActiveSelf());
+    EXPECT_EQ(scene.Physics().Aabbs().size(), rig.restingAabbs - 1);
+}
+
+TEST(LaunchedBody, AdvancesHorizontallyByVelocityPerStep)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    const Vector3 start = rig.object->Root().Position();
+    rig.body->Launch(Vector3{10.0f, 4.0f, 0.0f});
+
+    StepBody(scene);
+
+    const Vector3 moved = rig.object->Root().Position();
+    EXPECT_FLOAT_EQ(moved.x - start.x, 10.0f * k_FixedDt);
+    EXPECT_FLOAT_EQ(moved.z, start.z);
+}
+
+TEST(LaunchedBody, GravityReducesVerticalSpeedEachStep)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    rig.body->Launch(Vector3{0.0f, 6.0f, 0.0f});
+
+    float expected = 6.0f;
+    expected += k_LaunchGravity * k_FixedDt;
+    StepBody(scene);
+    EXPECT_FLOAT_EQ(rig.body->Velocity().y, expected);
+
+    expected += k_LaunchGravity * k_FixedDt;
+    StepBody(scene);
+    EXPECT_FLOAT_EQ(rig.body->Velocity().y, expected);
+    EXPECT_TRUE(rig.body->IsFlying());
+}
+
+TEST(LaunchedBody, LandsOnFloorTopAndZeroesVerticalSpeed)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+    ASSERT_TRUE(rig.body->IsFlying());
+
+    const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
+
+    EXPECT_GT(steps, 20);
+    EXPECT_LT(steps, k_RestStepLimit);
+    EXPECT_NEAR(rig.object->Root().Position().y, k_BodyRestY, 1.0e-4f);
+    EXPECT_FLOAT_EQ(rig.body->Velocity().y, 0.0f);
+}
+
+TEST(LaunchedBody, GroundFrictionSlowsHorizontalSpeed)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    rig.body->Launch(Vector3{4.0f, 0.0f, 0.0f});
+
+    StepBody(scene);
+    const float first = rig.body->Velocity().x;
+    StepBody(scene);
+    const float second = rig.body->Velocity().x;
+
+    EXPECT_LT(first, 4.0f);
+    EXPECT_LT(second, first);
+    EXPECT_GT(second, 0.0f);
+}
+
+TEST(LaunchedBody, RestWakesColliderBack)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+    ASSERT_FALSE(rig.box->IsActiveSelf());
+
+    const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
+
+    EXPECT_LT(steps, k_RestStepLimit);
+    EXPECT_FALSE(rig.body->IsFlying());
+    EXPECT_TRUE(rig.box->IsActiveSelf());
+    EXPECT_EQ(scene.Physics().Aabbs().size(), rig.restingAabbs);
+    EXPECT_FLOAT_EQ(rig.body->Velocity().x, 0.0f);
+    EXPECT_FLOAT_EQ(rig.body->Velocity().z, 0.0f);
+}
+
+TEST(LaunchedBody, RestsAwayFromLaunchPosition)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    const Vector3 start = rig.object->Root().Position();
+    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+
+    const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
+    ASSERT_LT(steps, k_RestStepLimit);
+
+    const float travelled = rig.object->Root().Position().x - start.x;
+    EXPECT_GT(travelled, 1.5f);
+    EXPECT_LT(travelled, 3.0f);
+}
+
+TEST(LaunchedBody, IdleStaysPutAndKeepsCollider)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    const Vector3 start = rig.object->Root().Position();
+
+    for (int i = 0; i < 60; ++i)
+        StepBody(scene);
+
+    const Vector3 now = rig.object->Root().Position();
+    EXPECT_FALSE(rig.body->IsFlying());
+    EXPECT_TRUE(rig.box->IsActiveSelf());
+    EXPECT_FLOAT_EQ(now.x, start.x);
+    EXPECT_FLOAT_EQ(now.y, start.y);
+    EXPECT_FLOAT_EQ(now.z, start.z);
+    EXPECT_EQ(scene.Physics().Aabbs().size(), rig.restingAabbs);
+}
+
+TEST(LaunchedBody, NonFiniteLaunchIsIgnored)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+
+    rig.body->Launch(Vector3{std::numeric_limits<float>::quiet_NaN(), 4.0f, 0.0f});
+
+    EXPECT_FALSE(rig.body->IsFlying());
+    EXPECT_TRUE(rig.box->IsActiveSelf());
+    EXPECT_EQ(scene.Physics().Aabbs().size(), rig.restingAabbs);
 }

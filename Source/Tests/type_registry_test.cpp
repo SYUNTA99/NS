@@ -61,6 +61,7 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
         "HazardComponent",
         "HealthComponent",
         "KillZoneComponent",
+        "LaunchedBodyComponent",
         "MeshRendererComponent",
         "MomentumComponent",
         "GoalComponent",
@@ -135,7 +136,7 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 22u);
+    EXPECT_EQ(names.size(), 23u);
     EXPECT_TRUE(Contains(names, "BoxColliderComponent"));
     EXPECT_TRUE(Contains(names, "MeshRendererComponent"));
     EXPECT_TRUE(Contains(names, "CharacterMovementComponent"));
@@ -174,8 +175,9 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
         {"DirectionalLightComponent", {"方向", "色", "環境光", "地面環境光", "露出"}},
         {"HazardComponent", {}},
         {"HealthComponent", {"体力"}},
-        {"ImpactResolverComponent", {"反発初速", "反発の上向き初速"}},
+        {"ImpactResolverComponent", {"反発基準初速", "反発の上向き初速", "押し飛ばし基準初速", "押し飛ばしの浮き上がり", "ヒットストップ基準歩数"}},
         {"KillZoneComponent", {}},
+        {"LaunchedBodyComponent", {"重力", "接地摩擦", "停止速度しきい値", "止まってから消える秒"}},
         {"MeshColliderComponent", {}},
         {"MeshRendererComponent", {"基本色", "メッシュ", "マテリアル"}},
         {"MomentumComponent",
@@ -252,6 +254,7 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
         {"HealthComponent", {}},
         {"ImpactResolverComponent", {}},
         {"KillZoneComponent", {}},
+        {"LaunchedBodyComponent", {}},
         {"MeshColliderComponent", {"ColliderComponent"}},
         {"MeshRendererComponent", {}},
         {"MomentumComponent", {}},

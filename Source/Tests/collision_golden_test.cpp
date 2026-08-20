@@ -1,16 +1,26 @@
 #include "golden_trace.h"
 
+#include "Game/Level/BlockObject.h"
+#include "Game/Player.h"
+
+#include <Game/Level/BreakableComponent.h>
+#include <Game/Level/ImpactResolverComponent.h>
 #include <Game/Level/MomentumComponent.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/CharacterMovementComponent.h>
+#include <Runtime/Object/Components/PlayerInputComponent.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Reflection/ComponentEntry.h>
+#include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
+#include <Runtime/Object/World.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <gtest/gtest.h>
+#include <utility>
 #include <vector>
 
 namespace
@@ -97,6 +107,92 @@ namespace
         return rig.Trace();
     }
 
+    constexpr int k_ImpactSteps = 360; // 6 秒。押し飛ばした物へ追いついて当て直す往復が 4 回入る長さ
+    // 最高ダッシュ 16.0 で 6 秒ぶん走り切れる長さ。短いと道の端から落ち、軌跡の大半が自由落下になる
+    constexpr std::int16_t k_ImpactFloorCells = 100;
+    constexpr std::int16_t k_ImpactTargetZ = 6;
+    constexpr float k_ImpactTargetMass = 1.0f;
+    // 壊れない高さ。破壊が入っても反発と押し飛ばしの経路が変わらない
+    constexpr float k_ImpactTargetToughness = 99.0f;
+
+    // 反発と押し飛ばしを含む経路。当たりを持つ配置物が要るので Scene を組む
+    class ImpactRig
+    {
+    public:
+        ImpactRig()
+        {
+            NS::Object::SceneData data;
+            for (std::int16_t z = 0; z < k_ImpactFloorCells; ++z)
+                data.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, z));
+
+            NS::Object::ObjectData player =
+                MakePlayerObject(Vector3{0.0f, Player::k_DefaultSpawnY, 0.0f}, NS::Core::Quaternion{});
+            player.components.push_back(NS::Object::MakeComponentEntry("MomentumComponent"));
+            player.components.push_back(NS::Object::MakeComponentEntry("ImpactResolverComponent"));
+            data.objects.push_back(player);
+
+            NS::Object::ObjectData target = NS::Game::Level::MakeCellObject(0, 1, k_ImpactTargetZ);
+            target.components.push_back(NS::Object::MakeComponentEntry("BreakableComponent"));
+            data.objects.push_back(target);
+
+            m_scene.LoadFromData(std::move(data));
+
+            Player* live = FindPlayer(m_scene.World());
+            EXPECT_NE(live, nullptr);
+            if (live != nullptr)
+            {
+                m_player = live;
+                m_movement = live->FindComponent<CharacterMovementComponent>();
+                // 入力の component は EarlyUpdate で実機の入力を書き込む。起こしたままだと走行入力が毎歩 0 になる
+                if (auto* input = live->FindComponent<NS::Object::PlayerInputComponent>())
+                    input->SetActive(false);
+            }
+            m_scene.World().ForEachComponent<NS::Game::Level::BreakableComponent>(
+                [](NS::Game::Level::BreakableComponent& breakable) {
+                    breakable.SetMass(k_ImpactTargetMass);
+                    breakable.SetToughness(k_ImpactTargetToughness);
+                });
+        }
+
+        void Step(const Vector3& direction, float speedScale, int steps)
+        {
+            for (int i = 0; i < steps; ++i)
+            {
+                m_movement->SetDesiredMove(direction, speedScale);
+                m_scene.World().UpdateAllObjects();
+                m_trace.push_back(
+                    StepRecord{m_player->Root().Position(), m_movement->Velocity(), m_movement->IsGrounded()});
+            }
+        }
+
+        [[nodiscard]] const std::vector<StepRecord>& Trace() const noexcept { return m_trace; }
+
+    private:
+        NS::Object::Scene m_scene;
+        Player* m_player = nullptr;
+        CharacterMovementComponent* m_movement = nullptr;
+        std::vector<StepRecord> m_trace;
+    };
+
+    // 壊せる物へ走り込み、反発しながら追いかけ直す。記録するのは自機だけで、飛ばされた物の位置は入れない
+    std::vector<StepRecord> RunImpact()
+    {
+        ImpactRig rig;
+        rig.Step(k_Forward, 1.0f, k_ImpactSteps);
+        return rig.Trace();
+    }
+
+    // 進行方向と逆へ弾かれた歩があるか。反発が消えた改修を軌跡の一致より先に知らせる
+    bool HasReboundStep(const std::vector<StepRecord>& trace) noexcept
+    {
+        for (const StepRecord& s : trace)
+        {
+            if (s.velocity.z < -1.0f)
+                return true;
+        }
+        return false;
+    }
+
     float MaxForwardSpeedFrom(const std::vector<StepRecord>& trace, std::size_t first) noexcept
     {
         float peak = 0.0f;
@@ -110,6 +206,10 @@ namespace
     constexpr std::uint64_t k_PromoteGolden = 0x15C1DFDE28E0F4D3ULL;
     // 降格: 上と同じ 300 固定ステップ -> 入力なしで 120 -> +Z へ速度スケール 1.0 で 60
     constexpr std::uint64_t k_DemoteGolden = 0x2D530BB91AB33A80ULL;
+    // 衝突: 質量 1.0 / 耐久 99.0 の壊せる物へ +Z へ速度スケール 1.0 で 360 固定ステップ
+    // 耐久を高くして、破壊が入っても反発と押し飛ばしの経路が変わらないようにしてある
+    // 反発を勢いと質量から作る式とヒットストップを入れた時に取り直した。取り直し前は 0x32375285390311FF
+    constexpr std::uint64_t k_ImpactGolden = 0x9104E912BEA391C4ULL;
 } // namespace
 
 class CollisionGolden : public ::testing::Test
@@ -122,6 +222,7 @@ TEST_F(CollisionGolden, HashIsStableAcrossTwoRuns)
 {
     EXPECT_EQ(FoldTrace(RunPromote()), FoldTrace(RunPromote()));
     EXPECT_EQ(FoldTrace(RunDemote()), FoldTrace(RunDemote()));
+    EXPECT_EQ(FoldTrace(RunImpact()), FoldTrace(RunImpact()));
 }
 
 TEST_F(CollisionGolden, PromoteMatchesGoldenTrace)
@@ -156,4 +257,14 @@ TEST_F(CollisionGolden, DemoteMatchesGoldenTrace)
 
     const std::uint64_t hash = FoldTrace(trace);
     EXPECT_EQ(hash, k_DemoteGolden) << DescribeTrace(trace, hash);
+}
+
+TEST_F(CollisionGolden, ImpactMatchesGoldenTrace)
+{
+    const std::vector<StepRecord> trace = RunImpact();
+
+    EXPECT_TRUE(HasReboundStep(trace)) << "経路に反発が現れていない";
+
+    const std::uint64_t hash = FoldTrace(trace);
+    EXPECT_EQ(hash, k_ImpactGolden) << DescribeTrace(trace, hash);
 }
