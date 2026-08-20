@@ -32,7 +32,7 @@ namespace NS::Game::Level
         void OnStart() override;
 
         //! 接地したまま走行入力がある間だけ昇格の秒を積む。途切れれば猶予を数えて 1 段落とす
-        //! 空中では積算も猶予も止め、段をそのまま保つ
+        //! 空中では積算も猶予も止め、段をそのまま保つ。ただし反発から始まった猶予だけは空中でも進む
         //! 最高速度は段に対応する値を毎ステップ CharacterMovementComponent へ書き込む
         void OnUpdate() override;
 
@@ -42,7 +42,12 @@ namespace NS::Game::Level
         //! 段に対応する最高速度を返す
         [[nodiscard]] float SpeedForLevel(MomentumLevel level) const noexcept;
 
-        //! 走行が途切れてからの積算秒。走り直すか段が落ちると 0 へ戻る
+        //! 反発した瞬間に降格猶予を始める。走行入力を出し続けていても猶予が立つ
+        //! @details 接地したうえで走行入力が成立した最初の更新で猶予が解け、段は維持される
+        //! 弾かれた自機は空中に居るので、この猶予だけは接地していなくても秒が進む
+        void BeginGrace() noexcept;
+
+        //! 猶予を数え始めてからの積算秒。走り直すか段が落ちると 0 へ戻る
         [[nodiscard]] float GraceSeconds() const noexcept { return m_graceTimer; }
 
         //! 猶予を数えている最中の場合 true、それ以外の場合は false。段が Normal のときは常に false
@@ -71,8 +76,9 @@ namespace NS::Game::Level
         float m_demoteGraceSeconds = 0.5f;
         bool m_requireForwardInput = false;
 
-        float m_runSeconds = 0.0f; // 今の段になってからの走行の積算秒
-        float m_graceTimer = 0.0f; // 走行が途切れてからの積算秒
+        float m_runSeconds = 0.0f;   // 今の段になってからの走行の積算秒
+        float m_graceTimer = 0.0f;   // 猶予を数え始めてからの積算秒
+        bool m_reboundGrace = false; // 反発から始まった猶予を数えている最中か
         MomentumLevel m_level = MomentumLevel::Normal;
         NS::Object::CharacterMovementComponent* m_movement = nullptr; // 同じ配置物の移動。非所有
     };

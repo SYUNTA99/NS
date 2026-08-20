@@ -331,3 +331,85 @@ TEST_F(MomentumState, OpposedInputKeepsLevelWhenForwardNotRequired)
     RunToward(k_Backward, k_GraceSteps, 1.0f);
     EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
 }
+
+// 反発から始まる猶予。走行入力を出したまま弾かれるので、入力が切れた時の猶予とは別の入口が要る
+TEST_F(MomentumState, ReboundStartsGraceWhileRunInputHeld)
+{
+    ReachMaxDash();
+    Run(1, 1.0f);
+    ASSERT_FALSE(m_momentum->IsInGrace());
+
+    m_momentum->BeginGrace();
+
+    EXPECT_TRUE(m_momentum->IsInGrace());
+}
+
+TEST_F(MomentumState, ReboundGraceClearsOnFirstGroundedRunStep)
+{
+    ReachMaxDash();
+    m_momentum->BeginGrace();
+    ASSERT_TRUE(m_momentum->IsInGrace());
+
+    Run(1, 1.0f);
+
+    EXPECT_FALSE(m_momentum->IsInGrace());
+    EXPECT_FLOAT_EQ(m_momentum->GraceSeconds(), 0.0f);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
+}
+
+// 反発は上向きの初速を混ぜるので猶予は空中で始まる。接地していない間は解けず、秒だけ進む
+TEST_F(MomentumState, ReboundGraceAdvancesWhileAirborne)
+{
+    ReachMaxDash();
+
+    m_movement->SetJumpPressed();
+    for (int i = 0; i < 30 && m_movement->IsGrounded(); ++i)
+    {
+        m_movement->SetJumpHeld(true);
+        m_movement->OnUpdate();
+    }
+    ASSERT_FALSE(m_movement->IsGrounded());
+
+    m_momentum->BeginGrace();
+    ASSERT_FLOAT_EQ(m_momentum->GraceSeconds(), 0.0f);
+
+    constexpr int k_AirSteps = 10;
+    for (int i = 0; i < k_AirSteps; ++i)
+    {
+        m_movement->SetDesiredMove(k_Forward, 1.0f);
+        m_movement->SetJumpHeld(true);
+        m_momentum->OnUpdate();
+        m_movement->OnUpdate();
+        ASSERT_FALSE(m_movement->IsGrounded());
+    }
+
+    EXPECT_TRUE(m_momentum->IsInGrace());
+    EXPECT_FLOAT_EQ(m_momentum->GraceSeconds(), k_FixedDt * static_cast<float>(k_AirSteps));
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
+}
+
+TEST_F(MomentumState, ReboundGraceDemotesOneLevelWhenExpired)
+{
+    ReachMaxDash();
+    m_momentum->BeginGrace();
+
+    Release(k_GraceSteps);
+
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+    EXPECT_FALSE(m_momentum->IsInGrace());
+}
+
+// 速度と逆向きの入力は、厳しい側の設定では走り直したことにならない
+TEST_F(MomentumState, ReboundGraceHoldsAgainstOpposedInputWhenForwardRequired)
+{
+    ReachMaxDash();
+    SetRequireForwardInput(true);
+    ASSERT_GT(m_movement->Velocity().x, 0.0f);
+
+    m_momentum->BeginGrace();
+    HoldMomentumOnly(k_Backward, k_GraceSteps - 1, 1.0f);
+
+    EXPECT_TRUE(m_momentum->IsInGrace());
+    EXPECT_GT(m_momentum->GraceSeconds(), 0.0f);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
+}

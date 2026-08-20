@@ -61,9 +61,15 @@ namespace NS::Game::Level
         }
     }
 
+    void MomentumComponent::BeginGrace() noexcept
+    {
+        m_graceTimer = 0.0f;
+        m_reboundGrace = true;
+    }
+
     bool MomentumComponent::IsInGrace() const noexcept
     {
-        return m_level != MomentumLevel::Normal && m_graceTimer > 0.0f;
+        return m_level != MomentumLevel::Normal && (m_reboundGrace || m_graceTimer > 0.0f);
     }
 
     bool MomentumComponent::IsRunInputActive() const noexcept
@@ -90,9 +96,30 @@ namespace NS::Game::Level
         const float dt = NS::Core::FrameTimer::FixedDelta();
         const MomentumLevel previous = m_level;
 
+        // 反発から始まった猶予だけは接地を見ない。弾かれた自機は空中に居るので、接地を条件にすると着地まで切れない
+        if (m_reboundGrace)
+        {
+            // 走り直しは着地してから。空中で入力を倒しただけで段が戻ると、立て直しが着地を待たずに済んでしまう
+            if (IsRunInputActive() && m_movement->IsGrounded())
+            {
+                m_reboundGrace = false;
+                m_graceTimer = 0.0f;
+            }
+            else
+            {
+                m_graceTimer += dt;
+                if (m_level != MomentumLevel::Normal && m_graceTimer + dt * 0.5f >= m_demoteGraceSeconds)
+                {
+                    m_level = DemotedFrom(m_level);
+                    m_graceTimer = 0.0f;
+                    m_runSeconds = 0.0f;
+                    m_reboundGrace = false;
+                }
+            }
+        }
         // 空中では積算も猶予も進めず段を保つ。滞空は猶予秒より長く、猶予を進めると空中で手を放すたび段が落ちる
         // 積算も止めるのは、跳んでいる間は助走ではないため
-        if (m_movement->IsGrounded())
+        else if (m_movement->IsGrounded())
         {
             // 走行の判定は入力そのもの。速度の大きさで代用すると、手を放した後も減速しきるまで走行のままになる
             if (IsRunInputActive())
