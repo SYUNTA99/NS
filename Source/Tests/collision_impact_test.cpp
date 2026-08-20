@@ -8,7 +8,9 @@
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
+#include <Runtime/Object/Components/CameraBrainComponent.h>
 #include <Runtime/Object/Components/CharacterMovementComponent.h>
+#include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/Reflection.h>
@@ -16,6 +18,7 @@
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/World.h>
 #include <Runtime/Physics/PhysicsWorld.h>
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -634,6 +637,148 @@ TEST(CollisionImpact, HitStopDefersGraceUntilRelease)
 
     Step(scene);
     EXPECT_FLOAT_EQ(rig.momentum->GraceSeconds(), k_FixedDt);
+}
+
+// 凍結の頭で岩が発射方向へ食い込む。physics 側の当たりは動かない
+TEST(CollisionImpact, HitStopPushesRockAtDetection)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    ASSERT_NE(rig.breakable, nullptr);
+    rig.breakable->SetMass(4.0f);
+    const Vector3 home = rig.targetBox->Owner()->Root().Position();
+    const std::size_t aabbs = scene.Physics().Aabbs().size();
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+
+    ASSERT_TRUE(rig.impact->DidRebound());
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+    const Vector3 pushed = rig.targetBox->Owner()->Root().Position();
+    EXPECT_GT(pushed.x, home.x + 1.0e-4f);
+    EXPECT_FLOAT_EQ(pushed.y, home.y);
+    EXPECT_FLOAT_EQ(pushed.z, home.z);
+    EXPECT_EQ(scene.Physics().Aabbs().size(), aabbs);
+    EXPECT_TRUE(rig.targetBox->IsActiveSelf());
+}
+
+// 凍結中は歩ごとに岩が発射軸に沿って往復する
+TEST(CollisionImpact, RockVibratesWhileFrozen)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    ASSERT_NE(rig.breakable, nullptr);
+    rig.breakable->SetMass(4.0f);
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+
+    Step(scene);
+    const float x1 = rig.targetBox->Owner()->Root().Position().x;
+    Step(scene);
+    const float x2 = rig.targetBox->Owner()->Root().Position().x;
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+
+    EXPECT_GT(std::abs(x2 - x1), 1.0e-4f);
+}
+
+// 重い物は揺れない。振幅の差が質量の表現になる
+TEST(CollisionImpact, HeavierRockVibratesLess)
+{
+    SceneNs::Scene lightScene;
+    Rig light = Build(lightScene, Vector3{}, 1, 0, true);
+    ASSERT_NE(light.breakable, nullptr);
+    light.breakable->SetMass(0.5f);
+    light.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    Step(lightScene);
+    ASSERT_FALSE(light.movement->IsActiveSelf());
+    float lightMin = light.targetBox->Owner()->Root().Position().x;
+    float lightMax = lightMin;
+    for (int i = 0; i < 30; ++i)
+    {
+        Step(lightScene);
+        if (light.movement->IsActiveSelf())
+            break;
+        const float x = light.targetBox->Owner()->Root().Position().x;
+        lightMin = std::min(lightMin, x);
+        lightMax = std::max(lightMax, x);
+    }
+
+    SceneNs::Scene heavyScene;
+    Rig heavy = Build(heavyScene, Vector3{}, 1, 0, true);
+    ASSERT_NE(heavy.breakable, nullptr);
+    heavy.breakable->SetMass(8.0f);
+    heavy.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    Step(heavyScene);
+    ASSERT_FALSE(heavy.movement->IsActiveSelf());
+    float heavyMin = heavy.targetBox->Owner()->Root().Position().x;
+    float heavyMax = heavyMin;
+    for (int i = 0; i < 30; ++i)
+    {
+        Step(heavyScene);
+        if (heavy.movement->IsActiveSelf())
+            break;
+        const float x = heavy.targetBox->Owner()->Root().Position().x;
+        heavyMin = std::min(heavyMin, x);
+        heavyMax = std::max(heavyMax, x);
+    }
+
+    EXPECT_GT(lightMax - lightMin, 1.0e-4f);
+    EXPECT_LT(heavyMax - heavyMin, lightMax - lightMin);
+}
+
+// 食い込みも振動も絵だけ。明けた歩に元位置へ厳密に戻してから発射する
+TEST(CollisionImpact, ReleaseRestoresRockExactlyBeforeLaunch)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    ASSERT_NE(rig.breakable, nullptr);
+    rig.breakable->SetMass(4.0f);
+    const Vector3 home = rig.targetBox->Owner()->Root().Position();
+    const std::size_t aabbs = scene.Physics().Aabbs().size();
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+    const int rest = StepsUntilMovementActive(scene, rig, 60);
+    ASSERT_LT(rest, 60);
+
+    const Vector3 restored = rig.targetBox->Owner()->Root().Position();
+    EXPECT_FLOAT_EQ(restored.x, home.x);
+    EXPECT_FLOAT_EQ(restored.y, home.y);
+    EXPECT_FLOAT_EQ(restored.z, home.z);
+    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    ASSERT_NE(body, nullptr);
+    EXPECT_TRUE(body->IsFlying());
+    EXPECT_EQ(scene.Physics().Aabbs().size(), aabbs - 1);
+}
+
+// 凍結中だけカメラが揺れる。ImpactResolverComponent がシーンの CameraBrain へ揺れを渡す
+TEST(CollisionImpact, HitStopShakesCamera)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    ASSERT_NE(rig.breakable, nullptr);
+    rig.breakable->SetMass(4.0f);
+
+    SceneNs::CameraBrainComponent* brain = scene.CameraBrain();
+    ASSERT_NE(brain, nullptr);
+    auto* placed = brain->Owner()->AddComponent<SceneNs::PlacedVirtualCamera>();
+    // 据え置きカメラは進入まで非 active が既定。検証台では手で起こす
+    placed->SetActive(true);
+    placed->SetView(Vector3{0.0f, 3.0f, -6.0f}, Vector3{0.0f, 1.0f, 0.0f});
+    brain->AddVirtualCamera(placed);
+    brain->Evaluate(1.0f);
+    const Vector3 before = brain->LastPose().position;
+
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    Step(scene);
+    ASSERT_TRUE(rig.impact->DidRebound());
+
+    brain->Evaluate(1.0f);
+    const Vector3 during = brain->LastPose().position;
+    EXPECT_GT(std::abs(during.y - before.y), 1.0e-4f);
 }
 
 TEST(LaunchedBody, LaunchSleepsColliderAndDropsItFromPhysics)

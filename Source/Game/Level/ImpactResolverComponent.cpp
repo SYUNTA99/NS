@@ -8,6 +8,7 @@
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/BoxColliderComponent.h"
+#include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -104,7 +105,11 @@ namespace NS::Game::Level
         {
             --m_hitStopRemaining;
             if (m_hitStopRemaining == 0)
+            {
                 ReleaseHitStop();
+                return;
+            }
+            ApplyFreezeVibration();
             return;
         }
 
@@ -151,7 +156,8 @@ namespace NS::Game::Level
 
         // 質量因子 mass/(mass+1) は質量が大きいほど 1 へ寄る。重い物は入った速さがほぼそのまま返り、
         // 軽い物は勢いを持っていくのでほとんど返らない
-        float rebound = m_reboundSpeed * ratio * (mass / (mass + 1.0f));
+        const float massFactor = mass / (mass + 1.0f);
+        float rebound = m_reboundSpeed * ratio * massFactor;
         rebound = NS::Core::Clamp(rebound, 0.0f, k_MaxReboundSpeed);
 
         // 質量で割ると重い物ほど飛ばない
@@ -161,6 +167,10 @@ namespace NS::Game::Level
         m_pendingSelfVelocity = NS::Core::Vector3{awayX * rebound, m_reboundUpSpeed, awayZ * rebound};
         m_pendingLaunchVelocity = NS::Core::Vector3{-awayX * launch, launch * m_launchUpScale, -awayZ * launch};
         m_pendingTargetId = hit->Owner()->Id();
+        m_pendingTargetHome = hit->Owner()->Root().Position();
+        m_pendingImpactDir = NS::Core::Vector3{-awayX, 0.0f, -awayZ};
+        // 反発の質量因子の残り。動きは軽い側が受け取るので、重い物ほど揺れない
+        m_pendingShakeAmplitude = m_shakeAmplitude / (1.0f + mass);
         m_didRebound = true;
         NS_LOG_INFO(Game, "衝突: 質量 {} 耐久 {} 返り {} 押し飛ばし {}", mass, hit->Toughness(), rebound, launch);
 
@@ -173,8 +183,18 @@ namespace NS::Game::Level
 
         // 自機を寝かせて凍らせる。World::UpdateObjects は active をその場で見るので同じ歩から効く
         m_hitStopRemaining = stopSteps;
+        m_hitStopTotal = stopSteps;
         m_movement->SetActive(false);
         NS_LOG_INFO(Game, "ヒットストップ: {} 歩", stopSteps);
+
+        // 力が伝わった瞬間の絵。凍結の頭で相手を発射方向へ食い込ませて止める。当たりは動かさない
+        hit->Owner()->Root().SetPosition(m_pendingTargetHome + m_pendingImpactDir * m_pushInDistance);
+
+        if (NS::Object::Scene* scene = Owner()->OwningScene())
+        {
+            if (NS::Object::CameraBrainComponent* brain = scene->CameraBrain())
+                brain->StartShake(m_cameraShakeScale * ratio * massFactor, stopSteps);
+        }
     }
 
     void ImpactResolverComponent::ReleaseHitStop()
@@ -191,6 +211,8 @@ namespace NS::Game::Level
         NS::Object::GameObject* target = scene->World().FindByObjectId(m_pendingTargetId);
         if (target == nullptr)
             return;
+        // 食い込みと振動は絵だけ。発射の起点がずれないよう元位置へ厳密に戻してから発射する
+        target->Root().SetPosition(m_pendingTargetHome);
         // 積み忘れた配置物でも押し飛ばせるよう、無ければその場で足す
         auto* body = target->FindComponent<LaunchedBodyComponent>();
         if (body == nullptr)
@@ -198,9 +220,25 @@ namespace NS::Game::Level
         body->Launch(m_pendingLaunchVelocity);
     }
 
+    void ImpactResolverComponent::ApplyFreezeVibration()
+    {
+        NS::Object::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+            return;
+        NS::Object::GameObject* target = scene->World().FindByObjectId(m_pendingTargetId);
+        if (target == nullptr || m_hitStopTotal <= 0)
+            return;
+
+        // 歩数の偶奇で往復し、残り歩数で減衰する。乱数を使わないので同じ入力は同じ絵になる
+        const float sign = 1.0f - 2.0f * static_cast<float>(m_hitStopRemaining % 2);
+        const float decay = static_cast<float>(m_hitStopRemaining) / static_cast<float>(m_hitStopTotal);
+        const float along = m_pushInDistance + m_pendingShakeAmplitude * sign * decay;
+        target->Root().SetPosition(m_pendingTargetHome + m_pendingImpactDir * along);
+    }
+
     int ImpactResolverComponent::ComputeHitStopSteps(float ratio, float mass) const noexcept
     {
-        // 質量は平方根で圧縮する。質量の幅は 100 倍あるが、停止は 1 秒の何分の一かに収めたい
+        // 質量差をそのまま歩数に出すと停止が伸びすぎるので平方根で圧縮する
         const float raw = m_hitStopScale * ratio * std::sqrt(mass);
         if (!std::isfinite(raw))
             return 0;

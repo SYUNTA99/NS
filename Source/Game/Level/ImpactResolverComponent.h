@@ -44,6 +44,9 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_launchSpeed, "押し飛ばし基準初速")
         NS_REFLECT_FIELD(m_launchUpScale, "押し飛ばしの浮き上がり")
         NS_REFLECT_FIELD(m_hitStopScale, "ヒットストップ基準歩数")
+        NS_REFLECT_FIELD(m_pushInDistance, "食い込み距離")
+        NS_REFLECT_FIELD(m_shakeAmplitude, "振動の振幅")
+        NS_REFLECT_FIELD(m_cameraShakeScale, "カメラ揺れの強さ")
         NS_REFLECT_END()
 
     private:
@@ -54,18 +57,28 @@ namespace NS::Game::Level
         // 止めていた結果を適用する。自機を起こして反発速度を書き、猶予を始め、相手を発射する
         void ReleaseHitStop();
 
+        // 凍結中の歩で、相手を発射軸に沿って食い込み位置の周りで往復させる。絵だけで当たりは動かさない
+        void ApplyFreezeVibration();
+
         // 勢いの比と質量から止める歩数を出す。0 なら止めない
         [[nodiscard]] int ComputeHitStopSteps(float ratio, float mass) const noexcept;
 
-        float m_reboundSpeed = 9.0f;   // 動かない壁に通常速度で当たった時の返りの速さ
-        float m_reboundUpSpeed = 3.0f; // 反発の上向き初速
-        float m_launchSpeed = 14.0f;   // 通常速度で質量 1 の物に与える水平初速
-        float m_launchUpScale = 0.35f; // 水平初速に対する上向きの比
-        float m_hitStopScale = 4.0f;   // 質量 1 へ通常速度で当てた時に止める歩数
+        float m_reboundSpeed = 9.0f;      // 動かない壁に通常速度で当たった時の返りの速さ
+        float m_reboundUpSpeed = 3.0f;    // 反発の上向き初速
+        float m_launchSpeed = 14.0f;      // 通常速度で質量 1 の物に与える水平初速
+        float m_launchUpScale = 0.35f;    // 水平初速に対する上向きの比
+        float m_hitStopScale = 4.0f;      // 質量 1 へ通常速度で当てた時に止める歩数
+        float m_pushInDistance = 0.06f;   // 凍結の頭で相手を発射方向へ食い込ませる距離
+        float m_shakeAmplitude = 0.05f;   // 凍結中の往復の振れ幅。質量 1 で半分になる
+        float m_cameraShakeScale = 0.06f; // カメラ揺れの上下振れ幅の基準
 
         int m_hitStopRemaining = 0;                                  // 止まっている残り歩数。0 は止まっていない
+        int m_hitStopTotal = 0;                                      // 止め始めの歩数。振動の減衰の分母
         NS::Core::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f};   // 明けた歩に自機へ書く反発速度
         NS::Core::Vector3 m_pendingLaunchVelocity{0.0f, 0.0f, 0.0f}; // 明けた歩に相手へ渡す発射速度
+        NS::Core::Vector3 m_pendingTargetHome{0.0f, 0.0f, 0.0f};     // 相手の元位置。明けた歩に厳密に戻す
+        NS::Core::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f};      // 発射の水平方向。食い込みと振動の軸
+        float m_pendingShakeAmplitude = 0.0f;                        // この衝突の往復の振れ幅
         std::uint32_t m_pendingTargetId = 0;                         // 発射する相手の永続 id
 
         bool m_didRebound = false;                                    // 直近の更新で衝突を検知したか
