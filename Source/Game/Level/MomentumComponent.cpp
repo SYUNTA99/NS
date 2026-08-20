@@ -12,7 +12,7 @@ namespace NS::Game::Level
     namespace
     {
         // 走り出す境目。CharacterMovementComponent が歩き速度と最高速度を分ける値と同じ
-        // TODO: 同じ 0.5 が UpdateLocomotion にも直接書かれている。片方だけ動かすと歩きのまま昇格する
+        // TODO: 同じ 0.5 が UpdateLocomotion にも直接書かれている。片方だけ動かすと走りの境目と昇格の境目がずれる
         constexpr float k_RunInputThreshold = 0.5f;
 
         // 進んでいる向きがあると言える下限の速さの 2 乗。0.1 m/s は歩き速度 4.0 の 40 分の 1
@@ -88,37 +88,41 @@ namespace NS::Game::Level
             return;
 
         const float dt = NS::Core::FrameTimer::FixedDelta();
-        // 走行の判定は入力そのもの。速度の大きさで代用すると、手を放した後も減速しきるまで走行のままになる
-        const bool running = IsRunInputActive() && m_movement->IsGrounded();
-
         const MomentumLevel previous = m_level;
-        if (running)
-        {
-            m_graceTimer = 0.0f;
-            m_runSeconds += dt;
 
-            // 半歩ぶん先を見て昇格の秒に最も近い固定ステップで上げる。dt の積算は誤差で 1.5 秒へ届かず 1 歩遅れる
-            const float elapsed = m_runSeconds + dt * 0.5f;
-            if (m_level == MomentumLevel::Normal && elapsed >= m_dashPromoteSeconds)
-            {
-                m_level = MomentumLevel::Dash;
-                m_runSeconds = 0.0f;
-            }
-            else if (m_level == MomentumLevel::Dash && elapsed >= m_maxDashPromoteSeconds)
-            {
-                m_level = MomentumLevel::MaxDash;
-                m_runSeconds = 0.0f;
-            }
-        }
-        else
+        // 空中では積算も猶予も進めず段を保つ。滞空は猶予秒より長く、猶予を進めると空中で手を放すたび段が落ちる
+        // 積算も止めるのは、跳んでいる間は助走ではないため
+        if (m_movement->IsGrounded())
         {
-            m_graceTimer += dt;
-            // 昇格と同じ半歩ぶんを足す。素直に比べると猶予秒の値しだいで落ちるのが 1 歩ずれる
-            if (m_level != MomentumLevel::Normal && m_graceTimer + dt * 0.5f >= m_demoteGraceSeconds)
+            // 走行の判定は入力そのもの。速度の大きさで代用すると、手を放した後も減速しきるまで走行のままになる
+            if (IsRunInputActive())
             {
-                m_level = DemotedFrom(m_level);
                 m_graceTimer = 0.0f;
-                m_runSeconds = 0.0f;
+                m_runSeconds += dt;
+
+                // 半歩ぶん先を見て昇格の秒に最も近い固定ステップで上げる。dt の積算は誤差で昇格の秒へ届かず 1 歩遅れる
+                const float elapsed = m_runSeconds + dt * 0.5f;
+                if (m_level == MomentumLevel::Normal && elapsed >= m_dashPromoteSeconds)
+                {
+                    m_level = MomentumLevel::Dash;
+                    m_runSeconds = 0.0f;
+                }
+                else if (m_level == MomentumLevel::Dash && elapsed >= m_maxDashPromoteSeconds)
+                {
+                    m_level = MomentumLevel::MaxDash;
+                    m_runSeconds = 0.0f;
+                }
+            }
+            else
+            {
+                m_graceTimer += dt;
+                // 昇格と同じ半歩ぶんを足す。素直に比べると猶予秒の値しだいで落ちるのが 1 歩ずれる
+                if (m_level != MomentumLevel::Normal && m_graceTimer + dt * 0.5f >= m_demoteGraceSeconds)
+                {
+                    m_level = DemotedFrom(m_level);
+                    m_graceTimer = 0.0f;
+                    m_runSeconds = 0.0f;
+                }
             }
         }
 

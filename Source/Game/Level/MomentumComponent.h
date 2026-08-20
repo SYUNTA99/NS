@@ -21,7 +21,7 @@ namespace NS::Game::Level
     //! @brief 走行時間で最高速度を 3 段に上げる Component
     //! @details 段は MovementState と独立で、状態機械の状態にはしない
     //! 帯は Update より前。CharacterMovementComponent が動く前にその固定ステップの最高速度を決める
-    //! 止まったまま勢いを上げる入力の受け口を持たない
+    //! 昇格に使う入力は走行入力だけ
     //! 依存: NS::Object::CharacterMovementComponent
     class MomentumComponent : public NS::Object::Component
     {
@@ -32,6 +32,7 @@ namespace NS::Game::Level
         void OnStart() override;
 
         //! 接地したまま走行入力がある間だけ昇格の秒を積む。途切れれば猶予を数えて 1 段落とす
+        //! 空中では積算も猶予も止め、段をそのまま保つ
         //! 最高速度は段に対応する値を毎ステップ CharacterMovementComponent へ書き込む
         void OnUpdate() override;
 

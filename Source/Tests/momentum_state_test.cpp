@@ -94,6 +94,39 @@ protected:
         }
     }
 
+    // 滞空中の 1 歩目と最終歩の猶予。空中で猶予が進んでいないかを両端の差で見る
+    struct FlightResult
+    {
+        int airborneSteps = 0;
+        float graceAtFirstAirborneStep = 0.0f;
+        float graceAtLastAirborneStep = 0.0f;
+    };
+
+    // 走行入力を切って跳び、着地するまで回す。跳んだ後に入力を戻さないので接地中なら猶予が進む条件
+    FlightResult JumpAndHold(int maxSteps)
+    {
+        FlightResult result;
+        m_movement->SetJumpPressed();
+        for (int i = 0; i < maxSteps; ++i)
+        {
+            m_movement->SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+            m_movement->SetJumpHeld(true);
+            m_momentum->OnUpdate();
+            m_movement->OnUpdate();
+
+            if (!m_movement->IsGrounded())
+            {
+                if (result.airborneSteps == 0)
+                    result.graceAtFirstAirborneStep = m_momentum->GraceSeconds();
+                result.graceAtLastAirborneStep = m_momentum->GraceSeconds();
+                ++result.airborneSteps;
+            }
+            else if (result.airborneSteps > 0)
+                break;
+        }
+        return result;
+    }
+
     void ReachMaxDash()
     {
         Run(k_DashSteps + k_MaxDashSteps, 1.0f);
@@ -165,6 +198,29 @@ TEST_F(MomentumState, NoFourthLevelBeyondMaxDash)
     Run(600, 1.0f);
     EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
     EXPECT_FLOAT_EQ(m_movement->MaxSpeed(), 16.0f);
+}
+
+TEST_F(MomentumState, KeepsLevelWhileAirborneBeyondGrace)
+{
+    Run(k_DashSteps, 1.0f);
+    ASSERT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+
+    const FlightResult flight = JumpAndHold(600);
+    ASSERT_GT(flight.airborneSteps, k_GraceSteps) << "滞空が猶予秒より短く、猶予を止めた効果が出ない跳び方になっている";
+
+    EXPECT_FLOAT_EQ(flight.graceAtLastAirborneStep, flight.graceAtFirstAirborneStep);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+}
+
+TEST_F(MomentumState, KeepsMaxDashWhileAirborneBeyondGrace)
+{
+    ReachMaxDash();
+
+    const FlightResult flight = JumpAndHold(600);
+    ASSERT_GT(flight.airborneSteps, k_GraceSteps);
+
+    EXPECT_FLOAT_EQ(flight.graceAtLastAirborneStep, flight.graceAtFirstAirborneStep);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
 }
 
 TEST_F(MomentumState, KeepsLevelOneStepShortOfGrace)
