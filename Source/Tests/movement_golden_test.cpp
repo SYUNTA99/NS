@@ -1,15 +1,14 @@
-﻿#include <algorithm>
-#include <bit>
-#include <cstdint>
-#include <gtest/gtest.h>
+﻿#include "golden_trace.h"
+
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
-#include <sstream>
-#include <string>
+#include <algorithm>
+#include <cstdint>
+#include <gtest/gtest.h>
 #include <vector>
 
 namespace
@@ -18,63 +17,11 @@ namespace
     using NS::Core::Vector3;
     using NS::Object::CharacterMovementComponent;
     using NS::Object::GameObject;
+    using NS::Tests::DescribeTrace;
+    using NS::Tests::FoldTrace;
+    using NS::Tests::StepRecord;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
-
-    //! 1 fixed step ごとの表面状態。coyote / jump buffer 等の内部 timer は
-    //! 必ず位置・速度・接地の変化として表面に出るため、この 3 つだけで足りる
-    struct StepRecord
-    {
-        Vector3 position;
-        Vector3 velocity;
-        bool grounded = false;
-    };
-
-    //! FNV-1a 64bit へ 4 byte を畳み込む
-    uint64_t FoldFnv1a(uint64_t hash, uint32_t value) noexcept
-    {
-        for (int shift = 0; shift < 32; shift += 8)
-        {
-            hash ^= (value >> shift) & 0xFFu;
-            hash *= 0x100000001B3ULL;
-        }
-        return hash;
-    }
-
-    //! 軌跡全 step を 1 つのハッシュへ畳み込む。float は bit 表現のまま
-    //! 投入するため、1 bit でも挙動が変われば必ず値が変わる
-    uint64_t HashTrajectory(const std::vector<StepRecord>& trajectory) noexcept
-    {
-        uint64_t hash = 0xCBF29CE484222325ULL;
-        for (const StepRecord& s : trajectory)
-        {
-            hash = FoldFnv1a(hash, std::bit_cast<uint32_t>(s.position.x));
-            hash = FoldFnv1a(hash, std::bit_cast<uint32_t>(s.position.y));
-            hash = FoldFnv1a(hash, std::bit_cast<uint32_t>(s.position.z));
-            hash = FoldFnv1a(hash, std::bit_cast<uint32_t>(s.velocity.x));
-            hash = FoldFnv1a(hash, std::bit_cast<uint32_t>(s.velocity.y));
-            hash = FoldFnv1a(hash, std::bit_cast<uint32_t>(s.velocity.z));
-            uint32_t groundedBit = 0u;
-            if (s.grounded)
-                groundedBit = 1u;
-            hash = FoldFnv1a(hash, groundedBit);
-        }
-        return hash;
-    }
-
-    //! ハッシュ不一致時の一次診断。実測ハッシュと 10 step ごとの要約を返す
-    std::string DescribeTrajectory(const std::vector<StepRecord>& trajectory, uint64_t hash)
-    {
-        std::ostringstream out;
-        out << "actual hash = 0x" << std::hex << hash << std::dec << "\n";
-        for (size_t i = 0; i < trajectory.size(); i += 10)
-        {
-            const StepRecord& s = trajectory[i];
-            out << "step " << i << ": pos " << s.position.x << " " << s.position.y << " " << s.position.z << " / vel "
-                << s.velocity.x << " " << s.velocity.y << " " << s.velocity.z << " / grounded " << s.grounded << "\n";
-        }
-        return out.str();
-    }
 
     float MaxHeight(const std::vector<StepRecord>& trajectory) noexcept
     {
@@ -84,7 +31,7 @@ namespace
         return peak;
     }
 
-    //! ジャンプ発動の検出。impulse 12 の上向き速度は自由落下では絶対に出ない
+    //! ジャンプ発動の検出。ジャンプ初速 12 の上向き速度は自由落下では絶対に出ない
     bool HasUpwardBurst(const std::vector<StepRecord>& trajectory) noexcept
     {
         for (const StepRecord& s : trajectory)
@@ -95,8 +42,8 @@ namespace
         return false;
     }
 
-    //! owner に移動 component を載せ物理 world を繋ぐ。開始位置は空中に取り、
-    //! 数 step の自然落下で着地させる。床上へ直置きすると capsule が床へめり込み、
+    //! CharacterMovementComponent を載せて PhysicsWorld を繋ぐ。開始位置は空中に取り、
+    //! 数ステップの自然落下で着地させる。床上へ直置きするとカプセルが床へめり込み、
     //! 衝突解決が移動を丸ごと拒否して位置が固定されてしまう
     CharacterMovementComponent& SetUpMovement(GameObject& owner,
                                               NS::Physics::PhysicsWorld& world,
@@ -115,7 +62,7 @@ namespace
         return StepRecord{owner.Root().Position(), movement.Velocity(), movement.IsGrounded()};
     }
 
-    //! 平地を X+ へ全開で走り、90 step 目から入力を切って停止する
+    //! 平地を X+ へ全開で走り、90 ステップ目から入力を切って停止する
     //! 加速の立ち上がり・最大速度巡航・減速の 3 経路を通す
     std::vector<StepRecord> RunFlatWalk()
     {
@@ -137,7 +84,7 @@ namespace
         return trajectory;
     }
 
-    //! 走りながらジャンプ 1 回。20 step 保持してから離すことで
+    //! 走りながらジャンプ 1 回。20 ステップ保持してから離すことで
     //! 上昇の弱い重力・離し減速・頂点の重力緩和・落下の強い重力を全て通す
     //! 床は 3 秒間の全力走行で走り抜けない長さにする
     std::vector<StepRecord> RunSingleJump()
@@ -160,8 +107,8 @@ namespace
         return trajectory;
     }
 
-    //! 短い床を走り抜けて踏み外し、その次の step で jump press する
-    //! press 時点で空中 1 step ぶんの時間が経過しており、coyote 窓の内側を踏む
+    //! 短い床を走り抜けて踏み外し、その次のステップでジャンプ入力する
+    //! 入力の時点で空中 1 ステップぶんの時間が経過しており、コヨーテ時間の内側を踏む
     std::vector<StepRecord> RunCoyoteJump()
     {
         GameObject owner;
@@ -194,8 +141,8 @@ namespace
         return trajectory;
     }
 
-    //! 高所から自由落下し、着地前の空中で jump press を先行入力する
-    //! 着地の瞬間に buffer が消費されて即ジャンプする経路を固定する
+    //! 高所から自由落下し、着地前の空中でジャンプ入力を出す
+    //! 着地の瞬間に先行入力が消費されて即ジャンプする経路を固定する
     std::vector<StepRecord> RunJumpBuffer()
     {
         GameObject owner;
@@ -239,7 +186,7 @@ namespace
         return trajectory;
     }
 
-    // 基準ハッシュ。手触りに触る改修の前後で軌跡の bit 一致を検証する物で、
+    // 基準ハッシュ。手触りに触る改修の前後で軌跡のビット一致を検証する物で、
     // 意図して手触りを変えた時だけ実測値で更新する
     constexpr uint64_t k_FlatWalkGolden = 0x4FA4FA4FCFB0F728ULL;
     constexpr uint64_t k_SingleJumpGolden = 0xC15864A95E5EDFCDULL;
@@ -254,10 +201,10 @@ protected:
     void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_FixedDt); }
 };
 
-//! ハッシュ方式の前提として、同じビルドで 2 回走らせた結果が bit 一致すること
+//! ハッシュ方式の前提として、同じビルドで 2 回走らせた結果がビット一致すること
 TEST_F(MovementGolden, HashIsStableAcrossTwoRuns)
 {
-    EXPECT_EQ(HashTrajectory(RunSingleJump()), HashTrajectory(RunSingleJump()));
+    EXPECT_EQ(FoldTrace(RunSingleJump()), FoldTrace(RunSingleJump()));
 }
 
 TEST_F(MovementGolden, FlatWalkMatchesGoldenTrace)
@@ -273,8 +220,8 @@ TEST_F(MovementGolden, FlatWalkMatchesGoldenTrace)
     EXPECT_LT(trajectory.back().velocity.x, 0.5f) << "入力を切った後に停止していない";
     EXPECT_TRUE(trajectory.back().grounded);
 
-    const uint64_t hash = HashTrajectory(trajectory);
-    EXPECT_EQ(hash, k_FlatWalkGolden) << DescribeTrajectory(trajectory, hash);
+    const uint64_t hash = FoldTrace(trajectory);
+    EXPECT_EQ(hash, k_FlatWalkGolden) << DescribeTrace(trajectory, hash);
 }
 
 TEST_F(MovementGolden, SingleJumpMatchesGoldenTrace)
@@ -285,8 +232,8 @@ TEST_F(MovementGolden, SingleJumpMatchesGoldenTrace)
     EXPECT_LT(MaxHeight(trajectory), 6.0f) << "ジャンプ頂点が高すぎる";
     EXPECT_TRUE(trajectory.back().grounded) << "着地して終わっていない";
 
-    const uint64_t hash = HashTrajectory(trajectory);
-    EXPECT_EQ(hash, k_SingleJumpGolden) << DescribeTrajectory(trajectory, hash);
+    const uint64_t hash = FoldTrace(trajectory);
+    EXPECT_EQ(hash, k_SingleJumpGolden) << DescribeTrace(trajectory, hash);
 }
 
 TEST_F(MovementGolden, CoyoteJumpMatchesGoldenTrace)
@@ -295,8 +242,8 @@ TEST_F(MovementGolden, CoyoteJumpMatchesGoldenTrace)
 
     EXPECT_TRUE(HasUpwardBurst(trajectory)) << "踏み外し後の猶予ジャンプが発動していない";
 
-    const uint64_t hash = HashTrajectory(trajectory);
-    EXPECT_EQ(hash, k_CoyoteJumpGolden) << DescribeTrajectory(trajectory, hash);
+    const uint64_t hash = FoldTrace(trajectory);
+    EXPECT_EQ(hash, k_CoyoteJumpGolden) << DescribeTrace(trajectory, hash);
 }
 
 TEST_F(MovementGolden, JumpBufferMatchesGoldenTrace)
@@ -305,8 +252,8 @@ TEST_F(MovementGolden, JumpBufferMatchesGoldenTrace)
 
     EXPECT_TRUE(HasUpwardBurst(trajectory)) << "着地時に先行入力ジャンプが発動していない";
 
-    const uint64_t hash = HashTrajectory(trajectory);
-    EXPECT_EQ(hash, k_JumpBufferGolden) << DescribeTrajectory(trajectory, hash);
+    const uint64_t hash = FoldTrace(trajectory);
+    EXPECT_EQ(hash, k_JumpBufferGolden) << DescribeTrace(trajectory, hash);
 }
 
 TEST_F(MovementGolden, WallCollisionMatchesGoldenTrace)
@@ -317,6 +264,6 @@ TEST_F(MovementGolden, WallCollisionMatchesGoldenTrace)
     EXPECT_GT(trajectory.back().position.x, 4.0f) << "壁のはるか手前で止まっている";
     EXPECT_LT(trajectory.back().velocity.x, 0.5f) << "壁に当たり続けているのに速度が残っている";
 
-    const uint64_t hash = HashTrajectory(trajectory);
-    EXPECT_EQ(hash, k_WallCollisionGolden) << DescribeTrajectory(trajectory, hash);
+    const uint64_t hash = FoldTrace(trajectory);
+    EXPECT_EQ(hash, k_WallCollisionGolden) << DescribeTrace(trajectory, hash);
 }

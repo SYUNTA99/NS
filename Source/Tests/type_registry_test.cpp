@@ -46,8 +46,8 @@ namespace
     }
 } // namespace
 
-// 登録カバレッジの一覧。自己登録の翻訳単位がリンカに落とされたり登録マクロが消えたりすると、
-// この型の生成が失敗して露見する
+// 登録の抜けを見張る一覧。自己登録の翻訳単位がリンカに落とされたり登録マクロが消えたりすると、
+// その型の生成が失敗して露見する
 TEST(TypeRegistryTest, CreatesEachRegisteredType)
 {
     const char* k_Registered[] = {
@@ -82,7 +82,7 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
 TEST(TypeRegistryTest, CreatedTypeNameMatchesReflection)
 {
     // 登録済み全型でリフレクション typeName が登録キーと一致する。JSON の type キーと整合する
-    // 登録が増えても手直し不要なよう、一覧は registry 自身から取る
+    // 登録が増えても手直し不要なよう、一覧は TypeRegistry 自身から取る
     for (const std::string& name : RegisteredNames())
     {
         GameObject obj;
@@ -137,14 +137,15 @@ TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
     EXPECT_TRUE(Contains(names, "BoxColliderComponent"));
     EXPECT_TRUE(Contains(names, "MeshRendererComponent"));
     EXPECT_TRUE(Contains(names, "CharacterMovementComponent"));
-    // パレット表示が実行ごとに揺れない保証。一覧は名前順に揃えてある
+    // パレット表示が実行ごとに揺れないよう名前順に揃えてある
     EXPECT_TRUE(std::is_sorted(names.begin(), names.end()));
 }
 
 TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
 {
-    // リフレクションフィールドの期待一覧。ここに載ったフィールドだけが Inspector 編集とシリアライズの対象になる
-    // 増減が意図か事故かをこの一覧との突き合わせで判定する。抜けは無言のデータ欠損になる
+    // リフレクションフィールドの期待一覧
+    // リフレクションに載ったフィールドだけが Inspector 編集とシリアライズの対象になる
+    // 増減が意図か事故かをこの一覧との突き合わせで判定する。抜けは気づけない保存漏れになる
     const std::map<std::string, std::vector<std::string>> k_Ledger = {
         {"BoxColliderComponent", {"半径", "中心オフセット", "回転 (度)", "トリガー"}},
         {"CameraBrainComponent", {"ブレンド秒数"}},
@@ -173,7 +174,14 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
         {"KillZoneComponent", {}},
         {"MeshColliderComponent", {}},
         {"MeshRendererComponent", {"基本色", "メッシュ", "マテリアル"}},
-        {"MomentumComponent", {"通常速度", "ダッシュ速度", "最高ダッシュ速度", "ダッシュ昇格秒", "最高ダッシュ昇格秒"}},
+        {"MomentumComponent",
+         {"通常速度",
+          "ダッシュ速度",
+          "最高ダッシュ速度",
+          "ダッシュ昇格秒",
+          "最高ダッシュ昇格秒",
+          "降格猶予秒",
+          "復帰に進行方向入力を要求"}},
         {"GoalComponent", {}},
         {"PlacedVirtualCamera", {"注視点", "上方向", "トリガー中心", "トリガー半径", "プレイヤー追視", "優先度"}},
         {"PlayerInputComponent", {}},

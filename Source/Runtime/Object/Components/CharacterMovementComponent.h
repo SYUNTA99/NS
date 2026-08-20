@@ -12,8 +12,8 @@
 namespace NS::Object
 {
     //! @brief Player 移動の細分ラベル
-    //! @details 実行の単位は States のデータで組む状態機械 (Locomotion / LedgeHang / LedgeMantle) で、
-    //! この enum は Locomotion 内の歩き / ジャンプ / 落下まで割った読み取り用の細分。判定や演出が読む
+    //! @details 実行の単位は m_stateNames から組む状態機械 (Locomotion / LedgeHang / LedgeMantle) で、
+    //! この enum は Locomotion 内の歩き / ジャンプ / 落下まで割った読み取り用の細分
     //! LedgeHanging / LedgeMantling の掴まり中は CapsuleMover を通さず position を直更新する
     enum class MovementState
     {
@@ -26,11 +26,11 @@ namespace NS::Object
 
     //! @brief Player の物理状態を管理する Component
     //! @details カプセル + 1 段ジャンプ + コヨーテ時間と先行入力 + 非対称重力 + 頂点滞空を保持する
-    //! NS::Physics::CapsuleMover を value member として内包する
-    //! 毎 OnUpdate で desired velocity と dt を渡して結果を Root へ適用する
-    //! 重力やジャンプの調整値はここが持ち、CapsuleMover には数値計算だけ任せる
-    //! Input→desired velocity は PlayerInputComponent が作る
-    //! 衝突 world は OnStart で所属 scene から非所有借用する
+    //! NS::Physics::CapsuleMover を実体で持つ
+    //! Locomotion の 1 歩は速度と dt を CapsuleMover へ渡し、結果の位置を Root へ書く
+    //! 重力やジャンプの調整値はここが持つ
+    //! 目標の移動方向と速度スケールは PlayerInputComponent が入力から作る
+    //! 衝突 world は OnStart で所属 scene から非所有で借りる
     //! dt は NS::Core::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
     class CharacterMovementComponent : public Component
     {
@@ -46,7 +46,8 @@ namespace NS::Object
         //! 直近に渡された world 空間の目標移動方向。長さは入力の強さのままで正規化されていない
         [[nodiscard]] NS::Core::Vector3 DesiredDirection() const noexcept { return m_desiredDir; }
 
-        //! 掴まり中の生ローカル入力で各成分は -1..1。SetDesiredMove と別チャンネル、前=登る マップ用
+        //! 掴まり中の生ローカル入力で各成分は -1..1。SetDesiredMove とは別に持つ
+        //! 前入力で登り、後入力で手を放す
         void SetClimbMove(float localRight, float localForward) noexcept;
 
         //! ジャンプの押下を 1 回ぶん立てる。OnUpdate の最後に落ちるので次のステップには残らない
@@ -111,9 +112,11 @@ namespace NS::Object
             return m_coyoteJumpMarkers;
         }
 
-        //! 奈落落ち復活などで状態を初期化する。velocity / grounded / jump 関連 timer を全リセット
+        //! 奈落落ち復活などで状態を初期化する。velocity / grounded / jump 関連 timer に加え、
+        //! 掴まりの状態と状態機械も初期状態へ戻す
         void ResetState() noexcept;
 
+        //! 状態機械を 1 歩ぶん進める。初回だけ m_stateNames から組み、1 歩限りの押下は最後に落とす
         void OnUpdate() override;
 
         // 操作感の調整値を Inspector へ公開する。 プレイ中にライブで触って感触を詰める用途
@@ -141,7 +144,7 @@ namespace NS::Object
         friend class LedgeHangState;
         friend class LedgeMantleState;
 
-        //! States のセミコロン区切りから状態機械を組む。全滅時は既定の並びへ退避する
+        //! m_stateNames のセミコロン区切りから状態機械を組む。全滅時は既定の並びへ退避する
         void BuildStates();
 
         //! 通常移動の 1 歩。歩き / ジャンプ / 落下を 1 本の物理パイプラインで進め、下降中に縁を探す
@@ -163,14 +166,14 @@ namespace NS::Object
 
         float m_gravityUp = -25.0f;      // 上昇中の重力
         float m_gravityDown = -35.0f;    // 下降中の重力、上昇より強い
-        float m_apexHangVy = 1.0f;       // apex とみなす縦速度のしきい値
-        float m_apexHangScale = 0.5f;    // apex 付近で重力に掛ける倍率
+        float m_apexHangVy = 1.0f;       // 頂点とみなす縦速度のしきい値
+        float m_apexHangScale = 0.5f;    // 頂点付近で重力に掛ける倍率
         float m_jumpReleaseScale = 0.6f; // 上昇中に離した時の縦速度倍率
         float m_jumpImpulse = 12.0f;     // ジャンプ初速
         // 接地を離れてもジャンプを受ける猶予秒。実機プレイで詰めた約 1.5 フレームで、踏み外し直後のごく短い救済だけ残す
         float m_coyoteTime = 0.025f;
         // 着地前の先行ジャンプ入力を覚える秒
-        // TODO(syunta): 暫定値。人の早押し誤差は概ね 100ms なので目標は 0.1 秒、体感で詰める
+        // TODO: 暫定値。人の早押し誤差は概ね 100ms なので目標は 0.1 秒、体感で詰める
         float m_jumpBufferTime = 0.25f;
         float m_maxSpeed = 8.0f;      // 最大移動速度
         float m_walkSpeed = 4.0f;     // 歩き速度
@@ -178,8 +181,8 @@ namespace NS::Object
         float m_accelTau = 0.10f;     // 加速の時定数
         float m_decelTau = 0.10f;     // 減速の時定数
 
-        float m_capsuleRadius = 0.4f;     // capsule 半径
-        float m_capsuleHalfHeight = 0.5f; // capsule 半高
+        float m_capsuleRadius = 0.4f;     // カプセル半径
+        float m_capsuleHalfHeight = 0.5f; // カプセル半分の高さ
 
         NS::Core::Vector3 m_velocity{0.0f, 0.0f, 0.0f};   // 現在の速度
         NS::Core::Vector3 m_desiredDir{0.0f, 0.0f, 0.0f}; // 入力から作る world 空間の目標移動方向
@@ -198,7 +201,7 @@ namespace NS::Object
 
         bool m_debugDraw = true; // デバッグ可視化を出すか
 
-        // 最後に接地していた world 位置。 縁を踏み外した直後はここが踏み外し点 すなわち縁になる
+        // 最後に接地していた world 位置。縁を踏み外した直後はここが縁の位置になる
         NS::Core::Vector3 m_lastGroundedPosition{0.0f, 0.0f, 0.0f};
         // 表示中のコヨーテジャンプ記録。 寿命付きで OnUpdate 冒頭に減衰させ、 切れたら除外する
         std::vector<CoyoteJumpMarker> m_coyoteJumpMarkers;
@@ -206,9 +209,9 @@ namespace NS::Object
         const NS::Physics::PhysicsWorld* m_world = nullptr; // 衝突判定に使う physics world (非所有)
         NS::Physics::CapsuleMover m_controller;             // 数値計算を任せる controller
 
-        // 状態の並び。セミコロン区切りの登録名で、先頭が初期状態。反映は組み直しから
+        // 状態の並び。セミコロン区切りの登録名で、先頭が初期状態。書き換えても組み直すまで効かない
         std::string m_stateNames = "Locomotion;LedgeHang;LedgeMantle";
-        StateMachine<CharacterMovementComponent> m_machine; // States から組む状態機械。初回 OnUpdate で組む
+        StateMachine<CharacterMovementComponent> m_machine; // m_stateNames から組む。初回 OnUpdate で組む
 
         MovementState m_state = MovementState::Walking; // 細分ラベルの現在値
 
