@@ -52,6 +52,7 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
 {
     const char* k_Registered[] = {
         "BoxColliderComponent",
+        "BreakableComponent",
         "SphereColliderComponent",
         "CapsuleColliderComponent",
         "SlopeColliderComponent",
@@ -133,7 +134,7 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 20u);
+    EXPECT_EQ(names.size(), 21u);
     EXPECT_TRUE(Contains(names, "BoxColliderComponent"));
     EXPECT_TRUE(Contains(names, "MeshRendererComponent"));
     EXPECT_TRUE(Contains(names, "CharacterMovementComponent"));
@@ -148,6 +149,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
     // 増減が意図か事故かをこの一覧との突き合わせで判定する。抜けは気づけない保存漏れになる
     const std::map<std::string, std::vector<std::string>> k_Ledger = {
         {"BoxColliderComponent", {"半径", "中心オフセット", "回転 (度)", "トリガー"}},
+        {"BreakableComponent", {"質量", "耐久"}},
         {"CameraBrainComponent", {"ブレンド秒数"}},
         {"CameraComponent", {}},
         {"CapsuleColliderComponent", {"半径", "半分の高さ", "中心オフセット", "回転 (度)"}},
@@ -238,6 +240,7 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
     // 誤った基底を書いた宣言は typeName 一致では捕まらないため、期待基底を明示して突き合わせる
     const std::map<std::string, std::vector<std::string>> k_BaseLedger = {
         {"BoxColliderComponent", {"ColliderComponent"}},
+        {"BreakableComponent", {}},
         {"CameraBrainComponent", {}},
         {"CameraComponent", {}},
         {"CapsuleColliderComponent", {"ColliderComponent"}},
