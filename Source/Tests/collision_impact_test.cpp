@@ -548,8 +548,13 @@ TEST(CollisionImpact, HitStopFreezesPlayerAndDefersLaunch)
 
     Step(scene);
 
+    // 検知の歩は移動を止めない。最後の 1 歩で自機が岩へ触れてから凍る
     ASSERT_TRUE(rig.impact->DidRebound());
-    EXPECT_FALSE(rig.movement->IsActiveSelf());
+    EXPECT_TRUE(rig.movement->IsActiveSelf());
+    EXPECT_EQ(HitBody(rig), nullptr);
+
+    Step(scene);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
     EXPECT_EQ(HitBody(rig), nullptr);
     EXPECT_FLOAT_EQ(rig.movement->Velocity().x, k_RunSpeed);
 
@@ -576,6 +581,7 @@ TEST(CollisionImpact, HeavierTargetStopsLonger)
     light.breakable->SetMass(1.0f);
     light.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
     Step(lightScene);
+    Step(lightScene);
     ASSERT_FALSE(light.movement->IsActiveSelf());
     const int lightSteps = StepsUntilMovementActive(lightScene, light, 60);
 
@@ -584,6 +590,7 @@ TEST(CollisionImpact, HeavierTargetStopsLonger)
     ASSERT_NE(heavy.breakable, nullptr);
     heavy.breakable->SetMass(8.0f);
     heavy.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    Step(heavyScene);
     Step(heavyScene);
     ASSERT_FALSE(heavy.movement->IsActiveSelf());
     const int heavySteps = StepsUntilMovementActive(heavyScene, heavy, 60);
@@ -599,12 +606,14 @@ TEST(CollisionImpact, FasterImpactStopsLonger)
     Rig normal = Build(normalScene, Vector3{}, 1, 0, true);
     normal.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
     Step(normalScene);
+    Step(normalScene);
     ASSERT_FALSE(normal.movement->IsActiveSelf());
     const int normalSteps = StepsUntilMovementActive(normalScene, normal, 60);
 
     SceneNs::Scene maxScene;
     Rig maxDash = Build(maxScene, Vector3{}, 1, 0, true);
     maxDash.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+    Step(maxScene);
     Step(maxScene);
     ASSERT_FALSE(maxDash.movement->IsActiveSelf());
     const int maxSteps = StepsUntilMovementActive(maxScene, maxDash, 60);
@@ -625,6 +634,7 @@ TEST(CollisionImpact, HitStopDefersGraceUntilRelease)
 
     Step(scene);
     ASSERT_TRUE(rig.impact->DidRebound());
+    Step(scene);
     ASSERT_FALSE(rig.movement->IsActiveSelf());
 
     for (int i = 0; i < 4; ++i)
@@ -649,14 +659,134 @@ TEST(CollisionImpact, HitStopBaseSecondsDrivesFreezeLength)
 
     Step(scene);
     ASSERT_TRUE(rig.impact->DidRebound());
+    Step(scene);
     ASSERT_FALSE(rig.movement->IsActiveSelf());
 
     // 質量 1 × 勢いの比 1 なので、秒 ÷ 固定ステップ = 8 歩ちょうど止まる
     EXPECT_EQ(StepsUntilMovementActive(scene, rig, 60), 8);
 }
 
-// 凍結の頭で岩が発射方向へ食い込む。physics 側の当たりは動かない
-TEST(CollisionImpact, HitStopPushesRockAtDetection)
+// 凍結中は自機が進行方向へ潰れる。反発の前半を潰れで見せる
+TEST(CollisionImpact, FreezeSquashesPlayerShape)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    ASSERT_NE(rig.breakable, nullptr);
+    rig.breakable->SetMass(4.0f);
+    const Vector3 authored = rig.movement->Owner()->Root().Scale();
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+    // 検知の歩はまだ元の形のまま
+    const Vector3 detected = rig.movement->Owner()->Root().Scale();
+    EXPECT_FLOAT_EQ(detected.x, authored.x);
+    EXPECT_FLOAT_EQ(detected.y, authored.y);
+
+    Step(scene);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+    const Vector3 squashed = rig.movement->Owner()->Root().Scale();
+    EXPECT_LT(squashed.x, authored.x);
+    EXPECT_GT(squashed.y, authored.y);
+    EXPECT_FLOAT_EQ(squashed.z, authored.z);
+}
+
+// 解放の歩に弾かれる方向へ伸びた形で飛び出し、数歩で配置で決めた元の形へ厳密に戻る
+TEST(CollisionImpact, ReleaseStretchesThenRestoresScaleExactly)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    ASSERT_NE(rig.breakable, nullptr);
+    rig.breakable->SetMass(4.0f);
+    const Vector3 authored = rig.movement->Owner()->Root().Scale();
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+    Step(scene);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+    const int rest = StepsUntilMovementActive(scene, rig, 60);
+    ASSERT_LT(rest, 60);
+
+    // 解放の歩は伸びた形。弾かれる軸は進行と同じ x で、高さは元に戻っている
+    const Vector3 stretched = rig.movement->Owner()->Root().Scale();
+    EXPECT_GT(stretched.x, authored.x);
+    EXPECT_FLOAT_EQ(stretched.y, authored.y);
+    EXPECT_FLOAT_EQ(stretched.z, authored.z);
+
+    for (int i = 0; i < 10; ++i)
+        Step(scene);
+
+    const Vector3 restored = rig.movement->Owner()->Root().Scale();
+    EXPECT_FLOAT_EQ(restored.x, authored.x);
+    EXPECT_FLOAT_EQ(restored.y, authored.y);
+    EXPECT_FLOAT_EQ(restored.z, authored.z);
+}
+
+// 潰れは絵だけ。凍結中も当たり判定と位置は変わらない
+TEST(CollisionImpact, SquashLeavesPositionAndPhysicsAlone)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    ASSERT_NE(rig.breakable, nullptr);
+    rig.breakable->SetMass(4.0f);
+    const std::size_t aabbs = scene.Physics().Aabbs().size();
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+    Step(scene);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+    const Vector3 frozenPos = rig.movement->Owner()->Root().Position();
+
+    Step(scene);
+    const Vector3 stillPos = rig.movement->Owner()->Root().Position();
+    EXPECT_FLOAT_EQ(stillPos.x, frozenPos.x);
+    EXPECT_FLOAT_EQ(stillPos.y, frozenPos.y);
+    EXPECT_FLOAT_EQ(stillPos.z, frozenPos.z);
+    EXPECT_EQ(scene.Physics().Aabbs().size(), aabbs);
+}
+
+// 検知の歩では移動が最後の 1 歩を走り、次の歩で凍る。自機が岩へ押し付けられた構図で止まる
+TEST(CollisionImpact, FreezeWaitsOneStepAfterDetection)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    ASSERT_NE(rig.breakable, nullptr);
+    rig.breakable->SetMass(4.0f);
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+    ASSERT_TRUE(rig.impact->DidRebound());
+    EXPECT_TRUE(rig.movement->IsActiveSelf());
+
+    Step(scene);
+    EXPECT_FALSE(rig.movement->IsActiveSelf());
+}
+
+// 待ちの 1 歩と凍結中に同じ衝突を二重に検知しない
+TEST(CollisionImpact, DetectsOnlyOncePerImpact)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    ASSERT_NE(rig.breakable, nullptr);
+    rig.breakable->SetMass(4.0f);
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+
+    int detections = 0;
+    for (int i = 0; i < 20; ++i)
+    {
+        Step(scene);
+        if (rig.impact->DidRebound())
+            ++detections;
+    }
+
+    EXPECT_EQ(detections, 1);
+    EXPECT_TRUE(rig.movement->IsActiveSelf());
+    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    ASSERT_NE(body, nullptr);
+    EXPECT_TRUE(body->IsFlying());
+}
+
+// 凍結が始まる歩で岩が発射方向へ食い込む。当たりは動かさない
+TEST(CollisionImpact, HitStopPushesRockWhenFreezeBegins)
 {
     SceneNs::Scene scene;
     Rig rig = Build(scene, Vector3{}, 1, 0, true);
@@ -667,8 +797,10 @@ TEST(CollisionImpact, HitStopPushesRockAtDetection)
     rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
 
     Step(scene);
-
     ASSERT_TRUE(rig.impact->DidRebound());
+    EXPECT_FLOAT_EQ(rig.targetBox->Owner()->Root().Position().x, home.x);
+
+    Step(scene);
     ASSERT_FALSE(rig.movement->IsActiveSelf());
     const Vector3 pushed = rig.targetBox->Owner()->Root().Position();
     EXPECT_GT(pushed.x, home.x + 1.0e-4f);
@@ -687,6 +819,7 @@ TEST(CollisionImpact, RockVibratesWhileFrozen)
     rig.breakable->SetMass(4.0f);
     rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
 
+    Step(scene);
     Step(scene);
     ASSERT_FALSE(rig.movement->IsActiveSelf());
 
@@ -708,6 +841,7 @@ TEST(CollisionImpact, HeavierRockVibratesLess)
     light.breakable->SetMass(0.5f);
     light.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
     Step(lightScene);
+    Step(lightScene);
     ASSERT_FALSE(light.movement->IsActiveSelf());
     float lightMin = light.targetBox->Owner()->Root().Position().x;
     float lightMax = lightMin;
@@ -726,6 +860,7 @@ TEST(CollisionImpact, HeavierRockVibratesLess)
     ASSERT_NE(heavy.breakable, nullptr);
     heavy.breakable->SetMass(8.0f);
     heavy.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    Step(heavyScene);
     Step(heavyScene);
     ASSERT_FALSE(heavy.movement->IsActiveSelf());
     float heavyMin = heavy.targetBox->Owner()->Root().Position().x;
@@ -755,6 +890,7 @@ TEST(CollisionImpact, ReleaseRestoresRockExactlyBeforeLaunch)
     const std::size_t aabbs = scene.Physics().Aabbs().size();
     rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
 
+    Step(scene);
     Step(scene);
     ASSERT_FALSE(rig.movement->IsActiveSelf());
     const int rest = StepsUntilMovementActive(scene, rig, 60);
@@ -791,7 +927,11 @@ TEST(CollisionImpact, HitStopShakesCamera)
     rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
     Step(scene);
     ASSERT_TRUE(rig.impact->DidRebound());
+    brain->Evaluate(1.0f);
+    EXPECT_FLOAT_EQ(brain->LastPose().position.y, before.y);
 
+    Step(scene);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
     brain->Evaluate(1.0f);
     const Vector3 during = brain->LastPose().position;
     EXPECT_GT(std::abs(during.y - before.y), 1.0e-4f);

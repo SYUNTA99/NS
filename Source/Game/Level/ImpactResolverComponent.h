@@ -47,12 +47,24 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_pushInDistance, "食い込み距離")
         NS_REFLECT_FIELD(m_shakeAmplitude, "振動の振幅")
         NS_REFLECT_FIELD(m_cameraShakeScale, "カメラ揺れの強さ")
+        NS_REFLECT_FIELD(m_squashThickness, "潰れの厚み")
+        NS_REFLECT_FIELD(m_squashHeight, "潰れの伸び上がり")
+        NS_REFLECT_FIELD(m_stretchAlong, "弾け伸びの倍率")
         NS_REFLECT_END()
 
     private:
         // 重なっている壊せる物のうち中心が最も近い 1 体。無ければ nullptr
         // 事前条件: m_movement が非 null
         [[nodiscard]] BreakableComponent* FindOverlapped() const;
+
+        // 凍結を掛ける。自機を寝かせて潰し、相手を食い込ませ、カメラを揺らし始める
+        void BeginFreeze(int stopSteps);
+
+        // 解放後の歩で伸びた形から配置で決めた元の形へ滑らかに戻す。最後の歩は控えた値を厳密に書く
+        void RecoverScale();
+
+        // 進行の軸だけ倍率を効かせた描画スケールを作る。縦は別の倍率で受ける
+        [[nodiscard]] NS::Core::Vector3 ScaledAlongImpact(float along, float height) const noexcept;
 
         // 止めていた結果を適用する。自機を起こして反発速度を書き、猶予を始め、相手を発射する
         void ReleaseHitStop();
@@ -72,7 +84,11 @@ namespace NS::Game::Level
         float m_pushInDistance = 0.06f;            // 凍結の頭で相手を発射方向へ食い込ませる距離
         float m_shakeAmplitude = 0.05f;            // 凍結中の往復の振れ幅。質量 1 で半分になる
         float m_cameraShakeScale = 0.06f;          // カメラ揺れの上下振れ幅の基準
+        float m_squashThickness = 0.7f;            // 凍結中の進行方向の厚みの倍率
+        float m_squashHeight = 1.1f;               // 凍結中の高さの倍率
+        float m_stretchAlong = 1.2f;               // 解放の歩の弾かれる方向の倍率
 
+        int m_freezePendingSteps = 0;                                // 次の歩に掛ける凍結の歩数。0 は予約なし
         int m_hitStopRemaining = 0;                                  // 止まっている残り歩数。0 は止まっていない
         int m_hitStopTotal = 0;                                      // 止め始めの歩数。振動の減衰の分母
         NS::Core::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f};   // 明けた歩に自機へ書く反発速度
@@ -80,6 +96,11 @@ namespace NS::Game::Level
         NS::Core::Vector3 m_pendingTargetHome{0.0f, 0.0f, 0.0f};     // 相手の元位置。明けた歩に厳密に戻す
         NS::Core::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f};      // 発射の水平方向。食い込みと振動の軸
         float m_pendingShakeAmplitude = 0.0f;                        // この衝突の往復の振れ幅
+        float m_pendingShakeStrength = 0.0f;                         // この衝突のカメラ揺れの振れ幅
+        NS::Core::Vector3 m_scaleHome{1.0f, 1.0f, 1.0f};             // 配置で決めた元の描画スケールの控え
+        NS::Core::Vector3 m_stretchScale{1.0f, 1.0f, 1.0f};          // 解放の歩の伸びた形
+        int m_recoverRemaining = 0;                                  // 形を戻し切るまでの残り歩数
+        bool m_scaleHeld = false;                                    // 潰した形のまま凍結している最中か
         std::uint32_t m_pendingTargetId = 0;                         // 発射する相手の永続 id
 
         bool m_didRebound = false;                                    // 直近の更新で衝突を検知したか

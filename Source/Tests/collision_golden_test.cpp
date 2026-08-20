@@ -209,7 +209,8 @@ namespace
     // 衝突: 質量 1.0 / 耐久 99.0 の壊せる物へ +Z へ速度スケール 1.0 で 360 固定ステップ
     // 耐久を高くして、破壊が入っても反発と押し飛ばしの経路が変わらないようにしてある
     // 反発を勢いと質量から作る式とヒットストップを入れた時に取り直した。取り直し前は 0x32375285390311FF
-    constexpr std::uint64_t k_ImpactGolden = 0x9104E912BEA391C4ULL;
+    // 凍結を 1 歩遅らせて触れてから止まる構図にした時に取り直した。取り直し前は 0x9104E912BEA391C4
+    constexpr std::uint64_t k_ImpactGolden = 0x9557D5FB66D8EAB9ULL;
 } // namespace
 
 class CollisionGolden : public ::testing::Test

@@ -34,6 +34,9 @@ namespace NS::Game::Level
 
         // 止める歩数の上限 12 歩 (0.2 秒)。これより長い停止は衝突の重さではなく処理落ちに見える
         constexpr int k_MaxHitStopSteps = 12;
+
+        // 伸びから元の形へ戻す歩数。反発の滞空 0.3 秒の前半で戻し切り、着地の前に形を確定させる
+        constexpr int k_StretchRecoverSteps = 6;
     } // namespace
 
     // MomentumComponent の 50 より後。先に走ると BeginGrace した猶予がその固定ステップのうちに解ける
@@ -113,6 +116,16 @@ namespace NS::Game::Level
             return;
         }
 
+        if (m_freezePendingSteps > 0)
+        {
+            BeginFreeze(m_freezePendingSteps);
+            m_freezePendingSteps = 0;
+            return;
+        }
+
+        if (m_recoverRemaining > 0)
+            RecoverScale();
+
         BreakableComponent* hit = FindOverlapped();
         if (hit == nullptr)
             return;
@@ -171,6 +184,7 @@ namespace NS::Game::Level
         m_pendingImpactDir = NS::Core::Vector3{-awayX, 0.0f, -awayZ};
         // 反発の質量因子の残り。動きは軽い側が受け取るので、重い物ほど揺れない
         m_pendingShakeAmplitude = m_shakeAmplitude / (1.0f + mass);
+        m_pendingShakeStrength = m_cameraShakeScale * ratio * massFactor;
         m_didRebound = true;
         NS_LOG_INFO(Game, "衝突: 質量 {} 耐久 {} 返り {} 押し飛ばし {}", mass, hit->Toughness(), rebound, launch);
 
@@ -181,26 +195,50 @@ namespace NS::Game::Level
             return;
         }
 
+        // 凍結は次の歩から。この歩は移動が最後の 1 歩を走り、自機が箱へ触れてから止まる
+        m_freezePendingSteps = stopSteps;
+    }
+
+    void ImpactResolverComponent::BeginFreeze(int stopSteps)
+    {
         // 自機を寝かせて凍らせる。World::UpdateObjects は active をその場で見るので同じ歩から効く
         m_hitStopRemaining = stopSteps;
         m_hitStopTotal = stopSteps;
         m_movement->SetActive(false);
         NS_LOG_INFO(Game, "ヒットストップ: {} 歩", stopSteps);
 
-        // 力が伝わった瞬間の絵。凍結の頭で相手を発射方向へ食い込ませて止める。当たりは動かさない
-        hit->Owner()->Root().SetPosition(m_pendingTargetHome + m_pendingImpactDir * m_pushInDistance);
+        // 潰れは反発の前半。進行方向の厚みを潰し、行き場を失った体積を縦へ逃がす
+        // 戻りの最中に次の衝突が来たら、控え済みの元の形をそのまま使い続ける
+        if (m_recoverRemaining == 0)
+            m_scaleHome = RootTransform().Scale();
+        m_recoverRemaining = 0;
+        m_scaleHeld = true;
+        RootTransform().SetScale(ScaledAlongImpact(m_squashThickness, m_squashHeight));
 
-        if (NS::Object::Scene* scene = Owner()->OwningScene())
-        {
-            if (NS::Object::CameraBrainComponent* brain = scene->CameraBrain())
-                brain->StartShake(m_cameraShakeScale * ratio * massFactor, stopSteps);
-        }
+        NS::Object::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+            return;
+
+        // 力が伝わった瞬間の絵。凍結の頭で相手を発射方向へ食い込ませて止める。当たりは動かさない
+        if (NS::Object::GameObject* target = scene->World().FindByObjectId(m_pendingTargetId))
+            target->Root().SetPosition(m_pendingTargetHome + m_pendingImpactDir * m_pushInDistance);
+
+        if (NS::Object::CameraBrainComponent* brain = scene->CameraBrain())
+            brain->StartShake(m_pendingShakeStrength, stopSteps);
     }
 
     void ImpactResolverComponent::ReleaseHitStop()
     {
         m_movement->SetActive(true);
         m_movement->SetVelocity(m_pendingSelfVelocity);
+        if (m_scaleHeld)
+        {
+            // 解放の伸びが反発そのもの。弾かれる軸は進行の軸と同じで、高さは戻して横だけ伸ばす
+            m_stretchScale = ScaledAlongImpact(m_stretchAlong, 1.0f);
+            RootTransform().SetScale(m_stretchScale);
+            m_recoverRemaining = k_StretchRecoverSteps;
+            m_scaleHeld = false;
+        }
         // 猶予はここから数え始める。止まっている間に数えると、操作できないまま猶予が減る
         m_momentum->BeginGrace();
 
@@ -234,6 +272,29 @@ namespace NS::Game::Level
         const float decay = static_cast<float>(m_hitStopRemaining) / static_cast<float>(m_hitStopTotal);
         const float along = m_pushInDistance + m_pendingShakeAmplitude * sign * decay;
         target->Root().SetPosition(m_pendingTargetHome + m_pendingImpactDir * along);
+    }
+
+    void ImpactResolverComponent::RecoverScale()
+    {
+        --m_recoverRemaining;
+        if (m_recoverRemaining <= 0)
+        {
+            // 補間の残差を残さない。控えた元の値をそのまま書いて形を確定させる
+            RootTransform().SetScale(m_scaleHome);
+            return;
+        }
+        const float t = static_cast<float>(m_recoverRemaining) / static_cast<float>(k_StretchRecoverSteps);
+        RootTransform().SetScale(m_scaleHome + (m_stretchScale - m_scaleHome) * t);
+    }
+
+    NS::Core::Vector3 ImpactResolverComponent::ScaledAlongImpact(float along, float height) const noexcept
+    {
+        // 衝突は水平でしか起きない。進行の軸成分の 2 乗で倍率を混ぜ、軸に載った衝突では素の倍率になる
+        const float dx2 = m_pendingImpactDir.x * m_pendingImpactDir.x;
+        const float dz2 = m_pendingImpactDir.z * m_pendingImpactDir.z;
+        return NS::Core::Vector3{m_scaleHome.x * (1.0f + (along - 1.0f) * dx2),
+                                 m_scaleHome.y * height,
+                                 m_scaleHome.z * (1.0f + (along - 1.0f) * dz2)};
     }
 
     int ImpactResolverComponent::ComputeHitStopSteps(float ratio, float mass) const noexcept
