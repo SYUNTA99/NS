@@ -5,10 +5,7 @@
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
 #include "Game/Level/BlockObject.h"
-#include "Game/Level/FinisherComponent.h"
-#include "Game/Level/GoalComponent.h"
 #include "Game/Level/RespawnerComponent.h"
-#include "Game/Level/ScreenFadeComponent.h"
 #include "Game/Player.h"
 #include "Runtime/App/Application.h"
 #include "Runtime/Core/Clock.h"
@@ -268,11 +265,12 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     // ギズモに依存先を注入する。選択候補は自由オブジェクト + grid solid ブロックを連結して渡す
     m_gizmo.SetInput(&app->Input());
     m_gizmo.SetImGui(imgui);
-    RefreshGizmoSelectables();
 
-    // scene は OnStart でプレイ開始済。プレイを終えて player 凍結の編集モードへ切替える
+    // scene は OnStart でプレイ開始済。プレイを終えて操作系を休止させた編集モードへ切替える
     LeavePlayForEdit();
     m_mode = Mode::Edit;
+    // 選択候補の生ポインタは組み直しの後に集める。先に集めると破棄済みの相手を指す
+    RefreshGizmoSelectables();
 }
 
 void LevelEditorController::Teardown()
@@ -303,9 +301,7 @@ void LevelEditorController::EnterPlay() noexcept
     (void)m_scene->BeginPlayBaseline();
     if (auto* player = FindPlayer(m_scene->World()))
     {
-        // 編集で休止させた部品を有効化する。休止させる側は LeavePlayForEdit
-        if (auto* mesh = player->FindComponent<NS::Object::MeshRendererComponent>())
-            mesh->SetActive(true);
+        // 編集で休止させた movement / input を起こす。休止させる側は LeavePlayForEdit
         if (auto* movement = player->FindComponent<NS::Object::CharacterMovementComponent>())
             movement->SetActive(true);
         if (auto* input = player->FindComponent<NS::Object::PlayerInputComponent>())
@@ -350,7 +346,7 @@ void LevelEditorController::EnterEdit() noexcept
         app->Input().Keyboard().ClearState();
         app->Input().Mouse().ClearState();
     }
-    // プレイを終える。player を凍結し、follow と area camera を休ませ、演出を捨てる
+    // プレイを終え、凍結スナップショットから編集の姿へ組み直す
     LeavePlayForEdit();
     // プレイ視点から自由視点へ繋ぐ。始点は直前まで実カメラに書かれていた pose
     if (auto* brain = Brain())
@@ -359,7 +355,7 @@ void LevelEditorController::EnterEdit() noexcept
         m_editBlendElapsed = 0.0f;
         m_editBlending = true;
     }
-    // Play 中の rebuild を跨いだ選択を、id から現在のオブジェクトへ貼り直してから編集へ戻る
+    // 編集復帰の組み直しを跨いだ選択を、id から現在のオブジェクトへ貼り直してから編集へ戻る
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
     m_editor.SetActive(true);
@@ -372,7 +368,7 @@ void LevelEditorController::RequestStepFrame() noexcept
     m_scene->StepSimulation();
 }
 
-void LevelEditorController::LeavePlayForEdit() noexcept
+void LevelEditorController::LeavePlayForEdit()
 {
     // free-fly カメラはこの外で editor が握る
     if (m_scene == nullptr)
@@ -380,38 +376,25 @@ void LevelEditorController::LeavePlayForEdit() noexcept
     // 編集モードの間は世界を止める
     m_scene->SetSimulationEnabled(false);
 
-    // 進行中のクリアシーケンスと暗転はプレイの持ち物なのでここで破棄する
-    // 残すと次のプレイ開始で前回の演出が突然発火する。ゴールのフラグも戻す
-    m_scene->World().ForEachComponent<NS::Game::Level::FinisherComponent>(
-        [](NS::Game::Level::FinisherComponent& finisher) { finisher.Cancel(); });
-    m_scene->World().ForEachComponent<NS::Game::Level::ScreenFadeComponent>(
-        [](NS::Game::Level::ScreenFadeComponent& fade) { fade.Cancel(); });
-    m_scene->World().ForEachComponent<NS::Game::Level::GoalComponent>(
-        [](NS::Game::Level::GoalComponent& goal) { goal.ResetReached(); });
+    // プレイは試走。位置・生成・破棄・演出の進行を live に残さず、突入時の凍結から世界を組み直す
+    // 演出の破棄もゴールの旗戻しも組み直しが済ませるので、個別の後始末は置かない
+    // 一時オブジェクトの実カメラは凍結に写らないが、Rebuild が退避して残す
+    NS::Object::SceneData baseline = m_scene->PlayBaseline();
+    m_scene->LoadFromData(std::move(baseline));
+
+    // 組み直し直後の描画が補間の初期値を読むので、全 root を snapshot して現在値に揃える
+    for (NS::Object::GameObject* obj : m_scene->World())
+        obj->Root().Snapshot();
 
     if (auto* player = FindPlayer(m_scene->World()))
     {
+        // 操作系は生成時 active のまま組み上がるので、編集中だけ休止させる。起こす側は EnterPlay
+        // follow と vcam はコンストラクタが休止で作るので、ここで寝かせる行は要らない
         if (auto* movement = player->FindComponent<NS::Object::CharacterMovementComponent>())
             movement->SetActive(false);
         if (auto* input = player->FindComponent<NS::Object::PlayerInputComponent>())
             input->SetActive(false);
-        // 編集中も player を突入時の pose に見せ、 ギズモで掴んで動かせるようにする
-        if (auto* mesh = player->FindComponent<NS::Object::MeshRendererComponent>())
-            mesh->SetActive(true);
-        const NS::Object::SceneData& level = m_scene->PlayBaseline();
-        const std::size_t playerIndex = FindPlayerObjectIndex(level);
-        if (playerIndex != NS::Object::k_NoObjectIndex)
-        {
-            const NS::Object::ObjectData& playerObject = level.objects[playerIndex];
-            player->Root().SetPosition(NS::Object::ObjectPosition(playerObject));
-            player->Root().SetRotation(NS::Object::ObjectRotation(playerObject));
-        }
-        player->Root().Snapshot();
     }
-    m_scene->World().ForEachComponent<NS::Object::ThirdPersonFollowComponent>(
-        [](NS::Object::ThirdPersonFollowComponent& follow) { follow.SetActive(false); });
-    m_scene->World().ForEachComponent<NS::Object::PlacedVirtualCamera>(
-        [](NS::Object::PlacedVirtualCamera& placed) { placed.SetActive(false); });
 
     // 編集モードはカーソルを出し、 相対モードも解いてカーソル位置ベースの操作へ戻す
     if (auto* app = NS::App::Application::Get())
@@ -560,7 +543,7 @@ void LevelEditorController::TickEdit()
         SyncFollowCameraPoses();
 
         // 毎フレーム live な scene から候補 span を作り直し、選択を id から今のオブジェクトへ引き直す
-        // 作り直さないと Play 突入 / undo の rebuild で破棄された実体を指したままになる
+        // 作り直さないと編集復帰 / undo の rebuild で破棄された実体を指したままになる
         RefreshGizmoSelectables();
         ResolveSelectionFromId();
 
@@ -1048,20 +1031,28 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
     m_lastGizmoSelected = nullptr;
 }
 
-void LevelEditorController::SetSelectedFreePosition(NS::Core::Vector3 position) noexcept
+void LevelEditorController::SetSelectedFreePosition(NS::Core::Vector3 position)
 {
     // live の Root を直接動かす。永続化は CommitTransformEdit / SyncPhysics 経路が担う
     if (NS::Object::GameObject* go = SelectedObjectGameObject())
+    {
         go->Root().SetPosition(position);
+        if (auto* transform = go->FindComponent<NS::Object::TransformComponent>())
+            MirrorPlayEditToBaseline(*transform, NS::Object::k_PositionFieldName);
+    }
 }
 
-void LevelEditorController::SetSelectedFreeRotation(NS::Core::Quaternion rotation) noexcept
+void LevelEditorController::SetSelectedFreeRotation(NS::Core::Quaternion rotation)
 {
     if (NS::Object::GameObject* go = SelectedObjectGameObject())
+    {
         go->Root().SetRotation(rotation);
+        if (auto* transform = go->FindComponent<NS::Object::TransformComponent>())
+            MirrorPlayEditToBaseline(*transform, NS::Object::k_RotationEulerFieldName);
+    }
 }
 
-void LevelEditorController::SetSelectedFreeScale(NS::Core::Vector3 scale) noexcept
+void LevelEditorController::SetSelectedFreeScale(NS::Core::Vector3 scale)
 {
     // ImGui の入力で 0 / 負になると描画と当たり判定が壊れるため最小正値で止める
     constexpr float k_MinScale = 0.01f;
@@ -1069,7 +1060,19 @@ void LevelEditorController::SetSelectedFreeScale(NS::Core::Vector3 scale) noexce
     scale.y = std::max(scale.y, k_MinScale);
     scale.z = std::max(scale.z, k_MinScale);
     if (NS::Object::GameObject* go = SelectedObjectGameObject())
+    {
         go->Root().SetScale(scale);
+        if (auto* transform = go->FindComponent<NS::Object::TransformComponent>())
+            MirrorPlayEditToBaseline(*transform, NS::Object::k_ScaleFieldName);
+    }
+}
+
+void LevelEditorController::MirrorPlayEditToBaseline(const NS::Object::Component& comp, std::string_view fieldName)
+{
+    // 写すのはプレイ中だけ。編集モードで写すと次のプレイ突入の捕捉と二重管理になる
+    if (m_mode != Mode::Play || m_scene == nullptr)
+        return;
+    m_scene->WritePlayBaselineField(comp, fieldName);
 }
 
 void LevelEditorController::AddObject()

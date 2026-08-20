@@ -10,6 +10,12 @@
 
 namespace NS::Object
 {
+    //! TransformComponent のリフレクション欄の名前。 直列化の JSON キーそのもので、
+    //! 欄を名指しで書く消費側と綴りがずれないよう定数で共有する
+    inline constexpr const char* k_PositionFieldName = "位置";
+    inline constexpr const char* k_RotationEulerFieldName = "回転 (度)";
+    inline constexpr const char* k_ScaleFieldName = "スケール";
+
     //! @brief 位置・回転・スケールの実体を持ち、リフレクション経路 (Inspector / undo / 直列化) へ載せるコンポーネント
     //! @details GameObject はコンストラクタでこれを 1 つ積み、Root() はここが持つ Transform を指す
     //! 回転は Transform が quaternion で持ち、リフレクション欄だけ Euler 度で読み書きする
@@ -33,9 +39,12 @@ namespace NS::Object
         [[nodiscard]] NS::Core::Vector3 Scale() const noexcept;
 
         NS_REFLECT_BEGIN(TransformComponent, Component)
-        NS_REFLECT_ACCESSOR(NS::Core::Vector3, "位置", Position(), SetPosition)
-        NS_REFLECT_ACCESSOR(NS::Core::Vector3, "回転 (度)", RotationEulerDegrees(), SetRotationEulerDegrees)
-        NS_REFLECT_ACCESSOR(NS::Core::Vector3, "スケール", Scale(), SetScale)
+        NS_REFLECT_ACCESSOR(NS::Core::Vector3, k_PositionFieldName, Position(), SetPosition)
+        NS_REFLECT_ACCESSOR(NS::Core::Vector3,
+                            k_RotationEulerFieldName,
+                            RotationEulerDegrees(),
+                            SetRotationEulerDegrees)
+        NS_REFLECT_ACCESSOR(NS::Core::Vector3, k_ScaleFieldName, Scale(), SetScale)
         NS_REFLECT_END()
 
     private:

@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -26,6 +27,7 @@ namespace NS::Object
     class AssetManager;
     class CameraBrainComponent;
     class CameraComponent;
+    class Component;
     class IRenderable;
 
     //! @brief 1 つのシーンビュー。 指定の描画先へ指定の視点で world を描く単位
@@ -100,6 +102,14 @@ namespace NS::Object
 
         //! @brief テスト用に凍結スナップショットを外から与える。 以降の BeginPlayBaseline は捕捉せず据え置く
         void SetPlayBaselineForTest(SceneData data);
+
+        //! @brief live component の欄 1 つを凍結スナップショットの同じ欄へ写す
+        //! @details プレイ中の手編集を、 凍結から組み直す編集復帰の後へ残すための口
+        //! component 丸写しにしないのは、 シミュレーションが動かした値まで写すと試走の結果が凍結へ漏れるため
+        //! 凍結に居ない相手 (プレイ中に湧いた object・一時オブジェクト) は写す先が無く、 何もしない
+        //! @param[in] comp 手編集を受けた live component
+        //! @param[in] fieldName リフレクションのフィールド名。 持っていない欄なら何もしない
+        void WritePlayBaselineField(const Component& comp, std::string_view fieldName);
 
         //! @brief 世界を回すかの切替。 既定は回す。 エディタが編集モードの間だけ下ろす
         //! @details 切替時に一時停止とコマ送りは払う

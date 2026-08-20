@@ -58,6 +58,11 @@ namespace NS::Editor
         // 値をこの場で書くと undo の控えを取る前に live が動くので、 適用は呼び出し側へ預ける
         NS::Object::Component* revertTarget = nullptr;
         const NS::Object::FieldDesc* revertField = nullptr;
+
+        // 値が編集された対象と欄。 編集が起きたフレームだけ入る
+        // 凍結スナップショットへの写しが欄単位で要るので、 changed の集約とは別に持つ
+        NS::Object::Component* changedTarget = nullptr;
+        const NS::Object::FieldDesc* changedField = nullptr;
     };
 
     //! @brief リフレクション欄 1 つの値が既定と違うか

@@ -144,6 +144,7 @@ namespace NS::Editor
         {
             const NS::Object::FieldDesc& field = info->fields[i];
             const bool changed = FieldDiffersFromDefault(comp, defaults, field);
+            const bool wasChanged = result.changed;
             ImGui::PushID(static_cast<int>(i));
             FieldRow(field.name);
 
@@ -284,6 +285,12 @@ namespace NS::Editor
             // 空編集は CommitComponentEdit が before==after で弾くので履歴は汚れない
             result.committed |= ImGui::IsItemDeactivated();
 
+            if (result.changed && !wasChanged)
+            {
+                result.changedTarget = &comp;
+                result.changedField = &field;
+            }
+
             if (RevertButton(changed) && defaults != nullptr)
             {
                 result.revertTarget = &comp;
@@ -346,6 +353,11 @@ namespace NS::Editor
                     {
                         result.revertTarget = r.revertTarget;
                         result.revertField = r.revertField;
+                    }
+                    if (r.changedField != nullptr)
+                    {
+                        result.changedTarget = r.changedTarget;
+                        result.changedField = r.changedField;
                     }
                 }
                 else

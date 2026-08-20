@@ -10,8 +10,11 @@
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/DirectionalLightComponent.h"
 #include "Runtime/Object/Components/OverlayRendererComponent.h"
+#include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/IRenderable.h"
+#include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
+#include "Runtime/Object/Reflection/ReflectionJson.h"
 
 namespace NS::Object
 {
@@ -79,6 +82,38 @@ namespace NS::Object
     {
         m_playBaseline = std::move(data);
         m_playBaselineInjected = true;
+    }
+
+    void Scene::WritePlayBaselineField(const Component& comp, std::string_view fieldName)
+    {
+        const GameObject* owner = comp.Owner();
+        if (owner == nullptr)
+            return;
+        const std::size_t objectIndex = FindObjectIndexById(m_playBaseline, owner->Id());
+        if (objectIndex == k_NoObjectIndex)
+            return;
+        ObjectData& object = m_playBaseline.objects[objectIndex];
+
+        for (nlohmann::json& entry : object.components)
+        {
+            if (ComponentEntryId(entry) != comp.Id())
+                continue;
+            // 回転は Euler と厳密クォータニオンの控えが対で載る。両方を揃えて書く SetObjectRotation へ委ねる
+            if (ComponentEntryType(entry) == k_TransformTypeName && fieldName == k_RotationEulerFieldName)
+            {
+                SetObjectRotation(object, owner->Root().Rotation());
+                return;
+            }
+            const nlohmann::json serialized = SerializeComponent(comp);
+            const auto fieldsIt = serialized.find("fields");
+            if (fieldsIt == serialized.end())
+                return;
+            const auto valueIt = fieldsIt->find(std::string(fieldName));
+            if (valueIt == fieldsIt->end())
+                return;
+            entry["fields"][std::string(fieldName)] = *valueIt;
+            return;
+        }
     }
 
     void Scene::SetSimulationEnabled(bool enabled) noexcept

@@ -22,6 +22,7 @@ namespace NS::Object
     class Transform;
     class CameraBrainComponent;
     class CameraComponent;
+    class Component;
     class World;
     class ThirdPersonFollowComponent;
     class Scene;
@@ -147,9 +148,9 @@ public:
     [[nodiscard]] NS::Object::ObjectData SelectedObjectSnapshot() const noexcept;
 
     //! 選択中の配置物の位置 / 回転 / スケールを live へ直接設定する。非選択時は何もしない
-    void SetSelectedFreePosition(NS::Core::Vector3 position) noexcept;
-    void SetSelectedFreeRotation(NS::Core::Quaternion rotation) noexcept;
-    void SetSelectedFreeScale(NS::Core::Vector3 scale) noexcept;
+    void SetSelectedFreePosition(NS::Core::Vector3 position);
+    void SetSelectedFreeRotation(NS::Core::Quaternion rotation);
+    void SetSelectedFreeScale(NS::Core::Vector3 scale);
 
     //! ドラッグでの変形を始める / 確定する
     void BeginTransformEdit() noexcept;
@@ -158,6 +159,10 @@ public:
     //! Inspector のリフレクション項目をドラッグで編集し始める / 確定する
     void BeginComponentEdit() noexcept;
     void CommitComponentEdit() noexcept;
+
+    //! プレイ中の手編集を凍結スナップショットへも写す。編集復帰の組み直しを跨いで調整値が残る
+    //! 編集モードでは live が唯一の出所なので何もしない。Inspector の編集箇所と transform 設定子が呼ぶ
+    void MirrorPlayEditToBaseline(const NS::Object::Component& comp, std::string_view fieldName);
 
     //! 編集視点の中心あたりに新しい自由オブジェクトを 1 個追加して選択する。Undo 対応
     void AddObject();
@@ -228,9 +233,9 @@ public:
 private:
     void TickEdit();
 
-    //! プレイを終えて編集の姿へ戻す。部品を休止させ pose を凍結時の姿へ復元し、カーソルを出す
-    //! 編集モードでしか要らない遷移なのでエディタが持つ。演出破棄とゴールのフラグ戻しは CancelPlayEffects に任せる
-    void LeavePlayForEdit() noexcept;
+    //! プレイを終えて編集の姿へ戻す。凍結スナップショットから世界を組み直し、操作系を休止させ、カーソルを出す
+    //! 編集モードでしか要らない遷移なのでエディタが持つ。組み直しで確保が起きるため noexcept にしない
+    void LeavePlayForEdit();
 
     //! 配置物を新しい永続 id で 1 体追加する唯一の経路。採番・履歴登録・選択をまとめて面倒を見る
     void PushCreateObject(NS::Object::ObjectData object);

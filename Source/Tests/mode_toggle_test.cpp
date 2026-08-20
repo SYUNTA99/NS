@@ -2,6 +2,7 @@
 #include "Editor/EditorObjects.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
+#include "Game/Level/LaunchedBodyComponent.h"
 #include "Game/Level/ScreenFadeComponent.h"
 #include "Game/Player.h"
 #include "Runtime/Object/Components/TransformComponent.h"
@@ -34,6 +35,52 @@ namespace
         NS::Object::SetField(box, "トリガー", true);
         object.components = nlohmann::json::array({std::move(box), NS::Object::MakeComponentEntry("HazardComponent")});
         return object;
+    }
+
+    NS::Object::ObjectData MakeRock(float x, float y, float z)
+    {
+        NS::Object::ObjectData object;
+        NS::Object::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
+        object.components.push_back(NS::Object::MakeComponentEntry("BoxColliderComponent"));
+        return object;
+    }
+
+    NS::Object::GameObject* FindFirstPlaced(NS::Object::World& world)
+    {
+        for (NS::Object::GameObject* obj : world)
+        {
+            if (!obj->IsTransient())
+                return obj;
+        }
+        return nullptr;
+    }
+
+    void SetFloatField(NS::Object::Component& comp, std::string_view name, float value)
+    {
+        const NS::Object::ReflectionInfo* info = comp.GetReflection();
+        for (std::size_t i = 0; i < info->fieldCount; ++i)
+        {
+            if (std::string_view{info->fields[i].name} == name)
+            {
+                info->fields[i].set(&comp, &value);
+                return;
+            }
+        }
+    }
+
+    float GetFloatField(const NS::Object::Component& comp, std::string_view name)
+    {
+        const NS::Object::ReflectionInfo* info = comp.GetReflection();
+        for (std::size_t i = 0; i < info->fieldCount; ++i)
+        {
+            if (std::string_view{info->fields[i].name} == name)
+            {
+                float value = 0.0f;
+                info->fields[i].get(&comp, &value);
+                return value;
+            }
+        }
+        return 0.0f;
     }
 
     // 応答 component を載せた GameObject から暗転を引く
@@ -179,6 +226,85 @@ TEST(ModeToggle, EnterPlayPlacesPlayerAtBaselinePosition)
     EXPECT_NEAR(player->Root().Position().z, -4.0f, 1e-4f);
 }
 
+TEST(ModeToggle, EnterEditRestoresPoseMovedDuringPlay)
+{
+    NS::Object::Scene scene;
+    LevelEditorController editor(&scene);
+    NS::Object::SceneData data;
+    data.objects.push_back(MakeRock(1.0f, 2.0f, 3.0f));
+    scene.LoadFromData(std::move(data));
+    editor.EnterPlay();
+
+    NS::Object::GameObject* rock = FindFirstPlaced(scene.World());
+    ASSERT_NE(rock, nullptr);
+    const std::uint32_t rockId = rock->Id();
+    rock->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
+
+    editor.EnterEdit();
+
+    NS::Object::GameObject* restored = scene.World().FindObject(NS::Object::ObjectRef{rockId});
+    ASSERT_NE(restored, nullptr);
+    EXPECT_NEAR(restored->Root().Position().x, 1.0f, 1e-4f);
+    EXPECT_NEAR(restored->Root().Position().y, 2.0f, 1e-4f);
+    EXPECT_NEAR(restored->Root().Position().z, 3.0f, 1e-4f);
+}
+
+TEST(ModeToggle, EnterEditRevivesObjectDestroyedDuringPlay)
+{
+    NS::Object::Scene scene;
+    LevelEditorController editor(&scene);
+    NS::Object::SceneData data;
+    data.objects.push_back(MakeRock(1.0f, 2.0f, 3.0f));
+    scene.LoadFromData(std::move(data));
+    editor.EnterPlay();
+
+    NS::Object::GameObject* rock = FindFirstPlaced(scene.World());
+    ASSERT_NE(rock, nullptr);
+    const std::uint32_t rockId = rock->Id();
+    scene.DestroyObject(rockId);
+    ASSERT_EQ(scene.World().FindObject(NS::Object::ObjectRef{rockId}), nullptr);
+
+    editor.EnterEdit();
+
+    NS::Object::GameObject* revived = scene.World().FindObject(NS::Object::ObjectRef{rockId});
+    ASSERT_NE(revived, nullptr);
+    EXPECT_NEAR(revived->Root().Position().x, 1.0f, 1e-4f);
+    EXPECT_NEAR(revived->Root().Position().y, 2.0f, 1e-4f);
+    EXPECT_NEAR(revived->Root().Position().z, 3.0f, 1e-4f);
+}
+
+TEST(ModeToggle, PlayInspectorEditSurvivesReturnToEdit)
+{
+    NS::Object::Scene scene;
+    LevelEditorController editor(&scene);
+    NS::Object::SceneData data;
+    NS::Object::ObjectData rock = MakeRock(1.0f, 2.0f, 3.0f);
+    rock.components.push_back(NS::Object::MakeComponentEntry("LaunchedBodyComponent"));
+    data.objects.push_back(std::move(rock));
+    scene.LoadFromData(std::move(data));
+    editor.EnterPlay();
+
+    NS::Object::GameObject* live = FindFirstPlaced(scene.World());
+    ASSERT_NE(live, nullptr);
+    const std::uint32_t rockId = live->Id();
+    live->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
+    auto* launched = live->FindComponent<NS::Game::Level::LaunchedBodyComponent>();
+    ASSERT_NE(launched, nullptr);
+    SetFloatField(*launched, "重力", -99.0f);
+    editor.MirrorPlayEditToBaseline(*launched, "重力");
+
+    editor.EnterEdit();
+
+    NS::Object::GameObject* restored = scene.World().FindObject(NS::Object::ObjectRef{rockId});
+    ASSERT_NE(restored, nullptr);
+    EXPECT_NEAR(restored->Root().Position().x, 1.0f, 1e-4f);
+    EXPECT_NEAR(restored->Root().Position().y, 2.0f, 1e-4f);
+    EXPECT_NEAR(restored->Root().Position().z, 3.0f, 1e-4f);
+    auto* restoredLaunched = restored->FindComponent<NS::Game::Level::LaunchedBodyComponent>();
+    ASSERT_NE(restoredLaunched, nullptr);
+    EXPECT_FLOAT_EQ(GetFloatField(*restoredLaunched, "重力"), -99.0f);
+}
+
 TEST(ModeToggle, EnterEditCancelsInFlightFade)
 {
     NS::Object::Scene scene;
@@ -196,6 +322,8 @@ TEST(ModeToggle, EnterEditCancelsInFlightFade)
 
     // 編集へ戻ると進行中の暗転は破棄され、 次のプレイ開始へ持ち越さない
     editor.EnterEdit();
+    fade = FindFade(scene);
+    ASSERT_NE(fade, nullptr);
     EXPECT_FALSE(fade->IsFading());
     EXPECT_NEAR(fade->Alpha(), 0.0f, 1e-6f);
 }
@@ -221,6 +349,8 @@ TEST(ModeToggle, CancelledClearDoesNotRefireAfterReenter)
     // 編集へ戻ってもう一度プレイへ。 前のプレイで立ったゴールのフラグは戻っているので開始直後に再クリアしない
     editor.EnterEdit();
     editor.EnterPlay();
+    fade = FindFade(scene);
+    ASSERT_NE(fade, nullptr);
     scene.OnUpdate();
     EXPECT_FALSE(fade->IsFading());
 }
