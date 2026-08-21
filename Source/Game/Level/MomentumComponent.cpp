@@ -41,7 +41,13 @@ namespace NS::Game::Level
     } // namespace
 
     // PlayerInputComponent の 0 より後、CharacterMovementComponent の 200 より前。移動が動く前に最高速度が決まる
-    MomentumComponent::MomentumComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::Update - 150) {}
+    MomentumComponent::MomentumComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::Update - 150)
+    {
+        // 平らな 2 点の倍率 1 を既定にするのは、形を触るまで平地も下りも従来の昇格秒のままにするため
+        m_promoteRateCurve.count = 2;
+        m_promoteRateCurve.keys[0] = NS::Object::Curve::Key{0.0f, 1.0f};
+        m_promoteRateCurve.keys[1] = NS::Object::Curve::Key{1.0f, 1.0f};
+    }
 
     void MomentumComponent::OnStart()
     {
@@ -133,7 +139,15 @@ namespace NS::Game::Level
             if (IsRunInputActive())
             {
                 m_graceTimer = 0.0f;
-                m_runSeconds += dt;
+
+                // 下り勾配は Velocity().y から作る。接地して坂を下ると CapsuleMover が斜面に沿わせるので y が負になる
+                // 通常速度で割った 0..1 は坂の角度と走る向きの両方が効く。登りの正は 0 へ丸める
+                const float descent = NS::Core::Clamp(-m_movement->Velocity().y / m_normalSpeed, 0.0f, 1.0f);
+                float rate = m_promoteRateCurve.Evaluate(descent);
+                // Inspector で点を全部消すと Evaluate が 0 を返して昇格が永久に止まるため、0 以下は 1 とみなす
+                if (!(rate > 0.0f))
+                    rate = 1.0f;
+                m_runSeconds += dt * rate;
 
                 // 半歩ぶん先を見て昇格の秒に最も近い固定ステップで上げる。dt の積算は誤差で昇格の秒へ届かず 1 歩遅れる
                 const float elapsed = m_runSeconds + dt * 0.5f;

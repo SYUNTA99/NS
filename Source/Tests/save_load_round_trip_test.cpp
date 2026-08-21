@@ -3,13 +3,16 @@
 #include "Game/Level/BreakableComponent.h"
 #include "Game/Level/FollowCameraObject.h"
 #include "Game/Level/KillZoneComponent.h"
+#include "Game/Level/MomentumComponent.h"
 #include "Game/Player.h"
 #include "Runtime/Core/Filesystem.h"
 #include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
+#include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
+#include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 
 #include <cstring>
@@ -670,4 +673,160 @@ TEST(SaveLoadRoundTrip, MissingBreakableFieldFallsBackToDefault)
     ASSERT_NE(breakable, nullptr);
     EXPECT_FLOAT_EQ(breakable->Mass(), 1.0f);
     EXPECT_FLOAT_EQ(breakable->Toughness(), 2.0f);
+}
+
+namespace
+{
+    // MomentumComponent は調整値の公開 setter を持たないため、Inspector と同じリフレクション経路で読み書きする
+    const SceneNs::FieldDesc* MomentumField(const char* label)
+    {
+        return SceneNs::FindField(LevelNs::MomentumComponent::StaticReflection(), label);
+    }
+
+    template <class T> void WriteMomentumField(LevelNs::MomentumComponent& momentum, const char* label, const T& value)
+    {
+        const SceneNs::FieldDesc* field = MomentumField(label);
+        ASSERT_NE(field, nullptr) << label;
+        field->set(&momentum, &value);
+    }
+
+    template <class T> [[nodiscard]] T ReadMomentumField(const LevelNs::MomentumComponent& momentum, const char* label)
+    {
+        T value{};
+        const SceneNs::FieldDesc* field = MomentumField(label);
+        if (field == nullptr)
+        {
+            ADD_FAILURE() << label << " の欄が見つからない";
+            return value;
+        }
+        field->get(&momentum, &value);
+        return value;
+    }
+
+    const nlohmann::json* FindMomentumEntry(const nlohmann::json& components)
+    {
+        for (const nlohmann::json& entry : components)
+        {
+            if (entry.value("type", std::string{}) == "MomentumComponent")
+                return &entry;
+        }
+        return nullptr;
+    }
+
+    [[nodiscard]] SceneNs::Curve ThreePointCurve()
+    {
+        SceneNs::Curve curve;
+        curve.count = 3;
+        curve.keys[0] = SceneNs::Curve::Key{0.0f, 1.0f};
+        curve.keys[1] = SceneNs::Curve::Key{0.5f, 1.5f};
+        curve.keys[2] = SceneNs::Curve::Key{1.0f, 3.0f};
+        return curve;
+    }
+} // namespace
+
+TEST(SaveLoadRoundTrip, MomentumSecondsSurviveRoundTrip)
+{
+    SceneNs::GameObject source;
+    LevelNs::MomentumComponent* authored = source.AddComponent<LevelNs::MomentumComponent>();
+    ASSERT_NE(authored, nullptr);
+    WriteMomentumField(*authored, "ダッシュ昇格秒", 2.0f);
+    WriteMomentumField(*authored, "最高ダッシュ昇格秒", 4.0f);
+    WriteMomentumField(*authored, "降格猶予秒", 0.8f);
+
+    SceneNs::SceneData src;
+    src.objects.push_back(SceneNs::CaptureObjectData(source));
+
+    SceneNs::SceneData dst;
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
+    ASSERT_EQ(dst.objects.size(), 1u);
+
+    const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
+    ASSERT_NE(live, nullptr);
+    const LevelNs::MomentumComponent* momentum = live->FindComponent<LevelNs::MomentumComponent>();
+    ASSERT_NE(momentum, nullptr);
+    EXPECT_FLOAT_EQ(ReadMomentumField<float>(*momentum, "ダッシュ昇格秒"), 2.0f);
+    EXPECT_FLOAT_EQ(ReadMomentumField<float>(*momentum, "最高ダッシュ昇格秒"), 4.0f);
+    EXPECT_FLOAT_EQ(ReadMomentumField<float>(*momentum, "降格猶予秒"), 0.8f);
+}
+
+TEST(SaveLoadRoundTrip, MomentumCurveSurvivesRoundTrip)
+{
+    SceneNs::GameObject source;
+    LevelNs::MomentumComponent* authored = source.AddComponent<LevelNs::MomentumComponent>();
+    ASSERT_NE(authored, nullptr);
+    WriteMomentumField(*authored, "昇格倍率カーブ", ThreePointCurve());
+
+    SceneNs::SceneData src;
+    src.objects.push_back(SceneNs::CaptureObjectData(source));
+
+    SceneNs::SceneData dst;
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
+    ASSERT_EQ(dst.objects.size(), 1u);
+
+    const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
+    ASSERT_NE(live, nullptr);
+    const LevelNs::MomentumComponent* momentum = live->FindComponent<LevelNs::MomentumComponent>();
+    ASSERT_NE(momentum, nullptr);
+
+    const SceneNs::Curve loaded = ReadMomentumField<SceneNs::Curve>(*momentum, "昇格倍率カーブ");
+    ASSERT_EQ(loaded.count, 3u);
+    EXPECT_FLOAT_EQ(loaded.keys[0].x, 0.0f);
+    EXPECT_FLOAT_EQ(loaded.keys[0].y, 1.0f);
+    EXPECT_FLOAT_EQ(loaded.keys[1].x, 0.5f);
+    EXPECT_FLOAT_EQ(loaded.keys[1].y, 1.5f);
+    EXPECT_FLOAT_EQ(loaded.keys[2].x, 1.0f);
+    EXPECT_FLOAT_EQ(loaded.keys[2].y, 3.0f);
+}
+
+TEST(SaveLoadRoundTrip, MomentumForwardInputFlagSurvivesRoundTrip)
+{
+    SceneNs::GameObject source;
+    LevelNs::MomentumComponent* authored = source.AddComponent<LevelNs::MomentumComponent>();
+    ASSERT_NE(authored, nullptr);
+    WriteMomentumField(*authored, "復帰に進行方向入力を要求", true);
+
+    SceneNs::SceneData src;
+    src.objects.push_back(SceneNs::CaptureObjectData(source));
+
+    SceneNs::SceneData dst;
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
+    ASSERT_EQ(dst.objects.size(), 1u);
+
+    const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
+    ASSERT_NE(live, nullptr);
+    const LevelNs::MomentumComponent* momentum = live->FindComponent<LevelNs::MomentumComponent>();
+    ASSERT_NE(momentum, nullptr);
+    EXPECT_TRUE(ReadMomentumField<bool>(*momentum, "復帰に進行方向入力を要求"));
+}
+
+// キーの綴りを名指しで固定するのは、欄名を後から変えると保存済みレベルの値が静かに既定へ戻るため
+TEST(SaveLoadRoundTrip, MomentumFieldKeysAreTheLockedLabels)
+{
+    SceneNs::GameObject live;
+    LevelNs::MomentumComponent* momentum = live.AddComponent<LevelNs::MomentumComponent>();
+    ASSERT_NE(momentum, nullptr);
+    WriteMomentumField(*momentum, "昇格倍率カーブ", ThreePointCurve());
+
+    SceneNs::SceneData src;
+    src.objects.push_back(SceneNs::CaptureObjectData(live));
+
+    const nlohmann::json root = nlohmann::json::parse(SceneNs::SerializeSceneToJson(src));
+    const nlohmann::json* entry = FindMomentumEntry(root.at("objects").at(0).at("components"));
+    ASSERT_NE(entry, nullptr);
+
+    const nlohmann::json& fields = entry->at("fields");
+    EXPECT_TRUE(fields.contains("ダッシュ昇格秒"));
+    EXPECT_TRUE(fields.contains("最高ダッシュ昇格秒"));
+    EXPECT_TRUE(fields.contains("降格猶予秒"));
+    EXPECT_TRUE(fields.contains("昇格倍率カーブ"));
+    EXPECT_TRUE(fields.contains("復帰に進行方向入力を要求"));
+
+    const nlohmann::json& points = fields.at("昇格倍率カーブ").at("curve");
+    ASSERT_TRUE(points.is_array());
+    ASSERT_EQ(points.size(), 3u);
+    for (const nlohmann::json& point : points)
+    {
+        ASSERT_TRUE(point.is_array());
+        EXPECT_EQ(point.size(), 2u);
+    }
 }

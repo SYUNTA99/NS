@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/Object/Component.h"
+#include "Runtime/Object/Reflection/Curve.h"
 
 namespace NS::Object
 {
@@ -65,6 +66,7 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_maxDashPromoteSeconds, "最高ダッシュ昇格秒")
         NS_REFLECT_FIELD(m_demoteGraceSeconds, "降格猶予秒")
         NS_REFLECT_FIELD(m_requireForwardInput, "復帰に進行方向入力を要求")
+        NS_REFLECT_FIELD(m_promoteRateCurve, "昇格倍率カーブ")
         NS_REFLECT_END()
 
     private:
@@ -78,6 +80,8 @@ namespace NS::Game::Level
         float m_maxDashPromoteSeconds = 2.5f;
         float m_demoteGraceSeconds = 0.5f;
         bool m_requireForwardInput = false;
+        // 既定は空でなく平らな倍率 1 の 2 点。コンストラクタで入れる
+        NS::Object::Curve m_promoteRateCurve{};
 
         float m_runSeconds = 0.0f;   // 今の段になってからの走行の積算秒
         float m_graceTimer = 0.0f;   // 猶予を数え始めてからの積算秒

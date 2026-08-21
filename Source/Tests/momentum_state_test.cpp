@@ -3,6 +3,7 @@
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Reflection/Curve.h>
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
@@ -24,6 +25,16 @@ namespace
 
     const Vector3 k_Forward{1.0f, 0.0f, 0.0f};
     const Vector3 k_Backward{-1.0f, 0.0f, 0.0f};
+
+    // 2 点にしたのは、点を増やすと昇格歩数の期待値がカーブの補間に依存して読みにくくなるため
+    [[nodiscard]] NS::Object::Curve RisingRateCurve()
+    {
+        NS::Object::Curve curve;
+        curve.count = 2;
+        curve.keys[0] = NS::Object::Curve::Key{0.0f, 1.0f};
+        curve.keys[1] = NS::Object::Curve::Key{1.0f, 3.0f};
+        return curve;
+    }
 } // namespace
 
 class MomentumState : public ::testing::Test
@@ -131,6 +142,26 @@ protected:
     {
         Run(k_DashSteps + k_MaxDashSteps, 1.0f);
         ASSERT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
+    }
+
+    // 移動を回さないのは、回すと着地の押し戻しで下向き速度が消えて勾配が作れないため。接地は SetUp の着地が残る
+    void RunWithPinnedVelocity(const Vector3& velocity, int steps)
+    {
+        for (int i = 0; i < steps; ++i)
+        {
+            m_movement->SetDesiredMove(k_Forward, 1.0f);
+            m_movement->SetVelocity(velocity);
+            m_momentum->OnUpdate();
+        }
+    }
+
+    // Inspector と同じリフレクション経路で書く。この欄だけの公開 setter を作らないため
+    void SetPromoteRateCurve(const NS::Object::Curve& curve)
+    {
+        const NS::Object::FieldDesc* field =
+            NS::Object::FindField(MomentumComponent::StaticReflection(), "昇格倍率カーブ");
+        ASSERT_NE(field, nullptr);
+        field->set(m_momentum, &curve);
     }
 
     // Inspector と同じリフレクション経路で欄を書き換える。公開の setter を作らずに切り替えを試す
@@ -412,4 +443,69 @@ TEST_F(MomentumState, ReboundGraceHoldsAgainstOpposedInputWhenForwardRequired)
     EXPECT_TRUE(m_momentum->IsInGrace());
     EXPECT_GT(m_momentum->GraceSeconds(), 0.0f);
     EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
+}
+
+TEST_F(MomentumState, DefaultCurveKeepsFlatPromotionStep)
+{
+    RunWithPinnedVelocity(Vector3{0.0f, 0.0f, 8.0f}, k_DashSteps - 1);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
+
+    RunWithPinnedVelocity(Vector3{0.0f, 0.0f, 8.0f}, 1);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+}
+
+TEST_F(MomentumState, DefaultCurveKeepsPromotionStepOnDescent)
+{
+    RunWithPinnedVelocity(Vector3{0.0f, -8.0f, 8.0f}, k_DashSteps - 1);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
+
+    RunWithPinnedVelocity(Vector3{0.0f, -8.0f, 8.0f}, 1);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+}
+
+// 30 歩ちょうどで境目を見るのは、倍率 3 が昇格歩数を 90 から 30 へ縮めるため
+TEST_F(MomentumState, RisingCurvePromotesEarlierOnDescent)
+{
+    SetPromoteRateCurve(RisingRateCurve());
+
+    RunWithPinnedVelocity(Vector3{0.0f, -8.0f, 8.0f}, k_DashSteps / 3 - 1);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
+
+    RunWithPinnedVelocity(Vector3{0.0f, -8.0f, 8.0f}, 1);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+}
+
+TEST_F(MomentumState, RisingCurveKeepsFlatPromotionStep)
+{
+    SetPromoteRateCurve(RisingRateCurve());
+
+    RunWithPinnedVelocity(Vector3{0.0f, 0.0f, 8.0f}, k_DashSteps - 1);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
+
+    RunWithPinnedVelocity(Vector3{0.0f, 0.0f, 8.0f}, 1);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+}
+
+// 点が無いと Evaluate が 0 を返し、そのまま倍率にすると昇格が永久に止まるため、1 とみなす側を見張る
+TEST_F(MomentumState, EmptyCurveKeepsPromotionStep)
+{
+    SetPromoteRateCurve(NS::Object::Curve{});
+
+    RunWithPinnedVelocity(Vector3{0.0f, 0.0f, 8.0f}, k_DashSteps - 1);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
+
+    RunWithPinnedVelocity(Vector3{0.0f, 0.0f, 8.0f}, 1);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+}
+
+// 負の勾配をカーブへ渡すと端の値へ張り付いて登りの昇格が変わり得る。登りで昇格歩数が平地と変わらないことを見る
+TEST_F(MomentumState, RisingCurveKeepsPromotionStepOnAscent)
+{
+    SetPromoteRateCurve(RisingRateCurve());
+
+    RunWithPinnedVelocity(Vector3{0.0f, 8.0f, 8.0f}, k_DashSteps - 1);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
+
+    RunWithPinnedVelocity(Vector3{0.0f, 8.0f, 8.0f}, 1);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
 }
