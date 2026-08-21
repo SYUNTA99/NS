@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Runtime/Core/Math.h"
+#include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
 
 #include <cstddef>
@@ -12,7 +13,8 @@ namespace NS::Object
 {
     class Component;
 
-    //! リフレクションが扱うフィールド型タグ。Radians / enum は後続で追加する
+    //! リフレクションが扱うフィールド型タグ
+    // TODO: Radians / enum の欄が要る時に FieldType へ足す
     enum class FieldType
     {
         Float,
@@ -20,16 +22,18 @@ namespace NS::Object
         Bool,
         Vector3,
         String,
-        ObjectRef
+        ObjectRef,
+        Curve
     };
 
     //! メンバ型から FieldType タグを引く。マクロが型タグを自動推論するのに使う。未対応型はここで弾く
     template <class T> constexpr FieldType FieldTypeOf() noexcept
     {
-        static_assert(std::is_same_v<T, float> || std::is_same_v<T, int> || std::is_same_v<T, bool> ||
-                          std::is_same_v<T, NS::Core::Vector3> || std::is_same_v<T, std::string> ||
-                          std::is_same_v<T, ObjectRef>,
-                      "reflection: 未対応のフィールド型 (Float / Int / Bool / Vector3 / String / ObjectRef のみ)");
+        static_assert(
+            std::is_same_v<T, float> || std::is_same_v<T, int> || std::is_same_v<T, bool> ||
+                std::is_same_v<T, NS::Core::Vector3> || std::is_same_v<T, std::string> ||
+                std::is_same_v<T, ObjectRef> || std::is_same_v<T, Curve>,
+            "reflection: 未対応のフィールド型 (Float / Int / Bool / Vector3 / String / ObjectRef / Curve のみ)");
         if constexpr (std::is_same_v<T, float>)
             return FieldType::Float;
         else if constexpr (std::is_same_v<T, int>)
@@ -40,6 +44,8 @@ namespace NS::Object
             return FieldType::String;
         else if constexpr (std::is_same_v<T, ObjectRef>)
             return FieldType::ObjectRef;
+        else if constexpr (std::is_same_v<T, Curve>)
+            return FieldType::Curve;
         else
             return FieldType::Vector3;
     }
@@ -67,7 +73,8 @@ namespace NS::Object
         const ReflectionInfo* base; // 基底型のリフレクション (Component 直下は鎖の終端 nullptr)
     };
 
-    //! 基底型のリフレクションを返す。Component 直下は Component、素の値型は void を渡し、いずれも鎖の終端 nullptr になる
+    //! 基底型のリフレクションを返す。Component 直下は Component、素の値型は void を渡し、いずれも鎖の終端 nullptr
+    //! になる
     template <class TBase> [[nodiscard]] const ReflectionInfo* ReflectionBaseOf() noexcept
     {
         if constexpr (std::is_same_v<TBase, Component> || std::is_same_v<TBase, void>)
@@ -97,7 +104,7 @@ namespace NS::Object
 
 //! 直メンバ用フィールド宣言の開始。クラス本体の public 節に、直接の基底型と並べて書く
 #define NS_REFLECT_BEGIN(ThisType, BaseType)                                                                           \
-    [[nodiscard]] static const NS::Object::ReflectionInfo* StaticReflection() noexcept                                \
+    [[nodiscard]] static const NS::Object::ReflectionInfo* StaticReflection() noexcept                                 \
     {                                                                                                                  \
         using Self = ThisType;                                                                                         \
         using ReflectBase = BaseType;                                                                                  \
@@ -106,35 +113,35 @@ namespace NS::Object
 
 //! 同一クラスの直メンバを 1 フィールドとして登録する。private メンバも対象にできる。型タグはメンバ型から推論する
 #define NS_REFLECT_FIELD(member, label)                                                                                \
-    NS::Object::FieldDesc{label,                                                                                      \
-                           NS::Object::FieldTypeOf<decltype(Self::member)>(),                                         \
-                           +[](const void* c, void* out) noexcept {                                                    \
-                               *static_cast<decltype(Self::member)*>(out) = static_cast<const Self*>(c)->member;       \
-                           },                                                                                          \
-                           +[](void* c, const void* in) noexcept {                                                     \
-                               static_cast<Self*>(c)->member = *static_cast<const decltype(Self::member)*>(in);        \
-                           }},
+    NS::Object::FieldDesc{label,                                                                                       \
+                          NS::Object::FieldTypeOf<decltype(Self::member)>(),                                           \
+                          +[](const void* c, void* out) noexcept {                                                     \
+                              *static_cast<decltype(Self::member)*>(out) = static_cast<const Self*>(c)->member;        \
+                          },                                                                                           \
+                          +[](void* c, const void* in) noexcept {                                                      \
+                              static_cast<Self*>(c)->member = *static_cast<const decltype(Self::member)*>(in);         \
+                          }},
 
 //! 基底の private や検証付きフィールドを getter/setter 経由で登録する。getter は値返し、setter は 1 引数
 #define NS_REFLECT_ACCESSOR(ValueType, label, getterCall, setterCall)                                                  \
-    NS::Object::FieldDesc{label,                                                                                      \
-                           NS::Object::FieldTypeOf<ValueType>(),                                                      \
-                           +[](const void* c, void* out) noexcept {                                                    \
-                               *static_cast<ValueType*>(out) = static_cast<const Self*>(c)->getterCall;                \
-                           },                                                                                          \
-                           +[](void* c, const void* in) noexcept {                                                     \
-                               static_cast<Self*>(c)->setterCall(*static_cast<const ValueType*>(in));                  \
-                           }},
+    NS::Object::FieldDesc{label,                                                                                       \
+                          NS::Object::FieldTypeOf<ValueType>(),                                                        \
+                          +[](const void* c, void* out) noexcept {                                                     \
+                              *static_cast<ValueType*>(out) = static_cast<const Self*>(c)->getterCall;                 \
+                          },                                                                                           \
+                          +[](void* c, const void* in) noexcept {                                                      \
+                              static_cast<Self*>(c)->setterCall(*static_cast<const ValueType*>(in));                   \
+                          }},
 
 //! フィールド宣言の終了。static なリフレクション情報を組み立てて返し、仮想の GetReflection はそこへ転送する
 #define NS_REFLECT_END()                                                                                               \
     }                                                                                                                  \
     ;                                                                                                                  \
-    static const NS::Object::ReflectionInfo k_Info{                                                                   \
-        k_TypeName, k_Fields, sizeof(k_Fields) / sizeof(k_Fields[0]), NS::Object::ReflectionBaseOf<ReflectBase>()};   \
+    static const NS::Object::ReflectionInfo k_Info{                                                                    \
+        k_TypeName, k_Fields, sizeof(k_Fields) / sizeof(k_Fields[0]), NS::Object::ReflectionBaseOf<ReflectBase>()};    \
     return &k_Info;                                                                                                    \
     }                                                                                                                  \
-    [[nodiscard]] const NS::Object::ReflectionInfo* GetReflection() const noexcept override                           \
+    [[nodiscard]] const NS::Object::ReflectionInfo* GetReflection() const noexcept override                            \
     {                                                                                                                  \
         return StaticReflection();                                                                                     \
     }
@@ -143,20 +150,21 @@ namespace NS::Object
 #define NS_REFLECT_END_VALUE()                                                                                         \
     }                                                                                                                  \
     ;                                                                                                                  \
-    static const NS::Object::ReflectionInfo k_Info{                                                                   \
-        k_TypeName, k_Fields, sizeof(k_Fields) / sizeof(k_Fields[0]), NS::Object::ReflectionBaseOf<ReflectBase>()};   \
+    static const NS::Object::ReflectionInfo k_Info{                                                                    \
+        k_TypeName, k_Fields, sizeof(k_Fields) / sizeof(k_Fields[0]), NS::Object::ReflectionBaseOf<ReflectBase>()};    \
     return &k_Info;                                                                                                    \
     }
 
-//! 調整フィールドを持たない型用。typeName と基底だけのリフレクション情報を返す。空配列は宣言できないため fields は nullptr
+//! 調整フィールドを持たない型用。typeName と基底だけのリフレクション情報を返す。空配列は宣言できないため fields は
+//! nullptr
 #define NS_REFLECT_NONE(ThisType, BaseType)                                                                            \
-    [[nodiscard]] static const NS::Object::ReflectionInfo* StaticReflection() noexcept                                \
+    [[nodiscard]] static const NS::Object::ReflectionInfo* StaticReflection() noexcept                                 \
     {                                                                                                                  \
-        static const NS::Object::ReflectionInfo k_Info{                                                               \
-            #ThisType, nullptr, 0, NS::Object::ReflectionBaseOf<BaseType>()};                                         \
+        static const NS::Object::ReflectionInfo k_Info{                                                                \
+            #ThisType, nullptr, 0, NS::Object::ReflectionBaseOf<BaseType>()};                                          \
         return &k_Info;                                                                                                \
     }                                                                                                                  \
-    [[nodiscard]] const NS::Object::ReflectionInfo* GetReflection() const noexcept override                           \
+    [[nodiscard]] const NS::Object::ReflectionInfo* GetReflection() const noexcept override                            \
     {                                                                                                                  \
         return StaticReflection();                                                                                     \
     }

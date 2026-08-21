@@ -3,6 +3,7 @@
 #include "Editor/EditorUi.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 
@@ -79,6 +80,8 @@ namespace NS::Editor
             return !SameValue<std::string>(comp, *defaults, field);
         case NS::Object::FieldType::ObjectRef:
             return !SameValue<NS::Object::ObjectRef>(comp, *defaults, field);
+        case NS::Object::FieldType::Curve:
+            return !SameValue<NS::Object::Curve>(comp, *defaults, field);
         }
         return false;
     }
@@ -106,6 +109,9 @@ namespace NS::Editor
             break;
         case NS::Object::FieldType::ObjectRef:
             CopyValue<NS::Object::ObjectRef>(comp, defaults, field);
+            break;
+        case NS::Object::FieldType::Curve:
+            CopyValue<NS::Object::Curve>(comp, defaults, field);
             break;
         }
     }
@@ -275,6 +281,59 @@ namespace NS::Editor
                         ImGui::PopID();
                     }
                     ImGui::EndCombo();
+                }
+                break;
+            }
+            case NS::Object::FieldType::Curve:
+            {
+                NS::Object::Curve value{};
+                field.get(&comp, &value);
+                bool edited = false;
+                for (std::uint32_t pointIndex = 0; pointIndex < value.count; ++pointIndex)
+                {
+                    ImGui::PushID(static_cast<int>(pointIndex));
+                    float xy[2] = {value.keys[pointIndex].x, value.keys[pointIndex].y};
+                    if (ImGui::DragFloat2("##point", xy, 0.05f))
+                    {
+                        value.keys[pointIndex] = NS::Object::Curve::Key{xy[0], xy[1]};
+                        edited = true;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::SmallButton("削除"))
+                    {
+                        for (std::uint32_t next = pointIndex; next + 1 < value.count; ++next)
+                        {
+                            value.keys[next] = value.keys[next + 1];
+                        }
+                        --value.count;
+                        value.keys[value.count] = NS::Object::Curve::Key{};
+                        edited = true;
+                        // 詰めた並びを同じ周回で触ると消した点の隣を重ねて編集するため、この周は抜ける
+                        ImGui::PopID();
+                        break;
+                    }
+                    ImGui::PopID();
+                }
+                if (value.count < NS::Object::Curve::k_MaxKeys && ImGui::SmallButton("点を追加"))
+                {
+                    // 離れた位置に湧くと並びが崩れて SortKeys で点の番号が飛ぶため、末尾の点の右隣へ足す
+                    float lastX = 0.0f;
+                    float lastY = 1.0f;
+                    if (value.count > 0)
+                    {
+                        lastX = value.keys[value.count - 1].x;
+                        lastY = value.keys[value.count - 1].y;
+                    }
+                    value.keys[value.count] = NS::Object::Curve::Key{lastX + 1.0f, lastY};
+                    ++value.count;
+                    edited = true;
+                }
+                if (edited)
+                {
+                    // x を左右へドラッグすると並びが崩れるため、編集のたびに並べ直してから書き戻す
+                    value.SortKeys();
+                    field.set(&comp, &value);
+                    result.changed = true;
                 }
                 break;
             }

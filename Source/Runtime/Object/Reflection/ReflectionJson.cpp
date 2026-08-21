@@ -4,6 +4,7 @@
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 
 namespace NS::Object
@@ -52,6 +53,20 @@ namespace NS::Object
                 field.get(&comp, &value);
                 nlohmann::json out;
                 out["ref"] = value.id;
+                return out;
+            }
+            case FieldType::Curve:
+            {
+                // 素の配列だと読み込み時に Vector3 と区別できないため {"curve": [[x,y], ...]} の単キー object で書く
+                Curve value{};
+                field.get(&comp, &value);
+                nlohmann::json points = nlohmann::json::array();
+                for (std::uint32_t i = 0; i < value.count; ++i)
+                {
+                    points.push_back(nlohmann::json{value.keys[i].x, value.keys[i].y});
+                }
+                nlohmann::json out;
+                out["curve"] = std::move(points);
                 return out;
             }
             }
@@ -115,6 +130,32 @@ namespace NS::Object
                 if (it == value.end() || !it->is_number_unsigned())
                     return;
                 ObjectRef v{it->get<std::uint32_t>()};
+                field.set(&comp, &v);
+                return;
+            }
+            case FieldType::Curve:
+            {
+                if (!value.is_object())
+                    return;
+                const auto it = value.find("curve");
+                if (it == value.end() || !it->is_array())
+                    return;
+                Curve v{};
+                for (const auto& point : *it)
+                {
+                    // 固定長からはみ出すため、手編集で上限を超えて書かれた点は捨てる
+                    if (v.count >= Curve::k_MaxKeys)
+                        break;
+                    // 点が 1 個壊れただけで全部を捨てると手編集の損害が広がるので、形の違う点だけ飛ばして残りを読む
+                    if (!point.is_array() || point.size() != 2u)
+                        continue;
+                    if (!point[0].is_number() || !point[1].is_number())
+                        continue;
+                    v.keys[v.count] = Curve::Key{point[0].get<float>(), point[1].get<float>()};
+                    ++v.count;
+                }
+                // 降順に書かれた記述だと Evaluate の昇順前提が崩れるため、読み込み直後に並べ直す
+                v.SortKeys();
                 field.set(&comp, &v);
                 return;
             }
