@@ -136,9 +136,20 @@ namespace NS::Object
         obj->SetTransient(true);
         obj->AttachScene(this);
         GameObject* raw = m_world.Append(std::move(obj));
-        // データ由来の配置物は Rebuild が開始まで面倒を見る。 後から入る一時オブジェクトはここで開始する
-        if (raw != nullptr)
-            raw->OnStart();
+        if (raw == nullptr)
+            return nullptr;
+        // データ由来の配置物は ObjectBuilder が引き当てる。後から入る一時オブジェクトはここで引き当てる
+        // AssetManager が無い間は跳ばす。テストは資産なしでシーンを立てる
+        if (m_assets != nullptr)
+        {
+            for (Component* comp : raw->Components())
+            {
+                if (comp != nullptr)
+                    comp->ResolveAssets(*m_assets);
+            }
+        }
+        // 開始は引き当ての後。OnStart の中で資産を読む Component が空の参照を掴まない
+        raw->OnStart();
         return raw;
     }
 

@@ -60,6 +60,7 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
         "ImpactResolverComponent",
         "HazardComponent",
         "HealthComponent",
+        "ImpactMarkComponent",
         "KillZoneComponent",
         "LaunchedBodyComponent",
         "MeshRendererComponent",
@@ -136,7 +137,7 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 23u);
+    EXPECT_EQ(names.size(), 24u);
     EXPECT_TRUE(Contains(names, "BoxColliderComponent"));
     EXPECT_TRUE(Contains(names, "MeshRendererComponent"));
     EXPECT_TRUE(Contains(names, "CharacterMovementComponent"));
@@ -175,6 +176,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
         {"DirectionalLightComponent", {"方向", "色", "環境光", "地面環境光", "露出"}},
         {"HazardComponent", {}},
         {"HealthComponent", {"体力"}},
+        {"ImpactMarkComponent", {"跡の直径", "跡の残る秒"}},
         {"ImpactResolverComponent",
          {"反発基準初速",
           "反発の上向き初速",
@@ -186,7 +188,12 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "カメラ揺れの強さ",
           "潰れの厚み",
           "潰れの伸び上がり",
-          "弾け伸びの倍率"}},
+          "弾け伸びの倍率",
+          "貫通時の減速倍率",
+          "貫通の止め秒",
+          "破片の数",
+          "破片の初速",
+          "破片の残る秒"}},
         {"KillZoneComponent", {}},
         {"LaunchedBodyComponent", {"重力", "接地摩擦", "停止速度しきい値", "止まってから消える秒"}},
         {"MeshColliderComponent", {}},
@@ -263,6 +270,7 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
         {"DirectionalLightComponent", {}},
         {"HazardComponent", {}},
         {"HealthComponent", {}},
+        {"ImpactMarkComponent", {}},
         {"ImpactResolverComponent", {}},
         {"KillZoneComponent", {}},
         {"LaunchedBodyComponent", {}},

@@ -37,6 +37,13 @@ namespace NS::Game::Level
         SetColliderActive(false);
     }
 
+    void LaunchedBodyComponent::SetRestLifeSeconds(float seconds) noexcept
+    {
+        if (!std::isfinite(seconds) || seconds < 0.0f)
+            return;
+        m_restLifeSeconds = seconds;
+    }
+
     void LaunchedBodyComponent::OnUpdate()
     {
         const float dt = NS::Core::FrameTimer::FixedDelta();
@@ -118,7 +125,13 @@ namespace NS::Game::Level
             return k_DefaultHalfHeight;
         const auto* box = Owner()->FindComponent<NS::Object::BoxColliderComponent>();
         if (box == nullptr)
+        {
+            // 当たり箱の無い破片は描画スケールから半分の高さを作る。既定値のままだと小さい破片が浮いて止まる
+            const float scaleY = Owner()->Root().Scale().y;
+            if (scaleY > 0.0f)
+                return k_DefaultHalfHeight * scaleY;
             return k_DefaultHalfHeight;
+        }
         // GroundBelow が見るのと同じ world 空間の箱から取る。 HalfExtents だと拡縮した配置物が床へ潜る
         return box->WorldAABB().Extents.y;
     }

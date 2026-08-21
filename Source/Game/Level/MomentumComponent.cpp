@@ -61,6 +61,14 @@ namespace NS::Game::Level
         }
     }
 
+    void MomentumComponent::SetLevel(MomentumLevel level) noexcept
+    {
+        m_level = level;
+        m_runSeconds = 0.0f;
+        m_graceTimer = 0.0f;
+        m_reboundGrace = false;
+    }
+
     void MomentumComponent::BeginGrace() noexcept
     {
         m_graceTimer = 0.0f;
@@ -99,7 +107,7 @@ namespace NS::Game::Level
         // 反発から始まった猶予だけは接地を見ない。弾かれた自機は空中に居るので、接地を条件にすると着地まで切れない
         if (m_reboundGrace)
         {
-            // 走り直しは着地してから。空中で入力を倒しただけで段が戻ると、立て直しが着地を待たずに済んでしまう
+            // 走り直しは着地してから。空中で入力を倒しただけで猶予が解けると、立て直しが着地を待たずに済んでしまう
             if (IsRunInputActive() && m_movement->IsGrounded())
             {
                 m_reboundGrace = false;

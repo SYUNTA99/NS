@@ -39,6 +39,9 @@ namespace NS::Game::Level
         //! 現在の段
         [[nodiscard]] MomentumLevel Level() const noexcept { return m_level; }
 
+        //! 段を直接置く。昇格の走行を挟まずに状態を作る検証台が使う。積算と猶予は 0 へ戻す
+        void SetLevel(MomentumLevel level) noexcept;
+
         //! 段に対応する最高速度を返す
         [[nodiscard]] float SpeedForLevel(MomentumLevel level) const noexcept;
 

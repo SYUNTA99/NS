@@ -1,6 +1,7 @@
 #include "Game/Level/ImpactResolverComponent.h"
 
 #include "Game/Level/BreakableComponent.h"
+#include "Game/Level/ImpactMarkComponent.h"
 #include "Game/Level/LaunchedBodyComponent.h"
 #include "Game/Level/MomentumComponent.h"
 #include "Runtime/Core/Clock.h"
@@ -10,13 +11,18 @@
 #include "Runtime/Object/Components/BoxColliderComponent.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/Components/CharacterMovementComponent.h"
+#include "Runtime/Object/Components/MeshRendererComponent.h"
+#include "Runtime/Object/Components/ShadowComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/World.h"
 #include "Runtime/Physics/Capsule.h"
+#include "Runtime/Physics/PhysicsWorld.h"
 
 #include <cmath>
+#include <memory>
+#include <utility>
 
 namespace NS::Game::Level
 {
@@ -37,6 +43,21 @@ namespace NS::Game::Level
 
         // 伸びから元の形へ戻す歩数。反発の滞空 0.3 秒の前半で戻し切り、着地の前に形を確定させる
         constexpr int k_StretchRecoverSteps = 6;
+
+        // 壊れた物の見た目の色。破片が出るまでの仮の差し替え
+        constexpr NS::Core::Vector3 k_BrokenBaseColor{0.25f, 0.22f, 0.20f};
+
+        // 跡の床探しで真下を見る上限。これより下に床が無ければ跡を出さない
+        constexpr float k_MarkProbeDistance = 64.0f;
+
+        // 床の上面から跡を浮かせる高さ。面がぴったり重なるとちらつく
+        constexpr float k_MarkFloorOffset = 0.02f;
+
+        // 破片 1 個の描画スケール。壊れた物より明確に小さくして、数で壊れた量を見せる
+        constexpr float k_DebrisScale = 0.25f;
+
+        // 破片の色。壊れた本体より少し明るくして欠けた中身に見せる
+        constexpr NS::Core::Vector3 k_DebrisBaseColor{0.35f, 0.32f, 0.30f};
     } // namespace
 
     // MomentumComponent の 50 より後。先に走ると BeginGrace した猶予がその固定ステップのうちに解ける
@@ -100,6 +121,7 @@ namespace NS::Game::Level
     void ImpactResolverComponent::OnUpdate()
     {
         m_didRebound = false;
+        m_didBreak = false;
         if (m_movement == nullptr || m_momentum == nullptr)
             return;
 
@@ -166,29 +188,45 @@ namespace NS::Game::Level
         if (normalSpeed > 0.0f)
             ratio = impactSpeed / normalSpeed;
         const float mass = hit->Mass();
-
-        // 質量因子 mass/(mass+1) は質量が大きいほど 1 へ寄る。重い物は入った速さがほぼそのまま返り、
-        // 軽い物は勢いを持っていくのでほとんど返らない
         const float massFactor = mass / (mass + 1.0f);
-        float rebound = m_reboundSpeed * ratio * massFactor;
-        rebound = NS::Core::Clamp(rebound, 0.0f, k_MaxReboundSpeed);
 
-        // 質量で割ると重い物ほど飛ばない
-        float launch = m_launchSpeed * ratio / mass;
-        launch = NS::Core::Clamp(launch, 0.0f, k_MaxLaunchSpeed);
-
-        m_pendingSelfVelocity = NS::Core::Vector3{awayX * rebound, m_reboundUpSpeed, awayZ * rebound};
-        m_pendingLaunchVelocity = NS::Core::Vector3{-awayX * launch, launch * m_launchUpScale, -awayZ * launch};
         m_pendingTargetId = hit->Owner()->Id();
         m_pendingTargetHome = hit->Owner()->Root().Position();
         m_pendingImpactDir = NS::Core::Vector3{-awayX, 0.0f, -awayZ};
         // 反発の質量因子の残り。動きは軽い側が受け取るので、重い物ほど揺れない
         m_pendingShakeAmplitude = m_shakeAmplitude / (1.0f + mass);
         m_pendingShakeStrength = m_cameraShakeScale * ratio * massFactor;
-        m_didRebound = true;
-        NS_LOG_INFO(Game, "衝突: 質量 {} 耐久 {} 返り {} 押し飛ばし {}", mass, hit->Toughness(), rebound, launch);
 
-        const int stopSteps = ComputeHitStopSteps(ratio, mass);
+        // 破壊は勢いが最大に達した時だけ。耐久と比べる物差しは押し飛ばしと同じ勢いの比
+        int stopSteps = 0;
+        if (m_momentum->Level() == MomentumLevel::MaxDash && hit->Toughness() <= ratio)
+        {
+            m_pendingBreak = true;
+            // 向きを保ったまま減速する。倍率は相手の質量に依らない
+            m_pendingSelfVelocity = velocity * m_breakSpeedScale;
+            m_didBreak = true;
+            NS_LOG_INFO(Game, "貫通: 耐久 {} 勢い {}", hit->Toughness(), ratio);
+            stopSteps = SecondsToSteps(m_breakStopSeconds);
+        }
+        else
+        {
+            m_pendingBreak = false;
+            // 質量因子 mass/(mass+1) は質量が大きいほど 1 へ寄る。重い物は入った速さがほぼそのまま返り、
+            // 軽い物は勢いを持っていくのでほとんど返らない
+            float rebound = m_reboundSpeed * ratio * massFactor;
+            rebound = NS::Core::Clamp(rebound, 0.0f, k_MaxReboundSpeed);
+
+            // 質量で割ると重い物ほど飛ばない
+            float launch = m_launchSpeed * ratio / mass;
+            launch = NS::Core::Clamp(launch, 0.0f, k_MaxLaunchSpeed);
+
+            m_pendingSelfVelocity = NS::Core::Vector3{awayX * rebound, m_reboundUpSpeed, awayZ * rebound};
+            m_pendingLaunchVelocity = NS::Core::Vector3{-awayX * launch, launch * m_launchUpScale, -awayZ * launch};
+            m_didRebound = true;
+            NS_LOG_INFO(Game, "衝突: 質量 {} 耐久 {} 返り {} 押し飛ばし {}", mass, hit->Toughness(), rebound, launch);
+            stopSteps = ComputeHitStopSteps(ratio, mass);
+        }
+
         if (stopSteps <= 0)
         {
             ReleaseHitStop();
@@ -207,13 +245,15 @@ namespace NS::Game::Level
         m_movement->SetActive(false);
         NS_LOG_INFO(Game, "ヒットストップ: {} 歩", stopSteps);
 
-        // 潰れは反発の前半。進行方向の厚みを潰し、行き場を失った体積を縦へ逃がす
+        // 潰れは反発の前半。進行方向の厚みを潰し、代わりに高さを伸ばす
         // 戻りの最中に次の衝突が来たら、控え済みの元の形をそのまま使い続ける
         if (m_recoverRemaining == 0)
             m_scaleHome = RootTransform().Scale();
         m_recoverRemaining = 0;
         m_scaleHeld = true;
-        RootTransform().SetScale(ScaledAlongImpact(m_squashThickness, m_squashHeight));
+        // 貫通は押し勝っている側なので潰さない。潰れは押し返されている反発だけの絵
+        if (!m_pendingBreak)
+            RootTransform().SetScale(ScaledAlongImpact(m_squashThickness, m_squashHeight));
 
         NS::Object::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
@@ -227,35 +267,104 @@ namespace NS::Game::Level
             brain->StartShake(m_pendingShakeStrength, stopSteps);
     }
 
+    void ImpactResolverComponent::OnEndPlay()
+    {
+        // 凍結の途中で裁定が外れても、移動が止まったまま残らないようにする
+        if (m_movement != nullptr)
+            m_movement->SetActive(true);
+    }
+
+    void ImpactResolverComponent::BreakTarget(NS::Object::GameObject& target)
+    {
+        // 壊れた物は世界から消さない。更新の最中に消すと集めた並びに解放済みの位置が残る
+        // 印と当たりを寝かせて探索と固形から外し、見た目の色で壊れたと分かるようにする
+        if (auto* breakable = target.FindComponent<BreakableComponent>())
+            breakable->SetActive(false);
+        if (auto* box = target.FindComponent<NS::Object::BoxColliderComponent>())
+            box->SetActive(false);
+        if (auto* mesh = target.FindComponent<NS::Object::MeshRendererComponent>())
+            mesh->SetBaseColor(k_BrokenBaseColor);
+        // 固形から外すのは壊れた 1 回だけ。直後に動く移動が素通りする
+        if (NS::Object::Scene* scene = Owner()->OwningScene())
+            scene->SyncPhysics();
+    }
+
+    int ImpactResolverComponent::SecondsToSteps(float seconds) const noexcept
+    {
+        // 見せる単位は秒、数えるのは歩。整数の歩で数えるから同じ入力は同じ長さ止まる
+        const float raw = seconds / NS::Core::FrameTimer::FixedDelta();
+        if (!std::isfinite(raw))
+            return 0;
+        return NS::Core::Clamp(static_cast<int>(std::lround(raw)), 0, k_MaxHitStopSteps);
+    }
+
     void ImpactResolverComponent::ReleaseHitStop()
     {
         m_movement->SetActive(true);
         m_movement->SetVelocity(m_pendingSelfVelocity);
         if (m_scaleHeld)
         {
-            // 解放の伸びが反発そのもの。弾かれる軸は進行の軸と同じで、高さは戻して横だけ伸ばす
+            // 解放の伸びが衝突の後半。伸びる軸は進行の軸と同じで、高さは戻して横だけ伸ばす
             m_stretchScale = ScaledAlongImpact(m_stretchAlong, 1.0f);
             RootTransform().SetScale(m_stretchScale);
             m_recoverRemaining = k_StretchRecoverSteps;
             m_scaleHeld = false;
         }
-        // 猶予はここから数え始める。止まっている間に数えると、操作できないまま猶予が減る
-        m_momentum->BeginGrace();
+
+        // 貫通は段を落とさず猶予も始めない。壊しながら走り続けるループを守る
+        const bool wasBreak = m_pendingBreak;
+        m_pendingBreak = false;
+        if (!wasBreak)
+        {
+            // 猶予はここから数え始める。止まっている間に数えると、操作できないまま猶予が減る
+            m_momentum->BeginGrace();
+        }
 
         NS::Object::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
             return;
-        // 相手は id で引き直す。止まっている数歩の間に消されていたら発射だけ諦める
+        // 相手は id で引き直す。止まっている数歩の間に消されていたら残りだけ諦める
         NS::Object::GameObject* target = scene->World().FindByObjectId(m_pendingTargetId);
         if (target == nullptr)
             return;
-        // 食い込みと振動は絵だけ。発射の起点がずれないよう元位置へ厳密に戻してから発射する
+        // 食い込みと振動は絵だけ。結果の起点がずれないよう元位置へ厳密に戻してから先へ進む
         target->Root().SetPosition(m_pendingTargetHome);
+
+        // 跡は破壊と押し飛ばしの両方で出す。片方だけ何も残らないと結果が非対称になる
+        // 真下の床は相手の中心から探す。箱の中から始まる探索はその箱に当たらず、自分を素通りして床の上面が返る
+        bool floorFound = false;
+        NS::Core::Vector3 markPosition{0.0f, 0.0f, 0.0f};
+        {
+            float dist = 0.0f;
+            if (NS::Object::ShadowComponent::GroundBelow(
+                    m_pendingTargetHome, scene->Physics().Aabbs(), k_MarkProbeDistance, dist))
+            {
+                floorFound = true;
+                markPosition = NS::Core::Vector3{
+                    m_pendingTargetHome.x, m_pendingTargetHome.y - dist + k_MarkFloorOffset, m_pendingTargetHome.z};
+            }
+        }
+
+        if (wasBreak)
+        {
+            // 破片の飛び方は壊れた物の質量を受け継ぐ
+            float mass = 1.0f;
+            if (auto* breakable = target->FindComponent<BreakableComponent>())
+                mass = breakable->Mass();
+            BreakTarget(*target);
+            SpawnDebris(m_pendingTargetHome, mass);
+            if (floorFound)
+                ImpactMarkComponent::SpawnAt(scene, markPosition);
+            return;
+        }
+
         // 積み忘れた配置物でも押し飛ばせるよう、無ければその場で足す
         auto* body = target->FindComponent<LaunchedBodyComponent>();
         if (body == nullptr)
             body = target->AddComponent<LaunchedBodyComponent>();
         body->Launch(m_pendingLaunchVelocity);
+        if (floorFound)
+            ImpactMarkComponent::SpawnAt(scene, markPosition);
     }
 
     void ImpactResolverComponent::ApplyFreezeVibration()
@@ -295,6 +404,42 @@ namespace NS::Game::Level
         return NS::Core::Vector3{m_scaleHome.x * (1.0f + (along - 1.0f) * dx2),
                                  m_scaleHome.y * height,
                                  m_scaleHome.z * (1.0f + (along - 1.0f) * dz2)};
+    }
+
+    void ImpactResolverComponent::SpawnDebris(const NS::Core::Vector3& origin, float mass)
+    {
+        NS::Object::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr || m_debrisCount <= 0)
+            return;
+        if (!std::isfinite(mass) || mass < 0.01f)
+            mass = 0.01f;
+        // 重い物ほど破片が飛ばない。押し飛ばしと同じ向きの質量感を破片でも見せる
+        const float speed = m_debrisSpeed / mass;
+        for (int i = 0; i < m_debrisCount; ++i)
+        {
+            // 番号から角度を作る。乱数を使わないので同じ状況では毎回同じ散り方になる
+            const float angle = 2.0f * NS::Core::k_Pi * static_cast<float>(i) / static_cast<float>(m_debrisCount);
+            // 浮きは交互に変える。全部同じ高さだと 1 つの輪に見えて壊れた量が伝わらない
+            const float up = 0.5f + 0.5f * static_cast<float>(i % 2);
+            auto owned = std::make_unique<NS::Object::GameObject>();
+            owned->Root().SetPosition(origin);
+            owned->Root().SetScale(NS::Core::Vector3{k_DebrisScale, k_DebrisScale, k_DebrisScale});
+            auto* mesh = owned->AddComponent<NS::Object::MeshRendererComponent>();
+            mesh->SetMeshRef("cube");
+            mesh->SetMaterialRef("player");
+            mesh->SetBaseColor(k_DebrisBaseColor);
+            owned->AddComponent<LaunchedBodyComponent>();
+            NS::Object::GameObject* spawned = scene->SpawnTransient(std::move(owned));
+            if (spawned == nullptr)
+                continue;
+            // 所有を渡した後の元のポインタは使わない。戻り値から引き直す
+            auto* body = spawned->FindComponent<LaunchedBodyComponent>();
+            if (body == nullptr)
+                continue;
+            // 破片だけ寿命を持つ。壊すたびに増えるので、止まったら消さないと世界に積み上がり続ける
+            body->SetRestLifeSeconds(m_debrisLifeSeconds);
+            body->Launch(NS::Core::Vector3{std::cos(angle) * speed, up * speed, std::sin(angle) * speed});
+        }
     }
 
     int ImpactResolverComponent::ComputeHitStopSteps(float ratio, float mass) const noexcept

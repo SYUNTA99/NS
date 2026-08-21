@@ -2,6 +2,7 @@
 #include "Game/Player.h"
 
 #include <Game/Level/BreakableComponent.h>
+#include <Game/Level/ImpactMarkComponent.h>
 #include <Game/Level/ImpactResolverComponent.h>
 #include <Game/Level/LaunchedBodyComponent.h>
 #include <Game/Level/MomentumComponent.h>
@@ -10,6 +11,7 @@
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/CameraBrainComponent.h>
 #include <Runtime/Object/Components/CharacterMovementComponent.h>
+#include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
@@ -26,6 +28,7 @@
 #include <limits>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace LevelNs = NS::Game::Level;
 namespace SceneNs = NS::Object;
@@ -183,6 +186,69 @@ namespace
                 return i + 1;
         }
         return maxSteps;
+    }
+
+    // リフレクションの int 欄へ値を入れる
+    void SetIntField(SceneNs::Component& comp, std::string_view label, int value)
+    {
+        const SceneNs::FieldDesc* field = SceneNs::FindField(comp.GetReflection(), label);
+        ASSERT_NE(field, nullptr);
+        field->set(&comp, &value);
+    }
+
+    // 床を敷いた上に壊せる物を置く検証台。破片の着地と跡の床探しに床が要る
+    Rig BuildOnFloor(SceneNs::Scene& scene)
+    {
+        NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+
+        SceneNs::SceneData data;
+        SceneNs::ObjectData player = MakePlayerObject(Vector3{0.0f, 1.0f, 0.0f}, NS::Core::Quaternion{});
+        player.components.push_back(SceneNs::MakeComponentEntry("MomentumComponent"));
+        player.components.push_back(SceneNs::MakeComponentEntry("ImpactResolverComponent"));
+        data.objects.push_back(player);
+        for (std::int16_t x = -2; x <= 4; ++x)
+        {
+            for (std::int16_t z = -2; z <= 2; ++z)
+                data.objects.push_back(LevelNs::MakeCellObject(x, 0, z));
+        }
+        SceneNs::ObjectData target = LevelNs::MakeCellObject(1, 1, 0);
+        target.components.push_back(SceneNs::MakeComponentEntry("BreakableComponent"));
+        data.objects.push_back(target);
+        scene.LoadFromData(std::move(data));
+
+        Rig rig;
+        Player* live = FindPlayer(scene.World());
+        EXPECT_NE(live, nullptr);
+        if (live != nullptr)
+        {
+            rig.movement = live->FindComponent<SceneNs::CharacterMovementComponent>();
+            rig.momentum = live->FindComponent<LevelNs::MomentumComponent>();
+            rig.impact = live->FindComponent<LevelNs::ImpactResolverComponent>();
+        }
+        scene.World().ForEachComponent<LevelNs::BreakableComponent>(
+            [&rig](LevelNs::BreakableComponent& breakable) { rig.breakable = &breakable; });
+        if (rig.breakable != nullptr)
+            rig.targetBox = rig.breakable->Owner()->FindComponent<SceneNs::BoxColliderComponent>();
+        return rig;
+    }
+
+    // 一時オブジェクトとして湧いた破片だけ集める。押し飛ばされた配置物は数えない
+    std::vector<LevelNs::LaunchedBodyComponent*> DebrisBodies(SceneNs::Scene& scene)
+    {
+        std::vector<LevelNs::LaunchedBodyComponent*> out;
+        scene.World().ForEachComponent<LevelNs::LaunchedBodyComponent>([&out](LevelNs::LaunchedBodyComponent& body) {
+            if (body.Owner()->IsTransient())
+                out.push_back(&body);
+        });
+        return out;
+    }
+
+    int MarkCount(SceneNs::Scene& scene)
+    {
+        int count = 0;
+        scene.World().ForEachComponent<LevelNs::ImpactMarkComponent>(
+            [&count](LevelNs::ImpactMarkComponent&) { ++count; });
+        return count;
     }
 } // namespace
 
@@ -744,6 +810,220 @@ TEST(CollisionImpact, SquashLeavesPositionAndPhysicsAlone)
     EXPECT_EQ(scene.Physics().Aabbs().size(), aabbs);
 }
 
+// 最高ダッシュ かつ 耐久が勢いの比以下なら、壊して貫通する。当たりだけ外れて配置物は残る
+TEST(CollisionImpact, MaxDashBreaksThroughSoftTarget)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    ASSERT_NE(rig.momentum, nullptr);
+    const std::size_t aabbs = scene.Physics().Aabbs().size();
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+    ASSERT_TRUE(rig.impact->DidBreak());
+    EXPECT_FALSE(rig.impact->DidRebound());
+    EXPECT_TRUE(rig.movement->IsActiveSelf());
+
+    Step(scene);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+    const int rest = StepsUntilMovementActive(scene, rig, 60);
+    EXPECT_EQ(rest, 4);
+
+    EXPECT_FALSE(rig.breakable->IsActiveSelf());
+    EXPECT_FALSE(rig.targetBox->IsActiveSelf());
+    EXPECT_EQ(scene.Physics().Aabbs().size(), aabbs - 1);
+    EXPECT_FLOAT_EQ(rig.movement->Velocity().x, k_MaxDashSpeed * 0.75f);
+    EXPECT_FLOAT_EQ(rig.movement->Velocity().z, 0.0f);
+    EXPECT_GT(rig.movement->Velocity().x, 0.0f);
+}
+
+// 貫通は段を落とさず猶予も始めない。壊しながら走り続けるループを守る
+TEST(CollisionImpact, BreakKeepsLevelAndStartsNoGrace)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    ASSERT_NE(rig.momentum, nullptr);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+    Step(scene);
+    const int rest = StepsUntilMovementActive(scene, rig, 60);
+    ASSERT_LT(rest, 60);
+    Step(scene);
+    Step(scene);
+
+    EXPECT_EQ(rig.momentum->Level(), LevelNs::MomentumLevel::MaxDash);
+    EXPECT_FALSE(rig.momentum->IsInGrace());
+    EXPECT_FLOAT_EQ(rig.momentum->GraceSeconds(), 0.0f);
+}
+
+// 耐久が勢いを上回る物は最高ダッシュでも壊れず、反発する
+TEST(CollisionImpact, MaxDashReboundsOffToughTarget)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    ASSERT_NE(rig.breakable, nullptr);
+    rig.breakable->SetToughness(99.0f);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+    ASSERT_TRUE(rig.impact->DidRebound());
+    EXPECT_FALSE(rig.impact->DidBreak());
+
+    Step(scene);
+    const int rest = StepsUntilMovementActive(scene, rig, 60);
+    ASSERT_LT(rest, 60);
+
+    EXPECT_TRUE(rig.breakable->IsActiveSelf());
+    EXPECT_LT(rig.movement->Velocity().x, 0.0f);
+}
+
+// 最高ダッシュでなければ耐久以下でも壊れない
+TEST(CollisionImpact, DashLevelCannotBreak)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::Dash);
+    rig.movement->SetVelocity(Vector3{12.0f, 0.0f, 0.0f});
+
+    Step(scene);
+
+    EXPECT_TRUE(rig.impact->DidRebound());
+    EXPECT_FALSE(rig.impact->DidBreak());
+    EXPECT_TRUE(rig.breakable->IsActiveSelf());
+}
+
+// 壊れた物は世界から消えず、見た目が壊れた色に変わる
+TEST(CollisionImpact, BreakLeavesObjectInWorldWithBrokenColor)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    SetIntField(*rig.impact, "破片の数", 0);
+    const std::size_t objects = scene.World().ObjectCount();
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+    Step(scene);
+    const int rest = StepsUntilMovementActive(scene, rig, 60);
+    ASSERT_LT(rest, 60);
+
+    EXPECT_EQ(scene.World().ObjectCount(), objects);
+    auto* mesh = rig.targetBox->Owner()->FindComponent<SceneNs::MeshRendererComponent>();
+    ASSERT_NE(mesh, nullptr);
+    const SceneNs::FieldDesc* field = SceneNs::FindField(mesh->GetReflection(), "基本色");
+    ASSERT_NE(field, nullptr);
+    Vector3 color{};
+    field->get(mesh, &color);
+    EXPECT_FLOAT_EQ(color.x, 0.25f);
+    EXPECT_FLOAT_EQ(color.y, 0.22f);
+    EXPECT_FLOAT_EQ(color.z, 0.20f);
+}
+
+// 壊した物へもう一度向かっても何も起きない。印が寝ているので探索から外れる
+TEST(CollisionImpact, BrokenTargetIsIgnoredAfterwards)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+    Step(scene);
+    Step(scene);
+    const int rest = StepsUntilMovementActive(scene, rig, 60);
+    ASSERT_LT(rest, 60);
+    for (int i = 0; i < 10; ++i)
+        Step(scene);
+
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+    Step(scene);
+
+    EXPECT_FALSE(rig.impact->DidBreak());
+    EXPECT_FALSE(rig.impact->DidRebound());
+}
+
+// 貫通は相手を飛ばさない。破片は別の仕組みが出す
+TEST(CollisionImpact, BreakDoesNotLaunchTarget)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+    Step(scene);
+    const int rest = StepsUntilMovementActive(scene, rig, 60);
+    ASSERT_LT(rest, 60);
+
+    EXPECT_EQ(HitBody(rig), nullptr);
+}
+
+// 貫通の止め秒を 0 にすると凍結を挟まず、その歩のうちに壊れて減速する
+TEST(CollisionImpact, BreakStopZeroAppliesInstantly)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+
+    ASSERT_TRUE(rig.impact->DidBreak());
+    EXPECT_TRUE(rig.movement->IsActiveSelf());
+    EXPECT_FALSE(rig.targetBox->IsActiveSelf());
+    EXPECT_FLOAT_EQ(rig.movement->Velocity().x, k_MaxDashSpeed * 0.75f);
+}
+
+// 凍結の途中で裁定が外れても移動は止まったまま残らない
+TEST(CollisionImpact, OnEndPlayWakesFrozenMovement)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+    Step(scene);
+    Step(scene);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+
+    rig.impact->OnEndPlay();
+
+    EXPECT_TRUE(rig.movement->IsActiveSelf());
+}
+
+// 貫通は潰れない。潰れは押し返されている反発だけの絵で、貫通は前へ伸びるだけ
+TEST(CollisionImpact, BreakSkipsSquashButStretchesForward)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    const Vector3 authored = rig.movement->Owner()->Root().Scale();
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+    Step(scene);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+    const Vector3 frozen = rig.movement->Owner()->Root().Scale();
+    EXPECT_FLOAT_EQ(frozen.x, authored.x);
+    EXPECT_FLOAT_EQ(frozen.y, authored.y);
+    EXPECT_FLOAT_EQ(frozen.z, authored.z);
+
+    const int rest = StepsUntilMovementActive(scene, rig, 60);
+    ASSERT_LT(rest, 60);
+    const Vector3 stretched = rig.movement->Owner()->Root().Scale();
+    EXPECT_GT(stretched.x, authored.x);
+    EXPECT_FLOAT_EQ(stretched.y, authored.y);
+
+    for (int i = 0; i < 10; ++i)
+        Step(scene);
+    const Vector3 restored = rig.movement->Owner()->Root().Scale();
+    EXPECT_FLOAT_EQ(restored.x, authored.x);
+    EXPECT_FLOAT_EQ(restored.y, authored.y);
+    EXPECT_FLOAT_EQ(restored.z, authored.z);
+}
+
 // 検知の歩では移動が最後の 1 歩を走り、次の歩で凍る。自機が岩へ押し付けられた構図で止まる
 TEST(CollisionImpact, FreezeWaitsOneStepAfterDetection)
 {
@@ -1082,4 +1362,400 @@ TEST(LaunchedBody, NonFiniteLaunchIsIgnored)
     EXPECT_FALSE(rig.body->IsFlying());
     EXPECT_TRUE(rig.box->IsActiveSelf());
     EXPECT_EQ(scene.Physics().Aabbs().size(), rig.restingAabbs);
+}
+
+// 跡は指定位置に出る一時オブジェクト。保存や凍結に写らない印が立つ
+TEST(ImpactMark, SpawnAtPlacesTransientMark)
+{
+    NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+    SceneNs::Scene scene;
+    const std::size_t before = scene.World().ObjectCount();
+
+    SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{3.0f, 0.02f, 5.0f});
+
+    ASSERT_NE(mark, nullptr);
+    EXPECT_EQ(scene.World().ObjectCount(), before + 1);
+    EXPECT_TRUE(mark->IsTransient());
+    const Vector3 pos = mark->Root().Position();
+    EXPECT_FLOAT_EQ(pos.x, 3.0f);
+    EXPECT_FLOAT_EQ(pos.y, 0.02f);
+    EXPECT_FLOAT_EQ(pos.z, 5.0f);
+    EXPECT_EQ(LevelNs::ImpactMarkComponent::SpawnAt(nullptr, Vector3{}), nullptr);
+}
+
+// 跡は保存に写らない
+TEST(ImpactMark, SkipsSaveCapture)
+{
+    NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+    SceneNs::Scene scene;
+    SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
+    ASSERT_NE(mark, nullptr);
+
+    const SceneNs::SceneData data = scene.CaptureLiveToSceneData();
+
+    EXPECT_TRUE(data.objects.empty());
+}
+
+// 見た目は床へ寝かせた半透明の板
+TEST(ImpactMark, UsesShadowQuadLook)
+{
+    NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+    SceneNs::Scene scene;
+    SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
+    ASSERT_NE(mark, nullptr);
+
+    auto* mesh = mark->FindComponent<SceneNs::MeshRendererComponent>();
+    ASSERT_NE(mesh, nullptr);
+    EXPECT_EQ(mesh->MeshRef(), "shadowQuad");
+    EXPECT_EQ(mesh->MaterialRef(), "shadow");
+}
+
+// 出た直後の水平の大きさが跡の直径
+TEST(ImpactMark, StartsAtDiameter)
+{
+    NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+    SceneNs::Scene scene;
+    SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
+    ASSERT_NE(mark, nullptr);
+
+    const Vector3 scale = mark->Root().Scale();
+    EXPECT_FLOAT_EQ(scale.x, 1.5f);
+    EXPECT_FLOAT_EQ(scale.z, 1.5f);
+}
+
+// 寿命の半分で大きさも半分。線形に縮む
+TEST(ImpactMark, ShrinksToHalfAtHalfLife)
+{
+    NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+    SceneNs::Scene scene;
+    SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
+    ASSERT_NE(mark, nullptr);
+
+    for (int i = 0; i < 180; ++i)
+        StepBody(scene);
+
+    const Vector3 scale = mark->Root().Scale();
+    EXPECT_NEAR(scale.x, 0.75f, 0.02f);
+    EXPECT_NEAR(scale.z, 0.75f, 0.02f);
+}
+
+// 寿命が尽きたら描画と更新を止める。配置物は破棄しない
+TEST(ImpactMark, HidesAfterLifeWithoutDestroy)
+{
+    NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+    SceneNs::Scene scene;
+    SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
+    ASSERT_NE(mark, nullptr);
+    const std::size_t after = scene.World().ObjectCount();
+
+    for (int i = 0; i < 370; ++i)
+        StepBody(scene);
+
+    auto* mesh = mark->FindComponent<SceneNs::MeshRendererComponent>();
+    ASSERT_NE(mesh, nullptr);
+    EXPECT_FALSE(mesh->IsActiveSelf());
+    auto* comp = mark->FindComponent<LevelNs::ImpactMarkComponent>();
+    ASSERT_NE(comp, nullptr);
+    EXPECT_FALSE(comp->IsActiveSelf());
+    EXPECT_EQ(scene.World().ObjectCount(), after);
+}
+
+// 壊した瞬間に破片と跡が出る。破片は壊れた物の位置から飛び始める
+TEST(CollisionImpact, BreakScattersDebrisAndLeavesMark)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildOnFloor(scene);
+    ASSERT_NE(rig.impact, nullptr);
+    SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+    const std::size_t before = scene.World().ObjectCount();
+
+    Step(scene);
+
+    ASSERT_TRUE(rig.impact->DidBreak());
+    EXPECT_EQ(scene.World().ObjectCount(), before + 6);
+    EXPECT_EQ(MarkCount(scene), 1);
+    const std::vector<LevelNs::LaunchedBodyComponent*> debris = DebrisBodies(scene);
+    ASSERT_EQ(debris.size(), 5u);
+    const Vector3 home = rig.targetBox->Owner()->Root().Position();
+    for (LevelNs::LaunchedBodyComponent* body : debris)
+    {
+        EXPECT_TRUE(body->IsFlying());
+        const Vector3 pos = body->Owner()->Root().Position();
+        EXPECT_FLOAT_EQ(pos.x, home.x);
+        EXPECT_FLOAT_EQ(pos.y, home.y);
+        EXPECT_FLOAT_EQ(pos.z, home.z);
+    }
+}
+
+// 破片は同じ速さで別の向きへ散る。1 方向に固まると壊れた量が見えない
+TEST(CollisionImpact, DebrisScatterDirectionsDifferButShareSpeed)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildOnFloor(scene);
+    SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+
+    const std::vector<LevelNs::LaunchedBodyComponent*> debris = DebrisBodies(scene);
+    ASSERT_EQ(debris.size(), 5u);
+    for (LevelNs::LaunchedBodyComponent* body : debris)
+        EXPECT_NEAR(HorizontalSpeed(body->Velocity()), 6.0f, 0.001f);
+    const Vector3 first = debris[0]->Velocity();
+    const Vector3 second = debris[1]->Velocity();
+    EXPECT_GT(std::abs(first.x - second.x) + std::abs(first.z - second.z), 0.1f);
+}
+
+// 散り方は決定論。同じ状況で 2 回壊すと同じ向きへ散る
+TEST(CollisionImpact, DebrisScatterIsDeterministic)
+{
+    SceneNs::Scene firstScene;
+    Rig first = BuildOnFloor(firstScene);
+    SetFloatField(*first.impact, "貫通の止め秒", 0.0f);
+    first.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    first.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+    Step(firstScene);
+
+    SceneNs::Scene secondScene;
+    Rig second = BuildOnFloor(secondScene);
+    SetFloatField(*second.impact, "貫通の止め秒", 0.0f);
+    second.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    second.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+    Step(secondScene);
+
+    const std::vector<LevelNs::LaunchedBodyComponent*> firstDebris = DebrisBodies(firstScene);
+    const std::vector<LevelNs::LaunchedBodyComponent*> secondDebris = DebrisBodies(secondScene);
+    ASSERT_EQ(firstDebris.size(), secondDebris.size());
+    ASSERT_EQ(firstDebris.size(), 5u);
+    for (std::size_t i = 0; i < firstDebris.size(); ++i)
+    {
+        const Vector3 a = firstDebris[i]->Velocity();
+        const Vector3 b = secondDebris[i]->Velocity();
+        EXPECT_FLOAT_EQ(a.x, b.x);
+        EXPECT_FLOAT_EQ(a.y, b.y);
+        EXPECT_FLOAT_EQ(a.z, b.z);
+    }
+}
+
+// 重い物の破片は飛ばない。破片の飛び方も質量の表示にする
+TEST(CollisionImpact, HeavierTargetScattersSlowerDebris)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildOnFloor(scene);
+    ASSERT_NE(rig.breakable, nullptr);
+    rig.breakable->SetMass(4.0f);
+    SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+
+    ASSERT_TRUE(rig.impact->DidBreak());
+    const std::vector<LevelNs::LaunchedBodyComponent*> debris = DebrisBodies(scene);
+    ASSERT_EQ(debris.size(), 5u);
+    for (LevelNs::LaunchedBodyComponent* body : debris)
+        EXPECT_NEAR(HorizontalSpeed(body->Velocity()), 1.5f, 0.001f);
+}
+
+// 押し飛ばしは跡だけ出す。破片は貫通の絵
+TEST(CollisionImpact, LaunchLeavesMarkWithoutDebris)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildOnFloor(scene);
+    SetInstantImpact(rig);
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    const std::size_t before = scene.World().ObjectCount();
+
+    Step(scene);
+
+    ASSERT_TRUE(rig.impact->DidRebound());
+    EXPECT_EQ(scene.World().ObjectCount(), before + 1);
+    EXPECT_EQ(MarkCount(scene), 1);
+    EXPECT_TRUE(DebrisBodies(scene).empty());
+}
+
+// 破片の数 0 は破片を出さない指定
+TEST(CollisionImpact, ZeroDebrisCountScattersNone)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildOnFloor(scene);
+    SetIntField(*rig.impact, "破片の数", 0);
+    SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+    const std::size_t before = scene.World().ObjectCount();
+
+    Step(scene);
+
+    ASSERT_TRUE(rig.impact->DidBreak());
+    EXPECT_EQ(scene.World().ObjectCount(), before + 1);
+    EXPECT_TRUE(DebrisBodies(scene).empty());
+    EXPECT_EQ(MarkCount(scene), 1);
+}
+
+// 真下に床が無ければ跡を出さない
+TEST(CollisionImpact, NoMarkWithoutFloorBelow)
+{
+    SceneNs::Scene scene;
+    Rig rig = Build(scene, Vector3{}, 1, 0, true);
+    SetInstantImpact(rig);
+    rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+    const std::size_t before = scene.World().ObjectCount();
+
+    Step(scene);
+
+    ASSERT_TRUE(rig.impact->DidRebound());
+    EXPECT_EQ(scene.World().ObjectCount(), before);
+    EXPECT_EQ(MarkCount(scene), 0);
+}
+
+// 破片は壊れた物より小さい cube。大きいと壊れた本体と見分けがつかない
+TEST(CollisionImpact, DebrisLooksLikeSmallCube)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildOnFloor(scene);
+    SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+
+    Step(scene);
+
+    const std::vector<LevelNs::LaunchedBodyComponent*> debris = DebrisBodies(scene);
+    ASSERT_EQ(debris.size(), 5u);
+    auto* mesh = debris[0]->Owner()->FindComponent<SceneNs::MeshRendererComponent>();
+    ASSERT_NE(mesh, nullptr);
+    EXPECT_EQ(mesh->MeshRef(), "cube");
+    const Vector3 scale = debris[0]->Owner()->Root().Scale();
+    const Vector3 targetScale = rig.targetBox->Owner()->Root().Scale();
+    EXPECT_LT(scale.x, targetScale.x);
+    EXPECT_FLOAT_EQ(scale.x, 0.25f);
+}
+
+// 破片は転がって止まり、しばらくして描画ごと消える。配置物は破棄しない
+TEST(CollisionImpact, DebrisRestsThenExpires)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildOnFloor(scene);
+    SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
+    SetFloatField(*rig.impact, "破片の初速", 1.0f);
+    SetFloatField(*rig.impact, "破片の残る秒", 0.05f);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+    Step(scene);
+
+    const std::vector<LevelNs::LaunchedBodyComponent*> debris = DebrisBodies(scene);
+    ASSERT_EQ(debris.size(), 5u);
+    auto anyFlying = [&debris]() {
+        for (LevelNs::LaunchedBodyComponent* body : debris)
+        {
+            if (body->IsFlying())
+                return true;
+        }
+        return false;
+    };
+    int guard = 0;
+    while (anyFlying() && guard < 300)
+    {
+        StepBody(scene);
+        ++guard;
+    }
+    ASSERT_LT(guard, 300);
+    EXPECT_NEAR(debris[0]->Owner()->Root().Position().y, 0.625f, 0.02f);
+
+    for (int i = 0; i < 5; ++i)
+        StepBody(scene);
+    for (LevelNs::LaunchedBodyComponent* body : debris)
+    {
+        auto* mesh = body->Owner()->FindComponent<SceneNs::MeshRendererComponent>();
+        ASSERT_NE(mesh, nullptr);
+        EXPECT_FALSE(mesh->IsActiveSelf());
+        EXPECT_FALSE(body->IsActiveSelf());
+    }
+}
+
+// 破片と跡は解放の歩に出る。止まった 1 枚の横で破片だけが飛ばない
+TEST(CollisionImpact, DebrisWaitForRelease)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildOnFloor(scene);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+    const std::size_t before = scene.World().ObjectCount();
+
+    Step(scene);
+    ASSERT_TRUE(rig.impact->DidBreak());
+    EXPECT_EQ(scene.World().ObjectCount(), before);
+
+    Step(scene);
+    ASSERT_FALSE(rig.movement->IsActiveSelf());
+    EXPECT_EQ(scene.World().ObjectCount(), before);
+
+    const int rest = StepsUntilMovementActive(scene, rig, 60);
+    ASSERT_LT(rest, 60);
+    EXPECT_EQ(scene.World().ObjectCount(), before + 6);
+}
+
+// 押し飛ばされた配置物は消えない。0 は消えない指定
+TEST(LaunchedBody, RestWithZeroLifeStaysVisible)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+    const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
+    ASSERT_LT(steps, k_RestStepLimit);
+
+    for (int i = 0; i < 120; ++i)
+        StepBody(scene);
+
+    auto* mesh = rig.object->FindComponent<SceneNs::MeshRendererComponent>();
+    ASSERT_NE(mesh, nullptr);
+    EXPECT_TRUE(mesh->IsActiveSelf());
+    EXPECT_TRUE(rig.box->IsActiveSelf());
+    EXPECT_TRUE(rig.body->IsActiveSelf());
+}
+
+// 寿命を入れた物は止まってから消え、当たりも外れる
+TEST(LaunchedBody, SetRestLifeSecondsHidesAfterRest)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    rig.body->SetRestLifeSeconds(0.05f);
+    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+    const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
+    ASSERT_LT(steps, k_RestStepLimit);
+
+    for (int i = 0; i < 5; ++i)
+        StepBody(scene);
+
+    auto* mesh = rig.object->FindComponent<SceneNs::MeshRendererComponent>();
+    ASSERT_NE(mesh, nullptr);
+    EXPECT_FALSE(mesh->IsActiveSelf());
+    EXPECT_FALSE(rig.box->IsActiveSelf());
+    EXPECT_FALSE(rig.body->IsActiveSelf());
+    EXPECT_EQ(scene.Physics().Aabbs().size(), rig.restingAabbs - 1);
+}
+
+// 壊れた値は捨てる。非有限値と負で寿命が入らない
+TEST(LaunchedBody, RestLifeRejectsNonFiniteAndNegative)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    rig.body->SetRestLifeSeconds(std::numeric_limits<float>::quiet_NaN());
+    rig.body->SetRestLifeSeconds(-2.0f);
+    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+    const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
+    ASSERT_LT(steps, k_RestStepLimit);
+
+    for (int i = 0; i < 120; ++i)
+        StepBody(scene);
+
+    auto* mesh = rig.object->FindComponent<SceneNs::MeshRendererComponent>();
+    ASSERT_NE(mesh, nullptr);
+    EXPECT_TRUE(mesh->IsActiveSelf());
 }

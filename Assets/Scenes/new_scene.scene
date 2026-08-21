@@ -75,6 +75,32 @@
         },
         {
           "fields": {
+            "ダッシュ昇格秒": 1.5,
+            "ダッシュ速度": 12.0,
+            "復帰に進行方向入力を要求": false,
+            "最高ダッシュ昇格秒": 2.5,
+            "最高ダッシュ速度": 16.0,
+            "通常速度": 8.0,
+            "降格猶予秒": 0.5
+          },
+          "id": 29,
+          "type": "MomentumComponent"
+        },
+        {
+          "fields": {
+            "カメラ揺れの強さ": 0.05999999865889549,
+            "反発の上向き初速": 3.0,
+            "反発基準初速": 9.0,
+            "押し飛ばしの浮き上がり": 0.3499999940395355,
+            "押し飛ばし基準初速": 14.0,
+            "振動の振幅": 0.05000000074505806,
+            "食い込み距離": 0.05999999865889549
+          },
+          "id": 30,
+          "type": "ImpactResolverComponent"
+        },
+        {
+          "fields": {
             "スケール": [
               0.800000011920929,
               1.7999999523162842,
@@ -120,7 +146,6 @@
             "下降重力": -35.0,
             "先行入力時間": 0.25,
             "加速時定数": 0.10000000149011612,
-            "最高速度": 8.0,
             "歩き速度": 4.0,
             "減速時定数": 0.10000000149011612,
             "状態一覧": "Locomotion;LedgeHang;LedgeMantle",
@@ -171,16 +196,6 @@
           "fields": {},
           "id": 23,
           "type": "AreaCameraActivatorComponent"
-        },
-        {
-          "id": 29,
-          "type": "MomentumComponent",
-          "fields": {}
-        },
-        {
-          "id": 30,
-          "type": "ImpactResolverComponent",
-          "fields": {}
         }
       ],
       "id": 2
@@ -319,45 +334,42 @@
       "name": "w"
     },
     {
-      "id": 35,
       "components": [
         {
-          "id": 36,
-          "type": "TransformComponent",
           "fields": {
-            "位置": [
-              18.0,
-              1.0,
-              -7.5
-            ],
             "スケール": [
               1.0,
               1.0,
               1.0
             ],
+            "位置": [
+              18.0,
+              1.0,
+              -7.5
+            ],
             "回転 (度)": [
-              0.0,
+              -0.0,
               0.0,
               0.0
             ]
-          }
+          },
+          "id": 36,
+          "type": "TransformComponent"
         },
         {
-          "id": 37,
-          "type": "MeshRendererComponent",
           "fields": {
-            "メッシュ": "sphere",
             "マテリアル": "",
+            "メッシュ": "sphere",
             "基本色": [
-              0.72,
-              0.7,
-              0.66
+              0.7200000286102295,
+              0.699999988079071,
+              0.6600000262260437
             ]
-          }
+          },
+          "id": 37,
+          "type": "MeshRendererComponent"
         },
         {
-          "id": 38,
-          "type": "BoxColliderComponent",
           "fields": {
             "トリガー": false,
             "中心オフセット": [
@@ -371,67 +383,72 @@
               0.5
             ],
             "回転 (度)": [
-              0.0,
+              -0.0,
               0.0,
               0.0
             ]
-          }
+          },
+          "id": 38,
+          "type": "BoxColliderComponent"
         },
         {
-          "id": 39,
-          "type": "BreakableComponent",
           "fields": {
-            "質量": 0.5,
-            "耐久": 1.0
-          }
+            "耐久": 0.5,
+            "質量": 0.5
+          },
+          "id": 39,
+          "type": "BreakableComponent"
         },
         {
+          "fields": {
+            "停止速度しきい値": 0.5,
+            "接地摩擦": 6.0,
+            "止まってから消える秒": 0.0,
+            "重力": -25.0
+          },
           "id": 40,
-          "type": "LaunchedBodyComponent",
-          "fields": {}
+          "type": "LaunchedBodyComponent"
         }
-      ]
+      ],
+      "id": 35
     },
     {
-      "id": 41,
       "components": [
         {
-          "id": 42,
-          "type": "TransformComponent",
           "fields": {
-            "位置": [
-              18.0,
-              1.25,
-              -2.5
-            ],
             "スケール": [
               1.5,
               1.5,
               1.5
             ],
+            "位置": [
+              18.0,
+              1.25,
+              -2.5
+            ],
             "回転 (度)": [
-              0.0,
+              -0.0,
               0.0,
               0.0
             ]
-          }
+          },
+          "id": 42,
+          "type": "TransformComponent"
         },
         {
-          "id": 43,
-          "type": "MeshRendererComponent",
           "fields": {
-            "メッシュ": "sphere",
             "マテリアル": "",
+            "メッシュ": "sphere",
             "基本色": [
-              0.62,
-              0.6,
-              0.56
+              0.6200000047683716,
+              0.6000000238418579,
+              0.5600000023841858
             ]
-          }
+          },
+          "id": 43,
+          "type": "MeshRendererComponent"
         },
         {
-          "id": 44,
-          "type": "BoxColliderComponent",
           "fields": {
             "トリガー": false,
             "中心オフセット": [
@@ -445,67 +462,72 @@
               0.5
             ],
             "回転 (度)": [
-              0.0,
+              -0.0,
               0.0,
               0.0
             ]
-          }
+          },
+          "id": 44,
+          "type": "BoxColliderComponent"
         },
         {
-          "id": 45,
-          "type": "BreakableComponent",
           "fields": {
-            "質量": 1.0,
-            "耐久": 1.0
-          }
+            "耐久": 1.0,
+            "質量": 1.0
+          },
+          "id": 45,
+          "type": "BreakableComponent"
         },
         {
+          "fields": {
+            "停止速度しきい値": 0.5,
+            "接地摩擦": 6.0,
+            "止まってから消える秒": 0.0,
+            "重力": -25.0
+          },
           "id": 46,
-          "type": "LaunchedBodyComponent",
-          "fields": {}
+          "type": "LaunchedBodyComponent"
         }
-      ]
+      ],
+      "id": 41
     },
     {
-      "id": 47,
       "components": [
         {
-          "id": 48,
-          "type": "TransformComponent",
           "fields": {
-            "位置": [
-              18.0,
-              1.5,
-              2.5
-            ],
             "スケール": [
               2.0,
               2.0,
               2.0
             ],
+            "位置": [
+              18.0,
+              1.5,
+              2.5
+            ],
             "回転 (度)": [
-              0.0,
+              -0.0,
               0.0,
               0.0
             ]
-          }
+          },
+          "id": 48,
+          "type": "TransformComponent"
         },
         {
-          "id": 49,
-          "type": "MeshRendererComponent",
           "fields": {
-            "メッシュ": "sphere",
             "マテリアル": "",
+            "メッシュ": "sphere",
             "基本色": [
               0.5,
-              0.48,
-              0.45
+              0.47999998927116394,
+              0.44999998807907104
             ]
-          }
+          },
+          "id": 49,
+          "type": "MeshRendererComponent"
         },
         {
-          "id": 50,
-          "type": "BoxColliderComponent",
           "fields": {
             "トリガー": false,
             "中心オフセット": [
@@ -519,67 +541,72 @@
               0.5
             ],
             "回転 (度)": [
-              0.0,
+              -0.0,
               0.0,
               0.0
             ]
-          }
+          },
+          "id": 50,
+          "type": "BoxColliderComponent"
         },
         {
-          "id": 51,
-          "type": "BreakableComponent",
           "fields": {
-            "質量": 2.0,
-            "耐久": 1.0
-          }
+            "耐久": 2.0,
+            "質量": 2.0
+          },
+          "id": 51,
+          "type": "BreakableComponent"
         },
         {
+          "fields": {
+            "停止速度しきい値": 0.5,
+            "接地摩擦": 6.0,
+            "止まってから消える秒": 0.0,
+            "重力": -25.0
+          },
           "id": 52,
-          "type": "LaunchedBodyComponent",
-          "fields": {}
+          "type": "LaunchedBodyComponent"
         }
-      ]
+      ],
+      "id": 47
     },
     {
-      "id": 53,
       "components": [
         {
-          "id": 54,
-          "type": "TransformComponent",
           "fields": {
-            "位置": [
-              18.0,
-              2.0,
-              7.5
-            ],
             "スケール": [
               3.0,
               3.0,
               3.0
             ],
+            "位置": [
+              18.0,
+              2.0,
+              7.5
+            ],
             "回転 (度)": [
-              0.0,
+              -0.0,
               0.0,
               0.0
             ]
-          }
+          },
+          "id": 54,
+          "type": "TransformComponent"
         },
         {
-          "id": 55,
-          "type": "MeshRendererComponent",
           "fields": {
-            "メッシュ": "sphere",
             "マテリアル": "",
+            "メッシュ": "sphere",
             "基本色": [
-              0.36,
-              0.34,
-              0.32
+              0.36000001430511475,
+              0.3400000035762787,
+              0.3199999928474426
             ]
-          }
+          },
+          "id": 55,
+          "type": "MeshRendererComponent"
         },
         {
-          "id": 56,
-          "type": "BoxColliderComponent",
           "fields": {
             "トリガー": false,
             "中心オフセット": [
@@ -593,26 +620,34 @@
               0.5
             ],
             "回転 (度)": [
-              0.0,
+              -0.0,
               0.0,
               0.0
             ]
-          }
+          },
+          "id": 56,
+          "type": "BoxColliderComponent"
         },
         {
-          "id": 57,
-          "type": "BreakableComponent",
           "fields": {
-            "質量": 8.0,
-            "耐久": 1.0
-          }
+            "耐久": 5.0,
+            "質量": 8.0
+          },
+          "id": 57,
+          "type": "BreakableComponent"
         },
         {
+          "fields": {
+            "停止速度しきい値": 0.5,
+            "接地摩擦": 6.0,
+            "止まってから消える秒": 0.0,
+            "重力": -25.0
+          },
           "id": 58,
-          "type": "LaunchedBodyComponent",
-          "fields": {}
+          "type": "LaunchedBodyComponent"
         }
-      ]
+      ],
+      "id": 53
     }
   ],
   "version": 3

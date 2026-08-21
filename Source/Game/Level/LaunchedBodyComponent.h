@@ -26,6 +26,9 @@ namespace NS::Game::Level
         //! 現在の速度。止まっている時は 0
         [[nodiscard]] NS::Core::Vector3 Velocity() const noexcept { return m_velocity; }
 
+        //! 止まってから消えるまでの秒を置く。0 は消えない。非有限値と負は捨てる
+        void SetRestLifeSeconds(float seconds) noexcept;
+
         //! 重力と摩擦を掛けて位置を進め、床の上で止める
         void OnUpdate() override;
 
