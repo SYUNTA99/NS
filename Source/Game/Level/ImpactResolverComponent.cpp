@@ -354,7 +354,7 @@ namespace NS::Game::Level
             BreakTarget(*target);
             SpawnDebris(m_pendingTargetHome, mass);
             if (floorFound)
-                ImpactMarkComponent::SpawnAt(scene, markPosition);
+                (void)ImpactMarkComponent::SpawnAt(scene, markPosition);
             return;
         }
 
@@ -364,7 +364,7 @@ namespace NS::Game::Level
             body = target->AddComponent<LaunchedBodyComponent>();
         body->Launch(m_pendingLaunchVelocity);
         if (floorFound)
-            ImpactMarkComponent::SpawnAt(scene, markPosition);
+            (void)ImpactMarkComponent::SpawnAt(scene, markPosition);
     }
 
     void ImpactResolverComponent::ApplyFreezeVibration()
