@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <climits>
+#include <cmath>
 #include <cstring>
 
 #if NS_EDITOR_ENABLED
@@ -132,12 +133,18 @@ namespace NS::Editor
 
         constexpr float k_CurveGraphHeight = 100.0f;
         constexpr float k_CurveGrabRadius = 6.0f;
+        constexpr float k_CurveHandleLength = 40.0f;
 
         constexpr ImU32 k_CurveGridColor = IM_COL32(255, 255, 255, 28);
         constexpr ImU32 k_CurveRefLineColor = IM_COL32(255, 255, 255, 70);
         constexpr ImU32 k_CurveLineColor = IM_COL32(150, 200, 255, 255);
         constexpr ImU32 k_CurvePointColor = IM_COL32(230, 230, 230, 255);
         constexpr ImU32 k_CurvePointActiveColor = IM_COL32(255, 200, 80, 255);
+        constexpr ImU32 k_CurveHandleColor = IM_COL32(150, 230, 170, 255);
+
+        constexpr int k_GrabPoint = 0;
+        constexpr int k_GrabInHandle = 1;
+        constexpr int k_GrabOutHandle = 2;
 
         struct CurveGraphView
         {
@@ -175,6 +182,83 @@ namespace NS::Editor
             const float x = std::clamp((pos.x - view.origin.x) / view.size.x, 0.0f, 1.0f);
             const float ratioY = 1.0f - (pos.y - view.origin.y) / view.size.y;
             return NS::Object::Curve::Key{x, view.yMin + ratioY * (view.yMax - view.yMin)};
+        }
+
+        // 昇格の初期値も表示も実際に効いている傾きから作る。ずれると掴んだ瞬間に形が飛ぶため
+        float DisplayTangent(const NS::Object::Curve& curve, std::uint32_t index, bool leftSide) noexcept
+        {
+            const NS::Object::Curve::Key& key = curve.keys[index];
+            if (key.mode == NS::Object::Curve::InterpMode::Manual)
+            {
+                if (leftSide)
+                {
+                    return key.inTangent;
+                }
+                return key.outTangent;
+            }
+            if (key.mode == NS::Object::Curve::InterpMode::AutoSmooth)
+            {
+                return curve.AutoTangentAt(index);
+            }
+            if (leftSide)
+            {
+                if (index == 0)
+                {
+                    return 0.0f;
+                }
+                const float width = curve.keys[index].x - curve.keys[index - 1].x;
+                if (width <= 0.0f)
+                {
+                    return 0.0f;
+                }
+                return (curve.keys[index].y - curve.keys[index - 1].y) / width;
+            }
+            if (index + 1 >= curve.count)
+            {
+                return 0.0f;
+            }
+            const float width = curve.keys[index + 1].x - curve.keys[index].x;
+            if (width <= 0.0f)
+            {
+                return 0.0f;
+            }
+            return (curve.keys[index + 1].y - curve.keys[index].y) / width;
+        }
+
+        // 接線の向きを画面座標へ写して一定の画面距離に置く。カーブ座標の距離だと棒の長さが暴れるため
+        ImVec2 TangentHandleTip(const CurveGraphView& view, ImVec2 center, float slope, bool leftSide) noexcept
+        {
+            float directionX = view.size.x;
+            float directionY = -slope * view.size.y / (view.yMax - view.yMin);
+            if (leftSide)
+            {
+                directionX = -directionX;
+                directionY = -directionY;
+            }
+            const float length = std::sqrt(directionX * directionX + directionY * directionY);
+            if (length <= 0.0f)
+            {
+                return center;
+            }
+            const float scale = k_CurveHandleLength / length;
+            return ImVec2{center.x + directionX * scale, center.y + directionY * scale};
+        }
+
+        float ScreenToTangent(const CurveGraphView& view, ImVec2 center, ImVec2 pos, bool leftSide) noexcept
+        {
+            float deltaX = (pos.x - center.x) / view.size.x;
+            const float deltaY = (center.y - pos.y) / view.size.y * (view.yMax - view.yMin);
+            // x の幅が 0 に近づくと傾きが発散するので、点の反対側へ回り込んでも符号ごと最小幅で止める
+            constexpr float k_MinDeltaX = 0.02f;
+            if (leftSide)
+            {
+                deltaX = std::min(deltaX, -k_MinDeltaX);
+            }
+            else
+            {
+                deltaX = std::max(deltaX, k_MinDeltaX);
+            }
+            return deltaY / deltaX;
         }
 
         int FindKeyNear(const NS::Object::Curve& curve, const CurveGraphView& view, ImVec2 pos, float radius) noexcept
@@ -228,7 +312,8 @@ namespace NS::Editor
         void DrawCurveGraph(ImDrawList& drawList,
                             const CurveGraphView& view,
                             const NS::Object::Curve& curve,
-                            int highlighted) noexcept
+                            int highlighted,
+                            int selected) noexcept
         {
             const ImVec2 rectMin = view.origin;
             const ImVec2 rectMax{view.origin.x + view.size.x, view.origin.y + view.size.y};
@@ -253,15 +338,49 @@ namespace NS::Editor
             if (curve.count > 0)
             {
                 // Evaluate は範囲の外を端の値で止めるので、見た目も両端まで水平に延ばす
-                ImVec2 prev = CurveToScreen(view, 0.0f, curve.keys[0].y);
-                for (std::uint32_t i = 0; i < curve.count; ++i)
+                const ImVec2 firstPoint = CurveToScreen(view, curve.keys[0].x, curve.keys[0].y);
+                drawList.AddLine(CurveToScreen(view, 0.0f, curve.keys[0].y), firstPoint, k_CurveLineColor, 2.0f);
+                for (std::uint32_t i = 0; i + 1 < curve.count; ++i)
                 {
-                    const ImVec2 point = CurveToScreen(view, curve.keys[i].x, curve.keys[i].y);
-                    drawList.AddLine(prev, point, k_CurveLineColor, 2.0f);
-                    prev = point;
+                    const NS::Object::Curve::Key& left = curve.keys[i];
+                    const NS::Object::Curve::Key& right = curve.keys[i + 1];
+                    ImVec2 prev = CurveToScreen(view, left.x, left.y);
+                    const ImVec2 end = CurveToScreen(view, right.x, right.y);
+                    const bool straight = left.mode == NS::Object::Curve::InterpMode::Linear &&
+                                          right.mode == NS::Object::Curve::InterpMode::Linear;
+                    if (straight || right.x - left.x <= 0.0f)
+                    {
+                        drawList.AddLine(prev, end, k_CurveLineColor, 2.0f);
+                        continue;
+                    }
+                    // 曲線の区間は実物の Evaluate をサンプリングして描く。描画用の別実装だと見た目と効く形がずれるため
+                    constexpr int k_CurveSegmentSamples = 16;
+                    for (int sample = 1; sample < k_CurveSegmentSamples; ++sample)
+                    {
+                        const float ratio = static_cast<float>(sample) / static_cast<float>(k_CurveSegmentSamples);
+                        const float x = left.x + (right.x - left.x) * ratio;
+                        const ImVec2 point = CurveToScreen(view, x, curve.Evaluate(x));
+                        drawList.AddLine(prev, point, k_CurveLineColor, 2.0f);
+                        prev = point;
+                    }
+                    drawList.AddLine(prev, end, k_CurveLineColor, 2.0f);
                 }
-                const ImVec2 rightEnd = CurveToScreen(view, 1.0f, curve.keys[curve.count - 1].y);
-                drawList.AddLine(prev, rightEnd, k_CurveLineColor, 2.0f);
+                const NS::Object::Curve::Key& lastKey = curve.keys[curve.count - 1];
+                const ImVec2 lastPoint = CurveToScreen(view, lastKey.x, lastKey.y);
+                drawList.AddLine(lastPoint, CurveToScreen(view, 1.0f, lastKey.y), k_CurveLineColor, 2.0f);
+            }
+
+            if (selected >= 0 && static_cast<std::uint32_t>(selected) < curve.count)
+            {
+                const std::uint32_t selectedIndex = static_cast<std::uint32_t>(selected);
+                const ImVec2 center = CurveToScreen(view, curve.keys[selectedIndex].x, curve.keys[selectedIndex].y);
+                const ImVec2 inTip = TangentHandleTip(view, center, DisplayTangent(curve, selectedIndex, true), true);
+                const ImVec2 outTip =
+                    TangentHandleTip(view, center, DisplayTangent(curve, selectedIndex, false), false);
+                drawList.AddLine(center, inTip, k_CurveHandleColor, 1.5f);
+                drawList.AddLine(center, outTip, k_CurveHandleColor, 1.5f);
+                drawList.AddCircleFilled(inTip, 3.5f, k_CurveHandleColor);
+                drawList.AddCircleFilled(outTip, 3.5f, k_CurveHandleColor);
             }
 
             for (std::uint32_t i = 0; i < curve.count; ++i)
@@ -275,6 +394,10 @@ namespace NS::Editor
                     radius = 5.5f;
                 }
                 drawList.AddCircleFilled(center, radius, color);
+                if (static_cast<int>(i) == selected)
+                {
+                    drawList.AddCircle(center, radius + 2.5f, k_CurveHandleColor, 0, 1.5f);
+                }
             }
 
             drawList.PopClipRect();
@@ -447,17 +570,23 @@ namespace NS::Editor
                 view.origin = ImGui::GetCursorScreenPos();
                 ComputeCurveYRange(value, view.yMin, view.yMax);
 
-                // 右クリックの削除でも IsItemDeactivated の確定が立つため、右ボタンも受ける
+                // 右クリックのメニュー操作でも活性化と確定を拾うため、右ボタンも受ける
                 ImGui::InvisibleButton(
                     "##graph", view.size, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
                 // ドラッグ全体を 1 回の undo にまとめるため、グラフの活性化と非活性化も集約へ入れる
                 result.activated |= ImGui::IsItemActivated();
-                result.committed |= ImGui::IsItemDeactivated();
+                const bool graphDeactivated = ImGui::IsItemDeactivated();
 
                 ImGuiStorage* storage = ImGui::GetStateStorage();
                 const ImGuiID grabbedId = ImGui::GetID("graph-grabbed");
+                const ImGuiID grabKindId = ImGui::GetID("graph-grab-kind");
                 const ImGuiID grabOffsetXId = ImGui::GetID("graph-grab-offset-x");
                 const ImGuiID grabOffsetYId = ImGui::GetID("graph-grab-offset-y");
+                const ImGuiID selectedId = ImGui::GetID("graph-selected");
+                const ImGuiID menuPointId = ImGui::GetID("graph-menu-point");
+                const ImGuiID menuXId = ImGui::GetID("graph-menu-x");
+                const ImGuiID menuYId = ImGui::GetID("graph-menu-y");
+                const ImGuiID menuWasOpenId = ImGui::GetID("graph-menu-was-open");
                 const ImVec2 mouse = ImGui::GetMousePos();
                 const bool hovered = ImGui::IsItemHovered();
                 const bool leftHeld = ImGui::IsMouseDown(ImGuiMouseButton_Left);
@@ -468,17 +597,58 @@ namespace NS::Editor
                     highlighted = FindKeyNear(value, view, mouse, k_CurveGrabRadius);
                 }
 
+                // 点の削除は選択も解くが、既定へ戻すは点数だけ減らして選択を残すため、範囲の外へ出た選択は毎フレーム解く
+                int selected = storage->GetInt(selectedId, -1);
+                if (selected >= 0 && static_cast<std::uint32_t>(selected) >= value.count)
+                {
+                    selected = -1;
+                    storage->SetInt(selectedId, -1);
+                }
+
                 if (ImGui::IsItemActivated())
                 {
                     // ドラッグの途中で隣の点へ乗り移ると形が壊れるため、掴む点は押した瞬間に決めて離すまで追う
                     // 右ボタンの活性化で前回の番号が残ると、右を押したまま左を押した時に別の点を掴むため空にする
                     int grabbedNow = -1;
+                    int grabKind = k_GrabPoint;
                     if (leftHeld)
                     {
-                        grabbedNow = highlighted;
+                        // 点よりハンドルを先に判定する。重なった時に点の掴みが勝つと選択が移って接線を触れないため
+                        if (selected >= 0 && static_cast<std::uint32_t>(selected) < value.count)
+                        {
+                            const std::uint32_t selectedIndex = static_cast<std::uint32_t>(selected);
+                            const ImVec2 center =
+                                CurveToScreen(view, value.keys[selectedIndex].x, value.keys[selectedIndex].y);
+                            const ImVec2 inTip =
+                                TangentHandleTip(view, center, DisplayTangent(value, selectedIndex, true), true);
+                            const ImVec2 outTip =
+                                TangentHandleTip(view, center, DisplayTangent(value, selectedIndex, false), false);
+                            const float inDx = inTip.x - mouse.x;
+                            const float inDy = inTip.y - mouse.y;
+                            const float outDx = outTip.x - mouse.x;
+                            const float outDy = outTip.y - mouse.y;
+                            constexpr float k_HandleRadiusSq = k_CurveGrabRadius * k_CurveGrabRadius;
+                            if (inDx * inDx + inDy * inDy <= k_HandleRadiusSq)
+                            {
+                                grabbedNow = selected;
+                                grabKind = k_GrabInHandle;
+                            }
+                            else if (outDx * outDx + outDy * outDy <= k_HandleRadiusSq)
+                            {
+                                grabbedNow = selected;
+                                grabKind = k_GrabOutHandle;
+                            }
+                        }
+                        if (grabKind == k_GrabPoint)
+                        {
+                            grabbedNow = highlighted;
+                            storage->SetInt(selectedId, grabbedNow);
+                            selected = grabbedNow;
+                        }
                     }
                     storage->SetInt(grabbedId, grabbedNow);
-                    if (grabbedNow >= 0)
+                    storage->SetInt(grabKindId, grabKind);
+                    if (grabbedNow >= 0 && grabKind == k_GrabPoint)
                     {
                         // 掴んだ瞬間に点がカーソルへ飛ぶのを避けるため、点の中心と押した位置のずれを控える
                         const NS::Object::Curve::Key& key = value.keys[grabbedNow];
@@ -488,7 +658,7 @@ namespace NS::Editor
                     }
                 }
 
-                // 左の単クリックは掴みに使うため、追加は空きのダブルクリック、削除は点の右クリックに分ける
+                // 左の単クリックは掴みと選択に使うため、追加は空きのダブルクリックか右クリックのメニューに分ける
                 if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && highlighted < 0 &&
                     value.count < NS::Object::Curve::k_MaxKeys)
                 {
@@ -498,37 +668,140 @@ namespace NS::Editor
                     // 追加してから掴み直す手間を省くため、追加した点をそのまま掴んだ扱いにする
                     const std::uint32_t inserted = MoveKey(value, value.count - 1, added);
                     storage->SetInt(grabbedId, static_cast<int>(inserted));
+                    storage->SetInt(grabKindId, k_GrabPoint);
+                    storage->SetInt(selectedId, static_cast<int>(inserted));
                     storage->SetFloat(grabOffsetXId, 0.0f);
                     storage->SetFloat(grabOffsetYId, 0.0f);
                     highlighted = static_cast<int>(inserted);
                     edited = true;
                 }
-                else if (hovered && !leftHeld && ImGui::IsMouseClicked(ImGuiMouseButton_Right) && highlighted >= 0)
-                {
-                    RemoveKey(value, static_cast<std::uint32_t>(highlighted));
-                    highlighted = -1;
-                    edited = true;
-                }
                 else if (ImGui::IsItemActive() && leftHeld)
                 {
                     const int grabbed = storage->GetInt(grabbedId, -1);
+                    const int grabKind = storage->GetInt(grabKindId, k_GrabPoint);
                     if (grabbed >= 0 && static_cast<std::uint32_t>(grabbed) < value.count)
                     {
-                        const ImVec2 target{mouse.x + storage->GetFloat(grabOffsetXId, 0.0f),
-                                            mouse.y + storage->GetFloat(grabOffsetYId, 0.0f)};
-                        const NS::Object::Curve::Key moved = ScreenToCurve(view, target);
-                        if (moved != value.keys[grabbed])
+                        if (grabKind == k_GrabPoint)
                         {
-                            const std::uint32_t movedTo = MoveKey(value, static_cast<std::uint32_t>(grabbed), moved);
-                            storage->SetInt(grabbedId, static_cast<int>(movedTo));
-                            highlighted = static_cast<int>(movedTo);
-                            edited = true;
+                            const ImVec2 target{mouse.x + storage->GetFloat(grabOffsetXId, 0.0f),
+                                                mouse.y + storage->GetFloat(grabOffsetYId, 0.0f)};
+                            // 移動先の x y だけ写す。ScreenToCurve の返り値ごと代入するとモードと接線が既定へ戻るため
+                            const NS::Object::Curve::Key targetKey = ScreenToCurve(view, target);
+                            NS::Object::Curve::Key moved = value.keys[grabbed];
+                            moved.x = targetKey.x;
+                            moved.y = targetKey.y;
+                            if (moved != value.keys[grabbed])
+                            {
+                                const std::uint32_t movedTo =
+                                    MoveKey(value, static_cast<std::uint32_t>(grabbed), moved);
+                                storage->SetInt(grabbedId, static_cast<int>(movedTo));
+                                storage->SetInt(selectedId, static_cast<int>(movedTo));
+                                highlighted = static_cast<int>(movedTo);
+                                edited = true;
+                            }
+                        }
+                        else if (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 1.0f))
+                        {
+                            NS::Object::Curve::Key& key = value.keys[grabbed];
+                            const ImVec2 center = CurveToScreen(view, key.x, key.y);
+                            const float slope = ScreenToTangent(view, center, mouse, grabKind == k_GrabInHandle);
+                            // 昇格は動かした瞬間に行う。掴んだだけで昇格するとクリックだけでモードが変わるため
+                            if (key.mode != NS::Object::Curve::InterpMode::Manual)
+                            {
+                                const std::uint32_t grabbedIndex = static_cast<std::uint32_t>(grabbed);
+                                const float inNow = DisplayTangent(value, grabbedIndex, true);
+                                const float outNow = DisplayTangent(value, grabbedIndex, false);
+                                key.mode = NS::Object::Curve::InterpMode::Manual;
+                                key.inTangent = inNow;
+                                key.outTangent = outNow;
+                                edited = true;
+                            }
+                            if (grabKind == k_GrabInHandle && slope != key.inTangent)
+                            {
+                                key.inTangent = slope;
+                                edited = true;
+                            }
+                            if (grabKind == k_GrabOutHandle && slope != key.outTangent)
+                            {
+                                key.outTangent = slope;
+                                edited = true;
+                            }
                         }
                     }
                 }
 
-                DrawCurveGraph(*ImGui::GetWindowDrawList(), view, value, highlighted);
-                ImGui::TextDisabled("点をドラッグで移動 / 空きをダブルクリックで追加 / 点を右クリックで削除");
+                // メニューの対象は開く瞬間に控える。開いている間にマウスが動くと対象の点がずれるため
+                if (hovered && ImGui::IsMouseReleased(ImGuiMouseButton_Right))
+                {
+                    storage->SetInt(menuPointId, highlighted);
+                    const NS::Object::Curve::Key menuAt = ScreenToCurve(view, mouse);
+                    storage->SetFloat(menuXId, menuAt.x);
+                    storage->SetFloat(menuYId, menuAt.y);
+                    // 開く瞬間に activated を立てる。undo の控えを開いている間の編集より前に取らせるため
+                    result.activated = true;
+                    ImGui::OpenPopup("curve-menu");
+                }
+                if (ImGui::BeginPopup("curve-menu"))
+                {
+                    const int menuPoint = storage->GetInt(menuPointId, -1);
+                    if (menuPoint >= 0 && static_cast<std::uint32_t>(menuPoint) < value.count)
+                    {
+                        NS::Object::Curve::Key& key = value.keys[menuPoint];
+                        const bool isLinear = key.mode == NS::Object::Curve::InterpMode::Linear;
+                        const bool isSmooth = key.mode == NS::Object::Curve::InterpMode::AutoSmooth;
+                        if (ImGui::MenuItem("直線にする", nullptr, isLinear) && !isLinear)
+                        {
+                            key.mode = NS::Object::Curve::InterpMode::Linear;
+                            edited = true;
+                        }
+                        if (ImGui::MenuItem("なめらかにする", nullptr, isSmooth) && !isSmooth)
+                        {
+                            key.mode = NS::Object::Curve::InterpMode::AutoSmooth;
+                            edited = true;
+                        }
+                        ImGui::Separator();
+                        if (ImGui::MenuItem("削除"))
+                        {
+                            RemoveKey(value, static_cast<std::uint32_t>(menuPoint));
+                            storage->SetInt(selectedId, -1);
+                            edited = true;
+                        }
+                    }
+                    else if (ImGui::MenuItem("点を追加", nullptr, false, value.count < NS::Object::Curve::k_MaxKeys))
+                    {
+                        const NS::Object::Curve::Key added{storage->GetFloat(menuXId, 0.0f),
+                                                           storage->GetFloat(menuYId, 0.0f)};
+                        value.keys[value.count] = added;
+                        ++value.count;
+                        const std::uint32_t inserted = MoveKey(value, value.count - 1, added);
+                        storage->SetInt(selectedId, static_cast<int>(inserted));
+                        edited = true;
+                    }
+                    ImGui::EndPopup();
+                }
+                // メニューが開いている間は確定を遅らせる。開いた瞬間に確定するとメニューの編集が履歴に残らないため
+                const bool menuOpen = ImGui::IsPopupOpen("curve-menu");
+                const bool menuWasOpen = storage->GetInt(menuWasOpenId, 0) != 0;
+                if (graphDeactivated && !menuOpen)
+                {
+                    result.committed = true;
+                }
+                if (menuWasOpen && !menuOpen)
+                {
+                    result.committed = true;
+                }
+                if (menuOpen)
+                {
+                    storage->SetInt(menuWasOpenId, 1);
+                }
+                else
+                {
+                    storage->SetInt(menuWasOpenId, 0);
+                }
+
+                DrawCurveGraph(*ImGui::GetWindowDrawList(), view, value, highlighted, storage->GetInt(selectedId, -1));
+                ImGui::TextDisabled(
+                    "ドラッグで移動 / ダブルクリックで追加 / 右クリックでメニュー / クリックで選択して接線");
 
                 // グラフのドラッグでは細かい値を打てないため、数値の並びを折り畳みで残す
                 if (ImGui::TreeNode("数値で編集"))
@@ -542,19 +815,34 @@ namespace NS::Editor
                         ImGui::SetNextItemWidth(-(deleteButtonWidth + ImGui::GetStyle().ItemSpacing.x));
                         if (ImGui::DragFloat2("##point", xy, 0.05f))
                         {
-                            value.keys[pointIndex] = NS::Object::Curve::Key{xy[0], xy[1]};
+                            // x y だけ書く。Key ごと作り直すとモードと接線が既定へ戻るため
+                            value.keys[pointIndex].x = xy[0];
+                            value.keys[pointIndex].y = xy[1];
                             edited = true;
                         }
                         ImGui::SameLine();
                         if (ImGui::SmallButton("削除"))
                         {
                             RemoveKey(value, pointIndex);
+                            storage->SetInt(selectedId, -1);
                             edited = true;
                             // 詰めた並びを同じ周回で回し続けると、消した点の隣の行がこの周だけ描かれないため抜ける
                             ImGui::PopID();
                             break;
                         }
                         ImGui::PopID();
+                    }
+                    const int selectedPoint = storage->GetInt(selectedId, -1);
+                    if (selectedPoint >= 0 && static_cast<std::uint32_t>(selectedPoint) < value.count &&
+                        value.keys[selectedPoint].mode == NS::Object::Curve::InterpMode::Manual)
+                    {
+                        float tangents[2] = {value.keys[selectedPoint].inTangent, value.keys[selectedPoint].outTangent};
+                        if (ImGui::DragFloat2("選択中の接線", tangents, 0.05f))
+                        {
+                            value.keys[selectedPoint].inTangent = tangents[0];
+                            value.keys[selectedPoint].outTangent = tangents[1];
+                            edited = true;
+                        }
                     }
                     if (value.count < NS::Object::Curve::k_MaxKeys && ImGui::SmallButton("点を追加"))
                     {
