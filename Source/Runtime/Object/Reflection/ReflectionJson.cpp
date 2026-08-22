@@ -63,7 +63,20 @@ namespace NS::Object
                 nlohmann::json points = nlohmann::json::array();
                 for (std::uint32_t i = 0; i < value.count; ++i)
                 {
-                    points.push_back(nlohmann::json{value.keys[i].x, value.keys[i].y});
+                    const Curve::Key& key = value.keys[i];
+                    // 直線の点は従来の 2 要素のまま書く。要素を足すと古い記述との互換が切れるため
+                    if (key.mode == Curve::InterpMode::Linear)
+                    {
+                        points.push_back(nlohmann::json{key.x, key.y});
+                        continue;
+                    }
+                    if (key.mode == Curve::InterpMode::AutoSmooth)
+                    {
+                        points.push_back(nlohmann::json{key.x, key.y, static_cast<int>(Curve::InterpMode::AutoSmooth)});
+                        continue;
+                    }
+                    points.push_back(nlohmann::json{
+                        key.x, key.y, static_cast<int>(Curve::InterpMode::Manual), key.inTangent, key.outTangent});
                 }
                 nlohmann::json out;
                 out["curve"] = std::move(points);
@@ -147,11 +160,39 @@ namespace NS::Object
                     if (v.count >= Curve::k_MaxKeys)
                         break;
                     // 点が 1 個壊れただけで全部を捨てると手編集の損害が広がるので、形の違う点だけ飛ばして残りを読む
-                    if (!point.is_array() || point.size() != 2u)
+                    if (!point.is_array())
+                        continue;
+                    // 2 は直線、3 は自動なめらか、5 は手動接線。他の要素数は形が壊れた点として飛ばす
+                    const std::size_t pointSize = point.size();
+                    if (pointSize != 2u && pointSize != 3u && pointSize != 5u)
                         continue;
                     if (!point[0].is_number() || !point[1].is_number())
                         continue;
-                    v.keys[v.count] = Curve::Key{point[0].get<float>(), point[1].get<float>()};
+                    Curve::Key key{point[0].get<float>(), point[1].get<float>()};
+                    if (pointSize >= 3u)
+                    {
+                        if (!point[2].is_number())
+                            continue;
+                        // 要素数とモード番号が食い違う点は手編集で壊れた点なので飛ばす
+                        const int mode = point[2].get<int>();
+                        if (pointSize == 3u)
+                        {
+                            if (mode != static_cast<int>(Curve::InterpMode::AutoSmooth))
+                                continue;
+                            key.mode = Curve::InterpMode::AutoSmooth;
+                        }
+                        else
+                        {
+                            if (mode != static_cast<int>(Curve::InterpMode::Manual))
+                                continue;
+                            if (!point[3].is_number() || !point[4].is_number())
+                                continue;
+                            key.mode = Curve::InterpMode::Manual;
+                            key.inTangent = point[3].get<float>();
+                            key.outTangent = point[4].get<float>();
+                        }
+                    }
+                    v.keys[v.count] = key;
                     ++v.count;
                 }
                 // 降順に書かれた記述だと Evaluate の昇順前提が崩れるため、読み込み直後に並べ直す
