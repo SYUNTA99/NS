@@ -3,8 +3,12 @@
 :: @build.cmd
 :: Generate the VS solution via Premake5, then build the given config w/ MSBuild.
 ::
-:: Usage: tools\@build.cmd [Debug|Development|GameDebug|GameRelease]
+:: Usage: tools\@build.cmd [Debug|Development|GameDebug|GameRelease] [profile]
 ::   Defaults to Debug when omitted.
+::   profile: define NS_ENABLE_PROFILING so NS_SCOPED_TIMER expands.
+::            (CharacterMovement::OnUpdate / CapsuleMover::Update /
+::             Application::FixedStepLoop timings go to the Debug log.
+::             Rerun without "profile" to get a normal build back.)
 ::
 :: NOTE: this header must be ASCII. It is parsed before chcp 65001 (line below)
 ::       takes effect, and cmd.exe misparses UTF-8 multibyte here
@@ -15,6 +19,12 @@ chcp 65001 >nul
 
 set "CONFIG=%~1"
 if "%CONFIG%"=="" set "CONFIG=Debug"
+
+:: profile 指定で計測ビルド。premake が環境変数を読んで define を注入する (premake5.lua 参照)
+if /i "%~2"=="profile" (
+    set "NS_ENABLE_PROFILING=1"
+    echo [build] NS_ENABLE_PROFILING=1 で計測ビルドを作成します
+)
 
 :: PC を張り付かせないよう msbuild の並列数を 10 に制限する (物理 20 コア中 10、 残りは OS / 編集用)
 :: -nodeReuse:false はビルド後にワーカーを残さない。 既定だと 10 個が居座って 500MB 超を占め続ける

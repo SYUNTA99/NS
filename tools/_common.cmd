@@ -77,7 +77,7 @@ goto %~1
 :generate_project
     if not exist "%~dp0premake5\premake5.exe" (
         echo [ERROR] tools\premake5\premake5.exe が見つかりません。
-        echo         初回セットアップは tools\@download_premake.cmd を実行してください。
+        echo         リポジトリに同梱しているファイルです。checkout を確認してください。
         exit /b 1
     )
     for /f %%a in ('powershell -command "[guid]::NewGuid().ToString()"') do set "GUID=%%a"
