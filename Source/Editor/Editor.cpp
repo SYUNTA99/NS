@@ -228,8 +228,11 @@ void Editor::OnRender()
     // 自由視点中はゲームへのマウスラッチをかけない。 見回しドラッグ中だけキーボードも UI が持つ
     // 入力を持つパネル (編集中= Scene / プレイ中= Game) のラッチで UI のマウス掴みを外す
     const bool ownerLatched = playMode ? m_gameView.IsMouseLatched() : m_sceneView.IsMouseLatched();
+    // ImGui は項目を押している間 WantCaptureKeyboard も立てるため、Game ビューの長押しで WASD が UI に奪われる
+    // プレイ中にゲームがマウスを掴んでいる間はキーボードをゲームへ渡す
+    const bool keyboardOwnedByGame = playMode && ownerLatched;
     app->Input().SetUiCapture(m_imgui->WantCaptureMouse() && !ownerLatched,
-                              m_imgui->WantCaptureKeyboard() || m_sceneView.IsFreeFlying());
+                              (m_imgui->WantCaptureKeyboard() && !keyboardOwnedByGame) || m_sceneView.IsFreeFlying());
 
     // 見回しドラッグの立ち下がりで押しっぱなしのキーが残らないよう解除する。 WM_KEYUP も UI 捕捉中は届かない
     if (m_sceneView.ConsumeFreeFlyReleased())

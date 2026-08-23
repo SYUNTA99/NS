@@ -4,6 +4,7 @@
 #include "Runtime/Physics/SweptCapsule.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace NS::Physics
 {
@@ -194,6 +195,126 @@ namespace NS::Physics
                 return true;
         }
         return false;
+    }
+
+    NS::Core::Vector3 PhysicsWorld::ComputePushOut(const Capsule& cap) const noexcept
+    {
+        // 1 個から出た先で隣の箱と重なることがあるので反復する。4 回は substep の再掃引と同じ回数
+        constexpr int k_MaxPasses = 4;
+        // 接面ちょうどだと次の掃引が toi 0 で当たり直すため、わずかに離す
+        constexpr float k_Separation = 1e-3f;
+
+        NS::Core::Vector3 total{0.0f, 0.0f, 0.0f};
+        Capsule moved = cap;
+
+        // TODO: AABB channel だけ見ている。回転した箱と坂に埋まった時はまだ出られない
+        for (int pass = 0; pass < k_MaxPasses; ++pass)
+        {
+            bool pushed = false;
+
+            const auto considerAabb = [&](const NS::Core::AABB& box) {
+                const float minX = box.Center.x - box.Extents.x;
+                const float maxX = box.Center.x + box.Extents.x;
+                const float minY = box.Center.y - box.Extents.y;
+                const float maxY = box.Center.y + box.Extents.y;
+                const float minZ = box.Center.z - box.Extents.z;
+                const float maxZ = box.Center.z + box.Extents.z;
+
+                const float cx = moved.center.x;
+                const float cz = moved.center.z;
+                const float segTop = moved.center.y + moved.halfHeight;
+                const float segBottom = moved.center.y - moved.halfHeight;
+
+                // IntersectsCapsuleAABB と同じギャップの形。押す向きが要るので符号を残す
+                float dx = 0.0f;
+                if (cx < minX)
+                    dx = cx - minX;
+                else if (cx > maxX)
+                    dx = cx - maxX;
+                float dz = 0.0f;
+                if (cz < minZ)
+                    dz = cz - minZ;
+                else if (cz > maxZ)
+                    dz = cz - maxZ;
+                float dy = 0.0f;
+                if (segBottom > maxY)
+                    dy = segBottom - maxY;
+                else if (segTop < minY)
+                    dy = segTop - minY;
+
+                const float r = moved.radius;
+                const float distSq = dx * dx + dy * dy + dz * dz;
+                if (distSq >= r * r)
+                    return;
+
+                NS::Core::Vector3 push{0.0f, 0.0f, 0.0f};
+                if (distSq > 1e-8f)
+                {
+                    const float dist = std::sqrt(distSq);
+                    const float amount = r - dist + k_Separation;
+                    push = NS::Core::Vector3{dx / dist * amount, dy / dist * amount, dz / dist * amount};
+                }
+                else
+                {
+                    // 軸線分が箱の中へ入るとギャップが全て 0 になり向きが決まらない。抜けの最短の軸へ出す
+                    const float exitPosX = (maxX + r) - cx;
+                    const float exitNegX = cx - (minX - r);
+                    const float exitPosZ = (maxZ + r) - cz;
+                    const float exitNegZ = cz - (minZ - r);
+                    const float exitPosY = (maxY + r) - segBottom;
+                    const float exitNegY = segTop - (minY - r);
+
+                    float best = exitPosX;
+                    push = NS::Core::Vector3{exitPosX + k_Separation, 0.0f, 0.0f};
+                    if (exitNegX < best)
+                    {
+                        best = exitNegX;
+                        push = NS::Core::Vector3{-(exitNegX + k_Separation), 0.0f, 0.0f};
+                    }
+                    if (exitPosZ < best)
+                    {
+                        best = exitPosZ;
+                        push = NS::Core::Vector3{0.0f, 0.0f, exitPosZ + k_Separation};
+                    }
+                    if (exitNegZ < best)
+                    {
+                        best = exitNegZ;
+                        push = NS::Core::Vector3{0.0f, 0.0f, -(exitNegZ + k_Separation)};
+                    }
+                    if (exitPosY < best)
+                    {
+                        best = exitPosY;
+                        push = NS::Core::Vector3{0.0f, exitPosY + k_Separation, 0.0f};
+                    }
+                    if (exitNegY < best)
+                    {
+                        best = exitNegY;
+                        push = NS::Core::Vector3{0.0f, -(exitNegY + k_Separation), 0.0f};
+                    }
+                }
+
+                moved.center += push;
+                total += push;
+                pushed = true;
+            };
+
+            if (!m_grid.IsEmpty())
+            {
+                const NS::Core::AABB queryBox = CapsuleSweptAABB(moved, NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+                m_grid.Query(queryBox, m_candidates);
+                for (const std::uint32_t index : m_candidates)
+                    considerAabb(m_aabbs[index]);
+            }
+            else
+            {
+                for (const NS::Core::AABB& box : m_aabbs)
+                    considerAabb(box);
+            }
+
+            if (!pushed)
+                break;
+        }
+        return total;
     }
 
     bool PhysicsWorld::IsEmpty() const noexcept

@@ -61,6 +61,9 @@ namespace NS::Physics
         //! bottomCenter から下方向へ reach 以内に AABB / OBB の床があれば true。接地判定の補助に使う
         [[nodiscard]] bool ProbeGround(const NS::Core::Vector3& bottomCenter, float reach) const noexcept;
 
+        //! capsule を AABB channel との重なりの外へ出す移動量を返す。重なりが無ければ零ベクトル
+        [[nodiscard]] NS::Core::Vector3 ComputePushOut(const NS::Physics::Capsule& cap) const noexcept;
+
         // アクセサ
 
         //! AABB channel への読み取り専用の参照。ledge grab の走査が使う

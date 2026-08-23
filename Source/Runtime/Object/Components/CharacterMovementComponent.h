@@ -12,8 +12,8 @@
 namespace NS::Object
 {
     //! @brief Player 移動の細分ラベル
-    //! @details 実行の単位は m_stateNames から組む状態機械 (Locomotion / LedgeHang / LedgeMantle) で、
-    //! この enum は Locomotion 内の歩き / ジャンプ / 落下まで割った読み取り用の細分
+    //! @details 実行の単位は m_stateNames から組む状態機械 (Locomotion / LedgeHang / LedgeMantle / BodySlam) で、
+    //! この enum は歩き / ジャンプ / 落下まで割った読み取り用の細分
     //! LedgeHanging / LedgeMantling の掴まり中は CapsuleMover を通さず position を直更新する
     enum class MovementState
     {
@@ -24,14 +24,18 @@ namespace NS::Object
         LedgeMantling,
     };
 
+    class CapsuleColliderComponent;
+
     //! @brief Player の物理状態を管理する Component
     //! @details カプセル + 1 段ジャンプ + コヨーテ時間と先行入力 + 非対称重力 + 頂点滞空を保持する
     //! NS::Physics::CapsuleMover を実体で持つ
     //! Locomotion の 1 歩は速度と dt を CapsuleMover へ渡し、結果の位置を Root へ書く
+    //! 体当たりの突進は BodySlam 状態が進め、発動要求は接地した Locomotion の歩で消費する
     //! 重力やジャンプの調整値はここが持つ
     //! 目標の移動方向と速度スケールは PlayerInputComponent が入力から作る
     //! 衝突 world は OnStart で所属 scene から非所有で借りる
     //! dt は NS::Core::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
+    //! 依存: NS::Core, NS::Physics::CapsuleMover / PhysicsWorld, NS::Object::StateMachine
     class CharacterMovementComponent : public Component
     {
     public:
@@ -54,6 +58,30 @@ namespace NS::Object
         void SetJumpPressed() noexcept;
         //! ジャンプボタンの長押し状態を渡す。上昇中に離すと縦速度を縮めて上昇を切る
         void SetJumpHeld(bool held) noexcept;
+
+        //! 体当たりの発動を 1 回ぶん要求する。Locomotion の歩で消費する。空中でも出る
+        //! すぐ出せない歩は先行入力時間だけ覚え、過ぎたら失効する
+        //! 溜め量は 0..1 に丸める。0 をタップの印にするので、しきい値ちょうどで離したチャージもタップの飛び込みになる
+        void RequestBodySlam(float charge01) noexcept;
+
+        //! 体当たりの突進中の場合 true、それ以外の場合は false
+        [[nodiscard]] bool IsBodySlamming() const noexcept;
+
+        //! 突進の進み具合 0..1。突進中でなければ 0
+        [[nodiscard]] float BodySlamProgress01() const noexcept;
+
+        //! 発動時に控えた溜め量 0..1
+        [[nodiscard]] float BodySlamCharge01() const noexcept { return m_bodySlamCharge01; }
+
+        //! 発動時の水平速度。突進中の実速度は突進速度で一定になるため、勢いの量はここでしか読めない
+        [[nodiscard]] float BodySlamEntrySpeed() const noexcept { return m_bodySlamEntrySpeed; }
+
+        //! 突進の狙いの速度。突進中でなければ現在速度をそのまま返す
+        //! 箱へ押し付けられた歩は実速度が 0 に潰されるため、衝突を裁く側はこちらで先を見る
+        [[nodiscard]] NS::Core::Vector3 BodySlamVelocity() const noexcept;
+
+        //! 突進を打ち切って Locomotion へ戻す。突進中でなければ何もしない
+        void CancelBodySlam() noexcept;
 
         //! 衝突 query 元の physics world を非所有で借用する。 scene 無しで動かすテスト用の継ぎ目で、
         //! 本編は OnStart が所属 scene の world を取る
@@ -133,6 +161,11 @@ namespace NS::Object
         NS_REFLECT_FIELD(m_accelTau, "加速時定数")
         NS_REFLECT_FIELD(m_decelTau, "減速時定数")
         NS_REFLECT_FIELD(m_stickDeadzone, "スティック遊び")
+        NS_REFLECT_FIELD(m_bodySlamSpeed, "突進速度")
+        NS_REFLECT_FIELD(m_bodySlamDistance, "突進距離")
+        NS_REFLECT_FIELD(m_tapSlamSpeed, "タップ初速")
+        NS_REFLECT_FIELD(m_tapSlamUpSpeed, "タップの上向き初速")
+        NS_REFLECT_FIELD(m_tapSlamDistance, "タップ距離")
         NS_REFLECT_ACCESSOR(float, "カプセル半径", CapsuleRadius(), SetCapsuleRadius)
         NS_REFLECT_ACCESSOR(float, "カプセル半分の高さ", CapsuleHalfHeight(), SetCapsuleHalfHeight)
         NS_REFLECT_FIELD(m_debugDraw, "デバッグ表示")
@@ -143,6 +176,7 @@ namespace NS::Object
         friend class LocomotionState;
         friend class LedgeHangState;
         friend class LedgeMantleState;
+        friend class BodySlamState;
 
         //! m_stateNames のセミコロン区切りから状態機械を組む。全滅時は既定の並びへ退避する
         void BuildStates();
@@ -151,6 +185,13 @@ namespace NS::Object
         void UpdateLocomotion(float dt) noexcept;
         //! 空中下降中に進行方向の block 縁を検出し、掴めれば LedgeHanging へ遷移して true を返す
         bool TryGrabLedge(const NS::Core::Vector3& pos) noexcept;
+
+        //! 入力・カメラ前方・速度の順で突進の向きを決め、決まれば BodySlam へ遷移して true を返す
+        //! 向きが 1 つも決まらない時は出さない。0 方向の突進は進めず、停滞の打ち切りで終わる空発動になる
+        bool BeginBodySlam() noexcept;
+
+        //! 突進の 1 歩。タップ以外は水平を発動時の値で書き直し、実移動の距離か停滞の打ち切りで終える
+        void UpdateBodySlam(float dt) noexcept;
 
         //! LedgeHanging 中の毎フレーム更新。jump/後入力で即 mantle/drop、k_LedgeMinHangTime 後のみ前入力で自動登り
         void UpdateLedgeHang(float dt) noexcept;
@@ -181,6 +222,13 @@ namespace NS::Object
         float m_accelTau = 0.10f;     // 加速の時定数
         float m_decelTau = 0.10f;     // 減速の時定数
 
+        // どれも触って決める仮値
+        float m_bodySlamSpeed = 20.0f;
+        float m_bodySlamDistance = 6.0f;
+        float m_tapSlamSpeed = 10.0f;
+        float m_tapSlamUpSpeed = 3.0f;
+        float m_tapSlamDistance = 2.0f;
+
         float m_capsuleRadius = 0.4f;     // カプセル半径
         float m_capsuleHalfHeight = 0.5f; // カプセル半分の高さ
 
@@ -199,6 +247,16 @@ namespace NS::Object
         bool m_wasGrounded = false;          // 前フレームの接地状態
         bool m_isGrounded = false;           // 現在の接地状態
 
+        float m_bodySlamBufferRemaining = 0.0f;
+        bool m_bodySlamIsTap = false;
+        float m_bodySlamRequestCharge01 = 0.0f;
+        float m_bodySlamCharge01 = 0.0f;
+        float m_bodySlamEntrySpeed = 0.0f;
+        float m_bodySlamTravelled = 0.0f;
+        float m_bodySlamDistanceTarget = 0.0f;
+        int m_bodySlamStallSteps = 0;
+        NS::Core::Vector3 m_bodySlamDir{0.0f, 0.0f, 0.0f};
+
         bool m_debugDraw = true; // デバッグ可視化を出すか
 
         // 最後に接地していた world 位置。縁を踏み外した直後はここが縁の位置になる
@@ -207,10 +265,11 @@ namespace NS::Object
         std::vector<CoyoteJumpMarker> m_coyoteJumpMarkers;
 
         const NS::Physics::PhysicsWorld* m_world = nullptr; // 衝突判定に使う physics world (非所有)
-        NS::Physics::CapsuleMover m_controller;             // 数値計算を任せる controller
+        CapsuleColliderComponent* m_capsuleCollider = nullptr;
+        NS::Physics::CapsuleMover m_controller; // 数値計算を任せる controller
 
         // 状態の並び。セミコロン区切りの登録名で、先頭が初期状態。書き換えても組み直すまで効かない
-        std::string m_stateNames = "Locomotion;LedgeHang;LedgeMantle";
+        std::string m_stateNames = "Locomotion;LedgeHang;LedgeMantle;BodySlam";
         StateMachine<CharacterMovementComponent> m_machine; // m_stateNames から組む。初回 OnUpdate で組む
 
         MovementState m_state = MovementState::Walking; // 細分ラベルの現在値

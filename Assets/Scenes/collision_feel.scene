@@ -2,7 +2,7 @@
   "environment": {
     "skybox": "Assets/Skybox/kurt/"
   },
-  "nextObjectId": 59,
+  "nextObjectId": 62,
   "objects": [
     {
       "components": [
@@ -534,7 +534,10 @@
           "type": "PlayerInputComponent"
         },
         {
-          "fields": {},
+          "fields": {
+            "ダッシュ昇格秒": 0.5,
+            "最高ダッシュ昇格秒": 1.0
+          },
           "id": 41,
           "type": "MomentumComponent"
         },
@@ -542,6 +545,16 @@
           "fields": {},
           "id": 42,
           "type": "ImpactResolverComponent"
+        },
+        {
+          "fields": {},
+          "id": 59,
+          "type": "CollisionInputComponent"
+        },
+        {
+          "fields": {},
+          "id": 60,
+          "type": "MomentumLockComponent"
         },
         {
           "fields": {
@@ -592,12 +605,20 @@
             "加速時定数": 0.1,
             "歩き速度": 4.0,
             "減速時定数": 0.1,
-            "状態一覧": "Locomotion;LedgeHang;LedgeMantle",
+            "状態一覧": "Locomotion;LedgeHang;LedgeMantle;BodySlam",
             "頂点滞空 Vy": 1.0,
             "頂点滞空倍率": 0.5
           },
           "id": 45,
           "type": "CharacterMovementComponent"
+        },
+        {
+          "fields": {
+            "半分の高さ": 0.5,
+            "半径": 0.4
+          },
+          "id": 61,
+          "type": "CapsuleColliderComponent"
         },
         {
           "fields": {

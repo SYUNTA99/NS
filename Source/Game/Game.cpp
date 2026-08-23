@@ -77,6 +77,7 @@ void Game::OnAttach()
     // カーソルを消し、 マウスを相対モードにして視点操作をカーソル位置から切り離す
     // Esc で出すまで非表示のまま。 出し直しは OnUpdate の Esc 処理が行う
     app->Window().SetCursorVisible(false);
+    app->Window().SetCursorLocked(true);
     app->Input().Mouse().SetRelativeMode(true);
 }
 
@@ -100,6 +101,7 @@ void Game::OnUpdate()
                 {
                     // カーソルを出すなら相対モードも解く。 見えるカーソルと相対モードの併存は挙動が矛盾する
                     app->Window().SetCursorVisible(true);
+                    app->Window().SetCursorLocked(false);
                     app->Input().Mouse().SetRelativeMode(false);
                 }
                 else

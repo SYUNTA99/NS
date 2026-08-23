@@ -108,6 +108,9 @@ namespace
     }
 
     constexpr int k_ImpactSteps = 360; // 6 秒。押し飛ばした物へ追いついて当て直す往復が 4 回入る長さ
+    // 突進 0.3 秒と凍結と反発からの立て直しが 1 周に収まる間隔。短いと接地待ちで発動が落ちて経路が読めない
+    constexpr int k_ImpactSlamPeriod = 30;
+    constexpr float k_ImpactSlamCharge = 1.0f;
     // 最高ダッシュ 16.0 で 6 秒ぶん走り切れる長さ。短いと道の端から落ち、軌跡の大半が自由落下になる
     constexpr std::int16_t k_ImpactFloorCells = 100;
     constexpr std::int16_t k_ImpactTargetZ = 6;
@@ -129,6 +132,7 @@ namespace
                 MakePlayerObject(Vector3{0.0f, Player::k_DefaultSpawnY, 0.0f}, NS::Core::Quaternion{});
             player.components.push_back(NS::Object::MakeComponentEntry("MomentumComponent"));
             player.components.push_back(NS::Object::MakeComponentEntry("ImpactResolverComponent"));
+            player.components.push_back(NS::Object::MakeComponentEntry("CollisionInputComponent"));
             data.objects.push_back(player);
 
             NS::Object::ObjectData target = NS::Game::Level::MakeCellObject(0, 1, k_ImpactTargetZ);
@@ -159,6 +163,9 @@ namespace
             for (int i = 0; i < steps; ++i)
             {
                 m_movement->SetDesiredMove(direction, speedScale);
+                if (m_stepIndex % k_ImpactSlamPeriod == 0)
+                    m_movement->RequestBodySlam(k_ImpactSlamCharge);
+                ++m_stepIndex;
                 m_scene.World().UpdateAllObjects();
                 m_trace.push_back(
                     StepRecord{m_player->Root().Position(), m_movement->Velocity(), m_movement->IsGrounded()});
@@ -172,6 +179,7 @@ namespace
         Player* m_player = nullptr;
         CharacterMovementComponent* m_movement = nullptr;
         std::vector<StepRecord> m_trace;
+        int m_stepIndex = 0;
     };
 
     // 壊せる物へ走り込み、反発しながら追いかけ直す。記録するのは自機だけで、飛ばされた物の位置は入れない
@@ -210,7 +218,10 @@ namespace
     // 耐久を高くして、破壊が入っても反発と押し飛ばしの経路が変わらないようにしてある
     // 反発を勢いと質量から作る式とヒットストップを入れた時に取り直した。取り直し前は 0x32375285390311FF
     // 凍結を 1 歩遅らせて触れてから止まる構図にした時に取り直した。取り直し前は 0x9104E912BEA391C4
-    constexpr std::uint64_t k_ImpactGolden = 0x9557D5FB66D8EAB9ULL;
+    // 体当たりを発動しない歩は裁かない仕様にした時に取り直した。取り直し前は 0x9557D5FB66D8EAB9
+    // 威力の比に下限を入れた時に取り直した。取り直し前は 0xBBEEE91DFF9BE37B
+    // 体当たりの空中発動と先行入力を入れた時に取り直した。取り直し前は 0x226FEFA1B6B49164
+    constexpr std::uint64_t k_ImpactGolden = 0x5CB7A5CC3E014443ULL;
 } // namespace
 
 class CollisionGolden : public ::testing::Test

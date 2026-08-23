@@ -172,7 +172,20 @@ bool LevelEditorController::PlayPaused() const noexcept
 void LevelEditorController::TogglePlayPause() noexcept
 {
     if (m_scene != nullptr)
+    {
         m_scene->SetSimulationPaused(!m_scene->IsSimulationPaused());
+        // 固定したままだと Inspector を触れず、プレイ中に値を調整する動線が消える。止めている間は解く
+        if (m_mode == Mode::Play)
+        {
+            if (auto* app = NS::App::Application::Get())
+            {
+                const bool paused = m_scene->IsSimulationPaused();
+                app->Window().SetCursorVisible(paused);
+                app->Window().SetCursorLocked(!paused);
+                app->Input().Mouse().SetRelativeMode(!paused);
+            }
+        }
+    }
 }
 
 NS::Object::SceneEnvironment& LevelEditorController::Environment() noexcept
@@ -326,6 +339,8 @@ void LevelEditorController::EnterPlay() noexcept
     if (auto* app = NS::App::Application::Get())
     {
         app->Window().SetCursorVisible(false);
+        // 固定しないとクリックが他のパネルへ落ち、押しっぱなしの体当たり入力が届かない歩ができる
+        app->Window().SetCursorLocked(true);
         app->Input().Mouse().SetRelativeMode(true);
     }
 
@@ -400,6 +415,7 @@ void LevelEditorController::LeavePlayForEdit()
     if (auto* app = NS::App::Application::Get())
     {
         app->Window().SetCursorVisible(true);
+        app->Window().SetCursorLocked(false);
         app->Input().Mouse().SetRelativeMode(false);
     }
 }
@@ -410,6 +426,12 @@ void LevelEditorController::SetGameView(int x, int y, int width, int height, boo
     m_gameViewRectValid = true;
     m_gameViewHovered = hovered;
     m_gameViewHidden = false;
+    // 窓の中心だと別のパネルの上へ乗ることがある。プレイ中は Game ビューの中心へ留める
+    if (m_mode == Mode::Play)
+    {
+        if (auto* app = NS::App::Application::Get())
+            app->Window().SetCursorLockPoint(x + width / 2, y + height / 2);
+    }
     // 編集入力はこの表示矩形基準でレイを飛ばす。hover 偽の間は配置カーソルを立てない
     m_editor.SetViewRect(m_gameViewRect);
     m_editor.SetViewHovered(hovered);

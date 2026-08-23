@@ -1,6 +1,7 @@
 #include "Game/Level/ImpactResolverComponent.h"
 
 #include "Game/Level/BreakableComponent.h"
+#include "Game/Level/CollisionInputComponent.h"
 #include "Game/Level/ImpactMarkComponent.h"
 #include "Game/Level/LaunchedBodyComponent.h"
 #include "Game/Level/MomentumComponent.h"
@@ -8,6 +9,8 @@
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Graphics/RenderContext.h"
+#include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Object/Components/BoxColliderComponent.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/Components/CharacterMovementComponent.h"
@@ -34,8 +37,8 @@ namespace NS::Game::Level
         // 質量の下限 0.01 で割ると初速が 100 倍まで跳ねる。画面の外へ消える前に頭打ちにする
         constexpr float k_MaxLaunchSpeed = 60.0f;
 
-        // 反発の頭打ち。最高ダッシュ 16 の 1.5 倍。質量因子は 1 未満に飽和するので通常の遊びでは届かず、
-        // 基準初速に桁違いの値を入れた時に操作の成立を守る
+        // 反発の頭打ち。最高ダッシュ 16 の 1.5 倍。素の係数では質量因子が 1 未満に飽和して届かず、
+        // 入力係数と重い相手が重なった時と、基準初速に桁違いの値を入れた時に操作の成立を守る
         constexpr float k_MaxReboundSpeed = 24.0f;
 
         // 止める歩数の上限 12 歩 (0.2 秒)。これより長い停止は衝突の重さではなく処理落ちに見える
@@ -58,18 +61,26 @@ namespace NS::Game::Level
 
         // 破片の色。壊れた本体より少し明るくして欠けた中身に見せる
         constexpr NS::Core::Vector3 k_DebrisBaseColor{0.35f, 0.32f, 0.30f};
+
+        // ピークで当てた時だけの白フラッシュ。音が無い間の唯一の瞬間報酬なので、端で当てた時と見間違えない強さにする
+        // 0.5 は一瞬白と分かる濃さ。1.0 だと衝突の絵 (食い込みと潰れ) が隠れる
+        constexpr float k_PeakFlashAlpha = 0.5f;
+        // 8 歩 (約 0.13 秒)。ヒットストップの尺に収まる一瞬で、走り出しの視界に白を残さない
+        constexpr int k_PeakFlashSteps = 8;
     } // namespace
 
-    // MomentumComponent の 50 より後。先に走ると BeginGrace した猶予がその固定ステップのうちに解ける
+    // MomentumComponent (-150) より後。先に走ると BeginGrace した猶予がその固定ステップのうちに解ける
     // CharacterMovementComponent の 200 より前。書き込んだ速度が同じ固定ステップの移動に乗る
     ImpactResolverComponent::ImpactResolverComponent() noexcept
-        : NS::Object::Component(NS::Object::TickPriority::Update - 100)
+        : NS::Object::OverlayRendererComponent(NS::Object::TickPriority::Update - 100)
     {}
 
     void ImpactResolverComponent::OnStart()
     {
         m_movement = Owner()->FindComponent<NS::Object::CharacterMovementComponent>();
         m_momentum = Owner()->FindComponent<MomentumComponent>();
+        // 無ければ null のまま。null は常に素と同じ経路なので、ボタン未搭載の配置物は従来のまま動く
+        m_collisionInput = Owner()->FindComponent<CollisionInputComponent>();
     }
 
     BreakableComponent* ImpactResolverComponent::FindOverlapped() const
@@ -79,7 +90,7 @@ namespace NS::Game::Level
             return nullptr;
 
         const NS::Core::Vector3 position = Owner()->Root().Position();
-        const NS::Core::Vector3 velocity = m_movement->Velocity();
+        const NS::Core::Vector3 velocity = m_movement->BodySlamVelocity();
         const float dt = NS::Core::FrameTimer::FixedDelta();
 
         // この固定ステップで進んだ先で見る。今の位置だけでは手前で止められて重ならず、反発が起きない
@@ -122,6 +133,9 @@ namespace NS::Game::Level
     {
         m_didRebound = false;
         m_didBreak = false;
+        // フラッシュの減衰は早期 return より前に置く。凍結中の歩もここまでは来るので、止まっている間も白が薄れる
+        if (m_peakFlashRemaining > 0)
+            --m_peakFlashRemaining;
         if (m_movement == nullptr || m_momentum == nullptr)
             return;
 
@@ -148,6 +162,10 @@ namespace NS::Game::Level
         if (m_recoverRemaining > 0)
             RecoverScale();
 
+        // 押していない接触は物理の停止だけで済ませるため、体当たり中でない歩は裁定しない
+        if (!m_movement->IsBodySlamming())
+            return;
+
         BreakableComponent* hit = FindOverlapped();
         if (hit == nullptr)
             return;
@@ -158,7 +176,8 @@ namespace NS::Game::Level
 
         const NS::Core::AABB bounds = box->WorldAABB();
         const NS::Core::Vector3 position = Owner()->Root().Position();
-        const NS::Core::Vector3 velocity = m_movement->Velocity();
+        // 箱へ押し付けられた歩は実速度が 0 に潰されるため、突進の狙いの速度で向きと勢いを決める
+        const NS::Core::Vector3 velocity = m_movement->BodySlamVelocity();
 
         // 弾かれる向きは箱と自機の並びで決まる。水平だけを見て、上向きは別の値で足す
         float awayX = position.x - bounds.Center.x;
@@ -181,50 +200,96 @@ namespace NS::Game::Level
         if (velocity.x * awayX + velocity.z * awayZ >= 0.0f)
             return;
 
-        // 当たった瞬間の水平速度を通常速度で割った比が勢いの強さ。反発も発射もこの 1 つの比から作る
-        const float impactSpeed = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+        // 突進中の実速度は突進速度で一定になり、助走で作った勢いが威力から消えるため、比は発動時の速度から作る
+        const float impactSpeed = m_movement->BodySlamEntrySpeed();
         const float normalSpeed = m_momentum->SpeedForLevel(MomentumLevel::Normal);
         float ratio = 0.0f;
         if (normalSpeed > 0.0f)
             ratio = impactSpeed / normalSpeed;
+        // 立ち止まりの発動は比が 0 になり、壊せず止めも揺れも出ない。下限で威力を支える
+        if (std::isfinite(m_powerFloorRatio) && ratio < m_powerFloorRatio)
+            ratio = m_powerFloorRatio;
         const float mass = hit->Mass();
         const float massFactor = mass / (mass + 1.0f);
+
+        // ボタン未搭載 (null) は係数 1.0 の素通し。1.0f の乗算は IEEE で恒等なので、係数を掛けない式とビット同値
+        const float charge01 = m_movement->BodySlamCharge01();
+        const float progress01 = m_movement->BodySlamProgress01();
+        float chargeFactor = 1.0f;
+        float positionFactor = 1.0f;
+        bool peak = false;
+        if (m_collisionInput != nullptr)
+        {
+            chargeFactor = m_collisionInput->ChargeFactorFor(charge01);
+            positionFactor = m_collisionInput->PositionFactorFor(progress01);
+            peak = m_collisionInput->IsPeak(positionFactor);
+        }
+        // 最終威力 = 比 × チャージ倍率 × 突進位置係数。破壊の物差しだけでなく反発・発射・揺れも威力で作る
+        const float power = ratio * chargeFactor * positionFactor;
+        m_lastCharge01 = charge01;
+        m_lastPositionFactor = positionFactor;
+        m_lastPower = power;
+        m_wasPeakImpact = peak;
+        float hitStopScale = 1.0f;
+        if (peak)
+        {
+            m_peakFlashRemaining = k_PeakFlashSteps;
+            hitStopScale = m_peakHitStopScale;
+        }
+        NS_LOG_INFO(Game,
+                    "威力の内訳: 比 {} × 溜め {} × 位置 {} = {} 溜め量 {} 突進 {}",
+                    ratio,
+                    chargeFactor,
+                    positionFactor,
+                    power,
+                    charge01,
+                    progress01);
+
+        // 明けた歩の反発と貫通速度を Locomotion に乗せるため、凍結より先に突進を打ち切る
+        m_movement->CancelBodySlam();
 
         m_pendingTargetId = hit->Owner()->Id();
         m_pendingTargetHome = hit->Owner()->Root().Position();
         m_pendingImpactDir = NS::Core::Vector3{-awayX, 0.0f, -awayZ};
         // 反発の質量因子の残り。動きは軽い側が受け取るので、重い物ほど揺れない
         m_pendingShakeAmplitude = m_shakeAmplitude / (1.0f + mass);
-        m_pendingShakeStrength = m_cameraShakeScale * ratio * massFactor;
+        m_pendingShakeStrength = m_cameraShakeScale * power * massFactor;
 
-        // 破壊は勢いが最大に達した時だけ。耐久と比べる物差しは押し飛ばしと同じ勢いの比
+        // 最高ダッシュ限定の破壊条件は外した。耐久 ≤ 最終威力で壊れないと、
+        // ダッシュ + ピークが最高ダッシュ + 素を上回る逆転が成立しない
         int stopSteps = 0;
-        if (m_momentum->Level() == MomentumLevel::MaxDash && hit->Toughness() <= ratio)
+        if (hit->Toughness() <= power)
         {
             m_pendingBreak = true;
             // 向きを保ったまま減速する。倍率は相手の質量に依らない
             m_pendingSelfVelocity = velocity * m_breakSpeedScale;
             m_didBreak = true;
-            NS_LOG_INFO(Game, "貫通: 耐久 {} 勢い {}", hit->Toughness(), ratio);
-            stopSteps = SecondsToSteps(m_breakStopSeconds);
+            NS_LOG_INFO(Game, "貫通: 耐久 {} 威力 {} ピーク {}", hit->Toughness(), power, peak);
+            stopSteps = SecondsToSteps(m_breakStopSeconds * hitStopScale);
         }
         else
         {
             m_pendingBreak = false;
             // 質量因子 mass/(mass+1) は質量が大きいほど 1 へ寄る。重い物は入った速さがほぼそのまま返り、
             // 軽い物は勢いを持っていくのでほとんど返らない
-            float rebound = m_reboundSpeed * ratio * massFactor;
+            float rebound = m_reboundSpeed * power * massFactor;
             rebound = NS::Core::Clamp(rebound, 0.0f, k_MaxReboundSpeed);
 
             // 質量で割ると重い物ほど飛ばない
-            float launch = m_launchSpeed * ratio / mass;
+            float launch = m_launchSpeed * power / mass;
             launch = NS::Core::Clamp(launch, 0.0f, k_MaxLaunchSpeed);
 
             m_pendingSelfVelocity = NS::Core::Vector3{awayX * rebound, m_reboundUpSpeed, awayZ * rebound};
             m_pendingLaunchVelocity = NS::Core::Vector3{-awayX * launch, launch * m_launchUpScale, -awayZ * launch};
             m_didRebound = true;
-            NS_LOG_INFO(Game, "衝突: 質量 {} 耐久 {} 返り {} 押し飛ばし {}", mass, hit->Toughness(), rebound, launch);
-            stopSteps = ComputeHitStopSteps(ratio, mass);
+            NS_LOG_INFO(Game,
+                        "衝突: 質量 {} 耐久 {} 返り {} 押し飛ばし {} ピーク {}",
+                        mass,
+                        hit->Toughness(),
+                        rebound,
+                        launch,
+                        peak);
+            stopSteps = ComputeHitStopSteps(power, mass, hitStopScale);
         }
 
         if (stopSteps <= 0)
@@ -272,6 +337,16 @@ namespace NS::Game::Level
         // 凍結の途中で裁定が外れても、移動が止まったまま残らないようにする
         if (m_movement != nullptr)
             m_movement->SetActive(true);
+        m_peakFlashRemaining = 0;
+    }
+
+    void ImpactResolverComponent::OnRenderOverlay(const NS::Graphics::RenderContext& ctx)
+    {
+        if (m_peakFlashRemaining <= 0)
+            return;
+        // ScreenFadeComponent は黒の固定色と暗転の段階機械で、白の瞬間減衰には流用できないためここで直接描く
+        const float decay = static_cast<float>(m_peakFlashRemaining) / static_cast<float>(k_PeakFlashSteps);
+        ctx.renderer->DrawFullscreenColor(NS::Core::Color{1.0f, 1.0f, 1.0f, k_PeakFlashAlpha * decay});
     }
 
     void ImpactResolverComponent::BreakTarget(NS::Object::GameObject& target)
@@ -442,10 +517,12 @@ namespace NS::Game::Level
         }
     }
 
-    int ImpactResolverComponent::ComputeHitStopSteps(float ratio, float mass) const noexcept
+    int ImpactResolverComponent::ComputeHitStopSteps(float power, float mass, float hitStopScale) const noexcept
     {
         // 質量差をそのまま歩数に出すと停止が伸びすぎるので平方根で圧縮する
-        const float raw = m_hitStopBaseSeconds * ratio * std::sqrt(mass) / NS::Core::FrameTimer::FixedDelta();
+        // ピークの倍率は式の最後に掛ける。1.0f は IEEE で恒等なので、ピーク以外の歩数は倍率を掛けない式と一致する
+        const float raw =
+            m_hitStopBaseSeconds * power * std::sqrt(mass) / NS::Core::FrameTimer::FixedDelta() * hitStopScale;
         if (!std::isfinite(raw))
             return 0;
         const int steps = static_cast<int>(std::lround(raw));

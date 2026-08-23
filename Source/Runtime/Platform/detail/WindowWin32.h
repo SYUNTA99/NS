@@ -30,6 +30,12 @@ namespace NS::Platform
 
         // false の間はクライアント領域のカーソルを消す。 WM_SETCURSOR がこの値を見て適用する
         bool cursorVisible = true;
+
+        bool cursorLocked = false;
+        bool hasFocus = true;
+        bool lockPointSet = false;
+        int lockPointX = 0;
+        int lockPointY = 0;
     };
 
 } // namespace NS::Platform

@@ -67,6 +67,17 @@ namespace NS::Platform
         //! @brief 現在のマウスカーソルの表示状態を取得する
         [[nodiscard]] bool IsCursorVisible() const noexcept;
 
+        //! @brief カーソルの固定を切り替える
+        //! @note 固定中は PollMessages が毎フレームカーソルを固定点へ戻す。フォーカスを失っている間は戻さない
+        void SetCursorLocked(bool locked) noexcept;
+
+        //! @brief 現在のカーソル固定状態を取得する
+        [[nodiscard]] bool IsCursorLocked() const noexcept;
+
+        //! @brief カーソル固定の戻し先をクライアント座標で設定する
+        //! @note 未設定の間はクライアント領域の中央へ戻す
+        void SetCursorLockPoint(int clientX, int clientY) noexcept;
+
         //! @brief プログラム側からウィンドウを閉じる要求を発行する
         void RequestClose() noexcept;
 

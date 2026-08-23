@@ -1,5 +1,6 @@
 ﻿#include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
+#include <Runtime/Object/Components/CapsuleColliderComponent.h>
 #include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
@@ -46,6 +47,19 @@ class CharacterMovementTest : public ::testing::Test
 protected:
     void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_FixedDt); }
 };
+
+// 当たりの形は同居する CapsuleColliderComponent が正。写さないと Inspector で触っても移動に効かない
+TEST_F(CharacterMovementTest, AdoptsSiblingCapsuleColliderSize)
+{
+    GameObject obj;
+    obj.AddComponent<NS::Object::CapsuleColliderComponent>(0.7f, 0.9f);
+    auto& mov = *obj.AddComponent<CharacterMovementComponent>();
+    mov.OnStart();
+    StepN(mov, 1);
+
+    EXPECT_FLOAT_EQ(mov.CapsuleRadius(), 0.7f);
+    EXPECT_FLOAT_EQ(mov.CapsuleHalfHeight(), 0.9f);
+}
 
 TEST_F(CharacterMovementTest, GravityReducesVerticalVelocityWhenAirborne)
 {
@@ -223,4 +237,165 @@ TEST_F(CharacterMovementTest, DesiredDirectionReadsBackLastInput)
     EXPECT_FLOAT_EQ(dir.x, 1.0f);
     EXPECT_FLOAT_EQ(dir.y, 0.0f);
     EXPECT_FLOAT_EQ(dir.z, 0.0f);
+}
+
+TEST_F(CharacterMovementTest, BodySlamStartsWhenGroundedInLocomotion)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& mov = MakeGrounded(obj, world);
+    ASSERT_TRUE(mov.IsGrounded());
+
+    mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
+    mov.RequestBodySlam(1.0f);
+    StepN(mov, 1);
+
+    EXPECT_TRUE(mov.IsBodySlamming());
+    EXPECT_FLOAT_EQ(mov.BodySlamCharge01(), 1.0f);
+    EXPECT_GT(mov.Velocity().x, 15.0f);
+}
+
+// 空中で押した発動が消えると連打で出ない時ができる。空中でも出す
+TEST_F(CharacterMovementTest, BodySlamFiresInAir)
+{
+    GameObject obj;
+    auto& mov = *obj.AddComponent<CharacterMovementComponent>();
+    mov.SetDebugDrawEnabled(false);
+    ASSERT_FALSE(mov.IsGrounded());
+
+    mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
+    mov.RequestBodySlam(1.0f);
+    StepN(mov, 1);
+
+    EXPECT_TRUE(mov.IsBodySlamming());
+}
+
+// 突進中の押しをその歩で捨てると連打が取りこぼされる。先行入力時間ぶん覚えて突進明けに出す
+TEST_F(CharacterMovementTest, BodySlamRequestBuffersDuringRush)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& mov = MakeGrounded(obj, world);
+
+    mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
+    mov.RequestBodySlam(0.0f);
+    StepN(mov, 1);
+    ASSERT_TRUE(mov.IsBodySlamming());
+
+    StepN(mov, 8);
+    ASSERT_TRUE(mov.IsBodySlamming());
+    mov.RequestBodySlam(1.0f);
+
+    for (int i = 0; i < 120 && mov.BodySlamCharge01() < 1.0f; ++i)
+        StepN(mov, 1);
+
+    EXPECT_TRUE(mov.IsBodySlamming());
+    EXPECT_FLOAT_EQ(mov.BodySlamCharge01(), 1.0f);
+}
+
+// 覚え続けると忘れた頃の着地で勝手に出るため、先行入力時間で失効させる
+TEST_F(CharacterMovementTest, BodySlamRequestExpiresAfterBufferTime)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& mov = MakeGrounded(obj, world);
+
+    mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
+    mov.RequestBodySlam(1.0f);
+    StepN(mov, 1);
+    ASSERT_TRUE(mov.IsBodySlamming());
+    mov.RequestBodySlam(0.5f);
+
+    for (int i = 0; i < 120 && mov.IsBodySlamming(); ++i)
+        StepN(mov, 1);
+
+    EXPECT_FALSE(mov.IsBodySlamming());
+    StepN(mov, 1);
+    EXPECT_FALSE(mov.IsBodySlamming());
+}
+
+TEST_F(CharacterMovementTest, BodySlamEndsAfterRushDistance)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& mov = MakeGrounded(obj, world);
+    const float startX = obj.Root().Position().x;
+
+    mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
+    mov.RequestBodySlam(1.0f);
+    StepN(mov, 1);
+    ASSERT_TRUE(mov.IsBodySlamming());
+
+    int steps = 0;
+    while (mov.IsBodySlamming() && steps < 120)
+    {
+        StepN(mov, 1);
+        ++steps;
+    }
+
+    EXPECT_LT(steps, 120);
+    EXPECT_GT(steps, 5);
+    EXPECT_GT(obj.Root().Position().x - startX, 5.0f);
+}
+
+TEST_F(CharacterMovementTest, BodySlamIgnoresDirectionInput)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& mov = MakeGrounded(obj, world);
+
+    mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
+    mov.RequestBodySlam(1.0f);
+    StepN(mov, 1);
+    ASSERT_TRUE(mov.IsBodySlamming());
+
+    mov.SetDesiredMove({0.0f, 0.0f, 1.0f}, 1.0f);
+    StepN(mov, 3);
+
+    ASSERT_TRUE(mov.IsBodySlamming());
+    EXPECT_GT(mov.Velocity().x, 15.0f);
+    EXPECT_NEAR(mov.Velocity().z, 0.0f, 1.0e-4f);
+}
+
+TEST_F(CharacterMovementTest, BodySlamProgressRisesThenCancelResets)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& mov = MakeGrounded(obj, world);
+    EXPECT_FLOAT_EQ(mov.BodySlamProgress01(), 0.0f);
+
+    mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
+    mov.RequestBodySlam(1.0f);
+    StepN(mov, 1);
+    ASSERT_TRUE(mov.IsBodySlamming());
+
+    float previous = mov.BodySlamProgress01();
+    for (int i = 0; i < 5; ++i)
+    {
+        StepN(mov, 1);
+        const float now = mov.BodySlamProgress01();
+        EXPECT_GT(now, previous);
+        previous = now;
+    }
+
+    mov.CancelBodySlam();
+    EXPECT_FALSE(mov.IsBodySlamming());
+    EXPECT_FLOAT_EQ(mov.BodySlamProgress01(), 0.0f);
+}
+
+TEST_F(CharacterMovementTest, TapBodySlamHopsForwardAndUp)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& mov = MakeGrounded(obj, world);
+
+    mov.SetDesiredMove({1.0f, 0.0f, 0.0f}, 1.0f);
+    mov.RequestBodySlam(0.0f);
+    StepN(mov, 1);
+
+    ASSERT_TRUE(mov.IsBodySlamming());
+    EXPECT_FLOAT_EQ(mov.BodySlamCharge01(), 0.0f);
+    EXPECT_GT(mov.Velocity().y, 0.0f);
+    EXPECT_GT(mov.Velocity().x, 5.0f);
+    EXPECT_LT(mov.Velocity().x, 15.0f);
 }

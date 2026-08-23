@@ -223,7 +223,7 @@ TEST(ReflectionTest, CharacterMovementReflectsFeelFloats)
     NS::Object::CharacterMovementComponent move;
     const ReflectionInfo* info = move.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 16u);
+    EXPECT_EQ(info->fieldCount, 21u);
 
     // 操作感の代表値が float として往復する。getter が無いのでリフレクション get で確認する
     const FieldDesc* jump = FindField(info, "ジャンプ初速");

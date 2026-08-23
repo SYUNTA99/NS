@@ -2,6 +2,8 @@
 
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Core/LogCategories.h"
+#include "Runtime/Object/Components/CameraBrainComponent.h"
+#include "Runtime/Object/Components/CapsuleColliderComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -9,10 +11,18 @@
 #include "Runtime/Physics/PhysicsWorld.h"
 
 #include <cmath>
+#include <string_view>
 
 namespace
 {
     constexpr float k_HorizontalSpeedEpsilon = 0.01f;
+
+    // 向きと言える長さの下限。長さ 0 のまま正規化すると 0 除算になる
+    constexpr float k_BodySlamMinDirection = 1e-4f;
+
+    // 1 歩で打ち切ると衝突を裁く側が突進を見る前に終わるため、壁に押し付けられた歩を 2 回数える
+    constexpr float k_BodySlamStallDistance = 1e-4f;
+    constexpr int k_BodySlamMaxStallSteps = 2;
 
     //! ledge grab が走査する AABB 群を world から借りる。 world 未設定時は空で掴めない
     [[nodiscard]] std::span<const NS::Core::AABB> WorldAabbs(const NS::Physics::PhysicsWorld* world) noexcept
@@ -118,6 +128,16 @@ namespace NS::Object
     };
     NS_STATE(LedgeMantleState, CharacterMovementComponent)
 
+    //! 体当たりの突進。発動時に固定した向きへ、距離を使い切るまで進む
+    class BodySlamState final : public State<CharacterMovementComponent>
+    {
+    public:
+        static constexpr const char* k_Name = "BodySlam";
+        [[nodiscard]] const char* Name() const noexcept override { return k_Name; }
+        void OnStep(CharacterMovementComponent& owner, float dt) override { owner.UpdateBodySlam(dt); }
+    };
+    NS_STATE(BodySlamState, CharacterMovementComponent)
+
     CharacterMovementComponent::CharacterMovementComponent() noexcept {}
 
     void CharacterMovementComponent::SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept
@@ -154,6 +174,48 @@ namespace NS::Object
         m_jumpHeld = held;
     }
 
+    void CharacterMovementComponent::RequestBodySlam(float charge01) noexcept
+    {
+        // その歩で出せないと押しが無言で消える。ジャンプと同じ先行入力時間だけ覚える
+        m_bodySlamBufferRemaining = m_jumpBufferTime;
+        // NaN は 0..1 への丸めを素通りして溜め量に残るため、入口で 0 へ倒す
+        if (!std::isfinite(charge01))
+            m_bodySlamRequestCharge01 = 0.0f;
+        else
+            m_bodySlamRequestCharge01 = NS::Core::Clamp(charge01, 0.0f, 1.0f);
+    }
+
+    bool CharacterMovementComponent::IsBodySlamming() const noexcept
+    {
+        return m_machine.IsBuilt() && std::string_view(m_machine.CurrentName()) == BodySlamState::k_Name;
+    }
+
+    float CharacterMovementComponent::BodySlamProgress01() const noexcept
+    {
+        if (!IsBodySlamming() || !(m_bodySlamDistanceTarget > 0.0f))
+            return 0.0f;
+        return NS::Core::Clamp(m_bodySlamTravelled / m_bodySlamDistanceTarget, 0.0f, 1.0f);
+    }
+
+    NS::Core::Vector3 CharacterMovementComponent::BodySlamVelocity() const noexcept
+    {
+        if (!IsBodySlamming())
+            return m_velocity;
+        float speed = m_bodySlamSpeed;
+        if (m_bodySlamIsTap)
+            speed = m_tapSlamSpeed;
+        return NS::Core::Vector3{m_bodySlamDir.x * speed, m_velocity.y, m_bodySlamDir.z * speed};
+    }
+
+    void CharacterMovementComponent::CancelBodySlam() noexcept
+    {
+        if (!IsBodySlamming())
+            return;
+        m_bodySlamTravelled = 0.0f;
+        m_bodySlamDistanceTarget = 0.0f;
+        m_machine.Change(*this, LocomotionState::k_Name);
+    }
+
     void CharacterMovementComponent::ResetState() noexcept
     {
         m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
@@ -178,12 +240,22 @@ namespace NS::Object
         m_ledgeMantleTimer = 0.0f;
         m_lastGroundedPosition = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         m_coyoteJumpMarkers.clear();
+        m_bodySlamBufferRemaining = 0.0f;
+        m_bodySlamIsTap = false;
+        m_bodySlamRequestCharge01 = 0.0f;
+        m_bodySlamCharge01 = 0.0f;
+        m_bodySlamEntrySpeed = 0.0f;
+        m_bodySlamTravelled = 0.0f;
+        m_bodySlamDistanceTarget = 0.0f;
+        m_bodySlamDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
     }
 
     void CharacterMovementComponent::OnStart()
     {
         if (m_world == nullptr && Owner() != nullptr && Owner()->OwningScene() != nullptr)
             m_world = &Owner()->OwningScene()->Physics();
+        if (Owner() != nullptr)
+            m_capsuleCollider = Owner()->FindComponent<CapsuleColliderComponent>();
     }
 
     void CharacterMovementComponent::PushCoyoteJumpMarker(const NS::Core::Vector3& edge,
@@ -197,6 +269,13 @@ namespace NS::Object
     void CharacterMovementComponent::OnUpdate()
     {
         NS_SCOPED_TIMER(Game, "CharacterMovement::OnUpdate");
+
+        // 当たりの形の正は同居する CapsuleColliderComponent。写さないと Inspector で触っても移動に効かない
+        if (m_capsuleCollider != nullptr)
+        {
+            m_capsuleRadius = m_capsuleCollider->Radius();
+            m_capsuleHalfHeight = m_capsuleCollider->HalfHeight();
+        }
 
         const float dt = NS::Core::FrameTimer::FixedDelta();
 
@@ -217,11 +296,22 @@ namespace NS::Object
         // 状態一覧はデータ (States) から組む。 初回だけ組み、 以降は現在状態が 1 歩を進める
         if (!m_machine.IsBuilt())
             BuildStates();
+
+        // 状態の中で見ると Locomotion の 1 歩を走ってから移ることになり、突進の初速がその歩に乗らない
+        // 空中の押しを捨てると連打で出ない時ができるため、接地は求めない
+        if (m_bodySlamBufferRemaining > 0.0f && std::string_view(m_machine.CurrentName()) == LocomotionState::k_Name)
+        {
+            if (BeginBodySlam())
+                m_bodySlamBufferRemaining = 0.0f;
+        }
+
         m_machine.Step(*this, dt);
 
         // 1 フレームだけ有効な入力フラグの消費は、 どの状態でも通るここで行う
         m_prevJumpHeld = m_jumpHeld;
         m_jumpPressedThisFrame = false;
+        if (m_bodySlamBufferRemaining > 0.0f)
+            m_bodySlamBufferRemaining = std::max(0.0f, m_bodySlamBufferRemaining - dt);
     }
 
     void CharacterMovementComponent::BuildStates()
@@ -248,7 +338,9 @@ namespace NS::Object
         }
         // 全滅なら既定の並びで動かす。 データ不備で移動が止まる事故を避ける
         NS_LOG_ERROR(Game, "CharacterMovement: States が組めないため既定の並びへ退避: {}", m_stateNames);
-        m_machine.Build(*this, {LocomotionState::k_Name, LedgeHangState::k_Name, LedgeMantleState::k_Name});
+        const std::vector<std::string> fallback = {
+            LocomotionState::k_Name, LedgeHangState::k_Name, LedgeMantleState::k_Name, BodySlamState::k_Name};
+        m_machine.Build(*this, fallback);
     }
 
     void CharacterMovementComponent::UpdateLocomotion(float dt) noexcept
@@ -355,6 +447,129 @@ namespace NS::Object
 
         // 通常 block の縁を掴めるか試す。 空中下降中のみ成立する
         TryGrabLedge(out.position);
+    }
+
+    bool CharacterMovementComponent::BeginBodySlam() noexcept
+    {
+        NS::Core::Vector3 dir{m_desiredDir.x, 0.0f, m_desiredDir.z};
+        float length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+        // 反発後の滑りなど残った速度が向きに勝つと狙いと食い違う方へ飛ぶ。入力が無ければ速度よりカメラの前を先に見る
+        if (length < k_BodySlamMinDirection && Owner() != nullptr && Owner()->OwningScene() != nullptr)
+        {
+            if (CameraBrainComponent* brain = Owner()->OwningScene()->CameraBrain())
+            {
+                const NS::Core::Vector3 forward = brain->ForwardHorizontal();
+                dir = NS::Core::Vector3{forward.x, 0.0f, forward.z};
+                length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+            }
+        }
+        if (length < k_BodySlamMinDirection)
+        {
+            dir = NS::Core::Vector3{m_velocity.x, 0.0f, m_velocity.z};
+            length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+        }
+        if (length < k_BodySlamMinDirection)
+            return false;
+
+        dir.x /= length;
+        dir.z /= length;
+        m_bodySlamDir = dir;
+        m_bodySlamEntrySpeed = std::sqrt(m_velocity.x * m_velocity.x + m_velocity.z * m_velocity.z);
+        m_bodySlamCharge01 = m_bodySlamRequestCharge01;
+        m_bodySlamIsTap = !(m_bodySlamRequestCharge01 > 0.0f);
+        m_bodySlamTravelled = 0.0f;
+        m_bodySlamStallSteps = 0;
+
+        if (m_bodySlamIsTap)
+        {
+            m_bodySlamDistanceTarget = m_tapSlamDistance;
+            m_velocity = NS::Core::Vector3{dir.x * m_tapSlamSpeed, m_tapSlamUpSpeed, dir.z * m_tapSlamSpeed};
+        }
+        else
+        {
+            m_bodySlamDistanceTarget = m_bodySlamDistance;
+            m_velocity = NS::Core::Vector3{dir.x * m_bodySlamSpeed, m_velocity.y, dir.z * m_bodySlamSpeed};
+        }
+
+        // 距離が 0 以下だと 1 歩目で終わって発動が消えるため、出さずに Locomotion のままにする
+        if (!(m_bodySlamDistanceTarget > 0.0f))
+            return false;
+
+        m_machine.Change(*this, BodySlamState::k_Name);
+        return true;
+    }
+
+    void CharacterMovementComponent::UpdateBodySlam(float dt) noexcept
+    {
+        const NS::Core::Vector3 before = RootTransform().Position();
+
+        // 突進中に向きを変えられると当てる間合いを詰める意味が消えるので、水平は発動時の値で書き直す
+        if (!m_bodySlamIsTap)
+        {
+            m_velocity.x = m_bodySlamDir.x * m_bodySlamSpeed;
+            m_velocity.z = m_bodySlamDir.z * m_bodySlamSpeed;
+        }
+
+        const bool apex = std::abs(m_velocity.y) < m_apexHangVy;
+        const float baseG = [&]() -> float {
+            if (m_velocity.y > 0.0f)
+                return m_gravityUp;
+            return m_gravityDown;
+        }();
+        const float g = [&]() -> float {
+            if (apex)
+                return baseG * m_apexHangScale;
+            return baseG;
+        }();
+        m_velocity.y += g * dt;
+
+        NS::Physics::CapsuleMoverInput in{};
+        in.position = before;
+        in.velocity = m_velocity;
+        in.dt = dt;
+        in.capsuleRadius = m_capsuleRadius;
+        in.capsuleHalfHeight = m_capsuleHalfHeight;
+        in.physicsWorld = m_world;
+        const NS::Physics::CapsuleMoverResult out = m_controller.Update(in);
+
+        RootTransform().SetPosition(out.position);
+        m_velocity = out.velocity;
+        m_wasGrounded = m_isGrounded;
+        m_isGrounded = out.grounded;
+
+        if (!m_wasGrounded && m_isGrounded)
+            m_jumpsRemaining = 1;
+        if (m_isGrounded)
+        {
+            m_coyoteTimer = m_coyoteTime;
+            m_lastGroundedPosition = out.position;
+        }
+
+        if (m_isGrounded)
+            m_state = MovementState::Walking;
+        else if (m_velocity.y > 0.0f)
+            m_state = MovementState::Jumping;
+        else
+            m_state = MovementState::Falling;
+
+        // 進んだ距離は実移動から測る。速度から積むと壁で止められた歩も進んだ扱いになる
+        const float dx = out.position.x - before.x;
+        const float dz = out.position.z - before.z;
+        const float stepDistance = std::sqrt(dx * dx + dz * dz);
+        m_bodySlamTravelled += stepDistance;
+
+        // 壁で止められると距離が減らず突進から出られなくなるため、進めない歩が続いたら打ち切る
+        if (stepDistance < k_BodySlamStallDistance)
+            ++m_bodySlamStallSteps;
+        else
+            m_bodySlamStallSteps = 0;
+
+        if (m_bodySlamTravelled >= m_bodySlamDistanceTarget || m_bodySlamStallSteps >= k_BodySlamMaxStallSteps)
+        {
+            m_bodySlamTravelled = 0.0f;
+            m_bodySlamDistanceTarget = 0.0f;
+            m_machine.Change(*this, LocomotionState::k_Name);
+        }
     }
 
     bool CharacterMovementComponent::TryGrabLedge(const NS::Core::Vector3& pos) noexcept

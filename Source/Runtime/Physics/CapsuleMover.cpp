@@ -36,6 +36,17 @@ namespace NS::Physics
             input.capsuleRadius < 0.0f || !std::isfinite(input.capsuleHalfHeight) || input.capsuleHalfHeight < 0.0f)
             return result;
 
+        // 掃引は重なった相手に toi 0 で当たり続け、埋まったままでは動けない。動く前に重なりから押し出す
+        if (input.physicsWorld != nullptr)
+        {
+            Capsule startCap;
+            startCap.center = result.position;
+            startCap.axis = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
+            startCap.halfHeight = input.capsuleHalfHeight;
+            startCap.radius = input.capsuleRadius;
+            result.position = result.position + input.physicsWorld->ComputePushOut(startCap);
+        }
+
         const float subDt = input.dt / static_cast<float>(k_MaxSubSteps);
 
         for (int step = 0; step < k_MaxSubSteps; ++step)
