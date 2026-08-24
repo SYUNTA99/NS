@@ -193,6 +193,37 @@ namespace
         return trajectory;
     }
 
+    //! 縁を掴む → シミー → よじ登る → 立つ を 1 続きで通す
+    //! 床を敷かないので 1 歩目から下降し、掴みの条件が立つ
+    //! 掴まりは値を見る検証しか持たず、動詞を呼ぶ順序の入れ替えはハッシュでしか拾えない
+    std::vector<StepRecord> RunLedgeClimb()
+    {
+        GameObject owner;
+        NS::Physics::PhysicsWorld world;
+        world.AddAABB(AABB{Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}});
+        world.AddAABB(AABB{Vector3{0.0f, 0.0f, 1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
+        world.AddAABB(AABB{Vector3{0.0f, 0.0f, -1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
+        auto& movement = SetUpMovement(owner, world, Vector3{-0.9f, 0.0f, 0.0f});
+
+        std::vector<StepRecord> trajectory;
+        for (int i = 0; i < 150; ++i)
+        {
+            float speedScale = 0.0f;
+            if (i == 0)
+                speedScale = 1.0f;
+
+            float climb = 0.0f;
+            if (i >= 1)
+                climb = 1.0f;
+
+            movement.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, speedScale);
+            movement.SetClimbMove(climb, climb);
+            movement.OnUpdate();
+            trajectory.push_back(Record(owner, movement));
+        }
+        return trajectory;
+    }
+
     // 基準ハッシュ。手触りに触る改修の前後で軌跡のビット一致を検証する物で、
     // 意図して手触りを変えた時だけ実測値で更新する
     constexpr uint64_t k_FlatWalkGolden = 0x4FA4FA4FCFB0F728ULL;
@@ -200,6 +231,7 @@ namespace
     constexpr uint64_t k_CoyoteJumpGolden = 0xE363FC53420CB70DULL;
     constexpr uint64_t k_JumpBufferGolden = 0xFC63ACD2279A8321ULL;
     constexpr uint64_t k_WallCollisionGolden = 0xE38F47F9986195ACULL;
+    constexpr uint64_t k_LedgeClimbGolden = 0x16DCA66A3ECA0AD7ULL;
 } // namespace
 
 class MovementGolden : public ::testing::Test
@@ -273,4 +305,15 @@ TEST_F(MovementGolden, WallCollisionMatchesGoldenTrace)
 
     const uint64_t hash = FoldTrace(trajectory);
     EXPECT_EQ(hash, k_WallCollisionGolden) << DescribeTrace(trajectory, hash);
+}
+
+TEST_F(MovementGolden, LedgeClimbMatchesGoldenTrace)
+{
+    const auto trajectory = RunLedgeClimb();
+
+    EXPECT_TRUE(trajectory.back().grounded) << "よじ登り切って立っていない";
+    EXPECT_GT(trajectory.back().position.y, 0.5f) << "上面へ上がっていない";
+
+    const uint64_t hash = FoldTrace(trajectory);
+    EXPECT_EQ(hash, k_LedgeClimbGolden) << DescribeTrace(trajectory, hash);
 }

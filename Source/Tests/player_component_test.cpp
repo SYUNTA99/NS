@@ -5,7 +5,6 @@
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/CameraBrainComponent.h>
 #include <Runtime/Object/Components/CapsuleColliderComponent.h>
-#include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
@@ -763,52 +762,6 @@ TEST_F(PlayerComponentTest, ResetStateReturnsToTheFirstState)
     EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
 }
 
-// 動詞へ割った 1 歩が現行と 1 ビットも違わないことを見張る。値だけの検証は呼ぶ順序の入れ替えを拾えない
-TEST_F(PlayerComponentTest, MatchesLegacyMovementStepForStep)
-{
-    NS::Physics::PhysicsWorld world;
-    world.AddAABB(AABB{Vector3{0.0f, -1.0f, 0.0f}, Vector3{50.0f, 1.0f, 50.0f}});
-    world.BuildBroadphase();
-
-    GameObject legacyObj;
-    auto& legacy = *legacyObj.AddComponent<NS::Object::CharacterMovementComponent>();
-    legacy.SetPhysicsWorld(&world);
-    legacy.SetDebugDrawEnabled(false);
-    legacyObj.Root().SetPosition(Vector3{0.0f, 2.0f, 0.0f});
-
-    GameObject freshObj;
-    auto& fresh = MakePlayer(freshObj);
-    fresh.SetPhysicsWorld(&world);
-    freshObj.Root().SetPosition(Vector3{0.0f, 2.0f, 0.0f});
-
-    for (int step = 0; step < 240; ++step)
-    {
-        const bool held = step >= 120 && step < 130;
-        legacy.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.8f);
-        fresh.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.8f);
-        legacy.SetJumpHeld(held);
-        fresh.SetJumpHeld(held);
-        if (step == 120)
-        {
-            legacy.SetJumpPressed();
-            fresh.SetJumpPressed();
-        }
-
-        legacy.OnUpdate();
-        fresh.OnUpdate();
-
-        const Vector3 legacyPos = legacyObj.Root().Position();
-        const Vector3 freshPos = freshObj.Root().Position();
-        ASSERT_EQ(freshPos.x, legacyPos.x) << step;
-        ASSERT_EQ(freshPos.y, legacyPos.y) << step;
-        ASSERT_EQ(freshPos.z, legacyPos.z) << step;
-        ASSERT_EQ(fresh.Velocity().x, legacy.Velocity().x) << step;
-        ASSERT_EQ(fresh.Velocity().y, legacy.Velocity().y) << step;
-        ASSERT_EQ(fresh.Velocity().z, legacy.Velocity().z) << step;
-        ASSERT_EQ(fresh.IsGrounded(), legacy.IsGrounded()) << step;
-    }
-}
-
 TEST_F(PlayerComponentTest, GrabsLedgeWhenDescendingIntoEdge)
 {
     GameObject obj;
@@ -1107,60 +1060,4 @@ TEST_F(PlayerComponentTest, ShimmyIgnoresInputInsideTheDeadzone)
         player.OnUpdate();
 
     EXPECT_FLOAT_EQ(obj.Root().Position().z, zStart);
-}
-
-// 掴む → シミー → よじ登る → 立つ を旧実装と並走させる。値だけの検証は呼ぶ順序の入れ替えを拾えない
-TEST_F(PlayerComponentTest, MatchesLegacyLedgeStepForStep)
-{
-    NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 1.0f));
-    world.AddAABB(MakeBlock(0.0f, 0.0f, -1.0f));
-    world.BuildBroadphase();
-
-    GameObject legacyObj;
-    auto& legacy = *legacyObj.AddComponent<NS::Object::CharacterMovementComponent>();
-    legacy.SetPhysicsWorld(&world);
-    legacy.SetDebugDrawEnabled(false);
-    legacyObj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
-
-    GameObject freshObj;
-    auto& fresh = MakeLedgeReady(freshObj, world);
-    freshObj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
-
-    for (int step = 0; step < 150; ++step)
-    {
-        float speedScale = 0.0f;
-        if (step == 0)
-            speedScale = 1.0f;
-
-        float climbRight = 0.0f;
-        float climbForward = 0.0f;
-        if (step >= 1)
-        {
-            climbRight = 1.0f;
-            climbForward = 1.0f;
-        }
-
-        legacy.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, speedScale);
-        fresh.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, speedScale);
-        legacy.SetClimbMove(climbRight, climbForward);
-        fresh.SetClimbMove(climbRight, climbForward);
-
-        legacy.OnUpdate();
-        fresh.OnUpdate();
-
-        const Vector3 legacyPos = legacyObj.Root().Position();
-        const Vector3 freshPos = freshObj.Root().Position();
-        ASSERT_EQ(freshPos.x, legacyPos.x) << step;
-        ASSERT_EQ(freshPos.y, legacyPos.y) << step;
-        ASSERT_EQ(freshPos.z, legacyPos.z) << step;
-        ASSERT_EQ(fresh.Velocity().x, legacy.Velocity().x) << step;
-        ASSERT_EQ(fresh.Velocity().y, legacy.Velocity().y) << step;
-        ASSERT_EQ(fresh.Velocity().z, legacy.Velocity().z) << step;
-        ASSERT_EQ(fresh.IsGrounded(), legacy.IsGrounded()) << step;
-    }
-
-    ASSERT_TRUE(fresh.IsGrounded());
-    ASSERT_GT(freshObj.Root().Position().y, 0.5f);
 }
