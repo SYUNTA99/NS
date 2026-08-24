@@ -198,6 +198,13 @@
           "fields": {
             "カプセル半分の高さ": 0.5,
             "カプセル半径": 0.4000000059604645,
+            "デバッグ表示": true
+          },
+          "id": 0,
+          "type": "PlayerComponent"
+        },
+        {
+          "fields": {
             "コヨーテ時間": 0.02500000037252903,
             "ジャンプ初速": 12.0,
             "ジャンプ離し倍率": 0.6000000238418579,
@@ -205,21 +212,26 @@
             "タップの上向き初速": 3.0,
             "タップ初速": 10.0,
             "タップ距離": 2.0,
-            "デバッグ表示": true,
             "上昇重力": -25.0,
             "下降重力": -35.0,
             "先行入力時間": 0.25,
             "加速時定数": 0.10000000149011612,
             "歩き速度": 4.0,
             "減速時定数": 0.10000000149011612,
-            "状態一覧": "Locomotion;LedgeHang;LedgeMantle;BodySlam",
             "突進距離": 6.0,
             "突進速度": 20.0,
             "頂点滞空 Vy": 1.0,
             "頂点滞空倍率": 0.5
           },
-          "id": 9,
-          "type": "CharacterMovementComponent"
+          "id": 0,
+          "type": "PlayerStatsManagerComponent"
+        },
+        {
+          "fields": {
+            "状態一覧": "Idle;Walk;Fall;LedgeHanging;LedgeClimbing;BodySlam"
+          },
+          "id": 0,
+          "type": "PlayerStateManagerComponent"
         },
         {
           "fields": {
