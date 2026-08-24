@@ -221,6 +221,8 @@ namespace NS::Game::Player
         if (!(m_bodySlamDistanceTarget > 0.0f))
             return false;
 
+        m_bodySlamSpent = true;
+
         if (m_stateManager != nullptr)
             m_stateManager->ChangeByName(k_BodySlamStateName);
         m_playerEvents.onBodySlamStarted.Invoke();
@@ -283,6 +285,7 @@ namespace NS::Game::Player
         m_lastGroundedPosition = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         m_coyoteJumpMarkers.clear();
         m_bodySlamBufferRemaining = 0.0f;
+        m_bodySlamSpent = false;
         m_bodySlamIsTap = false;
         m_bodySlamRequestCharge01 = 0.0f;
         m_bodySlamCharge01 = 0.0f;
@@ -399,6 +402,8 @@ namespace NS::Game::Player
         {
             m_coyoteTimer = CoyoteTime();
             m_lastGroundedPosition = RootTransform().Position();
+            // 着地の歩だけで戻すと、接地したまま走り抜けた突進の後に次が出せない
+            m_bodySlamSpent = false;
         }
     }
 
@@ -698,7 +703,8 @@ namespace NS::Game::Player
             // 突進の中で見ると通常移動の 1 歩を走ってから移ることになり、突進の初速がその歩に乗らない
             // 空中の押しを捨てると連打で出ない歩ができるため、接地は求めない
             // 突進を出すのは通常移動の歩だけ。掴まり中に出せると縁から離れる操作が 3 通りになる
-            if (m_bodySlamBufferRemaining > 0.0f && IsLocomotion())
+            // 空中で 2 発目まで出せると 1 発の重みが消える。接地するまで次は出さない
+            if (m_bodySlamBufferRemaining > 0.0f && !m_bodySlamSpent && IsLocomotion())
             {
                 if (BodySlam())
                     m_bodySlamBufferRemaining = 0.0f;

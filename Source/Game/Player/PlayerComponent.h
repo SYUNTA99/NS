@@ -86,7 +86,8 @@ namespace NS::Game::Player
 
         //! 体当たりの発動を要求する
         //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
-        //! その歩で出せない要求は先行入力時間だけ覚え、過ぎたら失効する
+        //! その歩で出せない要求は先行入力時間だけ覚え、過ぎたら失効する。
+        //! 1 度出すと接地するまで次は出せないので、空中の要求は着地の歩まで持ち越される
         //! @param[in] charge01 溜め量 0..1
         void RequestBodySlam(float charge01) noexcept;
         //! 突進中の場合 true、それ以外の場合は false
@@ -196,6 +197,7 @@ namespace NS::Game::Player
         bool m_debugDraw = true; // デバッグ可視化を出すか
 
         float m_bodySlamBufferRemaining = 0.0f;            // 出せない歩の押しを覚える残り秒
+        bool m_bodySlamSpent = false;                      // 発動してから接地していないか
         bool m_bodySlamIsTap = false;                      // 溜め量 0 の飛び込みか
         float m_bodySlamRequestCharge01 = 0.0f;            // 要求された溜め量 0..1
         float m_bodySlamCharge01 = 0.0f;                   // 発動時に確定した溜め量 0..1

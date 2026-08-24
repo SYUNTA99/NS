@@ -375,6 +375,84 @@ TEST_F(PlayerComponentTest, SlamFiresInAir)
     EXPECT_TRUE(player.IsBodySlamming());
 }
 
+// 空中で押し続けると無限に出て 1 発の重みが消える。次は接地するまで出さない
+TEST_F(PlayerComponentTest, SecondSlamDoesNotFireInAir)
+{
+    GameObject obj;
+    auto& player = MakePlayer(obj);
+    ASSERT_FALSE(player.IsGrounded());
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    for (int i = 0; i < 120 && player.IsBodySlamming(); ++i)
+        player.OnUpdate();
+    ASSERT_FALSE(player.IsBodySlamming());
+    ASSERT_FALSE(player.IsGrounded());
+
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+
+    EXPECT_FALSE(player.IsBodySlamming());
+}
+
+// 空中で使い切っても、足が地面に付けば次の 1 発が戻る
+TEST_F(PlayerComponentTest, LandingRestoresTheSlam)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    ASSERT_TRUE(player.IsGrounded());
+
+    player.SetJumpPressed();
+    player.OnUpdate();
+    ASSERT_FALSE(player.IsGrounded());
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    for (int i = 0; i < 120 && player.IsBodySlamming(); ++i)
+        player.OnUpdate();
+    ASSERT_FALSE(player.IsBodySlamming());
+
+    // 先行入力が残っていると着地の歩で勝手に出て、接地で戻ったことの確認にならない
+    for (int i = 0; i < 240 && !player.IsGrounded(); ++i)
+        player.OnUpdate();
+    ASSERT_TRUE(player.IsGrounded());
+
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+
+    EXPECT_TRUE(player.IsBodySlamming());
+}
+
+// 地上の連打まで止めると走りの中で当て直せない。接地したままの突進は明けた歩で続けて出せる
+TEST_F(PlayerComponentTest, GroundedSlamsFireBackToBack)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    for (int i = 0; i < 120 && player.IsBodySlamming(); ++i)
+        player.OnUpdate();
+    ASSERT_FALSE(player.IsBodySlamming());
+    ASSERT_TRUE(player.IsGrounded());
+
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+
+    EXPECT_TRUE(player.IsBodySlamming());
+}
+
 // 出せない歩の押しをその場で捨てると連打が取りこぼされる。先行入力時間ぶん覚える
 TEST_F(PlayerComponentTest, BufferedRequestSurvivesInsideTheWindow)
 {
