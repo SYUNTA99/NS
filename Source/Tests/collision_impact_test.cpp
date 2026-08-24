@@ -265,7 +265,7 @@ namespace
     }
 
     // 突進の中ほどで当たる並び。ここでしか突進位置係数がピークしきい値を超えない
-    constexpr SlamCourse k_PeakCourse{.start = -0.5f, .targetCell = 5};
+    constexpr SlamCourse k_PeakCourse{.start = -0.5f, .targetCell = 6};
     constexpr SlamCourse k_NearCourse{.start = 0.0f, .targetCell = 1};
 
     // 飛んで着地して滑り切るまでの道。狭いと端から落ちて停止の検証にならない

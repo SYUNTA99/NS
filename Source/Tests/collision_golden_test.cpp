@@ -235,7 +235,8 @@ namespace
     // 威力の比を発動時の実速度から勢いの段へ変えた時に取り直した。取り直し前は 0x6D19639767D9BB26
     // 走っているだけの歩は一致し、加速しきる前に出した最初の体当たりの歩から差が出る
     // 突進距離を 6.0 から 8.0 へ伸ばした時に取り直した。取り直し前は 0x47DD9DADAAD3A0A6
-    constexpr std::uint64_t k_ImpactGolden = 0x19AF2207089F933CULL;
+    // 突進距離を 10.0 へ伸ばした時に取り直した。取り直し前は 0x19AF2207089F933C
+    constexpr std::uint64_t k_ImpactGolden = 0x48D67D77254C7DA6ULL;
 } // namespace
 
 class CollisionGolden : public ::testing::Test
