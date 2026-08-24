@@ -194,9 +194,17 @@ namespace
             Step(scene, rig);
     }
 
-    void BeginSlam(SceneNs::Scene& scene, const Rig& rig, float entrySpeed, float charge01, bool alongZ = false)
+    // 段を置くのは接地待ちの後。先に置くと接地を待つ歩で猶予が進み、当てる前に落ちる
+    void BeginSlamAtLevel(SceneNs::Scene& scene,
+                          const Rig& rig,
+                          LevelNs::MomentumLevel level,
+                          float entrySpeed,
+                          float charge01,
+                          bool alongZ = false)
     {
         SettleOnFloor(scene, rig);
+        if (rig.momentum != nullptr)
+            rig.momentum->SetLevel(level);
         float axisSign = 1.0f;
         if (entrySpeed < 0.0f)
             axisSign = -1.0f;
@@ -212,6 +220,22 @@ namespace
         rig.movement->SetDesiredMove(aim, 0.0f);
         rig.movement->RequestBodySlam(charge01);
         Step(scene, rig);
+    }
+
+    // 呼び出し側が渡すのは段の公称速度 8 / 12 / 16 のいずれか。速度から段を引き、1 引数で両方を揃える
+    [[nodiscard]] LevelNs::MomentumLevel LevelForSpeed(float entrySpeed) noexcept
+    {
+        const float speed = std::abs(entrySpeed);
+        if (speed >= k_MaxDashSpeed)
+            return LevelNs::MomentumLevel::MaxDash;
+        if (speed >= k_DashSpeed)
+            return LevelNs::MomentumLevel::Dash;
+        return LevelNs::MomentumLevel::Normal;
+    }
+
+    void BeginSlam(SceneNs::Scene& scene, const Rig& rig, float entrySpeed, float charge01, bool alongZ = false)
+    {
+        BeginSlamAtLevel(scene, rig, LevelForSpeed(entrySpeed), entrySpeed, charge01, alongZ);
     }
 
     // 裁定が書いた速度をそのまま読むため、裁定が起きた歩は移動を走らせずに返す
@@ -1139,6 +1163,28 @@ TEST(CollisionImpact, TapImpactIsWeakerThanCharged)
 
     EXPECT_FLOAT_EQ(tap.impact->LastCharge01(), 0.0f);
     EXPECT_LT(tap.impact->LastPower(), charged.impact->LastPower());
+}
+
+// キーを離すと減速が始まる。実速度で威力が変わると、同じ助走で当てたのに飛びが揺れる
+TEST(CollisionImpact, PowerFollowsMomentumLevelNotEntrySpeed)
+{
+    SceneNs::Scene fullScene;
+    Rig full = BuildSlam(fullScene, k_NearCourse);
+    SetInstantImpact(full);
+    BeginSlamAtLevel(fullScene, full, LevelNs::MomentumLevel::MaxDash, k_MaxDashSpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(fullScene, full, 30), 30);
+
+    // 手を放した直後の減速中。降格猶予の内なので段は最高ダッシュのまま
+    SceneNs::Scene slowScene;
+    Rig slow = BuildSlam(slowScene, k_NearCourse);
+    SetInstantImpact(slow);
+    BeginSlamAtLevel(slowScene, slow, LevelNs::MomentumLevel::MaxDash, 2.0f, 0.0f);
+    ASSERT_LT(StepUntilImpact(slowScene, slow, 30), 30);
+
+    ASSERT_TRUE(full.impact->DidRebound());
+    ASSERT_TRUE(slow.impact->DidRebound());
+    EXPECT_FLOAT_EQ(slow.impact->LastPower(), full.impact->LastPower());
+    EXPECT_FLOAT_EQ(HorizontalSpeed(slow.movement->Velocity()), HorizontalSpeed(full.movement->Velocity()));
 }
 
 // 発動時速度 0 で威力が 0 になると、壊せず止めも揺れも出ず衝突が無かったように見える。比の下限を見張る
