@@ -27,9 +27,9 @@ namespace NS::Game::Player
 
         // どれも触って決める仮値
         float bodySlamSpeed = 20.0f;
-        float bodySlamDistance = 6.0f;
+        float bodySlamDistance = 8.0f;
         float tapSlamSpeed = 10.0f;
         float tapSlamUpSpeed = 3.0f;
-        float tapSlamDistance = 2.0f;
+        float tapSlamDistance = 2.5f;
     };
 } // namespace NS::Game::Player

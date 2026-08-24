@@ -234,7 +234,8 @@ namespace
     // 基準初速を 32.0 へ、質量指数を 0.35 へ上げた時に取り直した。取り直し前は 0xA143A23EBE09F88A
     // 威力の比を発動時の実速度から勢いの段へ変えた時に取り直した。取り直し前は 0x6D19639767D9BB26
     // 走っているだけの歩は一致し、加速しきる前に出した最初の体当たりの歩から差が出る
-    constexpr std::uint64_t k_ImpactGolden = 0x47DD9DADAAD3A0A6ULL;
+    // 突進距離を 6.0 から 8.0 へ伸ばした時に取り直した。取り直し前は 0x47DD9DADAAD3A0A6
+    constexpr std::uint64_t k_ImpactGolden = 0x19AF2207089F933CULL;
 } // namespace
 
 class CollisionGolden : public ::testing::Test
