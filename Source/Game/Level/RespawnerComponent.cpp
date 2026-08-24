@@ -3,7 +3,7 @@
 #include "Game/Level/GoalComponent.h"
 #include "Game/Level/HealthComponent.h"
 #include "Game/Player.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
+#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -34,13 +34,13 @@ namespace NS::Game::Level
         // 出現位置はエディタで配置したプレイヤーの capsule 中心 world 位置そのもの
         // 凍結スナップショットに既にある値なので写しは持たず、その都度読む
         const NS::Object::SceneData& level = scene->PlayBaseline();
-        NS::Core::Vector3 spawn{0.0f, Player::k_DefaultSpawnY, 0.0f};
+        NS::Core::Vector3 spawn{0.0f, ::Player::k_DefaultSpawnY, 0.0f};
         const std::size_t playerIndex = FindPlayerObjectIndex(level);
         if (playerIndex != NS::Object::k_NoObjectIndex)
             spawn = NS::Object::ObjectPosition(level.objects[playerIndex]);
 
         Owner()->Root().SetPosition(spawn);
-        if (auto* movement = Owner()->FindComponent<NS::Object::CharacterMovementComponent>())
+        if (auto* movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>())
             movement->ResetState();
         if (auto* health = Owner()->FindComponent<HealthComponent>())
             health->Reset();

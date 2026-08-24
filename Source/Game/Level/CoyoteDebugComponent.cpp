@@ -10,7 +10,7 @@
 
 #include "Game/Level/BlockObject.h"
 #include "Game/Level/LedgeEdges.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
+#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/World.h"
@@ -24,10 +24,10 @@ namespace NS::Game::Level
             const NS::Core::Color ledgeColor{0.65f, 0.30f, 1.0f, 1.0f};
             const NS::Core::Color limitColor{1.0f, 0.20f, 0.90f, 1.0f};
 
-            NS::Object::CharacterMovementComponent* movement = nullptr;
+            NS::Game::Player::PlayerComponent* movement = nullptr;
             if (player != nullptr)
             {
-                movement = player->FindComponent<NS::Object::CharacterMovementComponent>();
+                movement = player->FindComponent<NS::Game::Player::PlayerComponent>();
             }
 
             float coyoteReach = 0.0f;

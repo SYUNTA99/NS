@@ -5,9 +5,9 @@
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Reflection/Curve.h"
 
-namespace NS::Object
+namespace NS::Game::Player
 {
-    class CharacterMovementComponent;
+    class PlayerComponent;
 }
 
 namespace NS::Game::Level
@@ -17,10 +17,10 @@ namespace NS::Game::Level
 
     //! @brief 体当たりのボタン入力を読んで発動を要求する Component
     //! @details 保持はマウス左かゲームパッドの X で、ImpactInputJudge がタップ / チャージを裁く
-    //! タップは押した歩、チャージは離した歩に溜め量を添えて CharacterMovementComponent::RequestBodySlam を呼ぶ
+    //! タップは押した歩、チャージは離した歩に溜め量を添えて PlayerComponent::RequestBodySlam を呼ぶ
     //! チャージ中は最高速度へ減速を掛け、縦へ縮めた構えを掛ける
     //! 威力のチャージ倍率カーブと突進位置係数カーブもここが持ち、ImpactResolverComponent が参照する
-    //! 依存: NS::Object::CharacterMovementComponent / Curve, ImpactInputJudge, MomentumComponent,
+    //! 依存: NS::Game::Player::PlayerComponent, NS::Object::Curve, ImpactInputJudge, MomentumComponent,
     //! ImpactResolverComponent
     class CollisionInputComponent : public NS::Object::Component
     {
@@ -86,7 +86,7 @@ namespace NS::Game::Level
         ImpactInputJudge m_judge{};
         NS::Core::Vector3 m_homeScale{1.0f, 1.0f, 1.0f};
         bool m_stanceApplied = false;
-        NS::Object::CharacterMovementComponent* m_movement = nullptr;
+        NS::Game::Player::PlayerComponent* m_movement = nullptr;
         MomentumComponent* m_momentum = nullptr;
         ImpactResolverComponent* m_resolver = nullptr;
     };

@@ -7,6 +7,7 @@
 #include "Game/Level/BlockObject.h"
 #include "Game/Level/RespawnerComponent.h"
 #include "Game/Player.h"
+#include "Game/Player/PlayerComponent.h"
 #include "Runtime/App/Application.h"
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Core/Filesystem.h"
@@ -18,7 +19,6 @@
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CapsuleColliderComponent.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/Components/PlacedVirtualCamera.h"
 #include "Runtime/Object/Components/PlayerInputComponent.h"
@@ -314,8 +314,8 @@ void LevelEditorController::EnterPlay() noexcept
     (void)m_scene->BeginPlayBaseline();
     if (auto* player = FindPlayer(m_scene->World()))
     {
-        // 編集で休止させた movement / input を起こす。休止させる側は LeavePlayForEdit
-        if (auto* movement = player->FindComponent<NS::Object::CharacterMovementComponent>())
+        // 編集で休止させた自機と入力を起こす。休止させる側は LeavePlayForEdit
+        if (auto* movement = player->FindComponent<NS::Game::Player::PlayerComponent>())
             movement->SetActive(true);
         if (auto* input = player->FindComponent<NS::Object::PlayerInputComponent>())
             input->SetActive(true);
@@ -405,7 +405,7 @@ void LevelEditorController::LeavePlayForEdit()
     {
         // 操作系は生成時 active のまま組み上がるので、編集中だけ休止させる。起こす側は EnterPlay
         // follow と vcam はコンストラクタが休止で作るので、ここで寝かせる行は要らない
-        if (auto* movement = player->FindComponent<NS::Object::CharacterMovementComponent>())
+        if (auto* movement = player->FindComponent<NS::Game::Player::PlayerComponent>())
             movement->SetActive(false);
         if (auto* input = player->FindComponent<NS::Object::PlayerInputComponent>())
             input->SetActive(false);

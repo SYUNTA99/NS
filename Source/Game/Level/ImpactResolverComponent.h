@@ -7,9 +7,13 @@
 
 namespace NS::Object
 {
-    class CharacterMovementComponent;
     class GameObject;
 } // namespace NS::Object
+
+namespace NS::Game::Player
+{
+    class PlayerComponent;
+}
 
 namespace NS::Game::Level
 {
@@ -19,12 +23,12 @@ namespace NS::Game::Level
     class MomentumComponent;
 
     //! @brief ぶつかった結果を自機側で決める Component
-    //! @details 帯は Update より前。CharacterMovementComponent が動く前にその 1 固定ステップの結末を決めるので、
+    //! @details 帯は Update より前。PlayerComponent が動く前にその 1 固定ステップの結末を決めるので、
     //! 壁の手前で止められて速度を消された後から結果を推測し直さずに済む
     //! 相手は World::ForEachComponent で BreakableComponent を回って自分で探す
     //! NS::Physics は NS::Object を知らない決まりなので、掃引の戻り値から相手を引く経路は使えない
     //! 衝突の瞬間は自機を数固定ステップ止め、反発・発射・破壊・猶予の開始を明けた歩へ保留する
-    //! 依存: NS::Object::CharacterMovementComponent, MomentumComponent, BreakableComponent, LaunchedBodyComponent,
+    //! 依存: NS::Game::Player::PlayerComponent, MomentumComponent, BreakableComponent, LaunchedBodyComponent,
     //! CollisionInputComponent
     class ImpactResolverComponent : public NS::Object::OverlayRendererComponent
     {
@@ -162,8 +166,8 @@ namespace NS::Game::Level
         float m_lastPositionFactor = 0.0f;
         float m_lastPower = 0.0f;
         int m_peakFlashRemaining = 0;
-        NS::Object::CharacterMovementComponent* m_movement = nullptr; // 同じ配置物の移動。非所有
-        MomentumComponent* m_momentum = nullptr;                      // 同じ配置物の勢い。非所有
+        NS::Game::Player::PlayerComponent* m_movement = nullptr; // 同じ配置物の移動。非所有
+        MomentumComponent* m_momentum = nullptr;                 // 同じ配置物の勢い。非所有
         CollisionInputComponent* m_collisionInput = nullptr;
     };
 } // namespace NS::Game::Level

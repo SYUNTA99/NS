@@ -3,10 +3,10 @@
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Reflection/Curve.h"
 
-namespace NS::Object
+namespace NS::Game::Player
 {
-    class CharacterMovementComponent;
-} // namespace NS::Object
+    class PlayerComponent;
+} // namespace NS::Game::Player
 
 namespace NS::Game::Level
 {
@@ -21,20 +21,20 @@ namespace NS::Game::Level
 
     //! @brief 走行時間で最高速度を 3 段に上げる Component
     //! @details 段は MovementState と独立で、状態機械の状態にはしない
-    //! 帯は Update より前。CharacterMovementComponent が動く前にその固定ステップの最高速度を決める
+    //! 帯は Update より前。PlayerComponent が動く前にその固定ステップの最高速度を決める
     //! 昇格に使う入力は走行入力だけ
-    //! 依存: NS::Object::CharacterMovementComponent
+    //! 依存: NS::Game::Player::PlayerComponent
     class MomentumComponent : public NS::Object::Component
     {
     public:
         MomentumComponent() noexcept;
 
-        //! 同じ配置物の CharacterMovementComponent を引き当てる。見つからなければ以後何もしない
+        //! 同じ配置物の PlayerComponent を引き当てる。見つからなければ以後何もしない
         void OnStart() override;
 
         //! 接地したまま走行入力がある間だけ昇格の秒を積む。途切れれば猶予を数えて 1 段落とす
         //! 空中では積算も猶予も止め、段をそのまま保つ。ただし反発から始まった猶予だけは空中でも進む
-        //! 最高速度は段に対応する値を毎ステップ CharacterMovementComponent へ書き込む
+        //! 最高速度は段に対応する値を毎ステップ PlayerComponent へ書き込む
         void OnUpdate() override;
 
         //! 現在の段
@@ -87,6 +87,6 @@ namespace NS::Game::Level
         float m_graceTimer = 0.0f;   // 猶予を数え始めてからの積算秒
         bool m_reboundGrace = false; // 反発から始まった猶予を数えている最中か
         MomentumLevel m_level = MomentumLevel::Normal;
-        NS::Object::CharacterMovementComponent* m_movement = nullptr; // 同じ配置物の移動。非所有
+        NS::Game::Player::PlayerComponent* m_movement = nullptr; // 同じ配置物の移動。非所有
     };
 } // namespace NS::Game::Level

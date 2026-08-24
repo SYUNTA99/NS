@@ -1,8 +1,8 @@
 #include "Game/Level/KillZoneComponent.h"
 
 #include "Game/Player.h"
+#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Object/Components/BoxColliderComponent.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
@@ -13,9 +13,7 @@
 
 namespace NS::Game::Level
 {
-    KillZoneComponent::KillZoneComponent() noexcept
-        : NS::Object::Component(NS::Object::TickPriority::LateUpdate)
-    {}
+    KillZoneComponent::KillZoneComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::LateUpdate) {}
 
     void KillZoneComponent::OnUpdate()
     {
@@ -29,7 +27,7 @@ namespace NS::Game::Level
         auto* player = FindPlayer(scene->World());
         if (player == nullptr)
             return;
-        auto* movement = player->FindComponent<NS::Object::CharacterMovementComponent>();
+        auto* movement = player->FindComponent<NS::Game::Player::PlayerComponent>();
         if (movement == nullptr)
             return;
 

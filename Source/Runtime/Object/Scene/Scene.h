@@ -71,7 +71,7 @@ namespace NS::Object
         [[nodiscard]] CameraComponent* MainCamera() noexcept;
 
         //! 衝突 world への可変ハンドル。build 時に満たし、
-        //! CharacterMovementComponent 等の借用元は OnStart で所属 scene から取りに来る
+        //! 移動の Component 等の借用元は OnStart で所属 scene から取りに来る
         [[nodiscard]] NS::Physics::PhysicsWorld& Physics() noexcept { return m_physicsWorld; }
 
         //! AssetManager を非所有で差す。組み立て時の参照実体化が使う。未設定 (テスト等) は解決を跳ばす
@@ -207,7 +207,7 @@ namespace NS::Object
         NS::Graphics::RenderScene m_renderScene;
 
         //! 衝突 world。当たりの有る scene だけが build で満たし、無ければ空のまま
-        //! m_world より前に宣言してあるので破棄は後になり、これを借りる CharacterMovementComponent より長く生きる
+        //! m_world より前に宣言してあるので破棄は後になり、これを借りる移動の Component より長く生きる
         NS::Physics::PhysicsWorld m_physicsWorld;
 
         NS::Object::World m_world;               // ランタイムワールド

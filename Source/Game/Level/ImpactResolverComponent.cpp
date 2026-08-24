@@ -5,6 +5,7 @@
 #include "Game/Level/ImpactMarkComponent.h"
 #include "Game/Level/LaunchedBodyComponent.h"
 #include "Game/Level/MomentumComponent.h"
+#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
@@ -13,7 +14,6 @@
 #include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Object/Components/BoxColliderComponent.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/Components/ShadowComponent.h"
 #include "Runtime/Object/GameObject.h"
@@ -70,14 +70,14 @@ namespace NS::Game::Level
     } // namespace
 
     // MomentumComponent (-150) より後。先に走ると BeginGrace した猶予がその固定ステップのうちに解ける
-    // CharacterMovementComponent の 200 より前。書き込んだ速度が同じ固定ステップの移動に乗る
+    // PlayerComponent の 200 より前。書き込んだ速度が同じ固定ステップの移動に乗る
     ImpactResolverComponent::ImpactResolverComponent() noexcept
         : NS::Object::OverlayRendererComponent(NS::Object::TickPriority::Update - 100)
     {}
 
     void ImpactResolverComponent::OnStart()
     {
-        m_movement = Owner()->FindComponent<NS::Object::CharacterMovementComponent>();
+        m_movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>();
         m_momentum = Owner()->FindComponent<MomentumComponent>();
         // 無ければ null のまま。null は常に素と同じ経路なので、ボタン未搭載の配置物は従来のまま動く
         m_collisionInput = Owner()->FindComponent<CollisionInputComponent>();

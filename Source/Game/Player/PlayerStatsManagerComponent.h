@@ -11,7 +11,7 @@ namespace NS::Game::Player
 {
     //! @brief 自機の調整値の組を持つ Component
     //! @details 組は 1 つで始める。Inspector の欄は現在の組を直接編集する
-    //! 欄の表示名は CharacterMovementComponent と 1 文字も違えない。変えると保存済みシーンの値が既定へ化ける
+    //! 欄の表示名は移し替え前と 1 文字も違えない。変えると保存済みシーンの値が既定へ化ける
     //! 依存: NS::Game::Entity::EntityStatsManagerComponent, PlayerStats
     class PlayerStatsManagerComponent : public NS::Game::Entity::EntityStatsManagerComponent
     {

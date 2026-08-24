@@ -2,11 +2,11 @@
 
 #include "Game/Level/ImpactResolverComponent.h"
 #include "Game/Level/MomentumComponent.h"
+#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
@@ -34,7 +34,7 @@ namespace NS::Game::Level
     } // namespace
 
     // -140 は MomentumComponent (-150) が書いた最高速度へチャージ減速を掛けてから
-    // CharacterMovementComponent (200) が動く並びにするため
+    // PlayerComponent (200) が動く並びにするため
     CollisionInputComponent::CollisionInputComponent() noexcept
         : NS::Object::Component(NS::Object::TickPriority::Update - 140)
     {
@@ -50,7 +50,7 @@ namespace NS::Game::Level
 
     void CollisionInputComponent::OnStart()
     {
-        m_movement = Owner()->FindComponent<NS::Object::CharacterMovementComponent>();
+        m_movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>();
         m_momentum = Owner()->FindComponent<MomentumComponent>();
         m_resolver = Owner()->FindComponent<ImpactResolverComponent>();
     }

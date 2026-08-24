@@ -1,9 +1,9 @@
 #include "Game/Level/MomentumComponent.h"
 
+#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 
@@ -11,7 +11,7 @@ namespace NS::Game::Level
 {
     namespace
     {
-        // 走り出す境目。CharacterMovementComponent が歩き速度と最高速度を分ける値と同じ
+        // 走り出す境目。PlayerComponent が歩き速度と最高速度を分ける値と同じ
         // TODO: 同じ 0.5 が UpdateLocomotion にも直接書かれている。片方だけ動かすと走りの境目と昇格の境目がずれる
         constexpr float k_RunInputThreshold = 0.5f;
 
@@ -40,7 +40,7 @@ namespace NS::Game::Level
         }
     } // namespace
 
-    // PlayerInputComponent の 0 より後、CharacterMovementComponent の 200 より前。移動が動く前に最高速度が決まる
+    // PlayerInputComponent の 0 より後、PlayerComponent の 200 より前。移動が動く前に最高速度が決まる
     MomentumComponent::MomentumComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::Update - 150)
     {
         // 平らな 2 点の倍率 1 を既定にするのは、形を触るまで平地も下りも従来の昇格秒のままにするため
@@ -51,7 +51,7 @@ namespace NS::Game::Level
 
     void MomentumComponent::OnStart()
     {
-        m_movement = Owner()->FindComponent<NS::Object::CharacterMovementComponent>();
+        m_movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>();
     }
 
     float MomentumComponent::SpeedForLevel(MomentumLevel level) const noexcept
