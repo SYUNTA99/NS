@@ -4,6 +4,7 @@
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/CameraBrainComponent.h>
+#include <Runtime/Object/Components/CapsuleColliderComponent.h>
 #include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Scene/Scene.h>
@@ -33,16 +34,25 @@ namespace
         return AABB{Vector3{cx, cy, cz}, Vector3{0.5f, 0.5f, 0.5f}};
     }
 
-    //! 床を敷かない検証台。1 歩目から下降するので掴みの条件が立つ。block は呼び出し側が先に積む
-    PlayerComponent& MakeLedgeReady(GameObject& owner, NS::Physics::PhysicsWorld& world)
+    //! 自機 3 部品を積んで OnStart まで通す。1 つでも欠けると調整値か遷移が効かない
+    //! @details 積む順は Player のコンストラクタと同じ
+    PlayerComponent& MakePlayer(GameObject& owner)
     {
+        owner.AddComponent<PlayerStatsManagerComponent>();
         auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
         auto& player = *owner.AddComponent<PlayerComponent>();
 
-        player.SetPhysicsWorld(&world);
         player.SetDebugDrawEnabled(false);
         player.OnStart();
         manager.OnStart();
+        return player;
+    }
+
+    //! 床を敷かない検証台。1 歩目から下降するので掴みの条件が立つ。block は呼び出し側が先に積む
+    PlayerComponent& MakeLedgeReady(GameObject& owner, NS::Physics::PhysicsWorld& world)
+    {
+        auto& player = MakePlayer(owner);
+        player.SetPhysicsWorld(&world);
         return player;
     }
 
@@ -52,21 +62,14 @@ namespace
     }
 
     //! 床 1 枚を敷いて接地させた自機を返す。壁は呼び出し側が先に足す
-    //! @details 状態管理を先に積むのは OnStart が同居から引き当てるため
-    // 状態管理は本物を積む。1 歩が状態機械を通るようになったので、名前を覚えるだけの偽物では
-    // 遷移が起きず突進にも掴まりにも入れない
     PlayerComponent& MakeSlamReady(GameObject& owner, NS::Physics::PhysicsWorld& world)
     {
-        auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
-        auto& player = *owner.AddComponent<PlayerComponent>();
+        auto& player = MakePlayer(owner);
 
         world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 64.0f}});
         world.BuildBroadphase();
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
         player.SetPhysicsWorld(&world);
-        player.SetDebugDrawEnabled(false);
-        player.OnStart();
-        manager.OnStart();
 
         for (int i = 0; i < 30 && !player.IsGrounded(); ++i)
             player.OnUpdate();
@@ -103,19 +106,58 @@ TEST_F(PlayerComponentTest, ClimbMoveClampsToSignedUnitRange)
     EXPECT_FLOAT_EQ(player.ClimbForward(), -1.0f);
 }
 
-TEST_F(PlayerComponentTest, MaxSpeedRoundsNegativeAndDropsNonFinite)
+TEST_F(PlayerComponentTest, MaxSpeedRoundsNegativeAndKeepsTheValueOnNonFinite)
 {
     GameObject obj;
     auto& player = *obj.AddComponent<PlayerComponent>();
 
-    player.SetMaxSpeed(-3.0f);
-    EXPECT_FLOAT_EQ(player.MaxSpeed(), 0.0f);
+    player.SetMaxSpeed(20.0f);
+    EXPECT_FLOAT_EQ(player.MaxSpeed(), 20.0f);
 
     player.SetMaxSpeed(std::numeric_limits<float>::quiet_NaN());
-    EXPECT_FLOAT_EQ(player.MaxSpeed(), 0.0f);
+    EXPECT_FLOAT_EQ(player.MaxSpeed(), 20.0f);
 
     player.SetMaxSpeed(std::numeric_limits<float>::infinity());
+    EXPECT_FLOAT_EQ(player.MaxSpeed(), 20.0f);
+
+    player.SetMaxSpeed(-3.0f);
     EXPECT_FLOAT_EQ(player.MaxSpeed(), 0.0f);
+}
+
+// 当たりの形は同居する CapsuleColliderComponent が正。写さないと Inspector で触っても移動に効かない
+TEST_F(PlayerComponentTest, AdoptsSiblingCapsuleColliderSize)
+{
+    GameObject obj;
+    obj.AddComponent<NS::Object::CapsuleColliderComponent>(0.7f, 0.9f);
+    auto& player = MakePlayer(obj);
+
+    player.OnUpdate();
+
+    EXPECT_FLOAT_EQ(player.CapsuleRadius(), 0.7f);
+    EXPECT_FLOAT_EQ(player.CapsuleHalfHeight(), 0.9f);
+}
+
+TEST_F(PlayerComponentTest, CapsuleSettersPersist)
+{
+    PlayerComponent player;
+
+    player.SetCapsuleRadius(0.6f);
+    player.SetCapsuleHalfHeight(0.8f);
+
+    EXPECT_FLOAT_EQ(player.CapsuleRadius(), 0.6f);
+    EXPECT_FLOAT_EQ(player.CapsuleHalfHeight(), 0.8f);
+}
+
+TEST_F(PlayerComponentTest, OnUpdateNoOpWhenInactive)
+{
+    GameObject obj;
+    auto& player = MakePlayer(obj);
+    player.SetActive(false);
+
+    player.SetJumpPressed();
+    player.OnUpdate();
+
+    EXPECT_FLOAT_EQ(player.VerticalVelocity(), 0.0f);
 }
 
 // 調整値の読みは同居の組が正。ここが切れると Inspector で触っても手触りが変わらない
@@ -194,6 +236,24 @@ TEST_F(PlayerComponentTest, GroundedJumpSpendsTheJump)
     player.Jump(k_FixedDt);
 
     EXPECT_FLOAT_EQ(player.VerticalVelocity(), 12.0f);
+    EXPECT_EQ(player.JumpsRemaining(), 0);
+}
+
+// 着地するまで 2 回目は出ない。空中で押し続けると無限に登れる
+TEST_F(PlayerComponentTest, SecondJumpDoesNotFireWithoutLanding)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    ASSERT_TRUE(player.IsGrounded());
+
+    player.SetJumpPressed();
+    player.OnUpdate();
+    ASSERT_EQ(player.JumpsRemaining(), 0);
+
+    player.SetJumpPressed();
+    player.OnUpdate();
+
     EXPECT_EQ(player.JumpsRemaining(), 0);
 }
 
@@ -305,11 +365,7 @@ TEST_F(PlayerComponentTest, ChargedSlamFiresWithTheRushSpeed)
 TEST_F(PlayerComponentTest, SlamFiresInAir)
 {
     GameObject obj;
-    auto& manager = *obj.AddComponent<PlayerStateManagerComponent>();
-    auto& player = *obj.AddComponent<PlayerComponent>();
-    player.SetDebugDrawEnabled(false);
-    player.OnStart();
-    manager.OnStart();
+    auto& player = MakePlayer(obj);
     ASSERT_FALSE(player.IsGrounded());
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -364,11 +420,7 @@ TEST_F(PlayerComponentTest, AimsAtTheCameraForwardWithoutInput)
     ASSERT_NE(scene.CameraBrain(), nullptr);
     ASSERT_NEAR(scene.CameraBrain()->ForwardHorizontal().z, 1.0f, 1.0e-4f);
 
-    auto& manager = *obj->AddComponent<PlayerStateManagerComponent>();
-    auto& player = *obj->AddComponent<PlayerComponent>();
-    player.SetDebugDrawEnabled(false);
-    player.OnStart();
-    manager.OnStart();
+    auto& player = MakePlayer(*obj);
 
     player.RequestBodySlam(1.0f);
     player.OnUpdate();
@@ -599,11 +651,7 @@ TEST_F(PlayerComponentTest, MovesToWalkWhileTheRunInputIsHeld)
 TEST_F(PlayerComponentTest, MovesToFallWithoutGround)
 {
     GameObject obj;
-    auto& manager = *obj.AddComponent<PlayerStateManagerComponent>();
-    auto& player = *obj.AddComponent<PlayerComponent>();
-    player.SetDebugDrawEnabled(false);
-    player.OnStart();
-    manager.OnStart();
+    auto& player = MakePlayer(obj);
 
     player.OnUpdate();
 
@@ -652,12 +700,8 @@ TEST_F(PlayerComponentTest, MatchesLegacyMovementStepForStep)
     legacyObj.Root().SetPosition(Vector3{0.0f, 2.0f, 0.0f});
 
     GameObject freshObj;
-    auto& freshManager = *freshObj.AddComponent<PlayerStateManagerComponent>();
-    auto& fresh = *freshObj.AddComponent<PlayerComponent>();
+    auto& fresh = MakePlayer(freshObj);
     fresh.SetPhysicsWorld(&world);
-    fresh.SetDebugDrawEnabled(false);
-    fresh.OnStart();
-    freshManager.OnStart();
     freshObj.Root().SetPosition(Vector3{0.0f, 2.0f, 0.0f});
 
     for (int step = 0; step < 240; ++step)
