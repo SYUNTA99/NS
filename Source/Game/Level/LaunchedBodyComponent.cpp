@@ -22,6 +22,9 @@ namespace NS::Game::Level
         constexpr float k_DefaultHalfHeight = 0.5f;
         // 真下を探す上限。これより下に何も無ければ落ち続ける
         constexpr float k_GroundProbeDistance = 64.0f;
+
+        // 回る向きが決まる水平の速さの下限。これ未満は軸の正規化が 0 除算になり、姿勢へ NaN が流れる
+        constexpr float k_MinSpinSpeed = 1.0e-4f;
     } // namespace
 
     void LaunchedBodyComponent::Launch(const NS::Core::Vector3& velocity)
@@ -30,11 +33,51 @@ namespace NS::Game::Level
         if (!std::isfinite(velocity.x) || !std::isfinite(velocity.y) || !std::isfinite(velocity.z))
             return;
 
+        // 控えるのは回っていない飛び始めだけ。回した後の当たり箱は高さが伸びて床の上へ乗らない
+        if (!m_flying)
+        {
+            m_spinHome = RootTransform().Rotation();
+            m_halfHeight = HalfHeight();
+            m_spinAngle = 0.0f;
+        }
+
         m_velocity = velocity;
         m_flying = true;
         m_grounded = false;
         m_restAge = 0.0f;
+        BeginSpin(velocity);
         SetColliderActive(false);
+    }
+
+    void LaunchedBodyComponent::BeginSpin(const NS::Core::Vector3& velocity) noexcept
+    {
+        const float horizontal = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+        m_spinRate = m_spinPerSpeed * horizontal;
+        if (!std::isfinite(m_spinRate) || horizontal < k_MinSpinSpeed)
+        {
+            m_spinRate = 0.0f;
+            return;
+        }
+        // 上向きと進む向きの外積。正の角度で上面が進行方向へ倒れる前転になる
+        m_spinAxis = NS::Core::Vector3{velocity.z / horizontal, 0.0f, -velocity.x / horizontal};
+    }
+
+    void LaunchedBodyComponent::UpdateSpin(float dt)
+    {
+        if (m_grounded)
+        {
+            // 当たり箱は回らない。傾いたまま滑って止まると絵と当たりがずれる
+            if (m_spinAngle != 0.0f)
+            {
+                m_spinAngle = 0.0f;
+                RootTransform().SetRotation(m_spinHome);
+            }
+            return;
+        }
+
+        m_spinAngle += m_spinRate * dt;
+        RootTransform().SetRotation(NS::Core::Quaternion::Concatenate(
+            m_spinHome, NS::Core::Quaternion::CreateFromAxisAngle(m_spinAxis, m_spinAngle)));
     }
 
     void LaunchedBodyComponent::SetRestLifeSeconds(float seconds) noexcept
@@ -70,7 +113,7 @@ namespace NS::Game::Level
             position.x + m_velocity.x * dt, position.y + m_velocity.y * dt, position.z + m_velocity.z * dt};
 
         // 進んだ先で床を見る。今の位置で見ると 1 固定ステップぶん床へ潜ってから乗る
-        const float halfY = HalfHeight();
+        const float halfY = m_halfHeight;
         m_grounded = false;
         if (NS::Object::Scene* scene = Owner()->OwningScene())
         {
@@ -93,6 +136,7 @@ namespace NS::Game::Level
             m_velocity.z *= decay;
         }
 
+        UpdateSpin(dt);
         RootTransform().SetPosition(next);
 
         const float horizontal = std::sqrt(m_velocity.x * m_velocity.x + m_velocity.z * m_velocity.z);

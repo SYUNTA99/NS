@@ -276,8 +276,14 @@ namespace NS::Game::Level
             float rebound = m_reboundSpeed * power * massFactor;
             rebound = NS::Core::Clamp(rebound, 0.0f, k_MaxReboundSpeed);
 
+            // 指数の範囲は 0〜1。負は重い物ほど飛ぶ逆転、1 超えは重い側がまったく動かない
+            float massExponent = m_launchMassExponent;
+            if (!std::isfinite(massExponent))
+                massExponent = 1.0f;
+            massExponent = NS::Core::Clamp(massExponent, 0.0f, 1.0f);
+
             // 質量で割ると重い物ほど飛ばない
-            float launch = m_launchSpeed * power / mass;
+            float launch = m_launchSpeed * power / std::pow(mass, massExponent);
             launch = NS::Core::Clamp(launch, 0.0f, k_MaxLaunchSpeed);
 
             m_pendingSelfVelocity = NS::Core::Vector3{awayX * rebound, m_reboundUpSpeed, awayZ * rebound};

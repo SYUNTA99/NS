@@ -47,6 +47,7 @@ namespace
     constexpr float k_MaxDashSpeed = 16.0f;
     constexpr float k_SlamSpeed = 20.0f;
     constexpr float k_TapSlamSpeed = 10.0f;
+    constexpr float k_LaunchBaseSpeed = 20.0f;
     constexpr float k_LaunchSpeedCap = 60.0f;
     constexpr float k_ReboundSpeedCap = 24.0f;
     // 破壊は耐久 ≤ 最終威力なので、反発と押し飛ばしを見る台は壊れない高さを既定にする
@@ -672,6 +673,8 @@ TEST(CollisionImpact, LaunchFieldsDriveLaunchVelocity)
     SetInstantImpact(rig);
     SetFloatField(*rig.impact, "押し飛ばし基準初速", 20.0f);
     SetFloatField(*rig.impact, "押し飛ばしの浮き上がり", 0.5f);
+    // 指数は 1.0 に固定する。既定 0.5 の平方根が混ざると、この 2 欄だけを見る式にならない
+    SetFloatField(*rig.impact, "押し飛ばしの質量指数", 1.0f);
     rig.breakable->SetMass(2.0f);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
 
@@ -682,6 +685,33 @@ TEST(CollisionImpact, LaunchFieldsDriveLaunchVelocity)
     const float expected = 20.0f * rig.impact->LastPower() / 2.0f;
     EXPECT_FLOAT_EQ(HorizontalSpeed(body->Velocity()), expected);
     EXPECT_FLOAT_EQ(body->Velocity().y, expected * 0.5f);
+}
+
+// 質量の効きは指数で曲げる。既定 0.5 は平方根で割る
+TEST(CollisionImpact, LaunchMassExponentBendsMassEffect)
+{
+    SceneNs::Scene inverseScene;
+    Rig inverse = BuildSlam(inverseScene, k_NearCourse);
+    SetInstantImpact(inverse);
+    SetFloatField(*inverse.impact, "押し飛ばしの質量指数", 1.0f);
+    inverse.breakable->SetMass(4.0f);
+    BeginSlam(inverseScene, inverse, k_RunSpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(inverseScene, inverse, 30), 30);
+
+    // 欄を触らず既定の指数で当てる。既定を 0.5 から動かすと平方根の期待値が外れる
+    SceneNs::Scene rootScene;
+    Rig root = BuildSlam(rootScene, k_NearCourse);
+    SetInstantImpact(root);
+    root.breakable->SetMass(4.0f);
+    BeginSlam(rootScene, root, k_RunSpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(rootScene, root, 30), 30);
+
+    LevelNs::LaunchedBodyComponent* inverseBody = HitBody(inverse);
+    LevelNs::LaunchedBodyComponent* rootBody = HitBody(root);
+    ASSERT_NE(inverseBody, nullptr);
+    ASSERT_NE(rootBody, nullptr);
+    EXPECT_FLOAT_EQ(HorizontalSpeed(inverseBody->Velocity()), k_LaunchBaseSpeed * inverse.impact->LastPower() / 4.0f);
+    EXPECT_FLOAT_EQ(HorizontalSpeed(rootBody->Velocity()), k_LaunchBaseSpeed * root.impact->LastPower() / 2.0f);
 }
 
 // 質量の下限 0.01 で割ると 100 倍になる。頭打ちが無いと画面の外へ消える
@@ -1838,6 +1868,82 @@ TEST(LaunchedBody, RestsAwayFromLaunchPosition)
     const float travelled = rig.object->Root().Position().x - start.x;
     EXPECT_GT(travelled, 1.5f);
     EXPECT_LT(travelled, 3.0f);
+}
+
+// 飛んでいる間だけ回る。上面が進行方向へ倒れる前転
+TEST(LaunchedBody, TumblesForwardWhileFlying)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    rig.body->Launch(Vector3{10.0f, 6.0f, 0.0f});
+
+    for (int i = 0; i < 10; ++i)
+        StepBody(scene);
+
+    ASSERT_TRUE(rig.body->IsFlying());
+    const Vector3 up = Vector3::Transform(Vector3{0.0f, 1.0f, 0.0f}, rig.object->Root().Rotation());
+    EXPECT_GT(up.x, 0.0f) << "上面が進行方向へ倒れていない";
+    EXPECT_NEAR(up.z, 0.0f, 1.0e-4f);
+}
+
+TEST(LaunchedBody, FasterFlightSpinsFaster)
+{
+    SceneNs::Scene slowScene;
+    BodyRig slow = BuildBody(slowScene);
+    ASSERT_NE(slow.body, nullptr);
+    slow.body->Launch(Vector3{4.0f, 6.0f, 0.0f});
+
+    SceneNs::Scene fastScene;
+    BodyRig fast = BuildBody(fastScene);
+    ASSERT_NE(fast.body, nullptr);
+    fast.body->Launch(Vector3{12.0f, 6.0f, 0.0f});
+
+    for (int i = 0; i < 5; ++i)
+    {
+        StepBody(slowScene);
+        StepBody(fastScene);
+    }
+
+    const Vector3 slowUp = Vector3::Transform(Vector3{0.0f, 1.0f, 0.0f}, slow.object->Root().Rotation());
+    const Vector3 fastUp = Vector3::Transform(Vector3{0.0f, 1.0f, 0.0f}, fast.object->Root().Rotation());
+    EXPECT_GT(fastUp.x, slowUp.x);
+    EXPECT_GT(slowUp.x, 0.0f);
+}
+
+// 当たり箱は回らないので、止まった時の姿勢は配置のまま
+TEST(LaunchedBody, LandingRestoresPlacedRotation)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    const NS::Core::Quaternion home = rig.object->Root().Rotation();
+    rig.body->Launch(Vector3{4.0f, 4.0f, 0.0f});
+
+    const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
+    ASSERT_LT(steps, k_RestStepLimit);
+
+    const NS::Core::Quaternion rest = rig.object->Root().Rotation();
+    EXPECT_FLOAT_EQ(rest.x, home.x);
+    EXPECT_FLOAT_EQ(rest.y, home.y);
+    EXPECT_FLOAT_EQ(rest.z, home.z);
+    EXPECT_FLOAT_EQ(rest.w, home.w);
+}
+
+TEST(LaunchedBody, SpinStrengthFieldStopsRotation)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    SetFloatField(*rig.body, "回転の強さ", 0.0f);
+    rig.body->Launch(Vector3{10.0f, 6.0f, 0.0f});
+
+    for (int i = 0; i < 10; ++i)
+        StepBody(scene);
+
+    const Vector3 up = Vector3::Transform(Vector3{0.0f, 1.0f, 0.0f}, rig.object->Root().Rotation());
+    EXPECT_FLOAT_EQ(up.x, 0.0f);
+    EXPECT_FLOAT_EQ(up.y, 1.0f);
 }
 
 TEST(LaunchedBody, IdleStaysPutAndKeepsCollider)

@@ -73,6 +73,7 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_reboundSpeed, "反発基準初速")
         NS_REFLECT_FIELD(m_reboundUpSpeed, "反発の上向き初速")
         NS_REFLECT_FIELD(m_launchSpeed, "押し飛ばし基準初速")
+        NS_REFLECT_FIELD(m_launchMassExponent, "押し飛ばしの質量指数")
         NS_REFLECT_FIELD(m_launchUpScale, "押し飛ばしの浮き上がり")
         NS_REFLECT_FIELD(m_hitStopBaseSeconds, "ヒットストップ基準秒")
         NS_REFLECT_FIELD(m_peakHitStopScale, "ピークのヒットストップ倍率")
@@ -123,10 +124,11 @@ namespace NS::Game::Level
         // 壊れた位置へ破片を撒く。向きは番号から決めるので同じ状況では同じ散り方になる
         void SpawnDebris(const NS::Core::Vector3& origin, float mass);
 
-        float m_reboundSpeed = 9.0f;   // 動かない壁に通常速度で当たった時の返りの速さ
-        float m_reboundUpSpeed = 3.0f; // 反発の上向き初速
-        float m_launchSpeed = 20.0f;   // 通常速度で質量 1 の物に与える水平初速
-        float m_launchUpScale = 0.35f; // 水平初速に対する上向きの比
+        float m_reboundSpeed = 9.0f;       // 動かない壁に通常速度で当たった時の返りの速さ
+        float m_reboundUpSpeed = 3.0f;     // 反発の上向き初速
+        float m_launchSpeed = 20.0f;       // 通常速度で質量 1 の物に与える水平初速
+        float m_launchMassExponent = 0.5f; // 押し飛ばしの初速を割る質量の指数。1 で反比例、0 で質量を見ない
+        float m_launchUpScale = 0.35f;     // 水平初速に対する上向きの比
         // 既定の固定ステップ (1/60 秒) の 4 歩ぶん
         float m_hitStopBaseSeconds = 4.0f / 60.0f; // 質量 1 へ通常速度で当てた時に止める秒
         float m_peakHitStopScale = 2.0f;           // 威力の伸び (最大 2 倍) と掛けて、素とピークの止まりを 4 倍差にする
