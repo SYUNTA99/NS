@@ -46,6 +46,18 @@ namespace NS::Object
         m_movement = movement;
     }
 
+    void ThirdPersonFollowComponent::SetFollowMotion(bool grounded, const NS::Core::Vector3& velocity) noexcept
+    {
+        m_followGrounded = grounded;
+        const float horiz = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+        // 非有限を通すと距離のばね補間が NaN に染まり、以後カメラが戻らなくなる
+        if (std::isfinite(horiz))
+            m_followHorizontalSpeed = horiz;
+        else
+            m_followHorizontalSpeed = 0.0f;
+        m_hasFollowMotion = true;
+    }
+
     void ThirdPersonFollowComponent::OnStart()
     {
         // 基底が brain へ自分を登録する
@@ -171,7 +183,22 @@ namespace NS::Object
         if (!m_manualDistance)
         {
             float desired = m_idleDistance;
-            if (m_movement != nullptr)
+            if (m_hasFollowMotion)
+            {
+                if (!m_followGrounded)
+                {
+                    desired = m_jumpDistance;
+                }
+                else
+                {
+                    if (m_followHorizontalSpeed > m_runSpeedThreshold)
+                        desired = m_runDistance;
+                    else
+                        desired = m_idleDistance;
+                }
+            }
+            // TODO: 値受け口だけになったら消す。移動 Component の型を名指しする最後の箇所
+            else if (m_movement != nullptr)
             {
                 if (!m_movement->IsGrounded())
                 {

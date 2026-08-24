@@ -35,6 +35,9 @@ namespace NS::Object
         void SetMovement(const CharacterMovementComponent* movement) noexcept;
         [[nodiscard]] const CharacterMovementComponent* Movement() const noexcept { return m_movement; }
 
+        //! 自動ズームの判定に使う接地と速度を値で受け取る。移動 Component の型を include せずに済む
+        void SetFollowMotion(bool grounded, const NS::Core::Vector3& velocity) noexcept;
+
         //! 将来 Settings UI から繋ぐ
         void SetSensX(float radPerPixel) noexcept;
         [[nodiscard]] float SensX() const noexcept { return m_sensX; }
@@ -102,6 +105,11 @@ namespace NS::Object
         Transform* m_target = nullptr;                          // 追従対象の Transform (非所有)
         const CharacterMovementComponent* m_movement = nullptr; // 自動ズーム判定用の移動 Component (非所有)
         ObjectRef m_targetRef{};                                // 追従対象の永続参照
+
+        // 値で受けた追従先の運動。一度でも受け取ったら自動ズームはこちらだけを見る
+        bool m_followGrounded = false;
+        float m_followHorizontalSpeed = 0.0f; // 速度の向きは使わないので水平の大きさへ畳んで持つ
+        bool m_hasFollowMotion = false;
 
         float m_yaw = 0.0f;       // 水平回転角
         float m_pitch = -0.2618f; // 仰俯角
