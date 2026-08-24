@@ -79,6 +79,9 @@ namespace NS::Game::Player
         //! 縁から上面へよじ登っている状態の登録名
         static constexpr const char* k_LedgeClimbingStateName = "LedgeClimbing";
 
+        //! 状態が次の登録名を渡す先。OnStep を呼ぶのが状態管理なので、状態の中では非 null
+        [[nodiscard]] NS::Game::Entity::EntityStateManagerComponent* States() const noexcept { return m_stateManager; }
+
         //! 体当たりの発動を要求する
         //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
         //! その歩で出せない要求は先行入力時間だけ覚え、過ぎたら失効する
