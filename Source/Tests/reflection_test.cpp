@@ -1,8 +1,8 @@
+#include <Game/Player/PlayerStatsManagerComponent.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Component.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/CameraBrainComponent.h>
-#include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/Components/ShadowComponent.h>
@@ -218,14 +218,14 @@ TEST(ReflectionTest, PlacedVirtualCameraReflectsSixFields)
     EXPECT_FLOAT_EQ(cam->TriggerCenter().z, 22.0f);
 }
 
-TEST(ReflectionTest, CharacterMovementReflectsFeelFloats)
+TEST(ReflectionTest, PlayerStatsManagerReflectsFeelFloats)
 {
-    NS::Object::CharacterMovementComponent move;
+    NS::Game::Player::PlayerStatsManagerComponent move;
     const ReflectionInfo* info = move.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 21u);
+    EXPECT_EQ(info->fieldCount, 17u);
 
-    // 操作感の代表値が float として往復する。getter が無いのでリフレクション get で確認する
+    // 操作感の代表値が float として往復する。欄ごとの取り出し口は無いのでリフレクション get で確認する
     const FieldDesc* jump = FindField(info, "ジャンプ初速");
     ASSERT_NE(jump, nullptr);
     EXPECT_EQ(jump->type, FieldType::Float);

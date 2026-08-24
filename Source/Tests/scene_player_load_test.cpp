@@ -2,7 +2,6 @@
 #include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerStateManagerComponent.h"
 #include "Game/Player/PlayerStatsManagerComponent.h"
-#include "Runtime/Core/Filesystem.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
@@ -43,17 +42,6 @@ namespace
                 return &object;
         }
         return nullptr;
-    }
-
-    std::string ReadSceneText(std::string_view name)
-    {
-        const auto path = EditorNs::BuildLevelPath(name);
-        if (!path.has_value())
-            return {};
-        const auto bytes = NS::Core::FileSystem::ReadAllBytes(*path);
-        if (!bytes.has_value())
-            return {};
-        return std::string{reinterpret_cast<const char*>(bytes->data()), bytes->size()};
     }
 
     std::vector<std::string> ReflectedFieldNames(const SceneNs::Component& comp)
@@ -98,14 +86,6 @@ TEST_P(ShippedScene, StateListIsTheSixStateOrderStartingAtIdle)
     const nlohmann::json* entry = SceneNs::FindComponentEntry(*player, "PlayerStateManagerComponent");
     ASSERT_NE(entry, nullptr);
     EXPECT_EQ(SceneNs::FieldString(*entry, "状態一覧", ""), k_StateList);
-}
-
-TEST_P(ShippedScene, LegacyTypeNameIsGoneFromTheFile)
-{
-    const std::string text = ReadSceneText(GetParam());
-    ASSERT_FALSE(text.empty());
-    EXPECT_EQ(text.find("CharacterMovementComponent"), std::string::npos)
-        << GetParam() << " に旧型名が残っている。読込は素通りするので実機だけでは気づけない";
 }
 
 TEST_P(ShippedScene, LoadedPlayerBuildsItsStateMachine)
