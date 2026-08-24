@@ -43,7 +43,7 @@ namespace NS::Object
 
     void PlayerInputComponent::OnUpdate()
     {
-        if (!IsActive() || m_movement == nullptr)
+        if (!IsActive())
             return;
 
         // camera 相対移動の基準 forward は Brain から自分で読む。 Brain 不在 (テスト等) は注入値のまま
@@ -104,19 +104,29 @@ namespace NS::Object
             right.z * localX + fwd.z * localZ,
         };
 
-        m_movement->SetDesiredMove(worldDir, speedScale);
-        // climb 中は camera 回転をかける前の生ローカル入力を渡す。 前で登り、 右で面に沿って右へ動く
-        m_movement->SetClimbMove(localX, localZ);
-
         // ジャンプの押下と長押し
         const bool jumpPressed =
             (!wantKb && kb.IsPressed(NS::Platform::Key::Space)) || pad.IsPressed(NS::Platform::GamepadButton::A);
         const bool jumpHeld =
             (!wantKb && kb.IsHeld(NS::Platform::Key::Space)) || pad.IsHeld(NS::Platform::GamepadButton::A);
 
-        if (jumpPressed)
-            m_movement->SetJumpPressed();
-        m_movement->SetJumpHeld(jumpHeld);
+        // 渡し先が居ない歩でも値だけは残す
+        m_desiredDir = worldDir;
+        m_desiredSpeedScale = speedScale;
+        m_climbRight = localX;
+        m_climbForward = localZ;
+        m_jumpPressed = jumpPressed;
+        m_jumpHeld = jumpHeld;
+
+        if (m_movement != nullptr)
+        {
+            m_movement->SetDesiredMove(worldDir, speedScale);
+            // climb 中は camera 回転をかける前の生ローカル入力を渡す。 前で登り、 右で面に沿って右へ動く
+            m_movement->SetClimbMove(localX, localZ);
+            if (jumpPressed)
+                m_movement->SetJumpPressed();
+            m_movement->SetJumpHeld(jumpHeld);
+        }
     }
 
     NS_CLASS(PlayerInputComponent)

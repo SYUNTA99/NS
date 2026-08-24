@@ -23,6 +23,18 @@ namespace NS::Object
 
         [[nodiscard]] CharacterMovementComponent* Movement() const noexcept { return m_movement; }
 
+        // 読み取った値は自分でも持つ。渡し先の型を include できない場所からも引ける
+        //! 直近の歩で作った world 空間の目標移動方向。長さは入力の強さのまま
+        [[nodiscard]] NS::Core::Vector3 DesiredDirection() const noexcept { return m_desiredDir; }
+        //! 直近の歩の目標速度スケール。入力の大きさで 0..1
+        [[nodiscard]] float DesiredSpeedScale() const noexcept { return m_desiredSpeedScale; }
+        //! 掴まりで使う、camera 回転をかける前のローカル入力
+        [[nodiscard]] float ClimbRight() const noexcept { return m_climbRight; }
+        [[nodiscard]] float ClimbForward() const noexcept { return m_climbForward; }
+        //! ジャンプの押下があった歩だけ true
+        [[nodiscard]] bool JumpPressed() const noexcept { return m_jumpPressed; }
+        [[nodiscard]] bool JumpHeld() const noexcept { return m_jumpHeld; }
+
         //! 同じ object の movement をここで解決する。見つからなければ OnUpdate は何もしない
         void OnStart() override;
         void OnUpdate() override;
@@ -33,5 +45,13 @@ namespace NS::Object
     private:
         CharacterMovementComponent* m_movement = nullptr;    // 渡し先の移動 Component (非所有)
         NS::Core::Vector3 m_cameraForward{0.0f, 0.0f, 1.0f}; // camera 相対移動用の水平 forward
+
+        // 直近に稼働した歩で読み取った値。稼働していない歩では書き換わらない
+        NS::Core::Vector3 m_desiredDir{0.0f, 0.0f, 0.0f}; // world 空間の目標移動方向
+        float m_desiredSpeedScale = 0.0f;
+        float m_climbRight = 0.0f;
+        float m_climbForward = 0.0f;
+        bool m_jumpPressed = false;
+        bool m_jumpHeld = false;
     };
 } // namespace NS::Object
