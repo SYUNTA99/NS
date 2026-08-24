@@ -74,6 +74,7 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
         "ThirdPersonFollowComponent",
         "CharacterMovementComponent",
         "PlayerInputComponent",
+        "PlayerStatsManagerComponent",
         "ShadowComponent",
         "SkeletalAnimationComponent",
         "DirectionalLightComponent",
@@ -139,7 +140,7 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 26u);
+    EXPECT_EQ(names.size(), 27u);
     EXPECT_TRUE(Contains(names, "BoxColliderComponent"));
     EXPECT_TRUE(Contains(names, "MeshRendererComponent"));
     EXPECT_TRUE(Contains(names, "CharacterMovementComponent"));
@@ -211,6 +212,24 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
         {"GoalComponent", {}},
         {"PlacedVirtualCamera", {"注視点", "上方向", "トリガー中心", "トリガー半径", "プレイヤー追視", "優先度"}},
         {"PlayerInputComponent", {}},
+        {"PlayerStatsManagerComponent",
+         {"ジャンプ初速",
+          "上昇重力",
+          "下降重力",
+          "頂点滞空 Vy",
+          "頂点滞空倍率",
+          "ジャンプ離し倍率",
+          "コヨーテ時間",
+          "先行入力時間",
+          "歩き速度",
+          "加速時定数",
+          "減速時定数",
+          "スティック遊び",
+          "突進速度",
+          "突進距離",
+          "タップ初速",
+          "タップの上向き初速",
+          "タップ距離"}},
         {"ShadowComponent", {"基本直径", "最大投影距離", "表面オフセット", "基本不透明度"}},
         {"SkeletalAnimationComponent", {"再生速度", "ループ再生", "モデル", "クリップ"}},
         {"SlopeColliderComponent", {"角度 (度)", "半径"}},
@@ -284,6 +303,7 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
         {"GoalComponent", {}},
         {"PlacedVirtualCamera", {"VirtualCameraComponent"}},
         {"PlayerInputComponent", {}},
+        {"PlayerStatsManagerComponent", {"EntityStatsManagerComponent"}},
         {"ShadowComponent", {}},
         {"SkeletalAnimationComponent", {}},
         {"SlopeColliderComponent", {"ColliderComponent"}},
