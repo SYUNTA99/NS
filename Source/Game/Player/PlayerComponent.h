@@ -70,14 +70,32 @@ namespace NS::Game::Player
         //! 奈落落ちの復活などで速度・接地・ジャンプまわりの記録と状態機械を初期状態へ戻す
         void ResetState() noexcept;
 
-        // TODO: 突進を移すまで定義が無い。呼ぶとリンクで落ちる
+        //! 体当たりの状態の登録名。状態クラスの k_Name と同じ綴り
+        static constexpr const char* k_BodySlamStateName = "BodySlam";
+        //! 突進を終えた後に戻る状態の登録名
+        static constexpr const char* k_IdleStateName = "Idle";
+
+        //! 体当たりの発動を要求する
+        //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
+        //! その歩で出せない要求は先行入力時間だけ覚え、過ぎたら失効する
+        //! @param[in] charge01 溜め量 0..1
         void RequestBodySlam(float charge01) noexcept;
+        //! 突進中の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsBodySlamming() const noexcept;
+        //! 突進の進み具合 0..1。突進中でなければ 0
         [[nodiscard]] float BodySlamProgress01() const noexcept;
-        [[nodiscard]] float BodySlamCharge01() const noexcept;
-        [[nodiscard]] float BodySlamEntrySpeed() const noexcept;
+        [[nodiscard]] float BodySlamCharge01() const noexcept { return m_bodySlamCharge01; } //!< 発動時の溜め量 0..1
+        //! 発動時の水平の速さ。衝突の威力の基礎になる
+        [[nodiscard]] float BodySlamEntrySpeed() const noexcept { return m_bodySlamEntrySpeed; }
+        //! 衝突の裁定が読む速度。突進中は向きと突進速度から作る
+        //! @details 実速度は壁へ押し付けられた歩で 0 に潰れ、衝突の先読みが 1 歩も進まなくなる
         [[nodiscard]] NS::Core::Vector3 BodySlamVelocity() const noexcept;
+        //! 突進を打ち切って通常移動へ戻す。突進中でなければ何もしない
         void CancelBodySlam() noexcept;
+
+        //! 向きを解決して突進を始める。向きが決まらないか距離が 0 以下の場合 false、それ以外の場合は true
+        //! @details 向きは 入力の水平 → カメラの水平前方 → 現在速度の水平 の順で解決する
+        [[nodiscard]] bool BodySlam() noexcept;
 
         // 移動の 1 歩を作る動詞。呼ぶ順序がそのまま手触りになる
         //! 先行入力とコヨーテ猶予のタイマーを 1 歩進める
@@ -144,6 +162,16 @@ namespace NS::Game::Player
         float m_maxSpeed = 8.0f;
 
         bool m_debugDraw = true; // デバッグ可視化を出すか
+
+        float m_bodySlamBufferRemaining = 0.0f;            // 出せない歩の押しを覚える残り秒
+        bool m_bodySlamIsTap = false;                      // 溜め量 0 の飛び込みか
+        float m_bodySlamRequestCharge01 = 0.0f;            // 要求された溜め量 0..1
+        float m_bodySlamCharge01 = 0.0f;                   // 発動時に確定した溜め量 0..1
+        float m_bodySlamEntrySpeed = 0.0f;                 // 発動時の水平の速さ
+        float m_bodySlamTravelled = 0.0f;                  // 突進で進んだ水平距離
+        float m_bodySlamDistanceTarget = 0.0f;             // 突進を終える水平距離
+        int m_bodySlamStallSteps = 0;                      // 進めなかった歩の連続数
+        NS::Core::Vector3 m_bodySlamDir{0.0f, 0.0f, 0.0f}; // 突進の水平の向き。正規化済み
 
         // 最後に接地していた world 位置。縁を踏み外した直後はここが縁の位置になる
         NS::Core::Vector3 m_lastGroundedPosition{0.0f, 0.0f, 0.0f};

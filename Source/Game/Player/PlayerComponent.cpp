@@ -2,10 +2,13 @@
 
 #include "Game/Entity/EntityStateManagerComponent.h"
 #include "Game/Player/PlayerStatsManagerComponent.h"
+#include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 
@@ -18,6 +21,13 @@ namespace
     constexpr float k_CoyoteJumpMarkerLifetime = 3.0f;
     // 同時に保持するコヨーテジャンプ記録の上限。画面が線で埋まらない数
     constexpr std::size_t k_MaxCoyoteJumpMarkers = 16;
+
+    // 向きと言える長さの下限。長さ 0 のまま正規化すると 0 除算になる
+    constexpr float k_BodySlamMinDirection = 1e-4f;
+
+    // 1 歩で打ち切ると衝突を裁く側が突進を見る前に終わるため、壁に押し付けられた歩を 2 回数える
+    constexpr float k_BodySlamStallDistance = 1e-4f;
+    constexpr int k_BodySlamMaxStallSteps = 2;
 } // namespace
 
 namespace NS::Game::Player
@@ -71,6 +81,104 @@ namespace NS::Game::Player
             m_maxSpeed = speed;
     }
 
+    void PlayerComponent::RequestBodySlam(float charge01) noexcept
+    {
+        // その歩で出せないと押しが無言で消える。ジャンプと同じ先行入力時間だけ覚える
+        m_bodySlamBufferRemaining = Stats().jumpBufferTime;
+        // NaN は 0..1 への丸めを素通りして溜め量に残るため、入口で 0 へ倒す
+        if (!std::isfinite(charge01))
+            m_bodySlamRequestCharge01 = 0.0f;
+        else
+            m_bodySlamRequestCharge01 = NS::Core::Clamp(charge01, 0.0f, 1.0f);
+    }
+
+    bool PlayerComponent::IsBodySlamming() const noexcept
+    {
+        return m_stateManager != nullptr && m_stateManager->IsCurrent(k_BodySlamStateName);
+    }
+
+    float PlayerComponent::BodySlamProgress01() const noexcept
+    {
+        if (!IsBodySlamming() || !(m_bodySlamDistanceTarget > 0.0f))
+            return 0.0f;
+        return NS::Core::Clamp(m_bodySlamTravelled / m_bodySlamDistanceTarget, 0.0f, 1.0f);
+    }
+
+    NS::Core::Vector3 PlayerComponent::BodySlamVelocity() const noexcept
+    {
+        if (!IsBodySlamming())
+            return Velocity();
+
+        float speed = Stats().bodySlamSpeed;
+        if (m_bodySlamIsTap)
+            speed = Stats().tapSlamSpeed;
+        return NS::Core::Vector3{m_bodySlamDir.x * speed, VerticalVelocity(), m_bodySlamDir.z * speed};
+    }
+
+    void PlayerComponent::CancelBodySlam() noexcept
+    {
+        if (!IsBodySlamming())
+            return;
+        m_bodySlamTravelled = 0.0f;
+        m_bodySlamDistanceTarget = 0.0f;
+        m_stateManager->ChangeByName(k_IdleStateName);
+    }
+
+    bool PlayerComponent::BodySlam() noexcept
+    {
+        const NS::Core::Vector3 lateral = LateralVelocity();
+        NS::Core::Vector3 dir{m_desiredDir.x, 0.0f, m_desiredDir.z};
+        float length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+
+        // 反発後の滑りなど残った速度が向きに勝つと狙いと食い違う方へ飛ぶ。入力が無ければ速度よりカメラの前を先に見る
+        if (length < k_BodySlamMinDirection && Owner() != nullptr && Owner()->OwningScene() != nullptr)
+        {
+            if (NS::Object::CameraBrainComponent* brain = Owner()->OwningScene()->CameraBrain())
+            {
+                const NS::Core::Vector3 forward = brain->ForwardHorizontal();
+                dir = NS::Core::Vector3{forward.x, 0.0f, forward.z};
+                length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+            }
+        }
+        if (length < k_BodySlamMinDirection)
+        {
+            dir = lateral;
+            length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+        }
+        if (length < k_BodySlamMinDirection)
+            return false;
+
+        dir.x /= length;
+        dir.z /= length;
+        m_bodySlamDir = dir;
+        m_bodySlamEntrySpeed = std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z);
+        m_bodySlamCharge01 = m_bodySlamRequestCharge01;
+        m_bodySlamIsTap = !(m_bodySlamRequestCharge01 > 0.0f);
+        m_bodySlamTravelled = 0.0f;
+        m_bodySlamStallSteps = 0;
+
+        if (m_bodySlamIsTap)
+        {
+            m_bodySlamDistanceTarget = Stats().tapSlamDistance;
+            SetVelocity(
+                NS::Core::Vector3{dir.x * Stats().tapSlamSpeed, Stats().tapSlamUpSpeed, dir.z * Stats().tapSlamSpeed});
+        }
+        else
+        {
+            m_bodySlamDistanceTarget = Stats().bodySlamDistance;
+            SetVelocity(
+                NS::Core::Vector3{dir.x * Stats().bodySlamSpeed, VerticalVelocity(), dir.z * Stats().bodySlamSpeed});
+        }
+
+        // 距離が 0 以下だと 1 歩目で終わって発動が消えるため、出さずに通常移動のままにする
+        if (!(m_bodySlamDistanceTarget > 0.0f))
+            return false;
+
+        if (m_stateManager != nullptr)
+            m_stateManager->ChangeByName(k_BodySlamStateName);
+        return true;
+    }
+
     void PlayerComponent::ResetState() noexcept
     {
         SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
@@ -87,6 +195,15 @@ namespace NS::Game::Player
         SetGrounded(false);
         m_lastGroundedPosition = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         m_coyoteJumpMarkers.clear();
+        m_bodySlamBufferRemaining = 0.0f;
+        m_bodySlamIsTap = false;
+        m_bodySlamRequestCharge01 = 0.0f;
+        m_bodySlamCharge01 = 0.0f;
+        m_bodySlamEntrySpeed = 0.0f;
+        m_bodySlamTravelled = 0.0f;
+        m_bodySlamDistanceTarget = 0.0f;
+        m_bodySlamStallSteps = 0;
+        m_bodySlamDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
 
         if (m_stateManager != nullptr)
             m_stateManager->ResetToFirst();
@@ -246,11 +363,23 @@ namespace NS::Game::Player
         std::erase_if(m_coyoteJumpMarkers, [](const CoyoteJumpMarker& m) { return m.remaining <= 0.0f; });
 #endif
 
-        StepLocomotion(dt);
+        // 突進の中で見ると通常移動の 1 歩を走ってから移ることになり、突進の初速がその歩に乗らない
+        // 空中の押しを捨てると連打で出ない歩ができるため、接地は求めない
+        if (m_bodySlamBufferRemaining > 0.0f && !IsBodySlamming())
+        {
+            if (BodySlam())
+                m_bodySlamBufferRemaining = 0.0f;
+        }
+
+        // TODO: 突進の 1 歩を足すまでの仮。通常移動を走らせると発動時の速度が上書きされる
+        if (!IsBodySlamming())
+            StepLocomotion(dt);
 
         // 1 歩限りの入力の消費は、どの状態でも通るここで行う
         m_prevJumpHeld = m_jumpHeld;
         m_jumpPressedThisFrame = false;
+        if (m_bodySlamBufferRemaining > 0.0f)
+            m_bodySlamBufferRemaining = std::max(0.0f, m_bodySlamBufferRemaining - dt);
     }
 
     void PlayerComponent::OnStepSkipped()
