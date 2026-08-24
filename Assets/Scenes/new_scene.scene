@@ -2,7 +2,7 @@
   "environment": {
     "skybox": "Assets/Skybox/kurt/"
   },
-  "nextObjectId": 61,
+  "nextObjectId": 63,
   "objects": [
     {
       "components": [
@@ -200,7 +200,7 @@
             "カプセル半径": 0.4000000059604645,
             "デバッグ表示": true
           },
-          "id": 0,
+          "id": 9,
           "type": "PlayerComponent"
         },
         {
@@ -223,14 +223,14 @@
             "頂点滞空 Vy": 1.0,
             "頂点滞空倍率": 0.5
           },
-          "id": 0,
+          "id": 61,
           "type": "PlayerStatsManagerComponent"
         },
         {
           "fields": {
             "状態一覧": "Idle;Walk;Fall;LedgeHanging;LedgeClimbing;BodySlam"
           },
-          "id": 0,
+          "id": 62,
           "type": "PlayerStateManagerComponent"
         },
         {

@@ -1,7 +1,9 @@
 #include <Game/Level/MomentumComponent.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
-#include <Runtime/Object/Components/CharacterMovementComponent.h>
+#include <Game/Player/PlayerComponent.h>
+#include <Game/Player/PlayerStateManagerComponent.h>
+#include <Game/Player/PlayerStatsManagerComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/Curve.h>
 #include <Runtime/Object/Reflection/Reflection.h>
@@ -15,7 +17,9 @@ namespace
     using NS::Core::Vector3;
     using NS::Game::Level::MomentumComponent;
     using NS::Game::Level::MomentumLevel;
-    using NS::Object::CharacterMovementComponent;
+    using NS::Game::Player::PlayerComponent;
+    using NS::Game::Player::PlayerStateManagerComponent;
+    using NS::Game::Player::PlayerStatsManagerComponent;
     using NS::Object::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
@@ -44,7 +48,9 @@ protected:
     {
         NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
 
-        m_movement = m_object.AddComponent<CharacterMovementComponent>();
+        m_object.AddComponent<PlayerStatsManagerComponent>();
+        m_object.AddComponent<PlayerStateManagerComponent>();
+        m_movement = m_object.AddComponent<PlayerComponent>();
         m_momentum = m_object.AddComponent<MomentumComponent>();
 
         // 床は走り切る長さだけ。広げるほど broadphase の格子が増え、 1 件で数分かかる
@@ -53,6 +59,8 @@ protected:
         m_object.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
         m_movement->SetPhysicsWorld(&m_world);
         m_movement->SetDebugDrawEnabled(false);
+        m_movement->OnStart();
+        m_object.FindComponent<PlayerStateManagerComponent>()->OnStart();
         m_momentum->OnStart();
 
         for (int i = 0; i < 30 && !m_movement->IsGrounded(); ++i)
@@ -175,7 +183,7 @@ protected:
 
     GameObject m_object;
     NS::Physics::PhysicsWorld m_world;
-    CharacterMovementComponent* m_movement = nullptr;
+    PlayerComponent* m_movement = nullptr;
     MomentumComponent* m_momentum = nullptr;
 };
 

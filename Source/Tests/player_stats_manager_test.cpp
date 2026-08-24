@@ -14,7 +14,7 @@ namespace
 {
     using NS::Game::Player::PlayerStatsManagerComponent;
 
-    // 現行の CharacterMovementComponent とシーン JSON に載っている綴り。半角空白 1 つのずれでも値が読めなくなる
+    // 移し替え前とシーン JSON に載っている綴り。半角空白 1 つのずれでも値が読めなくなる
     const std::vector<std::string> k_LegacyFieldNames = {"ジャンプ初速",
                                                          "上昇重力",
                                                          "下降重力",

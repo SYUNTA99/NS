@@ -6,7 +6,7 @@
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/CapsuleColliderComponent.h>
-#include <Runtime/Object/Components/CharacterMovementComponent.h>
+#include <Game/Player/PlayerComponent.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/Components/SlopeColliderComponent.h>
 #include <Runtime/Object/Components/SphereColliderComponent.h>
@@ -339,7 +339,9 @@ TEST_F(ObjectBuildTest, PlayerObjectDataIsSparseTypeListFromClass)
 
     ASSERT_EQ(data.components.size(), Player{}.Components().size());
     EXPECT_NE(NS::Object::FindComponentEntry(data, "MeshRendererComponent"), nullptr);
-    EXPECT_NE(NS::Object::FindComponentEntry(data, "CharacterMovementComponent"), nullptr);
+    EXPECT_NE(NS::Object::FindComponentEntry(data, "PlayerComponent"), nullptr);
+    EXPECT_NE(NS::Object::FindComponentEntry(data, "PlayerStatsManagerComponent"), nullptr);
+    EXPECT_NE(NS::Object::FindComponentEntry(data, "PlayerStateManagerComponent"), nullptr);
     EXPECT_NE(NS::Object::FindComponentEntry(data, "PlayerInputComponent"), nullptr);
     EXPECT_NE(NS::Object::FindComponentEntry(data, "HealthComponent"), nullptr);
     EXPECT_NE(NS::Object::FindComponentEntry(data, "ShadowComponent"), nullptr);
@@ -388,12 +390,13 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataValuesToComponents)
 {
     ObjectData data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
     for (nlohmann::json& entry : data.components)
-        if (NS::Object::ComponentEntryType(entry) == "CharacterMovementComponent")
+        if (NS::Object::ComponentEntryType(entry) == "PlayerStatsManagerComponent")
             NS::Object::SetField(entry, "コヨーテ時間", 0.125f);
 
     auto obj = Build(data);
     ASSERT_NE(obj, nullptr);
-    auto* movement = obj->FindComponent<NS::Object::CharacterMovementComponent>();
+    obj->OnStart();
+    auto* movement = obj->FindComponent<NS::Game::Player::PlayerComponent>();
     ASSERT_NE(movement, nullptr);
     EXPECT_FLOAT_EQ(movement->CoyoteTime(), 0.125f);
 }

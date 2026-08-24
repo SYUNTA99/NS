@@ -8,7 +8,9 @@
 #include <Game/Level/MomentumComponent.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
-#include <Runtime/Object/Components/CharacterMovementComponent.h>
+#include <Game/Player/PlayerComponent.h>
+#include <Game/Player/PlayerStateManagerComponent.h>
+#include <Game/Player/PlayerStatsManagerComponent.h>
 #include <Runtime/Object/Components/PlayerInputComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
@@ -29,7 +31,9 @@ namespace
     using NS::Core::Vector3;
     using NS::Game::Level::MomentumComponent;
     using NS::Game::Level::MomentumLevel;
-    using NS::Object::CharacterMovementComponent;
+    using NS::Game::Player::PlayerComponent;
+    using NS::Game::Player::PlayerStateManagerComponent;
+    using NS::Game::Player::PlayerStatsManagerComponent;
     using NS::Object::GameObject;
     using NS::Tests::DescribeTrace;
     using NS::Tests::FoldTrace;
@@ -49,7 +53,9 @@ namespace
     public:
         Rig()
         {
-            m_movement = m_object.AddComponent<CharacterMovementComponent>();
+            m_object.AddComponent<PlayerStatsManagerComponent>();
+            m_object.AddComponent<PlayerStateManagerComponent>();
+            m_movement = m_object.AddComponent<PlayerComponent>();
             m_momentum = m_object.AddComponent<MomentumComponent>();
 
             // 床は走り切る z 方向だけ伸ばす。全方向へ広げると broadphase の格子が膨らみ 1 件で数分かかる
@@ -58,6 +64,8 @@ namespace
             m_object.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
             m_movement->SetPhysicsWorld(&m_world);
             m_movement->SetDebugDrawEnabled(false);
+            m_movement->OnStart();
+            m_object.FindComponent<PlayerStateManagerComponent>()->OnStart();
             m_momentum->OnStart();
 
             // 開始位置は空中に取る。床へ直置きするとカプセルがめり込み、衝突解決が移動を丸ごと拒否する
@@ -83,7 +91,7 @@ namespace
     private:
         GameObject m_object;
         NS::Physics::PhysicsWorld m_world;
-        CharacterMovementComponent* m_movement = nullptr;
+        PlayerComponent* m_movement = nullptr;
         MomentumComponent* m_momentum = nullptr;
         std::vector<StepRecord> m_trace;
     };
@@ -146,7 +154,7 @@ namespace
             if (live != nullptr)
             {
                 m_player = live;
-                m_movement = live->FindComponent<CharacterMovementComponent>();
+                m_movement = live->FindComponent<PlayerComponent>();
                 // 入力の component は EarlyUpdate で実機の入力を書き込む。起こしたままだと走行入力が毎歩 0 になる
                 if (auto* input = live->FindComponent<NS::Object::PlayerInputComponent>())
                     input->SetActive(false);
@@ -177,7 +185,7 @@ namespace
     private:
         NS::Object::Scene m_scene;
         Player* m_player = nullptr;
-        CharacterMovementComponent* m_movement = nullptr;
+        PlayerComponent* m_movement = nullptr;
         std::vector<StepRecord> m_trace;
         int m_stepIndex = 0;
     };

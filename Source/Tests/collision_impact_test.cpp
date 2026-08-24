@@ -12,7 +12,7 @@
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/CameraBrainComponent.h>
-#include <Runtime/Object/Components/CharacterMovementComponent.h>
+#include <Game/Player/PlayerComponent.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/Components/PlayerInputComponent.h>
@@ -54,7 +54,7 @@ namespace
 
     struct Rig
     {
-        SceneNs::CharacterMovementComponent* movement = nullptr;
+        NS::Game::Player::PlayerComponent* movement = nullptr;
         LevelNs::MomentumComponent* momentum = nullptr;
         LevelNs::ImpactResolverComponent* impact = nullptr;
         LevelNs::CollisionInputComponent* input = nullptr;
@@ -110,7 +110,7 @@ namespace
         EXPECT_NE(live, nullptr);
         if (live != nullptr)
         {
-            rig.movement = live->FindComponent<SceneNs::CharacterMovementComponent>();
+            rig.movement = live->FindComponent<NS::Game::Player::PlayerComponent>();
             rig.momentum = live->FindComponent<LevelNs::MomentumComponent>();
             rig.impact = live->FindComponent<LevelNs::ImpactResolverComponent>();
             rig.input = live->FindComponent<LevelNs::CollisionInputComponent>();

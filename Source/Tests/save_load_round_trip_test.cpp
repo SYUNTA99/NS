@@ -401,7 +401,7 @@ TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
     EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(player).y, Player::k_DefaultSpawnY);
     // 既定構成 5 点。 mesh 描画 + 移動 + 入力 + 命 + 接地影
     EXPECT_NE(SceneNs::FindComponentEntry(player, "MeshRendererComponent"), nullptr);
-    EXPECT_NE(SceneNs::FindComponentEntry(player, "CharacterMovementComponent"), nullptr);
+    EXPECT_NE(SceneNs::FindComponentEntry(player, "PlayerComponent"), nullptr);
     EXPECT_NE(SceneNs::FindComponentEntry(player, "PlayerInputComponent"), nullptr);
     EXPECT_NE(SceneNs::FindComponentEntry(player, "HealthComponent"), nullptr);
     EXPECT_NE(SceneNs::FindComponentEntry(player, "ShadowComponent"), nullptr);
