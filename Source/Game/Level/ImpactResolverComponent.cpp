@@ -35,7 +35,7 @@ namespace NS::Game::Level
         constexpr float k_MinDirectionLengthSq = 1e-8f;
 
         // 質量の下限 0.01 で割ると初速が 100 倍まで跳ねる。画面の外へ消える前に頭打ちにする
-        constexpr float k_MaxLaunchSpeed = 60.0f;
+        constexpr float k_MaxLaunchSpeed = 120.0f;
 
         // 反発の頭打ち。最高ダッシュ 16 の 1.5 倍。素の係数では質量因子が 1 未満に飽和して届かず、
         // 入力係数と重い相手が重なった時と、基準初速に桁違いの値を入れた時に操作の成立を守る

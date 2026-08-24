@@ -231,7 +231,8 @@ namespace
     // 体当たりの空中発動と先行入力を入れた時に取り直した。取り直し前は 0x226FEFA1B6B49164
     // 押し飛ばし基準初速を 14.0 から 20.0 へ上げた時に取り直した。取り直し前は 0x5CB7A5CC3E014443
     // 最初の衝突と反発を含む 30 歩は一致し、遠くへ飛んだ岩へ追いつく歩から差が出る
-    constexpr std::uint64_t k_ImpactGolden = 0xA143A23EBE09F88AULL;
+    // 基準初速を 32.0 へ、質量指数を 0.35 へ上げた時に取り直した。取り直し前は 0xA143A23EBE09F88A
+    constexpr std::uint64_t k_ImpactGolden = 0x6D19639767D9BB26ULL;
 } // namespace
 
 class CollisionGolden : public ::testing::Test

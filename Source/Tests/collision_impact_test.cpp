@@ -47,8 +47,8 @@ namespace
     constexpr float k_MaxDashSpeed = 16.0f;
     constexpr float k_SlamSpeed = 20.0f;
     constexpr float k_TapSlamSpeed = 10.0f;
-    constexpr float k_LaunchBaseSpeed = 20.0f;
-    constexpr float k_LaunchSpeedCap = 60.0f;
+    constexpr float k_LaunchBaseSpeed = 32.0f;
+    constexpr float k_LaunchSpeedCap = 120.0f;
     constexpr float k_ReboundSpeedCap = 24.0f;
     // 破壊は耐久 ≤ 最終威力なので、反発と押し飛ばしを見る台は壊れない高さを既定にする
     constexpr float k_UnbreakableToughness = 99.0f;
@@ -687,7 +687,7 @@ TEST(CollisionImpact, LaunchFieldsDriveLaunchVelocity)
     EXPECT_FLOAT_EQ(body->Velocity().y, expected * 0.5f);
 }
 
-// 質量の効きは指数で曲げる。既定 0.5 は平方根で割る
+// 質量の効きは指数で曲げる。既定 0.35 は 4^0.35 = 約 1.62 で割る
 TEST(CollisionImpact, LaunchMassExponentBendsMassEffect)
 {
     SceneNs::Scene inverseScene;
@@ -698,7 +698,7 @@ TEST(CollisionImpact, LaunchMassExponentBendsMassEffect)
     BeginSlam(inverseScene, inverse, k_RunSpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(inverseScene, inverse, 30), 30);
 
-    // 欄を触らず既定の指数で当てる。既定を 0.5 から動かすと平方根の期待値が外れる
+    // 欄を触らず既定の指数で当てる。既定を 0.35 から動かすとこの期待値が外れる
     SceneNs::Scene rootScene;
     Rig root = BuildSlam(rootScene, k_NearCourse);
     SetInstantImpact(root);
@@ -711,7 +711,8 @@ TEST(CollisionImpact, LaunchMassExponentBendsMassEffect)
     ASSERT_NE(inverseBody, nullptr);
     ASSERT_NE(rootBody, nullptr);
     EXPECT_FLOAT_EQ(HorizontalSpeed(inverseBody->Velocity()), k_LaunchBaseSpeed * inverse.impact->LastPower() / 4.0f);
-    EXPECT_FLOAT_EQ(HorizontalSpeed(rootBody->Velocity()), k_LaunchBaseSpeed * root.impact->LastPower() / 2.0f);
+    EXPECT_FLOAT_EQ(HorizontalSpeed(rootBody->Velocity()),
+                    k_LaunchBaseSpeed * root.impact->LastPower() / std::pow(4.0f, 0.35f));
 }
 
 // 質量の下限 0.01 で割ると 100 倍になる。頭打ちが無いと画面の外へ消える
