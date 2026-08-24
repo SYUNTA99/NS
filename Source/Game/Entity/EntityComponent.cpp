@@ -118,5 +118,11 @@ namespace NS::Game::Entity
         m_wasGrounded = m_isGrounded;
         m_isGrounded = out.grounded;
         m_positionDelta = out.position - before;
+
+        // 発火は位置・速度・接地・実移動を書き終えた後。途中で呼ぶと購読側がその歩だけ古い値を読む
+        if (!m_wasGrounded && m_isGrounded)
+            m_events.onGroundEnter.Invoke();
+        else if (m_wasGrounded && !m_isGrounded)
+            m_events.onGroundExit.Invoke();
     }
 } // namespace NS::Game::Entity

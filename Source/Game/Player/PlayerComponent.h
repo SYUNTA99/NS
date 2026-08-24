@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game/Entity/EntityComponent.h"
+#include "Game/Player/PlayerEvents.h"
 #include "Game/Player/PlayerStats.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Reflection/Reflection.h"
@@ -148,6 +149,9 @@ namespace NS::Game::Player
         //! 接地を外れている場合 true、それ以外の場合は false
         [[nodiscard]] bool ShouldFall() const noexcept;
 
+        //! 自機だけの通知の受け口。基底の Events() は接地の 2 件を返すので名前を分ける
+        [[nodiscard]] PlayerEvents& PlayerEventsRef() noexcept { return m_playerEvents; }
+
         //! 同居する組。無ければ既定の組。調整値はすべてここから読む
         [[nodiscard]] const PlayerStats& Stats() const noexcept;
 
@@ -215,5 +219,7 @@ namespace NS::Game::Player
 
         PlayerStatsManagerComponent* m_statsManager = nullptr; // 調整値の組 (非所有)
         PlayerStateManagerComponent* m_stateManager = nullptr; // 状態機械 (非所有)
+
+        PlayerEvents m_playerEvents;
     };
 } // namespace NS::Game::Player

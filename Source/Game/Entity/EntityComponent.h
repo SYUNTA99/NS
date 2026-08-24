@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Game/Entity/EntityEvents.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Physics/CapsuleMover.h"
@@ -80,6 +81,9 @@ namespace NS::Game::Entity
         //! 直近の Move で実際に動いた量。突進の進み具合を実移動から測るのに使う
         [[nodiscard]] NS::Core::Vector3 PositionDelta() const noexcept { return m_positionDelta; }
 
+        //! 接地の通知の受け口。購読は後から足せる
+        [[nodiscard]] EntityEvents& Events() noexcept { return m_events; }
+
         //! 未注入なら所属 scene の衝突 world を借り、同居する CapsuleColliderComponent を控える
         void OnStart() override;
         //! カプセル寸法を写してから 1 歩ぶん HandleStates を呼ぶ
@@ -103,5 +107,6 @@ namespace NS::Game::Entity
         const NS::Physics::PhysicsWorld* m_world = nullptr; // 衝突判定に使う physics world (非所有)
         NS::Object::CapsuleColliderComponent* m_capsuleCollider = nullptr;
         NS::Physics::CapsuleMover m_controller; // 数値計算を任せる controller
+        EntityEvents m_events;
     };
 } // namespace NS::Game::Entity

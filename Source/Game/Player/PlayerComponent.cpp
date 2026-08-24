@@ -168,6 +168,7 @@ namespace NS::Game::Player
         m_bodySlamTravelled = 0.0f;
         m_bodySlamDistanceTarget = 0.0f;
         m_stateManager->ChangeByName(k_IdleStateName);
+        m_playerEvents.onBodySlamEnded.Invoke();
     }
 
     bool PlayerComponent::BodySlam() noexcept
@@ -222,6 +223,7 @@ namespace NS::Game::Player
 
         if (m_stateManager != nullptr)
             m_stateManager->ChangeByName(k_BodySlamStateName);
+        m_playerEvents.onBodySlamStarted.Invoke();
         return true;
     }
 
@@ -255,6 +257,7 @@ namespace NS::Game::Player
             m_bodySlamDistanceTarget = 0.0f;
             if (m_stateManager != nullptr)
                 m_stateManager->ChangeByName(k_IdleStateName);
+            m_playerEvents.onBodySlamEnded.Invoke();
         }
     }
 
@@ -361,6 +364,7 @@ namespace NS::Game::Player
             --m_jumpsRemaining;
             m_bufferTimer = 0.0f;
             m_coyoteTimer = 0.0f;
+            m_playerEvents.onJump.Invoke();
         }
     }
 
@@ -484,6 +488,7 @@ namespace NS::Game::Player
             m_ledgeHangTimer = 0.0f;
             if (m_stateManager != nullptr)
                 m_stateManager->ChangeByName(k_LedgeHangingStateName);
+            m_playerEvents.onLedgeGrabbed.Invoke();
             return true;
         }
         return false;
@@ -524,6 +529,7 @@ namespace NS::Game::Player
         if (m_stateManager != nullptr)
             m_stateManager->ChangeByName(k_LedgeClimbingStateName);
         SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        m_playerEvents.onLedgeClimbing.Invoke();
     }
 
     void PlayerComponent::DropLedge() noexcept
