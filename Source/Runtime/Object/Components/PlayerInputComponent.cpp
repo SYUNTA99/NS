@@ -1,7 +1,6 @@
 #include "Runtime/Object/Components/PlayerInputComponent.h"
 
 #include "Runtime/Object/Components/CameraBrainComponent.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -31,14 +30,6 @@ namespace NS::Object
     void PlayerInputComponent::SetCameraForward(const NS::Core::Vector3& cameraForwardHorizontal) noexcept
     {
         m_cameraForward = NormalizeHorizontal(cameraForwardHorizontal);
-    }
-
-    void PlayerInputComponent::OnStart()
-    {
-        if (Owner() != nullptr)
-            m_movement = Owner()->FindComponent<CharacterMovementComponent>();
-        else
-            m_movement = nullptr;
     }
 
     void PlayerInputComponent::OnUpdate()
@@ -110,23 +101,12 @@ namespace NS::Object
         const bool jumpHeld =
             (!wantKb && kb.IsHeld(NS::Platform::Key::Space)) || pad.IsHeld(NS::Platform::GamepadButton::A);
 
-        // 渡し先が居ない歩でも値だけは残す
         m_desiredDir = worldDir;
         m_desiredSpeedScale = speedScale;
         m_climbRight = localX;
         m_climbForward = localZ;
         m_jumpPressed = jumpPressed;
         m_jumpHeld = jumpHeld;
-
-        if (m_movement != nullptr)
-        {
-            m_movement->SetDesiredMove(worldDir, speedScale);
-            // climb 中は camera 回転をかける前の生ローカル入力を渡す。 前で登り、 右で面に沿って右へ動く
-            m_movement->SetClimbMove(localX, localZ);
-            if (jumpPressed)
-                m_movement->SetJumpPressed();
-            m_movement->SetJumpHeld(jumpHeld);
-        }
     }
 
     NS_CLASS(PlayerInputComponent)

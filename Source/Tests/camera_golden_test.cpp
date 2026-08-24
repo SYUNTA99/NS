@@ -1,16 +1,18 @@
-﻿#include <bit>
-#include <cstdint>
-#include <gtest/gtest.h>
+﻿#include <Game/Player/PlayerComponent.h>
+#include <Game/Player/PlayerStateManagerComponent.h>
+#include <Game/Player/PlayerStatsManagerComponent.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/CameraBrainComponent.h>
 #include <Runtime/Object/Components/CameraComponent.h>
-#include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
+#include <bit>
+#include <cstdint>
+#include <gtest/gtest.h>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -22,7 +24,9 @@ namespace
     using NS::Object::CameraBrainComponent;
     using NS::Object::CameraComponent;
     using NS::Object::CameraPose;
-    using NS::Object::CharacterMovementComponent;
+    using NS::Game::Player::PlayerComponent;
+    using NS::Game::Player::PlayerStateManagerComponent;
+    using NS::Game::Player::PlayerStatsManagerComponent;
     using NS::Object::GameObject;
     using NS::Object::PlacedVirtualCamera;
     using NS::Object::ThirdPersonFollowComponent;
@@ -97,9 +101,12 @@ namespace
         GameObject player;
         NS::Physics::PhysicsWorld world;
         world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 8.0f}});
-        auto& movement = *player.AddComponent<CharacterMovementComponent>();
+        player.AddComponent<PlayerStatsManagerComponent>();
+        player.AddComponent<PlayerStateManagerComponent>();
+        auto& movement = *player.AddComponent<PlayerComponent>();
         player.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
         world.BuildBroadphase();
+        player.OnStart();
         movement.SetPhysicsWorld(&world);
         movement.SetDebugDrawEnabled(false);
 
@@ -108,7 +115,6 @@ namespace
         follow.SetTarget(&player.Root());
         // 生成直後は休止なのでテスト側で有効化する
         follow.SetActive(true);
-        follow.SetMovement(&movement);
 
         std::vector<CameraStepRecord> trajectory;
         for (int i = 0; i < 210; ++i)
@@ -122,6 +128,7 @@ namespace
                 movement.SetJumpPressed();
             movement.SetJumpHeld(i >= 60 && i < 80);
             movement.OnUpdate();
+            follow.SetFollowMotion(movement.IsGrounded(), movement.Velocity());
             follow.OnUpdate();
 
             // fixed step の確定姿勢と render 補間の中間姿勢の両方を記録する

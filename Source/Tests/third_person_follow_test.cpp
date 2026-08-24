@@ -1,5 +1,4 @@
 #include <Runtime/Core/Clock.h>
-#include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
@@ -9,7 +8,6 @@
 
 namespace
 {
-    using NS::Object::CharacterMovementComponent;
     using NS::Object::GameObject;
     using NS::Object::ThirdPersonFollowComponent;
 
@@ -170,30 +168,10 @@ TEST_F(ThirdPersonFollowTest, FollowMotionRejectsNonFiniteVelocity)
     EXPECT_NEAR(follow.Distance(), k_IdleDistance, 0.01f);
 }
 
-TEST_F(ThirdPersonFollowTest, WithoutFollowMotionTheMovementPathStillDecidesTheDistance)
+TEST_F(ThirdPersonFollowTest, WithoutAnyFollowMotionTheDistanceStaysAtIdle)
 {
-    GameObject player;
-    auto& movement = *player.AddComponent<CharacterMovementComponent>();
-
     GameObject obj;
     auto& follow = MakeZoomProbe(obj);
-    follow.SetMovement(&movement);
-
-    SettleZoom(follow);
-
-    EXPECT_FALSE(movement.IsGrounded());
-    EXPECT_NEAR(follow.Distance(), k_JumpDistance, 0.01f);
-}
-
-TEST_F(ThirdPersonFollowTest, FollowMotionWinsOverTheMovementPath)
-{
-    GameObject player;
-    auto& movement = *player.AddComponent<CharacterMovementComponent>();
-
-    GameObject obj;
-    auto& follow = MakeZoomProbe(obj);
-    follow.SetMovement(&movement);
-    follow.SetFollowMotion(true, {0.0f, 0.0f, 0.0f});
 
     SettleZoom(follow);
 

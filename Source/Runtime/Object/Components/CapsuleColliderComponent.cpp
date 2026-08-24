@@ -1,6 +1,5 @@
 #include "Runtime/Object/Components/CapsuleColliderComponent.h"
 
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
@@ -115,11 +114,14 @@ namespace NS::Object
         return NS::Core::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
     }
 
+    void CapsuleColliderComponent::SetExcludedFromStaticWorld(bool excluded) noexcept
+    {
+        m_excludedFromStaticWorld = excluded;
+    }
+
     void CapsuleColliderComponent::AddToPhysics(NS::Physics::PhysicsWorld& physics) const
     {
-        // CharacterMovementComponent の持ち主の capsule は移動側が掃引する。静的世界へ入れると自分に当たって動けない
-        const GameObject* owner = Owner();
-        if (owner != nullptr && owner->FindComponent<CharacterMovementComponent>() != nullptr)
+        if (m_excludedFromStaticWorld)
             return;
         physics.AddCapsule(WorldCapsule());
     }

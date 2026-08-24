@@ -63,6 +63,9 @@ namespace NS::Game::Entity
             m_world = &Owner()->OwningScene()->Physics();
         if (Owner() != nullptr)
             m_capsuleCollider = Owner()->FindComponent<NS::Object::CapsuleColliderComponent>();
+        // 自分の capsule は Move が掃引する。静的世界に居ると自分に当たって動けない
+        if (m_capsuleCollider != nullptr)
+            m_capsuleCollider->SetExcludedFromStaticWorld(true);
     }
 
     void EntityComponent::OnUpdate()

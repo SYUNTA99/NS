@@ -7,7 +7,6 @@
 
 namespace NS::Object
 {
-    class CharacterMovementComponent;
     class Transform;
     class GameObject;
 
@@ -27,13 +26,9 @@ namespace NS::Object
         //! 追従対象の永続参照。データ経由の構築がリフレクション set で書き、OnStart が live へ解決する
         [[nodiscard]] ObjectRef TargetRef() const noexcept { return m_targetRef; }
 
-        //! 追従対象の参照を world の永続 id 解決で引き、Transform と自動ズーム用の Movement を束ねる
+        //! 追従対象の参照を world の永続 id 解決で引き、その Transform を控える
         //! 参照未設定 / 解決不可なら SetTarget 済みの直結線を保つ。直結線とデータ経由の両立の要
         void OnStart() override;
-
-        //! 自動ズームの判定に使い、接地と水平速度を見る。null で idle 距離固定
-        void SetMovement(const CharacterMovementComponent* movement) noexcept;
-        [[nodiscard]] const CharacterMovementComponent* Movement() const noexcept { return m_movement; }
 
         //! 自動ズームの判定に使う接地と速度を値で受け取る。移動 Component の型を include せずに済む
         void SetFollowMotion(bool grounded, const NS::Core::Vector3& velocity) noexcept;
@@ -102,11 +97,10 @@ namespace NS::Object
         NS_REFLECT_END()
 
     private:
-        Transform* m_target = nullptr;                          // 追従対象の Transform (非所有)
-        const CharacterMovementComponent* m_movement = nullptr; // 自動ズーム判定用の移動 Component (非所有)
-        ObjectRef m_targetRef{};                                // 追従対象の永続参照
+        Transform* m_target = nullptr; // 追従対象の Transform (非所有)
+        ObjectRef m_targetRef{};       // 追従対象の永続参照
 
-        // 値で受けた追従先の運動。一度でも受け取ったら自動ズームはこちらだけを見る
+        // 値で受けた追従先の運動。届くまでは待機距離のまま
         bool m_followGrounded = false;
         float m_followHorizontalSpeed = 0.0f; // 速度の向きは使わないので水平の大きさへ畳んで持つ
         bool m_hasFollowMotion = false;

@@ -1,4 +1,3 @@
-#include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Object.h>
@@ -59,14 +58,12 @@ TEST(ObjectRefTest, UnnumberedObjectIsNeverResolved)
     EXPECT_EQ(world.FindObject(ObjectRef{9u}), nullptr);
 }
 
-TEST(ObjectRefTest, FollowResolvesTargetAndMovementOnStart)
+TEST(ObjectRefTest, FollowResolvesTargetOnStart)
 {
     Scene scene;
 
-    // 追従先: 移動 component 持ちの実体を id 5 で world へ入れる
     GameObject* target = scene.World().Spawn<GameObject>();
     ObjectIdAccess::SetId(*target, 5u);
-    auto* movement = target->AddComponent<NS::Object::CharacterMovementComponent>();
 
     GameObject rig;
     rig.AttachScene(&scene);
@@ -75,9 +72,7 @@ TEST(ObjectRefTest, FollowResolvesTargetAndMovementOnStart)
 
     rig.OnStart();
 
-    // OnStart が参照を解決し、追従 Transform と自動ズーム用 Movement の両方が結ばれる
     EXPECT_EQ(follow->Target(), &target->Root());
-    EXPECT_EQ(follow->Movement(), movement);
     EXPECT_EQ(follow->TargetRef().id, 5u);
 }
 

@@ -3,11 +3,15 @@
 #include "Game/Level/AreaCameraActivatorComponent.h"
 #include "Game/Level/CoyoteDebugComponent.h"
 #include "Game/Level/FinisherComponent.h"
+#include "Game/Level/FollowCameraFeedComponent.h"
 #include "Game/Level/HealthComponent.h"
 #include "Game/Level/RespawnerComponent.h"
 #include "Game/Level/ScreenFadeComponent.h"
+#include "Game/Player/PlayerComponent.h"
+#include "Game/Player/PlayerInputRelayComponent.h"
+#include "Game/Player/PlayerStateManagerComponent.h"
+#include "Game/Player/PlayerStatsManagerComponent.h"
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/Components/PlayerInputComponent.h"
 #include "Runtime/Object/Components/ShadowComponent.h"
@@ -29,14 +33,19 @@ namespace
 Player::Player() noexcept
 {
     // 構成と見た目のコード既定。値と追加分はファクトリが player object のデータから写す
-    // input は OnStart で同じ object の movement を解決するので生成順に縛りは無い
+    // 同居する部品の引き当ては OnStart なので生成順に縛りは無い
     auto* mesh = AddComponent<NS::Object::MeshRendererComponent>();
     // 参照はファクトリが cube mesh と共有 player 材質へ解決する
     mesh->SetMeshRef("cube");
     mesh->SetMaterialRef("player");
     mesh->SetBaseColor(k_PlayerBaseColor);
-    AddComponent<NS::Object::CharacterMovementComponent>();
+    // 3 つで 1 組。1 つでも欠けると調整値か遷移が効かない
+    AddComponent<NS::Game::Player::PlayerStatsManagerComponent>();
+    AddComponent<NS::Game::Player::PlayerStateManagerComponent>();
+    AddComponent<NS::Game::Player::PlayerComponent>();
     AddComponent<NS::Object::PlayerInputComponent>();
+    // 入力は NS::Object に居て自機の型を名指しできないので、値の受け渡しを挟む
+    AddComponent<NS::Game::Player::PlayerInputRelayComponent>();
     // 命は player 自身の持ち物。hazard 等のルール配置物がこれを削る
     AddComponent<NS::Game::Level::HealthComponent>();
     // 接地シャドウ。mesh / material / 衝突 world は後から注入される
@@ -48,6 +57,8 @@ Player::Player() noexcept
     AddComponent<NS::Game::Level::RespawnerComponent>();
     AddComponent<NS::Game::Level::FinisherComponent>();
     AddComponent<NS::Game::Level::AreaCameraActivatorComponent>();
+    // 追従カメラは NS::Object に居るので、自動ズームが要る接地と速度を値で送る
+    AddComponent<NS::Game::Level::FollowCameraFeedComponent>();
 #if !defined(NS_SHIPPING)
     AddComponent<NS::Game::Level::CoyoteDebugComponent>();
 #endif

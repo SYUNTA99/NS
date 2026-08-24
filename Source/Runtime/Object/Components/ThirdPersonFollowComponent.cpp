@@ -1,7 +1,6 @@
 #include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
 
 #include "Runtime/Core/Clock.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -41,11 +40,6 @@ namespace NS::Object
         m_target = target;
     }
 
-    void ThirdPersonFollowComponent::SetMovement(const CharacterMovementComponent* movement) noexcept
-    {
-        m_movement = movement;
-    }
-
     void ThirdPersonFollowComponent::SetFollowMotion(bool grounded, const NS::Core::Vector3& velocity) noexcept
     {
         m_followGrounded = grounded;
@@ -79,7 +73,6 @@ namespace NS::Object
         if (target == nullptr)
             return;
         m_target = &target->Root();
-        m_movement = target->FindComponent<CharacterMovementComponent>();
     }
 
     void ThirdPersonFollowComponent::SetSensX(float radPerPixel) noexcept
@@ -192,23 +185,6 @@ namespace NS::Object
                 else
                 {
                     if (m_followHorizontalSpeed > m_runSpeedThreshold)
-                        desired = m_runDistance;
-                    else
-                        desired = m_idleDistance;
-                }
-            }
-            // TODO: 値受け口だけになったら消す。移動 Component の型を名指しする最後の箇所
-            else if (m_movement != nullptr)
-            {
-                if (!m_movement->IsGrounded())
-                {
-                    desired = m_jumpDistance;
-                }
-                else
-                {
-                    const auto v = m_movement->Velocity();
-                    const float horiz = std::sqrt(v.x * v.x + v.z * v.z);
-                    if (horiz > m_runSpeedThreshold)
                         desired = m_runDistance;
                     else
                         desired = m_idleDistance;
