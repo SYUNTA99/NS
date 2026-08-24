@@ -95,8 +95,6 @@ namespace NS::Game::Player
         //! 突進の進み具合 0..1。突進中でなければ 0
         [[nodiscard]] float BodySlamProgress01() const noexcept;
         [[nodiscard]] float BodySlamCharge01() const noexcept { return m_bodySlamCharge01; } //!< 発動時の溜め量 0..1
-        //! 発動時の水平の速さ。衝突の威力の基礎になる
-        [[nodiscard]] float BodySlamEntrySpeed() const noexcept { return m_bodySlamEntrySpeed; }
         //! 衝突の裁定が読む速度。突進中は向きと突進速度から作る
         //! @details 実速度は壁へ押し付けられた歩で 0 に潰れ、衝突の先読みが 1 歩も進まなくなる
         [[nodiscard]] NS::Core::Vector3 BodySlamVelocity() const noexcept;
@@ -201,7 +199,6 @@ namespace NS::Game::Player
         bool m_bodySlamIsTap = false;                      // 溜め量 0 の飛び込みか
         float m_bodySlamRequestCharge01 = 0.0f;            // 要求された溜め量 0..1
         float m_bodySlamCharge01 = 0.0f;                   // 発動時に確定した溜め量 0..1
-        float m_bodySlamEntrySpeed = 0.0f;                 // 発動時の水平の速さ
         float m_bodySlamTravelled = 0.0f;                  // 突進で進んだ水平距離
         float m_bodySlamDistanceTarget = 0.0f;             // 突進を終える水平距離
         int m_bodySlamStallSteps = 0;                      // 進めなかった歩の連続数

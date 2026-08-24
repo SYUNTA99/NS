@@ -200,15 +200,12 @@ namespace NS::Game::Level
         if (velocity.x * awayX + velocity.z * awayZ >= 0.0f)
             return;
 
-        // 突進中の実速度は突進速度で一定になり、助走で作った勢いが威力から消えるため、比は発動時の速度から作る
-        const float impactSpeed = m_movement->BodySlamEntrySpeed();
+        // 比は勢いの段から作る。実速度から作ると、手を放して減速し始めた歩の発動だけ威力が落ちる
         const float normalSpeed = m_momentum->SpeedForLevel(MomentumLevel::Normal);
-        float ratio = 0.0f;
+        // 通常速度が 0 の壊れたデータでは比が作れない。1.0 は通常の段で当てたのと同じ
+        float ratio = 1.0f;
         if (normalSpeed > 0.0f)
-            ratio = impactSpeed / normalSpeed;
-        // 立ち止まりの発動は比が 0 になり、壊せず止めも揺れも出ない。下限で威力を支える
-        if (std::isfinite(m_powerFloorRatio) && ratio < m_powerFloorRatio)
-            ratio = m_powerFloorRatio;
+            ratio = m_momentum->SpeedForLevel(m_momentum->Level()) / normalSpeed;
         const float mass = hit->Mass();
         const float massFactor = mass / (mass + 1.0f);
 

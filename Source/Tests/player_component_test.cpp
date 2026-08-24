@@ -520,7 +520,6 @@ TEST_F(PlayerComponentTest, FallsBackToTheVelocityWithoutInputOrCamera)
     player.OnUpdate();
 
     ASSERT_TRUE(player.IsBodySlamming());
-    EXPECT_FLOAT_EQ(player.BodySlamEntrySpeed(), 5.0f);
     EXPECT_GT(player.Velocity().x, 15.0f);
     EXPECT_NEAR(player.Velocity().z, 0.0f, 1.0e-4f);
 }

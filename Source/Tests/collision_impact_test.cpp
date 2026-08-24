@@ -1187,7 +1187,6 @@ TEST(CollisionImpact, PowerFollowsMomentumLevelNotEntrySpeed)
     EXPECT_FLOAT_EQ(HorizontalSpeed(slow.movement->Velocity()), HorizontalSpeed(full.movement->Velocity()));
 }
 
-// 発動時速度 0 で威力が 0 になると、壊せず止めも揺れも出ず衝突が無かったように見える。比の下限を見張る
 TEST(CollisionImpact, StandingChargedSlamStillCarriesPower)
 {
     SceneNs::Scene scene;
@@ -1196,13 +1195,23 @@ TEST(CollisionImpact, StandingChargedSlamStillCarriesPower)
     EnableBreak(rig);
     rig.breakable->SetToughness(0.6f);
     SettleOnFloor(scene, rig);
+    rig.movement->SetVelocity(Vector3{0.0f, 0.0f, 0.0f});
     rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
     rig.movement->RequestBodySlam(1.0f);
     Step(scene, rig);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
-    EXPECT_GT(rig.impact->LastPower(), 0.0f);
     EXPECT_TRUE(rig.impact->DidBreak());
+
+    SceneNs::Scene runScene;
+    Rig run = BuildSlam(runScene, k_NearCourse);
+    SetInstantImpact(run);
+    EnableBreak(run);
+    run.breakable->SetToughness(0.6f);
+    BeginSlam(runScene, run, k_RunSpeed, 1.0f);
+    ASSERT_LT(StepUntilImpact(runScene, run, 30), 30);
+
+    EXPECT_FLOAT_EQ(rig.impact->LastPower(), run.impact->LastPower());
 }
 
 // 反発後の後ろ滑りなど残った速度が向きに勝つと狙いと食い違う方へ飛ぶ。入力が無い発動はカメラの前へ出す

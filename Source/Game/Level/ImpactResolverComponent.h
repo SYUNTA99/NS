@@ -89,7 +89,6 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_debrisCount, "破片の数")
         NS_REFLECT_FIELD(m_debrisSpeed, "破片の初速")
         NS_REFLECT_FIELD(m_debrisLifeSeconds, "破片の残る秒")
-        NS_REFLECT_FIELD(m_powerFloorRatio, "威力の下限比")
         NS_REFLECT_END()
 
     private:
@@ -145,8 +144,6 @@ namespace NS::Game::Level
         int m_debrisCount = 5;                   // 貫通した時に出す破片の数
         float m_debrisSpeed = 6.0f;              // 質量 1 の物を壊した時の破片の水平初速
         float m_debrisLifeSeconds = 8.0f; // 破片が止まってから消えるまでの秒。押し飛ばした配置物と違い破片は残さない
-        // 0.5 は歩き 4 ÷ 通常 8。立ち止まりの発動にも歩きで当てた程度の勢いを残す
-        float m_powerFloorRatio = 0.5f;
 
         int m_freezePendingSteps = 0;                                // 次の歩に掛ける凍結の歩数。0 は予約なし
         int m_hitStopRemaining = 0;                                  // 止まっている残り歩数。0 は止まっていない

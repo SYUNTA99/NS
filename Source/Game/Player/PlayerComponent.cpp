@@ -198,7 +198,6 @@ namespace NS::Game::Player
         dir.x /= length;
         dir.z /= length;
         m_bodySlamDir = dir;
-        m_bodySlamEntrySpeed = std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z);
         m_bodySlamCharge01 = m_bodySlamRequestCharge01;
         m_bodySlamIsTap = !(m_bodySlamRequestCharge01 > 0.0f);
         m_bodySlamTravelled = 0.0f;
@@ -289,7 +288,6 @@ namespace NS::Game::Player
         m_bodySlamIsTap = false;
         m_bodySlamRequestCharge01 = 0.0f;
         m_bodySlamCharge01 = 0.0f;
-        m_bodySlamEntrySpeed = 0.0f;
         m_bodySlamTravelled = 0.0f;
         m_bodySlamDistanceTarget = 0.0f;
         m_bodySlamStallSteps = 0;
