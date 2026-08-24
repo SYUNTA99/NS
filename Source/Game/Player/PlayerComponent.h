@@ -74,6 +74,8 @@ namespace NS::Game::Player
         static constexpr const char* k_BodySlamStateName = "BodySlam";
         //! 突進を終えた後に戻る状態の登録名
         static constexpr const char* k_IdleStateName = "Idle";
+        //! 縁にぶら下がっている状態の登録名
+        static constexpr const char* k_LedgeHangingStateName = "LedgeHanging";
 
         //! 体当たりの発動を要求する
         //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
@@ -175,6 +177,14 @@ namespace NS::Game::Player
         float m_bodySlamDistanceTarget = 0.0f;             // 突進を終える水平距離
         int m_bodySlamStallSteps = 0;                      // 進めなかった歩の連続数
         NS::Core::Vector3 m_bodySlamDir{0.0f, 0.0f, 0.0f}; // 突進の水平の向き。正規化済み
+
+        float m_ledgeTopY = 0.0f;                              // 掴んでいる縁の上端の y
+        NS::Core::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f}; // 掴んでいる面の外向き法線
+        float m_ledgeRegrabCooldown = 0.0f;                    // 再掴みを禁止する残り秒
+        float m_ledgeHangTimer = 0.0f;                         // 掴んでからの経過秒
+        NS::Core::Vector3 m_ledgeMantleStart{0.0f, 0.0f, 0.0f};
+        NS::Core::Vector3 m_ledgeMantleEnd{0.0f, 0.0f, 0.0f};
+        float m_ledgeMantleTimer = 0.0f; // よじ登りの経過秒
 
         // 最後に接地していた world 位置。縁を踏み外した直後はここが縁の位置になる
         NS::Core::Vector3 m_lastGroundedPosition{0.0f, 0.0f, 0.0f};

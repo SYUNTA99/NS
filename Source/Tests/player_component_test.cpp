@@ -45,6 +45,29 @@ namespace
         std::string m_current = PlayerComponent::k_IdleStateName;
     };
 
+    //! 中心 (cx,cy,cz) に置いた 1m 立方の固形 block
+    AABB MakeBlock(float cx, float cy, float cz)
+    {
+        return AABB{Vector3{cx, cy, cz}, Vector3{0.5f, 0.5f, 0.5f}};
+    }
+
+    //! 床を敷かない検証台。1 歩目から下降するので掴みの条件が立つ。block は呼び出し側が先に積む
+    PlayerComponent& MakeLedgeReady(GameObject& owner, NS::Physics::PhysicsWorld& world)
+    {
+        owner.AddComponent<NamedStateManager>();
+        auto& player = *owner.AddComponent<PlayerComponent>();
+
+        player.SetPhysicsWorld(&world);
+        player.SetDebugDrawEnabled(false);
+        player.OnStart();
+        return player;
+    }
+
+    [[nodiscard]] std::string_view CurrentStateName(GameObject& owner)
+    {
+        return owner.FindComponent<NamedStateManager>()->CurrentName();
+    }
+
     //! 床 1 枚を敷いて接地させた自機を返す。壁は呼び出し側が先に足す
     //! @details 状態管理を先に積むのは OnStart が同居から引き当てるため
     PlayerComponent& MakeSlamReady(GameObject& owner, NS::Physics::PhysicsWorld& world)
@@ -604,4 +627,103 @@ TEST_F(PlayerComponentTest, MatchesLegacyMovementStepForStep)
         ASSERT_EQ(fresh.Velocity().z, legacy.Velocity().z) << step;
         ASSERT_EQ(fresh.IsGrounded(), legacy.IsGrounded()) << step;
     }
+}
+
+TEST_F(PlayerComponentTest, GrabsLedgeWhenDescendingIntoEdge)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    EXPECT_NEAR(obj.Root().Position().x, -0.9f, 1e-3f);
+    EXPECT_NEAR(obj.Root().Position().y, 0.0f, 1e-3f);
+    EXPECT_FLOAT_EQ(player.Velocity().x, 0.0f);
+    EXPECT_FLOAT_EQ(player.Velocity().y, 0.0f);
+}
+
+TEST_F(PlayerComponentTest, DoesNotGrabWhileGrounded)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetGrounded(true);
+
+    EXPECT_FALSE(player.LedgeGrab());
+}
+
+TEST_F(PlayerComponentTest, DoesNotGrabWhileAscending)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetVelocity(Vector3{0.0f, 6.0f, 0.0f});
+    player.OnUpdate();
+
+    ASSERT_GT(player.Velocity().y, 0.0f);
+    EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+}
+
+TEST_F(PlayerComponentTest, DoesNotGrabWithoutForwardInput)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
+    player.OnUpdate();
+
+    EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+}
+
+// 手の高さの帯を外れた縁は掴まない。block 上端より 2m 高い所から前へ押しても素通りする
+TEST_F(PlayerComponentTest, DoesNotGrabOutsideTheHandBand)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 2.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+
+    EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+}
+
+// 登り先が別の block で塞がれた縁は掴まない。オーバーハングの下でぶら下がったまま出られなくなる
+TEST_F(PlayerComponentTest, DoesNotGrabWhenTheClimbTargetIsBlocked)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.AddAABB(MakeBlock(0.0f, 1.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+
+    EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
 }

@@ -7,10 +7,12 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
+#include "Runtime/Physics/PhysicsWorld.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <span>
 
 namespace
 {
@@ -28,6 +30,49 @@ namespace
     // 1 歩で打ち切ると衝突を裁く側が突進を見る前に終わるため、壁に押し付けられた歩を 2 回数える
     constexpr float k_BodySlamStallDistance = 1e-4f;
     constexpr int k_BodySlamMaxStallSteps = 2;
+
+    // capsule 上端を手とみなし、block 上端との高さ差の許容下幅 / 上幅で単位は m。この帯に block 上端が
+    // 入ると掴める。実機で触って詰める初期値
+    constexpr float k_LedgeGrabBandLow = 0.5f;
+    constexpr float k_LedgeGrabBandHigh = 0.5f;
+    // capsule 表面から前方へ手を伸ばす追加距離で単位は m
+    constexpr float k_LedgeReach = 0.3f;
+    // よじ登りで面の内側へ押し込む余白で単位は m。2*radius に上乗せして上面へ確実に乗せる
+    constexpr float k_LedgeMantleInset = 0.1f;
+    // よじ登りの後に block 上面から浮かせる安全マージンで単位は m
+    constexpr float k_LedgeMantleLift = 0.02f;
+    // よじ登りと手放しを起こす掴まり中の前後入力のしきい値
+    constexpr float k_LedgeInputThreshold = 0.5f;
+    // 前入力での自動登りを許すまでの最小ぶら下がり時間で単位は s。壁に向かう入力のまま即登り切って
+    // 掴まりが見えない問題を防ぐ。ジャンプと手放しはこの待ちを受けない
+    constexpr float k_LedgeMinHangTime = 0.3f;
+    // ぶら下がりから上面へよじ登る所要時間で単位は s。瞬間移動を避けて登りを視認できるようにする
+    constexpr float k_LedgeMantleDuration = 0.25f;
+    // 縁に沿った左右移動の速度と入力の遊び。速度の単位は m/s
+    constexpr float k_LedgeShimmySpeed = 2.0f;
+    constexpr float k_LedgeShimmyDeadzone = 0.3f;
+    // シミーの継続判定で同じ高さの縁とみなす上端の許容差で単位は m
+    constexpr float k_LedgeContinueTopTol = 0.1f;
+    // 手放しで面法線方向へ離す距離と初速で、単位はそれぞれ m と m/s
+    constexpr float k_LedgeDropOutward = 0.2f;
+    constexpr float k_LedgeDropOutwardSpeed = 2.0f;
+    // 手放しとよじ登りの直後に再掴みを禁止する時間で単位は s。放しても入力を倒し続けた時の即再掴みを防ぐ
+    constexpr float k_LedgeRegrabCooldownTime = 0.3f;
+
+    // 掴まりの走査が借りる AABB 群。world 未設定なら空を返すので、掴めないだけで落ちない
+    [[nodiscard]] std::span<const NS::Core::AABB> WorldAabbs(const NS::Physics::PhysicsWorld* world) noexcept
+    {
+        if (world == nullptr)
+            return {};
+        return std::span<const NS::Core::AABB>(world->Aabbs());
+    }
+
+    [[nodiscard]] bool AabbContainsPoint(const NS::Core::AABB& box, const NS::Core::Vector3& p) noexcept
+    {
+        return p.x >= box.Center.x - box.Extents.x && p.x <= box.Center.x + box.Extents.x &&
+               p.y >= box.Center.y - box.Extents.y && p.y <= box.Center.y + box.Extents.y &&
+               p.z >= box.Center.z - box.Extents.z && p.z <= box.Center.z + box.Extents.z;
+    }
 } // namespace
 
 namespace NS::Game::Player
@@ -226,6 +271,11 @@ namespace NS::Game::Player
         m_coyoteTimer = 0.0f;
         m_bufferTimer = 0.0f;
         SetGrounded(false);
+        m_ledgeTopY = 0.0f;
+        m_ledgeFaceNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_ledgeRegrabCooldown = 0.0f;
+        m_ledgeHangTimer = 0.0f;
+        m_ledgeMantleTimer = 0.0f;
         m_lastGroundedPosition = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         m_coyoteJumpMarkers.clear();
         m_bodySlamBufferRemaining = 0.0f;
@@ -255,6 +305,9 @@ namespace NS::Game::Player
 
     void PlayerComponent::TickTimers(float dt) noexcept
     {
+        if (m_ledgeRegrabCooldown > 0.0f)
+            m_ledgeRegrabCooldown -= dt;
+
         m_bufferTimer -= dt;
         if (m_jumpPressedThisFrame)
             m_bufferTimer = Stats().jumpBufferTime;
@@ -341,7 +394,92 @@ namespace NS::Game::Player
 
     bool PlayerComponent::LedgeGrab() noexcept
     {
-        // TODO: 縁の探索は掴まりを移す時に足す。今はどこでも掴めない
+        // 空中で下降中、かつ前入力がある時だけ掴む。再掴み禁止の間は無効
+        if (m_ledgeRegrabCooldown > 0.0f || IsGrounded() || VerticalVelocity() > 0.0f)
+            return false;
+        if (m_desiredSpeedScale <= Stats().stickDeadzone)
+            return false;
+
+        NS::Core::Vector3 dir{m_desiredDir.x, 0.0f, m_desiredDir.z};
+        const float dirLen = std::sqrt(dir.x * dir.x + dir.z * dir.z);
+        if (dirLen < 1e-4f)
+            return false;
+        dir.x /= dirLen;
+        dir.z /= dirLen;
+
+        // 手の高さ = capsule 上端。そこから前方へ伸ばした probe 点が block の XZ 内に入り、
+        // かつ block 上端が手の高さの帯に収まれば縁とみなす
+        const NS::Core::Vector3 pos = RootTransform().Position();
+        const float handY = pos.y + CapsuleHalfHeight();
+        const NS::Core::Vector3 probe{
+            pos.x + dir.x * (CapsuleRadius() + k_LedgeReach),
+            handY,
+            pos.z + dir.z * (CapsuleRadius() + k_LedgeReach),
+        };
+
+        for (const NS::Core::AABB& box : WorldAabbs(PhysicsWorld()))
+        {
+            const float top = box.Center.y + box.Extents.y;
+            if (top < handY - k_LedgeGrabBandLow || top > handY + k_LedgeGrabBandHigh)
+                continue;
+            if (probe.x < box.Center.x - box.Extents.x || probe.x > box.Center.x + box.Extents.x)
+                continue;
+            if (probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z)
+                continue;
+
+            // 接近軸の優勢成分で掴む手前面を決め、その外側に capsule を寄せた hang 位置を出す
+            NS::Core::Vector3 faceNormal{0.0f, 0.0f, 0.0f};
+            NS::Core::Vector3 hang = pos;
+            if (std::abs(dir.x) >= std::abs(dir.z))
+            {
+                float sgn = -1.0f;
+                if (dir.x >= 0.0f)
+                    sgn = 1.0f;
+                const float faceX = box.Center.x - sgn * box.Extents.x;
+                faceNormal = NS::Core::Vector3{-sgn, 0.0f, 0.0f};
+                hang.x = faceX - sgn * CapsuleRadius();
+                hang.z = NS::Core::Clamp(pos.z, box.Center.z - box.Extents.z, box.Center.z + box.Extents.z);
+            }
+            else
+            {
+                float sgn = -1.0f;
+                if (dir.z >= 0.0f)
+                    sgn = 1.0f;
+                const float faceZ = box.Center.z - sgn * box.Extents.z;
+                faceNormal = NS::Core::Vector3{0.0f, 0.0f, -sgn};
+                hang.z = faceZ - sgn * CapsuleRadius();
+                hang.x = NS::Core::Clamp(pos.x, box.Center.x - box.Extents.x, box.Center.x + box.Extents.x);
+            }
+            hang.y = top - CapsuleHalfHeight();
+
+            // 上面手前の登り先が別 block で塞がっているなら縁ではない。掴まない
+            const float mantleStep = 2.0f * CapsuleRadius() + k_LedgeMantleInset;
+            const NS::Core::Vector3 mantleCheck{
+                hang.x - faceNormal.x * mantleStep,
+                top + CapsuleHalfHeight(),
+                hang.z - faceNormal.z * mantleStep,
+            };
+            bool blocked = false;
+            for (const NS::Core::AABB& other : WorldAabbs(PhysicsWorld()))
+            {
+                if (AabbContainsPoint(other, mantleCheck))
+                {
+                    blocked = true;
+                    break;
+                }
+            }
+            if (blocked)
+                continue;
+
+            RootTransform().SetPosition(hang);
+            SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+            m_ledgeTopY = top;
+            m_ledgeFaceNormal = faceNormal;
+            m_ledgeHangTimer = 0.0f;
+            if (m_stateManager != nullptr)
+                m_stateManager->ChangeByName(k_LedgeHangingStateName);
+            return true;
+        }
         return false;
     }
 
