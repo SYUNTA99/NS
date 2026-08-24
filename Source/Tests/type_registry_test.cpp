@@ -72,7 +72,6 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
         "PlacedVirtualCamera",
         "CameraBrainComponent",
         "ThirdPersonFollowComponent",
-        "CharacterMovementComponent",
         "PlayerComponent",
         "PlayerInputComponent",
         "PlayerStateManagerComponent",
@@ -135,17 +134,17 @@ TEST(TypeRegistryTest, GameObjectClassIsNotAComponent)
 TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 {
     EXPECT_TRUE(IsRegistered("BoxColliderComponent"));
-    EXPECT_TRUE(IsRegistered("CharacterMovementComponent"));
+    EXPECT_TRUE(IsRegistered("PlayerComponent"));
     EXPECT_FALSE(IsRegistered("Bogus"));
 }
 
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 29u);
+    EXPECT_EQ(names.size(), 28u);
     EXPECT_TRUE(Contains(names, "BoxColliderComponent"));
     EXPECT_TRUE(Contains(names, "MeshRendererComponent"));
-    EXPECT_TRUE(Contains(names, "CharacterMovementComponent"));
+    EXPECT_TRUE(Contains(names, "PlayerComponent"));
     // パレット表示が実行ごとに揺れないよう名前順に揃えてある
     EXPECT_TRUE(std::is_sorted(names.begin(), names.end()));
 }
@@ -161,11 +160,6 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
         {"CameraBrainComponent", {"ブレンド秒数"}},
         {"CameraComponent", {}},
         {"CapsuleColliderComponent", {"半径", "半分の高さ", "中心オフセット", "回転 (度)"}},
-        {"CharacterMovementComponent",
-         {"ジャンプ初速",       "上昇重力",     "下降重力",   "頂点滞空 Vy",        "頂点滞空倍率", "ジャンプ離し倍率",
-          "コヨーテ時間",       "先行入力時間", "歩き速度",   "加速時定数",         "減速時定数",   "スティック遊び",
-          "突進速度",           "突進距離",     "タップ初速", "タップの上向き初速", "タップ距離",   "カプセル半径",
-          "カプセル半分の高さ", "デバッグ表示", "状態一覧"}},
         {"CollisionInputComponent",
          {"チャージしきい値秒",
           "チャージ満タン秒",
@@ -292,7 +286,6 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
         {"CameraBrainComponent", {}},
         {"CameraComponent", {}},
         {"CapsuleColliderComponent", {"ColliderComponent"}},
-        {"CharacterMovementComponent", {}},
         {"CollisionInputComponent", {}},
         {"DirectionalLightComponent", {}},
         {"HazardComponent", {}},

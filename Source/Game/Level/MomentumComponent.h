@@ -20,7 +20,7 @@ namespace NS::Game::Level
     };
 
     //! @brief 走行時間で最高速度を 3 段に上げる Component
-    //! @details 段は MovementState と独立で、状態機械の状態にはしない
+    //! @details 段は自機の状態と独立で、状態機械の状態にはしない
     //! 帯は Update より前。PlayerComponent が動く前にその固定ステップの最高速度を決める
     //! 昇格に使う入力は走行入力だけ
     //! 依存: NS::Game::Player::PlayerComponent
