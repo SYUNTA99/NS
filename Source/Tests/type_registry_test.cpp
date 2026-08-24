@@ -111,6 +111,9 @@ TEST(TypeRegistryTest, ExcludedTypesReturnNull)
     EXPECT_EQ(CreateComponent("VirtualCameraComponent", obj), nullptr);
     EXPECT_EQ(CreateComponent("ColliderComponent", obj), nullptr);
     EXPECT_EQ(CreateComponent("TransformComponent", obj), nullptr);
+    EXPECT_EQ(CreateComponent("EntityComponent", obj), nullptr);
+    EXPECT_EQ(CreateComponent("EntityStateManagerComponent", obj), nullptr);
+    EXPECT_EQ(CreateComponent("EntityStatsManagerComponent", obj), nullptr);
     EXPECT_EQ(obj.Components().size(), before);
 }
 
