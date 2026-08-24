@@ -1,4 +1,5 @@
 #include <Game/Entity/EntityStatsManagerComponent.h>
+#include <Game/Player/PlayerStats.h>
 #include <Runtime/Object/GameObject.h>
 #include <gtest/gtest.h>
 
@@ -7,11 +8,6 @@
 
 namespace
 {
-    struct FakeStats
-    {
-        float walkSpeed = 4.0f;
-    };
-
     //! 基底だけを見るための最小の派生。組を型付きの配列で持つ形をそのまま写している
     template <std::size_t N> class FakeStatsManager final : public NS::Game::Entity::EntityStatsManagerComponent
     {
@@ -24,7 +20,7 @@ namespace
         void OnStatsChanged() noexcept override { ++m_changedCount; }
 
     private:
-        std::array<FakeStats, N> m_sets{};
+        std::array<NS::Game::Player::PlayerStats, N> m_sets{};
         int m_changedCount = 0;
     };
 
