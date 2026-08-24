@@ -8,11 +8,11 @@
 #include <Game/Level/ImpactResolverComponent.h>
 #include <Game/Level/LaunchedBodyComponent.h>
 #include <Game/Level/MomentumComponent.h>
+#include <Game/Player/PlayerComponent.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/CameraBrainComponent.h>
-#include <Game/Player/PlayerComponent.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/Components/PlayerInputComponent.h>
@@ -167,10 +167,23 @@ namespace
         field->set(&comp, &value);
     }
 
+    void SetBoolField(SceneNs::Component& comp, std::string_view label, bool value)
+    {
+        const SceneNs::FieldDesc* field = SceneNs::FindField(comp.GetReflection(), label);
+        ASSERT_NE(field, nullptr);
+        field->set(&comp, &value);
+    }
+
     // ヒットストップを 0 にして、衝突の結果をその歩のうちに適用させる
     void SetInstantImpact(Rig& rig)
     {
         SetFloatField(*rig.impact, "ヒットストップ基準秒", 0.0f);
+    }
+
+    // 破壊は既定で止まっている。壊れる側を見る検証台は欄を立ててから当てる
+    void EnableBreak(const Rig& rig)
+    {
+        SetBoolField(*rig.impact, "破壊を許可", true);
     }
 
     // 空中でも出せるが、落下が混ざると当たる歩が揺れる。先に床へ着けて接地からの発動に揃える
@@ -875,10 +888,51 @@ TEST(CollisionImpact, SquashLeavesPositionAndPhysicsAlone)
 }
 
 // 耐久が最終威力以下なら壊して貫通する。当たりだけ外れて配置物は残る
+// 耐久 0 の最も脆い相手へ最大の勢いで当てても壊れない。壊れて消えると重さが飛距離に出ない
+TEST(CollisionImpact, BreakIsOffByDefault)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    SetInstantImpact(rig);
+    rig.breakable->SetToughness(0.0f);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    BeginSlam(scene, rig, k_MaxDashSpeed, 1.0f);
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+
+    EXPECT_FALSE(rig.impact->DidBreak());
+    EXPECT_TRUE(rig.impact->DidRebound());
+    EXPECT_TRUE(rig.breakable->IsActiveSelf());
+    EXPECT_TRUE(DebrisBodies(scene).empty());
+    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    ASSERT_NE(body, nullptr);
+    EXPECT_TRUE(body->IsFlying());
+}
+
+// 戻し口は欄 1 つ。立てれば耐久と威力の比較がそのまま効く
+TEST(CollisionImpact, BreakFieldReenablesBreaking)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
+    EnableBreak(rig);
+    rig.breakable->SetToughness(0.0f);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
+    BeginSlam(scene, rig, k_MaxDashSpeed, 1.0f);
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+
+    EXPECT_TRUE(rig.impact->DidBreak());
+    EXPECT_FALSE(rig.impact->DidRebound());
+    EXPECT_FALSE(rig.breakable->IsActiveSelf());
+    EXPECT_FALSE(rig.targetBox->IsActiveSelf());
+}
+
 TEST(CollisionImpact, MaxDashBreaksThroughSoftTarget)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
     rig.breakable->SetToughness(1.0f);
     const std::size_t aabbs = scene.Physics().Aabbs().size();
     rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
@@ -906,6 +960,7 @@ TEST(CollisionImpact, BreakKeepsLevel)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
     rig.breakable->SetToughness(1.0f);
     rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
     BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
@@ -923,6 +978,7 @@ TEST(CollisionImpact, MaxDashReboundsOffToughTarget)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
     rig.breakable->SetToughness(99.0f);
     rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
     BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
@@ -943,6 +999,7 @@ TEST(CollisionImpact, DashHitAtStartCannotBreakToughTwo)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
     rig.breakable->SetToughness(2.0f);
     rig.momentum->SetLevel(LevelNs::MomentumLevel::Dash);
     BeginSlam(scene, rig, k_DashSpeed, 0.0f);
@@ -958,6 +1015,7 @@ TEST(CollisionImpact, ChargedPeakBeatsMaxDashPlainHit)
 {
     SceneNs::Scene chargedScene;
     Rig charged = BuildSlam(chargedScene, k_PeakCourse);
+    EnableBreak(charged);
     charged.breakable->SetToughness(2.0f);
     charged.momentum->SetLevel(LevelNs::MomentumLevel::Dash);
     BeginSlam(chargedScene, charged, k_DashSpeed, 1.0f);
@@ -965,6 +1023,7 @@ TEST(CollisionImpact, ChargedPeakBeatsMaxDashPlainHit)
 
     SceneNs::Scene plainScene;
     Rig plain = BuildSlam(plainScene, k_NearCourse);
+    EnableBreak(plain);
     plain.breakable->SetToughness(2.0f);
     plain.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
     BeginSlam(plainScene, plain, k_MaxDashSpeed, 0.0f);
@@ -1057,6 +1116,7 @@ TEST(CollisionImpact, StandingChargedSlamStillCarriesPower)
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     SetInstantImpact(rig);
+    EnableBreak(rig);
     rig.breakable->SetToughness(0.6f);
     SettleOnFloor(scene, rig);
     rig.movement->SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
@@ -1124,6 +1184,7 @@ TEST(CollisionImpact, BrokenTargetIsIgnoredAfterwards)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
     rig.breakable->SetToughness(1.0f);
     rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
     BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
@@ -1145,6 +1206,7 @@ TEST(CollisionImpact, BreakDoesNotLaunchTarget)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
     rig.breakable->SetToughness(1.0f);
     rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
     BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
@@ -1163,6 +1225,7 @@ TEST(CollisionImpact, BreakStopZeroAppliesInstantly)
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
+    EnableBreak(rig);
     rig.breakable->SetToughness(1.0f);
     rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
     BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
@@ -1196,6 +1259,7 @@ TEST(CollisionImpact, BreakSkipsSquashButStretchesForward)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
     rig.breakable->SetToughness(1.0f);
     const Vector3 authored = rig.movement->Owner()->Root().Scale();
     rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
@@ -1413,6 +1477,7 @@ TEST(CollisionImpact, BreakScattersDebrisAndLeavesMark)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     rig.breakable->SetToughness(1.0f);
     rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
@@ -1442,6 +1507,7 @@ TEST(CollisionImpact, DebrisScatterDirectionsDifferButShareSpeed)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     rig.breakable->SetToughness(1.0f);
     rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
@@ -1463,6 +1529,7 @@ TEST(CollisionImpact, DebrisScatterIsDeterministic)
 {
     SceneNs::Scene firstScene;
     Rig first = BuildSlam(firstScene, k_NearCourse);
+    EnableBreak(first);
     SetFloatField(*first.impact, "貫通の止め秒", 0.0f);
     first.breakable->SetToughness(1.0f);
     first.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
@@ -1471,6 +1538,7 @@ TEST(CollisionImpact, DebrisScatterIsDeterministic)
 
     SceneNs::Scene secondScene;
     Rig second = BuildSlam(secondScene, k_NearCourse);
+    EnableBreak(second);
     SetFloatField(*second.impact, "貫通の止め秒", 0.0f);
     second.breakable->SetToughness(1.0f);
     second.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
@@ -1496,6 +1564,7 @@ TEST(CollisionImpact, HeavierTargetScattersSlowerDebris)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
     rig.breakable->SetMass(4.0f);
     rig.breakable->SetToughness(1.0f);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
@@ -1533,6 +1602,7 @@ TEST(CollisionImpact, ZeroDebrisCountScattersNone)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
     SetIntField(*rig.impact, "破片の数", 0);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     rig.breakable->SetToughness(1.0f);
@@ -1569,6 +1639,7 @@ TEST(CollisionImpact, DebrisLooksLikeSmallCube)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     rig.breakable->SetToughness(1.0f);
     rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
@@ -1592,6 +1663,7 @@ TEST(CollisionImpact, DebrisRestsThenExpires)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     SetFloatField(*rig.impact, "破片の初速", 1.0f);
     SetFloatField(*rig.impact, "破片の残る秒", 0.05f);
@@ -1634,6 +1706,7 @@ TEST(CollisionImpact, DebrisWaitForRelease)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
     rig.breakable->SetToughness(1.0f);
     rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
     BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);

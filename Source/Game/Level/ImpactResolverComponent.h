@@ -82,6 +82,7 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_squashThickness, "潰れの厚み")
         NS_REFLECT_FIELD(m_squashHeight, "潰れの伸び上がり")
         NS_REFLECT_FIELD(m_stretchAlong, "弾け伸びの倍率")
+        NS_REFLECT_FIELD(m_breakEnabled, "破壊を許可")
         NS_REFLECT_FIELD(m_breakSpeedScale, "貫通時の減速倍率")
         NS_REFLECT_FIELD(m_breakStopSeconds, "貫通の止め秒")
         NS_REFLECT_FIELD(m_debrisCount, "破片の数")
@@ -135,10 +136,12 @@ namespace NS::Game::Level
         float m_squashThickness = 0.7f;            // 凍結中の進行方向の厚みの倍率
         float m_squashHeight = 1.1f;               // 凍結中の高さの倍率
         float m_stretchAlong = 1.2f;               // 解放の歩の弾かれる方向の倍率
-        float m_breakSpeedScale = 0.75f;           // 貫通した直後に速度へ掛ける倍率
-        float m_breakStopSeconds = 4.0f / 60.0f;   // 貫通の瞬間に止める秒。4 歩ぶん
-        int m_debrisCount = 5;                     // 貫通した時に出す破片の数
-        float m_debrisSpeed = 6.0f;                // 質量 1 の物を壊した時の破片の水平初速
+        // 既定は壊さない。壊れて消えると重さが飛距離に出ず、押し飛ばしと反発だけを先に詰められない
+        bool m_breakEnabled = false;
+        float m_breakSpeedScale = 0.75f;         // 貫通した直後に速度へ掛ける倍率
+        float m_breakStopSeconds = 4.0f / 60.0f; // 貫通の瞬間に止める秒。4 歩ぶん
+        int m_debrisCount = 5;                   // 貫通した時に出す破片の数
+        float m_debrisSpeed = 6.0f;              // 質量 1 の物を壊した時の破片の水平初速
         float m_debrisLifeSeconds = 8.0f; // 破片が止まってから消えるまでの秒。押し飛ばした配置物と違い破片は残さない
         // 0.5 は歩き 4 ÷ 通常 8。立ち止まりの発動にも歩きで当てた程度の勢いを残す
         float m_powerFloorRatio = 0.5f;

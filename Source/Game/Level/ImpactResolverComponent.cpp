@@ -257,8 +257,9 @@ namespace NS::Game::Level
 
         // 最高ダッシュ限定の破壊条件は外した。耐久 ≤ 最終威力で壊れないと、
         // ダッシュ + ピークが最高ダッシュ + 素を上回る逆転が成立しない
+        // 欄を下ろしている間は耐久を見ない。壊れる相手も押し飛ばしと反発へ回る
         int stopSteps = 0;
-        if (hit->Toughness() <= power)
+        if (m_breakEnabled && hit->Toughness() <= power)
         {
             m_pendingBreak = true;
             // 向きを保ったまま減速する。倍率は相手の質量に依らない

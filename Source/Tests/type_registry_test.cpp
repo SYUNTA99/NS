@@ -191,6 +191,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "潰れの厚み",
           "潰れの伸び上がり",
           "弾け伸びの倍率",
+          "破壊を許可",
           "貫通時の減速倍率",
           "貫通の止め秒",
           "破片の数",
