@@ -179,6 +179,39 @@ namespace NS::Game::Player
         return true;
     }
 
+    void PlayerComponent::UpdateBodySlam(float dt) noexcept
+    {
+        // 突進中に向きを変えられると当てる間合いを詰める意味が消えるので、水平は発動時の値で書き直す
+        if (!m_bodySlamIsTap)
+        {
+            SetLateralVelocity(NS::Core::Vector3{
+                m_bodySlamDir.x * Stats().bodySlamSpeed, 0.0f, m_bodySlamDir.z * Stats().bodySlamSpeed});
+        }
+
+        Gravity(dt);
+        Move(dt);
+        SyncGroundState();
+
+        // 進んだ距離は基底が控えた実移動から測る。速度から積むと壁で止められた歩も進んだ扱いになる
+        const NS::Core::Vector3 delta = PositionDelta();
+        const float stepDistance = std::sqrt(delta.x * delta.x + delta.z * delta.z);
+        m_bodySlamTravelled += stepDistance;
+
+        // 壁で止められると距離が減らず突進から出られなくなるため、進めない歩が続いたら打ち切る
+        if (stepDistance < k_BodySlamStallDistance)
+            ++m_bodySlamStallSteps;
+        else
+            m_bodySlamStallSteps = 0;
+
+        if (m_bodySlamTravelled >= m_bodySlamDistanceTarget || m_bodySlamStallSteps >= k_BodySlamMaxStallSteps)
+        {
+            m_bodySlamTravelled = 0.0f;
+            m_bodySlamDistanceTarget = 0.0f;
+            if (m_stateManager != nullptr)
+                m_stateManager->ChangeByName(k_IdleStateName);
+        }
+    }
+
     void PlayerComponent::ResetState() noexcept
     {
         SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
@@ -371,8 +404,9 @@ namespace NS::Game::Player
                 m_bodySlamBufferRemaining = 0.0f;
         }
 
-        // TODO: 突進の 1 歩を足すまでの仮。通常移動を走らせると発動時の速度が上書きされる
-        if (!IsBodySlamming())
+        if (IsBodySlamming())
+            UpdateBodySlam(dt);
+        else
             StepLocomotion(dt);
 
         // 1 歩限りの入力の消費は、どの状態でも通るここで行う

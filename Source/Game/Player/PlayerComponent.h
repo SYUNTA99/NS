@@ -97,6 +97,9 @@ namespace NS::Game::Player
         //! @details 向きは 入力の水平 → カメラの水平前方 → 現在速度の水平 の順で解決する
         [[nodiscard]] bool BodySlam() noexcept;
 
+        //! 突進の 1 歩を進める。距離を使い切るか進めない歩が続くと通常移動へ戻す
+        void UpdateBodySlam(float dt) noexcept;
+
         // 移動の 1 歩を作る動詞。呼ぶ順序がそのまま手触りになる
         //! 先行入力とコヨーテ猶予のタイマーを 1 歩進める
         void TickTimers(float dt) noexcept;

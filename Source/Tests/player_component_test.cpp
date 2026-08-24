@@ -414,6 +414,151 @@ TEST_F(PlayerComponentTest, NonFiniteChargeIsTreatedAsTap)
     EXPECT_LT(player.Velocity().x, 15.0f);
 }
 
+// 突進中に曲がれると当てる間合いを詰める意味が消える
+TEST_F(PlayerComponentTest, RushIgnoresDirectionInput)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    for (int i = 0; i < 3; ++i)
+        player.OnUpdate();
+
+    ASSERT_TRUE(player.IsBodySlamming());
+    EXPECT_GT(player.Velocity().x, 15.0f);
+    EXPECT_NEAR(player.Velocity().z, 0.0f, 1.0e-4f);
+}
+
+TEST_F(PlayerComponentTest, RushEndsAfterTheRushDistance)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    const float startX = obj.Root().Position().x;
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    int steps = 0;
+    while (player.IsBodySlamming() && steps < 120)
+    {
+        player.OnUpdate();
+        ++steps;
+    }
+
+    EXPECT_LT(steps, 120);
+    EXPECT_GT(obj.Root().Position().x - startX, 5.0f);
+}
+
+// 壁で止められると距離が減らず突進から出られなくなる。進めない歩が続いたら打ち切る
+TEST_F(PlayerComponentTest, RushEndsWhenTheWallStopsIt)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(AABB{Vector3{2.0f, 1.0f, 0.0f}, Vector3{0.5f, 2.0f, 8.0f}});
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    int steps = 0;
+    while (player.IsBodySlamming() && steps < 120)
+    {
+        player.OnUpdate();
+        ++steps;
+    }
+
+    EXPECT_LT(steps, 18);
+    EXPECT_LT(obj.Root().Position().x, 2.0f);
+}
+
+// 短押しは隙の小さい移動技。突進より短い距離で終わる
+TEST_F(PlayerComponentTest, TapHopEndsAfterTheShortDistance)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    const float startX = obj.Root().Position().x;
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    int steps = 0;
+    while (player.IsBodySlamming() && steps < 120)
+    {
+        player.OnUpdate();
+        ++steps;
+    }
+
+    EXPECT_LT(steps, 120);
+    const float travelled = obj.Root().Position().x - startX;
+    EXPECT_GT(travelled, 1.5f);
+    EXPECT_LT(travelled, 3.0f);
+}
+
+TEST_F(PlayerComponentTest, ProgressRisesThenCancelResets)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    EXPECT_FLOAT_EQ(player.BodySlamProgress01(), 0.0f);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    float previous = player.BodySlamProgress01();
+    for (int i = 0; i < 5; ++i)
+    {
+        player.OnUpdate();
+        const float now = player.BodySlamProgress01();
+        EXPECT_GT(now, previous);
+        previous = now;
+    }
+
+    player.CancelBodySlam();
+    EXPECT_FALSE(player.IsBodySlamming());
+    EXPECT_FLOAT_EQ(player.BodySlamProgress01(), 0.0f);
+}
+
+// 突進中の押しをその歩で捨てると連打が取りこぼされる。突進明けの歩で消費する
+TEST_F(PlayerComponentTest, BufferedRequestFiresWhenTheRushEnds)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+    ASSERT_FLOAT_EQ(player.BodySlamCharge01(), 0.0f);
+
+    for (int i = 0; i < 8; ++i)
+        player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+    player.RequestBodySlam(1.0f);
+
+    for (int i = 0; i < 120 && player.BodySlamCharge01() < 1.0f; ++i)
+        player.OnUpdate();
+
+    EXPECT_TRUE(player.IsBodySlamming());
+    EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 1.0f);
+}
+
 // 動詞へ割った 1 歩が現行と 1 ビットも違わないことを見張る。値だけの検証は呼ぶ順序の入れ替えを拾えない
 TEST_F(PlayerComponentTest, MatchesLegacyMovementStepForStep)
 {
