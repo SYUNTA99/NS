@@ -7,6 +7,8 @@
 #include <Runtime/Physics/PhysicsWorld.h>
 #include <gtest/gtest.h>
 
+#include <cmath>
+
 namespace
 {
     using NS::Core::AABB;
@@ -146,4 +148,107 @@ TEST_F(EntityComponentTest, MoveWithoutPhysicsWorldAdvancesByVelocity)
     EXPECT_NEAR(pos.y, 5.0f, 1e-5f);
     EXPECT_NEAR(pos.z, -3.0f * k_FixedDt, 1e-5f);
     EXPECT_FALSE(entity.IsGrounded());
+}
+
+TEST_F(EntityComponentTest, AccelerateMatchesFirstOrderLag)
+{
+    GameObject obj;
+    auto& entity = *obj.AddComponent<BareEntity>();
+
+    entity.Accelerate(Vector3{4.0f, 0.0f, 0.0f}, 0.1f, k_FixedDt);
+
+    const float expected = 4.0f * (1.0f - std::exp(-k_FixedDt / 0.1f));
+    EXPECT_NEAR(entity.Velocity().x, expected, 1e-6f);
+    EXPECT_FLOAT_EQ(entity.Velocity().z, 0.0f);
+}
+
+TEST_F(EntityComponentTest, AccelerateKeepsVerticalVelocity)
+{
+    GameObject obj;
+    auto& entity = *obj.AddComponent<BareEntity>();
+    entity.SetVelocity(Vector3{0.0f, -9.0f, 0.0f});
+
+    entity.Accelerate(Vector3{4.0f, 123.0f, 0.0f}, 0.1f, k_FixedDt);
+
+    EXPECT_FLOAT_EQ(entity.VerticalVelocity(), -9.0f);
+}
+
+TEST_F(EntityComponentTest, AccelerateWithNonPositiveTauSnapsToTarget)
+{
+    GameObject obj;
+    auto& entity = *obj.AddComponent<BareEntity>();
+
+    entity.Accelerate(Vector3{4.0f, 0.0f, -2.0f}, 0.0f, k_FixedDt);
+
+    EXPECT_FLOAT_EQ(entity.Velocity().x, 4.0f);
+    EXPECT_FLOAT_EQ(entity.Velocity().z, -2.0f);
+}
+
+// 減速は目標 0 の加速と同じ式。別の式に分かれると調整値の意味が 2 つになる
+TEST_F(EntityComponentTest, DecelerateEqualsAccelerateTowardZero)
+{
+    GameObject obj;
+    auto& entity = *obj.AddComponent<BareEntity>();
+    entity.SetVelocity(Vector3{6.0f, 1.0f, -8.0f});
+
+    GameObject other;
+    auto& reference = *other.AddComponent<BareEntity>();
+    reference.SetVelocity(Vector3{6.0f, 1.0f, -8.0f});
+
+    entity.Decelerate(0.1f, k_FixedDt);
+    reference.Accelerate(Vector3{0.0f, 0.0f, 0.0f}, 0.1f, k_FixedDt);
+
+    EXPECT_FLOAT_EQ(entity.Velocity().x, reference.Velocity().x);
+    EXPECT_FLOAT_EQ(entity.Velocity().z, reference.Velocity().z);
+    EXPECT_FLOAT_EQ(entity.VerticalVelocity(), 1.0f);
+}
+
+TEST_F(EntityComponentTest, GravityChangesOnlyVerticalVelocity)
+{
+    GameObject obj;
+    auto& entity = *obj.AddComponent<BareEntity>();
+    entity.SetVelocity(Vector3{3.0f, 0.0f, 4.0f});
+
+    entity.Gravity(-25.0f, k_FixedDt);
+
+    EXPECT_FLOAT_EQ(entity.Velocity().x, 3.0f);
+    EXPECT_FLOAT_EQ(entity.Velocity().z, 4.0f);
+    EXPECT_NEAR(entity.VerticalVelocity(), -25.0f * k_FixedDt, 1e-6f);
+}
+
+TEST_F(EntityComponentTest, PositionDeltaMatchesActualMovement)
+{
+    GameObject obj;
+    auto& entity = *obj.AddComponent<BareEntity>();
+    obj.Root().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
+    entity.SetVelocity(Vector3{2.0f, 0.0f, -3.0f});
+
+    const Vector3 before = obj.Root().Position();
+    entity.Move(k_FixedDt);
+    const Vector3 after = obj.Root().Position();
+
+    EXPECT_FLOAT_EQ(entity.PositionDelta().x, after.x - before.x);
+    EXPECT_FLOAT_EQ(entity.PositionDelta().y, after.y - before.y);
+    EXPECT_FLOAT_EQ(entity.PositionDelta().z, after.z - before.z);
+}
+
+// 突進の進み具合は狙いの速度でなく実移動で測る。壁に押し付けられた歩は両者が食い違う
+TEST_F(EntityComponentTest, PositionDeltaIsNearZeroWhenBlockedByWall)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(AABB{Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.5f, 4.0f, 4.0f}});
+    world.BuildBroadphase();
+
+    auto& entity = *obj.AddComponent<BareEntity>();
+    entity.SetPhysicsWorld(&world);
+    obj.Root().SetPosition(Vector3{0.0f, 0.0f, 0.0f});
+    entity.SetVelocity(Vector3{50.0f, 0.0f, 0.0f});
+
+    const Vector3 before = obj.Root().Position();
+    entity.Move(k_FixedDt);
+    const Vector3 after = obj.Root().Position();
+
+    EXPECT_FLOAT_EQ(entity.PositionDelta().x, after.x - before.x);
+    EXPECT_LT(entity.PositionDelta().x, 0.2f);
 }

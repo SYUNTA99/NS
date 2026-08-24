@@ -7,8 +7,37 @@
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/PhysicsWorld.h"
 
+#include <cmath>
+
+namespace
+{
+    //! 一次遅れの離散化。tau は時定数で値が大きいほど鈍い、dt は step。0 < tau で安定
+    //! 式は現行の CharacterMovementComponent から 1 文字も変えていない。加速と減速の手触りはこの式が決める
+    [[nodiscard]] float SmoothApproach(float current, float target, float tau, float dt) noexcept
+    {
+        if (tau <= 0.0f)
+            return target;
+        const float a = 1.0f - std::exp(-dt / tau);
+        return current + (target - current) * a;
+    }
+
+    [[nodiscard]] NS::Core::Vector3 HorizontalSmooth(const NS::Core::Vector3& curr,
+                                                     const NS::Core::Vector3& target,
+                                                     float tau,
+                                                     float dt) noexcept
+    {
+        return NS::Core::Vector3{
+            SmoothApproach(curr.x, target.x, tau, dt),
+            curr.y,
+            SmoothApproach(curr.z, target.z, tau, dt),
+        };
+    }
+} // namespace
+
 namespace NS::Game::Entity
 {
+    // 天井の当たりは持たない。CapsuleMover が接触面へ速度を射影するので、
+    // 天井に当たった歩の上向き速度は Move を抜けた時点で 0 になっている
     EntityComponent::EntityComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::Update) {}
 
     NS::Core::Vector3 EntityComponent::LateralVelocity() const noexcept
@@ -56,10 +85,27 @@ namespace NS::Game::Entity
         HandleStates(dt);
     }
 
+    void EntityComponent::Accelerate(const NS::Core::Vector3& targetHorizontal, float tau, float dt) noexcept
+    {
+        m_velocity = HorizontalSmooth(m_velocity, targetHorizontal, tau, dt);
+    }
+
+    void EntityComponent::Decelerate(float tau, float dt) noexcept
+    {
+        Accelerate(NS::Core::Vector3{0.0f, 0.0f, 0.0f}, tau, dt);
+    }
+
+    void EntityComponent::Gravity(float gravity, float dt) noexcept
+    {
+        m_velocity.y += gravity * dt;
+    }
+
     void EntityComponent::Move(float dt) noexcept
     {
+        const NS::Core::Vector3 before = RootTransform().Position();
+
         NS::Physics::CapsuleMoverInput in{};
-        in.position = RootTransform().Position();
+        in.position = before;
         in.velocity = m_velocity;
         in.dt = dt;
         in.capsuleRadius = m_capsuleRadius;
@@ -71,5 +117,6 @@ namespace NS::Game::Entity
         m_velocity = out.velocity;
         m_wasGrounded = m_isGrounded;
         m_isGrounded = out.grounded;
+        m_positionDelta = out.position - before;
     }
 } // namespace NS::Game::Entity

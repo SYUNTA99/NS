@@ -65,8 +65,20 @@ namespace NS::Game::Entity
         void SetPhysicsWorld(const NS::Physics::PhysicsWorld* world) noexcept { m_world = world; }
         [[nodiscard]] const NS::Physics::PhysicsWorld* PhysicsWorld() const noexcept { return m_world; }
 
+        //! 水平の目標速度へ一次遅れで近づける。縦は触らない
+        void Accelerate(const NS::Core::Vector3& targetHorizontal, float tau, float dt) noexcept;
+
+        //! 水平を 0 へ一次遅れで近づける
+        void Decelerate(float tau, float dt) noexcept;
+
+        //! 縦速度へ重力を 1 歩ぶん当てる。値の選び分け (上昇 / 下降 / 頂点) は派生の仕事
+        void Gravity(float gravity, float dt) noexcept;
+
         //! CapsuleMover へ 1 歩渡し、位置・速度・接地を更新する
         void Move(float dt) noexcept;
+
+        //! 直近の Move で実際に動いた量。突進の進み具合を実移動から測るのに使う
+        [[nodiscard]] NS::Core::Vector3 PositionDelta() const noexcept { return m_positionDelta; }
 
         //! 未注入なら所属 scene の衝突 world を借り、同居する CapsuleColliderComponent を控える
         void OnStart() override;
@@ -83,6 +95,7 @@ namespace NS::Game::Entity
         virtual void OnStepSkipped() {}
 
         NS::Core::Vector3 m_velocity{0.0f, 0.0f, 0.0f};
+        NS::Core::Vector3 m_positionDelta{0.0f, 0.0f, 0.0f};
         bool m_isGrounded = false;
         bool m_wasGrounded = false;                         // 直前の Move より前の接地
         float m_capsuleRadius = 0.4f;                       // カプセル半径
