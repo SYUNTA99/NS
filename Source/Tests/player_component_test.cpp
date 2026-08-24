@@ -727,3 +727,260 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhenTheClimbTargetIsBlocked)
 
     EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
 }
+
+TEST_F(PlayerComponentTest, HangHoldsTheLedgeHeightWithoutGravity)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    const Vector3 hangPos = obj.Root().Position();
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    for (int i = 0; i < 10; ++i)
+        player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    EXPECT_FLOAT_EQ(obj.Root().Position().y, hangPos.y);
+    EXPECT_FLOAT_EQ(player.Velocity().y, 0.0f);
+}
+
+// 前入力での自動登りは最小ぶら下がり時間だけ待つ。壁に向かう入力のまま即登り切ると掴まりが見えない
+TEST_F(PlayerComponentTest, ForwardInputWaitsForTheMinimumHangTime)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetClimbMove(0.0f, 1.0f);
+    player.OnUpdate();
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    for (int i = 0; i < 45; ++i)
+        player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+    EXPECT_TRUE(player.IsGrounded());
+    EXPECT_GT(obj.Root().Position().y, 0.5f);
+}
+
+TEST_F(PlayerComponentTest, JumpClimbsWithoutWaiting)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    const float hangY = obj.Root().Position().y;
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetJumpPressed();
+    player.OnUpdate();
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeClimbingStateName);
+
+    for (int i = 0; i < 3; ++i)
+        player.OnUpdate();
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeClimbingStateName);
+    EXPECT_GT(obj.Root().Position().y, hangY);
+
+    for (int i = 0; i < 20; ++i)
+        player.OnUpdate();
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+    EXPECT_TRUE(player.IsGrounded());
+    EXPECT_EQ(player.JumpsRemaining(), 1);
+    EXPECT_GT(obj.Root().Position().y, 0.5f);
+}
+
+TEST_F(PlayerComponentTest, BackInputDropsAwayFromTheFace)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetClimbMove(0.0f, -1.0f);
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+    EXPECT_NEAR(obj.Root().Position().x, -1.1f, 1e-4f);
+    EXPECT_FLOAT_EQ(player.Velocity().x, -2.0f);
+    EXPECT_FALSE(player.IsGrounded());
+}
+
+// 放しても入力を倒し続けた時の即再掴みを止める。止めないと縁から離れられない
+TEST_F(PlayerComponentTest, DropBlocksTheRegrabForTheCooldown)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    player.SetClimbMove(0.0f, -1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+
+    player.SetClimbMove(0.0f, 0.0f);
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    for (int i = 0; i < 5; ++i)
+        player.OnUpdate();
+
+    EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+}
+
+TEST_F(PlayerComponentTest, ShimmyMovesAlongTheLedge)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 1.0f));
+    world.AddAABB(MakeBlock(0.0f, 0.0f, -1.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    const float zStart = obj.Root().Position().z;
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetClimbMove(1.0f, 0.0f);
+    for (int i = 0; i < 20; ++i)
+        player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    EXPECT_GT(std::abs(obj.Root().Position().z - zStart), 0.4f);
+}
+
+TEST_F(PlayerComponentTest, ShimmyStopsAtTheLedgeEnd)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetClimbMove(1.0f, 0.0f);
+    for (int i = 0; i < 60; ++i)
+        player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    EXPECT_LE(std::abs(obj.Root().Position().z), 0.55f);
+}
+
+TEST_F(PlayerComponentTest, ShimmyIgnoresInputInsideTheDeadzone)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 1.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    const float zStart = obj.Root().Position().z;
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetClimbMove(0.2f, 0.0f);
+    for (int i = 0; i < 20; ++i)
+        player.OnUpdate();
+
+    EXPECT_FLOAT_EQ(obj.Root().Position().z, zStart);
+}
+
+// 掴む → シミー → よじ登る → 立つ を旧実装と並走させる。値だけの検証は呼ぶ順序の入れ替えを拾えない
+TEST_F(PlayerComponentTest, MatchesLegacyLedgeStepForStep)
+{
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 1.0f));
+    world.AddAABB(MakeBlock(0.0f, 0.0f, -1.0f));
+    world.BuildBroadphase();
+
+    GameObject legacyObj;
+    auto& legacy = *legacyObj.AddComponent<NS::Object::CharacterMovementComponent>();
+    legacy.SetPhysicsWorld(&world);
+    legacy.SetDebugDrawEnabled(false);
+    legacyObj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+
+    GameObject freshObj;
+    auto& fresh = MakeLedgeReady(freshObj, world);
+    freshObj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+
+    for (int step = 0; step < 150; ++step)
+    {
+        float speedScale = 0.0f;
+        if (step == 0)
+            speedScale = 1.0f;
+
+        float climbRight = 0.0f;
+        float climbForward = 0.0f;
+        if (step >= 1)
+        {
+            climbRight = 1.0f;
+            climbForward = 1.0f;
+        }
+
+        legacy.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, speedScale);
+        fresh.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, speedScale);
+        legacy.SetClimbMove(climbRight, climbForward);
+        fresh.SetClimbMove(climbRight, climbForward);
+
+        legacy.OnUpdate();
+        fresh.OnUpdate();
+
+        const Vector3 legacyPos = legacyObj.Root().Position();
+        const Vector3 freshPos = freshObj.Root().Position();
+        ASSERT_EQ(freshPos.x, legacyPos.x) << step;
+        ASSERT_EQ(freshPos.y, legacyPos.y) << step;
+        ASSERT_EQ(freshPos.z, legacyPos.z) << step;
+        ASSERT_EQ(fresh.Velocity().x, legacy.Velocity().x) << step;
+        ASSERT_EQ(fresh.Velocity().y, legacy.Velocity().y) << step;
+        ASSERT_EQ(fresh.Velocity().z, legacy.Velocity().z) << step;
+        ASSERT_EQ(fresh.IsGrounded(), legacy.IsGrounded()) << step;
+    }
+
+    ASSERT_TRUE(fresh.IsGrounded());
+    ASSERT_GT(freshObj.Root().Position().y, 0.5f);
+}

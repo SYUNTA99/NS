@@ -483,6 +483,163 @@ namespace NS::Game::Player
         return false;
     }
 
+    void PlayerComponent::HoldLedge(float dt) noexcept
+    {
+        m_ledgeHangTimer += dt;
+
+        NS::Core::Vector3 pos = RootTransform().Position();
+        pos.y = m_ledgeTopY - CapsuleHalfHeight();
+        RootTransform().SetPosition(pos);
+        SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+    }
+
+    bool PlayerComponent::ShouldClimbLedge() const noexcept
+    {
+        const bool autoClimb = m_climbForward > k_LedgeInputThreshold && m_ledgeHangTimer >= k_LedgeMinHangTime;
+        return m_jumpPressedThisFrame || autoClimb;
+    }
+
+    bool PlayerComponent::ShouldDropLedge() const noexcept
+    {
+        return m_climbForward < -k_LedgeInputThreshold;
+    }
+
+    void PlayerComponent::ClimbLedge() noexcept
+    {
+        const NS::Core::Vector3 pos = RootTransform().Position();
+        const float mantleStep = 2.0f * CapsuleRadius() + k_LedgeMantleInset;
+        m_ledgeMantleStart = pos;
+        m_ledgeMantleEnd = NS::Core::Vector3{
+            pos.x - m_ledgeFaceNormal.x * mantleStep,
+            m_ledgeTopY + CapsuleHalfHeight() + CapsuleRadius() + k_LedgeMantleLift,
+            pos.z - m_ledgeFaceNormal.z * mantleStep,
+        };
+        m_ledgeMantleTimer = 0.0f;
+        if (m_stateManager != nullptr)
+            m_stateManager->ChangeByName(k_LedgeClimbingStateName);
+        SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+    }
+
+    void PlayerComponent::DropLedge() noexcept
+    {
+        NS::Core::Vector3 pos = RootTransform().Position();
+        pos.x += m_ledgeFaceNormal.x * k_LedgeDropOutward;
+        pos.z += m_ledgeFaceNormal.z * k_LedgeDropOutward;
+        RootTransform().SetPosition(pos);
+        if (m_stateManager != nullptr)
+            m_stateManager->ChangeByName(k_IdleStateName);
+        SetVelocity(NS::Core::Vector3{
+            m_ledgeFaceNormal.x * k_LedgeDropOutwardSpeed, 0.0f, m_ledgeFaceNormal.z * k_LedgeDropOutwardSpeed});
+        SetGrounded(false);
+        m_ledgeRegrabCooldown = k_LedgeRegrabCooldownTime;
+    }
+
+    void PlayerComponent::Shimmy(float dt) noexcept
+    {
+        if (std::abs(m_climbRight) > k_LedgeShimmyDeadzone)
+        {
+            // 面法線に水平直交する縁方向。動いても面からの距離は変わらない
+            const NS::Core::Vector3 pos = RootTransform().Position();
+            const NS::Core::Vector3 alongDir{-m_ledgeFaceNormal.z, 0.0f, m_ledgeFaceNormal.x};
+            NS::Core::Vector3 shimmied = pos;
+            shimmied.x += alongDir.x * m_climbRight * k_LedgeShimmySpeed * dt;
+            shimmied.z += alongDir.z * m_climbRight * k_LedgeShimmySpeed * dt;
+            // 移動先にも同じ高さの縁が続いている時だけ動く。端なら止めて落とさない
+            if (CanShimmyTo(shimmied))
+                RootTransform().SetPosition(shimmied);
+        }
+    }
+
+    void PlayerComponent::UpdateLedgeClimb(float dt) noexcept
+    {
+        m_ledgeMantleTimer += dt;
+        const float t = NS::Core::Clamp(m_ledgeMantleTimer / k_LedgeMantleDuration, 0.0f, 1.0f);
+
+        // 2 段に割るのは角への食い込みを避けるため。前半は上昇だけで前へ進まない
+        NS::Core::Vector3 pos{0.0f, 0.0f, 0.0f};
+        if (t < 0.5f)
+        {
+            const float u = t / 0.5f;
+            pos.x = m_ledgeMantleStart.x;
+            pos.z = m_ledgeMantleStart.z;
+            pos.y = m_ledgeMantleStart.y + (m_ledgeMantleEnd.y - m_ledgeMantleStart.y) * u;
+        }
+        else
+        {
+            const float u = (t - 0.5f) / 0.5f;
+            pos.x = m_ledgeMantleStart.x + (m_ledgeMantleEnd.x - m_ledgeMantleStart.x) * u;
+            pos.z = m_ledgeMantleStart.z + (m_ledgeMantleEnd.z - m_ledgeMantleStart.z) * u;
+            pos.y = m_ledgeMantleEnd.y;
+        }
+        RootTransform().SetPosition(pos);
+        SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+
+        if (t >= 1.0f)
+        {
+            RootTransform().SetPosition(m_ledgeMantleEnd);
+            if (m_stateManager != nullptr)
+                m_stateManager->ChangeByName(k_IdleStateName);
+            SetGrounded(true);
+            m_jumpsRemaining = 1;
+            m_coyoteTimer = CoyoteTime();
+            m_ledgeRegrabCooldown = k_LedgeRegrabCooldownTime;
+        }
+    }
+
+    bool PlayerComponent::CanShimmyTo(const NS::Core::Vector3& hangPos) const noexcept
+    {
+        const NS::Core::Vector3 inward{-m_ledgeFaceNormal.x, 0.0f, -m_ledgeFaceNormal.z};
+        const float handY = hangPos.y + CapsuleHalfHeight();
+        const NS::Core::Vector3 probe{
+            hangPos.x + inward.x * (CapsuleRadius() + k_LedgeReach),
+            handY,
+            hangPos.z + inward.z * (CapsuleRadius() + k_LedgeReach),
+        };
+
+        for (const NS::Core::AABB& box : WorldAabbs(PhysicsWorld()))
+        {
+            const float top = box.Center.y + box.Extents.y;
+            if (std::abs(top - m_ledgeTopY) > k_LedgeContinueTopTol)
+                continue;
+            if (probe.x < box.Center.x - box.Extents.x || probe.x > box.Center.x + box.Extents.x)
+                continue;
+            if (probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z)
+                continue;
+
+            // 乗り上がり先が別 block で塞がっていたら縁とみなさない。オーバーハングの下では掴めない
+            const float mantleStep = 2.0f * CapsuleRadius() + k_LedgeMantleInset;
+            const NS::Core::Vector3 mantleCheck{
+                hangPos.x - m_ledgeFaceNormal.x * mantleStep,
+                m_ledgeTopY + CapsuleHalfHeight(),
+                hangPos.z - m_ledgeFaceNormal.z * mantleStep,
+            };
+            bool blocked = false;
+            for (const NS::Core::AABB& other : WorldAabbs(PhysicsWorld()))
+            {
+                if (AabbContainsPoint(other, mantleCheck))
+                {
+                    blocked = true;
+                    break;
+                }
+            }
+            if (blocked)
+                continue;
+
+            return true;
+        }
+        return false;
+    }
+
+    bool PlayerComponent::IsLedgeHanging() const noexcept
+    {
+        return m_stateManager != nullptr && m_stateManager->IsCurrent(k_LedgeHangingStateName);
+    }
+
+    bool PlayerComponent::IsLedgeClimbing() const noexcept
+    {
+        return m_stateManager != nullptr && m_stateManager->IsCurrent(k_LedgeClimbingStateName);
+    }
+
     bool PlayerComponent::ShouldWalk() const noexcept
     {
         if (!IsGrounded())
@@ -518,6 +675,23 @@ namespace NS::Game::Player
             return;
     }
 
+    // TODO: 掴まりの状態を書くまでの 1 本道。経過秒を進めてから登る / 放すを見る順は変えない
+    void PlayerComponent::StepLedgeHang(float dt) noexcept
+    {
+        HoldLedge(dt);
+        if (ShouldClimbLedge())
+        {
+            ClimbLedge();
+            return;
+        }
+        if (ShouldDropLedge())
+        {
+            DropLedge();
+            return;
+        }
+        Shimmy(dt);
+    }
+
     void PlayerComponent::PushCoyoteJumpMarker(const NS::Core::Vector3& edge, const NS::Core::Vector3& jump) noexcept
     {
         if (m_coyoteJumpMarkers.size() >= k_MaxCoyoteJumpMarkers)
@@ -536,7 +710,8 @@ namespace NS::Game::Player
 
         // 突進の中で見ると通常移動の 1 歩を走ってから移ることになり、突進の初速がその歩に乗らない
         // 空中の押しを捨てると連打で出ない歩ができるため、接地は求めない
-        if (m_bodySlamBufferRemaining > 0.0f && !IsBodySlamming())
+        // 突進を出すのは通常移動の歩だけ。掴まり中に出せると縁から離れる操作が 3 通りになる
+        if (m_bodySlamBufferRemaining > 0.0f && !IsBodySlamming() && !IsLedgeHanging() && !IsLedgeClimbing())
         {
             if (BodySlam())
                 m_bodySlamBufferRemaining = 0.0f;
@@ -544,6 +719,10 @@ namespace NS::Game::Player
 
         if (IsBodySlamming())
             UpdateBodySlam(dt);
+        else if (IsLedgeHanging())
+            StepLedgeHang(dt);
+        else if (IsLedgeClimbing())
+            UpdateLedgeClimb(dt);
         else
             StepLocomotion(dt);
 

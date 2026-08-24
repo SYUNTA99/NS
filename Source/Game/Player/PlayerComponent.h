@@ -76,6 +76,8 @@ namespace NS::Game::Player
         static constexpr const char* k_IdleStateName = "Idle";
         //! 縁にぶら下がっている状態の登録名
         static constexpr const char* k_LedgeHangingStateName = "LedgeHanging";
+        //! 縁から上面へよじ登っている状態の登録名
+        static constexpr const char* k_LedgeClimbingStateName = "LedgeClimbing";
 
         //! 体当たりの発動を要求する
         //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
@@ -118,6 +120,23 @@ namespace NS::Game::Player
         //! 縁を掴めるか試す。掴んだ場合 true、それ以外の場合は false。true なら呼び出し側は即 return する
         [[nodiscard]] bool LedgeGrab() noexcept;
 
+        //! ぶら下がりの経過秒を進め、縁の高さへ位置を貼り直す。重力は当てない
+        void HoldLedge(float dt) noexcept;
+        //! 左右入力で縁に沿って動く。続いていない方向へは動かない
+        void Shimmy(float dt) noexcept;
+        //! 移動先に同じ高さの縁が続いている場合 true、それ以外の場合は false
+        [[nodiscard]] bool CanShimmyTo(const NS::Core::Vector3& hangPos) const noexcept;
+        //! よじ登りを始める。2 段補間の始点と終点を決めて登りの状態へ移る
+        void ClimbLedge() noexcept;
+        //! よじ登りの 1 歩。終われば通常移動へ戻す
+        void UpdateLedgeClimb(float dt) noexcept;
+        //! 手を放す。面法線方向へ離して落下させ、再掴みをしばらく禁止する
+        void DropLedge() noexcept;
+        //! ジャンプ押下、または前入力が最小ぶら下がり時間を越えた場合 true、それ以外の場合は false
+        [[nodiscard]] bool ShouldClimbLedge() const noexcept;
+        //! 後入力がしきい値を越えた場合 true、それ以外の場合は false
+        [[nodiscard]] bool ShouldDropLedge() const noexcept;
+
         //! 走行入力が出ているか動いている場合 true、それ以外の場合は false
         [[nodiscard]] bool ShouldWalk() const noexcept;
         //! 接地していて走行も動きも無い場合 true、それ以外の場合は false
@@ -148,6 +167,10 @@ namespace NS::Game::Player
     private:
         // TODO: 状態機械へ差し替えるまでの 1 本道。動詞を現行と同じ並びで呼ぶ
         void StepLocomotion(float dt) noexcept;
+        // TODO: 掴まりの状態を書くまでの 1 本道。判断と算術は動詞側にあるので、並べる順だけを持つ
+        void StepLedgeHang(float dt) noexcept;
+        [[nodiscard]] bool IsLedgeHanging() const noexcept;
+        [[nodiscard]] bool IsLedgeClimbing() const noexcept;
         //! コヨーテ窓内ジャンプを 1 件記録する。上限を超えた分は最古から捨てる
         void PushCoyoteJumpMarker(const NS::Core::Vector3& edge, const NS::Core::Vector3& jump) noexcept;
 
