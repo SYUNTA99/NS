@@ -61,7 +61,7 @@ namespace NS::Game::Player
         //! デバッグ可視化を切り替える。既定は true、テストでは false にする
         void SetDebugDrawEnabled(bool enabled) noexcept { m_debugDraw = enabled; }
 
-        //! コヨーテジャンプの記録。デバッグ描画が縁から跳躍点への線を引くのに読む
+        //! 生存中のコヨーテジャンプ記録。デバッグ描画が縁から跳躍点への線を引くのに読む。寿命切れは除外済
         [[nodiscard]] std::span<const CoyoteJumpMarker> CoyoteJumpMarkers() const noexcept
         {
             return m_coyoteJumpMarkers;
@@ -78,6 +78,29 @@ namespace NS::Game::Player
         [[nodiscard]] float BodySlamEntrySpeed() const noexcept;
         [[nodiscard]] NS::Core::Vector3 BodySlamVelocity() const noexcept;
         void CancelBodySlam() noexcept;
+
+        // 移動の 1 歩を作る動詞。呼ぶ順序がそのまま手触りになる
+        //! 先行入力とコヨーテ猶予のタイマーを 1 歩進める
+        void TickTimers(float dt) noexcept;
+        //! 入力の向きと強さから目標の水平速度を作り、一次遅れで近づける
+        void AccelerateToInputDirection(float dt) noexcept;
+        //! 接地かコヨーテ窓の内で押されていれば跳ぶ
+        void Jump(float dt) noexcept;
+        //! 上昇中にボタンを離した歩だけ縦速度を縮める
+        void CutJumpRelease() noexcept;
+        //! 上昇と下降で非対称な重力を当てる。頂点の近くは弱める
+        void Gravity(float dt) noexcept;
+        //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と最終接地位置を張り直す
+        void SyncGroundState() noexcept;
+        //! 縁を掴めるか試す。掴んだ場合 true、それ以外の場合は false。true なら呼び出し側は即 return する
+        [[nodiscard]] bool LedgeGrab() noexcept;
+
+        //! 走行入力が出ているか動いている場合 true、それ以外の場合は false
+        [[nodiscard]] bool ShouldWalk() const noexcept;
+        //! 接地していて走行も動きも無い場合 true、それ以外の場合は false
+        [[nodiscard]] bool ShouldIdle() const noexcept;
+        //! 接地を外れている場合 true、それ以外の場合は false
+        [[nodiscard]] bool ShouldFall() const noexcept;
 
         //! 同居する組。無ければ既定の組。調整値はすべてここから読む
         [[nodiscard]] const PlayerStats& Stats() const noexcept;
@@ -100,6 +123,11 @@ namespace NS::Game::Player
         void OnStepSkipped() override;
 
     private:
+        // TODO: 状態機械へ差し替えるまでの 1 本道。動詞を現行と同じ並びで呼ぶ
+        void StepLocomotion(float dt) noexcept;
+        //! コヨーテ窓内ジャンプを 1 件記録する。上限を超えた分は最古から捨てる
+        void PushCoyoteJumpMarker(const NS::Core::Vector3& edge, const NS::Core::Vector3& jump) noexcept;
+
         NS::Core::Vector3 m_desiredDir{0.0f, 0.0f, 0.0f}; // 入力から作る world 空間の目標移動方向
         float m_desiredSpeedScale = 0.0f;                 // 目標速度スケール 0..1
         float m_climbRight = 0.0f;                        // 掴まり中の左右入力 -1..1

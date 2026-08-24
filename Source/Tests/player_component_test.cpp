@@ -2,8 +2,10 @@
 #include <Game/Player/PlayerStatsManagerComponent.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
+#include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
+#include <Runtime/Physics/PhysicsWorld.h>
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -11,6 +13,7 @@
 
 namespace
 {
+    using NS::Core::AABB;
     using NS::Core::Vector3;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStatsManagerComponent;
@@ -105,4 +108,157 @@ TEST_F(PlayerComponentTest, ResetStateClearsMotion)
     EXPECT_EQ(player.JumpsRemaining(), 1);
     EXPECT_FALSE(player.IsGrounded());
     EXPECT_FLOAT_EQ(player.DesiredSpeedScale(), 0.0f);
+}
+
+TEST_F(PlayerComponentTest, GravityPullsHarderWhileFalling)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+    player.SetVelocity(Vector3{0.0f, -5.0f, 0.0f});
+
+    player.Gravity(k_FixedDt);
+
+    EXPECT_NEAR(player.VerticalVelocity(), -5.0f + -35.0f * k_FixedDt, 1e-5f);
+}
+
+TEST_F(PlayerComponentTest, GravityIsHalvedNearTheApex)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+    player.SetVelocity(Vector3{0.0f, 0.5f, 0.0f});
+
+    player.Gravity(k_FixedDt);
+
+    EXPECT_NEAR(player.VerticalVelocity(), 0.5f + -25.0f * 0.5f * k_FixedDt, 1e-5f);
+}
+
+TEST_F(PlayerComponentTest, GroundedJumpSpendsTheJump)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+    player.SetGrounded(true);
+    player.SetJumpPressed();
+
+    player.Jump(k_FixedDt);
+
+    EXPECT_FLOAT_EQ(player.VerticalVelocity(), 12.0f);
+    EXPECT_EQ(player.JumpsRemaining(), 0);
+}
+
+TEST_F(PlayerComponentTest, JumpIsLostAfterTheCoyoteWindow)
+{
+    GameObject insideWindow;
+    auto& early = *insideWindow.AddComponent<PlayerComponent>();
+    early.SetGrounded(true);
+    early.SyncGroundState();
+    early.SetGrounded(false);
+    early.TickTimers(k_FixedDt);
+    early.SetJumpPressed();
+    early.Jump(k_FixedDt);
+
+    EXPECT_FLOAT_EQ(early.VerticalVelocity(), 12.0f);
+
+    GameObject outsideWindow;
+    auto& late = *outsideWindow.AddComponent<PlayerComponent>();
+    late.SetGrounded(true);
+    late.SyncGroundState();
+    late.SetGrounded(false);
+    late.TickTimers(k_FixedDt);
+    late.TickTimers(k_FixedDt);
+    late.SetJumpPressed();
+    late.Jump(k_FixedDt);
+
+    EXPECT_FLOAT_EQ(late.VerticalVelocity(), 0.0f);
+    EXPECT_EQ(late.JumpsRemaining(), 1);
+}
+
+TEST_F(PlayerComponentTest, ReleasingTheButtonCutsTheRise)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+    player.SetJumpHeld(true);
+    player.OnUpdate();
+
+    player.SetJumpHeld(false);
+    player.SetVelocity(Vector3{0.0f, 10.0f, 0.0f});
+    player.CutJumpRelease();
+
+    EXPECT_FLOAT_EQ(player.VerticalVelocity(), 6.0f);
+}
+
+TEST_F(PlayerComponentTest, InputInsideTheDeadzoneAimsAtZeroSpeed)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.2f);
+
+    player.AccelerateToInputDirection(k_FixedDt);
+
+    EXPECT_FLOAT_EQ(player.Velocity().x, 0.0f);
+}
+
+TEST_F(PlayerComponentTest, HalfScaleSplitsWalkSpeedFromMaxSpeed)
+{
+    const float lag = 1.0f - std::exp(-k_FixedDt / 0.1f);
+
+    GameObject walkObj;
+    auto& walker = *walkObj.AddComponent<PlayerComponent>();
+    walker.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.4f);
+    walker.AccelerateToInputDirection(k_FixedDt);
+
+    EXPECT_NEAR(walker.Velocity().x, 4.0f * lag, 1e-5f);
+
+    GameObject runObj;
+    auto& runner = *runObj.AddComponent<PlayerComponent>();
+    runner.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.8f);
+    runner.AccelerateToInputDirection(k_FixedDt);
+
+    EXPECT_NEAR(runner.Velocity().x, 8.0f * 0.8f * lag, 1e-5f);
+}
+
+// 動詞へ割った 1 歩が現行と 1 ビットも違わないことを見張る。値だけの検証は呼ぶ順序の入れ替えを拾えない
+TEST_F(PlayerComponentTest, MatchesLegacyMovementStepForStep)
+{
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(AABB{Vector3{0.0f, -1.0f, 0.0f}, Vector3{50.0f, 1.0f, 50.0f}});
+    world.BuildBroadphase();
+
+    GameObject legacyObj;
+    auto& legacy = *legacyObj.AddComponent<NS::Object::CharacterMovementComponent>();
+    legacy.SetPhysicsWorld(&world);
+    legacy.SetDebugDrawEnabled(false);
+    legacyObj.Root().SetPosition(Vector3{0.0f, 2.0f, 0.0f});
+
+    GameObject freshObj;
+    auto& fresh = *freshObj.AddComponent<PlayerComponent>();
+    fresh.SetPhysicsWorld(&world);
+    fresh.SetDebugDrawEnabled(false);
+    freshObj.Root().SetPosition(Vector3{0.0f, 2.0f, 0.0f});
+
+    for (int step = 0; step < 240; ++step)
+    {
+        const bool held = step >= 120 && step < 130;
+        legacy.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.8f);
+        fresh.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.8f);
+        legacy.SetJumpHeld(held);
+        fresh.SetJumpHeld(held);
+        if (step == 120)
+        {
+            legacy.SetJumpPressed();
+            fresh.SetJumpPressed();
+        }
+
+        legacy.OnUpdate();
+        fresh.OnUpdate();
+
+        const Vector3 legacyPos = legacyObj.Root().Position();
+        const Vector3 freshPos = freshObj.Root().Position();
+        ASSERT_EQ(freshPos.x, legacyPos.x) << step;
+        ASSERT_EQ(freshPos.y, legacyPos.y) << step;
+        ASSERT_EQ(freshPos.z, legacyPos.z) << step;
+        ASSERT_EQ(fresh.Velocity().x, legacy.Velocity().x) << step;
+        ASSERT_EQ(fresh.Velocity().y, legacy.Velocity().y) << step;
+        ASSERT_EQ(fresh.Velocity().z, legacy.Velocity().z) << step;
+        ASSERT_EQ(fresh.IsGrounded(), legacy.IsGrounded()) << step;
+    }
 }
