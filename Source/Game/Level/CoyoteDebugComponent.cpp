@@ -72,24 +72,6 @@ namespace NS::Game::Level
                 return;
             }
 
-            // プレイヤー状態のデバッグ描画
-            const NS::Core::Vector3 center = player->Root().Position();
-
-            // 接地判定のマーカーを頭上へボックスで出す
-            const float headTop = center.y + movement->CapsuleHalfHeight() + movement->CapsuleRadius();
-            const NS::Core::Color groundedColor = [movement]() -> NS::Core::Color {
-                if (movement->IsGrounded())
-                {
-                    return NS::Core::Color{0.2f, 1.0f, 0.2f, 1.0f};
-                }
-                return NS::Core::Color{1.0f, 1.0f, 0.2f, 1.0f};
-            }();
-
-            const NS::Core::AABB groundedMarker(NS::Core::Vector3{center.x, headTop + 0.45f, center.z},
-                                                NS::Core::Vector3{0.18f, 0.18f, 0.18f});
-
-            NS::Graphics::DebugDraw::AABB(groundedMarker, groundedColor);
-
             // ジャンプ実行点のマーカー
             const NS::Core::Color coyoteColor{1.0f, 0.15f, 0.15f, 1.0f};
             for (const auto& marker : movement->CoyoteJumpMarkers())
