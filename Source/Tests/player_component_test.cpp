@@ -1,5 +1,5 @@
-#include <Game/Entity/EntityStateManagerComponent.h>
 #include <Game/Player/PlayerComponent.h>
+#include <Game/Player/PlayerStateManagerComponent.h>
 #include <Game/Player/PlayerStatsManagerComponent.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
@@ -21,29 +21,11 @@ namespace
     using NS::Core::AABB;
     using NS::Core::Vector3;
     using NS::Game::Player::PlayerComponent;
+    using NS::Game::Player::PlayerStateManagerComponent;
     using NS::Game::Player::PlayerStatsManagerComponent;
     using NS::Object::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
-
-    //! 現在状態の名前を覚えて答えるだけの状態管理
-    //! @details 本物の StateMachine を積むと登録名 "BodySlam" / "Idle" が本番の状態とぶつかる。
-    //! 状態機械そのものは entity_state_manager_test が見張る
-    class NamedStateManager final : public NS::Game::Entity::EntityStateManagerComponent
-    {
-    public:
-        [[nodiscard]] const char* CurrentName() const noexcept override { return m_current.c_str(); }
-        [[nodiscard]] bool IsBuilt() const noexcept override { return true; }
-        bool ChangeByName(std::string_view name) override
-        {
-            m_current.assign(name);
-            return true;
-        }
-        void ResetToFirst() noexcept override { m_current = PlayerComponent::k_IdleStateName; }
-
-    private:
-        std::string m_current = PlayerComponent::k_IdleStateName;
-    };
 
     //! 中心 (cx,cy,cz) に置いた 1m 立方の固形 block
     AABB MakeBlock(float cx, float cy, float cz)
@@ -54,25 +36,28 @@ namespace
     //! 床を敷かない検証台。1 歩目から下降するので掴みの条件が立つ。block は呼び出し側が先に積む
     PlayerComponent& MakeLedgeReady(GameObject& owner, NS::Physics::PhysicsWorld& world)
     {
-        owner.AddComponent<NamedStateManager>();
+        auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
         auto& player = *owner.AddComponent<PlayerComponent>();
 
         player.SetPhysicsWorld(&world);
         player.SetDebugDrawEnabled(false);
         player.OnStart();
+        manager.OnStart();
         return player;
     }
 
     [[nodiscard]] std::string_view CurrentStateName(GameObject& owner)
     {
-        return owner.FindComponent<NamedStateManager>()->CurrentName();
+        return owner.FindComponent<PlayerStateManagerComponent>()->CurrentName();
     }
 
     //! 床 1 枚を敷いて接地させた自機を返す。壁は呼び出し側が先に足す
     //! @details 状態管理を先に積むのは OnStart が同居から引き当てるため
+    // 状態管理は本物を積む。1 歩が状態機械を通るようになったので、名前を覚えるだけの偽物では
+    // 遷移が起きず突進にも掴まりにも入れない
     PlayerComponent& MakeSlamReady(GameObject& owner, NS::Physics::PhysicsWorld& world)
     {
-        owner.AddComponent<NamedStateManager>();
+        auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
         auto& player = *owner.AddComponent<PlayerComponent>();
 
         world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 64.0f}});
@@ -81,6 +66,7 @@ namespace
         player.SetPhysicsWorld(&world);
         player.SetDebugDrawEnabled(false);
         player.OnStart();
+        manager.OnStart();
 
         for (int i = 0; i < 30 && !player.IsGrounded(); ++i)
             player.OnUpdate();
@@ -319,10 +305,11 @@ TEST_F(PlayerComponentTest, ChargedSlamFiresWithTheRushSpeed)
 TEST_F(PlayerComponentTest, SlamFiresInAir)
 {
     GameObject obj;
-    obj.AddComponent<NamedStateManager>();
+    auto& manager = *obj.AddComponent<PlayerStateManagerComponent>();
     auto& player = *obj.AddComponent<PlayerComponent>();
     player.SetDebugDrawEnabled(false);
     player.OnStart();
+    manager.OnStart();
     ASSERT_FALSE(player.IsGrounded());
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -377,10 +364,11 @@ TEST_F(PlayerComponentTest, AimsAtTheCameraForwardWithoutInput)
     ASSERT_NE(scene.CameraBrain(), nullptr);
     ASSERT_NEAR(scene.CameraBrain()->ForwardHorizontal().z, 1.0f, 1.0e-4f);
 
-    obj->AddComponent<NamedStateManager>();
+    auto& manager = *obj->AddComponent<PlayerStateManagerComponent>();
     auto& player = *obj->AddComponent<PlayerComponent>();
     player.SetDebugDrawEnabled(false);
     player.OnStart();
+    manager.OnStart();
 
     player.RequestBodySlam(1.0f);
     player.OnUpdate();
@@ -582,6 +570,74 @@ TEST_F(PlayerComponentTest, BufferedRequestFiresWhenTheRushEnds)
     EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 1.0f);
 }
 
+// 1 歩が状態機械を通っているかを状態名で見る。値だけでは 1 本道のままでも同じ結果になる
+TEST_F(PlayerComponentTest, StaysIdleWhileGroundedWithoutInput)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    ASSERT_TRUE(player.IsGrounded());
+
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+}
+
+TEST_F(PlayerComponentTest, MovesToWalkWhileTheRunInputIsHeld)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), "Walk");
+}
+
+TEST_F(PlayerComponentTest, MovesToFallWithoutGround)
+{
+    GameObject obj;
+    auto& manager = *obj.AddComponent<PlayerStateManagerComponent>();
+    auto& player = *obj.AddComponent<PlayerComponent>();
+    player.SetDebugDrawEnabled(false);
+    player.OnStart();
+    manager.OnStart();
+
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), "Fall");
+}
+
+// 押した歩に移らないと突進の初速がその歩に乗らない
+TEST_F(PlayerComponentTest, MovesToBodySlamOnTheStepOfTheRequest)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_BodySlamStateName);
+}
+
+TEST_F(PlayerComponentTest, ResetStateReturnsToTheFirstState)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), "Walk");
+
+    player.ResetState();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+}
+
 // 動詞へ割った 1 歩が現行と 1 ビットも違わないことを見張る。値だけの検証は呼ぶ順序の入れ替えを拾えない
 TEST_F(PlayerComponentTest, MatchesLegacyMovementStepForStep)
 {
@@ -596,9 +652,12 @@ TEST_F(PlayerComponentTest, MatchesLegacyMovementStepForStep)
     legacyObj.Root().SetPosition(Vector3{0.0f, 2.0f, 0.0f});
 
     GameObject freshObj;
+    auto& freshManager = *freshObj.AddComponent<PlayerStateManagerComponent>();
     auto& fresh = *freshObj.AddComponent<PlayerComponent>();
     fresh.SetPhysicsWorld(&world);
     fresh.SetDebugDrawEnabled(false);
+    fresh.OnStart();
+    freshManager.OnStart();
     freshObj.Root().SetPosition(Vector3{0.0f, 2.0f, 0.0f});
 
     for (int step = 0; step < 240; ++step)

@@ -1,6 +1,7 @@
 #include "Game/Player/PlayerComponent.h"
 
 #include "Game/Entity/EntityStateManagerComponent.h"
+#include "Game/Player/PlayerStateManagerComponent.h"
 #include "Game/Player/PlayerStatsManagerComponent.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/GameObject.h"
@@ -300,7 +301,12 @@ namespace NS::Game::Player
             return;
 
         m_statsManager = Owner()->FindComponent<PlayerStatsManagerComponent>();
-        m_stateManager = Owner()->FindComponent<NS::Game::Entity::EntityStateManagerComponent>();
+        m_stateManager = Owner()->FindComponent<PlayerStateManagerComponent>();
+    }
+
+    NS::Game::Entity::EntityStateManagerComponent* PlayerComponent::States() const noexcept
+    {
+        return m_stateManager;
     }
 
     void PlayerComponent::TickTimers(float dt) noexcept
@@ -630,14 +636,14 @@ namespace NS::Game::Player
         return false;
     }
 
-    bool PlayerComponent::IsLedgeHanging() const noexcept
+    // 綴りが状態側とずれると突進が出なくなるので、走りと落下は player_state_registration_test が
+    // 同じ名前で登録簿から作れることを見張っている
+    bool PlayerComponent::IsLocomotion() const noexcept
     {
-        return m_stateManager != nullptr && m_stateManager->IsCurrent(k_LedgeHangingStateName);
-    }
-
-    bool PlayerComponent::IsLedgeClimbing() const noexcept
-    {
-        return m_stateManager != nullptr && m_stateManager->IsCurrent(k_LedgeClimbingStateName);
+        if (m_stateManager == nullptr)
+            return false;
+        return m_stateManager->IsCurrent(k_IdleStateName) || m_stateManager->IsCurrent("Walk") ||
+               m_stateManager->IsCurrent("Fall");
     }
 
     bool PlayerComponent::ShouldWalk() const noexcept
@@ -661,37 +667,6 @@ namespace NS::Game::Player
         return !IsGrounded();
     }
 
-    // TODO: 状態機械へ差し替えるまでの 1 本道。並びを変えると手触りが変わるので、上から下をそのまま保つ
-    void PlayerComponent::StepLocomotion(float dt) noexcept
-    {
-        TickTimers(dt);
-        AccelerateToInputDirection(dt);
-        Jump(dt);
-        CutJumpRelease();
-        Gravity(dt);
-        Move(dt);
-        SyncGroundState();
-        if (LedgeGrab())
-            return;
-    }
-
-    // TODO: 掴まりの状態を書くまでの 1 本道。経過秒を進めてから登る / 放すを見る順は変えない
-    void PlayerComponent::StepLedgeHang(float dt) noexcept
-    {
-        HoldLedge(dt);
-        if (ShouldClimbLedge())
-        {
-            ClimbLedge();
-            return;
-        }
-        if (ShouldDropLedge())
-        {
-            DropLedge();
-            return;
-        }
-        Shimmy(dt);
-    }
-
     void PlayerComponent::PushCoyoteJumpMarker(const NS::Core::Vector3& edge, const NS::Core::Vector3& jump) noexcept
     {
         if (m_coyoteJumpMarkers.size() >= k_MaxCoyoteJumpMarkers)
@@ -708,23 +683,23 @@ namespace NS::Game::Player
         std::erase_if(m_coyoteJumpMarkers, [](const CoyoteJumpMarker& m) { return m.remaining <= 0.0f; });
 #endif
 
-        // 突進の中で見ると通常移動の 1 歩を走ってから移ることになり、突進の初速がその歩に乗らない
-        // 空中の押しを捨てると連打で出ない歩ができるため、接地は求めない
-        // 突進を出すのは通常移動の歩だけ。掴まり中に出せると縁から離れる操作が 3 通りになる
-        if (m_bodySlamBufferRemaining > 0.0f && !IsBodySlamming() && !IsLedgeHanging() && !IsLedgeClimbing())
+        if (m_stateManager != nullptr)
         {
-            if (BodySlam())
-                m_bodySlamBufferRemaining = 0.0f;
-        }
+            // 発動の判定が現在状態を見るので、組むのは 1 歩の頭。Step の初回に任せると
+            // 1 歩目だけ現在状態が空になり、その歩の押しが落ちる
+            m_stateManager->EnsureBuilt(*this);
 
-        if (IsBodySlamming())
-            UpdateBodySlam(dt);
-        else if (IsLedgeHanging())
-            StepLedgeHang(dt);
-        else if (IsLedgeClimbing())
-            UpdateLedgeClimb(dt);
-        else
-            StepLocomotion(dt);
+            // 突進の中で見ると通常移動の 1 歩を走ってから移ることになり、突進の初速がその歩に乗らない
+            // 空中の押しを捨てると連打で出ない歩ができるため、接地は求めない
+            // 突進を出すのは通常移動の歩だけ。掴まり中に出せると縁から離れる操作が 3 通りになる
+            if (m_bodySlamBufferRemaining > 0.0f && IsLocomotion())
+            {
+                if (BodySlam())
+                    m_bodySlamBufferRemaining = 0.0f;
+            }
+
+            m_stateManager->Step(*this, dt);
+        }
 
         // 1 歩限りの入力の消費は、どの状態でも通るここで行う
         m_prevJumpHeld = m_jumpHeld;

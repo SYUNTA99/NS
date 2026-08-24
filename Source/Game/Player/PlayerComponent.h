@@ -15,6 +15,7 @@ namespace NS::Game::Entity
 
 namespace NS::Game::Player
 {
+    class PlayerStateManagerComponent;
     class PlayerStatsManagerComponent;
 
     //! @brief 自機の能力を持つ Component
@@ -80,7 +81,7 @@ namespace NS::Game::Player
         static constexpr const char* k_LedgeClimbingStateName = "LedgeClimbing";
 
         //! 状態が次の登録名を渡す先。OnStep を呼ぶのが状態管理なので、状態の中では非 null
-        [[nodiscard]] NS::Game::Entity::EntityStateManagerComponent* States() const noexcept { return m_stateManager; }
+        [[nodiscard]] NS::Game::Entity::EntityStateManagerComponent* States() const noexcept;
 
         //! 体当たりの発動を要求する
         //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
@@ -162,18 +163,14 @@ namespace NS::Game::Player
         NS_REFLECT_END()
 
     protected:
-        //! 1 歩の中身。末尾で 1 歩限りの入力を落とす
+        //! 1 歩の中身。状態機械へ 1 歩渡し、末尾で 1 歩限りの入力を落とす
         void HandleStates(float dt) override;
         //! 稼働していない歩でも 1 歩限りの入力は落とす。残すと再開した歩で古い押下が効く
         void OnStepSkipped() override;
 
     private:
-        // TODO: 状態機械へ差し替えるまでの 1 本道。動詞を現行と同じ並びで呼ぶ
-        void StepLocomotion(float dt) noexcept;
-        // TODO: 掴まりの状態を書くまでの 1 本道。判断と算術は動詞側にあるので、並べる順だけを持つ
-        void StepLedgeHang(float dt) noexcept;
-        [[nodiscard]] bool IsLedgeHanging() const noexcept;
-        [[nodiscard]] bool IsLedgeClimbing() const noexcept;
+        //! 現在状態が通常移動 (立ち / 走り / 落下) の場合 true、それ以外の場合は false
+        [[nodiscard]] bool IsLocomotion() const noexcept;
         //! コヨーテ窓内ジャンプを 1 件記録する。上限を超えた分は最古から捨てる
         void PushCoyoteJumpMarker(const NS::Core::Vector3& edge, const NS::Core::Vector3& jump) noexcept;
 
@@ -216,7 +213,7 @@ namespace NS::Game::Player
         NS::Core::Vector3 m_lastGroundedPosition{0.0f, 0.0f, 0.0f};
         std::vector<CoyoteJumpMarker> m_coyoteJumpMarkers; // 表示中のコヨーテジャンプ記録。寿命付き
 
-        PlayerStatsManagerComponent* m_statsManager = nullptr;                   // 調整値の組 (非所有)
-        NS::Game::Entity::EntityStateManagerComponent* m_stateManager = nullptr; // 状態機械 (非所有)
+        PlayerStatsManagerComponent* m_statsManager = nullptr; // 調整値の組 (非所有)
+        PlayerStateManagerComponent* m_stateManager = nullptr; // 状態機械 (非所有)
     };
 } // namespace NS::Game::Player
