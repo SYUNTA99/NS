@@ -796,6 +796,7 @@ project "Tests"
         -- Game 側 GameObject 派生 (Player) は Application 依存を持たないので
         -- Tests から直接コンパイルしてリンクする。Game.cpp は Application や
         -- Window への依存があるので除外し、unit test で扱える範囲だけ取り込む。
+        -- Source/Game/Player/ 配下とは別物。GameObject 派生の Player 本体
         "Source/Game/Player.cpp",
         "Source/Editor/EditorCamera.cpp",
         -- LevelEditorController は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
@@ -805,6 +806,10 @@ project "Tests"
         -- Level 配下と Undo Command は Application 非依存の純粋ロジックなので
         -- Tests project から直接 compile する。
         "Source/Game/Level/**.cpp",
+        -- Entity / Player 配下は状態の自己登録 (NS_STATE) が無名 namespace の静的初期化に載る。
+        -- Tests が自分でコンパイルした obj はリンカが必ず取り込むので、ここへ足せば /WHOLEARCHIVE は要らない
+        "Source/Game/Entity/**.cpp",
+        "Source/Game/Player/**.cpp",
         "Source/Editor/Undo/**.cpp",
         -- editor のうち Application 非依存なものだけ取り込む (Editor は Application 依存のため除外)
         "Source/Editor/EditorObjects.cpp",
