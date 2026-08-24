@@ -1,17 +1,21 @@
-﻿#include <gtest/gtest.h>
+﻿#include <Game/Player/PlayerComponent.h>
+#include <Game/Player/PlayerStateManagerComponent.h>
+#include <Game/Player/PlayerStatsManagerComponent.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
-#include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
+#include <gtest/gtest.h>
 #include <vector>
 
 namespace
 {
     using NS::Core::AABB;
     using NS::Core::Vector3;
-    using NS::Object::CharacterMovementComponent;
+    using NS::Game::Player::PlayerComponent;
+    using NS::Game::Player::PlayerStateManagerComponent;
+    using NS::Game::Player::PlayerStatsManagerComponent;
     using NS::Object::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
@@ -33,7 +37,9 @@ namespace
         const AABB floor = MakeFloorOnly();
 
         GameObject owner;
-        auto& movement = *owner.AddComponent<CharacterMovementComponent>();
+        owner.AddComponent<PlayerStatsManagerComponent>();
+        auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
+        auto& movement = *owner.AddComponent<PlayerComponent>();
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
 
         NS::Physics::PhysicsWorld pw;
@@ -41,6 +47,8 @@ namespace
         pw.BuildBroadphase();
         movement.SetPhysicsWorld(&pw);
         movement.SetDebugDrawEnabled(false);
+        movement.OnStart();
+        manager.OnStart();
 
         std::vector<Vector3> trajectory;
         trajectory.reserve(k_NumSteps);
@@ -107,7 +115,9 @@ TEST_F(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
     const AABB floor = MakeFloorOnly();
 
     GameObject owner;
-    auto& movement = *owner.AddComponent<CharacterMovementComponent>();
+    owner.AddComponent<PlayerStatsManagerComponent>();
+    auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
+    auto& movement = *owner.AddComponent<PlayerComponent>();
     owner.Root().SetPosition(Vector3{0.0f, 0.5f, 0.0f}); // 床の上に直置きして接地から始める
 
     NS::Physics::PhysicsWorld pw;
@@ -115,6 +125,8 @@ TEST_F(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
     pw.BuildBroadphase();
     movement.SetPhysicsWorld(&pw);
     movement.SetDebugDrawEnabled(false);
+    movement.OnStart();
+    manager.OnStart();
 
     for (int i = 0; i < 60; ++i)
     {
