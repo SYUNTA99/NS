@@ -44,7 +44,7 @@ namespace
     // 編集復帰の視点ブレンド秒。Brain の vcam 切替の既定 0.35 秒と揃え、モード切替の繋ぎを同じ感触にする
     constexpr float k_EditBlendSeconds = 0.35f;
 
-    // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球 / カプセル / slope は collider 由来の AABB
+    // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、カプセルは実形状、球 / slope は collider 由来の AABB
     void DrawColliderWireframe(NS::Object::GameObject& object, const NS::Core::Color& color) noexcept
     {
         if (auto* box = object.FindComponent<NS::Object::BoxColliderComponent>())
@@ -57,7 +57,10 @@ namespace
         }
         else if (auto* capsule = object.FindComponent<NS::Object::CapsuleColliderComponent>())
         {
-            NS::Graphics::DebugDraw::AABB(capsule->WorldAABB(), color);
+            const NS::Physics::Capsule world = capsule->WorldCapsule();
+            NS::Core::Vector3 axis = world.axis;
+            axis.Normalize();
+            NS::Graphics::DebugDraw::Capsule(world.center, axis * world.halfHeight, world.radius, color);
         }
         else if (auto* slope = object.FindComponent<NS::Object::SlopeColliderComponent>())
         {
