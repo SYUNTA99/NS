@@ -125,7 +125,7 @@ namespace NS::Game::Level
 
         float m_reboundSpeed = 9.0f;   // 動かない壁に通常速度で当たった時の返りの速さ
         float m_reboundUpSpeed = 3.0f; // 反発の上向き初速
-        float m_launchSpeed = 14.0f;   // 通常速度で質量 1 の物に与える水平初速
+        float m_launchSpeed = 20.0f;   // 通常速度で質量 1 の物に与える水平初速
         float m_launchUpScale = 0.35f; // 水平初速に対する上向きの比
         // 既定の固定ステップ (1/60 秒) の 4 歩ぶん
         float m_hitStopBaseSeconds = 4.0f / 60.0f; // 質量 1 へ通常速度で当てた時に止める秒

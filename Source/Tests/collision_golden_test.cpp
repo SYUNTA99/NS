@@ -6,11 +6,11 @@
 #include <Game/Level/BreakableComponent.h>
 #include <Game/Level/ImpactResolverComponent.h>
 #include <Game/Level/MomentumComponent.h>
-#include <Runtime/Core/Clock.h>
-#include <Runtime/Core/Math.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
 #include <Game/Player/PlayerStatsManagerComponent.h>
+#include <Runtime/Core/Clock.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/PlayerInputComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
@@ -229,7 +229,9 @@ namespace
     // 体当たりを発動しない歩は裁かない仕様にした時に取り直した。取り直し前は 0x9557D5FB66D8EAB9
     // 威力の比に下限を入れた時に取り直した。取り直し前は 0xBBEEE91DFF9BE37B
     // 体当たりの空中発動と先行入力を入れた時に取り直した。取り直し前は 0x226FEFA1B6B49164
-    constexpr std::uint64_t k_ImpactGolden = 0x5CB7A5CC3E014443ULL;
+    // 押し飛ばし基準初速を 14.0 から 20.0 へ上げた時に取り直した。取り直し前は 0x5CB7A5CC3E014443
+    // 最初の衝突と反発を含む 30 歩は一致し、遠くへ飛んだ岩へ追いつく歩から差が出る
+    constexpr std::uint64_t k_ImpactGolden = 0xA143A23EBE09F88AULL;
 } // namespace
 
 class CollisionGolden : public ::testing::Test
