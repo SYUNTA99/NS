@@ -3,6 +3,7 @@
 #include <DirectXCollision.h>
 #include <SimpleMath.h>
 #include <cmath>
+#include <limits>
 
 namespace NS::Core
 {
@@ -238,6 +239,28 @@ namespace NS::Core
     [[nodiscard]] constexpr float Lerp(float a, float b, float t) noexcept
     {
         return a + (b - a) * t;
+    }
+
+    //! @brief 0 除算よけの下限。単位は m
+    //! @details 長さ 2 乗と比べる側は k_Epsilon * k_Epsilon と書く。意味を持つ許容誤差には使わない
+    inline constexpr float k_Epsilon = 1e-4f;
+
+    //! float の刻み幅
+    inline constexpr float k_FloatEpsilon = std::numeric_limits<float>::epsilon();
+
+    //! @brief XZ 平面へ畳んだ向きを正規化する
+    //! @param[in] v 元のベクトル。y 成分は捨てる
+    //! @param[out] outDirection 正規化した向き。y は 0。失敗した場合は書き換えない
+    //! @return 正規化できた場合 true、長さが k_Epsilon 未満の場合は false
+    //! @details 除算よけの下限を関数の中へ閉じる。呼ぶ側は下限の値を知らずに済む
+    [[nodiscard]] inline bool TryNormalizeHorizontal(const Vector3& v, Vector3& outDirection) noexcept
+    {
+        const float lengthSq = v.x * v.x + v.z * v.z;
+        if (lengthSq < k_Epsilon * k_Epsilon)
+            return false;
+        const float invLength = 1.0f / std::sqrt(lengthSq);
+        outDirection = Vector3{v.x * invLength, 0.0f, v.z * invLength};
+        return true;
     }
 
 } // namespace NS::Core

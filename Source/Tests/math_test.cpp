@@ -1,5 +1,7 @@
-#include <gtest/gtest.h>
 #include <Runtime/Core/Math.h>
+#include <cmath>
+#include <gtest/gtest.h>
+#include <limits>
 #include <type_traits>
 
 namespace
@@ -145,6 +147,56 @@ TEST(NsMath, QuaternionAxisAngleRotatesVector)
     EXPECT_NEAR(rotated.x, -1.0f, 1e-4f);
     EXPECT_NEAR(rotated.y, 0.0f, 1e-4f);
     EXPECT_NEAR(rotated.z, 0.0f, 1e-4f);
+}
+
+TEST(NsMath, EpsilonHoldsItsExactValue)
+{
+    EXPECT_EQ(NS::Core::k_Epsilon, 1e-4f);
+}
+
+TEST(NsMath, FloatEpsilonMatchesNumericLimits)
+{
+    EXPECT_EQ(NS::Core::k_FloatEpsilon, std::numeric_limits<float>::epsilon());
+}
+
+TEST(NsMath, TryNormalizeHorizontalRejectsZeroVectorAndKeepsOutput)
+{
+    NS::Core::Vector3 out{7.0f, 8.0f, 9.0f};
+    EXPECT_FALSE(NS::Core::TryNormalizeHorizontal(NS::Core::Vector3{0.0f, 0.0f, 0.0f}, out));
+    EXPECT_EQ(out.x, 7.0f);
+    EXPECT_EQ(out.y, 8.0f);
+    EXPECT_EQ(out.z, 9.0f);
+}
+
+TEST(NsMath, TryNormalizeHorizontalRejectsBelowEpsilon)
+{
+    NS::Core::Vector3 out{1.0f, 1.0f, 1.0f};
+    EXPECT_FALSE(NS::Core::TryNormalizeHorizontal(NS::Core::Vector3{5e-5f, 100.0f, 0.0f}, out));
+    EXPECT_EQ(out.x, 1.0f);
+    EXPECT_EQ(out.y, 1.0f);
+    EXPECT_EQ(out.z, 1.0f);
+}
+
+TEST(NsMath, TryNormalizeHorizontalDropsVerticalAndNormalizesXZ)
+{
+    NS::Core::Vector3 out{0.0f, 0.0f, 0.0f};
+    EXPECT_TRUE(NS::Core::TryNormalizeHorizontal(NS::Core::Vector3{3.0f, 99.0f, 4.0f}, out));
+    EXPECT_FLOAT_EQ(out.x, 0.6f);
+    EXPECT_FLOAT_EQ(out.y, 0.0f);
+    EXPECT_FLOAT_EQ(out.z, 0.8f);
+}
+
+TEST(NsMath, TryNormalizeHorizontalMatchesCallerArithmeticBitForBit)
+{
+    const NS::Core::Vector3 v{1.7f, -3.0f, -0.35f};
+    const float lengthSq = v.x * v.x + v.z * v.z;
+    const float invLength = 1.0f / std::sqrt(lengthSq);
+
+    NS::Core::Vector3 out{0.0f, 0.0f, 0.0f};
+    ASSERT_TRUE(NS::Core::TryNormalizeHorizontal(v, out));
+    EXPECT_EQ(out.x, v.x * invLength);
+    EXPECT_EQ(out.y, 0.0f);
+    EXPECT_EQ(out.z, v.z * invLength);
 }
 
 TEST(NsMath, AabbIntersectsOverlappingAndDisjoint)
