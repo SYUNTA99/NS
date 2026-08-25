@@ -19,8 +19,9 @@ namespace NS::Physics
                                             NS::Core::Vector3& outNormal) noexcept;
 
     //! @brief Capsule が motion だけ移動した時の別 Capsule との最初の接触を返す
-    //! @details プレイヤー capsule の軸端点を相手の膨張 capsule へ ray で当てる端点近似
-    //!          軸の中央だけが当たる稀なケースは取りこぼす。SweptOBB と同水準
+    //! @details 2 本の軸が平行なら厳密解。相手を半径と長さを足した capsule 1 本へ膨張させ、
+    //!          自分の中心から ray を当てる。 平行でなければ自分の軸端点 2 つから ray を当てる近似で、
+    //!          相手が短く自分の胴体の中央だけに当たる場合を取りこぼす
     //! @param[in] capsule   移動開始位置の Capsule
     //! @param[in] motion    1 フレーム分の変位ベクトル
     //! @param[in] other     ターゲット Capsule

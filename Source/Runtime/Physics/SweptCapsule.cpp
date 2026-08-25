@@ -141,6 +141,36 @@ namespace
         outClosest = bestQ;
         return true;
     }
+
+    //! 2 本の軸を平行とみなす内積の下限。 自機も敵も軸は {0,1,0} 固定で実運用の内積は 1.0 ちょうどなので、
+    //! 浮動小数の丸めだけを吸収する幅にして傾いた軸を厳密扱いしない
+    //! 1e-6 は角度 1.4e-3 rad 相当で、 halfHeight 1m の capsule なら端で 1.4mm のずれ
+    //! NS::Core::k_Epsilon は長さ (m) の下限なので流用しない
+    inline constexpr float k_ParallelAxisDot = 1.0f - 1e-6f;
+
+    //! 軸が平行な capsule 同士の厳密解。 平行な線分どうしのミンコフスキー和は線分のままなので、
+    //! 相手を半径と長さを足した capsule 1 本へ膨張させ、 自分の中心から motion 方向へ光線を飛ばす
+    [[nodiscard]] bool SweptParallelCapsules(const Capsule& capsule,
+                                             const Vector3& motion,
+                                             const Capsule& other,
+                                             const Vector3& axis,
+                                             float& outToi,
+                                             Vector3& outNormal) noexcept
+    {
+        const float halfHeight = capsule.halfHeight + other.halfHeight;
+        const float r = capsule.radius + other.radius;
+        const Vector3 a = other.center - axis * halfHeight;
+        const Vector3 b = other.center + axis * halfHeight;
+
+        float t = 1.0f;
+        Vector3 core{};
+        if (!RayVsCapsule(capsule.center, motion, a, b, r, t, core))
+            return false;
+
+        outToi = t;
+        outNormal = Normalized((capsule.center + motion * t) - core);
+        return true;
+    }
 } // namespace
 
 namespace NS::Physics
@@ -182,10 +212,14 @@ namespace NS::Physics
         outNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
 
         const Vector3 axisSelf = NormalizeAxis(capsule.axis);
+        const Vector3 axisOther = NormalizeAxis(other.axis);
+        // 実運用で来るのは平行だけだが、 汎用の口は塞がない。 非平行は端点近似で落とす
+        if (std::abs(Dot(axisSelf, axisOther)) >= k_ParallelAxisDot)
+            return SweptParallelCapsules(capsule, motion, other, axisSelf, outToi, outNormal);
+
         const Vector3 selfBottom = capsule.center - axisSelf * capsule.halfHeight;
         const Vector3 selfTop = capsule.center + axisSelf * capsule.halfHeight;
 
-        const Vector3 axisOther = NormalizeAxis(other.axis);
         const Vector3 otherBottom = other.center - axisOther * other.halfHeight;
         const Vector3 otherTop = other.center + axisOther * other.halfHeight;
         const float r = capsule.radius + other.radius;
