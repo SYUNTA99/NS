@@ -63,15 +63,13 @@ namespace NS::Core
             console->set_pattern("%H:%M:%S.%e [%^%l%$] [%n] %v");
             sinks.push_back(console);
 
-            // リリース版はファイルには書かない
-#if !defined(NS_SHIPPING)
+            // 出荷版はウィンドウだけでコンソールが無い。ファイルに残さないと失敗が誰にも伝わらない
             const auto logsDir = NS::Core::FileSystem::ContentRoot() / "logs";
             const std::string logFilePath = (logsDir / (g_logName + ".log")).string();
             auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
                 logFilePath, k_RotatingMaxBytes, k_RotatingMaxFiles, g_rotateOnOpen);
             file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread:%t] [%s:%#] %v");
             sinks.push_back(file);
-#endif
 
 #if defined(_WIN32)
             auto msvc = std::make_shared<spdlog::sinks::msvc_sink_mt>();
@@ -123,9 +121,7 @@ namespace NS::Core
 
         try
         {
-#if !defined(NS_SHIPPING)
             (void)NS::Core::FileSystem::CreateDirectories(NS::Core::FileSystem::ContentRoot() / "logs");
-#endif
 
             auto sinks = BuildSinks();
             auto logger = std::make_shared<spdlog::logger>(k_LoggerName, sinks.begin(), sinks.end());
@@ -141,7 +137,7 @@ namespace NS::Core
         }
         catch (const std::exception& e)
         {
-            // ロガー自身の構築に失敗した箇所なので、 ログ経路へは流さず標準エラー出力へ直接出す
+            // ロガー自身の構築に失敗した箇所なので、ログ経路へは流さず標準エラー出力へ直接出す
             std::fprintf(stderr, "Logger::Init failed: %s\n", e.what());
             g_initialized.store(false);
         }

@@ -10,6 +10,7 @@
 #include <d3dcompiler.h>
 
 #include <filesystem>
+#include <string>
 
 namespace NS::Graphics
 {
@@ -62,12 +63,7 @@ namespace NS::Graphics
         return float4(1.0, 0.0, 1.0, 1.0);
         })HLSL";
 
-        bool CompileFromMemory(const void* bytes,
-                               std::size_t size,
-                               const char* entryPoint,
-                               const char* target,
-                               const char* sourceName,
-                               ComPtr<ID3DBlob>& outBlob) noexcept
+        [[nodiscard]] UINT CompileFlags() noexcept
         {
             UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
 #ifdef _DEBUG
@@ -75,7 +71,37 @@ namespace NS::Graphics
 #else
             flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
+            return flags;
+        }
 
+        void LogCompileFailure(const char* entryPoint,
+                               const char* target,
+                               HRESULT hr,
+                               const ComPtr<ID3DBlob>& errorBlob) noexcept
+        {
+            const char* msg = [&]() -> const char* {
+                if (errorBlob)
+                {
+                    return static_cast<const char*>(errorBlob->GetBufferPointer());
+                }
+                return "(no error blob)";
+            }();
+            NS_LOG_ERROR(Graphics,
+                         "Shader compile failed: target={}, entry={}, hr=0x{:X}, msg={}",
+                         target,
+                         entryPoint,
+                         static_cast<unsigned>(hr),
+                         msg);
+        }
+
+        // メモリ上のソース専用。実ファイルは CompileStage
+        bool CompileFromMemory(const void* bytes,
+                               std::size_t size,
+                               const char* entryPoint,
+                               const char* target,
+                               const char* sourceName,
+                               ComPtr<ID3DBlob>& outBlob) noexcept
+        {
             ComPtr<ID3DBlob> errorBlob;
             const HRESULT hr = D3DCompile(bytes,
                                           size,
@@ -84,31 +110,20 @@ namespace NS::Graphics
                                           D3D_COMPILE_STANDARD_FILE_INCLUDE,
                                           entryPoint,
                                           target,
-                                          flags,
+                                          CompileFlags(),
                                           0u,
                                           outBlob.GetAddressOf(),
                                           errorBlob.GetAddressOf());
             if (FAILED(hr))
             {
-                const char* msg = [&]() -> const char* {
-                    if (errorBlob)
-                    {
-                        return static_cast<const char*>(errorBlob->GetBufferPointer());
-                    }
-                    return "(no error blob)";
-                }();
-                NS_LOG_ERROR(Graphics,
-                             "Shader compile failed: target={}, entry={}, hr=0x{:X}, msg={}",
-                             target,
-                             entryPoint,
-                             static_cast<unsigned>(hr),
-                             msg);
+                LogCompileFailure(entryPoint, target, hr, errorBlob);
                 return false;
             }
             return true;
         }
 
-        // .hlsl を読んで 1 ステージをコンパイルし blob を返す。 path 空 / 読込失敗 / コンパイル失敗で nullptr
+        // D3DCompile のソース名は char* のみで、非 ASCII を含むパスは #include の基準として扱えない
+        // Common.hlsli が解決できずコンパイルが失敗するため、wide のまま渡せる D3DCompileFromFile を使う
         [[nodiscard]] ComPtr<ID3DBlob> CompileStage(const std::filesystem::path& path,
                                                     const char* entryPoint,
                                                     const char* target) noexcept
@@ -117,16 +132,26 @@ namespace NS::Graphics
             {
                 return nullptr;
             }
-            const auto bytes = ::NS::Core::FileSystem::ReadAllBytes(path);
-            if (!bytes.has_value())
+            if (!::NS::Core::FileSystem::Exists(path))
             {
-                NS_LOG_ERROR(Graphics, "Shader file read failed: {}", path.string());
+                NS_LOG_ERROR(Graphics, "Shader file not found: {}", path.string());
                 return nullptr;
             }
-            const std::string tag = path.string();
+            const std::wstring widePath = path.wstring();
             ComPtr<ID3DBlob> blob;
-            if (!CompileFromMemory(bytes->data(), bytes->size(), entryPoint, target, tag.c_str(), blob))
+            ComPtr<ID3DBlob> errorBlob;
+            const HRESULT hr = D3DCompileFromFile(widePath.c_str(),
+                                                  nullptr,
+                                                  D3D_COMPILE_STANDARD_FILE_INCLUDE,
+                                                  entryPoint,
+                                                  target,
+                                                  CompileFlags(),
+                                                  0u,
+                                                  blob.GetAddressOf(),
+                                                  errorBlob.GetAddressOf());
+            if (FAILED(hr))
             {
+                LogCompileFailure(entryPoint, target, hr, errorBlob);
                 return nullptr;
             }
             return blob;
@@ -296,7 +321,7 @@ namespace NS::Graphics
         {
             m_vsBytecode = std::move(bytecode);
         }
-        m_fallback = false; // 実ファイルの再コンパイル成功は fallback ではない
+        m_fallback = false; // 実ファイルの再コンパイル成功はフォールバックではない
         return true;
     }
 
