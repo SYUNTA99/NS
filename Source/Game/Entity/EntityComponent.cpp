@@ -12,7 +12,7 @@
 namespace
 {
     //! 一次遅れの離散化。tau は時定数で値が大きいほど鈍い、dt は step。0 < tau で安定
-    //! 式は移し替え前の実装から 1 文字も変えていない。加速と減速の手触りはこの式が決める
+    //! 加速と減速の手触りはこの式が決める
     [[nodiscard]] float SmoothApproach(float current, float target, float tau, float dt) noexcept
     {
         if (tau <= 0.0f)
