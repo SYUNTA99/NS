@@ -1,6 +1,7 @@
 #include "Game/Level/ImpactResolverComponent.h"
 
 #include "Game/Level/BreakableComponent.h"
+#include "Game/Level/ColliderBounds.h"
 #include "Game/Level/CollisionInputComponent.h"
 #include "Game/Level/ImpactMarkComponent.h"
 #include "Game/Level/LaunchedBodyComponent.h"
@@ -14,6 +15,7 @@
 #include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Object/Components/BoxColliderComponent.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
+#include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/Components/ShadowComponent.h"
 #include "Runtime/Object/GameObject.h"
@@ -105,11 +107,14 @@ namespace NS::Game::Level
                 return;
 
             // トリガの箱は通り抜ける体積なのでぶつかる相手にならない
-            auto* box = breakable.Owner()->FindComponent<NS::Object::BoxColliderComponent>();
-            if (box == nullptr || box->IsTrigger())
+            const auto* box = breakable.Owner()->FindComponent<NS::Object::BoxColliderComponent>();
+            if (box != nullptr && box->IsTrigger())
                 return;
 
-            const NS::Core::AABB bounds = box->WorldAABB();
+            NS::Core::AABB bounds{};
+            if (!TryGetColliderBounds(*breakable.Owner(), bounds))
+                return;
+
             if (!NS::Physics::IntersectsCapsuleAABB(capsule, bounds))
                 return;
 
@@ -167,11 +172,10 @@ namespace NS::Game::Level
         if (hit == nullptr)
             return;
 
-        auto* box = hit->Owner()->FindComponent<NS::Object::BoxColliderComponent>();
-        if (box == nullptr)
+        NS::Core::AABB bounds{};
+        if (!TryGetColliderBounds(*hit->Owner(), bounds))
             return;
 
-        const NS::Core::AABB bounds = box->WorldAABB();
         const NS::Core::Vector3 position = Owner()->Root().Position();
         // 箱へ押し付けられた歩は実速度が 0 に潰されるため、突進の狙いの速度で向きと勢いを決める
         const NS::Core::Vector3 velocity = m_movement->BodySlamVelocity();
@@ -356,8 +360,8 @@ namespace NS::Game::Level
         // 印と当たりを寝かせて探索と固形から外し、見た目の色で壊れたと分かるようにする
         if (auto* breakable = target.FindComponent<BreakableComponent>())
             breakable->SetActive(false);
-        if (auto* box = target.FindComponent<NS::Object::BoxColliderComponent>())
-            box->SetActive(false);
+        if (auto* collider = target.FindComponent<NS::Object::ColliderComponent>())
+            collider->SetActive(false);
         if (auto* mesh = target.FindComponent<NS::Object::MeshRendererComponent>())
             mesh->SetBaseColor(k_BrokenBaseColor);
         // 固形から外すのは壊れた 1 回だけ。直後に動く移動が素通りする

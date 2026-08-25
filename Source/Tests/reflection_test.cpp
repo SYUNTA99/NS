@@ -223,9 +223,9 @@ TEST(ReflectionTest, PlayerComponentReflectsFeelFloats)
     NS::Game::Player::PlayerComponent move;
     const ReflectionInfo* info = move.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 20u);
+    EXPECT_EQ(info->fieldCount, 18u);
 
-    // 操作感の代表値が float として往復する。欄ごとの取り出し口は無いのでリフレクション get で確認する
+    // 操作感の代表値が float として往復する
     const FieldDesc* jump = FindField(info, "ジャンプ初速");
     ASSERT_NE(jump, nullptr);
     EXPECT_EQ(jump->type, FieldType::Float);

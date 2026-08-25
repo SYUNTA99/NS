@@ -9,7 +9,7 @@ namespace NS::Game::Level
     //! @details 自機はキネマティック制御のままで、簡易物理で動くのはこの Component を積んだ物だけ
     //! 飛んでいる間は当たりを寝かせる。張り直しは配置物の数に比例する費用なので、寝かせる時と起こす時だけ呼ぶ
     //! 地形との当たりは真下の地面探しだけで見る。壁は見ない
-    //! 依存: NS::Object::BoxColliderComponent, NS::Object::MeshRendererComponent, NS::Object::ShadowComponent,
+    //! 依存: NS::Object::ColliderComponent, NS::Object::MeshRendererComponent, NS::Object::ShadowComponent,
     //! NS::Object::Scene
     class LaunchedBodyComponent : public NS::Object::Component
     {
@@ -45,7 +45,7 @@ namespace NS::Game::Level
         // 当たりを寝かせる / 起こす。値が変わった時だけ SyncPhysics を呼ぶ
         void SetColliderActive(bool active);
 
-        // 床へ乗せる時に使う自分の半分の高さ。当たり箱が無ければ既定値
+        // 床へ乗せる時に使う自分の半分の高さ。当たりが無ければ既定値に描画スケールを掛ける
         [[nodiscard]] float HalfHeight() const noexcept;
 
         // 飛ぶ向きから回転の軸と 1 秒あたりの回転量を決める

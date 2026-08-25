@@ -151,7 +151,9 @@ TEST_P(ShippedScene, PlayerComponentCarriesEveryTuningField)
     const auto fields = entry->find("fields");
     ASSERT_NE(fields, entry->end());
 
-    const std::size_t expected = std::string_view{GetParam()} == "collision_feel" ? 15u : 20u;
+    std::size_t expected = 18u;
+    if (std::string_view{GetParam()} == "collision_feel")
+        expected = 13u;
     EXPECT_EQ(fields->size(), expected) << GetParam() << " の調整値の欄が減っている。落ちた欄は既定値で動く";
 }
 

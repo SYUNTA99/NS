@@ -160,7 +160,7 @@ TEST_F(PlayerComponentTest, MaxSpeedRoundsNegativeAndKeepsTheValueOnNonFinite)
     EXPECT_FLOAT_EQ(player.MaxSpeed(), 0.0f);
 }
 
-// 当たりの形は同居する CapsuleColliderComponent が正。写さないと Inspector で触っても移動に効かない
+// 当たりの形は同居する CapsuleColliderComponent が正。掃引はこの写しを読むので、追従しないと形と動きがずれる
 TEST_F(PlayerComponentTest, AdoptsSiblingCapsuleColliderSize)
 {
     GameObject obj;

@@ -61,6 +61,7 @@ namespace
         LevelNs::ImpactResolverComponent* impact = nullptr;
         LevelNs::CollisionInputComponent* input = nullptr;
         SceneNs::BoxColliderComponent* targetBox = nullptr;
+        NS::Object::GameObject* target = nullptr;
         LevelNs::BreakableComponent* breakable = nullptr;
     };
 
@@ -72,6 +73,7 @@ namespace
         bool withCollisionInput = true;
         bool floorUnderTarget = true;
         bool alongZ = false;
+        bool sphereTarget = false;
     };
 
     Rig BuildSlam(SceneNs::Scene& scene, const SlamCourse& course)
@@ -102,6 +104,16 @@ namespace
         SceneNs::ObjectData target = LevelNs::MakeCellObject(course.targetCell, 1, 0);
         if (course.alongZ)
             target = LevelNs::MakeCellObject(0, 1, course.targetCell);
+        if (course.sphereTarget)
+        {
+            for (nlohmann::json& entry : target.components)
+            {
+                if (SceneNs::ComponentEntryType(entry) != "BoxColliderComponent")
+                    continue;
+                entry = SceneNs::MakeComponentEntry("SphereColliderComponent");
+                SceneNs::SetField(entry, "半径", LevelNs::k_CellHalfExtents.y);
+            }
+        }
         if (course.withBreakable)
             target.components.push_back(SceneNs::MakeComponentEntry("BreakableComponent"));
         data.objects.push_back(target);
@@ -125,6 +137,7 @@ namespace
         if (rig.breakable != nullptr)
         {
             rig.breakable->SetToughness(k_UnbreakableToughness);
+            rig.target = rig.breakable->Owner();
             rig.targetBox = rig.breakable->Owner()->FindComponent<SceneNs::BoxColliderComponent>();
         }
         if (rig.targetBox == nullptr)
@@ -134,14 +147,16 @@ namespace
                     rig.targetBox = &box;
             });
         }
+        if (rig.target == nullptr && rig.targetBox != nullptr)
+            rig.target = rig.targetBox->Owner();
         return rig;
     }
 
     LevelNs::LaunchedBodyComponent* HitBody(const Rig& rig)
     {
-        if (rig.targetBox == nullptr)
+        if (rig.target == nullptr)
             return nullptr;
-        return rig.targetBox->Owner()->FindComponent<LevelNs::LaunchedBodyComponent>();
+        return rig.target->FindComponent<LevelNs::LaunchedBodyComponent>();
     }
 
     // 帯の範囲は半開なので Update (200) の移動は入らない。押し飛ばされた物と破片を動かさずに済む
@@ -613,6 +628,36 @@ TEST(CollisionImpact, ReboundLaunchesHitBody)
     LevelNs::LaunchedBodyComponent* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
     EXPECT_TRUE(body->IsFlying());
+}
+
+TEST(CollisionImpact, ReboundsAgainstSphereTarget)
+{
+    SceneNs::Scene scene;
+    SlamCourse course = k_NearCourse;
+    course.sphereTarget = true;
+    Rig rig = BuildSlam(scene, course);
+    SetInstantImpact(rig);
+    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+    EXPECT_TRUE(rig.impact->DidRebound());
+}
+
+TEST(CollisionImpact, LaunchesSphereTarget)
+{
+    SceneNs::Scene scene;
+    SlamCourse course = k_NearCourse;
+    course.sphereTarget = true;
+    Rig rig = BuildSlam(scene, course);
+    SetInstantImpact(rig);
+    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+
+    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    ASSERT_NE(body, nullptr);
+    EXPECT_TRUE(body->IsFlying());
+    EXPECT_GT(body->Velocity().x, 0.0f);
 }
 
 TEST(CollisionImpact, LaunchDirectionFollowsApproach)

@@ -70,7 +70,7 @@ namespace NS::Game::Entity
 
     void EntityComponent::OnUpdate()
     {
-        // 当たりの形の正は同居する CapsuleColliderComponent。写さないと Inspector で触っても移動に効かない
+        // 当たりの形の正は同居する CapsuleColliderComponent。掃引はこの写しを読むので毎歩追従させる
         if (m_capsuleCollider != nullptr)
         {
             m_capsuleRadius = m_capsuleCollider->Radius();

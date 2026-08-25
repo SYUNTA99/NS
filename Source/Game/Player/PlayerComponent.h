@@ -208,8 +208,6 @@ namespace NS::Game::Player
 
         // 欄は登録される具象型に置く。リフレクションの直列化は自分の型の欄だけを回り、基底の鎖はたどらない
         NS_REFLECT_BEGIN(PlayerComponent, NS::Game::Entity::EntityComponent)
-        NS_REFLECT_ACCESSOR(float, "カプセル半径", CapsuleRadius(), SetCapsuleRadius)
-        NS_REFLECT_ACCESSOR(float, "カプセル半分の高さ", CapsuleHalfHeight(), SetCapsuleHalfHeight)
         NS_REFLECT_ACCESSOR(float, "ジャンプ初速", JumpImpulse(), SetJumpImpulse)
         NS_REFLECT_ACCESSOR(float, "上昇重力", GravityUp(), SetGravityUp)
         NS_REFLECT_ACCESSOR(float, "下降重力", GravityDown(), SetGravityDown)

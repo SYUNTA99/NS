@@ -1,7 +1,8 @@
 #include "Game/Level/LaunchedBodyComponent.h"
 
+#include "Game/Level/ColliderBounds.h"
 #include "Runtime/Core/Clock.h"
-#include "Runtime/Object/Components/BoxColliderComponent.h"
+#include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/Components/ShadowComponent.h"
 #include "Runtime/Object/GameObject.h"
@@ -154,11 +155,11 @@ namespace NS::Game::Level
         if (Owner() == nullptr)
             return;
         // 当たり箱を持たない配置物でも飛べるようにする
-        auto* box = Owner()->FindComponent<NS::Object::BoxColliderComponent>();
-        if (box == nullptr || box->IsActiveSelf() == active)
+        auto* collider = Owner()->FindComponent<NS::Object::ColliderComponent>();
+        if (collider == nullptr || collider->IsActiveSelf() == active)
             return;
 
-        box->SetActive(active);
+        collider->SetActive(active);
         if (NS::Object::Scene* scene = Owner()->OwningScene())
             scene->SyncPhysics();
     }
@@ -167,8 +168,8 @@ namespace NS::Game::Level
     {
         if (Owner() == nullptr)
             return k_DefaultHalfHeight;
-        const auto* box = Owner()->FindComponent<NS::Object::BoxColliderComponent>();
-        if (box == nullptr)
+        NS::Core::AABB bounds{};
+        if (!TryGetColliderBounds(*Owner(), bounds))
         {
             // 当たり箱の無い破片は描画スケールから半分の高さを作る。既定値のままだと小さい破片が浮いて止まる
             const float scaleY = Owner()->Root().Scale().y;
@@ -177,7 +178,7 @@ namespace NS::Game::Level
             return k_DefaultHalfHeight;
         }
         // GroundBelow が見るのと同じ world 空間の箱から取る。 HalfExtents だと拡縮した配置物が床へ潜る
-        return box->WorldAABB().Extents.y;
+        return bounds.Extents.y;
     }
 
     NS_CLASS(LaunchedBodyComponent)

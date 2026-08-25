@@ -21,7 +21,8 @@ namespace NS::Game::Level
         NS_REFLECT_NONE(CoyoteDebugComponent, NS::Object::Component)
 
     private:
-        bool m_draw = true; // F2 で切替
+        // 猶予の値を詰める時だけ見る。出したままだと遊びの視界を塞ぐので既定は消す
+        bool m_draw = false; // F2 で切替
     };
 
 } // namespace NS::Game::Level
