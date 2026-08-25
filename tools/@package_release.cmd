@@ -80,16 +80,42 @@ if not exist "%BIN%\Game.exe" (
 )
 
 :: --- 4. fresh output dir --------------------------------------------------
+:: The delete is delegated to PowerShell: rmdir /s /q is denied on the
+:: previous run's .txt / .png files here. clean_dir.ps1 has the measurement.
 echo [3/8] Preparing output dir ...
-if exist "%OUT%" rmdir /s /q "%OUT%"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0package_assets\clean_dir.ps1" "%OUT%"
+if errorlevel 1 (
+    echo [ERROR] could not clear %OUT%
+    exit /b 1
+)
 mkdir "%OUT%"
+if errorlevel 1 (
+    echo [ERROR] mkdir %OUT% failed
+    exit /b 1
+)
 mkdir "%GAMEDIR%"
+if errorlevel 1 (
+    echo [ERROR] mkdir %GAMEDIR% failed
+    exit /b 1
+)
 
 :: --- 5. exe + assets (into Game\ so exe sits next to its DLLs) -------------
 echo [4/8] Copying exe + Assets + Shaders into Game\ ...
 copy /y "%BIN%\Game.exe" "%GAMEDIR%\Game.exe" >nul
+if errorlevel 1 (
+    echo [ERROR] copy Game.exe failed
+    exit /b 1
+)
 xcopy /e /i /q /y "Assets"  "%GAMEDIR%\Assets\"  >nul
+if errorlevel 1 (
+    echo [ERROR] copy Assets failed
+    exit /b 1
+)
 xcopy /e /i /q /y "Shaders" "%GAMEDIR%\Shaders\" >nul
+if errorlevel 1 (
+    echo [ERROR] copy Shaders failed
+    exit /b 1
+)
 :: Scenes now live under Assets\Scenes and are copied by the Assets xcopy above.
 :: The game loads GetExeDirectory()\Assets\Scenes\new_scene.scene
 if not exist "%GAMEDIR%\Assets\Scenes\new_scene.scene" (
@@ -128,16 +154,36 @@ if errorlevel 1 (
     exit /b 1
 )
 tar -xf "%OUT%\_src.tar" -C "%OUT%"
+if errorlevel 1 (
+    echo [ERROR] extracting the source archive failed
+    exit /b 1
+)
 del /q "%OUT%\_src.tar"
 
 echo [7/8] Adding README (top) + notices/licenses inside Source\ ...
 copy /y "%ASSETS%\README.txt"                "%OUT%\README.txt"                        >nul
+if errorlevel 1 (
+    echo [ERROR] copy README.txt failed
+    exit /b 1
+)
 copy /y "%ASSETS%\THIRD_PARTY_NOTICES.txt"   "%OUT%\Source\THIRD_PARTY_NOTICES.txt"    >nul
+if errorlevel 1 (
+    echo [ERROR] copy THIRD_PARTY_NOTICES.txt failed
+    exit /b 1
+)
 mkdir "%OUT%\Source\Licenses"
-copy /y "Source\ThirdParty\DirectXTK\LICENSE"   "%OUT%\Source\Licenses\DirectXTK-LICENSE.txt"   >nul
-copy /y "Source\ThirdParty\DirectXTex\LICENSE"  "%OUT%\Source\Licenses\DirectXTex-LICENSE.txt"  >nul
-copy /y "Source\ThirdParty\spdlog\LICENSE"      "%OUT%\Source\Licenses\spdlog-LICENSE.txt"      >nul
-copy /y "Source\ThirdParty\magic_enum\LICENSE"  "%OUT%\Source\Licenses\magic_enum-LICENSE.txt"  >nul
+if errorlevel 1 (
+    echo [ERROR] mkdir %OUT%\Source\Licenses failed
+    exit /b 1
+)
+:: one license text per bundled library: ThirdParty\<lib>\LICENSE -> <lib>-LICENSE.txt
+for %%L in (DirectXTK DirectXTex spdlog magic_enum) do (
+    copy /y "Source\ThirdParty\%%L\LICENSE" "%OUT%\Source\Licenses\%%L-LICENSE.txt" >nul
+    if errorlevel 1 (
+        echo [ERROR] copy %%L LICENSE failed
+        exit /b 1
+    )
+)
 
 :: --- 8. rename ASCII build folders to JP submission names ------------------
 :: cmd misparses UTF-8 in logic lines, so the JP rename is done in a pure-ASCII
