@@ -10,8 +10,8 @@
 namespace
 {
     constexpr int k_MaxSubSteps = 4;
-    // 壁との安全マージン。小さすぎると毎フレーム toi=0 で hit が連続して進まなくなり引っかかる
-    // 1cm 離して止めるので次フレームの motion が進む
+    // 衝突時刻の手前で止める割合。距離でなく 0〜1 の toi から引くため、隙間は移動量に比例して最高速で 0.7mm
+    // 低速では隙間がほぼ 0 になる。壁への貼り付きを防いでいるのは ComputePushOut の 1mm 側
     constexpr float k_Skin = 0.01f;
     // 着地直後に player.y が跳ねて grounded がちらつくのを抑えるため raycast をこの分だけ下へ延ばす
     constexpr float k_GroundProbeDistance = 0.2f;
