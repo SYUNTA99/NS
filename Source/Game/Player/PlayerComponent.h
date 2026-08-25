@@ -115,6 +115,8 @@ namespace NS::Game::Player
         void CutJumpRelease() noexcept;
         //! 上昇と下降で非対称な重力を当てる。頂点の近くは弱める
         void Gravity(float dt) noexcept;
+        //! タップの飛び込みだけに当てる重力。滞空秒がタップ距離を進む秒と揃う強さにする
+        void TapSlamGravity(float dt) noexcept;
         //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と最終接地位置を張り直す
         void SyncGroundState() noexcept;
         //! 縁を掴めるか試す。掴んだ場合 true、それ以外の場合は false。true なら呼び出し側は即 return する

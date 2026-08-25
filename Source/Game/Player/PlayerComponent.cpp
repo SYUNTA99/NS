@@ -301,6 +301,24 @@ namespace NS::Game::Player
         return true;
     }
 
+    void PlayerComponent::TapSlamGravity(float dt) noexcept
+    {
+        // 進み切る前に着地すると残りを地面の上で滑り、走っていないのに動いて見える。
+        // 滞空秒を踏み込みの秒へ合わせ、進み切った所で足が着くようにする
+        const float airSeconds = (Stats().tapSlamSpeed > 0.0f) ? Stats().tapSlamDistance / Stats().tapSlamSpeed : 0.0f;
+        // Inspector で 0 を置くと 0 除算で位置まで NaN が伝わるため、距離か初速が 0 なら通常の重力へ戻す
+        if (!(airSeconds > NS::Core::k_Epsilon))
+        {
+            Gravity(dt);
+            return;
+        }
+
+        // 上下対称の弧なので、山の高さは tapSlamUpSpeed * airSeconds / 4 で決まる。
+        // 高さを変えたい時に触るのは tapSlamUpSpeed で、ここは触らない
+        const float g = -2.0f * Stats().tapSlamUpSpeed / airSeconds;
+        NS::Game::Entity::EntityComponent::Gravity(g, dt);
+    }
+
     void PlayerComponent::UpdateBodySlam(float dt) noexcept
     {
         // 突進中に向きを変えられると当てる間合いを詰める意味が消えるので、水平は発動時の値で書き直す
@@ -310,7 +328,10 @@ namespace NS::Game::Player
                 m_bodySlamDir.x * Stats().bodySlamSpeed, 0.0f, m_bodySlamDir.z * Stats().bodySlamSpeed});
         }
 
-        Gravity(dt);
+        if (m_bodySlamIsTap)
+            TapSlamGravity(dt);
+        else
+            Gravity(dt);
         Move(dt);
         SyncGroundState();
 

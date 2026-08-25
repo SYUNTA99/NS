@@ -722,10 +722,52 @@ TEST_F(PlayerComponentTest, TapHopEndsAfterTheShortDistance)
     }
 
     EXPECT_LT(steps, 120);
-    // 着地を挟むので欄の数字ぶん進むとは限らない。実移動で測る
+    // 目標を越えた歩で終わるので少し行き過ぎる。実移動で測る
     const float travelled = obj.Root().Position().x - startX;
     EXPECT_NEAR(travelled, player.TapSlamDistance(), 0.2f);
     EXPECT_LT(player.TapSlamDistance(), player.BodySlamDistance());
+}
+
+// 途中で着地すると残りを地面の上で滑り、走っていないのに動いて見える
+TEST_F(PlayerComponentTest, TapSlamStaysAirborneUntilTheEndOfTheLunge)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    const Vector3 start = obj.Root().Position();
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    const float half = player.TapSlamDistance() * 0.5f;
+    float peakY = start.y;
+    bool groundedAtHalf = true;
+    bool sawHalf = false;
+    bool groundedAtEnd = false;
+    int steps = 0;
+    while (player.IsBodySlamming() && steps < 300)
+    {
+        player.OnUpdate();
+        ++steps;
+        const Vector3 position = obj.Root().Position();
+        peakY = std::max(peakY, position.y);
+        if (!sawHalf && position.x - start.x >= half)
+        {
+            sawHalf = true;
+            groundedAtHalf = player.IsGrounded();
+        }
+        groundedAtEnd = player.IsGrounded();
+    }
+    ASSERT_LT(steps, 300);
+    ASSERT_TRUE(sawHalf);
+
+    // 半ばで足が着いていると残りを地面の上で滑る
+    EXPECT_FALSE(groundedAtHalf);
+    EXPECT_TRUE(groundedAtEnd);
+    // ジャンプに見える高さまで上げると別の技になる
+    EXPECT_LT(peakY - start.y, 0.7f);
 }
 
 TEST_F(PlayerComponentTest, ProgressRisesThenCancelResets)
