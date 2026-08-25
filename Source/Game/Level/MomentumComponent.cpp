@@ -22,21 +22,11 @@ namespace NS::Game::Level
         {
             switch (level)
             {
-            case MomentumLevel::Dash:
-                return "ダッシュ";
             case MomentumLevel::MaxDash:
                 return "最高ダッシュ";
             default:
                 return "通常";
             }
-        }
-
-        // 1 段だけ落とす。Normal が下限
-        [[nodiscard]] MomentumLevel DemotedFrom(MomentumLevel level) noexcept
-        {
-            if (level == MomentumLevel::MaxDash)
-                return MomentumLevel::Dash;
-            return MomentumLevel::Normal;
         }
     } // namespace
 
@@ -58,8 +48,6 @@ namespace NS::Game::Level
     {
         switch (level)
         {
-        case MomentumLevel::Dash:
-            return m_dashSpeed;
         case MomentumLevel::MaxDash:
             return m_maxDashSpeed;
         default:
@@ -124,7 +112,7 @@ namespace NS::Game::Level
                 m_graceTimer += dt;
                 if (m_level != MomentumLevel::Normal && m_graceTimer + dt * 0.5f >= m_demoteGraceSeconds)
                 {
-                    m_level = DemotedFrom(m_level);
+                    m_level = MomentumLevel::Normal;
                     m_graceTimer = 0.0f;
                     m_runSeconds = 0.0f;
                     m_reboundGrace = false;
@@ -151,12 +139,7 @@ namespace NS::Game::Level
 
                 // 半歩ぶん先を見て昇格の秒に最も近い固定ステップで上げる。dt の積算は誤差で昇格の秒へ届かず 1 歩遅れる
                 const float elapsed = m_runSeconds + dt * 0.5f;
-                if (m_level == MomentumLevel::Normal && elapsed >= m_dashPromoteSeconds)
-                {
-                    m_level = MomentumLevel::Dash;
-                    m_runSeconds = 0.0f;
-                }
-                else if (m_level == MomentumLevel::Dash && elapsed >= m_maxDashPromoteSeconds)
+                if (m_level == MomentumLevel::Normal && elapsed >= m_promoteSeconds)
                 {
                     m_level = MomentumLevel::MaxDash;
                     m_runSeconds = 0.0f;
@@ -168,7 +151,7 @@ namespace NS::Game::Level
                 // 昇格と同じ半歩ぶんを足す。素直に比べると猶予秒の値しだいで落ちるのが 1 歩ずれる
                 if (m_level != MomentumLevel::Normal && m_graceTimer + dt * 0.5f >= m_demoteGraceSeconds)
                 {
-                    m_level = DemotedFrom(m_level);
+                    m_level = MomentumLevel::Normal;
                     m_graceTimer = 0.0f;
                     m_runSeconds = 0.0f;
                 }

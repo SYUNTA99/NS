@@ -20,7 +20,7 @@ namespace NS::Game::Level
         //! 同じ配置物の MomentumComponent を引き当てる。見つからなければ以後何もしない
         void OnStart() override;
 
-        //! 固定が有効なら段を 0〜2 へ丸めて置き直す
+        //! 固定が有効なら段を 0〜1 へ丸めて置き直す
         void OnUpdate() override;
 
         NS_REFLECT_BEGIN(MomentumLockComponent, NS::Object::Component)
@@ -28,7 +28,7 @@ namespace NS::Game::Level
         NS_REFLECT_END()
 
     private:
-        // -1=なし 0=通常 1=ダッシュ 2=最高ダッシュ。時間昇格を待たずに衝突を検証するための固定で、
+        // -1=なし 0=通常 1=最高ダッシュ。時間昇格を待たずに衝突を検証するための固定で、
         // 触らない限り昇格の挙動を変えないよう既定は -1
         int m_lockLevel = -1;
         MomentumComponent* m_momentum = nullptr;

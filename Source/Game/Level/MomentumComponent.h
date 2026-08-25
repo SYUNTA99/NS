@@ -15,11 +15,10 @@ namespace NS::Game::Level
     enum class MomentumLevel
     {
         Normal,
-        Dash,
         MaxDash,
     };
 
-    //! @brief 走行時間で最高速度を 3 段に上げる Component
+    //! @brief 走行時間で最高速度を 2 段に上げる Component
     //! @details 段は自機の状態と独立で、状態機械の状態にはしない
     //! 帯は Update より前。PlayerComponent が動く前にその固定ステップの最高速度を決める
     //! 昇格に使う入力は走行入力だけ
@@ -32,7 +31,7 @@ namespace NS::Game::Level
         //! 同じ配置物の PlayerComponent を引き当てる。見つからなければ以後何もしない
         void OnStart() override;
 
-        //! 接地したまま走行入力がある間だけ昇格の秒を積む。途切れれば猶予を数えて 1 段落とす
+        //! 接地したまま走行入力がある間だけ昇格の秒を積む。途切れれば猶予を数えて通常へ落とす
         //! 空中では積算も猶予も止め、段をそのまま保つ。ただし反発から始まった猶予だけは空中でも進む
         //! 最高速度は段に対応する値を毎ステップ PlayerComponent へ書き込む
         void OnUpdate() override;
@@ -60,10 +59,8 @@ namespace NS::Game::Level
         // プレイ中に Inspector で触って感触を詰められるよう公開する
         NS_REFLECT_BEGIN(MomentumComponent, NS::Object::Component)
         NS_REFLECT_FIELD(m_normalSpeed, "通常速度")
-        NS_REFLECT_FIELD(m_dashSpeed, "ダッシュ速度")
         NS_REFLECT_FIELD(m_maxDashSpeed, "最高ダッシュ速度")
-        NS_REFLECT_FIELD(m_dashPromoteSeconds, "ダッシュ昇格秒")
-        NS_REFLECT_FIELD(m_maxDashPromoteSeconds, "最高ダッシュ昇格秒")
+        NS_REFLECT_FIELD(m_promoteSeconds, "昇格秒")
         NS_REFLECT_FIELD(m_demoteGraceSeconds, "降格猶予秒")
         NS_REFLECT_FIELD(m_requireForwardInput, "復帰に進行方向入力を要求")
         NS_REFLECT_FIELD(m_promoteRateCurve, "昇格倍率カーブ")
@@ -74,10 +71,9 @@ namespace NS::Game::Level
         [[nodiscard]] bool IsRunInputActive() const noexcept;
 
         float m_normalSpeed = 8.0f;
-        float m_dashSpeed = 12.0f;
         float m_maxDashSpeed = 16.0f;
-        float m_dashPromoteSeconds = 1.5f;
-        float m_maxDashPromoteSeconds = 2.5f;
+        // 中間段の 1.5 を足した 4.0 では最高へ出すこと自体が難所になる。後半の 2.5 だけ残す
+        float m_promoteSeconds = 2.5f;
         float m_demoteGraceSeconds = 0.5f;
         bool m_requireForwardInput = false;
         // 既定は空でなく平らな倍率 1 の 2 点。コンストラクタで入れる

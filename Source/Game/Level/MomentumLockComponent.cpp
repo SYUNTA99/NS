@@ -26,7 +26,7 @@ namespace NS::Game::Level
             return;
 
         // 毎ステップ SetLevel し直す。積算と猶予が毎歩 0 へ戻り、固定中は昇格も降格も成立しない
-        const int clamped = std::clamp(m_lockLevel, 0, 2);
+        const int clamped = std::clamp(m_lockLevel, 0, 1);
         m_momentum->SetLevel(static_cast<MomentumLevel>(clamped));
     }
 
