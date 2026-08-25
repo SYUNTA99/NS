@@ -729,8 +729,7 @@ TEST(SaveLoadRoundTrip, MomentumSecondsSurviveRoundTrip)
     SceneNs::GameObject source;
     LevelNs::MomentumComponent* authored = source.AddComponent<LevelNs::MomentumComponent>();
     ASSERT_NE(authored, nullptr);
-    WriteMomentumField(*authored, "ダッシュ昇格秒", 2.0f);
-    WriteMomentumField(*authored, "最高ダッシュ昇格秒", 4.0f);
+    WriteMomentumField(*authored, "昇格秒", 4.0f);
     WriteMomentumField(*authored, "降格猶予秒", 0.8f);
 
     SceneNs::SceneData src;
@@ -744,8 +743,7 @@ TEST(SaveLoadRoundTrip, MomentumSecondsSurviveRoundTrip)
     ASSERT_NE(live, nullptr);
     const LevelNs::MomentumComponent* momentum = live->FindComponent<LevelNs::MomentumComponent>();
     ASSERT_NE(momentum, nullptr);
-    EXPECT_FLOAT_EQ(ReadMomentumField<float>(*momentum, "ダッシュ昇格秒"), 2.0f);
-    EXPECT_FLOAT_EQ(ReadMomentumField<float>(*momentum, "最高ダッシュ昇格秒"), 4.0f);
+    EXPECT_FLOAT_EQ(ReadMomentumField<float>(*momentum, "昇格秒"), 4.0f);
     EXPECT_FLOAT_EQ(ReadMomentumField<float>(*momentum, "降格猶予秒"), 0.8f);
 }
 
@@ -815,8 +813,7 @@ TEST(SaveLoadRoundTrip, MomentumFieldKeysAreTheLockedLabels)
     ASSERT_NE(entry, nullptr);
 
     const nlohmann::json& fields = entry->at("fields");
-    EXPECT_TRUE(fields.contains("ダッシュ昇格秒"));
-    EXPECT_TRUE(fields.contains("最高ダッシュ昇格秒"));
+    EXPECT_TRUE(fields.contains("昇格秒"));
     EXPECT_TRUE(fields.contains("降格猶予秒"));
     EXPECT_TRUE(fields.contains("昇格倍率カーブ"));
     EXPECT_TRUE(fields.contains("復帰に進行方向入力を要求"));

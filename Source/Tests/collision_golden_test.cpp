@@ -38,8 +38,8 @@ namespace
     using NS::Tests::StepRecord;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
-    constexpr int k_PromoteSteps = 300; // 5 秒。昇格が 2 回起きる長さ
-    constexpr int k_ReleaseSteps = 120; // 2 秒。降格が 2 回起きる長さ
+    constexpr int k_PromoteSteps = 300; // 5 秒。昇格の後に最高速度まで伸び切る長さ
+    constexpr int k_ReleaseSteps = 120; // 2 秒。降格が起きて速度が落ち切る長さ
     constexpr int k_ReaccelSteps = 60;  // 1 秒。降格後の最高速度まで伸び切る長さ
 
     const Vector3 k_Forward{0.0f, 0.0f, 1.0f};
@@ -93,7 +93,7 @@ namespace
         std::vector<StepRecord> m_trace;
     };
 
-    // 全開走行だけ。通常 -> ダッシュ -> 最高ダッシュ の 2 回の昇格を通る
+    // 全開走行だけ。通常 -> 最高ダッシュ の 1 回の昇格を通る
     std::vector<StepRecord> RunPromote()
     {
         Rig rig;
@@ -216,23 +216,11 @@ namespace
 
     // 基準ハッシュ。意図して手触りを変えた時だけ実測値で更新する
     // 昇格: +Z へ速度スケール 1.0 で 300 固定ステップ
-    constexpr std::uint64_t k_PromoteGolden = 0x15C1DFDE28E0F4D3ULL;
+    constexpr std::uint64_t k_PromoteGolden = 0x45EC62D9D1CB981DULL;
     // 降格: 上と同じ 300 固定ステップ -> 入力なしで 120 -> +Z へ速度スケール 1.0 で 60
-    constexpr std::uint64_t k_DemoteGolden = 0x2D530BB91AB33A80ULL;
+    constexpr std::uint64_t k_DemoteGolden = 0xEAFAD1C8544329BCULL;
     // 衝突: 質量 1.0 / 耐久 99.0 の壊せる物へ +Z へ速度スケール 1.0 で 360 固定ステップ
     // 耐久を高くして、破壊が入っても反発と押し飛ばしの経路が変わらないようにしてある
-    // 反発を勢いと質量から作る式とヒットストップを入れた時に取り直した。取り直し前は 0x32375285390311FF
-    // 凍結を 1 歩遅らせて触れてから止まる構図にした時に取り直した。取り直し前は 0x9104E912BEA391C4
-    // 体当たりを発動しない歩は裁かない仕様にした時に取り直した。取り直し前は 0x9557D5FB66D8EAB9
-    // 威力の比に下限を入れた時に取り直した。取り直し前は 0xBBEEE91DFF9BE37B
-    // 体当たりの空中発動と先行入力を入れた時に取り直した。取り直し前は 0x226FEFA1B6B49164
-    // 押し飛ばし基準初速を 14.0 から 20.0 へ上げた時に取り直した。取り直し前は 0x5CB7A5CC3E014443
-    // 最初の衝突と反発を含む 30 歩は一致し、遠くへ飛んだ岩へ追いつく歩から差が出る
-    // 基準初速を 32.0 へ、質量指数を 0.35 へ上げた時に取り直した。取り直し前は 0xA143A23EBE09F88A
-    // 威力の比を発動時の実速度から勢いの段へ変えた時に取り直した。取り直し前は 0x6D19639767D9BB26
-    // 走っているだけの歩は一致し、加速しきる前に出した最初の体当たりの歩から差が出る
-    // 突進距離を 6.0 から 8.0 へ伸ばした時に取り直した。取り直し前は 0x47DD9DADAAD3A0A6
-    // 突進距離を 10.0 へ伸ばした時に取り直した。取り直し前は 0x19AF2207089F933C
     constexpr std::uint64_t k_ImpactGolden = 0x48D67D77254C7DA6ULL;
 } // namespace
 

@@ -92,8 +92,8 @@ TEST(CollisionCourse, ToughnessHasUnbreakableWall)
 
 TEST(CollisionCourse, ToughnessHasBreakableTarget)
 {
-    // 比は当たった瞬間の実速度から作るので、最高ダッシュでも加速し切る前は 2.0 に届かない
-    // 耐久 1.0 以下の物があれば、最高ダッシュの段のまま通常速度ぶんの当たりでも壊せる物が残る
+    // 比は勢いの段から作るので、通常の段でぶつかる限り 1.0 のまま
+    // 耐久 1.0 以下の物があれば、昇格の 2.5 秒を待たずに壊せる物が残る
     SceneNs::SceneData scene;
     ASSERT_TRUE(LoadCourse(scene));
     const std::vector<float> toughness = CollectBreakableField(scene, "耐久");

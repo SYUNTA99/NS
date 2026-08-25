@@ -43,7 +43,6 @@ namespace
     constexpr float k_FixedDt = 1.0f / 60.0f;
     constexpr float k_ReboundUpSpeed = 3.0f;
     constexpr float k_RunSpeed = 8.0f;
-    constexpr float k_DashSpeed = 12.0f;
     constexpr float k_MaxDashSpeed = 16.0f;
     constexpr float k_SlamSpeed = 20.0f;
     constexpr float k_TapSlamSpeed = 10.0f;
@@ -52,6 +51,8 @@ namespace
     constexpr float k_ReboundSpeedCap = 24.0f;
     // 破壊は耐久 ≤ 最終威力なので、反発と押し飛ばしを見る台は壊れない高さを既定にする
     constexpr float k_UnbreakableToughness = 99.0f;
+    // 逆転を見る台の耐久。通常 + 満溜め + ピークの 1.9 台と最高ダッシュの素当て 1.4 台の間に置く
+    constexpr float k_ReversalToughness = 1.7f;
 
     struct Rig
     {
@@ -222,14 +223,12 @@ namespace
         Step(scene, rig);
     }
 
-    // 呼び出し側が渡すのは段の公称速度 8 / 12 / 16 のいずれか。速度から段を引き、1 引数で両方を揃える
+    // 呼び出し側が渡すのは段の公称速度 8 / 16 のどちらか。速度から段を引き、1 引数で両方を揃える
     [[nodiscard]] LevelNs::MomentumLevel LevelForSpeed(float entrySpeed) noexcept
     {
         const float speed = std::abs(entrySpeed);
         if (speed >= k_MaxDashSpeed)
             return LevelNs::MomentumLevel::MaxDash;
-        if (speed >= k_DashSpeed)
-            return LevelNs::MomentumLevel::Dash;
         return LevelNs::MomentumLevel::Normal;
     }
 
@@ -1050,14 +1049,14 @@ TEST(CollisionImpact, MaxDashReboundsOffToughTarget)
     EXPECT_LT(rig.movement->Velocity().x, 0.0f);
 }
 
-TEST(CollisionImpact, DashHitAtStartCannotBreakToughTwo)
+TEST(CollisionImpact, NormalHitAtStartCannotBreakToughTwo)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     EnableBreak(rig);
     rig.breakable->SetToughness(2.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::Dash);
-    BeginSlam(scene, rig, k_DashSpeed, 0.0f);
+    rig.momentum->SetLevel(LevelNs::MomentumLevel::Normal);
+    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
@@ -1071,15 +1070,15 @@ TEST(CollisionImpact, ChargedPeakBeatsMaxDashPlainHit)
     SceneNs::Scene chargedScene;
     Rig charged = BuildSlam(chargedScene, k_PeakCourse);
     EnableBreak(charged);
-    charged.breakable->SetToughness(2.0f);
-    charged.momentum->SetLevel(LevelNs::MomentumLevel::Dash);
-    BeginSlam(chargedScene, charged, k_DashSpeed, 1.0f);
+    charged.breakable->SetToughness(k_ReversalToughness);
+    charged.momentum->SetLevel(LevelNs::MomentumLevel::Normal);
+    BeginSlam(chargedScene, charged, k_RunSpeed, 1.0f);
     ASSERT_LT(StepUntilImpact(chargedScene, charged, 30), 30);
 
     SceneNs::Scene plainScene;
     Rig plain = BuildSlam(plainScene, k_NearCourse);
     EnableBreak(plain);
-    plain.breakable->SetToughness(2.0f);
+    plain.breakable->SetToughness(k_ReversalToughness);
     plain.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
     BeginSlam(plainScene, plain, k_MaxDashSpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(plainScene, plain, 30), 30);

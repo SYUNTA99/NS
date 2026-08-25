@@ -21,8 +21,7 @@ namespace
     using NS::Object::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
-    constexpr int k_DashSteps = 90;     // ダッシュ昇格秒 1.5 秒ぶんの固定ステップ数
-    constexpr int k_MaxDashSteps = 150; // 最高ダッシュ昇格秒 2.5 秒ぶんの固定ステップ数
+    constexpr int k_PromoteSteps = 150; // 昇格秒 2.5 秒ぶんの固定ステップ数
     constexpr int k_GraceSteps = 30;    // 降格猶予秒 0.5 秒ぶんの固定ステップ数
 
     const Vector3 k_Forward{1.0f, 0.0f, 0.0f};
@@ -145,7 +144,7 @@ protected:
 
     void ReachMaxDash()
     {
-        Run(k_DashSteps + k_MaxDashSteps, 1.0f);
+        Run(k_PromoteSteps, 1.0f);
         ASSERT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
     }
 
@@ -184,26 +183,18 @@ protected:
     MomentumComponent* m_momentum = nullptr;
 };
 
-TEST_F(MomentumState, PromotesToDashAfterFullThrottleRun)
+TEST_F(MomentumState, PromotesToMaxDashAfterFullThrottleRun)
 {
     ASSERT_TRUE(m_movement->IsGrounded());
-    Run(k_DashSteps, 1.0f);
-    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+    Run(k_PromoteSteps, 1.0f);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
 }
 
 TEST_F(MomentumState, StaysNormalOneStepShortOfPromotion)
 {
     ASSERT_TRUE(m_movement->IsGrounded());
-    Run(k_DashSteps - 1, 1.0f);
+    Run(k_PromoteSteps - 1, 1.0f);
     EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
-}
-
-TEST_F(MomentumState, PromotesToMaxDashAfterSecondRun)
-{
-    Run(k_DashSteps, 1.0f);
-    ASSERT_EQ(m_momentum->Level(), MomentumLevel::Dash);
-    Run(k_MaxDashSteps, 1.0f);
-    EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
 }
 
 TEST_F(MomentumState, NeverPromotesWithoutRunInput)
@@ -217,18 +208,14 @@ TEST_F(MomentumState, MaxSpeedFollowsLevel)
     Run(1, 0.0f);
     EXPECT_FLOAT_EQ(m_movement->MaxSpeed(), 8.0f);
 
-    Run(k_DashSteps, 1.0f);
-    ASSERT_EQ(m_momentum->Level(), MomentumLevel::Dash);
-    EXPECT_FLOAT_EQ(m_movement->MaxSpeed(), 12.0f);
-
-    Run(k_MaxDashSteps, 1.0f);
+    Run(k_PromoteSteps, 1.0f);
     ASSERT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
     EXPECT_FLOAT_EQ(m_movement->MaxSpeed(), 16.0f);
 }
 
-TEST_F(MomentumState, NoFourthLevelBeyondMaxDash)
+TEST_F(MomentumState, NoThirdLevelBeyondMaxDash)
 {
-    Run(k_DashSteps + k_MaxDashSteps, 1.0f);
+    Run(k_PromoteSteps, 1.0f);
     ASSERT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
 
     Run(600, 1.0f);
@@ -236,24 +223,12 @@ TEST_F(MomentumState, NoFourthLevelBeyondMaxDash)
     EXPECT_FLOAT_EQ(m_movement->MaxSpeed(), 16.0f);
 }
 
-TEST_F(MomentumState, KeepsLevelWhileAirborneBeyondGrace)
-{
-    Run(k_DashSteps, 1.0f);
-    ASSERT_EQ(m_momentum->Level(), MomentumLevel::Dash);
-
-    const FlightResult flight = JumpAndHold(600);
-    ASSERT_GT(flight.airborneSteps, k_GraceSteps) << "滞空が猶予秒より短く、猶予を止めた効果が出ない跳び方になっている";
-
-    EXPECT_FLOAT_EQ(flight.graceAtLastAirborneStep, flight.graceAtFirstAirborneStep);
-    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
-}
-
 TEST_F(MomentumState, KeepsMaxDashWhileAirborneBeyondGrace)
 {
     ReachMaxDash();
 
     const FlightResult flight = JumpAndHold(600);
-    ASSERT_GT(flight.airborneSteps, k_GraceSteps);
+    ASSERT_GT(flight.airborneSteps, k_GraceSteps) << "滞空が猶予秒より短く、猶予を止めた効果が出ない跳び方になっている";
 
     EXPECT_FLOAT_EQ(flight.graceAtLastAirborneStep, flight.graceAtFirstAirborneStep);
     EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
@@ -269,13 +244,13 @@ TEST_F(MomentumState, KeepsLevelOneStepShortOfGrace)
     EXPECT_GT(m_momentum->GraceSeconds(), 0.0f);
 }
 
-TEST_F(MomentumState, DemotesOneLevelWhenGraceExpires)
+TEST_F(MomentumState, DemotesToNormalWhenGraceExpires)
 {
     ReachMaxDash();
 
     Release(k_GraceSteps);
-    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
-    EXPECT_FLOAT_EQ(m_movement->MaxSpeed(), 12.0f);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
+    EXPECT_FLOAT_EQ(m_movement->MaxSpeed(), 8.0f);
 }
 
 TEST_F(MomentumState, DemotesToNormalAndStopsThere)
@@ -283,10 +258,7 @@ TEST_F(MomentumState, DemotesToNormalAndStopsThere)
     ReachMaxDash();
 
     Release(k_GraceSteps);
-    ASSERT_EQ(m_momentum->Level(), MomentumLevel::Dash);
-
-    Release(k_GraceSteps);
-    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
+    ASSERT_EQ(m_momentum->Level(), MomentumLevel::Normal);
 
     Release(300);
     EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
@@ -327,7 +299,7 @@ TEST_F(MomentumState, OpposedInputDemotesWhenForwardRequired)
     ASSERT_GT(m_movement->Velocity().x, 0.0f);
 
     HoldMomentumOnly(k_Backward, k_GraceSteps, 1.0f);
-    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
 }
 
 TEST_F(MomentumState, ForwardInputClearsGraceWhenForwardRequired)
@@ -350,8 +322,8 @@ TEST_F(MomentumState, PromotesFromStandstillWhenForwardRequired)
     ASSERT_FLOAT_EQ(m_movement->Velocity().x, 0.0f);
     ASSERT_FLOAT_EQ(m_movement->Velocity().z, 0.0f);
 
-    Run(k_DashSteps, 1.0f);
-    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+    Run(k_PromoteSteps, 1.0f);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
 }
 
 TEST_F(MomentumState, OpposedInputKeepsLevelWhenForwardNotRequired)
@@ -424,14 +396,14 @@ TEST_F(MomentumState, ReboundGraceAdvancesWhileAirborne)
     EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
 }
 
-TEST_F(MomentumState, ReboundGraceDemotesOneLevelWhenExpired)
+TEST_F(MomentumState, ReboundGraceDemotesWhenExpired)
 {
     ReachMaxDash();
     m_momentum->BeginGrace();
 
     Release(k_GraceSteps);
 
-    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
     EXPECT_FALSE(m_momentum->IsInGrace());
 }
 
@@ -452,43 +424,43 @@ TEST_F(MomentumState, ReboundGraceHoldsAgainstOpposedInputWhenForwardRequired)
 
 TEST_F(MomentumState, DefaultCurveKeepsFlatPromotionStep)
 {
-    RunWithPinnedVelocity(Vector3{0.0f, 0.0f, 8.0f}, k_DashSteps - 1);
+    RunWithPinnedVelocity(Vector3{0.0f, 0.0f, 8.0f}, k_PromoteSteps - 1);
     EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
 
     RunWithPinnedVelocity(Vector3{0.0f, 0.0f, 8.0f}, 1);
-    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
 }
 
 TEST_F(MomentumState, DefaultCurveKeepsPromotionStepOnDescent)
 {
-    RunWithPinnedVelocity(Vector3{0.0f, -8.0f, 8.0f}, k_DashSteps - 1);
+    RunWithPinnedVelocity(Vector3{0.0f, -8.0f, 8.0f}, k_PromoteSteps - 1);
     EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
 
     RunWithPinnedVelocity(Vector3{0.0f, -8.0f, 8.0f}, 1);
-    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
 }
 
-// 30 歩ちょうどで境目を見るのは、倍率 3 が昇格歩数を 90 から 30 へ縮めるため
+// 50 歩ちょうどで境目を見るのは、倍率 3 が昇格歩数を 150 から 50 へ縮めるため
 TEST_F(MomentumState, RisingCurvePromotesEarlierOnDescent)
 {
     SetPromoteRateCurve(RisingRateCurve());
 
-    RunWithPinnedVelocity(Vector3{0.0f, -8.0f, 8.0f}, k_DashSteps / 3 - 1);
+    RunWithPinnedVelocity(Vector3{0.0f, -8.0f, 8.0f}, k_PromoteSteps / 3 - 1);
     EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
 
     RunWithPinnedVelocity(Vector3{0.0f, -8.0f, 8.0f}, 1);
-    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
 }
 
 TEST_F(MomentumState, RisingCurveKeepsFlatPromotionStep)
 {
     SetPromoteRateCurve(RisingRateCurve());
 
-    RunWithPinnedVelocity(Vector3{0.0f, 0.0f, 8.0f}, k_DashSteps - 1);
+    RunWithPinnedVelocity(Vector3{0.0f, 0.0f, 8.0f}, k_PromoteSteps - 1);
     EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
 
     RunWithPinnedVelocity(Vector3{0.0f, 0.0f, 8.0f}, 1);
-    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
 }
 
 // 点が無いと Evaluate が 0 を返し、そのまま倍率にすると昇格が永久に止まるため、1 とみなす側を見張る
@@ -496,11 +468,11 @@ TEST_F(MomentumState, EmptyCurveKeepsPromotionStep)
 {
     SetPromoteRateCurve(NS::Object::Curve{});
 
-    RunWithPinnedVelocity(Vector3{0.0f, 0.0f, 8.0f}, k_DashSteps - 1);
+    RunWithPinnedVelocity(Vector3{0.0f, 0.0f, 8.0f}, k_PromoteSteps - 1);
     EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
 
     RunWithPinnedVelocity(Vector3{0.0f, 0.0f, 8.0f}, 1);
-    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
 }
 
 // 負の勾配をカーブへ渡すと端の値へ張り付いて登りの昇格が変わり得る。登りで昇格歩数が平地と変わらないことを見る
@@ -508,9 +480,9 @@ TEST_F(MomentumState, RisingCurveKeepsPromotionStepOnAscent)
 {
     SetPromoteRateCurve(RisingRateCurve());
 
-    RunWithPinnedVelocity(Vector3{0.0f, 8.0f, 8.0f}, k_DashSteps - 1);
+    RunWithPinnedVelocity(Vector3{0.0f, 8.0f, 8.0f}, k_PromoteSteps - 1);
     EXPECT_EQ(m_momentum->Level(), MomentumLevel::Normal);
 
     RunWithPinnedVelocity(Vector3{0.0f, 8.0f, 8.0f}, 1);
-    EXPECT_EQ(m_momentum->Level(), MomentumLevel::Dash);
+    EXPECT_EQ(m_momentum->Level(), MomentumLevel::MaxDash);
 }
