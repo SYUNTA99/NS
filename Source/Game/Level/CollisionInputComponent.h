@@ -19,7 +19,7 @@ namespace NS::Game::Level
     //! @details 保持はマウス左かゲームパッドの X で、ImpactInputJudge がタップ / チャージを裁く
     //! タップは押した歩、チャージは離した歩に溜め量を添えて PlayerComponent::RequestBodySlam を呼ぶ
     //! チャージ中は最高速度へ減速を掛け、縦へ縮めた構えを掛ける
-    //! 威力のチャージ倍率カーブと突進位置係数カーブもここが持ち、ImpactResolverComponent が参照する
+    //! 威力のチャージ倍率カーブと当たり位置係数カーブもここが持ち、ImpactResolverComponent が参照する
     //! 依存: NS::Game::Player::PlayerComponent, NS::Object::Curve, ImpactInputJudge, MomentumComponent,
     //! ImpactResolverComponent
     class CollisionInputComponent : public NS::Object::Component
@@ -39,10 +39,11 @@ namespace NS::Game::Level
         //! 溜め量 0..1 をチャージ倍率カーブで威力の倍率にする。非有限の入力とカーブの 0 以下の値は 1 とみなす
         [[nodiscard]] float ChargeFactorFor(float charge01) const noexcept;
 
-        //! 突進の進み具合 0..1 を突進位置係数カーブで威力の倍率にする。非有限の入力とカーブの 0 以下の値は 1 とみなす
-        [[nodiscard]] float PositionFactorFor(float progress01) const noexcept;
+        //! 相手の中心からの横ずれ 0..1 を当たり位置係数カーブで威力の倍率にする。非有限の入力とカーブの 0 以下の値は 1
+        //! とみなす
+        [[nodiscard]] float PositionFactorFor(float offset01) const noexcept;
 
-        //! 突進位置係数がピークしきい値以上の場合 true、それ以外の場合は false
+        //! 当たり位置係数がピークしきい値以上の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsPeak(float positionFactor) const noexcept;
 
         //! チャージ中の場合 true、それ以外の場合は false
@@ -77,9 +78,10 @@ namespace NS::Game::Level
         float m_chargeSlowRate = 0.3f;
         // 既定の形は使う側が持つのが Curve の決まりなので、既定の点はコンストラクタで入れる
         NS::Object::Curve m_chargeFactorCurve{};
-        // 既定は山を進み 0.6 に置く。出だしで当たる近すぎる間合いを弱くし、踏み込んでから当てる形を得にする
+        // 既定は中心直撃で 1.0、縁かすりで 0.7。画面に見えている相手の中心が狙う対象になる
+        // TODO: リフレクション欄は「突進位置係数カーブ」のまま。改名すると保存済みの値が読めなくなる
         NS::Object::Curve m_positionFactorCurve{};
-        // 0.95 は既定カーブで進み 0.5〜0.67 の区間だけがピークになる値
+        // 0.95 は既定カーブで横ずれ 0〜0.167 の区間だけがピークになる値
         float m_peakThreshold = 0.95f;
         float m_chargeSquashScale = 0.95f; // 構えと分かる最小の変化。深いと衝突の潰れ演出と紛れる
 

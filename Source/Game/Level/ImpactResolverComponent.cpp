@@ -66,6 +66,29 @@ namespace NS::Game::Level
         constexpr float k_PeakFlashAlpha = 0.5f;
         // 8 歩 (約 0.13 秒)。ヒットストップの尺に収まる一瞬で、走り出しの視界に白を残さない
         constexpr int k_PeakFlashSteps = 8;
+
+        // 相手の中心からの横ずれ 0..1。OnUpdate へ式を埋めると当たり判定の流れが読めなくなる
+        // 半径は AABB を突進方向に直交する軸へ投影した半幅。球と傾いた箱は外接箱で測るので実際の縁より広く出る
+        // 水平が 0 の枝は要らない。向かっていない歩は内積の判定で先に返しており、水平が 0 の歩もそこへ入る
+        [[nodiscard]] float HitOffset01(const NS::Core::Vector3& position,
+                                        const NS::Core::AABB& bounds,
+                                        const NS::Core::Vector3& velocity) noexcept
+        {
+            const float toX = bounds.Center.x - position.x;
+            const float toZ = bounds.Center.z - position.z;
+            const float invSpeed = 1.0f / std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+            const float dirX = velocity.x * invSpeed;
+            const float dirZ = velocity.z * invSpeed;
+            const float along = toX * dirX + toZ * dirZ;
+            const float lateralX = toX - along * dirX;
+            const float lateralZ = toZ - along * dirZ;
+            const float lateral = std::sqrt(lateralX * lateralX + lateralZ * lateralZ);
+            const float radius = std::abs(dirZ) * bounds.Extents.x + std::abs(dirX) * bounds.Extents.z;
+            // 半幅 0 の相手では割れない。中心扱いへ倒す
+            if (!(radius > 0.0f))
+                return 0.0f;
+            return NS::Core::Clamp(lateral / radius, 0.0f, 1.0f);
+        }
     } // namespace
 
     // MomentumComponent (-150) より後。先に走ると BeginGrace した猶予がその固定ステップのうちに解ける
@@ -212,17 +235,17 @@ namespace NS::Game::Level
 
         // ボタン未搭載 (null) は係数 1.0 の素通し。1.0f の乗算は IEEE で恒等なので、係数を掛けない式とビット同値
         const float charge01 = m_movement->BodySlamCharge01();
-        const float progress01 = m_movement->BodySlamProgress01();
+        const float offset01 = HitOffset01(position, bounds, velocity);
         float chargeFactor = 1.0f;
         float positionFactor = 1.0f;
         bool peak = false;
         if (m_collisionInput != nullptr)
         {
             chargeFactor = m_collisionInput->ChargeFactorFor(charge01);
-            positionFactor = m_collisionInput->PositionFactorFor(progress01);
+            positionFactor = m_collisionInput->PositionFactorFor(offset01);
             peak = m_collisionInput->IsPeak(positionFactor);
         }
-        // 最終威力 = 比 × チャージ倍率 × 突進位置係数。破壊の物差しだけでなく反発・発射・揺れも威力で作る
+        // 最終威力 = 比 × チャージ倍率 × 当たり位置係数。破壊の物差しだけでなく反発・発射・揺れも威力で作る
         const float power = ratio * chargeFactor * positionFactor;
         m_lastCharge01 = charge01;
         m_lastPositionFactor = positionFactor;
@@ -235,13 +258,13 @@ namespace NS::Game::Level
             hitStopScale = m_peakHitStopScale;
         }
         NS_LOG_INFO(Game,
-                    "威力の内訳: 比 {} × 溜め {} × 位置 {} = {} 溜め量 {} 突進 {}",
+                    "威力の内訳: 比 {} × 溜め {} × 当たり位置 {} = {} 溜め量 {} 中心からの横ずれ {}",
                     ratio,
                     chargeFactor,
                     positionFactor,
                     power,
                     charge01,
-                    progress01);
+                    offset01);
 
         // 明けた歩の反発と貫通速度を Locomotion に乗せるため、凍結より先に突進を打ち切る
         m_movement->CancelBodySlam();

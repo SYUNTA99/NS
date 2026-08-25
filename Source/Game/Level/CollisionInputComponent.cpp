@@ -42,10 +42,9 @@ namespace NS::Game::Level
         m_chargeFactorCurve.keys[0] = NS::Object::Curve::Key{0.0f, 1.0f};
         m_chargeFactorCurve.keys[1] = NS::Object::Curve::Key{1.0f, 2.0f};
 
-        m_positionFactorCurve.count = 3;
-        m_positionFactorCurve.keys[0] = NS::Object::Curve::Key{0.0f, 0.7f};
-        m_positionFactorCurve.keys[1] = NS::Object::Curve::Key{0.6f, 1.0f};
-        m_positionFactorCurve.keys[2] = NS::Object::Curve::Key{1.0f, 0.7f};
+        m_positionFactorCurve.count = 2;
+        m_positionFactorCurve.keys[0] = NS::Object::Curve::Key{0.0f, 1.0f};
+        m_positionFactorCurve.keys[1] = NS::Object::Curve::Key{1.0f, 0.7f};
     }
 
     void CollisionInputComponent::OnStart()
@@ -163,11 +162,11 @@ namespace NS::Game::Level
         return factor;
     }
 
-    float CollisionInputComponent::PositionFactorFor(float progress01) const noexcept
+    float CollisionInputComponent::PositionFactorFor(float offset01) const noexcept
     {
-        if (!std::isfinite(progress01))
+        if (!std::isfinite(offset01))
             return 1.0f;
-        const float clamped = NS::Core::Clamp(progress01, 0.0f, 1.0f);
+        const float clamped = NS::Core::Clamp(offset01, 0.0f, 1.0f);
         const float factor = m_positionFactorCurve.Evaluate(clamped);
         // 点を全部消すと威力が 0 になるため、チャージ倍率カーブと同じく 0 以下は 1 とみなす
         if (!(factor > 0.0f))

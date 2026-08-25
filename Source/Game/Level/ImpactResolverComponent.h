@@ -53,7 +53,7 @@ namespace NS::Game::Level
         //! 直近の裁定で読んだ溜め量 0..1
         [[nodiscard]] float LastCharge01() const noexcept { return m_lastCharge01; }
 
-        //! 直近の裁定の突進位置係数
+        //! 直近の裁定の当たり位置係数
         [[nodiscard]] float LastPositionFactor() const noexcept { return m_lastPositionFactor; }
 
         //! 直近の裁定の最終威力

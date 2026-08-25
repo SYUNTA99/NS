@@ -221,7 +221,7 @@ namespace
     constexpr std::uint64_t k_DemoteGolden = 0xEAFAD1C8544329BCULL;
     // 衝突: 質量 1.0 / 耐久 99.0 の壊せる物へ +Z へ速度スケール 1.0 で 360 固定ステップ
     // 耐久を高くして、破壊が入っても反発と押し飛ばしの経路が変わらないようにしてある
-    constexpr std::uint64_t k_ImpactGolden = 0x48D67D77254C7DA6ULL;
+    constexpr std::uint64_t k_ImpactGolden = 0xC521F555541B7402ULL;
 } // namespace
 
 class CollisionGolden : public ::testing::Test

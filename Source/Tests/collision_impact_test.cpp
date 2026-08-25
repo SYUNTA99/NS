@@ -51,7 +51,7 @@ namespace
     constexpr float k_ReboundSpeedCap = 24.0f;
     // 破壊は耐久 ≤ 最終威力なので、反発と押し飛ばしを見る台は壊れない高さを既定にする
     constexpr float k_UnbreakableToughness = 99.0f;
-    // 逆転を見る台の耐久。通常 + 満溜め + ピークの 1.9 台と最高ダッシュの素当て 1.4 台の間に置く
+    // 逆転を見る台の耐久。通常 + 満溜め + 中心直撃の 2.0 と、最高ダッシュ + 素当て + 縁かすりの 1.46 の間に置く
     constexpr float k_ReversalToughness = 1.7f;
 
     struct Rig
@@ -68,6 +68,8 @@ namespace
     struct SlamCourse
     {
         float start = 0.0f;
+        // 的は動かないので、湧き位置のずらしがそのまま当たりの横ずれになる
+        float lateral = 0.0f;
         std::int16_t targetCell = 1;
         bool withBreakable = true;
         bool withCollisionInput = true;
@@ -81,9 +83,9 @@ namespace
         NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
 
         SceneNs::SceneData data;
-        Vector3 spawn{course.start, Player::k_DefaultSpawnY, 0.0f};
+        Vector3 spawn{course.start, Player::k_DefaultSpawnY, course.lateral};
         if (course.alongZ)
-            spawn = Vector3{0.0f, Player::k_DefaultSpawnY, course.start};
+            spawn = Vector3{course.lateral, Player::k_DefaultSpawnY, course.start};
         SceneNs::ObjectData player = MakePlayerObject(spawn, NS::Core::Quaternion{});
         player.components.push_back(SceneNs::MakeComponentEntry("MomentumComponent"));
         player.components.push_back(SceneNs::MakeComponentEntry("ImpactResolverComponent"));
@@ -91,14 +93,28 @@ namespace
             player.components.push_back(SceneNs::MakeComponentEntry("CollisionInputComponent"));
         data.objects.push_back(player);
 
+        // カプセル半径 0.4 の自機を横へずらすと床 1 列からはみ出すので、ずらす側にもう 1 列敷く
+        std::int16_t lateralCell = 0;
+        if (course.lateral > 0.0f)
+            lateralCell = 1;
+        if (course.lateral < 0.0f)
+            lateralCell = -1;
         for (std::int16_t i = -3; i <= static_cast<std::int16_t>(course.targetCell + 3); ++i)
         {
             if (!course.floorUnderTarget && i == course.targetCell)
                 continue;
             if (course.alongZ)
+            {
                 data.objects.push_back(LevelNs::MakeCellObject(0, 0, i));
+                if (lateralCell != 0)
+                    data.objects.push_back(LevelNs::MakeCellObject(lateralCell, 0, i));
+            }
             else
+            {
                 data.objects.push_back(LevelNs::MakeCellObject(i, 0, 0));
+                if (lateralCell != 0)
+                    data.objects.push_back(LevelNs::MakeCellObject(i, 0, lateralCell));
+            }
         }
 
         SceneNs::ObjectData target = LevelNs::MakeCellObject(course.targetCell, 1, 0);
@@ -278,9 +294,11 @@ namespace
         return maxSteps;
     }
 
-    // 突進の中ほどで当たる並び。ここでしか突進位置係数がピークしきい値を超えない
-    constexpr SlamCourse k_PeakCourse{.start = -0.5f, .targetCell = 6};
+    // 助走の長さだけが k_NearCourse と違う
+    constexpr SlamCourse k_FarCourse{.start = -0.5f, .targetCell = 6};
     constexpr SlamCourse k_NearCourse{.start = 0.0f, .targetCell = 1};
+    // 横ずれ 0.45 ÷ 的の半幅 0.5 = 0.9 で係数 0.73。ピークしきい値 0.95 に届かない
+    constexpr SlamCourse k_EdgeCourse{.start = 0.0f, .lateral = 0.45f, .targetCell = 1};
 
     // 飛んで着地して滑り切るまでの道。狭いと端から落ちて停止の検証にならない
     constexpr std::int16_t k_FloorFirstX = -2;
@@ -741,7 +759,7 @@ TEST(CollisionImpact, LaunchFieldsDriveLaunchVelocity)
     SetInstantImpact(rig);
     SetFloatField(*rig.impact, "押し飛ばし基準初速", 20.0f);
     SetFloatField(*rig.impact, "押し飛ばしの浮き上がり", 0.5f);
-    // 指数は 1.0 に固定する。既定 0.5 の平方根が混ざると、この 2 欄だけを見る式にならない
+    // 指数は 1.0 に固定する。既定の 0.35 乗が混ざると、この 2 欄だけを見る式にならない
     SetFloatField(*rig.impact, "押し飛ばしの質量指数", 1.0f);
     rig.breakable->SetMass(2.0f);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
@@ -833,6 +851,8 @@ TEST(CollisionImpact, HeavierTargetStopsLonger)
 {
     SceneNs::Scene lightScene;
     Rig light = BuildSlam(lightScene, k_NearCourse);
+    // 中心直撃はピーク倍率が乗る。既定の基準秒では軽い側も重い側も上限 12 歩に並び、質量の差が消える
+    SetFloatField(*light.impact, "ヒットストップ基準秒", 1.0f / 60.0f);
     light.breakable->SetMass(1.0f);
     BeginSlam(lightScene, light, k_MaxDashSpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(lightScene, light, 30), 30);
@@ -842,6 +862,7 @@ TEST(CollisionImpact, HeavierTargetStopsLonger)
 
     SceneNs::Scene heavyScene;
     Rig heavy = BuildSlam(heavyScene, k_NearCourse);
+    SetFloatField(*heavy.impact, "ヒットストップ基準秒", 1.0f / 60.0f);
     heavy.breakable->SetMass(8.0f);
     BeginSlam(heavyScene, heavy, k_MaxDashSpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(heavyScene, heavy, 30), 30);
@@ -902,14 +923,15 @@ TEST(CollisionImpact, HitStopBaseSecondsDrivesFreezeLength)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
-    SetFloatField(*rig.impact, "ヒットストップ基準秒", 8.0f / 60.0f);
+    // 中心直撃はピーク倍率 2.0 が乗る。8 歩を基準にすると上限 12 歩で頭打ちになり基準秒が読めない
+    SetFloatField(*rig.impact, "ヒットストップ基準秒", 2.0f / 60.0f);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
     Step(scene, rig);
     ASSERT_FALSE(rig.movement->IsActiveSelf());
 
-    const int expected = static_cast<int>(std::lround(8.0f * rig.impact->LastPower()));
+    const int expected = static_cast<int>(std::lround(2.0f * rig.impact->LastPower() * 2.0f));
     EXPECT_EQ(StepsUntilMovementActive(scene, rig, 60), expected);
 }
 
@@ -1113,7 +1135,7 @@ TEST(CollisionImpact, NormalHitAtStartCannotBreakToughTwo)
 TEST(CollisionImpact, ChargedPeakBeatsMaxDashPlainHit)
 {
     SceneNs::Scene chargedScene;
-    Rig charged = BuildSlam(chargedScene, k_PeakCourse);
+    Rig charged = BuildSlam(chargedScene, k_FarCourse);
     EnableBreak(charged);
     charged.breakable->SetToughness(k_ReversalToughness);
     charged.momentum->SetLevel(LevelNs::MomentumLevel::Normal);
@@ -1121,7 +1143,7 @@ TEST(CollisionImpact, ChargedPeakBeatsMaxDashPlainHit)
     ASSERT_LT(StepUntilImpact(chargedScene, charged, 30), 30);
 
     SceneNs::Scene plainScene;
-    Rig plain = BuildSlam(plainScene, k_NearCourse);
+    Rig plain = BuildSlam(plainScene, k_EdgeCourse);
     EnableBreak(plain);
     plain.breakable->SetToughness(k_ReversalToughness);
     plain.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
@@ -1135,38 +1157,57 @@ TEST(CollisionImpact, ChargedPeakBeatsMaxDashPlainHit)
     EXPECT_GT(charged.impact->LastPower(), plain.impact->LastPower());
 }
 
-TEST(CollisionImpact, PeakFlagFollowsRushPosition)
+// 走る距離と速度と溜めを揃えてあるので、差が出れば原因は横ずれだけ
+TEST(CollisionImpact, PeakFlagFollowsHitOffset)
 {
-    SceneNs::Scene peakScene;
-    Rig peak = BuildSlam(peakScene, k_PeakCourse);
-    SetInstantImpact(peak);
-    BeginSlam(peakScene, peak, k_RunSpeed, 1.0f);
-    ASSERT_LT(StepUntilImpact(peakScene, peak, 30), 30);
+    SceneNs::Scene centerScene;
+    Rig center = BuildSlam(centerScene, k_NearCourse);
+    SetInstantImpact(center);
+    BeginSlam(centerScene, center, k_RunSpeed, 1.0f);
+    ASSERT_LT(StepUntilImpact(centerScene, center, 30), 30);
 
+    SceneNs::Scene edgeScene;
+    Rig edge = BuildSlam(edgeScene, k_EdgeCourse);
+    SetInstantImpact(edge);
+    BeginSlam(edgeScene, edge, k_RunSpeed, 1.0f);
+    ASSERT_LT(StepUntilImpact(edgeScene, edge, 30), 30);
+
+    EXPECT_TRUE(center.impact->WasPeakImpact());
+    EXPECT_FALSE(edge.impact->WasPeakImpact());
+    EXPECT_GT(center.impact->LastPositionFactor(), edge.impact->LastPositionFactor());
+    EXPECT_GT(center.impact->LastPower(), edge.impact->LastPower());
+}
+
+// 助走の長さが位置係数に混ざると、画面に出ない間合いを当てさせる作りへ戻る
+TEST(CollisionImpact, PositionFactorIgnoresRushDistance)
+{
     SceneNs::Scene nearScene;
     Rig nearHit = BuildSlam(nearScene, k_NearCourse);
     SetInstantImpact(nearHit);
     BeginSlam(nearScene, nearHit, k_RunSpeed, 1.0f);
     ASSERT_LT(StepUntilImpact(nearScene, nearHit, 30), 30);
 
-    EXPECT_TRUE(peak.impact->WasPeakImpact());
-    EXPECT_FALSE(nearHit.impact->WasPeakImpact());
-    EXPECT_GT(peak.impact->LastPositionFactor(), nearHit.impact->LastPositionFactor());
-    EXPECT_GT(peak.impact->LastPower(), nearHit.impact->LastPower());
+    SceneNs::Scene farScene;
+    Rig farHit = BuildSlam(farScene, k_FarCourse);
+    SetInstantImpact(farHit);
+    BeginSlam(farScene, farHit, k_RunSpeed, 1.0f);
+    ASSERT_LT(StepUntilImpact(farScene, farHit, 30), 30);
+
+    EXPECT_FLOAT_EQ(nearHit.impact->LastPositionFactor(), farHit.impact->LastPositionFactor());
 }
 
 TEST(CollisionImpact, StoresChargeAndPositionForNextPhase)
 {
     SceneNs::Scene scene;
-    Rig rig = BuildSlam(scene, k_PeakCourse);
+    Rig rig = BuildSlam(scene, k_NearCourse);
     SetInstantImpact(rig);
     BeginSlam(scene, rig, k_RunSpeed, 1.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
     EXPECT_FLOAT_EQ(rig.impact->LastCharge01(), 1.0f);
-    EXPECT_GT(rig.impact->LastPositionFactor(), 0.0f);
-    EXPECT_FLOAT_EQ(rig.impact->LastPower(), 1.0f * 2.0f * rig.impact->LastPositionFactor());
+    EXPECT_FLOAT_EQ(rig.impact->LastPositionFactor(), 1.0f);
+    EXPECT_FLOAT_EQ(rig.impact->LastPower(), 1.0f * 2.0f * 1.0f);
 }
 
 TEST(CollisionImpact, ChargeScalesPowerByCurve)
@@ -1277,7 +1318,7 @@ TEST(CollisionImpact, SlamWithoutInputAimsCameraForward)
 TEST(CollisionImpact, PeakStretchesHitStop)
 {
     SceneNs::Scene scene;
-    Rig rig = BuildSlam(scene, k_PeakCourse);
+    Rig rig = BuildSlam(scene, k_FarCourse);
     // 既定の基準秒では上限 12 歩で頭打ちになるため、ピーク倍率が歩数に出るまで基準を下げる
     SetFloatField(*rig.impact, "ヒットストップ基準秒", 2.0f / 60.0f);
     BeginSlam(scene, rig, k_RunSpeed, 1.0f);
