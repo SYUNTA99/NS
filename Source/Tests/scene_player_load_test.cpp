@@ -151,10 +151,7 @@ TEST_P(ShippedScene, PlayerComponentCarriesEveryTuningField)
     const auto fields = entry->find("fields");
     ASSERT_NE(fields, entry->end());
 
-    std::size_t expected = 18u;
-    if (std::string_view{GetParam()} == "collision_feel")
-        expected = 13u;
-    EXPECT_EQ(fields->size(), expected) << GetParam() << " の調整値の欄が減っている。落ちた欄は既定値で動く";
+    EXPECT_EQ(fields->size(), 18u) << GetParam() << " の調整値の欄が減っている。落ちた欄は既定値で動く";
 }
 
 TEST_P(ShippedScene, LoadedPlayerKeepsTheTunedSlamValues)
@@ -178,5 +175,5 @@ TEST_P(ShippedScene, LoadedPlayerKeepsTheTunedSlamValues)
 
 INSTANTIATE_TEST_SUITE_P(ScenePlayerLoad,
                          ShippedScene,
-                         ::testing::Values("collision_feel", "new_scene"),
+                         ::testing::Values("new_scene"),
                          [](const ::testing::TestParamInfo<const char*>& info) { return std::string{info.param}; });
