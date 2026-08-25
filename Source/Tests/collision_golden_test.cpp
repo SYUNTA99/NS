@@ -8,7 +8,6 @@
 #include <Game/Level/MomentumComponent.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
-#include <Game/Player/PlayerStatsManagerComponent.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/PlayerInputComponent.h>
@@ -33,7 +32,6 @@ namespace
     using NS::Game::Level::MomentumLevel;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
-    using NS::Game::Player::PlayerStatsManagerComponent;
     using NS::Object::GameObject;
     using NS::Tests::DescribeTrace;
     using NS::Tests::FoldTrace;
@@ -53,7 +51,6 @@ namespace
     public:
         Rig()
         {
-            m_object.AddComponent<PlayerStatsManagerComponent>();
             m_object.AddComponent<PlayerStateManagerComponent>();
             m_movement = m_object.AddComponent<PlayerComponent>();
             m_momentum = m_object.AddComponent<MomentumComponent>();

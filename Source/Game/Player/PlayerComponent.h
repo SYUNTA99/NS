@@ -17,13 +17,12 @@ namespace NS::Game::Entity
 namespace NS::Game::Player
 {
     class PlayerStateManagerComponent;
-    class PlayerStatsManagerComponent;
 
     //! @brief 自機の能力を持つ Component
     //! @details 移動と接地は EntityComponent が持ち、ここには自機だけの能力と条件判定を置く
-    //! 調整値は同居する PlayerStatsManagerComponent の組から読む。組が無ければ既定の組
+    //! 調整値 17 個は自分の欄として持つ。Inspector とシーン JSON はこの欄を直接読み書きする
     //! 状態は能力呼びの列だけにするので、動詞はすべて public
-    //! 依存: NS::Game::Entity::EntityComponent / EntityStateManagerComponent, PlayerStatsManagerComponent
+    //! 依存: NS::Game::Entity::EntityComponent / EntityStateManagerComponent, PlayerStats
     class PlayerComponent : public NS::Game::Entity::EntityComponent
     {
     public:
@@ -52,9 +51,6 @@ namespace NS::Game::Player
         //! ジャンプボタンの長押し状態を渡す。上昇中に離すと縦速度を縮める
         void SetJumpHeld(bool held) noexcept;
         [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; } //!< 残りジャンプ回数
-
-        //! 接地を離れてもジャンプを受ける猶予秒。デバッグ可視化がコヨーテ帯の寸法に使う
-        [[nodiscard]] float CoyoteTime() const noexcept;
 
         [[nodiscard]] float MaxSpeed() const noexcept { return m_maxSpeed; } //!< 走行の最高速度
         //! 最高速度を外から差し替える。負は 0 へ丸め、非有限値は書き込まない
@@ -151,17 +147,86 @@ namespace NS::Game::Player
         //! 自機だけの通知の受け口。基底の Events() は接地の 2 件を返すので名前を分ける
         [[nodiscard]] PlayerEvents& PlayerEventsRef() noexcept { return m_playerEvents; }
 
-        //! 同居する組。無ければ既定の組。調整値はすべてここから読む
-        [[nodiscard]] const PlayerStats& Stats() const noexcept;
+        //! 自分が持つ調整値。読む側はここから引く
+        [[nodiscard]] const PlayerStats& Stats() const noexcept { return m_stats; }
 
-        //! 基底の借用に続けて、同居する調整値の組と状態機械を控える
+        // setter は非有限値を書き込まない。重力や時定数へ入ると位置まで NaN が伝わる
+        [[nodiscard]] float JumpImpulse() const noexcept { return m_stats.jumpImpulse; }
+        void SetJumpImpulse(float value) noexcept;
+
+        [[nodiscard]] float GravityUp() const noexcept { return m_stats.gravityUp; }
+        void SetGravityUp(float value) noexcept;
+
+        [[nodiscard]] float GravityDown() const noexcept { return m_stats.gravityDown; }
+        void SetGravityDown(float value) noexcept;
+
+        [[nodiscard]] float ApexHangVy() const noexcept { return m_stats.apexHangVy; }
+        void SetApexHangVy(float value) noexcept;
+
+        [[nodiscard]] float ApexHangScale() const noexcept { return m_stats.apexHangScale; }
+        void SetApexHangScale(float value) noexcept;
+
+        [[nodiscard]] float JumpReleaseScale() const noexcept { return m_stats.jumpReleaseScale; }
+        void SetJumpReleaseScale(float value) noexcept;
+
+        //! 接地を離れてもジャンプを受ける猶予秒。デバッグ可視化がコヨーテ帯の寸法に使う
+        [[nodiscard]] float CoyoteTime() const noexcept { return m_stats.coyoteTime; }
+        void SetCoyoteTime(float value) noexcept;
+
+        [[nodiscard]] float JumpBufferTime() const noexcept { return m_stats.jumpBufferTime; }
+        void SetJumpBufferTime(float value) noexcept;
+
+        [[nodiscard]] float WalkSpeed() const noexcept { return m_stats.walkSpeed; }
+        void SetWalkSpeed(float value) noexcept;
+
+        [[nodiscard]] float AccelTau() const noexcept { return m_stats.accelTau; }
+        void SetAccelTau(float value) noexcept;
+
+        [[nodiscard]] float DecelTau() const noexcept { return m_stats.decelTau; }
+        void SetDecelTau(float value) noexcept;
+
+        [[nodiscard]] float StickDeadzone() const noexcept { return m_stats.stickDeadzone; }
+        void SetStickDeadzone(float value) noexcept;
+
+        [[nodiscard]] float BodySlamSpeed() const noexcept { return m_stats.bodySlamSpeed; }
+        void SetBodySlamSpeed(float value) noexcept;
+
+        [[nodiscard]] float BodySlamDistance() const noexcept { return m_stats.bodySlamDistance; }
+        void SetBodySlamDistance(float value) noexcept;
+
+        [[nodiscard]] float TapSlamSpeed() const noexcept { return m_stats.tapSlamSpeed; }
+        void SetTapSlamSpeed(float value) noexcept;
+
+        [[nodiscard]] float TapSlamUpSpeed() const noexcept { return m_stats.tapSlamUpSpeed; }
+        void SetTapSlamUpSpeed(float value) noexcept;
+
+        [[nodiscard]] float TapSlamDistance() const noexcept { return m_stats.tapSlamDistance; }
+        void SetTapSlamDistance(float value) noexcept;
+
+        //! 基底の借用に続けて、同居する状態機械を控える
         void OnStart() override;
 
         // 欄は登録される具象型に置く。リフレクションの直列化は自分の型の欄だけを回り、基底の鎖はたどらない
-        // 調整値 17 個は PlayerStatsManagerComponent が持つ
         NS_REFLECT_BEGIN(PlayerComponent, NS::Game::Entity::EntityComponent)
         NS_REFLECT_ACCESSOR(float, "カプセル半径", CapsuleRadius(), SetCapsuleRadius)
         NS_REFLECT_ACCESSOR(float, "カプセル半分の高さ", CapsuleHalfHeight(), SetCapsuleHalfHeight)
+        NS_REFLECT_ACCESSOR(float, "ジャンプ初速", JumpImpulse(), SetJumpImpulse)
+        NS_REFLECT_ACCESSOR(float, "上昇重力", GravityUp(), SetGravityUp)
+        NS_REFLECT_ACCESSOR(float, "下降重力", GravityDown(), SetGravityDown)
+        NS_REFLECT_ACCESSOR(float, "頂点滞空 Vy", ApexHangVy(), SetApexHangVy)
+        NS_REFLECT_ACCESSOR(float, "頂点滞空倍率", ApexHangScale(), SetApexHangScale)
+        NS_REFLECT_ACCESSOR(float, "ジャンプ離し倍率", JumpReleaseScale(), SetJumpReleaseScale)
+        NS_REFLECT_ACCESSOR(float, "コヨーテ時間", CoyoteTime(), SetCoyoteTime)
+        NS_REFLECT_ACCESSOR(float, "先行入力時間", JumpBufferTime(), SetJumpBufferTime)
+        NS_REFLECT_ACCESSOR(float, "歩き速度", WalkSpeed(), SetWalkSpeed)
+        NS_REFLECT_ACCESSOR(float, "加速時定数", AccelTau(), SetAccelTau)
+        NS_REFLECT_ACCESSOR(float, "減速時定数", DecelTau(), SetDecelTau)
+        NS_REFLECT_ACCESSOR(float, "スティック遊び", StickDeadzone(), SetStickDeadzone)
+        NS_REFLECT_ACCESSOR(float, "突進速度", BodySlamSpeed(), SetBodySlamSpeed)
+        NS_REFLECT_ACCESSOR(float, "突進距離", BodySlamDistance(), SetBodySlamDistance)
+        NS_REFLECT_ACCESSOR(float, "タップ初速", TapSlamSpeed(), SetTapSlamSpeed)
+        NS_REFLECT_ACCESSOR(float, "タップの上向き初速", TapSlamUpSpeed(), SetTapSlamUpSpeed)
+        NS_REFLECT_ACCESSOR(float, "タップ距離", TapSlamDistance(), SetTapSlamDistance)
         NS_REFLECT_FIELD(m_debugDraw, "デバッグ表示")
         NS_REFLECT_END()
 
@@ -189,7 +254,7 @@ namespace NS::Game::Player
         float m_coyoteTimer = 0.0f;          // コヨーテ猶予の残り秒
         float m_bufferTimer = 0.0f;          // 先行ジャンプ入力の残り秒
 
-        // 走行中に MomentumComponent が毎歩書き換える。手で決める値ではないので調整値の組に入れない
+        // 走行中に MomentumComponent が毎歩書き換える。手で決める値ではないので調整値の欄に入れない
         float m_maxSpeed = 8.0f;
 
         bool m_debugDraw = true; // デバッグ可視化を出すか
@@ -216,7 +281,7 @@ namespace NS::Game::Player
         NS::Core::Vector3 m_lastGroundedPosition{0.0f, 0.0f, 0.0f};
         std::vector<CoyoteJumpMarker> m_coyoteJumpMarkers; // 表示中のコヨーテジャンプ記録。寿命付き
 
-        PlayerStatsManagerComponent* m_statsManager = nullptr; // 調整値の組 (非所有)
+        PlayerStats m_stats;                                   // 調整値 17 個
         PlayerStateManagerComponent* m_stateManager = nullptr; // 状態機械 (非所有)
 
         PlayerEvents m_playerEvents;

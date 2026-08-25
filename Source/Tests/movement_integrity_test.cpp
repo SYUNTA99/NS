@@ -1,6 +1,5 @@
 ﻿#include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
-#include <Game/Player/PlayerStatsManagerComponent.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/GameObject.h>
@@ -15,7 +14,6 @@ namespace
     using NS::Core::Vector3;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
-    using NS::Game::Player::PlayerStatsManagerComponent;
     using NS::Object::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
@@ -37,7 +35,6 @@ namespace
         const AABB floor = MakeFloorOnly();
 
         GameObject owner;
-        owner.AddComponent<PlayerStatsManagerComponent>();
         auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
         auto& movement = *owner.AddComponent<PlayerComponent>();
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
@@ -108,14 +105,13 @@ TEST_F(MovementIntegrity, JumpReachesExpectedPeakHeightRange)
     EXPECT_LT(peakY, 6.0f) << "jump peak unreasonably high";
 }
 
-//! walkTau = 0.10s なら 1 秒 (60 step) でほぼ maxSpeed=8 に届く
+//! accelTau = 0.10s なら 1 秒 (60 step) でほぼ maxSpeed=8 に届く
 //! ジャンプ中は非対称重力や着地の substep で x 速度が揺れるので、ジャンプ無しの歩行だけで見る
 TEST_F(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
 {
     const AABB floor = MakeFloorOnly();
 
     GameObject owner;
-    owner.AddComponent<PlayerStatsManagerComponent>();
     auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
     auto& movement = *owner.AddComponent<PlayerComponent>();
     owner.Root().SetPosition(Vector3{0.0f, 0.5f, 0.0f}); // 床の上に直置きして接地から始める

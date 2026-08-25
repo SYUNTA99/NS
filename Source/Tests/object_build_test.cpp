@@ -3,10 +3,10 @@
 
 #include <Editor/EditorObjects.h>
 #include <Game/Level/GoalComponent.h>
+#include <Game/Player/PlayerComponent.h>
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/CapsuleColliderComponent.h>
-#include <Game/Player/PlayerComponent.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/Components/SlopeColliderComponent.h>
 #include <Runtime/Object/Components/SphereColliderComponent.h>
@@ -340,7 +340,6 @@ TEST_F(ObjectBuildTest, PlayerObjectDataIsSparseTypeListFromClass)
     ASSERT_EQ(data.components.size(), Player{}.Components().size());
     EXPECT_NE(NS::Object::FindComponentEntry(data, "MeshRendererComponent"), nullptr);
     EXPECT_NE(NS::Object::FindComponentEntry(data, "PlayerComponent"), nullptr);
-    EXPECT_NE(NS::Object::FindComponentEntry(data, "PlayerStatsManagerComponent"), nullptr);
     EXPECT_NE(NS::Object::FindComponentEntry(data, "PlayerStateManagerComponent"), nullptr);
     EXPECT_NE(NS::Object::FindComponentEntry(data, "PlayerInputComponent"), nullptr);
     EXPECT_NE(NS::Object::FindComponentEntry(data, "HealthComponent"), nullptr);
@@ -390,7 +389,7 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataValuesToComponents)
 {
     ObjectData data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
     for (nlohmann::json& entry : data.components)
-        if (NS::Object::ComponentEntryType(entry) == "PlayerStatsManagerComponent")
+        if (NS::Object::ComponentEntryType(entry) == "PlayerComponent")
             NS::Object::SetField(entry, "コヨーテ時間", 0.125f);
 
     auto obj = Build(data);

@@ -1,7 +1,6 @@
 #include "Editor/LevelFilePaths.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerStateManagerComponent.h"
-#include "Game/Player/PlayerStatsManagerComponent.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
@@ -59,7 +58,7 @@ namespace
     {};
 } // namespace
 
-TEST_P(ShippedScene, PlayerCarriesTheThreeNewComponents)
+TEST_P(ShippedScene, PlayerCarriesTheTwoNewComponents)
 {
     SceneNs::SceneData scene;
     ASSERT_TRUE(LoadShippedScene(scene, GetParam()));
@@ -70,8 +69,6 @@ TEST_P(ShippedScene, PlayerCarriesTheThreeNewComponents)
         << GetParam()
         << " の自機に PlayerComponent が無い。未知の型名は黙って読み飛ばされるので、"
            "書き換え漏れはこのテストでしか出ない";
-    EXPECT_NE(SceneNs::FindComponentEntry(*player, "PlayerStatsManagerComponent"), nullptr)
-        << GetParam() << " の自機に PlayerStatsManagerComponent が無い。調整値が既定へ化ける";
     EXPECT_NE(SceneNs::FindComponentEntry(*player, "PlayerStateManagerComponent"), nullptr)
         << GetParam() << " の自機に PlayerStateManagerComponent が無い。状態が 1 つも移らない";
 }
@@ -100,10 +97,8 @@ TEST_P(ShippedScene, LoadedPlayerBuildsItsStateMachine)
 
     auto* player = live->FindComponent<PlayerNs::PlayerComponent>();
     auto* states = live->FindComponent<PlayerNs::PlayerStateManagerComponent>();
-    auto* stats = live->FindComponent<PlayerNs::PlayerStatsManagerComponent>();
     ASSERT_NE(player, nullptr);
     ASSERT_NE(states, nullptr);
-    ASSERT_NE(stats, nullptr);
 
     live->OnStart();
     states->EnsureBuilt(*player);
@@ -123,7 +118,6 @@ TEST_P(ShippedScene, EveryTuningFieldNameIsReflected)
 
     const std::vector<std::pair<const char*, const SceneNs::Component*>> targets{
         {"PlayerComponent", live->FindComponent<PlayerNs::PlayerComponent>()},
-        {"PlayerStatsManagerComponent", live->FindComponent<PlayerNs::PlayerStatsManagerComponent>()},
         {"PlayerStateManagerComponent", live->FindComponent<PlayerNs::PlayerStateManagerComponent>()},
     };
 
@@ -145,20 +139,39 @@ TEST_P(ShippedScene, EveryTuningFieldNameIsReflected)
     }
 }
 
-TEST_P(ShippedScene, StatsManagerCarriesEveryTuningField)
+TEST_P(ShippedScene, PlayerComponentCarriesEveryTuningField)
 {
     SceneNs::SceneData scene;
     ASSERT_TRUE(LoadShippedScene(scene, GetParam()));
     const SceneNs::ObjectData* object = FindPlayerObject(scene);
     ASSERT_NE(object, nullptr);
 
-    const nlohmann::json* entry = SceneNs::FindComponentEntry(*object, "PlayerStatsManagerComponent");
+    const nlohmann::json* entry = SceneNs::FindComponentEntry(*object, "PlayerComponent");
     ASSERT_NE(entry, nullptr);
     const auto fields = entry->find("fields");
     ASSERT_NE(fields, entry->end());
 
-    const std::size_t expected = std::string_view{GetParam()} == "collision_feel" ? 12u : 17u;
+    const std::size_t expected = std::string_view{GetParam()} == "collision_feel" ? 15u : 20u;
     EXPECT_EQ(fields->size(), expected) << GetParam() << " の調整値の欄が減っている。落ちた欄は既定値で動く";
+}
+
+TEST_P(ShippedScene, LoadedPlayerKeepsTheTunedSlamValues)
+{
+    SceneNs::SceneData scene;
+    ASSERT_TRUE(LoadShippedScene(scene, GetParam()));
+    const SceneNs::ObjectData* object = FindPlayerObject(scene);
+    ASSERT_NE(object, nullptr);
+
+    std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(*object, nullptr);
+    ASSERT_NE(live, nullptr);
+    auto* player = live->FindComponent<PlayerNs::PlayerComponent>();
+    ASSERT_NE(player, nullptr);
+    live->OnStart();
+
+    EXPECT_FLOAT_EQ(player->Stats().bodySlamDistance, 10.0f);
+    EXPECT_FLOAT_EQ(player->Stats().tapSlamDistance, 2.5f);
+    EXPECT_FLOAT_EQ(player->Stats().jumpImpulse, 12.0f);
+    EXPECT_FLOAT_EQ(player->CoyoteTime(), 0.025f);
 }
 
 INSTANTIATE_TEST_SUITE_P(ScenePlayerLoad,

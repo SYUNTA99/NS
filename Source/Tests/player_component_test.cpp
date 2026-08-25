@@ -1,11 +1,11 @@
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
-#include <Game/Player/PlayerStatsManagerComponent.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/CameraBrainComponent.h>
 #include <Runtime/Object/Components/CapsuleColliderComponent.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
@@ -15,6 +15,7 @@
 #include <limits>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace
 {
@@ -22,10 +23,47 @@ namespace
     using NS::Core::Vector3;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
-    using NS::Game::Player::PlayerStatsManagerComponent;
     using NS::Object::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
+
+    // シーン JSON に載っている調整値の欄名。半角空白 1 つのずれでも値が読めなくなる
+    const std::vector<std::string> k_TuningFieldNames = {"ジャンプ初速",
+                                                         "上昇重力",
+                                                         "下降重力",
+                                                         "頂点滞空 Vy",
+                                                         "頂点滞空倍率",
+                                                         "ジャンプ離し倍率",
+                                                         "コヨーテ時間",
+                                                         "先行入力時間",
+                                                         "歩き速度",
+                                                         "加速時定数",
+                                                         "減速時定数",
+                                                         "スティック遊び",
+                                                         "突進速度",
+                                                         "突進距離",
+                                                         "タップ初速",
+                                                         "タップの上向き初速",
+                                                         "タップ距離"};
+
+    float ReadTuningField(const PlayerComponent& player, const char* name)
+    {
+        const NS::Object::FieldDesc* field = NS::Object::FindField(player.GetReflection(), name);
+        EXPECT_NE(field, nullptr) << name;
+        if (field == nullptr)
+            return std::numeric_limits<float>::quiet_NaN();
+
+        float value = 0.0f;
+        field->get(&player, &value);
+        return value;
+    }
+
+    void WriteTuningField(PlayerComponent& player, const char* name, float value)
+    {
+        const NS::Object::FieldDesc* field = NS::Object::FindField(player.GetReflection(), name);
+        ASSERT_NE(field, nullptr) << name;
+        field->set(&player, &value);
+    }
 
     //! 中心 (cx,cy,cz) に置いた 1m 立方の固形 block
     AABB MakeBlock(float cx, float cy, float cz)
@@ -33,11 +71,10 @@ namespace
         return AABB{Vector3{cx, cy, cz}, Vector3{0.5f, 0.5f, 0.5f}};
     }
 
-    //! 自機 3 部品を積んで OnStart まで通す。1 つでも欠けると調整値か遷移が効かない
+    //! 自機 2 部品を積んで OnStart まで通す。状態機械が欠けると遷移が 1 つも起きない
     //! @details 積む順は Player のコンストラクタと同じ
     PlayerComponent& MakePlayer(GameObject& owner)
     {
-        owner.AddComponent<PlayerStatsManagerComponent>();
         auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
         auto& player = *owner.AddComponent<PlayerComponent>();
 
@@ -159,30 +196,73 @@ TEST_F(PlayerComponentTest, OnUpdateNoOpWhenInactive)
     EXPECT_FLOAT_EQ(player.VerticalVelocity(), 0.0f);
 }
 
-// 調整値の読みは同居の組が正。ここが切れると Inspector で触っても手触りが変わらない
-TEST_F(PlayerComponentTest, ReadsTuningFromSiblingStatsManager)
+// 調整値は自分の欄。ここが切れると Inspector で触っても手触りが変わらない
+TEST_F(PlayerComponentTest, ReadsTuningFromItsOwnFields)
 {
     GameObject obj;
-    auto& stats = *obj.AddComponent<PlayerStatsManagerComponent>();
     auto& player = *obj.AddComponent<PlayerComponent>();
 
     player.OnStart();
     EXPECT_FLOAT_EQ(player.CoyoteTime(), 0.025f);
+    EXPECT_FLOAT_EQ(player.Stats().walkSpeed, 4.0f);
 
-    stats.SetCoyoteTime(0.2f);
+    player.SetCoyoteTime(0.2f);
     EXPECT_FLOAT_EQ(player.CoyoteTime(), 0.2f);
 }
 
-// 組を積まない検証台でも既定の組で動く。既定値は組の既定と同じなので手触りは変わらない
-TEST_F(PlayerComponentTest, FallsBackToDefaultTuningWithoutStatsManager)
+TEST_F(PlayerComponentTest, ReflectsEveryTuningFieldName)
 {
     GameObject obj;
     auto& player = *obj.AddComponent<PlayerComponent>();
 
-    player.OnStart();
+    const NS::Object::ReflectionInfo* info = player.GetReflection();
+    ASSERT_NE(info, nullptr);
 
-    EXPECT_FLOAT_EQ(player.CoyoteTime(), 0.025f);
-    EXPECT_FLOAT_EQ(player.Stats().walkSpeed, 4.0f);
+    for (const std::string& name : k_TuningFieldNames)
+        EXPECT_NE(NS::Object::FindField(info, name.c_str()), nullptr)
+            << name << " の欄が無い。シーン JSON のこの値は黙って捨てられ、調整値が既定へ化ける";
+}
+
+TEST_F(PlayerComponentTest, ReadsTheJumpImpulseThroughReflection)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+
+    EXPECT_FLOAT_EQ(ReadTuningField(player, "ジャンプ初速"), 12.0f);
+}
+
+TEST_F(PlayerComponentTest, TuningWriteThroughReflectionReachesStats)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+
+    WriteTuningField(player, "突進距離", 7.5f);
+    WriteTuningField(player, "先行入力時間", 0.4f);
+
+    EXPECT_FLOAT_EQ(player.Stats().bodySlamDistance, 7.5f);
+    EXPECT_FLOAT_EQ(player.Stats().jumpBufferTime, 0.4f);
+}
+
+TEST_F(PlayerComponentTest, TuningKeepsItsValueOnNonFiniteWrite)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+
+    const float k_Rejected[] = {std::numeric_limits<float>::quiet_NaN(),
+                                std::numeric_limits<float>::infinity(),
+                                -std::numeric_limits<float>::infinity()};
+
+    for (const std::string& name : k_TuningFieldNames)
+    {
+        const float original = ReadTuningField(player, name.c_str());
+        ASSERT_TRUE(std::isfinite(original)) << name;
+
+        for (float rejected : k_Rejected)
+        {
+            WriteTuningField(player, name.c_str(), rejected);
+            EXPECT_FLOAT_EQ(ReadTuningField(player, name.c_str()), original) << name;
+        }
+    }
 }
 
 TEST_F(PlayerComponentTest, ResetStateClearsMotion)

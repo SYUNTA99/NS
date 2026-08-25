@@ -1,9 +1,8 @@
 #include <Game/Level/MomentumComponent.h>
-#include <Runtime/Core/Clock.h>
-#include <Runtime/Core/Math.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
-#include <Game/Player/PlayerStatsManagerComponent.h>
+#include <Runtime/Core/Clock.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/Curve.h>
 #include <Runtime/Object/Reflection/Reflection.h>
@@ -19,7 +18,6 @@ namespace
     using NS::Game::Level::MomentumLevel;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
-    using NS::Game::Player::PlayerStatsManagerComponent;
     using NS::Object::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
@@ -48,7 +46,6 @@ protected:
     {
         NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
 
-        m_object.AddComponent<PlayerStatsManagerComponent>();
         m_object.AddComponent<PlayerStateManagerComponent>();
         m_movement = m_object.AddComponent<PlayerComponent>();
         m_momentum = m_object.AddComponent<MomentumComponent>();

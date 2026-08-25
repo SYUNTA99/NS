@@ -1,4 +1,4 @@
-#include <Game/Player/PlayerStatsManagerComponent.h>
+#include <Game/Player/PlayerComponent.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Component.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
@@ -218,12 +218,12 @@ TEST(ReflectionTest, PlacedVirtualCameraReflectsSixFields)
     EXPECT_FLOAT_EQ(cam->TriggerCenter().z, 22.0f);
 }
 
-TEST(ReflectionTest, PlayerStatsManagerReflectsFeelFloats)
+TEST(ReflectionTest, PlayerComponentReflectsFeelFloats)
 {
-    NS::Game::Player::PlayerStatsManagerComponent move;
+    NS::Game::Player::PlayerComponent move;
     const ReflectionInfo* info = move.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 17u);
+    EXPECT_EQ(info->fieldCount, 20u);
 
     // 操作感の代表値が float として往復する。欄ごとの取り出し口は無いのでリフレクション get で確認する
     const FieldDesc* jump = FindField(info, "ジャンプ初速");

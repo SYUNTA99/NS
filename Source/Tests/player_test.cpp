@@ -8,7 +8,6 @@
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerInputRelayComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
-#include <Game/Player/PlayerStatsManagerComponent.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/Components/PlayerInputComponent.h>
 #include <Runtime/Object/Components/ShadowComponent.h>
@@ -20,7 +19,7 @@
 TEST(PlayerTest, ConstructsWithDefaultComposition)
 {
     Player player{};
-    std::size_t expected = 14u;
+    std::size_t expected = 13u;
 #if !defined(NS_SHIPPING)
     expected += 1u;
 #endif
@@ -34,11 +33,10 @@ TEST(PlayerTest, DefaultComponentsResolveByType)
     EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerInputRelayComponent>(), player.Components()[1]);
     EXPECT_EQ(player.FindComponent<NS::Object::TransformComponent>(), player.Components()[2]);
     EXPECT_EQ(player.FindComponent<NS::Object::MeshRendererComponent>(), player.Components()[3]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerStatsManagerComponent>(), player.Components()[4]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerStateManagerComponent>(), player.Components()[5]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerComponent>(), player.Components()[6]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Level::HealthComponent>(), player.Components()[7]);
-    EXPECT_EQ(player.FindComponent<NS::Object::ShadowComponent>(), player.Components()[8]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerStateManagerComponent>(), player.Components()[4]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerComponent>(), player.Components()[5]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::HealthComponent>(), player.Components()[6]);
+    EXPECT_EQ(player.FindComponent<NS::Object::ShadowComponent>(), player.Components()[7]);
 }
 
 TEST(PlayerTest, ResponseComponentsTrailTheUpdateBand)

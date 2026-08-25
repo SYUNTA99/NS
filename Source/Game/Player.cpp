@@ -10,7 +10,6 @@
 #include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerInputRelayComponent.h"
 #include "Game/Player/PlayerStateManagerComponent.h"
-#include "Game/Player/PlayerStatsManagerComponent.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/Components/PlayerInputComponent.h"
@@ -39,8 +38,7 @@ Player::Player() noexcept
     mesh->SetMeshRef("cube");
     mesh->SetMaterialRef("player");
     mesh->SetBaseColor(k_PlayerBaseColor);
-    // 3 つで 1 組。1 つでも欠けると調整値か遷移が効かない
-    AddComponent<NS::Game::Player::PlayerStatsManagerComponent>();
+    // 2 つで 1 組。状態機械が欠けると遷移が 1 つも起きない
     AddComponent<NS::Game::Player::PlayerStateManagerComponent>();
     AddComponent<NS::Game::Player::PlayerComponent>();
     AddComponent<NS::Object::PlayerInputComponent>();

@@ -2,9 +2,8 @@
 
 namespace NS::Game::Player
 {
-    //! @brief 自機の調整値の 1 組
-    //! @details 組を差し替えると自機の手触りがまとめて変わる。持つのは素の値だけで、
-    //! Inspector への露出も値の検査もここではしない
+    //! @brief 自機の調整値
+    //! @details 持つのは素の値だけで、Inspector への露出も値の検査も PlayerComponent の側にある
     //! 走行の最高速度は入れない。MomentumComponent が速度状態に応じて毎歩書き換える値で、
     //! 手で決める調整値ではない
     struct PlayerStats

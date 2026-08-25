@@ -2,7 +2,6 @@
 
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
-#include <Game/Player/PlayerStatsManagerComponent.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/GameObject.h>
@@ -19,7 +18,6 @@ namespace
     using NS::Core::Vector3;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
-    using NS::Game::Player::PlayerStatsManagerComponent;
     using NS::Object::GameObject;
     using NS::Tests::DescribeTrace;
     using NS::Tests::FoldTrace;
@@ -46,12 +44,11 @@ namespace
         return false;
     }
 
-    //! 自機 3 部品を載せて PhysicsWorld を繋ぐ。積む順は Player のコンストラクタと同じ
+    //! 自機 2 部品を載せて PhysicsWorld を繋ぐ。積む順は Player のコンストラクタと同じ
     //! @details 開始位置は空中に取り、数ステップの自然落下で着地させる。
     //! 床上へ直置きするとカプセルが床へめり込み、衝突解決が移動を丸ごと拒否して位置が固定されてしまう
     PlayerComponent& SetUpMovement(GameObject& owner, NS::Physics::PhysicsWorld& world, const Vector3& startPosition)
     {
-        owner.AddComponent<PlayerStatsManagerComponent>();
         auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
         auto& movement = *owner.AddComponent<PlayerComponent>();
 

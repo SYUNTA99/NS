@@ -1,6 +1,5 @@
 ﻿#include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
-#include <Game/Player/PlayerStatsManagerComponent.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/CameraBrainComponent.h>
@@ -26,7 +25,6 @@ namespace
     using NS::Object::CameraPose;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
-    using NS::Game::Player::PlayerStatsManagerComponent;
     using NS::Object::GameObject;
     using NS::Object::PlacedVirtualCamera;
     using NS::Object::ThirdPersonFollowComponent;
@@ -101,7 +99,6 @@ namespace
         GameObject player;
         NS::Physics::PhysicsWorld world;
         world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 8.0f}});
-        player.AddComponent<PlayerStatsManagerComponent>();
         player.AddComponent<PlayerStateManagerComponent>();
         auto& movement = *player.AddComponent<PlayerComponent>();
         player.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});

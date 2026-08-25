@@ -75,7 +75,6 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
         "PlayerComponent",
         "PlayerInputComponent",
         "PlayerStateManagerComponent",
-        "PlayerStatsManagerComponent",
         "ShadowComponent",
         "SkeletalAnimationComponent",
         "DirectionalLightComponent",
@@ -113,7 +112,6 @@ TEST(TypeRegistryTest, ExcludedTypesReturnNull)
     EXPECT_EQ(CreateComponent("TransformComponent", obj), nullptr);
     EXPECT_EQ(CreateComponent("EntityComponent", obj), nullptr);
     EXPECT_EQ(CreateComponent("EntityStateManagerComponent", obj), nullptr);
-    EXPECT_EQ(CreateComponent("EntityStatsManagerComponent", obj), nullptr);
     EXPECT_EQ(obj.Components().size(), before);
 }
 
@@ -144,7 +142,7 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 28u);
+    EXPECT_EQ(names.size(), 27u);
     EXPECT_TRUE(Contains(names, "BoxColliderComponent"));
     EXPECT_TRUE(Contains(names, "MeshRendererComponent"));
     EXPECT_TRUE(Contains(names, "PlayerComponent"));
@@ -211,27 +209,13 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "昇格倍率カーブ"}},
         {"GoalComponent", {}},
         {"PlacedVirtualCamera", {"注視点", "上方向", "トリガー中心", "トリガー半径", "プレイヤー追視", "優先度"}},
-        {"PlayerComponent", {"カプセル半径", "カプセル半分の高さ", "デバッグ表示"}},
+        {"PlayerComponent",
+         {"カプセル半径", "カプセル半分の高さ", "ジャンプ初速",       "上昇重力",       "下降重力",
+          "頂点滞空 Vy",  "頂点滞空倍率",       "ジャンプ離し倍率",   "コヨーテ時間",   "先行入力時間",
+          "歩き速度",     "加速時定数",         "減速時定数",         "スティック遊び", "突進速度",
+          "突進距離",     "タップ初速",         "タップの上向き初速", "タップ距離",     "デバッグ表示"}},
         {"PlayerInputComponent", {}},
         {"PlayerStateManagerComponent", {"状態一覧"}},
-        {"PlayerStatsManagerComponent",
-         {"ジャンプ初速",
-          "上昇重力",
-          "下降重力",
-          "頂点滞空 Vy",
-          "頂点滞空倍率",
-          "ジャンプ離し倍率",
-          "コヨーテ時間",
-          "先行入力時間",
-          "歩き速度",
-          "加速時定数",
-          "減速時定数",
-          "スティック遊び",
-          "突進速度",
-          "突進距離",
-          "タップ初速",
-          "タップの上向き初速",
-          "タップ距離"}},
         {"ShadowComponent", {"基本直径", "最大投影距離", "表面オフセット", "基本不透明度"}},
         {"SkeletalAnimationComponent", {"再生速度", "ループ再生", "モデル", "クリップ"}},
         {"SlopeColliderComponent", {"角度 (度)", "半径"}},
@@ -306,7 +290,6 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
         {"PlayerComponent", {"EntityComponent"}},
         {"PlayerInputComponent", {}},
         {"PlayerStateManagerComponent", {"EntityStateManagerComponent"}},
-        {"PlayerStatsManagerComponent", {"EntityStatsManagerComponent"}},
         {"ShadowComponent", {}},
         {"SkeletalAnimationComponent", {}},
         {"SlopeColliderComponent", {"ColliderComponent"}},

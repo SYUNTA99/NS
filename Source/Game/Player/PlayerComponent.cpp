@@ -2,7 +2,6 @@
 
 #include "Game/Entity/EntityStateManagerComponent.h"
 #include "Game/Player/PlayerStateManagerComponent.h"
-#include "Game/Player/PlayerStatsManagerComponent.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -71,18 +70,100 @@ namespace
                p.y >= box.Center.y - box.Extents.y && p.y <= box.Center.y + box.Extents.y &&
                p.z >= box.Center.z - box.Extents.z && p.z <= box.Center.z + box.Extents.z;
     }
+
+    // 非有限値を捨てる。シーン JSON が外部データの唯一の入口で、重力や時定数へ入ると位置まで NaN が伝わる
+    void AssignFinite(float& target, float value) noexcept
+    {
+        if (std::isfinite(value))
+            target = value;
+    }
 } // namespace
 
 namespace NS::Game::Player
 {
-    const PlayerStats& PlayerComponent::Stats() const noexcept
+    void PlayerComponent::SetJumpImpulse(float value) noexcept
     {
-        if (m_statsManager != nullptr)
-            return m_statsManager->Current();
+        AssignFinite(m_stats.jumpImpulse, value);
+    }
 
-        // 組が無いのはシーンを組まない検証台だけ。既定値は組の既定と同じなので手触りは変わらない
-        static const PlayerStats k_Default{};
-        return k_Default;
+    void PlayerComponent::SetGravityUp(float value) noexcept
+    {
+        AssignFinite(m_stats.gravityUp, value);
+    }
+
+    void PlayerComponent::SetGravityDown(float value) noexcept
+    {
+        AssignFinite(m_stats.gravityDown, value);
+    }
+
+    void PlayerComponent::SetApexHangVy(float value) noexcept
+    {
+        AssignFinite(m_stats.apexHangVy, value);
+    }
+
+    void PlayerComponent::SetApexHangScale(float value) noexcept
+    {
+        AssignFinite(m_stats.apexHangScale, value);
+    }
+
+    void PlayerComponent::SetJumpReleaseScale(float value) noexcept
+    {
+        AssignFinite(m_stats.jumpReleaseScale, value);
+    }
+
+    void PlayerComponent::SetCoyoteTime(float value) noexcept
+    {
+        AssignFinite(m_stats.coyoteTime, value);
+    }
+
+    void PlayerComponent::SetJumpBufferTime(float value) noexcept
+    {
+        AssignFinite(m_stats.jumpBufferTime, value);
+    }
+
+    void PlayerComponent::SetWalkSpeed(float value) noexcept
+    {
+        AssignFinite(m_stats.walkSpeed, value);
+    }
+
+    void PlayerComponent::SetAccelTau(float value) noexcept
+    {
+        AssignFinite(m_stats.accelTau, value);
+    }
+
+    void PlayerComponent::SetDecelTau(float value) noexcept
+    {
+        AssignFinite(m_stats.decelTau, value);
+    }
+
+    void PlayerComponent::SetStickDeadzone(float value) noexcept
+    {
+        AssignFinite(m_stats.stickDeadzone, value);
+    }
+
+    void PlayerComponent::SetBodySlamSpeed(float value) noexcept
+    {
+        AssignFinite(m_stats.bodySlamSpeed, value);
+    }
+
+    void PlayerComponent::SetBodySlamDistance(float value) noexcept
+    {
+        AssignFinite(m_stats.bodySlamDistance, value);
+    }
+
+    void PlayerComponent::SetTapSlamSpeed(float value) noexcept
+    {
+        AssignFinite(m_stats.tapSlamSpeed, value);
+    }
+
+    void PlayerComponent::SetTapSlamUpSpeed(float value) noexcept
+    {
+        AssignFinite(m_stats.tapSlamUpSpeed, value);
+    }
+
+    void PlayerComponent::SetTapSlamDistance(float value) noexcept
+    {
+        AssignFinite(m_stats.tapSlamDistance, value);
     }
 
     void PlayerComponent::SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept
@@ -105,11 +186,6 @@ namespace NS::Game::Player
     void PlayerComponent::SetJumpHeld(bool held) noexcept
     {
         m_jumpHeld = held;
-    }
-
-    float PlayerComponent::CoyoteTime() const noexcept
-    {
-        return Stats().coyoteTime;
     }
 
     void PlayerComponent::SetMaxSpeed(float speed) noexcept
@@ -301,7 +377,6 @@ namespace NS::Game::Player
         if (Owner() == nullptr)
             return;
 
-        m_statsManager = Owner()->FindComponent<PlayerStatsManagerComponent>();
         m_stateManager = Owner()->FindComponent<PlayerStateManagerComponent>();
     }
 
