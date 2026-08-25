@@ -22,15 +22,14 @@ namespace NS::Editor
             if (editor.ObjectToolActive())
             {
                 const bool hasSelection = editor.HasGizmoSelection();
-                const char* selectionLabel = "Select an object first (click it)";
+                const char* selectionLabel = "オブジェクトが未選択。クリックで選ぶ";
                 if (hasSelection)
-                    selectionLabel = "Selected object: yes";
+                    selectionLabel = "オブジェクトを選択中";
                 ImGui::TextUnformatted(selectionLabel);
 
-                // ドロップ枠: ツリーの .mat をここへドラッグすると選択中の物体へ適用する
-                const char* dropLabel = "Drop target (needs selection)";
+                const char* dropLabel = "選択してから .mat を落とす";
                 if (hasSelection)
-                    dropLabel = "Drop .mat here -> apply to selected";
+                    dropLabel = ".mat をここへ落とすと選択中のオブジェクトへ適用";
                 ImGui::Button(dropLabel, ImVec2(-1.0f, 32.0f));
                 if (ImGui::BeginDragDropTarget())
                 {
@@ -45,7 +44,6 @@ namespace NS::Editor
                 ImGui::Separator();
             }
 
-            // .mat はクリック適用 / ドラッグ可
             RenderTree(NS::Core::FileSystem::ContentRoot() / "Assets", editor);
         }
         ImGui::End();
@@ -59,7 +57,7 @@ namespace NS::Editor
 #if NS_EDITOR_ENABLED
         const bool hasSelection = editor.HasGizmoSelection();
 
-        // open 時のみ中身を走査する遅延読み
+        // 開いた時だけ中身を走査する
         for (const auto& sub : NS::Core::FileSystem::ListDirectories(dir))
         {
             const std::string label = sub.filename().string();
@@ -70,13 +68,11 @@ namespace NS::Editor
             }
         }
 
-        // フォルダ直下のファイル。 .mat はクリックで選択物体へ適用 + ドラッグ可、 他は読み取り専用表示
         for (const auto& file : NS::Core::FileSystem::ListFiles(dir))
         {
             const std::string name = file.filename().string();
             const std::filesystem::path extension = file.extension();
 
-            // メッシュは Scene ビューへ落として置ける
             if (extension == ".gltf" || extension == ".glb")
             {
                 ImGui::PushID(name.c_str());
