@@ -587,7 +587,7 @@ TEST_F(PlayerComponentTest, AimsAtTheCameraForwardWithoutInput)
     EXPECT_NEAR(player.Velocity().x, 0.0f, 1.0e-4f);
 }
 
-// カメラの居ない検証台でも突進が出せるよう、速度を最後の受けに残す
+// カメラの居ない検証台でも突進が出せるよう、速度をフォールバックに残す
 TEST_F(PlayerComponentTest, FallsBackToTheVelocityWithoutInputOrCamera)
 {
     GameObject obj;
@@ -722,9 +722,10 @@ TEST_F(PlayerComponentTest, TapHopEndsAfterTheShortDistance)
     }
 
     EXPECT_LT(steps, 120);
+    // 着地を挟むので欄の数字ぶん進むとは限らない。実移動で測る
     const float travelled = obj.Root().Position().x - startX;
-    EXPECT_GT(travelled, 1.5f);
-    EXPECT_LT(travelled, 3.0f);
+    EXPECT_NEAR(travelled, player.TapSlamDistance(), 0.2f);
+    EXPECT_LT(player.TapSlamDistance(), player.BodySlamDistance());
 }
 
 TEST_F(PlayerComponentTest, ProgressRisesThenCancelResets)
@@ -751,6 +752,36 @@ TEST_F(PlayerComponentTest, ProgressRisesThenCancelResets)
     player.CancelBodySlam();
     EXPECT_FALSE(player.IsBodySlamming());
     EXPECT_FLOAT_EQ(player.BodySlamProgress01(), 0.0f);
+}
+
+// 踏み込みは先行入力の秒より長い。突進中に期限を数えると、明ける前に押しが消える
+TEST_F(PlayerComponentTest, BufferedRequestSurvivesALongerRush)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    // 先行入力の秒を使い切るまで突進させてから押す
+    const int stepsPastBuffer = static_cast<int>(player.Stats().jumpBufferTime / k_FixedDt) + 2;
+    for (int i = 0; i < stepsPastBuffer; ++i)
+        player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    player.RequestBodySlam(1.0f);
+    for (int i = 0; i < stepsPastBuffer; ++i)
+        player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    for (int i = 0; i < 120 && player.BodySlamCharge01() < 1.0f; ++i)
+        player.OnUpdate();
+
+    EXPECT_TRUE(player.IsBodySlamming());
+    EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 1.0f);
 }
 
 // 突進中の押しをその歩で捨てると連打が取りこぼされる。突進明けの歩で消費する

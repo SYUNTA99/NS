@@ -168,7 +168,7 @@ TEST_P(ShippedScene, LoadedPlayerKeepsTheTunedSlamValues)
     live->OnStart();
 
     EXPECT_FLOAT_EQ(player->Stats().bodySlamDistance, 10.0f);
-    EXPECT_FLOAT_EQ(player->Stats().tapSlamDistance, 2.5f);
+    EXPECT_FLOAT_EQ(player->Stats().tapSlamDistance, 6.25f);
     EXPECT_FLOAT_EQ(player->Stats().jumpImpulse, 12.0f);
     EXPECT_FLOAT_EQ(player->CoyoteTime(), 0.025f);
 }

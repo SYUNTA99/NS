@@ -29,6 +29,8 @@ namespace NS::Game::Player
         float bodySlamDistance = 10.0f;
         float tapSlamSpeed = 10.0f;
         float tapSlamUpSpeed = 3.0f;
-        float tapSlamDistance = 2.5f;
+        // 2.5 では目の前の物にしか届かず、狙って押す価値が無かった。実機で 2.5 倍にして詰める
+        // 初速はそのままなので踏み込みは 0.25 秒から 0.625 秒へ延びる
+        float tapSlamDistance = 6.25f;
     };
 } // namespace NS::Game::Player

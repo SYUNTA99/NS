@@ -71,7 +71,7 @@ namespace
                p.z >= box.Center.z - box.Extents.z && p.z <= box.Center.z + box.Extents.z;
     }
 
-    // 非有限値を捨てる。シーン JSON が外部データの唯一の入口で、重力や時定数へ入ると位置まで NaN が伝わる
+    // 非有限値を捨てる。重力や時定数へ入ると位置まで NaN が伝わる
     void AssignFinite(float& target, float value) noexcept
     {
         if (std::isfinite(value))
@@ -772,7 +772,7 @@ namespace NS::Game::Player
 
             // 突進の中で見ると通常移動の 1 歩を走ってから移ることになり、突進の初速がその歩に乗らない
             // 空中の押しを捨てると連打で出ない歩ができるため、接地は求めない
-            // 突進を出すのは通常移動の歩だけ。掴まり中に出せると縁から離れる操作が 3 通りになる
+            // 突進を出すのは通常移動の歩だけ。掴まり中に出せると縁から離れる操作が 1 つ増える
             // 空中で 2 発目まで出せると 1 発の重みが消える。接地するまで次は出さない
             if (m_bodySlamBufferRemaining > 0.0f && !m_bodySlamSpent && IsLocomotion())
             {
@@ -783,10 +783,11 @@ namespace NS::Game::Player
             m_stateManager->Step(*this, dt);
         }
 
-        // 1 歩限りの入力の消費は、どの状態でも通るここで行う
+        // 1 歩限りの入力は、どの状態でも通るここで落とす
         m_prevJumpHeld = m_jumpHeld;
         m_jumpPressedThisFrame = false;
-        if (m_bodySlamBufferRemaining > 0.0f)
+        // 突進中は期限を数えない。踏み込みが先行入力の秒より長いので、数えると明ける前に押しが消える
+        if (m_bodySlamBufferRemaining > 0.0f && !IsBodySlamming())
             m_bodySlamBufferRemaining = std::max(0.0f, m_bodySlamBufferRemaining - dt);
     }
 
