@@ -25,9 +25,6 @@ namespace
     // 同時に保持するコヨーテジャンプ記録の上限。画面が線で埋まらない数
     constexpr std::size_t k_MaxCoyoteJumpMarkers = 16;
 
-    // 向きと言える長さの下限。長さ 0 のまま正規化すると 0 除算になる
-    constexpr float k_BodySlamMinDirection = 1e-4f;
-
     // 1 歩で打ち切ると衝突を裁く側が突進を見る前に終わるため、壁に押し付けられた歩を 2 回数える
     constexpr float k_BodySlamStallDistance = 1e-4f;
     constexpr int k_BodySlamMaxStallSteps = 2;
@@ -178,7 +175,7 @@ namespace NS::Game::Player
         float length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
 
         // 反発後の滑りなど残った速度が向きに勝つと狙いと食い違う方へ飛ぶ。入力が無ければ速度よりカメラの前を先に見る
-        if (length < k_BodySlamMinDirection && Owner() != nullptr && Owner()->OwningScene() != nullptr)
+        if (length < NS::Core::k_Epsilon && Owner() != nullptr && Owner()->OwningScene() != nullptr)
         {
             if (NS::Object::CameraBrainComponent* brain = Owner()->OwningScene()->CameraBrain())
             {
@@ -187,12 +184,12 @@ namespace NS::Game::Player
                 length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
             }
         }
-        if (length < k_BodySlamMinDirection)
+        if (length < NS::Core::k_Epsilon)
         {
             dir = lateral;
             length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
         }
-        if (length < k_BodySlamMinDirection)
+        if (length < NS::Core::k_Epsilon)
             return false;
 
         dir.x /= length;
@@ -415,7 +412,7 @@ namespace NS::Game::Player
 
         NS::Core::Vector3 dir{m_desiredDir.x, 0.0f, m_desiredDir.z};
         const float dirLen = std::sqrt(dir.x * dir.x + dir.z * dir.z);
-        if (dirLen < 1e-4f)
+        if (dirLen < NS::Core::k_Epsilon)
             return false;
         dir.x /= dirLen;
         dir.z /= dirLen;

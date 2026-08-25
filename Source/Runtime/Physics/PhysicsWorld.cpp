@@ -248,7 +248,7 @@ namespace NS::Physics
                     return;
 
                 NS::Core::Vector3 push{0.0f, 0.0f, 0.0f};
-                if (distSq > 1e-8f)
+                if (distSq > NS::Core::k_Epsilon * NS::Core::k_Epsilon)
                 {
                     const float dist = std::sqrt(distSq);
                     const float amount = r - dist + k_Separation;

@@ -31,9 +31,6 @@ namespace NS::Game::Level
 {
     namespace
     {
-        // 向きと言える下限 0.0001 の 2 乗。完全に重なると正規化が 0 除算になり、NaN が速度へ流れる
-        constexpr float k_MinDirectionLengthSq = 1e-8f;
-
         // 質量の下限 0.01 で割ると初速が 100 倍まで跳ねる。画面の外へ消える前に頭打ちにする
         constexpr float k_MaxLaunchSpeed = 120.0f;
 
@@ -184,12 +181,12 @@ namespace NS::Game::Level
         float awayZ = position.z - bounds.Center.z;
         float lengthSq = awayX * awayX + awayZ * awayZ;
         // 箱の中心へ重なると向きが決まらない。進んできた向きの逆へ弾く
-        if (lengthSq < k_MinDirectionLengthSq)
+        if (lengthSq < NS::Core::k_Epsilon * NS::Core::k_Epsilon)
         {
             awayX = -velocity.x;
             awayZ = -velocity.z;
             lengthSq = awayX * awayX + awayZ * awayZ;
-            if (lengthSq < k_MinDirectionLengthSq)
+            if (lengthSq < NS::Core::k_Epsilon * NS::Core::k_Epsilon)
                 return;
         }
         const float invLength = 1.0f / std::sqrt(lengthSq);

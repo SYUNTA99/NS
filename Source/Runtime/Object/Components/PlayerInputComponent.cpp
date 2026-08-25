@@ -1,5 +1,6 @@
 #include "Runtime/Object/Components/PlayerInputComponent.h"
 
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -15,11 +16,10 @@ namespace
     //! 水平 forward を XZ 平面正規化。長さ 0 の入力は world +Z にフォールバック
     [[nodiscard]] NS::Core::Vector3 NormalizeHorizontal(const NS::Core::Vector3& v) noexcept
     {
-        const float lenSq = v.x * v.x + v.z * v.z;
-        if (lenSq < 1e-8f)
+        NS::Core::Vector3 out{};
+        if (!NS::Core::TryNormalizeHorizontal(v, out))
             return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
-        const float invLen = 1.0f / std::sqrt(lenSq);
-        return NS::Core::Vector3{v.x * invLen, 0.0f, v.z * invLen};
+        return out;
     }
 } // namespace
 
