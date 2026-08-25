@@ -44,7 +44,7 @@ namespace
     // 編集復帰の視点ブレンド秒。Brain の vcam 切替の既定 0.35 秒と揃え、モード切替の繋ぎを同じ感触にする
     constexpr float k_EditBlendSeconds = 0.35f;
 
-    // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、カプセルは実形状、球 / slope は collider 由来の AABB
+    // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状、slope は collider 由来の AABB
     void DrawColliderWireframe(NS::Object::GameObject& object, const NS::Core::Color& color) noexcept
     {
         if (auto* box = object.FindComponent<NS::Object::BoxColliderComponent>())
@@ -53,7 +53,7 @@ namespace
         }
         else if (auto* sphere = object.FindComponent<NS::Object::SphereColliderComponent>())
         {
-            NS::Graphics::DebugDraw::AABB(sphere->WorldAABB(), color);
+            NS::Graphics::DebugDraw::Sphere(sphere->WorldSphere(), color);
         }
         else if (auto* capsule = object.FindComponent<NS::Object::CapsuleColliderComponent>())
         {
@@ -80,8 +80,8 @@ namespace
         }
     }
 
-    // a→b を 0.5m 刻みで等分し 1 区間おきに線を引いて点線にする。DebugDraw に dashed が無いので描画側で
-    // 間引く。辺長からセグメント数を出すので、長い辺も短い辺も破線ピッチが揃う
+    // a→b を 0.5m を目安に等分し 1 区間おきに線を引いて点線にする。DebugDraw に破線が無いので描画側で
+    // 間引く。辺長からセグメント数を出すので、長い辺でも刻みが粗くならない
     void DrawDashedLine(const NS::Core::Vector3& a, const NS::Core::Vector3& b, const NS::Core::Color& color) noexcept
     {
         const float length = (b - a).Length();
@@ -129,13 +129,12 @@ namespace
 
     // 視点マーカーの world 半径。カメラから遠いほど半径を伸ばし、画面上の見かけサイズを一定に近づける
     // 見かけ寸法は world 半径 / clip.w に比例するので、半径を clip.w に比例させると相殺されて一定になる
-    // 近距離は基準半径を下限に据え、遠距離だけ伸ばす
     [[nodiscard]] float CameraMarkerHalf(const NS::Core::Vector3& center, const NS::Core::Matrix& vp) noexcept
     {
         const float baseHalf = 0.3f;
         const NS::Core::Vector4 clip =
             NS::Core::Vector4::Transform(NS::Core::Vector4{center.x, center.y, center.z, 1.0f}, vp);
-        // clip.w がほぼ 0、カメラ至近や背面では深度で割らず基準半径へ退避する
+        // clip.w がほぼ 0 になるカメラ至近や背面では基準半径へ退避する
         if (clip.w <= 1.0e-3f)
             return baseHalf;
         // 深度 10 までは基準半径、これより遠いほど深度に比例して伸ばし画面上一定に近づける
@@ -930,7 +929,6 @@ void LevelEditorController::RenderCameraGizmos(const NS::Core::Matrix& viewProje
 
         const NS::Object::CameraPose pose = vcam->EvaluatePose(1.0f);
         DrawCameraFrustum(pose, aspect, camColor);
-        // 視点マーカーは遠いカメラでも潰れないよう、深度に応じて world 半径を伸ばし画面上一定サイズに近づける
         const float markerHalf = CameraMarkerHalf(pose.position, viewProjection);
         NS::Graphics::DebugDraw::AABB(
             NS::Core::AABB{pose.position, NS::Core::Vector3{markerHalf, markerHalf, markerHalf}}, camColor);

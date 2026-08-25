@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-// 線分と AABB / OBB / カプセルの枠線を溜めて、まとめて描くデバッグ描画
+// 線分と AABB / OBB / 球 / カプセルの枠線を溜めて、まとめて描くデバッグ描画
 
 #include "Runtime/Core/Math.h"
 
@@ -27,10 +27,16 @@ namespace NS::Graphics::DebugDraw
     //! @param[in] color 描画色
     void OBB(const NS::Core::OBB& obb, const NS::Core::Color& color) noexcept;
 
+    //! @brief 球の枠線を追加する
+    //! @details 座標軸に沿った大円を 3 本描く。どの向きから見ても 1 本は線に潰れないので半径が読める
+    //! @param[in] sphere 描画する球データ
+    //! @param[in] color 描画色
+    void Sphere(const NS::Core::Sphere& sphere, const NS::Core::Color& color) noexcept;
+
     //! @brief カプセル形状の枠線を追加する
     //! @details 軸方向に伸びる円柱部分と、両端の半球の概形を描画する
     //! @param[in] base カプセル中心の座標
-    //! @param[in] axis 中心から端の半球中心へ向かうベクトル（長さは halfHeight）
+    //! @param[in] axis 中心から端の半球中心へ向かうベクトル
     //! @param[in] radius カプセルの半径
     //! @param[in] color 描画色
     void Capsule(const NS::Core::Vector3& base,
@@ -39,11 +45,11 @@ namespace NS::Graphics::DebugDraw
                  const NS::Core::Color& color) noexcept;
 
     //! @brief 蓄積された図形群を一括で描画し、内部のバッファをクリアする
-    //! @param[in,out] renderer コマンドを発行する描画システム
+    //! @param[in,out] renderer 描画コマンドの発行先
     //! @param[in] viewProjection ビュー・プロジェクション行列
     void Flush(Renderer& renderer, const NS::Core::Matrix& viewProjection) noexcept;
 
-    //! バッファを破棄する
+    //! 蓄積した頂点を全て捨てる
     void Clear() noexcept;
 
     //! 現在バッファに蓄積されている頂点の総数を返す
