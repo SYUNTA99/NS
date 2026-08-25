@@ -85,10 +85,15 @@ namespace NS::Platform
         //! @note プレイ中の視点操作など、マウスポインタが画面端に到達しても操作を継続させたい場合に有効化する
         void SetRelativeMode(bool enabled) noexcept;
 
+        //! @brief 相対マウスモードが有効かどうかを判定する
         [[nodiscard]] bool IsRelativeMode() const noexcept { return m_relativeMode; }
 
         //! @brief 相対マウスモード用に、OS からの Raw Input の移動量を蓄積する内部 API
         void OnRawMove(int dx, int dy) noexcept;
+
+        //! @brief 相対マウスモード用に、OS からの Raw Input の絶対座標を前回との差にして蓄積する内部 API
+        //! @note 最初の 1 回は座標を記録するだけで移動量は積まない
+        void OnRawMoveAbsolute(int screenX, int screenY) noexcept;
 
         //! @brief ボタンとホイールの入力状態を強制的にリセットする
         //! @note
@@ -108,6 +113,9 @@ namespace NS::Platform
         int m_wheel = 0;
         int m_rawDeltaX = 0;
         int m_rawDeltaY = 0;
+        int m_absX = 0;
+        int m_absY = 0;
+        bool m_absOriginSet = false;
         bool m_relativeMode = false;
     };
 
