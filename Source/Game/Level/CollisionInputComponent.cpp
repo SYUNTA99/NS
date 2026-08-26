@@ -79,6 +79,9 @@ namespace NS::Game::Level
             (mouseFree && mouse.IsHeld(NS::Platform::MouseButton::Left)) || pad.IsHeld(NS::Platform::GamepadButton::X);
         m_judge.Step(held);
 
+        if (m_judge.JustPressed() && m_movement != nullptr)
+            m_movement->MarkBodySlamAim();
+
         const SlamKind fired = m_judge.TakeFired();
         if (fired != SlamKind::None && m_movement != nullptr)
         {
@@ -106,15 +109,15 @@ namespace NS::Game::Level
         // 凍結と潰れ・伸びの最中は触らない。書くと控えた元の形と衝突演出が壊れる
         const bool resolverAnimating = m_resolver != nullptr && m_resolver->IsScaleAnimating();
         const bool movementFrozen = m_movement != nullptr && !m_movement->IsActiveSelf();
-        if (m_judge.IsCharging() && !resolverAnimating && !movementFrozen)
+        if (m_judge.IsHeld() && !resolverAnimating && !movementFrozen)
         {
             if (!m_stanceApplied)
             {
                 m_homeScale = RootTransform().Scale();
                 m_stanceApplied = true;
             }
-            RootTransform().SetScale(
-                NS::Core::Vector3{m_homeScale.x, m_homeScale.y * m_chargeSquashScale, m_homeScale.z});
+            const float scale = m_judge.IsCharging() ? m_chargeSquashScale : m_pressSquashScale;
+            RootTransform().SetScale(NS::Core::Vector3{m_homeScale.x, m_homeScale.y * scale, m_homeScale.z});
         }
         else if (m_stanceApplied && !resolverAnimating)
         {

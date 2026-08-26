@@ -30,27 +30,47 @@ TEST(ImpactInputJudge, IdleNeverFires)
     EXPECT_FLOAT_EQ(judge.Charge01(), 0.0f);
 }
 
-// 押した瞬間に技が出る手応えが要件。離し待ちだと押下の歩に何も起きない
-TEST(ImpactInputJudge, PressFiresTapImmediately)
+// 押した歩で出すとチャージ狙いにもタップが混ざる。発動点は離した歩だけに絞る
+TEST(ImpactInputJudge, PressAloneFiresNothing)
 {
     ImpactInputJudge judge;
     judge.Step(true);
 
-    EXPECT_EQ(judge.TakeFired(), SlamKind::Tap);
+    EXPECT_EQ(judge.TakeFired(), SlamKind::None);
 }
 
-// タップは押した歩で出済み。しきい値前の離しが二発目を出してはいけない
-TEST(ImpactInputJudge, ReleaseBeforeThresholdAddsNothing)
+TEST(ImpactInputJudge, JustPressedMarksOnlyTheFirstHeldStep)
 {
     ImpactInputJudge judge;
+    EXPECT_FALSE(judge.JustPressed());
+    EXPECT_FALSE(judge.IsHeld());
+
     judge.Step(true);
-    ASSERT_EQ(judge.TakeFired(), SlamKind::Tap);
-    StepHeld(judge, judge.chargeThresholdSteps - 2);
+    EXPECT_TRUE(judge.JustPressed());
+    EXPECT_TRUE(judge.IsHeld());
+
+    judge.Step(true);
+    EXPECT_FALSE(judge.JustPressed());
+    EXPECT_TRUE(judge.IsHeld());
+
+    judge.Step(false);
+    EXPECT_FALSE(judge.JustPressed());
+    EXPECT_FALSE(judge.IsHeld());
+
+    judge.Step(true);
+    EXPECT_TRUE(judge.JustPressed());
+}
+
+TEST(ImpactInputJudge, ReleaseBeforeThresholdFiresTap)
+{
+    ImpactInputJudge judge;
+    StepHeld(judge, judge.chargeThresholdSteps - 1);
+    ASSERT_EQ(judge.TakeFired(), SlamKind::None);
     EXPECT_FALSE(judge.IsCharging());
 
     judge.Step(false);
 
-    EXPECT_EQ(judge.TakeFired(), SlamKind::None);
+    EXPECT_EQ(judge.TakeFired(), SlamKind::Tap);
     EXPECT_FLOAT_EQ(judge.Charge01(), 0.0f);
 }
 
@@ -58,9 +78,7 @@ TEST(ImpactInputJudge, ReleaseBeforeThresholdAddsNothing)
 TEST(ImpactInputJudge, ThresholdStepReleasesAsCharged)
 {
     ImpactInputJudge judge;
-    judge.Step(true);
-    ASSERT_EQ(judge.TakeFired(), SlamKind::Tap);
-    StepHeld(judge, judge.chargeThresholdSteps - 1);
+    StepHeld(judge, judge.chargeThresholdSteps);
     EXPECT_TRUE(judge.IsCharging());
 
     judge.Step(false);
@@ -68,18 +86,31 @@ TEST(ImpactInputJudge, ThresholdStepReleasesAsCharged)
     EXPECT_EQ(judge.TakeFired(), SlamKind::Charged);
 }
 
-TEST(ImpactInputJudge, HoldingFiresOnlyThePressTap)
+TEST(ImpactInputJudge, HoldingFiresNothingUntilRelease)
 {
     ImpactInputJudge judge;
-    judge.Step(true);
-    ASSERT_EQ(judge.TakeFired(), SlamKind::Tap);
-    for (int i = 0; i < 99; ++i)
+    for (int i = 0; i < 100; ++i)
     {
         judge.Step(true);
         ASSERT_EQ(judge.TakeFired(), SlamKind::None);
     }
     EXPECT_TRUE(judge.IsCharging());
     EXPECT_TRUE(judge.IsChargeFull());
+}
+
+// タップとチャージの排他そのもの。溜めてから離すまでの間にタップが 1 回も混ざってはいけない
+TEST(ImpactInputJudge, ChargedRunNeverFiresTap)
+{
+    ImpactInputJudge judge;
+    for (int i = 0; i < judge.chargeMaxSteps; ++i)
+    {
+        judge.Step(true);
+        ASSERT_NE(judge.TakeFired(), SlamKind::Tap);
+    }
+
+    judge.Step(false);
+
+    EXPECT_EQ(judge.TakeFired(), SlamKind::Charged);
 }
 
 TEST(ImpactInputJudge, FullChargeClampsAtOne)
@@ -118,6 +149,7 @@ TEST(ImpactInputJudge, FiredIsConsumedOnce)
 {
     ImpactInputJudge judge;
     judge.Step(true);
+    judge.Step(false);
     EXPECT_EQ(judge.TakeFired(), SlamKind::Tap);
     EXPECT_EQ(judge.TakeFired(), SlamKind::None);
 
@@ -130,21 +162,19 @@ TEST(ImpactInputJudge, FiredIsConsumedOnce)
     EXPECT_EQ(judge.TakeFired(), SlamKind::None);
 }
 
-TEST(ImpactInputJudge, RepressFiresTapAndRestartsCharge)
+TEST(ImpactInputJudge, RepressRestartsCharge)
 {
     ImpactInputJudge judge;
     StepHeld(judge, judge.chargeMaxSteps);
     judge.Step(false);
     ASSERT_EQ(judge.TakeFired(), SlamKind::Charged);
 
-    judge.Step(true);
-    EXPECT_EQ(judge.TakeFired(), SlamKind::Tap);
     StepHeld(judge, 2);
     EXPECT_FALSE(judge.IsCharging());
     EXPECT_FLOAT_EQ(judge.Charge01(), 0.0f);
 
     judge.Step(false);
-    EXPECT_EQ(judge.TakeFired(), SlamKind::None);
+    EXPECT_EQ(judge.TakeFired(), SlamKind::Tap);
 }
 
 // 欄は Inspector から 0 以下にできるため、無入力のチャージ扱いと 0 除算を見張る

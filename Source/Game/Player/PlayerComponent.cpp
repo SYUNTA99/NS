@@ -166,6 +166,16 @@ namespace NS::Game::Player
         AssignFinite(m_stats.tapSlamDistance, value);
     }
 
+    void PlayerComponent::SetSlamAimHoldTime(float value) noexcept
+    {
+        AssignFinite(m_stats.slamAimHoldTime, value);
+    }
+
+    void PlayerComponent::SetSlamAimFadeTime(float value) noexcept
+    {
+        AssignFinite(m_stats.slamAimFadeTime, value);
+    }
+
     void PlayerComponent::SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept
     {
         m_desiredDir = worldDir;
@@ -244,9 +254,8 @@ namespace NS::Game::Player
         m_playerEvents.onBodySlamEnded.Invoke();
     }
 
-    bool PlayerComponent::BodySlam() noexcept
+    NS::Core::Vector3 PlayerComponent::AimDirection() const noexcept
     {
-        const NS::Core::Vector3 lateral = LateralVelocity();
         NS::Core::Vector3 dir{m_desiredDir.x, 0.0f, m_desiredDir.z};
         float length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
 
@@ -262,14 +271,60 @@ namespace NS::Game::Player
         }
         if (length < NS::Core::k_Epsilon)
         {
-            dir = lateral;
+            const NS::Core::Vector3 lateral = LateralVelocity();
+            dir = NS::Core::Vector3{lateral.x, 0.0f, lateral.z};
             length = std::sqrt(dir.x * dir.x + dir.z * dir.z);
         }
         if (length < NS::Core::k_Epsilon)
+            return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+
+        return NS::Core::Vector3{dir.x / length, 0.0f, dir.z / length};
+    }
+
+    void PlayerComponent::MarkBodySlamAim() noexcept
+    {
+        m_bodySlamAimDir = AimDirection();
+        m_bodySlamAimAge = 0.0f;
+    }
+
+    float PlayerComponent::BodySlamAimBlend01() const noexcept
+    {
+        const float hold = m_stats.slamAimHoldTime;
+        const float fade = m_stats.slamAimFadeTime;
+        if (m_bodySlamAimAge <= hold)
+            return 1.0f;
+        // 巻き戻し秒を消える秒より後ろにできる。幅が 0 以下なら割らずに切る
+        if (!(fade > hold) || m_bodySlamAimAge >= fade)
+            return 0.0f;
+        return (fade - m_bodySlamAimAge) / (fade - hold);
+    }
+
+    bool PlayerComponent::BodySlam() noexcept
+    {
+        NS::Core::Vector3 dir = AimDirection();
+
+        const float aimLength =
+            std::sqrt(m_bodySlamAimDir.x * m_bodySlamAimDir.x + m_bodySlamAimDir.z * m_bodySlamAimDir.z);
+        if (aimLength >= NS::Core::k_Epsilon)
+        {
+            const float blend = BodySlamAimBlend01();
+            if (blend > 0.0f)
+            {
+                NS::Core::Vector3 mixed{dir.x * (1.0f - blend) + m_bodySlamAimDir.x * blend,
+                                        0.0f,
+                                        dir.z * (1.0f - blend) + m_bodySlamAimDir.z * blend};
+                const float mixedLength = std::sqrt(mixed.x * mixed.x + mixed.z * mixed.z);
+                // 正反対だと混ぜた長さが 0 になる。その時は濃い側をそのまま採る
+                if (mixedLength >= NS::Core::k_Epsilon)
+                    dir = NS::Core::Vector3{mixed.x / mixedLength, 0.0f, mixed.z / mixedLength};
+                else if (blend >= 0.5f)
+                    dir = m_bodySlamAimDir;
+            }
+        }
+
+        if (std::sqrt(dir.x * dir.x + dir.z * dir.z) < NS::Core::k_Epsilon)
             return false;
 
-        dir.x /= length;
-        dir.z /= length;
         m_bodySlamDir = dir;
         m_bodySlamCharge01 = m_bodySlamRequestCharge01;
         m_bodySlamIsTap = !(m_bodySlamRequestCharge01 > 0.0f);
@@ -810,6 +865,10 @@ namespace NS::Game::Player
         // 突進中は期限を数えない。踏み込みが先行入力の秒より長いので、数えると明ける前に押しが消える
         if (m_bodySlamBufferRemaining > 0.0f && !IsBodySlamming())
             m_bodySlamBufferRemaining = std::max(0.0f, m_bodySlamBufferRemaining - dt);
+
+        // 発動の判定より後で数える。前だと押した歩の狙いが同じ歩で 1 歩ぶん古くなる
+        if (m_bodySlamAimAge < m_stats.slamAimFadeTime)
+            m_bodySlamAimAge += dt;
     }
 
     void PlayerComponent::OnStepSkipped()

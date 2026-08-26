@@ -25,10 +25,7 @@ namespace NS::Game::Level
     {
         if (held)
         {
-            // 押した瞬間に技が出る手応えが要件。離しを待たず押し始めの歩でタップを控える
-            // 未消費の持ち越しもこの上書きで消える
-            if (m_heldSteps == 0)
-                m_fired = SlamKind::Tap;
+            // 押している間は何も控えない。押した歩でタップを出すとチャージ狙いにも必ず 1 回混ざる
             if (m_heldSteps < k_MaxCountedSteps)
                 ++m_heldSteps;
             return;
@@ -36,7 +33,7 @@ namespace NS::Game::Level
 
         if (m_heldSteps > 0)
         {
-            // タップは押した歩で出済み。しきい値前の離しは何も控えない
+            // 発動点は離した歩だけ。保持の長さでタップとチャージを振り分けるので、両方が出ることはない
             if (IsCharging())
             {
                 m_releasedSteps = m_heldSteps;
@@ -45,6 +42,7 @@ namespace NS::Game::Level
             else
             {
                 m_releasedSteps = 0;
+                m_fired = SlamKind::Tap;
             }
             m_heldSteps = 0;
         }
@@ -55,6 +53,16 @@ namespace NS::Game::Level
         const SlamKind kind = m_fired;
         m_fired = SlamKind::None;
         return kind;
+    }
+
+    bool ImpactInputJudge::JustPressed() const noexcept
+    {
+        return m_heldSteps == 1;
+    }
+
+    bool ImpactInputJudge::IsHeld() const noexcept
+    {
+        return m_heldSteps > 0;
     }
 
     bool ImpactInputJudge::IsCharging() const noexcept

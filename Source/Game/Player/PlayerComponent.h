@@ -205,6 +205,15 @@ namespace NS::Game::Player
         [[nodiscard]] float TapSlamDistance() const noexcept { return m_stats.tapSlamDistance; }
         void SetTapSlamDistance(float value) noexcept;
 
+        [[nodiscard]] float SlamAimHoldTime() const noexcept { return m_stats.slamAimHoldTime; }
+        void SetSlamAimHoldTime(float value) noexcept;
+
+        [[nodiscard]] float SlamAimFadeTime() const noexcept { return m_stats.slamAimFadeTime; }
+        void SetSlamAimFadeTime(float value) noexcept;
+
+        //! 押した歩の狙いを控える。離すまでの遅れのぶん、発動はこの向きから始める
+        void MarkBodySlamAim() noexcept;
+
         //! 基底の借用に続けて、同居する状態機械を控える
         void OnStart() override;
 
@@ -227,6 +236,8 @@ namespace NS::Game::Player
         NS_REFLECT_ACCESSOR(float, "タップ初速", TapSlamSpeed(), SetTapSlamSpeed)
         NS_REFLECT_ACCESSOR(float, "タップの上向き初速", TapSlamUpSpeed(), SetTapSlamUpSpeed)
         NS_REFLECT_ACCESSOR(float, "タップ距離", TapSlamDistance(), SetTapSlamDistance)
+        NS_REFLECT_ACCESSOR(float, "狙いの巻き戻し秒", SlamAimHoldTime(), SetSlamAimHoldTime)
+        NS_REFLECT_ACCESSOR(float, "狙いの巻き戻しが消える秒", SlamAimFadeTime(), SetSlamAimFadeTime)
         NS_REFLECT_FIELD(m_debugDraw, "デバッグ表示")
         NS_REFLECT_END()
 
@@ -241,6 +252,11 @@ namespace NS::Game::Player
         [[nodiscard]] bool IsLocomotion() const noexcept;
         //! コヨーテ窓内ジャンプを 1 件記録する。上限を超えた分は最古から捨てる
         void PushCoyoteJumpMarker(const NS::Core::Vector3& edge, const NS::Core::Vector3& jump) noexcept;
+
+        //! 体当たりを出す水平の向き。入力・カメラの前・速度の順に見て、どれも無ければゼロ
+        [[nodiscard]] NS::Core::Vector3 AimDirection() const noexcept;
+        //! 控えた狙いを今の向きにどれだけ混ぜるか 0..1。巻き戻し秒までは 1、消える秒で 0
+        [[nodiscard]] float BodySlamAimBlend01() const noexcept;
 
         NS::Core::Vector3 m_desiredDir{0.0f, 0.0f, 0.0f}; // 入力から作る world 空間の目標移動方向
         float m_desiredSpeedScale = 0.0f;                 // 目標速度スケール 0..1
@@ -259,15 +275,17 @@ namespace NS::Game::Player
 
         bool m_debugDraw = true; // デバッグ可視化を出すか
 
-        float m_bodySlamBufferRemaining = 0.0f;            // 出せない歩の押しを覚える残り秒
-        bool m_bodySlamSpent = false;                      // 発動してから接地していないか
-        bool m_bodySlamIsTap = false;                      // 溜め量 0 の飛び込みか
-        float m_bodySlamRequestCharge01 = 0.0f;            // 要求された溜め量 0..1
-        float m_bodySlamCharge01 = 0.0f;                   // 発動時に確定した溜め量 0..1
-        float m_bodySlamTravelled = 0.0f;                  // 突進で進んだ水平距離
-        float m_bodySlamDistanceTarget = 0.0f;             // 突進を終える水平距離
-        int m_bodySlamStallSteps = 0;                      // 進めなかった歩の連続数
-        NS::Core::Vector3 m_bodySlamDir{0.0f, 0.0f, 0.0f}; // 突進の水平の向き。正規化済み
+        float m_bodySlamBufferRemaining = 0.0f;               // 出せない歩の押しを覚える残り秒
+        bool m_bodySlamSpent = false;                         // 発動してから接地していないか
+        bool m_bodySlamIsTap = false;                         // 溜め量 0 の飛び込みか
+        float m_bodySlamRequestCharge01 = 0.0f;               // 要求された溜め量 0..1
+        float m_bodySlamCharge01 = 0.0f;                      // 発動時に確定した溜め量 0..1
+        float m_bodySlamTravelled = 0.0f;                     // 突進で進んだ水平距離
+        float m_bodySlamDistanceTarget = 0.0f;                // 突進を終える水平距離
+        int m_bodySlamStallSteps = 0;                         // 進めなかった歩の連続数
+        NS::Core::Vector3 m_bodySlamDir{0.0f, 0.0f, 0.0f};    // 突進の水平の向き。正規化済み
+        NS::Core::Vector3 m_bodySlamAimDir{0.0f, 0.0f, 0.0f}; // 押した歩に控えた狙いの向き。正規化済み
+        float m_bodySlamAimAge = 0.0f;                        // 狙いを控えてからの経過秒
 
         float m_ledgeTopY = 0.0f;                              // 掴んでいる縁の上端の y
         NS::Core::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f}; // 掴んでいる面の外向き法線

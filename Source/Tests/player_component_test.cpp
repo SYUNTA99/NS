@@ -425,6 +425,43 @@ TEST_F(PlayerComponentTest, TapSlamFiresOnTheStepAfterTheRequest)
     EXPECT_LT(player.Velocity().x, 15.0f);
 }
 
+TEST_F(PlayerComponentTest, SlamUsesTheAimMarkedAtPress)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.MarkBodySlamAim();
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+
+    ASSERT_TRUE(player.IsBodySlamming());
+    EXPECT_GT(player.Velocity().x, 5.0f);
+    EXPECT_NEAR(player.Velocity().z, 0.0f, 1e-3f);
+}
+
+TEST_F(PlayerComponentTest, StaleAimFallsBackToTheCurrentDirection)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.MarkBodySlamAim();
+    for (int i = 0; i < 20; ++i)
+        player.OnUpdate();
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+
+    ASSERT_TRUE(player.IsBodySlamming());
+    EXPECT_NEAR(player.Velocity().x, 0.0f, 1e-3f);
+    EXPECT_GT(player.Velocity().z, 5.0f);
+}
+
 TEST_F(PlayerComponentTest, ChargedSlamFiresWithTheRushSpeed)
 {
     GameObject obj;

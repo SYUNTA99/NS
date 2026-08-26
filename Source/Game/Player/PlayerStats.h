@@ -32,5 +32,7 @@ namespace NS::Game::Player
         // 2.5 では目の前の物にしか届かず、狙って押す価値が無かった。実機で 2.5 倍にして詰める
         // 初速はそのままなので踏み込みは 0.25 秒から 0.625 秒へ延びる
         float tapSlamDistance = 6.25f;
+        float slamAimHoldTime = 0.11f;
+        float slamAimFadeTime = 0.19f;
     };
 } // namespace NS::Game::Player

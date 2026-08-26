@@ -15,14 +15,20 @@ namespace NS::Game::Level
 
     //! @brief 押下時間から体当たりの発動種別を判定する
     //! @details 毎ステップ Step で保持を数え込み、この歩の発動を TakeFired で 1 回だけ引く
-    //! 押し始めの歩にタップを、しきい値以上の保持を離した歩にチャージを控える
+    //! 発動は離した歩だけで、保持がしきい値未満ならタップ、以上ならチャージを控える。両方は出ない
     struct ImpactInputJudge
     {
-        //! 保持を 1 固定ステップぶん数え込む。押し始めの歩にタップを控え、チャージ域の離しにチャージを控える
+        //! 保持を 1 固定ステップぶん数え込む。離した歩に、保持の長さに応じてタップかチャージを控える
         void Step(bool held) noexcept;
 
         //! この歩に発動した種別を返し、消費する。発動が無ければ None
         [[nodiscard]] SlamKind TakeFired() noexcept;
+
+        //! 押し始めた歩の場合 true、それ以外の場合は false
+        [[nodiscard]] bool JustPressed() const noexcept;
+
+        //! ボタンを保持している場合 true、それ以外の場合は false
+        [[nodiscard]] bool IsHeld() const noexcept;
 
         //! 保持がチャージしきい値に達している場合 true、それ以外の場合は false
         [[nodiscard]] bool IsCharging() const noexcept;
