@@ -35,8 +35,8 @@ namespace NS::Game::Level
         // 質量の下限 0.01 で割ると初速が 100 倍まで跳ねる。画面の外へ消える前に頭打ちにする
         constexpr float k_MaxLaunchSpeed = 120.0f;
 
-        // 反発の頭打ち。最高ダッシュ 16 の 1.5 倍。素の係数では質量因子が 1 未満に飽和して届かず、
-        // 入力係数と重い相手が重なった時と、基準初速に桁違いの値を入れた時に操作の成立を守る
+        // 反発の頭打ち。最高ダッシュ 16 の 1.5 倍。既定のカーブでは威力 2.0 と質量因子 1 未満で 18 を超えないので、
+        // 基準初速に桁違いの値を入れた時に操作の成立を守る
         constexpr float k_MaxReboundSpeed = 24.0f;
 
         // 止める歩数の上限 12 歩 (0.2 秒)。これより長い停止は衝突の重さではなく処理落ちに見える
@@ -100,7 +100,7 @@ namespace NS::Game::Level
     {
         m_movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>();
         m_momentum = Owner()->FindComponent<MomentumComponent>();
-        // 無ければ null のまま。null は常に素と同じ経路なので、ボタン未搭載の配置物は従来のまま動く
+        // 無ければ null のまま。ボタンを積んでいない配置物でも裁定は続ける
         m_collisionInput = Owner()->FindComponent<CollisionInputComponent>();
     }
 
@@ -199,7 +199,7 @@ namespace NS::Game::Level
             return;
 
         const NS::Core::Vector3 position = Owner()->Root().Position();
-        // 箱へ押し付けられた歩は実速度が 0 に潰されるため、突進の狙いの速度で向きと勢いを決める
+        // 箱へ押し付けられた歩は実速度が 0 に潰されるため、突進の狙いの速度で向きと貫通後の速度を決める
         const NS::Core::Vector3 velocity = m_movement->BodySlamVelocity();
 
         // 弾かれる向きは箱と自機の並びで決まる。水平だけを見て、上向きは別の値で足す
@@ -223,17 +223,19 @@ namespace NS::Game::Level
         if (velocity.x * awayX + velocity.z * awayZ >= 0.0f)
             return;
 
-        // 比は勢いの段から作る。実速度から作ると、手を放して減速し始めた歩の発動だけ威力が落ちる
+        const float charge01 = m_movement->BodySlamCharge01();
+
+        // 溜め 0 の発動では比を勢いの段から作る。実速度から作ると、手を放して減速し始めた歩の発動だけ威力が落ちる
         const float normalSpeed = m_momentum->SpeedForLevel(MomentumLevel::Normal);
         // 通常速度が 0 の壊れたデータでは比が作れない。1.0 は通常の段で当てたのと同じ
         float ratio = 1.0f;
-        if (normalSpeed > 0.0f)
+        // チャージに段を掛けると、走った分と溜めた分が二重に乗る
+        if (normalSpeed > 0.0f && !(charge01 > 0.0f))
             ratio = m_momentum->SpeedForLevel(m_momentum->Level()) / normalSpeed;
         const float mass = hit->Mass();
         const float massFactor = mass / (mass + 1.0f);
 
-        // ボタン未搭載 (null) は係数 1.0 の素通し。1.0f の乗算は IEEE で恒等なので、係数を掛けない式とビット同値
-        const float charge01 = m_movement->BodySlamCharge01();
+        // ボタン未搭載 (null) は係数 1.0 の素通し
         const float offset01 = HitOffset01(position, bounds, velocity);
         float chargeFactor = 1.0f;
         float positionFactor = 1.0f;
@@ -244,7 +246,7 @@ namespace NS::Game::Level
             positionFactor = m_collisionInput->PositionFactorFor(offset01);
             peak = m_collisionInput->IsPeak(positionFactor);
         }
-        // 最終威力 = 比 × チャージ倍率 × 当たり位置係数。破壊の物差しだけでなく反発・発射・揺れも威力で作る
+        // 最終威力 = 比 × チャージ倍率 × 当たり位置係数。破壊の判定だけでなく反発・発射・揺れも威力で作る
         const float power = ratio * chargeFactor * positionFactor;
         m_lastCharge01 = charge01;
         m_lastPositionFactor = positionFactor;
@@ -265,7 +267,7 @@ namespace NS::Game::Level
                     charge01,
                     offset01);
 
-        // 明けた歩の反発と貫通速度を Locomotion に乗せるため、凍結より先に突進を打ち切る
+        // 明けた歩の反発と貫通速度を通常移動に乗せるため、凍結より先に突進を打ち切る
         m_movement->CancelBodySlam();
 
         m_pendingTargetId = hit->Owner()->Id();
@@ -275,9 +277,8 @@ namespace NS::Game::Level
         m_pendingShakeAmplitude = m_shakeAmplitude / (1.0f + mass);
         m_pendingShakeStrength = m_cameraShakeScale * power * massFactor;
 
-        // 最高ダッシュ限定の破壊条件は外した。耐久 ≤ 最終威力で壊れないと、
-        // ダッシュ + ピークが最高ダッシュ + 素を上回る逆転が成立しない
-        // 欄を下ろしている間は耐久を見ない。壊れる相手も押し飛ばしと反発へ回る
+        // 最高ダッシュ限定の破壊条件にすると、溜め + ピークが最高ダッシュ + 素を上回る逆転が成立しない
+        // 破壊を許可していない間は耐久を見ない。壊れる相手も押し飛ばしと反発へ回る
         int stopSteps = 0;
         if (m_breakEnabled && hit->Toughness() <= power)
         {
@@ -296,7 +297,7 @@ namespace NS::Game::Level
             float rebound = m_reboundSpeed * power * massFactor;
             rebound = NS::Core::Clamp(rebound, 0.0f, k_MaxReboundSpeed);
 
-            // 指数の範囲は 0〜1。負は重い物ほど飛ぶ逆転、1 超えは重い側がまったく動かない
+            // 指数の範囲は 0〜1。負にすると重い物ほど飛ぶ逆転になる
             float massExponent = m_launchMassExponent;
             if (!std::isfinite(massExponent))
                 massExponent = 1.0f;
@@ -393,7 +394,7 @@ namespace NS::Game::Level
 
     int ImpactResolverComponent::SecondsToSteps(float seconds) const noexcept
     {
-        // 見せる単位は秒、数えるのは歩。整数の歩で数えるから同じ入力は同じ長さ止まる
+        // 整数の歩へ丸めるので、同じ秒の指定は毎回同じ長さ止まる
         const float raw = seconds / NS::Core::FrameTimer::FixedDelta();
         if (!std::isfinite(raw))
             return 0;
@@ -518,7 +519,6 @@ namespace NS::Game::Level
         const float speed = m_debrisSpeed / mass;
         for (int i = 0; i < m_debrisCount; ++i)
         {
-            // 番号から角度を作る。乱数を使わないので同じ状況では毎回同じ散り方になる
             const float angle = 2.0f * NS::Core::k_Pi * static_cast<float>(i) / static_cast<float>(m_debrisCount);
             // 浮きは交互に変える。全部同じ高さだと 1 つの輪に見えて壊れた量が伝わらない
             const float up = 0.5f + 0.5f * static_cast<float>(i % 2);
@@ -546,7 +546,6 @@ namespace NS::Game::Level
     int ImpactResolverComponent::ComputeHitStopSteps(float power, float mass, float hitStopScale) const noexcept
     {
         // 質量差をそのまま歩数に出すと停止が伸びすぎるので平方根で圧縮する
-        // ピークの倍率は式の最後に掛ける。1.0f は IEEE で恒等なので、ピーク以外の歩数は倍率を掛けない式と一致する
         const float raw =
             m_hitStopBaseSeconds * power * std::sqrt(mass) / NS::Core::FrameTimer::FixedDelta() * hitStopScale;
         if (!std::isfinite(raw))

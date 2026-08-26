@@ -359,7 +359,6 @@ namespace
         return maxSteps;
     }
 
-    // リフレクションの int 欄へ値を入れる
     void SetIntField(SceneNs::Component& comp, std::string_view label, int value)
     {
         const SceneNs::FieldDesc* field = SceneNs::FindField(comp.GetReflection(), label);
@@ -828,7 +827,7 @@ TEST(CollisionImpact, HitStopFreezesPlayerAndDefersLaunch)
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
-    // 検知の歩は移動を止めない。最後の 1 歩で自機が岩へ触れてから凍る
+    // 検知の歩は移動を止めない。最後の 1 歩で自機が相手へ触れてから凍る
     ASSERT_TRUE(rig.impact->DidRebound());
     EXPECT_TRUE(rig.movement->IsActiveSelf());
     EXPECT_EQ(HitBody(rig), nullptr);
@@ -923,7 +922,7 @@ TEST(CollisionImpact, HitStopBaseSecondsDrivesFreezeLength)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
-    // 中心直撃はピーク倍率 2.0 が乗る。8 歩を基準にすると上限 12 歩で頭打ちになり基準秒が読めない
+    // 中心直撃はピーク倍率 2.0 が乗る
     SetFloatField(*rig.impact, "ヒットストップ基準秒", 2.0f / 60.0f);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
 
@@ -1250,6 +1249,40 @@ TEST(CollisionImpact, TapImpactIsWeakerThanCharged)
     EXPECT_LT(tap.impact->LastPower(), charged.impact->LastPower());
 }
 
+TEST(CollisionImpact, ChargedPowerIgnoresMomentumLevel)
+{
+    SceneNs::Scene normalScene;
+    Rig normal = BuildSlam(normalScene, k_NearCourse);
+    SetInstantImpact(normal);
+    BeginSlamAtLevel(normalScene, normal, LevelNs::MomentumLevel::Normal, k_RunSpeed, 1.0f);
+    ASSERT_LT(StepUntilImpact(normalScene, normal, 30), 30);
+
+    SceneNs::Scene dashScene;
+    Rig dash = BuildSlam(dashScene, k_NearCourse);
+    SetInstantImpact(dash);
+    BeginSlamAtLevel(dashScene, dash, LevelNs::MomentumLevel::MaxDash, k_MaxDashSpeed, 1.0f);
+    ASSERT_LT(StepUntilImpact(dashScene, dash, 30), 30);
+
+    EXPECT_FLOAT_EQ(dash.impact->LastPower(), normal.impact->LastPower());
+}
+
+TEST(CollisionImpact, TapPowerStillFollowsMomentumLevel)
+{
+    SceneNs::Scene normalScene;
+    Rig normal = BuildSlam(normalScene, k_NearCourse);
+    SetInstantImpact(normal);
+    BeginSlamAtLevel(normalScene, normal, LevelNs::MomentumLevel::Normal, k_RunSpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(normalScene, normal, 30), 30);
+
+    SceneNs::Scene dashScene;
+    Rig dash = BuildSlam(dashScene, k_NearCourse);
+    SetInstantImpact(dash);
+    BeginSlamAtLevel(dashScene, dash, LevelNs::MomentumLevel::MaxDash, k_MaxDashSpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(dashScene, dash, 30), 30);
+
+    EXPECT_GT(dash.impact->LastPower(), normal.impact->LastPower());
+}
+
 // キーを離すと減速が始まる。実速度で威力が変わると、同じ助走で当てたのに飛びが揺れる
 TEST(CollisionImpact, PowerFollowsMomentumLevelNotEntrySpeed)
 {
@@ -1458,7 +1491,7 @@ TEST(CollisionImpact, BreakSkipsSquashButStretchesForward)
     EXPECT_FLOAT_EQ(restored.z, authored.z);
 }
 
-// 検知の歩では移動が最後の 1 歩を走り、次の歩で凍る。自機が岩へ押し付けられた構図で止まる
+// 検知の歩では移動が最後の 1 歩を走り、次の歩で凍る。自機が相手へ押し付けられた構図で止まる
 TEST(CollisionImpact, FreezeWaitsOneStepAfterDetection)
 {
     SceneNs::Scene scene;
@@ -1497,7 +1530,7 @@ TEST(CollisionImpact, DetectsOnlyOncePerImpact)
     EXPECT_TRUE(body->IsFlying());
 }
 
-// 凍結が始まる歩で岩が発射方向へ食い込む。当たりは動かさない
+// 凍結が始まる歩で相手が発射方向へ食い込む。当たりは動かさない
 TEST(CollisionImpact, HitStopPushesRockWhenFreezeBegins)
 {
     SceneNs::Scene scene;
@@ -1521,7 +1554,7 @@ TEST(CollisionImpact, HitStopPushesRockWhenFreezeBegins)
     EXPECT_TRUE(rig.targetBox->IsActiveSelf());
 }
 
-// 凍結中は歩ごとに岩が発射軸に沿って往復する
+// 凍結中は歩ごとに相手が発射軸に沿って往復する
 TEST(CollisionImpact, RockVibratesWhileFrozen)
 {
     SceneNs::Scene scene;
