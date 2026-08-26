@@ -2,7 +2,7 @@
   "environment": {
     "skybox": "Assets/Skybox/kurt/"
   },
-  "nextObjectId": 65,
+  "nextObjectId": 69,
   "objects": [
     {
       "components": [
@@ -493,6 +493,16 @@
           },
           "id": 40,
           "type": "LaunchedBodyComponent"
+        },
+        {
+          "fields": {
+            "基本不透明度": 0.5,
+            "基本直径": 1.0,
+            "最大投影距離": 12.0,
+            "表面オフセット": 0.019999999552965164
+          },
+          "id": 65,
+          "type": "ShadowComponent"
         }
       ],
       "id": 35
@@ -563,6 +573,16 @@
           },
           "id": 46,
           "type": "LaunchedBodyComponent"
+        },
+        {
+          "fields": {
+            "基本不透明度": 0.5,
+            "基本直径": 1.5,
+            "最大投影距離": 12.0,
+            "表面オフセット": 0.019999999552965164
+          },
+          "id": 66,
+          "type": "ShadowComponent"
         }
       ],
       "id": 41
@@ -633,6 +653,16 @@
           },
           "id": 52,
           "type": "LaunchedBodyComponent"
+        },
+        {
+          "fields": {
+            "基本不透明度": 0.5,
+            "基本直径": 2.0,
+            "最大投影距離": 12.0,
+            "表面オフセット": 0.019999999552965164
+          },
+          "id": 67,
+          "type": "ShadowComponent"
         }
       ],
       "id": 47
@@ -703,6 +733,16 @@
           },
           "id": 58,
           "type": "LaunchedBodyComponent"
+        },
+        {
+          "fields": {
+            "基本不透明度": 0.5,
+            "基本直径": 3.0,
+            "最大投影距離": 12.0,
+            "表面オフセット": 0.019999999552965164
+          },
+          "id": 68,
+          "type": "ShadowComponent"
         }
       ],
       "id": 53
