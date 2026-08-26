@@ -18,7 +18,7 @@ namespace NS::Game::Level
     //! @brief 体当たりのボタン入力を読んで発動を要求する Component
     //! @details 保持はマウス左かゲームパッドの X で、ImpactInputJudge がタップ / チャージを裁く
     //! どちらも離した歩に、溜め量を添えて PlayerComponent::RequestBodySlam を呼ぶ
-    //! チャージ中は最高速度へ減速を掛け、縦へ縮めた構えを掛ける
+    //! チャージ中は最高速度へ減速を掛ける。構えの縮みは押した歩から掛かる
     //! 威力のチャージ倍率カーブと当たり位置係数カーブもここが持ち、ImpactResolverComponent が参照する
     //! 依存: NS::Game::Player::PlayerComponent, NS::Object::Curve, ImpactInputJudge, MomentumComponent,
     //! ImpactResolverComponent

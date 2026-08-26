@@ -24,7 +24,7 @@ namespace
     // 同時に保持するコヨーテジャンプ記録の上限。画面が線で埋まらない数
     constexpr std::size_t k_MaxCoyoteJumpMarkers = 16;
 
-    // 1 歩で打ち切ると衝突を裁く側が突進を見る前に終わるため、壁に押し付けられた歩を 2 回数える
+    // 1 歩で打ち切ると ImpactResolverComponent が突進を見る前に終わるため、壁に押し付けられた歩を 2 回数える
     constexpr float k_BodySlamStallDistance = 1e-4f;
     constexpr int k_BodySlamMaxStallSteps = 2;
 

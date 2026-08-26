@@ -20,8 +20,8 @@ namespace NS::Game::Player
 
     //! @brief 自機の能力を持つ Component
     //! @details 移動と接地は EntityComponent が持ち、ここには自機だけの能力と条件判定を置く
-    //! 調整値 17 個は自分の欄として持つ。Inspector とシーン JSON はこの欄を直接読み書きする
-    //! 状態は能力呼びの列だけにするので、動詞はすべて public
+    //! 調整値 19 個は自分の欄として持つ。Inspector とシーン JSON はこの欄を直接読み書きする
+    //! 状態は能力呼びの列だけにするので、状態から呼ぶ動詞は public
     //! 依存: NS::Game::Entity::EntityComponent / EntityStateManagerComponent, PlayerStats
     class PlayerComponent : public NS::Game::Entity::EntityComponent
     {
@@ -83,7 +83,7 @@ namespace NS::Game::Player
         //! 体当たりの発動を要求する
         //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
         //! その歩で出せない要求は先行入力時間だけ覚え、過ぎたら失効する。
-        //! 1 度出すと接地するまで次は出せないので、空中の要求は着地の歩まで持ち越される
+        //! 1 度出すと接地するまで次は出せない
         //! @param[in] charge01 溜め量 0..1
         void RequestBodySlam(float charge01) noexcept;
         //! 突進中の場合 true、それ以外の場合は false
@@ -299,7 +299,7 @@ namespace NS::Game::Player
         NS::Core::Vector3 m_lastGroundedPosition{0.0f, 0.0f, 0.0f};
         std::vector<CoyoteJumpMarker> m_coyoteJumpMarkers; // 表示中のコヨーテジャンプ記録。寿命付き
 
-        PlayerStats m_stats;                                   // 調整値 17 個
+        PlayerStats m_stats;                                   // 調整値 19 個
         PlayerStateManagerComponent* m_stateManager = nullptr; // 状態機械 (非所有)
 
         PlayerEvents m_playerEvents;

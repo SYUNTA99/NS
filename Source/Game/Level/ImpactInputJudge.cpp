@@ -33,7 +33,7 @@ namespace NS::Game::Level
 
         if (m_heldSteps > 0)
         {
-            // 発動点は離した歩だけ。保持の長さでタップとチャージを振り分けるので、両方が出ることはない
+            // 発動点は離した歩だけ
             if (IsCharging())
             {
                 m_releasedSteps = m_heldSteps;
