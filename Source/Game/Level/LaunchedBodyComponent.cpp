@@ -4,7 +4,6 @@
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
-#include "Runtime/Object/Components/ShadowComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -119,8 +118,7 @@ namespace NS::Game::Level
         if (NS::Object::Scene* scene = Owner()->OwningScene())
         {
             float dist = 0.0f;
-            const bool found =
-                NS::Object::ShadowComponent::GroundBelow(next, scene->Physics().Aabbs(), k_GroundProbeDistance, dist);
+            const bool found = scene->Physics().RaycastDown(next, k_GroundProbeDistance, dist);
             if (found && dist <= halfY)
             {
                 next.y += halfY - dist;
@@ -177,7 +175,7 @@ namespace NS::Game::Level
                 return k_DefaultHalfHeight * scaleY;
             return k_DefaultHalfHeight;
         }
-        // GroundBelow が見るのと同じ world 空間の箱から取る。 HalfExtents だと拡縮した配置物が床へ潜る
+        // RaycastDown が見るのと同じ world 空間の箱から取る。 HalfExtents だと拡縮した配置物が床へ潜る
         return bounds.Extents.y;
     }
 

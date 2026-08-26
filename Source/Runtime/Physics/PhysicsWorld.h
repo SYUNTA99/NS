@@ -61,6 +61,11 @@ namespace NS::Physics
         //! bottomCenter から下方向へ reach 以内に AABB / OBB の床があれば true。接地判定の補助に使う
         [[nodiscard]] bool ProbeGround(const NS::Core::Vector3& bottomCenter, float reach) const noexcept;
 
+        //! origin から真下へ maxDist 以内で最も近い床までの距離を outDist に返す。命中が無ければ false
+        //! @details 床と見なすのは AABB / OBB / Triangle の 3 channel。Sphere / Capsule は立てる床ではないので見ない
+        //! 接地影の受け先探しが使う
+        [[nodiscard]] bool RaycastDown(const NS::Core::Vector3& origin, float maxDist, float& outDist) const noexcept;
+
         //! capsule を AABB channel との重なりの外へ出す移動量を返す。重なりが無ければ零ベクトル
         [[nodiscard]] NS::Core::Vector3 ComputePushOut(const NS::Physics::Capsule& cap) const noexcept;
 

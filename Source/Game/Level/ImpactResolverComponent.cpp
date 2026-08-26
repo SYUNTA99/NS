@@ -17,7 +17,6 @@
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
-#include "Runtime/Object/Components/ShadowComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -439,8 +438,7 @@ namespace NS::Game::Level
         NS::Core::Vector3 markPosition{0.0f, 0.0f, 0.0f};
         {
             float dist = 0.0f;
-            if (NS::Object::ShadowComponent::GroundBelow(
-                    m_pendingTargetHome, scene->Physics().Aabbs(), k_MarkProbeDistance, dist))
+            if (scene->Physics().RaycastDown(m_pendingTargetHome, k_MarkProbeDistance, dist))
             {
                 floorFound = true;
                 markPosition = NS::Core::Vector3{

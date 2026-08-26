@@ -22,7 +22,6 @@
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/Components/PlacedVirtualCamera.h"
 #include "Runtime/Object/Components/PlayerInputComponent.h"
-#include "Runtime/Object/Components/ShadowComponent.h"
 #include "Runtime/Object/Components/SlopeColliderComponent.h"
 #include "Runtime/Object/Components/SphereColliderComponent.h"
 #include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
@@ -153,7 +152,7 @@ namespace
         out.push_back(root.Id());
     }
 
-    // 1 本なら包まずそのまま返す。 まとめ役を挟むのは複数を 1 回の undo で往復させたい時だけ
+    // 1 本なら包まずそのまま返す。 CompositeCommand を挟むのは複数を 1 回の undo で往復させたい時だけ
     std::unique_ptr<NS::Editor::ICommand> MakeUndoUnit(std::vector<std::unique_ptr<NS::Editor::ICommand>> commands)
     {
         if (commands.size() == 1)
@@ -277,7 +276,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
         }
     }
 
-    // ギズモに依存先を注入する。選択候補は自由オブジェクト + grid solid ブロックを連結して渡す
+    // ギズモに依存先を注入する。選択候補は RefreshGizmoSelectables が別に渡す
     m_gizmo.SetInput(&app->Input());
     m_gizmo.SetImGui(imgui);
 
@@ -290,7 +289,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
 
 void LevelEditorController::Teardown()
 {
-    // ギズモは free オブジェクトの Transform を非所有参照するので、scene 破棄前に選択を外す
+    // ギズモは配置物の Transform を非所有参照するので、scene 破棄前に選択を外す
     m_gizmo.ClearSelection();
     m_selectablePtrs.clear();
     m_selectableHalfExtents.clear();
@@ -321,9 +320,6 @@ void LevelEditorController::EnterPlay() noexcept
             movement->SetActive(true);
         if (auto* input = player->FindComponent<NS::Object::PlayerInputComponent>())
             input->SetActive(true);
-        // 編集で増減した配置物を接地影の受け先へ反映する
-        if (auto* shadow = player->FindComponent<NS::Object::ShadowComponent>())
-            shadow->RefreshReceivers();
     }
     // 走行を最初から。手順は出荷と同じ respawner の持ち物
     m_scene->World().ForEachComponent<NS::Game::Level::RespawnerComponent>(

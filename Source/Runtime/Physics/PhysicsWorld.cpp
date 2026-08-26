@@ -170,6 +170,57 @@ namespace NS::Physics
         return result;
     }
 
+    bool PhysicsWorld::RaycastDown(const NS::Core::Vector3& origin, float maxDist, float& outDist) const noexcept
+    {
+        const NS::Core::Ray ray(origin, NS::Core::Vector3{0.0f, -1.0f, 0.0f});
+        float nearest = maxDist;
+        bool hit = false;
+
+        // TODO: 3 channel を総当たりで見ている。 影を落とす配置物が増えたら grid で絞る
+        for (const NS::Core::AABB& box : m_aabbs)
+        {
+            float dist = 0.0f;
+            if (ray.Intersects(box, dist) && dist >= 0.0f && dist <= nearest)
+            {
+                nearest = dist;
+                hit = true;
+            }
+        }
+
+        // OBB は ray を local 軸へ移し、 原点中心の local AABB へ ray test する
+        for (const OBB& obb : m_obbs)
+        {
+            const NS::Core::Vector3 d = origin - obb.center;
+            const NS::Core::Vector3 localOrigin{d.Dot(obb.axisX), d.Dot(obb.axisY), d.Dot(obb.axisZ)};
+            const NS::Core::Vector3 down{0.0f, -1.0f, 0.0f};
+            const NS::Core::Vector3 localDir{down.Dot(obb.axisX), down.Dot(obb.axisY), down.Dot(obb.axisZ)};
+            const NS::Core::Ray localRay(localOrigin, localDir);
+            const NS::Core::AABB localBox(NS::Core::Vector3{0.0f, 0.0f, 0.0f},
+                                          NS::Core::Vector3{obb.halfExtentX, obb.halfExtentY, obb.halfExtentZ});
+            float dist = 0.0f;
+            if (localRay.Intersects(localBox, dist) && dist >= 0.0f && dist <= nearest)
+            {
+                nearest = dist;
+                hit = true;
+            }
+        }
+
+        // 斜面と自由形状。 面の上の交点をそのまま取るので、 傾いた床でも影が面に乗る
+        for (const Triangle& tri : m_triangles)
+        {
+            float dist = 0.0f;
+            if (ray.Intersects(tri.v0, tri.v1, tri.v2, dist) && dist >= 0.0f && dist <= nearest)
+            {
+                nearest = dist;
+                hit = true;
+            }
+        }
+
+        if (hit)
+            outDist = nearest;
+        return hit;
+    }
+
     bool PhysicsWorld::ProbeGround(const NS::Core::Vector3& bottomCenter, float reach) const noexcept
     {
         const NS::Core::Ray ray(bottomCenter, NS::Core::Vector3{0.0f, -1.0f, 0.0f});

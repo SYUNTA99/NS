@@ -4,17 +4,11 @@
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/Components/BoxColliderComponent.h"
-#include "Runtime/Object/Components/CapsuleColliderComponent.h"
-#include "Runtime/Object/Components/SlopeColliderComponent.h"
-#include "Runtime/Object/Components/SphereColliderComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Object/World.h"
-
-#include <optional>
+#include "Runtime/Physics/PhysicsWorld.h"
 
 namespace NS::Object
 {
@@ -22,57 +16,6 @@ namespace NS::Object
     {
         m_mesh = mesh;
         m_material = material;
-    }
-
-    void ShadowComponent::SetCollisionWorld(std::span<const NS::Core::AABB> world)
-    {
-        m_collisionWorld.assign(world.begin(), world.end());
-    }
-
-    namespace
-    {
-        // object が持つ最初の collider のワールド AABB。 影の地面探索は形の別を問わず箱で受ける
-        std::optional<NS::Core::AABB> ColliderAABB(GameObject& obj) noexcept
-        {
-            if (auto* box = obj.FindComponent<BoxColliderComponent>())
-                return box->WorldAABB();
-            if (auto* sphere = obj.FindComponent<SphereColliderComponent>())
-                return sphere->WorldAABB();
-            if (auto* capsule = obj.FindComponent<CapsuleColliderComponent>())
-                return capsule->WorldAABB();
-            if (auto* slope = obj.FindComponent<SlopeColliderComponent>())
-            {
-                const auto tris = slope->WorldTriangles();
-                NS::Core::Vector3 lo = tris[0].v0;
-                NS::Core::Vector3 hi = tris[0].v0;
-                for (const auto& t : tris)
-                {
-                    for (const NS::Core::Vector3& v : {t.v0, t.v1, t.v2})
-                    {
-                        lo = NS::Core::Vector3::Min(lo, v);
-                        hi = NS::Core::Vector3::Max(hi, v);
-                    }
-                }
-                return NS::Core::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
-            }
-            return std::nullopt;
-        }
-    } // namespace
-
-    void ShadowComponent::RefreshReceivers()
-    {
-        GameObject* owner = Owner();
-        if (owner == nullptr || owner->OwningScene() == nullptr)
-            return;
-        World* world = &owner->OwningScene()->World();
-
-        m_collisionWorld.clear();
-        m_collisionWorld.reserve(world->ObjectCount());
-        for (GameObject* obj : *world)
-        {
-            if (auto aabb = ColliderAABB(*obj))
-                m_collisionWorld.push_back(*aabb);
-        }
     }
 
     void ShadowComponent::ResolveAssets(AssetManager& assets)
@@ -89,8 +32,6 @@ namespace NS::Object
         if (scene == nullptr)
             return;
         scene->RegisterRenderable(this);
-        // 組み直しのたび OnStart が呼び直されるので、 受け先はここで集めれば常に今の world と揃う
-        RefreshReceivers();
     }
 
     void ShadowComponent::OnEndPlay()
@@ -126,28 +67,6 @@ namespace NS::Object
         return NS::Core::AABB{center, extents};
     }
 
-    bool ShadowComponent::GroundBelow(const NS::Core::Vector3& origin,
-                                      std::span<const NS::Core::AABB> world,
-                                      float maxDist,
-                                      float& outDist) noexcept
-    {
-        const NS::Core::Ray ray(origin, NS::Core::Vector3{0.0f, -1.0f, 0.0f});
-        float nearest = maxDist;
-        bool hit = false;
-        for (const auto& box : world)
-        {
-            float t = 0.0f;
-            if (ray.Intersects(box, t) && t >= 0.0f && t <= nearest)
-            {
-                nearest = t;
-                hit = true;
-            }
-        }
-        if (hit)
-            outDist = nearest;
-        return hit;
-    }
-
     float ShadowComponent::ComputeFade(float dist, float maxDist) noexcept
     {
         if (maxDist <= 0.0f)
@@ -162,27 +81,28 @@ namespace NS::Object
 
     void ShadowComponent::Collect(const NS::Graphics::RenderContext& context, std::vector<NS::Graphics::DrawItem>& out)
     {
-        const GameObject* owner = Owner();
-        if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr || m_collisionWorld.empty())
+        GameObject* owner = Owner();
+        if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
+            return;
+        Scene* scene = owner->OwningScene();
+        if (scene == nullptr)
             return;
 
         const NS::Core::Matrix ownerWorld = owner->Root().InterpolatedWorldMatrix(context.alpha);
         const NS::Core::Vector3 origin{ownerWorld._41, ownerWorld._42, ownerWorld._43};
 
-        // 真下の地面探索とフェード算出
         float dist = 0.0f;
-        if (!GroundBelow(origin, m_collisionWorld, m_maxDrop, dist))
+        if (!scene->Physics().RaycastDown(origin, m_maxDrop, dist))
             return; // 真下に地面が無い奈落上なら描かない
 
-        const float alpha = ComputeFade(dist, m_maxDrop) * m_baseAlpha;
+        const float fade = ComputeFade(dist, m_maxDrop);
+        const float alpha = fade * m_baseAlpha;
         if (alpha <= 0.0f)
             return;
 
-        const float fade = ComputeFade(dist, m_maxDrop);
         const float scale = m_baseDiameter * (0.6f + 0.4f * fade); // 高いほど小さく
         const float groundY = origin.y - dist;
 
-        // 影クアッドの world 行列
         const NS::Core::Matrix world =
             NS::Core::Matrix::CreateScale(scale, 1.0f, scale) *
             NS::Core::Matrix::CreateTranslation(origin.x, groundY + m_surfaceOffset, origin.z);
