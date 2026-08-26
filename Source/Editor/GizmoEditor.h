@@ -58,7 +58,7 @@ namespace NS::Editor
         NS::Core::Vector3 scale{1.0f, 1.0f, 1.0f};
     };
 
-    //! @brief エディタ上のオブジェクト選択および変形ギズモの操作を管理するクラス
+    //! @brief オブジェクトの選択と、変形ギズモのドラッグによる Transform 書き換え
     class GizmoEditor : public NS::Core::NonCopyable
     {
     public:
@@ -100,7 +100,7 @@ namespace NS::Editor
         [[nodiscard]] GizmoTool Tool() const noexcept { return m_tool; }
         [[nodiscard]] NS::Object::Transform* Selected() const noexcept { return m_selected; }
 
-        //! @brief 現在の選択状態を解除し、進行中のドラッグ操作などをキャンセルする
+        //! @brief 選択を解除し、進行中のドラッグを取り消す
         void ClearSelection() noexcept
         {
             m_selected = nullptr;
@@ -121,7 +121,7 @@ namespace NS::Editor
 
         //! @brief 視線レイを配置物の OBB へ当て、最も手前の添字を返す
         //! @return ヒットした場合はそのインデックス、ヒットしなかった場合は -1
-        [[nodiscard]] static int PickNearestObb(const NS::Core::Ray& ray,
+        [[nodiscard]] static int PickNearestOBB(const NS::Core::Ray& ray,
                                                 std::span<const NS::Core::Matrix> worldMatrices,
                                                 std::span<const NS::Core::Vector3> localHalfExtents,
                                                 std::span<const std::uint8_t> pickMask = {}) noexcept;
@@ -150,7 +150,7 @@ namespace NS::Editor
                                                                     bool snap,
                                                                     bool worldSpace = false) noexcept;
 
-        //! スクリーンのドラッグ量を、スケール変化の倍率に変換して計算する
+        //! スクリーンのドラッグ量を、スケールへ足し引きする変化量に変換する
         [[nodiscard]] static float ScreenDragToScaleAmount(NS::Core::Vector2 axisDir2d,
                                                            NS::Core::Vector2 dragPixels) noexcept;
 

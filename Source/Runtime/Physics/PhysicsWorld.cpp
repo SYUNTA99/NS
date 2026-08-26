@@ -13,7 +13,7 @@ namespace NS::Physics
 
     namespace
     {
-        // 平均ブロック寸法相当。 broadphase の候補数を抑えつつセル数を増やしすぎない値
+        // broadphase の候補数を抑えつつセル数を増やしすぎない値
         constexpr float k_GridCellSize = 2.0f;
 
         // capsule が motion だけ動く間に占有する swept AABB。 grid 候補絞り込みの query box に使う
@@ -49,7 +49,7 @@ namespace NS::Physics
         m_grid.Build(m_aabbs, k_GridCellSize);
     }
 
-    void PhysicsWorld::ReserveAabbs(std::size_t count)
+    void PhysicsWorld::ReserveAABBs(std::size_t count)
     {
         m_aabbs.reserve(count);
     }
@@ -90,7 +90,7 @@ namespace NS::Physics
         NS::Core::Vector3 hitNormal{0.0f, 0.0f, 0.0f};
         bool anyHit = false;
 
-        const auto considerAabb = [&](const NS::Core::AABB& box) {
+        const auto considerAABB = [&](const NS::Core::AABB& box) {
             float toi = 1.0f;
             NS::Core::Vector3 n{};
             if (SweptCapsuleVsAABB(cap, motion, box, toi, n) && toi < earliestToi)
@@ -107,12 +107,12 @@ namespace NS::Physics
             const NS::Core::AABB queryBox = CapsuleSweptAABB(cap, motion);
             m_grid.Query(queryBox, m_candidates);
             for (const std::uint32_t index : m_candidates)
-                considerAabb(m_aabbs[index]);
+                considerAABB(m_aabbs[index]);
         }
         else
         {
             for (const NS::Core::AABB& box : m_aabbs)
-                considerAabb(box);
+                considerAABB(box);
         }
 
         for (const Triangle& tri : m_triangles)
@@ -263,7 +263,7 @@ namespace NS::Physics
         {
             bool pushed = false;
 
-            const auto considerAabb = [&](const NS::Core::AABB& box) {
+            const auto considerAABB = [&](const NS::Core::AABB& box) {
                 const float minX = box.Center.x - box.Extents.x;
                 const float maxX = box.Center.x + box.Extents.x;
                 const float minY = box.Center.y - box.Extents.y;
@@ -354,12 +354,12 @@ namespace NS::Physics
                 const NS::Core::AABB queryBox = CapsuleSweptAABB(moved, NS::Core::Vector3{0.0f, 0.0f, 0.0f});
                 m_grid.Query(queryBox, m_candidates);
                 for (const std::uint32_t index : m_candidates)
-                    considerAabb(m_aabbs[index]);
+                    considerAABB(m_aabbs[index]);
             }
             else
             {
                 for (const NS::Core::AABB& box : m_aabbs)
-                    considerAabb(box);
+                    considerAABB(box);
             }
 
             if (!pushed)

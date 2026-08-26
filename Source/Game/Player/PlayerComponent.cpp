@@ -57,14 +57,14 @@ namespace
     constexpr float k_LedgeRegrabCooldownTime = 0.3f;
 
     // 掴まりの走査が借りる AABB 群。world 未設定なら空を返すので、掴めないだけで落ちない
-    [[nodiscard]] std::span<const NS::Core::AABB> WorldAabbs(const NS::Physics::PhysicsWorld* world) noexcept
+    [[nodiscard]] std::span<const NS::Core::AABB> WorldAABBs(const NS::Physics::PhysicsWorld* world) noexcept
     {
         if (world == nullptr)
             return {};
-        return std::span<const NS::Core::AABB>(world->Aabbs());
+        return std::span<const NS::Core::AABB>(world->AABBs());
     }
 
-    [[nodiscard]] bool AabbContainsPoint(const NS::Core::AABB& box, const NS::Core::Vector3& p) noexcept
+    [[nodiscard]] bool AABBContainsPoint(const NS::Core::AABB& box, const NS::Core::Vector3& p) noexcept
     {
         return p.x >= box.Center.x - box.Extents.x && p.x <= box.Center.x + box.Extents.x &&
                p.y >= box.Center.y - box.Extents.y && p.y <= box.Center.y + box.Extents.y &&
@@ -578,7 +578,7 @@ namespace NS::Game::Player
             pos.z + dir.z * (CapsuleRadius() + k_LedgeReach),
         };
 
-        for (const NS::Core::AABB& box : WorldAabbs(PhysicsWorld()))
+        for (const NS::Core::AABB& box : WorldAABBs(PhysicsWorld()))
         {
             const float top = box.Center.y + box.Extents.y;
             if (top < handY - k_LedgeGrabBandLow || top > handY + k_LedgeGrabBandHigh)
@@ -621,9 +621,9 @@ namespace NS::Game::Player
                 hang.z - faceNormal.z * mantleStep,
             };
             bool blocked = false;
-            for (const NS::Core::AABB& other : WorldAabbs(PhysicsWorld()))
+            for (const NS::Core::AABB& other : WorldAABBs(PhysicsWorld()))
             {
-                if (AabbContainsPoint(other, mantleCheck))
+                if (AABBContainsPoint(other, mantleCheck))
                 {
                     blocked = true;
                     break;
@@ -759,7 +759,7 @@ namespace NS::Game::Player
             hangPos.z + inward.z * (CapsuleRadius() + k_LedgeReach),
         };
 
-        for (const NS::Core::AABB& box : WorldAabbs(PhysicsWorld()))
+        for (const NS::Core::AABB& box : WorldAABBs(PhysicsWorld()))
         {
             const float top = box.Center.y + box.Extents.y;
             if (std::abs(top - m_ledgeTopY) > k_LedgeContinueTopTol)
@@ -777,9 +777,9 @@ namespace NS::Game::Player
                 hangPos.z - m_ledgeFaceNormal.z * mantleStep,
             };
             bool blocked = false;
-            for (const NS::Core::AABB& other : WorldAabbs(PhysicsWorld()))
+            for (const NS::Core::AABB& other : WorldAABBs(PhysicsWorld()))
             {
-                if (AabbContainsPoint(other, mantleCheck))
+                if (AABBContainsPoint(other, mantleCheck))
                 {
                     blocked = true;
                     break;

@@ -52,7 +52,7 @@ namespace NS::Editor
         constexpr float k_RingGrabRadiusEpsilonSq = 1e-6f;
 
         // AABB交差判定時の平行閾値
-        constexpr float k_RayAabbParallelEpsilon = 1e-8f;
+        constexpr float k_RayAABBParallelEpsilon = 1e-8f;
 
         // 指定の刻み幅へ丸める
         [[nodiscard]] float SnapTo(float value, float step) noexcept
@@ -118,7 +118,7 @@ namespace NS::Editor
         }
 
         // レイが原点中心の AABB と交差するか
-        [[nodiscard]] bool IntersectRayCenteredAabb(const NS::Core::Vector3& origin,
+        [[nodiscard]] bool IntersectRayCenteredAABB(const NS::Core::Vector3& origin,
                                                     const NS::Core::Vector3& direction,
                                                     const NS::Core::Vector3& halfExtents,
                                                     float& outT) noexcept
@@ -131,7 +131,7 @@ namespace NS::Editor
             float tMax = std::numeric_limits<float>::infinity();
             for (int axis = 0; axis < 3; ++axis)
             {
-                if (std::fabs(d[axis]) < k_RayAabbParallelEpsilon)
+                if (std::fabs(d[axis]) < k_RayAABBParallelEpsilon)
                 {
                     if (o[axis] < -he[axis] || o[axis] > he[axis])
                     {
@@ -411,7 +411,7 @@ namespace NS::Editor
             }
         }
 
-        // マウスはパネル基準のローカル座標で扱う。継続中のドラッグは矩形外でも従来どおり動かす
+        // マウスはパネル基準のローカル座標で扱う。継続中のドラッグは矩形外でも動かす
         const NS::Core::Size2D viewport = ViewRectSize(view);
         int viewMouseX = 0;
         int viewMouseY = 0;
@@ -450,8 +450,8 @@ namespace NS::Editor
             return;
         }
 
-        // クリック開始 (ハンドル掴み・選択) はパネル上でだけ受ける。Game 窓の上では ImGui が常に
-        // マウスを要求するため、UI との取り合いは hover (他窓が上に無い) と矩形内で判定する
+        // クリック開始はパネル上でだけ受ける。Game 窓の上では ImGui が常にマウスを要求するため、
+        // UI との取り合いは他窓が上に無いことと矩形内かで判定する
         if (!m_viewHovered || !ViewRectContains(view, viewMouseX, viewMouseY))
         {
             return;
@@ -486,10 +486,10 @@ namespace NS::Editor
         }
 
         // 可視オブジェクトを優先して判定し、ヒットしなければ不可視オブジェクトも含めて再判定する
-        int hit = PickNearestObb(ray, worldMatrices, m_halfExtents, m_pickable);
+        int hit = PickNearestOBB(ray, worldMatrices, m_halfExtents, m_pickable);
         if (hit < 0)
         {
-            hit = PickNearestObb(ray, worldMatrices, m_halfExtents);
+            hit = PickNearestOBB(ray, worldMatrices, m_halfExtents);
         }
 
         if (hit >= 0)
@@ -678,7 +678,7 @@ namespace NS::Editor
         }
     }
 
-    int GizmoEditor::PickNearestObb(const NS::Core::Ray& ray,
+    int GizmoEditor::PickNearestOBB(const NS::Core::Ray& ray,
                                     std::span<const NS::Core::Matrix> worldMatrices,
                                     std::span<const NS::Core::Vector3> localHalfExtents,
                                     std::span<const std::uint8_t> pickMask) noexcept
@@ -699,7 +699,7 @@ namespace NS::Editor
             const NS::Core::Vector3 localOrigin = NS::Core::Vector3::Transform(ray.position, inv);
             const NS::Core::Vector3 localDir = NS::Core::Vector3::TransformNormal(ray.direction, inv);
             float t = 0.0f;
-            if (IntersectRayCenteredAabb(localOrigin, localDir, localHalfExtents[i], t) && (best < 0 || t < bestT))
+            if (IntersectRayCenteredAABB(localOrigin, localDir, localHalfExtents[i], t) && (best < 0 || t < bestT))
             {
                 best = static_cast<int>(i);
                 bestT = t;

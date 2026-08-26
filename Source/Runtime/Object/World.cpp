@@ -42,7 +42,7 @@ namespace NS::Object
         }
 
         m_objects.reserve(data.objects.size() + transients.size());
-        physics.ReserveAabbs(data.objects.size());
+        physics.ReserveAABBs(data.objects.size());
 
         // 並び順は object の持ち物なので、 配列の並びではなく order で組む
         // 同値は書かれた順のまま残すので、 order を持たない古いファイルは従来と同じ形に組み上がる
@@ -170,7 +170,7 @@ namespace NS::Object
     {
         // 当たりは Clear -> Add* -> BuildBroadphase で満たし直す。 古い当たりを残さない
         physics.Clear();
-        physics.ReserveAabbs(m_objects.size());
+        physics.ReserveAABBs(m_objects.size());
         ForEachComponent<ColliderComponent>([&physics](const ColliderComponent& collider) {
             // active を切った component は当たりも持たない。 更新・ 描画と同じ問いで揃える
             if (collider.IsActive())

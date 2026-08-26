@@ -314,7 +314,7 @@ namespace
         };
 
         const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
-        const int picked = GizmoEditor::PickNearestObb(ray, worlds, halfExtents);
+        const int picked = GizmoEditor::PickNearestOBB(ray, worlds, halfExtents);
         EXPECT_EQ(picked, 0); // 手前 (z=5) の box を選ぶ
     }
 
@@ -337,9 +337,9 @@ namespace
         const std::array<std::uint8_t, 2> mask = {0, 1};
 
         const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
-        EXPECT_EQ(GizmoEditor::PickNearestObb(ray, worlds, halfExtents, mask), 1);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, halfExtents, mask), 1);
         // mask 無し (空 span) なら従来通り手前を拾う
-        EXPECT_EQ(GizmoEditor::PickNearestObb(ray, worlds, halfExtents), 0);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, halfExtents), 0);
     }
 
     TEST(GizmoEditor, PickNearestObbReturnsMinusOneWhenMaskExcludesAllHits)
@@ -354,7 +354,7 @@ namespace
         const std::array<std::uint8_t, 1> mask = {0};
 
         const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
-        EXPECT_EQ(GizmoEditor::PickNearestObb(ray, worlds, halfExtents, mask), -1);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, halfExtents, mask), -1);
     }
 
     TEST(GizmoEditor, PickNearestObbReturnsMinusOneWhenRayMisses)
@@ -368,7 +368,7 @@ namespace
 
         // box は原点周辺 (x in [-1,1])。 x=100 を通る +Z ray は完全に外す
         const Ray ray(Vector3{100.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
-        EXPECT_EQ(GizmoEditor::PickNearestObb(ray, worlds, halfExtents), -1);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, halfExtents), -1);
     }
 
     TEST(GizmoEditor, PickNearestObbHitsRotatedBoxThatAxisAlignedWouldMiss)
@@ -392,7 +392,7 @@ namespace
         const Ray ray(Vector3{k_Sqrt2Half, 10.0f, -k_Sqrt2Half}, Vector3{0.0f, -1.0f, 0.0f});
 
         // 軸平行 AABB {3,1,1} なら z=-1.414 が [-1,1] 外で外すが、 回転考慮なら box1 を拾う
-        const int picked = GizmoEditor::PickNearestObb(ray, worlds, halfExtents);
+        const int picked = GizmoEditor::PickNearestOBB(ray, worlds, halfExtents);
         EXPECT_EQ(picked, 1);
     }
 
@@ -409,7 +409,7 @@ namespace
 
         // world box は x in [-4,4]。 x=-10 から +X 撃つと x=-4 で当たる
         const Ray ray(Vector3{-10.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f});
-        EXPECT_EQ(GizmoEditor::PickNearestObb(ray, worlds, halfExtents), 0);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, halfExtents), 0);
     }
 
     TEST(GizmoEditor, PickNearestObbEmptySpanReturnsMinusOne)
@@ -420,7 +420,7 @@ namespace
         const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
         const std::span<const NS::Core::Matrix> emptyWorlds{};
         const std::span<const NS::Core::Vector3> emptyExtents{};
-        EXPECT_EQ(GizmoEditor::PickNearestObb(ray, emptyWorlds, emptyExtents), -1);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, emptyWorlds, emptyExtents), -1);
     }
 
     TEST(GizmoEditor, ComputeScaleXAxisOnlyAffectsX)

@@ -337,7 +337,7 @@ namespace
             rig.object = rig.body->Owner();
             rig.box = rig.object->FindComponent<SceneNs::BoxColliderComponent>();
         }
-        rig.restingAabbs = scene.Physics().Aabbs().size();
+        rig.restingAabbs = scene.Physics().AABBs().size();
         return rig;
     }
 
@@ -991,7 +991,7 @@ TEST(CollisionImpact, SquashLeavesPositionAndPhysicsAlone)
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     rig.breakable->SetMass(4.0f);
-    const std::size_t aabbs = scene.Physics().Aabbs().size();
+    const std::size_t aabbs = scene.Physics().AABBs().size();
     BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
@@ -1004,10 +1004,9 @@ TEST(CollisionImpact, SquashLeavesPositionAndPhysicsAlone)
     EXPECT_FLOAT_EQ(stillPos.x, frozenPos.x);
     EXPECT_FLOAT_EQ(stillPos.y, frozenPos.y);
     EXPECT_FLOAT_EQ(stillPos.z, frozenPos.z);
-    EXPECT_EQ(scene.Physics().Aabbs().size(), aabbs);
+    EXPECT_EQ(scene.Physics().AABBs().size(), aabbs);
 }
 
-// 耐久が最終威力以下なら壊して貫通する。当たりだけ外れて配置物は残る
 // 耐久 0 の最も脆い相手へ最大の勢いで当てても壊れない。壊れて消えると重さが飛距離に出ない
 TEST(CollisionImpact, BreakIsOffByDefault)
 {
@@ -1054,7 +1053,7 @@ TEST(CollisionImpact, MaxDashBreaksThroughSoftTarget)
     Rig rig = BuildSlam(scene, k_NearCourse);
     EnableBreak(rig);
     rig.breakable->SetToughness(1.0f);
-    const std::size_t aabbs = scene.Physics().Aabbs().size();
+    const std::size_t aabbs = scene.Physics().AABBs().size();
     rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
     BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
 
@@ -1070,7 +1069,7 @@ TEST(CollisionImpact, MaxDashBreaksThroughSoftTarget)
 
     EXPECT_FALSE(rig.breakable->IsActiveSelf());
     EXPECT_FALSE(rig.targetBox->IsActiveSelf());
-    EXPECT_EQ(scene.Physics().Aabbs().size(), aabbs - 1);
+    EXPECT_EQ(scene.Physics().AABBs().size(), aabbs - 1);
     EXPECT_FLOAT_EQ(rig.movement->Velocity().x, k_TapSlamSpeed * 0.75f);
     EXPECT_FLOAT_EQ(rig.movement->Velocity().z, 0.0f);
 }
@@ -1537,7 +1536,7 @@ TEST(CollisionImpact, HitStopPushesRockWhenFreezeBegins)
     Rig rig = BuildSlam(scene, k_NearCourse);
     rig.breakable->SetMass(4.0f);
     const Vector3 home = rig.targetBox->Owner()->Root().Position();
-    const std::size_t aabbs = scene.Physics().Aabbs().size();
+    const std::size_t aabbs = scene.Physics().AABBs().size();
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
@@ -1550,7 +1549,7 @@ TEST(CollisionImpact, HitStopPushesRockWhenFreezeBegins)
     EXPECT_GT(pushed.x, home.x + 1.0e-4f);
     EXPECT_FLOAT_EQ(pushed.y, home.y);
     EXPECT_FLOAT_EQ(pushed.z, home.z);
-    EXPECT_EQ(scene.Physics().Aabbs().size(), aabbs);
+    EXPECT_EQ(scene.Physics().AABBs().size(), aabbs);
     EXPECT_TRUE(rig.targetBox->IsActiveSelf());
 }
 
@@ -1627,7 +1626,7 @@ TEST(CollisionImpact, ReleaseRestoresRockExactlyBeforeLaunch)
     Rig rig = BuildSlam(scene, k_NearCourse);
     rig.breakable->SetMass(4.0f);
     const Vector3 home = rig.targetBox->Owner()->Root().Position();
-    const std::size_t aabbs = scene.Physics().Aabbs().size();
+    const std::size_t aabbs = scene.Physics().AABBs().size();
     BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
@@ -1643,7 +1642,7 @@ TEST(CollisionImpact, ReleaseRestoresRockExactlyBeforeLaunch)
     LevelNs::LaunchedBodyComponent* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
     EXPECT_TRUE(body->IsFlying());
-    EXPECT_EQ(scene.Physics().Aabbs().size(), aabbs - 1);
+    EXPECT_EQ(scene.Physics().AABBs().size(), aabbs - 1);
 }
 
 // 凍結中だけカメラが揺れる。ImpactResolverComponent がシーンの CameraBrain へ揺れを渡す
@@ -1941,7 +1940,7 @@ TEST(LaunchedBody, LaunchSleepsColliderAndDropsItFromPhysics)
 
     EXPECT_TRUE(rig.body->IsFlying());
     EXPECT_FALSE(rig.box->IsActiveSelf());
-    EXPECT_EQ(scene.Physics().Aabbs().size(), rig.restingAabbs - 1);
+    EXPECT_EQ(scene.Physics().AABBs().size(), rig.restingAabbs - 1);
 }
 
 TEST(LaunchedBody, AdvancesHorizontallyByVelocityPerStep)
@@ -2023,7 +2022,7 @@ TEST(LaunchedBody, RestWakesColliderBack)
     EXPECT_LT(steps, k_RestStepLimit);
     EXPECT_FALSE(rig.body->IsFlying());
     EXPECT_TRUE(rig.box->IsActiveSelf());
-    EXPECT_EQ(scene.Physics().Aabbs().size(), rig.restingAabbs);
+    EXPECT_EQ(scene.Physics().AABBs().size(), rig.restingAabbs);
     EXPECT_FLOAT_EQ(rig.body->Velocity().x, 0.0f);
     EXPECT_FLOAT_EQ(rig.body->Velocity().z, 0.0f);
 }
@@ -2136,7 +2135,7 @@ TEST(LaunchedBody, IdleStaysPutAndKeepsCollider)
     EXPECT_FLOAT_EQ(now.x, start.x);
     EXPECT_FLOAT_EQ(now.y, start.y);
     EXPECT_FLOAT_EQ(now.z, start.z);
-    EXPECT_EQ(scene.Physics().Aabbs().size(), rig.restingAabbs);
+    EXPECT_EQ(scene.Physics().AABBs().size(), rig.restingAabbs);
 }
 
 TEST(LaunchedBody, NonFiniteLaunchIsIgnored)
@@ -2149,7 +2148,7 @@ TEST(LaunchedBody, NonFiniteLaunchIsIgnored)
 
     EXPECT_FALSE(rig.body->IsFlying());
     EXPECT_TRUE(rig.box->IsActiveSelf());
-    EXPECT_EQ(scene.Physics().Aabbs().size(), rig.restingAabbs);
+    EXPECT_EQ(scene.Physics().AABBs().size(), rig.restingAabbs);
 }
 
 // 押し飛ばされた配置物は消えない。0 は消えない指定
@@ -2191,7 +2190,7 @@ TEST(LaunchedBody, SetRestLifeSecondsHidesAfterRest)
     EXPECT_FALSE(mesh->IsActiveSelf());
     EXPECT_FALSE(rig.box->IsActiveSelf());
     EXPECT_FALSE(rig.body->IsActiveSelf());
-    EXPECT_EQ(scene.Physics().Aabbs().size(), rig.restingAabbs - 1);
+    EXPECT_EQ(scene.Physics().AABBs().size(), rig.restingAabbs - 1);
 }
 
 // 壊れた値は捨てる。非有限値と負で寿命が入らない

@@ -10,7 +10,7 @@ namespace NS::Physics
     //! @param[in] center      world 空間での OBB の中心
     //! @param[in] rotation    正規直交軸の保証に必要な単位 quaternion 前提
     //! @param[in] halfExtents scale 込みの半サイズ。各成分の絶対値を取る
-    [[nodiscard]] NS::Core::OBB MakeObb(const NS::Core::Vector3& center,
+    [[nodiscard]] NS::Core::OBB MakeOBB(const NS::Core::Vector3& center,
                                         const NS::Core::Quaternion& rotation,
                                         const NS::Core::Vector3& halfExtents) noexcept;
 

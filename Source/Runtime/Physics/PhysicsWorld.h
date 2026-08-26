@@ -29,13 +29,13 @@ namespace NS::Physics
         //! 全 channel と grid を空にする
         void Clear() noexcept;
 
-        //! AABB channel の領域を予約する。grid 配置物数が分かっている時の最適化
-        void ReserveAabbs(std::size_t count);
+        //! AABB channel の領域を予約する。配置物の数が分かっている時の最適化
+        void ReserveAABBs(std::size_t count);
 
-        //! grid solid の軸並行 box を AABB channel へ追加する
+        //! 軸並行の box を AABB channel へ追加する
         void AddAABB(const NS::Core::AABB& box);
 
-        //! slope の world 空間三角形を Triangle channel へ追加する
+        //! 斜面と取込地形の world 空間三角形を Triangle channel へ追加する
         void AddTriangle(const Triangle& triangle);
 
         //! 回転 / scale 込みの自由配置物を OBB channel へ追加する
@@ -72,7 +72,7 @@ namespace NS::Physics
         // アクセサ
 
         //! AABB channel への読み取り専用の参照。ledge grab の走査が使う
-        [[nodiscard]] const std::vector<NS::Core::AABB>& Aabbs() const noexcept { return m_aabbs; }
+        [[nodiscard]] const std::vector<NS::Core::AABB>& AABBs() const noexcept { return m_aabbs; }
 
         //! 全 channel が空かどうか。未 Build かプリミティブ無しなら空
         [[nodiscard]] bool IsEmpty() const noexcept;

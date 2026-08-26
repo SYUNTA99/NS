@@ -10,7 +10,7 @@ namespace
     using NS::Core::Quaternion;
     using NS::Core::Vector3;
     using NS::Physics::Capsule;
-    using NS::Physics::MakeObb;
+    using NS::Physics::MakeOBB;
     using NS::Physics::PhysicsWorld;
     using NS::Core::Sphere;
     using NS::Physics::SweepHit;
@@ -41,21 +41,21 @@ TEST(PhysicsWorldTest, DefaultIsEmpty)
 {
     PhysicsWorld world;
     EXPECT_TRUE(world.IsEmpty());
-    EXPECT_TRUE(world.Aabbs().empty());
+    EXPECT_TRUE(world.AABBs().empty());
 }
 
-// AABB を足すと非空になり Aabbs に反映される
+// AABB を足すと非空になり AABBs に反映される
 TEST(PhysicsWorldTest, AddAabbReflectsInAccessors)
 {
     PhysicsWorld world;
     world.AddAABB(MakeBox({1.0f, 2.0f, 3.0f}, {0.5f, 0.5f, 0.5f}));
 
     EXPECT_FALSE(world.IsEmpty());
-    ASSERT_EQ(world.Aabbs().size(), 1u);
-    EXPECT_FLOAT_EQ(world.Aabbs()[0].Center.x, 1.0f);
+    ASSERT_EQ(world.AABBs().size(), 1u);
+    EXPECT_FLOAT_EQ(world.AABBs()[0].Center.x, 1.0f);
 }
 
-// sphere を足しても Aabbs には入らないが非空判定になる
+// sphere を足しても AABBs には入らないが非空判定になる
 TEST(PhysicsWorldTest, NonAabbChannelsCountTowardNonEmpty)
 {
     PhysicsWorld world;
@@ -65,7 +65,7 @@ TEST(PhysicsWorldTest, NonAabbChannelsCountTowardNonEmpty)
     world.AddSphere(s);
 
     EXPECT_FALSE(world.IsEmpty());
-    EXPECT_TRUE(world.Aabbs().empty());
+    EXPECT_TRUE(world.AABBs().empty());
 }
 
 // Clear で全 channel と grid が空に戻る
@@ -78,7 +78,7 @@ TEST(PhysicsWorldTest, ClearResetsAllChannels)
     world.Clear();
 
     EXPECT_TRUE(world.IsEmpty());
-    EXPECT_TRUE(world.Aabbs().empty());
+    EXPECT_TRUE(world.AABBs().empty());
 }
 
 // 空 world で BuildBroadphase を呼んでも安全
@@ -158,7 +158,7 @@ TEST(PhysicsWorldTest, SweepCapsuleHitsRotatedObb)
 {
     PhysicsWorld world;
     const Quaternion rot = Quaternion::CreateFromAxisAngle(Vector3::UnitY, k_Pi / 4.0f);
-    world.AddOBB(MakeObb({0.0f, 0.0f, 0.0f}, rot, {0.5f, 0.5f, 0.5f}));
+    world.AddOBB(MakeOBB({0.0f, 0.0f, 0.0f}, rot, {0.5f, 0.5f, 0.5f}));
 
     const SweepHit h = world.SweepCapsule(MakeCapsule({-3.0f, 0.0f, 0.0f}), Vector3{4.0f, 0.0f, 0.0f});
 
@@ -213,7 +213,7 @@ TEST(PhysicsWorldTest, SweepCapsuleOverlappingObbReturnsZeroToi)
 {
     PhysicsWorld world;
     const Quaternion rot = Quaternion::CreateFromAxisAngle(Vector3::UnitY, k_Pi / 4.0f);
-    world.AddOBB(MakeObb({0.0f, 0.0f, 0.0f}, rot, {2.0f, 2.0f, 2.0f}));
+    world.AddOBB(MakeOBB({0.0f, 0.0f, 0.0f}, rot, {2.0f, 2.0f, 2.0f}));
 
     const SweepHit h = world.SweepCapsule(MakeCapsule({0.0f, 0.0f, 0.0f}), Vector3{3.0f, 0.0f, 0.0f});
 
@@ -263,7 +263,7 @@ TEST(PhysicsWorldTest, ProbeGroundDetectsAabbBelow)
 TEST(PhysicsWorldTest, ProbeGroundDetectsObbBelow)
 {
     PhysicsWorld world;
-    world.AddOBB(MakeObb({0.0f, 0.0f, 0.0f}, Quaternion::Identity, {2.0f, 0.5f, 2.0f}));
+    world.AddOBB(MakeOBB({0.0f, 0.0f, 0.0f}, Quaternion::Identity, {2.0f, 0.5f, 2.0f}));
 
     EXPECT_TRUE(world.ProbeGround(Vector3{0.0f, 1.0f, 0.0f}, 0.6f));
 }
@@ -344,7 +344,7 @@ TEST(PhysicsWorldTest, RaycastDownHitsTriangle)
 TEST(PhysicsWorldTest, RaycastDownHitsOBB)
 {
     PhysicsWorld world;
-    world.AddOBB(MakeObb({0.0f, -2.0f, 0.0f}, Quaternion::Identity, {1.0f, 0.5f, 1.0f})); // 上面 y=-1.5
+    world.AddOBB(MakeOBB({0.0f, -2.0f, 0.0f}, Quaternion::Identity, {1.0f, 0.5f, 1.0f})); // 上面 y=-1.5
     world.BuildBroadphase();
 
     float dist = 0.0f;
