@@ -4,7 +4,7 @@
 :: Remove build artifacts.
 ::
 :: Deletes:
-::   - build/     (solution, object files, executables)
+::   - build/     (solution, object files, executables, compile_commands.json, clangd index)
 ::   - .vs/       (Visual Studio settings cache)
 ::
 :: NOTE: this header must be ASCII. It is parsed before chcp 65001 takes effect
@@ -37,3 +37,4 @@ if exist ".vs" (
 
 echo.
 echo [OK] クリーンアップ完了
+echo      compile_commands.json と clangd の索引も消えた。 ビルドすると戻る

@@ -124,7 +124,7 @@ goto %~1
         echo [ERROR] build\premake\compile_commands.json が見つかりません
         exit /b 1
     )
-    powershell -Command "(Get-Content '%JUNCTION_PATH%\build\premake\compile_commands.json' -Raw) -replace [regex]::Escape('%JUNCTION_PATH%'.Replace('\','/')),'%CD:\=/%' | Set-Content 'compile_commands.json' -NoNewline"
+    powershell -Command "(Get-Content '%JUNCTION_PATH%\build\premake\compile_commands.json' -Raw) -replace [regex]::Escape('%JUNCTION_PATH%'.Replace('\','/')),'%CD:\=/%' | Set-Content 'build/compile_commands.json' -NoNewline"
     if %errorlevel% neq 0 (
         rmdir "%JUNCTION_PATH%"
         echo [ERROR] compile_commands.json の書き出しに失敗しました
