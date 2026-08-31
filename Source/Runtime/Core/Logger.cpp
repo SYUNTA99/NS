@@ -33,6 +33,17 @@ namespace NS::Core
         // 起動するたびにファイルを新しくするかどうか
         bool g_rotateOnOpen{false};
 
+        std::filesystem::path LogsDirectory()
+        {
+#if defined(NS_SHIPPING)
+            // 出荷版はコンソールが無くファイルが唯一の報告先。exe の隣に残す
+            return NS::Core::FileSystem::ContentRoot() / "logs";
+#else
+            // 開発中の生成物は build/ に集約する。@cleanup.cmd の掃除にも乗る
+            return NS::Core::FileSystem::ContentRoot() / "build" / "logs";
+#endif
+        }
+
         spdlog::level::level_enum ToSpdLevel(LogLevel level)
         {
             switch (level)
@@ -63,8 +74,7 @@ namespace NS::Core
             console->set_pattern("%H:%M:%S.%e [%^%l%$] [%n] %v");
             sinks.push_back(console);
 
-            // 出荷版はウィンドウだけでコンソールが無い。ファイルに残さないと失敗が誰にも伝わらない
-            const auto logsDir = NS::Core::FileSystem::ContentRoot() / "logs";
+            const auto logsDir = LogsDirectory();
             const std::string logFilePath = (logsDir / (g_logName + ".log")).string();
             auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
                 logFilePath, k_RotatingMaxBytes, k_RotatingMaxFiles, g_rotateOnOpen);
@@ -121,7 +131,7 @@ namespace NS::Core
 
         try
         {
-            (void)NS::Core::FileSystem::CreateDirectories(NS::Core::FileSystem::ContentRoot() / "logs");
+            (void)NS::Core::FileSystem::CreateDirectories(LogsDirectory());
 
             auto sinks = BuildSinks();
             auto logger = std::make_shared<spdlog::logger>(k_LoggerName, sinks.begin(), sinks.end());
