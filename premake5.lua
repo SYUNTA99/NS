@@ -4,7 +4,7 @@
 --============================================================================
 
 -- compile_commands.json生成モジュール
-require "premake/modules/export-compile-commands/export-compile-commands"
+require "Tools/premake5/modules/export-compile-commands/export-compile-commands"
 
 --============================================================================
 -- ワークスペース

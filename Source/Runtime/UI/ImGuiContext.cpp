@@ -131,6 +131,8 @@ namespace NS::UI
         }
 
         ::ImGuiIO& io = ::ImGui::GetIO();
+        // 既定はカレント直下で、 リポジトリのルートに配置ファイルが残る
+        io.IniFilename = "build/imgui.ini";
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         // パネルをメインウィンドウの外へドラッグしても各自が OS ウィンドウとして描画され続ける
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
