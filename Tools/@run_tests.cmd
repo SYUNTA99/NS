@@ -3,9 +3,9 @@
 :: @run_tests.cmd
 :: Build the tests, then run them.
 ::
-:: Usage: tools\@run_tests.cmd [nobuild] [Debug|Development|GameDebug|GameRelease] [gtest_filter]
+:: Usage: Tools\@run_tests.cmd [nobuild] [Debug|Development|GameDebug|GameRelease] [gtest_filter]
 ::   nobuild  skip generation/build, run the existing tests.exe as-is
-::            (keeps the PC load low; build first with tools\@build.cmd)
+::            (keeps the PC load low; build first with Tools\@build.cmd)
 ::   Config   defaults to Debug when omitted
 ::   filter   defaults to all tests. e.g. CameraBrainTest.*:ChunkIOTest.*
 ::
@@ -65,7 +65,7 @@ echo [3/3] テスト実行中...
 set "TEST_EXE=build\bin\%CONFIG%-windows-x86_64\tests\tests.exe"
 if not exist "%TEST_EXE%" (
     echo [ERROR] テスト実行ファイルが見つかりません: %TEST_EXE%
-    echo         先に tools\@build.cmd %CONFIG% でビルドしてください。
+    echo         先に Tools\@build.cmd %CONFIG% でビルドしてください。
     exit /b 1
 )
 

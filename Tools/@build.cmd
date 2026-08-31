@@ -3,7 +3,7 @@
 :: @build.cmd
 :: Generate the VS solution via Premake5, then build the given config w/ MSBuild.
 ::
-:: Usage: tools\@build.cmd [Debug|Development|GameDebug|GameRelease] [profile]
+:: Usage: Tools\@build.cmd [Debug|Development|GameDebug|GameRelease] [profile]
 ::   Defaults to Debug when omitted.
 ::   profile: define NS_ENABLE_PROFILING so NS_SCOPED_TIMER expands.
 ::            (CharacterMovement::OnUpdate / CapsuleMover::Update /

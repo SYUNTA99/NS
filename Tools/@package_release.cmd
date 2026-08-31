@@ -17,9 +17,9 @@
 ::     README.txt
 ::
 :: Usage:
-::   tools\@package_release.cmd                 build GameRelease then package
-::   tools\@package_release.cmd --skip-build    reuse existing GameRelease build
-::   tools\@package_release.cmd <outdir>        custom output dir (default dist\NS_release)
+::   Tools\@package_release.cmd                 build GameRelease then package
+::   Tools\@package_release.cmd --skip-build    reuse existing GameRelease build
+::   Tools\@package_release.cmd <outdir>        custom output dir (default dist\NS_release)
 ::   (flags and outdir can be combined in any order)
 ::
 :: NOTE: ASCII-only logic on purpose. cmd.exe misparses UTF-8 multibyte in

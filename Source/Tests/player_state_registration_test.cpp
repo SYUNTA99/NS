@@ -17,7 +17,7 @@ namespace
     // 登録簿から作れることをここで見張る
     constexpr const char* k_MissingHint =
         " が登録簿にない。状態の翻訳単位がリンクされていない疑い。premake5.lua の project \"Tests\" の"
-        " files に Source/Game/Player/**.cpp があるか、足した後に tools\\@regen_project.cmd を掛けたかを見る";
+        " files に Source/Game/Player/**.cpp があるか、足した後に Tools\\@regen_project.cmd を掛けたかを見る";
 
     constexpr const char* k_StaleHint =
         " が登録簿にまだある。改名前の綴りが生きていると、シーン JSON の状態一覧を書き換え忘れても"

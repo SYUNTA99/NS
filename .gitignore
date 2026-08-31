@@ -39,7 +39,7 @@ node_modules/
 compile_commands.json
 
 # premake5 本体は例外的に追跡 (クローン直後にビルドできるように同梱)
-!tools/premake5/premake5.exe
+!Tools/premake5/premake5.exe
 
 # ====================================================================
 # ログ・OS・エディタ残骸
@@ -86,10 +86,10 @@ Source/ThirdParty/lib/Release/
 Source/ThirdParty/*/build/
 
 # ====================================================================
-# tools/ 配下のローカル成果物
+# Tools/ 配下のローカル成果物
 # ====================================================================
-tools/example.*
-tools/luasocket.*
+Tools/example.*
+Tools/luasocket.*
 
 # ====================================================================
 # スクリーンショットや動画などのファイル

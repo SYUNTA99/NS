@@ -4,7 +4,7 @@
 :: Generate the VS2022 solution then run a full Debug build in one shot.
 ::
 :: Usage:
-::   tools\@make_project.cmd
+::   Tools\@make_project.cmd
 ::
 :: Steps:
 ::   1. Set codepage, cd to repo root (:init)
