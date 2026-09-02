@@ -1,9 +1,11 @@
-#include <gtest/gtest.h>
+#include <Game/Player/PlayerComponent.h>
 #include <Runtime/Object/Components/CapsuleColliderComponent.h>
 #include <Runtime/Object/Components/MeshColliderComponent.h>
 #include <Runtime/Object/Components/SphereColliderComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
+#include <Runtime/Physics/PhysicsWorld.h>
+#include <gtest/gtest.h>
 #include <vector>
 
 namespace
@@ -79,6 +81,20 @@ TEST(CapsuleColliderTest, WorldCapsuleReflectsOwnerScale)
     EXPECT_NEAR(c.radius, 0.8f, 1e-5f);     // 0.4 * max(scale.x, scale.z)=2
     EXPECT_NEAR(c.halfHeight, 1.5f, 1e-5f); // 0.5 * scale.y=3
     EXPECT_NEAR(c.axis.y, 1.0f, 1e-5f);
+}
+
+// 自分で掃引して動く配置物の capsule を静的世界へ入れると、掃引が自分に当たって動けなくなる
+// 判定は型でなく旗で、EntityComponent の OnStart が同居の capsule へ立てる
+TEST(CapsuleColliderTest, AddToPhysicsSkipsTheOwnerThatSweepsItself)
+{
+    NS::Object::GameObject obj;
+    auto& cc = *obj.AddComponent<NS::Object::CapsuleColliderComponent>(0.4f, 0.5f);
+    obj.AddComponent<NS::Game::Player::PlayerComponent>();
+    obj.OnStart();
+
+    NS::Physics::PhysicsWorld physics;
+    cc.AddToPhysics(physics);
+    EXPECT_TRUE(physics.IsEmpty());
 }
 
 TEST(CapsuleColliderTest, RotationEulerDegreesRoundTrips)

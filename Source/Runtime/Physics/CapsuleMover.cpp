@@ -10,8 +10,8 @@
 namespace
 {
     constexpr int k_MaxSubSteps = 4;
-    // 壁との安全マージン。小さすぎると毎フレーム toi=0 で hit が連続して進まなくなり引っかかる
-    // 1cm 離れて stop することで次フレームの slide motion が確実に進む
+    // 衝突時刻の手前で止める割合。距離でなく 0〜1 の toi から引くため、隙間は移動量に比例して最高速で 0.7mm
+    // 低速では隙間がほぼ 0 になる。壁への貼り付きを防いでいるのは ComputePushOut の 1mm 側
     constexpr float k_Skin = 0.01f;
     // 着地直後に player.y が跳ねて grounded がちらつくのを抑えるため raycast をこの分だけ下へ延ばす
     constexpr float k_GroundProbeDistance = 0.2f;
@@ -36,11 +36,22 @@ namespace NS::Physics
             input.capsuleRadius < 0.0f || !std::isfinite(input.capsuleHalfHeight) || input.capsuleHalfHeight < 0.0f)
             return result;
 
+        // 掃引は重なった相手に toi 0 で当たり続け、埋まったままでは動けない。動く前に重なりから押し出す
+        if (input.physicsWorld != nullptr)
+        {
+            Capsule startCap;
+            startCap.center = result.position;
+            startCap.axis = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
+            startCap.halfHeight = input.capsuleHalfHeight;
+            startCap.radius = input.capsuleRadius;
+            result.position = result.position + input.physicsWorld->ComputePushOut(startCap);
+        }
+
         const float subDt = input.dt / static_cast<float>(k_MaxSubSteps);
 
         for (int step = 0; step < k_MaxSubSteps; ++step)
         {
-            // 床に接触したまま壁に走った時も壁 hit を無視せず stop できるよう、 残り motion を最大 k_MaxSlideIters
+            // 床に接触したまま壁へ走り込んだ時も壁の接触を取りこぼさないよう、 残り motion を最大 k_MaxSlideIters
             // 回まで再 swept する
             constexpr int k_MaxSlideIters = 4;
             float remainingTime = 1.0f; // この substep のうち未消費の比率で 0..1
@@ -97,8 +108,7 @@ namespace NS::Physics
             }
         }
 
-        // slide 後に anyHit が false で grounded が立たない床ギリギリのケースを、 Capsule 底端から下方向への short ray
-        // で補足する
+        // slide を終えても grounded が立たない床ギリギリの場合を、 Capsule 底端から下向きの ray で拾う
         if (!result.grounded)
         {
             const NS::Core::Vector3 bottomCenter{

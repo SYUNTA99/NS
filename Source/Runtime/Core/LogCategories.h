@@ -3,7 +3,7 @@
 namespace NS::Core
 {
 
-    /// ログ出力時に指定するカテゴリ
+    //! ログ出力時に指定するカテゴリ
     enum class LogCategory
     {
         Core,

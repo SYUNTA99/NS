@@ -10,6 +10,7 @@ namespace NS::Editor
     class ToolModePanel : public NS::Core::NonCopyable
     {
     public:
+        //! Edit Mode パネルを 1 枚描く。 エディタを外したビルドでは何もしない
         void Render(LevelEditorController& editor) noexcept;
     };
 } // namespace NS::Editor

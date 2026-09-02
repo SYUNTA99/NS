@@ -108,7 +108,7 @@ namespace
     TEST(GizmoEditorComputeAxisMove, SnapRoundsToHalf)
     {
         const NS::Core::Vector3 start{2.0f, 3.0f, 4.0f};
-        // delta=1.3 -> newX=3.3 -> snap(0.5) -> 3.5
+        // 1.3 動かすと 3.3、 0.5 刻みで丸めて 3.5
         const auto r0 = MakeAxisProbeRayZ(0.0f, start.z);
         const auto r1 = MakeAxisProbeRayZ(1.3f, start.z);
         const auto out =
@@ -120,7 +120,7 @@ namespace
 
     constexpr float k_Pi = 3.14159265358979323846f;
 
-    // クォータニオン q が既知ベクトルに与える回転を成分比較する (quat 直接比較は ±符号曖昧を含むため避ける)
+    // クォータニオン q が既知ベクトルに与える回転を成分比較する。quat の直接比較は ±符号の曖昧さがあるので避ける
     void ExpectRotatesSame(const NS::Core::Quaternion& a, const NS::Core::Quaternion& b, float tol)
     {
         const NS::Core::Vector3 probes[3] = {
@@ -193,7 +193,7 @@ namespace
                     1e-6f);
     }
 
-    // 単位 VP の視線は +Z。 X 軸リング平面 (YZ) を真横から見るため交点が定まらず 0 (縮退)
+    // 単位 VP の視線は +Z。 X 軸リング平面 (YZ) を真横から見ると縮退して交点が定まらず 0
     TEST(GizmoEditorWorldDragToAngle, EdgeOnPlaneReturnsZero)
     {
         const NS::Core::Matrix vp;
@@ -252,8 +252,8 @@ namespace
         ExpectRotatesSame(out, expected, 1e-5f);
     }
 
-    // local 軸回転の担保。 選択物を local Y 周りに回しても、 その local Y (world 像) は不動のまま (world Y
-    // 固定の旧挙動なら startRot が非単位のとき local Y は動く)。 これで local 化を弁別する
+    // local 軸回転の担保。 選択物を local Y 周りに回しても、 その local Y (world 像) は不動のまま
+    // world Y 固定の旧挙動なら startRot が非単位のとき local Y が動くので、 これで local 化を弁別する
     TEST(GizmoEditorComputeAxisRotate, LocalRotateLeavesLocalAxisFixed)
     {
         const auto startRot = NS::Core::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.5f);
@@ -283,7 +283,7 @@ namespace
         ExpectRotatesSame(diff, expectedDelta, 1e-4f);
     }
 
-    // World 空間回転は world 軸で回す。 非単位 startRot でも世界差分が world Y 周りになる (local 化の逆)
+    // World 空間回転は world 軸で回す。 非単位 startRot でも世界差分が world Y 周りになる。local 化の逆
     TEST(GizmoEditorComputeAxisRotate, WorldRotateUsesWorldAxis)
     {
         const auto startRot = NS::Core::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.5f);
@@ -314,7 +314,7 @@ namespace
         };
 
         const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
-        const int picked = GizmoEditor::PickNearestObb(ray, worlds, halfExtents);
+        const int picked = GizmoEditor::PickNearestOBB(ray, worlds, halfExtents);
         EXPECT_EQ(picked, 0); // 手前 (z=5) の box を選ぶ
     }
 
@@ -337,9 +337,9 @@ namespace
         const std::array<std::uint8_t, 2> mask = {0, 1};
 
         const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
-        EXPECT_EQ(GizmoEditor::PickNearestObb(ray, worlds, halfExtents, mask), 1);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, halfExtents, mask), 1);
         // mask 無し (空 span) なら従来通り手前を拾う
-        EXPECT_EQ(GizmoEditor::PickNearestObb(ray, worlds, halfExtents), 0);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, halfExtents), 0);
     }
 
     TEST(GizmoEditor, PickNearestObbReturnsMinusOneWhenMaskExcludesAllHits)
@@ -354,7 +354,7 @@ namespace
         const std::array<std::uint8_t, 1> mask = {0};
 
         const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
-        EXPECT_EQ(GizmoEditor::PickNearestObb(ray, worlds, halfExtents, mask), -1);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, halfExtents, mask), -1);
     }
 
     TEST(GizmoEditor, PickNearestObbReturnsMinusOneWhenRayMisses)
@@ -368,7 +368,7 @@ namespace
 
         // box は原点周辺 (x in [-1,1])。 x=100 を通る +Z ray は完全に外す
         const Ray ray(Vector3{100.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
-        EXPECT_EQ(GizmoEditor::PickNearestObb(ray, worlds, halfExtents), -1);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, halfExtents), -1);
     }
 
     TEST(GizmoEditor, PickNearestObbHitsRotatedBoxThatAxisAlignedWouldMiss)
@@ -379,7 +379,7 @@ namespace
 
         // box1: ローカル X に長い薄箱を Y 軸 45° 回転。 box0 はぶつからない遠方ダミー
         const std::array<Matrix, 2> worlds = {
-            Matrix::CreateTranslation(0.0f, 50.0f, 0.0f),    // 遠方 (ヒットしない)
+            Matrix::CreateTranslation(0.0f, 50.0f, 0.0f),    // 遠方でヒットしない
             Matrix::CreateRotationY(NS::Core::k_Pi * 0.25f), // 原点で 45° 回転
         };
         const std::array<Vector3, 2> halfExtents = {
@@ -392,12 +392,12 @@ namespace
         const Ray ray(Vector3{k_Sqrt2Half, 10.0f, -k_Sqrt2Half}, Vector3{0.0f, -1.0f, 0.0f});
 
         // 軸平行 AABB {3,1,1} なら z=-1.414 が [-1,1] 外で外すが、 回転考慮なら box1 を拾う
-        const int picked = GizmoEditor::PickNearestObb(ray, worlds, halfExtents);
+        const int picked = GizmoEditor::PickNearestOBB(ray, worlds, halfExtents);
         EXPECT_EQ(picked, 1);
     }
 
     // スケール box を掴む回帰。 逆ワールド行列にスケール逆数が入り localDir が非単位になる経路で、
-    // 単位ベクトル assert を踏まず正しく拾えること (スケール軸に沿う ray でその条件を作る)
+    // 単位ベクトル assert を踏まず正しく拾えること。スケール軸に沿う ray でその条件を作る
     TEST(GizmoEditor, PickNearestObbHitsScaledBoxAlongScaledAxis)
     {
         using NS::Core::Matrix;
@@ -409,7 +409,7 @@ namespace
 
         // world box は x in [-4,4]。 x=-10 から +X 撃つと x=-4 で当たる
         const Ray ray(Vector3{-10.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f});
-        EXPECT_EQ(GizmoEditor::PickNearestObb(ray, worlds, halfExtents), 0);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, halfExtents), 0);
     }
 
     TEST(GizmoEditor, PickNearestObbEmptySpanReturnsMinusOne)
@@ -420,7 +420,7 @@ namespace
         const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
         const std::span<const NS::Core::Matrix> emptyWorlds{};
         const std::span<const NS::Core::Vector3> emptyExtents{};
-        EXPECT_EQ(GizmoEditor::PickNearestObb(ray, emptyWorlds, emptyExtents), -1);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, emptyWorlds, emptyExtents), -1);
     }
 
     TEST(GizmoEditor, ComputeScaleXAxisOnlyAffectsX)
@@ -505,7 +505,7 @@ namespace
 
     TEST(GizmoEditor, ScreenDragToScaleAmountFallbackOnDegenerateAxis)
     {
-        // 軸が縮退 (ほぼ零) -> |drag| * 0.01 * sign(drag.x)。 (3,4) は len5、 x>0 で +0.05
+        // 軸がほぼ零で縮退 -> |drag| * 0.01 * sign(drag.x)。 (3,4) は len5、 x>0 で +0.05
         const float amount =
             GizmoEditor::ScreenDragToScaleAmount(NS::Core::Vector2{0.0f, 0.0f}, NS::Core::Vector2{3.0f, 4.0f});
         EXPECT_NEAR(amount, 0.05f, 1.0e-4f);
@@ -519,7 +519,7 @@ namespace
         EXPECT_NEAR(amount, -0.1f, 1.0e-4f);
     }
 
-    // 投影規約: 単位行列を vp に使うと worldH={x,y,z,1} がそのまま clip になる (行ベクトル規約)
+    // 投影規約: 単位行列を vp に使うと worldH={x,y,z,1} がそのまま clip になる。行ベクトル規約
     // viewport 800x600 で origin{0,0,0}->(400,300) 画面中心、 +X{1,0,0}->(800,300)、 +Y{0,1,0}->(400,0)
     TEST(GizmoEditor, ToolHandlePickSelectAlwaysNone)
     {
@@ -671,7 +671,7 @@ namespace
         EXPECT_GT(std::fabs(t.Position().y), 0.05f);
     }
 
-    // World 空間では Z 90° 回しても local X ハンドル = world X。 横ドラッグで world X が動く (local 化の逆)
+    // World 空間では Z 90° 回しても local X ハンドル = world X。 横ドラッグで world X が動く。local 化の逆
     TEST(GizmoEditorDrag, MoveUsesWorldAxisInWorldSpace)
     {
         NS::Object::Transform t;

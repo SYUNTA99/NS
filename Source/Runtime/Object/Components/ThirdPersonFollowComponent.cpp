@@ -1,7 +1,6 @@
 #include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
 
 #include "Runtime/Core/Clock.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -41,9 +40,16 @@ namespace NS::Object
         m_target = target;
     }
 
-    void ThirdPersonFollowComponent::SetMovement(const CharacterMovementComponent* movement) noexcept
+    void ThirdPersonFollowComponent::SetFollowMotion(bool grounded, const NS::Core::Vector3& velocity) noexcept
     {
-        m_movement = movement;
+        m_followGrounded = grounded;
+        const float horiz = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+        // 非有限を通すと距離のばね補間が NaN に染まり、以後カメラが戻らなくなる
+        if (std::isfinite(horiz))
+            m_followHorizontalSpeed = horiz;
+        else
+            m_followHorizontalSpeed = 0.0f;
+        m_hasFollowMotion = true;
     }
 
     void ThirdPersonFollowComponent::OnStart()
@@ -67,7 +73,6 @@ namespace NS::Object
         if (target == nullptr)
             return;
         m_target = &target->Root();
-        m_movement = target->FindComponent<CharacterMovementComponent>();
     }
 
     void ThirdPersonFollowComponent::SetSensX(float radPerPixel) noexcept
@@ -171,17 +176,15 @@ namespace NS::Object
         if (!m_manualDistance)
         {
             float desired = m_idleDistance;
-            if (m_movement != nullptr)
+            if (m_hasFollowMotion)
             {
-                if (!m_movement->IsGrounded())
+                if (!m_followGrounded)
                 {
                     desired = m_jumpDistance;
                 }
                 else
                 {
-                    const auto v = m_movement->Velocity();
-                    const float horiz = std::sqrt(v.x * v.x + v.z * v.z);
-                    if (horiz > m_runSpeedThreshold)
+                    if (m_followHorizontalSpeed > m_runSpeedThreshold)
                         desired = m_runDistance;
                     else
                         desired = m_idleDistance;
@@ -217,6 +220,5 @@ namespace NS::Object
         return MakePose(camPos, headPos, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
     }
 
-    // 追従対象はオブジェクト間参照なので data からは空で作り、配線は後から SetTarget で結ぶ
     NS_CLASS(ThirdPersonFollowComponent)
 } // namespace NS::Object

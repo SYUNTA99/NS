@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-/// 機構単体の検証。所有者は呼ばれた OnEnter / OnExit を記録するだけで、状態はテスト内で登録する
+//! 機構単体の検証。所有者は呼ばれた OnEnter / OnExit を記録するだけで、状態はテスト内で登録する
 
 namespace
 {
@@ -126,7 +126,7 @@ TEST(StateMachineTest, ChangeOnlyReachesStatesInBuiltList)
 {
     Rig rig;
     NS::Object::StateMachine<Rig> machine;
-    // 一覧に Beta を入れなければ、登録済みでも遷移できない (データが持てる状態の全集合)
+    // 一覧に Beta を入れなければ、登録済みでも遷移できない。一覧はデータが持てる状態の全集合
     machine.Build(rig, {"Alpha"});
 
     EXPECT_FALSE(machine.Change(rig, "Beta"));

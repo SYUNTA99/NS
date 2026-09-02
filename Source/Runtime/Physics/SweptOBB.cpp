@@ -10,15 +10,15 @@ namespace
     using NS::Core::OBB;
     using NS::Physics::Capsule;
 
-    /// 回転のみで平行移動なしに world ベクトルを OBB local 軸へ射影する
+    //! 回転のみで平行移動なしに world ベクトルを OBB local 軸へ射影する
     [[nodiscard]] Vector3 ToLocalDir(const Vector3& v, const OBB& obb) noexcept
     {
         return Vector3{Dot(v, obb.axisX), Dot(v, obb.axisY), Dot(v, obb.axisZ)};
     }
 
-    /// start と radius の sphere が motion だけ動いた時に OBB と最初に当たる TOI を返す
-    /// 始点と変位を OBB local 軸へ移し、 原点中心の膨張 box への slab test へ帰着する
-    [[nodiscard]] bool SweptSphereVsObb(const Vector3& start,
+    //! start と radius の sphere が motion だけ動いた時に OBB と最初に当たる TOI を返す
+    //! 始点と変位を OBB local 軸へ移し、 原点中心の膨張 box への slab test へ帰着する
+    [[nodiscard]] bool SweptSphereVsOBB(const Vector3& start,
                                         const Vector3& motion,
                                         const OBB& obb,
                                         float radius,
@@ -125,7 +125,7 @@ namespace
 
 namespace NS::Physics
 {
-    OBB MakeObb(const NS::Core::Vector3& center,
+    OBB MakeOBB(const NS::Core::Vector3& center,
                 const NS::Core::Quaternion& rotation,
                 const NS::Core::Vector3& halfExtents) noexcept
     {
@@ -155,8 +155,8 @@ namespace NS::Physics
         float toiBottom = 1.0f;
         NS::Core::Vector3 normalTop{};
         NS::Core::Vector3 normalBottom{};
-        const bool hitTop = SweptSphereVsObb(top, motion, obb, capsule.radius, toiTop, normalTop);
-        const bool hitBottom = SweptSphereVsObb(bottom, motion, obb, capsule.radius, toiBottom, normalBottom);
+        const bool hitTop = SweptSphereVsOBB(top, motion, obb, capsule.radius, toiTop, normalTop);
+        const bool hitBottom = SweptSphereVsOBB(bottom, motion, obb, capsule.radius, toiBottom, normalBottom);
 
         if (!hitTop && !hitBottom)
             return false;

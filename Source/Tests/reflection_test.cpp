@@ -1,8 +1,8 @@
+#include <Game/Player/PlayerComponent.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Component.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/CameraBrainComponent.h>
-#include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/Components/ShadowComponent.h>
@@ -218,14 +218,14 @@ TEST(ReflectionTest, PlacedVirtualCameraReflectsSixFields)
     EXPECT_FLOAT_EQ(cam->TriggerCenter().z, 22.0f);
 }
 
-TEST(ReflectionTest, CharacterMovementReflectsFeelFloats)
+TEST(ReflectionTest, PlayerComponentReflectsFeelFloats)
 {
-    NS::Object::CharacterMovementComponent move;
+    NS::Game::Player::PlayerComponent move;
     const ReflectionInfo* info = move.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 17u);
+    EXPECT_EQ(info->fieldCount, 21u);
 
-    // 操作感の代表値が float として往復する (getter が無いのでリフレクション get で確認する)
+    // 操作感の代表値が float として往復する
     const FieldDesc* jump = FindField(info, "ジャンプ初速");
     ASSERT_NE(jump, nullptr);
     EXPECT_EQ(jump->type, FieldType::Float);
@@ -296,7 +296,7 @@ TEST(ReflectionTest, BoxColliderHalfExtentsAccessorClampsNegative)
     EXPECT_FLOAT_EQ(collider.HalfExtents().y, 3.0f);
     EXPECT_FLOAT_EQ(collider.HalfExtents().z, 4.0f);
 
-    // ACCESSOR は setter 経由なので負は 0 にクランプされる (直 FIELD では起きない保証)
+    // ACCESSOR は setter 経由なので負は 0 にクランプされる。直 FIELD では起きない
     NS::Core::Vector3 negative{-1.0f, 5.0f, -2.0f};
     he->set(&collider, &negative);
     EXPECT_FLOAT_EQ(collider.HalfExtents().x, 0.0f);

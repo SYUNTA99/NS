@@ -114,8 +114,15 @@ namespace NS::Object
         return NS::Core::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
     }
 
+    void CapsuleColliderComponent::SetExcludedFromStaticWorld(bool excluded) noexcept
+    {
+        m_excludedFromStaticWorld = excluded;
+    }
+
     void CapsuleColliderComponent::AddToPhysics(NS::Physics::PhysicsWorld& physics) const
     {
+        if (m_excludedFromStaticWorld)
+            return;
         physics.AddCapsule(WorldCapsule());
     }
 

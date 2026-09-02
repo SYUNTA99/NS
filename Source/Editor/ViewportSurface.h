@@ -43,7 +43,7 @@ namespace NS::Editor
         void ResetVisibility() noexcept { m_visible = false; }
 
         //! @brief windowName のパネルを Begin し、 content 領域があれば目標サイズを更新して RT を貼る
-        //! @param outMin,outMax,outHovered 貼った映像の矩形と hover。 映像を貼れた時だけ埋まる
+        //! @param[out] outMin,outMax,outHovered 貼った映像の矩形と hover。 映像を貼れた時だけ埋まる
         //! @return 映像を貼れたか (可視かつ RT 有効)。 可視否かに関わらず EndView を必ず呼ぶ
         [[nodiscard]] bool BeginView(const char* windowName, ImVec2& outMin, ImVec2& outMax, bool& outHovered) noexcept;
 

@@ -48,7 +48,7 @@ namespace NS::Editor
 
     void CategoryPalette::CycleActiveVariant() noexcept
     {
-        // ※現在の仕様ではバリエーションの切り替えは行わない
+        // スロットごとの雛形は 1 つずつなので切り替える先が無い
     }
 
     void CategoryPalette::TickInput(NS::Platform::Input* input, NS::UI::ImGuiContext* imgui) noexcept

@@ -10,14 +10,17 @@
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/DirectionalLightComponent.h"
 #include "Runtime/Object/Components/OverlayRendererComponent.h"
+#include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/IRenderable.h"
+#include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
+#include "Runtime/Object/Reflection/ReflectionJson.h"
 
 namespace NS::Object
 {
     namespace
     {
-        // RenderScene の proxy から IRenderable::Collect を呼ぶ橋渡し。owner は登録元の IRenderable
+        // RenderScene の proxy を IRenderable::Collect へつなぐ。owner は登録元の IRenderable
         void CollectRenderable(void* owner,
                                const NS::Graphics::RenderContext& context,
                                std::vector<NS::Graphics::DrawItem>& out)
@@ -81,6 +84,38 @@ namespace NS::Object
         m_playBaselineInjected = true;
     }
 
+    void Scene::WritePlayBaselineField(const Component& comp, std::string_view fieldName)
+    {
+        const GameObject* owner = comp.Owner();
+        if (owner == nullptr)
+            return;
+        const std::size_t objectIndex = FindObjectIndexById(m_playBaseline, owner->Id());
+        if (objectIndex == k_NoObjectIndex)
+            return;
+        ObjectData& object = m_playBaseline.objects[objectIndex];
+
+        for (nlohmann::json& entry : object.components)
+        {
+            if (ComponentEntryId(entry) != comp.Id())
+                continue;
+            // 回転は Euler と厳密クォータニオンの控えが対で載る。両方を揃えて書く SetObjectRotation へ委ねる
+            if (ComponentEntryType(entry) == k_TransformTypeName && fieldName == k_RotationEulerFieldName)
+            {
+                SetObjectRotation(object, owner->Root().Rotation());
+                return;
+            }
+            const nlohmann::json serialized = SerializeComponent(comp);
+            const auto fieldsIt = serialized.find("fields");
+            if (fieldsIt == serialized.end())
+                return;
+            const auto valueIt = fieldsIt->find(std::string(fieldName));
+            if (valueIt == fieldsIt->end())
+                return;
+            entry["fields"][std::string(fieldName)] = *valueIt;
+            return;
+        }
+    }
+
     void Scene::SetSimulationEnabled(bool enabled) noexcept
     {
         m_simulationEnabled = enabled;
@@ -101,9 +136,20 @@ namespace NS::Object
         obj->SetTransient(true);
         obj->AttachScene(this);
         GameObject* raw = m_world.Append(std::move(obj));
-        // データ由来の配置物は Rebuild が開始まで面倒を見る。 後から入る一時オブジェクトはここで開始する
-        if (raw != nullptr)
-            raw->OnStart();
+        if (raw == nullptr)
+            return nullptr;
+        // データ由来の配置物は ObjectBuilder が引き当てる。後から入る一時オブジェクトはここで引き当てる
+        // AssetManager が無い間は跳ばす。テストは資産なしでシーンを立てる
+        if (m_assets != nullptr)
+        {
+            for (Component* comp : raw->Components())
+            {
+                if (comp != nullptr)
+                    comp->ResolveAssets(*m_assets);
+            }
+        }
+        // 開始は引き当ての後。OnStart の中で資産を読む Component が空の参照を掴まない
+        raw->OnStart();
         return raw;
     }
 
@@ -133,7 +179,7 @@ namespace NS::Object
 
     void Scene::RebuildWorldFrom(const SceneData& data)
     {
-        // Worldの再構築。 GameObject の型選択は登録一覧、 参照の実体化は各 component の ResolveAssets が担う
+        // GameObject の型選択は登録一覧、 参照の実体化は各 component の ResolveAssets が行う
         // vcam の brain への付け外しは VirtualCameraComponent が OnStart / OnEndPlay で自分で行う
         m_world.Rebuild(
             data, *this, Physics(), [this](const ObjectData& entry) { return BuildSceneObject(entry, m_assets); });
@@ -188,7 +234,6 @@ namespace NS::Object
         ctx.renderer = &renderer;
         ctx.alpha = NS::Core::FrameTimer::Alpha();
 
-        // カメラ情報の評価と設定
         brain->Evaluate(ctx.alpha);
 
         // 上書き視点は実カメラを経由せず、その場で行列を組む。実カメラの中身はゲーム視点のまま残す
@@ -203,7 +248,7 @@ namespace NS::Object
             overrideCamera.SetNearPlane(viewOverride->nearPlane);
             overrideCamera.SetFarPlane(viewOverride->farPlane);
 
-            // aspect は実カメラと同じ規則で renderer から取る (0 以下は 16:9 へ退避)
+            // aspect は実カメラと同じ規則で renderer から取る。 幅か高さが 0 以下なら 16:9
             const NS::Core::Size2D size = renderer.Size();
             const float aspect = [&]() -> float {
                 if (size.width <= 0 || size.height <= 0)
@@ -344,7 +389,7 @@ namespace NS::Object
             return;
         }
 
-        // ビュー列が空なら従来どおり。 現描画先 (BeginFrame で bind 済) へ Brain 視点で 1 回
+        // ビュー列が空なら現描画先へ Brain 視点で 1 回だけ描く。 描画先は BeginFrame が bind 済み
         if (m_sceneViews.empty())
         {
             RenderViewWithOverlays(std::nullopt);

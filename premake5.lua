@@ -4,7 +4,7 @@
 --============================================================================
 
 -- compile_commands.json生成モジュール
-require "premake/modules/export-compile-commands/export-compile-commands"
+require "Tools/premake5/modules/export-compile-commands/export-compile-commands"
 
 --============================================================================
 -- ワークスペース
@@ -35,7 +35,7 @@ workspace "NS"
     -- Profile build opt-in: 環境変数 NS_ENABLE_PROFILING=1 で有効化。
     -- NS_SCOPED_TIMER が clock.h で何もしない実装から ScopedTimer 展開に切替わる。
     -- 通常 build では未定義 = profiling マクロは ((void)0) で 0 overhead。
-    -- tools\@build_profile.cmd 経由で 1 cmd 実行可能。
+    -- Tools\@build_profile.cmd 経由で 1 cmd 実行可能。
     if os.getenv("NS_ENABLE_PROFILING") == "1" then
         defines { "NS_ENABLE_PROFILING" }
         print("[premake5] NS_ENABLE_PROFILING enabled — profile build")
@@ -668,7 +668,10 @@ project "GameApp"
 
     -- Object の component 自己登録はどこからも参照されない TU の静的初期化に載っているため、
     -- リンカの未参照 obj 除去で無言に欠け得る。Object.lib は全 obj を強制で取り込んで防ぐ
-    linkoptions { "/WHOLEARCHIVE:Object.lib" }
+    -- Game 層の配置物 Component も同じ理由で落ちる。Source/Game/Level/ に足した Component は
+    -- 他のコードから型を参照されない限り Game.lib の中で未参照のまま残り、
+    -- 対策が無いと登録ごと捨てられてエディタのコンポーネント追加一覧に出ない
+    linkoptions { "/WHOLEARCHIVE:Object.lib", "/WHOLEARCHIVE:Game.lib" }
 
     -- 出荷 (GameRelease) のみ exe 隣へ Shaders/ Assets/ をコピーする (exe 相対で読込む配布レイアウト)
     -- 開発構成は FileSystem::ContentRoot() がリポ直下を直接読むためコピーしない (ビルド毎のコピーを排除)
@@ -793,6 +796,7 @@ project "Tests"
         -- Game 側 GameObject 派生 (Player) は Application 依存を持たないので
         -- Tests から直接コンパイルしてリンクする。Game.cpp は Application や
         -- Window への依存があるので除外し、unit test で扱える範囲だけ取り込む。
+        -- Source/Game/Player/ 配下とは別物。GameObject 派生の Player 本体
         "Source/Game/Player.cpp",
         "Source/Editor/EditorCamera.cpp",
         -- LevelEditorController は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
@@ -802,6 +806,10 @@ project "Tests"
         -- Level 配下と Undo Command は Application 非依存の純粋ロジックなので
         -- Tests project から直接 compile する。
         "Source/Game/Level/**.cpp",
+        -- Entity / Player 配下は状態の自己登録 (NS_STATE) が無名 namespace の静的初期化に載る。
+        -- Tests が自分でコンパイルした obj はリンカが必ず取り込むので、ここへ足せば /WHOLEARCHIVE は要らない
+        "Source/Game/Entity/**.cpp",
+        "Source/Game/Player/**.cpp",
         "Source/Editor/Undo/**.cpp",
         -- editor のうち Application 非依存なものだけ取り込む (Editor は Application 依存のため除外)
         "Source/Editor/EditorObjects.cpp",
@@ -850,6 +858,8 @@ project "Tests"
     }
 
     -- Game.exe と同じ理由で Object の自己登録 TU をリンカ除去から守る
+    -- Game 層は Source/Game/Level/**.cpp を直接コンパイルしていて Game.lib を link しないため、
+    -- Game.lib 側の指定は要らない。ここで守れているのは Tests が自分でコンパイルした obj だから
     linkoptions { "/WHOLEARCHIVE:Object.lib" }
 
     -- Debug / Development / GameDebug の Tests は editor / ImGui を呼ぶため UI + imgui を link する。

@@ -11,7 +11,7 @@ namespace NS::Graphics
 {
     std::string NormalizeBoneName(std::string_view raw)
     {
-        // 最後の `:` / `|` より後ろが素の骨名
+        // 最後の : / | より後ろが素の骨名
         const std::size_t separator = raw.find_last_of(":|");
         if (separator != std::string_view::npos)
             raw = raw.substr(separator + 1);

@@ -10,8 +10,8 @@
 #include "Game/Level/KillZoneComponent.h"
 #include "Game/Player.h"
 #include "Runtime/Core/Clock.h"
-#include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Scene/SceneJson.h"
@@ -34,7 +34,7 @@ namespace NS::Editor
     {
         constexpr float k_CellHalfExtent = 0.5f;
 
-        // 90度（ラジアン）の定数
+        // 90 度をラジアンで
         constexpr float k_QuarterTurnYaw = NS::Core::k_Pi * 0.5f;
 
         constexpr NS::Core::Color k_CursorOkColor{0.1f, 1.0f, 0.1f, 1.0f};
@@ -47,7 +47,7 @@ namespace NS::Editor
             return static_cast<std::int16_t>(std::lround(v));
         }
 
-        // current + delta を 4 で割った余り。 90° 刻み回転を wrap する
+        // 足した結果を 4 で割った余り。 90° 刻みの回転を 0〜3 で巻き戻す
         [[nodiscard]] std::uint8_t RotateMod4(std::uint8_t current, std::int8_t delta) noexcept
         {
             int32_t r = static_cast<int32_t>(current) + delta;
@@ -258,7 +258,7 @@ namespace NS::Editor
         }
 
 #if NS_EDITOR_ENABLED
-        // モーダル外での操作結果（上書き保存など）をトースト通知として描画する
+        // 上書き保存などモーダルを開かずに終わった操作をトーストで知らせる
         if (m_statusTimer > 0.0f)
         {
             m_statusTimer -= NS::Core::FrameTimer::DeltaSeconds();

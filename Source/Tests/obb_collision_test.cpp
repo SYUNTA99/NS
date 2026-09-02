@@ -11,7 +11,7 @@ namespace
     using NS::Physics::CapsuleMover;
     using NS::Physics::CapsuleMoverInput;
     using NS::Physics::CapsuleMoverResult;
-    using NS::Physics::MakeObb;
+    using NS::Physics::MakeOBB;
     using NS::Physics::PhysicsWorld;
 
     constexpr float k_Pi = 3.14159265358979323846f;
@@ -22,7 +22,7 @@ TEST(ObbCollisionTest, CapsuleLandsOnFlatObb)
 {
     CapsuleMover cc;
     PhysicsWorld world;
-    world.AddOBB(MakeObb({0.0f, 0.0f, 0.0f}, Quaternion::Identity, {2.0f, 0.5f, 2.0f}));
+    world.AddOBB(MakeOBB({0.0f, 0.0f, 0.0f}, Quaternion::Identity, {2.0f, 0.5f, 2.0f}));
     world.BuildBroadphase();
 
     CapsuleMoverInput input;
@@ -41,7 +41,7 @@ TEST(ObbCollisionTest, CapsuleRestingOnObbStaysGrounded)
 {
     CapsuleMover cc;
     PhysicsWorld world;
-    world.AddOBB(MakeObb({0.0f, 0.0f, 0.0f}, Quaternion::Identity, {2.0f, 0.5f, 2.0f}));
+    world.AddOBB(MakeOBB({0.0f, 0.0f, 0.0f}, Quaternion::Identity, {2.0f, 0.5f, 2.0f}));
     world.BuildBroadphase();
 
     // capsule 底端 (center.y - halfHeight = 0.9) が床上面 0.5 から radius 内に収まる静止姿勢
@@ -61,7 +61,7 @@ TEST(ObbCollisionTest, CapsuleStopsAtRotatedWall)
     CapsuleMover cc;
     const Quaternion rot = Quaternion::CreateFromAxisAngle(Vector3::UnitY, k_Pi / 4.0f);
     PhysicsWorld world;
-    world.AddOBB(MakeObb({0.0f, 0.0f, 0.0f}, rot, {0.1f, 2.0f, 2.0f}));
+    world.AddOBB(MakeOBB({0.0f, 0.0f, 0.0f}, rot, {0.1f, 2.0f, 2.0f}));
     world.BuildBroadphase();
 
     Vector3 position{-3.0f, 0.0f, 0.0f};

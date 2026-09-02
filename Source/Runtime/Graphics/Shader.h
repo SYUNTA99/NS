@@ -28,10 +28,10 @@ namespace NS::Graphics
         [[nodiscard]] std::span<const std::byte> GetVertexShaderBytecode(const Shader& shader) noexcept;
     } // namespace detail
 
-    //! @brief 描画処理を行う単一ステージのシェーダ。
-    //! @details ファイルパスからステージ（頂点・ピクセル等）を自動判定し、実行時にコンパイルする。
-    //! 頂点・ピクセルシェーダで読み込みに失敗した場合は、エラーを視覚化するための代替表示（ピンク色）に自動切り替えする。
-    //! コンパイル後の内部オブジェクトは、描画コマンドの発行用クラスがステージに応じて適宜使用する
+    //! @brief シェーダ 1 本
+    //! @details 頂点・ピクセルなどの種類をファイル名から決め、実行時にコンパイルする
+    //! 頂点・ピクセルは読み込みに失敗するとピンク一色のフォールバックへ差し替わり、画面で失敗が見える
+    //! コンパイル後のシェーダオブジェクトは CommandList がステージ別のバインドで使う
     class Shader : public NS::Core::NonCopyable
     {
     public:
@@ -40,26 +40,26 @@ namespace NS::Graphics
 
         [[nodiscard]] bool IsValid() const noexcept;
 
-        //! 読み込み失敗により代替表示（ピンク色）が有効になっているか
+        //! 読み込みに失敗してピンクのフォールバックへ差し替わっているか
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
         //! シェーダの種類を返す
         [[nodiscard]] ShaderType Type() const noexcept;
 
-        //! 内部のグラフィックスAPI用オブジェクトを取得する
+        //! DX11 のシェーダを取得する
         [[nodiscard]] ID3D11DeviceChild* Native() const noexcept;
 
         //! 頂点レイアウト生成用のバイナリコードを取得する
         [[nodiscard]] std::span<const std::byte> VertexShaderBytecode() const noexcept;
 
         //! @brief ファイルを再読み込みし、シェーダを更新する
-        //! @return 成功時はtrue。失敗時は旧状態を保持する
+        //! @return 成功した場合 true、それ以外の場合は false。失敗しても前の中身を保つ
         [[nodiscard]] bool Reload();
 
     private:
         explicit Shader(const std::filesystem::path& hlslPath);
 
-        //! コンパイル処理、成功時のみシェーダオブジェクトを生成する
+        //! コンパイルして、成功した時だけシェーダを作る
         [[nodiscard]] bool Compile(ComPtr<ID3D11DeviceChild>& outShader,
                                    ComPtr<ID3DBlob>& outVsBytecode) const noexcept;
 

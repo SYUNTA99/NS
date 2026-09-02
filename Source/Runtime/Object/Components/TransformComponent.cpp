@@ -41,10 +41,6 @@ namespace NS::Object
 
     namespace
     {
-        constexpr std::string_view k_PositionFieldName = "位置";
-        constexpr std::string_view k_RotationFieldName = "回転 (度)";
-        constexpr std::string_view k_ScaleFieldName = "スケール";
-
         NS::Core::Vector3 ReadTransformVec3(const ObjectData& object,
                                             std::string_view fieldName,
                                             const NS::Core::Vector3& fallback) noexcept
@@ -72,7 +68,7 @@ namespace NS::Object
         }
         nlohmann::json transform = MakeComponentEntry(k_TransformTypeName);
         SetField(transform, k_PositionFieldName, NS::Core::Vector3{0.0f, 0.0f, 0.0f});
-        SetField(transform, k_RotationFieldName, NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        SetField(transform, k_RotationEulerFieldName, NS::Core::Vector3{0.0f, 0.0f, 0.0f});
         SetField(transform, k_ScaleFieldName, NS::Core::Vector3{1.0f, 1.0f, 1.0f});
         object.components.push_back(std::move(transform));
         return object.components.back();
@@ -91,13 +87,13 @@ namespace NS::Object
     NS::Core::Quaternion ObjectRotation(const ObjectData& object) noexcept
     {
         const NS::Core::Vector3 euler =
-            ReadTransformVec3(object, k_RotationFieldName, NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+            ReadTransformVec3(object, k_RotationEulerFieldName, NS::Core::Vector3{0.0f, 0.0f, 0.0f});
         return NS::Core::EulerDegreesToQuaternion(euler);
     }
 
     void SetObjectRotation(ObjectData& object, const NS::Core::Quaternion& rotation) noexcept
     {
-        WriteTransformVec3(object, k_RotationFieldName, NS::Core::QuaternionToEulerDegrees(rotation));
+        WriteTransformVec3(object, k_RotationEulerFieldName, NS::Core::QuaternionToEulerDegrees(rotation));
 
         // 厳密回転の控えが載っている間は組み立てでそちらが勝つので、置き去りにすると回転が戻る
         nlohmann::json* transform = FindComponentEntry(object, k_TransformTypeName);

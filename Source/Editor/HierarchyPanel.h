@@ -25,7 +25,7 @@ namespace NS::Editor
 
     private:
         //! @brief 1 行を描く
-        //! @param withChildren 真なら子を再帰で下へ潜る。 検索中は一致した物だけを平らに並べるので偽で呼ぶ
+        //! @param[in] withChildren 真なら子を再帰で下へ潜る。 検索中は一致した物だけを平らに並べるので偽で呼ぶ
         void RenderNode(LevelEditorController& editor, NS::Object::GameObject& object, bool withChildren) noexcept;
 
         //! 対象を改名待ちにして、 入力欄へ現在の表示名を入れる

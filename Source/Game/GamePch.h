@@ -18,7 +18,6 @@
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CapsuleColliderComponent.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Object/Components/MeshColliderComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"

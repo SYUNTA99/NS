@@ -8,11 +8,10 @@ namespace NS::Editor
 {
     const std::array<PaletteTemplate, k_PaletteSlotCount>& PaletteTemplateSlots() noexcept
     {
-        // テンプレート定義は実行時に一度だけ初期化する
         static const std::array<PaletteTemplate, k_PaletteSlotCount> slots = []() {
             std::array<PaletteTemplate, k_PaletteSlotCount> result{};
 
-            // スロット0: 基本の正方形ブロック
+            // スロット0: 基本の立方体ブロック
             {
                 NS::Object::ObjectData cube = NS::Game::Level::MakeCellObject(0, 0, 0);
                 result[0].name = "Cube";

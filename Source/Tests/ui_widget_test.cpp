@@ -4,8 +4,8 @@
 
 #include <gtest/gtest.h>
 
-/// 整形 (anchor / pivot / 拡縮) と入力の吸い込みは D3D 無しで検証する
-/// 描画の呼び出し (実ピクセル矩形と実効 alpha) だけは headless renderer で確かめる
+//! 整形 (anchor / pivot / 拡縮) と入力の吸い込みは DX11 無しで検証する
+//! 描画の呼び出し (実ピクセル矩形と実効 alpha) だけは headless renderer で確かめる
 
 namespace
 {

@@ -87,7 +87,7 @@ namespace NS::Graphics
         const float yBottom = -ey;
         const float yTop = -ey + height;
 
-        // 斜面の法線ベクトルを計算する。
+        // 斜面の法線ベクトルを計算する
         const float c = std::cos(angleRad);
         const float s = std::sin(angleRad);
 

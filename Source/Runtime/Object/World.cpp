@@ -42,7 +42,7 @@ namespace NS::Object
         }
 
         m_objects.reserve(data.objects.size() + transients.size());
-        physics.ReserveAabbs(data.objects.size());
+        physics.ReserveAABBs(data.objects.size());
 
         // 並び順は object の持ち物なので、 配列の並びではなく order で組む
         // 同値は書かれた順のまま残すので、 order を持たない古いファイルは従来と同じ形に組み上がる
@@ -74,7 +74,7 @@ namespace NS::Object
             }
 
             // 親子は全 object が揃ってから結ぶ。 子が親より前に並ぶファイルでも同じ形に組める
-            // 循環は読込の PruneInvalidParents が落とし済みで、 ここへは届かない
+            // 循環は SetParent が輪を閉じる結び付けを拒むので、 手編集のデータでも組み上がる
             // id 引きを線形で回すと体数の二乗に効くので、 組み立ての間だけ使う対応表で引く
             // 索引として持ち越さないのは、 所有リストと同期を保つ手間を抱え込まないため
             std::unordered_map<std::uint32_t, GameObject*> byObjectId;
@@ -170,7 +170,7 @@ namespace NS::Object
     {
         // 当たりは Clear -> Add* -> BuildBroadphase で満たし直す。 古い当たりを残さない
         physics.Clear();
-        physics.ReserveAabbs(m_objects.size());
+        physics.ReserveAABBs(m_objects.size());
         ForEachComponent<ColliderComponent>([&physics](const ColliderComponent& collider) {
             // active を切った component は当たりも持たない。 更新・ 描画と同じ問いで揃える
             if (collider.IsActive())
@@ -220,7 +220,7 @@ namespace NS::Object
 
     void World::Clear()
     {
-        // 配置物は生成の逆順で破棄する。 依存し合う component の OnEndPlay 順序を生成時と対称に保つ
+        // OnEndPlay は生成の逆順で呼ぶ。 依存し合う component の後始末を生成と対称にする
         for (auto it = m_objects.rbegin(); it != m_objects.rend(); ++it)
             (*it)->OnEndPlay();
         m_objects.clear();

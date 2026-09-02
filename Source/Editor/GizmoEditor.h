@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 #include "Editor/GridMath.h"
-#include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Platform/Keyboard.h"
 
 #include <span>
@@ -50,7 +50,7 @@ namespace NS::Editor
         Uniform
     };
 
-    //! @brief トランスフォーム（位置・回転・スケール）のスナップショット
+    //! @brief 位置・回転・スケールのスナップショット
     struct TransformState
     {
         NS::Core::Vector3 position{0.0f, 0.0f, 0.0f};
@@ -58,7 +58,7 @@ namespace NS::Editor
         NS::Core::Vector3 scale{1.0f, 1.0f, 1.0f};
     };
 
-    //! @brief エディタ上のオブジェクト選択および変形ギズモの操作を管理するクラス
+    //! @brief オブジェクトの選択と、変形ギズモのドラッグによる Transform 書き換え
     class GizmoEditor : public NS::Core::NonCopyable
     {
     public:
@@ -68,10 +68,10 @@ namespace NS::Editor
         void SetInput(NS::Platform::Input* input) noexcept { m_input = input; }
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
 
-        //! @brief ピック（選択）対象となるオブジェクトと、そのローカル境界サイズを設定する
-        //! @param objects 選択対象となるオブジェクト
-        //! @param localHalfExtents 各オブジェクトに対応するローカル境界サイズ
-        //! @param pickable 選択の優先度を下げる（あるいは無効化する）ためのマスク指定（オプション）
+        //! @brief 選択できる配置物と、そのローカル境界サイズを設定する
+        //! @param[in] objects 選択対象となるオブジェクト
+        //! @param[in] localHalfExtents 各オブジェクトに対応するローカル境界サイズ
+        //! @param[in] pickable 選択の優先度を下げるマスク。省略できる
         void SetSelectableObjects(std::span<NS::Object::GameObject* const> objects,
                                   std::span<const NS::Core::Vector3> localHalfExtents,
                                   std::span<const std::uint8_t> pickable = {}) noexcept;
@@ -81,7 +81,7 @@ namespace NS::Editor
 
         void SetSpace(GizmoSpace space) noexcept { m_space = space; }
 
-        //! ギズモの座標系（Local / World）をトグル切り替えする
+        //! ギズモの座標系を Local / World で切り替える
         void ToggleSpace() noexcept
         {
             m_space = (m_space == GizmoSpace::Local) ? GizmoSpace::World : GizmoSpace::Local;
@@ -90,8 +90,8 @@ namespace NS::Editor
         //! マウスがゲーム表示パネル上に居るかを渡す。偽の間は選択クリックとハンドル掴みを受けない
         void SetViewHovered(bool hovered) noexcept { m_viewHovered = hovered; }
 
-        //! @brief 毎フレームの入力処理、選択判定、およびドラッグによる変形処理を行う
-        //! @param view ゲーム表示パネルの矩形。マウスはこの矩形基準のローカル座標で扱う
+        //! @brief 毎フレーム入力を見て、選択とドラッグによる変形を進める
+        //! @param[in] view ゲーム表示パネルの矩形。マウスはこの矩形基準のローカル座標で扱う
         void Tick(const NS::Core::Matrix& viewProjection, const ViewRect& view) noexcept;
 
         //! 現在の選択対象に対するギズモのUI描画コマンドを発行する。パネル外はクリップされる
@@ -100,7 +100,7 @@ namespace NS::Editor
         [[nodiscard]] GizmoTool Tool() const noexcept { return m_tool; }
         [[nodiscard]] NS::Object::Transform* Selected() const noexcept { return m_selected; }
 
-        //! @brief 現在の選択状態を解除し、進行中のドラッグ操作などをキャンセルする
+        //! @brief 選択を解除し、進行中のドラッグを取り消す
         void ClearSelection() noexcept
         {
             m_selected = nullptr;
@@ -119,14 +119,14 @@ namespace NS::Editor
         //! ギズモのハンドルをドラッグして操作中かどうかを返す
         [[nodiscard]] bool IsDragging() const noexcept { return m_dragging; }
 
-        //! @brief 視線レイとオブジェクト群のOBB（有向境界ボックス）との交差判定を行い、最も手前のインデックスを返す
+        //! @brief 視線レイを配置物の OBB へ当て、最も手前の添字を返す
         //! @return ヒットした場合はそのインデックス、ヒットしなかった場合は -1
-        [[nodiscard]] static int PickNearestObb(const NS::Core::Ray& ray,
+        [[nodiscard]] static int PickNearestOBB(const NS::Core::Ray& ray,
                                                 std::span<const NS::Core::Matrix> worldMatrices,
                                                 std::span<const NS::Core::Vector3> localHalfExtents,
                                                 std::span<const std::uint8_t> pickMask = {}) noexcept;
 
-        //! 指定されたギズモ軸に沿った移動後の新しいワールド座標を計算する。
+        //! 指定されたギズモ軸に沿った移動後の新しいワールド座標を計算する
         [[nodiscard]] static NS::Core::Vector3 ComputeAxisMove(const NS::Core::Vector3& startPos,
                                                                GizmoAxis axis,
                                                                const NS::Core::Quaternion& rotation,
@@ -134,7 +134,7 @@ namespace NS::Editor
                                                                const NS::Core::Ray& rayNow,
                                                                bool snap) noexcept;
 
-        //! スクリーンのドラッグ量を、指定軸周りの回転角度（ラジアン）に変換して計算する
+        //! 画面のドラッグ量を、指定軸まわりの回転角 (ラジアン) へ変換する
         [[nodiscard]] static float WorldDragToAngle(const NS::Core::Vector3& origin,
                                                     GizmoAxis axis,
                                                     const NS::Core::Quaternion& rotation,
@@ -143,14 +143,14 @@ namespace NS::Editor
                                                     NS::Core::Vector2 screenStart,
                                                     NS::Core::Vector2 screenEnd) noexcept;
 
-        //! 指定された軸と角度に基づく、新しい回転（クォータニオン）を計算する
+        //! 指定の軸と角度から新しい回転を計算する
         [[nodiscard]] static NS::Core::Quaternion ComputeAxisRotate(const NS::Core::Quaternion& startRot,
                                                                     GizmoAxis axis,
                                                                     float angleRad,
                                                                     bool snap,
                                                                     bool worldSpace = false) noexcept;
 
-        //! スクリーンのドラッグ量を、スケール変化の倍率に変換して計算する
+        //! スクリーンのドラッグ量を、スケールへ足し引きする変化量に変換する
         [[nodiscard]] static float ScreenDragToScaleAmount(NS::Core::Vector2 axisDir2d,
                                                            NS::Core::Vector2 dragPixels) noexcept;
 

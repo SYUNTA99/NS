@@ -15,7 +15,7 @@
 namespace
 {
     constexpr std::size_t k_MaxVertices = 4096;
-    constexpr int k_CapsuleSegments = 12;
+    constexpr int k_CircleSegments = 12;
 
     struct DebugVertex
     {
@@ -49,7 +49,6 @@ namespace
         return backend;
     }
 
-    // 描画に必要なリソースを生成する
     bool EnsureBackend() noexcept
     {
         LineBackend& b = Backend();
@@ -86,7 +85,6 @@ namespace
             return false;
         }
 
-        // 動的頂点バッファと定数バッファを確保
         b.vb = NS::Graphics::Buffer::Create(
             NS::Graphics::MakeVertexBufferDesc(nullptr, k_MaxVertices, sizeof(DebugVertex), D3D11_USAGE_DYNAMIC));
         b.cb = NS::Graphics::Buffer::Create(NS::Graphics::MakeConstantBufferDesc(sizeof(NS::Core::Matrix)));
@@ -100,7 +98,6 @@ namespace
         return true;
     }
 
-    // 頂点を追加する
     void PushLine(const NS::Core::Vector3& a, const NS::Core::Vector3& b, const NS::Core::Color& color) noexcept
     {
         auto& v = Storage();
@@ -110,6 +107,27 @@ namespace
         }
         v.push_back({a, color});
         v.push_back({b, color});
+    }
+
+    // center を中心に u と v が張る平面上の円を積む。u と v は半径ぶん伸ばした直交ベクトルを渡す
+    void PushCircle(const NS::Core::Vector3& center,
+                    const NS::Core::Vector3& u,
+                    const NS::Core::Vector3& v,
+                    const NS::Core::Color& color) noexcept
+    {
+        constexpr float twoPi = 2.0f * NS::Core::k_Pi;
+        NS::Core::Vector3 prev{};
+        for (int i = 0; i <= k_CircleSegments; ++i)
+        {
+            const float t = (static_cast<float>(i) / k_CircleSegments) * twoPi;
+            const float ca = std::cos(t);
+            const float sa = std::sin(t);
+            const NS::Core::Vector3 point{
+                center.x + u.x * ca + v.x * sa, center.y + u.y * ca + v.y * sa, center.z + u.z * ca + v.z * sa};
+            if (i > 0)
+                PushLine(prev, point, color);
+            prev = point;
+        }
     }
 } // namespace
 
@@ -163,7 +181,6 @@ namespace NS::Graphics::DebugDraw
         const NS::Core::Vector3 ey = obb.axisY * obb.halfExtentY;
         const NS::Core::Vector3 ez = obb.axisZ * obb.halfExtentZ;
 
-        // 8つの頂点座標を計算する。
         const NS::Core::Vector3 c000 = obb.center - ex - ey - ez;
         const NS::Core::Vector3 c100 = obb.center + ex - ey - ez;
         const NS::Core::Vector3 c110 = obb.center + ex + ey - ez;
@@ -190,6 +207,17 @@ namespace NS::Graphics::DebugDraw
         PushLine(c100, c101, color);
         PushLine(c110, c111, color);
         PushLine(c010, c011, color);
+    }
+
+    void Sphere(const NS::Core::Sphere& sphere, const NS::Core::Color& color) noexcept
+    {
+        const NS::Core::Vector3 rx{sphere.radius, 0.0f, 0.0f};
+        const NS::Core::Vector3 ry{0.0f, sphere.radius, 0.0f};
+        const NS::Core::Vector3 rz{0.0f, 0.0f, sphere.radius};
+
+        PushCircle(sphere.center, rx, ry, color);
+        PushCircle(sphere.center, ry, rz, color);
+        PushCircle(sphere.center, rz, rx, color);
     }
 
     void Capsule(const NS::Core::Vector3& base,
@@ -227,31 +255,13 @@ namespace NS::Graphics::DebugDraw
                                       axisN.x * perpA.y - axisN.y * perpA.x};
 
         // 上下の円を描画する
-        const float twoPi = 6.2831853f;
-        NS::Core::Vector3 prevTop{}, prevBot{};
-        for (int i = 0; i <= k_CapsuleSegments; ++i)
-        {
-            const float t = (static_cast<float>(i) / k_CapsuleSegments) * twoPi;
-            const float ca = std::cos(t) * radius;
-            const float sa = std::sin(t) * radius;
-            const NS::Core::Vector3 offset{
-                perpA.x * ca + perpB.x * sa, perpA.y * ca + perpB.y * sa, perpA.z * ca + perpB.z * sa};
-            const NS::Core::Vector3 ptTop = top + offset;
-            const NS::Core::Vector3 ptBot = bottom + offset;
-            if (i > 0)
-            {
-                PushLine(prevTop, ptTop, color);
-                PushLine(prevBot, ptBot, color);
-            }
-            prevTop = ptTop;
-            prevBot = ptBot;
-        }
+        const NS::Core::Vector3 uA{perpA.x * radius, perpA.y * radius, perpA.z * radius};
+        const NS::Core::Vector3 uB{perpB.x * radius, perpB.y * radius, perpB.z * radius};
+        PushCircle(top, uA, uB, color);
+        PushCircle(bottom, uA, uB, color);
 
         // 円柱部分の側面の辺を描画する
-        const NS::Core::Vector3 dirs[4] = {{perpA.x * radius, perpA.y * radius, perpA.z * radius},
-                                           {-perpA.x * radius, -perpA.y * radius, -perpA.z * radius},
-                                           {perpB.x * radius, perpB.y * radius, perpB.z * radius},
-                                           {-perpB.x * radius, -perpB.y * radius, -perpB.z * radius}};
+        const NS::Core::Vector3 dirs[4] = {uA, -uA, uB, -uB};
         for (const auto& d : dirs)
         {
             PushLine(bottom + d, top + d, color);
@@ -280,7 +290,6 @@ namespace NS::Graphics::DebugDraw
         LineBackend& b = Backend();
         const std::size_t vertexCount = store.size();
 
-        // 定数バッファと頂点バッファを更新
         cmd.UpdateSubresource(*b.cb, &viewProjection, sizeof(viewProjection));
         cmd.UpdateSubresource(*b.vb, store.data(), vertexCount * sizeof(DebugVertex));
 

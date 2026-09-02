@@ -127,7 +127,7 @@ namespace NS::Object
         const NS::Core::Vector3 half{m_halfExtents.x * std::abs(scale.x),
                                      m_halfExtents.y * std::abs(scale.y),
                                      m_halfExtents.z * std::abs(scale.z)};
-        return NS::Physics::MakeObb(translation, rotation, half);
+        return NS::Physics::MakeOBB(translation, rotation, half);
     }
 
     void BoxColliderComponent::AddToPhysics(NS::Physics::PhysicsWorld& physics) const

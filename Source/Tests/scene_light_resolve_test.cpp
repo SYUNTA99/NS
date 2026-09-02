@@ -14,7 +14,7 @@ namespace
 
     constexpr float k_Epsilon = 1e-5f;
 
-    /// protected の ResolveSceneSettings をテスト用に公開する最小派生
+    //! protected の ResolveSceneSettings をテスト用に公開する最小派生
     class ResolveProbeScene : public Scene
     {
     public:
@@ -24,7 +24,7 @@ namespace
         }
     };
 
-    /// リフレクションフィールド越しに平行光の値を書く。照明はデータ駆動で、公開の設定関数を持たない
+    //! リフレクションフィールド越しに平行光の値を書く。照明はデータ駆動で、公開の設定関数を持たない
     void SetLightField(DirectionalLightComponent& light, const char* name, const NS::Core::Vector3& value)
     {
         const NS::Object::FieldDesc* field = NS::Object::FindField(DirectionalLightComponent::StaticReflection(), name);
@@ -32,7 +32,7 @@ namespace
         field->set(&light, &value);
     }
 
-    /// world に平行光を 1 本置いて返す
+    //! world に平行光を 1 本置いて返す
     DirectionalLightComponent* SpawnLight(Scene& scene)
     {
         GameObject* obj = scene.World().Spawn<GameObject>();

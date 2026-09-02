@@ -5,11 +5,9 @@
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
 #include "Game/Level/BlockObject.h"
-#include "Game/Level/FinisherComponent.h"
-#include "Game/Level/GoalComponent.h"
 #include "Game/Level/RespawnerComponent.h"
-#include "Game/Level/ScreenFadeComponent.h"
 #include "Game/Player.h"
+#include "Game/Player/PlayerComponent.h"
 #include "Runtime/App/Application.h"
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Core/Filesystem.h"
@@ -21,11 +19,9 @@
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/CapsuleColliderComponent.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/Components/PlacedVirtualCamera.h"
 #include "Runtime/Object/Components/PlayerInputComponent.h"
-#include "Runtime/Object/Components/ShadowComponent.h"
 #include "Runtime/Object/Components/SlopeColliderComponent.h"
 #include "Runtime/Object/Components/SphereColliderComponent.h"
 #include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
@@ -47,7 +43,7 @@ namespace
     // 編集復帰の視点ブレンド秒。Brain の vcam 切替の既定 0.35 秒と揃え、モード切替の繋ぎを同じ感触にする
     constexpr float k_EditBlendSeconds = 0.35f;
 
-    // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球 / カプセル / slope は collider 由来の AABB
+    // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状、slope は collider 由来の AABB
     void DrawColliderWireframe(NS::Object::GameObject& object, const NS::Core::Color& color) noexcept
     {
         if (auto* box = object.FindComponent<NS::Object::BoxColliderComponent>())
@@ -56,11 +52,14 @@ namespace
         }
         else if (auto* sphere = object.FindComponent<NS::Object::SphereColliderComponent>())
         {
-            NS::Graphics::DebugDraw::AABB(sphere->WorldAABB(), color);
+            NS::Graphics::DebugDraw::Sphere(sphere->WorldSphere(), color);
         }
         else if (auto* capsule = object.FindComponent<NS::Object::CapsuleColliderComponent>())
         {
-            NS::Graphics::DebugDraw::AABB(capsule->WorldAABB(), color);
+            const NS::Physics::Capsule world = capsule->WorldCapsule();
+            NS::Core::Vector3 axis = world.axis;
+            axis.Normalize();
+            NS::Graphics::DebugDraw::Capsule(world.center, axis * world.halfHeight, world.radius, color);
         }
         else if (auto* slope = object.FindComponent<NS::Object::SlopeColliderComponent>())
         {
@@ -80,8 +79,8 @@ namespace
         }
     }
 
-    // a→b を 0.5m 刻みで等分し 1 区間おきに線を引いて点線にする。DebugDraw に dashed が無いので描画側で
-    // 間引く。辺長からセグメント数を出すので、長い辺も短い辺も破線ピッチが揃う
+    // a→b を 0.5m を目安に等分し 1 区間おきに線を引いて点線にする。DebugDraw に破線が無いので描画側で
+    // 間引く。辺長からセグメント数を出すので、長い辺でも刻みが粗くならない
     void DrawDashedLine(const NS::Core::Vector3& a, const NS::Core::Vector3& b, const NS::Core::Color& color) noexcept
     {
         const float length = (b - a).Length();
@@ -129,13 +128,12 @@ namespace
 
     // 視点マーカーの world 半径。カメラから遠いほど半径を伸ばし、画面上の見かけサイズを一定に近づける
     // 見かけ寸法は world 半径 / clip.w に比例するので、半径を clip.w に比例させると相殺されて一定になる
-    // 近距離は基準半径を下限に据え、遠距離だけ伸ばす
     [[nodiscard]] float CameraMarkerHalf(const NS::Core::Vector3& center, const NS::Core::Matrix& vp) noexcept
     {
         const float baseHalf = 0.3f;
         const NS::Core::Vector4 clip =
             NS::Core::Vector4::Transform(NS::Core::Vector4{center.x, center.y, center.z, 1.0f}, vp);
-        // clip.w がほぼ 0、カメラ至近や背面では深度で割らず基準半径へ退避する
+        // clip.w がほぼ 0 になるカメラ至近や背面では基準半径へ退避する
         if (clip.w <= 1.0e-3f)
             return baseHalf;
         // 深度 10 までは基準半径、これより遠いほど深度に比例して伸ばし画面上一定に近づける
@@ -154,7 +152,7 @@ namespace
         out.push_back(root.Id());
     }
 
-    // 1 本なら包まずそのまま返す。 まとめ役を挟むのは複数を 1 回の undo で往復させたい時だけ
+    // 1 本なら包まずそのまま返す。 CompositeCommand を挟むのは複数を 1 回の undo で往復させたい時だけ
     std::unique_ptr<NS::Editor::ICommand> MakeUndoUnit(std::vector<std::unique_ptr<NS::Editor::ICommand>> commands)
     {
         if (commands.size() == 1)
@@ -175,7 +173,20 @@ bool LevelEditorController::PlayPaused() const noexcept
 void LevelEditorController::TogglePlayPause() noexcept
 {
     if (m_scene != nullptr)
+    {
         m_scene->SetSimulationPaused(!m_scene->IsSimulationPaused());
+        // 固定したままだと Inspector を触れず、プレイ中に値を調整する動線が消える。止めている間は解く
+        if (m_mode == Mode::Play)
+        {
+            if (auto* app = NS::App::Application::Get())
+            {
+                const bool paused = m_scene->IsSimulationPaused();
+                app->Window().SetCursorVisible(paused);
+                app->Window().SetCursorLocked(!paused);
+                app->Input().Mouse().SetRelativeMode(!paused);
+            }
+        }
+    }
 }
 
 NS::Object::SceneEnvironment& LevelEditorController::Environment() noexcept
@@ -265,19 +276,20 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
         }
     }
 
-    // ギズモに依存先を注入する。選択候補は自由オブジェクト + grid solid ブロックを連結して渡す
+    // ギズモに依存先を注入する。選択候補は RefreshGizmoSelectables が別に渡す
     m_gizmo.SetInput(&app->Input());
     m_gizmo.SetImGui(imgui);
-    RefreshGizmoSelectables();
 
-    // scene は OnStart でプレイ開始済。プレイを終えて player 凍結の編集モードへ切替える
+    // scene は OnStart でプレイ開始済。プレイを終えて操作系を休止させた編集モードへ切替える
     LeavePlayForEdit();
     m_mode = Mode::Edit;
+    // 選択候補の生ポインタは組み直しの後に集める。先に集めると破棄済みの相手を指す
+    RefreshGizmoSelectables();
 }
 
 void LevelEditorController::Teardown()
 {
-    // ギズモは free オブジェクトの Transform を非所有参照するので、scene 破棄前に選択を外す
+    // ギズモは配置物の Transform を非所有参照するので、scene 破棄前に選択を外す
     m_gizmo.ClearSelection();
     m_selectablePtrs.clear();
     m_selectableHalfExtents.clear();
@@ -289,7 +301,7 @@ void LevelEditorController::EnterPlay() noexcept
     if (m_mode == Mode::Play)
         return;
     m_mode = Mode::Play;
-    // UI がキーを掴んでいた間に押されたキーは、離した通知がゲームへ届かず押しっぱなしで残る。
+    // UI がキーを掴んでいた間に押されたキーは、離した通知がゲームへ届かず押しっぱなしで残る
     // モード遷移で持ち越さないよう消す
     if (auto* app = NS::App::Application::Get())
     {
@@ -303,16 +315,11 @@ void LevelEditorController::EnterPlay() noexcept
     (void)m_scene->BeginPlayBaseline();
     if (auto* player = FindPlayer(m_scene->World()))
     {
-        // 編集で休止させた部品を有効化する。休止させる側は LeavePlayForEdit
-        if (auto* mesh = player->FindComponent<NS::Object::MeshRendererComponent>())
-            mesh->SetActive(true);
-        if (auto* movement = player->FindComponent<NS::Object::CharacterMovementComponent>())
+        // 編集で休止させた自機と入力を起こす。休止させる側は LeavePlayForEdit
+        if (auto* movement = player->FindComponent<NS::Game::Player::PlayerComponent>())
             movement->SetActive(true);
         if (auto* input = player->FindComponent<NS::Object::PlayerInputComponent>())
             input->SetActive(true);
-        // 編集で増減した配置物を接地影の受け先へ反映する
-        if (auto* shadow = player->FindComponent<NS::Object::ShadowComponent>())
-            shadow->RefreshReceivers();
     }
     // 走行を最初から。手順は出荷と同じ respawner の持ち物
     m_scene->World().ForEachComponent<NS::Game::Level::RespawnerComponent>(
@@ -330,6 +337,8 @@ void LevelEditorController::EnterPlay() noexcept
     if (auto* app = NS::App::Application::Get())
     {
         app->Window().SetCursorVisible(false);
+        // 固定しないとクリックが他のパネルへ落ち、押しっぱなしの体当たり入力が届かない歩ができる
+        app->Window().SetCursorLocked(true);
         app->Input().Mouse().SetRelativeMode(true);
     }
 
@@ -343,14 +352,14 @@ void LevelEditorController::EnterEdit() noexcept
     if (m_mode == Mode::Edit)
         return;
     m_mode = Mode::Edit;
-    // UI がキーを掴んでいた間に押されたキーは、離した通知がゲームへ届かず押しっぱなしで残る。
+    // UI がキーを掴んでいた間に押されたキーは、離した通知がゲームへ届かず押しっぱなしで残る
     // モード遷移で持ち越さないよう消す
     if (auto* app = NS::App::Application::Get())
     {
         app->Input().Keyboard().ClearState();
         app->Input().Mouse().ClearState();
     }
-    // プレイを終えて player 凍結 / follow・area camera 休止 / 演出破棄を行う
+    // プレイを終え、凍結スナップショットから編集の姿へ組み直す
     LeavePlayForEdit();
     // プレイ視点から自由視点へ繋ぐ。始点は直前まで実カメラに書かれていた pose
     if (auto* brain = Brain())
@@ -359,7 +368,7 @@ void LevelEditorController::EnterEdit() noexcept
         m_editBlendElapsed = 0.0f;
         m_editBlending = true;
     }
-    // Play 中の rebuild を跨いだ選択を、id から現在のオブジェクトへ貼り直してから編集へ戻る
+    // 編集復帰の組み直しを跨いだ選択を、id から現在のオブジェクトへ貼り直してから編集へ戻る
     RefreshGizmoSelectables();
     ResolveSelectionFromId();
     m_editor.SetActive(true);
@@ -372,7 +381,7 @@ void LevelEditorController::RequestStepFrame() noexcept
     m_scene->StepSimulation();
 }
 
-void LevelEditorController::LeavePlayForEdit() noexcept
+void LevelEditorController::LeavePlayForEdit()
 {
     // free-fly カメラはこの外で editor が握る
     if (m_scene == nullptr)
@@ -380,43 +389,31 @@ void LevelEditorController::LeavePlayForEdit() noexcept
     // 編集モードの間は世界を止める
     m_scene->SetSimulationEnabled(false);
 
-    // 進行中のクリアシーケンスと暗転はプレイの持ち物なのでここで破棄する
-    // 残すと次のプレイ開始で前回の演出が突然発火する。ゴールのフラグも戻す
-    m_scene->World().ForEachComponent<NS::Game::Level::FinisherComponent>(
-        [](NS::Game::Level::FinisherComponent& finisher) { finisher.Cancel(); });
-    m_scene->World().ForEachComponent<NS::Game::Level::ScreenFadeComponent>(
-        [](NS::Game::Level::ScreenFadeComponent& fade) { fade.Cancel(); });
-    m_scene->World().ForEachComponent<NS::Game::Level::GoalComponent>(
-        [](NS::Game::Level::GoalComponent& goal) { goal.ResetReached(); });
+    // プレイは試走。位置・生成・破棄・演出の進行を live に残さず、突入時の凍結から世界を組み直す
+    // 演出の破棄もゴールの旗戻しも組み直しが済ませるので、個別の後始末は置かない
+    // 一時オブジェクトの実カメラは凍結に写らないが、Rebuild が退避して残す
+    NS::Object::SceneData baseline = m_scene->PlayBaseline();
+    m_scene->LoadFromData(std::move(baseline));
+
+    // 組み直し直後の描画が補間の初期値を読むので、全 root を snapshot して現在値に揃える
+    for (NS::Object::GameObject* obj : m_scene->World())
+        obj->Root().Snapshot();
 
     if (auto* player = FindPlayer(m_scene->World()))
     {
-        if (auto* movement = player->FindComponent<NS::Object::CharacterMovementComponent>())
+        // 操作系は生成時 active のまま組み上がるので、編集中だけ休止させる。起こす側は EnterPlay
+        // follow と vcam はコンストラクタが休止で作るので、ここで寝かせる行は要らない
+        if (auto* movement = player->FindComponent<NS::Game::Player::PlayerComponent>())
             movement->SetActive(false);
         if (auto* input = player->FindComponent<NS::Object::PlayerInputComponent>())
             input->SetActive(false);
-        // 編集中も player を突入時の pose に見せ、 ギズモで掴んで動かせるようにする
-        if (auto* mesh = player->FindComponent<NS::Object::MeshRendererComponent>())
-            mesh->SetActive(true);
-        const NS::Object::SceneData& level = m_scene->PlayBaseline();
-        const std::size_t playerIndex = FindPlayerObjectIndex(level);
-        if (playerIndex != NS::Object::k_NoObjectIndex)
-        {
-            const NS::Object::ObjectData& playerObject = level.objects[playerIndex];
-            player->Root().SetPosition(NS::Object::ObjectPosition(playerObject));
-            player->Root().SetRotation(NS::Object::ObjectRotation(playerObject));
-        }
-        player->Root().Snapshot();
     }
-    m_scene->World().ForEachComponent<NS::Object::ThirdPersonFollowComponent>(
-        [](NS::Object::ThirdPersonFollowComponent& follow) { follow.SetActive(false); });
-    m_scene->World().ForEachComponent<NS::Object::PlacedVirtualCamera>(
-        [](NS::Object::PlacedVirtualCamera& placed) { placed.SetActive(false); });
 
     // 編集モードはカーソルを出し、 相対モードも解いてカーソル位置ベースの操作へ戻す
     if (auto* app = NS::App::Application::Get())
     {
         app->Window().SetCursorVisible(true);
+        app->Window().SetCursorLocked(false);
         app->Input().Mouse().SetRelativeMode(false);
     }
 }
@@ -427,6 +424,12 @@ void LevelEditorController::SetGameView(int x, int y, int width, int height, boo
     m_gameViewRectValid = true;
     m_gameViewHovered = hovered;
     m_gameViewHidden = false;
+    // 窓の中心だと別のパネルの上へ乗ることがある。プレイ中は Game ビューの中心へ留める
+    if (m_mode == Mode::Play)
+    {
+        if (auto* app = NS::App::Application::Get())
+            app->Window().SetCursorLockPoint(x + width / 2, y + height / 2);
+    }
     // 編集入力はこの表示矩形基準でレイを飛ばす。hover 偽の間は配置カーソルを立てない
     m_editor.SetViewRect(m_gameViewRect);
     m_editor.SetViewHovered(hovered);
@@ -560,7 +563,7 @@ void LevelEditorController::TickEdit()
         SyncFollowCameraPoses();
 
         // 毎フレーム live な scene から候補 span を作り直し、選択を id から今のオブジェクトへ引き直す
-        // Play 突入 / undo の rebuild を跨いでも生ポインタを残さないための要
+        // 作り直さないと編集復帰 / undo の rebuild で破棄された実体を指したままになる
         RefreshGizmoSelectables();
         ResolveSelectionFromId();
 
@@ -922,7 +925,6 @@ void LevelEditorController::RenderCameraGizmos(const NS::Core::Matrix& viewProje
 
         const NS::Object::CameraPose pose = vcam->EvaluatePose(1.0f);
         DrawCameraFrustum(pose, aspect, camColor);
-        // 視点マーカーは遠いカメラでも潰れないよう、深度に応じて world 半径を伸ばし画面上一定サイズに近づける
         const float markerHalf = CameraMarkerHalf(pose.position, viewProjection);
         NS::Graphics::DebugDraw::AABB(
             NS::Core::AABB{pose.position, NS::Core::Vector3{markerHalf, markerHalf, markerHalf}}, camColor);
@@ -1048,20 +1050,28 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
     m_lastGizmoSelected = nullptr;
 }
 
-void LevelEditorController::SetSelectedFreePosition(NS::Core::Vector3 position) noexcept
+void LevelEditorController::SetSelectedFreePosition(NS::Core::Vector3 position)
 {
     // live の Root を直接動かす。永続化は CommitTransformEdit / SyncPhysics 経路が担う
     if (NS::Object::GameObject* go = SelectedObjectGameObject())
+    {
         go->Root().SetPosition(position);
+        if (auto* transform = go->FindComponent<NS::Object::TransformComponent>())
+            MirrorPlayEditToBaseline(*transform, NS::Object::k_PositionFieldName);
+    }
 }
 
-void LevelEditorController::SetSelectedFreeRotation(NS::Core::Quaternion rotation) noexcept
+void LevelEditorController::SetSelectedFreeRotation(NS::Core::Quaternion rotation)
 {
     if (NS::Object::GameObject* go = SelectedObjectGameObject())
+    {
         go->Root().SetRotation(rotation);
+        if (auto* transform = go->FindComponent<NS::Object::TransformComponent>())
+            MirrorPlayEditToBaseline(*transform, NS::Object::k_RotationEulerFieldName);
+    }
 }
 
-void LevelEditorController::SetSelectedFreeScale(NS::Core::Vector3 scale) noexcept
+void LevelEditorController::SetSelectedFreeScale(NS::Core::Vector3 scale)
 {
     // ImGui の入力で 0 / 負になると描画と当たり判定が壊れるため最小正値で止める
     constexpr float k_MinScale = 0.01f;
@@ -1069,7 +1079,19 @@ void LevelEditorController::SetSelectedFreeScale(NS::Core::Vector3 scale) noexce
     scale.y = std::max(scale.y, k_MinScale);
     scale.z = std::max(scale.z, k_MinScale);
     if (NS::Object::GameObject* go = SelectedObjectGameObject())
+    {
         go->Root().SetScale(scale);
+        if (auto* transform = go->FindComponent<NS::Object::TransformComponent>())
+            MirrorPlayEditToBaseline(*transform, NS::Object::k_ScaleFieldName);
+    }
+}
+
+void LevelEditorController::MirrorPlayEditToBaseline(const NS::Object::Component& comp, std::string_view fieldName)
+{
+    // 写すのはプレイ中だけ。編集モードで写すと次のプレイ突入の捕捉と二重管理になる
+    if (m_mode != Mode::Play || m_scene == nullptr)
+        return;
+    m_scene->WritePlayBaselineField(comp, fieldName);
 }
 
 void LevelEditorController::AddObject()

@@ -49,6 +49,6 @@ namespace NS::Object
             physics.AddTriangle(tri);
     }
 
-    // 三角形群は asset 由来なので data からは空で作り、読み込み時に ResolveAssets が差し込む
+    // 三角形群はリフレクションで運べないので data からは空で作る。差すのは呼出側の SetLocalTriangles
     NS_CLASS(MeshColliderComponent)
 } // namespace NS::Object

@@ -1,8 +1,8 @@
 #include "Game/Level/HazardComponent.h"
 
 #include "Game/Player.h"
+#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Object/Components/BoxColliderComponent.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -11,9 +11,7 @@
 
 namespace NS::Game::Level
 {
-    HazardComponent::HazardComponent() noexcept
-        : NS::Object::Component(NS::Object::TickPriority::LateUpdate)
-    {}
+    HazardComponent::HazardComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::LateUpdate) {}
 
     void HazardComponent::OnUpdate()
     {
@@ -28,7 +26,7 @@ namespace NS::Game::Level
         auto* player = FindPlayer(scene->World());
         if (player == nullptr)
             return;
-        auto* movement = player->FindComponent<NS::Object::CharacterMovementComponent>();
+        auto* movement = player->FindComponent<NS::Game::Player::PlayerComponent>();
         if (movement == nullptr)
             return;
 

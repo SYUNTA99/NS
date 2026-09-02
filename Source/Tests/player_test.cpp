@@ -1,20 +1,27 @@
+#include <Game/Level/AreaCameraActivatorComponent.h>
+#include <Game/Level/FinisherComponent.h>
+#include <Game/Level/FollowCameraFeedComponent.h>
 #include <Game/Level/HealthComponent.h>
+#include <Game/Level/RespawnerComponent.h>
+#include <Game/Level/ScreenFadeComponent.h>
 #include <Game/Player.h>
-#include <gtest/gtest.h>
-#include <Runtime/Object/Components/CharacterMovementComponent.h>
+#include <Game/Player/PlayerComponent.h>
+#include <Game/Player/PlayerInputRelayComponent.h>
+#include <Game/Player/PlayerStateManagerComponent.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/Components/PlayerInputComponent.h>
 #include <Runtime/Object/Components/ShadowComponent.h>
 #include <Runtime/Object/Components/TransformComponent.h>
+#include <Runtime/Platform/Input.h>
+#include <Runtime/Platform/Keyboard.h>
+#include <gtest/gtest.h>
 
 TEST(PlayerTest, ConstructsWithDefaultComposition)
 {
     Player player{};
-    // GameObject が積む transform に素の 5 つ (mesh / movement / input / health / shadow) と判定への応答 4 つ
-    // (fade / respawner / finisher / area camera) を足した 10 つ。 デバッグ表示は出荷では積まれない
-    std::size_t expected = 10u;
+    std::size_t expected = 13u;
 #if !defined(NS_SHIPPING)
-    expected += 1u; // コヨーテ時間のデバッグ描画
+    expected += 1u;
 #endif
     EXPECT_EQ(player.Components().size(), expected);
 }
@@ -22,27 +29,51 @@ TEST(PlayerTest, ConstructsWithDefaultComposition)
 TEST(PlayerTest, DefaultComponentsResolveByType)
 {
     Player player{};
-    // priority 昇順 + 同 priority 内は宣言順:
-    //   [0] input     (Input,      0)
-    //   [1] transform (Update,   200) — GameObject のコンストラクタが最初に積む
-    //   [2] mesh      (Update,   200) — コンストラクタで movement より前に登録
-    //   [3] movement  (Update,   200)
-    //   [4] health    (Update,   200) — movement の後に登録
-    //   [5] shadow    (Update,   200) — 同 priority 内で最後に登録
-    // 応答はこの後ろの LateUpdate 帯に並ぶ (fade +5、 respawner / finisher / area camera +10)
     EXPECT_EQ(player.FindComponent<NS::Object::PlayerInputComponent>(), player.Components()[0]);
-    EXPECT_EQ(player.FindComponent<NS::Object::TransformComponent>(), player.Components()[1]);
-    EXPECT_EQ(player.FindComponent<NS::Object::MeshRendererComponent>(), player.Components()[2]);
-    EXPECT_EQ(player.FindComponent<NS::Object::CharacterMovementComponent>(), player.Components()[3]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Level::HealthComponent>(), player.Components()[4]);
-    EXPECT_EQ(player.FindComponent<NS::Object::ShadowComponent>(), player.Components()[5]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerInputRelayComponent>(), player.Components()[1]);
+    EXPECT_EQ(player.FindComponent<NS::Object::TransformComponent>(), player.Components()[2]);
+    EXPECT_EQ(player.FindComponent<NS::Object::MeshRendererComponent>(), player.Components()[3]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerStateManagerComponent>(), player.Components()[4]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerComponent>(), player.Components()[5]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::HealthComponent>(), player.Components()[6]);
+    EXPECT_EQ(player.FindComponent<NS::Object::ShadowComponent>(), player.Components()[7]);
 }
 
-TEST(PlayerTest, InputComponentResolvesMovementOnStart)
+TEST(PlayerTest, ResponseComponentsTrailTheUpdateBand)
 {
     Player player{};
+    const std::size_t count = player.Components().size();
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::ScreenFadeComponent>(), player.Components()[count - 5]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::RespawnerComponent>(), player.Components()[count - 4]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::FinisherComponent>(), player.Components()[count - 3]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::AreaCameraActivatorComponent>(), player.Components()[count - 2]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::FollowCameraFeedComponent>(), player.Components()[count - 1]);
+}
+
+TEST(PlayerTest, InputRelayResolvesBothSidesOnStart)
+{
+    auto& keyboard = NS::Platform::Input::Get().Keyboard();
+    keyboard.ClearState();
+    keyboard.Update();
+
+    Player player{};
     player.OnStart();
+
     auto* input = player.FindComponent<NS::Object::PlayerInputComponent>();
+    auto* relay = player.FindComponent<NS::Game::Player::PlayerInputRelayComponent>();
+    auto* entity = player.FindComponent<NS::Game::Player::PlayerComponent>();
     ASSERT_NE(input, nullptr);
-    EXPECT_EQ(input->Movement(), player.FindComponent<NS::Object::CharacterMovementComponent>());
+    ASSERT_NE(relay, nullptr);
+    ASSERT_NE(entity, nullptr);
+
+    input->SetCameraForward({0.0f, 0.0f, 1.0f});
+    keyboard.OnKeyDown(NS::Platform::Key::W);
+    input->OnUpdate();
+    relay->OnUpdate();
+
+    EXPECT_GT(entity->DesiredSpeedScale(), 0.0f);
+    EXPECT_GT(entity->DesiredDirection().z, 0.9f);
+
+    keyboard.ClearState();
+    keyboard.Update();
 }

@@ -27,7 +27,7 @@ namespace
     }
 } // namespace
 
-// 編集中の capture→rebuild 往復を重ねても root 回転が初回 rebuild 後の値と bit 一致する (ドリフトゼロ)
+// 編集中の capture→rebuild 往復を重ねても root 回転が初回 rebuild 後の値と bit 一致する
 // pitch を特異点付近に置き、 Euler を経由する旧経路なら誤差が積もる条件で確かめる
 TEST(SceneRotationDrift, RepeatedCaptureRebuildKeepsExactQuaternion)
 {
@@ -110,7 +110,7 @@ TEST(SceneRotationDrift, SaveDropsQuatFieldKeepsEuler)
     EXPECT_EQ(json.find("回転 (クォータニオン)"), std::string::npos);
     EXPECT_NE(json.find("回転 (度)"), std::string::npos);
 
-    // version 2 の形式検査を通って読み戻せる
+    // 現行 version の形式検査を通って読み戻せる
     SceneNs::SceneData reloaded;
     EXPECT_TRUE(SceneNs::DeserializeSceneFromJson(reloaded, json));
 }

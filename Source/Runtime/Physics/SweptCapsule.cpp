@@ -19,7 +19,7 @@ namespace
         return Vector3{v.x * inv, v.y * inv, v.z * inv};
     }
 
-    /// 非単位入力でも軸端点が歪まないよう axis を正規化する。 零ベクトルは Y 軸にする
+    //! 非単位入力でも軸端点が歪まないよう axis を正規化する。 零ベクトルは Y 軸にする
     [[nodiscard]] Vector3 NormalizeAxis(const Vector3& axis) noexcept
     {
         const float lenSq = Dot(axis, axis);
@@ -39,7 +39,7 @@ namespace
         return a + ab * s;
     }
 
-    /// a t^2 + b t + c = 0 の [0,1] 内最小実根を返す。 過去 / 範囲外しか無ければ false
+    //! a t^2 + b t + c = 0 の [0,1] 内最小実根を返す。 過去 / 範囲外しか無ければ false
     [[nodiscard]] bool SmallestRoot01(float a, float b, float c, float& outT) noexcept
     {
         if (std::abs(a) < 1e-12f)
@@ -71,9 +71,9 @@ namespace
         return false;
     }
 
-    /// 軸線分 [A,B] と半径 R の capsule に、 t が [0,1] の ray P(t)=O+tD が最初に入る t と、
-    /// その時の軸上の最近点 Q を返す。 既に内部なら t=0。 当たらなければ false
-    /// 軸直交成分の二次式の無限円柱 + 端 cap 球 2 個 の最小 t を採る
+    //! 軸線分 [A,B] と半径 R の capsule に、 t が [0,1] の ray P(t)=O+tD が最初に入る t と、
+    //! その時の軸上の最近点 Q を返す。 既に内部なら t=0。 当たらなければ false
+    //! 軸直交成分の二次式の無限円柱 + 端 cap 球 2 個 の最小 t を採る
     [[nodiscard]] bool RayVsCapsule(const Vector3& O,
                                     const Vector3& D,
                                     const Vector3& A,
@@ -141,6 +141,36 @@ namespace
         outClosest = bestQ;
         return true;
     }
+
+    //! 2 本の軸を平行とみなす内積の下限。 自機も敵も軸は {0,1,0} 固定で実運用の内積は 1.0 ちょうどなので、
+    //! 浮動小数の丸めだけを吸収する幅にして傾いた軸を厳密扱いしない
+    //! 1e-6 は角度 1.4e-3 rad 相当で、 halfHeight 1m の capsule なら端で 1.4mm のずれ
+    //! NS::Core::k_Epsilon は長さ (m) の下限なので流用しない
+    inline constexpr float k_ParallelAxisDot = 1.0f - 1e-6f;
+
+    //! 軸が平行な capsule 同士の厳密解。 平行な線分どうしのミンコフスキー和は線分のままなので、
+    //! 相手を半径と長さを足した capsule 1 本へ膨張させ、 自分の中心から motion 方向へ光線を飛ばす
+    [[nodiscard]] bool SweptParallelCapsules(const Capsule& capsule,
+                                             const Vector3& motion,
+                                             const Capsule& other,
+                                             const Vector3& axis,
+                                             float& outToi,
+                                             Vector3& outNormal) noexcept
+    {
+        const float halfHeight = capsule.halfHeight + other.halfHeight;
+        const float r = capsule.radius + other.radius;
+        const Vector3 a = other.center - axis * halfHeight;
+        const Vector3 b = other.center + axis * halfHeight;
+
+        float t = 1.0f;
+        Vector3 core{};
+        if (!RayVsCapsule(capsule.center, motion, a, b, r, t, core))
+            return false;
+
+        outToi = t;
+        outNormal = Normalized((capsule.center + motion * t) - core);
+        return true;
+    }
 } // namespace
 
 namespace NS::Physics
@@ -182,10 +212,14 @@ namespace NS::Physics
         outNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
 
         const Vector3 axisSelf = NormalizeAxis(capsule.axis);
+        const Vector3 axisOther = NormalizeAxis(other.axis);
+        // 実運用で来るのは平行だけだが、 汎用の口は塞がない。 非平行は端点近似で落とす
+        if (std::abs(Dot(axisSelf, axisOther)) >= k_ParallelAxisDot)
+            return SweptParallelCapsules(capsule, motion, other, axisSelf, outToi, outNormal);
+
         const Vector3 selfBottom = capsule.center - axisSelf * capsule.halfHeight;
         const Vector3 selfTop = capsule.center + axisSelf * capsule.halfHeight;
 
-        const Vector3 axisOther = NormalizeAxis(other.axis);
         const Vector3 otherBottom = other.center - axisOther * other.halfHeight;
         const Vector3 otherTop = other.center + axisOther * other.halfHeight;
         const float r = capsule.radius + other.radius;

@@ -1,10 +1,9 @@
 #include "Runtime/Object/Components/CameraComponent.h"
 
+#include "Runtime/Core/Math.h"
 #include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
-
-#include <cmath>
 
 namespace NS::Object
 {
@@ -69,11 +68,10 @@ namespace NS::Object
     NS::Core::Vector3 CameraComponent::ForwardHorizontal() const noexcept
     {
         const NS::Core::Vector3 d = m_camera.Target() - m_camera.Position();
-        const float lenSq = d.x * d.x + d.z * d.z;
-        if (lenSq < 1e-8f)
+        NS::Core::Vector3 out{};
+        if (!NS::Core::TryNormalizeHorizontal(d, out))
             return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
-        const float invLen = 1.0f / std::sqrt(lenSq);
-        return NS::Core::Vector3{d.x * invLen, 0.0f, d.z * invLen};
+        return out;
     }
 
     NS_CLASS(CameraComponent)

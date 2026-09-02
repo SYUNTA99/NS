@@ -12,9 +12,7 @@ namespace NS::Game::Level
         using NS::Core::Vector3;
         using NS::Core::OBB;
 
-        // -------------------------------------------------------------------------
-        // 内部ヘルパー数学関数
-        // -------------------------------------------------------------------------
+        // 内部ヘルパーの数学関数
 
         [[nodiscard]] bool ContainsPoint(const OBB& obb, const Vector3& p, float eps) noexcept
         {
@@ -39,7 +37,7 @@ namespace NS::Game::Level
     std::vector<LedgeEdge> ComputeTopLedgeEdges(const std::vector<NS::Core::OBB>& solidBoxes)
     {
         constexpr float k_ContainEps = 1.0e-3f; // 面上も内側と判定する許容誤差
-        constexpr float k_ProbeDist = 0.05f;    // 隣接判定で縁の外側を調べる距離（これ未満の隙間は地続き）
+        constexpr float k_ProbeDist = 0.05f;    // 隣接判定で縁の外側を調べる距離。これ未満の隙間は地続き
         constexpr float k_CoverEps = 0.05f;     // 天面直上の被覆を調べる高さ
 
         const Vector3 worldUp{0.0f, 1.0f, 0.0f};
@@ -49,7 +47,7 @@ namespace NS::Game::Level
         {
             const OBB& box = solidBoxes[i];
 
-            // 1. 最も上を向いているローカル軸を「天面の法線」として選択する
+            // 最も上を向いているローカル軸を天面の法線に選ぶ
             const Vector3 axes[3] = {box.axisX, box.axisY, box.axisZ};
             const float halfExtents[3] = {box.halfExtentX, box.halfExtentY, box.halfExtentZ};
 
@@ -76,7 +74,7 @@ namespace NS::Game::Level
             const Vector3 faceCenter{
                 box.center.x + up.x * upHalf, box.center.y + up.y * upHalf, box.center.z + up.z * upHalf};
 
-            // 2. 天面直上が別の固形で覆われているか判定（覆われていれば縁は発生しない）
+            // 天面直上が別の固形で覆われていれば縁は無い
             const Vector3 aboveTop{faceCenter.x, faceCenter.y + k_CoverEps, faceCenter.z};
             bool isCovered = false;
             for (std::size_t j = 0; j < solidBoxes.size(); ++j)
@@ -90,7 +88,7 @@ namespace NS::Game::Level
             if (isCovered)
                 continue;
 
-            // 3. 天面の4隅の頂点を計算する
+            // 天面の 4 隅
             const Vector3& ax = axes[inA];
             const Vector3& az = axes[inB];
             const float hx = halfExtents[inA];
@@ -107,7 +105,7 @@ namespace NS::Game::Level
             const Vector3 cPlusPlus = corner(+1.0f, +1.0f);
             const Vector3 cMinusPlus = corner(-1.0f, +1.0f);
 
-            // 4. 各辺について、外側に別の固形が接していなければ踏み外せる縁として抽出する
+            // 外側に別の固形が接していない辺だけが踏み外せる縁になる
             const auto emitIfLedge = [&](const Vector3& a, const Vector3& b, const Vector3& axisOut) {
                 const Vector3 outward = HorizontalUnit(axisOut);
                 const Vector3 mid{(a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f, (a.z + b.z) * 0.5f};

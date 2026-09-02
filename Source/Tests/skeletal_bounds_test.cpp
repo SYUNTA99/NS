@@ -1,5 +1,5 @@
-#include "Runtime/Graphics/SkeletalMesh.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Graphics/SkeletalMesh.h"
 
 #include <cstdint>
 #include <gtest/gtest.h>
@@ -102,7 +102,7 @@ TEST(SkeletalBounds, NeverUnderCoversSkinnedVertices)
     const AABB fallback{};
     const AABB merged = MergeSkinnedBounds(spheres, palette.data(), palette.size(), fallback);
 
-    // どのスキン後頂点も境界の中に入る（過小＝画面端で手足が消えるポップが起きない）
+    // どのスキン後頂点も境界の中に入る。境界が小さすぎると画面端で手足が消える
     for (const SkinnedVertex& v : verts)
     {
         const Vector3 p = SkinVertex(v, palette);

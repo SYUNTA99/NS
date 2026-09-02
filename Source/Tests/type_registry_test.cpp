@@ -46,27 +46,33 @@ namespace
     }
 } // namespace
 
-// 登録カバレッジの一覧。自己登録の翻訳単位がリンカに落とされたり登録マクロが消えたりすると、
-// この型の生成が失敗して露見する
+// 登録の抜けを見張る一覧。自己登録の翻訳単位がリンカに落とされたり登録マクロが消えたりすると、
+// その型の生成が失敗して露見する
 TEST(TypeRegistryTest, CreatesEachRegisteredType)
 {
     const char* k_Registered[] = {
         "BoxColliderComponent",
+        "BreakableComponent",
         "SphereColliderComponent",
         "CapsuleColliderComponent",
         "SlopeColliderComponent",
         "MeshColliderComponent",
+        "CollisionInputComponent",
+        "ImpactResolverComponent",
         "HazardComponent",
         "HealthComponent",
+        "ImpactMarkComponent",
         "KillZoneComponent",
+        "LaunchedBodyComponent",
         "MeshRendererComponent",
         "GoalComponent",
         "CameraComponent",
         "PlacedVirtualCamera",
         "CameraBrainComponent",
         "ThirdPersonFollowComponent",
-        "CharacterMovementComponent",
+        "PlayerComponent",
         "PlayerInputComponent",
+        "PlayerStateManagerComponent",
         "ShadowComponent",
         "SkeletalAnimationComponent",
         "DirectionalLightComponent",
@@ -80,8 +86,8 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
 
 TEST(TypeRegistryTest, CreatedTypeNameMatchesReflection)
 {
-    // 登録済み全型でリフレクション typeName が登録キーと一致する (JSON の type キーと整合)
-    // 登録が増えても手直し不要なよう、一覧は registry 自身から取る
+    // 登録済み全型でリフレクション typeName が登録キーと一致する。JSON の type キーと整合する
+    // 登録が増えても手直し不要なよう、一覧は TypeRegistry 自身から取る
     for (const std::string& name : RegisteredNames())
     {
         GameObject obj;
@@ -102,6 +108,8 @@ TEST(TypeRegistryTest, ExcludedTypesReturnNull)
     EXPECT_EQ(CreateComponent("VirtualCameraComponent", obj), nullptr);
     EXPECT_EQ(CreateComponent("ColliderComponent", obj), nullptr);
     EXPECT_EQ(CreateComponent("TransformComponent", obj), nullptr);
+    EXPECT_EQ(CreateComponent("EntityComponent", obj), nullptr);
+    EXPECT_EQ(CreateComponent("EntityStateManagerComponent", obj), nullptr);
     EXPECT_EQ(obj.Components().size(), before);
 }
 
@@ -125,58 +133,87 @@ TEST(TypeRegistryTest, GameObjectClassIsNotAComponent)
 TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 {
     EXPECT_TRUE(IsRegistered("BoxColliderComponent"));
-    EXPECT_TRUE(IsRegistered("CharacterMovementComponent"));
+    EXPECT_TRUE(IsRegistered("PlayerComponent"));
     EXPECT_FALSE(IsRegistered("Bogus"));
 }
 
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 19u);
+    EXPECT_EQ(names.size(), 25u);
     EXPECT_TRUE(Contains(names, "BoxColliderComponent"));
     EXPECT_TRUE(Contains(names, "MeshRendererComponent"));
-    EXPECT_TRUE(Contains(names, "CharacterMovementComponent"));
-    // パレット表示が実行ごとに揺れない保証。一覧は名前順に揃えてある
+    EXPECT_TRUE(Contains(names, "PlayerComponent"));
+    // パレット表示が実行ごとに揺れないよう名前順に揃えてある
     EXPECT_TRUE(std::is_sorted(names.begin(), names.end()));
 }
 
 TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
 {
-    // リフレクションフィールドの期待一覧。ここに載ったフィールドだけが Inspector 編集とシリアライズの対象になる
-    // 増減が意図か事故かをこの一覧との突き合わせで判定する。抜けは無言のデータ欠損になる
+    // リフレクションフィールドの期待一覧
+    // リフレクションに載ったフィールドだけが Inspector 編集とシリアライズの対象になる
+    // 増減が意図か事故かをこの一覧との突き合わせで判定する。抜けは気づけない保存漏れになる
     const std::map<std::string, std::vector<std::string>> k_Ledger = {
         {"BoxColliderComponent", {"半径", "中心オフセット", "回転 (度)", "トリガー"}},
+        {"BreakableComponent", {"質量", "耐久"}},
         {"CameraBrainComponent", {"ブレンド秒数"}},
         {"CameraComponent", {}},
         {"CapsuleColliderComponent", {"半径", "半分の高さ", "中心オフセット", "回転 (度)"}},
-        {"CharacterMovementComponent",
-         {"ジャンプ初速",
-          "上昇重力",
-          "下降重力",
-          "頂点滞空 Vy",
-          "頂点滞空倍率",
-          "ジャンプ離し倍率",
-          "コヨーテ時間",
-          "先行入力時間",
-          "最高速度",
-          "歩き速度",
-          "加速時定数",
-          "減速時定数",
-          "スティック遊び",
-          "カプセル半径",
-          "カプセル半分の高さ",
-          "デバッグ表示",
-          "状態一覧"}},
+        {"CollisionInputComponent",
+         {"チャージしきい値秒",
+          "チャージ満タン秒",
+          "チャージ減速率",
+          "チャージ倍率カーブ",
+          "突進位置係数カーブ",
+          "ピークしきい値",
+          "構えの縮み",
+          "押しの構えの縮み"}},
         {"DirectionalLightComponent", {"方向", "色", "環境光", "地面環境光", "露出"}},
         {"HazardComponent", {}},
         {"HealthComponent", {"体力"}},
+        {"ImpactMarkComponent", {"跡の直径", "跡の残る秒"}},
+        {"ImpactResolverComponent",
+         {"反発基準初速",
+          "反発の上向き初速",
+          "押し飛ばし基準初速",
+          "押し飛ばしの質量指数",
+          "押し飛ばしの浮き上がり",
+          "ヒットストップ基準秒",
+          "ピークのヒットストップ倍率",
+          "食い込み距離",
+          "振動の振幅",
+          "カメラ揺れの強さ",
+          "潰れの厚み",
+          "潰れの伸び上がり",
+          "弾け伸びの倍率",
+          "破壊を許可",
+          "貫通時の減速倍率",
+          "貫通の止め秒",
+          "破片の数",
+          "破片の初速",
+          "破片の残る秒"}},
         {"KillZoneComponent", {}},
+        {"LaunchedBodyComponent",
+         {"重力",
+          "接地摩擦",
+          "回転の強さ",
+          "停止速度しきい値",
+          "止まってから消える秒",
+          "破片の数",
+          "破片の速さ",
+          "破片の寿命秒"}},
         {"MeshColliderComponent", {}},
         {"MeshRendererComponent", {"基本色", "メッシュ", "マテリアル"}},
         {"GoalComponent", {}},
-        {"PlacedVirtualCamera",
-         {"注視点", "上方向", "トリガー中心", "トリガー半径", "プレイヤー追視", "優先度"}},
+        {"PlacedVirtualCamera", {"注視点", "上方向", "トリガー中心", "トリガー半径", "プレイヤー追視", "優先度"}},
+        {"PlayerComponent",
+         {"ジャンプ初速",     "上昇重力",           "下降重力",       "頂点滞空 Vy",      "頂点滞空倍率",
+          "ジャンプ離し倍率", "コヨーテ時間",       "先行入力時間",   "歩き速度",         "走行速度",
+          "加速時定数",       "減速時定数",         "スティック遊び", "突進速度",         "突進距離",
+          "タップ初速",       "タップの上向き初速", "タップ距離",     "狙いの巻き戻し秒", "狙いの巻き戻しが消える秒",
+          "デバッグ表示"}},
         {"PlayerInputComponent", {}},
+        {"PlayerStateManagerComponent", {"状態一覧"}},
         {"ShadowComponent", {"基本直径", "最大投影距離", "表面オフセット", "基本不透明度"}},
         {"SkeletalAnimationComponent", {"再生速度", "ループ再生", "モデル", "クリップ"}},
         {"SlopeColliderComponent", {"角度 (度)", "半径"}},
@@ -230,19 +267,25 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
     // 誤った基底を書いた宣言は typeName 一致では捕まらないため、期待基底を明示して突き合わせる
     const std::map<std::string, std::vector<std::string>> k_BaseLedger = {
         {"BoxColliderComponent", {"ColliderComponent"}},
+        {"BreakableComponent", {}},
         {"CameraBrainComponent", {}},
         {"CameraComponent", {}},
         {"CapsuleColliderComponent", {"ColliderComponent"}},
-        {"CharacterMovementComponent", {}},
+        {"CollisionInputComponent", {}},
         {"DirectionalLightComponent", {}},
         {"HazardComponent", {}},
         {"HealthComponent", {}},
+        {"ImpactMarkComponent", {}},
+        {"ImpactResolverComponent", {"OverlayRendererComponent"}},
         {"KillZoneComponent", {}},
+        {"LaunchedBodyComponent", {}},
         {"MeshColliderComponent", {"ColliderComponent"}},
         {"MeshRendererComponent", {}},
         {"GoalComponent", {}},
         {"PlacedVirtualCamera", {"VirtualCameraComponent"}},
+        {"PlayerComponent", {"EntityComponent"}},
         {"PlayerInputComponent", {}},
+        {"PlayerStateManagerComponent", {"EntityStateManagerComponent"}},
         {"ShadowComponent", {}},
         {"SkeletalAnimationComponent", {}},
         {"SlopeColliderComponent", {"ColliderComponent"}},

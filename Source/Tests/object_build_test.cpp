@@ -2,13 +2,11 @@
 #include "Game/Player.h"
 
 #include <Editor/EditorObjects.h>
-#include <filesystem>
 #include <Game/Level/GoalComponent.h>
-#include <gtest/gtest.h>
+#include <Game/Player/PlayerComponent.h>
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/CapsuleColliderComponent.h>
-#include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/Components/SlopeColliderComponent.h>
 #include <Runtime/Object/Components/SphereColliderComponent.h>
@@ -18,6 +16,8 @@
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Reflection/ReflectionJson.h>
 #include <Runtime/Object/Reflection/TypeRegistry.h>
+#include <filesystem>
+#include <gtest/gtest.h>
 #include <string_view>
 #include <vector>
 
@@ -303,7 +303,7 @@ TEST_F(ObjectBuildTest, GridCubeIsRotatable)
     EXPECT_TRUE(NS::Editor::IsRotatableObject(MakeCellObject(0, 0, 0)));
 }
 
-// 自由配置の cube も固形 box なので回せる。 固形判定は BoxCollider の有無で決まり、 空構成の marker は回せない
+// 自由配置の cube も固形 box なので回せる。 固形判定には BoxCollider が要るので、 空構成の marker は回せない
 TEST_F(ObjectBuildTest, FreeCubeRotatableButEmptyMarkerNot)
 {
     ObjectData freeCube;
@@ -339,7 +339,8 @@ TEST_F(ObjectBuildTest, PlayerObjectDataIsSparseTypeListFromClass)
 
     ASSERT_EQ(data.components.size(), Player{}.Components().size());
     EXPECT_NE(NS::Object::FindComponentEntry(data, "MeshRendererComponent"), nullptr);
-    EXPECT_NE(NS::Object::FindComponentEntry(data, "CharacterMovementComponent"), nullptr);
+    EXPECT_NE(NS::Object::FindComponentEntry(data, "PlayerComponent"), nullptr);
+    EXPECT_NE(NS::Object::FindComponentEntry(data, "PlayerStateManagerComponent"), nullptr);
     EXPECT_NE(NS::Object::FindComponentEntry(data, "PlayerInputComponent"), nullptr);
     EXPECT_NE(NS::Object::FindComponentEntry(data, "HealthComponent"), nullptr);
     EXPECT_NE(NS::Object::FindComponentEntry(data, "ShadowComponent"), nullptr);
@@ -388,14 +389,15 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataValuesToComponents)
 {
     ObjectData data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
     for (nlohmann::json& entry : data.components)
-        if (NS::Object::ComponentEntryType(entry) == "CharacterMovementComponent")
-            NS::Object::SetField(entry, "最高速度", 11.0f);
+        if (NS::Object::ComponentEntryType(entry) == "PlayerComponent")
+            NS::Object::SetField(entry, "コヨーテ時間", 0.125f);
 
     auto obj = Build(data);
     ASSERT_NE(obj, nullptr);
-    auto* movement = obj->FindComponent<NS::Object::CharacterMovementComponent>();
+    obj->OnStart();
+    auto* movement = obj->FindComponent<NS::Game::Player::PlayerComponent>();
     ASSERT_NE(movement, nullptr);
-    EXPECT_FLOAT_EQ(movement->MaxSpeed(), 11.0f);
+    EXPECT_FLOAT_EQ(movement->CoyoteTime(), 0.125f);
 }
 
 // 同型 component を重ねたデータは live でも同数立ち、 2 件目が 1 件目へ上書きされない
@@ -417,8 +419,8 @@ TEST_F(ObjectBuildTest, DuplicateColliderDataBuildsCompoundColliders)
     EXPECT_FLOAT_EQ(boxes[1]->HalfExtents().x, 2.0f);
 }
 
-// 統合 C-1: 実体をリフレクション serialize → 既定 component へ apply → 再 serialize で一致する (live→JSON→live の忠実性)
-// 保存を data でなく実体から作る統合の前提。 registry で組める component だけを対象にする
+// 実体をリフレクション serialize → 既定 component へ apply → 再 serialize で一致する
+// 保存を data でなく実体から作る前提。 registry で組める component だけを対象にする
 TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
@@ -448,7 +450,7 @@ TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
     }
 }
 
-// 統合 C-2: 実体を CaptureObjectData で値データへ忠実に写し、 素の GameObject へ ApplyObjectComponents で復元すると
+// 実体を CaptureObjectData で値データへ忠実に写し、 素の GameObject へ ApplyObjectComponents で復元すると
 // 元 live と component JSON が一致する。 undo とプレイ↔編集の退避・復元に使う機構を直接確かめる
 TEST_F(ObjectBuildTest, CaptureObjectDataRestoresFaithfully)
 {

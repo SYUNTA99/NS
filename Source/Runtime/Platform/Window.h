@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Core/NonCopyable.h"
 
 #include <cstdint>
 #include <functional>
@@ -19,24 +19,23 @@ namespace NS::Platform
         //! ウィンドウのタイトル
         std::string title = "NS";
 
-        //! クライアント領域のサイズ。
+        //! クライアント領域のサイズ
         NS::Core::Size2D size{1280, 720};
 
         //! ウィンドウ生成時の初期表示フラグ
         bool visible = true;
     };
 
-    //! @brief OSウィンドウを管理するクラス。
-    //! @details 内部実装（OS固有のAPIなど）を隠蔽し、イベント処理や状態管理の入口を提供する
+    //! @brief OS ウィンドウ
+    //! @details OS 固有の API を隠し、メッセージ処理とサイズ・カーソル状態の取得口をまとめる
     class Window : public NS::Core::NonCopyable
     {
     public:
-        //! 内部実装用の不透明構造体。
+        //! 内部実装用の不透明構造体
         struct Impl;
 
-        //! @brief OSのネイティブメッセージをフックするためのコールバック型
-        //! @note
-        //! UIライブラリ（ImGuiなど）へのイベント転送など、プラットフォーム層を外部に依存させない処理のために利用する
+        //! @brief OS のネイティブメッセージをフックするためのコールバック型
+        //! @note ImGui へのイベント転送に使う。プラットフォーム層を外部へ依存させないための口
         using MessageHook =
             std::function<void(void* hwnd, std::uint32_t msg, std::uintptr_t wParam, std::intptr_t lParam)>;
 
@@ -49,14 +48,14 @@ namespace NS::Platform
         //! @brief 毎フレーム呼び出し、OSのメッセージイベントを処理する
         void PollMessages() noexcept;
 
-        //! @brief ウィンドウの閉じる要求（終了要求）が発生しているかを返す
+        //! @brief ウィンドウを閉じる要求が出ているかを返す
         [[nodiscard]] bool ShouldClose() const noexcept;
 
         //! @brief 現在のクライアント領域のサイズを取得する
         [[nodiscard]] NS::Core::Size2D Size() const noexcept;
 
         //! @brief ネイティブのウィンドウハンドルを取得する
-        //! @note 利用側（Graphics層など）で適切な型（HWND等）にキャストして使用する
+        //! @note Graphics 層が HWND へキャストして使う
         [[nodiscard]] void* NativeHandle() const noexcept;
 
         //! @brief ウィンドウのタイトルを変更する
@@ -67,6 +66,17 @@ namespace NS::Platform
 
         //! @brief 現在のマウスカーソルの表示状態を取得する
         [[nodiscard]] bool IsCursorVisible() const noexcept;
+
+        //! @brief カーソルの固定を切り替える
+        //! @note 固定中は PollMessages が毎フレームカーソルを固定点へ戻す。フォーカスを失っている間は戻さない
+        void SetCursorLocked(bool locked) noexcept;
+
+        //! @brief 現在のカーソル固定状態を取得する
+        [[nodiscard]] bool IsCursorLocked() const noexcept;
+
+        //! @brief カーソル固定の戻し先をクライアント座標で設定する
+        //! @note 未設定の間はクライアント領域の中央へ戻す
+        void SetCursorLockPoint(int clientX, int clientY) noexcept;
 
         //! @brief プログラム側からウィンドウを閉じる要求を発行する
         void RequestClose() noexcept;

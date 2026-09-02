@@ -19,7 +19,7 @@ namespace NS::Editor
         NS::Object::ObjectData prototype;
     };
 
-    //! パレットに含まれるブラシ（テンプレート）の総数
+    //! パレットのブラシの総数
     inline constexpr std::size_t k_PaletteSlotCount = 3;
 
     //! @brief 利用可能な配置テンプレートの一覧を取得する

@@ -14,8 +14,8 @@
 
 namespace
 {
-    /// @brief シーン名からファイルパスを組む
-    /// @details Assets/Scenes 配下に収まる相対パスだけを受け、".." 等で外へ抜ける名前は ResolveUnder が弾く
+    //! @brief シーン名からファイルパスを組む
+    //! @details Assets/Scenes 配下に収まる相対パスだけを受け、".." 等で外へ抜ける名前は ResolveUnder が弾く
     std::optional<std::filesystem::path> BuildScenePath(std::string_view sceneName)
     {
         if (sceneName.empty())
@@ -48,7 +48,7 @@ void Game::OnAttach()
     }
 
     // AssetManager とレンダラーを預ける。 立てるシーンがここから受け取る
-    // ※編集機能は Editor がオーバーレイとして乗せる想定
+    // 編集機能は Editor がオーバーレイとして乗せる
     m_scenes.SetAssets(&app->Assets());
     m_scenes.SetRenderer(&app->Renderer());
 
@@ -77,6 +77,7 @@ void Game::OnAttach()
     // カーソルを消し、 マウスを相対モードにして視点操作をカーソル位置から切り離す
     // Esc で出すまで非表示のまま。 出し直しは OnUpdate の Esc 処理が行う
     app->Window().SetCursorVisible(false);
+    app->Window().SetCursorLocked(true);
     app->Input().Mouse().SetRelativeMode(true);
 }
 
@@ -100,6 +101,7 @@ void Game::OnUpdate()
                 {
                     // カーソルを出すなら相対モードも解く。 見えるカーソルと相対モードの併存は挙動が矛盾する
                     app->Window().SetCursorVisible(true);
+                    app->Window().SetCursorLocked(false);
                     app->Input().Mouse().SetRelativeMode(false);
                 }
                 else
@@ -118,8 +120,8 @@ void Game::OnUpdate()
 void Game::OnRender()
 {
     m_scenes.Render();
-    // scene が最後に bind した描画先へ UI を重ねる。単体起動は backbuffer、editor はビュー列の
-    // 末尾に居る Game ビューがそのまま残っているので、どちらもゲームの絵の上に載る
+    // scene が最後に bind した描画先へ UI を重ねる。単体起動はバックバッファ、editor はビュー列の
+    // 末尾にある Game ビューがそのまま残るので、どちらもゲームの絵の上に載る
     if (auto* app = NS::App::Application::Get())
         m_ui.Render(app->Renderer());
 }

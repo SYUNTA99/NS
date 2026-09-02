@@ -8,7 +8,7 @@
 
 namespace NS::Physics
 {
-    /// capsule sweep の最初の接触結果。hit が false の時 toi は 1.0、normal は零ベクトル
+    //! capsule sweep の最初の接触結果。hit が false の時 toi は 1.0、normal は零ベクトル
     struct SweepHit
     {
         float toi = 1.0f;
@@ -16,57 +16,65 @@ namespace NS::Physics
         bool hit = false;
     };
 
-    /// @brief 静的衝突プリミティブ 5 channel と broadphase grid を持ち、capsule sweep と接地 probe を提供する衝突 world
-    /// @details AABB / Triangle / OBB / Sphere / Capsule の 5 channel と AABB 専用 broadphase grid を持つ
-    /// collision 再構築時に Clear -> Add* -> BuildBroadphase で満たし、SweepCapsule / ProbeGround で問い合わせる
-    /// hazard 等の gameplay 判定は層が違うため含めない。NS::Physics は NS::Object に依存しない
-    /// 依存: Math の AABB / OBB / Vector3、Capsule、Sphere、SweptOBB の sweep、SweptTriangle の Triangle、CollisionGrid
+    //! @brief 静的衝突プリミティブ 5 channel と broadphase grid を持ち、capsule sweep と接地 probe を提供する衝突 world
+    //! @details AABB / Triangle / OBB / Sphere / Capsule の 5 channel と AABB 専用 broadphase grid を持つ
+    //! collision 再構築時に Clear -> Add* -> BuildBroadphase で満たし、SweepCapsule / ProbeGround で問い合わせる
+    //! hazard 等のゲームプレイ判定は層が違うため含めない。NS::Physics は NS::Object に依存しない
+    //! 依存: Math の AABB / OBB / Vector3、Capsule、Sphere、SweptOBB の sweep、SweptTriangle の Triangle、CollisionGrid
     class PhysicsWorld
     {
     public:
         // 構築。collision 再構築時に 1 度満たす
 
-        /// 全 channel と grid を空にする
+        //! 全 channel と grid を空にする
         void Clear() noexcept;
 
-        /// AABB channel の領域を予約する。grid 配置物数が分かっている時の最適化
-        void ReserveAabbs(std::size_t count);
+        //! AABB channel の領域を予約する。配置物の数が分かっている時の最適化
+        void ReserveAABBs(std::size_t count);
 
-        /// grid solid の軸並行 box を AABB channel へ追加する
+        //! 軸並行の box を AABB channel へ追加する
         void AddAABB(const NS::Core::AABB& box);
 
-        /// slope の world 空間三角形を Triangle channel へ追加する
+        //! 斜面と取込地形の world 空間三角形を Triangle channel へ追加する
         void AddTriangle(const Triangle& triangle);
 
-        /// 回転 / scale 込みの自由配置物を OBB channel へ追加する
+        //! 回転 / scale 込みの自由配置物を OBB channel へ追加する
         void AddOBB(const NS::Core::OBB& obb);
 
-        /// 球 collider を Sphere channel へ追加する
+        //! 球 collider を Sphere channel へ追加する
         void AddSphere(const NS::Core::Sphere& sphere);
 
-        /// capsule collider を Capsule channel へ追加する
+        //! capsule collider を Capsule channel へ追加する
         void AddCapsule(const NS::Physics::Capsule& capsule);
 
-        /// AABB channel から broadphase grid を構築する。Add 完了後に 1 度呼ぶ
+        //! AABB channel から broadphase grid を構築する。Add 完了後に 1 度呼ぶ
         void BuildBroadphase() noexcept;
 
         // クエリ
 
-        /// capsule が motion だけ動く間の最小 TOI の接触を全 channel から探して返す
-        /// AABB は grid 候補、grid が無ければ総当たり
-        /// 評価順は AABB -> Triangle -> OBB -> Sphere -> Capsule、同 TOI は先勝ち
+        //! capsule が motion だけ動く間の最小 TOI の接触を全 channel から探して返す
+        //! AABB は grid 候補、grid が無ければ総当たり
+        //! 評価順は AABB -> Triangle -> OBB -> Sphere -> Capsule、同 TOI は先勝ち
         [[nodiscard]] SweepHit SweepCapsule(const NS::Physics::Capsule& cap,
                                             const NS::Core::Vector3& motion) const noexcept;
 
-        /// bottomCenter から下方向へ reach 以内に AABB / OBB の床があれば true。接地判定の補助に使う
+        //! bottomCenter から下方向へ reach 以内に AABB / OBB の床があれば true。接地判定の補助に使う
         [[nodiscard]] bool ProbeGround(const NS::Core::Vector3& bottomCenter, float reach) const noexcept;
+
+        //! origin から真下へ maxDist 以内で最も近い床までの距離を outDist に返す。命中が無ければ false
+        //! @details 床と見なすのは AABB / OBB / Triangle の 3 channel。Sphere / Capsule は立てる床ではないので見ない
+        //! 接地影の受け先探しが使う
+        [[nodiscard]] bool RaycastDown(const NS::Core::Vector3& origin, float maxDist, float& outDist) const noexcept;
+
+        //! capsule を AABB channel との重なりの外へ出す移動量を返す。重なりが無ければ零ベクトル
+        [[nodiscard]] NS::Core::Vector3 ComputePushOut(const NS::Physics::Capsule& cap) const noexcept;
 
         // アクセサ
 
-        /// AABB channel への読み取り専用の参照。ledge grab の走査が使う
-        [[nodiscard]] const std::vector<NS::Core::AABB>& Aabbs() const noexcept { return m_aabbs; }
+        //! AABB channel への読み取り専用の参照。ledge grab の走査が使う
+        [[nodiscard]] const std::vector<NS::Core::AABB>& AABBs() const noexcept { return m_aabbs; }
 
-        /// 全 channel が空かどうか。未 Build かプリミティブ無しなら空
+        //! 全 channel が空かどうか。未 Build かプリミティブ無しなら空
         [[nodiscard]] bool IsEmpty() const noexcept;
 
     private:

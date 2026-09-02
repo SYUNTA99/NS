@@ -12,23 +12,23 @@ namespace NS::Object
 
     struct ObjectIdAccess;
 
-    /// @brief GameObject と Component の共通基底。クラス名と永続 id と表示名を持つ
-    /// @details ClassName() は保存が ObjectData.className へ写し、読込は登録簿の同名登録で型を選ぶ
-    /// Id() は保存と参照解決で使う同一性。配置物と Component の両方に振られ、番号の空間は共通
-    /// Name() は編集側が付ける表示名。付けられるのは配置物だけで、Component は空のまま
+    //! @brief GameObject と Component の共通基底。クラス名と永続 id と表示名を持つ
+    //! @details ClassName() は保存が ObjectData.className へ写し、読込は TypeRegistry の同名登録で型を選ぶ
+    //! Id() は保存と参照解決で使う同一性。配置物と Component の両方に振られ、番号の空間は共通
+    //! Name() は編集側が付ける表示名。付けられるのは配置物だけで、Component は空のまま
     class Object : public NS::Core::NonCopyable
     {
     public:
         Object() noexcept = default;
         virtual ~Object() noexcept = default;
 
-        /// クラス名。素の GameObject と未リフレクション Component は空を返す
+        //! クラス名。素の GameObject と未リフレクション Component は空を返す
         [[nodiscard]] virtual const char* ClassName() const noexcept { return ""; }
 
-        /// 永続 id。0 は未採番
+        //! 永続 id。0 は未採番
         [[nodiscard]] std::uint32_t Id() const noexcept { return m_id; }
 
-        /// 編集側が付けた表示名。空なら呼出側が型から名前を導出する
+        //! 編集側が付けた表示名。空なら呼出側が型から名前を導出する
         [[nodiscard]] const std::string& Name() const noexcept { return m_name; }
 
     private:
@@ -43,8 +43,8 @@ namespace NS::Object
         std::string m_name;     // 表示名、空は未設定
     };
 
-    /// @brief Component へ永続 id を書くための専用経路。組み立て経路だけが使う
-    /// @details 配置物の id は World が書くので、こちらは Component 用
+    //! @brief Component へ永続 id を書くための専用経路。組み立て経路だけが使う
+    //! @details 配置物の id は World が書くので、こちらは Component 用
     struct ObjectIdAccess
     {
         static void SetId(Object& object, std::uint32_t id) noexcept { object.SetId(id); }

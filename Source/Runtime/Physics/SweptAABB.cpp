@@ -9,8 +9,8 @@ namespace
     using NS::Core::Vector3;
     using NS::Physics::Capsule;
 
-    /// Capsule の片端である sphere を motion だけ swept した時に AABB と最初に当たる TOI を返す
-    /// AABB を radius で膨張 → 線分 vs 膨張 AABB の slab test
+    //! Capsule の片端である sphere を motion だけ swept した時に AABB と最初に当たる TOI を返す
+    //! AABB を radius で膨張 → 線分 vs 膨張 AABB の slab test
     bool SweptSphereVsAABB(const Vector3& start,
                            const Vector3& motion,
                            const AABB& box,

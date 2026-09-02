@@ -103,7 +103,7 @@ TEST(LedgeEdgesTest, YawRotatedBoxEdgesFollowOrientation)
 {
     // yaw 45° に回した箱の天面は 45° 回った正方形。 縁の隅が軸並行の 0.5 でなく √2/2 まで張り出す
     constexpr float k_QuarterPi = 0.78539816339744830961f;
-    const NS::Core::OBB obb = NS::Physics::MakeObb(
+    const NS::Core::OBB obb = NS::Physics::MakeOBB(
         NS::Core::Vector3{0.0f, 0.0f, 0.0f},
         NS::Core::Quaternion::CreateFromAxisAngle(NS::Core::Vector3{0.0f, 1.0f, 0.0f}, k_QuarterPi),
         NS::Core::Vector3{0.5f, 0.5f, 0.5f});
@@ -128,7 +128,7 @@ TEST(LedgeEdgesTest, UpsideDownBoxEdgesStayOnTop)
     // axisY 決め打ちだと反転で axisY が真下を向き、 縁が底面(y=-0.5) に出てしまう
     constexpr float k_Pi = 3.14159265358979323846f;
     const NS::Core::OBB obb =
-        NS::Physics::MakeObb(NS::Core::Vector3{0.0f, 0.0f, 0.0f},
+        NS::Physics::MakeOBB(NS::Core::Vector3{0.0f, 0.0f, 0.0f},
                              NS::Core::Quaternion::CreateFromAxisAngle(NS::Core::Vector3{1.0f, 0.0f, 0.0f}, k_Pi),
                              NS::Core::Vector3{0.5f, 0.5f, 0.5f});
     const auto edges = LevelNs::ComputeTopLedgeEdges({obb});

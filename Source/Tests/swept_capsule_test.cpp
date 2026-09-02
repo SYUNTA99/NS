@@ -1,7 +1,7 @@
-#include <gtest/gtest.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Physics/Capsule.h>
 #include <Runtime/Physics/SweptAABB.h>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -33,7 +33,7 @@ TEST(SweptCapsuleTest, NoHitWhenMotionPointsAway)
 {
     Capsule c = MakeCapsule({0.0f, 5.0f, 0.0f});
     AABB box = MakeAABB({0.0f, 0.0f, 0.0f}, {0.5f, 0.5f, 0.5f});
-    Vector3 motion{0.0f, 10.0f, 0.0f}; // 上方向 (AABB から離れる)
+    Vector3 motion{0.0f, 10.0f, 0.0f}; // AABB から離れる上方向
 
     float toi = -1.0f;
     Vector3 normal{};

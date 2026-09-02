@@ -23,8 +23,8 @@ namespace
         return c;
     }
 
-    /// 角度 `angleDeg` で +Z 方向に上昇する 1×1 wedge slope の slope quad を 1 三角形として返す
-    /// CCW winding で計算した normal は (0, cos(angle), -sin(angle)) になる
+    //! 角度 angleDeg で +Z 方向に上昇する 1×1 wedge slope の slope quad を 1 三角形として返す
+    //! CCW winding で計算した normal は (0, cos(angle), -sin(angle)) になる
     Triangle MakeWedgeSlopeTriangle(float angleDeg) noexcept
     {
         const float t = std::tan(angleDeg * k_Pi / 180.0f);

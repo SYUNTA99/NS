@@ -358,12 +358,12 @@ TEST(WorldTest, RemoveByObjectIdDropsCollider)
     World world;
     world.Rebuild(level, scene, physics, MakeFactory(assets, level));
 
-    const std::size_t before = physics.Aabbs().size();
+    const std::size_t before = physics.AABBs().size();
     ASSERT_EQ(before, 2u);
 
     world.RemoveByObjectId(victimId, physics);
 
-    EXPECT_EQ(physics.Aabbs().size(), 1u);
+    EXPECT_EQ(physics.AABBs().size(), 1u);
 }
 
 // 据え置きカメラの配置物は問い合わせで引け、エリア外の非アクティブで組み上がる
@@ -526,7 +526,7 @@ TEST(WorldTest, BoxColliderRoutesByRotation)
 
     NS::Physics::PhysicsWorld alignedPhysics;
     aligned.RebuildPhysics(alignedPhysics);
-    EXPECT_EQ(alignedPhysics.Aabbs().size(), 1u);
+    EXPECT_EQ(alignedPhysics.AABBs().size(), 1u);
 
     World tilted;
     auto* box = tilted.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
@@ -534,7 +534,7 @@ TEST(WorldTest, BoxColliderRoutesByRotation)
 
     NS::Physics::PhysicsWorld tiltedPhysics;
     tilted.RebuildPhysics(tiltedPhysics);
-    EXPECT_TRUE(tiltedPhysics.Aabbs().empty());
+    EXPECT_TRUE(tiltedPhysics.AABBs().empty());
     EXPECT_FALSE(tiltedPhysics.IsEmpty());
 }
 

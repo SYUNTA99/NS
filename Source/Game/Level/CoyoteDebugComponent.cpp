@@ -1,8 +1,8 @@
 #include "Game/Level/CoyoteDebugComponent.h"
 
 #include "Runtime/App/Application.h"
-#include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/Keyboard.h"
 
@@ -10,7 +10,7 @@
 
 #include "Game/Level/BlockObject.h"
 #include "Game/Level/LedgeEdges.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
+#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/World.h"
@@ -24,10 +24,10 @@ namespace NS::Game::Level
             const NS::Core::Color ledgeColor{0.65f, 0.30f, 1.0f, 1.0f};
             const NS::Core::Color limitColor{1.0f, 0.20f, 0.90f, 1.0f};
 
-            NS::Object::CharacterMovementComponent* movement = nullptr;
+            NS::Game::Player::PlayerComponent* movement = nullptr;
             if (player != nullptr)
             {
-                movement = player->FindComponent<NS::Object::CharacterMovementComponent>();
+                movement = player->FindComponent<NS::Game::Player::PlayerComponent>();
             }
 
             float coyoteReach = 0.0f;
@@ -36,7 +36,7 @@ namespace NS::Game::Level
                 coyoteReach = movement->MaxSpeed() * movement->CoyoteTime();
             }
 
-            // コヨーテ猶予範囲の描画 (縁のAABB天面ベース)
+            // 固形ブロック天面の縁から、コヨーテ猶予の届く範囲を描く
             std::vector<NS::Core::OBB> solidBoxes;
             solidBoxes.reserve(world.ObjectCount());
             for (NS::Object::GameObject* obj : world)
@@ -71,24 +71,6 @@ namespace NS::Game::Level
             {
                 return;
             }
-
-            // プレイヤー状態のデバッグ描画
-            const NS::Core::Vector3 center = player->Root().Position();
-
-            // 接地判定マーカー (頭上にボックス表示)
-            const float headTop = center.y + movement->CapsuleHalfHeight() + movement->CapsuleRadius();
-            const NS::Core::Color groundedColor = [movement]() -> NS::Core::Color {
-                if (movement->IsGrounded())
-                {
-                    return NS::Core::Color{0.2f, 1.0f, 0.2f, 1.0f};
-                }
-                return NS::Core::Color{1.0f, 1.0f, 0.2f, 1.0f};
-            }();
-
-            const NS::Core::AABB groundedMarker(NS::Core::Vector3{center.x, headTop + 0.45f, center.z},
-                                                NS::Core::Vector3{0.18f, 0.18f, 0.18f});
-
-            NS::Graphics::DebugDraw::AABB(groundedMarker, groundedColor);
 
             // ジャンプ実行点のマーカー
             const NS::Core::Color coyoteColor{1.0f, 0.15f, 0.15f, 1.0f};

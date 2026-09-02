@@ -1,0 +1,1253 @@
+#include <Game/Player/PlayerComponent.h>
+#include <Game/Player/PlayerStateManagerComponent.h>
+#include <Runtime/Core/Clock.h>
+#include <Runtime/Core/Math.h>
+#include <Runtime/Object/Components/CameraBrainComponent.h>
+#include <Runtime/Object/Components/CapsuleColliderComponent.h>
+#include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Reflection/Reflection.h>
+#include <Runtime/Object/Scene/Scene.h>
+#include <Runtime/Object/Transform.h>
+#include <Runtime/Physics/PhysicsWorld.h>
+#include <gtest/gtest.h>
+
+#include <cmath>
+#include <limits>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace
+{
+    using NS::Core::AABB;
+    using NS::Core::Vector3;
+    using NS::Game::Player::PlayerComponent;
+    using NS::Game::Player::PlayerStateManagerComponent;
+    using NS::Object::GameObject;
+
+    constexpr float k_FixedDt = 1.0f / 60.0f;
+
+    // シーン JSON に載っている調整値の欄名。半角空白 1 つのずれでも値が読めなくなる
+    const std::vector<std::string> k_TuningFieldNames = {"ジャンプ初速",
+                                                         "上昇重力",
+                                                         "下降重力",
+                                                         "頂点滞空 Vy",
+                                                         "頂点滞空倍率",
+                                                         "ジャンプ離し倍率",
+                                                         "コヨーテ時間",
+                                                         "先行入力時間",
+                                                         "歩き速度",
+                                                         "加速時定数",
+                                                         "減速時定数",
+                                                         "スティック遊び",
+                                                         "突進速度",
+                                                         "突進距離",
+                                                         "タップ初速",
+                                                         "タップの上向き初速",
+                                                         "タップ距離"};
+
+    float ReadTuningField(const PlayerComponent& player, const char* name)
+    {
+        const NS::Object::FieldDesc* field = NS::Object::FindField(player.GetReflection(), name);
+        EXPECT_NE(field, nullptr) << name;
+        if (field == nullptr)
+            return std::numeric_limits<float>::quiet_NaN();
+
+        float value = 0.0f;
+        field->get(&player, &value);
+        return value;
+    }
+
+    void WriteTuningField(PlayerComponent& player, const char* name, float value)
+    {
+        const NS::Object::FieldDesc* field = NS::Object::FindField(player.GetReflection(), name);
+        ASSERT_NE(field, nullptr) << name;
+        field->set(&player, &value);
+    }
+
+    //! 中心 (cx,cy,cz) に置いた 1m 立方の固形 block
+    AABB MakeBlock(float cx, float cy, float cz)
+    {
+        return AABB{Vector3{cx, cy, cz}, Vector3{0.5f, 0.5f, 0.5f}};
+    }
+
+    //! 自機 2 部品を積んで OnStart まで通す。状態機械が欠けると遷移が 1 つも起きない
+    //! @details 積む順は Player のコンストラクタと同じ
+    PlayerComponent& MakePlayer(GameObject& owner)
+    {
+        auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
+        auto& player = *owner.AddComponent<PlayerComponent>();
+
+        player.SetDebugDrawEnabled(false);
+        player.OnStart();
+        manager.OnStart();
+        return player;
+    }
+
+    //! 床を敷かない検証台。1 歩目から下降するので掴みの条件が立つ。block は呼び出し側が先に積む
+    PlayerComponent& MakeLedgeReady(GameObject& owner, NS::Physics::PhysicsWorld& world)
+    {
+        auto& player = MakePlayer(owner);
+        player.SetPhysicsWorld(&world);
+        return player;
+    }
+
+    [[nodiscard]] std::string_view CurrentStateName(GameObject& owner)
+    {
+        return owner.FindComponent<PlayerStateManagerComponent>()->CurrentName();
+    }
+
+    //! 床 1 枚を敷いて接地させた自機を返す。壁は呼び出し側が先に足す
+    PlayerComponent& MakeSlamReady(GameObject& owner, NS::Physics::PhysicsWorld& world)
+    {
+        auto& player = MakePlayer(owner);
+
+        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 64.0f}});
+        world.BuildBroadphase();
+        owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
+        player.SetPhysicsWorld(&world);
+
+        for (int i = 0; i < 30 && !player.IsGrounded(); ++i)
+            player.OnUpdate();
+        return player;
+    }
+} // namespace
+
+class PlayerComponentTest : public ::testing::Test
+{
+protected:
+    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_FixedDt); }
+};
+
+TEST_F(PlayerComponentTest, DesiredSpeedScaleClampsToUnitRange)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 2.0f);
+
+    EXPECT_FLOAT_EQ(player.DesiredSpeedScale(), 1.0f);
+    EXPECT_FLOAT_EQ(player.DesiredDirection().x, 1.0f);
+    EXPECT_FLOAT_EQ(player.DesiredDirection().z, 0.0f);
+}
+
+TEST_F(PlayerComponentTest, ClimbMoveClampsToSignedUnitRange)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+
+    player.SetClimbMove(5.0f, -5.0f);
+
+    EXPECT_FLOAT_EQ(player.ClimbRight(), 1.0f);
+    EXPECT_FLOAT_EQ(player.ClimbForward(), -1.0f);
+}
+
+TEST_F(PlayerComponentTest, MaxSpeedRoundsNegativeAndKeepsTheValueOnNonFinite)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+
+    player.SetMaxSpeed(20.0f);
+    EXPECT_FLOAT_EQ(player.MaxSpeed(), 20.0f);
+
+    player.SetMaxSpeed(std::numeric_limits<float>::quiet_NaN());
+    EXPECT_FLOAT_EQ(player.MaxSpeed(), 20.0f);
+
+    player.SetMaxSpeed(std::numeric_limits<float>::infinity());
+    EXPECT_FLOAT_EQ(player.MaxSpeed(), 20.0f);
+
+    player.SetMaxSpeed(-3.0f);
+    EXPECT_FLOAT_EQ(player.MaxSpeed(), 0.0f);
+}
+
+// 当たりの形は同居する CapsuleColliderComponent が正。掃引はこの写しを読むので、追従しないと形と動きがずれる
+TEST_F(PlayerComponentTest, AdoptsSiblingCapsuleColliderSize)
+{
+    GameObject obj;
+    obj.AddComponent<NS::Object::CapsuleColliderComponent>(0.7f, 0.9f);
+    auto& player = MakePlayer(obj);
+
+    player.OnUpdate();
+
+    EXPECT_FLOAT_EQ(player.CapsuleRadius(), 0.7f);
+    EXPECT_FLOAT_EQ(player.CapsuleHalfHeight(), 0.9f);
+}
+
+TEST_F(PlayerComponentTest, CapsuleSettersPersist)
+{
+    PlayerComponent player;
+
+    player.SetCapsuleRadius(0.6f);
+    player.SetCapsuleHalfHeight(0.8f);
+
+    EXPECT_FLOAT_EQ(player.CapsuleRadius(), 0.6f);
+    EXPECT_FLOAT_EQ(player.CapsuleHalfHeight(), 0.8f);
+}
+
+TEST_F(PlayerComponentTest, OnUpdateNoOpWhenInactive)
+{
+    GameObject obj;
+    auto& player = MakePlayer(obj);
+    player.SetActive(false);
+
+    player.SetJumpPressed();
+    player.OnUpdate();
+
+    EXPECT_FLOAT_EQ(player.VerticalVelocity(), 0.0f);
+}
+
+// 調整値は自分の欄。ここが切れると Inspector で触っても手触りが変わらない
+TEST_F(PlayerComponentTest, ReadsTuningFromItsOwnFields)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+
+    player.OnStart();
+    EXPECT_FLOAT_EQ(player.CoyoteTime(), 0.025f);
+    EXPECT_FLOAT_EQ(player.Stats().walkSpeed, 4.0f);
+
+    player.SetCoyoteTime(0.2f);
+    EXPECT_FLOAT_EQ(player.CoyoteTime(), 0.2f);
+}
+
+TEST_F(PlayerComponentTest, ReflectsEveryTuningFieldName)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+
+    const NS::Object::ReflectionInfo* info = player.GetReflection();
+    ASSERT_NE(info, nullptr);
+
+    for (const std::string& name : k_TuningFieldNames)
+        EXPECT_NE(NS::Object::FindField(info, name.c_str()), nullptr)
+            << name << " の欄が無い。シーン JSON のこの値は黙って捨てられ、調整値が既定へ化ける";
+}
+
+TEST_F(PlayerComponentTest, ReadsTheJumpImpulseThroughReflection)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+
+    EXPECT_FLOAT_EQ(ReadTuningField(player, "ジャンプ初速"), 12.0f);
+}
+
+TEST_F(PlayerComponentTest, TuningWriteThroughReflectionReachesStats)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+
+    WriteTuningField(player, "突進距離", 7.5f);
+    WriteTuningField(player, "先行入力時間", 0.4f);
+
+    EXPECT_FLOAT_EQ(player.Stats().bodySlamDistance, 7.5f);
+    EXPECT_FLOAT_EQ(player.Stats().jumpBufferTime, 0.4f);
+}
+
+TEST_F(PlayerComponentTest, TuningKeepsItsValueOnNonFiniteWrite)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+
+    const float k_Rejected[] = {std::numeric_limits<float>::quiet_NaN(),
+                                std::numeric_limits<float>::infinity(),
+                                -std::numeric_limits<float>::infinity()};
+
+    for (const std::string& name : k_TuningFieldNames)
+    {
+        const float original = ReadTuningField(player, name.c_str());
+        ASSERT_TRUE(std::isfinite(original)) << name;
+
+        for (float rejected : k_Rejected)
+        {
+            WriteTuningField(player, name.c_str(), rejected);
+            EXPECT_FLOAT_EQ(ReadTuningField(player, name.c_str()), original) << name;
+        }
+    }
+}
+
+TEST_F(PlayerComponentTest, ResetStateClearsMotion)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+    player.SetVelocity(Vector3{3.0f, 9.0f, -2.0f});
+    player.SetGrounded(true);
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+
+    player.ResetState();
+
+    EXPECT_FLOAT_EQ(player.Velocity().x, 0.0f);
+    EXPECT_FLOAT_EQ(player.Velocity().y, 0.0f);
+    EXPECT_FLOAT_EQ(player.Velocity().z, 0.0f);
+    EXPECT_EQ(player.JumpsRemaining(), 1);
+    EXPECT_FALSE(player.IsGrounded());
+    EXPECT_FLOAT_EQ(player.DesiredSpeedScale(), 0.0f);
+}
+
+TEST_F(PlayerComponentTest, GravityPullsHarderWhileFalling)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+    player.SetVelocity(Vector3{0.0f, -5.0f, 0.0f});
+
+    player.Gravity(k_FixedDt);
+
+    EXPECT_NEAR(player.VerticalVelocity(), -5.0f + -35.0f * k_FixedDt, 1e-5f);
+}
+
+TEST_F(PlayerComponentTest, GravityIsHalvedNearTheApex)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+    player.SetVelocity(Vector3{0.0f, 0.5f, 0.0f});
+
+    player.Gravity(k_FixedDt);
+
+    EXPECT_NEAR(player.VerticalVelocity(), 0.5f + -25.0f * 0.5f * k_FixedDt, 1e-5f);
+}
+
+TEST_F(PlayerComponentTest, GroundedJumpSpendsTheJump)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+    player.SetGrounded(true);
+    player.SetJumpPressed();
+
+    player.Jump(k_FixedDt);
+
+    EXPECT_FLOAT_EQ(player.VerticalVelocity(), 12.0f);
+    EXPECT_EQ(player.JumpsRemaining(), 0);
+}
+
+// 着地するまで 2 回目は出ない。空中で押し続けると無限に登れる
+TEST_F(PlayerComponentTest, SecondJumpDoesNotFireWithoutLanding)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    ASSERT_TRUE(player.IsGrounded());
+
+    player.SetJumpPressed();
+    player.OnUpdate();
+    ASSERT_EQ(player.JumpsRemaining(), 0);
+
+    player.SetJumpPressed();
+    player.OnUpdate();
+
+    EXPECT_EQ(player.JumpsRemaining(), 0);
+}
+
+TEST_F(PlayerComponentTest, JumpIsLostAfterTheCoyoteWindow)
+{
+    GameObject insideWindow;
+    auto& early = *insideWindow.AddComponent<PlayerComponent>();
+    early.SetGrounded(true);
+    early.SyncGroundState();
+    early.SetGrounded(false);
+    early.TickTimers(k_FixedDt);
+    early.SetJumpPressed();
+    early.Jump(k_FixedDt);
+
+    EXPECT_FLOAT_EQ(early.VerticalVelocity(), 12.0f);
+
+    GameObject outsideWindow;
+    auto& late = *outsideWindow.AddComponent<PlayerComponent>();
+    late.SetGrounded(true);
+    late.SyncGroundState();
+    late.SetGrounded(false);
+    late.TickTimers(k_FixedDt);
+    late.TickTimers(k_FixedDt);
+    late.SetJumpPressed();
+    late.Jump(k_FixedDt);
+
+    EXPECT_FLOAT_EQ(late.VerticalVelocity(), 0.0f);
+    EXPECT_EQ(late.JumpsRemaining(), 1);
+}
+
+TEST_F(PlayerComponentTest, ReleasingTheButtonCutsTheRise)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+    player.SetJumpHeld(true);
+    player.OnUpdate();
+
+    player.SetJumpHeld(false);
+    player.SetVelocity(Vector3{0.0f, 10.0f, 0.0f});
+    player.CutJumpRelease();
+
+    EXPECT_FLOAT_EQ(player.VerticalVelocity(), 6.0f);
+}
+
+TEST_F(PlayerComponentTest, InputInsideTheDeadzoneAimsAtZeroSpeed)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.2f);
+
+    player.AccelerateToInputDirection(k_FixedDt);
+
+    EXPECT_FLOAT_EQ(player.Velocity().x, 0.0f);
+}
+
+TEST_F(PlayerComponentTest, HalfScaleSplitsWalkSpeedFromMaxSpeed)
+{
+    const float lag = 1.0f - std::exp(-k_FixedDt / 0.1f);
+
+    GameObject walkObj;
+    auto& walker = *walkObj.AddComponent<PlayerComponent>();
+    walker.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.4f);
+    walker.AccelerateToInputDirection(k_FixedDt);
+
+    EXPECT_NEAR(walker.Velocity().x, 4.0f * lag, 1e-5f);
+
+    GameObject runObj;
+    auto& runner = *runObj.AddComponent<PlayerComponent>();
+    runner.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.8f);
+    runner.AccelerateToInputDirection(k_FixedDt);
+
+    EXPECT_NEAR(runner.Velocity().x, 8.0f * 0.8f * lag, 1e-5f);
+}
+
+TEST_F(PlayerComponentTest, TapSlamFiresOnTheStepAfterTheRequest)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    ASSERT_TRUE(player.IsGrounded());
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+
+    EXPECT_TRUE(player.IsBodySlamming());
+    EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 0.0f);
+    EXPECT_GT(player.Velocity().y, 0.0f);
+    EXPECT_GT(player.Velocity().x, 5.0f);
+    EXPECT_LT(player.Velocity().x, 15.0f);
+}
+
+TEST_F(PlayerComponentTest, SlamUsesTheAimMarkedAtPress)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.MarkBodySlamAim();
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+
+    ASSERT_TRUE(player.IsBodySlamming());
+    EXPECT_GT(player.Velocity().x, 5.0f);
+    EXPECT_NEAR(player.Velocity().z, 0.0f, 1e-3f);
+}
+
+TEST_F(PlayerComponentTest, StaleAimFallsBackToTheCurrentDirection)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.MarkBodySlamAim();
+    for (int i = 0; i < 20; ++i)
+        player.OnUpdate();
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+
+    ASSERT_TRUE(player.IsBodySlamming());
+    EXPECT_NEAR(player.Velocity().x, 0.0f, 1e-3f);
+    EXPECT_GT(player.Velocity().z, 5.0f);
+}
+
+TEST_F(PlayerComponentTest, ChargedSlamFiresWithTheRushSpeed)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+
+    EXPECT_TRUE(player.IsBodySlamming());
+    EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 1.0f);
+    EXPECT_GT(player.Velocity().x, 15.0f);
+}
+
+// 空中の押しを捨てると連打で出ない歩ができる。接地は求めない
+TEST_F(PlayerComponentTest, SlamFiresInAir)
+{
+    GameObject obj;
+    auto& player = MakePlayer(obj);
+    ASSERT_FALSE(player.IsGrounded());
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+
+    EXPECT_TRUE(player.IsBodySlamming());
+}
+
+// 空中で押し続けると無限に出て 1 発の重みが消える。次は接地するまで出さない
+TEST_F(PlayerComponentTest, SecondSlamDoesNotFireInAir)
+{
+    GameObject obj;
+    auto& player = MakePlayer(obj);
+    ASSERT_FALSE(player.IsGrounded());
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    for (int i = 0; i < 120 && player.IsBodySlamming(); ++i)
+        player.OnUpdate();
+    ASSERT_FALSE(player.IsBodySlamming());
+    ASSERT_FALSE(player.IsGrounded());
+
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+
+    EXPECT_FALSE(player.IsBodySlamming());
+}
+
+// 空中で使い切っても、足が地面に付けば次の 1 発が戻る
+TEST_F(PlayerComponentTest, LandingRestoresTheSlam)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    ASSERT_TRUE(player.IsGrounded());
+
+    player.SetJumpPressed();
+    player.OnUpdate();
+    ASSERT_FALSE(player.IsGrounded());
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    for (int i = 0; i < 120 && player.IsBodySlamming(); ++i)
+        player.OnUpdate();
+    ASSERT_FALSE(player.IsBodySlamming());
+
+    // 先行入力が残っていると着地の歩で勝手に出て、接地で戻ったことの確認にならない
+    for (int i = 0; i < 240 && !player.IsGrounded(); ++i)
+        player.OnUpdate();
+    ASSERT_TRUE(player.IsGrounded());
+
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+
+    EXPECT_TRUE(player.IsBodySlamming());
+}
+
+// 地上の連打まで止めると走りの中で当て直せない。接地したままの突進は明けた歩で続けて出せる
+TEST_F(PlayerComponentTest, GroundedSlamsFireBackToBack)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    for (int i = 0; i < 120 && player.IsBodySlamming(); ++i)
+        player.OnUpdate();
+    ASSERT_FALSE(player.IsBodySlamming());
+    ASSERT_TRUE(player.IsGrounded());
+
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+
+    EXPECT_TRUE(player.IsBodySlamming());
+}
+
+// 出せない歩の押しをその場で捨てると連打が取りこぼされる。先行入力時間ぶん覚える
+TEST_F(PlayerComponentTest, BufferedRequestSurvivesInsideTheWindow)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.RequestBodySlam(1.0f);
+    for (int i = 0; i < 5; ++i)
+        player.OnUpdate();
+    ASSERT_FALSE(player.IsBodySlamming());
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+
+    EXPECT_TRUE(player.IsBodySlamming());
+}
+
+// 覚え続けると忘れた頃に勝手に出る。先行入力時間で失効させる
+TEST_F(PlayerComponentTest, BufferedRequestExpiresAfterTheBufferTime)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.RequestBodySlam(1.0f);
+    for (int i = 0; i < 20; ++i)
+        player.OnUpdate();
+    ASSERT_FALSE(player.IsBodySlamming());
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+
+    EXPECT_FALSE(player.IsBodySlamming());
+}
+
+// 反発後の残り速度が向きに勝つと狙いと食い違う方へ飛ぶ。速度よりカメラの前が先
+TEST_F(PlayerComponentTest, AimsAtTheCameraForwardWithoutInput)
+{
+    NS::Object::Scene scene;
+    GameObject* obj = scene.SpawnTransient<GameObject>();
+    ASSERT_NE(obj, nullptr);
+    ASSERT_NE(scene.CameraBrain(), nullptr);
+    ASSERT_NEAR(scene.CameraBrain()->ForwardHorizontal().z, 1.0f, 1.0e-4f);
+
+    auto& player = MakePlayer(*obj);
+
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+
+    ASSERT_TRUE(player.IsBodySlamming());
+    EXPECT_GT(player.Velocity().z, 15.0f);
+    EXPECT_NEAR(player.Velocity().x, 0.0f, 1.0e-4f);
+}
+
+// カメラの居ない検証台でも突進が出せるよう、速度をフォールバックに残す
+TEST_F(PlayerComponentTest, FallsBackToTheVelocityWithoutInputOrCamera)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetVelocity(Vector3{5.0f, 0.0f, 0.0f});
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+
+    ASSERT_TRUE(player.IsBodySlamming());
+    EXPECT_GT(player.Velocity().x, 15.0f);
+    EXPECT_NEAR(player.Velocity().z, 0.0f, 1.0e-4f);
+}
+
+// 長さ 0 のまま正規化すると 0 除算になる。向きが 1 つも決まらない歩は出さない
+TEST_F(PlayerComponentTest, DoesNotFireWithoutAnyDirection)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+
+    EXPECT_FALSE(player.IsBodySlamming());
+    EXPECT_FLOAT_EQ(player.BodySlamProgress01(), 0.0f);
+}
+
+// NaN は 0..1 への丸めを素通りして溜め量に残る
+TEST_F(PlayerComponentTest, NonFiniteChargeIsTreatedAsTap)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(std::numeric_limits<float>::quiet_NaN());
+    player.OnUpdate();
+
+    ASSERT_TRUE(player.IsBodySlamming());
+    EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 0.0f);
+    EXPECT_LT(player.Velocity().x, 15.0f);
+}
+
+// 突進中に曲がれると当てる間合いを詰める意味が消える
+TEST_F(PlayerComponentTest, RushIgnoresDirectionInput)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    for (int i = 0; i < 3; ++i)
+        player.OnUpdate();
+
+    ASSERT_TRUE(player.IsBodySlamming());
+    EXPECT_GT(player.Velocity().x, 15.0f);
+    EXPECT_NEAR(player.Velocity().z, 0.0f, 1.0e-4f);
+}
+
+TEST_F(PlayerComponentTest, RushEndsAfterTheRushDistance)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    const float startX = obj.Root().Position().x;
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    int steps = 0;
+    while (player.IsBodySlamming() && steps < 120)
+    {
+        player.OnUpdate();
+        ++steps;
+    }
+
+    EXPECT_LT(steps, 120);
+    EXPECT_GT(obj.Root().Position().x - startX, 5.0f);
+}
+
+// 壁で止められると距離が減らず突進から出られなくなる。進めない歩が続いたら打ち切る
+TEST_F(PlayerComponentTest, RushEndsWhenTheWallStopsIt)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(AABB{Vector3{2.0f, 1.0f, 0.0f}, Vector3{0.5f, 2.0f, 8.0f}});
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    int steps = 0;
+    while (player.IsBodySlamming() && steps < 120)
+    {
+        player.OnUpdate();
+        ++steps;
+    }
+
+    EXPECT_LT(steps, 18);
+    EXPECT_LT(obj.Root().Position().x, 2.0f);
+}
+
+// 短押しは隙の小さい移動技。突進より短い距離で終わる
+TEST_F(PlayerComponentTest, TapHopEndsAfterTheShortDistance)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    const float startX = obj.Root().Position().x;
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    int steps = 0;
+    while (player.IsBodySlamming() && steps < 120)
+    {
+        player.OnUpdate();
+        ++steps;
+    }
+
+    EXPECT_LT(steps, 120);
+    // 目標を越えた歩で終わるので少し行き過ぎる。実移動で測る
+    const float travelled = obj.Root().Position().x - startX;
+    EXPECT_NEAR(travelled, player.TapSlamDistance(), 0.2f);
+    EXPECT_LT(player.TapSlamDistance(), player.BodySlamDistance());
+}
+
+// 途中で着地すると残りを地面の上で滑り、走っていないのに動いて見える
+TEST_F(PlayerComponentTest, TapSlamStaysAirborneUntilTheEndOfTheLunge)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    const Vector3 start = obj.Root().Position();
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    const float half = player.TapSlamDistance() * 0.5f;
+    float peakY = start.y;
+    bool groundedAtHalf = true;
+    bool sawHalf = false;
+    bool groundedAtEnd = false;
+    int steps = 0;
+    while (player.IsBodySlamming() && steps < 300)
+    {
+        player.OnUpdate();
+        ++steps;
+        const Vector3 position = obj.Root().Position();
+        peakY = std::max(peakY, position.y);
+        if (!sawHalf && position.x - start.x >= half)
+        {
+            sawHalf = true;
+            groundedAtHalf = player.IsGrounded();
+        }
+        groundedAtEnd = player.IsGrounded();
+    }
+    ASSERT_LT(steps, 300);
+    ASSERT_TRUE(sawHalf);
+
+    // 半ばで足が着いていると残りを地面の上で滑る
+    EXPECT_FALSE(groundedAtHalf);
+    EXPECT_TRUE(groundedAtEnd);
+    // ジャンプに見える高さまで上げると別の技になる
+    EXPECT_LT(peakY - start.y, 0.7f);
+}
+
+TEST_F(PlayerComponentTest, ProgressRisesThenCancelResets)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    EXPECT_FLOAT_EQ(player.BodySlamProgress01(), 0.0f);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    float previous = player.BodySlamProgress01();
+    for (int i = 0; i < 5; ++i)
+    {
+        player.OnUpdate();
+        const float now = player.BodySlamProgress01();
+        EXPECT_GT(now, previous);
+        previous = now;
+    }
+
+    player.CancelBodySlam();
+    EXPECT_FALSE(player.IsBodySlamming());
+    EXPECT_FLOAT_EQ(player.BodySlamProgress01(), 0.0f);
+}
+
+// 踏み込みは先行入力の秒より長い。突進中に期限を数えると、明ける前に押しが消える
+TEST_F(PlayerComponentTest, BufferedRequestSurvivesALongerRush)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    // 先行入力の秒を使い切るまで突進させてから押す
+    const int stepsPastBuffer = static_cast<int>(player.Stats().jumpBufferTime / k_FixedDt) + 2;
+    for (int i = 0; i < stepsPastBuffer; ++i)
+        player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    player.RequestBodySlam(1.0f);
+    for (int i = 0; i < stepsPastBuffer; ++i)
+        player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    for (int i = 0; i < 120 && player.BodySlamCharge01() < 1.0f; ++i)
+        player.OnUpdate();
+
+    EXPECT_TRUE(player.IsBodySlamming());
+    EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 1.0f);
+}
+
+// 突進中の押しをその歩で捨てると連打が取りこぼされる。突進明けの歩で消費する
+TEST_F(PlayerComponentTest, BufferedRequestFiresWhenTheRushEnds)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(0.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+    ASSERT_FLOAT_EQ(player.BodySlamCharge01(), 0.0f);
+
+    for (int i = 0; i < 8; ++i)
+        player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+    player.RequestBodySlam(1.0f);
+
+    for (int i = 0; i < 120 && player.BodySlamCharge01() < 1.0f; ++i)
+        player.OnUpdate();
+
+    EXPECT_TRUE(player.IsBodySlamming());
+    EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 1.0f);
+}
+
+// 1 歩が状態機械を通っているかを状態名で見る。値だけでは 1 本道のままでも同じ結果になる
+TEST_F(PlayerComponentTest, StaysIdleWhileGroundedWithoutInput)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    ASSERT_TRUE(player.IsGrounded());
+
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+}
+
+TEST_F(PlayerComponentTest, MovesToWalkWhileTheRunInputIsHeld)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), "Walk");
+}
+
+TEST_F(PlayerComponentTest, MovesToFallWithoutGround)
+{
+    GameObject obj;
+    auto& player = MakePlayer(obj);
+
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), "Fall");
+}
+
+// 押した歩に移らないと突進の初速がその歩に乗らない
+TEST_F(PlayerComponentTest, MovesToBodySlamOnTheStepOfTheRequest)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_BodySlamStateName);
+}
+
+TEST_F(PlayerComponentTest, ResetStateReturnsToTheFirstState)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    auto& player = MakeSlamReady(obj, world);
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), "Walk");
+
+    player.ResetState();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+}
+
+TEST_F(PlayerComponentTest, GrabsLedgeWhenDescendingIntoEdge)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    EXPECT_NEAR(obj.Root().Position().x, -0.9f, 1e-3f);
+    EXPECT_NEAR(obj.Root().Position().y, 0.0f, 1e-3f);
+    EXPECT_FLOAT_EQ(player.Velocity().x, 0.0f);
+    EXPECT_FLOAT_EQ(player.Velocity().y, 0.0f);
+}
+
+TEST_F(PlayerComponentTest, DoesNotGrabWhileGrounded)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetGrounded(true);
+
+    EXPECT_FALSE(player.LedgeGrab());
+}
+
+TEST_F(PlayerComponentTest, DoesNotGrabWhileAscending)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.SetVelocity(Vector3{0.0f, 6.0f, 0.0f});
+    player.OnUpdate();
+
+    ASSERT_GT(player.Velocity().y, 0.0f);
+    EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+}
+
+TEST_F(PlayerComponentTest, DoesNotGrabWithoutForwardInput)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
+    player.OnUpdate();
+
+    EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+}
+
+// 手の高さの帯を外れた縁は掴まない。block 上端より 2m 高い所から前へ押しても素通りする
+TEST_F(PlayerComponentTest, DoesNotGrabOutsideTheHandBand)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 2.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+
+    EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+}
+
+// 登り先が別の block で塞がれた縁は掴まない。オーバーハングの下でぶら下がったまま出られなくなる
+TEST_F(PlayerComponentTest, DoesNotGrabWhenTheClimbTargetIsBlocked)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.AddAABB(MakeBlock(0.0f, 1.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+
+    EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+}
+
+TEST_F(PlayerComponentTest, HangHoldsTheLedgeHeightWithoutGravity)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    const Vector3 hangPos = obj.Root().Position();
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    for (int i = 0; i < 10; ++i)
+        player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    EXPECT_FLOAT_EQ(obj.Root().Position().y, hangPos.y);
+    EXPECT_FLOAT_EQ(player.Velocity().y, 0.0f);
+}
+
+// 前入力での自動登りは最小ぶら下がり時間だけ待つ。壁に向かう入力のまま即登り切ると掴まりが見えない
+TEST_F(PlayerComponentTest, ForwardInputWaitsForTheMinimumHangTime)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetClimbMove(0.0f, 1.0f);
+    player.OnUpdate();
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    for (int i = 0; i < 45; ++i)
+        player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+    EXPECT_TRUE(player.IsGrounded());
+    EXPECT_GT(obj.Root().Position().y, 0.5f);
+}
+
+TEST_F(PlayerComponentTest, JumpClimbsWithoutWaiting)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    const float hangY = obj.Root().Position().y;
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetJumpPressed();
+    player.OnUpdate();
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeClimbingStateName);
+
+    for (int i = 0; i < 3; ++i)
+        player.OnUpdate();
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeClimbingStateName);
+    EXPECT_GT(obj.Root().Position().y, hangY);
+
+    for (int i = 0; i < 20; ++i)
+        player.OnUpdate();
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+    EXPECT_TRUE(player.IsGrounded());
+    EXPECT_EQ(player.JumpsRemaining(), 1);
+    EXPECT_GT(obj.Root().Position().y, 0.5f);
+}
+
+TEST_F(PlayerComponentTest, BackInputDropsAwayFromTheFace)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetClimbMove(0.0f, -1.0f);
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+    EXPECT_NEAR(obj.Root().Position().x, -1.1f, 1e-4f);
+    EXPECT_FLOAT_EQ(player.Velocity().x, -2.0f);
+    EXPECT_FALSE(player.IsGrounded());
+}
+
+// 放しても入力を倒し続けた時の即再掴みを止める。止めないと縁から離れられない
+TEST_F(PlayerComponentTest, DropBlocksTheRegrabForTheCooldown)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    player.SetClimbMove(0.0f, -1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+
+    player.SetClimbMove(0.0f, 0.0f);
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    for (int i = 0; i < 5; ++i)
+        player.OnUpdate();
+
+    EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+}
+
+TEST_F(PlayerComponentTest, ShimmyMovesAlongTheLedge)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 1.0f));
+    world.AddAABB(MakeBlock(0.0f, 0.0f, -1.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    const float zStart = obj.Root().Position().z;
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetClimbMove(1.0f, 0.0f);
+    for (int i = 0; i < 20; ++i)
+        player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    EXPECT_GT(std::abs(obj.Root().Position().z - zStart), 0.4f);
+}
+
+TEST_F(PlayerComponentTest, ShimmyStopsAtTheLedgeEnd)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetClimbMove(1.0f, 0.0f);
+    for (int i = 0; i < 60; ++i)
+        player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    EXPECT_LE(std::abs(obj.Root().Position().z), 0.55f);
+}
+
+TEST_F(PlayerComponentTest, ShimmyIgnoresInputInsideTheDeadzone)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
+    world.AddAABB(MakeBlock(0.0f, 0.0f, 1.0f));
+    world.BuildBroadphase();
+    auto& player = MakeLedgeReady(obj, world);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    const float zStart = obj.Root().Position().z;
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetClimbMove(0.2f, 0.0f);
+    for (int i = 0; i < 20; ++i)
+        player.OnUpdate();
+
+    EXPECT_FLOAT_EQ(obj.Root().Position().z, zStart);
+}

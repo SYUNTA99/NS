@@ -1,5 +1,4 @@
 #include <Game/Level/HazardComponent.h>
-#include <gtest/gtest.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Component.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
@@ -8,6 +7,7 @@
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Reflection/ReflectionJson.h>
 #include <Runtime/Object/Reflection/TypeRegistry.h>
+#include <gtest/gtest.h>
 #include <string>
 
 namespace
@@ -19,7 +19,7 @@ namespace
     using NS::Object::ReflectionInfo;
     using NS::Object::SerializeComponent;
 
-    // std::string をリフレクションするテスト用 Component、curated に string 型がまだ無いので自前で用意
+    // std::string 1 欄だけをリフレクションするテスト用 Component
     class FakeStringComponent : public Component
     {
     public:
@@ -35,7 +35,7 @@ namespace
         std::string m_label{"hello"};
     };
 
-    // ObjectRef をリフレクションするテスト用 Component、curated に ObjectRef 型がまだ無いので自前で用意
+    // ObjectRef 1 欄だけをリフレクションするテスト用 Component
     class FakeRefComponent : public Component
     {
     public:

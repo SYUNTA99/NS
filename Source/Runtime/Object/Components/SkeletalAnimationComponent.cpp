@@ -173,7 +173,7 @@ namespace NS::Object
             AddClips(std::span(*loaded.clips));
         SetMesh(loaded.mesh);
 
-        // MeshRenderer は priority が低く (Physics=200 < Animation=300) 先に自分の参照を解決済み
+        // 参照解決は component の並び順で回るので、 priority 200 の MeshRenderer は 300 のここより先に解決済み
         // ここで差し替えないと skinned mesh が見た目に反映されない
         if (GameObject* owner = Owner())
         {

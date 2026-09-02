@@ -1,14 +1,14 @@
 ﻿#pragma once
 
-#include "Runtime/Graphics/Mesh.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Graphics/Mesh.h"
 
 #include <memory>
 #include <type_traits>
 
 namespace NS::Graphics
 {
-    //! アニメーションを持たない静的モデル用の頂点データ構造。
+    //! アニメーションを持たない静的モデル用の頂点データ構造
     struct StaticVertex
     {
         NS::Core::Vector3 position;
@@ -19,7 +19,7 @@ namespace NS::Graphics
     static_assert(std::is_standard_layout_v<StaticVertex>,
                   "GPUへ正しく転送するため、StaticVertexは標準レイアウトである必要があります。");
 
-    //! 静的メッシュの初期化パラメータ。
+    //! 静的メッシュの初期化パラメータ
     struct MeshDesc
     {
         const StaticVertex* vertices = nullptr;
@@ -29,11 +29,10 @@ namespace NS::Graphics
         const NS::Core::AABB* precomputedBounds = nullptr; // あれば頂点走査を省いて局所境界に使う
     };
 
-    //! @brief アニメーションを持たない静的な3Dモデルの形状データを管理するクラス。
-    //! @details 基本的な頂点情報（位置、UV座標、法線）を保持し、描画処理へ渡す。
-    //! @note 構築に失敗した場合は、エラーを示す代替モデル（キューブ形状）が自動的に適用される。
-    //! @warning
-    //! 破棄順序のバグを防ぐため、描画システム（Renderer等）よりも先に破棄されるようライフサイクルを管理すること。
+    //! @brief アニメーションを持たない静的な 3D モデル
+    //! @details 位置・UV 座標・法線の頂点情報を持ち、描画へ渡す
+    //! @note 構築に失敗するとキューブのフォールバックへ差し替わる
+    //! @warning Renderer より先に破棄すること
     class StaticMesh : public Mesh
     {
     public:
@@ -42,7 +41,7 @@ namespace NS::Graphics
 
         ~StaticMesh() override = default;
 
-        //! 静的メッシュ用の頂点入力レイアウト（シェーダへのデータ構造の渡し方）を取得する
+        //! 静的メッシュ用の頂点入力レイアウトを返す
         [[nodiscard]] static std::vector<InputElement> StandardInputLayout();
 
     private:

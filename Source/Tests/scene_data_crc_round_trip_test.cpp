@@ -22,9 +22,9 @@ namespace
     }
 } // namespace
 
-/// Play 中の凍結スナップショット書込禁止保証。 600 tick (10 秒 @60Hz) を回した後の
-/// CRC32 が突入直後と一致することで、 プレイ進行の経路が凍結を変更しないことを
-/// runtime にも検証する (compile-time の const& 受取と二段防御)
+//! プレイ中は凍結スナップショットへ書き込まない。 600 tick (10 秒 @60Hz) を回した後の
+//! CRC32 が突入直後と一致することで、 プレイ進行の経路が凍結を変更しないことを実行時にも見る
+//! 受け取りを const& にする型の側の縛りと合わせて二重に確かめる
 TEST(PlayBaselineCrc, TickDoesNotTouchPlayBaseline)
 {
     SceneNs::Scene scene;

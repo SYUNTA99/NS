@@ -6,8 +6,8 @@ namespace NS::Physics
 {
     class PhysicsWorld;
 
-    /// 1 フレーム分の Update 入力。dt は固定ステップ
-    /// 衝突は physicsWorld への capsule sweep で解決する。nullptr なら衝突なしで motion を進める
+    //! 1 フレーム分の Update 入力。dt は固定ステップ
+    //! 衝突は physicsWorld への capsule sweep で解決する。nullptr なら衝突なしで motion を進める
     struct CapsuleMoverInput
     {
         NS::Core::Vector3 position{0.0f, 0.0f, 0.0f};
@@ -18,7 +18,7 @@ namespace NS::Physics
         const PhysicsWorld* physicsWorld = nullptr;
     };
 
-    /// Update の戻り値。新 position / velocity と接触情報
+    //! Update の戻り値。新 position / velocity と接触情報
     struct CapsuleMoverResult
     {
         NS::Core::Vector3 position{0.0f, 0.0f, 0.0f};
@@ -27,15 +27,15 @@ namespace NS::Physics
         bool grounded = false;
     };
 
-    /// @brief Capsule をサブステップで swept する物理
-    /// @details 入出力は POD struct。重力やジャンプ等のゲームプレイ値は持たない
+    //! @brief Capsule をサブステップで swept する物理
+    //! @details 入出力は POD struct。重力やジャンプ等のゲームプレイ値は持たない
     class CapsuleMover
     {
     public:
         CapsuleMover() noexcept = default;
 
-        /// 1 フレーム分の物理を進めて新しい状態を返す
-        /// 結果を毎回同じにするため `NS::Core::FrameTimer::DeltaSeconds()` 等の可変フレーム時間は使わない
+        //! 1 フレーム分の物理を進めて新しい状態を返す
+        //! 結果を毎回同じにするため NS::Core::FrameTimer::DeltaSeconds() 等の可変フレーム時間は使わない
         [[nodiscard]] CapsuleMoverResult Update(const CapsuleMoverInput& input) noexcept;
     };
 } // namespace NS::Physics

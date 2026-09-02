@@ -48,14 +48,14 @@ namespace NS::Editor
             ImGuiID leftId = 0;
             ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Left, 0.24f, &leftId, &centerId);
 
-            // 後にドックした方が既定の前面タブになるので Hierarchy を最後に置く
+            // Edit Mode と Hierarchy は左列でタブに重ねる。前面タブは下の SelectDefaultTab が決める
             ImGui::DockBuilderDockWindow(k_PanelEditMode, leftId);
             ImGui::DockBuilderDockWindow(k_PanelHierarchy, leftId);
             ImGui::DockBuilderDockWindow(k_PanelInspector, rightId);
-            // Assets と Console は下段でタブに重ねる。後にドックした Assets が既定の前面タブ
+            // Assets と Console は下段でタブに重ねる
             ImGui::DockBuilderDockWindow(k_PanelConsole, bottomId);
             ImGui::DockBuilderDockWindow(k_PanelAssets, bottomId);
-            // 中央ノードは窓を割り当てず、Scene / Game の両方をドックする (前面の側だけが映像を持つ)
+            // 中央ノードは窓を割り当てず、Scene / Game の両方をドックする。映像を持つのは前面の側だけ
             ImGui::DockBuilderDockWindow(k_PanelScene, centerId);
             ImGui::DockBuilderDockWindow(k_PanelGame, centerId);
 
@@ -209,7 +209,7 @@ namespace NS::Editor
             ImGuiWindow* w = ImGui::FindWindowByName(name);
             if (w == nullptr || !w->WasActive)
                 continue;
-            // ドック内で今表に出ている窓にだけ出す。 裏に隠れたタブは飛ばす。
+            // ドック内で今表に出ている窓にだけ出す。 裏に隠れたタブは飛ばす
             // 単独枠や浮き窓はタブが畳まれても表なので出す
             if (w->DockNode != nullptr && w->DockNode->VisibleWindow != w)
                 continue;

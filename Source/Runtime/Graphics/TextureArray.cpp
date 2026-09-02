@@ -6,9 +6,9 @@
 #include "Runtime/Graphics/D3dCommon.h"
 #include "Runtime/Graphics/GraphicObject.h"
 
-#include <algorithm>
 #include <DDSTextureLoader.h>
 #include <WICTextureLoader.h>
+#include <algorithm>
 
 namespace NS::Graphics
 {
@@ -91,7 +91,7 @@ namespace NS::Graphics
             return true;
         }
 
-        // 読み込みに失敗した場合の代替画像（ピンク色）を生成する
+        // 読み込みに失敗した時のピンク一色の画像を作る
         [[nodiscard]] bool CreateMagentaFallbackArray(ID3D11Device* device,
                                                       ComPtr<ID3D11Texture2D>& outTexture,
                                                       ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
@@ -212,7 +212,7 @@ namespace NS::Graphics
         const UINT sliceHeight = firstDesc.Height;
         const DXGI_FORMAT sliceFormat = firstDesc.Format;
 
-        // ミップマップを自動生成するかどうかに応じて設定を切り替える（0を指定すると最大数まで自動算出される）
+        // 自動生成する時は 0 を渡す。DX11 が 1x1 まで作る段数を自分で決める
         const UINT mipLevels = [&]() -> UINT {
             if (desc.generateMipmaps)
                 return 0u;
