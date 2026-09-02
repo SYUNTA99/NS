@@ -71,6 +71,15 @@ namespace NS::Game::Level
         return m_heldSteps > 0 && m_heldSteps >= chargeThresholdSteps;
     }
 
+    bool ImpactInputJudge::JustStartedCharging() const noexcept
+    {
+        if (!IsCharging())
+            return false;
+        // 入り口は 1 歩前の保持で同じ判定を引き直して決める。控えた結果だと、しきい値を変えた歩で境目がずれる
+        const int previous = m_heldSteps - 1;
+        return !(previous > 0 && previous >= chargeThresholdSteps);
+    }
+
     bool ImpactInputJudge::IsChargeFull() const noexcept
     {
         return IsCharging() && m_heldSteps >= chargeMaxSteps;

@@ -33,6 +33,9 @@ namespace NS::Game::Level
         //! 保持がチャージしきい値に達している場合 true、それ以外の場合は false
         [[nodiscard]] bool IsCharging() const noexcept;
 
+        //! チャージに入った歩の場合 true、それ以外の場合は false。押し直すたびにもう一度 true になる
+        [[nodiscard]] bool JustStartedCharging() const noexcept;
+
         //! 溜めが満タンに達している場合 true、それ以外の場合は false
         [[nodiscard]] bool IsChargeFull() const noexcept;
 

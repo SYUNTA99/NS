@@ -193,3 +193,39 @@ TEST(ImpactInputJudge, NonPositiveFieldsStaySafe)
     EXPECT_TRUE(judge.IsChargeFull());
     EXPECT_FLOAT_EQ(judge.Charge01(), 1.0f);
 }
+
+// 溜めの入り口で速度を落とすため、入った歩を 1 回だけ知らせる
+TEST(ImpactInputJudge, JustStartedChargingIsTrueOnlyOnTheEntryStep)
+{
+    ImpactInputJudge judge;
+    judge.chargeThresholdSteps = 3;
+    judge.chargeMaxSteps = 10;
+
+    judge.Step(true);
+    EXPECT_FALSE(judge.JustStartedCharging());
+    judge.Step(true);
+    EXPECT_FALSE(judge.JustStartedCharging());
+    judge.Step(true);
+    EXPECT_TRUE(judge.JustStartedCharging());
+    judge.Step(true);
+    EXPECT_FALSE(judge.JustStartedCharging());
+
+    // 押し直すたびに入り口はもう一度来る
+    judge.Step(false);
+    StepHeld(judge, 3);
+    EXPECT_TRUE(judge.JustStartedCharging());
+}
+
+// しきい値を 0 以下にされると押した歩からチャージ扱いになる。入り口もその歩へ揃える
+TEST(ImpactInputJudge, NonPositiveThresholdStartsChargingOnTheFirstStep)
+{
+    ImpactInputJudge judge;
+    judge.chargeThresholdSteps = 0;
+    judge.chargeMaxSteps = 10;
+
+    EXPECT_FALSE(judge.JustStartedCharging());
+    judge.Step(true);
+    EXPECT_TRUE(judge.JustStartedCharging());
+    judge.Step(true);
+    EXPECT_FALSE(judge.JustStartedCharging());
+}

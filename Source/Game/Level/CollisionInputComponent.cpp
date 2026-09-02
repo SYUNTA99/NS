@@ -96,6 +96,13 @@ namespace NS::Game::Level
             m_movement->SetMaxSpeed(m_movement->RunSpeed() * scale);
         }
 
+        if (m_judge.JustStartedCharging() && m_movement != nullptr)
+        {
+            // 縦は残す。空中で溜めた歩に 0 を書くと落下が一瞬止まって引っかかる
+            const NS::Core::Vector3 velocity = m_movement->Velocity();
+            m_movement->SetVelocity(NS::Core::Vector3{0.0f, velocity.y, 0.0f});
+        }
+
         UpdateChargeStance();
 
 #if !defined(NS_SHIPPING)
