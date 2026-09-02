@@ -1,7 +1,6 @@
 #include "Game/Level/CollisionInputComponent.h"
 
 #include "Game/Level/ImpactResolverComponent.h"
-#include "Game/Level/MomentumComponent.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Core/LogCategories.h"
@@ -33,8 +32,7 @@ namespace NS::Game::Level
         }
     } // namespace
 
-    // -140 は MomentumComponent (-150) が書いた最高速度へチャージ減速を掛けてから
-    // PlayerComponent (200) が動く並びにするため
+    // -140 はチャージ減速を書いてから PlayerComponent (200) が動く並びにするため
     CollisionInputComponent::CollisionInputComponent() noexcept
         : NS::Object::Component(NS::Object::TickPriority::Update - 140)
     {
@@ -50,7 +48,6 @@ namespace NS::Game::Level
     void CollisionInputComponent::OnStart()
     {
         m_movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>();
-        m_momentum = Owner()->FindComponent<MomentumComponent>();
         m_resolver = Owner()->FindComponent<ImpactResolverComponent>();
     }
 
@@ -92,10 +89,12 @@ namespace NS::Game::Level
             NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", SlamKindLabel(fired), charge01);
         }
 
-        // MomentumComponent が毎ステップ最高速度を書き直す前提の乗算。書き直しが無いと毎歩積み重なって
-        // 最高速度が指数的に 0 へ落ちるので、MomentumComponent を持つ配置物でだけ減速する
-        if (m_movement != nullptr && m_momentum != nullptr && m_judge.IsCharging())
-            m_movement->SetMaxSpeed(m_movement->MaxSpeed() * (1.0f - m_chargeSlowRate));
+        // 走行速度から絶対値で書く。前の歩の値へ掛けると毎歩積み重なり、最高速度が指数的に 0 へ落ちる
+        if (m_movement != nullptr)
+        {
+            const float scale = m_judge.IsCharging() ? 1.0f - m_chargeSlowRate : 1.0f;
+            m_movement->SetMaxSpeed(m_movement->RunSpeed() * scale);
+        }
 
         UpdateChargeStance();
 

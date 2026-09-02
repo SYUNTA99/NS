@@ -6,7 +6,7 @@
 
 namespace NS::Game::Player
 {
-    // 入力 (EarlyUpdate) の直後、走行入力を読む MomentumComponent (Update - 150) より前に渡す
+    // 入力 (EarlyUpdate) の直後、移動の PlayerComponent (Update) より前に渡す
     PlayerInputRelayComponent::PlayerInputRelayComponent() noexcept
         : NS::Object::Component(NS::Object::TickPriority::EarlyUpdate + 10)
     {}

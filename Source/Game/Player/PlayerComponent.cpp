@@ -126,6 +126,12 @@ namespace NS::Game::Player
         AssignFinite(m_stats.walkSpeed, value);
     }
 
+    void PlayerComponent::SetRunSpeed(float value) noexcept
+    {
+        AssignFinite(m_stats.runSpeed, value);
+        m_maxSpeed = m_stats.runSpeed;
+    }
+
     void PlayerComponent::SetAccelTau(float value) noexcept
     {
         AssignFinite(m_stats.accelTau, value);
@@ -454,6 +460,7 @@ namespace NS::Game::Player
             return;
 
         m_stateManager = Owner()->FindComponent<PlayerStateManagerComponent>();
+        m_maxSpeed = m_stats.runSpeed;
     }
 
     NS::Game::Entity::EntityStateManagerComponent* PlayerComponent::States() const noexcept

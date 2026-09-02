@@ -7,7 +7,6 @@
 #include <Game/Level/ImpactMarkComponent.h>
 #include <Game/Level/ImpactResolverComponent.h>
 #include <Game/Level/LaunchedBodyComponent.h>
-#include <Game/Level/MomentumComponent.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
@@ -43,7 +42,7 @@ namespace
     constexpr float k_FixedDt = 1.0f / 60.0f;
     constexpr float k_ReboundUpSpeed = 3.0f;
     constexpr float k_RunSpeed = 8.0f;
-    constexpr float k_MaxDashSpeed = 16.0f;
+    constexpr float k_FastEntrySpeed = 16.0f;
     constexpr float k_SlamSpeed = 20.0f;
     constexpr float k_TapSlamSpeed = 10.0f;
     constexpr float k_LaunchBaseSpeed = 32.0f;
@@ -51,13 +50,12 @@ namespace
     constexpr float k_ReboundSpeedCap = 24.0f;
     // 破壊は耐久 ≤ 最終威力なので、反発と押し飛ばしを見る台は壊れない高さを既定にする
     constexpr float k_UnbreakableToughness = 99.0f;
-    // 逆転を見る台の耐久。通常 + 満溜め + 中心直撃の 2.0 と、最高ダッシュ + 素当て + 縁かすりの 1.46 の間に置く
+    // 逆転を見る台の耐久。満溜め + 中心直撃の 2.0 と、素当て + 縁かすりの 0.73 の間に置く
     constexpr float k_ReversalToughness = 1.7f;
 
     struct Rig
     {
         NS::Game::Player::PlayerComponent* movement = nullptr;
-        LevelNs::MomentumComponent* momentum = nullptr;
         LevelNs::ImpactResolverComponent* impact = nullptr;
         LevelNs::CollisionInputComponent* input = nullptr;
         SceneNs::BoxColliderComponent* targetBox = nullptr;
@@ -87,7 +85,6 @@ namespace
         if (course.alongZ)
             spawn = Vector3{course.lateral, Player::k_DefaultSpawnY, course.start};
         SceneNs::ObjectData player = MakePlayerObject(spawn, NS::Core::Quaternion{});
-        player.components.push_back(SceneNs::MakeComponentEntry("MomentumComponent"));
         player.components.push_back(SceneNs::MakeComponentEntry("ImpactResolverComponent"));
         if (course.withCollisionInput)
             player.components.push_back(SceneNs::MakeComponentEntry("CollisionInputComponent"));
@@ -141,7 +138,6 @@ namespace
         if (live != nullptr)
         {
             rig.movement = live->FindComponent<NS::Game::Player::PlayerComponent>();
-            rig.momentum = live->FindComponent<LevelNs::MomentumComponent>();
             rig.impact = live->FindComponent<LevelNs::ImpactResolverComponent>();
             rig.input = live->FindComponent<LevelNs::CollisionInputComponent>();
             // 起こしたままだと実機の入力が毎歩 0 を書き込むため、走行入力と向きが検証台から消える
@@ -226,17 +222,9 @@ namespace
             Step(scene, rig);
     }
 
-    // 段を置くのは接地待ちの後。先に置くと接地を待つ歩で猶予が進み、当てる前に落ちる
-    void BeginSlamAtLevel(SceneNs::Scene& scene,
-                          const Rig& rig,
-                          LevelNs::MomentumLevel level,
-                          float entrySpeed,
-                          float charge01,
-                          bool alongZ = false)
+    void BeginSlam(SceneNs::Scene& scene, const Rig& rig, float entrySpeed, float charge01, bool alongZ = false)
     {
         SettleOnFloor(scene, rig);
-        if (rig.momentum != nullptr)
-            rig.momentum->SetLevel(level);
         float axisSign = 1.0f;
         if (entrySpeed < 0.0f)
             axisSign = -1.0f;
@@ -252,20 +240,6 @@ namespace
         rig.movement->SetDesiredMove(aim, 0.0f);
         rig.movement->RequestBodySlam(charge01);
         Step(scene, rig);
-    }
-
-    // 呼び出し側が渡すのは段の公称速度 8 / 16 のどちらか。速度から段を引き、1 引数で両方を揃える
-    [[nodiscard]] LevelNs::MomentumLevel LevelForSpeed(float entrySpeed) noexcept
-    {
-        const float speed = std::abs(entrySpeed);
-        if (speed >= k_MaxDashSpeed)
-            return LevelNs::MomentumLevel::MaxDash;
-        return LevelNs::MomentumLevel::Normal;
-    }
-
-    void BeginSlam(SceneNs::Scene& scene, const Rig& rig, float entrySpeed, float charge01, bool alongZ = false)
-    {
-        BeginSlamAtLevel(scene, rig, LevelForSpeed(entrySpeed), entrySpeed, charge01, alongZ);
     }
 
     // 裁定が書いた速度をそのまま読むため、裁定が起きた歩は移動を走らせずに返す
@@ -304,6 +278,7 @@ namespace
     constexpr std::int16_t k_FloorFirstX = -2;
     constexpr std::int16_t k_FloorLastX = 8;
     constexpr float k_BodyRestY = 1.0f; // 床の上面 0.5 に半分の高さ 0.5 を足した静止の高さ
+    constexpr std::int16_t k_WallX = 2;
     constexpr float k_LaunchGravity = -25.0f;
     constexpr int k_RestStepLimit = 600;
 
@@ -316,13 +291,15 @@ namespace
     };
 
     // 床を 1 列並べ、その上へ飛ばされる物を 1 個置く検証台。自機は要らない
-    BodyRig BuildBody(SceneNs::Scene& scene)
+    BodyRig BuildBody(SceneNs::Scene& scene, bool withWall = false)
     {
         NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
 
         SceneNs::SceneData data;
         for (std::int16_t x = k_FloorFirstX; x <= k_FloorLastX; ++x)
             data.objects.push_back(LevelNs::MakeCellObject(x, 0, 0));
+        if (withWall)
+            data.objects.push_back(LevelNs::MakeCellObject(k_WallX, 1, 0));
 
         SceneNs::ObjectData target = LevelNs::MakeCellObject(0, 1, 0);
         target.components.push_back(SceneNs::MakeComponentEntry("LaunchedBodyComponent"));
@@ -395,7 +372,7 @@ TEST(CollisionImpact, LightContactDoesNothing)
 
     for (int i = 0; i < 20; ++i)
     {
-        rig.movement->SetVelocity(Vector3{k_MaxDashSpeed, 0.0f, 0.0f});
+        rig.movement->SetVelocity(Vector3{k_FastEntrySpeed, 0.0f, 0.0f});
         Step(scene, rig);
         ASSERT_FALSE(rig.impact->DidRebound());
         ASSERT_FALSE(rig.impact->DidBreak());
@@ -423,27 +400,27 @@ TEST(CollisionImpact, ReboundsAwayFromApproachedBox)
     EXPECT_FALSE(rig.movement->IsBodySlamming());
 }
 
-// 入りが速いほど返りも速い。速く行くほど損になると、勢いを作る意味が消える
-TEST(CollisionImpact, FasterImpactReboundsFaster)
+// 溜めるほど返りも速い。溜めるほど損になると、溜めて放つ意味が消える
+TEST(CollisionImpact, ChargedImpactReboundsFaster)
 {
-    SceneNs::Scene normalScene;
-    Rig normal = BuildSlam(normalScene, k_NearCourse);
-    SetInstantImpact(normal);
-    BeginSlam(normalScene, normal, k_RunSpeed, 0.0f);
-    ASSERT_LT(StepUntilImpact(normalScene, normal, 30), 30);
+    SceneNs::Scene plainScene;
+    Rig plain = BuildSlam(plainScene, k_NearCourse);
+    SetInstantImpact(plain);
+    BeginSlam(plainScene, plain, k_RunSpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(plainScene, plain, 30), 30);
 
-    SceneNs::Scene maxScene;
-    Rig maxDash = BuildSlam(maxScene, k_NearCourse);
-    SetInstantImpact(maxDash);
-    BeginSlam(maxScene, maxDash, k_MaxDashSpeed, 0.0f);
-    ASSERT_LT(StepUntilImpact(maxScene, maxDash, 30), 30);
+    SceneNs::Scene chargedScene;
+    Rig charged = BuildSlam(chargedScene, k_NearCourse);
+    SetInstantImpact(charged);
+    BeginSlam(chargedScene, charged, k_RunSpeed, 1.0f);
+    ASSERT_LT(StepUntilImpact(chargedScene, charged, 30), 30);
 
-    ASSERT_TRUE(normal.impact->DidRebound());
-    ASSERT_TRUE(maxDash.impact->DidRebound());
-    const float slow = HorizontalSpeed(normal.movement->Velocity());
-    const float fast = HorizontalSpeed(maxDash.movement->Velocity());
-    EXPECT_GT(slow, 0.0f);
-    EXPECT_GT(fast, slow);
+    ASSERT_TRUE(plain.impact->DidRebound());
+    ASSERT_TRUE(charged.impact->DidRebound());
+    const float weak = HorizontalSpeed(plain.movement->Velocity());
+    const float strong = HorizontalSpeed(charged.movement->Velocity());
+    EXPECT_GT(weak, 0.0f);
+    EXPECT_GT(strong, weak);
 }
 
 // 重い物ほど壁として返す。軽い物は勢いを持っていくので返りが弱い
@@ -493,23 +470,6 @@ TEST(CollisionImpact, ReboundAddsUpSpeed)
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
     EXPECT_FLOAT_EQ(rig.movement->Velocity().y, k_ReboundUpSpeed);
-}
-
-TEST(CollisionImpact, ReboundStartsMomentumGrace)
-{
-    SceneNs::Scene scene;
-    Rig rig = BuildSlam(scene, k_NearCourse);
-    ASSERT_NE(rig.momentum, nullptr);
-    SetInstantImpact(rig);
-    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
-
-    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
-    ASSERT_TRUE(rig.impact->DidRebound());
-    EXPECT_FLOAT_EQ(rig.momentum->GraceSeconds(), 0.0f);
-
-    Step(scene, rig);
-
-    EXPECT_FLOAT_EQ(rig.momentum->GraceSeconds(), k_FixedDt);
 }
 
 TEST(CollisionImpact, ReboundDirectionFollowsBoxAxis)
@@ -730,25 +690,25 @@ TEST(CollisionImpact, HeavierBodyLaunchesSlower)
     EXPECT_LT(HorizontalSpeed(heavyBody->Velocity()), HorizontalSpeed(lightBody->Velocity()));
 }
 
-TEST(CollisionImpact, FasterImpactLaunchesFarther)
+TEST(CollisionImpact, ChargedImpactLaunchesFarther)
 {
-    SceneNs::Scene normalScene;
-    Rig normal = BuildSlam(normalScene, k_NearCourse);
-    SetInstantImpact(normal);
-    BeginSlam(normalScene, normal, k_RunSpeed, 0.0f);
-    ASSERT_LT(StepUntilImpact(normalScene, normal, 30), 30);
+    SceneNs::Scene plainScene;
+    Rig plain = BuildSlam(plainScene, k_NearCourse);
+    SetInstantImpact(plain);
+    BeginSlam(plainScene, plain, k_RunSpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(plainScene, plain, 30), 30);
 
-    SceneNs::Scene maxScene;
-    Rig maxDash = BuildSlam(maxScene, k_NearCourse);
-    SetInstantImpact(maxDash);
-    BeginSlam(maxScene, maxDash, k_MaxDashSpeed, 0.0f);
-    ASSERT_LT(StepUntilImpact(maxScene, maxDash, 30), 30);
+    SceneNs::Scene chargedScene;
+    Rig charged = BuildSlam(chargedScene, k_NearCourse);
+    SetInstantImpact(charged);
+    BeginSlam(chargedScene, charged, k_RunSpeed, 1.0f);
+    ASSERT_LT(StepUntilImpact(chargedScene, charged, 30), 30);
 
-    LevelNs::LaunchedBodyComponent* normalBody = HitBody(normal);
-    LevelNs::LaunchedBodyComponent* maxBody = HitBody(maxDash);
-    ASSERT_NE(normalBody, nullptr);
-    ASSERT_NE(maxBody, nullptr);
-    EXPECT_GT(HorizontalSpeed(maxBody->Velocity()), HorizontalSpeed(normalBody->Velocity()));
+    LevelNs::LaunchedBodyComponent* plainBody = HitBody(plain);
+    LevelNs::LaunchedBodyComponent* chargedBody = HitBody(charged);
+    ASSERT_NE(plainBody, nullptr);
+    ASSERT_NE(chargedBody, nullptr);
+    EXPECT_GT(HorizontalSpeed(chargedBody->Velocity()), HorizontalSpeed(plainBody->Velocity()));
 }
 
 TEST(CollisionImpact, LaunchFieldsDriveLaunchVelocity)
@@ -808,7 +768,7 @@ TEST(CollisionImpact, TinyMassCannotBlowLaunchSpeedUp)
     SetInstantImpact(rig);
     rig.breakable->SetMass(0.0f);
     ASSERT_FLOAT_EQ(rig.breakable->Mass(), 0.01f);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
@@ -850,10 +810,10 @@ TEST(CollisionImpact, HeavierTargetStopsLonger)
 {
     SceneNs::Scene lightScene;
     Rig light = BuildSlam(lightScene, k_NearCourse);
-    // 中心直撃はピーク倍率が乗る。既定の基準秒では軽い側も重い側も上限 12 歩に並び、質量の差が消える
+    // 中心直撃はピーク倍率が乗る。既定の基準秒だと重い側が上限 12 歩に張り付くので、下げて上限の外で比べる
     SetFloatField(*light.impact, "ヒットストップ基準秒", 1.0f / 60.0f);
     light.breakable->SetMass(1.0f);
-    BeginSlam(lightScene, light, k_MaxDashSpeed, 0.0f);
+    BeginSlam(lightScene, light, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(lightScene, light, 30), 30);
     Step(lightScene, light);
     ASSERT_FALSE(light.movement->IsActiveSelf());
@@ -863,7 +823,7 @@ TEST(CollisionImpact, HeavierTargetStopsLonger)
     Rig heavy = BuildSlam(heavyScene, k_NearCourse);
     SetFloatField(*heavy.impact, "ヒットストップ基準秒", 1.0f / 60.0f);
     heavy.breakable->SetMass(8.0f);
-    BeginSlam(heavyScene, heavy, k_MaxDashSpeed, 0.0f);
+    BeginSlam(heavyScene, heavy, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(heavyScene, heavy, 30), 30);
     Step(heavyScene, heavy);
     ASSERT_FALSE(heavy.movement->IsActiveSelf());
@@ -874,47 +834,26 @@ TEST(CollisionImpact, HeavierTargetStopsLonger)
     EXPECT_LT(lightSteps, heavySteps);
 }
 
-TEST(CollisionImpact, FasterImpactStopsLonger)
+TEST(CollisionImpact, ChargedImpactStopsLonger)
 {
-    SceneNs::Scene normalScene;
-    Rig normal = BuildSlam(normalScene, k_NearCourse);
-    BeginSlam(normalScene, normal, k_RunSpeed, 0.0f);
-    ASSERT_LT(StepUntilImpact(normalScene, normal, 30), 30);
-    Step(normalScene, normal);
-    ASSERT_FALSE(normal.movement->IsActiveSelf());
-    const int normalSteps = StepsUntilMovementActive(normalScene, normal, 60);
+    SceneNs::Scene plainScene;
+    Rig plain = BuildSlam(plainScene, k_NearCourse);
+    BeginSlam(plainScene, plain, k_RunSpeed, 0.0f);
+    ASSERT_LT(StepUntilImpact(plainScene, plain, 30), 30);
+    Step(plainScene, plain);
+    ASSERT_FALSE(plain.movement->IsActiveSelf());
+    const int plainSteps = StepsUntilMovementActive(plainScene, plain, 60);
 
-    SceneNs::Scene maxScene;
-    Rig maxDash = BuildSlam(maxScene, k_NearCourse);
-    BeginSlam(maxScene, maxDash, k_MaxDashSpeed, 0.0f);
-    ASSERT_LT(StepUntilImpact(maxScene, maxDash, 30), 30);
-    Step(maxScene, maxDash);
-    ASSERT_FALSE(maxDash.movement->IsActiveSelf());
-    const int maxSteps = StepsUntilMovementActive(maxScene, maxDash, 60);
+    SceneNs::Scene chargedScene;
+    Rig charged = BuildSlam(chargedScene, k_NearCourse);
+    BeginSlam(chargedScene, charged, k_RunSpeed, 1.0f);
+    ASSERT_LT(StepUntilImpact(chargedScene, charged, 30), 30);
+    Step(chargedScene, charged);
+    ASSERT_FALSE(charged.movement->IsActiveSelf());
+    const int chargedSteps = StepsUntilMovementActive(chargedScene, charged, 60);
 
-    EXPECT_GT(normalSteps, 0);
-    EXPECT_LT(normalSteps, maxSteps);
-}
-
-// 猶予は明けた歩から数え始める。止まっている間に数えると、操作できないまま猶予が減る
-TEST(CollisionImpact, HitStopDefersGraceUntilRelease)
-{
-    SceneNs::Scene scene;
-    Rig rig = BuildSlam(scene, k_NearCourse);
-    ASSERT_NE(rig.momentum, nullptr);
-    rig.breakable->SetMass(4.0f);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
-
-    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
-    Step(scene, rig);
-    ASSERT_FALSE(rig.movement->IsActiveSelf());
-
-    const int rest = StepsUntilMovementActive(scene, rig, 60);
-    ASSERT_LT(rest, 60);
-    EXPECT_FLOAT_EQ(rig.momentum->GraceSeconds(), 0.0f);
-
-    Step(scene, rig);
-    EXPECT_FLOAT_EQ(rig.momentum->GraceSeconds(), k_FixedDt);
+    EXPECT_GT(plainSteps, 0);
+    EXPECT_LT(plainSteps, chargedSteps);
 }
 
 // 基準は秒で指定し、内部で歩数へ換算して凍結の長さを決める
@@ -963,7 +902,7 @@ TEST(CollisionImpact, ReleaseStretchesThenRestoresScaleExactly)
     Rig rig = BuildSlam(scene, k_NearCourse);
     rig.breakable->SetMass(4.0f);
     const Vector3 authored = rig.movement->Owner()->Root().Scale();
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
     Step(scene, rig);
@@ -992,7 +931,7 @@ TEST(CollisionImpact, SquashLeavesPositionAndPhysicsAlone)
     Rig rig = BuildSlam(scene, k_NearCourse);
     rig.breakable->SetMass(4.0f);
     const std::size_t aabbs = scene.Physics().AABBs().size();
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
     Step(scene, rig);
@@ -1014,8 +953,7 @@ TEST(CollisionImpact, BreakIsOffByDefault)
     Rig rig = BuildSlam(scene, k_NearCourse);
     SetInstantImpact(rig);
     rig.breakable->SetToughness(0.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 1.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 1.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
@@ -1036,8 +974,7 @@ TEST(CollisionImpact, BreakFieldReenablesBreaking)
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     EnableBreak(rig);
     rig.breakable->SetToughness(0.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 1.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 1.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
@@ -1047,15 +984,14 @@ TEST(CollisionImpact, BreakFieldReenablesBreaking)
     EXPECT_FALSE(rig.targetBox->IsActiveSelf());
 }
 
-TEST(CollisionImpact, MaxDashBreaksThroughSoftTarget)
+TEST(CollisionImpact, PlainHitBreaksThroughSoftTarget)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     EnableBreak(rig);
     rig.breakable->SetToughness(1.0f);
     const std::size_t aabbs = scene.Physics().AABBs().size();
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
     ASSERT_TRUE(rig.impact->DidBreak());
@@ -1074,33 +1010,13 @@ TEST(CollisionImpact, MaxDashBreaksThroughSoftTarget)
     EXPECT_FLOAT_EQ(rig.movement->Velocity().z, 0.0f);
 }
 
-// 貫通は段を落とさない。壊しながら走り続けるループを守る
-TEST(CollisionImpact, BreakKeepsLevel)
-{
-    SceneNs::Scene scene;
-    Rig rig = BuildSlam(scene, k_NearCourse);
-    EnableBreak(rig);
-    rig.breakable->SetToughness(1.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
-
-    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
-    Step(scene, rig);
-    const int rest = StepsUntilMovementActive(scene, rig, 60);
-    ASSERT_LT(rest, 60);
-    Step(scene, rig);
-
-    EXPECT_EQ(rig.momentum->Level(), LevelNs::MomentumLevel::MaxDash);
-}
-
-TEST(CollisionImpact, MaxDashReboundsOffToughTarget)
+TEST(CollisionImpact, PlainHitReboundsOffToughTarget)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     EnableBreak(rig);
     rig.breakable->SetToughness(99.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
     ASSERT_TRUE(rig.impact->DidRebound());
@@ -1120,7 +1036,6 @@ TEST(CollisionImpact, NormalHitAtStartCannotBreakToughTwo)
     Rig rig = BuildSlam(scene, k_NearCourse);
     EnableBreak(rig);
     rig.breakable->SetToughness(2.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::Normal);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
@@ -1130,13 +1045,12 @@ TEST(CollisionImpact, NormalHitAtStartCannotBreakToughTwo)
     EXPECT_TRUE(rig.breakable->IsActiveSelf());
 }
 
-TEST(CollisionImpact, ChargedPeakBeatsMaxDashPlainHit)
+TEST(CollisionImpact, ChargedPeakBeatsPlainEdgeHit)
 {
     SceneNs::Scene chargedScene;
     Rig charged = BuildSlam(chargedScene, k_FarCourse);
     EnableBreak(charged);
     charged.breakable->SetToughness(k_ReversalToughness);
-    charged.momentum->SetLevel(LevelNs::MomentumLevel::Normal);
     BeginSlam(chargedScene, charged, k_RunSpeed, 1.0f);
     ASSERT_LT(StepUntilImpact(chargedScene, charged, 30), 30);
 
@@ -1144,8 +1058,7 @@ TEST(CollisionImpact, ChargedPeakBeatsMaxDashPlainHit)
     Rig plain = BuildSlam(plainScene, k_EdgeCourse);
     EnableBreak(plain);
     plain.breakable->SetToughness(k_ReversalToughness);
-    plain.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(plainScene, plain, k_MaxDashSpeed, 0.0f);
+    BeginSlam(plainScene, plain, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(plainScene, plain, 30), 30);
 
     EXPECT_TRUE(charged.impact->WasPeakImpact());
@@ -1248,54 +1161,19 @@ TEST(CollisionImpact, TapImpactIsWeakerThanCharged)
     EXPECT_LT(tap.impact->LastPower(), charged.impact->LastPower());
 }
 
-TEST(CollisionImpact, ChargedPowerIgnoresMomentumLevel)
-{
-    SceneNs::Scene normalScene;
-    Rig normal = BuildSlam(normalScene, k_NearCourse);
-    SetInstantImpact(normal);
-    BeginSlamAtLevel(normalScene, normal, LevelNs::MomentumLevel::Normal, k_RunSpeed, 1.0f);
-    ASSERT_LT(StepUntilImpact(normalScene, normal, 30), 30);
-
-    SceneNs::Scene dashScene;
-    Rig dash = BuildSlam(dashScene, k_NearCourse);
-    SetInstantImpact(dash);
-    BeginSlamAtLevel(dashScene, dash, LevelNs::MomentumLevel::MaxDash, k_MaxDashSpeed, 1.0f);
-    ASSERT_LT(StepUntilImpact(dashScene, dash, 30), 30);
-
-    EXPECT_FLOAT_EQ(dash.impact->LastPower(), normal.impact->LastPower());
-}
-
-TEST(CollisionImpact, TapPowerStillFollowsMomentumLevel)
-{
-    SceneNs::Scene normalScene;
-    Rig normal = BuildSlam(normalScene, k_NearCourse);
-    SetInstantImpact(normal);
-    BeginSlamAtLevel(normalScene, normal, LevelNs::MomentumLevel::Normal, k_RunSpeed, 0.0f);
-    ASSERT_LT(StepUntilImpact(normalScene, normal, 30), 30);
-
-    SceneNs::Scene dashScene;
-    Rig dash = BuildSlam(dashScene, k_NearCourse);
-    SetInstantImpact(dash);
-    BeginSlamAtLevel(dashScene, dash, LevelNs::MomentumLevel::MaxDash, k_MaxDashSpeed, 0.0f);
-    ASSERT_LT(StepUntilImpact(dashScene, dash, 30), 30);
-
-    EXPECT_GT(dash.impact->LastPower(), normal.impact->LastPower());
-}
-
 // キーを離すと減速が始まる。実速度で威力が変わると、同じ助走で当てたのに飛びが揺れる
-TEST(CollisionImpact, PowerFollowsMomentumLevelNotEntrySpeed)
+TEST(CollisionImpact, PowerIgnoresEntrySpeed)
 {
     SceneNs::Scene fullScene;
     Rig full = BuildSlam(fullScene, k_NearCourse);
     SetInstantImpact(full);
-    BeginSlamAtLevel(fullScene, full, LevelNs::MomentumLevel::MaxDash, k_MaxDashSpeed, 0.0f);
+    BeginSlam(fullScene, full, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(fullScene, full, 30), 30);
 
-    // 手を放した直後の減速中。降格猶予の内なので段は最高ダッシュのまま
     SceneNs::Scene slowScene;
     Rig slow = BuildSlam(slowScene, k_NearCourse);
     SetInstantImpact(slow);
-    BeginSlamAtLevel(slowScene, slow, LevelNs::MomentumLevel::MaxDash, 2.0f, 0.0f);
+    BeginSlam(slowScene, slow, 2.0f, 0.0f);
     ASSERT_LT(StepUntilImpact(slowScene, slow, 30), 30);
 
     ASSERT_TRUE(full.impact->DidRebound());
@@ -1389,8 +1267,7 @@ TEST(CollisionImpact, BrokenTargetIsIgnoredAfterwards)
     Rig rig = BuildSlam(scene, k_NearCourse);
     EnableBreak(rig);
     rig.breakable->SetToughness(1.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
     Step(scene, rig);
     const int rest = StepsUntilMovementActive(scene, rig, 60);
@@ -1398,7 +1275,7 @@ TEST(CollisionImpact, BrokenTargetIsIgnoredAfterwards)
     for (int i = 0; i < 10; ++i)
         Step(scene, rig);
 
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
     EXPECT_EQ(StepUntilImpact(scene, rig, 30), 30);
     EXPECT_FALSE(rig.impact->DidBreak());
     EXPECT_FALSE(rig.impact->DidRebound());
@@ -1411,8 +1288,7 @@ TEST(CollisionImpact, BreakDoesNotLaunchTarget)
     Rig rig = BuildSlam(scene, k_NearCourse);
     EnableBreak(rig);
     rig.breakable->SetToughness(1.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
     Step(scene, rig);
@@ -1430,8 +1306,7 @@ TEST(CollisionImpact, BreakStopZeroAppliesInstantly)
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     EnableBreak(rig);
     rig.breakable->SetToughness(1.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
@@ -1446,8 +1321,7 @@ TEST(CollisionImpact, OnEndPlayWakesFrozenMovement)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
     Step(scene, rig);
     ASSERT_FALSE(rig.movement->IsActiveSelf());
@@ -1465,8 +1339,7 @@ TEST(CollisionImpact, BreakSkipsSquashButStretchesForward)
     EnableBreak(rig);
     rig.breakable->SetToughness(1.0f);
     const Vector3 authored = rig.movement->Owner()->Root().Scale();
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
     Step(scene, rig);
@@ -1559,7 +1432,7 @@ TEST(CollisionImpact, RockVibratesWhileFrozen)
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     rig.breakable->SetMass(4.0f);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
     Step(scene, rig);
@@ -1580,7 +1453,7 @@ TEST(CollisionImpact, HeavierRockVibratesLess)
     SceneNs::Scene lightScene;
     Rig light = BuildSlam(lightScene, k_NearCourse);
     light.breakable->SetMass(0.5f);
-    BeginSlam(lightScene, light, k_MaxDashSpeed, 0.0f);
+    BeginSlam(lightScene, light, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(lightScene, light, 30), 30);
     Step(lightScene, light);
     ASSERT_FALSE(light.movement->IsActiveSelf());
@@ -1599,7 +1472,7 @@ TEST(CollisionImpact, HeavierRockVibratesLess)
     SceneNs::Scene heavyScene;
     Rig heavy = BuildSlam(heavyScene, k_NearCourse);
     heavy.breakable->SetMass(8.0f);
-    BeginSlam(heavyScene, heavy, k_MaxDashSpeed, 0.0f);
+    BeginSlam(heavyScene, heavy, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(heavyScene, heavy, 30), 30);
     Step(heavyScene, heavy);
     ASSERT_FALSE(heavy.movement->IsActiveSelf());
@@ -1627,7 +1500,7 @@ TEST(CollisionImpact, ReleaseRestoresRockExactlyBeforeLaunch)
     rig.breakable->SetMass(4.0f);
     const Vector3 home = rig.targetBox->Owner()->Root().Position();
     const std::size_t aabbs = scene.Physics().AABBs().size();
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
     Step(scene, rig);
@@ -1662,7 +1535,7 @@ TEST(CollisionImpact, HitStopShakesCamera)
     brain->Evaluate(1.0f);
     const Vector3 before = brain->LastPose().position;
 
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
     ASSERT_TRUE(rig.impact->DidRebound());
     brain->Evaluate(1.0f);
@@ -1683,8 +1556,7 @@ TEST(CollisionImpact, BreakScattersDebrisAndLeavesMark)
     EnableBreak(rig);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     rig.breakable->SetToughness(1.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
     const std::size_t before = scene.World().ObjectCount();
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
@@ -1713,8 +1585,7 @@ TEST(CollisionImpact, DebrisScatterDirectionsDifferButShareSpeed)
     EnableBreak(rig);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     rig.breakable->SetToughness(1.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
@@ -1735,8 +1606,7 @@ TEST(CollisionImpact, DebrisScatterIsDeterministic)
     EnableBreak(first);
     SetFloatField(*first.impact, "貫通の止め秒", 0.0f);
     first.breakable->SetToughness(1.0f);
-    first.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(firstScene, first, k_MaxDashSpeed, 0.0f);
+    BeginSlam(firstScene, first, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(firstScene, first, 30), 30);
 
     SceneNs::Scene secondScene;
@@ -1744,8 +1614,7 @@ TEST(CollisionImpact, DebrisScatterIsDeterministic)
     EnableBreak(second);
     SetFloatField(*second.impact, "貫通の止め秒", 0.0f);
     second.breakable->SetToughness(1.0f);
-    second.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(secondScene, second, k_MaxDashSpeed, 0.0f);
+    BeginSlam(secondScene, second, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(secondScene, second, 30), 30);
 
     const std::vector<LevelNs::LaunchedBodyComponent*> firstDebris = DebrisBodies(firstScene);
@@ -1771,8 +1640,7 @@ TEST(CollisionImpact, HeavierTargetScattersSlowerDebris)
     rig.breakable->SetMass(4.0f);
     rig.breakable->SetToughness(1.0f);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
@@ -1809,8 +1677,7 @@ TEST(CollisionImpact, ZeroDebrisCountScattersNone)
     SetIntField(*rig.impact, "破片の数", 0);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     rig.breakable->SetToughness(1.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
     const std::size_t before = scene.World().ObjectCount();
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
@@ -1845,8 +1712,7 @@ TEST(CollisionImpact, DebrisLooksLikeSmallCube)
     EnableBreak(rig);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     rig.breakable->SetToughness(1.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
@@ -1871,8 +1737,7 @@ TEST(CollisionImpact, DebrisRestsThenExpires)
     SetFloatField(*rig.impact, "破片の初速", 1.0f);
     SetFloatField(*rig.impact, "破片の残る秒", 0.05f);
     rig.breakable->SetToughness(1.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
     const std::vector<LevelNs::LaunchedBodyComponent*> debris = DebrisBodies(scene);
@@ -1911,8 +1776,7 @@ TEST(CollisionImpact, DebrisWaitForRelease)
     Rig rig = BuildSlam(scene, k_NearCourse);
     EnableBreak(rig);
     rig.breakable->SetToughness(1.0f);
-    rig.momentum->SetLevel(LevelNs::MomentumLevel::MaxDash);
-    BeginSlam(scene, rig, k_MaxDashSpeed, 0.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
     const std::size_t before = scene.World().ObjectCount();
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
@@ -2307,4 +2171,35 @@ TEST(ImpactMark, HidesAfterLifeWithoutDestroy)
     ASSERT_NE(comp, nullptr);
     EXPECT_FALSE(comp->IsActiveSelf());
     EXPECT_EQ(scene.World().ObjectCount(), after);
+}
+
+TEST(LaunchedBody, ShattersAgainstWall)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene, true);
+    ASSERT_NE(rig.body, nullptr);
+    const std::size_t debrisBefore = DebrisBodies(scene).size();
+
+    rig.body->Launch(Vector3{20.0f, 0.0f, 0.0f});
+    for (int i = 0; i < 60 && rig.body->IsFlying(); ++i)
+        StepBody(scene);
+
+    EXPECT_FALSE(rig.body->IsFlying());
+    EXPECT_GT(DebrisBodies(scene).size(), debrisBefore);
+    EXPECT_LT(rig.object->Root().Position().x, static_cast<float>(k_WallX));
+}
+
+TEST(LaunchedBody, LandingOnFloorDoesNotShatter)
+{
+    SceneNs::Scene scene;
+    BodyRig rig = BuildBody(scene);
+    ASSERT_NE(rig.body, nullptr);
+    const std::size_t debrisBefore = DebrisBodies(scene).size();
+
+    rig.body->Launch(Vector3{3.0f, 6.0f, 0.0f});
+    const int steps = RunUntilRest(scene, *rig.body, k_RestStepLimit);
+
+    EXPECT_LT(steps, k_RestStepLimit);
+    EXPECT_EQ(DebrisBodies(scene).size(), debrisBefore);
+    EXPECT_NEAR(rig.object->Root().Position().y, k_BodyRestY, 0.05f);
 }

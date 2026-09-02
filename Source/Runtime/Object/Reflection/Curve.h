@@ -28,7 +28,7 @@ namespace NS::Object
         {
             float x = 0.0f;
             float y = 0.0f;
-            // 既定は Linear。既存データと平ら 2 点の既定の評価結果を 1 ビットも変えないため
+            // 既定は Linear。既存データの評価結果を 1 ビットも変えないため
             InterpMode mode = InterpMode::Linear;
             // 接線は dy/dx の傾きで持つ。t 基準の値にすると区間の幅が変わるたびに意味が変わるため
             float inTangent = 0.0f;
@@ -41,8 +41,8 @@ namespace NS::Object
         std::uint32_t count = 0; // 有効な点の数
 
         //! x に対応する y を返す。点が無ければ 0、範囲の外は端の点の
-        //! y、点の間は両端のモードに応じて線形かエルミートで補間 事前条件: keys の先頭 count 個が x 昇順。同じ x
-        //! が並ぶ区間は後の点の y になる
+        //! y、点の間は両端のモードに応じて線形かエルミートで補間
+        //! 事前条件: keys の先頭 count 個が x 昇順。同じ x が並ぶ区間は後の点の y になる
         [[nodiscard]] float Evaluate(float x) const noexcept;
 
         //! keys の先頭 count 個を x 昇順に並べ直す。同じ x は元の並びを保つ

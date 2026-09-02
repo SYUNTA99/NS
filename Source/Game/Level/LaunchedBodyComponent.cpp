@@ -1,19 +1,22 @@
 #include "Game/Level/LaunchedBodyComponent.h"
 
+#include "Game/Level/BreakableComponent.h"
 #include "Game/Level/ColliderBounds.h"
 #include "Runtime/Core/Clock.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
+#include "Runtime/Physics/Capsule.h"
 #include "Runtime/Physics/PhysicsWorld.h"
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 
-// TODO: 真下の地面しか見ていない。飛んだ物が壁を抜けるのが気になったら掃引へ替える
 namespace NS::Game::Level
 {
     namespace
@@ -25,6 +28,15 @@ namespace NS::Game::Level
 
         // 回る向きが決まる水平の速さの下限。これ未満は軸の正規化が 0 除算になり、姿勢へ NaN が流れる
         constexpr float k_MinSpinSpeed = 1.0e-4f;
+
+        // 壁とみなす法線の上限。床は毎歩当たるので分けないと着地で割れる。cos 45 ≈ 0.707 に合わせて 0.7
+        constexpr float k_WallNormalY = 0.7f;
+
+        // 床へぴったり乗せた球は誤差でめり込み、掃引が 1 歩目から当たる。半径をこの分だけ細くして逃がす
+        constexpr float k_SweepSkin = 0.01f;
+
+        constexpr float k_DebrisScale = 0.25f;
+        constexpr NS::Core::Vector3 k_DebrisBaseColor{0.35f, 0.32f, 0.30f};
     } // namespace
 
     void LaunchedBodyComponent::Launch(const NS::Core::Vector3& velocity)
@@ -87,6 +99,64 @@ namespace NS::Game::Level
         m_restLifeSeconds = seconds;
     }
 
+    void LaunchedBodyComponent::SetDebrisCount(int count) noexcept
+    {
+        m_debrisCount = std::max(0, count);
+    }
+
+    void LaunchedBodyComponent::Shatter()
+    {
+        if (Owner() == nullptr)
+            return;
+        NS::Object::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+            return;
+
+        const NS::Core::Vector3 origin = RootTransform().Position();
+        float mass = 1.0f;
+        if (auto* breakable = Owner()->FindComponent<BreakableComponent>())
+            mass = breakable->Mass();
+        if (!std::isfinite(mass) || mass < 0.01f)
+            mass = 0.01f;
+
+        // 重い物ほど破片が飛ばない。押し飛ばしと同じ向きの質量感を破片でも見せる
+        const float speed = m_debrisSpeed / mass;
+        for (int i = 0; i < m_debrisCount; ++i)
+        {
+            const float angle = 2.0f * NS::Core::k_Pi * static_cast<float>(i) / static_cast<float>(m_debrisCount);
+            // 浮きは交互に変える。全部同じ高さだと 1 つの輪に見えて壊れた量が伝わらない
+            const float up = 0.5f + 0.5f * static_cast<float>(i % 2);
+            auto owned = std::make_unique<NS::Object::GameObject>();
+            owned->Root().SetPosition(origin);
+            owned->Root().SetScale(NS::Core::Vector3{k_DebrisScale, k_DebrisScale, k_DebrisScale});
+            auto* mesh = owned->AddComponent<NS::Object::MeshRendererComponent>();
+            mesh->SetMeshRef("cube");
+            mesh->SetMaterialRef("player");
+            mesh->SetBaseColor(k_DebrisBaseColor);
+            owned->AddComponent<LaunchedBodyComponent>();
+            NS::Object::GameObject* spawned = scene->SpawnTransient(std::move(owned));
+            if (spawned == nullptr)
+                continue;
+            // 所有を渡した後の元のポインタは使わない。戻り値から引き直す
+            auto* body = spawned->FindComponent<LaunchedBodyComponent>();
+            if (body == nullptr)
+                continue;
+            // 破片だけ寿命を持つ。壊すたびに増えるので、止まったら消さないと世界に積み上がり続ける
+            body->SetRestLifeSeconds(m_debrisLifeSeconds);
+            // 破片は割れない。0 にしないと破片が壁へ当たるたびに破片を撒く
+            body->SetDebrisCount(0);
+            body->Launch(NS::Core::Vector3{std::cos(angle) * speed, up * speed, std::sin(angle) * speed});
+        }
+
+        m_flying = false;
+        m_velocity = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        // 更新中に消すと集めた並びに解放済みの位置が残る。寝かせるだけにする
+        if (auto* mesh = Owner()->FindComponent<NS::Object::MeshRendererComponent>())
+            mesh->SetActive(false);
+        SetColliderActive(false);
+        SetActive(false);
+    }
+
     void LaunchedBodyComponent::OnUpdate()
     {
         const float dt = NS::Core::FrameTimer::FixedDelta();
@@ -117,6 +187,18 @@ namespace NS::Game::Level
         m_grounded = false;
         if (NS::Object::Scene* scene = Owner()->OwningScene())
         {
+            NS::Physics::Capsule cap{};
+            cap.center = position;
+            cap.halfHeight = 0.0f;
+            cap.radius = std::max(0.0f, halfY - k_SweepSkin);
+            const NS::Physics::SweepHit swept = scene->Physics().SweepCapsule(
+                cap, NS::Core::Vector3{m_velocity.x * dt, m_velocity.y * dt, m_velocity.z * dt});
+            if (swept.hit && swept.normal.y < k_WallNormalY)
+            {
+                Shatter();
+                return;
+            }
+
             float dist = 0.0f;
             const bool found = scene->Physics().RaycastDown(next, k_GroundProbeDistance, dist);
             if (found && dist <= halfY)

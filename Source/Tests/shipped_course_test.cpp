@@ -14,18 +14,15 @@ namespace EditorNs = NS::Editor;
 
 namespace
 {
-    // 最高ダッシュ速度 16.0 ÷ 通常速度 8.0。走行で作れる比の上限で、威力はこれに溜め倍率と突進位置係数が掛かる
-    constexpr float k_MaxDashMomentumRatio = 2.0f;
-
     // チャージ倍率カーブの右端。溜め切った 1 回で威力が倍になる
     constexpr float k_MaxChargeScale = 2.0f;
 
-    // 威力は 比 × 溜め倍率 × 突進位置係数 で、位置係数は 1.0 を超えない
+    // 威力は 溜め倍率 × 突進位置係数 で、位置係数は 1.0 を超えない
     // 破壊を許可した時、耐久が威力の上限を超える物だけが必ず跳ね返す
-    constexpr float k_MaxImpactPower = k_MaxDashMomentumRatio * k_MaxChargeScale;
+    constexpr float k_MaxImpactPower = k_MaxChargeScale;
 
-    // 通常の段の比。昇格を待たずにぶつかる限りこの値のまま
-    constexpr float k_NormalMomentumRatio = 1.0f;
+    // 溜めずに当てた時の威力
+    constexpr float k_PlainHitPower = 1.0f;
 
     // 検査対象は Assets の実ファイルそのもの。固定データの複製を検査すると、実ファイル側の壊れを見逃す
     bool LoadShippedCourse(SceneNs::SceneData& outScene)
@@ -61,7 +58,7 @@ TEST(ShippedCourse, MassesHaveAtLeastTwoDistinctValues)
     EXPECT_GE(distinct.size(), 2u);
 }
 
-// 破壊を許可した時、耐久の最大が威力の上限以下だと最高ダッシュの溜め切りで全部壊せ、勢いを最大にしても跳ね返される壁が無くなる
+// 破壊を許可した時、耐久の最大が威力の上限以下だと溜め切りで全部壊せ、跳ね返される壁が無くなる
 TEST(ShippedCourse, ToughnessHasUnbreakableWall)
 {
     SceneNs::SceneData scene;
@@ -72,7 +69,7 @@ TEST(ShippedCourse, ToughnessHasUnbreakableWall)
     EXPECT_GT(maxToughness, k_MaxImpactPower);
 }
 
-// 耐久が通常の段の比を超える物しか無いと、昇格の 2.5 秒か溜めを挟まないと 1 つも壊せない
+// 耐久が素当ての威力を超える物しか無いと、溜めを挟まないと 1 つも壊せない
 TEST(ShippedCourse, ToughnessHasBreakableTarget)
 {
     SceneNs::SceneData scene;
@@ -80,5 +77,5 @@ TEST(ShippedCourse, ToughnessHasBreakableTarget)
     const std::vector<float> toughness = CollectBreakableField(scene, "耐久");
     ASSERT_FALSE(toughness.empty());
     const float minToughness = *std::min_element(toughness.begin(), toughness.end());
-    EXPECT_LE(minToughness, k_NormalMomentumRatio);
+    EXPECT_LE(minToughness, k_PlainHitPower);
 }

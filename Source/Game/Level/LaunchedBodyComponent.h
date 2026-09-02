@@ -8,7 +8,7 @@ namespace NS::Game::Level
     //! @brief 押し飛ばされた配置物を落として止める簡易物理
     //! @details 自機はキネマティック制御のままで、簡易物理で動くのはこの Component を積んだ物だけ
     //! 飛んでいる間は当たりを寝かせる。張り直しは配置物の数に比例する費用なので、寝かせる時と起こす時だけ呼ぶ
-    //! 地形との当たりは真下の地面探しだけで見る。壁は見ない
+    //! 地形との当たりは進む先までの掃引で見る。上向きの面には乗り、それ以外に当たったら割れる
     //! 依存: NS::Object::ColliderComponent, NS::Object::MeshRendererComponent, NS::Physics::PhysicsWorld,
     //! NS::Object::Scene
     class LaunchedBodyComponent : public NS::Object::Component
@@ -29,6 +29,14 @@ namespace NS::Game::Level
         //! 止まってから消えるまでの秒を置く。0 は消えない。非有限値と負は捨てる
         void SetRestLifeSeconds(float seconds) noexcept;
 
+        //! 割れた時に出す破片の数を置く。負は 0 に丸める
+        void SetDebrisCount(int count) noexcept;
+
+        //! @brief 割れる
+        //! @details 破片を撒いて自分の描画と当たりを止める。破片は寿命を持ち、破片自身は割れない
+        //! 世界からは消さない。更新の最中に消すと集めた並びに解放済みの位置が残る
+        void Shatter();
+
         //! 重力と摩擦を掛けて位置を進め、床の上で止める
         void OnUpdate() override;
 
@@ -39,6 +47,9 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_spinPerSpeed, "回転の強さ")
         NS_REFLECT_FIELD(m_restSpeed, "停止速度しきい値")
         NS_REFLECT_FIELD(m_restLifeSeconds, "止まってから消える秒")
+        NS_REFLECT_FIELD(m_debrisCount, "破片の数")
+        NS_REFLECT_FIELD(m_debrisSpeed, "破片の速さ")
+        NS_REFLECT_FIELD(m_debrisLifeSeconds, "破片の寿命秒")
         NS_REFLECT_END()
 
     private:
@@ -60,6 +71,9 @@ namespace NS::Game::Level
         float m_restSpeed = 0.5f;       // これを下回ったら止まったとみなす
         float m_restLifeSeconds = 0.0f; // 止まってから消えるまでの秒。0 は消えない
         float m_restAge = 0.0f;         // 止まってからの経過秒
+        int m_debrisCount = 5;
+        float m_debrisSpeed = 6.0f;
+        float m_debrisLifeSeconds = 8.0f;
 
         NS::Core::Vector3 m_velocity{0.0f, 0.0f, 0.0f}; // 現在の速度
         NS::Core::Quaternion m_spinHome{};              // 飛び始めの姿勢。接地した歩に書き戻す

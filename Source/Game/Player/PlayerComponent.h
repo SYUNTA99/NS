@@ -20,7 +20,7 @@ namespace NS::Game::Player
 
     //! @brief 自機の能力を持つ Component
     //! @details 移動と接地は EntityComponent が持ち、ここには自機だけの能力と条件判定を置く
-    //! 調整値 19 個は自分の欄として持つ。Inspector とシーン JSON はこの欄を直接読み書きする
+    //! 調整値 20 個は自分の欄として持つ。Inspector とシーン JSON はこの欄を直接読み書きする
     //! 状態は能力呼びの列だけにするので、状態から呼ぶ動詞は public
     //! 依存: NS::Game::Entity::EntityComponent / EntityStateManagerComponent, PlayerStats
     class PlayerComponent : public NS::Game::Entity::EntityComponent
@@ -181,6 +181,9 @@ namespace NS::Game::Player
         [[nodiscard]] float WalkSpeed() const noexcept { return m_stats.walkSpeed; }
         void SetWalkSpeed(float value) noexcept;
 
+        [[nodiscard]] float RunSpeed() const noexcept { return m_stats.runSpeed; }
+        void SetRunSpeed(float value) noexcept;
+
         [[nodiscard]] float AccelTau() const noexcept { return m_stats.accelTau; }
         void SetAccelTau(float value) noexcept;
 
@@ -228,6 +231,7 @@ namespace NS::Game::Player
         NS_REFLECT_ACCESSOR(float, "コヨーテ時間", CoyoteTime(), SetCoyoteTime)
         NS_REFLECT_ACCESSOR(float, "先行入力時間", JumpBufferTime(), SetJumpBufferTime)
         NS_REFLECT_ACCESSOR(float, "歩き速度", WalkSpeed(), SetWalkSpeed)
+        NS_REFLECT_ACCESSOR(float, "走行速度", RunSpeed(), SetRunSpeed)
         NS_REFLECT_ACCESSOR(float, "加速時定数", AccelTau(), SetAccelTau)
         NS_REFLECT_ACCESSOR(float, "減速時定数", DecelTau(), SetDecelTau)
         NS_REFLECT_ACCESSOR(float, "スティック遊び", StickDeadzone(), SetStickDeadzone)
@@ -270,7 +274,6 @@ namespace NS::Game::Player
         float m_coyoteTimer = 0.0f;          // コヨーテ猶予の残り秒
         float m_bufferTimer = 0.0f;          // 先行ジャンプ入力の残り秒
 
-        // 走行中に MomentumComponent が毎歩書き換える。手で決める値ではないので調整値の欄に入れない
         float m_maxSpeed = 8.0f;
 
         bool m_debugDraw = true; // デバッグ可視化を出すか
@@ -299,7 +302,7 @@ namespace NS::Game::Player
         NS::Core::Vector3 m_lastGroundedPosition{0.0f, 0.0f, 0.0f};
         std::vector<CoyoteJumpMarker> m_coyoteJumpMarkers; // 表示中のコヨーテジャンプ記録。寿命付き
 
-        PlayerStats m_stats;                                   // 調整値 19 個
+        PlayerStats m_stats;                                   // 調整値 20 個
         PlayerStateManagerComponent* m_stateManager = nullptr; // 状態機械 (非所有)
 
         PlayerEvents m_playerEvents;

@@ -4,8 +4,6 @@ namespace NS::Game::Player
 {
     //! @brief 自機の調整値
     //! @details 持つのは素の値だけで、Inspector への露出も値の検査も PlayerComponent の側にある
-    //! 走行の最高速度は入れない。MomentumComponent が速度状態に応じて毎歩書き換える値で、
-    //! 手で決める調整値ではない
     struct PlayerStats
     {
         float jumpImpulse = 12.0f;     // ジャンプ初速
@@ -20,6 +18,7 @@ namespace NS::Game::Player
         // TODO: 暫定値。人の早押し誤差は概ね 100ms なので目標は 0.1 秒、体感で詰める
         float jumpBufferTime = 0.25f;
         float walkSpeed = 4.0f;     // 歩き速度
+        float runSpeed = 8.0f;      // 走行の最高速度
         float accelTau = 0.10f;     // 加速の時定数
         float decelTau = 0.10f;     // 減速の時定数
         float stickDeadzone = 0.3f; // スティック入力のデッドゾーン

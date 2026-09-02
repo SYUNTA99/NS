@@ -20,22 +20,21 @@ namespace NS::Game::Level
     class BreakableComponent;
     class CollisionInputComponent;
     class LaunchedBodyComponent;
-    class MomentumComponent;
 
     //! @brief ぶつかった結果を自機側で決める Component
     //! @details 帯は Update より前。PlayerComponent が動く前にその 1 固定ステップの結末を決めるので、
     //! 壁の手前で止められて速度を消された後から結果を推測し直さずに済む
     //! 相手は World::ForEachComponent で BreakableComponent を回って自分で探す
     //! NS::Physics は NS::Object を知らない決まりなので、掃引の戻り値から相手を引く経路は使えない
-    //! 衝突の瞬間は自機を数固定ステップ止め、反発・発射・破壊・猶予の開始を明けた歩へ保留する
-    //! 依存: NS::Game::Player::PlayerComponent, MomentumComponent, BreakableComponent, LaunchedBodyComponent,
+    //! 衝突の瞬間は自機を数固定ステップ止め、反発・発射・破壊を明けた歩へ保留する
+    //! 依存: NS::Game::Player::PlayerComponent, BreakableComponent, LaunchedBodyComponent,
     //! CollisionInputComponent
     class ImpactResolverComponent : public NS::Object::OverlayRendererComponent
     {
     public:
         ImpactResolverComponent() noexcept;
 
-        //! 同じ配置物の移動と勢いを引き当てる。どちらか無ければ以後何もしない
+        //! 同じ配置物の移動と体当たりの入力を引き当てる。移動が無ければ以後何もしない
         void OnStart() override;
 
         //! この固定ステップで重なる壊せる物を探し、向かっていれば止めてから破壊するか、反発と押し飛ばしを与える
@@ -105,7 +104,7 @@ namespace NS::Game::Level
         // 進行の軸だけ倍率を効かせた描画スケールを作る。縦は別の倍率で受ける
         [[nodiscard]] NS::Core::Vector3 ScaledAlongImpact(float along, float height) const noexcept;
 
-        // 止めていた結果を適用する。自機を起こして速度を書き、反発なら猶予と発射、貫通なら破壊を行う
+        // 止めていた結果を適用する。自機を起こして速度を書き、反発なら発射、貫通なら破壊を行う
         void ReleaseHitStop();
 
         // 壊れた物の印と当たりを寝かせ、見た目を差し替える。配置物は消さない
@@ -169,7 +168,6 @@ namespace NS::Game::Level
         float m_lastPower = 0.0f;
         int m_peakFlashRemaining = 0;
         NS::Game::Player::PlayerComponent* m_movement = nullptr; // 同じ配置物の移動。非所有
-        MomentumComponent* m_momentum = nullptr;                 // 同じ配置物の勢い。非所有
         CollisionInputComponent* m_collisionInput = nullptr;
     };
 } // namespace NS::Game::Level

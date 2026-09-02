@@ -14,7 +14,7 @@ namespace NS::Game::Player
     //! @brief 入力の読み取り値を自機へ渡す Component
     //! @details PlayerInputComponent は NS::Object にあり、NS::Game::Player の型を名指しできない
     //! 値だけを運ぶことで include の向きを保つ
-    //! 帯は EarlyUpdate + 10 で、走行入力を読む MomentumComponent より前
+    //! 帯は EarlyUpdate + 10 で、入力を読む PlayerInputComponent の直後
     //! 依存: NS::Object::PlayerInputComponent, PlayerComponent
     class PlayerInputRelayComponent : public NS::Object::Component
     {

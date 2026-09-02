@@ -274,7 +274,6 @@ TEST(CurveReflection, LinearOnlyEvaluateMatchesLegacyPathBitExact)
 
 TEST(CurveReflection, FlatLinearCurveReturnsExactlyOne)
 {
-    // MomentumComponent の既定と同じ平ら 2 点。1.0f と厳密一致しないと基準比較のハッシュが崩れるため
     const Curve curve = MakeCurve({{0.0f, 1.0f}, {1.0f, 1.0f}});
     const float samples[] = {0.1f, 0.3f, 0.5f, 0.77f};
     for (const float x : samples)

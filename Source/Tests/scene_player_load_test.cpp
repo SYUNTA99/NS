@@ -151,7 +151,7 @@ TEST_P(ShippedScene, PlayerComponentCarriesEveryTuningField)
     const auto fields = entry->find("fields");
     ASSERT_NE(fields, entry->end());
 
-    EXPECT_EQ(fields->size(), 18u) << GetParam() << " の調整値の欄が減っている。落ちた欄は既定値で動く";
+    EXPECT_EQ(fields->size(), 19u) << GetParam() << " の調整値の欄が減っている。落ちた欄は既定値で動く";
 }
 
 TEST_P(ShippedScene, LoadedPlayerKeepsTheTunedSlamValues)

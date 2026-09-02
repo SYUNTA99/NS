@@ -5,7 +5,6 @@
 #include "Game/Level/CollisionInputComponent.h"
 #include "Game/Level/ImpactMarkComponent.h"
 #include "Game/Level/LaunchedBodyComponent.h"
-#include "Game/Level/MomentumComponent.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Core/LogCategories.h"
@@ -35,7 +34,7 @@ namespace NS::Game::Level
         // 質量の下限 0.01 で割ると初速が 100 倍まで跳ねる。画面の外へ消える前に頭打ちにする
         constexpr float k_MaxLaunchSpeed = 120.0f;
 
-        // 反発の頭打ち。最高ダッシュ 16 の 1.5 倍。既定のカーブでは威力 2.0 と質量因子 1 未満で 18 を超えないので、
+        // 反発の頭打ち。既定のカーブでは威力 2.0 と質量因子 1 未満で 18 を超えないので、
         // 基準初速に桁違いの値を入れた時に操作の成立を守る
         constexpr float k_MaxReboundSpeed = 24.0f;
 
@@ -90,7 +89,6 @@ namespace NS::Game::Level
         }
     } // namespace
 
-    // MomentumComponent (-150) より後。先に走ると BeginGrace した猶予がその固定ステップのうちに解ける
     // PlayerComponent の 200 より前。書き込んだ速度が同じ固定ステップの移動に乗る
     ImpactResolverComponent::ImpactResolverComponent() noexcept
         : NS::Object::OverlayRendererComponent(NS::Object::TickPriority::Update - 100)
@@ -99,7 +97,6 @@ namespace NS::Game::Level
     void ImpactResolverComponent::OnStart()
     {
         m_movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>();
-        m_momentum = Owner()->FindComponent<MomentumComponent>();
         // 無ければ null のまま。ボタンを積んでいない配置物でも裁定は続ける
         m_collisionInput = Owner()->FindComponent<CollisionInputComponent>();
     }
@@ -160,7 +157,7 @@ namespace NS::Game::Level
         // フラッシュの減衰は早期 return より前に置く。凍結中の歩もここまでは来るので、止まっている間も白が薄れる
         if (m_peakFlashRemaining > 0)
             --m_peakFlashRemaining;
-        if (m_movement == nullptr || m_momentum == nullptr)
+        if (m_movement == nullptr)
             return;
 
         // 止まっている間は新しい衝突を見ない。凍った自機は重なったままなので、見ると毎歩検知し直す
@@ -225,13 +222,6 @@ namespace NS::Game::Level
 
         const float charge01 = m_movement->BodySlamCharge01();
 
-        // 溜め 0 の発動では比を勢いの段から作る。実速度から作ると、手を放して減速し始めた歩の発動だけ威力が落ちる
-        const float normalSpeed = m_momentum->SpeedForLevel(MomentumLevel::Normal);
-        // 通常速度が 0 の壊れたデータでは比が作れない。1.0 は通常の段で当てたのと同じ
-        float ratio = 1.0f;
-        // チャージに段を掛けると、走った分と溜めた分が二重に乗る
-        if (normalSpeed > 0.0f && !(charge01 > 0.0f))
-            ratio = m_momentum->SpeedForLevel(m_momentum->Level()) / normalSpeed;
         const float mass = hit->Mass();
         const float massFactor = mass / (mass + 1.0f);
 
@@ -246,8 +236,8 @@ namespace NS::Game::Level
             positionFactor = m_collisionInput->PositionFactorFor(offset01);
             peak = m_collisionInput->IsPeak(positionFactor);
         }
-        // 最終威力 = 比 × チャージ倍率 × 当たり位置係数。破壊の判定だけでなく反発・発射・揺れも威力で作る
-        const float power = ratio * chargeFactor * positionFactor;
+        // 最終威力 = チャージ倍率 × 当たり位置係数。破壊の判定だけでなく反発・発射・揺れも威力で作る
+        const float power = chargeFactor * positionFactor;
         m_lastCharge01 = charge01;
         m_lastPositionFactor = positionFactor;
         m_lastPower = power;
@@ -259,8 +249,7 @@ namespace NS::Game::Level
             hitStopScale = m_peakHitStopScale;
         }
         NS_LOG_INFO(Game,
-                    "威力の内訳: 比 {} × 溜め {} × 当たり位置 {} = {} 溜め量 {} 中心からの横ずれ {}",
-                    ratio,
+                    "威力の内訳: 溜め {} × 当たり位置 {} = {} 溜め量 {} 中心からの横ずれ {}",
                     chargeFactor,
                     positionFactor,
                     power,
@@ -277,7 +266,6 @@ namespace NS::Game::Level
         m_pendingShakeAmplitude = m_shakeAmplitude / (1.0f + mass);
         m_pendingShakeStrength = m_cameraShakeScale * power * massFactor;
 
-        // 最高ダッシュ限定の破壊条件にすると、溜め + ピークが最高ダッシュ + 素を上回る逆転が成立しない
         // 破壊を許可していない間は耐久を見ない。壊れる相手も押し飛ばしと反発へ回る
         int stopSteps = 0;
         if (m_breakEnabled && hit->Toughness() <= power)
@@ -292,8 +280,7 @@ namespace NS::Game::Level
         else
         {
             m_pendingBreak = false;
-            // 質量因子 mass/(mass+1) は質量が大きいほど 1 へ寄る。重い物は入った速さがほぼそのまま返り、
-            // 軽い物は勢いを持っていくのでほとんど返らない
+            // 質量因子 mass/(mass+1) は質量が大きいほど 1 へ寄る。軽い物は勢いを持っていくのでほとんど返らない
             float rebound = m_reboundSpeed * power * massFactor;
             rebound = NS::Core::Clamp(rebound, 0.0f, k_MaxReboundSpeed);
 
@@ -414,14 +401,8 @@ namespace NS::Game::Level
             m_scaleHeld = false;
         }
 
-        // 貫通は段を落とさず猶予も始めない。壊しながら走り続けるループを守る
         const bool wasBreak = m_pendingBreak;
         m_pendingBreak = false;
-        if (!wasBreak)
-        {
-            // 猶予はここから数え始める。止まっている間に数えると、操作できないまま猶予が減る
-            m_momentum->BeginGrace();
-        }
 
         NS::Object::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)

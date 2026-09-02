@@ -1,9 +1,10 @@
 #include "Editor/LevelFilePaths.h"
 #include "Game/Level/BlockObject.h"
 #include "Game/Level/BreakableComponent.h"
+#include "Game/Level/CollisionInputComponent.h"
 #include "Game/Level/FollowCameraObject.h"
+#include "Game/Level/ImpactResolverComponent.h"
 #include "Game/Level/KillZoneComponent.h"
-#include "Game/Level/MomentumComponent.h"
 #include "Game/Player.h"
 #include "Runtime/Core/Filesystem.h"
 #include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
@@ -677,37 +678,37 @@ TEST(SaveLoadRoundTrip, MissingBreakableFieldFallsBackToDefault)
 
 namespace
 {
-    // MomentumComponent は調整値の公開 setter を持たないため、Inspector と同じリフレクション経路で読み書きする
-    const SceneNs::FieldDesc* MomentumField(const char* label)
+    // CollisionInputComponent は調整値の公開 setter を持たないため、Inspector と同じリフレクション経路で読み書きする
+    const SceneNs::FieldDesc* ChargeField(const char* label)
     {
-        return SceneNs::FindField(LevelNs::MomentumComponent::StaticReflection(), label);
+        return SceneNs::FindField(LevelNs::CollisionInputComponent::StaticReflection(), label);
     }
 
-    template <class T> void WriteMomentumField(LevelNs::MomentumComponent& momentum, const char* label, const T& value)
+    template <class T> void WriteChargeField(LevelNs::CollisionInputComponent& input, const char* label, const T& value)
     {
-        const SceneNs::FieldDesc* field = MomentumField(label);
+        const SceneNs::FieldDesc* field = ChargeField(label);
         ASSERT_NE(field, nullptr) << label;
-        field->set(&momentum, &value);
+        field->set(&input, &value);
     }
 
-    template <class T> [[nodiscard]] T ReadMomentumField(const LevelNs::MomentumComponent& momentum, const char* label)
+    template <class T> [[nodiscard]] T ReadChargeField(const LevelNs::CollisionInputComponent& input, const char* label)
     {
         T value{};
-        const SceneNs::FieldDesc* field = MomentumField(label);
+        const SceneNs::FieldDesc* field = ChargeField(label);
         if (field == nullptr)
         {
             ADD_FAILURE() << label << " の欄が見つからない";
             return value;
         }
-        field->get(&momentum, &value);
+        field->get(&input, &value);
         return value;
     }
 
-    const nlohmann::json* FindMomentumEntry(const nlohmann::json& components)
+    const nlohmann::json* FindChargeEntry(const nlohmann::json& components)
     {
         for (const nlohmann::json& entry : components)
         {
-            if (entry.value("type", std::string{}) == "MomentumComponent")
+            if (entry.value("type", std::string{}) == "CollisionInputComponent")
                 return &entry;
         }
         return nullptr;
@@ -724,13 +725,13 @@ namespace
     }
 } // namespace
 
-TEST(SaveLoadRoundTrip, MomentumSecondsSurviveRoundTrip)
+TEST(SaveLoadRoundTrip, ChargeSecondsSurviveRoundTrip)
 {
     SceneNs::GameObject source;
-    LevelNs::MomentumComponent* authored = source.AddComponent<LevelNs::MomentumComponent>();
+    LevelNs::CollisionInputComponent* authored = source.AddComponent<LevelNs::CollisionInputComponent>();
     ASSERT_NE(authored, nullptr);
-    WriteMomentumField(*authored, "昇格秒", 4.0f);
-    WriteMomentumField(*authored, "降格猶予秒", 0.8f);
+    WriteChargeField(*authored, "チャージしきい値秒", 0.4f);
+    WriteChargeField(*authored, "チャージ満タン秒", 1.8f);
 
     SceneNs::SceneData src;
     src.objects.push_back(SceneNs::CaptureObjectData(source));
@@ -741,18 +742,18 @@ TEST(SaveLoadRoundTrip, MomentumSecondsSurviveRoundTrip)
 
     const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
     ASSERT_NE(live, nullptr);
-    const LevelNs::MomentumComponent* momentum = live->FindComponent<LevelNs::MomentumComponent>();
-    ASSERT_NE(momentum, nullptr);
-    EXPECT_FLOAT_EQ(ReadMomentumField<float>(*momentum, "昇格秒"), 4.0f);
-    EXPECT_FLOAT_EQ(ReadMomentumField<float>(*momentum, "降格猶予秒"), 0.8f);
+    const LevelNs::CollisionInputComponent* input = live->FindComponent<LevelNs::CollisionInputComponent>();
+    ASSERT_NE(input, nullptr);
+    EXPECT_FLOAT_EQ(ReadChargeField<float>(*input, "チャージしきい値秒"), 0.4f);
+    EXPECT_FLOAT_EQ(ReadChargeField<float>(*input, "チャージ満タン秒"), 1.8f);
 }
 
-TEST(SaveLoadRoundTrip, MomentumCurveSurvivesRoundTrip)
+TEST(SaveLoadRoundTrip, ChargeCurveSurvivesRoundTrip)
 {
     SceneNs::GameObject source;
-    LevelNs::MomentumComponent* authored = source.AddComponent<LevelNs::MomentumComponent>();
+    LevelNs::CollisionInputComponent* authored = source.AddComponent<LevelNs::CollisionInputComponent>();
     ASSERT_NE(authored, nullptr);
-    WriteMomentumField(*authored, "昇格倍率カーブ", ThreePointCurve());
+    WriteChargeField(*authored, "チャージ倍率カーブ", ThreePointCurve());
 
     SceneNs::SceneData src;
     src.objects.push_back(SceneNs::CaptureObjectData(source));
@@ -763,10 +764,10 @@ TEST(SaveLoadRoundTrip, MomentumCurveSurvivesRoundTrip)
 
     const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
     ASSERT_NE(live, nullptr);
-    const LevelNs::MomentumComponent* momentum = live->FindComponent<LevelNs::MomentumComponent>();
-    ASSERT_NE(momentum, nullptr);
+    const LevelNs::CollisionInputComponent* input = live->FindComponent<LevelNs::CollisionInputComponent>();
+    ASSERT_NE(input, nullptr);
 
-    const SceneNs::Curve loaded = ReadMomentumField<SceneNs::Curve>(*momentum, "昇格倍率カーブ");
+    const SceneNs::Curve loaded = ReadChargeField<SceneNs::Curve>(*input, "チャージ倍率カーブ");
     ASSERT_EQ(loaded.count, 3u);
     EXPECT_FLOAT_EQ(loaded.keys[0].x, 0.0f);
     EXPECT_FLOAT_EQ(loaded.keys[0].y, 1.0f);
@@ -776,12 +777,16 @@ TEST(SaveLoadRoundTrip, MomentumCurveSurvivesRoundTrip)
     EXPECT_FLOAT_EQ(loaded.keys[2].y, 3.0f);
 }
 
-TEST(SaveLoadRoundTrip, MomentumForwardInputFlagSurvivesRoundTrip)
+TEST(SaveLoadRoundTrip, BreakFlagSurvivesRoundTrip)
 {
     SceneNs::GameObject source;
-    LevelNs::MomentumComponent* authored = source.AddComponent<LevelNs::MomentumComponent>();
+    LevelNs::ImpactResolverComponent* authored = source.AddComponent<LevelNs::ImpactResolverComponent>();
     ASSERT_NE(authored, nullptr);
-    WriteMomentumField(*authored, "復帰に進行方向入力を要求", true);
+    const SceneNs::FieldDesc* field =
+        SceneNs::FindField(LevelNs::ImpactResolverComponent::StaticReflection(), "破壊を許可");
+    ASSERT_NE(field, nullptr);
+    const bool enabled = true;
+    field->set(authored, &enabled);
 
     SceneNs::SceneData src;
     src.objects.push_back(SceneNs::CaptureObjectData(source));
@@ -792,33 +797,35 @@ TEST(SaveLoadRoundTrip, MomentumForwardInputFlagSurvivesRoundTrip)
 
     const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
     ASSERT_NE(live, nullptr);
-    const LevelNs::MomentumComponent* momentum = live->FindComponent<LevelNs::MomentumComponent>();
-    ASSERT_NE(momentum, nullptr);
-    EXPECT_TRUE(ReadMomentumField<bool>(*momentum, "復帰に進行方向入力を要求"));
+    const LevelNs::ImpactResolverComponent* impact = live->FindComponent<LevelNs::ImpactResolverComponent>();
+    ASSERT_NE(impact, nullptr);
+    bool loaded = false;
+    field->get(impact, &loaded);
+    EXPECT_TRUE(loaded);
 }
 
 // キーの綴りを名指しで固定するのは、欄名を後から変えると保存済みレベルの値が静かに既定へ戻るため
-TEST(SaveLoadRoundTrip, MomentumFieldKeysAreTheLockedLabels)
+TEST(SaveLoadRoundTrip, ChargeFieldKeysAreTheLockedLabels)
 {
     SceneNs::GameObject live;
-    LevelNs::MomentumComponent* momentum = live.AddComponent<LevelNs::MomentumComponent>();
-    ASSERT_NE(momentum, nullptr);
-    WriteMomentumField(*momentum, "昇格倍率カーブ", ThreePointCurve());
+    LevelNs::CollisionInputComponent* input = live.AddComponent<LevelNs::CollisionInputComponent>();
+    ASSERT_NE(input, nullptr);
+    WriteChargeField(*input, "チャージ倍率カーブ", ThreePointCurve());
 
     SceneNs::SceneData src;
     src.objects.push_back(SceneNs::CaptureObjectData(live));
 
     const nlohmann::json root = nlohmann::json::parse(SceneNs::SerializeSceneToJson(src));
-    const nlohmann::json* entry = FindMomentumEntry(root.at("objects").at(0).at("components"));
+    const nlohmann::json* entry = FindChargeEntry(root.at("objects").at(0).at("components"));
     ASSERT_NE(entry, nullptr);
 
     const nlohmann::json& fields = entry->at("fields");
-    EXPECT_TRUE(fields.contains("昇格秒"));
-    EXPECT_TRUE(fields.contains("降格猶予秒"));
-    EXPECT_TRUE(fields.contains("昇格倍率カーブ"));
-    EXPECT_TRUE(fields.contains("復帰に進行方向入力を要求"));
+    EXPECT_TRUE(fields.contains("チャージしきい値秒"));
+    EXPECT_TRUE(fields.contains("チャージ満タン秒"));
+    EXPECT_TRUE(fields.contains("チャージ倍率カーブ"));
+    EXPECT_TRUE(fields.contains("突進位置係数カーブ"));
 
-    const nlohmann::json& points = fields.at("昇格倍率カーブ").at("curve");
+    const nlohmann::json& points = fields.at("チャージ倍率カーブ").at("curve");
     ASSERT_TRUE(points.is_array());
     ASSERT_EQ(points.size(), 3u);
     for (const nlohmann::json& point : points)

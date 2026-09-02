@@ -13,21 +13,19 @@ namespace NS::Game::Player
 namespace NS::Game::Level
 {
     class ImpactResolverComponent;
-    class MomentumComponent;
 
     //! @brief 体当たりのボタン入力を読んで発動を要求する Component
     //! @details 保持はマウス左かゲームパッドの X で、ImpactInputJudge がタップ / チャージを裁く
     //! どちらも離した歩に、溜め量を添えて PlayerComponent::RequestBodySlam を呼ぶ
     //! チャージ中は最高速度へ減速を掛ける。構えの縮みは押した歩から掛かる
     //! 威力のチャージ倍率カーブと当たり位置係数カーブもここが持ち、ImpactResolverComponent が参照する
-    //! 依存: NS::Game::Player::PlayerComponent, NS::Object::Curve, ImpactInputJudge, MomentumComponent,
-    //! ImpactResolverComponent
+    //! 依存: NS::Game::Player::PlayerComponent, NS::Object::Curve, ImpactInputJudge, ImpactResolverComponent
     class CollisionInputComponent : public NS::Object::Component
     {
     public:
         CollisionInputComponent() noexcept;
 
-        //! 同じ配置物の移動・勢い・裁定を引き当てる。見つからない相手に関わる処理は以後行わない
+        //! 同じ配置物の移動と裁定を引き当てる。見つからない相手に関わる処理は以後行わない
         void OnStart() override;
 
         //! ボタンの保持を判定へ 1 歩進め、発動を控えた歩に溜め量を添えて体当たりを要求する
@@ -91,7 +89,6 @@ namespace NS::Game::Level
         NS::Core::Vector3 m_homeScale{1.0f, 1.0f, 1.0f};
         bool m_stanceApplied = false;
         NS::Game::Player::PlayerComponent* m_movement = nullptr;
-        MomentumComponent* m_momentum = nullptr;
         ImpactResolverComponent* m_resolver = nullptr;
     };
 } // namespace NS::Game::Level
