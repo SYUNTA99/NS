@@ -30,11 +30,18 @@ namespace
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
     using NS::Object::GameObject;
-    using NS::Tests::DescribeTrace;
+    using NS::Tests::CompareTraces;
+    using NS::Tests::DescribeDiff;
     using NS::Tests::FoldTrace;
+    using NS::Tests::LoadBaseline;
+    using NS::Tests::MissingBaselineMessage;
+    using NS::Tests::SaveBaseline;
     using NS::Tests::StepRecord;
+    using NS::Tests::TraceDiff;
+    using NS::Tests::TraceTolerance;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
+    constexpr TraceTolerance k_Exact{};
     constexpr int k_RunSteps = 300; // 5 秒。走り出しから最高速度まで伸び切る長さ
 
     const Vector3 k_Forward{0.0f, 0.0f, 1.0f};
@@ -91,7 +98,7 @@ namespace
     }
 
     constexpr int k_ImpactSteps = 360; // 6 秒。押し飛ばした物へ追いついて当て直す往復が 4 回入る長さ
-    // 突進 0.3 秒と凍結と反発からの立て直しが 1 周に収まる間隔。短いと接地待ちで発動が落ちて経路が読めない
+    // 突進と凍結と反発からの立て直しが 1 周に収まる間隔。短いと接地待ちで発動が落ちて経路が読めない
     constexpr int k_ImpactSlamPeriod = 30;
     constexpr float k_ImpactSlamCharge = 1.0f;
     // 走行速度 8.0 で 6 秒ぶん走り切れる長さ。短いと道の端から落ち、軌跡の大半が自由落下になる
@@ -191,12 +198,6 @@ namespace
         return peak;
     }
 
-    // 基準ハッシュ。意図して手触りを変えた時だけ実測値で更新する
-    // 走行: +Z へ速度スケール 1.0 で 300 固定ステップ
-    constexpr std::uint64_t k_SteadyGolden = 0x03B0F438C908AAB2ULL;
-    // 衝突: 質量 1.0 / 耐久 99.0 の壊せる物へ +Z へ速度スケール 1.0 で 360 固定ステップ
-    // 耐久を高くして、破壊が入っても反発と押し飛ばしの経路が変わらないようにしてある
-    constexpr std::uint64_t k_ImpactGolden = 0xC521F555541B7402ULL;
 } // namespace
 
 class CollisionGolden : public ::testing::Test
@@ -221,8 +222,10 @@ TEST_F(CollisionGolden, SteadyRunMatchesGoldenTrace)
     EXPECT_LT(MaxForwardSpeedFrom(trace, 0), 9.0f) << "走行速度 8 を超えて伸びている";
     EXPECT_TRUE(trace.back().grounded) << "走り切る前に床から外れている";
 
-    const std::uint64_t hash = FoldTrace(trace);
-    EXPECT_EQ(hash, k_SteadyGolden) << DescribeTrace(trace, hash);
+    const auto baseline = LoadBaseline("collision_steady_run");
+    ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("collision_steady_run");
+    const TraceDiff diff = CompareTraces(*baseline, trace, k_Exact);
+    EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trace);
 }
 
 TEST_F(CollisionGolden, ImpactMatchesGoldenTrace)
@@ -231,6 +234,14 @@ TEST_F(CollisionGolden, ImpactMatchesGoldenTrace)
 
     EXPECT_TRUE(HasReboundStep(trace)) << "経路に反発が現れていない";
 
-    const std::uint64_t hash = FoldTrace(trace);
-    EXPECT_EQ(hash, k_ImpactGolden) << DescribeTrace(trace, hash);
+    const auto baseline = LoadBaseline("collision_impact");
+    ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("collision_impact");
+    const TraceDiff diff = CompareTraces(*baseline, trace, k_Exact);
+    EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trace);
+}
+
+TEST_F(CollisionGolden, DISABLED_SaveBaselines)
+{
+    EXPECT_TRUE(SaveBaseline("collision_steady_run", RunSteady()));
+    EXPECT_TRUE(SaveBaseline("collision_impact", RunImpact()));
 }

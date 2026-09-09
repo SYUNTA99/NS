@@ -8,6 +8,7 @@
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <vector>
@@ -19,11 +20,18 @@ namespace
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
     using NS::Object::GameObject;
-    using NS::Tests::DescribeTrace;
+    using NS::Tests::CompareTraces;
+    using NS::Tests::DescribeDiff;
     using NS::Tests::FoldTrace;
+    using NS::Tests::LoadBaseline;
+    using NS::Tests::MissingBaselineMessage;
+    using NS::Tests::SaveBaseline;
     using NS::Tests::StepRecord;
+    using NS::Tests::TraceDiff;
+    using NS::Tests::TraceTolerance;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
+    constexpr TraceTolerance k_Exact{};
 
     float MaxHeight(const std::vector<StepRecord>& trajectory) noexcept
     {
@@ -192,7 +200,7 @@ namespace
 
     //! 縁を掴む → シミー → よじ登る → 立つ を 1 続きで通す
     //! 床を敷かないので 1 歩目から下降し、掴みの条件が立つ
-    //! 掴まりは値を見る検証しか持たず、動詞を呼ぶ順序の入れ替えはハッシュでしか拾えない
+    //! 掴まりは値を見る検証しか持たず、呼ぶ順序の入れ替えは基準の軌跡でしか拾えない
     std::vector<StepRecord> RunLedgeClimb()
     {
         GameObject owner;
@@ -221,14 +229,33 @@ namespace
         return trajectory;
     }
 
-    // 基準ハッシュ。手触りに触る改修の前後で軌跡のビット一致を検証する物で、
-    // 意図して手触りを変えた時だけ実測値で更新する
-    constexpr uint64_t k_FlatWalkGolden = 0x4FA4FA4FCFB0F728ULL;
-    constexpr uint64_t k_SingleJumpGolden = 0xC15864A95E5EDFCDULL;
-    constexpr uint64_t k_CoyoteJumpGolden = 0xE363FC53420CB70DULL;
-    constexpr uint64_t k_JumpBufferGolden = 0xFC63ACD2279A8321ULL;
-    constexpr uint64_t k_WallCollisionGolden = 0xE38F47F9986195ACULL;
-    constexpr uint64_t k_LedgeClimbGolden = 0x16DCA66A3ECA0AD7ULL;
+    std::vector<StepRecord> RunSlopeAscent()
+    {
+        constexpr float k_Pi = 3.14159265358979323846f;
+        constexpr float k_AngleDegrees = 30.0f;
+        constexpr float k_Length = 24.0f;
+        constexpr float k_HalfWidth = 4.0f;
+        const float height = std::tan(k_AngleDegrees * k_Pi / 180.0f) * k_Length;
+        const Vector3 lowLeft{-k_HalfWidth, 0.0f, -k_Length * 0.5f};
+        const Vector3 lowRight{k_HalfWidth, 0.0f, -k_Length * 0.5f};
+        const Vector3 highLeft{-k_HalfWidth, height, k_Length * 0.5f};
+        const Vector3 highRight{k_HalfWidth, height, k_Length * 0.5f};
+
+        GameObject owner;
+        NS::Physics::PhysicsWorld world;
+        world.AddTriangle(NS::Physics::Triangle{lowLeft, highRight, lowRight});
+        world.AddTriangle(NS::Physics::Triangle{lowLeft, highLeft, highRight});
+        auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 2.5f, -10.5f});
+
+        std::vector<StepRecord> trajectory;
+        for (int i = 0; i < 120; ++i)
+        {
+            movement.SetDesiredMove(Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+            movement.OnUpdate();
+            trajectory.push_back(Record(owner, movement));
+        }
+        return trajectory;
+    }
 } // namespace
 
 class MovementGolden : public ::testing::Test
@@ -237,7 +264,7 @@ protected:
     void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_FixedDt); }
 };
 
-//! ハッシュ方式の前提として、同じビルドで 2 回走らせた結果がビット一致すること
+//! 基準の軌跡は差 0 で突き合わせる。同じビルドで 2 回走らせた結果がビット一致することが前提
 TEST_F(MovementGolden, HashIsStableAcrossTwoRuns)
 {
     EXPECT_EQ(FoldTrace(RunSingleJump()), FoldTrace(RunSingleJump()));
@@ -256,8 +283,10 @@ TEST_F(MovementGolden, FlatWalkMatchesGoldenTrace)
     EXPECT_LT(trajectory.back().velocity.x, 0.5f) << "入力を切った後に停止していない";
     EXPECT_TRUE(trajectory.back().grounded);
 
-    const uint64_t hash = FoldTrace(trajectory);
-    EXPECT_EQ(hash, k_FlatWalkGolden) << DescribeTrace(trajectory, hash);
+    const auto baseline = LoadBaseline("movement_flat_walk");
+    ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("movement_flat_walk");
+    const TraceDiff diff = CompareTraces(*baseline, trajectory, k_Exact);
+    EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trajectory);
 }
 
 TEST_F(MovementGolden, SingleJumpMatchesGoldenTrace)
@@ -268,8 +297,10 @@ TEST_F(MovementGolden, SingleJumpMatchesGoldenTrace)
     EXPECT_LT(MaxHeight(trajectory), 6.0f) << "ジャンプ頂点が高すぎる";
     EXPECT_TRUE(trajectory.back().grounded) << "着地して終わっていない";
 
-    const uint64_t hash = FoldTrace(trajectory);
-    EXPECT_EQ(hash, k_SingleJumpGolden) << DescribeTrace(trajectory, hash);
+    const auto baseline = LoadBaseline("movement_single_jump");
+    ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("movement_single_jump");
+    const TraceDiff diff = CompareTraces(*baseline, trajectory, k_Exact);
+    EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trajectory);
 }
 
 TEST_F(MovementGolden, CoyoteJumpMatchesGoldenTrace)
@@ -278,8 +309,10 @@ TEST_F(MovementGolden, CoyoteJumpMatchesGoldenTrace)
 
     EXPECT_TRUE(HasUpwardBurst(trajectory)) << "踏み外し後の猶予ジャンプが発動していない";
 
-    const uint64_t hash = FoldTrace(trajectory);
-    EXPECT_EQ(hash, k_CoyoteJumpGolden) << DescribeTrace(trajectory, hash);
+    const auto baseline = LoadBaseline("movement_coyote_jump");
+    ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("movement_coyote_jump");
+    const TraceDiff diff = CompareTraces(*baseline, trajectory, k_Exact);
+    EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trajectory);
 }
 
 TEST_F(MovementGolden, JumpBufferMatchesGoldenTrace)
@@ -288,8 +321,10 @@ TEST_F(MovementGolden, JumpBufferMatchesGoldenTrace)
 
     EXPECT_TRUE(HasUpwardBurst(trajectory)) << "着地時に先行入力ジャンプが発動していない";
 
-    const uint64_t hash = FoldTrace(trajectory);
-    EXPECT_EQ(hash, k_JumpBufferGolden) << DescribeTrace(trajectory, hash);
+    const auto baseline = LoadBaseline("movement_jump_buffer");
+    ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("movement_jump_buffer");
+    const TraceDiff diff = CompareTraces(*baseline, trajectory, k_Exact);
+    EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trajectory);
 }
 
 TEST_F(MovementGolden, WallCollisionMatchesGoldenTrace)
@@ -300,8 +335,10 @@ TEST_F(MovementGolden, WallCollisionMatchesGoldenTrace)
     EXPECT_GT(trajectory.back().position.x, 4.0f) << "壁のはるか手前で止まっている";
     EXPECT_LT(trajectory.back().velocity.x, 0.5f) << "壁に当たり続けているのに速度が残っている";
 
-    const uint64_t hash = FoldTrace(trajectory);
-    EXPECT_EQ(hash, k_WallCollisionGolden) << DescribeTrace(trajectory, hash);
+    const auto baseline = LoadBaseline("movement_wall_collision");
+    ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("movement_wall_collision");
+    const TraceDiff diff = CompareTraces(*baseline, trajectory, k_Exact);
+    EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trajectory);
 }
 
 TEST_F(MovementGolden, LedgeClimbMatchesGoldenTrace)
@@ -311,6 +348,39 @@ TEST_F(MovementGolden, LedgeClimbMatchesGoldenTrace)
     EXPECT_TRUE(trajectory.back().grounded) << "よじ登り切って立っていない";
     EXPECT_GT(trajectory.back().position.y, 0.5f) << "上面へ上がっていない";
 
-    const uint64_t hash = FoldTrace(trajectory);
-    EXPECT_EQ(hash, k_LedgeClimbGolden) << DescribeTrace(trajectory, hash);
+    const auto baseline = LoadBaseline("movement_ledge_climb");
+    ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("movement_ledge_climb");
+    const TraceDiff diff = CompareTraces(*baseline, trajectory, k_Exact);
+    EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trajectory);
+}
+
+TEST_F(MovementGolden, SlopeAscentMatchesGoldenTrace)
+{
+    const auto trajectory = RunSlopeAscent();
+
+    int monotonicSteps = 0;
+    for (std::size_t i = 61; i < trajectory.size(); ++i)
+    {
+        if (trajectory[i].position.y >= trajectory[i - 1].position.y - 0.001f)
+            ++monotonicSteps;
+    }
+    EXPECT_GE(monotonicSteps, 55);
+    EXPECT_GT(trajectory.back().position.y, trajectory[60].position.y + 1.0f);
+    EXPECT_TRUE(trajectory.back().grounded);
+
+    const auto baseline = LoadBaseline("movement_slope_ascent");
+    ASSERT_TRUE(baseline.has_value()) << MissingBaselineMessage("movement_slope_ascent");
+    const TraceDiff diff = CompareTraces(*baseline, trajectory, k_Exact);
+    EXPECT_TRUE(diff.matched) << DescribeDiff(diff, *baseline, trajectory);
+}
+
+TEST_F(MovementGolden, DISABLED_SaveBaselines)
+{
+    EXPECT_TRUE(SaveBaseline("movement_flat_walk", RunFlatWalk()));
+    EXPECT_TRUE(SaveBaseline("movement_single_jump", RunSingleJump()));
+    EXPECT_TRUE(SaveBaseline("movement_coyote_jump", RunCoyoteJump()));
+    EXPECT_TRUE(SaveBaseline("movement_jump_buffer", RunJumpBuffer()));
+    EXPECT_TRUE(SaveBaseline("movement_wall_collision", RunWallCollision()));
+    EXPECT_TRUE(SaveBaseline("movement_ledge_climb", RunLedgeClimb()));
+    EXPECT_TRUE(SaveBaseline("movement_slope_ascent", RunSlopeAscent()));
 }
