@@ -4,6 +4,7 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/JoltWorld.h"
 
 #include <algorithm>
 #include <cmath>
@@ -141,6 +142,17 @@ namespace NS::Object
             physics.AddAABB(WorldAABB());
         else
             physics.AddOBB(obb);
+    }
+
+    void BoxColliderComponent::AddToPhysics(NS::Physics::JoltWorld& physics)
+    {
+        if (m_isTrigger)
+        {
+            ReplaceBody(physics, JPH::BodyID{});
+            return;
+        }
+
+        ReplaceBody(physics, physics.AddBox(WorldOBB(), NS::Physics::ObjectLayers::Terrain));
     }
 
     NS_CLASS(BoxColliderComponent)

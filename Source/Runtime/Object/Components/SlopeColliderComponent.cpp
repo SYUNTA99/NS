@@ -4,6 +4,7 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/JoltWorld.h"
 #include "Runtime/Physics/WedgeGeometry.h"
 
 namespace NS::Object
@@ -30,6 +31,12 @@ namespace NS::Object
     {
         for (const NS::Physics::Triangle& tri : WorldTriangles())
             physics.AddTriangle(tri);
+    }
+
+    void SlopeColliderComponent::AddToPhysics(NS::Physics::JoltWorld& physics)
+    {
+        const std::array<NS::Physics::Triangle, 8> triangles = WorldTriangles();
+        ReplaceBody(physics, physics.AddMesh(triangles, NS::Physics::ObjectLayers::Terrain));
     }
 
     NS_CLASS(SlopeColliderComponent)

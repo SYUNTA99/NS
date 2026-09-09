@@ -14,7 +14,8 @@
 namespace NS::Physics
 {
     class PhysicsWorld;
-}
+    class JoltWorld;
+} // namespace NS::Physics
 
 namespace NS::Object
 {
@@ -32,7 +33,7 @@ namespace NS::Object
     //! 配置物 1 件の組み立ては呼出側のファクトリに委ね、GameObject の型選択や資産解決は持たない
     //! 機能別の型付き控えも持たず、欲しい component 型は ForEachComponent で問い合わせる
     //! 特定の 1 体は永続 id の解決で引く
-    //! 依存: NS::Object::GameObject / ObjectData, NS::Physics::PhysicsWorld
+    //! 依存: NS::Object::GameObject / ObjectData, NS::Physics::PhysicsWorld / JoltWorld
     class World : public NS::Core::NonCopyable
     {
     public:
@@ -81,6 +82,10 @@ namespace NS::Object
         //! 全配置物の collider を physics へ入れ直し broadphase を張り直す。 object は作り直さない
         //! 編集や配置変更の後、 全 rebuild せず当たりだけ同期するための軽い経路
         void RebuildPhysics(NS::Physics::PhysicsWorld& physics) const;
+
+        //! 全配置物の collider を JoltWorld へ body として入れ直し broadphase を張り直す
+        //! collider が覚えている body id もここで入れ替わる
+        void RebuildPhysics(NS::Physics::JoltWorld& physics);
 
         //! priority が [firstPriority, lastPriority) の Component を昇順で回す。 同じ priority の中は配置物の並び順
         //! 帯の一部だけ回したい呼び出し側が使う。 一時オブジェクトも同じ帯に乗る

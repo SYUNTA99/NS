@@ -4,6 +4,7 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/JoltWorld.h"
 
 #include <algorithm>
 #include <cmath>
@@ -67,6 +68,11 @@ namespace NS::Object
     void SphereColliderComponent::AddToPhysics(NS::Physics::PhysicsWorld& physics) const
     {
         physics.AddSphere(WorldSphere());
+    }
+
+    void SphereColliderComponent::AddToPhysics(NS::Physics::JoltWorld& physics)
+    {
+        ReplaceBody(physics, physics.AddSphere(WorldSphere(), NS::Physics::ObjectLayers::Terrain));
     }
 
     NS_CLASS(SphereColliderComponent)

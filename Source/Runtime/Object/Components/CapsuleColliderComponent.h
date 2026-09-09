@@ -54,6 +54,8 @@ namespace NS::Object
 
         //! world 座標の capsule を physics へ入れる
         void AddToPhysics(NS::Physics::PhysicsWorld& physics) const override;
+        //! 静的世界から外した capsule は body を作らない
+        void AddToPhysics(NS::Physics::JoltWorld& physics) override;
 
         NS_REFLECT_BEGIN(CapsuleColliderComponent, ColliderComponent)
         NS_REFLECT_ACCESSOR(float, "半径", Radius(), SetRadius)

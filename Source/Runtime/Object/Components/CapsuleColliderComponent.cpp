@@ -4,6 +4,7 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/JoltWorld.h"
 
 #include <algorithm>
 #include <cmath>
@@ -124,6 +125,17 @@ namespace NS::Object
         if (m_excludedFromStaticWorld)
             return;
         physics.AddCapsule(WorldCapsule());
+    }
+
+    void CapsuleColliderComponent::AddToPhysics(NS::Physics::JoltWorld& physics)
+    {
+        if (m_excludedFromStaticWorld)
+        {
+            ReplaceBody(physics, JPH::BodyID{});
+            return;
+        }
+
+        ReplaceBody(physics, physics.AddCapsule(WorldCapsule(), NS::Physics::ObjectLayers::Terrain));
     }
 
     NS_CLASS(CapsuleColliderComponent)

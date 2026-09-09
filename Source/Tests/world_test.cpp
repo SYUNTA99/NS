@@ -16,6 +16,7 @@
 #include <Runtime/Object/Reflection/ObjectRef.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/World.h>
+#include <Runtime/Physics/JoltWorld.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 #include <algorithm>
 #include <chrono>
@@ -31,7 +32,7 @@ using NS::Object::World;
 
 namespace
 {
-    // world は型付き控えを持たないので、テストも本番の読み手と同じ問い合わせ口から集める
+    // world は型付き控えを持たないので、テストも本番と同じ問い合わせ口から集める
     template <class T> std::vector<T*> Collect(const World& world)
     {
         std::vector<T*> result;
@@ -493,6 +494,62 @@ TEST(WorldTest, UpdateAllObjectsFollowsOwnerActiveFlag)
     owner->SetActive(true);
     world.UpdateAllObjects();
     EXPECT_EQ(counter->Count(), 1);
+}
+
+TEST(WorldTest, RebuildPhysicsFillsJoltWorld)
+{
+    World world;
+    world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
+    world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::SphereColliderComponent>();
+
+    NS::Physics::JoltWorld physics;
+    world.RebuildPhysics(physics);
+
+    EXPECT_EQ(physics.BodyCount(), 2u);
+}
+
+TEST(WorldTest, RebuildPhysicsIntoJoltWorldTwiceKeepsTheCount)
+{
+    World world;
+    world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
+
+    NS::Physics::JoltWorld physics;
+    world.RebuildPhysics(physics);
+    world.RebuildPhysics(physics);
+
+    EXPECT_EQ(physics.BodyCount(), 1u);
+}
+
+// 組み直しは body を作り直すので、collider が覚えている id も入れ替わる。数だけ見ると素通しする
+// 形の違う 2 つを置くのは AddToPhysics が派生ごとに別実装だからで、1 種類では 1 つの実装しか通らない
+TEST(WorldTest, RebuildPhysicsIntoJoltWorldRefreshesEveryBodyId)
+{
+    World world;
+    auto* box = world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
+    auto* sphere = world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::SphereColliderComponent>();
+
+    NS::Physics::JoltWorld physics;
+    world.RebuildPhysics(physics);
+    const JPH::BodyID staleBox = box->BodyId();
+    const JPH::BodyID staleSphere = sphere->BodyId();
+
+    world.RebuildPhysics(physics);
+
+    EXPECT_EQ(physics.BodyCount(), 2u);
+    EXPECT_NE(box->BodyId(), staleBox);
+    EXPECT_NE(sphere->BodyId(), staleSphere);
+}
+
+TEST(WorldTest, InactiveColliderStaysOutOfJoltWorld)
+{
+    World world;
+    auto* collider = world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
+    collider->SetActive(false);
+
+    NS::Physics::JoltWorld physics;
+    world.RebuildPhysics(physics);
+
+    EXPECT_EQ(physics.BodyCount(), 0u);
 }
 
 // 取り込み形状の三角形も物理へ入る。 組み直し側が形状を名指ししない事の裏取り

@@ -55,6 +55,8 @@ namespace NS::Object
     {
         // ギズモで動いた live の当たりを張り直す。 object を作り直さないので選択・参照はそのまま保たれる
         m_world.RebuildPhysics(Physics());
+        // Jolt 側は移行の途中で、当たりを問い合わせる使い手はまだ居ない。掃引と接地は PhysicsWorld が答える
+        m_world.RebuildPhysics(m_joltWorld);
         OnWorldChanged();
         NotifyTransientsWorldChanged();
     }
@@ -175,6 +177,7 @@ namespace NS::Object
     void Scene::DestroyObject(std::uint32_t objectId)
     {
         m_world.RemoveByObjectId(objectId, Physics());
+        m_world.RebuildPhysics(m_joltWorld);
     }
 
     void Scene::RebuildWorldFrom(const SceneData& data)
@@ -183,6 +186,7 @@ namespace NS::Object
         // vcam の brain への付け外しは VirtualCameraComponent が OnStart / OnEndPlay で自分で行う
         m_world.Rebuild(
             data, *this, Physics(), [this](const ObjectData& entry) { return BuildSceneObject(entry, m_assets); });
+        m_world.RebuildPhysics(m_joltWorld);
 
         OnWorldChanged();
         NotifyTransientsWorldChanged();

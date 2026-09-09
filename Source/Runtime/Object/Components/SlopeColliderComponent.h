@@ -28,6 +28,8 @@ namespace NS::Object
 
         //! wedge の 8 三角形を physics へ入れる
         void AddToPhysics(NS::Physics::PhysicsWorld& physics) const override;
+        //! wedge の 8 三角形をまとめて body 1 個にする
+        void AddToPhysics(NS::Physics::JoltWorld& physics) override;
 
         // 角度・半サイズを Inspector / 直列化へ公開する。 WorldTriangles は member を都度読むため set で即反映する
         NS_REFLECT_BEGIN(SlopeColliderComponent, ColliderComponent)

@@ -1,9 +1,17 @@
 #include "Runtime/Physics/JoltWorld.h"
 
+#include "Runtime/Physics/JoltConversion.h"
+
 #include <Jolt/Core/Factory.h>
+#include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/MeshShape.h>
+#include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/RegisterTypes.h>
 
 #include <memory>
+#include <utility>
 
 namespace NS::Physics
 {
@@ -114,5 +122,115 @@ namespace NS::Physics
     JPH::uint JoltWorld::BodyCount() const noexcept
     {
         return m_physicsSystem.GetNumBodies();
+    }
+
+    JPH::BodyID JoltWorld::AddStatic(const JPH::ShapeRefC& shape,
+                                     const NS::Core::Vector3& position,
+                                     const NS::Core::Quaternion& rotation,
+                                     JPH::ObjectLayer layer)
+    {
+        if (shape == nullptr)
+            return JPH::BodyID{};
+
+        const JPH::BodyCreationSettings settings{
+            shape, ToJolt(position), ToJolt(rotation), JPH::EMotionType::Static, layer};
+        return m_physicsSystem.GetBodyInterface().CreateAndAddBody(settings, JPH::EActivation::DontActivate);
+    }
+
+    JPH::BodyID JoltWorld::AddBox(const NS::Core::OBB& box, JPH::ObjectLayer layer)
+    {
+        const JPH::BoxShapeSettings shapeSettings{
+            JPH::Vec3{box.halfExtentX, box.halfExtentY, box.halfExtentZ}};
+        const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
+        if (shape.HasError())
+            return JPH::BodyID{};
+
+        const JPH::Mat44 axes{JPH::Vec4{ToJolt(box.axisX), 0.0f},
+                              JPH::Vec4{ToJolt(box.axisY), 0.0f},
+                              JPH::Vec4{ToJolt(box.axisZ), 0.0f},
+                              JPH::Vec4{0.0f, 0.0f, 0.0f, 1.0f}};
+        return AddStatic(shape.Get(), box.center, FromJolt(axes.GetQuaternion()), layer);
+    }
+
+    JPH::BodyID JoltWorld::AddSphere(const NS::Core::Sphere& sphere, JPH::ObjectLayer layer)
+    {
+        const JPH::SphereShapeSettings shapeSettings{sphere.radius};
+        const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
+        if (shape.HasError())
+            return JPH::BodyID{};
+
+        return AddStatic(shape.Get(), sphere.center, NS::Core::Quaternion::Identity, layer);
+    }
+
+    JPH::BodyID JoltWorld::AddCapsule(const Capsule& capsule, JPH::ObjectLayer layer)
+    {
+        const JPH::CapsuleShapeSettings shapeSettings{capsule.halfHeight, capsule.radius};
+        const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
+        if (shape.HasError())
+            return JPH::BodyID{};
+
+        const JPH::Quat rotation =
+            JPH::Quat::sFromTo(JPH::Vec3::sAxisY(), ToJolt(capsule.axis).NormalizedOr(JPH::Vec3::sAxisY()));
+        return AddStatic(shape.Get(), capsule.center, FromJolt(rotation), layer);
+    }
+
+    JPH::BodyID JoltWorld::AddMesh(std::span<const Triangle> triangles, JPH::ObjectLayer layer)
+    {
+        if (triangles.empty())
+            return JPH::BodyID{};
+
+        JPH::TriangleList list;
+        list.reserve(triangles.size());
+        for (const Triangle& triangle : triangles)
+        {
+            list.push_back(JPH::Triangle{JPH::Float3{triangle.v0.x, triangle.v0.y, triangle.v0.z},
+                                         JPH::Float3{triangle.v1.x, triangle.v1.y, triangle.v1.z},
+                                         JPH::Float3{triangle.v2.x, triangle.v2.y, triangle.v2.z}});
+        }
+
+        const JPH::MeshShapeSettings shapeSettings{std::move(list)};
+        const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
+        if (shape.HasError())
+            return JPH::BodyID{};
+
+        return AddStatic(
+            shape.Get(), NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Quaternion::Identity, layer);
+    }
+
+    void JoltWorld::OptimizeBroadPhase()
+    {
+        m_physicsSystem.OptimizeBroadPhase();
+    }
+
+    void JoltWorld::RemoveBody(JPH::BodyID id)
+    {
+        if (id.IsInvalid())
+            return;
+
+        JPH::BodyInterface& bodies = m_physicsSystem.GetBodyInterface();
+        bodies.RemoveBody(id);
+        bodies.DestroyBody(id);
+    }
+
+    void JoltWorld::RemoveAllBodies()
+    {
+        JPH::BodyIDVector ids;
+        m_physicsSystem.GetBodies(ids);
+        if (ids.empty())
+            return;
+
+        JPH::BodyInterface& bodies = m_physicsSystem.GetBodyInterface();
+        bodies.RemoveBodies(ids.data(), static_cast<int>(ids.size()));
+        bodies.DestroyBodies(ids.data(), static_cast<int>(ids.size()));
+    }
+
+    NS::Core::Vector3 JoltWorld::BodyPosition(JPH::BodyID id) const
+    {
+        return FromJolt(m_physicsSystem.GetBodyInterfaceNoLock().GetPosition(id));
+    }
+
+    NS::Core::Quaternion JoltWorld::BodyRotation(JPH::BodyID id) const
+    {
+        return FromJolt(m_physicsSystem.GetBodyInterfaceNoLock().GetRotation(id));
     }
 } // namespace NS::Physics

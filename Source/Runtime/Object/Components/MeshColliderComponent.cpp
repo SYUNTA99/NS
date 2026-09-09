@@ -4,6 +4,7 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/JoltWorld.h"
 
 namespace NS::Object
 {
@@ -47,6 +48,12 @@ namespace NS::Object
     {
         for (const NS::Physics::Triangle& tri : WorldTriangles())
             physics.AddTriangle(tri);
+    }
+
+    void MeshColliderComponent::AddToPhysics(NS::Physics::JoltWorld& physics)
+    {
+        const std::vector<NS::Physics::Triangle> triangles = WorldTriangles();
+        ReplaceBody(physics, physics.AddMesh(triangles, NS::Physics::ObjectLayers::Terrain));
     }
 
     // 三角形群はリフレクションで運べないので data からは空で作る。差すのは呼出側の SetLocalTriangles

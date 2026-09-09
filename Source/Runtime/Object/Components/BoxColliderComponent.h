@@ -49,6 +49,8 @@ namespace NS::Object
 
         //! トリガなら何も入れない。 90° 刻みの回転は AABB、 傾いていれば OBB
         void AddToPhysics(NS::Physics::PhysicsWorld& physics) const override;
+        //! トリガなら body を作らない。 傾きに関わらず OBB のまま入れる
+        void AddToPhysics(NS::Physics::JoltWorld& physics) override;
 
         // 当たり箱の形状の半径と Transform からの独立オフセット / 回転を Inspector へ公開する
         // 半径は負クランプ、 回転は Euler 度で受けるため全て setter 経由で書く

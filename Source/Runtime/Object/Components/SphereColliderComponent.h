@@ -34,6 +34,8 @@ namespace NS::Object
 
         //! world 座標の球を physics へ入れる
         void AddToPhysics(NS::Physics::PhysicsWorld& physics) const override;
+        //! world 座標の球を body 1 個として入れる
+        void AddToPhysics(NS::Physics::JoltWorld& physics) override;
 
         NS_REFLECT_BEGIN(SphereColliderComponent, ColliderComponent)
         NS_REFLECT_ACCESSOR(float, "半径", Radius(), SetRadius)

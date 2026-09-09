@@ -3,6 +3,7 @@
 #include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Physics/JoltWorld.h"
 #include "Runtime/Physics/PhysicsWorld.h"
 
 #include <algorithm>
@@ -177,6 +178,17 @@ namespace NS::Object
                 collider.AddToPhysics(physics);
         });
         physics.BuildBroadphase();
+    }
+
+    void World::RebuildPhysics(NS::Physics::JoltWorld& physics)
+    {
+        physics.RemoveAllBodies();
+        ForEachComponent<ColliderComponent>([&physics](ColliderComponent& collider) {
+            collider.ForgetBody();
+            if (collider.IsActive())
+                collider.AddToPhysics(physics);
+        });
+        physics.OptimizeBroadPhase();
     }
 
     void World::UpdateAllObjects()
