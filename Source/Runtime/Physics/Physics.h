@@ -5,6 +5,7 @@
 #include "Runtime/Physics/Capsule.h"
 #include "Runtime/Physics/CapsuleMover.h"
 #include "Runtime/Physics/CollisionGrid.h"
+#include "Runtime/Physics/JoltWorld.h"
 #include "Runtime/Physics/PhysicsWorld.h"
 #include "Runtime/Physics/Plane.h"
 #include "Runtime/Physics/Ray.h"

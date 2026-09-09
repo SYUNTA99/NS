@@ -6,6 +6,7 @@
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 #include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Object/World.h"
+#include "Runtime/Physics/JoltWorld.h"
 #include "Runtime/Physics/PhysicsWorld.h"
 
 #include <cstdint>
@@ -73,6 +74,9 @@ namespace NS::Object
         //! 衝突 world への可変ハンドル。build 時に満たし、
         //! 移動の Component 等の借用元は OnStart で所属 scene から取りに来る
         [[nodiscard]] NS::Physics::PhysicsWorld& Physics() noexcept { return m_physicsWorld; }
+
+        //! JoltWorld への可変ハンドル。scene が値で持つので寿命は scene と同じ
+        [[nodiscard]] NS::Physics::JoltWorld& Jolt() noexcept { return m_joltWorld; }
 
         //! AssetManager を非所有で差す。組み立て時の参照実体化が使う。未設定 (テスト等) は解決を跳ばす
         void SetAssets(AssetManager* assets) noexcept { m_assets = assets; }
@@ -206,6 +210,7 @@ namespace NS::Object
         //! 描画物の登録簿と視錐台カリングを持つレンダラ側の描画シーン
         NS::Graphics::RenderScene m_renderScene;
 
+        NS::Physics::JoltWorld m_joltWorld;
         //! 衝突 world。当たりの有る scene だけが build で満たし、無ければ空のまま
         //! m_world より前に宣言してあるので破棄は後になり、これを借りる移動の Component より長く生きる
         NS::Physics::PhysicsWorld m_physicsWorld;

@@ -437,7 +437,10 @@ project "Object"
         "Source/ThirdParty/DirectXTK/Inc",
         "Source/ThirdParty/spdlog/include",
         "Source/ThirdParty/magic_enum/include",
+        "Source/ThirdParty/JoltPhysics",
     }
+
+    applyJoltDefines()
 
     defines {
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
@@ -575,7 +578,10 @@ project "Game"
         "Source/ThirdParty/DirectXTK/Inc",
         "Source/ThirdParty/spdlog/include",
         "Source/ThirdParty/magic_enum/include",
+        "Source/ThirdParty/JoltPhysics",
     }
+
+    applyJoltDefines()
 
     defines {
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
@@ -630,7 +636,10 @@ project "Editor"
         "Source/ThirdParty/magic_enum/include",
         "Source/ThirdParty/imgui",
         "Source/ThirdParty/imgui/backends",
+        "Source/ThirdParty/JoltPhysics",
     }
+
+    applyJoltDefines()
 
     defines {
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
@@ -691,7 +700,10 @@ project "GameApp"
         "Source/ThirdParty/DirectXTK/Inc",
         "Source/ThirdParty/spdlog/include",
         "Source/ThirdParty/magic_enum/include",
+        "Source/ThirdParty/JoltPhysics",
     }
+
+    applyJoltDefines()
 
     defines {
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
@@ -708,7 +720,8 @@ project "GameApp"
         "Object",
         "App",
         "UI",
-        "directxtk_simplemath"
+        "directxtk_simplemath",
+        "jolt"
     }
 
     -- Object の component 自己登録はどこからも参照されない TU の静的初期化に載っているため、
@@ -879,7 +892,10 @@ project "Tests"
         "Source/ThirdParty/DirectXTK/Inc",
         "Source/ThirdParty/spdlog/include",
         "Source/ThirdParty/magic_enum/include",
+        "Source/ThirdParty/JoltPhysics",
     }
+
+    applyJoltDefines()
 
     defines {
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
@@ -899,7 +915,8 @@ project "Tests"
         "Graphics",
         "Audio",
         "Object",
-        "App"
+        "App",
+        "jolt"
     }
 
     -- Game.exe と同じ理由で Object の自己登録 TU をリンカ除去から守る
