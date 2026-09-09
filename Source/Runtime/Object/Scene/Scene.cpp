@@ -16,6 +16,8 @@
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
 
+#include <limits>
+
 namespace NS::Object
 {
     namespace
@@ -210,7 +212,11 @@ namespace NS::Object
                 return;
             m_simulationStepFrames -= 1;
         }
-        m_world.UpdateAllObjects();
+        // カメラが追う前に踏む。自機と衝突の裁定は Update 帯までに終わっている
+        m_world.UpdateObjects(std::numeric_limits<int>::min(), TickPriority::LateUpdate);
+        m_joltWorld.Update(NS::Core::FrameTimer::FixedDelta());
+        m_world.UpdateObjects(TickPriority::LateUpdate);
+        m_world.SnapshotObjects();
     }
 
     void Scene::OnShutdown()

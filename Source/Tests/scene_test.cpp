@@ -1,6 +1,8 @@
-#include <gtest/gtest.h>
 #include <Runtime/Core/Clock.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Object/Scene/Scene.h>
+#include <Runtime/Physics/JoltWorld.h>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -84,4 +86,58 @@ TEST(SceneTest, PolymorphicDeleteCallsDerivedDtor)
         std::unique_ptr<NS::Object::Scene> scene = std::make_unique<TrackedScene>(&dtorCalled);
     }
     EXPECT_TRUE(dtorCalled);
+}
+
+namespace
+{
+    using NS::Core::Sphere;
+    using NS::Core::Vector3;
+    namespace ObjectLayers = NS::Physics::ObjectLayers;
+
+    JPH::BodyID DropSphereInto(NS::Object::Scene& scene)
+    {
+        const JPH::BodyID id = scene.Jolt().AddSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, ObjectLayers::Rock);
+        scene.Jolt().OptimizeBroadPhase();
+        scene.Jolt().SetBodyDynamic(id, true);
+        return id;
+    }
+
+    void RunFrames(NS::Object::Scene& scene, int frames)
+    {
+        NS::Core::FrameTimer::SetFixedDelta(1.0f / 60.0f);
+        for (int i = 0; i < frames; ++i)
+            scene.OnUpdate();
+    }
+} // namespace
+
+TEST(SceneTest, OnUpdateStepsTheJoltWorld)
+{
+    NS::Object::Scene scene;
+    const JPH::BodyID id = DropSphereInto(scene);
+
+    RunFrames(scene, 30);
+
+    EXPECT_LT(scene.Jolt().BodyPosition(id).y, 9.0f);
+}
+
+TEST(SceneTest, EditModeLeavesTheJoltWorldStill)
+{
+    NS::Object::Scene scene;
+    const JPH::BodyID id = DropSphereInto(scene);
+    scene.SetSimulationEnabled(false);
+
+    RunFrames(scene, 30);
+
+    EXPECT_NEAR(scene.Jolt().BodyPosition(id).y, 10.0f, 1.0e-5f);
+}
+
+TEST(SceneTest, PausedSceneLeavesTheJoltWorldStill)
+{
+    NS::Object::Scene scene;
+    const JPH::BodyID id = DropSphereInto(scene);
+    scene.SetSimulationPaused(true);
+
+    RunFrames(scene, 30);
+
+    EXPECT_NEAR(scene.Jolt().BodyPosition(id).y, 10.0f, 1.0e-5f);
 }

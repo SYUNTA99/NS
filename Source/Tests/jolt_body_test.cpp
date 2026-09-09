@@ -148,3 +148,79 @@ TEST(JoltBody, YawedBoxKeepsItsAxes)
     EXPECT_NEAR(rotatedX.y, 0.0f, 1.0e-5f);
     EXPECT_NEAR(rotatedX.z, -std::sin(yaw), 1.0e-5f);
 }
+
+namespace
+{
+    constexpr float k_FixedDelta = 1.0f / 60.0f;
+
+    void Step(JoltWorld& world, int steps)
+    {
+        for (int i = 0; i < steps; ++i)
+            world.Update(k_FixedDelta);
+    }
+} // namespace
+
+TEST(JoltStep, StaticBodyStaysWhereItWasPut)
+{
+    JoltWorld world;
+    const JPH::BodyID id = world.AddSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, ObjectLayers::Rock);
+    world.OptimizeBroadPhase();
+
+    Step(world, 30);
+
+    EXPECT_NEAR(world.BodyPosition(id).y, 10.0f, 1.0e-5f);
+}
+
+TEST(JoltStep, DynamicBodyFalls)
+{
+    JoltWorld world;
+    const JPH::BodyID id = world.AddSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, ObjectLayers::Rock);
+    world.OptimizeBroadPhase();
+    world.SetBodyDynamic(id, true);
+
+    Step(world, 30);
+
+    EXPECT_LT(world.BodyPosition(id).y, 9.0f);
+}
+
+TEST(JoltStep, BodyTurnedBackToStaticStopsFalling)
+{
+    JoltWorld world;
+    const JPH::BodyID id = world.AddSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, ObjectLayers::Rock);
+    world.OptimizeBroadPhase();
+    world.SetBodyDynamic(id, true);
+    Step(world, 30);
+
+    world.SetBodyDynamic(id, false);
+    const float restingY = world.BodyPosition(id).y;
+    Step(world, 30);
+
+    EXPECT_NEAR(world.BodyPosition(id).y, restingY, 1.0e-5f);
+}
+
+// dynamic にできるかは shape だけで決まる。ObjectLayer は見ていない
+TEST(JoltStep, TerrainBodyCanBecomeDynamic)
+{
+    JoltWorld world;
+    const JPH::BodyID id = world.AddSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, ObjectLayers::Terrain);
+    world.OptimizeBroadPhase();
+    world.SetBodyDynamic(id, true);
+
+    Step(world, 30);
+
+    EXPECT_LT(world.BodyPosition(id).y, 9.0f);
+}
+
+// MeshShape::MustBeStatic が true なので SetBodyDynamic は警告を出して戻る
+TEST(JoltStep, MeshBodyStaysStatic)
+{
+    JoltWorld world;
+    const std::vector<Triangle> floor = MakeFloorQuad();
+    const JPH::BodyID id = world.AddMesh(floor, ObjectLayers::Terrain);
+    world.OptimizeBroadPhase();
+
+    world.SetBodyDynamic(id, true);
+    Step(world, 30);
+
+    EXPECT_NEAR(world.BodyPosition(id).y, 0.0f, 1.0e-5f);
+}

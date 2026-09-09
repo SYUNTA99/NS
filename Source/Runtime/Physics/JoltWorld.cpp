@@ -1,5 +1,7 @@
 #include "Runtime/Physics/JoltWorld.h"
 
+#include "Runtime/Core/LogCategories.h"
+#include "Runtime/Core/Logger.h"
 #include "Runtime/Physics/JoltConversion.h"
 
 #include <Jolt/Core/Factory.h>
@@ -132,15 +134,17 @@ namespace NS::Physics
         if (shape == nullptr)
             return JPH::BodyID{};
 
-        const JPH::BodyCreationSettings settings{
-            shape, ToJolt(position), ToJolt(rotation), JPH::EMotionType::Static, layer};
+        JPH::BodyCreationSettings settings{shape, ToJolt(position), ToJolt(rotation), JPH::EMotionType::Static, layer};
+        // false のまま作った body は Dynamic への SetMotionType が JPH_ASSERT で止まる
+        // 動かすかを決めるのは SetBodyDynamic を呼ぶ側で、Add 系にそれを伝える引数は無い
+        // mesh は体積を出せず質量が 0 になる。true にすると body の生成が JPH_ASSERT で止まる
+        settings.mAllowDynamicOrKinematic = !shape->MustBeStatic();
         return m_physicsSystem.GetBodyInterface().CreateAndAddBody(settings, JPH::EActivation::DontActivate);
     }
 
     JPH::BodyID JoltWorld::AddBox(const NS::Core::OBB& box, JPH::ObjectLayer layer)
     {
-        const JPH::BoxShapeSettings shapeSettings{
-            JPH::Vec3{box.halfExtentX, box.halfExtentY, box.halfExtentZ}};
+        const JPH::BoxShapeSettings shapeSettings{JPH::Vec3{box.halfExtentX, box.halfExtentY, box.halfExtentZ}};
         const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
         if (shape.HasError())
             return JPH::BodyID{};
@@ -193,13 +197,36 @@ namespace NS::Physics
         if (shape.HasError())
             return JPH::BodyID{};
 
-        return AddStatic(
-            shape.Get(), NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Quaternion::Identity, layer);
+        return AddStatic(shape.Get(), NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Quaternion::Identity, layer);
     }
 
     void JoltWorld::OptimizeBroadPhase()
     {
         m_physicsSystem.OptimizeBroadPhase();
+    }
+
+    void JoltWorld::Update(float deltaTime)
+    {
+        // NS の固定更新が 1/60 秒なので分割は 1
+        m_physicsSystem.Update(deltaTime, 1, &m_tempAllocator, &m_jobSystem);
+    }
+
+    void JoltWorld::SetBodyDynamic(JPH::BodyID id, bool dynamic)
+    {
+        if (id.IsInvalid())
+            return;
+
+        JPH::BodyInterface& bodies = m_physicsSystem.GetBodyInterface();
+        // 静的専用の形の body には MotionProperties が無く、Dynamic を渡すと Jolt の JPH_ASSERT で落ちる
+        if (dynamic && bodies.GetShape(id)->MustBeStatic())
+        {
+            NS_LOG_WARN(Physics, "静的専用の形なので動的にできない");
+            return;
+        }
+
+        bodies.SetMotionType(id,
+                             dynamic ? JPH::EMotionType::Dynamic : JPH::EMotionType::Static,
+                             dynamic ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
     }
 
     void JoltWorld::RemoveBody(JPH::BodyID id)

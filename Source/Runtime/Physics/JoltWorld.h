@@ -17,7 +17,7 @@
 
 namespace NS::Physics
 {
-    //! body の種別を表す ObjectLayer。どの組み合わせが当たるかは ObjectLayerPairFilter が持つ
+    //! body の種別を表す ObjectLayer。どの組み合わせが当たるかは 2 つの ShouldCollide が同じ形で持つ
     namespace ObjectLayers
     {
         inline constexpr JPH::ObjectLayer Terrain = 0;
@@ -75,6 +75,14 @@ namespace NS::Physics
         //! broadphase の木を組み直す。Add 完了後に 1 度呼ぶ
         void OptimizeBroadPhase();
 
+        //! world を deltaTime 秒ぶん進める。衝突の分割は 1 で、渡した時間を刻まない
+        void Update(float deltaTime);
+
+        //! @brief body を dynamic と static で切り替える
+        //! @details dynamic にする時だけ body を起こす。無効な BodyID は何もしない
+        //! 静的専用の形の body は dynamic にできない。警告を出して戻る
+        void SetBodyDynamic(JPH::BodyID id, bool dynamic);
+
         //! body を world から外して壊す。無効な BodyID は何もしない
         void RemoveBody(JPH::BodyID id);
         //! world の body を全部外して壊す
@@ -119,6 +127,7 @@ namespace NS::Physics
             [[nodiscard]] bool ShouldCollide(JPH::ObjectLayer object, JPH::BroadPhaseLayer broadPhase) const override;
         };
 
+        // m_tempAllocator より前に置く。構築が呼ぶ Jolt の確保関数は RegisterDefaultAllocator まで nullptr
         RuntimeInitialization m_runtimeInitialization;
         BroadPhaseLayerInterface m_broadPhaseLayerInterface;
         ObjectLayerPairFilter m_objectLayerPairFilter;
