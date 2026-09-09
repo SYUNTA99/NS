@@ -134,6 +134,19 @@ local function applyRuntimeLayerDefaults(layerName)
     buildoptions { "/FI\"" .. pchLogical .. "\"" }
 end
 
+-- Jolt の定義。 jolt project と Jolt を include する全 project が必ず呼ぶ。
+-- 定義が食い違うと RegisterTypes が起動時に Trace を出して abort する。 照合されるのは 11 個
+-- (JPH_DOUBLE_PRECISION / JPH_CROSS_PLATFORM_DETERMINISTIC / JPH_FLOATING_POINT_EXCEPTIONS_ENABLED /
+--  JPH_PROFILE_ENABLED / JPH_EXTERNAL_PROFILE / JPH_DEBUG_RENDERER / JPH_DISABLE_TEMP_ALLOCATOR /
+--  JPH_DISABLE_CUSTOM_ALLOCATOR / JPH_OBJECT_LAYER_BITS / JPH_ENABLE_ASSERTS / JPH_OBJECT_STREAM)。
+-- 既定のまま使う物は書かない。 書けば両側で書き忘れる余地が増える
+local function applyJoltDefines()
+    -- NS_ENABLE_ASSERT と同じ構成で入れる
+    filter { "configurations:Debug or Development or GameDebug" }
+        defines { "JPH_ENABLE_ASSERTS" }
+    filter {}
+end
+
 --============================================================================
 -- DirectXTK 必要サブセット (StaticLib)
 --   NS が使う 4 機能: SimpleMath / CommonStates / DDSTextureLoader /
@@ -176,6 +189,33 @@ project "directxtk_simplemath"
     -- DirectXTK 標準の pch.h を PCH 化 (各 .cpp が冒頭で `#include "pch.h"` 済)
     pchheader "pch.h"
     pchsource "Source/ThirdParty/DirectXTK/Src/pch.cpp"
+
+    warnings "Off"
+    buildoptions { "/utf-8", "/FS" }
+
+--============================================================================
+-- Jolt Physics (StaticLib)
+--   剛体と当たり判定。 Physics 層が使う。
+--   vendoring したのはライブラリ本体 (Jolt/) だけで、 Samples / UnitTests / Docs は入れていない。
+--   定義は applyJoltDefines() に集約する。 jolt と使う側で食い違うと起動時に abort する。
+--============================================================================
+project "jolt"
+    kind "StaticLib"
+    location "build/jolt"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/ThirdParty/JoltPhysics/Jolt/**.h",
+        "Source/ThirdParty/JoltPhysics/Jolt/**.inl",
+        "Source/ThirdParty/JoltPhysics/Jolt/**.cpp",
+    }
+
+    -- Jolt の内部 include は "Jolt/..." 形式。 起点は Jolt/ の 1 つ上
+    includedirs { "Source/ThirdParty/JoltPhysics" }
+
+    applyJoltDefines()
 
     warnings "Off"
     buildoptions { "/utf-8", "/FS" }
@@ -322,11 +362,16 @@ project "Physics"
     }
 
     -- NS::Core::Vector3 / BoundingBox / Ray (SimpleMath) を使う
+    -- Jolt の型は公開ヘッダへ出す方針なので、 起点をここに入れる
     includedirs {
         "Source/ThirdParty/DirectXTK/Inc",
         "Source/ThirdParty/spdlog/include",
         "Source/ThirdParty/magic_enum/include",
+        "Source/ThirdParty/JoltPhysics",
     }
+
+    applyJoltDefines()
+    links { "jolt" }
 
     defines {
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
