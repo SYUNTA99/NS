@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include <DirectXCollision.h>
 #include <SimpleMath.h>
 #include <cmath>
 #include <limits>
@@ -38,73 +37,6 @@ namespace NS::Core
 
     //! 色
     using Color = DirectX::SimpleMath::Color;
-
-    //! 軸に平行な境界ボックス
-    using AABB = DirectX::BoundingBox;
-
-    //! @brief 有向境界ボックス
-    //! @details 回転を持つ境界ボックス。中心座標、各軸の向き、中心から各面までの距離で表す
-    struct OBB
-    {
-        Vector3 center{0.0f, 0.0f, 0.0f};
-        Vector3 axisX{1.0f, 0.0f, 0.0f};
-        Vector3 axisY{0.0f, 1.0f, 0.0f};
-        Vector3 axisZ{0.0f, 0.0f, 1.0f};
-        float halfExtentX{0.5f};
-        float halfExtentY{0.5f};
-        float halfExtentZ{0.5f};
-    };
-
-    //! @brief 中心・回転・半径から OBB を組む
-    //! @details 3 軸は rotation で回した単位軸。半径は絶対値を取るので負の scale を渡しても潰れない
-    //! @param[in] center 中心
-    //! @param[in] rotation 3 軸の向き
-    //! @param[in] halfExtents 中心から各面までの距離
-    //! @return 組み上がった OBB
-    [[nodiscard]] OBB MakeOBB(const Vector3& center, const Quaternion& rotation, const Vector3& halfExtents) noexcept;
-
-    //! @brief center と radius による球形状
-    //! @details 向きを持たない球。center を中心に半径 radius
-    struct Sphere
-    {
-        Vector3 center{0.0f, 0.0f, 0.0f}; // 中心
-        float radius = 0.5f;              // 半径
-    };
-
-    //! @brief AABB カリング用の視錐台。viewProj から抜いた6平面を内向き正で保持する
-    //! @details 平面は正規化しない。内外の符号だけ要る AABB 交差にしか使わないため、正規化は無駄になる
-    struct Frustum
-    {
-        Plane planes[6]{}; // 左右下上 near far の順。各平面は内側が正
-
-        //! @brief 行ベクトル規約 v*M の viewProj から6平面を抽出する。奥行きは DX11 の [0,1] 前提
-        [[nodiscard]] static Frustum FromViewProjection(const Matrix& m) noexcept
-        {
-            Frustum f{};
-            f.planes[0] = Plane{m._14 + m._11, m._24 + m._21, m._34 + m._31, m._44 + m._41};
-            f.planes[1] = Plane{m._14 - m._11, m._24 - m._21, m._34 - m._31, m._44 - m._41};
-            f.planes[2] = Plane{m._14 + m._12, m._24 + m._22, m._34 + m._32, m._44 + m._42};
-            f.planes[3] = Plane{m._14 - m._12, m._24 - m._22, m._34 - m._32, m._44 - m._42};
-            f.planes[4] = Plane{m._13, m._23, m._33, m._43}; // near は z>=0
-            f.planes[5] = Plane{m._14 - m._13, m._24 - m._23, m._34 - m._33, m._44 - m._43};
-            return f;
-        }
-
-        //! @brief AABB が視錐台と交差するか。完全に外なら false、少しでも重なれば true
-        //! @details 中心・半径の保守判定で、外を内と誤ることはあっても内を外と切り落とすことはない
-        [[nodiscard]] bool Intersects(const AABB& box) const noexcept
-        {
-            for (const Plane& p : planes)
-            {
-                const float r =
-                    box.Extents.x * std::fabs(p.x) + box.Extents.y * std::fabs(p.y) + box.Extents.z * std::fabs(p.z);
-                const float s = p.x * box.Center.x + p.y * box.Center.y + p.z * box.Center.z + p.w;
-                if (s + r < 0.0f)
-                    return false; // AABB 全体が内向き平面の外側なので視錐台の外
-            }
-            return true;
-        }
-    };
 
     //! 2つのベクトルの内積
     [[nodiscard]] inline float Dot(const Vector3& a, const Vector3& b) noexcept

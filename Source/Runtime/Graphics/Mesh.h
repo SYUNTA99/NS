@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/D3dCommon.h"

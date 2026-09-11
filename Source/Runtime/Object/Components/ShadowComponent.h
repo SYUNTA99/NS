@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/IRenderable.h"

@@ -1,8 +1,11 @@
 ﻿#include "Runtime/Graphics/DebugDraw.h"
 
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
+#include "Runtime/Core/OBB.h"
+#include "Runtime/Core/Sphere.h"
 #include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Graphics/CommandList.h"
 #include "Runtime/Graphics/D3dCommon.h"

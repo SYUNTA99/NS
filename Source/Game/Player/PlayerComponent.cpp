@@ -2,6 +2,7 @@
 
 #include "Game/Entity/EntityStateManagerComponent.h"
 #include "Game/Player/PlayerStateManagerComponent.h"
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"

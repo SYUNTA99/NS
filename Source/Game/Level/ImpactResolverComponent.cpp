@@ -6,6 +6,7 @@
 #include "Game/Level/ImpactMarkComponent.h"
 #include "Game/Level/LaunchedBodyComponent.h"
 #include "Game/Player/PlayerComponent.h"
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"

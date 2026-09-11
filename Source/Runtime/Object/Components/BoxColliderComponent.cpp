@@ -1,3 +1,5 @@
+#include "Runtime/Core/AABB.h"
+#include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/BoxColliderComponent.h"
 
 #include "Runtime/Object/GameObject.h"

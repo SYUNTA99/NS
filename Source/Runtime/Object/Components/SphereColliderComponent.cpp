@@ -1,3 +1,5 @@
+#include "Runtime/Core/AABB.h"
+#include "Runtime/Core/Sphere.h"
 #include "Runtime/Object/Components/SphereColliderComponent.h"
 
 #include "Runtime/Object/GameObject.h"

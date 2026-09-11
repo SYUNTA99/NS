@@ -1,7 +1,10 @@
 #include "Game/Player.h"
 
 #include <Game/Level/HazardComponent.h>
+#include <Runtime/Core/AABB.h>
 #include <Runtime/Core/Math.h>
+#include <Runtime/Core/OBB.h>
+#include <Runtime/Core/Sphere.h>
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/CapsuleColliderComponent.h>

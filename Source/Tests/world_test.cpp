@@ -1,6 +1,7 @@
 #include "Game/Level/BlockObject.h"
 #include "Game/Level/FollowCameraObject.h"
 #include "Game/Player.h"
+#include "Runtime/Core/Sphere.h"
 #include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"

@@ -1,5 +1,6 @@
 ﻿#include "Runtime/Graphics/SkeletalMesh.h"
 
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Buffer.h"

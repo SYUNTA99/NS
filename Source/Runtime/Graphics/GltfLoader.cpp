@@ -1,5 +1,6 @@
 ﻿#include "Runtime/Graphics/GltfLoader.h"
 
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"

@@ -2,7 +2,10 @@
 
 // 線分と AABB / OBB / 球 / カプセルの枠線を溜めて、まとめて描くデバッグ描画
 
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Core/OBB.h"
+#include "Runtime/Core/Sphere.h"
 
 namespace NS::Graphics
 {

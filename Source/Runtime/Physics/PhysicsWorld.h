@@ -1,6 +1,9 @@
 #pragma once
 
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Core/OBB.h"
+#include "Runtime/Core/Sphere.h"
 #include "Runtime/Physics/Capsule.h"
 #include "Runtime/Physics/Triangle.h"
 

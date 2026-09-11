@@ -1,3 +1,4 @@
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 
 #include "Runtime/Graphics/Material.h"

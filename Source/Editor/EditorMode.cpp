@@ -9,6 +9,7 @@
 #include "Game/Level/FollowCameraObject.h"
 #include "Game/Level/KillZoneComponent.h"
 #include "Game/Player.h"
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Graphics/DebugDraw.h"

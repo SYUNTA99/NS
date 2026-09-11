@@ -4,6 +4,8 @@
 #include <Editor/EditorObjects.h>
 #include <Game/Level/GoalComponent.h>
 #include <Game/Player/PlayerComponent.h>
+#include <Runtime/Core/AABB.h>
+#include <Runtime/Core/Sphere.h>
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Components/CapsuleColliderComponent.h>

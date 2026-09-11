@@ -1,4 +1,5 @@
 #include <Runtime/Core/Math.h>
+#include <Runtime/Core/OBB.h>
 #include <Runtime/Physics/JoltCharacter.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 

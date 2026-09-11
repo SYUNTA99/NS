@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Physics/Capsule.h"

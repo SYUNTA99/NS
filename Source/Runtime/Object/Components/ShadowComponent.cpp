@@ -1,3 +1,4 @@
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Components/ShadowComponent.h"
 
 #include "Runtime/Graphics/Material.h"

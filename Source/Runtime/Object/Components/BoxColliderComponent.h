@@ -1,6 +1,8 @@
 #pragma once
 
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/ColliderComponent.h"
 
 namespace NS::Object

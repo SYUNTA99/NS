@@ -8,6 +8,7 @@
 #include <Game/Level/LaunchedBodyComponent.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
+#include <Runtime/Core/AABB.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/PlayerInputComponent.h>

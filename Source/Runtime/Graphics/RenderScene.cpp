@@ -1,5 +1,7 @@
 ﻿#include "Runtime/Graphics/RenderScene.h"
 
+#include "Runtime/Core/AABB.h"
+#include "Runtime/Core/Frustum.h"
 #include "Runtime/Graphics/RenderContext.h"
 
 #include <algorithm>

@@ -1,3 +1,4 @@
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Components/CapsuleColliderComponent.h"
 
 #include "Runtime/Object/GameObject.h"

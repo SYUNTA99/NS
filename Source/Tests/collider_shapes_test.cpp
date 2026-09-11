@@ -1,4 +1,5 @@
 #include <Game/Player/PlayerComponent.h>
+#include <Runtime/Core/Sphere.h>
 #include <Runtime/Object/Components/CapsuleColliderComponent.h>
 #include <Runtime/Object/Components/MeshColliderComponent.h>
 #include <Runtime/Object/Components/SphereColliderComponent.h>

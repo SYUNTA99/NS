@@ -1,4 +1,7 @@
+#include <Runtime/Core/AABB.h>
 #include <Runtime/Core/Math.h>
+#include <Runtime/Core/OBB.h>
+#include <Runtime/Core/Sphere.h>
 #include <Runtime/Graphics/DebugDraw.h>
 #include <gtest/gtest.h>
 

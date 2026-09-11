@@ -1,3 +1,4 @@
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Components/SkeletalAnimationComponent.h"
 
 #include "Runtime/Core/Clock.h"

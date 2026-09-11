@@ -1,5 +1,6 @@
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
+#include <Runtime/Core/Sphere.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Scene/Scene.h>
