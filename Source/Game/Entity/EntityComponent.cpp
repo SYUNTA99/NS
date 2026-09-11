@@ -67,16 +67,15 @@ namespace NS::Game::Entity
         return m_capsuleCollider != nullptr ? m_capsuleCollider->HalfHeight() : 0.5f;
     }
 
-    void EntityComponent::SetPhysicsWorld(NS::Physics::PhysicsWorld* world) noexcept
+    NS::Physics::PhysicsWorld* EntityComponent::PhysicsWorld() const noexcept
     {
-        m_world = world;
-        m_character.reset();
+        if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
+            return nullptr;
+        return &Owner()->OwningScene()->Physics();
     }
 
     void EntityComponent::OnStart()
     {
-        if (m_world == nullptr && Owner() != nullptr && Owner()->OwningScene() != nullptr)
-            m_world = &Owner()->OwningScene()->Physics();
         if (Owner() != nullptr)
             m_capsuleCollider = Owner()->FindComponent<NS::Object::CapsuleColliderComponent>();
         // 自分の capsule は Move が掃引する。静的世界に居ると自分に当たって動けない
@@ -115,7 +114,8 @@ namespace NS::Game::Entity
     void EntityComponent::Move(float dt) noexcept
     {
         const NS::Core::Vector3 before = RootTransform().Position();
-        if (m_world == nullptr)
+        NS::Physics::PhysicsWorld* world = PhysicsWorld();
+        if (world == nullptr)
         {
             RootTransform().SetPosition(before + m_velocity * dt);
             m_wasGrounded = m_isGrounded;
@@ -126,7 +126,7 @@ namespace NS::Game::Entity
         const float radius = CapsuleRadius();
         const float halfHeight = CapsuleHalfHeight();
         if (m_character == nullptr)
-            m_character = std::make_unique<NS::Physics::JoltCharacter>(*m_world, radius, halfHeight);
+            m_character = std::make_unique<NS::Physics::JoltCharacter>(*world, radius, halfHeight);
         m_character->Resize(radius, halfHeight);
 
         m_character->Step(before, m_velocity, dt);

@@ -11,6 +11,7 @@
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 
+#include "entity_test_stage.h"
 #include "jolt_test_world.h"
 #include <bit>
 #include <cstdint>
@@ -99,15 +100,15 @@ namespace
     //! 加速・ジャンプ・停止の自動ズーム全遷移と render 補間 (alpha=0.5) を 1 本の軌跡に記録する
     std::vector<CameraStepRecord> RunFollowWalkJump()
     {
-        GameObject player;
-        NS::Physics::PhysicsWorld world;
+        NsTest::EntityStage stage;
+        GameObject& player = stage.owner;
+        NS::Physics::PhysicsWorld& world = stage.world;
         NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 8.0f}});
         player.AddComponent<PlayerStateManagerComponent>();
         auto& movement = *player.AddComponent<PlayerComponent>();
         player.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
         world.OptimizeBroadPhase();
         player.OnStart();
-        movement.SetPhysicsWorld(&world);
 
         GameObject rig;
         auto& follow = *rig.AddComponent<ThirdPersonFollowComponent>();

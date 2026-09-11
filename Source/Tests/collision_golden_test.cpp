@@ -19,6 +19,7 @@
 #include <Runtime/Object/World.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 
+#include "entity_test_stage.h"
 #include "jolt_test_world.h"
 #include <algorithm>
 #include <cstddef>
@@ -64,7 +65,6 @@ namespace
             NsTest::AddBox(m_world, AABB{Vector3{0.0f, -0.5f, 32.0f}, Vector3{4.0f, 0.5f, 44.0f}});
             m_world.OptimizeBroadPhase();
             m_object.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
-            m_movement->SetPhysicsWorld(&m_world);
             m_movement->OnStart();
             m_object.FindComponent<PlayerStateManagerComponent>()->OnStart();
 
@@ -87,8 +87,9 @@ namespace
         [[nodiscard]] const std::vector<StepRecord>& Trace() const noexcept { return m_trace; }
 
     private:
-        GameObject m_object;
-        NS::Physics::PhysicsWorld m_world;
+        NsTest::EntityStage m_stage;
+        GameObject& m_object = m_stage.owner;
+        NS::Physics::PhysicsWorld& m_world = m_stage.world;
         PlayerComponent* m_movement = nullptr;
         std::vector<StepRecord> m_trace;
     };
@@ -112,7 +113,7 @@ namespace
     // 壊れない高さ。破壊が入っても反発と押し飛ばしの経路が変わらない
     constexpr float k_ImpactTargetToughness = 99.0f;
 
-    // 反発と押し飛ばしを含む経路。当たりを持つ配置物が要るので Scene を組む
+    // 反発と押し飛ばしを含む経路。当たりを持つ配置物が要るのでシーンデータから組む
     class ImpactRig
     {
     public:

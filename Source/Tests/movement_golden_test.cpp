@@ -9,6 +9,7 @@
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 
+#include "entity_test_stage.h"
 #include "jolt_test_world.h"
 #include <algorithm>
 #include <array>
@@ -56,7 +57,7 @@ namespace
         return false;
     }
 
-    //! 自機 2 部品を載せて衝突 world を繋ぐ。積む順は Player のコンストラクタと同じ
+    //! 自機 2 部品を載せて OnStart まで通す。積む順は Player のコンストラクタと同じ
     //! @details 開始位置は空中に取り、数ステップの自然落下で着地させる
     PlayerComponent& SetUpMovement(GameObject& owner, NS::Physics::PhysicsWorld& world, const Vector3& startPosition)
     {
@@ -65,7 +66,6 @@ namespace
 
         owner.Root().SetPosition(startPosition);
         world.OptimizeBroadPhase();
-        movement.SetPhysicsWorld(&world);
         movement.OnStart();
         manager.OnStart();
         return movement;
@@ -80,8 +80,9 @@ namespace
     //! 加速の立ち上がり・最大速度巡航・減速の 3 経路を通す
     std::vector<StepRecord> RunFlatWalk()
     {
-        GameObject owner;
-        NS::Physics::PhysicsWorld world;
+        NsTest::EntityStage stage;
+        GameObject& owner = stage.owner;
+        NS::Physics::PhysicsWorld& world = stage.world;
         NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{16.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 1.0f, 0.0f});
 
@@ -103,8 +104,9 @@ namespace
     //! 床は 3 秒間の全力走行で走り抜けない長さにする
     std::vector<StepRecord> RunSingleJump()
     {
-        GameObject owner;
-        NS::Physics::PhysicsWorld world;
+        NsTest::EntityStage stage;
+        GameObject& owner = stage.owner;
+        NS::Physics::PhysicsWorld& world = stage.world;
         NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{32.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 1.0f, 0.0f});
 
@@ -125,8 +127,9 @@ namespace
     //! 入力の時点で空中 1 ステップぶんの時間が経過しており、コヨーテ時間の内側を踏む
     std::vector<StepRecord> RunCoyoteJump()
     {
-        GameObject owner;
-        NS::Physics::PhysicsWorld world;
+        NsTest::EntityStage stage;
+        GameObject& owner = stage.owner;
+        NS::Physics::PhysicsWorld& world = stage.world;
         NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{2.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 1.0f, 0.0f});
 
@@ -159,8 +162,9 @@ namespace
     //! 着地の瞬間に先行入力が消費されて即ジャンプする経路を固定する
     std::vector<StepRecord> RunJumpBuffer()
     {
-        GameObject owner;
-        NS::Physics::PhysicsWorld world;
+        NsTest::EntityStage stage;
+        GameObject& owner = stage.owner;
+        NS::Physics::PhysicsWorld& world = stage.world;
         NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 3.0f, 0.0f});
 
@@ -184,8 +188,9 @@ namespace
     //! 壁へ向かって走り続け、衝突解決で壁面手前に止まる押し戻しを固定する
     std::vector<StepRecord> RunWallCollision()
     {
-        GameObject owner;
-        NS::Physics::PhysicsWorld world;
+        NsTest::EntityStage stage;
+        GameObject& owner = stage.owner;
+        NS::Physics::PhysicsWorld& world = stage.world;
         NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
         NsTest::AddBox(world, AABB{Vector3{6.0f, 1.5f, 0.0f}, Vector3{0.5f, 2.0f, 8.0f}});
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 1.0f, 0.0f});
@@ -205,8 +210,9 @@ namespace
     //! 掴まりは値を見る検証しか持たず、呼ぶ順序の入れ替えは基準の軌跡でしか拾えない
     std::vector<StepRecord> RunLedgeClimb()
     {
-        GameObject owner;
-        NS::Physics::PhysicsWorld world;
+        NsTest::EntityStage stage;
+        GameObject& owner = stage.owner;
+        NS::Physics::PhysicsWorld& world = stage.world;
         NsTest::AddBox(world, AABB{Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}});
         NsTest::AddBox(world, AABB{Vector3{0.0f, 0.0f, 1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
         NsTest::AddBox(world, AABB{Vector3{0.0f, 0.0f, -1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
@@ -243,8 +249,9 @@ namespace
         const Vector3 highLeft{-k_HalfWidth, height, k_Length * 0.5f};
         const Vector3 highRight{k_HalfWidth, height, k_Length * 0.5f};
 
-        GameObject owner;
-        NS::Physics::PhysicsWorld world;
+        NsTest::EntityStage stage;
+        GameObject& owner = stage.owner;
+        NS::Physics::PhysicsWorld& world = stage.world;
         const std::array<NS::Physics::Triangle, 2> slope{
             NS::Physics::Triangle{lowLeft, highRight, lowRight},
             NS::Physics::Triangle{lowLeft, highLeft, highRight},

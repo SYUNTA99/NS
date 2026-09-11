@@ -10,6 +10,7 @@
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 
+#include "entity_test_stage.h"
 #include "jolt_test_world.h"
 #include <gtest/gtest.h>
 
@@ -51,20 +52,18 @@ namespace
         world.OptimizeBroadPhase();
     }
 
-    FallingEntity& MakeAirborneEntity(GameObject& owner, NS::Physics::PhysicsWorld& world)
+    FallingEntity& MakeAirborneEntity(GameObject& owner)
     {
         auto& entity = *owner.AddComponent<FallingEntity>();
         owner.Root().SetPosition(Vector3{0.0f, 2.0f, 0.0f});
-        entity.SetPhysicsWorld(&world);
         return entity;
     }
 
-    PlayerComponent& MakeLedgeReady(GameObject& owner, NS::Physics::PhysicsWorld& world)
+    PlayerComponent& MakeLedgeReady(GameObject& owner)
     {
         auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
         auto& player = *owner.AddComponent<PlayerComponent>();
 
-        player.SetPhysicsWorld(&world);
         player.OnStart();
         manager.OnStart();
         return player;
@@ -77,7 +76,6 @@ namespace
 
         AddFloor(world);
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
-        player.SetPhysicsWorld(&world);
         player.OnStart();
         manager.OnStart();
 
@@ -180,10 +178,11 @@ TEST_F(EntityEventsTest, PlayerNotificationsAreSeparate)
 
 TEST_F(EntityEventsTest, GroundEnterFiresOnceOnTheLandingStep)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsWorld& world = stage.world;
     AddFloor(world);
-    auto& entity = MakeAirborneEntity(obj, world);
+    auto& entity = MakeAirborneEntity(obj);
 
     int entered = 0;
     int exited = 0;
@@ -200,10 +199,11 @@ TEST_F(EntityEventsTest, GroundEnterFiresOnceOnTheLandingStep)
 
 TEST_F(EntityEventsTest, GroundExitFiresOnceOnTheLeavingStep)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsWorld& world = stage.world;
     AddFloor(world);
-    auto& entity = MakeAirborneEntity(obj, world);
+    auto& entity = MakeAirborneEntity(obj);
     for (int i = 0; i < 60; ++i)
         entity.OnUpdate();
     ASSERT_TRUE(entity.IsGrounded());
@@ -224,10 +224,11 @@ TEST_F(EntityEventsTest, GroundExitFiresOnceOnTheLeavingStep)
 
 TEST_F(EntityEventsTest, StayingGroundedFiresNeitherNotification)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsWorld& world = stage.world;
     AddFloor(world);
-    auto& entity = MakeAirborneEntity(obj, world);
+    auto& entity = MakeAirborneEntity(obj);
     for (int i = 0; i < 60; ++i)
         entity.OnUpdate();
     ASSERT_TRUE(entity.IsGrounded());
@@ -263,11 +264,12 @@ TEST_F(EntityEventsTest, JumpNotificationFiresOnlyWhenTheJumpHappens)
 
 TEST_F(EntityEventsTest, LedgeGrabbedFiresOnTheGrabbingStep)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsWorld& world = stage.world;
     NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
     world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    auto& player = MakeLedgeReady(obj);
 
     int grabbed = 0;
     player.PlayerEventsRef().onLedgeGrabbed.Subscribe([&grabbed]() { ++grabbed; });
@@ -283,11 +285,12 @@ TEST_F(EntityEventsTest, LedgeGrabbedFiresOnTheGrabbingStep)
 
 TEST_F(EntityEventsTest, LedgeClimbingFiresWhenTheClimbStarts)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsWorld& world = stage.world;
     NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
     world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    auto& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -309,8 +312,9 @@ TEST_F(EntityEventsTest, LedgeClimbingFiresWhenTheClimbStarts)
 
 TEST_F(EntityEventsTest, BodySlamStartedAndEndedFireAroundTheRush)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsWorld& world = stage.world;
     auto& player = MakeSlamReady(obj, world);
 
     int started = 0;
@@ -336,8 +340,9 @@ TEST_F(EntityEventsTest, BodySlamStartedAndEndedFireAroundTheRush)
 
 TEST_F(EntityEventsTest, CancelBodySlamFiresTheEndNotification)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsWorld& world = stage.world;
     auto& player = MakeSlamReady(obj, world);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);

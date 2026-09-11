@@ -7,6 +7,7 @@
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 
+#include "entity_test_stage.h"
 #include "jolt_test_world.h"
 #include <gtest/gtest.h>
 #include <vector>
@@ -37,15 +38,15 @@ namespace
     {
         const AABB floor = MakeFloorOnly();
 
-        GameObject owner;
+        NsTest::EntityStage stage;
+        GameObject& owner = stage.owner;
         auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
         auto& movement = *owner.AddComponent<PlayerComponent>();
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
 
-        NS::Physics::PhysicsWorld pw;
+        NS::Physics::PhysicsWorld& pw = stage.world;
         NsTest::AddBox(pw, floor);
         pw.OptimizeBroadPhase();
-        movement.SetPhysicsWorld(&pw);
         movement.OnStart();
         manager.OnStart();
 
@@ -113,15 +114,15 @@ TEST_F(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
 {
     const AABB floor = MakeFloorOnly();
 
-    GameObject owner;
+    NsTest::EntityStage stage;
+    GameObject& owner = stage.owner;
     auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
     auto& movement = *owner.AddComponent<PlayerComponent>();
     owner.Root().SetPosition(Vector3{0.0f, 0.5f, 0.0f}); // 床の上に直置きして接地から始める
 
-    NS::Physics::PhysicsWorld pw;
+    NS::Physics::PhysicsWorld& pw = stage.world;
     NsTest::AddBox(pw, floor);
     pw.OptimizeBroadPhase();
-    movement.SetPhysicsWorld(&pw);
     movement.OnStart();
     manager.OnStart();
 

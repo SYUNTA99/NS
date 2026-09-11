@@ -70,8 +70,7 @@ namespace NS::Object
         //! brain が駆動する実カメラ。 シーンの破棄後は nullptr
         [[nodiscard]] CameraComponent* MainCamera() noexcept;
 
-        //! 衝突 world への可変参照。scene が値で持つので寿命は scene と同じ
-        //! 移動の Component は OnStart で所属 scene からこれを取って控える
+        //! 衝突 world への可変参照。Scene が値で持つので寿命は Scene と同じ
         [[nodiscard]] NS::Physics::PhysicsWorld& Physics() noexcept { return m_physicsWorld; }
 
         //! AssetManager を非所有で差す。組み立て時の参照実体化が使う。未設定 (テスト等) は解決を跳ばす
