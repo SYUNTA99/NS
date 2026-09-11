@@ -189,7 +189,7 @@ if errorlevel 1 (
     exit /b 1
 )
 :: one license text per bundled library: ThirdParty\<lib>\LICENSE -> <lib>-LICENSE.txt
-for %%L in (DirectXTK DirectXTex spdlog magic_enum Effekseer) do (
+for %%L in (DirectXTK DirectXTex spdlog magic_enum Effekseer JoltPhysics) do (
     copy /y "Source\ThirdParty\%%L\LICENSE" "%OUT%\Source\Licenses\%%L-LICENSE.txt" >nul
     if errorlevel 1 (
         echo [ERROR] copy %%L LICENSE failed
