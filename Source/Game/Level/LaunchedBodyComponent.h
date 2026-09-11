@@ -34,7 +34,7 @@ namespace NS::Game::Level
 
         void SetDebrisCount(int count) noexcept;
 
-        // 世界からは消さない。更新の最中に消すと集めた並びに解放済みの位置が残る
+        // 世界からは消さない。更新の最中に消すと集めた並びに解放済みのポインタが残る
         void Shatter();
 
         void OnUpdate() override;
@@ -65,6 +65,10 @@ namespace NS::Game::Level
 
         void HideAndSleep();
 
+        // 持ち主の Scene の world。 Scene に居なければ null
+        // 控えを持つと Scene と正が 2 つになるので、 使う時に毎回引く
+        [[nodiscard]] NS::Physics::PhysicsWorld* ScenePhysics() const noexcept;
+
         float m_restitution = 0.35f;
         float m_friction = 0.6f;
         float m_spinPerSpeed = 0.5f;
@@ -74,7 +78,6 @@ namespace NS::Game::Level
         float m_debrisSpeed = 6.0f;
         float m_debrisLifeSeconds = 8.0f;
 
-        NS::Physics::PhysicsWorld* m_physics = nullptr;
         JPH::BodyID m_bodyId;
         bool m_flying = false;
     };

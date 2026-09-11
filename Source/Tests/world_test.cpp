@@ -145,7 +145,7 @@ TEST(WorldTest, InactiveObjectHasNoCollision)
     ASSERT_EQ(world.ObjectCount(), std::size_t{1});
     EXPECT_FALSE(world.ObjectAt(0)->IsActiveSelf());
     // active を切った配置物はすり抜ける
-    NS::Physics::PhysicsWorld physics;
+    NS::Physics::PhysicsWorld& physics = scene.Physics();
     world.SyncPhysics(physics);
     EXPECT_EQ(physics.BodyCount(), 0u);
 }
@@ -167,7 +167,7 @@ TEST(WorldTest, TriggerBoxHasNoSolidCollision)
 
     ASSERT_EQ(world.ObjectCount(), std::size_t{1});
     // トリガの箱は sensor body として登録されるが、固形の衝突応答は起こさない
-    NS::Physics::PhysicsWorld physics;
+    NS::Physics::PhysicsWorld& physics = scene.Physics();
     world.SyncPhysics(physics);
     EXPECT_EQ(physics.BodyCount(), 1u);
 }
@@ -184,7 +184,7 @@ TEST(WorldTest, RebuildDropsTheCollidersOfTheObjectsItReplaces)
     World world;
     world.Rebuild(level, scene, MakeFactory(assets, level));
 
-    NS::Physics::PhysicsWorld physics;
+    NS::Physics::PhysicsWorld& physics = scene.Physics();
     world.SyncPhysics(physics);
     ASSERT_EQ(physics.BodyCount(), 1u);
 
@@ -360,7 +360,7 @@ TEST(WorldTest, RemoveByObjectIdDropsCollider)
     World world;
     world.Rebuild(level, scene, MakeFactory(assets, level));
 
-    NS::Physics::PhysicsWorld physics;
+    NS::Physics::PhysicsWorld& physics = scene.Physics();
     world.SyncPhysics(physics);
     ASSERT_EQ(physics.BodyCount(), 2u);
 
@@ -522,7 +522,7 @@ TEST(WorldTest, SyncPhysicsIntoPhysicsWorldTwiceKeepsTheCount)
 }
 
 // 同期は body を作り直さず、collider が覚えている id を維持する
-// 形の違う 2 つを置くのは SyncToPhysics が派生ごとに別実装だから。1 種類では 1 つの実装しか通らない
+// 形の違う 2 つを置くのは SyncBody が派生ごとに別実装だから。1 種類では 1 つの実装しか通らない
 TEST(WorldTest, SyncPhysicsIntoPhysicsWorldKeepsEveryBodyId)
 {
     World world;
@@ -651,15 +651,18 @@ TEST(WorldTest, SyncPhysicsDropsTheBodyOfADeactivatedCollider)
 // 配置物ごと消える時は破棄の前に OnEndPlay が通る。ここで外さないと body が誰の持ち物でもなくなる
 TEST(WorldTest, ClearTakesEveryColliderBodyOutOfThePhysicsWorld)
 {
-    World world;
-    world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
-    world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::SphereColliderComponent>();
+    NS::Object::Scene scene;
+    auto box = std::make_unique<NS::Object::GameObject>();
+    box->AddComponent<NS::Object::BoxColliderComponent>();
+    scene.SpawnTransient(std::move(box));
+    auto sphere = std::make_unique<NS::Object::GameObject>();
+    sphere->AddComponent<NS::Object::SphereColliderComponent>();
+    scene.SpawnTransient(std::move(sphere));
 
-    NS::Physics::PhysicsWorld physics;
-    world.SyncPhysics(physics);
-    ASSERT_EQ(physics.BodyCount(), 2u);
+    scene.SyncPhysics();
+    ASSERT_EQ(scene.Physics().BodyCount(), 2u);
 
-    world.Clear();
+    scene.World().Clear();
 
-    EXPECT_EQ(physics.BodyCount(), 0u);
+    EXPECT_EQ(scene.Physics().BodyCount(), 0u);
 }

@@ -6,12 +6,14 @@
 #include <Runtime/Object/Components/SlopeColliderComponent.h>
 #include <Runtime/Object/Components/SphereColliderComponent.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/MeshCollision.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 
 #include <filesystem>
 #include <gtest/gtest.h>
+#include <memory>
 #include <vector>
 
 namespace
@@ -244,17 +246,50 @@ TEST(ColliderJolt, SyncingResizedBoxKeepsTheBodyIdAndUpdatesTheJoltShape)
     EXPECT_TRUE(world.RaycastDown(Vector3{1.5f, 2.0f, 0.0f}, 4.0f, distance));
 }
 
+// 寿命の終わりは持ち主の Scene の world から外す。 collider は world を覚えていない
 TEST(ColliderJolt, EndPlayRemovesItsOwnBody)
 {
-    GameObject owner;
-    auto* box = owner.AddComponent<BoxColliderComponent>();
-    PhysicsWorld world;
+    NS::Object::Scene scene;
+    auto owned = std::make_unique<GameObject>();
+    auto* box = owned->AddComponent<BoxColliderComponent>();
+    scene.SpawnTransient(std::move(owned));
 
-    box->SyncToPhysics(world);
+    box->SyncToPhysics(scene.Physics());
     box->OnEndPlay();
 
-    EXPECT_EQ(world.BodyCount(), 0u);
+    EXPECT_EQ(scene.Physics().BodyCount(), 0u);
     EXPECT_TRUE(box->BodyId().IsInvalid());
+}
+
+// Scene に居る配置物の body は Scene の world にだけ入る。 別の world に入ると、 寿命の終わりに外しに行く先が違う
+TEST(ColliderJolt, SyncIntoAWorldOtherThanTheScenesIsRefused)
+{
+    NS::Object::Scene scene;
+    auto owned = std::make_unique<GameObject>();
+    auto* box = owned->AddComponent<BoxColliderComponent>();
+    scene.SpawnTransient(std::move(owned));
+    PhysicsWorld other;
+
+    box->SyncToPhysics(other);
+
+    EXPECT_EQ(other.BodyCount(), 0u);
+    EXPECT_TRUE(box->BodyId().IsInvalid());
+}
+
+// 別の world から外そうとしても断る。 断らないと、 その world が持たない id を消しに行って Jolt が落ちる
+TEST(ColliderJolt, RemoveFromAWorldOtherThanTheScenesKeepsTheBody)
+{
+    NS::Object::Scene scene;
+    auto owned = std::make_unique<GameObject>();
+    auto* box = owned->AddComponent<BoxColliderComponent>();
+    scene.SpawnTransient(std::move(owned));
+    box->SyncToPhysics(scene.Physics());
+    PhysicsWorld other;
+
+    box->RemoveFromPhysics(other);
+
+    EXPECT_EQ(scene.Physics().BodyCount(), 1u);
+    EXPECT_FALSE(box->BodyId().IsInvalid());
 }
 
 TEST(ColliderJolt, EndPlayWithoutABodyLeavesTheWorldAlone)

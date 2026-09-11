@@ -26,10 +26,10 @@ namespace NS::Object
         return tris;
     }
 
-    void SlopeColliderComponent::SyncToPhysics(NS::Physics::PhysicsWorld& physics)
+    JPH::BodyID SlopeColliderComponent::SyncBody(NS::Physics::PhysicsWorld& physics, JPH::BodyID current)
     {
         const std::array<NS::Physics::Triangle, 8> triangles = WorldTriangles();
-        TrackBody(physics, physics.SyncMesh(BodyIn(physics), triangles, NS::Physics::ObjectLayers::Terrain));
+        return physics.SyncMesh(current, triangles, NS::Physics::ObjectLayers::Terrain);
     }
 
     NS_CLASS(SlopeColliderComponent)

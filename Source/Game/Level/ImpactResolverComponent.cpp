@@ -388,7 +388,7 @@ namespace NS::Game::Level
 
     void ImpactResolverComponent::BreakTarget(NS::Object::GameObject& target)
     {
-        // 壊れた物は世界から消さない。更新の最中に消すと集めた並びに解放済みの位置が残る
+        // 壊れた物は世界から消さない。更新の最中に消すと集めた並びに解放済みのポインタが残る
         // 印と当たりを寝かせて探索と固形から外し、見た目の色で壊れたと分かるようにする
         if (auto* breakable = target.FindComponent<BreakableComponent>())
             breakable->SetActive(false);
@@ -396,7 +396,8 @@ namespace NS::Game::Level
         {
             collider->SetActive(false);
             // body はその場で外す。直後に動く移動が素通りする
-            collider->RemoveFromPhysics();
+            if (NS::Object::Scene* scene = target.OwningScene())
+                collider->RemoveFromPhysics(scene->Physics());
         }
         if (auto* mesh = target.FindComponent<NS::Object::MeshRendererComponent>())
             mesh->SetBaseColor(k_BrokenBaseColor);

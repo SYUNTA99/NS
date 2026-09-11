@@ -164,7 +164,7 @@ namespace NS::Object
             if (collider.IsActive())
                 collider.SyncToPhysics(physics);
             else
-                collider.RemoveFromPhysics();
+                collider.RemoveFromPhysics(physics);
         });
         physics.OptimizeBroadPhase();
     }

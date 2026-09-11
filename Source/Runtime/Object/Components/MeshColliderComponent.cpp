@@ -71,13 +71,10 @@ namespace NS::Object
         return result;
     }
 
-    void MeshColliderComponent::SyncToPhysics(NS::Physics::PhysicsWorld& physics)
+    JPH::BodyID MeshColliderComponent::SyncBody(NS::Physics::PhysicsWorld& physics, JPH::BodyID current)
     {
         if (m_collision == nullptr)
-        {
-            TrackBody(physics, JPH::BodyID{});
-            return;
-        }
+            return JPH::BodyID{};
 
         NS::Core::Matrix world = NS::Core::Matrix::Identity;
         if (const GameObject* owner = Owner())
@@ -85,18 +82,11 @@ namespace NS::Object
         const NS::Core::AffineDecomposition parts = NS::Core::DecomposeAffine(world);
         // 描画は 4x4 の行列で歪みまで出すので、 形の共有をやめて世界座標の三角形から作り、 描画と当たりを揃える
         if (HasShear(world, parts))
-        {
-            TrackBody(physics, physics.SyncMesh(BodyIn(physics), WorldTriangles(), NS::Physics::ObjectLayers::Terrain));
-            return;
-        }
+            return physics.SyncMesh(current, WorldTriangles(), NS::Physics::ObjectLayers::Terrain);
+
         const NS::Physics::MeshCollision& shared = *m_collision;
-        TrackBody(physics,
-                  physics.SyncMeshShape(BodyIn(physics),
-                                        shared,
-                                        parts.translation,
-                                        parts.rotation,
-                                        parts.scale,
-                                        NS::Physics::ObjectLayers::Terrain));
+        return physics.SyncMeshShape(
+            current, shared, parts.translation, parts.rotation, parts.scale, NS::Physics::ObjectLayers::Terrain);
     }
 
     void MeshColliderComponent::ResolveAssets(AssetManager& assets)

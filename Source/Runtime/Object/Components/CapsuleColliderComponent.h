@@ -16,22 +16,24 @@ namespace NS::Object
     public:
         //! 既定 半径 0.4 / 半高 0.5 の縦 capsule で構築する
         CapsuleColliderComponent() noexcept;
-        //! 半径 / 半高を指定して構築する。 負は最小値にクランプ
+        //! 半径 / 半高を指定して構築する。 負は 0 にクランプ
         CapsuleColliderComponent(float radius, float halfHeight) noexcept;
 
         //! 負は 0 にクランプ
         void SetRadius(float radius) noexcept;
+        //! 半径を返す。 owner の scale を掛ける前の値
         [[nodiscard]] float Radius() const noexcept;
 
         //! 軸線分の半分の長さ、 半球を除く円柱部の半長。 負は 0 にクランプ
         void SetHalfHeight(float halfHeight) noexcept;
+        //! 円柱部の半長を返す。 owner の scale を掛ける前の値
         [[nodiscard]] float HalfHeight() const noexcept;
 
         //! owner local 空間での中心オフセット
         void SetCenterOffset(const NS::Core::Vector3& offset) noexcept;
         [[nodiscard]] NS::Core::Vector3 CenterOffset() const noexcept;
 
-        //! local 回転を quaternion で直接設定 / 取得する。 保存値の復元に使う
+        //! local 回転を quaternion で直接設定 / 取得する
         void SetLocalRotation(const NS::Core::Quaternion& rotation) noexcept;
         [[nodiscard]] NS::Core::Quaternion LocalRotation() const noexcept;
 
@@ -53,9 +55,6 @@ namespace NS::Object
         //! @param[in] excluded 静的世界から外す場合 true
         void SetExcludedFromStaticWorld(bool excluded) noexcept;
 
-        //! 静的世界から外した capsule は body を作らない
-        void SyncToPhysics(NS::Physics::PhysicsWorld& physics) override;
-
         NS_REFLECT_BEGIN(CapsuleColliderComponent, ColliderComponent)
         NS_REFLECT_ACCESSOR(float, "半径", Radius(), SetRadius)
         NS_REFLECT_ACCESSOR(float, "半分の高さ", HalfHeight(), SetHalfHeight)
@@ -64,6 +63,8 @@ namespace NS::Object
         NS_REFLECT_END()
 
     private:
+        // 静的世界から外した capsule は body を作らない
+        [[nodiscard]] JPH::BodyID SyncBody(NS::Physics::PhysicsWorld& physics, JPH::BodyID current) override;
         [[nodiscard]] NS::Core::Matrix CapsuleWorldMatrix() const noexcept;
 
         float m_radius = 0.4f;                                                 // capsule 半径
