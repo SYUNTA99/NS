@@ -31,13 +31,13 @@ namespace NS::Graphics::DebugDraw
     void OBB(const NS::Core::OBB& obb, const NS::Core::Color& color) noexcept;
 
     //! @brief 球の枠線を追加する
-    //! @details 座標軸に沿った大円を 3 本描く。どの向きから見ても 1 本は線に潰れないので半径が読める
+    //! @details 座標面ごとの大円を 3 本描く。どの向きから見ても 1 本は線に潰れないので半径が読める
     //! @param[in] sphere 描画する球データ
     //! @param[in] color 描画色
     void Sphere(const NS::Core::Sphere& sphere, const NS::Core::Color& color) noexcept;
 
     //! @brief カプセル形状の枠線を追加する
-    //! @details 軸方向に伸びる円柱部分と、両端の半球の概形を描画する
+    //! @details 円柱の両端の円 2 つと、軸に平行な側面の線 4 本を追加する。両端の半球の弧は描かない
     //! @param[in] base カプセル中心の座標
     //! @param[in] axis 中心から端の半球中心へ向かうベクトル
     //! @param[in] radius カプセルの半径

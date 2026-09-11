@@ -205,7 +205,7 @@ namespace NS::Graphics::DebugDraw
         PushLine(c111, c011, color);
         PushLine(c011, c001, color);
 
-        // 側面を繋ぐ辺
+        // 前面と背面を繋ぐ辺
         PushLine(c000, c001, color);
         PushLine(c100, c101, color);
         PushLine(c110, c111, color);
@@ -257,13 +257,13 @@ namespace NS::Graphics::DebugDraw
                                       axisN.z * perpA.x - axisN.x * perpA.z,
                                       axisN.x * perpA.y - axisN.y * perpA.x};
 
-        // 上下の円を描画する
+        // 上下端の円
         const NS::Core::Vector3 uA{perpA.x * radius, perpA.y * radius, perpA.z * radius};
         const NS::Core::Vector3 uB{perpB.x * radius, perpB.y * radius, perpB.z * radius};
         PushCircle(top, uA, uB, color);
         PushCircle(bottom, uA, uB, color);
 
-        // 円柱部分の側面の辺を描画する
+        // 円柱の側面に沿う線 4 本
         const NS::Core::Vector3 dirs[4] = {uA, -uA, uB, -uB};
         for (const auto& d : dirs)
         {
