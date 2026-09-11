@@ -9,6 +9,8 @@
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
+
+#include "jolt_test_world.h"
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -102,8 +104,8 @@ namespace
     {
         auto& player = MakePlayer(owner);
 
-        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 64.0f}});
-        world.BuildBroadphase();
+        NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 64.0f}});
+        world.OptimizeBroadPhase();
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
         player.SetPhysicsWorld(&world);
 
@@ -160,7 +162,7 @@ TEST_F(PlayerComponentTest, MaxSpeedRoundsNegativeAndKeepsTheValueOnNonFinite)
     EXPECT_FLOAT_EQ(player.MaxSpeed(), 0.0f);
 }
 
-// 当たりの形は同居する CapsuleColliderComponent が正。掃引はこの写しを読むので、追従しないと形と動きがずれる
+// 当たりの形は同居する CapsuleColliderComponent が正。移動側はコピーを持たず直接読む
 TEST_F(PlayerComponentTest, AdoptsSiblingCapsuleColliderSize)
 {
     GameObject obj;
@@ -173,15 +175,12 @@ TEST_F(PlayerComponentTest, AdoptsSiblingCapsuleColliderSize)
     EXPECT_FLOAT_EQ(player.CapsuleHalfHeight(), 0.9f);
 }
 
-TEST_F(PlayerComponentTest, CapsuleSettersPersist)
+TEST_F(PlayerComponentTest, CapsuleDefaultsWithoutCollider)
 {
     PlayerComponent player;
 
-    player.SetCapsuleRadius(0.6f);
-    player.SetCapsuleHalfHeight(0.8f);
-
-    EXPECT_FLOAT_EQ(player.CapsuleRadius(), 0.6f);
-    EXPECT_FLOAT_EQ(player.CapsuleHalfHeight(), 0.8f);
+    EXPECT_FLOAT_EQ(player.CapsuleRadius(), 0.4f);
+    EXPECT_FLOAT_EQ(player.CapsuleHalfHeight(), 0.5f);
 }
 
 TEST_F(PlayerComponentTest, OnUpdateNoOpWhenInactive)
@@ -719,7 +718,7 @@ TEST_F(PlayerComponentTest, RushEndsWhenTheWallStopsIt)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(AABB{Vector3{2.0f, 1.0f, 0.0f}, Vector3{0.5f, 2.0f, 8.0f}});
+    NsTest::AddBox(world, AABB{Vector3{2.0f, 1.0f, 0.0f}, Vector3{0.5f, 2.0f, 8.0f}});
     auto& player = MakeSlamReady(obj, world);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -956,8 +955,8 @@ TEST_F(PlayerComponentTest, GrabsLedgeWhenDescendingIntoEdge)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
@@ -975,8 +974,8 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhileGrounded)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
@@ -990,8 +989,8 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhileAscending)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
@@ -1007,8 +1006,8 @@ TEST_F(PlayerComponentTest, DoesNotGrabWithoutForwardInput)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
@@ -1023,8 +1022,8 @@ TEST_F(PlayerComponentTest, DoesNotGrabOutsideTheHandBand)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     obj.Root().SetPosition(Vector3{-0.9f, 2.0f, 0.0f});
@@ -1039,9 +1038,9 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhenTheClimbTargetIsBlocked)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.AddAABB(MakeBlock(0.0f, 1.0f, 0.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    NsTest::AddBox(world, MakeBlock(0.0f, 1.0f, 0.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
@@ -1055,8 +1054,8 @@ TEST_F(PlayerComponentTest, HangHoldsTheLedgeHeightWithoutGravity)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
@@ -1079,8 +1078,8 @@ TEST_F(PlayerComponentTest, ForwardInputWaitsForTheMinimumHangTime)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
@@ -1105,8 +1104,8 @@ TEST_F(PlayerComponentTest, JumpClimbsWithoutWaiting)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
@@ -1137,8 +1136,8 @@ TEST_F(PlayerComponentTest, BackInputDropsAwayFromTheFace)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
@@ -1161,8 +1160,8 @@ TEST_F(PlayerComponentTest, DropBlocksTheRegrabForTheCooldown)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
@@ -1186,10 +1185,10 @@ TEST_F(PlayerComponentTest, ShimmyMovesAlongTheLedge)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 1.0f));
-    world.AddAABB(MakeBlock(0.0f, 0.0f, -1.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 1.0f));
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, -1.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
@@ -1211,8 +1210,8 @@ TEST_F(PlayerComponentTest, ShimmyStopsAtTheLedgeEnd)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
@@ -1233,9 +1232,9 @@ TEST_F(PlayerComponentTest, ShimmyIgnoresInputInsideTheDeadzone)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 1.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 1.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});

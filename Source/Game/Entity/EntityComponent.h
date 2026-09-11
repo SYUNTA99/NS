@@ -3,23 +3,30 @@
 #include "Game/Entity/EntityEvents.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
-#include "Runtime/Physics/CapsuleMover.h"
+#include "Runtime/Physics/JoltCharacter.h"
+
+#include <memory>
 
 namespace NS::Object
 {
     class CapsuleColliderComponent;
 }
 
+namespace NS::Physics
+{
+    class PhysicsWorld;
+}
+
 namespace NS::Game::Entity
 {
     //! @brief 登場人物に共通する移動と接地の抽象基底
-    //! @details 敵も自機もここから派生する。速度の横縦分解・接地・カプセル寸法・1 歩の移動だけを持ち、
+    //! @details 敵も自機もここから派生する。速度の横縦分解・接地・カプセル寸法の参照・1 歩の移動だけを持ち、
     //! 能力も調整値も持たない
     //! 状態機械は派生が具象の型で持つ。1 歩の中身は HandleStates の中で派生が並べる
     //! TypeRegistry には登録しない。実体化できるのは派生だけ
     //! 衝突 query 元は OnStart で所属 scene から非所有で借りる
     //! dt は NS::Core::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
-    //! 依存: NS::Core, NS::Physics::CapsuleMover / PhysicsWorld, NS::Object::CapsuleColliderComponent
+    //! 依存: NS::Core, NS::Physics::JoltCharacter / PhysicsWorld, NS::Object::CapsuleColliderComponent
     class EntityComponent : public NS::Object::Component
     {
     public:
@@ -42,29 +49,15 @@ namespace NS::Game::Entity
         //! 掴まりのように移動を通さず位置を直に置く時、接地の控えも合わせて置く
         void SetGrounded(bool grounded) noexcept;
 
-        //! カプセル半径を設定する。0.001 未満は丸める。負のまま渡すと CapsuleMover が 1 歩ぶん動かさずに返す
-        void SetCapsuleRadius(float r) noexcept
-        {
-            if (r < 0.001f)
-                m_capsuleRadius = 0.001f;
-            else
-                m_capsuleRadius = r;
-        }
-        //! カプセル半分の高さを設定する。下限は半径と同じ 0.001 で、理由も同じ
-        void SetCapsuleHalfHeight(float h) noexcept
-        {
-            if (h < 0.001f)
-                m_capsuleHalfHeight = 0.001f;
-            else
-                m_capsuleHalfHeight = h;
-        }
-        [[nodiscard]] float CapsuleRadius() const noexcept { return m_capsuleRadius; }
-        [[nodiscard]] float CapsuleHalfHeight() const noexcept { return m_capsuleHalfHeight; }
+        //! 同居する CapsuleColliderComponent の半径。無ければ 0.4
+        [[nodiscard]] float CapsuleRadius() const noexcept;
+        //! 同居する CapsuleColliderComponent の半分の高さ。無ければ 0.5
+        [[nodiscard]] float CapsuleHalfHeight() const noexcept;
 
-        //! 衝突 query 元を非所有で借りる。シーン無しで動かす検証台の継ぎ目で、
-        //! 本編は OnStart が所属 scene の world を取る
-        void SetPhysicsWorld(const NS::Physics::PhysicsWorld* world) noexcept { m_world = world; }
-        [[nodiscard]] const NS::Physics::PhysicsWorld* PhysicsWorld() const noexcept { return m_world; }
+        //! 衝突 query 元を非所有で借りる。作り済みの JoltCharacter は捨て、次の Move が借りた world で作り直す
+        //! シーンを立てずに動かすテストが使う。本編は OnStart が所属 scene の world を取る
+        void SetPhysicsWorld(NS::Physics::PhysicsWorld* world) noexcept;
+        [[nodiscard]] NS::Physics::PhysicsWorld* PhysicsWorld() const noexcept { return m_world; }
 
         //! 水平の目標速度へ一次遅れで近づける。縦は触らない
         void Accelerate(const NS::Core::Vector3& targetHorizontal, float tau, float dt) noexcept;
@@ -75,7 +68,8 @@ namespace NS::Game::Entity
         //! 縦速度へ重力を 1 歩ぶん当てる。値の選び分け (上昇 / 下降 / 頂点) は派生の仕事
         void Gravity(float gravity, float dt) noexcept;
 
-        //! CapsuleMover へ 1 歩渡し、位置・速度・接地を更新する
+        //! JoltCharacter へ 1 歩渡し、位置・速度・接地を更新する
+        //! 衝突 world が無ければ当たりを見ずに速度ぶん進め、接地は false にする
         void Move(float dt) noexcept;
 
         //! 直近の Move で実際に動いた量。突進の進み具合を実移動から測るのに使う
@@ -86,7 +80,7 @@ namespace NS::Game::Entity
 
         //! 未注入なら所属 scene の衝突 world を借り、同居する CapsuleColliderComponent を控える
         void OnStart() override;
-        //! カプセル寸法を写してから 1 歩ぶん HandleStates を呼ぶ
+        //! 1 歩ぶん HandleStates を呼ぶ
         void OnUpdate() override;
 
         // 抽象基底なので TypeRegistry には登録せず、リフレクションの鎖だけ通す
@@ -101,12 +95,10 @@ namespace NS::Game::Entity
         NS::Core::Vector3 m_velocity{0.0f, 0.0f, 0.0f};
         NS::Core::Vector3 m_positionDelta{0.0f, 0.0f, 0.0f};
         bool m_isGrounded = false;
-        bool m_wasGrounded = false;                         // 直前の Move より前の接地
-        float m_capsuleRadius = 0.4f;                       // カプセル半径
-        float m_capsuleHalfHeight = 0.5f;                   // カプセル半分の高さ
-        const NS::Physics::PhysicsWorld* m_world = nullptr; // 衝突判定に使う physics world (非所有)
+        bool m_wasGrounded = false;                   // 直前の Move より前の接地
+        NS::Physics::PhysicsWorld* m_world = nullptr; // 衝突判定に使う physics world。非所有
         NS::Object::CapsuleColliderComponent* m_capsuleCollider = nullptr;
-        NS::Physics::CapsuleMover m_controller; // 数値計算を任せる controller
+        std::unique_ptr<NS::Physics::JoltCharacter> m_character;
         EntityEvents m_events;
     };
 } // namespace NS::Game::Entity

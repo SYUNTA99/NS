@@ -5,7 +5,6 @@
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Object/World.h"
-#include "Runtime/Physics/PhysicsWorld.h"
 
 #include <chrono>
 #include <cstddef>
@@ -129,7 +128,6 @@ namespace
     [[nodiscard]] double MeasureRebuildMicros(const NS::Object::SceneData& data, int iterations)
     {
         NS::Object::Scene scene;
-        NS::Physics::PhysicsWorld physics;
         NS::Object::World world;
         const auto factory = [](const NS::Object::ObjectData& entry) {
             return NS::Object::BuildSceneObject(entry, nullptr);
@@ -137,7 +135,7 @@ namespace
 
         const auto begin = std::chrono::steady_clock::now();
         for (int i = 0; i < iterations; ++i)
-            world.Rebuild(data, scene, physics, factory);
+            world.Rebuild(data, scene, factory);
         const auto end = std::chrono::steady_clock::now();
         return std::chrono::duration<double, std::micro>(end - begin).count() / static_cast<double>(iterations);
     }

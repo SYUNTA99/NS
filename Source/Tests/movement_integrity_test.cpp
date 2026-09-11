@@ -5,6 +5,8 @@
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
+
+#include "jolt_test_world.h"
 #include <gtest/gtest.h>
 #include <vector>
 
@@ -40,8 +42,8 @@ namespace
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
 
         NS::Physics::PhysicsWorld pw;
-        pw.AddAABB(floor);
-        pw.BuildBroadphase();
+        NsTest::AddBox(pw, floor);
+        pw.OptimizeBroadPhase();
         movement.SetPhysicsWorld(&pw);
         movement.SetDebugDrawEnabled(false);
         movement.OnStart();
@@ -117,8 +119,8 @@ TEST_F(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
     owner.Root().SetPosition(Vector3{0.0f, 0.5f, 0.0f}); // 床の上に直置きして接地から始める
 
     NS::Physics::PhysicsWorld pw;
-    pw.AddAABB(floor);
-    pw.BuildBroadphase();
+    NsTest::AddBox(pw, floor);
+    pw.OptimizeBroadPhase();
     movement.SetPhysicsWorld(&pw);
     movement.SetDebugDrawEnabled(false);
     movement.OnStart();

@@ -9,7 +9,9 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/World.h"
-#include "Runtime/Physics/Capsule.h"
+#include "Runtime/Physics/PhysicsWorld.h"
+
+#include <algorithm>
 
 namespace NS::Game::Level
 {
@@ -31,11 +33,12 @@ namespace NS::Game::Level
         if (movement == nullptr)
             return;
 
-        NS::Physics::Capsule capsule{};
-        capsule.center = player->Root().Position();
-        capsule.radius = movement->CapsuleRadius();
-        capsule.halfHeight = movement->CapsuleHalfHeight();
-        if (NS::Physics::IntersectsCapsuleAABB(capsule, box->WorldAABB()))
+        const NS::Physics::Capsule capsule{player->Root().Position(),
+                                           NS::Core::Vector3::UnitY,
+                                           movement->CapsuleHalfHeight(),
+                                           movement->CapsuleRadius()};
+        const auto overlaps = scene->Physics().OverlapCapsule(capsule);
+        if (std::find(overlaps.begin(), overlaps.end(), box->BodyId()) != overlaps.end())
             player->Kill();
     }
 

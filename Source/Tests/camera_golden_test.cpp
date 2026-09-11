@@ -9,6 +9,8 @@
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
+
+#include "jolt_test_world.h"
 #include <bit>
 #include <cstdint>
 #include <gtest/gtest.h>
@@ -98,11 +100,11 @@ namespace
     {
         GameObject player;
         NS::Physics::PhysicsWorld world;
-        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 8.0f}});
+        NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 8.0f}});
         player.AddComponent<PlayerStateManagerComponent>();
         auto& movement = *player.AddComponent<PlayerComponent>();
         player.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
-        world.BuildBroadphase();
+        world.OptimizeBroadPhase();
         player.OnStart();
         movement.SetPhysicsWorld(&world);
         movement.SetDebugDrawEnabled(false);
@@ -184,7 +186,7 @@ namespace
     }
 
     // 基準ハッシュ。意図してカメラの感触を変えた時だけ実測値で更新する
-    constexpr uint64_t k_FollowWalkJumpGolden = 0x6C68A644E4D28AAEULL;
+    constexpr uint64_t k_FollowWalkJumpGolden = 0x40ED2786AF5FEEEFULL;
     constexpr uint64_t k_AreaCameraBlendGolden = 0xDF21CBDB3D18F8D1ULL;
 } // namespace
 

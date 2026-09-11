@@ -7,7 +7,10 @@
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
+
+#include "jolt_test_world.h"
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <gtest/gtest.h>
@@ -52,16 +55,15 @@ namespace
         return false;
     }
 
-    //! 自機 2 部品を載せて PhysicsWorld を繋ぐ。積む順は Player のコンストラクタと同じ
-    //! @details 開始位置は空中に取り、数ステップの自然落下で着地させる。
-    //! 床上へ直置きするとカプセルが床へめり込み、衝突解決が移動を丸ごと拒否して位置が固定されてしまう
+    //! 自機 2 部品を載せて衝突 world を繋ぐ。積む順は Player のコンストラクタと同じ
+    //! @details 開始位置は空中に取り、数ステップの自然落下で着地させる
     PlayerComponent& SetUpMovement(GameObject& owner, NS::Physics::PhysicsWorld& world, const Vector3& startPosition)
     {
         auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
         auto& movement = *owner.AddComponent<PlayerComponent>();
 
         owner.Root().SetPosition(startPosition);
-        world.BuildBroadphase();
+        world.OptimizeBroadPhase();
         movement.SetPhysicsWorld(&world);
         movement.SetDebugDrawEnabled(false);
         movement.OnStart();
@@ -80,7 +82,7 @@ namespace
     {
         GameObject owner;
         NS::Physics::PhysicsWorld world;
-        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{16.0f, 0.5f, 8.0f}});
+        NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{16.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 1.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
@@ -103,7 +105,7 @@ namespace
     {
         GameObject owner;
         NS::Physics::PhysicsWorld world;
-        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{32.0f, 0.5f, 8.0f}});
+        NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{32.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 1.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
@@ -125,7 +127,7 @@ namespace
     {
         GameObject owner;
         NS::Physics::PhysicsWorld world;
-        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{2.0f, 0.5f, 8.0f}});
+        NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{2.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 1.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
@@ -159,7 +161,7 @@ namespace
     {
         GameObject owner;
         NS::Physics::PhysicsWorld world;
-        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
+        NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 3.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
@@ -184,8 +186,8 @@ namespace
     {
         GameObject owner;
         NS::Physics::PhysicsWorld world;
-        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
-        world.AddAABB(AABB{Vector3{6.0f, 1.5f, 0.0f}, Vector3{0.5f, 2.0f, 8.0f}});
+        NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{8.0f, 0.5f, 8.0f}});
+        NsTest::AddBox(world, AABB{Vector3{6.0f, 1.5f, 0.0f}, Vector3{0.5f, 2.0f, 8.0f}});
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 1.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
@@ -205,9 +207,9 @@ namespace
     {
         GameObject owner;
         NS::Physics::PhysicsWorld world;
-        world.AddAABB(AABB{Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}});
-        world.AddAABB(AABB{Vector3{0.0f, 0.0f, 1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
-        world.AddAABB(AABB{Vector3{0.0f, 0.0f, -1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
+        NsTest::AddBox(world, AABB{Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}});
+        NsTest::AddBox(world, AABB{Vector3{0.0f, 0.0f, 1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
+        NsTest::AddBox(world, AABB{Vector3{0.0f, 0.0f, -1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
         auto& movement = SetUpMovement(owner, world, Vector3{-0.9f, 0.0f, 0.0f});
 
         std::vector<StepRecord> trajectory;
@@ -243,8 +245,11 @@ namespace
 
         GameObject owner;
         NS::Physics::PhysicsWorld world;
-        world.AddTriangle(NS::Physics::Triangle{lowLeft, highRight, lowRight});
-        world.AddTriangle(NS::Physics::Triangle{lowLeft, highLeft, highRight});
+        const std::array<NS::Physics::Triangle, 2> slope{
+            NS::Physics::Triangle{lowLeft, highRight, lowRight},
+            NS::Physics::Triangle{lowLeft, highLeft, highRight},
+        };
+        world.AddMesh(slope, NS::Physics::ObjectLayers::Terrain);
         auto& movement = SetUpMovement(owner, world, Vector3{0.0f, 2.5f, -10.5f});
 
         std::vector<StepRecord> trajectory;

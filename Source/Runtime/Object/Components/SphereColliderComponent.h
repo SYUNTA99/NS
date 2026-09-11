@@ -32,10 +32,8 @@ namespace NS::Object
         //! owner の world 変換を反映した世界軸並行 AABB を返す。 Owner 未登録時は local だけを反映する
         [[nodiscard]] NS::Core::AABB WorldAABB() const noexcept;
 
-        //! world 座標の球を physics へ入れる
-        void AddToPhysics(NS::Physics::PhysicsWorld& physics) const override;
         //! world 座標の球を body 1 個として入れる
-        void AddToPhysics(NS::Physics::JoltWorld& physics) override;
+        void SyncToPhysics(NS::Physics::PhysicsWorld& physics) override;
 
         NS_REFLECT_BEGIN(SphereColliderComponent, ColliderComponent)
         NS_REFLECT_ACCESSOR(float, "半径", Radius(), SetRadius)

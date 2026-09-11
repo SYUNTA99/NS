@@ -15,10 +15,10 @@ namespace NS::Graphics
 namespace NS::Object
 {
     //! @brief owner の真下の地面に半透明の接地シャドウを描く IRenderable Component
-    //! @details 下方向レイ vs 所属 Scene の衝突形状で真下の地面を探し、命中面に水平な半透明クアッドを置く
+    //! @details 所属 Scene の PhysicsWorld へ下向きのレイを撃ち、命中点の高さに水平な半透明クアッドを置く
     //! 高さに応じて薄く・小さくし、空中でも着地点が分かる目印にする。真下に地面が無ければ描かない
     //! Alpha 合成で深度テストON 書込OFF の半透明バケットで描かれ、手前のジオメトリに遮蔽される
-    //! 受け先は毎 Collect で PhysicsWorld を引き直す。落下先を控えないので、当たりを張り直した後の位置に影が乗る
+    //! 毎 Collect で Scene から PhysicsWorld を引き直す。落下先を控えないので、当たりを張り直した後の位置に影が乗る
     //! quad mesh / shadow material は AssetManager の共有物を ResolveAssets が差す。本 Component は非所有
     class ShadowComponent : public Component, public IRenderable
     {

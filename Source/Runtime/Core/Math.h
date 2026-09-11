@@ -55,6 +55,14 @@ namespace NS::Core
         float halfExtentZ{0.5f};
     };
 
+    //! @brief 中心・回転・半径から OBB を組む
+    //! @details 3 軸は rotation で回した単位軸。半径は絶対値を取るので負の scale を渡しても潰れない
+    //! @param[in] center 中心
+    //! @param[in] rotation 3 軸の向き
+    //! @param[in] halfExtents 中心から各面までの距離
+    //! @return 組み上がった OBB
+    [[nodiscard]] OBB MakeOBB(const Vector3& center, const Quaternion& rotation, const Vector3& halfExtents) noexcept;
+
     //! @brief center と radius による球形状
     //! @details 向きを持たない球。center を中心に半径 radius
     struct Sphere

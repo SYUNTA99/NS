@@ -8,6 +8,8 @@
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
+
+#include "jolt_test_world.h"
 #include <gtest/gtest.h>
 
 #include <cstddef>
@@ -44,8 +46,8 @@ namespace
 
     void AddFloor(NS::Physics::PhysicsWorld& world)
     {
-        world.AddAABB(AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 64.0f}});
-        world.BuildBroadphase();
+        NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 64.0f}});
+        world.OptimizeBroadPhase();
     }
 
     FallingEntity& MakeAirborneEntity(GameObject& owner, NS::Physics::PhysicsWorld& world)
@@ -265,8 +267,8 @@ TEST_F(EntityEventsTest, LedgeGrabbedFiresOnTheGrabbingStep)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     int grabbed = 0;
@@ -285,8 +287,8 @@ TEST_F(EntityEventsTest, LedgeClimbingFiresWhenTheClimbStarts)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(MakeBlock(0.0f, 0.0f, 0.0f));
-    world.BuildBroadphase();
+    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
+    world.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj, world);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});

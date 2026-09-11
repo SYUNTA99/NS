@@ -107,8 +107,8 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
     ASSERT_NE(launched, nullptr);
 
     live->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
-    SetFloatField(*launched, "重力", -99.0f);
-    scene.WritePlayBaselineField(*launched, "重力");
+    SetFloatField(*launched, "跳ね返り", 0.9f);
+    scene.WritePlayBaselineField(*launched, "跳ね返り");
 
     SceneNs::SceneData copy = scene.PlayBaseline();
     ASSERT_EQ(copy.objects.size(), 1u);
@@ -122,7 +122,7 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
     ASSERT_NE(rebuilt, nullptr);
     auto* rebuiltLaunched = rebuilt->FindComponent<LevelNs::LaunchedBodyComponent>();
     ASSERT_NE(rebuiltLaunched, nullptr);
-    EXPECT_FLOAT_EQ(GetFloatField(*rebuiltLaunched, "重力"), -99.0f);
+    EXPECT_FLOAT_EQ(GetFloatField(*rebuiltLaunched, "跳ね返り"), 0.9f);
 }
 
 TEST(PlayBaselineSave, HandEditedRotationUpdatesFrozenQuaternion)

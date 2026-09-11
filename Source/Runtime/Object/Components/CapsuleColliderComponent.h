@@ -7,7 +7,7 @@
 namespace NS::Object
 {
     //! @brief カプセル collider を Scene に登録する Component
-    //! @details owner の world 変換から中心・軸・半径・半高を備えた WorldCapsule を返す
+    //! @details owner の world 変換から中心・軸・半径・半高を個別に返す
     //! 既定は縦向き Y 軸の capsule。 local 回転で寝かせられる。 半径は X/Z scale の最大、 半高は Y scale で拡縮する
     //! 回転と非一様 scale を併用すると近似になる
     class CapsuleColliderComponent : public ColliderComponent
@@ -52,10 +52,8 @@ namespace NS::Object
         //! @param[in] excluded 静的世界から外す場合 true
         void SetExcludedFromStaticWorld(bool excluded) noexcept;
 
-        //! world 座標の capsule を physics へ入れる
-        void AddToPhysics(NS::Physics::PhysicsWorld& physics) const override;
         //! 静的世界から外した capsule は body を作らない
-        void AddToPhysics(NS::Physics::JoltWorld& physics) override;
+        void SyncToPhysics(NS::Physics::PhysicsWorld& physics) override;
 
         NS_REFLECT_BEGIN(CapsuleColliderComponent, ColliderComponent)
         NS_REFLECT_ACCESSOR(float, "半径", Radius(), SetRadius)
@@ -65,6 +63,8 @@ namespace NS::Object
         NS_REFLECT_END()
 
     private:
+        [[nodiscard]] NS::Core::Matrix CapsuleWorldMatrix() const noexcept;
+
         float m_radius = 0.4f;                                                 // capsule 半径
         float m_halfHeight = 0.5f;                                             // 円柱部の半長、半球を除く
         NS::Core::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f};                    // owner local 空間での中心オフセット

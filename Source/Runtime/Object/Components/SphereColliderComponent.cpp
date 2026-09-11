@@ -4,7 +4,6 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/PhysicsWorld.h"
-#include "Runtime/Physics/JoltWorld.h"
 
 #include <algorithm>
 #include <cmath>
@@ -65,14 +64,9 @@ namespace NS::Object
         return NS::Core::AABB{s.center, NS::Core::Vector3{s.radius, s.radius, s.radius}};
     }
 
-    void SphereColliderComponent::AddToPhysics(NS::Physics::PhysicsWorld& physics) const
+    void SphereColliderComponent::SyncToPhysics(NS::Physics::PhysicsWorld& physics)
     {
-        physics.AddSphere(WorldSphere());
-    }
-
-    void SphereColliderComponent::AddToPhysics(NS::Physics::JoltWorld& physics)
-    {
-        ReplaceBody(physics, physics.AddSphere(WorldSphere(), NS::Physics::ObjectLayers::Terrain));
+        TrackBody(physics, physics.SyncSphere(BodyIn(physics), WorldSphere(), NS::Physics::ObjectLayers::Terrain));
     }
 
     NS_CLASS(SphereColliderComponent)

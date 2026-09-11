@@ -7,7 +7,6 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/PhysicsWorld.h"
 
 #include <algorithm>
 #include <cmath>
@@ -56,12 +55,31 @@ namespace
     // 手放しとよじ登りの直後に再掴みを禁止する時間で単位は s。放しても入力を倒し続けた時の即再掴みを防ぐ
     constexpr float k_LedgeRegrabCooldownTime = 0.3f;
 
-    // 掴まりの走査が借りる AABB 群。world 未設定なら空を返すので、掴めないだけで落ちない
-    [[nodiscard]] std::span<const NS::Core::AABB> WorldAABBs(const NS::Physics::PhysicsWorld* world) noexcept
+    // 掴まりの走査で見る AABB 群。world 未設定なら空を返すので、掴めないだけで異常終了しない
+    [[nodiscard]] std::vector<NS::Core::AABB> BoxesTouchingBand(const NS::Physics::PhysicsWorld* world,
+                                                                const NS::Core::Vector3& probe,
+                                                                float below,
+                                                                float above)
     {
         if (world == nullptr)
             return {};
-        return std::span<const NS::Core::AABB>(world->AABBs());
+
+        NS::Core::AABB region;
+        region.Center = NS::Core::Vector3{probe.x, probe.y + 0.5f * (above - below), probe.z};
+        region.Extents = NS::Core::Vector3{0.0f, 0.5f * (above + below), 0.0f};
+        return world->OverlapBox(region);
+    }
+
+    [[nodiscard]] std::vector<NS::Core::AABB> BoxesAtPoint(const NS::Physics::PhysicsWorld* world,
+                                                           const NS::Core::Vector3& point)
+    {
+        if (world == nullptr)
+            return {};
+
+        NS::Core::AABB region;
+        region.Center = point;
+        region.Extents = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        return world->OverlapBox(region);
     }
 
     [[nodiscard]] bool AABBContainsPoint(const NS::Core::AABB& box, const NS::Core::Vector3& p) noexcept
@@ -206,7 +224,7 @@ namespace NS::Game::Player
 
     void PlayerComponent::SetMaxSpeed(float speed) noexcept
     {
-        // 非有限値は入口で捨てる。CapsuleMover は速度を検査しないので位置まで NaN が伝わる
+        // 非有限値は入口で捨てる。JoltCharacter は速度を検査しないので位置まで NaN が伝わる
         if (!std::isfinite(speed))
             return;
 
@@ -585,7 +603,8 @@ namespace NS::Game::Player
             pos.z + dir.z * (CapsuleRadius() + k_LedgeReach),
         };
 
-        for (const NS::Core::AABB& box : WorldAABBs(PhysicsWorld()))
+        for (const NS::Core::AABB& box :
+             BoxesTouchingBand(PhysicsWorld(), probe, k_LedgeGrabBandLow, k_LedgeGrabBandHigh))
         {
             const float top = box.Center.y + box.Extents.y;
             if (top < handY - k_LedgeGrabBandLow || top > handY + k_LedgeGrabBandHigh)
@@ -628,7 +647,7 @@ namespace NS::Game::Player
                 hang.z - faceNormal.z * mantleStep,
             };
             bool blocked = false;
-            for (const NS::Core::AABB& other : WorldAABBs(PhysicsWorld()))
+            for (const NS::Core::AABB& other : BoxesAtPoint(PhysicsWorld(), mantleCheck))
             {
                 if (AABBContainsPoint(other, mantleCheck))
                 {
@@ -766,7 +785,8 @@ namespace NS::Game::Player
             hangPos.z + inward.z * (CapsuleRadius() + k_LedgeReach),
         };
 
-        for (const NS::Core::AABB& box : WorldAABBs(PhysicsWorld()))
+        for (const NS::Core::AABB& box :
+             BoxesTouchingBand(PhysicsWorld(), probe, k_LedgeContinueTopTol, k_LedgeContinueTopTol))
         {
             const float top = box.Center.y + box.Extents.y;
             if (std::abs(top - m_ledgeTopY) > k_LedgeContinueTopTol)
@@ -784,7 +804,7 @@ namespace NS::Game::Player
                 hangPos.z - m_ledgeFaceNormal.z * mantleStep,
             };
             bool blocked = false;
-            for (const NS::Core::AABB& other : WorldAABBs(PhysicsWorld()))
+            for (const NS::Core::AABB& other : BoxesAtPoint(PhysicsWorld(), mantleCheck))
             {
                 if (AABBContainsPoint(other, mantleCheck))
                 {

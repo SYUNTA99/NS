@@ -5,7 +5,7 @@
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/JoltCharacter.h"
 
 #include <cmath>
 
@@ -36,7 +36,7 @@ namespace
 
 namespace NS::Game::Entity
 {
-    // 天井の当たりは持たない。CapsuleMover が接触面へ速度を射影するので、
+    // 天井の当たりは持たない。JoltCharacter が接触面へ速度を射影するので、
     // 天井に当たった歩の上向き速度は Move を抜けた時点で 0 になっている
     EntityComponent::EntityComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::Update) {}
 
@@ -57,6 +57,22 @@ namespace NS::Game::Entity
         m_isGrounded = grounded;
     }
 
+    float EntityComponent::CapsuleRadius() const noexcept
+    {
+        return m_capsuleCollider != nullptr ? m_capsuleCollider->Radius() : 0.4f;
+    }
+
+    float EntityComponent::CapsuleHalfHeight() const noexcept
+    {
+        return m_capsuleCollider != nullptr ? m_capsuleCollider->HalfHeight() : 0.5f;
+    }
+
+    void EntityComponent::SetPhysicsWorld(NS::Physics::PhysicsWorld* world) noexcept
+    {
+        m_world = world;
+        m_character.reset();
+    }
+
     void EntityComponent::OnStart()
     {
         if (m_world == nullptr && Owner() != nullptr && Owner()->OwningScene() != nullptr)
@@ -70,13 +86,6 @@ namespace NS::Game::Entity
 
     void EntityComponent::OnUpdate()
     {
-        // 当たりの形の正は同居する CapsuleColliderComponent。掃引はこの写しを読むので毎歩追従させる
-        if (m_capsuleCollider != nullptr)
-        {
-            m_capsuleRadius = m_capsuleCollider->Radius();
-            m_capsuleHalfHeight = m_capsuleCollider->HalfHeight();
-        }
-
         const float dt = NS::Core::FrameTimer::FixedDelta();
 
         if (!IsActive() || dt <= 0.0f)
@@ -106,21 +115,31 @@ namespace NS::Game::Entity
     void EntityComponent::Move(float dt) noexcept
     {
         const NS::Core::Vector3 before = RootTransform().Position();
+        if (m_world == nullptr)
+        {
+            // 実移動は書いた位置から引く。m_velocity * dt を控えると丸めのぶんだけ位置と食い違う
+            const NS::Core::Vector3 after = before + m_velocity * dt;
+            RootTransform().SetPosition(after);
+            m_positionDelta = after - before;
+            m_wasGrounded = m_isGrounded;
+            m_isGrounded = false;
+            return;
+        }
 
-        NS::Physics::CapsuleMoverInput in{};
-        in.position = before;
-        in.velocity = m_velocity;
-        in.dt = dt;
-        in.capsuleRadius = m_capsuleRadius;
-        in.capsuleHalfHeight = m_capsuleHalfHeight;
-        in.physicsWorld = m_world;
-        const NS::Physics::CapsuleMoverResult out = m_controller.Update(in);
+        const float radius = CapsuleRadius();
+        const float halfHeight = CapsuleHalfHeight();
+        if (m_character == nullptr)
+            m_character = std::make_unique<NS::Physics::JoltCharacter>(*m_world, radius, halfHeight);
+        m_character->Resize(radius, halfHeight);
 
-        RootTransform().SetPosition(out.position);
-        m_velocity = out.velocity;
+        m_character->Step(before, m_velocity, dt);
+
+        const NS::Core::Vector3 after = m_character->Position();
+        RootTransform().SetPosition(after);
+        m_velocity = m_character->Velocity();
         m_wasGrounded = m_isGrounded;
-        m_isGrounded = out.grounded;
-        m_positionDelta = out.position - before;
+        m_isGrounded = m_character->IsGrounded();
+        m_positionDelta = after - before;
 
         // 発火は位置・速度・接地・実移動を書き終えた後。途中で呼ぶと購読側がその歩だけ古い値を読む
         if (!m_wasGrounded && m_isGrounded)

@@ -1,5 +1,5 @@
 #include <Runtime/Core/Math.h>
-#include <Runtime/Physics/JoltConversion.h>
+#include <Runtime/Physics/detail/JoltConversion.h>
 
 #include <gtest/gtest.h>
 

@@ -56,23 +56,23 @@ namespace
         }
         else if (auto* capsule = object.FindComponent<NS::Object::CapsuleColliderComponent>())
         {
-            const NS::Physics::Capsule world = capsule->WorldCapsule();
-            NS::Core::Vector3 axis = world.axis;
-            axis.Normalize();
-            NS::Graphics::DebugDraw::Capsule(world.center, axis * world.halfHeight, world.radius, color);
+            NS::Physics::Capsule worldCapsule = capsule->WorldCapsule();
+            worldCapsule.axis.Normalize();
+            NS::Graphics::DebugDraw::Capsule(
+                worldCapsule.center, worldCapsule.axis * worldCapsule.halfHeight, worldCapsule.radius, color);
         }
         else if (auto* slope = object.FindComponent<NS::Object::SlopeColliderComponent>())
         {
             // 斜面は三角の集まりなので、包む箱を出して面の広がりを見せる
             const auto tris = slope->WorldTriangles();
             NS::Core::Vector3 lo = tris[0].v0;
-            NS::Core::Vector3 hi = tris[0].v0;
+            NS::Core::Vector3 hi = lo;
             for (const auto& tri : tris)
             {
-                for (const NS::Core::Vector3& v : {tri.v0, tri.v1, tri.v2})
+                for (const NS::Core::Vector3* vertex : {&tri.v0, &tri.v1, &tri.v2})
                 {
-                    lo = NS::Core::Vector3::Min(lo, v);
-                    hi = NS::Core::Vector3::Max(hi, v);
+                    lo = NS::Core::Vector3::Min(lo, *vertex);
+                    hi = NS::Core::Vector3::Max(hi, *vertex);
                 }
             }
             NS::Graphics::DebugDraw::AABB(NS::Core::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f}, color);
@@ -1052,7 +1052,7 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
 
 void LevelEditorController::SetSelectedFreePosition(NS::Core::Vector3 position)
 {
-    // live の Root を直接動かす。永続化は CommitTransformEdit / SyncPhysics 経路が担う
+    // live の Root を直接動かす。undo の記録は CommitTransformEdit、当たりの追従は SyncPhysics が担う
     if (NS::Object::GameObject* go = SelectedObjectGameObject())
     {
         go->Root().SetPosition(position);

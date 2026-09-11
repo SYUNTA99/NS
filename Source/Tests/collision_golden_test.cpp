@@ -5,6 +5,7 @@
 
 #include <Game/Level/BreakableComponent.h>
 #include <Game/Level/ImpactResolverComponent.h>
+#include <Game/Level/LaunchedBodyComponent.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
 #include <Runtime/Core/Clock.h>
@@ -16,10 +17,13 @@
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Object/World.h>
 #include <Runtime/Physics/PhysicsWorld.h>
+
+#include "jolt_test_world.h"
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <gtest/gtest.h>
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -55,16 +59,16 @@ namespace
             m_object.AddComponent<PlayerStateManagerComponent>();
             m_movement = m_object.AddComponent<PlayerComponent>();
 
-            // 床は走り切る z 方向だけ伸ばす。全方向へ広げると broadphase の格子が膨らみ 1 件で数分かかる
-            m_world.AddAABB(AABB{Vector3{0.0f, -0.5f, 32.0f}, Vector3{4.0f, 0.5f, 44.0f}});
-            m_world.BuildBroadphase();
+            // 床は走り切る z 方向だけ伸ばす
+            NsTest::AddBox(m_world, AABB{Vector3{0.0f, -0.5f, 32.0f}, Vector3{4.0f, 0.5f, 44.0f}});
+            m_world.OptimizeBroadPhase();
             m_object.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
             m_movement->SetPhysicsWorld(&m_world);
             m_movement->SetDebugDrawEnabled(false);
             m_movement->OnStart();
             m_object.FindComponent<PlayerStateManagerComponent>()->OnStart();
 
-            // 開始位置は空中に取る。床へ直置きするとカプセルがめり込み、衝突解決が移動を丸ごと拒否する
+            // 開始位置は空中に取る
             for (int i = 0; i < 30 && !m_movement->IsGrounded(); ++i)
                 m_movement->OnUpdate();
         }
@@ -155,7 +159,11 @@ namespace
                 if (m_stepIndex % k_ImpactSlamPeriod == 0)
                     m_movement->RequestBodySlam(k_ImpactSlamCharge);
                 ++m_stepIndex;
-                m_scene.World().UpdateAllObjects();
+                // 岩は Jolt の剛体なので、帯だけ回しても動かない。物理の 1 歩を LateUpdate 帯の手前へ挟む
+                m_scene.World().UpdateObjects(std::numeric_limits<int>::min(), NS::Object::TickPriority::LateUpdate);
+                m_scene.Physics().Update(k_FixedDt);
+                m_scene.World().UpdateObjects(NS::Object::TickPriority::LateUpdate);
+                m_scene.World().SnapshotObjects();
                 m_trace.push_back(
                     StepRecord{m_player->Root().Position(), m_movement->Velocity(), m_movement->IsGrounded()});
             }

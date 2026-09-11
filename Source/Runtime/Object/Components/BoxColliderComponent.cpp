@@ -4,7 +4,6 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/PhysicsWorld.h"
-#include "Runtime/Physics/JoltWorld.h"
 
 #include <algorithm>
 #include <cmath>
@@ -128,31 +127,19 @@ namespace NS::Object
         const NS::Core::Vector3 half{m_halfExtents.x * std::abs(scale.x),
                                      m_halfExtents.y * std::abs(scale.y),
                                      m_halfExtents.z * std::abs(scale.z)};
-        return NS::Physics::MakeOBB(translation, rotation, half);
+        return NS::Core::MakeOBB(translation, rotation, half);
     }
 
-    void BoxColliderComponent::AddToPhysics(NS::Physics::PhysicsWorld& physics) const
+    void BoxColliderComponent::SyncToPhysics(NS::Physics::PhysicsWorld& physics)
     {
-        // トリガの箱は通り抜ける体積。 固形に入れず、 重なりは owner の component が自分で調べる
-        if (m_isTrigger)
-            return;
-
-        const NS::Core::OBB obb = WorldOBB();
-        if (IsAxisAligned(obb))
-            physics.AddAABB(WorldAABB());
-        else
-            physics.AddOBB(obb);
-    }
-
-    void BoxColliderComponent::AddToPhysics(NS::Physics::JoltWorld& physics)
-    {
+        // 通り抜ける体積も body にする。入れないと重なりの問い合わせに出てこず、触れても判定できない
         if (m_isTrigger)
         {
-            ReplaceBody(physics, JPH::BodyID{});
+            TrackBody(physics, physics.SyncBox(BodyIn(physics), WorldOBB(), NS::Physics::ObjectLayers::Trigger, true));
             return;
         }
 
-        ReplaceBody(physics, physics.AddBox(WorldOBB(), NS::Physics::ObjectLayers::Terrain));
+        TrackBody(physics, physics.SyncBox(BodyIn(physics), WorldOBB(), NS::Physics::ObjectLayers::Terrain));
     }
 
     NS_CLASS(BoxColliderComponent)

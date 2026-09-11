@@ -6,7 +6,6 @@
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 #include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Object/World.h"
-#include "Runtime/Physics/JoltWorld.h"
 #include "Runtime/Physics/PhysicsWorld.h"
 
 #include <cstdint>
@@ -40,7 +39,7 @@ namespace NS::Object
     };
 
     //! @brief SceneData から組んだ World を運転する scene
-    //! @details world と環境値の所有、読込/保存/プレイ凍結の出入口、標準の world 描画パスを担う
+    //! @details world と環境値を所有し、SceneData を読み書きし、プレイを凍結し、標準の world 描画パスを走らせる
     //! Application から OnStart / OnUpdate / OnRender / OnShutdown を順に呼び戻される
     //! fixed timestep + variable render で駆動し、IRenderable の自己登録先も兼ねる
     //! live な GameObject/Component が唯一の表現で、SceneData は境界でだけ使う一時データ
@@ -71,12 +70,9 @@ namespace NS::Object
         //! brain が駆動する実カメラ。 シーンの破棄後は nullptr
         [[nodiscard]] CameraComponent* MainCamera() noexcept;
 
-        //! 衝突 world への可変ハンドル。build 時に満たし、
-        //! 移動の Component 等の借用元は OnStart で所属 scene から取りに来る
+        //! 衝突 world への可変参照。scene が値で持つので寿命は scene と同じ
+        //! 移動の Component は OnStart で所属 scene からこれを取って控える
         [[nodiscard]] NS::Physics::PhysicsWorld& Physics() noexcept { return m_physicsWorld; }
-
-        //! JoltWorld への可変ハンドル。scene が値で持つので寿命は scene と同じ
-        [[nodiscard]] NS::Physics::JoltWorld& Jolt() noexcept { return m_joltWorld; }
 
         //! AssetManager を非所有で差す。組み立て時の参照実体化が使う。未設定 (テスト等) は解決を跳ばす
         void SetAssets(AssetManager* assets) noexcept { m_assets = assets; }
@@ -95,7 +91,7 @@ namespace NS::Object
         //! @brief 読み込んだシーンデータを取り込み world を組み直す。 データは取込後に用済みになる一時データ
         void LoadFromData(SceneData&& data);
 
-        //! @brief 編集で動いた live の当たりを張り直し、 組み直し後 hook を呼ぶ。 object は作り直さない
+        //! @brief 編集で動いた live の当たりを張り直し、 OnWorldChanged を呼ぶ。 object は作り直さない
         void SyncPhysics();
 
         //! @brief プレイ突入時に live を凍結して返す。 プレイ規則の判定と編集復帰の姿はこの凍結を読む
@@ -155,7 +151,7 @@ namespace NS::Object
         //! @details リフレクションで全 component の値を忠実に写す
         [[nodiscard]] SceneData CaptureLiveToSceneData() const;
 
-        //! カメラブレンドの更新・補間スナップショット・帯の一括更新。 世界の駆動はここが持つ
+        //! 補間スナップショット・帯の更新・LateUpdate 帯の手前で物理の 1 歩。 世界の駆動はここが持つ
         //! 読み込んだら回り続けるのが既定で、 止める口は SetSimulationEnabled / SetSimulationPaused
         virtual void OnUpdate();
 
@@ -210,8 +206,7 @@ namespace NS::Object
         //! 描画物の登録簿と視錐台カリングを持つレンダラ側の描画シーン
         NS::Graphics::RenderScene m_renderScene;
 
-        NS::Physics::JoltWorld m_joltWorld;
-        //! 衝突 world。当たりの有る scene だけが build で満たし、無ければ空のまま
+        //! 衝突 world。当たりの有る scene だけ World::SyncPhysics が body を入れ、無ければ空のまま
         //! m_world より前に宣言してあるので破棄は後になり、これを借りる移動の Component より長く生きる
         NS::Physics::PhysicsWorld m_physicsWorld;
 

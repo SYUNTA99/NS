@@ -20,12 +20,13 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/World.h"
-#include "Runtime/Physics/Capsule.h"
 #include "Runtime/Physics/PhysicsWorld.h"
 
+#include <algorithm>
 #include <cmath>
 #include <memory>
 #include <utility>
+#include <vector>
 
 namespace NS::Game::Level
 {
@@ -52,6 +53,9 @@ namespace NS::Game::Level
 
         // 床の上面から跡を浮かせる高さ。面がぴったり重なるとちらつく
         constexpr float k_MarkFloorOffset = 0.02f;
+
+        // レイの起点を相手の底からずらす量。誤差で相手自身に当たらない最小の隙間
+        constexpr float k_MarkProbeSkin = 0.01f;
 
         // 破片 1 個の描画スケール。壊れた物より明確に小さくして、数で壊れた量を見せる
         constexpr float k_DebrisScale = 0.25f;
@@ -87,6 +91,22 @@ namespace NS::Game::Level
                 return 0.0f;
             return NS::Core::Clamp(lateral / radius, 0.0f, 1.0f);
         }
+
+        [[nodiscard]] JPH::BodyID CurrentBodyOf(const NS::Object::GameObject& object) noexcept
+        {
+            // 飛んでいる間は collider の body が外れて無効になる。LaunchedBodyComponent が作った動的 body を先に見る
+            if (const auto* launched = object.FindComponent<LaunchedBodyComponent>();
+                launched != nullptr && launched->IsFlying())
+                return launched->BodyId();
+            if (const auto* collider = object.FindComponent<NS::Object::ColliderComponent>())
+                return collider->BodyId();
+            return JPH::BodyID{};
+        }
+
+        [[nodiscard]] bool IsTouching(const std::vector<JPH::BodyID>& touching, JPH::BodyID id)
+        {
+            return std::find(touching.begin(), touching.end(), id) != touching.end();
+        }
     } // namespace
 
     // PlayerComponent の 200 より前。書き込んだ速度が同じ固定ステップの移動に乗る
@@ -112,11 +132,12 @@ namespace NS::Game::Level
         const float dt = NS::Core::FrameTimer::FixedDelta();
 
         // この固定ステップで進んだ先で見る。今の位置だけでは手前で止められて重ならず、反発が起きない
-        NS::Physics::Capsule capsule{};
-        capsule.center =
-            NS::Core::Vector3{position.x + velocity.x * dt, position.y + velocity.y * dt, position.z + velocity.z * dt};
-        capsule.radius = m_movement->CapsuleRadius();
-        capsule.halfHeight = m_movement->CapsuleHalfHeight();
+        const NS::Physics::Capsule capsule{
+            NS::Core::Vector3{position.x + velocity.x * dt, position.y + velocity.y * dt, position.z + velocity.z * dt},
+            NS::Core::Vector3::UnitY,
+            m_movement->CapsuleHalfHeight(),
+            m_movement->CapsuleRadius()};
+        const std::vector<JPH::BodyID> touching = scene->Physics().OverlapCapsule(capsule);
 
         // TODO: 壊せる物を総当たりで見ている。数十個までを想定。増えたら格子で絞る
         BreakableComponent* nearest = nullptr;
@@ -130,11 +151,11 @@ namespace NS::Game::Level
             if (box != nullptr && box->IsTrigger())
                 return;
 
-            NS::Core::AABB bounds{};
-            if (!TryGetColliderBounds(*breakable.Owner(), bounds))
+            if (!IsTouching(touching, CurrentBodyOf(*breakable.Owner())))
                 return;
 
-            if (!NS::Physics::IntersectsCapsuleAABB(capsule, bounds))
+            NS::Core::AABB bounds{};
+            if (!TryGetColliderBounds(*breakable.Owner(), bounds))
                 return;
 
             const float dx = bounds.Center.x - position.x;
@@ -371,12 +392,13 @@ namespace NS::Game::Level
         if (auto* breakable = target.FindComponent<BreakableComponent>())
             breakable->SetActive(false);
         if (auto* collider = target.FindComponent<NS::Object::ColliderComponent>())
+        {
             collider->SetActive(false);
+            // body はその場で外す。直後に動く移動が素通りする
+            collider->RemoveFromPhysics();
+        }
         if (auto* mesh = target.FindComponent<NS::Object::MeshRendererComponent>())
             mesh->SetBaseColor(k_BrokenBaseColor);
-        // 固形から外すのは壊れた 1 回だけ。直後に動く移動が素通りする
-        if (NS::Object::Scene* scene = Owner()->OwningScene())
-            scene->SyncPhysics();
     }
 
     int ImpactResolverComponent::SecondsToSteps(float seconds) const noexcept
@@ -415,16 +437,21 @@ namespace NS::Game::Level
         target->Root().SetPosition(m_pendingTargetHome);
 
         // 跡は破壊と押し飛ばしの両方で出す。片方だけ何も残らないと結果が非対称になる
-        // 真下の床は相手の中心から探す。箱の中から始まる探索はその箱に当たらず、自分を素通りして床の上面が返る
         bool floorFound = false;
         NS::Core::Vector3 markPosition{0.0f, 0.0f, 0.0f};
         {
+            // 起点は相手の底の下。中心から始めると相手自身の当たりに 0 距離で当たる
+            NS::Core::Vector3 probe = m_pendingTargetHome;
+            NS::Core::AABB targetBounds{};
+            if (TryGetColliderBounds(*target, targetBounds))
+                probe.y = targetBounds.Center.y - targetBounds.Extents.y - k_MarkProbeSkin;
+
             float dist = 0.0f;
-            if (scene->Physics().RaycastDown(m_pendingTargetHome, k_MarkProbeDistance, dist))
+            if (scene->Physics().RaycastDown(probe, k_MarkProbeDistance, dist))
             {
                 floorFound = true;
-                markPosition = NS::Core::Vector3{
-                    m_pendingTargetHome.x, m_pendingTargetHome.y - dist + k_MarkFloorOffset, m_pendingTargetHome.z};
+                markPosition =
+                    NS::Core::Vector3{m_pendingTargetHome.x, probe.y - dist + k_MarkFloorOffset, m_pendingTargetHome.z};
             }
         }
 

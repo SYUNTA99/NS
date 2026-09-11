@@ -14,7 +14,6 @@
 namespace NS::Physics
 {
     class PhysicsWorld;
-    class JoltWorld;
 } // namespace NS::Physics
 
 namespace NS::Object
@@ -28,25 +27,23 @@ namespace NS::Object
     using ObjectFactoryFn = std::function<std::unique_ptr<GameObject>(const ObjectData&)>;
 
     //! @brief SceneData から組む runtime world の所有と構築を一手に担う
-    //! @details 配置物 GameObject と衝突プリミティブを SceneData から一括で組み直す
+    //! @details 配置物 GameObject を SceneData から一括で組み直す
     //! runtime も editor も同じ Rebuild 経路を通り、scene は公開読み口から観測して描画するだけ
     //! 配置物 1 件の組み立ては呼出側のファクトリに委ね、GameObject の型選択や資産解決は持たない
     //! 機能別の型付き控えも持たず、欲しい component 型は ForEachComponent で問い合わせる
     //! 特定の 1 体は永続 id の解決で引く
-    //! 依存: NS::Object::GameObject / ObjectData, NS::Physics::PhysicsWorld / JoltWorld
+    //! 依存: NS::Object::GameObject / ObjectData, NS::Physics::PhysicsWorld
     class World : public NS::Core::NonCopyable
     {
     public:
         World();
         ~World();
 
-        //! data の objects から全 runtime 表現を組み直す。 既存の配置物と衝突 world は必ず先に空へ戻す
-        //! factory が空の起動前 / テストでは物を組まず、 衝突 world も空のまま返る
+        //! data の objects から配置物を組み直す。 既存の配置物は先に空へ戻し、 一時オブジェクトだけ残す
+        //! 当たりの同期は含まない。 呼出側が続けて SyncPhysics を呼ぶ
+        //! factory が空の起動前 / テストでは物を組まない
         //! 読込直後の 1 回だけ通る経路で、 編集中は個別の Append / RemoveByObjectId で live を直接いじる
-        void Rebuild(const SceneData& data,
-                     Scene& scene,
-                     NS::Physics::PhysicsWorld& physics,
-                     const ObjectFactoryFn& factory);
+        void Rebuild(const SceneData& data, Scene& scene, const ObjectFactoryFn& factory);
 
         //! 配置物を逆順に破棄して所有物を空へ戻す。 scene の OnShutdown と Rebuild 冒頭が呼ぶ
         void Clear();
@@ -69,7 +66,7 @@ namespace NS::Object
         //! 当たり箱もここで揃えるので、 組み直さずに 1 体だけ消せる
         //! 子は根として残る (親子の切り離しは GameObject の破棄が行う)
         //! 0 は未採番の印なので何もしない
-        void RemoveByObjectId(std::uint32_t objectId, NS::Physics::PhysicsWorld& physics);
+        void RemoveByObjectId(std::uint32_t objectId);
 
         //! objectId 一致の配置物を返す。 居なければ nullptr。 選択・編集の live 索引
         //! 0 は未採番の印なので常に nullptr
@@ -79,13 +76,9 @@ namespace NS::Object
         //! 索引は所有リストそのものなので、 破棄した相手を指す参照は必ず nullptr になる
         [[nodiscard]] GameObject* FindObject(ObjectRef ref) noexcept;
 
-        //! 全配置物の collider を physics へ入れ直し broadphase を張り直す。 object は作り直さない
-        //! 編集や配置変更の後、 全 rebuild せず当たりだけ同期するための軽い経路
-        void RebuildPhysics(NS::Physics::PhysicsWorld& physics) const;
-
-        //! 全配置物の collider を JoltWorld へ body として入れ直し broadphase を張り直す
-        //! collider が覚えている body id もここで入れ替わる
-        void RebuildPhysics(NS::Physics::JoltWorld& physics);
+        //! 稼働中の collider を PhysicsWorld へ body として入れ、broadphase を張り直す
+        //! 稼働していない collider は body を外す。既存 body は同じ id のまま shape と姿勢を更新する
+        void SyncPhysics(NS::Physics::PhysicsWorld& physics);
 
         //! priority が [firstPriority, lastPriority) の Component を昇順で回す。 同じ priority の中は配置物の並び順
         //! 帯の一部だけ回したい呼び出し側が使う。 一時オブジェクトも同じ帯に乗る
@@ -96,7 +89,6 @@ namespace NS::Object
         void UpdateAllObjects();
 
         //! 全配置物の Root を Snapshot する (previous を current へ揃える)
-        //! 時間停止の凍結フレームでも呼び、 補間が凍って見た目が振れないようにする
         void SnapshotObjects();
 
         //! 永続 object id を 1 個割り当ててカウンタを進める。 新規配置物の採番は world が一手に担う

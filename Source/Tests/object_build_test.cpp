@@ -162,9 +162,9 @@ TEST_F(ObjectBuildTest, FreeCapsuleHasOnlyCapsuleCollider)
     ASSERT_NE(capsule, nullptr);
     EXPECT_FALSE(Has<NS::Object::SphereColliderComponent>(*obj));
 
-    const NS::Physics::Capsule world = capsule->WorldCapsule();
-    EXPECT_NEAR(world.radius, 0.4f, 1e-4f);
-    EXPECT_NEAR(world.halfHeight, 0.9f, 1e-4f);
+    const NS::Physics::Capsule worldCapsule = capsule->WorldCapsule();
+    EXPECT_NEAR(worldCapsule.radius, 0.4f, 1e-4f);
+    EXPECT_NEAR(worldCapsule.halfHeight, 0.9f, 1e-4f);
 }
 
 TEST_F(ObjectBuildTest, CapsuleColliderWorldAabbEnclosesCapsule)

@@ -7,7 +7,7 @@ TEST(JoltInitialization, RegisterTypesRunsThroughSceneConstruction)
 {
     NS::Object::Scene scene;
 
-    EXPECT_EQ(scene.Jolt().BodyCount(), 0u);
+    EXPECT_EQ(scene.Physics().BodyCount(), 0u);
     ASSERT_NE(JPH::Factory::sInstance, nullptr);
     EXPECT_NE(JPH::Factory::sInstance->Find("BoxShapeSettings"), nullptr);
 }

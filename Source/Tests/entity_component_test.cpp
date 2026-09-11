@@ -5,6 +5,8 @@
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsWorld.h>
+
+#include "jolt_test_world.h"
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -81,17 +83,14 @@ TEST_F(EntityComponentTest, SetLateralVelocityKeepsVertical)
     EXPECT_FLOAT_EQ(entity.VerticalVelocity(), 7.0f);
 }
 
-// 0 や負の寸法では掃引が成立しない。入口で下限へ丸める
-TEST_F(EntityComponentTest, CapsuleSizeClampsToMinimum)
+// collider を持たない最小 Entity は既定寸法で動く
+TEST_F(EntityComponentTest, CapsuleSizeDefaultsWithoutCollider)
 {
     GameObject obj;
     auto& entity = *obj.AddComponent<BareEntity>();
 
-    entity.SetCapsuleRadius(0.0f);
-    entity.SetCapsuleHalfHeight(-1.0f);
-
-    EXPECT_FLOAT_EQ(entity.CapsuleRadius(), 0.001f);
-    EXPECT_FLOAT_EQ(entity.CapsuleHalfHeight(), 0.001f);
+    EXPECT_FLOAT_EQ(entity.CapsuleRadius(), 0.4f);
+    EXPECT_FLOAT_EQ(entity.CapsuleHalfHeight(), 0.5f);
 }
 
 // 当たりの形の正は同居する CapsuleColliderComponent
@@ -102,7 +101,6 @@ TEST_F(EntityComponentTest, AdoptsSiblingCapsuleColliderSize)
     auto& entity = *obj.AddComponent<BareEntity>();
 
     entity.OnStart();
-    entity.OnUpdate();
 
     EXPECT_FLOAT_EQ(entity.CapsuleRadius(), 0.7f);
     EXPECT_FLOAT_EQ(entity.CapsuleHalfHeight(), 0.9f);
@@ -237,8 +235,8 @@ TEST_F(EntityComponentTest, PositionDeltaIsNearZeroWhenBlockedByWall)
 {
     GameObject obj;
     NS::Physics::PhysicsWorld world;
-    world.AddAABB(AABB{Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.5f, 4.0f, 4.0f}});
-    world.BuildBroadphase();
+    NsTest::AddBox(world, AABB{Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.5f, 4.0f, 4.0f}});
+    world.OptimizeBroadPhase();
 
     auto& entity = *obj.AddComponent<BareEntity>();
     entity.SetPhysicsWorld(&world);

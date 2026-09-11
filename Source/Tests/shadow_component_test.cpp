@@ -6,7 +6,7 @@ namespace
     using NS::Object::ShadowComponent;
 } // namespace
 
-// 真下の地面探索は PhysicsWorld::RaycastDown が持つ。 検証は physics_world_test.cpp
+// 真下の地面探索は PhysicsWorld::RaycastDown が持つ。 検証は jolt_body_test.cpp
 
 TEST(ShadowComponentTest, ComputeFadeEndpointsAndClamp)
 {

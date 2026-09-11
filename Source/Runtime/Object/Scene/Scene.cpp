@@ -56,9 +56,7 @@ namespace NS::Object
     void Scene::SyncPhysics()
     {
         // ギズモで動いた live の当たりを張り直す。 object を作り直さないので選択・参照はそのまま保たれる
-        m_world.RebuildPhysics(Physics());
-        // Jolt 側は移行の途中で、当たりを問い合わせる使い手はまだ居ない。掃引と接地は PhysicsWorld が答える
-        m_world.RebuildPhysics(m_joltWorld);
+        m_world.SyncPhysics(m_physicsWorld);
         OnWorldChanged();
         NotifyTransientsWorldChanged();
     }
@@ -178,17 +176,15 @@ namespace NS::Object
 
     void Scene::DestroyObject(std::uint32_t objectId)
     {
-        m_world.RemoveByObjectId(objectId, Physics());
-        m_world.RebuildPhysics(m_joltWorld);
+        m_world.RemoveByObjectId(objectId);
     }
 
     void Scene::RebuildWorldFrom(const SceneData& data)
     {
         // GameObject の型選択は登録一覧、 参照の実体化は各 component の ResolveAssets が行う
         // vcam の brain への付け外しは VirtualCameraComponent が OnStart / OnEndPlay で自分で行う
-        m_world.Rebuild(
-            data, *this, Physics(), [this](const ObjectData& entry) { return BuildSceneObject(entry, m_assets); });
-        m_world.RebuildPhysics(m_joltWorld);
+        m_world.Rebuild(data, *this, [this](const ObjectData& entry) { return BuildSceneObject(entry, m_assets); });
+        m_world.SyncPhysics(m_physicsWorld);
 
         OnWorldChanged();
         NotifyTransientsWorldChanged();
@@ -214,7 +210,7 @@ namespace NS::Object
         }
         // カメラが追う前に踏む。自機と衝突の裁定は Update 帯までに終わっている
         m_world.UpdateObjects(std::numeric_limits<int>::min(), TickPriority::LateUpdate);
-        m_joltWorld.Update(NS::Core::FrameTimer::FixedDelta());
+        m_physicsWorld.Update(NS::Core::FrameTimer::FixedDelta());
         m_world.UpdateObjects(TickPriority::LateUpdate);
         m_world.SnapshotObjects();
     }

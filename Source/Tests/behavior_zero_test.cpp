@@ -1,10 +1,6 @@
 #include "Game/Player.h"
 
-#include <array>
-#include <cstddef>
-#include <filesystem>
 #include <Game/Level/HazardComponent.h>
-#include <gtest/gtest.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
@@ -16,8 +12,10 @@
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Scene/SceneJson.h>
-#include <Runtime/Physics/Capsule.h>
-#include <Runtime/Physics/SweptTriangle.h>
+#include <array>
+#include <cstddef>
+#include <filesystem>
+#include <gtest/gtest.h>
 #include <utility>
 #include <vector>
 
@@ -38,7 +36,7 @@ namespace
         EXPECT_NEAR(expected.z, actual.z, k_Tol);
     }
 
-    // collider channel の比較用。 型の有無と当たり幾何だけ持ち、 mesh / material は見ない
+    // 当たりの構成の比較用。 型の有無と当たり幾何だけ持ち、 mesh / material は見ない
     struct ColliderSignature
     {
         bool hasBox = false;
@@ -49,7 +47,10 @@ namespace
         NS::Core::AABB boxAabb{};
         NS::Core::OBB boxObb;
         NS::Core::Sphere sphere;
-        NS::Physics::Capsule capsule;
+        NS::Core::Vector3 capsuleCenter{};
+        NS::Core::Vector3 capsuleAxis{};
+        float capsuleRadius = 0.0f;
+        float capsuleHalfHeight = 0.0f;
         float slopeAngle = 0.0f;
         std::array<NS::Physics::Triangle, 8> slopeTriangles{};
     };
@@ -71,7 +72,11 @@ namespace
         if (auto* capsule = obj.FindComponent<NS::Object::CapsuleColliderComponent>())
         {
             sig.hasCapsule = true;
-            sig.capsule = capsule->WorldCapsule();
+            const NS::Physics::Capsule worldCapsule = capsule->WorldCapsule();
+            sig.capsuleCenter = worldCapsule.center;
+            sig.capsuleAxis = worldCapsule.axis;
+            sig.capsuleRadius = worldCapsule.radius;
+            sig.capsuleHalfHeight = worldCapsule.halfHeight;
         }
         if (auto* slope = obj.FindComponent<NS::Object::SlopeColliderComponent>())
         {
@@ -111,10 +116,10 @@ namespace
         }
         if (expected.hasCapsule && actual.hasCapsule)
         {
-            ExpectVec3Near(expected.capsule.center, actual.capsule.center);
-            ExpectVec3Near(expected.capsule.axis, actual.capsule.axis);
-            EXPECT_NEAR(expected.capsule.radius, actual.capsule.radius, k_Tol);
-            EXPECT_NEAR(expected.capsule.halfHeight, actual.capsule.halfHeight, k_Tol);
+            ExpectVec3Near(expected.capsuleCenter, actual.capsuleCenter);
+            ExpectVec3Near(expected.capsuleAxis, actual.capsuleAxis);
+            EXPECT_NEAR(expected.capsuleRadius, actual.capsuleRadius, k_Tol);
+            EXPECT_NEAR(expected.capsuleHalfHeight, actual.capsuleHalfHeight, k_Tol);
         }
         if (expected.hasSlope && actual.hasSlope)
         {
@@ -130,7 +135,7 @@ namespace
 
 } // namespace
 
-// components 駆動の object が JSON 往復後も同じ collider channel に組み上がるか確かめる
+// components 駆動の object が JSON 往復後も同じ当たりの構成に組み上がるか確かめる
 TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
 {
     SceneData src;
