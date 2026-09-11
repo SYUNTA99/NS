@@ -64,7 +64,6 @@ namespace
         auto& player = *owner.AddComponent<PlayerComponent>();
 
         player.SetPhysicsWorld(&world);
-        player.SetDebugDrawEnabled(false);
         player.OnStart();
         manager.OnStart();
         return player;
@@ -78,7 +77,6 @@ namespace
         AddFloor(world);
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
         player.SetPhysicsWorld(&world);
-        player.SetDebugDrawEnabled(false);
         player.OnStart();
         manager.OnStart();
 
@@ -249,7 +247,6 @@ TEST_F(EntityEventsTest, JumpNotificationFiresOnlyWhenTheJumpHappens)
 {
     GameObject obj;
     auto& player = *obj.AddComponent<PlayerComponent>();
-    player.SetDebugDrawEnabled(false);
 
     int jumped = 0;
     player.PlayerEventsRef().onJump.Subscribe([&jumped]() { ++jumped; });

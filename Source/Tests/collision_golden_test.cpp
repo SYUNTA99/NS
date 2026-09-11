@@ -64,7 +64,6 @@ namespace
             m_world.OptimizeBroadPhase();
             m_object.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
             m_movement->SetPhysicsWorld(&m_world);
-            m_movement->SetDebugDrawEnabled(false);
             m_movement->OnStart();
             m_object.FindComponent<PlayerStateManagerComponent>()->OnStart();
 

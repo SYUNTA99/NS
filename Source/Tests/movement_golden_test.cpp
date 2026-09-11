@@ -65,7 +65,6 @@ namespace
         owner.Root().SetPosition(startPosition);
         world.OptimizeBroadPhase();
         movement.SetPhysicsWorld(&world);
-        movement.SetDebugDrawEnabled(false);
         movement.OnStart();
         manager.OnStart();
         return movement;

@@ -6,9 +6,6 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 
-#include <span>
-#include <vector>
-
 namespace NS::Game::Entity
 {
     class EntityStateManagerComponent;
@@ -26,14 +23,6 @@ namespace NS::Game::Player
     class PlayerComponent : public NS::Game::Entity::EntityComponent
     {
     public:
-        //! @brief コヨーテ窓内で跳んだ 1 件の記録
-        struct CoyoteJumpMarker
-        {
-            NS::Core::Vector3 edge{0.0f, 0.0f, 0.0f}; // 最終接地位置
-            NS::Core::Vector3 jump{0.0f, 0.0f, 0.0f}; // 跳んだ位置
-            float remaining = 0.0f;                   // 残りの表示秒
-        };
-
         //! world 空間の目標移動方向と速度スケールを渡す。スケールは 0..1 に丸める
         void SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept;
         //! 直近に渡された目標速度スケール 0..1
@@ -55,15 +44,6 @@ namespace NS::Game::Player
         [[nodiscard]] float MaxSpeed() const noexcept { return m_maxSpeed; } //!< 走行の最高速度
         //! 最高速度を外から差し替える。負は 0 へ丸め、非有限値は書き込まない
         void SetMaxSpeed(float speed) noexcept;
-
-        //! デバッグ可視化を切り替える。既定は true、テストでは false にする
-        void SetDebugDrawEnabled(bool enabled) noexcept { m_debugDraw = enabled; }
-
-        //! 生存中のコヨーテジャンプ記録。デバッグ描画が縁から跳躍点への線を引くのに読む。寿命切れは除外済
-        [[nodiscard]] std::span<const CoyoteJumpMarker> CoyoteJumpMarkers() const noexcept
-        {
-            return m_coyoteJumpMarkers;
-        }
 
         //! 奈落落ちの復活などで速度・接地・ジャンプまわりの記録と状態機械を初期状態へ戻す
         void ResetState() noexcept;
@@ -117,7 +97,7 @@ namespace NS::Game::Player
         void Gravity(float dt) noexcept;
         //! タップの飛び込みだけに当てる重力。滞空秒がタップ距離を進む秒と揃う強さにする
         void TapSlamGravity(float dt) noexcept;
-        //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と最終接地位置を張り直す
+        //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と突進の使用済みを戻す
         void SyncGroundState() noexcept;
         //! 縁を掴めるか試す。掴んだ場合 true、それ以外の場合は false。true なら呼び出し側は即 return する
         [[nodiscard]] bool LedgeGrab() noexcept;
@@ -171,7 +151,7 @@ namespace NS::Game::Player
         [[nodiscard]] float JumpReleaseScale() const noexcept { return m_stats.jumpReleaseScale; }
         void SetJumpReleaseScale(float value) noexcept;
 
-        //! 接地を離れてもジャンプを受ける猶予秒。デバッグ可視化がコヨーテ帯の寸法に使う
+        //! 接地を離れてもジャンプを受ける猶予秒
         [[nodiscard]] float CoyoteTime() const noexcept { return m_stats.coyoteTime; }
         void SetCoyoteTime(float value) noexcept;
 
@@ -242,7 +222,6 @@ namespace NS::Game::Player
         NS_REFLECT_ACCESSOR(float, "タップ距離", TapSlamDistance(), SetTapSlamDistance)
         NS_REFLECT_ACCESSOR(float, "狙いの巻き戻し秒", SlamAimHoldTime(), SetSlamAimHoldTime)
         NS_REFLECT_ACCESSOR(float, "狙いの巻き戻しが消える秒", SlamAimFadeTime(), SetSlamAimFadeTime)
-        NS_REFLECT_FIELD(m_debugDraw, "デバッグ表示")
         NS_REFLECT_END()
 
     protected:
@@ -254,8 +233,6 @@ namespace NS::Game::Player
     private:
         //! 現在状態が通常移動 (立ち / 走り / 落下) の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsLocomotion() const noexcept;
-        //! コヨーテ窓内ジャンプを 1 件記録する。上限を超えた分は最古から捨てる
-        void PushCoyoteJumpMarker(const NS::Core::Vector3& edge, const NS::Core::Vector3& jump) noexcept;
 
         //! 体当たりを出す水平の向き。入力・カメラの前・速度の順に見て、どれも無ければゼロ
         [[nodiscard]] NS::Core::Vector3 AimDirection() const noexcept;
@@ -276,8 +253,6 @@ namespace NS::Game::Player
 
         float m_maxSpeed = 8.0f;
 
-        bool m_debugDraw = true; // デバッグ可視化を出すか
-
         float m_bodySlamBufferRemaining = 0.0f;               // 出せない歩の押しを覚える残り秒
         bool m_bodySlamSpent = false;                         // 発動してから接地していないか
         bool m_bodySlamIsTap = false;                         // 溜め量 0 の飛び込みか
@@ -297,10 +272,6 @@ namespace NS::Game::Player
         NS::Core::Vector3 m_ledgeMantleStart{0.0f, 0.0f, 0.0f};
         NS::Core::Vector3 m_ledgeMantleEnd{0.0f, 0.0f, 0.0f};
         float m_ledgeMantleTimer = 0.0f; // よじ登りの経過秒
-
-        // 最後に接地していた world 位置。縁を踏み外した直後はここが縁の位置になる
-        NS::Core::Vector3 m_lastGroundedPosition{0.0f, 0.0f, 0.0f};
-        std::vector<CoyoteJumpMarker> m_coyoteJumpMarkers; // 表示中のコヨーテジャンプ記録。寿命付き
 
         PlayerStats m_stats;                                   // 調整値 20 個
         PlayerStateManagerComponent* m_stateManager = nullptr; // 状態機械 (非所有)

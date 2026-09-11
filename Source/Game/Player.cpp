@@ -1,7 +1,6 @@
 #include "Game/Player.h"
 
 #include "Game/Level/AreaCameraActivatorComponent.h"
-#include "Game/Level/CoyoteDebugComponent.h"
 #include "Game/Level/FinisherComponent.h"
 #include "Game/Level/FollowCameraFeedComponent.h"
 #include "Game/Level/HealthComponent.h"
@@ -57,9 +56,6 @@ Player::Player() noexcept
     AddComponent<NS::Game::Level::AreaCameraActivatorComponent>();
     // 追従カメラは NS::Object に居るので、自動ズームが要る接地と速度を値で送る
     AddComponent<NS::Game::Level::FollowCameraFeedComponent>();
-#if !defined(NS_SHIPPING)
-    AddComponent<NS::Game::Level::CoyoteDebugComponent>();
-#endif
 }
 
 void Player::ApplyDamage(int amount) noexcept

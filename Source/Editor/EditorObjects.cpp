@@ -221,7 +221,7 @@ namespace NS::Editor
         const bool hasHazard = HasComponentType(object, "HazardComponent");
         const bool hasGoal = NS::Game::Level::IsGoalObject(object);
         const bool hasKillZone = NS::Game::Level::IsKillZoneObject(object);
-        return NS::Game::Level::IsSolidBoxRule(hasBox, hasSlope, hasHazard, hasGoal, hasKillZone);
+        return hasBox && !hasSlope && !hasHazard && !hasGoal && !hasKillZone;
     }
 
     bool IsRotatableObject(const NS::Object::ObjectData& object)

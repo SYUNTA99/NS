@@ -80,7 +80,6 @@ namespace
         auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
         auto& player = *owner.AddComponent<PlayerComponent>();
 
-        player.SetDebugDrawEnabled(false);
         player.OnStart();
         manager.OnStart();
         return player;

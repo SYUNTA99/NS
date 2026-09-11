@@ -45,8 +45,7 @@ namespace
     {
         owner.AddComponent<NS::Object::PlayerInputComponent>();
         owner.AddComponent<PlayerInputRelayComponent>();
-        auto& player = *owner.AddComponent<PlayerComponent>();
-        player.SetDebugDrawEnabled(false);
+        owner.AddComponent<PlayerComponent>();
         owner.OnStart();
     }
 
@@ -103,8 +102,7 @@ namespace
         ObjectIdAccess::SetId(*owner, id);
         if (withEntity)
         {
-            auto& player = *owner->AddComponent<PlayerComponent>();
-            player.SetDebugDrawEnabled(false);
+            owner->AddComponent<PlayerComponent>();
         }
         owner->AddComponent<FollowCameraFeedComponent>();
         owner->OnStart();
@@ -255,7 +253,6 @@ TEST_F(PlayerRelayTest, MissingSideIsHarmless)
     GameObject withoutInput;
     withoutInput.AddComponent<PlayerInputRelayComponent>();
     auto& player = *withoutInput.AddComponent<PlayerComponent>();
-    player.SetDebugDrawEnabled(false);
     withoutInput.OnStart();
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.5f);

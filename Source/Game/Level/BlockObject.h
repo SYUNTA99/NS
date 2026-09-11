@@ -6,13 +6,7 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Scene/SceneData.h"
 
-#include <optional>
 #include <string_view>
-
-namespace NS::Object
-{
-    class GameObject;
-} // namespace NS::Object
 
 namespace NS::Game::Level
 {
@@ -32,12 +26,4 @@ namespace NS::Game::Level
 
     //! cell の x, y, z に既定 solid の ObjectData を作る
     [[nodiscard]] NS::Object::ObjectData MakeCellObject(std::int16_t x, std::int16_t y, std::int16_t z);
-
-    //! 純粋な solid ブロックか。当たり Box を持ち、斜面・ダメージ・ゴール・即死のどれも付いていない
-    //! live とエディタの「solid とは何か」をこの 1 本に揃える
-    [[nodiscard]] bool IsSolidBoxRule(
-        bool hasBox, bool hasSlope, bool hasHazard, bool hasGoal, bool hasKillZone) noexcept;
-
-    //! 固形ブロックのワールド OBB。solid でなければ nullopt
-    [[nodiscard]] std::optional<NS::Core::OBB> SolidBoxWorldOBB(NS::Object::GameObject& obj) noexcept;
 } // namespace NS::Game::Level

@@ -45,7 +45,6 @@ namespace
         NsTest::AddBox(pw, floor);
         pw.OptimizeBroadPhase();
         movement.SetPhysicsWorld(&pw);
-        movement.SetDebugDrawEnabled(false);
         movement.OnStart();
         manager.OnStart();
 
@@ -122,7 +121,6 @@ TEST_F(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
     NsTest::AddBox(pw, floor);
     pw.OptimizeBroadPhase();
     movement.SetPhysicsWorld(&pw);
-    movement.SetDebugDrawEnabled(false);
     movement.OnStart();
     manager.OnStart();
 

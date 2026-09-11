@@ -59,7 +59,6 @@ namespace
         {
             manager = owner.AddComponent<PlayerStateManagerComponent>();
             player = owner.AddComponent<PlayerComponent>();
-            player->SetDebugDrawEnabled(false);
             player->OnStart();
             manager->OnStart();
         }

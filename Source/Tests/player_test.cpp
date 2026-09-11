@@ -19,11 +19,7 @@
 TEST(PlayerTest, ConstructsWithDefaultComposition)
 {
     Player player{};
-    std::size_t expected = 13u;
-#if !defined(NS_SHIPPING)
-    expected += 1u;
-#endif
-    EXPECT_EQ(player.Components().size(), expected);
+    EXPECT_EQ(player.Components().size(), 13u);
 }
 
 TEST(PlayerTest, DefaultComponentsResolveByType)

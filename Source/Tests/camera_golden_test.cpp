@@ -107,7 +107,6 @@ namespace
         world.OptimizeBroadPhase();
         player.OnStart();
         movement.SetPhysicsWorld(&world);
-        movement.SetDebugDrawEnabled(false);
 
         GameObject rig;
         auto& follow = *rig.AddComponent<ThirdPersonFollowComponent>();

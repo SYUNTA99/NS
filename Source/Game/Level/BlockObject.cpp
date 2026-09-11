@@ -1,12 +1,6 @@
 #include "Game/Level/BlockObject.h"
 
-#include "Game/Level/GoalComponent.h"
-#include "Game/Level/HazardComponent.h"
-#include "Game/Level/KillZoneComponent.h"
-#include "Runtime/Object/Components/BoxColliderComponent.h"
-#include "Runtime/Object/Components/SlopeColliderComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 
 namespace NS::Game::Level
@@ -37,25 +31,5 @@ namespace NS::Game::Level
         NS::Object::SetObjectPosition(
             object, NS::Core::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
         return object;
-    }
-
-    bool IsSolidBoxRule(bool hasBox, bool hasSlope, bool hasHazard, bool hasGoal, bool hasKillZone) noexcept
-    {
-        return hasBox && !hasSlope && !hasHazard && !hasGoal && !hasKillZone;
-    }
-
-    std::optional<NS::Core::OBB> SolidBoxWorldOBB(NS::Object::GameObject& obj) noexcept
-    {
-        auto* box = obj.FindComponent<NS::Object::BoxColliderComponent>();
-        const bool hasSlope = obj.FindComponent<NS::Object::SlopeColliderComponent>() != nullptr;
-        const bool hasHazard = obj.FindComponent<HazardComponent>() != nullptr;
-        const bool hasGoal = obj.FindComponent<GoalComponent>() != nullptr;
-        const bool hasKillZone = obj.FindComponent<KillZoneComponent>() != nullptr;
-
-        if (!IsSolidBoxRule(box != nullptr, hasSlope, hasHazard, hasGoal, hasKillZone))
-        {
-            return std::nullopt;
-        }
-        return box->WorldOBB();
     }
 } // namespace NS::Game::Level

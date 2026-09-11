@@ -10,18 +10,12 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstddef>
-#include <span>
+#include <vector>
 
 namespace
 {
     // 加速と減速の切り替えで見る速さの差の下限。単位は m/s
     constexpr float k_HorizontalSpeedEpsilon = 0.01f;
-
-    // コヨーテジャンプ記録の表示寿命で単位は s。直近の数試行を見比べられる長さ
-    constexpr float k_CoyoteJumpMarkerLifetime = 3.0f;
-    // 同時に保持するコヨーテジャンプ記録の上限。画面が線で埋まらない数
-    constexpr std::size_t k_MaxCoyoteJumpMarkers = 16;
 
     // 1 歩で打ち切ると ImpactResolverComponent が突進を見る前に終わるため、壁に押し付けられた歩を 2 回数える
     constexpr float k_BodySlamStallDistance = 1e-4f;
@@ -455,8 +449,6 @@ namespace NS::Game::Player
         m_ledgeRegrabCooldown = 0.0f;
         m_ledgeHangTimer = 0.0f;
         m_ledgeMantleTimer = 0.0f;
-        m_lastGroundedPosition = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-        m_coyoteJumpMarkers.clear();
         m_bodySlamBufferRemaining = 0.0f;
         m_bodySlamSpent = false;
         m_bodySlamIsTap = false;
@@ -530,11 +522,6 @@ namespace NS::Game::Player
         const bool wantJump = m_jumpPressedThisFrame || m_bufferTimer > 0.0f;
         if (canGroundJump && wantJump)
         {
-#if !defined(NS_SHIPPING)
-            // 接地していないのに窓が残って跳べた = コヨーテ窓内ジャンプなので記録する
-            if (m_debugDraw && !IsGrounded() && m_coyoteTimer > 0.0f)
-                PushCoyoteJumpMarker(m_lastGroundedPosition, RootTransform().Position());
-#endif
             SetVerticalVelocity(Stats().jumpImpulse);
             --m_jumpsRemaining;
             m_bufferTimer = 0.0f;
@@ -569,11 +556,9 @@ namespace NS::Game::Player
         if (!WasGrounded() && IsGrounded())
             m_jumpsRemaining = 1;
 
-        // 縁を踏み外した瞬間に踏み外し点を保てるよう、接地している間は最終接地位置を張り直し続ける
         if (IsGrounded())
         {
             m_coyoteTimer = CoyoteTime();
-            m_lastGroundedPosition = RootTransform().Position();
             // 着地の歩だけで戻すと、接地したまま走り抜けた突進の後に次が出せない
             m_bodySlamSpent = false;
         }
@@ -852,22 +837,8 @@ namespace NS::Game::Player
         return !IsGrounded();
     }
 
-    void PlayerComponent::PushCoyoteJumpMarker(const NS::Core::Vector3& edge, const NS::Core::Vector3& jump) noexcept
-    {
-        if (m_coyoteJumpMarkers.size() >= k_MaxCoyoteJumpMarkers)
-            m_coyoteJumpMarkers.erase(m_coyoteJumpMarkers.begin());
-        m_coyoteJumpMarkers.push_back(CoyoteJumpMarker{edge, jump, k_CoyoteJumpMarkerLifetime});
-    }
-
     void PlayerComponent::HandleStates(float dt)
     {
-#if !defined(NS_SHIPPING)
-        // 掴まりの状態は移動の 1 歩を通らないので、記録の減衰は状態の外に置く
-        for (CoyoteJumpMarker& marker : m_coyoteJumpMarkers)
-            marker.remaining -= dt;
-        std::erase_if(m_coyoteJumpMarkers, [](const CoyoteJumpMarker& m) { return m.remaining <= 0.0f; });
-#endif
-
         if (m_stateManager != nullptr)
         {
             // 発動の判定が現在状態を見るので、組むのは 1 歩の頭。Step の初回に任せると
