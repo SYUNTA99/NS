@@ -17,6 +17,7 @@
 #include <Runtime/Object/Reflection/ObjectRef.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/World.h>
+#include <Runtime/Physics/MeshCollision.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 #include <algorithm>
 #include <chrono>
@@ -555,14 +556,16 @@ TEST(WorldTest, InactiveColliderStaysOutOfPhysicsWorld)
 // 取り込み形状の三角形も物理へ入る。 同期側が形状を名指ししない事の裏取り
 TEST(WorldTest, MeshColliderTrianglesReachPhysics)
 {
-    // CCW 並びで法線が上を向く床の三角形。 斜辺を x+z=4 まで押し出し、 原点を縁でなく内側に置く
-    std::vector<NS::Physics::Triangle> tris = {NS::Physics::Triangle{NS::Core::Vector3{-4.0f, 0.0f, -4.0f},
-                                                                     NS::Core::Vector3{-4.0f, 0.0f, 8.0f},
-                                                                     NS::Core::Vector3{8.0f, 0.0f, -4.0f}}};
+    // 法線が上を向く床の三角形。 斜辺を x+z=4 まで押し出し、 原点を縁でなく内側に置く
+    NS::Physics::MeshCollision collision{{NS::Physics::Triangle{NS::Core::Vector3{-4.0f, 0.0f, -4.0f},
+                                                                NS::Core::Vector3{-4.0f, 0.0f, 8.0f},
+                                                                NS::Core::Vector3{8.0f, 0.0f, -4.0f}}},
+                                         nullptr};
+    collision.shape = NS::Physics::CreateMeshShape(collision.triangles);
 
     World world;
     auto* floor = world.Spawn<NS::Object::GameObject>();
-    floor->AddComponent<NS::Object::MeshColliderComponent>(std::move(tris));
+    floor->AddComponent<NS::Object::MeshColliderComponent>()->SetCollision(&collision);
 
     NS::Physics::PhysicsWorld physics;
     world.SyncPhysics(physics);

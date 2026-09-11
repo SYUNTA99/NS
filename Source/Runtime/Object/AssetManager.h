@@ -5,7 +5,6 @@
 #include "Runtime/Graphics/Animation.h"
 #include "Runtime/Graphics/Material.h"
 #include "Runtime/Graphics/Skeleton.h"
-#include "Runtime/Physics/Triangle.h"
 
 #include <filesystem>
 #include <map>
@@ -24,6 +23,11 @@ namespace NS::Graphics
     class StaticMesh;
     struct AnimationSource;
 } // namespace NS::Graphics
+
+namespace NS::Physics
+{
+    struct MeshCollision;
+}
 
 namespace NS::Object
 {
@@ -90,13 +94,14 @@ namespace NS::Object
         //! 現在キャッシュしている mesh エントリ数。 読込失敗を負キャッシュした path も 1 件として数える
         [[nodiscard]] std::size_t MeshCacheSize() const noexcept;
 
-        //! meshRef の形を当たり用の三角形群にして返す。 参照の引き方は ResolveMeshFromRef と同じ
+        //! meshRef の形を当たりにして返す。 参照の引き方は ResolveMeshFromRef と同じ
         //! 三角形は描画の index の並びのままで、 法線 (v1 - v0) × (v2 - v0) が表面の外を向く
-        //! 同じ file を指す参照には、 区切り文字や . / .. の書き方が違っても同じ一覧を返す
+        //! Jolt の形は最初に頼まれた時に 1 度だけ作り、 以後は同じ当たりを返す。 歪みの無い配置物はその形を共有する
+        //! 同じ file を指す参照には、 区切り文字や . / .. の書き方が違っても同じ当たりを返す
         //! file は GetOrLoadMesh と同じ読込を通るので、 glTF を読むのは描画と合わせて 1 回
-        //! device が無くても三角形は作れる。 読めなかった参照も負キャッシュする
-        //! 空文字・トラバーサル・読込失敗は nullptr
-        [[nodiscard]] const std::vector<NS::Physics::Triangle>* GetOrLoadMeshCollision(const std::string& meshRef);
+        //! device が無くても当たりは作れる。 読めなかった参照も負キャッシュする
+        //! 空文字・トラバーサル・読込失敗は nullptr。 返す当たりは AssetManager 所有で Clear() まで有効
+        [[nodiscard]] const NS::Physics::MeshCollision* GetOrLoadMeshCollision(const std::string& meshRef);
 
         //! skinned glTF を読み SkeletalMesh を path キーで重複なく所有して返す。 skeleton / clips は
         //! キャッシュ record への参照で返し、 再生状態だけをインスタンス側が持つ。 失敗時は valid=false
@@ -151,8 +156,8 @@ namespace NS::Object
         // file の mesh 1 件。 描画と当たりを 1 回の読込から両方作る。 読込に失敗した path も両方 null で残す
         struct MeshRecord
         {
-            std::unique_ptr<NS::Graphics::Mesh> mesh;                      // GPU 生成に失敗したら null
-            std::unique_ptr<std::vector<NS::Physics::Triangle>> collision; // 当たり用の三角形
+            std::unique_ptr<NS::Graphics::Mesh> mesh;              // GPU 生成に失敗したら null
+            std::unique_ptr<NS::Physics::MeshCollision> collision; // 形は当たりを頼まれた時に作る
         };
 
         // 正規化した path で記録を引き、 無ければ glTF を読んで作る
@@ -173,7 +178,7 @@ namespace NS::Object
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Texture>>
             m_textures;                                       // path キーの Texture キャッシュ
         std::map<std::filesystem::path, MeshRecord> m_meshes; // path キーの file mesh
-        std::map<std::string, std::unique_ptr<std::vector<NS::Physics::Triangle>>>
+        std::map<std::string, std::unique_ptr<NS::Physics::MeshCollision>>
             m_builtinCollisions;                                                          // 組み込み名キーの当たり
         std::map<std::string, std::unique_ptr<NS::Graphics::StaticMesh>> m_builtins;      // path 無し、 leaf と別容器
         std::map<std::filesystem::path, MaterialRecord> m_materials;                      // .mat composite

@@ -15,6 +15,7 @@
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Graphics/Texture.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
+#include "Runtime/Physics/MeshCollision.h"
 
 #include <array>
 #include <cstdint>
@@ -120,6 +121,14 @@ namespace NS::Object
                     geom.vertices[a].position, geom.vertices[b].position, geom.vertices[c].position});
             }
             return triangles;
+        }
+
+        // Jolt の形は当たりを頼まれた時に 1 度だけ作る。 描画だけの mesh には作らない
+        NS::Physics::MeshCollision* WithShape(NS::Physics::MeshCollision* collision)
+        {
+            if (collision != nullptr && collision->shape == nullptr)
+                collision->shape = NS::Physics::CreateMeshShape(collision->triangles);
+            return collision;
         }
 
         // geom はこの呼出中のみ参照される
@@ -253,7 +262,8 @@ namespace NS::Object
             // GPU 生成だけ失敗しても当たりは作る。 device 無しのテストでも当たりを確かめられる
             // TODO: コライダーの無い描画だけの mesh も三角形を Clear() まで持つ
             // 大きな mesh を飾りに多く置いてメモリが効いてきたら、 当たりを頼まれた時に作る形へ移す
-            record.collision = std::make_unique<std::vector<NS::Physics::Triangle>>(MakeTriangles(geom));
+            record.collision = std::make_unique<NS::Physics::MeshCollision>();
+            record.collision->triangles = MakeTriangles(geom);
         }
         // 失敗した記録も残し、 同じ参照を持つ配置物が毎回ディスクを読むのを防ぐ。 修正後の再試行は Clear() で解いてから
         return m_meshes.emplace(key, std::move(record)).first->second;
@@ -269,7 +279,7 @@ namespace NS::Object
         return m_meshes.size();
     }
 
-    const std::vector<NS::Physics::Triangle>* AssetManager::GetOrLoadMeshCollision(const std::string& meshRef)
+    const NS::Physics::MeshCollision* AssetManager::GetOrLoadMeshCollision(const std::string& meshRef)
     {
         if (meshRef.empty())
             return nullptr;
@@ -279,18 +289,17 @@ namespace NS::Object
             auto it = m_builtinCollisions.find(meshRef);
             if (it == m_builtinCollisions.end())
             {
-                it = m_builtinCollisions
-                         .emplace(meshRef,
-                                  std::make_unique<std::vector<NS::Physics::Triangle>>(MakeTriangles(shape->make())))
-                         .first;
+                auto collision = std::make_unique<NS::Physics::MeshCollision>();
+                collision->triangles = MakeTriangles(shape->make());
+                it = m_builtinCollisions.emplace(meshRef, std::move(collision)).first;
             }
-            return it->second.get();
+            return WithShape(it->second.get());
         }
 
         const std::optional<std::filesystem::path> resolved = ResolveContentPath(meshRef);
         if (!resolved)
             return nullptr;
-        return LoadMeshRecord(*resolved).collision.get();
+        return WithShape(LoadMeshRecord(*resolved).collision.get());
     }
 
     LoadedSkinnedModel AssetManager::GetOrLoadSkinnedModel(const std::filesystem::path& path)

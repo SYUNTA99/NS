@@ -7,36 +7,62 @@
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
+#include "Runtime/Physics/MeshCollision.h"
 #include "Runtime/Physics/PhysicsWorld.h"
+
+#include <algorithm>
+#include <cmath>
 
 namespace NS::Object
 {
+    namespace
+    {
+        // 分解と組み直しの丸め誤差 (1e-6 前後) より 2 桁大きく取った、 拡縮 1 あたりの許容差
+        constexpr float k_ShearTolerance = 1.0e-4f;
+
+        // 分解した拡縮と回転から 3x3 を組み直し、 元と合わなければ歪みがある
+        // 歪みは縦横で違う拡縮の親の下に回転した子を置いた時に出て、 位置・回転・拡縮の 3 つでは表せない
+        [[nodiscard]] bool HasShear(const NS::Core::Matrix& world, const NS::Core::AffineDecomposition& parts) noexcept
+        {
+            const NS::Core::Matrix rebuilt =
+                NS::Core::Matrix::CreateScale(parts.scale) * NS::Core::Matrix::CreateFromQuaternion(parts.rotation);
+            const float tolerance = k_ShearTolerance * std::max({1.0f, parts.scale.x, parts.scale.y, parts.scale.z});
+            for (int row = 0; row < 3; ++row)
+            {
+                for (int column = 0; column < 3; ++column)
+                {
+                    if (std::abs(rebuilt.m[row][column] - world.m[row][column]) > tolerance)
+                        return true;
+                }
+            }
+            return false;
+        }
+    } // namespace
+
     MeshColliderComponent::MeshColliderComponent() noexcept {}
 
-    MeshColliderComponent::MeshColliderComponent(std::vector<NS::Physics::Triangle> localTriangles) noexcept
-        : m_localTriangles(std::move(localTriangles))
-    {}
-
-    void MeshColliderComponent::SetLocalTriangles(std::vector<NS::Physics::Triangle> localTriangles) noexcept
+    void MeshColliderComponent::SetCollision(const NS::Physics::MeshCollision* collision) noexcept
     {
-        m_localTriangles = std::move(localTriangles);
+        m_collision = collision;
     }
 
-    const std::vector<NS::Physics::Triangle>& MeshColliderComponent::LocalTriangles() const noexcept
+    const NS::Physics::MeshCollision* MeshColliderComponent::Collision() const noexcept
     {
-        return m_localTriangles;
+        return m_collision;
     }
 
     std::vector<NS::Physics::Triangle> MeshColliderComponent::WorldTriangles() const
     {
+        if (m_collision == nullptr)
+            return {};
         const GameObject* owner = Owner();
         if (owner == nullptr)
-            return m_localTriangles;
+            return m_collision->triangles;
 
         const NS::Core::Matrix world = owner->Root().WorldMatrix();
         std::vector<NS::Physics::Triangle> result;
-        result.reserve(m_localTriangles.size());
-        for (const NS::Physics::Triangle& tri : m_localTriangles)
+        result.reserve(m_collision->triangles.size());
+        for (const NS::Physics::Triangle& tri : m_collision->triangles)
         {
             result.push_back(NS::Physics::Triangle{NS::Core::Vector3::Transform(tri.v0, world),
                                                    NS::Core::Vector3::Transform(tri.v1, world),
@@ -47,10 +73,30 @@ namespace NS::Object
 
     void MeshColliderComponent::SyncToPhysics(NS::Physics::PhysicsWorld& physics)
     {
-        // TODO: 張り直しのたびに world 三角形から形を組み直す
-        // 大きな地形で張り直しが重くなったら、 形を local で 1 度だけ組んで変換は body 側に持たせる
-        const std::vector<NS::Physics::Triangle> triangles = WorldTriangles();
-        TrackBody(physics, physics.SyncMesh(BodyIn(physics), triangles, NS::Physics::ObjectLayers::Terrain));
+        if (m_collision == nullptr)
+        {
+            TrackBody(physics, JPH::BodyID{});
+            return;
+        }
+
+        NS::Core::Matrix world = NS::Core::Matrix::Identity;
+        if (const GameObject* owner = Owner())
+            world = owner->Root().WorldMatrix();
+        const NS::Core::AffineDecomposition parts = NS::Core::DecomposeAffine(world);
+        // 描画は 4x4 の行列で歪みまで出すので、 形の共有をやめて世界座標の三角形から作り、 描画と当たりを揃える
+        if (HasShear(world, parts))
+        {
+            TrackBody(physics, physics.SyncMesh(BodyIn(physics), WorldTriangles(), NS::Physics::ObjectLayers::Terrain));
+            return;
+        }
+        const NS::Physics::MeshCollision& shared = *m_collision;
+        TrackBody(physics,
+                  physics.SyncMeshShape(BodyIn(physics),
+                                        shared,
+                                        parts.translation,
+                                        parts.rotation,
+                                        parts.scale,
+                                        NS::Physics::ObjectLayers::Terrain));
     }
 
     void MeshColliderComponent::ResolveAssets(AssetManager& assets)
@@ -65,14 +111,12 @@ namespace NS::Object
             return;
         }
 
-        const std::vector<NS::Physics::Triangle>* triangles = assets.GetOrLoadMeshCollision(renderer->MeshRef());
-        if (triangles == nullptr)
-            triangles = assets.GetOrLoadMeshCollision("cube");
-        if (triangles == nullptr)
-            return;
-        SetLocalTriangles(*triangles);
+        const NS::Physics::MeshCollision* collision = assets.GetOrLoadMeshCollision(renderer->MeshRef());
+        if (collision == nullptr)
+            collision = assets.GetOrLoadMeshCollision("cube");
+        SetCollision(collision);
     }
 
-    // data からは空で作る。 三角形は ResolveAssets が描画の参照から入れる
+    // data からは当たり無しで作る
     NS_CLASS(MeshColliderComponent)
 } // namespace NS::Object

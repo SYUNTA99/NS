@@ -5,6 +5,7 @@
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Core/Sphere.h"
 #include "Runtime/Physics/Capsule.h"
+#include "Runtime/Physics/MeshCollision.h"
 #include "Runtime/Physics/Triangle.h"
 
 #include <Jolt/Jolt.h>
@@ -66,7 +67,8 @@ namespace NS::Physics
     };
 
     //! @brief JPH::PhysicsSystem と、一時 allocator・job system・layer filter を同じ寿命で持つ衝突 world
-    //! @details 最初の 1 個の構築で JPH::RegisterDefaultAllocator / JPH::Factory / JPH::RegisterTypes を 1 度だけ通す
+    //! @details 最初の 1 個の構築か、 形を作る最初の CreateMeshShape で、 Jolt の登録を 1 度だけ通す
+    //! 登録は JPH::RegisterDefaultAllocator / JPH::Factory / JPH::RegisterTypes
     //! 型の登録解除はプロセス終了時
     //! Add 系はどれも body を 1 つ作り、shape を作れなければ無効な BodyID を返す
     //! 作った時点で動的なのは AddDynamic の付く 2 つだけで、これだけが起きた状態で入る
@@ -102,6 +104,16 @@ namespace NS::Physics
         //! id の body を三角形群の形と layer へ書き換えて id を返す。id が無効なら新しく作る
         //! 空なら無効な BodyID を返す
         JPH::BodyID SyncMesh(JPH::BodyID id, std::span<const Triangle> triangles, JPH::ObjectLayer layer);
+        //! @brief id の body を collision の形で、 位置・回転・拡縮へ置いて id を返す。 id が無効なら新しく作る
+        //! @details 形は作り直さずに共有する。 拡縮が 1 でなければ、 共有した形を拡縮つきの形で包む
+        //! 位置・回転・拡縮で表せない歪みは受け取れない。 歪みのある配置は SyncMesh に世界座標の三角形を渡す
+        //! collision の形が null なら無効な BodyID を返す
+        JPH::BodyID SyncMeshShape(JPH::BodyID id,
+                                  const MeshCollision& collision,
+                                  const NS::Core::Vector3& position,
+                                  const NS::Core::Quaternion& rotation,
+                                  const NS::Core::Vector3& scale,
+                                  JPH::ObjectLayer layer);
 
         //! @brief OBB を通り抜けられる sensor body にする
         //! @details layer は ObjectLayers::Trigger 固定で、2 つの ShouldCollide がどの layer とも組ませない

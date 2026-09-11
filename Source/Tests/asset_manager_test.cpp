@@ -3,6 +3,7 @@
 #include <Runtime/Core/Math.h>
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Object/AssetManager.h>
+#include <Runtime/Physics/MeshCollision.h>
 #include <Runtime/Physics/Triangle.h>
 #include <Runtime/Platform/Window.h>
 #include <algorithm>
@@ -208,27 +209,28 @@ TEST_F(AssetManagerTest, FailedMeshLoadIsNegativeCached)
     EXPECT_EQ(am.MeshCacheSize(), 1u); // 2 度目は再読込せず件数が増えない
 }
 
-// 組み込みの cube は device 無しでも当たり用の三角形 12 枚になり、 どの面の法線も外を向く
+// 組み込みの cube は device 無しでも三角形 12 枚と Jolt の形を持つ当たりになり、 どの面の法線も外を向く
 TEST_F(AssetManagerTest, BuiltinCubeCollisionHasTwelveOutwardTriangles)
 {
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
 
-    const std::vector<NS::Physics::Triangle>* triangles = am.GetOrLoadMeshCollision("cube");
-    ASSERT_NE(triangles, nullptr);
-    ASSERT_EQ(triangles->size(), 12u);
-    for (const NS::Physics::Triangle& triangle : *triangles)
+    const NS::Physics::MeshCollision* collision = am.GetOrLoadMeshCollision("cube");
+    ASSERT_NE(collision, nullptr);
+    EXPECT_NE(collision->shape, nullptr);
+    ASSERT_EQ(collision->triangles.size(), 12u);
+    for (const NS::Physics::Triangle& triangle : collision->triangles)
     {
         const NS::Core::Vector3 centroid = (triangle.v0 + triangle.v1 + triangle.v2) / 3.0f;
         EXPECT_GT(FaceNormal(triangle).Dot(centroid), 0.0f);
     }
 }
 
-// 同じ参照には同じ三角形群を返す。 配置物ごとに読み直さない
+// 同じ参照には同じ当たりを返す。 配置物ごとに読み直さない
 TEST_F(AssetManagerTest, SameMeshRefSharesCollision)
 {
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
 
-    const std::vector<NS::Physics::Triangle>* first = am.GetOrLoadMeshCollision("wedge45");
+    const NS::Physics::MeshCollision* first = am.GetOrLoadMeshCollision("wedge45");
     ASSERT_NE(first, nullptr);
     EXPECT_EQ(am.GetOrLoadMeshCollision("wedge45"), first);
 }
@@ -243,11 +245,11 @@ TEST_F(AssetManagerTest, GltfCollisionKeepsFrontFaceInLeftHandedSpace)
         GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << path.string();
 
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
-    const std::vector<NS::Physics::Triangle>* triangles = am.GetOrLoadMeshCollision(ref);
-    ASSERT_NE(triangles, nullptr);
-    ASSERT_EQ(triangles->size(), 1u);
+    const NS::Physics::MeshCollision* collision = am.GetOrLoadMeshCollision(ref);
+    ASSERT_NE(collision, nullptr);
+    ASSERT_EQ(collision->triangles.size(), 1u);
 
-    const NS::Physics::Triangle& triangle = (*triangles)[0];
+    const NS::Physics::Triangle& triangle = collision->triangles[0];
     const std::array<NS::Core::Vector3, 3> vertices = {triangle.v0, triangle.v1, triangle.v2};
     const std::array<NS::Core::Vector3, 3> expected = {NS::Core::Vector3{0.0f, 0.0f, -1.0f},
                                                        NS::Core::Vector3{2.0f, 0.0f, -1.0f},
@@ -295,7 +297,7 @@ TEST_F(AssetManagerTest, CollisionRefSpellingsShareOneRecord)
         GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << path.string();
 
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
-    const std::vector<NS::Physics::Triangle>* plain = am.GetOrLoadMeshCollision(ref);
+    const NS::Physics::MeshCollision* plain = am.GetOrLoadMeshCollision(ref);
     ASSERT_NE(plain, nullptr);
     EXPECT_EQ(am.GetOrLoadMeshCollision("./" + ref), plain);
     EXPECT_EQ(am.MeshCacheSize(), 1u);
@@ -315,10 +317,10 @@ TEST_F(AssetManagerTest, MeshAndCollisionReadTheGltfOnce)
     static_cast<void>(am.GetOrLoadMesh(path));
     WriteFixture("ns_am_read_once_triangle.gltf", SingleTriangleGltf(rewritten));
 
-    const std::vector<NS::Physics::Triangle>* triangles = am.GetOrLoadMeshCollision(ref);
-    ASSERT_NE(triangles, nullptr);
-    ASSERT_EQ(triangles->size(), 1u);
-    const NS::Physics::Triangle& triangle = (*triangles)[0];
+    const NS::Physics::MeshCollision* collision = am.GetOrLoadMeshCollision(ref);
+    ASSERT_NE(collision, nullptr);
+    ASSERT_EQ(collision->triangles.size(), 1u);
+    const NS::Physics::Triangle& triangle = collision->triangles[0];
     EXPECT_FLOAT_EQ(std::max({triangle.v0.x, triangle.v1.x, triangle.v2.x}), 1.0f);
     EXPECT_EQ(am.MeshCacheSize(), 1u);
 }

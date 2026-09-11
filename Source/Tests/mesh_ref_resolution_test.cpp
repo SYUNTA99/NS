@@ -9,6 +9,7 @@
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Scene/SceneData.h>
 #include <Runtime/Object/World.h>
+#include <Runtime/Physics/MeshCollision.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 #include <Runtime/Platform/Window.h>
 #include <filesystem>
@@ -126,7 +127,7 @@ TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
     EXPECT_EQ(compMesh->GetMesh(), assets.Builtin("cube"));
 }
 
-// MeshColliderComponent は同じ object の MeshRendererComponent の参照から三角形を取る
+// MeshColliderComponent は同じ object の MeshRendererComponent の参照から AssetManager の当たりを借りる
 TEST(MeshRefResolution, MeshColliderTakesTrianglesFromRendererMesh)
 {
     AssetManager assets{std::filesystem::path{"."}};
@@ -140,18 +141,12 @@ TEST(MeshRefResolution, MeshColliderTakesTrianglesFromRendererMesh)
     auto* collider = built->FindComponent<NS::Object::MeshColliderComponent>();
     ASSERT_NE(collider, nullptr);
 
-    const std::vector<NS::Physics::Triangle>* wedge = assets.GetOrLoadMeshCollision("wedge45");
+    const NS::Physics::MeshCollision* wedge = assets.GetOrLoadMeshCollision("wedge45");
     ASSERT_NE(wedge, nullptr);
-    ASSERT_EQ(collider->LocalTriangles().size(), wedge->size());
-    for (std::size_t i = 0; i < wedge->size(); ++i)
-    {
-        EXPECT_EQ(collider->LocalTriangles()[i].v0, (*wedge)[i].v0);
-        EXPECT_EQ(collider->LocalTriangles()[i].v1, (*wedge)[i].v1);
-        EXPECT_EQ(collider->LocalTriangles()[i].v2, (*wedge)[i].v2);
-    }
+    EXPECT_EQ(collider->Collision(), wedge);
 }
 
-// 描画が cube へフォールバックする参照では、 当たりも cube の 12 枚になる
+// 描画が cube へフォールバックする参照では、 当たりも組み込みの cube の当たりを指す
 TEST(MeshRefResolution, MeshColliderFallsBackToCubeLikeRenderer)
 {
     AssetManager assets{std::filesystem::path{"."}};
@@ -164,10 +159,11 @@ TEST(MeshRefResolution, MeshColliderFallsBackToCubeLikeRenderer)
     ASSERT_NE(built, nullptr);
     auto* collider = built->FindComponent<NS::Object::MeshColliderComponent>();
     ASSERT_NE(collider, nullptr);
-    EXPECT_EQ(collider->LocalTriangles().size(), 12u);
+    ASSERT_NE(collider->Collision(), nullptr);
+    EXPECT_EQ(collider->Collision(), assets.GetOrLoadMeshCollision("cube"));
 }
 
-// MeshRendererComponent が無ければ当たりは空のまま
+// MeshRendererComponent が無ければ当たり無しのまま
 TEST(MeshRefResolution, MeshColliderWithoutRendererStaysEmpty)
 {
     AssetManager assets{std::filesystem::path{"."}};
@@ -179,7 +175,7 @@ TEST(MeshRefResolution, MeshColliderWithoutRendererStaysEmpty)
     ASSERT_NE(built, nullptr);
     auto* collider = built->FindComponent<NS::Object::MeshColliderComponent>();
     ASSERT_NE(collider, nullptr);
-    EXPECT_TRUE(collider->LocalTriangles().empty());
+    EXPECT_EQ(collider->Collision(), nullptr);
 }
 
 // 組んだ cube の当たりは body 1 個として physics に入り、 下向きのレイが上面 (y = 0.5) で止まる

@@ -1,13 +1,13 @@
+#include "Runtime/Physics/PhysicsWorld.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Core/Sphere.h"
-#include "Runtime/Physics/PhysicsWorld.h"
 
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Physics/detail/JoltConversion.h"
+#include "Runtime/Physics/detail/JoltRuntime.h"
 
-#include <Jolt/Core/Factory.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyLockInterface.h>
 #include <Jolt/Physics/Collision/CastResult.h>
@@ -17,12 +17,9 @@
 #include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
-#include <Jolt/Physics/Collision/Shape/MeshShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
-#include <Jolt/RegisterTypes.h>
 
 #include <algorithm>
-#include <memory>
 #include <utility>
 
 namespace NS::Physics
@@ -38,37 +35,11 @@ namespace NS::Physics
         // 自機の上昇重力と同じ値。下降の -35 は頂点から早く落として操作を返すための値で、操作の無い物には掛けない
         constexpr float k_GravityY = -25.0f;
 
-        class JoltRuntime
-        {
-        public:
-            JoltRuntime()
-            {
-                JPH::RegisterDefaultAllocator();
-                m_factory = std::make_unique<JPH::Factory>();
-                JPH::Factory::sInstance = m_factory.get();
-                JPH::RegisterTypes();
-            }
-
-            ~JoltRuntime()
-            {
-                JPH::UnregisterTypes();
-                JPH::Factory::sInstance = nullptr;
-            }
-
-        private:
-            std::unique_ptr<JPH::Factory> m_factory;
-        };
-
-        void InitializeJoltRuntime()
-        {
-            static JoltRuntime runtime;
-        }
-
     } // namespace
 
     PhysicsWorld::RuntimeInitialization::RuntimeInitialization()
     {
-        InitializeJoltRuntime();
+        detail::InitializeJoltRuntime();
     }
 
     JPH::uint PhysicsWorld::BroadPhaseLayerInterface::GetNumBroadPhaseLayers() const
@@ -296,27 +267,34 @@ namespace NS::Physics
 
     JPH::BodyID PhysicsWorld::SyncMesh(JPH::BodyID id, std::span<const Triangle> triangles, JPH::ObjectLayer layer)
     {
-        if (triangles.empty())
+        return SyncStatic(id,
+                          CreateMeshShape(triangles),
+                          NS::Core::Vector3{0.0f, 0.0f, 0.0f},
+                          NS::Core::Quaternion::Identity,
+                          layer,
+                          false);
+    }
+
+    JPH::BodyID PhysicsWorld::SyncMeshShape(JPH::BodyID id,
+                                            const MeshCollision& collision,
+                                            const NS::Core::Vector3& position,
+                                            const NS::Core::Quaternion& rotation,
+                                            const NS::Core::Vector3& scale,
+                                            JPH::ObjectLayer layer)
+    {
+        if (collision.shape == nullptr)
         {
             return JPH::BodyID{};
         }
 
-        JPH::TriangleList list;
-        list.reserve(triangles.size());
-        for (const Triangle& triangle : triangles)
-        {
-            list.emplace_back(ToJolt(triangle.v0), ToJolt(triangle.v1), ToJolt(triangle.v2));
-        }
-
-        const JPH::MeshShapeSettings shapeSettings{std::move(list)};
-        const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
-        if (shape.HasError())
+        // 拡縮が 1 なら ScaleShape は共有の形そのものを返す
+        const JPH::Shape::ShapeResult scaled = collision.shape->ScaleShape(ToJolt(scale));
+        if (scaled.HasError())
         {
             return JPH::BodyID{};
         }
 
-        return SyncStatic(
-            id, shape.Get(), NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Quaternion::Identity, layer, false);
+        return SyncStatic(id, scaled.Get(), position, rotation, layer, false);
     }
 
     JPH::BodyID PhysicsWorld::AddDynamic(const JPH::ShapeRefC& shape,
