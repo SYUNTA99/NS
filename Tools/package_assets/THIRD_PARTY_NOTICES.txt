@@ -25,6 +25,13 @@
    用途: enum のリフレクション
    全文: Licenses/magic_enum-LICENSE.txt
 ------------------------------------------------------------
+ Effekseer  (Effekseer Project) -- MIT License
+   用途: エフェクトの再生と描画
+   全文: Licenses/Effekseer-LICENSE.txt
+   DX11 の描画部に含まれる DirectX Tool Kit 由来のコード
+   (Microsoft Public License) の表示:
+         Licenses/Effekseer-LICENSE_RUNTIME_DIRECTX.txt
+------------------------------------------------------------
  cgltf  (Johannes Kuhlmann) -- MIT License
    用途: glTF モデル読込
    ライセンス全文:

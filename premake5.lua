@@ -221,6 +221,49 @@ project "jolt"
     buildoptions { "/utf-8", "/FS" }
 
 --============================================================================
+-- Effekseer 1.80.7 (StaticLib)
+--   衝突の視覚効果の生成と再生。 Graphics 層が使う。
+--   vendoring したのは実行時に要る物だけで、 ツール・他の描画 API・CMake 設定・シェーダーの原本 (.fx) は入れていない。
+--   シェーダーはコンパイル済みの ShaderHeader/ を使うので、 ビルド中に fxc は走らない。
+--   上流の CMake は本体 / 共通部 / DX11 部の 3 つの lib に分けるが、 使い手が Graphics だけなので 1 つにまとめる。
+--   __EFFEKSEER_NETWORK_ENABLED__ は付けない。 付けるとエディタとの生編集のためにスレッドと winsock が入る。
+--   ヘッダーはこの定義と SIMD の選択 (/arch で決まる) で分岐する。 どちらも使う側と揃えるため、 ここにも使う側にも書かない
+--============================================================================
+
+-- 上流の include の起点は 3 つの lib のルート。 兄弟へは "../3rdParty/..." のように起点から 1 段上がって辿る。
+-- Effekseer の型は Graphics の公開ヘッダ (EffectWorld.h) へ出す方針なので、 それを読む project も同じ起点を入れる
+local effekseerIncludeDirs = {
+    "Source/ThirdParty/Effekseer/Effekseer",
+    "Source/ThirdParty/Effekseer/EffekseerRendererCommon",
+    "Source/ThirdParty/Effekseer/EffekseerRendererDX11",
+}
+
+project "effekseer"
+    kind "StaticLib"
+    location "build/effekseer"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/ThirdParty/Effekseer/Effekseer/**.h",
+        "Source/ThirdParty/Effekseer/Effekseer/**.cpp",
+        "Source/ThirdParty/Effekseer/EffekseerRendererCommon/**.h",
+        "Source/ThirdParty/Effekseer/EffekseerRendererCommon/**.cpp",
+        "Source/ThirdParty/Effekseer/EffekseerRendererDX11/**.h",
+        "Source/ThirdParty/Effekseer/EffekseerRendererDX11/**.cpp",
+        -- DX11 部が .efkmat を実行時に HLSL へ起こすのに使う。 上流も DX11 部の lib に焼き込んでいる
+        "Source/ThirdParty/Effekseer/EffekseerMaterialCompiler/**.h",
+        "Source/ThirdParty/Effekseer/EffekseerMaterialCompiler/**.cpp",
+        "Source/ThirdParty/Effekseer/3rdParty/stb_effekseer/**.h",
+    }
+
+    includedirs(effekseerIncludeDirs)
+
+    warnings "Off"
+    buildoptions { "/utf-8", "/FS" }
+
+--============================================================================
 -- Runtime 層 (Solution Folder)
 --   8 層 (Core / Platform / Physics / Graphics / Audio / Object / UI / App) を
 --   Visual Studio Solution Explorer 上で 1 つのフォルダにまとめる。
@@ -324,6 +367,7 @@ project "Graphics"
         "Source/ThirdParty/magic_enum/include",
         "Source/ThirdParty/cgltf"
     }
+    includedirs(effekseerIncludeDirs)
 
     defines {
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
@@ -333,6 +377,7 @@ project "Graphics"
     links {
         "Core",
         "Platform",
+        "effekseer",
         -- D3D11 system libs
         "d3d11",
         "dxgi",
@@ -580,6 +625,7 @@ project "Game"
         "Source/ThirdParty/magic_enum/include",
         "Source/ThirdParty/JoltPhysics",
     }
+    includedirs(effekseerIncludeDirs)
 
     applyJoltDefines()
 
@@ -638,6 +684,7 @@ project "Editor"
         "Source/ThirdParty/imgui/backends",
         "Source/ThirdParty/JoltPhysics",
     }
+    includedirs(effekseerIncludeDirs)
 
     applyJoltDefines()
 
@@ -702,6 +749,7 @@ project "GameApp"
         "Source/ThirdParty/magic_enum/include",
         "Source/ThirdParty/JoltPhysics",
     }
+    includedirs(effekseerIncludeDirs)
 
     applyJoltDefines()
 
@@ -721,7 +769,8 @@ project "GameApp"
         "App",
         "UI",
         "directxtk_simplemath",
-        "jolt"
+        "jolt",
+        "effekseer"
     }
 
     -- Object の component 自己登録はどこからも参照されない TU の静的初期化に載っているため、
@@ -894,6 +943,7 @@ project "Tests"
         "Source/ThirdParty/magic_enum/include",
         "Source/ThirdParty/JoltPhysics",
     }
+    includedirs(effekseerIncludeDirs)
 
     applyJoltDefines()
 
@@ -916,7 +966,8 @@ project "Tests"
         "Audio",
         "Object",
         "App",
-        "jolt"
+        "jolt",
+        "effekseer"
     }
 
     -- Game.exe と同じ理由で Object の自己登録 TU をリンカ除去から守る
