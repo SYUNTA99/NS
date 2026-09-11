@@ -9,7 +9,7 @@
 namespace LevelNs = NS::Game::Level;
 namespace SceneNs = NS::Object;
 
-/// 即死体積が LateUpdate 帯で自分から重なりを判定し、プレイヤーを即死させることを検証する
+//! 即死体積が LateUpdate 帯で自分から重なりを判定し、プレイヤーを即死させることを検証する
 
 TEST(KillZoneTest, KillsPlayerInsideVolume)
 {

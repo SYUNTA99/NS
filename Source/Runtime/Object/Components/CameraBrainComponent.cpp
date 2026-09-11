@@ -7,6 +7,7 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace NS::Object
 {
@@ -45,6 +46,16 @@ namespace NS::Object
             m_blendDuration = seconds;
         else
             m_blendDuration = 0.0f;
+    }
+
+    void CameraBrainComponent::StartShake(float amplitude, int steps) noexcept
+    {
+        // 壊れた振れ幅が pose へ流れると視点が消える。入口で捨てる
+        if (!std::isfinite(amplitude) || amplitude <= 0.0f || steps <= 0)
+            return;
+        m_shakeAmplitude = amplitude;
+        m_shakeTotal = steps;
+        m_shakeRemaining = steps;
     }
 
     void CameraBrainComponent::BeginBlendFrom(const CameraPose& pose) noexcept
@@ -106,6 +117,9 @@ namespace NS::Object
             if (m_blendElapsed >= m_blendDuration)
                 m_blending = false;
         }
+
+        if (m_shakeRemaining > 0)
+            --m_shakeRemaining;
     }
 
     void CameraBrainComponent::Evaluate(float alpha) noexcept
@@ -122,6 +136,18 @@ namespace NS::Object
             const float t = NS::Core::Clamp(m_blendElapsed / m_blendDuration, 0.0f, 1.0f);
             const float eased = t * t * (3.0f - 2.0f * t); // smoothstep で ease-in-out
             pose = CameraPose::Lerp(m_blendFrom, pose, eased);
+        }
+
+        // 揺れは合成の最後に足す。どの vcam が選ばれていてもブレンド中でも一様に掛かる
+        // position と target を同じだけ動かす平行移動なので視線方向が回らず、
+        // ForwardHorizontal を基準にする camera 相対入力に波及しない
+        if (m_shakeRemaining > 0 && m_shakeTotal > 0)
+        {
+            const float sign = 1.0f - 2.0f * static_cast<float>(m_shakeRemaining % 2);
+            const float decay = static_cast<float>(m_shakeRemaining) / static_cast<float>(m_shakeTotal);
+            const NS::Core::Vector3 offset{0.0f, m_shakeAmplitude * sign * decay, 0.0f};
+            pose.position += offset;
+            pose.target += offset;
         }
 
         m_lastPose = pose;

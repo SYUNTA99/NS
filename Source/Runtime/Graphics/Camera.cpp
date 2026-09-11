@@ -103,7 +103,7 @@ namespace NS::Graphics
         if (m_viewDirty)
         {
             const NS::Core::Vector3 lookDir = m_target - m_position;
-            if (lookDir.LengthSquared() < 1e-8f)
+            if (lookDir.LengthSquared() < NS::Core::k_Epsilon * NS::Core::k_Epsilon)
             {
                 m_view = NS::Core::Matrix::Identity;
             }

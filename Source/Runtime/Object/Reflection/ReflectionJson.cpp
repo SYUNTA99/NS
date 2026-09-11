@@ -4,6 +4,7 @@
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 
 namespace NS::Object
@@ -52,6 +53,33 @@ namespace NS::Object
                 field.get(&comp, &value);
                 nlohmann::json out;
                 out["ref"] = value.id;
+                return out;
+            }
+            case FieldType::Curve:
+            {
+                // 素の配列だと読み込み時に Vector3 と区別できないため {"curve": [[x,y], ...]} の単キー object で書く
+                Curve value{};
+                field.get(&comp, &value);
+                nlohmann::json points = nlohmann::json::array();
+                for (std::uint32_t i = 0; i < value.count; ++i)
+                {
+                    const Curve::Key& key = value.keys[i];
+                    // 直線の点は従来の 2 要素のまま書く。要素を足すと古い記述との互換が切れるため
+                    if (key.mode == Curve::InterpMode::Linear)
+                    {
+                        points.push_back(nlohmann::json{key.x, key.y});
+                        continue;
+                    }
+                    if (key.mode == Curve::InterpMode::AutoSmooth)
+                    {
+                        points.push_back(nlohmann::json{key.x, key.y, static_cast<int>(Curve::InterpMode::AutoSmooth)});
+                        continue;
+                    }
+                    points.push_back(nlohmann::json{
+                        key.x, key.y, static_cast<int>(Curve::InterpMode::Manual), key.inTangent, key.outTangent});
+                }
+                nlohmann::json out;
+                out["curve"] = std::move(points);
                 return out;
             }
             }
@@ -118,6 +146,60 @@ namespace NS::Object
                 field.set(&comp, &v);
                 return;
             }
+            case FieldType::Curve:
+            {
+                if (!value.is_object())
+                    return;
+                const auto it = value.find("curve");
+                if (it == value.end() || !it->is_array())
+                    return;
+                Curve v{};
+                for (const auto& point : *it)
+                {
+                    // 固定長からはみ出すため、手編集で上限を超えて書かれた点は捨てる
+                    if (v.count >= Curve::k_MaxKeys)
+                        break;
+                    // 点が 1 個壊れただけで全部を捨てると手編集の損害が広がるので、形の違う点だけ飛ばして残りを読む
+                    if (!point.is_array())
+                        continue;
+                    // 2 は直線、3 は自動なめらか、5 は手動接線。他の要素数は形が壊れた点として飛ばす
+                    const std::size_t pointSize = point.size();
+                    if (pointSize != 2u && pointSize != 3u && pointSize != 5u)
+                        continue;
+                    if (!point[0].is_number() || !point[1].is_number())
+                        continue;
+                    Curve::Key key{point[0].get<float>(), point[1].get<float>()};
+                    if (pointSize >= 3u)
+                    {
+                        if (!point[2].is_number())
+                            continue;
+                        // 要素数とモード番号が食い違う点は手編集で壊れた点なので飛ばす
+                        const int mode = point[2].get<int>();
+                        if (pointSize == 3u)
+                        {
+                            if (mode != static_cast<int>(Curve::InterpMode::AutoSmooth))
+                                continue;
+                            key.mode = Curve::InterpMode::AutoSmooth;
+                        }
+                        else
+                        {
+                            if (mode != static_cast<int>(Curve::InterpMode::Manual))
+                                continue;
+                            if (!point[3].is_number() || !point[4].is_number())
+                                continue;
+                            key.mode = Curve::InterpMode::Manual;
+                            key.inTangent = point[3].get<float>();
+                            key.outTangent = point[4].get<float>();
+                        }
+                    }
+                    v.keys[v.count] = key;
+                    ++v.count;
+                }
+                // 降順に書かれた記述だと Evaluate の昇順前提が崩れるため、読み込み直後に並べ直す
+                v.SortKeys();
+                field.set(&comp, &v);
+                return;
+            }
             }
         }
     } // namespace
@@ -128,7 +210,7 @@ namespace NS::Object
         const ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr)
         {
-            // リフレクションの無いコンポは type を復元できない。 登録簿への追加漏れを黙って握り潰さず警告する
+            // リフレクションの無いコンポは type を復元できない。 宣言の書き忘れに気付けるよう警告する
             NS_LOG_WARN(Game, "リフレクションの無い Component を直列化しようとした (type 復元不可)");
             out["type"] = "";
             out["fields"] = nlohmann::json::object();

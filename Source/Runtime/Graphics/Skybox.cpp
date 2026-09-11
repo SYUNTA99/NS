@@ -22,7 +22,7 @@ namespace NS::Graphics
 
     namespace
     {
-        // シェーダに渡す定数データ（64バイト境界に配置する）
+        // シェーダへ渡す定数。HLSL 側の cbuffer と同じ 64 バイトに揃える
         struct alignas(16) SkyboxCB
         {
             NS::Core::Matrix viewProj;
@@ -30,7 +30,7 @@ namespace NS::Graphics
         static_assert(sizeof(SkyboxCB) == 64, "SkyboxCB は HLSL 側 cbuffer (b0) と byte 一致が必要");
 
         // キューブマップのテクスチャファイル名
-        // 素材の ft/bk/lf/rt 命名は D3D の軸から水平 90° ずれている。継ぎ目が合う並びで置く
+        // 素材のファイル名が示す向きは DX11 の軸から水平に 90° ずれている。継ぎ目が合う並びで置く
         constexpr std::array<const char*, 6> k_KurtFaceFileNames = {
             "space_ft.png", // 右
             "space_bk.png", // 左
@@ -49,7 +49,7 @@ namespace NS::Graphics
             return ext == ".dds";
         }
 
-        // 読み込みに失敗した場合の代替キューブマップ（ピンク色）を生成する
+        // 読み込みに失敗した時のピンク一色のキューブマップを作る
         bool CreateMagentaCubemapFallback(ID3D11Device* device, ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
         {
             if (device == nullptr)
@@ -316,7 +316,7 @@ namespace NS::Graphics
             return;
         }
 
-        // スカイボックス用の描画ステートを設定する（内側を描画し、深度の更新を行わない）
+        // 立方体の内側から見るので表面をカリングし、深度は書かない
         PipelineDesc pipeDesc{};
         pipeDesc.cull = CullMode::Front;
         pipeDesc.depth = DepthMode::ReadOnly;

@@ -23,16 +23,6 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      - name: Setup premake5
-        shell: pwsh
-        run: |
-          # premake5.exe は gitignore 対象のため CI で取得する (版は tools/@download_premake.cmd と一致)
-          $ErrorActionPreference = 'Stop'
-          $version = '5.0.0-beta2'
-          $url = "https://github.com/premake/premake-core/releases/download/v$version/premake-$version-windows.zip"
-          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP/premake.zip"
-          Expand-Archive -Path "$env:RUNNER_TEMP/premake.zip" -DestinationPath tools/premake5 -Force
-
       - name: Cache build outputs
         uses: actions/cache@v4
         with:
@@ -45,12 +35,12 @@ jobs:
 
       - name: Build (${{ matrix.config }})
         shell: cmd
-        run: tools\@build.cmd ${{ matrix.config }}
+        run: Tools\@build.cmd ${{ matrix.config }}
 
       - name: Run tests
         if: matrix.config == 'Debug'
         shell: cmd
-        run: tools\@run_tests.cmd ${{ matrix.config }}
+        run: Tools\@run_tests.cmd ${{ matrix.config }}
 
       - name: Upload GameRelease artifacts
         if: matrix.config == 'GameRelease' && success()
@@ -72,19 +62,9 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      - name: Setup premake5
-        shell: pwsh
-        run: |
-          # premake5.exe は gitignore 対象のため CI で取得する (版は tools/@download_premake.cmd と一致)
-          $ErrorActionPreference = 'Stop'
-          $version = '5.0.0-beta2'
-          $url = "https://github.com/premake/premake-core/releases/download/v$version/premake-$version-windows.zip"
-          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP/premake.zip"
-          Expand-Archive -Path "$env:RUNNER_TEMP/premake.zip" -DestinationPath tools/premake5 -Force
-
       - name: Generate compile_commands.json
         shell: cmd
-        run: tools\@gen_compile_commands.cmd
+        run: Tools\@gen_compile_commands.cmd
 
       - name: Detect changed C++ files
         id: changed
@@ -101,7 +81,7 @@ jobs:
           }
           $files = git diff --name-only "$base...HEAD" |
             Where-Object { $_ -match '\.(cpp|hpp|h|cc|cxx|inl)$' } |
-            Where-Object { $_ -notmatch '^(build|tools|Source/ThirdParty|external|vendor)/' } |
+            Where-Object { $_ -notmatch '^(build|Tools|Source/ThirdParty|external|vendor)/' } |
             Where-Object { Test-Path $_ }
           if ($files) {
             $files | Out-File -FilePath changed.txt -Encoding utf8

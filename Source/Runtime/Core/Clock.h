@@ -11,8 +11,8 @@
 namespace NS::Core
 {
 
-    /// @brief アプリケーション起動時からの経過時間を計測する
-    /// @details OSのシステム時刻変更の影響を受けず、<windows.h> にも依存しない
+    //! @brief アプリケーション起動時からの経過時間を計測する
+    //! @details OSのシステム時刻変更の影響を受けず、<windows.h> にも依存しない
     class Clock
     {
     public:
@@ -23,7 +23,7 @@ namespace NS::Core
             return std::chrono::steady_clock::now();
         }
 
-        /// 長時間起動による精度の低下を防ぐため、戻り値に double を採用している
+        //! 長時間起動による精度の低下を防ぐため、戻り値に double を採用している
         [[nodiscard]] static double ElapsedSeconds() noexcept
         {
             return std::chrono::duration<double>(Now() - StartTime()).count();
@@ -37,14 +37,14 @@ namespace NS::Core
         }
     };
 
-    /// @brief デルタタイムと固定タイムステップを管理する静的クラス。
-    /// @details 毎フレームの経過時間を蓄積し、固定時間ぶんだけ処理ステップを回す。
+    //! @brief デルタタイムと固定タイムステップを管理する静的クラス
+    //! @details 毎フレームの経過時間を蓄積し、固定時間ぶんだけ処理ステップを回す
     class FrameTimer
     {
     public:
         FrameTimer() = delete;
 
-        /// 毎フレームの冒頭で呼び出すこと
+        //! 毎フレームの冒頭で呼び出すこと
         static void Tick() noexcept
         {
             const auto now = std::chrono::steady_clock::now();
@@ -59,7 +59,7 @@ namespace NS::Core
             s_accumulator -= static_cast<float>(s_fixedSteps) * s_fixedDelta;
         }
 
-        /// 状態を初期化
+        //! 状態を初期化
         static void Reset() noexcept
         {
             s_lastTime = std::chrono::steady_clock::now();
@@ -74,10 +74,10 @@ namespace NS::Core
         [[nodiscard]] static double TotalSeconds() noexcept { return s_total; }
         [[nodiscard]] static std::uint64_t FrameNumber() noexcept { return s_frame; }
 
-        /// デフォルトは60FPS
+        //! デフォルトは60FPS
         static constexpr float k_DefaultFixedDelta = 1.0f / 60.0f;
 
-        /// 固定タイムステップを設定し、0以下はゼロ除算による未定義動作を防ぐため無視
+        //! 固定タイムステップを設定し、0以下はゼロ除算による未定義動作を防ぐため無視
         static void SetFixedDelta(float fixed) noexcept
         {
             if (fixed > 0.0f)
@@ -86,23 +86,23 @@ namespace NS::Core
             }
         }
         [[nodiscard]] static float FixedDelta() noexcept { return s_fixedDelta; }
-        /// このフレームで固定更新処理を実行すべき回数
+        //! このフレームで固定更新処理を実行すべき回数
         [[nodiscard]] static int FixedStepsThisFrame() noexcept { return s_fixedSteps; }
-        /// 描画のガクツキを防ぐための補間用ブレンド率（0.0～1.0）
+        //! 描画のガクツキを防ぐための補間用ブレンド率（0.0～1.0）
         [[nodiscard]] static float Alpha() noexcept { return s_accumulator / s_fixedDelta; }
 
     private:
         static inline std::chrono::steady_clock::time_point s_lastTime{std::chrono::steady_clock::now()};
-        static inline float s_delta = 0.0f;                     ///< 前フレームからの経過秒
-        static inline double s_total = 0.0;                     ///< 起動からの累計秒
-        static inline std::uint64_t s_frame = 0;                ///< 累計フレーム数
-        static inline float s_fixedDelta = k_DefaultFixedDelta; ///< 固定更新の間隔（秒）
-        static inline float s_accumulator = 0.0f;               ///< 未消化の経過時間。固定ステップを刻んだ残り
-        static inline int s_fixedSteps = 0;                     ///< 今フレームで固定更新を回す回数
+        static inline float s_delta = 0.0f;                     //!< 前フレームからの経過秒
+        static inline double s_total = 0.0;                     //!< 起動からの累計秒
+        static inline std::uint64_t s_frame = 0;                //!< 累計フレーム数
+        static inline float s_fixedDelta = k_DefaultFixedDelta; //!< 固定更新の間隔（秒）
+        static inline float s_accumulator = 0.0f;               //!< 未消化の経過時間。固定ステップを刻んだ残り
+        static inline int s_fixedSteps = 0;                     //!< 今フレームで固定更新を回す回数
     };
 
-    /// @brief スコープを抜ける際に、そこまでの処理にかかった時間をデバッグログに出力する
-    /// @details 直接インスタンス化せず、NS_SCOPED_TIMER マクロを経由して使用すること。
+    //! @brief スコープを抜ける際に、そこまでの処理にかかった時間をデバッグログに出力する
+    //! @details 直接インスタンス化せず、NS_SCOPED_TIMER マクロを経由して使用すること
     class ScopedTimer
     {
     public:
@@ -136,8 +136,8 @@ namespace NS::Core
 #define NS_CLOCK_PASTE_IMPL(a, b) a##b
 #define NS_CLOCK_PASTE(a, b) NS_CLOCK_PASTE_IMPL(a, b)
 
-/// @brief 指定したスコープの処理時間を計測・ログ出力する
-/// @details プロファイリングが無効な環境では何も展開されず、オーバーヘッドは発生しない
+//! @brief 指定したスコープの処理時間を計測・ログ出力する
+//! @details プロファイリングが無効な環境では何も展開されず、オーバーヘッドは発生しない
 #if defined(NS_ENABLE_PROFILING)
 #define NS_SCOPED_TIMER(cat, label)                                                                                    \
     ::NS::Core::ScopedTimer NS_CLOCK_PASTE(ns_scoped_timer_, __COUNTER__)((::NS::Core::LogCategory::cat), (label))

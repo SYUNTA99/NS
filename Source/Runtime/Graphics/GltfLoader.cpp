@@ -1,5 +1,6 @@
 ﻿#include "Runtime/Graphics/GltfLoader.h"
 
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
@@ -53,8 +54,9 @@ namespace NS::Graphics
             return false;
         }
 
-        // world 3x3 の逆転置を余因子で求める。列優先 cgltf: 1 行目は
-        // m[0]/m[4]/m[8]。後で正規化するので行列式スケール無視可
+        // world 3x3 の逆転置を余因子で求める。cgltf は列優先なので 1 行目が m[0]/m[4]/m[8]
+        // 余因子は逆転置の行列式倍。行列式の大きさは後の正規化で消えるが、符号は残る
+        // TODO: 行列式が負の node は未対応。法線と三角形の表裏が逆になる
         void ComputeNormalMatrix(const float m[16], float out[9])
         {
             const float a = m[0], b = m[4], c = m[8];
@@ -161,7 +163,6 @@ namespace NS::Graphics
             }
 
             // 頂点を world 変換して LH で積む
-            // 頂点を world 変換して LH で積む
             geom.vertices.reserve(geom.vertices.size() + vertexCount);
             // 頂点を積むついでに軸並行境界を広げ、StaticMesh 側の二度目の全走査を省く
             NS::Core::Vector3 pmin{0.0f, 0.0f, 0.0f};
@@ -250,7 +251,7 @@ namespace NS::Graphics
                 std::swap(geom.indices[t + 1], geom.indices[t + 2]);
         }
 
-        // 三角形以外 / Draco 圧縮 primitive は skip
+        // 三角形以外と Draco 圧縮の primitive は飛ばす
         void AppendMesh(const cgltf_mesh& mesh, const float world[16], const std::string& path, MeshGeometry& geom)
         {
             for (cgltf_size p = 0; p < mesh.primitives_count; ++p)
@@ -278,7 +279,10 @@ namespace NS::Graphics
     {
         MeshGeometry geom;
 
-        // cgltf にはメモリを渡す。cgltf 内部の fopen を使わない
+        // .gltf / .glb はここで読んでメモリで渡す。ファイルの読み込みは Core の FileSystem を通す決まり
+        // TODO: 外部 .bin の buffer は cgltf_load_buffers が cgltf 内部の fopen で読む
+        // LoadGltfSkinnedMesh と LoadGltfAnimationSource も同じ。options.file.read を FileSystem 経由に
+        // 差し替えれば全部の読み込みが FileSystem を通る。release は read の確保の仕方に合わせる
         const std::optional<std::vector<std::byte>> bytes = NS::Core::FileSystem::ReadAllBytes(path);
         if (!bytes)
             return geom; // ReadAllBytes 内で NS_LOG_ERROR 済
@@ -450,7 +454,8 @@ namespace NS::Graphics
             return NS::Core::Matrix::Identity;
         }
 
-        // node 変換は頂点へ適用しない。重みのある joint index が範囲外なら false
+        // node 変換は頂点へ適用しない。glTF の仕様で、skin 付き mesh は joint の行列だけで動かす
+        // POSITION・JOINTS_0・WEIGHTS_0 が無い時と、重みのある joint index が範囲外の時は false
         bool AppendSkinnedPrimitive(const cgltf_primitive& prim,
                                     cgltf_size jointsCount,
                                     const std::string& path,
@@ -485,7 +490,6 @@ namespace NS::Graphics
             }
 
             // 頂点を LH で積みつつ joint / weight を正規化
-            // 頂点を LH で積みつつ joint/weight を正規化
             vertices.reserve(vertices.size() + vertexCount);
             for (cgltf_size i = 0; i < vertexCount; ++i)
             {

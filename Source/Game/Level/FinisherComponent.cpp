@@ -12,13 +12,11 @@
 namespace NS::Game::Level
 {
     // 判定より後の帯。接触と同じ LateUpdate で演出を始める
-    FinisherComponent::FinisherComponent() noexcept
-        : NS::Object::Component(NS::Object::TickPriority::LateUpdate + 10)
+    FinisherComponent::FinisherComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::LateUpdate + 10)
     {}
 
     ScreenFadeComponent* FinisherComponent::Fade() noexcept
     {
-        // 同じ owner に載った別 component。シーケンスの待ちをまたぐので毎回引き直す
         return Owner()->FindComponent<ScreenFadeComponent>();
     }
 

@@ -224,6 +224,69 @@ TEST(NsPlatformMouse, ClearStateResetsRawDelta)
     EXPECT_EQ(m.GetDeltaY(), 0);
 }
 
+TEST(NsPlatformMouse, AbsoluteRawMoveYieldsNothingOnFirstSample)
+{
+    Mouse m;
+    m.SetRelativeMode(true);
+    // 初回は比べる相手が無い。差を取ると原点からの距離が移動量になり視点が飛ぶ
+    m.OnRawMoveAbsolute(800, 600);
+    EXPECT_EQ(m.GetDeltaX(), 0);
+    EXPECT_EQ(m.GetDeltaY(), 0);
+}
+
+TEST(NsPlatformMouse, AbsoluteRawMoveYieldsDifferenceFromSecondSample)
+{
+    Mouse m;
+    m.SetRelativeMode(true);
+    m.OnRawMoveAbsolute(800, 600);
+    m.OnRawMoveAbsolute(806, 594);
+    EXPECT_EQ(m.GetDeltaX(), 6);
+    EXPECT_EQ(m.GetDeltaY(), -6);
+
+    m.Update();
+    m.OnRawMoveAbsolute(800, 594);
+    EXPECT_EQ(m.GetDeltaX(), -6);
+    EXPECT_EQ(m.GetDeltaY(), 0);
+}
+
+TEST(NsPlatformMouse, RelativeModeSwitchDropsAbsoluteOrigin)
+{
+    Mouse m;
+    m.SetRelativeMode(true);
+    m.OnRawMoveAbsolute(800, 600);
+    m.Update();
+    m.SetRelativeMode(false);
+
+    // 切替で起点も捨てるので、入り直した最初の座標は初回扱いになる
+    m.SetRelativeMode(true);
+    m.OnRawMoveAbsolute(100, 100);
+    EXPECT_EQ(m.GetDeltaX(), 0);
+    EXPECT_EQ(m.GetDeltaY(), 0);
+}
+
+TEST(NsPlatformMouse, ClearStateDropsAbsoluteOrigin)
+{
+    Mouse m;
+    m.SetRelativeMode(true);
+    m.OnRawMoveAbsolute(800, 600);
+    // ClearState は WM_KILLFOCUS で呼ばれる。焦点を失っている間のカーソル移動を持ち込ませない
+    m.ClearState();
+    m.OnRawMoveAbsolute(100, 100);
+    EXPECT_EQ(m.GetDeltaX(), 0);
+    EXPECT_EQ(m.GetDeltaY(), 0);
+}
+
+TEST(NsPlatformMouse, NonRelativeModeIgnoresAbsoluteRawMove)
+{
+    Mouse m;
+    m.OnMove(10, 20);
+    m.Update();
+    m.OnMove(15, 30);
+    m.OnRawMoveAbsolute(900, 900);
+    EXPECT_EQ(m.GetDeltaX(), 5);
+    EXPECT_EQ(m.GetDeltaY(), 10);
+}
+
 TEST(NsPlatformMouse, WheelAccumulatesAndResetsOnUpdate)
 {
     Mouse m;

@@ -1,14 +1,14 @@
-﻿#include <array>
-#include <cstdint>
-#include <gtest/gtest.h>
-#include <memory>
-#include <Runtime/Core/Logger.h>
+﻿#include <Runtime/Core/Logger.h>
 #include <Runtime/Graphics/Buffer.h>
 #include <Runtime/Graphics/CommandList.h>
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/Shader.h>
 #include <Runtime/Graphics/Texture.h>
 #include <Runtime/Platform/Window.h>
+#include <array>
+#include <cstdint>
+#include <gtest/gtest.h>
+#include <memory>
 
 namespace
 {
@@ -104,7 +104,7 @@ TEST_F(CommandListLoggerTest, SetAndDrawDoNotCrash)
     CommandList& cmd = renderer.Commands();
     cmd.VSSetShader(vs);
     cmd.PSSetShader(ps);
-    cmd.SetInputLayout(nullptr); // nullptr は何もしない (実レイアウト経路は mesh テストがカバー)
+    cmd.SetInputLayout(nullptr); // nullptr は何もしない。実レイアウト経路は mesh テストが見る
     cmd.SetVertexBuffer(vb, 0);
     cmd.SetIndexBuffer(ib);
     cmd.VSSetConstantBuffer(cb, 0);
@@ -134,7 +134,7 @@ TEST_F(CommandListLoggerTest, UpdateHandlesDynamicAndDefaultBuffers)
     CommandList& cmd = renderer.Commands();
     verts[0].pos[0] = 1.0f;
     cmd.UpdateSubresource(dyn, verts.data(), verts.size() * sizeof(TestVertex));
-    // DEFAULT は UpdateSubresource で更新される (crash しない)
+    // DEFAULT は UpdateSubresource で更新されて落ちない
     cmd.UpdateSubresource(stat, verts.data(), verts.size() * sizeof(TestVertex));
     SUCCEED();
 }

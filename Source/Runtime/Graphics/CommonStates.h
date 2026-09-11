@@ -19,8 +19,8 @@ namespace NS::Graphics
     class Renderer;
 
     //! @brief DirectXTK CommonStates のラッパ
-    //! @details 戻り値は型付きの D3D11 State ポインタで、Renderer / Material が直接 bind する。
-    //! 構築できるのは friend の Renderer だけ。
+    //! @details 戻り値は型付きの D3D11 State ポインタで、Renderer / Material が直接 bind する
+    //! 構築できるのは friend の Renderer だけ
     class CommonStates : public NS::Core::NonCopyable
     {
     public:
@@ -28,7 +28,7 @@ namespace NS::Graphics
 
         [[nodiscard]] bool IsValid() const noexcept;
 
-        [[nodiscard]] ID3D11BlendState* Opaque() const noexcept;     //<! 不透明
+        [[nodiscard]] ID3D11BlendState* Opaque() const noexcept;     //!< 不透明
         [[nodiscard]] ID3D11BlendState* AlphaBlend() const noexcept; //!< アルファブレンド
 
         [[nodiscard]] ID3D11DepthStencilState* DepthDefault() const noexcept; //!< 深度テスト＋書き込みあり

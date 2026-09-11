@@ -15,10 +15,7 @@ namespace NS::Object
     World::World() = default;
     World::~World() = default;
 
-    void World::Rebuild(const SceneData& data,
-                        Scene& scene,
-                        NS::Physics::PhysicsWorld& physics,
-                        const ObjectFactoryFn& factory)
+    void World::Rebuild(const SceneData& data, Scene& scene, const ObjectFactoryFn& factory)
     {
         // 実行時の一時オブジェクトはデータ由来でないため、 退避して組み直し後も残す
         std::vector<std::unique_ptr<GameObject>> transients;
@@ -30,7 +27,6 @@ namespace NS::Object
         std::erase_if(m_objects, [](const std::unique_ptr<GameObject>& obj) { return obj == nullptr; });
 
         Clear();
-        physics.Clear();
 
         // カウンタは 1 始まりでファイルの id を知らない。読込値まで上げないと次に置く 1 個目が既存とぶつかる
         m_nextObjectId = std::max(m_nextObjectId, data.nextObjectId);
@@ -42,7 +38,6 @@ namespace NS::Object
         }
 
         m_objects.reserve(data.objects.size() + transients.size());
-        physics.ReserveAabbs(data.objects.size());
 
         // 並び順は object の持ち物なので、 配列の並びではなく order で組む
         // 同値は書かれた順のまま残すので、 order を持たない古いファイルは従来と同じ形に組み上がる
@@ -74,7 +69,7 @@ namespace NS::Object
             }
 
             // 親子は全 object が揃ってから結ぶ。 子が親より前に並ぶファイルでも同じ形に組める
-            // 循環は読込の PruneInvalidParents が落とし済みで、 ここへは届かない
+            // 循環は SetParent が輪を閉じる結び付けを拒むので、 手編集のデータでも組み上がる
             // id 引きを線形で回すと体数の二乗に効くので、 組み立ての間だけ使う対応表で引く
             // 索引として持ち越さないのは、 所有リストと同期を保つ手間を抱え込まないため
             std::unordered_map<std::uint32_t, GameObject*> byObjectId;
@@ -108,8 +103,6 @@ namespace NS::Object
         for (auto& obj : transients)
             m_objects.push_back(std::move(obj));
 
-        RebuildPhysics(physics);
-
         // 生成直後は previous PRS が原点/単位回転のため Snapshot で current に揃える
         // 欠かすと InterpolatedWorldMatrix(alpha) が原点→配置先を補間し編集のたびに全配置物が振れる
         for (auto& obj : m_objects)
@@ -125,7 +118,7 @@ namespace NS::Object
         return raw;
     }
 
-    void World::RemoveByObjectId(std::uint32_t objectId, NS::Physics::PhysicsWorld& physics)
+    void World::RemoveByObjectId(std::uint32_t objectId)
     {
         // 0 は未採番の印。 一時オブジェクトは id を持たないので、 素通しすると先頭の一時が消える
         if (objectId == k_NoObjectId)
@@ -137,8 +130,6 @@ namespace NS::Object
 
             (*it)->OnEndPlay();
             m_objects.erase(it);
-            // 当たり箱は配置物と紐付かない平らな配列なので、 1 体分を抜くより張り直す
-            RebuildPhysics(physics);
             return;
         }
     }
@@ -166,17 +157,16 @@ namespace NS::Object
         return FindByObjectId(ref.id);
     }
 
-    void World::RebuildPhysics(NS::Physics::PhysicsWorld& physics) const
+    void World::SyncPhysics(NS::Physics::PhysicsWorld& physics)
     {
-        // 当たりは Clear -> Add* -> BuildBroadphase で満たし直す。 古い当たりを残さない
-        physics.Clear();
-        physics.ReserveAabbs(m_objects.size());
-        ForEachComponent<ColliderComponent>([&physics](const ColliderComponent& collider) {
-            // active を切った component は当たりも持たない。 更新・ 描画と同じ問いで揃える
+        // 世界ごと消さず、collider ごとに既存 body の shape と姿勢を同期する
+        ForEachComponent<ColliderComponent>([&physics](ColliderComponent& collider) {
             if (collider.IsActive())
-                collider.AddToPhysics(physics);
+                collider.SyncToPhysics(physics);
+            else
+                collider.RemoveFromPhysics();
         });
-        physics.BuildBroadphase();
+        physics.OptimizeBroadPhase();
     }
 
     void World::UpdateAllObjects()
@@ -220,7 +210,7 @@ namespace NS::Object
 
     void World::Clear()
     {
-        // 配置物は生成の逆順で破棄する。 依存し合う component の OnEndPlay 順序を生成時と対称に保つ
+        // OnEndPlay は生成の逆順で呼ぶ。 依存し合う component の後始末を生成と対称にする
         for (auto it = m_objects.rbegin(); it != m_objects.rend(); ++it)
             (*it)->OnEndPlay();
         m_objects.clear();

@@ -7,7 +7,7 @@
             "command": "cmd",
             "args": [
                 "/c",
-                "tools\\@build.cmd",
+                "Tools\\@build.cmd",
                 "Debug"
             ],
             "options": {
@@ -32,7 +32,7 @@
             "command": "cmd",
             "args": [
                 "/c",
-                "tools\\@build.cmd",
+                "Tools\\@build.cmd",
                 "Release"
             ],
             "options": {
@@ -54,7 +54,7 @@
             "command": "cmd",
             "args": [
                 "/c",
-                "tools\\@regen_project.cmd"
+                "Tools\\@regen_project.cmd"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
@@ -72,7 +72,7 @@
             "command": "cmd",
             "args": [
                 "/c",
-                "tools\\@run_tests.cmd"
+                "Tools\\@run_tests.cmd"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

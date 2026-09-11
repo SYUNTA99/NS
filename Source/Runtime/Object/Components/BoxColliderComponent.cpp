@@ -1,3 +1,5 @@
+#include "Runtime/Core/AABB.h"
+#include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/BoxColliderComponent.h"
 
 #include "Runtime/Object/GameObject.h"
@@ -127,20 +129,19 @@ namespace NS::Object
         const NS::Core::Vector3 half{m_halfExtents.x * std::abs(scale.x),
                                      m_halfExtents.y * std::abs(scale.y),
                                      m_halfExtents.z * std::abs(scale.z)};
-        return NS::Physics::MakeObb(translation, rotation, half);
+        return NS::Core::MakeOBB(translation, rotation, half);
     }
 
-    void BoxColliderComponent::AddToPhysics(NS::Physics::PhysicsWorld& physics) const
+    void BoxColliderComponent::SyncToPhysics(NS::Physics::PhysicsWorld& physics)
     {
-        // トリガの箱は通り抜ける体積。 固形に入れず、 重なりは owner の component が自分で調べる
+        // 通り抜ける体積も body にする。入れないと重なりの問い合わせに出てこず、触れても判定できない
         if (m_isTrigger)
+        {
+            TrackBody(physics, physics.SyncBox(BodyIn(physics), WorldOBB(), NS::Physics::ObjectLayers::Trigger, true));
             return;
+        }
 
-        const NS::Core::OBB obb = WorldOBB();
-        if (IsAxisAligned(obb))
-            physics.AddAABB(WorldAABB());
-        else
-            physics.AddOBB(obb);
+        TrackBody(physics, physics.SyncBox(BodyIn(physics), WorldOBB(), NS::Physics::ObjectLayers::Terrain));
     }
 
     NS_CLASS(BoxColliderComponent)

@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-/// シーケンス実行器の単体検証。待ちの明け方・破棄・複数本の独立を dt 駆動で確かめる
+//! CoroutineRunner の単体検証。待ちの明け方・破棄・複数本の独立を dt 駆動で確かめる
 
 namespace
 {

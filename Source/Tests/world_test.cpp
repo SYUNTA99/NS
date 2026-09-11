@@ -1,6 +1,7 @@
 #include "Game/Level/BlockObject.h"
 #include "Game/Level/FollowCameraObject.h"
 #include "Game/Player.h"
+#include "Runtime/Core/Sphere.h"
 #include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
@@ -31,7 +32,7 @@ using NS::Object::World;
 
 namespace
 {
-    // world は型付き控えを持たないので、テストも本番の読み手と同じ問い合わせ口から集める
+    // world は型付き控えを持たないので、テストも本番と同じ問い合わせ口から集める
     template <class T> std::vector<T*> Collect(const World& world)
     {
         std::vector<T*> result;
@@ -95,10 +96,9 @@ TEST(WorldTest, BuildFollowsObjectOrderNotArrayOrder)
     level.objects[2].order = 1;
 
     NS::Object::Scene scene;
-    NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
-    world.Rebuild(level, scene, physics, MakeFactory(assets, level));
+    world.Rebuild(level, scene, MakeFactory(assets, level));
 
     ASSERT_EQ(world.ObjectCount(), std::size_t{3});
     EXPECT_EQ(world.ObjectAt(0)->Id(), second);
@@ -120,10 +120,9 @@ TEST(WorldTest, EqualOrderKeepsWrittenSequence)
     const std::uint32_t second = level.objects[1].objectId;
 
     NS::Object::Scene scene;
-    NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
-    world.Rebuild(level, scene, physics, MakeFactory(assets, level));
+    world.Rebuild(level, scene, MakeFactory(assets, level));
 
     ASSERT_EQ(world.ObjectCount(), std::size_t{2});
     EXPECT_EQ(world.ObjectAt(0)->Id(), first);
@@ -138,15 +137,16 @@ TEST(WorldTest, InactiveObjectHasNoCollision)
     level.objects[0].active = false;
 
     NS::Object::Scene scene;
-    NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
-    world.Rebuild(level, scene, physics, MakeFactory(assets, level));
+    world.Rebuild(level, scene, MakeFactory(assets, level));
 
     ASSERT_EQ(world.ObjectCount(), std::size_t{1});
     EXPECT_FALSE(world.ObjectAt(0)->IsActiveSelf());
     // active を切った配置物はすり抜ける
-    EXPECT_TRUE(physics.IsEmpty());
+    NS::Physics::PhysicsWorld physics;
+    world.SyncPhysics(physics);
+    EXPECT_EQ(physics.BodyCount(), 0u);
 }
 
 TEST(WorldTest, TriggerBoxHasNoSolidCollision)
@@ -160,30 +160,36 @@ TEST(WorldTest, TriggerBoxHasNoSolidCollision)
     NS::Object::EnsureUniqueObjectIds(level);
 
     NS::Object::Scene scene;
-    NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
-    world.Rebuild(level, scene, physics, MakeFactory(assets, level));
+    world.Rebuild(level, scene, MakeFactory(assets, level));
 
     ASSERT_EQ(world.ObjectCount(), std::size_t{1});
-    // トリガの箱は通り抜ける体積。固形の当たりにも broadphase にも入らない
-    EXPECT_TRUE(physics.IsEmpty());
+    // トリガの箱は sensor body として登録されるが、固形の衝突応答は起こさない
+    NS::Physics::PhysicsWorld physics;
+    world.SyncPhysics(physics);
+    EXPECT_EQ(physics.BodyCount(), 1u);
 }
 
-TEST(WorldTest, RebuildClearsStalePhysicsAndBuildsNothingWithoutFactory)
+// 古い当たりが Rebuild 後に残ると、 編集で消した block へ当たり続ける
+TEST(WorldTest, RebuildDropsTheCollidersOfTheObjectsItReplaces)
 {
+    SceneData level;
+    level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
+    NS::Object::EnsureUniqueObjectIds(level);
+
     NS::Object::Scene scene;
-    NS::Physics::PhysicsWorld physics;
-    // 古い衝突が Rebuild 後に残ると、 編集で消した block へ当たり続ける。 必ず Clear から始まる仕様を固定する
-    physics.AddAABB(NS::Core::AABB{NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Core::Vector3{1.0f, 1.0f, 1.0f}});
-    physics.BuildBroadphase();
-    ASSERT_FALSE(physics.IsEmpty());
-
+    NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
-    const SceneData level{};
-    world.Rebuild(level, scene, physics, nullptr);
+    world.Rebuild(level, scene, MakeFactory(assets, level));
 
-    EXPECT_TRUE(physics.IsEmpty());
+    NS::Physics::PhysicsWorld physics;
+    world.SyncPhysics(physics);
+    ASSERT_EQ(physics.BodyCount(), 1u);
+
+    world.Rebuild(SceneData{}, scene, nullptr);
+
+    EXPECT_EQ(physics.BodyCount(), 0u);
     EXPECT_EQ(world.ObjectCount(), 0u);
 }
 
@@ -203,10 +209,9 @@ TEST(WorldTest, RebuildBuildsPlayerAndResolvesItById)
     NS::Object::EnsureUniqueObjectIds(level);
 
     NS::Object::Scene scene;
-    NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
-    world.Rebuild(level, scene, physics, MakeFactory(assets, level));
+    world.Rebuild(level, scene, MakeFactory(assets, level));
 
     // grid block とプレイヤーの両方が組まれ、 id 解決は所有リスト内の実体を指す
     ASSERT_EQ(world.ObjectCount(), 2u);
@@ -232,11 +237,10 @@ TEST(WorldTest, RebuildBakesFollowCameraAndResolvesTarget)
             NS::Object::SetField(component, "追従対象", NS::Object::ObjectRef{level.objects[1].objectId});
 
     NS::Object::Scene scene;
-    NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     // 参照の解決は scene 越しに world へ届くので、 組むのは scene 自身の world
     NS::Object::World& world = scene.World();
-    world.Rebuild(level, scene, physics, MakeFactory(assets, level));
+    world.Rebuild(level, scene, MakeFactory(assets, level));
 
     const auto follows = Collect<NS::Object::ThirdPersonFollowComponent>(world);
     ASSERT_EQ(follows.size(), 1u);
@@ -288,10 +292,9 @@ TEST(WorldTest, ComponentIdSurvivesBuildAndCapture)
     NS::Object::EnsureUniqueObjectIds(level);
 
     NS::Object::Scene scene;
-    NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
-    world.Rebuild(level, scene, physics, MakeFactory(assets, level));
+    world.Rebuild(level, scene, MakeFactory(assets, level));
 
     ASSERT_EQ(world.ObjectCount(), 1u);
     NS::Object::GameObject* live = world.ObjectAt(0);
@@ -330,14 +333,13 @@ TEST(WorldTest, RemoveByObjectIdDropsIdResolution)
     const std::uint32_t victimId = level.objects[1].objectId;
 
     NS::Object::Scene scene;
-    NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
-    world.Rebuild(level, scene, physics, MakeFactory(assets, level));
+    world.Rebuild(level, scene, MakeFactory(assets, level));
 
     ASSERT_NE(world.FindObject(NS::Object::ObjectRef{victimId}), nullptr);
 
-    world.RemoveByObjectId(victimId, physics);
+    world.RemoveByObjectId(victimId);
 
     EXPECT_EQ(world.ObjectCount(), 1u);
     EXPECT_EQ(world.FindObject(NS::Object::ObjectRef{victimId}), nullptr);
@@ -353,17 +355,17 @@ TEST(WorldTest, RemoveByObjectIdDropsCollider)
     const std::uint32_t victimId = level.objects[1].objectId;
 
     NS::Object::Scene scene;
-    NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
-    world.Rebuild(level, scene, physics, MakeFactory(assets, level));
+    world.Rebuild(level, scene, MakeFactory(assets, level));
 
-    const std::size_t before = physics.Aabbs().size();
-    ASSERT_EQ(before, 2u);
+    NS::Physics::PhysicsWorld physics;
+    world.SyncPhysics(physics);
+    ASSERT_EQ(physics.BodyCount(), 2u);
 
-    world.RemoveByObjectId(victimId, physics);
+    world.RemoveByObjectId(victimId);
 
-    EXPECT_EQ(physics.Aabbs().size(), 1u);
+    EXPECT_EQ(physics.BodyCount(), 1u);
 }
 
 // 据え置きカメラの配置物は問い合わせで引け、エリア外の非アクティブで組み上がる
@@ -378,10 +380,9 @@ TEST(WorldTest, RebuildBakesPlacedCamerasInactive)
     level.objects.push_back(std::move(cameraObject));
 
     NS::Object::Scene scene;
-    NS::Physics::PhysicsWorld physics;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
     World world;
-    world.Rebuild(level, scene, physics, MakeFactory(assets, level));
+    world.Rebuild(level, scene, MakeFactory(assets, level));
 
     const auto placedCameras = Collect<NS::Object::PlacedVirtualCamera>(world);
     ASSERT_EQ(placedCameras.size(), 1u);
@@ -495,7 +496,63 @@ TEST(WorldTest, UpdateAllObjectsFollowsOwnerActiveFlag)
     EXPECT_EQ(counter->Count(), 1);
 }
 
-// 取り込み形状の三角形も物理へ入る。 組み直し側が形状を名指ししない事の裏取り
+TEST(WorldTest, SyncPhysicsFillsPhysicsWorld)
+{
+    World world;
+    world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
+    world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::SphereColliderComponent>();
+
+    NS::Physics::PhysicsWorld physics;
+    world.SyncPhysics(physics);
+
+    EXPECT_EQ(physics.BodyCount(), 2u);
+}
+
+TEST(WorldTest, SyncPhysicsIntoPhysicsWorldTwiceKeepsTheCount)
+{
+    World world;
+    world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
+
+    NS::Physics::PhysicsWorld physics;
+    world.SyncPhysics(physics);
+    world.SyncPhysics(physics);
+
+    EXPECT_EQ(physics.BodyCount(), 1u);
+}
+
+// 同期は body を作り直さず、collider が覚えている id を維持する
+// 形の違う 2 つを置くのは SyncToPhysics が派生ごとに別実装だから。1 種類では 1 つの実装しか通らない
+TEST(WorldTest, SyncPhysicsIntoPhysicsWorldKeepsEveryBodyId)
+{
+    World world;
+    auto* box = world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
+    auto* sphere = world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::SphereColliderComponent>();
+
+    NS::Physics::PhysicsWorld physics;
+    world.SyncPhysics(physics);
+    const JPH::BodyID staleBox = box->BodyId();
+    const JPH::BodyID staleSphere = sphere->BodyId();
+
+    world.SyncPhysics(physics);
+
+    EXPECT_EQ(physics.BodyCount(), 2u);
+    EXPECT_EQ(box->BodyId(), staleBox);
+    EXPECT_EQ(sphere->BodyId(), staleSphere);
+}
+
+TEST(WorldTest, InactiveColliderStaysOutOfPhysicsWorld)
+{
+    World world;
+    auto* collider = world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
+    collider->SetActive(false);
+
+    NS::Physics::PhysicsWorld physics;
+    world.SyncPhysics(physics);
+
+    EXPECT_EQ(physics.BodyCount(), 0u);
+}
+
+// 取り込み形状の三角形も物理へ入る。 同期側が形状を名指ししない事の裏取り
 TEST(WorldTest, MeshColliderTrianglesReachPhysics)
 {
     // CCW 並びで法線が上を向く床の三角形。 斜辺を x+z=4 まで押し出し、 原点を縁でなく内側に置く
@@ -508,34 +565,12 @@ TEST(WorldTest, MeshColliderTrianglesReachPhysics)
     floor->AddComponent<NS::Object::MeshColliderComponent>(std::move(tris));
 
     NS::Physics::PhysicsWorld physics;
-    world.RebuildPhysics(physics);
-    ASSERT_FALSE(physics.IsEmpty());
+    world.SyncPhysics(physics);
+    ASSERT_EQ(physics.BodyCount(), 1u);
 
-    NS::Physics::Capsule cap;
-    cap.center = NS::Core::Vector3{0.0f, 2.0f, 0.0f};
-    const NS::Physics::SweepHit hit = physics.SweepCapsule(cap, NS::Core::Vector3{0.0f, -3.0f, 0.0f});
-    EXPECT_TRUE(hit.hit);
-    EXPECT_GT(hit.normal.y, 0.7f);
-}
-
-// 箱の入れ先は回転で決まる。 90° 刻みは AABB、 傾いていれば OBB
-TEST(WorldTest, BoxColliderRoutesByRotation)
-{
-    World aligned;
-    aligned.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
-
-    NS::Physics::PhysicsWorld alignedPhysics;
-    aligned.RebuildPhysics(alignedPhysics);
-    EXPECT_EQ(alignedPhysics.Aabbs().size(), 1u);
-
-    World tilted;
-    auto* box = tilted.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
-    box->SetRotationEulerDegrees(NS::Core::Vector3{0.0f, 30.0f, 0.0f});
-
-    NS::Physics::PhysicsWorld tiltedPhysics;
-    tilted.RebuildPhysics(tiltedPhysics);
-    EXPECT_TRUE(tiltedPhysics.Aabbs().empty());
-    EXPECT_FALSE(tiltedPhysics.IsEmpty());
+    float distance = 0.0f;
+    EXPECT_TRUE(physics.RaycastDown(NS::Core::Vector3{0.0f, 2.0f, 0.0f}, 8.0f, distance));
+    EXPECT_NEAR(distance, 2.0f, 1.0e-3f);
 }
 
 // 帯を回すたびの確保と並べ替えが 1 フレームの予算をどれだけ食うかを測る
@@ -571,4 +606,57 @@ TEST(WorldTest, UpdateObjectsCostMeasurement)
 
     measure(20, 5);
     measure(1000, 4);
+}
+
+// 飛んでいる岩の body は collider の持ち物ではない。同期が巻き添えで消すと飛行が途中で止まる
+TEST(WorldTest, SyncPhysicsKeepsBodiesItDidNotCreate)
+{
+    World world;
+    world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
+
+    NS::Physics::PhysicsWorld physics;
+    world.SyncPhysics(physics);
+
+    NS::Core::Sphere loose;
+    loose.center = NS::Core::Vector3{20.0f, 20.0f, 20.0f};
+    loose.radius = 0.5f;
+    const JPH::BodyID outsider = physics.AddSphere(loose, NS::Physics::ObjectLayers::Rock);
+
+    world.SyncPhysics(physics);
+
+    EXPECT_EQ(physics.BodyCount(), 2u);
+    EXPECT_NEAR(physics.BodyPosition(outsider).y, 20.0f, 1.0e-4f);
+}
+
+// 寝かせた collider の body は同期で外れる。残ると壊した物の当たりが固形のまま居座る
+TEST(WorldTest, SyncPhysicsDropsTheBodyOfADeactivatedCollider)
+{
+    World world;
+    auto* box = world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
+
+    NS::Physics::PhysicsWorld physics;
+    world.SyncPhysics(physics);
+    ASSERT_EQ(physics.BodyCount(), 1u);
+
+    box->SetActive(false);
+    world.SyncPhysics(physics);
+
+    EXPECT_EQ(physics.BodyCount(), 0u);
+    EXPECT_TRUE(box->BodyId().IsInvalid());
+}
+
+// 配置物ごと消える時は破棄の前に OnEndPlay が通る。ここで外さないと body が誰の持ち物でもなくなる
+TEST(WorldTest, ClearTakesEveryColliderBodyOutOfThePhysicsWorld)
+{
+    World world;
+    world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
+    world.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::SphereColliderComponent>();
+
+    NS::Physics::PhysicsWorld physics;
+    world.SyncPhysics(physics);
+    ASSERT_EQ(physics.BodyCount(), 2u);
+
+    world.Clear();
+
+    EXPECT_EQ(physics.BodyCount(), 0u);
 }

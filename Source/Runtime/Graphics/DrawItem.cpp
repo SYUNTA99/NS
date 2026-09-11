@@ -19,7 +19,7 @@ namespace NS::Graphics
         item.material->CreateInputLayoutFor(*item.mesh);
         item.material->SetParams(renderer, item.constants);
 
-        // 追加のシェーダデータ（アニメーション情報など）があれば転送・適用する
+        // ボーンパレットなどの追加データがあれば転送して bind する
         if (item.extraVsCb != nullptr)
         {
             if (item.extraVsData != nullptr && item.extraVsSize != 0)

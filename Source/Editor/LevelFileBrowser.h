@@ -8,7 +8,7 @@
 
 namespace NS::Editor
 {
-    //! @brief レベルファイルの保存・読込を行うためのモーダルUI
+    //! @brief レベルファイルを保存・読込するモーダル UI
     class LevelFileBrowser : public NS::Core::NonCopyable
     {
     public:
@@ -33,7 +33,7 @@ namespace NS::Editor
         //! @brief 読込用モーダルを開く
         void OpenLoadModal() noexcept;
 
-        //! @brief UIの描画処理を行う。ユーザーの操作結果をResultとして返す
+        //! @brief モーダルを描き、操作の結果を Result で返す
         [[nodiscard]] Result Render() noexcept;
 
         //! @brief 保存結果のフィードバックを表示する

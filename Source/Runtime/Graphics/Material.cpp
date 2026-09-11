@@ -38,7 +38,7 @@ namespace NS::Graphics
             return;
         }
 
-        // 必要に応じて定数バッファを生成する
+        // サイズ 0 の指定は定数バッファを持たない意味なので作らない
         if (desc.constantBufferSize > 0u)
         {
             BufferDesc cbDesc = MakeConstantBufferDesc(desc.constantBufferSize);

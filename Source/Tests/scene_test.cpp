@@ -1,6 +1,11 @@
-#include <gtest/gtest.h>
 #include <Runtime/Core/Clock.h>
+#include <Runtime/Core/Math.h>
+#include <Runtime/Core/Sphere.h>
+#include <Runtime/Object/Components/BoxColliderComponent.h>
+#include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Scene/Scene.h>
+#include <Runtime/Physics/PhysicsWorld.h>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -84,4 +89,85 @@ TEST(SceneTest, PolymorphicDeleteCallsDerivedDtor)
         std::unique_ptr<NS::Object::Scene> scene = std::make_unique<TrackedScene>(&dtorCalled);
     }
     EXPECT_TRUE(dtorCalled);
+}
+
+TEST(SceneTest, DestroyObjectKeepsTheSurvivingColliderBodyId)
+{
+    NS::Object::SceneData data;
+    NS::Object::ObjectData removed;
+    removed.objectId = 10;
+    removed.components.push_back(NS::Object::MakeComponentEntry("BoxColliderComponent"));
+    data.objects.push_back(std::move(removed));
+
+    NS::Object::ObjectData survivor;
+    survivor.objectId = 20;
+    survivor.components.push_back(NS::Object::MakeComponentEntry("BoxColliderComponent"));
+    data.objects.push_back(std::move(survivor));
+
+    NS::Object::Scene scene;
+    scene.LoadFromData(std::move(data));
+    NS::Object::GameObject* survivingObject = scene.World().FindByObjectId(20);
+    ASSERT_NE(survivingObject, nullptr);
+    auto* collider = survivingObject->FindComponent<NS::Object::BoxColliderComponent>();
+    ASSERT_NE(collider, nullptr);
+    const JPH::BodyID bodyId = collider->BodyId();
+
+    scene.DestroyObject(10);
+
+    EXPECT_EQ(collider->BodyId(), bodyId);
+    EXPECT_EQ(scene.Physics().BodyCount(), 1u);
+}
+
+namespace
+{
+    using NS::Core::Sphere;
+    using NS::Core::Vector3;
+    namespace ObjectLayers = NS::Physics::ObjectLayers;
+
+    JPH::BodyID DropSphereInto(NS::Object::Scene& scene)
+    {
+        const JPH::BodyID id = scene.Physics().AddSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, ObjectLayers::Rock);
+        scene.Physics().OptimizeBroadPhase();
+        scene.Physics().SetBodyDynamic(id, true);
+        return id;
+    }
+
+    void RunFrames(NS::Object::Scene& scene, int frames)
+    {
+        NS::Core::FrameTimer::SetFixedDelta(1.0f / 60.0f);
+        for (int i = 0; i < frames; ++i)
+            scene.OnUpdate();
+    }
+} // namespace
+
+TEST(SceneTest, OnUpdateStepsThePhysicsWorld)
+{
+    NS::Object::Scene scene;
+    const JPH::BodyID id = DropSphereInto(scene);
+
+    RunFrames(scene, 30);
+
+    EXPECT_LT(scene.Physics().BodyPosition(id).y, 9.0f);
+}
+
+TEST(SceneTest, EditModeLeavesThePhysicsWorldStill)
+{
+    NS::Object::Scene scene;
+    const JPH::BodyID id = DropSphereInto(scene);
+    scene.SetSimulationEnabled(false);
+
+    RunFrames(scene, 30);
+
+    EXPECT_NEAR(scene.Physics().BodyPosition(id).y, 10.0f, 1.0e-5f);
+}
+
+TEST(SceneTest, PausedSceneLeavesThePhysicsWorldStill)
+{
+    NS::Object::Scene scene;
+    const JPH::BodyID id = DropSphereInto(scene);
+    scene.SetSimulationPaused(true);
+
+    RunFrames(scene, 30);
+
+    EXPECT_NEAR(scene.Physics().BodyPosition(id).y, 10.0f, 1.0e-5f);
 }

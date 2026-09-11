@@ -1,17 +1,17 @@
-#include <filesystem>
-#include <gtest/gtest.h>
-#include <iostream>
 #include <Runtime/Core/Filesystem.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Graphics/Animation.h>
 #include <Runtime/Graphics/GltfLoader.h>
 #include <Runtime/Graphics/Skeleton.h>
-#include <Runtime/Core/Math.h>
+#include <filesystem>
+#include <gtest/gtest.h>
+#include <iostream>
 #include <span>
 #include <string>
 #include <vector>
 
 // 実アセット (Khronos サンプル CesiumMan.glb、 人型の歩行) を読み、 skin + animation が取り込めて
-// 別時刻で別ポーズになる (実際に動く) ことを確認する。 アセットが無ければ skip
+// 別時刻で別ポーズになることを確認する。 アセットが無ければ飛ばす
 TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
 {
     const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / "Assets" / "Models" / "CesiumMan.glb";
@@ -87,7 +87,7 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
     EXPECT_GT(bindExtent.y, bindExtent.x) << "bind ポーズで Y が最長でない (寝ている可能性)";
     EXPECT_GT(bindExtent.y, bindExtent.z) << "bind ポーズで Y が最長でない (寝ている可能性)";
 
-    // 骨に node 名が入っている (リターゲットの対応づけキー)
+    // 骨に node 名が入っている。リターゲットの対応づけキーになる
     std::size_t namedBones = 0;
     for (const NS::Graphics::Bone& bone : data.skeleton.Bones())
         if (!bone.name.empty())

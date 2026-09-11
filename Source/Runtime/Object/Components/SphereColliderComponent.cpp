@@ -1,3 +1,5 @@
+#include "Runtime/Core/AABB.h"
+#include "Runtime/Core/Sphere.h"
 #include "Runtime/Object/Components/SphereColliderComponent.h"
 
 #include "Runtime/Object/GameObject.h"
@@ -64,9 +66,9 @@ namespace NS::Object
         return NS::Core::AABB{s.center, NS::Core::Vector3{s.radius, s.radius, s.radius}};
     }
 
-    void SphereColliderComponent::AddToPhysics(NS::Physics::PhysicsWorld& physics) const
+    void SphereColliderComponent::SyncToPhysics(NS::Physics::PhysicsWorld& physics)
     {
-        physics.AddSphere(WorldSphere());
+        TrackBody(physics, physics.SyncSphere(BodyIn(physics), WorldSphere(), NS::Physics::ObjectLayers::Terrain));
     }
 
     NS_CLASS(SphereColliderComponent)

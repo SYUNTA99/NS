@@ -98,7 +98,7 @@ namespace NS::Object
 
     void GameObject::OnEndPlay()
     {
-        // 後から登録したものを先に廃棄する
+        // 更新の並びと逆順に呼ぶ
         for (auto it = m_components.rbegin(); it != m_components.rend(); ++it)
         {
             Component* comp = *it;

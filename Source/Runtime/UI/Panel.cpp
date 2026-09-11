@@ -13,7 +13,7 @@ namespace NS::UI
     Panel::Panel(std::string_view title, bool* isOpen, int windowFlags) noexcept
     {
 #if NS_UI_IMGUI_ENABLED
-        // NewFrame 未呼出だと GetCurrentContext==nullptr で Begin が assert 死するので守る
+        // コンテキスト未作成で Begin を呼ぶと GImGui の null 参照で落ちる
         if (::ImGui::GetCurrentContext() == nullptr)
         {
             (void)title;
@@ -21,7 +21,7 @@ namespace NS::UI
             (void)windowFlags;
             return;
         }
-        // Begin は null-terminated 必須なので std::string 経由で渡す
+        // Begin は null 終端の文字列が要るので std::string 経由で渡す
         const std::string label(title);
         m_isOpen = ::ImGui::Begin(label.c_str(), isOpen, static_cast<ImGuiWindowFlags>(windowFlags));
         m_began = true;

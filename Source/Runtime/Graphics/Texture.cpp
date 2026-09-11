@@ -7,9 +7,9 @@
 #include "Runtime/Graphics/GraphicObject.h"
 #include "Runtime/Graphics/Renderer.h"
 
-#include <algorithm>
 #include <DDSTextureLoader.h>
 #include <WICTextureLoader.h>
+#include <algorithm>
 
 namespace NS::Graphics
 {
@@ -52,7 +52,7 @@ namespace NS::Graphics
             return ::NS::Core::Size2D{static_cast<int>(d.Width), static_cast<int>(d.Height)};
         }
 
-        // 指定された用途（バインドフラグ）に応じて、必要なビューだけを生成する
+        // bindFlags に立っているビューだけを作る
         void CreateRequestedViews(ID3D11Device* device,
                                   ID3D11Texture2D* tex2d,
                                   UINT bindFlags,

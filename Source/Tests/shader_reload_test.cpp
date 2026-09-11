@@ -1,11 +1,11 @@
-#include <filesystem>
-#include <gtest/gtest.h>
-#include <memory>
 #include <Runtime/Core/Filesystem.h>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/Shader.h>
 #include <Runtime/Platform/Window.h>
+#include <filesystem>
+#include <gtest/gtest.h>
+#include <memory>
 
 namespace
 {
@@ -15,7 +15,7 @@ namespace
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
 
-    // 存在しない .ps. パスは magenta fallback shader になる (ステージはファイル名で判定)
+    // 存在しない .ps. パスは magenta フォールバックシェーダになる。ステージはファイル名で判定する
     constexpr const char* k_FallbackPsPath = "C:/nonexistent/__ns_reload_fallback.ps.hlsl";
 
     WindowDesc MakeWindowDesc(const char* title)
@@ -86,7 +86,7 @@ TEST_F(ShaderReloadTest, ReloadSucceedsForValidShader)
     EXPECT_TRUE(ps->IsValid());
 }
 
-// 再コンパイル失敗 (読込不可) では旧 GPU リソースを保持し false を返す (編集中の打ち間違いで画面を壊さない)
+// 再コンパイル失敗 (読込不可) では旧 GPU リソースを保持し false を返す。編集中の打ち間違いで画面を壊さない
 TEST_F(ShaderReloadTest, ReloadFailureKeepsPreviousObject)
 {
     Window window(MakeWindowDesc("ns_reload_fail"));

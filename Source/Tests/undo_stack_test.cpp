@@ -16,7 +16,7 @@ namespace SceneNs = NS::Object;
 namespace
 {
     // 実 world を持たずに ObjectSnapshotCommand の往復だけを検証する適用経路
-    // ObjectSnapshotApplier の中核 (組み直し抜き) と同じ差し替え/新規/除去を SceneData 上で行う
+    // ObjectSnapshotApplier の中核と同じ差し替え/新規/除去を SceneData 上で行う。組み直しはしない
     class FakeApplier final : public EditorNs::IObjectSnapshotApplier
     {
     public:

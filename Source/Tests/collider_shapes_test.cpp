@@ -1,9 +1,12 @@
-#include <gtest/gtest.h>
+#include <Game/Player/PlayerComponent.h>
+#include <Runtime/Core/Sphere.h>
 #include <Runtime/Object/Components/CapsuleColliderComponent.h>
 #include <Runtime/Object/Components/MeshColliderComponent.h>
 #include <Runtime/Object/Components/SphereColliderComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
+#include <Runtime/Physics/PhysicsWorld.h>
+#include <gtest/gtest.h>
 #include <vector>
 
 namespace
@@ -59,26 +62,40 @@ TEST(CapsuleColliderTest, DefaultsAreVertical)
     EXPECT_FLOAT_EQ(cc.Radius(), 0.4f);
     EXPECT_FLOAT_EQ(cc.HalfHeight(), 0.5f);
 
-    const NS::Physics::Capsule c = cc.WorldCapsule();
-    EXPECT_NEAR(c.axis.x, 0.0f, 1e-5f);
-    EXPECT_NEAR(c.axis.y, 1.0f, 1e-5f);
-    EXPECT_NEAR(c.axis.z, 0.0f, 1e-5f);
-    EXPECT_FLOAT_EQ(c.radius, 0.4f);
-    EXPECT_FLOAT_EQ(c.halfHeight, 0.5f);
+    const NS::Physics::Capsule capsule = cc.WorldCapsule();
+    EXPECT_NEAR(capsule.axis.x, 0.0f, 1e-5f);
+    EXPECT_NEAR(capsule.axis.y, 1.0f, 1e-5f);
+    EXPECT_NEAR(capsule.axis.z, 0.0f, 1e-5f);
+    EXPECT_FLOAT_EQ(capsule.radius, 0.4f);
+    EXPECT_FLOAT_EQ(capsule.halfHeight, 0.5f);
 }
 
-TEST(CapsuleColliderTest, WorldCapsuleReflectsOwnerScale)
+TEST(CapsuleColliderTest, WorldPropertiesReflectOwnerScale)
 {
     NS::Object::GameObject obj;
     obj.Root().SetPosition(Vector3{0.0f, 5.0f, 0.0f});
     obj.Root().SetScale(Vector3{2.0f, 3.0f, 2.0f});
     auto& cc = *obj.AddComponent<NS::Object::CapsuleColliderComponent>(0.4f, 0.5f);
 
-    const NS::Physics::Capsule c = cc.WorldCapsule();
-    EXPECT_NEAR(c.center.y, 5.0f, 1e-5f);
-    EXPECT_NEAR(c.radius, 0.8f, 1e-5f);     // 0.4 * max(scale.x, scale.z)=2
-    EXPECT_NEAR(c.halfHeight, 1.5f, 1e-5f); // 0.5 * scale.y=3
-    EXPECT_NEAR(c.axis.y, 1.0f, 1e-5f);
+    const NS::Physics::Capsule capsule = cc.WorldCapsule();
+    EXPECT_NEAR(capsule.center.y, 5.0f, 1e-5f);
+    EXPECT_NEAR(capsule.radius, 0.8f, 1e-5f);     // 0.4 * max(scale.x, scale.z)=2
+    EXPECT_NEAR(capsule.halfHeight, 1.5f, 1e-5f); // 0.5 * scale.y=3
+    EXPECT_NEAR(capsule.axis.y, 1.0f, 1e-5f);
+}
+
+// 自分で掃引して動く配置物の capsule を静的世界へ入れると、掃引が自分に当たって動けなくなる
+// 判定は型でなく SetExcludedFromStaticWorld の値で見る。EntityComponent の OnStart が同居の capsule へ設定する
+TEST(CapsuleColliderTest, SyncToPhysicsSkipsTheOwnerThatSweepsItself)
+{
+    NS::Object::GameObject obj;
+    auto& cc = *obj.AddComponent<NS::Object::CapsuleColliderComponent>(0.4f, 0.5f);
+    obj.AddComponent<NS::Game::Player::PlayerComponent>();
+    obj.OnStart();
+
+    NS::Physics::PhysicsWorld physics;
+    cc.SyncToPhysics(physics);
+    EXPECT_EQ(physics.BodyCount(), 0u);
 }
 
 TEST(CapsuleColliderTest, RotationEulerDegreesRoundTrips)

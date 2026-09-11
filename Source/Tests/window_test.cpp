@@ -1,6 +1,6 @@
-#include <gtest/gtest.h>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Platform/Window.h>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -51,6 +51,20 @@ TEST_F(WindowLoggerTest, RequestCloseSetsShouldClose)
     window.RequestClose();
     window.PollMessages();
     EXPECT_TRUE(window.ShouldClose());
+}
+
+TEST_F(WindowLoggerTest, CursorLockFlagRoundTrips)
+{
+    NS::Platform::Window window(MakeDesc("ns_test_cursor_lock"));
+    ASSERT_TRUE(window.IsValid());
+    EXPECT_FALSE(window.IsCursorLocked());
+
+    window.SetCursorLocked(true);
+    window.PollMessages();
+    EXPECT_TRUE(window.IsCursorLocked());
+
+    window.SetCursorLocked(false);
+    EXPECT_FALSE(window.IsCursorLocked());
 }
 
 TEST_F(WindowLoggerTest, NativeHandleNotNull)

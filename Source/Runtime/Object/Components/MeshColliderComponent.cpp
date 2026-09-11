@@ -34,21 +34,19 @@ namespace NS::Object
         result.reserve(m_localTriangles.size());
         for (const NS::Physics::Triangle& tri : m_localTriangles)
         {
-            NS::Physics::Triangle worldTri;
-            worldTri.v0 = NS::Core::Vector3::Transform(tri.v0, world);
-            worldTri.v1 = NS::Core::Vector3::Transform(tri.v1, world);
-            worldTri.v2 = NS::Core::Vector3::Transform(tri.v2, world);
-            result.push_back(worldTri);
+            result.push_back(NS::Physics::Triangle{NS::Core::Vector3::Transform(tri.v0, world),
+                                                   NS::Core::Vector3::Transform(tri.v1, world),
+                                                   NS::Core::Vector3::Transform(tri.v2, world)});
         }
         return result;
     }
 
-    void MeshColliderComponent::AddToPhysics(NS::Physics::PhysicsWorld& physics) const
+    void MeshColliderComponent::SyncToPhysics(NS::Physics::PhysicsWorld& physics)
     {
-        for (const NS::Physics::Triangle& tri : WorldTriangles())
-            physics.AddTriangle(tri);
+        const std::vector<NS::Physics::Triangle> triangles = WorldTriangles();
+        TrackBody(physics, physics.SyncMesh(BodyIn(physics), triangles, NS::Physics::ObjectLayers::Terrain));
     }
 
-    // 三角形群は asset 由来なので data からは空で作り、読み込み時に ResolveAssets が差し込む
+    // 三角形群はリフレクションで運べないので data からは空で作る。差すのは呼出側の SetLocalTriangles
     NS_CLASS(MeshColliderComponent)
 } // namespace NS::Object

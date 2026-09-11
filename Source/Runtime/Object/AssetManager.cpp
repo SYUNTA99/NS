@@ -3,6 +3,7 @@
 #include "Runtime/Core/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
+#include "Runtime/Core/Math.h"
 #include "Runtime/Graphics/FrameConstants.h"
 #include "Runtime/Graphics/GltfLoader.h"
 #include "Runtime/Graphics/Material.h"
@@ -13,7 +14,6 @@
 #include "Runtime/Graphics/SkeletalMesh.h"
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Graphics/Texture.h"
-#include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 
 #include <memory>
@@ -474,7 +474,7 @@ namespace NS::Object
 
     void AssetManager::Clear() noexcept
     {
-        // material は leaf である shader / texture を参照するので先に解放する
+        // material は shader / texture を参照するので先に解放する
         m_sharedMaterials.clear();
         m_materials.clear();
         m_textures.clear();

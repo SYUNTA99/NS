@@ -1,16 +1,24 @@
 #include "Editor/LevelFilePaths.h"
 #include "Game/Level/BlockObject.h"
+#include "Game/Level/BreakableComponent.h"
+#include "Game/Level/CollisionInputComponent.h"
 #include "Game/Level/FollowCameraObject.h"
+#include "Game/Level/ImpactResolverComponent.h"
 #include "Game/Level/KillZoneComponent.h"
 #include "Game/Player.h"
 #include "Runtime/Core/Filesystem.h"
 #include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
+#include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
+#include "Runtime/Object/Reflection/Curve.h"
+#include "Runtime/Object/Reflection/ObjectBuilder.h"
+#include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 
 #include <cstring>
 #include <gtest/gtest.h>
+#include <memory>
 #include <span>
 #include <string>
 #include <vector>
@@ -157,7 +165,7 @@ TEST(SaveLoadRoundTrip, ObjectParentSurvivesJsonRoundTrip)
 }
 
 // 正準 JSON は object キーが辞書順・float が最短往復表現なので、 同一データの 2 回保存は
-// バイト一致する。 これがレベル差分の決定性 (git diff の安定) を担保する
+// バイト一致する。 これがレベル差分の決定性を担保し、 git diff が安定する
 TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
 {
     auto path1 = TestScenePath("test_byteid_a");
@@ -200,7 +208,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     EXPECT_TRUE(dst.objects.empty());
 }
 
-// object 数が上限を超えるレベルは保存段でクラッシュせず false を返す (メモリ枯渇による DoS の防御)
+// object 数が上限を超えるレベルは保存段でクラッシュせず false を返す。 メモリ枯渇まで走らせない
 TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
 {
     auto path = TestScenePath("test_oversized");
@@ -213,7 +221,7 @@ TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
 }
 
 // 型名 + リフレクションフィールド値 (全 5 種の値) を持つコンポ一覧が save→load で復元される
-// (全コンポ一覧を持つ形式の往復) 並びは正準化 (名前昇順) されるため等価判定は CRC ではなく正準 JSON の一致で行う
+// 全コンポ一覧を持つ形式の往復。 並びは正準化 (名前昇順) されるため等価判定は CRC ではなく正準 JSON の一致で行う
 TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 {
     auto path = TestScenePath("test_components");
@@ -394,7 +402,7 @@ TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
     EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(player).y, Player::k_DefaultSpawnY);
     // 既定構成 5 点。 mesh 描画 + 移動 + 入力 + 命 + 接地影
     EXPECT_NE(SceneNs::FindComponentEntry(player, "MeshRendererComponent"), nullptr);
-    EXPECT_NE(SceneNs::FindComponentEntry(player, "CharacterMovementComponent"), nullptr);
+    EXPECT_NE(SceneNs::FindComponentEntry(player, "PlayerComponent"), nullptr);
     EXPECT_NE(SceneNs::FindComponentEntry(player, "PlayerInputComponent"), nullptr);
     EXPECT_NE(SceneNs::FindComponentEntry(player, "HealthComponent"), nullptr);
     EXPECT_NE(SceneNs::FindComponentEntry(player, "ShadowComponent"), nullptr);
@@ -528,4 +536,301 @@ TEST(SaveLoadRoundTrip, FollowCameraObjectRoundTrip)
     ASSERT_NE(comp, nullptr);
     ASSERT_TRUE(SceneNs::HasField(*comp, "追従対象"));
     EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "追従対象").id, dst.objects[0].objectId);
+}
+
+namespace
+{
+    // Cube 1 個へ質量と耐久を積む。値は欄名をキーに書き、Inspector で入れた時と同じ形にする
+    SceneNs::ObjectData MakeBreakableCube(int cellX, float mass, float toughness)
+    {
+        SceneNs::ObjectData object = LevelNs::MakeCellObject(cellX, 0, 0);
+        nlohmann::json breakable = SceneNs::MakeComponentEntry("BreakableComponent");
+        SceneNs::SetField(breakable, "質量", mass);
+        SceneNs::SetField(breakable, "耐久", toughness);
+        object.components.push_back(std::move(breakable));
+        return object;
+    }
+
+    const nlohmann::json* FindBreakableEntry(const nlohmann::json& components)
+    {
+        for (const nlohmann::json& entry : components)
+        {
+            if (entry.value("type", std::string{}) == "BreakableComponent")
+                return &entry;
+        }
+        return nullptr;
+    }
+
+    nlohmann::json* FindBreakableEntry(nlohmann::json& components)
+    {
+        for (nlohmann::json& entry : components)
+        {
+            if (entry.value("type", std::string{}) == "BreakableComponent")
+                return &entry;
+        }
+        return nullptr;
+    }
+} // namespace
+
+// 入れた質量と耐久が JSON を経て live の Component まで戻る
+TEST(SaveLoadRoundTrip, BreakableValuesSurviveRoundTrip)
+{
+    SceneNs::SceneData src;
+    src.objects.push_back(MakeBreakableCube(0, 3.5f, 2.0f));
+
+    SceneNs::SceneData dst;
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
+    ASSERT_EQ(dst.objects.size(), 1u);
+
+    const nlohmann::json* entry = SceneNs::FindComponentEntry(dst.objects[0], "BreakableComponent");
+    ASSERT_NE(entry, nullptr);
+    EXPECT_FLOAT_EQ(SceneNs::FieldFloat(*entry, "質量", -1.0f), 3.5f);
+    EXPECT_FLOAT_EQ(SceneNs::FieldFloat(*entry, "耐久", -1.0f), 2.0f);
+
+    const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
+    ASSERT_NE(live, nullptr);
+    const LevelNs::BreakableComponent* breakable = live->FindComponent<LevelNs::BreakableComponent>();
+    ASSERT_NE(breakable, nullptr);
+    EXPECT_FLOAT_EQ(breakable->Mass(), 3.5f);
+    EXPECT_FLOAT_EQ(breakable->Toughness(), 2.0f);
+}
+
+// 同じ Cube を 2 個並べても値は個体ごと。同じ壁が勢い次第で壊す対象にも壁にもなる前提
+TEST(SaveLoadRoundTrip, BreakableValuesStayPerObject)
+{
+    SceneNs::SceneData src;
+    src.objects.push_back(MakeBreakableCube(0, 0.5f, 1.0f));
+    src.objects.push_back(MakeBreakableCube(1, 4.0f, 3.0f));
+    SceneNs::EnsureUniqueObjectIds(src);
+
+    SceneNs::SceneData dst;
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
+    ASSERT_EQ(dst.objects.size(), 2u);
+
+    const std::unique_ptr<SceneNs::GameObject> light = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
+    const std::unique_ptr<SceneNs::GameObject> heavy = SceneNs::BuildSceneObject(dst.objects[1], nullptr);
+    ASSERT_NE(light, nullptr);
+    ASSERT_NE(heavy, nullptr);
+
+    const LevelNs::BreakableComponent* lightBreakable = light->FindComponent<LevelNs::BreakableComponent>();
+    const LevelNs::BreakableComponent* heavyBreakable = heavy->FindComponent<LevelNs::BreakableComponent>();
+    ASSERT_NE(lightBreakable, nullptr);
+    ASSERT_NE(heavyBreakable, nullptr);
+    EXPECT_FLOAT_EQ(lightBreakable->Mass(), 0.5f);
+    EXPECT_FLOAT_EQ(lightBreakable->Toughness(), 1.0f);
+    EXPECT_FLOAT_EQ(heavyBreakable->Mass(), 4.0f);
+    EXPECT_FLOAT_EQ(heavyBreakable->Toughness(), 3.0f);
+}
+
+// .scene のキーは欄名そのもの。書き手と読み手が同じ欄名を使う限り往復自体は通るので、
+// 綴りは値ごと突き合わせる。取り違えは保存済みレベルの値を静かに既定へ戻す
+TEST(SaveLoadRoundTrip, BreakableFieldKeysAreTheLockedLabels)
+{
+    SceneNs::GameObject live;
+    LevelNs::BreakableComponent* breakable = live.AddComponent<LevelNs::BreakableComponent>();
+    ASSERT_NE(breakable, nullptr);
+    breakable->SetMass(2.0f);
+    breakable->SetToughness(1.5f);
+
+    SceneNs::SceneData src;
+    src.objects.push_back(SceneNs::CaptureObjectData(live));
+
+    const nlohmann::json root = nlohmann::json::parse(SceneNs::SerializeSceneToJson(src));
+    const nlohmann::json* entry = FindBreakableEntry(root.at("objects").at(0).at("components"));
+    ASSERT_NE(entry, nullptr);
+
+    const nlohmann::json& fields = entry->at("fields");
+    ASSERT_TRUE(fields.contains("質量")) << "欄名を変えると保存済みレベルの質量が既定へ戻る";
+    ASSERT_TRUE(fields.contains("耐久")) << "欄名を変えると保存済みレベルの耐久が既定へ戻る";
+    EXPECT_FLOAT_EQ(fields.at("質量").get<float>(), 2.0f);
+    EXPECT_FLOAT_EQ(fields.at("耐久").get<float>(), 1.5f);
+    EXPECT_EQ(fields.size(), 2u);
+}
+
+// 欄が欠けた .scene でも読込は壊れない。欠けた欄だけコード既定へ落ち、隣の欄は残る
+TEST(SaveLoadRoundTrip, MissingBreakableFieldFallsBackToDefault)
+{
+    SceneNs::GameObject source;
+    LevelNs::BreakableComponent* authored = source.AddComponent<LevelNs::BreakableComponent>();
+    ASSERT_NE(authored, nullptr);
+    authored->SetMass(3.5f);
+    authored->SetToughness(2.0f);
+
+    SceneNs::SceneData src;
+    src.objects.push_back(SceneNs::CaptureObjectData(source));
+
+    nlohmann::json root = nlohmann::json::parse(SceneNs::SerializeSceneToJson(src));
+    nlohmann::json* entry = FindBreakableEntry(root.at("objects").at(0).at("components"));
+    ASSERT_NE(entry, nullptr);
+    entry->at("fields").erase("質量");
+
+    SceneNs::SceneData dst;
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, root.dump()));
+    ASSERT_EQ(dst.objects.size(), 1u);
+
+    const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
+    ASSERT_NE(live, nullptr);
+    const LevelNs::BreakableComponent* breakable = live->FindComponent<LevelNs::BreakableComponent>();
+    ASSERT_NE(breakable, nullptr);
+    EXPECT_FLOAT_EQ(breakable->Mass(), 1.0f);
+    EXPECT_FLOAT_EQ(breakable->Toughness(), 2.0f);
+}
+
+namespace
+{
+    // CollisionInputComponent は調整値の公開 setter を持たないため、Inspector と同じリフレクション経路で読み書きする
+    const SceneNs::FieldDesc* ChargeField(const char* label)
+    {
+        return SceneNs::FindField(LevelNs::CollisionInputComponent::StaticReflection(), label);
+    }
+
+    template <class T> void WriteChargeField(LevelNs::CollisionInputComponent& input, const char* label, const T& value)
+    {
+        const SceneNs::FieldDesc* field = ChargeField(label);
+        ASSERT_NE(field, nullptr) << label;
+        field->set(&input, &value);
+    }
+
+    template <class T> [[nodiscard]] T ReadChargeField(const LevelNs::CollisionInputComponent& input, const char* label)
+    {
+        T value{};
+        const SceneNs::FieldDesc* field = ChargeField(label);
+        if (field == nullptr)
+        {
+            ADD_FAILURE() << label << " の欄が見つからない";
+            return value;
+        }
+        field->get(&input, &value);
+        return value;
+    }
+
+    const nlohmann::json* FindChargeEntry(const nlohmann::json& components)
+    {
+        for (const nlohmann::json& entry : components)
+        {
+            if (entry.value("type", std::string{}) == "CollisionInputComponent")
+                return &entry;
+        }
+        return nullptr;
+    }
+
+    [[nodiscard]] SceneNs::Curve ThreePointCurve()
+    {
+        SceneNs::Curve curve;
+        curve.count = 3;
+        curve.keys[0] = SceneNs::Curve::Key{0.0f, 1.0f};
+        curve.keys[1] = SceneNs::Curve::Key{0.5f, 1.5f};
+        curve.keys[2] = SceneNs::Curve::Key{1.0f, 3.0f};
+        return curve;
+    }
+} // namespace
+
+TEST(SaveLoadRoundTrip, ChargeSecondsSurviveRoundTrip)
+{
+    SceneNs::GameObject source;
+    LevelNs::CollisionInputComponent* authored = source.AddComponent<LevelNs::CollisionInputComponent>();
+    ASSERT_NE(authored, nullptr);
+    WriteChargeField(*authored, "チャージしきい値秒", 0.4f);
+    WriteChargeField(*authored, "チャージ満タン秒", 1.8f);
+
+    SceneNs::SceneData src;
+    src.objects.push_back(SceneNs::CaptureObjectData(source));
+
+    SceneNs::SceneData dst;
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
+    ASSERT_EQ(dst.objects.size(), 1u);
+
+    const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
+    ASSERT_NE(live, nullptr);
+    const LevelNs::CollisionInputComponent* input = live->FindComponent<LevelNs::CollisionInputComponent>();
+    ASSERT_NE(input, nullptr);
+    EXPECT_FLOAT_EQ(ReadChargeField<float>(*input, "チャージしきい値秒"), 0.4f);
+    EXPECT_FLOAT_EQ(ReadChargeField<float>(*input, "チャージ満タン秒"), 1.8f);
+}
+
+TEST(SaveLoadRoundTrip, ChargeCurveSurvivesRoundTrip)
+{
+    SceneNs::GameObject source;
+    LevelNs::CollisionInputComponent* authored = source.AddComponent<LevelNs::CollisionInputComponent>();
+    ASSERT_NE(authored, nullptr);
+    WriteChargeField(*authored, "チャージ倍率カーブ", ThreePointCurve());
+
+    SceneNs::SceneData src;
+    src.objects.push_back(SceneNs::CaptureObjectData(source));
+
+    SceneNs::SceneData dst;
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
+    ASSERT_EQ(dst.objects.size(), 1u);
+
+    const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
+    ASSERT_NE(live, nullptr);
+    const LevelNs::CollisionInputComponent* input = live->FindComponent<LevelNs::CollisionInputComponent>();
+    ASSERT_NE(input, nullptr);
+
+    const SceneNs::Curve loaded = ReadChargeField<SceneNs::Curve>(*input, "チャージ倍率カーブ");
+    ASSERT_EQ(loaded.count, 3u);
+    EXPECT_FLOAT_EQ(loaded.keys[0].x, 0.0f);
+    EXPECT_FLOAT_EQ(loaded.keys[0].y, 1.0f);
+    EXPECT_FLOAT_EQ(loaded.keys[1].x, 0.5f);
+    EXPECT_FLOAT_EQ(loaded.keys[1].y, 1.5f);
+    EXPECT_FLOAT_EQ(loaded.keys[2].x, 1.0f);
+    EXPECT_FLOAT_EQ(loaded.keys[2].y, 3.0f);
+}
+
+TEST(SaveLoadRoundTrip, BreakFlagSurvivesRoundTrip)
+{
+    SceneNs::GameObject source;
+    LevelNs::ImpactResolverComponent* authored = source.AddComponent<LevelNs::ImpactResolverComponent>();
+    ASSERT_NE(authored, nullptr);
+    const SceneNs::FieldDesc* field =
+        SceneNs::FindField(LevelNs::ImpactResolverComponent::StaticReflection(), "破壊を許可");
+    ASSERT_NE(field, nullptr);
+    const bool enabled = true;
+    field->set(authored, &enabled);
+
+    SceneNs::SceneData src;
+    src.objects.push_back(SceneNs::CaptureObjectData(source));
+
+    SceneNs::SceneData dst;
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
+    ASSERT_EQ(dst.objects.size(), 1u);
+
+    const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
+    ASSERT_NE(live, nullptr);
+    const LevelNs::ImpactResolverComponent* impact = live->FindComponent<LevelNs::ImpactResolverComponent>();
+    ASSERT_NE(impact, nullptr);
+    bool loaded = false;
+    field->get(impact, &loaded);
+    EXPECT_TRUE(loaded);
+}
+
+// キーの綴りを名指しで固定するのは、欄名を後から変えると保存済みレベルの値が静かに既定へ戻るため
+TEST(SaveLoadRoundTrip, ChargeFieldKeysAreTheLockedLabels)
+{
+    SceneNs::GameObject live;
+    LevelNs::CollisionInputComponent* input = live.AddComponent<LevelNs::CollisionInputComponent>();
+    ASSERT_NE(input, nullptr);
+    WriteChargeField(*input, "チャージ倍率カーブ", ThreePointCurve());
+
+    SceneNs::SceneData src;
+    src.objects.push_back(SceneNs::CaptureObjectData(live));
+
+    const nlohmann::json root = nlohmann::json::parse(SceneNs::SerializeSceneToJson(src));
+    const nlohmann::json* entry = FindChargeEntry(root.at("objects").at(0).at("components"));
+    ASSERT_NE(entry, nullptr);
+
+    const nlohmann::json& fields = entry->at("fields");
+    EXPECT_TRUE(fields.contains("チャージしきい値秒"));
+    EXPECT_TRUE(fields.contains("チャージ満タン秒"));
+    EXPECT_TRUE(fields.contains("チャージ倍率カーブ"));
+    EXPECT_TRUE(fields.contains("突進位置係数カーブ"));
+
+    const nlohmann::json& points = fields.at("チャージ倍率カーブ").at("curve");
+    ASSERT_TRUE(points.is_array());
+    ASSERT_EQ(points.size(), 3u);
+    for (const nlohmann::json& point : points)
+    {
+        ASSERT_TRUE(point.is_array());
+        EXPECT_EQ(point.size(), 2u);
+    }
 }

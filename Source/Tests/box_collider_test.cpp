@@ -1,3 +1,5 @@
+#include <Runtime/Core/AABB.h>
+#include <Runtime/Core/OBB.h>
 #include <cmath>
 #include <gtest/gtest.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>

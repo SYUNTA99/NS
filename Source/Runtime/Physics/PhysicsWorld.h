@@ -1,83 +1,245 @@
-﻿#pragma once
+#pragma once
 
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Core/OBB.h"
+#include "Runtime/Core/Sphere.h"
 #include "Runtime/Physics/Capsule.h"
-#include "Runtime/Physics/CollisionGrid.h"
-#include "Runtime/Physics/SweptOBB.h"
-#include "Runtime/Physics/SweptTriangle.h"
+#include "Runtime/Physics/Triangle.h"
+
+#include <Jolt/Jolt.h>
+
+#include <Jolt/Core/JobSystemSingleThreaded.h>
+#include <Jolt/Core/TempAllocator.h>
+#include <Jolt/Physics/Body/BodyID.h>
+#include <Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h>
+#include <Jolt/Physics/Collision/ContactListener.h>
+#include <Jolt/Physics/Collision/ObjectLayer.h>
+#include <Jolt/Physics/PhysicsSystem.h>
+
+#include <span>
+#include <vector>
 
 namespace NS::Physics
 {
-    /// capsule sweep の最初の接触結果。hit が false の時 toi は 1.0、normal は零ベクトル
-    struct SweepHit
+    //! body の種別を表す ObjectLayer。どの組み合わせが当たるかは 2 つの ShouldCollide が同じ形で持つ
+    namespace ObjectLayers
     {
-        float toi = 1.0f;
-        NS::Core::Vector3 normal{0.0f, 0.0f, 0.0f};
-        bool hit = false;
+        inline constexpr JPH::ObjectLayer Terrain = 0;
+        inline constexpr JPH::ObjectLayer Rock = 1;
+        inline constexpr JPH::ObjectLayer Debris = 2;
+        inline constexpr JPH::ObjectLayer Trigger = 3;
+        inline constexpr JPH::uint Count = 4;
+    } // namespace ObjectLayers
+
+    namespace BroadPhaseLayers
+    {
+        //! @brief ObjectLayer と同じ番号の BroadPhaseLayer を作る
+        //! @details BroadPhaseLayerInterface は ObjectLayer をそのまま番号へ cast して割り当てる
+        //! 定数側にも番号を書くと、ObjectLayers を並べ替えた時に片方だけ古い番号が残る
+        constexpr JPH::BroadPhaseLayer FromObjectLayer(JPH::ObjectLayer layer) noexcept
+        {
+            return JPH::BroadPhaseLayer{static_cast<JPH::BroadPhaseLayer::Type>(layer)};
+        }
+
+        inline constexpr JPH::BroadPhaseLayer Terrain = FromObjectLayer(ObjectLayers::Terrain);
+        inline constexpr JPH::BroadPhaseLayer Rock = FromObjectLayer(ObjectLayers::Rock);
+        inline constexpr JPH::BroadPhaseLayer Debris = FromObjectLayer(ObjectLayers::Debris);
+        inline constexpr JPH::BroadPhaseLayer Trigger = FromObjectLayer(ObjectLayers::Trigger);
+        inline constexpr JPH::uint Count = ObjectLayers::Count;
+    } // namespace BroadPhaseLayers
+
+    //! @brief 1 歩の間に記録した接触 1 件
+    struct BodyContact
+    {
+        JPH::BodyID other;        // ぶつかった相手の body
+        NS::Core::Vector3 normal; // 接触面の法線。持ち主を相手から離す向き
     };
 
-    /// @brief 静的衝突プリミティブ 5 channel と broadphase grid を持ち、capsule sweep と接地 probe を提供する衝突 world
-    /// @details AABB / Triangle / OBB / Sphere / Capsule の 5 channel と AABB 専用 broadphase grid を持つ
-    /// collision 再構築時に Clear -> Add* -> BuildBroadphase で満たし、SweepCapsule / ProbeGround で問い合わせる
-    /// hazard 等の gameplay 判定は層が違うため含めない。NS::Physics は NS::Object に依存しない
-    /// 依存: Math の AABB / OBB / Vector3、Capsule、Sphere、SweptOBB の sweep、SweptTriangle の Triangle、CollisionGrid
+    //! @brief 動的 body を作る時の設定
+    struct DynamicBodyDesc
+    {
+        JPH::ObjectLayer layer = ObjectLayers::Rock; // 当たる相手を決める種別
+        float mass = 1.0f;                           // 質量。0 以下なら 1 として作る
+        float restitution = 0.0f;                    // 跳ね返り
+        float friction = 0.2f;                       // 摩擦
+    };
+
+    //! @brief JPH::PhysicsSystem と、一時 allocator・job system・layer filter を同じ寿命で持つ衝突 world
+    //! @details 最初の 1 個の構築で JPH::RegisterDefaultAllocator / JPH::Factory / JPH::RegisterTypes を 1 度だけ通す
+    //! 型の登録解除はプロセス終了時
+    //! Add 系はどれも body を 1 つ作り、shape を作れなければ無効な BodyID を返す
+    //! 作った時点で動的なのは AddDynamic の付く 2 つだけで、これだけが起きた状態で入る
     class PhysicsWorld
     {
     public:
-        // 構築。collision 再構築時に 1 度満たす
+        PhysicsWorld();
+        ~PhysicsWorld();
 
-        /// 全 channel と grid を空にする
-        void Clear() noexcept;
+        PhysicsWorld(const PhysicsWorld&) = delete;
+        PhysicsWorld& operator=(const PhysicsWorld&) = delete;
+        PhysicsWorld(PhysicsWorld&&) = delete;
+        PhysicsWorld& operator=(PhysicsWorld&&) = delete;
 
-        /// AABB channel の領域を予約する。grid 配置物数が分かっている時の最適化
-        void ReserveAabbs(std::size_t count);
+        //! world に入っている body の数
+        [[nodiscard]] JPH::uint BodyCount() const noexcept;
 
-        /// grid solid の軸並行 box を AABB channel へ追加する
-        void AddAABB(const NS::Core::AABB& box);
+        //! OBB の中心と 3 軸をそのまま box body にする
+        JPH::BodyID AddBox(const NS::Core::OBB& box, JPH::ObjectLayer layer);
+        //! id の body を box の形と姿勢・layer・sensor の有無へ書き換えて id を返す。id が無効なら新しく作る
+        JPH::BodyID SyncBox(JPH::BodyID id, const NS::Core::OBB& box, JPH::ObjectLayer layer, bool sensor = false);
+        //! 中心と半径をそのまま球 body にする
+        JPH::BodyID AddSphere(const NS::Core::Sphere& sphere, JPH::ObjectLayer layer);
+        //! id の body を sphere の形と位置・layer へ書き換えて id を返す。id が無効なら新しく作る
+        JPH::BodyID SyncSphere(JPH::BodyID id, const NS::Core::Sphere& sphere, JPH::ObjectLayer layer);
+        //! capsule body を capsule.axis の向きで入れる。軸が零ベクトルなら Y 軸
+        JPH::BodyID AddCapsule(const Capsule& capsule, JPH::ObjectLayer layer);
+        //! id の body を capsule の形と姿勢・layer へ書き換えて id を返す。id が無効なら新しく作る
+        JPH::BodyID SyncCapsule(JPH::BodyID id, const Capsule& capsule, JPH::ObjectLayer layer);
+        //! @brief 三角形群をまとめて 1 つの mesh body にする。空なら作らない
+        //! @details 呼出側が std::vector と std::array<Triangle, 8> のどちらでも写さずに渡せるよう span で受ける
+        JPH::BodyID AddMesh(std::span<const Triangle> triangles, JPH::ObjectLayer layer);
+        //! id の body を三角形群の形と layer へ書き換えて id を返す。id が無効なら新しく作る
+        //! 空なら無効な BodyID を返す
+        JPH::BodyID SyncMesh(JPH::BodyID id, std::span<const Triangle> triangles, JPH::ObjectLayer layer);
 
-        /// slope の world 空間三角形を Triangle channel へ追加する
-        void AddTriangle(const Triangle& triangle);
+        //! @brief OBB を通り抜けられる sensor body にする
+        //! @details layer は ObjectLayers::Trigger 固定で、2 つの ShouldCollide がどの layer とも組ませない
+        //! 押し戻しも接触の通知も起きず、出てくるのは layer で絞らない RaycastDown・OverlapCapsule・OverlapBox だけ
+        JPH::BodyID AddSensorBox(const NS::Core::OBB& box);
 
-        /// 回転 / scale 込みの自由配置物を OBB channel へ追加する
-        void AddOBB(const NS::Core::OBB& obb);
+        //! OBB の中心と 3 軸をそのまま動的な box body にする
+        JPH::BodyID AddDynamicBox(const NS::Core::OBB& box, const DynamicBodyDesc& desc);
+        //! 中心と半径をそのまま動的な球 body にする
+        JPH::BodyID AddDynamicSphere(const NS::Core::Sphere& sphere, const DynamicBodyDesc& desc);
 
-        /// 球 collider を Sphere channel へ追加する
-        void AddSphere(const NS::Core::Sphere& sphere);
+        //! body の角速度を置く。無効な BodyID は何もしない
+        void SetBodyAngularVelocity(JPH::BodyID id, const NS::Core::Vector3& angularVelocity);
+        //! body の角速度
+        [[nodiscard]] NS::Core::Vector3 BodyAngularVelocity(JPH::BodyID id) const;
+        //! body が起きている場合 true、それ以外の場合は false。無効な BodyID は false
+        [[nodiscard]] bool IsBodyAwake(JPH::BodyID id) const;
+        //! 直近の Update で記録した id の接触。前の歩の分は残らない。無効な BodyID は空
+        [[nodiscard]] std::vector<BodyContact> ContactsOf(JPH::BodyID id) const;
 
-        /// capsule collider を Capsule channel へ追加する
-        void AddCapsule(const NS::Physics::Capsule& capsule);
+        //! broadphase の木を組み直す。Add 完了後に 1 度呼ぶ
+        void OptimizeBroadPhase();
 
-        /// AABB channel から broadphase grid を構築する。Add 完了後に 1 度呼ぶ
-        void BuildBroadphase() noexcept;
+        //! world を deltaTime 秒ぶん進める。衝突の分割は 1 で、渡した時間を刻まない
+        void Update(float deltaTime);
 
-        // クエリ
+        //! @brief body を dynamic と static で切り替える
+        //! @details dynamic にする時だけ body を起こす。無効な BodyID は何もしない
+        //! 静的専用の形の body は dynamic にできない。警告を出して戻る
+        void SetBodyDynamic(JPH::BodyID id, bool dynamic);
 
-        /// capsule が motion だけ動く間の最小 TOI の接触を全 channel から探して返す
-        /// AABB は grid 候補、grid が無ければ総当たり
-        /// 評価順は AABB -> Triangle -> OBB -> Sphere -> Capsule、同 TOI は先勝ち
-        [[nodiscard]] SweepHit SweepCapsule(const NS::Physics::Capsule& cap,
-                                            const NS::Core::Vector3& motion) const noexcept;
+        //! @brief origin から真下へ maxDistance までの間で最も近い命中までの距離を outDistance に返す
+        //! @details layer でも shape でも絞らないので、world の全 body が対象
+        //! maxDistance が正でなければ false。命中が無ければ outDistance を変えない
+        [[nodiscard]] bool RaycastDown(const NS::Core::Vector3& origin, float maxDistance, float& outDistance) const;
 
-        /// bottomCenter から下方向へ reach 以内に AABB / OBB の床があれば true。接地判定の補助に使う
-        [[nodiscard]] bool ProbeGround(const NS::Core::Vector3& bottomCenter, float reach) const noexcept;
+        //! @brief capsule に重なっている body の id を集めて返す
+        //! @details 形の実物どうしで見るので、回転した box は外接箱ではなく本当の形で判定する
+        //! sensor も layer も問わない。同じ body は 1 度だけ返る
+        [[nodiscard]] std::vector<JPH::BodyID> OverlapCapsule(const Capsule& capsule) const;
 
-        // アクセサ
+        //! @brief region に重なる body の world 空間の境界箱を集めて返す
+        //! @details 重なりを見るのも返すのも軸並行の境界箱で、shape の形は見ない
+        //! 回転した box や mesh では形より大きい箱が返る
+        [[nodiscard]] std::vector<NS::Core::AABB> OverlapBox(const NS::Core::AABB& region) const;
 
-        /// AABB channel への読み取り専用の参照。ledge grab の走査が使う
-        [[nodiscard]] const std::vector<NS::Core::AABB>& Aabbs() const noexcept { return m_aabbs; }
+        //! body の線速度を置く。無効な BodyID は何もしない
+        void SetBodyVelocity(JPH::BodyID id, const NS::Core::Vector3& velocity);
 
-        /// 全 channel が空かどうか。未 Build かプリミティブ無しなら空
-        [[nodiscard]] bool IsEmpty() const noexcept;
+        //! body の線速度
+        [[nodiscard]] NS::Core::Vector3 BodyVelocity(JPH::BodyID id) const;
+
+        //! body を world から外して壊す。無効な BodyID は何もしない
+        void RemoveBody(JPH::BodyID id);
+
+        //! body の world 位置
+        [[nodiscard]] NS::Core::Vector3 BodyPosition(JPH::BodyID id) const;
+        //! body の world 回転
+        [[nodiscard]] NS::Core::Quaternion BodyRotation(JPH::BodyID id) const;
 
     private:
-        std::vector<NS::Core::AABB> m_aabbs;
-        std::vector<Triangle> m_triangles;
-        std::vector<NS::Core::OBB> m_obbs;
-        std::vector<NS::Core::Sphere> m_spheres;
-        std::vector<NS::Physics::Capsule> m_capsules;
-        CollisionGrid m_grid;
+        friend class JoltCharacter;
 
-        // sweep 候補の使い回しバッファ。const の query から確保なしで使うため mutable
-        mutable std::vector<std::uint32_t> m_candidates;
+        JPH::BodyID AddStatic(const JPH::ShapeRefC& shape,
+                              const NS::Core::Vector3& position,
+                              const NS::Core::Quaternion& rotation,
+                              JPH::ObjectLayer layer,
+                              bool sensor);
+
+        JPH::BodyID SyncStatic(JPH::BodyID id,
+                               const JPH::ShapeRefC& shape,
+                               const NS::Core::Vector3& position,
+                               const NS::Core::Quaternion& rotation,
+                               JPH::ObjectLayer layer,
+                               bool sensor);
+
+        class RuntimeInitialization
+        {
+        public:
+            RuntimeInitialization();
+        };
+
+        class BroadPhaseLayerInterface final : public JPH::BroadPhaseLayerInterface
+        {
+        public:
+            [[nodiscard]] JPH::uint GetNumBroadPhaseLayers() const override;
+            [[nodiscard]] JPH::BroadPhaseLayer GetBroadPhaseLayer(JPH::ObjectLayer layer) const override;
+#if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
+            [[nodiscard]] const char* GetBroadPhaseLayerName(JPH::BroadPhaseLayer layer) const override;
+#endif
+        };
+
+        class ObjectLayerPairFilter final : public JPH::ObjectLayerPairFilter
+        {
+        public:
+            [[nodiscard]] bool ShouldCollide(JPH::ObjectLayer first, JPH::ObjectLayer second) const override;
+        };
+
+        class ObjectVsBroadPhaseLayerFilter final : public JPH::ObjectVsBroadPhaseLayerFilter
+        {
+        public:
+            [[nodiscard]] bool ShouldCollide(JPH::ObjectLayer object, JPH::BroadPhaseLayer broadPhase) const override;
+        };
+
+        class ContactRecorder final : public JPH::ContactListener
+        {
+        public:
+            void OnContactAdded(const JPH::Body& first,
+                                const JPH::Body& second,
+                                const JPH::ContactManifold& manifold,
+                                JPH::ContactSettings& settings) override;
+
+            void Clear() noexcept;
+            [[nodiscard]] std::vector<BodyContact> Of(JPH::BodyID id) const;
+
+        private:
+            struct Record
+            {
+                JPH::BodyID owner;
+                BodyContact contact;
+            };
+
+            std::vector<Record> m_records;
+        };
+
+        JPH::BodyID AddDynamic(const JPH::ShapeRefC& shape,
+                               const NS::Core::Vector3& position,
+                               const NS::Core::Quaternion& rotation,
+                               const DynamicBodyDesc& desc);
+
+        // m_tempAllocator より前に置く。構築が呼ぶ Jolt の確保関数は RegisterDefaultAllocator まで nullptr
+        RuntimeInitialization m_runtimeInitialization;
+        BroadPhaseLayerInterface m_broadPhaseLayerInterface;
+        ObjectLayerPairFilter m_objectLayerPairFilter;
+        ObjectVsBroadPhaseLayerFilter m_objectVsBroadPhaseLayerFilter;
+        ContactRecorder m_contactRecorder;
+        JPH::TempAllocatorImpl m_tempAllocator;
+        JPH::JobSystemSingleThreaded m_jobSystem;
+        JPH::PhysicsSystem m_physicsSystem;
     };
 } // namespace NS::Physics

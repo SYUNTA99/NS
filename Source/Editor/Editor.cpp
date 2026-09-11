@@ -83,7 +83,7 @@ void Editor::OnAttach()
 
 void Editor::OnDetach()
 {
-    // scene 破棄の Game::OnDetach より先に呼ばれる順序で、 overlay は逆順で OnDetach されるので安全に片付く
+    // overlay は逆順で OnDetach されるので、 scene を破棄する Game::OnDetach より先にここが走る
     if (m_controller)
     {
         // world が抱えるビュー列を空にしてから、 その参照先ターゲットを破棄する
@@ -131,7 +131,7 @@ void Editor::OnRender()
     // ImGui の 1 フレームを Layer が囲う。Renderer::BeginFrame 済の RT へ EndFrame の Render が描く
     m_imgui->BeginFrame();
 
-    // ギズモ / palette / 編集ビジュアルといった編集用の上乗せ描画と 出所デバッグ入力の退避
+    // 編集用の上乗せ描画。カーソルプレビュー / カメラギズモ / 当たり線 / 選択枠 / ツールバー / ギズモ
     editor.Render();
 
     // 終了確認は UI 非表示やプレイ中でも必ず出すため m_uiVisible のゲート外で描く
@@ -228,8 +228,11 @@ void Editor::OnRender()
     // 自由視点中はゲームへのマウスラッチをかけない。 見回しドラッグ中だけキーボードも UI が持つ
     // 入力を持つパネル (編集中= Scene / プレイ中= Game) のラッチで UI のマウス掴みを外す
     const bool ownerLatched = playMode ? m_gameView.IsMouseLatched() : m_sceneView.IsMouseLatched();
+    // ImGui は項目を押している間 WantCaptureKeyboard も立てるため、Game ビューの長押しで WASD が UI に奪われる
+    // プレイ中にゲームがマウスを掴んでいる間はキーボードをゲームへ渡す
+    const bool keyboardOwnedByGame = playMode && ownerLatched;
     app->Input().SetUiCapture(m_imgui->WantCaptureMouse() && !ownerLatched,
-                              m_imgui->WantCaptureKeyboard() || m_sceneView.IsFreeFlying());
+                              (m_imgui->WantCaptureKeyboard() && !keyboardOwnedByGame) || m_sceneView.IsFreeFlying());
 
     // 見回しドラッグの立ち下がりで押しっぱなしのキーが残らないよう解除する。 WM_KEYUP も UI 捕捉中は届かない
     if (m_sceneView.ConsumeFreeFlyReleased())

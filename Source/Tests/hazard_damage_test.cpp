@@ -10,7 +10,7 @@
 namespace LevelNs = NS::Game::Level;
 namespace SceneNs = NS::Object;
 
-/// 命の増減の能力と、hazard 配置物が LateUpdate 帯で自分から削ってくる自走を検証する
+//! 命の増減の能力と、hazard 配置物が LateUpdate 帯で自分から削ってくる自走を検証する
 
 TEST(HealthTest, StartsFullAt8)
 {

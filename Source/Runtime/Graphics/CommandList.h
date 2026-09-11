@@ -14,10 +14,10 @@ namespace NS::Graphics
     class Pipeline;
     enum class Topology;
 
-    //! @brief グラフィックスAPIのデバイスコンテキストを包んだラッパークラス。
-    //! @details リソースの設定、画面のクリア、描画の発行といった基本操作を集約する。
-    //! Rendererが単一のインスタンスを所有し、外部からはそれを経由して利用する設計となっている
-    //! 変換や一括設定が必要な処理のみをラップし、その他は `operator->` 経由で元のAPIを直接呼び出す設計
+    //! @brief グラフィックスAPIのデバイスコンテキストを包んだラッパークラス
+    //! @details リソースの設定、画面のクリア、描画の発行といった基本操作を集約する
+    //! Renderer が 1 つだけ所有し、外部はそれを経由して使う
+    //! 変換や一括設定が要る処理だけをラップし、その他は operator-> で元の API を直接呼ぶ
     class CommandList : public NS::Core::NonCopyable
     {
     public:
@@ -34,13 +34,13 @@ namespace NS::Graphics
         //--------------------------------------------------------
         //!@{
 
-        //! 描画先（レンダーターゲットと深度バッファ）を設定する
+        //! 描画先のレンダーターゲットと深度バッファを設定する
         void SetRenderTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv) noexcept;
         //! 描画先を指定した色でクリアする
         void ClearRenderTarget(ID3D11RenderTargetView* rtv, float r, float g, float b, float a) noexcept;
         //! 深度・ステンシルバッファをクリアする
         void ClearDepth(ID3D11DepthStencilView* dsv, float depth = 1.0f) noexcept;
-        //! 描画領域（ビューポート）のサイズを設定する
+        //! ビューポートのサイズを設定する
         void SetViewport(float width, float height) noexcept;
 
         //!@}
@@ -49,7 +49,7 @@ namespace NS::Graphics
         //--------------------------------------------------------
         //!@{
 
-        //! 描画設定（パイプライン）を一括で適用する
+        //! シェーダとブレンド・深度・ラスタライザを一括で適用する
         void SetPipeline(const Pipeline& pipeline) noexcept;
         //! 頂点の入力レイアウトを設定する
         void SetInputLayout(ID3D11InputLayout* layout) noexcept;
@@ -57,12 +57,12 @@ namespace NS::Graphics
         void SetVertexBuffer(const Buffer& buffer, unsigned slot = 0) noexcept;
         //! インデックスバッファを設定する
         void SetIndexBuffer(const Buffer& buffer) noexcept;
-        //! 描画する図形の形状を設定する
+        //! インデックスを三角形と線分のどちらとして読むかを設定する
         void SetTopology(Topology topology) noexcept;
         //! 指定したデータでバッファの内容を更新する
         void UpdateSubresource(const Buffer& buffer, const void* data, std::size_t bytes) noexcept;
-        //! @brief 指定したデータでテクスチャ全体を更新する。
-        //! @param rowPitch 画像1行あたりのデータサイズ（バイト数）
+        //! @brief 指定したデータでテクスチャ全体を更新する
+        //! @param[in] rowPitch 画像 1 行あたりのバイト数
         void UpdateSubresource(const Texture& texture, const void* data, unsigned rowPitch) noexcept;
 
         //!@}
@@ -126,9 +126,9 @@ namespace NS::Graphics
         //--------------------------------------------------------
         //!@{
 
-        //! 借用している非所有の ID3D11DeviceContext。継ぎ目で生 D3D を扱う場合に使う
+        //! 借用している非所有の ID3D11DeviceContext。継ぎ目で生 DX11 を扱う場合に使う
         [[nodiscard]] ID3D11DeviceContext* Native() const noexcept;
-        //! cmd->IASetInputLayout(...) 等、ラップしていない D3D 呼び出しを生 context へそのまま流す
+        //! cmd->IASetInputLayout(...) 等、ラップしていない DX11 呼び出しを生 context へそのまま流す
         //! @note context 無効時は nullptr を返すため呼び出し側で有効性を確認すること
         [[nodiscard]] ID3D11DeviceContext* operator->() const noexcept;
 

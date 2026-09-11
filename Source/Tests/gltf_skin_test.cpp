@@ -1,14 +1,14 @@
+#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Core/Math.h>
+#include <Runtime/Graphics/Animation.h>
+#include <Runtime/Graphics/GltfLoader.h>
+#include <Runtime/Graphics/Skeleton.h>
+#include <Runtime/Graphics/detail/GltfSkinHelpers.h>
 #include <array>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <gtest/gtest.h>
-#include <Runtime/Core/Filesystem.h>
-#include <Runtime/Graphics/Animation.h>
-#include <Runtime/Graphics/detail/GltfSkinHelpers.h>
-#include <Runtime/Graphics/GltfLoader.h>
-#include <Runtime/Graphics/Skeleton.h>
-#include <Runtime/Core/Math.h>
 #include <span>
 #include <string>
 #include <vector>
@@ -64,7 +64,7 @@ namespace
             AppendFloat(buf, 0.0f);
             AppendFloat(buf, 0.0f);
         }
-        // inverse bind: 単位行列 (列優先・行優先とも同一)
+        // inverse bind: 単位行列。列優先・行優先とも同一
         const float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
         for (float f : identity)
             AppendFloat(buf, f);

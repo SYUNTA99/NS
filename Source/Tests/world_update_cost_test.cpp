@@ -5,7 +5,6 @@
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Object/World.h"
-#include "Runtime/Physics/PhysicsWorld.h"
 
 #include <chrono>
 #include <cstddef>
@@ -13,8 +12,8 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
-/// 更新経路の 1 回あたり所要時間を出し、 1 フレーム予算に対して無視できるかを数字で判断する
-/// 時間で合否は決めない (機械の状態で揺れるため)。 assertion は更新が全 component へ届いた事だけ
+//! 更新経路の 1 回あたり所要時間を出し、 1 フレーム予算に対して無視できるかを数字で判断する
+//! 時間で合否は決めない。機械の状態で揺れる。 assertion は更新が全 component へ届いた事だけ
 
 namespace
 {
@@ -129,7 +128,6 @@ namespace
     [[nodiscard]] double MeasureRebuildMicros(const NS::Object::SceneData& data, int iterations)
     {
         NS::Object::Scene scene;
-        NS::Physics::PhysicsWorld physics;
         NS::Object::World world;
         const auto factory = [](const NS::Object::ObjectData& entry) {
             return NS::Object::BuildSceneObject(entry, nullptr);
@@ -137,7 +135,7 @@ namespace
 
         const auto begin = std::chrono::steady_clock::now();
         for (int i = 0; i < iterations; ++i)
-            world.Rebuild(data, scene, physics, factory);
+            world.Rebuild(data, scene, factory);
         const auto end = std::chrono::steady_clock::now();
         return std::chrono::duration<double, std::micro>(end - begin).count() / static_cast<double>(iterations);
     }

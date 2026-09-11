@@ -3,9 +3,9 @@
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/StringUtils.h"
+#include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/detail/InputWin32.h"
 #include "Runtime/Platform/detail/WindowWin32.h"
-#include "Runtime/Platform/Input.h"
 
 #include <memory>
 
@@ -17,7 +17,7 @@ namespace NS::Platform
         // Window は単一インスタンス
         Window::Impl* s_instance = nullptr;
 
-        /// Inputクラス に送る Win32 メッセージ判定
+        // Input へ送る Win32 メッセージの判定
         [[nodiscard]] constexpr bool IsInputMessage(UINT msg) noexcept
         {
             switch (msg)
@@ -70,6 +70,23 @@ namespace NS::Platform
             }
         }
 
+        // 離しのメッセージ
+        [[nodiscard]] constexpr bool IsReleaseMessage(UINT msg) noexcept
+        {
+            switch (msg)
+            {
+            case WM_KEYUP:
+            case WM_SYSKEYUP:
+            case WM_LBUTTONUP:
+            case WM_RBUTTONUP:
+            case WM_MBUTTONUP:
+            case WM_XBUTTONUP:
+                return true;
+            default:
+                return false;
+            }
+        }
+
         LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
         {
             Window::Impl* impl = s_instance;
@@ -77,6 +94,12 @@ namespace NS::Platform
             {
                 return ::DefWindowProcW(hwnd, msg, wparam, lparam);
             }
+
+            // 焦点を失ったまま毎フレーム SetCursorPos すると他のアプリの操作を奪うため、焦点の有無を控える
+            if (msg == WM_SETFOCUS)
+                impl->hasFocus = true;
+            else if (msg == WM_KILLFOCUS)
+                impl->hasFocus = false;
 
             // OSからのメッセージを ImGui に送る
             if (impl->messageHook)
@@ -93,8 +116,9 @@ namespace NS::Platform
                 if (impl->input != nullptr)
                 {
                     // UIがキャプチャ中の入力はゲーム側へ流さない
-                    if ((IsKeyboardMessage(msg) && impl->input->UiWantsKeyboard()) ||
-                        (IsMouseMessage(msg) && impl->input->UiWantsMouse()))
+                    // 離しだけは流す。奪うと Input に押しっぱなしが残り、離した瞬間の入力が来なくなる
+                    if (!IsReleaseMessage(msg) && ((IsKeyboardMessage(msg) && impl->input->UiWantsKeyboard()) ||
+                                                   (IsMouseMessage(msg) && impl->input->UiWantsMouse())))
                     {
                         return ::DefWindowProcW(hwnd, msg, wparam, lparam);
                     }
@@ -112,8 +136,8 @@ namespace NS::Platform
             {
             case WM_ERASEBKGND:
             {
-                // D3Dが毎フレームPresentするため、GDI背景消去は不要。
-                // これを通すと初回Present前に白フラッシュが発生するため明示的に1を返す
+                // DX11 が毎フレーム Present するので GDI の背景消去は要らない
+                // 通すと初回 Present の前に白く光るため 1 を返して止める
                 return 1;
             }
             case WM_SIZE:
@@ -290,6 +314,24 @@ namespace NS::Platform
             ::TranslateMessage(&msg);
             ::DispatchMessageW(&msg);
         }
+
+        // 相対マウスは WM_INPUT の生の移動量で動くので、毎フレーム固定点へ戻してもカメラ操作は壊れない
+        if (m_pImpl->cursorLocked && m_pImpl->hasFocus && m_pImpl->hwnd != nullptr)
+        {
+            POINT point{};
+            if (m_pImpl->lockPointSet)
+            {
+                point.x = m_pImpl->lockPointX;
+                point.y = m_pImpl->lockPointY;
+            }
+            else
+            {
+                point.x = m_pImpl->size.width / 2;
+                point.y = m_pImpl->size.height / 2;
+            }
+            ::ClientToScreen(m_pImpl->hwnd, &point);
+            ::SetCursorPos(point.x, point.y);
+        }
     }
 
     bool Window::ShouldClose() const noexcept
@@ -330,6 +372,23 @@ namespace NS::Platform
     bool Window::IsCursorVisible() const noexcept
     {
         return m_pImpl->cursorVisible;
+    }
+
+    void Window::SetCursorLocked(bool locked) noexcept
+    {
+        m_pImpl->cursorLocked = locked;
+    }
+
+    bool Window::IsCursorLocked() const noexcept
+    {
+        return m_pImpl->cursorLocked;
+    }
+
+    void Window::SetCursorLockPoint(int clientX, int clientY) noexcept
+    {
+        m_pImpl->lockPointSet = true;
+        m_pImpl->lockPointX = clientX;
+        m_pImpl->lockPointY = clientY;
     }
 
     void Window::RequestClose() noexcept

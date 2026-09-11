@@ -13,10 +13,10 @@
 namespace LevelNs = NS::Game::Level;
 namespace SceneNs = NS::Object;
 
-/// Application 依存のない Scene で、 走行のやり直しと応答 component の挙動を検証する
-/// 応答部品はプレイヤーに載るので、 プレイヤーを 1 体置けば揃う
-/// 世界の駆動は Scene::OnUpdate で、 dt は FrameTimer::FixedDelta の既定 1/60 が使われる
-/// 判定と応答 (respawner / finisher) は同じ LateUpdate 帯の並びで済む
+//! Application 依存のない Scene で、 走行のやり直しと応答 component の挙動を検証する
+//! 応答部品はプレイヤーに載るので、 プレイヤーを 1 体置けば揃う
+//! 世界の駆動は Scene::OnUpdate で、 dt は FrameTimer::FixedDelta の既定 1/60 が使われる
+//! 判定と応答 (respawner / finisher) は同じ LateUpdate 帯の並びで済む
 
 namespace
 {

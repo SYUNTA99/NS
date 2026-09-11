@@ -1,8 +1,8 @@
 ﻿#pragma once
 
+#include "Runtime/Core/Math.h"
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/D3dCommon.h"
-#include "Runtime/Core/Math.h"
 
 #include <filesystem>
 
@@ -16,10 +16,10 @@ namespace NS::Graphics
     class Buffer;
     class Pipeline;
 
-    //! @brief 空間の背景（スカイボックス）用の描画リソースを管理するクラス。
-    //! @details 無限遠の背景を表現するためのメッシュやテクスチャデータを保持する
-    //! 。読み込みに失敗した場合は、エラーを示す代替画像（ピンク色）が適用される。
-    //! @warning 破棄順序のバグを防ぐため、描画システム（Renderer等）よりも先に破棄されるようにすること。
+    //! @brief スカイボックスの描画リソース
+    //! @details 無限遠の背景を描くメッシュとキューブマップを持つ
+    //! 画像を読み込むまではピンク一色のフォールバックを描く
+    //! @warning Renderer より先に破棄すること
     class Skybox : public NS::Core::NonCopyable
     {
     public:
@@ -29,17 +29,18 @@ namespace NS::Graphics
         ~Skybox();
 
         //! @brief 指定されたパスから背景画像を読み込む
-        //! @details 単一のファイル（DDS等）、または6方向の画像が含まれるディレクトリを指定できる
-        //! @param path 読み込むファイルまたはディレクトリのパス
-        //! @return 成功時はtrue。失敗時は旧状態（または代替画像）を維持してfalseを返す
+        //! @details DDS などの単一ファイルか、6 方向の画像を入れたディレクトリを指定できる
+        //! @param[in] path 読み込むファイルまたはディレクトリのパス
+        //! @return 成功した場合 true、それ以外の場合は false。失敗しても前の中身を保つ
         [[nodiscard]] bool LoadCubemap(const std::filesystem::path& path);
 
+        //! 立方体メッシュ・シェーダ・定数バッファ・サンプラー・キューブマップが揃っているか
         [[nodiscard]] bool IsValid() const noexcept;
 
-        //! 画像が未読み込み、または読み込みに失敗し、代替表示が適用されているか
+        //! 画像が未読み込み、または直近の読み込みに失敗したか
         [[nodiscard]] bool IsUsingFallback() const noexcept;
 
-        //! シェーダに渡すためのキューブマップのリソースビューを取得する
+        //! シェーダへ渡すキューブマップのリソースビューを取得する
         [[nodiscard]] ID3D11ShaderResourceView* Srv() const noexcept;
 
         //! スカイボックス描画用のパイプライン設定を取得する
@@ -66,10 +67,10 @@ namespace NS::Graphics
     };
 
     //! @brief 指定されたスカイボックスの描画コマンドを発行する
-    //! @param renderer コマンドを発行する描画システム
-    //! @param skybox 描画リソースを持つスカイボックス
-    //! @param viewProjNoTranslate カメラの移動成分を排除したビュー・プロジェクション行列
-    //! @note 描画順序の仕様上、不透明なオブジェクトを描画した後、かつ半透明なオブジェクトを描画する前に呼び出すこと
+    //! @param[in,out] renderer コマンドを発行する描画システム
+    //! @param[in] skybox 描画リソースを持つスカイボックス
+    //! @param[in] viewProjNoTranslate カメラの移動成分を排除したビュー・プロジェクション行列
+    //! @note 不透明なオブジェクトを描画した後、かつ半透明なオブジェクトを描画する前に呼び出すこと
     void IssueSkybox(Renderer& renderer, const Skybox& skybox, const NS::Core::Matrix& viewProjNoTranslate) noexcept;
 
 } // namespace NS::Graphics

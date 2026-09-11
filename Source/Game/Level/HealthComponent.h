@@ -4,21 +4,21 @@
 
 namespace NS::Game::Level
 {
-    /// @brief プレイヤーの命。残量の所有と増減の能力だけ持ち、誰に削られるかは知らない
-    /// @details hazard / KillZone 等のルール配置物が ApplyDamage / Kill を呼ぶ
-    /// 死んだ後どうするかは RespawnerComponent が IsDead を読んで決める。OnUpdate は持たない
+    //! @brief プレイヤーの命。残量の所有と増減の能力だけ持ち、誰に削られるかは知らない
+    //! @details hazard / KillZone 等のルール配置物が ApplyDamage / Kill を呼ぶ
+    //! 死んだ後どうするかは RespawnerComponent が IsDead を読んで決める。OnUpdate は持たない
     class HealthComponent : public NS::Object::Component
     {
     public:
         HealthComponent() noexcept;
 
-        /// amount だけ削る。下限 0。既に 0 か amount が 0 以下なら何もしない
+        //! amount だけ削る。下限 0。既に 0 か amount が 0 以下なら何もしない
         void ApplyDamage(int amount) noexcept;
 
-        /// 即死。残量を 0 にする
+        //! 即死。残量を 0 にする
         void Kill() noexcept { m_current = 0; }
 
-        /// 満タンへ戻す。プレイ突入とリスタートで呼ぶ
+        //! 満タンへ戻す。プレイ突入とリスタートで呼ぶ
         void Reset() noexcept { m_current = m_maxHealth; }
 
         [[nodiscard]] bool IsDead() const noexcept { return m_current <= 0; }

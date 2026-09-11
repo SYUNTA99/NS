@@ -1,3 +1,4 @@
+#include <Runtime/Core/AABB.h>
 #include <gtest/gtest.h>
 #include <Runtime/Graphics/RenderContext.h>
 #include <Runtime/Object/IRenderable.h>

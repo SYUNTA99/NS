@@ -1,6 +1,6 @@
 #include <Editor/InspectorReflection.h>
+#include <Game/Player/PlayerComponent.h>
 #include <Runtime/Object/Component.h>
-#include <Runtime/Object/Components/CharacterMovementComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <gtest/gtest.h>
@@ -22,9 +22,9 @@ namespace
 TEST(InspectorDefaultsTest, SameTypeReusesOneInstance)
 {
     NS::Editor::ComponentDefaults defaults;
-    const NS::Object::Component* first = defaults.Find("CharacterMovementComponent");
+    const NS::Object::Component* first = defaults.Find("PlayerComponent");
     ASSERT_NE(first, nullptr);
-    EXPECT_EQ(defaults.Find("CharacterMovementComponent"), first);
+    EXPECT_EQ(defaults.Find("PlayerComponent"), first);
 }
 
 TEST(InspectorDefaultsTest, UnknownTypeHasNoDefaults)
@@ -36,11 +36,11 @@ TEST(InspectorDefaultsTest, UnknownTypeHasNoDefaults)
 TEST(InspectorDefaultsTest, MarkFollowsTheEditedValue)
 {
     NS::Editor::ComponentDefaults defaults;
-    const NS::Object::Component* baseline = defaults.Find("CharacterMovementComponent");
+    const NS::Object::Component* baseline = defaults.Find("PlayerComponent");
     ASSERT_NE(baseline, nullptr);
 
     NS::Object::GameObject obj;
-    NS::Object::Component* live = obj.AddComponent<NS::Object::CharacterMovementComponent>();
+    NS::Object::Component* live = obj.AddComponent<NS::Game::Player::PlayerComponent>();
     ASSERT_NE(live, nullptr);
     const NS::Object::ReflectionInfo* info = live->GetReflection();
     ASSERT_NE(info, nullptr);
@@ -66,7 +66,7 @@ TEST(InspectorDefaultsTest, MarkFollowsTheEditedValue)
 TEST(InspectorDefaultsTest, NoBaselineMeansNoMark)
 {
     NS::Object::GameObject obj;
-    NS::Object::Component* live = obj.AddComponent<NS::Object::CharacterMovementComponent>();
+    NS::Object::Component* live = obj.AddComponent<NS::Game::Player::PlayerComponent>();
     ASSERT_NE(live, nullptr);
     const NS::Object::ReflectionInfo* info = live->GetReflection();
     ASSERT_NE(info, nullptr);

@@ -16,8 +16,8 @@ namespace NS::UI
 
 namespace NS::Editor
 {
-    //! @brief 配置するオブジェクト（ブラシ）を選択するツールバーを管理するクラス。
-    //! @details 現在選択されているブラシの状態を保持し、入力による切り替えやUIの描画処理を担う。
+    //! @brief 置くブラシを選ぶツールバー
+    //! @details 選択中のスロットを保持し、数字キーでの切り替えとツールバーの描画を行う
     class CategoryPalette : public NS::Core::NonCopyable
     {
     public:
@@ -26,18 +26,19 @@ namespace NS::Editor
         CategoryPalette() noexcept;
         ~CategoryPalette() noexcept = default;
 
-        //! @brief 入力を受け取り、アクティブなスロット（ブラシ）を切り替える
+        //! @brief 数字キーを見て、選択中のスロットを切り替える
         //! @note UI側がキーボード入力を要求している場合は、誤操作を防ぐためショートカット入力は無視される
         void TickInput(NS::Platform::Input* input, NS::UI::ImGuiContext* imgui) noexcept;
 
-        //! @brief ツールバーのUIを描画する（UI機能が無効な環境では何もしない）
-        //! @param viewRect Scene ビューのスクリーン矩形。ツールバーはこの矩形の外へ出ないよう毎フレーム位置を固定する
+        //! @brief ツールバーを描く。UI を外したビルドでは何もしない
+        //! @param[in] viewRect Scene
+        //! ビューのスクリーン矩形。ツールバーはこの矩形の外へ出ないよう毎フレーム位置を固定する
         void Render(const NS::Editor::ViewRect& viewRect) noexcept;
 
         //! 現在アクティブなスロット番号を取得する
         [[nodiscard]] std::size_t ActiveSlot() const noexcept { return m_activeSlot; }
 
-        //! 選択中のブラシの元となるデータ（配置用テンプレート）を取得する
+        //! 選択中のブラシのテンプレートを取得する
         [[nodiscard]] const NS::Object::ObjectData& CurrentTemplate() const noexcept { return m_current.prototype; }
 
         //! 選択中のブラシの表示名を取得する
@@ -47,13 +48,13 @@ namespace NS::Editor
         [[nodiscard]] bool CurrentIsRotatable() const noexcept { return m_current.rotatable; }
 
         //! @brief 配置プレビュー用のスロープ角度を返す
-        //! @note 角度を持たない形状（キューブなど）の場合は負の値が返る
+        //! @note キューブのように角度を持たない形状では負の値が返る
         [[nodiscard]] float CurrentSlopeAngleDegrees() const noexcept;
 
         //! アクティブなスロットを指定した番号に変更する
         void SetActiveSlot(std::size_t slot) noexcept;
 
-        //! 同じスロットが再度選択された際の、形状のバリエーション切り替え処理を行う
+        //! 同じスロットをもう一度選んだ時に、形状のバリエーションを切り替える
         void CycleActiveVariant() noexcept;
 
     private:

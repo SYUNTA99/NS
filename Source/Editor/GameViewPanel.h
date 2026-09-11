@@ -8,7 +8,7 @@ class LevelEditorController;
 namespace NS::Editor
 {
     //! @brief ゲーム視点の出力を映すパネル。 プレイ中は入力を持ち、 編集中はゲームカメラを貼るだけ
-    //! @details 出力を映すのが役目で、 自由視点のようなナビゲーションは持たない。 描画先は ViewportSurface が握る
+    //! @details 出力を映すだけで、 自由視点のようなナビゲーションは持たない。 描画先は ViewportSurface が持つ
     class GameViewPanel : public NS::Core::NonCopyable
     {
     public:

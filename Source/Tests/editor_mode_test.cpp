@@ -17,7 +17,7 @@ namespace SceneNs = NS::Object;
 namespace
 {
     // 実 world を持たずに grid 編集を検証する適用経路。 EditorMode が読むのと同じ SceneData を直接いじる
-    // ObjectSnapshotApplier の差し替え/新規/除去だけを再現する (組み直しは無し)
+    // ObjectSnapshotApplier の差し替え/新規/除去だけを再現する。組み直しはしない
     class RefApplier final : public EditorNs::IObjectSnapshotApplier
     {
     public:

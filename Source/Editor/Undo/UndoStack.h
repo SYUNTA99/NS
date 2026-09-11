@@ -23,7 +23,7 @@ namespace NS::Editor
         UndoStack() = default;
         ~UndoStack() = default;
 
-        //! @brief コマンドを実行し、Undo 履歴へ追加する（Redo 履歴はクリアされる）
+        //! @brief コマンドを実行して Undo 履歴へ積む。Redo 履歴は捨てる
         void Push(std::unique_ptr<ICommand> cmd, IObjectSnapshotApplier& target) noexcept;
 
         //! @brief 既に適用済みの編集を Do を呼ばずに履歴へ積む。 ドラッグ確定など live を先に動かした編集用

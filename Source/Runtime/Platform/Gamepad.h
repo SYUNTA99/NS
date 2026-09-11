@@ -34,7 +34,7 @@ namespace NS::Platform
     };
 
     //! @brief ゲームパッドの状態を管理するクラス
-    //! @note 内部でポーリングを行うため、メインループのフレーム頭でUpdate()を呼び出す必要がある
+    //! @note 内部でポーリングするので、メインループのフレーム頭で Update() を呼ぶ
     class Gamepad
     {
     public:
@@ -66,7 +66,6 @@ namespace NS::Platform
         [[nodiscard]] float RightTrigger() const noexcept;
 
         //! @brief 最新のハードウェア状態を同期する
-        //! @n
         void Update() noexcept;
 
     private:

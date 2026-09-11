@@ -20,9 +20,9 @@ namespace NS::UI
 
 class LevelEditorController;
 
-//! @brief エディタ用のUIを提供するレイヤー。
+//! @brief エディタ用のUIを提供するレイヤー
 //! @details
-//! ゲームの進行状態を維持したまま、エディタ機能（UIパネル、ギズモ、自由視点カメラ等）をオーバーレイとして描画・管理する。
+//! ゲームを止めずに、UI パネル・ギズモ・自由視点カメラを world の上へ重ねる
 class Editor : public NS::App::Layer
 {
 public:
@@ -38,7 +38,7 @@ private:
     static void HandleModeToggleInput(LevelEditorController& editor) noexcept;
     static void HandlePauseInput(LevelEditorController& editor) noexcept;
 
-    //! エディタUI全体の表示・非表示を切り替える入力処理を行う
+    //! エディタ UI 全体の表示・非表示を切り替える入力を見る
     void HandleUiVisibilityInput(LevelEditorController& editor) noexcept;
 
     //! @brief 画面最上部に File / Edit / GameObject 等のメインメニューバーを描画する
@@ -46,7 +46,7 @@ private:
     void RenderMainMenuBar(LevelEditorController& editor) noexcept;
 
     //! @brief 画面最上部にプレイ制御ツールバーの帯を描画する
-    //! @return 帯の高さ（後続のドックホストがこの分だけ上端を空けるために使う）
+    //! @return 帯の高さ。ドックホストはこの分だけ上端を空ける
     [[nodiscard]] static float RenderPlayToolbar(LevelEditorController& editor) noexcept;
 
     //! 全面化中のパネルだけをワークエリア全面へ描く。ドックと他パネルは発行しない

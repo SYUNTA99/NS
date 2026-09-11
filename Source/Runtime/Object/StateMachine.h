@@ -8,9 +8,9 @@
 
 namespace NS::Object
 {
-    /// @brief 状態機械の 1 状態。素のクラスで、所有者の能力を呼ぶ判断と遷移だけを書く
-    /// @details 調整値や続きのデータは所有者側に置き、状態は持たない (どの状態からでも同じ記録を読める)
-    /// 派生は登録名 `static constexpr const char* k_Name` を持ち、Name はそれを返す
+    //! @brief 状態機械の 1 状態。素のクラスで、所有者の能力を呼ぶ判断と遷移だけを書く
+    //! @details 調整値や続きのデータは所有者側に置き、状態は持たない。どの状態からでも同じ記録を読める
+    //! 派生は登録名 static constexpr const char* k_Name を持ち、Name はそれを返す
     template <typename TOwner> class State
     {
     public:
@@ -22,7 +22,7 @@ namespace NS::Object
         State(State&&) = delete;
         State& operator=(State&&) = delete;
 
-        /// 登録名。データ駆動の一覧と Change の指定に使う
+        //! 登録名。データ駆動の一覧と Change の指定に使う
         [[nodiscard]] virtual const char* Name() const noexcept = 0;
 
         virtual void OnEnter(TOwner&) {}
@@ -30,7 +30,7 @@ namespace NS::Object
         virtual void OnExit(TOwner&) {}
     };
 
-    /// @brief 所有者型ごとの状態の登録一覧。名前 → 生成の対応を自己登録 (NS_STATE) で集める
+    //! @brief 所有者型ごとの状態の登録一覧。名前 → 生成の対応を自己登録 (NS_STATE) で集める
     template <typename TOwner> class StateRegistry
     {
     public:
@@ -42,7 +42,7 @@ namespace NS::Object
             return true;
         }
 
-        /// 登録名から状態を作る。未登録は nullptr
+        //! 登録名から状態を作る。未登録は nullptr
         [[nodiscard]] static std::unique_ptr<State<TOwner>> Create(std::string_view name)
         {
             const auto& map = Map();
@@ -60,13 +60,13 @@ namespace NS::Object
         }
     };
 
-    /// @brief 名前の並びから組む状態機械。先頭が初期状態で、Build 時に OnEnter する
-    /// @details 遷移は Change が今の状態の OnExit → 次の OnEnter を即時に呼ぶ
-    /// OnStep の中で Change した状態のコードへ戻らないよう、呼び出し側は遷移したら return すること
+    //! @brief 名前の並びから組む状態機械。先頭が初期状態で、Build 時に OnEnter する
+    //! @details 遷移は Change が今の状態の OnExit → 次の OnEnter を即時に呼ぶ
+    //! OnStep の中で Change した状態のコードへ戻らないよう、呼び出し側は遷移したら return すること
     template <typename TOwner> class StateMachine
     {
     public:
-        /// 登録名の並びから状態列を組み、先頭へ入る。未登録名は飛ばし、1 つでも飛ばしたら false
+        //! 登録名の並びから状態列を組み、先頭へ入る。未登録名は飛ばし、1 つでも飛ばしたら false
         bool Build(TOwner& owner, const std::vector<std::string>& names)
         {
             m_states.clear();
@@ -92,7 +92,7 @@ namespace NS::Object
             return all;
         }
 
-        /// OnExit / OnEnter を呼ばずに初期状態 (先頭) へ戻す。リスポーン等のハードリセット用
+        //! OnExit / OnEnter を呼ばずに初期状態 (先頭) へ戻す。リスポーン等のハードリセット用
         void Reset() noexcept
         {
             if (m_states.empty())
@@ -103,7 +103,7 @@ namespace NS::Object
 
         [[nodiscard]] bool IsBuilt() const noexcept { return m_current != nullptr; }
 
-        /// 現在状態の登録名。未組立は空文字
+        //! 現在状態の登録名。未組立は空文字
         [[nodiscard]] const char* CurrentName() const noexcept
         {
             if (m_current == nullptr)
@@ -111,15 +111,15 @@ namespace NS::Object
             return m_current->Name();
         }
 
-        /// 現在状態で 1 歩進める。未組立は何もしない
+        //! 現在状態で 1 歩進める。未組立は何もしない
         void Step(TOwner& owner, float dt)
         {
             if (m_current != nullptr)
                 m_current->OnStep(owner, dt);
         }
 
-        /// 名前の状態へ移る。今の OnExit → 次の OnEnter を即時に呼ぶ。同じ状態へは何もせず true、
-        /// 未知名と未組立は何もせず false
+        //! 名前の状態へ移る。今の OnExit → 次の OnEnter を即時に呼ぶ。同じ状態へは何もせず true、
+        //! 未知名と未組立は何もせず false
         bool Change(TOwner& owner, std::string_view name)
         {
             State<TOwner>* next = Find(name);
@@ -153,12 +153,11 @@ namespace NS::Object
 
 } // namespace NS::Object
 
-/// 状態を一覧へ登録する。状態クラスを定義した cpp の namespace スコープに置く
+//! 状態を一覧へ登録する。状態クラスを定義した cpp の namespace スコープに置く
 #define NS_STATE(StateClass, OwnerClass)                                                                               \
     namespace                                                                                                          \
     {                                                                                                                  \
-        [[maybe_unused]] const bool g_stateRegistered##StateClass =                                                    \
-            ::NS::Object::StateRegistry<OwnerClass>::Register(                                                        \
-                StateClass::k_Name,                                                                                    \
-                []() -> std::unique_ptr<::NS::Object::State<OwnerClass>> { return std::make_unique<StateClass>(); }); \
+        [[maybe_unused]] const bool g_stateRegistered##StateClass = ::NS::Object::StateRegistry<OwnerClass>::Register( \
+            StateClass::k_Name,                                                                                        \
+            []() -> std::unique_ptr<::NS::Object::State<OwnerClass>> { return std::make_unique<StateClass>(); });      \
     }

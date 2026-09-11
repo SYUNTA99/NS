@@ -1,11 +1,17 @@
 #include "Game/Level/BlockObject.h"
 
+#include <Runtime/Object/AssetManager.h>
+#include <Runtime/Object/Component.h>
+#include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Scene/SceneData.h>
 #include <Runtime/Object/Scene/SceneManager.h>
 #include <Runtime/Object/World.h>
 #include <cstdint>
+#include <filesystem>
 #include <gtest/gtest.h>
+#include <memory>
+#include <utility>
 
 namespace
 {
@@ -86,4 +92,51 @@ TEST(NsSceneManager, UpdateRenderWhenNoSceneIsNoOp)
     mgr.Update();
     mgr.Render();
     SUCCEED();
+}
+
+namespace
+{
+    // 引き当てと開始の順番を記録する検証用 Component
+    class ResolveOrderProbeComponent : public NS::Object::Component
+    {
+    public:
+        void ResolveAssets(NS::Object::AssetManager&) override
+        {
+            resolved = true;
+            resolvedBeforeStart = !started;
+        }
+        void OnStart() override { started = true; }
+
+        bool resolved = false;
+        bool started = false;
+        bool resolvedBeforeStart = false;
+    };
+} // namespace
+
+// AssetManager 未設定でも SpawnTransient は落ちず、引き当てが走らない
+TEST(NsSceneManager, SpawnTransientWithoutAssetsSkipsResolve)
+{
+    NS::Object::Scene scene;
+    auto owned = std::make_unique<NS::Object::GameObject>();
+    auto* probe = owned->AddComponent<ResolveOrderProbeComponent>();
+    NS::Object::GameObject* spawned = scene.SpawnTransient(std::move(owned));
+
+    ASSERT_NE(spawned, nullptr);
+    EXPECT_TRUE(probe->started);
+    EXPECT_FALSE(probe->resolved);
+}
+
+// 引き当ては OnStart より前。OnStart の中で資産を読む Component が空の参照を掴まない
+TEST(NsSceneManager, SpawnTransientResolvesAssetsBeforeStart)
+{
+    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::Scene scene;
+    scene.SetAssets(&assets);
+    auto owned = std::make_unique<NS::Object::GameObject>();
+    auto* probe = owned->AddComponent<ResolveOrderProbeComponent>();
+    NS::Object::GameObject* spawned = scene.SpawnTransient(std::move(owned));
+
+    ASSERT_NE(spawned, nullptr);
+    EXPECT_TRUE(probe->resolved);
+    EXPECT_TRUE(probe->resolvedBeforeStart);
 }

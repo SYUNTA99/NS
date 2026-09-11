@@ -26,15 +26,15 @@ namespace NS::Editor
 {
     class IObjectSnapshotApplier;
 
-    //! @brief エディタの編集機能（カーソル、パレット、Undo履歴など）を統括するクラス。
-    //! @details シーンに対する編集操作を管理し、非アクティブ時はすべての入力・描画処理をスキップする。
+    //! @brief カーソル・パレット・Undo 履歴をまとめた編集機能
+    //! @details シーンに対する編集操作を管理し、非アクティブ時はすべての入力・描画処理をスキップする
     class EditorMode : public NS::Core::NonCopyable
     {
     public:
         //! @brief 編集中のカーソル状態。レイキャスト結果や配置候補のセル情報を保持する
         struct CursorState
         {
-            bool valid = false;                  //!< 有効な対象（ブロック面や地面）にヒットしたかどうか
+            bool valid = false;                  //!< ブロック面か地面に当たったか
             NS::Core::Vector3 placementCenter{}; //!< 配置先セルの中心ワールド座標
             NS::Core::Vector3 deleteCenter{};    //!< 削除対象セルの中心ワールド座標
             bool placementBlocked = false;       //!< 配置予定地にすでにブロックが存在するかどうか
@@ -97,10 +97,10 @@ namespace NS::Editor
         //! ギズモドラッグ中だけ undo/redo を止める。 旧 Transform への書込を防ぐ
         void SetUndoRedoSuppressed(bool suppressed) noexcept { m_undoRedoSuppressed = suppressed; }
 
-        //! @brief 毎フレームの更新処理を行い、入力に応じた編集操作を実行する
+        //! @brief 毎フレーム入力を見て、対応する編集操作を実行する
         void Tick() noexcept;
 
-        //! @brief 現在のカーソル位置に応じたプレビュー（AABBなど）の描画コマンドを発行する
+        //! @brief カーソル位置に置いた時のプレビュー枠を描く
         void RenderCursorPreview() noexcept;
 
         [[nodiscard]] const NS::Editor::UndoStack& Undo() const noexcept { return m_undo; }
@@ -117,7 +117,7 @@ namespace NS::Editor
         //! @brief 今開いているレベル名。 まだ名前が決まっていなければ空
         [[nodiscard]] const std::string& CurrentLevelName() const noexcept { return m_currentLevelName; }
 
-        //! @brief レベルデータに変更が加えられたかどうかを返す
+        //! @brief 前回の取り込みからレベルデータが変わったか
         [[nodiscard]] bool IsLevelDirty() const noexcept { return m_levelDirty; }
         void ClearLevelDirty() noexcept { m_levelDirty = false; }
 
@@ -126,13 +126,13 @@ namespace NS::Editor
         //! テスト用にカーソル状態を直接設定する
         void SetCursorForTest(const CursorState& state) noexcept { m_cursor = state; }
 
-        //! @brief 保存および読み込みに関するショートカット入力の処理を行う
+        //! @brief 保存と読み込みのショートカット入力を見る
         void HandleSaveLoadInput() noexcept;
 
-        //! ファイルブラウザのモーダルUIを描画し、セーブ・ロード処理を実行する
+        //! 保存 / 読込のモーダルを描き、確定した操作をその場で実行する
         void RenderFileBrowser() noexcept;
 
-        //! @brief アプリケーション終了時などの保存処理を行う
+        //! @brief 終了する前に保存する
         [[nodiscard]] bool SaveForQuit() noexcept;
 
         //! @brief 起動レベルが実在するのに読めなかったことを印す。 終了保存が既存ファイルを上書きしないようにする
@@ -154,7 +154,7 @@ namespace NS::Editor
 
     private:
         std::function<NS::Object::SceneData()> m_captureLevel;    // 保存時に live から SceneData を作る
-        IObjectSnapshotApplier* m_applier = nullptr;               // grid 編集・ undo を live へ通す適用経路
+        IObjectSnapshotApplier* m_applier = nullptr;              // grid 編集・ undo を live へ通す適用経路
         std::function<void(NS::Object::SceneData&&)> m_loadLevel; // 読込済みデータを実体側へ取り込む
         std::function<std::uint32_t(std::int16_t, std::int16_t, std::int16_t)>
             m_findCellObject;                                   // cell に居る配置物の永続 id を live から引く

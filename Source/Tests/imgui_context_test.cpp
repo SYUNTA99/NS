@@ -6,8 +6,8 @@
 
 namespace
 {
-    /// hidden window + Debug layer 無効化で軽量に Renderer を作る
-    /// headless 環境では IsValid を確認して GTEST_SKIP に落とす
+    //! hidden window + Debug layer 無効化で軽量に Renderer を作る
+    //! headless 環境では IsValid を確認して GTEST_SKIP に落とす
     NS::Platform::WindowDesc MakeHiddenWindowDesc()
     {
         NS::Platform::WindowDesc desc{};

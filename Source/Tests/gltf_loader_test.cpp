@@ -1,7 +1,7 @@
-#include <filesystem>
-#include <gtest/gtest.h>
 #include <Runtime/Core/Filesystem.h>
 #include <Runtime/Graphics/GltfLoader.h>
+#include <filesystem>
+#include <gtest/gtest.h>
 #include <span>
 #include <string>
 #include <string_view>
@@ -48,7 +48,7 @@ namespace
                R"({"bufferView":7,"componentType":5123,"count":3,"type":"SCALAR"}]})";
     }
 
-    // 単一三角形 + extensionsRequired に Draco (展開不可なので弾く対象)
+    // 単一三角形 + extensionsRequired に Draco。展開できないので弾く対象
     std::string DracoRequiredGltf()
     {
         return std::string{R"({"asset":{"version":"2.0"},"extensionsRequired":["KHR_draco_mesh_compression"],)"} +
@@ -86,7 +86,7 @@ namespace
                R"({"bufferView":1,"componentType":5123,"count":3,"type":"SCALAR"}]})";
     }
 
-    // fixture を exe 隣に NS Filesystem 経由で書き出してパスを返す (std::ofstream は使わない)
+    // fixture を exe 隣に NS Filesystem 経由で書き出してパスを返す。std::ofstream は使わない
     std::filesystem::path WriteFixture(const char* name, std::string_view content)
     {
         const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / name;

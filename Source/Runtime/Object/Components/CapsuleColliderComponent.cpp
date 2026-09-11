@@ -1,3 +1,4 @@
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Components/CapsuleColliderComponent.h"
 
 #include "Runtime/Object/GameObject.h"
@@ -81,42 +82,48 @@ namespace NS::Object
         return NS::Core::QuaternionToEulerDegrees(m_localRotation);
     }
 
-    NS::Physics::Capsule CapsuleColliderComponent::WorldCapsule() const noexcept
+    NS::Core::Matrix CapsuleColliderComponent::CapsuleWorldMatrix() const noexcept
     {
         const GameObject* owner = Owner();
         const NS::Core::Matrix local = NS::Core::Matrix::CreateFromQuaternion(m_localRotation) *
                                        NS::Core::Matrix::CreateTranslation(m_centerOffset);
-        const NS::Core::Matrix combined = [&]() -> NS::Core::Matrix {
-            if (owner != nullptr)
-                return local * owner->Root().WorldMatrix();
-            return local;
-        }();
+        return owner != nullptr ? local * owner->Root().WorldMatrix() : local;
+    }
 
-        const auto [scale, rotation, translation] = NS::Core::DecomposeAffine(combined);
-        const float radiusScale = std::max(std::abs(scale.x), std::abs(scale.z));
-
-        NS::Physics::Capsule capsule;
-        capsule.center = translation;
-        capsule.axis = NS::Core::Vector3::Transform(NS::Core::Vector3::UnitY, rotation);
-        capsule.radius = m_radius * radiusScale;
-        capsule.halfHeight = m_halfHeight * std::abs(scale.y);
-        return capsule;
+    NS::Physics::Capsule CapsuleColliderComponent::WorldCapsule() const noexcept
+    {
+        const auto [scale, rotation, translation] = NS::Core::DecomposeAffine(CapsuleWorldMatrix());
+        return NS::Physics::Capsule{translation,
+                                    NS::Core::Vector3::Transform(NS::Core::Vector3::UnitY, rotation),
+                                    m_halfHeight * std::abs(scale.y),
+                                    m_radius * std::max(std::abs(scale.x), std::abs(scale.z))};
     }
 
     NS::Core::AABB CapsuleColliderComponent::WorldAABB() const noexcept
     {
-        const NS::Physics::Capsule c = WorldCapsule();
-        const NS::Core::Vector3 tip = c.center + c.axis * c.halfHeight;
-        const NS::Core::Vector3 base = c.center - c.axis * c.halfHeight;
-        const NS::Core::Vector3 r{c.radius, c.radius, c.radius};
+        const NS::Physics::Capsule capsule = WorldCapsule();
+        const NS::Core::Vector3 tip = capsule.center + capsule.axis * capsule.halfHeight;
+        const NS::Core::Vector3 base = capsule.center - capsule.axis * capsule.halfHeight;
+        const NS::Core::Vector3 r{capsule.radius, capsule.radius, capsule.radius};
         const NS::Core::Vector3 lo = NS::Core::Vector3::Min(tip, base) - r;
         const NS::Core::Vector3 hi = NS::Core::Vector3::Max(tip, base) + r;
         return NS::Core::AABB{(lo + hi) * 0.5f, (hi - lo) * 0.5f};
     }
 
-    void CapsuleColliderComponent::AddToPhysics(NS::Physics::PhysicsWorld& physics) const
+    void CapsuleColliderComponent::SetExcludedFromStaticWorld(bool excluded) noexcept
     {
-        physics.AddCapsule(WorldCapsule());
+        m_excludedFromStaticWorld = excluded;
+    }
+
+    void CapsuleColliderComponent::SyncToPhysics(NS::Physics::PhysicsWorld& physics)
+    {
+        if (m_excludedFromStaticWorld)
+        {
+            TrackBody(physics, JPH::BodyID{});
+            return;
+        }
+
+        TrackBody(physics, physics.SyncCapsule(BodyIn(physics), WorldCapsule(), NS::Physics::ObjectLayers::Terrain));
     }
 
     NS_CLASS(CapsuleColliderComponent)

@@ -1,5 +1,6 @@
 ﻿#include "Runtime/Platform/Input.h"
 
+#include "Runtime/Core/Logger.h"
 #include "Runtime/Platform/detail/InputWin32.h"
 
 #include <windows.h>
@@ -217,6 +218,7 @@ namespace NS::Platform
         // モード切替時に積み残しの相対量を捨て、 切替直後の 1 フレームが暴れないようにする
         m_rawDeltaX = 0;
         m_rawDeltaY = 0;
+        m_absOriginSet = false;
     }
 
     void Mouse::OnRawMove(int dx, int dy) noexcept
@@ -225,12 +227,25 @@ namespace NS::Platform
         m_rawDeltaY += dy;
     }
 
+    void Mouse::OnRawMoveAbsolute(int screenX, int screenY) noexcept
+    {
+        if (m_absOriginSet)
+        {
+            m_rawDeltaX += screenX - m_absX;
+            m_rawDeltaY += screenY - m_absY;
+        }
+        m_absX = screenX;
+        m_absY = screenY;
+        m_absOriginSet = true;
+    }
+
     void Mouse::ClearState() noexcept
     {
         m_current.fill(false);
         m_wheel = 0;
         m_rawDeltaX = 0;
         m_rawDeltaY = 0;
+        m_absOriginSet = false;
     }
 
     Gamepad::Gamepad(int userIndex) noexcept : m_userIndex(userIndex) {}
@@ -511,12 +526,39 @@ namespace NS::Platform
             {
                 break;
             }
-            // 通常マウスは相対移動。 リモートデスクトップやタブレットの絶対座標は WM_MOUSEMOVE 側に任せて無視する
-            if (raw.header.dwType == RIM_TYPEMOUSE && (raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) == 0)
+            if (raw.header.dwType != RIM_TYPEMOUSE)
+            {
+                break;
+            }
+            if ((raw.data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) == 0)
             {
                 input.Mouse().OnRawMove(static_cast<int>(raw.data.mouse.lLastX),
                                         static_cast<int>(raw.data.mouse.lLastY));
+                break;
             }
+            // 遠隔操作とタブレットは絶対座標で届く。相対モードの差分は移動量だけなので座標差から作る
+            // 座標は 0〜65535 の正規化値。画面の画素へ戻さないと感度が画面の大きさで変わる
+            int widthMetric = SM_CXSCREEN;
+            int heightMetric = SM_CYSCREEN;
+            if ((raw.data.mouse.usFlags & MOUSE_VIRTUAL_DESKTOP) != 0)
+            {
+                widthMetric = SM_CXVIRTUALSCREEN;
+                heightMetric = SM_CYVIRTUALSCREEN;
+            }
+            const float width = static_cast<float>(::GetSystemMetrics(widthMetric));
+            const float height = static_cast<float>(::GetSystemMetrics(heightMetric));
+            const float normalizedX = static_cast<float>(raw.data.mouse.lLastX) / 65535.0f;
+            const float normalizedY = static_cast<float>(raw.data.mouse.lLastY) / 65535.0f;
+            // 遠隔で視点が動かない時に、入力が届いていないのか計算が違うのかを切り分ける
+            // 毎回出すとマウスを動かす間ずっとログが流れるので 1 回で止める
+            static bool s_absoluteReported = false;
+            if (!s_absoluteReported)
+            {
+                s_absoluteReported = true;
+                NS_LOG_INFO(Platform, "絶対座標のマウスを検出、 相対移動は座標差から作る");
+            }
+            input.Mouse().OnRawMoveAbsolute(static_cast<int>(normalizedX * width),
+                                            static_cast<int>(normalizedY * height));
             break;
         }
         default:

@@ -7,15 +7,15 @@
 namespace NS::UI
 {
 
-    //! @brief UIパネル（ウィンドウ）の描画状態を安全に管理するクラス。
-    //! @details スコープ（寿命）を利用してパネルの描画開始と終了を自動で行い、処理の抜け漏れを防ぐ。
-    //! UI機能が無効化されている環境では何も実行されない。
+    //! @brief UI パネル 1 枚の描画範囲
+    //! @details 寿命に合わせて描画の開始と終了を出すので、閉じ忘れが起きない
+    //! UI を外したビルドでは何も実行しない
     class Panel : public NS::Core::NonCopyable
     {
     public:
-        //! @param title パネルのタイトル
-        //! @param isOpen 閉じるボタン（×）と連動する開閉状態フラグへのポインタ。不要な場合はnullptrを指定する
-        //! @param windowFlags ImGuiWindowFlags のビット値。既定は0（フラグなし）
+        //! @param[in] title パネルのタイトル
+        //! @param[in,out] isOpen 閉じるボタンと連動する開閉状態へのポインタ。閉じるボタンが要らないなら nullptr
+        //! @param[in] windowFlags ImGuiWindowFlags のビット値 (既定の 0 はフラグなし)
         Panel(std::string_view title, bool* isOpen = nullptr, int windowFlags = 0) noexcept;
         ~Panel() noexcept;
 

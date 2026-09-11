@@ -1,21 +1,21 @@
 #include "Game/Level/KillZoneComponent.h"
 
 #include "Game/Player.h"
+#include "Game/Player/PlayerComponent.h"
 #include "Runtime/Object/Components/BoxColliderComponent.h"
-#include "Runtime/Object/Components/CharacterMovementComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/World.h"
-#include "Runtime/Physics/Capsule.h"
+#include "Runtime/Physics/PhysicsWorld.h"
+
+#include <algorithm>
 
 namespace NS::Game::Level
 {
-    KillZoneComponent::KillZoneComponent() noexcept
-        : NS::Object::Component(NS::Object::TickPriority::LateUpdate)
-    {}
+    KillZoneComponent::KillZoneComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::LateUpdate) {}
 
     void KillZoneComponent::OnUpdate()
     {
@@ -29,15 +29,16 @@ namespace NS::Game::Level
         auto* player = FindPlayer(scene->World());
         if (player == nullptr)
             return;
-        auto* movement = player->FindComponent<NS::Object::CharacterMovementComponent>();
+        auto* movement = player->FindComponent<NS::Game::Player::PlayerComponent>();
         if (movement == nullptr)
             return;
 
-        NS::Physics::Capsule capsule{};
-        capsule.center = player->Root().Position();
-        capsule.radius = movement->CapsuleRadius();
-        capsule.halfHeight = movement->CapsuleHalfHeight();
-        if (NS::Physics::IntersectsCapsuleAABB(capsule, box->WorldAABB()))
+        const NS::Physics::Capsule capsule{player->Root().Position(),
+                                           NS::Core::Vector3::UnitY,
+                                           movement->CapsuleHalfHeight(),
+                                           movement->CapsuleRadius()};
+        const auto overlaps = scene->Physics().OverlapCapsule(capsule);
+        if (std::find(overlaps.begin(), overlaps.end(), box->BodyId()) != overlaps.end())
             player->Kill();
     }
 

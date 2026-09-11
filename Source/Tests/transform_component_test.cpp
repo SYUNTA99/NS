@@ -1,5 +1,3 @@
-#include <cstddef>
-#include <gtest/gtest.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Component.h>
 #include <Runtime/Object/Components/TransformComponent.h>
@@ -8,6 +6,8 @@
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Scene/SceneData.h>
+#include <cstddef>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -121,7 +121,7 @@ TEST(TransformComponentTest, ScaleReflectionRoundTrips)
     EXPECT_FLOAT_EQ(obj.Root().Scale().y, 3.0f);
 }
 
-// 回転は Euler 度で読み書きし、 往復で一致する (BoxCollider と同じ変換)
+// 回転は Euler 度で読み書きし、 往復で一致する。変換は BoxCollider と同じ
 TEST(TransformComponentTest, RotationEulerDegreesRoundTrips)
 {
     GameObject obj;

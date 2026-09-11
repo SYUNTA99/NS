@@ -6,7 +6,7 @@
 namespace NS::Platform
 {
 
-    /// 物理キー識別子
+    //! 物理キー識別子
     enum class Key : int
     {
         Unknown = 0,
@@ -80,8 +80,8 @@ namespace NS::Platform
         Count
     };
 
-    //! @brief キーボード入力の現在および前フレームの状態を追跡・管理するクラス。
-    //! @note スレッドセーフではないため、単一スレッドからのアクセスを前提とする。
+    //! @brief キーボード入力の現在および前フレームの状態を追跡・管理するクラス
+    //! @note スレッドセーフではないため、単一スレッドからのアクセスを前提とする
     class Keyboard
     {
     public:
@@ -107,7 +107,7 @@ namespace NS::Platform
         //! @note Key::Unknown は処理されず無視される
         void OnKeyUp(Key k) noexcept;
 
-        //! @brief すべてのキー入力状態を強制的にオフ（解放状態）にリセットする
+        //! @brief すべてのキーを離した状態へ強制的に戻す
         //! @note ウィンドウのフォーカス消失時など、キーが押されたまま内部で固着するバグを防ぐために利用する
         void ClearState() noexcept;
 

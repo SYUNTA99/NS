@@ -1,11 +1,11 @@
-#include <gtest/gtest.h>
-#include <memory>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Graphics/Material.h>
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/Shader.h>
 #include <Runtime/Graphics/Texture.h>
 #include <Runtime/Platform/Window.h>
+#include <gtest/gtest.h>
+#include <memory>
 
 namespace
 {
@@ -168,7 +168,7 @@ TEST_F(MaterialLoggerTest, SetAndClearTextureBindDoesNotCrash)
     ASSERT_TRUE(mat.IsValid());
 
     // SetTexture / ClearTexture / 未割当 slot への ClearTexture がどれも落ちないか確認
-    // 内部状態を見る公開 API はあえて用意しない、raw pointer を外に出さないため
+    // 内部状態を見る公開 API はあえて用意しない。生ポインタを外に出さないため
     mat.SetTexture(0u, &texture);
     mat.Bind(renderer);
     mat.ClearTexture(0u);

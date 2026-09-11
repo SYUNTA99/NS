@@ -6,7 +6,7 @@ namespace NS::Editor
 {
     namespace
     {
-        /// JSON 木の heap 量を概算する。 要素そのものと文字列の確保分を数える
+        //! JSON 木の heap 量を概算する。 要素そのものと文字列の確保分を数える
         std::size_t EstimatedJsonBytes(const nlohmann::json& value) noexcept
         {
             if (value.is_string())
@@ -25,7 +25,7 @@ namespace NS::Editor
             return bytes;
         }
 
-        /// sizeof 外の heap 量。 components の JSON 木を再帰で概算する
+        //! sizeof 外の heap 量。 components の JSON 木を再帰で概算する
         std::size_t EstimatedHeapBytes(const NS::Object::ObjectData& object) noexcept
         {
             return object.className.capacity() + EstimatedJsonBytes(object.components);

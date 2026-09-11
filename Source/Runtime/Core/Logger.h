@@ -9,7 +9,7 @@
 namespace NS::Core
 {
 
-    /// ログ出力の重要度。Fatal は出力後にプロセスを強制終了する
+    //! ログ出力の重要度。Fatal は出力後にプロセスを強制終了する
     enum class LogLevel : int
     {
         Trace = 0,
@@ -20,29 +20,29 @@ namespace NS::Core
         Fatal = 5,
     };
 
-    /// @brief 内部ロガー（spdlog）の実装を隠蔽するクラス。直接は呼ばず NS_LOG_* マクロを使うこと
-    /// @details
-    /// 各マクロは std::format と同じ書き方ができる。
-    /// シングルスレッドでの動作を前提としているため、マルチスレッド環境で同時に叩かないように注意。
+    //! @brief spdlog を隠すロガー。直接は呼ばず NS_LOG_* マクロを使うこと
+    //! @details
+    //! 各マクロは std::format と同じ書き方ができる
+    //! シングルスレッド前提。複数のスレッドから同時に呼ぶと出力が壊れる
     class Logger
     {
     public:
         Logger() = delete;
 
-        /// 失敗時は標準エラー出力にエラーを出し、既定の設定で強行する。複数回呼んでも無視される
+        //! 失敗時は標準エラー出力にエラーを出し、既定の設定で強行する。複数回呼んでも無視される
         static void Init() noexcept;
 
-        /// ログファイル名を `logs/<name>.log` に変更する。必ずロガーの初期化より前に呼ぶこと（未指定時は "ns"）
+        //! ログファイル名を logs/<name>.log に変更する。必ずロガーの初期化より前に呼ぶこと（未指定時は "ns"）
         static void SetLogName(std::string_view name) noexcept;
 
-        /// true の場合は起動ごとにファイルを新しくし、false
-        /// なら既存のファイルへ追記する。必ずロガーの初期化より前に呼ぶこと
+        //! true の場合は起動ごとにファイルを新しくし、false
+        //! なら既存のファイルへ追記する。必ずロガーの初期化より前に呼ぶこと
         static void SetRotateOnOpen(bool rotate) noexcept;
 
-        /// 未出力のログをすべてファイル等に書き出して終了処理を行う
+        //! 未出力のログをすべて書き出して終了する
         static void Shutdown() noexcept;
 
-        /// NS_LOG_* マクロ内部用。直接呼ばないこと
+        //! NS_LOG_* マクロ内部用。直接呼ばないこと
         static void LogImpl(LogLevel level,
                             std::string_view category,
                             const char* file,
@@ -50,7 +50,7 @@ namespace NS::Core
                             const char* func,
                             std::string_view msg);
 
-        /// Fatal マクロ内部用。ログを書き出した後、開発環境ではデバッガで停止し、その後プロセスを強制終了する
+        //! Fatal マクロ内部用。ログを書き出した後、開発環境ではデバッガで停止し、その後プロセスを強制終了する
         [[noreturn]] static void FatalImpl(
             std::string_view category, const char* file, int line, const char* func, std::string_view msg);
     };

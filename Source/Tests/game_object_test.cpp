@@ -1,7 +1,7 @@
-#include <gtest/gtest.h>
 #include <Runtime/Object/Component.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
+#include <gtest/gtest.h>
 #include <vector>
 
 namespace
@@ -134,9 +134,9 @@ TEST(GameObjectPriorityTest, AddComponentSortsByPriority)
 {
     NS::Object::GameObject obj;
     auto& low = *obj.AddComponent<LowPrioComponent>();   // 先に追加 (LateUpdate, 400)
-    auto& high = *obj.AddComponent<HighPrioComponent>(); // 後に追加 (Input, 0)
+    auto& high = *obj.AddComponent<HighPrioComponent>(); // 後に追加 (EarlyUpdate, 0)
 
-    // Input 0 の high、 GameObject が積む transform (Update 200)、 LateUpdate 400 の low の順
+    // EarlyUpdate 0 の high、 GameObject が積む transform (Update 200)、 LateUpdate 400 の low の順
     ASSERT_EQ(obj.Components().size(), std::size_t{3});
     EXPECT_EQ(obj.Components()[0], &high);
     EXPECT_EQ(obj.Components()[2], &low);
@@ -148,7 +148,7 @@ TEST(GameObjectPriorityTest, SamePriorityPreservesInsertionOrder)
     auto& a = *obj.AddComponent<HighPrioComponent>();
     auto& b = *obj.AddComponent<HighPrioComponent>();
 
-    // Input 0 の 2 つが登録順のまま先頭に並び、 GameObject が積む transform (Update 200) は後ろ
+    // EarlyUpdate 0 の 2 つが登録順のまま先頭に並び、 GameObject が積む transform (Update 200) は後ろ
     ASSERT_EQ(obj.Components().size(), std::size_t{3});
     EXPECT_EQ(obj.Components()[0], &a);
     EXPECT_EQ(obj.Components()[1], &b);
@@ -158,7 +158,7 @@ TEST(GameObjectAddComponentTest, OwnsLifetimeInjectsOwnerAndOrdersByPriority)
 {
     NS::Object::GameObject obj;
     auto* low = obj.AddComponent<LowPrioComponent>();   // LateUpdate 400
-    auto* high = obj.AddComponent<HighPrioComponent>(); // Input 0
+    auto* high = obj.AddComponent<HighPrioComponent>(); // EarlyUpdate 0
     auto* mock = obj.AddComponent<MockComponent>();     // 既定 Update 200
 
     ASSERT_NE(low, nullptr);
@@ -171,7 +171,7 @@ TEST(GameObjectAddComponentTest, OwnsLifetimeInjectsOwnerAndOrdersByPriority)
     obj.OnUpdate();
     EXPECT_EQ(mock->updateCount, 1);
 
-    // priority 昇順 (Input 0 < Update 200 < LateUpdate 400)。 200 帯は GameObject が積む transform が先
+    // priority 昇順 (EarlyUpdate 0 < Update 200 < LateUpdate 400)。 200 帯は GameObject が積む transform が先
     ASSERT_EQ(obj.Components().size(), std::size_t{4});
     EXPECT_EQ(obj.Components()[0], high);
     EXPECT_EQ(obj.Components()[2], mock);

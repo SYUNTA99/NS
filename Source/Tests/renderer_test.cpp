@@ -1,9 +1,9 @@
-#include <gtest/gtest.h>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Graphics/CommonStates.h>
 #include <Runtime/Graphics/Pipeline.h>
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Platform/Window.h>
+#include <gtest/gtest.h>
 
 namespace
 {
@@ -74,7 +74,7 @@ TEST_F(RendererLoggerTest, CommonPipelinesAreValidDistinctAndCached)
     // create-once: 再取得で同一インスタンスを返す
     EXPECT_EQ(&opaque, &renderer.CommonPipeline(NS::Graphics::BlendMode::Opaque));
 
-    // desc は意図どおり (半透明は深度読取専用)
+    // desc は意図どおり。半透明は深度読取専用
     EXPECT_EQ(opaque.Desc().blend, NS::Graphics::BlendMode::Opaque);
     EXPECT_EQ(opaque.Desc().depth, NS::Graphics::DepthMode::ReadWrite);
     EXPECT_EQ(alpha.Desc().blend, NS::Graphics::BlendMode::Alpha);

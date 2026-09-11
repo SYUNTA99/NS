@@ -20,7 +20,6 @@ namespace NS::App
 #endif
         auto app = std::make_unique<Application>(desc);
 
-        // 合成ルート。 overlay の editor は NS_EDITOR_ENABLED 時だけ積む
         app->AddLayer(std::make_unique<::Game>());
 #if NS_EDITOR_ENABLED
         app->AddOverlay(std::make_unique<::Editor>());

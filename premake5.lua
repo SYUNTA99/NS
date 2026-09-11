@@ -4,7 +4,7 @@
 --============================================================================
 
 -- compile_commands.json生成モジュール
-require "premake/modules/export-compile-commands/export-compile-commands"
+require "Tools/premake5/modules/export-compile-commands/export-compile-commands"
 
 --============================================================================
 -- ワークスペース
@@ -35,7 +35,7 @@ workspace "NS"
     -- Profile build opt-in: 環境変数 NS_ENABLE_PROFILING=1 で有効化。
     -- NS_SCOPED_TIMER が clock.h で何もしない実装から ScopedTimer 展開に切替わる。
     -- 通常 build では未定義 = profiling マクロは ((void)0) で 0 overhead。
-    -- tools\@build_profile.cmd 経由で 1 cmd 実行可能。
+    -- Tools\@build_profile.cmd 経由で 1 cmd 実行可能。
     if os.getenv("NS_ENABLE_PROFILING") == "1" then
         defines { "NS_ENABLE_PROFILING" }
         print("[premake5] NS_ENABLE_PROFILING enabled — profile build")
@@ -134,6 +134,19 @@ local function applyRuntimeLayerDefaults(layerName)
     buildoptions { "/FI\"" .. pchLogical .. "\"" }
 end
 
+-- Jolt の定義。 jolt project と Jolt を include する全 project が必ず呼ぶ。
+-- 定義が食い違うと RegisterTypes が起動時に Trace を出して abort する。 照合されるのは 11 個
+-- (JPH_DOUBLE_PRECISION / JPH_CROSS_PLATFORM_DETERMINISTIC / JPH_FLOATING_POINT_EXCEPTIONS_ENABLED /
+--  JPH_PROFILE_ENABLED / JPH_EXTERNAL_PROFILE / JPH_DEBUG_RENDERER / JPH_DISABLE_TEMP_ALLOCATOR /
+--  JPH_DISABLE_CUSTOM_ALLOCATOR / JPH_OBJECT_LAYER_BITS / JPH_ENABLE_ASSERTS / JPH_OBJECT_STREAM)。
+-- 既定のまま使う物は書かない。 書けば両側で書き忘れる余地が増える
+local function applyJoltDefines()
+    -- NS_ENABLE_ASSERT と同じ構成で入れる
+    filter { "configurations:Debug or Development or GameDebug" }
+        defines { "JPH_ENABLE_ASSERTS" }
+    filter {}
+end
+
 --============================================================================
 -- DirectXTK 必要サブセット (StaticLib)
 --   NS が使う 4 機能: SimpleMath / CommonStates / DDSTextureLoader /
@@ -176,6 +189,33 @@ project "directxtk_simplemath"
     -- DirectXTK 標準の pch.h を PCH 化 (各 .cpp が冒頭で `#include "pch.h"` 済)
     pchheader "pch.h"
     pchsource "Source/ThirdParty/DirectXTK/Src/pch.cpp"
+
+    warnings "Off"
+    buildoptions { "/utf-8", "/FS" }
+
+--============================================================================
+-- Jolt Physics (StaticLib)
+--   剛体と当たり判定。 Physics 層が使う。
+--   vendoring したのはライブラリ本体 (Jolt/) だけで、 Samples / UnitTests / Docs は入れていない。
+--   定義は applyJoltDefines() に集約する。 jolt と使う側で食い違うと起動時に abort する。
+--============================================================================
+project "jolt"
+    kind "StaticLib"
+    location "build/jolt"
+
+    targetdir (bindir .. "/%{prj.name}")
+    objdir (objdir_base .. "/%{prj.name}")
+
+    files {
+        "Source/ThirdParty/JoltPhysics/Jolt/**.h",
+        "Source/ThirdParty/JoltPhysics/Jolt/**.inl",
+        "Source/ThirdParty/JoltPhysics/Jolt/**.cpp",
+    }
+
+    -- Jolt の内部 include は "Jolt/..." 形式。 起点は Jolt/ の 1 つ上
+    includedirs { "Source/ThirdParty/JoltPhysics" }
+
+    applyJoltDefines()
 
     warnings "Off"
     buildoptions { "/utf-8", "/FS" }
@@ -322,11 +362,16 @@ project "Physics"
     }
 
     -- NS::Core::Vector3 / BoundingBox / Ray (SimpleMath) を使う
+    -- Jolt の型は公開ヘッダへ出す方針なので、 起点をここに入れる
     includedirs {
         "Source/ThirdParty/DirectXTK/Inc",
         "Source/ThirdParty/spdlog/include",
         "Source/ThirdParty/magic_enum/include",
+        "Source/ThirdParty/JoltPhysics",
     }
+
+    applyJoltDefines()
+    links { "jolt" }
 
     defines {
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
@@ -392,7 +437,10 @@ project "Object"
         "Source/ThirdParty/DirectXTK/Inc",
         "Source/ThirdParty/spdlog/include",
         "Source/ThirdParty/magic_enum/include",
+        "Source/ThirdParty/JoltPhysics",
     }
+
+    applyJoltDefines()
 
     defines {
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
@@ -530,7 +578,10 @@ project "Game"
         "Source/ThirdParty/DirectXTK/Inc",
         "Source/ThirdParty/spdlog/include",
         "Source/ThirdParty/magic_enum/include",
+        "Source/ThirdParty/JoltPhysics",
     }
+
+    applyJoltDefines()
 
     defines {
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
@@ -585,7 +636,10 @@ project "Editor"
         "Source/ThirdParty/magic_enum/include",
         "Source/ThirdParty/imgui",
         "Source/ThirdParty/imgui/backends",
+        "Source/ThirdParty/JoltPhysics",
     }
+
+    applyJoltDefines()
 
     defines {
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
@@ -646,7 +700,10 @@ project "GameApp"
         "Source/ThirdParty/DirectXTK/Inc",
         "Source/ThirdParty/spdlog/include",
         "Source/ThirdParty/magic_enum/include",
+        "Source/ThirdParty/JoltPhysics",
     }
+
+    applyJoltDefines()
 
     defines {
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
@@ -663,12 +720,16 @@ project "GameApp"
         "Object",
         "App",
         "UI",
-        "directxtk_simplemath"
+        "directxtk_simplemath",
+        "jolt"
     }
 
     -- Object の component 自己登録はどこからも参照されない TU の静的初期化に載っているため、
     -- リンカの未参照 obj 除去で無言に欠け得る。Object.lib は全 obj を強制で取り込んで防ぐ
-    linkoptions { "/WHOLEARCHIVE:Object.lib" }
+    -- Game 層の配置物 Component も同じ理由で落ちる。Source/Game/Level/ に足した Component は
+    -- 他のコードから型を参照されない限り Game.lib の中で未参照のまま残り、
+    -- 対策が無いと登録ごと捨てられてエディタのコンポーネント追加一覧に出ない
+    linkoptions { "/WHOLEARCHIVE:Object.lib", "/WHOLEARCHIVE:Game.lib" }
 
     -- 出荷 (GameRelease) のみ exe 隣へ Shaders/ Assets/ をコピーする (exe 相対で読込む配布レイアウト)
     -- 開発構成は FileSystem::ContentRoot() がリポ直下を直接読むためコピーしない (ビルド毎のコピーを排除)
@@ -793,6 +854,7 @@ project "Tests"
         -- Game 側 GameObject 派生 (Player) は Application 依存を持たないので
         -- Tests から直接コンパイルしてリンクする。Game.cpp は Application や
         -- Window への依存があるので除外し、unit test で扱える範囲だけ取り込む。
+        -- Source/Game/Player/ 配下とは別物。GameObject 派生の Player 本体
         "Source/Game/Player.cpp",
         "Source/Editor/EditorCamera.cpp",
         -- LevelEditorController は EnterPlay / EnterEdit / 値型 PlayMode の配線テストで参照する。
@@ -802,6 +864,10 @@ project "Tests"
         -- Level 配下と Undo Command は Application 非依存の純粋ロジックなので
         -- Tests project から直接 compile する。
         "Source/Game/Level/**.cpp",
+        -- Entity / Player 配下は状態の自己登録 (NS_STATE) が無名 namespace の静的初期化に載る。
+        -- Tests が自分でコンパイルした obj はリンカが必ず取り込むので、ここへ足せば /WHOLEARCHIVE は要らない
+        "Source/Game/Entity/**.cpp",
+        "Source/Game/Player/**.cpp",
         "Source/Editor/Undo/**.cpp",
         -- editor のうち Application 非依存なものだけ取り込む (Editor は Application 依存のため除外)
         "Source/Editor/EditorObjects.cpp",
@@ -826,7 +892,10 @@ project "Tests"
         "Source/ThirdParty/DirectXTK/Inc",
         "Source/ThirdParty/spdlog/include",
         "Source/ThirdParty/magic_enum/include",
+        "Source/ThirdParty/JoltPhysics",
     }
+
+    applyJoltDefines()
 
     defines {
         "SPDLOG_WCHAR_TO_UTF8_SUPPORT",
@@ -846,10 +915,13 @@ project "Tests"
         "Graphics",
         "Audio",
         "Object",
-        "App"
+        "App",
+        "jolt"
     }
 
     -- Game.exe と同じ理由で Object の自己登録 TU をリンカ除去から守る
+    -- Game 層は Source/Game/Level/**.cpp を直接コンパイルしていて Game.lib を link しないため、
+    -- Game.lib 側の指定は要らない。ここで守れているのは Tests が自分でコンパイルした obj だから
     linkoptions { "/WHOLEARCHIVE:Object.lib" }
 
     -- Debug / Development / GameDebug の Tests は editor / ImGui を呼ぶため UI + imgui を link する。

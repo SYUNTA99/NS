@@ -22,6 +22,7 @@ namespace NS::Object
     class Transform;
     class CameraBrainComponent;
     class CameraComponent;
+    class Component;
     class World;
     class ThirdPersonFollowComponent;
     class Scene;
@@ -49,13 +50,13 @@ public:
     //! fixed step 更新。編集中は free-fly カメラ / ギズモ / EditorMode を回す。プレイ中は何もしない
     void Tick();
 
-    //! ギズモ / palette / 編集ビジュアルといった render フレームの上乗せ描画と出所デバッグ入力の退避
+    //! カーソルプレビュー / カメラギズモ / 当たり線 / 選択枠 / ツールバー / ギズモを描画フレームへ重ねる
     void Render();
 
     //! scene 破棄の前に呼ぶ。ギズモ選択解除と free-fly カメラの後始末
     void Teardown();
 
-    //! 現在のモード（編集モード or プレイモード）
+    //! 編集モードかプレイモードか
     enum class Mode : std::uint8_t
     {
         Edit,
@@ -116,7 +117,7 @@ public:
     //! 編集対象の live world。一覧 UI と参照候補は範囲 for か ObjectAt でここを直接読む
     [[nodiscard]] const NS::Object::World& World() const noexcept;
 
-    //! 配置ツールのモード（Build/Object）を取得する
+    //! 配置ツールのモード (Build / Object) を取得する
     [[nodiscard]] bool ObjectToolActive() const noexcept { return m_editorToolMode == EditorToolMode::Object; }
     //! 配置ツールを Build / Object 切替える。Build へ戻す時はギズモ選択を解除する
     void SetObjectToolActive(bool active) noexcept;
@@ -137,8 +138,8 @@ public:
     //! 選択へ足す / 選択から外す。足した物が主対象になる
     void ToggleObjectSelection(std::uint32_t id) noexcept;
     //! @brief 選択を丸ごと差し替える
-    //! @param ids 選択する永続 id 一覧
-    //! @param primary 主対象。ids に無ければ足す
+    //! @param[in] ids 選択する永続 id 一覧
+    //! @param[in] primary 主対象。ids に無ければ足す
     void SelectObjects(std::vector<std::uint32_t> ids, std::uint32_t primary) noexcept;
 
     //! Inspector が編集 / 表示できる選択を持つか
@@ -147,27 +148,31 @@ public:
     [[nodiscard]] NS::Object::ObjectData SelectedObjectSnapshot() const noexcept;
 
     //! 選択中の配置物の位置 / 回転 / スケールを live へ直接設定する。非選択時は何もしない
-    void SetSelectedFreePosition(NS::Core::Vector3 position) noexcept;
-    void SetSelectedFreeRotation(NS::Core::Quaternion rotation) noexcept;
-    void SetSelectedFreeScale(NS::Core::Vector3 scale) noexcept;
+    void SetSelectedFreePosition(NS::Core::Vector3 position);
+    void SetSelectedFreeRotation(NS::Core::Quaternion rotation);
+    void SetSelectedFreeScale(NS::Core::Vector3 scale);
 
-    //! 変形編集（ドラッグ操作）の開始および確定処理を行う
+    //! ドラッグでの変形を始める / 確定する
     void BeginTransformEdit() noexcept;
     void CommitTransformEdit() noexcept;
 
-    //! コンポーネントリフレクション編集（ドラッグ操作）の開始および確定処理を行う
+    //! Inspector のリフレクション項目をドラッグで編集し始める / 確定する
     void BeginComponentEdit() noexcept;
     void CommitComponentEdit() noexcept;
+
+    //! プレイ中の手編集を凍結スナップショットへも写す。編集復帰の組み直しを跨いで調整値が残る
+    //! 編集モードでは live が唯一の出所なので何もしない。Inspector の編集箇所と transform 設定子が呼ぶ
+    void MirrorPlayEditToBaseline(const NS::Object::Component& comp, std::string_view fieldName);
 
     //! 編集視点の中心あたりに新しい自由オブジェクトを 1 個追加して選択する。Undo 対応
     void AddObject();
 
     //! @brief 基本形を 1 個、編集視点の中心あたりへ追加して選択する。Undo 対応
-    //! @param kind 立方体 / 球 / 坂 / 空の GameObject
+    //! @param[in] kind 立方体 / 球 / 坂 / 空の GameObject
     void AddPrimitive(NS::Editor::PrimitiveKind kind);
 
     //! @brief メッシュ資産を 1 体として編集視点の中心あたりへ置く。Undo 対応
-    //! @param meshPath 資産ファイルの絶対パス。参照は ContentRoot 相対へ直して持つ
+    //! @param[in] meshPath 資産ファイルの絶対パス。参照は ContentRoot 相対へ直して持つ
     void AddObjectWithMesh(const std::filesystem::path& meshPath);
 
     //! 選択中の配置物に対応する runtime GameObject。未選択 / 未構築は nullptr
@@ -179,13 +184,13 @@ public:
     [[nodiscard]] std::vector<NS::Object::ObjectRefLocation> ReferencesToSelected();
 
     //! @brief 配置物の表示名を差し替えて undo へ積む
-    //! @param id 対象の永続 object id。 居なければ何もしない
-    //! @param name 新しい表示名。 空にすると型からの導出名へ戻る
+    //! @param[in] id 対象の永続 object id。 居なければ何もしない
+    //! @param[in] name 新しい表示名。 空にすると型からの導出名へ戻る
     void RenameObject(std::uint32_t id, std::string_view name);
 
     //! @brief 配置物の親を差し替えて undo へ積む
-    //! @param id 対象の永続 object id
-    //! @param parentId 新しい親の永続 id。 0 で root へ戻す
+    //! @param[in] id 対象の永続 object id
+    //! @param[in] parentId 新しい親の永続 id。 0 で root へ戻す
     //! @retresult 付け替えたら true。 自分自身や自分の子孫を親に指定した場合は false で何もしない
     //! @details 見た目が動かないよう、 今の world 変換を新しい親空間の local へ計算し直して持ち替える
     bool SetObjectParent(std::uint32_t id, std::uint32_t parentId);
@@ -228,16 +233,16 @@ public:
 private:
     void TickEdit();
 
-    //! プレイを終えて編集の姿へ戻す。部品を休止させ pose を凍結時の姿へ復元し、カーソルを出す
-    //! 編集モードでしか要らない遷移なのでエディタが持つ。演出破棄とゴールのフラグ戻しは CancelPlayEffects に任せる
-    void LeavePlayForEdit() noexcept;
+    //! プレイを終えて編集の姿へ戻す。凍結スナップショットから世界を組み直し、操作系を休止させ、カーソルを出す
+    //! 編集モードでしか要らない遷移なのでエディタが持つ。組み直しで確保が起きるため noexcept にしない
+    void LeavePlayForEdit();
 
     //! 配置物を新しい永続 id で 1 体追加する唯一の経路。採番・履歴登録・選択をまとめて面倒を見る
     void PushCreateObject(NS::Object::ObjectData object);
 
     void RenderCameraGizmos(const NS::Core::Matrix& viewProjection, NS::Core::Size2D viewport) noexcept;
     //! @brief 当たり形状を線で描く
-    //! @param all 真なら全配置物、 偽なら選んでいる分だけ
+    //! @param[in] all 真なら全配置物、 偽なら選んでいる分だけ
     void RenderColliderWireframes(bool all) noexcept;
 
     //! 主対象以外の選択物を枠で見せる。ギズモは 1 体にしか出ないので、選んだ範囲を目で追えるようにする
@@ -279,7 +284,7 @@ private:
     float m_editBlendElapsed = 0.0f;
     bool m_editBlending = false;
 
-    NS::Editor::EditorMode m_editor{}; // 編集モード管理（カーソル・Undo等）
+    NS::Editor::EditorMode m_editor{}; // カーソルと Undo を持つ編集モード
     Mode m_mode = Mode::Edit;          // 現在の実行モード
 
     enum class EditorToolMode : std::uint8_t
@@ -287,7 +292,7 @@ private:
         Build,
         Object
     };
-    EditorToolMode m_editorToolMode = EditorToolMode::Build; // ツールモード（Build/Object）
+    EditorToolMode m_editorToolMode = EditorToolMode::Build; // ツールモード (Build / Object)
 
     NS::Editor::GizmoEditor m_gizmo{}; // 変形ギズモ管理
 
