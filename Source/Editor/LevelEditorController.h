@@ -296,9 +296,8 @@ private:
 
     NS::Editor::GizmoEditor m_gizmo{}; // 変形ギズモ管理
 
-    std::vector<NS::Object::GameObject*> m_selectablePtrs;  // 選択可能なオブジェクト
-    std::vector<NS::Core::Vector3> m_selectableHalfExtents; // 各オブジェクトのサイズ
-    std::vector<std::uint8_t> m_selectablePickable;         // 選択可否フラグ
+    std::vector<NS::Object::GameObject*> m_selectablePtrs; // 選択可能なオブジェクト
+    std::vector<std::uint8_t> m_selectablePickable;        // 1 は MeshRendererComponent を持つ配置物。ギズモが先に選ぶ
 
     enum class SpecialSelection : std::uint8_t
     {

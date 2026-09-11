@@ -294,7 +294,6 @@ void LevelEditorController::Teardown()
     // ギズモは配置物の Transform を非所有参照するので、scene 破棄前に選択を外す
     m_gizmo.ClearSelection();
     m_selectablePtrs.clear();
-    m_selectableHalfExtents.clear();
     m_selectablePickable.clear();
 }
 
@@ -561,7 +560,7 @@ void LevelEditorController::TickEdit()
 
     if (objectMode && Brain())
     {
-        // 追従カメラの Root を実プレイ視点位置へ寄せてから候補を作る。pick 箱 / ギズモがその位置に出る
+        // 追従カメラの Root を実プレイ視点位置へ寄せてからギズモを回す。判定箱とギズモがその位置に出る
         SyncFollowCameraPoses();
 
         // 毎フレーム live な scene から候補 span を作り直し、選択を id から今のオブジェクトへ引き直す
@@ -739,16 +738,13 @@ NS::Object::GameObject* LevelEditorController::ActiveVirtualCameraObject() noexc
 void LevelEditorController::RefreshGizmoSelectables()
 {
     m_selectablePtrs.clear();
-    m_selectableHalfExtents.clear();
     m_selectablePickable.clear();
     m_selectablePtrs.reserve(m_scene->World().ObjectCount());
-    m_selectableHalfExtents.reserve(m_scene->World().ObjectCount());
     m_selectablePickable.reserve(m_scene->World().ObjectCount());
 
-    // 可視メッシュを持つ候補は 1、見えないカメラ等は 0。ギズモは 1 の候補を優先して pick する
+    // 可視メッシュを持つ候補は 1、見えないカメラ等は 0。ギズモは 1 の候補を先に選ぶ
     const auto pushSelectable = [this](NS::Object::GameObject* object) {
         m_selectablePtrs.push_back(object);
-        m_selectableHalfExtents.push_back(NS::Game::Level::k_CellHalfExtents);
         const bool hasVisual = object->FindComponent<NS::Object::MeshRendererComponent>() != nullptr;
         std::uint8_t pickable = std::uint8_t{0};
         if (hasVisual)
@@ -756,9 +752,7 @@ void LevelEditorController::RefreshGizmoSelectables()
         m_selectablePickable.push_back(pickable);
     };
 
-    // runtime list は 1 本。全配置物をギズモ候補に積む。pick OBB は Root().WorldMatrix() が scale 込みで
-    // 持ち、逆変換した unit ローカル空間で判定する。ここで halfExtents に scale を乗せると二重適用になり、
-    // 拡大した配置物の判定箱が scale^2 に膨らんで近くのクリックを先に取ってしまうので unit のまま渡す
+    // 全配置物をギズモ候補に積む。判定箱はギズモがクリックの時に配置物から引く
     for (NS::Object::GameObject* object : m_scene->World())
     {
         if (object->IsTransient())
@@ -766,7 +760,7 @@ void LevelEditorController::RefreshGizmoSelectables()
         pushSelectable(object);
     }
 
-    m_gizmo.SetSelectableObjects(m_selectablePtrs, m_selectableHalfExtents, m_selectablePickable);
+    m_gizmo.SetSelectableObjects(m_selectablePtrs, m_selectablePickable);
 }
 
 NS::Object::ThirdPersonFollowComponent* LevelEditorController::SelectedFollowCamera() noexcept
@@ -1146,7 +1140,7 @@ void LevelEditorController::PushCreateObject(NS::Object::ObjectData object)
     m_editor.Undo().Push(std::make_unique<NS::Editor::ObjectSnapshotCommand>(id, std::nullopt, std::move(object)),
                          m_applier);
 
-    // 組み直し後の新規を選択する。候補箱も貼り直す
+    // 組み直し後の新規を選択する。選択候補も貼り直す
     m_specialSelection = SpecialSelection::None;
     m_selectedObjectId = id;
     m_selectionIds.assign(1, id);

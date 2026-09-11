@@ -6,6 +6,7 @@
 #include "Game/Level/HazardComponent.h"
 #include "Game/Level/KillZoneComponent.h"
 #include "Game/Player.h"
+#include "Runtime/Graphics/Mesh.h"
 #include "Runtime/Object/Components/BoxColliderComponent.h"
 #include "Runtime/Object/Components/DirectionalLightComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
@@ -321,6 +322,14 @@ namespace NS::Editor
             return "Empty";
 
         return "?";
+    }
+
+    NS::Core::AABB PickLocalBounds(const NS::Object::GameObject& object) noexcept
+    {
+        const auto* renderer = object.FindComponent<NS::Object::MeshRendererComponent>();
+        if (renderer != nullptr && renderer->GetMesh() != nullptr)
+            return renderer->GetMesh()->LocalBounds();
+        return NS::Core::AABB{NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Game::Level::k_CellHalfExtents};
     }
 
 } // namespace NS::Editor

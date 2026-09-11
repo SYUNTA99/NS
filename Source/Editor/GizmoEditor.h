@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "Editor/GridMath.h"
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Platform/Keyboard.h"
@@ -68,12 +69,11 @@ namespace NS::Editor
         void SetInput(NS::Platform::Input* input) noexcept { m_input = input; }
         void SetImGui(NS::UI::ImGuiContext* imgui) noexcept { m_imgui = imgui; }
 
-        //! @brief 選択できる配置物と、そのローカル境界サイズを設定する
+        //! @brief 選択できる配置物を設定する
         //! @param[in] objects 選択対象となるオブジェクト
-        //! @param[in] localHalfExtents 各オブジェクトに対応するローカル境界サイズ
-        //! @param[in] pickable 選択の優先度を下げるマスク。省略できる
+        //! @param[in] pickable objects と同じ添字の優先度。0 の配置物は 1 の配置物に当たらなかった時だけ選ぶ。
+        //! 省略すると全部を同じに扱う
         void SetSelectableObjects(std::span<NS::Object::GameObject* const> objects,
-                                  std::span<const NS::Core::Vector3> localHalfExtents,
                                   std::span<const std::uint8_t> pickable = {}) noexcept;
 
         void SetActive(bool active) noexcept { m_active = active; }
@@ -120,10 +120,12 @@ namespace NS::Editor
         [[nodiscard]] bool IsDragging() const noexcept { return m_dragging; }
 
         //! @brief 視線レイを配置物の OBB へ当て、最も手前の添字を返す
+        //! @param[in] localBounds worldMatrices と同じ添字の判定箱。行列のローカル空間で、中心は原点でなくてよい
+        //! @param[in] pickMask 0 の添字を飛ばす。空なら全部を見る
         //! @return ヒットした場合はそのインデックス、ヒットしなかった場合は -1
         [[nodiscard]] static int PickNearestOBB(const NS::Core::Ray& ray,
                                                 std::span<const NS::Core::Matrix> worldMatrices,
-                                                std::span<const NS::Core::Vector3> localHalfExtents,
+                                                std::span<const NS::Core::AABB> localBounds,
                                                 std::span<const std::uint8_t> pickMask = {}) noexcept;
 
         //! 指定されたギズモ軸に沿った移動後の新しいワールド座標を計算する
@@ -186,8 +188,7 @@ namespace NS::Editor
         NS::UI::ImGuiContext* m_imgui = nullptr;
 
         std::span<NS::Object::GameObject* const> m_objects{}; //!< 選択判定の対象となるオブジェクト
-        std::span<const NS::Core::Vector3> m_halfExtents{};   //!< 各オブジェクトのローカル境界サイズ
-        std::span<const std::uint8_t> m_pickable{};           //!< 選択の有効状態や優先度を示すマスク
+        std::span<const std::uint8_t> m_pickable{};           //!< 選択の優先度。1 の配置物を先に選ぶ
 
         bool m_active = false;                       //!< ギズモ操作が有効かどうか
         bool m_viewHovered = true;                   //!< マウスがパネル上に居るか。全画面時は常に真

@@ -1,8 +1,9 @@
 #pragma once
 
 // 配置物をエディタ側から扱うヘルパ
-// cell ブラシの照合・90° 回転・Hierarchy の表示名・パレット雛形。出荷ビルドには載らない
+// cell ブラシの照合・90° 回転・Hierarchy の表示名・パレット雛形・クリックで選ぶ判定箱。出荷ビルドには載らない
 
+#include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Scene/SceneData.h"
 
 namespace NS::Object
@@ -77,5 +78,12 @@ namespace NS::Editor
 
     //! live 実体版。判定はデータ版と同じ基準で、component の有無と値を実体から見る
     [[nodiscard]] const char* ObjectDisplayName(NS::Object::GameObject& object);
+
+    //! @brief クリックで配置物を選ぶ時の判定箱を、Root のローカル空間で返す
+    //! @details メッシュを描く配置物はメッシュの境界、描かない配置物 (カメラ・光・空の GameObject) と
+    //! メッシュが未解決の配置物は 1m 立方
+    //! @param[in] object 判定箱を求める配置物
+    //! @return Root のローカル空間の軸並行境界ボックス
+    [[nodiscard]] NS::Core::AABB PickLocalBounds(const NS::Object::GameObject& object) noexcept;
 
 } // namespace NS::Editor
