@@ -1,5 +1,9 @@
 #include "Runtime/Object/Components/MeshColliderComponent.h"
 
+#include "Runtime/Core/LogCategories.h"
+#include "Runtime/Core/Logger.h"
+#include "Runtime/Object/AssetManager.h"
+#include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
@@ -43,10 +47,32 @@ namespace NS::Object
 
     void MeshColliderComponent::SyncToPhysics(NS::Physics::PhysicsWorld& physics)
     {
+        // TODO: 張り直しのたびに world 三角形から形を組み直す
+        // 大きな地形で張り直しが重くなったら、 形を local で 1 度だけ組んで変換は body 側に持たせる
         const std::vector<NS::Physics::Triangle> triangles = WorldTriangles();
         TrackBody(physics, physics.SyncMesh(BodyIn(physics), triangles, NS::Physics::ObjectLayers::Terrain));
     }
 
-    // 三角形群はリフレクションで運べないので data からは空で作る。差すのは呼出側の SetLocalTriangles
+    void MeshColliderComponent::ResolveAssets(AssetManager& assets)
+    {
+        const GameObject* owner = Owner();
+        if (owner == nullptr)
+            return;
+        const MeshRendererComponent* renderer = owner->FindComponent<MeshRendererComponent>();
+        if (renderer == nullptr)
+        {
+            NS_LOG_WARN(Scene, "MeshColliderComponent: 同じ object に MeshRendererComponent が無く、 当たりは空のまま");
+            return;
+        }
+
+        const std::vector<NS::Physics::Triangle>* triangles = assets.GetOrLoadMeshCollision(renderer->MeshRef());
+        if (triangles == nullptr)
+            triangles = assets.GetOrLoadMeshCollision("cube");
+        if (triangles == nullptr)
+            return;
+        SetLocalTriangles(*triangles);
+    }
+
+    // data からは空で作る。 三角形は ResolveAssets が描画の参照から入れる
     NS_CLASS(MeshColliderComponent)
 } // namespace NS::Object

@@ -9,10 +9,10 @@
 namespace NS::Object
 {
     //! @brief 任意三角形群を当たり判定として Scene に登録する Component
-    //! @details 球 / 箱で表せない取り込み形状向け。 三角形ソースは glTF の MeshGeometry 等の呼出側が用意する
-    //! 三角形は local 空間のまま、描画メッシュとは独立に持つ
-    //! StaticMesh は GPU upload 後に CPU 頂点を捨てるため別途渡す
-    //! physics へは mesh の body として渡す。三角形は CCW winding 前提
+    //! @details 球 / 箱で表せない取り込み形状向け
+    //! 三角形は同じ object の MeshRendererComponent の参照から ResolveAssets が作る
+    //! local 空間で持ち、 physics へは mesh の body として渡す
+    //! 並びは法線 (v1 - v0) × (v2 - v0) が外を向く向き
     class MeshColliderComponent : public ColliderComponent
     {
     public:
@@ -31,6 +31,11 @@ namespace NS::Object
 
         //! 三角形群をまとめて body 1 個にする。 空なら何も入れない
         void SyncToPhysics(NS::Physics::PhysicsWorld& physics) override;
+
+        //! 同じ object の MeshRendererComponent の参照から三角形群を取る
+        //! 解決できない参照は描画と同じく cube にする
+        //! MeshRendererComponent が無ければ警告を出して空のまま
+        void ResolveAssets(AssetManager& assets) override;
 
         // 三角形群はリフレクションで運べない。 同じ object の collider と揃えて型名だけ登録しておく
         NS_REFLECT_NONE(MeshColliderComponent, ColliderComponent)

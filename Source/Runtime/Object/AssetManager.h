@@ -5,6 +5,7 @@
 #include "Runtime/Graphics/Animation.h"
 #include "Runtime/Graphics/Material.h"
 #include "Runtime/Graphics/Skeleton.h"
+#include "Runtime/Physics/Triangle.h"
 
 #include <filesystem>
 #include <map>
@@ -89,6 +90,12 @@ namespace NS::Object
         //! 現在キャッシュしている mesh エントリ数。 読込失敗を負キャッシュした path も 1 件として数える
         [[nodiscard]] std::size_t MeshCacheSize() const noexcept;
 
+        //! meshRef の形を当たり用の三角形群にして返す。 参照の引き方は ResolveMeshFromRef と同じで、 GPU を使わない
+        //! 三角形は描画の index の並びのままで、 法線 (v1 - v0) × (v2 - v0) が表面の外を向く
+        //! 同じ meshRef には同じ一覧を返し、 読めなかった参照も負キャッシュする
+        //! 空文字・トラバーサル・読込失敗は nullptr
+        [[nodiscard]] const std::vector<NS::Physics::Triangle>* GetOrLoadMeshCollision(const std::string& meshRef);
+
         //! skinned glTF を読み SkeletalMesh を path キーで重複なく所有して返す。 skeleton / clips は
         //! キャッシュ record への参照で返し、 再生状態だけをインスタンス側が持つ。 失敗時は valid=false
         //! 相対 path は baseDir 基準
@@ -105,7 +112,7 @@ namespace NS::Object
         [[nodiscard]] const std::vector<NS::Graphics::AnimationClip>* GetOrLoadBoundClips(
             const std::filesystem::path& clipPath, const std::filesystem::path& modelPath);
 
-        //! 手続き生成の組み込み cube / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad を一括登録する
+        //! 手続き生成の組み込み cube / sphere / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad を一括登録する
         //! device 確立後・最初の利用前に 1 度だけ呼ぶ。 既登録名は上書きしない
         void RegisterBuiltins();
         //! 名前キーで組み込み StaticMesh を引く。 未登録は nullptr
@@ -155,6 +162,8 @@ namespace NS::Object
             m_textures; // path キーの Texture キャッシュ
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Mesh>>
             m_meshes; // path キーの Mesh キャッシュ、 null は負キャッシュ
+        std::map<std::string, std::unique_ptr<std::vector<NS::Physics::Triangle>>>
+            m_meshCollisions; // meshRef キーの当たり用三角形、 null は負キャッシュ
         std::map<std::string, std::unique_ptr<NS::Graphics::StaticMesh>> m_builtins;      // path 無し、 leaf と別容器
         std::map<std::filesystem::path, MaterialRecord> m_materials;                      // .mat composite
         std::map<std::string, std::unique_ptr<NS::Graphics::Material>> m_sharedMaterials; // 手続き共有 material

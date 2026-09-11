@@ -2,15 +2,19 @@
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/StaticMesh.h>
 #include <Runtime/Object/AssetManager.h>
+#include <Runtime/Object/Components/MeshColliderComponent.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Scene/SceneData.h>
+#include <Runtime/Object/World.h>
+#include <Runtime/Physics/PhysicsWorld.h>
 #include <Runtime/Platform/Window.h>
 #include <filesystem>
 #include <gtest/gtest.h>
 #include <string>
+#include <utility>
 
 namespace
 {
@@ -120,4 +124,81 @@ TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
     // 上と同じく ResolveMeshFromRef の nullptr だけ headless で確認する。cube 比較は device がある時だけ効く
     EXPECT_EQ(ResolveMeshFromRef(assets, ""), nullptr);
     EXPECT_EQ(compMesh->GetMesh(), assets.Builtin("cube"));
+}
+
+// MeshColliderComponent は同じ object の MeshRendererComponent の参照から三角形を取る
+TEST(MeshRefResolution, MeshColliderTakesTrianglesFromRendererMesh)
+{
+    AssetManager assets{std::filesystem::path{"."}};
+
+    ObjectData obj;
+    obj.components.push_back(MakeMeshRenderer("wedge45"));
+    obj.components.push_back(NS::Object::MakeComponentEntry("MeshColliderComponent"));
+
+    auto built = BuildSceneObject(obj, &assets);
+    ASSERT_NE(built, nullptr);
+    auto* collider = built->FindComponent<NS::Object::MeshColliderComponent>();
+    ASSERT_NE(collider, nullptr);
+
+    const std::vector<NS::Physics::Triangle>* wedge = assets.GetOrLoadMeshCollision("wedge45");
+    ASSERT_NE(wedge, nullptr);
+    ASSERT_EQ(collider->LocalTriangles().size(), wedge->size());
+    for (std::size_t i = 0; i < wedge->size(); ++i)
+    {
+        EXPECT_EQ(collider->LocalTriangles()[i].v0, (*wedge)[i].v0);
+        EXPECT_EQ(collider->LocalTriangles()[i].v1, (*wedge)[i].v1);
+        EXPECT_EQ(collider->LocalTriangles()[i].v2, (*wedge)[i].v2);
+    }
+}
+
+// 描画が cube へフォールバックする参照では、 当たりも cube の 12 枚になる
+TEST(MeshRefResolution, MeshColliderFallsBackToCubeLikeRenderer)
+{
+    AssetManager assets{std::filesystem::path{"."}};
+
+    ObjectData obj;
+    obj.components.push_back(MakeMeshRenderer("__ns_missing_mesh__.gltf"));
+    obj.components.push_back(NS::Object::MakeComponentEntry("MeshColliderComponent"));
+
+    auto built = BuildSceneObject(obj, &assets);
+    ASSERT_NE(built, nullptr);
+    auto* collider = built->FindComponent<NS::Object::MeshColliderComponent>();
+    ASSERT_NE(collider, nullptr);
+    EXPECT_EQ(collider->LocalTriangles().size(), 12u);
+}
+
+// MeshRendererComponent が無ければ当たりは空のまま
+TEST(MeshRefResolution, MeshColliderWithoutRendererStaysEmpty)
+{
+    AssetManager assets{std::filesystem::path{"."}};
+
+    ObjectData obj;
+    obj.components.push_back(NS::Object::MakeComponentEntry("MeshColliderComponent"));
+
+    auto built = BuildSceneObject(obj, &assets);
+    ASSERT_NE(built, nullptr);
+    auto* collider = built->FindComponent<NS::Object::MeshColliderComponent>();
+    ASSERT_NE(collider, nullptr);
+    EXPECT_TRUE(collider->LocalTriangles().empty());
+}
+
+// 組んだ cube の当たりは body 1 個として physics に入り、 下向きのレイが上面 (y = 0.5) で止まる
+TEST(MeshRefResolution, BuiltCubeMeshColliderStopsRayAtTopFace)
+{
+    AssetManager assets{std::filesystem::path{"."}};
+
+    ObjectData obj;
+    obj.components.push_back(MakeMeshRenderer("cube"));
+    obj.components.push_back(NS::Object::MakeComponentEntry("MeshColliderComponent"));
+
+    NS::Object::World world;
+    ASSERT_NE(world.Append(BuildSceneObject(obj, &assets)), nullptr);
+
+    NS::Physics::PhysicsWorld physics;
+    world.SyncPhysics(physics);
+    ASSERT_EQ(physics.BodyCount(), 1u);
+
+    float distance = 0.0f;
+    ASSERT_TRUE(physics.RaycastDown(NS::Core::Vector3{0.1f, 2.0f, 0.2f}, 8.0f, distance));
+    EXPECT_NEAR(distance, 1.5f, 1.0e-3f);
 }

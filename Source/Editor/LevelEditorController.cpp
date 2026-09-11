@@ -1125,17 +1125,11 @@ void LevelEditorController::AddObjectWithMesh(const std::filesystem::path& meshP
 
     const NS::Core::Vector3 center = m_editorCamera.Center();
 
-    // 既定の cube 構成から描画だけ差し替える。 当たりは cell 大の箱のまま置く
+    // 描いた形と当たりをずらさない。 MeshColliderComponent が描画と同じ三角形から当たりを作る
     NS::Object::ObjectData object{};
-    object.components = NS::Game::Level::MakeCellCubeComponents();
-    for (auto& entry : object.components)
-    {
-        if (NS::Object::ComponentEntryType(entry) == "MeshRendererComponent")
-        {
-            NS::Object::SetField(entry, "メッシュ", meshRef);
-            break;
-        }
-    }
+    object.components =
+        nlohmann::json::array({NS::Game::Level::MakeMeshRendererEntry(meshRef, "", NS::Game::Level::k_SolidBaseColor),
+                               NS::Object::MakeComponentEntry("MeshColliderComponent")});
     NS::Object::SetObjectPosition(object, center);
     object.name = meshPath.stem().string();
 
