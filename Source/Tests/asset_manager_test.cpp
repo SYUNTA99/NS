@@ -5,10 +5,12 @@
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Physics/Triangle.h>
 #include <Runtime/Platform/Window.h>
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <format>
 #include <gtest/gtest.h>
 #include <span>
 #include <string>
@@ -100,13 +102,35 @@ namespace
         const std::array<std::uint16_t, 3> indices = {0, 1, 2};
         std::memcpy(buffer.data() + 36, indices.data(), 6);
 
+        std::array<float, 3> low = {positions[0], positions[1], positions[2]};
+        std::array<float, 3> high = low;
+        for (std::size_t vertex = 1; vertex < 3; ++vertex)
+        {
+            for (std::size_t axis = 0; axis < 3; ++axis)
+            {
+                low[axis] = std::min(low[axis], positions[vertex * 3 + axis]);
+                high[axis] = std::max(high[axis], positions[vertex * 3 + axis]);
+            }
+        }
+        const std::string bounds =
+            std::format(R"("min":[{},{},{}],"max":[{},{},{}])", low[0], low[1], low[2], high[0], high[1], high[2]);
+
         return std::string{R"({"asset":{"version":"2.0"},)"} +
                R"("meshes":[{"primitives":[{"attributes":{"POSITION":0},"indices":1}]}],)" +
                R"("buffers":[{"byteLength":42,"uri":"data:application/octet-stream;base64,)" + EncodeBase64(buffer) +
                R"("}],)" + R"("bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36,"target":34962},)" +
                R"({"buffer":0,"byteOffset":36,"byteLength":6,"target":34963}],)" +
-               R"("accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[0,0,1],"max":[2,3,2]},)" +
+               R"("accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3",)" + bounds + "}," +
                R"({"bufferView":1,"componentType":5123,"count":3,"type":"SCALAR"}]})";
+    }
+
+    // ContentRoot 相対の参照。 ContentRoot の外なら空
+    std::string ContentRelativeRef(const std::filesystem::path& path)
+    {
+        const std::filesystem::path relative = path.lexically_relative(NS::Core::FileSystem::ContentRoot());
+        if (relative.empty() || *relative.begin() == std::filesystem::path{".."})
+            return {};
+        return relative.generic_string();
     }
 
     std::filesystem::path WriteFixture(const char* name, std::string_view content)
@@ -214,12 +238,12 @@ TEST_F(AssetManagerTest, GltfCollisionKeepsFrontFaceInLeftHandedSpace)
 {
     const std::array<float, 9> positions = {0.0f, 0.0f, 1.0f, 2.0f, 0.0f, 1.0f, 0.0f, 3.0f, 2.0f};
     const std::filesystem::path path = WriteFixture("ns_am_collision_triangle.gltf", SingleTriangleGltf(positions));
-    const std::filesystem::path relative = path.lexically_relative(NS::Core::FileSystem::ContentRoot());
-    if (relative.empty() || *relative.begin() == std::filesystem::path{".."})
+    const std::string ref = ContentRelativeRef(path);
+    if (ref.empty())
         GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << path.string();
 
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
-    const std::vector<NS::Physics::Triangle>* triangles = am.GetOrLoadMeshCollision(relative.generic_string());
+    const std::vector<NS::Physics::Triangle>* triangles = am.GetOrLoadMeshCollision(ref);
     ASSERT_NE(triangles, nullptr);
     ASSERT_EQ(triangles->size(), 1u);
 
@@ -259,6 +283,44 @@ TEST_F(AssetManagerTest, UnresolvableMeshRefHasNoCollision)
     EXPECT_EQ(am.GetOrLoadMeshCollision("../secret.gltf"), nullptr);
     EXPECT_EQ(am.GetOrLoadMeshCollision("__ns_am_missing_collision__.gltf"), nullptr);
     EXPECT_EQ(am.GetOrLoadMeshCollision("__ns_am_missing_collision__.gltf"), nullptr);
+}
+
+// 同じ file を指す参照は、 先頭に ./ を付けても記録 1 件の同じ三角形を返す
+TEST_F(AssetManagerTest, CollisionRefSpellingsShareOneRecord)
+{
+    const std::array<float, 9> positions = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+    const std::filesystem::path path = WriteFixture("ns_am_spelling_triangle.gltf", SingleTriangleGltf(positions));
+    const std::string ref = ContentRelativeRef(path);
+    if (ref.empty())
+        GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << path.string();
+
+    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    const std::vector<NS::Physics::Triangle>* plain = am.GetOrLoadMeshCollision(ref);
+    ASSERT_NE(plain, nullptr);
+    EXPECT_EQ(am.GetOrLoadMeshCollision("./" + ref), plain);
+    EXPECT_EQ(am.MeshCacheSize(), 1u);
+}
+
+// 描画を先に頼んだ glTF は、 当たりを頼んだ時に読み直さない。 間で file を書き換えても最初の中身のまま
+TEST_F(AssetManagerTest, MeshAndCollisionReadTheGltfOnce)
+{
+    const std::array<float, 9> first = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+    const std::array<float, 9> rewritten = {0.0f, 0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, 5.0f, 0.0f};
+    const std::filesystem::path path = WriteFixture("ns_am_read_once_triangle.gltf", SingleTriangleGltf(first));
+    const std::string ref = ContentRelativeRef(path);
+    if (ref.empty())
+        GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << path.string();
+
+    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    static_cast<void>(am.GetOrLoadMesh(path));
+    WriteFixture("ns_am_read_once_triangle.gltf", SingleTriangleGltf(rewritten));
+
+    const std::vector<NS::Physics::Triangle>* triangles = am.GetOrLoadMeshCollision(ref);
+    ASSERT_NE(triangles, nullptr);
+    ASSERT_EQ(triangles->size(), 1u);
+    const NS::Physics::Triangle& triangle = (*triangles)[0];
+    EXPECT_FLOAT_EQ(std::max({triangle.v0.x, triangle.v1.x, triangle.v2.x}), 1.0f);
+    EXPECT_EQ(am.MeshCacheSize(), 1u);
 }
 
 // Reload は path キーの Shader をその場で置き換えるのでキャッシュのポインタが不変

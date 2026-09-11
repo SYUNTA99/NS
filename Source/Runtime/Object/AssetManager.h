@@ -90,9 +90,11 @@ namespace NS::Object
         //! 現在キャッシュしている mesh エントリ数。 読込失敗を負キャッシュした path も 1 件として数える
         [[nodiscard]] std::size_t MeshCacheSize() const noexcept;
 
-        //! meshRef の形を当たり用の三角形群にして返す。 参照の引き方は ResolveMeshFromRef と同じで、 GPU を使わない
+        //! meshRef の形を当たり用の三角形群にして返す。 参照の引き方は ResolveMeshFromRef と同じ
         //! 三角形は描画の index の並びのままで、 法線 (v1 - v0) × (v2 - v0) が表面の外を向く
-        //! 同じ meshRef には同じ一覧を返し、 読めなかった参照も負キャッシュする
+        //! 同じ file を指す参照には、 区切り文字や . / .. の書き方が違っても同じ一覧を返す
+        //! file は GetOrLoadMesh と同じ読込を通るので、 glTF を読むのは描画と合わせて 1 回
+        //! device が無くても三角形は作れる。 読めなかった参照も負キャッシュする
         //! 空文字・トラバーサル・読込失敗は nullptr
         [[nodiscard]] const std::vector<NS::Physics::Triangle>* GetOrLoadMeshCollision(const std::string& meshRef);
 
@@ -146,6 +148,16 @@ namespace NS::Object
             NS::Core::Vector3 baseColor{1.0f, 1.0f, 1.0f};
         };
 
+        // file の mesh 1 件。 描画と当たりを 1 回の読込から両方作る。 読込に失敗した path も両方 null で残す
+        struct MeshRecord
+        {
+            std::unique_ptr<NS::Graphics::Mesh> mesh;                      // GPU 生成に失敗したら null
+            std::unique_ptr<std::vector<NS::Physics::Triangle>> collision; // 当たり用の三角形
+        };
+
+        // 正規化した path で記録を引き、 無ければ glTF を読んで作る
+        [[nodiscard]] MeshRecord& LoadMeshRecord(const std::filesystem::path& path);
+
         struct SkinnedModelRecord
         {
             std::unique_ptr<NS::Graphics::SkeletalMesh> mesh;
@@ -159,11 +171,10 @@ namespace NS::Object
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Shader>>
             m_shaders; // path キーの Shader キャッシュ
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Texture>>
-            m_textures; // path キーの Texture キャッシュ
-        std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Mesh>>
-            m_meshes; // path キーの Mesh キャッシュ、 null は負キャッシュ
+            m_textures;                                       // path キーの Texture キャッシュ
+        std::map<std::filesystem::path, MeshRecord> m_meshes; // path キーの file mesh
         std::map<std::string, std::unique_ptr<std::vector<NS::Physics::Triangle>>>
-            m_meshCollisions; // meshRef キーの当たり用三角形、 null は負キャッシュ
+            m_builtinCollisions;                                                          // 組み込み名キーの当たり
         std::map<std::string, std::unique_ptr<NS::Graphics::StaticMesh>> m_builtins;      // path 無し、 leaf と別容器
         std::map<std::filesystem::path, MaterialRecord> m_materials;                      // .mat composite
         std::map<std::string, std::unique_ptr<NS::Graphics::Material>> m_sharedMaterials; // 手続き共有 material

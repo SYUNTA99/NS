@@ -229,34 +229,39 @@ namespace NS::Object
         return raw;
     }
 
-    NS::Graphics::Mesh* AssetManager::GetOrLoadMesh(const std::filesystem::path& path)
+    AssetManager::MeshRecord& AssetManager::LoadMeshRecord(const std::filesystem::path& path)
     {
         const std::filesystem::path key = path.lexically_normal();
-        // null エントリは負キャッシュした失敗 path を表す。 get() が nullptr を返し再読込を短絡する
         if (const auto it = m_meshes.find(key); it != m_meshes.end())
-            return it->second.get();
+            return it->second;
 
+        // 描画と当たりのどちらを先に頼まれても両方ここで作る
+        // 当たりは MeshColliderComponent が描画と同じ参照で頼む。 当たりが先でも GPU mesh は描画に使われる
+        MeshRecord record;
         const NS::Graphics::MeshGeometry geom = NS::Graphics::LoadGltfMesh(key.string());
         if (geom.vertices.empty() || geom.indices.empty())
         {
-            NS_LOG_WARN(Graphics, "AssetManager::GetOrLoadMesh: mesh の読込失敗 / 空: {}", key.string());
-            // 壊れた path を負キャッシュし、 同じ参照を持つ object 群が毎回ディスク I/O を踏むのを防ぐ
-            m_meshes.emplace(key, nullptr);
-            return nullptr;
+            NS_LOG_WARN(Graphics, "AssetManager: mesh の読込失敗 / 空: {}", key.string());
         }
-
-        std::unique_ptr<NS::Graphics::StaticMesh> mesh = MakeStaticMesh(geom);
-        if (mesh == nullptr || !mesh->IsValid())
+        else
         {
-            NS_LOG_ERROR(Graphics, "AssetManager::GetOrLoadMesh: mesh の GPU 生成失敗: {}", key.string());
-            // GPU 生成失敗も負キャッシュする。 修正後の再試行は Clear() で解いてから
-            m_meshes.emplace(key, nullptr);
-            return nullptr;
+            std::unique_ptr<NS::Graphics::StaticMesh> mesh = MakeStaticMesh(geom);
+            if (mesh == nullptr || !mesh->IsValid())
+                NS_LOG_ERROR(Graphics, "AssetManager: mesh の GPU 生成失敗: {}", key.string());
+            else
+                record.mesh = std::move(mesh);
+            // GPU 生成だけ失敗しても当たりは作る。 device 無しのテストでも当たりを確かめられる
+            // TODO: コライダーの無い描画だけの mesh も三角形を Clear() まで持つ
+            // 大きな mesh を飾りに多く置いてメモリが効いてきたら、 当たりを頼まれた時に作る形へ移す
+            record.collision = std::make_unique<std::vector<NS::Physics::Triangle>>(MakeTriangles(geom));
         }
+        // 失敗した記録も残し、 同じ参照を持つ配置物が毎回ディスクを読むのを防ぐ。 修正後の再試行は Clear() で解いてから
+        return m_meshes.emplace(key, std::move(record)).first->second;
+    }
 
-        NS::Graphics::Mesh* raw = mesh.get();
-        m_meshes.emplace(key, std::move(mesh));
-        return raw;
+    NS::Graphics::Mesh* AssetManager::GetOrLoadMesh(const std::filesystem::path& path)
+    {
+        return LoadMeshRecord(path).mesh.get();
     }
 
     std::size_t AssetManager::MeshCacheSize() const noexcept
@@ -268,29 +273,24 @@ namespace NS::Object
     {
         if (meshRef.empty())
             return nullptr;
-        if (const auto it = m_meshCollisions.find(meshRef); it != m_meshCollisions.end())
-            return it->second.get();
 
-        std::unique_ptr<std::vector<NS::Physics::Triangle>> triangles;
         if (const BuiltinShape* shape = FindBuiltinShape(meshRef))
         {
-            triangles = std::make_unique<std::vector<NS::Physics::Triangle>>(MakeTriangles(shape->make()));
-        }
-        else if (const std::optional<std::filesystem::path> resolved = ResolveContentPath(meshRef))
-        {
-            // TODO: 描画の GetOrLoadMesh と同じ glTF をもう一度読む
-            // 読込が重くなったら MeshGeometry を両者で共有する
-            const NS::Graphics::MeshGeometry geom = NS::Graphics::LoadGltfMesh(resolved->string());
-            if (geom.vertices.empty() || geom.indices.empty())
-                NS_LOG_WARN(
-                    Graphics, "AssetManager::GetOrLoadMeshCollision: mesh の読込失敗 / 空: {}", resolved->string());
-            else
-                triangles = std::make_unique<std::vector<NS::Physics::Triangle>>(MakeTriangles(geom));
+            auto it = m_builtinCollisions.find(meshRef);
+            if (it == m_builtinCollisions.end())
+            {
+                it = m_builtinCollisions
+                         .emplace(meshRef,
+                                  std::make_unique<std::vector<NS::Physics::Triangle>>(MakeTriangles(shape->make())))
+                         .first;
+            }
+            return it->second.get();
         }
 
-        const std::vector<NS::Physics::Triangle>* raw = triangles.get();
-        m_meshCollisions.emplace(meshRef, std::move(triangles));
-        return raw;
+        const std::optional<std::filesystem::path> resolved = ResolveContentPath(meshRef);
+        if (!resolved)
+            return nullptr;
+        return LoadMeshRecord(*resolved).collision.get();
     }
 
     LoadedSkinnedModel AssetManager::GetOrLoadSkinnedModel(const std::filesystem::path& path)
@@ -555,7 +555,7 @@ namespace NS::Object
         m_textures.clear();
         m_shaders.clear();
         m_meshes.clear();
-        m_meshCollisions.clear();
+        m_builtinCollisions.clear();
         m_skinnedModels.clear();
         m_animationSources.clear();
         m_boundClips.clear();
