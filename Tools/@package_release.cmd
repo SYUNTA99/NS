@@ -189,12 +189,18 @@ if errorlevel 1 (
     exit /b 1
 )
 :: one license text per bundled library: ThirdParty\<lib>\LICENSE -> <lib>-LICENSE.txt
-for %%L in (DirectXTK DirectXTex spdlog magic_enum) do (
+for %%L in (DirectXTK DirectXTex spdlog magic_enum Effekseer JoltPhysics) do (
     copy /y "Source\ThirdParty\%%L\LICENSE" "%OUT%\Source\Licenses\%%L-LICENSE.txt" >nul
     if errorlevel 1 (
         echo [ERROR] copy %%L LICENSE failed
         exit /b 1
     )
+)
+:: the Effekseer DX11 runtime also carries DirectX Tool Kit code under Ms-PL
+copy /y "Source\ThirdParty\Effekseer\LICENSE_RUNTIME_DIRECTX" "%OUT%\Source\Licenses\Effekseer-LICENSE_RUNTIME_DIRECTX.txt" >nul
+if errorlevel 1 (
+    echo [ERROR] copy Effekseer LICENSE_RUNTIME_DIRECTX failed
+    exit /b 1
 )
 
 :: --- 8. rename ASCII build folders to JP submission names ------------------
