@@ -4,9 +4,6 @@
 #include <Runtime/Object/Components/CapsuleColliderComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
-#include <Runtime/Physics/PhysicsWorld.h>
-
-#include "jolt_test_world.h"
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -212,41 +209,4 @@ TEST_F(EntityComponentTest, GravityChangesOnlyVerticalVelocity)
     EXPECT_FLOAT_EQ(entity.Velocity().x, 3.0f);
     EXPECT_FLOAT_EQ(entity.Velocity().z, 4.0f);
     EXPECT_NEAR(entity.VerticalVelocity(), -25.0f * k_FixedDt, 1e-6f);
-}
-
-TEST_F(EntityComponentTest, PositionDeltaMatchesActualMovement)
-{
-    GameObject obj;
-    auto& entity = *obj.AddComponent<BareEntity>();
-    obj.Root().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
-    entity.SetVelocity(Vector3{2.0f, 0.0f, -3.0f});
-
-    const Vector3 before = obj.Root().Position();
-    entity.Move(k_FixedDt);
-    const Vector3 after = obj.Root().Position();
-
-    EXPECT_FLOAT_EQ(entity.PositionDelta().x, after.x - before.x);
-    EXPECT_FLOAT_EQ(entity.PositionDelta().y, after.y - before.y);
-    EXPECT_FLOAT_EQ(entity.PositionDelta().z, after.z - before.z);
-}
-
-// 突進の進み具合は狙いの速度でなく実移動で測る。壁に押し付けられた歩は両者が食い違う
-TEST_F(EntityComponentTest, PositionDeltaIsNearZeroWhenBlockedByWall)
-{
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, AABB{Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.5f, 4.0f, 4.0f}});
-    world.OptimizeBroadPhase();
-
-    auto& entity = *obj.AddComponent<BareEntity>();
-    entity.SetPhysicsWorld(&world);
-    obj.Root().SetPosition(Vector3{0.0f, 0.0f, 0.0f});
-    entity.SetVelocity(Vector3{50.0f, 0.0f, 0.0f});
-
-    const Vector3 before = obj.Root().Position();
-    entity.Move(k_FixedDt);
-    const Vector3 after = obj.Root().Position();
-
-    EXPECT_FLOAT_EQ(entity.PositionDelta().x, after.x - before.x);
-    EXPECT_LT(entity.PositionDelta().x, 0.2f);
 }

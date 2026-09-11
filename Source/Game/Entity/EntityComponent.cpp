@@ -117,10 +117,7 @@ namespace NS::Game::Entity
         const NS::Core::Vector3 before = RootTransform().Position();
         if (m_world == nullptr)
         {
-            // 実移動は書いた位置から引く。m_velocity * dt を控えると丸めのぶんだけ位置と食い違う
-            const NS::Core::Vector3 after = before + m_velocity * dt;
-            RootTransform().SetPosition(after);
-            m_positionDelta = after - before;
+            RootTransform().SetPosition(before + m_velocity * dt);
             m_wasGrounded = m_isGrounded;
             m_isGrounded = false;
             return;
@@ -134,14 +131,12 @@ namespace NS::Game::Entity
 
         m_character->Step(before, m_velocity, dt);
 
-        const NS::Core::Vector3 after = m_character->Position();
-        RootTransform().SetPosition(after);
+        RootTransform().SetPosition(m_character->Position());
         m_velocity = m_character->Velocity();
         m_wasGrounded = m_isGrounded;
         m_isGrounded = m_character->IsGrounded();
-        m_positionDelta = after - before;
 
-        // 発火は位置・速度・接地・実移動を書き終えた後。途中で呼ぶと購読側がその歩だけ古い値を読む
+        // 発火は位置・速度・接地を書き終えた後。途中で呼ぶと購読側がその歩だけ古い値を読む
         if (!m_wasGrounded && m_isGrounded)
             m_events.onGroundEnter.Invoke();
         else if (m_wasGrounded && !m_isGrounded)

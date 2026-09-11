@@ -411,11 +411,12 @@ namespace NS::Game::Player
             TapSlamGravity(dt);
         else
             Gravity(dt);
+        const NS::Core::Vector3 before = RootTransform().Position();
         Move(dt);
         SyncGroundState();
 
-        // 進んだ距離は基底が控えた実移動から測る。速度から積むと壁で止められた歩も進んだ扱いになる
-        const NS::Core::Vector3 delta = PositionDelta();
+        // 進んだ距離は実際に動いた量から測る。突進の速さから積むと壁で止められた歩も進んだ扱いになる
+        const NS::Core::Vector3 delta = RootTransform().Position() - before;
         const float stepDistance = std::sqrt(delta.x * delta.x + delta.z * delta.z);
         m_bodySlamTravelled += stepDistance;
 

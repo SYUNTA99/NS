@@ -72,9 +72,6 @@ namespace NS::Game::Entity
         //! 衝突 world が無ければ当たりを見ずに速度ぶん進め、接地は false にする
         void Move(float dt) noexcept;
 
-        //! 直近の Move で実際に動いた量。突進の進み具合を実移動から測るのに使う
-        [[nodiscard]] NS::Core::Vector3 PositionDelta() const noexcept { return m_positionDelta; }
-
         //! 接地の通知の受け口。購読は後から足せる
         [[nodiscard]] EntityEvents& Events() noexcept { return m_events; }
 
@@ -93,7 +90,6 @@ namespace NS::Game::Entity
         virtual void OnStepSkipped() {}
 
         NS::Core::Vector3 m_velocity{0.0f, 0.0f, 0.0f};
-        NS::Core::Vector3 m_positionDelta{0.0f, 0.0f, 0.0f};
         bool m_isGrounded = false;
         bool m_wasGrounded = false;                   // 直前の Move より前の接地
         NS::Physics::PhysicsWorld* m_world = nullptr; // 衝突判定に使う physics world。非所有

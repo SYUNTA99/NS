@@ -568,6 +568,29 @@ TEST_F(PlayerComponentTest, GroundedSlamsFireBackToBack)
     EXPECT_TRUE(player.IsBodySlamming());
 }
 
+// 進みを突進の速さから積むと、壁に押し付けた歩も進んだ扱いになり、距離を走り切るまで突進が終わらない
+TEST_F(PlayerComponentTest, SlamAgainstAWallEndsWithoutRunningTheFullDistance)
+{
+    GameObject obj;
+    NS::Physics::PhysicsWorld world;
+    // 壁の面は x=0.45。半径 0.4 の自機との隙間は 0.05
+    NsTest::AddBox(world, AABB{Vector3{0.95f, 1.0f, 0.0f}, Vector3{0.5f, 1.0f, 4.0f}});
+    auto& player = MakeSlamReady(obj, world);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    int steps = 0;
+    for (; steps < 60 && player.IsBodySlamming(); ++steps)
+        player.OnUpdate();
+
+    // 走り切ると 30 歩 (距離 10 / 速さ 20)。10 歩未満なら進めない歩が続いて打ち切れている
+    EXPECT_FALSE(player.IsBodySlamming());
+    EXPECT_LT(steps, 10);
+}
+
 // 出せない歩の押しをその場で捨てると連打が取りこぼされる。先行入力時間ぶん覚える
 TEST_F(PlayerComponentTest, BufferedRequestSurvivesInsideTheWindow)
 {
