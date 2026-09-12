@@ -11,7 +11,7 @@
 
 namespace
 {
-    //! 一次遅れの離散化。tau は時定数で値が大きいほど鈍い、dt は step。0 < tau で安定
+    //! 一次遅れの離散化。tau は時定数で値が大きいほど鈍い。0 < tau で安定
     //! 加速と減速の手触りはこの式が決める
     [[nodiscard]] float SmoothApproach(float current, float target, float tau, float dt) noexcept
     {
@@ -125,6 +125,7 @@ namespace NS::Game::Entity
 
         const float radius = CapsuleRadius();
         const float halfHeight = CapsuleHalfHeight();
+        // AttachScene は新しく組んだ配置物にしか呼ばれない。Scene が変わらないので m_character を作り直さない
         if (m_character == nullptr)
             m_character = std::make_unique<NS::Physics::JoltCharacter>(*physics, radius, halfHeight);
         m_character->Resize(radius, halfHeight);
