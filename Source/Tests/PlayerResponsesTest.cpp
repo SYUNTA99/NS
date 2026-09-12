@@ -15,7 +15,7 @@ namespace SceneNs = NS::Object;
 
 //! Application 依存のない Scene で、 走行のやり直しと応答 component の挙動を検証する
 //! 応答部品はプレイヤーに載るので、 プレイヤーを 1 体置けば揃う
-//! 世界の駆動は Scene::OnUpdate で、 dt は FrameTimer::FixedDelta の既定 1/60 が使われる
+//! 更新を回すのは Scene::OnUpdate で、 dt は FrameTimer::FixedDelta の既定 1/60 が使われる
 //! 判定と応答 (respawner / finisher) は同じ LateUpdate 帯の並びで済む
 
 namespace
@@ -169,7 +169,7 @@ TEST(PlayerResponses, StepFrameAdvancesExactlyOneTick)
     EXPECT_EQ(player->Health(), 7);
 }
 
-TEST(PlayerResponses, DisabledSimulationSkipsWorld)
+TEST(PlayerResponses, DisabledSimulationSkipsObjectUpdates)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData data;
@@ -181,7 +181,7 @@ TEST(PlayerResponses, DisabledSimulationSkipsWorld)
     auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
 
-    // 編集モード相当。 世界を回さないので hazard の中でも何も起きない
+    // 編集モード相当。 component の更新が走らないので hazard の中でも何も起きない
     scene.SetSimulationEnabled(false);
     scene.OnUpdate();
     EXPECT_EQ(player->Health(), 8);
@@ -210,7 +210,7 @@ TEST(PlayerResponses, ClearFadesOutRestartsAtBlackThenFadesIn)
     ASSERT_NE(fade, nullptr);
     ASSERT_TRUE(fade->IsFading());
 
-    // シーケンスの間は世界を止めず入力だけ切る
+    // シーケンスの間も Scene の更新は止めず入力だけ切る
     auto* input = player->FindComponent<SceneNs::PlayerInputComponent>();
     ASSERT_NE(input, nullptr);
     EXPECT_FALSE(input->IsActiveSelf());
