@@ -37,7 +37,8 @@ namespace NS::Object
         NS::Physics::PhysicsScene* scenePhysics = ScenePhysics();
         if (scenePhysics == nullptr)
         {
-            NS_LOG_ERROR(Scene, "ColliderComponent: Scene に居ないので body を外せない。 body は PhysicsScene を壊すまで残る");
+            NS_LOG_ERROR(Scene,
+                         "ColliderComponent: Scene に居ないので body を外せない。 body は PhysicsScene を壊すまで残る");
             m_bodyId = JPH::BodyID{};
             return;
         }
@@ -55,7 +56,12 @@ namespace NS::Object
     bool ColliderComponent::AcceptsScenePhysics(const NS::Physics::PhysicsScene& physics) const
     {
         const NS::Physics::PhysicsScene* scenePhysics = ScenePhysics();
-        if (scenePhysics == nullptr || scenePhysics == &physics)
+        if (scenePhysics == nullptr)
+        {
+            NS_LOG_ERROR(Scene, "ColliderComponent: 持ち主が Scene に居ないので body を出し入れしない");
+            return false;
+        }
+        if (scenePhysics == &physics)
             return true;
 
         NS_LOG_ERROR(Scene, "ColliderComponent: 持ち主の Scene と違う PhysicsScene を渡された。 body を出し入れしない");

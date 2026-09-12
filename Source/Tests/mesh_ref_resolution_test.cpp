@@ -5,10 +5,11 @@
 #include <Runtime/Object/Components/MeshColliderComponent.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
+#include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Scene/SceneData.h>
-#include <Runtime/Object/ObjectList.h>
 #include <Runtime/Physics/MeshCollision.h>
 #include <Runtime/Physics/PhysicsScene.h>
 #include <Runtime/Platform/Window.h>
@@ -83,8 +84,8 @@ TEST(MeshRefResolution, EmptyMeshRefFallsBackToCube)
     ASSERT_NE(built, nullptr);
     auto* mr = built->FindComponent<MeshRendererComponent>();
     ASSERT_NE(mr, nullptr);
-    // headless では Builtin("cube") も nullptr になり cube 比較は素通りする
-    // ResolveMeshFromRef が空参照で nullptr を返すことだけは headless でも確認できる
+    // この assets は RegisterBuiltins を呼んでいないので Builtin("cube") は nullptr
+    // cube 比較は両辺 nullptr で素通りし、確かめているのは空参照の nullptr だけ
     EXPECT_EQ(ResolveMeshFromRef(assets, ""), nullptr);
     EXPECT_EQ(mr->GetMesh(), assets.Builtin("cube"));
 }
@@ -109,7 +110,7 @@ TEST(MeshRefResolution, RelativePathAttemptsContentRootLoad)
     EXPECT_EQ(ResolveMeshFromRef(assets, "meshes/foo.gltf"), assets.GetOrLoadMesh(*resolved));
 }
 
-// メッシュ参照が空の grid cube も cube に解決される
+// メッシュ参照が空の object も cube に解決される
 TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
 {
     AssetManager assets{std::filesystem::path{"."}};
@@ -122,7 +123,8 @@ TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
 
     auto* compMesh = compBuilt->FindComponent<MeshRendererComponent>();
     ASSERT_NE(compMesh, nullptr);
-    // 上と同じく ResolveMeshFromRef の nullptr だけ headless で確認する。cube 比較は device がある時だけ効く
+    // 上と同じく確かめているのは ResolveMeshFromRef の nullptr だけ
+    // cube 比較は RegisterBuiltins を呼んだ assets でしか効かない
     EXPECT_EQ(ResolveMeshFromRef(assets, ""), nullptr);
     EXPECT_EQ(compMesh->GetMesh(), assets.Builtin("cube"));
 }
@@ -187,10 +189,14 @@ TEST(MeshRefResolution, BuiltCubeMeshColliderStopsRayAtTopFace)
     obj.components.push_back(MakeMeshRenderer("cube"));
     obj.components.push_back(NS::Object::MakeComponentEntry("MeshColliderComponent"));
 
+    NS::Object::Scene scene;
     NS::Object::ObjectList objects;
-    ASSERT_NE(objects.Append(BuildSceneObject(obj, &assets)), nullptr);
+    NS::Object::GameObject* placed = objects.Append(BuildSceneObject(obj, &assets));
+    ASSERT_NE(placed, nullptr);
+    // collider は持ち主の Scene の PhysicsScene しか受け取らないので、組んだ配置物を Scene へ結ぶ
+    placed->AttachScene(&scene);
 
-    NS::Physics::PhysicsScene physics;
+    NS::Physics::PhysicsScene& physics = scene.Physics();
     objects.SyncPhysics(physics);
     ASSERT_EQ(physics.BodyCount(), 1u);
 

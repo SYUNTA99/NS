@@ -72,6 +72,21 @@ namespace
         int m_count = 0;
     };
 
+    // collider は持ち主の Scene からしか PhysicsScene を受け取らないので、 Spawn した配置物も Scene へ結ぶ
+    // ObjectList 自身は Scene を知らない。 Rebuild だけが引数で受けて結ぶ
+    struct PhysicsStage
+    {
+        NS::Object::Scene scene;
+        ObjectList objects;
+        NS::Physics::PhysicsScene& physics = scene.Physics();
+
+        NS::Object::GameObject* Spawn()
+        {
+            NS::Object::GameObject* obj = objects.Spawn<NS::Object::GameObject>();
+            obj->AttachScene(&scene);
+            return obj;
+        }
+    };
 } // namespace
 
 TEST(ObjectListTest, InitialStateIsEmpty)
@@ -499,58 +514,57 @@ TEST(ObjectListTest, UpdateAllObjectsFollowsOwnerActiveFlag)
 
 TEST(ObjectListTest, SyncPhysicsFillsPhysicsScene)
 {
-    ObjectList objects;
-    objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
-    objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::SphereColliderComponent>();
+    PhysicsStage stage;
+    stage.Spawn()->AddComponent<NS::Object::BoxColliderComponent>();
+    stage.Spawn()->AddComponent<NS::Object::SphereColliderComponent>();
 
-    NS::Physics::PhysicsScene physics;
-    objects.SyncPhysics(physics);
+    stage.objects.SyncPhysics(stage.physics);
 
-    EXPECT_EQ(physics.BodyCount(), 2u);
+    EXPECT_EQ(stage.physics.BodyCount(), 2u);
 }
 
 TEST(ObjectListTest, SyncPhysicsIntoPhysicsSceneTwiceKeepsTheCount)
 {
-    ObjectList objects;
-    objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
+    PhysicsStage stage;
+    stage.Spawn()->AddComponent<NS::Object::BoxColliderComponent>();
 
-    NS::Physics::PhysicsScene physics;
-    objects.SyncPhysics(physics);
-    objects.SyncPhysics(physics);
+    stage.objects.SyncPhysics(stage.physics);
+    stage.objects.SyncPhysics(stage.physics);
 
-    EXPECT_EQ(physics.BodyCount(), 1u);
+    EXPECT_EQ(stage.physics.BodyCount(), 1u);
 }
 
 // 同期は body を作り直さず、collider が覚えている id を維持する
 // 形の違う 2 つを置くのは SyncBody が派生ごとに別実装だから。1 種類では 1 つの実装しか通らない
 TEST(ObjectListTest, SyncPhysicsIntoPhysicsSceneKeepsEveryBodyId)
 {
-    ObjectList objects;
-    auto* box = objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
-    auto* sphere = objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::SphereColliderComponent>();
+    PhysicsStage stage;
+    auto* box = stage.Spawn()->AddComponent<NS::Object::BoxColliderComponent>();
+    auto* sphere = stage.Spawn()->AddComponent<NS::Object::SphereColliderComponent>();
 
-    NS::Physics::PhysicsScene physics;
-    objects.SyncPhysics(physics);
+    stage.objects.SyncPhysics(stage.physics);
     const JPH::BodyID staleBox = box->BodyId();
     const JPH::BodyID staleSphere = sphere->BodyId();
 
-    objects.SyncPhysics(physics);
+    stage.objects.SyncPhysics(stage.physics);
 
-    EXPECT_EQ(physics.BodyCount(), 2u);
+    EXPECT_EQ(stage.physics.BodyCount(), 2u);
     EXPECT_EQ(box->BodyId(), staleBox);
     EXPECT_EQ(sphere->BodyId(), staleSphere);
 }
 
+// 起きている collider を隣に置くのは、 body 0 個を期待すると全部断られても緑になるため
 TEST(ObjectListTest, InactiveColliderStaysOutOfPhysicsScene)
 {
-    ObjectList objects;
-    auto* collider = objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
+    PhysicsStage stage;
+    stage.Spawn()->AddComponent<NS::Object::BoxColliderComponent>();
+    auto* collider = stage.Spawn()->AddComponent<NS::Object::BoxColliderComponent>();
     collider->SetActive(false);
 
-    NS::Physics::PhysicsScene physics;
-    objects.SyncPhysics(physics);
+    stage.objects.SyncPhysics(stage.physics);
 
-    EXPECT_EQ(physics.BodyCount(), 0u);
+    EXPECT_EQ(stage.physics.BodyCount(), 1u);
+    EXPECT_TRUE(collider->BodyId().IsInvalid());
 }
 
 // 取り込み形状の三角形も物理へ入る。 同期側が形状を名指ししない事の裏取り
@@ -563,16 +577,14 @@ TEST(ObjectListTest, MeshColliderTrianglesReachPhysics)
                                          nullptr};
     collision.shape = NS::Physics::CreateMeshShape(collision.triangles);
 
-    ObjectList objects;
-    auto* floor = objects.Spawn<NS::Object::GameObject>();
-    floor->AddComponent<NS::Object::MeshColliderComponent>()->SetCollision(&collision);
+    PhysicsStage stage;
+    stage.Spawn()->AddComponent<NS::Object::MeshColliderComponent>()->SetCollision(&collision);
 
-    NS::Physics::PhysicsScene physics;
-    objects.SyncPhysics(physics);
-    ASSERT_EQ(physics.BodyCount(), 1u);
+    stage.objects.SyncPhysics(stage.physics);
+    ASSERT_EQ(stage.physics.BodyCount(), 1u);
 
     float distance = 0.0f;
-    EXPECT_TRUE(physics.RaycastDown(NS::Core::Vector3{0.0f, 2.0f, 0.0f}, 8.0f, distance));
+    EXPECT_TRUE(stage.physics.RaycastDown(NS::Core::Vector3{0.0f, 2.0f, 0.0f}, 8.0f, distance));
     EXPECT_NEAR(distance, 2.0f, 1.0e-3f);
 }
 
@@ -614,37 +626,35 @@ TEST(ObjectListTest, UpdateObjectsCostMeasurement)
 // 飛んでいる岩の body は collider の持ち物ではない。同期が巻き添えで消すと飛行が途中で止まる
 TEST(ObjectListTest, SyncPhysicsKeepsBodiesItDidNotCreate)
 {
-    ObjectList objects;
-    objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
+    PhysicsStage stage;
+    stage.Spawn()->AddComponent<NS::Object::BoxColliderComponent>();
 
-    NS::Physics::PhysicsScene physics;
-    objects.SyncPhysics(physics);
+    stage.objects.SyncPhysics(stage.physics);
 
     NS::Core::Sphere loose;
     loose.center = NS::Core::Vector3{20.0f, 20.0f, 20.0f};
     loose.radius = 0.5f;
-    const JPH::BodyID outsider = physics.AddSphere(loose, NS::Physics::ObjectLayers::Rock);
+    const JPH::BodyID outsider = stage.physics.AddSphere(loose, NS::Physics::ObjectLayers::Rock);
 
-    objects.SyncPhysics(physics);
+    stage.objects.SyncPhysics(stage.physics);
 
-    EXPECT_EQ(physics.BodyCount(), 2u);
-    EXPECT_NEAR(physics.BodyPosition(outsider).y, 20.0f, 1.0e-4f);
+    EXPECT_EQ(stage.physics.BodyCount(), 2u);
+    EXPECT_NEAR(stage.physics.BodyPosition(outsider).y, 20.0f, 1.0e-4f);
 }
 
 // 寝かせた collider の body は同期で外れる。残ると壊した物の当たりが固形のまま居座る
 TEST(ObjectListTest, SyncPhysicsDropsTheBodyOfADeactivatedCollider)
 {
-    ObjectList objects;
-    auto* box = objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
+    PhysicsStage stage;
+    auto* box = stage.Spawn()->AddComponent<NS::Object::BoxColliderComponent>();
 
-    NS::Physics::PhysicsScene physics;
-    objects.SyncPhysics(physics);
-    ASSERT_EQ(physics.BodyCount(), 1u);
+    stage.objects.SyncPhysics(stage.physics);
+    ASSERT_EQ(stage.physics.BodyCount(), 1u);
 
     box->SetActive(false);
-    objects.SyncPhysics(physics);
+    stage.objects.SyncPhysics(stage.physics);
 
-    EXPECT_EQ(physics.BodyCount(), 0u);
+    EXPECT_EQ(stage.physics.BodyCount(), 0u);
     EXPECT_TRUE(box->BodyId().IsInvalid());
 }
 

@@ -23,14 +23,15 @@ namespace NS::Object
     {
     public:
         //! world 座標の当たりを body 1 個として physics へ入れる。 入れた body があれば置き直す
-        //! 何も入れない形状もある。 持ち主が Scene に居る時、 Scene の PhysicsScene 以外はエラーを出して受け取らない
+        //! 何も入れない形状もある。 持ち主が Scene に居ない時と、 持ち主の Scene 以外の PhysicsScene を
+        //! 渡された時は、 エラーを出して受け取らない
         void SyncToPhysics(NS::Physics::PhysicsScene& physics);
 
         //! 入れた body の id。 何も入れなかった形状では無効
         [[nodiscard]] JPH::BodyID BodyId() const noexcept { return m_bodyId; }
 
         //! 自分が入れた body を physics から外す。 入れていなければ何もしない
-        //! 持ち主が Scene に居る時、 Scene の PhysicsScene 以外はエラーを出して受け取らない
+        //! 受け取る条件は SyncToPhysics と同じ
         void RemoveFromPhysics(NS::Physics::PhysicsScene& physics);
 
         //! 配置物ごと消える前に、 持ち主の Scene の PhysicsScene から自分の body を外す
@@ -46,7 +47,9 @@ namespace NS::Object
         [[nodiscard]] virtual JPH::BodyID SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current) = 0;
         // 持ち主の Scene の PhysicsScene。 Scene に居なければ null
         [[nodiscard]] NS::Physics::PhysicsScene* ScenePhysics() const noexcept;
-        // Scene に居なければどの PhysicsScene も受け取る。 Scene に居る時は Scene の PhysicsScene だけ
+        // 受け取るのは持ち主の Scene の PhysicsScene だけ。 Scene に居ない持ち主も断る
+        // 断らないと、 覚えている id がどの PhysicsScene の物か言えなくなる。 別の PhysicsScene は
+        // 同じ index と使い回し回数を配るので、 無関係の body を作り変える
         [[nodiscard]] bool AcceptsScenePhysics(const NS::Physics::PhysicsScene& physics) const;
 
         JPH::BodyID m_bodyId;
