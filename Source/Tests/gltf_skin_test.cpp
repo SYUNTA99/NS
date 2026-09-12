@@ -1,3 +1,5 @@
+#include "scoped_fixture.h"
+
 #include <Runtime/Core/Filesystem.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Graphics/Animation.h>
@@ -107,24 +109,6 @@ namespace
                R"({"buffer":0,"byteOffset":160,"byteLength":6,"target":34963}],)" + R"("accessors":[)" +
                R"({"bufferView":0,"componentType":5126,"count":3,"type":"VEC3","min":[0,0,0],"max":[1,1,2]},)" +
                R"({"bufferView":1,"componentType":5123,"count":3,"type":"SCALAR"}]})";
-    }
-
-    std::filesystem::path WriteBinFixture(const char* name, const std::vector<unsigned char>& bytes)
-    {
-        const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / name;
-        const bool ok = NS::Core::FileSystem::WriteAllBytes(
-            path, std::as_bytes(std::span<const unsigned char>{bytes.data(), bytes.size()}));
-        EXPECT_TRUE(ok);
-        return path;
-    }
-
-    std::filesystem::path WriteTextFixture(const char* name, const std::string& content)
-    {
-        const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / name;
-        const bool ok = NS::Core::FileSystem::WriteAllBytes(
-            path, std::as_bytes(std::span<const char>{content.data(), content.size()}));
-        EXPECT_TRUE(ok);
-        return path;
     }
 
     // skinned fixture + 1 ボーン回転アニメ (208 byte: 末尾に anim times 2 + rotation 2 を追加)
@@ -262,20 +246,22 @@ TEST(GltfSkinLoadTest, NonexistentPathIsInvalid)
 
 TEST(GltfSkinLoadTest, StaticMeshWithoutSkinIsInvalid)
 {
-    WriteBinFixture("ns_skinned_fixture.bin", MakeSkinnedBufferBin());
-    const auto gltfPath = WriteTextFixture("ns_skin_noskin.gltf", NoSkinGltf());
+    // gltf の buffers.uri が名前でこの .bin を指す。 消えると読込が失敗する
+    const NsTest::ScopedFixture bin{"ns_skinned_fixture.bin", MakeSkinnedBufferBin()};
+    const NsTest::ScopedFixture gltf{"ns_skin_noskin.gltf", NoSkinGltf()};
 
-    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltfPath.string());
+    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltf.Path().string());
     EXPECT_FALSE(data.IsValid());
     EXPECT_TRUE(data.vertices.empty());
 }
 
 TEST(GltfSkinLoadTest, LoadsSkinnedTriangleWithLeftHandedConversion)
 {
-    WriteBinFixture("ns_skinned_fixture.bin", MakeSkinnedBufferBin());
-    const auto gltfPath = WriteTextFixture("ns_skin_happy.gltf", SkinnedGltf());
+    // gltf の buffers.uri が名前でこの .bin を指す。 消えると読込が失敗する
+    const NsTest::ScopedFixture bin{"ns_skinned_fixture.bin", MakeSkinnedBufferBin()};
+    const NsTest::ScopedFixture gltf{"ns_skin_happy.gltf", SkinnedGltf()};
 
-    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltfPath.string());
+    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltf.Path().string());
     ASSERT_TRUE(data.IsValid());
     EXPECT_EQ(data.vertices.size(), 3u);
     ASSERT_EQ(data.indices.size(), 3u);
@@ -298,10 +284,11 @@ TEST(GltfSkinLoadTest, LoadsSkinnedTriangleWithLeftHandedConversion)
 
 TEST(GltfSkinLoadTest, LoadsAnimationClip)
 {
-    WriteBinFixture("ns_skinned_anim_fixture.bin", MakeAnimatedSkinnedBufferBin());
-    const auto gltfPath = WriteTextFixture("ns_skin_anim.gltf", AnimatedSkinnedGltf());
+    // gltf の buffers.uri が名前でこの .bin を指す。 消えると読込が失敗する
+    const NsTest::ScopedFixture bin{"ns_skinned_anim_fixture.bin", MakeAnimatedSkinnedBufferBin()};
+    const NsTest::ScopedFixture gltf{"ns_skin_anim.gltf", AnimatedSkinnedGltf()};
 
-    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltfPath.string());
+    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltf.Path().string());
     ASSERT_TRUE(data.IsValid());
     ASSERT_EQ(data.animations.size(), 1u);
 

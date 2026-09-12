@@ -1,3 +1,5 @@
+#include "scoped_fixture.h"
+
 #include <Runtime/Core/Filesystem.h>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Core/Math.h>
@@ -134,15 +136,6 @@ namespace
         return relative.generic_string();
     }
 
-    std::filesystem::path WriteFixture(const char* name, std::string_view content)
-    {
-        const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / name;
-        const bool ok = NS::Core::FileSystem::WriteAllBytes(
-            path, std::as_bytes(std::span<const char>{content.data(), content.size()}));
-        EXPECT_TRUE(ok);
-        return path;
-    }
-
     NS::Core::Vector3 FaceNormal(const NS::Physics::Triangle& triangle)
     {
         return (triangle.v1 - triangle.v0).Cross(triangle.v2 - triangle.v0);
@@ -239,10 +232,10 @@ TEST_F(AssetManagerTest, SameMeshRefSharesCollision)
 TEST_F(AssetManagerTest, GltfCollisionKeepsFrontFaceInLeftHandedSpace)
 {
     const std::array<float, 9> positions = {0.0f, 0.0f, 1.0f, 2.0f, 0.0f, 1.0f, 0.0f, 3.0f, 2.0f};
-    const std::filesystem::path path = WriteFixture("ns_am_collision_triangle.gltf", SingleTriangleGltf(positions));
-    const std::string ref = ContentRelativeRef(path);
+    const NsTest::ScopedFixture fixture{"ns_am_collision_triangle.gltf", SingleTriangleGltf(positions)};
+    const std::string ref = ContentRelativeRef(fixture.Path());
     if (ref.empty())
-        GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << path.string();
+        GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << fixture.Path().string();
 
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
     const NS::Physics::MeshCollision* collision = am.GetOrLoadMeshCollision(ref);
@@ -291,10 +284,10 @@ TEST_F(AssetManagerTest, UnresolvableMeshRefHasNoCollision)
 TEST_F(AssetManagerTest, CollisionRefSpellingsShareOneRecord)
 {
     const std::array<float, 9> positions = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
-    const std::filesystem::path path = WriteFixture("ns_am_spelling_triangle.gltf", SingleTriangleGltf(positions));
-    const std::string ref = ContentRelativeRef(path);
+    const NsTest::ScopedFixture fixture{"ns_am_spelling_triangle.gltf", SingleTriangleGltf(positions)};
+    const std::string ref = ContentRelativeRef(fixture.Path());
     if (ref.empty())
-        GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << path.string();
+        GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << fixture.Path().string();
 
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
     const NS::Physics::MeshCollision* plain = am.GetOrLoadMeshCollision(ref);
@@ -308,14 +301,14 @@ TEST_F(AssetManagerTest, MeshAndCollisionReadTheGltfOnce)
 {
     const std::array<float, 9> first = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
     const std::array<float, 9> rewritten = {0.0f, 0.0f, 0.0f, 5.0f, 0.0f, 0.0f, 0.0f, 5.0f, 0.0f};
-    const std::filesystem::path path = WriteFixture("ns_am_read_once_triangle.gltf", SingleTriangleGltf(first));
-    const std::string ref = ContentRelativeRef(path);
+    NsTest::ScopedFixture fixture{"ns_am_read_once_triangle.gltf", SingleTriangleGltf(first)};
+    const std::string ref = ContentRelativeRef(fixture.Path());
     if (ref.empty())
-        GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << path.string();
+        GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << fixture.Path().string();
 
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
-    static_cast<void>(am.GetOrLoadMesh(path));
-    WriteFixture("ns_am_read_once_triangle.gltf", SingleTriangleGltf(rewritten));
+    static_cast<void>(am.GetOrLoadMesh(fixture.Path()));
+    fixture.Rewrite(SingleTriangleGltf(rewritten));
 
     const NS::Physics::MeshCollision* collision = am.GetOrLoadMeshCollision(ref);
     ASSERT_NE(collision, nullptr);

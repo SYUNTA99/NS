@@ -22,19 +22,20 @@ namespace
 } // namespace
 
 // エディタへ落とした glTF は箱でなく、 自分の三角形で当たる MeshColliderComponent を持つ
+// 参照の実体化は AssetManager を差した Scene だけが行う。 この試しは差していないので実在しない file で足りる
 TEST(EditorMeshDrop, DroppedMeshCollidesWithItsOwnTriangles)
 {
     NS::Object::Scene scene;
     LevelEditorController editor(&scene);
 
-    editor.AddObjectWithMesh(NS::Core::FileSystem::ContentRoot() / "Assets" / "Models" / "ns_drop_terrain.glb");
+    editor.AddObjectWithMesh(NS::Core::FileSystem::ContentRoot() / "Assets" / "Models" / "__ns_missing_terrain__.glb");
 
     NS::Object::GameObject* placed = FindFirstPlaced(scene.Objects());
     ASSERT_NE(placed, nullptr);
 
     const auto* renderer = placed->FindComponent<NS::Object::MeshRendererComponent>();
     ASSERT_NE(renderer, nullptr);
-    EXPECT_EQ(renderer->MeshRef(), "Assets/Models/ns_drop_terrain.glb");
+    EXPECT_EQ(renderer->MeshRef(), "Assets/Models/__ns_missing_terrain__.glb");
     EXPECT_NE(placed->FindComponent<NS::Object::MeshColliderComponent>(), nullptr);
     EXPECT_EQ(placed->FindComponent<NS::Object::BoxColliderComponent>(), nullptr);
 }

@@ -1,3 +1,5 @@
+#include "scoped_fixture.h"
+
 #include <Runtime/Core/Filesystem.h>
 #include <Runtime/Graphics/GltfLoader.h>
 #include <filesystem>
@@ -86,15 +88,6 @@ namespace
                R"({"bufferView":1,"componentType":5123,"count":3,"type":"SCALAR"}]})";
     }
 
-    // fixture を exe 隣に NS Filesystem 経由で書き出してパスを返す。std::ofstream は使わない
-    std::filesystem::path WriteFixture(const char* name, std::string_view content)
-    {
-        const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / name;
-        const bool ok = NS::Core::FileSystem::WriteAllBytes(
-            path, std::as_bytes(std::span<const char>{content.data(), content.size()}));
-        EXPECT_TRUE(ok);
-        return path;
-    }
 } // namespace
 
 TEST(GltfLoaderTest, NonexistentPathReturnsEmpty)
@@ -107,8 +100,8 @@ TEST(GltfLoaderTest, NonexistentPathReturnsEmpty)
 TEST(GltfLoaderTest, ConcatenatesPrimitivesWithNodeTransformAndOffset)
 {
     const std::string json = MultiPrimGltf();
-    const std::filesystem::path path = WriteFixture("ns_gltf_loader_test_multi.gltf", json);
-    const auto geom = NS::Graphics::LoadGltfMesh(path.string());
+    const NsTest::ScopedFixture fixture{"ns_gltf_loader_test_multi.gltf", json};
+    const auto geom = NS::Graphics::LoadGltfMesh(fixture.Path().string());
 
     // 2 primitive 連結で 6 頂点 / 6 index
     ASSERT_EQ(geom.vertices.size(), 6u);
@@ -133,8 +126,8 @@ TEST(GltfLoaderTest, ConcatenatesPrimitivesWithNodeTransformAndOffset)
 TEST(GltfLoaderTest, RejectsDracoCompressed)
 {
     const std::string json = DracoRequiredGltf();
-    const std::filesystem::path path = WriteFixture("ns_gltf_loader_test_draco.gltf", json);
-    const auto geom = NS::Graphics::LoadGltfMesh(path.string());
+    const NsTest::ScopedFixture fixture{"ns_gltf_loader_test_draco.gltf", json};
+    const auto geom = NS::Graphics::LoadGltfMesh(fixture.Path().string());
     EXPECT_TRUE(geom.vertices.empty());
     EXPECT_TRUE(geom.indices.empty());
 }
@@ -142,8 +135,8 @@ TEST(GltfLoaderTest, RejectsDracoCompressed)
 TEST(GltfLoaderTest, SkipsNonTriangleTopology)
 {
     const std::string json = LineTopologyGltf();
-    const std::filesystem::path path = WriteFixture("ns_gltf_loader_test_lines.gltf", json);
-    const auto geom = NS::Graphics::LoadGltfMesh(path.string());
+    const NsTest::ScopedFixture fixture{"ns_gltf_loader_test_lines.gltf", json};
+    const auto geom = NS::Graphics::LoadGltfMesh(fixture.Path().string());
     EXPECT_TRUE(geom.vertices.empty());
     EXPECT_TRUE(geom.indices.empty());
 }
@@ -151,8 +144,8 @@ TEST(GltfLoaderTest, SkipsNonTriangleTopology)
 TEST(GltfLoaderTest, ComputesSmoothNormalWhenAbsent)
 {
     const std::string json = NoNormalGltf();
-    const std::filesystem::path path = WriteFixture("ns_gltf_loader_test_nonormal.gltf", json);
-    const auto geom = NS::Graphics::LoadGltfMesh(path.string());
+    const NsTest::ScopedFixture fixture{"ns_gltf_loader_test_nonormal.gltf", json};
+    const auto geom = NS::Graphics::LoadGltfMesh(fixture.Path().string());
 
     ASSERT_EQ(geom.vertices.size(), 3u);
 
