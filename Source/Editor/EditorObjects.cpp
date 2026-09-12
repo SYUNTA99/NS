@@ -17,8 +17,8 @@
 #include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
-#include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/ObjectList.h"
+#include "Runtime/Object/Reflection/ComponentEntry.h"
 
 namespace NS::Editor
 {

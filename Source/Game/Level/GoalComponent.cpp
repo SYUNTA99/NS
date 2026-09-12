@@ -2,16 +2,14 @@
 
 #include "Game/Player.h"
 #include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/ObjectList.h"
 
 namespace NS::Game::Level
 {
-    GoalComponent::GoalComponent() noexcept
-        : NS::Object::Component(NS::Object::TickPriority::LateUpdate)
-    {}
+    GoalComponent::GoalComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::LateUpdate) {}
 
     void GoalComponent::OnUpdate()
     {

@@ -39,7 +39,7 @@ namespace NS::Object
         void SetTransient(bool transient) noexcept { m_transient = transient; }
 
         //! 配置物の組み直し・当たりの張り直しの後に scene が一時オブジェクトへ知らせる。 データ由来の配置物には来ない
-        virtual void OnWorldChanged() {}
+        virtual void OnObjectsRebuilt() {}
 
         [[nodiscard]] GameObject* Parent() const noexcept { return m_parent; }
         //! parent==nullptr で root 化。Transform の親子関係も同期更新する
@@ -89,7 +89,7 @@ namespace NS::Object
         void OnEndPlay();
 
         [[nodiscard]] bool IsAlive() const noexcept { return m_alive; }
-        //! 即時破棄ではなく、次フレーム以降 Scene 側で安全に回収される
+        //! 生存の印を下ろすだけ。この印を見て回収する経路は無く、1 体消すのは Scene::DestroyObject
         void Destroy() noexcept { m_alive = false; }
 
         //! この配置物自身の active 値。親の状態は含まない

@@ -43,7 +43,7 @@ namespace NS::Object
     //! Application から OnStart / OnUpdate / OnRender / OnShutdown を順に呼び戻される
     //! fixed timestep + variable render で駆動し、IRenderable の自己登録先も兼ねる
     //! live な GameObject/Component が唯一の表現で、SceneData は境界でだけ使う一時データ
-    //! 配置物は TypeRegistry と ResolveAssets で自力で組む。組み直し後の参照解決だけ派生が OnWorldChanged で埋める
+    //! 配置物は TypeRegistry と ResolveAssets で自力で組む。組み直し後の参照解決だけ派生が OnObjectsRebuilt で埋める
     //! 寿命は SceneManager が unique_ptr で所有する
     //! 依存: ObjectList / SceneData / ObjectBuilder / TypeRegistry
     class Scene : public NS::Core::NonCopyable
@@ -52,7 +52,7 @@ namespace NS::Object
         Scene();
         virtual ~Scene();
 
-        //! Application::Run() 開始時に 1 回呼ばれる。Window/Renderer/Input は既に有効
+        //! SceneManager::LoadScene が scene を立てた直後に 1 回呼ぶ。Window/Renderer/Input は既に有効
         virtual void OnStart() {}
 
         //! 可変フレーム Render の入口。描画本体は OnRenderScene に書く
@@ -89,7 +89,7 @@ namespace NS::Object
         //! @brief 読み込んだシーンデータを取り込み配置物を組み直す。 データは取込後に用済みになる一時データ
         void LoadFromData(SceneData&& data);
 
-        //! @brief 編集で動いた live の当たりを張り直し、 OnWorldChanged を呼ぶ。 object は作り直さない
+        //! @brief 編集で動いた live の当たりを張り直し、 OnObjectsRebuilt を呼ぶ。 object は作り直さない
         void SyncPhysics();
 
         //! @brief プレイ突入時に live を凍結して返す。 プレイ規則の判定と編集復帰の姿はこの凍結を読む
@@ -126,7 +126,7 @@ namespace NS::Object
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneViews = std::move(views); }
 
         //! @brief 型 T の一時オブジェクトをシーンの中で作って入れる。 呼出側へは生ポインタだけ返す
-        //! @details 所有はシーンが握る。 印立てと開始は下の受け口が行う
+        //! @details 所有はシーンが握る。 印立てと開始は unique_ptr を取る SpawnTransient が行う
         template <class T, class... Args> T* SpawnTransient(Args&&... args)
         {
             auto obj = std::make_unique<T>(std::forward<Args>(args)...);
@@ -163,7 +163,7 @@ namespace NS::Object
         //! 距離が同じなら SortPriority 昇順、それも同じなら stable_sort が登録順を保つ
         void DrawTransparent(const NS::Graphics::RenderContext& context);
 
-        //! @brief 標準の描画。 シーン描画パス→デバッグ描画の吐き出し→一時オブジェクトの重ね描き
+        //! @brief 標準の描画。 シーン描画パス→デバッグ描画の吐き出し→OverlayRendererComponent の重ね描き
         virtual void OnRenderScene();
 
         //! @brief project 既定値から scene 段の描画設定を作る。配置された平行光があれば照明を上書きする
@@ -172,10 +172,10 @@ namespace NS::Object
             const NS::Graphics::RenderSettings& projectDefaults);
 
         //! @brief 配置物の組み直し・当たりの張り直しの後に呼ばれる。 派生は live への参照をここで取り直す
-        virtual void OnWorldChanged() {}
+        virtual void OnObjectsRebuilt() {}
 
         //! @brief 渡されたシーンデータから配置物と当たりの body を組み直す。 データはその場限りの一時データ
-        void RebuildWorldFrom(const SceneData& data);
+        void RebuildObjectsFrom(const SceneData& data);
 
         //! @brief 標準のシーン描画パス。 環境同期→カメラ評価→不透明→空→半透明
         //! @param[in] viewOverride 描画視点の上書き。 空なら Brain の選ぶカメラで描く
@@ -185,9 +185,9 @@ namespace NS::Object
 
     private:
         //! 配置物の変化を一時オブジェクトへ知らせる。 組み直しと当たりの張り直しの後に呼ぶ
-        void NotifyTransientsWorldChanged();
+        void NotifyTransientsObjectsRebuilt();
 
-        //! 1 ビュー分のシーン描画と、 デバッグ描画・一時オブジェクトの重ね描きをまとめて行う
+        //! 1 ビュー分のシーン描画と、 デバッグ描画・OverlayRendererComponent の重ね描きをまとめて行う
         void RenderViewWithOverlays(const std::optional<CameraPose>& viewOverride);
 
         //! 登録中の全 renderable の bounds とソート情報を RenderScene へ同期する。描画の入口で呼ぶ
@@ -209,7 +209,7 @@ namespace NS::Object
         NS::Physics::PhysicsScene m_physicsScene;
 
         NS::Object::ObjectList m_objects;        // 配置物の一覧
-        CameraBrainComponent* m_brain = nullptr; // 常駐するカメラ配置物の brain。所有は m_objects、これは控え
+        CameraBrainComponent* m_brain = nullptr; // 常駐するカメラ一時オブジェクトの brain。所有は m_objects、これは控え
         SceneEnvironment m_environment;          // シーンの環境値。 実体側の唯一の出所
 
         bool m_warnedZeroLightDirection = false;      // 平行光 zero 警告の 1 回制御

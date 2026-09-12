@@ -4,8 +4,8 @@
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
 #include "Runtime/Object/GameObject.h"
-#include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/ObjectList.h"
+#include "Runtime/Object/Scene/Scene.h"
 
 #include <cstdint>
 

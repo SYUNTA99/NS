@@ -6,8 +6,8 @@
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Object/Components/PlayerInputComponent.h"
 #include "Runtime/Object/GameObject.h"
-#include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/ObjectList.h"
+#include "Runtime/Object/Scene/Scene.h"
 
 namespace NS::Game::Level
 {

@@ -50,23 +50,23 @@ namespace NS::Object
         m_environment = data.environment;
         // 組む前に番号を揃える。未採番のまま組むと id で名指しできない実体ができる
         EnsureUniqueObjectIds(data);
-        RebuildWorldFrom(data);
+        RebuildObjectsFrom(data);
     }
 
     void Scene::SyncPhysics()
     {
         // ギズモで動いた live の当たりを張り直す。 object を作り直さないので選択・参照はそのまま保たれる
         m_objects.SyncPhysics(m_physicsScene);
-        OnWorldChanged();
-        NotifyTransientsWorldChanged();
+        OnObjectsRebuilt();
+        NotifyTransientsObjectsRebuilt();
     }
 
-    void Scene::NotifyTransientsWorldChanged()
+    void Scene::NotifyTransientsObjectsRebuilt()
     {
         for (GameObject* obj : m_objects)
         {
             if (obj->IsTransient())
-                obj->OnWorldChanged();
+                obj->OnObjectsRebuilt();
         }
     }
 
@@ -179,15 +179,15 @@ namespace NS::Object
         m_objects.RemoveByObjectId(objectId);
     }
 
-    void Scene::RebuildWorldFrom(const SceneData& data)
+    void Scene::RebuildObjectsFrom(const SceneData& data)
     {
         // GameObject の型選択は登録一覧、 参照の実体化は各 component の ResolveAssets が行う
         // vcam の brain への付け外しは VirtualCameraComponent が OnStart / OnEndPlay で自分で行う
         m_objects.Rebuild(data, *this, [this](const ObjectData& entry) { return BuildSceneObject(entry, m_assets); });
         m_objects.SyncPhysics(m_physicsScene);
 
-        OnWorldChanged();
-        NotifyTransientsWorldChanged();
+        OnObjectsRebuilt();
+        NotifyTransientsObjectsRebuilt();
     }
 
     void Scene::OnUpdate()
@@ -423,7 +423,7 @@ namespace NS::Object
 #endif
 
         // 重ね描きを持つ component を最前面へ重ねる。 演出の中身はゲーム側の component が持つ
-        // 並びは配置物の順、 その中は component を積んだ順。 帯の priority は見ない
+        // 並びは配置物の順、 その中は component の priority 昇順
         for (GameObject* obj : m_objects)
         {
             for (Component* comp : obj->Components())

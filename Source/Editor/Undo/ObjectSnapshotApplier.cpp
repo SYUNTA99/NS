@@ -1,9 +1,9 @@
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 
 #include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/ObjectList.h"
 
 namespace NS::Editor
 {
@@ -46,7 +46,7 @@ namespace NS::Editor
         {
             working.objects.erase(working.objects.begin() + static_cast<std::ptrdiff_t>(index));
         }
-        // 足したばかりの component の採番も、 環境値の取込も、 取込関数が中で済ませる
+        // 足したばかりの component の採番も、 環境値の取込も、 LoadFromData が中で済ませる
         m_scene->LoadFromData(std::move(working));
     }
 } // namespace NS::Editor

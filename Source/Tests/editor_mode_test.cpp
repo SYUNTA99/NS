@@ -2,8 +2,8 @@
 #include "Editor/EditorObjects.h"
 #include "Editor/Undo/IObjectSnapshotApplier.h"
 #include "Game/Level/BlockObject.h"
-#include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Object/ObjectList.h"
+#include "Runtime/Object/Scene/SceneData.h"
 
 #include <cstddef>
 #include <cstdint>
