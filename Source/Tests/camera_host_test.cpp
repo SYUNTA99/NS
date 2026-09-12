@@ -6,7 +6,7 @@
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Scene/SceneData.h>
-#include <Runtime/Object/World.h>
+#include <Runtime/Object/ObjectList.h>
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -30,7 +30,7 @@ namespace
     NS::Object::PlacedVirtualCamera* FindPlaced(Scene& scene)
     {
         NS::Object::PlacedVirtualCamera* found = nullptr;
-        scene.World().ForEachComponent<NS::Object::PlacedVirtualCamera>(
+        scene.Objects().ForEachComponent<NS::Object::PlacedVirtualCamera>(
             [&found](NS::Object::PlacedVirtualCamera& placed) {
                 if (found == nullptr)
                     found = &placed;

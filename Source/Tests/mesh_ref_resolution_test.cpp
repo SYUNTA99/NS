@@ -8,7 +8,7 @@
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Scene/SceneData.h>
-#include <Runtime/Object/World.h>
+#include <Runtime/Object/ObjectList.h>
 #include <Runtime/Physics/MeshCollision.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 #include <Runtime/Platform/Window.h>
@@ -187,11 +187,11 @@ TEST(MeshRefResolution, BuiltCubeMeshColliderStopsRayAtTopFace)
     obj.components.push_back(MakeMeshRenderer("cube"));
     obj.components.push_back(NS::Object::MakeComponentEntry("MeshColliderComponent"));
 
-    NS::Object::World world;
-    ASSERT_NE(world.Append(BuildSceneObject(obj, &assets)), nullptr);
+    NS::Object::ObjectList objects;
+    ASSERT_NE(objects.Append(BuildSceneObject(obj, &assets)), nullptr);
 
     NS::Physics::PhysicsWorld physics;
-    world.SyncPhysics(physics);
+    objects.SyncPhysics(physics);
     ASSERT_EQ(physics.BodyCount(), 1u);
 
     float distance = 0.0f;

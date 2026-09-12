@@ -16,7 +16,7 @@
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
-#include <Runtime/Object/World.h>
+#include <Runtime/Object/ObjectList.h>
 #include <Runtime/Physics/PhysicsWorld.h>
 
 #include "entity_test_stage.h"
@@ -135,7 +135,7 @@ namespace
 
             m_scene.LoadFromData(std::move(data));
 
-            Player* live = FindPlayer(m_scene.World());
+            Player* live = FindPlayer(m_scene.Objects());
             EXPECT_NE(live, nullptr);
             if (live != nullptr)
             {
@@ -145,7 +145,7 @@ namespace
                 if (auto* input = live->FindComponent<NS::Object::PlayerInputComponent>())
                     input->SetActive(false);
             }
-            m_scene.World().ForEachComponent<NS::Game::Level::BreakableComponent>(
+            m_scene.Objects().ForEachComponent<NS::Game::Level::BreakableComponent>(
                 [](NS::Game::Level::BreakableComponent& breakable) {
                     breakable.SetMass(k_ImpactTargetMass);
                     breakable.SetToughness(k_ImpactTargetToughness);
@@ -161,10 +161,10 @@ namespace
                     m_movement->RequestBodySlam(k_ImpactSlamCharge);
                 ++m_stepIndex;
                 // 岩は Jolt の剛体なので、帯だけ回しても動かない。物理の 1 歩を LateUpdate 帯の手前へ挟む
-                m_scene.World().UpdateObjects(std::numeric_limits<int>::min(), NS::Object::TickPriority::LateUpdate);
+                m_scene.Objects().UpdateObjects(std::numeric_limits<int>::min(), NS::Object::TickPriority::LateUpdate);
                 m_scene.Physics().Update(k_FixedDt);
-                m_scene.World().UpdateObjects(NS::Object::TickPriority::LateUpdate);
-                m_scene.World().SnapshotObjects();
+                m_scene.Objects().UpdateObjects(NS::Object::TickPriority::LateUpdate);
+                m_scene.Objects().SnapshotObjects();
                 m_trace.push_back(
                     StepRecord{m_player->Root().Position(), m_movement->Velocity(), m_movement->IsGrounded()});
             }

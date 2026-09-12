@@ -23,7 +23,7 @@ namespace NS::Object
     class CameraBrainComponent;
     class CameraComponent;
     class Component;
-    class World;
+    class ObjectList;
     class ThirdPersonFollowComponent;
     class Scene;
     struct SceneView;
@@ -99,7 +99,7 @@ public:
     [[nodiscard]] std::optional<NS::Object::CameraPose> SceneViewPose() noexcept;
     //! @brief Game パネルに映す視点。編集中はゲームカメラを上書き、プレイ中は Brain 任せ (nullopt)
     [[nodiscard]] std::optional<NS::Object::CameraPose> GameViewPose() noexcept;
-    //! @brief 可視な中央ビュー列を world へ流す。空なら現描画先へ 1 回だけ描く従来動作
+    //! @brief 可視な中央ビュー列を Scene へ流す。空なら現描画先へ 1 回だけ描く
     void SetSceneViews(std::vector<NS::Object::SceneView> views);
 
     [[nodiscard]] NS::Editor::EditorMode& Editor() noexcept { return m_editor; }
@@ -114,8 +114,8 @@ public:
     //! シーンの環境値。実体側が唯一の出所で、UI はこれを直接編集する
     [[nodiscard]] NS::Object::SceneEnvironment& Environment() noexcept;
 
-    //! 編集対象の live world。一覧 UI と参照候補は範囲 for か ObjectAt でここを直接読む
-    [[nodiscard]] const NS::Object::World& World() const noexcept;
+    //! 編集対象の live な ObjectList。一覧 UI と参照候補は範囲 for か ObjectAt でここを直接読む
+    [[nodiscard]] const NS::Object::ObjectList& Objects() const noexcept;
 
     //! 配置ツールのモード (Build / Object) を取得する
     [[nodiscard]] bool ObjectToolActive() const noexcept { return m_editorToolMode == EditorToolMode::Object; }
@@ -306,7 +306,7 @@ private:
     };
     SpecialSelection m_specialSelection = SpecialSelection::None; // 特別な選択状態
 
-    std::uint32_t m_selectedObjectId = NS::Object::k_NoObjectId; // 主対象の永続ID (選択の一次情報)
+    std::uint32_t m_selectedObjectId = NS::Object::k_NoObjectId; // 主対象の永続 id。選択の一次情報
     std::vector<std::uint32_t> m_selectionIds;                   // 選択中の全配置物。主対象も含む
     NS::Object::Transform* m_lastGizmoSelected = nullptr;        // 前フレームの選択対象
 
@@ -329,6 +329,6 @@ private:
     std::vector<std::pair<std::uint32_t, NS::Object::ObjectData>> m_editBaselines;
 
     bool m_componentEditing = false;                                    // コンポーネント編集の開始状態
-    std::uint32_t m_componentEditBaselineId = NS::Object::k_NoObjectId; // 編集開始時の対象ID
+    std::uint32_t m_componentEditBaselineId = NS::Object::k_NoObjectId; // 編集開始時の対象 id
     NS::Object::ObjectData m_componentEditBaseline{};                   // 編集開始時の状態スナップショット
 };

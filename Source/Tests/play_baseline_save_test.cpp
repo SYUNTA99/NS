@@ -65,8 +65,8 @@ TEST(PlayBaselineSave, FrozenBaselineIgnoresPlayMovement)
     scene.BeginPlayBaseline();
 
     // プレイ中の変化相当。 live object を別位置へ動かす
-    ASSERT_GT(scene.World().ObjectCount(), 0u);
-    scene.World().ObjectAt(0)->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
+    ASSERT_GT(scene.Objects().ObjectCount(), 0u);
+    scene.Objects().ObjectAt(0)->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
 
     // 控えは突入時の位置を保ち、 動かした後の位置は映らない
     const SceneNs::SceneData& baseline = scene.PlayBaseline();
@@ -101,7 +101,7 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
     scene.LoadFromData(std::move(level));
     scene.BeginPlayBaseline();
 
-    NS::Object::GameObject* live = scene.World().FindObject(NS::Object::ObjectRef{rockId});
+    NS::Object::GameObject* live = scene.Objects().FindObject(NS::Object::ObjectRef{rockId});
     ASSERT_NE(live, nullptr);
     auto* launched = live->FindComponent<LevelNs::LaunchedBodyComponent>();
     ASSERT_NE(launched, nullptr);
@@ -118,7 +118,7 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
     EXPECT_FLOAT_EQ(frozen.z, 3.0f);
 
     scene.LoadFromData(std::move(copy));
-    NS::Object::GameObject* rebuilt = scene.World().FindObject(NS::Object::ObjectRef{rockId});
+    NS::Object::GameObject* rebuilt = scene.Objects().FindObject(NS::Object::ObjectRef{rockId});
     ASSERT_NE(rebuilt, nullptr);
     auto* rebuiltLaunched = rebuilt->FindComponent<LevelNs::LaunchedBodyComponent>();
     ASSERT_NE(rebuiltLaunched, nullptr);
@@ -136,7 +136,7 @@ TEST(PlayBaselineSave, HandEditedRotationUpdatesFrozenQuaternion)
     scene.LoadFromData(std::move(level));
     scene.BeginPlayBaseline();
 
-    NS::Object::GameObject* live = scene.World().FindObject(NS::Object::ObjectRef{blockId});
+    NS::Object::GameObject* live = scene.Objects().FindObject(NS::Object::ObjectRef{blockId});
     ASSERT_NE(live, nullptr);
     auto* transform = live->FindComponent<SceneNs::TransformComponent>();
     ASSERT_NE(transform, nullptr);
@@ -148,7 +148,7 @@ TEST(PlayBaselineSave, HandEditedRotationUpdatesFrozenQuaternion)
 
     SceneNs::SceneData copy = scene.PlayBaseline();
     scene.LoadFromData(std::move(copy));
-    NS::Object::GameObject* rebuilt = scene.World().FindObject(NS::Object::ObjectRef{blockId});
+    NS::Object::GameObject* rebuilt = scene.Objects().FindObject(NS::Object::ObjectRef{blockId});
     ASSERT_NE(rebuilt, nullptr);
     const NS::Core::Quaternion restored = rebuilt->Root().Rotation();
     EXPECT_NEAR(std::abs(restored.Dot(edited)), 1.0f, 1e-4f);

@@ -5,11 +5,11 @@
 
 namespace NS::Object
 {
-    class World;
+    class ObjectList;
 } // namespace NS::Object
 
 //! @brief プレイヤーキャラクタ。Mesh / Movement / Input / Health / Shadow の既定構成をコードで組む
-//! @details 値と追加の component はファクトリが player object のデータから写す
+//! @details 値と追加の component はファクトリがプレイヤーの ObjectData から写す
 //! 移動やつかみ等の能力 API はここに置き、実装は各 Component が持つ
 //! hazard / KillZone 等のルール配置物は FindPlayer で得た Player* へ能力を呼ぶ。プレイヤーはルールを知らない
 class Player : public NS::Object::GameObject
@@ -43,21 +43,21 @@ public:
     [[nodiscard]] int Health() const noexcept;
 };
 
-//! live world からプレイヤーを引く。無ければ nullptr
+//! live の配置物からプレイヤーを引く。無ければ nullptr
 //! 型名の照合で見つける。能力は Player の公開関数を呼び、細部が要る側だけ FindComponent で引く
-[[nodiscard]] Player* FindPlayer(const NS::Object::World& world) noexcept;
+[[nodiscard]] Player* FindPlayer(const NS::Object::ObjectList& objects) noexcept;
 
 //! プレイヤーの配置物か。live の FindPlayer と同じく型名で照合する
 [[nodiscard]] bool IsPlayerObject(const NS::Object::ObjectData& object) noexcept;
 
-//! objects からプレイヤーを探す。最初の 1 件の添字、無ければ k_NoObjectIndex
+//! シーンデータからプレイヤーを探す。最初の 1 件の添字、無ければ k_NoObjectIndex
 //! 複数居ても先頭を正とする。余分は読込時に警告済み
 [[nodiscard]] std::size_t FindPlayerObjectIndex(const NS::Object::SceneData& level) noexcept;
 
 //! 指定の位置と向きでプレイヤーの ObjectData を作る。components は型名だけ持ち、値はコード既定を使う
 //! scale は capsule 当たり 0.4/0.9/0.4 に cube mesh の見た目を合わせる値
 [[nodiscard]] NS::Object::ObjectData MakePlayerObject(const NS::Core::Vector3& position,
-                                                       const NS::Core::Quaternion& rotation);
+                                                      const NS::Core::Quaternion& rotation);
 
 //! プレイヤーの永続 id。居なければ k_NoObjectId。追従カメラの追従先を結ぶのに使う
 [[nodiscard]] std::uint32_t PlayerObjectId(const NS::Object::SceneData& level) noexcept;

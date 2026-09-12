@@ -5,7 +5,7 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Object/World.h"
+#include "Runtime/Object/ObjectList.h"
 #include "Runtime/Platform/Gamepad.h"
 #include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/Mouse.h"
@@ -69,7 +69,7 @@ namespace NS::Object
         // 参照未設定はテスト / 直結線の構築なので触らない。解決不可も既存の結線を壊さず据え置く
         if (!m_targetRef.IsSet() || Owner() == nullptr || Owner()->OwningScene() == nullptr)
             return;
-        GameObject* target = Owner()->OwningScene()->World().FindObject(m_targetRef);
+        GameObject* target = Owner()->OwningScene()->Objects().FindObject(m_targetRef);
         if (target == nullptr)
             return;
         m_target = &target->Root();

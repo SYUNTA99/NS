@@ -22,10 +22,10 @@ namespace
         return object;
     }
 
-    LevelNs::GoalComponent* FindGoal(SceneNs::World& world)
+    LevelNs::GoalComponent* FindGoal(SceneNs::ObjectList& objects)
     {
         LevelNs::GoalComponent* found = nullptr;
-        world.ForEachComponent<LevelNs::GoalComponent>([&](LevelNs::GoalComponent& goal) { found = &goal; });
+        objects.ForEachComponent<LevelNs::GoalComponent>([&](LevelNs::GoalComponent& goal) { found = &goal; });
         return found;
     }
 } // namespace
@@ -38,11 +38,11 @@ TEST(GoalTest, ReachedWhenPlayerWithinRadius)
     data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
 
-    auto* goal = FindGoal(scene.World());
+    auto* goal = FindGoal(scene.Objects());
     ASSERT_NE(goal, nullptr);
     EXPECT_FALSE(goal->Reached());
 
-    scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
+    scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
 
     EXPECT_TRUE(goal->Reached());
 }
@@ -55,9 +55,9 @@ TEST(GoalTest, NotReachedWhenFar)
     data.objects.push_back(MakeGoal(10.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
 
-    scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
+    scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
 
-    auto* goal = FindGoal(scene.World());
+    auto* goal = FindGoal(scene.Objects());
     ASSERT_NE(goal, nullptr);
     EXPECT_FALSE(goal->Reached());
 }
@@ -70,20 +70,20 @@ TEST(GoalTest, ReachedLatchesUntilReset)
     data.objects.push_back(MakeGoal(0.0f, 0.0f, 0.0f));
     scene.LoadFromData(std::move(data));
 
-    auto* goal = FindGoal(scene.World());
+    auto* goal = FindGoal(scene.Objects());
     ASSERT_NE(goal, nullptr);
-    scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
+    scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
     ASSERT_TRUE(goal->Reached());
 
     // 触れた後に離れてもフラグは立ったまま
-    auto* player = FindPlayer(scene.World());
+    auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     player->Root().SetPosition(NS::Core::Vector3{10.0f, 0.0f, 0.0f});
-    scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
+    scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
     EXPECT_TRUE(goal->Reached());
 
     // 戻すのは respawner のやり直し。戻した後は離れている限り立たない
     goal->ResetReached();
-    scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
+    scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
     EXPECT_FALSE(goal->Reached());
 }

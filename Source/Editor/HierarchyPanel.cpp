@@ -5,7 +5,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "Runtime/Object/GameObject.h"
-#include "Runtime/Object/World.h"
+#include "Runtime/Object/ObjectList.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -46,7 +46,7 @@ namespace NS::Editor
             ImGui::Separator();
 
             std::size_t shownCount = 0;
-            for (const NS::Object::GameObject* obj : editor.World())
+            for (const NS::Object::GameObject* obj : editor.Objects())
                 if (!obj->IsTransient())
                     ++shownCount;
             ImGui::Text("オブジェクト %zu 個", shownCount);
@@ -56,7 +56,7 @@ namespace NS::Editor
             const bool filtering = m_hierarchyFilter[0] != '\0';
             ImGui::Separator();
 
-            // 改名も親の付け替えも world を組み直して objects を入れ替えるので、木を描き終えるまで適用を待つ
+            // 改名も親の付け替えも配置物を組み直して一覧を入れ替えるので、木を描き終えるまで適用を待つ
             m_renameCommitId = 0;
             m_reparentPending = false;
             m_duplicateRequestId = 0;
@@ -72,7 +72,7 @@ namespace NS::Editor
             }
 
             // 検索中は木を畳んで、一致した物だけを親子に関係なく並べる
-            for (NS::Object::GameObject* objPtr : editor.World())
+            for (NS::Object::GameObject* objPtr : editor.Objects())
             {
                 NS::Object::GameObject& object = *objPtr;
                 // 一時オブジェクトは配置物でないので一覧に出さない
@@ -113,7 +113,7 @@ namespace NS::Editor
                 ImGui::EndDragDropTarget();
             }
 
-            // 余白の右クリックから基本形を足す。木を描き終えた後なので world を組み直しても崩れない
+            // 余白の右クリックから基本形を足す。木を描き終えた後なので配置物を組み直しても崩れない
             if (ImGui::BeginPopupContextItem("##hierarchyAdd"))
             {
                 if (ImGui::MenuItem("空のオブジェクト"))
@@ -127,7 +127,7 @@ namespace NS::Editor
                 ImGui::EndPopup();
             }
 
-            // objects を触り終えてから適用する。永続 id 越しなので組み直しを跨いでも同じ 1 体に届く
+            // 一覧を触り終えてから適用する。永続 id 越しなので組み直しを跨いでも同じ 1 体に届く
             if (m_renameCommitId != 0)
             {
                 editor.RenameObject(m_renameCommitId, m_renameBuffer);

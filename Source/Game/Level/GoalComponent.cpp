@@ -5,7 +5,7 @@
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/World.h"
+#include "Runtime/Object/ObjectList.h"
 
 namespace NS::Game::Level
 {
@@ -21,7 +21,7 @@ namespace NS::Game::Level
         auto* scene = Owner()->OwningScene();
         if (scene == nullptr)
             return;
-        auto* player = FindPlayer(scene->World());
+        auto* player = FindPlayer(scene->Objects());
         if (player == nullptr)
             return;
 

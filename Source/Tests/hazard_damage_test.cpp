@@ -78,13 +78,13 @@ TEST(HazardTest, DrainsPlayerHealthThroughLateUpdateBand)
     data.objects.push_back(hazard);
     scene.LoadFromData(std::move(data));
 
-    auto* player = FindPlayer(scene.World());
+    auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
 
     // LateUpdate 帯が回るたび、hazard が自分で重なりを判定して 1 ずつ削る
-    scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
+    scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
     EXPECT_EQ(player->Health(), 7);
-    scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
+    scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
     EXPECT_EQ(player->Health(), 6);
 }
 
@@ -98,10 +98,10 @@ TEST(HazardTest, NoOverlapNoDamage)
     data.objects.push_back(hazard);
     scene.LoadFromData(std::move(data));
 
-    auto* player = FindPlayer(scene.World());
+    auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
 
-    scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
+    scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
 
     EXPECT_EQ(player->Health(), 8);
 }

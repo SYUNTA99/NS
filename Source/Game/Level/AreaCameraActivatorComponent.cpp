@@ -3,7 +3,7 @@
 #include "Runtime/Object/Components/PlacedVirtualCamera.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/World.h"
+#include "Runtime/Object/ObjectList.h"
 
 namespace NS::Game::Level
 {
@@ -20,7 +20,7 @@ namespace NS::Game::Level
 
         // 渡すのは owner の位置。 プレイヤーに載せるので、 これが進入判定の対象になる
         const NS::Core::Vector3 position = Owner()->Root().Position();
-        scene->World().ForEachComponent<NS::Object::PlacedVirtualCamera>(
+        scene->Objects().ForEachComponent<NS::Object::PlacedVirtualCamera>(
             [&position](NS::Object::PlacedVirtualCamera& placed) { placed.UpdateActivation(position); });
     }
 } // namespace NS::Game::Level

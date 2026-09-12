@@ -7,7 +7,7 @@
 #include "Runtime/Object/Components/PlayerInputComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/World.h"
+#include "Runtime/Object/ObjectList.h"
 
 namespace NS::Game::Level
 {
@@ -33,7 +33,7 @@ namespace NS::Game::Level
             return;
 
         bool goalReached = false;
-        scene->World().ForEachComponent<GoalComponent>([&goalReached](GoalComponent& goal) {
+        scene->Objects().ForEachComponent<GoalComponent>([&goalReached](GoalComponent& goal) {
             if (goal.Reached())
                 goalReached = true;
         });

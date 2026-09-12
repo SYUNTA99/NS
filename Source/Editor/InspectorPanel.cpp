@@ -7,10 +7,10 @@
 #include "Editor/PanelIds.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/SceneData.h"
-#include "Runtime/Object/World.h"
 
 #include <cstdint>
 #include <cstdio>
@@ -54,10 +54,10 @@ namespace NS::Editor
         {
             // ObjectRef フィールドの参照先候補。 Hierarchy と同じ並びと表示名で全配置物を出す
             std::vector<NS::Editor::ObjectRefOption> refOptions;
-            refOptions.reserve(editor.World().ObjectCount());
-            for (std::size_t i = 0; i < editor.World().ObjectCount(); ++i)
+            refOptions.reserve(editor.Objects().ObjectCount());
+            for (std::size_t i = 0; i < editor.Objects().ObjectCount(); ++i)
             {
-                NS::Object::GameObject& candidate = *editor.World().ObjectAt(i);
+                NS::Object::GameObject& candidate = *editor.Objects().ObjectAt(i);
                 if (candidate.IsTransient())
                     continue;
                 char label[96];
@@ -122,7 +122,7 @@ namespace NS::Editor
             }
             ImGui::SetNextItemWidth(-1.0f);
             ImGui::InputText("##objectName", m_nameBuffer, sizeof(m_nameBuffer));
-            // 改名は world を組み直すので、 このパネルを描き終えてから流す
+            // 改名は配置物を組み直すので、 このパネルを描き終えてから流す
             if (ImGui::IsItemDeactivatedAfterEdit())
                 m_nameCommitId = selectedId;
             ImGui::Text("[%zu] %s", editor.SelectedObjectIndex(), obj.className.c_str());
@@ -208,8 +208,8 @@ namespace NS::Editor
             if (obj.components.empty())
                 ImGui::TextDisabled("コンポーネント無し。 足すと表示・当たりが付く");
 
-            // リフレクション編集は live component へ直接入る。 live は priority 順なので data
-            // の並びへ型と出現番号で対応づける
+            // リフレクション編集は live component へ直接入る。 live は priority 順で data の並びと
+            // 揃わないので、 位置でなく永続 id で引き当てる
             NS::Object::GameObject* go = editor.SelectedObjectGameObject();
             NS::Editor::ComponentEditResult componentEdit{};
             for (std::size_t k = 0; k < obj.components.size(); ++k)

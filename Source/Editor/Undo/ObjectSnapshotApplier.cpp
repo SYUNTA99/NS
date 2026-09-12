@@ -3,7 +3,7 @@
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/World.h"
+#include "Runtime/Object/ObjectList.h"
 
 namespace NS::Editor
 {
@@ -12,7 +12,7 @@ namespace NS::Editor
         if (m_scene == nullptr)
             return std::nullopt;
 
-        for (const NS::Object::GameObject* obj : m_scene->World())
+        for (const NS::Object::GameObject* obj : m_scene->Objects())
         {
             if (obj->Id() != objectId)
                 continue;

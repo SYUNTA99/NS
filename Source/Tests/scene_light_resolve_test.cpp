@@ -32,10 +32,10 @@ namespace
         field->set(&light, &value);
     }
 
-    //! world に平行光を 1 本置いて返す
+    //! シーンに平行光を 1 本置いて返す
     DirectionalLightComponent* SpawnLight(Scene& scene)
     {
-        GameObject* obj = scene.World().Spawn<GameObject>();
+        GameObject* obj = scene.Objects().Spawn<GameObject>();
         return obj->AddComponent<DirectionalLightComponent>();
     }
 } // namespace

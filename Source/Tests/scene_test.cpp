@@ -106,7 +106,7 @@ TEST(SceneTest, DestroyObjectKeepsTheSurvivingColliderBodyId)
 
     NS::Object::Scene scene;
     scene.LoadFromData(std::move(data));
-    NS::Object::GameObject* survivingObject = scene.World().FindByObjectId(20);
+    NS::Object::GameObject* survivingObject = scene.Objects().FindByObjectId(20);
     ASSERT_NE(survivingObject, nullptr);
     auto* collider = survivingObject->FindComponent<NS::Object::BoxColliderComponent>();
     ASSERT_NE(collider, nullptr);

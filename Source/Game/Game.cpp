@@ -71,7 +71,7 @@ void Game::OnAttach()
     (void)scene->BeginPlayBaseline();
 
     // 追従カメラは生成直後は休止している。 出荷はプレイしかないので起動で有効化する
-    scene->World().ForEachComponent<NS::Object::ThirdPersonFollowComponent>(
+    scene->Objects().ForEachComponent<NS::Object::ThirdPersonFollowComponent>(
         [](NS::Object::ThirdPersonFollowComponent& follow) { follow.SetActive(true); });
 
     // カーソルを消し、 マウスを相対モードにして視点操作をカーソル位置から切り離す

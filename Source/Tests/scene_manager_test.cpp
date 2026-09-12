@@ -3,10 +3,10 @@
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Component.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Scene/SceneData.h>
 #include <Runtime/Object/Scene/SceneManager.h>
-#include <Runtime/Object/World.h>
 #include <cstdint>
 #include <filesystem>
 #include <gtest/gtest.h>
@@ -44,8 +44,8 @@ TEST(NsSceneManager, LoadSceneBuildsWorldFromData)
 
     EXPECT_TRUE(mgr.HasScene());
     EXPECT_EQ(mgr.Current(), &scene);
-    // データの分 + world に常駐するカメラ 1 体
-    EXPECT_EQ(scene.World().ObjectCount(), 4u);
+    // データの分 + シーンに常駐するカメラ 1 体
+    EXPECT_EQ(scene.Objects().ObjectCount(), 4u);
 }
 
 TEST(NsSceneManager, LoadSceneReplacesPreviousWorld)
@@ -55,7 +55,7 @@ TEST(NsSceneManager, LoadSceneReplacesPreviousWorld)
 
     NS::Object::Scene& second = mgr.LoadScene(MakeLevel(1));
     // 前の scene が破棄されていれば、残るのは新しいデータの分だけ
-    EXPECT_EQ(second.World().ObjectCount(), 2u);
+    EXPECT_EQ(second.Objects().ObjectCount(), 2u);
 }
 
 TEST(NsSceneManager, UnloadSceneClearsCurrent)
@@ -74,7 +74,7 @@ TEST(NsSceneManager, UpdateReachesLoadedScene)
     mgr.LoadScene(MakeLevel(1));
 
     mgr.Update();
-    EXPECT_EQ(mgr.Current()->World().ObjectCount(), 2u);
+    EXPECT_EQ(mgr.Current()->Objects().ObjectCount(), 2u);
 }
 
 TEST(NsSceneManager, DestructorUnloadsCurrent)

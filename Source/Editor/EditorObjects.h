@@ -9,7 +9,7 @@
 namespace NS::Object
 {
     class GameObject;
-    class World;
+    class ObjectList;
 } // namespace NS::Object
 
 namespace NS::Editor
@@ -37,8 +37,8 @@ namespace NS::Editor
                                                std::int16_t y,
                                                std::int16_t z) noexcept;
 
-    //! live の world から cell 一致の最初の cell ブラシ配置物の永続 id。無ければ k_NoObjectId
-    [[nodiscard]] std::uint32_t FindObjectIdAtCell(const NS::Object::World& world,
+    //! live の objects から cell 一致の最初の cell ブラシ配置物の永続 id。無ければ k_NoObjectId
+    [[nodiscard]] std::uint32_t FindObjectIdAtCell(const NS::Object::ObjectList& objects,
                                                    std::int16_t x,
                                                    std::int16_t y,
                                                    std::int16_t z) noexcept;

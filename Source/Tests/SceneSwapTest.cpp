@@ -1,8 +1,8 @@
 #include "Game/Level/BlockObject.h"
+#include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Object/Scene/SceneManager.h"
-#include "Runtime/Object/World.h"
 
 #include <cstdint>
 #include <gtest/gtest.h>
@@ -32,8 +32,8 @@ TEST(SceneSwap, SwapReplacesWorldContents)
     NS::Object::Scene& swapped = manager.LoadScene(MakeLevel(1));
 
     EXPECT_EQ(&swapped, manager.Current());
-    // データの分 + world に常駐するカメラ 1 体
-    EXPECT_EQ(swapped.World().ObjectCount(), 2u);
+    // データの分 + シーンに常駐するカメラ 1 体
+    EXPECT_EQ(swapped.Objects().ObjectCount(), 2u);
 }
 
 TEST(SceneSwap, SwappedSceneKeepsRunning)
@@ -48,7 +48,7 @@ TEST(SceneSwap, SwappedSceneKeepsRunning)
     (void)swapped.BeginPlayBaseline();
     manager.Update();
 
-    EXPECT_EQ(swapped.World().ObjectCount(), 3u);
+    EXPECT_EQ(swapped.Objects().ObjectCount(), 3u);
 }
 
 TEST(SceneSwap, SwapAfterUnloadStartsFresh)
@@ -58,5 +58,5 @@ TEST(SceneSwap, SwapAfterUnloadStartsFresh)
     manager.UnloadScene();
 
     NS::Object::Scene& reloaded = manager.LoadScene(MakeLevel(1));
-    EXPECT_EQ(reloaded.World().ObjectCount(), 2u);
+    EXPECT_EQ(reloaded.Objects().ObjectCount(), 2u);
 }

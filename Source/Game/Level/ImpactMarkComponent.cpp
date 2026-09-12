@@ -44,7 +44,7 @@ namespace NS::Game::Level
         RootTransform().SetScale(NS::Core::Vector3{size, 1.0f, size});
         if (t >= 1.0f)
         {
-            // 消える時も配置物は残す。更新の最中に消すと World::UpdateObjects が集めた並びに解放済みの位置が残る
+            // 消える時も配置物は残す。更新の最中に消すと ObjectList::UpdateObjects が集めた並びに解放済みの位置が残る
             if (auto* mesh = Owner()->FindComponent<NS::Object::MeshRendererComponent>())
                 mesh->SetActive(false);
             SetActive(false);

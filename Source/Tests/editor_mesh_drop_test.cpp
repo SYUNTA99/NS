@@ -10,9 +10,9 @@
 
 namespace
 {
-    NS::Object::GameObject* FindFirstPlaced(NS::Object::World& world)
+    NS::Object::GameObject* FindFirstPlaced(NS::Object::ObjectList& objects)
     {
-        for (NS::Object::GameObject* obj : world)
+        for (NS::Object::GameObject* obj : objects)
         {
             if (!obj->IsTransient())
                 return obj;
@@ -29,7 +29,7 @@ TEST(EditorMeshDrop, DroppedMeshCollidesWithItsOwnTriangles)
 
     editor.AddObjectWithMesh(NS::Core::FileSystem::ContentRoot() / "Assets" / "Models" / "ns_drop_terrain.glb");
 
-    NS::Object::GameObject* placed = FindFirstPlaced(scene.World());
+    NS::Object::GameObject* placed = FindFirstPlaced(scene.Objects());
     ASSERT_NE(placed, nullptr);
 
     const auto* renderer = placed->FindComponent<NS::Object::MeshRendererComponent>();

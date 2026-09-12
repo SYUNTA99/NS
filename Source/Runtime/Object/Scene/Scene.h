@@ -4,8 +4,8 @@
 #include "Runtime/Graphics/RenderScene.h"
 #include "Runtime/Graphics/RenderSettings.h"
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
+#include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Scene/SceneData.h"
-#include "Runtime/Object/World.h"
 #include "Runtime/Physics/PhysicsWorld.h"
 
 #include <cstdint>
@@ -30,7 +30,7 @@ namespace NS::Object
     class Component;
     class IRenderable;
 
-    //! @brief 1 つのシーンビュー。 指定の描画先へ指定の視点で world を描く単位
+    //! @brief 1 つのシーンビュー。 指定の描画先へ指定の視点でシーンを描く単位
     //! @details target が null なら backbuffer、 viewPose が空なら Brain の選ぶカメラで描く
     struct SceneView
     {
@@ -38,14 +38,14 @@ namespace NS::Object
         std::optional<CameraPose> viewPose;           // 描画視点。 空なら Brain の選ぶカメラ
     };
 
-    //! @brief SceneData から組んだ World を運転する scene
-    //! @details world と環境値を所有し、SceneData を読み書きし、プレイを凍結し、標準の world 描画パスを走らせる
+    //! @brief SceneData から組んだ ObjectList を運転する scene
+    //! @details ObjectList と環境値を所有し、SceneData の読み書き・プレイの凍結・標準のシーン描画パスを受け持つ
     //! Application から OnStart / OnUpdate / OnRender / OnShutdown を順に呼び戻される
     //! fixed timestep + variable render で駆動し、IRenderable の自己登録先も兼ねる
     //! live な GameObject/Component が唯一の表現で、SceneData は境界でだけ使う一時データ
-    //! 配置物は TypeRegistry と ResolveAssets で自力で組む。組み直し後の参照解決だけ派生が hook で埋める
+    //! 配置物は TypeRegistry と ResolveAssets で自力で組む。組み直し後の参照解決だけ派生が OnWorldChanged で埋める
     //! 寿命は SceneManager が unique_ptr で所有する
-    //! 依存: World / SceneData / ObjectBuilder / TypeRegistry
+    //! 依存: ObjectList / SceneData / ObjectBuilder / TypeRegistry
     class Scene : public NS::Core::NonCopyable
     {
     public:
@@ -70,7 +70,7 @@ namespace NS::Object
         //! brain が駆動する実カメラ。 シーンの破棄後は nullptr
         [[nodiscard]] CameraComponent* MainCamera() noexcept;
 
-        //! 衝突 world への可変参照。Scene が値で持つので寿命は Scene と同じ
+        //! PhysicsWorld への可変参照。Scene が値で持つので寿命は Scene と同じ
         [[nodiscard]] NS::Physics::PhysicsWorld& Physics() noexcept { return m_physicsWorld; }
 
         //! AssetManager を非所有で差す。組み立て時の参照実体化が使う。未設定 (テスト等) は解決を跳ばす
@@ -83,11 +83,10 @@ namespace NS::Object
         [[nodiscard]] SceneEnvironment& Environment() noexcept { return m_environment; }
         [[nodiscard]] const SceneEnvironment& Environment() const noexcept { return m_environment; }
 
-        //! @brief シーンデータから構築されたランタイムワールド
-        //! 取得子と型が同じ綴りなので、 このクラスの中では型を完全修飾しないと関数名として解決される
-        [[nodiscard]] NS::Object::World& World() noexcept { return m_world; }
+        //! @brief シーンデータから組んだ配置物の一覧
+        [[nodiscard]] NS::Object::ObjectList& Objects() noexcept { return m_objects; }
 
-        //! @brief 読み込んだシーンデータを取り込み world を組み直す。 データは取込後に用済みになる一時データ
+        //! @brief 読み込んだシーンデータを取り込み配置物を組み直す。 データは取込後に用済みになる一時データ
         void LoadFromData(SceneData&& data);
 
         //! @brief 編集で動いた live の当たりを張り直し、 OnWorldChanged を呼ぶ。 object は作り直さない
@@ -136,7 +135,7 @@ namespace NS::Object
             return raw;
         }
 
-        //! @brief 実行時の一時オブジェクトを world へ入れる。 一時オブジェクトの印はここで立てる
+        //! @brief 実行時の一時オブジェクトを ObjectList へ入れる。 一時オブジェクトの印はここで立てる
         //! @details 保存・凍結に写らず、 データからの組み直し後も残る。 更新は配置物と同じ帯に乗る
         //! 型が実行時にしか決まらない時の受け口。 型が分かっているなら SpawnTransient<T> を使う
         GameObject* SpawnTransient(std::unique_ptr<GameObject> obj);
@@ -154,7 +153,7 @@ namespace NS::Object
         //! 読み込んだら回り続けるのが既定で、 止める口は SetSimulationEnabled / SetSimulationPaused
         virtual void OnUpdate();
 
-        //! world の破棄。 派生の OnShutdown はここを呼ぶ
+        //! 配置物の破棄。 派生の OnShutdown はここを呼ぶ
         virtual void OnShutdown();
 
     protected:
@@ -164,7 +163,7 @@ namespace NS::Object
         //! 距離が同じなら SortPriority 昇順、それも同じなら stable_sort が登録順を保つ
         void DrawTransparent(const NS::Graphics::RenderContext& context);
 
-        //! @brief 標準の描画。 world 描画パス→デバッグ描画の吐き出し→一時オブジェクトの重ね描き
+        //! @brief 標準の描画。 シーン描画パス→デバッグ描画の吐き出し→一時オブジェクトの重ね描き
         virtual void OnRenderScene();
 
         //! @brief project 既定値から scene 段の描画設定を作る。配置された平行光があれば照明を上書きする
@@ -172,23 +171,23 @@ namespace NS::Object
         [[nodiscard]] NS::Graphics::RenderSettings ResolveSceneSettings(
             const NS::Graphics::RenderSettings& projectDefaults);
 
-        //! @brief world の組み直し・当たりの張り直しの後に呼ばれる。 派生は live への参照をここで取り直す
+        //! @brief 配置物の組み直し・当たりの張り直しの後に呼ばれる。 派生は live への参照をここで取り直す
         virtual void OnWorldChanged() {}
 
-        //! @brief 渡されたシーンデータから world と衝突判定世界を組み直す。 データはその場限りの一時データ
+        //! @brief 渡されたシーンデータから配置物と PhysicsWorld を組み直す。 データはその場限りの一時データ
         void RebuildWorldFrom(const SceneData& data);
 
-        //! @brief 標準の world 描画パス。 環境同期→カメラ評価→不透明→空→半透明
+        //! @brief 標準のシーン描画パス。 環境同期→カメラ評価→不透明→空→半透明
         //! @param[in] viewOverride 描画視点の上書き。 空なら Brain の選ぶカメラで描く
         //! @return 組んだ描画コンテキスト。 カメラ不在なら nullopt を返し何も描かない
         [[nodiscard]] std::optional<NS::Graphics::RenderContext> RenderWorld(
             NS::Graphics::Renderer& renderer, const std::optional<CameraPose>& viewOverride);
 
     private:
-        //! world の変化を一時オブジェクトへ知らせる。 組み直しと当たりの張り直しの後に呼ぶ
+        //! 配置物の変化を一時オブジェクトへ知らせる。 組み直しと当たりの張り直しの後に呼ぶ
         void NotifyTransientsWorldChanged();
 
-        //! 1 ビュー分の world 描画と、 デバッグ描画・一時オブジェクトの重ね描きをまとめて行う
+        //! 1 ビュー分のシーン描画と、 デバッグ描画・一時オブジェクトの重ね描きをまとめて行う
         void RenderViewWithOverlays(const std::optional<CameraPose>& viewOverride);
 
         //! 登録中の全 renderable の bounds とソート情報を RenderScene へ同期する。描画の入口で呼ぶ
@@ -205,12 +204,12 @@ namespace NS::Object
         //! 描画物の登録簿と視錐台カリングを持つレンダラ側の描画シーン
         NS::Graphics::RenderScene m_renderScene;
 
-        //! 衝突 world。当たりの有る scene だけ World::SyncPhysics が body を入れ、無ければ空のまま
-        //! m_world より前に宣言してあるので破棄は後になり、これを借りる移動の Component より長く生きる
+        //! 衝突判定の PhysicsWorld。当たりの有る scene だけ ObjectList::SyncPhysics が body を入れ、無ければ空のまま
+        //! m_objects より前に宣言してあるので破棄は後になり、これを借りる移動の Component より長く生きる
         NS::Physics::PhysicsWorld m_physicsWorld;
 
-        NS::Object::World m_world;               // ランタイムワールド
-        CameraBrainComponent* m_brain = nullptr; // 常駐するカメラ配置物の brain。所有は m_world、これは控え
+        NS::Object::ObjectList m_objects;        // 配置物の一覧
+        CameraBrainComponent* m_brain = nullptr; // 常駐するカメラ配置物の brain。所有は m_objects、これは控え
         SceneEnvironment m_environment;          // シーンの環境値。 実体側の唯一の出所
 
         bool m_warnedZeroLightDirection = false;      // 平行光 zero 警告の 1 回制御

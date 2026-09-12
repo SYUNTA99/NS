@@ -18,7 +18,7 @@
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
-#include "Runtime/Object/World.h"
+#include "Runtime/Object/ObjectList.h"
 
 namespace NS::Editor
 {
@@ -122,12 +122,12 @@ namespace NS::Editor
         return NS::Object::k_NoObjectIndex;
     }
 
-    std::uint32_t FindObjectIdAtCell(const NS::Object::World& world,
+    std::uint32_t FindObjectIdAtCell(const NS::Object::ObjectList& objects,
                                      std::int16_t x,
                                      std::int16_t y,
                                      std::int16_t z) noexcept
     {
-        for (NS::Object::GameObject* objPtr : world)
+        for (NS::Object::GameObject* objPtr : objects)
         {
             NS::Object::GameObject& object = *objPtr;
             if (IsCellBrushObject(object) && ObjectCellX(object) == x && ObjectCellY(object) == y &&

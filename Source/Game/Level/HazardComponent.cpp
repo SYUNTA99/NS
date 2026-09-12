@@ -6,7 +6,7 @@
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/World.h"
+#include "Runtime/Object/ObjectList.h"
 #include "Runtime/Physics/PhysicsWorld.h"
 
 #include <algorithm>
@@ -25,7 +25,7 @@ namespace NS::Game::Level
         if (scene == nullptr)
             return;
         // 待ちまたぎの生ポインタを避けるため毎ステップ引き直す。組み直しで古い参照を掴む事故を防ぐ
-        auto* player = FindPlayer(scene->World());
+        auto* player = FindPlayer(scene->Objects());
         if (player == nullptr)
             return;
         auto* movement = player->FindComponent<NS::Game::Player::PlayerComponent>();

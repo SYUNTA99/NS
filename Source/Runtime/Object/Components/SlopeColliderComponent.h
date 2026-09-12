@@ -12,7 +12,7 @@ namespace NS::Object
     //! @details Owner の root world transform を基準に、wedge の 5 面、斜面・底面・裏壁の四角形と
     //! 左右側面の三角形を 8 三角形に分割した世界座標版 Triangle 配列を返す
     //! 斜面のみだと側面 / 裏 / 底から capsule がめり込むため全面を登録する
-    //! World::SyncPhysics で PhysicsWorld へ mesh の body として登録される
+    //! ObjectList::SyncPhysics で PhysicsWorld へ mesh の body として登録される
     //! 角度・半サイズはリフレクション set で編集でき、WorldTriangles が member を都度読むため形状の再生成は要らない
     class SlopeColliderComponent : public ColliderComponent
     {
