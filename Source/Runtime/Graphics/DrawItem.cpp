@@ -16,12 +16,12 @@ namespace NS::Graphics
 
         CommandList& cmd = renderer.Commands();
 
-        // 前回の描画ステートを引き継がないよう、毎回必ずパイプラインを初期化・設定する
+        // 前回の描画ステートを引き継がないよう、描画ごとにパイプラインを設定する
         cmd.SetPipeline(renderer.CommonPipeline(item.blend));
         item.material->CreateInputLayoutFor(*item.mesh);
         item.material->SetParams(renderer, item.constants);
 
-        // ボーンパレットなどの追加データがあれば転送して bind する
+        // ボーンパレットなどの追加データがあれば転送して頂点シェーダのスロットへ設定する
         if (item.extraVsCb != nullptr)
         {
             if (item.extraVsData != nullptr && item.extraVsSize != 0)

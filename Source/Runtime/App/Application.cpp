@@ -42,7 +42,9 @@ namespace NS::App
         m_desc = desc;
         if (m_desc.fixedDelta <= 0.0f)
         {
-            NS_LOG_WARN(App,"ApplicationDesc::fixedDelta が非正値 ({}) のため default 1/60 にフォールバック",m_desc.fixedDelta);
+            NS_LOG_WARN(App,
+                        "ApplicationDesc::fixedDelta が非正値 ({}) のため default 1/60 にフォールバック",
+                        m_desc.fixedDelta);
             m_desc.fixedDelta = NS::Core::FrameTimer::k_DefaultFixedDelta;
         }
         NS::Core::FrameTimer::SetFixedDelta(m_desc.fixedDelta);
@@ -70,7 +72,6 @@ namespace NS::App
 
     Application::~Application()
     {
-        // 念のため終了処理を呼んでおく
         Shutdown();
         if (s_instance == this)
             s_instance = nullptr;
@@ -158,7 +159,7 @@ namespace NS::App
 
         if (m_quitGuard)
         {
-            // guard 呼出は try 内の 1 回だけにする。 noexcept 境界で例外を外へ出すと std::terminate になる
+            // guard 呼出は try 内の 1 回だけにする。noexcept 境界で例外を外へ出すと std::terminate になる
             try
             {
                 if (!m_quitGuard())
@@ -169,7 +170,6 @@ namespace NS::App
             }
             catch (...)
             {
-                // 例外が飛んだら終了要求を取り下げてループを続ける
                 NS_LOG_ERROR(App, "コールバック内で例外が発生しました");
                 m_quitRequested = false;
                 return false;
@@ -200,7 +200,8 @@ namespace NS::App
             if (steps >= 2)
             {
                 const auto now = std::chrono::steady_clock::now();
-                const auto since = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastStutterWarnAt).count();
+                const auto since =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastStutterWarnAt).count();
                 if (since >= 1000)
                 {
                     NS_LOG_WARN(App, "Frame drop indicator: {} fixed steps in single frame", steps);
@@ -246,19 +247,16 @@ namespace NS::App
         {
             return;
         }
- 
+
         m_shutdownCalled = true;
 
-        // 追加したのと逆の順番でレイヤーを終了させる
         for (auto it = m_layers.rbegin(); it != m_layers.rend(); ++it)
         {
             (*it)->OnDetach();
         }
- 
 
         m_quitGuard = nullptr;
 
-        // エラーを防ぐために登録したコールバックを解除しておく
         if (m_window)
         {
             m_window->SetCloseCallback(nullptr);

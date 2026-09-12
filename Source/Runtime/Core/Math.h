@@ -70,7 +70,8 @@ namespace NS::Core
     //! @brief 度の Euler 角 (x=Pitch, y=Yaw, z=Roll) を回転 Quaternion へ変換する
     [[nodiscard]] inline Quaternion EulerDegreesToQuaternion(const Vector3& eulerDegrees) noexcept
     {
-        return Quaternion::CreateFromYawPitchRoll(Vector3{DegreesToRadians(eulerDegrees.x), DegreesToRadians(eulerDegrees.y), DegreesToRadians(eulerDegrees.z)});
+        return Quaternion::CreateFromYawPitchRoll(Vector3{
+            DegreesToRadians(eulerDegrees.x), DegreesToRadians(eulerDegrees.y), DegreesToRadians(eulerDegrees.z)});
     }
 
     //! @brief 回転 Quaternion を度の Euler 角 (x=Pitch, y=Yaw, z=Roll) へ変換する
@@ -184,11 +185,11 @@ namespace NS::Core
         return a + (b - a) * t;
     }
 
-    //! @brief 0 除算よけの下限。単位は m
+    //! @brief 0 除算よけの下限
     //! @details 長さ 2 乗と比べる側は k_Epsilon * k_Epsilon と書く。意味を持つ許容誤差には使わない
     inline constexpr float k_Epsilon = 1e-4f;
 
-    //! float の刻み幅
+    //! 1.0f と次に表現できる float との差
     inline constexpr float k_FloatEpsilon = std::numeric_limits<float>::epsilon();
 
     //! @brief XZ 平面へ畳んだ向きを正規化する
@@ -203,7 +204,7 @@ namespace NS::Core
         {
             return false;
         }
- 
+
         const float invLength = 1.0f / std::sqrt(lengthSq);
         outDirection = Vector3{v.x * invLength, 0.0f, v.z * invLength};
         return true;

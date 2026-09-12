@@ -109,7 +109,7 @@ namespace NS::Graphics
         m_context->OMSetDepthStencilState(pipeline.DepthStencilState(), 0u);
     }
 
-    // InputLayout は NS にラッパ型が無いため Mesh が所有する生 ID3D11InputLayout* をそのまま受ける
+    // InputLayout は NS にラッパ型が無いため生の ID3D11InputLayout* をそのまま受ける
     void CommandList::SetInputLayout(ID3D11InputLayout* layout) noexcept
     {
         if (m_context == nullptr || layout == nullptr)

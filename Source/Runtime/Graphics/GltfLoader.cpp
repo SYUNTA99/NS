@@ -79,7 +79,7 @@ namespace NS::Graphics
             out[8] = a * e - b * d;
         }
 
-        // NORMAL 無し primitive 向け: 面法線を area-weighted 積算した smooth normal を RH
+        // NORMAL 無し primitive 向け: 面法線を面積で重み付けして積算した smooth normal を RH
         // ローカル空間で計算。縮退頂点は (0,0,1)
         std::vector<std::array<float, 3>> ComputeSmoothNormals(const cgltf_primitive& prim,
                                                                const cgltf_accessor& posAcc,
@@ -90,7 +90,6 @@ namespace NS::Graphics
             {
                 cgltf_accessor_read_float(&posAcc, i, positions[i].data(), 3);
             }
-
 
             std::vector<std::array<float, 3>> normals(vertexCount, {0.0f, 0.0f, 0.0f});
             const cgltf_size count = [&]() -> cgltf_size {
@@ -158,9 +157,8 @@ namespace NS::Graphics
                 const float len2 = nrm[0] * nrm[0] + nrm[1] * nrm[1] + nrm[2] * nrm[2];
                 if (len2 < 1e-12f)
                 {
-                    nrm = { 0.0f, 0.0f, 1.0f };
+                    nrm = {0.0f, 0.0f, 1.0f};
                 }
-
             }
             return normals;
         }
@@ -188,7 +186,8 @@ namespace NS::Graphics
             std::vector<std::array<float, 3>> computedNormals;
             if (normalAcc == nullptr)
             {
-                NS_LOG_WARN(Graphics, "LoadGltfMesh: NORMAL 属性が無いため面法線から smooth normal を生成 (path={})", path);
+                NS_LOG_WARN(
+                    Graphics, "LoadGltfMesh: NORMAL 属性が無いため面法線から smooth normal を生成 (path={})", path);
                 computedNormals = ComputeSmoothNormals(prim, *posAcc, vertexCount);
             }
 
@@ -269,7 +268,8 @@ namespace NS::Graphics
                 geom.indices.reserve(geom.indices.size() + indexCount);
                 for (cgltf_size i = 0; i < indexCount; ++i)
                 {
-                    geom.indices.push_back(baseVertex + static_cast<std::uint32_t>(cgltf_accessor_read_index(prim.indices, i)));
+                    geom.indices.push_back(baseVertex +
+                                           static_cast<std::uint32_t>(cgltf_accessor_read_index(prim.indices, i)));
                 }
             }
             else
@@ -281,7 +281,7 @@ namespace NS::Graphics
                 }
             }
 
-            // この primitive 分だけ三角形 winding を右手から左手へ反転
+            // この primitive 分だけ三角形の巻き順を右手から左手へ反転
             for (std::size_t t = indexStart; t + 2 < geom.indices.size(); t += 3)
             {
                 std::swap(geom.indices[t + 1], geom.indices[t + 2]);
@@ -364,7 +364,7 @@ namespace NS::Graphics
             AppendMesh(*node.mesh, world, path, geom);
         }
 
-        // ノードに紐付かない mesh だけのファイル は identity 変換でフォールバック
+        // ノードに紐付かない mesh だけのファイルは恒等変換でフォールバック
         if (!anyNodeMesh)
         {
             const float identity[16] = {
@@ -458,7 +458,6 @@ namespace NS::Graphics
                 return false;
             }
 
-            // joint ごとに Bone を組む
             outBones.resize(skin.joints_count);
             for (cgltf_size i = 0; i < skin.joints_count; ++i)
             {

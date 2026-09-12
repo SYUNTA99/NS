@@ -17,7 +17,7 @@ namespace NS::Graphics
             NS_LOG_ERROR(Graphics, "CommonStates 構築時に device が null");
             return;
         }
-        // DirectXTK は生成失敗を例外で投げるので、 ここで受けて m_states を空のままにする
+        // DirectXTK のコンストラクタは例外を投げるので、noexcept のここで受けて m_states を空のままにする
         try
         {
             m_states = std::make_unique<DirectX::CommonStates>(device);
@@ -100,7 +100,8 @@ namespace NS::Graphics
 
     ID3D11SamplerState* CommonStates::LinearClamp() const noexcept
     {
-        if (m_states) {
+        if (m_states)
+        {
             return m_states->LinearClamp();
         }
 
