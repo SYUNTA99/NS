@@ -10,7 +10,9 @@ namespace NS::Graphics
     void IssueDrawItem(Renderer& renderer, const DrawItem& item) noexcept
     {
         if (item.mesh == nullptr || item.material == nullptr)
+        {
             return;
+        }
 
         CommandList& cmd = renderer.Commands();
 
@@ -23,7 +25,9 @@ namespace NS::Graphics
         if (item.extraVsCb != nullptr)
         {
             if (item.extraVsData != nullptr && item.extraVsSize != 0)
+            {
                 cmd.UpdateSubresource(*item.extraVsCb, item.extraVsData, item.extraVsSize);
+            }
             cmd.VSSetConstantBuffer(*item.extraVsCb, item.extraVsSlot);
         }
 

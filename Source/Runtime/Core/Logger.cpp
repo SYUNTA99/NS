@@ -76,8 +76,7 @@ namespace NS::Core
 
             const auto logsDir = LogsDirectory();
             const std::string logFilePath = (logsDir / (g_logName + ".log")).string();
-            auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-                logFilePath, k_RotatingMaxBytes, k_RotatingMaxFiles, g_rotateOnOpen);
+            auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(logFilePath, k_RotatingMaxBytes, k_RotatingMaxFiles, g_rotateOnOpen);
             file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread:%t] [%s:%#] %v");
             sinks.push_back(file);
 
@@ -86,7 +85,6 @@ namespace NS::Core
             msvc->set_pattern("[%H:%M:%S.%e] [%l] [%n] [%s:%#] %v");
             sinks.push_back(msvc);
 #endif
-
             return sinks;
         }
 
@@ -108,7 +106,9 @@ namespace NS::Core
     {
         // 空文字は無視する。Init 済みの間は反映されず、Shutdown 後の Init から効く
         if (name.empty())
+        {
             return;
+        }
         g_logName.assign(name);
     }
 
@@ -143,7 +143,7 @@ namespace NS::Core
             spdlog::set_default_logger(logger);
             spdlog::flush_every(std::chrono::seconds(3));
 
-            logger->info("===== セッション開始 =====");
+            logger->info("===== 開始 =====");
         }
         catch (const std::exception& e)
         {

@@ -76,6 +76,7 @@ namespace NS::Core
                          "FileSystem::ReadAllBytes allocation failed: {} ({} bytes)",
                          path.string(),
                          static_cast<std::size_t>(end));
+
             return std::nullopt;
         }
     }
@@ -154,7 +155,9 @@ namespace NS::Core
         [[nodiscard]] bool ExtensionMatches(const std::filesystem::path& file, std::string_view extension) noexcept
         {
             if (extension.empty())
+            {
                 return true;
+            }
             // extension() の戻りは一時なので値で受ける。native() の参照だけ残すと宙づりになる
             const std::filesystem::path extPath = file.extension();
             const std::filesystem::path::string_type& ext = extPath.native();
@@ -164,11 +167,16 @@ namespace NS::Core
             {
                 const wchar_t wc = ext[i];
                 if (wc > 127)
-                    return false; // 比較対象の拡張子は ASCII 前提
+                {
+                    return false;
+                }
+
                 const int a = std::tolower(static_cast<int>(wc));
                 const int b = std::tolower(static_cast<unsigned char>(extension[i]));
                 if (a != b)
+                {
                     return false;
+                }
             }
             return true;
         }
@@ -194,14 +202,22 @@ namespace NS::Core
             {
                 std::error_code entryEc;
                 if (!it->is_regular_file(entryEc) || entryEc)
+                {
                     continue;
+                }
+
                 if (!ExtensionMatches(it->path(), extension))
+                {
                     continue;
+                }
                 result.push_back(it->path());
             }
             // increment の失敗はイテレータを end にするので、エラーはループを抜けてから確認する
             if (ec)
+            {
                 NS_LOG_ERROR(Core, "{} iteration failed: {} ({})", callerName, dir.string(), ec.message());
+            }
+
             return result;
         }
     } // namespace
@@ -236,12 +252,18 @@ namespace NS::Core
         {
             std::error_code entryEc;
             if (!it->is_directory(entryEc) || entryEc)
+            {
                 continue;
+            }
+
             result.push_back(it->path());
         }
         // increment の失敗はイテレータを end にするので、エラーはループを抜けてから確認する
         if (ec)
+        {
             NS_LOG_ERROR(Core, "FileSystem::ListDirectories iteration failed: {} ({})", dir.string(), ec.message());
+        }
+
         return result;
     }
 
@@ -254,6 +276,7 @@ namespace NS::Core
             NS_LOG_ERROR(Core, "FileSystem::GetExeDirectory failed (GetLastError={})", ::GetLastError());
             return {};
         }
+
         return std::filesystem::path(std::wstring(buffer.data(), len)).parent_path();
     }
 
@@ -267,12 +290,17 @@ namespace NS::Core
         {
             std::error_code ec;
             if (std::filesystem::exists(dir / "premake5.lua", ec) || std::filesystem::exists(dir / ".git", ec))
+            {
                 return dir;
+            }
             const auto parent = dir.parent_path();
             if (parent == dir)
+            {
                 break;
+            }
             dir = parent;
         }
+
         return GetExeDirectory();
 #endif
     }
@@ -282,12 +310,18 @@ namespace NS::Core
     {
         // 絶対パスとドライブ相対は base 配下を保証できないので入口で拒否する
         if (relative.is_absolute() || relative.has_root_name())
+        {
             return std::nullopt;
+        }
+
         std::filesystem::path combined = (base / relative).lexically_normal();
         // 正規化後も base 配下かを相対化で確かめる。外へ出ていれば先頭要素が ".." になる
         const std::filesystem::path fromBase = combined.lexically_relative(base.lexically_normal());
         if (fromBase.empty() || *fromBase.begin() == "..")
+        {
             return std::nullopt;
+        }
+
         return combined;
     }
 

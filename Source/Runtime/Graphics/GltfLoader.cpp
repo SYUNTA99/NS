@@ -26,7 +26,9 @@ namespace NS::Graphics
             ~CgltfGuard()
             {
                 if (data != nullptr)
+                {
                     cgltf_free(data);
+                }
             }
         };
 
@@ -36,7 +38,9 @@ namespace NS::Graphics
             {
                 const cgltf_attribute& attribute = prim.attributes[i];
                 if (attribute.type == type && attribute.index == setIndex)
+                {
                     return attribute.data;
+                }
             }
             return nullptr;
         }
@@ -49,7 +53,9 @@ namespace NS::Graphics
             {
                 const char* ext = model.extensions_required[i];
                 if (ext != nullptr && std::strcmp(ext, "KHR_draco_mesh_compression") == 0)
+                {
                     return true;
+                }
             }
             return false;
         }
@@ -81,12 +87,17 @@ namespace NS::Graphics
         {
             std::vector<std::array<float, 3>> positions(vertexCount, {0.0f, 0.0f, 0.0f});
             for (cgltf_size i = 0; i < vertexCount; ++i)
+            {
                 cgltf_accessor_read_float(&posAcc, i, positions[i].data(), 3);
+            }
+
 
             std::vector<std::array<float, 3>> normals(vertexCount, {0.0f, 0.0f, 0.0f});
             const cgltf_size count = [&]() -> cgltf_size {
                 if (prim.indices != nullptr)
+                {
                     return prim.indices->count;
+                }
                 return vertexCount;
             }();
             // 三角形ごとに面法線を積算
@@ -94,21 +105,36 @@ namespace NS::Graphics
             {
                 const cgltf_size i0 = [&]() -> cgltf_size {
                     if (prim.indices != nullptr)
+                    {
                         return cgltf_accessor_read_index(prim.indices, t);
+                    }
+
                     return t;
                 }();
+
                 const cgltf_size i1 = [&]() -> cgltf_size {
                     if (prim.indices != nullptr)
+                    {
                         return cgltf_accessor_read_index(prim.indices, t + 1);
+                    }
+
                     return t + 1;
                 }();
+
                 const cgltf_size i2 = [&]() -> cgltf_size {
                     if (prim.indices != nullptr)
+                    {
                         return cgltf_accessor_read_index(prim.indices, t + 2);
+                    }
+
                     return t + 2;
                 }();
+
                 if (i0 >= vertexCount || i1 >= vertexCount || i2 >= vertexCount)
+                {
                     continue;
+                }
+
                 const std::array<float, 3>& a = positions[i0];
                 const std::array<float, 3>& b = positions[i1];
                 const std::array<float, 3>& c = positions[i2];
@@ -131,7 +157,10 @@ namespace NS::Graphics
             {
                 const float len2 = nrm[0] * nrm[0] + nrm[1] * nrm[1] + nrm[2] * nrm[2];
                 if (len2 < 1e-12f)
-                    nrm = {0.0f, 0.0f, 1.0f};
+                {
+                    nrm = { 0.0f, 0.0f, 1.0f };
+                }
+
             }
             return normals;
         }
@@ -144,7 +173,9 @@ namespace NS::Graphics
         {
             const cgltf_accessor* posAcc = FindAttribute(prim, cgltf_attribute_type_position, 0);
             if (posAcc == nullptr)
+            {
                 return;
+            }
             const cgltf_accessor* uvAcc = FindAttribute(prim, cgltf_attribute_type_texcoord, 0);
             const cgltf_accessor* normalAcc = FindAttribute(prim, cgltf_attribute_type_normal, 0);
 
@@ -157,8 +188,7 @@ namespace NS::Graphics
             std::vector<std::array<float, 3>> computedNormals;
             if (normalAcc == nullptr)
             {
-                NS_LOG_WARN(
-                    Graphics, "LoadGltfMesh: NORMAL 属性が無いため面法線から smooth normal を生成 (path={})", path);
+                NS_LOG_WARN(Graphics, "LoadGltfMesh: NORMAL 属性が無いため面法線から smooth normal を生成 (path={})", path);
                 computedNormals = ComputeSmoothNormals(prim, *posAcc, vertexCount);
             }
 
@@ -196,7 +226,9 @@ namespace NS::Graphics
 
                 float n[3] = {0.0f, 0.0f, 1.0f};
                 if (normalAcc != nullptr)
+                {
                     cgltf_accessor_read_float(normalAcc, i, n, 3);
+                }
                 else
                 {
                     n[0] = computedNormals[i][0];
@@ -236,19 +268,24 @@ namespace NS::Graphics
                 const cgltf_size indexCount = prim.indices->count;
                 geom.indices.reserve(geom.indices.size() + indexCount);
                 for (cgltf_size i = 0; i < indexCount; ++i)
-                    geom.indices.push_back(baseVertex +
-                                           static_cast<std::uint32_t>(cgltf_accessor_read_index(prim.indices, i)));
+                {
+                    geom.indices.push_back(baseVertex + static_cast<std::uint32_t>(cgltf_accessor_read_index(prim.indices, i)));
+                }
             }
             else
             {
                 geom.indices.reserve(geom.indices.size() + vertexCount);
                 for (cgltf_size i = 0; i < vertexCount; ++i)
+                {
                     geom.indices.push_back(baseVertex + static_cast<std::uint32_t>(i));
+                }
             }
 
             // この primitive 分だけ三角形 winding を右手から左手へ反転
             for (std::size_t t = indexStart; t + 2 < geom.indices.size(); t += 3)
+            {
                 std::swap(geom.indices[t + 1], geom.indices[t + 2]);
+            }
         }
 
         // 三角形以外と Draco 圧縮の primitive は飛ばす
@@ -285,7 +322,9 @@ namespace NS::Graphics
         // 差し替えれば全部の読み込みが FileSystem を通る。release は read の確保の仕方に合わせる
         const std::optional<std::vector<std::byte>> bytes = NS::Core::FileSystem::ReadAllBytes(path);
         if (!bytes)
+        {
             return geom; // ReadAllBytes 内で NS_LOG_ERROR 済
+        }
 
         cgltf_options options{};
         CgltfGuard guard;
@@ -316,7 +355,9 @@ namespace NS::Graphics
         {
             const cgltf_node& node = model.nodes[n];
             if (node.mesh == nullptr)
+            {
                 continue;
+            }
             anyNodeMesh = true;
             float world[16];
             cgltf_node_transform_world(&node, world);
@@ -329,11 +370,15 @@ namespace NS::Graphics
             const float identity[16] = {
                 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f};
             for (cgltf_size m = 0; m < model.meshes_count; ++m)
+            {
                 AppendMesh(model.meshes[m], identity, path, geom);
+            }
         }
 
         if (geom.vertices.empty())
+        {
             NS_LOG_ERROR(Graphics, "LoadGltfMesh: 有効な三角形ジオメトリが無い (path={})", path);
+        }
 
         return geom;
     }

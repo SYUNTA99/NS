@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <coroutine>
 #include <cstddef>
@@ -38,7 +38,9 @@ namespace NS::Core
         ~Coroutine()
         {
             if (m_handle)
+            {
                 m_handle.destroy();
+            }
         }
 
         Coroutine(const Coroutine&) = delete;
@@ -49,7 +51,9 @@ namespace NS::Core
             if (this != &other)
             {
                 if (m_handle)
+                {
                     m_handle.destroy();
+                }
                 m_handle = std::exchange(other.m_handle, {});
             }
             return *this;
@@ -122,7 +126,9 @@ namespace NS::Core
         {
             Coroutine::Handle handle = coroutine.Release();
             if (!handle)
+            {
                 return;
+            }
             handle.resume();
             if (handle.done())
             {
@@ -184,7 +190,10 @@ namespace NS::Core
         void CancelAll() noexcept
         {
             for (Coroutine::Handle handle : m_handles)
+            {
                 handle.destroy();
+            }
+
             m_handles.clear();
         }
 

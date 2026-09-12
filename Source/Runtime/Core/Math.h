@@ -70,8 +70,7 @@ namespace NS::Core
     //! @brief 度の Euler 角 (x=Pitch, y=Yaw, z=Roll) を回転 Quaternion へ変換する
     [[nodiscard]] inline Quaternion EulerDegreesToQuaternion(const Vector3& eulerDegrees) noexcept
     {
-        return Quaternion::CreateFromYawPitchRoll(Vector3{
-            DegreesToRadians(eulerDegrees.x), DegreesToRadians(eulerDegrees.y), DegreesToRadians(eulerDegrees.z)});
+        return Quaternion::CreateFromYawPitchRoll(Vector3{DegreesToRadians(eulerDegrees.x), DegreesToRadians(eulerDegrees.y), DegreesToRadians(eulerDegrees.z)});
     }
 
     //! @brief 回転 Quaternion を度の Euler 角 (x=Pitch, y=Yaw, z=Roll) へ変換する
@@ -166,9 +165,13 @@ namespace NS::Core
     template <typename T> [[nodiscard]] constexpr T Clamp(T value, T lo, T hi) noexcept
     {
         if (value < lo)
+        {
             return lo;
+        }
         if (value > hi)
+        {
             return hi;
+        }
         return value;
     }
 
@@ -197,7 +200,10 @@ namespace NS::Core
     {
         const float lengthSq = v.x * v.x + v.z * v.z;
         if (lengthSq < k_Epsilon * k_Epsilon)
+        {
             return false;
+        }
+ 
         const float invLength = 1.0f / std::sqrt(lengthSq);
         outDirection = Vector3{v.x * invLength, 0.0f, v.z * invLength};
         return true;

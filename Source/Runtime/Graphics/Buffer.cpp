@@ -30,6 +30,7 @@ namespace NS::Graphics
         desc.stride = stride;
         desc.usage = usage;
         desc.bindFlags = D3D11_BIND_VERTEX_BUFFER;
+
         return desc;
     }
 
@@ -49,6 +50,7 @@ namespace NS::Graphics
         desc.indexFormat = format;
         desc.usage = usage;
         desc.bindFlags = D3D11_BIND_INDEX_BUFFER;
+
         return desc;
     }
 
@@ -58,6 +60,7 @@ namespace NS::Graphics
         desc.byteSize = byteSize; // 16 バイト切り上げは Buffer のコンストラクタでやる
         desc.usage = D3D11_USAGE_DYNAMIC;
         desc.bindFlags = D3D11_BIND_CONSTANT_BUFFER;
+
         return desc;
     }
 
@@ -71,7 +74,9 @@ namespace NS::Graphics
         const bool isConstant = (desc.bindFlags & D3D11_BIND_CONSTANT_BUFFER) != 0u;
         const std::size_t bytes = [&]() -> std::size_t {
             if (isConstant)
+            {
                 return RoundUpToAlignment(desc.byteSize, k_ConstantBufferAlignment);
+            }
             return desc.byteSize;
         }();
 
@@ -80,7 +85,7 @@ namespace NS::Graphics
         m_format = desc.indexFormat;
         m_dynamic = (detail::GetCpuAccessFlags(desc.usage) & D3D11_CPU_ACCESS_WRITE) != 0u;
 
-        auto* device = Gpu().device;
+        ID3D11Device* device = Gpu().device;
         if (device == nullptr || bytes == 0u)
         {
             NS_LOG_ERROR(Graphics,
@@ -90,6 +95,7 @@ namespace NS::Graphics
                          static_cast<unsigned>(desc.bindFlags));
             return;
         }
+
         if (desc.usage != D3D11_USAGE_DYNAMIC && desc.initialData == nullptr)
         {
             NS_LOG_ERROR(Graphics, "Static バッファは initialData 必須 (CreateBuffer 後 GPU が未初期化を読む危険)");

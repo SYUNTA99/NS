@@ -15,8 +15,12 @@ namespace NS::Graphics
     {
         D3D11_PRIMITIVE_TOPOLOGY ToD3d(Topology topology) noexcept
         {
-            return (topology == Topology::LineList) ? D3D11_PRIMITIVE_TOPOLOGY_LINELIST
-                                                    : D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+            if (topology == Topology::LineList)
+            {
+                return D3D11_PRIMITIVE_TOPOLOGY_LINELIST;
+            }
+
+            return D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
         }
 
         bool MapAndCopy(ID3D11DeviceContext* context,
@@ -156,9 +160,11 @@ namespace NS::Graphics
             NS_LOG_ERROR(Graphics, "CommandList::Update: buffer サイズ超過 (req={}, max={})", bytes, buffer.ByteSize());
             return;
         }
+
         ID3D11Buffer* native = buffer.Native();
         D3D11_BUFFER_DESC desc{};
         native->GetDesc(&desc);
+
         switch (desc.Usage)
         {
         case D3D11_USAGE_DYNAMIC:
@@ -188,13 +194,16 @@ namespace NS::Graphics
         {
             return;
         }
+
         ID3D11Texture2D* native = texture.Native();
         if (native == nullptr)
         {
             return;
         }
+
         D3D11_TEXTURE2D_DESC desc{};
         native->GetDesc(&desc);
+
         switch (desc.Usage)
         {
         case D3D11_USAGE_DEFAULT:
