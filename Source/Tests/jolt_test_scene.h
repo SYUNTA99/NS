@@ -3,7 +3,7 @@
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Core/OBB.h>
-#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/PhysicsScene.h>
 
 namespace NsTest
 {
@@ -17,8 +17,8 @@ namespace NsTest
         return out;
     }
 
-    inline void AddBox(NS::Physics::PhysicsWorld& world, const NS::Core::AABB& box)
+    inline void AddBox(NS::Physics::PhysicsScene& physics, const NS::Core::AABB& box)
     {
-        world.AddBox(ToOBB(box), NS::Physics::ObjectLayers::Terrain);
+        physics.AddBox(ToOBB(box), NS::Physics::ObjectLayers::Terrain);
     }
 } // namespace NsTest

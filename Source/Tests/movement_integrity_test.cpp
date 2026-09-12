@@ -5,10 +5,10 @@
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
-#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/PhysicsScene.h>
 
 #include "entity_test_stage.h"
-#include "jolt_test_world.h"
+#include "jolt_test_scene.h"
 #include <gtest/gtest.h>
 #include <vector>
 
@@ -44,9 +44,9 @@ namespace
         auto& movement = *owner.AddComponent<PlayerComponent>();
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
 
-        NS::Physics::PhysicsWorld& pw = stage.world;
-        NsTest::AddBox(pw, floor);
-        pw.OptimizeBroadPhase();
+        NS::Physics::PhysicsScene& physics = stage.physics;
+        NsTest::AddBox(physics, floor);
+        physics.OptimizeBroadPhase();
         movement.OnStart();
         manager.OnStart();
 
@@ -73,7 +73,7 @@ protected:
     void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_FixedDt); }
 };
 
-//! 固定ステップ物理が DeltaTime や乱数を使っていなければ、同条件で 2 回走らせた軌跡は一致する
+//! 固定ステップ物理が可変の経過時間や乱数を使っていなければ、同条件で 2 回走らせた軌跡は一致する
 //! std::exp を使うので EXPECT_NEAR (1e-5) で誤差を許す
 TEST_F(MovementIntegrity, JumpTrajectoryIsDeterministicAcrossTwoRuns)
 {
@@ -109,7 +109,7 @@ TEST_F(MovementIntegrity, JumpReachesExpectedPeakHeightRange)
 }
 
 //! accelTau = 0.10s なら 1 秒 (60 step) でほぼ maxSpeed=8 に届く
-//! ジャンプ中は非対称重力や着地の substep で x 速度が揺れるので、ジャンプ無しの歩行だけで見る
+//! ジャンプ中は x 速度が揺れるので、ジャンプ無しの歩行だけで見る
 TEST_F(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
 {
     const AABB floor = MakeFloorOnly();
@@ -120,9 +120,9 @@ TEST_F(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
     auto& movement = *owner.AddComponent<PlayerComponent>();
     owner.Root().SetPosition(Vector3{0.0f, 0.5f, 0.0f}); // 床の上に直置きして接地から始める
 
-    NS::Physics::PhysicsWorld& pw = stage.world;
-    NsTest::AddBox(pw, floor);
-    pw.OptimizeBroadPhase();
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, floor);
+    physics.OptimizeBroadPhase();
     movement.OnStart();
     manager.OnStart();
 

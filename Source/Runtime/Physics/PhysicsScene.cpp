@@ -1,4 +1,4 @@
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Core/Sphere.h"
@@ -37,24 +37,24 @@ namespace NS::Physics
 
     } // namespace
 
-    PhysicsWorld::RuntimeInitialization::RuntimeInitialization()
+    PhysicsScene::RuntimeInitialization::RuntimeInitialization()
     {
         detail::InitializeJoltRuntime();
     }
 
-    JPH::uint PhysicsWorld::BroadPhaseLayerInterface::GetNumBroadPhaseLayers() const
+    JPH::uint PhysicsScene::BroadPhaseLayerInterface::GetNumBroadPhaseLayers() const
     {
         return BroadPhaseLayers::Count;
     }
 
-    JPH::BroadPhaseLayer PhysicsWorld::BroadPhaseLayerInterface::GetBroadPhaseLayer(JPH::ObjectLayer layer) const
+    JPH::BroadPhaseLayer PhysicsScene::BroadPhaseLayerInterface::GetBroadPhaseLayer(JPH::ObjectLayer layer) const
     {
         JPH_ASSERT(layer < ObjectLayers::Count);
         return JPH::BroadPhaseLayer{static_cast<JPH::BroadPhaseLayer::Type>(layer)};
     }
 
 #if defined(JPH_EXTERNAL_PROFILE) || defined(JPH_PROFILE_ENABLED)
-    const char* PhysicsWorld::BroadPhaseLayerInterface::GetBroadPhaseLayerName(JPH::BroadPhaseLayer layer) const
+    const char* PhysicsScene::BroadPhaseLayerInterface::GetBroadPhaseLayerName(JPH::BroadPhaseLayer layer) const
     {
         if (layer == BroadPhaseLayers::Terrain)
             return "Terrain";
@@ -68,7 +68,7 @@ namespace NS::Physics
     }
 #endif
 
-    bool PhysicsWorld::ObjectLayerPairFilter::ShouldCollide(JPH::ObjectLayer first, JPH::ObjectLayer second) const
+    bool PhysicsScene::ObjectLayerPairFilter::ShouldCollide(JPH::ObjectLayer first, JPH::ObjectLayer second) const
     {
         if (first == ObjectLayers::Terrain)
         {
@@ -86,7 +86,7 @@ namespace NS::Physics
         return false;
     }
 
-    bool PhysicsWorld::ObjectVsBroadPhaseLayerFilter::ShouldCollide(JPH::ObjectLayer object,
+    bool PhysicsScene::ObjectVsBroadPhaseLayerFilter::ShouldCollide(JPH::ObjectLayer object,
                                                                     JPH::BroadPhaseLayer broadPhase) const
     {
         const auto other = static_cast<JPH::ObjectLayer>(broadPhase.GetValue());
@@ -106,7 +106,7 @@ namespace NS::Physics
         return false;
     }
 
-    void PhysicsWorld::ContactRecorder::OnContactAdded(const JPH::Body& first,
+    void PhysicsScene::ContactRecorder::OnContactAdded(const JPH::Body& first,
                                                        const JPH::Body& second,
                                                        const JPH::ContactManifold& manifold,
                                                        JPH::ContactSettings& settings)
@@ -118,12 +118,12 @@ namespace NS::Physics
         m_records.push_back(Record{second.GetID(), BodyContact{first.GetID(), FromJolt(outward)}});
     }
 
-    void PhysicsWorld::ContactRecorder::Clear() noexcept
+    void PhysicsScene::ContactRecorder::Clear() noexcept
     {
         m_records.clear();
     }
 
-    std::vector<BodyContact> PhysicsWorld::ContactRecorder::Of(JPH::BodyID id) const
+    std::vector<BodyContact> PhysicsScene::ContactRecorder::Of(JPH::BodyID id) const
     {
         std::vector<BodyContact> found;
         for (const Record& record : m_records)
@@ -134,7 +134,7 @@ namespace NS::Physics
         return found;
     }
 
-    PhysicsWorld::PhysicsWorld() : m_tempAllocator(k_TempAllocatorBytes), m_jobSystem(k_MaxJobs)
+    PhysicsScene::PhysicsScene() : m_tempAllocator(k_TempAllocatorBytes), m_jobSystem(k_MaxJobs)
     {
         m_physicsSystem.Init(k_MaxBodies,
                              0,
@@ -147,14 +147,14 @@ namespace NS::Physics
         m_physicsSystem.SetGravity(JPH::Vec3{0.0f, k_GravityY, 0.0f});
     }
 
-    PhysicsWorld::~PhysicsWorld() = default;
+    PhysicsScene::~PhysicsScene() = default;
 
-    JPH::uint PhysicsWorld::BodyCount() const noexcept
+    JPH::uint PhysicsScene::BodyCount() const noexcept
     {
         return m_physicsSystem.GetNumBodies();
     }
 
-    JPH::BodyID PhysicsWorld::AddStatic(const JPH::ShapeRefC& shape,
+    JPH::BodyID PhysicsScene::AddStatic(const JPH::ShapeRefC& shape,
                                         const NS::Core::Vector3& position,
                                         const NS::Core::Quaternion& rotation,
                                         JPH::ObjectLayer layer,
@@ -175,7 +175,7 @@ namespace NS::Physics
         return m_physicsSystem.GetBodyInterface().CreateAndAddBody(settings, JPH::EActivation::DontActivate);
     }
 
-    JPH::BodyID PhysicsWorld::SyncStatic(JPH::BodyID id,
+    JPH::BodyID PhysicsScene::SyncStatic(JPH::BodyID id,
                                          const JPH::ShapeRefC& shape,
                                          const NS::Core::Vector3& position,
                                          const NS::Core::Quaternion& rotation,
@@ -202,12 +202,12 @@ namespace NS::Physics
         return id;
     }
 
-    JPH::BodyID PhysicsWorld::AddBox(const NS::Core::OBB& box, JPH::ObjectLayer layer)
+    JPH::BodyID PhysicsScene::AddBox(const NS::Core::OBB& box, JPH::ObjectLayer layer)
     {
         return SyncBox(JPH::BodyID{}, box, layer);
     }
 
-    JPH::BodyID PhysicsWorld::SyncBox(JPH::BodyID id, const NS::Core::OBB& box, JPH::ObjectLayer layer, bool sensor)
+    JPH::BodyID PhysicsScene::SyncBox(JPH::BodyID id, const NS::Core::OBB& box, JPH::ObjectLayer layer, bool sensor)
     {
         const JPH::BoxShapeSettings shapeSettings{JPH::Vec3{box.halfExtentX, box.halfExtentY, box.halfExtentZ}};
         const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
@@ -224,12 +224,12 @@ namespace NS::Physics
         return SyncStatic(id, shape.Get(), box.center, FromJolt(axes.GetQuaternion()), layer, sensor);
     }
 
-    JPH::BodyID PhysicsWorld::AddSphere(const NS::Core::Sphere& sphere, JPH::ObjectLayer layer)
+    JPH::BodyID PhysicsScene::AddSphere(const NS::Core::Sphere& sphere, JPH::ObjectLayer layer)
     {
         return SyncSphere(JPH::BodyID{}, sphere, layer);
     }
 
-    JPH::BodyID PhysicsWorld::SyncSphere(JPH::BodyID id, const NS::Core::Sphere& sphere, JPH::ObjectLayer layer)
+    JPH::BodyID PhysicsScene::SyncSphere(JPH::BodyID id, const NS::Core::Sphere& sphere, JPH::ObjectLayer layer)
     {
         const JPH::SphereShapeSettings shapeSettings{sphere.radius};
         const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
@@ -241,12 +241,12 @@ namespace NS::Physics
         return SyncStatic(id, shape.Get(), sphere.center, NS::Core::Quaternion::Identity, layer, false);
     }
 
-    JPH::BodyID PhysicsWorld::AddCapsule(const Capsule& capsule, JPH::ObjectLayer layer)
+    JPH::BodyID PhysicsScene::AddCapsule(const Capsule& capsule, JPH::ObjectLayer layer)
     {
         return SyncCapsule(JPH::BodyID{}, capsule, layer);
     }
 
-    JPH::BodyID PhysicsWorld::SyncCapsule(JPH::BodyID id, const Capsule& capsule, JPH::ObjectLayer layer)
+    JPH::BodyID PhysicsScene::SyncCapsule(JPH::BodyID id, const Capsule& capsule, JPH::ObjectLayer layer)
     {
         const JPH::CapsuleShapeSettings shapeSettings{capsule.halfHeight, capsule.radius};
         const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
@@ -260,12 +260,12 @@ namespace NS::Physics
         return SyncStatic(id, shape.Get(), capsule.center, FromJolt(rotation), layer, false);
     }
 
-    JPH::BodyID PhysicsWorld::AddMesh(std::span<const Triangle> triangles, JPH::ObjectLayer layer)
+    JPH::BodyID PhysicsScene::AddMesh(std::span<const Triangle> triangles, JPH::ObjectLayer layer)
     {
         return SyncMesh(JPH::BodyID{}, triangles, layer);
     }
 
-    JPH::BodyID PhysicsWorld::SyncMesh(JPH::BodyID id, std::span<const Triangle> triangles, JPH::ObjectLayer layer)
+    JPH::BodyID PhysicsScene::SyncMesh(JPH::BodyID id, std::span<const Triangle> triangles, JPH::ObjectLayer layer)
     {
         return SyncStatic(id,
                           CreateMeshShape(triangles),
@@ -275,7 +275,7 @@ namespace NS::Physics
                           false);
     }
 
-    JPH::BodyID PhysicsWorld::SyncMeshShape(JPH::BodyID id,
+    JPH::BodyID PhysicsScene::SyncMeshShape(JPH::BodyID id,
                                             const MeshCollision& collision,
                                             const NS::Core::Vector3& position,
                                             const NS::Core::Quaternion& rotation,
@@ -297,7 +297,7 @@ namespace NS::Physics
         return SyncStatic(id, scaled.Get(), position, rotation, layer, false);
     }
 
-    JPH::BodyID PhysicsWorld::AddDynamic(const JPH::ShapeRefC& shape,
+    JPH::BodyID PhysicsScene::AddDynamic(const JPH::ShapeRefC& shape,
                                          const NS::Core::Vector3& position,
                                          const NS::Core::Quaternion& rotation,
                                          const DynamicBodyDesc& desc)
@@ -316,12 +316,12 @@ namespace NS::Physics
         return m_physicsSystem.GetBodyInterface().CreateAndAddBody(settings, JPH::EActivation::Activate);
     }
 
-    JPH::BodyID PhysicsWorld::AddSensorBox(const NS::Core::OBB& box)
+    JPH::BodyID PhysicsScene::AddSensorBox(const NS::Core::OBB& box)
     {
         return SyncBox(JPH::BodyID{}, box, ObjectLayers::Trigger, true);
     }
 
-    JPH::BodyID PhysicsWorld::AddDynamicBox(const NS::Core::OBB& box, const DynamicBodyDesc& desc)
+    JPH::BodyID PhysicsScene::AddDynamicBox(const NS::Core::OBB& box, const DynamicBodyDesc& desc)
     {
         const JPH::BoxShapeSettings shapeSettings{JPH::Vec3{box.halfExtentX, box.halfExtentY, box.halfExtentZ}};
         const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
@@ -337,7 +337,7 @@ namespace NS::Physics
         return AddDynamic(shape.Get(), box.center, FromJolt(axes.GetQuaternion()), desc);
     }
 
-    JPH::BodyID PhysicsWorld::AddDynamicSphere(const NS::Core::Sphere& sphere, const DynamicBodyDesc& desc)
+    JPH::BodyID PhysicsScene::AddDynamicSphere(const NS::Core::Sphere& sphere, const DynamicBodyDesc& desc)
     {
         const JPH::SphereShapeSettings shapeSettings{sphere.radius};
         const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
@@ -349,12 +349,12 @@ namespace NS::Physics
         return AddDynamic(shape.Get(), sphere.center, NS::Core::Quaternion::Identity, desc);
     }
 
-    void PhysicsWorld::OptimizeBroadPhase()
+    void PhysicsScene::OptimizeBroadPhase()
     {
         m_physicsSystem.OptimizeBroadPhase();
     }
 
-    void PhysicsWorld::Update(float deltaTime)
+    void PhysicsScene::Update(float deltaTime)
     {
         // 前の歩の接触を残すと、離れた後も当たり続けて見える
         m_contactRecorder.Clear();
@@ -362,7 +362,7 @@ namespace NS::Physics
         m_physicsSystem.Update(deltaTime, 1, &m_tempAllocator, &m_jobSystem);
     }
 
-    void PhysicsWorld::SetBodyAngularVelocity(JPH::BodyID id, const NS::Core::Vector3& angularVelocity)
+    void PhysicsScene::SetBodyAngularVelocity(JPH::BodyID id, const NS::Core::Vector3& angularVelocity)
     {
         if (id.IsInvalid())
         {
@@ -372,12 +372,12 @@ namespace NS::Physics
         m_physicsSystem.GetBodyInterface().SetAngularVelocity(id, ToJolt(angularVelocity));
     }
 
-    NS::Core::Vector3 PhysicsWorld::BodyAngularVelocity(JPH::BodyID id) const
+    NS::Core::Vector3 PhysicsScene::BodyAngularVelocity(JPH::BodyID id) const
     {
         return FromJolt(m_physicsSystem.GetBodyInterfaceNoLock().GetAngularVelocity(id));
     }
 
-    bool PhysicsWorld::IsBodyAwake(JPH::BodyID id) const
+    bool PhysicsScene::IsBodyAwake(JPH::BodyID id) const
     {
         if (id.IsInvalid())
         {
@@ -387,7 +387,7 @@ namespace NS::Physics
         return m_physicsSystem.GetBodyInterfaceNoLock().IsActive(id);
     }
 
-    std::vector<BodyContact> PhysicsWorld::ContactsOf(JPH::BodyID id) const
+    std::vector<BodyContact> PhysicsScene::ContactsOf(JPH::BodyID id) const
     {
         if (id.IsInvalid())
         {
@@ -397,7 +397,7 @@ namespace NS::Physics
         return m_contactRecorder.Of(id);
     }
 
-    void PhysicsWorld::SetBodyDynamic(JPH::BodyID id, bool dynamic)
+    void PhysicsScene::SetBodyDynamic(JPH::BodyID id, bool dynamic)
     {
         if (id.IsInvalid())
         {
@@ -417,7 +417,7 @@ namespace NS::Physics
                              dynamic ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
     }
 
-    void PhysicsWorld::RemoveBody(JPH::BodyID id)
+    void PhysicsScene::RemoveBody(JPH::BodyID id)
     {
         if (id.IsInvalid())
         {
@@ -429,7 +429,7 @@ namespace NS::Physics
         bodies.DestroyBody(id);
     }
 
-    bool PhysicsWorld::RaycastDown(const NS::Core::Vector3& origin, float maxDistance, float& outDistance) const
+    bool PhysicsScene::RaycastDown(const NS::Core::Vector3& origin, float maxDistance, float& outDistance) const
     {
         if (!(maxDistance > 0.0f))
         {
@@ -447,7 +447,7 @@ namespace NS::Physics
         return true;
     }
 
-    std::vector<JPH::BodyID> PhysicsWorld::OverlapCapsule(const Capsule& capsule) const
+    std::vector<JPH::BodyID> PhysicsScene::OverlapCapsule(const Capsule& capsule) const
     {
         const JPH::CapsuleShapeSettings shapeSettings{capsule.halfHeight, capsule.radius};
         const JPH::ShapeSettings::ShapeResult shape = shapeSettings.Create();
@@ -478,7 +478,7 @@ namespace NS::Physics
         return found;
     }
 
-    std::vector<NS::Core::AABB> PhysicsWorld::OverlapBox(const NS::Core::AABB& region) const
+    std::vector<NS::Core::AABB> PhysicsScene::OverlapBox(const NS::Core::AABB& region) const
     {
         const JPH::Vec3 center = ToJolt(region.Center);
         const JPH::Vec3 extents = ToJolt(region.Extents);
@@ -507,7 +507,7 @@ namespace NS::Physics
         return found;
     }
 
-    void PhysicsWorld::SetBodyVelocity(JPH::BodyID id, const NS::Core::Vector3& velocity)
+    void PhysicsScene::SetBodyVelocity(JPH::BodyID id, const NS::Core::Vector3& velocity)
     {
         if (id.IsInvalid())
         {
@@ -517,17 +517,17 @@ namespace NS::Physics
         m_physicsSystem.GetBodyInterface().SetLinearVelocity(id, ToJolt(velocity));
     }
 
-    NS::Core::Vector3 PhysicsWorld::BodyVelocity(JPH::BodyID id) const
+    NS::Core::Vector3 PhysicsScene::BodyVelocity(JPH::BodyID id) const
     {
         return FromJolt(m_physicsSystem.GetBodyInterfaceNoLock().GetLinearVelocity(id));
     }
 
-    NS::Core::Vector3 PhysicsWorld::BodyPosition(JPH::BodyID id) const
+    NS::Core::Vector3 PhysicsScene::BodyPosition(JPH::BodyID id) const
     {
         return FromJolt(m_physicsSystem.GetBodyInterfaceNoLock().GetPosition(id));
     }
 
-    NS::Core::Quaternion PhysicsWorld::BodyRotation(JPH::BodyID id) const
+    NS::Core::Quaternion PhysicsScene::BodyRotation(JPH::BodyID id) const
     {
         return FromJolt(m_physicsSystem.GetBodyInterfaceNoLock().GetRotation(id));
     }

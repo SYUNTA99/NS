@@ -1,7 +1,7 @@
 #include <Runtime/Core/Math.h>
 #include <Runtime/Core/OBB.h>
 #include <Runtime/Physics/JoltCharacter.h>
-#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/PhysicsScene.h>
 
 #include <algorithm>
 #include <gtest/gtest.h>
@@ -11,7 +11,7 @@ namespace
     using NS::Core::OBB;
     using NS::Core::Vector3;
     using NS::Physics::JoltCharacter;
-    using NS::Physics::PhysicsWorld;
+    using NS::Physics::PhysicsScene;
     namespace ObjectLayers = NS::Physics::ObjectLayers;
 
     constexpr float k_Dt = 1.0f / 60.0f;
@@ -28,9 +28,9 @@ namespace
         return box;
     }
 
-    void AddFloor(PhysicsWorld& world)
+    void AddFloor(PhysicsScene& physics)
     {
-        world.AddBox(MakeBox(Vector3{0.0f, -0.5f, 0.0f}, 20.0f, 0.5f, 20.0f), ObjectLayers::Terrain);
+        physics.AddBox(MakeBox(Vector3{0.0f, -0.5f, 0.0f}, 20.0f, 0.5f, 20.0f), ObjectLayers::Terrain);
     }
 
     void StepCharacter(JoltCharacter& character, const Vector3& position, const Vector3& velocity)
@@ -39,11 +39,11 @@ namespace
     }
 } // namespace
 
-TEST(JoltCharacterTest, FreeFallProgressesWhenWorldIsEmpty)
+TEST(JoltCharacterTest, FreeFallProgressesWhenThePhysicsSceneIsEmpty)
 {
-    PhysicsWorld world;
-    world.OptimizeBroadPhase();
-    JoltCharacter character{world, k_Radius, k_HalfHeight};
+    PhysicsScene physics;
+    physics.OptimizeBroadPhase();
+    JoltCharacter character{physics, k_Radius, k_HalfHeight};
 
     StepCharacter(character, Vector3{0.0f, 5.0f, 0.0f}, Vector3{0.0f, -10.0f, 0.0f});
 
@@ -53,10 +53,10 @@ TEST(JoltCharacterTest, FreeFallProgressesWhenWorldIsEmpty)
 
 TEST(JoltCharacterTest, LandsOnFloorAndReportsGrounded)
 {
-    PhysicsWorld world;
-    AddFloor(world);
-    world.OptimizeBroadPhase();
-    JoltCharacter character{world, k_Radius, k_HalfHeight};
+    PhysicsScene physics;
+    AddFloor(physics);
+    physics.OptimizeBroadPhase();
+    JoltCharacter character{physics, k_Radius, k_HalfHeight};
 
     Vector3 position{0.0f, 3.0f, 0.0f};
     bool grounded = false;
@@ -73,10 +73,10 @@ TEST(JoltCharacterTest, LandsOnFloorAndReportsGrounded)
 
 TEST(JoltCharacterTest, NoGroundedWhenAirborne)
 {
-    PhysicsWorld world;
-    AddFloor(world);
-    world.OptimizeBroadPhase();
-    JoltCharacter character{world, k_Radius, k_HalfHeight};
+    PhysicsScene physics;
+    AddFloor(physics);
+    physics.OptimizeBroadPhase();
+    JoltCharacter character{physics, k_Radius, k_HalfHeight};
 
     StepCharacter(character, Vector3{0.0f, 5.0f, 0.0f}, Vector3{0.0f, 0.0f, 0.0f});
 
@@ -85,11 +85,11 @@ TEST(JoltCharacterTest, NoGroundedWhenAirborne)
 
 TEST(JoltCharacterTest, StopsAtWall)
 {
-    PhysicsWorld world;
-    AddFloor(world);
-    world.AddBox(MakeBox(Vector3{2.0f, 1.0f, 0.0f}, 0.5f, 1.0f, 4.0f), ObjectLayers::Terrain);
-    world.OptimizeBroadPhase();
-    JoltCharacter character{world, k_Radius, k_HalfHeight};
+    PhysicsScene physics;
+    AddFloor(physics);
+    physics.AddBox(MakeBox(Vector3{2.0f, 1.0f, 0.0f}, 0.5f, 1.0f, 4.0f), ObjectLayers::Terrain);
+    physics.OptimizeBroadPhase();
+    JoltCharacter character{physics, k_Radius, k_HalfHeight};
 
     Vector3 position{0.0f, k_HalfHeight + k_Radius, 0.0f};
     for (int i = 0; i < 120; ++i)
@@ -104,11 +104,11 @@ TEST(JoltCharacterTest, StopsAtWall)
 // sensor は通知だけの体積。壁と同じ場所に置いても足を止めない
 TEST(JoltCharacterTest, PassesThroughSensorBox)
 {
-    PhysicsWorld world;
-    AddFloor(world);
-    world.AddSensorBox(MakeBox(Vector3{2.0f, 1.0f, 0.0f}, 0.5f, 1.0f, 4.0f));
-    world.OptimizeBroadPhase();
-    JoltCharacter character{world, k_Radius, k_HalfHeight};
+    PhysicsScene physics;
+    AddFloor(physics);
+    physics.AddSensorBox(MakeBox(Vector3{2.0f, 1.0f, 0.0f}, 0.5f, 1.0f, 4.0f));
+    physics.OptimizeBroadPhase();
+    JoltCharacter character{physics, k_Radius, k_HalfHeight};
 
     Vector3 position{0.0f, k_HalfHeight + k_Radius, 0.0f};
     for (int i = 0; i < 120; ++i)
@@ -122,12 +122,12 @@ TEST(JoltCharacterTest, PassesThroughSensorBox)
 
 TEST(JoltCharacterTest, DeterministicUnderSameInput)
 {
-    PhysicsWorld first;
+    PhysicsScene first;
     AddFloor(first);
     first.OptimizeBroadPhase();
     JoltCharacter firstCharacter{first, k_Radius, k_HalfHeight};
 
-    PhysicsWorld second;
+    PhysicsScene second;
     AddFloor(second);
     second.OptimizeBroadPhase();
     JoltCharacter secondCharacter{second, k_Radius, k_HalfHeight};
@@ -149,10 +149,10 @@ TEST(JoltCharacterTest, DeterministicUnderSameInput)
 
 TEST(JoltCharacterTest, GroundCancelsVelocityIntoTheFloor)
 {
-    PhysicsWorld world;
-    AddFloor(world);
-    world.OptimizeBroadPhase();
-    JoltCharacter character{world, k_Radius, k_HalfHeight};
+    PhysicsScene physics;
+    AddFloor(physics);
+    physics.OptimizeBroadPhase();
+    JoltCharacter character{physics, k_Radius, k_HalfHeight};
 
     Vector3 position{0.0f, 3.0f, 0.0f};
     Vector3 velocity{0.0f, 0.0f, 0.0f};
@@ -170,11 +170,11 @@ TEST(JoltCharacterTest, GroundCancelsVelocityIntoTheFloor)
 // 壁へ押し付けたまま速度が残ると、離した歩に溜まった勢いで急に飛び出す
 TEST(JoltCharacterTest, WallCancelsVelocityIntoIt)
 {
-    PhysicsWorld world;
-    AddFloor(world);
-    world.AddBox(MakeBox(Vector3{2.0f, 1.0f, 0.0f}, 0.5f, 1.0f, 4.0f), ObjectLayers::Terrain);
-    world.OptimizeBroadPhase();
-    JoltCharacter character{world, k_Radius, k_HalfHeight};
+    PhysicsScene physics;
+    AddFloor(physics);
+    physics.AddBox(MakeBox(Vector3{2.0f, 1.0f, 0.0f}, 0.5f, 1.0f, 4.0f), ObjectLayers::Terrain);
+    physics.OptimizeBroadPhase();
+    JoltCharacter character{physics, k_Radius, k_HalfHeight};
 
     Vector3 position{0.0f, k_HalfHeight + k_Radius, 0.0f};
     Vector3 velocity{8.0f, 0.0f, 0.0f};
@@ -198,13 +198,13 @@ TEST(JoltCharacterTest, RunsFlatOverTiledFloor)
     // 歩き速度と突進速度。1 歩の進みが継ぎ目の手前へ落ちるかどうかで当たり方が変わる
     for (const float speed : {6.0f, 20.0f})
     {
-        PhysicsWorld world;
+        PhysicsScene physics;
         for (int z = 0; z < k_TileCount; ++z)
         {
-            world.AddBox(MakeBox(Vector3{0.0f, 0.0f, static_cast<float>(z)}, 0.5f, 0.5f, 0.5f), ObjectLayers::Terrain);
+            physics.AddBox(MakeBox(Vector3{0.0f, 0.0f, static_cast<float>(z)}, 0.5f, 0.5f, 0.5f), ObjectLayers::Terrain);
         }
-        world.OptimizeBroadPhase();
-        JoltCharacter character{world, k_Radius, k_HalfHeight};
+        physics.OptimizeBroadPhase();
+        JoltCharacter character{physics, k_Radius, k_HalfHeight};
 
         Vector3 position{0.0f, k_RestY, 0.0f};
         Vector3 velocity{0.0f, 0.0f, speed};

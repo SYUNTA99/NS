@@ -17,10 +17,10 @@
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Object/ObjectList.h>
-#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/PhysicsScene.h>
 
 #include "entity_test_stage.h"
-#include "jolt_test_world.h"
+#include "jolt_test_scene.h"
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -62,8 +62,8 @@ namespace
             m_movement = m_object.AddComponent<PlayerComponent>();
 
             // 床は走り切る z 方向だけ伸ばす
-            NsTest::AddBox(m_world, AABB{Vector3{0.0f, -0.5f, 32.0f}, Vector3{4.0f, 0.5f, 44.0f}});
-            m_world.OptimizeBroadPhase();
+            NsTest::AddBox(m_physics, AABB{Vector3{0.0f, -0.5f, 32.0f}, Vector3{4.0f, 0.5f, 44.0f}});
+            m_physics.OptimizeBroadPhase();
             m_object.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
             m_movement->OnStart();
             m_object.FindComponent<PlayerStateManagerComponent>()->OnStart();
@@ -89,7 +89,7 @@ namespace
     private:
         NsTest::EntityStage m_stage;
         GameObject& m_object = m_stage.owner;
-        NS::Physics::PhysicsWorld& m_world = m_stage.world;
+        NS::Physics::PhysicsScene& m_physics = m_stage.physics;
         PlayerComponent* m_movement = nullptr;
         std::vector<StepRecord> m_trace;
     };

@@ -14,7 +14,7 @@ namespace NS::Object
 
 namespace NS::Physics
 {
-    class PhysicsWorld;
+    class PhysicsScene;
 }
 
 namespace NS::Game::Entity
@@ -24,9 +24,9 @@ namespace NS::Game::Entity
     //! 能力も調整値も持たない
     //! 状態機械は派生が具象の型で持つ。1 歩の中身は HandleStates の中で派生が並べる
     //! TypeRegistry には登録しない。実体化できるのは派生だけ
-    //! 衝突 world は使う時に持ち主の Scene から引く。JoltCharacter だけは作った時の world を持ち続ける
+    //! 衝突の PhysicsScene は使う時に持ち主の Scene から引く。JoltCharacter だけは作った時の PhysicsScene を持ち続ける
     //! dt は NS::Core::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
-    //! 依存: NS::Core, NS::Physics::JoltCharacter / PhysicsWorld, NS::Object::Scene / CapsuleColliderComponent
+    //! 依存: NS::Core, NS::Physics::JoltCharacter / PhysicsScene, NS::Object::Scene / CapsuleColliderComponent
     class EntityComponent : public NS::Object::Component
     {
     public:
@@ -54,8 +54,8 @@ namespace NS::Game::Entity
         //! 同居する CapsuleColliderComponent の半分の高さ。無ければ 0.5
         [[nodiscard]] float CapsuleHalfHeight() const noexcept;
 
-        //! 持ち主の Scene の衝突 world。Scene に居なければ nullptr
-        [[nodiscard]] NS::Physics::PhysicsWorld* PhysicsWorld() const noexcept;
+        //! 持ち主の Scene の衝突の PhysicsScene。Scene に居なければ nullptr
+        [[nodiscard]] NS::Physics::PhysicsScene* ScenePhysics() const noexcept;
 
         //! 水平の目標速度へ一次遅れで近づける。縦は触らない
         void Accelerate(const NS::Core::Vector3& targetHorizontal, float tau, float dt) noexcept;

@@ -9,10 +9,10 @@
 #include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
-#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/PhysicsScene.h>
 
 #include "entity_test_stage.h"
-#include "jolt_test_world.h"
+#include "jolt_test_scene.h"
 #include <bit>
 #include <cstdint>
 #include <gtest/gtest.h>
@@ -102,12 +102,12 @@ namespace
     {
         NsTest::EntityStage stage;
         GameObject& player = stage.owner;
-        NS::Physics::PhysicsWorld& world = stage.world;
-        NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 8.0f}});
+        NS::Physics::PhysicsScene& physics = stage.physics;
+        NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 8.0f}});
         player.AddComponent<PlayerStateManagerComponent>();
         auto& movement = *player.AddComponent<PlayerComponent>();
         player.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
-        world.OptimizeBroadPhase();
+        physics.OptimizeBroadPhase();
         player.OnStart();
 
         GameObject rig;

@@ -13,7 +13,7 @@
 
 namespace NS::Physics
 {
-    class PhysicsWorld;
+    class PhysicsScene;
 } // namespace NS::Physics
 
 namespace NS::Object
@@ -31,7 +31,7 @@ namespace NS::Object
     //! 配置物 1 件の組み立ては呼出側のファクトリに委ね、GameObject の型選択や資産解決は持たない
     //! 機能別の型付き控えも持たず、欲しい component 型は ForEachComponent で問い合わせる
     //! 特定の 1 体は永続 id の解決で引く
-    //! 依存: NS::Object::GameObject / ObjectData, NS::Physics::PhysicsWorld
+    //! 依存: NS::Object::GameObject / ObjectData, NS::Physics::PhysicsScene
     class ObjectList : public NS::Core::NonCopyable
     {
     public:
@@ -74,9 +74,9 @@ namespace NS::Object
         //! 索引は所有リストそのものなので、 破棄した相手を指す参照は必ず nullptr になる
         [[nodiscard]] GameObject* FindObject(ObjectRef ref) noexcept;
 
-        //! 稼働中の collider を PhysicsWorld へ body として入れ、broadphase を張り直す
+        //! 稼働中の collider を PhysicsScene へ body として入れ、broadphase を張り直す
         //! 稼働していない collider は body を外す。既存 body は同じ id のまま shape と姿勢を更新する
-        void SyncPhysics(NS::Physics::PhysicsWorld& physics);
+        void SyncPhysics(NS::Physics::PhysicsScene& physics);
 
         //! priority が [firstPriority, lastPriority) の Component を昇順で回す。 同じ priority の中は配置物の並び順
         //! 帯の一部だけ回したい呼び出し側が使う。 一時オブジェクトも同じ帯に乗る

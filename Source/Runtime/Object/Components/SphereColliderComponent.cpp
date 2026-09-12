@@ -5,7 +5,7 @@
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 #include <algorithm>
 #include <cmath>
@@ -66,7 +66,7 @@ namespace NS::Object
         return NS::Core::AABB{s.center, NS::Core::Vector3{s.radius, s.radius, s.radius}};
     }
 
-    JPH::BodyID SphereColliderComponent::SyncBody(NS::Physics::PhysicsWorld& physics, JPH::BodyID current)
+    JPH::BodyID SphereColliderComponent::SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current)
     {
         return physics.SyncSphere(current, WorldSphere(), NS::Physics::ObjectLayers::Terrain);
     }

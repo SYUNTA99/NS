@@ -18,7 +18,7 @@
 #include <Runtime/Object/Reflection/ObjectRef.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Physics/MeshCollision.h>
-#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/PhysicsScene.h>
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -145,7 +145,7 @@ TEST(ObjectListTest, InactiveObjectHasNoCollision)
     ASSERT_EQ(objects.ObjectCount(), std::size_t{1});
     EXPECT_FALSE(objects.ObjectAt(0)->IsActiveSelf());
     // active を切った配置物はすり抜ける
-    NS::Physics::PhysicsWorld& physics = scene.Physics();
+    NS::Physics::PhysicsScene& physics = scene.Physics();
     objects.SyncPhysics(physics);
     EXPECT_EQ(physics.BodyCount(), 0u);
 }
@@ -167,7 +167,7 @@ TEST(ObjectListTest, TriggerBoxHasNoSolidCollision)
 
     ASSERT_EQ(objects.ObjectCount(), std::size_t{1});
     // トリガの箱は sensor body として登録されるが、固形の衝突応答は起こさない
-    NS::Physics::PhysicsWorld& physics = scene.Physics();
+    NS::Physics::PhysicsScene& physics = scene.Physics();
     objects.SyncPhysics(physics);
     EXPECT_EQ(physics.BodyCount(), 1u);
 }
@@ -184,7 +184,7 @@ TEST(ObjectListTest, RebuildDropsTheCollidersOfTheObjectsItReplaces)
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
-    NS::Physics::PhysicsWorld& physics = scene.Physics();
+    NS::Physics::PhysicsScene& physics = scene.Physics();
     objects.SyncPhysics(physics);
     ASSERT_EQ(physics.BodyCount(), 1u);
 
@@ -251,7 +251,7 @@ TEST(ObjectListTest, RebuildBakesFollowCameraAndResolvesTarget)
     const auto vcams = Collect<NS::Object::VirtualCameraComponent>(objects);
     ASSERT_EQ(vcams.size(), 1u);
     EXPECT_EQ(vcams[0], follow);
-    // データの Far Plane 100 がリフレクション set で効いている
+    // far plane 100 はコンストラクタの既定。データが持つのは追従対象だけ
     EXPECT_FLOAT_EQ(follow->FarPlane(), 100.0f);
 
     // 追従先の解決: ObjectList が組んだ grid block の Root を指す
@@ -360,7 +360,7 @@ TEST(ObjectListTest, RemoveByObjectIdDropsCollider)
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
-    NS::Physics::PhysicsWorld& physics = scene.Physics();
+    NS::Physics::PhysicsScene& physics = scene.Physics();
     objects.SyncPhysics(physics);
     ASSERT_EQ(physics.BodyCount(), 2u);
 
@@ -497,24 +497,24 @@ TEST(ObjectListTest, UpdateAllObjectsFollowsOwnerActiveFlag)
     EXPECT_EQ(counter->Count(), 1);
 }
 
-TEST(ObjectListTest, SyncPhysicsFillsPhysicsWorld)
+TEST(ObjectListTest, SyncPhysicsFillsPhysicsScene)
 {
     ObjectList objects;
     objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
     objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::SphereColliderComponent>();
 
-    NS::Physics::PhysicsWorld physics;
+    NS::Physics::PhysicsScene physics;
     objects.SyncPhysics(physics);
 
     EXPECT_EQ(physics.BodyCount(), 2u);
 }
 
-TEST(ObjectListTest, SyncPhysicsIntoPhysicsWorldTwiceKeepsTheCount)
+TEST(ObjectListTest, SyncPhysicsIntoPhysicsSceneTwiceKeepsTheCount)
 {
     ObjectList objects;
     objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
 
-    NS::Physics::PhysicsWorld physics;
+    NS::Physics::PhysicsScene physics;
     objects.SyncPhysics(physics);
     objects.SyncPhysics(physics);
 
@@ -523,13 +523,13 @@ TEST(ObjectListTest, SyncPhysicsIntoPhysicsWorldTwiceKeepsTheCount)
 
 // 同期は body を作り直さず、collider が覚えている id を維持する
 // 形の違う 2 つを置くのは SyncBody が派生ごとに別実装だから。1 種類では 1 つの実装しか通らない
-TEST(ObjectListTest, SyncPhysicsIntoPhysicsWorldKeepsEveryBodyId)
+TEST(ObjectListTest, SyncPhysicsIntoPhysicsSceneKeepsEveryBodyId)
 {
     ObjectList objects;
     auto* box = objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
     auto* sphere = objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::SphereColliderComponent>();
 
-    NS::Physics::PhysicsWorld physics;
+    NS::Physics::PhysicsScene physics;
     objects.SyncPhysics(physics);
     const JPH::BodyID staleBox = box->BodyId();
     const JPH::BodyID staleSphere = sphere->BodyId();
@@ -541,13 +541,13 @@ TEST(ObjectListTest, SyncPhysicsIntoPhysicsWorldKeepsEveryBodyId)
     EXPECT_EQ(sphere->BodyId(), staleSphere);
 }
 
-TEST(ObjectListTest, InactiveColliderStaysOutOfPhysicsWorld)
+TEST(ObjectListTest, InactiveColliderStaysOutOfPhysicsScene)
 {
     ObjectList objects;
     auto* collider = objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
     collider->SetActive(false);
 
-    NS::Physics::PhysicsWorld physics;
+    NS::Physics::PhysicsScene physics;
     objects.SyncPhysics(physics);
 
     EXPECT_EQ(physics.BodyCount(), 0u);
@@ -567,7 +567,7 @@ TEST(ObjectListTest, MeshColliderTrianglesReachPhysics)
     auto* floor = objects.Spawn<NS::Object::GameObject>();
     floor->AddComponent<NS::Object::MeshColliderComponent>()->SetCollision(&collision);
 
-    NS::Physics::PhysicsWorld physics;
+    NS::Physics::PhysicsScene physics;
     objects.SyncPhysics(physics);
     ASSERT_EQ(physics.BodyCount(), 1u);
 
@@ -617,7 +617,7 @@ TEST(ObjectListTest, SyncPhysicsKeepsBodiesItDidNotCreate)
     ObjectList objects;
     objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
 
-    NS::Physics::PhysicsWorld physics;
+    NS::Physics::PhysicsScene physics;
     objects.SyncPhysics(physics);
 
     NS::Core::Sphere loose;
@@ -637,7 +637,7 @@ TEST(ObjectListTest, SyncPhysicsDropsTheBodyOfADeactivatedCollider)
     ObjectList objects;
     auto* box = objects.Spawn<NS::Object::GameObject>()->AddComponent<NS::Object::BoxColliderComponent>();
 
-    NS::Physics::PhysicsWorld physics;
+    NS::Physics::PhysicsScene physics;
     objects.SyncPhysics(physics);
     ASSERT_EQ(physics.BodyCount(), 1u);
 
@@ -649,7 +649,7 @@ TEST(ObjectListTest, SyncPhysicsDropsTheBodyOfADeactivatedCollider)
 }
 
 // 配置物ごと消える時は破棄の前に OnEndPlay が通る。ここで外さないと body が誰の持ち物でもなくなる
-TEST(ObjectListTest, ClearTakesEveryColliderBodyOutOfThePhysicsWorld)
+TEST(ObjectListTest, ClearTakesEveryColliderBodyOutOfThePhysicsScene)
 {
     NS::Object::Scene scene;
     auto box = std::make_unique<NS::Object::GameObject>();

@@ -9,7 +9,7 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 namespace NS::Object
 {

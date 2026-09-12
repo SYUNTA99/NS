@@ -1,6 +1,6 @@
 #include <Runtime/Core/Math.h>
 #include <Runtime/Physics/MeshCollision.h>
-#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/PhysicsScene.h>
 
 #include <gtest/gtest.h>
 #include <vector>
@@ -20,7 +20,7 @@ namespace
     }
 } // namespace
 
-// 三角形群から形ができる。 この試しだけを走らせても PhysicsWorld 無しで Jolt の下準備が通る
+// 三角形群から形ができる。 この試しだけを走らせても PhysicsScene 無しで Jolt の下準備が通る
 TEST(MeshCollisionTest, CreateMeshShapeBuildsShapeFromTriangles)
 {
     const std::vector<Triangle> floor = MakeFloorQuad();
@@ -41,7 +41,7 @@ TEST(MeshCollisionTest, SyncMeshShapePlacesSharedShapeAtPoseAndScale)
     floor.shape = NS::Physics::CreateMeshShape(floor.triangles);
     ASSERT_NE(floor.shape, nullptr);
 
-    NS::Physics::PhysicsWorld physics;
+    NS::Physics::PhysicsScene physics;
     const JPH::BodyID id = physics.SyncMeshShape(JPH::BodyID{},
                                                  floor,
                                                  Vector3{10.0f, 2.0f, 0.0f},

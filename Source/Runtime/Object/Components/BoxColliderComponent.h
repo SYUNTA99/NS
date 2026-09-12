@@ -60,7 +60,7 @@ namespace NS::Object
 
     private:
         // トリガなら sensor、 そうでなければ固形の body として OBB のまま入れる
-        [[nodiscard]] JPH::BodyID SyncBody(NS::Physics::PhysicsWorld& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current) override;
 
         // owner world 変換に重ねる当たり箱の local 変換を行列化する。 offset と回転を合わせる
         [[nodiscard]] NS::Core::Matrix LocalMatrix() const noexcept;

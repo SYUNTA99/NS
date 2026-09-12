@@ -9,7 +9,7 @@
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/MeshCollision.h>
-#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/PhysicsScene.h>
 
 #include <filesystem>
 #include <gtest/gtest.h>
@@ -25,7 +25,7 @@ namespace
     using NS::Object::MeshColliderComponent;
     using NS::Object::SlopeColliderComponent;
     using NS::Object::SphereColliderComponent;
-    using NS::Physics::PhysicsWorld;
+    using NS::Physics::PhysicsScene;
     using NS::Physics::Triangle;
 
     std::vector<Triangle> MakeFloorQuad()
@@ -42,13 +42,13 @@ TEST(ColliderJolt, BoxCreatesOneBody)
     GameObject owner;
     auto* box = owner.AddComponent<BoxColliderComponent>();
     owner.Root().SetPosition(Vector3{2.0f, 3.0f, 4.0f});
-    PhysicsWorld world;
+    PhysicsScene physics;
 
-    box->SyncToPhysics(world);
+    box->SyncToPhysics(physics);
 
-    EXPECT_EQ(world.BodyCount(), 1u);
+    EXPECT_EQ(physics.BodyCount(), 1u);
     EXPECT_FALSE(box->BodyId().IsInvalid());
-    EXPECT_NEAR(world.BodyPosition(box->BodyId()).y, 3.0f, 1.0e-4f);
+    EXPECT_NEAR(physics.BodyPosition(box->BodyId()).y, 3.0f, 1.0e-4f);
 }
 
 TEST(ColliderJolt, TriggerBoxCreatesASensorBody)
@@ -56,11 +56,11 @@ TEST(ColliderJolt, TriggerBoxCreatesASensorBody)
     GameObject owner;
     auto* box = owner.AddComponent<BoxColliderComponent>();
     box->SetTrigger(true);
-    PhysicsWorld world;
+    PhysicsScene physics;
 
-    box->SyncToPhysics(world);
+    box->SyncToPhysics(physics);
 
-    EXPECT_EQ(world.BodyCount(), 1u);
+    EXPECT_EQ(physics.BodyCount(), 1u);
     EXPECT_FALSE(box->BodyId().IsInvalid());
 }
 
@@ -69,11 +69,11 @@ TEST(ColliderJolt, SphereCreatesOneBody)
     GameObject owner;
     auto* sphere = owner.AddComponent<SphereColliderComponent>();
     sphere->SetRadius(0.75f);
-    PhysicsWorld world;
+    PhysicsScene physics;
 
-    sphere->SyncToPhysics(world);
+    sphere->SyncToPhysics(physics);
 
-    EXPECT_EQ(world.BodyCount(), 1u);
+    EXPECT_EQ(physics.BodyCount(), 1u);
     EXPECT_FALSE(sphere->BodyId().IsInvalid());
 }
 
@@ -81,11 +81,11 @@ TEST(ColliderJolt, CapsuleCreatesOneBody)
 {
     GameObject owner;
     auto* capsule = owner.AddComponent<CapsuleColliderComponent>();
-    PhysicsWorld world;
+    PhysicsScene physics;
 
-    capsule->SyncToPhysics(world);
+    capsule->SyncToPhysics(physics);
 
-    EXPECT_EQ(world.BodyCount(), 1u);
+    EXPECT_EQ(physics.BodyCount(), 1u);
     EXPECT_FALSE(capsule->BodyId().IsInvalid());
 }
 
@@ -94,11 +94,11 @@ TEST(ColliderJolt, ExcludedCapsuleCreatesNoBody)
     GameObject owner;
     auto* capsule = owner.AddComponent<CapsuleColliderComponent>();
     capsule->SetExcludedFromStaticWorld(true);
-    PhysicsWorld world;
+    PhysicsScene physics;
 
-    capsule->SyncToPhysics(world);
+    capsule->SyncToPhysics(physics);
 
-    EXPECT_EQ(world.BodyCount(), 0u);
+    EXPECT_EQ(physics.BodyCount(), 0u);
     EXPECT_TRUE(capsule->BodyId().IsInvalid());
 }
 
@@ -109,11 +109,11 @@ TEST(ColliderJolt, MeshCreatesOneBodyForAllTriangles)
     GameObject owner;
     auto* mesh = owner.AddComponent<MeshColliderComponent>();
     mesh->SetCollision(&floor);
-    PhysicsWorld world;
+    PhysicsScene physics;
 
-    mesh->SyncToPhysics(world);
+    mesh->SyncToPhysics(physics);
 
-    EXPECT_EQ(world.BodyCount(), 1u);
+    EXPECT_EQ(physics.BodyCount(), 1u);
     EXPECT_FALSE(mesh->BodyId().IsInvalid());
 }
 
@@ -135,14 +135,14 @@ TEST(ColliderJolt, PlacedMeshCollidersShareOneShape)
     second.Root().SetScale(Vector3{2.0f, 1.0f, 1.0f});
     auto* secondMesh = second.AddComponent<MeshColliderComponent>();
     secondMesh->SetCollision(cube);
-    PhysicsWorld world;
+    PhysicsScene physics;
 
-    firstMesh->SyncToPhysics(world);
-    secondMesh->SyncToPhysics(world);
+    firstMesh->SyncToPhysics(physics);
+    secondMesh->SyncToPhysics(physics);
 
     EXPECT_EQ(cube->shape->GetRefCount(), before + 2);
     float distance = 0.0f;
-    ASSERT_TRUE(world.RaycastDown(Vector3{5.9f, 2.0f, 0.0f}, 8.0f, distance));
+    ASSERT_TRUE(physics.RaycastDown(Vector3{5.9f, 2.0f, 0.0f}, 8.0f, distance));
     EXPECT_NEAR(distance, 1.5f, 1.0e-3f);
 }
 
@@ -164,12 +164,12 @@ TEST(ColliderJolt, ShearedMeshColliderKeepsTheDrawnShape)
         NS::Core::Quaternion::CreateFromAxisAngle(Vector3::UnitY, NS::Core::ToRadians(NS::Core::Degrees{45.0f}).value));
     auto* mesh = child.AddComponent<MeshColliderComponent>();
     mesh->SetCollision(cube);
-    PhysicsWorld world;
+    PhysicsScene physics;
 
-    mesh->SyncToPhysics(world);
+    mesh->SyncToPhysics(physics);
 
     float distance = 0.0f;
-    ASSERT_TRUE(world.RaycastDown(Vector3{1.2f, 2.0f, 0.0f}, 8.0f, distance));
+    ASSERT_TRUE(physics.RaycastDown(Vector3{1.2f, 2.0f, 0.0f}, 8.0f, distance));
     EXPECT_NEAR(distance, 1.5f, 1.0e-3f);
 }
 
@@ -177,11 +177,11 @@ TEST(ColliderJolt, EmptyMeshCreatesNoBody)
 {
     GameObject owner;
     auto* mesh = owner.AddComponent<MeshColliderComponent>();
-    PhysicsWorld world;
+    PhysicsScene physics;
 
-    mesh->SyncToPhysics(world);
+    mesh->SyncToPhysics(physics);
 
-    EXPECT_EQ(world.BodyCount(), 0u);
+    EXPECT_EQ(physics.BodyCount(), 0u);
     EXPECT_TRUE(mesh->BodyId().IsInvalid());
 }
 
@@ -189,11 +189,11 @@ TEST(ColliderJolt, SlopeCreatesOneBody)
 {
     GameObject owner;
     auto* slope = owner.AddComponent<SlopeColliderComponent>();
-    PhysicsWorld world;
+    PhysicsScene physics;
 
-    slope->SyncToPhysics(world);
+    slope->SyncToPhysics(physics);
 
-    EXPECT_EQ(world.BodyCount(), 1u);
+    EXPECT_EQ(physics.BodyCount(), 1u);
     EXPECT_FALSE(slope->BodyId().IsInvalid());
 }
 
@@ -201,13 +201,13 @@ TEST(ColliderJolt, SyncingTwiceKeepsTheBodyId)
 {
     GameObject owner;
     auto* box = owner.AddComponent<BoxColliderComponent>();
-    PhysicsWorld world;
+    PhysicsScene physics;
 
-    box->SyncToPhysics(world);
+    box->SyncToPhysics(physics);
     const JPH::BodyID first = box->BodyId();
-    box->SyncToPhysics(world);
+    box->SyncToPhysics(physics);
 
-    EXPECT_EQ(world.BodyCount(), 1u);
+    EXPECT_EQ(physics.BodyCount(), 1u);
     EXPECT_EQ(box->BodyId(), first);
 }
 
@@ -215,38 +215,38 @@ TEST(ColliderJolt, SyncingMovedBoxKeepsTheBodyIdAndMovesTheJoltBody)
 {
     GameObject owner;
     auto* box = owner.AddComponent<BoxColliderComponent>();
-    PhysicsWorld world;
+    PhysicsScene physics;
 
-    box->SyncToPhysics(world);
+    box->SyncToPhysics(physics);
     const JPH::BodyID first = box->BodyId();
     owner.Root().SetPosition(Vector3{4.0f, 5.0f, 6.0f});
-    box->SyncToPhysics(world);
+    box->SyncToPhysics(physics);
 
     EXPECT_EQ(box->BodyId(), first);
-    EXPECT_NEAR(world.BodyPosition(first).x, 4.0f, 1.0e-4f);
-    EXPECT_NEAR(world.BodyPosition(first).y, 5.0f, 1.0e-4f);
-    EXPECT_NEAR(world.BodyPosition(first).z, 6.0f, 1.0e-4f);
+    EXPECT_NEAR(physics.BodyPosition(first).x, 4.0f, 1.0e-4f);
+    EXPECT_NEAR(physics.BodyPosition(first).y, 5.0f, 1.0e-4f);
+    EXPECT_NEAR(physics.BodyPosition(first).z, 6.0f, 1.0e-4f);
 }
 
 TEST(ColliderJolt, SyncingResizedBoxKeepsTheBodyIdAndUpdatesTheJoltShape)
 {
     GameObject owner;
     auto* box = owner.AddComponent<BoxColliderComponent>();
-    PhysicsWorld world;
+    PhysicsScene physics;
 
-    box->SyncToPhysics(world);
+    box->SyncToPhysics(physics);
     const JPH::BodyID first = box->BodyId();
     float distance = 0.0f;
-    EXPECT_FALSE(world.RaycastDown(Vector3{1.5f, 2.0f, 0.0f}, 4.0f, distance));
+    EXPECT_FALSE(physics.RaycastDown(Vector3{1.5f, 2.0f, 0.0f}, 4.0f, distance));
 
     box->SetHalfExtents(Vector3{2.0f, 0.5f, 0.5f});
-    box->SyncToPhysics(world);
+    box->SyncToPhysics(physics);
 
     EXPECT_EQ(box->BodyId(), first);
-    EXPECT_TRUE(world.RaycastDown(Vector3{1.5f, 2.0f, 0.0f}, 4.0f, distance));
+    EXPECT_TRUE(physics.RaycastDown(Vector3{1.5f, 2.0f, 0.0f}, 4.0f, distance));
 }
 
-// 寿命の終わりは持ち主の Scene の world から外す。 collider は world を覚えていない
+// 寿命の終わりは持ち主の Scene の physics から外す。 collider は physics を覚えていない
 TEST(ColliderJolt, EndPlayRemovesItsOwnBody)
 {
     NS::Object::Scene scene;
@@ -261,14 +261,14 @@ TEST(ColliderJolt, EndPlayRemovesItsOwnBody)
     EXPECT_TRUE(box->BodyId().IsInvalid());
 }
 
-// Scene に居る配置物の body は Scene の world にだけ入る。 別の world に入ると、 寿命の終わりに外しに行く先が違う
-TEST(ColliderJolt, SyncIntoAWorldOtherThanTheScenesIsRefused)
+// Scene に居る配置物の body は Scene の physics にだけ入る。 別の physics に入ると、 寿命の終わりに外しに行く先が違う
+TEST(ColliderJolt, SyncIntoAPhysicsSceneOtherThanTheOwnersIsRefused)
 {
     NS::Object::Scene scene;
     auto owned = std::make_unique<GameObject>();
     auto* box = owned->AddComponent<BoxColliderComponent>();
     scene.SpawnTransient(std::move(owned));
-    PhysicsWorld other;
+    PhysicsScene other;
 
     box->SyncToPhysics(other);
 
@@ -276,15 +276,15 @@ TEST(ColliderJolt, SyncIntoAWorldOtherThanTheScenesIsRefused)
     EXPECT_TRUE(box->BodyId().IsInvalid());
 }
 
-// 別の world から外そうとしても断る。 断らないと、 その world が持たない id を消しに行って Jolt が落ちる
-TEST(ColliderJolt, RemoveFromAWorldOtherThanTheScenesKeepsTheBody)
+// 別の physics から外そうとしても断る。 断らないと、 その physics が持たない id を消しに行って Jolt が落ちる
+TEST(ColliderJolt, RemoveFromAPhysicsSceneOtherThanTheOwnersKeepsTheBody)
 {
     NS::Object::Scene scene;
     auto owned = std::make_unique<GameObject>();
     auto* box = owned->AddComponent<BoxColliderComponent>();
     scene.SpawnTransient(std::move(owned));
     box->SyncToPhysics(scene.Physics());
-    PhysicsWorld other;
+    PhysicsScene other;
 
     box->RemoveFromPhysics(other);
 
@@ -292,14 +292,14 @@ TEST(ColliderJolt, RemoveFromAWorldOtherThanTheScenesKeepsTheBody)
     EXPECT_FALSE(box->BodyId().IsInvalid());
 }
 
-TEST(ColliderJolt, EndPlayWithoutABodyLeavesTheWorldAlone)
+TEST(ColliderJolt, EndPlayWithoutABodyLeavesThePhysicsSceneAlone)
 {
     GameObject owner;
     auto* box = owner.AddComponent<BoxColliderComponent>();
-    PhysicsWorld world;
+    PhysicsScene physics;
 
     box->OnEndPlay();
 
-    EXPECT_EQ(world.BodyCount(), 0u);
+    EXPECT_EQ(physics.BodyCount(), 0u);
     EXPECT_TRUE(box->BodyId().IsInvalid());
 }

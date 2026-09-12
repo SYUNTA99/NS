@@ -66,24 +66,24 @@ namespace NS::Physics
         float friction = 0.2f;                       // 摩擦
     };
 
-    //! @brief JPH::PhysicsSystem と、一時 allocator・job system・layer filter を同じ寿命で持つ衝突 world
+    //! @brief JPH::PhysicsSystem と、一時 allocator・job system・layer filter を同じ寿命で持つ当たりの世界
     //! @details 最初の 1 個の構築か、 形を作る最初の CreateMeshShape で、 Jolt の登録を 1 度だけ通す
     //! 登録は JPH::RegisterDefaultAllocator / JPH::Factory / JPH::RegisterTypes
     //! 型の登録解除はプロセス終了時
     //! Add 系はどれも body を 1 つ作り、shape を作れなければ無効な BodyID を返す
     //! 作った時点で動的なのは AddDynamic の付く 2 つだけで、これだけが起きた状態で入る
-    class PhysicsWorld
+    class PhysicsScene
     {
     public:
-        PhysicsWorld();
-        ~PhysicsWorld();
+        PhysicsScene();
+        ~PhysicsScene();
 
-        PhysicsWorld(const PhysicsWorld&) = delete;
-        PhysicsWorld& operator=(const PhysicsWorld&) = delete;
-        PhysicsWorld(PhysicsWorld&&) = delete;
-        PhysicsWorld& operator=(PhysicsWorld&&) = delete;
+        PhysicsScene(const PhysicsScene&) = delete;
+        PhysicsScene& operator=(const PhysicsScene&) = delete;
+        PhysicsScene(PhysicsScene&&) = delete;
+        PhysicsScene& operator=(PhysicsScene&&) = delete;
 
-        //! world に入っている body の数
+        //! 入っている body の数
         [[nodiscard]] JPH::uint BodyCount() const noexcept;
 
         //! OBB の中心と 3 軸をそのまま box body にする
@@ -137,7 +137,7 @@ namespace NS::Physics
         //! broadphase の木を組み直す。Add 完了後に 1 度呼ぶ
         void OptimizeBroadPhase();
 
-        //! world を deltaTime 秒ぶん進める。衝突の分割は 1 で、渡した時間を刻まない
+        //! この PhysicsScene を deltaTime 秒ぶん進める。衝突の分割は 1 で、渡した時間を刻まない
         void Update(float deltaTime);
 
         //! @brief body を dynamic と static で切り替える
@@ -146,7 +146,7 @@ namespace NS::Physics
         void SetBodyDynamic(JPH::BodyID id, bool dynamic);
 
         //! @brief origin から真下へ maxDistance までの間で最も近い命中までの距離を outDistance に返す
-        //! @details layer でも shape でも絞らないので、world の全 body が対象
+        //! @details layer でも shape でも絞らないので、この PhysicsScene の全 body が対象
         //! maxDistance が正でなければ false。命中が無ければ outDistance を変えない
         [[nodiscard]] bool RaycastDown(const NS::Core::Vector3& origin, float maxDistance, float& outDistance) const;
 
@@ -155,7 +155,7 @@ namespace NS::Physics
         //! sensor も layer も問わない。同じ body は 1 度だけ返る
         [[nodiscard]] std::vector<JPH::BodyID> OverlapCapsule(const Capsule& capsule) const;
 
-        //! @brief region に重なる body の world 空間の境界箱を集めて返す
+        //! @brief region に重なる body の世界座標の境界箱を集めて返す
         //! @details 重なりを見るのも返すのも軸並行の境界箱で、shape の形は見ない
         //! 回転した box や mesh では形より大きい箱が返る
         [[nodiscard]] std::vector<NS::Core::AABB> OverlapBox(const NS::Core::AABB& region) const;
@@ -166,12 +166,12 @@ namespace NS::Physics
         //! body の線速度
         [[nodiscard]] NS::Core::Vector3 BodyVelocity(JPH::BodyID id) const;
 
-        //! body を world から外して壊す。無効な BodyID は何もしない
+        //! body をこの PhysicsScene から外して壊す。無効な BodyID は何もしない
         void RemoveBody(JPH::BodyID id);
 
-        //! body の world 位置
+        //! body の世界座標の位置
         [[nodiscard]] NS::Core::Vector3 BodyPosition(JPH::BodyID id) const;
-        //! body の world 回転
+        //! body の世界座標の回転
         [[nodiscard]] NS::Core::Quaternion BodyRotation(JPH::BodyID id) const;
 
     private:

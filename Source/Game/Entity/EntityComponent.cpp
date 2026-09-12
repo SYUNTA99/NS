@@ -67,7 +67,7 @@ namespace NS::Game::Entity
         return m_capsuleCollider != nullptr ? m_capsuleCollider->HalfHeight() : 0.5f;
     }
 
-    NS::Physics::PhysicsWorld* EntityComponent::PhysicsWorld() const noexcept
+    NS::Physics::PhysicsScene* EntityComponent::ScenePhysics() const noexcept
     {
         if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
             return nullptr;
@@ -114,8 +114,8 @@ namespace NS::Game::Entity
     void EntityComponent::Move(float dt) noexcept
     {
         const NS::Core::Vector3 before = RootTransform().Position();
-        NS::Physics::PhysicsWorld* world = PhysicsWorld();
-        if (world == nullptr)
+        NS::Physics::PhysicsScene* physics = ScenePhysics();
+        if (physics == nullptr)
         {
             RootTransform().SetPosition(before + m_velocity * dt);
             m_wasGrounded = m_isGrounded;
@@ -126,7 +126,7 @@ namespace NS::Game::Entity
         const float radius = CapsuleRadius();
         const float halfHeight = CapsuleHalfHeight();
         if (m_character == nullptr)
-            m_character = std::make_unique<NS::Physics::JoltCharacter>(*world, radius, halfHeight);
+            m_character = std::make_unique<NS::Physics::JoltCharacter>(*physics, radius, halfHeight);
         m_character->Resize(radius, halfHeight);
 
         m_character->Step(before, m_velocity, dt);

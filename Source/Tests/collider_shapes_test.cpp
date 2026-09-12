@@ -6,7 +6,7 @@
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/MeshCollision.h>
-#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/PhysicsScene.h>
 #include <gtest/gtest.h>
 #include <vector>
 
@@ -94,7 +94,7 @@ TEST(CapsuleColliderTest, SyncToPhysicsSkipsTheOwnerThatSweepsItself)
     obj.AddComponent<NS::Game::Player::PlayerComponent>();
     obj.OnStart();
 
-    NS::Physics::PhysicsWorld physics;
+    NS::Physics::PhysicsScene physics;
     cc.SyncToPhysics(physics);
     EXPECT_EQ(physics.BodyCount(), 0u);
 }

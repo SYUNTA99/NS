@@ -24,7 +24,7 @@ namespace NS::Game::Level
     //! @brief ぶつかった結果を自機側で決める Component
     //! @details 帯は Update より前。PlayerComponent が動く前にその 1 固定ステップの結末を決めるので、
     //! 壁の手前で止められて速度を消された後から結果を推測し直さずに済む
-    //! 相手は PhysicsWorld::OverlapCapsule で重なった body を集め、ObjectList::ForEachComponent で回した
+    //! 相手は PhysicsScene::OverlapCapsule で重なった body を集め、ObjectList::ForEachComponent で回した
     //! BreakableComponent の body と照合して決める。NS::Physics は NS::Object を知らないので、
     //! body から持ち主を引く関数は無い
     //! 衝突の瞬間は自機を数固定ステップ止め、反発・発射・破壊を明けた歩へ保留する

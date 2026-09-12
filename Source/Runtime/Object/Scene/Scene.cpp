@@ -56,7 +56,7 @@ namespace NS::Object
     void Scene::SyncPhysics()
     {
         // ギズモで動いた live の当たりを張り直す。 object を作り直さないので選択・参照はそのまま保たれる
-        m_objects.SyncPhysics(m_physicsWorld);
+        m_objects.SyncPhysics(m_physicsScene);
         OnWorldChanged();
         NotifyTransientsWorldChanged();
     }
@@ -72,7 +72,7 @@ namespace NS::Object
 
     const SceneData& Scene::BeginPlayBaseline()
     {
-        // プレイ規則の判定と編集復帰の姿はこの凍結を読む。 プレイ中の変化は凍結に映らず、編集へ持ち込まれない
+        // プレイ規則の判定と編集復帰の姿はこの凍結を読む。 シミュレーションが動かした値は映らず、編集へ持ち込まれない
         if (!m_playBaselineInjected)
         {
             m_playBaseline = CaptureLiveToSceneData();
@@ -184,7 +184,7 @@ namespace NS::Object
         // GameObject の型選択は登録一覧、 参照の実体化は各 component の ResolveAssets が行う
         // vcam の brain への付け外しは VirtualCameraComponent が OnStart / OnEndPlay で自分で行う
         m_objects.Rebuild(data, *this, [this](const ObjectData& entry) { return BuildSceneObject(entry, m_assets); });
-        m_objects.SyncPhysics(m_physicsWorld);
+        m_objects.SyncPhysics(m_physicsScene);
 
         OnWorldChanged();
         NotifyTransientsWorldChanged();
@@ -210,7 +210,7 @@ namespace NS::Object
         }
         // カメラが追う前に踏む。自機と衝突の裁定は Update 帯までに終わっている
         m_objects.UpdateObjects(std::numeric_limits<int>::min(), TickPriority::LateUpdate);
-        m_physicsWorld.Update(NS::Core::FrameTimer::FixedDelta());
+        m_physicsScene.Update(NS::Core::FrameTimer::FixedDelta());
         m_objects.UpdateObjects(TickPriority::LateUpdate);
         m_objects.SnapshotObjects();
     }
@@ -313,7 +313,6 @@ namespace NS::Object
     {
         // 更新は終わっているので bounds は 1 フレームに 1 回で足りる。ビューを何枚描いても同じ値
         SyncRenderBounds();
-        // renderer と camera は Game 層しか知らないため、コンテキスト構築は OnRenderScene に任せる
         OnRenderScene();
     }
 

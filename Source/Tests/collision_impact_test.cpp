@@ -19,12 +19,12 @@
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/Components/PlayerInputComponent.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Reflection/TypeRegistry.h>
 #include <Runtime/Object/Scene/Scene.h>
-#include <Runtime/Object/ObjectList.h>
-#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/PhysicsScene.h>
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -531,7 +531,7 @@ TEST(CollisionImpact, NoReboundWithoutBreakableMark)
     EXPECT_FALSE(rig.impact->DidRebound());
 }
 
-// 世界を総当たりで回るので、重なりを見ないと離れた所に置いた物にも反発する
+// 壊せる物を総当たりで見るので、重なりを見ないと離れた所に置いた物にも反発する
 TEST(CollisionImpact, NoReboundAgainstDistantBox)
 {
     SceneNs::Scene scene;
@@ -2281,15 +2281,15 @@ TEST(LaunchedBody, LandingOnFloorDoesNotShatter)
 // 飛ばされた物の重力は自機の上昇重力と同じ値
 TEST(LaunchedBody, FallsAtThePlayersUpwardGravity)
 {
-    NS::Physics::PhysicsWorld world;
+    NS::Physics::PhysicsScene physics;
     NS::Core::Sphere ball;
     ball.center = Vector3{0.0f, 50.0f, 0.0f};
     ball.radius = 0.5f;
-    const JPH::BodyID body = world.AddDynamicSphere(ball, NS::Physics::DynamicBodyDesc{});
-    world.OptimizeBroadPhase();
+    const JPH::BodyID body = physics.AddDynamicSphere(ball, NS::Physics::DynamicBodyDesc{});
+    physics.OptimizeBroadPhase();
 
-    world.Update(k_FixedDt);
-    const float fallenSpeed = world.BodyVelocity(body).y;
+    physics.Update(k_FixedDt);
+    const float fallenSpeed = physics.BodyVelocity(body).y;
 
     EXPECT_NEAR(fallenSpeed / k_FixedDt, NS::Game::Player::PlayerStats{}.gravityUp, 1.0f);
 }

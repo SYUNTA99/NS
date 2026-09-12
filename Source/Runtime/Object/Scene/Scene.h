@@ -6,7 +6,7 @@
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Scene/SceneData.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 #include <cstdint>
 #include <memory>
@@ -70,8 +70,8 @@ namespace NS::Object
         //! brain が駆動する実カメラ。 シーンの破棄後は nullptr
         [[nodiscard]] CameraComponent* MainCamera() noexcept;
 
-        //! PhysicsWorld への可変参照。Scene が値で持つので寿命は Scene と同じ
-        [[nodiscard]] NS::Physics::PhysicsWorld& Physics() noexcept { return m_physicsWorld; }
+        //! PhysicsScene への可変参照。Scene が値で持つので寿命は Scene と同じ
+        [[nodiscard]] NS::Physics::PhysicsScene& Physics() noexcept { return m_physicsScene; }
 
         //! AssetManager を非所有で差す。組み立て時の参照実体化が使う。未設定 (テスト等) は解決を跳ばす
         void SetAssets(AssetManager* assets) noexcept { m_assets = assets; }
@@ -174,7 +174,7 @@ namespace NS::Object
         //! @brief 配置物の組み直し・当たりの張り直しの後に呼ばれる。 派生は live への参照をここで取り直す
         virtual void OnWorldChanged() {}
 
-        //! @brief 渡されたシーンデータから配置物と PhysicsWorld を組み直す。 データはその場限りの一時データ
+        //! @brief 渡されたシーンデータから配置物と当たりの body を組み直す。 データはその場限りの一時データ
         void RebuildWorldFrom(const SceneData& data);
 
         //! @brief 標準のシーン描画パス。 環境同期→カメラ評価→不透明→空→半透明
@@ -204,9 +204,9 @@ namespace NS::Object
         //! 描画物の登録簿と視錐台カリングを持つレンダラ側の描画シーン
         NS::Graphics::RenderScene m_renderScene;
 
-        //! 衝突判定の PhysicsWorld。当たりの有る scene だけ ObjectList::SyncPhysics が body を入れ、無ければ空のまま
+        //! 衝突判定の PhysicsScene。当たりの有る scene だけ ObjectList::SyncPhysics が body を入れ、無ければ空のまま
         //! m_objects より前に宣言してあるので破棄は後になり、これを借りる移動の Component より長く生きる
-        NS::Physics::PhysicsWorld m_physicsWorld;
+        NS::Physics::PhysicsScene m_physicsScene;
 
         NS::Object::ObjectList m_objects;        // 配置物の一覧
         CameraBrainComponent* m_brain = nullptr; // 常駐するカメラ配置物の brain。所有は m_objects、これは控え

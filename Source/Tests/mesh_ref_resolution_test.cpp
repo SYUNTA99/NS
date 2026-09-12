@@ -10,7 +10,7 @@
 #include <Runtime/Object/Scene/SceneData.h>
 #include <Runtime/Object/ObjectList.h>
 #include <Runtime/Physics/MeshCollision.h>
-#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/PhysicsScene.h>
 #include <Runtime/Platform/Window.h>
 #include <filesystem>
 #include <gtest/gtest.h>
@@ -190,7 +190,7 @@ TEST(MeshRefResolution, BuiltCubeMeshColliderStopsRayAtTopFace)
     NS::Object::ObjectList objects;
     ASSERT_NE(objects.Append(BuildSceneObject(obj, &assets)), nullptr);
 
-    NS::Physics::PhysicsWorld physics;
+    NS::Physics::PhysicsScene physics;
     objects.SyncPhysics(physics);
     ASSERT_EQ(physics.BodyCount(), 1u);
 

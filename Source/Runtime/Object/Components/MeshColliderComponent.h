@@ -43,7 +43,7 @@ namespace NS::Object
     private:
         // 資産の形を自分の位置・回転・拡縮で body 1 個として置く。 当たりが無ければ何も入れない
         // 歪みのある変換だけは、 WorldTriangles の三角形から自分専用の形を作る
-        [[nodiscard]] JPH::BodyID SyncBody(NS::Physics::PhysicsWorld& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current) override;
 
         const NS::Physics::MeshCollision* m_collision = nullptr; // 非所有。 普段は AssetManager の持ち物
     };

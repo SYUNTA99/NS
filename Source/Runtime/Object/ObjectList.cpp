@@ -3,7 +3,7 @@
 #include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Scene/SceneData.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 #include <algorithm>
 #include <limits>
@@ -157,9 +157,9 @@ namespace NS::Object
         return FindByObjectId(ref.id);
     }
 
-    void ObjectList::SyncPhysics(NS::Physics::PhysicsWorld& physics)
+    void ObjectList::SyncPhysics(NS::Physics::PhysicsScene& physics)
     {
-        // PhysicsWorld を作り直さず、collider ごとに既存 body の shape と姿勢を同期する
+        // PhysicsScene を作り直さず、collider ごとに既存 body の shape と姿勢を同期する
         ForEachComponent<ColliderComponent>([&physics](ColliderComponent& collider) {
             if (collider.IsActive())
                 collider.SyncToPhysics(physics);

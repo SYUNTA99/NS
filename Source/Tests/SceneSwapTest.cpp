@@ -24,7 +24,7 @@ namespace
     }
 } // namespace
 
-TEST(SceneSwap, SwapReplacesWorldContents)
+TEST(SceneSwap, SwapReplacesObjectListContents)
 {
     NS::Object::SceneManager manager;
     manager.LoadScene(MakeLevel(3));
@@ -43,7 +43,7 @@ TEST(SceneSwap, SwappedSceneKeepsRunning)
 
     NS::Object::Scene& swapped = manager.LoadScene(MakeLevel(2));
 
-    // 差し替え後の scene が動くことを、世界を 1 tick 回して確かめる
+    // 差し替え後の scene が動くことを、1 tick 回して確かめる
     EXPECT_TRUE(swapped.IsSimulationEnabled());
     (void)swapped.BeginPlayBaseline();
     manager.Update();

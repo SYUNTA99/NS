@@ -64,7 +64,7 @@ namespace NS::Object
 
     private:
         // 静的世界から外した capsule は body を作らない
-        [[nodiscard]] JPH::BodyID SyncBody(NS::Physics::PhysicsWorld& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current) override;
         [[nodiscard]] NS::Core::Matrix CapsuleWorldMatrix() const noexcept;
 
         float m_radius = 0.4f;                                                 // capsule 半径

@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-// PhysicsWorld と CreateMeshShape の両方から呼ばれるので、 2 度目の呼び出しは登録済みの Factory を差し替えない
+// PhysicsScene と CreateMeshShape の両方から呼ばれるので、 2 度目の呼び出しは登録済みの Factory を差し替えない
 TEST(JoltRuntimeTest, SecondInitializationKeepsTheFactory)
 {
     NS::Physics::detail::InitializeJoltRuntime();

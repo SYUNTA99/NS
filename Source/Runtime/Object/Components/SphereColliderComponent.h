@@ -42,7 +42,7 @@ namespace NS::Object
 
     private:
         // world 座標の球を body 1 個として入れる
-        [[nodiscard]] JPH::BodyID SyncBody(NS::Physics::PhysicsWorld& physics, JPH::BodyID current) override;
+        [[nodiscard]] JPH::BodyID SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current) override;
 
         float m_radius = 0.5f;                              // 球の半径 (owner scale 前)
         NS::Core::Vector3 m_centerOffset{0.0f, 0.0f, 0.0f}; // owner local 空間での中心オフセット

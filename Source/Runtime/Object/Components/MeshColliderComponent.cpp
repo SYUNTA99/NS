@@ -8,7 +8,7 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
 #include "Runtime/Physics/MeshCollision.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 #include <algorithm>
 #include <cmath>
@@ -71,7 +71,7 @@ namespace NS::Object
         return result;
     }
 
-    JPH::BodyID MeshColliderComponent::SyncBody(NS::Physics::PhysicsWorld& physics, JPH::BodyID current)
+    JPH::BodyID MeshColliderComponent::SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current)
     {
         if (m_collision == nullptr)
             return JPH::BodyID{};

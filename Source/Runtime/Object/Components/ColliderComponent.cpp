@@ -4,13 +4,13 @@
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 namespace NS::Object
 {
-    void ColliderComponent::SyncToPhysics(NS::Physics::PhysicsWorld& physics)
+    void ColliderComponent::SyncToPhysics(NS::Physics::PhysicsScene& physics)
     {
-        if (!AcceptsWorld(physics))
+        if (!AcceptsScenePhysics(physics))
             return;
 
         const JPH::BodyID body = SyncBody(physics, m_bodyId);
@@ -20,9 +20,9 @@ namespace NS::Object
         m_bodyId = body;
     }
 
-    void ColliderComponent::RemoveFromPhysics(NS::Physics::PhysicsWorld& physics)
+    void ColliderComponent::RemoveFromPhysics(NS::Physics::PhysicsScene& physics)
     {
-        if (!AcceptsWorld(physics))
+        if (!AcceptsScenePhysics(physics))
             return;
 
         physics.RemoveBody(m_bodyId);
@@ -34,17 +34,17 @@ namespace NS::Object
         if (m_bodyId.IsInvalid())
             return;
 
-        NS::Physics::PhysicsWorld* sceneWorld = SceneWorld();
-        if (sceneWorld == nullptr)
+        NS::Physics::PhysicsScene* scenePhysics = ScenePhysics();
+        if (scenePhysics == nullptr)
         {
-            NS_LOG_ERROR(Scene, "ColliderComponent: Scene に居ないので body を外せない。 body は world を壊すまで残る");
+            NS_LOG_ERROR(Scene, "ColliderComponent: Scene に居ないので body を外せない。 body は PhysicsScene を壊すまで残る");
             m_bodyId = JPH::BodyID{};
             return;
         }
-        RemoveFromPhysics(*sceneWorld);
+        RemoveFromPhysics(*scenePhysics);
     }
 
-    NS::Physics::PhysicsWorld* ColliderComponent::SceneWorld() const noexcept
+    NS::Physics::PhysicsScene* ColliderComponent::ScenePhysics() const noexcept
     {
         const GameObject* owner = Owner();
         if (owner == nullptr || owner->OwningScene() == nullptr)
@@ -52,13 +52,13 @@ namespace NS::Object
         return &owner->OwningScene()->Physics();
     }
 
-    bool ColliderComponent::AcceptsWorld(const NS::Physics::PhysicsWorld& physics) const
+    bool ColliderComponent::AcceptsScenePhysics(const NS::Physics::PhysicsScene& physics) const
     {
-        const NS::Physics::PhysicsWorld* sceneWorld = SceneWorld();
-        if (sceneWorld == nullptr || sceneWorld == &physics)
+        const NS::Physics::PhysicsScene* scenePhysics = ScenePhysics();
+        if (scenePhysics == nullptr || scenePhysics == &physics)
             return true;
 
-        NS_LOG_ERROR(Scene, "ColliderComponent: 持ち主の Scene と違う world を渡された。 body を出し入れしない");
+        NS_LOG_ERROR(Scene, "ColliderComponent: 持ち主の Scene と違う PhysicsScene を渡された。 body を出し入れしない");
         return false;
     }
 } // namespace NS::Object

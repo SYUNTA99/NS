@@ -12,7 +12,7 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 #include <algorithm>
 #include <cmath>
@@ -58,7 +58,7 @@ namespace NS::Game::Level
 
     NS::Core::Vector3 LaunchedBodyComponent::Velocity() const noexcept
     {
-        NS::Physics::PhysicsWorld* physics = ScenePhysics();
+        NS::Physics::PhysicsScene* physics = ScenePhysics();
         if (!m_flying || physics == nullptr)
             return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
         return physics->BodyVelocity(m_bodyId);
@@ -76,7 +76,7 @@ namespace NS::Game::Level
         m_debrisCount = std::max(0, count);
     }
 
-    JPH::BodyID LaunchedBodyComponent::CreateFlyingBody(NS::Physics::PhysicsWorld& physics) const
+    JPH::BodyID LaunchedBodyComponent::CreateFlyingBody(NS::Physics::PhysicsScene& physics) const
     {
         NS::Core::AABB bounds{};
         if (!TryGetColliderBounds(*Owner(), bounds))
@@ -108,7 +108,7 @@ namespace NS::Game::Level
 
     void LaunchedBodyComponent::RemoveFlyingBody() noexcept
     {
-        NS::Physics::PhysicsWorld* physics = ScenePhysics();
+        NS::Physics::PhysicsScene* physics = ScenePhysics();
         if (physics == nullptr)
             return;
 
@@ -223,7 +223,7 @@ namespace NS::Game::Level
             return;
         }
 
-        NS::Physics::PhysicsWorld* physics = ScenePhysics();
+        NS::Physics::PhysicsScene* physics = ScenePhysics();
         if (physics == nullptr)
             return;
 
@@ -269,7 +269,7 @@ namespace NS::Game::Level
         }
     }
 
-    NS::Physics::PhysicsWorld* LaunchedBodyComponent::ScenePhysics() const noexcept
+    NS::Physics::PhysicsScene* LaunchedBodyComponent::ScenePhysics() const noexcept
     {
         if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
             return nullptr;

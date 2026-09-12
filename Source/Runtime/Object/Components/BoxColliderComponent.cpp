@@ -5,7 +5,7 @@
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 #include <algorithm>
 #include <cmath>
@@ -132,7 +132,7 @@ namespace NS::Object
         return NS::Core::MakeOBB(translation, rotation, half);
     }
 
-    JPH::BodyID BoxColliderComponent::SyncBody(NS::Physics::PhysicsWorld& physics, JPH::BodyID current)
+    JPH::BodyID BoxColliderComponent::SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current)
     {
         // 通り抜ける体積も body にする。入れないと重なりの問い合わせに出てこず、触れても判定できない
         if (m_isTrigger)

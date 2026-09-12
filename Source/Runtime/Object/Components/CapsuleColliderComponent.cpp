@@ -4,7 +4,7 @@
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 #include <algorithm>
 #include <cmath>
@@ -115,7 +115,7 @@ namespace NS::Object
         m_excludedFromStaticWorld = excluded;
     }
 
-    JPH::BodyID CapsuleColliderComponent::SyncBody(NS::Physics::PhysicsWorld& physics, JPH::BodyID current)
+    JPH::BodyID CapsuleColliderComponent::SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current)
     {
         if (m_excludedFromStaticWorld)
             return JPH::BodyID{};

@@ -22,7 +22,7 @@ namespace NS::Physics
     };
 
     //! @brief 三角形群から Jolt の三角形の形を作る
-    //! @details PhysicsWorld を 1 つも作る前に呼んでも、 Jolt の下準備を先に通してから作る
+    //! @details PhysicsScene を 1 つも作る前に呼んでも、 Jolt の下準備を先に通してから作る
     //! @param[in] triangles 形にする三角形群
     //! @return 作った形。 空か、 Jolt が形を作れなければ null
     [[nodiscard]] JPH::ShapeRefC CreateMeshShape(std::span<const Triangle> triangles);
