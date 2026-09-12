@@ -256,7 +256,10 @@ namespace NS::Object
         {
             std::unique_ptr<NS::Graphics::StaticMesh> mesh = MakeStaticMesh(geom);
             if (mesh == nullptr || !mesh->IsValid())
-                NS_LOG_ERROR(Graphics, "AssetManager: mesh の GPU 生成失敗: {}", key.string());
+                NS_LOG_ERROR(
+                    Graphics,
+                    "AssetManager: mesh の GPU 生成失敗。 描画は cube へフォールバックし、 当たりは本物の形のまま: {}",
+                    key.string());
             else
                 record.mesh = std::move(mesh);
             // GPU 生成だけ失敗しても当たりは作る。 device 無しのテストでも当たりを確かめられる
@@ -374,7 +377,7 @@ namespace NS::Object
         if (!source.IsValid())
         {
             NS_LOG_WARN(Graphics, "AssetManager: アニメーション glTF の読込失敗 / 空: {}", key.string());
-            // 壊れた path を負キャッシュし、 毎回のディスク I/O を防ぐ。 再試行は Clear() から
+            // 壊れた path を負キャッシュし、 毎回ディスクを読むのを防ぐ。 再試行は Clear() から
             m_animationSources.emplace(key, nullptr);
             return nullptr;
         }

@@ -80,7 +80,7 @@ namespace NS::Object
     class AssetManager : public NS::Core::NonCopyable
     {
     public:
-        //! baseDir は将来 file mesh 等の相対 path を解決する基準で、 通常は ContentRoot
+        //! baseDir は shader / texture の相対 path を解決する基準で、 通常は ContentRoot
         explicit AssetManager(std::filesystem::path baseDir) noexcept;
         ~AssetManager();
 
@@ -105,7 +105,6 @@ namespace NS::Object
 
         //! skinned glTF を読み SkeletalMesh を path キーで重複なく所有して返す。 skeleton / clips は
         //! キャッシュ record への参照で返し、 再生状態だけをインスタンス側が持つ。 失敗時は valid=false
-        //! 相対 path は baseDir 基準
         [[nodiscard]] LoadedSkinnedModel GetOrLoadSkinnedModel(const std::filesystem::path& path);
 
         //! アニメーション専用 glTF を path キーで重複なく所有して返す。 読込失敗の path は負キャッシュし
@@ -157,7 +156,7 @@ namespace NS::Object
         struct MeshRecord
         {
             std::unique_ptr<NS::Graphics::Mesh> mesh;              // GPU 生成に失敗したら null
-            std::unique_ptr<NS::Physics::MeshCollision> collision; // 形は当たりを頼まれた時に作る
+            std::unique_ptr<NS::Physics::MeshCollision> collision; // Jolt の形は当たりを頼まれた時に作る
         };
 
         // 正規化した path で記録を引き、 無ければ glTF を読んで作る
