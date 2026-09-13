@@ -93,6 +93,7 @@ namespace NS::Object
             {k_BuiltinShadowQuad, [] { return NS::Graphics::MakePlane(NS::Core::Vector2{0.5f, 0.5f}); }},
         }};
 
+        // 引く先は m_builtins でなく k_BuiltinShapes。 RegisterBuiltins を呼んでいなくても引ける
         [[nodiscard]] const BuiltinShape* FindBuiltinShape(std::string_view name) noexcept
         {
             for (const BuiltinShape& shape : k_BuiltinShapes)
@@ -263,6 +264,7 @@ namespace NS::Object
             else
                 record.mesh = std::move(mesh);
             // GPU 生成だけ失敗しても当たりは作る。 device 無しのテストでも当たりを確かめられる
+            // 当たりだけ頼まれた時も GPU 生成を通るので、 device の無いテストでは上のエラーが出る
             // TODO: コライダーの無い描画だけの mesh も三角形を Clear() まで持つ
             // 大きな mesh を飾りに多く置いてメモリが効いてきたら、 当たりを頼まれた時に作る形へ移す
             record.collision = std::make_unique<NS::Physics::MeshCollision>();

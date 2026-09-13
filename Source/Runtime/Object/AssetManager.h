@@ -122,6 +122,8 @@ namespace NS::Object
         //! device 確立後・最初の利用前に 1 度だけ呼ぶ。 既登録名は上書きしない
         void RegisterBuiltins();
         //! 名前キーで組み込み StaticMesh を引く。 未登録は nullptr
+        //! RegisterBuiltins を通っていない AssetManager では全部 nullptr になる
+        //! 同じ名前の当たりは RegisterBuiltins 無しでも GetOrLoadMeshCollision が返す
         [[nodiscard]] NS::Graphics::StaticMesh* Builtin(std::string_view name) const noexcept;
 
         //! matPath の .mat を読み込み composite Material を組んで返す。 shader / texture は内部 leaf を借りて共有
