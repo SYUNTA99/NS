@@ -444,6 +444,27 @@ namespace
         EXPECT_EQ(GizmoEditor::PickNearestOBB(belowFeet, worlds, bounds), -1);
     }
 
+    // 奥の箱は 4 倍に拡大してあり、 ローカルの距離で比べると奥の方が近くなる。
+    // ワールドのレイの上で比べている時だけ手前を選ぶ
+    TEST(GizmoEditor, PickNearestObbPrefersNearerBoxOverFartherScaledBox)
+    {
+        using NS::Core::Matrix;
+        using NS::Core::Ray;
+        using NS::Core::Vector3;
+
+        const std::array<Matrix, 2> worlds = {
+            Matrix::CreateTranslation(0.0f, 0.0f, 5.0f),
+            Matrix::CreateScale(4.0f) * Matrix::CreateTranslation(0.0f, 0.0f, 20.0f),
+        };
+        const std::array<NS::Core::AABB, 2> bounds = {
+            CenteredBox(Vector3{1.0f, 1.0f, 1.0f}),
+            CenteredBox(Vector3{1.0f, 1.0f, 1.0f}),
+        };
+
+        const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, bounds), 0);
+    }
+
     TEST(GizmoEditor, PickNearestObbEmptySpanReturnsMinusOne)
     {
         using NS::Core::Ray;
