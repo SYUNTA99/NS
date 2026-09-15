@@ -10,7 +10,7 @@
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
-#include <Runtime/Object/World.h>
+#include <Runtime/Object/ObjectList.h>
 #include <Runtime/Platform/Input.h>
 #include <Runtime/Platform/Keyboard.h>
 #include <gtest/gtest.h>

@@ -72,7 +72,6 @@ namespace NS::App
 
     Application::~Application()
     {
-        // 念のため終了処理を呼んでおく
         Shutdown();
         if (s_instance == this)
             s_instance = nullptr;
@@ -150,12 +149,17 @@ namespace NS::App
     bool Application::WantExit() noexcept
     {
         if (m_window->ShouldClose())
+        {
             return true;
+        }
         if (!m_quitRequested)
+        {
             return false;
+        }
+
         if (m_quitGuard)
         {
-            // guard 呼出は try 内の 1 回だけにする。 noexcept 境界で例外を外へ出すと std::terminate になる
+            // guard 呼出は try 内の 1 回だけにする。noexcept 境界で例外を外へ出すと std::terminate になる
             try
             {
                 if (!m_quitGuard())
@@ -166,7 +170,6 @@ namespace NS::App
             }
             catch (...)
             {
-                // 例外が飛んだら終了要求を取り下げてループを続ける
                 NS_LOG_ERROR(App, "コールバック内で例外が発生しました");
                 m_quitRequested = false;
                 return false;
@@ -213,7 +216,9 @@ namespace NS::App
                     for (auto& layer : stack)
                     {
                         if (layer->IsActive())
+                        {
                             layer->OnUpdate();
+                        }
                     }
                     // 固定更新のたびに基準を進める。描画フレーム単位だと、
                     // 1 フレームに 2 回更新が入った時に 2 回とも「押した瞬間」になる
@@ -227,7 +232,9 @@ namespace NS::App
             for (auto& layer : stack)
             {
                 if (layer->IsActive())
+                {
                     layer->OnRender();
+                }
             }
 
             renderer.EndFrame();
@@ -237,16 +244,19 @@ namespace NS::App
     void Application::Shutdown()
     {
         if (m_shutdownCalled)
+        {
             return;
+        }
+
         m_shutdownCalled = true;
 
-        // 追加したのと逆の順番でレイヤーを終了させる
         for (auto it = m_layers.rbegin(); it != m_layers.rend(); ++it)
+        {
             (*it)->OnDetach();
+        }
 
         m_quitGuard = nullptr;
 
-        // エラーを防ぐために登録したコールバックを解除しておく
         if (m_window)
         {
             m_window->SetCloseCallback(nullptr);
@@ -255,7 +265,9 @@ namespace NS::App
 
         // レンダラーより先にアセットマネージャーを解放する
         if (m_assets)
+        {
             m_assets->Clear();
+        }
         m_renderer.reset();
         m_window.reset();
     }
@@ -268,7 +280,9 @@ namespace NS::App
     void Application::Quit() noexcept
     {
         if (s_instance == nullptr)
+        {
             return;
+        }
         s_instance->m_quitRequested = true;
     }
 

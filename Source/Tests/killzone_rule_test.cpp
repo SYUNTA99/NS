@@ -20,13 +20,13 @@ TEST(KillZoneTest, KillsPlayerInsideVolume)
     data.objects.push_back(LevelNs::MakeKillZoneObject());
     scene.LoadFromData(std::move(data));
 
-    auto* player = FindPlayer(scene.World());
+    auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     ASSERT_FALSE(player->IsDead());
 
     // 同じ帯に居る respawner を切って判定だけを見る。 有効なままだと同じ LateUpdate で復活する
     player->FindComponent<LevelNs::RespawnerComponent>()->SetActive(false);
-    scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
+    scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
 
     EXPECT_TRUE(player->IsDead());
 }
@@ -40,9 +40,9 @@ TEST(KillZoneTest, DoesNotKillPlayerAboveVolume)
     data.objects.push_back(LevelNs::MakeKillZoneObject());
     scene.LoadFromData(std::move(data));
 
-    scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
+    scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
 
-    auto* player = FindPlayer(scene.World());
+    auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     EXPECT_FALSE(player->IsDead());
 }

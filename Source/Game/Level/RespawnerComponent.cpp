@@ -46,6 +46,6 @@ namespace NS::Game::Level
             health->Reset();
 
         // ルール配置物のフラグも初期状態へ戻す。前のプレイのフラグが残ると開始直後に再クリアしてしまう
-        scene->World().ForEachComponent<GoalComponent>([](GoalComponent& goal) { goal.ResetReached(); });
+        scene->Objects().ForEachComponent<GoalComponent>([](GoalComponent& goal) { goal.ResetReached(); });
     }
 } // namespace NS::Game::Level

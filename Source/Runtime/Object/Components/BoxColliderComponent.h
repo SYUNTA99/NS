@@ -8,7 +8,7 @@
 namespace NS::Object
 {
     //! @brief 箱型 collider を Scene に登録する Component
-    //! @details owner の world 変換を重ねた当たり箱を返し、scene の collision world 構築に使う
+    //! @details owner の world 変換を重ねた当たり箱を返す。 body は WorldOBB の形と姿勢で入れる
     //! WorldAABB は回転時に内包する軸並行ボックスにするが、 WorldOBB は回転・非一様 scale を厳密に保持する
     //! Mesh と分離し、 視覚と衝突を独立に調整できるようにする
     class BoxColliderComponent : public ColliderComponent
@@ -16,11 +16,13 @@ namespace NS::Object
     public:
         //! 既定 halfExtents {0.5,0.5,0.5} で構築する
         BoxColliderComponent() noexcept;
-        //! halfExtents を指定して構築する。 ClampNonNegative で負を 0 にクランプ
+        //! halfExtents を指定して構築する。 負の成分は 0 にクランプ
         explicit BoxColliderComponent(const NS::Core::Vector3& halfExtents) noexcept;
 
+        //! 当たり箱の各軸の半径を設定する。 負の成分は 0 にクランプ
         void SetHalfExtents(const NS::Core::Vector3& halfExtents) noexcept;
 
+        //! 当たり箱の各軸の半径を返す。 owner の scale を掛ける前の値
         [[nodiscard]] NS::Core::Vector3 HalfExtents() const noexcept;
 
         //! owner local 空間での中心オフセットを設定 / 取得する。 当たり箱を視覚と独立にずらすのに使う
@@ -47,11 +49,8 @@ namespace NS::Object
         //! 回転・非一様 scale を厳密に保持する。 Owner 未登録時は local offset / 回転だけを反映する
         [[nodiscard]] NS::Core::OBB WorldOBB() const noexcept;
 
-        //! トリガなら sensor、そうでなければ固形の body として OBB のまま入れる
-        void SyncToPhysics(NS::Physics::PhysicsWorld& physics) override;
-
         // 当たり箱の形状の半径と Transform からの独立オフセット / 回転を Inspector へ公開する
-        // 半径は負クランプ、 回転は Euler 度で受けるため全て setter 経由で書く
+        // 半径は負を 0 にクランプし、 回転は Euler 度で受けるため setter 経由で書く
         NS_REFLECT_BEGIN(BoxColliderComponent, ColliderComponent)
         NS_REFLECT_ACCESSOR(NS::Core::Vector3, "半径", HalfExtents(), SetHalfExtents)
         NS_REFLECT_ACCESSOR(NS::Core::Vector3, "中心オフセット", CenterOffset(), SetCenterOffset)
@@ -60,6 +59,9 @@ namespace NS::Object
         NS_REFLECT_END()
 
     private:
+        // トリガなら sensor、 そうでなければ固形の body として OBB のまま入れる
+        [[nodiscard]] JPH::BodyID SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current) override;
+
         // owner world 変換に重ねる当たり箱の local 変換を行列化する。 offset と回転を合わせる
         [[nodiscard]] NS::Core::Matrix LocalMatrix() const noexcept;
 

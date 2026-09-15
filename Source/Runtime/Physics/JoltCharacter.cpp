@@ -1,6 +1,6 @@
 #include "Runtime/Physics/JoltCharacter.h"
 
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 #include "Runtime/Physics/detail/JoltConversion.h"
 
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
@@ -36,9 +36,9 @@ namespace NS::Physics
         }
     } // namespace
 
-    JoltCharacter::JoltCharacter(PhysicsWorld& world, float radius, float halfHeight)
-        : m_world(world), m_radius(radius), m_halfHeight(halfHeight),
-          m_character(MakeCharacter(world.m_physicsSystem, radius, halfHeight))
+    JoltCharacter::JoltCharacter(PhysicsScene& physics, float radius, float halfHeight)
+        : m_physics(physics), m_radius(radius), m_halfHeight(halfHeight),
+          m_character(MakeCharacter(physics.m_physicsSystem, radius, halfHeight))
     {}
 
     JoltCharacter::~JoltCharacter() = default;
@@ -52,7 +52,7 @@ namespace NS::Physics
 
         m_radius = radius;
         m_halfHeight = halfHeight;
-        m_character = MakeCharacter(m_world.m_physicsSystem, radius, halfHeight);
+        m_character = MakeCharacter(m_physics.m_physicsSystem, radius, halfHeight);
     }
 
     void JoltCharacter::Step(const NS::Core::Vector3& position, const NS::Core::Vector3& velocity, float dt)
@@ -65,7 +65,7 @@ namespace NS::Physics
                             JPH::ObjectLayerFilter{},
                             JPH::BodyFilter{},
                             JPH::ShapeFilter{},
-                            m_world.m_tempAllocator);
+                            m_physics.m_tempAllocator);
 
         // 呼出側が毎歩速度を足すので、面へ向かう分を抜かないと押し付けている間に溜まり、離した歩に飛び出す
         JPH::Vec3 correctedVelocity = m_character->GetLinearVelocity();

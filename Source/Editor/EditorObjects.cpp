@@ -6,6 +6,7 @@
 #include "Game/Level/HazardComponent.h"
 #include "Game/Level/KillZoneComponent.h"
 #include "Game/Player.h"
+#include "Runtime/Graphics/Mesh.h"
 #include "Runtime/Object/Components/BoxColliderComponent.h"
 #include "Runtime/Object/Components/DirectionalLightComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
@@ -16,8 +17,8 @@
 #include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
-#include "Runtime/Object/World.h"
 
 namespace NS::Editor
 {
@@ -121,12 +122,12 @@ namespace NS::Editor
         return NS::Object::k_NoObjectIndex;
     }
 
-    std::uint32_t FindObjectIdAtCell(const NS::Object::World& world,
+    std::uint32_t FindObjectIdAtCell(const NS::Object::ObjectList& objects,
                                      std::int16_t x,
                                      std::int16_t y,
                                      std::int16_t z) noexcept
     {
-        for (NS::Object::GameObject* objPtr : world)
+        for (NS::Object::GameObject* objPtr : objects)
         {
             NS::Object::GameObject& object = *objPtr;
             if (IsCellBrushObject(object) && ObjectCellX(object) == x && ObjectCellY(object) == y &&
@@ -321,6 +322,14 @@ namespace NS::Editor
             return "Empty";
 
         return "?";
+    }
+
+    NS::Core::AABB PickLocalBounds(const NS::Object::GameObject& object) noexcept
+    {
+        const auto* renderer = object.FindComponent<NS::Object::MeshRendererComponent>();
+        if (renderer != nullptr && renderer->GetMesh() != nullptr)
+            return renderer->GetMesh()->LocalBounds();
+        return NS::Core::AABB{NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Game::Level::k_CellHalfExtents};
     }
 
 } // namespace NS::Editor

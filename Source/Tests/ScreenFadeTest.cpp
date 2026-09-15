@@ -3,7 +3,7 @@
 #include "Runtime/Object/Components/OverlayRendererComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
-#include "Runtime/Object/World.h"
+#include "Runtime/Object/ObjectList.h"
 
 #include <gtest/gtest.h>
 
@@ -130,13 +130,13 @@ TEST(ScreenFade, OnlyOverlayRendererIsPickedUp)
 // 暗転は player に積む配置物側の component なので、 一時オブジェクトに絞ると一度も描かれない
 TEST(ScreenFade, PlacedObjectFadeIsPickedUp)
 {
-    NS::Object::World world;
-    auto* obj = world.Spawn<NS::Object::GameObject>();
+    NS::Object::ObjectList objects;
+    auto* obj = objects.Spawn<NS::Object::GameObject>();
     obj->AddComponent<NS::Game::Level::ScreenFadeComponent>();
     ASSERT_FALSE(obj->IsTransient());
 
     int found = 0;
-    world.ForEachComponent<NS::Object::OverlayRendererComponent>(
+    objects.ForEachComponent<NS::Object::OverlayRendererComponent>(
         [&found](const NS::Object::OverlayRendererComponent&) { ++found; });
     EXPECT_EQ(found, 1);
 }

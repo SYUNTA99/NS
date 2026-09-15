@@ -6,36 +6,45 @@
 
 #include <vector>
 
+namespace NS::Physics
+{
+    struct MeshCollision;
+}
+
 namespace NS::Object
 {
-    //! @brief 任意三角形群を当たり判定として Scene に登録する Component
-    //! @details 球 / 箱で表せない取り込み形状向け。 三角形ソースは glTF の MeshGeometry 等の呼出側が用意する
-    //! 三角形は local 空間のまま、描画メッシュとは独立に持つ
-    //! StaticMesh は GPU upload 後に CPU 頂点を捨てるため別途渡す
-    //! physics へは mesh の body として渡す。三角形は CCW winding 前提
+    //! @brief メッシュ資産の三角形を当たりにする Component
+    //! @details 球 / 箱で表せない取り込み形状向け
+    //! 当たりは AssetManager が資産ごとに持ち、 同じ資産を置いた配置物はその形を共有する
+    //! 自分が持つのは借りた当たりへの参照だけで、 body は自分の位置・回転・拡縮で置く
     class MeshColliderComponent : public ColliderComponent
     {
     public:
         //! 空の collider で構築する
         MeshColliderComponent() noexcept;
-        //! local 空間の三角形群で構築する。 所有権を移す
-        explicit MeshColliderComponent(std::vector<NS::Physics::Triangle> localTriangles) noexcept;
 
-        //! local 三角形群を差し替える。 所有権を移す
-        void SetLocalTriangles(std::vector<NS::Physics::Triangle> localTriangles) noexcept;
-        //! 現在の local 三角形群
-        [[nodiscard]] const std::vector<NS::Physics::Triangle>& LocalTriangles() const noexcept;
+        //! 使う当たりを差し替える。 所有しないので、 この Component より長く生きる物を渡す。 null で当たり無し
+        void SetCollision(const NS::Physics::MeshCollision* collision) noexcept;
+        //! 借りている当たり。 無ければ null
+        [[nodiscard]] const NS::Physics::MeshCollision* Collision() const noexcept;
 
-        //! owner の world 変換を各頂点に乗せた world 三角形群を返す。 Owner 未登録なら local をそのまま返す
+        //! owner の world 変換を各頂点に乗せた world 三角形群を返す。 Owner 未登録なら資産の座標のまま返す
+        //! 当たりが無ければ空
         [[nodiscard]] std::vector<NS::Physics::Triangle> WorldTriangles() const;
 
-        //! 三角形群をまとめて body 1 個にする。 空なら何も入れない
-        void SyncToPhysics(NS::Physics::PhysicsWorld& physics) override;
+        //! 同じ object の MeshRendererComponent の参照から当たりを借りる
+        //! 解決できない参照は描画と同じく cube にする
+        //! MeshRendererComponent が無ければ警告を出して当たり無しのまま
+        void ResolveAssets(AssetManager& assets) override;
 
-        // 三角形群はリフレクションで運べない。 同じ object の collider と揃えて型名だけ登録しておく
+        // 当たりはリフレクションで運ばない。 ResolveAssets が描画の参照から借りるので、 型名だけ登録しておく
         NS_REFLECT_NONE(MeshColliderComponent, ColliderComponent)
 
     private:
-        std::vector<NS::Physics::Triangle> m_localTriangles; // local 空間の三角形群
+        // 資産の形を自分の位置・回転・拡縮で body 1 個として置く。 当たりが無ければ何も入れない
+        // 歪みのある変換だけは、 WorldTriangles の三角形から自分専用の形を作る
+        [[nodiscard]] JPH::BodyID SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current) override;
+
+        const NS::Physics::MeshCollision* m_collision = nullptr; // 非所有。 普段は AssetManager の持ち物
     };
 } // namespace NS::Object

@@ -18,10 +18,10 @@
 #include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
-#include "Runtime/Object/World.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 #include <algorithm>
 #include <cmath>
@@ -46,7 +46,6 @@ namespace NS::Game::Level
         // 伸びから元の形へ戻す歩数。反発の滞空 0.3 秒の前半で戻し切り、着地の前に形を確定させる
         constexpr int k_StretchRecoverSteps = 6;
 
-        // 壊れた物の見た目の色。破片が出るまでの仮の差し替え
         constexpr NS::Core::Vector3 k_BrokenBaseColor{0.25f, 0.22f, 0.20f};
 
         // 跡の床探しで真下を見る上限。これより下に床が無ければ跡を出さない
@@ -143,7 +142,7 @@ namespace NS::Game::Level
         // TODO: 壊せる物を総当たりで見ている。数十個までを想定。増えたら格子で絞る
         BreakableComponent* nearest = nullptr;
         float nearestDistanceSq = 0.0f;
-        scene->World().ForEachComponent<BreakableComponent>([&](BreakableComponent& breakable) {
+        scene->Objects().ForEachComponent<BreakableComponent>([&](BreakableComponent& breakable) {
             if (!breakable.IsActive())
                 return;
 
@@ -341,7 +340,7 @@ namespace NS::Game::Level
 
     void ImpactResolverComponent::BeginFreeze(int stopSteps)
     {
-        // 自機を寝かせて凍らせる。World::UpdateObjects は active をその場で見るので同じ歩から効く
+        // 自機を寝かせて凍らせる。ObjectList::UpdateObjects は active をその場で見るので同じ歩から効く
         m_hitStopRemaining = stopSteps;
         m_hitStopTotal = stopSteps;
         m_movement->SetActive(false);
@@ -362,7 +361,7 @@ namespace NS::Game::Level
             return;
 
         // 力が伝わった瞬間の絵。凍結の頭で相手を発射方向へ食い込ませて止める。当たりは動かさない
-        if (NS::Object::GameObject* target = scene->World().FindByObjectId(m_pendingTargetId))
+        if (NS::Object::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId))
             target->Root().SetPosition(m_pendingTargetHome + m_pendingImpactDir * m_pushInDistance);
 
         if (NS::Object::CameraBrainComponent* brain = scene->CameraBrain())
@@ -388,7 +387,7 @@ namespace NS::Game::Level
 
     void ImpactResolverComponent::BreakTarget(NS::Object::GameObject& target)
     {
-        // 壊れた物は世界から消さない。更新の最中に消すと集めた並びに解放済みの位置が残る
+        // 壊れた物は ObjectList から消さない。更新の最中に消すと集めた並びに解放済みのポインタが残る
         // 印と当たりを寝かせて探索と固形から外し、見た目の色で壊れたと分かるようにする
         if (auto* breakable = target.FindComponent<BreakableComponent>())
             breakable->SetActive(false);
@@ -396,7 +395,8 @@ namespace NS::Game::Level
         {
             collider->SetActive(false);
             // body はその場で外す。直後に動く移動が素通りする
-            collider->RemoveFromPhysics();
+            if (NS::Object::Scene* scene = target.OwningScene())
+                collider->RemoveFromPhysics(scene->Physics());
         }
         if (auto* mesh = target.FindComponent<NS::Object::MeshRendererComponent>())
             mesh->SetBaseColor(k_BrokenBaseColor);
@@ -431,7 +431,7 @@ namespace NS::Game::Level
         if (scene == nullptr)
             return;
         // 相手は id で引き直す。止まっている数歩の間に消されていたら残りだけ諦める
-        NS::Object::GameObject* target = scene->World().FindByObjectId(m_pendingTargetId);
+        NS::Object::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId);
         if (target == nullptr)
             return;
         // 食い込みと振動は絵だけ。結果の起点がずれないよう元位置へ厳密に戻してから先へ進む
@@ -448,7 +448,7 @@ namespace NS::Game::Level
                 probe.y = targetBounds.Center.y - targetBounds.Extents.y - k_MarkProbeSkin;
 
             float dist = 0.0f;
-            if (scene->Physics().RaycastDown(probe, k_MarkProbeDistance, dist))
+            if (scene->Physics().Raycast(probe, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, k_MarkProbeDistance, dist))
             {
                 floorFound = true;
                 markPosition =
@@ -483,7 +483,7 @@ namespace NS::Game::Level
         NS::Object::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
             return;
-        NS::Object::GameObject* target = scene->World().FindByObjectId(m_pendingTargetId);
+        NS::Object::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId);
         if (target == nullptr || m_hitStopTotal <= 0)
             return;
 

@@ -1,5 +1,6 @@
 ﻿#include "Editor/GizmoEditor.h"
 
+#include "Editor/EditorObjects.h"
 #include "Editor/GridMath.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/GameObject.h"
@@ -363,11 +364,9 @@ namespace NS::Editor
     } // namespace
 
     void GizmoEditor::SetSelectableObjects(std::span<NS::Object::GameObject* const> objects,
-                                           std::span<const NS::Core::Vector3> localHalfExtents,
                                            std::span<const std::uint8_t> pickable) noexcept
     {
         m_objects = objects;
-        m_halfExtents = localHalfExtents;
         m_pickable = pickable;
     }
 
@@ -479,17 +478,22 @@ namespace NS::Editor
         // ハンドルに当たらなければ配置物を拾う
         const NS::Core::Ray ray = NS::Editor::ScreenToWorldRay(viewProjection, viewport, localX, localY);
         std::vector<NS::Core::Matrix> worldMatrices;
+        std::vector<NS::Core::AABB> localBounds;
         worldMatrices.reserve(m_objects.size());
+        localBounds.reserve(m_objects.size());
+        // 箱は Root のローカル空間のまま。WorldMatrix が拡縮を含むので、箱にも掛けると拡大した配置物の箱が
+        // 拡縮の 2 乗に膨らみ、近くのクリックを先に取る
         for (const NS::Object::GameObject* obj : m_objects)
         {
             worldMatrices.push_back(obj->Root().WorldMatrix());
+            localBounds.push_back(PickLocalBounds(*obj));
         }
 
         // 可視オブジェクトを優先して判定し、ヒットしなければ不可視オブジェクトも含めて再判定する
-        int hit = PickNearestOBB(ray, worldMatrices, m_halfExtents, m_pickable);
+        int hit = PickNearestOBB(ray, worldMatrices, localBounds, m_pickable);
         if (hit < 0)
         {
-            hit = PickNearestOBB(ray, worldMatrices, m_halfExtents);
+            hit = PickNearestOBB(ray, worldMatrices, localBounds);
         }
 
         if (hit >= 0)
@@ -680,11 +684,11 @@ namespace NS::Editor
 
     int GizmoEditor::PickNearestOBB(const NS::Core::Ray& ray,
                                     std::span<const NS::Core::Matrix> worldMatrices,
-                                    std::span<const NS::Core::Vector3> localHalfExtents,
+                                    std::span<const NS::Core::AABB> localBounds,
                                     std::span<const std::uint8_t> pickMask) noexcept
     {
         // 全部にレイを当てて、最も手前の添字を選ぶ
-        const std::size_t count = std::min(worldMatrices.size(), localHalfExtents.size());
+        const std::size_t count = std::min(worldMatrices.size(), localBounds.size());
         int best = -1;
         float bestT = 0.0f;
         for (std::size_t i = 0; i < count; ++i)
@@ -696,10 +700,12 @@ namespace NS::Editor
             }
 
             const NS::Core::Matrix inv = worldMatrices[i].Invert();
-            const NS::Core::Vector3 localOrigin = NS::Core::Vector3::Transform(ray.position, inv);
+            const NS::Core::Vector3 boxCenter{localBounds[i].Center};
+            const NS::Core::Vector3 localOrigin = NS::Core::Vector3::Transform(ray.position, inv) - boxCenter;
             const NS::Core::Vector3 localDir = NS::Core::Vector3::TransformNormal(ray.direction, inv);
             float t = 0.0f;
-            if (IntersectRayCenteredAABB(localOrigin, localDir, localHalfExtents[i], t) && (best < 0 || t < bestT))
+            const NS::Core::Vector3 halfExtents{localBounds[i].Extents};
+            if (IntersectRayCenteredAABB(localOrigin, localDir, halfExtents, t) && (best < 0 || t < bestT))
             {
                 best = static_cast<int>(i);
                 bestT = t;

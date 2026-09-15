@@ -33,7 +33,7 @@ namespace NS::Object
 
     Scene::Scene()
     {
-        // 描くには実カメラが 1 個要る。 配置物ではないがシーンには必ず居るので、 ここで world へ入れる
+        // 描くには実カメラが 1 個要る。 配置物ではないがシーンには必ず居るので、 ここで ObjectList へ入れる
         // 保存・凍結・編集 UI に出ない一時オブジェクトで、 データからの組み直しも跨いで残る
         // 描画 component は積まない。 RegisterRenderable は virtual で、 基底コンストラクタからは派生へ落ちない
         auto host = std::make_unique<GameObject>();
@@ -50,29 +50,29 @@ namespace NS::Object
         m_environment = data.environment;
         // 組む前に番号を揃える。未採番のまま組むと id で名指しできない実体ができる
         EnsureUniqueObjectIds(data);
-        RebuildWorldFrom(data);
+        RebuildObjectsFrom(data);
     }
 
     void Scene::SyncPhysics()
     {
         // ギズモで動いた live の当たりを張り直す。 object を作り直さないので選択・参照はそのまま保たれる
-        m_world.SyncPhysics(m_physicsWorld);
-        OnWorldChanged();
-        NotifyTransientsWorldChanged();
+        m_objects.SyncPhysics(m_physicsScene);
+        OnObjectsRebuilt();
+        NotifyTransientsObjectsRebuilt();
     }
 
-    void Scene::NotifyTransientsWorldChanged()
+    void Scene::NotifyTransientsObjectsRebuilt()
     {
-        for (GameObject* obj : m_world)
+        for (GameObject* obj : m_objects)
         {
             if (obj->IsTransient())
-                obj->OnWorldChanged();
+                obj->OnObjectsRebuilt();
         }
     }
 
     const SceneData& Scene::BeginPlayBaseline()
     {
-        // プレイ規則の判定と編集復帰の姿はこの凍結を読む。 プレイ中の変化は凍結に映らず、編集へ持ち込まれない
+        // プレイ規則の判定と編集復帰の姿はこの凍結を読む。 シミュレーションが動かした値は映らず、編集へ持ち込まれない
         if (!m_playBaselineInjected)
         {
             m_playBaseline = CaptureLiveToSceneData();
@@ -137,7 +137,7 @@ namespace NS::Object
             return nullptr;
         obj->SetTransient(true);
         obj->AttachScene(this);
-        GameObject* raw = m_world.Append(std::move(obj));
+        GameObject* raw = m_objects.Append(std::move(obj));
         if (raw == nullptr)
             return nullptr;
         // データ由来の配置物は ObjectBuilder が引き当てる。後から入る一時オブジェクトはここで引き当てる
@@ -160,10 +160,10 @@ namespace NS::Object
         // 一時オブジェクトを除く全 object を、 全 component 値まで忠実に写す
         SceneData data{};
         data.environment = m_environment;
-        data.nextObjectId = m_world.NextObjectId();
+        data.nextObjectId = m_objects.NextObjectId();
 
-        data.objects.reserve(m_world.ObjectCount());
-        for (const GameObject* obj : m_world)
+        data.objects.reserve(m_objects.ObjectCount());
+        for (const GameObject* obj : m_objects)
         {
             if (obj->IsTransient())
                 continue;
@@ -176,24 +176,24 @@ namespace NS::Object
 
     void Scene::DestroyObject(std::uint32_t objectId)
     {
-        m_world.RemoveByObjectId(objectId);
+        m_objects.RemoveByObjectId(objectId);
     }
 
-    void Scene::RebuildWorldFrom(const SceneData& data)
+    void Scene::RebuildObjectsFrom(const SceneData& data)
     {
         // GameObject の型選択は登録一覧、 参照の実体化は各 component の ResolveAssets が行う
         // vcam の brain への付け外しは VirtualCameraComponent が OnStart / OnEndPlay で自分で行う
-        m_world.Rebuild(data, *this, [this](const ObjectData& entry) { return BuildSceneObject(entry, m_assets); });
-        m_world.SyncPhysics(m_physicsWorld);
+        m_objects.Rebuild(data, *this, [this](const ObjectData& entry) { return BuildSceneObject(entry, m_assets); });
+        m_objects.SyncPhysics(m_physicsScene);
 
-        OnWorldChanged();
-        NotifyTransientsWorldChanged();
+        OnObjectsRebuilt();
+        NotifyTransientsObjectsRebuilt();
     }
 
     void Scene::OnUpdate()
     {
         // 補間描画用。 全表示オブジェクトの状態をスナップショットする
-        for (GameObject* obj : m_world)
+        for (GameObject* obj : m_objects)
         {
             obj->Root().Snapshot();
         }
@@ -209,16 +209,16 @@ namespace NS::Object
             m_simulationStepFrames -= 1;
         }
         // カメラが追う前に踏む。自機と衝突の裁定は Update 帯までに終わっている
-        m_world.UpdateObjects(std::numeric_limits<int>::min(), TickPriority::LateUpdate);
-        m_physicsWorld.Update(NS::Core::FrameTimer::FixedDelta());
-        m_world.UpdateObjects(TickPriority::LateUpdate);
-        m_world.SnapshotObjects();
+        m_objects.UpdateObjects(std::numeric_limits<int>::min(), TickPriority::LateUpdate);
+        m_physicsScene.Update(NS::Core::FrameTimer::FixedDelta());
+        m_objects.UpdateObjects(TickPriority::LateUpdate);
+        m_objects.SnapshotObjects();
     }
 
     void Scene::OnShutdown()
     {
-        m_world.Clear();
-        // host も world と一緒に消えた。 控えを残すと破棄済みを指し続ける
+        m_objects.Clear();
+        // host も ObjectList と一緒に消えた。 控えを残すと破棄済みを指し続ける
         m_brain = nullptr;
     }
 
@@ -288,7 +288,7 @@ namespace NS::Object
         NS::Graphics::RenderSettings resolved = projectDefaults;
         // 照明は配置された平行光から取る。無ければ project 既定値がそのまま残る
         // 複数置かれた場合は多灯合成せず、走査順で最後の有効な 1 本が勝つ
-        m_world.ForEachComponent<DirectionalLightComponent>([&resolved, this](DirectionalLightComponent& light) {
+        m_objects.ForEachComponent<DirectionalLightComponent>([&resolved, this](DirectionalLightComponent& light) {
             if (!light.IsActive())
                 return;
             if (light.Direction().LengthSquared() > 1e-6f)
@@ -313,7 +313,6 @@ namespace NS::Object
     {
         // 更新は終わっているので bounds は 1 フレームに 1 回で足りる。ビューを何枚描いても同じ値
         SyncRenderBounds();
-        // renderer と camera は Game 層しか知らないため、コンテキスト構築は OnRenderScene に任せる
         OnRenderScene();
     }
 
@@ -424,8 +423,8 @@ namespace NS::Object
 #endif
 
         // 重ね描きを持つ component を最前面へ重ねる。 演出の中身はゲーム側の component が持つ
-        // 並びは配置物の順、 その中は component を積んだ順。 帯の priority は見ない
-        for (GameObject* obj : m_world)
+        // 並びは配置物の順、 その中は component の priority 昇順
+        for (GameObject* obj : m_objects)
         {
             for (Component* comp : obj->Components())
             {

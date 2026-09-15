@@ -4,7 +4,7 @@
 #include <Runtime/Object/Components/BoxColliderComponent.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Scene/Scene.h>
-#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/PhysicsScene.h>
 #include <gtest/gtest.h>
 
 namespace
@@ -106,7 +106,7 @@ TEST(SceneTest, DestroyObjectKeepsTheSurvivingColliderBodyId)
 
     NS::Object::Scene scene;
     scene.LoadFromData(std::move(data));
-    NS::Object::GameObject* survivingObject = scene.World().FindByObjectId(20);
+    NS::Object::GameObject* survivingObject = scene.Objects().FindByObjectId(20);
     ASSERT_NE(survivingObject, nullptr);
     auto* collider = survivingObject->FindComponent<NS::Object::BoxColliderComponent>();
     ASSERT_NE(collider, nullptr);
@@ -140,7 +140,7 @@ namespace
     }
 } // namespace
 
-TEST(SceneTest, OnUpdateStepsThePhysicsWorld)
+TEST(SceneTest, OnUpdateStepsThePhysicsScene)
 {
     NS::Object::Scene scene;
     const JPH::BodyID id = DropSphereInto(scene);
@@ -150,7 +150,7 @@ TEST(SceneTest, OnUpdateStepsThePhysicsWorld)
     EXPECT_LT(scene.Physics().BodyPosition(id).y, 9.0f);
 }
 
-TEST(SceneTest, EditModeLeavesThePhysicsWorldStill)
+TEST(SceneTest, EditModeLeavesThePhysicsSceneStill)
 {
     NS::Object::Scene scene;
     const JPH::BodyID id = DropSphereInto(scene);
@@ -161,7 +161,7 @@ TEST(SceneTest, EditModeLeavesThePhysicsWorldStill)
     EXPECT_NEAR(scene.Physics().BodyPosition(id).y, 10.0f, 1.0e-5f);
 }
 
-TEST(SceneTest, PausedSceneLeavesThePhysicsWorldStill)
+TEST(SceneTest, PausedSceneLeavesThePhysicsSceneStill)
 {
     NS::Object::Scene scene;
     const JPH::BodyID id = DropSphereInto(scene);

@@ -12,7 +12,7 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 #include <algorithm>
 #include <cmath>
@@ -58,9 +58,10 @@ namespace NS::Game::Level
 
     NS::Core::Vector3 LaunchedBodyComponent::Velocity() const noexcept
     {
-        if (!m_flying || m_physics == nullptr)
+        NS::Physics::PhysicsScene* physics = ScenePhysics();
+        if (!m_flying || physics == nullptr)
             return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-        return m_physics->BodyVelocity(m_bodyId);
+        return physics->BodyVelocity(m_bodyId);
     }
 
     void LaunchedBodyComponent::SetRestLifeSeconds(float seconds) noexcept
@@ -75,7 +76,7 @@ namespace NS::Game::Level
         m_debrisCount = std::max(0, count);
     }
 
-    JPH::BodyID LaunchedBodyComponent::CreateFlyingBody(NS::Physics::PhysicsWorld& physics) const
+    JPH::BodyID LaunchedBodyComponent::CreateFlyingBody(NS::Physics::PhysicsScene& physics) const
     {
         NS::Core::AABB bounds{};
         if (!TryGetColliderBounds(*Owner(), bounds))
@@ -107,10 +108,11 @@ namespace NS::Game::Level
 
     void LaunchedBodyComponent::RemoveFlyingBody() noexcept
     {
-        if (m_physics == nullptr)
+        NS::Physics::PhysicsScene* physics = ScenePhysics();
+        if (physics == nullptr)
             return;
 
-        m_physics->RemoveBody(m_bodyId);
+        physics->RemoveBody(m_bodyId);
         m_bodyId = JPH::BodyID{};
     }
 
@@ -127,8 +129,7 @@ namespace NS::Game::Level
         {
             // 置かれた当たりを先に外す。残すと同じ場所に静的と動的の body が二重に立つ
             SetColliderActive(false);
-            m_physics = &scene->Physics();
-            m_bodyId = CreateFlyingBody(*m_physics);
+            m_bodyId = CreateFlyingBody(scene->Physics());
             if (m_bodyId.IsInvalid())
             {
                 SetColliderActive(true);
@@ -137,8 +138,8 @@ namespace NS::Game::Level
             m_flying = true;
         }
 
-        m_physics->SetBodyVelocity(m_bodyId, velocity);
-        m_physics->SetBodyAngularVelocity(m_bodyId, TumbleFrom(velocity));
+        scene->Physics().SetBodyVelocity(m_bodyId, velocity);
+        scene->Physics().SetBodyAngularVelocity(m_bodyId, TumbleFrom(velocity));
         m_restAge = 0.0f;
     }
 
@@ -222,10 +223,11 @@ namespace NS::Game::Level
             return;
         }
 
-        if (m_physics == nullptr)
+        NS::Physics::PhysicsScene* physics = ScenePhysics();
+        if (physics == nullptr)
             return;
 
-        for (const NS::Physics::BodyContact& contact : m_physics->ContactsOf(m_bodyId))
+        for (const NS::Physics::BodyContact& contact : physics->ContactsOf(m_bodyId))
         {
             if (contact.normal.y < k_WallNormalY)
             {
@@ -234,11 +236,11 @@ namespace NS::Game::Level
             }
         }
 
-        RootTransform().SetPosition(m_physics->BodyPosition(m_bodyId));
-        RootTransform().SetRotation(m_physics->BodyRotation(m_bodyId));
+        RootTransform().SetPosition(physics->BodyPosition(m_bodyId));
+        RootTransform().SetRotation(physics->BodyRotation(m_bodyId));
 
         // 止まったかを決めるのは Jolt の睡眠。速度のしきい値を自分で持つと 2 か所で止まりを判断することになる
-        if (!m_physics->IsBodyAwake(m_bodyId))
+        if (!physics->IsBodyAwake(m_bodyId))
             ComeToRest();
     }
 
@@ -263,8 +265,15 @@ namespace NS::Game::Level
             if (active)
                 collider->SyncToPhysics(scene->Physics());
             else
-                collider->RemoveFromPhysics();
+                collider->RemoveFromPhysics(scene->Physics());
         }
+    }
+
+    NS::Physics::PhysicsScene* LaunchedBodyComponent::ScenePhysics() const noexcept
+    {
+        if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
+            return nullptr;
+        return &Owner()->OwningScene()->Physics();
     }
 
     NS_CLASS(LaunchedBodyComponent)

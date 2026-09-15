@@ -129,8 +129,8 @@ TEST_F(EntityComponentTest, InactiveUpdateSkipsStatesButNotifies)
     EXPECT_EQ(entity.SkippedSteps(), 1);
 }
 
-// シーン無しの検証台には衝突 query 元が無い。落ちずに等速で進む
-TEST_F(EntityComponentTest, MoveWithoutPhysicsWorldAdvancesByVelocity)
+// Scene に居ない GameObject からは PhysicsScene を引けない。落ちずに等速で進む
+TEST_F(EntityComponentTest, MoveWithoutPhysicsSceneAdvancesByVelocity)
 {
     GameObject obj;
     auto& entity = *obj.AddComponent<BareEntity>();

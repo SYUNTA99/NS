@@ -10,16 +10,16 @@
 
 namespace NS::Physics
 {
-    class PhysicsWorld;
+    class PhysicsScene;
 
     //! @brief カプセル 1 本を 1 歩ずつ動かす JPH::CharacterVirtual のラッパー
     //! @details 重力は掛けないので、縦の速度は呼出側が作って Step の引数で渡す
-    //! @pre world は JoltCharacter より長く生きる
+    //! @pre physics は JoltCharacter より長く生きる
     class JoltCharacter
     {
     public:
         //! 半径 radius・半分の高さ halfHeight の縦カプセルで作る
-        JoltCharacter(PhysicsWorld& world, float radius, float halfHeight);
+        JoltCharacter(PhysicsScene& physics, float radius, float halfHeight);
         ~JoltCharacter();
 
         JoltCharacter(const JoltCharacter&) = delete;
@@ -43,7 +43,7 @@ namespace NS::Physics
     private:
         [[nodiscard]] float RestingHeightOnGround() const;
 
-        PhysicsWorld& m_world;
+        PhysicsScene& m_physics;
         float m_radius = 0.4f;
         float m_halfHeight = 0.5f;
         JPH::Ref<JPH::CharacterVirtual> m_character;

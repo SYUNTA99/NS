@@ -1,10 +1,10 @@
 #include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Object.h>
+#include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ObjectRef.h>
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Scene/Scene.h>
-#include <Runtime/Object/World.h>
 #include <gtest/gtest.h>
 
 namespace
@@ -13,7 +13,7 @@ namespace
     using NS::Object::ObjectIdAccess;
     using NS::Object::ObjectRef;
     using NS::Object::Scene;
-    using NS::Object::World;
+    using NS::Object::ObjectList;
 
     //! リフレクションフィールド名で ObjectRef を書き込む。 データ経由の構築と同じ set 経路を通す
     void SetTargetRef(NS::Object::Component& comp, std::uint32_t id)
@@ -34,35 +34,35 @@ namespace
 
 TEST(ObjectRefTest, ResolvesByPersistentId)
 {
-    World world;
-    GameObject* object = world.Spawn<GameObject>();
+    ObjectList objects;
+    GameObject* object = objects.Spawn<GameObject>();
     ObjectIdAccess::SetId(*object, 7u);
 
-    EXPECT_EQ(world.FindObject(ObjectRef{7u}), object);
+    EXPECT_EQ(objects.FindObject(ObjectRef{7u}), object);
     // 未設定 0 と該当なしの id は nullptr
-    EXPECT_EQ(world.FindObject(ObjectRef{}), nullptr);
-    EXPECT_EQ(world.FindObject(ObjectRef{8u}), nullptr);
+    EXPECT_EQ(objects.FindObject(ObjectRef{}), nullptr);
+    EXPECT_EQ(objects.FindObject(ObjectRef{8u}), nullptr);
 
     // 索引は所有リストそのものなので、 破棄すれば参照は引けなくなる
-    world.Clear();
-    EXPECT_EQ(world.FindObject(ObjectRef{7u}), nullptr);
+    objects.Clear();
+    EXPECT_EQ(objects.FindObject(ObjectRef{7u}), nullptr);
 }
 
 TEST(ObjectRefTest, UnnumberedObjectIsNeverResolved)
 {
-    World world;
+    ObjectList objects;
     // 一時オブジェクトと同じ未採番の状態。 0 を素通しすると先頭のこれが引けてしまう
-    world.Spawn<GameObject>();
+    objects.Spawn<GameObject>();
 
-    EXPECT_EQ(world.FindObject(ObjectRef{0u}), nullptr);
-    EXPECT_EQ(world.FindObject(ObjectRef{9u}), nullptr);
+    EXPECT_EQ(objects.FindObject(ObjectRef{0u}), nullptr);
+    EXPECT_EQ(objects.FindObject(ObjectRef{9u}), nullptr);
 }
 
 TEST(ObjectRefTest, FollowResolvesTargetOnStart)
 {
     Scene scene;
 
-    GameObject* target = scene.World().Spawn<GameObject>();
+    GameObject* target = scene.Objects().Spawn<GameObject>();
     ObjectIdAccess::SetId(*target, 5u);
 
     GameObject rig;
@@ -97,7 +97,7 @@ TEST(ObjectRefTest, FollowKeepsWiringWhenRefDangling)
 {
     Scene scene;
 
-    // 参照はあるが world に該当 id が居ない。解決失敗でも既存の結線を壊さない
+    // 参照はあるが ObjectList に該当 id が居ない。解決失敗でも既存の結線を壊さない
     GameObject player;
     GameObject rig;
     rig.AttachScene(&scene);

@@ -15,8 +15,13 @@
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Graphics/Texture.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
+#include "Runtime/Physics/MeshCollision.h"
 
+#include <array>
+#include <cstdint>
 #include <memory>
+#include <string_view>
+#include <vector>
 
 // json.hpp は /W4 で警告が出るため、 この翻訳単位でだけ警告を抑止して取り込む
 #pragma warning(push, 0)
@@ -69,6 +74,63 @@ namespace NS::Object
         constexpr const char* k_SharedPlayer = "player";
         constexpr const char* k_SharedWater = "water";
         constexpr const char* k_SharedShadow = "shadow";
+
+        // 描画の RegisterBuiltins と当たりの GetOrLoadMeshCollision が同じ表から形を作る
+        // 組み込みの形は両者で食い違わない
+        struct BuiltinShape
+        {
+            const char* name;
+            NS::Graphics::MeshGeometry (*make)();
+        };
+
+        constexpr std::array<BuiltinShape, 7> k_BuiltinShapes = {{
+            {k_BuiltinCube, [] { return NS::Graphics::MakeCube(NS::Core::Vector3{0.5f, 0.5f, 0.5f}); }},
+            {k_BuiltinSphere, [] { return NS::Graphics::MakeSphere(0.5f); }},
+            {k_BuiltinWedge45, [] { return NS::Graphics::MakeSlope(45.0f, NS::Core::Vector3{0.5f, 0.5f, 0.5f}); }},
+            {k_BuiltinWedge30, [] { return NS::Graphics::MakeSlope(30.0f, NS::Core::Vector3{0.5f, 0.5f, 0.5f}); }},
+            {k_BuiltinWedge22, [] { return NS::Graphics::MakeSlope(22.5f, NS::Core::Vector3{0.5f, 0.5f, 0.5f}); }},
+            {k_BuiltinWedge15, [] { return NS::Graphics::MakeSlope(15.0f, NS::Core::Vector3{0.5f, 0.5f, 0.5f}); }},
+            {k_BuiltinShadowQuad, [] { return NS::Graphics::MakePlane(NS::Core::Vector2{0.5f, 0.5f}); }},
+        }};
+
+        // 引く先は m_builtins でなく k_BuiltinShapes。 RegisterBuiltins を呼んでいなくても引ける
+        [[nodiscard]] const BuiltinShape* FindBuiltinShape(std::string_view name) noexcept
+        {
+            for (const BuiltinShape& shape : k_BuiltinShapes)
+            {
+                if (name == shape.name)
+                    return &shape;
+            }
+            return nullptr;
+        }
+
+        // index の並びを入れ替えずに写す。 描画の並びのまま (v1 - v0) × (v2 - v0) が表面の外を向く
+        // 当たりの表裏もこの向きで決まる
+        [[nodiscard]] std::vector<NS::Physics::Triangle> MakeTriangles(const NS::Graphics::MeshGeometry& geom)
+        {
+            std::vector<NS::Physics::Triangle> triangles;
+            triangles.reserve(geom.indices.size() / 3);
+            const std::size_t vertexCount = geom.vertices.size();
+            for (std::size_t i = 0; i + 2 < geom.indices.size(); i += 3)
+            {
+                const std::uint32_t a = geom.indices[i];
+                const std::uint32_t b = geom.indices[i + 1];
+                const std::uint32_t c = geom.indices[i + 2];
+                if (a >= vertexCount || b >= vertexCount || c >= vertexCount)
+                    continue;
+                triangles.push_back(NS::Physics::Triangle{
+                    geom.vertices[a].position, geom.vertices[b].position, geom.vertices[c].position});
+            }
+            return triangles;
+        }
+
+        // Jolt の形は当たりを頼まれた時に 1 度だけ作る。 描画だけの mesh には作らない
+        NS::Physics::MeshCollision* WithShape(NS::Physics::MeshCollision* collision)
+        {
+            if (collision != nullptr && collision->shape == nullptr)
+                collision->shape = NS::Physics::CreateMeshShape(collision->triangles);
+            return collision;
+        }
 
         // geom はこの呼出中のみ参照される
         [[nodiscard]] std::unique_ptr<NS::Graphics::StaticMesh> MakeStaticMesh(const NS::Graphics::MeshGeometry& geom)
@@ -177,39 +239,72 @@ namespace NS::Object
         return raw;
     }
 
-    NS::Graphics::Mesh* AssetManager::GetOrLoadMesh(const std::filesystem::path& path)
+    AssetManager::MeshRecord& AssetManager::LoadMeshRecord(const std::filesystem::path& path)
     {
         const std::filesystem::path key = path.lexically_normal();
-        // null エントリは負キャッシュした失敗 path を表す。 get() が nullptr を返し再読込を短絡する
         if (const auto it = m_meshes.find(key); it != m_meshes.end())
-            return it->second.get();
+            return it->second;
 
+        // 描画と当たりのどちらを先に頼まれても両方ここで作る
+        // 当たりは MeshColliderComponent が描画と同じ参照で頼む。 当たりが先でも GPU mesh は描画に使われる
+        MeshRecord record;
         const NS::Graphics::MeshGeometry geom = NS::Graphics::LoadGltfMesh(key.string());
         if (geom.vertices.empty() || geom.indices.empty())
         {
-            NS_LOG_WARN(Graphics, "AssetManager::GetOrLoadMesh: mesh の読込失敗 / 空: {}", key.string());
-            // 壊れた path を負キャッシュし、 同じ参照を持つ object 群が毎回ディスク I/O を踏むのを防ぐ
-            m_meshes.emplace(key, nullptr);
-            return nullptr;
+            NS_LOG_WARN(Graphics, "AssetManager: mesh の読込失敗 / 空: {}", key.string());
         }
-
-        std::unique_ptr<NS::Graphics::StaticMesh> mesh = MakeStaticMesh(geom);
-        if (mesh == nullptr || !mesh->IsValid())
+        else
         {
-            NS_LOG_ERROR(Graphics, "AssetManager::GetOrLoadMesh: mesh の GPU 生成失敗: {}", key.string());
-            // GPU 生成失敗も負キャッシュする。 修正後の再試行は Clear() で解いてから
-            m_meshes.emplace(key, nullptr);
-            return nullptr;
+            std::unique_ptr<NS::Graphics::StaticMesh> mesh = MakeStaticMesh(geom);
+            if (mesh == nullptr || !mesh->IsValid())
+                NS_LOG_ERROR(
+                    Graphics,
+                    "AssetManager: mesh の GPU 生成失敗。 描画は cube へフォールバックし、 当たりは本物の形のまま: {}",
+                    key.string());
+            else
+                record.mesh = std::move(mesh);
+            // GPU 生成だけ失敗しても当たりは作る。 device 無しのテストでも当たりを確かめられる
+            // 当たりだけ頼まれた時も GPU 生成を通るので、 device の無いテストでは上のエラーが出る
+            // TODO: コライダーの無い描画だけの mesh も三角形を Clear() まで持つ
+            // 大きな mesh を飾りに多く置いてメモリが効いてきたら、 当たりを頼まれた時に作る形へ移す
+            record.collision = std::make_unique<NS::Physics::MeshCollision>();
+            record.collision->triangles = MakeTriangles(geom);
         }
+        // 失敗した記録も残し、 同じ参照を持つ配置物が毎回ディスクを読むのを防ぐ。 修正後の再試行は Clear() で解いてから
+        return m_meshes.emplace(key, std::move(record)).first->second;
+    }
 
-        NS::Graphics::Mesh* raw = mesh.get();
-        m_meshes.emplace(key, std::move(mesh));
-        return raw;
+    NS::Graphics::Mesh* AssetManager::GetOrLoadMesh(const std::filesystem::path& path)
+    {
+        return LoadMeshRecord(path).mesh.get();
     }
 
     std::size_t AssetManager::MeshCacheSize() const noexcept
     {
         return m_meshes.size();
+    }
+
+    const NS::Physics::MeshCollision* AssetManager::GetOrLoadMeshCollision(const std::string& meshRef)
+    {
+        if (meshRef.empty())
+            return nullptr;
+
+        if (const BuiltinShape* shape = FindBuiltinShape(meshRef))
+        {
+            auto it = m_builtinCollisions.find(meshRef);
+            if (it == m_builtinCollisions.end())
+            {
+                auto collision = std::make_unique<NS::Physics::MeshCollision>();
+                collision->triangles = MakeTriangles(shape->make());
+                it = m_builtinCollisions.emplace(meshRef, std::move(collision)).first;
+            }
+            return WithShape(it->second.get());
+        }
+
+        const std::optional<std::filesystem::path> resolved = ResolveContentPath(meshRef);
+        if (!resolved)
+            return nullptr;
+        return WithShape(LoadMeshRecord(*resolved).collision.get());
     }
 
     LoadedSkinnedModel AssetManager::GetOrLoadSkinnedModel(const std::filesystem::path& path)
@@ -284,7 +379,7 @@ namespace NS::Object
         if (!source.IsValid())
         {
             NS_LOG_WARN(Graphics, "AssetManager: アニメーション glTF の読込失敗 / 空: {}", key.string());
-            // 壊れた path を負キャッシュし、 毎回のディスク I/O を防ぐ。 再試行は Clear() から
+            // 壊れた path を負キャッシュし、 毎回ディスクを読むのを防ぐ。 再試行は Clear() から
             m_animationSources.emplace(key, nullptr);
             return nullptr;
         }
@@ -329,14 +424,8 @@ namespace NS::Object
 
     void AssetManager::RegisterBuiltins()
     {
-        const NS::Core::Vector3 half{0.5f, 0.5f, 0.5f};
-        m_builtins.emplace(k_BuiltinCube, MakeStaticMesh(NS::Graphics::MakeCube(half)));
-        m_builtins.emplace(k_BuiltinSphere, MakeStaticMesh(NS::Graphics::MakeSphere(half.x)));
-        m_builtins.emplace(k_BuiltinWedge45, MakeStaticMesh(NS::Graphics::MakeSlope(45.0f, half)));
-        m_builtins.emplace(k_BuiltinWedge30, MakeStaticMesh(NS::Graphics::MakeSlope(30.0f, half)));
-        m_builtins.emplace(k_BuiltinWedge22, MakeStaticMesh(NS::Graphics::MakeSlope(22.5f, half)));
-        m_builtins.emplace(k_BuiltinWedge15, MakeStaticMesh(NS::Graphics::MakeSlope(15.0f, half)));
-        m_builtins.emplace(k_BuiltinShadowQuad, MakeStaticMesh(NS::Graphics::MakePlane(NS::Core::Vector2{0.5f, 0.5f})));
+        for (const BuiltinShape& shape : k_BuiltinShapes)
+            m_builtins.emplace(shape.name, MakeStaticMesh(shape.make()));
     }
 
     NS::Graphics::StaticMesh* AssetManager::Builtin(std::string_view name) const noexcept
@@ -480,6 +569,7 @@ namespace NS::Object
         m_textures.clear();
         m_shaders.clear();
         m_meshes.clear();
+        m_builtinCollisions.clear();
         m_skinnedModels.clear();
         m_animationSources.clear();
         m_boundClips.clear();

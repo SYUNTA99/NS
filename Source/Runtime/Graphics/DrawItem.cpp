@@ -10,20 +10,24 @@ namespace NS::Graphics
     void IssueDrawItem(Renderer& renderer, const DrawItem& item) noexcept
     {
         if (item.mesh == nullptr || item.material == nullptr)
+        {
             return;
+        }
 
         CommandList& cmd = renderer.Commands();
 
-        // 前回の描画ステートを引き継がないよう、毎回必ずパイプラインを初期化・設定する
+        // 前回の描画ステートを引き継がないよう、描画ごとにパイプラインを設定する
         cmd.SetPipeline(renderer.CommonPipeline(item.blend));
         item.material->CreateInputLayoutFor(*item.mesh);
         item.material->SetParams(renderer, item.constants);
 
-        // ボーンパレットなどの追加データがあれば転送して bind する
+        // ボーンパレットなどの追加データがあれば転送して頂点シェーダのスロットへ設定する
         if (item.extraVsCb != nullptr)
         {
             if (item.extraVsData != nullptr && item.extraVsSize != 0)
+            {
                 cmd.UpdateSubresource(*item.extraVsCb, item.extraVsData, item.extraVsSize);
+            }
             cmd.VSSetConstantBuffer(*item.extraVsCb, item.extraVsSlot);
         }
 

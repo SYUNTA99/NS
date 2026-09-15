@@ -15,7 +15,7 @@ namespace SceneNs = NS::Object;
 
 //! Application 依存のない Scene で、 走行のやり直しと応答 component の挙動を検証する
 //! 応答部品はプレイヤーに載るので、 プレイヤーを 1 体置けば揃う
-//! 世界の駆動は Scene::OnUpdate で、 dt は FrameTimer::FixedDelta の既定 1/60 が使われる
+//! 更新を回すのは Scene::OnUpdate で、 dt は FrameTimer::FixedDelta の既定 1/60 が使われる
 //! 判定と応答 (respawner / finisher) は同じ LateUpdate 帯の並びで済む
 
 namespace
@@ -43,7 +43,7 @@ namespace
     LevelNs::ScreenFadeComponent* FindFade(SceneNs::Scene& scene)
     {
         LevelNs::ScreenFadeComponent* found = nullptr;
-        scene.World().ForEachComponent<LevelNs::ScreenFadeComponent>([&found](LevelNs::ScreenFadeComponent& fade) {
+        scene.Objects().ForEachComponent<LevelNs::ScreenFadeComponent>([&found](LevelNs::ScreenFadeComponent& fade) {
             if (found == nullptr)
                 found = &fade;
         });
@@ -61,7 +61,7 @@ TEST(PlayerResponses, RestartRunPlacesPlayerAtBaseline)
     baseline.objects.push_back(MakePlayerObject(NS::Core::Vector3{7.0f, 2.0f, -4.0f}, NS::Core::Quaternion{}));
     scene.SetPlayBaselineForTest(std::move(baseline));
 
-    auto* player = FindPlayer(scene.World());
+    auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     // やり直しの手順はプレイヤーに載る respawner の持ち物
     player->FindComponent<LevelNs::RespawnerComponent>()->RestartRun();
@@ -80,7 +80,7 @@ TEST(PlayerResponses, FallIntoKillZoneRestartsSameTick)
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();
 
-    auto* player = FindPlayer(scene.World());
+    auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     // 体力を減らしておくと、 全回復が「リスタートが走った」証拠になる
     player->ApplyDamage(5);
@@ -104,7 +104,7 @@ TEST(PlayerResponses, HazardDrainsExactlyOncePerTick)
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();
 
-    auto* player = FindPlayer(scene.World());
+    auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     scene.OnUpdate();
 
@@ -139,7 +139,7 @@ TEST(PlayerResponses, PausedTickAdvancesNothing)
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();
 
-    auto* player = FindPlayer(scene.World());
+    auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     player->ApplyDamage(5);
     scene.SetSimulationPaused(true);
@@ -158,7 +158,7 @@ TEST(PlayerResponses, StepFrameAdvancesExactlyOneTick)
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();
 
-    auto* player = FindPlayer(scene.World());
+    auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
 
     // コマ送り 1 回で hazard がちょうど 1 削り、 その後は止まったまま
@@ -169,7 +169,7 @@ TEST(PlayerResponses, StepFrameAdvancesExactlyOneTick)
     EXPECT_EQ(player->Health(), 7);
 }
 
-TEST(PlayerResponses, DisabledSimulationSkipsWorld)
+TEST(PlayerResponses, DisabledSimulationSkipsObjectUpdates)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData data;
@@ -178,10 +178,10 @@ TEST(PlayerResponses, DisabledSimulationSkipsWorld)
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();
 
-    auto* player = FindPlayer(scene.World());
+    auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
 
-    // 編集モード相当。 世界を回さないので hazard の中でも何も起きない
+    // 編集モード相当。 component の更新が走らないので hazard の中でも何も起きない
     scene.SetSimulationEnabled(false);
     scene.OnUpdate();
     EXPECT_EQ(player->Health(), 8);
@@ -202,7 +202,7 @@ TEST(PlayerResponses, ClearFadesOutRestartsAtBlackThenFadesIn)
     (void)scene.BeginPlayBaseline();
 
     // 体力を減らしておくと、 全回復が「全黒でリスタートが走った」証拠になる
-    auto* player = FindPlayer(scene.World());
+    auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     player->ApplyDamage(5);
     scene.OnUpdate();
@@ -210,7 +210,7 @@ TEST(PlayerResponses, ClearFadesOutRestartsAtBlackThenFadesIn)
     ASSERT_NE(fade, nullptr);
     ASSERT_TRUE(fade->IsFading());
 
-    // シーケンスの間は世界を止めず入力だけ切る
+    // シーケンスの間も Scene の更新は止めず入力だけ切る
     auto* input = player->FindComponent<SceneNs::PlayerInputComponent>();
     ASSERT_NE(input, nullptr);
     EXPECT_FALSE(input->IsActiveSelf());

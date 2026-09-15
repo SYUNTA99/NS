@@ -1,10 +1,10 @@
-#include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Components/CapsuleColliderComponent.h"
+#include "Runtime/Core/AABB.h"
 
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 #include <algorithm>
 #include <cmath>
@@ -115,15 +115,12 @@ namespace NS::Object
         m_excludedFromStaticWorld = excluded;
     }
 
-    void CapsuleColliderComponent::SyncToPhysics(NS::Physics::PhysicsWorld& physics)
+    JPH::BodyID CapsuleColliderComponent::SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current)
     {
         if (m_excludedFromStaticWorld)
-        {
-            TrackBody(physics, JPH::BodyID{});
-            return;
-        }
+            return JPH::BodyID{};
 
-        TrackBody(physics, physics.SyncCapsule(BodyIn(physics), WorldCapsule(), NS::Physics::ObjectLayers::Terrain));
+        return physics.SyncCapsule(current, WorldCapsule(), NS::Physics::ObjectLayers::Terrain);
     }
 
     NS_CLASS(CapsuleColliderComponent)

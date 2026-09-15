@@ -1,5 +1,13 @@
 #include "Editor/GizmoEditor.h"
+#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Graphics/Mesh.h"
+#include "Runtime/Graphics/Renderer.h"
+#include "Runtime/Object/AssetManager.h"
+#include "Runtime/Object/Components/MeshRendererComponent.h"
+#include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Transform.h"
+#include "Runtime/Platform/Input.h"
+#include "Runtime/Platform/Window.h"
 
 #include <array>
 #include <cmath>
@@ -297,6 +305,11 @@ namespace
         ExpectRotatesSame(diff, expected, 1e-4f);
     }
 
+    NS::Core::AABB CenteredBox(const NS::Core::Vector3& halfExtents)
+    {
+        return NS::Core::AABB{NS::Core::Vector3{0.0f, 0.0f, 0.0f}, halfExtents};
+    }
+
     TEST(GizmoEditor, PickNearestObbPicksNearerOfTwoAxisAlignedBoxes)
     {
         using NS::Core::Matrix;
@@ -308,13 +321,13 @@ namespace
             Matrix::CreateTranslation(0.0f, 0.0f, 5.0f),
             Matrix::CreateTranslation(0.0f, 0.0f, 15.0f),
         };
-        const std::array<Vector3, 2> halfExtents = {
-            Vector3{1.0f, 1.0f, 1.0f},
-            Vector3{1.0f, 1.0f, 1.0f},
+        const std::array<NS::Core::AABB, 2> bounds = {
+            CenteredBox(Vector3{1.0f, 1.0f, 1.0f}),
+            CenteredBox(Vector3{1.0f, 1.0f, 1.0f}),
         };
 
         const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
-        const int picked = GizmoEditor::PickNearestOBB(ray, worlds, halfExtents);
+        const int picked = GizmoEditor::PickNearestOBB(ray, worlds, bounds);
         EXPECT_EQ(picked, 0); // 手前 (z=5) の box を選ぶ
     }
 
@@ -324,22 +337,22 @@ namespace
         using NS::Core::Ray;
         using NS::Core::Vector3;
 
-        // 手前 z=5 と奥 z=15 の箱。 mask で手前を対象外にすると、 手前が最近でも奥を拾う
-        // 見えないカメラが重なった可視ブロックの pick を取らない 2 パス目相当の検証
+        // 手前 z=5 と奥 z=15 の箱。 mask で手前を対象外にすると奥を拾う
+        // 見えないカメラが可視ブロックに重なっても、ブロックを先に選ぶ 1 回目の判定の検証
         const std::array<Matrix, 2> worlds = {
             Matrix::CreateTranslation(0.0f, 0.0f, 5.0f),
             Matrix::CreateTranslation(0.0f, 0.0f, 15.0f),
         };
-        const std::array<Vector3, 2> halfExtents = {
-            Vector3{1.0f, 1.0f, 1.0f},
-            Vector3{1.0f, 1.0f, 1.0f},
+        const std::array<NS::Core::AABB, 2> bounds = {
+            CenteredBox(Vector3{1.0f, 1.0f, 1.0f}),
+            CenteredBox(Vector3{1.0f, 1.0f, 1.0f}),
         };
         const std::array<std::uint8_t, 2> mask = {0, 1};
 
         const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
-        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, halfExtents, mask), 1);
-        // mask 無し (空 span) なら従来通り手前を拾う
-        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, halfExtents), 0);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, bounds, mask), 1);
+        // mask 無し (空 span) なら手前を拾う
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, bounds), 0);
     }
 
     TEST(GizmoEditor, PickNearestObbReturnsMinusOneWhenMaskExcludesAllHits)
@@ -348,13 +361,13 @@ namespace
         using NS::Core::Ray;
         using NS::Core::Vector3;
 
-        // 全候補を mask=0 にすると、 ray が当たっても無ヒット扱い。 controller はこの後 2 パス目で全体を撃つ
+        // 全候補を mask=0 にすると、 ray が当たっても無ヒット扱い。 GizmoEditor::Tick はこの後マスク無しで当て直す
         const std::array<Matrix, 1> worlds = {Matrix::CreateTranslation(0.0f, 0.0f, 5.0f)};
-        const std::array<Vector3, 1> halfExtents = {Vector3{1.0f, 1.0f, 1.0f}};
+        const std::array<NS::Core::AABB, 1> bounds = {CenteredBox(Vector3{1.0f, 1.0f, 1.0f})};
         const std::array<std::uint8_t, 1> mask = {0};
 
         const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
-        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, halfExtents, mask), -1);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, bounds, mask), -1);
     }
 
     TEST(GizmoEditor, PickNearestObbReturnsMinusOneWhenRayMisses)
@@ -364,11 +377,11 @@ namespace
         using NS::Core::Vector3;
 
         const std::array<Matrix, 1> worlds = {Matrix::CreateTranslation(0.0f, 0.0f, 5.0f)};
-        const std::array<Vector3, 1> halfExtents = {Vector3{1.0f, 1.0f, 1.0f}};
+        const std::array<NS::Core::AABB, 1> bounds = {CenteredBox(Vector3{1.0f, 1.0f, 1.0f})};
 
         // box は原点周辺 (x in [-1,1])。 x=100 を通る +Z ray は完全に外す
         const Ray ray(Vector3{100.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
-        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, halfExtents), -1);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, bounds), -1);
     }
 
     TEST(GizmoEditor, PickNearestObbHitsRotatedBoxThatAxisAlignedWouldMiss)
@@ -382,8 +395,8 @@ namespace
             Matrix::CreateTranslation(0.0f, 50.0f, 0.0f),    // 遠方でヒットしない
             Matrix::CreateRotationY(NS::Core::k_Pi * 0.25f), // 原点で 45° 回転
         };
-        const std::array<Vector3, 2> halfExtents = {
-            Vector3{1.0f, 1.0f, 1.0f}, Vector3{3.0f, 1.0f, 1.0f}, // ローカル X に長い
+        const std::array<NS::Core::AABB, 2> bounds = {
+            CenteredBox(Vector3{1.0f, 1.0f, 1.0f}), CenteredBox(Vector3{3.0f, 1.0f, 1.0f}), // ローカル X に長い
         };
 
         // ローカル点 (2,0,0) は回転後ワールド (2cos45, 0, -2sin45) ≈ (1.414, 0, -1.414)
@@ -392,7 +405,7 @@ namespace
         const Ray ray(Vector3{k_Sqrt2Half, 10.0f, -k_Sqrt2Half}, Vector3{0.0f, -1.0f, 0.0f});
 
         // 軸平行 AABB {3,1,1} なら z=-1.414 が [-1,1] 外で外すが、 回転考慮なら box1 を拾う
-        const int picked = GizmoEditor::PickNearestOBB(ray, worlds, halfExtents);
+        const int picked = GizmoEditor::PickNearestOBB(ray, worlds, bounds);
         EXPECT_EQ(picked, 1);
     }
 
@@ -405,11 +418,51 @@ namespace
         using NS::Core::Vector3;
 
         const std::array<Matrix, 1> worlds = {Matrix::CreateScale(4.0f, 1.0f, 1.0f)};
-        const std::array<Vector3, 1> halfExtents = {Vector3{1.0f, 1.0f, 1.0f}};
+        const std::array<NS::Core::AABB, 1> bounds = {CenteredBox(Vector3{1.0f, 1.0f, 1.0f})};
 
         // world box は x in [-4,4]。 x=-10 から +X 撃つと x=-4 で当たる
         const Ray ray(Vector3{-10.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f});
-        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, halfExtents), 0);
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, bounds), 0);
+    }
+
+    // 足元が原点の人形の箱は、中心が原点より上にある。2 倍に拡大しても胴を撃てば拾い、足の下は拾わない
+    TEST(GizmoEditor, PickNearestObbHitsScaledBoxWhoseCenterIsAboveTheOrigin)
+    {
+        using NS::Core::Matrix;
+        using NS::Core::Ray;
+        using NS::Core::Vector3;
+
+        const std::array<Matrix, 1> worlds = {Matrix::CreateScale(2.0f) * Matrix::CreateTranslation(0.0f, 0.0f, 5.0f)};
+        const std::array<NS::Core::AABB, 1> bounds = {
+            NS::Core::AABB{Vector3{0.0f, 0.9f, 0.0f}, Vector3{0.3f, 0.9f, 0.2f}},
+        };
+
+        const Ray chest(Vector3{0.0f, 3.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(chest, worlds, bounds), 0);
+
+        const Ray belowFeet(Vector3{0.0f, -0.5f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(belowFeet, worlds, bounds), -1);
+    }
+
+    // 奥の箱は 4 倍に拡大してあり、 ローカルの距離で比べると奥の方が近くなる。
+    // ワールドのレイの上で比べている時だけ手前を選ぶ
+    TEST(GizmoEditor, PickNearestObbPrefersNearerBoxOverFartherScaledBox)
+    {
+        using NS::Core::Matrix;
+        using NS::Core::Ray;
+        using NS::Core::Vector3;
+
+        const std::array<Matrix, 2> worlds = {
+            Matrix::CreateTranslation(0.0f, 0.0f, 5.0f),
+            Matrix::CreateScale(4.0f) * Matrix::CreateTranslation(0.0f, 0.0f, 20.0f),
+        };
+        const std::array<NS::Core::AABB, 2> bounds = {
+            CenteredBox(Vector3{1.0f, 1.0f, 1.0f}),
+            CenteredBox(Vector3{1.0f, 1.0f, 1.0f}),
+        };
+
+        const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, bounds), 0);
     }
 
     TEST(GizmoEditor, PickNearestObbEmptySpanReturnsMinusOne)
@@ -419,8 +472,8 @@ namespace
 
         const Ray ray(Vector3{0.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
         const std::span<const NS::Core::Matrix> emptyWorlds{};
-        const std::span<const NS::Core::Vector3> emptyExtents{};
-        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, emptyWorlds, emptyExtents), -1);
+        const std::span<const NS::Core::AABB> emptyBounds{};
+        EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, emptyWorlds, emptyBounds), -1);
     }
 
     TEST(GizmoEditor, ComputeScaleXAxisOnlyAffectsX)
@@ -837,6 +890,49 @@ namespace
         out = NS::Core::Vector2{(ndcX * 0.5f + 0.5f) * static_cast<float>(k_ViewWidth),
                                 (1.0f - (ndcY * 0.5f + 0.5f)) * static_cast<float>(k_ViewHeight)};
         return true;
+    }
+
+    // Soldier.glb の人形は足元が原点で身長 1.83m。1m 立方の外にある胸 (高さ 1.4m) をクリックしても選べる
+    TEST(GizmoEditorTick, ClickOnTheChestOfADollSelectsIt)
+    {
+        NS::Platform::WindowDesc windowDesc{};
+        windowDesc.title = "ns_gizmo_click_doll";
+        windowDesc.size = NS::Core::Size2D{320, 240};
+        windowDesc.visible = false;
+        NS::Platform::Window window(windowDesc);
+        ASSERT_TRUE(window.IsValid());
+        NS::Graphics::RendererDesc rendererDesc{};
+        rendererDesc.vsync = false;
+        rendererDesc.enableDebugLayer = false;
+        NS::Graphics::Renderer renderer(rendererDesc, window);
+        if (!renderer.IsValid())
+            GTEST_SKIP() << "Device 確立不可 (headless)";
+
+        NS::Object::AssetManager assets{NS::Core::FileSystem::ContentRoot()};
+        NS::Graphics::Mesh* soldier =
+            assets.GetOrLoadMesh(NS::Core::FileSystem::ContentRoot() / "Assets" / "Models" / "Soldier.glb");
+        ASSERT_NE(soldier, nullptr);
+
+        NS::Object::GameObject doll;
+        doll.AddComponent<NS::Object::MeshRendererComponent>()->SetMesh(soldier);
+        const std::array<NS::Object::GameObject*, 1> objects = {&doll};
+
+        const NS::Core::Vector3 chest{0.0f, 1.4f, 0.0f};
+        const NS::Core::Matrix vp = MakeOrbitViewProjection(NS::Core::Vector3{2.0f, 2.5f, -4.0f}, chest);
+        NS::Core::Vector2 click{};
+        ASSERT_TRUE(ProjectPoint(vp, chest, click));
+
+        NS::Platform::Input input;
+        input.Mouse().OnMove(static_cast<int>(click.x), static_cast<int>(click.y));
+        input.Mouse().OnButtonDown(NS::Platform::MouseButton::Left);
+
+        GizmoEditor gizmo;
+        gizmo.SetInput(&input);
+        gizmo.SetActive(true);
+        gizmo.SetSelectableObjects(objects);
+        gizmo.Tick(vp, NS::Editor::ViewRect{0, 0, k_ViewWidth, k_ViewHeight});
+
+        EXPECT_EQ(gizmo.Selected(), &doll.Root());
     }
 
     // 矢印の途中を掴んで画面上で引く。 掴めた軸と、 その軸に沿って動いた量を見る

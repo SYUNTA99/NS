@@ -24,6 +24,11 @@ namespace NS::Graphics
     struct AnimationSource;
 } // namespace NS::Graphics
 
+namespace NS::Physics
+{
+    struct MeshCollision;
+}
+
 namespace NS::Object
 {
     class AssetManager;
@@ -75,7 +80,7 @@ namespace NS::Object
     class AssetManager : public NS::Core::NonCopyable
     {
     public:
-        //! baseDir は将来 file mesh 等の相対 path を解決する基準で、 通常は ContentRoot
+        //! baseDir は shader / texture の相対 path を解決する基準で、 通常は ContentRoot
         explicit AssetManager(std::filesystem::path baseDir) noexcept;
         ~AssetManager();
 
@@ -89,9 +94,17 @@ namespace NS::Object
         //! 現在キャッシュしている mesh エントリ数。 読込失敗を負キャッシュした path も 1 件として数える
         [[nodiscard]] std::size_t MeshCacheSize() const noexcept;
 
+        //! meshRef の形を当たりにして返す。 参照の引き方は ResolveMeshFromRef と同じ
+        //! 三角形は描画の index の並びのままで、 法線 (v1 - v0) × (v2 - v0) が表面の外を向く
+        //! Jolt の形は最初に頼まれた時に 1 度だけ作り、 以後は同じ当たりを返す。 歪みの無い配置物はその形を共有する
+        //! 同じ file を指す参照には、 区切り文字や . / .. の書き方が違っても同じ当たりを返す
+        //! file は GetOrLoadMesh と同じ読込を通るので、 glTF を読むのは描画と合わせて 1 回
+        //! device が無くても当たりは作れる。 読めなかった参照も負キャッシュする
+        //! 空文字・トラバーサル・読込失敗は nullptr。 返す当たりは AssetManager 所有で Clear() まで有効
+        [[nodiscard]] const NS::Physics::MeshCollision* GetOrLoadMeshCollision(const std::string& meshRef);
+
         //! skinned glTF を読み SkeletalMesh を path キーで重複なく所有して返す。 skeleton / clips は
         //! キャッシュ record への参照で返し、 再生状態だけをインスタンス側が持つ。 失敗時は valid=false
-        //! 相対 path は baseDir 基準
         [[nodiscard]] LoadedSkinnedModel GetOrLoadSkinnedModel(const std::filesystem::path& path);
 
         //! アニメーション専用 glTF を path キーで重複なく所有して返す。 読込失敗の path は負キャッシュし
@@ -105,10 +118,12 @@ namespace NS::Object
         [[nodiscard]] const std::vector<NS::Graphics::AnimationClip>* GetOrLoadBoundClips(
             const std::filesystem::path& clipPath, const std::filesystem::path& modelPath);
 
-        //! 手続き生成の組み込み cube / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad を一括登録する
+        //! 手続き生成の組み込み cube / sphere / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad を一括登録する
         //! device 確立後・最初の利用前に 1 度だけ呼ぶ。 既登録名は上書きしない
         void RegisterBuiltins();
         //! 名前キーで組み込み StaticMesh を引く。 未登録は nullptr
+        //! RegisterBuiltins を通っていない AssetManager では全部 nullptr になる
+        //! 同じ名前の当たりは RegisterBuiltins 無しでも GetOrLoadMeshCollision が返す
         [[nodiscard]] NS::Graphics::StaticMesh* Builtin(std::string_view name) const noexcept;
 
         //! matPath の .mat を読み込み composite Material を組んで返す。 shader / texture は内部 leaf を借りて共有
@@ -139,6 +154,16 @@ namespace NS::Object
             NS::Core::Vector3 baseColor{1.0f, 1.0f, 1.0f};
         };
 
+        // file の mesh 1 件。 描画と当たりを 1 回の読込から両方作る。 読込に失敗した path も両方 null で残す
+        struct MeshRecord
+        {
+            std::unique_ptr<NS::Graphics::Mesh> mesh;              // GPU 生成に失敗したら null
+            std::unique_ptr<NS::Physics::MeshCollision> collision; // Jolt の形は当たりを頼まれた時に作る
+        };
+
+        // 正規化した path で記録を引き、 無ければ glTF を読んで作る
+        [[nodiscard]] MeshRecord& LoadMeshRecord(const std::filesystem::path& path);
+
         struct SkinnedModelRecord
         {
             std::unique_ptr<NS::Graphics::SkeletalMesh> mesh;
@@ -152,9 +177,10 @@ namespace NS::Object
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Shader>>
             m_shaders; // path キーの Shader キャッシュ
         std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Texture>>
-            m_textures; // path キーの Texture キャッシュ
-        std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Mesh>>
-            m_meshes; // path キーの Mesh キャッシュ、 null は負キャッシュ
+            m_textures;                                       // path キーの Texture キャッシュ
+        std::map<std::filesystem::path, MeshRecord> m_meshes; // path キーの file mesh
+        std::map<std::string, std::unique_ptr<NS::Physics::MeshCollision>>
+            m_builtinCollisions;                                                          // 組み込み名キーの当たり
         std::map<std::string, std::unique_ptr<NS::Graphics::StaticMesh>> m_builtins;      // path 無し、 leaf と別容器
         std::map<std::filesystem::path, MaterialRecord> m_materials;                      // .mat composite
         std::map<std::string, std::unique_ptr<NS::Graphics::Material>> m_sharedMaterials; // 手続き共有 material

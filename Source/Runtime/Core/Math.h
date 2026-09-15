@@ -166,9 +166,13 @@ namespace NS::Core
     template <typename T> [[nodiscard]] constexpr T Clamp(T value, T lo, T hi) noexcept
     {
         if (value < lo)
+        {
             return lo;
+        }
         if (value > hi)
+        {
             return hi;
+        }
         return value;
     }
 
@@ -181,11 +185,11 @@ namespace NS::Core
         return a + (b - a) * t;
     }
 
-    //! @brief 0 除算よけの下限。単位は m
+    //! @brief 0 除算よけの下限
     //! @details 長さ 2 乗と比べる側は k_Epsilon * k_Epsilon と書く。意味を持つ許容誤差には使わない
     inline constexpr float k_Epsilon = 1e-4f;
 
-    //! float の刻み幅
+    //! 1.0f と次に表現できる float との差
     inline constexpr float k_FloatEpsilon = std::numeric_limits<float>::epsilon();
 
     //! @brief XZ 平面へ畳んだ向きを正規化する
@@ -197,7 +201,10 @@ namespace NS::Core
     {
         const float lengthSq = v.x * v.x + v.z * v.z;
         if (lengthSq < k_Epsilon * k_Epsilon)
+        {
             return false;
+        }
+
         const float invLength = 1.0f / std::sqrt(lengthSq);
         outDirection = Vector3{v.x * invLength, 0.0f, v.z * invLength};
         return true;

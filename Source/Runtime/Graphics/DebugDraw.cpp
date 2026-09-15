@@ -56,10 +56,12 @@ namespace
     {
         LineBackend& b = Backend();
         if (b.initAttempted)
+        {
             return b.valid;
+        }
         b.initAttempted = true;
 
-        auto* device = NS::Graphics::Gpu().device;
+        ID3D11Device* device = NS::Graphics::Gpu().device;
         if (device == nullptr)
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: グローバル Device が無効");
@@ -80,8 +82,7 @@ namespace
             {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
             {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
         };
-        const HRESULT hr =
-            device->CreateInputLayout(layout, 2u, bytecode.data(), bytecode.size(), b.inputLayout.GetAddressOf());
+        const HRESULT hr = device->CreateInputLayout(layout, 2u, bytecode.data(), bytecode.size(), b.inputLayout.GetAddressOf());
         if (FAILED(hr))
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: CreateInputLayout 失敗 (hr=0x{:08X})", static_cast<unsigned>(hr));
@@ -128,7 +129,9 @@ namespace
             const NS::Core::Vector3 point{
                 center.x + u.x * ca + v.x * sa, center.y + u.y * ca + v.y * sa, center.z + u.z * ca + v.z * sa};
             if (i > 0)
+            {
                 PushLine(prev, point, color);
+            }
             prev = point;
         }
     }
@@ -241,8 +244,17 @@ namespace NS::Graphics::DebugDraw
             axisN.y /= axisLen;
             axisN.z /= axisLen;
         }
-        NS::Core::Vector3 perpA =
-            (std::abs(axisN.y) < 0.99f) ? NS::Core::Vector3{0.0f, 1.0f, 0.0f} : NS::Core::Vector3{1.0f, 0.0f, 0.0f};
+
+        NS::Core::Vector3 perpA;
+        if (std::abs(axisN.y) < 0.99f)
+        {
+            perpA = NS::Core::Vector3{ 0.0f, 1.0f, 0.0f };
+        }
+        else
+        {
+            perpA = NS::Core::Vector3{ 1.0f, 0.0f, 0.0f };
+        }
+ 
         perpA = {perpA.y * axisN.z - perpA.z * axisN.y,
                  perpA.z * axisN.x - perpA.x * axisN.z,
                  perpA.x * axisN.y - perpA.y * axisN.x};
@@ -275,7 +287,9 @@ namespace NS::Graphics::DebugDraw
     {
         std::vector<DebugVertex>& store = Storage();
         if (store.empty())
+        {
             return;
+        }
 
         if (!EnsureBackend())
         {

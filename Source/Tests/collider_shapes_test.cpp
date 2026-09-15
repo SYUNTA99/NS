@@ -5,7 +5,8 @@
 #include <Runtime/Object/Components/SphereColliderComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
-#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/MeshCollision.h>
+#include <Runtime/Physics/PhysicsScene.h>
 #include <gtest/gtest.h>
 #include <vector>
 
@@ -93,7 +94,7 @@ TEST(CapsuleColliderTest, SyncToPhysicsSkipsTheOwnerThatSweepsItself)
     obj.AddComponent<NS::Game::Player::PlayerComponent>();
     obj.OnStart();
 
-    NS::Physics::PhysicsWorld physics;
+    NS::Physics::PhysicsScene physics;
     cc.SyncToPhysics(physics);
     EXPECT_EQ(physics.BodyCount(), 0u);
 }
@@ -107,12 +108,14 @@ TEST(CapsuleColliderTest, RotationEulerDegreesRoundTrips)
 
 TEST(MeshColliderTest, WorldTrianglesTransformByOwnerPosition)
 {
-    std::vector<NS::Physics::Triangle> tris = {
-        NS::Physics::Triangle{Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}}};
+    const NS::Physics::MeshCollision collision{
+        {NS::Physics::Triangle{Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}}},
+        nullptr};
 
     NS::Object::GameObject obj;
     obj.Root().SetPosition(Vector3{10.0f, 0.0f, 0.0f});
-    auto& cc = *obj.AddComponent<NS::Object::MeshColliderComponent>(tris);
+    auto& cc = *obj.AddComponent<NS::Object::MeshColliderComponent>();
+    cc.SetCollision(&collision);
 
     const std::vector<NS::Physics::Triangle> world = cc.WorldTriangles();
     ASSERT_EQ(world.size(), 1u);
@@ -124,12 +127,13 @@ TEST(MeshColliderTest, WorldTrianglesTransformByOwnerPosition)
 
 TEST(MeshColliderTest, WithoutOwnerReturnsLocalUnchanged)
 {
-    std::vector<NS::Physics::Triangle> tris = {
-        NS::Physics::Triangle{Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}}};
-    NS::Object::MeshColliderComponent cc(tris);
+    const NS::Physics::MeshCollision collision{
+        {NS::Physics::Triangle{Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}}},
+        nullptr};
+    NS::Object::MeshColliderComponent cc;
+    cc.SetCollision(&collision);
 
     const std::vector<NS::Physics::Triangle> world = cc.WorldTriangles();
     ASSERT_EQ(world.size(), 1u);
     EXPECT_FLOAT_EQ(world[0].v1.x, 1.0f);
-    EXPECT_EQ(cc.LocalTriangles().size(), 1u);
 }

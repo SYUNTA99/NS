@@ -11,7 +11,7 @@
 
 namespace
 {
-    //! 一次遅れの離散化。tau は時定数で値が大きいほど鈍い、dt は step。0 < tau で安定
+    //! 一次遅れの離散化。tau は時定数で値が大きいほど鈍い。0 < tau で安定
     //! 加速と減速の手触りはこの式が決める
     [[nodiscard]] float SmoothApproach(float current, float target, float tau, float dt) noexcept
     {
@@ -67,16 +67,15 @@ namespace NS::Game::Entity
         return m_capsuleCollider != nullptr ? m_capsuleCollider->HalfHeight() : 0.5f;
     }
 
-    void EntityComponent::SetPhysicsWorld(NS::Physics::PhysicsWorld* world) noexcept
+    NS::Physics::PhysicsScene* EntityComponent::ScenePhysics() const noexcept
     {
-        m_world = world;
-        m_character.reset();
+        if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
+            return nullptr;
+        return &Owner()->OwningScene()->Physics();
     }
 
     void EntityComponent::OnStart()
     {
-        if (m_world == nullptr && Owner() != nullptr && Owner()->OwningScene() != nullptr)
-            m_world = &Owner()->OwningScene()->Physics();
         if (Owner() != nullptr)
             m_capsuleCollider = Owner()->FindComponent<NS::Object::CapsuleColliderComponent>();
         // 自分の capsule は Move が掃引する。静的世界に居ると自分に当たって動けない
@@ -115,7 +114,8 @@ namespace NS::Game::Entity
     void EntityComponent::Move(float dt) noexcept
     {
         const NS::Core::Vector3 before = RootTransform().Position();
-        if (m_world == nullptr)
+        NS::Physics::PhysicsScene* physics = ScenePhysics();
+        if (physics == nullptr)
         {
             RootTransform().SetPosition(before + m_velocity * dt);
             m_wasGrounded = m_isGrounded;
@@ -125,8 +125,9 @@ namespace NS::Game::Entity
 
         const float radius = CapsuleRadius();
         const float halfHeight = CapsuleHalfHeight();
+        // AttachScene は新しく組んだ配置物にしか呼ばれない。Scene が変わらないので m_character を作り直さない
         if (m_character == nullptr)
-            m_character = std::make_unique<NS::Physics::JoltCharacter>(*m_world, radius, halfHeight);
+            m_character = std::make_unique<NS::Physics::JoltCharacter>(*physics, radius, halfHeight);
         m_character->Resize(radius, halfHeight);
 
         m_character->Step(before, m_velocity, dt);

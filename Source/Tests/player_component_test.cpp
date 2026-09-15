@@ -9,9 +9,10 @@
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
-#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/PhysicsScene.h>
 
-#include "jolt_test_world.h"
+#include "entity_test_stage.h"
+#include "jolt_test_scene.h"
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -86,12 +87,10 @@ namespace
         return player;
     }
 
-    //! 床を敷かない検証台。1 歩目から下降するので掴みの条件が立つ。block は呼び出し側が先に積む
-    PlayerComponent& MakeLedgeReady(GameObject& owner, NS::Physics::PhysicsWorld& world)
+    //! 床を敷かない検証台。1 歩目から下降するので掴みの条件が立つ。block は呼び出し側が積む
+    PlayerComponent& MakeLedgeReady(GameObject& owner)
     {
-        auto& player = MakePlayer(owner);
-        player.SetPhysicsWorld(&world);
-        return player;
+        return MakePlayer(owner);
     }
 
     [[nodiscard]] std::string_view CurrentStateName(GameObject& owner)
@@ -100,14 +99,13 @@ namespace
     }
 
     //! 床 1 枚を敷いて接地させた自機を返す。壁は呼び出し側が先に足す
-    PlayerComponent& MakeSlamReady(GameObject& owner, NS::Physics::PhysicsWorld& world)
+    PlayerComponent& MakeSlamReady(GameObject& owner, NS::Physics::PhysicsScene& physics)
     {
         auto& player = MakePlayer(owner);
 
-        NsTest::AddBox(world, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 64.0f}});
-        world.OptimizeBroadPhase();
+        NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 64.0f}});
+        physics.OptimizeBroadPhase();
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
-        player.SetPhysicsWorld(&world);
 
         for (int i = 0; i < 30 && !player.IsGrounded(); ++i)
             player.OnUpdate();
@@ -320,9 +318,10 @@ TEST_F(PlayerComponentTest, GroundedJumpSpendsTheJump)
 // 着地するまで 2 回目は出ない。空中で押し続けると無限に登れる
 TEST_F(PlayerComponentTest, SecondJumpDoesNotFireWithoutLanding)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
     ASSERT_TRUE(player.IsGrounded());
 
     player.SetJumpPressed();
@@ -408,9 +407,10 @@ TEST_F(PlayerComponentTest, HalfScaleSplitsWalkSpeedFromMaxSpeed)
 
 TEST_F(PlayerComponentTest, TapSlamFiresOnTheStepAfterTheRequest)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
     ASSERT_TRUE(player.IsGrounded());
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -426,9 +426,10 @@ TEST_F(PlayerComponentTest, TapSlamFiresOnTheStepAfterTheRequest)
 
 TEST_F(PlayerComponentTest, SlamUsesTheAimMarkedAtPress)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.MarkBodySlamAim();
@@ -443,9 +444,10 @@ TEST_F(PlayerComponentTest, SlamUsesTheAimMarkedAtPress)
 
 TEST_F(PlayerComponentTest, StaleAimFallsBackToTheCurrentDirection)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.MarkBodySlamAim();
@@ -463,9 +465,10 @@ TEST_F(PlayerComponentTest, StaleAimFallsBackToTheCurrentDirection)
 
 TEST_F(PlayerComponentTest, ChargedSlamFiresWithTheRushSpeed)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.RequestBodySlam(1.0f);
@@ -516,9 +519,10 @@ TEST_F(PlayerComponentTest, SecondSlamDoesNotFireInAir)
 // 空中で使い切っても、足が地面に付けば次の 1 発が戻る
 TEST_F(PlayerComponentTest, LandingRestoresTheSlam)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
     ASSERT_TRUE(player.IsGrounded());
 
     player.SetJumpPressed();
@@ -548,9 +552,10 @@ TEST_F(PlayerComponentTest, LandingRestoresTheSlam)
 // 地上の連打まで止めると走りの中で当て直せない。接地したままの突進は明けた歩で続けて出せる
 TEST_F(PlayerComponentTest, GroundedSlamsFireBackToBack)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.RequestBodySlam(1.0f);
@@ -571,11 +576,12 @@ TEST_F(PlayerComponentTest, GroundedSlamsFireBackToBack)
 // 進みを突進の速さから積むと、壁に押し付けた歩も進んだ扱いになり、距離を走り切るまで突進が終わらない
 TEST_F(PlayerComponentTest, SlamAgainstAWallEndsWithoutRunningTheFullDistance)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
     // 壁の面は x=0.45。半径 0.4 の自機との隙間は 0.05
-    NsTest::AddBox(world, AABB{Vector3{0.95f, 1.0f, 0.0f}, Vector3{0.5f, 1.0f, 4.0f}});
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::AddBox(physics, AABB{Vector3{0.95f, 1.0f, 0.0f}, Vector3{0.5f, 1.0f, 4.0f}});
+    auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.RequestBodySlam(1.0f);
@@ -592,11 +598,11 @@ TEST_F(PlayerComponentTest, SlamAgainstAWallEndsWithoutRunningTheFullDistance)
 }
 
 // 出せない歩の押しをその場で捨てると連打が取りこぼされる。先行入力時間ぶん覚える
+// Scene の中ではカメラの前が向きになるので、向きの無い歩は Scene の外でしか作れない
 TEST_F(PlayerComponentTest, BufferedRequestSurvivesInsideTheWindow)
 {
     GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    auto& player = MakePlayer(obj);
 
     player.RequestBodySlam(1.0f);
     for (int i = 0; i < 5; ++i)
@@ -610,11 +616,11 @@ TEST_F(PlayerComponentTest, BufferedRequestSurvivesInsideTheWindow)
 }
 
 // 覚え続けると忘れた頃に勝手に出る。先行入力時間で失効させる
+// Scene の中ではカメラの前が向きになるので、向きの無い歩は Scene の外でしか作れない
 TEST_F(PlayerComponentTest, BufferedRequestExpiresAfterTheBufferTime)
 {
     GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    auto& player = MakePlayer(obj);
 
     player.RequestBodySlam(1.0f);
     for (int i = 0; i < 20; ++i)
@@ -650,8 +656,7 @@ TEST_F(PlayerComponentTest, AimsAtTheCameraForwardWithoutInput)
 TEST_F(PlayerComponentTest, FallsBackToTheVelocityWithoutInputOrCamera)
 {
     GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    auto& player = MakePlayer(obj);
 
     player.SetVelocity(Vector3{5.0f, 0.0f, 0.0f});
     player.RequestBodySlam(1.0f);
@@ -663,11 +668,11 @@ TEST_F(PlayerComponentTest, FallsBackToTheVelocityWithoutInputOrCamera)
 }
 
 // 長さ 0 のまま正規化すると 0 除算になる。向きが 1 つも決まらない歩は出さない
+// Scene の中ではカメラの前が向きになるので、向きの無い歩は Scene の外でしか作れない
 TEST_F(PlayerComponentTest, DoesNotFireWithoutAnyDirection)
 {
     GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    auto& player = MakePlayer(obj);
 
     player.RequestBodySlam(1.0f);
     player.OnUpdate();
@@ -679,9 +684,10 @@ TEST_F(PlayerComponentTest, DoesNotFireWithoutAnyDirection)
 // NaN は 0..1 への丸めを素通りして溜め量に残る
 TEST_F(PlayerComponentTest, NonFiniteChargeIsTreatedAsTap)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.RequestBodySlam(std::numeric_limits<float>::quiet_NaN());
@@ -695,9 +701,10 @@ TEST_F(PlayerComponentTest, NonFiniteChargeIsTreatedAsTap)
 // 突進中に曲がれると当てる間合いを詰める意味が消える
 TEST_F(PlayerComponentTest, RushIgnoresDirectionInput)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.RequestBodySlam(1.0f);
@@ -715,9 +722,10 @@ TEST_F(PlayerComponentTest, RushIgnoresDirectionInput)
 
 TEST_F(PlayerComponentTest, RushEndsAfterTheRushDistance)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
     const float startX = obj.Root().Position().x;
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -739,10 +747,11 @@ TEST_F(PlayerComponentTest, RushEndsAfterTheRushDistance)
 // 壁で止められると距離が減らず突進から出られなくなる。進めない歩が続いたら打ち切る
 TEST_F(PlayerComponentTest, RushEndsWhenTheWallStopsIt)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, AABB{Vector3{2.0f, 1.0f, 0.0f}, Vector3{0.5f, 2.0f, 8.0f}});
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, AABB{Vector3{2.0f, 1.0f, 0.0f}, Vector3{0.5f, 2.0f, 8.0f}});
+    auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.RequestBodySlam(1.0f);
@@ -763,9 +772,10 @@ TEST_F(PlayerComponentTest, RushEndsWhenTheWallStopsIt)
 // 短押しは隙の小さい移動技。突進より短い距離で終わる
 TEST_F(PlayerComponentTest, TapHopEndsAfterTheShortDistance)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
     const float startX = obj.Root().Position().x;
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -790,9 +800,10 @@ TEST_F(PlayerComponentTest, TapHopEndsAfterTheShortDistance)
 // 途中で着地すると残りを地面の上で滑り、走っていないのに動いて見える
 TEST_F(PlayerComponentTest, TapSlamStaysAirborneUntilTheEndOfTheLunge)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
     const Vector3 start = obj.Root().Position();
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -831,9 +842,10 @@ TEST_F(PlayerComponentTest, TapSlamStaysAirborneUntilTheEndOfTheLunge)
 
 TEST_F(PlayerComponentTest, ProgressRisesThenCancelResets)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
     EXPECT_FLOAT_EQ(player.BodySlamProgress01(), 0.0f);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -858,9 +870,10 @@ TEST_F(PlayerComponentTest, ProgressRisesThenCancelResets)
 // 踏み込みは先行入力の秒より長い。突進中に期限を数えると、明ける前に押しが消える
 TEST_F(PlayerComponentTest, BufferedRequestSurvivesALongerRush)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.RequestBodySlam(0.0f);
@@ -888,9 +901,10 @@ TEST_F(PlayerComponentTest, BufferedRequestSurvivesALongerRush)
 // 突進中の押しをその歩で捨てると連打が取りこぼされる。突進明けの歩で消費する
 TEST_F(PlayerComponentTest, BufferedRequestFiresWhenTheRushEnds)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.RequestBodySlam(0.0f);
@@ -913,9 +927,10 @@ TEST_F(PlayerComponentTest, BufferedRequestFiresWhenTheRushEnds)
 // 1 歩が状態機械を通っているかを状態名で見る。値だけでは 1 本道のままでも同じ結果になる
 TEST_F(PlayerComponentTest, StaysIdleWhileGroundedWithoutInput)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
     ASSERT_TRUE(player.IsGrounded());
 
     player.OnUpdate();
@@ -925,9 +940,10 @@ TEST_F(PlayerComponentTest, StaysIdleWhileGroundedWithoutInput)
 
 TEST_F(PlayerComponentTest, MovesToWalkWhileTheRunInputIsHeld)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
     ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -949,9 +965,10 @@ TEST_F(PlayerComponentTest, MovesToFallWithoutGround)
 // 押した歩に移らないと突進の初速がその歩に乗らない
 TEST_F(PlayerComponentTest, MovesToBodySlamOnTheStepOfTheRequest)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.RequestBodySlam(1.0f);
@@ -962,9 +979,10 @@ TEST_F(PlayerComponentTest, MovesToBodySlamOnTheStepOfTheRequest)
 
 TEST_F(PlayerComponentTest, ResetStateReturnsToTheFirstState)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    auto& player = MakeSlamReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     ASSERT_EQ(CurrentStateName(obj), "Walk");
@@ -976,11 +994,12 @@ TEST_F(PlayerComponentTest, ResetStateReturnsToTheFirstState)
 
 TEST_F(PlayerComponentTest, GrabsLedgeWhenDescendingIntoEdge)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
-    world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -995,11 +1014,12 @@ TEST_F(PlayerComponentTest, GrabsLedgeWhenDescendingIntoEdge)
 
 TEST_F(PlayerComponentTest, DoesNotGrabWhileGrounded)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
-    world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -1010,11 +1030,12 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhileGrounded)
 
 TEST_F(PlayerComponentTest, DoesNotGrabWhileAscending)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
-    world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -1027,11 +1048,12 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhileAscending)
 
 TEST_F(PlayerComponentTest, DoesNotGrabWithoutForwardInput)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
-    world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
@@ -1043,11 +1065,12 @@ TEST_F(PlayerComponentTest, DoesNotGrabWithoutForwardInput)
 // 手の高さの帯を外れた縁は掴まない。block 上端より 2m 高い所から前へ押しても素通りする
 TEST_F(PlayerComponentTest, DoesNotGrabOutsideTheHandBand)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
-    world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 2.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -1059,12 +1082,13 @@ TEST_F(PlayerComponentTest, DoesNotGrabOutsideTheHandBand)
 // 登り先が別の block で塞がれた縁は掴まない。オーバーハングの下でぶら下がったまま出られなくなる
 TEST_F(PlayerComponentTest, DoesNotGrabWhenTheClimbTargetIsBlocked)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
-    NsTest::AddBox(world, MakeBlock(0.0f, 1.0f, 0.0f));
-    world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    NsTest::AddBox(physics, MakeBlock(0.0f, 1.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -1075,11 +1099,12 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhenTheClimbTargetIsBlocked)
 
 TEST_F(PlayerComponentTest, HangHoldsTheLedgeHeightWithoutGravity)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
-    world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -1099,11 +1124,12 @@ TEST_F(PlayerComponentTest, HangHoldsTheLedgeHeightWithoutGravity)
 // 前入力での自動登りは最小ぶら下がり時間だけ待つ。壁に向かう入力のまま即登り切ると掴まりが見えない
 TEST_F(PlayerComponentTest, ForwardInputWaitsForTheMinimumHangTime)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
-    world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -1125,11 +1151,12 @@ TEST_F(PlayerComponentTest, ForwardInputWaitsForTheMinimumHangTime)
 
 TEST_F(PlayerComponentTest, JumpClimbsWithoutWaiting)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
-    world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -1157,11 +1184,12 @@ TEST_F(PlayerComponentTest, JumpClimbsWithoutWaiting)
 
 TEST_F(PlayerComponentTest, BackInputDropsAwayFromTheFace)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
-    world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -1181,11 +1209,12 @@ TEST_F(PlayerComponentTest, BackInputDropsAwayFromTheFace)
 // 放しても入力を倒し続けた時の即再掴みを止める。止めないと縁から離れられない
 TEST_F(PlayerComponentTest, DropBlocksTheRegrabForTheCooldown)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
-    world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -1206,13 +1235,14 @@ TEST_F(PlayerComponentTest, DropBlocksTheRegrabForTheCooldown)
 
 TEST_F(PlayerComponentTest, ShimmyMovesAlongTheLedge)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 1.0f));
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, -1.0f));
-    world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 1.0f));
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, -1.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -1231,11 +1261,12 @@ TEST_F(PlayerComponentTest, ShimmyMovesAlongTheLedge)
 
 TEST_F(PlayerComponentTest, ShimmyStopsAtTheLedgeEnd)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
-    world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -1253,12 +1284,13 @@ TEST_F(PlayerComponentTest, ShimmyStopsAtTheLedgeEnd)
 
 TEST_F(PlayerComponentTest, ShimmyIgnoresInputInsideTheDeadzone)
 {
-    GameObject obj;
-    NS::Physics::PhysicsWorld world;
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 0.0f));
-    NsTest::AddBox(world, MakeBlock(0.0f, 0.0f, 1.0f));
-    world.OptimizeBroadPhase();
-    auto& player = MakeLedgeReady(obj, world);
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 1.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);

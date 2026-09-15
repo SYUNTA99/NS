@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <coroutine>
 #include <cstddef>
@@ -11,7 +11,7 @@ namespace NS::Core
 {
     //! @brief 複数フレームにまたがる演出手順のシーケンス。co_await で待ちを挟みつつ上から下へ書く
     //! @details CoroutineRunner が所有と駆動を持つ。シーケンスの中で待ちをまたいで生ポインタを持たないこと
-    //! (待っている間に所有側が破棄され得る)。破棄はフレームごと捨てる方式で、途中再開はしない
+    //! 待っている間に持ち主が破棄され得る。破棄はコルーチンフレームごと捨てる方式で、途中再開はしない
     class Coroutine
     {
     public:
@@ -38,7 +38,9 @@ namespace NS::Core
         ~Coroutine()
         {
             if (m_handle)
+            {
                 m_handle.destroy();
+            }
         }
 
         Coroutine(const Coroutine&) = delete;
@@ -49,7 +51,9 @@ namespace NS::Core
             if (this != &other)
             {
                 if (m_handle)
+                {
                     m_handle.destroy();
+                }
                 m_handle = std::exchange(other.m_handle, {});
             }
             return *this;
@@ -62,7 +66,7 @@ namespace NS::Core
         Handle m_handle{};
     };
 
-    //! @brief 指定秒の待ち。時間は駆動側が Tick へ渡す dt で進む
+    //! @brief 指定秒の待ち。CoroutineRunner::Tick へ渡す dt で進む
     struct WaitSeconds
     {
         float seconds = 0.0f;
@@ -104,8 +108,8 @@ namespace NS::Core
     };
 
     //! @brief 所有するシーケンスの待ちを進め、明けた物を再開する
-    //! @details いつ Tick するかは所有側が決める。止めている間は全シーケンスが止まる (pause はこれで効く)
-    //! CancelAll はシーケンスを途中のまま破棄する (フレーム内の破棄処理は走る)。破棄後の再開は無い
+    //! @details いつ Tick するかは持ち主が決める。止めている間は全シーケンスが止まる。一時停止はこれで効く
+    //! CancelAll はシーケンスを途中のまま破棄する。コルーチンフレームのデストラクタは走る。破棄後の再開は無い
     class CoroutineRunner
     {
     public:
@@ -122,7 +126,9 @@ namespace NS::Core
         {
             Coroutine::Handle handle = coroutine.Release();
             if (!handle)
+            {
                 return;
+            }
             handle.resume();
             if (handle.done())
             {
@@ -184,10 +190,14 @@ namespace NS::Core
         void CancelAll() noexcept
         {
             for (Coroutine::Handle handle : m_handles)
+            {
                 handle.destroy();
+            }
+
             m_handles.clear();
         }
 
+        //! 進行中のシーケンスが 1 本でも残っている場合 true、それ以外の場合は false
         [[nodiscard]] bool IsRunning() const noexcept { return !m_handles.empty(); }
 
     private:

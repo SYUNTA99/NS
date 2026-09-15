@@ -35,9 +35,12 @@ namespace NS::Graphics
             const float span = times[i + 1] - times[i];
             const float f = [&]() -> float {
                 if (span > 0.0f)
+                {
                     return (t - times[i]) / span;
+                }
                 return 0.0f;
             }();
+
             return {i, i + 1, f};
         }
     } // namespace
@@ -110,10 +113,8 @@ namespace NS::Graphics
                 continue;
             }
             BonePose& pose = outPose[boneIndex];
-            pose.translation =
-                SampleVec3(track.positionTimes, track.positionValues, track.positionInterp, t, pose.translation);
-            pose.rotation =
-                SampleQuat(track.rotationTimes, track.rotationValues, track.rotationInterp, t, pose.rotation);
+            pose.translation = SampleVec3(track.positionTimes, track.positionValues, track.positionInterp, t, pose.translation);
+            pose.rotation = SampleQuat(track.rotationTimes, track.rotationValues, track.rotationInterp, t, pose.rotation);
             pose.scale = SampleVec3(track.scaleTimes, track.scaleValues, track.scaleInterp, t, pose.scale);
         }
     }

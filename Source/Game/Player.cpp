@@ -14,9 +14,9 @@
 #include "Runtime/Object/Components/PlayerInputComponent.h"
 #include "Runtime/Object/Components/ShadowComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
+#include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
-#include "Runtime/Object/World.h"
 
 #include <cstring>
 
@@ -45,7 +45,7 @@ Player::Player() noexcept
     AddComponent<NS::Game::Player::PlayerInputRelayComponent>();
     // 命は player 自身の持ち物。hazard 等のルール配置物がこれを削る
     AddComponent<NS::Game::Level::HealthComponent>();
-    // 接地シャドウ。mesh / material / 衝突 world は後から注入される
+    // 接地シャドウ。mesh / material は後から注入される
     AddComponent<NS::Object::ShadowComponent>();
 
     // ルール判定への応答。死んだらやり直す・ゴールでクリアする・自分の位置を area camera へ渡す、は
@@ -90,9 +90,9 @@ int Player::Health() const noexcept
     return 0;
 }
 
-Player* FindPlayer(const NS::Object::World& world) noexcept
+Player* FindPlayer(const NS::Object::ObjectList& objects) noexcept
 {
-    for (NS::Object::GameObject* obj : world)
+    for (NS::Object::GameObject* obj : objects)
     {
         if (std::strcmp(obj->ClassName(), "Player") == 0)
             return static_cast<Player*>(obj);

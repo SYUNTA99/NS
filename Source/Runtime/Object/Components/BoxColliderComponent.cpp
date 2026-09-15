@@ -1,11 +1,11 @@
+#include "Runtime/Object/Components/BoxColliderComponent.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/OBB.h"
-#include "Runtime/Object/Components/BoxColliderComponent.h"
 
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 #include <algorithm>
 #include <cmath>
@@ -115,7 +115,7 @@ namespace NS::Object
     NS::Core::AABB BoxColliderComponent::WorldAABB() const noexcept
     {
         // 原点中心 + 半径の local box に、 当たり箱の local offset / 回転 → owner の world 変換の順で重ねる
-        // offset 0・回転単位・scale 1・整数位置の grid では結果が従来と一致する。 回転時は内包する軸並行 AABB になる
+        // 回転時は内包する軸並行 AABB になる
         const NS::Core::Matrix combined = CombinedWorldMatrix();
         const NS::Core::AABB local(NS::Core::Vector3{0.0f, 0.0f, 0.0f}, m_halfExtents);
         NS::Core::AABB world;
@@ -132,16 +132,13 @@ namespace NS::Object
         return NS::Core::MakeOBB(translation, rotation, half);
     }
 
-    void BoxColliderComponent::SyncToPhysics(NS::Physics::PhysicsWorld& physics)
+    JPH::BodyID BoxColliderComponent::SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current)
     {
         // 通り抜ける体積も body にする。入れないと重なりの問い合わせに出てこず、触れても判定できない
         if (m_isTrigger)
-        {
-            TrackBody(physics, physics.SyncBox(BodyIn(physics), WorldOBB(), NS::Physics::ObjectLayers::Trigger, true));
-            return;
-        }
+            return physics.SyncBox(current, WorldOBB(), NS::Physics::ObjectLayers::Trigger, true);
 
-        TrackBody(physics, physics.SyncBox(BodyIn(physics), WorldOBB(), NS::Physics::ObjectLayers::Terrain));
+        return physics.SyncBox(current, WorldOBB(), NS::Physics::ObjectLayers::Terrain);
     }
 
     NS_CLASS(BoxColliderComponent)

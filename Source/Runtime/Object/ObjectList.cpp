@@ -1,9 +1,9 @@
-﻿#include "Runtime/Object/World.h"
+﻿#include "Runtime/Object/ObjectList.h"
 
 #include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Scene/SceneData.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 #include <algorithm>
 #include <limits>
@@ -12,10 +12,10 @@
 
 namespace NS::Object
 {
-    World::World() = default;
-    World::~World() = default;
+    ObjectList::ObjectList() = default;
+    ObjectList::~ObjectList() = default;
 
-    void World::Rebuild(const SceneData& data, Scene& scene, const ObjectFactoryFn& factory)
+    void ObjectList::Rebuild(const SceneData& data, Scene& scene, const ObjectFactoryFn& factory)
     {
         // 実行時の一時オブジェクトはデータ由来でないため、 退避して組み直し後も残す
         std::vector<std::unique_ptr<GameObject>> transients;
@@ -109,7 +109,7 @@ namespace NS::Object
             obj->Root().Snapshot();
     }
 
-    GameObject* World::Append(std::unique_ptr<GameObject> obj)
+    GameObject* ObjectList::Append(std::unique_ptr<GameObject> obj)
     {
         if (!obj)
             return nullptr;
@@ -118,7 +118,7 @@ namespace NS::Object
         return raw;
     }
 
-    void World::RemoveByObjectId(std::uint32_t objectId)
+    void ObjectList::RemoveByObjectId(std::uint32_t objectId)
     {
         // 0 は未採番の印。 一時オブジェクトは id を持たないので、 素通しすると先頭の一時が消える
         if (objectId == k_NoObjectId)
@@ -134,14 +134,14 @@ namespace NS::Object
         }
     }
 
-    GameObject* World::ObjectAt(std::size_t index) const noexcept
+    GameObject* ObjectList::ObjectAt(std::size_t index) const noexcept
     {
         if (index >= m_objects.size())
             return nullptr;
         return m_objects[index].get();
     }
 
-    GameObject* World::FindByObjectId(std::uint32_t objectId) noexcept
+    GameObject* ObjectList::FindByObjectId(std::uint32_t objectId) noexcept
     {
         // 0 は未採番の印。 一時オブジェクトは id を持たないので、 素通しすると先頭の一時が引ける
         if (objectId == k_NoObjectId)
@@ -152,38 +152,38 @@ namespace NS::Object
         return nullptr;
     }
 
-    GameObject* World::FindObject(ObjectRef ref) noexcept
+    GameObject* ObjectList::FindObject(ObjectRef ref) noexcept
     {
         return FindByObjectId(ref.id);
     }
 
-    void World::SyncPhysics(NS::Physics::PhysicsWorld& physics)
+    void ObjectList::SyncPhysics(NS::Physics::PhysicsScene& physics)
     {
-        // 世界ごと消さず、collider ごとに既存 body の shape と姿勢を同期する
+        // PhysicsScene を作り直さず、collider ごとに既存 body の shape と姿勢を同期する
         ForEachComponent<ColliderComponent>([&physics](ColliderComponent& collider) {
             if (collider.IsActive())
                 collider.SyncToPhysics(physics);
             else
-                collider.RemoveFromPhysics();
+                collider.RemoveFromPhysics(physics);
         });
         physics.OptimizeBroadPhase();
     }
 
-    void World::UpdateAllObjects()
+    void ObjectList::UpdateAllObjects()
     {
         UpdateObjects(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
         SnapshotObjects();
     }
 
-    void World::SnapshotObjects()
+    void ObjectList::SnapshotObjects()
     {
         for (auto& obj : m_objects)
             obj->Root().Snapshot();
     }
 
-    void World::UpdateObjects(int firstPriority, int lastPriority)
+    void ObjectList::UpdateObjects(int firstPriority, int lastPriority)
     {
-        // 帯の昇順で世界中を回すため、 範囲内の component を一度集めて priority で並べ直す
+        // 帯の昇順で配置物を横断して回すため、 範囲内の component を一度集めて priority で並べ直す
         // stable_sort なので同じ帯の中は配置物の並び順に落ちる
         std::vector<Component*> scheduled;
         for (auto& obj : m_objects)
@@ -208,7 +208,7 @@ namespace NS::Object
         }
     }
 
-    void World::Clear()
+    void ObjectList::Clear()
     {
         // OnEndPlay は生成の逆順で呼ぶ。 依存し合う component の後始末を生成と対称にする
         for (auto it = m_objects.rbegin(); it != m_objects.rend(); ++it)
@@ -216,12 +216,12 @@ namespace NS::Object
         m_objects.clear();
     }
 
-    std::vector<ObjectRefLocation> FindReferencesTo(const World& world, std::uint32_t targetId)
+    std::vector<ObjectRefLocation> FindReferencesTo(const ObjectList& objects, std::uint32_t targetId)
     {
         std::vector<ObjectRefLocation> result;
         if (targetId == k_NoObjectId)
             return result;
-        for (const GameObject* objPtr : world)
+        for (const GameObject* objPtr : objects)
         {
             const auto& components = objPtr->Components();
             for (std::size_t c = 0; c < components.size(); ++c)

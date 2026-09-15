@@ -1,12 +1,12 @@
-#include <gtest/gtest.h>
 #include <Runtime/Object/Components/ShadowComponent.h>
+#include <gtest/gtest.h>
 
 namespace
 {
     using NS::Object::ShadowComponent;
 } // namespace
 
-// 真下の地面探索は PhysicsWorld::RaycastDown が持つ。 検証は jolt_body_test.cpp
+// 真下の地面探索は PhysicsScene::Raycast が持つ。 検証は jolt_body_test.cpp
 
 TEST(ShadowComponentTest, ComputeFadeEndpointsAndClamp)
 {

@@ -13,7 +13,7 @@ namespace NS::Game::Level
 {
     //! @brief ぶつかった場所の床へ寝かせる跡
     //! @details 半透明の板を置き、時間で縮めて消す。消える時は配置物を破棄せず描画と自身の更新を止める
-    //! 更新の最中の破棄は World::UpdateObjects が集めた並びに解放済みの位置を残すため使わない
+    //! 更新の最中の破棄は ObjectList::UpdateObjects が集めた並びに解放済みの位置を残すため使わない
     //! 依存: NS::Object::MeshRendererComponent, NS::Object::Scene
     class ImpactMarkComponent : public NS::Object::Component
     {

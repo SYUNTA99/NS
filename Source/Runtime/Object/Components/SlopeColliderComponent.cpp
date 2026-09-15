@@ -3,7 +3,7 @@
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 #include "Runtime/Physics/WedgeGeometry.h"
 
 namespace NS::Object
@@ -26,10 +26,10 @@ namespace NS::Object
         return tris;
     }
 
-    void SlopeColliderComponent::SyncToPhysics(NS::Physics::PhysicsWorld& physics)
+    JPH::BodyID SlopeColliderComponent::SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current)
     {
         const std::array<NS::Physics::Triangle, 8> triangles = WorldTriangles();
-        TrackBody(physics, physics.SyncMesh(BodyIn(physics), triangles, NS::Physics::ObjectLayers::Terrain));
+        return physics.SyncMesh(current, triangles, NS::Physics::ObjectLayers::Terrain);
     }
 
     NS_CLASS(SlopeColliderComponent)

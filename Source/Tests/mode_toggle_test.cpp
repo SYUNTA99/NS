@@ -45,9 +45,9 @@ namespace
         return object;
     }
 
-    NS::Object::GameObject* FindFirstPlaced(NS::Object::World& world)
+    NS::Object::GameObject* FindFirstPlaced(NS::Object::ObjectList& objects)
     {
-        for (NS::Object::GameObject* obj : world)
+        for (NS::Object::GameObject* obj : objects)
         {
             if (!obj->IsTransient())
                 return obj;
@@ -87,7 +87,7 @@ namespace
     NS::Game::Level::ScreenFadeComponent* FindFade(NS::Object::Scene& scene)
     {
         NS::Game::Level::ScreenFadeComponent* found = nullptr;
-        scene.World().ForEachComponent<NS::Game::Level::ScreenFadeComponent>(
+        scene.Objects().ForEachComponent<NS::Game::Level::ScreenFadeComponent>(
             [&found](NS::Game::Level::ScreenFadeComponent& fade) {
                 if (found == nullptr)
                     found = &fade;
@@ -143,19 +143,19 @@ TEST(ModeToggle, EditorStateIsPreservedAcrossToggle)
     NS::Editor::ObjectSnapshotApplier applier{&scene};
     editor.Editor().SetApplier(&applier);
     editor.Editor().SetFindCellObjectFn([&scene](std::int16_t x, std::int16_t y, std::int16_t z) {
-        return NS::Editor::FindObjectIdAtCell(scene.World(), x, y, z);
+        return NS::Editor::FindObjectIdAtCell(scene.Objects(), x, y, z);
     });
-    editor.Editor().SetAllocateIdFn([&scene]() { return scene.World().AllocateObjectId(); });
+    editor.Editor().SetAllocateIdFn([&scene]() { return scene.Objects().AllocateObjectId(); });
     editor.Editor().PlaceUnderCursorProgrammatic(5, 0, 3);
     const auto undoSizeBefore = editor.Editor().Undo().UndoSize();
     ASSERT_GE(undoSizeBefore, 1u);
-    const auto objectsBefore = scene.World().ObjectCount();
+    const auto objectsBefore = scene.Objects().ObjectCount();
 
     editor.EnterPlay();
     editor.EnterEdit();
 
     EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoSizeBefore);
-    EXPECT_EQ(scene.World().ObjectCount(), objectsBefore);
+    EXPECT_EQ(scene.Objects().ObjectCount(), objectsBefore);
 }
 
 TEST(ModeToggle, SingleFrameFlipIsComplete)
@@ -192,16 +192,16 @@ TEST(ModeToggle, EditModeRebuildKeepsWorldStill)
 
     // 編集中の構造編集で世界が組み直っても、 止めた世界は動き出さない
     NS::Object::ObjectData player = MakePlayerObject(NS::Core::Vector3{0.0f, 2.0f, 0.0f}, NS::Core::Quaternion{});
-    const std::uint32_t playerId = scene.World().AllocateObjectId();
+    const std::uint32_t playerId = scene.Objects().AllocateObjectId();
     applier.ApplyObjectSnapshot(playerId, player);
     NS::Object::ObjectData hazard = MakeTriggerHazard();
     NS::Object::SetObjectPosition(hazard, NS::Core::Vector3{0.0f, 2.0f, 0.0f});
-    const std::uint32_t hazardId = scene.World().AllocateObjectId();
+    const std::uint32_t hazardId = scene.Objects().AllocateObjectId();
     applier.ApplyObjectSnapshot(hazardId, hazard);
 
     scene.OnUpdate();
 
-    Player* live = FindPlayer(scene.World());
+    Player* live = FindPlayer(scene.Objects());
     ASSERT_NE(live, nullptr);
     EXPECT_EQ(live->Health(), 8);
 }
@@ -219,7 +219,7 @@ TEST(ModeToggle, EnterPlayPlacesPlayerAtBaselinePosition)
     editor.EnterPlay();
 
     // プレイヤーの位置は capsule 中心のワールド座標そのもので、凍結スナップショットの値がそのまま入る
-    NS::Object::GameObject* player = FindPlayer(scene.World());
+    NS::Object::GameObject* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     EXPECT_NEAR(player->Root().Position().x, 7.0f, 1e-4f);
     EXPECT_NEAR(player->Root().Position().y, 2.0f, 1e-4f);
@@ -235,14 +235,14 @@ TEST(ModeToggle, EnterEditRestoresPoseMovedDuringPlay)
     scene.LoadFromData(std::move(data));
     editor.EnterPlay();
 
-    NS::Object::GameObject* rock = FindFirstPlaced(scene.World());
+    NS::Object::GameObject* rock = FindFirstPlaced(scene.Objects());
     ASSERT_NE(rock, nullptr);
     const std::uint32_t rockId = rock->Id();
     rock->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
 
     editor.EnterEdit();
 
-    NS::Object::GameObject* restored = scene.World().FindObject(NS::Object::ObjectRef{rockId});
+    NS::Object::GameObject* restored = scene.Objects().FindObject(NS::Object::ObjectRef{rockId});
     ASSERT_NE(restored, nullptr);
     EXPECT_NEAR(restored->Root().Position().x, 1.0f, 1e-4f);
     EXPECT_NEAR(restored->Root().Position().y, 2.0f, 1e-4f);
@@ -258,15 +258,15 @@ TEST(ModeToggle, EnterEditRevivesObjectDestroyedDuringPlay)
     scene.LoadFromData(std::move(data));
     editor.EnterPlay();
 
-    NS::Object::GameObject* rock = FindFirstPlaced(scene.World());
+    NS::Object::GameObject* rock = FindFirstPlaced(scene.Objects());
     ASSERT_NE(rock, nullptr);
     const std::uint32_t rockId = rock->Id();
     scene.DestroyObject(rockId);
-    ASSERT_EQ(scene.World().FindObject(NS::Object::ObjectRef{rockId}), nullptr);
+    ASSERT_EQ(scene.Objects().FindObject(NS::Object::ObjectRef{rockId}), nullptr);
 
     editor.EnterEdit();
 
-    NS::Object::GameObject* revived = scene.World().FindObject(NS::Object::ObjectRef{rockId});
+    NS::Object::GameObject* revived = scene.Objects().FindObject(NS::Object::ObjectRef{rockId});
     ASSERT_NE(revived, nullptr);
     EXPECT_NEAR(revived->Root().Position().x, 1.0f, 1e-4f);
     EXPECT_NEAR(revived->Root().Position().y, 2.0f, 1e-4f);
@@ -284,7 +284,7 @@ TEST(ModeToggle, PlayInspectorEditSurvivesReturnToEdit)
     scene.LoadFromData(std::move(data));
     editor.EnterPlay();
 
-    NS::Object::GameObject* live = FindFirstPlaced(scene.World());
+    NS::Object::GameObject* live = FindFirstPlaced(scene.Objects());
     ASSERT_NE(live, nullptr);
     const std::uint32_t rockId = live->Id();
     live->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
@@ -295,7 +295,7 @@ TEST(ModeToggle, PlayInspectorEditSurvivesReturnToEdit)
 
     editor.EnterEdit();
 
-    NS::Object::GameObject* restored = scene.World().FindObject(NS::Object::ObjectRef{rockId});
+    NS::Object::GameObject* restored = scene.Objects().FindObject(NS::Object::ObjectRef{rockId});
     ASSERT_NE(restored, nullptr);
     EXPECT_NEAR(restored->Root().Position().x, 1.0f, 1e-4f);
     EXPECT_NEAR(restored->Root().Position().y, 2.0f, 1e-4f);
@@ -338,7 +338,7 @@ TEST(ModeToggle, CancelledClearDoesNotRefireAfterReenter)
     scene.LoadFromData(std::move(data));
     editor.EnterPlay();
 
-    Player* player = FindPlayer(scene.World());
+    Player* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     player->Root().SetPosition(NS::Core::Vector3{5.0f, 0.0f, 0.0f});
     scene.OnUpdate();

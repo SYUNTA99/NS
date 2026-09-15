@@ -1,5 +1,5 @@
-#include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Components/ShadowComponent.h"
+#include "Runtime/Core/AABB.h"
 
 #include "Runtime/Graphics/Material.h"
 #include "Runtime/Graphics/RenderContext.h"
@@ -9,7 +9,7 @@
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
-#include "Runtime/Physics/PhysicsWorld.h"
+#include "Runtime/Physics/PhysicsScene.h"
 
 namespace NS::Object
 {
@@ -93,8 +93,10 @@ namespace NS::Object
         const NS::Core::Vector3 origin{ownerWorld._41, ownerWorld._42, ownerWorld._43};
 
         float dist = 0.0f;
-        if (!scene->Physics().RaycastDown(origin, m_maxDrop, dist))
-            return; // 真下に地面が無い奈落上なら描かない
+        if (!scene->Physics().Raycast(origin, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, m_maxDrop, dist))
+        {
+            return; // 真下 maxDrop 以内に地面が無ければ描かない
+        }
 
         const float fade = ComputeFade(dist, m_maxDrop);
         const float alpha = fade * m_baseAlpha;
@@ -111,7 +113,7 @@ namespace NS::Object
         NS::Graphics::DrawItem item{};
         item.mesh = m_mesh;
         item.material = m_material;
-        item.blend = NS::Graphics::BlendMode::Alpha; // 深度書込OFF の半透明として手前に遮蔽される
+        item.blend = NS::Graphics::BlendMode::Alpha; // 深度は読むだけで書かない。手前の物には隠れる
         item.constants.world = world;
         item.constants.viewProj = context.viewProjection;
         item.constants.baseColor = NS::Core::Vector3{alpha, 0.0f, 0.0f}; // x = 高さフェードアルファで shadow.ps が読む

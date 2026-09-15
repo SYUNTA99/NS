@@ -10,7 +10,7 @@ namespace NS::Object
     class Transform;
 
     //! OnUpdate 実行順を制御する priority。値が小さいほど先、同 priority 内は登録順
-    //! 1 体の中の並びに加え、 World::UpdateObjects が配置物を帯ごとに横断して回す時の単位にも使う
+    //! 1 体の中の並びに加え、 ObjectList::UpdateObjects が配置物を帯ごとに横断して回す時の単位にも使う
     //! どの段階を使うかは component を書く人が決める。 段階の間の値 (+10 等) も自由に使える
     struct TickPriority
     {
@@ -26,7 +26,7 @@ namespace NS::Object
     //! @details GameObject::AddComponent<T>() で生成され、 GameObject が unique_ptr で寿命を所有する
     //! Component 自身は所有者 GameObject を生参照する。 owner は生成後に GameObject が注入する
     //! 同じ object 上の Component への参照は OnStart で Owner()->FindComponent<T>() により解決する
-    //! scene の Subsystem は OnStart で Owner()->OwningScene() 経由で借用する
+    //! scene が持つ物は OnStart で Owner()->OwningScene() 経由で借りる
     //! ライフサイクル:
     //!   - OnStart() — Scene attach 直後に 1 回
     //!   - OnUpdate() — fixed step 内で毎回。 IsActive()==false なら skip する
@@ -72,13 +72,15 @@ namespace NS::Object
         virtual void OnEndPlay() {}
 
         //! リフレクションで運んだ参照文字列 (mesh / material 等) を資産の実体へ引き当てる。 既定は何もしない
-        //! world の組み立てが値の適用後に呼ぶ。 AssetManager が無い間 (テスト等) は呼ばれない
+        //! 配置物の組み立てが値の適用後に呼ぶ。 AssetManager が無い間 (テスト等) は呼ばれない
         virtual void ResolveAssets(AssetManager&) {}
 
-        //! このコンポーネント型のリフレクション情報。未リフレクション型は nullptr。エディタが Component* 越しに field を列挙する
+        //! このコンポーネント型のリフレクション情報。未リフレクション型は nullptr。エディタが Component* 越しに field
+        //! を列挙する
         [[nodiscard]] virtual const ReflectionInfo* GetReflection() const noexcept { return nullptr; }
 
-        //! リフレクションの typeName をクラス名として返す。名前の出所をリフレクション 1 本に保つため派生で個別に返さない
+        //! リフレクションの typeName をクラス名として返す。名前の出所をリフレクション 1
+        //! 本に保つため派生で個別に返さない
         [[nodiscard]] const char* ClassName() const noexcept override
         {
             const ReflectionInfo* info = GetReflection();
@@ -87,7 +89,8 @@ namespace NS::Object
             return "";
         }
 
-        //! 自分のリフレクション鎖に target が現れるか。リフレクション照合による is-a 判定。target が nullptr なら常に false
+        //! 自分のリフレクション鎖に target が現れるか。リフレクション照合による is-a 判定。target が nullptr なら常に
+        //! false
         [[nodiscard]] bool IsA(const ReflectionInfo* target) const noexcept;
 
     private:

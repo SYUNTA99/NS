@@ -14,7 +14,7 @@ namespace NS::Object
 
 namespace NS::Physics
 {
-    class PhysicsWorld;
+    class PhysicsScene;
 }
 
 namespace NS::Game::Entity
@@ -24,9 +24,9 @@ namespace NS::Game::Entity
     //! 能力も調整値も持たない
     //! 状態機械は派生が具象の型で持つ。1 歩の中身は HandleStates の中で派生が並べる
     //! TypeRegistry には登録しない。実体化できるのは派生だけ
-    //! 衝突 query 元は OnStart で所属 scene から非所有で借りる
+    //! 衝突の PhysicsScene は使う時に持ち主の Scene から引く。JoltCharacter だけは作った時の PhysicsScene を持ち続ける
     //! dt は NS::Core::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
-    //! 依存: NS::Core, NS::Physics::JoltCharacter / PhysicsWorld, NS::Object::CapsuleColliderComponent
+    //! 依存: NS::Core, NS::Physics::JoltCharacter / PhysicsScene, NS::Object::Scene / CapsuleColliderComponent
     class EntityComponent : public NS::Object::Component
     {
     public:
@@ -54,10 +54,8 @@ namespace NS::Game::Entity
         //! 同居する CapsuleColliderComponent の半分の高さ。無ければ 0.5
         [[nodiscard]] float CapsuleHalfHeight() const noexcept;
 
-        //! 衝突 query 元を非所有で借りる。作り済みの JoltCharacter は捨て、次の Move が借りた world で作り直す
-        //! シーンを立てずに動かすテストが使う。本編は OnStart が所属 scene の world を取る
-        void SetPhysicsWorld(NS::Physics::PhysicsWorld* world) noexcept;
-        [[nodiscard]] NS::Physics::PhysicsWorld* PhysicsWorld() const noexcept { return m_world; }
+        //! 持ち主の Scene の衝突の PhysicsScene。Scene に居なければ nullptr
+        [[nodiscard]] NS::Physics::PhysicsScene* ScenePhysics() const noexcept;
 
         //! 水平の目標速度へ一次遅れで近づける。縦は触らない
         void Accelerate(const NS::Core::Vector3& targetHorizontal, float tau, float dt) noexcept;
@@ -69,13 +67,13 @@ namespace NS::Game::Entity
         void Gravity(float gravity, float dt) noexcept;
 
         //! JoltCharacter へ 1 歩渡し、位置・速度・接地を更新する
-        //! 衝突 world が無ければ当たりを見ずに速度ぶん進め、接地は false にする
+        //! 持ち主が Scene に居なければ当たりを見ずに速度ぶん進め、接地は false にする
         void Move(float dt) noexcept;
 
         //! 接地の通知の受け口。購読は後から足せる
         [[nodiscard]] EntityEvents& Events() noexcept { return m_events; }
 
-        //! 未注入なら所属 scene の衝突 world を借り、同居する CapsuleColliderComponent を控える
+        //! 同居する CapsuleColliderComponent を控え、静的な当たりの世界から外す
         void OnStart() override;
         //! 1 歩ぶん HandleStates を呼ぶ
         void OnUpdate() override;
@@ -91,8 +89,7 @@ namespace NS::Game::Entity
 
         NS::Core::Vector3 m_velocity{0.0f, 0.0f, 0.0f};
         bool m_isGrounded = false;
-        bool m_wasGrounded = false;                   // 直前の Move より前の接地
-        NS::Physics::PhysicsWorld* m_world = nullptr; // 衝突判定に使う physics world。非所有
+        bool m_wasGrounded = false; // 直前の Move より前の接地
         NS::Object::CapsuleColliderComponent* m_capsuleCollider = nullptr;
         std::unique_ptr<NS::Physics::JoltCharacter> m_character;
         EntityEvents m_events;

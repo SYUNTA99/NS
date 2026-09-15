@@ -19,12 +19,12 @@
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/Components/PlayerInputComponent.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Reflection/TypeRegistry.h>
 #include <Runtime/Object/Scene/Scene.h>
-#include <Runtime/Object/World.h>
-#include <Runtime/Physics/PhysicsWorld.h>
+#include <Runtime/Physics/PhysicsScene.h>
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -136,7 +136,7 @@ namespace
         scene.LoadFromData(std::move(data));
 
         Rig rig;
-        Player* live = FindPlayer(scene.World());
+        Player* live = FindPlayer(scene.Objects());
         EXPECT_NE(live, nullptr);
         if (live != nullptr)
         {
@@ -147,7 +147,7 @@ namespace
             if (auto* input = live->FindComponent<SceneNs::PlayerInputComponent>())
                 input->SetActive(false);
         }
-        scene.World().ForEachComponent<LevelNs::BreakableComponent>(
+        scene.Objects().ForEachComponent<LevelNs::BreakableComponent>(
             [&rig](LevelNs::BreakableComponent& breakable) { rig.breakable = &breakable; });
         if (rig.breakable != nullptr)
         {
@@ -157,7 +157,7 @@ namespace
         }
         if (rig.targetBox == nullptr)
         {
-            scene.World().ForEachComponent<SceneNs::BoxColliderComponent>([&rig](SceneNs::BoxColliderComponent& box) {
+            scene.Objects().ForEachComponent<SceneNs::BoxColliderComponent>([&rig](SceneNs::BoxColliderComponent& box) {
                 if (box.Owner()->Root().Position().y > 0.9f)
                     rig.targetBox = &box;
             });
@@ -177,7 +177,7 @@ namespace
     // 帯の範囲は半開なので Update (200) の移動は入らない。押し飛ばされた物と破片を動かさずに済む
     void StepWorld(SceneNs::Scene& scene)
     {
-        scene.World().UpdateObjects(SceneNs::TickPriority::EarlyUpdate, SceneNs::TickPriority::Update);
+        scene.Objects().UpdateObjects(SceneNs::TickPriority::EarlyUpdate, SceneNs::TickPriority::Update);
     }
 
     void Step(SceneNs::Scene& scene, const Rig& rig)
@@ -310,7 +310,7 @@ namespace
         scene.LoadFromData(std::move(data));
 
         BodyRig rig;
-        scene.World().ForEachComponent<LevelNs::LaunchedBodyComponent>(
+        scene.Objects().ForEachComponent<LevelNs::LaunchedBodyComponent>(
             [&rig](LevelNs::LaunchedBodyComponent& body) { rig.body = &body; });
         if (rig.body != nullptr)
         {
@@ -324,9 +324,9 @@ namespace
     // 飛ばされる物が乗る帯を回す。Scene::OnUpdate と同じく物理の 1 歩を LateUpdate 帯の手前へ挟む
     void StepBody(SceneNs::Scene& scene)
     {
-        scene.World().UpdateObjects(SceneNs::TickPriority::Update, SceneNs::TickPriority::LateUpdate);
+        scene.Objects().UpdateObjects(SceneNs::TickPriority::Update, SceneNs::TickPriority::LateUpdate);
         scene.Physics().Update(k_FixedDt);
-        scene.World().UpdateObjects(SceneNs::TickPriority::LateUpdate);
+        scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
     }
 
     // 止まるまで回して掛かった歩数を返す。止まらなければ maxSteps を返す
@@ -352,7 +352,7 @@ namespace
     std::vector<LevelNs::LaunchedBodyComponent*> DebrisBodies(SceneNs::Scene& scene)
     {
         std::vector<LevelNs::LaunchedBodyComponent*> out;
-        scene.World().ForEachComponent<LevelNs::LaunchedBodyComponent>([&out](LevelNs::LaunchedBodyComponent& body) {
+        scene.Objects().ForEachComponent<LevelNs::LaunchedBodyComponent>([&out](LevelNs::LaunchedBodyComponent& body) {
             if (body.Owner()->IsTransient())
                 out.push_back(&body);
         });
@@ -362,7 +362,7 @@ namespace
     int MarkCount(SceneNs::Scene& scene)
     {
         int count = 0;
-        scene.World().ForEachComponent<LevelNs::ImpactMarkComponent>(
+        scene.Objects().ForEachComponent<LevelNs::ImpactMarkComponent>(
             [&count](LevelNs::ImpactMarkComponent&) { ++count; });
         return count;
     }
@@ -531,7 +531,7 @@ TEST(CollisionImpact, NoReboundWithoutBreakableMark)
     EXPECT_FALSE(rig.impact->DidRebound());
 }
 
-// 世界を総当たりで回るので、重なりを見ないと離れた所に置いた物にも反発する
+// 壊せる物を総当たりで見るので、重なりを見ないと離れた所に置いた物にも反発する
 TEST(CollisionImpact, NoReboundAgainstDistantBox)
 {
     SceneNs::Scene scene;
@@ -1607,12 +1607,12 @@ TEST(CollisionImpact, BreakScattersDebrisAndLeavesMark)
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     rig.breakable->SetToughness(1.0f);
     BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
-    const std::size_t before = scene.World().ObjectCount();
+    const std::size_t before = scene.Objects().ObjectCount();
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
     ASSERT_TRUE(rig.impact->DidBreak());
-    EXPECT_EQ(scene.World().ObjectCount(), before + 6);
+    EXPECT_EQ(scene.Objects().ObjectCount(), before + 6);
     EXPECT_EQ(MarkCount(scene), 1);
     const std::vector<LevelNs::LaunchedBodyComponent*> debris = DebrisBodies(scene);
     ASSERT_EQ(debris.size(), 5u);
@@ -1708,12 +1708,12 @@ TEST(CollisionImpact, LaunchLeavesMarkWithoutDebris)
     Rig rig = BuildSlam(scene, k_NearCourse);
     SetInstantImpact(rig);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
-    const std::size_t before = scene.World().ObjectCount();
+    const std::size_t before = scene.Objects().ObjectCount();
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
     ASSERT_TRUE(rig.impact->DidRebound());
-    EXPECT_EQ(scene.World().ObjectCount(), before + 1);
+    EXPECT_EQ(scene.Objects().ObjectCount(), before + 1);
     EXPECT_EQ(MarkCount(scene), 1);
     EXPECT_TRUE(DebrisBodies(scene).empty());
 }
@@ -1728,12 +1728,12 @@ TEST(CollisionImpact, ZeroDebrisCountScattersNone)
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     rig.breakable->SetToughness(1.0f);
     BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
-    const std::size_t before = scene.World().ObjectCount();
+    const std::size_t before = scene.Objects().ObjectCount();
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
     ASSERT_TRUE(rig.impact->DidBreak());
-    EXPECT_EQ(scene.World().ObjectCount(), before + 1);
+    EXPECT_EQ(scene.Objects().ObjectCount(), before + 1);
     EXPECT_TRUE(DebrisBodies(scene).empty());
     EXPECT_EQ(MarkCount(scene), 1);
 }
@@ -1745,12 +1745,12 @@ TEST(CollisionImpact, NoMarkWithoutFloorBelow)
     Rig rig = BuildSlam(scene, SlamCourse{.targetCell = 2, .floorUnderTarget = false});
     SetInstantImpact(rig);
     BeginSlam(scene, rig, k_RunSpeed, 0.0f);
-    const std::size_t before = scene.World().ObjectCount();
+    const std::size_t before = scene.Objects().ObjectCount();
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
     ASSERT_TRUE(rig.impact->DidRebound());
-    EXPECT_EQ(scene.World().ObjectCount(), before);
+    EXPECT_EQ(scene.Objects().ObjectCount(), before);
     EXPECT_EQ(MarkCount(scene), 0);
 }
 
@@ -1827,19 +1827,19 @@ TEST(CollisionImpact, DebrisWaitForRelease)
     EnableBreak(rig);
     rig.breakable->SetToughness(1.0f);
     BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
-    const std::size_t before = scene.World().ObjectCount();
+    const std::size_t before = scene.Objects().ObjectCount();
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
     ASSERT_TRUE(rig.impact->DidBreak());
-    EXPECT_EQ(scene.World().ObjectCount(), before);
+    EXPECT_EQ(scene.Objects().ObjectCount(), before);
 
     Step(scene, rig);
     ASSERT_FALSE(rig.movement->IsActiveSelf());
-    EXPECT_EQ(scene.World().ObjectCount(), before);
+    EXPECT_EQ(scene.Objects().ObjectCount(), before);
 
     const int rest = StepsUntilMovementActive(scene, rig, 60);
     ASSERT_LT(rest, 60);
-    EXPECT_EQ(scene.World().ObjectCount(), before + 6);
+    EXPECT_EQ(scene.Objects().ObjectCount(), before + 6);
 }
 
 TEST(LaunchedBody, LaunchSleepsColliderAndDropsItFromPhysics)
@@ -2156,12 +2156,12 @@ TEST(ImpactMark, SpawnAtPlacesTransientMark)
 {
     NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
     SceneNs::Scene scene;
-    const std::size_t before = scene.World().ObjectCount();
+    const std::size_t before = scene.Objects().ObjectCount();
 
     SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{3.0f, 0.02f, 5.0f});
 
     ASSERT_NE(mark, nullptr);
-    EXPECT_EQ(scene.World().ObjectCount(), before + 1);
+    EXPECT_EQ(scene.Objects().ObjectCount(), before + 1);
     EXPECT_TRUE(mark->IsTransient());
     const Vector3 pos = mark->Root().Position();
     EXPECT_FLOAT_EQ(pos.x, 3.0f);
@@ -2233,7 +2233,7 @@ TEST(ImpactMark, HidesAfterLifeWithoutDestroy)
     SceneNs::Scene scene;
     SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
     ASSERT_NE(mark, nullptr);
-    const std::size_t after = scene.World().ObjectCount();
+    const std::size_t after = scene.Objects().ObjectCount();
 
     for (int i = 0; i < 370; ++i)
         StepBody(scene);
@@ -2244,7 +2244,7 @@ TEST(ImpactMark, HidesAfterLifeWithoutDestroy)
     auto* comp = mark->FindComponent<LevelNs::ImpactMarkComponent>();
     ASSERT_NE(comp, nullptr);
     EXPECT_FALSE(comp->IsActiveSelf());
-    EXPECT_EQ(scene.World().ObjectCount(), after);
+    EXPECT_EQ(scene.Objects().ObjectCount(), after);
 }
 
 TEST(LaunchedBody, ShattersAgainstWall)
@@ -2281,15 +2281,15 @@ TEST(LaunchedBody, LandingOnFloorDoesNotShatter)
 // 飛ばされた物の重力は自機の上昇重力と同じ値
 TEST(LaunchedBody, FallsAtThePlayersUpwardGravity)
 {
-    NS::Physics::PhysicsWorld world;
+    NS::Physics::PhysicsScene physics;
     NS::Core::Sphere ball;
     ball.center = Vector3{0.0f, 50.0f, 0.0f};
     ball.radius = 0.5f;
-    const JPH::BodyID body = world.AddDynamicSphere(ball, NS::Physics::DynamicBodyDesc{});
-    world.OptimizeBroadPhase();
+    const JPH::BodyID body = physics.AddDynamicSphere(ball, NS::Physics::DynamicBodyDesc{});
+    physics.OptimizeBroadPhase();
 
-    world.Update(k_FixedDt);
-    const float fallenSpeed = world.BodyVelocity(body).y;
+    physics.Update(k_FixedDt);
+    const float fallenSpeed = physics.BodyVelocity(body).y;
 
     EXPECT_NEAR(fallenSpeed / k_FixedDt, NS::Game::Player::PlayerStats{}.gravityUp, 1.0f);
 }

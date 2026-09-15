@@ -8,7 +8,7 @@
 
 namespace NS::Object
 {
-    class World;
+    class ObjectList;
 
     struct ObjectIdAccess;
 
@@ -33,8 +33,8 @@ namespace NS::Object
 
     private:
         // id と表示名の書き込みは data 適用の経路だけに絞る
-        // 配置物は World::Rebuild、Component は組み立て側が ObjectIdAccess 越しに書く
-        friend class World;
+        // 配置物は ObjectList::Rebuild、Component は組み立て側が ObjectIdAccess 越しに書く
+        friend class ObjectList;
         friend struct ObjectIdAccess;
         void SetId(std::uint32_t id) noexcept { m_id = id; }
         void SetName(std::string name) noexcept { m_name = std::move(name); }
@@ -44,7 +44,7 @@ namespace NS::Object
     };
 
     //! @brief Component へ永続 id を書くための専用経路。組み立て経路だけが使う
-    //! @details 配置物の id は World が書くので、こちらは Component 用
+    //! @details 配置物の id は ObjectList が書くので、こちらは Component 用
     struct ObjectIdAccess
     {
         static void SetId(Object& object, std::uint32_t id) noexcept { object.SetId(id); }

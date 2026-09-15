@@ -18,7 +18,7 @@ namespace NS::Object
     //! @details 配下 Component は AddComponent<T>() で生成し、 GameObject が unique_ptr で寿命を所有する
     //! 伝播の並びは m_components の priority 昇順、 所有は m_ownedComponents が別に持つ
     //! OnStart / OnUpdate / OnEndPlay は配下 Component へ伝播するだけの補助で、派生の拡張点ではない
-    //! 毎フレームの更新は World が持つ。全配置物の Component を priority 昇順に集めて直接回すため、
+    //! 毎フレームの更新は ObjectList が持つ。全配置物の Component を priority 昇順に集めて直接回すため、
     //! ここの OnUpdate は通らない
     //! FindComponent<T>() は自分の Component 列しか見ない
     class GameObject : public Object
@@ -38,8 +38,8 @@ namespace NS::Object
         //! 一時オブジェクトの印。 Scene::SpawnTransient が立てる。 テストは直接立ててよい
         void SetTransient(bool transient) noexcept { m_transient = transient; }
 
-        //! world の組み直し・当たりの張り直しの後に scene が一時オブジェクトへ知らせる。 データ由来の配置物には来ない
-        virtual void OnWorldChanged() {}
+        //! 配置物の組み直し・当たりの張り直しの後に scene が一時オブジェクトへ知らせる。 データ由来の配置物には来ない
+        virtual void OnObjectsRebuilt() {}
 
         [[nodiscard]] GameObject* Parent() const noexcept { return m_parent; }
         //! parent==nullptr で root 化。Transform の親子関係も同期更新する
@@ -48,10 +48,9 @@ namespace NS::Object
 
         [[nodiscard]] const std::vector<Component*>& Components() const noexcept { return m_components; }
 
-        //! Component 列から型 T の最初の一致を返す。無ければ nullptr。具象型を知らずに同じ object の Component
-        //! を引く読み取り経路 リフレクション鎖の照合で一致を見るため T
-        //! はリフレクション宣言を持つこと。未宣言型はここがコンパイルエラーになり、
-        //! 実行時に静かに見つからない事故を防ぐ。派生型は基底型の検索にも一致する。読み取りのみで所有・順序には触れない
+        //! Component 列から型 T の最初の一致を返す。無ければ nullptr
+        //! リフレクション鎖の照合で一致を見るため T はリフレクション宣言を持つこと。未宣言型はコンパイルエラーになる
+        //! 派生型は基底型の検索にも一致する
         template <class T> [[nodiscard]] T* FindComponent() noexcept
         {
             const auto* target = T::StaticReflection();
@@ -90,7 +89,7 @@ namespace NS::Object
         void OnEndPlay();
 
         [[nodiscard]] bool IsAlive() const noexcept { return m_alive; }
-        //! 即時破棄ではなく、次フレーム以降 Scene 側で安全に回収される
+        //! 生存の印を下ろすだけ。この印を見て回収する経路は無く、1 体消すのは Scene::DestroyObject
         void Destroy() noexcept { m_alive = false; }
 
         //! この配置物自身の active 値。親の状態は含まない
@@ -107,8 +106,8 @@ namespace NS::Object
         [[nodiscard]] std::uint32_t Order() const noexcept { return m_order; }
 
     private:
-        // 並び順の書き込みは World::Rebuild の data 適用経路だけに絞る
-        friend class World;
+        // 並び順の書き込みは ObjectList::Rebuild の data 適用経路だけに絞る
+        friend class ObjectList;
         void SetOrder(std::uint32_t order) noexcept { m_order = order; }
 
         //! Component に owner を注入し tick 列へ priority 昇順で挿入する
