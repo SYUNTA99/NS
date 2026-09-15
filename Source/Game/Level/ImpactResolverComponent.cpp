@@ -449,7 +449,7 @@ namespace NS::Game::Level
                 probe.y = targetBounds.Center.y - targetBounds.Extents.y - k_MarkProbeSkin;
 
             float dist = 0.0f;
-            if (scene->Physics().RaycastDown(probe, k_MarkProbeDistance, dist))
+            if (scene->Physics().Raycast(probe, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, k_MarkProbeDistance, dist))
             {
                 floorFound = true;
                 markPosition =

@@ -1,5 +1,5 @@
-#include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Components/ShadowComponent.h"
+#include "Runtime/Core/AABB.h"
 
 #include "Runtime/Graphics/Material.h"
 #include "Runtime/Graphics/RenderContext.h"
@@ -93,8 +93,10 @@ namespace NS::Object
         const NS::Core::Vector3 origin{ownerWorld._41, ownerWorld._42, ownerWorld._43};
 
         float dist = 0.0f;
-        if (!scene->Physics().RaycastDown(origin, m_maxDrop, dist))
-            return; // 真下に地面が無い奈落上なら描かない
+        if (!scene->Physics().Raycast(origin, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, m_maxDrop, dist))
+        {
+            return; // 真下 maxDrop 以内に地面が無ければ描かない
+        }
 
         const float fade = ComputeFade(dist, m_maxDrop);
         const float alpha = fade * m_baseAlpha;

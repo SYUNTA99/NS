@@ -201,6 +201,7 @@ TEST(MeshRefResolution, BuiltCubeMeshColliderStopsRayAtTopFace)
     ASSERT_EQ(physics.BodyCount(), 1u);
 
     float distance = 0.0f;
-    ASSERT_TRUE(physics.RaycastDown(NS::Core::Vector3{0.1f, 2.0f, 0.2f}, 8.0f, distance));
+    ASSERT_TRUE(
+        physics.Raycast(NS::Core::Vector3{0.1f, 2.0f, 0.2f}, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, 8.0f, distance));
     EXPECT_NEAR(distance, 1.5f, 1.0e-3f);
 }

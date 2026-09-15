@@ -584,7 +584,8 @@ TEST(ObjectListTest, MeshColliderTrianglesReachPhysics)
     ASSERT_EQ(stage.physics.BodyCount(), 1u);
 
     float distance = 0.0f;
-    EXPECT_TRUE(stage.physics.RaycastDown(NS::Core::Vector3{0.0f, 2.0f, 0.0f}, 8.0f, distance));
+    EXPECT_TRUE(stage.physics.Raycast(
+        NS::Core::Vector3{0.0f, 2.0f, 0.0f}, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, 8.0f, distance));
     EXPECT_NEAR(distance, 2.0f, 1.0e-3f);
 }
 

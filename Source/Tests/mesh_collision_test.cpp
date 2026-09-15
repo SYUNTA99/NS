@@ -51,7 +51,7 @@ TEST(MeshCollisionTest, SyncMeshShapePlacesSharedShapeAtPoseAndScale)
     ASSERT_FALSE(id.IsInvalid());
 
     float distance = 0.0f;
-    ASSERT_TRUE(physics.RaycastDown(Vector3{12.5f, 5.0f, 0.0f}, 8.0f, distance));
+    ASSERT_TRUE(physics.Raycast(Vector3{12.5f, 5.0f, 0.0f}, Vector3{0.0f, -1.0f, 0.0f}, 8.0f, distance));
     EXPECT_NEAR(distance, 3.0f, 1.0e-3f);
-    EXPECT_FALSE(physics.RaycastDown(Vector3{14.0f, 5.0f, 0.0f}, 8.0f, distance));
+    EXPECT_FALSE(physics.Raycast(Vector3{14.0f, 5.0f, 0.0f}, Vector3{0.0f, -1.0f, 0.0f}, 8.0f, distance));
 }

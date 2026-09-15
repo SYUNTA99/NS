@@ -117,7 +117,7 @@ namespace NS::Physics
 
         //! @brief OBB を通り抜けられる sensor body にする
         //! @details layer は ObjectLayers::Trigger 固定で、2 つの ShouldCollide がどの layer とも組ませない
-        //! 押し戻しも接触の通知も起きず、出てくるのは layer で絞らない RaycastDown・OverlapCapsule・OverlapBox だけ
+        //! 押し戻しも接触の通知も起きず、出てくるのは layer で絞らない Raycast・OverlapCapsule・OverlapBox だけ
         JPH::BodyID AddSensorBox(const NS::Core::OBB& box);
 
         //! OBB の中心と 3 軸をそのまま動的な box body にする
@@ -145,10 +145,14 @@ namespace NS::Physics
         //! 静的専用の形の body は dynamic にできない。警告を出して戻る
         void SetBodyDynamic(JPH::BodyID id, bool dynamic);
 
-        //! @brief origin から真下へ maxDistance までの間で最も近い命中までの距離を outDistance に返す
-        //! @details layer でも shape でも絞らないので、この PhysicsScene の全 body が対象
-        //! maxDistance が正でなければ false。命中が無ければ outDistance を変えない
-        [[nodiscard]] bool RaycastDown(const NS::Core::Vector3& origin, float maxDistance, float& outDistance) const;
+        //! @brief origin から direction へ maxDistance までの間で最も近い命中までの距離を outDistance に返す
+        //! @details direction の長さは問わない。outDistance は direction の長さに依らずワールドの距離
+        //! layer でも shape でも絞らないので、この PhysicsScene の全 body が対象
+        //! maxDistance か direction の長さが正でなければ false。命中が無ければ outDistance を変えない
+        [[nodiscard]] bool Raycast(const NS::Core::Vector3& origin,
+                                   const NS::Core::Vector3& direction,
+                                   float maxDistance,
+                                   float& outDistance) const;
 
         //! @brief capsule に重なっている body の id を集めて返す
         //! @details 形の実物どうしで見るので、回転した box は外接箱ではなく本当の形で判定する

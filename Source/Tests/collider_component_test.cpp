@@ -146,7 +146,7 @@ TEST(ColliderJolt, PlacedMeshCollidersShareOneShape)
 
     EXPECT_EQ(cube->shape->GetRefCount(), before + 2);
     float distance = 0.0f;
-    ASSERT_TRUE(stage.physics.RaycastDown(Vector3{5.9f, 2.0f, 0.0f}, 8.0f, distance));
+    ASSERT_TRUE(stage.physics.Raycast(Vector3{5.9f, 2.0f, 0.0f}, Vector3{0.0f, -1.0f, 0.0f}, 8.0f, distance));
     EXPECT_NEAR(distance, 1.5f, 1.0e-3f);
 }
 
@@ -173,7 +173,7 @@ TEST(ColliderJolt, ShearedMeshColliderKeepsTheDrawnShape)
     mesh->SyncToPhysics(stage.physics);
 
     float distance = 0.0f;
-    ASSERT_TRUE(stage.physics.RaycastDown(Vector3{1.2f, 2.0f, 0.0f}, 8.0f, distance));
+    ASSERT_TRUE(stage.physics.Raycast(Vector3{1.2f, 2.0f, 0.0f}, Vector3{0.0f, -1.0f, 0.0f}, 8.0f, distance));
     EXPECT_NEAR(distance, 1.5f, 1.0e-3f);
 }
 
@@ -239,13 +239,13 @@ TEST(ColliderJolt, SyncingResizedBoxKeepsTheBodyIdAndUpdatesTheJoltShape)
     box->SyncToPhysics(stage.physics);
     const JPH::BodyID first = box->BodyId();
     float distance = 0.0f;
-    EXPECT_FALSE(stage.physics.RaycastDown(Vector3{1.5f, 2.0f, 0.0f}, 4.0f, distance));
+    EXPECT_FALSE(stage.physics.Raycast(Vector3{1.5f, 2.0f, 0.0f}, Vector3{0.0f, -1.0f, 0.0f}, 4.0f, distance));
 
     box->SetHalfExtents(Vector3{2.0f, 0.5f, 0.5f});
     box->SyncToPhysics(stage.physics);
 
     EXPECT_EQ(box->BodyId(), first);
-    EXPECT_TRUE(stage.physics.RaycastDown(Vector3{1.5f, 2.0f, 0.0f}, 4.0f, distance));
+    EXPECT_TRUE(stage.physics.Raycast(Vector3{1.5f, 2.0f, 0.0f}, Vector3{0.0f, -1.0f, 0.0f}, 4.0f, distance));
 }
 
 // 寿命の終わりは持ち主の Scene の physics から外す。 collider は physics を覚えていない

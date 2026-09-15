@@ -236,41 +236,56 @@ TEST(JoltStep, VelocityOfStaticBodyIsZero)
     EXPECT_NEAR(physics.BodyVelocity(id).y, 0.0f, 1.0e-5f);
 }
 
-TEST(JoltQuery, RaycastDownFindsTheFloorBelow)
+TEST(JoltQuery, RaycastDownwardFindsTheFloorBelow)
 {
     PhysicsScene physics;
     physics.AddBox(MakeAxisAlignedBox(Vector3{0.0f, 0.0f, 0.0f}, 4.0f, 0.5f, 4.0f), ObjectLayers::Terrain);
     physics.OptimizeBroadPhase();
 
     float distance = 0.0f;
-    const bool found = physics.RaycastDown(Vector3{0.0f, 3.0f, 0.0f}, 64.0f, distance);
+    const bool found = physics.Raycast(Vector3{0.0f, 3.0f, 0.0f}, Vector3{0.0f, -1.0f, 0.0f}, 64.0f, distance);
 
     EXPECT_TRUE(found);
     EXPECT_NEAR(distance, 2.5f, 1.0e-3f);
 }
 
-TEST(JoltQuery, RaycastDownMissesWhenNothingIsBelow)
+TEST(JoltQuery, RaycastDownwardMissesWhenNothingIsBelow)
 {
     PhysicsScene physics;
     physics.AddBox(MakeAxisAlignedBox(Vector3{20.0f, 0.0f, 0.0f}, 1.0f, 1.0f, 1.0f), ObjectLayers::Terrain);
     physics.OptimizeBroadPhase();
 
     float distance = 0.0f;
-    const bool found = physics.RaycastDown(Vector3{0.0f, 3.0f, 0.0f}, 64.0f, distance);
+    const bool found = physics.Raycast(Vector3{0.0f, 3.0f, 0.0f}, Vector3{0.0f, -1.0f, 0.0f}, 64.0f, distance);
 
     EXPECT_FALSE(found);
 }
 
-TEST(JoltQuery, RaycastDownStopsAtMaxDistance)
+TEST(JoltQuery, RaycastStopsAtMaxDistance)
 {
     PhysicsScene physics;
     physics.AddBox(MakeAxisAlignedBox(Vector3{0.0f, 0.0f, 0.0f}, 4.0f, 0.5f, 4.0f), ObjectLayers::Terrain);
     physics.OptimizeBroadPhase();
 
     float distance = 0.0f;
-    const bool found = physics.RaycastDown(Vector3{0.0f, 3.0f, 0.0f}, 1.0f, distance);
+    const bool found = physics.Raycast(Vector3{0.0f, 3.0f, 0.0f}, Vector3{0.0f, -1.0f, 0.0f}, 1.0f, distance);
 
     EXPECT_FALSE(found);
+}
+
+// 向き (6, 8, 24) は長さ 26、 起点から球の中心までは (3, 4, 12) で 13。 半径 1 なので当たりまで 12
+// 長さを 1 にそろえずに渡すと距離が 26 分の 1 に縮み、 成分を取り違えると球を外れる
+TEST(JoltQuery, RaycastHitsAlongAnObliqueDirection)
+{
+    PhysicsScene physics;
+    physics.AddSphere(Sphere{Vector3{4.0f, 2.0f, 12.5f}, 1.0f}, ObjectLayers::Rock);
+    physics.OptimizeBroadPhase();
+
+    float distance = 0.0f;
+    const bool found = physics.Raycast(Vector3{1.0f, -2.0f, 0.5f}, Vector3{6.0f, 8.0f, 24.0f}, 64.0f, distance);
+
+    EXPECT_TRUE(found);
+    EXPECT_NEAR(distance, 12.0f, 1.0e-3f);
 }
 
 TEST(JoltQuery, OverlapBoxReturnsTheBoundsOfTouchingBodies)
@@ -498,7 +513,8 @@ TEST(JoltOverlap, SensorBoxIsFoundLikeAnyOtherBody)
     physics.OptimizeBroadPhase();
 
     EXPECT_FALSE(sensor.IsInvalid());
-    EXPECT_TRUE(Contains(physics.OverlapCapsule(Capsule{Vector3{0.0f, 0.0f, 0.0f}, Vector3::UnitY, 0.5f, 0.4f}), sensor));
+    EXPECT_TRUE(
+        Contains(physics.OverlapCapsule(Capsule{Vector3{0.0f, 0.0f, 0.0f}, Vector3::UnitY, 0.5f, 0.4f}), sensor));
 }
 
 // 同じ勢いで突かれても重い物ほど動かない。飛距離が重さの表示になる

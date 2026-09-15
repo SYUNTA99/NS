@@ -429,14 +429,18 @@ namespace NS::Physics
         bodies.DestroyBody(id);
     }
 
-    bool PhysicsScene::RaycastDown(const NS::Core::Vector3& origin, float maxDistance, float& outDistance) const
+    bool PhysicsScene::Raycast(const NS::Core::Vector3& origin,
+                               const NS::Core::Vector3& direction,
+                               float maxDistance,
+                               float& outDistance) const
     {
-        if (!(maxDistance > 0.0f))
+        const float directionLength = direction.Length();
+        if (!(maxDistance > 0.0f) || !(directionLength > 0.0f))
         {
             return false;
         }
 
-        const JPH::RRayCast ray{ToJolt(origin), JPH::Vec3{0.0f, -maxDistance, 0.0f}};
+        const JPH::RRayCast ray{ToJolt(origin), ToJolt(direction * (maxDistance / directionLength))};
         JPH::RayCastResult hit;
         if (!m_physicsSystem.GetNarrowPhaseQuery().CastRay(ray, hit))
         {
