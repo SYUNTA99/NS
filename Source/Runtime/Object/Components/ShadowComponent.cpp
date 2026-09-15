@@ -113,7 +113,7 @@ namespace NS::Object
         NS::Graphics::DrawItem item{};
         item.mesh = m_mesh;
         item.material = m_material;
-        item.blend = NS::Graphics::BlendMode::Alpha; // 深度書込OFF の半透明として手前に遮蔽される
+        item.blend = NS::Graphics::BlendMode::Alpha; // 深度は読むだけで書かない。手前の物には隠れる
         item.constants.world = world;
         item.constants.viewProj = context.viewProjection;
         item.constants.baseColor = NS::Core::Vector3{alpha, 0.0f, 0.0f}; // x = 高さフェードアルファで shadow.ps が読む

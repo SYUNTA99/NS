@@ -46,7 +46,6 @@ namespace NS::Game::Level
         // 伸びから元の形へ戻す歩数。反発の滞空 0.3 秒の前半で戻し切り、着地の前に形を確定させる
         constexpr int k_StretchRecoverSteps = 6;
 
-        // 壊れた物の見た目の色。破片が出るまでの仮の差し替え
         constexpr NS::Core::Vector3 k_BrokenBaseColor{0.25f, 0.22f, 0.20f};
 
         // 跡の床探しで真下を見る上限。これより下に床が無ければ跡を出さない

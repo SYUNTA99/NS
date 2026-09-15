@@ -55,7 +55,7 @@ namespace
 } // namespace
 
 // builtin 名は AssetManager::Builtin のメッシュへ解決される
-// builtin 登録には device が要るので headless では飛ばす
+// builtin 登録には device が要るので、 Renderer を作れない環境では飛ばす
 TEST(MeshRefResolution, BuiltinNameResolvesToBuiltinMesh)
 {
     NS::Platform::Window window(MakeWindowDesc("ns_meshref_builtin"));

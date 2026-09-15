@@ -36,7 +36,7 @@ namespace NS::Physics
     namespace BroadPhaseLayers
     {
         //! @brief ObjectLayer と同じ番号の BroadPhaseLayer を作る
-        //! @details BroadPhaseLayerInterface は ObjectLayer をそのまま番号へ cast して割り当てる
+        //! @details BroadPhaseLayerInterface は ObjectLayer をそのまま番号へキャストして割り当てる
         //! 定数側にも番号を書くと、ObjectLayers を並べ替えた時に片方だけ古い番号が残る
         constexpr JPH::BroadPhaseLayer FromObjectLayer(JPH::ObjectLayer layer) noexcept
         {
@@ -66,7 +66,7 @@ namespace NS::Physics
         float friction = 0.2f;                       // 摩擦
     };
 
-    //! @brief JPH::PhysicsSystem と、一時 allocator・job system・layer filter を同じ寿命で持つ当たりの世界
+    //! @brief JPH::PhysicsSystem と、一時メモリ・ジョブ・layer の絞り込みを同じ寿命で持つ当たりの世界
     //! @details 最初の 1 個の構築か、 形を作る最初の CreateMeshShape で、 Jolt の登録を 1 度だけ通す
     //! 登録は JPH::RegisterDefaultAllocator / JPH::Factory / JPH::RegisterTypes
     //! 型の登録解除はプロセス終了時
@@ -102,12 +102,12 @@ namespace NS::Physics
         //! @details 呼出側が std::vector と std::array<Triangle, 8> のどちらでも写さずに渡せるよう span で受ける
         JPH::BodyID AddMesh(std::span<const Triangle> triangles, JPH::ObjectLayer layer);
         //! id の body を三角形群の形と layer へ書き換えて id を返す。id が無効なら新しく作る
-        //! 空なら無効な BodyID を返す
+        //! 空か、 形を作れなければ無効な BodyID を返し、 id の body は外さない
         JPH::BodyID SyncMesh(JPH::BodyID id, std::span<const Triangle> triangles, JPH::ObjectLayer layer);
         //! @brief id の body を collision の形で、 位置・回転・拡縮へ置いて id を返す。 id が無効なら新しく作る
         //! @details 形は作り直さずに共有する。 拡縮が 1 でなければ、 共有した形を拡縮つきの形で包む
         //! 位置・回転・拡縮で表せない歪みは受け取れない。 歪みのある配置は SyncMesh に世界座標の三角形を渡す
-        //! collision の形が null なら無効な BodyID を返す
+        //! collision の形が null か、 拡縮の 3 軸がどれも 0 に近ければ無効な BodyID を返す。 id の body は外さない
         JPH::BodyID SyncMeshShape(JPH::BodyID id,
                                   const MeshCollision& collision,
                                   const NS::Core::Vector3& position,
