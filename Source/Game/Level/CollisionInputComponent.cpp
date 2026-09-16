@@ -20,7 +20,7 @@ namespace NS::Game::Level
 {
     namespace
     {
-        // ImpactInputJudge は固定ステップの整数で数えるため、秒の欄を歩数へ丸めて渡す
+        // ImpactInputJudge は固定ステップの整数で数えるため、秒の欄をフレーム数へ丸めて渡す
         [[nodiscard]] int SecondsToSteps(float seconds, float dt) noexcept
         {
             if (!(dt > 0.0f))
@@ -89,7 +89,7 @@ namespace NS::Game::Level
             NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", SlamKindLabel(fired), charge01);
         }
 
-        // 走行速度から絶対値で書く。前の歩の値へ掛けると毎歩積み重なり、最高速度が指数的に 0 へ落ちる
+        // 走行速度から絶対値で書く。前の値へ掛けると毎フレーム積み重なり、最高速度が指数的に 0 へ落ちる
         if (m_movement != nullptr)
         {
             const float scale = m_judge.IsCharging() ? 1.0f - m_chargeSlowRate : 1.0f;
@@ -98,7 +98,7 @@ namespace NS::Game::Level
 
         if (m_judge.JustStartedCharging() && m_movement != nullptr)
         {
-            // 縦は残す。空中で溜めた歩に 0 を書くと落下が一瞬止まって引っかかる
+            // 縦は残す。空中で溜めたフレームに 0 を書くと落下が一瞬止まって引っかかる
             const NS::Core::Vector3 velocity = m_movement->Velocity();
             m_movement->SetVelocity(NS::Core::Vector3{0.0f, velocity.y, 0.0f});
         }

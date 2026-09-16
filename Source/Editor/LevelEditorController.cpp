@@ -338,7 +338,7 @@ void LevelEditorController::EnterPlay() noexcept
     if (auto* app = NS::App::Application::Get())
     {
         app->Window().SetCursorVisible(false);
-        // 固定しないとクリックが他のパネルへ落ち、押しっぱなしの体当たり入力が届かない歩ができる
+        // 固定しないとクリックが他のパネルへ落ち、押しっぱなしの体当たり入力が届かないフレームができる
         app->Window().SetCursorLocked(true);
         app->Input().Mouse().SetRelativeMode(true);
     }

@@ -13,10 +13,10 @@
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/PlayerInputComponent.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
-#include <Runtime/Object/ObjectList.h>
 #include <Runtime/Physics/PhysicsScene.h>
 
 #include "entity_test_stage.h"
@@ -141,7 +141,7 @@ namespace
             {
                 m_player = live;
                 m_movement = live->FindComponent<PlayerComponent>();
-                // 入力の component は EarlyUpdate で実機の入力を書き込む。起こしたままだと走行入力が毎歩 0 になる
+                // 入力の component は EarlyUpdate で実機の入力を書き込む。起こしたままだと走行入力が毎フレーム 0 になる
                 if (auto* input = live->FindComponent<NS::Object::PlayerInputComponent>())
                     input->SetActive(false);
             }
@@ -160,7 +160,7 @@ namespace
                 if (m_stepIndex % k_ImpactSlamPeriod == 0)
                     m_movement->RequestBodySlam(k_ImpactSlamCharge);
                 ++m_stepIndex;
-                // 岩は Jolt の剛体なので、帯だけ回しても動かない。物理の 1 歩を LateUpdate 帯の手前へ挟む
+                // 岩は Jolt の剛体なので、帯だけ回しても動かない。物理の 1 フレームを LateUpdate 帯の手前へ挟む
                 m_scene.Objects().UpdateObjects(std::numeric_limits<int>::min(), NS::Object::TickPriority::LateUpdate);
                 m_scene.Physics().Update(k_FixedDt);
                 m_scene.Objects().UpdateObjects(NS::Object::TickPriority::LateUpdate);
@@ -188,7 +188,7 @@ namespace
         return rig.Trace();
     }
 
-    // 進行方向と逆へ弾かれた歩があるか。反発が消えた改修を軌跡の一致より先に知らせる
+    // 進行方向と逆へ弾かれたフレームがあるか。反発が消えた改修を軌跡の一致より先に知らせる
     bool HasReboundStep(const std::vector<StepRecord>& trace) noexcept
     {
         for (const StepRecord& s : trace)

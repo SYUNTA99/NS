@@ -47,7 +47,7 @@ namespace
         field->set(&manager, &list);
     }
 
-    // 組んだ直後を見たい所は Step でなく EnsureBuilt を呼ぶ。Step は状態を 1 歩走らせるので、
+    // 組んだ直後を見たい所は Step でなく EnsureBuilt を呼ぶ。Step は状態を 1 回走らせるので、
     // 床の無いこの検証台では立ちから落下へ移ってしまう
     struct Rig
     {

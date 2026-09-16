@@ -30,7 +30,7 @@ TEST(ImpactInputJudge, IdleNeverFires)
     EXPECT_FLOAT_EQ(judge.Charge01(), 0.0f);
 }
 
-// 押した歩で出すとチャージ狙いにもタップが混ざる。発動点は離した歩だけに絞る
+// 押したフレームで出すとチャージ狙いにもタップが混ざる。発動点は離したフレームだけに絞る
 TEST(ImpactInputJudge, PressAloneFiresNothing)
 {
     ImpactInputJudge judge;
@@ -132,7 +132,7 @@ TEST(ImpactInputJudge, ChargeRampsBetweenThresholdAndFull)
     EXPECT_NEAR(judge.Charge01(), 0.5f, 0.02f);
 }
 
-// 離した歩で 0 に戻すと発動要求へ渡す溜め量が消えるため、その歩は読める
+// 離したフレームで 0 に戻すと発動要求へ渡す溜め量が消えるため、そのフレームは読める
 TEST(ImpactInputJudge, ChargeIsReadableOnReleaseStep)
 {
     ImpactInputJudge judge;
@@ -194,7 +194,7 @@ TEST(ImpactInputJudge, NonPositiveFieldsStaySafe)
     EXPECT_FLOAT_EQ(judge.Charge01(), 1.0f);
 }
 
-// 溜めの入り口で速度を落とすため、入った歩を 1 回だけ知らせる
+// 溜めの入り口で速度を落とすため、入ったフレームを 1 回だけ知らせる
 TEST(ImpactInputJudge, JustStartedChargingIsTrueOnlyOnTheEntryStep)
 {
     ImpactInputJudge judge;
@@ -216,7 +216,7 @@ TEST(ImpactInputJudge, JustStartedChargingIsTrueOnlyOnTheEntryStep)
     EXPECT_TRUE(judge.JustStartedCharging());
 }
 
-// しきい値を 0 以下にされると押した歩からチャージ扱いになる。入り口もその歩へ揃える
+// しきい値を 0 以下にされると押したフレームからチャージ扱いになる。入り口もそのフレームへ揃える
 TEST(ImpactInputJudge, NonPositiveThresholdStartsChargingOnTheFirstStep)
 {
     ImpactInputJudge judge;

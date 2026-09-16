@@ -18,7 +18,7 @@ namespace
     // 加速と減速の切り替えで見る速さの差の下限。単位は m/s
     constexpr float k_HorizontalSpeedEpsilon = 0.01f;
 
-    // 1 歩で打ち切ると ImpactResolverComponent が突進を見る前に終わるため、壁に押し付けられた歩を 2 回数える
+    // 1 フレームで打ち切ると ImpactResolverComponent が突進を見る前に終わる。壁で止められたフレームを 2 回数える
     constexpr float k_BodySlamStallDistance = 1e-4f;
     constexpr int k_BodySlamMaxStallSteps = 2;
 
@@ -231,7 +231,7 @@ namespace NS::Game::Player
 
     void PlayerComponent::RequestBodySlam(float charge01) noexcept
     {
-        // その歩で出せないと押しが無言で消える。ジャンプと同じ先行入力時間だけ覚える
+        // そのフレームで出せないと押しが無言で消える。ジャンプと同じ先行入力時間だけ覚える
         m_bodySlamBufferRemaining = Stats().jumpBufferTime;
         // NaN は 0..1 への丸めを素通りして溜め量に残るため、入口で 0 へ倒す
         if (!std::isfinite(charge01))
@@ -363,7 +363,7 @@ namespace NS::Game::Player
                 NS::Core::Vector3{dir.x * Stats().bodySlamSpeed, VerticalVelocity(), dir.z * Stats().bodySlamSpeed});
         }
 
-        // 距離が 0 以下だと 1 歩目で終わって発動が消えるため、出さずに通常移動のままにする
+        // 距離が 0 以下だと 1 フレーム目で終わって発動が消えるため、出さずに通常移動のままにする
         if (!(m_bodySlamDistanceTarget > 0.0f))
             return false;
 
@@ -410,12 +410,12 @@ namespace NS::Game::Player
         Move(dt);
         SyncGroundState();
 
-        // 進んだ距離は実際に動いた量から測る。突進の速さから積むと壁で止められた歩も進んだ扱いになる
+        // 進んだ距離は実際に動いた量から測る。突進の速さから積むと壁で止められたフレームも進んだ扱いになる
         const NS::Core::Vector3 delta = RootTransform().Position() - before;
         const float stepDistance = std::sqrt(delta.x * delta.x + delta.z * delta.z);
         m_bodySlamTravelled += stepDistance;
 
-        // 壁で止められると距離が減らず突進から出られなくなるため、進めない歩が続いたら打ち切る
+        // 壁で止められると距離が減らず突進から出られなくなるため、進めないフレームが続いたら打ち切る
         if (stepDistance < k_BodySlamStallDistance)
             ++m_bodySlamStallSteps;
         else
@@ -507,7 +507,7 @@ namespace NS::Game::Player
 
         const NS::Core::Vector3 targetHoriz{m_desiredDir.x * targetSpeed, 0.0f, m_desiredDir.z * targetSpeed};
 
-        // 目標が今の速さを上回る歩だけ加速の時定数。誤差ぶんの差で加速と減速が入れ替わらないよう下駄を履かせる
+        // 目標が今の速さを上回るフレームだけ加速の時定数。誤差ぶんの差で加速と減速が入れ替わらないよう下駄を履かせる
         const NS::Core::Vector3 lateral = LateralVelocity();
         const float currHorizMag = std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z);
         float tau = Stats().decelTau;
@@ -560,7 +560,7 @@ namespace NS::Game::Player
         if (IsGrounded())
         {
             m_coyoteTimer = CoyoteTime();
-            // 着地の歩だけで戻すと、接地したまま走り抜けた突進の後に次が出せない
+            // 着地のフレームだけで戻すと、接地したまま走り抜けた突進の後に次が出せない
             m_bodySlamSpent = false;
         }
     }
@@ -842,13 +842,13 @@ namespace NS::Game::Player
     {
         if (m_stateManager != nullptr)
         {
-            // 発動の判定が現在状態を見るので、組むのは 1 歩の頭。Step の初回に任せると
-            // 1 歩目だけ現在状態が空になり、その歩の押しが落ちる
+            // 発動の判定が現在状態を見るので、組むのは 1 フレームの頭。Step の初回に任せると
+            // 1 フレーム目だけ現在状態が空になり、そのフレームの押しが落ちる
             m_stateManager->EnsureBuilt(*this);
 
-            // 突進の中で見ると通常移動の 1 歩を走ってから移ることになり、突進の初速がその歩に乗らない
-            // 空中の押しを捨てると連打で出ない歩ができるため、接地は求めない
-            // 突進を出すのは通常移動の歩だけ。掴まり中に出せると縁から離れる操作が 1 つ増える
+            // 突進の中で見ると通常移動の 1 フレームを走ってから移ることになり、突進の初速がそのフレームに乗らない
+            // 空中の押しを捨てると連打で出ないフレームができるため、接地は求めない
+            // 突進を出すのは通常移動のフレームだけ。掴まり中に出せると縁から離れる操作が 1 つ増える
             // 空中で 2 発目まで出せると 1 発の重みが消える。接地するまで次は出さない
             if (m_bodySlamBufferRemaining > 0.0f && !m_bodySlamSpent && IsLocomotion())
             {
@@ -859,14 +859,14 @@ namespace NS::Game::Player
             m_stateManager->Step(*this, dt);
         }
 
-        // 1 歩限りの入力は、どの状態でも通るここで落とす
+        // 1 フレーム限りの入力は、どの状態でも通るここで落とす
         m_prevJumpHeld = m_jumpHeld;
         m_jumpPressedThisFrame = false;
         // 突進中は期限を数えない。踏み込みが先行入力の秒より長いので、数えると明ける前に押しが消える
         if (m_bodySlamBufferRemaining > 0.0f && !IsBodySlamming())
             m_bodySlamBufferRemaining = std::max(0.0f, m_bodySlamBufferRemaining - dt);
 
-        // 発動の判定より後で数える。前だと押した歩の狙いが同じ歩で 1 歩ぶん古くなる
+        // 発動の判定より後で数える。前だと押した時の狙いが、同じフレームの中で 1 つ古い値になる
         if (m_bodySlamAimAge < m_stats.slamAimFadeTime)
             m_bodySlamAimAge += dt;
     }

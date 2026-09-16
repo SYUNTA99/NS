@@ -50,7 +50,7 @@ namespace NS::Physics
         inline constexpr JPH::uint Count = ObjectLayers::Count;
     } // namespace BroadPhaseLayers
 
-    //! @brief 1 歩の間に記録した接触 1 件
+    //! @brief 直近の Update で記録した接触 1 件
     struct BodyContact
     {
         JPH::BodyID other;        // ぶつかった相手の body
@@ -131,7 +131,7 @@ namespace NS::Physics
         [[nodiscard]] NS::Core::Vector3 BodyAngularVelocity(JPH::BodyID id) const;
         //! body が起きている場合 true、それ以外の場合は false。無効な BodyID は false
         [[nodiscard]] bool IsBodyAwake(JPH::BodyID id) const;
-        //! 直近の Update で記録した id の接触。前の歩の分は残らない。無効な BodyID は空
+        //! 直近の Update で記録した id の接触。前の Update の分は残らない。無効な BodyID は空
         [[nodiscard]] std::vector<BodyContact> ContactsOf(JPH::BodyID id) const;
 
         //! broadphase の木を組み直す。Add 完了後に 1 度呼ぶ

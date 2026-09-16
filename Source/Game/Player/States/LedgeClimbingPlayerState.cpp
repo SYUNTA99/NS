@@ -3,7 +3,7 @@
 
 namespace NS::Game::Player
 {
-    //! よじ登り。登り切った歩に立ちへ移る
+    //! よじ登り。登り切ったフレームに立ちへ移る
     class LedgeClimbingPlayerState final : public PlayerState
     {
     public:

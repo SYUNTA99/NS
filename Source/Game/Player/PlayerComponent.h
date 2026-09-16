@@ -35,7 +35,7 @@ namespace NS::Game::Player
         [[nodiscard]] float ClimbRight() const noexcept { return m_climbRight; }     //!< 掴まり中の左右入力
         [[nodiscard]] float ClimbForward() const noexcept { return m_climbForward; } //!< 掴まり中の前後入力
 
-        //! ジャンプの押下を 1 回ぶん立てる。1 歩の終わりに落ちるので次の歩には残らない
+        //! ジャンプの押下を 1 回ぶん立てる。更新の終わりに落ちるので次のフレームには残らない
         void SetJumpPressed() noexcept;
         //! ジャンプボタンの長押し状態を渡す。上昇中に離すと縦速度を縮める
         void SetJumpHeld(bool held) noexcept;
@@ -62,7 +62,7 @@ namespace NS::Game::Player
 
         //! 体当たりの発動を要求する
         //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
-        //! その歩で出せない要求は先行入力時間だけ覚え、過ぎたら失効する。
+        //! そのフレームで出せない要求は先行入力時間だけ覚え、過ぎたら失効する。
         //! 1 度出すと接地するまで次は出せない
         //! @param[in] charge01 溜め量 0..1
         void RequestBodySlam(float charge01) noexcept;
@@ -72,7 +72,7 @@ namespace NS::Game::Player
         [[nodiscard]] float BodySlamProgress01() const noexcept;
         [[nodiscard]] float BodySlamCharge01() const noexcept { return m_bodySlamCharge01; } //!< 発動時の溜め量 0..1
         //! 衝突の裁定が読む速度。突進中は向きと突進速度から作る
-        //! @details 実速度は壁へ押し付けられた歩で 0 に潰れ、衝突の先読みが 1 歩も進まなくなる
+        //! @details 実速度は壁へ押し付けられたフレームで 0 に潰れ、衝突の先読みが今の位置から動かなくなる
         [[nodiscard]] NS::Core::Vector3 BodySlamVelocity() const noexcept;
         //! 突進を打ち切って通常移動へ戻す。突進中でなければ何もしない
         void CancelBodySlam() noexcept;
@@ -81,17 +81,17 @@ namespace NS::Game::Player
         //! @details 向きは 入力の水平 → カメラの水平前方 → 現在速度の水平 の順で解決する
         [[nodiscard]] bool BodySlam() noexcept;
 
-        //! 突進の 1 歩を進める。距離を使い切るか進めない歩が続くと通常移動へ戻す
+        //! 突進の 1 フレームを進める。距離を使い切るか進めないフレームが続くと通常移動へ戻す
         void UpdateBodySlam(float dt) noexcept;
 
-        // 移動の 1 歩を作る動詞。呼ぶ順序がそのまま手触りになる
-        //! 先行入力とコヨーテ猶予のタイマーを 1 歩進める
+        // 移動の 1 フレームを作る動詞。呼ぶ順序がそのまま手触りになる
+        //! 先行入力とコヨーテ猶予のタイマーを 1 フレーム進める
         void TickTimers(float dt) noexcept;
         //! 入力の向きと強さから目標の水平速度を作り、一次遅れで近づける
         void AccelerateToInputDirection(float dt) noexcept;
         //! 接地かコヨーテ窓の内で押されていれば跳ぶ
         void Jump(float dt) noexcept;
-        //! 上昇中にボタンを離した歩だけ縦速度を縮める
+        //! 上昇中にボタンを離したフレームだけ縦速度を縮める
         void CutJumpRelease() noexcept;
         //! 上昇と下降で非対称な重力を当てる。頂点の近くは弱める
         void Gravity(float dt) noexcept;
@@ -110,7 +110,7 @@ namespace NS::Game::Player
         [[nodiscard]] bool CanShimmyTo(const NS::Core::Vector3& hangPos) const noexcept;
         //! よじ登りを始める。2 段補間の始点と終点を決めて登りの状態へ移る
         void ClimbLedge() noexcept;
-        //! よじ登りの 1 歩。終われば通常移動へ戻す
+        //! よじ登りの 1 フレーム。終われば通常移動へ戻す
         void UpdateLedgeClimb(float dt) noexcept;
         //! 手を放す。面法線方向へ離して落下させ、再掴みをしばらく禁止する
         void DropLedge() noexcept;
@@ -194,7 +194,7 @@ namespace NS::Game::Player
         [[nodiscard]] float SlamAimFadeTime() const noexcept { return m_stats.slamAimFadeTime; }
         void SetSlamAimFadeTime(float value) noexcept;
 
-        //! 押した歩の狙いを控える。離すまでの遅れのぶん、発動はこの向きから始める
+        //! 押したフレームの狙いを控える。離すまでの遅れのぶん、発動はこの向きから始める
         void MarkBodySlamAim() noexcept;
 
         //! 基底の借用に続けて、同居する状態機械を控える
@@ -225,9 +225,9 @@ namespace NS::Game::Player
         NS_REFLECT_END()
 
     protected:
-        //! 1 歩の中身。状態機械へ 1 歩渡し、末尾で 1 歩限りの入力を落とす
+        //! 1 フレームの中身。状態機械を 1 つ進め、末尾でそのフレーム限りの入力を落とす
         void HandleStates(float dt) override;
-        //! 稼働していない歩でも 1 歩限りの入力は落とす。残すと再開した歩で古い押下が効く
+        //! 稼働していない間もそのフレーム限りの入力は落とす。残すと再開した時に古い押下が効く
         void OnStepSkipped() override;
 
     private:
@@ -245,24 +245,24 @@ namespace NS::Game::Player
         float m_climbForward = 0.0f;                      // 掴まり中の前後入力 -1..1
 
         bool m_jumpHeld = false;             // ジャンプボタン長押し中か
-        bool m_prevJumpHeld = false;         // 前の歩の長押し状態
-        bool m_jumpPressedThisFrame = false; // この歩でジャンプ押下があったか
+        bool m_prevJumpHeld = false;         // 前のフレームの長押し状態
+        bool m_jumpPressedThisFrame = false; // このフレームでジャンプ押下があったか
         int m_jumpsRemaining = 1;            // 残りジャンプ回数
         float m_coyoteTimer = 0.0f;          // コヨーテ猶予の残り秒
         float m_bufferTimer = 0.0f;          // 先行ジャンプ入力の残り秒
 
         float m_maxSpeed = 8.0f;
 
-        float m_bodySlamBufferRemaining = 0.0f;               // 出せない歩の押しを覚える残り秒
+        float m_bodySlamBufferRemaining = 0.0f;               // 出せないフレームの押しを覚える残り秒
         bool m_bodySlamSpent = false;                         // 発動してから接地していないか
         bool m_bodySlamIsTap = false;                         // 溜め量 0 の飛び込みか
         float m_bodySlamRequestCharge01 = 0.0f;               // 要求された溜め量 0..1
         float m_bodySlamCharge01 = 0.0f;                      // 発動時に確定した溜め量 0..1
         float m_bodySlamTravelled = 0.0f;                     // 突進で進んだ水平距離
         float m_bodySlamDistanceTarget = 0.0f;                // 突進を終える水平距離
-        int m_bodySlamStallSteps = 0;                         // 進めなかった歩の連続数
+        int m_bodySlamStallSteps = 0;                         // 進めなかったフレームの連続数
         NS::Core::Vector3 m_bodySlamDir{0.0f, 0.0f, 0.0f};    // 突進の水平の向き。正規化済み
-        NS::Core::Vector3 m_bodySlamAimDir{0.0f, 0.0f, 0.0f}; // 押した歩に控えた狙いの向き。正規化済み
+        NS::Core::Vector3 m_bodySlamAimDir{0.0f, 0.0f, 0.0f}; // 押したフレームに控えた狙いの向き。正規化済み
         float m_bodySlamAimAge = 0.0f;                        // 狙いを控えてからの経過秒
 
         float m_ledgeTopY = 0.0f;                              // 掴んでいる縁の上端の y

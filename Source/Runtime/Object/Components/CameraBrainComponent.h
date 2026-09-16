@@ -56,7 +56,7 @@ namespace NS::Object
         [[nodiscard]] const CameraPose& LastPose() const noexcept { return m_lastPose; }
 
         //! 画面揺れを始める。steps 固定ステップの間、最終 pose を上下へ平行移動して減衰し切る
-        //! 振れ幅が正でない・非有限・0 歩以下なら何もしない
+        //! 振れ幅が正でない・非有限・0 フレーム以下なら何もしない
         void StartShake(float amplitude, int steps) noexcept;
 
         //! @brief 登録済みから priority 最高の vcam の pose を返す。候補が無ければ nullopt
@@ -87,7 +87,7 @@ namespace NS::Object
         bool m_blending = false;       // ブレンド進行中か
 
         float m_shakeAmplitude = 0.0f; // 揺れの上下振れ幅
-        int m_shakeTotal = 0;          // 揺れ始めの歩数。減衰の分母
-        int m_shakeRemaining = 0;      // 揺れの残り歩数。0 は揺れていない
+        int m_shakeTotal = 0;          // 揺れ始めのフレーム数。減衰の分母
+        int m_shakeRemaining = 0;      // 揺れの残りフレーム数。0 は揺れていない
     };
 } // namespace NS::Object

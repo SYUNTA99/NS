@@ -37,7 +37,7 @@ namespace
 namespace NS::Game::Entity
 {
     // 天井の当たりは持たない。JoltCharacter が接触面へ速度を射影するので、
-    // 天井に当たった歩の上向き速度は Move を抜けた時点で 0 になっている
+    // 天井に当たったフレームの上向き速度は Move を抜けた時点で 0 になっている
     EntityComponent::EntityComponent() noexcept : NS::Object::Component(NS::Object::TickPriority::Update) {}
 
     NS::Core::Vector3 EntityComponent::LateralVelocity() const noexcept
@@ -137,7 +137,7 @@ namespace NS::Game::Entity
         m_wasGrounded = m_isGrounded;
         m_isGrounded = m_character->IsGrounded();
 
-        // 発火は位置・速度・接地を書き終えた後。途中で呼ぶと購読側がその歩だけ古い値を読む
+        // 発火は位置・速度・接地を書き終えた後。途中で呼ぶと購読側がそのフレームだけ古い値を読む
         if (!m_wasGrounded && m_isGrounded)
             m_events.onGroundEnter.Invoke();
         else if (m_wasGrounded && !m_isGrounded)

@@ -167,7 +167,7 @@ TEST(JoltCharacterTest, GroundCancelsVelocityIntoTheFloor)
     EXPECT_NEAR(velocity.y, 0.0f, 0.5f);
 }
 
-// 壁へ押し付けたまま速度が残ると、離した歩に溜まった勢いで急に飛び出す
+// 壁へ押し付けたまま速度が残ると、離したフレームに溜まった勢いで急に飛び出す
 TEST(JoltCharacterTest, WallCancelsVelocityIntoIt)
 {
     PhysicsScene physics;
@@ -195,7 +195,7 @@ TEST(JoltCharacterTest, RunsFlatOverTiledFloor)
     constexpr float k_RestY = k_TileTop + k_HalfHeight + k_Radius;
     constexpr int k_TileCount = 40;
 
-    // 歩き速度と突進速度。1 歩の進みが継ぎ目の手前へ落ちるかどうかで当たり方が変わる
+    // 歩き速度と突進速度。1 フレームの進みが継ぎ目の手前へ落ちるかどうかで当たり方が変わる
     for (const float speed : {6.0f, 20.0f})
     {
         PhysicsScene physics;

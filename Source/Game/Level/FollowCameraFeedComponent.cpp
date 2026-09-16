@@ -37,7 +37,7 @@ namespace NS::Game::Level
 
         const bool grounded = m_entity->IsGrounded();
         const NS::Core::Vector3 velocity = m_entity->Velocity();
-        // カメラは控えず毎歩引き直す。控えると畳まれた相手を指したまま次の歩へ持ち越す
+        // カメラは控えず毎フレーム引き直す。控えると畳まれた相手を指したまま次のフレームへ持ち越す
         Owner()->OwningScene()->Objects().ForEachComponent<NS::Object::ThirdPersonFollowComponent>(
             [ownerId, grounded, &velocity](NS::Object::ThirdPersonFollowComponent& follow) {
                 if (follow.TargetRef().id != ownerId)

@@ -40,10 +40,10 @@ namespace NS::Game::Level
         // 基準初速に桁違いの値を入れた時に操作の成立を守る
         constexpr float k_MaxReboundSpeed = 24.0f;
 
-        // 止める歩数の上限 12 歩 (0.2 秒)。これより長い停止は衝突の重さではなく処理落ちに見える
+        // 止める長さの上限は 12 フレーム (0.2 秒)。これより長い停止は衝突の重さではなく処理落ちに見える
         constexpr int k_MaxHitStopSteps = 12;
 
-        // 伸びから元の形へ戻す歩数。反発の滞空 0.3 秒の前半で戻し切り、着地の前に形を確定させる
+        // 伸びから元の形へ戻すフレーム数。反発の滞空 0.3 秒の前半で戻し切り、着地の前に形を確定させる
         constexpr int k_StretchRecoverSteps = 6;
 
         constexpr NS::Core::Vector3 k_BrokenBaseColor{0.25f, 0.22f, 0.20f};
@@ -66,12 +66,12 @@ namespace NS::Game::Level
         // ピークで当てた時だけの白フラッシュ。音が無い間の唯一の瞬間報酬なので、端で当てた時と見間違えない強さにする
         // 0.5 は一瞬白と分かる濃さ。1.0 だと衝突の絵 (食い込みと潰れ) が隠れる
         constexpr float k_PeakFlashAlpha = 0.5f;
-        // 8 歩 (約 0.13 秒)。ヒットストップの尺に収まる一瞬で、走り出しの視界に白を残さない
+        // 8 フレーム (約 0.13 秒)。ヒットストップの尺に収まる一瞬で、走り出しの視界に白を残さない
         constexpr int k_PeakFlashSteps = 8;
 
         // 相手の中心からの横ずれ 0..1。OnUpdate へ式を埋めると当たり判定の流れが読めなくなる
         // 半径は AABB を突進方向に直交する軸へ投影した半幅。球と傾いた箱は外接箱で測るので実際の縁より広く出る
-        // 水平が 0 の枝は要らない。向かっていない歩は内積の判定で先に返しており、水平が 0 の歩もそこへ入る
+        // 水平が 0 の枝は要らない。向かっていないフレームは内積の判定で先に返しており、水平が 0 のフレームもそこへ入る
         [[nodiscard]] float HitOffset01(const NS::Core::Vector3& position,
                                         const NS::Core::AABB& bounds,
                                         const NS::Core::Vector3& velocity) noexcept
@@ -175,13 +175,13 @@ namespace NS::Game::Level
     {
         m_didRebound = false;
         m_didBreak = false;
-        // フラッシュの減衰は早期 return より前に置く。凍結中の歩もここまでは来るので、止まっている間も白が薄れる
+        // フラッシュの減衰は早期 return より前に置く。凍結中のフレームもここまでは来るので、止まっている間も白が薄れる
         if (m_peakFlashRemaining > 0)
             --m_peakFlashRemaining;
         if (m_movement == nullptr)
             return;
 
-        // 止まっている間は新しい衝突を見ない。凍った自機は重なったままなので、見ると毎歩検知し直す
+        // 止まっている間は新しい衝突を見ない。凍った自機は重なったままなので、見ると毎フレーム検知し直す
         if (m_hitStopRemaining > 0)
         {
             --m_hitStopRemaining;
@@ -204,7 +204,7 @@ namespace NS::Game::Level
         if (m_recoverRemaining > 0)
             RecoverScale();
 
-        // 押していない接触は物理の停止だけで済ませるため、体当たり中でない歩は裁定しない
+        // 押していない接触は物理の停止だけで済ませるため、体当たり中でないフレームは裁定しない
         if (!m_movement->IsBodySlamming())
             return;
 
@@ -217,7 +217,7 @@ namespace NS::Game::Level
             return;
 
         const NS::Core::Vector3 position = Owner()->Root().Position();
-        // 箱へ押し付けられた歩は実速度が 0 に潰されるため、突進の狙いの速度で向きと貫通後の速度を決める
+        // 箱へ押し付けられたフレームは実速度が 0 に潰されるため、突進の狙いの速度で向きと貫通後の速度を決める
         const NS::Core::Vector3 velocity = m_movement->BodySlamVelocity();
 
         // 弾かれる向きは箱と自機の並びで決まる。水平だけを見て、上向きは別の値で足す
@@ -237,7 +237,7 @@ namespace NS::Game::Level
         awayX *= invLength;
         awayZ *= invLength;
 
-        // 箱へ向かっている歩だけ弾く。離れていく間も弾くと、重なりが解けるまで毎歩掛かり直す
+        // 箱へ向かっているフレームだけ弾く。離れていく間も弾くと、重なりが解けるまで毎フレーム掛かり直す
         if (velocity.x * awayX + velocity.z * awayZ >= 0.0f)
             return;
 
@@ -277,7 +277,7 @@ namespace NS::Game::Level
                     charge01,
                     offset01);
 
-        // 明けた歩の反発と貫通速度を通常移動に乗せるため、凍結より先に突進を打ち切る
+        // 明けたフレームの反発と貫通速度を通常移動に乗せるため、凍結より先に突進を打ち切る
         m_movement->CancelBodySlam();
 
         m_pendingTargetId = hit->Owner()->Id();
@@ -334,17 +334,17 @@ namespace NS::Game::Level
             return;
         }
 
-        // 凍結は次の歩から。この歩は移動が最後の 1 歩を走り、自機が箱へ触れてから止まる
+        // 凍結は次のフレームから。今回は移動を最後まで走らせ、自機が箱へ触れてから止まる
         m_freezePendingSteps = stopSteps;
     }
 
     void ImpactResolverComponent::BeginFreeze(int stopSteps)
     {
-        // 自機を寝かせて凍らせる。ObjectList::UpdateObjects は active をその場で見るので同じ歩から効く
+        // 自機を寝かせて凍らせる。ObjectList::UpdateObjects は active をその場で見るので同じフレームから効く
         m_hitStopRemaining = stopSteps;
         m_hitStopTotal = stopSteps;
         m_movement->SetActive(false);
-        NS_LOG_INFO(Game, "ヒットストップ: {} 歩", stopSteps);
+        NS_LOG_INFO(Game, "ヒットストップ: {} フレーム", stopSteps);
 
         // 潰れは反発の前半。進行方向の厚みを潰し、代わりに高さを伸ばす
         // 戻りの最中に次の衝突が来たら、控え済みの元の形をそのまま使い続ける
@@ -404,7 +404,7 @@ namespace NS::Game::Level
 
     int ImpactResolverComponent::SecondsToSteps(float seconds) const noexcept
     {
-        // 整数の歩へ丸めるので、同じ秒の指定は毎回同じ長さ止まる
+        // 整数のフレームへ丸めるので、同じ秒の指定は毎回同じ長さ止まる
         const float raw = seconds / NS::Core::FrameTimer::FixedDelta();
         if (!std::isfinite(raw))
             return 0;
@@ -430,7 +430,7 @@ namespace NS::Game::Level
         NS::Object::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
             return;
-        // 相手は id で引き直す。止まっている数歩の間に消されていたら残りだけ諦める
+        // 相手は id で引き直す。止まっている数フレームの間に消されていたら残りだけ諦める
         NS::Object::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId);
         if (target == nullptr)
             return;
@@ -487,7 +487,7 @@ namespace NS::Game::Level
         if (target == nullptr || m_hitStopTotal <= 0)
             return;
 
-        // 歩数の偶奇で往復し、残り歩数で減衰する。乱数を使わないので同じ入力は同じ絵になる
+        // フレーム数の偶奇で往復し、残りフレーム数で減衰する。乱数を使わないので同じ入力は同じ絵になる
         const float sign = 1.0f - 2.0f * static_cast<float>(m_hitStopRemaining % 2);
         const float decay = static_cast<float>(m_hitStopRemaining) / static_cast<float>(m_hitStopTotal);
         const float along = m_pushInDistance + m_pendingShakeAmplitude * sign * decay;
@@ -554,7 +554,7 @@ namespace NS::Game::Level
 
     int ImpactResolverComponent::ComputeHitStopSteps(float power, float mass, float hitStopScale) const noexcept
     {
-        // 質量差をそのまま歩数に出すと停止が伸びすぎるので平方根で圧縮する
+        // 質量差をそのままフレーム数に出すと停止が伸びすぎるので平方根で圧縮する
         const float raw =
             m_hitStopBaseSeconds * power * std::sqrt(mass) / NS::Core::FrameTimer::FixedDelta() * hitStopScale;
         if (!std::isfinite(raw))

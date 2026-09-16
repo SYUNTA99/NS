@@ -12,7 +12,7 @@ namespace NS::Physics
 {
     class PhysicsScene;
 
-    //! @brief カプセル 1 本を 1 歩ずつ動かす JPH::CharacterVirtual のラッパー
+    //! @brief カプセル 1 本を 1 フレームずつ動かす JPH::CharacterVirtual のラッパー
     //! @details 重力は掛けないので、縦の速度は呼出側が作って Step の引数で渡す
     //! @pre physics は JoltCharacter より長く生きる
     class JoltCharacter

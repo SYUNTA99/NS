@@ -111,7 +111,7 @@ namespace NS::Object
             return m_current->Name();
         }
 
-        //! 現在状態で 1 歩進める。未組立は何もしない
+        //! 現在状態の OnStep を 1 回呼ぶ。未組立は何もしない
         void Step(TOwner& owner, float dt)
         {
             if (m_current != nullptr)

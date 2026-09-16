@@ -24,11 +24,11 @@ namespace NS::Game::Player
         void ResetToFirst() noexcept override;
 
         //! まだ組んでいなければ一覧から組む。遷移に渡す所有者もここで控える
-        //! @details 1 歩の頭で組む必要があるのは、現在状態を見て決める判断が Step より前にあるため
+        //! @details Step を待たずに組む必要があるのは、現在状態を見て決める判断が Step より前にあるため
         //! @param[in] player 状態へ渡す所有者
         void EnsureBuilt(PlayerComponent& player);
 
-        //! 現在状態で 1 歩進める。初回はここで組む
+        //! 現在状態で 1 フレーム進める。初回はここで組む
         //! @param[in] player 状態へ渡す所有者
         //! @param[in] dt 固定ステップの秒数
         void Step(PlayerComponent& player, float dt);

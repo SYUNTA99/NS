@@ -27,7 +27,7 @@ namespace NS::Game::Level
     //! 相手は PhysicsScene::OverlapCapsule で重なった body を集め、ObjectList::ForEachComponent で回した
     //! BreakableComponent の body と照合して決める。NS::Physics は NS::Object を知らないので、
     //! body から持ち主を引く関数は無い
-    //! 衝突の瞬間は自機を数固定ステップ止め、反発・発射・破壊を明けた歩へ保留する
+    //! 衝突の瞬間は自機を数固定ステップ止め、反発・発射・破壊を明けたフレームへ保留する
     //! 依存: NS::Game::Player::PlayerComponent, BreakableComponent, LaunchedBodyComponent, CollisionInputComponent
     class ImpactResolverComponent : public NS::Object::OverlayRendererComponent
     {
@@ -61,7 +61,7 @@ namespace NS::Game::Level
         //! 凍結の途中で外れても移動を止めたままにしない
         void OnEndPlay() override;
 
-        //! ピークで当てた直後だけ、歩ごとに減衰する白を画面全体へ重ねる
+        //! ピークで当てた直後だけ、フレームごとに減衰する白を画面全体へ重ねる
         void OnRenderOverlay(const NS::Graphics::RenderContext& ctx) override;
 
         //! 潰した形で凍結中か、伸びから元の形へ戻している途中の場合 true、それ以外の場合は false
@@ -98,7 +98,7 @@ namespace NS::Game::Level
         // 凍結を掛ける。自機を寝かせて潰し、相手を食い込ませ、カメラを揺らし始める
         void BeginFreeze(int stopSteps);
 
-        // 解放後の歩で伸びた形から配置で決めた元の形へ滑らかに戻す。最後の歩は控えた値を厳密に書く
+        // 解放後のフレームで伸びた形から配置で決めた元の形へ滑らかに戻す。最後のフレームは控えた値を厳密に書く
         void RecoverScale();
 
         // 進行の軸だけ倍率を効かせた描画スケールを作る。縦は別の倍率で受ける
@@ -110,13 +110,13 @@ namespace NS::Game::Level
         // 壊れた物の印と当たりを寝かせ、見た目を差し替える。配置物は消さない
         void BreakTarget(NS::Object::GameObject& target);
 
-        // 秒を固定ステップの歩数へ換算して 0〜12 に丸める
+        // 秒をフレーム数へ換算して 0〜12 に丸める
         [[nodiscard]] int SecondsToSteps(float seconds) const noexcept;
 
-        // 凍結中の歩で、相手を発射軸に沿って食い込み位置の周りで往復させる。絵だけで当たりは動かさない
+        // 凍結中のフレームで、相手を発射軸に沿って食い込み位置の周りで往復させる。絵だけで当たりは動かさない
         void ApplyFreezeVibration();
 
-        // 最終威力と質量から止める歩数を出す。0 なら止めない
+        // 最終威力と質量から止めるフレーム数を出す。0 なら止めない
         [[nodiscard]] int ComputeHitStopSteps(float power, float mass, float hitStopScale) const noexcept;
 
         // 壊れた位置へ破片を撒く。向きは番号から決めるので同じ状況では同じ散り方になる
@@ -127,7 +127,7 @@ namespace NS::Game::Level
         float m_launchSpeed = 32.0f;        // 通常速度で質量 1 の物に与える水平初速
         float m_launchMassExponent = 0.35f; // 押し飛ばしの初速を割る質量の指数。1 で反比例、0 で質量を見ない
         float m_launchUpScale = 0.35f;      // 水平初速に対する上向きの比
-        // 既定の固定ステップ (1/60 秒) の 4 歩ぶん
+        // 既定の固定ステップ (1/60 秒) の 4 フレームぶん
         float m_hitStopBaseSeconds = 4.0f / 60.0f; // 質量 1 へ通常速度で当てた時に止める秒
         float m_peakHitStopScale = 2.0f;           // 威力の伸び (最大 2 倍) と掛けて、素とピークの止まりを 4 倍差にする
         float m_pushInDistance = 0.06f;            // 凍結の頭で相手を発射方向へ食い込ませる距離
@@ -135,27 +135,27 @@ namespace NS::Game::Level
         float m_cameraShakeScale = 0.06f;          // カメラ揺れの上下振れ幅の基準
         float m_squashThickness = 0.7f;            // 凍結中の進行方向の厚みの倍率
         float m_squashHeight = 1.1f;               // 凍結中の高さの倍率
-        float m_stretchAlong = 1.2f;               // 解放の歩の弾かれる方向の倍率
+        float m_stretchAlong = 1.2f;               // 解放のフレームの弾かれる方向の倍率
         // 既定は壊さない。壊れて消えると重さが飛距離に出ず、押し飛ばしと反発だけを先に詰められない
         bool m_breakEnabled = false;
         float m_breakSpeedScale = 0.75f;         // 貫通した直後に速度へ掛ける倍率
-        float m_breakStopSeconds = 4.0f / 60.0f; // 貫通の瞬間に止める秒。4 歩ぶん
+        float m_breakStopSeconds = 4.0f / 60.0f; // 貫通の瞬間に止める秒。4 フレームぶん
         int m_debrisCount = 5;                   // 貫通した時に出す破片の数
         float m_debrisSpeed = 6.0f;              // 質量 1 の物を壊した時の破片の水平初速
         float m_debrisLifeSeconds = 8.0f; // 破片が止まってから消えるまでの秒。押し飛ばした配置物と違い破片は残さない
 
-        int m_freezePendingSteps = 0;                                // 次の歩に掛ける凍結の歩数。0 は予約なし
-        int m_hitStopRemaining = 0;                                  // 止まっている残り歩数。0 は止まっていない
-        int m_hitStopTotal = 0;                                      // 止め始めの歩数。振動の減衰の分母
-        NS::Core::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f};   // 明けた歩に自機へ書く反発速度
-        NS::Core::Vector3 m_pendingLaunchVelocity{0.0f, 0.0f, 0.0f}; // 明けた歩に相手へ渡す発射速度
-        NS::Core::Vector3 m_pendingTargetHome{0.0f, 0.0f, 0.0f};     // 相手の元位置。明けた歩に厳密に戻す
+        int m_freezePendingSteps = 0;                              // 次のフレームに掛ける凍結のフレーム数。0 は予約なし
+        int m_hitStopRemaining = 0;                                // 止まっている残りフレーム数。0 は止まっていない
+        int m_hitStopTotal = 0;                                    // 止め始めのフレーム数。振動の減衰の分母
+        NS::Core::Vector3 m_pendingSelfVelocity{0.0f, 0.0f, 0.0f}; // 明けたフレームに自機へ書く反発速度
+        NS::Core::Vector3 m_pendingLaunchVelocity{0.0f, 0.0f, 0.0f}; // 明けたフレームに相手へ渡す発射速度
+        NS::Core::Vector3 m_pendingTargetHome{0.0f, 0.0f, 0.0f};     // 相手の元位置。明けたフレームに厳密に戻す
         NS::Core::Vector3 m_pendingImpactDir{0.0f, 0.0f, 0.0f};      // 発射の水平方向。食い込みと振動の軸
         float m_pendingShakeAmplitude = 0.0f;                        // この衝突の往復の振れ幅
         float m_pendingShakeStrength = 0.0f;                         // この衝突のカメラ揺れの振れ幅
         NS::Core::Vector3 m_scaleHome{1.0f, 1.0f, 1.0f};             // 配置で決めた元の描画スケールの控え
-        NS::Core::Vector3 m_stretchScale{1.0f, 1.0f, 1.0f};          // 解放の歩の伸びた形
-        int m_recoverRemaining = 0;                                  // 形を戻し切るまでの残り歩数
+        NS::Core::Vector3 m_stretchScale{1.0f, 1.0f, 1.0f};          // 解放のフレームの伸びた形
+        int m_recoverRemaining = 0;                                  // 形を戻し切るまでの残りフレーム数
         bool m_scaleHeld = false;                                    // 潰した形のまま凍結している最中か
         std::uint32_t m_pendingTargetId = 0;                         // 発射する相手の永続 id
 

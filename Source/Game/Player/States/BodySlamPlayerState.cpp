@@ -3,7 +3,7 @@
 
 namespace NS::Game::Player
 {
-    //! 突進。距離を使い切るか進めない歩が続いた時に立ちへ移る
+    //! 突進。距離を使い切るか進めないフレームが続いた時に立ちへ移る
     class BodySlamPlayerState final : public PlayerState
     {
     public:

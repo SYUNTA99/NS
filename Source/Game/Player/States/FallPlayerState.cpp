@@ -5,7 +5,7 @@
 
 namespace NS::Game::Player
 {
-    //! 落下。着地した歩に走りか立ちへ移る
+    //! 落下。着地したフレームに走りか立ちへ移る
     class FallPlayerState final : public PlayerState
     {
     public:

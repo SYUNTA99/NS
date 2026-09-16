@@ -1,4 +1,4 @@
-#include "Runtime/Physics/JoltCharacter.h"
+﻿#include "Runtime/Physics/JoltCharacter.h"
 
 #include "Runtime/Physics/PhysicsScene.h"
 #include "Runtime/Physics/detail/JoltConversion.h"
@@ -67,7 +67,7 @@ namespace NS::Physics
                             JPH::ShapeFilter{},
                             m_physics.m_tempAllocator);
 
-        // 呼出側が毎歩速度を足すので、面へ向かう分を抜かないと押し付けている間に溜まり、離した歩に飛び出す
+        // 呼出側が毎フレーム速度を足すので、面へ向かう分を抜かないと押し付けている間に溜まり、離したフレームに飛び出す
         JPH::Vec3 correctedVelocity = m_character->GetLinearVelocity();
         if (IsGrounded())
         {
@@ -92,8 +92,8 @@ namespace NS::Physics
         m_character->SetLinearVelocity(correctedVelocity);
 
         // TODO: 隣り合う地形を 1 つの body へまとめれば角が消えて、この置き直しは要らなくなる
-        // 並んだ床の継ぎ目では予測接触に押し上げられる。接地している歩は接点から出た高さへ戻す
-        // 上向きの速度が残る歩は触らない。跳んだ直後と登り坂がこれに当たる
+        // 並んだ床の継ぎ目では予測接触に押し上げられる。接地しているフレームは接点から出た高さへ戻す
+        // 上向きの速度が残るフレームは触らない。跳んだ直後と登り坂がこれに当たる
         NS::Core::Vector3 correctedPosition = Position();
         if (IsGrounded() && correctedVelocity.GetY() <= 0.0f)
         {
@@ -121,8 +121,7 @@ namespace NS::Physics
     {
         // 下端の球は接点から法線方向へ半径ぶん離れた所に中心がある
         const JPH::Vec3 normal = m_character->GetGroundNormal();
-        const float sphereCenterY =
-            static_cast<float>(m_character->GetGroundPosition().GetY()) + normal.GetY() * m_radius;
+        const float sphereCenterY = static_cast<float>(m_character->GetGroundPosition().GetY()) + normal.GetY() * m_radius;
 
         return sphereCenterY + m_halfHeight;
     }

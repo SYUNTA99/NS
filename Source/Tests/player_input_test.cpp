@@ -17,7 +17,7 @@ namespace
         void SetUp() override { ClearKeyboard(); }
         void TearDown() override { ClearKeyboard(); }
 
-        //! ClearState は現在の押下しか消さない。前歩の控えは Update で揃える
+        //! ClearState は現在の押下しか消さない。前フレームの控えは Update で揃える
         static void ClearKeyboard() noexcept
         {
             auto& kb = NS::Platform::Input::Get().Keyboard();
@@ -25,7 +25,7 @@ namespace
             kb.Update();
         }
 
-        //! 押しっぱなしのまま歩を 1 つ進める。押した瞬間の判定はここで消える
+        //! 押しっぱなしのままフレームを 1 つ進める。押した瞬間の判定はここで消える
         static void AdvanceFrame() noexcept { NS::Platform::Input::Get().Keyboard().Update(); }
     };
 } // namespace

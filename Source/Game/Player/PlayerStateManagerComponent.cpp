@@ -33,7 +33,7 @@ namespace NS::Game::Player
 
     void PlayerStateManagerComponent::EnsureBuilt(PlayerComponent& player)
     {
-        // 状態が呼ぶ ChangeByName は 1 歩の中で起きる。渡された所有者をここで控えると、
+        // 状態が呼ぶ ChangeByName は 1 フレームの中で起きる。渡された所有者をここで控えると、
         // OnStart を通らない検証台でも遷移が false を返さない
         m_player = &player;
         if (!m_machine.IsBuilt())

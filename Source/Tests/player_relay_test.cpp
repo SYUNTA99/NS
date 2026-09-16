@@ -134,7 +134,7 @@ protected:
         kb.Update();
     }
 
-    //! 押しっぱなしのまま歩を 1 つ進める。押した瞬間の判定はここで消える
+    //! 押しっぱなしのままフレームを 1 つ進める。押した瞬間の判定はここで消える
     static void AdvanceFrame() noexcept { NS::Platform::Input::Get().Keyboard().Update(); }
 };
 
@@ -182,7 +182,7 @@ TEST_F(PlayerRelayTest, JumpPressReachesThePlayerOnTheStepOfThePress)
     EXPECT_FLOAT_EQ(Player(owner).VerticalVelocity(), 12.0f);
 }
 
-// 押しっぱなしの歩まで押下を渡すと、押していない歩に跳ぶ
+// 押しっぱなしのフレームまで押下を渡すと、押していないフレームに跳ぶ
 TEST_F(PlayerRelayTest, HoldOnlyStepDoesNotPressTheJump)
 {
     GameObject owner;
@@ -218,7 +218,7 @@ TEST_F(PlayerRelayTest, JumpHoldStateIsRelayed)
     Input(owner).OnUpdate();
     Relay(owner).OnUpdate();
 
-    // 離した歩が届いていれば上昇が縮む
+    // 離したフレームが届いていれば上昇が縮む
     Player(owner).SetVelocity(Vector3{0.0f, 10.0f, 0.0f});
     Player(owner).CutJumpRelease();
 

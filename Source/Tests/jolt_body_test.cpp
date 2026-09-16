@@ -421,7 +421,7 @@ TEST(JoltDynamic, HittingAWallReportsASidewaysContactNormal)
     EXPECT_LT(sidewaysNormalY, 0.7f);
 }
 
-// 集めるのは新しく起きた接触だけ。持ち越すと、床に載ったままの岩が毎歩ぶつかり直しているように見える
+// 集めるのは新しく起きた接触だけ。持ち越すと、床に載ったままの岩が毎フレームぶつかり直しているように見える
 TEST(JoltDynamic, ContactsCoverOnlyTheNewTouchesOfTheLatestStep)
 {
     PhysicsScene physics;

@@ -87,7 +87,7 @@ namespace
         return player;
     }
 
-    //! 床を敷かない検証台。1 歩目から下降するので掴みの条件が立つ。block は呼び出し側が積む
+    //! 床を敷かない検証台。1 フレーム目から下降するので掴みの条件が立つ。block は呼び出し側が積む
     PlayerComponent& MakeLedgeReady(GameObject& owner)
     {
         return MakePlayer(owner);
@@ -479,7 +479,7 @@ TEST_F(PlayerComponentTest, ChargedSlamFiresWithTheRushSpeed)
     EXPECT_GT(player.Velocity().x, 15.0f);
 }
 
-// 空中の押しを捨てると連打で出ない歩ができる。接地は求めない
+// 空中の押しを捨てると連打で出ないフレームができる。接地は求めない
 TEST_F(PlayerComponentTest, SlamFiresInAir)
 {
     GameObject obj;
@@ -538,7 +538,7 @@ TEST_F(PlayerComponentTest, LandingRestoresTheSlam)
         player.OnUpdate();
     ASSERT_FALSE(player.IsBodySlamming());
 
-    // 先行入力が残っていると着地の歩で勝手に出て、接地で戻ったことの確認にならない
+    // 先行入力が残っていると着地のフレームで勝手に出て、接地で戻ったことの確認にならない
     for (int i = 0; i < 240 && !player.IsGrounded(); ++i)
         player.OnUpdate();
     ASSERT_TRUE(player.IsGrounded());
@@ -549,7 +549,7 @@ TEST_F(PlayerComponentTest, LandingRestoresTheSlam)
     EXPECT_TRUE(player.IsBodySlamming());
 }
 
-// 地上の連打まで止めると走りの中で当て直せない。接地したままの突進は明けた歩で続けて出せる
+// 地上の連打まで止めると走りの中で当て直せない。接地したままの突進は明けたフレームで続けて出せる
 TEST_F(PlayerComponentTest, GroundedSlamsFireBackToBack)
 {
     NsTest::EntityStage stage;
@@ -573,7 +573,7 @@ TEST_F(PlayerComponentTest, GroundedSlamsFireBackToBack)
     EXPECT_TRUE(player.IsBodySlamming());
 }
 
-// 進みを突進の速さから積むと、壁に押し付けた歩も進んだ扱いになり、距離を走り切るまで突進が終わらない
+// 進みを突進の速さから積むと、壁に押し付けたフレームも進んだ扱いになり、距離を走り切るまで突進が終わらない
 TEST_F(PlayerComponentTest, SlamAgainstAWallEndsWithoutRunningTheFullDistance)
 {
     NsTest::EntityStage stage;
@@ -592,13 +592,13 @@ TEST_F(PlayerComponentTest, SlamAgainstAWallEndsWithoutRunningTheFullDistance)
     for (; steps < 60 && player.IsBodySlamming(); ++steps)
         player.OnUpdate();
 
-    // 走り切ると 30 歩 (距離 10 / 速さ 20)。10 歩未満なら進めない歩が続いて打ち切れている
+    // 走り切ると 30 フレーム (距離 10 / 速さ 20)。10 未満なら進めない状態が続いて打ち切れている
     EXPECT_FALSE(player.IsBodySlamming());
     EXPECT_LT(steps, 10);
 }
 
-// 出せない歩の押しをその場で捨てると連打が取りこぼされる。先行入力時間ぶん覚える
-// Scene の中ではカメラの前が向きになるので、向きの無い歩は Scene の外でしか作れない
+// 出せないフレームの押しをその場で捨てると連打が取りこぼされる。先行入力時間ぶん覚える
+// Scene の中ではカメラの前が向きになるので、向きの無いフレームは Scene の外でしか作れない
 TEST_F(PlayerComponentTest, BufferedRequestSurvivesInsideTheWindow)
 {
     GameObject obj;
@@ -616,7 +616,7 @@ TEST_F(PlayerComponentTest, BufferedRequestSurvivesInsideTheWindow)
 }
 
 // 覚え続けると忘れた頃に勝手に出る。先行入力時間で失効させる
-// Scene の中ではカメラの前が向きになるので、向きの無い歩は Scene の外でしか作れない
+// Scene の中ではカメラの前が向きになるので、向きの無いフレームは Scene の外でしか作れない
 TEST_F(PlayerComponentTest, BufferedRequestExpiresAfterTheBufferTime)
 {
     GameObject obj;
@@ -667,8 +667,8 @@ TEST_F(PlayerComponentTest, FallsBackToTheVelocityWithoutInputOrCamera)
     EXPECT_NEAR(player.Velocity().z, 0.0f, 1.0e-4f);
 }
 
-// 長さ 0 のまま正規化すると 0 除算になる。向きが 1 つも決まらない歩は出さない
-// Scene の中ではカメラの前が向きになるので、向きの無い歩は Scene の外でしか作れない
+// 長さ 0 のまま正規化すると 0 除算になる。向きが 1 つも決まらないフレームは出さない
+// Scene の中ではカメラの前が向きになるので、向きの無いフレームは Scene の外でしか作れない
 TEST_F(PlayerComponentTest, DoesNotFireWithoutAnyDirection)
 {
     GameObject obj;
@@ -744,7 +744,7 @@ TEST_F(PlayerComponentTest, RushEndsAfterTheRushDistance)
     EXPECT_GT(obj.Root().Position().x - startX, 5.0f);
 }
 
-// 壁で止められると距離が減らず突進から出られなくなる。進めない歩が続いたら打ち切る
+// 壁で止められると距離が減らず突進から出られなくなる。進めないフレームが続いたら打ち切る
 TEST_F(PlayerComponentTest, RushEndsWhenTheWallStopsIt)
 {
     NsTest::EntityStage stage;
@@ -791,7 +791,7 @@ TEST_F(PlayerComponentTest, TapHopEndsAfterTheShortDistance)
     }
 
     EXPECT_LT(steps, 120);
-    // 目標を越えた歩で終わるので少し行き過ぎる。実移動で測る
+    // 目標を越えたフレームで終わるので少し行き過ぎる。実移動で測る
     const float travelled = obj.Root().Position().x - startX;
     EXPECT_NEAR(travelled, player.TapSlamDistance(), 0.2f);
     EXPECT_LT(player.TapSlamDistance(), player.BodySlamDistance());
@@ -898,7 +898,7 @@ TEST_F(PlayerComponentTest, BufferedRequestSurvivesALongerRush)
     EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 1.0f);
 }
 
-// 突進中の押しをその歩で捨てると連打が取りこぼされる。突進明けの歩で消費する
+// 突進中の押しをそのフレームで捨てると連打が取りこぼされる。突進明けのフレームで消費する
 TEST_F(PlayerComponentTest, BufferedRequestFiresWhenTheRushEnds)
 {
     NsTest::EntityStage stage;
@@ -924,7 +924,7 @@ TEST_F(PlayerComponentTest, BufferedRequestFiresWhenTheRushEnds)
     EXPECT_FLOAT_EQ(player.BodySlamCharge01(), 1.0f);
 }
 
-// 1 歩が状態機械を通っているかを状態名で見る。値だけでは 1 本道のままでも同じ結果になる
+// 1 フレームが状態機械を通っているかを状態名で見る。値だけでは 1 本道のままでも同じ結果になる
 TEST_F(PlayerComponentTest, StaysIdleWhileGroundedWithoutInput)
 {
     NsTest::EntityStage stage;
@@ -962,7 +962,7 @@ TEST_F(PlayerComponentTest, MovesToFallWithoutGround)
     EXPECT_EQ(CurrentStateName(obj), "Fall");
 }
 
-// 押した歩に移らないと突進の初速がその歩に乗らない
+// 押したフレームに移らないと突進の初速がそのフレームに乗らない
 TEST_F(PlayerComponentTest, MovesToBodySlamOnTheStepOfTheRequest)
 {
     NsTest::EntityStage stage;

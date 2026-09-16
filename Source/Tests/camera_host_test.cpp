@@ -3,10 +3,10 @@
 #include <Runtime/Object/Components/CameraComponent.h>
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/GameObject.h>
+#include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Scene/SceneData.h>
-#include <Runtime/Object/ObjectList.h>
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -170,7 +170,7 @@ TEST(CameraHost, ShakeTranslatesViewWithoutTurning)
     EXPECT_FLOAT_EQ(forwardDuring.z, forwardBefore.z);
 }
 
-// 揺れは渡した歩数の中で減衰し切り、明けた後に尾を引かない
+// 揺れは渡したフレーム数の中で減衰し切り、明けた後に尾を引かない
 TEST(CameraHost, ShakeEndsWithinSteps)
 {
     Scene scene;
@@ -196,7 +196,7 @@ TEST(CameraHost, ShakeEndsWithinSteps)
     EXPECT_FLOAT_EQ(brain->LastPose().position.y, before.y);
 }
 
-// 壊れた値は受け取らない。負の振れ幅と 0 歩は揺れを始めない
+// 壊れた値は受け取らない。負の振れ幅と 0 フレームは揺れを始めない
 TEST(CameraHost, ShakeRejectsBrokenInput)
 {
     Scene scene;

@@ -149,7 +149,7 @@ namespace NS::Object
         //! @details リフレクションで全 component の値を忠実に写す
         [[nodiscard]] SceneData CaptureLiveToSceneData() const;
 
-        //! 補間スナップショット・帯の更新・LateUpdate 帯の手前で物理の 1 歩。 世界の駆動はここが持つ
+        //! 補間スナップショット・帯の更新・LateUpdate 帯の手前で物理の 1 フレーム。 世界の駆動はここが持つ
         //! 読み込んだら回り続けるのが既定で、 止める口は SetSimulationEnabled / SetSimulationPaused
         virtual void OnUpdate();
 

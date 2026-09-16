@@ -143,7 +143,7 @@ namespace
             rig.movement = live->FindComponent<NS::Game::Player::PlayerComponent>();
             rig.impact = live->FindComponent<LevelNs::ImpactResolverComponent>();
             rig.input = live->FindComponent<LevelNs::CollisionInputComponent>();
-            // 起こしたままだと実機の入力が毎歩 0 を書き込むため、走行入力と向きが検証台から消える
+            // 起こしたままだと実機の入力が毎フレーム 0 を書き込むため、走行入力と向きが検証台から消える
             if (auto* input = live->FindComponent<SceneNs::PlayerInputComponent>())
                 input->SetActive(false);
         }
@@ -206,7 +206,7 @@ namespace
         field->set(&comp, &value);
     }
 
-    // ヒットストップを 0 にして、衝突の結果をその歩のうちに適用させる
+    // ヒットストップを 0 にして、衝突の結果をそのフレームのうちに適用させる
     void SetInstantImpact(Rig& rig)
     {
         SetFloatField(*rig.impact, "ヒットストップ基準秒", 0.0f);
@@ -218,7 +218,7 @@ namespace
         SetBoolField(*rig.impact, "破壊を許可", true);
     }
 
-    // 空中でも出せるが、落下が混ざると当たる歩が揺れる。先に床へ着けて接地からの発動に揃える
+    // 空中でも出せるが、落下が混ざると当たるフレームが揺れる。先に床へ着けて接地からの発動に揃える
     void SettleOnFloor(SceneNs::Scene& scene, const Rig& rig)
     {
         for (int i = 0; i < 30 && !rig.movement->IsGrounded(); ++i)
@@ -245,7 +245,7 @@ namespace
         Step(scene, rig);
     }
 
-    // 裁定が書いた速度をそのまま読むため、裁定が起きた歩は移動を走らせずに返す
+    // 裁定が書いた速度をそのまま読むため、裁定が起きたフレームは移動を走らせずに返す
     int StepUntilImpact(SceneNs::Scene& scene, const Rig& rig, int maxSteps)
     {
         for (int i = 0; i < maxSteps; ++i)
@@ -258,7 +258,7 @@ namespace
         return maxSteps;
     }
 
-    // 解放が書いた速度をそのまま読むため、移動が起きた歩は移動を走らせずに返す
+    // 解放が書いた速度をそのまま読むため、移動が起きたフレームは移動を走らせずに返す
     int StepsUntilMovementActive(SceneNs::Scene& scene, const Rig& rig, int maxSteps)
     {
         for (int i = 0; i < maxSteps; ++i)
@@ -321,7 +321,7 @@ namespace
         return rig;
     }
 
-    // 飛ばされる物が乗る帯を回す。Scene::OnUpdate と同じく物理の 1 歩を LateUpdate 帯の手前へ挟む
+    // 飛ばされる物が乗る帯を回す。Scene::OnUpdate と同じく物理の 1 フレームを LateUpdate 帯の手前へ挟む
     void StepBody(SceneNs::Scene& scene)
     {
         scene.Objects().UpdateObjects(SceneNs::TickPriority::Update, SceneNs::TickPriority::LateUpdate);
@@ -329,7 +329,7 @@ namespace
         scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
     }
 
-    // 止まるまで回して掛かった歩数を返す。止まらなければ maxSteps を返す
+    // 止まるまで回して掛かったフレーム数を返す。止まらなければ maxSteps を返す
     int RunUntilRest(SceneNs::Scene& scene, LevelNs::LaunchedBodyComponent& body, int maxSteps)
     {
         for (int i = 0; i < maxSteps; ++i)
@@ -828,7 +828,7 @@ TEST(CollisionImpact, TinyMassCannotBlowLaunchSpeedUp)
     EXPECT_FLOAT_EQ(HorizontalSpeed(body->Velocity()), k_LaunchSpeedCap);
 }
 
-// 衝突の瞬間に自機が数歩止まる。止まっている間は反発も発射も適用されず、明けた歩にまとめて掛かる
+// 衝突の瞬間に自機が数フレーム止まる。止まっている間は反発も発射も適用されず、明けたフレームにまとめて掛かる
 TEST(CollisionImpact, HitStopFreezesPlayerAndDefersLaunch)
 {
     SceneNs::Scene scene;
@@ -838,7 +838,7 @@ TEST(CollisionImpact, HitStopFreezesPlayerAndDefersLaunch)
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
-    // 検知の歩は移動を止めない。最後の 1 歩で自機が相手へ触れてから凍る
+    // 検知のフレームは移動を止めない。最後の 1 フレームで自機が相手へ触れてから凍る
     ASSERT_TRUE(rig.impact->DidRebound());
     EXPECT_TRUE(rig.movement->IsActiveSelf());
     EXPECT_EQ(HitBody(rig), nullptr);
@@ -861,7 +861,7 @@ TEST(CollisionImpact, HeavierTargetStopsLonger)
 {
     SceneNs::Scene lightScene;
     Rig light = BuildSlam(lightScene, k_NearCourse);
-    // 中心直撃はピーク倍率が乗る。既定の基準秒だと重い側が上限 12 歩に張り付くので、下げて上限の外で比べる
+    // 中心直撃はピーク倍率が乗る。既定の基準秒だと重い側が上限 12 フレームに張り付くので、下げて上限の外で比べる
     SetFloatField(*light.impact, "ヒットストップ基準秒", 1.0f / 60.0f);
     light.breakable->SetMass(1.0f);
     BeginSlam(lightScene, light, k_FastEntrySpeed, 0.0f);
@@ -907,7 +907,7 @@ TEST(CollisionImpact, ChargedImpactStopsLonger)
     EXPECT_LT(plainSteps, chargedSteps);
 }
 
-// 基準は秒で指定し、内部で歩数へ換算して凍結の長さを決める
+// 基準は秒で指定し、内部でフレーム数へ換算して凍結の長さを決める
 TEST(CollisionImpact, HitStopBaseSecondsDrivesFreezeLength)
 {
     SceneNs::Scene scene;
@@ -946,7 +946,7 @@ TEST(CollisionImpact, FreezeSquashesPlayerShape)
     EXPECT_FLOAT_EQ(squashed.z, authored.z);
 }
 
-// 解放の歩に弾かれる方向へ伸びた形で飛び出し、数歩で配置で決めた元の形へ厳密に戻る
+// 解放のフレームに弾かれる方向へ伸びた形で飛び出し、数フレームで配置で決めた元の形へ厳密に戻る
 TEST(CollisionImpact, ReleaseStretchesThenRestoresScaleExactly)
 {
     SceneNs::Scene scene;
@@ -1280,7 +1280,7 @@ TEST(CollisionImpact, PeakStretchesHitStop)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_FarCourse);
-    // 既定の基準秒では上限 12 歩で頭打ちになるため、ピーク倍率が歩数に出るまで基準を下げる
+    // 既定の基準秒では上限 12 フレームで頭打ちになるため、ピーク倍率がフレーム数に出るまで基準を下げる
     SetFloatField(*rig.impact, "ヒットストップ基準秒", 2.0f / 60.0f);
     BeginSlam(scene, rig, k_RunSpeed, 1.0f);
 
@@ -1349,7 +1349,7 @@ TEST(CollisionImpact, BreakDoesNotLaunchTarget)
     EXPECT_EQ(HitBody(rig), nullptr);
 }
 
-// 貫通の止め秒を 0 にすると凍結を挟まず、その歩のうちに壊れて減速する
+// 貫通の止め秒を 0 にすると凍結を挟まず、そのフレームのうちに壊れて減速する
 TEST(CollisionImpact, BreakStopZeroAppliesInstantly)
 {
     SceneNs::Scene scene;
@@ -1414,7 +1414,7 @@ TEST(CollisionImpact, BreakSkipsSquashButStretchesForward)
     EXPECT_FLOAT_EQ(restored.z, authored.z);
 }
 
-// 検知の歩では移動が最後の 1 歩を走り、次の歩で凍る。自機が相手へ押し付けられた構図で止まる
+// 検知したフレームは移動を最後まで走らせ、次で凍る。自機が相手へ押し付けられた構図で止まる
 TEST(CollisionImpact, FreezeWaitsOneStepAfterDetection)
 {
     SceneNs::Scene scene;
@@ -1430,7 +1430,7 @@ TEST(CollisionImpact, FreezeWaitsOneStepAfterDetection)
     EXPECT_FALSE(rig.movement->IsActiveSelf());
 }
 
-// 待ちの 1 歩と凍結中に同じ衝突を二重に検知しない
+// 待ちの 1 フレームと凍結中に同じ衝突を二重に検知しない
 TEST(CollisionImpact, DetectsOnlyOncePerImpact)
 {
     SceneNs::Scene scene;
@@ -1453,7 +1453,7 @@ TEST(CollisionImpact, DetectsOnlyOncePerImpact)
     EXPECT_TRUE(body->IsFlying());
 }
 
-// 凍結が始まる歩で相手が発射方向へ食い込む。当たりは動かさない
+// 凍結が始まるフレームで相手が発射方向へ食い込む。当たりは動かさない
 TEST(CollisionImpact, HitStopPushesRockWhenFreezeBegins)
 {
     SceneNs::Scene scene;
@@ -1477,7 +1477,7 @@ TEST(CollisionImpact, HitStopPushesRockWhenFreezeBegins)
     EXPECT_TRUE(rig.targetBox->IsActiveSelf());
 }
 
-// 凍結中は歩ごとに相手が発射軸に沿って往復する
+// 凍結中はフレームごとに相手が発射軸に沿って往復する
 TEST(CollisionImpact, RockVibratesWhileFrozen)
 {
     SceneNs::Scene scene;
@@ -1543,7 +1543,7 @@ TEST(CollisionImpact, HeavierRockVibratesLess)
     EXPECT_LT(heavyMax - heavyMin, lightMax - lightMin);
 }
 
-// 食い込みも振動も絵だけ。明けた歩に元位置へ厳密に戻してから発射する
+// 食い込みも振動も絵だけ。明けたフレームに元位置へ厳密に戻してから発射する
 TEST(CollisionImpact, ReleaseRestoresRockExactlyBeforeLaunch)
 {
     SceneNs::Scene scene;
@@ -1819,7 +1819,7 @@ TEST(CollisionImpact, DebrisRestsThenExpires)
     }
 }
 
-// 破片と跡は解放の歩に出る。止まった 1 枚の横で破片だけが飛ばない
+// 破片と跡は解放のフレームに出る。止まった 1 枚の横で破片だけが飛ばない
 TEST(CollisionImpact, DebrisWaitForRelease)
 {
     SceneNs::Scene scene;

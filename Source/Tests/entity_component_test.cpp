@@ -18,7 +18,7 @@ namespace
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
 
-    //! 移動と接地だけを見るための最小の派生。1 歩では呼ばれた回数を数えるだけ
+    //! 移動と接地だけを見るための最小の派生。1 フレームの中身は呼ばれた回数を数えるだけ
     class BareEntity final : public EntityComponent
     {
     public:
@@ -116,7 +116,7 @@ TEST_F(EntityComponentTest, UpdateStepsHandleStatesOncePerCall)
     EXPECT_EQ(entity.SkippedSteps(), 0);
 }
 
-// 稼働していない歩でも、1 歩限りの入力を落とす口だけは呼ぶ
+// 稼働していないフレームでも、1 フレーム限りの入力を落とす口だけは呼ぶ
 TEST_F(EntityComponentTest, InactiveUpdateSkipsStatesButNotifies)
 {
     GameObject obj;

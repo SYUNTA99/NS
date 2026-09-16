@@ -356,7 +356,7 @@ namespace NS::Physics
 
     void PhysicsScene::Update(float deltaTime)
     {
-        // 前の歩の接触を残すと、離れた後も当たり続けて見える
+        // 前の Update の接触を残すと、離れた後も当たり続けて見える
         m_contactRecorder.Clear();
         // NS の固定更新が 1/60 秒なので分割は 1
         m_physicsSystem.Update(deltaTime, 1, &m_tempAllocator, &m_jobSystem);
