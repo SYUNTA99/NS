@@ -1,4 +1,4 @@
-#include "Runtime/Object/detail/Crc32.h"
+﻿#include "Runtime/Object/detail/Crc32.h"
 
 #include <array>
 
@@ -17,9 +17,13 @@ namespace NS::Object::detail
                 for (int k = 0; k < 8; ++k)
                 {
                     if ((c & 1u) != 0u)
-                        c = k_Polynomial ^ (c >> 1);
+                    {
+						c = k_Polynomial ^ (c >> 1);
+                    }
                     else
-                        c = c >> 1;
+                    {
+						c = c >> 1;
+                    }
                 }
                 table[i] = c;
             }

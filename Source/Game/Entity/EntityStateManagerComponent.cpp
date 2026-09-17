@@ -1,4 +1,4 @@
-#include "Game/Entity/EntityStateManagerComponent.h"
+﻿#include "Game/Entity/EntityStateManagerComponent.h"
 
 #include <cstddef>
 
@@ -21,9 +21,13 @@ namespace NS::Game::Entity
         {
             std::size_t end = list.find(';', pos);
             if (end == std::string::npos)
+            {
                 end = list.size();
+            }
             if (end > pos)
+            {
                 names.push_back(list.substr(pos, end - pos));
+            }
             pos = end + 1;
         }
         return names;

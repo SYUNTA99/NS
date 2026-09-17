@@ -1,4 +1,4 @@
-#include "Runtime/Physics/PhysicsScene.h"
+﻿#include "Runtime/Physics/PhysicsScene.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Core/Sphere.h"
@@ -37,17 +37,17 @@ namespace NS::Physics
 
     } // namespace
 
-    PhysicsScene::RuntimeInitialization::RuntimeInitialization()
+    PhysicsScene::RuntimeInit::RuntimeInit()
     {
-        detail::InitializeJoltRuntime();
+        detail::InitJoltRuntime();
     }
 
-    JPH::uint PhysicsScene::BroadPhaseLayerInterface::GetNumBroadPhaseLayers() const
+    JPH::uint PhysicsScene::BPLayerInterface::GetNumBroadPhaseLayers() const
     {
         return BroadPhaseLayers::Count;
     }
 
-    JPH::BroadPhaseLayer PhysicsScene::BroadPhaseLayerInterface::GetBroadPhaseLayer(JPH::ObjectLayer layer) const
+    JPH::BroadPhaseLayer PhysicsScene::BPLayerInterface::GetBroadPhaseLayer(JPH::ObjectLayer layer) const
     {
         JPH_ASSERT(layer < ObjectLayers::Count);
         return JPH::BroadPhaseLayer{static_cast<JPH::BroadPhaseLayer::Type>(layer)};
@@ -68,7 +68,7 @@ namespace NS::Physics
     }
 #endif
 
-    bool PhysicsScene::ObjectLayerPairFilter::ShouldCollide(JPH::ObjectLayer first, JPH::ObjectLayer second) const
+    bool PhysicsScene::ObjLayerPairFilter::ShouldCollide(JPH::ObjectLayer first, JPH::ObjectLayer second) const
     {
         if (first == ObjectLayers::Terrain)
         {
@@ -86,7 +86,7 @@ namespace NS::Physics
         return false;
     }
 
-    bool PhysicsScene::ObjectVsBroadPhaseLayerFilter::ShouldCollide(JPH::ObjectLayer object,
+    bool PhysicsScene::ObjVsBPLayerFilter::ShouldCollide(JPH::ObjectLayer object,
                                                                     JPH::BroadPhaseLayer broadPhase) const
     {
         const auto other = static_cast<JPH::ObjectLayer>(broadPhase.GetValue());
@@ -129,7 +129,9 @@ namespace NS::Physics
         for (const Record& record : m_records)
         {
             if (record.owner == id)
-                found.push_back(record.contact);
+            {
+				found.push_back(record.contact);
+            }
         }
         return found;
     }
@@ -255,8 +257,7 @@ namespace NS::Physics
             return JPH::BodyID{};
         }
 
-        const JPH::Quat rotation =
-            JPH::Quat::sFromTo(JPH::Vec3::sAxisY(), ToJolt(capsule.axis).NormalizedOr(JPH::Vec3::sAxisY()));
+        const JPH::Quat rotation = JPH::Quat::sFromTo(JPH::Vec3::sAxisY(), ToJolt(capsule.axis).NormalizedOr(JPH::Vec3::sAxisY()));
         return SyncStatic(id, shape.Get(), capsule.center, FromJolt(rotation), layer, false);
     }
 

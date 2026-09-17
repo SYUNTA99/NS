@@ -1,4 +1,4 @@
-#include "Runtime/Object/Reflection/TypeRegistry.h"
+﻿#include "Runtime/Object/Reflection/TypeRegistry.h"
 
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
@@ -21,14 +21,22 @@ namespace NS::Object
     void TypeRegistry::Register(const char* className, GameObjectCreateFn create, ComponentAttachFn attach)
     {
         if (className == nullptr)
-            return;
+        {
+            NS_LOG_ERROR(Scene, "TypeRegistry::Register: className が nullptr");
+			return;
+        }
         if ((create == nullptr) == (attach == nullptr))
+        {
             return;
+        }
+
         // 静的初期化中に呼ばれ Logger がまだ無いので、二重登録は assert で即座に落とす
         const bool duplicate = (Find(className) != nullptr);
         assert(!duplicate && "class registered twice");
         if (duplicate)
+        {
             return;
+        }
         m_entries.push_back(Entry{className, create, attach});
     }
 
@@ -42,7 +50,9 @@ namespace NS::Object
         for (const Entry& entry : m_entries)
         {
             if (className == entry.className)
-                return &entry;
+            {
+				return &entry;
+            }
         }
         return nullptr;
     }
@@ -54,7 +64,9 @@ namespace NS::Object
         {
             const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(object.className);
             if (entry != nullptr && entry->create != nullptr)
-                return entry->create();
+            {
+				return entry->create();
+            }
             NS_LOG_WARN(Scene, "CreateRegisteredObject: 未登録クラス {} を素の GameObject で組む", object.className);
         }
         return std::make_unique<GameObject>();
@@ -64,7 +76,9 @@ namespace NS::Object
     {
         const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(typeName);
         if (entry != nullptr && entry->attach != nullptr)
+        {
             return entry->attach(obj);
+        }
         // 未登録の type 名は生成せず読み飛ばす。 不正な型注入をここで止める
         NS_LOG_WARN(Scene, "未登録のコンポーネント型 {} を読み飛ばす", typeName);
         return nullptr;
@@ -85,7 +99,9 @@ namespace NS::Object
             for (const TypeRegistry::Entry& entry : TypeRegistry::Get().Entries())
             {
                 if (entry.attach != nullptr)
+                {
                     result.emplace_back(entry.className);
+                }
             }
             std::sort(result.begin(), result.end());
             return result;

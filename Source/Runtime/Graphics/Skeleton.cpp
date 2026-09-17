@@ -36,8 +36,7 @@ namespace NS::Graphics
         out.assign(boneCount, NS::Core::Matrix::Identity);
         if (pose.size() != boneCount)
         {
-            NS_LOG_ERROR(
-                Graphics, "Skeleton::ComputePalette: pose 数 ({}) が bone 数 ({}) と不一致", pose.size(), boneCount);
+            NS_LOG_ERROR(Graphics, "Skeleton::ComputePalette: pose 数 ({}) が bone 数 ({}) と不一致", pose.size(), boneCount);
             return;
         }
 
@@ -67,8 +66,7 @@ namespace NS::Graphics
         out.assign(boneCount, NS::Core::Matrix::Identity);
         if (pose.size() != boneCount)
         {
-            NS_LOG_ERROR(
-                Graphics, "Skeleton::ComputeGlobals: pose 数 ({}) が bone 数 ({}) と不一致", pose.size(), boneCount);
+            NS_LOG_ERROR(Graphics, "Skeleton::ComputeGlobals: pose 数 ({}) が bone 数 ({}) と不一致", pose.size(), boneCount);
             return;
         }
 
@@ -84,9 +82,13 @@ namespace NS::Graphics
             const NS::Core::Matrix local = LocalMatrix(pose[i]);
             const int parent = m_bones[i].parentIndex;
             if (parent >= 0 && static_cast<std::size_t>(parent) < i)
+            {
                 out[i] = local * out[parent];
+            }
             else
+            {
                 out[i] = local * rootParent;
+            }
         }
     }
 

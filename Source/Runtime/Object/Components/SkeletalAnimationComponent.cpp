@@ -1,4 +1,4 @@
-#include "Runtime/Core/AABB.h"
+﻿#include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Components/SkeletalAnimationComponent.h"
 
 #include "Runtime/Core/Clock.h"
@@ -28,14 +28,22 @@ namespace NS::Object
             {
                 std::size_t end = refs.find(';', begin);
                 if (end == std::string::npos)
+                {
                     end = refs.size();
+                }
                 std::string_view entry(refs.data() + begin, end - begin);
                 while (!entry.empty() && std::isspace(static_cast<unsigned char>(entry.front())) != 0)
+                {
                     entry.remove_prefix(1);
+                }
                 while (!entry.empty() && std::isspace(static_cast<unsigned char>(entry.back())) != 0)
+                {
                     entry.remove_suffix(1);
+                }
                 if (!entry.empty())
+                {
                     entries.emplace_back(entry);
+                }
                 begin = end + 1;
             }
             return entries;
@@ -78,9 +86,13 @@ namespace NS::Object
     void SkeletalAnimationComponent::SetSpeed(float speed) noexcept
     {
         if (speed > 0.0f)
+        {
             m_speed = speed;
+        }
         else
+        {
             m_speed = 0.0f;
+        }
     }
 
     void SkeletalAnimationComponent::SetLooping(bool looping) noexcept
@@ -115,7 +127,10 @@ namespace NS::Object
     {
         m_clips.reserve(m_clips.size() + clips.size());
         for (const NS::Graphics::AnimationClip& clip : clips)
+        {
             m_clips.push_back(&clip);
+        }
+
     }
 
     std::size_t SkeletalAnimationComponent::ClipCount() const noexcept
@@ -136,7 +151,9 @@ namespace NS::Object
     float SkeletalAnimationComponent::Duration() const noexcept
     {
         if (m_current < m_clips.size() && m_clips[m_current] != nullptr)
+        {
             return m_clips[m_current]->duration;
+        }
         return 0.0f;
     }
 
@@ -151,7 +168,9 @@ namespace NS::Object
         {
             // 結合先の骨格が無いので Clips だけあっても解決できない
             if (!m_clipsRef.empty())
-                NS_LOG_WARN(Graphics, "SkeletalAnimationComponent: model 参照が無く Clips を結合できない");
+            {
+				NS_LOG_WARN(Graphics, "SkeletalAnimationComponent: model 参照が空のまま Clips を結合しようとしている");
+            }
             return;
         }
 
@@ -171,7 +190,10 @@ namespace NS::Object
 
         SetSkeleton(loaded.skeleton);
         if (loaded.clips != nullptr)
+        {
             AddClips(std::span(*loaded.clips));
+        }
+
         SetMesh(loaded.mesh);
 
         // 参照解決は component の並び順で回るので、 priority 200 の MeshRenderer は 300 のここより先に解決済み
@@ -179,12 +201,16 @@ namespace NS::Object
         if (GameObject* owner = Owner())
         {
             if (MeshRendererComponent* renderer = owner->FindComponent<MeshRendererComponent>())
+            {
                 renderer->SetMesh(loaded.mesh);
+            }
         }
 
         // Clips 欄のエントリを骨名で model の骨格へ結合して足す。失敗エントリは skip して残りを続ける
         if (loaded.skeleton == nullptr)
+        {
             return;
+        }
         for (const std::string& entry : SplitClipRefs(m_clipsRef))
         {
             const std::optional<std::filesystem::path> resolvedClip = ResolveContentPath(entry);
@@ -209,17 +235,23 @@ namespace NS::Object
         NS::Graphics::BufferDesc cbDesc = NS::Graphics::MakeConstantBufferDesc(sizeof(NS::Graphics::BonePaletteCB));
         m_bonePaletteCB = NS::Graphics::Buffer::Create(cbDesc);
         for (std::size_t i = 0; i < NS::Graphics::k_MaxBones; ++i)
+        {
             m_palette.bones[i] = NS::Core::Matrix::Identity;
+        }
 
         // 描画する MeshRendererComponent にパレットを差す。現在ポーズ境界は ApplyPose が毎フレーム差す
         if (GameObject* owner = Owner())
+        {
             m_renderer = owner->FindComponent<MeshRendererComponent>();
+        }
+
         if (m_renderer != nullptr && m_bonePaletteCB->IsValid())
+        {
             m_renderer->SetPerObjectVsConstant(m_bonePaletteCB.get(),
                                                &m_palette,
                                                sizeof(NS::Graphics::BonePaletteCB),
-                                               NS::Graphics::k_BonePaletteSlot);
-
+				                               NS::Graphics::k_BonePaletteSlot);
+        }
         ApplyPose(m_time);
     }
 
@@ -272,16 +304,19 @@ namespace NS::Object
         for (std::size_t i = 0; i < NS::Graphics::k_MaxBones; ++i)
         {
             if (i < count)
+            {
                 m_palette.bones[i] = m_paletteScratch[i];
+            }
             else
+            {
                 m_palette.bones[i] = NS::Core::Matrix::Identity;
+            }
         }
 
         // 現在ポーズの締まった境界を描画側へ差し、カリングをポーズ追従させる
         if (m_renderer != nullptr)
         {
-            const NS::Core::AABB localBounds = NS::Graphics::MergeSkinnedBounds(
-                m_mesh->BoneSpheres(), m_palette.bones, m_mesh->BoneCount(), m_mesh->LocalBounds());
+            const NS::Core::AABB localBounds = NS::Graphics::MergeSkinnedBounds(m_mesh->BoneSpheres(), m_palette.bones, m_mesh->BoneCount(), m_mesh->LocalBounds());
             m_renderer->SetLocalBoundsOverride(localBounds);
         }
     }

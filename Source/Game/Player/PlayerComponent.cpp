@@ -160,6 +160,11 @@ namespace NS::Game::Player
         AssignFinite(m_stats.stickDeadzone, value);
     }
 
+    void PlayerComponent::SetMaxStepHeight(float value) noexcept
+    {
+        AssignFinite(m_stats.maxStepHeight, value);
+    }
+
     void PlayerComponent::SetBodySlamSpeed(float value) noexcept
     {
         AssignFinite(m_stats.bodySlamSpeed, value);
@@ -550,6 +555,11 @@ namespace NS::Game::Player
             g = baseG * Stats().apexHangScale;
 
         NS::Game::Entity::EntityComponent::Gravity(g, dt);
+    }
+
+    void PlayerComponent::Move(float dt) noexcept
+    {
+        NS::Game::Entity::EntityComponent::Move(dt, Stats().maxStepHeight);
     }
 
     void PlayerComponent::SyncGroundState() noexcept

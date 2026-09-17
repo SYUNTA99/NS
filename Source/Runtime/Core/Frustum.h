@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
@@ -32,11 +32,12 @@ namespace NS::Core
         {
             for (const Plane& p : planes)
             {
-                const float r =
-                    box.Extents.x * std::fabs(p.x) + box.Extents.y * std::fabs(p.y) + box.Extents.z * std::fabs(p.z);
+                const float r = box.Extents.x * std::fabs(p.x) + box.Extents.y * std::fabs(p.y) + box.Extents.z * std::fabs(p.z);
                 const float s = p.x * box.Center.x + p.y * box.Center.y + p.z * box.Center.z + p.w;
                 if (s + r < 0.0f)
+                {
                     return false; // AABB 全体が内向き平面の外側なので視錐台の外
+                }
             }
             return true;
         }

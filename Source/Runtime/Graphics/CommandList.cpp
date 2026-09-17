@@ -229,9 +229,7 @@ namespace NS::Graphics
             break;
         }
         default:
-            NS_LOG_ERROR(Graphics,
-                         "CommandList::Update: IMMUTABLE/STAGING texture は更新不可 (usage={})",
-                         static_cast<int>(desc.Usage));
+            NS_LOG_ERROR(Graphics,"CommandList::Update: IMMUTABLE/STAGING texture は更新不可 (usage={})",static_cast<int>(desc.Usage));
             break;
         }
     }
@@ -311,9 +309,7 @@ namespace NS::Graphics
         }
         if (shader.Type() != ShaderType::Pixel)
         {
-            NS_LOG_ERROR(Graphics,
-                         "CommandList::PSSetShader: ピクセル以外の Shader を渡した (type={})",
-                         static_cast<int>(shader.Type()));
+            NS_LOG_ERROR(Graphics,"CommandList::PSSetShader: ピクセル以外の Shader を渡した (type={})",static_cast<int>(shader.Type()));
             return;
         }
         ID3D11DeviceChild* raw = shader.Native();
@@ -375,9 +371,7 @@ namespace NS::Graphics
         }
         if (shader.Type() != ShaderType::Geometry)
         {
-            NS_LOG_ERROR(Graphics,
-                         "CommandList::GSSetShader: ジオメトリ以外の Shader を渡した (type={})",
-                         static_cast<int>(shader.Type()));
+            NS_LOG_ERROR(Graphics,"CommandList::GSSetShader: ジオメトリ以外の Shader を渡した (type={})",static_cast<int>(shader.Type()));
             return;
         }
         ID3D11DeviceChild* raw = shader.Native();

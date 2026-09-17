@@ -57,7 +57,9 @@ namespace NS::Object
 
         const std::optional<std::filesystem::path> resolved = ResolveContentPath(meshRef);
         if (!resolved)
+        {
             return nullptr;
+        }
         return assets.GetOrLoadMesh(*resolved);
     }
 
@@ -99,7 +101,9 @@ namespace NS::Object
             for (const BuiltinShape& shape : k_BuiltinShapes)
             {
                 if (name == shape.name)
+                {
                     return &shape;
+                }
             }
             return nullptr;
         }
@@ -117,9 +121,11 @@ namespace NS::Object
                 const std::uint32_t b = geom.indices[i + 1];
                 const std::uint32_t c = geom.indices[i + 2];
                 if (a >= vertexCount || b >= vertexCount || c >= vertexCount)
+                {
                     continue;
-                triangles.push_back(NS::Physics::Triangle{
-                    geom.vertices[a].position, geom.vertices[b].position, geom.vertices[c].position});
+                }
+
+                triangles.push_back(NS::Physics::Triangle{geom.vertices[a].position, geom.vertices[b].position, geom.vertices[c].position});
             }
             return triangles;
         }
@@ -128,7 +134,9 @@ namespace NS::Object
         NS::Physics::MeshCollision* WithShape(NS::Physics::MeshCollision* collision)
         {
             if (collision != nullptr && collision->shape == nullptr)
+            {
                 collision->shape = NS::Physics::CreateMeshShape(collision->triangles);
+            }
             return collision;
         }
 
@@ -141,16 +149,22 @@ namespace NS::Object
             desc.indices = geom.indices.data();
             desc.indexCount = geom.indices.size();
             if (geom.hasBounds)
+            {
                 desc.precomputedBounds = &geom.bounds;
+            }
             return NS::Graphics::StaticMesh::Create(desc);
         }
 
         [[nodiscard]] NS::Graphics::BlendMode ParseBlend(const std::string& value) noexcept
         {
             if (value == "Alpha")
+            {
                 return NS::Graphics::BlendMode::Alpha;
+            }
             if (value == "Additive")
+            {
                 return NS::Graphics::BlendMode::Additive;
+            }
             return NS::Graphics::BlendMode::Opaque;
         }
     } // namespace
@@ -185,7 +199,9 @@ namespace NS::Object
             for (const auto& tex : j["textures"])
             {
                 if (tex.is_string())
+                {
                     out.textures.emplace_back(tex.get<std::string>());
+                }
             }
         }
 
@@ -195,13 +211,17 @@ namespace NS::Object
         {
             const auto& c = j["baseColor"];
             if (c[0].is_number() && c[1].is_number() && c[2].is_number())
-                out.baseColor = NS::Core::Vector3{c[0].get<float>(), c[1].get<float>(), c[2].get<float>()};
+            {
+                out.baseColor = NS::Core::Vector3{ c[0].get<float>(), c[1].get<float>(), c[2].get<float>() };
+            }
         }
 
         // blend は任意
         out.blend = NS::Graphics::BlendMode::Opaque;
         if (j.contains("blend") && j["blend"].is_string())
+        {
             out.blend = ParseBlend(j["blend"].get<std::string>());
+        }
 
         outError.clear();
         return true;
@@ -215,11 +235,16 @@ namespace NS::Object
         // 区切り文字や . / .. の表記揺れで同一ファイルが別キー扱いにならないよう正規化してから重複をまとめる
         const std::filesystem::path key = path.lexically_normal();
         if (const auto it = m_shaders.find(key); it != m_shaders.end())
+        {
             return it->second.get();
+        }
+
         auto shader = NS::Graphics::Shader::Create(key);
         NS::Graphics::Shader* raw = shader.get();
         if (raw->IsUsingFallback())
-            NS_LOG_WARN(Graphics, "AssetManager: shader の読込/コンパイル失敗、 fallback 描画: {}", key.string());
+        {
+			NS_LOG_ERROR(Graphics, "AssetManager: shader の読込/コンパイル失敗、 fallback 描画: {}", key.string());
+        }
         m_shaders.emplace(key, std::move(shader));
         return raw;
     }
@@ -228,7 +253,9 @@ namespace NS::Object
     {
         const std::filesystem::path key = path.lexically_normal();
         if (const auto it = m_textures.find(key); it != m_textures.end())
+        {
             return it->second.get();
+        }
         NS::Graphics::TextureDesc desc{};
         desc.path = key;
         desc.generateMipmaps = true;
@@ -243,7 +270,9 @@ namespace NS::Object
     {
         const std::filesystem::path key = path.lexically_normal();
         if (const auto it = m_meshes.find(key); it != m_meshes.end())
+        {
             return it->second;
+        }
 
         // 描画と当たりのどちらを先に頼まれても両方ここで作る
         // 当たりは MeshColliderComponent が描画と同じ参照で頼む。 当たりが先でも GPU mesh は描画に使われる
@@ -257,12 +286,13 @@ namespace NS::Object
         {
             std::unique_ptr<NS::Graphics::StaticMesh> mesh = MakeStaticMesh(geom);
             if (mesh == nullptr || !mesh->IsValid())
-                NS_LOG_ERROR(
-                    Graphics,
-                    "AssetManager: mesh の GPU 生成失敗。 描画は cube へフォールバックし、 当たりは本物の形のまま: {}",
-                    key.string());
+            {
+                NS_LOG_ERROR(Graphics, "AssetManager: mesh の GPU 生成失敗。 描画は cube へフォールバックし、 当たりは本物の形のまま: {}", key.string());
+            }
             else
+            {
                 record.mesh = std::move(mesh);
+            }
             // GPU 生成だけ失敗しても当たりは作る。 device 無しのテストでも当たりを確かめられる
             // 当たりだけ頼まれた時も GPU 生成を通るので、 device の無いテストでは上のエラーが出る
             // TODO: コライダーの無い描画だけの mesh も三角形を Clear() まで持つ
@@ -287,7 +317,9 @@ namespace NS::Object
     const NS::Physics::MeshCollision* AssetManager::GetOrLoadMeshCollision(const std::string& meshRef)
     {
         if (meshRef.empty())
-            return nullptr;
+        {
+			return nullptr;
+        }
 
         if (const BuiltinShape* shape = FindBuiltinShape(meshRef))
         {
@@ -303,7 +335,9 @@ namespace NS::Object
 
         const std::optional<std::filesystem::path> resolved = ResolveContentPath(meshRef);
         if (!resolved)
+        {
             return nullptr;
+        }
         return WithShape(LoadMeshRecord(*resolved).collision.get());
     }
 
@@ -373,7 +407,9 @@ namespace NS::Object
         const std::filesystem::path key = path.lexically_normal();
         // null エントリは負キャッシュした失敗 path を表す。 get() が nullptr を返し再読込を短絡する
         if (const auto it = m_animationSources.find(key); it != m_animationSources.end())
+        {
             return it->second.get();
+        }
 
         NS::Graphics::AnimationSource source = NS::Graphics::LoadGltfAnimationSource(key.string());
         if (!source.IsValid())
@@ -393,10 +429,11 @@ namespace NS::Object
     const std::vector<NS::Graphics::AnimationClip>* AssetManager::GetOrLoadBoundClips(
         const std::filesystem::path& clipPath, const std::filesystem::path& modelPath)
     {
-        const std::pair<std::filesystem::path, std::filesystem::path> key{clipPath.lexically_normal(),
-                                                                          modelPath.lexically_normal()};
+        const std::pair<std::filesystem::path, std::filesystem::path> key{clipPath.lexically_normal(),modelPath.lexically_normal()};
         if (const auto it = m_boundClips.find(key); it != m_boundClips.end())
+        {
             return it->second.get();
+        }
 
         const NS::Graphics::AnimationSource* source = GetOrLoadAnimationSource(key.first);
         if (source == nullptr)
@@ -415,8 +452,7 @@ namespace NS::Object
 
         // 結合で index を振り直した複製は避けられない派生データだが、 所有はこちら側なので
         // 同じ組で解決する全インスタンスがこの 1 本を共有する
-        auto bound = std::make_unique<std::vector<NS::Graphics::AnimationClip>>(
-            NS::Graphics::BindClipsByName(source->animations, source->skeleton, *model.skeleton));
+        auto bound = std::make_unique<std::vector<NS::Graphics::AnimationClip>>(NS::Graphics::BindClipsByName(source->animations, source->skeleton, *model.skeleton));
         const std::vector<NS::Graphics::AnimationClip>* raw = bound.get();
         m_boundClips.emplace(key, std::move(bound));
         return raw;
@@ -425,14 +461,18 @@ namespace NS::Object
     void AssetManager::RegisterBuiltins()
     {
         for (const BuiltinShape& shape : k_BuiltinShapes)
+        {
             m_builtins.emplace(shape.name, MakeStaticMesh(shape.make()));
+        }
     }
 
     NS::Graphics::StaticMesh* AssetManager::Builtin(std::string_view name) const noexcept
     {
         const auto it = m_builtins.find(std::string(name));
         if (it != m_builtins.end())
-            return it->second.get();
+        {
+			return it->second.get();
+        }
         return nullptr;
     }
 
@@ -440,7 +480,9 @@ namespace NS::Object
     {
         const std::filesystem::path matKey = matPath.lexically_normal();
         if (const auto it = m_materials.find(matKey); it != m_materials.end())
-            return LoadedMaterial{it->second.material.get(), it->second.baseColor};
+        {
+            return LoadedMaterial{ it->second.material.get(), it->second.baseColor };
+        }
 
         // .mat を読む
         const auto textOpt = NS::Core::FileSystem::ReadAllText(matKey);
@@ -462,7 +504,9 @@ namespace NS::Object
         // 相対 path は構築時の baseDir 基準で解決する
         const auto resolve = [this](const std::filesystem::path& p) -> std::filesystem::path {
             if (p.is_absolute())
-                return p;
+            {
+				return p;
+            }
             return m_baseDir / p;
         };
 
@@ -536,7 +580,9 @@ namespace NS::Object
     {
         const auto it = m_sharedMaterials.find(std::string(name));
         if (it != m_sharedMaterials.end())
-            return it->second.get();
+        {
+			return it->second.get();
+        }
         return nullptr;
     }
 
@@ -544,7 +590,9 @@ namespace NS::Object
     {
         const std::filesystem::path key = path.lexically_normal();
         if (const auto it = m_shaders.find(key); it != m_shaders.end())
+        {
             return it->second->Reload();
+        }
         NS_LOG_WARN(Graphics, "AssetManager::Reload: 未キャッシュの path: {}", key.string());
         return false;
     }
@@ -555,7 +603,9 @@ namespace NS::Object
         for (auto& entry : m_shaders)
         {
             if (entry.second->Reload())
+            {
                 ++reloaded;
+            }
         }
         NS_LOG_INFO(Graphics, "AssetManager: shader reload {} / {} 本成功", reloaded, m_shaders.size());
         return reloaded;

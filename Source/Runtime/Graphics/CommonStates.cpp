@@ -4,7 +4,6 @@
 #include "Runtime/Core/Logger.h"
 
 #include <CommonStates.h>
-#include <exception>
 #include <memory>
 
 namespace NS::Graphics
@@ -17,15 +16,7 @@ namespace NS::Graphics
             NS_LOG_ERROR(Graphics, "CommonStates 構築時に device が null");
             return;
         }
-        // DirectXTK のコンストラクタは例外を投げるので、noexcept のここで受けて m_states を空のままにする
-        try
-        {
-            m_states = std::make_unique<DirectX::CommonStates>(device);
-        }
-        catch (const std::exception& e)
-        {
-            NS_LOG_ERROR(Graphics, "DirectXTK CommonStates 構築失敗: {}", e.what());
-        }
+        m_states = std::make_unique<DirectX::CommonStates>(device);
     }
 
     CommonStates::~CommonStates() = default;

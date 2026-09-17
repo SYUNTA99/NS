@@ -1,4 +1,4 @@
-#include "Runtime/Object/Components/ShadowComponent.h"
+﻿#include "Runtime/Object/Components/ShadowComponent.h"
 #include "Runtime/Core/AABB.h"
 
 #include "Runtime/Graphics/Material.h"
@@ -28,10 +28,14 @@ namespace NS::Object
     {
         GameObject* owner = Owner();
         if (owner == nullptr)
+        {
             return;
+        }
         Scene* scene = owner->OwningScene();
         if (scene == nullptr)
-            return;
+        {
+			return;
+        }
         scene->RegisterRenderable(this);
     }
 
@@ -39,10 +43,14 @@ namespace NS::Object
     {
         GameObject* owner = Owner();
         if (owner == nullptr)
-            return;
+        {
+			return;
+        }
         Scene* scene = owner->OwningScene();
         if (scene == nullptr)
+        {
             return;
+        }
         scene->UnregisterRenderable(this);
     }
 
@@ -50,7 +58,9 @@ namespace NS::Object
     {
         const GameObject* owner = Owner();
         if (owner == nullptr)
-            return {};
+        {
+			return {};
+        }
         const NS::Core::Matrix m = owner->Root().WorldMatrix();
         return NS::Core::Vector3{m._41, m._42, m._43};
     }
@@ -59,7 +69,9 @@ namespace NS::Object
     {
         const GameObject* owner = Owner();
         if (owner == nullptr)
-            return {};
+        {
+			return {};
+        }
         const NS::Core::Matrix world = owner->Root().WorldMatrix();
         const NS::Core::Vector3 origin{world._41, world._42, world._43};
         // 影は owner 直下 [-maxDrop, 0] のどこかに baseDiameter 幅で落ちる。その可動域を全部覆う
@@ -71,12 +83,18 @@ namespace NS::Object
     float ShadowComponent::ComputeFade(float dist, float maxDist) noexcept
     {
         if (maxDist <= 0.0f)
-            return 0.0f;
+        {
+			return 0.0f;
+        }
         const float f = 1.0f - dist / maxDist;
         if (f < 0.0f)
-            return 0.0f;
+        {
+			return 0.0f;
+        }
         if (f > 1.0f)
-            return 1.0f;
+        {
+			return 1.0f;
+        }
         return f;
     }
 
@@ -84,10 +102,14 @@ namespace NS::Object
     {
         GameObject* owner = Owner();
         if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
-            return;
+        {
+			return;
+        }
         Scene* scene = owner->OwningScene();
         if (scene == nullptr)
-            return;
+        {
+			return;
+        }
 
         const NS::Core::Matrix ownerWorld = owner->Root().InterpolatedWorldMatrix(context.alpha);
         const NS::Core::Vector3 origin{ownerWorld._41, ownerWorld._42, ownerWorld._43};
@@ -101,7 +123,9 @@ namespace NS::Object
         const float fade = ComputeFade(dist, m_maxDrop);
         const float alpha = fade * m_baseAlpha;
         if (alpha <= 0.0f)
-            return;
+        {
+			return;
+        }
 
         const float scale = m_baseDiameter * (0.6f + 0.4f * fade); // 高いほど小さく
         const float groundY = origin.y - dist;

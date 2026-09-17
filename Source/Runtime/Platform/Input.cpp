@@ -39,7 +39,9 @@ namespace NS::Platform
         {
             const float fx = [&]() -> float {
                 if (rawX < 0)
+                {
                     return static_cast<float>(rawX) / 32768.0f;
+                }
                 return static_cast<float>(rawX) / 32767.0f;
             }();
             const float fy = [&]() -> float {
@@ -50,10 +52,14 @@ namespace NS::Platform
             const float dz = static_cast<float>(deadzone) / 32767.0f;
             float clampedX = fx;
             if (std::fabs(fx) < dz)
+            {
                 clampedX = 0.0f;
+            }
             float clampedY = fy;
             if (std::fabs(fy) < dz)
+            {
                 clampedY = 0.0f;
+            }
             return Stick{clampedX, clampedY};
         }
 

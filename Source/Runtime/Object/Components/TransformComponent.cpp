@@ -1,4 +1,4 @@
-#include "Runtime/Object/Components/TransformComponent.h"
+﻿#include "Runtime/Object/Components/TransformComponent.h"
 
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 
@@ -47,7 +47,9 @@ namespace NS::Object
         {
             const nlohmann::json* transform = FindComponentEntry(object, k_TransformTypeName);
             if (transform == nullptr)
-                return fallback;
+            {
+				return fallback;
+            }
             return FieldVector3(*transform, fieldName, fallback);
         }
 
@@ -60,11 +62,15 @@ namespace NS::Object
     nlohmann::json& EnsureTransformComponent(ObjectData& object)
     {
         if (!object.components.is_array())
-            object.components = nlohmann::json::array();
+        {
+			object.components = nlohmann::json::array();
+        }
         for (nlohmann::json& entry : object.components)
         {
             if (ComponentEntryType(entry) == k_TransformTypeName)
-                return entry;
+            {
+				return entry;
+            }
         }
         nlohmann::json transform = MakeComponentEntry(k_TransformTypeName);
         SetField(transform, k_PositionFieldName, NS::Core::Vector3{0.0f, 0.0f, 0.0f});
@@ -98,13 +104,19 @@ namespace NS::Object
         // 厳密回転の控えが載っている間は組み立てでそちらが勝つので、置き去りにすると回転が戻る
         nlohmann::json* transform = FindComponentEntry(object, k_TransformTypeName);
         if (transform == nullptr)
+        {
             return;
+        }
         const auto fieldsIt = transform->find("fields");
         if (fieldsIt == transform->end() || !fieldsIt->is_object())
+        {
             return;
+        }
         const auto quatIt = fieldsIt->find(std::string(k_RotationQuatFieldName));
         if (quatIt != fieldsIt->end())
-            *quatIt = nlohmann::json{rotation.x, rotation.y, rotation.z, rotation.w};
+        {
+            *quatIt = nlohmann::json{ rotation.x, rotation.y, rotation.z, rotation.w };
+        }
     }
 
     NS::Core::Vector3 ObjectScale(const ObjectData& object) noexcept

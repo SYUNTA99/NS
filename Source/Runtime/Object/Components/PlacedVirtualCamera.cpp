@@ -1,4 +1,4 @@
-#include "Runtime/Object/Components/PlacedVirtualCamera.h"
+﻿#include "Runtime/Object/Components/PlacedVirtualCamera.h"
 
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -17,14 +17,18 @@ namespace NS::Object
     void PlacedVirtualCamera::SetView(const NS::Core::Vector3& position, const NS::Core::Vector3& target) noexcept
     {
         if (Owner() != nullptr)
+        {
             Owner()->Root().SetPosition(position);
+        }
         m_target = target;
     }
 
     NS::Core::Vector3 PlacedVirtualCamera::ViewPosition() const noexcept
     {
         if (Owner() != nullptr)
-            return Owner()->Root().Position();
+        {
+			return Owner()->Root().Position();
+        }
         return NS::Core::Vector3{0.0f, 5.0f, -10.0f};
     }
 
@@ -35,7 +39,9 @@ namespace NS::Object
                             std::abs(playerPosition.z - m_triggerCenter.z) <= m_triggerExtent.z;
         SetActive(inside);
         if (inside && m_lookAtPlayer)
+        {
             m_target = playerPosition;
+        }
     }
 
     CameraPose PlacedVirtualCamera::EvaluatePose(float /*alpha*/) const noexcept

@@ -1,4 +1,4 @@
-#include "Runtime/Physics/detail/JoltRuntime.h"
+﻿#include "Runtime/Physics/detail/JoltRuntime.h"
 
 #include <Jolt/Jolt.h>
 
@@ -33,7 +33,7 @@ namespace NS::Physics::detail
         };
     } // namespace
 
-    void InitializeJoltRuntime()
+    void InitJoltRuntime()
     {
         static JoltRuntime runtime;
     }

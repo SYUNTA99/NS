@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Object.h"
@@ -55,24 +55,31 @@ namespace NS::Object
         {
             const auto* target = T::StaticReflection();
             for (Component* comp : m_components)
+            {
                 if (comp != nullptr && comp->IsA(target))
+                {
                     return static_cast<T*>(comp);
+                }
+            }
             return nullptr;
         }
         template <class T> [[nodiscard]] const T* FindComponent() const noexcept
         {
             const auto* target = T::StaticReflection();
             for (const Component* comp : m_components)
+            {
                 if (comp != nullptr && comp->IsA(target))
-                    return static_cast<const T*>(comp);
+                {
+					return static_cast<const T*>(comp);
+                }
+            }
             return nullptr;
         }
 
         //! Component を生成して寿命を所有し priority 昇順の tick 列へ登録する。戻り値は非所有の生ポインタ
         template <class T, class... Args> T* AddComponent(Args&&... args)
         {
-            static_assert(!std::is_same_v<T, TransformComponent>,
-                          "TransformComponent は器が必ず 1 つ持つ。Root() を使う");
+            static_assert(!std::is_same_v<T, TransformComponent>,"TransformComponent は器が必ず 1 つ持つ。Root() を使う");
             return AddComponentUnchecked<T>(std::forward<Args>(args)...);
         }
 

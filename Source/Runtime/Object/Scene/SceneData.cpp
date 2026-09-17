@@ -1,4 +1,4 @@
-#include "Runtime/Object/Scene/SceneData.h"
+﻿#include "Runtime/Object/Scene/SceneData.h"
 
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/detail/Crc32.h"
@@ -121,7 +121,9 @@ namespace NS::Object
     std::size_t FindObjectIndexById(const SceneData& scene, std::uint32_t id) noexcept
     {
         if (id == k_NoObjectId)
-            return k_NoObjectIndex;
+        {
+			return k_NoObjectIndex;
+        }
         for (std::size_t i = 0; i < scene.objects.size(); ++i)
         {
             if (scene.objects[i].objectId == id)
@@ -136,19 +138,25 @@ namespace NS::Object
         for (const ObjectData& object : scene.objects)
         {
             if (object.objectId >= scene.nextObjectId)
+            {
                 scene.nextObjectId = object.objectId + 1;
+            }
         }
 
         // component の id も同じ空間なので、カウンタを進める段から一緒に見る
         for (const ObjectData& object : scene.objects)
         {
             if (!object.components.is_array())
+            {
                 continue;
+            }
             for (const nlohmann::json& entry : object.components)
             {
                 const std::uint32_t id = ComponentEntryId(entry);
                 if (id >= scene.nextObjectId)
-                    scene.nextObjectId = id + 1;
+                {
+					scene.nextObjectId = id + 1;
+                }
             }
         }
 
@@ -168,7 +176,9 @@ namespace NS::Object
         for (ObjectData& object : scene.objects)
         {
             if (!object.components.is_array())
-                continue;
+            {
+				continue;
+            }
             for (nlohmann::json& entry : object.components)
             {
                 const std::uint32_t id = ComponentEntryId(entry);
@@ -187,30 +197,45 @@ namespace NS::Object
         std::unordered_set<std::uint32_t> validIds;
         validIds.reserve(scene.objects.size());
         for (const ObjectData& object : scene.objects)
+        {
             validIds.insert(object.objectId);
+        }
+
 
         std::size_t prunedCount = 0;
         for (ObjectData& object : scene.objects)
         {
             if (!object.components.is_array())
+            {
                 continue;
+            }
             for (nlohmann::json& entry : object.components)
             {
                 if (!entry.is_object())
-                    continue;
+                {
+					continue;
+                }
                 const auto fieldsIt = entry.find("fields");
                 if (fieldsIt == entry.end() || !fieldsIt->is_object())
+                {
                     continue;
+                }
                 for (auto& fieldValue : *fieldsIt)
                 {
                     if (!fieldValue.is_object())
+                    {
                         continue;
+                    }
                     const auto refIt = fieldValue.find("ref");
                     if (refIt == fieldValue.end() || !refIt->is_number_unsigned())
+                    {
                         continue;
+                    }
                     const std::uint32_t id = refIt->get<std::uint32_t>();
                     if (id == k_NoObjectId || validIds.contains(id))
+                    {
                         continue;
+                    }
                     *refIt = 0u;
                     ++prunedCount;
                 }
@@ -224,13 +249,17 @@ namespace NS::Object
         std::unordered_map<std::uint32_t, std::size_t> indexById;
         indexById.reserve(scene.objects.size());
         for (std::size_t i = 0; i < scene.objects.size(); ++i)
+        {
             indexById.emplace(scene.objects[i].objectId, i);
+        }
 
         std::size_t prunedCount = 0;
         for (ObjectData& object : scene.objects)
         {
             if (object.parentId == k_NoObjectId)
+            {
                 continue;
+            }
 
             bool valid = object.parentId != object.objectId && indexById.contains(object.parentId);
             // 祖先を辿って自分へ戻れば循環。 その場で root へ落とすので、輪の残りは正当な親子として通る
@@ -245,9 +274,13 @@ namespace NS::Object
                 }
                 ancestor = scene.objects[it->second].parentId;
                 if (ancestor == k_NoObjectId)
-                    break;
+                {
+					break;
+                }
                 if (ancestor == object.objectId)
+                {
                     valid = false;
+                }
             }
 
             if (!valid)
@@ -267,22 +300,32 @@ namespace NS::Object
         for (const ObjectData& object : scene.objects)
         {
             if (!object.components.is_array())
+            {
                 continue;
+            }
             for (std::size_t c = 0; c < object.components.size(); ++c)
             {
                 const nlohmann::json* fields = ComponentEntryFields(object.components[c]);
                 if (fields == nullptr)
-                    continue;
+                {
+					continue;
+                }
                 for (auto it = fields->begin(); it != fields->end(); ++it)
                 {
                     const nlohmann::json& fieldValue = it.value();
                     if (!fieldValue.is_object())
+                    {
                         continue;
+                    }
                     const auto refIt = fieldValue.find("ref");
                     if (refIt == fieldValue.end() || !refIt->is_number_unsigned())
+                    {
                         continue;
+                    }
                     if (refIt->get<std::uint32_t>() != targetId)
+                    {
                         continue;
+                    }
                     result.push_back(ObjectRefLocation{object.objectId, c, it.key()});
                 }
             }

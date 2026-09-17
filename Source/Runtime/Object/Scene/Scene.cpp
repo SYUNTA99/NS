@@ -1,4 +1,4 @@
-#include "Runtime/Object/Scene/Scene.h"
+﻿#include "Runtime/Object/Scene/Scene.h"
 
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Core/LogCategories.h"
@@ -66,7 +66,9 @@ namespace NS::Object
         for (GameObject* obj : m_objects)
         {
             if (obj->IsTransient())
+            {
                 obj->OnObjectsRebuilt();
+            }
         }
     }
 
@@ -90,16 +92,24 @@ namespace NS::Object
     {
         const GameObject* owner = comp.Owner();
         if (owner == nullptr)
+        {
             return;
+        }
+
         const std::size_t objectIndex = FindObjectIndexById(m_playBaseline, owner->Id());
         if (objectIndex == k_NoObjectIndex)
+        {
             return;
+        }
+
         ObjectData& object = m_playBaseline.objects[objectIndex];
 
         for (nlohmann::json& entry : object.components)
         {
             if (ComponentEntryId(entry) != comp.Id())
+            {
                 continue;
+            }
             // 回転は Euler と厳密クォータニオンの控えが対で載る。両方を揃えて書く SetObjectRotation へ委ねる
             if (ComponentEntryType(entry) == k_TransformTypeName && fieldName == k_RotationEulerFieldName)
             {
@@ -109,10 +119,15 @@ namespace NS::Object
             const nlohmann::json serialized = SerializeComponent(comp);
             const auto fieldsIt = serialized.find("fields");
             if (fieldsIt == serialized.end())
-                return;
+            {
+				return;
+            }
             const auto valueIt = fieldsIt->find(std::string(fieldName));
             if (valueIt == fieldsIt->end())
+            {
                 return;
+            }
+
             entry["fields"][std::string(fieldName)] = *valueIt;
             return;
         }
@@ -134,12 +149,17 @@ namespace NS::Object
     GameObject* Scene::SpawnTransient(std::unique_ptr<GameObject> obj)
     {
         if (!obj)
+        {
             return nullptr;
+        }
+
         obj->SetTransient(true);
         obj->AttachScene(this);
         GameObject* raw = m_objects.Append(std::move(obj));
         if (raw == nullptr)
+        {
             return nullptr;
+        }
         // データ由来の配置物は ObjectBuilder が引き当てる。後から入る一時オブジェクトはここで引き当てる
         // AssetManager が無い間は跳ばす。テストは資産なしでシーンを立てる
         if (m_assets != nullptr)
@@ -147,7 +167,9 @@ namespace NS::Object
             for (Component* comp : raw->Components())
             {
                 if (comp != nullptr)
+                {
                     comp->ResolveAssets(*m_assets);
+                }
             }
         }
         // 開始は引き当ての後。OnStart の中で資産を読む Component が空の参照を掴まない
@@ -166,7 +188,10 @@ namespace NS::Object
         for (const GameObject* obj : m_objects)
         {
             if (obj->IsTransient())
+            {
                 continue;
+            }
+
             ObjectData od = CaptureObjectData(*obj);
             od.objectId = obj->Id();
             data.objects.push_back(std::move(od));
@@ -201,11 +226,16 @@ namespace NS::Object
         // 世界の駆動。 読み込んだら回り続けるのが既定で、 編集モードのエディタだけが止める
         // 時間停止中は上の snapshot だけが残り、 previous == current で補間が凍る
         if (!m_simulationEnabled)
+        {
             return;
+        }
+
         if (m_simulationPaused)
         {
             if (m_simulationStepFrames <= 0)
+            {
                 return;
+            }
             m_simulationStepFrames -= 1;
         }
         // カメラが追う前に踏む。自機と衝突の裁定は Update 帯までに終わっている
@@ -290,7 +320,9 @@ namespace NS::Object
         // 複数置かれた場合は多灯合成せず、走査順で最後の有効な 1 本が勝つ
         m_objects.ForEachComponent<DirectionalLightComponent>([&resolved, this](DirectionalLightComponent& light) {
             if (!light.IsActive())
-                return;
+            {
+				return;
+            }
             if (light.Direction().LengthSquared() > 1e-6f)
             {
                 resolved.lightDir = light.Direction();
@@ -319,11 +351,17 @@ namespace NS::Object
     void Scene::RegisterRenderable(IRenderable* renderable)
     {
         if (renderable == nullptr)
-            return;
+        {
+			return;
+        }
         // 二重登録を防ぐ。Component 側で OnStart が誤って 2 回呼ばれても二重描画にならない
         for (const RenderEntry& entry : m_renderables)
+        {
             if (entry.renderable == renderable)
-                return;
+            {
+				return;
+            }
+        }
 
         NS::Graphics::RenderProxyDesc desc{};
         desc.bounds = renderable->WorldBounds();
@@ -338,11 +376,15 @@ namespace NS::Object
     void Scene::UnregisterRenderable(IRenderable* renderable)
     {
         if (renderable == nullptr)
-            return;
+        {
+			return;
+        }
         for (auto it = m_renderables.begin(); it != m_renderables.end(); ++it)
         {
             if (it->renderable != renderable)
+            {
                 continue;
+            }
             m_renderScene.Unregister(it->handle);
             m_renderables.erase(it);
             return;
@@ -356,7 +398,9 @@ namespace NS::Object
         {
             IRenderable* r = entry.renderable;
             if (r == nullptr)
-                continue;
+            {
+				continue;
+            }
             m_renderScene.Update(entry.handle,
                                  r->WorldBounds(),
                                  r->SortCenter(),
@@ -383,7 +427,9 @@ namespace NS::Object
     CameraComponent* Scene::MainCamera() noexcept
     {
         if (m_brain == nullptr)
-            return nullptr;
+        {
+			return nullptr;
+        }
         return m_brain->Camera();
     }
 
@@ -431,7 +477,9 @@ namespace NS::Object
                 auto* overlay = ComponentCast<OverlayRendererComponent>(comp);
                 // active を切った component は描かない。 更新・ 当たりと同じ問いで揃える
                 if (overlay != nullptr && overlay->IsActive())
+                {
                     overlay->OnRenderOverlay(*ctx);
+                }
             }
         }
     }

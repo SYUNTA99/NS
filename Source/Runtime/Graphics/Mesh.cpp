@@ -109,10 +109,15 @@ namespace NS::Graphics
     void Mesh::CreateInputLayout(const Shader& vertexShader) noexcept
     {
         if (m_inputLayout)
-            return;
+        {
+			return; 
+        }
         ID3D11Device* device = Gpu().device;
         if (device == nullptr || m_layoutElements.empty())
-            return;
+        {
+            NS_LOG_ERROR(Graphics, "Mesh::CreateInputLayout: device が無効か、レイアウト要素が空");
+			return;
+        }
 
         const std::span<const std::byte> bytecode = detail::GetVertexShaderBytecode(vertexShader);
         if (bytecode.empty())
@@ -163,7 +168,9 @@ namespace NS::Graphics
     void DrawMesh(CommandList& commands, const Mesh& mesh) noexcept
     {
         if (!mesh.IsValid())
+        {
             return;
+        }
 
         commands.SetInputLayout(mesh.InputLayout());
         commands.SetVertexBuffer(*mesh.VertexBuffer(), 0);

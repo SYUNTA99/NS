@@ -1,4 +1,4 @@
-#include "Runtime/Object/Components/CameraBrainComponent.h"
+﻿#include "Runtime/Object/Components/CameraBrainComponent.h"
 
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Object/Components/CameraComponent.h"
@@ -17,42 +17,60 @@ namespace NS::Object
     void CameraBrainComponent::OnStart()
     {
         if (Owner() != nullptr)
+        {
             m_camera = Owner()->FindComponent<CameraComponent>();
+        }
         else
-            m_camera = nullptr;
+        {
+			m_camera = nullptr;
+        }
     }
 
     void CameraBrainComponent::AddVirtualCamera(VirtualCameraComponent* vcam)
     {
         if (vcam == nullptr)
-            return;
+        {
+			return;
+        }
         if (std::find(m_vcams.begin(), m_vcams.end(), vcam) != m_vcams.end())
+        {
             return;
+        }
         m_vcams.push_back(vcam);
     }
 
     void CameraBrainComponent::RemoveVirtualCamera(VirtualCameraComponent* vcam) noexcept
     {
         if (vcam == nullptr)
-            return;
+        {
+			return;
+        }
         m_vcams.erase(std::remove(m_vcams.begin(), m_vcams.end(), vcam), m_vcams.end());
         if (m_active == vcam)
-            m_active = nullptr; // 次の OnUpdate / Evaluate で選び直す
+        {
+			m_active = nullptr; // 次の OnUpdate / Evaluate で選び直す
+        }
     }
 
     void CameraBrainComponent::SetBlendDuration(float seconds) noexcept
     {
         if (seconds > 0.0f)
+        {
             m_blendDuration = seconds;
+        }
         else
+        {
             m_blendDuration = 0.0f;
+        }
     }
 
     void CameraBrainComponent::StartShake(float amplitude, int steps) noexcept
     {
         // 壊れた振れ幅が pose へ流れると視点が消える。入口で捨てる
         if (!std::isfinite(amplitude) || amplitude <= 0.0f || steps <= 0)
+        {
             return;
+        }
         m_shakeAmplitude = amplitude;
         m_shakeTotal = steps;
         m_shakeRemaining = steps;
@@ -61,7 +79,10 @@ namespace NS::Object
     void CameraBrainComponent::BeginBlendFrom(const CameraPose& pose) noexcept
     {
         if (m_blendDuration <= 0.0f)
+        {
             return;
+        }
+
         m_lastPose = pose;
         m_blendFrom = pose;
         m_blendElapsed = 0.0f;
@@ -74,9 +95,13 @@ namespace NS::Object
         for (auto* vcam : m_vcams)
         {
             if (vcam == nullptr || !vcam->IsActive())
+            {
                 continue;
+            }
             if (best == nullptr || vcam->VcamPriority() > best->VcamPriority())
+            {
                 best = vcam;
+            }
         }
         return best;
     }
@@ -87,12 +112,18 @@ namespace NS::Object
         for (auto* vcam : m_vcams)
         {
             if (vcam == nullptr)
+            {
                 continue;
+            }
             if (best == nullptr || vcam->VcamPriority() > best->VcamPriority())
-                best = vcam;
+            {
+				best = vcam;
+            }
         }
         if (best == nullptr)
-            return std::nullopt;
+        {
+			return std::nullopt;
+        }
         return best->EvaluatePose(alpha);
     }
 
@@ -115,20 +146,29 @@ namespace NS::Object
         {
             m_blendElapsed += NS::Core::FrameTimer::FixedDelta();
             if (m_blendElapsed >= m_blendDuration)
+            {
                 m_blending = false;
+            }
+
         }
 
         if (m_shakeRemaining > 0)
+        {
             --m_shakeRemaining;
+        }
     }
 
     void CameraBrainComponent::Evaluate(float alpha) noexcept
     {
         // 非 active になった vcam の pose は書かない。 編集モードのように OnUpdate が回らない間も選び直す
         if (m_active == nullptr || !m_active->IsActive())
+        {
             m_active = SelectActive();
+        }
         if (m_active == nullptr || m_camera == nullptr)
+        {
             return;
+        }
 
         CameraPose pose = m_active->EvaluatePose(alpha);
         if (m_blending && m_blendDuration > 0.0f)
@@ -157,14 +197,18 @@ namespace NS::Object
     NS::Core::Matrix CameraBrainComponent::ViewProjection() const noexcept
     {
         if (m_camera != nullptr)
-            return m_camera->ViewProjection();
+        {
+			return m_camera->ViewProjection();
+        }
         return NS::Core::Matrix::Identity;
     }
 
     NS::Core::Vector3 CameraBrainComponent::ForwardHorizontal() const noexcept
     {
         if (m_camera != nullptr)
+        {
             return m_camera->ForwardHorizontal();
+        }
         return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
     }
 

@@ -1,4 +1,4 @@
-#include "Game/Level/BreakableComponent.h"
+﻿#include "Game/Level/BreakableComponent.h"
 
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 
@@ -17,19 +17,27 @@ namespace NS::Game::Level
     void BreakableComponent::SetMass(float mass) noexcept
     {
         if (!std::isfinite(mass))
-            return;
+        {
+			return;
+        }
         m_mass = mass;
         if (m_mass < k_MinMass)
+        {
             m_mass = k_MinMass;
+        }
     }
 
     void BreakableComponent::SetToughness(float toughness) noexcept
     {
         if (!std::isfinite(toughness))
+        {
             return;
+        }
         m_toughness = toughness;
         if (m_toughness < k_MinToughness)
+        {
             m_toughness = k_MinToughness;
+        }
     }
 
     NS_CLASS(BreakableComponent)

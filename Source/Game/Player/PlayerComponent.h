@@ -17,7 +17,7 @@ namespace NS::Game::Player
 
     //! @brief 自機の能力を持つ Component
     //! @details 移動と接地は EntityComponent が持ち、ここには自機だけの能力と条件判定を置く
-    //! 調整値 20 個は自分の欄として持つ。Inspector とシーン JSON はこの欄を直接読み書きする
+    //! 調整値は自分の欄として持つ。Inspector とシーン JSON は getter と setter を通してこの欄を読み書きする
     //! 状態は能力呼びの列だけにするので、状態から呼ぶ動詞は public
     //! 依存: NS::Game::Entity::EntityComponent / EntityStateManagerComponent, PlayerStats
     class PlayerComponent : public NS::Game::Entity::EntityComponent
@@ -95,6 +95,8 @@ namespace NS::Game::Player
         void CutJumpRelease() noexcept;
         //! 上昇と下降で非対称な重力を当てる。頂点の近くは弱める
         void Gravity(float dt) noexcept;
+        //! 調整値の登れる段の高さを渡して 1 フレーム動かす
+        void Move(float dt) noexcept;
         //! タップの飛び込みだけに当てる重力。滞空秒がタップ距離を進む秒と揃う強さにする
         void TapSlamGravity(float dt) noexcept;
         //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と突進の使用済みを戻す
@@ -173,6 +175,9 @@ namespace NS::Game::Player
         [[nodiscard]] float StickDeadzone() const noexcept { return m_stats.stickDeadzone; }
         void SetStickDeadzone(float value) noexcept;
 
+        [[nodiscard]] float MaxStepHeight() const noexcept { return m_stats.maxStepHeight; }
+        void SetMaxStepHeight(float value) noexcept;
+
         [[nodiscard]] float BodySlamSpeed() const noexcept { return m_stats.bodySlamSpeed; }
         void SetBodySlamSpeed(float value) noexcept;
 
@@ -215,6 +220,7 @@ namespace NS::Game::Player
         NS_REFLECT_ACCESSOR(float, "加速時定数", AccelTau(), SetAccelTau)
         NS_REFLECT_ACCESSOR(float, "減速時定数", DecelTau(), SetDecelTau)
         NS_REFLECT_ACCESSOR(float, "スティック遊び", StickDeadzone(), SetStickDeadzone)
+        NS_REFLECT_ACCESSOR(float, "登れる段の高さ", MaxStepHeight(), SetMaxStepHeight)
         NS_REFLECT_ACCESSOR(float, "突進速度", BodySlamSpeed(), SetBodySlamSpeed)
         NS_REFLECT_ACCESSOR(float, "突進距離", BodySlamDistance(), SetBodySlamDistance)
         NS_REFLECT_ACCESSOR(float, "タップ初速", TapSlamSpeed(), SetTapSlamSpeed)
@@ -273,7 +279,7 @@ namespace NS::Game::Player
         NS::Core::Vector3 m_ledgeMantleEnd{0.0f, 0.0f, 0.0f};
         float m_ledgeMantleTimer = 0.0f; // よじ登りの経過秒
 
-        PlayerStats m_stats;                                   // 調整値 20 個
+        PlayerStats m_stats;                                   // 調整値
         PlayerStateManagerComponent* m_stateManager = nullptr; // 状態機械 (非所有)
 
         PlayerEvents m_playerEvents;

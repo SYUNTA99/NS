@@ -95,8 +95,7 @@ namespace NS::App
         std::function<bool()> m_quitGuard;
 
         bool m_shutdownCalled = false; //!< 終了処理の二重呼び出しを防ぐフラグ
-        std::chrono::steady_clock::time_point
-            m_lastStutterWarnAt{}; //!< 連続して処理落ち警告を出さないための最終警告時刻
+        std::chrono::steady_clock::time_point m_lastStutterWarnAt{}; //!< 連続して処理落ち警告を出さないための最終警告時刻
 
         static Application* s_instance;
     };

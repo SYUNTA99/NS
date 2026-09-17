@@ -18,6 +18,10 @@ workspace "NS"
     cppdialect "C++20"
     characterset "Unicode"
 
+    -- 例外は使わない方針。 /EHs-c- と _HAS_EXCEPTIONS=0 を依存も含む全 project に揃える。
+    -- _HAS_EXCEPTIONS は標準ライブラリの型の定義を変えるので、 lib ごとに食い違うとリンカが検出しないまま定義が 2 通りになる
+    exceptionhandling "Off"
+
     -- 全プロジェクト共通 include root = "Source/"
     includedirs { "Source" }
 
@@ -118,7 +122,8 @@ local function applyCommonBuildOptions()
     -- flags { "FatalWarnings" }  -- build 安定後に有効化
     -- 実行時型情報は使わない方針。 /GR- で切り、 dynamic_cast / 多態 typeid の使用 (C4541) は error で弾く
     rtti "Off"
-    fatalwarnings { "4541" }
+    -- 例外は workspace で切ってある。 try / catch (C4530) も error で弾く。 throw だけの行には MSVC が警告を出さないので、 ここでは止まらない
+    fatalwarnings { "4541", "4530" }
     buildoptions { "/utf-8", "/permissive-", "/FS" }
     linkoptions { "/ignore:4006" }
 end

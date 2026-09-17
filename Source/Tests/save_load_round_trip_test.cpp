@@ -514,6 +514,21 @@ TEST(SaveLoadRoundTrip, LegacyLightingKeysAreIgnored)
     EXPECT_EQ(dst.environment.skyboxCubemapPath, "Assets/Skybox/kurt/");
 }
 
+// type が数値の component も空の型名で読み、読込を止めない。例外を切っているので型を確かめずに読むと異常終了する
+TEST(SaveLoadRoundTrip, NonStringComponentTypeReadsAsEmpty)
+{
+    const std::string json = R"({
+        "version": 3,
+        "objects": [ { "id": 1, "components": [ { "type": 5, "fields": {} } ] } ]
+    })";
+
+    SceneNs::SceneData dst;
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
+    ASSERT_EQ(dst.objects.size(), 1u);
+    ASSERT_FALSE(dst.objects[0].components.empty());
+    EXPECT_EQ(SceneNs::ComponentEntryType(dst.objects[0].components[0]), "");
+}
+
 // 追従カメラ実体が既に居れば合成は走らず、 Target 参照ごと往復で保持される
 TEST(SaveLoadRoundTrip, FollowCameraObjectRoundTrip)
 {

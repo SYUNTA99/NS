@@ -1,4 +1,4 @@
-#include "Runtime/Object/Scene/SceneManager.h"
+﻿#include "Runtime/Object/Scene/SceneManager.h"
 
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneData.h"
@@ -41,8 +41,9 @@ namespace NS::Object
     void SceneManager::UnloadScene()
     {
         if (!m_current)
-            return;
-
+        {
+			return;
+        }
         m_current->OnShutdown();
         m_current.reset();
     }
@@ -65,13 +66,17 @@ namespace NS::Object
     void SceneManager::Update()
     {
         if (m_current)
+        {
             m_current->OnUpdate();
+        }
     }
 
     void SceneManager::Render()
     {
         if (m_current)
+        {
             m_current->OnRender();
+        }
     }
 
 } // namespace NS::Object

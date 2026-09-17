@@ -56,29 +56,17 @@ namespace NS::Core
         stream.seekg(0, std::ios::beg);
 
         // 確保と読み込み
-        try
+        std::vector<std::byte> buffer(static_cast<std::size_t>(end));
+        if (end > 0)
         {
-            std::vector<std::byte> buffer(static_cast<std::size_t>(end));
-            if (end > 0)
+            stream.read(reinterpret_cast<char*>(buffer.data()), end);
+            if (!stream)
             {
-                stream.read(reinterpret_cast<char*>(buffer.data()), end);
-                if (!stream)
-                {
-                    NS_LOG_ERROR(Core, "FileSystem::ReadAllBytes read failed: {}", path.string());
-                    return std::nullopt;
-                }
+                NS_LOG_ERROR(Core, "FileSystem::ReadAllBytes read failed: {}", path.string());
+                return std::nullopt;
             }
-            return buffer;
         }
-        catch (const std::bad_alloc&)
-        {
-            NS_LOG_ERROR(Core,
-                         "FileSystem::ReadAllBytes allocation failed: {} ({} bytes)",
-                         path.string(),
-                         static_cast<std::size_t>(end));
-
-            return std::nullopt;
-        }
+        return buffer;
     }
 
     bool FileSystem::WriteAllBytes(const std::filesystem::path& path, std::span<const std::byte> bytes)

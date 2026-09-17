@@ -1,4 +1,4 @@
-#include "Runtime/Object/Transform.h"
+﻿#include "Runtime/Object/Transform.h"
 
 #include <algorithm>
 
@@ -11,7 +11,9 @@ namespace NS::Object
         for (Transform* child : m_children)
         {
             if (child != nullptr)
-                child->m_parent = nullptr;
+            {
+				child->m_parent = nullptr;
+            }
         }
     }
 
@@ -48,7 +50,9 @@ namespace NS::Object
     NS::Core::Matrix Transform::WorldMatrix() const noexcept
     {
         if (m_parent == nullptr)
-            return LocalMatrix();
+        {
+			return LocalMatrix();
+        }
         return LocalMatrix() * m_parent->WorldMatrix();
     }
 
@@ -67,24 +71,32 @@ namespace NS::Object
     NS::Core::Matrix Transform::InterpolatedWorldMatrix(float alpha) const noexcept
     {
         if (m_parent == nullptr)
+        {
             return InterpolatedLocalMatrix(alpha);
+        }
         return InterpolatedLocalMatrix(alpha) * m_parent->InterpolatedWorldMatrix(alpha);
     }
 
     void Transform::SetParent(Transform* parent) noexcept
     {
         if (parent == m_parent)
+        {
             return;
+        }
         DetachFromParent();
         m_parent = parent;
         if (m_parent != nullptr)
+        {
             m_parent->m_children.push_back(this);
+        }
     }
 
     void Transform::DetachFromParent() noexcept
     {
         if (m_parent == nullptr)
+        {
             return;
+        }
         auto& siblings = m_parent->m_children;
         siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
         m_parent = nullptr;

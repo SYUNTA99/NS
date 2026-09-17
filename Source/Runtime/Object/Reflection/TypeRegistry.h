@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Runtime/Object/GameObject.h"
 
@@ -68,14 +68,12 @@ namespace NS::Object
     {
         if constexpr (std::is_base_of_v<Component, T>)
         {
-            TypeRegistry::Get().Register(
-                className, nullptr, +[](GameObject& o) -> Component* { return o.AddComponent<T>(); });
+            TypeRegistry::Get().Register(className, nullptr, +[](GameObject& o) -> Component* { return o.AddComponent<T>(); });
         }
         else
         {
             static_assert(std::is_base_of_v<GameObject, T>, "NS_CLASS は GameObject か Component の派生に書く");
-            TypeRegistry::Get().Register(
-                className, +[]() -> std::unique_ptr<GameObject> { return std::make_unique<T>(); }, nullptr);
+            TypeRegistry::Get().Register(className, +[]() -> std::unique_ptr<GameObject> { return std::make_unique<T>(); }, nullptr);
         }
     }
 } // namespace NS::Object

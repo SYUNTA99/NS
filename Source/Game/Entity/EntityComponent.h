@@ -68,7 +68,8 @@ namespace NS::Game::Entity
 
         //! JoltCharacter を 1 フレーム進め、位置・速度・接地を更新する
         //! 持ち主が Scene に居なければ当たりを見ずに速度ぶん進め、接地は false にする
-        void Move(float dt) noexcept;
+        //! maxStepHeight は走ったまま登れる段の高さ (m) で、JoltCharacter::Step へそのまま渡す
+        void Move(float dt, float maxStepHeight) noexcept;
 
         //! 接地の通知の受け口。購読は後から足せる
         [[nodiscard]] EntityEvents& Events() noexcept { return m_events; }

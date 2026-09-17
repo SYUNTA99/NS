@@ -53,7 +53,10 @@ namespace NS::Graphics
         bool CreateMagentaCubemapFallback(ID3D11Device* device, ComPtr<ID3D11ShaderResourceView>& outSrv) noexcept
         {
             if (device == nullptr)
-                return false;
+            {
+                NS_LOG_ERROR(Graphics, "Skybox fallback cubemap: device が nullptr");
+				return false;
+            }
 
             const std::uint8_t magenta[4] = {0xFF, 0x00, 0xFF, 0xFF};
 
@@ -79,8 +82,7 @@ namespace NS::Graphics
             HRESULT hr = device->CreateTexture2D(&td, srd.data(), tex.GetAddressOf());
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(
-                    Graphics, "Skybox fallback cubemap CreateTexture2D 失敗 (hr=0x{:08X})", static_cast<unsigned>(hr));
+                NS_LOG_ERROR(Graphics, "Skybox fallback cubemap CreateTexture2D 失敗 (hr=0x{:08X})", static_cast<unsigned>(hr));
                 return false;
             }
 
@@ -117,8 +119,7 @@ namespace NS::Graphics
                                                                    outSrv.GetAddressOf());
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(
-                    Graphics, "Skybox .dds ロード失敗: {} (hr=0x{:08X})", path.string(), static_cast<unsigned>(hr));
+                NS_LOG_ERROR(Graphics, "Skybox .dds ロード失敗: {} (hr=0x{:08X})", path.string(), static_cast<unsigned>(hr));
                 return false;
             }
             return true;
@@ -155,25 +156,21 @@ namespace NS::Graphics
                 ComPtr<ID3D11Resource> resource;
                 ComPtr<ID3D11ShaderResourceView> tmpSrv;
 
-                const HRESULT hr =
-                    DirectX::CreateWICTextureFromMemoryEx(device,
-                                                          nullptr,
-                                                          reinterpret_cast<const std::uint8_t*>(bytes.data()),
-                                                          bytes.size(),
-                                                          0u,
-                                                          D3D11_USAGE_DEFAULT,
-                                                          D3D11_BIND_SHADER_RESOURCE,
-                                                          0u,
-                                                          0u,
-                                                          DirectX::WIC_LOADER_IGNORE_SRGB,
-                                                          resource.GetAddressOf(),
-                                                          tmpSrv.GetAddressOf());
+                const HRESULT hr = DirectX::CreateWICTextureFromMemoryEx(device,
+                                                                         nullptr,
+                                                                         reinterpret_cast<const std::uint8_t*>(bytes.data()),
+                                                                         bytes.size(),
+                                                                         0u,
+                                                                         D3D11_USAGE_DEFAULT,
+                                                                         D3D11_BIND_SHADER_RESOURCE,
+                                                                         0u,
+                                                                         0u,
+                                                                         DirectX::WIC_LOADER_IGNORE_SRGB,
+                                                                         resource.GetAddressOf(),
+                                                                         tmpSrv.GetAddressOf());
                 if (FAILED(hr) || !resource)
                 {
-                    NS_LOG_ERROR(Graphics,
-                                 "Skybox 6-face: WIC 読込失敗 {} (hr=0x{:08X})",
-                                 facePath.string(),
-                                 static_cast<unsigned>(hr));
+                    NS_LOG_ERROR(Graphics,"Skybox 6-face: WIC 読込失敗 {} (hr=0x{:08X})",facePath.string(),static_cast<unsigned>(hr));
                     return false;
                 }
 
@@ -192,8 +189,7 @@ namespace NS::Graphics
                     faceHeight = static_cast<int>(d.Height);
                     faceFormat = d.Format;
                 }
-                else if (static_cast<int>(d.Width) != faceWidth || static_cast<int>(d.Height) != faceHeight ||
-                         d.Format != faceFormat)
+                else if (static_cast<int>(d.Width) != faceWidth || static_cast<int>(d.Height) != faceHeight ||d.Format != faceFormat)
                 {
                     NS_LOG_ERROR(Graphics,
                                  "Skybox 6-face: face {} の解像度/フォーマット不一致 ({}x{}, fmt={})",
@@ -221,9 +217,7 @@ namespace NS::Graphics
             HRESULT hr = device->CreateTexture2D(&cubeDesc, nullptr, cubeTex.GetAddressOf());
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(Graphics,
-                             "Skybox 6-face: cubemap 本体の CreateTexture2D 失敗 (hr=0x{:08X})",
-                             static_cast<unsigned>(hr));
+                NS_LOG_ERROR(Graphics,"Skybox 6-face: cubemap 本体の CreateTexture2D 失敗 (hr=0x{:08X})",static_cast<unsigned>(hr));
                 return false;
             }
 
@@ -322,13 +316,22 @@ namespace NS::Graphics
         pipeDesc.depth = DepthMode::ReadOnly;
         m_pipeline = Pipeline::Create(pipeDesc);
         if (!m_pipeline->IsValid())
-            return;
+        {
+            NS_LOG_ERROR(Graphics, "Skybox: Pipeline 構築失敗");
+			return;
+        }
         if (!CreateSkyboxSampler(device, m_sampler))
-            return;
-
+        {
+            NS_LOG_ERROR(Graphics, "Skybox: SamplerState 構築失敗");
+			return;
+        }
         // 未ロード時でも安全に描画できるよう、初期状態として代替画像を設定しておく
         if (!CreateMagentaCubemapFallback(device, m_cubemapSrv))
+        {
+			NS_LOG_ERROR(Graphics, "Skybox: fallback cubemap 構築失敗");
             return;
+        }
+
 
         m_usingFallback = true;
         m_valid = true;
@@ -354,7 +357,7 @@ namespace NS::Graphics
             // ディレクトリが指定された場合は、6方向の画像ファイルとして読み込みを試みる
             if (::NS::Core::FileSystem::IsDirectory(path))
             {
-                auto* context = Gpu().context;
+                ID3D11DeviceContext* context = Gpu().context;
                 loaded = (context != nullptr) && LoadSixFacePngCubemap(device, context, path, newSrv);
             }
             else
@@ -378,11 +381,15 @@ namespace NS::Graphics
     void IssueSkybox(Renderer& renderer, const Skybox& skybox, const NS::Core::Matrix& viewProjNoTranslate) noexcept
     {
         if (!skybox.IsValid())
-            return;
+        {
+			return;
+        }
 
         auto& cmd = renderer.Commands();
         if (cmd.Native() == nullptr)
+        {
             return;
+        }
 
         SkyboxCB cbData{};
         cbData.viewProj = viewProjNoTranslate;

@@ -25,12 +25,16 @@ namespace NS::Graphics
             BufferDesc vbDesc = MakeVertexBufferDesc(vertices, vertexCount, sizeof(SkinnedVertex));
             std::unique_ptr<Buffer> vb = Buffer::Create(vbDesc);
             if (!vb->IsValid())
-                return false;
+            {
+				return false;
+            }
 
             BufferDesc ibDesc = MakeIndexBufferDesc(indices, indexCount, DXGI_FORMAT_R32_UINT);
             std::unique_ptr<Buffer> ib = Buffer::Create(ibDesc);
             if (!ib->IsValid())
+            {
                 return false;
+            }
 
             outVb = std::move(vb);
             outIb = std::move(ib);
@@ -44,9 +48,13 @@ namespace NS::Graphics
     {
         std::vector<BoneSphere> spheres(boneCount);
         for (BoneSphere& s : spheres)
+        {
             s.radius = -1.0f; // 既定は影響なし。頂点が当たったボーンだけ後で半径を入れる
+        }
         if (vertices == nullptr || vertexCount == 0u || boneCount == 0u)
-            return spheres;
+        {
+			return spheres;
+        }
 
         constexpr float k_Big = std::numeric_limits<float>::max();
         std::vector<NS::Core::Vector3> mn(boneCount, NS::Core::Vector3{k_Big, k_Big, k_Big});
@@ -60,18 +68,27 @@ namespace NS::Graphics
             for (int k = 0; k < 4; ++k)
             {
                 if (v.weights[k] <= 0.0f)
+                {
                     continue;
+                }
                 const std::uint32_t j = v.joints[k];
                 if (j >= boneCount)
+                {
                     continue;
+                }
                 mn[j] = NS::Core::Vector3::Min(mn[j], v.position);
                 mx[j] = NS::Core::Vector3::Max(mx[j], v.position);
                 hit[j] = true;
             }
         }
         for (std::size_t j = 0; j < boneCount; ++j)
+        {
             if (hit[j])
+            {
                 spheres[j].center = (mn[j] + mx[j]) * 0.5f;
+            }
+        }
+
 
         // 中心が決まってから最遠影響頂点までの距離を半径にする
         std::vector<float> maxD2(boneCount, 0.0f);
@@ -81,18 +98,28 @@ namespace NS::Graphics
             for (int k = 0; k < 4; ++k)
             {
                 if (v.weights[k] <= 0.0f)
+                {
                     continue;
+                }
                 const std::uint32_t j = v.joints[k];
                 if (j >= boneCount)
-                    continue;
+                {
+					continue;
+                }
                 const float d2 = NS::Core::Vector3::DistanceSquared(v.position, spheres[j].center);
                 if (d2 > maxD2[j])
-                    maxD2[j] = d2;
+                {
+					maxD2[j] = d2;
+                }
             }
         }
         for (std::size_t j = 0; j < boneCount; ++j)
+        {
             if (hit[j])
+            {
                 spheres[j].radius = std::sqrt(maxD2[j]);
+            }
+        }
         return spheres;
     }
 
@@ -102,7 +129,10 @@ namespace NS::Graphics
                                       const NS::Core::AABB& fallback)
     {
         if (palette == nullptr)
-            return fallback;
+        {
+            NS_LOG_ERROR(Graphics, "MergeSkinnedBounds: palette が nullptr");
+			return fallback;
+        }
 
         NS::Core::AABB merged{};
         bool any = false;
@@ -110,7 +140,10 @@ namespace NS::Graphics
         for (std::size_t i = 0; i < count; ++i)
         {
             if (spheres[i].radius < 0.0f)
+            {
                 continue; // 影響頂点なしのボーンは飛ばす
+            }
+
             // 球中心だけ現在ポーズへ動かし半径そのままの箱にする。剛体変換なら半径は変わらない
             const NS::Core::Vector3 c = NS::Core::Vector3::Transform(spheres[i].center, palette[i]);
             const float r = spheres[i].radius;
@@ -126,7 +159,9 @@ namespace NS::Graphics
             }
         }
         if (!any)
+        {
             return fallback;
+        }
         return merged;
     }
 
@@ -181,8 +216,7 @@ namespace NS::Graphics
 
         if (desc.boneCount > k_MaxBones)
         {
-            NS_LOG_ERROR(
-                Graphics, "SkeletalMesh: boneCount {} が上限 {} を超過 — 上限に切詰め", desc.boneCount, k_MaxBones);
+            NS_LOG_ERROR(Graphics, "SkeletalMesh: boneCount {} が上限 {} を超過 — 上限に切詰め", desc.boneCount, k_MaxBones);
         }
         m_boneCount = std::min(desc.boneCount, k_MaxBones);
 
@@ -195,14 +229,11 @@ namespace NS::Graphics
     std::vector<InputElement> SkeletalMesh::SkinnedInputLayout()
     {
         static const std::vector<InputElement> k_Layout = {
-            InputElement{
-                "POSITION", InputElementFormat::Float3, static_cast<unsigned>(offsetof(SkinnedVertex, position))},
+            InputElement{"POSITION", InputElementFormat::Float3, static_cast<unsigned>(offsetof(SkinnedVertex, position))},
             InputElement{"TEXCOORD", InputElementFormat::Float2, static_cast<unsigned>(offsetof(SkinnedVertex, uv))},
             InputElement{"NORMAL", InputElementFormat::Float3, static_cast<unsigned>(offsetof(SkinnedVertex, normal))},
-            InputElement{
-                "BLENDINDICES", InputElementFormat::UInt4, static_cast<unsigned>(offsetof(SkinnedVertex, joints))},
-            InputElement{
-                "BLENDWEIGHT", InputElementFormat::Float4, static_cast<unsigned>(offsetof(SkinnedVertex, weights))},
+            InputElement{"BLENDINDICES", InputElementFormat::UInt4, static_cast<unsigned>(offsetof(SkinnedVertex, joints))},
+            InputElement{"BLENDWEIGHT", InputElementFormat::Float4, static_cast<unsigned>(offsetof(SkinnedVertex, weights))},
         };
         return k_Layout;
     }

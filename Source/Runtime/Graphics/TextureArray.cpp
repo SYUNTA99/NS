@@ -64,7 +64,9 @@ namespace NS::Graphics
             {
                 const DirectX::WIC_LOADER_FLAGS loadFlags = [&]() -> DirectX::WIC_LOADER_FLAGS {
                     if (sRGB)
+                    {
                         return DirectX::WIC_LOADER_FORCE_SRGB;
+                    }
                     return DirectX::WIC_LOADER_IGNORE_SRGB;
                 }();
                 const HRESULT hr = DirectX::CreateWICTextureFromMemoryEx(device,
@@ -113,8 +115,7 @@ namespace NS::Graphics
             HRESULT hr = device->CreateTexture2D(&td, &srd, outTexture.GetAddressOf());
             if (FAILED(hr))
             {
-                NS_LOG_ERROR(
-                    Graphics, "TextureArray fallback CreateTexture2D 失敗 (hr=0x{:08X})", static_cast<unsigned>(hr));
+                NS_LOG_ERROR(Graphics, "TextureArray fallback CreateTexture2D 失敗 (hr=0x{:08X})", static_cast<unsigned>(hr));
                 return false;
             }
 

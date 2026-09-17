@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
@@ -7,6 +7,7 @@
 #include "Runtime/Physics/Capsule.h"
 #include "Runtime/Physics/MeshCollision.h"
 #include "Runtime/Physics/Triangle.h"
+#include "Runtime/Core/NonCopyable.h"
 
 #include <Jolt/Jolt.h>
 
@@ -72,16 +73,11 @@ namespace NS::Physics
     //! 型の登録解除はプロセス終了時
     //! Add 系はどれも body を 1 つ作り、shape を作れなければ無効な BodyID を返す
     //! 作った時点で動的なのは AddDynamic の付く 2 つだけで、これだけが起きた状態で入る
-    class PhysicsScene
+	class PhysicsScene :public NS::Core::NonCopyable
     {
     public:
         PhysicsScene();
         ~PhysicsScene();
-
-        PhysicsScene(const PhysicsScene&) = delete;
-        PhysicsScene& operator=(const PhysicsScene&) = delete;
-        PhysicsScene(PhysicsScene&&) = delete;
-        PhysicsScene& operator=(PhysicsScene&&) = delete;
 
         //! 入っている body の数
         [[nodiscard]] JPH::uint BodyCount() const noexcept;
@@ -194,13 +190,13 @@ namespace NS::Physics
                                JPH::ObjectLayer layer,
                                bool sensor);
 
-        class RuntimeInitialization
+        class RuntimeInit
         {
         public:
-            RuntimeInitialization();
+            RuntimeInit();
         };
 
-        class BroadPhaseLayerInterface final : public JPH::BroadPhaseLayerInterface
+        class BPLayerInterface final : public JPH::BroadPhaseLayerInterface
         {
         public:
             [[nodiscard]] JPH::uint GetNumBroadPhaseLayers() const override;
@@ -210,13 +206,13 @@ namespace NS::Physics
 #endif
         };
 
-        class ObjectLayerPairFilter final : public JPH::ObjectLayerPairFilter
+        class ObjLayerPairFilter final : public JPH::ObjectLayerPairFilter
         {
         public:
             [[nodiscard]] bool ShouldCollide(JPH::ObjectLayer first, JPH::ObjectLayer second) const override;
         };
 
-        class ObjectVsBroadPhaseLayerFilter final : public JPH::ObjectVsBroadPhaseLayerFilter
+        class ObjVsBPLayerFilter final : public JPH::ObjectVsBroadPhaseLayerFilter
         {
         public:
             [[nodiscard]] bool ShouldCollide(JPH::ObjectLayer object, JPH::BroadPhaseLayer broadPhase) const override;
@@ -249,10 +245,10 @@ namespace NS::Physics
                                const DynamicBodyDesc& desc);
 
         // m_tempAllocator より前に置く。構築が呼ぶ Jolt の確保関数は RegisterDefaultAllocator まで nullptr
-        RuntimeInitialization m_runtimeInitialization;
-        BroadPhaseLayerInterface m_broadPhaseLayerInterface;
-        ObjectLayerPairFilter m_objectLayerPairFilter;
-        ObjectVsBroadPhaseLayerFilter m_objectVsBroadPhaseLayerFilter;
+        RuntimeInit m_runtimeInitialization;
+        BPLayerInterface m_broadPhaseLayerInterface;
+        ObjLayerPairFilter m_objectLayerPairFilter;
+        ObjVsBPLayerFilter m_objectVsBroadPhaseLayerFilter;
         ContactRecorder m_contactRecorder;
         JPH::TempAllocatorImpl m_tempAllocator;
         JPH::JobSystemSingleThreaded m_jobSystem;

@@ -69,8 +69,7 @@ namespace NS::Graphics
                 const HRESULT hr = device->CreateShaderResourceView(tex2d, nullptr, outSrv.GetAddressOf());
                 if (FAILED(hr))
                 {
-                    NS_LOG_ERROR(
-                        Graphics, "Texture: CreateShaderResourceView 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                    NS_LOG_ERROR(Graphics, "Texture: CreateShaderResourceView 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
                 }
             }
             if (bindFlags & D3D11_BIND_RENDER_TARGET)
@@ -78,8 +77,7 @@ namespace NS::Graphics
                 const HRESULT hr = device->CreateRenderTargetView(tex2d, nullptr, outRtv.GetAddressOf());
                 if (FAILED(hr))
                 {
-                    NS_LOG_ERROR(
-                        Graphics, "Texture: CreateRenderTargetView 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                    NS_LOG_ERROR(Graphics, "Texture: CreateRenderTargetView 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
                 }
             }
             if (bindFlags & D3D11_BIND_DEPTH_STENCIL)
@@ -87,8 +85,7 @@ namespace NS::Graphics
                 const HRESULT hr = device->CreateDepthStencilView(tex2d, nullptr, outDsv.GetAddressOf());
                 if (FAILED(hr))
                 {
-                    NS_LOG_ERROR(
-                        Graphics, "Texture: CreateDepthStencilView 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                    NS_LOG_ERROR(Graphics, "Texture: CreateDepthStencilView 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
                 }
             }
         }
@@ -164,21 +161,29 @@ namespace NS::Graphics
         {
             const DirectX::WIC_LOADER_FLAGS loadFlags = [&]() -> DirectX::WIC_LOADER_FLAGS {
                 if (sRGB)
+                {
                     return DirectX::WIC_LOADER_FORCE_SRGB;
+                }
                 return DirectX::WIC_LOADER_IGNORE_SRGB;
             }();
 
             ID3D11DeviceContext* ctxForMipmap = nullptr;
             if (generateMipmaps)
-                ctxForMipmap = context;
+            {
+				ctxForMipmap = context;
+            }
 
             UINT mipmapBindFlag = 0u;
             if (generateMipmaps)
+            {
                 mipmapBindFlag = D3D11_BIND_RENDER_TARGET;
+            }
 
             UINT mipmapMiscFlag = 0u;
             if (generateMipmaps)
-                mipmapMiscFlag = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+            {
+				mipmapMiscFlag = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+            }
 
             const HRESULT hr = DirectX::CreateWICTextureFromMemoryEx(device,
                                                                      ctxForMipmap,
@@ -224,8 +229,8 @@ namespace NS::Graphics
 
     Texture::Texture(const TextureDesc& desc)
     {
-        auto* device = Gpu().device;
-        auto* context = Gpu().context;
+        ID3D11Device* device = Gpu().device;
+        ID3D11DeviceContext* context = Gpu().context;
         if (device == nullptr || context == nullptr)
         {
             NS_LOG_ERROR(Graphics, "Texture: Renderer の Device / Context が無効");
@@ -249,8 +254,7 @@ namespace NS::Graphics
                 }
                 else
                 {
-                    loaded = TryLoadWic(
-                        device, context, data, bytes.size(), desc.generateMipmaps, desc.sRGB, resource, m_srv);
+                    loaded = TryLoadWic(device, context, data, bytes.size(), desc.generateMipmaps, desc.sRGB, resource, m_srv);
                 }
             }
             else
@@ -313,7 +317,7 @@ namespace NS::Graphics
 
     Texture::Texture(ComPtr<ID3D11Texture2D> existing, UINT bindFlags)
     {
-        auto* device = Gpu().device;
+        ID3D11Device* device = Gpu().device;
         if (device == nullptr || !existing)
         {
             NS_LOG_ERROR(Graphics, "Texture: ラップ対象 / Device が無効");

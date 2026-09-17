@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Runtime/Object/Object.h"
 #include "Runtime/Object/Reflection/Reflection.h"
@@ -85,7 +85,9 @@ namespace NS::Object
         {
             const ReflectionInfo* info = GetReflection();
             if (info != nullptr)
+            {
                 return info->typeName;
+            }
             return "";
         }
 
@@ -108,7 +110,10 @@ namespace NS::Object
     template <class T> [[nodiscard]] T* ComponentCast(Component* comp) noexcept
     {
         if (comp != nullptr && comp->IsA(T::StaticReflection()))
-            return static_cast<T*>(comp);
+        {
+			return static_cast<T*>(comp);
+        }
+
         return nullptr;
     }
 
@@ -116,7 +121,10 @@ namespace NS::Object
     template <class T> [[nodiscard]] const T* ComponentCast(const Component* comp) noexcept
     {
         if (comp != nullptr && comp->IsA(T::StaticReflection()))
+        {
             return static_cast<const T*>(comp);
+        }
+
         return nullptr;
     }
 

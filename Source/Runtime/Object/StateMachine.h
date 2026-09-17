@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <map>
 #include <memory>
@@ -47,8 +47,10 @@ namespace NS::Object
         {
             const auto& map = Map();
             const auto it = map.find(name);
-            if (it == map.end())
+            if (it == map.end()) 
+            {
                 return nullptr;
+            }
             return it->second();
         }
 
@@ -88,7 +90,9 @@ namespace NS::Object
                 m_current->OnEnter(owner);
             }
             if (m_states.empty())
+            {
                 all = false;
+            }
             return all;
         }
 
@@ -96,9 +100,13 @@ namespace NS::Object
         void Reset() noexcept
         {
             if (m_states.empty())
+            {
                 m_current = nullptr;
+            }
             else
-                m_current = m_states.front().get();
+            {
+				m_current = m_states.front().get();
+            }
         }
 
         [[nodiscard]] bool IsBuilt() const noexcept { return m_current != nullptr; }
@@ -107,7 +115,9 @@ namespace NS::Object
         [[nodiscard]] const char* CurrentName() const noexcept
         {
             if (m_current == nullptr)
-                return "";
+            {
+				return "";
+            }
             return m_current->Name();
         }
 
@@ -115,7 +125,10 @@ namespace NS::Object
         void Step(TOwner& owner, float dt)
         {
             if (m_current != nullptr)
+            {
                 m_current->OnStep(owner, dt);
+            }
+
         }
 
         //! 名前の状態へ移る。今の OnExit → 次の OnEnter を即時に呼ぶ。同じ状態へは何もせず true、
@@ -124,11 +137,19 @@ namespace NS::Object
         {
             State<TOwner>* next = Find(name);
             if (next == nullptr)
-                return false;
+            {
+				return false;
+            }
             if (next == m_current)
+            {
                 return true;
+            }
+
             if (m_current != nullptr)
+            {
                 m_current->OnExit(owner);
+            }
+
             m_current = next;
             m_current->OnEnter(owner);
             return true;
@@ -142,7 +163,9 @@ namespace NS::Object
             for (const std::unique_ptr<State<TOwner>>& state : m_states)
             {
                 if (name == state->Name())
-                    return state.get();
+                {
+					return state.get();
+                }
             }
             return nullptr;
         }

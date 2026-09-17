@@ -1,4 +1,4 @@
-#include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
+﻿#include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
 
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Object/GameObject.h"
@@ -17,7 +17,9 @@ namespace
     [[nodiscard]] float SpringApproach(float curr, float target, float omega, float dt) noexcept
     {
         if (omega <= 0.0f || dt <= 0.0f)
-            return target;
+        {
+			return target;
+        }
         const float a = 1.0f - std::exp(-omega * dt);
         return curr + (target - curr) * a;
     }
@@ -46,9 +48,13 @@ namespace NS::Object
         const float horiz = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
         // NaN を持つと走り判定の比較が常に偽になり、走っても待機時距離のまま
         if (std::isfinite(horiz))
+        {
             m_followHorizontalSpeed = horiz;
+        }
         else
-            m_followHorizontalSpeed = 0.0f;
+        {
+			m_followHorizontalSpeed = 0.0f;
+        }
         m_hasFollowMotion = true;
     }
 
@@ -68,10 +74,14 @@ namespace NS::Object
 
         // 参照未設定はテスト / 直結線の構築なので触らない。解決不可も既存の結線を壊さず据え置く
         if (!m_targetRef.IsSet() || Owner() == nullptr || Owner()->OwningScene() == nullptr)
+        {
             return;
+        }
         GameObject* target = Owner()->OwningScene()->Objects().FindObject(m_targetRef);
         if (target == nullptr)
+        {
             return;
+        }
         m_target = &target->Root();
     }
 
@@ -95,11 +105,17 @@ namespace NS::Object
     void ThirdPersonFollowComponent::SetAutoDistances(float idle, float run, float jump) noexcept
     {
         if (idle > 0.0f)
+        {
             m_idleDistance = idle;
+        }
         if (run > 0.0f)
-            m_runDistance = run;
+        {
+			m_runDistance = run;
+        }
         if (jump > 0.0f)
-            m_jumpDistance = jump;
+        {
+			m_jumpDistance = jump;
+        }
     }
 
     void ThirdPersonFollowComponent::SetRunSpeedThreshold(float speed) noexcept
@@ -122,13 +138,18 @@ namespace NS::Object
     void ThirdPersonFollowComponent::SetInitialPoseFromCameraPosition(const NS::Core::Vector3& cameraPosition) noexcept
     {
         if (m_target == nullptr)
+        {
             return;
+        }
+
         const NS::Core::Vector3 tgtPos = m_target->Position();
         const NS::Core::Vector3 headPos{tgtPos.x, tgtPos.y + m_headHeight, tgtPos.z};
         const NS::Core::Vector3 toHead = headPos - cameraPosition; // = forward * distance
         const float distance = toHead.Length();
         if (distance < 1e-3f)
+        {
             return;
+        }
         const NS::Core::Vector3 forward = toHead * (1.0f / distance);
 
         // EvaluatePose の forward = (sin(yaw)cos(pitch), sin(pitch), cos(yaw)cos(pitch)) を解く
@@ -151,17 +172,23 @@ namespace NS::Object
     {
         const float dt = NS::Core::FrameTimer::FixedDelta();
         if (!IsActive() || m_target == nullptr || dt <= 0.0f)
-            return;
+        {
+			return;
+        }
 
         // マウスと右スティックの手動回転
         auto& input = NS::Platform::Input::Get();
         const auto& mouse = input.Mouse();
         float mxSign = 1.0f;
         if (m_invertX)
-            mxSign = -1.0f;
+        {
+			mxSign = -1.0f;
+        }
         float mySign = 1.0f;
         if (m_invertY)
-            mySign = -1.0f;
+        {
+			mySign = -1.0f;
+        }
         m_yaw += static_cast<float>(mouse.GetDeltaX()) * m_sensX * mxSign;
         m_pitch += static_cast<float>(mouse.GetDeltaY()) * m_sensY * mySign;
 
@@ -185,9 +212,13 @@ namespace NS::Object
                 else
                 {
                     if (m_followHorizontalSpeed > m_runSpeedThreshold)
+                    {
                         desired = m_runDistance;
+                    }
                     else
+                    {
                         desired = m_idleDistance;
+                    }
                 }
             }
             m_desiredDistance = desired;
@@ -198,9 +229,11 @@ namespace NS::Object
     CameraPose ThirdPersonFollowComponent::EvaluatePose(float alpha) const noexcept
     {
         if (m_target == nullptr)
-            return MakePose(NS::Core::Vector3{0.0f, 0.0f, -5.0f},
-                            NS::Core::Vector3{0.0f, 0.0f, 0.0f},
-                            NS::Core::Vector3{0.0f, 1.0f, 0.0f});
+        {
+            return MakePose(NS::Core::Vector3{ 0.0f, 0.0f, -5.0f },
+                            NS::Core::Vector3{ 0.0f, 0.0f, 0.0f },
+                            NS::Core::Vector3{ 0.0f, 1.0f, 0.0f });
+        }
 
         const float cy = std::cos(m_yaw);
         const float sy = std::sin(m_yaw);

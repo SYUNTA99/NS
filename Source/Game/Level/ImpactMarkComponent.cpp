@@ -1,4 +1,4 @@
-#include "Game/Level/ImpactMarkComponent.h"
+﻿#include "Game/Level/ImpactMarkComponent.h"
 
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
@@ -15,7 +15,9 @@ namespace NS::Game::Level
     NS::Object::GameObject* ImpactMarkComponent::SpawnAt(NS::Object::Scene* scene, const NS::Core::Vector3& position)
     {
         if (scene == nullptr)
+        {
             return nullptr;
+        }
 
         // 組み立ててから渡す。SpawnTransient の資産の引き当ては渡した時に持っている Component にしか効かない
         auto owned = std::make_unique<NS::Object::GameObject>();
@@ -35,18 +37,24 @@ namespace NS::Game::Level
     void ImpactMarkComponent::OnUpdate()
     {
         if (m_age >= m_lifeSeconds)
+        {
             return;
+        }
         m_age += NS::Core::FrameTimer::FixedDelta();
         float t = 1.0f;
         if (m_lifeSeconds > 0.0f)
+        {
             t = NS::Core::Clamp(m_age / m_lifeSeconds, 0.0f, 1.0f);
+        }
         const float size = m_diameter * (1.0f - t);
         RootTransform().SetScale(NS::Core::Vector3{size, 1.0f, size});
         if (t >= 1.0f)
         {
             // 消える時も配置物は残す。更新の最中に消すと ObjectList::UpdateObjects が集めた並びに解放済みの位置が残る
             if (auto* mesh = Owner()->FindComponent<NS::Object::MeshRendererComponent>())
+            {
                 mesh->SetActive(false);
+            }
             SetActive(false);
         }
     }

@@ -1,4 +1,4 @@
-#include "Runtime/UI/UISystem.h"
+﻿#include "Runtime/UI/UISystem.h"
 
 #include "Runtime/Graphics/Renderer.h"
 
@@ -28,7 +28,9 @@ namespace NS::UI
     void UISystem::Render(NS::Graphics::Renderer& renderer)
     {
         if (!m_root.HasChildren())
+        {
             return;
+        }
 
         const NS::Core::Size2D size = renderer.Size();
         Layout(static_cast<float>(size.width), static_cast<float>(size.height));
@@ -38,7 +40,9 @@ namespace NS::UI
     bool UISystem::ConsumesPointer(float px, float py) const noexcept
     {
         if (m_scale <= 0.0f)
+        {
             return false;
+        }
         return m_root.HitTest(px / m_scale, py / m_scale);
     }
 

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstddef>
 #include <functional>
@@ -17,7 +17,9 @@ namespace NS::Game::Entity
         void Subscribe(std::function<void()> callback)
         {
             if (!callback)
-                return;
+            {
+				return;
+            }
             m_callbacks.push_back(std::move(callback));
         }
 
@@ -26,7 +28,9 @@ namespace NS::Game::Entity
         void Invoke() const noexcept
         {
             for (const std::function<void()>& callback : m_callbacks)
+            {
                 callback();
+            }
         }
 
         [[nodiscard]] std::size_t SubscriberCount() const noexcept { return m_callbacks.size(); }

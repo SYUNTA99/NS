@@ -137,7 +137,7 @@ TEST_F(EntityComponentTest, MoveWithoutPhysicsSceneAdvancesByVelocity)
     obj.Root().SetPosition(Vector3{0.0f, 5.0f, 0.0f});
     entity.SetVelocity(Vector3{2.0f, 0.0f, -3.0f});
 
-    entity.Move(k_FixedDt);
+    entity.Move(k_FixedDt, 0.0f);
 
     const Vector3 pos = obj.Root().Position();
     EXPECT_NEAR(pos.x, 2.0f * k_FixedDt, 1e-5f);

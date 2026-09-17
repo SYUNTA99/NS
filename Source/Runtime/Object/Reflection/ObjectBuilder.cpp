@@ -1,4 +1,4 @@
-#include "Runtime/Object/Reflection/ObjectBuilder.h"
+﻿#include "Runtime/Object/Reflection/ObjectBuilder.h"
 
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Component.h"
@@ -25,12 +25,18 @@ namespace NS::Object
             for (Component* comp : obj.Components())
             {
                 if (comp == nullptr)
-                    continue;
+                {
+					continue;
+                }
                 if (std::find(applied.begin(), applied.end(), comp) != applied.end())
+                {
                     continue;
+                }
                 const ReflectionInfo* info = comp->GetReflection();
                 if (info != nullptr && typeName == info->typeName)
-                    return comp;
+                {
+					return comp;
+                }
             }
             return nullptr;
         }
@@ -38,8 +44,7 @@ namespace NS::Object
         // transform エントリへ root 回転を 4 要素配列で控える。 リフレクションの Euler と別に厳密なクォータニオンを運ぶ
         void WriteRotationQuatField(nlohmann::json& transformEntry, const NS::Core::Quaternion& rotation)
         {
-            transformEntry["fields"][std::string(k_RotationQuatFieldName)] =
-                nlohmann::json{rotation.x, rotation.y, rotation.z, rotation.w};
+            transformEntry["fields"][std::string(k_RotationQuatFieldName)] = nlohmann::json{rotation.x, rotation.y, rotation.z, rotation.w};
         }
 
         // 控えの厳密なクォータニオンで root 回転を上書きする。 控えが無い読込直後や旧データは Euler のまま
@@ -47,15 +52,20 @@ namespace NS::Object
         {
             const auto fieldsIt = transformEntry.find("fields");
             if (fieldsIt == transformEntry.end() || !fieldsIt->is_object())
+            {
                 return;
+            }
             const auto quatIt = fieldsIt->find(std::string(k_RotationQuatFieldName));
             if (quatIt == fieldsIt->end() || !quatIt->is_array() || quatIt->size() != 4u)
+            {
                 return;
+            }
             const nlohmann::json& q = *quatIt;
             if (!q[0].is_number() || !q[1].is_number() || !q[2].is_number() || !q[3].is_number())
+            {
                 return;
-            obj.Root().SetRotation(
-                NS::Core::Quaternion{q[0].get<float>(), q[1].get<float>(), q[2].get<float>(), q[3].get<float>()});
+            }
+            obj.Root().SetRotation(NS::Core::Quaternion{q[0].get<float>(), q[1].get<float>(), q[2].get<float>(), q[3].get<float>()});
         }
     } // namespace
 
@@ -64,20 +74,28 @@ namespace NS::Object
     void ApplyObjectComponents(GameObject& obj, const ObjectData& object, const ComponentBuiltFn& onBuilt)
     {
         if (!object.components.is_array())
+        {
             return;
+        }
 
         std::vector<Component*> applied;
         for (const nlohmann::json& entry : object.components)
         {
             const std::string_view typeName = ComponentEntryType(entry);
             if (typeName.empty())
-                continue;
+            {
+				continue;
+            }
 
             Component* created = FindExistingComponent(obj, typeName, applied);
             if (created == nullptr)
+            {
                 created = CreateComponent(std::string(typeName), obj);
+            }
             if (created == nullptr)
+            {
                 continue; // 許可リスト外 / 未知の型は読み飛ばす
+            }
             applied.push_back(created);
 
             // data の id を実体へ書く。以降この component は並び順でなく id で名指しできる
@@ -86,14 +104,20 @@ namespace NS::Object
 
             const auto fieldsIt = entry.find("fields");
             if (fieldsIt != entry.end())
+            {
                 ApplyJsonFields(*created, *fieldsIt);
+            }
 
             // Euler のリフレクション適用で丸まった root 回転を、 控えの厳密なクォータニオンで戻して往復ドリフトを断つ
             if (typeName == k_TransformTypeName)
-                ApplyRotationQuatOverride(obj, entry);
+            {
+				ApplyRotationQuatOverride(obj, entry);
+            }
 
             if (onBuilt)
-                onBuilt(*created, entry);
+            {
+				onBuilt(*created, entry);
+            }
         }
     }
 
@@ -113,7 +137,9 @@ namespace NS::Object
             for (Component* comp : obj->Components())
             {
                 if (comp != nullptr)
+                {
                     comp->ResolveAssets(*assets);
+                }
             }
         }
         return obj;
@@ -131,10 +157,14 @@ namespace NS::Object
         for (const Component* comp : obj.Components())
         {
             if (comp == nullptr)
-                continue;
+            {
+				continue;
+            }
             const ReflectionInfo* info = comp->GetReflection();
             if (info == nullptr)
+            {
                 continue;
+            }
             data.components.push_back(MakeComponentEntry(info->typeName));
         }
         SetObjectPosition(data, obj.Root().Position());
@@ -151,13 +181,21 @@ namespace NS::Object
         data.order = obj.Order();
         data.active = obj.IsActiveSelf();
         if (const GameObject* parent = obj.Parent())
+        {
             data.parentId = parent->Id();
+        }
+
         for (const Component* comp : obj.Components())
         {
             if (comp == nullptr)
-                continue;
+            {
+				continue;
+            }
             if (comp->GetReflection() == nullptr)
+            {
                 continue;
+            }
+
             nlohmann::json entry = SerializeComponent(*comp);
             // id は往復で保つ。落とすと保存のたびに振り直しになり、名指ししている参照が外れる
             SetComponentEntryId(entry, comp->Id());
@@ -167,7 +205,10 @@ namespace NS::Object
         }
         // 回転は Euler を経由すると往復で誤差が積もるため、 root quaternion を控えて厳密なまま持ち回す
         if (nlohmann::json* transform = FindComponentEntry(data, k_TransformTypeName))
+        {
             WriteRotationQuatField(*transform, obj.Root().Rotation());
+        }
+
         return data;
     }
 } // namespace NS::Object

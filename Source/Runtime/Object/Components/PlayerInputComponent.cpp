@@ -1,4 +1,4 @@
-#include "Runtime/Object/Components/PlayerInputComponent.h"
+﻿#include "Runtime/Object/Components/PlayerInputComponent.h"
 
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
@@ -18,7 +18,9 @@ namespace
     {
         NS::Core::Vector3 out{};
         if (!NS::Core::TryNormalizeHorizontal(v, out))
-            return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+        {
+            return NS::Core::Vector3{ 0.0f, 0.0f, 1.0f };
+        }
         return out;
     }
 } // namespace
@@ -35,13 +37,17 @@ namespace NS::Object
     void PlayerInputComponent::OnUpdate()
     {
         if (!IsActive())
+        {
             return;
+        }
 
         // camera 相対移動の基準 forward は Brain から自分で読む。 Brain 不在 (テスト等) は注入値のまま
         if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
         {
             if (CameraBrainComponent* brain = Owner()->OwningScene()->CameraBrain())
+            {
                 m_cameraForward = NormalizeHorizontal(brain->ForwardHorizontal());
+            }
         }
 
         auto& input = NS::Platform::Input::Get();
@@ -56,14 +62,10 @@ namespace NS::Object
         float kbRight = 0.0f;
         if (!wantKb)
         {
-            if (kb.IsHeld(NS::Platform::Key::W))
-                kbForward += 1.0f;
-            if (kb.IsHeld(NS::Platform::Key::S))
-                kbForward -= 1.0f;
-            if (kb.IsHeld(NS::Platform::Key::A))
-                kbRight -= 1.0f;
-            if (kb.IsHeld(NS::Platform::Key::D))
-                kbRight += 1.0f;
+            if (kb.IsHeld(NS::Platform::Key::W)) kbForward += 1.0f;
+            if (kb.IsHeld(NS::Platform::Key::S)) kbForward -= 1.0f;
+            if (kb.IsHeld(NS::Platform::Key::A)) kbRight -= 1.0f;
+            if (kb.IsHeld(NS::Platform::Key::D)) kbRight += 1.0f;
         }
 
         // スティック合成と入力の大きさクランプ
@@ -96,10 +98,8 @@ namespace NS::Object
         };
 
         // ジャンプの押下と長押し
-        const bool jumpPressed =
-            (!wantKb && kb.IsPressed(NS::Platform::Key::Space)) || pad.IsPressed(NS::Platform::GamepadButton::A);
-        const bool jumpHeld =
-            (!wantKb && kb.IsHeld(NS::Platform::Key::Space)) || pad.IsHeld(NS::Platform::GamepadButton::A);
+        const bool jumpPressed = (!wantKb && kb.IsPressed(NS::Platform::Key::Space)) || pad.IsPressed(NS::Platform::GamepadButton::A);
+        const bool jumpHeld =(!wantKb && kb.IsHeld(NS::Platform::Key::Space)) || pad.IsHeld(NS::Platform::GamepadButton::A);
 
         m_desiredDir = worldDir;
         m_desiredSpeedScale = speedScale;

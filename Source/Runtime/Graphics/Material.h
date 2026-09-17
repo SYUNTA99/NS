@@ -59,8 +59,7 @@ namespace NS::Graphics
         //! @note T は alignas(16) で、サイズも 16 の倍数であること
         template <typename T> void SetParams(Renderer& renderer, const T& params) noexcept
         {
-            static_assert((sizeof(T) % 16) == 0,
-                          "Material::SetParams<T> は sizeof(T) が 16 byte 倍数で alignas(16) 必須");
+            static_assert((sizeof(T) % 16) == 0,"Material::SetParams<T> は sizeof(T) が 16 byte 倍数で alignas(16) 必須");
             static_assert(alignof(T) >= 16, "Material::SetParams<T> は struct alignas(16) 必須 (Vector3 16-byte 境界)");
             UpdateParamsRaw(renderer, &params, sizeof(T));
         }

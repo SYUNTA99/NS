@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Object/GameObject.h"
@@ -130,9 +130,15 @@ namespace NS::Object
         template <class T, class Fn> void ForEachComponent(Fn&& fn) const
         {
             for (const auto& obj : m_objects)
-                for (Component* comp : obj->Components())
+            {
+                for (Component* comp : obj->Components()) 
+                {
                     if (auto* typed = ComponentCast<T>(comp))
-                        fn(*typed);
+                    {
+						fn(*typed);
+                    }
+                }
+            }
         }
 
     private:

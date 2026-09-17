@@ -161,12 +161,19 @@ namespace NS::UI
             for (const char* fontPath : k_FontCandidates)
             {
                 if (!NS::Core::FileSystem::Exists(fontPath))
+                {
                     continue;
+                }
                 if (io.Fonts->AddFontFromFileTTF(fontPath, 18.0f, nullptr, ranges) != nullptr)
-                    break;
+                {
+                    NS_LOG_INFO(UI, "日本語フォントを読み込みました: {}", fontPath);
+					break;
+                }
             }
             if (io.Fonts->Fonts.Size == 0)
+            {
                 NS_LOG_WARN(UI, "日本語フォントが見つからず ASCII 既定で続行、 日本語は ??? 表示になる");
+            }
         }
 
         // Win32 backend 初期化

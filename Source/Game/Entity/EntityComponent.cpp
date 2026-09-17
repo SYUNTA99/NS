@@ -1,4 +1,4 @@
-#include "Game/Entity/EntityComponent.h"
+﻿#include "Game/Entity/EntityComponent.h"
 
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Object/Components/CapsuleColliderComponent.h"
@@ -16,7 +16,9 @@ namespace
     [[nodiscard]] float SmoothApproach(float current, float target, float tau, float dt) noexcept
     {
         if (tau <= 0.0f)
+        {
             return target;
+        }
         const float a = 1.0f - std::exp(-dt / tau);
         return current + (target - current) * a;
     }
@@ -70,17 +72,23 @@ namespace NS::Game::Entity
     NS::Physics::PhysicsScene* EntityComponent::ScenePhysics() const noexcept
     {
         if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
-            return nullptr;
+        {
+			return nullptr;
+        }
         return &Owner()->OwningScene()->Physics();
     }
 
     void EntityComponent::OnStart()
     {
         if (Owner() != nullptr)
+        {
             m_capsuleCollider = Owner()->FindComponent<NS::Object::CapsuleColliderComponent>();
+        }
         // 自分の capsule は Move が掃引する。静的世界に居ると自分に当たって動けない
         if (m_capsuleCollider != nullptr)
+        {
             m_capsuleCollider->SetExcludedFromStaticWorld(true);
+        }
     }
 
     void EntityComponent::OnUpdate()
@@ -111,7 +119,7 @@ namespace NS::Game::Entity
         m_velocity.y += gravity * dt;
     }
 
-    void EntityComponent::Move(float dt) noexcept
+    void EntityComponent::Move(float dt, float maxStepHeight) noexcept
     {
         const NS::Core::Vector3 before = RootTransform().Position();
         NS::Physics::PhysicsScene* physics = ScenePhysics();
@@ -127,10 +135,12 @@ namespace NS::Game::Entity
         const float halfHeight = CapsuleHalfHeight();
         // AttachScene は新しく組んだ配置物にしか呼ばれない。Scene が変わらないので m_character を作り直さない
         if (m_character == nullptr)
+        {
             m_character = std::make_unique<NS::Physics::JoltCharacter>(*physics, radius, halfHeight);
+        }
         m_character->Resize(radius, halfHeight);
 
-        m_character->Step(before, m_velocity, dt);
+        m_character->Step(before, m_velocity, dt, maxStepHeight);
 
         RootTransform().SetPosition(m_character->Position());
         m_velocity = m_character->Velocity();
@@ -139,8 +149,12 @@ namespace NS::Game::Entity
 
         // 発火は位置・速度・接地を書き終えた後。途中で呼ぶと購読側がそのフレームだけ古い値を読む
         if (!m_wasGrounded && m_isGrounded)
+        {
             m_events.onGroundEnter.Invoke();
+        }
         else if (m_wasGrounded && !m_isGrounded)
+        {
             m_events.onGroundExit.Invoke();
+        }
     }
 } // namespace NS::Game::Entity

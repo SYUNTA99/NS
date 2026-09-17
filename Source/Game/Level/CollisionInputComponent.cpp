@@ -1,4 +1,4 @@
-#include "Game/Level/CollisionInputComponent.h"
+﻿#include "Game/Level/CollisionInputComponent.h"
 
 #include "Game/Level/ImpactResolverComponent.h"
 #include "Game/Player/PlayerComponent.h"
@@ -24,10 +24,14 @@ namespace NS::Game::Level
         [[nodiscard]] int SecondsToSteps(float seconds, float dt) noexcept
         {
             if (!(dt > 0.0f))
+            {
                 return 0;
+            }
             const float raw = seconds / dt;
             if (!std::isfinite(raw))
+            {
                 return 0;
+            }
             return std::max(0, static_cast<int>(std::lround(raw)));
         }
     } // namespace
@@ -77,14 +81,18 @@ namespace NS::Game::Level
         m_judge.Step(held);
 
         if (m_judge.JustPressed() && m_movement != nullptr)
+        {
             m_movement->MarkBodySlamAim();
+        }
 
         const SlamKind fired = m_judge.TakeFired();
         if (fired != SlamKind::None && m_movement != nullptr)
         {
             float charge01 = 0.0f;
             if (fired == SlamKind::Charged)
+            {
                 charge01 = m_judge.Charge01();
+            }
             m_movement->RequestBodySlam(charge01);
             NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", SlamKindLabel(fired), charge01);
         }
@@ -136,7 +144,9 @@ namespace NS::Game::Level
     void CollisionInputComponent::DrawChargeRing()
     {
         if (!m_judge.IsCharging() || m_movement == nullptr)
+        {
             return;
+        }
 
         const float charge01 = m_judge.Charge01();
         const NS::Core::Vector3 center = Owner()->Root().Position();
@@ -145,7 +155,9 @@ namespace NS::Game::Level
         const float radius = m_movement->CapsuleRadius() + 0.25f + charge01 * 0.75f;
         NS::Core::Color color{1.0f, 0.85f, 0.2f, 1.0f};
         if (m_judge.IsChargeFull())
-            color = NS::Core::Color{1.0f, 1.0f, 1.0f, 1.0f};
+        {
+            color = NS::Core::Color{ 1.0f, 1.0f, 1.0f, 1.0f };
+        }
         constexpr int k_Segments = 24;
         for (int i = 0; i < k_Segments; ++i)
         {
@@ -162,24 +174,34 @@ namespace NS::Game::Level
     float CollisionInputComponent::ChargeFactorFor(float charge01) const noexcept
     {
         if (!std::isfinite(charge01))
-            return 1.0f;
+        {
+			return 1.0f;
+        }
         const float clamped = NS::Core::Clamp(charge01, 0.0f, 1.0f);
         const float factor = m_chargeFactorCurve.Evaluate(clamped);
         // Inspector で点を全部消すと Evaluate が 0 を返して威力が消えるため、0 以下は 1 とみなす
         if (!(factor > 0.0f))
-            return 1.0f;
+        {
+			return 1.0f;
+        }
         return factor;
     }
 
     float CollisionInputComponent::PositionFactorFor(float offset01) const noexcept
     {
         if (!std::isfinite(offset01))
+        {
             return 1.0f;
+        }
+
         const float clamped = NS::Core::Clamp(offset01, 0.0f, 1.0f);
         const float factor = m_positionFactorCurve.Evaluate(clamped);
         // 点を全部消すと威力が 0 になるため、チャージ倍率カーブと同じく 0 以下は 1 とみなす
         if (!(factor > 0.0f))
+        {
             return 1.0f;
+        }
+
         return factor;
     }
 

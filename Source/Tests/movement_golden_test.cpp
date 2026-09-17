@@ -374,7 +374,9 @@ TEST_F(MovementGolden, SlopeAscentMatchesGoldenTrace)
     for (std::size_t i = 61; i < trajectory.size(); ++i)
     {
         if (trajectory[i].position.y >= trajectory[i - 1].position.y - 0.001f)
+        {
             ++monotonicSteps;
+        }
     }
     EXPECT_GE(monotonicSteps, 55);
     EXPECT_GT(trajectory.back().position.y, trajectory[60].position.y + 1.0f);

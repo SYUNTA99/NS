@@ -1,4 +1,4 @@
-#include "Runtime/Object/Components/VirtualCameraComponent.h"
+﻿#include "Runtime/Object/Components/VirtualCameraComponent.h"
 
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/GameObject.h"
@@ -13,10 +13,14 @@ namespace NS::Object
         {
             GameObject* owner = self.Owner();
             if (owner == nullptr)
-                return nullptr;
+            {
+				return nullptr;
+            }
             Scene* scene = owner->OwningScene();
             if (scene == nullptr)
-                return nullptr;
+            {
+				return nullptr;
+            }
             return scene->CameraBrain();
         }
     } // namespace
@@ -27,12 +31,16 @@ namespace NS::Object
     void VirtualCameraComponent::OnStart()
     {
         if (CameraBrainComponent* brain = FindBrain(*this))
+        {
             brain->AddVirtualCamera(this);
+        }
     }
 
     void VirtualCameraComponent::OnEndPlay()
     {
         if (CameraBrainComponent* brain = FindBrain(*this))
-            brain->RemoveVirtualCamera(this);
+        {
+			brain->RemoveVirtualCamera(this);
+        }
     }
 } // namespace NS::Object

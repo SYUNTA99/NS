@@ -42,9 +42,7 @@ namespace NS::App
         m_desc = desc;
         if (m_desc.fixedDelta <= 0.0f)
         {
-            NS_LOG_WARN(App,
-                        "ApplicationDesc::fixedDelta が非正値 ({}) のため default 1/60 にフォールバック",
-                        m_desc.fixedDelta);
+            NS_LOG_WARN(App,"ApplicationDesc::fixedDelta が非正値 ({}) のため default 1/60 にフォールバック",m_desc.fixedDelta);
             m_desc.fixedDelta = NS::Core::FrameTimer::k_DefaultFixedDelta;
         }
         NS::Core::FrameTimer::SetFixedDelta(m_desc.fixedDelta);
@@ -74,7 +72,9 @@ namespace NS::App
     {
         Shutdown();
         if (s_instance == this)
-            s_instance = nullptr;
+        {
+			s_instance = nullptr;
+        }
     }
 
     bool Application::IsValid() const noexcept
@@ -143,7 +143,9 @@ namespace NS::App
         m_assets->RegisterSharedMaterials();
 
         for (auto& layer : m_layers)
+        {
             layer->OnAttach();
+        }
     }
 
     bool Application::WantExit() noexcept
@@ -159,18 +161,8 @@ namespace NS::App
 
         if (m_quitGuard)
         {
-            // guard 呼出は try 内の 1 回だけにする。noexcept 境界で例外を外へ出すと std::terminate になる
-            try
+            if (!m_quitGuard())
             {
-                if (!m_quitGuard())
-                {
-                    m_quitRequested = false;
-                    return false;
-                }
-            }
-            catch (...)
-            {
-                NS_LOG_ERROR(App, "コールバック内で例外が発生しました");
                 m_quitRequested = false;
                 return false;
             }
@@ -190,7 +182,9 @@ namespace NS::App
             window.PollMessages();
 
             if (WantExit())
+            {
                 break;
+            }
 
             NS::Core::FrameTimer::Tick();
 

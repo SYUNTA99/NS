@@ -1,4 +1,4 @@
-#include "Runtime/Object/Components/BoxColliderComponent.h"
+﻿#include "Runtime/Object/Components/BoxColliderComponent.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/OBB.h"
 
@@ -31,13 +31,19 @@ namespace NS::Object
         {
             float x = v.x;
             if (x < 0.0f)
+            {
                 x = 0.0f;
+            }
             float y = v.y;
             if (y < 0.0f)
-                y = 0.0f;
+            {
+				y = 0.0f;
+            }
             float z = v.z;
             if (z < 0.0f)
-                z = 0.0f;
+            {
+				z = 0.0f;
+            }
             return NS::Core::Vector3{x, y, z};
         }
     } // namespace
@@ -100,15 +106,16 @@ namespace NS::Object
 
     NS::Core::Matrix BoxColliderComponent::LocalMatrix() const noexcept
     {
-        return NS::Core::Matrix::CreateFromQuaternion(m_localRotation) *
-               NS::Core::Matrix::CreateTranslation(m_centerOffset);
+        return NS::Core::Matrix::CreateFromQuaternion(m_localRotation) * NS::Core::Matrix::CreateTranslation(m_centerOffset);
     }
 
     NS::Core::Matrix BoxColliderComponent::CombinedWorldMatrix() const noexcept
     {
         const GameObject* owner = Owner();
         if (owner != nullptr)
+        {
             return LocalMatrix() * owner->Root().WorldMatrix();
+        }
         return LocalMatrix();
     }
 
@@ -129,6 +136,7 @@ namespace NS::Object
         const NS::Core::Vector3 half{m_halfExtents.x * std::abs(scale.x),
                                      m_halfExtents.y * std::abs(scale.y),
                                      m_halfExtents.z * std::abs(scale.z)};
+
         return NS::Core::MakeOBB(translation, rotation, half);
     }
 
@@ -136,8 +144,9 @@ namespace NS::Object
     {
         // 通り抜ける体積も body にする。入れないと重なりの問い合わせに出てこず、触れても判定できない
         if (m_isTrigger)
+        {
             return physics.SyncBox(current, WorldOBB(), NS::Physics::ObjectLayers::Trigger, true);
-
+        }
         return physics.SyncBox(current, WorldOBB(), NS::Physics::ObjectLayers::Terrain);
     }
 

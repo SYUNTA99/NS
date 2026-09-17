@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Runtime/Physics/Triangle.h"
 
@@ -11,7 +11,7 @@
 
 namespace NS::Physics
 {
-    //! @brief メッシュ資産 1 つ分の当たり。 資産の座標の三角形と、 そこから作った形
+    //! @brief メッシュ 1 つ分の当たり。 資産の座標の三角形と、 そこから作った形
     //! @details 形は参照数つきで、 置いた body がそれぞれ参照を持つ
     //! 同じ資産を置いた配置物は、 歪みが無ければ形を作り直さずに共有する
     //! Jolt の三角形の形は動かない body 専用

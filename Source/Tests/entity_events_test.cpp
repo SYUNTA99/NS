@@ -37,7 +37,7 @@ namespace
         void HandleStates(float dt) override
         {
             Gravity(-25.0f, dt);
-            Move(dt);
+            Move(dt, 0.0f);
         }
     };
 

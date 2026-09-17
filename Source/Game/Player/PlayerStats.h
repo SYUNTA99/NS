@@ -22,6 +22,8 @@ namespace NS::Game::Player
         float accelTau = 0.10f;     // 加速の時定数
         float decelTau = 0.10f;     // 減速の時定数
         float stickDeadzone = 0.3f; // スティック入力のデッドゾーン
+        // 走ったまま登れる段の高さ。実寸の階段 1 段 (15〜20 cm) は越え、半マス (50 cm) はジャンプが要る
+        float maxStepHeight = 0.25f;
 
         // どれも触って決める仮値
         float bodySlamSpeed = 20.0f;
