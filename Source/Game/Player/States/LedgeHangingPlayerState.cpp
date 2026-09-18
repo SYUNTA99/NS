@@ -14,7 +14,14 @@ namespace NS::Game::Player
 
         void OnStep(PlayerComponent& player, float dt) override
         {
-            player.HoldLedge(dt);
+            if (!player.HoldLedge())
+            {
+                return;
+            }
+            if (player.LedgeJump())
+            {
+                return;
+            }
             if (player.ShouldClimbLedge())
             {
                 player.ClimbLedge();

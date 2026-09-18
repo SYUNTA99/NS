@@ -274,7 +274,7 @@ TEST_F(EntityEventsTest, LedgeGrabbedFiresOnTheGrabbingStep)
     int grabbed = 0;
     player.PlayerEventsRef().onLedgeGrabbed.Subscribe([&grabbed]() { ++grabbed; });
 
-    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
 
@@ -292,7 +292,7 @@ TEST_F(EntityEventsTest, LedgeClimbingFiresWhenTheClimbStarts)
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
 
-    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     ASSERT_EQ(obj.FindComponent<PlayerStateManagerComponent>()->CurrentName(),
@@ -302,7 +302,7 @@ TEST_F(EntityEventsTest, LedgeClimbingFiresWhenTheClimbStarts)
     player.PlayerEventsRef().onLedgeClimbing.Subscribe([&climbing]() { ++climbing; });
 
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
-    player.SetJumpPressed();
+    player.SetClimbMove(0.0f, 1.0f);
     player.OnUpdate();
 
     ASSERT_EQ(obj.FindComponent<PlayerStateManagerComponent>()->CurrentName(),

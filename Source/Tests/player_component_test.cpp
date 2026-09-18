@@ -1001,7 +1001,7 @@ TEST_F(PlayerComponentTest, GrabsLedgeWhenDescendingIntoEdge)
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
 
-    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
 
@@ -1021,7 +1021,7 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhileGrounded)
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
 
-    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.SetGrounded(true);
 
@@ -1037,7 +1037,7 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhileAscending)
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
 
-    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.SetVelocity(Vector3{0.0f, 6.0f, 0.0f});
     player.OnUpdate();
@@ -1046,7 +1046,7 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhileAscending)
     EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
 }
 
-TEST_F(PlayerComponentTest, DoesNotGrabWithoutForwardInput)
+TEST_F(PlayerComponentTest, DoesNotGrabWithoutHorizontalMovement)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
@@ -1055,11 +1055,28 @@ TEST_F(PlayerComponentTest, DoesNotGrabWithoutForwardInput)
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
 
-    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.0f);
     player.OnUpdate();
 
     EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+}
+
+TEST_F(PlayerComponentTest, GrabsWithoutInputWhileMovingIntoTheLedge)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetVelocity(Vector3{4.0f, 0.0f, 0.0f});
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
 }
 
 // 手の高さの帯を外れた縁は掴まない。block 上端より 2m 高い所から前へ押しても素通りする
@@ -1079,6 +1096,23 @@ TEST_F(PlayerComponentTest, DoesNotGrabOutsideTheHandBand)
     EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
 }
 
+// 帯の上は今フレーム動いた距離まで。手が届いていない縁へは体を引き上げない
+TEST_F(PlayerComponentTest, DoesNotGrabALedgeAboveTheHand)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
+
+    obj.Root().SetPosition(Vector3{-0.9f, -0.3f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+
+    EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+}
+
 // 登り先が別の block で塞がれた縁は掴まない。オーバーハングの下でぶら下がったまま出られなくなる
 TEST_F(PlayerComponentTest, DoesNotGrabWhenTheClimbTargetIsBlocked)
 {
@@ -1090,7 +1124,7 @@ TEST_F(PlayerComponentTest, DoesNotGrabWhenTheClimbTargetIsBlocked)
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
 
-    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
 
@@ -1106,7 +1140,7 @@ TEST_F(PlayerComponentTest, HangHoldsTheLedgeHeightWithoutGravity)
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
 
-    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
@@ -1121,8 +1155,8 @@ TEST_F(PlayerComponentTest, HangHoldsTheLedgeHeightWithoutGravity)
     EXPECT_FLOAT_EQ(player.Velocity().y, 0.0f);
 }
 
-// 前入力での自動登りは最小ぶら下がり時間だけ待つ。壁に向かう入力のまま即登り切ると掴まりが見えない
-TEST_F(PlayerComponentTest, ForwardInputWaitsForTheMinimumHangTime)
+// 前入力で待たずに登る。LedgeGrab は入力を見ないので、倒さずに寄ればぶら下がったまま止まれる
+TEST_F(PlayerComponentTest, ForwardInputClimbsImmediately)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
@@ -1131,7 +1165,7 @@ TEST_F(PlayerComponentTest, ForwardInputWaitsForTheMinimumHangTime)
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
 
-    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
@@ -1139,17 +1173,43 @@ TEST_F(PlayerComponentTest, ForwardInputWaitsForTheMinimumHangTime)
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
     player.SetClimbMove(0.0f, 1.0f);
     player.OnUpdate();
-    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeClimbingStateName);
 
-    for (int i = 0; i < 45; ++i)
+    for (int i = 0; i < 20; ++i)
+    {
         player.OnUpdate();
+    }
 
     EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
     EXPECT_TRUE(player.IsGrounded());
+    EXPECT_EQ(player.JumpsRemaining(), 1);
     EXPECT_GT(obj.Root().Position().y, 0.5f);
 }
 
-TEST_F(PlayerComponentTest, JumpClimbsWithoutWaiting)
+TEST_F(PlayerComponentTest, NonPositiveClimbDurationFinishesTheClimbAtOnce)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
+    player.SetLedgeClimbDuration(-0.25f);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetClimbMove(0.0f, 1.0f);
+    player.OnUpdate();
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+}
+
+TEST_F(PlayerComponentTest, JumpFromTheLedgeGoesStraightUp)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
@@ -1158,7 +1218,7 @@ TEST_F(PlayerComponentTest, JumpClimbsWithoutWaiting)
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
 
-    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
@@ -1167,47 +1227,56 @@ TEST_F(PlayerComponentTest, JumpClimbsWithoutWaiting)
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
     player.SetJumpPressed();
     player.OnUpdate();
-    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeClimbingStateName);
 
-    for (int i = 0; i < 3; ++i)
+    EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeClimbingStateName);
+    EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    EXPECT_GT(player.Velocity().y, 0.0f);
+    EXPECT_FALSE(player.IsGrounded());
+
+    for (int i = 0; i < 5; ++i)
+    {
         player.OnUpdate();
-    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeClimbingStateName);
+    }
+
     EXPECT_GT(obj.Root().Position().y, hangY);
-
-    for (int i = 0; i < 20; ++i)
-        player.OnUpdate();
-    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
-    EXPECT_TRUE(player.IsGrounded());
-    EXPECT_EQ(player.JumpsRemaining(), 1);
-    EXPECT_GT(obj.Root().Position().y, 0.5f);
+    EXPECT_NEAR(obj.Root().Position().x, -0.9f, 0.05f);
 }
 
-TEST_F(PlayerComponentTest, BackInputDropsAwayFromTheFace)
+TEST_F(PlayerComponentTest, StandsOnTheTopAfterClimbing)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
     NS::Physics::PhysicsScene& physics = stage.physics;
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    NsTest::AddBox(physics, MakeBlock(1.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
 
-    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
 
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
-    player.SetClimbMove(0.0f, -1.0f);
-    player.OnUpdate();
+    player.SetClimbMove(0.0f, 1.0f);
+    for (int i = 0; i < 30 && CurrentStateName(obj) != PlayerComponent::k_IdleStateName; ++i)
+    {
+        player.OnUpdate();
+    }
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+    player.SetClimbMove(0.0f, 0.0f);
 
-    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
-    EXPECT_NEAR(obj.Root().Position().x, -1.1f, 1e-4f);
-    EXPECT_FLOAT_EQ(player.Velocity().x, -2.0f);
-    EXPECT_FALSE(player.IsGrounded());
+    const float restY = 0.5f + player.CapsuleHalfHeight() + player.CapsuleRadius();
+    for (int i = 0; i < 30; ++i)
+    {
+        player.OnUpdate();
+        EXPECT_TRUE(player.IsGrounded()) << "登り切ってから " << i << " フレーム目";
+        EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName) << "登り切ってから " << i << " フレーム目";
+    }
+    EXPECT_NEAR(obj.Root().Position().y, restY, 1e-3f);
 }
 
-// 放しても入力を倒し続けた時の即再掴みを止める。止めないと縁から離れられない
-TEST_F(PlayerComponentTest, DropBlocksTheRegrabForTheCooldown)
+TEST_F(PlayerComponentTest, ReleaseButtonDropsFromTheLedge)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
@@ -1216,21 +1285,140 @@ TEST_F(PlayerComponentTest, DropBlocksTheRegrabForTheCooldown)
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
 
-    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
 
-    player.SetClimbMove(0.0f, -1.0f);
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetReleaseLedgePressed();
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+    EXPECT_NEAR(obj.Root().Position().x, -0.9f, 1e-4f);
+    EXPECT_FLOAT_EQ(player.Velocity().x, 0.0f);
+    EXPECT_FALSE(player.IsGrounded());
+}
+
+// 手放しは専用ボタンだけ。後ろ入力で放すと、カメラ側の縁へ寄せた入力で手を放す
+TEST_F(PlayerComponentTest, BackInputKeepsHangingOnTheLedge)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    for (int i = 0; i < 30; ++i)
+    {
+        player.SetClimbMove(0.0f, -1.0f);
+        player.OnUpdate();
+        ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName) << "後ろ入力 " << i << " フレーム目";
+    }
+}
+
+TEST_F(PlayerComponentTest, GrabsTheLedgeWhenFallingPastItInOneFrame)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
+
+    const float blockTop = 0.5f;
+    obj.Root().SetPosition(Vector3{-0.9f, blockTop + 0.3f - player.CapsuleHalfHeight(), 0.0f});
+    player.SetVelocity(Vector3{0.0f, -40.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+}
+
+TEST_F(PlayerComponentTest, DoesNotRegrabAfterReleasingWithoutInput)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetReleaseLedgePressed();
     player.OnUpdate();
     ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
 
-    player.SetClimbMove(0.0f, 0.0f);
-    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 60; ++i)
+    {
         player.OnUpdate();
+        ASSERT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName)
+            << "手放してから " << i << " フレーム目";
+    }
+}
 
-    EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+// 手放した後に壁へ倒し直しても、落ちている間は同じ縁を掴み直さない。掴み直すと縁から離れられない
+TEST_F(PlayerComponentTest, DoesNotRegrabWhileFallingPastTheLedge)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    player.SetReleaseLedgePressed();
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    for (int i = 0; i < 60; ++i)
+    {
+        player.OnUpdate();
+        EXPECT_NE(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName)
+            << "手放してから " << i << " フレーム目";
+    }
+}
+
+// 0 以下はその場で向く。手放した次のフレームで壁を向き、同じ縁を掴む
+TEST_F(PlayerComponentTest, ZeroTurnSpeedFacesTheMoveAtOnce)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
+    player.SetTurnSpeed(0.0f);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    player.SetReleaseLedgePressed();
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+
+    player.OnUpdate();
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
 }
 
 TEST_F(PlayerComponentTest, ShimmyMovesAlongTheLedge)
@@ -1244,7 +1432,7 @@ TEST_F(PlayerComponentTest, ShimmyMovesAlongTheLedge)
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
 
-    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
@@ -1259,6 +1447,33 @@ TEST_F(PlayerComponentTest, ShimmyMovesAlongTheLedge)
     EXPECT_GT(std::abs(obj.Root().Position().z - zStart), 0.4f);
 }
 
+TEST_F(PlayerComponentTest, ShimmyFollowsTheNextLedgeHeight)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    NsTest::AddBox(physics, MakeBlock(0.0f, -0.2f, -1.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetClimbMove(1.0f, 0.0f);
+    for (int i = 0; i < 30; ++i)
+    {
+        player.OnUpdate();
+    }
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    EXPECT_LT(obj.Root().Position().z, -0.5f);
+    EXPECT_NEAR(obj.Root().Position().y, 0.3f - player.CapsuleHalfHeight(), 1e-3f);
+}
+
 TEST_F(PlayerComponentTest, ShimmyStopsAtTheLedgeEnd)
 {
     NsTest::EntityStage stage;
@@ -1268,7 +1483,7 @@ TEST_F(PlayerComponentTest, ShimmyStopsAtTheLedgeEnd)
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
 
-    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
@@ -1282,7 +1497,8 @@ TEST_F(PlayerComponentTest, ShimmyStopsAtTheLedgeEnd)
     EXPECT_LE(std::abs(obj.Root().Position().z), 0.55f);
 }
 
-TEST_F(PlayerComponentTest, ShimmyIgnoresInputInsideTheDeadzone)
+// パッドの遊びは Input.cpp の NormalizeStick で掛かる。掴まり中の横移動で重ねると、弱く倒した時だけ動かない
+TEST_F(PlayerComponentTest, ShimmyMovesWithWeakInput)
 {
     NsTest::EntityStage stage;
     GameObject& obj = stage.owner;
@@ -1292,16 +1508,46 @@ TEST_F(PlayerComponentTest, ShimmyIgnoresInputInsideTheDeadzone)
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
 
-    obj.Root().SetPosition(Vector3{-0.9f, 0.0f, 0.0f});
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    const float zStart = obj.Root().Position().z;
+
+    // 0.3 はパッドの遊び 7849 / 32767 = 0.24 を越えた直後に届く値
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    player.SetClimbMove(0.3f, 0.0f);
+    for (int i = 0; i < 20; ++i)
+    {
+        player.OnUpdate();
+    }
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
+    EXPECT_GT(std::abs(obj.Root().Position().z - zStart), 0.1f);
+}
+
+TEST_F(PlayerComponentTest, ShimmyStaysWithoutInput)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 1.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakeLedgeReady(obj);
+
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
     const float zStart = obj.Root().Position().z;
 
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
-    player.SetClimbMove(0.2f, 0.0f);
+    player.SetClimbMove(0.0f, 0.0f);
     for (int i = 0; i < 20; ++i)
+    {
         player.OnUpdate();
+    }
 
     EXPECT_FLOAT_EQ(obj.Root().Position().z, zStart);
 }

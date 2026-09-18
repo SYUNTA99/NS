@@ -37,6 +37,8 @@ namespace NS::Game::Player
 
         //! ジャンプの押下を 1 回ぶん立てる。更新の終わりに落ちるので次のフレームには残らない
         void SetJumpPressed() noexcept;
+        //! 手放しの押下を 1 回ぶん立てる。更新の終わりに落ちるので次のフレームには残らない
+        void SetReleaseLedgePressed() noexcept;
         //! ジャンプボタンの長押し状態を渡す。上昇中に離すと縦速度を縮める
         void SetJumpHeld(bool held) noexcept;
         [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; } //!< 残りジャンプ回数
@@ -104,21 +106,24 @@ namespace NS::Game::Player
         //! 縁を掴めるか試す。掴んだ場合 true、それ以外の場合は false。true なら呼び出し側は即 return する
         [[nodiscard]] bool LedgeGrab() noexcept;
 
-        //! ぶら下がりの経過秒を進め、縁の高さへ位置を貼り直す。重力は当てない
-        void HoldLedge(float dt) noexcept;
+        //! @brief 掴んでいる縁を取り直し、その高さへ位置を合わせ直す
+        //! @details 重力は当てない。縁の高さが変われば追い、失ったら手を放す
+        //! @return 縁が続いている場合 true、それ以外の場合は false。false なら呼び出し側は即 return する
+        [[nodiscard]] bool HoldLedge() noexcept;
+        //! @brief 掴まりからジャンプの縦の初速を与えて立ちへ移る
+        //! @return ジャンプが押された場合 true、それ以外の場合は false。true なら呼び出し側は即 return する
+        [[nodiscard]] bool LedgeJump() noexcept;
         //! 左右入力で縁に沿って動く。続いていない方向へは動かない
         void Shimmy(float dt) noexcept;
-        //! 移動先に同じ高さの縁が続いている場合 true、それ以外の場合は false
-        [[nodiscard]] bool CanShimmyTo(const NS::Core::Vector3& hangPos) const noexcept;
         //! よじ登りを始める。2 段補間の始点と終点を決めて登りの状態へ移る
         void ClimbLedge() noexcept;
         //! よじ登りの 1 フレーム。終われば通常移動へ戻す
         void UpdateLedgeClimb(float dt) noexcept;
-        //! 手を放す。面法線方向へ離して落下させ、再掴みをしばらく禁止する
+        //! 手を放し、その場から落下させる
         void DropLedge() noexcept;
-        //! ジャンプ押下、または前入力が最小ぶら下がり時間を越えた場合 true、それ以外の場合は false
+        //! 前入力が出ている場合 true、それ以外の場合は false
         [[nodiscard]] bool ShouldClimbLedge() const noexcept;
-        //! 後入力がしきい値を越えた場合 true、それ以外の場合は false
+        //! 手放しのボタンが押された場合 true、それ以外の場合は false
         [[nodiscard]] bool ShouldDropLedge() const noexcept;
 
         //! 走行入力が出ているか動いている場合 true、それ以外の場合は false
@@ -178,6 +183,22 @@ namespace NS::Game::Player
         [[nodiscard]] float MaxStepHeight() const noexcept { return m_stats.maxStepHeight; }
         void SetMaxStepHeight(float value) noexcept;
 
+        //! 掴める縁を探す帯の深さ。手の高さからこの距離だけ下まで見る
+        [[nodiscard]] float LedgeGrabBelowHand() const noexcept { return m_stats.ledgeGrabBelowHand; }
+        void SetLedgeGrabBelowHand(float value) noexcept;
+
+        [[nodiscard]] float LedgeReach() const noexcept { return m_stats.ledgeReach; }
+        void SetLedgeReach(float value) noexcept;
+
+        [[nodiscard]] float LedgeClimbDuration() const noexcept { return m_stats.ledgeClimbDuration; }
+        void SetLedgeClimbDuration(float value) noexcept;
+
+        [[nodiscard]] float LedgeShimmySpeed() const noexcept { return m_stats.ledgeShimmySpeed; }
+        void SetLedgeShimmySpeed(float value) noexcept;
+
+        [[nodiscard]] float TurnSpeed() const noexcept { return m_stats.turnSpeed; }
+        void SetTurnSpeed(float value) noexcept;
+
         [[nodiscard]] float BodySlamSpeed() const noexcept { return m_stats.bodySlamSpeed; }
         void SetBodySlamSpeed(float value) noexcept;
 
@@ -221,6 +242,11 @@ namespace NS::Game::Player
         NS_REFLECT_ACCESSOR(float, "減速時定数", DecelTau(), SetDecelTau)
         NS_REFLECT_ACCESSOR(float, "スティック遊び", StickDeadzone(), SetStickDeadzone)
         NS_REFLECT_ACCESSOR(float, "登れる段の高さ", MaxStepHeight(), SetMaxStepHeight)
+        NS_REFLECT_ACCESSOR(float, "掴める縁の下向き距離", LedgeGrabBelowHand(), SetLedgeGrabBelowHand)
+        NS_REFLECT_ACCESSOR(float, "縁へ手を伸ばす距離", LedgeReach(), SetLedgeReach)
+        NS_REFLECT_ACCESSOR(float, "よじ登りの所要時間", LedgeClimbDuration(), SetLedgeClimbDuration)
+        NS_REFLECT_ACCESSOR(float, "縁の横移動速度", LedgeShimmySpeed(), SetLedgeShimmySpeed)
+        NS_REFLECT_ACCESSOR(float, "振り向きの速さ", TurnSpeed(), SetTurnSpeed)
         NS_REFLECT_ACCESSOR(float, "突進速度", BodySlamSpeed(), SetBodySlamSpeed)
         NS_REFLECT_ACCESSOR(float, "突進距離", BodySlamDistance(), SetBodySlamDistance)
         NS_REFLECT_ACCESSOR(float, "タップ初速", TapSlamSpeed(), SetTapSlamSpeed)
@@ -240,6 +266,12 @@ namespace NS::Game::Player
         //! 現在状態が通常移動 (立ち / 走り / 落下) の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsLocomotion() const noexcept;
 
+        //! @brief 掴まり位置から掴める縁を探す
+        //! @param[in] hangPos 手を伸ばす元になるカプセル中心の位置
+        //! @param[out] outTop 見つけた縁の上端の y。見つからない場合は書き換えない
+        //! @return 手の高さ以下の帯に縁があり、登り先も塞がっていない場合 true、それ以外の場合は false
+        [[nodiscard]] bool FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) const noexcept;
+
         //! 体当たりを出す水平の向き。入力・カメラの前・速度の順に見て、どれも無ければゼロ
         [[nodiscard]] NS::Core::Vector3 AimDirection() const noexcept;
         //! 控えた狙いを今の向きにどれだけ混ぜるか 0..1。巻き戻し秒までは 1、消える秒で 0
@@ -250,12 +282,13 @@ namespace NS::Game::Player
         float m_climbRight = 0.0f;                        // 掴まり中の左右入力 -1..1
         float m_climbForward = 0.0f;                      // 掴まり中の前後入力 -1..1
 
-        bool m_jumpHeld = false;             // ジャンプボタン長押し中か
-        bool m_prevJumpHeld = false;         // 前のフレームの長押し状態
-        bool m_jumpPressedThisFrame = false; // このフレームでジャンプ押下があったか
-        int m_jumpsRemaining = 1;            // 残りジャンプ回数
-        float m_coyoteTimer = 0.0f;          // コヨーテ猶予の残り秒
-        float m_bufferTimer = 0.0f;          // 先行ジャンプ入力の残り秒
+        bool m_jumpHeld = false;                     // ジャンプボタン長押し中か
+        bool m_prevJumpHeld = false;                 // 前のフレームの長押し状態
+        bool m_jumpPressedThisFrame = false;         // このフレームでジャンプ押下があったか
+        bool m_releaseLedgePressedThisFrame = false; // このフレームで手放しの押下があったか
+        int m_jumpsRemaining = 1;                    // 残りジャンプ回数
+        float m_coyoteTimer = 0.0f;                  // コヨーテ猶予の残り秒
+        float m_bufferTimer = 0.0f;                  // 先行ジャンプ入力の残り秒
 
         float m_maxSpeed = 8.0f;
 
@@ -271,10 +304,10 @@ namespace NS::Game::Player
         NS::Core::Vector3 m_bodySlamAimDir{0.0f, 0.0f, 0.0f}; // 押したフレームに控えた狙いの向き。正規化済み
         float m_bodySlamAimAge = 0.0f;                        // 狙いを控えてからの経過秒
 
+        NS::Core::Vector3 m_facingDir{0.0f, 0.0f, 0.0f};       // 掴む向き。動こうとした水平の向きへ振り向きの速さで回る
+        float m_lastMoveDistance = 0.0f;                       // 直前の Move で動いた距離。縁を探す帯の上の余白
         float m_ledgeTopY = 0.0f;                              // 掴んでいる縁の上端の y
         NS::Core::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f}; // 掴んでいる面の外向き法線
-        float m_ledgeRegrabCooldown = 0.0f;                    // 再掴みを禁止する残り秒
-        float m_ledgeHangTimer = 0.0f;                         // 掴んでからの経過秒
         NS::Core::Vector3 m_ledgeMantleStart{0.0f, 0.0f, 0.0f};
         NS::Core::Vector3 m_ledgeMantleEnd{0.0f, 0.0f, 0.0f};
         float m_ledgeMantleTimer = 0.0f; // よじ登りの経過秒

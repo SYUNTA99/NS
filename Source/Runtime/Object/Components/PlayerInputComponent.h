@@ -7,7 +7,7 @@ namespace NS::Object
 {
     //! @brief Keyboard / Gamepad の入力を読んで値として持つ Component
     //! @details WASD + 左スティックを camera forward 相対の world 方向に変換し、Space / Gamepad A の
-    //! 押した瞬間と押しっぱなしを合わせた 6 つの値を持つ。渡し先は知らない
+    //! 押した瞬間と押しっぱなし、マウス右ボタン / 左トリガーの手放しを合わせた 7 つの値を持つ。渡し先は知らない
     //! 基準の forward は毎ステップ scene の CameraBrain から自分で読む
     //! 入力はプロセス全体で 1 個の Input::Get() を直接読む
     class PlayerInputComponent : public Component
@@ -30,6 +30,8 @@ namespace NS::Object
         //! ジャンプの押下があったフレームだけ true
         [[nodiscard]] bool JumpPressed() const noexcept { return m_jumpPressed; }
         [[nodiscard]] bool JumpHeld() const noexcept { return m_jumpHeld; }
+        //! 掴まりの手放しの押下があったフレームだけ true
+        [[nodiscard]] bool ReleaseLedgePressed() const noexcept { return m_releaseLedgePressed; }
 
         void OnUpdate() override;
 
@@ -46,5 +48,7 @@ namespace NS::Object
         float m_climbForward = 0.0f;
         bool m_jumpPressed = false;
         bool m_jumpHeld = false;
+        bool m_releaseLedgePressed = false;
+        bool m_prevReleaseLedgeHeld = false;
     };
 } // namespace NS::Object

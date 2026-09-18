@@ -8,6 +8,7 @@
 #include "Runtime/Platform/Gamepad.h"
 #include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/Keyboard.h"
+#include "Runtime/Platform/Mouse.h"
 
 #include <cmath>
 
@@ -107,6 +108,14 @@ namespace NS::Object
         m_climbForward = localZ;
         m_jumpPressed = jumpPressed;
         m_jumpHeld = jumpHeld;
+
+        // 手放しは専用のマウス右ボタン / 左トリガー。後ろ入力と兼ねると、カメラ側の縁へ寄せた入力で手を放す
+        // トリガーは XInput の既定のしきい値を NormalizeTrigger が先に切っているので、0 を超えたかだけ見る
+        const bool releaseLedgeHeld = pad.LeftTrigger() > 0.0f;
+        const bool mouseFree = !input.UiWantsMouse();
+        m_releaseLedgePressed = (mouseFree && input.Mouse().IsPressed(NS::Platform::MouseButton::Right)) ||
+                                (releaseLedgeHeld && !m_prevReleaseLedgeHeld);
+        m_prevReleaseLedgeHeld = releaseLedgeHeld;
     }
 
     NS_CLASS(PlayerInputComponent)

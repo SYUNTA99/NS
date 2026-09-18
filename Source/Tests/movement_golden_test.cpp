@@ -216,7 +216,7 @@ namespace
         NsTest::AddBox(physics, AABB{Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}});
         NsTest::AddBox(physics, AABB{Vector3{0.0f, 0.0f, 1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
         NsTest::AddBox(physics, AABB{Vector3{0.0f, 0.0f, -1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
-        auto& movement = SetUpMovement(owner, physics, Vector3{-0.9f, 0.0f, 0.0f});
+        auto& movement = SetUpMovement(owner, physics, Vector3{-0.9f, 0.1f, 0.0f});
 
         std::vector<StepRecord> trajectory;
         for (int i = 0; i < 150; ++i)
@@ -225,12 +225,19 @@ namespace
             if (i == 0)
                 speedScale = 1.0f;
 
+            float shimmy = 0.0f;
             float climb = 0.0f;
-            if (i >= 1)
+            if (i >= 1 && i <= 30)
+            {
+                shimmy = 1.0f;
+            }
+            else if (i > 30)
+            {
                 climb = 1.0f;
+            }
 
             movement.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, speedScale);
-            movement.SetClimbMove(climb, climb);
+            movement.SetClimbMove(shimmy, climb);
             movement.OnUpdate();
             trajectory.push_back(Record(owner, movement));
         }

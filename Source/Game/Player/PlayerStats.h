@@ -25,6 +25,16 @@ namespace NS::Game::Player
         // 走ったまま登れる段の高さ。実寸の階段 1 段 (15〜20 cm) は越え、半マス (50 cm) はジャンプが要る
         float maxStepHeight = 0.25f;
 
+        // カプセルの円柱部の上端を手とみなし、ブロック上端が手からこの距離だけ下までにあれば掴める
+        float ledgeGrabBelowHand = 0.5f;
+        float ledgeReach = 0.3f; // カプセル表面から前方へ手を伸ばす追加距離
+        // ぶら下がりから上面へよじ登る所要時間。瞬間移動を避けて登りを視認できるようにする
+        float ledgeClimbDuration = 0.25f;
+        float ledgeShimmySpeed = 2.0f; // 縁に沿った左右移動の速度
+        // 掴む向きを動く向きへ回す速さ (度/秒)。180° を約 0.19 秒で回る
+        // 手放した直後に壁の方へ入力しても、振り向く前に手が縁より下へ落ちて掴み直さない
+        float turnSpeed = 970.0f;
+
         // どれも触って決める仮値
         float bodySlamSpeed = 20.0f;
         float bodySlamDistance = 10.0f;
