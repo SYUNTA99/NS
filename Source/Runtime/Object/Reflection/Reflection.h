@@ -14,7 +14,7 @@ namespace NS::Object
     class Component;
 
     //! リフレクションが扱うフィールド型タグ
-    // TODO: Radians / enum の欄が要る時に FieldType へ足す
+    // TODO: 角度の欄は素の float / Vector3 で、単位は欄名だけが持つ。Core/Math.h の Radians を FieldType へ足す
     enum class FieldType
     {
         Float,
@@ -66,18 +66,17 @@ namespace NS::Object
 
     //! @brief 1 コンポーネント型のリフレクション情報。マクロで宣言したフィールドの名前 / 型 / get / set を束ねる
     //! @details エディタは Component* 越しに fields を列挙して編集 UI を自動生成する
-    //! base は基底型のリフレクションを指し、辿る鎖で is-a も判定する
+    //! base は基底型のリフレクションを指し、順に辿って is-a も判定する
     //! 依存: NS::Core
     struct ReflectionInfo
     {
         const char* typeName;       // リフレクションする型名
         const FieldDesc* fields;    // フィールド記述子配列 (static 寿命)
         std::size_t fieldCount;     // fields の要素数
-        const ReflectionInfo* base; // 基底型のリフレクション (Component 直下は鎖の終端 nullptr)
+        const ReflectionInfo* base; // 基底型のリフレクション。Component 直下は nullptr
     };
 
-    //! 基底型のリフレクションを返す。Component 直下は Component、素の値型は void を渡し、いずれも鎖の終端 nullptr
-    //! になる
+    //! 基底型のリフレクションを返す。Component 直下は Component、素の値型は void を渡し、いずれも nullptr になる
     template <class TBase> [[nodiscard]] const ReflectionInfo* ReflectionBaseOf() noexcept
     {
         if constexpr (std::is_same_v<TBase, Component> || std::is_same_v<TBase, void>)
@@ -87,7 +86,7 @@ namespace NS::Object
     }
 
     //! info->fields から name 一致の最初の 1 件を返す。無ければ nullptr、info が nullptr でも nullptr
-    //! 基底鎖は辿らない。リフレクション欄は継承分も accessor で平坦に並べる約束に合わせる
+    //! 基底型のリフレクションは辿らない。リフレクション欄は継承分も accessor で平坦に並べる約束に合わせる
     [[nodiscard]] inline const FieldDesc* FindField(const ReflectionInfo* info, std::string_view name) noexcept
     {
         if (info == nullptr)

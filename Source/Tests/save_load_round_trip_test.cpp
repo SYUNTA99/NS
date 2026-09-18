@@ -160,7 +160,7 @@ TEST(SaveLoadRoundTrip, ObjectParentSurvivesJsonRoundTrip)
 }
 
 // 正準 JSON は object キーが辞書順・float が最短往復表現なので、 同一データの 2 回保存は
-// バイト一致する。 これがレベル差分の決定性を担保し、 git diff が安定する
+// バイト一致する。 保存し直しただけでは git diff に行が出ない
 TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
 {
     auto path1 = TestScenePath("test_byteid_a");
@@ -323,7 +323,7 @@ TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
 }
 
 // 配置物の "基本色" リフレクション値が save→reload を往復で保持される
-// 種別固定の色上書きが消え、 色は component 経由で永続することの担保
+// 種別固定の色上書きが消え、 色は component 経由で保存に残る
 TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
 {
     auto path = TestScenePath("test_basecolor");
@@ -381,7 +381,7 @@ TEST(SaveLoadRoundTrip, PlayerObjectRoundTrip)
     EXPECT_NEAR(SceneNs::ObjectRotation(loaded).w, 0.70710677f, 1e-5f);
 }
 
-// 空のシーンには読込時の補完がプレイヤーと追従カメラを既定構成で合成し、 プレイ可能な最小構成を保証する
+// 空のシーンには読込時の補完がプレイヤーと追従カメラを既定構成で合成する
 TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
 {
     SceneNs::SceneData level;
@@ -629,7 +629,7 @@ TEST(SaveLoadRoundTrip, BreakableValuesStayPerObject)
     EXPECT_FLOAT_EQ(heavyBreakable->Toughness(), 3.0f);
 }
 
-// .scene のキーは欄名そのもの。書き手と読み手が同じ欄名を使う限り往復自体は通るので、
+// .scene のキーは欄名そのもの。保存と読込が同じ欄名を使う限り往復自体は通るので、
 // 綴りは値ごと突き合わせる。取り違えは保存済みレベルの値を静かに既定へ戻す
 TEST(SaveLoadRoundTrip, BreakableFieldKeysAreTheLockedLabels)
 {
