@@ -45,7 +45,7 @@ namespace NS::Game::Player
         //! m_stateNames のセミコロン区切りから状態機械を組む。全滅時は既定の並びへ退避する
         void BuildStates(PlayerComponent& player);
 
-        std::string m_stateNames = "Idle;Walk;Fall;LedgeHanging;LedgeClimbing;BodySlam"; // 先頭が初期状態
+        std::string m_stateNames = "Idle;Walk;Fall;LedgeHanging;LedgeClimbing;BodySlam;Brake"; // 先頭が初期状態
         NS::Object::StateMachine<PlayerComponent> m_machine;
         PlayerComponent* m_player = nullptr; // 遷移に渡す所有者 (非所有)
     };

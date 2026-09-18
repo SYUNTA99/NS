@@ -37,7 +37,7 @@ namespace
     }
 } // namespace
 
-// 掴まりと突進が戻る先の定数をそのまま登録簿へ通し、綴りがずれていないことも同時に見る
+// 立ちへ移す所が使う定数をそのまま登録簿へ通し、綴りがずれていないことも同時に見る
 TEST(PlayerStateRegistrationTest, IdleIsCreatableByName)
 {
     ExpectRegistered(PlayerComponent::k_IdleStateName);
@@ -68,6 +68,11 @@ TEST(PlayerStateRegistrationTest, BodySlamIsCreatableByName)
     ExpectRegistered(PlayerComponent::k_BodySlamStateName);
 }
 
+TEST(PlayerStateRegistrationTest, BrakeIsCreatableByName)
+{
+    ExpectRegistered("Brake");
+}
+
 TEST(PlayerStateRegistrationTest, UnknownNameCreatesNothing)
 {
     EXPECT_EQ(Registry::Create("登録していない状態"), nullptr);
@@ -80,7 +85,7 @@ TEST(PlayerStateRegistrationTest, RenamedStatesAreGone)
     ExpectGone("LedgeMantle");
 }
 
-TEST(PlayerStateRegistrationTest, SixStatesBuildAMachineStartingAtIdle)
+TEST(PlayerStateRegistrationTest, SevenStatesBuildAMachineStartingAtIdle)
 {
     NS::Object::GameObject obj;
     PlayerComponent& player = *obj.AddComponent<PlayerComponent>();
@@ -92,6 +97,7 @@ TEST(PlayerStateRegistrationTest, SixStatesBuildAMachineStartingAtIdle)
         PlayerComponent::k_LedgeHangingStateName,
         PlayerComponent::k_LedgeClimbingStateName,
         PlayerComponent::k_BodySlamStateName,
+        "Brake",
     };
 
     NS::Object::StateMachine<PlayerComponent> machine;

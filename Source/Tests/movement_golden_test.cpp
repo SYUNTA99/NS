@@ -217,6 +217,11 @@ namespace
         NsTest::AddBox(physics, AABB{Vector3{0.0f, 0.0f, 1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
         NsTest::AddBox(physics, AABB{Vector3{0.0f, 0.0f, -1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
         auto& movement = SetUpMovement(owner, physics, Vector3{-0.9f, 0.1f, 0.0f});
+        // 入力は最初のフレームだけ。立ちから始めるとそのフレームに加速せず、縁を向かないまま落ちて掴まない
+        // 状態機械は最初のフレームまで組まれないので、先に組んでから落下へ移す
+        auto& manager = *owner.FindComponent<PlayerStateManagerComponent>();
+        manager.EnsureBuilt(movement);
+        manager.ChangeByName("Fall");
 
         std::vector<StepRecord> trajectory;
         for (int i = 0; i < 150; ++i)

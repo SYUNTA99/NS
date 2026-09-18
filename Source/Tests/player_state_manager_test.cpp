@@ -16,7 +16,7 @@ namespace
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
     constexpr const char* k_StateListField = "状態一覧";
-    constexpr const char* k_DefaultStateList = "Idle;Walk;Fall;LedgeHanging;LedgeClimbing;BodySlam";
+    constexpr const char* k_DefaultStateList = "Idle;Walk;Fall;LedgeHanging;LedgeClimbing;BodySlam;Brake";
 
     const FieldDesc* FindField(const NS::Object::ReflectionInfo* info, const char* name)
     {
@@ -65,7 +65,7 @@ namespace
     };
 } // namespace
 
-TEST(PlayerStateManagerTest, StateListDefaultsToTheSixNames)
+TEST(PlayerStateManagerTest, StateListDefaultsToTheSevenNames)
 {
     Rig rig;
 

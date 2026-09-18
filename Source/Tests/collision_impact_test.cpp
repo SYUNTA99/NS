@@ -397,6 +397,28 @@ TEST(CollisionImpact, ReboundsAwayFromApproachedBox)
     EXPECT_FALSE(rig.movement->IsBodySlamming());
 }
 
+// 箱に押し付けたまま出しても当たる。発動したフレームのうちに進めずに打ち切ると、
+// 裁定が一度も走らないまま突進が終わる
+TEST(CollisionImpact, SlamFromRestingContactStillHits)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    SetInstantImpact(rig);
+    SettleOnFloor(scene, rig);
+    for (int i = 0; i < 20; ++i)
+    {
+        rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+        Step(scene, rig);
+    }
+    ASSERT_FALSE(rig.impact->DidRebound());
+
+    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+    ASSERT_TRUE(rig.movement->IsBodySlamming());
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+    EXPECT_TRUE(rig.impact->DidRebound());
+}
+
 // 溜めるほど返りも速い。溜めるほど損になると、溜めて放つ意味が消える
 TEST(CollisionImpact, ChargedImpactReboundsFaster)
 {

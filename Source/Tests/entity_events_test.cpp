@@ -66,6 +66,10 @@ namespace
 
         player.OnStart();
         manager.OnStart();
+        // 立ちは縁掴みを持たず、立ちから始めると最初のフレームに掴まない
+        // 状態機械は最初のフレームまで組まれないので、先に組んでから落下へ移す
+        manager.EnsureBuilt(player);
+        manager.ChangeByName("Fall");
         return player;
     }
 

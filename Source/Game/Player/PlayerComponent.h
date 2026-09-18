@@ -52,7 +52,7 @@ namespace NS::Game::Player
 
         //! 体当たりの状態の登録名。状態クラスの k_Name と同じ綴り
         static constexpr const char* k_BodySlamStateName = "BodySlam";
-        //! 突進を終えた後に戻る状態の登録名
+        //! 立ちの状態の登録名
         static constexpr const char* k_IdleStateName = "Idle";
         //! 縁にぶら下がっている状態の登録名
         static constexpr const char* k_LedgeHangingStateName = "LedgeHanging";
@@ -83,14 +83,19 @@ namespace NS::Game::Player
         //! @details 向きは 入力の水平 → カメラの水平前方 → 現在速度の水平 の順で解決する
         [[nodiscard]] bool BodySlam() noexcept;
 
-        //! 突進の 1 フレームを進める。距離を使い切るか進めないフレームが続くと通常移動へ戻す
+        //! 突進の 1 フレームを進める。距離を使い切るか、発動したフレームより後に進めないと通常移動へ戻す
         void UpdateBodySlam(float dt) noexcept;
 
         // 移動の 1 フレームを作る動詞。呼ぶ順序がそのまま手触りになる
         //! 先行入力とコヨーテ猶予のタイマーを 1 フレーム進める
         void TickTimers(float dt) noexcept;
-        //! 入力の向きと強さから目標の水平速度を作り、一次遅れで近づける
+        //! @brief 入力の向きへ加速する。入力が無ければ何もしない
+        //! @details 加速の上限は走行の最高速度 × 倒し具合で、歩き速度を下回らない。空中は空中の加速度を使う
         void AccelerateToInputDirection(float dt) noexcept;
+        //! 手を放した時の減速度で水平の速さを減らす
+        void ApplyFriction(float dt) noexcept;
+        //! ブレーキの減速度で水平の速さを減らす
+        void ApplyBrake(float dt) noexcept;
         //! 接地かコヨーテ窓の内で押されていれば跳ぶ
         void Jump(float dt) noexcept;
         //! 上昇中にボタンを離したフレームだけ縦速度を縮める
@@ -110,7 +115,7 @@ namespace NS::Game::Player
         //! @details 重力は当てない。縁の高さが変われば追い、失ったら手を放す
         //! @return 縁が続いている場合 true、それ以外の場合は false。false なら呼び出し側は即 return する
         [[nodiscard]] bool HoldLedge() noexcept;
-        //! @brief 掴まりからジャンプの縦の初速を与えて立ちへ移る
+        //! @brief 掴まりからジャンプの縦の初速を与えて落下へ移る
         //! @return ジャンプが押された場合 true、それ以外の場合は false。true なら呼び出し側は即 return する
         [[nodiscard]] bool LedgeJump() noexcept;
         //! 左右入力で縁に沿って動く。続いていない方向へは動かない
@@ -132,6 +137,12 @@ namespace NS::Game::Player
         [[nodiscard]] bool ShouldIdle() const noexcept;
         //! 接地を外れている場合 true、それ以外の場合は false
         [[nodiscard]] bool ShouldFall() const noexcept;
+        //! 入力の向きと水平の速度の内積がブレーキのしきい値を下回る場合 true、それ以外の場合は false
+        [[nodiscard]] bool ShouldBrake() const noexcept;
+        //! スティックの倒し具合が遊び以上の場合 true、それ以外の場合は false
+        [[nodiscard]] bool HasMoveInput() const noexcept;
+        //! 水平の速さが k_Epsilon 未満の場合 true、それ以外の場合は false
+        [[nodiscard]] bool IsStopped() const noexcept;
 
         //! 自機だけの通知の受け口。基底の Events() は接地の 2 件を返すので名前を分ける
         [[nodiscard]] PlayerEvents& PlayerEventsRef() noexcept { return m_playerEvents; }
@@ -139,7 +150,7 @@ namespace NS::Game::Player
         //! 自分が持つ調整値。読む側はここから引く
         [[nodiscard]] const PlayerStats& Stats() const noexcept { return m_stats; }
 
-        // setter は非有限値を書き込まない。重力や時定数へ入ると位置まで NaN が伝わる
+        // setter は非有限値を書き込まない。重力や加速度へ入ると位置まで NaN が伝わる
         [[nodiscard]] float JumpImpulse() const noexcept { return m_stats.jumpImpulse; }
         void SetJumpImpulse(float value) noexcept;
 
@@ -171,11 +182,23 @@ namespace NS::Game::Player
         [[nodiscard]] float RunSpeed() const noexcept { return m_stats.runSpeed; }
         void SetRunSpeed(float value) noexcept;
 
-        [[nodiscard]] float AccelTau() const noexcept { return m_stats.accelTau; }
-        void SetAccelTau(float value) noexcept;
+        [[nodiscard]] float Acceleration() const noexcept { return m_stats.acceleration; }
+        void SetAcceleration(float value) noexcept;
 
-        [[nodiscard]] float DecelTau() const noexcept { return m_stats.decelTau; }
-        void SetDecelTau(float value) noexcept;
+        [[nodiscard]] float AirAcceleration() const noexcept { return m_stats.airAcceleration; }
+        void SetAirAcceleration(float value) noexcept;
+
+        [[nodiscard]] float TurningDrag() const noexcept { return m_stats.turningDrag; }
+        void SetTurningDrag(float value) noexcept;
+
+        [[nodiscard]] float Friction() const noexcept { return m_stats.friction; }
+        void SetFriction(float value) noexcept;
+
+        [[nodiscard]] float Deceleration() const noexcept { return m_stats.deceleration; }
+        void SetDeceleration(float value) noexcept;
+
+        [[nodiscard]] float BrakeThreshold() const noexcept { return m_stats.brakeThreshold; }
+        void SetBrakeThreshold(float value) noexcept;
 
         [[nodiscard]] float StickDeadzone() const noexcept { return m_stats.stickDeadzone; }
         void SetStickDeadzone(float value) noexcept;
@@ -238,8 +261,12 @@ namespace NS::Game::Player
         NS_REFLECT_ACCESSOR(float, "先行入力時間", JumpBufferTime(), SetJumpBufferTime)
         NS_REFLECT_ACCESSOR(float, "歩き速度", WalkSpeed(), SetWalkSpeed)
         NS_REFLECT_ACCESSOR(float, "走行速度", RunSpeed(), SetRunSpeed)
-        NS_REFLECT_ACCESSOR(float, "加速時定数", AccelTau(), SetAccelTau)
-        NS_REFLECT_ACCESSOR(float, "減速時定数", DecelTau(), SetDecelTau)
+        NS_REFLECT_ACCESSOR(float, "加速度", Acceleration(), SetAcceleration)
+        NS_REFLECT_ACCESSOR(float, "空中の加速度", AirAcceleration(), SetAirAcceleration)
+        NS_REFLECT_ACCESSOR(float, "曲がる時の抵抗", TurningDrag(), SetTurningDrag)
+        NS_REFLECT_ACCESSOR(float, "手を放した時の減速度", Friction(), SetFriction)
+        NS_REFLECT_ACCESSOR(float, "ブレーキの減速度", Deceleration(), SetDeceleration)
+        NS_REFLECT_ACCESSOR(float, "ブレーキのしきい値", BrakeThreshold(), SetBrakeThreshold)
         NS_REFLECT_ACCESSOR(float, "スティック遊び", StickDeadzone(), SetStickDeadzone)
         NS_REFLECT_ACCESSOR(float, "登れる段の高さ", MaxStepHeight(), SetMaxStepHeight)
         NS_REFLECT_ACCESSOR(float, "掴める縁の下向き距離", LedgeGrabBelowHand(), SetLedgeGrabBelowHand)
@@ -265,6 +292,8 @@ namespace NS::Game::Player
     private:
         //! 現在状態が通常移動 (立ち / 走り / 落下) の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsLocomotion() const noexcept;
+        //! 突進を終える。水平の速さを走行の最高速度で切り、接地していれば走りへ、空中なら落下へ移す
+        void EndBodySlam() noexcept;
 
         //! @brief 掴まり位置から掴める縁を探す
         //! @param[in] hangPos 手を伸ばす元になるカプセル中心の位置
@@ -299,7 +328,7 @@ namespace NS::Game::Player
         float m_bodySlamCharge01 = 0.0f;                      // 発動時に確定した溜め量 0..1
         float m_bodySlamTravelled = 0.0f;                     // 突進で進んだ水平距離
         float m_bodySlamDistanceTarget = 0.0f;                // 突進を終える水平距離
-        int m_bodySlamStallSteps = 0;                         // 進めなかったフレームの連続数
+        bool m_bodySlamJustStarted = false;                   // 発動したフレームか
         NS::Core::Vector3 m_bodySlamDir{0.0f, 0.0f, 0.0f};    // 突進の水平の向き。正規化済み
         NS::Core::Vector3 m_bodySlamAimDir{0.0f, 0.0f, 0.0f}; // 押したフレームに控えた狙いの向き。正規化済み
         float m_bodySlamAimAge = 0.0f;                        // 狙いを控えてからの経過秒

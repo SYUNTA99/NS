@@ -9,8 +9,8 @@ namespace NS::Game::Player
     class IdlePlayerState final : public PlayerState
     {
     public:
-        // 掴まりと突進が戻る先と同じ綴り。別々に書くと片方を直した時に ChangeByName が false を返し、
-        // 掴まりと突進からその状態のまま出られなくなる
+        // 立ちへ移す所と同じ綴り。別々に書くと片方を直した時に ChangeByName が false を返し、
+        // よじ登り・落下・走り・ブレーキから立ちへ移れなくなる
         static constexpr const char* k_Name = PlayerComponent::k_IdleStateName;
 
         [[nodiscard]] const char* Name() const noexcept override { return k_Name; }
@@ -18,14 +18,12 @@ namespace NS::Game::Player
         void OnStep(PlayerComponent& player, float dt) override
         {
             player.TickTimers(dt);
-            player.AccelerateToInputDirection(dt);
+            player.ApplyFriction(dt);
             player.Jump(dt);
             player.CutJumpRelease();
             player.Gravity(dt);
             player.Move(dt);
             player.SyncGroundState();
-            if (player.LedgeGrab())
-                return;
 
             if (player.ShouldFall())
                 player.States()->ChangeByName("Fall");

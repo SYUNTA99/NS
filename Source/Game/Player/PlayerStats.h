@@ -17,10 +17,21 @@ namespace NS::Game::Player
         // 着地前の先行ジャンプ入力を覚える秒。体当たりの先行入力と共用で、分けない
         // TODO: 暫定値。人の早押し誤差は概ね 100ms なので目標は 0.1 秒、体感で詰める
         float jumpBufferTime = 0.25f;
-        float walkSpeed = 4.0f;     // 歩き速度
-        float runSpeed = 8.0f;      // 走行の最高速度
-        float accelTau = 0.10f;     // 加速の時定数
-        float decelTau = 0.10f;     // 減速の時定数
+        float walkSpeed = 4.0f; // 歩き速度
+        float runSpeed = 8.0f;  // 走行の最高速度
+        // 入力の向きへの加速度 (m/s²)。0 から走り 8 m/s まで 0.2 秒 (12 フレーム) で、手を放して止まるまでと同じ
+        float acceleration = 40.0f;
+        // 空中で入力の向きへ足す加速度 (m/s²)。前は空中も地上と同じ時定数で近づけていたので、地上と同じ強さから始める
+        float airAcceleration = 40.0f;
+        // 入力の向きからずれた速度を減らす減速度 (m/s²)
+        // 前は向きの成分もずれた成分も 1 本の式でまとめて近づけていたので、加速度と同じ強さから始める
+        float turningDrag = 40.0f;
+        // 手を放した時の減速度 (m/s²)。走り 8 m/s から 0.2 秒 (12 フレーム) で止まる
+        float friction = 40.0f;
+        // ブレーキの減速度 (m/s²)。手を放した時と同じ強さ
+        float deceleration = 40.0f;
+        // 入力の向きと速度の内積のしきい値 (m/s)。逆向きに 0.8 m/s より速く動いている時にブレーキ
+        float brakeThreshold = -0.8f;
         float stickDeadzone = 0.3f; // スティック入力のデッドゾーン
         // 走ったまま登れる段の高さ。実寸の階段 1 段 (15〜20 cm) は越え、半マス (50 cm) はジャンプが要る
         float maxStepHeight = 0.25f;

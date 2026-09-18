@@ -11,28 +11,19 @@
 
 namespace
 {
-    //! 一次遅れの離散化。tau は時定数で値が大きいほど鈍い。0 < tau で安定
-    //! 加速と減速の手触りはこの式が決める
-    [[nodiscard]] float SmoothApproach(float current, float target, float tau, float dt) noexcept
+    // 水平の長さを drop だけ縮め、drop 以下なら 0 にする
+    void ShrinkHorizontal(float& x, float& z, float drop) noexcept
     {
-        if (tau <= 0.0f)
+        const float length = std::sqrt(x * x + z * z);
+        if (length <= drop || length == 0.0f)
         {
-            return target;
+            x = 0.0f;
+            z = 0.0f;
+            return;
         }
-        const float a = 1.0f - std::exp(-dt / tau);
-        return current + (target - current) * a;
-    }
-
-    [[nodiscard]] NS::Core::Vector3 HorizontalSmooth(const NS::Core::Vector3& curr,
-                                                     const NS::Core::Vector3& target,
-                                                     float tau,
-                                                     float dt) noexcept
-    {
-        return NS::Core::Vector3{
-            SmoothApproach(curr.x, target.x, tau, dt),
-            curr.y,
-            SmoothApproach(curr.z, target.z, tau, dt),
-        };
+        const float scale = (length - drop) / length;
+        x *= scale;
+        z *= scale;
     }
 } // namespace
 
@@ -44,6 +35,12 @@ namespace NS::Game::Entity
 
     NS::Core::Vector3 EntityComponent::LateralVelocity() const noexcept
     {
+        // 8 m/s を減速度 40 で止めると、最後のフレームに 6×10⁻⁷ m/s の端数が残る
+        // 0 と読まないと、止まったかの判定が 1 フレーム遅れる
+        if (m_velocity.x * m_velocity.x + m_velocity.z * m_velocity.z < NS::Core::k_Epsilon * NS::Core::k_Epsilon)
+        {
+            return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        }
         return NS::Core::Vector3{m_velocity.x, 0.0f, m_velocity.z};
     }
 
@@ -73,7 +70,7 @@ namespace NS::Game::Entity
     {
         if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
         {
-			return nullptr;
+            return nullptr;
         }
         return &Owner()->OwningScene()->Physics();
     }
@@ -104,14 +101,31 @@ namespace NS::Game::Entity
         HandleStates(dt);
     }
 
-    void EntityComponent::Accelerate(const NS::Core::Vector3& targetHorizontal, float tau, float dt) noexcept
+    void EntityComponent::Accelerate(
+        const NS::Core::Vector3& direction, float turningDrag, float acceleration, float topSpeed, float dt) noexcept
     {
-        m_velocity = HorizontalSmooth(m_velocity, targetHorizontal, tau, dt);
+        const NS::Core::Vector3 lateral = LateralVelocity();
+        float speed = direction.x * lateral.x + direction.z * lateral.z;
+        float turningX = lateral.x - direction.x * speed;
+        float turningZ = lateral.z - direction.z * speed;
+
+        const float lateralSpeed = std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z);
+        if (lateralSpeed < topSpeed || speed < 0.0f)
+        {
+            speed = NS::Core::Clamp(speed + acceleration * dt, -topSpeed, topSpeed);
+        }
+
+        ShrinkHorizontal(turningX, turningZ, turningDrag * dt);
+        m_velocity.x = direction.x * speed + turningX;
+        m_velocity.z = direction.z * speed + turningZ;
     }
 
-    void EntityComponent::Decelerate(float tau, float dt) noexcept
+    void EntityComponent::Decelerate(float deceleration, float dt) noexcept
     {
-        Accelerate(NS::Core::Vector3{0.0f, 0.0f, 0.0f}, tau, dt);
+        NS::Core::Vector3 lateral = LateralVelocity();
+        ShrinkHorizontal(lateral.x, lateral.z, deceleration * dt);
+        m_velocity.x = lateral.x;
+        m_velocity.z = lateral.z;
     }
 
     void EntityComponent::Gravity(float gravity, float dt) noexcept

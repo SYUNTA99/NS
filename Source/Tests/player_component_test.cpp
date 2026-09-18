@@ -41,8 +41,12 @@ namespace
                                                          "コヨーテ時間",
                                                          "先行入力時間",
                                                          "歩き速度",
-                                                         "加速時定数",
-                                                         "減速時定数",
+                                                         "加速度",
+                                                         "空中の加速度",
+                                                         "曲がる時の抵抗",
+                                                         "手を放した時の減速度",
+                                                         "ブレーキの減速度",
+                                                         "ブレーキのしきい値",
                                                          "スティック遊び",
                                                          "突進速度",
                                                          "突進距離",
@@ -90,7 +94,13 @@ namespace
     //! 床を敷かない検証台。1 フレーム目から下降するので掴みの条件が立つ。block は呼び出し側が積む
     PlayerComponent& MakeLedgeReady(GameObject& owner)
     {
-        return MakePlayer(owner);
+        auto& player = MakePlayer(owner);
+        // 立ちは縁掴みを持たず、立ちから始めると最初のフレームに掴まない
+        // 状態機械は最初のフレームまで組まれないので、先に組んでから落下へ移す
+        auto& manager = *owner.FindComponent<PlayerStateManagerComponent>();
+        manager.EnsureBuilt(player);
+        manager.ChangeByName("Fall");
+        return player;
     }
 
     [[nodiscard]] std::string_view CurrentStateName(GameObject& owner)
@@ -388,21 +398,25 @@ TEST_F(PlayerComponentTest, InputInsideTheDeadzoneAimsAtZeroSpeed)
 
 TEST_F(PlayerComponentTest, HalfScaleSplitsWalkSpeedFromMaxSpeed)
 {
-    const float lag = 1.0f - std::exp(-k_FixedDt / 0.1f);
-
     GameObject walkObj;
     auto& walker = *walkObj.AddComponent<PlayerComponent>();
     walker.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.4f);
-    walker.AccelerateToInputDirection(k_FixedDt);
+    for (int i = 0; i < 30; ++i)
+    {
+        walker.AccelerateToInputDirection(k_FixedDt);
+    }
 
-    EXPECT_NEAR(walker.Velocity().x, 4.0f * lag, 1e-5f);
+    EXPECT_FLOAT_EQ(walker.Velocity().x, 4.0f);
 
     GameObject runObj;
     auto& runner = *runObj.AddComponent<PlayerComponent>();
     runner.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 0.8f);
-    runner.AccelerateToInputDirection(k_FixedDt);
+    for (int i = 0; i < 30; ++i)
+    {
+        runner.AccelerateToInputDirection(k_FixedDt);
+    }
 
-    EXPECT_NEAR(runner.Velocity().x, 8.0f * 0.8f * lag, 1e-5f);
+    EXPECT_FLOAT_EQ(runner.Velocity().x, 8.0f * 0.8f);
 }
 
 TEST_F(PlayerComponentTest, TapSlamFiresOnTheStepAfterTheRequest)
@@ -744,7 +758,7 @@ TEST_F(PlayerComponentTest, RushEndsAfterTheRushDistance)
     EXPECT_GT(obj.Root().Position().x - startX, 5.0f);
 }
 
-// 壁で止められると距離が減らず突進から出られなくなる。進めないフレームが続いたら打ち切る
+// 壁で止められると距離が減らず突進から出られなくなる。進めないフレームで打ち切る
 TEST_F(PlayerComponentTest, RushEndsWhenTheWallStopsIt)
 {
     NsTest::EntityStage stage;
@@ -952,6 +966,109 @@ TEST_F(PlayerComponentTest, MovesToWalkWhileTheRunInputIsHeld)
     EXPECT_EQ(CurrentStateName(obj), "Walk");
 }
 
+// 走りの 8 m/s から手を放すと、減速度 40 で 12 フレーム目にちょうど止まって立ちへ移る
+TEST_F(PlayerComponentTest, ReleasingTheStickStopsAtExactlyZero)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), "Walk");
+
+    player.SetVelocity(Vector3{8.0f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
+    for (int i = 0; i < 11; ++i)
+    {
+        player.OnUpdate();
+    }
+    ASSERT_EQ(CurrentStateName(obj), "Walk");
+
+    player.OnUpdate();
+
+    EXPECT_EQ(player.LateralVelocity().x, 0.0f);
+    EXPECT_EQ(player.LateralVelocity().z, 0.0f);
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+}
+
+// 空中は減速しない。手を放しても弾かれた勢いが残る
+TEST_F(PlayerComponentTest, FallKeepsHorizontalSpeedWithoutInput)
+{
+    GameObject obj;
+    auto& player = MakePlayer(obj);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), "Fall");
+
+    player.SetVelocity(Vector3{5.0f, 0.0f, 0.0f});
+    player.OnUpdate();
+
+    EXPECT_FLOAT_EQ(player.Velocity().x, 5.0f);
+}
+
+// 最高速以上で進んでいる向きへ倒しても加速は足さず、最高速を超えた速さは削られない
+TEST_F(PlayerComponentTest, HoldingTheStickKeepsSpeedAboveTheTop)
+{
+    GameObject obj;
+    auto& player = MakePlayer(obj);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), "Fall");
+
+    player.SetVelocity(Vector3{20.0f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+
+    EXPECT_FLOAT_EQ(player.Velocity().x, 20.0f);
+}
+
+// 走っている向きと逆へ倒すとブレーキを挟み、止まってから立ちへ移る
+TEST_F(PlayerComponentTest, ReverseInputBrakesToAStop)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
+    player.SetVelocity(Vector3{8.0f, 0.0f, 0.0f});
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), "Walk");
+
+    player.SetDesiredMove(Vector3{-1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), "Brake");
+
+    for (int i = 0; i < 30 && CurrentStateName(obj) == "Brake"; ++i)
+    {
+        player.OnUpdate();
+    }
+
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+    EXPECT_EQ(player.LateralVelocity().x, 0.0f);
+}
+
+// 突進の終わりに走行の最高速で切る。切らないと、倒している間は突進の速さのまま走り続ける
+TEST_F(PlayerComponentTest, SlamThatHitsNothingEndsAtTheTopSpeed)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    auto& player = MakeSlamReady(obj, physics);
+    player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.RequestBodySlam(1.0f);
+    player.OnUpdate();
+    ASSERT_TRUE(player.IsBodySlamming());
+
+    for (int i = 0; i < 120 && player.IsBodySlamming(); ++i)
+    {
+        player.OnUpdate();
+    }
+
+    ASSERT_FALSE(player.IsBodySlamming());
+    const Vector3 v = player.Velocity();
+    EXPECT_LE(std::sqrt(v.x * v.x + v.z * v.z), player.RunSpeed() + 1e-4f);
+}
+
 TEST_F(PlayerComponentTest, MovesToFallWithoutGround)
 {
     GameObject obj;
@@ -990,6 +1107,25 @@ TEST_F(PlayerComponentTest, ResetStateReturnsToTheFirstState)
     player.ResetState();
 
     EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+}
+
+// 立ちは地上の状態なので縁掴みを持たない。空中に出たフレームは落下へ移すだけで、掴むのは次のフレーム
+TEST_F(PlayerComponentTest, IdleLeavesTheLedgeGrabToFall)
+{
+    NsTest::EntityStage stage;
+    GameObject& obj = stage.owner;
+    NS::Physics::PhysicsScene& physics = stage.physics;
+    NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
+    physics.OptimizeBroadPhase();
+    auto& player = MakePlayer(obj);
+    obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
+    player.SetVelocity(Vector3{1.0f, 0.0f, 0.0f});
+
+    player.OnUpdate();
+    ASSERT_EQ(CurrentStateName(obj), "Fall");
+
+    player.OnUpdate();
+    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);
 }
 
 TEST_F(PlayerComponentTest, GrabsLedgeWhenDescendingIntoEdge)
@@ -1294,7 +1430,7 @@ TEST_F(PlayerComponentTest, ReleaseButtonDropsFromTheLedge)
     player.SetReleaseLedgePressed();
     player.OnUpdate();
 
-    EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+    EXPECT_EQ(CurrentStateName(obj), "Fall");
     EXPECT_NEAR(obj.Root().Position().x, -0.9f, 1e-4f);
     EXPECT_FLOAT_EQ(player.Velocity().x, 0.0f);
     EXPECT_FALSE(player.IsGrounded());
@@ -1359,7 +1495,7 @@ TEST_F(PlayerComponentTest, DoesNotRegrabAfterReleasingWithoutInput)
     player.SetDesiredMove(Vector3{0.0f, 0.0f, 0.0f}, 0.0f);
     player.SetReleaseLedgePressed();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+    ASSERT_EQ(CurrentStateName(obj), "Fall");
 
     for (int i = 0; i < 60; ++i)
     {
@@ -1386,7 +1522,7 @@ TEST_F(PlayerComponentTest, DoesNotRegrabWhileFallingPastTheLedge)
 
     player.SetReleaseLedgePressed();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+    ASSERT_EQ(CurrentStateName(obj), "Fall");
 
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     for (int i = 0; i < 60; ++i)
@@ -1415,7 +1551,7 @@ TEST_F(PlayerComponentTest, ZeroTurnSpeedFacesTheMoveAtOnce)
 
     player.SetReleaseLedgePressed();
     player.OnUpdate();
-    ASSERT_EQ(CurrentStateName(obj), PlayerComponent::k_IdleStateName);
+    ASSERT_EQ(CurrentStateName(obj), "Fall");
 
     player.OnUpdate();
     EXPECT_EQ(CurrentStateName(obj), PlayerComponent::k_LedgeHangingStateName);

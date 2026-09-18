@@ -23,7 +23,7 @@ namespace PlayerNs = NS::Game::Player;
 
 namespace
 {
-    constexpr const char* k_StateList = "Idle;Walk;Fall;LedgeHanging;LedgeClimbing;BodySlam";
+    constexpr const char* k_StateList = "Idle;Walk;Fall;LedgeHanging;LedgeClimbing;BodySlam;Brake";
 
     bool LoadShippedScene(SceneNs::SceneData& outScene, std::string_view name)
     {
@@ -73,7 +73,7 @@ TEST_P(ShippedScene, PlayerCarriesTheTwoNewComponents)
         << GetParam() << " の自機に PlayerStateManagerComponent が無い。状態が 1 つも移らない";
 }
 
-TEST_P(ShippedScene, StateListIsTheSixStateOrderStartingAtIdle)
+TEST_P(ShippedScene, StateListIsTheSevenStateOrderStartingAtIdle)
 {
     SceneNs::SceneData scene;
     ASSERT_TRUE(LoadShippedScene(scene, GetParam()));
@@ -151,7 +151,7 @@ TEST_P(ShippedScene, PlayerComponentCarriesEveryTuningField)
     const auto fields = entry->find("fields");
     ASSERT_NE(fields, entry->end());
 
-    EXPECT_EQ(fields->size(), 18u) << GetParam() << " の調整値の欄が減っている。落ちた欄は既定値で動く";
+    EXPECT_EQ(fields->size(), 22u) << GetParam() << " の調整値の欄が減っている。落ちた欄は既定値で動く";
 }
 
 TEST_P(ShippedScene, LoadedPlayerKeepsTheTunedSlamValues)

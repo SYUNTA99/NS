@@ -5,7 +5,7 @@
 
 namespace NS::Game::Player
 {
-    //! 落下。着地したフレームに走りか立ちへ移る
+    //! 落下。着地したフレームに立ちへ移る
     class FallPlayerState final : public PlayerState
     {
     public:
@@ -27,10 +27,7 @@ namespace NS::Game::Player
 
             if (player.IsGrounded())
             {
-                if (player.ShouldWalk())
-                    player.States()->ChangeByName("Walk");
-                else
-                    player.States()->ChangeByName(PlayerComponent::k_IdleStateName);
+                player.States()->ChangeByName(PlayerComponent::k_IdleStateName);
             }
         }
     };

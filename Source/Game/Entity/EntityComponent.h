@@ -35,7 +35,7 @@ namespace NS::Game::Entity
         [[nodiscard]] NS::Core::Vector3 Velocity() const noexcept { return m_velocity; }
         void SetVelocity(const NS::Core::Vector3& v) noexcept { m_velocity = v; }
 
-        //! 水平成分だけを取り出した速度で y は 0
+        //! 水平成分だけを取り出した速度で y は 0。長さが k_Epsilon 未満なら 0 を返す
         [[nodiscard]] NS::Core::Vector3 LateralVelocity() const noexcept;
         //! 水平成分だけを差し替える。引数の y は読まない
         void SetLateralVelocity(const NS::Core::Vector3& v) noexcept;
@@ -57,11 +57,23 @@ namespace NS::Game::Entity
         //! 持ち主の Scene の衝突の PhysicsScene。Scene に居なければ nullptr
         [[nodiscard]] NS::Physics::PhysicsScene* ScenePhysics() const noexcept;
 
-        //! 水平の目標速度へ一次遅れで近づける。縦は触らない
-        void Accelerate(const NS::Core::Vector3& targetHorizontal, float tau, float dt) noexcept;
+        //! @brief 水平の速度を direction へ加速し、向きからずれた成分を turningDrag で減らす。縦は触らない
+        //! @details 向きの成分に acceleration × dt を足すのは、水平の速さが topSpeed
+        //! 未満か、向きの成分が逆向きの時だけ。足した後は ±topSpeed で切る
+        //! 水平の速さが topSpeed 以上で向きへ進んでいる時は足しも削りもしない
+        //! @param[in] direction 加速する向き。水平の単位ベクトル
+        //! @param[in] turningDrag ずれた成分を減らす減速度 (m/s²)
+        //! @param[in] acceleration 向きの成分へ足す加速度 (m/s²)
+        //! @param[in] topSpeed 向きの成分を加速で上げる上限 (m/s)
+        //! @param[in] dt 1 フレームの秒数
+        void Accelerate(const NS::Core::Vector3& direction,
+                        float turningDrag,
+                        float acceleration,
+                        float topSpeed,
+                        float dt) noexcept;
 
-        //! 水平を 0 へ一次遅れで近づける
-        void Decelerate(float tau, float dt) noexcept;
+        //! 水平の速さを 1 フレームに deceleration × dt ずつ減らし、ちょうど 0 で止める。縦は触らない
+        void Decelerate(float deceleration, float dt) noexcept;
 
         //! 縦速度へ重力を 1 フレームぶん当てる。値の選び分け (上昇 / 下降 / 頂点) は派生の仕事
         void Gravity(float gravity, float dt) noexcept;

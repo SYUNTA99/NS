@@ -3,7 +3,7 @@
 
 namespace NS::Game::Player
 {
-    //! ぶら下がり。移る先はよじ登りと立ち
+    //! ぶら下がり。移る先はよじ登りと落下
     class LedgeHangingPlayerState final : public PlayerState
     {
     public:

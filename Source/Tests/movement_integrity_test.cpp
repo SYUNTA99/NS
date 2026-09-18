@@ -24,7 +24,6 @@ namespace
     constexpr int k_NumSteps = 120;
     constexpr int k_JumpPressStep = 10;
     constexpr int k_JumpReleaseStep = 20;
-    constexpr float k_DeterministicEpsilon = 1.0e-5f;
 
     //! 床 1 枚 (center y=-0.5, half y=0.5、 上面が y=0) のみ。 壁なし
     AABB MakeFloorOnly() noexcept
@@ -74,7 +73,6 @@ protected:
 };
 
 //! 固定ステップ物理が可変の経過時間や乱数を使っていなければ、同条件で 2 回走らせた軌跡は一致する
-//! std::exp を使うので EXPECT_NEAR (1e-5) で誤差を許す
 TEST_F(MovementIntegrity, JumpTrajectoryIsDeterministicAcrossTwoRuns)
 {
     const auto traj1 = RunDeterministicSim();
@@ -85,9 +83,9 @@ TEST_F(MovementIntegrity, JumpTrajectoryIsDeterministicAcrossTwoRuns)
 
     for (size_t i = 0; i < traj1.size(); ++i)
     {
-        EXPECT_NEAR(traj1[i].x, traj2[i].x, k_DeterministicEpsilon) << "step " << i << " x";
-        EXPECT_NEAR(traj1[i].y, traj2[i].y, k_DeterministicEpsilon) << "step " << i << " y";
-        EXPECT_NEAR(traj1[i].z, traj2[i].z, k_DeterministicEpsilon) << "step " << i << " z";
+        EXPECT_EQ(traj1[i].x, traj2[i].x) << "step " << i << " x";
+        EXPECT_EQ(traj1[i].y, traj2[i].y) << "step " << i << " y";
+        EXPECT_EQ(traj1[i].z, traj2[i].z) << "step " << i << " z";
     }
 }
 
@@ -108,7 +106,7 @@ TEST_F(MovementIntegrity, JumpReachesExpectedPeakHeightRange)
     EXPECT_LT(peakY, 6.0f) << "jump peak unreasonably high";
 }
 
-//! accelTau = 0.10s なら 1 秒 (60 step) でほぼ maxSpeed=8 に届く
+//! 加速度 40 なら 0.2 秒で走行の最高速度 8 m/s に届く
 //! ジャンプ中は x 速度が揺れるので、ジャンプ無しの歩行だけで見る
 TEST_F(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
 {

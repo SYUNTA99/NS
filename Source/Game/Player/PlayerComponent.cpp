@@ -15,13 +15,6 @@
 
 namespace
 {
-    // 加速と減速の切り替えで見る速さの差の下限。単位は m/s
-    constexpr float k_HorizontalSpeedEpsilon = 0.01f;
-
-    // 1 フレームで打ち切ると ImpactResolverComponent が突進を見る前に終わる。壁で止められたフレームを 2 回数える
-    constexpr float k_BodySlamStallDistance = 1e-4f;
-    constexpr int k_BodySlamMaxStallSteps = 2;
-
     // 掴まりの走査で見る AABB 群。physics 未設定なら空を返すので、掴めないだけで異常終了しない
     [[nodiscard]] std::vector<NS::Core::AABB> BoxesTouchingBand(const NS::Physics::PhysicsScene* physics,
                                                                 const NS::Core::Vector3& probe,
@@ -56,7 +49,7 @@ namespace
                p.z >= box.Center.z - box.Extents.z && p.z <= box.Center.z + box.Extents.z;
     }
 
-    // 非有限値を捨てる。重力や時定数へ入ると位置まで NaN が伝わる
+    // 非有限値を捨てる。重力や加速度へ入ると位置まで NaN が伝わる
     void AssignFinite(float& target, float value) noexcept
     {
         if (std::isfinite(value))
@@ -137,14 +130,34 @@ namespace NS::Game::Player
         m_maxSpeed = m_stats.runSpeed;
     }
 
-    void PlayerComponent::SetAccelTau(float value) noexcept
+    void PlayerComponent::SetAcceleration(float value) noexcept
     {
-        AssignFinite(m_stats.accelTau, value);
+        AssignFinite(m_stats.acceleration, value);
     }
 
-    void PlayerComponent::SetDecelTau(float value) noexcept
+    void PlayerComponent::SetAirAcceleration(float value) noexcept
     {
-        AssignFinite(m_stats.decelTau, value);
+        AssignFinite(m_stats.airAcceleration, value);
+    }
+
+    void PlayerComponent::SetTurningDrag(float value) noexcept
+    {
+        AssignFinite(m_stats.turningDrag, value);
+    }
+
+    void PlayerComponent::SetFriction(float value) noexcept
+    {
+        AssignFinite(m_stats.friction, value);
+    }
+
+    void PlayerComponent::SetDeceleration(float value) noexcept
+    {
+        AssignFinite(m_stats.deceleration, value);
+    }
+
+    void PlayerComponent::SetBrakeThreshold(float value) noexcept
+    {
+        AssignFinite(m_stats.brakeThreshold, value);
     }
 
     void PlayerComponent::SetStickDeadzone(float value) noexcept
@@ -294,9 +307,34 @@ namespace NS::Game::Player
     {
         if (!IsBodySlamming())
             return;
+        EndBodySlam();
+    }
+
+    void PlayerComponent::EndBodySlam() noexcept
+    {
         m_bodySlamTravelled = 0.0f;
         m_bodySlamDistanceTarget = 0.0f;
-        m_stateManager->ChangeByName(k_IdleStateName);
+
+        // 加速は最高速を超えた速さを削らない。切らないと、倒している間は突進の速さのまま走り続ける
+        const NS::Core::Vector3 lateral = LateralVelocity();
+        const float speed = std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z);
+        if (speed > m_maxSpeed)
+        {
+            const float scale = m_maxSpeed / speed;
+            SetLateralVelocity(NS::Core::Vector3{lateral.x * scale, 0.0f, lateral.z * scale});
+        }
+
+        if (m_stateManager != nullptr)
+        {
+            if (IsGrounded())
+            {
+                m_stateManager->ChangeByName("Walk");
+            }
+            else
+            {
+                m_stateManager->ChangeByName("Fall");
+            }
+        }
         m_playerEvents.onBodySlamEnded.Invoke();
     }
 
@@ -375,7 +413,7 @@ namespace NS::Game::Player
         m_bodySlamCharge01 = m_bodySlamRequestCharge01;
         m_bodySlamIsTap = !(m_bodySlamRequestCharge01 > 0.0f);
         m_bodySlamTravelled = 0.0f;
-        m_bodySlamStallSteps = 0;
+        m_bodySlamJustStarted = true;
 
         if (m_bodySlamIsTap)
         {
@@ -442,19 +480,15 @@ namespace NS::Game::Player
         const float stepDistance = std::sqrt(delta.x * delta.x + delta.z * delta.z);
         m_bodySlamTravelled += stepDistance;
 
-        // 壁で止められると距離が減らず突進から出られなくなるため、進めないフレームが続いたら打ち切る
-        if (stepDistance < k_BodySlamStallDistance)
-            ++m_bodySlamStallSteps;
-        else
-            m_bodySlamStallSteps = 0;
+        // 進めないフレームで打ち切る。壁で止められると進んだ距離が伸びず、突進から出られなくなる
+        // 発動したフレームは見ない。ここで打ち切ると発動から打ち切りまでに ImpactResolverComponent が
+        // 一度も走らず、突進を見ないまま終わる
+        const bool stalled = !m_bodySlamJustStarted && stepDistance < NS::Core::k_Epsilon;
+        m_bodySlamJustStarted = false;
 
-        if (m_bodySlamTravelled >= m_bodySlamDistanceTarget || m_bodySlamStallSteps >= k_BodySlamMaxStallSteps)
+        if (m_bodySlamTravelled >= m_bodySlamDistanceTarget || stalled)
         {
-            m_bodySlamTravelled = 0.0f;
-            m_bodySlamDistanceTarget = 0.0f;
-            if (m_stateManager != nullptr)
-                m_stateManager->ChangeByName(k_IdleStateName);
-            m_playerEvents.onBodySlamEnded.Invoke();
+            EndBodySlam();
         }
     }
 
@@ -485,7 +519,7 @@ namespace NS::Game::Player
         m_bodySlamCharge01 = 0.0f;
         m_bodySlamTravelled = 0.0f;
         m_bodySlamDistanceTarget = 0.0f;
-        m_bodySlamStallSteps = 0;
+        m_bodySlamJustStarted = false;
         m_bodySlamDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
 
         if (m_stateManager != nullptr)
@@ -521,25 +555,29 @@ namespace NS::Game::Player
 
     void PlayerComponent::AccelerateToInputDirection(float dt) noexcept
     {
-        float targetSpeed = 0.0f;
-        if (m_desiredSpeedScale >= Stats().stickDeadzone)
+        NS::Core::Vector3 direction{};
+        if (!HasMoveInput() || !NS::Core::TryNormalizeHorizontal(m_desiredDir, direction))
         {
-            if (m_desiredSpeedScale < 0.5f)
-                targetSpeed = Stats().walkSpeed;
-            else
-                targetSpeed = m_maxSpeed * m_desiredSpeedScale;
+            return;
         }
 
-        const NS::Core::Vector3 targetHoriz{m_desiredDir.x * targetSpeed, 0.0f, m_desiredDir.z * targetSpeed};
+        const float topSpeed = std::max(m_maxSpeed * m_desiredSpeedScale, Stats().walkSpeed);
+        float acceleration = Stats().airAcceleration;
+        if (IsGrounded())
+        {
+            acceleration = Stats().acceleration;
+        }
+        Accelerate(direction, Stats().turningDrag, acceleration, topSpeed, dt);
+    }
 
-        // 目標が今の速さを上回るフレームだけ加速の時定数。誤差ぶんの差で加速と減速が入れ替わらないよう下駄を履かせる
-        const NS::Core::Vector3 lateral = LateralVelocity();
-        const float currHorizMag = std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z);
-        float tau = Stats().decelTau;
-        if (targetSpeed > currHorizMag + k_HorizontalSpeedEpsilon)
-            tau = Stats().accelTau;
+    void PlayerComponent::ApplyFriction(float dt) noexcept
+    {
+        Decelerate(Stats().friction, dt);
+    }
 
-        Accelerate(targetHoriz, tau, dt);
+    void PlayerComponent::ApplyBrake(float dt) noexcept
+    {
+        Decelerate(Stats().deceleration, dt);
     }
 
     void PlayerComponent::Jump(float) noexcept
@@ -741,7 +779,7 @@ namespace NS::Game::Player
         SetGrounded(false);
         if (m_stateManager != nullptr)
         {
-            m_stateManager->ChangeByName(k_IdleStateName);
+            m_stateManager->ChangeByName("Fall");
         }
         m_playerEvents.onJump.Invoke();
         return true;
@@ -773,7 +811,9 @@ namespace NS::Game::Player
     void PlayerComponent::DropLedge() noexcept
     {
         if (m_stateManager != nullptr)
-            m_stateManager->ChangeByName(k_IdleStateName);
+        {
+            m_stateManager->ChangeByName("Fall");
+        }
         SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
         SetGrounded(false);
         // 壁と逆を向いて落ちる。壁を向いたままだと、帯の上の余白に縁が入って次のフレームで掴み直す
@@ -902,8 +942,29 @@ namespace NS::Game::Player
         if (m_desiredSpeedScale >= Stats().stickDeadzone)
             return true;
 
+        return !IsStopped();
+    }
+
+    bool PlayerComponent::ShouldBrake() const noexcept
+    {
+        NS::Core::Vector3 direction{};
+        if (!HasMoveInput() || !NS::Core::TryNormalizeHorizontal(m_desiredDir, direction))
+        {
+            return false;
+        }
         const NS::Core::Vector3 lateral = LateralVelocity();
-        return std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z) > k_HorizontalSpeedEpsilon;
+        return direction.x * lateral.x + direction.z * lateral.z < Stats().brakeThreshold;
+    }
+
+    bool PlayerComponent::HasMoveInput() const noexcept
+    {
+        return m_desiredSpeedScale >= Stats().stickDeadzone;
+    }
+
+    bool PlayerComponent::IsStopped() const noexcept
+    {
+        const NS::Core::Vector3 lateral = LateralVelocity();
+        return lateral.x == 0.0f && lateral.z == 0.0f;
     }
 
     bool PlayerComponent::ShouldIdle() const noexcept

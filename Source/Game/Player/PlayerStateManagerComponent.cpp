@@ -76,7 +76,8 @@ namespace NS::Game::Player
                                                    "Fall",
                                                    PlayerComponent::k_LedgeHangingStateName,
                                                    PlayerComponent::k_LedgeClimbingStateName,
-                                                   PlayerComponent::k_BodySlamStateName};
+                                                   PlayerComponent::k_BodySlamStateName,
+                                                   "Brake"};
         m_machine.Build(player, fallback);
     }
 

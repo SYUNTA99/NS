@@ -5,26 +5,18 @@
 
 namespace NS::Game::Player
 {
-    //! 走り。移る先は落下・ブレーキ・立ち
-    class WalkPlayerState final : public PlayerState
+    //! ブレーキ。止まるまで入力の向きへ加速しない。移る先は落下と立ち
+    class BrakePlayerState final : public PlayerState
     {
     public:
-        static constexpr const char* k_Name = "Walk";
+        static constexpr const char* k_Name = "Brake";
 
         [[nodiscard]] const char* Name() const noexcept override { return k_Name; }
 
         void OnStep(PlayerComponent& player, float dt) override
         {
             player.TickTimers(dt);
-            const bool brake = player.ShouldBrake();
-            if (!brake && player.HasMoveInput())
-            {
-                player.AccelerateToInputDirection(dt);
-            }
-            else if (!brake)
-            {
-                player.ApplyFriction(dt);
-            }
+            player.ApplyBrake(dt);
             player.Jump(dt);
             player.CutJumpRelease();
             player.Gravity(dt);
@@ -35,16 +27,12 @@ namespace NS::Game::Player
             {
                 player.States()->ChangeByName("Fall");
             }
-            else if (brake)
-            {
-                player.States()->ChangeByName("Brake");
-            }
-            else if (player.ShouldIdle())
+            else if (player.IsStopped())
             {
                 player.States()->ChangeByName(PlayerComponent::k_IdleStateName);
             }
         }
     };
 
-    NS_STATE(WalkPlayerState, NS::Game::Player::PlayerComponent)
+    NS_STATE(BrakePlayerState, NS::Game::Player::PlayerComponent)
 } // namespace NS::Game::Player
