@@ -17,11 +17,11 @@ namespace NS::Object
 {
     namespace
     {
-        // 分解と組み直しの丸め誤差 (1e-6 前後) より 2 桁大きく取った、 拡縮 1 あたりの許容差
+        // 分解と組み直しの丸め誤差 (1e-6 前後) より 2 桁大きく取った、拡縮 1 あたりの許容差
         constexpr float k_ShearTolerance = 1.0e-4f;
 
-        // 分解した拡縮と回転から 3x3 を組み直し、 元と合わなければ歪みがある
-        // 歪みは縦横で違う拡縮の親の下に回転した子を置いた時に出て、 位置・回転・拡縮の 3 つでは表せない
+        // 分解した拡縮と回転から 3x3 を組み直し、元と合わなければ歪みがある
+        // 歪みは縦横で違う拡縮の親の下に回転した子を置いた時に出て、位置・回転・拡縮の 3 つでは表せない
         [[nodiscard]] bool HasShear(const NS::Core::Matrix& world, const NS::Core::AffineDecomposition& parts) noexcept
         {
             const NS::Core::Matrix rebuilt =
@@ -90,7 +90,7 @@ namespace NS::Object
 			world = owner->Root().WorldMatrix();
         }
         const NS::Core::AffineDecomposition parts = NS::Core::DecomposeAffine(world);
-        // 描画は 4x4 の行列で歪みまで出すので、 形の共有をやめて世界座標の三角形から作り、 描画と当たりを揃える
+        // 描画は 4x4 の行列で歪みまで出すので、形の共有をやめて世界座標の三角形から作り、描画と当たりを揃える
         if (HasShear(world, parts))
         {
             return physics.SyncMesh(current, WorldTriangles(), NS::Physics::ObjectLayers::Terrain);

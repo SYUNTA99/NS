@@ -47,10 +47,10 @@ namespace NS::Object
         explicit VirtualCameraComponent(int tickPriority) noexcept : Component(tickPriority) {}
         ~VirtualCameraComponent() noexcept override;
 
-        //! 所属 scene の brain へ自分を登録する。 派生で上書きするなら基底のこれを呼ぶ
+        //! 所属 scene の brain へ自分を登録する。派生で上書きするなら基底のこれを呼ぶ
         void OnStart() override;
 
-        //! 所属 scene の brain から自分を外す。 派生で上書きするなら基底のこれを呼ぶ
+        //! 所属 scene の brain から自分を外す。派生で上書きするなら基底のこれを呼ぶ
         void OnEndPlay() override;
 
         //! この vcam の最終姿勢を返す。alpha は補間係数で、follow 系が補間 target に使い free-fly は無視してよい

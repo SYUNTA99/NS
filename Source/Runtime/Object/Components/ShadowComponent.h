@@ -42,13 +42,13 @@ namespace NS::Object
         //! OwningScene から自分を解除する
         void OnEndPlay() override;
 
-        //! 共有の quad mesh と shadow material を引き当てる。 参照文字列は持たず資材は固定
+        //! 共有の quad mesh と shadow material を引き当てる。参照文字列は持たず資材は固定
         void ResolveAssets(AssetManager& assets) override;
 
         //! 落下距離 dist に対する高さフェード係数 [0,1]。dist=0 で 1、dist>=maxDist で 0
         [[nodiscard]] static float ComputeFade(float dist, float maxDist) noexcept;
 
-        // 接地シャドウの見た目を Inspector へ公開する。 毎 Draw 読まれるのでライブで効く
+        // 接地シャドウの見た目を Inspector へ公開する。毎 Draw 読まれるのでライブで効く
         NS_REFLECT_BEGIN(ShadowComponent, Component)
         NS_REFLECT_FIELD(m_baseDiameter, "基本直径")
         NS_REFLECT_FIELD(m_maxDrop, "最大投影距離")

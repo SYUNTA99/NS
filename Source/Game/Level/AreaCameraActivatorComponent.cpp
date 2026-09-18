@@ -20,7 +20,7 @@ namespace NS::Game::Level
             return;
         }
 
-        // 渡すのは owner の位置。 プレイヤーに載せるので、 これが進入判定の対象になる
+        // 渡すのは owner の位置。プレイヤーに載せるので、これが進入判定の対象になる
         const NS::Core::Vector3 position = Owner()->Root().Position();
         scene->Objects().ForEachComponent<NS::Object::PlacedVirtualCamera>([&position](NS::Object::PlacedVirtualCamera& placed) { placed.UpdateActivation(position); });
     }

@@ -31,19 +31,33 @@ namespace NS::Object
     template <class T> constexpr FieldType FieldTypeOf() noexcept
     {
         if constexpr (std::is_same_v<T, float>)
+        {
             return FieldType::Float;
+        }
         else if constexpr (std::is_same_v<T, int>)
+        {
             return FieldType::Int;
+        }
         else if constexpr (std::is_same_v<T, bool>)
+        {
             return FieldType::Bool;
+        }
         else if constexpr (std::is_same_v<T, NS::Core::Quaternion>)
+        {
             return FieldType::Quaternion;
+        }
         else if constexpr (std::is_same_v<T, std::string>)
+        {
             return FieldType::String;
+        }
         else if constexpr (std::is_same_v<T, ObjectRef>)
+        {
             return FieldType::ObjectRef;
+        }
         else if constexpr (std::is_same_v<T, Curve>)
+        {
             return FieldType::Curve;
+        }
         else
         {
             static_assert(std::is_same_v<T, NS::Core::Vector3>,
@@ -66,7 +80,7 @@ namespace NS::Object
 
     //! @brief 1 コンポーネント型のリフレクション情報。マクロで宣言したフィールドの名前 / 型 / get / set を束ねる
     //! @details エディタは Component* 越しに fields を列挙して編集 UI を自動生成する
-    //! base は基底型のリフレクションを指し、順に辿って is-a も判定する
+    //! base は基底型のリフレクションを指し、Component::IsA はこれを辿って継承関係を判定する
     //! 依存: NS::Core
     struct ReflectionInfo
     {
@@ -80,9 +94,13 @@ namespace NS::Object
     template <class TBase> [[nodiscard]] const ReflectionInfo* ReflectionBaseOf() noexcept
     {
         if constexpr (std::is_same_v<TBase, Component> || std::is_same_v<TBase, void>)
+        {
             return nullptr;
+        }
         else
+        {
             return TBase::StaticReflection();
+        }
     }
 
     //! info->fields から name 一致の最初の 1 件を返す。無ければ nullptr、info が nullptr でも nullptr
@@ -104,7 +122,7 @@ namespace NS::Object
     }
 } // namespace NS::Object
 
-//! 直メンバ用フィールド宣言の開始。クラス本体の public 節に、直接の基底型と並べて書く
+//! フィールド宣言の開始。クラス本体の public 節に、自分の型と直接の基底型を並べて書く
 #define NS_REFLECT_BEGIN(ThisType, BaseType)                                                                           \
     [[nodiscard]] static const NS::Object::ReflectionInfo* StaticReflection() noexcept                                 \
     {                                                                                                                  \

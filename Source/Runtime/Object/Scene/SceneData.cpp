@@ -151,7 +151,7 @@ namespace NS::Object
             }
 
             bool valid = object.parentId != object.objectId && indexById.contains(object.parentId);
-            // 祖先を辿って自分へ戻れば循環。 その場で root へ落とすので、輪の残りは正当な親子として通る
+            // 祖先を辿って自分へ戻れば循環。その場で root へ落とすので、輪の残りは正当な親子として通る
             std::uint32_t ancestor = object.parentId;
             for (std::size_t step = 0; valid && step < scene.objects.size(); ++step)
             {

@@ -23,7 +23,7 @@
 #include <string_view>
 #include <vector>
 
-// json.hpp は /W4 で警告が出るため、 この翻訳単位でだけ警告を抑止して取り込む
+// json.hpp は /W4 で警告が出るため、この翻訳単位でだけ警告を抑止して取り込む
 #pragma warning(push, 0)
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
@@ -95,7 +95,7 @@ namespace NS::Object
             {k_BuiltinShadowQuad, [] { return NS::Graphics::MakePlane(NS::Core::Vector2{0.5f, 0.5f}); }},
         }};
 
-        // 引く先は m_builtins でなく k_BuiltinShapes。 RegisterBuiltins を呼んでいなくても引ける
+        // 引く先は m_builtins でなく k_BuiltinShapes。RegisterBuiltins を呼んでいなくても引ける
         [[nodiscard]] const BuiltinShape* FindBuiltinShape(std::string_view name) noexcept
         {
             for (const BuiltinShape& shape : k_BuiltinShapes)
@@ -108,7 +108,7 @@ namespace NS::Object
             return nullptr;
         }
 
-        // index の並びを入れ替えずに写す。 描画の並びのまま (v1 - v0) × (v2 - v0) が表面の外を向く
+        // index の並びを入れ替えずに写す。描画の並びのまま (v1 - v0) × (v2 - v0) が表面の外を向く
         // 当たりの表裏もこの向きで決まる
         [[nodiscard]] std::vector<NS::Physics::Triangle> MakeTriangles(const NS::Graphics::MeshGeometry& geom)
         {
@@ -131,7 +131,7 @@ namespace NS::Object
             return triangles;
         }
 
-        // Jolt の形は当たりを頼まれた時に 1 度だけ作る。 描画だけの mesh には作らない
+        // Jolt の形は当たりを頼まれた時に 1 度だけ作る。描画だけの mesh には作らない
         NS::Physics::MeshCollision* WithShape(NS::Physics::MeshCollision* collision)
         {
             if (collision != nullptr && collision->shape == nullptr)
@@ -172,7 +172,7 @@ namespace NS::Object
 
     bool ParseMaterialJson(std::string_view jsonText, MaterialFileDesc& out, std::string& outError)
     {
-        // 例外を投げない parse。 不正 JSON は is_discarded() で検知する
+        // 例外を投げない parse。不正 JSON は is_discarded() で検知する
         const nlohmann::json j = nlohmann::json::parse(jsonText, nullptr, false);
         if (j.is_discarded())
         {
@@ -276,7 +276,7 @@ namespace NS::Object
         }
 
         // 描画と当たりのどちらを先に頼まれても両方ここで作る
-        // 当たりは MeshColliderComponent が描画と同じ参照で頼む。 当たりが先でも GPU mesh は描画に使われる
+        // 当たりは MeshColliderComponent が描画と同じ参照で頼む。当たりが先でも GPU mesh は描画に使われる
         MeshRecord record;
         const NS::Graphics::MeshGeometry geom = NS::Graphics::LoadGltfMesh(key.string());
         if (geom.vertices.empty() || geom.indices.empty())
@@ -297,14 +297,14 @@ namespace NS::Object
             {
                 record.mesh = std::move(mesh);
             }
-            // GPU 生成だけ失敗しても当たりは作る。 device 無しのテストでも当たりを確かめられる
-            // 当たりだけ頼まれた時も GPU 生成を通るので、 device の無いテストでは上のエラーが出る
+            // GPU 生成だけ失敗しても当たりは作る。device 無しのテストでも当たりを確かめられる
+            // 当たりだけ頼まれた時も GPU 生成を通るので、device の無いテストでは上のエラーが出る
             // TODO: コライダーの無い描画だけの mesh も三角形を Clear() まで持つ
-            // 大きな mesh を飾りに多く置いてメモリが効いてきたら、 当たりを頼まれた時に作る形へ移す
+            // 大きな mesh を飾りに多く置いてメモリが効いてきたら、当たりを頼まれた時に作る形へ移す
             record.collision = std::make_unique<NS::Physics::MeshCollision>();
             record.collision->triangles = MakeTriangles(geom);
         }
-        // 失敗した記録も残し、 同じ参照を持つ配置物が毎回ディスクを読むのを防ぐ。 修正後の再試行は Clear() で解いてから
+        // 失敗した記録も残し、同じ参照を持つ配置物が毎回ディスクを読むのを防ぐ。修正後の再試行は Clear() で解いてから
         return m_meshes.emplace(key, std::move(record)).first->second;
     }
 
@@ -377,7 +377,7 @@ namespace NS::Object
             record.mesh = NS::Graphics::SkeletalMesh::Create(smd);
             if (record.mesh == nullptr || !record.mesh->IsValid())
             {
-                // GPU buffer 生成に失敗。 壊れた mesh をキャッシュせず無効を返し、 Draw が無音で何もしないのを防ぐ
+                // GPU buffer 生成に失敗。壊れた mesh をキャッシュせず無効を返し、Draw が無音で何もしないのを防ぐ
                 NS_LOG_ERROR(Graphics, "AssetManager: skinned mesh の GPU 生成失敗: {}", key.string());
                 return LoadedSkinnedModel{};
             }
@@ -387,7 +387,7 @@ namespace NS::Object
             it = m_skinnedModels.emplace(key, std::move(record)).first;
         }
 
-        // record への参照を渡す。 record は挿入後に書き換えないので、 参照は Clear() まで有効
+        // record への参照を渡す。record は挿入後に書き換えないので、参照は Clear() まで有効
         LoadedSkinnedModel out{};
         out.mesh = it->second.mesh.get();
         out.skeleton = &it->second.skeleton;
@@ -399,7 +399,7 @@ namespace NS::Object
     const NS::Graphics::AnimationSource* AssetManager::GetOrLoadAnimationSource(const std::filesystem::path& path)
     {
         const std::filesystem::path key = path.lexically_normal();
-        // null エントリは負キャッシュした失敗 path を表す。 get() が nullptr を返し再読込を短絡する
+        // null エントリは負キャッシュした失敗 path を表す。get() が nullptr を返し再読込を短絡する
         if (const auto it = m_animationSources.find(key); it != m_animationSources.end())
         {
             return it->second.get();
@@ -409,7 +409,7 @@ namespace NS::Object
         if (!source.IsValid())
         {
             NS_LOG_WARN(Graphics, "AssetManager: アニメーション glTF の読込失敗 / 空: {}", key.string());
-            // 壊れた path を負キャッシュし、 毎回ディスクを読むのを防ぐ。 再試行は Clear() から
+            // 壊れた path を負キャッシュし、毎回ディスクを読むのを防ぐ。再試行は Clear() から
             m_animationSources.emplace(key, nullptr);
             return nullptr;
         }
@@ -433,7 +433,7 @@ namespace NS::Object
         const NS::Graphics::AnimationSource* source = GetOrLoadAnimationSource(key.first);
         if (source == nullptr)
         {
-            // クリップ側の読込失敗は上流で負キャッシュ済み。 組としても負キャッシュする
+            // クリップ側の読込失敗は上流で負キャッシュ済み。組としても負キャッシュする
             m_boundClips.emplace(key, nullptr);
             return nullptr;
         }
@@ -441,11 +441,11 @@ namespace NS::Object
         const LoadedSkinnedModel model = GetOrLoadSkinnedModel(key.second);
         if (!model.valid || model.skeleton == nullptr)
         {
-            // model 側の失敗は GetOrLoadSkinnedModel がキャッシュせず再試行できるようにしている。 組で恒久化しない
+            // model 側の失敗は GetOrLoadSkinnedModel がキャッシュせず再試行できるようにしている。組で恒久化しない
             return nullptr;
         }
 
-        // 結合で index を振り直した複製は避けられない派生データだが、 所有はこちら側なので
+        // 結合で index を振り直した複製は避けられない派生データだが、所有はこちら側なので
         // 同じ組で解決する全インスタンスがこの 1 本を共有する
         auto bound = std::make_unique<std::vector<NS::Graphics::AnimationClip>>(
             NS::Graphics::BindClipsByName(source->animations, source->skeleton, *model.skeleton));
@@ -548,7 +548,7 @@ namespace NS::Object
         base.constantBufferSize = sizeof(NS::Graphics::FrameCB);
         base.cbSlot = 0;
 
-        // player: 単一 Texture2D。 slot0 に基準テクスチャを bind する
+        // player: 単一 Texture2D。slot0 に基準テクスチャを bind する
         {
             auto mat = NS::Graphics::Material::Create(base);
             mat->SetTexture(0, baseTexture);
@@ -563,7 +563,7 @@ namespace NS::Object
             mat->SetTexture(0, baseTexture);
             m_sharedMaterials.emplace(k_SharedWater, std::move(mat));
         }
-        // shadow: shadow.ps が放射状アルファを生成するためテクスチャ不要、 Alpha ブレンド
+        // shadow: shadow.ps が放射状アルファを生成するためテクスチャ不要、Alpha ブレンド
         {
             NS::Graphics::MaterialDesc desc = base;
             desc.pixelShader = GetOrLoadShader(shaderPath("shadow.ps.hlsl"));

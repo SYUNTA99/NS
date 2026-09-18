@@ -10,7 +10,7 @@
 
 namespace NS::Object
 {
-    //! TransformComponent のリフレクション欄の名前。 直列化の JSON キーそのもので、
+    //! TransformComponent のリフレクション欄の名前。直列化の JSON キーそのもので、
     //! 欄を名指しで書く消費側と綴りがずれないよう定数で共有する
     inline constexpr const char* k_PositionFieldName = "位置";
     inline constexpr const char* k_RotationFieldName = "回転";
@@ -47,12 +47,12 @@ namespace NS::Object
         Transform m_transform; // GameObject の Root() が指す実体
     };
 
-    // 配置物データに書かれた transform も同じ物を指すので、 live クラスと同じ場所に置く
+    // 配置物データに書かれた transform も同じ物を指すので、live クラスと同じ場所に置く
 
-    //! TransformComponent のリフレクション型名。 transform エントリの照合に使う共有定数
+    //! TransformComponent のリフレクション型名。transform エントリの照合に使う共有定数
     inline constexpr std::string_view k_TransformTypeName = "TransformComponent";
 
-    //! ObjectData の transform を読み書きする唯一の経路。 実体は components 内の TransformComponent エントリ
+    //! ObjectData の transform を読み書きする唯一の経路。実体は components 内の TransformComponent エントリ
     //! Set は対象エントリが無ければ EnsureTransformComponent で 1 つ作る
     [[nodiscard]] NS::Core::Vector3 ObjectPosition(const ObjectData& object) noexcept;
     void SetObjectPosition(ObjectData& object, const NS::Core::Vector3& position) noexcept;
@@ -62,6 +62,6 @@ namespace NS::Object
     void SetObjectScale(ObjectData& object, const NS::Core::Vector3& scale) noexcept;
 
     //! object に TransformComponent エントリが無ければ既定値(位置0 / 回転なし / スケール1)で 1 つ足して返す
-    //! 既にあればそれを返す。 factory と load 直後に通し、 全 object が transform を必ず 1 つ持つ不変を保つ
+    //! 既にあればそれを返す。factory と load 直後に通し、全 object が transform を必ず 1 つ持つ不変を保つ
     nlohmann::json& EnsureTransformComponent(ObjectData& object);
 } // namespace NS::Object

@@ -8,7 +8,7 @@ namespace NS::Object
 {
     namespace
     {
-        // scene に着いていない裸の GameObject 上でも OnStart は走るので、 経路の全段で不在を許す
+        // scene に着いていない裸の GameObject 上でも OnStart は走るので、経路の全段で不在を許す
         [[nodiscard]] CameraBrainComponent* FindBrain(Component& self) noexcept
         {
             GameObject* owner = self.Owner();
@@ -25,7 +25,7 @@ namespace NS::Object
         }
     } // namespace
 
-    // 仮想デストラクタはヘッダでなくこの .cpp に置き、 vtable の重複生成を避ける
+    // 仮想デストラクタはヘッダでなくこの .cpp に置き、vtable の重複生成を避ける
     VirtualCameraComponent::~VirtualCameraComponent() noexcept = default;
 
     void VirtualCameraComponent::OnStart()

@@ -17,7 +17,7 @@ namespace NS::Object
         {
 			return false;
         }
-        // owner に着く前は IsActiveSelf の値だけで答える。 組み立て途中の問い合わせをここで落とさない
+        // owner に着く前は IsActiveSelf の値だけで答える。組み立て途中の問い合わせをここで落とさない
         if (m_owner == nullptr)
         {
             return true;

@@ -55,13 +55,13 @@ namespace NS::Editor
     //! ヒエラルキーの右クリックから足せる基本形
     enum class PrimitiveKind
     {
-        Empty,  //!< 何も持たない GameObject。 子をぶら下げる支点や目印に使う
+        Empty,  //!< 何も持たない GameObject。子をぶら下げる支点や目印に使う
         Cube,   //!< 1m 立方の固形ブロック
-        Sphere, //!< 半径 0.5 の球。 当たりも球
+        Sphere, //!< 半径 0.5 の球。当たりも球
         Slope,  //!< 45 度の坂
     };
 
-    //! 基本形 1 個ぶんの component 構成を生成する。 Empty は空配列
+    //! 基本形 1 個ぶんの component 構成を生成する。Empty は空配列
     [[nodiscard]] nlohmann::json MakePrimitiveComponents(PrimitiveKind kind);
 
     //! 接触判定と見た目を積んだゴールの構成を作る

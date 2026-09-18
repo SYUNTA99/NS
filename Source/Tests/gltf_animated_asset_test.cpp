@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
-// 実アセット (Khronos サンプル CesiumMan.glb、 人型の歩行) を読み、 skin + animation が取り込めて
-// 別時刻で別ポーズになることを確認する。 アセットが無ければ飛ばす
+// 実アセット (Khronos サンプル CesiumMan.glb、人型の歩行) を読み、skin + animation が取り込めて
+// 別時刻で別ポーズになることを確認する。アセットが無ければ飛ばす
 TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
 {
     const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / "Assets" / "Models" / "CesiumMan.glb";
@@ -38,7 +38,7 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
                   << "\n";
     }
 
-    // 先頭クリップを t=0 と中間で評価し、 ポーズが変化している = 実際にアニメする
+    // 先頭クリップを t=0 と中間で評価し、ポーズが変化している = 実際にアニメする
     const NS::Graphics::AnimationClip& clip = data.animations[0];
     std::vector<NS::Graphics::BonePose> poseStart;
     std::vector<NS::Graphics::BonePose> poseMid;
@@ -60,7 +60,7 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
     }
     EXPECT_TRUE(anyDifference) << "t=0 と中間でポーズが変化していない";
 
-    // skinned 頂点 AABB の最長軸で向きを判定する。 人型が立っていれば Y (身長) が最長
+    // skinned 頂点 AABB の最長軸で向きを判定する。人型が立っていれば Y (身長) が最長
     // root 上位ノード変換 (アーマチュア Z-up→Y-up) を取りこぼすと Z 最長 = 寝た状態になる
     auto extentOf = [&](const std::vector<NS::Core::Matrix>& palette) {
         const std::span<const NS::Core::Matrix> sp(palette.data(), palette.size());

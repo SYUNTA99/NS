@@ -30,12 +30,12 @@ namespace NS::Object
     class Component;
     class IRenderable;
 
-    //! @brief 1 つのシーンビュー。 指定の描画先へ指定の視点でシーンを描く単位
-    //! @details target が null なら backbuffer、 viewPose が空なら Brain の選ぶカメラで描く
+    //! @brief 1 つのシーンビュー。指定の描画先へ指定の視点でシーンを描く単位
+    //! @details target が null なら backbuffer、viewPose が空なら Brain の選ぶカメラで描く
     struct SceneView
     {
-        NS::Graphics::RenderTarget* target = nullptr; // 描画先、 非所有。 null は backbuffer
-        std::optional<CameraPose> viewPose;           // 描画視点。 空なら Brain の選ぶカメラ
+        NS::Graphics::RenderTarget* target = nullptr; // 描画先、非所有。null は backbuffer
+        std::optional<CameraPose> viewPose;           // 描画視点。空なら Brain の選ぶカメラ
     };
 
     //! @brief SceneData から組んだ ObjectList を運転する scene
@@ -58,16 +58,16 @@ namespace NS::Object
         //! 可変フレーム Render の入口。描画本体は OnRenderScene に書く
         void OnRender();
 
-        //! IRenderable Component の自己登録。MeshRendererComponent 等が OnStart で呼ぶ。 二重登録は無視する
+        //! IRenderable Component の自己登録。MeshRendererComponent 等が OnStart で呼ぶ。二重登録は無視する
         //! 登録先はここが一元管理する。テスト等が差し替えて観測するため virtual だが、通常は override しない
         virtual void RegisterRenderable(IRenderable* renderable);
         //! IRenderable Component の自己解除。MeshRendererComponent 等が OnEndPlay で呼ぶ
         virtual void UnregisterRenderable(IRenderable* renderable);
 
-        //! シーンの描画を駆動する brain。 シーンの破棄後は nullptr
+        //! シーンの描画を駆動する brain。シーンの破棄後は nullptr
         [[nodiscard]] CameraBrainComponent* CameraBrain() noexcept;
 
-        //! brain が駆動する実カメラ。 シーンの破棄後は nullptr
+        //! brain が駆動する実カメラ。シーンの破棄後は nullptr
         [[nodiscard]] CameraComponent* MainCamera() noexcept;
 
         //! PhysicsScene への可変参照。Scene が値で持つので寿命は Scene と同じ
@@ -79,54 +79,54 @@ namespace NS::Object
         //! レンダラーを非所有で差す。標準の OnRenderScene が使う。未設定 (テスト等) は描かない
         void SetRenderer(NS::Graphics::Renderer* renderer) noexcept { m_renderer = renderer; }
 
-        //! @brief シーンの見た目を確定する環境値。 実体側が唯一の出所で、 保存は保存時にここから写す
+        //! @brief シーンの見た目を確定する環境値。実体側が唯一の出所で、保存は保存時にここから写す
         [[nodiscard]] SceneEnvironment& Environment() noexcept { return m_environment; }
         [[nodiscard]] const SceneEnvironment& Environment() const noexcept { return m_environment; }
 
         //! @brief シーンデータから組んだ配置物の一覧
         [[nodiscard]] NS::Object::ObjectList& Objects() noexcept { return m_objects; }
 
-        //! @brief 読み込んだシーンデータを取り込み配置物を組み直す。 データは取込後に用済みになる一時データ
+        //! @brief 読み込んだシーンデータを取り込み配置物を組み直す。データは取込後に用済みになる一時データ
         void LoadFromData(SceneData&& data);
 
-        //! @brief 編集で動いた live の当たりを張り直し、 OnObjectsRebuilt を呼ぶ。 object は作り直さない
+        //! @brief 編集で動いた live の当たりを張り直し、OnObjectsRebuilt を呼ぶ。object は作り直さない
         void SyncPhysics();
 
-        //! @brief プレイ突入時に live を凍結して返す。 プレイ規則の判定と編集復帰の姿はこの凍結を読む
+        //! @brief プレイ突入時に live を凍結して返す。プレイ規則の判定と編集復帰の姿はこの凍結を読む
         const SceneData& BeginPlayBaseline();
 
-        //! @brief 直近の凍結スナップショット。 プレイ中に限り意味を持つ
+        //! @brief 直近の凍結スナップショット。プレイ中に限り意味を持つ
         [[nodiscard]] const SceneData& PlayBaseline() const noexcept { return m_playBaseline; }
 
-        //! @brief テスト用に凍結スナップショットを外から与える。 以降の BeginPlayBaseline は捕捉せず据え置く
+        //! @brief テスト用に凍結スナップショットを外から与える。以降の BeginPlayBaseline は捕捉せず据え置く
         void SetPlayBaselineForTest(SceneData data);
 
         //! @brief live component の欄 1 つを凍結スナップショットの同じ欄へ写す
-        //! @details プレイ中の手編集を、 凍結から組み直す編集復帰の後へ残すための口
-        //! component 丸写しにしないのは、 シミュレーションが動かした値まで写すと試走の結果が凍結へ漏れるため
-        //! 凍結に居ない相手 (プレイ中に湧いた object・一時オブジェクト) は写す先が無く、 何もしない
+        //! @details プレイ中の手編集を、凍結から組み直す編集復帰の後へ残すための口
+        //! component 丸写しにしないのは、シミュレーションが動かした値まで写すと試走の結果が凍結へ漏れるため
+        //! 凍結に居ない相手 (プレイ中に湧いた object・一時オブジェクト) は写す先が無く、何もしない
         //! @param[in] comp 手編集を受けた live component
-        //! @param[in] fieldName リフレクションのフィールド名。 持っていない欄なら何もしない
+        //! @param[in] fieldName リフレクションのフィールド名。持っていない欄なら何もしない
         void WritePlayBaselineField(const Component& comp, std::string_view fieldName);
 
-        //! @brief 世界を回すかの切替。 既定は回す。 エディタが編集モードの間だけ下ろす
+        //! @brief 世界を回すかの切替。既定は回す。エディタが編集モードの間だけ下ろす
         //! @details 切替時に一時停止とコマ送りは払う
         void SetSimulationEnabled(bool enabled) noexcept;
         [[nodiscard]] bool IsSimulationEnabled() const noexcept { return m_simulationEnabled; }
 
-        //! @brief 時間停止。 snapshot だけ回して補間を凍らせ、 動きの一瞬を止めて観察できるようにする
+        //! @brief 時間停止。snapshot だけ回して補間を凍らせ、動きの一瞬を止めて観察できるようにする
         void SetSimulationPaused(bool paused) noexcept { m_simulationPaused = paused; }
         [[nodiscard]] bool IsSimulationPaused() const noexcept { return m_simulationPaused; }
 
-        //! @brief 止めたまま次の fixed step を 1 コマだけ進める。 動いていればまず止める
+        //! @brief 止めたまま次の fixed step を 1 コマだけ進める。動いていればまず止める
         void StepSimulation() noexcept;
 
-        //! @brief 1 フレームで描くビュー列を差す。 空なら現描画先へ Brain の視点で 1 回だけ描く
-        //! @details 空でない間は各ビューを順に bind して描き分ける。 出荷 (Editor 無し) では常に空
+        //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ Brain の視点で 1 回だけ描く
+        //! @details 空でない間は各ビューを順に bind して描き分ける。出荷 (Editor 無し) では常に空
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneViews = std::move(views); }
 
-        //! @brief 型 T の一時オブジェクトをシーンの中で作って入れる。 呼出側へは生ポインタだけ返す
-        //! @details 所有はシーンが握る。 印立てと開始は unique_ptr を取る SpawnTransient が行う
+        //! @brief 型 T の一時オブジェクトをシーンの中で作って入れる。呼出側へは生ポインタだけ返す
+        //! @details 所有はシーンが握る。印立てと開始は unique_ptr を取る SpawnTransient が行う
         template <class T, class... Args> T* SpawnTransient(Args&&... args)
         {
             auto obj = std::make_unique<T>(std::forward<Args>(args)...);
@@ -135,25 +135,25 @@ namespace NS::Object
             return raw;
         }
 
-        //! @brief 実行時の一時オブジェクトを ObjectList へ入れる。 一時オブジェクトの印はここで立てる
-        //! @details 保存・凍結に写らず、 データからの組み直し後も残る。 更新は配置物と同じ帯に乗る
-        //! 型が実行時にしか決まらない時の受け口。 型が分かっているなら SpawnTransient<T> を使う
+        //! @brief 実行時の一時オブジェクトを ObjectList へ入れる。一時オブジェクトの印はここで立てる
+        //! @details 保存・凍結に写らず、データからの組み直し後も残る。更新は配置物と同じ帯に乗る
+        //! 型が実行時にしか決まらない時の受け口。型が分かっているなら SpawnTransient<T> を使う
         GameObject* SpawnTransient(std::unique_ptr<GameObject> obj);
 
-        //! @brief 配置物を 1 体消す。 居なければ何もしない
-        //! @details 当たり箱も揃うので、 走っている世界を止めずに消せる
-        //! 子は根として残る。 まとめて消したい呼び出し側が並びを決めて 1 体ずつ呼ぶ
+        //! @brief 配置物を 1 体消す。居なければ何もしない
+        //! @details 当たり箱も揃うので、走っている世界を止めずに消せる
+        //! 子は根として残る。まとめて消したい呼び出し側が並びを決めて 1 体ずつ呼ぶ
         void DestroyObject(std::uint32_t objectId);
 
-        //! @brief live な配置物から SceneData を作る。 保存の出所を実体に一本化するための捕捉
+        //! @brief live な配置物から SceneData を作る。保存の出所を実体に一本化するための捕捉
         //! @details リフレクションで全 component の値を忠実に写す
         [[nodiscard]] SceneData CaptureLiveToSceneData() const;
 
-        //! 補間スナップショット・帯の更新・LateUpdate 帯の手前で物理の 1 フレーム。 世界の駆動はここが持つ
-        //! 読み込んだら回り続けるのが既定で、 止める口は SetSimulationEnabled / SetSimulationPaused
+        //! 補間スナップショット・帯の更新・LateUpdate 帯の手前で物理の 1 フレーム。世界の駆動はここが持つ
+        //! 読み込んだら回り続けるのが既定で、止める口は SetSimulationEnabled / SetSimulationPaused
         virtual void OnUpdate();
 
-        //! 配置物の破棄。 派生の OnShutdown はここを呼ぶ
+        //! 配置物の破棄。派生の OnShutdown はここを呼ぶ
         virtual void OnShutdown();
 
     protected:
@@ -163,7 +163,7 @@ namespace NS::Object
         //! 距離が同じなら SortPriority 昇順、それも同じなら stable_sort が登録順を保つ
         void DrawTransparent(const NS::Graphics::RenderContext& context);
 
-        //! @brief 標準の描画。 シーン描画パス→デバッグ描画の吐き出し→OverlayRendererComponent の重ね描き
+        //! @brief 標準の描画。シーン描画パス→デバッグ描画の吐き出し→OverlayRendererComponent の重ね描き
         virtual void OnRenderScene();
 
         //! @brief project 既定値から scene 段の描画設定を作る。配置された平行光があれば照明を上書きする
@@ -171,23 +171,23 @@ namespace NS::Object
         [[nodiscard]] NS::Graphics::RenderSettings ResolveSceneSettings(
             const NS::Graphics::RenderSettings& projectDefaults);
 
-        //! @brief 配置物の組み直し・当たりの張り直しの後に呼ばれる。 派生は live への参照をここで取り直す
+        //! @brief 配置物の組み直し・当たりの張り直しの後に呼ばれる。派生は live への参照をここで取り直す
         virtual void OnObjectsRebuilt() {}
 
-        //! @brief 渡されたシーンデータから配置物と当たりの body を組み直す。 データはその場限りの一時データ
+        //! @brief 渡されたシーンデータから配置物と当たりの body を組み直す。データはその場限りの一時データ
         void RebuildObjectsFrom(const SceneData& data);
 
-        //! @brief 標準のシーン描画パス。 環境同期→カメラ評価→不透明→空→半透明
-        //! @param[in] viewOverride 描画視点の上書き。 空なら Brain の選ぶカメラで描く
-        //! @return 組んだ描画コンテキスト。 カメラ不在なら nullopt を返し何も描かない
+        //! @brief 標準のシーン描画パス。環境同期→カメラ評価→不透明→空→半透明
+        //! @param[in] viewOverride 描画視点の上書き。空なら Brain の選ぶカメラで描く
+        //! @return 組んだ描画コンテキスト。カメラ不在なら nullopt を返し何も描かない
         [[nodiscard]] std::optional<NS::Graphics::RenderContext> RenderWorld(
             NS::Graphics::Renderer& renderer, const std::optional<CameraPose>& viewOverride);
 
     private:
-        //! 配置物の変化を一時オブジェクトへ知らせる。 組み直しと当たりの張り直しの後に呼ぶ
+        //! 配置物の変化を一時オブジェクトへ知らせる。組み直しと当たりの張り直しの後に呼ぶ
         void NotifyTransientsObjectsRebuilt();
 
-        //! 1 ビュー分のシーン描画と、 デバッグ描画・OverlayRendererComponent の重ね描きをまとめて行う
+        //! 1 ビュー分のシーン描画と、デバッグ描画・OverlayRendererComponent の重ね描きをまとめて行う
         void RenderViewWithOverlays(const std::optional<CameraPose>& viewOverride);
 
         //! 登録中の全 renderable の bounds とソート情報を RenderScene へ同期する。描画の入口で呼ぶ
@@ -210,11 +210,11 @@ namespace NS::Object
 
         NS::Object::ObjectList m_objects;        // 配置物の一覧
         CameraBrainComponent* m_brain = nullptr; // 常駐するカメラ一時オブジェクトの brain。所有は m_objects、これは控え
-        SceneEnvironment m_environment;          // シーンの環境値。 実体側の唯一の出所
+        SceneEnvironment m_environment;          // シーンの環境値。実体側の唯一の出所
 
         bool m_warnedZeroLightDirection = false;      // 平行光 zero 警告の 1 回制御
-        AssetManager* m_assets = nullptr;             // AssetManager、 非所有。 未設定なら参照の実体化を跳ばす
-        NS::Graphics::Renderer* m_renderer = nullptr; // レンダラー、 非所有。 未設定なら描かない
+        AssetManager* m_assets = nullptr;             // AssetManager、非所有。未設定なら参照の実体化を跳ばす
+        NS::Graphics::Renderer* m_renderer = nullptr; // レンダラー、非所有。未設定なら描かない
 
         SceneData m_playBaseline;            // プレイ突入時の凍結スナップショット
         bool m_playBaselineInjected = false; // テスト注入の凍結を捕捉で潰さないための印
@@ -223,6 +223,6 @@ namespace NS::Object
         bool m_simulationPaused = false;         // 時間停止中か
         std::int32_t m_simulationStepFrames = 0; // コマ送り残り fixed step 数。止めたままこの数だけ進める
 
-        std::vector<SceneView> m_sceneViews; // 描くビュー列。 空なら現描画先へ 1 回だけ描く
+        std::vector<SceneView> m_sceneViews; // 描くビュー列。空なら現描画先へ 1 回だけ描く
     };
 } // namespace NS::Object

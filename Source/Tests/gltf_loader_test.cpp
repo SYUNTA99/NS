@@ -62,7 +62,7 @@ namespace
                R"({"bufferView":1,"componentType":5123,"count":3,"type":"SCALAR"}]})";
     }
 
-    // 単一三角形 だが primitive mode=1 (LINES)。 三角形以外なので skip される
+    // 単一三角形 だが primitive mode=1 (LINES)。三角形以外なので skip される
     std::string LineTopologyGltf()
     {
         return std::string{R"({"asset":{"version":"2.0"},)"} +
@@ -74,7 +74,7 @@ namespace
                R"({"bufferView":1,"componentType":5123,"count":3,"type":"SCALAR"}]})";
     }
 
-    // 法線なし三角形 (42 byte): pos v0(0,0,0) v1(1,0,0) v2(0,1,0) / idx[0,1,2]、 NORMAL 属性なし
+    // 法線なし三角形 (42 byte): pos v0(0,0,0) v1(1,0,0) v2(0,1,0) / idx[0,1,2]、NORMAL 属性なし
     const char* k_NoNormalBase64 = "AAAAAAAAAAAAAAAAAACAPwAAAAAAAAAAAAAAAAAAgD8AAAAAAAABAAIA";
 
     std::string NoNormalGltf()
@@ -149,7 +149,7 @@ TEST(GltfLoaderTest, ComputesSmoothNormalWhenAbsent)
 
     ASSERT_EQ(geom.vertices.size(), 3u);
 
-    // XY 平面三角形の面法線 = RH で (0,0,1) -> Z 反転で NS の (0,0,-1)。 3 頂点とも同方向
+    // XY 平面三角形の面法線 = RH で (0,0,1) -> Z 反転で NS の (0,0,-1)。3 頂点とも同方向
     for (const auto& v : geom.vertices)
     {
         EXPECT_NEAR(v.normal.x, 0.0f, 1e-5f);

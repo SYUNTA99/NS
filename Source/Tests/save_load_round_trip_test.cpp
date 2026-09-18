@@ -49,7 +49,7 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
                                NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.5f, 0.0f, 0.0f));
     src.objects.push_back(rotated);
     src.objects.push_back(LevelNs::MakeCellObject(2, 0, 0));
-    // 編集中のレベルは読込採番か Command 採番で常に id を持つため、 比べる元も採番後から取る
+    // 編集中のレベルは読込採番か Command 採番で常に id を持つため、比べる元も採番後から取る
     SceneNs::EnsureUniqueObjectIds(src);
     src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[0].objectId));
     SceneNs::EnsureUniqueObjectIds(src);
@@ -128,7 +128,7 @@ TEST(SaveLoadRoundTrip, MissingActiveReadsAsDefault)
     const std::string text = SceneNs::SerializeSceneToJson(src);
     const nlohmann::json json = nlohmann::json::parse(text);
     const nlohmann::json& first = json.at("objects").at(0);
-    // 既定値は書かない。 欄が増えても古いファイルとバイト互換が保てる
+    // 既定値は書かない。欄が増えても古いファイルとバイト互換が保てる
     EXPECT_TRUE(first.find("active") == first.end());
 
     SceneNs::SceneData dst;
@@ -159,8 +159,8 @@ TEST(SaveLoadRoundTrip, ObjectParentSurvivesJsonRoundTrip)
     EXPECT_FALSE(src == parented);
 }
 
-// 正準 JSON は object キーが辞書順・float が最短往復表現なので、 同一データの 2 回保存は
-// バイト一致する。 保存し直しただけでは git diff に行が出ない
+// 正準 JSON は object キーが辞書順・float が最短往復表現なので、同一データの 2 回保存は
+// バイト一致する。保存し直しただけでは git diff に行が出ない
 TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
 {
     auto path1 = TestScenePath("test_byteid_a");
@@ -194,7 +194,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     auto bytes = NS::Core::FileSystem::ReadAllBytes(*path);
     ASSERT_TRUE(bytes.has_value());
     ASSERT_GE(bytes->size(), 1u);
-    // 先頭の '{' を壊すと JSON parse が失敗し、 load は false + 空 SceneData を返す
+    // 先頭の '{' を壊すと JSON parse が失敗し、load は false + 空 SceneData を返す
     (*bytes)[0] = std::byte{'X'};
     ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(*path, std::span<const std::byte>(*bytes)));
 
@@ -203,7 +203,7 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     EXPECT_TRUE(dst.objects.empty());
 }
 
-// object 数が上限を超えるレベルは保存段でクラッシュせず false を返す。 メモリ枯渇まで走らせない
+// object 数が上限を超えるレベルは保存段でクラッシュせず false を返す。メモリ枯渇まで走らせない
 TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
 {
     auto path = TestScenePath("test_oversized");
@@ -216,7 +216,7 @@ TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
 }
 
 // 型名 + リフレクションフィールド値 (値 5 つ) を持つ component 一覧が save→load で復元される
-// 並びは正準化 (名前昇順) されるので、 等価判定は正準 JSON の一致で行う
+// 並びは正準化 (名前昇順) されるので、等価判定は正準 JSON の一致で行う
 TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 {
     auto path = TestScenePath("test_components");
@@ -235,7 +235,7 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
     freeObject.components.push_back(std::move(comp));
     src.objects.push_back(std::move(freeObject));
     src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    // 正準 JSON 同士の比較なので、 読込側と同じく採番 + 追従カメラ済の状態に揃えてから保存する
+    // 正準 JSON 同士の比較なので、読込側と同じく採番 + 追従カメラ済の状態に揃えてから保存する
     SceneNs::EnsureUniqueObjectIds(src);
     src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[1].objectId));
     SceneNs::EnsureUniqueObjectIds(src);
@@ -295,12 +295,12 @@ TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
     src.objects.push_back(freeObject);
 
     SceneNs::ObjectData gridObject{};
-    // 読込は全 object に transform を保証するため、 比べる元を合わせるよう src 側にも 1 つ持たせる
+    // 読込は全 object に transform を保証するため、比べる元を合わせるよう src 側にも 1 つ持たせる
     SceneNs::EnsureTransformComponent(gridObject);
     src.objects.push_back(gridObject);
     src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
 
-    // 編集中のレベルは常に採番済なので、 比べる元も採番 + 追従カメラ済から取る
+    // 編集中のレベルは常に採番済なので、比べる元も採番 + 追従カメラ済から取る
     SceneNs::EnsureUniqueObjectIds(src);
     src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[2].objectId));
     SceneNs::EnsureUniqueObjectIds(src);
@@ -317,13 +317,13 @@ TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
     EXPECT_NEAR(SceneNs::ObjectRotation(dst.objects[0]).w, 0.70710677f, 1e-5f);
     EXPECT_FLOAT_EQ(SceneNs::ObjectScale(dst.objects[0]).x, 2.0f);
 
-    // クラス名は書いた object だけ載って戻り、 素の object は空のまま
+    // クラス名は書いた object だけ載って戻り、素の object は空のまま
     EXPECT_EQ(dst.objects[0].className, "");
     EXPECT_EQ(dst.objects[2].className, "Player");
 }
 
 // 配置物の "基本色" リフレクション値が save→reload を往復で保持される
-// 種別固定の色上書きが消え、 色は component 経由で保存に残る
+// 種別固定の色上書きが消え、色は component 経由で保存に残る
 TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
 {
     auto path = TestScenePath("test_basecolor");
@@ -400,7 +400,7 @@ TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
     EXPECT_NE(SceneNs::FindComponentEntry(player, "HealthComponent"), nullptr);
     EXPECT_NE(SceneNs::FindComponentEntry(player, "ShadowComponent"), nullptr);
 
-    // 追従カメラも 1 台合成され、 追従対象は合成したプレイヤーを指す
+    // 追従カメラも 1 台合成され、追従対象は合成したプレイヤーを指す
     const std::size_t followIndex = NS::Game::Level::FindFollowCameraObjectIndex(level);
     ASSERT_NE(followIndex, SceneNs::k_NoObjectIndex);
     const nlohmann::json* comp = SceneNs::FindComponentEntry(level.objects[followIndex], "ThirdPersonFollowComponent");
@@ -418,7 +418,7 @@ TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
     EXPECT_TRUE(hasKillZone);
 }
 
-// プレイヤーが複数居ても先頭を正とする。 手編集の重複でも読込と補完は成立する
+// プレイヤーが複数居ても先頭を正とする。手編集の重複でも読込と補完は成立する
 TEST(SaveLoadRoundTrip, MultiplePlayersFirstWins)
 {
     SceneNs::SceneData src;
@@ -458,13 +458,13 @@ TEST(EnsurePlayableObjects, SynthesizesFollowCameraTargetingExistingPlayer)
     // 追従先はプレイヤー実体への通常の ObjectRef
     ASSERT_TRUE(SceneNs::HasField(*comp, "追従対象"));
     EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "追従対象").id, playerId);
-    // データが持つのは誰を追うかだけ。 遠景を抑える投影値は component のコード既定を使う
+    // データが持つのは誰を追うかだけ。遠景を抑える投影値は component のコード既定を使う
     EXPECT_FALSE(SceneNs::HasField(*comp, "ファークリップ"));
     NS::Object::ThirdPersonFollowComponent live;
     EXPECT_FLOAT_EQ(live.FarPlane(), 100.0f);
 }
 
-// environment 欄が save→load で往復する。 照明は Component へ移り、 ここに残るのは skybox
+// environment 欄が save→load で往復する。照明は Component へ移り、ここに残るのは skybox
 TEST(SaveLoadRoundTrip, EnvironmentRoundTrip)
 {
     SceneNs::SceneData src;
@@ -482,7 +482,7 @@ TEST(SaveLoadRoundTrip, EnvironmentRoundTrip)
     EXPECT_TRUE(dst == src);
 }
 
-// 旧版のファイルは黙って既定値で読まず、 読込自体を拒否する。 欄名が違う旧データの静かな破壊を防ぐ
+// 旧版のファイルは黙って既定値で読まず、読込自体を拒否する。欄名が違う旧データの静かな破壊を防ぐ
 TEST(SaveLoadRoundTrip, RejectsOldFormatVersion)
 {
     const std::string json = R"({ "version": 2, "objects": [] })";
@@ -490,7 +490,7 @@ TEST(SaveLoadRoundTrip, RejectsOldFormatVersion)
     EXPECT_FALSE(SceneNs::DeserializeSceneFromJson(dst, json));
 }
 
-// 旧形式の照明キーは照明が Component へ移った今、 読み飛ばされる。 skybox だけが environment から読める
+// 旧形式の照明キーは照明が Component へ移った今、読み飛ばされる。skybox だけが environment から読める
 TEST(SaveLoadRoundTrip, LegacyLightingKeysAreIgnored)
 {
     const std::string json = R"({
@@ -502,7 +502,7 @@ TEST(SaveLoadRoundTrip, LegacyLightingKeysAreIgnored)
     SceneNs::SceneData dst;
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
 
-    // skybox は読める。 旧照明キー lightColor は無視され、 読込は壊れない
+    // skybox は読める。旧照明キー lightColor は無視され、読込は壊れない
     EXPECT_EQ(dst.environment.skyboxCubemapPath, "Assets/Skybox/kurt/");
 }
 
@@ -521,7 +521,7 @@ TEST(SaveLoadRoundTrip, NonStringComponentTypeReadsAsEmpty)
     EXPECT_EQ(SceneNs::ComponentEntryType(dst.objects[0].components[0]), "");
 }
 
-// 追従カメラ実体が既に居れば合成は走らず、 Target 参照ごと往復で保持される
+// 追従カメラ実体が既に居れば合成は走らず、Target 参照ごと往復で保持される
 TEST(SaveLoadRoundTrip, FollowCameraObjectRoundTrip)
 {
     SceneNs::SceneData src;

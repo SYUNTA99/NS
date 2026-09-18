@@ -15,8 +15,8 @@ namespace NS::Object
     public:
         PlayerInputComponent() noexcept;
 
-        //! camera 相対移動用の水平 forward を注入し、 XZ 平面で Y=0 とする。未注入時は world +Z
-        //! Brain の居る scene では OnUpdate が毎ステップ上書きする。 Brain 不在 (テスト等) では直接設定に使う
+        //! camera 相対移動用の水平 forward を注入し、XZ 平面で Y=0 とする。未注入時は world +Z
+        //! Brain の居る scene では OnUpdate が毎ステップ上書きする。Brain 不在 (テスト等) では直接設定に使う
         void SetCameraForward(const NS::Core::Vector3& cameraForwardHorizontal) noexcept;
 
         // 読み取った値は自分で持つ。渡し先の型を include できない場所からも引ける

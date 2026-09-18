@@ -105,7 +105,7 @@ TEST(UndoStackTest, RecordStoresWithoutApplying)
     EditorNs::UndoStack stack;
     FakeApplier applier;
 
-    // 追加は先に適用しておき、 Record は Do を呼ばずに履歴だけ積む
+    // 追加は先に適用しておき、Record は Do を呼ばずに履歴だけ積む
     applier.ApplyObjectSnapshot(1, MakeObjectAt(1, 0.0f));
     SceneNs::ObjectData before = *applier.CaptureObject(1);
     SceneNs::ObjectData after = MakeObjectAt(1, 5.0f);

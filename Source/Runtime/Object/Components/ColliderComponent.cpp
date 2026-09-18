@@ -16,7 +16,7 @@ namespace NS::Object
         }
 
         const JPH::BodyID body = SyncBody(physics, m_bodyId);
-        // 置き直しは同じ id を返す。 違うのは初めて作った時か、 無効が返った時だけ
+        // 置き直しは同じ id を返す。違うのは初めて作った時か、無効が返った時だけ
         if (m_bodyId != body)
         {
             physics.RemoveBody(m_bodyId);

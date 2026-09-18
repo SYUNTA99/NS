@@ -71,7 +71,7 @@ public:
     //! プレイモードから編集モードへ移行する
     void EnterEdit() noexcept;
 
-    //! プレイ中に 1 fixed step だけコマ送りする。 自動で一時停止に入り、 手触り検証で 1 コマずつ観察する
+    //! プレイ中に 1 fixed step だけコマ送りする。自動で一時停止に入り、手触り検証で 1 コマずつ観察する
     void RequestStepFrame() noexcept;
 
     //! 前面のパネル (編集= Scene / プレイ= Game) が image を描いたフレームで矩形と hover を渡す
@@ -86,7 +86,7 @@ public:
     [[nodiscard]] bool GameViewHidden() const noexcept { return m_gameViewHidden; }
 
     //! @brief Scene パネルが映っているフレームで真を渡す
-    //! @details プレイ中の当たり表示の条件。 Scene が映っていない間は線を積まず、 ゲーム画面へ出さない
+    //! @details プレイ中の当たり表示の条件。Scene が映っていない間は線を積まず、ゲーム画面へ出さない
     void SetSceneViewVisible(bool visible) noexcept { m_sceneViewVisible = visible; }
 
     //! プレイ中に Scene タブへ自由視点を映すフレームで毎回呼ぶ。入力を free-fly カメラへ流す
@@ -180,23 +180,23 @@ public:
     [[nodiscard]] std::vector<NS::Object::ObjectRefLocation> ReferencesToSelected();
 
     //! @brief 配置物の表示名を差し替えて undo へ積む
-    //! @param[in] id 対象の永続 object id。 居なければ何もしない
-    //! @param[in] name 新しい表示名。 空にすると型からの導出名へ戻る
+    //! @param[in] id 対象の永続 object id。居なければ何もしない
+    //! @param[in] name 新しい表示名。空にすると型からの導出名へ戻る
     void RenameObject(std::uint32_t id, std::string_view name);
 
     //! @brief 配置物の親を差し替えて undo へ積む
     //! @param[in] id 対象の永続 object id
-    //! @param[in] parentId 新しい親の永続 id。 0 で root へ戻す
-    //! @retresult 付け替えたら true。 自分自身や自分の子孫を親に指定した場合は false で何もしない
-    //! @details 見た目が動かないよう、 今の world 変換を新しい親空間の local へ計算し直して持ち替える
+    //! @param[in] parentId 新しい親の永続 id。0 で root へ戻す
+    //! @retresult 付け替えたら true。自分自身や自分の子孫を親に指定した場合は false で何もしない
+    //! @details 見た目が動かないよう、今の world 変換を新しい親空間の local へ計算し直して持ち替える
     bool SetObjectParent(std::uint32_t id, std::uint32_t parentId);
 
     //! コンポーネントの操作関連機能
     void AddComponentToSelected(std::string_view typeName);
     void RemoveComponentFromSelected(std::size_t componentIndex);
 
-    //! @brief 選択中の配置物のコンポーネント 1 個について、 データの active を切り替える
-    //! @details false は保存に残り、 読み直しても false のまま。 player の入力と transform は守って何もしない
+    //! @brief 選択中の配置物のコンポーネント 1 個について、データの active を切り替える
+    //! @details false は保存に残り、読み直しても false のまま。player の入力と transform は守って何もしない
     void SetComponentEnabledOnSelected(std::size_t componentIndex, bool enabled);
 
     void DuplicateSelectedObject();
@@ -205,7 +205,7 @@ public:
     //! @details プレイヤーが対象または子孫に含まれる場合は何もしない
     void DeleteSelectedObject();
 
-    //! 編集カメラの注視点を選択中の配置物へ寄せる。 広がりに応じて距離も取り直す
+    //! 編集カメラの注視点を選択中の配置物へ寄せる。広がりに応じて距離も取り直す
     void FocusSelectedInView() noexcept;
 
     void CopyComponentToClipboard(std::size_t componentIndex);
@@ -231,7 +231,7 @@ private:
 
     void RenderCameraGizmos(const NS::Core::Matrix& viewProjection, NS::Core::Size2D viewport) noexcept;
     //! @brief 当たり形状を線で描く
-    //! @param[in] all 真なら全配置物、 偽なら選んでいる分だけ
+    //! @param[in] all 真なら全配置物、偽なら選んでいる分だけ
     void RenderColliderWireframes(bool all) noexcept;
 
     //! 主対象以外の選択物を枠で見せる。ギズモは 1 体にしか出ないので、選んだ範囲を目で追えるようにする
@@ -256,14 +256,14 @@ private:
     [[nodiscard]] NS::Object::CameraComponent* MainCamera() const noexcept;
 
     NS::Object::Scene* m_scene = nullptr;        // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
-    NS::Editor::ObjectSnapshotApplier m_applier; // 編集を live へ写す口。 undo コマンドが叩く適用先
+    NS::Editor::ObjectSnapshotApplier m_applier; // 編集を live へ写す口。undo コマンドが叩く適用先
 
     // 前面のパネルの表示矩形。未設定時は CurrentViewRect が全画面の予備矩形を返す
     NS::Editor::ViewRect m_gameViewRect{};
     bool m_gameViewRectValid = false;
     bool m_gameViewHovered = false;
     bool m_gameViewHidden = false;   // UI 表示中に前面のパネルが裏へ隠れているか
-    bool m_sceneViewVisible = false; // Scene パネルが映っているか。 プレイ中の当たり表示の条件
+    bool m_sceneViewVisible = false; // Scene パネルが映っているか。プレイ中の当たり表示の条件
 
     NS::UI::ImGuiContext* m_imgui = nullptr; // UI描画用コンテキスト、非所有
     NS::Editor::EditorCamera m_editorCamera; // 編集用自由視点カメラ

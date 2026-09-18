@@ -28,10 +28,10 @@ namespace
 } // namespace
 
 // 編集中の capture→rebuild 往復を重ねても root 回転が初回 rebuild 後の値と bit 一致する
-// pitch を特異点付近に置き、 Euler を経由する旧経路なら誤差が積もる条件で確かめる
+// pitch を特異点付近に置き、Euler を経由する旧経路なら誤差が積もる条件で確かめる
 TEST(SceneRotationDrift, RepeatedCaptureRebuildKeepsExactQuaternion)
 {
-    // device 無しの AssetManager でも組み立ては落ちない。 mesh も material も解決できず空のまま
+    // device 無しの AssetManager でも組み立ては落ちない。mesh も material も解決できず空のまま
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
 
     const SceneNs::ObjectData object = MakeRotatedCube(NS::Core::Vector3{89.9f, 40.0f, 20.0f});

@@ -59,7 +59,7 @@ TEST(ComponentTest, EnabledAndActiveAreSeparateFlags)
     EXPECT_TRUE(c.IsEnabled());
     EXPECT_FALSE(c.IsActive());
 
-    // データの active を切った側は、 休止を解いても効かないまま
+    // データの active を切った側は、休止を解いても効かないまま
     c.SetEnabled(false);
     c.SetActive(true);
     EXPECT_TRUE(c.IsActiveSelf());
@@ -80,7 +80,7 @@ TEST(ComponentTest, RootTransformReturnsOwnerRoot)
 
 namespace
 {
-    //! 破棄回数を外部カウンタへ記録する Component。 GameObject 所有の寿命検証に使う
+    //! 破棄回数を外部カウンタへ記録する Component。GameObject 所有の寿命検証に使う
     class LifetimeComponent : public NS::Object::Component
     {
     public:
@@ -101,7 +101,7 @@ TEST(ComponentOwnershipTest, AddComponentRegistersAndInjectsOwner)
     NS::Object::GameObject obj;
     auto* c = obj.AddComponent<CountingComponent>();
 
-    // GameObject が先に transform を積むので、 同 priority の後入れは末尾に来る
+    // GameObject が先に transform を積むので、同 priority の後入れは末尾に来る
     ASSERT_EQ(obj.Components().size(), std::size_t{2});
     EXPECT_EQ(obj.Components().back(), c);
     EXPECT_EQ(c->Owner(), &obj);

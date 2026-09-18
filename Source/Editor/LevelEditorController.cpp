@@ -143,7 +143,7 @@ namespace
         return baseHalf * std::max(scale, 1.0f);
     }
 
-    // 子を先、 自分を後の順で永続 id を集める。 削除はこの順で流し、 undo は逆順に親から戻る
+    // 子を先、自分を後の順で永続 id を集める。削除はこの順で流し、undo は逆順に親から戻る
     void CollectSubtreeIds(const NS::Object::GameObject& root, std::vector<std::uint32_t>& out)
     {
         for (const NS::Object::GameObject* child : root.Children())
@@ -154,7 +154,7 @@ namespace
         out.push_back(root.Id());
     }
 
-    // 1 本なら包まずそのまま返す。 CompositeCommand を挟むのは複数を 1 回の undo で往復させたい時だけ
+    // 1 本なら包まずそのまま返す。CompositeCommand を挟むのは複数を 1 回の undo で往復させたい時だけ
     std::unique_ptr<NS::Editor::ICommand> MakeUndoUnit(std::vector<std::unique_ptr<NS::Editor::ICommand>> commands)
     {
         if (commands.size() == 1)
@@ -410,7 +410,7 @@ void LevelEditorController::LeavePlayForEdit()
             input->SetActive(false);
     }
 
-    // 編集モードはカーソルを出し、 相対モードも解いてカーソル位置ベースの操作へ戻す
+    // 編集モードはカーソルを出し、相対モードも解いてカーソル位置ベースの操作へ戻す
     if (auto* app = NS::App::Application::Get())
     {
         app->Window().SetCursorVisible(true);
@@ -584,7 +584,7 @@ void LevelEditorController::TickEdit()
             if (!wasDragging && nowDragging)
             {
                 BeginTransformEdit();
-                // 掴んだ瞬間はまだ動いていない。 ここで控えれば差分の基準が揃う
+                // 掴んだ瞬間はまだ動いていない。ここで控えれば差分の基準が揃う
                 CaptureDragFollowers();
             }
             else if (wasDragging && !nowDragging)
@@ -593,7 +593,7 @@ void LevelEditorController::TickEdit()
                 m_dragFollowers.clear();
             }
         }
-        // ギズモは主対象しか動かさないので、 残りの選択はここで追わせる
+        // ギズモは主対象しか動かさないので、残りの選択はここで追わせる
         if (nowDragging)
             ApplyDragToFollowers();
         m_gizmoWasDragging = nowDragging;
@@ -626,9 +626,9 @@ void LevelEditorController::Render()
 
     if (m_mode != Mode::Edit)
     {
-        // プレイ中も Scene には当たりを見せる。 動いている形をそのまま追えるよう選択に関わらず全部出す
-        // 線を積むのは Scene が映っているフレームだけ。 ビュー列の先頭が Scene なので、
-        // 溜めた線は Scene の描画で消え、 ゲーム画面へは残らない
+        // プレイ中も Scene には当たりを見せる。動いている形をそのまま追えるよう選択に関わらず全部出す
+        // 線を積むのは Scene が映っているフレームだけ。ビュー列の先頭が Scene なので、
+        // 溜めた線は Scene の描画で消え、ゲーム画面へは残らない
         if (m_sceneViewVisible)
             RenderColliderWireframes(true);
         return;
@@ -813,7 +813,7 @@ void LevelEditorController::ToggleObjectSelection(std::uint32_t id) noexcept
         m_selectionIds.erase(it);
         if (m_selectedObjectId != id)
             return;
-        // 主対象を外したので、 残っている中の直近へ譲る
+        // 主対象を外したので、残っている中の直近へ譲る
         std::uint32_t next = NS::Object::k_NoObjectId;
         if (!m_selectionIds.empty())
             next = m_selectionIds.back();
@@ -904,7 +904,7 @@ void LevelEditorController::RenderCameraGizmos(const NS::Core::Matrix& viewProje
 
 void LevelEditorController::RenderSelectionOutlines() noexcept
 {
-    // ギズモが出るのは主対象だけなので、 一緒に選んでいる分は枠で見せる
+    // ギズモが出るのは主対象だけなので、一緒に選んでいる分は枠で見せる
     if (m_selectionIds.size() < 2)
         return;
 
@@ -918,7 +918,7 @@ void LevelEditorController::RenderSelectionOutlines() noexcept
         const NS::Core::Matrix world = object->Root().WorldMatrix();
         const NS::Core::Vector3 scale = object->Root().Scale();
 
-        // 行の基底が各軸の向き。 正規化して大きさは halfExtent へ回す
+        // 行の基底が各軸の向き。正規化して大きさは halfExtent へ回す
         NS::Core::OBB obb{};
         obb.center = NS::Core::Vector3{world._41, world._42, world._43};
         obb.axisX = NS::Core::Vector3{world._11, world._12, world._13};
@@ -946,7 +946,7 @@ void LevelEditorController::RenderColliderWireframes(bool all) noexcept
         return;
     }
 
-    // 編集中は選んだ分だけ。 全部出すと線が重なって、 どれの形か読み取れない
+    // 編集中は選んだ分だけ。全部出すと線が重なって、どれの形か読み取れない
     for (const std::uint32_t id : m_selectionIds)
     {
         if (NS::Object::GameObject* objPtr = m_scene->Objects().FindByObjectId(id))
@@ -1069,7 +1069,7 @@ void LevelEditorController::AddPrimitive(NS::Editor::PrimitiveKind kind)
 
 void LevelEditorController::AddObjectWithMesh(const std::filesystem::path& meshPath)
 {
-    // 参照は ContentRoot 相対で持つ。 build 時にこの文字列から実体を引く
+    // 参照は ContentRoot 相対で持つ。build 時にこの文字列から実体を引く
     const std::filesystem::path relative = meshPath.lexically_relative(NS::Core::FileSystem::ContentRoot());
     const std::string meshRef = [&]() -> std::string {
         if (relative.empty())
@@ -1079,7 +1079,7 @@ void LevelEditorController::AddObjectWithMesh(const std::filesystem::path& meshP
 
     const NS::Core::Vector3 center = m_editorCamera.Center();
 
-    // 描いた形と当たりをずらさない。 MeshColliderComponent が描画と同じ三角形から当たりを作る
+    // 描いた形と当たりをずらさない。MeshColliderComponent が描画と同じ三角形から当たりを作る
     NS::Object::ObjectData object{};
     object.components =
         nlohmann::json::array({NS::Game::Level::MakeMeshRendererEntry(meshRef, "", NS::Game::Level::k_SolidBaseColor),
@@ -1284,7 +1284,7 @@ void LevelEditorController::DuplicateSelectedObject()
     if (copies.empty())
         return;
 
-    // 親も一緒に複製したなら、 コピーの親はコピー側へ向ける。 親が選択外ならそのまま元の親へぶら下がる
+    // 親も一緒に複製したなら、コピーの親はコピー側へ向ける。親が選択外ならそのまま元の親へぶら下がる
     std::vector<std::unique_ptr<NS::Editor::ICommand>> commands;
     std::vector<std::uint32_t> created;
     commands.reserve(copies.size());
@@ -1321,7 +1321,7 @@ void LevelEditorController::DeleteSelectedObject()
     if (m_selectionIds.empty())
         return;
 
-    // 親だけ消すと子が宙に浮くので、 ぶら下がっている分もまとめて消す
+    // 親だけ消すと子が宙に浮くので、ぶら下がっている分もまとめて消す
     std::vector<std::uint32_t> victims;
     for (const std::uint32_t id : m_selectionIds)
     {
@@ -1330,7 +1330,7 @@ void LevelEditorController::DeleteSelectedObject()
             CollectSubtreeIds(*target, victims);
     }
 
-    // 親と子を両方選んでいると同じ物が二度並ぶ。 葉が先の順は崩さずに重複だけ落とす
+    // 親と子を両方選んでいると同じ物が二度並ぶ。葉が先の順は崩さずに重複だけ落とす
     std::vector<std::uint32_t> ordered;
     ordered.reserve(victims.size());
     for (const std::uint32_t victim : victims)
@@ -1339,7 +1339,7 @@ void LevelEditorController::DeleteSelectedObject()
             ordered.push_back(victim);
     }
 
-    // プレイヤーが消えるとレベルが遊べなくなる。 子孫に紛れていても止める
+    // プレイヤーが消えるとレベルが遊べなくなる。子孫に紛れていても止める
     const NS::Object::GameObject* player = FindPlayer(m_scene->Objects());
     if (player != nullptr && std::find(ordered.begin(), ordered.end(), player->Id()) != ordered.end())
     {
@@ -1375,7 +1375,7 @@ void LevelEditorController::FocusSelectedInView() noexcept
     if (m_selectionIds.empty())
         return;
 
-    // 選んだ分を全部収める。 中心は重心、 距離は一番外側までの広がりで決める
+    // 選んだ分を全部収める。中心は重心、距離は一番外側までの広がりで決める
     NS::Core::Vector3 sum{0.0f, 0.0f, 0.0f};
     std::vector<NS::Core::Vector3> centers;
     float extent = 0.0f;
@@ -1427,7 +1427,7 @@ void LevelEditorController::CaptureDragFollowers() noexcept
         if (object == nullptr)
             continue;
 
-        // 選択中の物にぶら下がっている分は親が動けば付いてくる。 二重に動かさない
+        // 選択中の物にぶら下がっている分は親が動けば付いてくる。二重に動かさない
         bool underSelected = false;
         for (const NS::Object::GameObject* ancestor = object->Parent(); ancestor != nullptr;
              ancestor = ancestor->Parent())
@@ -1453,7 +1453,7 @@ void LevelEditorController::ApplyDragToFollowers() noexcept
     if (primary == nullptr)
         return;
 
-    // 主対象が動いた分をワールド空間の差分として取り、 残りへ同じだけ効かせる
+    // 主対象が動いた分をワールド空間の差分として取り、残りへ同じだけ効かせる
     const NS::Core::Matrix delta = m_dragPrimaryWorld.Invert() * primary->Root().WorldMatrix();
     for (const DragFollower& follower : m_dragFollowers)
     {
@@ -1515,7 +1515,7 @@ void LevelEditorController::BeginTransformEdit() noexcept
     if (m_transformEditing)
         return;
     m_editBaselines.clear();
-    // 選択している分をまとめて控える。 動かなかった物は確定時に落ちる
+    // 選択している分をまとめて控える。動かなかった物は確定時に落ちる
     for (const std::uint32_t id : m_selectionIds)
     {
         std::optional<NS::Object::ObjectData> baseline = m_applier.CaptureObject(id);

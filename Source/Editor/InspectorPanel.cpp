@@ -26,11 +26,11 @@ namespace NS::Editor
 #if NS_EDITOR_ENABLED
     namespace
     {
-        // 置いたばかりの配置物の姿。 ここから動かした欄だけ印を出す
+        // 置いたばかりの配置物の姿。ここから動かした欄だけ印を出す
         const NS::Core::Vector3 k_DefaultPosition{0.0f, 0.0f, 0.0f};
         const NS::Core::Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
 
-        // 添字は CaptureObjectData の並びへそのまま渡る。 絞り方を変えると編集操作が隣を掴む
+        // 添字は CaptureObjectData の並びへそのまま渡る。絞り方を変えると編集操作が隣を掴む
         std::vector<NS::Object::Component*> ReflectedComponents(NS::Object::GameObject& go)
         {
             std::vector<NS::Object::Component*> result;
@@ -54,7 +54,7 @@ namespace NS::Editor
         m_nameCommitId = 0;
         if (ImGui::Begin(k_PanelInspector))
         {
-            // ObjectRef フィールドの参照先候補。 Hierarchy と同じ並びと表示名で全配置物を出す
+            // ObjectRef フィールドの参照先候補。Hierarchy と同じ並びと表示名で全配置物を出す
             std::vector<NS::Editor::ObjectRefOption> refOptions;
             refOptions.reserve(editor.Objects().ObjectCount());
             for (std::size_t i = 0; i < editor.Objects().ObjectCount(); ++i)
@@ -83,7 +83,7 @@ namespace NS::Editor
             NS::Object::GameObject* go = editor.SelectedObjectGameObject();
             const std::vector<NS::Object::Component*> components = ReflectedComponents(*go);
 
-            // 名前は直接ここで書き換えられる。 選択が変わったら今の表示名を入れ直す
+            // 名前は直接ここで書き換えられる。選択が変わったら今の表示名を入れ直す
             const std::uint32_t selectedId = editor.SelectedObjectId();
             if (m_nameId != selectedId)
             {
@@ -92,13 +92,13 @@ namespace NS::Editor
             }
             ImGui::SetNextItemWidth(-1.0f);
             ImGui::InputText("##objectName", m_nameBuffer, sizeof(m_nameBuffer));
-            // 改名は配置物を組み直すので、 このパネルを描き終えてから流す
+            // 改名は配置物を組み直すので、このパネルを描き終えてから流す
             if (ImGui::IsItemDeactivatedAfterEdit())
                 m_nameCommitId = selectedId;
             ImGui::Text("[%zu] %s", editor.SelectedObjectIndex(), go->ClassName());
             ImGui::Separator();
 
-            // Transform は runtime が唯一の出所なので即反映し、 commit が undo へ確定する
+            // Transform は runtime が唯一の出所なので即反映し、commit が undo へ確定する
             ImGui::SeparatorText("Transform");
 
             if (NS::Editor::BeginFieldTable("##transform"))
@@ -122,8 +122,8 @@ namespace NS::Editor
                 }
                 ImGui::PopID();
 
-                // 回転は内部 quaternion を度の Euler に直して編集し、 入力を quaternion へ戻す
-                // 滑らかに回し続けるならギズモの回転ツールが向く。 ここは角度の直接入力 / 微調整用
+                // 回転は内部 quaternion を度の Euler に直して編集し、入力を quaternion へ戻す
+                // 滑らかに回し続けるならギズモの回転ツールが向く。ここは角度の直接入力 / 微調整用
                 const NS::Core::Quaternion q = go->Root().Rotation();
                 const NS::Core::Vector3 euler = q.ToEuler();
                 float rot[3] = {NS::Core::RadiansToDegrees(euler.x),
@@ -171,7 +171,7 @@ namespace NS::Editor
                 NS::Editor::EndFieldTable();
             }
 
-            // MeshRendererComponent の Material フィールドはリフレクション一覧に出る。 適用は Assets パネルのドロップ /
+            // MeshRendererComponent の Material フィールドはリフレクション一覧に出る。適用は Assets パネルのドロップ /
             // クリックから
             ImGui::Separator();
 
@@ -197,11 +197,11 @@ namespace NS::Editor
                 ImGui::EndDisabled();
                 ImGui::SameLine();
 
-                // ヘッダを中身より明るくして、 どこからどこまでが 1 個か見えるようにする
+                // ヘッダを中身より明るくして、どこからどこまでが 1 個か見えるようにする
                 ImGui::PushStyleColor(ImGuiCol_Header, NS::Editor::k_ComponentHeaderColor);
                 ImGui::PushStyleColor(ImGuiCol_HeaderHovered, NS::Editor::k_ComponentHeaderHoveredColor);
                 ImGui::PushStyleColor(ImGuiCol_HeaderActive, NS::Editor::k_ComponentHeaderActiveColor);
-                // AllowOverlap 無しだとヘッダが全幅の当たりを取り、 右端に重ねた「...」がクリックを拾えない
+                // AllowOverlap 無しだとヘッダが全幅の当たりを取り、右端に重ねた「...」がクリックを拾えない
                 const bool open = ImGui::CollapsingHeader(
                     typeName.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
                 ImGui::PopStyleColor(3);
@@ -215,7 +215,7 @@ namespace NS::Editor
                 {
                     if (ImGui::MenuItem("コンポーネントをコピー"))
                         editor.CopyComponentToClipboard(k);
-                    // 最後の 1 個は消すと空構成になる。 プレイヤーの印の入力 component も消させない
+                    // 最後の 1 個は消すと空構成になる。プレイヤーの印の入力 component も消させない
                     const bool canRemove = components.size() > 1 && typeName != "PlayerInputComponent";
                     if (ImGui::MenuItem("コンポーネントを削除", nullptr, false, canRemove))
                         editor.RemoveComponentFromSelected(k);
@@ -247,7 +247,7 @@ namespace NS::Editor
                 }
                 ImGui::PopID();
             }
-            // 戻すは控えを取ってから live を書く。 順を逆にすると変更後が控えになり履歴が空になる
+            // 戻すは控えを取ってから live を書く。順を逆にすると変更後が控えになり履歴が空になる
             if (componentEdit.revertTarget != nullptr && componentEdit.revertField != nullptr)
             {
                 const NS::Object::Component* baseline = m_defaults.Find(componentEdit.revertTarget->ClassName());

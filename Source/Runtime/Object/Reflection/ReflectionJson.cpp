@@ -110,7 +110,7 @@ namespace NS::Object
             }
             case FieldType::Int:
             {
-                // 手編集 JSON が 1.0 形式で書いても拾えるよう数値全般を受け、 int へ切り捨てる
+                // 手編集 JSON が 1.0 形式で書いても拾えるよう数値全般を受け、int へ切り捨てる
                 if (!value.is_number())
                 {
                     return;
@@ -175,7 +175,7 @@ namespace NS::Object
                     return;
                 }
                 const auto it = value.find("ref");
-                // 負数は id として不正なので unsigned のみ受ける。 手編集の壊れた値は既定 0 のまま
+                // 負数は id として不正なので unsigned のみ受ける。手編集の壊れた値は既定 0 のまま
                 if (it == value.end() || !it->is_number_unsigned())
                 {
                     return;
@@ -287,7 +287,7 @@ namespace NS::Object
         const ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr)
         {
-            // リフレクションの無い component は type を復元できない。 宣言の書き忘れに気付けるよう警告する
+            // リフレクションの無い component は type を復元できない。宣言の書き忘れに気付けるよう警告する
             NS_LOG_WARN(Game, "リフレクションの無い Component を直列化しようとした (type 復元不可)");
             out["type"] = "";
             out["fields"] = nlohmann::json::object();

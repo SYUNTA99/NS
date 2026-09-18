@@ -26,7 +26,7 @@ TEST(CategoryPalette, KeyboardNumNotEdgeNoChange)
     NS::Platform::Input input;
     EditorNs::CategoryPalette palette;
 
-    // OnKeyDown → Update で押した瞬間の判定が消える。 次の TickInput では IsPressed が false
+    // OnKeyDown → Update で押した瞬間の判定が消える。次の TickInput では IsPressed が false
     input.Keyboard().OnKeyDown(NS::Platform::Key::Num2);
     input.Keyboard().Update();
     palette.TickInput(&input, nullptr);

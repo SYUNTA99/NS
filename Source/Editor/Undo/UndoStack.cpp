@@ -17,7 +17,7 @@ namespace NS::Editor
         if (!cmd)
             return;
 
-        // live は呼出側が既に動かしている。 Do を呼ぶと同じ姿を組み直す無駄が出るので履歴へ積むだけにする
+        // live は呼出側が既に動かしている。Do を呼ぶと同じ姿を組み直す無駄が出るので履歴へ積むだけにする
         PushRecorded(std::move(cmd));
     }
 
@@ -71,7 +71,7 @@ namespace NS::Editor
         m_redo.clear();
         m_undoBytes = 0;
         m_redoBytes = 0;
-        // 読込直後はファイルと同じ内容なので、 版も振り出しへ戻す
+        // 読込直後はファイルと同じ内容なので、版も振り出しへ戻す
         m_version = 0;
     }
 

@@ -16,7 +16,7 @@ namespace
 {
     using NS::Object::Scene;
 
-    // 据え置きカメラを 1 体だけ持つレベル。 組み立ては AssetManager 不在でも通る
+    // 据え置きカメラを 1 体だけ持つレベル。組み立ては AssetManager 不在でも通る
     NS::Object::SceneData MakePlacedCameraLevel()
     {
         NS::Object::SceneData data;
@@ -63,7 +63,7 @@ TEST(CameraHost, TeardownDropsTheHost)
     Scene scene;
     ASSERT_NE(scene.CameraBrain(), nullptr);
 
-    // シーンを畳むと host ごと消え、 読み口は nullptr を返す
+    // シーンを畳むと host ごと消え、読み口は nullptr を返す
     scene.OnShutdown();
     EXPECT_EQ(scene.CameraBrain(), nullptr);
     EXPECT_EQ(scene.MainCamera(), nullptr);
@@ -82,7 +82,7 @@ TEST(CameraHost, BrainRunsInTheLateUpdateBand)
     placed->SetActive(true);
     ASSERT_EQ(scene.CameraBrain()->ActiveVirtualCamera(), nullptr);
 
-    // 帯が brain を回すので、 進行から手で呼ぶ 1 行は要らない
+    // 帯が brain を回すので、進行から手で呼ぶ 1 行は要らない
     scene.OnUpdate();
 
     EXPECT_EQ(scene.CameraBrain()->ActiveVirtualCamera(), placed);
@@ -106,7 +106,7 @@ TEST(CameraHost, SurvivesRebuildAndRebindsVirtualCameras)
     scene.OnUpdate();
     ASSERT_EQ(scene.CameraBrain()->ActiveVirtualCamera(), first);
 
-    // 2 回目の組み直しで古い登録が外れ、 新しい実体が選ばれる
+    // 2 回目の組み直しで古い登録が外れ、新しい実体が選ばれる
     scene.LoadFromData(MakePlacedCameraLevel());
     NS::Object::PlacedVirtualCamera* second = FindPlaced(scene);
     ASSERT_NE(second, nullptr);

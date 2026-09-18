@@ -42,7 +42,7 @@ namespace NS::Object
             return;
         }
 
-        // camera 相対移動の基準 forward は Brain から自分で読む。 Brain 不在 (テスト等) は注入値のまま
+        // camera 相対移動の基準 forward は Brain から自分で読む。Brain 不在 (テスト等) は注入値のまま
         if (Owner() != nullptr && Owner()->OwningScene() != nullptr)
         {
             if (CameraBrainComponent* brain = Owner()->OwningScene()->CameraBrain())
@@ -55,7 +55,7 @@ namespace NS::Object
         const auto& kb = input.Keyboard();
         const auto& pad = input.Gamepad(0);
 
-        // UI のテキスト入力中はキーボード由来の移動 / ジャンプを取り合わない。 gamepad は維持する
+        // UI のテキスト入力中はキーボード由来の移動 / ジャンプを取り合わない。gamepad は維持する
         const bool wantKb = input.UiWantsKeyboard();
 
         // WASD の前後左右入力

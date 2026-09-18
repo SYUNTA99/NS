@@ -17,7 +17,7 @@ namespace NS::Object
 {
     namespace
     {
-        // GameObject に既に載る同型 component をリフレクション型名で探す。 適用済みの控えにある分は飛ばし、 無ければ
+        // GameObject に既に載る同型 component をリフレクション型名で探す。適用済みの控えにある分は飛ばし、無ければ
         // nullptr
         Component* FindExistingComponent(GameObject& obj,
                                          std::string_view typeName,
@@ -100,7 +100,7 @@ namespace NS::Object
         std::unique_ptr<GameObject> obj = CreateRegisteredObject(object);
         ApplyObjectComponents(*obj, object, {});
 
-        // 参照文字列の実体化は component 自身の仕事。 AssetManager が無い間は文字列のまま持たせておく
+        // 参照文字列の実体化は component 自身の仕事。AssetManager が無い間は文字列のまま持たせておく
         if (assets != nullptr)
         {
             for (Component* comp : obj->Components())
@@ -166,7 +166,7 @@ namespace NS::Object
             nlohmann::json entry = SerializeComponent(*comp);
             // id は往復で保つ。落とすと保存のたびに振り直しになり、名指ししている参照が外れる
             SetComponentEntryId(entry, comp->Id());
-            // active はデータ側だけを写す。 モード切替の一時的な休止 (SetActive) は保存に持ち込まない
+            // active はデータ側だけを写す。モード切替の一時的な休止 (SetActive) は保存に持ち込まない
             SetComponentEntryEnabled(entry, comp->IsEnabled());
             data.components.push_back(std::move(entry));
         }

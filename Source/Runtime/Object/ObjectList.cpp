@@ -17,7 +17,7 @@ namespace NS::Object
 
     void ObjectList::Rebuild(const SceneData& data, Scene& scene, const ObjectFactoryFn& factory)
     {
-        // 実行時の一時オブジェクトはデータ由来でないため、 退避して組み直し後も残す
+        // 実行時の一時オブジェクトはデータ由来でないため、退避して組み直し後も残す
         std::vector<std::unique_ptr<GameObject>> transients;
         for (auto& obj : m_objects)
         {
@@ -43,11 +43,11 @@ namespace NS::Object
 
         m_objects.reserve(data.objects.size() + transients.size());
 
-        // 配置物の組み立ては呼出側の知識。 ファクトリの無い起動前 / テストでは何も組まない
+        // 配置物の組み立ては呼出側の知識。ファクトリの無い起動前 / テストでは何も組まない
         if (factory)
         {
-            // 先に全 object を組んで、 開始は後段でまとめて行う
-            // OnStart で ObjectRef を解決する component が、 自分より後ろの object も引けるようにするため
+            // 先に全 object を組んで、開始は後段でまとめて行う
+            // OnStart で ObjectRef を解決する component が、自分より後ろの object も引けるようにするため
             for (const ObjectData& entry : data.objects)
             {
                 auto obj = factory(entry);
@@ -64,10 +64,10 @@ namespace NS::Object
                 m_objects.push_back(std::move(obj));
             }
 
-            // 親子は全 object が揃ってから結ぶ。 子が親より前に並ぶファイルでも同じ形に組める
-            // 循環は SetParent が輪を閉じる結び付けを拒むので、 手編集のデータでも組み上がる
-            // id 引きを線形で回すと体数の二乗に効くので、 組み立ての間だけ使う対応表で引く
-            // 索引として持ち越さないのは、 所有リストと同期を保つ手間を抱え込まないため
+            // 親子は全 object が揃ってから結ぶ。子が親より前に並ぶファイルでも同じ形に組める
+            // 循環は SetParent が輪を閉じる結び付けを拒むので、手編集のデータでも組み上がる
+            // id 引きを線形で回すと体数の二乗に効くので、組み立ての間だけ使う対応表で引く
+            // 索引として持ち越さないのは、所有リストと同期を保つ手間を抱え込まないため
             std::unordered_map<std::uint32_t, GameObject*> byObjectId;
             byObjectId.reserve(m_objects.size());
             for (auto& obj : m_objects)
@@ -100,7 +100,7 @@ namespace NS::Object
                 objPtr->OnStart();
         }
 
-        // 退避した一時オブジェクトを末尾へ戻す。 開始済みなので OnStart は呼ばない
+        // 退避した一時オブジェクトを末尾へ戻す。開始済みなので OnStart は呼ばない
         for (auto& obj : transients)
         {
             m_objects.push_back(std::move(obj));
@@ -127,7 +127,7 @@ namespace NS::Object
 
     void ObjectList::RemoveByObjectId(std::uint32_t objectId)
     {
-        // 0 は未採番の印。 一時オブジェクトは id を持たないので、 素通しすると先頭の一時が消える
+        // 0 は未採番の印。一時オブジェクトは id を持たないので、素通しすると先頭の一時が消える
         if (objectId == k_NoObjectId)
         {
             return;
@@ -157,7 +157,7 @@ namespace NS::Object
 
     GameObject* ObjectList::FindByObjectId(std::uint32_t objectId) noexcept
     {
-        // 0 は未採番の印。 一時オブジェクトは id を持たないので、 素通しすると先頭の一時が引ける
+        // 0 は未採番の印。一時オブジェクトは id を持たないので、素通しすると先頭の一時が引ける
         if (objectId == k_NoObjectId)
         {
             return nullptr;
@@ -209,7 +209,7 @@ namespace NS::Object
 
     void ObjectList::UpdateObjects(int firstPriority, int lastPriority)
     {
-        // 帯の昇順で配置物を横断して回すため、 範囲内の component を一度集めて priority で並べ直す
+        // 帯の昇順で配置物を横断して回すため、範囲内の component を一度集めて priority で並べ直す
         // stable_sort なので同じ帯の中は配置物の並び順に落ちる
         std::vector<Component*> scheduled;
         for (auto& obj : m_objects)
@@ -230,7 +230,7 @@ namespace NS::Object
             return a->Priority() < b->Priority();
         });
 
-        // active はこの場で見る。 先に回った component が後ろを SetActive(false) にしても効く
+        // active はこの場で見る。先に回った component が後ろを SetActive(false) にしても効く
         for (Component* comp : scheduled)
         {
             if (comp->IsActive())
@@ -242,7 +242,7 @@ namespace NS::Object
 
     void ObjectList::Clear()
     {
-        // OnEndPlay は生成の逆順で呼ぶ。 依存し合う component の後始末を生成と対称にする
+        // OnEndPlay は生成の逆順で呼ぶ。依存し合う component の後始末を生成と対称にする
         for (auto it = m_objects.rbegin(); it != m_objects.rend(); ++it)
         {
             (*it)->OnEndPlay();

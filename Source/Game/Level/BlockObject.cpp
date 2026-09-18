@@ -27,7 +27,7 @@ namespace NS::Game::Level
     {
         NS::Object::ObjectData object{};
         object.components = MakeCellCubeComponents();
-        // components を確定した後に transform を書き込む。 先に書くと components 代入が TransformComponent を消す
+        // components を確定した後に transform を書き込む。先に書くと components 代入が TransformComponent を消す
         NS::Object::SetObjectPosition(object, NS::Core::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
         return object;
     }

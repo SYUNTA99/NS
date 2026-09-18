@@ -16,7 +16,7 @@ namespace NS::Physics
             return nullptr;
         }
 
-        // 資産の読込は PhysicsScene より先に来ることがある。 形の確保は allocator の登録が済んでいないと落ちる
+        // 資産の読込は PhysicsScene より先に来ることがある。形の確保は allocator の登録が済んでいないと落ちる
         detail::InitJoltRuntime();
         JPH::TriangleList list;
         list.reserve(triangles.size());

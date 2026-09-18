@@ -36,7 +36,7 @@ namespace NS::Game::Level
 
         ObjectData object{};
         object.components = nlohmann::json::array({std::move(follow)});
-        // 姿勢は実行時に追従で決まるが、 データ側にも transform を 1 つ持たせる
+        // 姿勢は実行時に追従で決まるが、データ側にも transform を 1 つ持たせる
         NS::Object::EnsureTransformComponent(object);
         return object;
     }

@@ -39,17 +39,17 @@ namespace NS::Object
         [[nodiscard]] NS::Graphics::Material* GetMaterial() const noexcept { return m_material; }
 
         //! 描画に使う Mesh を差し替える。mesh=nullptr で Collect は何も積まなくなる
-        //! リフレクションでは Mesh を運べないので、 MeshRef から解決したものをここで差す
+        //! リフレクションでは Mesh を運べないので、MeshRef から解決したものをここで差す
         void SetMesh(NS::Graphics::Mesh* mesh) noexcept { m_mesh = mesh; }
-        //! build 時に解決された実体 Mesh を返す。 未解決なら nullptr
+        //! build 時に解決された実体 Mesh を返す。未解決なら nullptr
         [[nodiscard]] const NS::Graphics::Mesh* GetMesh() const noexcept { return m_mesh; }
 
-        //! 描くメッシュの参照。 builtin 名または ContentRoot 配下の相対パス。 空 / 解決不可なら構築側が既定にする
+        //! 描くメッシュの参照。builtin 名または ContentRoot 配下の相対パス。空 / 解決不可なら構築側が既定にする
         [[nodiscard]] const std::string& MeshRef() const noexcept { return m_meshRef; }
         //! build 時にこの文字列から mesh を解決する
         void SetMeshRef(std::string ref) noexcept { m_meshRef = std::move(ref); }
 
-        //! 描画 material の参照。 player / water / shadow といった共有 material 名または .mat 相対パス
+        //! 描画 material の参照。player / water / shadow といった共有 material 名または .mat 相対パス
         //! 空・解決不可は ResolveAssets が既定 material にする
         [[nodiscard]] const std::string& MaterialRef() const noexcept { return m_materialRef; }
         //! build 時にこの文字列から material を解決する
@@ -73,7 +73,7 @@ namespace NS::Object
         //! alpha 補間 world matrix を FrameCB に詰めた DrawItem を out に積む。IsActive()==false なら何も積まない
         void Collect(const NS::Graphics::RenderContext& context, std::vector<NS::Graphics::DrawItem>& out) override;
 
-        //! Material の BlendMode から bucket を返し、 Opaque 以外は Transparent。Material 不在は Opaque
+        //! Material の BlendMode から bucket を返し、Opaque 以外は Transparent。Material 不在は Opaque
         [[nodiscard]] RenderBucket Bucket() const noexcept override;
         //! Owner の world 行列の平行移動成分で半透明ソート用の中心
         [[nodiscard]] NS::Core::Vector3 SortCenter() const noexcept override;
@@ -89,7 +89,7 @@ namespace NS::Object
         void OnEndPlay() override;
 
         //! meshRef / matRef の参照文字列から実体の Mesh / Material を引き当てる
-        //! 共有 material 名を先に引き、 外れたら .mat 相対パスとして読む。 解決不可は cube と既定 material にする
+        //! 共有 material 名を先に引き、外れたら .mat 相対パスとして読む。解決不可は cube と既定 material にする
         void ResolveAssets(AssetManager& assets) override;
 
         NS_REFLECT_BEGIN(MeshRendererComponent, Component)
@@ -102,7 +102,7 @@ namespace NS::Object
         NS::Graphics::Mesh* m_mesh = nullptr;            // 描画する Mesh (非所有)
         NS::Graphics::Material* m_material = nullptr;    // 描画に使う Material (非所有)
         NS::Core::Vector3 m_baseColor{1.0f, 1.0f, 1.0f}; // 個体色、lighting と別系統
-        // 保存・編集される参照文字列。 build 時に解決して m_mesh / m_material へ実体を当てる
+        // 保存・編集される参照文字列。build 時に解決して m_mesh / m_material へ実体を当てる
         std::string m_meshRef{};
         std::string m_materialRef{};
 

@@ -196,7 +196,7 @@ namespace NS::Object
 
         SetMesh(loaded.mesh);
 
-        // 参照解決は component の並び順で回るので、 priority 200 の MeshRenderer は 300 のここより先に解決済み
+        // 参照解決は component の並び順で回るので、priority 200 の MeshRenderer は 300 のここより先に解決済み
         // ここで差し替えないと skinned mesh が見た目に反映されない
         if (GameObject* owner = Owner())
         {

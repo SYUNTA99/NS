@@ -23,7 +23,7 @@ namespace
     using NS::Object::PlacedVirtualCamera;
     using NS::Object::ReflectionInfo;
 
-    // float / int / bool / Vector3 を private に持ち、 4 フィールドをリフレクションするテスト用 Component
+    // float / int / bool / Vector3 を private に持ち、4 フィールドをリフレクションするテスト用 Component
     class FakeReflectedComponent : public Component
     {
     public:
@@ -318,7 +318,7 @@ TEST(ReflectionTest, BoxColliderExposesCenterOffsetAndRotation)
     EXPECT_FLOAT_EQ(collider.CenterOffset().y, -2.0f);
     EXPECT_FLOAT_EQ(collider.CenterOffset().z, 3.0f);
 
-    // 回転は Euler(度) アクセサで読み書きし、 往復で一致する
+    // 回転は Euler(度) アクセサで読み書きし、往復で一致する
     const FieldDesc* rot = FindField(info, "回転 (度)");
     ASSERT_NE(rot, nullptr);
     NS::Core::Vector3 setRot{0.0f, 90.0f, 0.0f};
@@ -360,7 +360,7 @@ TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
     ASSERT_NE(farPlane, nullptr);
     EXPECT_EQ(farPlane->type, FieldType::Float);
 
-    // プレイ開始時の向きは editor のギズモ / Inspector が data 保存し、 OnStart で現在 yaw へ写る
+    // プレイ開始時の向きは editor のギズモ / Inspector が data 保存し、OnStart で現在 yaw へ写る
     const FieldDesc* initialYaw = FindField(info, "初期ヨー");
     ASSERT_NE(initialYaw, nullptr);
     EXPECT_EQ(initialYaw->type, FieldType::Float);

@@ -13,7 +13,7 @@ namespace NS::Editor
 
     //! @brief Undo/Redo 履歴管理スタック
     //! @note 上限 (200 操作 / 50 MB) を超えた場合、古い履歴から自動的に破棄する
-    //! @note 適用は live 実体を触る IObjectSnapshotApplier 越し。 コマンドは objectId の before/after を往復させる
+    //! @note 適用は live 実体を触る IObjectSnapshotApplier 越し。コマンドは objectId の before/after を往復させる
     class UndoStack : public NS::Core::NonCopyable
     {
     public:
@@ -26,7 +26,7 @@ namespace NS::Editor
         //! @brief コマンドを実行して Undo 履歴へ積む。Redo 履歴は捨てる
         void Push(std::unique_ptr<ICommand> cmd, IObjectSnapshotApplier& target) noexcept;
 
-        //! @brief 既に適用済みの編集を Do を呼ばずに履歴へ積む。 ドラッグ確定など live を先に動かした編集用
+        //! @brief 既に適用済みの編集を Do を呼ばずに履歴へ積む。ドラッグ確定など live を先に動かした編集用
         void Record(std::unique_ptr<ICommand> cmd) noexcept;
 
         //! @brief 最新の Undo 操作を戻し、Redo 履歴へ移動する
@@ -39,7 +39,7 @@ namespace NS::Editor
         void Clear() noexcept;
 
         //! @brief 履歴が動いた通算回数
-        //! @details 保存時の値と突き合わせて未保存かどうかを見る。 戻して同じ内容に帰っても値は進むので、
+        //! @details 保存時の値と突き合わせて未保存かどうかを見る。戻して同じ内容に帰っても値は進むので、
         //! 保存済みを未保存と誤る側にしか外れない
         [[nodiscard]] std::uint64_t Version() const noexcept { return m_version; }
 

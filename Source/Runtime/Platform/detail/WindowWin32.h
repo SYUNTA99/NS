@@ -28,7 +28,7 @@ namespace NS::Platform
         Input* input = nullptr; // 入力転送先 (非所有)
         Window::MessageHook messageHook;
 
-        // false の間はクライアント領域のカーソルを消す。 WM_SETCURSOR がこの値を見て適用する
+        // false の間はクライアント領域のカーソルを消す。WM_SETCURSOR がこの値を見て適用する
         bool cursorVisible = true;
 
         bool cursorLocked = false;

@@ -31,9 +31,9 @@ namespace NS::Object
     ThirdPersonFollowComponent::ThirdPersonFollowComponent() noexcept
         : VirtualCameraComponent(NS::Object::TickPriority::LateUpdate + 50)
     {
-        // 生成直後は非 active でプレイ突入時に有効化される。 編集中は free-fly が active のまま
+        // 生成直後は非 active でプレイ突入時に有効化される。編集中は free-fly が active のまま
         SetActive(false);
-        // 追う相手を中心に見るので遠景は要らない。 編集カメラの 5000 と違いプレイ視点は 100 で足りる
+        // 追う相手を中心に見るので遠景は要らない。編集カメラの 5000 と違いプレイ視点は 100 で足りる
         SetFarPlane(100.0f);
     }
 
@@ -63,7 +63,7 @@ namespace NS::Object
         // 基底が brain へ自分を登録する
         VirtualCameraComponent::OnStart();
 
-        // プレイ開始 / rebuild ごとに初期姿勢へ戻す。 editor で置いた向きからプレイを始め、 手動回転はここから積む
+        // プレイ開始 / rebuild ごとに初期姿勢へ戻す。editor で置いた向きからプレイを始め、手動回転はここから積む
         m_yaw = m_initialYaw;
         m_pitch = m_initialPitch;
         if (!m_manualDistance)
@@ -153,7 +153,7 @@ namespace NS::Object
         const NS::Core::Vector3 forward = toHead * (1.0f / distance);
 
         // EvaluatePose の forward = (sin(yaw)cos(pitch), sin(pitch), cos(yaw)cos(pitch)) を解く
-        // pitch は仰角の可動域に収める。 clamp した分だけギズモ位置と厳密には一致しないが範囲外へは向けない
+        // pitch は仰角の可動域に収める。clamp した分だけギズモ位置と厳密には一致しないが範囲外へは向けない
         const float pitch = NS::Core::Clamp(std::asin(NS::Core::Clamp(forward.y, -1.0f, 1.0f)), m_pitchMin, m_pitchMax);
         const float yaw = std::atan2(forward.x, forward.z);
 
@@ -161,7 +161,7 @@ namespace NS::Object
         m_initialPitch = pitch;
         m_idleDistance = distance;
 
-        // 編集中は OnUpdate が走らないので現在値も直接書き、 EvaluatePose 表示をその場で追従させる
+        // 編集中は OnUpdate が走らないので現在値も直接書き、EvaluatePose 表示をその場で追従させる
         m_yaw = yaw;
         m_pitch = pitch;
         m_distance = distance;

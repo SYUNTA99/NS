@@ -56,7 +56,7 @@ namespace NS::Editor
         if (!m_holder)
             m_holder = std::make_unique<NS::Object::GameObject>();
 
-        // 既定コンストラクタで作っただけの 1 体。 未登録の型は nullptr が返り、 その答も控えて再試行しない
+        // 既定コンストラクタで作っただけの 1 体。未登録の型は nullptr が返り、その答も控えて再試行しない
         NS::Object::Component* created = NS::Object::CreateComponent(typeName, *m_holder);
         m_byType.emplace_back(std::string(typeName), created);
         return created;
@@ -893,7 +893,7 @@ namespace NS::Editor
             }
 
             result.activated |= ImGui::IsItemActivated();
-            // 編集無しのクリックでもラッチを解くため、 確定ではなく非活性化で committed を立てる
+            // 編集無しのクリックでもラッチを解くため、確定ではなく非活性化で committed を立てる
             // 空編集は CommitComponentEdit が before==after で弾くので履歴は汚れない
             result.committed |= ImGui::IsItemDeactivated();
 

@@ -12,20 +12,20 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
-//! 更新経路の 1 回あたり所要時間を出し、 1 フレーム予算に対して無視できるかを数字で判断する
+//! 更新経路の 1 回あたり所要時間を出し、1 フレーム予算に対して無視できるかを数字で判断する
 //! 時間で合否は決めない。機械の状態で揺れる。確かめるのは更新が全 component へ届いた事
 
 namespace
 {
     constexpr double k_FixedStepMs = 1000.0 / 60.0;
 
-    // 帯を散らす。 同じ priority ばかりだとソートが最良ケースになり実態より速く出る
+    // 帯を散らす。同じ priority ばかりだとソートが最良ケースになり実態より速く出る
     constexpr int k_Bands[] = {NS::Object::TickPriority::EarlyUpdate,
                                NS::Object::TickPriority::Update,
                                NS::Object::TickPriority::LateUpdate,
                                NS::Object::TickPriority::LateUpdate + 50};
 
-    // 更新回数だけ数える。 OnUpdate の中身が重いと経路の取り分が埋もれる
+    // 更新回数だけ数える。OnUpdate の中身が重いと経路の取り分が埋もれる
     class TickCountingComponent : public NS::Object::Component
     {
     public:
@@ -75,7 +75,7 @@ namespace
                   << "  確保とソートの取り分 " << (allMicros - snapMicros) << " us" << std::endl;
     }
 
-    // 経路が全 component を回したか。 時間ではなくここで合否を決める
+    // 経路が全 component を回したか。時間ではなくここで合否を決める
     [[nodiscard]] int TotalTicks(const NS::Object::ObjectList& objects)
     {
         int total = 0;
@@ -85,11 +85,11 @@ namespace
     }
 } // namespace
 
-// 同梱レベル相当。 今の実物でどれだけ食うか
+// 同梱レベル相当。今の実物でどれだけ食うか
 TEST(ObjectListUpdateCost, BundledLevelScale)
 {
     constexpr std::size_t k_Objects = 4;
-    constexpr std::size_t k_PerObject = 5; // 4 体で 20 個。 live 実測のおよそ 18 個に一番近い割り切り
+    constexpr std::size_t k_PerObject = 5; // 4 体で 20 個。live 実測のおよそ 18 個に一番近い割り切り
     constexpr int k_Iterations = 20000;
 
     NS::Object::ObjectList objects;
@@ -104,18 +104,18 @@ TEST(ObjectListUpdateCost, BundledLevelScale)
 
 namespace
 {
-    // depth 段のツリーを組む。 実際のレベルは浅く、 1 列の鎖は最悪ケースの確認用
+    // depth 段のツリーを組む。実際のレベルは浅く、1 列の鎖は最悪ケースの確認用
     [[nodiscard]] NS::Object::SceneData MakeParentTree(std::uint32_t count, std::uint32_t depth)
     {
         NS::Object::SceneData data{};
         data.objects.reserve(count);
-        // 1 段あたりの体数。 深さ 1 なら全員が根、 count なら 1 列の鎖になる
+        // 1 段あたりの体数。深さ 1 なら全員が根、count なら 1 列の鎖になる
         const std::uint32_t perLevel = std::max(std::uint32_t{1}, count / std::max(depth, std::uint32_t{1}));
         for (std::uint32_t i = 0; i < count; ++i)
         {
             NS::Object::ObjectData object{};
             object.objectId = i + 1;
-            // 先頭の 1 段は根。 以降は 1 段上の同じ位置にぶら下げる
+            // 先頭の 1 段は根。以降は 1 段上の同じ位置にぶら下げる
             if (i >= perLevel)
                 object.parentId = i - perLevel + 1;
             NS::Object::EnsureTransformComponent(object);
@@ -141,7 +141,7 @@ namespace
     }
 } // namespace
 
-// 実際のレベルに近い浅い階層。 読込と undo のたびに通る経路
+// 実際のレベルに近い浅い階層。読込と undo のたびに通る経路
 TEST(ObjectListRebuildCost, ShallowTreeScale)
 {
     for (const std::uint32_t count : {std::uint32_t{100}, std::uint32_t{500}, std::uint32_t{1000}})
@@ -152,7 +152,7 @@ TEST(ObjectListRebuildCost, ShallowTreeScale)
     }
 }
 
-// 1 列の鎖。 実際には起きないが、 階層の深さが効く所を切り分けるために測る
+// 1 列の鎖。実際には起きないが、階層の深さが効く所を切り分けるために測る
 TEST(ObjectListRebuildCost, DeepChainScale)
 {
     for (const std::uint32_t count : {std::uint32_t{100}, std::uint32_t{500}, std::uint32_t{1000}})
@@ -163,7 +163,7 @@ TEST(ObjectListRebuildCost, DeepChainScale)
     }
 }
 
-// 余裕水準。 過去の最大 156 体の 6 倍以上を見る
+// 余裕水準。過去の最大 156 体の 6 倍以上を見る
 TEST(ObjectListUpdateCost, HeadroomScale)
 {
     constexpr std::size_t k_Objects = 1000;

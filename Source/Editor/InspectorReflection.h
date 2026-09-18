@@ -29,8 +29,8 @@ namespace NS::Editor
     };
 
     //! @brief 型ごとの既定インスタンスを控える置き場
-    //! @details リフレクション欄の「既定と違う」印と戻すボタンが、 今の値と比べる相手として引く
-    //! 控えは 1 体の GameObject へまとめて attach するだけで、 world に入らないので更新も描画も走らない
+    //! @details リフレクション欄の「既定と違う」印と戻すボタンが、今の値と比べる相手として引く
+    //! 控えは 1 体の GameObject へまとめて attach するだけで、world に入らないので更新も描画も走らない
     class ComponentDefaults : public NS::Core::NonCopyable
     {
     public:
@@ -38,7 +38,7 @@ namespace NS::Editor
         ~ComponentDefaults() noexcept;
 
         //! @brief typeName の既定インスタンスを返す
-        //! @details 初回だけ作って以降は使い回す。 未登録の型は nullptr
+        //! @details 初回だけ作って以降は使い回す。未登録の型は nullptr
         [[nodiscard]] const NS::Object::Component* Find(std::string_view typeName);
 
     private:
@@ -54,19 +54,19 @@ namespace NS::Editor
         bool activated = false; // いずれかのウィジェットで編集が始まった (ドラッグ開始フレーム)
         bool committed = false; // いずれかのウィジェットが非活性化した (編集の有無は問わない)
 
-        // 既定へ戻す要求。 ボタンが押されたフレームだけ対象と欄が入る
-        // 値をこの場で書くと undo の控えを取る前に live が動くので、 適用は呼び出し側へ預ける
+        // 既定へ戻す要求。ボタンが押されたフレームだけ対象と欄が入る
+        // 値をこの場で書くと undo の控えを取る前に live が動くので、適用は呼び出し側へ預ける
         NS::Object::Component* revertTarget = nullptr;
         const NS::Object::FieldDesc* revertField = nullptr;
 
-        // 値が編集された対象と欄。 編集が起きたフレームだけ入る
-        // 凍結スナップショットへの写しが欄単位で要るので、 changed の集約とは別に持つ
+        // 値が編集された対象と欄。編集が起きたフレームだけ入る
+        // 凍結スナップショットへの写しが欄単位で要るので、changed の集約とは別に持つ
         NS::Object::Component* changedTarget = nullptr;
         const NS::Object::FieldDesc* changedField = nullptr;
     };
 
     //! @brief リフレクション欄 1 つの値が既定と違うか
-    //! @param[in] defaults 既定インスタンス。 nullptr なら常に false
+    //! @param[in] defaults 既定インスタンス。nullptr なら常に false
     [[nodiscard]] bool FieldDiffersFromDefault(const NS::Object::Component& comp,
                                                const NS::Object::Component* defaults,
                                                const NS::Object::FieldDesc& field) noexcept;
@@ -79,7 +79,7 @@ namespace NS::Editor
     //! @brief コンポーネントのフィールドをImGuiウィジェットとして描画する
     //! @param[in,out] comp 編集対象のコンポーネント
     //! @param[in] refOptions 参照先候補のリスト。指定しない場合は数値入力となる
-    //! @param[in] defaults 既定インスタンス。 渡すと既定と違う欄に印と戻すボタンが付く
+    //! @param[in] defaults 既定インスタンス。渡すと既定と違う欄に印と戻すボタンが付く
     //! @return 値の編集有無と、編集の開始・確定フレームを集約した結果
     [[nodiscard]] ComponentEditResult DrawReflectedComponent(NS::Object::Component& comp,
                                                              std::span<const ObjectRefOption> refOptions = {},

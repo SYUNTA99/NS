@@ -22,13 +22,13 @@ namespace NS::Object
 
         //! 斜面の傾斜角を度で返す
         [[nodiscard]] float AngleDegrees() const noexcept { return m_angleDegrees; }
-        //! wedge の半サイズを返す。 owner の scale を掛ける前の値
+        //! wedge の半サイズを返す。owner の scale を掛ける前の値
         [[nodiscard]] NS::Core::Vector3 HalfExtents() const noexcept { return m_halfExtents; }
 
-        //! world 座標の wedge 三角形 8 個、 内訳は斜面2・底2・裏壁2・側面各1。 Owner 未登録なら local 座標版
+        //! world 座標の wedge 三角形 8 個、内訳は斜面2・底2・裏壁2・側面各1。Owner 未登録なら local 座標版
         [[nodiscard]] std::array<NS::Physics::Triangle, 8> WorldTriangles() const noexcept;
 
-        // 角度・半サイズを Inspector / 直列化へ公開する。 WorldTriangles は member を都度読むため set で即反映する
+        // 角度・半サイズを Inspector / 直列化へ公開する。WorldTriangles は member を都度読むため set で即反映する
         NS_REFLECT_BEGIN(SlopeColliderComponent, ColliderComponent)
         NS_REFLECT_FIELD(m_angleDegrees, "角度 (度)")
         NS_REFLECT_FIELD(m_halfExtents, "半径")

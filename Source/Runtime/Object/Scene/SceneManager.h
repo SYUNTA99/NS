@@ -41,16 +41,16 @@ namespace NS::Object
         //! 現 scene を破棄して scene 無し状態にする。未ロードなら何もしない
         void UnloadScene();
 
-        //! 現在有効な scene。 未ロードなら nullptr
+        //! 現在有効な scene。未ロードなら nullptr
         [[nodiscard]] Scene* Current() noexcept;
         [[nodiscard]] const Scene* Current() const noexcept;
 
         //! 現在有効な scene があるか
         [[nodiscard]] bool HasScene() const noexcept;
 
-        //! 現 scene の OnUpdate へ取り次ぐ。 未ロードなら何もしない
+        //! 現 scene の OnUpdate へ取り次ぐ。未ロードなら何もしない
         void Update();
-        //! 現 scene の OnRender へ取り次ぐ。 未ロードなら何もしない
+        //! 現 scene の OnRender へ取り次ぐ。未ロードなら何もしない
         void Render();
 
     private:

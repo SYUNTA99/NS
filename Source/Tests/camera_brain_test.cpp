@@ -18,7 +18,7 @@ namespace
 
     constexpr float k_Dt = 1.0f / 60.0f;
 
-    // 固定 pose を返すだけのテスト用 vcam。 X 座標だけずらして補間が見えるようにする
+    // 固定 pose を返すだけのテスト用 vcam。X 座標だけずらして補間が見えるようにする
     class FixedVcam : public VirtualCameraComponent
     {
     public:
@@ -129,7 +129,7 @@ TEST_F(CameraBrainTest, BlendSweepsFromOldToNewOverDuration)
     brain->Evaluate(1.0f);
     EXPECT_FLOAT_EQ(cam->Position().x, 0.0f);
 
-    // b を優先に上げて切替 → ブレンド開始。 1 ステップ目はまだ a 寄り
+    // b を優先に上げて切替 → ブレンド開始。1 ステップ目はまだ a 寄り
     b->SetVcamPriority(30);
     brain->OnUpdate();
     brain->Evaluate(1.0f);

@@ -14,12 +14,12 @@ namespace NS::Object
 {
     namespace
     {
-        //! 保存形式のバージョン。 形式を変えたら上げ、 読込は一致のみ受け付ける
-        //! 3: リフレクション欄名を日本語化。 旧欄名のファイルを黙って既定値で読まないための引き上げ
+        //! 保存形式のバージョン。形式を変えたら上げ、読込は一致のみ受け付ける
+        //! 3: リフレクション欄名を日本語化。旧欄名のファイルを黙って既定値で読まないための引き上げ
         //! 4: transform の回転を Euler 度 3 要素から クォータニオン 4 要素の 1 欄へ
         constexpr int k_FormatVersion = 4;
 
-        //! 読込時の上限。 巨大 size / 要素数による メモリ枯渇を防ぐ
+        //! 読込時の上限。巨大 size / 要素数による メモリ枯渇を防ぐ
         constexpr std::size_t k_MaxSceneFileBytes = 16u * 1024u * 1024u;
         constexpr std::size_t k_MaxObjectCount = 100'000u;
 
@@ -28,7 +28,7 @@ namespace NS::Object
             return nlohmann::json{x, y, z};
         }
 
-        //! parent[key] が長さ 3 の数値配列なら x/y/z へ書き込む。 不在 / 型不一致は据え置きで前方互換を保つ
+        //! parent[key] が長さ 3 の数値配列なら x/y/z へ書き込む。不在 / 型不一致は据え置きで前方互換を保つ
         void ReadVec3(const nlohmann::json& parent, const char* key, float& x, float& y, float& z)
         {
             const auto it = parent.find(key);
@@ -46,7 +46,7 @@ namespace NS::Object
             z = (*it)[2].get<float>();
         }
 
-        //! parent[key] が数値なら int で返す。 不在 / 型不一致は fallback。 手編集の 1.0 形式も拾う
+        //! parent[key] が数値なら int で返す。不在 / 型不一致は fallback。手編集の 1.0 形式も拾う
         int ReadInt(const nlohmann::json& parent, const char* key, int fallback)
         {
             const auto it = parent.find(key);
@@ -61,22 +61,22 @@ namespace NS::Object
         {
             nlohmann::json out;
             out["id"] = object.objectId;
-            // GameObject のクラス名。 素の GameObject は書かず、 読込側は不在を空として扱う
+            // GameObject のクラス名。素の GameObject は書かず、読込側は不在を空として扱う
             if (!object.className.empty())
             {
                 out["class"] = object.className;
             }
-            // 表示名は付いている物だけ書き、 未設定は型からの導出に任せる
+            // 表示名は付いている物だけ書き、未設定は型からの導出に任せる
             if (!object.name.empty())
             {
                 out["name"] = object.name;
             }
-            // root は書かず、 読込側は不在を 0 として扱う
+            // root は書かず、読込側は不在を 0 として扱う
             if (object.parentId != k_NoObjectId)
             {
                 out["parent"] = object.parentId;
             }
-            // 既定値は書かない。 active true は不在で表す
+            // 既定値は書かない。active true は不在で表す
             if (!object.active)
             {
                 out["active"] = false;
@@ -116,7 +116,7 @@ namespace NS::Object
             const auto componentsIt = json.find("components");
             if (componentsIt != json.end() && componentsIt->is_array())
             {
-                // {type, id, fields} の骨格だけ整えて受け取る。 未知キーは捨て、 fields の中身は素通し
+                // {type, id, fields} の骨格だけ整えて受け取る。未知キーは捨て、fields の中身は素通し
                 for (const auto& componentJson : *componentsIt)
                 {
                     if (!componentJson.is_object())
@@ -130,7 +130,7 @@ namespace NS::Object
                         fields = *fieldsIt;
                     }
                     nlohmann::json entry = MakeComponentEntry(ComponentEntryType(componentJson), std::move(fields));
-                    // id を落とすと読むたびに振り直しになり、 名指ししている参照が外れる
+                    // id を落とすと読むたびに振り直しになり、名指ししている参照が外れる
                     SetComponentEntryId(entry, ComponentEntryId(componentJson));
                     object.components.push_back(std::move(entry));
                 }
@@ -159,7 +159,7 @@ namespace NS::Object
         root["objects"] = std::move(objects);
         root["nextObjectId"] = scene.nextObjectId;
 
-        // 不正 UTF-8 は replace で握り、 dump が例外を投げないようにして noexcept 経路を保つ
+        // 不正 UTF-8 は replace で握り、dump が例外を投げないようにして noexcept 経路を保つ
         return root.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
     }
 
@@ -179,7 +179,7 @@ namespace NS::Object
             return false;
         }
 
-        // 小数の version が切り捨てで一致に化けないよう、 version の形式検査だけは整数のみ受ける
+        // 小数の version が切り捨てで一致に化けないよう、version の形式検査だけは整数のみ受ける
         const auto versionIt = root.find("version");
         if (versionIt == root.end() || !versionIt->is_number_integer() || versionIt->get<int>() != k_FormatVersion)
         {
@@ -207,8 +207,8 @@ namespace NS::Object
             }
         }
 
-        // environment 欄は skybox だけを所有する。 旧形式の lightDirection / lightColor / ambientColor は
-        // 照明が DirectionalLightComponent へ移ったので、 キーが残っていても読み飛ばす
+        // environment 欄は skybox だけを所有する。旧形式の lightDirection / lightColor / ambientColor は
+        // 照明が DirectionalLightComponent へ移ったので、キーが残っていても読み飛ばす
         const auto environmentIt = root.find("environment");
         if (environmentIt != root.end() && environmentIt->is_object())
         {

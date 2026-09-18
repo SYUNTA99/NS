@@ -80,7 +80,7 @@ TEST(TransformComponentTest, ReflectsPositionRotationScale)
     EXPECT_NE(FindField(info, "スケール"), nullptr);
 }
 
-// リフレクション set が owner の root Transform を動かし、 root を直接動かすとリフレクション get が追う
+// リフレクション set が owner の root Transform を動かし、root を直接動かすとリフレクション get が追う
 TEST(TransformComponentTest, PositionReflectionBridgesOwnerRootTransform)
 {
     GameObject obj;
@@ -142,7 +142,7 @@ TEST(TransformComponentTest, RotationReflectionRoundTripsExactly)
     EXPECT_EQ(got.w, set.w);
 }
 
-// 実体を自分で持つので、 owner に着いていなくても読み書きできる
+// 実体を自分で持つので、owner に着いていなくても読み書きできる
 TEST(TransformComponentTest, WithoutOwnerReadsAndWritesOwnTransform)
 {
     TransformComponent orphan;
@@ -153,7 +153,7 @@ TEST(TransformComponentTest, WithoutOwnerReadsAndWritesOwnTransform)
     EXPECT_FLOAT_EQ(orphan.Root().Position().x, 9.0f);
 }
 
-// どの GameObject も TransformComponent をちょうど 1 つ持ち、 Root() はその実体を指す
+// どの GameObject も TransformComponent をちょうど 1 つ持ち、Root() はその実体を指す
 TEST(TransformComponentTest, EveryObjectCarriesExactlyOne)
 {
     GameObject obj;
@@ -164,7 +164,7 @@ TEST(TransformComponentTest, EveryObjectCarriesExactlyOne)
     EXPECT_EQ(&obj.Root(), &tc->Root());
 }
 
-// データに transform エントリが無くても GameObject の 1 つは残り、 pose は既定のまま
+// データに transform エントリが無くても GameObject の 1 つは残り、pose は既定のまま
 TEST(TransformComponentTest, DataWithoutTransformEntryKeepsOneAtDefaults)
 {
     ObjectData object = MakeMinimalObject();
@@ -182,7 +182,7 @@ TEST(TransformComponentTest, DataWithoutTransformEntryKeepsOneAtDefaults)
     EXPECT_FLOAT_EQ(obj.Root().Scale().z, 1.0f);
 }
 
-// エントリを消せば効果も消える。 書き込んだ位置は組み直しで原点へ戻る
+// エントリを消せば効果も消える。書き込んだ位置は組み直しで原点へ戻る
 TEST(TransformComponentTest, ErasingTransformEntryDropsThePose)
 {
     ObjectData object = MakeMinimalObject();
@@ -204,7 +204,7 @@ TEST(TransformComponentTest, ErasingTransformEntryDropsThePose)
     EXPECT_FLOAT_EQ(rebuilt.Root().Position().z, 0.0f);
 }
 
-// エントリを 2 つ書いても live は 1 つ。 値は先に書かれた方が勝ち、 保存も 1 件に戻る
+// エントリを 2 つ書いても live は 1 つ。値は先に書かれた方が勝ち、保存も 1 件に戻る
 TEST(TransformComponentTest, DuplicateEntriesBuildOnlyOne)
 {
     ObjectData object = MakeMinimalObject();

@@ -58,7 +58,7 @@ namespace
         EXPECT_EQ(GizmoEditor::ToolForKey(GizmoTool::Move, NS::Platform::Key::Space), GizmoTool::Move);
     }
 
-    // -Z 向きの平行 ray を px の位置から撃つ。 X 軸ドラッグ平面 (z=startPos.z) との交点 x は px になる
+    // -Z 向きの平行 ray を px の位置から撃つ。X 軸ドラッグ平面 (z=startPos.z) との交点 x は px になる
     NS::Core::Ray MakeAxisProbeRayZ(float px, float startZ)
     {
         return NS::Core::Ray{NS::Core::Vector3{px, 0.0f, startZ + 5.0f}, NS::Core::Vector3{0.0f, 0.0f, -1.0f}};
@@ -116,7 +116,7 @@ namespace
     TEST(GizmoEditorComputeAxisMove, SnapRoundsToHalf)
     {
         const NS::Core::Vector3 start{2.0f, 3.0f, 4.0f};
-        // 1.3 動かすと 3.3、 0.5 刻みで丸めて 3.5
+        // 1.3 動かすと 3.3、0.5 刻みで丸めて 3.5
         const auto r0 = MakeAxisProbeRayZ(0.0f, start.z);
         const auto r1 = MakeAxisProbeRayZ(1.3f, start.z);
         const auto out =
@@ -146,8 +146,8 @@ namespace
         }
     }
 
-    // 単位 VP は world {x,y,z,1} がそのまま clip + 視線 +Z。 viewport 800x600 では
-    // screen(600,300)->world(0.5,0,0)、 screen(400,150)->world(0,0.5,0) に逆投影される
+    // 単位 VP は world {x,y,z,1} がそのまま clip + 視線 +Z。viewport 800x600 では
+    // screen(600,300)->world(0.5,0,0)、screen(400,150)->world(0,0.5,0) に逆投影される
     TEST(GizmoEditorWorldDragToAngle, GrabXDragToYAroundZIsQuarterTurn)
     {
         const NS::Core::Matrix vp;
@@ -201,7 +201,7 @@ namespace
                     1e-6f);
     }
 
-    // 単位 VP の視線は +Z。 X 軸リング平面 (YZ) を真横から見ると縮退して交点が定まらず 0
+    // 単位 VP の視線は +Z。X 軸リング平面 (YZ) を真横から見ると縮退して交点が定まらず 0
     TEST(GizmoEditorWorldDragToAngle, EdgeOnPlaneReturnsZero)
     {
         const NS::Core::Matrix vp;
@@ -260,8 +260,8 @@ namespace
         ExpectRotatesSame(out, expected, 1e-5f);
     }
 
-    // local 軸回転の担保。 選択物を local Y 周りに回しても、 その local Y (world 像) は不動のまま
-    // world Y 固定の旧挙動なら startRot が非単位のとき local Y が動くので、 これで local 化を弁別する
+    // local 軸回転の担保。選択物を local Y 周りに回しても、その local Y (world 像) は不動のまま
+    // world Y 固定の旧挙動なら startRot が非単位のとき local Y が動くので、これで local 化を弁別する
     TEST(GizmoEditorComputeAxisRotate, LocalRotateLeavesLocalAxisFixed)
     {
         const auto startRot = NS::Core::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.5f);
@@ -276,7 +276,7 @@ namespace
     }
 
     // 世界差分回転 conj(startRot)*out が local 軸 (startRot で回した Y) 周りになることを固定する
-    // 旧 world 挙動なら差分は world Y 周りなので、 両者を弁別する
+    // 旧 world 挙動なら差分は world Y 周りなので、両者を弁別する
     TEST(GizmoEditorComputeAxisRotate, LocalAxisCompositionOrder)
     {
         const auto startRot = NS::Core::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.5f);
@@ -291,7 +291,7 @@ namespace
         ExpectRotatesSame(diff, expectedDelta, 1e-4f);
     }
 
-    // World 空間回転は world 軸で回す。 非単位 startRot でも世界差分が world Y 周りになる。local 化の逆
+    // World 空間回転は world 軸で回す。非単位 startRot でも世界差分が world Y 周りになる。local 化の逆
     TEST(GizmoEditorComputeAxisRotate, WorldRotateUsesWorldAxis)
     {
         const auto startRot = NS::Core::Quaternion::CreateFromAxisAngle({1.0f, 0.0f, 0.0f}, 0.5f);
@@ -316,7 +316,7 @@ namespace
         using NS::Core::Ray;
         using NS::Core::Vector3;
 
-        // 2 つの単位箱を z=5 (近) と z=15 (遠) に置き、 +Z 向き ray を撃つ
+        // 2 つの単位箱を z=5 (近) と z=15 (遠) に置き、+Z 向き ray を撃つ
         const std::array<Matrix, 2> worlds = {
             Matrix::CreateTranslation(0.0f, 0.0f, 5.0f),
             Matrix::CreateTranslation(0.0f, 0.0f, 15.0f),
@@ -337,7 +337,7 @@ namespace
         using NS::Core::Ray;
         using NS::Core::Vector3;
 
-        // 手前 z=5 と奥 z=15 の箱。 mask で手前を対象外にすると奥を拾う
+        // 手前 z=5 と奥 z=15 の箱。mask で手前を対象外にすると奥を拾う
         // 見えないカメラが可視ブロックに重なっても、ブロックを先に選ぶ 1 回目の判定の検証
         const std::array<Matrix, 2> worlds = {
             Matrix::CreateTranslation(0.0f, 0.0f, 5.0f),
@@ -361,7 +361,7 @@ namespace
         using NS::Core::Ray;
         using NS::Core::Vector3;
 
-        // 全候補を mask=0 にすると、 ray が当たっても無ヒット扱い。 GizmoEditor::Tick はこの後マスク無しで当て直す
+        // 全候補を mask=0 にすると、ray が当たっても無ヒット扱い。GizmoEditor::Tick はこの後マスク無しで当て直す
         const std::array<Matrix, 1> worlds = {Matrix::CreateTranslation(0.0f, 0.0f, 5.0f)};
         const std::array<NS::Core::AABB, 1> bounds = {CenteredBox(Vector3{1.0f, 1.0f, 1.0f})};
         const std::array<std::uint8_t, 1> mask = {0};
@@ -379,7 +379,7 @@ namespace
         const std::array<Matrix, 1> worlds = {Matrix::CreateTranslation(0.0f, 0.0f, 5.0f)};
         const std::array<NS::Core::AABB, 1> bounds = {CenteredBox(Vector3{1.0f, 1.0f, 1.0f})};
 
-        // box は原点周辺 (x in [-1,1])。 x=100 を通る +Z ray は完全に外す
+        // box は原点周辺 (x in [-1,1])。x=100 を通る +Z ray は完全に外す
         const Ray ray(Vector3{100.0f, 0.0f, -10.0f}, Vector3{0.0f, 0.0f, 1.0f});
         EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, bounds), -1);
     }
@@ -390,7 +390,7 @@ namespace
         using NS::Core::Ray;
         using NS::Core::Vector3;
 
-        // box1: ローカル X に長い薄箱を Y 軸 45° 回転。 box0 はぶつからない遠方ダミー
+        // box1: ローカル X に長い薄箱を Y 軸 45° 回転。box0 はぶつからない遠方ダミー
         const std::array<Matrix, 2> worlds = {
             Matrix::CreateTranslation(0.0f, 50.0f, 0.0f),    // 遠方でヒットしない
             Matrix::CreateRotationY(NS::Core::k_Pi * 0.25f), // 原点で 45° 回転
@@ -404,12 +404,12 @@ namespace
         constexpr float k_Sqrt2Half = 1.41421356f;
         const Ray ray(Vector3{k_Sqrt2Half, 10.0f, -k_Sqrt2Half}, Vector3{0.0f, -1.0f, 0.0f});
 
-        // 軸平行 AABB {3,1,1} なら z=-1.414 が [-1,1] 外で外すが、 回転考慮なら box1 を拾う
+        // 軸平行 AABB {3,1,1} なら z=-1.414 が [-1,1] 外で外すが、回転考慮なら box1 を拾う
         const int picked = GizmoEditor::PickNearestOBB(ray, worlds, bounds);
         EXPECT_EQ(picked, 1);
     }
 
-    // スケール box を掴む回帰。 逆ワールド行列にスケール逆数が入り localDir が非単位になる経路で、
+    // スケール box を掴む回帰。逆ワールド行列にスケール逆数が入り localDir が非単位になる経路で、
     // 単位ベクトル assert を踏まず正しく拾えること。スケール軸に沿う ray でその条件を作る
     TEST(GizmoEditor, PickNearestObbHitsScaledBoxAlongScaledAxis)
     {
@@ -420,7 +420,7 @@ namespace
         const std::array<Matrix, 1> worlds = {Matrix::CreateScale(4.0f, 1.0f, 1.0f)};
         const std::array<NS::Core::AABB, 1> bounds = {CenteredBox(Vector3{1.0f, 1.0f, 1.0f})};
 
-        // world box は x in [-4,4]。 x=-10 から +X 撃つと x=-4 で当たる
+        // world box は x in [-4,4]。x=-10 から +X 撃つと x=-4 で当たる
         const Ray ray(Vector3{-10.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f});
         EXPECT_EQ(GizmoEditor::PickNearestOBB(ray, worlds, bounds), 0);
     }
@@ -444,7 +444,7 @@ namespace
         EXPECT_EQ(GizmoEditor::PickNearestOBB(belowFeet, worlds, bounds), -1);
     }
 
-    // 奥の箱は 4 倍に拡大してあり、 ローカルの距離で比べると奥の方が近くなる。
+    // 奥の箱は 4 倍に拡大してあり、ローカルの距離で比べると奥の方が近くなる。
     // ワールドのレイの上で比べている時だけ手前を選ぶ
     TEST(GizmoEditor, PickNearestObbPrefersNearerBoxOverFartherScaledBox)
     {
@@ -542,7 +542,7 @@ namespace
 
     TEST(GizmoEditor, ScreenDragToScaleAmountUsesNormalizedAxis)
     {
-        // axisDir2d は非正規化でも normalize される。 軸(3,4)|len5| に (3,4) ドラッグ -> 5 * 0.01 = 0.05
+        // axisDir2d は非正規化でも normalize される。軸(3,4)|len5| に (3,4) ドラッグ -> 5 * 0.01 = 0.05
         const float amount =
             GizmoEditor::ScreenDragToScaleAmount(NS::Core::Vector2{3.0f, 4.0f}, NS::Core::Vector2{3.0f, 4.0f});
         EXPECT_NEAR(amount, 0.05f, 1.0e-4f);
@@ -558,7 +558,7 @@ namespace
 
     TEST(GizmoEditor, ScreenDragToScaleAmountFallbackOnDegenerateAxis)
     {
-        // 軸がほぼ零で縮退 -> |drag| * 0.01 * sign(drag.x)。 (3,4) は len5、 x>0 で +0.05
+        // 軸がほぼ零で縮退 -> |drag| * 0.01 * sign(drag.x)。(3,4) は len5、x>0 で +0.05
         const float amount =
             GizmoEditor::ScreenDragToScaleAmount(NS::Core::Vector2{0.0f, 0.0f}, NS::Core::Vector2{3.0f, 4.0f});
         EXPECT_NEAR(amount, 0.05f, 1.0e-4f);
@@ -566,14 +566,14 @@ namespace
 
     TEST(GizmoEditor, ScreenDragToScaleAmountFallbackNegativeXShrinks)
     {
-        // 縮退軸で drag.x<0 -> 縮小方向の負値。 (-6,8) は len10、 -0.1
+        // 縮退軸で drag.x<0 -> 縮小方向の負値。(-6,8) は len10、-0.1
         const float amount =
             GizmoEditor::ScreenDragToScaleAmount(NS::Core::Vector2{0.0f, 0.0f}, NS::Core::Vector2{-6.0f, 8.0f});
         EXPECT_NEAR(amount, -0.1f, 1.0e-4f);
     }
 
     // 投影規約: 単位行列を vp に使うと worldH={x,y,z,1} がそのまま clip になる。行ベクトル規約
-    // viewport 800x600 で origin{0,0,0}->(400,300) 画面中心、 +X{1,0,0}->(800,300)、 +Y{0,1,0}->(400,0)
+    // viewport 800x600 で origin{0,0,0}->(400,300) 画面中心、+X{1,0,0}->(800,300)、+Y{0,1,0}->(400,0)
     TEST(GizmoEditor, ToolHandlePickSelectAlwaysNone)
     {
         const NS::Core::Matrix vp;
@@ -589,7 +589,7 @@ namespace
         const NS::Core::Matrix vp;
         const NS::Core::Size2D viewport{800, 600};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
-        // origin2d=(400,300) -> Xend2d=(800,300) の水平線分の真上 (600,303)、 距離約 3px
+        // origin2d=(400,300) -> Xend2d=(800,300) の水平線分の真上 (600,303)、距離約 3px
         const auto axis = GizmoEditor::ToolHandlePick(
             origin, NS::Core::Quaternion::Identity, GizmoTool::Move, NS::Core::Vector2{600.0f, 303.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::X);
@@ -600,7 +600,7 @@ namespace
         const NS::Core::Matrix vp;
         const NS::Core::Size2D viewport{800, 600};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
-        // origin2d=(400,300) -> Yend2d=(400,0) の垂直線分の真横 (402,150)、 距離約 2px
+        // origin2d=(400,300) -> Yend2d=(400,0) の垂直線分の真横 (402,150)、距離約 2px
         const auto axis = GizmoEditor::ToolHandlePick(
             origin, NS::Core::Quaternion::Identity, GizmoTool::Move, NS::Core::Vector2{402.0f, 150.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::Y);
@@ -622,7 +622,7 @@ namespace
         const NS::Core::Matrix vp;
         const NS::Core::Size2D viewport{800, 600};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
-        // 画面中心 origin2d=(400,300) のすぐ近く。 Scale では中心 Uniform が軸より優先される
+        // 画面中心 origin2d=(400,300) のすぐ近く。Scale では中心 Uniform が軸より優先される
         const auto axis = GizmoEditor::ToolHandlePick(
             origin, NS::Core::Quaternion::Identity, GizmoTool::Scale, NS::Core::Vector2{402.0f, 301.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::Uniform);
@@ -633,7 +633,7 @@ namespace
         const NS::Core::Matrix vp;
         const NS::Core::Size2D viewport{800, 600};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
-        // 中心(400,300)から十分離れ Uniform 閾値外、 だが X 軸線(600,303)には近い -> Scale でも X 軸が取れる
+        // 中心(400,300)から十分離れ Uniform 閾値外、だが X 軸線(600,303)には近い -> Scale でも X 軸が取れる
         const auto axis = GizmoEditor::ToolHandlePick(
             origin, NS::Core::Quaternion::Identity, GizmoTool::Scale, NS::Core::Vector2{600.0f, 303.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::X);
@@ -649,13 +649,13 @@ namespace
         EXPECT_EQ(axis, GizmoAxis::None);
     }
 
-    // 回転は軸リングで掴む。 identity VP では Z リングが楕円(中心 400,300)に投影される
+    // 回転は軸リングで掴む。identity VP では Z リングが楕円(中心 400,300)に投影される
     TEST(GizmoEditor, ToolHandlePickRotateHitsZRing)
     {
         const NS::Core::Matrix vp;
         const NS::Core::Size2D viewport{800, 600};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
-        // t=45° の Z リング点は screen (682.8, 87.9)。 X/Y 軸線から十分離れ Z リングだけが近い
+        // t=45° の Z リング点は screen (682.8, 87.9)。X/Y 軸線から十分離れ Z リングだけが近い
         const auto axis = GizmoEditor::ToolHandlePick(
             origin, NS::Core::Quaternion::Identity, GizmoTool::Rotate, NS::Core::Vector2{683.0f, 88.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::Z);
@@ -672,14 +672,14 @@ namespace
         EXPECT_EQ(axis, GizmoAxis::None);
     }
 
-    // Z 90° 回転で local X ハンドルは画面上の world Y 位置を向く。 旧 world 固定なら Y が取れた所で X が取れる
+    // Z 90° 回転で local X ハンドルは画面上の world Y 位置を向く。旧 world 固定なら Y が取れた所で X が取れる
     TEST(GizmoEditor, ToolHandlePickFollowsLocalAxisWhenRotated)
     {
         const NS::Core::Matrix vp;
         const NS::Core::Size2D viewport{800, 600};
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
         const auto rotation = NS::Core::Quaternion::CreateFromAxisAngle({0.0f, 0.0f, 1.0f}, k_Pi / 2.0f);
-        // (402,150) は identity なら world Y 軸線上だが、 local X がそこを向くので X になる
+        // (402,150) は identity なら world Y 軸線上だが、local X がそこを向くので X になる
         const auto axis = GizmoEditor::ToolHandlePick(
             origin, rotation, GizmoTool::Move, NS::Core::Vector2{402.0f, 150.0f}, vp, viewport);
         EXPECT_EQ(axis, GizmoAxis::X);
@@ -704,7 +704,7 @@ namespace
         EXPECT_NEAR(t.Position().z, 0.0f, 1e-4f);
     }
 
-    // 選択物を Z 90° 回した状態で local X をドラッグすると、 world では X でなく Y 方向へ動く
+    // 選択物を Z 90° 回した状態で local X をドラッグすると、world では X でなく Y 方向へ動く
     TEST(GizmoEditorDrag, MoveFollowsLocalAxisWhenRotated)
     {
         NS::Object::Transform t;
@@ -713,7 +713,7 @@ namespace
         gizmo.SelectForTest(&t);
         gizmo.SetToolForTest(GizmoTool::Move);
 
-        // local X は world +Y を向く。 軸が画面縦に投影されるので縦ドラッグで動かす
+        // local X は world +Y を向く。軸が画面縦に投影されるので縦ドラッグで動かす
         const NS::Core::Matrix vp;
         const NS::Core::Size2D viewport{100, 100};
         gizmo.ApplyDragForTest(
@@ -724,7 +724,7 @@ namespace
         EXPECT_GT(std::fabs(t.Position().y), 0.05f);
     }
 
-    // World 空間では Z 90° 回しても local X ハンドル = world X。 横ドラッグで world X が動く。local 化の逆
+    // World 空間では Z 90° 回しても local X ハンドル = world X。横ドラッグで world X が動く。local 化の逆
     TEST(GizmoEditorDrag, MoveUsesWorldAxisInWorldSpace)
     {
         NS::Object::Transform t;
@@ -766,7 +766,7 @@ namespace
         gizmo.SelectForTest(&t);
         gizmo.SetToolForTest(GizmoTool::Rotate);
 
-        // 単位 VP の視線は +Z。 Z 軸リング平面 (XY) はカメラ正面なので回転が定まる
+        // 単位 VP の視線は +Z。Z 軸リング平面 (XY) はカメラ正面なので回転が定まる
         const NS::Core::Matrix vp;
         const NS::Core::Size2D viewport{100, 100};
         gizmo.ApplyDragForTest(
@@ -777,8 +777,8 @@ namespace
         EXPECT_LT(std::fabs(dot), 0.9999f);
     }
 
-    // ワールドの同じ点を掴んで同じワールド点へ運ぶドラッグは、 カメラが軸の表から見ても裏から
-    // 見ても同じワールド回転になるべき。 screen 2D 角だけで決めると裏視点で逆回転する
+    // ワールドの同じ点を掴んで同じワールド点へ運ぶドラッグは、カメラが軸の表から見ても裏から
+    // 見ても同じワールド回転になるべき。screen 2D 角だけで決めると裏視点で逆回転する
     TEST(GizmoEditorDrag, RotateSameWorldRotationFromOppositeCameraSides)
     {
         const NS::Core::Size2D viewport{800, 600};
@@ -800,7 +800,7 @@ namespace
             return s;
         };
 
-        // Z 軸リングを「+X 点を掴んで +Y 点へ」 運ぶ。 これはどちらの視点でも同じワールド操作
+        // Z 軸リングを「+X 点を掴んで +Y 点へ」 運ぶ。これはどちらの視点でも同じワールド操作
         NS::Object::Transform tFront;
         GizmoEditor gFront;
         gFront.SelectForTest(&tFront);
@@ -864,7 +864,7 @@ namespace
     constexpr int k_ViewWidth = 1280;
     constexpr int k_ViewHeight = 720;
 
-    // 実機の編集視点に近い、 斜め見下ろしの view projection
+    // 実機の編集視点に近い、斜め見下ろしの view projection
     NS::Core::Matrix MakeOrbitViewProjection(const NS::Core::Vector3& eye, const NS::Core::Vector3& target)
     {
         NS::Core::Matrix view;
@@ -935,7 +935,7 @@ namespace
         EXPECT_EQ(gizmo.Selected(), &doll.Root());
     }
 
-    // 矢印の途中を掴んで画面上で引く。 掴めた軸と、 その軸に沿って動いた量を見る
+    // 矢印の途中を掴んで画面上で引く。掴めた軸と、その軸に沿って動いた量を見る
     void ExpectArrowGrabAndDrag(GizmoAxis axis, const NS::Core::Vector3& axisDir)
     {
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
@@ -982,8 +982,8 @@ namespace
         return std::sqrt(dx * dx + dy * dy);
     }
 
-    // 視点の向きを一周させて、 掴めるだけの長さで描かれている矢印が全部引けるか
-    // 別の矢印が重なって描かれる角度は、 どちらを採るかの取り決めの話なので別のテストで見る
+    // 視点の向きを一周させて、掴めるだけの長さで描かれている矢印が全部引けるか
+    // 別の矢印が重なって描かれる角度は、どちらを採るかの取り決めの話なので別のテストで見る
     TEST(GizmoEditorArrow, SweepViewAngles)
     {
         const NS::Core::Vector3 axes[3] = {
@@ -1019,7 +1019,7 @@ namespace
                     if (pixels < 20.0f)
                         continue;
 
-                    // 別の矢印が同じ所に重なっているなら、 どちらが勝つかは取り決め次第なので飛ばす
+                    // 別の矢印が同じ所に重なっているなら、どちらが勝つかは取り決め次第なので飛ばす
                     bool overlapped = false;
                     for (int j = 0; j < 3; ++j)
                     {
@@ -1055,7 +1055,7 @@ namespace
     }
 
     // 編集カメラの初期姿勢 (方位 0 / 見下ろし 30 度) は Z の矢印が Y の矢印に重なって描かれる
-    // 重なりの手前は短い Z、 その先は Y と、 どちらにも手が届くこと
+    // 重なりの手前は短い Z、その先は Y と、どちらにも手が届くこと
     TEST(GizmoEditorArrow, OverlappedArrowsStayReachable)
     {
         const NS::Core::Vector3 origin{0.0f, 0.0f, 0.0f};
@@ -1064,7 +1064,7 @@ namespace
         const NS::Core::Matrix vp = MakeOrbitViewProjection(eye, origin);
         const NS::Core::Size2D viewport{k_ViewWidth, k_ViewHeight};
 
-        // 掴み判定が使う矢印の長さ。 深さ 15 では 1.5 になる
+        // 掴み判定が使う矢印の長さ。深さ 15 では 1.5 になる
         const float handleLength = 1.5f;
 
         NS::Core::Vector2 origin2d{};

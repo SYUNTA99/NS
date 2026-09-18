@@ -124,8 +124,8 @@ namespace NS::Graphics
             factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
         }
 
-        // swapchain の backbuffer を RTV Texture として包み、 同サイズの depth Texture を生成する
-        // 構築 / Resize の両方から呼ぶ。 いずれか失敗で false を返し out は未確定
+        // swapchain の backbuffer を RTV Texture として包み、同サイズの depth Texture を生成する
+        // 構築 / Resize の両方から呼ぶ。いずれか失敗で false を返し out は未確定
         bool BuildBackbufferTargets(IDXGISwapChain* swapchain,
                                     std::unique_ptr<Texture>& outBackbuffer,
                                     std::unique_ptr<Texture>& outDepth)
@@ -201,12 +201,12 @@ namespace NS::Graphics
             return;
         }
 
-        // 単一 device 前提。 既に別 Renderer が公開済みならグローバルを上書きするため検知する
+        // 単一 device 前提。既に別 Renderer が公開済みならグローバルを上書きするため検知する
         if (Gpu().device != nullptr)
         {
             NS_LOG_ERROR(Graphics, "Renderer を同時に複数構築している (単一 device 前提、 グローバルが上書きされる)");
         }
-        // backbuffer Texture 構築より前にグローバル公開する。 構築が Gpu() を引くため
+        // backbuffer Texture 構築より前にグローバル公開する。構築が Gpu() を引くため
         Gpu().device = m_device.Get();
         Gpu().context = m_context.Get();
 
@@ -220,7 +220,7 @@ namespace NS::Graphics
             return;
         }
 
-        // CommonStates の private コンストラクタは make_unique から呼べない。 例外を使わず nothrow new で構築し
+        // CommonStates の private コンストラクタは make_unique から呼べない。例外を使わず nothrow new で構築し
         // 確保失敗は null 判定で扱う
         m_states.reset(new (std::nothrow) CommonStates(m_device.Get()));
         if (!m_states)
@@ -251,7 +251,7 @@ namespace NS::Graphics
         {
             m_window->SetResizeCallback(nullptr);
         }
-        // 自分が公開したグローバルだけを戻す。 別 Renderer が上書きしている場合は触らない
+        // 自分が公開したグローバルだけを戻す。別 Renderer が上書きしている場合は触らない
         if (m_device && Gpu().device == m_device.Get())
         {
             Gpu() = {};
@@ -571,7 +571,7 @@ namespace NS::Graphics
         if (FAILED(hr))
         {
             NS_LOG_ERROR(Graphics, "SwapChain::Present 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
-            // device 喪失は復帰不能。 以降の描画を止め、 毎フレームのログ連発も防ぐ
+            // device 喪失は復帰不能。以降の描画を止め、毎フレームのログ連発も防ぐ
             if (hr == DXGI_ERROR_DEVICE_REMOVED || hr == DXGI_ERROR_DEVICE_RESET)
             {
                 m_valid = false;
@@ -591,7 +591,7 @@ namespace NS::Graphics
         }
 
         auto* context = m_context.Get();
-        // ResizeBuffers の前に backbuffer 参照を全て手放す。 RTV を握ったままだと失敗する
+        // ResizeBuffers の前に backbuffer 参照を全て手放す。RTV を握ったままだと失敗する
         context->OMSetRenderTargets(0, nullptr, nullptr);
         m_backbuffer.reset();
         m_depth.reset();

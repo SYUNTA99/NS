@@ -16,11 +16,11 @@ namespace NS::Object
     [[nodiscard]] nlohmann::json SerializeComponent(const Component& comp);
 
     //! obj の全 component を SerializeComponent で {type, fields} の配列へ並べる
-    //! 保存を data でなく実体から作る統合経路。 リフレクションの無い component は type 空文字で混ざる
+    //! 保存を data でなく実体から作る統合経路。リフレクションの無い component は type 空文字で混ざる
     [[nodiscard]] nlohmann::json SerializeGameObjectComponents(const GameObject& obj);
 
-    //! @brief fields object の各キーをリフレクション FieldDesc に照合し、 一致する field を set で書き戻す
-    //! @details 欠損キーは前方互換のため既定値のまま、 型不一致は無視する
+    //! @brief fields object の各キーをリフレクション FieldDesc に照合し、一致する field を set で書き戻す
+    //! @details 欠損キーは前方互換のため既定値のまま、型不一致は無視する
     //! 読み手のいないキーは値がどこにも入らないので 1 件ずつ警告を出す
     //! @return 読み手のいなかったキーの数
     std::size_t ApplyJsonFields(Component& comp, const nlohmann::json& fields);

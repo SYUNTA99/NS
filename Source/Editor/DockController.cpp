@@ -72,25 +72,25 @@ namespace NS::Editor
         {
             constexpr float k_Btn = 22.0f;
             constexpr float k_PadX = 3.0f;
-            constexpr float k_PadY = -3.0f; // タブ行へ乗せ、 少し上へ
-            // タブバーのある枠はタブ行の高さに合わせたいので、 ノードがあればノード上端・右端を使う
+            constexpr float k_PadY = -3.0f; // タブ行へ乗せ、少し上へ
+            // タブバーのある枠はタブ行の高さに合わせたいので、ノードがあればノード上端・右端を使う
             ImVec2 topRight{panel->Pos.x + panel->Size.x, panel->Pos.y};
             if (panel->DockNode != nullptr)
                 topRight = ImVec2{panel->DockNode->Pos.x + panel->DockNode->Size.x, panel->DockNode->Pos.y};
             const ImVec2 anchor{topRight.x - k_Btn - k_PadX, topRight.y + k_PadY};
             ImGui::SetNextWindowPos(anchor, ImGuiCond_Always);
-            // 浮いた小窓に見せないよう枠と余白を消し、 アイコン 1 個分だけの当たりにする
+            // 浮いた小窓に見せないよう枠と余白を消し、アイコン 1 個分だけの当たりにする
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0.0f, 0.0f});
             ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-            // 普段は半透明の下地、 触れた時だけ明るくする
+            // 普段は半透明の下地、触れた時だけ明るくする
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.0f, 0.0f, 0.0f, 0.45f});
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{1.0f, 1.0f, 1.0f, 0.22f});
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{1.0f, 1.0f, 1.0f, 0.35f});
             bool pressed = false;
             if (ImGui::Begin(buttonId, nullptr, k_FloatingButtonFlags | ImGuiWindowFlags_NoBackground))
             {
-                // ドック内パネルの上に出す時、 そのパネルへ焦点が移ると背後へ潜るので毎フレーム前面へ出す
+                // ドック内パネルの上に出す時、そのパネルへ焦点が移ると背後へ潜るので毎フレーム前面へ出す
                 ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
                 if (ImGui::Button("□", ImVec2{k_Btn, k_Btn}))
                     pressed = true;
@@ -170,7 +170,7 @@ namespace NS::Editor
     void DockController::RenderMaximizeButton() noexcept
     {
 #if NS_EDITOR_ENABLED
-        // 全面化中はパネルがドックを外れてタブが無いので、 右上に復元ボタンを浮かべる
+        // 全面化中はパネルがドックを外れてタブが無いので、右上に復元ボタンを浮かべる
         if (!m_maximizedPanel.empty())
         {
             ImGuiWindow* w = ImGui::FindWindowByName(m_maximizedPanel.c_str());
@@ -209,7 +209,7 @@ namespace NS::Editor
             ImGuiWindow* w = ImGui::FindWindowByName(name);
             if (w == nullptr || !w->WasActive)
                 continue;
-            // ドック内で今表に出ている窓にだけ出す。 裏に隠れたタブは飛ばす
+            // ドック内で今表に出ている窓にだけ出す。裏に隠れたタブは飛ばす
             // 単独枠や浮き窓はタブが畳まれても表なので出す
             if (w->DockNode != nullptr && w->DockNode->VisibleWindow != w)
                 continue;

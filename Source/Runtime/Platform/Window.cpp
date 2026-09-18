@@ -362,7 +362,7 @@ namespace NS::Platform
     void Window::SetCursorVisible(bool visible) noexcept
     {
         m_pImpl->cursorVisible = visible;
-        // 次の WM_SETCURSOR を待たず即時反映する。 マウスが動かなくても切替わる
+        // 次の WM_SETCURSOR を待たず即時反映する。マウスが動かなくても切替わる
         HCURSOR cursor = nullptr;
         if (visible)
             cursor = ::LoadCursorW(nullptr, IDC_ARROW);

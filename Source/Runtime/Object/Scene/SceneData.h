@@ -16,28 +16,28 @@
 namespace NS::Object
 {
 
-    //! 配置物の永続表現。 コンポーネント一覧を内包し、 当たりも見た目も transform も components が唯一の出所
+    //! 配置物の永続表現。コンポーネント一覧を内包し、当たりも見た目も transform も components が唯一の出所
     //! 配置物は種別を問わず同じ型で 1 リストに格納する
     //! components は SerializeComponent と同じ {"type": 型名, "fields": {名前: 値}} の JSON 配列で、
     //! 保存形式・undo スナップショット・クリップボードが同じ形を共有する
-    //! transform は components 内の TransformComponent エントリが持ち、 EnsureTransformComponent が 1 つを保証する
+    //! transform は components 内の TransformComponent エントリが持ち、EnsureTransformComponent が 1 つを保証する
     //! objectId はシーン内で一意な永続 id で 0 は未割当。並べ替えや改名に耐えるオブジェクト参照のキーになる
     struct ObjectData
     {
         std::uint32_t objectId = 0;
 
-        //! 生成する GameObject のクラス名。 空は素の GameObject。 TypeRegistry の登録名と一致させ、
+        //! 生成する GameObject のクラス名。空は素の GameObject。TypeRegistry の登録名と一致させ、
         //! 保存にもこの名で書く
         std::string className;
 
-        //! 編集側が付ける表示名。 空なら型と component から名前を導出する
+        //! 編集側が付ける表示名。空なら型と component から名前を導出する
         std::string name;
 
-        //! 親の永続 id。 0 は root。 transform は親空間の local として解釈される
+        //! 親の永続 id。0 は root。transform は親空間の local として解釈される
         std::uint32_t parentId = 0;
 
-        //! この配置物自身の active 値。 false なら配下 component が更新も描画も当たりも止まる
-        //! 子の値は独立で、 親を戻せば子も一緒に戻る
+        //! この配置物自身の active 値。false なら配下 component が更新も描画も当たりも止まる
+        //! 子の値は独立で、親を戻せば子も一緒に戻る
         bool active = true;
 
         //! このオブジェクトが持つコンポーネント一覧
@@ -46,11 +46,11 @@ namespace NS::Object
         [[nodiscard]] bool operator==(const ObjectData& other) const = default;
     };
 
-    //! シーンが所有する環境値。 保存形式に入る永続データで、 skybox の描画が毎フレームこのパスを読む
-    //! 照明は DirectionalLightComponent が供給するので、 ここは skybox だけを持つ
+    //! シーンが所有する環境値。保存形式に入る永続データで、skybox の描画が毎フレームこのパスを読む
+    //! 照明は DirectionalLightComponent が供給するので、ここは skybox だけを持つ
     struct SceneEnvironment
     {
-        //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。 空文字なら skybox を描かない
+        //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空文字なら skybox を描かない
         std::string skyboxCubemapPath{};
 
         [[nodiscard]] bool operator==(const SceneEnvironment& other) const = default;
@@ -75,10 +75,10 @@ namespace NS::Object
         //! 次に割り当てる永続 object id。単調増加で欠番は再利用せず、削除済み id が別物を指す事故を防ぐ
         std::uint32_t nextObjectId = 1;
 
-        //! シーンの見た目を確定する環境値。 中身は skybox だけ
+        //! シーンの見た目を確定する環境値。中身は skybox だけ
         SceneEnvironment environment{};
 
-        //! 保存・再読込の照合に使う。 欄を足せば比較対象へ自動で入る
+        //! 保存・再読込の照合に使う。欄を足せば比較対象へ自動で入る
         [[nodiscard]] bool operator==(const SceneData& other) const = default;
     };
 
@@ -105,7 +105,7 @@ namespace NS::Object
     //! 循環したまま組むと world 変換の再帰が止まらないので、手編集のファイルを読込直後にここで断つ
     [[nodiscard]] std::size_t PruneInvalidParents(SceneData& scene);
 
-    //! ObjectRef フィールドが指す先を、 参照元 object と component 添字・ フィールド名で特定する
+    //! ObjectRef フィールドが指す先を、参照元 object と component 添字・ フィールド名で特定する
     struct ObjectRefLocation
     {
         std::uint32_t objectId;     // 参照元 object の永続 id
@@ -113,8 +113,8 @@ namespace NS::Object
         std::string fieldName;      // ObjectRef フィールド名
     };
 
-    //! targetId を指す ObjectRef フィールドを全 object から集める。 削除前に何が参照しているかを調べる関数
-    //! k_NoObjectId は未設定の印なので空を返す。 自分自身を指す参照も含める
+    //! targetId を指す ObjectRef フィールドを全 object から集める。削除前に何が参照しているかを調べる関数
+    //! k_NoObjectId は未設定の印なので空を返す。自分自身を指す参照も含める
     [[nodiscard]] std::vector<ObjectRefLocation> FindReferencesTo(const SceneData& scene, std::uint32_t targetId);
 
 } // namespace NS::Object

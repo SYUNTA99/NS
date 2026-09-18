@@ -11,9 +11,9 @@ namespace
     using NS::Physics::BuildWedgeTriangles;
     using NS::Physics::Triangle;
 
-    // 8 三角形の全頂点から最高 y 付近 (斜面の高い辺) の頂点を集め、 その XZ 重心を返す
-    // 三角形ごとに頂点が重複して現れ、 かつ重複回数が頂点で異なるため、 重心が偏らないよう
-    // 一意な頂点だけを集計する。 wedge の「向き」 は高い辺がどちらを向くかで決まる
+    // 8 三角形の全頂点から最高 y 付近 (斜面の高い辺) の頂点を集め、その XZ 重心を返す
+    // 三角形ごとに頂点が重複して現れ、かつ重複回数が頂点で異なるため、重心が偏らないよう
+    // 一意な頂点だけを集計する。wedge の「向き」 は高い辺がどちらを向くかで決まる
     Vector3 HighEdgeCentroid(const std::array<Triangle, 8>& tris)
     {
         float maxY = -std::numeric_limits<float>::infinity();
@@ -55,7 +55,7 @@ namespace
     constexpr float k_QuarterPi = 0.7853981633974483f;
 } // namespace
 
-// 既定 (yaw=0): 高い辺は +Z 側 (z>0、 x はほぼ 0)
+// 既定 (yaw=0): 高い辺は +Z 側 (z>0、x はほぼ 0)
 TEST(WedgeGeometryTest, DefaultFacesPositiveZ)
 {
     const auto tris = BuildWedgeTriangles(Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}, 45.0f, 0.0f);
@@ -64,7 +64,7 @@ TEST(WedgeGeometryTest, DefaultFacesPositiveZ)
     EXPECT_NEAR(high.x, 0.0f, 1e-3f);
 }
 
-// 回帰: yaw=90° で高い辺が +X 側へ回る。 rotation を無視する実装では FAIL する
+// 回帰: yaw=90° で高い辺が +X 側へ回る。rotation を無視する実装では FAIL する
 TEST(WedgeGeometryTest, Rotation90FacesPositiveX)
 {
     const auto tris = BuildWedgeTriangles(Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}, 45.0f, k_HalfPi);

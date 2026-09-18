@@ -45,7 +45,7 @@ namespace NS::Graphics
             return nullptr;
         }
 
-        // KHR_draco_mesh_compression が必須拡張に含まれるか。 cgltf_load_buffers は Draco を展開しないため、
+        // KHR_draco_mesh_compression が必須拡張に含まれるか。cgltf_load_buffers は Draco を展開しないため、
         // 圧縮ジオメトリは読むと壊れる
         bool RequiresDraco(const cgltf_data& model)
         {
@@ -200,7 +200,7 @@ namespace NS::Graphics
             {
                 float p[3] = {0.0f, 0.0f, 0.0f};
                 cgltf_accessor_read_float(posAcc, i, p, 3);
-                // 右手空間の node world 変換を適用してから、 Z 反転で左手へ
+                // 右手空間の node world 変換を適用してから、Z 反転で左手へ
                 const float wx = world[0] * p[0] + world[4] * p[1] + world[8] * p[2] + world[12];
                 const float wy = world[1] * p[0] + world[5] * p[1] + world[9] * p[2] + world[13];
                 const float wz = world[2] * p[0] + world[6] * p[1] + world[10] * p[2] + world[14];
@@ -396,7 +396,7 @@ namespace NS::Graphics
             return -1;
         }
 
-        // joint node の local TRS を RH→LH 変換して返す。 has_* フラグで cgltf 既定値への依存を避ける
+        // joint node の local TRS を RH→LH 変換して返す。has_* フラグで cgltf 既定値への依存を避ける
         BonePose ReadJointLocalPose(const cgltf_node& node)
         {
             BonePose pose;
@@ -431,7 +431,7 @@ namespace NS::Graphics
             return pose;
         }
 
-        // skin から Bone 配列を組む。 ボーン 0 / 上限超過 / inverse bind 欠落・数不一致は false
+        // skin から Bone 配列を組む。ボーン 0 / 上限超過 / inverse bind 欠落・数不一致は false
         bool BuildSkeletonBones(const cgltf_skin& skin, const std::string& path, std::vector<Bone>& outBones)
         {
             if (skin.joints_count == 0)
@@ -642,7 +642,7 @@ namespace NS::Graphics
             {
                 return Interpolation::Step;
             }
-            return Interpolation::Linear; // linear、 cubic_spline は linear で代替
+            return Interpolation::Linear; // linear、cubic_spline は linear で代替
         }
 
         // animation channel/sampler を AnimationClip へ変換。resolveBone(node)→bone index は -1
@@ -956,7 +956,7 @@ namespace NS::Graphics
         }
 
         // 同一 skin を共有する全 mesh node を連結する。Mixamo は本体と関節マーカーが別 mesh に分かれており、
-        // 先頭だけ読むと関節マーカーしか出ない。 joint index 整合のため skin が一致する node のみ対象とする
+        // 先頭だけ読むと関節マーカーしか出ない。joint index 整合のため skin が一致する node のみ対象とする
         std::vector<SkinnedVertex> vertices;
         std::vector<std::uint32_t> indices;
         for (cgltf_size n = 0; n < model.nodes_count; ++n)

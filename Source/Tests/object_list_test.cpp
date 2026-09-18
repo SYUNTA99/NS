@@ -47,7 +47,7 @@ namespace
         return [&assets](const NS::Object::ObjectData& entry) { return NS::Object::BuildSceneObject(entry, &assets); };
     }
 
-    // 帯の横断更新の検証用。 OnUpdate が呼ばれた順を共有の並びへ書き足す
+    // 帯の横断更新の検証用。OnUpdate が呼ばれた順を共有の並びへ書き足す
     class BandRecordingComponent : public NS::Object::Component
     {
     public:
@@ -61,7 +61,7 @@ namespace
         int m_id = 0;
     };
 
-    // 本番の更新経路の検証用。 OnUpdate が呼ばれた回数を数える
+    // 本番の更新経路の検証用。OnUpdate が呼ばれた回数を数える
     class CountingComponent : public NS::Object::Component
     {
     public:
@@ -72,8 +72,8 @@ namespace
         int m_count = 0;
     };
 
-    // collider は持ち主の Scene からしか PhysicsScene を受け取らないので、 Spawn した配置物も Scene へ結ぶ
-    // ObjectList 自身は Scene を知らない。 Rebuild だけが引数で受けて結ぶ
+    // collider は持ち主の Scene からしか PhysicsScene を受け取らないので、Spawn した配置物も Scene へ結ぶ
+    // ObjectList 自身は Scene を知らない。Rebuild だけが引数で受けて結ぶ
     struct PhysicsStage
     {
         NS::Object::Scene scene;
@@ -156,7 +156,7 @@ TEST(ObjectListTest, TriggerBoxHasNoSolidCollision)
     EXPECT_EQ(physics.BodyCount(), 1u);
 }
 
-// 古い当たりが Rebuild 後に残ると、 編集で消した block へ当たり続ける
+// 古い当たりが Rebuild 後に残ると、編集で消した block へ当たり続ける
 TEST(ObjectListTest, RebuildDropsTheCollidersOfTheObjectsItReplaces)
 {
     SceneData level;
@@ -185,7 +185,7 @@ TEST(ObjectListTest, ClearEmptiesEverything)
     EXPECT_EQ(objects.ObjectCount(), 0u);
 }
 
-// プレイヤー実体も他の配置物と同じ一本道で組まれ、 データが決めた id の解決で実体が引ける
+// プレイヤー実体も他の配置物と同じ一本道で組まれ、データが決めた id の解決で実体が引ける
 TEST(ObjectListTest, RebuildBuildsPlayerAndResolvesItById)
 {
     SceneData level;
@@ -198,7 +198,7 @@ TEST(ObjectListTest, RebuildBuildsPlayerAndResolvesItById)
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
-    // grid block とプレイヤーの両方が組まれ、 id 解決は所有リスト内の実体を指す
+    // grid block とプレイヤーの両方が組まれ、id 解決は所有リスト内の実体を指す
     ASSERT_EQ(objects.ObjectCount(), 2u);
     const std::size_t playerIndex = FindPlayerObjectIndex(level);
     ASSERT_NE(playerIndex, NS::Object::k_NoObjectIndex);
@@ -223,7 +223,7 @@ TEST(ObjectListTest, RebuildBakesFollowCameraAndResolvesTarget)
 
     NS::Object::Scene scene;
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
-    // 参照の解決は scene の ObjectList を引くので、 組むのは scene 自身の ObjectList
+    // 参照の解決は scene の ObjectList を引くので、組むのは scene 自身の ObjectList
     NS::Object::ObjectList& objects = scene.Objects();
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
@@ -239,7 +239,7 @@ TEST(ObjectListTest, RebuildBakesFollowCameraAndResolvesTarget)
     EXPECT_FLOAT_EQ(follow->FarPlane(), 100.0f);
 
     // 追従先の解決: ObjectList が組んだ grid block の Root を指す
-    // データの分 + シーンに常駐するカメラ 1 体。 一時オブジェクトは末尾へ回るので添字は動かない
+    // データの分 + シーンに常駐するカメラ 1 体。一時オブジェクトは末尾へ回るので添字は動かない
     ASSERT_EQ(objects.ObjectCount(), 3u);
     EXPECT_EQ(follow->Target(), &objects.ObjectAt(1)->Root());
 }
@@ -330,7 +330,7 @@ TEST(ObjectListTest, RemoveByObjectIdDropsIdResolution)
     EXPECT_EQ(objects.FindObject(NS::Object::ObjectRef{victimId}), nullptr);
 }
 
-// 1 体消したら当たり箱もその場で減る。 消えた物に当たり続けない
+// 1 体消したら当たり箱もその場で減る。消えた物に当たり続けない
 TEST(ObjectListTest, RemoveByObjectIdDropsCollider)
 {
     SceneData level;
@@ -378,7 +378,7 @@ TEST(ObjectListTest, RebuildBakesPlacedCamerasInactive)
     EXPECT_FLOAT_EQ(placed->ViewPosition().x, 8.0f);
 }
 
-// 指定した帯だけが回る。 帯をどの順で回すかは呼ぶ側の並びで決まる
+// 指定した帯だけが回る。帯をどの順で回すかは呼ぶ側の並びで決まる
 TEST(ObjectListTest, UpdateObjectsRunsOnlyRequestedBand)
 {
     ObjectList objects;
@@ -396,7 +396,7 @@ TEST(ObjectListTest, UpdateObjectsRunsOnlyRequestedBand)
     objects.UpdateObjects(NS::Object::TickPriority::EarlyUpdate, NS::Object::TickPriority::Update);
     EXPECT_EQ(order, (std::vector<int>{1}));
 
-    // Update は帯の途中 (+100) まで含み、 すぐ上の LateUpdate を巻き込まない
+    // Update は帯の途中 (+100) まで含み、すぐ上の LateUpdate を巻き込まない
     objects.UpdateObjects(NS::Object::TickPriority::Update, NS::Object::TickPriority::LateUpdate);
     EXPECT_EQ(order, (std::vector<int>{1, 2, 3}));
 
@@ -405,7 +405,7 @@ TEST(ObjectListTest, UpdateObjectsRunsOnlyRequestedBand)
     EXPECT_EQ(order, (std::vector<int>{1, 2, 3, 4, 5}));
 }
 
-// 同じ帯の中は配置物の並び順。 帯の途中の priority 値もその帯に含まれる
+// 同じ帯の中は配置物の並び順。帯の途中の priority 値もその帯に含まれる
 TEST(ObjectListTest, UpdateObjectsRunsSameBandInObjectOrder)
 {
     ObjectList objects;
@@ -422,7 +422,7 @@ TEST(ObjectListTest, UpdateObjectsRunsSameBandInObjectOrder)
     EXPECT_EQ(order, (std::vector<int>{1, 2, 3}));
 }
 
-// 一時オブジェクトも配置物と同じ帯に乗る。 更新経路は 1 本で、 違いは保存・凍結に写らない事だけ
+// 一時オブジェクトも配置物と同じ帯に乗る。更新経路は 1 本で、違いは保存・凍結に写らない事だけ
 TEST(ObjectListTest, BandUpdatesIncludeTransientObjects)
 {
     ObjectList objects;
@@ -450,7 +450,7 @@ TEST(ObjectListTest, BandUpdatesSkipInactiveComponents)
     EXPECT_TRUE(order.empty());
 }
 
-// 通常プレイが通る一括更新。 active を切った component はここでも回らない
+// 通常プレイが通る一括更新。active を切った component はここでも回らない
 TEST(ObjectListTest, UpdateAllObjectsSkipsInactiveComponent)
 {
     ObjectList objects;
@@ -465,7 +465,7 @@ TEST(ObjectListTest, UpdateAllObjectsSkipsInactiveComponent)
     EXPECT_EQ(counter->Count(), 1);
 }
 
-// owner の active を切ると配下 component が一括更新から外れ、 戻せばまた回る
+// owner の active を切ると配下 component が一括更新から外れ、戻せばまた回る
 TEST(ObjectListTest, UpdateAllObjectsFollowsOwnerActiveFlag)
 {
     ObjectList objects;
@@ -522,7 +522,7 @@ TEST(ObjectListTest, SyncPhysicsIntoPhysicsSceneKeepsEveryBodyId)
     EXPECT_EQ(sphere->BodyId(), staleSphere);
 }
 
-// 起きている collider を隣に置くのは、 body 0 個を期待すると全部断られても緑になるため
+// 起きている collider を隣に置くのは、body 0 個を期待すると全部断られても緑になるため
 TEST(ObjectListTest, InactiveColliderStaysOutOfPhysicsScene)
 {
     PhysicsStage stage;
@@ -536,10 +536,10 @@ TEST(ObjectListTest, InactiveColliderStaysOutOfPhysicsScene)
     EXPECT_TRUE(collider->BodyId().IsInvalid());
 }
 
-// 取り込み形状の三角形も物理へ入る。 同期側が形状を名指ししない事の裏取り
+// 取り込み形状の三角形も物理へ入る。同期側が形状を名指ししない事の裏取り
 TEST(ObjectListTest, MeshColliderTrianglesReachPhysics)
 {
-    // 法線が上を向く床の三角形。 斜辺を x+z=4 まで押し出し、 原点を縁でなく内側に置く
+    // 法線が上を向く床の三角形。斜辺を x+z=4 まで押し出し、原点を縁でなく内側に置く
     NS::Physics::MeshCollision collision{{NS::Physics::Triangle{NS::Core::Vector3{-4.0f, 0.0f, -4.0f},
                                                                 NS::Core::Vector3{-4.0f, 0.0f, 8.0f},
                                                                 NS::Core::Vector3{8.0f, 0.0f, -4.0f}}},
@@ -559,7 +559,7 @@ TEST(ObjectListTest, MeshColliderTrianglesReachPhysics)
 }
 
 // 帯を回すたびの確保と並べ替えが 1 フレームの予算をどれだけ食うかを測る
-// 時間で合否を決めると環境差で揺れるので、 数字を出すだけにして判断は人が行う
+// 時間で合否を決めると環境差で揺れるので、数字を出すだけにして判断は人が行う
 TEST(ObjectListTest, UpdateObjectsCostMeasurement)
 {
     const auto measure = [](std::size_t objectCount, std::size_t componentsPerObject) {

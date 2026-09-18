@@ -27,7 +27,7 @@ public:
     Player(Player&&) = delete;
     Player& operator=(Player&&) = delete;
 
-    //! 保存形式と TypeRegistry の登録名。 読込はこの名前で GameObject の型を選ぶ
+    //! 保存形式と TypeRegistry の登録名。読込はこの名前で GameObject の型を選ぶ
     [[nodiscard]] const char* ClassName() const noexcept override { return "Player"; }
 
     //! 命を amount 削る。下限 0

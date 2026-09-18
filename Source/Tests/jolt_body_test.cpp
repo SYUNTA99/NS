@@ -268,8 +268,8 @@ TEST(JoltQuery, RaycastStopsAtMaxDistance)
     EXPECT_FALSE(found);
 }
 
-// 向き (6, 8, 24) は長さ 26、 起点から球の中心までは (3, 4, 12) で 13。 半径 1 なので当たりまで 12
-// 長さを 1 にそろえずに渡すと距離が 26 分の 1 に縮み、 成分を取り違えると球を外れる
+// 向き (6, 8, 24) は長さ 26、起点から球の中心までは (3, 4, 12) で 13。半径 1 なので当たりまで 12
+// 長さを 1 にそろえずに渡すと距離が 26 分の 1 に縮み、成分を取り違えると球を外れる
 TEST(JoltQuery, RaycastHitsAlongAnObliqueDirection)
 {
     PhysicsScene physics;

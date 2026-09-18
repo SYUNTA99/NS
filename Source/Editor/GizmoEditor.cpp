@@ -382,7 +382,7 @@ namespace NS::Editor
 
         const bool imguiWantsKeyboard = (m_imgui != nullptr) && m_imgui->WantCaptureKeyboard();
 
-        // 右ドラッグ中の W/A/S/D/Q/E は編集カメラの移動なので、 ツール切替に食われないようにする
+        // 右ドラッグ中の W/A/S/D/Q/E は編集カメラの移動なので、ツール切替に食われないようにする
         const bool cameraFlying = mouse.IsHeld(NS::Platform::MouseButton::Right);
 
         // Q/W/E/R でツール、X で Local / World を切り替える

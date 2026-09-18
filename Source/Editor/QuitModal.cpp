@@ -14,7 +14,7 @@ namespace NS::Editor
     {
         if (m_confirmed)
             return true;
-        // まだ確認していない終了要求は modal を開いて握りつぶす。 取り下げを Application に返す
+        // まだ確認していない終了要求は modal を開いて握りつぶす。取り下げを Application に返す
         m_open = true;
         m_saveFailed = false;
         return false;
@@ -41,7 +41,7 @@ namespace NS::Editor
             ImGui::Separator();
             if (ImGui::Button("保存して終了", ImVec2(180.0f, 0.0f)))
             {
-                // 保存成功でのみ終了する。 失敗時は modal を残しデータ消失を防ぐ
+                // 保存成功でのみ終了する。失敗時は modal を残しデータ消失を防ぐ
                 if (editor.Editor().SaveForQuit())
                 {
                     m_confirmed = true;

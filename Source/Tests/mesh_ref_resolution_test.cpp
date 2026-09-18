@@ -55,7 +55,7 @@ namespace
 } // namespace
 
 // builtin 名は AssetManager::Builtin のメッシュへ解決される
-// builtin 登録には device が要るので、 Renderer を作れない環境では飛ばす
+// builtin 登録には device が要るので、Renderer を作れない環境では飛ばす
 TEST(MeshRefResolution, BuiltinNameResolvesToBuiltinMesh)
 {
     NS::Platform::Window window(MakeWindowDesc("ns_meshref_builtin"));
@@ -148,7 +148,7 @@ TEST(MeshRefResolution, MeshColliderTakesTrianglesFromRendererMesh)
     EXPECT_EQ(collider->Collision(), wedge);
 }
 
-// 描画が cube へフォールバックする参照では、 当たりも組み込みの cube の当たりを指す
+// 描画が cube へフォールバックする参照では、当たりも組み込みの cube の当たりを指す
 TEST(MeshRefResolution, MeshColliderFallsBackToCubeLikeRenderer)
 {
     AssetManager assets{std::filesystem::path{"."}};
@@ -180,7 +180,7 @@ TEST(MeshRefResolution, MeshColliderWithoutRendererStaysEmpty)
     EXPECT_EQ(collider->Collision(), nullptr);
 }
 
-// 組んだ cube の当たりは body 1 個として physics に入り、 下向きのレイが上面 (y = 0.5) で止まる
+// 組んだ cube の当たりは body 1 個として physics に入り、下向きのレイが上面 (y = 0.5) で止まる
 TEST(MeshRefResolution, BuiltCubeMeshColliderStopsRayAtTopFace)
 {
     AssetManager assets{std::filesystem::path{"."}};

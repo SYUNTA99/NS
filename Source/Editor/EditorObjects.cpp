@@ -32,7 +32,7 @@ namespace NS::Editor
             return NS::Object::FindComponentEntry(object, typeName) != nullptr;
         }
 
-        // Transform しか持たない = 中身が無い GameObject。 データ側は Transform も component 列に居る
+        // Transform しか持たない = 中身が無い GameObject。データ側は Transform も component 列に居る
         bool HasOnlyTransform(const NS::Object::ObjectData& object) noexcept
         {
             for (const nlohmann::json& entry : object.components)

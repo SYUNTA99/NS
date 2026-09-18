@@ -30,7 +30,7 @@ namespace
     using NS::Object::ObjectData;
     using NS::Core::Vector3;
 
-    // device を確立しない AssetManager。 Builtin / SharedMaterial は nullptr を返すが、 汎用構築は落ちない
+    // device を確立しない AssetManager。Builtin / SharedMaterial は nullptr を返すが、汎用構築は落ちない
     class ObjectBuildTest : public ::testing::Test
     {
     protected:
@@ -48,7 +48,7 @@ namespace
         return MakeCellObject(0, 0, 0);
     }
 
-    // 自由配置物のデータ。 見た目の cube と渡された collider を component 直書きで積む
+    // 自由配置物のデータ。見た目の cube と渡された collider を component 直書きで積む
     ObjectData MakeFreeObject(nlohmann::json collider)
     {
         ObjectData object;
@@ -227,7 +227,7 @@ TEST_F(ObjectBuildTest, FreeBoxWorldAabbReflectsPositionAndHalfExtents)
     EXPECT_NEAR(aabb.Extents.z, 3.0f, 1e-4f);
 }
 
-// components 一覧を持つ object は registry でコンポを生成し、 リフレクション set でフィールドが入る
+// components 一覧を持つ object は registry でコンポを生成し、リフレクション set でフィールドが入る
 TEST_F(ObjectBuildTest, ComponentsDriveBuild)
 {
     ObjectData object;
@@ -252,13 +252,13 @@ TEST_F(ObjectBuildTest, EmptyComponentsBuildsNothing)
     EXPECT_EQ(Build(object), nullptr);
 }
 
-// material 参照に .. を含む値は ContentRoot 外解決を拒否し、 共有の代替に切り替わってクラッシュしない
+// material 参照に .. を含む値は ContentRoot 外解決を拒否し、共有の代替に切り替わってクラッシュしない
 TEST_F(ObjectBuildTest, AssetPathTraversalRejectedFallsBackToDefault)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
     NS::Object::SetField(object.components[0], "マテリアル", "../evil.mat");
 
-    // const char* が string_view 版へ解決され、 bool でなく文字列として書かれていること
+    // const char* が string_view 版へ解決され、bool でなく文字列として書かれていること
     ASSERT_TRUE(object.components[0]["fields"]["マテリアル"].is_string());
 
     auto obj = Build(object);
@@ -267,7 +267,7 @@ TEST_F(ObjectBuildTest, AssetPathTraversalRejectedFallsBackToDefault)
     EXPECT_TRUE(Has<NS::Object::BoxColliderComponent>(*obj));
 }
 
-// 45 度スロープ prototype は wedge メッシュ + 45 度 SlopeCollider を作り、 R で回せる
+// 45 度スロープ prototype は wedge メッシュ + 45 度 SlopeCollider を作り、R で回せる
 TEST_F(ObjectBuildTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
 {
     ObjectData slope = MakeCellObject(0, 0, 0);
@@ -285,7 +285,7 @@ TEST_F(ObjectBuildTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
     EXPECT_FALSE(Has<NS::Object::BoxColliderComponent>(*obj));
 }
 
-// ゴール prototype は接触クリアの印を持ち、 表示名は Goal、 向きは無関係で回転不可
+// ゴール prototype は接触クリアの印を持ち、表示名は Goal、向きは無関係で回転不可
 TEST_F(ObjectBuildTest, GoalHasMarkerAndDisplaysAsGoal)
 {
     ObjectData goal = MakeCellObject(0, 0, 0);
@@ -305,7 +305,7 @@ TEST_F(ObjectBuildTest, GridCubeIsRotatable)
     EXPECT_TRUE(NS::Editor::IsRotatableObject(MakeCellObject(0, 0, 0)));
 }
 
-// 自由配置の cube も固形 box なので回せる。 固形判定には BoxCollider が要るので、 空構成の marker は回せない
+// 自由配置の cube も固形 box なので回せる。固形判定には BoxCollider が要るので、空構成の marker は回せない
 TEST_F(ObjectBuildTest, FreeCubeRotatableButEmptyMarkerNot)
 {
     ObjectData freeCube;
@@ -327,14 +327,14 @@ TEST_F(ObjectBuildTest, PlayerObjectBuildsPlayerTyped)
     // 実行時型情報は切っているため、クラス名で型選択を確かめてから GameObject の API で見る
     ASSERT_STREQ(obj->ClassName(), "Player");
 
-    // コンストラクタが積む分と同じ数。 transform も GameObject が持つので二重にはならない
+    // コンストラクタが積む分と同じ数。transform も GameObject が持つので二重にはならない
     EXPECT_EQ(obj->Components().size(), Player{}.Components().size());
 
     // pose は他の配置物と同じく data から乗る
     EXPECT_FLOAT_EQ(obj->Root().Position().y, 2.0f);
 }
 
-// プレイヤーのデータ構成は Player のコンストラクタから吸い出した型名だけの疎な一覧。 値は書かない
+// プレイヤーのデータ構成は Player のコンストラクタから吸い出した型名だけの疎な一覧。値は書かない
 TEST_F(ObjectBuildTest, PlayerObjectDataIsSparseTypeListFromClass)
 {
     const ObjectData data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
@@ -357,7 +357,7 @@ TEST_F(ObjectBuildTest, PlayerObjectDataIsSparseTypeListFromClass)
     EXPECT_TRUE(IsPlayerObject(data));
 }
 
-// 疎なデータで組んでも、 cube と共有 player 材質と赤の個体色はコンストラクタが与える
+// 疎なデータで組んでも、cube と共有 player 材質と赤の個体色はコンストラクタが与える
 TEST_F(ObjectBuildTest, PlayerDefaultLookComesFromClassNotData)
 {
     auto obj = Build(MakePlayerObject(Vector3{}, NS::Core::Quaternion{}));
@@ -402,8 +402,8 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataValuesToComponents)
     EXPECT_FLOAT_EQ(movement->CoyoteTime(), 0.125f);
 }
 
-// 同型 component を重ねたデータは live でも同数立ち、 2 件目が 1 件目へ上書きされない
-// 当たりの重ね置きは複合形状として衝突へ効く前提の機能で、 貼り重ねの経路がこの形を作る
+// 同型 component を重ねたデータは live でも同数立ち、2 件目が 1 件目へ上書きされない
+// 当たりの重ね置きは複合形状として衝突へ効く前提の機能で、貼り重ねの経路がこの形を作る
 TEST_F(ObjectBuildTest, DuplicateColliderDataBuildsCompoundColliders)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 1.0f, 1.0f}));
@@ -422,7 +422,7 @@ TEST_F(ObjectBuildTest, DuplicateColliderDataBuildsCompoundColliders)
 }
 
 // 実体をリフレクション serialize → 既定 component へ apply → 再 serialize で一致する
-// 保存を data でなく実体から作る前提。 registry で組める component だけを対象にする
+// 保存を data でなく実体から作る前提。registry で組める component だけを対象にする
 TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
@@ -435,12 +435,12 @@ TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
     const nlohmann::json components = NS::Object::SerializeGameObjectComponents(*obj);
     ASSERT_EQ(components.size(), obj->Components().size());
 
-    // 各 component を型名から既定生成し、 serialize した fields を書き戻して再 serialize が元に戻るか見る
+    // 各 component を型名から既定生成し、serialize した fields を書き戻して再 serialize が元に戻るか見る
     NS::Object::GameObject rebuilt;
     for (const auto& compJson : components)
     {
         const std::string typeName = compJson.at("type").get<std::string>();
-        // transform は登録一覧に無く GameObject が最初から 1 つ持っているので、 生成せずそれへ書き戻す
+        // transform は登録一覧に無く GameObject が最初から 1 つ持っているので、生成せずそれへ書き戻す
         NS::Object::Component* fresh = nullptr;
         if (typeName == NS::Object::k_TransformTypeName)
             fresh = rebuilt.FindComponent<NS::Object::TransformComponent>();
@@ -452,8 +452,8 @@ TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
     }
 }
 
-// 実体を CaptureObjectData で値データへ忠実に写し、 素の GameObject へ ApplyObjectComponents で復元すると
-// 元 live と component JSON が一致する。 undo とプレイ↔編集の退避・復元に使う機構を直接確かめる
+// 実体を CaptureObjectData で値データへ忠実に写し、素の GameObject へ ApplyObjectComponents で復元すると
+// 元 live と component JSON が一致する。undo とプレイ↔編集の退避・復元に使う機構を直接確かめる
 TEST_F(ObjectBuildTest, CaptureObjectDataRestoresFaithfully)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 2.0f, 3.0f}));
@@ -471,7 +471,7 @@ TEST_F(ObjectBuildTest, CaptureObjectDataRestoresFaithfully)
     EXPECT_EQ(NS::Object::SerializeGameObjectComponents(restored), NS::Object::SerializeGameObjectComponents(*live));
 }
 
-// データの active は保存の往復で残り、 読み直した実体にも false のまま乗る
+// データの active は保存の往復で残り、読み直した実体にも false のまま乗る
 TEST_F(ObjectBuildTest, DisabledComponentSurvivesRoundTrip)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
@@ -489,7 +489,7 @@ TEST_F(ObjectBuildTest, DisabledComponentSurvivesRoundTrip)
     EXPECT_FALSE(NS::Object::ComponentEntryEnabled(*entry));
 }
 
-// モード切替で休止させただけの component は保存に持ち込まない。 書き込むと読み直しでも動かなくなる
+// モード切替で休止させただけの component は保存に持ち込まない。書き込むと読み直しでも動かなくなる
 TEST_F(ObjectBuildTest, SleepingComponentIsSavedAsEnabled)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));

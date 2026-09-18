@@ -6,7 +6,7 @@ namespace NS::Object
 {
     namespace
     {
-        // fields から name 一致の値を返す。 値を読む Field 関数と HasField の共通処理
+        // fields から name 一致の値を返す。値を読む Field 関数と HasField の共通処理
         const nlohmann::json* FindFieldValue(const nlohmann::json& entry, std::string_view name) noexcept
         {
             const nlohmann::json* fields = ComponentEntryFields(entry);
@@ -24,7 +24,7 @@ namespace NS::Object
             return nullptr;
         }
 
-        // entry の fields object を返し、 無ければ作る。 SetField の書き込み先
+        // entry の fields object を返し、無ければ作る。SetField の書き込み先
         nlohmann::json& EnsureFields(nlohmann::json& entry)
         {
             if (!entry.is_object())

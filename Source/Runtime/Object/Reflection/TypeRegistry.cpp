@@ -59,7 +59,7 @@ namespace NS::Object
 
     std::unique_ptr<GameObject> CreateRegisteredObject(const ObjectData& object)
     {
-        // className が正。 一致登録があればその型で作る
+        // className が正。一致登録があればその型で作る
         if (!object.className.empty())
         {
             const TypeRegistry::Entry* entry = TypeRegistry::Get().Find(object.className);
@@ -79,7 +79,7 @@ namespace NS::Object
         {
             return entry->attach(obj);
         }
-        // 未登録の type 名は生成せず読み飛ばす。 不正な型注入をここで止める
+        // 未登録の type 名は生成せず読み飛ばす。不正な型注入をここで止める
         NS_LOG_WARN(Scene, "未登録のコンポーネント型 {} を読み飛ばす", typeName);
         return nullptr;
     }

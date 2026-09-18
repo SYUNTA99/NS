@@ -10,7 +10,7 @@ namespace NS::Object
     PlacedVirtualCamera::PlacedVirtualCamera() noexcept
         : VirtualCameraComponent(TickPriority::LateUpdate + 50)
     {
-        // 生成直後は非 active。 UpdateActivation の進入判定だけが active 化する
+        // 生成直後は非 active。UpdateActivation の進入判定だけが active 化する
         SetActive(false);
     }
 

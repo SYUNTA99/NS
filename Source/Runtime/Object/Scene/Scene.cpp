@@ -32,9 +32,9 @@ namespace NS::Object
 
     Scene::Scene()
     {
-        // 描くには実カメラが 1 個要る。 配置物ではないがシーンには必ず居るので、 ここで ObjectList へ入れる
-        // 保存・凍結・編集 UI に出ない一時オブジェクトで、 データからの組み直しも跨いで残る
-        // 描画 component は積まない。 RegisterRenderable は virtual で、 基底コンストラクタからは派生へ落ちない
+        // 描くには実カメラが 1 個要る。配置物ではないがシーンには必ず居るので、ここで ObjectList へ入れる
+        // 保存・凍結・編集 UI に出ない一時オブジェクトで、データからの組み直しも跨いで残る
+        // 描画 component は積まない。RegisterRenderable は virtual で、基底コンストラクタからは派生へ落ちない
         auto host = std::make_unique<GameObject>();
         CameraComponent* camera = host->AddComponent<CameraComponent>();
         camera->SetUp({0.0f, 1.0f, 0.0f});
@@ -54,7 +54,7 @@ namespace NS::Object
 
     void Scene::SyncPhysics()
     {
-        // ギズモで動いた live の当たりを張り直す。 object を作り直さないので選択・参照はそのまま保たれる
+        // ギズモで動いた live の当たりを張り直す。object を作り直さないので選択・参照はそのまま保たれる
         m_objects.SyncPhysics(m_physicsScene);
         OnObjectsRebuilt();
         NotifyTransientsObjectsRebuilt();
@@ -73,7 +73,7 @@ namespace NS::Object
 
     const SceneData& Scene::BeginPlayBaseline()
     {
-        // プレイ規則の判定と編集復帰の姿はこの凍結を読む。 シミュレーションが動かした値は映らず、編集へ持ち込まれない
+        // プレイ規則の判定と編集復帰の姿はこの凍結を読む。シミュレーションが動かした値は映らず、編集へ持ち込まれない
         if (!m_playBaselineInjected)
         {
             m_playBaseline = CaptureLiveToSceneData();
@@ -172,7 +172,7 @@ namespace NS::Object
 
     SceneData Scene::CaptureLiveToSceneData() const
     {
-        // 一時オブジェクトを除く全 object を、 全 component 値まで忠実に写す
+        // 一時オブジェクトを除く全 object を、全 component 値まで忠実に写す
         SceneData data{};
         data.environment = m_environment;
         data.nextObjectId = m_objects.NextObjectId();
@@ -199,7 +199,7 @@ namespace NS::Object
 
     void Scene::RebuildObjectsFrom(const SceneData& data)
     {
-        // GameObject の型選択は登録一覧、 参照の実体化は各 component の ResolveAssets が行う
+        // GameObject の型選択は登録一覧、参照の実体化は各 component の ResolveAssets が行う
         // vcam の brain への付け外しは VirtualCameraComponent が OnStart / OnEndPlay で自分で行う
         m_objects.Rebuild(data, *this, [this](const ObjectData& entry) { return BuildSceneObject(entry, m_assets); });
         m_objects.SyncPhysics(m_physicsScene);
@@ -210,14 +210,14 @@ namespace NS::Object
 
     void Scene::OnUpdate()
     {
-        // 補間描画用。 全配置物の Root を Snapshot する
+        // 補間描画用。全配置物の Root を Snapshot する
         for (GameObject* obj : m_objects)
         {
             obj->Root().Snapshot();
         }
 
-        // 世界の駆動。 読み込んだら回り続けるのが既定で、 編集モードのエディタだけが止める
-        // 時間停止中は上の snapshot だけが残り、 previous == current で補間が凍る
+        // 世界の駆動。読み込んだら回り続けるのが既定で、編集モードのエディタだけが止める
+        // 時間停止中は上の snapshot だけが残り、previous == current で補間が凍る
         if (!m_simulationEnabled)
         {
             return;
@@ -240,7 +240,7 @@ namespace NS::Object
     void Scene::OnShutdown()
     {
         m_objects.Clear();
-        // host も ObjectList と一緒に消えた。 控えを残すと破棄済みを指し続ける
+        // host も ObjectList と一緒に消えた。控えを残すと破棄済みを指し続ける
         m_brain = nullptr;
     }
 
@@ -255,7 +255,7 @@ namespace NS::Object
             return std::nullopt;
         }
 
-        // アスペクト比をレンダラーの現在サイズへ同期する。 リサイズ追従もここで済む
+        // アスペクト比をレンダラーの現在サイズへ同期する。リサイズ追従もここで済む
         mainCamera->SetAspectRatioFromRenderer(renderer);
 
         NS::Graphics::RenderContext ctx{};
@@ -276,7 +276,7 @@ namespace NS::Object
             overrideCamera.SetNearPlane(viewOverride->nearPlane);
             overrideCamera.SetFarPlane(viewOverride->farPlane);
 
-            // aspect は実カメラと同じ規則で renderer から取る。 幅か高さが 0 以下なら 16:9
+            // aspect は実カメラと同じ規則で renderer から取る。幅か高さが 0 以下なら 16:9
             const NS::Core::Size2D size = renderer.Size();
             const float aspect = [&]() -> float {
                 if (size.width <= 0 || size.height <= 0)
@@ -432,14 +432,14 @@ namespace NS::Object
             return;
         }
 
-        // ビュー列が空なら現描画先へ Brain 視点で 1 回だけ描く。 描画先は BeginFrame が bind 済み
+        // ビュー列が空なら現描画先へ Brain 視点で 1 回だけ描く。描画先は BeginFrame が bind 済み
         if (m_sceneViews.empty())
         {
             RenderViewWithOverlays(std::nullopt);
             return;
         }
 
-        // 可視ビューの数だけ、 各ビューの描画先へ切り替えてその視点で描く
+        // 可視ビューの数だけ、各ビューの描画先へ切り替えてその視点で描く
         for (const SceneView& view : m_sceneViews)
         {
             m_renderer->BeginSceneView(view.target);
@@ -460,14 +460,14 @@ namespace NS::Object
         NS::Graphics::DebugDraw::Flush(*ctx->renderer, ctx->viewProjection);
 #endif
 
-        // 重ね描きを持つ component を最前面へ重ねる。 演出の中身はゲーム側の component が持つ
-        // 並びは配置物の順、 その中は component の priority 昇順
+        // 重ね描きを持つ component を最前面へ重ねる。演出の中身はゲーム側の component が持つ
+        // 並びは配置物の順、その中は component の priority 昇順
         for (GameObject* obj : m_objects)
         {
             for (Component* comp : obj->Components())
             {
                 auto* overlay = ComponentCast<OverlayRendererComponent>(comp);
-                // active を切った component は描かない。 更新・ 当たりと同じ問いで揃える
+                // active を切った component は描かない。更新・ 当たりと同じ問いで揃える
                 if (overlay != nullptr && overlay->IsActive())
                 {
                     overlay->OnRenderOverlay(*ctx);
