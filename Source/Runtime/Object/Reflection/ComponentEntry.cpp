@@ -12,13 +12,13 @@ namespace NS::Object
             const nlohmann::json* fields = ComponentEntryFields(entry);
             if (fields == nullptr)
             {
-				return nullptr;
+                return nullptr;
             }
             for (auto it = fields->begin(); it != fields->end(); ++it)
             {
                 if (it.key() == name)
                 {
-					return &it.value();
+                    return &it.value();
                 }
             }
             return nullptr;
@@ -29,7 +29,7 @@ namespace NS::Object
         {
             if (!entry.is_object())
             {
-				entry = nlohmann::json::object();
+                entry = nlohmann::json::object();
             }
             nlohmann::json& fields = entry["fields"];
             if (!fields.is_object())
@@ -61,7 +61,7 @@ namespace NS::Object
         const auto it = entry.find("type");
         if (it == entry.end() || !it->is_string())
         {
-			return {};
+            return {};
         }
         return it->get_ref<const std::string&>();
     }
@@ -75,7 +75,7 @@ namespace NS::Object
         const auto it = entry.find("id");
         if (it == entry.end() || !it->is_number_unsigned())
         {
-			return 0;
+            return 0;
         }
         return it->get<std::uint32_t>();
     }
@@ -98,12 +98,12 @@ namespace NS::Object
     {
         if (!entry.is_object())
         {
-			return true;
+            return true;
         }
         const auto it = entry.find("enabled");
         if (it == entry.end() || !it->is_boolean())
         {
-			return true;
+            return true;
         }
         return it->get<bool>();
     }
@@ -126,12 +126,12 @@ namespace NS::Object
     {
         if (!entry.is_object())
         {
-			return nullptr;
+            return nullptr;
         }
         const auto it = entry.find("fields");
         if (it == entry.end() || !it->is_object())
         {
-			return nullptr;
+            return nullptr;
         }
         return &*it;
     }
@@ -140,13 +140,13 @@ namespace NS::Object
     {
         if (!object.components.is_array())
         {
-			return nullptr;
+            return nullptr;
         }
         for (const nlohmann::json& entry : object.components)
         {
             if (ComponentEntryType(entry) == typeName)
             {
-				return &entry;
+                return &entry;
             }
         }
         return nullptr;
@@ -156,7 +156,7 @@ namespace NS::Object
     {
         if (!object.components.is_array())
         {
-			return nullptr;
+            return nullptr;
         }
         for (nlohmann::json& entry : object.components)
         {
@@ -173,7 +173,7 @@ namespace NS::Object
         const nlohmann::json* value = FindFieldValue(entry, name);
         if (value == nullptr || !value->is_number())
         {
-			return fallback;
+            return fallback;
         }
         return value->get<float>();
     }
@@ -195,14 +195,14 @@ namespace NS::Object
         const nlohmann::json* value = FindFieldValue(entry, name);
         if (value == nullptr || !value->is_array() || value->size() != 3u)
         {
-			return fallback;
+            return fallback;
         }
         const nlohmann::json& x = (*value)[0];
         const nlohmann::json& y = (*value)[1];
         const nlohmann::json& z = (*value)[2];
         if (!x.is_number() || !y.is_number() || !z.is_number())
         {
-			return fallback;
+            return fallback;
         }
         return NS::Core::Vector3{x.get<float>(), y.get<float>(), z.get<float>()};
     }
@@ -242,12 +242,12 @@ namespace NS::Object
         const nlohmann::json* value = FindFieldValue(entry, name);
         if (value == nullptr || !value->is_object())
         {
-			return ObjectRef{};
+            return ObjectRef{};
         }
         const auto refIt = value->find("ref");
         if (refIt == value->end() || !refIt->is_number_unsigned())
         {
-			return ObjectRef{};
+            return ObjectRef{};
         }
         return ObjectRef{refIt->get<std::uint32_t>()};
     }

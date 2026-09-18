@@ -31,7 +31,7 @@ namespace
 // pitch を特異点付近に置き、 Euler を経由する旧経路なら誤差が積もる条件で確かめる
 TEST(SceneRotationDrift, RepeatedCaptureRebuildKeepsExactQuaternion)
 {
-    // device 無しでも汎用構築は落ちない。 参照は文字列のまま持つ
+    // device 無しの AssetManager でも組み立ては落ちない。 mesh も material も解決できず空のまま
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
 
     const SceneNs::ObjectData object = MakeRotatedCube(NS::Core::Vector3{89.9f, 40.0f, 20.0f});
@@ -89,6 +89,7 @@ TEST(SceneRotationDrift, RotationFieldLoadsToExpectedQuaternion)
 // 捕捉から保存・再読込までの間に、度の欄が生き残っていないことまで見る
 TEST(SceneRotationDrift, SaveWritesRotationAsQuaternionOnly)
 {
+    // 1 つ目の試しと同じく device 無し
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
 
     const SceneNs::ObjectData object = MakeRotatedCube(NS::Core::Vector3{30.0f, 45.0f, 60.0f});
@@ -116,7 +117,7 @@ TEST(SceneRotationDrift, SaveWritesRotationAsQuaternionOnly)
     EXPECT_TRUE(SceneNs::HasField(*reloadedTransform, "回転"));
     EXPECT_FALSE(SceneNs::HasField(*reloadedTransform, "回転 (度)"));
 
-    // 読み手が 4 要素を受けないと無回転のまま素通りするので、向きまで突き合わせる
+    // 読込が 4 要素を受けないと無回転のまま素通りするので、向きまで突き合わせる
     const NS::Core::Quaternion restored = SceneNs::ObjectRotation(reloaded.objects[0]);
     EXPECT_NEAR(std::abs(restored.Dot(live->Root().Rotation())), 1.0f, 1e-5f);
 }

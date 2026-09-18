@@ -215,7 +215,7 @@ TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
     EXPECT_FALSE(SceneNs::SaveSceneToJsonFile(huge, *path));
 }
 
-// 型名 + リフレクションフィールド値 (全 5 種の値) を持つ component 一覧が save→load で復元される
+// 型名 + リフレクションフィールド値 (値 5 つ) を持つ component 一覧が save→load で復元される
 // 並びは正準化 (名前昇順) されるので、 等価判定は正準 JSON の一致で行う
 TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 {

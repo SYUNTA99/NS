@@ -48,7 +48,7 @@ namespace NS::Object
             const nlohmann::json* transform = FindComponentEntry(object, k_TransformTypeName);
             if (transform == nullptr)
             {
-				return fallback;
+                return fallback;
             }
             return FieldVector3(*transform, fieldName, fallback);
         }
@@ -63,13 +63,13 @@ namespace NS::Object
     {
         if (!object.components.is_array())
         {
-			object.components = nlohmann::json::array();
+            object.components = nlohmann::json::array();
         }
         for (nlohmann::json& entry : object.components)
         {
             if (ComponentEntryType(entry) == k_TransformTypeName)
             {
-				return entry;
+                return entry;
             }
         }
         nlohmann::json transform = MakeComponentEntry(k_TransformTypeName);

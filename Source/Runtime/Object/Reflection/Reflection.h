@@ -30,11 +30,6 @@ namespace NS::Object
     //! メンバ型から FieldType タグを引く。マクロが型タグを自動推論するのに使う。未対応型はここで弾く
     template <class T> constexpr FieldType FieldTypeOf() noexcept
     {
-        static_assert(std::is_same_v<T, float> || std::is_same_v<T, int> || std::is_same_v<T, bool> ||
-                          std::is_same_v<T, NS::Core::Vector3> || std::is_same_v<T, NS::Core::Quaternion> ||
-                          std::is_same_v<T, std::string> || std::is_same_v<T, ObjectRef> || std::is_same_v<T, Curve>,
-                      "reflection: 未対応のフィールド型 (Float / Int / Bool / Vector3 / Quaternion / String / "
-                      "ObjectRef / Curve のみ)");
         if constexpr (std::is_same_v<T, float>)
             return FieldType::Float;
         else if constexpr (std::is_same_v<T, int>)
@@ -50,7 +45,12 @@ namespace NS::Object
         else if constexpr (std::is_same_v<T, Curve>)
             return FieldType::Curve;
         else
+        {
+            static_assert(std::is_same_v<T, NS::Core::Vector3>,
+                          "FieldTypeOf の T は float / int / bool / NS::Core::Vector3 / NS::Core::Quaternion / "
+                          "std::string / ObjectRef / Curve のいずれか");
             return FieldType::Vector3;
+        }
     }
 
     //! @brief リフレクションされた 1 フィールドの記述子
