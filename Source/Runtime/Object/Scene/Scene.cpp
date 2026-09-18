@@ -10,7 +10,6 @@
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/DirectionalLightComponent.h"
 #include "Runtime/Object/Components/OverlayRendererComponent.h"
-#include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/IRenderable.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
@@ -109,12 +108,6 @@ namespace NS::Object
             if (ComponentEntryId(entry) != comp.Id())
             {
                 continue;
-            }
-            // 回転は Euler と厳密クォータニオンの控えが対で載る。両方を揃えて書く SetObjectRotation へ委ねる
-            if (ComponentEntryType(entry) == k_TransformTypeName && fieldName == k_RotationEulerFieldName)
-            {
-                SetObjectRotation(object, owner->Root().Rotation());
-                return;
             }
             const nlohmann::json serialized = SerializeComponent(comp);
             const auto fieldsIt = serialized.find("fields");

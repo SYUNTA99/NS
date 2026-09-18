@@ -16,7 +16,8 @@ namespace NS::Object
     {
         //! 保存形式のバージョン。 形式を変えたら上げ、 読込は一致のみ受け付ける
         //! 3: リフレクション欄名を日本語化。 旧欄名のファイルを黙って既定値で読まないための引き上げ
-        constexpr int k_FormatVersion = 3;
+        //! 4: transform の回転を Euler 度 3 要素から クォータニオン 4 要素の 1 欄へ
+        constexpr int k_FormatVersion = 4;
 
         //! 読込時の上限。 巨大 size / 要素数による メモリ枯渇を防ぐ
         constexpr std::size_t k_MaxSceneFileBytes = 16u * 1024u * 1024u;
@@ -56,27 +57,6 @@ namespace NS::Object
             return it->get<int>();
         }
 
-        //! transform エントリから内部の回転控えを落とす。 ファイルは Euler の「回転 (度)」だけ残す
-        void StripRotationQuatField(nlohmann::json& components)
-        {
-            if (!components.is_array())
-            {
-                return;
-            }
-            for (nlohmann::json& entry : components)
-            {
-                if (ComponentEntryType(entry) != k_TransformTypeName)
-                {
-                    continue;
-                }
-                const auto fieldsIt = entry.find("fields");
-                if (fieldsIt != entry.end() && fieldsIt->is_object())
-                {
-                    fieldsIt->erase(std::string(k_RotationQuatFieldName));
-                }
-            }
-        }
-
         nlohmann::json SerializeObject(const ObjectData& object)
         {
             nlohmann::json out;
@@ -103,8 +83,6 @@ namespace NS::Object
             }
             // components はメモリ上も保存形式と同じ {type, fields} の JSON 配列なのでそのまま書く
             out["components"] = object.components;
-            // メモリ上は厳密なクォータニオンを控えるが、 ファイルは Euler 表現だけにして byte 安定を保つ
-            StripRotationQuatField(out["components"]);
             return out;
         }
 

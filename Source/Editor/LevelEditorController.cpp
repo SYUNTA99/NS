@@ -1023,7 +1023,7 @@ void LevelEditorController::SetSelectedFreeRotation(NS::Core::Quaternion rotatio
     {
         go->Root().SetRotation(rotation);
         if (auto* transform = go->FindComponent<NS::Object::TransformComponent>())
-            MirrorPlayEditToBaseline(*transform, NS::Object::k_RotationEulerFieldName);
+            MirrorPlayEditToBaseline(*transform, NS::Object::k_RotationFieldName);
     }
 }
 

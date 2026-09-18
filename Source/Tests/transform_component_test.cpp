@@ -76,7 +76,7 @@ TEST(TransformComponentTest, ReflectsPositionRotationScale)
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->fieldCount, 3u);
     EXPECT_NE(FindField(info, "位置"), nullptr);
-    EXPECT_NE(FindField(info, "回転 (度)"), nullptr);
+    EXPECT_NE(FindField(info, "回転"), nullptr);
     EXPECT_NE(FindField(info, "スケール"), nullptr);
 }
 
@@ -121,22 +121,25 @@ TEST(TransformComponentTest, ScaleReflectionRoundTrips)
     EXPECT_FLOAT_EQ(obj.Root().Scale().y, 3.0f);
 }
 
-// 回転は Euler 度で読み書きし、 往復で一致する。変換は BoxCollider と同じ
-TEST(TransformComponentTest, RotationEulerDegreesRoundTrips)
+// 欄が変換を挟まないので、近似でなく 4 成分の bit 一致を見る
+TEST(TransformComponentTest, RotationReflectionRoundTripsExactly)
 {
     GameObject obj;
     auto* tc = obj.FindComponent<TransformComponent>();
     ASSERT_NE(tc, nullptr);
-    const FieldDesc* rot = FindField(tc->GetReflection(), "回転 (度)");
+    const FieldDesc* rot = FindField(tc->GetReflection(), "回転");
     ASSERT_NE(rot, nullptr);
 
-    NS::Core::Vector3 set{0.0f, 45.0f, 0.0f};
+    NS::Core::Quaternion set = NS::Core::EulerDegreesToQuaternion(NS::Core::Vector3{89.9f, 45.0f, 20.0f});
     rot->set(tc, &set);
-    NS::Core::Vector3 got{};
+    EXPECT_EQ(obj.Root().Rotation(), set);
+
+    NS::Core::Quaternion got{};
     rot->get(tc, &got);
-    EXPECT_NEAR(got.x, 0.0f, 1e-2f);
-    EXPECT_NEAR(got.y, 45.0f, 1e-2f);
-    EXPECT_NEAR(got.z, 0.0f, 1e-2f);
+    EXPECT_EQ(got.x, set.x);
+    EXPECT_EQ(got.y, set.y);
+    EXPECT_EQ(got.z, set.z);
+    EXPECT_EQ(got.w, set.w);
 }
 
 // 実体を自分で持つので、 owner に着いていなくても読み書きできる

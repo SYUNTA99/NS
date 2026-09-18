@@ -495,7 +495,7 @@ TEST(SaveLoadRoundTrip, RejectsOldFormatVersion)
 TEST(SaveLoadRoundTrip, LegacyLightingKeysAreIgnored)
 {
     const std::string json = R"({
-        "version": 3,
+        "version": 4,
         "objects": [],
         "environment": { "skybox": "Assets/Skybox/kurt/", "lightColor": [0.5, 0.6, 0.7] }
     })";
@@ -511,7 +511,7 @@ TEST(SaveLoadRoundTrip, LegacyLightingKeysAreIgnored)
 TEST(SaveLoadRoundTrip, NonStringComponentTypeReadsAsEmpty)
 {
     const std::string json = R"({
-        "version": 3,
+        "version": 4,
         "objects": [ { "id": 1, "components": [ { "type": 5, "fields": {} } ] } ]
     })";
 

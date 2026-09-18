@@ -3,7 +3,6 @@
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
-#include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Reflection/Reflection.h"
@@ -12,7 +11,7 @@ namespace NS::Object
 {
     namespace
     {
-        // field を JSON 値へ変換する。Vector3 は [x,y,z] 配列
+        // field を JSON 値へ変換する。素の配列で書くのは Vector3=[x,y,z] と Quaternion=[x,y,z,w]
         nlohmann::json FieldToJson(const Component& comp, const FieldDesc& field)
         {
             switch (field.type)
@@ -40,6 +39,13 @@ namespace NS::Object
                 NS::Core::Vector3 value{};
                 field.get(&comp, &value);
                 return nlohmann::json{value.x, value.y, value.z};
+            }
+            case FieldType::Quaternion:
+            {
+                // 配列の長さで Vector3 と区別できるため単キー object で包まない
+                NS::Core::Quaternion value{};
+                field.get(&comp, &value);
+                return nlohmann::json{value.x, value.y, value.z, value.w};
             }
             case FieldType::String:
             {
@@ -134,6 +140,21 @@ namespace NS::Object
                     return;
                 }
                 NS::Core::Vector3 v{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
+                field.set(&comp, &v);
+                return;
+            }
+            case FieldType::Quaternion:
+            {
+                if (!value.is_array() || value.size() != 4u)
+                {
+                    return;
+                }
+                if (!value[0].is_number() || !value[1].is_number() || !value[2].is_number() || !value[3].is_number())
+                {
+                    return;
+                }
+                NS::Core::Quaternion v{
+                    value[0].get<float>(), value[1].get<float>(), value[2].get<float>(), value[3].get<float>()};
                 field.set(&comp, &v);
                 return;
             }
@@ -324,12 +345,6 @@ namespace NS::Object
         for (const auto& entry : fields.items())
         {
             if (IsReflectedFieldName(*info, entry.key()))
-            {
-                continue;
-            }
-            // リフレクション欄ではないが TransformComponent 自身が読む
-            // TODO: 回転をクォータニオンのリフレクション欄 1 本にすればこの例外は要らなくなる
-            if (entry.key() == k_RotationQuatFieldName)
             {
                 continue;
             }

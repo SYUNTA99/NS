@@ -78,6 +78,8 @@ namespace NS::Editor
             return !SameValue<bool>(comp, *defaults, field);
         case NS::Object::FieldType::Vector3:
             return !SameValue<NS::Core::Vector3>(comp, *defaults, field);
+        case NS::Object::FieldType::Quaternion:
+            return !SameValue<NS::Core::Quaternion>(comp, *defaults, field);
         case NS::Object::FieldType::String:
             return !SameValue<std::string>(comp, *defaults, field);
         case NS::Object::FieldType::ObjectRef:
@@ -105,6 +107,9 @@ namespace NS::Editor
             break;
         case NS::Object::FieldType::Vector3:
             CopyValue<NS::Core::Vector3>(comp, defaults, field);
+            break;
+        case NS::Object::FieldType::Quaternion:
+            CopyValue<NS::Core::Quaternion>(comp, defaults, field);
             break;
         case NS::Object::FieldType::String:
             CopyValue<std::string>(comp, defaults, field);
@@ -472,6 +477,21 @@ namespace NS::Editor
                 if (ImGui::DragFloat3("##value", xyz, 0.05f))
                 {
                     value = NS::Core::Vector3{xyz[0], xyz[1], xyz[2]};
+                    field.set(&comp, &value);
+                    result.changed = true;
+                }
+                break;
+            }
+            case NS::Object::FieldType::Quaternion:
+            {
+                // 4 成分を直接触らせると正規化の崩れた回転を作れるので、度の Euler を経由する
+                NS::Core::Quaternion value{};
+                field.get(&comp, &value);
+                const NS::Core::Vector3 degrees = NS::Core::QuaternionToEulerDegrees(value);
+                float xyz[3] = {degrees.x, degrees.y, degrees.z};
+                if (ImGui::DragFloat3("##value", xyz, 0.5f))
+                {
+                    value = NS::Core::EulerDegreesToQuaternion(NS::Core::Vector3{xyz[0], xyz[1], xyz[2]});
                     field.set(&comp, &value);
                     result.changed = true;
                 }

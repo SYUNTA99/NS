@@ -207,6 +207,26 @@ namespace NS::Object
         return NS::Core::Vector3{x.get<float>(), y.get<float>(), z.get<float>()};
     }
 
+    NS::Core::Quaternion FieldQuaternion(const nlohmann::json& entry,
+                                         std::string_view name,
+                                         const NS::Core::Quaternion& fallback) noexcept
+    {
+        const nlohmann::json* value = FindFieldValue(entry, name);
+        if (value == nullptr || !value->is_array() || value->size() != 4u)
+        {
+            return fallback;
+        }
+        const nlohmann::json& x = (*value)[0];
+        const nlohmann::json& y = (*value)[1];
+        const nlohmann::json& z = (*value)[2];
+        const nlohmann::json& w = (*value)[3];
+        if (!x.is_number() || !y.is_number() || !z.is_number() || !w.is_number())
+        {
+            return fallback;
+        }
+        return NS::Core::Quaternion{x.get<float>(), y.get<float>(), z.get<float>(), w.get<float>()};
+    }
+
     std::string FieldString(const nlohmann::json& entry, std::string_view name, std::string_view fallback)
     {
         const nlohmann::json* value = FindFieldValue(entry, name);
@@ -255,6 +275,11 @@ namespace NS::Object
     void SetField(nlohmann::json& entry, std::string_view name, const NS::Core::Vector3& value)
     {
         EnsureFields(entry)[std::string(name)] = nlohmann::json{value.x, value.y, value.z};
+    }
+
+    void SetField(nlohmann::json& entry, std::string_view name, const NS::Core::Quaternion& value)
+    {
+        EnsureFields(entry)[std::string(name)] = nlohmann::json{value.x, value.y, value.z, value.w};
     }
 
     void SetField(nlohmann::json& entry, std::string_view name, std::string_view value)

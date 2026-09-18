@@ -42,34 +42,6 @@ namespace NS::Object
             return nullptr;
         }
 
-        // transform エントリへ root 回転を 4 要素配列で控える。 リフレクションの Euler と別に厳密なクォータニオンを運ぶ
-        void WriteRotationQuatField(nlohmann::json& transformEntry, const NS::Core::Quaternion& rotation)
-        {
-            transformEntry["fields"][std::string(k_RotationQuatFieldName)] =
-                nlohmann::json{rotation.x, rotation.y, rotation.z, rotation.w};
-        }
-
-        // 控えの厳密なクォータニオンで root 回転を上書きする。 控えが無い読込直後や旧データは Euler のまま
-        void ApplyRotationQuatOverride(GameObject& obj, const nlohmann::json& transformEntry)
-        {
-            const auto fieldsIt = transformEntry.find("fields");
-            if (fieldsIt == transformEntry.end() || !fieldsIt->is_object())
-            {
-                return;
-            }
-            const auto quatIt = fieldsIt->find(std::string(k_RotationQuatFieldName));
-            if (quatIt == fieldsIt->end() || !quatIt->is_array() || quatIt->size() != 4u)
-            {
-                return;
-            }
-            const nlohmann::json& q = *quatIt;
-            if (!q[0].is_number() || !q[1].is_number() || !q[2].is_number() || !q[3].is_number())
-            {
-                return;
-            }
-            obj.Root().SetRotation(
-                NS::Core::Quaternion{q[0].get<float>(), q[1].get<float>(), q[2].get<float>(), q[3].get<float>()});
-        }
     } // namespace
 
     // データを唯一の正とする主経路。既定構成を積む GameObject では値だけが写り二重生成しない
@@ -109,12 +81,6 @@ namespace NS::Object
             if (fieldsIt != entry.end())
             {
                 ApplyJsonFields(*created, *fieldsIt);
-            }
-
-            // Euler のリフレクション適用で丸まった root 回転を、 控えの厳密なクォータニオンで戻して往復ドリフトを断つ
-            if (typeName == k_TransformTypeName)
-            {
-                ApplyRotationQuatOverride(obj, entry);
             }
 
             if (onBuilt)
@@ -204,12 +170,6 @@ namespace NS::Object
             SetComponentEntryEnabled(entry, comp->IsEnabled());
             data.components.push_back(std::move(entry));
         }
-        // 回転は Euler を経由すると往復で誤差が積もるため、 root quaternion を控えて厳密なまま持ち回す
-        if (nlohmann::json* transform = FindComponentEntry(data, k_TransformTypeName))
-        {
-            WriteRotationQuatField(*transform, obj.Root().Rotation());
-        }
-
         return data;
     }
 } // namespace NS::Object

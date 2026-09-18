@@ -21,6 +21,7 @@ namespace NS::Object
         Int,
         Bool,
         Vector3,
+        Quaternion,
         String,
         ObjectRef,
         Curve
@@ -29,17 +30,19 @@ namespace NS::Object
     //! メンバ型から FieldType タグを引く。マクロが型タグを自動推論するのに使う。未対応型はここで弾く
     template <class T> constexpr FieldType FieldTypeOf() noexcept
     {
-        static_assert(
-            std::is_same_v<T, float> || std::is_same_v<T, int> || std::is_same_v<T, bool> ||
-                std::is_same_v<T, NS::Core::Vector3> || std::is_same_v<T, std::string> ||
-                std::is_same_v<T, ObjectRef> || std::is_same_v<T, Curve>,
-            "reflection: 未対応のフィールド型 (Float / Int / Bool / Vector3 / String / ObjectRef / Curve のみ)");
+        static_assert(std::is_same_v<T, float> || std::is_same_v<T, int> || std::is_same_v<T, bool> ||
+                          std::is_same_v<T, NS::Core::Vector3> || std::is_same_v<T, NS::Core::Quaternion> ||
+                          std::is_same_v<T, std::string> || std::is_same_v<T, ObjectRef> || std::is_same_v<T, Curve>,
+                      "reflection: 未対応のフィールド型 (Float / Int / Bool / Vector3 / Quaternion / String / "
+                      "ObjectRef / Curve のみ)");
         if constexpr (std::is_same_v<T, float>)
             return FieldType::Float;
         else if constexpr (std::is_same_v<T, int>)
             return FieldType::Int;
         else if constexpr (std::is_same_v<T, bool>)
             return FieldType::Bool;
+        else if constexpr (std::is_same_v<T, NS::Core::Quaternion>)
+            return FieldType::Quaternion;
         else if constexpr (std::is_same_v<T, std::string>)
             return FieldType::String;
         else if constexpr (std::is_same_v<T, ObjectRef>)

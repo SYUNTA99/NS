@@ -8,6 +8,7 @@
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Scene/SceneData.h>
 #include <Runtime/Object/Scene/SceneJson.h>
+#include <cmath>
 #include <filesystem>
 #include <gtest/gtest.h>
 #include <memory>
@@ -21,8 +22,7 @@ namespace
     SceneNs::ObjectData MakeRotatedCube(const NS::Core::Vector3& eulerDegrees)
     {
         SceneNs::ObjectData object = LevelNs::MakeCellObject(0, 0, 0);
-        nlohmann::json& transform = SceneNs::EnsureTransformComponent(object);
-        SceneNs::SetField(transform, "回転 (度)", eulerDegrees);
+        SceneNs::SetObjectRotation(object, NS::Core::EulerDegreesToQuaternion(eulerDegrees));
         return object;
     }
 } // namespace
@@ -54,12 +54,11 @@ TEST(SceneRotationDrift, RepeatedCaptureRebuildKeepsExactQuaternion)
     EXPECT_EQ(after.w, reference.w);
 }
 
-// 手書きファイル (Euler の "回転 (度)" のみ・ quat 控え欄なし) が従来どおり読める
-TEST(SceneRotationDrift, LegacyEulerFileLoadsToExpectedQuaternion)
+// 手書きファイルの 4 要素の回転をそのまま読む
+TEST(SceneRotationDrift, RotationFieldLoadsToExpectedQuaternion)
 {
-    // JSON のキーに ) と " が隣接するため、 生文字列は衝突しない独自区切りで囲う
     const std::string json = R"lvl({
-        "version": 3,
+        "version": 4,
         "nextObjectId": 2,
         "objects": [
             {
@@ -67,7 +66,7 @@ TEST(SceneRotationDrift, LegacyEulerFileLoadsToExpectedQuaternion)
                 "components": [
                     { "type": "TransformComponent", "fields": {
                         "位置": [0.0, 0.0, 0.0],
-                        "回転 (度)": [0.0, 90.0, 0.0],
+                        "回転": [0.0, 0.70710677, 0.0, 0.70710677],
                         "スケール": [1.0, 1.0, 1.0]
                     } }
                 ]
@@ -87,8 +86,8 @@ TEST(SceneRotationDrift, LegacyEulerFileLoadsToExpectedQuaternion)
     EXPECT_NEAR(q.w, 0.70710677f, 1e-5f);
 }
 
-// 忠実な捕捉はメモリ上に quat 控えを乗せるが、 保存文字列には Euler だけが載る
-TEST(SceneRotationDrift, SaveDropsQuatFieldKeepsEuler)
+// 捕捉から保存・再読込までの間に、度の欄が生き残っていないことまで見る
+TEST(SceneRotationDrift, SaveWritesRotationAsQuaternionOnly)
 {
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
 
@@ -100,17 +99,24 @@ TEST(SceneRotationDrift, SaveDropsQuatFieldKeepsEuler)
     data.objects.push_back(SceneNs::CaptureObjectData(*live));
     data.objects[0].objectId = 1;
 
-    // メモリ上の控えには厳密なクォータニオンが乗っている
     const nlohmann::json* transform = SceneNs::FindComponentEntry(data.objects[0], "TransformComponent");
     ASSERT_NE(transform, nullptr);
-    EXPECT_TRUE(SceneNs::HasField(*transform, "回転 (クォータニオン)"));
-
-    // 保存文字列は Euler だけ・ quat 控えは落ちる
-    const std::string json = SceneNs::SerializeSceneToJson(data);
-    EXPECT_EQ(json.find("回転 (クォータニオン)"), std::string::npos);
-    EXPECT_NE(json.find("回転 (度)"), std::string::npos);
+    EXPECT_TRUE(SceneNs::HasField(*transform, "回転"));
+    EXPECT_FALSE(SceneNs::HasField(*transform, "回転 (度)"));
 
     // 現行 version の形式検査を通って読み戻せる
+    const std::string json = SceneNs::SerializeSceneToJson(data);
     SceneNs::SceneData reloaded;
-    EXPECT_TRUE(SceneNs::DeserializeSceneFromJson(reloaded, json));
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(reloaded, json));
+    ASSERT_EQ(reloaded.objects.size(), 1u);
+
+    // BoxColliderComponent も「回転 (度)」を持つので、保存文字列全体でなく transform の項目だけを見る
+    const nlohmann::json* reloadedTransform = SceneNs::FindComponentEntry(reloaded.objects[0], "TransformComponent");
+    ASSERT_NE(reloadedTransform, nullptr);
+    EXPECT_TRUE(SceneNs::HasField(*reloadedTransform, "回転"));
+    EXPECT_FALSE(SceneNs::HasField(*reloadedTransform, "回転 (度)"));
+
+    // 読み手が 4 要素を受けないと無回転のまま素通りするので、向きまで突き合わせる
+    const NS::Core::Quaternion restored = SceneNs::ObjectRotation(reloaded.objects[0]);
+    EXPECT_NEAR(std::abs(restored.Dot(live->Root().Rotation())), 1.0f, 1e-5f);
 }

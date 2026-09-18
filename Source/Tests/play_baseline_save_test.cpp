@@ -125,6 +125,7 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
     EXPECT_FLOAT_EQ(GetFloatField(*rebuiltLaunched, "跳ね返り"), 0.9f);
 }
 
+// プレイ中に live の回転を直接動かした分が凍結側へ写り、 編集へ戻った時に残る
 TEST(PlayBaselineSave, HandEditedRotationUpdatesFrozenQuaternion)
 {
     NS::Object::Scene scene;
@@ -144,7 +145,7 @@ TEST(PlayBaselineSave, HandEditedRotationUpdatesFrozenQuaternion)
     const NS::Core::Quaternion edited =
         NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::Vector3{NS::Core::DegreesToRadians(90.0f), 0.0f, 0.0f});
     live->Root().SetRotation(edited);
-    scene.WritePlayBaselineField(*transform, SceneNs::k_RotationEulerFieldName);
+    scene.WritePlayBaselineField(*transform, SceneNs::k_RotationFieldName);
 
     SceneNs::SceneData copy = scene.PlayBaseline();
     scene.LoadFromData(std::move(copy));
