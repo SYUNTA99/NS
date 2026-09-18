@@ -78,7 +78,7 @@ namespace NS::Object
         //! シーンの見た目を確定する環境値。 中身は skybox だけ
         SceneEnvironment environment{};
 
-        //! 未保存検知と保存・再読込の照合に使う。 欄を足せば比較対象へ自動で入る
+        //! 保存・再読込の照合に使う。 欄を足せば比較対象へ自動で入る
         [[nodiscard]] bool operator==(const SceneData& other) const = default;
     };
 

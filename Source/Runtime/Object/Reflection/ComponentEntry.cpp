@@ -6,7 +6,7 @@ namespace NS::Object
 {
     namespace
     {
-        // fields から name 一致の値を返す。 キー照合は文字列を確保せず string_view で比べる
+        // fields から name 一致の値を返す。 値を読む Field 関数と HasField の共通処理
         const nlohmann::json* FindFieldValue(const nlohmann::json& entry, std::string_view name) noexcept
         {
             const nlohmann::json* fields = ComponentEntryFields(entry);

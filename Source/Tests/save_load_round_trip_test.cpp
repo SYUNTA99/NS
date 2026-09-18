@@ -76,7 +76,7 @@ TEST(SaveLoadRoundTrip, ObjectNameSurvivesJsonRoundTrip)
     EXPECT_EQ(dst.objects[0].name, "足場A");
     EXPECT_TRUE(dst == named);
 
-    // 名前は未保存検知に出す必要があるので、外したら等しくなくなる
+    // 名前が operator== から抜けると、往復で消えても等しいと判定される
     src.objects[0].name.clear();
     EXPECT_FALSE(src == named);
 }
@@ -90,7 +90,7 @@ TEST(SaveLoadRoundTrip, ObjectActiveSurvivesJsonRoundTrip)
 
     src.objects[0].active = false;
     const SceneNs::SceneData disabled = src;
-    // 有効かどうかは保存対象なので、切ったら未保存検知に出る
+    // 有効かどうかは比較対象
     EXPECT_FALSE(disabled == enabled);
 
     SceneNs::SceneData dst;
@@ -128,7 +128,7 @@ TEST(SaveLoadRoundTrip, MissingActiveReadsAsDefault)
     const std::string text = SceneNs::SerializeSceneToJson(src);
     const nlohmann::json json = nlohmann::json::parse(text);
     const nlohmann::json& first = json.at("objects").at(0);
-    // 既定値は書かない。 欄が増えても古いファイルと byte 互換が保てる
+    // 既定値は書かない。 欄が増えても古いファイルとバイト互換が保てる
     EXPECT_TRUE(first.find("active") == first.end());
 
     SceneNs::SceneData dst;
@@ -154,7 +154,7 @@ TEST(SaveLoadRoundTrip, ObjectParentSurvivesJsonRoundTrip)
     EXPECT_EQ(dst.objects[1].parentId, dst.objects[0].objectId);
     EXPECT_TRUE(dst == parented);
 
-    // 親子も未保存検知に出す
+    // 親子も比較対象
     src.objects[1].parentId = SceneNs::k_NoObjectId;
     EXPECT_FALSE(src == parented);
 }
@@ -342,7 +342,6 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
     SceneNs::SceneData dst;
     ASSERT_TRUE(SceneNs::LoadSceneFromJsonFile(dst, *path));
 
-    // solid + player
     ASSERT_EQ(dst.objects.size(), 2u);
     bool found = false;
     for (const nlohmann::json& component : dst.objects[0].components)
@@ -358,7 +357,7 @@ TEST(SaveLoadRoundTrip, BaseColorSurvivesRoundTrip)
     EXPECT_TRUE(found) << "Base Color が往復で消えた";
 }
 
-// プレイヤー実体の pose が save→load を往復で保持される。 読込は書いてある物だけを返す
+// プレイヤー実体の姿勢が保存・再読込の往復で保たれる。読込は object を足さない
 TEST(SaveLoadRoundTrip, PlayerObjectRoundTrip)
 {
     SceneNs::SceneData src;
@@ -381,7 +380,7 @@ TEST(SaveLoadRoundTrip, PlayerObjectRoundTrip)
     EXPECT_NEAR(SceneNs::ObjectRotation(loaded).w, 0.70710677f, 1e-5f);
 }
 
-// 空のシーンには読込時の補完がプレイヤーと追従カメラを既定構成で合成する
+// 補完の呼び手はエディタのレベル読込だけ
 TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
 {
     SceneNs::SceneData level;
@@ -394,7 +393,7 @@ TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
     const SceneNs::ObjectData& player = level.objects[playerIndex];
     EXPECT_NE(player.objectId, 0u); // 合成後の一意化で永続 id も振られる
     EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(player).y, Player::k_DefaultSpawnY);
-    // 既定構成 5 点。 mesh 描画 + 移動 + 入力 + 命 + 接地影
+    // 既定構成のうち 5 つ
     EXPECT_NE(SceneNs::FindComponentEntry(player, "MeshRendererComponent"), nullptr);
     EXPECT_NE(SceneNs::FindComponentEntry(player, "PlayerComponent"), nullptr);
     EXPECT_NE(SceneNs::FindComponentEntry(player, "PlayerInputComponent"), nullptr);
@@ -438,7 +437,7 @@ TEST(SaveLoadRoundTrip, MultiplePlayersFirstWins)
     EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(dst.objects[playerIndex]).x, 1.0f);
 }
 
-// プレイヤーだけのシーンには読込時の補完がプレイヤーを追う 1 台を合成し、「必ず 1 台」を保証する
+// エディタの読込の補完が、プレイヤーを追う 1 台を足す。既に居れば足さない
 TEST(EnsurePlayableObjects, SynthesizesFollowCameraTargetingExistingPlayer)
 {
     SceneNs::SceneData dst;
@@ -602,7 +601,7 @@ TEST(SaveLoadRoundTrip, BreakableValuesSurviveRoundTrip)
     EXPECT_FLOAT_EQ(breakable->Toughness(), 2.0f);
 }
 
-// 同じ Cube を 2 個並べても値は個体ごと。同じ壁が勢い次第で壊す対象にも壁にもなる前提
+// 同じ Cube を 2 個並べても値は個体ごと
 TEST(SaveLoadRoundTrip, BreakableValuesStayPerObject)
 {
     SceneNs::SceneData src;
