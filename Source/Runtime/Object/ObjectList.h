@@ -31,6 +31,8 @@ namespace NS::Object
     //! 配置物 1 件の組み立ては呼出側のファクトリに委ね、GameObject の型選択や資産解決は持たない
     //! 機能別の型付き控えも持たず、欲しい component 型は ForEachComponent で問い合わせる
     //! 特定の 1 体は永続 id の解決で引く
+    //! const の参照で受けても中身は守れない。ObjectAt と範囲 for と ForEachComponent が渡すのは
+    //! 非 const の GameObject* と Component* で、呼び出し側はそこから書き換えられる
     //! 依存: NS::Object::GameObject / ObjectData, NS::Physics::PhysicsScene
     class ObjectList : public NS::Core::NonCopyable
     {

@@ -58,12 +58,19 @@ namespace NS::App
         //! @return 正常終了時に 0、初期化失敗またはレイヤーが空の場合は -1
         int Run();
 
+        //! 起動時に作ったウィンドウ。Shutdown で破棄するので以降は参照できない
         [[nodiscard]] NS::Platform::Window& Window() noexcept;
+        [[nodiscard]] const NS::Platform::Window& Window() const noexcept;
+        //! 起動時に作ったレンダラー。破棄の時期はウィンドウと同じ
         [[nodiscard]] NS::Graphics::Renderer& Renderer() noexcept;
+        [[nodiscard]] const NS::Graphics::Renderer& Renderer() const noexcept;
+        //! プロセス全体で共有される入力。Application は所有しない
         [[nodiscard]] NS::Platform::Input& Input() noexcept;
+        [[nodiscard]] const NS::Platform::Input& Input() const noexcept;
 
         //! アプリの寿命に紐づくアセットキャッシュ
         [[nodiscard]] NS::Object::AssetManager& Assets() noexcept;
+        [[nodiscard]] const NS::Object::AssetManager& Assets() const noexcept;
 
         //! 未構築時は nullptr を返す
         [[nodiscard]] static Application* Get() noexcept;

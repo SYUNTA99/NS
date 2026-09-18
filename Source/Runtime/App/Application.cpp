@@ -88,7 +88,17 @@ namespace NS::App
         return *m_window;
     }
 
+    const NS::Platform::Window& Application::Window() const noexcept
+    {
+        return *m_window;
+    }
+
     NS::Graphics::Renderer& Application::Renderer() noexcept
+    {
+        return *m_renderer;
+    }
+
+    const NS::Graphics::Renderer& Application::Renderer() const noexcept
     {
         return *m_renderer;
     }
@@ -98,7 +108,18 @@ namespace NS::App
         return NS::Platform::Input::Get();
     }
 
+    const NS::Platform::Input& Application::Input() const noexcept
+    {
+        return NS::Platform::Input::Get();
+    }
+
     NS::Object::AssetManager& Application::Assets() noexcept
+    {
+        NS_ASSERT(App, m_assets, "Init 前 / Shutdown 後に Assets() を呼んでいる");
+        return *m_assets;
+    }
+
+    const NS::Object::AssetManager& Application::Assets() const noexcept
     {
         NS_ASSERT(App, m_assets, "Init 前 / Shutdown 後に Assets() を呼んでいる");
         return *m_assets;

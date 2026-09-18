@@ -70,8 +70,9 @@ namespace NS::Object
         //! brain が駆動する実カメラ。シーンの破棄後は nullptr
         [[nodiscard]] CameraComponent* MainCamera() noexcept;
 
-        //! PhysicsScene への可変参照。Scene が値で持つので寿命は Scene と同じ
+        //! PhysicsScene への参照。Scene が値で持つので寿命は Scene と同じ
         [[nodiscard]] NS::Physics::PhysicsScene& Physics() noexcept { return m_physicsScene; }
+        [[nodiscard]] const NS::Physics::PhysicsScene& Physics() const noexcept { return m_physicsScene; }
 
         //! AssetManager を非所有で差す。組み立て時の参照実体化が使う。未設定 (テスト等) は解決を跳ばす
         void SetAssets(AssetManager* assets) noexcept { m_assets = assets; }
@@ -85,6 +86,7 @@ namespace NS::Object
 
         //! @brief シーンデータから組んだ配置物の一覧
         [[nodiscard]] NS::Object::ObjectList& Objects() noexcept { return m_objects; }
+        [[nodiscard]] const NS::Object::ObjectList& Objects() const noexcept { return m_objects; }
 
         //! @brief 読み込んだシーンデータを取り込み配置物を組み直す。データは取込後に用済みになる一時データ
         void LoadFromData(SceneData&& data);
