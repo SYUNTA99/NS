@@ -41,10 +41,11 @@ namespace
 
         [[nodiscard]] const char* CurrentName() const noexcept override { return m_machine.CurrentName(); }
         [[nodiscard]] bool IsBuilt() const noexcept override { return m_machine.IsBuilt(); }
-        bool ChangeByName(std::string_view name) override { return m_machine.Change(*this, name); }
         void ResetToFirst() noexcept override { m_machine.Reset(); }
 
     private:
+        bool ChangeByName(std::string_view name) override { return m_machine.Change(*this, name); }
+
         NS::Object::StateMachine<FakeStateManager> m_machine;
     };
 
@@ -84,18 +85,18 @@ TEST(EntityStateManagerTest, SplitWithoutSeparatorIsOneName)
     EXPECT_EQ(names[0], "Idle");
 }
 
-TEST(EntityStateManagerTest, IsCurrentFollowsTheStateMachine)
+TEST(EntityStateManagerTest, ChangeAndIsCurrentTakeTheStateType)
 {
     NS::Object::GameObject obj;
     auto& manager = *obj.AddComponent<FakeStateManager>();
     ASSERT_TRUE(manager.BuildFromList("IdleTest;WalkTest"));
     ASSERT_TRUE(manager.IsBuilt());
 
-    EXPECT_TRUE(manager.IsCurrent(IdleTestState::k_Name));
-    EXPECT_FALSE(manager.IsCurrent(WalkTestState::k_Name));
+    EXPECT_TRUE(manager.IsCurrent<IdleTestState>());
+    EXPECT_FALSE(manager.IsCurrent<WalkTestState>());
 
-    ASSERT_TRUE(manager.ChangeByName(WalkTestState::k_Name));
+    ASSERT_TRUE(manager.Change<WalkTestState>());
 
-    EXPECT_TRUE(manager.IsCurrent(WalkTestState::k_Name));
-    EXPECT_FALSE(manager.IsCurrent(IdleTestState::k_Name));
+    EXPECT_TRUE(manager.IsCurrent<WalkTestState>());
+    EXPECT_FALSE(manager.IsCurrent<IdleTestState>());
 }

@@ -20,7 +20,6 @@ namespace NS::Game::Player
     public:
         [[nodiscard]] const char* CurrentName() const noexcept override;
         [[nodiscard]] bool IsBuilt() const noexcept override;
-        bool ChangeByName(std::string_view name) override;
         void ResetToFirst() noexcept override;
 
         //! まだ組んでいなければ一覧から組む。遷移に渡す所有者もここで控える
@@ -42,6 +41,8 @@ namespace NS::Game::Player
         NS_REFLECT_END()
 
     private:
+        bool ChangeByName(std::string_view name) override;
+
         //! m_stateNames のセミコロン区切りから状態機械を組む。全滅時は既定の並びへ退避する
         void BuildStates(PlayerComponent& player);
 

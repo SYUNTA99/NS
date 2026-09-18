@@ -1,6 +1,7 @@
 #include "Editor/LevelFilePaths.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerStateManagerComponent.h"
+#include "Game/Player/States/IdlePlayerState.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
@@ -103,7 +104,7 @@ TEST_P(ShippedScene, LoadedPlayerBuildsItsStateMachine)
     live->OnStart();
     states->EnsureBuilt(*player);
     EXPECT_TRUE(states->IsBuilt());
-    EXPECT_STREQ(states->CurrentName(), "Idle");
+    EXPECT_STREQ(states->CurrentName(), PlayerNs::IdlePlayerState::k_Name);
 }
 
 TEST_P(ShippedScene, EveryTuningFieldNameIsReflected)

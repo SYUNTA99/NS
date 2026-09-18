@@ -1,5 +1,12 @@
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerState.h>
+#include <Game/Player/States/BodySlamPlayerState.h>
+#include <Game/Player/States/BrakePlayerState.h>
+#include <Game/Player/States/FallPlayerState.h>
+#include <Game/Player/States/IdlePlayerState.h>
+#include <Game/Player/States/LedgeClimbingPlayerState.h>
+#include <Game/Player/States/LedgeHangingPlayerState.h>
+#include <Game/Player/States/WalkPlayerState.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/StateMachine.h>
 #include <gtest/gtest.h>
@@ -12,9 +19,16 @@ namespace
 {
     using PlayerComponent = NS::Game::Player::PlayerComponent;
     using Registry = NS::Object::StateRegistry<PlayerComponent>;
+    using BodySlamPlayerState = NS::Game::Player::BodySlamPlayerState;
+    using BrakePlayerState = NS::Game::Player::BrakePlayerState;
+    using FallPlayerState = NS::Game::Player::FallPlayerState;
+    using IdlePlayerState = NS::Game::Player::IdlePlayerState;
+    using LedgeClimbingPlayerState = NS::Game::Player::LedgeClimbingPlayerState;
+    using LedgeHangingPlayerState = NS::Game::Player::LedgeHangingPlayerState;
+    using WalkPlayerState = NS::Game::Player::WalkPlayerState;
 
-    // 状態を名指しで呼ぶコードはどこにも無い。参照されない翻訳単位の静的初期化はリンカに落とされ得るので、
-    // 登録簿から作れることをここで見張る
+    // 状態の型を名指しする所が読むのはヘッダの k_Name だけで、状態の翻訳単位はどこからも参照されない
+    // 参照されない翻訳単位の静的初期化はリンカに落とされ得るので、登録簿から作れることをここで見張る
     constexpr const char* k_MissingHint =
         " が登録簿にない。状態の翻訳単位がリンクされていない疑い。premake5.lua の project \"Tests\" の"
         " files に Source/Game/Player/**.cpp があるか、足した後に Tools\\@regen_project.cmd を掛けたかを見る";
@@ -37,40 +51,39 @@ namespace
     }
 } // namespace
 
-// 立ちへ移す所が使う定数をそのまま登録簿へ通し、綴りがずれていないことも同時に見る
 TEST(PlayerStateRegistrationTest, IdleIsCreatableByName)
 {
-    ExpectRegistered(PlayerComponent::k_IdleStateName);
+    ExpectRegistered(IdlePlayerState::k_Name);
 }
 
 TEST(PlayerStateRegistrationTest, WalkIsCreatableByName)
 {
-    ExpectRegistered("Walk");
+    ExpectRegistered(WalkPlayerState::k_Name);
 }
 
 TEST(PlayerStateRegistrationTest, FallIsCreatableByName)
 {
-    ExpectRegistered("Fall");
+    ExpectRegistered(FallPlayerState::k_Name);
 }
 
 TEST(PlayerStateRegistrationTest, LedgeHangingIsCreatableByName)
 {
-    ExpectRegistered(PlayerComponent::k_LedgeHangingStateName);
+    ExpectRegistered(LedgeHangingPlayerState::k_Name);
 }
 
 TEST(PlayerStateRegistrationTest, LedgeClimbingIsCreatableByName)
 {
-    ExpectRegistered(PlayerComponent::k_LedgeClimbingStateName);
+    ExpectRegistered(LedgeClimbingPlayerState::k_Name);
 }
 
 TEST(PlayerStateRegistrationTest, BodySlamIsCreatableByName)
 {
-    ExpectRegistered(PlayerComponent::k_BodySlamStateName);
+    ExpectRegistered(BodySlamPlayerState::k_Name);
 }
 
 TEST(PlayerStateRegistrationTest, BrakeIsCreatableByName)
 {
-    ExpectRegistered("Brake");
+    ExpectRegistered(BrakePlayerState::k_Name);
 }
 
 TEST(PlayerStateRegistrationTest, UnknownNameCreatesNothing)
@@ -91,17 +104,17 @@ TEST(PlayerStateRegistrationTest, SevenStatesBuildAMachineStartingAtIdle)
     PlayerComponent& player = *obj.AddComponent<PlayerComponent>();
 
     const std::vector<std::string> names{
-        PlayerComponent::k_IdleStateName,
-        "Walk",
-        "Fall",
-        PlayerComponent::k_LedgeHangingStateName,
-        PlayerComponent::k_LedgeClimbingStateName,
-        PlayerComponent::k_BodySlamStateName,
-        "Brake",
+        IdlePlayerState::k_Name,
+        WalkPlayerState::k_Name,
+        FallPlayerState::k_Name,
+        LedgeHangingPlayerState::k_Name,
+        LedgeClimbingPlayerState::k_Name,
+        BodySlamPlayerState::k_Name,
+        BrakePlayerState::k_Name,
     };
 
     NS::Object::StateMachine<PlayerComponent> machine;
 
     EXPECT_TRUE(machine.Build(player, names));
-    EXPECT_STREQ(machine.CurrentName(), PlayerComponent::k_IdleStateName);
+    EXPECT_STREQ(machine.CurrentName(), IdlePlayerState::k_Name);
 }

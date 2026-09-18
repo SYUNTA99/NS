@@ -2,6 +2,7 @@
 
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
+#include <Game/Player/States/FallPlayerState.h>
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
@@ -22,6 +23,7 @@ namespace
 {
     using NS::Core::AABB;
     using NS::Core::Vector3;
+    using NS::Game::Player::FallPlayerState;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
     using NS::Object::GameObject;
@@ -221,7 +223,7 @@ namespace
         // 状態機械は最初のフレームまで組まれないので、先に組んでから落下へ移す
         auto& manager = *owner.FindComponent<PlayerStateManagerComponent>();
         manager.EnsureBuilt(movement);
-        manager.ChangeByName("Fall");
+        manager.Change<FallPlayerState>();
 
         std::vector<StepRecord> trajectory;
         for (int i = 0; i < 150; ++i)

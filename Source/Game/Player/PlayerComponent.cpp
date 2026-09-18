@@ -2,6 +2,12 @@
 
 #include "Game/Entity/EntityStateManagerComponent.h"
 #include "Game/Player/PlayerStateManagerComponent.h"
+#include "Game/Player/States/BodySlamPlayerState.h"
+#include "Game/Player/States/FallPlayerState.h"
+#include "Game/Player/States/IdlePlayerState.h"
+#include "Game/Player/States/LedgeClimbingPlayerState.h"
+#include "Game/Player/States/LedgeHangingPlayerState.h"
+#include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/GameObject.h"
@@ -282,7 +288,7 @@ namespace NS::Game::Player
 
     bool PlayerComponent::IsBodySlamming() const noexcept
     {
-        return m_stateManager != nullptr && m_stateManager->IsCurrent(k_BodySlamStateName);
+        return m_stateManager != nullptr && m_stateManager->IsCurrent<BodySlamPlayerState>();
     }
 
     float PlayerComponent::BodySlamProgress01() const noexcept
@@ -328,11 +334,11 @@ namespace NS::Game::Player
         {
             if (IsGrounded())
             {
-                m_stateManager->ChangeByName("Walk");
+                m_stateManager->Change<WalkPlayerState>();
             }
             else
             {
-                m_stateManager->ChangeByName("Fall");
+                m_stateManager->Change<FallPlayerState>();
             }
         }
         m_playerEvents.onBodySlamEnded.Invoke();
@@ -435,7 +441,9 @@ namespace NS::Game::Player
         m_bodySlamSpent = true;
 
         if (m_stateManager != nullptr)
-            m_stateManager->ChangeByName(k_BodySlamStateName);
+        {
+            m_stateManager->Change<BodySlamPlayerState>();
+        }
         m_playerEvents.onBodySlamStarted.Invoke();
         return true;
     }
@@ -739,7 +747,9 @@ namespace NS::Game::Player
             m_ledgeTopY = top;
             m_ledgeFaceNormal = faceNormal;
             if (m_stateManager != nullptr)
-                m_stateManager->ChangeByName(k_LedgeHangingStateName);
+            {
+                m_stateManager->Change<LedgeHangingPlayerState>();
+            }
             m_playerEvents.onLedgeGrabbed.Invoke();
             return true;
         }
@@ -779,7 +789,7 @@ namespace NS::Game::Player
         SetGrounded(false);
         if (m_stateManager != nullptr)
         {
-            m_stateManager->ChangeByName("Fall");
+            m_stateManager->Change<FallPlayerState>();
         }
         m_playerEvents.onJump.Invoke();
         return true;
@@ -803,7 +813,9 @@ namespace NS::Game::Player
         };
         m_ledgeMantleTimer = 0.0f;
         if (m_stateManager != nullptr)
-            m_stateManager->ChangeByName(k_LedgeClimbingStateName);
+        {
+            m_stateManager->Change<LedgeClimbingPlayerState>();
+        }
         SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
         m_playerEvents.onLedgeClimbing.Invoke();
     }
@@ -812,7 +824,7 @@ namespace NS::Game::Player
     {
         if (m_stateManager != nullptr)
         {
-            m_stateManager->ChangeByName("Fall");
+            m_stateManager->Change<FallPlayerState>();
         }
         SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
         SetGrounded(false);
@@ -871,7 +883,9 @@ namespace NS::Game::Player
         {
             RootTransform().SetPosition(m_ledgeMantleEnd);
             if (m_stateManager != nullptr)
-                m_stateManager->ChangeByName(k_IdleStateName);
+            {
+                m_stateManager->Change<IdlePlayerState>();
+            }
             SetGrounded(true);
             m_jumpsRemaining = 1;
             m_coyoteTimer = CoyoteTime();
@@ -925,14 +939,12 @@ namespace NS::Game::Player
         return false;
     }
 
-    // 綴りが状態側とずれると突進が出なくなるので、走りと落下は player_state_registration_test が
-    // 同じ名前で登録簿から作れることを見張っている
     bool PlayerComponent::IsLocomotion() const noexcept
     {
         if (m_stateManager == nullptr)
             return false;
-        return m_stateManager->IsCurrent(k_IdleStateName) || m_stateManager->IsCurrent("Walk") ||
-               m_stateManager->IsCurrent("Fall");
+        return m_stateManager->IsCurrent<IdlePlayerState>() || m_stateManager->IsCurrent<WalkPlayerState>() ||
+               m_stateManager->IsCurrent<FallPlayerState>();
     }
 
     bool PlayerComponent::ShouldWalk() const noexcept

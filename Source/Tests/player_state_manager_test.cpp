@@ -1,5 +1,9 @@
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
+#include <Game/Player/States/BodySlamPlayerState.h>
+#include <Game/Player/States/FallPlayerState.h>
+#include <Game/Player/States/IdlePlayerState.h>
+#include <Game/Player/States/WalkPlayerState.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <gtest/gtest.h>
@@ -8,8 +12,12 @@
 
 namespace
 {
+    using NS::Game::Player::BodySlamPlayerState;
+    using NS::Game::Player::FallPlayerState;
+    using NS::Game::Player::IdlePlayerState;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
+    using NS::Game::Player::WalkPlayerState;
     using NS::Object::FieldDesc;
     using NS::Object::FieldType;
     using NS::Object::GameObject;
@@ -87,7 +95,7 @@ TEST(PlayerStateManagerTest, BuildingEntersTheFirstNameInTheList)
     rig.manager->EnsureBuilt(*rig.player);
 
     EXPECT_TRUE(rig.manager->IsBuilt());
-    EXPECT_STREQ(rig.manager->CurrentName(), PlayerComponent::k_IdleStateName);
+    EXPECT_STREQ(rig.manager->CurrentName(), IdlePlayerState::k_Name);
 }
 
 TEST(PlayerStateManagerTest, FirstStepBuildsTheMachine)
@@ -107,9 +115,9 @@ TEST(PlayerStateManagerTest, UnknownNamesAreSkipped)
     rig.manager->EnsureBuilt(*rig.player);
 
     ASSERT_TRUE(rig.manager->IsBuilt());
-    EXPECT_STREQ(rig.manager->CurrentName(), PlayerComponent::k_IdleStateName);
-    EXPECT_TRUE(rig.manager->ChangeByName("Fall"));
-    EXPECT_FALSE(rig.manager->ChangeByName("Walk"));
+    EXPECT_STREQ(rig.manager->CurrentName(), IdlePlayerState::k_Name);
+    EXPECT_TRUE(rig.manager->Change<FallPlayerState>());
+    EXPECT_FALSE(rig.manager->Change<WalkPlayerState>());
 }
 
 TEST(PlayerStateManagerTest, AllUnknownNamesFallBackToTheDefaultList)
@@ -120,36 +128,36 @@ TEST(PlayerStateManagerTest, AllUnknownNamesFallBackToTheDefaultList)
     rig.manager->EnsureBuilt(*rig.player);
 
     ASSERT_TRUE(rig.manager->IsBuilt());
-    EXPECT_STREQ(rig.manager->CurrentName(), PlayerComponent::k_IdleStateName);
-    EXPECT_TRUE(rig.manager->ChangeByName(PlayerComponent::k_BodySlamStateName));
+    EXPECT_STREQ(rig.manager->CurrentName(), IdlePlayerState::k_Name);
+    EXPECT_TRUE(rig.manager->Change<BodySlamPlayerState>());
 }
 
-TEST(PlayerStateManagerTest, ChangeByNameMovesToTheNamedState)
+TEST(PlayerStateManagerTest, ChangeMovesToTheState)
 {
     Rig rig;
     rig.manager->EnsureBuilt(*rig.player);
 
-    EXPECT_TRUE(rig.manager->ChangeByName("Fall"));
-    EXPECT_STREQ(rig.manager->CurrentName(), "Fall");
+    EXPECT_TRUE(rig.manager->Change<FallPlayerState>());
+    EXPECT_STREQ(rig.manager->CurrentName(), FallPlayerState::k_Name);
 }
 
 TEST(PlayerStateManagerTest, ResetToFirstReturnsToTheFirstState)
 {
     Rig rig;
     rig.manager->EnsureBuilt(*rig.player);
-    ASSERT_TRUE(rig.manager->ChangeByName("Fall"));
+    ASSERT_TRUE(rig.manager->Change<FallPlayerState>());
 
     rig.manager->ResetToFirst();
 
-    EXPECT_STREQ(rig.manager->CurrentName(), PlayerComponent::k_IdleStateName);
+    EXPECT_STREQ(rig.manager->CurrentName(), IdlePlayerState::k_Name);
 }
 
-TEST(PlayerStateManagerTest, ChangeByNameFailsBeforeTheMachineIsBuilt)
+TEST(PlayerStateManagerTest, ChangeFailsBeforeTheMachineIsBuilt)
 {
     GameObject owner;
     PlayerStateManagerComponent& manager = *owner.AddComponent<PlayerStateManagerComponent>();
 
-    EXPECT_FALSE(manager.ChangeByName("Fall"));
+    EXPECT_FALSE(manager.Change<FallPlayerState>());
 }
 
 TEST(PlayerStateManagerTest, ReflectedStateListIsReadableAndWritable)
@@ -163,5 +171,5 @@ TEST(PlayerStateManagerTest, ReflectedStateListIsReadableAndWritable)
 
     EXPECT_EQ(ReadStateList(*rig.manager), "Idle;Fall");
     rig.manager->EnsureBuilt(*rig.player);
-    EXPECT_FALSE(rig.manager->ChangeByName("Walk"));
+    EXPECT_FALSE(rig.manager->Change<WalkPlayerState>());
 }

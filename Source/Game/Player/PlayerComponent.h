@@ -50,16 +50,7 @@ namespace NS::Game::Player
         //! 奈落落ちの復活などで速度・接地・ジャンプまわりの記録と状態機械を初期状態へ戻す
         void ResetState() noexcept;
 
-        //! 体当たりの状態の登録名。状態クラスの k_Name と同じ綴り
-        static constexpr const char* k_BodySlamStateName = "BodySlam";
-        //! 立ちの状態の登録名
-        static constexpr const char* k_IdleStateName = "Idle";
-        //! 縁にぶら下がっている状態の登録名
-        static constexpr const char* k_LedgeHangingStateName = "LedgeHanging";
-        //! 縁から上面へよじ登っている状態の登録名
-        static constexpr const char* k_LedgeClimbingStateName = "LedgeClimbing";
-
-        //! 状態が次の登録名を渡す先。OnStep を呼ぶのが状態管理なので、状態の中では非 null
+        //! 状態が次の状態へ移る時に呼ぶ状態管理。HandleStates はこれが無いと状態を進めないので、状態の中では非 null
         [[nodiscard]] NS::Game::Entity::EntityStateManagerComponent* States() const noexcept;
 
         //! 体当たりの発動を要求する

@@ -8,11 +8,6 @@ namespace NS::Game::Entity
         : NS::Object::Component(NS::Object::TickPriority::Update)
     {}
 
-    bool EntityStateManagerComponent::IsCurrent(std::string_view name) const noexcept
-    {
-        return std::string_view(CurrentName()) == name;
-    }
-
     std::vector<std::string> EntityStateManagerComponent::SplitStateNames(const std::string& list)
     {
         std::vector<std::string> names;

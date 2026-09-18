@@ -1,6 +1,13 @@
 #include "Game/Player/PlayerStateManagerComponent.h"
 
 #include "Game/Player/PlayerComponent.h"
+#include "Game/Player/States/BodySlamPlayerState.h"
+#include "Game/Player/States/BrakePlayerState.h"
+#include "Game/Player/States/FallPlayerState.h"
+#include "Game/Player/States/IdlePlayerState.h"
+#include "Game/Player/States/LedgeClimbingPlayerState.h"
+#include "Game/Player/States/LedgeHangingPlayerState.h"
+#include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -33,7 +40,7 @@ namespace NS::Game::Player
 
     void PlayerStateManagerComponent::EnsureBuilt(PlayerComponent& player)
     {
-        // 状態が呼ぶ ChangeByName は 1 フレームの中で起きる。渡された所有者をここで控えると、
+        // 状態が呼ぶ遷移は 1 フレームの中で起きる。渡された所有者をここで控えると、
         // OnStart を通らない検証台でも遷移が false を返さない
         m_player = &player;
         if (!m_machine.IsBuilt())
@@ -71,13 +78,13 @@ namespace NS::Game::Player
         // 退避の並びも同じ登録簿から作る。登録ごとリンカに落とされた時はここでも組めないので、
         // その検知は player_state_registration_test に任せる
         NS_LOG_ERROR(Game, "PlayerStateManager: 状態一覧が組めないため既定の並びへ退避: {}", m_stateNames);
-        const std::vector<std::string> fallback = {PlayerComponent::k_IdleStateName,
-                                                   "Walk",
-                                                   "Fall",
-                                                   PlayerComponent::k_LedgeHangingStateName,
-                                                   PlayerComponent::k_LedgeClimbingStateName,
-                                                   PlayerComponent::k_BodySlamStateName,
-                                                   "Brake"};
+        const std::vector<std::string> fallback = {IdlePlayerState::k_Name,
+                                                   WalkPlayerState::k_Name,
+                                                   FallPlayerState::k_Name,
+                                                   LedgeHangingPlayerState::k_Name,
+                                                   LedgeClimbingPlayerState::k_Name,
+                                                   BodySlamPlayerState::k_Name,
+                                                   BrakePlayerState::k_Name};
         m_machine.Build(player, fallback);
     }
 
