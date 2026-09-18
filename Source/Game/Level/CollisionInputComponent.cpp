@@ -158,16 +158,10 @@ namespace NS::Game::Level
         {
             color = NS::Core::Color{ 1.0f, 1.0f, 1.0f, 1.0f };
         }
-        constexpr int k_Segments = 24;
-        for (int i = 0; i < k_Segments; ++i)
-        {
-            const float a0 = 2.0f * NS::Core::k_Pi * static_cast<float>(i) / static_cast<float>(k_Segments);
-            const float a1 = 2.0f * NS::Core::k_Pi * static_cast<float>(i + 1) / static_cast<float>(k_Segments);
-            NS::Graphics::DebugDraw::Line(
-                NS::Core::Vector3{center.x + std::cos(a0) * radius, footY, center.z + std::sin(a0) * radius},
-                NS::Core::Vector3{center.x + std::cos(a1) * radius, footY, center.z + std::sin(a1) * radius},
-                color);
-        }
+        NS::Graphics::DebugDraw::Circle(NS::Core::Vector3{center.x, footY, center.z},
+                                        NS::Core::Vector3{radius, 0.0f, 0.0f},
+                                        NS::Core::Vector3{0.0f, 0.0f, radius},
+                                        color);
     }
 #endif
 

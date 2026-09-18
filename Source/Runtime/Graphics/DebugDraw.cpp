@@ -226,6 +226,14 @@ namespace NS::Graphics::DebugDraw
         PushCircle(sphere.center, rz, rx, color);
     }
 
+    void Circle(const NS::Core::Vector3& center,
+                const NS::Core::Vector3& u,
+                const NS::Core::Vector3& v,
+                const NS::Core::Color& color) noexcept
+    {
+        PushCircle(center, u, v, color);
+    }
+
     void Capsule(const NS::Core::Vector3& base,
                  const NS::Core::Vector3& axis,
                  float radius,

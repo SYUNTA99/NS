@@ -46,4 +46,10 @@ namespace NS::Physics
         float m_halfHeight = 0.5f;
         JPH::Ref<JPH::CharacterVirtual> m_character;
     };
+
+    //! @brief 面の法線の上向き成分が、歩いて登れる斜面のものかを返す
+    //! @details 登れる急さの上限は 45°
+    //! @param[in] normalY 単位法線の Y 成分
+    //! @return 歩いて登れる場合 true、それ以外の場合は false
+    [[nodiscard]] bool IsWalkableNormal(float normalY) noexcept;
 } // namespace NS::Physics

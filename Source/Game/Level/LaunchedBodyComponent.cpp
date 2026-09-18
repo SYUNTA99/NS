@@ -6,12 +6,14 @@
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Core/OBB.h"
+#include "Runtime/Object/Components/BoxColliderComponent.h"
 #include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
+#include "Runtime/Physics/JoltCharacter.h"
 #include "Runtime/Physics/PhysicsScene.h"
 
 #include <algorithm>
@@ -22,17 +24,6 @@ namespace NS::Game::Level
 {
     namespace
     {
-        // 当たり箱を持たない配置物の、各軸の半分の大きさ
-        constexpr float k_DefaultHalfExtent = 0.5f;
-
-        // 壁とみなす法線の上限。床は着地で必ず当たるので分けないと着地で割れる。cos 45 に合わせて 0.7
-        constexpr float k_WallNormalY = 0.7f;
-
-        constexpr float k_MinSpinSpeed = 1.0e-4f;
-
-        constexpr float k_DebrisScale = 0.25f;
-        constexpr NS::Core::Vector3 k_DebrisBaseColor{0.35f, 0.32f, 0.30f};
-
         [[nodiscard]] bool IsFinite(const NS::Core::Vector3& v) noexcept
         {
             return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
@@ -45,14 +36,20 @@ namespace NS::Game::Level
 
     NS::Core::Vector3 LaunchedBodyComponent::TumbleFrom(const NS::Core::Vector3& velocity) const noexcept
     {
+        NS::Core::Vector3 forward{};
+        if (!NS::Core::TryNormalizeHorizontal(velocity, forward))
+        {
+            return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        }
         const float horizontal = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
         const float rate = m_spinPerSpeed * horizontal;
-        // 下限に届かない水平の速さで軸を正規化すると 0 除算になり、姿勢へ NaN が流れる
-        if (!std::isfinite(rate) || horizontal < k_MinSpinSpeed)
+        if (!std::isfinite(rate))
+        {
             return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        }
 
         // 軸は上向きと進む向きの外積。正の角度で上面が進行方向へ倒れる前転になる
-        const NS::Core::Vector3 axis{velocity.z / horizontal, 0.0f, -velocity.x / horizontal};
+        const NS::Core::Vector3 axis{forward.z, 0.0f, -forward.x};
         return axis * rate;
     }
 
@@ -81,12 +78,7 @@ namespace NS::Game::Level
         NS::Core::AABB bounds{};
         if (!TryGetColliderBounds(*Owner(), bounds))
         {
-            // 当たりの無い破片は描画スケールから形を作る。既定の大きさだと小さい破片が浮いて止まる
-            const NS::Core::Vector3 scale = RootTransform().Scale();
-            bounds.Center = RootTransform().Position();
-            bounds.Extents = NS::Core::Vector3{k_DefaultHalfExtent * std::abs(scale.x),
-                                               k_DefaultHalfExtent * std::abs(scale.y),
-                                               k_DefaultHalfExtent * std::abs(scale.z)};
+            return JPH::BodyID{};
         }
 
         NS::Physics::DynamicBodyDesc desc;
@@ -169,10 +161,11 @@ namespace NS::Game::Level
 
         const NS::Core::Vector3 origin = RootTransform().Position();
         float mass = 1.0f;
-        if (auto* breakable = Owner()->FindComponent<BreakableComponent>())
+        auto* breakable = Owner()->FindComponent<BreakableComponent>();
+        if (breakable != nullptr)
+        {
             mass = breakable->Mass();
-        if (!std::isfinite(mass) || mass < 0.01f)
-            mass = 0.01f;
+        }
 
         RemoveFlyingBody();
         m_flying = false;
@@ -186,11 +179,12 @@ namespace NS::Game::Level
             const float up = 0.5f + 0.5f * static_cast<float>(i % 2);
             auto owned = std::make_unique<NS::Object::GameObject>();
             owned->Root().SetPosition(origin);
-            owned->Root().SetScale(NS::Core::Vector3{k_DebrisScale, k_DebrisScale, k_DebrisScale});
+            owned->Root().SetScale(NS::Core::Vector3{m_debrisScale, m_debrisScale, m_debrisScale});
             auto* mesh = owned->AddComponent<NS::Object::MeshRendererComponent>();
             mesh->SetMeshRef("cube");
             mesh->SetMaterialRef("player");
-            mesh->SetBaseColor(k_DebrisBaseColor);
+            mesh->SetBaseColor(m_debrisBaseColor);
+            owned->AddComponent<NS::Object::BoxColliderComponent>();
             owned->AddComponent<LaunchedBodyComponent>();
             NS::Object::GameObject* spawned = scene->SpawnTransient(std::move(owned));
             if (spawned == nullptr)
@@ -205,6 +199,10 @@ namespace NS::Game::Level
             body->Launch(NS::Core::Vector3{std::cos(angle) * speed, up * speed, std::sin(angle) * speed});
         }
 
+        if (breakable != nullptr)
+        {
+            breakable->SetActive(false);
+        }
         HideAndSleep();
     }
 
@@ -229,7 +227,8 @@ namespace NS::Game::Level
 
         for (const NS::Physics::BodyContact& contact : physics->ContactsOf(m_bodyId))
         {
-            if (contact.normal.y < k_WallNormalY)
+            // 歩ける面は床。着地で必ず当たる床を分けないと着地で割れる
+            if (!NS::Physics::IsWalkableNormal(contact.normal.y))
             {
                 Shatter();
                 return;
@@ -254,7 +253,6 @@ namespace NS::Game::Level
     {
         if (Owner() == nullptr)
             return;
-        // 当たり箱を持たない配置物でも飛べるようにする
         auto* collider = Owner()->FindComponent<NS::Object::ColliderComponent>();
         if (collider == nullptr || collider->IsActiveSelf() == active)
             return;

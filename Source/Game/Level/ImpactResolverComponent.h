@@ -74,20 +74,22 @@ namespace NS::Game::Level
         NS_REFLECT_FIELD(m_launchSpeed, "押し飛ばし基準初速")
         NS_REFLECT_FIELD(m_launchMassExponent, "押し飛ばしの質量指数")
         NS_REFLECT_FIELD(m_launchUpScale, "押し飛ばしの浮き上がり")
+        NS_REFLECT_FIELD(m_launchMaxSpeed, "押し飛ばしの最高速")
         NS_REFLECT_FIELD(m_hitStopBaseSeconds, "ヒットストップ基準秒")
         NS_REFLECT_FIELD(m_peakHitStopScale, "ピークのヒットストップ倍率")
+        NS_REFLECT_FIELD(m_hitStopMaxSeconds, "ヒットストップの上限秒")
         NS_REFLECT_FIELD(m_pushInDistance, "食い込み距離")
         NS_REFLECT_FIELD(m_shakeAmplitude, "振動の振幅")
         NS_REFLECT_FIELD(m_cameraShakeScale, "カメラ揺れの強さ")
         NS_REFLECT_FIELD(m_squashThickness, "潰れの厚み")
         NS_REFLECT_FIELD(m_squashHeight, "潰れの伸び上がり")
         NS_REFLECT_FIELD(m_stretchAlong, "弾け伸びの倍率")
+        NS_REFLECT_FIELD(m_stretchRecoverSteps, "弾け伸びを戻すフレーム数")
+        NS_REFLECT_FIELD(m_peakFlashAlpha, "ピークの白の濃さ")
+        NS_REFLECT_FIELD(m_peakFlashSteps, "ピークの白のフレーム数")
         NS_REFLECT_FIELD(m_breakEnabled, "破壊を許可")
         NS_REFLECT_FIELD(m_breakSpeedScale, "貫通時の減速倍率")
         NS_REFLECT_FIELD(m_breakStopSeconds, "貫通の止め秒")
-        NS_REFLECT_FIELD(m_debrisCount, "破片の数")
-        NS_REFLECT_FIELD(m_debrisSpeed, "破片の初速")
-        NS_REFLECT_FIELD(m_debrisLifeSeconds, "破片の残る秒")
         NS_REFLECT_END()
 
     private:
@@ -107,11 +109,11 @@ namespace NS::Game::Level
         // 止めていた結果を適用する。自機を起こして速度を書き、反発なら発射、貫通なら破壊を行う
         void ReleaseHitStop();
 
-        // 壊れた物の印と当たりを寝かせ、見た目を差し替える。配置物は消さない
-        void BreakTarget(NS::Object::GameObject& target);
-
-        // 秒をフレーム数へ換算して 0〜12 に丸める
+        // 秒をフレーム数へ換算して 0 から MaxHitStopSteps までに丸める
         [[nodiscard]] int SecondsToSteps(float seconds) const noexcept;
+
+        // 上限秒をフレーム数へ換算する。非有限と 0 以下は 0 で、止めない
+        [[nodiscard]] int MaxHitStopSteps() const noexcept;
 
         // 凍結中のフレームで、相手を発射軸に沿って食い込み位置の周りで往復させる。絵だけで当たりは動かさない
         void ApplyFreezeVibration();
@@ -119,30 +121,36 @@ namespace NS::Game::Level
         // 最終威力と質量から止めるフレーム数を出す。0 なら止めない
         [[nodiscard]] int ComputeHitStopSteps(float power, float mass, float hitStopScale) const noexcept;
 
-        // 壊れた位置へ破片を撒く。向きは番号から決めるので同じ状況では同じ散り方になる
-        void SpawnDebris(const NS::Core::Vector3& origin, float mass);
-
         float m_reboundSpeed = 9.0f;        // 動かない壁に通常速度で当たった時の返りの速さ
         float m_reboundUpSpeed = 3.0f;      // 反発の上向き初速
         float m_launchSpeed = 32.0f;        // 通常速度で質量 1 の物に与える水平初速
         float m_launchMassExponent = 0.35f; // 押し飛ばしの初速を割る質量の指数。1 で反比例、0 で質量を見ない
         float m_launchUpScale = 0.35f;      // 水平初速に対する上向きの比
+        // 押し飛ばしの初速の上限。軽い物ほど初速が伸び、上限が無いと画面の外へ消える
+        // 120 は、60 だと質量 1 以下の物を溜め切ってピークで当てた初速が 60 に揃い、軽いほど遠くへ飛ぶ差が消えるため
+        float m_launchMaxSpeed = 120.0f;
         // 既定の固定ステップ (1/60 秒) の 4 フレームぶん
         float m_hitStopBaseSeconds = 4.0f / 60.0f; // 質量 1 へ通常速度で当てた時に止める秒
         float m_peakHitStopScale = 2.0f;           // 威力の伸び (最大 2 倍) と掛けて、素とピークの止まりを 4 倍差にする
-        float m_pushInDistance = 0.06f;            // 凍結の頭で相手を発射方向へ食い込ませる距離
-        float m_shakeAmplitude = 0.05f;            // 凍結中の往復の振れ幅。質量 1 で半分になる
-        float m_cameraShakeScale = 0.06f;          // カメラ揺れの上下振れ幅の基準
-        float m_squashThickness = 0.7f;            // 凍結中の進行方向の厚みの倍率
-        float m_squashHeight = 1.1f;               // 凍結中の高さの倍率
-        float m_stretchAlong = 1.2f;               // 解放のフレームの弾かれる方向の倍率
+        // 止める長さの上限。0.2 秒より長い停止は衝突の重さではなく処理落ちに見える
+        float m_hitStopMaxSeconds = 12.0f / 60.0f;
+        float m_pushInDistance = 0.06f;   // 凍結の頭で相手を発射方向へ食い込ませる距離
+        float m_shakeAmplitude = 0.05f;   // 凍結中の往復の振れ幅。質量 1 で半分になる
+        float m_cameraShakeScale = 0.06f; // カメラ揺れの上下振れ幅の基準
+        float m_squashThickness = 0.7f;   // 凍結中の進行方向の厚みの倍率
+        float m_squashHeight = 1.1f;      // 凍結中の高さの倍率
+        float m_stretchAlong = 1.2f;      // 解放のフレームの弾かれる方向の倍率
+        // 伸びから元の形へ戻すフレーム数。反発の滞空 0.3 秒の前半で戻し切り、着地の前に形を確定させる
+        int m_stretchRecoverSteps = 6;
+        // ピークで当てた時だけの白フラッシュ。端で当てた時と見間違えない強さにする
+        // 0.5 は一瞬白と分かる濃さ。1.0 だと食い込みと潰れの絵が隠れる
+        float m_peakFlashAlpha = 0.5f;
+        // 8 フレーム (約 0.13 秒)。質量 1 のピークの停止に収まる長さで、走り出しの視界に白を残さない
+        int m_peakFlashSteps = 8;
         // 既定は壊さない。壊れて消えると重さが飛距離に出ず、押し飛ばしと反発だけを先に詰められない
         bool m_breakEnabled = false;
         float m_breakSpeedScale = 0.75f;         // 貫通した直後に速度へ掛ける倍率
         float m_breakStopSeconds = 4.0f / 60.0f; // 貫通の瞬間に止める秒。4 フレームぶん
-        int m_debrisCount = 5;                   // 貫通した時に出す破片の数
-        float m_debrisSpeed = 6.0f;              // 質量 1 の物を壊した時の破片の水平初速
-        float m_debrisLifeSeconds = 8.0f; // 破片が止まってから消えるまでの秒。押し飛ばした配置物と違い破片は残さない
 
         int m_freezePendingSteps = 0;                              // 次のフレームに掛ける凍結のフレーム数。0 は予約なし
         int m_hitStopRemaining = 0;                                // 止まっている残りフレーム数。0 は止まっていない

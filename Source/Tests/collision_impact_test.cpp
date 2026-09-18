@@ -50,7 +50,6 @@ namespace
     constexpr float k_TapSlamSpeed = 10.0f;
     constexpr float k_LaunchBaseSpeed = 32.0f;
     constexpr float k_LaunchSpeedCap = 120.0f;
-    constexpr float k_ReboundSpeedCap = 24.0f;
     // 破壊は耐久 ≤ 最終威力なので、反発と押し飛ばしを見る台は壊れない高さを既定にする
     constexpr float k_UnbreakableToughness = 99.0f;
     // 逆転を見る台の耐久。満溜め + 中心直撃の 2.0 と、素当て + 縁かすりの 0.73 の間に置く
@@ -341,13 +340,6 @@ namespace
         return maxSteps;
     }
 
-    void SetIntField(SceneNs::Component& comp, std::string_view label, int value)
-    {
-        const SceneNs::FieldDesc* field = SceneNs::FindField(comp.GetReflection(), label);
-        ASSERT_NE(field, nullptr);
-        field->set(&comp, &value);
-    }
-
     // 一時オブジェクトとして湧いた破片だけ集める。押し飛ばされた配置物は数えない
     std::vector<LevelNs::LaunchedBodyComponent*> DebrisBodies(SceneNs::Scene& scene)
     {
@@ -449,20 +441,6 @@ TEST(CollisionImpact, HeavierTargetReboundsHarder)
     const float strong = HorizontalSpeed(heavy.movement->Velocity());
     EXPECT_GT(weak, 0.0f);
     EXPECT_GT(strong, weak);
-}
-
-TEST(CollisionImpact, ReboundSpeedIsCapped)
-{
-    SceneNs::Scene scene;
-    Rig rig = BuildSlam(scene, k_NearCourse);
-    SetInstantImpact(rig);
-    SetFloatField(*rig.impact, "反発基準初速", 100.0f);
-    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
-
-    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
-
-    ASSERT_TRUE(rig.impact->DidRebound());
-    EXPECT_FLOAT_EQ(HorizontalSpeed(rig.movement->Velocity()), k_ReboundSpeedCap);
 }
 
 TEST(CollisionImpact, ReboundAddsUpSpeed)
@@ -1346,7 +1324,8 @@ TEST(CollisionImpact, BreakDoesNotLaunchTarget)
     const int rest = StepsUntilMovementActive(scene, rig, 60);
     ASSERT_LT(rest, 60);
 
-    EXPECT_EQ(HitBody(rig), nullptr);
+    const LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    EXPECT_TRUE(body == nullptr || !body->IsFlying());
 }
 
 // 貫通の止め秒を 0 にすると凍結を挟まず、そのフレームのうちに壊れて減速する
@@ -1627,6 +1606,50 @@ TEST(CollisionImpact, BreakScattersDebrisAndLeavesMark)
     }
 }
 
+// 壊した物の本体は見えなくなる
+TEST(CollisionImpact, BreakHidesTarget)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
+    SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
+    rig.breakable->SetToughness(1.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+
+    ASSERT_TRUE(rig.impact->DidBreak());
+    ASSERT_NE(rig.target, nullptr);
+    auto* mesh = rig.target->FindComponent<SceneNs::MeshRendererComponent>();
+    ASSERT_NE(mesh, nullptr);
+    EXPECT_FALSE(mesh->IsActiveSelf());
+}
+
+// 壊した時の破片は破片の数が 0。0 でないと壁に当たるたびに撒き直す
+TEST(CollisionImpact, BreakDebrisDoNotScatterAgain)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
+    SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
+    rig.breakable->SetToughness(1.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+
+    const std::vector<LevelNs::LaunchedBodyComponent*> debris = DebrisBodies(scene);
+    ASSERT_EQ(debris.size(), 5u);
+    for (LevelNs::LaunchedBodyComponent* body : debris)
+    {
+        const SceneNs::Component& comp = *body;
+        const SceneNs::FieldDesc* field = SceneNs::FindField(comp.GetReflection(), "破片の数");
+        ASSERT_NE(field, nullptr);
+        int count = -1;
+        field->get(&comp, &count);
+        EXPECT_EQ(count, 0);
+    }
+}
+
 // 破片は同じ速さで別の向きへ散る。1 方向に固まると壊れた量が見えない
 TEST(CollisionImpact, DebrisScatterDirectionsDifferButShareSpeed)
 {
@@ -1718,13 +1741,14 @@ TEST(CollisionImpact, LaunchLeavesMarkWithoutDebris)
     EXPECT_TRUE(DebrisBodies(scene).empty());
 }
 
-// 破片の数 0 は破片を出さない指定
+// 壊れた物の破片の数が 0 なら破片を出さない
 TEST(CollisionImpact, ZeroDebrisCountScattersNone)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     EnableBreak(rig);
-    SetIntField(*rig.impact, "破片の数", 0);
+    ASSERT_NE(rig.target, nullptr);
+    rig.target->AddComponent<LevelNs::LaunchedBodyComponent>()->SetDebrisCount(0);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     rig.breakable->SetToughness(1.0f);
     BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
@@ -1754,7 +1778,6 @@ TEST(CollisionImpact, NoMarkWithoutFloorBelow)
     EXPECT_EQ(MarkCount(scene), 0);
 }
 
-// 破片は壊れた物より小さい cube。大きいと壊れた本体と見分けがつかない
 TEST(CollisionImpact, DebrisLooksLikeSmallCube)
 {
     SceneNs::Scene scene;
@@ -1784,8 +1807,10 @@ TEST(CollisionImpact, DebrisRestsThenExpires)
     Rig rig = BuildSlam(scene, k_NearCourse);
     EnableBreak(rig);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
-    SetFloatField(*rig.impact, "破片の初速", 1.0f);
-    SetFloatField(*rig.impact, "破片の残る秒", 0.05f);
+    ASSERT_NE(rig.target, nullptr);
+    auto* targetBody = rig.target->AddComponent<LevelNs::LaunchedBodyComponent>();
+    SetFloatField(*targetBody, "破片の速さ", 1.0f);
+    SetFloatField(*targetBody, "破片の寿命秒", 0.05f);
     rig.breakable->SetToughness(1.0f);
     BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
@@ -2276,6 +2301,30 @@ TEST(LaunchedBody, LandingOnFloorDoesNotShatter)
     EXPECT_LT(steps, k_RestStepLimit);
     EXPECT_EQ(DebrisBodies(scene).size(), debrisBefore);
     EXPECT_NEAR(rig.object->Root().Position().y, k_BodyRestY, 0.05f);
+}
+
+// 飛ぶ形は当たり箱から作る。当たりの無い物は飛ばず、物理の body も増えない
+TEST(LaunchedBody, DoesNotFlyWithoutCollider)
+{
+    NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+    SceneNs::Scene scene;
+    SceneNs::SceneData data;
+    SceneNs::ObjectData bare;
+    bare.components.push_back(SceneNs::MakeComponentEntry("LaunchedBodyComponent"));
+    data.objects.push_back(bare);
+    scene.LoadFromData(std::move(data));
+
+    LevelNs::LaunchedBodyComponent* body = nullptr;
+    scene.Objects().ForEachComponent<LevelNs::LaunchedBodyComponent>(
+        [&body](LevelNs::LaunchedBodyComponent& found) { body = &found; });
+    ASSERT_NE(body, nullptr);
+    ASSERT_EQ(body->Owner()->FindComponent<SceneNs::ColliderComponent>(), nullptr);
+    const JPH::uint bodiesBefore = scene.Physics().BodyCount();
+
+    body->Launch(Vector3{5.0f, 0.0f, 0.0f});
+
+    EXPECT_FALSE(body->IsFlying());
+    EXPECT_EQ(scene.Physics().BodyCount(), bodiesBefore);
 }
 
 // 飛ばされた物の重力は自機の上昇重力と同じ値

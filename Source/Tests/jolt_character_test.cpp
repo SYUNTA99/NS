@@ -447,3 +447,13 @@ TEST(JoltCharacterTest, CeilingCancelsUpwardVelocity)
 
     EXPECT_EQ(framesPressedIntoCeiling, 0);
 }
+
+// 前後 0.5° で挟む。0.7 のような丸めた値 (約 45.6°) で切ると、45.5° が歩ける側に入りこの試しが落ちる
+TEST(JoltCharacterTest, WalkableNormalEndsAtFortyFiveDegrees)
+{
+    const float gentle = std::cos(44.5f * NS::Core::k_Pi / 180.0f);
+    const float steep = std::cos(45.5f * NS::Core::k_Pi / 180.0f);
+
+    EXPECT_TRUE(NS::Physics::IsWalkableNormal(gentle));
+    EXPECT_FALSE(NS::Physics::IsWalkableNormal(steep));
+}

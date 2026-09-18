@@ -132,7 +132,7 @@ namespace NS::Physics
             // 登れる急さの面で打ち消すのは、先に済ませた接地の法線だけ
             // 縦の成分を 0 にした向きで抜くと坂を上る前進まで消える
             // 30° の坂を上り続けるはずの 1 秒で 55 cm 下がった
-            if (contact.mContactNormal.GetY() >= k_MaxSlopeNormalY)
+            if (IsWalkableNormal(contact.mContactNormal.GetY()))
             {
                 continue;
             }
@@ -153,7 +153,7 @@ namespace NS::Physics
         if (IsGrounded())
         {
             const JPH::Vec3 groundNormal = m_character->GetGroundNormal();
-            const bool standingOnWalkable = groundNormal.GetY() >= k_MaxSlopeNormalY;
+            const bool standingOnWalkable = IsWalkableNormal(groundNormal.GetY());
 
             // 上向きの速度は足場の面に沿って進む分まで残す
             // 角を滑り上がった速度は次のフレームへ持ち越さない。持ち越すと 25 cm の段で 9 cm 跳ね、27 cm の段を越えた
@@ -210,6 +210,11 @@ namespace NS::Physics
     bool JoltCharacter::IsGrounded() const
     {
         return m_character->GetGroundState() == JPH::CharacterBase::EGroundState::OnGround;
+    }
+
+    bool IsWalkableNormal(float normalY) noexcept
+    {
+        return normalY >= k_MaxSlopeNormalY;
     }
 
 } // namespace NS::Physics

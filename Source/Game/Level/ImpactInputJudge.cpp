@@ -2,12 +2,6 @@
 
 namespace NS::Game::Level
 {
-    namespace
-    {
-        // 毎秒 60 回数えると int は約 414 日であふれる。溜めは高々数十フレームなので頭打ちにしても判定に影響しない
-        constexpr int k_MaxCountedSteps = 1 << 20;
-    } // namespace
-
     const char* SlamKindLabel(SlamKind kind) noexcept
     {
         switch (kind)
@@ -26,10 +20,7 @@ namespace NS::Game::Level
         if (held)
         {
             // 押している間は何も控えない。押したフレームでタップを出すとチャージ狙いにも必ず 1 回混ざる
-            if (m_heldSteps < k_MaxCountedSteps)
-            {
-				++m_heldSteps;
-            }
+            ++m_heldSteps;
             return;
         }
 
