@@ -25,7 +25,6 @@ namespace NS::Object
             {
                 transients.push_back(std::move(obj));
             }
-
         }
         std::erase_if(m_objects, [](const std::unique_ptr<GameObject>& obj) { return obj == nullptr; });
 
@@ -38,28 +37,19 @@ namespace NS::Object
         {
             if (entry.objectId >= m_nextObjectId)
             {
-				m_nextObjectId = entry.objectId + 1;
+                m_nextObjectId = entry.objectId + 1;
             }
         }
 
         m_objects.reserve(data.objects.size() + transients.size());
-
-        // 並び順は object の持ち物なので、 配列の並びではなく order で組む
-        // 同値は書かれた順のまま残すので、 order を持たない古いファイルは従来と同じ形に組み上がる
-        std::vector<std::size_t> buildOrder(data.objects.size());
-        std::iota(buildOrder.begin(), buildOrder.end(), std::size_t{0});
-        std::stable_sort(buildOrder.begin(), buildOrder.end(), [&data](std::size_t a, std::size_t b) noexcept {
-            return data.objects[a].order < data.objects[b].order;
-        });
 
         // 配置物の組み立ては呼出側の知識。 ファクトリの無い起動前 / テストでは何も組まない
         if (factory)
         {
             // 先に全 object を組んで、 開始は後段でまとめて行う
             // OnStart で ObjectRef を解決する component が、 自分より後ろの object も引けるようにするため
-            for (const std::size_t index : buildOrder)
+            for (const ObjectData& entry : data.objects)
             {
-                const ObjectData& entry = data.objects[index];
                 auto obj = factory(entry);
                 if (!obj)
                 {
@@ -69,7 +59,6 @@ namespace NS::Object
                 obj->AttachScene(&scene);
                 obj->SetId(entry.objectId);
                 obj->SetName(entry.name);
-                obj->SetOrder(entry.order);
                 obj->SetActive(entry.active);
 
                 m_objects.push_back(std::move(obj));
@@ -88,14 +77,13 @@ namespace NS::Object
                 const auto it = byObjectId.find(id);
                 if (it == byObjectId.end())
                 {
-					return nullptr;
+                    return nullptr;
                 }
                 return it->second;
             };
 
-            for (const std::size_t index : buildOrder)
+            for (const ObjectData& entry : data.objects)
             {
-                const ObjectData& entry = data.objects[index];
                 if (entry.parentId == k_NoObjectId)
                 {
                     continue;
@@ -124,14 +112,13 @@ namespace NS::Object
         {
             obj->Root().Snapshot();
         }
-
     }
 
     GameObject* ObjectList::Append(std::unique_ptr<GameObject> obj)
     {
         if (!obj)
         {
-			return nullptr;
+            return nullptr;
         }
         GameObject* raw = obj.get();
         m_objects.push_back(std::move(obj));
@@ -180,7 +167,7 @@ namespace NS::Object
         {
             if (obj->Id() == objectId)
             {
-				return obj.get();
+                return obj.get();
             }
         }
         return nullptr;
@@ -210,12 +197,11 @@ namespace NS::Object
     void ObjectList::UpdateAllObjects()
     {
         UpdateObjects(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
-        SnapshotObjects();
     }
 
     void ObjectList::SnapshotObjects()
     {
-        for (auto& obj : m_objects) 
+        for (auto& obj : m_objects)
         {
             obj->Root().Snapshot();
         }
@@ -232,7 +218,7 @@ namespace NS::Object
             {
                 if (comp == nullptr)
                 {
-					continue;
+                    continue;
                 }
                 if (comp->Priority() >= firstPriority && comp->Priority() < lastPriority)
                 {
@@ -279,12 +265,12 @@ namespace NS::Object
                 const Component* comp = components[c];
                 if (comp == nullptr)
                 {
-					continue;
+                    continue;
                 }
                 const ReflectionInfo* info = comp->GetReflection();
                 if (info == nullptr)
                 {
-					continue;
+                    continue;
                 }
                 for (std::size_t f = 0; f < info->fieldCount; ++f)
                 {

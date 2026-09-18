@@ -85,12 +85,4 @@ namespace NS::Editor
                                                              std::span<const ObjectRefOption> refOptions = {},
                                                              const NS::Object::Component* defaults = nullptr) noexcept;
 
-    //! @brief ゲームオブジェクトが持つ全コンポーネントの編集UIを描画する
-    //! @param[in,out] obj 編集対象のゲームオブジェクト
-    //! @param[in] refOptions 参照先候補のリスト
-    //! @param[in] defaults 既定インスタンスの控え。 渡すと既定と違う欄に印と戻すボタンが付く
-    //! @return 全コンポーネント分を集約した編集結果
-    [[nodiscard]] ComponentEditResult DrawObjectComponents(NS::Object::GameObject& obj,
-                                                           std::span<const ObjectRefOption> refOptions = {},
-                                                           ComponentDefaults* defaults = nullptr) noexcept;
 } // namespace NS::Editor

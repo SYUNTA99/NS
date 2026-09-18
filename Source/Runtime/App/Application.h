@@ -83,7 +83,6 @@ namespace NS::App
         //! ウィンドウが閉じられた場合は即座に終了する。終了要求は guard に諮り、拒否されたら取り下げる
         [[nodiscard]] bool WantExit() noexcept;
 
-        ApplicationDesc m_desc; //!< 構築時の設定の控え
         std::unique_ptr<NS::Platform::Window> m_window;
         std::unique_ptr<NS::Graphics::Renderer> m_renderer;
         // 下から順番に破棄されるから、アセットをRendererより先に解放させるためにここに書く
@@ -95,7 +94,8 @@ namespace NS::App
         std::function<bool()> m_quitGuard;
 
         bool m_shutdownCalled = false; //!< 終了処理の二重呼び出しを防ぐフラグ
-        std::chrono::steady_clock::time_point m_lastStutterWarnAt{}; //!< 連続して処理落ち警告を出さないための最終警告時刻
+        std::chrono::steady_clock::time_point
+            m_lastStutterWarnAt{}; //!< 連続して処理落ち警告を出さないための最終警告時刻
 
         static Application* s_instance;
     };

@@ -39,13 +39,14 @@ namespace NS::App
         }
         s_instance = this;
 
-        m_desc = desc;
-        if (m_desc.fixedDelta <= 0.0f)
+        float fixedDelta = desc.fixedDelta;
+        if (fixedDelta <= 0.0f)
         {
-            NS_LOG_WARN(App,"ApplicationDesc::fixedDelta が非正値 ({}) のため default 1/60 にフォールバック",m_desc.fixedDelta);
-            m_desc.fixedDelta = NS::Core::FrameTimer::k_DefaultFixedDelta;
+            NS_LOG_WARN(
+                App, "ApplicationDesc::fixedDelta が非正値 ({}) のため default 1/60 にフォールバック", fixedDelta);
+            fixedDelta = NS::Core::FrameTimer::k_DefaultFixedDelta;
         }
-        NS::Core::FrameTimer::SetFixedDelta(m_desc.fixedDelta);
+        NS::Core::FrameTimer::SetFixedDelta(fixedDelta);
 
         m_window = std::make_unique<NS::Platform::Window>(desc.window);
         if (!m_window->IsValid())
@@ -73,7 +74,7 @@ namespace NS::App
         Shutdown();
         if (s_instance == this)
         {
-			s_instance = nullptr;
+            s_instance = nullptr;
         }
     }
 

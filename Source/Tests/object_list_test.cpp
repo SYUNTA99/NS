@@ -95,39 +95,8 @@ TEST(ObjectListTest, InitialStateIsEmpty)
     EXPECT_EQ(objects.ObjectCount(), 0u);
 }
 
-TEST(ObjectListTest, BuildFollowsObjectOrderNotArrayOrder)
+TEST(ObjectListTest, BuildFollowsWrittenSequence)
 {
-    SceneData level;
-    level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
-    level.objects.push_back(NS::Game::Level::MakeCellObject(1, 0, 0));
-    level.objects.push_back(NS::Game::Level::MakeCellObject(2, 0, 0));
-    NS::Object::EnsureUniqueObjectIds(level);
-    const std::uint32_t first = level.objects[0].objectId;
-    const std::uint32_t second = level.objects[1].objectId;
-    const std::uint32_t third = level.objects[2].objectId;
-
-    // 配列の並びを触らず order だけで前後を入れ替える
-    level.objects[0].order = 2;
-    level.objects[1].order = 0;
-    level.objects[2].order = 1;
-
-    NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
-    ObjectList objects;
-    objects.Rebuild(level, scene, MakeFactory(assets, level));
-
-    ASSERT_EQ(objects.ObjectCount(), std::size_t{3});
-    EXPECT_EQ(objects.ObjectAt(0)->Id(), second);
-    EXPECT_EQ(objects.ObjectAt(1)->Id(), third);
-    EXPECT_EQ(objects.ObjectAt(2)->Id(), first);
-    // 値そのものも実体へ届く。 捕捉が同じ order を書き戻せる
-    EXPECT_EQ(objects.ObjectAt(0)->Order(), 0u);
-    EXPECT_EQ(objects.ObjectAt(2)->Order(), 2u);
-}
-
-TEST(ObjectListTest, EqualOrderKeepsWrittenSequence)
-{
-    // order を持たない古いファイルは書かれた順のまま組み上がる
     SceneData level;
     level.objects.push_back(NS::Game::Level::MakeCellObject(0, 0, 0));
     level.objects.push_back(NS::Game::Level::MakeCellObject(1, 0, 0));
@@ -262,7 +231,7 @@ TEST(ObjectListTest, RebuildBakesFollowCameraAndResolvesTarget)
     ASSERT_EQ(follows.size(), 1u);
     auto* follow = follows[0];
     EXPECT_FALSE(follow->IsActive());
-    // Brain 登録が使う抽象基底の問い合わせでも同じ実体が引ける
+    // CameraBrainComponent の登録が使う抽象基底の問い合わせでも同じ実体が引ける
     const auto vcams = Collect<NS::Object::VirtualCameraComponent>(objects);
     ASSERT_EQ(vcams.size(), 1u);
     EXPECT_EQ(vcams[0], follow);

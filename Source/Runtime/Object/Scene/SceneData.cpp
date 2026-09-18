@@ -1,128 +1,18 @@
 ﻿#include "Runtime/Object/Scene/SceneData.h"
 
 #include "Runtime/Object/Reflection/ComponentEntry.h"
-#include "Runtime/Object/detail/Crc32.h"
 
-#include <span>
-#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 
 namespace NS::Object
 {
-    namespace
-    {
-        //! POD 値を std::byte span に見立てて CRC32 に流す
-        template <typename T> std::uint32_t UpdateWith(std::uint32_t crc, const T& value) noexcept
-        {
-            static_assert(std::is_trivially_copyable_v<T>, "UpdateWith expects trivially copyable type");
-            const auto* raw = reinterpret_cast<const std::byte*>(&value);
-            return detail::Crc32Update(crc, std::span<const std::byte>(raw, sizeof(T)));
-        }
-
-        //! 長さ + 中身バイトの順で文字列を hash する
-        std::uint32_t UpdateWithString(std::uint32_t crc, const std::string& text) noexcept
-        {
-            crc = UpdateWith(crc, static_cast<std::uint64_t>(text.size()));
-            if (!text.empty())
-            {
-                const auto* raw = reinterpret_cast<const std::byte*>(text.data());
-                crc = detail::Crc32Update(crc, std::span<const std::byte>(raw, text.size()));
-            }
-            return crc;
-        }
-
-        //! JSON 木を「型のタグ + 値」の順で再帰 hash する。 object はキー昇順で並ぶので決定的
-        //! 整数は符号付きと符号無しを 1 つのタグにまとめる。 保存は符号付きで組み読込は非負を符号無しで返すので、
-        //! 分けると往復で CRC が変わり読込直後から dirty になる
-        std::uint32_t UpdateWithJson(std::uint32_t crc, const nlohmann::json& value) noexcept
-        {
-            if (value.is_object())
-            {
-                crc = UpdateWith(crc, static_cast<std::uint8_t>(1));
-                crc = UpdateWith(crc, static_cast<std::uint64_t>(value.size()));
-                for (auto it = value.begin(); it != value.end(); ++it)
-                {
-                    crc = UpdateWithString(crc, it.key());
-                    crc = UpdateWithJson(crc, it.value());
-                }
-                return crc;
-            }
-            if (value.is_array())
-            {
-                crc = UpdateWith(crc, static_cast<std::uint8_t>(2));
-                crc = UpdateWith(crc, static_cast<std::uint64_t>(value.size()));
-                for (const nlohmann::json& element : value)
-                    crc = UpdateWithJson(crc, element);
-                return crc;
-            }
-            if (value.is_string())
-            {
-                crc = UpdateWith(crc, static_cast<std::uint8_t>(3));
-                return UpdateWithString(crc, value.get_ref<const std::string&>());
-            }
-            if (value.is_boolean())
-            {
-                crc = UpdateWith(crc, static_cast<std::uint8_t>(4));
-                return UpdateWith(crc, value.get<bool>());
-            }
-            if (value.is_number_integer())
-            {
-                // is_number_integer は符号付き / 無しの両方に真
-                crc = UpdateWith(crc, static_cast<std::uint8_t>(5));
-                return UpdateWith(crc, value.get<std::int64_t>());
-            }
-            if (value.is_number_float())
-            {
-                crc = UpdateWith(crc, static_cast<std::uint8_t>(6));
-                return UpdateWith(crc, value.get<double>());
-            }
-            // null / binary / discarded は tag だけ流す
-            return UpdateWith(crc, static_cast<std::uint8_t>(0));
-        }
-
-        //! ObjectData のスカラ部を宣言順で hash し、 続けて components を hash する
-        std::uint32_t UpdateWithObject(std::uint32_t crc, const ObjectData& object) noexcept
-        {
-            // スカラ部を宣言順で hash。 transform は components 内の TransformComponent として混ざる
-            crc = UpdateWith(crc, object.objectId);
-            crc = UpdateWithString(crc, object.className);
-            crc = UpdateWithString(crc, object.name);
-            crc = UpdateWith(crc, object.parentId);
-            crc = UpdateWith(crc, object.order);
-            crc = UpdateWith(crc, object.active);
-            return UpdateWithJson(crc, object.components);
-        }
-
-    } // namespace
-
-    std::uint32_t SceneData::ComputeCrc32() const noexcept
-    {
-        std::uint32_t crc = detail::k_Crc32Init;
-
-        // objects の要素数を先に流す。 末尾へ足しただけでも CRC が変わる
-        const std::uint64_t objectCount = static_cast<std::uint64_t>(objects.size());
-        crc = UpdateWith(crc, objectCount);
-        for (const auto& object : objects)
-        {
-            crc = UpdateWithObject(crc, object);
-        }
-
-        // 環境は見た目を確定する永続データなので、 変化が dirty 検知に必ず出るよう hash する
-        crc = UpdateWithString(crc, environment.skyboxCubemapPath);
-
-        // nextObjectId は意図して hash しない。採番カウンタは undo で巻き戻さないため、入れると
-        // 「置いて undo しただけで dirty」が残り続ける。カウンタだけが進んだ状態は保存しなくても
-        // 未保存 object への参照が残らず整合が壊れないので、内容の変化検知からは外す
-
-        return detail::Crc32Finalize(crc);
-    }
 
     std::size_t FindObjectIndexById(const SceneData& scene, std::uint32_t id) noexcept
     {
         if (id == k_NoObjectId)
         {
-			return k_NoObjectIndex;
+            return k_NoObjectIndex;
         }
         for (std::size_t i = 0; i < scene.objects.size(); ++i)
         {
@@ -155,7 +45,7 @@ namespace NS::Object
                 const std::uint32_t id = ComponentEntryId(entry);
                 if (id >= scene.nextObjectId)
                 {
-					scene.nextObjectId = id + 1;
+                    scene.nextObjectId = id + 1;
                 }
             }
         }
@@ -177,7 +67,7 @@ namespace NS::Object
         {
             if (!object.components.is_array())
             {
-				continue;
+                continue;
             }
             for (nlohmann::json& entry : object.components)
             {
@@ -201,7 +91,6 @@ namespace NS::Object
             validIds.insert(object.objectId);
         }
 
-
         std::size_t prunedCount = 0;
         for (ObjectData& object : scene.objects)
         {
@@ -213,7 +102,7 @@ namespace NS::Object
             {
                 if (!entry.is_object())
                 {
-					continue;
+                    continue;
                 }
                 const auto fieldsIt = entry.find("fields");
                 if (fieldsIt == entry.end() || !fieldsIt->is_object())
@@ -275,7 +164,7 @@ namespace NS::Object
                 ancestor = scene.objects[it->second].parentId;
                 if (ancestor == k_NoObjectId)
                 {
-					break;
+                    break;
                 }
                 if (ancestor == object.objectId)
                 {
@@ -308,7 +197,7 @@ namespace NS::Object
                 const nlohmann::json* fields = ComponentEntryFields(object.components[c]);
                 if (fields == nullptr)
                 {
-					continue;
+                    continue;
                 }
                 for (auto it = fields->begin(); it != fields->end(); ++it)
                 {

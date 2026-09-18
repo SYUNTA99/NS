@@ -82,8 +82,8 @@ namespace NS::Object
         //! 帯の一部だけ回したい呼び出し側が使う。 一時オブジェクトも同じ帯に乗る
         void UpdateObjects(int firstPriority, int lastPriority = std::numeric_limits<int>::max());
 
-        //! 全配置物の Component を priority の昇順で一括で回し、 最後に SnapshotObjects で補間用の前回値を揃える
-        //! 並び順の一覧は別に持たない。 各 component がコンストラクタで指定する priority だけで並びが決まる
+        //! 全配置物の Component を priority の昇順で一括で回す。 補間用の前回値は呼ぶ側が更新の前に SnapshotObjects
+        //! で揃える。 並び順の一覧は別に持たない。 各 component がコンストラクタで指定する priority だけで並びが決まる
         void UpdateAllObjects();
 
         //! 全配置物の Root を Snapshot する (previous を current へ揃える)
@@ -131,11 +131,11 @@ namespace NS::Object
         {
             for (const auto& obj : m_objects)
             {
-                for (Component* comp : obj->Components()) 
+                for (Component* comp : obj->Components())
                 {
                     if (auto* typed = ComponentCast<T>(comp))
                     {
-						fn(*typed);
+                        fn(*typed);
                     }
                 }
             }

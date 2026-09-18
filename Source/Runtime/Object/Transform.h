@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Core/NonCopyable.h"
 
 #include <vector>
 
@@ -35,7 +35,7 @@ namespace NS::Object
         [[nodiscard]] const NS::Core::Quaternion& PreviousRotation() const noexcept { return m_previousRotation; }
         [[nodiscard]] const NS::Core::Vector3& PreviousScale() const noexcept { return m_previousScale; }
 
-        //! 現在 PRS を previous に退避する。Scene::OnUpdate 末尾で全 Transform に一括実行する
+        //! 現在 PRS を previous に退避する。Scene::OnUpdate 先頭で全 Transform に一括実行する
         //! Component の OnUpdate 内で個別実行すると parent-child の世代がずれるため禁止
         void Snapshot() noexcept;
 

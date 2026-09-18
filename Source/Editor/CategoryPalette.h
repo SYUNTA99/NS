@@ -23,7 +23,7 @@ namespace NS::Editor
     public:
         static constexpr std::size_t k_SlotCount = k_PaletteSlotCount;
 
-        CategoryPalette() noexcept;
+        CategoryPalette() noexcept = default;
         ~CategoryPalette() noexcept = default;
 
         //! @brief 数字キーを見て、選択中のスロットを切り替える
@@ -39,13 +39,22 @@ namespace NS::Editor
         [[nodiscard]] std::size_t ActiveSlot() const noexcept { return m_activeSlot; }
 
         //! 選択中のブラシのテンプレートを取得する
-        [[nodiscard]] const NS::Object::ObjectData& CurrentTemplate() const noexcept { return m_current.prototype; }
+        [[nodiscard]] const NS::Object::ObjectData& CurrentTemplate() const noexcept
+        {
+            return PaletteTemplateSlots()[m_activeSlot].prototype;
+        }
 
         //! 選択中のブラシの表示名を取得する
-        [[nodiscard]] const char* CurrentTemplateName() const noexcept { return m_current.name; }
+        [[nodiscard]] const char* CurrentTemplateName() const noexcept
+        {
+            return PaletteTemplateSlots()[m_activeSlot].name;
+        }
 
         //! 選択中のブラシが回転可能なオブジェクトかどうかを返す
-        [[nodiscard]] bool CurrentIsRotatable() const noexcept { return m_current.rotatable; }
+        [[nodiscard]] bool CurrentIsRotatable() const noexcept
+        {
+            return PaletteTemplateSlots()[m_activeSlot].rotatable;
+        }
 
         //! @brief 配置プレビュー用のスロープ角度を返す
         //! @note キューブのように角度を持たない形状では負の値が返る
@@ -54,14 +63,8 @@ namespace NS::Editor
         //! アクティブなスロットを指定した番号に変更する
         void SetActiveSlot(std::size_t slot) noexcept;
 
-        //! 同じスロットをもう一度選んだ時に、形状のバリエーションを切り替える
-        void CycleActiveVariant() noexcept;
-
     private:
-        void RefreshCurrentTemplate() noexcept;
-
         std::size_t m_activeSlot = 0;
-        PaletteTemplate m_current{};
 
         float m_toolbarX = 0.0f;        // ツールバー窓の左上X。Scene ビュー内で自前ドラッグする管理値
         float m_toolbarY = 0.0f;        // 同Y

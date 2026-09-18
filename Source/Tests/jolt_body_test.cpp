@@ -160,44 +160,40 @@ TEST(JoltStep, StaticBodyStaysWhereItWasPut)
 TEST(JoltStep, DynamicBodyFalls)
 {
     PhysicsScene physics;
-    const JPH::BodyID id = physics.AddSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, ObjectLayers::Rock);
+    const JPH::BodyID id =
+        physics.AddDynamicSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, NS::Physics::DynamicBodyDesc{});
     physics.OptimizeBroadPhase();
-    physics.SetBodyDynamic(id, true);
 
     Step(physics, 30);
 
     EXPECT_LT(physics.BodyPosition(id).y, 9.0f);
 }
 
-TEST(JoltStep, BodyTurnedBackToStaticStopsFalling)
+TEST(JoltStep, StaticBodyOfTheSameShapeStaysPut)
 {
     PhysicsScene physics;
     const JPH::BodyID id = physics.AddSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, ObjectLayers::Rock);
     physics.OptimizeBroadPhase();
-    physics.SetBodyDynamic(id, true);
+
     Step(physics, 30);
 
-    physics.SetBodyDynamic(id, false);
-    const float restingY = physics.BodyPosition(id).y;
-    Step(physics, 30);
-
-    EXPECT_NEAR(physics.BodyPosition(id).y, restingY, 1.0e-5f);
+    EXPECT_NEAR(physics.BodyPosition(id).y, 10.0f, 1.0e-5f);
 }
 
-// dynamic にできるかは shape だけで決まる。ObjectLayer は見ていない
-TEST(JoltStep, TerrainBodyCanBecomeDynamic)
+// 落ちるかは shape と作り方だけで決まる。ObjectLayer は見ていない
+TEST(JoltStep, TerrainLayerDynamicBodyFalls)
 {
     PhysicsScene physics;
-    const JPH::BodyID id = physics.AddSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, ObjectLayers::Terrain);
+    NS::Physics::DynamicBodyDesc desc;
+    desc.layer = ObjectLayers::Terrain;
+    const JPH::BodyID id = physics.AddDynamicSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, desc);
     physics.OptimizeBroadPhase();
-    physics.SetBodyDynamic(id, true);
 
     Step(physics, 30);
 
     EXPECT_LT(physics.BodyPosition(id).y, 9.0f);
 }
 
-// MeshShape::MustBeStatic が true なので SetBodyDynamic は警告を出して戻る
 TEST(JoltStep, MeshBodyStaysStatic)
 {
     PhysicsScene physics;
@@ -205,7 +201,6 @@ TEST(JoltStep, MeshBodyStaysStatic)
     const JPH::BodyID id = physics.AddMesh(floor, ObjectLayers::Terrain);
     physics.OptimizeBroadPhase();
 
-    physics.SetBodyDynamic(id, true);
     Step(physics, 30);
 
     EXPECT_NEAR(physics.BodyPosition(id).y, 0.0f, 1.0e-5f);
@@ -214,9 +209,9 @@ TEST(JoltStep, MeshBodyStaysStatic)
 TEST(JoltStep, LinearVelocityCarriesTheBody)
 {
     PhysicsScene physics;
-    const JPH::BodyID id = physics.AddSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, ObjectLayers::Rock);
+    const JPH::BodyID id =
+        physics.AddDynamicSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, NS::Physics::DynamicBodyDesc{});
     physics.OptimizeBroadPhase();
-    physics.SetBodyDynamic(id, true);
 
     physics.SetBodyVelocity(id, Vector3{5.0f, 0.0f, 0.0f});
     Step(physics, 30);

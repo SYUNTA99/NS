@@ -70,9 +70,6 @@ namespace NS::Object
         NS::Graphics::SkeletalMesh* mesh = nullptr;                      // AssetManager 所有
         const NS::Graphics::Skeleton* skeleton = nullptr;                // AssetManager 所有
         const std::vector<NS::Graphics::AnimationClip>* clips = nullptr; // AssetManager 所有
-        //! bind ポーズ頂点の境界。 配置スケール計算に使う
-        NS::Core::Vector3 boundsMin{};
-        NS::Core::Vector3 boundsMax{};
         bool valid = false;
     };
 
@@ -169,20 +166,25 @@ namespace NS::Object
             std::unique_ptr<NS::Graphics::SkeletalMesh> mesh;
             NS::Graphics::Skeleton skeleton;
             std::vector<NS::Graphics::AnimationClip> clips;
-            NS::Core::Vector3 boundsMin{};
-            NS::Core::Vector3 boundsMax{};
         };
 
         std::filesystem::path m_baseDir; // 相対 path 解決の基準ディレクトリ
-        std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Shader>>m_shaders; // path キーの Shader キャッシュ
-        std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Texture>> m_textures;  // path キーの Texture キャッシュ
+        std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Shader>>
+            m_shaders; // path キーの Shader キャッシュ
+        std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::Texture>>
+            m_textures;                                       // path キーの Texture キャッシュ
         std::map<std::filesystem::path, MeshRecord> m_meshes; // path キーの file mesh
-        std::map<std::string, std::unique_ptr<NS::Physics::MeshCollision>>m_builtinCollisions;  // 組み込み名キーの当たり
+        std::map<std::string, std::unique_ptr<NS::Physics::MeshCollision>>
+            m_builtinCollisions;                                                          // 組み込み名キーの当たり
         std::map<std::string, std::unique_ptr<NS::Graphics::StaticMesh>> m_builtins;      // path 無し、 leaf と別容器
         std::map<std::filesystem::path, MaterialRecord> m_materials;                      // .mat composite
         std::map<std::string, std::unique_ptr<NS::Graphics::Material>> m_sharedMaterials; // 手続き共有マテリアル
-        std::map<std::filesystem::path, SkinnedModelRecord> m_skinnedModels; // skinned glTF。 record は挿入後に書き換えず、 配った参照を安定させる
-        std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::AnimationSource>> m_animationSources; // アニメ専用 glTF、 null は負キャッシュ
-        std::map<std::pair<std::filesystem::path, std::filesystem::path>,std::unique_ptr<std::vector<NS::Graphics::AnimationClip>>>  m_boundClips; // clip と model の path 組がキーの結合済クリップ、 null は負キャッシュ
+        std::map<std::filesystem::path, SkinnedModelRecord>
+            m_skinnedModels; // skinned glTF。 record は挿入後に書き換えず、 配った参照を安定させる
+        std::map<std::filesystem::path, std::unique_ptr<NS::Graphics::AnimationSource>>
+            m_animationSources; // アニメ専用 glTF、 null は負キャッシュ
+        std::map<std::pair<std::filesystem::path, std::filesystem::path>,
+                 std::unique_ptr<std::vector<NS::Graphics::AnimationClip>>>
+            m_boundClips; // clip と model の path 組がキーの結合済クリップ、 null は負キャッシュ
     };
 } // namespace NS::Object

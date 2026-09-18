@@ -120,7 +120,7 @@ namespace NS::Object
             const auto fieldsIt = serialized.find("fields");
             if (fieldsIt == serialized.end())
             {
-				return;
+                return;
             }
             const auto valueIt = fieldsIt->find(std::string(fieldName));
             if (valueIt == fieldsIt->end())
@@ -217,7 +217,7 @@ namespace NS::Object
 
     void Scene::OnUpdate()
     {
-        // 補間描画用。 全表示オブジェクトの状態をスナップショットする
+        // 補間描画用。 全配置物の Root を Snapshot する
         for (GameObject* obj : m_objects)
         {
             obj->Root().Snapshot();
@@ -242,7 +242,6 @@ namespace NS::Object
         m_objects.UpdateObjects(std::numeric_limits<int>::min(), TickPriority::LateUpdate);
         m_physicsScene.Update(NS::Core::FrameTimer::FixedDelta());
         m_objects.UpdateObjects(TickPriority::LateUpdate);
-        m_objects.SnapshotObjects();
     }
 
     void Scene::OnShutdown()
@@ -302,7 +301,7 @@ namespace NS::Object
         else
         {
             ctx.viewProjection = brain->ViewProjection();
-            ctx.cameraPosition = mainCamera->Camera().View().Invert().Translation();
+            ctx.cameraPosition = mainCamera->Position();
         }
         ctx.resolvedSettings = ResolveSceneSettings(renderer.Settings());
 
@@ -321,7 +320,7 @@ namespace NS::Object
         m_objects.ForEachComponent<DirectionalLightComponent>([&resolved, this](DirectionalLightComponent& light) {
             if (!light.IsActive())
             {
-				return;
+                return;
             }
             if (light.Direction().LengthSquared() > 1e-6f)
             {
@@ -352,14 +351,14 @@ namespace NS::Object
     {
         if (renderable == nullptr)
         {
-			return;
+            return;
         }
         // 二重登録を防ぐ。Component 側で OnStart が誤って 2 回呼ばれても二重描画にならない
         for (const RenderEntry& entry : m_renderables)
         {
             if (entry.renderable == renderable)
             {
-				return;
+                return;
             }
         }
 
@@ -377,7 +376,7 @@ namespace NS::Object
     {
         if (renderable == nullptr)
         {
-			return;
+            return;
         }
         for (auto it = m_renderables.begin(); it != m_renderables.end(); ++it)
         {
@@ -399,7 +398,7 @@ namespace NS::Object
             IRenderable* r = entry.renderable;
             if (r == nullptr)
             {
-				continue;
+                continue;
             }
             m_renderScene.Update(entry.handle,
                                  r->WorldBounds(),
@@ -428,7 +427,7 @@ namespace NS::Object
     {
         if (m_brain == nullptr)
         {
-			return nullptr;
+            return nullptr;
         }
         return m_brain->Camera();
     }

@@ -2,12 +2,12 @@
 
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Core/Sphere.h"
 #include "Runtime/Physics/Capsule.h"
 #include "Runtime/Physics/MeshCollision.h"
 #include "Runtime/Physics/Triangle.h"
-#include "Runtime/Core/NonCopyable.h"
 
 #include <Jolt/Jolt.h>
 
@@ -73,7 +73,7 @@ namespace NS::Physics
     //! 型の登録解除はプロセス終了時
     //! Add 系はどれも body を 1 つ作り、shape を作れなければ無効な BodyID を返す
     //! 作った時点で動的なのは AddDynamic の付く 2 つだけで、これだけが起きた状態で入る
-	class PhysicsScene :public NS::Core::NonCopyable
+    class PhysicsScene : public NS::Core::NonCopyable
     {
     public:
         PhysicsScene();
@@ -135,11 +135,6 @@ namespace NS::Physics
 
         //! この PhysicsScene を deltaTime 秒ぶん進める。衝突の分割は 1 で、渡した時間を刻まない
         void Update(float deltaTime);
-
-        //! @brief body を dynamic と static で切り替える
-        //! @details dynamic にする時だけ body を起こす。無効な BodyID は何もしない
-        //! 静的専用の形の body は dynamic にできない。警告を出して戻る
-        void SetBodyDynamic(JPH::BodyID id, bool dynamic);
 
         //! @brief origin から direction へ maxDistance までの間で最も近い命中までの距離を outDistance に返す
         //! @details direction の長さは問わない。outDistance は direction の長さに依らずワールドの距離

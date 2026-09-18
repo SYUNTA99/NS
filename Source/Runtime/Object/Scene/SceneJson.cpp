@@ -33,7 +33,7 @@ namespace NS::Object
             const auto it = parent.find(key);
             if (it == parent.end() || !it->is_array() || it->size() < 3u)
             {
-				return;
+                return;
             }
             if (!(*it)[0].is_number() || !(*it)[1].is_number() || !(*it)[2].is_number())
             {
@@ -51,7 +51,7 @@ namespace NS::Object
             const auto it = parent.find(key);
             if (it == parent.end() || !it->is_number())
             {
-				return fallback;
+                return fallback;
             }
             return it->get<int>();
         }
@@ -61,7 +61,7 @@ namespace NS::Object
         {
             if (!components.is_array())
             {
-				return;
+                return;
             }
             for (nlohmann::json& entry : components)
             {
@@ -74,7 +74,6 @@ namespace NS::Object
                 {
                     fieldsIt->erase(std::string(k_RotationQuatFieldName));
                 }
-
             }
         }
 
@@ -85,7 +84,7 @@ namespace NS::Object
             // GameObject のクラス名。 素の GameObject は書かず、 読込側は不在を空として扱う
             if (!object.className.empty())
             {
-				out["class"] = object.className;
+                out["class"] = object.className;
             }
             // 表示名は付いている物だけ書き、 未設定は型からの導出に任せる
             if (!object.name.empty())
@@ -95,13 +94,9 @@ namespace NS::Object
             // root は書かず、 読込側は不在を 0 として扱う
             if (object.parentId != k_NoObjectId)
             {
-				out["parent"] = object.parentId;
+                out["parent"] = object.parentId;
             }
-            // 既定値は書かない。 order 0 と active true は不在で表す
-            if (object.order != 0)
-            {
-                out["order"] = object.order;
-            }
+            // 既定値は書かない。 active true は不在で表す
             if (!object.active)
             {
                 out["active"] = false;
@@ -133,12 +128,11 @@ namespace NS::Object
                 object.name = nameIt->get<std::string>();
             }
             object.parentId = static_cast<std::uint32_t>(ReadInt(json, "parent", 0));
-            object.order = static_cast<std::uint32_t>(ReadInt(json, "order", 0));
             // 欄が無い古いファイルは有効として読む
             const auto activeIt = json.find("active");
             if (activeIt != json.end() && activeIt->is_boolean())
             {
-				object.active = activeIt->get<bool>();
+                object.active = activeIt->get<bool>();
             }
 
             const auto componentsIt = json.find("components");
@@ -272,7 +266,8 @@ namespace NS::Object
         // 保存前の上限ガード
         if (scene.objects.size() > k_MaxObjectCount)
         {
-            NS_LOG_ERROR(Scene, "SaveSceneToJsonFile: object 数が上限超過 ({} > {})", scene.objects.size(), k_MaxObjectCount);
+            NS_LOG_ERROR(
+                Scene, "SaveSceneToJsonFile: object 数が上限超過 ({} > {})", scene.objects.size(), k_MaxObjectCount);
             return false;
         }
         const std::string text = SerializeSceneToJson(scene);

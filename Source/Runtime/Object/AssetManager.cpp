@@ -125,7 +125,8 @@ namespace NS::Object
                     continue;
                 }
 
-                triangles.push_back(NS::Physics::Triangle{geom.vertices[a].position, geom.vertices[b].position, geom.vertices[c].position});
+                triangles.push_back(NS::Physics::Triangle{
+                    geom.vertices[a].position, geom.vertices[b].position, geom.vertices[c].position});
             }
             return triangles;
         }
@@ -212,7 +213,7 @@ namespace NS::Object
             const auto& c = j["baseColor"];
             if (c[0].is_number() && c[1].is_number() && c[2].is_number())
             {
-                out.baseColor = NS::Core::Vector3{ c[0].get<float>(), c[1].get<float>(), c[2].get<float>() };
+                out.baseColor = NS::Core::Vector3{c[0].get<float>(), c[1].get<float>(), c[2].get<float>()};
             }
         }
 
@@ -243,7 +244,7 @@ namespace NS::Object
         NS::Graphics::Shader* raw = shader.get();
         if (raw->IsUsingFallback())
         {
-			NS_LOG_ERROR(Graphics, "AssetManager: shader の読込/コンパイル失敗、 fallback 描画: {}", key.string());
+            NS_LOG_ERROR(Graphics, "AssetManager: shader の読込/コンパイル失敗、 fallback 描画: {}", key.string());
         }
         m_shaders.emplace(key, std::move(shader));
         return raw;
@@ -287,7 +288,10 @@ namespace NS::Object
             std::unique_ptr<NS::Graphics::StaticMesh> mesh = MakeStaticMesh(geom);
             if (mesh == nullptr || !mesh->IsValid())
             {
-                NS_LOG_ERROR(Graphics, "AssetManager: mesh の GPU 生成失敗。 描画は cube へフォールバックし、 当たりは本物の形のまま: {}", key.string());
+                NS_LOG_ERROR(
+                    Graphics,
+                    "AssetManager: mesh の GPU 生成失敗。 描画は cube へフォールバックし、 当たりは本物の形のまま: {}",
+                    key.string());
             }
             else
             {
@@ -318,7 +322,7 @@ namespace NS::Object
     {
         if (meshRef.empty())
         {
-			return nullptr;
+            return nullptr;
         }
 
         if (const BuiltinShape* shape = FindBuiltinShape(meshRef))
@@ -378,14 +382,6 @@ namespace NS::Object
                 return LoadedSkinnedModel{};
             }
 
-            // bind ポーズ頂点の境界を求めて配置スケール計算用に持たせる
-            record.boundsMin = data.vertices.front().position;
-            record.boundsMax = record.boundsMin;
-            for (const NS::Graphics::SkinnedVertex& v : data.vertices)
-            {
-                record.boundsMin = NS::Core::Vector3::Min(record.boundsMin, v.position);
-                record.boundsMax = NS::Core::Vector3::Max(record.boundsMax, v.position);
-            }
             record.skeleton = std::move(data.skeleton);
             record.clips = std::move(data.animations);
             it = m_skinnedModels.emplace(key, std::move(record)).first;
@@ -396,8 +392,6 @@ namespace NS::Object
         out.mesh = it->second.mesh.get();
         out.skeleton = &it->second.skeleton;
         out.clips = &it->second.clips;
-        out.boundsMin = it->second.boundsMin;
-        out.boundsMax = it->second.boundsMax;
         out.valid = true;
         return out;
     }
@@ -429,7 +423,8 @@ namespace NS::Object
     const std::vector<NS::Graphics::AnimationClip>* AssetManager::GetOrLoadBoundClips(
         const std::filesystem::path& clipPath, const std::filesystem::path& modelPath)
     {
-        const std::pair<std::filesystem::path, std::filesystem::path> key{clipPath.lexically_normal(),modelPath.lexically_normal()};
+        const std::pair<std::filesystem::path, std::filesystem::path> key{clipPath.lexically_normal(),
+                                                                          modelPath.lexically_normal()};
         if (const auto it = m_boundClips.find(key); it != m_boundClips.end())
         {
             return it->second.get();
@@ -452,7 +447,8 @@ namespace NS::Object
 
         // 結合で index を振り直した複製は避けられない派生データだが、 所有はこちら側なので
         // 同じ組で解決する全インスタンスがこの 1 本を共有する
-        auto bound = std::make_unique<std::vector<NS::Graphics::AnimationClip>>(NS::Graphics::BindClipsByName(source->animations, source->skeleton, *model.skeleton));
+        auto bound = std::make_unique<std::vector<NS::Graphics::AnimationClip>>(
+            NS::Graphics::BindClipsByName(source->animations, source->skeleton, *model.skeleton));
         const std::vector<NS::Graphics::AnimationClip>* raw = bound.get();
         m_boundClips.emplace(key, std::move(bound));
         return raw;
@@ -471,7 +467,7 @@ namespace NS::Object
         const auto it = m_builtins.find(std::string(name));
         if (it != m_builtins.end())
         {
-			return it->second.get();
+            return it->second.get();
         }
         return nullptr;
     }
@@ -481,7 +477,7 @@ namespace NS::Object
         const std::filesystem::path matKey = matPath.lexically_normal();
         if (const auto it = m_materials.find(matKey); it != m_materials.end())
         {
-            return LoadedMaterial{ it->second.material.get(), it->second.baseColor };
+            return LoadedMaterial{it->second.material.get(), it->second.baseColor};
         }
 
         // .mat を読む
@@ -505,7 +501,7 @@ namespace NS::Object
         const auto resolve = [this](const std::filesystem::path& p) -> std::filesystem::path {
             if (p.is_absolute())
             {
-				return p;
+                return p;
             }
             return m_baseDir / p;
         };
@@ -581,7 +577,7 @@ namespace NS::Object
         const auto it = m_sharedMaterials.find(std::string(name));
         if (it != m_sharedMaterials.end())
         {
-			return it->second.get();
+            return it->second.get();
         }
         return nullptr;
     }

@@ -82,8 +82,6 @@ public:
     void HideGameView() noexcept;
     //! 現在の表示矩形。未設定時は全画面の予備矩形を返す
     [[nodiscard]] NS::Editor::ViewRect CurrentViewRect() const noexcept;
-    //! 前面のパネルの画像上にマウスが居るか。非表示フレームは偽
-    [[nodiscard]] bool GameViewHovered() const noexcept { return m_gameViewHovered; }
     //! 前面のパネルが裏へ隠れているか
     [[nodiscard]] bool GameViewHidden() const noexcept { return m_gameViewHidden; }
 
@@ -144,8 +142,6 @@ public:
 
     //! Inspector が編集 / 表示できる選択を持つか
     [[nodiscard]] bool HasInspectableSelection() const noexcept;
-    //! Inspector 表示用に選択中 ObjectData のコピーを返す。未選択は既定値
-    [[nodiscard]] NS::Object::ObjectData SelectedObjectSnapshot() const noexcept;
 
     //! 選択中の配置物の位置 / 回転 / スケールを live へ直接設定する。非選択時は何もしない
     void SetSelectedFreePosition(NS::Core::Vector3 position);
@@ -216,13 +212,6 @@ public:
     void PasteClipboardComponentToSelected();
 
     [[nodiscard]] bool HasClipboardComponent() const noexcept { return m_componentClipboard.has_value(); }
-
-    //! カメラ操作関連のオブジェクトを取得する
-    [[nodiscard]] NS::Object::GameObject* CameraBrainObject() noexcept;
-    [[nodiscard]] NS::Object::GameObject* ActiveVirtualCameraObject() noexcept;
-
-    void SelectCamera() noexcept;
-    [[nodiscard]] bool IsCameraSelected() const noexcept { return m_specialSelection == SpecialSelection::Camera; }
 
     [[nodiscard]] bool HasGizmoSelection() const noexcept
     {
@@ -299,13 +288,6 @@ private:
     std::vector<NS::Object::GameObject*> m_selectablePtrs; // 選択可能なオブジェクト
     std::vector<std::uint8_t> m_selectablePickable;        // 1 は MeshRendererComponent を持つ配置物。ギズモが先に選ぶ
 
-    enum class SpecialSelection : std::uint8_t
-    {
-        None,
-        Camera
-    };
-    SpecialSelection m_specialSelection = SpecialSelection::None; // 特別な選択状態
-
     std::uint32_t m_selectedObjectId = NS::Object::k_NoObjectId; // 主対象の永続 id。選択の一次情報
     std::vector<std::uint32_t> m_selectionIds;                   // 選択中の全配置物。主対象も含む
     NS::Object::Transform* m_lastGizmoSelected = nullptr;        // 前フレームの選択対象
@@ -318,7 +300,6 @@ private:
     };
     std::vector<DragFollower> m_dragFollowers; // 主対象に付いて動く残りの選択
     NS::Core::Matrix m_dragPrimaryWorld{};     // ドラッグ開始時の主対象の world 変換
-    bool m_dragFollowersValid = false;         // 控えが有効か。単体選択なら偽
 
     std::optional<nlohmann::json> m_componentClipboard; // コンポーネントのクリップボード ({type, fields} 1 件)
 

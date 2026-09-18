@@ -894,84 +894,10 @@ namespace NS::Editor
         return result;
     }
 
-    ComponentEditResult DrawObjectComponents(NS::Object::GameObject& obj,
-                                             std::span<const ObjectRefOption> refOptions,
-                                             ComponentDefaults* defaults) noexcept
-    {
-        ComponentEditResult result;
-        int index = 0;
-        for (NS::Object::Component* comp : obj.Components())
-        {
-            if (comp == nullptr)
-            {
-                continue;
-            }
-            const NS::Object::ReflectionInfo* info = comp->GetReflection();
-
-            // Transform は Inspector 上部の専用パネルが編集するので、 リフレクション一覧では重複させない
-            if (info != nullptr && std::strcmp(info->typeName, "TransformComponent") == 0)
-            {
-                continue;
-            }
-
-            ImGui::PushID(index++);
-            ImGuiTreeNodeFlags flags = 0;
-            if (info != nullptr)
-            {
-                flags = ImGuiTreeNodeFlags_DefaultOpen;
-            }
-
-            // コンポーネントごとのヘッダを描画する
-            ImGui::PushStyleColor(ImGuiCol_Header, k_ComponentHeaderColor);
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, k_ComponentHeaderHoveredColor);
-            ImGui::PushStyleColor(ImGuiCol_HeaderActive, k_ComponentHeaderActiveColor);
-            const bool open = ImGui::CollapsingHeader(DisplayTypeName(info), flags);
-            ImGui::PopStyleColor(3);
-
-            if (open)
-            {
-                if (info != nullptr)
-                {
-                    const NS::Object::Component* baseline = nullptr;
-                    if (defaults != nullptr)
-                    {
-                        baseline = defaults->Find(info->typeName);
-                    }
-                    const ComponentEditResult r = DrawReflectedComponent(*comp, refOptions, baseline);
-                    result.changed |= r.changed;
-                    result.activated |= r.activated;
-                    result.committed |= r.committed;
-                    if (r.revertField != nullptr)
-                    {
-                        result.revertTarget = r.revertTarget;
-                        result.revertField = r.revertField;
-                    }
-                    if (r.changedField != nullptr)
-                    {
-                        result.changedTarget = r.changedTarget;
-                        result.changedField = r.changedField;
-                    }
-                }
-                else
-                {
-                    ImGui::TextDisabled("調整できるパラメータなし");
-                }
-            }
-            ImGui::PopID();
-        }
-        return result;
-    }
 #else
     ComponentEditResult DrawReflectedComponent(NS::Object::Component&,
                                                std::span<const ObjectRefOption>,
                                                const NS::Object::Component*) noexcept
-    {
-        return ComponentEditResult{};
-    }
-
-    ComponentEditResult DrawObjectComponents(NS::Object::GameObject&,
-                                             std::span<const ObjectRefOption>,
-                                             ComponentDefaults*) noexcept
     {
         return ComponentEditResult{};
     }

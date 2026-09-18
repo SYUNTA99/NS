@@ -137,7 +137,7 @@ TEST(ReflectionJsonTest, UnknownAndMissingKeysAreIgnored)
     auto* box = obj.AddComponent<NS::Object::BoxColliderComponent>();
     box->SetHalfExtents(NS::Core::Vector3{2.0f, 2.0f, 2.0f});
 
-    // 未知キー + 欠損 (Half Extents を含まない) + 型不一致を混ぜても落ちず、 既定/現状値が保たれる
+    // 未知キー + 欠損 (半径を含まない) + 型不一致を混ぜても落ちず、 既定/現状値が保たれる
     nlohmann::json fields;
     fields["No Such Field"] = 123;
     fields["中心オフセット"] = "not an array";
@@ -177,4 +177,25 @@ TEST(ReflectionJsonTest, ObjectRefRejectsBrokenJsonShapes)
     fields["Target"] = nlohmann::json{{"id", 5}};
     ApplyJsonFields(comp, fields);
     EXPECT_EQ(comp.Target().id, 0u);
+}
+
+TEST(ReflectionJsonTest, CountsKeysNoFieldReads)
+{
+    FakeStringComponent comp;
+    nlohmann::json fields;
+    fields["Label"] = "written";
+    fields["むかしの欄"] = 1.0;
+    fields["もうひとつの余り"] = 2.0;
+
+    EXPECT_EQ(ApplyJsonFields(comp, fields), 2u);
+    EXPECT_EQ(comp.Label(), "written");
+}
+
+TEST(ReflectionJsonTest, CountsNothingWhenEveryKeyHasAField)
+{
+    FakeStringComponent comp;
+    nlohmann::json fields;
+    fields["Label"] = "written";
+
+    EXPECT_EQ(ApplyJsonFields(comp, fields), 0u);
 }

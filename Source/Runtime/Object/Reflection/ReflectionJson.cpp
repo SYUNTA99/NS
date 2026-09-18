@@ -3,6 +3,7 @@
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Reflection/Reflection.h"
@@ -106,7 +107,7 @@ namespace NS::Object
                 // 手編集 JSON が 1.0 形式で書いても拾えるよう数値全般を受け、 int へ切り捨てる
                 if (!value.is_number())
                 {
-					return;
+                    return;
                 }
                 int v = value.get<int>();
                 field.set(&comp, &v);
@@ -116,7 +117,7 @@ namespace NS::Object
             {
                 if (!value.is_boolean())
                 {
-					return;
+                    return;
                 }
                 bool v = value.get<bool>();
                 field.set(&comp, &v);
@@ -126,11 +127,11 @@ namespace NS::Object
             {
                 if (!value.is_array() || value.size() != 3u)
                 {
-					return;
+                    return;
                 }
                 if (!value[0].is_number() || !value[1].is_number() || !value[2].is_number())
                 {
-					return;
+                    return;
                 }
                 NS::Core::Vector3 v{value[0].get<float>(), value[1].get<float>(), value[2].get<float>()};
                 field.set(&comp, &v);
@@ -150,7 +151,7 @@ namespace NS::Object
             {
                 if (!value.is_object())
                 {
-					return;
+                    return;
                 }
                 const auto it = value.find("ref");
                 // 負数は id として不正なので unsigned のみ受ける。 手編集の壊れた値は既定 0 のまま
@@ -166,7 +167,7 @@ namespace NS::Object
             {
                 if (!value.is_object())
                 {
-					return;
+                    return;
                 }
                 const auto it = value.find("curve");
                 if (it == value.end() || !it->is_array())
@@ -179,7 +180,7 @@ namespace NS::Object
                     if (v.count >= Curve::k_MaxKeys)
                     {
                         NS_LOG_WARN(Game, "Curve の点が上限を超えているため捨てる");
-						break;
+                        break;
                     }
                     // 点が 1 個壊れただけで全部を捨てると手編集の損害が広がるので、形の違う点だけ飛ばして残りを読む
                     if (!point.is_array())
@@ -191,11 +192,11 @@ namespace NS::Object
                     if (pointSize != 2u && pointSize != 3u && pointSize != 5u)
                     {
                         NS_LOG_WARN(Game, "Curve の点の要素数が不正なため捨てる");
-						continue;
+                        continue;
                     }
                     if (!point[0].is_number() || !point[1].is_number())
                     {
-						NS_LOG_WARN(Game, "Curve の点の座標が不正なため捨てる");
+                        NS_LOG_WARN(Game, "Curve の点の座標が不正なため捨てる");
                         continue;
                     }
 
@@ -204,7 +205,7 @@ namespace NS::Object
                     {
                         if (!point[2].is_number())
                         {
-							NS_LOG_WARN(Game, "Curve の点のモード番号が不正なため捨てる");
+                            NS_LOG_WARN(Game, "Curve の点のモード番号が不正なため捨てる");
                             continue;
                         }
 
@@ -222,12 +223,12 @@ namespace NS::Object
                         {
                             if (mode != static_cast<int>(Curve::InterpMode::Manual))
                             {
-								NS_LOG_WARN(Game, "Curve の点のモード番号が不正なため捨てる");
+                                NS_LOG_WARN(Game, "Curve の点のモード番号が不正なため捨てる");
                                 continue;
                             }
                             if (!point[3].is_number() || !point[4].is_number())
                             {
-								NS_LOG_WARN(Game, "Curve の点の接線が不正なため捨てる");
+                                NS_LOG_WARN(Game, "Curve の点の接線が不正なため捨てる");
                                 continue;
                             }
                             key.mode = Curve::InterpMode::Manual;
@@ -245,6 +246,18 @@ namespace NS::Object
             }
             }
         }
+
+        bool IsReflectedFieldName(const ReflectionInfo& info, std::string_view name) noexcept
+        {
+            for (std::size_t i = 0; i < info.fieldCount; ++i)
+            {
+                if (name == info.fields[i].name)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
     } // namespace
 
     nlohmann::json SerializeComponent(const Component& comp)
@@ -253,7 +266,7 @@ namespace NS::Object
         const ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr)
         {
-            // リフレクションの無いコンポは type を復元できない。 宣言の書き忘れに気付けるよう警告する
+            // リフレクションの無い component は type を復元できない。 宣言の書き忘れに気付けるよう警告する
             NS_LOG_WARN(Game, "リフレクションの無い Component を直列化しようとした (type 復元不可)");
             out["type"] = "";
             out["fields"] = nlohmann::json::object();
@@ -278,20 +291,22 @@ namespace NS::Object
         {
             if (comp == nullptr)
             {
-                NS_LOG_WARN(Game, "GameObject に nullptr Component が混ざっている。AddComponent で nullptr を返す派生型があるか、 AddComponent 後に手動 delete したか");
-				continue;
+                NS_LOG_WARN(Game,
+                            "GameObject に nullptr Component が混ざっている。AddComponent で nullptr "
+                            "を返す派生型があるか、 AddComponent 後に手動 delete したか");
+                continue;
             }
             components.push_back(SerializeComponent(*comp));
         }
         return components;
     }
 
-    void ApplyJsonFields(Component& comp, const nlohmann::json& fields)
+    std::size_t ApplyJsonFields(Component& comp, const nlohmann::json& fields)
     {
         const ReflectionInfo* info = comp.GetReflection();
         if (info == nullptr || !fields.is_object())
         {
-            return;
+            return 0;
         }
 
         for (std::size_t i = 0; i < info->fieldCount; ++i)
@@ -304,5 +319,26 @@ namespace NS::Object
             }
             JsonToField(comp, field, *it);
         }
+
+        std::size_t unreadCount = 0;
+        for (const auto& entry : fields.items())
+        {
+            if (IsReflectedFieldName(*info, entry.key()))
+            {
+                continue;
+            }
+            // リフレクション欄ではないが TransformComponent 自身が読む
+            // TODO: 回転をクォータニオンのリフレクション欄 1 本にすればこの例外は要らなくなる
+            if (entry.key() == k_RotationQuatFieldName)
+            {
+                continue;
+            }
+            ++unreadCount;
+            NS_LOG_WARN(Game,
+                        "{} に読み手のいない欄 {} がある。 欄名を変えたなら保存済みの値は既定へ戻っている",
+                        info->typeName,
+                        entry.key());
+        }
+        return unreadCount;
     }
 } // namespace NS::Object

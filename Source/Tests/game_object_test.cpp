@@ -107,14 +107,6 @@ TEST(GameObjectTest, SetParentLinksHierarchyAndSyncsTransform)
     EXPECT_EQ(child.Root().Parent(), nullptr);
 }
 
-TEST(GameObjectTest, DestroyFlipsIsAlive)
-{
-    GameObject obj;
-    EXPECT_TRUE(obj.IsAlive());
-    obj.Destroy();
-    EXPECT_FALSE(obj.IsAlive());
-}
-
 namespace
 {
     class HighPrioComponent : public NS::Object::Component
@@ -167,7 +159,7 @@ TEST(GameObjectAddComponentTest, OwnsLifetimeInjectsOwnerAndOrdersByPriority)
     EXPECT_EQ(low->Owner(), &obj);
     EXPECT_EQ(high->Owner(), &obj);
 
-    // 寿命は GameObject が持つので、ローカル変数が無くても tick は伝わる
+    // 寿命は GameObject が持つので、ローカル変数が無くても OnUpdate は伝わる
     obj.OnUpdate();
     EXPECT_EQ(mock->updateCount, 1);
 

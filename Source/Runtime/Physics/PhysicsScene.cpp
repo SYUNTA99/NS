@@ -86,8 +86,7 @@ namespace NS::Physics
         return false;
     }
 
-    bool PhysicsScene::ObjVsBPLayerFilter::ShouldCollide(JPH::ObjectLayer object,
-                                                                    JPH::BroadPhaseLayer broadPhase) const
+    bool PhysicsScene::ObjVsBPLayerFilter::ShouldCollide(JPH::ObjectLayer object, JPH::BroadPhaseLayer broadPhase) const
     {
         const auto other = static_cast<JPH::ObjectLayer>(broadPhase.GetValue());
         if (object == ObjectLayers::Terrain)
@@ -130,7 +129,7 @@ namespace NS::Physics
         {
             if (record.owner == id)
             {
-				found.push_back(record.contact);
+                found.push_back(record.contact);
             }
         }
         return found;
@@ -169,10 +168,6 @@ namespace NS::Physics
 
         JPH::BodyCreationSettings settings{shape, ToJolt(position), ToJolt(rotation), JPH::EMotionType::Static, layer};
         settings.mIsSensor = sensor;
-        // false のまま作った body は Dynamic への SetMotionType が JPH_ASSERT で止まる
-        // 動かすかを決めるのは SetBodyDynamic を呼ぶ側で、Add 系にそれを伝える引数は無い
-        // mesh は体積を出せず質量が 0 になる。true にすると body の生成が JPH_ASSERT で止まる
-        settings.mAllowDynamicOrKinematic = !shape->MustBeStatic();
 
         return m_physicsSystem.GetBodyInterface().CreateAndAddBody(settings, JPH::EActivation::DontActivate);
     }
@@ -257,7 +252,8 @@ namespace NS::Physics
             return JPH::BodyID{};
         }
 
-        const JPH::Quat rotation = JPH::Quat::sFromTo(JPH::Vec3::sAxisY(), ToJolt(capsule.axis).NormalizedOr(JPH::Vec3::sAxisY()));
+        const JPH::Quat rotation =
+            JPH::Quat::sFromTo(JPH::Vec3::sAxisY(), ToJolt(capsule.axis).NormalizedOr(JPH::Vec3::sAxisY()));
         return SyncStatic(id, shape.Get(), capsule.center, FromJolt(rotation), layer, false);
     }
 
@@ -396,26 +392,6 @@ namespace NS::Physics
         }
 
         return m_contactRecorder.Of(id);
-    }
-
-    void PhysicsScene::SetBodyDynamic(JPH::BodyID id, bool dynamic)
-    {
-        if (id.IsInvalid())
-        {
-            return;
-        }
-
-        JPH::BodyInterface& bodies = m_physicsSystem.GetBodyInterface();
-        // 静的専用の形の body には MotionProperties が無く、Dynamic を渡すと Jolt の JPH_ASSERT で落ちる
-        if (dynamic && bodies.GetShape(id)->MustBeStatic())
-        {
-            NS_LOG_WARN(Physics, "静的専用の形なので動的にできない");
-            return;
-        }
-
-        bodies.SetMotionType(id,
-                             dynamic ? JPH::EMotionType::Dynamic : JPH::EMotionType::Static,
-                             dynamic ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
     }
 
     void PhysicsScene::RemoveBody(JPH::BodyID id)

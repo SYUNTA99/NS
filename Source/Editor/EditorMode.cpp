@@ -656,14 +656,11 @@ namespace NS::Editor
             m_cursor.hitX = hitX;
             m_cursor.hitY = hitY;
             m_cursor.hitZ = hitZ;
-            m_cursor.deleteCenter =
-                NS::Core::Vector3{static_cast<float>(hitX), static_cast<float>(hitY), static_cast<float>(hitZ)};
             m_cursor.placementCenter =
                 NS::Core::Vector3{static_cast<float>(placeX), static_cast<float>(placeY), static_cast<float>(placeZ)};
             m_cursor.placeX = placeX;
             m_cursor.placeY = placeY;
             m_cursor.placeZ = placeZ;
-            m_cursor.hitNormal = hitNormal;
             m_cursor.placementBlocked = HasObjectAtCell(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
             return;
         }
@@ -682,8 +679,6 @@ namespace NS::Editor
         m_cursor.hitX = m_cursor.placeX;
         m_cursor.hitY = m_cursor.placeY;
         m_cursor.hitZ = m_cursor.placeZ;
-        m_cursor.hitNormal = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
-        m_cursor.deleteCenter = cellCenter;
         m_cursor.placementBlocked = HasObjectAtCell(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
     }
 

@@ -49,17 +49,16 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
                                NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::k_Pi * 0.5f, 0.0f, 0.0f));
     src.objects.push_back(rotated);
     src.objects.push_back(LevelNs::MakeCellObject(2, 0, 0));
-    // 編集中のレベルは読込採番か Command 採番で常に id を持つため、 基準 CRC も採番後から取る
+    // 編集中のレベルは読込採番か Command 採番で常に id を持つため、 比べる元も採番後から取る
     SceneNs::EnsureUniqueObjectIds(src);
     src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[0].objectId));
     SceneNs::EnsureUniqueObjectIds(src);
-    const auto crc0 = src.ComputeCrc32();
 
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
 
     SceneNs::SceneData dst;
     ASSERT_TRUE(SceneNs::LoadSceneFromJsonFile(dst, *path));
-    EXPECT_EQ(dst.ComputeCrc32(), crc0);
+    EXPECT_TRUE(dst == src);
 }
 
 TEST(SaveLoadRoundTrip, ObjectNameSurvivesJsonRoundTrip)
@@ -68,18 +67,18 @@ TEST(SaveLoadRoundTrip, ObjectNameSurvivesJsonRoundTrip)
     src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
     src.objects[0].name = "足場A";
-    const auto namedCrc = src.ComputeCrc32();
+    const SceneNs::SceneData named = src;
 
     SceneNs::SceneData dst;
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
 
     ASSERT_EQ(dst.objects.size(), 1u);
     EXPECT_EQ(dst.objects[0].name, "足場A");
-    EXPECT_EQ(dst.ComputeCrc32(), namedCrc);
+    EXPECT_TRUE(dst == named);
 
-    // 名前は未保存検知に出す必要があるので、外したら CRC が動く
+    // 名前は未保存検知に出す必要があるので、外したら等しくなくなる
     src.objects[0].name.clear();
-    EXPECT_NE(src.ComputeCrc32(), namedCrc);
+    EXPECT_FALSE(src == named);
 }
 
 TEST(SaveLoadRoundTrip, ObjectActiveSurvivesJsonRoundTrip)
@@ -87,41 +86,39 @@ TEST(SaveLoadRoundTrip, ObjectActiveSurvivesJsonRoundTrip)
     SceneNs::SceneData src;
     src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
-    const auto enabledCrc = src.ComputeCrc32();
+    const SceneNs::SceneData enabled = src;
 
     src.objects[0].active = false;
-    const auto disabledCrc = src.ComputeCrc32();
+    const SceneNs::SceneData disabled = src;
     // 有効かどうかは保存対象なので、切ったら未保存検知に出る
-    EXPECT_NE(disabledCrc, enabledCrc);
+    EXPECT_FALSE(disabled == enabled);
 
     SceneNs::SceneData dst;
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
 
     ASSERT_EQ(dst.objects.size(), 1u);
     EXPECT_FALSE(dst.objects[0].active);
-    EXPECT_EQ(dst.ComputeCrc32(), disabledCrc);
+    EXPECT_TRUE(dst == disabled);
 }
 
-TEST(SaveLoadRoundTrip, ObjectOrderSurvivesJsonRoundTrip)
+TEST(SaveLoadRoundTrip, ObjectSequenceSurvivesJsonRoundTrip)
 {
     SceneNs::SceneData src;
     src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
     src.objects.push_back(LevelNs::MakeCellObject(1, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
-    src.objects[0].order = 1;
-    src.objects[1].order = 0;
-    const auto orderedCrc = src.ComputeCrc32();
+    const std::uint32_t first = src.objects[0].objectId;
+    const std::uint32_t second = src.objects[1].objectId;
 
     SceneNs::SceneData dst;
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
 
     ASSERT_EQ(dst.objects.size(), 2u);
-    EXPECT_EQ(dst.objects[0].order, 1u);
-    EXPECT_EQ(dst.objects[1].order, 0u);
-    EXPECT_EQ(dst.ComputeCrc32(), orderedCrc);
+    EXPECT_EQ(dst.objects[0].objectId, first);
+    EXPECT_EQ(dst.objects[1].objectId, second);
 }
 
-TEST(SaveLoadRoundTrip, MissingActiveAndOrderReadAsDefaults)
+TEST(SaveLoadRoundTrip, MissingActiveReadsAsDefault)
 {
     // 欄を持たない古いファイルが従来どおり読めること
     SceneNs::SceneData src;
@@ -133,13 +130,11 @@ TEST(SaveLoadRoundTrip, MissingActiveAndOrderReadAsDefaults)
     const nlohmann::json& first = json.at("objects").at(0);
     // 既定値は書かない。 欄が増えても古いファイルと byte 互換が保てる
     EXPECT_TRUE(first.find("active") == first.end());
-    EXPECT_TRUE(first.find("order") == first.end());
 
     SceneNs::SceneData dst;
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, text));
     ASSERT_EQ(dst.objects.size(), 1u);
     EXPECT_TRUE(dst.objects[0].active);
-    EXPECT_EQ(dst.objects[0].order, 0u);
 }
 
 TEST(SaveLoadRoundTrip, ObjectParentSurvivesJsonRoundTrip)
@@ -149,7 +144,7 @@ TEST(SaveLoadRoundTrip, ObjectParentSurvivesJsonRoundTrip)
     src.objects.push_back(LevelNs::MakeCellObject(1, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
     src.objects[1].parentId = src.objects[0].objectId;
-    const auto parentedCrc = src.ComputeCrc32();
+    const SceneNs::SceneData parented = src;
 
     SceneNs::SceneData dst;
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
@@ -157,11 +152,11 @@ TEST(SaveLoadRoundTrip, ObjectParentSurvivesJsonRoundTrip)
     ASSERT_EQ(dst.objects.size(), 2u);
     EXPECT_EQ(dst.objects[0].parentId, SceneNs::k_NoObjectId);
     EXPECT_EQ(dst.objects[1].parentId, dst.objects[0].objectId);
-    EXPECT_EQ(dst.ComputeCrc32(), parentedCrc);
+    EXPECT_TRUE(dst == parented);
 
     // 親子も未保存検知に出す
     src.objects[1].parentId = SceneNs::k_NoObjectId;
-    EXPECT_NE(src.ComputeCrc32(), parentedCrc);
+    EXPECT_FALSE(src == parented);
 }
 
 // 正準 JSON は object キーが辞書順・float が最短往復表現なので、 同一データの 2 回保存は
@@ -220,8 +215,8 @@ TEST(SaveLoadRoundTrip, RejectsOversizedObjectCount)
     EXPECT_FALSE(SceneNs::SaveSceneToJsonFile(huge, *path));
 }
 
-// 型名 + リフレクションフィールド値 (全 5 種の値) を持つコンポ一覧が save→load で復元される
-// 全コンポ一覧を持つ形式の往復。 並びは正準化 (名前昇順) されるため等価判定は CRC ではなく正準 JSON の一致で行う
+// 型名 + リフレクションフィールド値 (全 5 種の値) を持つ component 一覧が save→load で復元される
+// 並びは正準化 (名前昇順) されるので、 等価判定は正準 JSON の一致で行う
 TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 {
     auto path = TestScenePath("test_components");
@@ -253,7 +248,7 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
     EXPECT_EQ(SceneNs::SerializeSceneToJson(dst), SceneNs::SerializeSceneToJson(src));
 
     ASSERT_EQ(dst.objects.size(), 3u);
-    // freeObject は BoxCollider に加え transform を表す TransformComponent を持つ
+    // freeObject は BoxColliderComponent と TransformComponent の 2 つを持つ
     ASSERT_EQ(dst.objects[0].components.size(), 2u);
     const nlohmann::json* box = SceneNs::FindComponentEntry(dst.objects[0], "BoxColliderComponent");
     ASSERT_NE(box, nullptr);
@@ -262,13 +257,13 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 
     EXPECT_FLOAT_EQ(SceneNs::FieldVector3(*box, "vHalf", {}).y, 2.0f);
 
-    ASSERT_TRUE(fields.at("iCount").is_number_integer()); // int
+    ASSERT_TRUE(fields.at("iCount").is_number_integer());
     EXPECT_EQ(SceneNs::FieldInt(*box, "iCount", -1), 7);
 
     ASSERT_TRUE(fields.at("bOn").is_boolean());
     EXPECT_TRUE(fields.at("bOn").get<bool>());
 
-    ASSERT_TRUE(fields.at("fSpeed").is_number_float()); // float
+    ASSERT_TRUE(fields.at("fSpeed").is_number_float());
     EXPECT_FLOAT_EQ(SceneNs::FieldFloat(*box, "fSpeed", -1.0f), 1.5f);
 
     ASSERT_TRUE(fields.at("fWhole").is_number_float()); // 整数値でも float のまま
@@ -277,7 +272,7 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
 
 TEST(SaveLoadRoundTrip, BuildLevelPathRejectsTraversal)
 {
-    // path traversal が path 構築層で構造的に止まることを検証する
+    // 上位フォルダへの抜け出しは呼ぶ側でなく path を組む所で止まる
     EXPECT_FALSE(EditorNs::BuildLevelPath("../etc/passwd").has_value());
     EXPECT_FALSE(EditorNs::BuildLevelPath("..").has_value());
     EXPECT_FALSE(EditorNs::BuildLevelPath("a/../b").has_value());
@@ -285,7 +280,7 @@ TEST(SaveLoadRoundTrip, BuildLevelPathRejectsTraversal)
     EXPECT_TRUE(EditorNs::BuildLevelPath("a/b").has_value());
 }
 
-// 統一配置物 (ObjectData) の transform と className が 保存・再読込の往復で完全復元できることを検証する
+// 配置物 (ObjectData) の transform と className が保存・再読込の往復で戻る
 TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
 {
     auto path = TestScenePath("test_objects_roundtrip");
@@ -300,21 +295,20 @@ TEST(SaveLoadRoundTrip, ObjectsRoundTrip)
     src.objects.push_back(freeObject);
 
     SceneNs::ObjectData gridObject{};
-    // 読込は全 object に transform を保証するため、 基準 CRC を合わせるよう src 側にも 1 つ持たせる
+    // 読込は全 object に transform を保証するため、 比べる元を合わせるよう src 側にも 1 つ持たせる
     SceneNs::EnsureTransformComponent(gridObject);
     src.objects.push_back(gridObject);
     src.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
 
-    // 編集中のレベルは常に採番済なので、 基準 CRC も採番 + 追従カメラ済から取る
+    // 編集中のレベルは常に採番済なので、 比べる元も採番 + 追従カメラ済から取る
     SceneNs::EnsureUniqueObjectIds(src);
     src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[2].objectId));
     SceneNs::EnsureUniqueObjectIds(src);
-    const auto crc0 = src.ComputeCrc32();
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
 
     SceneNs::SceneData dst;
     ASSERT_TRUE(SceneNs::LoadSceneFromJsonFile(dst, *path));
-    EXPECT_EQ(dst.ComputeCrc32(), crc0);
+    EXPECT_TRUE(dst == src);
 
     ASSERT_EQ(dst.objects.size(), 4u);
 
@@ -480,14 +474,13 @@ TEST(SaveLoadRoundTrip, EnvironmentRoundTrip)
     SceneNs::EnsureUniqueObjectIds(src);
     src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[0].objectId));
     SceneNs::EnsureUniqueObjectIds(src);
-    const auto crc0 = src.ComputeCrc32();
 
     const std::string json = SceneNs::SerializeSceneToJson(src);
     SceneNs::SceneData dst;
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
 
     EXPECT_EQ(dst.environment.skyboxCubemapPath, "Assets/Skybox/kurt/");
-    EXPECT_EQ(dst.ComputeCrc32(), crc0);
+    EXPECT_TRUE(dst == src);
 }
 
 // 旧版のファイルは黙って既定値で読まず、 読込自体を拒否する。 欄名が違う旧データの静かな破壊を防ぐ
@@ -537,14 +530,13 @@ TEST(SaveLoadRoundTrip, FollowCameraObjectRoundTrip)
     SceneNs::EnsureUniqueObjectIds(src);
     src.objects.push_back(NS::Game::Level::MakeFollowCameraObject(src.objects[0].objectId));
     SceneNs::EnsureUniqueObjectIds(src);
-    const auto crc0 = src.ComputeCrc32();
 
     const std::string json = SceneNs::SerializeSceneToJson(src);
     SceneNs::SceneData dst;
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, json));
 
     ASSERT_EQ(dst.objects.size(), 2u);
-    EXPECT_EQ(dst.ComputeCrc32(), crc0);
+    EXPECT_TRUE(dst == src);
     const std::size_t followIndex = NS::Game::Level::FindFollowCameraObjectIndex(dst);
     ASSERT_EQ(followIndex, 1u);
     const nlohmann::json* comp = SceneNs::FindComponentEntry(dst.objects[1], "ThirdPersonFollowComponent");

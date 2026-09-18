@@ -126,9 +126,9 @@ namespace
 
     JPH::BodyID DropSphereInto(NS::Object::Scene& scene)
     {
-        const JPH::BodyID id = scene.Physics().AddSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, ObjectLayers::Rock);
+        const JPH::BodyID id =
+            scene.Physics().AddDynamicSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, NS::Physics::DynamicBodyDesc{});
         scene.Physics().OptimizeBroadPhase();
-        scene.Physics().SetBodyDynamic(id, true);
         return id;
     }
 
@@ -170,4 +170,51 @@ TEST(SceneTest, PausedSceneLeavesThePhysicsSceneStill)
     RunFrames(scene, 30);
 
     EXPECT_NEAR(scene.Physics().BodyPosition(id).y, 10.0f, 1.0e-5f);
+}
+
+namespace
+{
+    class MoverComponent : public NS::Object::Component
+    {
+    public:
+        void OnUpdate() override
+        {
+            NS::Object::Transform& root = Owner()->Root();
+            root.SetPosition(root.Position() + Vector3{1.0f, 0.0f, 0.0f});
+        }
+    };
+} // namespace
+
+TEST(SceneTest, UpdateLeavesThePreviousStepForInterpolation)
+{
+    NS::Core::FrameTimer::SetFixedDelta(1.0f / 60.0f);
+    NS::Object::Scene scene;
+    NS::Object::GameObject* obj = scene.SpawnTransient<NS::Object::GameObject>();
+    ASSERT_NE(obj, nullptr);
+    obj->AddComponent<MoverComponent>();
+
+    scene.OnUpdate();
+    scene.OnUpdate();
+
+    const NS::Core::Matrix half = obj->Root().InterpolatedWorldMatrix(0.5f);
+    EXPECT_NEAR(half.Translation().x, 1.5f, 1.0e-4f);
+
+    const NS::Core::Matrix current = obj->Root().InterpolatedWorldMatrix(1.0f);
+    EXPECT_NEAR(current.Translation().x, 2.0f, 1.0e-4f);
+}
+
+TEST(SceneTest, PausedSceneFreezesTheInterpolation)
+{
+    NS::Core::FrameTimer::SetFixedDelta(1.0f / 60.0f);
+    NS::Object::Scene scene;
+    NS::Object::GameObject* obj = scene.SpawnTransient<NS::Object::GameObject>();
+    ASSERT_NE(obj, nullptr);
+    obj->AddComponent<MoverComponent>();
+
+    scene.OnUpdate();
+    scene.SetSimulationPaused(true);
+    scene.OnUpdate();
+
+    const NS::Core::Matrix half = obj->Root().InterpolatedWorldMatrix(0.5f);
+    EXPECT_NEAR(half.Translation().x, 1.0f, 1.0e-4f);
 }

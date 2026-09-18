@@ -4,7 +4,6 @@
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Scene/Scene.h"
 
-#include <cstdint>
 #include <gtest/gtest.h>
 #include <utility>
 
@@ -22,10 +21,10 @@ namespace
     }
 } // namespace
 
-//! プレイ中は凍結スナップショットへ書き込まない。 600 tick (10 秒 @60Hz) を回した後の
-//! CRC32 が突入直後と一致することで、 プレイ進行の経路が凍結を変更しないことを実行時にも見る
+//! プレイ中は凍結スナップショットへ書き込まない。 600 tick (10 秒 @60Hz) を回した後も突入直後の写しと
+//! 等しいことで、 プレイ進行の経路が凍結を変更しないことを実行時にも見る
 //! 受け取りを const& にする型の側の縛りと合わせて二重に確かめる
-TEST(PlayBaselineCrc, TickDoesNotTouchPlayBaseline)
+TEST(PlayBaseline, TickDoesNotTouchPlayBaseline)
 {
     SceneNs::Scene scene;
     SceneNs::SceneData level;
@@ -39,9 +38,11 @@ TEST(PlayBaselineCrc, TickDoesNotTouchPlayBaseline)
     scene.LoadFromData(std::move(level));
 
     (void)scene.BeginPlayBaseline();
-    const std::uint32_t frozen = scene.PlayBaseline().ComputeCrc32();
+    const SceneNs::SceneData frozen = scene.PlayBaseline();
     for (int i = 0; i < 600; ++i)
+    {
         scene.OnUpdate();
+    }
 
-    EXPECT_EQ(scene.PlayBaseline().ComputeCrc32(), frozen) << "プレイ進行が凍結スナップショットを変更";
+    EXPECT_TRUE(scene.PlayBaseline() == frozen) << "プレイ進行が凍結スナップショットを変更";
 }

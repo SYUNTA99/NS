@@ -70,7 +70,7 @@ namespace NS::Object
             {
                 if (comp != nullptr && comp->IsA(target))
                 {
-					return static_cast<const T*>(comp);
+                    return static_cast<const T*>(comp);
                 }
             }
             return nullptr;
@@ -79,7 +79,8 @@ namespace NS::Object
         //! Component を生成して寿命を所有し priority 昇順の tick 列へ登録する。戻り値は非所有の生ポインタ
         template <class T, class... Args> T* AddComponent(Args&&... args)
         {
-            static_assert(!std::is_same_v<T, TransformComponent>,"TransformComponent は器が必ず 1 つ持つ。Root() を使う");
+            static_assert(!std::is_same_v<T, TransformComponent>,
+                          "TransformComponent は器が必ず 1 つ持つ。Root() を使う");
             return AddComponentUnchecked<T>(std::forward<Args>(args)...);
         }
 
@@ -95,10 +96,6 @@ namespace NS::Object
         //! priority の降順で Component::OnEndPlay を呼ぶ
         void OnEndPlay();
 
-        [[nodiscard]] bool IsAlive() const noexcept { return m_alive; }
-        //! 生存の印を下ろすだけ。この印を見て回収する経路は無く、1 体消すのは Scene::DestroyObject
-        void Destroy() noexcept { m_alive = false; }
-
         //! この配置物自身の active 値。親の状態は含まない
         [[nodiscard]] bool IsActiveSelf() const noexcept { return m_activeSelf; }
 
@@ -109,14 +106,7 @@ namespace NS::Object
         //! active を切り替える。子の値は触らないので、親を戻せば子も一緒に戻る
         void SetActive(bool active) noexcept { m_activeSelf = active; }
 
-        //! 親の中での並び順。ヒエラルキーの表示順で、組み立てはこの順に並べる
-        [[nodiscard]] std::uint32_t Order() const noexcept { return m_order; }
-
     private:
-        // 並び順の書き込みは ObjectList::Rebuild の data 適用経路だけに絞る
-        friend class ObjectList;
-        void SetOrder(std::uint32_t order) noexcept { m_order = order; }
-
         //! Component に owner を注入し tick 列へ priority 昇順で挿入する
         void AttachOwnedComponent(Component* comp) noexcept;
 
@@ -137,8 +127,6 @@ namespace NS::Object
         std::vector<GameObject*> m_children;                       // 子 GameObject、 非所有
         GameObject* m_parent = nullptr;                            // 親 GameObject、 root なら nullptr
         Scene* m_scene = nullptr;                                  // 所有 Scene、 attach 前後は nullptr
-        std::uint32_t m_order = 0;                                 // 親の中での並び順
-        bool m_alive = true;                                       // false で次フレーム回収対象
         bool m_activeSelf = true;                                  // false で配下 Component が全て止まる
         bool m_transient = false;                                  // 一時オブジェクトの印。保存・凍結に写らない
 

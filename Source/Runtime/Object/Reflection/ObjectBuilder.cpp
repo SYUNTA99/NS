@@ -17,7 +17,8 @@ namespace NS::Object
 {
     namespace
     {
-        // GameObject に既に載る同型 component をリフレクション型名で探す。 適用済みの控えにある分は飛ばし、 無ければ nullptr
+        // GameObject に既に載る同型 component をリフレクション型名で探す。 適用済みの控えにある分は飛ばし、 無ければ
+        // nullptr
         Component* FindExistingComponent(GameObject& obj,
                                          std::string_view typeName,
                                          const std::vector<Component*>& applied)
@@ -26,7 +27,7 @@ namespace NS::Object
             {
                 if (comp == nullptr)
                 {
-					continue;
+                    continue;
                 }
                 if (std::find(applied.begin(), applied.end(), comp) != applied.end())
                 {
@@ -35,7 +36,7 @@ namespace NS::Object
                 const ReflectionInfo* info = comp->GetReflection();
                 if (info != nullptr && typeName == info->typeName)
                 {
-					return comp;
+                    return comp;
                 }
             }
             return nullptr;
@@ -44,7 +45,8 @@ namespace NS::Object
         // transform エントリへ root 回転を 4 要素配列で控える。 リフレクションの Euler と別に厳密なクォータニオンを運ぶ
         void WriteRotationQuatField(nlohmann::json& transformEntry, const NS::Core::Quaternion& rotation)
         {
-            transformEntry["fields"][std::string(k_RotationQuatFieldName)] = nlohmann::json{rotation.x, rotation.y, rotation.z, rotation.w};
+            transformEntry["fields"][std::string(k_RotationQuatFieldName)] =
+                nlohmann::json{rotation.x, rotation.y, rotation.z, rotation.w};
         }
 
         // 控えの厳密なクォータニオンで root 回転を上書きする。 控えが無い読込直後や旧データは Euler のまま
@@ -65,7 +67,8 @@ namespace NS::Object
             {
                 return;
             }
-            obj.Root().SetRotation(NS::Core::Quaternion{q[0].get<float>(), q[1].get<float>(), q[2].get<float>(), q[3].get<float>()});
+            obj.Root().SetRotation(
+                NS::Core::Quaternion{q[0].get<float>(), q[1].get<float>(), q[2].get<float>(), q[3].get<float>()});
         }
     } // namespace
 
@@ -84,7 +87,7 @@ namespace NS::Object
             const std::string_view typeName = ComponentEntryType(entry);
             if (typeName.empty())
             {
-				continue;
+                continue;
             }
 
             Component* created = FindExistingComponent(obj, typeName, applied);
@@ -111,12 +114,12 @@ namespace NS::Object
             // Euler のリフレクション適用で丸まった root 回転を、 控えの厳密なクォータニオンで戻して往復ドリフトを断つ
             if (typeName == k_TransformTypeName)
             {
-				ApplyRotationQuatOverride(obj, entry);
+                ApplyRotationQuatOverride(obj, entry);
             }
 
             if (onBuilt)
             {
-				onBuilt(*created, entry);
+                onBuilt(*created, entry);
             }
         }
     }
@@ -150,7 +153,6 @@ namespace NS::Object
         ObjectData data{};
         data.className = obj.ClassName();
         data.name = obj.Name();
-        data.order = obj.Order();
         data.active = obj.IsActiveSelf();
         if (const GameObject* parent = obj.Parent())
             data.parentId = parent->Id();
@@ -158,7 +160,7 @@ namespace NS::Object
         {
             if (comp == nullptr)
             {
-				continue;
+                continue;
             }
             const ReflectionInfo* info = comp->GetReflection();
             if (info == nullptr)
@@ -178,7 +180,6 @@ namespace NS::Object
         ObjectData data{};
         data.className = obj.ClassName();
         data.name = obj.Name();
-        data.order = obj.Order();
         data.active = obj.IsActiveSelf();
         if (const GameObject* parent = obj.Parent())
         {
@@ -189,7 +190,7 @@ namespace NS::Object
         {
             if (comp == nullptr)
             {
-				continue;
+                continue;
             }
             if (comp->GetReflection() == nullptr)
             {

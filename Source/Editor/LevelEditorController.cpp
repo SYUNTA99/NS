@@ -525,8 +525,6 @@ void LevelEditorController::TickEdit()
         if (m_editorToolMode == EditorToolMode::Object && m_gizmo.Selected() != nullptr)
         {
             m_gizmo.ClearSelection();
-            // Camera の特殊選択も解除し、次フレームの再貼り付けで掴み続けないようにする
-            m_specialSelection = SpecialSelection::None;
             return;
         }
         NS::App::Application::Quit();
@@ -570,7 +568,7 @@ void LevelEditorController::TickEdit()
 
         const auto vp = Brain()->ViewProjection();
         const bool wasDragging = m_gizmoWasDragging;
-        m_gizmo.Tick(vp, CurrentViewRect());
+        m_gizmo.Tick(vp, CurrentViewRect(), m_gameViewHovered);
 
         // ビューポートでのギズモ選択変化を選択 id と Inspector が見る派生添字へ追従させる
         CaptureSelectionFromGizmo();
@@ -593,7 +591,6 @@ void LevelEditorController::TickEdit()
             {
                 CommitTransformEdit();
                 m_dragFollowers.clear();
-                m_dragFollowersValid = false;
             }
         }
         // ギズモは主対象しか動かさないので、 残りの選択はここで追わせる
@@ -608,6 +605,8 @@ void LevelEditorController::TickEdit()
         m_gizmoWasDragging = false;
     }
 
+    // 掴んでいる間は選択の貼り直しを飛ばすので、undo が旧 Transform を指す
+    m_editor.SetUndoRedoSuppressed(m_gizmo.IsDragging());
     m_editor.Tick();
     if (m_editor.IsLevelDirty())
     {
@@ -689,14 +688,6 @@ bool LevelEditorController::HasInspectableSelection() const noexcept
            m_scene->Objects().FindByObjectId(m_selectedObjectId) != nullptr;
 }
 
-NS::Object::ObjectData LevelEditorController::SelectedObjectSnapshot() const noexcept
-{
-    // live の忠実な写し。UI 表示用のその場限りの一時データで、どこにも常駐しない
-    if (std::optional<NS::Object::ObjectData> captured = m_applier.CaptureObject(m_selectedObjectId))
-        return std::move(*captured);
-    return NS::Object::ObjectData{};
-}
-
 NS::Object::GameObject* LevelEditorController::SelectedObjectGameObject() noexcept
 {
     // 選択の真実は永続 id。player も含め全配置物が ObjectList に居るので id で引く
@@ -716,23 +707,6 @@ std::vector<NS::Object::ObjectRefLocation> LevelEditorController::ReferencesToSe
     if (m_selectedObjectId == NS::Object::k_NoObjectId)
         return {};
     return NS::Object::FindReferencesTo(m_scene->Objects(), m_selectedObjectId);
-}
-
-NS::Object::GameObject* LevelEditorController::CameraBrainObject() noexcept
-{
-    if (Brain())
-        return Brain()->Owner();
-    return nullptr;
-}
-
-NS::Object::GameObject* LevelEditorController::ActiveVirtualCameraObject() noexcept
-{
-    if (Brain() == nullptr)
-        return nullptr;
-    NS::Object::VirtualCameraComponent* active = Brain()->ActiveVirtualCamera();
-    if (active != nullptr)
-        return active->Owner();
-    return nullptr;
 }
 
 void LevelEditorController::RefreshGizmoSelectables()
@@ -861,8 +835,6 @@ void LevelEditorController::SelectObjects(std::vector<std::uint32_t> ids, std::u
 
 void LevelEditorController::SetPrimarySelection(std::uint32_t id) noexcept
 {
-    // オブジェクトと Camera の特殊選択は排他。オブジェクトを選んだら解除する
-    m_specialSelection = SpecialSelection::None;
     m_selectedObjectId = id;
 
     if (id == NS::Object::k_NoObjectId)
@@ -884,15 +856,6 @@ void LevelEditorController::SetPrimarySelection(std::uint32_t id) noexcept
     }
     m_gizmo.ClearSelection();
     m_lastGizmoSelected = nullptr;
-}
-
-void LevelEditorController::SelectCamera() noexcept
-{
-    m_selectionIds.clear();
-    m_selectedObjectId = NS::Object::k_NoObjectId;
-    m_gizmo.ClearSelection();
-    m_lastGizmoSelected = nullptr;
-    m_specialSelection = SpecialSelection::Camera;
 }
 
 void LevelEditorController::RenderCameraGizmos(const NS::Core::Matrix& viewProjection,
@@ -1002,12 +965,9 @@ void LevelEditorController::CaptureSelectionFromGizmo() noexcept
     {
         m_selectionIds.clear();
         m_selectedObjectId = NS::Object::k_NoObjectId;
-        // ギズモが空クリック等で外れたら特殊選択も解除し、再貼り付けで掴み続けないようにする
-        m_specialSelection = SpecialSelection::None;
         return;
     }
-    // ビューポートでのオブジェクト実ピックは Camera の特殊選択より優先する。player も ObjectList に居るので同じ経路
-    m_specialSelection = SpecialSelection::None;
+    // player も ObjectList に居るので、ビューポートのピックと同じ経路で引ける
     for (NS::Object::GameObject* object : m_scene->Objects())
     {
         if (&object->Root() == selected)
@@ -1028,9 +988,9 @@ void LevelEditorController::ResolveSelectionFromId() noexcept
     if (m_gizmo.IsDragging())
         return;
 
-    // 選択 id が現存する配置物を指すなら gizmo に貼り直す。不在 / 特殊選択は gizmo を外す
+    // 選択 id が現存する配置物を指すなら gizmo に貼り直す。不在なら gizmo を外す
     // player も ObjectList に居るので id で引ける。rebuild を跨いでも掴める状態を保つ
-    if (m_specialSelection == SpecialSelection::None && m_selectedObjectId != NS::Object::k_NoObjectId)
+    if (m_selectedObjectId != NS::Object::k_NoObjectId)
     {
         if (NS::Object::GameObject* go = m_scene->Objects().FindByObjectId(m_selectedObjectId))
         {
@@ -1141,7 +1101,6 @@ void LevelEditorController::PushCreateObject(NS::Object::ObjectData object)
                          m_applier);
 
     // 組み直し後の新規を選択する。選択候補も貼り直す
-    m_specialSelection = SpecialSelection::None;
     m_selectedObjectId = id;
     m_selectionIds.assign(1, id);
     SetObjectToolActive(true);
@@ -1351,7 +1310,6 @@ void LevelEditorController::DuplicateSelectedObject()
 
     m_editor.Undo().Push(MakeUndoUnit(std::move(commands)), m_applier);
 
-    m_specialSelection = SpecialSelection::None;
     SetObjectToolActive(true);
     SelectObjects(created, created.back());
     RefreshGizmoSelectables();
@@ -1406,7 +1364,6 @@ void LevelEditorController::DeleteSelectedObject()
 
     m_selectionIds.clear();
     m_selectedObjectId = NS::Object::k_NoObjectId;
-    m_specialSelection = SpecialSelection::None;
     m_gizmo.ClearSelection();
     m_lastGizmoSelected = nullptr;
     RefreshGizmoSelectables();
@@ -1454,7 +1411,6 @@ void LevelEditorController::FocusSelectedInView() noexcept
 void LevelEditorController::CaptureDragFollowers() noexcept
 {
     m_dragFollowers.clear();
-    m_dragFollowersValid = false;
     if (m_selectionIds.size() < 2)
         return;
 
@@ -1487,12 +1443,11 @@ void LevelEditorController::CaptureDragFollowers() noexcept
 
         m_dragFollowers.push_back(DragFollower{id, object->Root().WorldMatrix()});
     }
-    m_dragFollowersValid = !m_dragFollowers.empty();
 }
 
 void LevelEditorController::ApplyDragToFollowers() noexcept
 {
-    if (!m_dragFollowersValid)
+    if (m_dragFollowers.empty())
         return;
     NS::Object::GameObject* primary = m_scene->Objects().FindByObjectId(m_selectedObjectId);
     if (primary == nullptr)

@@ -36,9 +36,6 @@ namespace NS::Object
         //! 親の永続 id。 0 は root。 transform は親空間の local として解釈される
         std::uint32_t parentId = 0;
 
-        //! 親の中での並び順。 一覧の表示順で、 組み立てもこの順に並べる。 同値は書かれた順のまま残る
-        std::uint32_t order = 0;
-
         //! この配置物自身の active 値。 false なら配下 component が更新も描画も当たりも止まる
         //! 子の値は独立で、 親を戻せば子も一緒に戻る
         bool active = true;
@@ -55,6 +52,8 @@ namespace NS::Object
     {
         //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。 空文字なら skybox を描かない
         std::string skyboxCubemapPath{};
+
+        [[nodiscard]] bool operator==(const SceneEnvironment& other) const = default;
     };
 
     //! @brief シーンの姿を値として持つデータ。配置物一覧とシーン付随プロパティを収める
@@ -79,8 +78,8 @@ namespace NS::Object
         //! シーンの見た目を確定する環境値。 中身は skybox だけ
         SceneEnvironment environment{};
 
-        //! フィールドを 1 つずつ順に流して計算する。 components は JSON 木を型のタグと値の順で再帰的に流す
-        [[nodiscard]] std::uint32_t ComputeCrc32() const noexcept;
+        //! 未保存検知と保存・再読込の照合に使う。 欄を足せば比較対象へ自動で入る
+        [[nodiscard]] bool operator==(const SceneData& other) const = default;
     };
 
     //! objects 配列で「該当無し」を表す添字

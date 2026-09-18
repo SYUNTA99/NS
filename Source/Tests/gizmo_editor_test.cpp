@@ -128,7 +128,7 @@ namespace
 
     constexpr float k_Pi = 3.14159265358979323846f;
 
-    // クォータニオン q が既知ベクトルに与える回転を成分比較する。quat の直接比較は ±符号の曖昧さがあるので避ける
+    // クォータニオンが既知ベクトルに与える回転を成分比較する。直接比較は ±符号の曖昧さがあるので避ける
     void ExpectRotatesSame(const NS::Core::Quaternion& a, const NS::Core::Quaternion& b, float tol)
     {
         const NS::Core::Vector3 probes[3] = {
@@ -846,7 +846,7 @@ namespace
         GizmoEditor gizmo;
         const NS::Core::Matrix vp;
         const NS::Editor::ViewRect view{0, 0, 100, 100};
-        gizmo.Tick(vp, view);
+        gizmo.Tick(vp, view, true);
         EXPECT_EQ(gizmo.Tool(), GizmoTool::Move);
         EXPECT_EQ(gizmo.Selected(), nullptr);
     }
@@ -857,7 +857,7 @@ namespace
         gizmo.SetActive(true);
         const NS::Core::Matrix vp;
         const NS::Editor::ViewRect view{0, 0, 100, 100};
-        gizmo.Tick(vp, view);
+        gizmo.Tick(vp, view, true);
         EXPECT_EQ(gizmo.Selected(), nullptr);
     }
 
@@ -930,7 +930,7 @@ namespace
         gizmo.SetInput(&input);
         gizmo.SetActive(true);
         gizmo.SetSelectableObjects(objects);
-        gizmo.Tick(vp, NS::Editor::ViewRect{0, 0, k_ViewWidth, k_ViewHeight});
+        gizmo.Tick(vp, NS::Editor::ViewRect{0, 0, k_ViewWidth, k_ViewHeight}, true);
 
         EXPECT_EQ(gizmo.Selected(), &doll.Root());
     }

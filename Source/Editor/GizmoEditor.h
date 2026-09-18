@@ -87,12 +87,10 @@ namespace NS::Editor
             m_space = (m_space == GizmoSpace::Local) ? GizmoSpace::World : GizmoSpace::Local;
         }
 
-        //! マウスがゲーム表示パネル上に居るかを渡す。偽の間は選択クリックとハンドル掴みを受けない
-        void SetViewHovered(bool hovered) noexcept { m_viewHovered = hovered; }
-
         //! @brief 毎フレーム入力を見て、選択とドラッグによる変形を進める
         //! @param[in] view ゲーム表示パネルの矩形。マウスはこの矩形基準のローカル座標で扱う
-        void Tick(const NS::Core::Matrix& viewProjection, const ViewRect& view) noexcept;
+        //! @param[in] viewHovered マウスがそのパネル上に居るか。偽の間は選択クリックとハンドル掴みを受けない
+        void Tick(const NS::Core::Matrix& viewProjection, const ViewRect& view, bool viewHovered) noexcept;
 
         //! 現在の選択対象に対するギズモのUI描画コマンドを発行する。パネル外はクリップされる
         void Render(const NS::Core::Matrix& viewProjection, const ViewRect& view) noexcept;
@@ -191,7 +189,6 @@ namespace NS::Editor
         std::span<const std::uint8_t> m_pickable{};           //!< 選択の優先度。1 の配置物を先に選ぶ
 
         bool m_active = false;                       //!< ギズモ操作が有効かどうか
-        bool m_viewHovered = true;                   //!< マウスがパネル上に居るか。全画面時は常に真
         GizmoTool m_tool = GizmoTool::Move;          //!< 現在の変形ツール
         GizmoSpace m_space = GizmoSpace::Local;      //!< 変形の座標系
         NS::Object::Transform* m_selected = nullptr; //!< 選択中の Transform

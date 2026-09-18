@@ -36,7 +36,6 @@ namespace NS::Editor
         {
             bool valid = false;                  //!< ブロック面か地面に当たったか
             NS::Core::Vector3 placementCenter{}; //!< 配置先セルの中心ワールド座標
-            NS::Core::Vector3 deleteCenter{};    //!< 削除対象セルの中心ワールド座標
             bool placementBlocked = false;       //!< 配置予定地にすでにブロックが存在するかどうか
             std::int16_t hitX = 0;               //!< ヒットしたセルのX座標
             std::int16_t hitY = 0;               //!< ヒットしたセルのY座標
@@ -44,7 +43,6 @@ namespace NS::Editor
             std::int16_t placeX = 0;             //!< 配置先セルのX座標
             std::int16_t placeY = 0;             //!< 配置先セルのY座標
             std::int16_t placeZ = 0;             //!< 配置先セルのZ座標
-            NS::Core::Vector3 hitNormal{};       //!< ヒットした面の法線ベクトル
         };
 
         //! @brief cell 1 個分の整数座標。 live 照会の受け渡しに使う
