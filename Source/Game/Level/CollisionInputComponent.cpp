@@ -156,7 +156,7 @@ namespace NS::Game::Level
         NS::Core::Color color{1.0f, 0.85f, 0.2f, 1.0f};
         if (m_judge.IsChargeFull())
         {
-            color = NS::Core::Color{ 1.0f, 1.0f, 1.0f, 1.0f };
+            color = NS::Core::Color{1.0f, 1.0f, 1.0f, 1.0f};
         }
         NS::Graphics::DebugDraw::Circle(NS::Core::Vector3{center.x, footY, center.z},
                                         NS::Core::Vector3{radius, 0.0f, 0.0f},
@@ -169,14 +169,14 @@ namespace NS::Game::Level
     {
         if (!std::isfinite(charge01))
         {
-			return 1.0f;
+            return 1.0f;
         }
         const float clamped = NS::Core::Clamp(charge01, 0.0f, 1.0f);
         const float factor = m_chargeFactorCurve.Evaluate(clamped);
         // Inspector で点を全部消すと Evaluate が 0 を返して威力が消えるため、0 以下は 1 とみなす
         if (!(factor > 0.0f))
         {
-			return 1.0f;
+            return 1.0f;
         }
         return factor;
     }

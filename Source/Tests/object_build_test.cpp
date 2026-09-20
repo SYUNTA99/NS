@@ -1,5 +1,6 @@
 #include "Game/Level/BlockObject.h"
 #include "Game/Player.h"
+#include "tuning_field_access.h"
 
 #include <Editor/EditorObjects.h>
 #include <Game/Level/GoalComponent.h>
@@ -227,7 +228,7 @@ TEST_F(ObjectBuildTest, FreeBoxWorldAabbReflectsPositionAndHalfExtents)
     EXPECT_NEAR(aabb.Extents.z, 3.0f, 1e-4f);
 }
 
-// components 一覧を持つ object は registry でコンポを生成し、リフレクション set でフィールドが入る
+// components 一覧を持つ object は registry で component を生成し、リフレクション set でフィールドが入る
 TEST_F(ObjectBuildTest, ComponentsDriveBuild)
 {
     ObjectData object;
@@ -399,7 +400,7 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataValuesToComponents)
     obj->OnStart();
     auto* movement = obj->FindComponent<NS::Game::Player::PlayerComponent>();
     ASSERT_NE(movement, nullptr);
-    EXPECT_FLOAT_EQ(movement->CoyoteTime(), 0.125f);
+    EXPECT_FLOAT_EQ(NsTest::ReadTuningField(*movement, "コヨーテ時間"), 0.125f);
 }
 
 // 同型 component を重ねたデータは live でも同数立ち、2 件目が 1 件目へ上書きされない

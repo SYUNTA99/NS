@@ -20,6 +20,7 @@
 
 #include "entity_test_stage.h"
 #include "jolt_test_scene.h"
+#include "tuning_field_access.h"
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -45,7 +46,7 @@ namespace
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
 
-    // シーン JSON に載っている調整値の欄名。半角空白 1 つのずれでも値が読めなくなる
+    // 調整値の欄名。そのままシーン JSON の鍵になるので、半角空白 1 つのずれでも値が読めなくなる
     const std::vector<std::string> k_TuningFieldNames = {"ジャンプ初速",
                                                          "上昇重力",
                                                          "下降重力",
@@ -55,6 +56,7 @@ namespace
                                                          "コヨーテ時間",
                                                          "先行入力時間",
                                                          "歩き速度",
+                                                         "走行速度",
                                                          "加速度",
                                                          "空中の加速度",
                                                          "曲がる時の抵抗",
@@ -62,30 +64,22 @@ namespace
                                                          "ブレーキの減速度",
                                                          "ブレーキのしきい値",
                                                          "スティック遊び",
+                                                         "登れる段の高さ",
+                                                         "掴める縁の下向き距離",
+                                                         "縁へ手を伸ばす距離",
+                                                         "よじ登りの所要時間",
+                                                         "縁の横移動速度",
+                                                         "振り向きの速さ",
                                                          "突進速度",
                                                          "突進距離",
                                                          "タップ初速",
                                                          "タップの上向き初速",
-                                                         "タップ距離"};
+                                                         "タップ距離",
+                                                         "狙いの巻き戻し秒",
+                                                         "狙いの巻き戻しが消える秒"};
 
-    float ReadTuningField(const PlayerComponent& player, const char* name)
-    {
-        const NS::Object::FieldDesc* field = NS::Object::FindField(player.GetReflection(), name);
-        EXPECT_NE(field, nullptr) << name;
-        if (field == nullptr)
-            return std::numeric_limits<float>::quiet_NaN();
-
-        float value = 0.0f;
-        field->get(&player, &value);
-        return value;
-    }
-
-    void WriteTuningField(PlayerComponent& player, const char* name, float value)
-    {
-        const NS::Object::FieldDesc* field = NS::Object::FindField(player.GetReflection(), name);
-        ASSERT_NE(field, nullptr) << name;
-        field->set(&player, &value);
-    }
+    using NsTest::ReadTuningField;
+    using NsTest::WriteTuningField;
 
     //! 中心 (cx,cy,cz) に置いた 1m 立方の固形 block
     AABB MakeBlock(float cx, float cy, float cz)
@@ -248,11 +242,11 @@ TEST_F(PlayerComponentTest, ReadsTuningFromItsOwnFields)
     auto& player = *obj.AddComponent<PlayerComponent>();
 
     player.OnStart();
-    EXPECT_FLOAT_EQ(player.CoyoteTime(), 0.025f);
-    EXPECT_FLOAT_EQ(player.Stats().walkSpeed, 4.0f);
+    EXPECT_FLOAT_EQ(ReadTuningField(player, "コヨーテ時間"), 0.025f);
+    EXPECT_FLOAT_EQ(ReadTuningField(player, "歩き速度"), 4.0f);
 
-    player.SetCoyoteTime(0.2f);
-    EXPECT_FLOAT_EQ(player.CoyoteTime(), 0.2f);
+    WriteTuningField(player, "コヨーテ時間", 0.2f);
+    EXPECT_FLOAT_EQ(ReadTuningField(player, "コヨーテ時間"), 0.2f);
 }
 
 TEST_F(PlayerComponentTest, ReflectsEveryTuningFieldName)
@@ -276,7 +270,7 @@ TEST_F(PlayerComponentTest, ReadsTheJumpImpulseThroughReflection)
     EXPECT_FLOAT_EQ(ReadTuningField(player, "ジャンプ初速"), 12.0f);
 }
 
-TEST_F(PlayerComponentTest, TuningWriteThroughReflectionReachesStats)
+TEST_F(PlayerComponentTest, TuningWriteThroughReflectionReachesMembers)
 {
     GameObject obj;
     auto& player = *obj.AddComponent<PlayerComponent>();
@@ -284,8 +278,19 @@ TEST_F(PlayerComponentTest, TuningWriteThroughReflectionReachesStats)
     WriteTuningField(player, "突進距離", 7.5f);
     WriteTuningField(player, "先行入力時間", 0.4f);
 
-    EXPECT_FLOAT_EQ(player.Stats().bodySlamDistance, 7.5f);
-    EXPECT_FLOAT_EQ(player.Stats().jumpBufferTime, 0.4f);
+    EXPECT_FLOAT_EQ(ReadTuningField(player, "突進距離"), 7.5f);
+    EXPECT_FLOAT_EQ(ReadTuningField(player, "先行入力時間"), 0.4f);
+}
+
+// CollisionInputComponent の無い自機では、この欄の書き換えだけが加速の上限を動かす
+TEST_F(PlayerComponentTest, WritingRunSpeedRaisesTheAccelerationCap)
+{
+    GameObject obj;
+    auto& player = *obj.AddComponent<PlayerComponent>();
+
+    WriteTuningField(player, "走行速度", 20.0f);
+
+    EXPECT_FLOAT_EQ(player.MaxSpeed(), 20.0f);
 }
 
 TEST_F(PlayerComponentTest, TuningKeepsItsValueOnNonFiniteWrite)
@@ -845,8 +850,8 @@ TEST_F(PlayerComponentTest, TapHopEndsAfterTheShortDistance)
     EXPECT_LT(steps, 120);
     // 目標を越えたフレームで終わるので少し行き過ぎる。実移動で測る
     const float travelled = obj.Root().Position().x - startX;
-    EXPECT_NEAR(travelled, player.TapSlamDistance(), 0.2f);
-    EXPECT_LT(player.TapSlamDistance(), player.BodySlamDistance());
+    EXPECT_NEAR(travelled, ReadTuningField(player, "タップ距離"), 0.2f);
+    EXPECT_LT(ReadTuningField(player, "タップ距離"), ReadTuningField(player, "突進距離"));
 }
 
 // 途中で着地すると残りを地面の上で滑り、走っていないのに動いて見える
@@ -863,7 +868,7 @@ TEST_F(PlayerComponentTest, TapSlamStaysAirborneUntilTheEndOfTheLunge)
     player.OnUpdate();
     ASSERT_TRUE(player.IsBodySlamming());
 
-    const float half = player.TapSlamDistance() * 0.5f;
+    const float half = ReadTuningField(player, "タップ距離") * 0.5f;
     float peakY = start.y;
     bool groundedAtHalf = true;
     bool sawHalf = false;
@@ -933,7 +938,7 @@ TEST_F(PlayerComponentTest, BufferedRequestSurvivesALongerRush)
     ASSERT_TRUE(player.IsBodySlamming());
 
     // 先行入力時間より長く突進させてから押す
-    const int stepsPastBuffer = static_cast<int>(player.Stats().jumpBufferTime / k_FixedDt) + 2;
+    const int stepsPastBuffer = static_cast<int>(ReadTuningField(player, "先行入力時間") / k_FixedDt) + 2;
     for (int i = 0; i < stepsPastBuffer; ++i)
         player.OnUpdate();
     ASSERT_TRUE(player.IsBodySlamming());
@@ -1373,7 +1378,7 @@ TEST_F(PlayerComponentTest, NonPositiveClimbDurationFinishesTheClimbAtOnce)
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
-    player.SetLedgeClimbDuration(-0.25f);
+    WriteTuningField(player, "よじ登りの所要時間", -0.25f);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
@@ -1592,7 +1597,7 @@ TEST_F(PlayerComponentTest, ZeroTurnSpeedFacesTheMoveAtOnce)
     NsTest::AddBox(physics, MakeBlock(0.0f, 0.0f, 0.0f));
     physics.OptimizeBroadPhase();
     auto& player = MakeLedgeReady(obj);
-    player.SetTurnSpeed(0.0f);
+    WriteTuningField(player, "振り向きの速さ", 0.0f);
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);

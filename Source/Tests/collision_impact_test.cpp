@@ -1,5 +1,6 @@
 #include "Game/Level/BlockObject.h"
 #include "Game/Player.h"
+#include "tuning_field_access.h"
 
 #include <Game/Level/BreakableComponent.h>
 #include <Game/Level/CollisionInputComponent.h>
@@ -8,7 +9,6 @@
 #include <Game/Level/ImpactResolverComponent.h>
 #include <Game/Level/LaunchedBodyComponent.h>
 #include <Game/Player/PlayerComponent.h>
-#include <Game/Player/PlayerStats.h>
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
@@ -2362,5 +2362,7 @@ TEST(LaunchedBody, FallsAtThePlayersUpwardGravity)
     physics.Update(k_FixedDt);
     const float fallenSpeed = physics.BodyVelocity(body).y;
 
-    EXPECT_NEAR(fallenSpeed / k_FixedDt, NS::Game::Player::PlayerStats{}.gravityUp, 1.0f);
+    NS::Object::GameObject probe;
+    auto& player = *probe.AddComponent<NS::Game::Player::PlayerComponent>();
+    EXPECT_NEAR(fallenSpeed / k_FixedDt, NsTest::ReadTuningField(player, "上昇重力"), 1.0f);
 }

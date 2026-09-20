@@ -9,7 +9,9 @@
 #include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/Reflection.h>
+#include <cmath>
 #include <gtest/gtest.h>
+#include <limits>
 #include <string>
 #include <string_view>
 
@@ -46,6 +48,29 @@ namespace
         int m_count = 3;
         bool m_enabled = true;
         NS::Core::Vector3 m_offset{1.0f, 2.0f, 3.0f};
+    };
+
+    struct FakeTuning
+    {
+        float speed = 4.0f;
+    };
+
+    class FakeNestedComponent : public Component
+    {
+    public:
+        FakeNestedComponent() noexcept : Component(0) {}
+
+        NS_REFLECT_BEGIN(FakeNestedComponent, Component)
+        NS_REFLECT_FIELD_FINITE(m_tuning.speed, "速度")
+        NS_REFLECT_FIELD(m_plainGravity, "重力")
+        NS_REFLECT_END()
+
+        [[nodiscard]] const FakeTuning& Tuning() const noexcept { return m_tuning; }
+        [[nodiscard]] float PlainGravity() const noexcept { return m_plainGravity; }
+
+    private:
+        FakeTuning m_tuning{};
+        float m_plainGravity = -9.8f;
     };
 
     // std::string をリフレクションするテスト用 Component
@@ -502,4 +527,48 @@ TEST(ReflectionComponentCastTest, CastsTypeWithRenderableSide)
     NS::Object::ShadowComponent shadow;
     Component* comp = &shadow;
     EXPECT_EQ(NS::Object::ComponentCast<NS::Object::ShadowComponent>(comp), &shadow);
+}
+
+TEST(ReflectionFiniteFieldTest, ReachesTheMemberInsideTheNestedStruct)
+{
+    FakeNestedComponent comp;
+    const FieldDesc* field = FindField(comp.GetReflection(), "速度");
+    ASSERT_NE(field, nullptr);
+    EXPECT_EQ(field->type, FieldType::Float);
+
+    float read = 0.0f;
+    field->get(&comp, &read);
+    EXPECT_FLOAT_EQ(read, 4.0f);
+
+    float written = 7.5f;
+    field->set(&comp, &written);
+    EXPECT_FLOAT_EQ(comp.Tuning().speed, 7.5f);
+}
+
+TEST(ReflectionFiniteFieldTest, KeepsItsValueOnNonFiniteWrite)
+{
+    FakeNestedComponent comp;
+    const FieldDesc* field = FindField(comp.GetReflection(), "速度");
+    ASSERT_NE(field, nullptr);
+
+    const float k_Rejected[] = {std::numeric_limits<float>::quiet_NaN(),
+                                std::numeric_limits<float>::infinity(),
+                                -std::numeric_limits<float>::infinity()};
+    for (float rejected : k_Rejected)
+    {
+        field->set(&comp, &rejected);
+        EXPECT_FLOAT_EQ(comp.Tuning().speed, 4.0f);
+    }
+}
+
+// ここが落ちたら素の NS_REFLECT_FIELD も NaN を弾くようになっていて、マクロ 2 本の区別が消えている
+TEST(ReflectionFiniteFieldTest, PlainFieldTakesNonFiniteWrite)
+{
+    FakeNestedComponent comp;
+    const FieldDesc* field = FindField(comp.GetReflection(), "重力");
+    ASSERT_NE(field, nullptr);
+
+    float notANumber = std::numeric_limits<float>::quiet_NaN();
+    field->set(&comp, &notANumber);
+    EXPECT_TRUE(std::isnan(comp.PlainGravity()));
 }

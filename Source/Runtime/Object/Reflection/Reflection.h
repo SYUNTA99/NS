@@ -4,6 +4,7 @@
 #include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
 
+#include <cmath>
 #include <cstddef>
 #include <string>
 #include <string_view>
@@ -64,6 +65,16 @@ namespace NS::Object
                           "FieldTypeOf の T は float / int / bool / NS::Core::Vector3 / NS::Core::Quaternion / "
                           "std::string / ObjectRef / Curve のいずれか");
             return FieldType::Vector3;
+        }
+    }
+
+    //! 有限値のときだけ target へ書く。非有限値は捨てて元の値を残す
+    //! float& で受けるので、float 以外のメンバに NS_REFLECT_FIELD_FINITE を使うとここで落ちる
+    inline void AssignIfFinite(float& target, float value) noexcept
+    {
+        if (std::isfinite(value))
+        {
+            target = value;
         }
     }
 
@@ -140,6 +151,19 @@ namespace NS::Object
                           },                                                                                           \
                           +[](void* c, const void* in) noexcept {                                                      \
                               static_cast<Self*>(c)->member = *static_cast<const decltype(Self::member)*>(in);         \
+                          }},
+
+//! float のメンバを 1 フィールドとして登録する。型タグは Float 固定で、非有限値の書き込みは捨てて元の値を残す
+#define NS_REFLECT_FIELD_FINITE(member, label)                                                                         \
+    NS::Object::FieldDesc{label,                                                                                       \
+                          NS::Object::FieldType::Float,                                                                \
+                          +[](const void* c, void* out) noexcept {                                                     \
+                              float& dst = *static_cast<float*>(out);                                                  \
+                              dst = static_cast<const Self*>(c)->member;                                               \
+                          },                                                                                           \
+                          +[](void* c, const void* in) noexcept {                                                      \
+                              const float value = *static_cast<const float*>(in);                                      \
+                              NS::Object::AssignIfFinite(static_cast<Self*>(c)->member, value);                        \
                           }},
 
 //! 基底の private や検証付きフィールドを getter/setter 経由で登録する。getter は値返し、setter は 1 引数

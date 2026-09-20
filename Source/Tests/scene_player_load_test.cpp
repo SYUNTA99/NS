@@ -9,6 +9,7 @@
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Object/Scene/SceneJson.h"
+#include "tuning_field_access.h"
 
 #include <algorithm>
 #include <gtest/gtest.h>
@@ -154,10 +155,10 @@ TEST_P(ShippedScene, LoadedPlayerKeepsTheTunedSlamValues)
     ASSERT_NE(player, nullptr);
     live->OnStart();
 
-    EXPECT_FLOAT_EQ(player->Stats().bodySlamDistance, 10.0f);
-    EXPECT_FLOAT_EQ(player->Stats().tapSlamDistance, 6.25f);
-    EXPECT_FLOAT_EQ(player->Stats().jumpImpulse, 12.0f);
-    EXPECT_FLOAT_EQ(player->CoyoteTime(), 0.025f);
+    EXPECT_FLOAT_EQ(NsTest::ReadTuningField(*player, "突進距離"), 10.0f);
+    EXPECT_FLOAT_EQ(NsTest::ReadTuningField(*player, "タップ距離"), 6.25f);
+    EXPECT_FLOAT_EQ(NsTest::ReadTuningField(*player, "ジャンプ初速"), 12.0f);
+    EXPECT_FLOAT_EQ(NsTest::ReadTuningField(*player, "コヨーテ時間"), 0.025f);
 }
 
 INSTANTIATE_TEST_SUITE_P(ScenePlayerLoad,
