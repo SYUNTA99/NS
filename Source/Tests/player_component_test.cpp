@@ -895,7 +895,7 @@ TEST_F(PlayerComponentTest, ProgressRisesThenCancelResets)
     EXPECT_FLOAT_EQ(player.BodySlamProgress01(), 0.0f);
 }
 
-// 踏み込みは先行入力の秒より長い。突進中に期限を数えると、明ける前に押しが消える
+// 踏み込みは先行入力時間より長い。突進中に期限を数えると、明ける前に押しが消える
 TEST_F(PlayerComponentTest, BufferedRequestSurvivesALongerRush)
 {
     NsTest::EntityStage stage;
@@ -908,7 +908,7 @@ TEST_F(PlayerComponentTest, BufferedRequestSurvivesALongerRush)
     player.OnUpdate();
     ASSERT_TRUE(player.IsBodySlamming());
 
-    // 先行入力の秒を使い切るまで突進させてから押す
+    // 先行入力時間より長く突進させてから押す
     const int stepsPastBuffer = static_cast<int>(player.Stats().jumpBufferTime / k_FixedDt) + 2;
     for (int i = 0; i < stepsPastBuffer; ++i)
         player.OnUpdate();
@@ -1229,7 +1229,7 @@ TEST_F(PlayerComponentTest, GrabsWithoutInputWhileMovingIntoTheLedge)
     EXPECT_EQ(CurrentStateName(obj), LedgeHangingPlayerState::k_Name);
 }
 
-// 手の高さの帯を外れた縁は掴まない。block 上端より 2m 高い所から前へ押しても素通りする
+// 手の高さの帯を外れた縁は掴まない。手が block 上端より 2m 上にある位置から前へ押しても素通りする
 TEST_F(PlayerComponentTest, DoesNotGrabOutsideTheHandBand)
 {
     NsTest::EntityStage stage;

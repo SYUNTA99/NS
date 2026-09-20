@@ -21,7 +21,7 @@
 
 namespace
 {
-    // 掴まりの走査で見る AABB 群。physics 未設定なら空を返すので、掴めないだけで異常終了しない
+    // 掴まりの走査で見る AABB 群。physics 未設定なら空を返し、掴めないだけにする
     [[nodiscard]] std::vector<NS::Core::AABB> BoxesTouchingBand(const NS::Physics::PhysicsScene* physics,
                                                                 const NS::Core::Vector3& probe,
                                                                 float below,
@@ -404,7 +404,7 @@ namespace NS::Game::Player
                                         0.0f,
                                         dir.z * (1.0f - blend) + m_bodySlamAimDir.z * blend};
                 const float mixedLength = std::sqrt(mixed.x * mixed.x + mixed.z * mixed.z);
-                // 正反対だと混ぜた長さが 0 になる。その時は濃い側をそのまま採る
+                // 正反対の向きを同じくらいの重みで混ぜると長さが 0 近くになる。その時は濃い側をそのまま採る
                 if (mixedLength >= NS::Core::k_Epsilon)
                     dir = NS::Core::Vector3{mixed.x / mixedLength, 0.0f, mixed.z / mixedLength};
                 else if (blend >= 0.5f)
@@ -698,7 +698,7 @@ namespace NS::Game::Player
             if (probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z)
                 continue;
 
-            // 接近軸の優勢成分で掴む手前面を決め、その外側に capsule を寄せた hang 位置を出す
+            // 接近軸の優勢成分で掴む手前面を決め、その外側にカプセルを寄せた hang 位置を出す
             NS::Core::Vector3 faceNormal{0.0f, 0.0f, 0.0f};
             NS::Core::Vector3 hang = pos;
             if (std::abs(dir.x) >= std::abs(dir.z))
@@ -723,7 +723,7 @@ namespace NS::Game::Player
             }
             hang.y = top - CapsuleHalfHeight();
 
-            // 上面手前の登り先が別 block で塞がっているなら縁ではない。掴まない
+            // 上面手前の登り先が別ブロックで塞がっているなら縁ではない。掴まない
             const float mantleStep = 2.0f * CapsuleRadius();
             const NS::Core::Vector3 mantleCheck{
                 hang.x - faceNormal.x * mantleStep,
@@ -914,7 +914,7 @@ namespace NS::Game::Player
             if (probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z)
                 continue;
 
-            // 乗り上がり先が別 block で塞がっていたら縁とみなさない。オーバーハングの下では掴めない
+            // 乗り上がり先が別ブロックで塞がっていたら縁とみなさない。オーバーハングの下では掴めない
             const float mantleStep = 2.0f * CapsuleRadius();
             const NS::Core::Vector3 mantleCheck{
                 hangPos.x - m_ledgeFaceNormal.x * mantleStep,
@@ -994,7 +994,7 @@ namespace NS::Game::Player
         if (m_stateManager != nullptr)
         {
             // 発動の判定が現在状態を見るので、組むのは 1 フレームの頭。Step の初回に任せると
-            // 1 フレーム目だけ現在状態が空になり、そのフレームの押しが落ちる
+            // 1 フレーム目だけ現在状態が空になり、そのフレームの押しが 1 フレーム遅れて出る
             m_stateManager->EnsureBuilt(*this);
 
             // 突進の中で見ると通常移動の 1 フレームを走ってから移ることになり、突進の初速がそのフレームに乗らない

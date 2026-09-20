@@ -13,7 +13,7 @@ namespace NS::Game::Player
 
     //! @brief 自機の状態機械を持つ Component
     //! @details 状態の一覧はセミコロン区切りのデータから組み、先頭が初期状態になる
-    //! 未登録名は飛ばし、1 つも組めなければ既定の並びへ退避する
+    //! 未登録名は飛ばし、1 つも組めなければ既定の並びへフォールバックする
     //! 依存: NS::Game::Entity::EntityStateManagerComponent, NS::Object::StateMachine, PlayerComponent
     class PlayerStateManagerComponent : public NS::Game::Entity::EntityStateManagerComponent
     {
@@ -43,7 +43,7 @@ namespace NS::Game::Player
     private:
         bool ChangeByName(std::string_view name) override;
 
-        //! m_stateNames のセミコロン区切りから状態機械を組む。全滅時は既定の並びへ退避する
+        //! m_stateNames のセミコロン区切りから状態機械を組む。全滅時は既定の並びへフォールバックする
         void BuildStates(PlayerComponent& player);
 
         std::string m_stateNames = "Idle;Walk;Fall;LedgeHanging;LedgeClimbing;BodySlam;Brake"; // 先頭が初期状態

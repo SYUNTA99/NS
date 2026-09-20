@@ -87,7 +87,7 @@ namespace NS::Game::Player
         void ApplyFriction(float dt) noexcept;
         //! ブレーキの減速度で水平の速さを減らす
         void ApplyBrake(float dt) noexcept;
-        //! 接地かコヨーテ窓の内で押されていれば跳ぶ
+        //! 接地かコヨーテ猶予の内で押されていれば跳ぶ
         void Jump(float dt) noexcept;
         //! 上昇中にボタンを離したフレームだけ縦速度を縮める
         void CutJumpRelease() noexcept;
@@ -122,7 +122,7 @@ namespace NS::Game::Player
         //! 手放しのボタンが押された場合 true、それ以外の場合は false
         [[nodiscard]] bool ShouldDropLedge() const noexcept;
 
-        //! 走行入力が出ているか動いている場合 true、それ以外の場合は false
+        //! 接地していて、走行入力が出ているか動いている場合 true、それ以外の場合は false
         [[nodiscard]] bool ShouldWalk() const noexcept;
         //! 接地していて走行も動きも無い場合 true、それ以外の場合は false
         [[nodiscard]] bool ShouldIdle() const noexcept;
@@ -237,7 +237,7 @@ namespace NS::Game::Player
         //! 押したフレームの狙いを控える。離すまでの遅れのぶん、発動はこの向きから始める
         void MarkBodySlamAim() noexcept;
 
-        //! 基底の借用に続けて、同居する状態機械を控える
+        //! 基底の OnStart に続けて、同居する状態機械を控える
         void OnStart() override;
 
         // 欄は登録される具象型に置く。リフレクションの直列化は自分の型の欄だけを回り、基底の鎖はたどらない

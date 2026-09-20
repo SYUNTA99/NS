@@ -75,7 +75,7 @@ namespace NS::Game::Player
             return;
         }
 
-        // 退避の並びも同じ登録簿から作る。登録ごとリンカに落とされた時はここでも組めないので、
+        // フォールバックの並びも同じ登録簿から作る。登録ごとリンカに落とされた時はここでも組めないので、
         // その検知は player_state_registration_test に任せる
         NS_LOG_ERROR(Game, "PlayerStateManager: 状態一覧が組めないため既定の並びへ退避: {}", m_stateNames);
         const std::vector<std::string> fallback = {IdlePlayerState::k_Name,

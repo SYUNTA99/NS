@@ -60,7 +60,7 @@ namespace
     }
 
     //! 自機 2 部品を載せて OnStart まで通す。積む順は Player のコンストラクタと同じ
-    //! @details 開始位置は空中に取り、数ステップの自然落下で着地させる
+    //! @details 開始位置は空中に取り、数フレームの自然落下で着地させる
     PlayerComponent& SetUpMovement(GameObject& owner, NS::Physics::PhysicsScene& physics, const Vector3& startPosition)
     {
         auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
@@ -78,7 +78,7 @@ namespace
         return StepRecord{owner.Root().Position(), movement.Velocity(), movement.IsGrounded()};
     }
 
-    //! 平地を X+ へ全開で走り、90 ステップ目から入力を切って停止する
+    //! 平地を X+ へ全開で走り、90 フレーム目から入力を切って停止する
     //! 加速の立ち上がり・最大速度巡航・減速の 3 経路を通す
     std::vector<StepRecord> RunFlatWalk()
     {
@@ -101,7 +101,7 @@ namespace
         return trajectory;
     }
 
-    //! 走りながらジャンプ 1 回。20 ステップ保持してから離すことで
+    //! 走りながらジャンプ 1 回。20 フレーム保持してから離すことで
     //! 上昇の弱い重力・離し減速・頂点の重力緩和・落下の強い重力を全て通す
     //! 床は 3 秒間の全力走行で走り抜けない長さにする
     std::vector<StepRecord> RunSingleJump()
@@ -125,8 +125,8 @@ namespace
         return trajectory;
     }
 
-    //! 短い床を走り抜けて踏み外し、その次のステップでジャンプ入力する
-    //! 入力の時点で空中 1 ステップぶんの時間が経過しており、コヨーテ時間の内側を踏む
+    //! 短い床を走り抜けて踏み外し、その次のフレームでジャンプ入力する
+    //! 入力の時点で空中 1 フレームぶんの時間が経過しており、コヨーテ時間の内側を踏む
     std::vector<StepRecord> RunCoyoteJump()
     {
         NsTest::EntityStage stage;
