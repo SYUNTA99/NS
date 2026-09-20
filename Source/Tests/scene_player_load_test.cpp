@@ -67,8 +67,8 @@ TEST_P(ShippedScene, PlayerCarriesTheTwoNewComponents)
 
     EXPECT_NE(SceneNs::FindComponentEntry(*player, "PlayerComponent"), nullptr)
         << GetParam()
-        << " の自機に PlayerComponent が無い。未知の型名は黙って読み飛ばされるので、"
-           "書き換え漏れはこのテストでしか出ない";
+        << " の自機に PlayerComponent が無い。未知の型名は警告だけ残して読み飛ばされる。"
+           "型名が変わると読み込みは成功したまま保存済みの値が落ちる";
     EXPECT_NE(SceneNs::FindComponentEntry(*player, "PlayerStateManagerComponent"), nullptr)
         << GetParam() << " の自機に PlayerStateManagerComponent が無い。状態が 1 つも移らない";
 }
@@ -122,7 +122,7 @@ TEST_P(ShippedScene, EveryTuningFieldNameIsReflected)
         {
             EXPECT_NE(std::find(reflected.begin(), reflected.end(), item.key()), reflected.end())
                 << GetParam() << " の " << typeName << " に欄 " << item.key()
-                << " があるが、この型は同じ名前を持たない。名前が違う欄は黙って捨てられ、値は既定のまま残る";
+                << " があるが、この型は同じ名前を持たない。名前が違う欄は警告だけ残して捨てられ、値は既定のまま残る";
         }
     }
 }
@@ -139,7 +139,8 @@ TEST_P(ShippedScene, PlayerComponentCarriesEveryTuningField)
     const auto fields = entry->find("fields");
     ASSERT_NE(fields, entry->end());
 
-    EXPECT_EQ(fields->size(), 22u) << GetParam() << " の調整値の欄が減っている。落ちた欄は既定値で動く";
+    // 22 は今の同梱シーンが持つ欄数。保存はリフレクションの欄 30 件を全部書き出すので、開いて保存し直すと増える
+    EXPECT_GE(fields->size(), 22u) << GetParam() << " の調整値の欄が減っている。落ちた欄は既定値で動く";
 }
 
 TEST_P(ShippedScene, LoadedPlayerKeepsTheTunedSlamValues)

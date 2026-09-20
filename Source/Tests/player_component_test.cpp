@@ -259,7 +259,7 @@ TEST_F(PlayerComponentTest, ReflectsEveryTuningFieldName)
 
     for (const std::string& name : k_TuningFieldNames)
         EXPECT_NE(NS::Object::FindField(info, name.c_str()), nullptr)
-            << name << " の欄が無い。シーン JSON のこの値は黙って捨てられ、調整値が既定へ化ける";
+            << name << " の欄が無い。シーン JSON のこの値は警告だけ残して捨てられ、調整値が既定へ化ける";
 }
 
 TEST_F(PlayerComponentTest, ReadsTheJumpImpulseThroughReflection)
@@ -282,7 +282,7 @@ TEST_F(PlayerComponentTest, TuningWriteThroughReflectionReachesMembers)
     EXPECT_FLOAT_EQ(ReadTuningField(player, "先行入力時間"), 0.4f);
 }
 
-// CollisionInputComponent の無い自機では、この欄の書き換えだけが加速の上限を動かす
+// 加速の上限は走行速度の欄と CollisionInputComponent が動かす。この自機に CollisionInputComponent は居ない
 TEST_F(PlayerComponentTest, WritingRunSpeedRaisesTheAccelerationCap)
 {
     GameObject obj;
