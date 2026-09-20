@@ -8,6 +8,4 @@ namespace NS::Game::Player
     {
         player.UpdateLedgeClimb(dt);
     }
-
-    NS_STATE(LedgeClimbingPlayerState, NS::Game::Player::PlayerComponent)
 } // namespace NS::Game::Player

@@ -5,12 +5,10 @@
 namespace NS::Game::Player
 {
     //! よじ登り。登り切ったフレームに立ちへ移る
-    class LedgeClimbingPlayerState final : public PlayerState
+    class LedgeClimbingPlayerState final : public PlayerState<LedgeClimbingPlayerState>
     {
     public:
         static constexpr const char* k_Name = "LedgeClimbing";
-
-        [[nodiscard]] const char* Name() const noexcept override { return k_Name; }
 
         void OnStep(PlayerComponent& player, float dt) override;
     };

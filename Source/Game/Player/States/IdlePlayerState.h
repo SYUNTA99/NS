@@ -4,13 +4,11 @@
 
 namespace NS::Game::Player
 {
-    //! 立ち。移る先は落下と走り
-    class IdlePlayerState final : public PlayerState
+    //! 立ち。落下と走りへ移る
+    class IdlePlayerState final : public PlayerState<IdlePlayerState>
     {
     public:
         static constexpr const char* k_Name = "Idle";
-
-        [[nodiscard]] const char* Name() const noexcept override { return k_Name; }
 
         void OnStep(PlayerComponent& player, float dt) override;
     };

@@ -241,7 +241,7 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "狙いの巻き戻し秒",
           "狙いの巻き戻しが消える秒"}},
         {"PlayerInputComponent", {}},
-        {"PlayerStateManagerComponent", {"状態一覧"}},
+        {"PlayerStateManagerComponent", {}},
         {"ShadowComponent", {"基本直径", "最大投影距離", "表面オフセット", "基本不透明度"}},
         {"SkeletalAnimationComponent", {"再生速度", "ループ再生", "モデル", "クリップ"}},
         {"SlopeColliderComponent", {"角度 (度)", "半径"}},

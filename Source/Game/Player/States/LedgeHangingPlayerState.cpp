@@ -26,6 +26,4 @@ namespace NS::Game::Player
         }
         player.Shimmy(dt);
     }
-
-    NS_STATE(LedgeHangingPlayerState, NS::Game::Player::PlayerComponent)
 } // namespace NS::Game::Player

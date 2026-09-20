@@ -8,11 +8,8 @@
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
-#include "Runtime/Core/LogCategories.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
-
-#include <vector>
 
 namespace NS::Game::Player
 {
@@ -26,11 +23,18 @@ namespace NS::Game::Player
         return m_machine.IsBuilt();
     }
 
-    bool PlayerStateManagerComponent::ChangeByName(std::string_view name)
+    bool PlayerStateManagerComponent::ChangeToState(NS::Object::StateId id)
     {
         if (m_player == nullptr)
+        {
             return false;
-        return m_machine.Change(*m_player, name);
+        }
+        return m_machine.Change(*m_player, id);
+    }
+
+    NS::Object::StateId PlayerStateManagerComponent::CurrentStateId() const noexcept
+    {
+        return m_machine.CurrentId();
     }
 
     void PlayerStateManagerComponent::ResetToFirst() noexcept
@@ -65,27 +69,13 @@ namespace NS::Game::Player
 
     void PlayerStateManagerComponent::BuildStates(PlayerComponent& player)
     {
-        const std::vector<std::string> names = SplitStateNames(m_stateNames);
-
-        if (m_machine.Build(player, names))
-            return;
-        if (m_machine.IsBuilt())
-        {
-            NS_LOG_ERROR(Game, "PlayerStateManager: 状態一覧に未登録名があり飛ばした: {}", m_stateNames);
-            return;
-        }
-
-        // フォールバックの並びも同じ登録簿から作る。登録ごとリンカに落とされた時はここでも組めないので、
-        // その検知は player_state_registration_test に任せる
-        NS_LOG_ERROR(Game, "PlayerStateManager: 状態一覧が組めないため既定の並びへ退避: {}", m_stateNames);
-        const std::vector<std::string> fallback = {IdlePlayerState::k_Name,
-                                                   WalkPlayerState::k_Name,
-                                                   FallPlayerState::k_Name,
-                                                   LedgeHangingPlayerState::k_Name,
-                                                   LedgeClimbingPlayerState::k_Name,
-                                                   BodySlamPlayerState::k_Name,
-                                                   BrakePlayerState::k_Name};
-        m_machine.Build(player, fallback);
+        m_machine.Build<IdlePlayerState,
+                        WalkPlayerState,
+                        FallPlayerState,
+                        LedgeHangingPlayerState,
+                        LedgeClimbingPlayerState,
+                        BodySlamPlayerState,
+                        BrakePlayerState>(player);
     }
 
     NS_CLASS(PlayerStateManagerComponent)

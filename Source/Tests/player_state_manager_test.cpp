@@ -1,59 +1,19 @@
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
-#include <Game/Player/States/BodySlamPlayerState.h>
 #include <Game/Player/States/FallPlayerState.h>
 #include <Game/Player/States/IdlePlayerState.h>
-#include <Game/Player/States/WalkPlayerState.h>
 #include <Runtime/Object/GameObject.h>
-#include <Runtime/Object/Reflection/Reflection.h>
 #include <gtest/gtest.h>
-
-#include <string>
 
 namespace
 {
-    using NS::Game::Player::BodySlamPlayerState;
     using NS::Game::Player::FallPlayerState;
     using NS::Game::Player::IdlePlayerState;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
-    using NS::Game::Player::WalkPlayerState;
-    using NS::Object::FieldDesc;
-    using NS::Object::FieldType;
     using NS::Object::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
-    constexpr const char* k_StateListField = "状態一覧";
-    constexpr const char* k_DefaultStateList = "Idle;Walk;Fall;LedgeHanging;LedgeClimbing;BodySlam;Brake";
-
-    const FieldDesc* FindField(const NS::Object::ReflectionInfo* info, const char* name)
-    {
-        if (info == nullptr)
-            return nullptr;
-        for (std::size_t i = 0; i < info->fieldCount; ++i)
-        {
-            if (std::string(info->fields[i].name) == name)
-                return &info->fields[i];
-        }
-        return nullptr;
-    }
-
-    std::string ReadStateList(PlayerStateManagerComponent& manager)
-    {
-        const FieldDesc* field = FindField(manager.GetReflection(), k_StateListField);
-        if (field == nullptr)
-            return {};
-        std::string out;
-        field->get(&manager, &out);
-        return out;
-    }
-
-    void WriteStateList(PlayerStateManagerComponent& manager, const std::string& list)
-    {
-        const FieldDesc* field = FindField(manager.GetReflection(), k_StateListField);
-        ASSERT_NE(field, nullptr);
-        field->set(&manager, &list);
-    }
 
     // 組んだ直後を見たい所は Step でなく EnsureBuilt を呼ぶ。Step は状態を 1 回走らせるので、
     // 床の無いこの検証台では立ちから落下へ移ってしまう
@@ -73,13 +33,6 @@ namespace
     };
 } // namespace
 
-TEST(PlayerStateManagerTest, StateListDefaultsToTheSevenNames)
-{
-    Rig rig;
-
-    EXPECT_EQ(ReadStateList(*rig.manager), k_DefaultStateList);
-}
-
 TEST(PlayerStateManagerTest, NothingIsBuiltBeforeTheFirstStep)
 {
     Rig rig;
@@ -88,14 +41,14 @@ TEST(PlayerStateManagerTest, NothingIsBuiltBeforeTheFirstStep)
     EXPECT_STREQ(rig.manager->CurrentName(), "");
 }
 
-TEST(PlayerStateManagerTest, BuildingEntersTheFirstNameInTheList)
+TEST(PlayerStateManagerTest, BuildingEntersIdle)
 {
     Rig rig;
 
     rig.manager->EnsureBuilt(*rig.player);
 
     EXPECT_TRUE(rig.manager->IsBuilt());
-    EXPECT_STREQ(rig.manager->CurrentName(), IdlePlayerState::k_Name);
+    EXPECT_TRUE(rig.manager->IsCurrent<IdlePlayerState>());
 }
 
 TEST(PlayerStateManagerTest, FirstStepBuildsTheMachine)
@@ -107,37 +60,13 @@ TEST(PlayerStateManagerTest, FirstStepBuildsTheMachine)
     EXPECT_TRUE(rig.manager->IsBuilt());
 }
 
-TEST(PlayerStateManagerTest, UnknownNamesAreSkipped)
-{
-    Rig rig;
-    WriteStateList(*rig.manager, "Idle;無い状態;Fall");
-
-    rig.manager->EnsureBuilt(*rig.player);
-
-    ASSERT_TRUE(rig.manager->IsBuilt());
-    EXPECT_STREQ(rig.manager->CurrentName(), IdlePlayerState::k_Name);
-    EXPECT_TRUE(rig.manager->Change<FallPlayerState>());
-    EXPECT_FALSE(rig.manager->Change<WalkPlayerState>());
-}
-
-TEST(PlayerStateManagerTest, AllUnknownNamesFallBackToTheDefaultList)
-{
-    Rig rig;
-    WriteStateList(*rig.manager, "無い状態;もう無い状態");
-
-    rig.manager->EnsureBuilt(*rig.player);
-
-    ASSERT_TRUE(rig.manager->IsBuilt());
-    EXPECT_STREQ(rig.manager->CurrentName(), IdlePlayerState::k_Name);
-    EXPECT_TRUE(rig.manager->Change<BodySlamPlayerState>());
-}
-
 TEST(PlayerStateManagerTest, ChangeMovesToTheState)
 {
     Rig rig;
     rig.manager->EnsureBuilt(*rig.player);
 
     EXPECT_TRUE(rig.manager->Change<FallPlayerState>());
+    EXPECT_TRUE(rig.manager->IsCurrent<FallPlayerState>());
     EXPECT_STREQ(rig.manager->CurrentName(), FallPlayerState::k_Name);
 }
 
@@ -149,7 +78,7 @@ TEST(PlayerStateManagerTest, ResetToFirstReturnsToTheFirstState)
 
     rig.manager->ResetToFirst();
 
-    EXPECT_STREQ(rig.manager->CurrentName(), IdlePlayerState::k_Name);
+    EXPECT_TRUE(rig.manager->IsCurrent<IdlePlayerState>());
 }
 
 TEST(PlayerStateManagerTest, ChangeFailsBeforeTheMachineIsBuilt)
@@ -158,18 +87,5 @@ TEST(PlayerStateManagerTest, ChangeFailsBeforeTheMachineIsBuilt)
     PlayerStateManagerComponent& manager = *owner.AddComponent<PlayerStateManagerComponent>();
 
     EXPECT_FALSE(manager.Change<FallPlayerState>());
-}
-
-TEST(PlayerStateManagerTest, ReflectedStateListIsReadableAndWritable)
-{
-    Rig rig;
-    const FieldDesc* field = FindField(rig.manager->GetReflection(), k_StateListField);
-    ASSERT_NE(field, nullptr);
-    EXPECT_EQ(field->type, FieldType::String);
-
-    WriteStateList(*rig.manager, "Idle;Fall");
-
-    EXPECT_EQ(ReadStateList(*rig.manager), "Idle;Fall");
-    rig.manager->EnsureBuilt(*rig.player);
-    EXPECT_FALSE(rig.manager->Change<WalkPlayerState>());
+    EXPECT_FALSE(manager.IsCurrent<IdlePlayerState>());
 }

@@ -8,6 +8,4 @@ namespace NS::Game::Player
     {
         player.UpdateBodySlam(dt);
     }
-
-    NS_STATE(BodySlamPlayerState, NS::Game::Player::PlayerComponent)
 } // namespace NS::Game::Player

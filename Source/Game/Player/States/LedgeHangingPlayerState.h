@@ -5,12 +5,10 @@
 namespace NS::Game::Player
 {
     //! ぶら下がり。移る先はよじ登りと落下
-    class LedgeHangingPlayerState final : public PlayerState
+    class LedgeHangingPlayerState final : public PlayerState<LedgeHangingPlayerState>
     {
     public:
         static constexpr const char* k_Name = "LedgeHanging";
-
-        [[nodiscard]] const char* Name() const noexcept override { return k_Name; }
 
         void OnStep(PlayerComponent& player, float dt) override;
     };

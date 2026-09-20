@@ -173,9 +173,7 @@
           "type": "MeshRendererComponent"
         },
         {
-          "fields": {
-            "状態一覧": "Idle;Walk;Fall;LedgeHanging;LedgeClimbing;BodySlam;Brake"
-          },
+          "fields": {},
           "id": 62,
           "type": "PlayerStateManagerComponent"
         },

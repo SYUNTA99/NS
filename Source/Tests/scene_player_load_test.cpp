@@ -24,8 +24,6 @@ namespace PlayerNs = NS::Game::Player;
 
 namespace
 {
-    constexpr const char* k_StateList = "Idle;Walk;Fall;LedgeHanging;LedgeClimbing;BodySlam;Brake";
-
     bool LoadShippedScene(SceneNs::SceneData& outScene, std::string_view name)
     {
         const auto path = EditorNs::BuildLevelPath(name);
@@ -72,18 +70,6 @@ TEST_P(ShippedScene, PlayerCarriesTheTwoNewComponents)
            "書き換え漏れはこのテストでしか出ない";
     EXPECT_NE(SceneNs::FindComponentEntry(*player, "PlayerStateManagerComponent"), nullptr)
         << GetParam() << " の自機に PlayerStateManagerComponent が無い。状態が 1 つも移らない";
-}
-
-TEST_P(ShippedScene, StateListIsTheSevenStateOrderStartingAtIdle)
-{
-    SceneNs::SceneData scene;
-    ASSERT_TRUE(LoadShippedScene(scene, GetParam()));
-    const SceneNs::ObjectData* player = FindPlayerObject(scene);
-    ASSERT_NE(player, nullptr);
-
-    const nlohmann::json* entry = SceneNs::FindComponentEntry(*player, "PlayerStateManagerComponent");
-    ASSERT_NE(entry, nullptr);
-    EXPECT_EQ(SceneNs::FieldString(*entry, "状態一覧", ""), k_StateList);
 }
 
 TEST_P(ShippedScene, LoadedPlayerBuildsItsStateMachine)

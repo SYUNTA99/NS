@@ -37,6 +37,4 @@ namespace NS::Game::Player
             player.States()->Change<IdlePlayerState>();
         }
     }
-
-    NS_STATE(WalkPlayerState, NS::Game::Player::PlayerComponent)
 } // namespace NS::Game::Player
