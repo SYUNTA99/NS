@@ -93,8 +93,6 @@ namespace NS::Game::Player
         void CutJumpRelease() noexcept;
         //! 上昇と下降で非対称な重力を当てる。頂点の近くは弱める
         void Gravity(float dt) noexcept;
-        //! 調整値の登れる段の高さを渡して 1 フレーム動かす
-        void Move(float dt) noexcept;
         //! タップの飛び込みだけに当てる重力。滞空秒がタップ距離を進む秒と揃う強さにする
         void TapSlamGravity(float dt) noexcept;
         //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と突進の使用済みを戻す
@@ -279,8 +277,15 @@ namespace NS::Game::Player
         void HandleStates(float dt) override;
         //! 稼働していない間もそのフレーム限りの入力は落とす。残すと再開した時に古い押下が効く
         void OnStepSkipped() override;
+        //! @brief 調整値の登れる段の高さを渡して 1 フレーム動かす
+        //! @details 向きを回すのは動かす前で、接地の反映と突進の距離はその後
+        void HandleMovement(float dt) noexcept override;
 
     private:
+        //! 突進の進んだ距離を足し、距離を使い切るか進めなくなったら突進を終える
+        //! @details 進めた距離は動かした後にしか出ないので、打ち切りの判定は状態でなくここに置く
+        //! 受け取るのは直前の Move で実際に動いた量
+        void AdvanceBodySlamTravel(const NS::Core::Vector3& delta) noexcept;
         //! 現在状態が通常移動 (立ち / 走り / 落下) の場合 true、それ以外の場合は false
         [[nodiscard]] bool IsLocomotion() const noexcept;
         //! 突進を終える。水平の速さを走行の最高速度で切り、接地していれば走りへ、空中なら落下へ移す

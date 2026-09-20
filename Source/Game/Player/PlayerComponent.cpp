@@ -476,27 +476,12 @@ namespace NS::Game::Player
         }
 
         if (m_bodySlamIsTap)
-            TapSlamGravity(dt);
-        else
-            Gravity(dt);
-        const NS::Core::Vector3 before = RootTransform().Position();
-        Move(dt);
-        SyncGroundState();
-
-        // 進んだ距離は実際に動いた量から測る。突進の速さから積むと壁で止められたフレームも進んだ扱いになる
-        const NS::Core::Vector3 delta = RootTransform().Position() - before;
-        const float stepDistance = std::sqrt(delta.x * delta.x + delta.z * delta.z);
-        m_bodySlamTravelled += stepDistance;
-
-        // 進めないフレームで打ち切る。壁で止められると進んだ距離が伸びず、突進から出られなくなる
-        // 発動したフレームは見ない。ここで打ち切ると発動から打ち切りまでに ImpactResolverComponent が
-        // 一度も走らず、突進を見ないまま終わる
-        const bool stalled = !m_bodySlamJustStarted && stepDistance < NS::Core::k_Epsilon;
-        m_bodySlamJustStarted = false;
-
-        if (m_bodySlamTravelled >= m_bodySlamDistanceTarget || stalled)
         {
-            EndBodySlam();
+            TapSlamGravity(dt);
+        }
+        else
+        {
+            Gravity(dt);
         }
     }
 
@@ -623,9 +608,9 @@ namespace NS::Game::Player
         NS::Game::Entity::EntityComponent::Gravity(g, dt);
     }
 
-    void PlayerComponent::Move(float dt) noexcept
+    void PlayerComponent::HandleMovement(float dt) noexcept
     {
-        // 壁に当たった後の速度は壁と逆を向く。掴む向きに使うので、押し返される前の向きを覚える
+        // 壁に当たった後の速度からは面へ向かう分が抜ける。掴む向きに使うので、抜ける前の向きを覚える
         NS::Core::Vector3 target{};
         if (NS::Core::TryNormalizeHorizontal(LateralVelocity(), target))
         {
@@ -644,7 +629,33 @@ namespace NS::Game::Player
 
         const NS::Core::Vector3 before = RootTransform().Position();
         NS::Game::Entity::EntityComponent::Move(dt, Stats().maxStepHeight);
-        m_lastMoveDistance = (RootTransform().Position() - before).Length();
+        const NS::Core::Vector3 delta = RootTransform().Position() - before;
+        m_lastMoveDistance = delta.Length();
+        SyncGroundState();
+        AdvanceBodySlamTravel(delta);
+    }
+
+    void PlayerComponent::AdvanceBodySlamTravel(const NS::Core::Vector3& delta) noexcept
+    {
+        if (!IsBodySlamming())
+        {
+            return;
+        }
+
+        // 進んだ距離は実際に動いた量から測る。突進の速さから積むと壁で止められたフレームも進んだ扱いになる
+        const float stepDistance = std::sqrt(delta.x * delta.x + delta.z * delta.z);
+        m_bodySlamTravelled += stepDistance;
+
+        // 進めないフレームで打ち切る。壁で止められると進んだ距離が伸びず、突進から出られなくなる
+        // 発動したフレームは見ない。ここで打ち切ると発動から打ち切りまでに ImpactResolverComponent が
+        // 一度も走らず、突進を見ないまま終わる
+        const bool stalled = !m_bodySlamJustStarted && stepDistance < NS::Core::k_Epsilon;
+        m_bodySlamJustStarted = false;
+
+        if (m_bodySlamTravelled >= m_bodySlamDistanceTarget || stalled)
+        {
+            EndBodySlam();
+        }
     }
 
     void PlayerComponent::SyncGroundState() noexcept

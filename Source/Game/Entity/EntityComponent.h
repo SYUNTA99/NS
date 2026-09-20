@@ -21,10 +21,11 @@ namespace NS::Game::Entity
 {
     //! @brief 登場人物に共通する移動と接地の抽象基底
     //! @details 敵も自機もここから派生する。速度の横縦分解・接地・カプセル寸法の参照・1 フレームの移動だけを持ち、
-    //! 能力も調整値も持たない
-    //! 状態機械は派生が具象の型で持つ。1 フレームの中身は HandleStates の中で派生が並べる
-    //! TypeRegistry には登録しない。実体化できるのは派生だけ
-    //! 衝突の PhysicsScene は使う時に持ち主の Scene から引く。JoltCharacter だけは作った時の PhysicsScene を持ち続ける
+    //! 能力も調整値も持たない。状態機械は派生が具象の型で持つ。
+    //! 1 フレームは HandleStates で派生が能力を並べ、続く HandleMovement で 1 回動かす。
+    //! TypeRegistry には登録しない。実体化できるのは派生だけ。
+    //! 衝突の PhysicsScene は使う時に持ち主の Scene から引く。
+    //! JoltCharacter だけは作った時の PhysicsScene を持ち続ける。
     //! dt は NS::Core::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
     //! 依存: NS::Core, NS::Physics::JoltCharacter / PhysicsScene, NS::Object::Scene / CapsuleColliderComponent
     class EntityComponent : public NS::Object::Component
@@ -88,7 +89,7 @@ namespace NS::Game::Entity
 
         //! 同居する CapsuleColliderComponent を控え、静的な当たりの世界から外す
         void OnStart() override;
-        //! 1 フレームぶん HandleStates を呼ぶ
+        //! 1 フレームぶん HandleStates を呼び、続けて HandleMovement で動かす
         void OnUpdate() override;
 
         // 抽象基底なので TypeRegistry には登録せず、リフレクションの鎖だけ通す
@@ -97,6 +98,10 @@ namespace NS::Game::Entity
     protected:
         //! 1 フレームの中身。派生が状態機械を回すか能力を直に並べる
         virtual void HandleStates(float dt) = 0;
+        //! @brief 状態が決めた速度で 1 フレーム動かす。既定は段差を登らずに進む
+        //! @details Move を呼ぶのは 1 フレームにここだけ。状態の側で動かすと、状態を足した時に呼び忘れても
+        //! ビルドが通り、その状態の間だけ動かなくなる
+        virtual void HandleMovement(float dt) noexcept;
         //! 稼働していないフレームでも 1 フレーム限りの入力を派生が落とせるようにする。既定は何もしない
         virtual void OnStepSkipped() {}
 

@@ -99,6 +99,12 @@ namespace NS::Game::Entity
         }
 
         HandleStates(dt);
+        HandleMovement(dt);
+    }
+
+    void EntityComponent::HandleMovement(float dt) noexcept
+    {
+        Move(dt, 0.0f);
     }
 
     void EntityComponent::Accelerate(

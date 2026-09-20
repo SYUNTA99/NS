@@ -40,11 +40,7 @@ namespace
     class FallingEntity final : public EntityComponent
     {
     protected:
-        void HandleStates(float dt) override
-        {
-            Gravity(-25.0f, dt);
-            Move(dt, 0.0f);
-        }
+        void HandleStates(float dt) override { Gravity(-25.0f, dt); }
     };
 
     AABB MakeBlock(float cx, float cy, float cz)
@@ -287,6 +283,7 @@ TEST_F(EntityEventsTest, LedgeGrabbedFiresOnTheGrabbingStep)
     obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
+    player.OnUpdate();
 
     ASSERT_EQ(obj.FindComponent<PlayerStateManagerComponent>()->CurrentName(), LedgeHangingPlayerState::k_Name);
     EXPECT_EQ(grabbed, 1);
@@ -303,6 +300,7 @@ TEST_F(EntityEventsTest, LedgeClimbingFiresWhenTheClimbStarts)
 
     obj.Root().SetPosition(Vector3{-0.9f, 0.1f, 0.0f});
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.OnUpdate();
     player.OnUpdate();
     ASSERT_EQ(obj.FindComponent<PlayerStateManagerComponent>()->CurrentName(), LedgeHangingPlayerState::k_Name);
 

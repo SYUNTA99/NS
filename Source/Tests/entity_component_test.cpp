@@ -116,6 +116,17 @@ TEST_F(EntityComponentTest, UpdateStepsHandleStatesOncePerCall)
     EXPECT_EQ(entity.SkippedSteps(), 0);
 }
 
+TEST_F(EntityComponentTest, UpdateMovesOncePerCall)
+{
+    GameObject obj;
+    auto& entity = *obj.AddComponent<BareEntity>();
+    entity.SetVelocity(Vector3{6.0f, 0.0f, 0.0f});
+
+    entity.OnUpdate();
+
+    EXPECT_NEAR(obj.Root().Position().x, 6.0f * k_FixedDt, 1e-5f);
+}
+
 // 稼働していないフレームでも、1 フレーム限りの入力を落とす口だけは呼ぶ
 TEST_F(EntityComponentTest, InactiveUpdateSkipsStatesButNotifies)
 {

@@ -187,7 +187,7 @@ namespace
     }
 
     // 基準ハッシュ。カメラか自機の動きを意図して変えた時だけ実測値で更新する
-    constexpr uint64_t k_FollowWalkJumpGolden = 0x2840A0425F79FD72ULL;
+    constexpr uint64_t k_FollowWalkJumpGolden = 0x6A49F2A9A3EA6903ULL;
     constexpr uint64_t k_AreaCameraBlendGolden = 0xDF21CBDB3D18F8D1ULL;
 } // namespace
 
