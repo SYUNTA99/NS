@@ -745,7 +745,9 @@ project "GameApp"
     files {
         "Source/Game/GameMain.cpp",
         -- Game 側 PCH を共有するため pchsource 用に取り込む
-        "Source/Game/GamePch.cpp"
+        "Source/Game/GamePch.cpp",
+        -- パスの文字コードと長さの上限は起動時に決まるので、コードからは変えられない
+        "Source/Game/Game.manifest"
     }
 
     includedirs {
