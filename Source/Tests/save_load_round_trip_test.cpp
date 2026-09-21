@@ -61,6 +61,26 @@ TEST(SaveLoadRoundTrip, SaveAndReloadSemanticEqual)
     EXPECT_TRUE(dst == src);
 }
 
+TEST(SaveLoadRoundTrip, DisabledComponentSurvivesJsonRoundTrip)
+{
+    SceneNs::SceneData src;
+    src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
+    SceneNs::EnsureUniqueObjectIds(src);
+
+    nlohmann::json* entry = SceneNs::FindComponentEntry(src.objects[0], "MeshRendererComponent");
+    ASSERT_NE(entry, nullptr);
+    SceneNs::SetComponentEntryEnabled(*entry, false);
+
+    SceneNs::SceneData dst;
+    ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
+
+    ASSERT_EQ(dst.objects.size(), 1u);
+    const nlohmann::json* reloaded = SceneNs::FindComponentEntry(dst.objects[0], "MeshRendererComponent");
+    ASSERT_NE(reloaded, nullptr);
+    EXPECT_FALSE(SceneNs::ComponentEntryEnabled(*reloaded))
+        << "切った component が読み直しで戻る。保存側は書き出すので、編集で切っても開くたびに復活する";
+}
+
 TEST(SaveLoadRoundTrip, ObjectNameSurvivesJsonRoundTrip)
 {
     SceneNs::SceneData src;

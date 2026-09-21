@@ -116,7 +116,7 @@ namespace NS::Object
             const auto componentsIt = json.find("components");
             if (componentsIt != json.end() && componentsIt->is_array())
             {
-                // {type, id, fields} の骨格だけ整えて受け取る。未知キーは捨て、fields の中身は素通し
+                // {type, id, enabled, fields} の骨格だけ整えて受け取る。未知キーは捨て、fields の中身は素通し
                 for (const auto& componentJson : *componentsIt)
                 {
                     if (!componentJson.is_object())
@@ -132,6 +132,8 @@ namespace NS::Object
                     nlohmann::json entry = MakeComponentEntry(ComponentEntryType(componentJson), std::move(fields));
                     // id を落とすと読むたびに振り直しになり、名指ししている参照が外れる
                     SetComponentEntryId(entry, ComponentEntryId(componentJson));
+                    // 保存側は書き出すので、ここで落とすと切った component が開くたびに有効へ戻る
+                    SetComponentEntryEnabled(entry, ComponentEntryEnabled(componentJson));
                     object.components.push_back(std::move(entry));
                 }
             }
