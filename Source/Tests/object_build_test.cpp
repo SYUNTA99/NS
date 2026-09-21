@@ -19,6 +19,7 @@
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Reflection/ReflectionJson.h>
 #include <Runtime/Object/Reflection/TypeRegistry.h>
+#include <cstdint>
 #include <filesystem>
 #include <gtest/gtest.h>
 #include <string_view>
@@ -401,6 +402,33 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataValuesToComponents)
     auto* movement = obj->FindComponent<NS::Game::Player::PlayerComponent>();
     ASSERT_NE(movement, nullptr);
     EXPECT_FLOAT_EQ(NsTest::ReadTuningField(*movement, "コヨーテ時間"), 0.125f);
+}
+
+// Player のデータはコンストラクタが積む型名の一覧なので、どの項目も既存の実体に当たり CreateComponent を通らない
+// ApplyObjectComponents が id を書かなくても component の数は合う。数を見る試しでは捕まらない
+// ComponentIdSurvivesBuildAndCapture が id を確かめるのは生成された MeshRendererComponent の分だけ
+TEST_F(ObjectBuildTest, PlayerObjectAppliesDataIdsToConstructorComponents)
+{
+    ObjectData data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
+
+    nlohmann::json* entry = nullptr;
+    for (nlohmann::json& candidate : data.components)
+    {
+        if (NS::Object::ComponentEntryType(candidate) == "PlayerComponent")
+        {
+            entry = &candidate;
+        }
+    }
+    ASSERT_NE(entry, nullptr);
+
+    const std::uint32_t dataId = 4321u;
+    NS::Object::SetComponentEntryId(*entry, dataId);
+
+    auto obj = Build(data);
+    ASSERT_NE(obj, nullptr);
+    auto* movement = obj->FindComponent<NS::Game::Player::PlayerComponent>();
+    ASSERT_NE(movement, nullptr);
+    EXPECT_EQ(movement->Id(), dataId);
 }
 
 // 同型 component を重ねたデータは live でも同数立ち、2 件目が 1 件目へ上書きされない
