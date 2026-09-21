@@ -185,32 +185,6 @@ TEST(PlayerAnimatorTest, UnknownClipNameFallsBackToIdle)
     EXPECT_EQ(rig.anim->CurrentClip(), k_Idle);
 }
 
-// 見た目は子の配置物に置くので、自分の Component 列には居ない
-TEST(PlayerAnimatorTest, SkeletalAnimationOnAChildIsFound)
-{
-    GameObject owner;
-    GameObject skin;
-    std::vector<AnimationClip> clips;
-    clips.push_back(MakeClip("idle"));
-    clips.push_back(MakeClip("walk"));
-    clips.push_back(MakeClip("run"));
-
-    skin.SetParent(&owner);
-    SkeletalAnimationComponent* anim = skin.AddComponent<SkeletalAnimationComponent>();
-    anim->AddClips(clips);
-
-    PlayerComponent* player = owner.AddComponent<PlayerComponent>();
-    PlayerAnimatorComponent* animator = owner.AddComponent<PlayerAnimatorComponent>();
-    player->OnStart();
-    animator->OnStart();
-
-    player->SetGrounded(true);
-    player->SetVelocity(Vector3{player->MaxSpeed() * 0.9f, 0.0f, 0.0f});
-    animator->OnUpdate();
-
-    EXPECT_EQ(anim->CurrentClip(), k_Run);
-}
-
 TEST(PlayerAnimatorTest, WithoutASkeletalAnimationNothingHappens)
 {
     GameObject owner;

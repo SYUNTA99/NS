@@ -28,8 +28,7 @@ namespace NS::Game::Player
     public:
         PlayerAnimatorComponent() noexcept;
 
-        //! 同居する PlayerComponent / PlayerStateManagerComponent と、SkeletalAnimationComponent を控える
-        //! @details SkeletalAnimationComponent は自分の配置物に無ければ子を 1 段だけ見る
+        //! 同居する PlayerComponent / PlayerStateManagerComponent / SkeletalAnimationComponent を控える
         void OnStart() override;
         //! クリップと再生速度を選び直す。PlayerComponent か SkeletalAnimationComponent が欠けていれば何もしない
         void OnUpdate() override;

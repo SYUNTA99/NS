@@ -97,7 +97,7 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
     EXPECT_EQ(namedBones, data.skeleton.BoneCount()) << "全ボーンに node 名が入っていない";
 }
 
-// 同梱シーンは足元を基準に見た目を 1.42 m 下げる。原点からずれると自機が地面へ埋まるか宙に浮く
+// Mixamo の glb はアーマチュア節点が 0.01 倍で骨をセンチメートルで持つ。CesiumMan はこの経路を通らない
 TEST(GltfAnimatedAssetTest, XbotStandsAtHumanScale)
 {
     const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / "Assets" / "Models" / "Xbot.glb";
@@ -125,7 +125,7 @@ TEST(GltfAnimatedAssetTest, XbotStandsAtHumanScale)
     }
     std::cout << "[Xbot] bind lowest y=" << lowest << " height=" << (highest - lowest) << "\n";
 
-    EXPECT_NEAR(lowest, 0.0f, 0.05f) << "足元が原点に無い。同梱シーンは足元を基準に見た目を下げている";
+    EXPECT_NEAR(lowest, 0.0f, 0.05f) << "足元が原点に無い。配置物へ差す時の高さ合わせがこの前提に乗る";
     EXPECT_NEAR(highest - lowest, 1.81f, 0.1f)
         << "身長が人の寸法でない。アーマチュアのスケール (0.01) を取りこぼすと 100 倍になる";
 }
