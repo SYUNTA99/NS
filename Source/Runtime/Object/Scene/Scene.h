@@ -28,6 +28,7 @@ namespace NS::Object
     class CameraBrainComponent;
     class CameraComponent;
     class Component;
+    class DirectionalLightComponent;
     class IRenderable;
     class OverlayRendererComponent;
 
@@ -70,6 +71,12 @@ namespace NS::Object
         virtual void RegisterOverlay(OverlayRendererComponent* overlay);
         //! OverlayRendererComponent の自己解除。基底の OnEndPlay が呼ぶ
         virtual void UnregisterOverlay(OverlayRendererComponent* overlay);
+
+        //! 平行光の自己登録。DirectionalLightComponent が OnStart で呼ぶ。二重登録は無視する
+        //! 並びは登録順。ResolveSceneSettings はこの順に読む
+        virtual void RegisterLight(DirectionalLightComponent* light);
+        //! 平行光の自己解除。DirectionalLightComponent が OnEndPlay で呼ぶ
+        virtual void UnregisterLight(DirectionalLightComponent* light);
 
         //! シーンの描画を駆動する brain。シーンの破棄後は nullptr
         [[nodiscard]] CameraBrainComponent* CameraBrain() noexcept;
@@ -178,8 +185,8 @@ namespace NS::Object
         //! @brief 標準の描画。シーン描画パス→デバッグ描画の吐き出し→OverlayRendererComponent の重ね描き
         virtual void OnRenderScene();
 
-        //! @brief project 既定値から scene 段の描画設定を作る。配置された平行光があれば照明を上書きする
-        //! 平行光が無ければ project 既定値がそのまま残る
+        //! @brief project 既定値から scene 段の描画設定を作る。登録された平行光があれば照明を上書きする
+        //! 登録が無ければ project 既定値がそのまま残る
         [[nodiscard]] NS::Graphics::RenderSettings ResolveSceneSettings(
             const NS::Graphics::RenderSettings& projectDefaults);
 
@@ -214,6 +221,8 @@ namespace NS::Object
         std::vector<RenderEntry> m_renderables;
 
         std::vector<OverlayRendererComponent*> m_overlays; // 重ね描きの登録簿。priority 昇順、非所有
+
+        std::vector<DirectionalLightComponent*> m_lights; // 平行光の登録簿。登録順、非所有
 
         //! 描画物の登録簿と視錐台カリングを持つレンダラ側の描画シーン
         NS::Graphics::RenderScene m_renderScene;

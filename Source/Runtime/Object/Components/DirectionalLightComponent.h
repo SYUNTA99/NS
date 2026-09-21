@@ -22,6 +22,11 @@ namespace NS::Object
         //! 画面へ出す前の露出。上げると暗部が持ち上がり、明部は S 字が受け止めるので飛ばない
         [[nodiscard]] float Exposure() const noexcept { return m_exposure; }
 
+        //! 所属 scene の平行光の登録簿へ自分を入れる
+        void OnStart() override;
+        //! 所属 scene の平行光の登録簿から自分を外す
+        void OnEndPlay() override;
+
         NS_REFLECT_BEGIN(DirectionalLightComponent, Component)
         NS_REFLECT_FIELD(m_direction, "方向")
         NS_REFLECT_FIELD(m_color, "色")

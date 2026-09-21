@@ -308,16 +308,16 @@ namespace NS::Object
     NS::Graphics::RenderSettings Scene::ResolveSceneSettings(const NS::Graphics::RenderSettings& projectDefaults)
     {
         NS::Graphics::RenderSettings resolved = projectDefaults;
-        // 照明は配置された平行光から取る。無ければ project 既定値がそのまま残る
-        // 複数置かれた場合は多灯合成せず、走査順で最後の有効な 1 本が勝つ
-        m_objects.ForEachComponent<DirectionalLightComponent>([&resolved, this](DirectionalLightComponent& light) {
-            if (!light.IsActive())
+        // 多灯合成を持たないので、後から登録した有効な 1 本が前の値を上書きする
+        for (DirectionalLightComponent* light : m_lights)
+        {
+            if (!light->IsActive())
             {
-                return;
+                continue;
             }
-            if (light.Direction().LengthSquared() > 1e-6f)
+            if (light->Direction().LengthSquared() > 1e-6f)
             {
-                resolved.lightDir = light.Direction();
+                resolved.lightDir = light->Direction();
             }
             else if (!m_warnedZeroLightDirection)
             {
@@ -325,11 +325,11 @@ namespace NS::Object
                 NS_LOG_WARN(Graphics, "Scene: 平行光の Direction が zero のため既定 lightDir で描画する");
                 m_warnedZeroLightDirection = true;
             }
-            resolved.lightColor = light.Color();
-            resolved.ambientColor = light.Ambient();
-            resolved.groundColor = light.Ground();
-            resolved.exposure = light.Exposure();
-        });
+            resolved.lightColor = light->Color();
+            resolved.ambientColor = light->Ambient();
+            resolved.groundColor = light->Ground();
+            resolved.exposure = light->Exposure();
+        }
         return resolved;
     }
 
@@ -421,6 +421,40 @@ namespace NS::Object
                 continue;
             }
             m_overlays.erase(it);
+            return;
+        }
+    }
+
+    void Scene::RegisterLight(DirectionalLightComponent* light)
+    {
+        if (light == nullptr)
+        {
+            return;
+        }
+        // 二重に積むと UnregisterLight が片方しか消さず、外したはずの光が残る
+        for (const DirectionalLightComponent* entry : m_lights)
+        {
+            if (entry == light)
+            {
+                return;
+            }
+        }
+        m_lights.push_back(light);
+    }
+
+    void Scene::UnregisterLight(DirectionalLightComponent* light)
+    {
+        if (light == nullptr)
+        {
+            return;
+        }
+        for (auto it = m_lights.begin(); it != m_lights.end(); ++it)
+        {
+            if (*it != light)
+            {
+                continue;
+            }
+            m_lights.erase(it);
             return;
         }
     }
