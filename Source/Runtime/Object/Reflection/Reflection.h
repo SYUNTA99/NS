@@ -69,7 +69,6 @@ namespace NS::Object
     }
 
     //! 有限値のときだけ target へ書く。非有限値は捨てて元の値を残す
-    //! float& で受けるので、float 以外のメンバに NS_REFLECT_FIELD_FINITE を使うとここで落ちる
     inline void AssignIfFinite(float& target, float value) noexcept
     {
         if (std::isfinite(value))
@@ -142,7 +141,8 @@ namespace NS::Object
         static constexpr const char* k_TypeName = #ThisType;                                                           \
         static const NS::Object::FieldDesc k_Fields[] = {
 
-//! 同一クラスの直メンバを 1 フィールドとして登録する。private メンバも対象にできる。型タグはメンバ型から推論する
+//! メンバを 1 フィールドとして登録する。private も入れ子の struct のメンバ (m_tuning.speed) も書ける
+//! 型タグはメンバ型から推論する。float の欄は AssignIfFinite を通るので、非有限値の書き込みは捨てて元の値が残る
 #define NS_REFLECT_FIELD(member, label)                                                                                \
     NS::Object::FieldDesc{label,                                                                                       \
                           NS::Object::FieldTypeOf<decltype(Self::member)>(),                                           \
@@ -150,20 +150,16 @@ namespace NS::Object
                               *static_cast<decltype(Self::member)*>(out) = static_cast<const Self*>(c)->member;        \
                           },                                                                                           \
                           +[](void* c, const void* in) noexcept {                                                      \
-                              static_cast<Self*>(c)->member = *static_cast<const decltype(Self::member)*>(in);         \
-                          }},
-
-//! float のメンバを 1 フィールドとして登録する。型タグは Float 固定で、非有限値の書き込みは捨てて元の値を残す
-#define NS_REFLECT_FIELD_FINITE(member, label)                                                                         \
-    NS::Object::FieldDesc{label,                                                                                       \
-                          NS::Object::FieldType::Float,                                                                \
-                          +[](const void* c, void* out) noexcept {                                                     \
-                              float& dst = *static_cast<float*>(out);                                                  \
-                              dst = static_cast<const Self*>(c)->member;                                               \
-                          },                                                                                           \
-                          +[](void* c, const void* in) noexcept {                                                      \
-                              const float value = *static_cast<const float*>(in);                                      \
-                              NS::Object::AssignIfFinite(static_cast<Self*>(c)->member, value);                        \
+                              using Field = decltype(Self::member);                                                    \
+                              if constexpr (std::is_same_v<Field, float>)                                              \
+                              {                                                                                        \
+                                  const float value = *static_cast<const float*>(in);                                  \
+                                  NS::Object::AssignIfFinite(static_cast<Self*>(c)->member, value);                    \
+                              }                                                                                        \
+                              else                                                                                     \
+                              {                                                                                        \
+                                  static_cast<Self*>(c)->member = *static_cast<const Field*>(in);                      \
+                              }                                                                                        \
                           }},
 
 //! 基底の private や検証付きフィールドを getter/setter 経由で登録する。getter は値返し、setter は 1 引数
