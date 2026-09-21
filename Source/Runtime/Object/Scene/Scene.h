@@ -29,6 +29,7 @@ namespace NS::Object
     class CameraComponent;
     class Component;
     class IRenderable;
+    class OverlayRendererComponent;
 
     //! @brief 1 つのシーンビュー。指定の描画先へ指定の視点でシーンを描く単位
     //! @details target が null なら backbuffer、viewPose が空なら Brain の選ぶカメラで描く
@@ -41,7 +42,7 @@ namespace NS::Object
     //! @brief SceneData から組んだ ObjectList を運転する scene
     //! @details ObjectList と環境値を所有し、SceneData の読み書き・プレイの凍結・標準のシーン描画パスを受け持つ
     //! Application から OnStart / OnUpdate / OnRender / OnShutdown を順に呼び戻される
-    //! fixed timestep + variable render で駆動し、IRenderable の自己登録先も兼ねる
+    //! fixed timestep + variable render で駆動し、IRenderable と OverlayRendererComponent の自己登録先も兼ねる
     //! live な GameObject/Component が唯一の表現で、SceneData は境界でだけ使う一時データ
     //! 配置物は TypeRegistry と ResolveAssets で自力で組む。組み直し後の参照解決だけ派生が OnObjectsRebuilt で埋める
     //! 寿命は SceneManager が unique_ptr で所有する
@@ -63,6 +64,12 @@ namespace NS::Object
         virtual void RegisterRenderable(IRenderable* renderable);
         //! IRenderable Component の自己解除。MeshRendererComponent 等が OnEndPlay で呼ぶ
         virtual void UnregisterRenderable(IRenderable* renderable);
+
+        //! OverlayRendererComponent の自己登録。基底の OnStart が呼ぶ。二重登録は無視する
+        //! 並びは priority 昇順に保たれ、同値なら後から登録した方が後ろになる
+        virtual void RegisterOverlay(OverlayRendererComponent* overlay);
+        //! OverlayRendererComponent の自己解除。基底の OnEndPlay が呼ぶ
+        virtual void UnregisterOverlay(OverlayRendererComponent* overlay);
 
         //! シーンの描画を駆動する brain。シーンの破棄後は nullptr
         [[nodiscard]] CameraBrainComponent* CameraBrain() noexcept;
@@ -165,6 +172,9 @@ namespace NS::Object
         //! 距離が同じなら SortPriority 昇順、それも同じなら stable_sort が登録順を保つ
         void DrawTransparent(const NS::Graphics::RenderContext& context);
 
+        //! 登録中の OverlayRendererComponent を priority 昇順で描画する。IsActive が偽なら飛ばす
+        void DrawOverlays(const NS::Graphics::RenderContext& context);
+
         //! @brief 標準の描画。シーン描画パス→デバッグ描画の吐き出し→OverlayRendererComponent の重ね描き
         virtual void OnRenderScene();
 
@@ -202,6 +212,8 @@ namespace NS::Object
             NS::Graphics::RenderHandle handle{};
         };
         std::vector<RenderEntry> m_renderables;
+
+        std::vector<OverlayRendererComponent*> m_overlays; // 重ね描きの登録簿。priority 昇順、非所有
 
         //! 描画物の登録簿と視錐台カリングを持つレンダラ側の描画シーン
         NS::Graphics::RenderScene m_renderScene;

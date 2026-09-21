@@ -17,12 +17,15 @@ namespace NS::Object
     {
     public:
         //! 中間基底を挟むと派生から Component の初期化子を書けないので priority をここで受けて渡す
-        explicit OverlayRendererComponent(int priority = TickPriority::Update) noexcept
-            : Component(priority)
-        {}
+        explicit OverlayRendererComponent(int priority = TickPriority::Update) noexcept : Component(priority) {}
 
         //! 標準の world 描画パスの後に画面へ重ねて描く
         virtual void OnRenderOverlay(const NS::Graphics::RenderContext& context) = 0;
+
+        //! 所属 scene の重ね描きの登録簿へ自分を入れる。派生で上書きするなら基底のこれを呼ぶ
+        void OnStart() override;
+        //! 所属 scene の重ね描きの登録簿から自分を外す。派生で上書きするなら基底のこれを呼ぶ
+        void OnEndPlay() override;
 
         NS_REFLECT_NONE(OverlayRendererComponent, Component)
     };

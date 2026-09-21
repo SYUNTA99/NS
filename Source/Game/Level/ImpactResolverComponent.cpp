@@ -67,13 +67,14 @@ namespace NS::Game::Level
         [[nodiscard]] JPH::BodyID CurrentBodyOf(const NS::Object::GameObject& object) noexcept
         {
             // 飛んでいる間は collider の body が外れて無効になる。LaunchedBodyComponent が作った動的 body を先に見る
-            if (const auto* launched = object.FindComponent<LaunchedBodyComponent>(); launched != nullptr && launched->IsFlying())
+            if (const auto* launched = object.FindComponent<LaunchedBodyComponent>();
+                launched != nullptr && launched->IsFlying())
             {
                 return launched->BodyId();
             }
             if (const auto* collider = object.FindComponent<NS::Object::ColliderComponent>())
             {
-				return collider->BodyId();
+                return collider->BodyId();
             }
             return JPH::BodyID{};
         }
@@ -91,6 +92,9 @@ namespace NS::Game::Level
 
     void ImpactResolverComponent::OnStart()
     {
+        // 基底が重ね描きの登録簿へ自分を入れる
+        NS::Object::OverlayRendererComponent::OnStart();
+
         m_movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>();
         // 無ければ null のまま。ボタンを積んでいない配置物でも裁定は続ける
         m_collisionInput = Owner()->FindComponent<CollisionInputComponent>();
@@ -122,14 +126,14 @@ namespace NS::Game::Level
         scene->Objects().ForEachComponent<BreakableComponent>([&](BreakableComponent& breakable) {
             if (!breakable.IsActive())
             {
-				return;
+                return;
             }
 
             // トリガの箱は通り抜ける体積なのでぶつかる相手にならない
             const auto* box = breakable.Owner()->FindComponent<NS::Object::BoxColliderComponent>();
             if (box != nullptr && box->IsTrigger())
             {
-				return;
+                return;
             }
 
             if (!IsTouching(touching, CurrentBodyOf(*breakable.Owner())))
@@ -204,7 +208,7 @@ namespace NS::Game::Level
         BreakableComponent* hit = FindOverlapped();
         if (hit == nullptr)
         {
-			return;
+            return;
         }
 
         NS::Core::AABB bounds{};
@@ -239,7 +243,7 @@ namespace NS::Game::Level
         // 箱へ向かっているフレームだけ弾く。離れていく間も弾くと、重なりが解けるまで毎フレーム掛かり直す
         if (velocity.x * awayX + velocity.z * awayZ >= 0.0f)
         {
-			return;
+            return;
         }
 
         const float charge01 = m_movement->BodySlamCharge01();
@@ -383,6 +387,9 @@ namespace NS::Game::Level
 
     void ImpactResolverComponent::OnEndPlay()
     {
+        // 基底が重ね描きの登録簿から自分を外す
+        NS::Object::OverlayRendererComponent::OnEndPlay();
+
         // 凍結の途中で裁定が外れても、移動が止まったまま残らないようにする
         if (m_movement != nullptr)
         {
@@ -395,7 +402,7 @@ namespace NS::Game::Level
     {
         if (m_peakFlashRemaining <= 0)
         {
-			return;
+            return;
         }
         // ScreenFadeComponent は黒の固定色と暗転の段階機械で、白の瞬間減衰には流用できないためここで直接描く
         const float decay = static_cast<float>(m_peakFlashRemaining) / static_cast<float>(m_peakFlashSteps);
@@ -408,7 +415,7 @@ namespace NS::Game::Level
         const float raw = seconds / NS::Core::FrameTimer::FixedDelta();
         if (!std::isfinite(raw))
         {
-			return 0;
+            return 0;
         }
         return NS::Core::Clamp(static_cast<int>(std::lround(raw)), 0, MaxHitStopSteps());
     }
@@ -471,7 +478,8 @@ namespace NS::Game::Level
             if (scene->Physics().Raycast(probe, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, k_MarkProbeDistance, dist))
             {
                 floorFound = true;
-                markPosition = NS::Core::Vector3{m_pendingTargetHome.x, probe.y - dist + k_MarkFloorOffset, m_pendingTargetHome.z};
+                markPosition =
+                    NS::Core::Vector3{m_pendingTargetHome.x, probe.y - dist + k_MarkFloorOffset, m_pendingTargetHome.z};
             }
         }
 
@@ -545,7 +553,8 @@ namespace NS::Game::Level
     int ImpactResolverComponent::ComputeHitStopSteps(float power, float mass, float hitStopScale) const noexcept
     {
         // 質量差をそのままフレーム数に出すと停止が伸びすぎるので平方根で圧縮する
-        const float raw = m_hitStopBaseSeconds * power * std::sqrt(mass) / NS::Core::FrameTimer::FixedDelta() * hitStopScale;
+        const float raw =
+            m_hitStopBaseSeconds * power * std::sqrt(mass) / NS::Core::FrameTimer::FixedDelta() * hitStopScale;
         if (!std::isfinite(raw))
         {
             return 0;

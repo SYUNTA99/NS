@@ -383,6 +383,60 @@ namespace NS::Object
         }
     }
 
+    void Scene::RegisterOverlay(OverlayRendererComponent* overlay)
+    {
+        if (overlay == nullptr)
+        {
+            return;
+        }
+        // 二重登録を防ぐ。同じ component の OnStart が 2 回呼ばれても二重に描かない
+        for (const OverlayRendererComponent* entry : m_overlays)
+        {
+            if (entry == overlay)
+            {
+                return;
+            }
+        }
+
+        // DrawOverlays が並べ替えずに回れるよう、挿入の時点で priority 昇順を保つ。同値は後から来た方が後ろ
+        const auto at = std::upper_bound(m_overlays.begin(),
+                                         m_overlays.end(),
+                                         overlay,
+                                         [](const OverlayRendererComponent* a, const OverlayRendererComponent* b) {
+                                             return a->Priority() < b->Priority();
+                                         });
+        m_overlays.insert(at, overlay);
+    }
+
+    void Scene::UnregisterOverlay(OverlayRendererComponent* overlay)
+    {
+        if (overlay == nullptr)
+        {
+            return;
+        }
+        for (auto it = m_overlays.begin(); it != m_overlays.end(); ++it)
+        {
+            if (*it != overlay)
+            {
+                continue;
+            }
+            m_overlays.erase(it);
+            return;
+        }
+    }
+
+    void Scene::DrawOverlays(const NS::Graphics::RenderContext& context)
+    {
+        for (OverlayRendererComponent* overlay : m_overlays)
+        {
+            // 更新と当たりが同じ問いで切れるので、描画も IsActive で揃える
+            if (overlay != nullptr && overlay->IsActive())
+            {
+                overlay->OnRenderOverlay(context);
+            }
+        }
+    }
+
     void Scene::SyncRenderBounds()
     {
         // proxy 側の bounds はコピーなので、描画前に登録元の現在値へ揃える
@@ -460,19 +514,6 @@ namespace NS::Object
         NS::Graphics::DebugDraw::Flush(*ctx->renderer, ctx->viewProjection);
 #endif
 
-        // 重ね描きを持つ component を最前面へ重ねる。演出の中身はゲーム側の component が持つ
-        // 並びは配置物の順、その中は component の priority 昇順
-        for (GameObject* obj : m_objects)
-        {
-            for (Component* comp : obj->Components())
-            {
-                auto* overlay = ComponentCast<OverlayRendererComponent>(comp);
-                // active を切った component は描かない。更新・ 当たりと同じ問いで揃える
-                if (overlay != nullptr && overlay->IsActive())
-                {
-                    overlay->OnRenderOverlay(*ctx);
-                }
-            }
-        }
+        DrawOverlays(*ctx);
     }
 } // namespace NS::Object
