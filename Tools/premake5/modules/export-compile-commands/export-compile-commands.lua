@@ -74,7 +74,9 @@ end
 
 -- 共通フラグを取得
 function m.getCommonFlags(cfg)
-    local flags = {}
+    -- MSVC のヘッダを読ませるのでターゲットと拡張を明示する。msys64 の clang は既定が MinGW
+    -- ターゲットで、__pragma(pack(pop)) が構文エラーになり解析が始まる前に打ち切られる
+    local flags = { '--target=x86_64-pc-windows-msvc', '-fms-compatibility', '-fms-extensions' }
 
     -- C++標準
     flags = table.join(flags, m.getCppStandard(cfg))
@@ -105,9 +107,11 @@ function m.getFileFlags(prj, cfg, node)
 end
 
 -- コンパイルコマンドを生成
+-- directory はリポジトリルート。prj.location (build/<Project>) はビルドしないと存在せず、
+-- clang-tidy が chdir で落ちる。command のパスは全て絶対なので相対解決には使われない
 function m.generateCompileCommand(prj, cfg, node)
     return {
-        directory = prj.location,
+        directory = _MAIN_SCRIPT_DIR,
         file = node.abspath,
         command = 'clang++ ' .. table.concat(m.getFileFlags(prj, cfg, node), ' ')
     }
