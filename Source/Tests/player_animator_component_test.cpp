@@ -8,6 +8,8 @@
 #include <Runtime/Object/GameObject.h>
 #include <gtest/gtest.h>
 
+#include "tuning_field_access.h"
+
 #include <cstddef>
 #include <string>
 #include <utility>
@@ -145,6 +147,20 @@ TEST(PlayerAnimatorTest, PlaybackSpeedStopsAtTheFloor)
 
     // 0.5 は m_minPlaybackSpeed の既定。既定を触るとこの試しが落ちる
     EXPECT_NEAR(rig.anim->Time(), k_FixedDt * 0.5f, 1e-4f);
+}
+
+// 走行速度はリフレクションの欄なので Inspector から 0 を打てる。割り算を素通りさせると
+// 再生速度が無限大になり、長さで折り返す時に再生時刻が NaN で固まる
+TEST(PlayerAnimatorTest, ZeroRunSpeedKeepsPlaybackAtNormal)
+{
+    Rig rig;
+    NsTest::WriteTuningField(*rig.player, "走行速度", 0.0f);
+    rig.Ground(4.0f);
+
+    rig.animator->OnUpdate();
+    rig.anim->OnUpdate();
+
+    EXPECT_NEAR(rig.anim->Time(), k_FixedDt, 1e-4f);
 }
 
 TEST(PlayerAnimatorTest, MissingAirClipFallsBackToIdle)
