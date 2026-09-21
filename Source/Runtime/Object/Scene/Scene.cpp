@@ -192,10 +192,7 @@ namespace NS::Object
     void Scene::OnUpdate()
     {
         // 補間描画用。全配置物の Root を Snapshot する
-        for (GameObject* obj : m_objects)
-        {
-            obj->Root().Snapshot();
-        }
+        m_objects.SnapshotObjects();
 
         // 世界の駆動。読み込んだら回り続けるのが既定で、編集モードのエディタだけが止める
         // 時間停止中は上の snapshot だけが残り、previous == current で補間が凍る
@@ -212,7 +209,7 @@ namespace NS::Object
             }
             m_simulationStepFrames -= 1;
         }
-        // カメラが追う前に踏む。自機と衝突の裁定は Update 帯までに終わっている
+        // カメラが追う前に物理を進める。自機と衝突の裁定は Update 帯までに終わっている
         m_objects.UpdateObjects(std::numeric_limits<int>::min(), TickPriority::LateUpdate);
         m_physicsScene.Update(NS::Core::FrameTimer::FixedDelta());
         m_objects.UpdateObjects(TickPriority::LateUpdate);

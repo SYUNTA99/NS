@@ -1,5 +1,6 @@
 ﻿#include "Runtime/Object/ObjectList.h"
 
+#include "Runtime/Core/Assert.h"
 #include "Runtime/Object/Components/ColliderComponent.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Scene/SceneData.h"
@@ -108,10 +109,7 @@ namespace NS::Object
 
         // 生成直後は previous PRS が原点/単位回転のため Snapshot で current に揃える
         // 欠かすと InterpolatedWorldMatrix(alpha) が原点→配置先を補間し編集のたびに全配置物が振れる
-        for (auto& obj : m_objects)
-        {
-            obj->Root().Snapshot();
-        }
+        SnapshotObjects();
     }
 
     GameObject* ObjectList::Append(std::unique_ptr<GameObject> obj)
@@ -209,9 +207,14 @@ namespace NS::Object
 
     void ObjectList::UpdateObjects(int firstPriority, int lastPriority)
     {
+        // 入れ子で呼ぶと内側の clear が外側の並びを消し、下の範囲 for が無効なイテレータを辿る
+        NS_ASSERT(Scene, !m_updating, "ObjectList::UpdateObjects を入れ子で呼んでいる");
+        m_updating = true;
+
         // 帯の昇順で配置物を横断して回すため、範囲内の component を一度集めて priority で並べ直す
         // stable_sort なので同じ帯の中は配置物の並び順に落ちる
-        std::vector<Component*> scheduled;
+        // clear は容量を残すので毎フレームの確保が要らない
+        m_scheduled.clear();
         for (auto& obj : m_objects)
         {
             for (Component* comp : obj->Components())
@@ -222,22 +225,24 @@ namespace NS::Object
                 }
                 if (comp->Priority() >= firstPriority && comp->Priority() < lastPriority)
                 {
-                    scheduled.push_back(comp);
+                    m_scheduled.push_back(comp);
                 }
             }
         }
-        std::stable_sort(scheduled.begin(), scheduled.end(), [](const Component* a, const Component* b) noexcept {
+        std::stable_sort(m_scheduled.begin(), m_scheduled.end(), [](const Component* a, const Component* b) noexcept {
             return a->Priority() < b->Priority();
         });
 
         // active はこの場で見る。先に回った component が後ろを SetActive(false) にしても効く
-        for (Component* comp : scheduled)
+        for (Component* comp : m_scheduled)
         {
             if (comp->IsActive())
             {
                 comp->OnUpdate();
             }
         }
+
+        m_updating = false;
     }
 
     void ObjectList::Clear()

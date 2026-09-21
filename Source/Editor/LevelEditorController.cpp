@@ -39,7 +39,7 @@
 
 namespace
 {
-    // カメラ frustum の far は実カメラだと 1000 で錐台が画面外になるため表示用に近くで切る
+    // カメラの視錐台を描く時の far。vcam の既定 1000 のままだと錐台が画面に収まらないので近くで切る
     constexpr float k_CameraGizmoFar = 8.0f;
 
     // 編集復帰の視点ブレンド秒。Brain の vcam 切替の既定 0.35 秒と揃え、モード切替の繋ぎを同じ感触にする
@@ -135,7 +135,7 @@ namespace
         const float baseHalf = 0.3f;
         const NS::Core::Vector4 clip =
             NS::Core::Vector4::Transform(NS::Core::Vector4{center.x, center.y, center.z, 1.0f}, vp);
-        // clip.w がほぼ 0 になるカメラ至近や背面では基準半径へ退避する
+        // clip.w がほぼ 0 になるカメラ至近や背面では基準半径へフォールバックする
         if (clip.w <= 1.0e-3f)
             return baseHalf;
         // 深度 10 までは基準半径、これより遠いほど深度に比例して伸ばし画面上一定に近づける
@@ -302,8 +302,7 @@ void LevelEditorController::EnterPlay() noexcept
     if (m_mode == Mode::Play)
         return;
     m_mode = Mode::Play;
-    // UI がキーを掴んでいた間に押されたキーは、離した通知がゲームへ届かず押しっぱなしで残る
-    // モード遷移で持ち越さないよう消す
+    // モード遷移へ押しっぱなしを持ち越さないよう消す
     if (auto* app = NS::App::Application::Get())
     {
         app->Input().Keyboard().ClearState();
@@ -353,8 +352,7 @@ void LevelEditorController::EnterEdit() noexcept
     if (m_mode == Mode::Edit)
         return;
     m_mode = Mode::Edit;
-    // UI がキーを掴んでいた間に押されたキーは、離した通知がゲームへ届かず押しっぱなしで残る
-    // モード遷移で持ち越さないよう消す
+    // モード遷移へ押しっぱなしを持ち越さないよう消す
     if (auto* app = NS::App::Application::Get())
     {
         app->Input().Keyboard().ClearState();
@@ -396,10 +394,6 @@ void LevelEditorController::LeavePlayForEdit()
     NS::Object::SceneData baseline = m_scene->PlayBaseline();
     m_scene->LoadFromData(std::move(baseline));
 
-    // 組み直し直後の描画が補間の初期値を読むので、全 root を snapshot して現在値に揃える
-    for (NS::Object::GameObject* obj : m_scene->Objects())
-        obj->Root().Snapshot();
-
     if (auto* player = FindPlayer(m_scene->Objects()))
     {
         // 操作系は生成時 active のまま組み上がるので、編集中だけ休止させる。起こす側は EnterPlay
@@ -438,7 +432,7 @@ void LevelEditorController::SetGameView(int x, int y, int width, int height, boo
 
 void LevelEditorController::ClearGameView() noexcept
 {
-    // 全画面直描き。予備の全画面矩形を使わせるため矩形無効 + hover 真にする
+    // 全画面直描き。フォールバックの全画面矩形を使わせるため矩形無効 + hover 真にする
     m_gameViewRectValid = false;
     m_gameViewHovered = true;
     m_gameViewHidden = false;
@@ -458,7 +452,7 @@ NS::Editor::ViewRect LevelEditorController::CurrentViewRect() const noexcept
 {
     if (m_gameViewRectValid)
         return m_gameViewRect;
-    // 未設定時は全画面を予備矩形とする。ウィンドウ不在は 0 サイズ
+    // 未設定時は全画面をフォールバックとする。ウィンドウ不在は 0 サイズ
     NS::Editor::ViewRect full{};
     if (auto* app = NS::App::Application::Get())
     {
@@ -502,7 +496,7 @@ void LevelEditorController::SetSceneViews(std::vector<NS::Object::SceneView> vie
 
 void LevelEditorController::Tick()
 {
-    // プレイ中のクリア / 死亡は応答 component が出荷と同じ暗転リスタートで完結させる
+    // プレイ中のクリア / 死亡は応答 component が出荷と同じ手順で完結させる
     // editor は割り込まず、編集へ戻るのは Tab / Pause modal の明示操作だけ
     if (m_mode == Mode::Edit)
         TickEdit();
@@ -576,7 +570,7 @@ void LevelEditorController::TickEdit()
         // 追従カメラを掴んでいたら Root 位置を初期姿勢へ逆算し components へ保存する。位置の書き戻しはこちら
         ApplyFollowCameraGizmoDrag();
 
-        // ドラッグ開始で baseline 退避、終了で 1 体のスナップショットを履歴へ積む。grid undo と同じ経路
+        // ドラッグ開始で baseline を控え、終了で変わった分のスナップショットを履歴へ積む。grid undo と同じ経路
         // 追従カメラは Root でなく初期姿勢を変えるので、Root 基準のスナップショットは積まない
         const bool nowDragging = m_gizmo.IsDragging();
         if (SelectedFollowCamera() == nullptr)
@@ -642,7 +636,6 @@ void LevelEditorController::Render()
     // 蓄積した DebugDraw 線をシーン描画後・ImGui 前にまとめて 1 描画する
     if (Brain())
         NS::Graphics::DebugDraw::Flush(app->Renderer(), Brain()->ViewProjection());
-    // Toolbar UI を ImGui 経由で描画する
     // Object モードはブラシを置かないので Build モードの時だけ出す
     // Game ビュー前面などで編集ビューが隠れているフレームは、ゲーム画面へ被せないよう出さない
     if (!ObjectToolActive() && !m_gameViewHidden)
@@ -864,7 +857,7 @@ void LevelEditorController::RenderCameraGizmos(const NS::Core::Matrix& viewProje
     // edit 中、各カメラの視錐台を点線の四角錐で、視点位置を小箱で可視化する。据え置きは進入トリガ AABB も出す
     // 選択中は強調色にする。追従カメラは pose がプレイヤー基準なので、錐台はプレイ中に居る視点位置へ出る
     const auto& objects = m_scene->Objects();
-    // 錐台の横幅は実ビューポート比で出す。viewport が潰れている時だけ 16:9 目安へ退避する
+    // 錐台の横幅は実ビューポート比で出す。viewport が潰れている時だけ 16:9 目安へフォールバックする
     const float aspect = [viewport]() -> float {
         if (viewport.height > 0)
             return static_cast<float>(viewport.width) / static_cast<float>(viewport.height);
@@ -1092,7 +1085,7 @@ void LevelEditorController::AddObjectWithMesh(const std::filesystem::path& meshP
 
 void LevelEditorController::PushCreateObject(NS::Object::ObjectData object)
 {
-    // 新規配置物に永続 id を 1 個振る。object 生成の採番はここだけで行う
+    // 新規配置物に永続 id を 1 個振る
     const std::uint32_t id = m_scene->Objects().AllocateObjectId();
     object.objectId = id;
 
@@ -1215,7 +1208,7 @@ void LevelEditorController::RemoveComponentFromSelected(std::size_t componentInd
     if (!before)
         return;
 
-    // 空構成は build で消えるゴーストになるので最後の 1 個 / 範囲外は消さない。履歴も汚さない
+    // component が 0 個の配置物は build で消えるので最後の 1 個 / 範囲外は消さない。履歴も汚さない
     const nlohmann::json& components = before->components;
     if (componentIndex >= components.size() || components.size() <= 1)
         return;

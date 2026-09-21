@@ -45,7 +45,7 @@ namespace NS::Object
         //! factory が空の起動前 / テストでは物を組まない
         void Rebuild(const SceneData& data, Scene& scene, const ObjectFactoryFn& factory);
 
-        //! 配置物を逆順に破棄して所有物を空へ戻す。scene の OnShutdown と Rebuild 冒頭が呼ぶ
+        //! 配置物の OnEndPlay を逆順に呼んでから所有物を空へ戻す。scene の OnShutdown と Rebuild 冒頭が呼ぶ
         void Clear();
 
         //! 型 T の配置物を作って加える。所有は ObjectList が持ち、呼出側へは生ポインタだけ返す
@@ -64,7 +64,7 @@ namespace NS::Object
 
         //! objectId 一致の配置物を破棄して所有リストから外す。居なければ何もしない
         //! 当たり箱もここで揃えるので、組み直さずに 1 体だけ消せる
-        //! 子は根として残る (親子の切り離しは GameObject の破棄が行う)
+        //! 子は根として残る。親子の切り離しは GameObject の破棄が行う
         //! 0 は未採番の印なので何もしない
         void RemoveByObjectId(std::uint32_t objectId);
 
@@ -85,10 +85,10 @@ namespace NS::Object
         void UpdateObjects(int firstPriority, int lastPriority = std::numeric_limits<int>::max());
 
         //! 全配置物の Component を priority の昇順で一括で回す。補間用の前回値は呼ぶ側が更新の前に SnapshotObjects
-        //! で揃える。並び順の一覧は別に持たない。各 component がコンストラクタで指定する priority だけで並びが決まる
+        //! で揃える。並び順の登録簿は持たない。各 component がコンストラクタで指定する priority だけで並びが決まる
         void UpdateAllObjects();
 
-        //! 全配置物の Root を Snapshot する (previous を current へ揃える)
+        //! 全配置物の Root を Snapshot する。previous を current へ揃える
         void SnapshotObjects();
 
         //! 永続 object id を 1 個割り当ててカウンタを進める
@@ -106,7 +106,7 @@ namespace NS::Object
         //! 範囲 for 用の反復子。辿ると生ポインタが出るので、所有の入れ物を外へ見せずに全配置物を回せる
         //! 添字が要る呼び出し側は ObjectCount / ObjectAt を使う
         //! std::vector<GameObject*> を返す関数は作らない。毎回確保になる
-        //! 生ポインタの配列もメンバに持たない。m_objects と食い違う
+        //! 配置物の生ポインタの配列もメンバに持たない。m_objects と食い違う
         class Iterator
         {
         public:
@@ -145,7 +145,9 @@ namespace NS::Object
 
     private:
         std::vector<std::unique_ptr<GameObject>> m_objects; // 配置物の単一所有リスト
+        std::vector<Component*> m_scheduled;                // UpdateObjects が priority 順に並べ直す作業用の並び
         std::uint32_t m_nextObjectId = 1;                   // 次に割り当てる永続 id。単調増加で欠番は再利用しない
+        bool m_updating = false;                            // UpdateObjects の実行中か。入れ子の呼び出しの検知に使う
     };
 
     //! targetId を指す ObjectRef フィールドを live の全配置物からリフレクションで集める
