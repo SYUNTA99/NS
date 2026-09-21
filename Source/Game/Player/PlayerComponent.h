@@ -42,9 +42,19 @@ namespace NS::Game::Player
         void SetJumpHeld(bool held) noexcept;
         [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; } //!< 残りジャンプ回数
 
-        [[nodiscard]] float MaxSpeed() const noexcept { return m_maxSpeed; } //!< 加速で届く速さの上限
-        //! 最高速度を外から差し替える。負は 0 へ丸め、非有限値は書き込まない
-        void SetMaxSpeed(float speed) noexcept;
+        //! @brief 走行速度に SetMaxSpeedScale の倍率を掛けた最高速度。負になる場合は 0
+        //! @details 負のまま返すと EndBodySlam の頭打ちが cap / speed で負の倍率になり、突進明けに水平の向きが反転する
+        [[nodiscard]] float MaxSpeed() const noexcept
+        {
+            const float capped = m_runSpeed * m_maxSpeedScale;
+            if (capped < 0.0f)
+            {
+                return 0.0f;
+            }
+            return capped;
+        }
+        //! 走行速度に掛ける倍率を渡す。非有限値は無視して直前の値を残す
+        void SetMaxSpeedScale(float scale) noexcept;
 
         //! 奈落落ちの復活などで速度・接地・ジャンプまわりの記録と状態機械を初期状態へ戻す
         void ResetState() noexcept;
@@ -135,15 +145,12 @@ namespace NS::Game::Player
         //! 自機だけの通知の受け口。基底の Events() は接地の 2 件を返すので名前を分ける
         [[nodiscard]] PlayerEvents& PlayerEventsRef() noexcept { return m_playerEvents; }
 
-        // 走行速度の書き換えに m_maxSpeed を追従させるため、この欄だけ setter を通す
         [[nodiscard]] float RunSpeed() const noexcept { return m_runSpeed; } //!< 走行の最高速度
-        //! 走行の最高速度を差し替える。非有限値は書き込まない
-        void SetRunSpeed(float value) noexcept;
 
         //! 押したフレームの狙いを控える。離すまでの遅れのぶん、発動はこの向きから始める
         void MarkBodySlamAim() noexcept;
 
-        //! 基底の OnStart に続けて、同居する状態機械を控え、加速の上限へ走行速度を入れる
+        //! 基底の OnStart に続けて、同居する状態機械を控える
         void OnStart() override;
 
         // 欄は登録される具象型に置く。リフレクションの直列化は自分の型の欄だけを回り、基底の鎖はたどらない
@@ -157,7 +164,7 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_coyoteTime, "コヨーテ時間")
         NS_REFLECT_FIELD(m_jumpBufferTime, "先行入力時間")
         NS_REFLECT_FIELD(m_walkSpeed, "歩き速度")
-        NS_REFLECT_ACCESSOR(float, "走行速度", RunSpeed(), SetRunSpeed)
+        NS_REFLECT_FIELD(m_runSpeed, "走行速度")
         NS_REFLECT_FIELD(m_acceleration, "加速度")
         NS_REFLECT_FIELD(m_airAcceleration, "空中の加速度")
         NS_REFLECT_FIELD(m_turningDrag, "曲がる時の抵抗")
@@ -223,7 +230,7 @@ namespace NS::Game::Player
         float m_coyoteTimer = 0.0f;                  // コヨーテ猶予の残り秒
         float m_bufferTimer = 0.0f;                  // 先行ジャンプ入力の残り秒
 
-        float m_maxSpeed = 8.0f;
+        float m_maxSpeedScale = 1.0f; // 走行速度に掛ける倍率。書くのは CollisionInputComponent
 
         float m_bodySlamBufferRemaining = 0.0f;               // 出せないフレームの押しを覚える残り秒
         bool m_bodySlamSpent = false;                         // 発動してから接地していないか

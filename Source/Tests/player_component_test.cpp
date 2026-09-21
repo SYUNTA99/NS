@@ -164,21 +164,23 @@ TEST_F(PlayerComponentTest, ClimbMoveClampsToSignedUnitRange)
     EXPECT_FLOAT_EQ(player.ClimbForward(), -1.0f);
 }
 
-TEST_F(PlayerComponentTest, MaxSpeedRoundsNegativeAndKeepsTheValueOnNonFinite)
+TEST_F(PlayerComponentTest, MaxSpeedScaleRoundsNegativeAndKeepsTheValueOnNonFinite)
 {
     GameObject obj;
     auto& player = *obj.AddComponent<PlayerComponent>();
 
-    player.SetMaxSpeed(20.0f);
+    // 走行速度の既定が 8.0 なので、20 を出す倍率は 2.5
+    player.SetMaxSpeedScale(2.5f);
     EXPECT_FLOAT_EQ(player.MaxSpeed(), 20.0f);
 
-    player.SetMaxSpeed(std::numeric_limits<float>::quiet_NaN());
+    player.SetMaxSpeedScale(std::numeric_limits<float>::quiet_NaN());
     EXPECT_FLOAT_EQ(player.MaxSpeed(), 20.0f);
 
-    player.SetMaxSpeed(std::numeric_limits<float>::infinity());
+    player.SetMaxSpeedScale(std::numeric_limits<float>::infinity());
     EXPECT_FLOAT_EQ(player.MaxSpeed(), 20.0f);
 
-    player.SetMaxSpeed(-3.0f);
+    // 負の上限だと EndBodySlam の頭打ちが負の倍率になり、突進明けに水平の向きが反転する
+    player.SetMaxSpeedScale(-1.0f);
     EXPECT_FLOAT_EQ(player.MaxSpeed(), 0.0f);
 }
 
@@ -282,7 +284,7 @@ TEST_F(PlayerComponentTest, TuningWriteThroughReflectionReachesMembers)
     EXPECT_FLOAT_EQ(ReadTuningField(player, "先行入力時間"), 0.4f);
 }
 
-// 加速の上限は走行速度の欄と CollisionInputComponent が動かす。この自機に CollisionInputComponent は居ない
+// 上限は走行速度から計算して返すので、欄を書き換えれば追従する
 TEST_F(PlayerComponentTest, WritingRunSpeedRaisesTheAccelerationCap)
 {
     GameObject obj;

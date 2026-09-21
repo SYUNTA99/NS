@@ -97,11 +97,10 @@ namespace NS::Game::Level
             NS_LOG_INFO(Game, "体当たり発動: {} 溜め {:.2f}", SlamKindLabel(fired), charge01);
         }
 
-        // 走行速度から絶対値で書く。前の値へ掛けると毎フレーム積み重なり、最高速度が指数的に 0 へ落ちる
         if (m_movement != nullptr)
         {
             const float scale = m_judge.IsCharging() ? 1.0f - m_chargeSlowRate : 1.0f;
-            m_movement->SetMaxSpeed(m_movement->RunSpeed() * scale);
+            m_movement->SetMaxSpeedScale(scale);
         }
 
         if (m_judge.JustStartedCharging() && m_movement != nullptr)

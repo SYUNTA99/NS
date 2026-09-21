@@ -55,13 +55,6 @@ namespace
                p.z >= box.Center.z - box.Extents.z && p.z <= box.Center.z + box.Extents.z;
     }
 
-    // 非有限値を捨てる。走行の最高速度へ入ると位置まで NaN が伝わる
-    void AssignFinite(float& target, float value) noexcept
-    {
-        if (std::isfinite(value))
-            target = value;
-    }
-
     // from と to は正規化した水平の向き。Y 軸まわりに最大 maxRadians だけ to へ寄せる
     [[nodiscard]] NS::Core::Vector3 TurnHorizontalToward(const NS::Core::Vector3& from,
                                                          const NS::Core::Vector3& to,
@@ -85,12 +78,6 @@ namespace
 
 namespace NS::Game::Player
 {
-    void PlayerComponent::SetRunSpeed(float value) noexcept
-    {
-        AssignFinite(m_runSpeed, value);
-        m_maxSpeed = m_runSpeed;
-    }
-
     void PlayerComponent::SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept
     {
         m_desiredDir = worldDir;
@@ -118,16 +105,14 @@ namespace NS::Game::Player
         m_jumpHeld = held;
     }
 
-    void PlayerComponent::SetMaxSpeed(float speed) noexcept
+    void PlayerComponent::SetMaxSpeedScale(float scale) noexcept
     {
-        // 非有限値は入口で捨てる。JoltCharacter は速度を検査しないので位置まで NaN が伝わる
-        if (!std::isfinite(speed))
+        // NaN を入れると MaxSpeed() との比較が偽になり、突進明けに水平の速さが切られない
+        if (!std::isfinite(scale))
+        {
             return;
-
-        if (speed < 0.0f)
-            m_maxSpeed = 0.0f;
-        else
-            m_maxSpeed = speed;
+        }
+        m_maxSpeedScale = scale;
     }
 
     void PlayerComponent::RequestBodySlam(float charge01) noexcept
@@ -179,9 +164,10 @@ namespace NS::Game::Player
         // 加速は最高速を超えた速さを削らない。切らないと、倒している間は突進の速さのまま走り続ける
         const NS::Core::Vector3 lateral = LateralVelocity();
         const float speed = std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z);
-        if (speed > m_maxSpeed)
+        const float cap = MaxSpeed();
+        if (speed > cap)
         {
-            const float scale = m_maxSpeed / speed;
+            const float scale = cap / speed;
             SetLateralVelocity(NS::Core::Vector3{lateral.x * scale, 0.0f, lateral.z * scale});
         }
 
@@ -380,7 +366,6 @@ namespace NS::Game::Player
             return;
 
         m_stateManager = Owner()->FindComponent<PlayerStateManagerComponent>();
-        m_maxSpeed = m_runSpeed;
     }
 
     NS::Game::Entity::EntityStateManagerComponent* PlayerComponent::States() const noexcept
@@ -407,7 +392,7 @@ namespace NS::Game::Player
             return;
         }
 
-        const float topSpeed = std::max(m_maxSpeed * m_desiredSpeedScale, m_walkSpeed);
+        const float topSpeed = std::max(MaxSpeed() * m_desiredSpeedScale, m_walkSpeed);
         float acceleration = m_airAcceleration;
         if (IsGrounded())
         {
