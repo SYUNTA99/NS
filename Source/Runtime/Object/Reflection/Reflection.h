@@ -77,6 +77,21 @@ namespace NS::Object
         }
     }
 
+    // テンプレートの外の if constexpr は捨てる枝も検査される
+    // マクロへ直に書くと clang が Vector3 の欄で AssignIfFinite(Vector3&, float) を型エラーにする
+    //! in の値を target へ書く。Field が float のときだけ AssignIfFinite を通し、他はそのまま代入する
+    template <class Field> void AssignFieldValue(Field& target, const void* in) noexcept
+    {
+        if constexpr (std::is_same_v<Field, float>)
+        {
+            AssignIfFinite(target, *static_cast<const float*>(in));
+        }
+        else
+        {
+            target = *static_cast<const Field*>(in);
+        }
+    }
+
     //! @brief リフレクションされた 1 フィールドの記述子
     //! @details get/set は型消去した関数ポインタ。obj はリフレクション対象そのものへの生ポインタで、
     //! Component でも素の値型でもよい。マクロが宣言時の具象型へ static_cast して読み書きする
@@ -144,23 +159,13 @@ namespace NS::Object
 //! メンバを 1 フィールドとして登録する。private も入れ子の struct のメンバ (m_tuning.speed) も書ける
 //! 型タグはメンバ型から推論する。float の欄は AssignIfFinite を通るので、非有限値の書き込みは捨てて元の値が残る
 #define NS_REFLECT_FIELD(member, label)                                                                                \
-    NS::Object::FieldDesc{label,                                                                                       \
-                          NS::Object::FieldTypeOf<decltype(Self::member)>(),                                           \
-                          +[](const void* c, void* out) noexcept {                                                     \
-                              *static_cast<decltype(Self::member)*>(out) = static_cast<const Self*>(c)->member;        \
-                          },                                                                                           \
-                          +[](void* c, const void* in) noexcept {                                                      \
-                              using Field = decltype(Self::member);                                                    \
-                              if constexpr (std::is_same_v<Field, float>)                                              \
-                              {                                                                                        \
-                                  const float value = *static_cast<const float*>(in);                                  \
-                                  NS::Object::AssignIfFinite(static_cast<Self*>(c)->member, value);                    \
-                              }                                                                                        \
-                              else                                                                                     \
-                              {                                                                                        \
-                                  static_cast<Self*>(c)->member = *static_cast<const Field*>(in);                      \
-                              }                                                                                        \
-                          }},
+    NS::Object::FieldDesc{                                                                                             \
+        label,                                                                                                         \
+        NS::Object::FieldTypeOf<decltype(Self::member)>(),                                                             \
+        +[](const void* c, void* out) noexcept {                                                                       \
+            *static_cast<decltype(Self::member)*>(out) = static_cast<const Self*>(c)->member;                          \
+        },                                                                                                             \
+        +[](void* c, const void* in) noexcept { NS::Object::AssignFieldValue(static_cast<Self*>(c)->member, in); }},
 
 //! 基底の private や検証付きフィールドを getter/setter 経由で登録する。getter は値返し、setter は 1 引数
 #define NS_REFLECT_ACCESSOR(ValueType, label, getterCall, setterCall)                                                  \

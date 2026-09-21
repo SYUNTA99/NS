@@ -19,6 +19,7 @@
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Reflection/ReflectionJson.h>
 #include <Runtime/Object/Reflection/TypeRegistry.h>
+#include <cstdint>
 #include <filesystem>
 #include <gtest/gtest.h>
 #include <string_view>
@@ -31,7 +32,8 @@ namespace
     using NS::Object::ObjectData;
     using NS::Core::Vector3;
 
-    // device を確立しない AssetManager。Builtin / SharedMaterial は nullptr を返すが、汎用構築は落ちない
+    // RegisterBuiltins も RegisterSharedMaterials も呼ばない AssetManager。組み込みと共有材質は
+    // nullptr を返すが、汎用構築は落ちない
     class ObjectBuildTest : public ::testing::Test
     {
     protected:
@@ -43,7 +45,7 @@ namespace
         }
     };
 
-    // grid に置く素の cube
+    // 格子に置く素の cube
     ObjectData MakeGridCube()
     {
         return MakeCellObject(0, 0, 0);
@@ -253,7 +255,7 @@ TEST_F(ObjectBuildTest, EmptyComponentsBuildsNothing)
     EXPECT_EQ(Build(object), nullptr);
 }
 
-// material 参照に .. を含む値は ContentRoot 外解決を拒否し、共有の代替に切り替わってクラッシュしない
+// 材質の参照が .. で ContentRoot の外へ出るなら拒否する。落ちずに component が揃うことだけを見る
 TEST_F(ObjectBuildTest, AssetPathTraversalRejectedFallsBackToDefault)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{0.5f, 0.5f, 0.5f}));
@@ -268,7 +270,7 @@ TEST_F(ObjectBuildTest, AssetPathTraversalRejectedFallsBackToDefault)
     EXPECT_TRUE(Has<NS::Object::BoxColliderComponent>(*obj));
 }
 
-// 45 度スロープ prototype は wedge メッシュ + 45 度 SlopeCollider を作り、R で回せる
+// 45 度スロープの雛形は表示名が Slope 45 で、45 度の SlopeCollider を持ち、回せる
 TEST_F(ObjectBuildTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
 {
     ObjectData slope = MakeCellObject(0, 0, 0);
@@ -286,7 +288,7 @@ TEST_F(ObjectBuildTest, GridSlopeHasSlopeColliderAndDisplaysAsSlope45)
     EXPECT_FALSE(Has<NS::Object::BoxColliderComponent>(*obj));
 }
 
-// ゴール prototype は接触クリアの印を持ち、表示名は Goal、向きは無関係で回転不可
+// ゴールの雛形は接触クリアの印を持ち、表示名は Goal。BoxCollider も SlopeCollider も積まないので回せない
 TEST_F(ObjectBuildTest, GoalHasMarkerAndDisplaysAsGoal)
 {
     ObjectData goal = MakeCellObject(0, 0, 0);
@@ -300,7 +302,7 @@ TEST_F(ObjectBuildTest, GoalHasMarkerAndDisplaysAsGoal)
     EXPECT_NE(obj->FindComponent<NS::Game::Level::GoalComponent>(), nullptr);
 }
 
-// grid に置く cube は固形なので R で 90° 回せる
+// 格子に置く cube は固形なので回せる
 TEST_F(ObjectBuildTest, GridCubeIsRotatable)
 {
     EXPECT_TRUE(NS::Editor::IsRotatableObject(MakeCellObject(0, 0, 0)));
@@ -331,11 +333,11 @@ TEST_F(ObjectBuildTest, PlayerObjectBuildsPlayerTyped)
     // コンストラクタが積む分と同じ数。transform も GameObject が持つので二重にはならない
     EXPECT_EQ(obj->Components().size(), Player{}.Components().size());
 
-    // pose は他の配置物と同じく data から乗る
+    // 姿勢は他の配置物と同じくデータから乗る
     EXPECT_FLOAT_EQ(obj->Root().Position().y, 2.0f);
 }
 
-// プレイヤーのデータ構成は Player のコンストラクタから吸い出した型名だけの疎な一覧。値は書かない
+// プレイヤーのデータ構成は Player のコンストラクタから吸い出した型名の一覧。値を持つのは transform だけ
 TEST_F(ObjectBuildTest, PlayerObjectDataIsSparseTypeListFromClass)
 {
     const ObjectData data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
@@ -354,7 +356,6 @@ TEST_F(ObjectBuildTest, PlayerObjectDataIsSparseTypeListFromClass)
             continue; // transform だけは値を持つ
         EXPECT_TRUE(entry.at("fields").empty()) << typeName;
     }
-    // 種別判定は疎なデータでも成立する
     EXPECT_TRUE(IsPlayerObject(data));
 }
 
@@ -403,8 +404,35 @@ TEST_F(ObjectBuildTest, PlayerObjectAppliesDataValuesToComponents)
     EXPECT_FLOAT_EQ(NsTest::ReadTuningField(*movement, "コヨーテ時間"), 0.125f);
 }
 
+// Player のデータはコンストラクタが積む型名の一覧なので、どの項目も既存の実体に当たり CreateComponent を通らない
+// ApplyObjectComponents が id を書かなくても component の数は合う。数を見る試しでは捕まらない
+// ComponentIdSurvivesBuildAndCapture が id を確かめるのは生成された MeshRendererComponent の分だけ
+TEST_F(ObjectBuildTest, PlayerObjectAppliesDataIdsToConstructorComponents)
+{
+    ObjectData data = MakePlayerObject(Vector3{}, NS::Core::Quaternion{});
+
+    nlohmann::json* entry = nullptr;
+    for (nlohmann::json& candidate : data.components)
+    {
+        if (NS::Object::ComponentEntryType(candidate) == "PlayerComponent")
+        {
+            entry = &candidate;
+        }
+    }
+    ASSERT_NE(entry, nullptr);
+
+    const std::uint32_t dataId = 4321u;
+    NS::Object::SetComponentEntryId(*entry, dataId);
+
+    auto obj = Build(data);
+    ASSERT_NE(obj, nullptr);
+    auto* movement = obj->FindComponent<NS::Game::Player::PlayerComponent>();
+    ASSERT_NE(movement, nullptr);
+    EXPECT_EQ(movement->Id(), dataId);
+}
+
 // 同型 component を重ねたデータは live でも同数立ち、2 件目が 1 件目へ上書きされない
-// 当たりの重ね置きは複合形状として衝突へ効く前提の機能で、貼り重ねの経路がこの形を作る
+// 重ねた当たりは 1 つずつ body になる
 TEST_F(ObjectBuildTest, DuplicateColliderDataBuildsCompoundColliders)
 {
     ObjectData object = MakeFreeObject(BoxColliderData(Vector3{1.0f, 1.0f, 1.0f}));
@@ -422,7 +450,7 @@ TEST_F(ObjectBuildTest, DuplicateColliderDataBuildsCompoundColliders)
     EXPECT_FLOAT_EQ(boxes[1]->HalfExtents().x, 2.0f);
 }
 
-// 実体をリフレクション serialize → 既定 component へ apply → 再 serialize で一致する
+// 実体をリフレクションで書き出し、既定の component へ適用して書き出し直した物が元と一致する
 // 保存を data でなく実体から作る前提。registry で組める component だけを対象にする
 TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
 {
@@ -436,7 +464,7 @@ TEST_F(ObjectBuildTest, LiveComponentsSerializeRoundTripFaithfully)
     const nlohmann::json components = NS::Object::SerializeGameObjectComponents(*obj);
     ASSERT_EQ(components.size(), obj->Components().size());
 
-    // 各 component を型名から既定生成し、serialize した fields を書き戻して再 serialize が元に戻るか見る
+    // 各 component を型名から既定生成し、書き出した fields を書き戻して、書き出し直した物が元に戻るか見る
     NS::Object::GameObject rebuilt;
     for (const auto& compJson : components)
     {
