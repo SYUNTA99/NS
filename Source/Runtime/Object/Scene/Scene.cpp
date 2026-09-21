@@ -1,16 +1,8 @@
 ﻿#include "Runtime/Object/Scene/Scene.h"
 
 #include "Runtime/Core/Clock.h"
-#include "Runtime/Core/LogCategories.h"
-#include "Runtime/Core/Logger.h"
-#include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Graphics/RenderContext.h"
-#include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/Components/CameraComponent.h"
-#include "Runtime/Object/Components/DirectionalLightComponent.h"
-#include "Runtime/Object/Components/OverlayRendererComponent.h"
-#include "Runtime/Object/IRenderable.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
 #include "Runtime/Object/Reflection/ReflectionJson.h"
@@ -19,17 +11,6 @@
 
 namespace NS::Object
 {
-    namespace
-    {
-        // RenderScene の proxy を IRenderable::Collect へつなぐ。owner は登録元の IRenderable
-        void CollectRenderable(void* owner,
-                               const NS::Graphics::RenderContext& context,
-                               std::vector<NS::Graphics::DrawItem>& out)
-        {
-            static_cast<IRenderable*>(owner)->Collect(context, out);
-        }
-    } // namespace
-
     Scene::Scene()
     {
         // 描くには実カメラが 1 個要る。配置物ではないがシーンには必ず居るので、ここで ObjectList へ入れる
@@ -244,259 +225,61 @@ namespace NS::Object
         m_brain = nullptr;
     }
 
-    std::optional<NS::Graphics::RenderContext> Scene::RenderWorld(NS::Graphics::Renderer& renderer,
-                                                                  const std::optional<CameraPose>& viewOverride)
-    {
-        // 描画コンテキストの準備
-        CameraBrainComponent* brain = CameraBrain();
-        CameraComponent* mainCamera = MainCamera();
-        if (brain == nullptr || mainCamera == nullptr)
-        {
-            return std::nullopt;
-        }
-
-        // アスペクト比をレンダラーの現在サイズへ同期する。リサイズ追従もここで済む
-        mainCamera->SetAspectRatioFromRenderer(renderer);
-
-        NS::Graphics::RenderContext ctx{};
-        ctx.renderer = &renderer;
-        ctx.alpha = NS::Core::FrameTimer::Alpha();
-
-        brain->Evaluate(ctx.alpha);
-
-        // 上書き視点は実カメラを経由せず、その場で行列を組む。実カメラの中身はゲーム視点のまま残す
-        NS::Graphics::Camera overrideCamera{};
-        const NS::Graphics::Camera* skyCamera = &mainCamera->Camera();
-        if (viewOverride.has_value())
-        {
-            overrideCamera.SetPosition(viewOverride->position);
-            overrideCamera.SetTarget(viewOverride->target);
-            overrideCamera.SetUp(viewOverride->up);
-            overrideCamera.SetFovY(viewOverride->fovY);
-            overrideCamera.SetNearPlane(viewOverride->nearPlane);
-            overrideCamera.SetFarPlane(viewOverride->farPlane);
-
-            // aspect は実カメラと同じ規則で renderer から取る。幅か高さが 0 以下なら 16:9
-            const NS::Core::Size2D size = renderer.Size();
-            const float aspect = [&]() -> float {
-                if (size.width <= 0 || size.height <= 0)
-                {
-                    return 16.0f / 9.0f;
-                }
-                return NS::Core::AspectRatio(size);
-            }();
-            overrideCamera.SetAspectRatio(aspect);
-
-            ctx.viewProjection = overrideCamera.ViewProjection();
-            ctx.cameraPosition = viewOverride->position;
-            skyCamera = &overrideCamera;
-        }
-        else
-        {
-            ctx.viewProjection = brain->ViewProjection();
-            ctx.cameraPosition = mainCamera->Position();
-        }
-        ctx.resolvedSettings = ResolveSceneSettings(renderer.Settings());
-
-        // レンダリングパス
-        DrawOpaque(ctx);
-        renderer.DrawSky(*skyCamera, m_environment.skyboxCubemapPath);
-        DrawTransparent(ctx);
-        return ctx;
-    }
-
     NS::Graphics::RenderSettings Scene::ResolveSceneSettings(const NS::Graphics::RenderSettings& projectDefaults)
     {
-        NS::Graphics::RenderSettings resolved = projectDefaults;
-        // 多灯合成を持たないので、後から登録した有効な 1 本が前の値を上書きする
-        for (DirectionalLightComponent* light : m_lights)
-        {
-            if (!light->IsActive())
-            {
-                continue;
-            }
-            if (light->Direction().LengthSquared() > 1e-6f)
-            {
-                resolved.lightDir = light->Direction();
-            }
-            else if (!m_warnedZeroLightDirection)
-            {
-                // zero ベクトルは normalize で拡散光が無言で消えるため上書きせず既定 lightDir に落とす
-                NS_LOG_WARN(Graphics, "Scene: 平行光の Direction が zero のため既定 lightDir で描画する");
-                m_warnedZeroLightDirection = true;
-            }
-            resolved.lightColor = light->Color();
-            resolved.ambientColor = light->Ambient();
-            resolved.groundColor = light->Ground();
-            resolved.exposure = light->Exposure();
-        }
-        return resolved;
+        return m_sceneRenderer.ResolveSceneSettings(projectDefaults);
     }
 
     void Scene::OnRender()
     {
         // 更新は終わっているので bounds は 1 フレームに 1 回で足りる。ビューを何枚描いても同じ値
-        SyncRenderBounds();
+        m_sceneRenderer.SyncRenderBounds();
         OnRenderScene();
     }
 
     void Scene::RegisterRenderable(IRenderable* renderable)
     {
-        if (renderable == nullptr)
-        {
-            return;
-        }
-        // 二重登録を防ぐ。Component 側で OnStart が誤って 2 回呼ばれても二重描画にならない
-        for (const RenderEntry& entry : m_renderables)
-        {
-            if (entry.renderable == renderable)
-            {
-                return;
-            }
-        }
-
-        NS::Graphics::RenderProxyDesc desc{};
-        desc.bounds = renderable->WorldBounds();
-        desc.sortCenter = renderable->SortCenter();
-        desc.sortPriority = renderable->SortPriority();
-        desc.transparent = renderable->Bucket() == RenderBucket::Transparent;
-        desc.collect = &CollectRenderable;
-        desc.owner = renderable;
-        m_renderables.push_back({renderable, m_renderScene.Register(desc)});
+        m_sceneRenderer.RegisterRenderable(renderable);
     }
 
     void Scene::UnregisterRenderable(IRenderable* renderable)
     {
-        if (renderable == nullptr)
-        {
-            return;
-        }
-        for (auto it = m_renderables.begin(); it != m_renderables.end(); ++it)
-        {
-            if (it->renderable != renderable)
-            {
-                continue;
-            }
-            m_renderScene.Unregister(it->handle);
-            m_renderables.erase(it);
-            return;
-        }
+        m_sceneRenderer.UnregisterRenderable(renderable);
     }
 
     void Scene::RegisterOverlay(OverlayRendererComponent* overlay)
     {
-        if (overlay == nullptr)
-        {
-            return;
-        }
-        // 二重登録を防ぐ。同じ component の OnStart が 2 回呼ばれても二重に描かない
-        for (const OverlayRendererComponent* entry : m_overlays)
-        {
-            if (entry == overlay)
-            {
-                return;
-            }
-        }
-
-        // DrawOverlays が並べ替えずに回れるよう、挿入の時点で priority 昇順を保つ。同値は後から来た方が後ろ
-        const auto at = std::upper_bound(m_overlays.begin(),
-                                         m_overlays.end(),
-                                         overlay,
-                                         [](const OverlayRendererComponent* a, const OverlayRendererComponent* b) {
-                                             return a->Priority() < b->Priority();
-                                         });
-        m_overlays.insert(at, overlay);
+        m_sceneRenderer.RegisterOverlay(overlay);
     }
 
     void Scene::UnregisterOverlay(OverlayRendererComponent* overlay)
     {
-        if (overlay == nullptr)
-        {
-            return;
-        }
-        for (auto it = m_overlays.begin(); it != m_overlays.end(); ++it)
-        {
-            if (*it != overlay)
-            {
-                continue;
-            }
-            m_overlays.erase(it);
-            return;
-        }
+        m_sceneRenderer.UnregisterOverlay(overlay);
     }
 
     void Scene::RegisterLight(DirectionalLightComponent* light)
     {
-        if (light == nullptr)
-        {
-            return;
-        }
-        // 二重に積むと UnregisterLight が片方しか消さず、外したはずの光が残る
-        for (const DirectionalLightComponent* entry : m_lights)
-        {
-            if (entry == light)
-            {
-                return;
-            }
-        }
-        m_lights.push_back(light);
+        m_sceneRenderer.RegisterLight(light);
     }
 
     void Scene::UnregisterLight(DirectionalLightComponent* light)
     {
-        if (light == nullptr)
-        {
-            return;
-        }
-        for (auto it = m_lights.begin(); it != m_lights.end(); ++it)
-        {
-            if (*it != light)
-            {
-                continue;
-            }
-            m_lights.erase(it);
-            return;
-        }
-    }
-
-    void Scene::DrawOverlays(const NS::Graphics::RenderContext& context)
-    {
-        for (OverlayRendererComponent* overlay : m_overlays)
-        {
-            // 更新と当たりが同じ問いで切れるので、描画も IsActive で揃える
-            if (overlay != nullptr && overlay->IsActive())
-            {
-                overlay->OnRenderOverlay(context);
-            }
-        }
-    }
-
-    void Scene::SyncRenderBounds()
-    {
-        // proxy 側の bounds はコピーなので、描画前に登録元の現在値へ揃える
-        for (const RenderEntry& entry : m_renderables)
-        {
-            IRenderable* r = entry.renderable;
-            if (r == nullptr)
-            {
-                continue;
-            }
-            m_renderScene.Update(entry.handle,
-                                 r->WorldBounds(),
-                                 r->SortCenter(),
-                                 r->SortPriority(),
-                                 r->Bucket() == RenderBucket::Transparent);
-        }
+        m_sceneRenderer.UnregisterLight(light);
     }
 
     void Scene::DrawOpaque(const NS::Graphics::RenderContext& context)
     {
-        m_renderScene.DrawBucket(context, false);
+        m_sceneRenderer.DrawOpaque(context);
     }
 
     void Scene::DrawTransparent(const NS::Graphics::RenderContext& context)
     {
-        m_renderScene.DrawBucket(context, true);
+        m_sceneRenderer.DrawTransparent(context);
+    }
+
+    void Scene::DrawOverlays(const NS::Graphics::RenderContext& context)
+    {
+        m_sceneRenderer.DrawOverlays(context);
     }
 
     CameraBrainComponent* Scene::CameraBrain() noexcept
@@ -515,39 +298,12 @@ namespace NS::Object
 
     void Scene::OnRenderScene()
     {
-        if (m_renderer == nullptr)
+        CameraBrainComponent* brain = CameraBrain();
+        CameraComponent* camera = MainCamera();
+        if (brain == nullptr || camera == nullptr)
         {
             return;
         }
-
-        // ビュー列が空なら現描画先へ Brain 視点で 1 回だけ描く。描画先は BeginFrame が bind 済み
-        if (m_sceneViews.empty())
-        {
-            RenderViewWithOverlays(std::nullopt);
-            return;
-        }
-
-        // 可視ビューの数だけ、各ビューの描画先へ切り替えてその視点で描く
-        for (const SceneView& view : m_sceneViews)
-        {
-            m_renderer->BeginSceneView(view.target);
-            RenderViewWithOverlays(view.viewPose);
-        }
-    }
-
-    void Scene::RenderViewWithOverlays(const std::optional<CameraPose>& viewOverride)
-    {
-        const std::optional<NS::Graphics::RenderContext> ctx = RenderWorld(*m_renderer, viewOverride);
-        if (!ctx)
-        {
-            return;
-        }
-
-#if !defined(NS_SHIPPING)
-        // 溜まったデバッグ線をここで一括で描く
-        NS::Graphics::DebugDraw::Flush(*ctx->renderer, ctx->viewProjection);
-#endif
-
-        DrawOverlays(*ctx);
+        m_sceneRenderer.Render(*brain, *camera, m_environment);
     }
 } // namespace NS::Object

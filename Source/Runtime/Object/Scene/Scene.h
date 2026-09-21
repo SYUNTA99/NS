@@ -1,16 +1,15 @@
 #pragma once
 
 #include "Runtime/Core/NonCopyable.h"
-#include "Runtime/Graphics/RenderScene.h"
 #include "Runtime/Graphics/RenderSettings.h"
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Scene/SceneData.h"
+#include "Runtime/Object/Scene/SceneRenderer.h"
 #include "Runtime/Physics/PhysicsScene.h"
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -18,7 +17,6 @@
 namespace NS::Graphics
 {
     class Renderer;
-    class RenderTarget;
     struct RenderContext;
 } // namespace NS::Graphics
 
@@ -31,14 +29,6 @@ namespace NS::Object
     class DirectionalLightComponent;
     class IRenderable;
     class OverlayRendererComponent;
-
-    //! @brief 1 つのシーンビュー。指定の描画先へ指定の視点でシーンを描く単位
-    //! @details target が null なら backbuffer、viewPose が空なら Brain の選ぶカメラで描く
-    struct SceneView
-    {
-        NS::Graphics::RenderTarget* target = nullptr; // 描画先、非所有。null は backbuffer
-        std::optional<CameraPose> viewPose;           // 描画視点。空なら Brain の選ぶカメラ
-    };
 
     //! @brief SceneData から組んだ ObjectList を運転する scene
     //! @details ObjectList と環境値を所有し、SceneData の読み書き・プレイの凍結・標準のシーン描画パスを受け持つ
@@ -61,7 +51,7 @@ namespace NS::Object
         void OnRender();
 
         //! IRenderable Component の自己登録。MeshRendererComponent 等が OnStart で呼ぶ。二重登録は無視する
-        //! 登録先はここが一元管理する。テスト等が差し替えて観測するため virtual だが、通常は override しない
+        //! 登録簿は SceneRenderer が持つ。テスト等が差し替えて観測するため virtual だが、通常はオーバーライドしない
         virtual void RegisterRenderable(IRenderable* renderable);
         //! IRenderable Component の自己解除。MeshRendererComponent 等が OnEndPlay で呼ぶ
         virtual void UnregisterRenderable(IRenderable* renderable);
@@ -92,7 +82,7 @@ namespace NS::Object
         void SetAssets(AssetManager* assets) noexcept { m_assets = assets; }
 
         //! レンダラーを非所有で差す。標準の OnRenderScene が使う。未設定 (テスト等) は描かない
-        void SetRenderer(NS::Graphics::Renderer* renderer) noexcept { m_renderer = renderer; }
+        void SetRenderer(NS::Graphics::Renderer* renderer) noexcept { m_sceneRenderer.SetRenderer(renderer); }
 
         //! @brief シーンの見た目を確定する環境値。実体側が唯一の出所で、保存は保存時にここから写す
         [[nodiscard]] SceneEnvironment& Environment() noexcept { return m_environment; }
@@ -139,7 +129,7 @@ namespace NS::Object
 
         //! @brief 1 フレームで描くビュー列を差す。空なら現描画先へ Brain の視点で 1 回だけ描く
         //! @details 空でない間は各ビューを順に bind して描き分ける。出荷 (Editor 無し) では常に空
-        void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneViews = std::move(views); }
+        void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneRenderer.SetSceneViews(std::move(views)); }
 
         //! @brief 型 T の一時オブジェクトをシーンの中で作って入れる。呼出側へは生ポインタだけ返す
         //! @details 所有はシーンが握る。印立てと開始は unique_ptr を取る SpawnTransient が行う
@@ -173,10 +163,10 @@ namespace NS::Object
         virtual void OnShutdown();
 
     protected:
-        //! Opaque バケットの Renderable を登録順に描画する
+        //! Opaque バケットの Renderable を並べ替えずに描画する
         void DrawOpaque(const NS::Graphics::RenderContext& context);
         //! Transparent バケットを context.cameraPosition から遠い順にソートして描画する
-        //! 距離が同じなら SortPriority 昇順、それも同じなら stable_sort が登録順を保つ
+        //! 距離が同じなら SortPriority 昇順、それも同じなら stable_sort が元の並びを保つ
         void DrawTransparent(const NS::Graphics::RenderContext& context);
 
         //! 登録中の OverlayRendererComponent を priority 昇順で描画する。IsActive が偽なら飛ばす
@@ -196,36 +186,11 @@ namespace NS::Object
         //! @brief 渡されたシーンデータから配置物と当たりの body を組み直す。データはその場限りの一時データ
         void RebuildObjectsFrom(const SceneData& data);
 
-        //! @brief 標準のシーン描画パス。環境同期→カメラ評価→不透明→空→半透明
-        //! @param[in] viewOverride 描画視点の上書き。空なら Brain の選ぶカメラで描く
-        //! @return 組んだ描画コンテキスト。カメラ不在なら nullopt を返し何も描かない
-        [[nodiscard]] std::optional<NS::Graphics::RenderContext> RenderWorld(
-            NS::Graphics::Renderer& renderer, const std::optional<CameraPose>& viewOverride);
-
     private:
         //! 配置物の変化を一時オブジェクトへ知らせる。組み直しと当たりの張り直しの後に呼ぶ
         void NotifyTransientsObjectsRebuilt();
 
-        //! 1 ビュー分のシーン描画と、デバッグ描画・OverlayRendererComponent の重ね描きをまとめて行う
-        void RenderViewWithOverlays(const std::optional<CameraPose>& viewOverride);
-
-        //! 登録中の全 renderable の bounds とソート情報を RenderScene へ同期する。描画の入口で呼ぶ
-        void SyncRenderBounds();
-
-        //! IRenderable と RenderScene 登録ハンドルの対。renderable は非所有
-        struct RenderEntry
-        {
-            IRenderable* renderable = nullptr;
-            NS::Graphics::RenderHandle handle{};
-        };
-        std::vector<RenderEntry> m_renderables;
-
-        std::vector<OverlayRendererComponent*> m_overlays; // 重ね描きの登録簿。priority 昇順、非所有
-
-        std::vector<DirectionalLightComponent*> m_lights; // 平行光の登録簿。登録順、非所有
-
-        //! 描画物の登録簿と視錐台カリングを持つレンダラ側の描画シーン
-        NS::Graphics::RenderScene m_renderScene;
+        SceneRenderer m_sceneRenderer;
 
         //! 衝突判定の PhysicsScene。当たりの有る scene だけ ObjectList::SyncPhysics が body を入れ、無ければ空のまま
         //! m_objects より前に宣言してあるので破棄は後になり、これを借りる移動の Component より長く生きる
@@ -235,9 +200,7 @@ namespace NS::Object
         CameraBrainComponent* m_brain = nullptr; // 常駐するカメラ一時オブジェクトの brain。所有は m_objects、これは控え
         SceneEnvironment m_environment;          // シーンの環境値。実体側の唯一の出所
 
-        bool m_warnedZeroLightDirection = false;      // 平行光 zero 警告の 1 回制御
-        AssetManager* m_assets = nullptr;             // AssetManager、非所有。未設定なら参照の実体化を跳ばす
-        NS::Graphics::Renderer* m_renderer = nullptr; // レンダラー、非所有。未設定なら描かない
+        AssetManager* m_assets = nullptr; // AssetManager、非所有。未設定なら参照の実体化を跳ばす
 
         SceneData m_playBaseline;            // プレイ突入時の凍結スナップショット
         bool m_playBaselineInjected = false; // テスト注入の凍結を捕捉で潰さないための印
@@ -245,7 +208,5 @@ namespace NS::Object
         bool m_simulationEnabled = true;         // 世界を回すか。エディタの編集モードだけが下ろす
         bool m_simulationPaused = false;         // 時間停止中か
         std::int32_t m_simulationStepFrames = 0; // コマ送り残り fixed step 数。止めたままこの数だけ進める
-
-        std::vector<SceneView> m_sceneViews; // 描くビュー列。空なら現描画先へ 1 回だけ描く
     };
 } // namespace NS::Object
