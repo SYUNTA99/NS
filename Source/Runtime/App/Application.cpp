@@ -39,15 +39,14 @@ namespace NS::App
         }
         s_instance = this;
 
-        m_desc = desc;
-        if (m_desc.fixedDelta <= 0.0f)
+        float fixedDelta = desc.fixedDelta;
+        if (fixedDelta <= 0.0f)
         {
-            NS_LOG_WARN(App,
-                        "ApplicationDesc::fixedDelta が非正値 ({}) のため default 1/60 にフォールバック",
-                        m_desc.fixedDelta);
-            m_desc.fixedDelta = NS::Core::FrameTimer::k_DefaultFixedDelta;
+            NS_LOG_WARN(
+                App, "ApplicationDesc::fixedDelta が非正値 ({}) のため default 1/60 にフォールバック", fixedDelta);
+            fixedDelta = NS::Core::FrameTimer::k_DefaultFixedDelta;
         }
-        NS::Core::FrameTimer::SetFixedDelta(m_desc.fixedDelta);
+        NS::Core::FrameTimer::SetFixedDelta(fixedDelta);
 
         m_window = std::make_unique<NS::Platform::Window>(desc.window);
         if (!m_window->IsValid())
@@ -74,7 +73,9 @@ namespace NS::App
     {
         Shutdown();
         if (s_instance == this)
+        {
             s_instance = nullptr;
+        }
     }
 
     bool Application::IsValid() const noexcept
@@ -87,7 +88,17 @@ namespace NS::App
         return *m_window;
     }
 
+    const NS::Platform::Window& Application::Window() const noexcept
+    {
+        return *m_window;
+    }
+
     NS::Graphics::Renderer& Application::Renderer() noexcept
+    {
+        return *m_renderer;
+    }
+
+    const NS::Graphics::Renderer& Application::Renderer() const noexcept
     {
         return *m_renderer;
     }
@@ -97,7 +108,18 @@ namespace NS::App
         return NS::Platform::Input::Get();
     }
 
+    const NS::Platform::Input& Application::Input() const noexcept
+    {
+        return NS::Platform::Input::Get();
+    }
+
     NS::Object::AssetManager& Application::Assets() noexcept
+    {
+        NS_ASSERT(App, m_assets, "Init 前 / Shutdown 後に Assets() を呼んでいる");
+        return *m_assets;
+    }
+
+    const NS::Object::AssetManager& Application::Assets() const noexcept
     {
         NS_ASSERT(App, m_assets, "Init 前 / Shutdown 後に Assets() を呼んでいる");
         return *m_assets;
@@ -143,7 +165,9 @@ namespace NS::App
         m_assets->RegisterSharedMaterials();
 
         for (auto& layer : m_layers)
+        {
             layer->OnAttach();
+        }
     }
 
     bool Application::WantExit() noexcept
@@ -159,18 +183,8 @@ namespace NS::App
 
         if (m_quitGuard)
         {
-            // guard 呼出は try 内の 1 回だけにする。noexcept 境界で例外を外へ出すと std::terminate になる
-            try
+            if (!m_quitGuard())
             {
-                if (!m_quitGuard())
-                {
-                    m_quitRequested = false;
-                    return false;
-                }
-            }
-            catch (...)
-            {
-                NS_LOG_ERROR(App, "コールバック内で例外が発生しました");
                 m_quitRequested = false;
                 return false;
             }
@@ -190,7 +204,9 @@ namespace NS::App
             window.PollMessages();
 
             if (WantExit())
+            {
                 break;
+            }
 
             NS::Core::FrameTimer::Tick();
 

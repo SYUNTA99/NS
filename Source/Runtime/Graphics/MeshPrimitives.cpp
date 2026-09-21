@@ -79,7 +79,7 @@ namespace NS::Graphics
         const float ey = extents.y;
         const float ez = extents.z;
 
-        // スロープの高さを求め、 指定の最大高さで上限クランプする
+        // スロープの高さを求め、指定の最大高さで上限クランプする
         const float angleRad = NS::Core::DegreesToRadians(angleDegrees);
         const float rawHeight = std::tan(angleRad) * (2.0f * ez);
         const float height = std::min(rawHeight, 2.0f * ey);
@@ -138,7 +138,7 @@ namespace NS::Graphics
         MeshGeometry geom;
         geom.vertices.reserve(static_cast<std::size_t>(rings + 1) * (segments + 1));
 
-        // 経線の継ぎ目で u が 0 と 1 に割れるよう、 一周した先にもう 1 列重ねて置く
+        // 経線の継ぎ目で u が 0 と 1 に割れるよう、一周した先にもう 1 列重ねて置く
         for (std::uint32_t ring = 0; ring <= rings; ++ring)
         {
             const float v = static_cast<float>(ring) / static_cast<float>(rings);

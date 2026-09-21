@@ -41,7 +41,9 @@ namespace NS::Graphics
     {
         const std::size_t elementSize = [format]() -> std::size_t {
             if (format == DXGI_FORMAT_R16_UINT)
-                return 2u;
+            {
+				return 2u;
+            }
             return 4u;
         }();
         BufferDesc desc{};

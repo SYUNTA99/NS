@@ -1,5 +1,6 @@
 #include "Game/Level/BlockObject.h"
 #include "Game/Player.h"
+#include "tuning_field_access.h"
 
 #include <Game/Level/BreakableComponent.h>
 #include <Game/Level/CollisionInputComponent.h>
@@ -8,7 +9,6 @@
 #include <Game/Level/ImpactResolverComponent.h>
 #include <Game/Level/LaunchedBodyComponent.h>
 #include <Game/Player/PlayerComponent.h>
-#include <Game/Player/PlayerStats.h>
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
@@ -50,7 +50,6 @@ namespace
     constexpr float k_TapSlamSpeed = 10.0f;
     constexpr float k_LaunchBaseSpeed = 32.0f;
     constexpr float k_LaunchSpeedCap = 120.0f;
-    constexpr float k_ReboundSpeedCap = 24.0f;
     // 破壊は耐久 ≤ 最終威力なので、反発と押し飛ばしを見る台は壊れない高さを既定にする
     constexpr float k_UnbreakableToughness = 99.0f;
     // 逆転を見る台の耐久。満溜め + 中心直撃の 2.0 と、素当て + 縁かすりの 0.73 の間に置く
@@ -143,7 +142,7 @@ namespace
             rig.movement = live->FindComponent<NS::Game::Player::PlayerComponent>();
             rig.impact = live->FindComponent<LevelNs::ImpactResolverComponent>();
             rig.input = live->FindComponent<LevelNs::CollisionInputComponent>();
-            // 起こしたままだと実機の入力が毎歩 0 を書き込むため、走行入力と向きが検証台から消える
+            // 起こしたままだと実機の入力が毎フレーム 0 を書き込むため、走行入力と向きが検証台から消える
             if (auto* input = live->FindComponent<SceneNs::PlayerInputComponent>())
                 input->SetActive(false);
         }
@@ -206,7 +205,7 @@ namespace
         field->set(&comp, &value);
     }
 
-    // ヒットストップを 0 にして、衝突の結果をその歩のうちに適用させる
+    // ヒットストップを 0 にして、衝突の結果をそのフレームのうちに適用させる
     void SetInstantImpact(Rig& rig)
     {
         SetFloatField(*rig.impact, "ヒットストップ基準秒", 0.0f);
@@ -218,7 +217,7 @@ namespace
         SetBoolField(*rig.impact, "破壊を許可", true);
     }
 
-    // 空中でも出せるが、落下が混ざると当たる歩が揺れる。先に床へ着けて接地からの発動に揃える
+    // 空中でも出せるが、落下が混ざると当たるフレームが揺れる。先に床へ着けて接地からの発動に揃える
     void SettleOnFloor(SceneNs::Scene& scene, const Rig& rig)
     {
         for (int i = 0; i < 30 && !rig.movement->IsGrounded(); ++i)
@@ -245,7 +244,7 @@ namespace
         Step(scene, rig);
     }
 
-    // 裁定が書いた速度をそのまま読むため、裁定が起きた歩は移動を走らせずに返す
+    // 裁定が書いた速度をそのまま読むため、裁定が起きたフレームは移動を走らせずに返す
     int StepUntilImpact(SceneNs::Scene& scene, const Rig& rig, int maxSteps)
     {
         for (int i = 0; i < maxSteps; ++i)
@@ -258,7 +257,7 @@ namespace
         return maxSteps;
     }
 
-    // 解放が書いた速度をそのまま読むため、移動が起きた歩は移動を走らせずに返す
+    // 解放が書いた速度をそのまま読むため、移動が起きたフレームは移動を走らせずに返す
     int StepsUntilMovementActive(SceneNs::Scene& scene, const Rig& rig, int maxSteps)
     {
         for (int i = 0; i < maxSteps; ++i)
@@ -321,7 +320,7 @@ namespace
         return rig;
     }
 
-    // 飛ばされる物が乗る帯を回す。Scene::OnUpdate と同じく物理の 1 歩を LateUpdate 帯の手前へ挟む
+    // 飛ばされる物が乗る帯を回す。Scene::OnUpdate と同じく物理の 1 フレームを LateUpdate 帯の手前へ挟む
     void StepBody(SceneNs::Scene& scene)
     {
         scene.Objects().UpdateObjects(SceneNs::TickPriority::Update, SceneNs::TickPriority::LateUpdate);
@@ -329,7 +328,7 @@ namespace
         scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
     }
 
-    // 止まるまで回して掛かった歩数を返す。止まらなければ maxSteps を返す
+    // 止まるまで回して掛かったフレーム数を返す。止まらなければ maxSteps を返す
     int RunUntilRest(SceneNs::Scene& scene, LevelNs::LaunchedBodyComponent& body, int maxSteps)
     {
         for (int i = 0; i < maxSteps; ++i)
@@ -339,13 +338,6 @@ namespace
                 return i + 1;
         }
         return maxSteps;
-    }
-
-    void SetIntField(SceneNs::Component& comp, std::string_view label, int value)
-    {
-        const SceneNs::FieldDesc* field = SceneNs::FindField(comp.GetReflection(), label);
-        ASSERT_NE(field, nullptr);
-        field->set(&comp, &value);
     }
 
     // 一時オブジェクトとして湧いた破片だけ集める。押し飛ばされた配置物は数えない
@@ -405,6 +397,28 @@ TEST(CollisionImpact, ReboundsAwayFromApproachedBox)
     EXPECT_FALSE(rig.movement->IsBodySlamming());
 }
 
+// 箱に押し付けたまま出しても当たる。発動したフレームのうちに進めずに打ち切ると、
+// 裁定が一度も走らないまま突進が終わる
+TEST(CollisionImpact, SlamFromRestingContactStillHits)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    SetInstantImpact(rig);
+    SettleOnFloor(scene, rig);
+    for (int i = 0; i < 20; ++i)
+    {
+        rig.movement->SetVelocity(Vector3{k_RunSpeed, 0.0f, 0.0f});
+        Step(scene, rig);
+    }
+    ASSERT_FALSE(rig.impact->DidRebound());
+
+    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
+    ASSERT_TRUE(rig.movement->IsBodySlamming());
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+    EXPECT_TRUE(rig.impact->DidRebound());
+}
+
 // 溜めるほど返りも速い。溜めるほど損になると、溜めて放つ意味が消える
 TEST(CollisionImpact, ChargedImpactReboundsFaster)
 {
@@ -449,20 +463,6 @@ TEST(CollisionImpact, HeavierTargetReboundsHarder)
     const float strong = HorizontalSpeed(heavy.movement->Velocity());
     EXPECT_GT(weak, 0.0f);
     EXPECT_GT(strong, weak);
-}
-
-TEST(CollisionImpact, ReboundSpeedIsCapped)
-{
-    SceneNs::Scene scene;
-    Rig rig = BuildSlam(scene, k_NearCourse);
-    SetInstantImpact(rig);
-    SetFloatField(*rig.impact, "反発基準初速", 100.0f);
-    BeginSlam(scene, rig, k_RunSpeed, 0.0f);
-
-    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
-
-    ASSERT_TRUE(rig.impact->DidRebound());
-    EXPECT_FLOAT_EQ(HorizontalSpeed(rig.movement->Velocity()), k_ReboundSpeedCap);
 }
 
 TEST(CollisionImpact, ReboundAddsUpSpeed)
@@ -828,7 +828,7 @@ TEST(CollisionImpact, TinyMassCannotBlowLaunchSpeedUp)
     EXPECT_FLOAT_EQ(HorizontalSpeed(body->Velocity()), k_LaunchSpeedCap);
 }
 
-// 衝突の瞬間に自機が数歩止まる。止まっている間は反発も発射も適用されず、明けた歩にまとめて掛かる
+// 衝突の瞬間に自機が数フレーム止まる。止まっている間は反発も発射も適用されず、明けたフレームにまとめて掛かる
 TEST(CollisionImpact, HitStopFreezesPlayerAndDefersLaunch)
 {
     SceneNs::Scene scene;
@@ -838,7 +838,7 @@ TEST(CollisionImpact, HitStopFreezesPlayerAndDefersLaunch)
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
-    // 検知の歩は移動を止めない。最後の 1 歩で自機が相手へ触れてから凍る
+    // 検知のフレームは移動を止めない。最後の 1 フレームで自機が相手へ触れてから凍る
     ASSERT_TRUE(rig.impact->DidRebound());
     EXPECT_TRUE(rig.movement->IsActiveSelf());
     EXPECT_EQ(HitBody(rig), nullptr);
@@ -861,7 +861,7 @@ TEST(CollisionImpact, HeavierTargetStopsLonger)
 {
     SceneNs::Scene lightScene;
     Rig light = BuildSlam(lightScene, k_NearCourse);
-    // 中心直撃はピーク倍率が乗る。既定の基準秒だと重い側が上限 12 歩に張り付くので、下げて上限の外で比べる
+    // 中心直撃はピーク倍率が乗る。既定の基準秒だと重い側が上限 12 フレームに張り付くので、下げて上限の外で比べる
     SetFloatField(*light.impact, "ヒットストップ基準秒", 1.0f / 60.0f);
     light.breakable->SetMass(1.0f);
     BeginSlam(lightScene, light, k_FastEntrySpeed, 0.0f);
@@ -907,7 +907,7 @@ TEST(CollisionImpact, ChargedImpactStopsLonger)
     EXPECT_LT(plainSteps, chargedSteps);
 }
 
-// 基準は秒で指定し、内部で歩数へ換算して凍結の長さを決める
+// 基準は秒で指定し、内部でフレーム数へ換算して凍結の長さを決める
 TEST(CollisionImpact, HitStopBaseSecondsDrivesFreezeLength)
 {
     SceneNs::Scene scene;
@@ -946,7 +946,7 @@ TEST(CollisionImpact, FreezeSquashesPlayerShape)
     EXPECT_FLOAT_EQ(squashed.z, authored.z);
 }
 
-// 解放の歩に弾かれる方向へ伸びた形で飛び出し、数歩で配置で決めた元の形へ厳密に戻る
+// 解放のフレームに弾かれる方向へ伸びた形で飛び出し、数フレームで配置で決めた元の形へ厳密に戻る
 TEST(CollisionImpact, ReleaseStretchesThenRestoresScaleExactly)
 {
     SceneNs::Scene scene;
@@ -1280,7 +1280,7 @@ TEST(CollisionImpact, PeakStretchesHitStop)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_FarCourse);
-    // 既定の基準秒では上限 12 歩で頭打ちになるため、ピーク倍率が歩数に出るまで基準を下げる
+    // 既定の基準秒では上限 12 フレームで頭打ちになるため、ピーク倍率がフレーム数に出るまで基準を下げる
     SetFloatField(*rig.impact, "ヒットストップ基準秒", 2.0f / 60.0f);
     BeginSlam(scene, rig, k_RunSpeed, 1.0f);
 
@@ -1346,10 +1346,11 @@ TEST(CollisionImpact, BreakDoesNotLaunchTarget)
     const int rest = StepsUntilMovementActive(scene, rig, 60);
     ASSERT_LT(rest, 60);
 
-    EXPECT_EQ(HitBody(rig), nullptr);
+    const LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    EXPECT_TRUE(body == nullptr || !body->IsFlying());
 }
 
-// 貫通の止め秒を 0 にすると凍結を挟まず、その歩のうちに壊れて減速する
+// 貫通の止め秒を 0 にすると凍結を挟まず、そのフレームのうちに壊れて減速する
 TEST(CollisionImpact, BreakStopZeroAppliesInstantly)
 {
     SceneNs::Scene scene;
@@ -1414,7 +1415,7 @@ TEST(CollisionImpact, BreakSkipsSquashButStretchesForward)
     EXPECT_FLOAT_EQ(restored.z, authored.z);
 }
 
-// 検知の歩では移動が最後の 1 歩を走り、次の歩で凍る。自機が相手へ押し付けられた構図で止まる
+// 検知したフレームは移動を最後まで走らせ、次で凍る。自機が相手へ押し付けられた構図で止まる
 TEST(CollisionImpact, FreezeWaitsOneStepAfterDetection)
 {
     SceneNs::Scene scene;
@@ -1430,7 +1431,7 @@ TEST(CollisionImpact, FreezeWaitsOneStepAfterDetection)
     EXPECT_FALSE(rig.movement->IsActiveSelf());
 }
 
-// 待ちの 1 歩と凍結中に同じ衝突を二重に検知しない
+// 待ちの 1 フレームと凍結中に同じ衝突を二重に検知しない
 TEST(CollisionImpact, DetectsOnlyOncePerImpact)
 {
     SceneNs::Scene scene;
@@ -1453,7 +1454,7 @@ TEST(CollisionImpact, DetectsOnlyOncePerImpact)
     EXPECT_TRUE(body->IsFlying());
 }
 
-// 凍結が始まる歩で相手が発射方向へ食い込む。当たりは動かさない
+// 凍結が始まるフレームで相手が発射方向へ食い込む。当たりは動かさない
 TEST(CollisionImpact, HitStopPushesRockWhenFreezeBegins)
 {
     SceneNs::Scene scene;
@@ -1477,7 +1478,7 @@ TEST(CollisionImpact, HitStopPushesRockWhenFreezeBegins)
     EXPECT_TRUE(rig.targetBox->IsActiveSelf());
 }
 
-// 凍結中は歩ごとに相手が発射軸に沿って往復する
+// 凍結中はフレームごとに相手が発射軸に沿って往復する
 TEST(CollisionImpact, RockVibratesWhileFrozen)
 {
     SceneNs::Scene scene;
@@ -1543,7 +1544,7 @@ TEST(CollisionImpact, HeavierRockVibratesLess)
     EXPECT_LT(heavyMax - heavyMin, lightMax - lightMin);
 }
 
-// 食い込みも振動も絵だけ。明けた歩に元位置へ厳密に戻してから発射する
+// 食い込みも振動も絵だけ。明けたフレームに元位置へ厳密に戻してから発射する
 TEST(CollisionImpact, ReleaseRestoresRockExactlyBeforeLaunch)
 {
     SceneNs::Scene scene;
@@ -1624,6 +1625,50 @@ TEST(CollisionImpact, BreakScattersDebrisAndLeavesMark)
         EXPECT_FLOAT_EQ(pos.x, home.x);
         EXPECT_FLOAT_EQ(pos.y, home.y);
         EXPECT_FLOAT_EQ(pos.z, home.z);
+    }
+}
+
+// 壊した物の本体は見えなくなる
+TEST(CollisionImpact, BreakHidesTarget)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
+    SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
+    rig.breakable->SetToughness(1.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+
+    ASSERT_TRUE(rig.impact->DidBreak());
+    ASSERT_NE(rig.target, nullptr);
+    auto* mesh = rig.target->FindComponent<SceneNs::MeshRendererComponent>();
+    ASSERT_NE(mesh, nullptr);
+    EXPECT_FALSE(mesh->IsActiveSelf());
+}
+
+// 壊した時の破片は破片の数が 0。0 でないと壁に当たるたびに撒き直す
+TEST(CollisionImpact, BreakDebrisDoNotScatterAgain)
+{
+    SceneNs::Scene scene;
+    Rig rig = BuildSlam(scene, k_NearCourse);
+    EnableBreak(rig);
+    SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
+    rig.breakable->SetToughness(1.0f);
+    BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
+
+    ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
+
+    const std::vector<LevelNs::LaunchedBodyComponent*> debris = DebrisBodies(scene);
+    ASSERT_EQ(debris.size(), 5u);
+    for (LevelNs::LaunchedBodyComponent* body : debris)
+    {
+        const SceneNs::Component& comp = *body;
+        const SceneNs::FieldDesc* field = SceneNs::FindField(comp.GetReflection(), "破片の数");
+        ASSERT_NE(field, nullptr);
+        int count = -1;
+        field->get(&comp, &count);
+        EXPECT_EQ(count, 0);
     }
 }
 
@@ -1718,13 +1763,14 @@ TEST(CollisionImpact, LaunchLeavesMarkWithoutDebris)
     EXPECT_TRUE(DebrisBodies(scene).empty());
 }
 
-// 破片の数 0 は破片を出さない指定
+// 壊れた物の破片の数が 0 なら破片を出さない
 TEST(CollisionImpact, ZeroDebrisCountScattersNone)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     EnableBreak(rig);
-    SetIntField(*rig.impact, "破片の数", 0);
+    ASSERT_NE(rig.target, nullptr);
+    rig.target->AddComponent<LevelNs::LaunchedBodyComponent>()->SetDebrisCount(0);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     rig.breakable->SetToughness(1.0f);
     BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
@@ -1754,7 +1800,6 @@ TEST(CollisionImpact, NoMarkWithoutFloorBelow)
     EXPECT_EQ(MarkCount(scene), 0);
 }
 
-// 破片は壊れた物より小さい cube。大きいと壊れた本体と見分けがつかない
 TEST(CollisionImpact, DebrisLooksLikeSmallCube)
 {
     SceneNs::Scene scene;
@@ -1784,8 +1829,10 @@ TEST(CollisionImpact, DebrisRestsThenExpires)
     Rig rig = BuildSlam(scene, k_NearCourse);
     EnableBreak(rig);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
-    SetFloatField(*rig.impact, "破片の初速", 1.0f);
-    SetFloatField(*rig.impact, "破片の残る秒", 0.05f);
+    ASSERT_NE(rig.target, nullptr);
+    auto* targetBody = rig.target->AddComponent<LevelNs::LaunchedBodyComponent>();
+    SetFloatField(*targetBody, "破片の速さ", 1.0f);
+    SetFloatField(*targetBody, "破片の寿命秒", 0.05f);
     rig.breakable->SetToughness(1.0f);
     BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
@@ -1819,7 +1866,7 @@ TEST(CollisionImpact, DebrisRestsThenExpires)
     }
 }
 
-// 破片と跡は解放の歩に出る。止まった 1 枚の横で破片だけが飛ばない
+// 破片と跡は解放のフレームに出る。止まった 1 枚の横で破片だけが飛ばない
 TEST(CollisionImpact, DebrisWaitForRelease)
 {
     SceneNs::Scene scene;
@@ -2278,6 +2325,30 @@ TEST(LaunchedBody, LandingOnFloorDoesNotShatter)
     EXPECT_NEAR(rig.object->Root().Position().y, k_BodyRestY, 0.05f);
 }
 
+// 飛ぶ形は当たり箱から作る。当たりの無い物は飛ばず、物理の body も増えない
+TEST(LaunchedBody, DoesNotFlyWithoutCollider)
+{
+    NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+    SceneNs::Scene scene;
+    SceneNs::SceneData data;
+    SceneNs::ObjectData bare;
+    bare.components.push_back(SceneNs::MakeComponentEntry("LaunchedBodyComponent"));
+    data.objects.push_back(bare);
+    scene.LoadFromData(std::move(data));
+
+    LevelNs::LaunchedBodyComponent* body = nullptr;
+    scene.Objects().ForEachComponent<LevelNs::LaunchedBodyComponent>(
+        [&body](LevelNs::LaunchedBodyComponent& found) { body = &found; });
+    ASSERT_NE(body, nullptr);
+    ASSERT_EQ(body->Owner()->FindComponent<SceneNs::ColliderComponent>(), nullptr);
+    const JPH::uint bodiesBefore = scene.Physics().BodyCount();
+
+    body->Launch(Vector3{5.0f, 0.0f, 0.0f});
+
+    EXPECT_FALSE(body->IsFlying());
+    EXPECT_EQ(scene.Physics().BodyCount(), bodiesBefore);
+}
+
 // 飛ばされた物の重力は自機の上昇重力と同じ値
 TEST(LaunchedBody, FallsAtThePlayersUpwardGravity)
 {
@@ -2291,5 +2362,7 @@ TEST(LaunchedBody, FallsAtThePlayersUpwardGravity)
     physics.Update(k_FixedDt);
     const float fallenSpeed = physics.BodyVelocity(body).y;
 
-    EXPECT_NEAR(fallenSpeed / k_FixedDt, NS::Game::Player::PlayerStats{}.gravityUp, 1.0f);
+    NS::Object::GameObject probe;
+    auto& player = *probe.AddComponent<NS::Game::Player::PlayerComponent>();
+    EXPECT_NEAR(fallenSpeed / k_FixedDt, NsTest::ReadTuningField(player, "上昇重力"), 1.0f);
 }

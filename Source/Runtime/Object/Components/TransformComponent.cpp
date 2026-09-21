@@ -1,4 +1,4 @@
-#include "Runtime/Object/Components/TransformComponent.h"
+﻿#include "Runtime/Object/Components/TransformComponent.h"
 
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 
@@ -16,14 +16,14 @@ namespace NS::Object
         return m_transform.Position();
     }
 
-    void TransformComponent::SetRotationEulerDegrees(const NS::Core::Vector3& eulerDegrees) noexcept
+    void TransformComponent::SetRotation(const NS::Core::Quaternion& rotation) noexcept
     {
-        m_transform.SetRotation(NS::Core::EulerDegreesToQuaternion(eulerDegrees));
+        m_transform.SetRotation(rotation);
     }
 
-    NS::Core::Vector3 TransformComponent::RotationEulerDegrees() const noexcept
+    NS::Core::Quaternion TransformComponent::Rotation() const noexcept
     {
-        return NS::Core::QuaternionToEulerDegrees(m_transform.Rotation());
+        return m_transform.Rotation();
     }
 
     void TransformComponent::SetScale(const NS::Core::Vector3& scale) noexcept
@@ -47,7 +47,9 @@ namespace NS::Object
         {
             const nlohmann::json* transform = FindComponentEntry(object, k_TransformTypeName);
             if (transform == nullptr)
+            {
                 return fallback;
+            }
             return FieldVector3(*transform, fieldName, fallback);
         }
 
@@ -60,15 +62,19 @@ namespace NS::Object
     nlohmann::json& EnsureTransformComponent(ObjectData& object)
     {
         if (!object.components.is_array())
+        {
             object.components = nlohmann::json::array();
+        }
         for (nlohmann::json& entry : object.components)
         {
             if (ComponentEntryType(entry) == k_TransformTypeName)
+            {
                 return entry;
+            }
         }
         nlohmann::json transform = MakeComponentEntry(k_TransformTypeName);
         SetField(transform, k_PositionFieldName, NS::Core::Vector3{0.0f, 0.0f, 0.0f});
-        SetField(transform, k_RotationEulerFieldName, NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        SetField(transform, k_RotationFieldName, NS::Core::Quaternion::Identity);
         SetField(transform, k_ScaleFieldName, NS::Core::Vector3{1.0f, 1.0f, 1.0f});
         object.components.push_back(std::move(transform));
         return object.components.back();
@@ -86,25 +92,17 @@ namespace NS::Object
 
     NS::Core::Quaternion ObjectRotation(const ObjectData& object) noexcept
     {
-        const NS::Core::Vector3 euler =
-            ReadTransformVec3(object, k_RotationEulerFieldName, NS::Core::Vector3{0.0f, 0.0f, 0.0f});
-        return NS::Core::EulerDegreesToQuaternion(euler);
+        const nlohmann::json* transform = FindComponentEntry(object, k_TransformTypeName);
+        if (transform == nullptr)
+        {
+            return NS::Core::Quaternion::Identity;
+        }
+        return FieldQuaternion(*transform, k_RotationFieldName, NS::Core::Quaternion::Identity);
     }
 
     void SetObjectRotation(ObjectData& object, const NS::Core::Quaternion& rotation) noexcept
     {
-        WriteTransformVec3(object, k_RotationEulerFieldName, NS::Core::QuaternionToEulerDegrees(rotation));
-
-        // 厳密回転の控えが載っている間は組み立てでそちらが勝つので、置き去りにすると回転が戻る
-        nlohmann::json* transform = FindComponentEntry(object, k_TransformTypeName);
-        if (transform == nullptr)
-            return;
-        const auto fieldsIt = transform->find("fields");
-        if (fieldsIt == transform->end() || !fieldsIt->is_object())
-            return;
-        const auto quatIt = fieldsIt->find(std::string(k_RotationQuatFieldName));
-        if (quatIt != fieldsIt->end())
-            *quatIt = nlohmann::json{rotation.x, rotation.y, rotation.z, rotation.w};
+        SetField(EnsureTransformComponent(object), k_RotationFieldName, rotation);
     }
 
     NS::Core::Vector3 ObjectScale(const ObjectData& object) noexcept

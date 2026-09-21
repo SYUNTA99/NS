@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Object.h"
@@ -15,8 +15,8 @@ namespace NS::Object
     class TransformComponent;
 
     //! @brief Transform を持つ継承可能基底。Player / Block / Enemy などの派生クラスの共通基底
-    //! @details 配下 Component は AddComponent<T>() で生成し、 GameObject が unique_ptr で寿命を所有する
-    //! 伝播の並びは m_components の priority 昇順、 所有は m_ownedComponents が別に持つ
+    //! @details 配下 Component は AddComponent<T>() で生成し、GameObject が unique_ptr で寿命を所有する
+    //! 伝播の並びは m_components の priority 昇順、所有は m_ownedComponents が別に持つ
     //! OnStart / OnUpdate / OnEndPlay は配下 Component へ伝播するだけの補助で、派生の拡張点ではない
     //! 毎フレームの更新は ObjectList が持つ。全配置物の Component を priority 昇順に集めて直接回すため、
     //! ここの OnUpdate は通らない
@@ -31,14 +31,14 @@ namespace NS::Object
         [[nodiscard]] Transform& Root() noexcept { return *m_transform; }
         [[nodiscard]] const Transform& Root() const noexcept { return *m_transform; }
 
-        //! 実行時にコードが足す一時オブジェクトか。 true は保存・凍結・作業データに写らず、
+        //! 実行時にコードが足す一時オブジェクトか。true は保存・凍結・作業データに写らず、
         //! データからの組み直し後も残る
         [[nodiscard]] bool IsTransient() const noexcept { return m_transient; }
 
-        //! 一時オブジェクトの印。 Scene::SpawnTransient が立てる。 テストは直接立ててよい
+        //! 一時オブジェクトの印。Scene::SpawnTransient が立てる。テストは直接立ててよい
         void SetTransient(bool transient) noexcept { m_transient = transient; }
 
-        //! 配置物の組み直し・当たりの張り直しの後に scene が一時オブジェクトへ知らせる。 データ由来の配置物には来ない
+        //! 配置物の組み直し・当たりの張り直しの後に scene が一時オブジェクトへ知らせる。データ由来の配置物には来ない
         virtual void OnObjectsRebuilt() {}
 
         [[nodiscard]] GameObject* Parent() const noexcept { return m_parent; }
@@ -55,16 +55,24 @@ namespace NS::Object
         {
             const auto* target = T::StaticReflection();
             for (Component* comp : m_components)
+            {
                 if (comp != nullptr && comp->IsA(target))
+                {
                     return static_cast<T*>(comp);
+                }
+            }
             return nullptr;
         }
         template <class T> [[nodiscard]] const T* FindComponent() const noexcept
         {
             const auto* target = T::StaticReflection();
             for (const Component* comp : m_components)
+            {
                 if (comp != nullptr && comp->IsA(target))
+                {
                     return static_cast<const T*>(comp);
+                }
+            }
             return nullptr;
         }
 
@@ -88,10 +96,6 @@ namespace NS::Object
         //! priority の降順で Component::OnEndPlay を呼ぶ
         void OnEndPlay();
 
-        [[nodiscard]] bool IsAlive() const noexcept { return m_alive; }
-        //! 生存の印を下ろすだけ。この印を見て回収する経路は無く、1 体消すのは Scene::DestroyObject
-        void Destroy() noexcept { m_alive = false; }
-
         //! この配置物自身の active 値。親の状態は含まない
         [[nodiscard]] bool IsActiveSelf() const noexcept { return m_activeSelf; }
 
@@ -102,14 +106,7 @@ namespace NS::Object
         //! active を切り替える。子の値は触らないので、親を戻せば子も一緒に戻る
         void SetActive(bool active) noexcept { m_activeSelf = active; }
 
-        //! 親の中での並び順。ヒエラルキーの表示順で、組み立てはこの順に並べる
-        [[nodiscard]] std::uint32_t Order() const noexcept { return m_order; }
-
     private:
-        // 並び順の書き込みは ObjectList::Rebuild の data 適用経路だけに絞る
-        friend class ObjectList;
-        void SetOrder(std::uint32_t order) noexcept { m_order = order; }
-
         //! Component に owner を注入し tick 列へ priority 昇順で挿入する
         void AttachOwnedComponent(Component* comp) noexcept;
 
@@ -125,13 +122,11 @@ namespace NS::Object
         }
 
         Transform* m_transform = nullptr;     // TransformComponent が持つ実体、GameObject が必ず 1 つ積む
-        std::vector<Component*> m_components; // priority 昇順の tick 列、 非所有
-        std::vector<std::unique_ptr<Component>> m_ownedComponents; // 所有権保持用。 tick 順序は m_components が担う
-        std::vector<GameObject*> m_children;                       // 子 GameObject、 非所有
-        GameObject* m_parent = nullptr;                            // 親 GameObject、 root なら nullptr
-        Scene* m_scene = nullptr;                                  // 所有 Scene、 attach 前後は nullptr
-        std::uint32_t m_order = 0;                                 // 親の中での並び順
-        bool m_alive = true;                                       // false で次フレーム回収対象
+        std::vector<Component*> m_components; // priority 昇順の tick 列、非所有
+        std::vector<std::unique_ptr<Component>> m_ownedComponents; // 所有権保持用。tick 順序は m_components が担う
+        std::vector<GameObject*> m_children;                       // 子 GameObject、非所有
+        GameObject* m_parent = nullptr;                            // 親 GameObject、root なら nullptr
+        Scene* m_scene = nullptr;                                  // 所有 Scene、attach 前後は nullptr
         bool m_activeSelf = true;                                  // false で配下 Component が全て止まる
         bool m_transient = false;                                  // 一時オブジェクトの印。保存・凍結に写らない
 

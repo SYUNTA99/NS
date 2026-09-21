@@ -26,7 +26,7 @@ namespace NS::Game::Level
 
     void RespawnerComponent::RestartRun() noexcept
     {
-        // プレイヤーに載る component なので、 戻す相手は自分の owner
+        // プレイヤーに載る component なので、戻す相手は自分の owner
         auto* scene = static_cast<NS::Object::Scene*>(Owner()->OwningScene());
         if (scene == nullptr)
             return;

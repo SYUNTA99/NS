@@ -29,7 +29,7 @@ namespace NS::Editor
     //! 中ドラッグで Pan、ホイールで Zoom
     //! ゲームパッドは右スティックで Orbit、左スティックで Pan、LT-RT で Zoom
     //! UI がマウスを掴んでいる間は Input::UiWantsMouse で判定してマウス入力を無視する
-    //! pitch / distance は clamp で有限範囲に抑え、NaN / 巨大値での描画クラッシュを防ぐ
+    //! pitch / distance は clamp で有限範囲に抑え、巨大値での描画クラッシュを防ぐ
     class EditorCamera
     {
     public:
@@ -64,21 +64,21 @@ namespace NS::Editor
         void ApplyOrbit(float yawDelta, float pitchDelta) noexcept;
         void ApplyPan(float panX, float panY) noexcept;
         void ApplyZoom(float zoomDelta) noexcept;
-        //! eye を固定したまま yaw / pitch を回す その場の見回し。 右ドラッグのフライ視点で使う
+        //! eye を固定したまま yaw / pitch を回す その場の見回し。右ドラッグのフライ視点で使う
         void ApplyLook(float yawDelta, float pitchDelta) noexcept;
-        //! 視線方向へのフライ移動。 forward は pitch を含む視線方向、 strafe は画面右、 vertical は world 上下で各軸
-        //! -1..1 speedScale は移動量の倍率で Shift 押下時の加速に使う。 既定 1.0 は従来速度
+        //! 視線方向へのフライ移動。forward は pitch を含む視線方向、strafe は画面右、vertical は world 上下で各軸
+        //! -1..1 speedScale は移動量の倍率で Shift 押下時の加速に使う。既定 1.0 は従来速度
         void ApplyFlyMove(
             float forwardAxis, float strafeAxis, float verticalAxis, float dt, float speedScale = 1.0f) noexcept;
 
-        //! free-fly 入力を 1 フレーム分適用する。 感度・ ズームバネは自分の設定値で処理する
+        //! free-fly 入力を 1 フレーム分適用する。感度・ズームバネは自分の設定値で処理する
         void ApplyInput(const EditorCameraInput& input) noexcept;
 
-        // 2m 未満は block 内側へ入り描画破綻するので下限は残す。 上限は広い地形を一望できるよう実質無制限まで
-        // 開け、 LevelEditorController が敷く far plane 5000 の内側に収めて遠景も映す。 完全な無限は
-        // inf / far 越えで全消えを招く
+        // 2m 未満は block 内側へ入り描画破綻するので下限は残す。上限は広い地形を一望できるよう実質無制限まで
+        // 開け、LevelEditorController が敷く far plane 5000 の内側に収めて遠景も映す。完全な無限は
+        // 無限大と far 越えで全消えを招く
         static constexpr float k_MinDistance = 2.0f;
-        // WASD の速さを距離比例で出す時の下限。 これより寄っても 3.6m/s は残り、 細かく詰めるには十分遅い
+        // WASD の速さを距離比例で出す時の下限。これより寄っても 3.6m/s は残り、細かく詰めるには十分遅い
         static constexpr float k_MinMoveDistance = 6.0f;
         static constexpr float k_MaxDistance = 4000.0f;
         // ±90° は up/forward 平行で gimbal lock 寸前のため ±89° でクランプ
@@ -92,14 +92,14 @@ namespace NS::Editor
             float springOmega = 6.0f; // 距離バネの角速度
             float mouseSensOrbit = 0.003f;
             float mouseSensPan = 0.02f;
-            // ホイール 1 刻みあたりの zoomDelta 倍率。 ApplyZoom が log scale なので
-            // 1.0 で 1 刻み = 10% 距離変化、 2.0 で 19%、 0.5 で 5% と直感的に効く
+            // ホイール 1 刻みあたりの zoomDelta 倍率。ApplyZoom が log scale なので
+            // 1.0 で 1 刻み = 10% 距離変化、2.0 で 19%、0.5 で 5% と直感的に効く
             float mouseSensZoom = 1.0f;
             float padSensOrbit = 2.5f;
             float padSensPan = 8.0f;
             float padSensZoom = 4.0f;
-            // WASD の 1 秒あたり移動量 = この値 × distance。 distance 比例でズーム量に依らず体感速度を一定に保つ
-            // ただし距離は k_MinMoveDistance で下支えするので、 寄り切っても速さは残る
+            // WASD の 1 秒あたり移動量 = この値 × distance。distance 比例でズーム量に依らず体感速度を一定に保つ
+            // ただし距離は k_MinMoveDistance で下支えするので、寄り切っても速さは残る
             float keyMoveSpeed = 0.6f;
         };
 

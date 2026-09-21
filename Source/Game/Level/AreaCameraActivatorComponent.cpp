@@ -1,4 +1,4 @@
-#include "Game/Level/AreaCameraActivatorComponent.h"
+﻿#include "Game/Level/AreaCameraActivatorComponent.h"
 
 #include "Runtime/Object/Components/PlacedVirtualCamera.h"
 #include "Runtime/Object/GameObject.h"
@@ -16,11 +16,12 @@ namespace NS::Game::Level
     {
         auto* scene = Owner()->OwningScene();
         if (scene == nullptr)
+        {
             return;
+        }
 
-        // 渡すのは owner の位置。 プレイヤーに載せるので、 これが進入判定の対象になる
+        // 渡すのは owner の位置。プレイヤーに載せるので、これが進入判定の対象になる
         const NS::Core::Vector3 position = Owner()->Root().Position();
-        scene->Objects().ForEachComponent<NS::Object::PlacedVirtualCamera>(
-            [&position](NS::Object::PlacedVirtualCamera& placed) { placed.UpdateActivation(position); });
+        scene->Objects().ForEachComponent<NS::Object::PlacedVirtualCamera>([&position](NS::Object::PlacedVirtualCamera& placed) { placed.UpdateActivation(position); });
     }
 } // namespace NS::Game::Level

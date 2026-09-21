@@ -22,7 +22,7 @@ namespace NS::Object
         void SetView(const NS::Core::Vector3& position, const NS::Core::Vector3& target) noexcept;
         void SetUpDirection(const NS::Core::Vector3& up) noexcept { m_up = up; }
 
-        //! 進入判定用のトリガ AABB を中心と半径で設定する。 半径成分は呼出側が正値に保つ
+        //! 進入判定用のトリガ AABB を中心と半径で設定する。半径成分は呼出側が正値に保つ
         void SetTrigger(const NS::Core::Vector3& center, const NS::Core::Vector3& extent) noexcept
         {
             m_triggerCenter = center;

@@ -27,7 +27,7 @@ public:
     Player(Player&&) = delete;
     Player& operator=(Player&&) = delete;
 
-    //! 保存形式と TypeRegistry の登録名。 読込はこの名前で GameObject の型を選ぶ
+    //! 保存形式と TypeRegistry の登録名。読込はこの名前で GameObject の型を選ぶ
     [[nodiscard]] const char* ClassName() const noexcept override { return "Player"; }
 
     //! 命を amount 削る。下限 0
@@ -45,13 +45,14 @@ public:
 
 //! live の配置物からプレイヤーを引く。無ければ nullptr
 //! 型名の照合で見つける。能力は Player の公開関数を呼び、細部が要る側だけ FindComponent で引く
-[[nodiscard]] Player* FindPlayer(const NS::Object::ObjectList& objects) noexcept;
+//! @param[in,out] objects 探す先の配置物。返した Player* から中身が書き換わる
+[[nodiscard]] Player* FindPlayer(NS::Object::ObjectList& objects) noexcept;
 
 //! プレイヤーの配置物か。live の FindPlayer と同じく型名で照合する
 [[nodiscard]] bool IsPlayerObject(const NS::Object::ObjectData& object) noexcept;
 
 //! シーンデータからプレイヤーを探す。最初の 1 件の添字、無ければ k_NoObjectIndex
-//! 複数居ても先頭を正とする。余分は読込時に警告済み
+//! 複数居ても先頭を正とする。2 体以上の警告は EnsurePlayerObject を通した時だけ出る
 [[nodiscard]] std::size_t FindPlayerObjectIndex(const NS::Object::SceneData& level) noexcept;
 
 //! 指定の位置と向きでプレイヤーの ObjectData を作る。components は型名だけ持ち、値はコード既定を使う

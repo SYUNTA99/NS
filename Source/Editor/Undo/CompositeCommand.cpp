@@ -18,7 +18,7 @@ namespace NS::Editor
 
     void CompositeCommand::Undo(IObjectSnapshotApplier& target) noexcept
     {
-        // 後から効かせた分を先に戻さないと、 依存のある編集が食い違う
+        // 後から効かせた分を先に戻さないと、依存のある編集が食い違う
         for (auto it = m_commands.rbegin(); it != m_commands.rend(); ++it)
         {
             if (*it)

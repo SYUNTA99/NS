@@ -40,7 +40,7 @@ namespace NS::UI
 #if NS_UI_IMGUI_ENABLED
     namespace
     {
-        // エディタ用の暗い配色に整える。 中間グレー地・角を落としたフラット・青の選択色へ寄せる
+        // エディタ用の暗い配色に整える。中間グレー地・角を落としたフラット・青の選択色へ寄せる
         // 明るいメニューバーとメニューのドロップダウンは Editor が描画時に上書きする
         void ApplyEditorStyle() noexcept
         {
@@ -131,26 +131,26 @@ namespace NS::UI
         }
 
         ::ImGuiIO& io = ::ImGui::GetIO();
-        // 既定はカレント直下で、 リポジトリのルートに配置ファイルが残る
+        // 既定はカレント直下で、リポジトリのルートに配置ファイルが残る
         io.IniFilename = "build/imgui.ini";
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         // パネルをメインウィンドウの外へドラッグしても各自が OS ウィンドウとして描画され続ける
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
         ::ImGui::StyleColorsDark();
         ApplyEditorStyle();
-        // 別 OS ウィンドウは半透明だと背景が透けるので、 ビューポート有効時は確実に不透明へ
+        // 別 OS ウィンドウは半透明だと背景が透けるので、ビューポート有効時は確実に不透明へ
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
             ::ImGui::GetStyle().Colors[ImGuiCol_WindowBg].w = 1.0f;
 
-        // 既定フォントは ASCII のみで日本語が ??? になるため、 システムの日本語フォントを読み込む
-        // エディタは開発専用なので Windows のフォントパス直指定でよい。 見つからなければ ASCII 既定で続行する
+        // 既定フォントは ASCII のみで日本語が ??? になるため、システムの日本語フォントを読み込む
+        // エディタは開発専用なので Windows のフォントパス直指定でよい。見つからなければ ASCII 既定で続行する
         {
             constexpr const char* k_FontCandidates[] = {
                 "C:/Windows/Fonts/YuGothM.ttc",
                 "C:/Windows/Fonts/meiryo.ttc",
                 "C:/Windows/Fonts/msgothic.ttc",
             };
-            // 日本語に加えて □ (パネル全面化ボタン) を出すため、 幾何学記号を 1 字だけ範囲へ足す
+            // 日本語に加えて □ (パネル全面化ボタン) を出すため、幾何学記号を 1 字だけ範囲へ足す
             static ImVector<ImWchar> s_glyphRanges;
             ImFontGlyphRangesBuilder builder;
             builder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
@@ -161,12 +161,19 @@ namespace NS::UI
             for (const char* fontPath : k_FontCandidates)
             {
                 if (!NS::Core::FileSystem::Exists(fontPath))
+                {
                     continue;
+                }
                 if (io.Fonts->AddFontFromFileTTF(fontPath, 18.0f, nullptr, ranges) != nullptr)
-                    break;
+                {
+                    NS_LOG_INFO(UI, "日本語フォントを読み込みました: {}", fontPath);
+					break;
+                }
             }
             if (io.Fonts->Fonts.Size == 0)
+            {
                 NS_LOG_WARN(UI, "日本語フォントが見つからず ASCII 既定で続行、 日本語は ??? 表示になる");
+            }
         }
 
         // Win32 backend 初期化
@@ -228,8 +235,8 @@ namespace NS::UI
 #if NS_UI_IMGUI_ENABLED
         if (!IsValid())
             return;
-        // カーソル非表示中は ImGui に OS カーソルを触らせず、 Window の SetCursor(nullptr) を保つ
-        // これをしないと backend が毎フレーム矢印へ戻し、 プレイ中もカーソルが消えない
+        // カーソル非表示中は ImGui に OS カーソルを触らせず、Window の SetCursor(nullptr) を保つ
+        // これをしないと backend が毎フレーム矢印へ戻し、プレイ中もカーソルが消えない
         ::ImGuiIO& io = ::ImGui::GetIO();
         if (m_pImpl->window != nullptr && !m_pImpl->window->IsCursorVisible())
             io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;

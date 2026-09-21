@@ -17,7 +17,7 @@ namespace
 
     constexpr TraceTolerance k_Exact{};
 
-    //! 1 歩ごとに同じ量だけ進む軌跡。全歩が接地
+    //! 1 フレームごとに同じ量だけ進む軌跡。全フレームが接地
     std::vector<StepRecord> MakeRamp(int steps)
     {
         std::vector<StepRecord> trace;

@@ -17,8 +17,7 @@ namespace NS::Graphics
         NS::Core::Vector3 normal;
     };
     static_assert(sizeof(StaticVertex) == 32, "頂点レイアウトの制約上、StaticVertexは32バイトである必要があります。");
-    static_assert(std::is_standard_layout_v<StaticVertex>,
-                  "GPUへ正しく転送するため、StaticVertexは標準レイアウトである必要があります。");
+    static_assert(std::is_standard_layout_v<StaticVertex>,"GPUへ正しく転送するため、StaticVertexは標準レイアウトである必要があります。");
 
     //! 静的メッシュの初期化パラメータ
     struct MeshDesc

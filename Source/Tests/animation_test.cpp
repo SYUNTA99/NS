@@ -120,7 +120,7 @@ TEST(AnimationClipTest, SampleClipPoseAnimatesTrackedBoneAndKeepsBindForOthers)
     // bone0 はトラック無し -> bindLocal 据え置き
     ExpectVec3Near(pose[0].translation, Vector3(5.0f, 0.0f, 0.0f));
 
-    // bone1 は回転のみ動く -> translation は bindLocal、 rotation は 45°Z
+    // bone1 は回転のみ動く -> translation は bindLocal、rotation は 45°Z
     ExpectVec3Near(pose[1].translation, Vector3(0.0f, 3.0f, 0.0f));
     const Vector3 r = Vector3::Transform(Vector3(1.0f, 0.0f, 0.0f), pose[1].rotation);
     ExpectVec3Near(r, Vector3(0.70710678f, 0.70710678f, 0.0f));

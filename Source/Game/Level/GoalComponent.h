@@ -23,7 +23,7 @@ namespace NS::Game::Level
         //! フラグを戻す。走行のやり直し (respawner) と編集へ戻る時 (エディタ) に呼ばれる
         void ResetReached() noexcept { m_reached = false; }
 
-        // 調整できるフィールドは無いが、 リフレクション typeName を持たせて type と空 fields で直列化できるようにする
+        // 調整できるフィールドは無いが、リフレクション typeName を持たせて type と空 fields で直列化できるようにする
         NS_REFLECT_NONE(GoalComponent, NS::Object::Component)
 
     private:

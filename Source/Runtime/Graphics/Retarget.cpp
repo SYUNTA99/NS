@@ -1,4 +1,4 @@
-#include "Runtime/Graphics/Retarget.h"
+﻿#include "Runtime/Graphics/Retarget.h"
 
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
@@ -14,17 +14,25 @@ namespace NS::Graphics
         // 最後の : / | より後ろが素の骨名
         const std::size_t separator = raw.find_last_of(":|");
         if (separator != std::string_view::npos)
+        {
             raw = raw.substr(separator + 1);
+        }
 
         while (!raw.empty() && std::isspace(static_cast<unsigned char>(raw.front())) != 0)
+        {
             raw.remove_prefix(1);
+        }
         while (!raw.empty() && std::isspace(static_cast<unsigned char>(raw.back())) != 0)
+        {
             raw.remove_suffix(1);
+        }
 
         std::string normalized;
         normalized.reserve(raw.size());
         for (const char c : raw)
+        {
             normalized.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+        }
         return normalized;
     }
 
@@ -37,10 +45,11 @@ namespace NS::Graphics
         const std::vector<Bone>& targetBones = targetSkeleton.Bones();
         for (std::size_t i = 0; i < targetBones.size(); ++i)
         {
-            const bool inserted =
-                targetIndexByName.try_emplace(NormalizeBoneName(targetBones[i].name), static_cast<int>(i)).second;
+            const bool inserted = targetIndexByName.try_emplace(NormalizeBoneName(targetBones[i].name), static_cast<int>(i)).second;
             if (!inserted)
+            {
                 NS_LOG_WARN(Graphics, "BindClipsByName: 正規化後の骨名が重複、 先の骨へ張る: {}", targetBones[i].name);
+            }
         }
 
         const std::vector<Bone>& sourceBones = sourceSkeleton.Bones();
@@ -54,11 +63,16 @@ namespace NS::Graphics
             for (const BoneTrack& track : clip.tracks)
             {
                 if (track.boneIndex < 0 || static_cast<std::size_t>(track.boneIndex) >= sourceBones.size())
-                    continue;
+                {
+                    NS_LOG_WARN(Graphics, "BindClipsByName: 無効な骨番号のトラックを skip: {}", track.boneIndex);
+					continue;
+                }
                 const std::string& sourceName = sourceBones[static_cast<std::size_t>(track.boneIndex)].name;
                 const auto found = targetIndexByName.find(NormalizeBoneName(sourceName));
                 if (found == targetIndexByName.end())
+                {
                     continue;
+                }
                 BoneTrack remappedTrack = track;
                 remappedTrack.boneIndex = found->second;
                 remappedClip.tracks.push_back(std::move(remappedTrack));

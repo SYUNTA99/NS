@@ -370,7 +370,7 @@ namespace NS::Editor
         m_pickable = pickable;
     }
 
-    void GizmoEditor::Tick(const NS::Core::Matrix& viewProjection, const ViewRect& view) noexcept
+    void GizmoEditor::Tick(const NS::Core::Matrix& viewProjection, const ViewRect& view, bool viewHovered) noexcept
     {
         if (!m_active || m_input == nullptr)
         {
@@ -382,7 +382,7 @@ namespace NS::Editor
 
         const bool imguiWantsKeyboard = (m_imgui != nullptr) && m_imgui->WantCaptureKeyboard();
 
-        // 右ドラッグ中の W/A/S/D/Q/E は編集カメラの移動なので、 ツール切替に食われないようにする
+        // 右ドラッグ中の W/A/S/D/Q/E は編集カメラの移動なので、ツール切替に食われないようにする
         const bool cameraFlying = mouse.IsHeld(NS::Platform::MouseButton::Right);
 
         // Q/W/E/R でツール、X で Local / World を切り替える
@@ -451,7 +451,7 @@ namespace NS::Editor
 
         // クリック開始はパネル上でだけ受ける。Game 窓の上では ImGui が常にマウスを要求するため、
         // UI との取り合いは他窓が上に無いことと矩形内かで判定する
-        if (!m_viewHovered || !ViewRectContains(view, viewMouseX, viewMouseY))
+        if (!viewHovered || !ViewRectContains(view, viewMouseX, viewMouseY))
         {
             return;
         }

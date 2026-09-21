@@ -1,11 +1,15 @@
 #include "Game/Player/PlayerStateManagerComponent.h"
 
 #include "Game/Player/PlayerComponent.h"
-#include "Runtime/Core/LogCategories.h"
+#include "Game/Player/States/BodySlamPlayerState.h"
+#include "Game/Player/States/BrakePlayerState.h"
+#include "Game/Player/States/FallPlayerState.h"
+#include "Game/Player/States/IdlePlayerState.h"
+#include "Game/Player/States/LedgeClimbingPlayerState.h"
+#include "Game/Player/States/LedgeHangingPlayerState.h"
+#include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
-
-#include <vector>
 
 namespace NS::Game::Player
 {
@@ -19,11 +23,18 @@ namespace NS::Game::Player
         return m_machine.IsBuilt();
     }
 
-    bool PlayerStateManagerComponent::ChangeByName(std::string_view name)
+    bool PlayerStateManagerComponent::ChangeToState(NS::Object::StateId id)
     {
         if (m_player == nullptr)
+        {
             return false;
-        return m_machine.Change(*m_player, name);
+        }
+        return m_machine.Change(*m_player, id);
+    }
+
+    NS::Object::StateId PlayerStateManagerComponent::CurrentStateId() const noexcept
+    {
+        return m_machine.CurrentId();
     }
 
     void PlayerStateManagerComponent::ResetToFirst() noexcept
@@ -33,7 +44,7 @@ namespace NS::Game::Player
 
     void PlayerStateManagerComponent::EnsureBuilt(PlayerComponent& player)
     {
-        // 状態が呼ぶ ChangeByName は 1 歩の中で起きる。渡された所有者をここで控えると、
+        // 状態が呼ぶ遷移は 1 フレームの中で起きる。渡された所有者をここで控えると、
         // OnStart を通らない検証台でも遷移が false を返さない
         m_player = &player;
         if (!m_machine.IsBuilt())
@@ -58,26 +69,13 @@ namespace NS::Game::Player
 
     void PlayerStateManagerComponent::BuildStates(PlayerComponent& player)
     {
-        const std::vector<std::string> names = SplitStateNames(m_stateNames);
-
-        if (m_machine.Build(player, names))
-            return;
-        if (m_machine.IsBuilt())
-        {
-            NS_LOG_ERROR(Game, "PlayerStateManager: 状態一覧に未登録名があり飛ばした: {}", m_stateNames);
-            return;
-        }
-
-        // 退避の並びも同じ登録簿から作る。登録ごとリンカに落とされた時はここでも組めないので、
-        // その検知は player_state_registration_test に任せる
-        NS_LOG_ERROR(Game, "PlayerStateManager: 状態一覧が組めないため既定の並びへ退避: {}", m_stateNames);
-        const std::vector<std::string> fallback = {PlayerComponent::k_IdleStateName,
-                                                   "Walk",
-                                                   "Fall",
-                                                   PlayerComponent::k_LedgeHangingStateName,
-                                                   PlayerComponent::k_LedgeClimbingStateName,
-                                                   PlayerComponent::k_BodySlamStateName};
-        m_machine.Build(player, fallback);
+        m_machine.Build<IdlePlayerState,
+                        WalkPlayerState,
+                        FallPlayerState,
+                        LedgeHangingPlayerState,
+                        LedgeClimbingPlayerState,
+                        BodySlamPlayerState,
+                        BrakePlayerState>(player);
     }
 
     NS_CLASS(PlayerStateManagerComponent)

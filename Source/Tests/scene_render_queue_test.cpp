@@ -1,8 +1,9 @@
 #include <Runtime/Core/AABB.h>
-#include <gtest/gtest.h>
 #include <Runtime/Graphics/RenderContext.h>
+#include <Runtime/Object/Components/OverlayRendererComponent.h>
 #include <Runtime/Object/IRenderable.h>
 #include <Runtime/Object/Scene/Scene.h>
+#include <gtest/gtest.h>
 #include <vector>
 
 namespace
@@ -41,11 +42,29 @@ namespace
         NS::Core::AABB m_bounds{};
     };
 
-    // protected の DrawOpaque / DrawTransparent を test から叩くための公開サブクラス
+    // 描かれた順に id を log へ積む fake。priority 順と IsActive の扱いだけ検証する
+    class FakeOverlay : public NS::Object::OverlayRendererComponent
+    {
+    public:
+        FakeOverlay(int id, int priority, std::vector<int>* log)
+            : NS::Object::OverlayRendererComponent(priority), m_id(id), m_log(log)
+        {}
+
+        void OnRenderOverlay(const RenderContext&) override { m_log->push_back(m_id); }
+
+        NS_REFLECT_NONE(FakeOverlay, NS::Object::OverlayRendererComponent)
+
+    private:
+        int m_id;
+        std::vector<int>* m_log;
+    };
+
+    // protected の描画呼び出しを test から叩くための公開サブクラス
     class TestScene : public Scene
     {
     public:
         using Scene::DrawOpaque;
+        using Scene::DrawOverlays;
         using Scene::DrawTransparent;
     };
 } // namespace
@@ -178,4 +197,40 @@ TEST(SceneRenderQueue, TransparentOutsideFrustumIsCulled)
 
     ASSERT_EQ(log.size(), 1u);
     EXPECT_EQ(log[0], 1); // 視錐台外はソート対象にもならない
+}
+
+TEST(SceneRenderQueue, OverlaysDrawInPriorityOrder)
+{
+    std::vector<int> log;
+    FakeOverlay late(1, NS::Object::TickPriority::LateUpdate + 5, &log);
+    FakeOverlay early(2, NS::Object::TickPriority::Update - 100, &log);
+
+    TestScene scene;
+    scene.RegisterOverlay(&late);
+    scene.RegisterOverlay(&early);
+
+    RenderContext ctx{};
+    scene.DrawOverlays(ctx);
+
+    ASSERT_EQ(log.size(), 2u);
+    EXPECT_EQ(log[0], 2);
+    EXPECT_EQ(log[1], 1);
+}
+
+TEST(SceneRenderQueue, InactiveOverlayIsSkipped)
+{
+    std::vector<int> log;
+    FakeOverlay shown(1, NS::Object::TickPriority::Update, &log);
+    FakeOverlay hidden(2, NS::Object::TickPriority::Update, &log);
+    hidden.SetActive(false);
+
+    TestScene scene;
+    scene.RegisterOverlay(&shown);
+    scene.RegisterOverlay(&hidden);
+
+    RenderContext ctx{};
+    scene.DrawOverlays(ctx);
+
+    ASSERT_EQ(log.size(), 1u);
+    EXPECT_EQ(log[0], 1);
 }

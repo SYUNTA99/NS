@@ -1,7 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Math.h"
+#include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Core/Sphere.h"
 #include "Runtime/Physics/Capsule.h"
@@ -50,7 +51,7 @@ namespace NS::Physics
         inline constexpr JPH::uint Count = ObjectLayers::Count;
     } // namespace BroadPhaseLayers
 
-    //! @brief 1 歩の間に記録した接触 1 件
+    //! @brief 直近の Update で記録した接触 1 件
     struct BodyContact
     {
         JPH::BodyID other;        // ぶつかった相手の body
@@ -67,21 +68,16 @@ namespace NS::Physics
     };
 
     //! @brief JPH::PhysicsSystem と、一時メモリ・ジョブ・layer の絞り込みを同じ寿命で持つ当たりの世界
-    //! @details 最初の 1 個の構築か、 形を作る最初の CreateMeshShape で、 Jolt の登録を 1 度だけ通す
+    //! @details 最初の 1 個の構築か、形を作る最初の CreateMeshShape で、Jolt の登録を 1 度だけ通す
     //! 登録は JPH::RegisterDefaultAllocator / JPH::Factory / JPH::RegisterTypes
     //! 型の登録解除はプロセス終了時
     //! Add 系はどれも body を 1 つ作り、shape を作れなければ無効な BodyID を返す
     //! 作った時点で動的なのは AddDynamic の付く 2 つだけで、これだけが起きた状態で入る
-    class PhysicsScene
+    class PhysicsScene : public NS::Core::NonCopyable
     {
     public:
         PhysicsScene();
         ~PhysicsScene();
-
-        PhysicsScene(const PhysicsScene&) = delete;
-        PhysicsScene& operator=(const PhysicsScene&) = delete;
-        PhysicsScene(PhysicsScene&&) = delete;
-        PhysicsScene& operator=(PhysicsScene&&) = delete;
 
         //! 入っている body の数
         [[nodiscard]] JPH::uint BodyCount() const noexcept;
@@ -102,12 +98,12 @@ namespace NS::Physics
         //! @details 呼出側が std::vector と std::array<Triangle, 8> のどちらでも写さずに渡せるよう span で受ける
         JPH::BodyID AddMesh(std::span<const Triangle> triangles, JPH::ObjectLayer layer);
         //! id の body を三角形群の形と layer へ書き換えて id を返す。id が無効なら新しく作る
-        //! 空か、 形を作れなければ無効な BodyID を返し、 id の body は外さない
+        //! 空か、形を作れなければ無効な BodyID を返し、id の body は外さない
         JPH::BodyID SyncMesh(JPH::BodyID id, std::span<const Triangle> triangles, JPH::ObjectLayer layer);
-        //! @brief id の body を collision の形で、 位置・回転・拡縮へ置いて id を返す。 id が無効なら新しく作る
-        //! @details 形は作り直さずに共有する。 拡縮が 1 でなければ、 共有した形を拡縮つきの形で包む
-        //! 位置・回転・拡縮で表せない歪みは受け取れない。 歪みのある配置は SyncMesh に世界座標の三角形を渡す
-        //! collision の形が null か、 拡縮の 3 軸がどれも 0 に近ければ無効な BodyID を返す。 id の body は外さない
+        //! @brief id の body を collision の形で、位置・回転・拡縮へ置いて id を返す。id が無効なら新しく作る
+        //! @details 形は作り直さずに共有する。拡縮が 1 でなければ、共有した形を拡縮つきの形で包む
+        //! 位置・回転・拡縮で表せない歪みは受け取れない。歪みのある配置は SyncMesh に世界座標の三角形を渡す
+        //! collision の形が null か、拡縮の 3 軸がどれも 0 に近ければ無効な BodyID を返す。id の body は外さない
         JPH::BodyID SyncMeshShape(JPH::BodyID id,
                                   const MeshCollision& collision,
                                   const NS::Core::Vector3& position,
@@ -131,7 +127,7 @@ namespace NS::Physics
         [[nodiscard]] NS::Core::Vector3 BodyAngularVelocity(JPH::BodyID id) const;
         //! body が起きている場合 true、それ以外の場合は false。無効な BodyID は false
         [[nodiscard]] bool IsBodyAwake(JPH::BodyID id) const;
-        //! 直近の Update で記録した id の接触。前の歩の分は残らない。無効な BodyID は空
+        //! 直近の Update で記録した id の接触。前の Update の分は残らない。無効な BodyID は空
         [[nodiscard]] std::vector<BodyContact> ContactsOf(JPH::BodyID id) const;
 
         //! broadphase の木を組み直す。Add 完了後に 1 度呼ぶ
@@ -139,11 +135,6 @@ namespace NS::Physics
 
         //! この PhysicsScene を deltaTime 秒ぶん進める。衝突の分割は 1 で、渡した時間を刻まない
         void Update(float deltaTime);
-
-        //! @brief body を dynamic と static で切り替える
-        //! @details dynamic にする時だけ body を起こす。無効な BodyID は何もしない
-        //! 静的専用の形の body は dynamic にできない。警告を出して戻る
-        void SetBodyDynamic(JPH::BodyID id, bool dynamic);
 
         //! @brief origin から direction へ maxDistance までの間で最も近い命中までの距離を outDistance に返す
         //! @details direction の長さは問わない。outDistance は direction の長さに依らずワールドの距離
@@ -194,13 +185,13 @@ namespace NS::Physics
                                JPH::ObjectLayer layer,
                                bool sensor);
 
-        class RuntimeInitialization
+        class RuntimeInit
         {
         public:
-            RuntimeInitialization();
+            RuntimeInit();
         };
 
-        class BroadPhaseLayerInterface final : public JPH::BroadPhaseLayerInterface
+        class BPLayerInterface final : public JPH::BroadPhaseLayerInterface
         {
         public:
             [[nodiscard]] JPH::uint GetNumBroadPhaseLayers() const override;
@@ -210,13 +201,13 @@ namespace NS::Physics
 #endif
         };
 
-        class ObjectLayerPairFilter final : public JPH::ObjectLayerPairFilter
+        class ObjLayerPairFilter final : public JPH::ObjectLayerPairFilter
         {
         public:
             [[nodiscard]] bool ShouldCollide(JPH::ObjectLayer first, JPH::ObjectLayer second) const override;
         };
 
-        class ObjectVsBroadPhaseLayerFilter final : public JPH::ObjectVsBroadPhaseLayerFilter
+        class ObjVsBPLayerFilter final : public JPH::ObjectVsBroadPhaseLayerFilter
         {
         public:
             [[nodiscard]] bool ShouldCollide(JPH::ObjectLayer object, JPH::BroadPhaseLayer broadPhase) const override;
@@ -249,10 +240,10 @@ namespace NS::Physics
                                const DynamicBodyDesc& desc);
 
         // m_tempAllocator より前に置く。構築が呼ぶ Jolt の確保関数は RegisterDefaultAllocator まで nullptr
-        RuntimeInitialization m_runtimeInitialization;
-        BroadPhaseLayerInterface m_broadPhaseLayerInterface;
-        ObjectLayerPairFilter m_objectLayerPairFilter;
-        ObjectVsBroadPhaseLayerFilter m_objectVsBroadPhaseLayerFilter;
+        RuntimeInit m_runtimeInitialization;
+        BPLayerInterface m_broadPhaseLayerInterface;
+        ObjLayerPairFilter m_objectLayerPairFilter;
+        ObjVsBPLayerFilter m_objectVsBroadPhaseLayerFilter;
         ContactRecorder m_contactRecorder;
         JPH::TempAllocatorImpl m_tempAllocator;
         JPH::JobSystemSingleThreaded m_jobSystem;

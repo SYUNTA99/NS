@@ -4,6 +4,7 @@
 #include "Runtime/Object/Reflection/Curve.h"
 #include "Runtime/Object/Reflection/ObjectRef.h"
 
+#include <cmath>
 #include <cstddef>
 #include <string>
 #include <string_view>
@@ -14,13 +15,14 @@ namespace NS::Object
     class Component;
 
     //! リフレクションが扱うフィールド型タグ
-    // TODO: Radians / enum の欄が要る時に FieldType へ足す
+    // TODO: 角度の欄は素の float / Vector3 で、単位は欄名だけが持つ。Core/Math.h の Radians を FieldType へ足す
     enum class FieldType
     {
         Float,
         Int,
         Bool,
         Vector3,
+        Quaternion,
         String,
         ObjectRef,
         Curve
@@ -29,25 +31,50 @@ namespace NS::Object
     //! メンバ型から FieldType タグを引く。マクロが型タグを自動推論するのに使う。未対応型はここで弾く
     template <class T> constexpr FieldType FieldTypeOf() noexcept
     {
-        static_assert(
-            std::is_same_v<T, float> || std::is_same_v<T, int> || std::is_same_v<T, bool> ||
-                std::is_same_v<T, NS::Core::Vector3> || std::is_same_v<T, std::string> ||
-                std::is_same_v<T, ObjectRef> || std::is_same_v<T, Curve>,
-            "reflection: 未対応のフィールド型 (Float / Int / Bool / Vector3 / String / ObjectRef / Curve のみ)");
         if constexpr (std::is_same_v<T, float>)
+        {
             return FieldType::Float;
+        }
         else if constexpr (std::is_same_v<T, int>)
+        {
             return FieldType::Int;
+        }
         else if constexpr (std::is_same_v<T, bool>)
+        {
             return FieldType::Bool;
+        }
+        else if constexpr (std::is_same_v<T, NS::Core::Quaternion>)
+        {
+            return FieldType::Quaternion;
+        }
         else if constexpr (std::is_same_v<T, std::string>)
+        {
             return FieldType::String;
+        }
         else if constexpr (std::is_same_v<T, ObjectRef>)
+        {
             return FieldType::ObjectRef;
+        }
         else if constexpr (std::is_same_v<T, Curve>)
+        {
             return FieldType::Curve;
+        }
         else
+        {
+            static_assert(std::is_same_v<T, NS::Core::Vector3>,
+                          "FieldTypeOf の T は float / int / bool / NS::Core::Vector3 / NS::Core::Quaternion / "
+                          "std::string / ObjectRef / Curve のいずれか");
             return FieldType::Vector3;
+        }
+    }
+
+    //! 有限値のときだけ target へ書く。非有限値は捨てて元の値を残す
+    inline void AssignIfFinite(float& target, float value) noexcept
+    {
+        if (std::isfinite(value))
+        {
+            target = value;
+        }
     }
 
     //! @brief リフレクションされた 1 フィールドの記述子
@@ -63,28 +90,31 @@ namespace NS::Object
 
     //! @brief 1 コンポーネント型のリフレクション情報。マクロで宣言したフィールドの名前 / 型 / get / set を束ねる
     //! @details エディタは Component* 越しに fields を列挙して編集 UI を自動生成する
-    //! base は基底型のリフレクションを指し、辿る鎖で is-a も判定する
+    //! base は基底型のリフレクションを指し、Component::IsA はこれを辿って継承関係を判定する
     //! 依存: NS::Core
     struct ReflectionInfo
     {
         const char* typeName;       // リフレクションする型名
         const FieldDesc* fields;    // フィールド記述子配列 (static 寿命)
         std::size_t fieldCount;     // fields の要素数
-        const ReflectionInfo* base; // 基底型のリフレクション (Component 直下は鎖の終端 nullptr)
+        const ReflectionInfo* base; // 基底型のリフレクション。Component 直下は nullptr
     };
 
-    //! 基底型のリフレクションを返す。Component 直下は Component、素の値型は void を渡し、いずれも鎖の終端 nullptr
-    //! になる
+    //! 基底型のリフレクションを返す。Component 直下は Component、素の値型は void を渡し、いずれも nullptr になる
     template <class TBase> [[nodiscard]] const ReflectionInfo* ReflectionBaseOf() noexcept
     {
         if constexpr (std::is_same_v<TBase, Component> || std::is_same_v<TBase, void>)
+        {
             return nullptr;
+        }
         else
+        {
             return TBase::StaticReflection();
+        }
     }
 
     //! info->fields から name 一致の最初の 1 件を返す。無ければ nullptr、info が nullptr でも nullptr
-    //! 基底鎖は辿らない。リフレクション欄は継承分も accessor で平坦に並べる約束に合わせる
+    //! 基底型のリフレクションは辿らない。リフレクション欄は継承分も accessor で平坦に並べる約束に合わせる
     [[nodiscard]] inline const FieldDesc* FindField(const ReflectionInfo* info, std::string_view name) noexcept
     {
         if (info == nullptr)
@@ -102,7 +132,7 @@ namespace NS::Object
     }
 } // namespace NS::Object
 
-//! 直メンバ用フィールド宣言の開始。クラス本体の public 節に、直接の基底型と並べて書く
+//! フィールド宣言の開始。クラス本体の public 節に、自分の型と直接の基底型を並べて書く
 #define NS_REFLECT_BEGIN(ThisType, BaseType)                                                                           \
     [[nodiscard]] static const NS::Object::ReflectionInfo* StaticReflection() noexcept                                 \
     {                                                                                                                  \
@@ -111,7 +141,8 @@ namespace NS::Object
         static constexpr const char* k_TypeName = #ThisType;                                                           \
         static const NS::Object::FieldDesc k_Fields[] = {
 
-//! 同一クラスの直メンバを 1 フィールドとして登録する。private メンバも対象にできる。型タグはメンバ型から推論する
+//! メンバを 1 フィールドとして登録する。private も入れ子の struct のメンバ (m_tuning.speed) も書ける
+//! 型タグはメンバ型から推論する。float の欄は AssignIfFinite を通るので、非有限値の書き込みは捨てて元の値が残る
 #define NS_REFLECT_FIELD(member, label)                                                                                \
     NS::Object::FieldDesc{label,                                                                                       \
                           NS::Object::FieldTypeOf<decltype(Self::member)>(),                                           \
@@ -119,7 +150,16 @@ namespace NS::Object
                               *static_cast<decltype(Self::member)*>(out) = static_cast<const Self*>(c)->member;        \
                           },                                                                                           \
                           +[](void* c, const void* in) noexcept {                                                      \
-                              static_cast<Self*>(c)->member = *static_cast<const decltype(Self::member)*>(in);         \
+                              using Field = decltype(Self::member);                                                    \
+                              if constexpr (std::is_same_v<Field, float>)                                              \
+                              {                                                                                        \
+                                  const float value = *static_cast<const float*>(in);                                  \
+                                  NS::Object::AssignIfFinite(static_cast<Self*>(c)->member, value);                    \
+                              }                                                                                        \
+                              else                                                                                     \
+                              {                                                                                        \
+                                  static_cast<Self*>(c)->member = *static_cast<const Field*>(in);                      \
+                              }                                                                                        \
                           }},
 
 //! 基底の private や検証付きフィールドを getter/setter 経由で登録する。getter は値返し、setter は 1 引数

@@ -20,7 +20,7 @@ namespace NS::Tests
 {
     //! @brief 1 固定ステップぶんの記録
     //! @details コヨーテ時間・先行入力の内部の秒は、ジャンプの成否として位置・速度・接地に出る
-    //! 基準比較はこの並びを 1 歩ずつ突き合わせる
+    //! 基準比較はこの並びを 1 フレームずつ突き合わせる
     struct StepRecord
     {
         NS::Core::Vector3 position{};
@@ -69,29 +69,29 @@ namespace NS::Tests
     //! @details 既定は全て 0 で、完全一致だけを通す
     struct TraceTolerance
     {
-        float position = 0.0f;              //!< 1 歩の位置差の上限 (m)
-        float velocity = 0.0f;              //!< 1 歩の速度差の上限
-        std::size_t groundedMismatches = 0; //!< 接地の食い違いを許す歩数
+        float position = 0.0f;              //!< 1 フレームの位置差の上限 (m)
+        float velocity = 0.0f;              //!< 1 フレームの速度差の上限
+        std::size_t groundedMismatches = 0; //!< 接地の食い違いを許すフレーム数
     };
 
     //! @brief 基準と実測の食い違い
     struct TraceDiff
     {
-        std::size_t baselineSteps = 0;      //!< 基準の歩数
-        std::size_t actualSteps = 0;        //!< 実測の歩数
+        std::size_t baselineSteps = 0;      //!< 基準のフレーム数
+        std::size_t actualSteps = 0;        //!< 実測のフレーム数
         float maxPositionDelta = 0.0f;      //!< 位置差の最大 (m)
         float maxVelocityDelta = 0.0f;      //!< 速度差の最大
-        std::size_t groundedMismatches = 0; //!< 接地が食い違った歩数
-        std::size_t firstDivergedStep = 0;  //!< 最初に許容を外れた歩。無ければ共通の歩数
+        std::size_t groundedMismatches = 0; //!< 接地が食い違ったフレーム数
+        std::size_t firstDivergedStep = 0;  //!< 最初に許容を外れたフレーム。無ければ共通のフレーム数
         bool matched = false;               //!< 許容の内側に収まったか
     };
 
-    //! @brief 基準と実測を 1 歩ずつ突き合わせる
-    //! @details 歩数が違う時は共通の範囲だけ比べる。歩数そのものの食い違いは matched が落とす
+    //! @brief 基準と実測を 1 フレームずつ突き合わせる
+    //! @details フレーム数が違う時は共通の範囲だけ比べる。フレーム数そのものの食い違いは matched が落とす
     //! @param[in] baseline 基準の記録
     //! @param[in] actual 実測の記録
     //! @param[in] tolerance 許す差
-    //! @return 差の最大と最初にずれた歩
+    //! @return 差の最大と最初にずれたフレーム
     [[nodiscard]] inline TraceDiff CompareTraces(const std::vector<StepRecord>& baseline,
                                                  const std::vector<StepRecord>& actual,
                                                  const TraceTolerance& tolerance) noexcept
@@ -125,8 +125,8 @@ namespace NS::Tests
         return diff;
     }
 
-    //! @brief 差の要約と、最初にずれた歩の前後を文字列にする
-    //! @details 並べるのはずれた歩の前後 2 歩ずつの位置だけ。ずれが無ければ要約で終わる
+    //! @brief 差の要約と、最初にずれたフレームの前後を文字列にする
+    //! @details 並べるのはずれたフレームの前後 2 つずつの位置だけ。ずれが無ければ要約で終わる
     //! @param[in] diff CompareTraces の結果
     //! @param[in] baseline 基準の記録
     //! @param[in] actual 実測の記録
@@ -136,16 +136,16 @@ namespace NS::Tests
                                                   const std::vector<StepRecord>& actual)
     {
         std::ostringstream out;
-        out << "歩数 基準 " << diff.baselineSteps << " / 実測 " << diff.actualSteps << "\n";
+        out << "フレーム数 基準 " << diff.baselineSteps << " / 実測 " << diff.actualSteps << "\n";
         out << "位置差の最大 " << diff.maxPositionDelta << " m\n";
         out << "速度差の最大 " << diff.maxVelocityDelta << "\n";
-        out << "接地の食い違い " << diff.groundedMismatches << " 歩\n";
+        out << "接地の食い違い " << diff.groundedMismatches << " フレーム\n";
 
         const std::size_t common = std::min(baseline.size(), actual.size());
         if (diff.firstDivergedStep >= common)
             return out.str();
 
-        out << "最初にずれた歩 " << diff.firstDivergedStep << "\n";
+        out << "最初にずれたフレーム " << diff.firstDivergedStep << "\n";
 
         std::size_t first = 0;
         if (diff.firstDivergedStep > 2)
@@ -164,7 +164,7 @@ namespace NS::Tests
     //! @brief 基準ファイルへ書く本文を作る
     //! @details 桁は max_digits10 で出す。float が読み直しで 1 ビットでも変わると、差 0 の比較が毎回落ちる
     //! @param[in] trace 毎固定ステップの記録
-    //! @return 先頭が列名の行、以降は 1 行 1 歩の本文
+    //! @return 先頭が列名の行、以降は 1 行 1 フレームの本文
     [[nodiscard]] inline std::string FormatTrace(const std::vector<StepRecord>& trace)
     {
         std::ostringstream out;

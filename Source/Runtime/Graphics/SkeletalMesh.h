@@ -26,8 +26,7 @@ namespace NS::Graphics
         float weights[4];
     };
     static_assert(sizeof(SkinnedVertex) == 64, "頂点レイアウトの制約上、SkinnedVertexは64バイトである必要があります。");
-    static_assert(std::is_standard_layout_v<SkinnedVertex>,
-                  "GPUへ正しく転送するため、SkinnedVertexは標準レイアウトである必要があります。");
+    static_assert(std::is_standard_layout_v<SkinnedVertex>,"GPUへ正しく転送するため、SkinnedVertexは標準レイアウトである必要があります。");
 
     //! スキンメッシュの初期化パラメータ
     struct SkinnedMeshDesc

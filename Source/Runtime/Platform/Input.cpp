@@ -39,7 +39,9 @@ namespace NS::Platform
         {
             const float fx = [&]() -> float {
                 if (rawX < 0)
+                {
                     return static_cast<float>(rawX) / 32768.0f;
+                }
                 return static_cast<float>(rawX) / 32767.0f;
             }();
             const float fy = [&]() -> float {
@@ -50,10 +52,14 @@ namespace NS::Platform
             const float dz = static_cast<float>(deadzone) / 32767.0f;
             float clampedX = fx;
             if (std::fabs(fx) < dz)
+            {
                 clampedX = 0.0f;
+            }
             float clampedY = fy;
             if (std::fabs(fy) < dz)
+            {
                 clampedY = 0.0f;
+            }
             return Stick{clampedX, clampedY};
         }
 
@@ -215,7 +221,7 @@ namespace NS::Platform
     void Mouse::SetRelativeMode(bool enabled) noexcept
     {
         m_relativeMode = enabled;
-        // モード切替時に積み残しの相対量を捨て、 切替直後の 1 フレームが暴れないようにする
+        // モード切替時に積み残しの相対量を捨て、切替直後の 1 フレームが暴れないようにする
         m_rawDeltaX = 0;
         m_rawDeltaY = 0;
         m_absOriginSet = false;
@@ -436,7 +442,7 @@ namespace NS::Platform
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:
         {
-            // lparam のスキャンコード、 bit 30 のリピートフラグ、 拡張キーは現状未使用
+            // lparam のスキャンコード、bit 30 のリピートフラグ、拡張キーは現状未使用
             const Key k = MapVkToKey(static_cast<unsigned int>(wparam));
             input.Keyboard().OnKeyDown(k);
             break;

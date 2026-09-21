@@ -160,44 +160,40 @@ TEST(JoltStep, StaticBodyStaysWhereItWasPut)
 TEST(JoltStep, DynamicBodyFalls)
 {
     PhysicsScene physics;
-    const JPH::BodyID id = physics.AddSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, ObjectLayers::Rock);
+    const JPH::BodyID id =
+        physics.AddDynamicSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, NS::Physics::DynamicBodyDesc{});
     physics.OptimizeBroadPhase();
-    physics.SetBodyDynamic(id, true);
 
     Step(physics, 30);
 
     EXPECT_LT(physics.BodyPosition(id).y, 9.0f);
 }
 
-TEST(JoltStep, BodyTurnedBackToStaticStopsFalling)
+TEST(JoltStep, StaticBodyOfTheSameShapeStaysPut)
 {
     PhysicsScene physics;
     const JPH::BodyID id = physics.AddSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, ObjectLayers::Rock);
     physics.OptimizeBroadPhase();
-    physics.SetBodyDynamic(id, true);
+
     Step(physics, 30);
 
-    physics.SetBodyDynamic(id, false);
-    const float restingY = physics.BodyPosition(id).y;
-    Step(physics, 30);
-
-    EXPECT_NEAR(physics.BodyPosition(id).y, restingY, 1.0e-5f);
+    EXPECT_NEAR(physics.BodyPosition(id).y, 10.0f, 1.0e-5f);
 }
 
-// dynamic にできるかは shape だけで決まる。ObjectLayer は見ていない
-TEST(JoltStep, TerrainBodyCanBecomeDynamic)
+// 落ちるかは shape と作り方だけで決まる。ObjectLayer は見ていない
+TEST(JoltStep, TerrainLayerDynamicBodyFalls)
 {
     PhysicsScene physics;
-    const JPH::BodyID id = physics.AddSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, ObjectLayers::Terrain);
+    NS::Physics::DynamicBodyDesc desc;
+    desc.layer = ObjectLayers::Terrain;
+    const JPH::BodyID id = physics.AddDynamicSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, desc);
     physics.OptimizeBroadPhase();
-    physics.SetBodyDynamic(id, true);
 
     Step(physics, 30);
 
     EXPECT_LT(physics.BodyPosition(id).y, 9.0f);
 }
 
-// MeshShape::MustBeStatic が true なので SetBodyDynamic は警告を出して戻る
 TEST(JoltStep, MeshBodyStaysStatic)
 {
     PhysicsScene physics;
@@ -205,7 +201,6 @@ TEST(JoltStep, MeshBodyStaysStatic)
     const JPH::BodyID id = physics.AddMesh(floor, ObjectLayers::Terrain);
     physics.OptimizeBroadPhase();
 
-    physics.SetBodyDynamic(id, true);
     Step(physics, 30);
 
     EXPECT_NEAR(physics.BodyPosition(id).y, 0.0f, 1.0e-5f);
@@ -214,9 +209,9 @@ TEST(JoltStep, MeshBodyStaysStatic)
 TEST(JoltStep, LinearVelocityCarriesTheBody)
 {
     PhysicsScene physics;
-    const JPH::BodyID id = physics.AddSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, ObjectLayers::Rock);
+    const JPH::BodyID id =
+        physics.AddDynamicSphere(Sphere{Vector3{0.0f, 10.0f, 0.0f}, 1.0f}, NS::Physics::DynamicBodyDesc{});
     physics.OptimizeBroadPhase();
-    physics.SetBodyDynamic(id, true);
 
     physics.SetBodyVelocity(id, Vector3{5.0f, 0.0f, 0.0f});
     Step(physics, 30);
@@ -273,8 +268,8 @@ TEST(JoltQuery, RaycastStopsAtMaxDistance)
     EXPECT_FALSE(found);
 }
 
-// 向き (6, 8, 24) は長さ 26、 起点から球の中心までは (3, 4, 12) で 13。 半径 1 なので当たりまで 12
-// 長さを 1 にそろえずに渡すと距離が 26 分の 1 に縮み、 成分を取り違えると球を外れる
+// 向き (6, 8, 24) は長さ 26、起点から球の中心までは (3, 4, 12) で 13。半径 1 なので当たりまで 12
+// 長さを 1 にそろえずに渡すと距離が 26 分の 1 に縮み、成分を取り違えると球を外れる
 TEST(JoltQuery, RaycastHitsAlongAnObliqueDirection)
 {
     PhysicsScene physics;
@@ -421,7 +416,7 @@ TEST(JoltDynamic, HittingAWallReportsASidewaysContactNormal)
     EXPECT_LT(sidewaysNormalY, 0.7f);
 }
 
-// 集めるのは新しく起きた接触だけ。持ち越すと、床に載ったままの岩が毎歩ぶつかり直しているように見える
+// 集めるのは新しく起きた接触だけ。持ち越すと、床に載ったままの岩が毎フレームぶつかり直しているように見える
 TEST(JoltDynamic, ContactsCoverOnlyTheNewTouchesOfTheLatestStep)
 {
     PhysicsScene physics;

@@ -36,6 +36,16 @@ namespace NS::Graphics::DebugDraw
     //! @param[in] color 描画色
     void Sphere(const NS::Core::Sphere& sphere, const NS::Core::Color& color) noexcept;
 
+    //! @brief 円の枠線を追加する
+    //! @param[in] center 円の中心の座標
+    //! @param[in] u 円の平面を張る 1 本目の軸。長さが半径
+    //! @param[in] v u と直交する 2 本目の軸。長さは u と揃える
+    //! @param[in] color 描画色
+    void Circle(const NS::Core::Vector3& center,
+                const NS::Core::Vector3& u,
+                const NS::Core::Vector3& v,
+                const NS::Core::Color& color) noexcept;
+
     //! @brief カプセル形状の枠線を追加する
     //! @details 円柱の両端の円 2 つと、軸に平行な側面の線 4 本を追加する。両端の半球の弧は描かない
     //! @param[in] base カプセル中心の座標

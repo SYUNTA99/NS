@@ -34,7 +34,7 @@ namespace NS::Editor
 #if NS_EDITOR_ENABLED
         if (ImGui::Begin(k_PanelHierarchy))
         {
-            // 見出しに今開いているシーン名を出す。 未保存なら * を付ける
+            // 見出しに今開いているシーン名を出す。未保存なら * を付ける
             const std::string& sceneName = editor.Editor().CurrentLevelName();
             const char* shownName = "(名前なし)";
             if (!sceneName.empty())

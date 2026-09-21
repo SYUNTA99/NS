@@ -39,7 +39,7 @@ namespace
         EXPECT_NEAR(expected.z, actual.z, k_Tol);
     }
 
-    // 当たりの構成の比較用。 型の有無と当たり幾何だけ持ち、 mesh / material は見ない
+    // 当たりの構成の比較用。型の有無と当たり幾何だけ持ち、mesh / material は見ない
     struct ColliderSignature
     {
         bool hasBox = false;

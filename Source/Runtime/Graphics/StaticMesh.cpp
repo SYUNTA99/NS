@@ -25,12 +25,16 @@ namespace NS::Graphics
             BufferDesc vbDesc = MakeVertexBufferDesc(vertices, vertexCount, sizeof(StaticVertex));
             std::unique_ptr<Buffer> vb = Buffer::Create(vbDesc);
             if (!vb->IsValid())
-                return false;
+            {
+				return false;
+            }
 
             BufferDesc ibDesc = MakeIndexBufferDesc(indices, indexCount, DXGI_FORMAT_R32_UINT);
             std::unique_ptr<Buffer> ib = Buffer::Create(ibDesc);
             if (!ib->IsValid())
+            {
                 return false;
+            }
 
             outVb = std::move(vb);
             outIb = std::move(ib);
@@ -42,8 +46,9 @@ namespace NS::Graphics
         {
             NS::Core::AABB box{};
             if (vertices != nullptr && count > 0u)
-                DirectX::BoundingBox::CreateFromPoints(
-                    box, count, static_cast<const DirectX::XMFLOAT3*>(&vertices[0].position), sizeof(StaticVertex));
+            {
+                DirectX::BoundingBox::CreateFromPoints(box, count, static_cast<const DirectX::XMFLOAT3*>(&vertices[0].position), sizeof(StaticVertex));
+            }
             return box;
         }
     } // namespace
@@ -66,20 +71,24 @@ namespace NS::Graphics
         std::unique_ptr<Buffer> vb;
         std::unique_ptr<Buffer> ib;
 
-        const bool descValid =
-            (desc.vertices != nullptr && desc.vertexCount != 0u && desc.indices != nullptr && desc.indexCount != 0u);
+        const bool descValid = (desc.vertices != nullptr && desc.vertexCount != 0u && desc.indices != nullptr && desc.indexCount != 0u);
         if (descValid && BuildBuffers(desc.vertices, desc.vertexCount, desc.indices, desc.indexCount, vb, ib))
         {
             SetGeometry(std::move(vb), std::move(ib), desc.vertexCount, desc.indexCount, false);
             // ローダーが構築時に境界を求めていればそれを使い、無ければ頂点から算出する
             if (desc.precomputedBounds != nullptr)
+            {
                 SetLocalBounds(*desc.precomputedBounds);
+            }
             else
+            {
                 SetLocalBounds(ComputeLocalBounds(desc.vertices, desc.vertexCount));
+            }
             return;
         }
 
         if (!descValid)
+        {
             NS_LOG_ERROR(
                 Graphics,
                 "StaticMesh: MeshDesc 不正 — fallback Cube に切替 (vertices={}, vCount={}, indices={}, iCount={})",
@@ -87,28 +96,31 @@ namespace NS::Graphics
                 desc.vertexCount,
                 static_cast<const void*>(desc.indices),
                 desc.indexCount);
+        }
         else
+        {
             NS_LOG_ERROR(Graphics,
-                         "StaticMesh: VertexBuffer / IndexBuffer 構築失敗 — fallback Cube に切替 (v={}, i={})",
-                         desc.vertexCount,
-                         desc.indexCount);
+                "StaticMesh: VertexBuffer / IndexBuffer 構築失敗 — fallback Cube に切替 (v={}, i={})",
+                desc.vertexCount,
+                desc.indexCount);
+        }
 
-        const MeshGeometry geom =
-            MakeCube(NS::Core::Vector3{k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent});
+        const MeshGeometry geom = MakeCube(NS::Core::Vector3{k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent, k_FallbackCubeHalfExtent});
         if (BuildBuffers(geom.vertices.data(), geom.vertices.size(), geom.indices.data(), geom.indices.size(), vb, ib))
         {
             SetGeometry(std::move(vb), std::move(ib), geom.vertices.size(), geom.indices.size(), true);
             SetLocalBounds(ComputeLocalBounds(geom.vertices.data(), geom.vertices.size()));
         }
         else
+        {
             NS_LOG_ERROR(Graphics, "StaticMesh: fallback Cube 構築失敗");
+        }
     }
 
     std::vector<InputElement> StaticMesh::StandardInputLayout()
     {
         static const std::vector<InputElement> k_Layout = {
-            InputElement{
-                "POSITION", InputElementFormat::Float3, static_cast<unsigned>(offsetof(StaticVertex, position))},
+            InputElement{"POSITION", InputElementFormat::Float3, static_cast<unsigned>(offsetof(StaticVertex, position))},
             InputElement{"TEXCOORD", InputElementFormat::Float2, static_cast<unsigned>(offsetof(StaticVertex, uv))},
             InputElement{"NORMAL", InputElementFormat::Float3, static_cast<unsigned>(offsetof(StaticVertex, normal))},
         };

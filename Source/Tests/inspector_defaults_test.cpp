@@ -7,7 +7,7 @@
 
 namespace
 {
-    // 最初の float 欄。 どの調整値かに依らずテストを書けるようにする
+    // 最初の float 欄。どの調整値かに依らずテストを書けるようにする
     const NS::Object::FieldDesc* FindFloatField(const NS::Object::ReflectionInfo& info)
     {
         for (std::size_t i = 0; i < info.fieldCount; ++i)

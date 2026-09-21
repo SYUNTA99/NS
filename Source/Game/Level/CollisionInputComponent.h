@@ -16,8 +16,8 @@ namespace NS::Game::Level
 
     //! @brief 体当たりのボタン入力を読んで発動を要求する Component
     //! @details 保持はマウス左かゲームパッドの X で、ImpactInputJudge がタップ / チャージを裁く
-    //! どちらも離した歩に、溜め量を添えて PlayerComponent::RequestBodySlam を呼ぶ
-    //! チャージ中は最高速度へ減速を掛ける。構えの縮みは押した歩から掛かる
+    //! どちらも離したフレームに、溜め量を添えて PlayerComponent::RequestBodySlam を呼ぶ
+    //! チャージ中は最高速度へ減速を掛ける。構えの縮みは押したフレームから掛かる
     //! 威力のチャージ倍率カーブと当たり位置係数カーブもここが持ち、ImpactResolverComponent が参照する
     //! 依存: NS::Game::Player::PlayerComponent, NS::Object::Curve, ImpactInputJudge, ImpactResolverComponent
     class CollisionInputComponent : public NS::Object::Component
@@ -28,7 +28,7 @@ namespace NS::Game::Level
         //! 同じ配置物の移動と裁定を引き当てる。見つからない相手に関わる処理は以後行わない
         void OnStart() override;
 
-        //! ボタンの保持を判定へ 1 歩進め、発動を控えた歩に溜め量を添えて体当たりを要求する
+        //! ボタンの保持を判定へ 1 フレーム進め、発動を控えたフレームに溜め量を添えて体当たりを要求する
         void OnUpdate() override;
 
         //! 構えの縮みが残っていれば元の形へ戻す
@@ -83,7 +83,7 @@ namespace NS::Game::Level
         // 0.95 は既定カーブで横ずれ 0〜0.167 の区間だけがピークになる値
         float m_peakThreshold = 0.95f;
         float m_chargeSquashScale = 0.95f; // 構えと分かる最小の変化。深いと衝突の潰れ演出と紛れる
-        float m_pressSquashScale = 0.97f;  // 押した歩の反応。チャージ成立の 0.95 と見分けが付く浅さ
+        float m_pressSquashScale = 0.97f;  // 押したフレームの反応。チャージ成立の 0.95 と見分けが付く浅さ
 
         ImpactInputJudge m_judge{};
         NS::Core::Vector3 m_homeScale{1.0f, 1.0f, 1.0f};

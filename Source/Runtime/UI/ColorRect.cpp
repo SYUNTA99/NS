@@ -1,4 +1,4 @@
-#include "Runtime/UI/ColorRect.h"
+﻿#include "Runtime/UI/ColorRect.h"
 
 #include "Runtime/Graphics/Renderer.h"
 
@@ -9,7 +9,10 @@ namespace NS::UI
     {
         const float effective = m_color.A() * alpha;
         if (effective <= 0.0f)
+        {
             return;
+        }
+
         renderer.DrawScreenRect(rectPx.x,
                                 rectPx.y,
                                 rectPx.width,

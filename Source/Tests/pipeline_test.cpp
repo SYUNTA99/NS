@@ -78,7 +78,7 @@ TEST_F(PipelineTest, DescRoundTripKeepsIntent)
 
 TEST_F(PipelineTest, CreateWithoutDeviceIsInvalid)
 {
-    // Renderer が無く device が空でも、 Pipeline::Create は非 null を返し IsValid() は false になる
+    // Renderer が無く device が空でも、Pipeline::Create は非 null を返し IsValid() は false になる
     const auto pipeline = Pipeline::Create(PipelineDesc{});
     ASSERT_NE(pipeline, nullptr);
     EXPECT_FALSE(pipeline->IsValid());

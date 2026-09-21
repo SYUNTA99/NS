@@ -21,8 +21,8 @@ namespace
     }
 } // namespace
 
-// エディタへ落とした glTF は箱でなく、 自分の三角形で当たる MeshColliderComponent を持つ
-// 参照の実体化は AssetManager を差した Scene だけが行う。 この試しは差していないので実在しない file で足りる
+// エディタへ落とした glTF は箱でなく、自分の三角形で当たる MeshColliderComponent を持つ
+// 参照の実体化は AssetManager を差した Scene だけが行う。この試しは差していないので実在しない file で足りる
 TEST(EditorMeshDrop, DroppedMeshCollidesWithItsOwnTriangles)
 {
     NS::Object::Scene scene;

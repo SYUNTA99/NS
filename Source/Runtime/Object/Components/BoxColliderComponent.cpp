@@ -1,4 +1,4 @@
-#include "Runtime/Object/Components/BoxColliderComponent.h"
+﻿#include "Runtime/Object/Components/BoxColliderComponent.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/OBB.h"
 
@@ -14,9 +14,9 @@ namespace NS::Object
 {
     namespace
     {
-        // OBB の 3 軸が座標軸に十分沿っていれば軸並行とみなす。 90° 刻みの回転はここに落ちる
+        // OBB の 3 軸が座標軸に十分沿っていれば軸並行とみなす。90° 刻みの回転はここに落ちる
         // 各軸は単位ベクトルなので最大成分が 1 に届けば残り 2 成分はほぼ 0 になる
-        // しきい 1e-4 は 90° を quaternion 経由で組んだ時の float 誤差を確実に飲み込み、 1° 以上の傾きは OBB へ回す
+        // しきい 1e-4 は 90° を quaternion 経由で組んだ時の float 誤差を確実に飲み込み、1° 以上の傾きは OBB へ回す
         [[nodiscard]] bool IsAxisAligned(const NS::Core::OBB& obb) noexcept
         {
             constexpr float k_AlignEpsilon = 1e-4f;
@@ -31,13 +31,19 @@ namespace NS::Object
         {
             float x = v.x;
             if (x < 0.0f)
+            {
                 x = 0.0f;
+            }
             float y = v.y;
             if (y < 0.0f)
-                y = 0.0f;
+            {
+				y = 0.0f;
+            }
             float z = v.z;
             if (z < 0.0f)
-                z = 0.0f;
+            {
+				z = 0.0f;
+            }
             return NS::Core::Vector3{x, y, z};
         }
     } // namespace
@@ -100,21 +106,22 @@ namespace NS::Object
 
     NS::Core::Matrix BoxColliderComponent::LocalMatrix() const noexcept
     {
-        return NS::Core::Matrix::CreateFromQuaternion(m_localRotation) *
-               NS::Core::Matrix::CreateTranslation(m_centerOffset);
+        return NS::Core::Matrix::CreateFromQuaternion(m_localRotation) * NS::Core::Matrix::CreateTranslation(m_centerOffset);
     }
 
     NS::Core::Matrix BoxColliderComponent::CombinedWorldMatrix() const noexcept
     {
         const GameObject* owner = Owner();
         if (owner != nullptr)
+        {
             return LocalMatrix() * owner->Root().WorldMatrix();
+        }
         return LocalMatrix();
     }
 
     NS::Core::AABB BoxColliderComponent::WorldAABB() const noexcept
     {
-        // 原点中心 + 半径の local box に、 当たり箱の local offset / 回転 → owner の world 変換の順で重ねる
+        // 原点中心 + 半径の local box に、当たり箱の local offset / 回転 → owner の world 変換の順で重ねる
         // 回転時は内包する軸並行 AABB になる
         const NS::Core::Matrix combined = CombinedWorldMatrix();
         const NS::Core::AABB local(NS::Core::Vector3{0.0f, 0.0f, 0.0f}, m_halfExtents);
@@ -129,6 +136,7 @@ namespace NS::Object
         const NS::Core::Vector3 half{m_halfExtents.x * std::abs(scale.x),
                                      m_halfExtents.y * std::abs(scale.y),
                                      m_halfExtents.z * std::abs(scale.z)};
+
         return NS::Core::MakeOBB(translation, rotation, half);
     }
 
@@ -136,8 +144,9 @@ namespace NS::Object
     {
         // 通り抜ける体積も body にする。入れないと重なりの問い合わせに出てこず、触れても判定できない
         if (m_isTrigger)
+        {
             return physics.SyncBox(current, WorldOBB(), NS::Physics::ObjectLayers::Trigger, true);
-
+        }
         return physics.SyncBox(current, WorldOBB(), NS::Physics::ObjectLayers::Terrain);
     }
 

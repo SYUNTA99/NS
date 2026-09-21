@@ -11,11 +11,13 @@
 ::   2. Remove build/ (clean)
 ::   3. Generate the VS2022 solution via Premake5 (:generate_project)
 ::   4. Set up the MSBuild environment via VsDevCmd.bat (:setup_msbuild)
-::   5. Build Debug with MSBuild
+::   5. Build Debug with MSBuild (Game.exe only; the tests are left out)
 ::
 :: Output:
 ::   build\NS.sln
-::   build\bin\Debug-windows-x86_64\tests\tests.exe
+::   build\bin\Debug-windows-x86_64\Game.exe
+::
+:: Tests.exe is not built here. Build it with Tools\@build_tests.cmd.
 ::
 :: NOTE: this header must be ASCII. It is parsed before chcp 65001 takes effect
 ::       (via _common.cmd :init), and cmd.exe misparses UTF-8 multibyte here
@@ -38,7 +40,9 @@ echo Debug ビルド中...
 call "%~dp0_common.cmd" :setup_msbuild
 if errorlevel 1 exit /b 1
 
-msbuild build\NS.sln -p:Configuration=Debug -p:Platform=x64 -m -nodeReuse:false -v:minimal
+:: -t:GameApp builds Game.exe and only the projects it references.
+:: Tests and googletest are not among them, so they are skipped.
+msbuild build\NS.sln -t:GameApp -p:Configuration=Debug -p:Platform=x64 -m -nodeReuse:false -v:minimal
 if errorlevel 1 (
     echo [ERROR] ビルド失敗
     exit /b 1

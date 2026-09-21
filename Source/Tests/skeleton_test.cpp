@@ -53,7 +53,7 @@ TEST(SkeletonTest, ComputeBindPaletteIsIdentityForWellFormedSkin)
     bones[1].parentIndex = 0;
     bones[1].bindLocal.translation = Vector3(0.0f, 3.0f, 0.0f);
 
-    // bind world を local 合成 (scale*rotate*translate, child = local*parentWorld) で求め、 逆を invBind に置く
+    // bind world を local 合成 (scale*rotate*translate, child = local*parentWorld) で求め、逆を invBind に置く
     const Matrix world0 = Matrix::CreateScale(bones[0].bindLocal.scale) *
                           Matrix::CreateFromQuaternion(bones[0].bindLocal.rotation) *
                           Matrix::CreateTranslation(bones[0].bindLocal.translation);
@@ -106,7 +106,7 @@ TEST(SkeletonTest, ComputePaletteComposesParentChildWorld)
     skeleton.ComputePalette(std::span<const BonePose>(pose.data(), pose.size()), palette);
     ASSERT_EQ(palette.size(), 2u);
 
-    // 子 world = T(0,3,0) * T(2,0,0) = T(2,3,0)。 原点を変換すると (2,3,0)
+    // 子 world = T(0,3,0) * T(2,0,0) = T(2,3,0)。原点を変換すると (2,3,0)
     const Vector3 childOrigin = Vector3::Transform(Vector3(0.0f, 0.0f, 0.0f), palette[1]);
     ExpectVec3Near(childOrigin, Vector3(2.0f, 3.0f, 0.0f));
 }

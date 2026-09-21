@@ -36,7 +36,7 @@ namespace
         };
     }
 
-    // collider は持ち主の Scene の PhysicsScene しか受け取らない。 持ち主を Scene の中へ湧かして揃える
+    // collider は持ち主の Scene の PhysicsScene しか受け取らない。持ち主を Scene の中へ湧かして揃える
     struct ColliderStage
     {
         NS::Object::Scene scene;
@@ -93,7 +93,7 @@ TEST(ColliderJolt, CapsuleCreatesOneBody)
     EXPECT_FALSE(capsule->BodyId().IsInvalid());
 }
 
-// 固形の箱を隣に置くのは、 body 0 個を期待すると全部断られても緑になるため
+// 固形の箱を隣に置くのは、body 0 個を期待すると全部断られても緑になるため
 TEST(ColliderJolt, ExcludedCapsuleCreatesNoBody)
 {
     ColliderStage stage;
@@ -122,8 +122,8 @@ TEST(ColliderJolt, MeshCreatesOneBodyForAllTriangles)
     EXPECT_FALSE(mesh->BodyId().IsInvalid());
 }
 
-// 同じ資産を置いた 2 体は形を作り直さず共有する。 置いた 1 体につき参照が 1 つ増える
-// 2 体目は x = 5 に横 2 倍で置いたので、 横に広がった x = 5.9 でも上面 (y = 0.5) に当たる
+// 同じ資産を置いた 2 体は形を作り直さず共有する。置いた 1 体につき参照が 1 つ増える
+// 2 体目は x = 5 に横 2 倍で置いたので、横に広がった x = 5.9 でも上面 (y = 0.5) に当たる
 TEST(ColliderJolt, PlacedMeshCollidersShareOneShape)
 {
     NS::Object::AssetManager assets{std::filesystem::path{"."}};
@@ -150,9 +150,9 @@ TEST(ColliderJolt, PlacedMeshCollidersShareOneShape)
     EXPECT_NEAR(distance, 1.5f, 1.0e-3f);
 }
 
-// 横 2 倍の親の下で 45 度回した cube は、 描画では x 方向に ±1.41 まで伸びた菱形になる
-// 歪んだ行列は分解できず、 DecomposeAffine は既定値 (拡縮 1・回転無し・原点) のまま返る
-// 共有の形で置くと原点の 1 x 1 の箱になり、 x = 0.5 までしか届かない
+// 横 2 倍の親の下で 45 度回した cube は、描画では x 方向に ±1.41 まで伸びた菱形になる
+// 歪んだ行列は分解できず、DecomposeAffine は既定値 (拡縮 1・回転無し・原点) のまま返る
+// 共有の形で置くと原点の 1 x 1 の箱になり、x = 0.5 までしか届かない
 // x = 1.2 に当たるのは描画と同じ形の時だけ
 TEST(ColliderJolt, ShearedMeshColliderKeepsTheDrawnShape)
 {
@@ -248,7 +248,7 @@ TEST(ColliderJolt, SyncingResizedBoxKeepsTheBodyIdAndUpdatesTheJoltShape)
     EXPECT_TRUE(stage.physics.Raycast(Vector3{1.5f, 2.0f, 0.0f}, Vector3{0.0f, -1.0f, 0.0f}, 4.0f, distance));
 }
 
-// 寿命の終わりは持ち主の Scene の physics から外す。 collider は physics を覚えていない
+// 寿命の終わりは持ち主の Scene の physics から外す。collider は physics を覚えていない
 TEST(ColliderJolt, EndPlayRemovesItsOwnBody)
 {
     NS::Object::Scene scene;
@@ -263,7 +263,7 @@ TEST(ColliderJolt, EndPlayRemovesItsOwnBody)
     EXPECT_TRUE(box->BodyId().IsInvalid());
 }
 
-// Scene に居る配置物の body は Scene の physics にだけ入る。 別の physics に入ると、 寿命の終わりに外しに行く先が違う
+// Scene に居る配置物の body は Scene の physics にだけ入る。別の physics に入ると、寿命の終わりに外しに行く先が違う
 TEST(ColliderJolt, SyncIntoAPhysicsSceneOtherThanTheOwnersIsRefused)
 {
     NS::Object::Scene scene;
@@ -278,7 +278,7 @@ TEST(ColliderJolt, SyncIntoAPhysicsSceneOtherThanTheOwnersIsRefused)
     EXPECT_TRUE(box->BodyId().IsInvalid());
 }
 
-// 別の physics から外そうとしても断る。 断らないと、 その physics が持たない id を消しに行って Jolt が落ちる
+// 別の physics から外そうとしても断る。断らないと、その physics が持たない id を消しに行って Jolt が落ちる
 TEST(ColliderJolt, RemoveFromAPhysicsSceneOtherThanTheOwnersKeepsTheBody)
 {
     NS::Object::Scene scene;
@@ -294,7 +294,7 @@ TEST(ColliderJolt, RemoveFromAPhysicsSceneOtherThanTheOwnersKeepsTheBody)
     EXPECT_FALSE(box->BodyId().IsInvalid());
 }
 
-// body を持たない collider は、 Scene に居なくても OnEndPlay で PhysicsScene を触らない
+// body を持たない collider は、Scene に居なくても OnEndPlay で PhysicsScene を触らない
 TEST(ColliderJolt, EndPlayWithoutABodyLeavesThePhysicsSceneAlone)
 {
     GameObject owner;
@@ -307,8 +307,8 @@ TEST(ColliderJolt, EndPlayWithoutABodyLeavesThePhysicsSceneAlone)
     EXPECT_TRUE(box->BodyId().IsInvalid());
 }
 
-// 持ち主が Scene に居なければ、 覚えている id がどの PhysicsScene の物か言えない
-// 通すと、 同じ index を配る別の PhysicsScene で無関係の body を作り変える
+// 持ち主が Scene に居なければ、覚えている id がどの PhysicsScene の物か言えない
+// 通すと、同じ index を配る別の PhysicsScene で無関係の body を作り変える
 TEST(ColliderJolt, SyncWithoutAnOwningSceneIsRefused)
 {
     GameObject owner;

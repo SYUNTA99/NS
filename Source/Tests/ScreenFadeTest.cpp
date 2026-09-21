@@ -7,7 +7,7 @@
 
 #include <gtest/gtest.h>
 
-//! 暗転状態機械だけを dt で進めて検証する。 描画は呼ばない
+//! 暗転状態機械だけを dt で進めて検証する。描画は呼ばない
 
 namespace
 {
@@ -29,7 +29,7 @@ TEST(ScreenFade, BeginOutRaisesAlphaThenHoldsBlack)
     fade.Advance(k_OutSeconds * 0.5f);
     EXPECT_NEAR(fade.Alpha(), 0.5f, 1e-4f);
 
-    // 暗転しきったら BeginIn まで全黒のまま。 進めても勝手に明転しない
+    // 暗転しきったら BeginIn まで全黒のまま。進めても勝手に明転しない
     fade.Advance(k_OutSeconds * 0.5f);
     EXPECT_FALSE(fade.IsFading());
     EXPECT_TRUE(fade.IsBlack());
@@ -69,7 +69,7 @@ TEST(ScreenFade, ReentryIsIgnoredWhileActive)
     fade.Advance(k_OutSeconds * 0.5f);
     const float alphaBefore = fade.Alpha();
 
-    // 演出中の呼び直しは無視され、 タイマーも不透明度も巻き戻らない
+    // 演出中の呼び直しは無視され、タイマーも不透明度も巻き戻らない
     fade.BeginOut(k_OutSeconds);
     EXPECT_NEAR(fade.Alpha(), alphaBefore, 1e-6f);
 
@@ -108,7 +108,7 @@ TEST(ScreenFade, ZeroSecondsJumpsToEndState)
     EXPECT_NEAR(fade.Alpha(), 0.0f, 1e-6f);
 }
 
-// 重ね描きの口を持つのは専用基底の派生だけ。 本番の呼び出しと同じリフレクション照合で確かめる
+// 重ね描きの口を持つのは専用基底の派生だけ。本番の呼び出しと同じリフレクション照合で確かめる
 TEST(ScreenFade, OnlyOverlayRendererIsPickedUp)
 {
     NS::Object::GameObject obj;
@@ -127,7 +127,7 @@ TEST(ScreenFade, OnlyOverlayRendererIsPickedUp)
     EXPECT_EQ(fade->Priority(), NS::Object::TickPriority::LateUpdate + 5);
 }
 
-// 暗転は player に積む配置物側の component なので、 一時オブジェクトに絞ると一度も描かれない
+// 暗転は player に積む配置物側の component なので、一時オブジェクトに絞ると一度も描かれない
 TEST(ScreenFade, PlacedObjectFadeIsPickedUp)
 {
     NS::Object::ObjectList objects;
@@ -141,7 +141,7 @@ TEST(ScreenFade, PlacedObjectFadeIsPickedUp)
     EXPECT_EQ(found, 1);
 }
 
-// active を切った暗転は描かない。 更新・ 当たりと同じ問いで揃える
+// active を切った暗転は描かない。更新・ 当たりと同じ問いで揃える
 TEST(ScreenFade, InactiveFadeIsSkipped)
 {
     NS::Object::GameObject obj;

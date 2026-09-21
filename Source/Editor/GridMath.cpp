@@ -87,12 +87,6 @@ namespace NS::Editor
         return {gx, gy, gz};
     }
 
-    NS::Core::Vector3 SnapHitToPlacementCell(NS::Core::Vector3 hit, NS::Core::Vector3 normal, float g) noexcept
-    {
-        const NS::Core::Vector3 base = SnapWorldPointToGrid(hit, g);
-        return {base.x + normal.x * g, base.y + normal.y * g, base.z + normal.z * g};
-    }
-
     bool TryGroundPlaneFallback(const NS::Core::Ray& ray, NS::Core::Vector3& outCenter, float g) noexcept
     {
         // 水平または上向きのレイは交差対象外とする

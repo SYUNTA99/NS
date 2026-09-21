@@ -20,7 +20,7 @@ namespace
     }
 } // namespace
 
-// 三角形群から形ができる。 この試しだけを走らせても PhysicsScene 無しで Jolt の下準備が通る
+// 三角形群から形ができる。この試しだけを走らせても PhysicsScene 無しで Jolt の下準備が通る
 TEST(MeshCollisionTest, CreateMeshShapeBuildsShapeFromTriangles)
 {
     const std::vector<Triangle> floor = MakeFloorQuad();
@@ -34,7 +34,7 @@ TEST(MeshCollisionTest, EmptyTrianglesMakeNoShape)
 }
 
 // 2 x 2 の床を x = 10 へ 3 倍で置くと x = 7〜13 に広がる
-// 12.5 は拡縮しなければ外れる所なので当たれば拡縮が効いている。 広がりの外の 14 は外れる
+// 12.5 は拡縮しなければ外れる所なので当たれば拡縮が効いている。広がりの外の 14 は外れる
 TEST(MeshCollisionTest, SyncMeshShapePlacesSharedShapeAtPoseAndScale)
 {
     NS::Physics::MeshCollision floor{MakeFloorQuad(), nullptr};

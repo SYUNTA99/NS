@@ -23,7 +23,7 @@ namespace NS::Game::Player
 
         //! 同居する入力と自機を控える。どちらか欠けたら OnUpdate は何もしない
         void OnStart() override;
-        //! 直近の歩の入力の値を自機へ渡す
+        //! 直近に読み取った入力の値を自機へ渡す
         void OnUpdate() override;
 
         // 保存する調整値は無い。リフレクションの鎖と型名だけ通す

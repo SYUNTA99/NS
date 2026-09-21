@@ -69,7 +69,7 @@ TEST(ObjectIdTest, JsonRoundTripPreservesIdsAndCounter)
     level.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
     level.objects.push_back(LevelNs::MakeCellObject(3, 1, 2));
     level.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    // 追従カメラも積んでおく。 読込時の既定合成で採番カウンタが動くと counter 比較が成り立たないため
+    // 追従カメラも積んでおく。読込時の既定合成で採番カウンタが動くと counter 比較が成り立たないため
     level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
     SceneNs::EnsureUniqueObjectIds(level);
     const std::uint32_t id0 = level.objects[0].objectId;
@@ -90,7 +90,7 @@ TEST(ObjectIdTest, JsonWithoutIdsGetsAssignedOnLoad)
 {
     // id と nextObjectId を欠いた手編集ファイルを読むと採番される
     const std::string handEdited = R"({
-        "version": 3,
+        "version": 4,
         "objects": [
             {"position": [0.0, 0.0, 0.0], "components": []},
             {"position": [1.0, 0.0, 0.0], "components": []}
@@ -134,7 +134,7 @@ TEST(ObjectIdTest, ObjectRefFieldSurvivesJsonRoundTrip)
     level.objects.push_back(SceneNs::ObjectData{});
     level.objects.push_back(SceneNs::ObjectData{});
     level.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
-    // 追従カメラも積んでおく。 読込時の既定合成が CRC を動かさないようにするため
+    // 追従カメラも積んでおく。読込時の既定合成で比べる元とずれないようにするため
     level.objects.push_back(NS::Game::Level::MakeFollowCameraObject(0u));
     SceneNs::EnsureUniqueObjectIds(level);
     const std::uint32_t targetId = level.objects[0].objectId;
@@ -143,18 +143,17 @@ TEST(ObjectIdTest, ObjectRefFieldSurvivesJsonRoundTrip)
     SceneNs::SetField(comp, "Target", NS::Object::ObjectRef{targetId});
     level.objects[1].components.push_back(std::move(comp));
 
-    // 読込が全 object に transform を保証するため、 基準 CRC も transform 込みで取る
+    // 読込が全 object に transform を保証するため、比べる元も transform 込みで揃える
     SceneNs::EnsureTransformComponent(level.objects[0]);
     SceneNs::EnsureTransformComponent(level.objects[1]);
-    // 後から足した component は未採番。 読込時の採番が番号を振るので、 基準 CRC も採番済から取る
+    // 後から足した component は未採番。読込時の採番が番号を振るので、比べる元も採番済から取る
     SceneNs::EnsureUniqueObjectIds(level);
 
-    const std::uint32_t crc0 = level.ComputeCrc32();
     const std::string text = SceneNs::SerializeSceneToJson(level);
     SceneNs::SceneData restored;
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(restored, text));
 
-    EXPECT_EQ(restored.ComputeCrc32(), crc0);
+    EXPECT_TRUE(restored == level);
     ASSERT_EQ(restored.objects.size(), 4u);
     ASSERT_EQ(restored.objects[1].components.size(), 2u); // FakeFollow + transform
     const nlohmann::json& entry = restored.objects[1].components[0];

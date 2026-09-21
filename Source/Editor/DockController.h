@@ -6,18 +6,18 @@
 
 namespace NS::Editor
 {
-    //! @brief ドックホストとパネル全面化。 レイアウトと全面化の状態を持ち、 controller には触れない
-    //! @details 各パネルの中身は描かない。 描くのはホストの設置・ 全面化の出入り・ タブ焦点の確定だけで、
+    //! @brief ドックホストとパネル全面化。レイアウトと全面化の状態を持ち、controller には触れない
+    //! @details 各パネルの中身は描かない。描くのはホストの設置・ 全面化の出入り・ タブ焦点の確定だけで、
     //! 全面化中にどのパネルを描くかは呼び出し側が MaximizedPanel() を見て振り分ける
     class DockController : public NS::Core::NonCopyable
     {
     public:
         //! @brief ツールバー帯の下にドックホストを 1 枚置く
         //! @param[in] topOffset ツールバー帯の高さ分だけ上端を空ける
-        //! @details ini に配置が無ければ既定レイアウトを組み、 次フレームで前面タブを確定させる
+        //! @details ini に配置が無ければ既定レイアウトを組み、次フレームで前面タブを確定させる
         void RenderDockSpaceHost(float topOffset) noexcept;
 
-        //! 通常時はタブバー右端、 全面化中は右上の浮遊ボタンに全面化 / 復元ボタンを描く
+        //! 通常時はタブバー右端、全面化中は右上の浮遊ボタンに全面化 / 復元ボタンを描く
         void RenderMaximizeButton() noexcept;
 
         //! レイアウトを組み直した次フレームで前面タブを確定させる
@@ -26,7 +26,7 @@ namespace NS::Editor
         //! 全面化中か
         [[nodiscard]] bool IsMaximized() const noexcept { return !m_maximizedPanel.empty(); }
 
-        //! 全面化中のパネル名。 通常時は空
+        //! 全面化中のパネル名。通常時は空
         [[nodiscard]] const std::string& MaximizedPanel() const noexcept { return m_maximizedPanel; }
 
         //! 未知名を掴んだ時の保険として状態だけ全面化を解く

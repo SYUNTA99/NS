@@ -1,13 +1,7 @@
-#include "Game/Level/ImpactInputJudge.h"
+﻿#include "Game/Level/ImpactInputJudge.h"
 
 namespace NS::Game::Level
 {
-    namespace
-    {
-        // 数え続けると 60fps で約 414 日後に int があふれるため頭打ちにする。溜めは高々数十歩なので判定に影響しない
-        constexpr int k_MaxCountedSteps = 1 << 20;
-    } // namespace
-
     const char* SlamKindLabel(SlamKind kind) noexcept
     {
         switch (kind)
@@ -25,15 +19,14 @@ namespace NS::Game::Level
     {
         if (held)
         {
-            // 押している間は何も控えない。押した歩でタップを出すとチャージ狙いにも必ず 1 回混ざる
-            if (m_heldSteps < k_MaxCountedSteps)
-                ++m_heldSteps;
+            // 押している間は何も控えない。押したフレームでタップを出すとチャージ狙いにも必ず 1 回混ざる
+            ++m_heldSteps;
             return;
         }
 
         if (m_heldSteps > 0)
         {
-            // 発動点は離した歩だけ
+            // 発動点は離したフレームだけ
             if (IsCharging())
             {
                 m_releasedSteps = m_heldSteps;
@@ -74,8 +67,10 @@ namespace NS::Game::Level
     bool ImpactInputJudge::JustStartedCharging() const noexcept
     {
         if (!IsCharging())
+        {
             return false;
-        // 入り口は 1 歩前の保持で同じ判定を引き直して決める。控えた結果だと、しきい値を変えた歩で境目がずれる
+        }
+        // 入り口は 1 フレーム前の保持で判定を引き直して決める。控えた結果だと、しきい値を変えたフレームで境目がずれる
         const int previous = m_heldSteps - 1;
         return !(previous > 0 && previous >= chargeThresholdSteps);
     }
@@ -88,7 +83,9 @@ namespace NS::Game::Level
     int ImpactInputJudge::ChargeSteps() const noexcept
     {
         if (m_heldSteps > 0)
+        {
             return m_heldSteps;
+        }
         return m_releasedSteps;
     }
 
@@ -96,14 +93,20 @@ namespace NS::Game::Level
     {
         const int steps = ChargeSteps();
         if (steps <= 0 || steps < chargeThresholdSteps)
+        {
             return 0.0f;
+        }
         const int span = chargeMaxSteps - chargeThresholdSteps;
         // 満タン秒をしきい値以下にされると幅が 0 以下になり 0 除算になるため、割らずに満タンへ倒す
         if (span <= 0)
+        {
             return 1.0f;
+        }
         const float raw = static_cast<float>(steps - chargeThresholdSteps) / static_cast<float>(span);
         if (raw >= 1.0f)
+        {
             return 1.0f;
+        }
         return raw;
     }
 } // namespace NS::Game::Level

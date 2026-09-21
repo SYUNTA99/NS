@@ -97,7 +97,7 @@ namespace
         return out;
     }
 
-    // 三角形 1 枚の glTF。 buffer は data URI に埋め、 外部 .bin を読ませない
+    // 三角形 1 枚の glTF。buffer は data URI に埋め、外部 .bin を読ませない
     std::string SingleTriangleGltf(const std::array<float, 9>& positions)
     {
         std::vector<std::uint8_t> buffer(42, 0);
@@ -127,7 +127,7 @@ namespace
                R"({"bufferView":1,"componentType":5123,"count":3,"type":"SCALAR"}]})";
     }
 
-    // ContentRoot 相対の参照。 ContentRoot の外なら空
+    // ContentRoot 相対の参照。ContentRoot の外なら空
     std::string ContentRelativeRef(const std::filesystem::path& path)
     {
         const std::filesystem::path relative = path.lexically_relative(NS::Core::FileSystem::ContentRoot());
@@ -171,7 +171,7 @@ TEST_F(AssetManagerTest, SamePathReturnsSamePointer)
     EXPECT_EQ(texA, texB);
 }
 
-// 組み込み名前キーは同一の非 null StaticMesh を返し、 未登録名は nullptr
+// 組み込み名前キーは同一の非 null StaticMesh を返し、未登録名は nullptr
 TEST_F(AssetManagerTest, BuiltinReturnsSameNonNullPointer)
 {
     Window window(MakeWindowDesc("ns_am_builtin"));
@@ -190,7 +190,7 @@ TEST_F(AssetManagerTest, BuiltinReturnsSameNonNullPointer)
     EXPECT_EQ(am.Builtin("nonexistent"), nullptr);
 }
 
-// device 無しでも読込失敗した mesh path は負キャッシュされ、 2 度目以降は再読込せず即 nullptr を返す
+// device 無しでも読込失敗した mesh path は負キャッシュされ、2 度目以降は再読込せず即 nullptr を返す
 TEST_F(AssetManagerTest, FailedMeshLoadIsNegativeCached)
 {
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
@@ -202,7 +202,7 @@ TEST_F(AssetManagerTest, FailedMeshLoadIsNegativeCached)
     EXPECT_EQ(am.MeshCacheSize(), 1u); // 2 度目は再読込せず件数が増えない
 }
 
-// 組み込みの cube は device 無しでも三角形 12 枚と Jolt の形を持つ当たりになり、 どの面の法線も外を向く
+// 組み込みの cube は device 無しでも三角形 12 枚と Jolt の形を持つ当たりになり、どの面の法線も外を向く
 TEST_F(AssetManagerTest, BuiltinCubeCollisionHasTwelveOutwardTriangles)
 {
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
@@ -218,7 +218,7 @@ TEST_F(AssetManagerTest, BuiltinCubeCollisionHasTwelveOutwardTriangles)
     }
 }
 
-// 同じ参照には同じ当たりを返す。 配置物ごとに読み直さない
+// 同じ参照には同じ当たりを返す。配置物ごとに読み直さない
 TEST_F(AssetManagerTest, SameMeshRefSharesCollision)
 {
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
@@ -228,7 +228,7 @@ TEST_F(AssetManagerTest, SameMeshRefSharesCollision)
     EXPECT_EQ(am.GetOrLoadMeshCollision("wedge45"), first);
 }
 
-// 右手系の glTF を Z 反転で読んでも表面は同じ側を向く。 期待する法線は元の法線 (0, -2, 6) の Z を反転した物
+// 右手系の glTF を Z 反転で読んでも表面は同じ側を向く。期待する法線は元の法線 (0, -2, 6) の Z を反転した物
 TEST_F(AssetManagerTest, GltfCollisionKeepsFrontFaceInLeftHandedSpace)
 {
     const std::array<float, 9> positions = {0.0f, 0.0f, 1.0f, 2.0f, 0.0f, 1.0f, 0.0f, 3.0f, 2.0f};
@@ -269,7 +269,7 @@ TEST_F(AssetManagerTest, GltfCollisionKeepsFrontFaceInLeftHandedSpace)
     EXPECT_NEAR(normal.z, frontFace.z, 1.0e-5f);
 }
 
-// 空文字・ContentRoot の外・存在しない file は nullptr。 読めなかった参照は 2 度目も nullptr
+// 空文字・ContentRoot の外・存在しない file は nullptr。読めなかった参照は 2 度目も nullptr
 TEST_F(AssetManagerTest, UnresolvableMeshRefHasNoCollision)
 {
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
@@ -280,7 +280,7 @@ TEST_F(AssetManagerTest, UnresolvableMeshRefHasNoCollision)
     EXPECT_EQ(am.GetOrLoadMeshCollision("__ns_am_missing_collision__.gltf"), nullptr);
 }
 
-// 同じ file を指す参照は、 先頭に ./ を付けても記録 1 件の同じ三角形を返す
+// 同じ file を指す参照は、先頭に ./ を付けても記録 1 件の同じ三角形を返す
 TEST_F(AssetManagerTest, CollisionRefSpellingsShareOneRecord)
 {
     const std::array<float, 9> positions = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
@@ -296,7 +296,7 @@ TEST_F(AssetManagerTest, CollisionRefSpellingsShareOneRecord)
     EXPECT_EQ(am.MeshCacheSize(), 1u);
 }
 
-// 描画を先に頼んだ glTF は、 当たりを頼んだ時に読み直さない。 間で file を書き換えても最初の中身のまま
+// 描画を先に頼んだ glTF は、当たりを頼んだ時に読み直さない。間で file を書き換えても最初の中身のまま
 TEST_F(AssetManagerTest, MeshAndCollisionReadTheGltfOnce)
 {
     const std::array<float, 9> first = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
@@ -425,7 +425,7 @@ TEST(AssetManagerParseTest, BlendStringMapsToEnum)
     EXPECT_EQ(blend, NS::Graphics::BlendMode::Opaque);
 }
 
-// 同一 .mat path の LoadMaterial は重複除去され同一 Material* を返す。 内部 leaf を借りて組む
+// 同一 .mat path の LoadMaterial は重複除去され同一 Material* を返す。内部 leaf を借りて組む
 TEST_F(AssetManagerTest, LoadMaterialDedupReturnsSamePointer)
 {
     Window window(MakeWindowDesc("ns_am_loadmat"));
@@ -445,7 +445,7 @@ TEST_F(AssetManagerTest, LoadMaterialDedupReturnsSamePointer)
     EXPECT_EQ(first.material, second.material);
 }
 
-// RegisterSharedMaterials 後、 player/water/shadow が非 null かつ同一アクセサが同一ポインタ
+// RegisterSharedMaterials 後、player/water/shadow が非 null かつ同一アクセサが同一ポインタ
 TEST_F(AssetManagerTest, SharedMaterialsNonNullAfterRegister)
 {
     Window window(MakeWindowDesc("ns_am_shared"));

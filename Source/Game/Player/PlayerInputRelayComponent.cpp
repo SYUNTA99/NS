@@ -33,6 +33,10 @@ namespace NS::Game::Player
         m_player->SetClimbMove(m_input->ClimbRight(), m_input->ClimbForward());
         if (m_input->JumpPressed())
             m_player->SetJumpPressed();
+        if (m_input->ReleaseLedgePressed())
+        {
+            m_player->SetReleaseLedgePressed();
+        }
         m_player->SetJumpHeld(m_input->JumpHeld());
     }
 } // namespace NS::Game::Player

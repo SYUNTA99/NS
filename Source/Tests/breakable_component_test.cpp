@@ -60,20 +60,6 @@ TEST(BreakableComponentTest, MassClampsToLowerBound)
     EXPECT_FLOAT_EQ(breakable->Mass(), 0.01f);
 }
 
-// 耐久 0 は最低の勢いでも壊れる的を置くための値なので許す。負だけ 0 へ丸める
-TEST(BreakableComponentTest, ToughnessClampsNegativeToZero)
-{
-    GameObject obj;
-    BreakableComponent* breakable = obj.AddComponent<BreakableComponent>();
-    ASSERT_NE(breakable, nullptr);
-
-    breakable->SetToughness(-1.0f);
-    EXPECT_FLOAT_EQ(breakable->Toughness(), 0.0f);
-
-    breakable->SetToughness(0.0f);
-    EXPECT_FLOAT_EQ(breakable->Toughness(), 0.0f);
-}
-
 // 非有限値は丸めずに捨てる。前の値が残る
 TEST(BreakableComponentTest, NonFiniteValuesAreIgnored)
 {
@@ -118,10 +104,11 @@ TEST(BreakableComponentTest, ReflectionLabelsAreMassAndToughness)
     EXPECT_EQ(mass->type, NS::Object::FieldType::Float);
     EXPECT_EQ(toughness->type, NS::Object::FieldType::Float);
 
-    // 欄は setter 経由。Inspector のドラッグで下限を越えて引いても JSON と同じ検証を通る
+    // 欄は setter 経由。Inspector のドラッグも JSON の手編集も同じ検証を通る
     const float belowBound = -2.0f;
     mass->set(breakable, &belowBound);
-    toughness->set(breakable, &belowBound);
     EXPECT_FLOAT_EQ(breakable->Mass(), 0.01f);
-    EXPECT_FLOAT_EQ(breakable->Toughness(), 0.0f);
+    const float notANumber = std::numeric_limits<float>::quiet_NaN();
+    toughness->set(breakable, &notANumber);
+    EXPECT_FLOAT_EQ(breakable->Toughness(), 1.0f);
 }

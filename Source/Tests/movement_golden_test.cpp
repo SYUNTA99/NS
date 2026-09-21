@@ -2,6 +2,7 @@
 
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
+#include <Game/Player/States/FallPlayerState.h>
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Math.h>
@@ -22,6 +23,7 @@ namespace
 {
     using NS::Core::AABB;
     using NS::Core::Vector3;
+    using NS::Game::Player::FallPlayerState;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerStateManagerComponent;
     using NS::Object::GameObject;
@@ -58,7 +60,7 @@ namespace
     }
 
     //! 自機 2 部品を載せて OnStart まで通す。積む順は Player のコンストラクタと同じ
-    //! @details 開始位置は空中に取り、数ステップの自然落下で着地させる
+    //! @details 開始位置は空中に取り、数フレームの自然落下で着地させる
     PlayerComponent& SetUpMovement(GameObject& owner, NS::Physics::PhysicsScene& physics, const Vector3& startPosition)
     {
         auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
@@ -76,7 +78,7 @@ namespace
         return StepRecord{owner.Root().Position(), movement.Velocity(), movement.IsGrounded()};
     }
 
-    //! 平地を X+ へ全開で走り、90 ステップ目から入力を切って停止する
+    //! 平地を X+ へ全開で走り、90 フレーム目から入力を切って停止する
     //! 加速の立ち上がり・最大速度巡航・減速の 3 経路を通す
     std::vector<StepRecord> RunFlatWalk()
     {
@@ -99,7 +101,7 @@ namespace
         return trajectory;
     }
 
-    //! 走りながらジャンプ 1 回。20 ステップ保持してから離すことで
+    //! 走りながらジャンプ 1 回。20 フレーム保持してから離すことで
     //! 上昇の弱い重力・離し減速・頂点の重力緩和・落下の強い重力を全て通す
     //! 床は 3 秒間の全力走行で走り抜けない長さにする
     std::vector<StepRecord> RunSingleJump()
@@ -123,8 +125,8 @@ namespace
         return trajectory;
     }
 
-    //! 短い床を走り抜けて踏み外し、その次のステップでジャンプ入力する
-    //! 入力の時点で空中 1 ステップぶんの時間が経過しており、コヨーテ時間の内側を踏む
+    //! 短い床を走り抜けて踏み外し、その次のフレームでジャンプ入力する
+    //! 入力の時点で空中 1 フレームぶんの時間が経過しており、コヨーテ時間の内側を踏む
     std::vector<StepRecord> RunCoyoteJump()
     {
         NsTest::EntityStage stage;
@@ -206,7 +208,7 @@ namespace
     }
 
     //! 縁を掴む → シミー → よじ登る → 立つ を 1 続きで通す
-    //! 床を敷かないので 1 歩目から下降し、掴みの条件が立つ
+    //! 床を敷かないので 1 フレーム目から下降し、掴みの条件が立つ
     //! 掴まりは値を見る検証しか持たず、呼ぶ順序の入れ替えは基準の軌跡でしか拾えない
     std::vector<StepRecord> RunLedgeClimb()
     {
@@ -216,7 +218,12 @@ namespace
         NsTest::AddBox(physics, AABB{Vector3{0.0f, 0.0f, 0.0f}, Vector3{0.5f, 0.5f, 0.5f}});
         NsTest::AddBox(physics, AABB{Vector3{0.0f, 0.0f, 1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
         NsTest::AddBox(physics, AABB{Vector3{0.0f, 0.0f, -1.0f}, Vector3{0.5f, 0.5f, 0.5f}});
-        auto& movement = SetUpMovement(owner, physics, Vector3{-0.9f, 0.0f, 0.0f});
+        auto& movement = SetUpMovement(owner, physics, Vector3{-0.9f, 0.1f, 0.0f});
+        // 入力は最初のフレームだけ。立ちから始めるとそのフレームに加速せず、縁を向かないまま落ちて掴まない
+        // 状態機械は最初のフレームまで組まれないので、先に組んでから落下へ移す
+        auto& manager = *owner.FindComponent<PlayerStateManagerComponent>();
+        manager.EnsureBuilt(movement);
+        manager.Change<FallPlayerState>();
 
         std::vector<StepRecord> trajectory;
         for (int i = 0; i < 150; ++i)
@@ -225,12 +232,19 @@ namespace
             if (i == 0)
                 speedScale = 1.0f;
 
+            float shimmy = 0.0f;
             float climb = 0.0f;
-            if (i >= 1)
+            if (i >= 1 && i <= 30)
+            {
+                shimmy = 1.0f;
+            }
+            else if (i > 30)
+            {
                 climb = 1.0f;
+            }
 
             movement.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, speedScale);
-            movement.SetClimbMove(climb, climb);
+            movement.SetClimbMove(shimmy, climb);
             movement.OnUpdate();
             trajectory.push_back(Record(owner, movement));
         }
@@ -374,7 +388,9 @@ TEST_F(MovementGolden, SlopeAscentMatchesGoldenTrace)
     for (std::size_t i = 61; i < trajectory.size(); ++i)
     {
         if (trajectory[i].position.y >= trajectory[i - 1].position.y - 0.001f)
+        {
             ++monotonicSteps;
+        }
     }
     EXPECT_GE(monotonicSteps, 55);
     EXPECT_GT(trajectory.back().position.y, trajectory[60].position.y + 1.0f);

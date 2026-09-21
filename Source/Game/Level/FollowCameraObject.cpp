@@ -1,4 +1,4 @@
-#include "Game/Level/FollowCameraObject.h"
+﻿#include "Game/Level/FollowCameraObject.h"
 
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
@@ -21,7 +21,9 @@ namespace NS::Game::Level
         for (std::size_t i = 0; i < scene.objects.size(); ++i)
         {
             if (IsFollowCameraObject(scene.objects[i]))
+            {
                 return i;
+            }
         }
         return NS::Object::k_NoObjectIndex;
     }
@@ -34,7 +36,7 @@ namespace NS::Game::Level
 
         ObjectData object{};
         object.components = nlohmann::json::array({std::move(follow)});
-        // 姿勢は実行時に追従で決まるが、 データ側にも transform を 1 つ持たせる
+        // 姿勢は実行時に追従で決まるが、データ側にも transform を 1 つ持たせる
         NS::Object::EnsureTransformComponent(object);
         return object;
     }
@@ -42,7 +44,10 @@ namespace NS::Game::Level
     bool EnsureFollowCameraObject(SceneData& scene, std::uint32_t targetObjectId)
     {
         if (FindFollowCameraObjectIndex(scene) != NS::Object::k_NoObjectIndex)
+        {
             return false;
+        }
+
         scene.objects.push_back(MakeFollowCameraObject(targetObjectId));
         NS::Object::EnsureUniqueObjectIds(scene);
         return true;

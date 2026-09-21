@@ -13,9 +13,9 @@
 namespace LevelNs = NS::Game::Level;
 namespace SceneNs = NS::Object;
 
-//! Application 依存のない Scene で、 走行のやり直しと応答 component の挙動を検証する
-//! 応答部品はプレイヤーに載るので、 プレイヤーを 1 体置けば揃う
-//! 更新を回すのは Scene::OnUpdate で、 dt は FrameTimer::FixedDelta の既定 1/60 が使われる
+//! Application 依存のない Scene で、走行のやり直しと応答 component の挙動を検証する
+//! 応答部品はプレイヤーに載るので、プレイヤーを 1 体置けば揃う
+//! 更新を回すのは Scene::OnUpdate で、dt は FrameTimer::FixedDelta の既定 1/60 が使われる
 //! 判定と応答 (respawner / finisher) は同じ LateUpdate 帯の並びで済む
 
 namespace
@@ -29,7 +29,7 @@ namespace
         return object;
     }
 
-    // プレイヤーと同じ場所に置くトリガの hazard 箱を組む。 トリガなので物理に押し出されない
+    // プレイヤーと同じ場所に置くトリガの hazard 箱を組む。トリガなので物理に押し出されない
     SceneNs::ObjectData MakeTriggerHazard()
     {
         SceneNs::ObjectData object;
@@ -39,7 +39,7 @@ namespace
         return object;
     }
 
-    // 応答 component を載せた GameObject から暗転を引く。 GameObject は無名なので component 検索で見つける
+    // 応答 component を載せた GameObject から暗転を引く。GameObject は無名なので component 検索で見つける
     LevelNs::ScreenFadeComponent* FindFade(SceneNs::Scene& scene)
     {
         LevelNs::ScreenFadeComponent* found = nullptr;
@@ -82,10 +82,10 @@ TEST(PlayerResponses, FallIntoKillZoneRestartsSameTick)
 
     auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
-    // 体力を減らしておくと、 全回復が「リスタートが走った」証拠になる
+    // 体力を減らしておくと、全回復が「リスタートが走った」証拠になる
     player->ApplyDamage(5);
 
-    // 奈落へ落とすと LateUpdate 帯の即死判定が立ち、 同じ LateUpdate の respawner がリスタートさせる
+    // 奈落へ落とすと LateUpdate 帯の即死判定が立ち、同じ LateUpdate の respawner がリスタートさせる
     player->Root().SetPosition(NS::Core::Vector3{0.0f, -55.0f, 0.0f});
     scene.OnUpdate();
 
@@ -124,7 +124,7 @@ TEST(PlayerResponses, GoalContactStartsClearFadeSameTick)
 
     scene.OnUpdate();
 
-    // 接触のフラグが判定で立ち、 同じ LateUpdate の finisher がシーケンスを始める
+    // 接触のフラグが判定で立ち、同じ LateUpdate の finisher がシーケンスを始める
     auto* fade = FindFade(scene);
     ASSERT_NE(fade, nullptr);
     EXPECT_TRUE(fade->IsFading());
@@ -161,7 +161,7 @@ TEST(PlayerResponses, StepFrameAdvancesExactlyOneTick)
     auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
 
-    // コマ送り 1 回で hazard がちょうど 1 削り、 その後は止まったまま
+    // コマ送り 1 回で hazard がちょうど 1 削り、その後は止まったまま
     scene.StepSimulation();
     scene.OnUpdate();
     EXPECT_EQ(player->Health(), 7);
@@ -181,7 +181,7 @@ TEST(PlayerResponses, DisabledSimulationSkipsObjectUpdates)
     auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
 
-    // 編集モード相当。 component の更新が走らないので hazard の中でも何も起きない
+    // 編集モード相当。component の更新が走らないので hazard の中でも何も起きない
     scene.SetSimulationEnabled(false);
     scene.OnUpdate();
     EXPECT_EQ(player->Health(), 8);
@@ -201,7 +201,7 @@ TEST(PlayerResponses, ClearFadesOutRestartsAtBlackThenFadesIn)
     scene.LoadFromData(std::move(data));
     (void)scene.BeginPlayBaseline();
 
-    // 体力を減らしておくと、 全回復が「全黒でリスタートが走った」証拠になる
+    // 体力を減らしておくと、全回復が「全黒でリスタートが走った」証拠になる
     auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     player->ApplyDamage(5);
@@ -215,7 +215,7 @@ TEST(PlayerResponses, ClearFadesOutRestartsAtBlackThenFadesIn)
     ASSERT_NE(input, nullptr);
     EXPECT_FALSE(input->IsActiveSelf());
 
-    // 暗転が終わると全黒の裏でリスタートし、 そのまま明転に入る
+    // 暗転が終わると全黒の裏でリスタートし、そのまま明転に入る
     int ticks = 0;
     while (player->Health() != 8 && ticks++ < 100)
         scene.OnUpdate();
@@ -223,7 +223,7 @@ TEST(PlayerResponses, ClearFadesOutRestartsAtBlackThenFadesIn)
     EXPECT_TRUE(fade->IsFading());
     EXPECT_NEAR(fade->Alpha(), 1.0f, 1e-4f);
 
-    // 明転を終えると通常プレイへ戻り、 操作が返る
+    // 明転を終えると通常プレイへ戻り、操作が返る
     ticks = 0;
     while (fade->IsFading() && ticks++ < 100)
         scene.OnUpdate();

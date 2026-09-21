@@ -1,4 +1,4 @@
-#include "Runtime/Object/Components/SphereColliderComponent.h"
+﻿#include "Runtime/Object/Components/SphereColliderComponent.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Sphere.h"
 
@@ -51,7 +51,9 @@ namespace NS::Object
     {
         const GameObject* owner = Owner();
         if (owner == nullptr)
-            return NS::Core::Sphere{m_centerOffset, m_radius};
+        {
+            return NS::Core::Sphere{ m_centerOffset, m_radius };
+        }
 
         const NS::Core::Matrix world = owner->Root().WorldMatrix();
         const NS::Core::Vector3 center = NS::Core::Vector3::Transform(m_centerOffset, world);

@@ -3,6 +3,7 @@
 #include <Runtime/Graphics/Animation.h>
 #include <Runtime/Graphics/GltfLoader.h>
 #include <Runtime/Graphics/Skeleton.h>
+#include <algorithm>
 #include <filesystem>
 #include <gtest/gtest.h>
 #include <iostream>
@@ -10,8 +11,8 @@
 #include <string>
 #include <vector>
 
-// 実アセット (Khronos サンプル CesiumMan.glb、 人型の歩行) を読み、 skin + animation が取り込めて
-// 別時刻で別ポーズになることを確認する。 アセットが無ければ飛ばす
+// 実アセット (Khronos サンプル CesiumMan.glb、人型の歩行) を読み、skin + animation が取り込めて
+// 別時刻で別ポーズになることを確認する。アセットが無ければ飛ばす
 TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
 {
     const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / "Assets" / "Models" / "CesiumMan.glb";
@@ -38,7 +39,7 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
                   << "\n";
     }
 
-    // 先頭クリップを t=0 と中間で評価し、 ポーズが変化している = 実際にアニメする
+    // 先頭クリップを t=0 と中間で評価し、ポーズが変化している = 実際にアニメする
     const NS::Graphics::AnimationClip& clip = data.animations[0];
     std::vector<NS::Graphics::BonePose> poseStart;
     std::vector<NS::Graphics::BonePose> poseMid;
@@ -60,7 +61,7 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
     }
     EXPECT_TRUE(anyDifference) << "t=0 と中間でポーズが変化していない";
 
-    // skinned 頂点 AABB の最長軸で向きを判定する。 人型が立っていれば Y (身長) が最長
+    // skinned 頂点 AABB の最長軸で向きを判定する。人型が立っていれば Y (身長) が最長
     // root 上位ノード変換 (アーマチュア Z-up→Y-up) を取りこぼすと Z 最長 = 寝た状態になる
     auto extentOf = [&](const std::vector<NS::Core::Matrix>& palette) {
         const std::span<const NS::Core::Matrix> sp(palette.data(), palette.size());
@@ -94,6 +95,39 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
             ++namedBones;
     std::cout << "[CesiumMan] named bones = " << namedBones << " / " << data.skeleton.BoneCount() << "\n";
     EXPECT_EQ(namedBones, data.skeleton.BoneCount()) << "全ボーンに node 名が入っていない";
+}
+
+// Xbot.glb はアーマチュア節点が 0.01 倍で骨をセンチメートルで持つ。CesiumMan にこの倍率は無い
+TEST(GltfAnimatedAssetTest, XbotStandsAtHumanScale)
+{
+    const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / "Assets" / "Models" / "Xbot.glb";
+    if (!std::filesystem::exists(path))
+    {
+        GTEST_SKIP() << "Xbot.glb が無い: " << path.string();
+    }
+
+    const auto data = NS::Graphics::LoadGltfSkinnedMesh(path.string());
+    ASSERT_TRUE(data.IsValid());
+    ASSERT_GT(data.vertices.size(), 0u);
+
+    std::vector<NS::Core::Matrix> bindPalette;
+    data.skeleton.ComputeBindPalette(bindPalette);
+    ASSERT_FALSE(bindPalette.empty());
+    const std::span<const NS::Core::Matrix> palette(bindPalette.data(), bindPalette.size());
+
+    float lowest = 1e9f;
+    float highest = -1e9f;
+    for (const NS::Graphics::SkinnedVertex& vertex : data.vertices)
+    {
+        const NS::Core::Vector3 p = NS::Graphics::Skeleton::SkinPositionReference(vertex, palette);
+        lowest = std::min(lowest, p.y);
+        highest = std::max(highest, p.y);
+    }
+    std::cout << "[Xbot] bind lowest y=" << lowest << " height=" << (highest - lowest) << "\n";
+
+    EXPECT_NEAR(lowest, 0.0f, 0.05f) << "足元が原点に無い";
+    EXPECT_NEAR(highest - lowest, 1.81f, 0.1f)
+        << "身長が人の寸法でない。アーマチュアのスケール (0.01) を取りこぼすと 100 倍になる";
 }
 
 // skin 非依存のソース読込: skin を無視して node 階層＋animation だけから骨格とクリップを取る

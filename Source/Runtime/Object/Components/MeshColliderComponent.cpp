@@ -1,4 +1,4 @@
-#include "Runtime/Object/Components/MeshColliderComponent.h"
+﻿#include "Runtime/Object/Components/MeshColliderComponent.h"
 
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
@@ -17,11 +17,11 @@ namespace NS::Object
 {
     namespace
     {
-        // 分解と組み直しの丸め誤差 (1e-6 前後) より 2 桁大きく取った、 拡縮 1 あたりの許容差
+        // 分解と組み直しの丸め誤差 (1e-6 前後) より 2 桁大きく取った、拡縮 1 あたりの許容差
         constexpr float k_ShearTolerance = 1.0e-4f;
 
-        // 分解した拡縮と回転から 3x3 を組み直し、 元と合わなければ歪みがある
-        // 歪みは縦横で違う拡縮の親の下に回転した子を置いた時に出て、 位置・回転・拡縮の 3 つでは表せない
+        // 分解した拡縮と回転から 3x3 を組み直し、元と合わなければ歪みがある
+        // 歪みは縦横で違う拡縮の親の下に回転した子を置いた時に出て、位置・回転・拡縮の 3 つでは表せない
         [[nodiscard]] bool HasShear(const NS::Core::Matrix& world, const NS::Core::AffineDecomposition& parts) noexcept
         {
             const NS::Core::Matrix rebuilt =
@@ -32,7 +32,9 @@ namespace NS::Object
                 for (int column = 0; column < 3; ++column)
                 {
                     if (std::abs(rebuilt.m[row][column] - world.m[row][column]) > tolerance)
+                    {
                         return true;
+                    }
                 }
             }
             return false;
@@ -54,10 +56,14 @@ namespace NS::Object
     std::vector<NS::Physics::Triangle> MeshColliderComponent::WorldTriangles() const
     {
         if (m_collision == nullptr)
+        {
             return {};
+        }
         const GameObject* owner = Owner();
         if (owner == nullptr)
-            return m_collision->triangles;
+        {
+			return m_collision->triangles;
+        }
 
         const NS::Core::Matrix world = owner->Root().WorldMatrix();
         std::vector<NS::Physics::Triangle> result;
@@ -74,26 +80,34 @@ namespace NS::Object
     JPH::BodyID MeshColliderComponent::SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current)
     {
         if (m_collision == nullptr)
+        {
             return JPH::BodyID{};
+        }
 
         NS::Core::Matrix world = NS::Core::Matrix::Identity;
         if (const GameObject* owner = Owner())
-            world = owner->Root().WorldMatrix();
+        {
+			world = owner->Root().WorldMatrix();
+        }
         const NS::Core::AffineDecomposition parts = NS::Core::DecomposeAffine(world);
-        // 描画は 4x4 の行列で歪みまで出すので、 形の共有をやめて世界座標の三角形から作り、 描画と当たりを揃える
+        // 描画は 4x4 の行列で歪みまで出すので、形の共有をやめて世界座標の三角形から作り、描画と当たりを揃える
         if (HasShear(world, parts))
+        {
             return physics.SyncMesh(current, WorldTriangles(), NS::Physics::ObjectLayers::Terrain);
+        }
 
         const NS::Physics::MeshCollision& shared = *m_collision;
-        return physics.SyncMeshShape(
-            current, shared, parts.translation, parts.rotation, parts.scale, NS::Physics::ObjectLayers::Terrain);
+        return physics.SyncMeshShape(current, shared, parts.translation, parts.rotation, parts.scale, NS::Physics::ObjectLayers::Terrain);
     }
 
     void MeshColliderComponent::ResolveAssets(AssetManager& assets)
     {
         const GameObject* owner = Owner();
         if (owner == nullptr)
+        {
             return;
+        }
+
         const MeshRendererComponent* renderer = owner->FindComponent<MeshRendererComponent>();
         if (renderer == nullptr)
         {
@@ -103,7 +117,10 @@ namespace NS::Object
 
         const NS::Physics::MeshCollision* collision = assets.GetOrLoadMeshCollision(renderer->MeshRef());
         if (collision == nullptr)
+        {
             collision = assets.GetOrLoadMeshCollision("cube");
+        }
+
         SetCollision(collision);
     }
 

@@ -56,7 +56,7 @@ namespace NS::Editor
         if (!m_holder)
             m_holder = std::make_unique<NS::Object::GameObject>();
 
-        // 既定コンストラクタで作っただけの 1 体。 未登録の型は nullptr が返り、 その答も控えて再試行しない
+        // 既定コンストラクタで作っただけの 1 体。未登録の型は nullptr が返り、その答も控えて再試行しない
         NS::Object::Component* created = NS::Object::CreateComponent(typeName, *m_holder);
         m_byType.emplace_back(std::string(typeName), created);
         return created;
@@ -78,6 +78,8 @@ namespace NS::Editor
             return !SameValue<bool>(comp, *defaults, field);
         case NS::Object::FieldType::Vector3:
             return !SameValue<NS::Core::Vector3>(comp, *defaults, field);
+        case NS::Object::FieldType::Quaternion:
+            return !SameValue<NS::Core::Quaternion>(comp, *defaults, field);
         case NS::Object::FieldType::String:
             return !SameValue<std::string>(comp, *defaults, field);
         case NS::Object::FieldType::ObjectRef:
@@ -105,6 +107,9 @@ namespace NS::Editor
             break;
         case NS::Object::FieldType::Vector3:
             CopyValue<NS::Core::Vector3>(comp, defaults, field);
+            break;
+        case NS::Object::FieldType::Quaternion:
+            CopyValue<NS::Core::Quaternion>(comp, defaults, field);
             break;
         case NS::Object::FieldType::String:
             CopyValue<std::string>(comp, defaults, field);
@@ -472,6 +477,21 @@ namespace NS::Editor
                 if (ImGui::DragFloat3("##value", xyz, 0.05f))
                 {
                     value = NS::Core::Vector3{xyz[0], xyz[1], xyz[2]};
+                    field.set(&comp, &value);
+                    result.changed = true;
+                }
+                break;
+            }
+            case NS::Object::FieldType::Quaternion:
+            {
+                // 4 成分を直接触らせると正規化の崩れた回転を作れるので、度の Euler を経由する
+                NS::Core::Quaternion value{};
+                field.get(&comp, &value);
+                const NS::Core::Vector3 degrees = NS::Core::QuaternionToEulerDegrees(value);
+                float xyz[3] = {degrees.x, degrees.y, degrees.z};
+                if (ImGui::DragFloat3("##value", xyz, 0.5f))
+                {
+                    value = NS::Core::EulerDegreesToQuaternion(NS::Core::Vector3{xyz[0], xyz[1], xyz[2]});
                     field.set(&comp, &value);
                     result.changed = true;
                 }
@@ -873,7 +893,7 @@ namespace NS::Editor
             }
 
             result.activated |= ImGui::IsItemActivated();
-            // 編集無しのクリックでもラッチを解くため、 確定ではなく非活性化で committed を立てる
+            // 編集無しのクリックでもラッチを解くため、確定ではなく非活性化で committed を立てる
             // 空編集は CommitComponentEdit が before==after で弾くので履歴は汚れない
             result.committed |= ImGui::IsItemDeactivated();
 
@@ -894,84 +914,10 @@ namespace NS::Editor
         return result;
     }
 
-    ComponentEditResult DrawObjectComponents(NS::Object::GameObject& obj,
-                                             std::span<const ObjectRefOption> refOptions,
-                                             ComponentDefaults* defaults) noexcept
-    {
-        ComponentEditResult result;
-        int index = 0;
-        for (NS::Object::Component* comp : obj.Components())
-        {
-            if (comp == nullptr)
-            {
-                continue;
-            }
-            const NS::Object::ReflectionInfo* info = comp->GetReflection();
-
-            // Transform は Inspector 上部の専用パネルが編集するので、 リフレクション一覧では重複させない
-            if (info != nullptr && std::strcmp(info->typeName, "TransformComponent") == 0)
-            {
-                continue;
-            }
-
-            ImGui::PushID(index++);
-            ImGuiTreeNodeFlags flags = 0;
-            if (info != nullptr)
-            {
-                flags = ImGuiTreeNodeFlags_DefaultOpen;
-            }
-
-            // コンポーネントごとのヘッダを描画する
-            ImGui::PushStyleColor(ImGuiCol_Header, k_ComponentHeaderColor);
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, k_ComponentHeaderHoveredColor);
-            ImGui::PushStyleColor(ImGuiCol_HeaderActive, k_ComponentHeaderActiveColor);
-            const bool open = ImGui::CollapsingHeader(DisplayTypeName(info), flags);
-            ImGui::PopStyleColor(3);
-
-            if (open)
-            {
-                if (info != nullptr)
-                {
-                    const NS::Object::Component* baseline = nullptr;
-                    if (defaults != nullptr)
-                    {
-                        baseline = defaults->Find(info->typeName);
-                    }
-                    const ComponentEditResult r = DrawReflectedComponent(*comp, refOptions, baseline);
-                    result.changed |= r.changed;
-                    result.activated |= r.activated;
-                    result.committed |= r.committed;
-                    if (r.revertField != nullptr)
-                    {
-                        result.revertTarget = r.revertTarget;
-                        result.revertField = r.revertField;
-                    }
-                    if (r.changedField != nullptr)
-                    {
-                        result.changedTarget = r.changedTarget;
-                        result.changedField = r.changedField;
-                    }
-                }
-                else
-                {
-                    ImGui::TextDisabled("調整できるパラメータなし");
-                }
-            }
-            ImGui::PopID();
-        }
-        return result;
-    }
 #else
     ComponentEditResult DrawReflectedComponent(NS::Object::Component&,
                                                std::span<const ObjectRefOption>,
                                                const NS::Object::Component*) noexcept
-    {
-        return ComponentEditResult{};
-    }
-
-    ComponentEditResult DrawObjectComponents(NS::Object::GameObject&,
-                                             std::span<const ObjectRefOption>,
-                                             ComponentDefaults*) noexcept
     {
         return ComponentEditResult{};
     }

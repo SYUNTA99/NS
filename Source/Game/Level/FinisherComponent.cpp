@@ -1,4 +1,4 @@
-#include "Game/Level/FinisherComponent.h"
+﻿#include "Game/Level/FinisherComponent.h"
 
 #include "Game/Level/GoalComponent.h"
 #include "Game/Level/RespawnerComponent.h"
@@ -30,7 +30,9 @@ namespace NS::Game::Level
 
         auto* scene = Owner()->OwningScene();
         if (scene == nullptr || Fade() == nullptr)
+        {
             return;
+        }
 
         bool goalReached = false;
         scene->Objects().ForEachComponent<GoalComponent>([&goalReached](GoalComponent& goal) {
@@ -38,13 +40,17 @@ namespace NS::Game::Level
                 goalReached = true;
         });
         if (goalReached)
+        {
             m_sequences.Start(ClearSequence());
+        }
     }
 
     void FinisherComponent::SetPlayerInputActive(bool active) noexcept
     {
         if (auto* input = Owner()->FindComponent<NS::Object::PlayerInputComponent>())
+        {
             input->SetActive(active);
+        }
     }
 
     NS::Core::Coroutine FinisherComponent::ClearSequence()
@@ -57,7 +63,10 @@ namespace NS::Game::Level
 
         // 全黒の裏でやり直すので、出現位置への瞬間移動が黒に隠れる。手順は同じ object の respawner が持つ
         if (auto* respawner = Owner()->FindComponent<RespawnerComponent>())
+        {
             respawner->RestartRun();
+        }
+
         Fade()->BeginIn(k_FadeInSeconds);
         co_await NS::Core::WaitUntil{[this] { return !Fade()->IsFading(); }};
 

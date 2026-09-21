@@ -83,7 +83,7 @@ TEST(BoxColliderTest, WorldAABBNinetyDegreeYawKeepsCubeExtents)
     EXPECT_NEAR(box.Extents.z, 0.5f, 1e-4f);
 }
 
-// owner の位置と halfExtents が OBB に載る。 無回転なら軸は world と一致
+// owner の位置と halfExtents が OBB に載る。無回転なら軸は world と一致
 TEST(BoxColliderTest, WorldOBBReflectsOwnerPositionAndExtents)
 {
     GameObject obj;
@@ -115,7 +115,7 @@ TEST(BoxColliderTest, WorldOBBReflectsOwnerScale)
     EXPECT_NEAR(obb.halfExtentZ, 3.0f, 1e-4f);
 }
 
-// Y 軸 90° 回転で OBB 軸が world X と直交する。 AABB と違い回転を丸めない
+// Y 軸 90° 回転で OBB 軸が world X と直交する。AABB と違い回転を丸めない
 TEST(BoxColliderTest, WorldOBBRotationProducesRotatedAxes)
 {
     GameObject obj;
@@ -190,7 +190,7 @@ TEST(BoxColliderTest, LocalRotationRotatesObbAxes)
     EXPECT_NEAR(obb.axisX.Dot(obb.axisX), 1.0f, 1e-4f);
 }
 
-// Euler(度) で設定して読み戻すと同じ値に戻る。 Inspector のアクセサ用
+// Euler(度) で設定して読み戻すと同じ値に戻る。Inspector のアクセサ用
 TEST(BoxColliderTest, RotationEulerDegreesRoundTrips)
 {
     BoxColliderComponent sc;

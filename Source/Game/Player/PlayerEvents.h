@@ -10,10 +10,10 @@ namespace NS::Game::Player
     //! 体当たりの 2 つはこの作品だけの通知
     struct PlayerEvents
     {
-        NS::Game::Entity::EntityEvent onJump;            //!< 跳んだ歩
-        NS::Game::Entity::EntityEvent onLedgeGrabbed;    //!< 縁を掴んだ歩
-        NS::Game::Entity::EntityEvent onLedgeClimbing;   //!< よじ登りを始めた歩
-        NS::Game::Entity::EntityEvent onBodySlamStarted; //!< 体当たりが出た歩
-        NS::Game::Entity::EntityEvent onBodySlamEnded;   //!< 体当たりが終わった歩
+        NS::Game::Entity::EntityEvent onJump;            //!< 跳んだフレーム
+        NS::Game::Entity::EntityEvent onLedgeGrabbed;    //!< 縁を掴んだフレーム
+        NS::Game::Entity::EntityEvent onLedgeClimbing;   //!< よじ登りを始めたフレーム
+        NS::Game::Entity::EntityEvent onBodySlamStarted; //!< 体当たりが出たフレーム
+        NS::Game::Entity::EntityEvent onBodySlamEnded;   //!< 体当たりが終わったフレーム
     };
 } // namespace NS::Game::Player

@@ -1,4 +1,4 @@
-#include "Runtime/Object/Components/CameraComponent.h"
+﻿#include "Runtime/Object/Components/CameraComponent.h"
 
 #include "Runtime/Core/Math.h"
 #include "Runtime/Graphics/Renderer.h"
@@ -39,7 +39,9 @@ namespace NS::Object
         const NS::Core::Size2D size = renderer.Size();
         const float aspect = [&]() -> float {
             if (size.width <= 0 || size.height <= 0)
+            {
                 return 16.0f / 9.0f;
+            }
             return NS::Core::AspectRatio(size);
         }();
         m_camera.SetAspectRatio(aspect);
@@ -70,7 +72,9 @@ namespace NS::Object
         const NS::Core::Vector3 d = m_camera.Target() - m_camera.Position();
         NS::Core::Vector3 out{};
         if (!NS::Core::TryNormalizeHorizontal(d, out))
-            return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+        {
+            return NS::Core::Vector3{ 0.0f, 0.0f, 1.0f };
+        }
         return out;
     }
 

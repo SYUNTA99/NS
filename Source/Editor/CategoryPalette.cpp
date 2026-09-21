@@ -16,39 +16,24 @@
 
 namespace NS::Editor
 {
-    CategoryPalette::CategoryPalette() noexcept
-    {
-        RefreshCurrentTemplate();
-    }
-
-    void CategoryPalette::RefreshCurrentTemplate() noexcept
-    {
-        m_current = PaletteTemplateSlots()[m_activeSlot];
-    }
-
     void CategoryPalette::SetActiveSlot(std::size_t slot) noexcept
     {
         if (slot < k_SlotCount)
         {
             m_activeSlot = slot;
-            RefreshCurrentTemplate();
         }
     }
 
     float CategoryPalette::CurrentSlopeAngleDegrees() const noexcept
     {
         // コンポーネントからスロープ角度を読み取る。角度を持たない場合は負値を返す
-        const nlohmann::json* slope = NS::Object::FindComponentEntry(m_current.prototype, "SlopeColliderComponent");
+        const nlohmann::json* slope =
+            NS::Object::FindComponentEntry(PaletteTemplateSlots()[m_activeSlot].prototype, "SlopeColliderComponent");
         if (slope == nullptr)
         {
             return -1.0f;
         }
         return NS::Object::FieldFloat(*slope, "角度 (度)", -1.0f);
-    }
-
-    void CategoryPalette::CycleActiveVariant() noexcept
-    {
-        // スロットごとの雛形は 1 つずつなので切り替える先が無い
     }
 
     void CategoryPalette::TickInput(NS::Platform::Input* input, NS::UI::ImGuiContext* imgui) noexcept

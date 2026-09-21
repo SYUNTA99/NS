@@ -23,7 +23,7 @@
 #include <string_view>
 #include <vector>
 
-// json.hpp は /W4 で警告が出るため、 この翻訳単位でだけ警告を抑止して取り込む
+// json.hpp は /W4 で警告が出るため、この翻訳単位でだけ警告を抑止して取り込む
 #pragma warning(push, 0)
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
@@ -57,7 +57,9 @@ namespace NS::Object
 
         const std::optional<std::filesystem::path> resolved = ResolveContentPath(meshRef);
         if (!resolved)
+        {
             return nullptr;
+        }
         return assets.GetOrLoadMesh(*resolved);
     }
 
@@ -93,18 +95,20 @@ namespace NS::Object
             {k_BuiltinShadowQuad, [] { return NS::Graphics::MakePlane(NS::Core::Vector2{0.5f, 0.5f}); }},
         }};
 
-        // 引く先は m_builtins でなく k_BuiltinShapes。 RegisterBuiltins を呼んでいなくても引ける
+        // 引く先は m_builtins でなく k_BuiltinShapes。RegisterBuiltins を呼んでいなくても引ける
         [[nodiscard]] const BuiltinShape* FindBuiltinShape(std::string_view name) noexcept
         {
             for (const BuiltinShape& shape : k_BuiltinShapes)
             {
                 if (name == shape.name)
+                {
                     return &shape;
+                }
             }
             return nullptr;
         }
 
-        // index の並びを入れ替えずに写す。 描画の並びのまま (v1 - v0) × (v2 - v0) が表面の外を向く
+        // index の並びを入れ替えずに写す。描画の並びのまま (v1 - v0) × (v2 - v0) が表面の外を向く
         // 当たりの表裏もこの向きで決まる
         [[nodiscard]] std::vector<NS::Physics::Triangle> MakeTriangles(const NS::Graphics::MeshGeometry& geom)
         {
@@ -117,18 +121,23 @@ namespace NS::Object
                 const std::uint32_t b = geom.indices[i + 1];
                 const std::uint32_t c = geom.indices[i + 2];
                 if (a >= vertexCount || b >= vertexCount || c >= vertexCount)
+                {
                     continue;
+                }
+
                 triangles.push_back(NS::Physics::Triangle{
                     geom.vertices[a].position, geom.vertices[b].position, geom.vertices[c].position});
             }
             return triangles;
         }
 
-        // Jolt の形は当たりを頼まれた時に 1 度だけ作る。 描画だけの mesh には作らない
+        // Jolt の形は当たりを頼まれた時に 1 度だけ作る。描画だけの mesh には作らない
         NS::Physics::MeshCollision* WithShape(NS::Physics::MeshCollision* collision)
         {
             if (collision != nullptr && collision->shape == nullptr)
+            {
                 collision->shape = NS::Physics::CreateMeshShape(collision->triangles);
+            }
             return collision;
         }
 
@@ -141,23 +150,29 @@ namespace NS::Object
             desc.indices = geom.indices.data();
             desc.indexCount = geom.indices.size();
             if (geom.hasBounds)
+            {
                 desc.precomputedBounds = &geom.bounds;
+            }
             return NS::Graphics::StaticMesh::Create(desc);
         }
 
         [[nodiscard]] NS::Graphics::BlendMode ParseBlend(const std::string& value) noexcept
         {
             if (value == "Alpha")
+            {
                 return NS::Graphics::BlendMode::Alpha;
+            }
             if (value == "Additive")
+            {
                 return NS::Graphics::BlendMode::Additive;
+            }
             return NS::Graphics::BlendMode::Opaque;
         }
     } // namespace
 
     bool ParseMaterialJson(std::string_view jsonText, MaterialFileDesc& out, std::string& outError)
     {
-        // 例外を投げない parse。 不正 JSON は is_discarded() で検知する
+        // 例外を投げない parse。不正 JSON は is_discarded() で検知する
         const nlohmann::json j = nlohmann::json::parse(jsonText, nullptr, false);
         if (j.is_discarded())
         {
@@ -185,7 +200,9 @@ namespace NS::Object
             for (const auto& tex : j["textures"])
             {
                 if (tex.is_string())
+                {
                     out.textures.emplace_back(tex.get<std::string>());
+                }
             }
         }
 
@@ -195,13 +212,17 @@ namespace NS::Object
         {
             const auto& c = j["baseColor"];
             if (c[0].is_number() && c[1].is_number() && c[2].is_number())
+            {
                 out.baseColor = NS::Core::Vector3{c[0].get<float>(), c[1].get<float>(), c[2].get<float>()};
+            }
         }
 
         // blend は任意
         out.blend = NS::Graphics::BlendMode::Opaque;
         if (j.contains("blend") && j["blend"].is_string())
+        {
             out.blend = ParseBlend(j["blend"].get<std::string>());
+        }
 
         outError.clear();
         return true;
@@ -215,11 +236,16 @@ namespace NS::Object
         // 区切り文字や . / .. の表記揺れで同一ファイルが別キー扱いにならないよう正規化してから重複をまとめる
         const std::filesystem::path key = path.lexically_normal();
         if (const auto it = m_shaders.find(key); it != m_shaders.end())
+        {
             return it->second.get();
+        }
+
         auto shader = NS::Graphics::Shader::Create(key);
         NS::Graphics::Shader* raw = shader.get();
         if (raw->IsUsingFallback())
-            NS_LOG_WARN(Graphics, "AssetManager: shader の読込/コンパイル失敗、 fallback 描画: {}", key.string());
+        {
+            NS_LOG_ERROR(Graphics, "AssetManager: shader の読込/コンパイル失敗、 fallback 描画: {}", key.string());
+        }
         m_shaders.emplace(key, std::move(shader));
         return raw;
     }
@@ -228,7 +254,9 @@ namespace NS::Object
     {
         const std::filesystem::path key = path.lexically_normal();
         if (const auto it = m_textures.find(key); it != m_textures.end())
+        {
             return it->second.get();
+        }
         NS::Graphics::TextureDesc desc{};
         desc.path = key;
         desc.generateMipmaps = true;
@@ -243,10 +271,12 @@ namespace NS::Object
     {
         const std::filesystem::path key = path.lexically_normal();
         if (const auto it = m_meshes.find(key); it != m_meshes.end())
+        {
             return it->second;
+        }
 
         // 描画と当たりのどちらを先に頼まれても両方ここで作る
-        // 当たりは MeshColliderComponent が描画と同じ参照で頼む。 当たりが先でも GPU mesh は描画に使われる
+        // 当たりは MeshColliderComponent が描画と同じ参照で頼む。当たりが先でも GPU mesh は描画に使われる
         MeshRecord record;
         const NS::Graphics::MeshGeometry geom = NS::Graphics::LoadGltfMesh(key.string());
         if (geom.vertices.empty() || geom.indices.empty())
@@ -257,20 +287,24 @@ namespace NS::Object
         {
             std::unique_ptr<NS::Graphics::StaticMesh> mesh = MakeStaticMesh(geom);
             if (mesh == nullptr || !mesh->IsValid())
+            {
                 NS_LOG_ERROR(
                     Graphics,
                     "AssetManager: mesh の GPU 生成失敗。 描画は cube へフォールバックし、 当たりは本物の形のまま: {}",
                     key.string());
+            }
             else
+            {
                 record.mesh = std::move(mesh);
-            // GPU 生成だけ失敗しても当たりは作る。 device 無しのテストでも当たりを確かめられる
-            // 当たりだけ頼まれた時も GPU 生成を通るので、 device の無いテストでは上のエラーが出る
+            }
+            // GPU 生成だけ失敗しても当たりは作る。device 無しのテストでも当たりを確かめられる
+            // 当たりだけ頼まれた時も GPU 生成を通るので、device の無いテストでは上のエラーが出る
             // TODO: コライダーの無い描画だけの mesh も三角形を Clear() まで持つ
-            // 大きな mesh を飾りに多く置いてメモリが効いてきたら、 当たりを頼まれた時に作る形へ移す
+            // 大きな mesh を飾りに多く置いてメモリが効いてきたら、当たりを頼まれた時に作る形へ移す
             record.collision = std::make_unique<NS::Physics::MeshCollision>();
             record.collision->triangles = MakeTriangles(geom);
         }
-        // 失敗した記録も残し、 同じ参照を持つ配置物が毎回ディスクを読むのを防ぐ。 修正後の再試行は Clear() で解いてから
+        // 失敗した記録も残し、同じ参照を持つ配置物が毎回ディスクを読むのを防ぐ。修正後の再試行は Clear() で解いてから
         return m_meshes.emplace(key, std::move(record)).first->second;
     }
 
@@ -287,7 +321,9 @@ namespace NS::Object
     const NS::Physics::MeshCollision* AssetManager::GetOrLoadMeshCollision(const std::string& meshRef)
     {
         if (meshRef.empty())
+        {
             return nullptr;
+        }
 
         if (const BuiltinShape* shape = FindBuiltinShape(meshRef))
         {
@@ -303,7 +339,9 @@ namespace NS::Object
 
         const std::optional<std::filesystem::path> resolved = ResolveContentPath(meshRef);
         if (!resolved)
+        {
             return nullptr;
+        }
         return WithShape(LoadMeshRecord(*resolved).collision.get());
     }
 
@@ -339,31 +377,21 @@ namespace NS::Object
             record.mesh = NS::Graphics::SkeletalMesh::Create(smd);
             if (record.mesh == nullptr || !record.mesh->IsValid())
             {
-                // GPU buffer 生成に失敗。 壊れた mesh をキャッシュせず無効を返し、 Draw が無音で何もしないのを防ぐ
+                // GPU buffer 生成に失敗。壊れた mesh をキャッシュせず無効を返し、Draw が無音で何もしないのを防ぐ
                 NS_LOG_ERROR(Graphics, "AssetManager: skinned mesh の GPU 生成失敗: {}", key.string());
                 return LoadedSkinnedModel{};
             }
 
-            // bind ポーズ頂点の境界を求めて配置スケール計算用に持たせる
-            record.boundsMin = data.vertices.front().position;
-            record.boundsMax = record.boundsMin;
-            for (const NS::Graphics::SkinnedVertex& v : data.vertices)
-            {
-                record.boundsMin = NS::Core::Vector3::Min(record.boundsMin, v.position);
-                record.boundsMax = NS::Core::Vector3::Max(record.boundsMax, v.position);
-            }
             record.skeleton = std::move(data.skeleton);
             record.clips = std::move(data.animations);
             it = m_skinnedModels.emplace(key, std::move(record)).first;
         }
 
-        // record への参照を渡す。 record は挿入後に書き換えないので、 参照は Clear() まで有効
+        // record への参照を渡す。record は挿入後に書き換えないので、参照は Clear() まで有効
         LoadedSkinnedModel out{};
         out.mesh = it->second.mesh.get();
         out.skeleton = &it->second.skeleton;
         out.clips = &it->second.clips;
-        out.boundsMin = it->second.boundsMin;
-        out.boundsMax = it->second.boundsMax;
         out.valid = true;
         return out;
     }
@@ -371,15 +399,17 @@ namespace NS::Object
     const NS::Graphics::AnimationSource* AssetManager::GetOrLoadAnimationSource(const std::filesystem::path& path)
     {
         const std::filesystem::path key = path.lexically_normal();
-        // null エントリは負キャッシュした失敗 path を表す。 get() が nullptr を返し再読込を短絡する
+        // null エントリは負キャッシュした失敗 path を表す。get() が nullptr を返し再読込を短絡する
         if (const auto it = m_animationSources.find(key); it != m_animationSources.end())
+        {
             return it->second.get();
+        }
 
         NS::Graphics::AnimationSource source = NS::Graphics::LoadGltfAnimationSource(key.string());
         if (!source.IsValid())
         {
             NS_LOG_WARN(Graphics, "AssetManager: アニメーション glTF の読込失敗 / 空: {}", key.string());
-            // 壊れた path を負キャッシュし、 毎回ディスクを読むのを防ぐ。 再試行は Clear() から
+            // 壊れた path を負キャッシュし、毎回ディスクを読むのを防ぐ。再試行は Clear() から
             m_animationSources.emplace(key, nullptr);
             return nullptr;
         }
@@ -396,12 +426,14 @@ namespace NS::Object
         const std::pair<std::filesystem::path, std::filesystem::path> key{clipPath.lexically_normal(),
                                                                           modelPath.lexically_normal()};
         if (const auto it = m_boundClips.find(key); it != m_boundClips.end())
+        {
             return it->second.get();
+        }
 
         const NS::Graphics::AnimationSource* source = GetOrLoadAnimationSource(key.first);
         if (source == nullptr)
         {
-            // クリップ側の読込失敗は上流で負キャッシュ済み。 組としても負キャッシュする
+            // クリップ側の読込失敗は上流で負キャッシュ済み。組としても負キャッシュする
             m_boundClips.emplace(key, nullptr);
             return nullptr;
         }
@@ -409,11 +441,11 @@ namespace NS::Object
         const LoadedSkinnedModel model = GetOrLoadSkinnedModel(key.second);
         if (!model.valid || model.skeleton == nullptr)
         {
-            // model 側の失敗は GetOrLoadSkinnedModel がキャッシュせず再試行できるようにしている。 組で恒久化しない
+            // model 側の失敗は GetOrLoadSkinnedModel がキャッシュせず再試行できるようにしている。組で恒久化しない
             return nullptr;
         }
 
-        // 結合で index を振り直した複製は避けられない派生データだが、 所有はこちら側なので
+        // 結合で index を振り直した複製は避けられない派生データだが、所有はこちら側なので
         // 同じ組で解決する全インスタンスがこの 1 本を共有する
         auto bound = std::make_unique<std::vector<NS::Graphics::AnimationClip>>(
             NS::Graphics::BindClipsByName(source->animations, source->skeleton, *model.skeleton));
@@ -425,14 +457,18 @@ namespace NS::Object
     void AssetManager::RegisterBuiltins()
     {
         for (const BuiltinShape& shape : k_BuiltinShapes)
+        {
             m_builtins.emplace(shape.name, MakeStaticMesh(shape.make()));
+        }
     }
 
     NS::Graphics::StaticMesh* AssetManager::Builtin(std::string_view name) const noexcept
     {
         const auto it = m_builtins.find(std::string(name));
         if (it != m_builtins.end())
+        {
             return it->second.get();
+        }
         return nullptr;
     }
 
@@ -440,7 +476,9 @@ namespace NS::Object
     {
         const std::filesystem::path matKey = matPath.lexically_normal();
         if (const auto it = m_materials.find(matKey); it != m_materials.end())
+        {
             return LoadedMaterial{it->second.material.get(), it->second.baseColor};
+        }
 
         // .mat を読む
         const auto textOpt = NS::Core::FileSystem::ReadAllText(matKey);
@@ -462,7 +500,9 @@ namespace NS::Object
         // 相対 path は構築時の baseDir 基準で解決する
         const auto resolve = [this](const std::filesystem::path& p) -> std::filesystem::path {
             if (p.is_absolute())
+            {
                 return p;
+            }
             return m_baseDir / p;
         };
 
@@ -508,7 +548,7 @@ namespace NS::Object
         base.constantBufferSize = sizeof(NS::Graphics::FrameCB);
         base.cbSlot = 0;
 
-        // player: 単一 Texture2D。 slot0 に基準テクスチャを bind する
+        // player: 単一 Texture2D。slot0 に基準テクスチャを bind する
         {
             auto mat = NS::Graphics::Material::Create(base);
             mat->SetTexture(0, baseTexture);
@@ -523,7 +563,7 @@ namespace NS::Object
             mat->SetTexture(0, baseTexture);
             m_sharedMaterials.emplace(k_SharedWater, std::move(mat));
         }
-        // shadow: shadow.ps が放射状アルファを生成するためテクスチャ不要、 Alpha ブレンド
+        // shadow: shadow.ps が放射状アルファを生成するためテクスチャ不要、Alpha ブレンド
         {
             NS::Graphics::MaterialDesc desc = base;
             desc.pixelShader = GetOrLoadShader(shaderPath("shadow.ps.hlsl"));
@@ -536,7 +576,9 @@ namespace NS::Object
     {
         const auto it = m_sharedMaterials.find(std::string(name));
         if (it != m_sharedMaterials.end())
+        {
             return it->second.get();
+        }
         return nullptr;
     }
 
@@ -544,7 +586,9 @@ namespace NS::Object
     {
         const std::filesystem::path key = path.lexically_normal();
         if (const auto it = m_shaders.find(key); it != m_shaders.end())
+        {
             return it->second->Reload();
+        }
         NS_LOG_WARN(Graphics, "AssetManager::Reload: 未キャッシュの path: {}", key.string());
         return false;
     }
@@ -555,7 +599,9 @@ namespace NS::Object
         for (auto& entry : m_shaders)
         {
             if (entry.second->Reload())
+            {
                 ++reloaded;
+            }
         }
         NS_LOG_INFO(Graphics, "AssetManager: shader reload {} / {} 本成功", reloaded, m_shaders.size());
         return reloaded;

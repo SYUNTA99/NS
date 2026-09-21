@@ -23,7 +23,7 @@
 #if NS_EDITOR_ENABLED
 namespace
 {
-    // パネル名定数は PanelIds.h (NS::Editor) が持つ。 ドック・ 全面化・ 中央ビュー・ 各パネルが共有する
+    // パネル名定数は PanelIds.h (NS::Editor) が持つ。ドック・ 全面化・ 中央ビュー・ 各パネルが共有する
     using NS::Editor::k_PanelAssets;
     using NS::Editor::k_PanelConsole;
     using NS::Editor::k_PanelEditMode;
@@ -32,7 +32,7 @@ namespace
     using NS::Editor::k_PanelInspector;
     using NS::Editor::k_PanelScene;
 
-    // メニューバーだけ明るい帯＋濃い文字にする。 他のポップアップは暗いテーマ任せ
+    // メニューバーだけ明るい帯＋濃い文字にする。他のポップアップは暗いテーマ任せ
     const ImVec4 k_MenuBarBg{0.96f, 0.96f, 0.96f, 1.0f};
     const ImVec4 k_MenuBarText{0.10f, 0.10f, 0.10f, 1.0f};
 } // namespace
@@ -60,7 +60,7 @@ void Editor::OnAttach()
     if (!m_imgui->IsValid())
         NS_LOG_ERROR(App, "ImGuiContext 構築失敗、 編集 UI は機能しない");
 
-    // Platform は UI 実装を知らないので、 転送は hook 経由にする
+    // Platform は UI 実装を知らないので、転送は hook 経由にする
     app->Window().SetMessageHook(
         [imgui = m_imgui.get()](void* hwnd, std::uint32_t msg, std::uintptr_t wParam, std::intptr_t lParam) {
             if (imgui != nullptr)
@@ -75,7 +75,7 @@ void Editor::OnAttach()
     m_sceneView.SetInitialSize(viewSize);
     m_gameView.SetInitialSize(viewSize);
 
-    // 終了要求を握って保存確認を挟む。 出荷には Editor が無いのでリリースは確認なしで終了する
+    // 終了要求を握って保存確認を挟む。出荷には Editor が無いのでリリースは確認なしで終了する
     app->SetQuitGuard([this]() { return m_quitModal.RequestQuit(); });
 
     NS_LOG_INFO(App, "Editor attached (Debug/Dev/GameDebug only)");
@@ -83,22 +83,22 @@ void Editor::OnAttach()
 
 void Editor::OnDetach()
 {
-    // overlay は逆順で OnDetach されるので、 scene を破棄する Game::OnDetach より先にここが走る
+    // overlay は逆順で OnDetach されるので、scene を破棄する Game::OnDetach より先にここが走る
     if (m_controller)
     {
-        // world が抱えるビュー列を空にしてから、 その参照先ターゲットを破棄する
+        // world が抱えるビュー列を空にしてから、その参照先ターゲットを破棄する
         m_controller->SetSceneViews({});
         m_controller->Teardown();
     }
     m_controller.reset();
 
-    // ImGui を破棄する前に hook を外し、 WndProc から無効になった context を踏まないようにする
+    // ImGui を破棄する前に hook を外し、WndProc から無効になった context を踏まないようにする
     if (auto* app = NS::App::Application::Get())
     {
         app->SetQuitGuard(nullptr);
         app->Window().SetMessageHook(nullptr);
         app->Input().SetUiCapture(false, false);
-        // Renderer が非所有ポインタを宙吊りにしないよう、 ターゲットを破棄する前に必ず外す
+        // Renderer が非所有ポインタを宙吊りにしないよう、ターゲットを破棄する前に必ず外す
         app->Renderer().SetSceneTarget(nullptr);
     }
     m_sceneView.ReleaseTarget();
@@ -139,20 +139,20 @@ void Editor::OnRender()
 
     const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
 
-    // プレイ中は F5 でエディタ UI を丸ごと隠せる。 隠している間も 3D 描画とゲーム進行はそのまま走る
+    // プレイ中は F5 でエディタ UI を丸ごと隠せる。隠している間も 3D 描画とゲーム進行はそのまま走る
     if (m_uiVisible)
     {
         m_sceneView.ResetVisibility();
         m_gameView.ResetVisibility();
 
-        // メニューバーは帯の分だけビューポート作業領域を下げるので、 ツールバーより先に置いて上端を確保する
+        // メニューバーは帯の分だけビューポート作業領域を下げるので、ツールバーより先に置いて上端を確保する
         RenderMainMenuBar(editor);
         const float toolbarHeight = RenderPlayToolbar(editor);
 
         if (!m_dock.IsMaximized())
         {
-            // Hierarchy / Inspector はプレイ中も出す。 Player / Camera を選んで操作感をライブ調整できるようにするため
-            // DockSpace も両モードで毎フレーム置き、 edit で組んだドッキングがプレイ移行で崩れないようにする
+            // Hierarchy / Inspector はプレイ中も出す。Player / Camera を選んで操作感をライブ調整できるようにするため
+            // DockSpace も両モードで毎フレーム置き、edit で組んだドッキングがプレイ移行で崩れないようにする
             m_dock.RenderDockSpaceHost(toolbarHeight);
             m_sceneView.Render(editor);
             m_gameView.Render(editor);
@@ -170,7 +170,7 @@ void Editor::OnRender()
             m_assets.Render(editor);
             m_console.Render();
 
-            // モードが変わったフレームだけ前面のタブへ自動フォーカスする。 Tab / ボタン / Quit to Edit のどこから
+            // モードが変わったフレームだけ前面のタブへ自動フォーカスする。Tab / ボタン / Quit to Edit のどこから
             // 切替わっても CurrentMode の変化検知で一律に効く
             const auto tabFocus =
                 NS::Editor::TabFocusOnModeChange({.wasPlayMode = m_lastModeWasPlay, .playMode = playMode});
@@ -201,11 +201,11 @@ void Editor::OnRender()
         m_sceneView.ClearForHiddenUi(editor);
     }
 
-    // ImGui 実描画の直前に backbuffer へ戻す。 それまではオフスクリーンへ描いたままで良い
+    // ImGui 実描画の直前に backbuffer へ戻す。それまではオフスクリーンへ描いたままで良い
     app->Renderer().BindBackbuffer();
     m_imgui->EndFrame();
 
-    // 次フレームの描画先を決める。 SRV 参照 (ImGui 実描画) が終わった直後の安全な位置で切り替える
+    // 次フレームの描画先を決める。SRV 参照 (ImGui 実描画) が終わった直後の安全な位置で切り替える
     if (m_uiVisible)
     {
         std::vector<NS::Object::SceneView> views;
@@ -218,14 +218,14 @@ void Editor::OnRender()
     else
         // F5 全画面プレイ: ビュー列を空にし backbuffer へ Brain 視点で 1 回描く
         editor.SetSceneViews({});
-    // ビュー列方式なので単一 sceneTarget は使わない。 BeginFrame には backbuffer だけ clear させる
+    // ビュー列方式なので単一 sceneTarget は使わない。BeginFrame には backbuffer だけ clear させる
     app->Renderer().SetSceneTarget(nullptr);
 
     m_gameView.UpdateMouseLatch();
     m_sceneView.UpdateMouseLatch();
 
     // 次フレームの gameplay / Window 入力ゲート用に UI キャプチャ状態を Input へ反映する
-    // 自由視点中はゲームへのマウスラッチをかけない。 見回しドラッグ中だけキーボードも UI が持つ
+    // 自由視点中はゲームへのマウスラッチをかけない。見回しドラッグ中だけキーボードも UI が持つ
     // 入力を持つパネル (編集中= Scene / プレイ中= Game) のラッチで UI のマウス掴みを外す
     const bool ownerLatched = playMode ? m_gameView.IsMouseLatched() : m_sceneView.IsMouseLatched();
     // ImGui は項目を押している間 WantCaptureKeyboard も立てるため、Game ビューの長押しで WASD が UI に奪われる
@@ -234,7 +234,7 @@ void Editor::OnRender()
     app->Input().SetUiCapture(m_imgui->WantCaptureMouse() && !ownerLatched,
                               (m_imgui->WantCaptureKeyboard() && !keyboardOwnedByGame) || m_sceneView.IsFreeFlying());
 
-    // 見回しドラッグの立ち下がりで押しっぱなしのキーが残らないよう解除する。 WM_KEYUP も UI 捕捉中は届かない
+    // 見回しドラッグの立ち下がりで押しっぱなしのキーが残らないよう解除する。WM_KEYUP も UI 捕捉中は届かない
     if (m_sceneView.ConsumeFreeFlyReleased())
         app->Input().Keyboard().ClearState();
 }
@@ -283,7 +283,7 @@ void Editor::HandlePauseInput(LevelEditorController& editor) noexcept
 
 void Editor::HandleUiVisibilityInput(LevelEditorController& editor) noexcept
 {
-    // 編集モードでは UI を常時表示に戻す。 トグルはプレイ中だけ効かせる
+    // 編集モードでは UI を常時表示に戻す。トグルはプレイ中だけ効かせる
     if (editor.CurrentMode() != LevelEditorController::Mode::Play)
     {
         m_uiVisible = true;
@@ -318,14 +318,14 @@ float Editor::RenderPlayToolbar(LevelEditorController& editor) noexcept
     const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
     if (ImGui::Begin("##PlayToolbar", nullptr, k_ToolbarFlags))
     {
-        // レベル名と未保存の印はメニューバー右端に出すので、 この帯は再生操作だけを中央に置く
+        // レベル名と未保存の印はメニューバー右端に出すので、この帯は再生操作だけを中央に置く
         const NS::Editor::PlayToolbarState state =
             NS::Editor::MakePlayToolbarState({.playMode = playMode, .paused = editor.PlayPaused()});
         const float buttonWidth = ImGui::GetFrameHeight() * 1.6f;
         const float totalWidth = buttonWidth * 3.0f + style.ItemSpacing.x * 2.0f;
         ImGui::SetCursorPosX(std::max(0.0f, (ImGui::GetWindowSize().x - totalWidth) * 0.5f));
 
-        // 開始 / 停止トグル。 編集中は ▶ で再生開始、 再生中は ■ で実行から抜ける
+        // 開始 / 停止トグル。編集中は ▶ で再生開始、再生中は ■ で実行から抜ける
         if (state.playActive)
             ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_ButtonActive]);
         if (ImGui::Button(state.playActive ? "■" : "▶", ImVec2(buttonWidth, 0.0f)))
@@ -338,7 +338,7 @@ float Editor::RenderPlayToolbar(LevelEditorController& editor) noexcept
         if (state.playActive)
             ImGui::PopStyleColor();
 
-        // 一時停止 / 再開。 抜けずに時間だけ止める
+        // 一時停止 / 再開。抜けずに時間だけ止める
         ImGui::SameLine();
         if (!state.pauseEnabled)
             ImGui::BeginDisabled();
@@ -351,7 +351,7 @@ float Editor::RenderPlayToolbar(LevelEditorController& editor) noexcept
         if (!state.pauseEnabled)
             ImGui::EndDisabled();
 
-        // コマ送り。 一時停止したまま 1 fixed step だけ進める
+        // コマ送り。一時停止したまま 1 fixed step だけ進める
         ImGui::SameLine();
         if (!state.stepEnabled)
             ImGui::BeginDisabled();
@@ -373,17 +373,17 @@ void Editor::RenderMainMenuBar(LevelEditorController& editor) noexcept
 #if NS_EDITOR_ENABLED
     NS::Editor::EditorMode& ed = editor.Editor();
     const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
-    const bool editEnabled = !playMode; // プレイ中はレベルへの編集を止め、 進行中のセッションを壊さない
+    const bool editEnabled = !playMode; // プレイ中はレベルへの編集を止め、進行中のセッションを壊さない
 
-    // 縦の余白を詰めてバーを細くする。 横は掴みやすさのため残す
+    // 縦の余白を詰めてバーを細くする。横は掴みやすさのため残す
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2{9.0f, 1.0f});
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{10.0f, 4.0f});
-    // ドロップダウンと同じ配色に揃え、 バーも明るい背景＋濃い文字にする
+    // ドロップダウンと同じ配色に揃え、バーも明るい背景＋濃い文字にする
     ImGui::PushStyleColor(ImGuiCol_MenuBarBg, k_MenuBarBg);
     ImGui::PushStyleColor(ImGuiCol_Text, k_MenuBarText);
     if (ImGui::BeginMainMenuBar())
     {
-        // ドロップダウンだけ白地・黒文字にする。 バーのラベルは元の配色のまま
+        // ドロップダウンだけ白地・黒文字にする。バーのラベルは元の配色のまま
         ImGui::PushStyleColor(ImGuiCol_PopupBg, k_MenuBarBg);
         if (ImGui::BeginMenu("File"))
         {
@@ -474,7 +474,7 @@ void Editor::RenderMaximizedPanel(LevelEditorController& editor, float topOffset
 void Editor::HandleEditShortcuts(LevelEditorController& editor) noexcept
 {
 #if NS_EDITOR_ENABLED
-    // プレイ中の配置物は live がそのまま保存対象なので、 誤爆で消さないよう編集中だけ効かせる
+    // プレイ中の配置物は live がそのまま保存対象なので、誤爆で消さないよう編集中だけ効かせる
     if (editor.CurrentMode() != LevelEditorController::Mode::Edit)
         return;
 

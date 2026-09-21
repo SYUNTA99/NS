@@ -15,7 +15,7 @@ namespace
     using NS::Object::Scene;
     using NS::Object::ObjectList;
 
-    //! リフレクションフィールド名で ObjectRef を書き込む。 データ経由の構築と同じ set 経路を通す
+    //! リフレクションフィールド名で ObjectRef を書き込む。データ経由の構築と同じ set 経路を通す
     void SetTargetRef(NS::Object::Component& comp, std::uint32_t id)
     {
         const NS::Object::ReflectionInfo* info = comp.GetReflection();
@@ -43,7 +43,7 @@ TEST(ObjectRefTest, ResolvesByPersistentId)
     EXPECT_EQ(objects.FindObject(ObjectRef{}), nullptr);
     EXPECT_EQ(objects.FindObject(ObjectRef{8u}), nullptr);
 
-    // 索引は所有リストそのものなので、 破棄すれば参照は引けなくなる
+    // 索引は所有リストそのものなので、破棄すれば参照は引けなくなる
     objects.Clear();
     EXPECT_EQ(objects.FindObject(ObjectRef{7u}), nullptr);
 }
@@ -51,7 +51,7 @@ TEST(ObjectRefTest, ResolvesByPersistentId)
 TEST(ObjectRefTest, UnnumberedObjectIsNeverResolved)
 {
     ObjectList objects;
-    // 一時オブジェクトと同じ未採番の状態。 0 を素通しすると先頭のこれが引けてしまう
+    // 一時オブジェクトと同じ未採番の状態。0 を素通しすると先頭のこれが引けてしまう
     objects.Spawn<GameObject>();
 
     EXPECT_EQ(objects.FindObject(ObjectRef{0u}), nullptr);

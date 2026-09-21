@@ -81,7 +81,7 @@ TEST_F(ThirdPersonFollowTest, EvaluatePosePlacesCameraBehindTarget)
     for (int i = 0; i < 60; ++i)
         follow.OnUpdate();
 
-    // OnUpdate は state mutation のみ (yaw/pitch/distance)、 最終姿勢は EvaluatePose が返す。揺れを避ける
+    // OnUpdate は state mutation のみ (yaw/pitch/distance)、最終姿勢は EvaluatePose が返す。揺れを避ける
     const auto pose = follow.EvaluatePose(1.0f);
 
     EXPECT_NEAR(pose.position.x, 0.0f, 0.1f);

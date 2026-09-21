@@ -17,12 +17,14 @@ namespace NS::Object
 
     void ObjectList::Rebuild(const SceneData& data, Scene& scene, const ObjectFactoryFn& factory)
     {
-        // 実行時の一時オブジェクトはデータ由来でないため、 退避して組み直し後も残す
+        // 実行時の一時オブジェクトはデータ由来でないため、退避して組み直し後も残す
         std::vector<std::unique_ptr<GameObject>> transients;
         for (auto& obj : m_objects)
         {
             if (obj->IsTransient())
+            {
                 transients.push_back(std::move(obj));
+            }
         }
         std::erase_if(m_objects, [](const std::unique_ptr<GameObject>& obj) { return obj == nullptr; });
 
@@ -34,44 +36,38 @@ namespace NS::Object
         for (const ObjectData& entry : data.objects)
         {
             if (entry.objectId >= m_nextObjectId)
+            {
                 m_nextObjectId = entry.objectId + 1;
+            }
         }
 
         m_objects.reserve(data.objects.size() + transients.size());
 
-        // 並び順は object の持ち物なので、 配列の並びではなく order で組む
-        // 同値は書かれた順のまま残すので、 order を持たない古いファイルは従来と同じ形に組み上がる
-        std::vector<std::size_t> buildOrder(data.objects.size());
-        std::iota(buildOrder.begin(), buildOrder.end(), std::size_t{0});
-        std::stable_sort(buildOrder.begin(), buildOrder.end(), [&data](std::size_t a, std::size_t b) noexcept {
-            return data.objects[a].order < data.objects[b].order;
-        });
-
-        // 配置物の組み立ては呼出側の知識。 ファクトリの無い起動前 / テストでは何も組まない
+        // 配置物の組み立ては呼出側の知識。ファクトリの無い起動前 / テストでは何も組まない
         if (factory)
         {
-            // 先に全 object を組んで、 開始は後段でまとめて行う
-            // OnStart で ObjectRef を解決する component が、 自分より後ろの object も引けるようにするため
-            for (const std::size_t index : buildOrder)
+            // 先に全 object を組んで、開始は後段でまとめて行う
+            // OnStart で ObjectRef を解決する component が、自分より後ろの object も引けるようにするため
+            for (const ObjectData& entry : data.objects)
             {
-                const ObjectData& entry = data.objects[index];
                 auto obj = factory(entry);
                 if (!obj)
+                {
                     continue; // 組み立てる component が無いオブジェクトはファクトリが nullptr を返す
+                }
 
                 obj->AttachScene(&scene);
                 obj->SetId(entry.objectId);
                 obj->SetName(entry.name);
-                obj->SetOrder(entry.order);
                 obj->SetActive(entry.active);
 
                 m_objects.push_back(std::move(obj));
             }
 
-            // 親子は全 object が揃ってから結ぶ。 子が親より前に並ぶファイルでも同じ形に組める
-            // 循環は SetParent が輪を閉じる結び付けを拒むので、 手編集のデータでも組み上がる
-            // id 引きを線形で回すと体数の二乗に効くので、 組み立ての間だけ使う対応表で引く
-            // 索引として持ち越さないのは、 所有リストと同期を保つ手間を抱え込まないため
+            // 親子は全 object が揃ってから結ぶ。子が親より前に並ぶファイルでも同じ形に組める
+            // 循環は SetParent が輪を閉じる結び付けを拒むので、手編集のデータでも組み上がる
+            // id 引きを線形で回すと体数の二乗に効くので、組み立ての間だけ使う対応表で引く
+            // 索引として持ち越さないのは、所有リストと同期を保つ手間を抱え込まないため
             std::unordered_map<std::uint32_t, GameObject*> byObjectId;
             byObjectId.reserve(m_objects.size());
             for (auto& obj : m_objects)
@@ -80,39 +76,50 @@ namespace NS::Object
             const auto find = [&byObjectId](std::uint32_t id) -> GameObject* {
                 const auto it = byObjectId.find(id);
                 if (it == byObjectId.end())
+                {
                     return nullptr;
+                }
                 return it->second;
             };
 
-            for (const std::size_t index : buildOrder)
+            for (const ObjectData& entry : data.objects)
             {
-                const ObjectData& entry = data.objects[index];
                 if (entry.parentId == k_NoObjectId)
+                {
                     continue;
+                }
                 GameObject* child = find(entry.objectId);
                 GameObject* parent = find(entry.parentId);
                 if (child != nullptr && parent != nullptr && child != parent)
+                {
                     child->SetParent(parent);
+                }
             }
 
             for (auto& objPtr : m_objects)
                 objPtr->OnStart();
         }
 
-        // 退避した一時オブジェクトを末尾へ戻す。 開始済みなので OnStart は呼ばない
+        // 退避した一時オブジェクトを末尾へ戻す。開始済みなので OnStart は呼ばない
         for (auto& obj : transients)
+        {
             m_objects.push_back(std::move(obj));
+        }
 
         // 生成直後は previous PRS が原点/単位回転のため Snapshot で current に揃える
         // 欠かすと InterpolatedWorldMatrix(alpha) が原点→配置先を補間し編集のたびに全配置物が振れる
         for (auto& obj : m_objects)
+        {
             obj->Root().Snapshot();
+        }
     }
 
     GameObject* ObjectList::Append(std::unique_ptr<GameObject> obj)
     {
         if (!obj)
+        {
             return nullptr;
+        }
         GameObject* raw = obj.get();
         m_objects.push_back(std::move(obj));
         return raw;
@@ -120,13 +127,18 @@ namespace NS::Object
 
     void ObjectList::RemoveByObjectId(std::uint32_t objectId)
     {
-        // 0 は未採番の印。 一時オブジェクトは id を持たないので、 素通しすると先頭の一時が消える
+        // 0 は未採番の印。一時オブジェクトは id を持たないので、素通しすると先頭の一時が消える
         if (objectId == k_NoObjectId)
+        {
             return;
+        }
+
         for (auto it = m_objects.begin(); it != m_objects.end(); ++it)
         {
             if ((*it)->Id() != objectId)
+            {
                 continue;
+            }
 
             (*it)->OnEndPlay();
             m_objects.erase(it);
@@ -137,18 +149,27 @@ namespace NS::Object
     GameObject* ObjectList::ObjectAt(std::size_t index) const noexcept
     {
         if (index >= m_objects.size())
+        {
             return nullptr;
+        }
         return m_objects[index].get();
     }
 
     GameObject* ObjectList::FindByObjectId(std::uint32_t objectId) noexcept
     {
-        // 0 は未採番の印。 一時オブジェクトは id を持たないので、 素通しすると先頭の一時が引ける
+        // 0 は未採番の印。一時オブジェクトは id を持たないので、素通しすると先頭の一時が引ける
         if (objectId == k_NoObjectId)
+        {
             return nullptr;
+        }
+
         for (auto& obj : m_objects)
+        {
             if (obj->Id() == objectId)
+            {
                 return obj.get();
+            }
+        }
         return nullptr;
     }
 
@@ -162,9 +183,13 @@ namespace NS::Object
         // PhysicsScene を作り直さず、collider ごとに既存 body の shape と姿勢を同期する
         ForEachComponent<ColliderComponent>([&physics](ColliderComponent& collider) {
             if (collider.IsActive())
+            {
                 collider.SyncToPhysics(physics);
+            }
             else
+            {
                 collider.RemoveFromPhysics(physics);
+            }
         });
         physics.OptimizeBroadPhase();
     }
@@ -172,18 +197,19 @@ namespace NS::Object
     void ObjectList::UpdateAllObjects()
     {
         UpdateObjects(std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
-        SnapshotObjects();
     }
 
     void ObjectList::SnapshotObjects()
     {
         for (auto& obj : m_objects)
+        {
             obj->Root().Snapshot();
+        }
     }
 
     void ObjectList::UpdateObjects(int firstPriority, int lastPriority)
     {
-        // 帯の昇順で配置物を横断して回すため、 範囲内の component を一度集めて priority で並べ直す
+        // 帯の昇順で配置物を横断して回すため、範囲内の component を一度集めて priority で並べ直す
         // stable_sort なので同じ帯の中は配置物の並び順に落ちる
         std::vector<Component*> scheduled;
         for (auto& obj : m_objects)
@@ -191,28 +217,36 @@ namespace NS::Object
             for (Component* comp : obj->Components())
             {
                 if (comp == nullptr)
+                {
                     continue;
+                }
                 if (comp->Priority() >= firstPriority && comp->Priority() < lastPriority)
+                {
                     scheduled.push_back(comp);
+                }
             }
         }
         std::stable_sort(scheduled.begin(), scheduled.end(), [](const Component* a, const Component* b) noexcept {
             return a->Priority() < b->Priority();
         });
 
-        // active はこの場で見る。 先に回った component が後ろを SetActive(false) にしても効く
+        // active はこの場で見る。先に回った component が後ろを SetActive(false) にしても効く
         for (Component* comp : scheduled)
         {
             if (comp->IsActive())
+            {
                 comp->OnUpdate();
+            }
         }
     }
 
     void ObjectList::Clear()
     {
-        // OnEndPlay は生成の逆順で呼ぶ。 依存し合う component の後始末を生成と対称にする
+        // OnEndPlay は生成の逆順で呼ぶ。依存し合う component の後始末を生成と対称にする
         for (auto it = m_objects.rbegin(); it != m_objects.rend(); ++it)
+        {
             (*it)->OnEndPlay();
+        }
         m_objects.clear();
     }
 
@@ -220,7 +254,9 @@ namespace NS::Object
     {
         std::vector<ObjectRefLocation> result;
         if (targetId == k_NoObjectId)
+        {
             return result;
+        }
         for (const GameObject* objPtr : objects)
         {
             const auto& components = objPtr->Components();
@@ -228,19 +264,27 @@ namespace NS::Object
             {
                 const Component* comp = components[c];
                 if (comp == nullptr)
+                {
                     continue;
+                }
                 const ReflectionInfo* info = comp->GetReflection();
                 if (info == nullptr)
+                {
                     continue;
+                }
                 for (std::size_t f = 0; f < info->fieldCount; ++f)
                 {
                     const FieldDesc& field = info->fields[f];
                     if (field.type != FieldType::ObjectRef)
+                    {
                         continue;
+                    }
                     ObjectRef value{};
                     field.get(comp, &value);
                     if (value.id != targetId)
+                    {
                         continue;
+                    }
                     result.push_back(ObjectRefLocation{objPtr->Id(), c, field.name});
                 }
             }

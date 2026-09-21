@@ -42,7 +42,7 @@ private:
     void HandleUiVisibilityInput(LevelEditorController& editor) noexcept;
 
     //! @brief 画面最上部に File / Edit / GameObject 等のメインメニューバーを描画する
-    //! @details 帯の高さ分だけビューポート作業領域が下がるので、 後続のツールバー / ドックは自動でずれる
+    //! @details 帯の高さ分だけビューポート作業領域が下がるので、後続のツールバー / ドックは自動でずれる
     void RenderMainMenuBar(LevelEditorController& editor) noexcept;
 
     //! @brief 画面最上部にプレイ制御ツールバーの帯を描画する

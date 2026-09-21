@@ -29,7 +29,7 @@ TEST(DirectionalLightComponentTest, DefaultsAreNeutralSun)
     EXPECT_FLOAT_EQ(light.Exposure(), 1.35f);
 }
 
-// 空側と地面側が同じ色だと単色の環境光に戻り、 影の中で面の向きが読めなくなる
+// 空側と地面側が同じ色だと単色の環境光に戻り、影の中で面の向きが読めなくなる
 TEST(DirectionalLightComponentTest, SkyAmbientIsBrighterThanGround)
 {
     DirectionalLightComponent light;

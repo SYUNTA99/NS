@@ -32,7 +32,7 @@ namespace NS::Editor
             const ImVec2 avail = ImGui::GetContentRegionAvail();
             if (avail.x >= 1.0f && avail.y >= 1.0f)
             {
-                // 縦横比の指定があれば収まる最大の大きさへ縮める。 余った分は貼らずに残し黒帯にする
+                // 縦横比の指定があれば収まる最大の大きさへ縮める。余った分は貼らずに残し黒帯にする
                 ImVec2 draw = avail;
                 if (m_fixedAspect > 0.0f)
                 {
@@ -42,13 +42,13 @@ namespace NS::Editor
                         draw = ImVec2{avail.x, avail.x / m_fixedAspect};
                 }
 
-                // 可視なら次フレームの描画先サイズを立てる。 RT 未生成でも記録する
+                // 可視なら次フレームの描画先サイズを立てる。RT 未生成でも記録する
                 m_visible = true;
                 m_size = NS::Core::Size2D{static_cast<int>(draw.x), static_cast<int>(draw.y)};
 
                 if (m_target != nullptr && m_target->IsValid())
                 {
-                    // 黒帯を左右上下へ均等に割るため、 貼る直前に中央へ寄せる
+                    // 黒帯を左右上下へ均等に割るため、貼る直前に中央へ寄せる
                     const ImVec2 cursor = ImGui::GetCursorPos();
                     ImGui::SetCursorPos(
                         ImVec2{cursor.x + (avail.x - draw.x) * 0.5f, cursor.y + (avail.y - draw.y) * 0.5f});

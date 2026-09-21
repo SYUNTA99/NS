@@ -18,7 +18,7 @@ namespace NS::Object
     class MeshRendererComponent;
 
     //! @brief クリップを時間再生して SkeletalMesh のボーンパレットを更新する
-    //! @details fixed step ごとに再生時刻を進める。AnimationClip をサンプリングしたポーズを
+    //! @details 毎フレーム再生時刻を進める。AnimationClip をサンプリングしたポーズを
     //! Skeleton でボーンパレット化し、SkeletalMesh に渡す。再生 / 停止 / 速度 / ループ / クリップ選択を制御できる
     //! mesh / skeleton / clips は全て非所有で、AssetManager 等の所有側が寿命を保証する。priority は Update 帯の後方
     //! (+100、移動の後に骨を追従させる)
@@ -33,15 +33,15 @@ namespace NS::Object
         //! ボーンパレット計算用の骨格を差し替える。非所有で呼出側が寿命を保証する。null の間 ApplyPose は何もしない
         void SetSkeleton(const NS::Graphics::Skeleton* skeleton) noexcept;
 
-        //! この Component が表す skinned モデルの参照。 ContentRoot 配下の glTF 相対パス
+        //! この Component が表す skinned モデルの参照。ContentRoot 配下の glTF 相対パス
         [[nodiscard]] const std::string& ModelRef() const noexcept { return m_modelRef; }
-        //! build 時にこの文字列から mesh / skeleton / clips を解決する。 同じ object の MeshRendererComponent の mesh
-        //! も こちらが差すので、 skinned の配置物は MeshRenderer 側の Mesh 参照を空のままにする
+        //! build 時にこの文字列から mesh / skeleton / clips を解決する。同じ object の MeshRendererComponent の mesh
+        //! もこちらが差すので、skinned の配置物は MeshRenderer 側の Mesh 参照を空のままにする
         void SetModelRef(std::string ref) noexcept { m_modelRef = std::move(ref); }
 
-        //! 追加で読むアニメーション glTF の参照一覧。 セミコロン区切りの ContentRoot 相対パス
+        //! 追加で読むアニメーション glTF の参照一覧。セミコロン区切りの ContentRoot 相対パス
         [[nodiscard]] const std::string& ClipsRef() const noexcept { return m_clipsRef; }
-        //! 各エントリのクリップを骨名で model の骨格へ結合して後ろに足す。 空エントリと前後の空白は無視し、
+        //! 各エントリのクリップを骨名で model の骨格へ結合して後ろに足す。空エントリと前後の空白は無視し、
         //! 解決できないエントリは読み飛ばして残りを続ける
         void SetClipsRef(std::string ref) noexcept { m_clipsRef = std::move(ref); }
 
@@ -49,12 +49,14 @@ namespace NS::Object
         void Pause() noexcept;
         //! 再生時刻を 0 に戻して停止する
         void Stop() noexcept;
-        //! 負値は 0 にクランプする
+        //! @brief 再生速度を差し替える
+        //! @details 非有限値は無視して直前の値を残す。有限の負値は 0 にクランプする
+        //! @param[in] speed 再生速度。1.0 が等倍
         void SetSpeed(float speed) noexcept;
         void SetLooping(bool looping) noexcept;
-        //! 添字でクリップを選び再生時刻を 0 へ戻す。 範囲外は false で選択を変えない
+        //! 添字でクリップを選び再生時刻を 0 へ戻す。範囲外は false で選択を変えない
         bool SelectClip(std::size_t index) noexcept;
-        //! 名前一致のクリップを選ぶ。 一致が無ければ false で選択を変えない
+        //! 名前一致のクリップを選ぶ。一致が無ければ false で選択を変えない
         bool SelectClip(std::string_view name) noexcept;
 
         //! クリップを後から追加する。既存の選択・再生位置は維持
@@ -64,18 +66,18 @@ namespace NS::Object
         [[nodiscard]] std::size_t ClipCount() const noexcept;
         [[nodiscard]] std::size_t CurrentClip() const noexcept;
         [[nodiscard]] float Time() const noexcept;
-        //! 現在クリップの尺。 無ければ 0
+        //! 現在クリップの尺。無ければ 0
         [[nodiscard]] float Duration() const noexcept;
         [[nodiscard]] bool IsPlaying() const noexcept;
 
         void OnStart() override;
         void OnUpdate() override;
 
-        //! modelRef から skinned glTF を解決し mesh / skeleton / clips を差す。 同じ object の MeshRendererComponent
-        //! があれば 同じ mesh を差す。 空 / 解決不可はそのまま何もしない (SetMesh 等の手動配線を壊さない)
+        //! modelRef から skinned glTF を解決し mesh / skeleton / clips を差す。同じ object の MeshRendererComponent
+        //! があれば同じ mesh を差す。空 / 解決不可はそのまま何もしない (SetMesh 等の手動配線を壊さない)
         void ResolveAssets(AssetManager& assets) override;
 
-        // 再生速度 / ループを Inspector へ公開する。 毎ステップ読まれるのでライブで効き、 負速度なら逆再生になる
+        // 再生速度 / ループを Inspector へ公開する。毎フレーム読まれるのでライブで効き、負速度なら逆再生になる
         NS_REFLECT_BEGIN(SkeletalAnimationComponent, Component)
         NS_REFLECT_FIELD(m_speed, "再生速度")
         NS_REFLECT_FIELD(m_looping, "ループ再生")
@@ -87,8 +89,8 @@ namespace NS::Object
         void ApplyPose(float time);
 
         NS::Graphics::SkeletalMesh* m_mesh = nullptr; // 更新先の SkeletalMesh (非所有)
-        std::string m_modelRef{}; // 保存・編集される参照文字列。 ResolveAssets が mesh/skeleton/clips へ実体を当てる
-        std::string m_clipsRef{}; // 追加アニメーションの参照一覧。 セミコロン区切りで ResolveAssets が結合する
+        std::string m_modelRef{}; // 保存・編集される参照文字列。ResolveAssets が mesh/skeleton/clips へ実体を当てる
+        std::string m_clipsRef{}; // 追加アニメーションの参照一覧。セミコロン区切りで ResolveAssets が結合する
         const NS::Graphics::Skeleton* m_skeleton = nullptr;      // ボーンパレット計算用の骨格 (非所有)
         std::vector<const NS::Graphics::AnimationClip*> m_clips; // 再生できるクリップ一覧 (非所有)
         std::size_t m_current = 0;                               // 選択中クリップの添字

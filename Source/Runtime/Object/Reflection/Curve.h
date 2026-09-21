@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Runtime/Core/Math.h"
 
@@ -135,8 +135,7 @@ namespace NS::Object
         const float weightY1 = -2.0f * t3 + 3.0f * t2;
         const float weightIn = t3 - t2;
         // 接線は dy/dx の傾きなので、t の空間へ持ち込むために区間の幅を掛ける
-        return weightY0 * keys[i].y + weightOut * width * tangentOut + weightY1 * keys[i + 1].y +
-               weightIn * width * tangentIn;
+        return weightY0 * keys[i].y + weightOut * width * tangentOut + weightY1 * keys[i + 1].y + weightIn * width * tangentIn;
     }
 
     inline float Curve::AutoTangentAt(std::uint32_t i) const noexcept

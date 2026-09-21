@@ -36,7 +36,6 @@ namespace NS::Editor
         {
             bool valid = false;                  //!< ブロック面か地面に当たったか
             NS::Core::Vector3 placementCenter{}; //!< 配置先セルの中心ワールド座標
-            NS::Core::Vector3 deleteCenter{};    //!< 削除対象セルの中心ワールド座標
             bool placementBlocked = false;       //!< 配置予定地にすでにブロックが存在するかどうか
             std::int16_t hitX = 0;               //!< ヒットしたセルのX座標
             std::int16_t hitY = 0;               //!< ヒットしたセルのY座標
@@ -44,10 +43,9 @@ namespace NS::Editor
             std::int16_t placeX = 0;             //!< 配置先セルのX座標
             std::int16_t placeY = 0;             //!< 配置先セルのY座標
             std::int16_t placeZ = 0;             //!< 配置先セルのZ座標
-            NS::Core::Vector3 hitNormal{};       //!< ヒットした面の法線ベクトル
         };
 
-        //! @brief cell 1 個分の整数座標。 live 照会の受け渡しに使う
+        //! @brief cell 1 個分の整数座標。live 照会の受け渡しに使う
         struct CellCoord
         {
             std::int16_t x = 0;
@@ -58,22 +56,22 @@ namespace NS::Editor
         EditorMode() noexcept = default;
         ~EditorMode() noexcept = default;
 
-        //! @brief 保存時に live 実体から SceneData を作る捕捉関数を差す。 未設定なら保存できない
+        //! @brief 保存時に live 実体から SceneData を作る捕捉関数を差す。未設定なら保存できない
         void SetCaptureLevelFn(std::function<NS::Object::SceneData()> fn) noexcept { m_captureLevel = std::move(fn); }
 
-        //! @brief grid 編集・ undo を live へ通す適用経路を差す。 未設定なら grid 編集は何もしない
+        //! @brief grid 編集・ undo を live へ通す適用経路を差す。未設定なら grid 編集は何もしない
         void SetApplier(IObjectSnapshotApplier* applier) noexcept { m_applier = applier; }
 
-        //! @brief 読込済みシーンデータを実体側へ取り込む関数を差す。 読込の完了時に呼ぶ
+        //! @brief 読込済みシーンデータを実体側へ取り込む関数を差す。読込の完了時に呼ぶ
         void SetLoadLevelFn(std::function<void(NS::Object::SceneData&&)> fn) noexcept { m_loadLevel = std::move(fn); }
 
-        //! @brief cell に居る cell ブラシ配置物の永続 id を live から引く関数を差す。 不在は k_NoObjectId
+        //! @brief cell に居る cell ブラシ配置物の永続 id を live から引く関数を差す。不在は k_NoObjectId
         void SetFindCellObjectFn(std::function<std::uint32_t(std::int16_t, std::int16_t, std::int16_t)> fn) noexcept
         {
             m_findCellObject = std::move(fn);
         }
 
-        //! @brief live の全 cell ブラシ配置物の cell 座標一覧を返す関数を差す。 カーソルの ray 判定が読む
+        //! @brief live の全 cell ブラシ配置物の cell 座標一覧を返す関数を差す。カーソルの ray 判定が読む
         void SetCollectCellsFn(std::function<std::vector<CellCoord>()> fn) noexcept { m_collectCells = std::move(fn); }
 
         //! @brief 新規配置物へ永続 id を 1 個振る関数を差す
@@ -94,7 +92,7 @@ namespace NS::Editor
         //! マウスが表示矩形のパネル上に居るかを渡す。偽の間は配置カーソルを立てない
         void SetViewHovered(bool hovered) noexcept { m_viewHovered = hovered; }
 
-        //! ギズモドラッグ中だけ undo/redo を止める。 旧 Transform への書込を防ぐ
+        //! ギズモドラッグ中だけ undo/redo を止める。旧 Transform への書込を防ぐ
         void SetUndoRedoSuppressed(bool suppressed) noexcept { m_undoRedoSuppressed = suppressed; }
 
         //! @brief 毎フレーム入力を見て、対応する編集操作を実行する
@@ -114,7 +112,7 @@ namespace NS::Editor
         //! @brief 最後の保存 / 読込のあとに編集が入ったか
         [[nodiscard]] bool HasUnsavedChanges() const noexcept { return m_undo.Version() != m_savedUndoVersion; }
 
-        //! @brief 今開いているレベル名。 まだ名前が決まっていなければ空
+        //! @brief 今開いているレベル名。まだ名前が決まっていなければ空
         [[nodiscard]] const std::string& CurrentLevelName() const noexcept { return m_currentLevelName; }
 
         //! @brief 前回の取り込みからレベルデータが変わったか
@@ -135,17 +133,17 @@ namespace NS::Editor
         //! @brief 終了する前に保存する
         [[nodiscard]] bool SaveForQuit() noexcept;
 
-        //! @brief 起動レベルが実在するのに読めなかったことを印す。 終了保存が既存ファイルを上書きしないようにする
+        //! @brief 起動レベルが実在するのに読めなかったことを印す。終了保存が既存ファイルを上書きしないようにする
         void MarkBootLevelLoadFailed() noexcept { m_bootLevelLoadFailed = true; }
 
-        //! 1 手戻す。 戻せたら true。 メニューとキーが同じ入口で呼ぶ
+        //! 1 手戻す。戻せたら true。メニューとキーが同じ入口で呼ぶ
         bool PerformUndo() noexcept;
-        //! 1 手やり直す。 やり直せたら true
+        //! 1 手やり直す。やり直せたら true
         bool PerformRedo() noexcept;
         [[nodiscard]] bool CanUndo() const noexcept { return m_undo.UndoSize() > 0; }
         [[nodiscard]] bool CanRedo() const noexcept { return m_undo.RedoSize() > 0; }
 
-        //! 現在名で上書き保存。 名前が無ければ名前を付けて保存を開く
+        //! 現在名で上書き保存。名前が無ければ名前を付けて保存を開く
         void RequestSave() noexcept;
         //! 名前を付けて保存のモーダルを開く
         void OpenSaveModal() noexcept { m_fileBrowser.OpenSaveModal(m_currentLevelName); }
@@ -193,7 +191,7 @@ namespace NS::Editor
         void HandleRotationInput() noexcept;
         void HandleUndoRedoInput() noexcept;
 
-        //! cell に cell ブラシ配置物が居るか。 live 照会が未設定なら常に不在
+        //! cell に cell ブラシ配置物が居るか。live 照会が未設定なら常に不在
         [[nodiscard]] bool HasObjectAtCell(std::int16_t x, std::int16_t y, std::int16_t z) const noexcept;
 
         [[nodiscard]] bool SaveLevelToName(std::string_view name) noexcept;

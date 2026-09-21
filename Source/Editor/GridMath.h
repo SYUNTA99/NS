@@ -45,11 +45,6 @@ namespace NS::Editor
     [[nodiscard]] NS::Core::Vector3 SnapWorldPointToGrid(NS::Core::Vector3 worldPoint,
                                                          float gridSize = k_GridSize) noexcept;
 
-    //! @brief 衝突点の座標と法線ベクトルから、隣接する配置先セルの中心座標を算出する
-    [[nodiscard]] NS::Core::Vector3 SnapHitToPlacementCell(NS::Core::Vector3 hitPoint,
-                                                           NS::Core::Vector3 hitNormal,
-                                                           float gridSize = k_GridSize) noexcept;
-
     //! @brief レイと水平な地面との交点を算出し、グリッドにスナップした座標を取得する
     //! @param[out] outCellCenter スナップ後のセル中心。交差した時だけ書く
     //! @return 交差した場合 true、それ以外の場合は false

@@ -139,7 +139,7 @@ TEST(ModeToggle, EditorStateIsPreservedAcrossToggle)
 {
     NS::Object::Scene scene;
     LevelEditorController editor(&scene);
-    // 適用経路を grid 編集へ差す。 照会と採番は実行時と同じ live 配線
+    // 適用経路を grid 編集へ差す。照会と採番は実行時と同じ live 配線
     NS::Editor::ObjectSnapshotApplier applier{&scene};
     editor.Editor().SetApplier(&applier);
     editor.Editor().SetFindCellObjectFn([&scene](std::int16_t x, std::int16_t y, std::int16_t z) {
@@ -190,7 +190,7 @@ TEST(ModeToggle, EditModeRebuildKeepsWorldStill)
     editor.EnterPlay();
     editor.EnterEdit();
 
-    // 編集中の構造編集で世界が組み直っても、 止めた世界は動き出さない
+    // 編集中の構造編集で世界が組み直っても、止めた世界は動き出さない
     NS::Object::ObjectData player = MakePlayerObject(NS::Core::Vector3{0.0f, 2.0f, 0.0f}, NS::Core::Quaternion{});
     const std::uint32_t playerId = scene.Objects().AllocateObjectId();
     applier.ApplyObjectSnapshot(playerId, player);
@@ -320,7 +320,7 @@ TEST(ModeToggle, EnterEditCancelsInFlightFade)
     ASSERT_NE(fade, nullptr);
     ASSERT_TRUE(fade->IsFading());
 
-    // 編集へ戻ると進行中の暗転は破棄され、 次のプレイ開始へ持ち越さない
+    // 編集へ戻ると進行中の暗転は破棄され、次のプレイ開始へ持ち越さない
     editor.EnterEdit();
     fade = FindFade(scene);
     ASSERT_NE(fade, nullptr);
@@ -346,7 +346,7 @@ TEST(ModeToggle, CancelledClearDoesNotRefireAfterReenter)
     ASSERT_NE(fade, nullptr);
     ASSERT_TRUE(fade->IsFading());
 
-    // 編集へ戻ってもう一度プレイへ。 前のプレイで立ったゴールのフラグは戻っているので開始直後に再クリアしない
+    // 編集へ戻ってもう一度プレイへ。前のプレイで立ったゴールのフラグは戻っているので開始直後に再クリアしない
     editor.EnterEdit();
     editor.EnterPlay();
     fade = FindFade(scene);

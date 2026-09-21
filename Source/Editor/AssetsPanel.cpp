@@ -1,4 +1,4 @@
-#include "Editor/AssetsPanel.h"
+﻿#include "Editor/AssetsPanel.h"
 
 #include "Editor/DragTypes.h"
 #include "Editor/LevelEditorController.h"
@@ -24,12 +24,16 @@ namespace NS::Editor
                 const bool hasSelection = editor.HasGizmoSelection();
                 const char* selectionLabel = "オブジェクトが未選択。クリックで選ぶ";
                 if (hasSelection)
+                {
                     selectionLabel = "オブジェクトを選択中";
+                }
                 ImGui::TextUnformatted(selectionLabel);
 
                 const char* dropLabel = "選択してから .mat を落とす";
                 if (hasSelection)
-                    dropLabel = ".mat をここへ落とすと選択中のオブジェクトへ適用";
+                {
+					dropLabel = ".mat をここへ落とすと選択中のオブジェクトへ適用";
+                }
                 ImGui::Button(dropLabel, ImVec2(-1.0f, 32.0f));
                 if (ImGui::BeginDragDropTarget())
                 {

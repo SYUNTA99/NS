@@ -1,4 +1,4 @@
-#include "Runtime/Object/Components/CapsuleColliderComponent.h"
+﻿#include "Runtime/Object/Components/CapsuleColliderComponent.h"
 #include "Runtime/Core/AABB.h"
 
 #include "Runtime/Object/GameObject.h"
@@ -16,12 +16,16 @@ namespace NS::Object
     CapsuleColliderComponent::CapsuleColliderComponent(float radius, float halfHeight) noexcept
         : m_radius([&]() -> float {
               if (radius < 0.0f)
-                  return 0.0f;
+              {
+                 return 0.0f;
+              }
               return radius;
           }()),
           m_halfHeight([&]() -> float {
               if (halfHeight < 0.0f)
-                  return 0.0f;
+              {
+                    return 0.0f;
+              }
               return halfHeight;
           }())
     {}
@@ -29,9 +33,13 @@ namespace NS::Object
     void CapsuleColliderComponent::SetRadius(float radius) noexcept
     {
         if (radius < 0.0f)
+        {
             m_radius = 0.0f;
+        }
         else
+        {
             m_radius = radius;
+        }
     }
 
     float CapsuleColliderComponent::Radius() const noexcept
@@ -42,9 +50,13 @@ namespace NS::Object
     void CapsuleColliderComponent::SetHalfHeight(float halfHeight) noexcept
     {
         if (halfHeight < 0.0f)
+        {
             m_halfHeight = 0.0f;
+        }
         else
-            m_halfHeight = halfHeight;
+        {
+			m_halfHeight = halfHeight;
+        }
     }
 
     float CapsuleColliderComponent::HalfHeight() const noexcept
@@ -118,8 +130,9 @@ namespace NS::Object
     JPH::BodyID CapsuleColliderComponent::SyncBody(NS::Physics::PhysicsScene& physics, JPH::BodyID current)
     {
         if (m_excludedFromStaticWorld)
+        {
             return JPH::BodyID{};
-
+        }
         return physics.SyncCapsule(current, WorldCapsule(), NS::Physics::ObjectLayers::Terrain);
     }
 

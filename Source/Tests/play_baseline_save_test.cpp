@@ -48,8 +48,8 @@ namespace
     }
 } // namespace
 
-// プレイ突入時に凍結した控えは、 プレイ中の live 移動を映さず突入時の姿を保つ
-// プレイ中の保存はこの控えを書くため、 プレイの一時状態がレベルファイルへ書き込まれない
+// プレイ突入時に凍結した控えは、プレイ中の live 移動を映さず突入時の姿を保つ
+// プレイ中の保存はこの控えを書くため、プレイの一時状態がレベルファイルへ書き込まれない
 TEST(PlayBaselineSave, FrozenBaselineIgnoresPlayMovement)
 {
     NS::Object::Scene scene;
@@ -64,11 +64,11 @@ TEST(PlayBaselineSave, FrozenBaselineIgnoresPlayMovement)
     // プレイ突入時の姿を凍結する
     scene.BeginPlayBaseline();
 
-    // プレイ中の変化相当。 live object を別位置へ動かす
+    // プレイ中の変化相当。live object を別位置へ動かす
     ASSERT_GT(scene.Objects().ObjectCount(), 0u);
     scene.Objects().ObjectAt(0)->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
 
-    // 控えは突入時の位置を保ち、 動かした後の位置は映らない
+    // 控えは突入時の位置を保ち、動かした後の位置は映らない
     const SceneNs::SceneData& baseline = scene.PlayBaseline();
     ASSERT_EQ(baseline.objects.size(), 1u);
     const NS::Core::Vector3 frozen = SceneNs::ObjectPosition(baseline.objects[0]);
@@ -125,6 +125,7 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
     EXPECT_FLOAT_EQ(GetFloatField(*rebuiltLaunched, "跳ね返り"), 0.9f);
 }
 
+// プレイ中に live の回転を直接動かした分が凍結側へ写り、編集へ戻った時に残る
 TEST(PlayBaselineSave, HandEditedRotationUpdatesFrozenQuaternion)
 {
     NS::Object::Scene scene;
@@ -144,7 +145,7 @@ TEST(PlayBaselineSave, HandEditedRotationUpdatesFrozenQuaternion)
     const NS::Core::Quaternion edited =
         NS::Core::Quaternion::CreateFromYawPitchRoll(NS::Core::Vector3{NS::Core::DegreesToRadians(90.0f), 0.0f, 0.0f});
     live->Root().SetRotation(edited);
-    scene.WritePlayBaselineField(*transform, SceneNs::k_RotationEulerFieldName);
+    scene.WritePlayBaselineField(*transform, SceneNs::k_RotationFieldName);
 
     SceneNs::SceneData copy = scene.PlayBaseline();
     scene.LoadFromData(std::move(copy));

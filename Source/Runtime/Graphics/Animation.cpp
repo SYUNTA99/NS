@@ -14,7 +14,7 @@ namespace NS::Graphics
             float f;
         };
 
-        // times は昇順前提・ 非空前提。 t を含む区間 [i0, i1] と補間係数 f を返す
+        // times は昇順前提・ 非空前提。t を含む区間 [i0, i1] と補間係数 f を返す
         // 範囲外は端点へクランプし i0==i1, f=0 になる
         [[nodiscard]] Segment FindSegment(std::span<const float> times, float t) noexcept
         {

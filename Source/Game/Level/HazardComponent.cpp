@@ -1,4 +1,4 @@
-#include "Game/Level/HazardComponent.h"
+﻿#include "Game/Level/HazardComponent.h"
 
 #include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
@@ -19,18 +19,27 @@ namespace NS::Game::Level
     {
         auto* box = Owner()->FindComponent<NS::Object::BoxColliderComponent>();
         if (box == nullptr)
+        {
             return;
+        }
+ 
 
         auto* scene = Owner()->OwningScene();
         if (scene == nullptr)
-            return;
+        {
+			return;
+        }
         // 組み直しで古い参照を掴むので、player は控えず毎ステップ引き直す
         auto* player = FindPlayer(scene->Objects());
         if (player == nullptr)
+        {
             return;
+        }
         auto* movement = player->FindComponent<NS::Game::Player::PlayerComponent>();
         if (movement == nullptr)
+        {
             return;
+        }
 
         const NS::Physics::Capsule capsule{player->Root().Position(),
                                            NS::Core::Vector3::UnitY,
@@ -38,7 +47,9 @@ namespace NS::Game::Level
                                            movement->CapsuleRadius()};
         const auto overlaps = scene->Physics().OverlapCapsule(capsule);
         if (std::find(overlaps.begin(), overlaps.end(), box->BodyId()) != overlaps.end())
+        {
             player->ApplyDamage(1);
+        }
     }
 
     NS_CLASS(HazardComponent)

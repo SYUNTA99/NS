@@ -56,6 +56,13 @@ TEST(DebugDrawTest, SphereAdds3GreatCircles)
     EXPECT_EQ(DD::VertexCount(), std::size_t{72}); // 大円 3 本 × 12 分割 × 2 頂点
 }
 
+TEST(DebugDrawTest, CircleAdds12Segments)
+{
+    Reset();
+    DD::Circle({0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, Color{1.0f, 1.0f, 1.0f, 1.0f});
+    EXPECT_EQ(DD::VertexCount(), std::size_t{24}); // 12 分割 × 2 頂点
+}
+
 TEST(DebugDrawTest, ClearResetsToZero)
 {
     DD::Line({0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, Color{1.0f, 1.0f, 1.0f, 1.0f});

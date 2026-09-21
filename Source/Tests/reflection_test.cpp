@@ -9,7 +9,9 @@
 #include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/Reflection.h>
+#include <cmath>
 #include <gtest/gtest.h>
+#include <limits>
 #include <string>
 #include <string_view>
 
@@ -23,7 +25,7 @@ namespace
     using NS::Object::PlacedVirtualCamera;
     using NS::Object::ReflectionInfo;
 
-    // float / int / bool / Vector3 を private に持ち、 4 フィールドをリフレクションするテスト用 Component
+    // float / int / bool / Vector3 を private に持ち、4 フィールドをリフレクションするテスト用 Component
     class FakeReflectedComponent : public Component
     {
     public:
@@ -46,6 +48,29 @@ namespace
         int m_count = 3;
         bool m_enabled = true;
         NS::Core::Vector3 m_offset{1.0f, 2.0f, 3.0f};
+    };
+
+    struct FakeTuning
+    {
+        float speed = 4.0f;
+    };
+
+    class FakeNestedComponent : public Component
+    {
+    public:
+        FakeNestedComponent() noexcept : Component(0) {}
+
+        NS_REFLECT_BEGIN(FakeNestedComponent, Component)
+        NS_REFLECT_FIELD(m_tuning.speed, "速度")
+        NS_REFLECT_FIELD(m_plainGravity, "重力")
+        NS_REFLECT_END()
+
+        [[nodiscard]] const FakeTuning& Tuning() const noexcept { return m_tuning; }
+        [[nodiscard]] float PlainGravity() const noexcept { return m_plainGravity; }
+
+    private:
+        FakeTuning m_tuning{};
+        float m_plainGravity = -9.8f;
     };
 
     // std::string をリフレクションするテスト用 Component
@@ -223,7 +248,7 @@ TEST(ReflectionTest, PlayerComponentReflectsFeelFloats)
     NS::Game::Player::PlayerComponent move;
     const ReflectionInfo* info = move.GetReflection();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->fieldCount, 20u);
+    EXPECT_EQ(info->fieldCount, 30u);
 
     // 操作感の代表値が float として往復する
     const FieldDesc* jump = FindField(info, "ジャンプ初速");
@@ -318,7 +343,7 @@ TEST(ReflectionTest, BoxColliderExposesCenterOffsetAndRotation)
     EXPECT_FLOAT_EQ(collider.CenterOffset().y, -2.0f);
     EXPECT_FLOAT_EQ(collider.CenterOffset().z, 3.0f);
 
-    // 回転は Euler(度) アクセサで読み書きし、 往復で一致する
+    // 回転は Euler(度) アクセサで読み書きし、往復で一致する
     const FieldDesc* rot = FindField(info, "回転 (度)");
     ASSERT_NE(rot, nullptr);
     NS::Core::Vector3 setRot{0.0f, 90.0f, 0.0f};
@@ -360,7 +385,7 @@ TEST(ReflectionTest, ThirdPersonFollowReflectsFeelFields)
     ASSERT_NE(farPlane, nullptr);
     EXPECT_EQ(farPlane->type, FieldType::Float);
 
-    // プレイ開始時の向きは editor のギズモ / Inspector が data 保存し、 OnStart で現在 yaw へ写る
+    // プレイ開始時の向きは editor のギズモ / Inspector が data 保存し、OnStart で現在 yaw へ写る
     const FieldDesc* initialYaw = FindField(info, "初期ヨー");
     ASSERT_NE(initialYaw, nullptr);
     EXPECT_EQ(initialYaw->type, FieldType::Float);
@@ -502,4 +527,48 @@ TEST(ReflectionComponentCastTest, CastsTypeWithRenderableSide)
     NS::Object::ShadowComponent shadow;
     Component* comp = &shadow;
     EXPECT_EQ(NS::Object::ComponentCast<NS::Object::ShadowComponent>(comp), &shadow);
+}
+
+TEST(ReflectionFiniteFieldTest, ReachesTheMemberInsideTheNestedStruct)
+{
+    FakeNestedComponent comp;
+    const FieldDesc* field = FindField(comp.GetReflection(), "速度");
+    ASSERT_NE(field, nullptr);
+    EXPECT_EQ(field->type, FieldType::Float);
+
+    float read = 0.0f;
+    field->get(&comp, &read);
+    EXPECT_FLOAT_EQ(read, 4.0f);
+
+    float written = 7.5f;
+    field->set(&comp, &written);
+    EXPECT_FLOAT_EQ(comp.Tuning().speed, 7.5f);
+}
+
+TEST(ReflectionFiniteFieldTest, KeepsItsValueOnNonFiniteWrite)
+{
+    FakeNestedComponent comp;
+    const FieldDesc* field = FindField(comp.GetReflection(), "速度");
+    ASSERT_NE(field, nullptr);
+
+    const float k_Rejected[] = {std::numeric_limits<float>::quiet_NaN(),
+                                std::numeric_limits<float>::infinity(),
+                                -std::numeric_limits<float>::infinity()};
+    for (float rejected : k_Rejected)
+    {
+        field->set(&comp, &rejected);
+        EXPECT_FLOAT_EQ(comp.Tuning().speed, 4.0f);
+    }
+}
+
+// 入れ子の欄と 2 本に分けるのは、decltype が入れ子でも直メンバでも通ることを別々に固定するため
+TEST(ReflectionFiniteFieldTest, PlainFloatFieldAlsoKeepsItsValue)
+{
+    FakeNestedComponent comp;
+    const FieldDesc* field = FindField(comp.GetReflection(), "重力");
+    ASSERT_NE(field, nullptr);
+
+    float notANumber = std::numeric_limits<float>::quiet_NaN();
+    field->set(&comp, &notANumber);
+    EXPECT_FLOAT_EQ(comp.PlainGravity(), -9.8f);
 }

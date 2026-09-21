@@ -246,7 +246,7 @@ TEST(GltfSkinLoadTest, NonexistentPathIsInvalid)
 
 TEST(GltfSkinLoadTest, StaticMeshWithoutSkinIsInvalid)
 {
-    // gltf の buffers.uri が名前でこの .bin を指す。 消えると読込が失敗する
+    // gltf の buffers.uri が名前でこの .bin を指す。消えると読込が失敗する
     const NsTest::ScopedFixture bin{"ns_skinned_fixture.bin", MakeSkinnedBufferBin()};
     const NsTest::ScopedFixture gltf{"ns_skin_noskin.gltf", NoSkinGltf()};
 
@@ -257,7 +257,7 @@ TEST(GltfSkinLoadTest, StaticMeshWithoutSkinIsInvalid)
 
 TEST(GltfSkinLoadTest, LoadsSkinnedTriangleWithLeftHandedConversion)
 {
-    // gltf の buffers.uri が名前でこの .bin を指す。 消えると読込が失敗する
+    // gltf の buffers.uri が名前でこの .bin を指す。消えると読込が失敗する
     const NsTest::ScopedFixture bin{"ns_skinned_fixture.bin", MakeSkinnedBufferBin()};
     const NsTest::ScopedFixture gltf{"ns_skin_happy.gltf", SkinnedGltf()};
 
@@ -284,7 +284,7 @@ TEST(GltfSkinLoadTest, LoadsSkinnedTriangleWithLeftHandedConversion)
 
 TEST(GltfSkinLoadTest, LoadsAnimationClip)
 {
-    // gltf の buffers.uri が名前でこの .bin を指す。 消えると読込が失敗する
+    // gltf の buffers.uri が名前でこの .bin を指す。消えると読込が失敗する
     const NsTest::ScopedFixture bin{"ns_skinned_anim_fixture.bin", MakeAnimatedSkinnedBufferBin()};
     const NsTest::ScopedFixture gltf{"ns_skin_anim.gltf", AnimatedSkinnedGltf()};
 

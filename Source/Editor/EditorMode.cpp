@@ -48,7 +48,7 @@ namespace NS::Editor
             return static_cast<std::int16_t>(std::lround(v));
         }
 
-        // 足した結果を 4 で割った余り。 90° 刻みの回転を 0〜3 で巻き戻す
+        // 足した結果を 4 で割った余り。90° 刻みの回転を 0〜3 で巻き戻す
         [[nodiscard]] std::uint8_t RotateMod4(std::uint8_t current, std::int8_t delta) noexcept
         {
             int32_t r = static_cast<int32_t>(current) + delta;
@@ -107,7 +107,7 @@ namespace NS::Editor
         const bool shift = kb.IsHeld(NS::Platform::Key::Shift);
         if (kb.IsPressed(NS::Platform::Key::S))
         {
-            // Shift 付きは常に名前を付けて保存、 素の Ctrl+S は上書き (名前が無ければ付けて保存へ落ちる)
+            // Shift 付きは常に名前を付けて保存、素の Ctrl+S は上書き (名前が無ければ付けて保存へ落ちる)
             if (shift)
             {
                 OpenSaveModal();
@@ -152,7 +152,7 @@ namespace NS::Editor
 
         (void)EnsureScenesDirectoryExists();
 
-        // 保存の出所は live 実体。 捕捉関数で実体から SceneData を作って書く
+        // 保存の出所は live 実体。捕捉関数で実体から SceneData を作って書く
         const NS::Object::SceneData snapshot = m_captureLevel();
         const bool ok = NS::Object::SaveSceneToJsonFile(snapshot, *path);
         if (ok)
@@ -185,7 +185,7 @@ namespace NS::Editor
             return SaveLevelToName(m_currentLevelName);
         }
 
-        // 起動レベルが実在するのに読めず seed で立ち上がった時は、 元ファイルを潰さないよう退避名へ逃がす
+        // 起動レベルが実在するのに読めず seed で立ち上がった時は、元ファイルを潰さないよう退避名へ逃がす
         if (m_bootLevelLoadFailed)
         {
             const bool ok = SaveLevelToName("Scenes/recovered_level");
@@ -234,12 +234,12 @@ namespace NS::Editor
             if (ok)
             {
                 // プレイヤー / 追従カメラ / 落下死体積が欠けたレベルには既定の 1 体を補う
-                // 追従カメラの Target にプレイヤーの id が要るので、 揃える順はこの並びで決まる
+                // 追従カメラの Target にプレイヤーの id が要るので、揃える順はこの並びで決まる
                 (void)EnsurePlayerObject(fresh);
                 (void)NS::Game::Level::EnsureFollowCameraObject(fresh, PlayerObjectId(fresh));
                 (void)NS::Game::Level::EnsureKillZoneObject(fresh);
 
-                // 読込済みデータを実体側へ取り込み world を組み直す。 新レベルなので Undo 履歴もクリアする
+                // 読込済みデータを実体側へ取り込み world を組み直す。新レベルなので Undo 履歴もクリアする
                 m_loadLevel(std::move(fresh));
                 m_undo.Clear();
                 m_savedUndoVersion = m_undo.Version();
@@ -472,7 +472,7 @@ namespace NS::Editor
             placed, NS::Core::Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
         NS::Editor::SetCellRotationStep(placed, rotation);
 
-        // 既存 cell は同じ永続 id で置換、 空 cell は新規採番
+        // 既存 cell は同じ永続 id で置換、空 cell は新規採番
         std::optional<NS::Object::ObjectData> before;
         std::uint32_t id = m_findCellObject(x, y, z);
         if (id != NS::Object::k_NoObjectId)
@@ -656,14 +656,11 @@ namespace NS::Editor
             m_cursor.hitX = hitX;
             m_cursor.hitY = hitY;
             m_cursor.hitZ = hitZ;
-            m_cursor.deleteCenter =
-                NS::Core::Vector3{static_cast<float>(hitX), static_cast<float>(hitY), static_cast<float>(hitZ)};
             m_cursor.placementCenter =
                 NS::Core::Vector3{static_cast<float>(placeX), static_cast<float>(placeY), static_cast<float>(placeZ)};
             m_cursor.placeX = placeX;
             m_cursor.placeY = placeY;
             m_cursor.placeZ = placeZ;
-            m_cursor.hitNormal = hitNormal;
             m_cursor.placementBlocked = HasObjectAtCell(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
             return;
         }
@@ -682,8 +679,6 @@ namespace NS::Editor
         m_cursor.hitX = m_cursor.placeX;
         m_cursor.hitY = m_cursor.placeY;
         m_cursor.hitZ = m_cursor.placeZ;
-        m_cursor.hitNormal = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
-        m_cursor.deleteCenter = cellCenter;
         m_cursor.placementBlocked = HasObjectAtCell(m_cursor.placeX, m_cursor.placeY, m_cursor.placeZ);
     }
 
@@ -769,7 +764,7 @@ namespace NS::Editor
         {
             return;
         }
-        // ドラッグ中は選択の貼り直しを飛ばすため、 旧 Transform を指したまま undo が走らないように止める
+        // ドラッグ中は選択の貼り直しを飛ばすため、旧 Transform を指したまま undo が走らないように止める
         if (m_undoRedoSuppressed)
         {
             return;

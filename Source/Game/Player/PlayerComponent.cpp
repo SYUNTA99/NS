@@ -2,6 +2,12 @@
 
 #include "Game/Entity/EntityStateManagerComponent.h"
 #include "Game/Player/PlayerStateManagerComponent.h"
+#include "Game/Player/States/BodySlamPlayerState.h"
+#include "Game/Player/States/FallPlayerState.h"
+#include "Game/Player/States/IdlePlayerState.h"
+#include "Game/Player/States/LedgeClimbingPlayerState.h"
+#include "Game/Player/States/LedgeHangingPlayerState.h"
+#include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/GameObject.h"
@@ -15,42 +21,7 @@
 
 namespace
 {
-    // 加速と減速の切り替えで見る速さの差の下限。単位は m/s
-    constexpr float k_HorizontalSpeedEpsilon = 0.01f;
-
-    // 1 歩で打ち切ると ImpactResolverComponent が突進を見る前に終わるため、壁に押し付けられた歩を 2 回数える
-    constexpr float k_BodySlamStallDistance = 1e-4f;
-    constexpr int k_BodySlamMaxStallSteps = 2;
-
-    // capsule 上端を手とみなし、block 上端との高さ差の許容下幅 / 上幅で単位は m。この帯に block 上端が
-    // 入ると掴める。実機で触って詰める初期値
-    constexpr float k_LedgeGrabBandLow = 0.5f;
-    constexpr float k_LedgeGrabBandHigh = 0.5f;
-    // capsule 表面から前方へ手を伸ばす追加距離で単位は m
-    constexpr float k_LedgeReach = 0.3f;
-    // よじ登りで面の内側へ押し込む余白で単位は m。2*radius に上乗せして上面へ確実に乗せる
-    constexpr float k_LedgeMantleInset = 0.1f;
-    // よじ登りの後に block 上面から浮かせる安全マージンで単位は m
-    constexpr float k_LedgeMantleLift = 0.02f;
-    // よじ登りと手放しを起こす掴まり中の前後入力のしきい値
-    constexpr float k_LedgeInputThreshold = 0.5f;
-    // 前入力での自動登りを許すまでの最小ぶら下がり時間で単位は s。壁に向かう入力のまま即登り切って
-    // 掴まりが見えない問題を防ぐ。ジャンプと手放しはこの待ちを受けない
-    constexpr float k_LedgeMinHangTime = 0.3f;
-    // ぶら下がりから上面へよじ登る所要時間で単位は s。瞬間移動を避けて登りを視認できるようにする
-    constexpr float k_LedgeMantleDuration = 0.25f;
-    // 縁に沿った左右移動の速度と入力の遊び。速度の単位は m/s
-    constexpr float k_LedgeShimmySpeed = 2.0f;
-    constexpr float k_LedgeShimmyDeadzone = 0.3f;
-    // シミーの継続判定で同じ高さの縁とみなす上端の許容差で単位は m
-    constexpr float k_LedgeContinueTopTol = 0.1f;
-    // 手放しで面法線方向へ離す距離と初速で、単位はそれぞれ m と m/s
-    constexpr float k_LedgeDropOutward = 0.2f;
-    constexpr float k_LedgeDropOutwardSpeed = 2.0f;
-    // 手放しとよじ登りの直後に再掴みを禁止する時間で単位は s。放しても入力を倒し続けた時の即再掴みを防ぐ
-    constexpr float k_LedgeRegrabCooldownTime = 0.3f;
-
-    // 掴まりの走査で見る AABB 群。physics 未設定なら空を返すので、掴めないだけで異常終了しない
+    // 掴まりの走査で見る AABB 群。physics 未設定なら空を返し、掴めないだけにする
     [[nodiscard]] std::vector<NS::Core::AABB> BoxesTouchingBand(const NS::Physics::PhysicsScene* physics,
                                                                 const NS::Core::Vector3& probe,
                                                                 float below,
@@ -84,117 +55,29 @@ namespace
                p.z >= box.Center.z - box.Extents.z && p.z <= box.Center.z + box.Extents.z;
     }
 
-    // 非有限値を捨てる。重力や時定数へ入ると位置まで NaN が伝わる
-    void AssignFinite(float& target, float value) noexcept
+    // from と to は正規化した水平の向き。Y 軸まわりに最大 maxRadians だけ to へ寄せる
+    [[nodiscard]] NS::Core::Vector3 TurnHorizontalToward(const NS::Core::Vector3& from,
+                                                         const NS::Core::Vector3& to,
+                                                         float maxRadians) noexcept
     {
-        if (std::isfinite(value))
-            target = value;
+        const float angle = std::atan2(from.z * to.x - from.x * to.z, from.x * to.x + from.z * to.z);
+        if (std::abs(angle) <= maxRadians)
+        {
+            return to;
+        }
+        float step = maxRadians;
+        if (angle < 0.0f)
+        {
+            step = -maxRadians;
+        }
+        const float c = std::cos(step);
+        const float s = std::sin(step);
+        return NS::Core::Vector3{from.x * c + from.z * s, 0.0f, -from.x * s + from.z * c};
     }
 } // namespace
 
 namespace NS::Game::Player
 {
-    void PlayerComponent::SetJumpImpulse(float value) noexcept
-    {
-        AssignFinite(m_stats.jumpImpulse, value);
-    }
-
-    void PlayerComponent::SetGravityUp(float value) noexcept
-    {
-        AssignFinite(m_stats.gravityUp, value);
-    }
-
-    void PlayerComponent::SetGravityDown(float value) noexcept
-    {
-        AssignFinite(m_stats.gravityDown, value);
-    }
-
-    void PlayerComponent::SetApexHangVy(float value) noexcept
-    {
-        AssignFinite(m_stats.apexHangVy, value);
-    }
-
-    void PlayerComponent::SetApexHangScale(float value) noexcept
-    {
-        AssignFinite(m_stats.apexHangScale, value);
-    }
-
-    void PlayerComponent::SetJumpReleaseScale(float value) noexcept
-    {
-        AssignFinite(m_stats.jumpReleaseScale, value);
-    }
-
-    void PlayerComponent::SetCoyoteTime(float value) noexcept
-    {
-        AssignFinite(m_stats.coyoteTime, value);
-    }
-
-    void PlayerComponent::SetJumpBufferTime(float value) noexcept
-    {
-        AssignFinite(m_stats.jumpBufferTime, value);
-    }
-
-    void PlayerComponent::SetWalkSpeed(float value) noexcept
-    {
-        AssignFinite(m_stats.walkSpeed, value);
-    }
-
-    void PlayerComponent::SetRunSpeed(float value) noexcept
-    {
-        AssignFinite(m_stats.runSpeed, value);
-        m_maxSpeed = m_stats.runSpeed;
-    }
-
-    void PlayerComponent::SetAccelTau(float value) noexcept
-    {
-        AssignFinite(m_stats.accelTau, value);
-    }
-
-    void PlayerComponent::SetDecelTau(float value) noexcept
-    {
-        AssignFinite(m_stats.decelTau, value);
-    }
-
-    void PlayerComponent::SetStickDeadzone(float value) noexcept
-    {
-        AssignFinite(m_stats.stickDeadzone, value);
-    }
-
-    void PlayerComponent::SetBodySlamSpeed(float value) noexcept
-    {
-        AssignFinite(m_stats.bodySlamSpeed, value);
-    }
-
-    void PlayerComponent::SetBodySlamDistance(float value) noexcept
-    {
-        AssignFinite(m_stats.bodySlamDistance, value);
-    }
-
-    void PlayerComponent::SetTapSlamSpeed(float value) noexcept
-    {
-        AssignFinite(m_stats.tapSlamSpeed, value);
-    }
-
-    void PlayerComponent::SetTapSlamUpSpeed(float value) noexcept
-    {
-        AssignFinite(m_stats.tapSlamUpSpeed, value);
-    }
-
-    void PlayerComponent::SetTapSlamDistance(float value) noexcept
-    {
-        AssignFinite(m_stats.tapSlamDistance, value);
-    }
-
-    void PlayerComponent::SetSlamAimHoldTime(float value) noexcept
-    {
-        AssignFinite(m_stats.slamAimHoldTime, value);
-    }
-
-    void PlayerComponent::SetSlamAimFadeTime(float value) noexcept
-    {
-        AssignFinite(m_stats.slamAimFadeTime, value);
-    }
-
     void PlayerComponent::SetDesiredMove(const NS::Core::Vector3& worldDir, float speedScale01) noexcept
     {
         m_desiredDir = worldDir;
@@ -212,28 +95,31 @@ namespace NS::Game::Player
         m_jumpPressedThisFrame = true;
     }
 
+    void PlayerComponent::SetReleaseLedgePressed() noexcept
+    {
+        m_releaseLedgePressedThisFrame = true;
+    }
+
     void PlayerComponent::SetJumpHeld(bool held) noexcept
     {
         m_jumpHeld = held;
     }
 
-    void PlayerComponent::SetMaxSpeed(float speed) noexcept
+    void PlayerComponent::SetMaxSpeedScale(float scale) noexcept
     {
-        // 非有限値は入口で捨てる。JoltCharacter は速度を検査しないので位置まで NaN が伝わる
-        if (!std::isfinite(speed))
+        // 非数を入れると MaxSpeed() との比較が偽になり、突進明けに水平の速さが切られない
+        if (!std::isfinite(scale))
+        {
             return;
-
-        if (speed < 0.0f)
-            m_maxSpeed = 0.0f;
-        else
-            m_maxSpeed = speed;
+        }
+        m_maxSpeedScale = scale;
     }
 
     void PlayerComponent::RequestBodySlam(float charge01) noexcept
     {
-        // その歩で出せないと押しが無言で消える。ジャンプと同じ先行入力時間だけ覚える
-        m_bodySlamBufferRemaining = Stats().jumpBufferTime;
-        // NaN は 0..1 への丸めを素通りして溜め量に残るため、入口で 0 へ倒す
+        // そのフレームで出せないと押しが無言で消える。ジャンプと同じ先行入力時間だけ覚える
+        m_bodySlamBufferRemaining = m_jumpBufferTime;
+        // 非数は 0..1 への丸めを素通りして溜め量に残るため、入口で 0 へ倒す
         if (!std::isfinite(charge01))
             m_bodySlamRequestCharge01 = 0.0f;
         else
@@ -242,7 +128,7 @@ namespace NS::Game::Player
 
     bool PlayerComponent::IsBodySlamming() const noexcept
     {
-        return m_stateManager != nullptr && m_stateManager->IsCurrent(k_BodySlamStateName);
+        return m_stateManager != nullptr && m_stateManager->IsCurrent<BodySlamPlayerState>();
     }
 
     float PlayerComponent::BodySlamProgress01() const noexcept
@@ -257,9 +143,9 @@ namespace NS::Game::Player
         if (!IsBodySlamming())
             return Velocity();
 
-        float speed = Stats().bodySlamSpeed;
+        float speed = m_bodySlamSpeed;
         if (m_bodySlamIsTap)
-            speed = Stats().tapSlamSpeed;
+            speed = m_tapSlamSpeed;
         return NS::Core::Vector3{m_bodySlamDir.x * speed, VerticalVelocity(), m_bodySlamDir.z * speed};
     }
 
@@ -267,9 +153,35 @@ namespace NS::Game::Player
     {
         if (!IsBodySlamming())
             return;
+        EndBodySlam();
+    }
+
+    void PlayerComponent::EndBodySlam() noexcept
+    {
         m_bodySlamTravelled = 0.0f;
         m_bodySlamDistanceTarget = 0.0f;
-        m_stateManager->ChangeByName(k_IdleStateName);
+
+        // 加速は最高速を超えた速さを削らない。切らないと、倒している間は突進の速さのまま走り続ける
+        const NS::Core::Vector3 lateral = LateralVelocity();
+        const float speed = std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z);
+        const float cap = MaxSpeed();
+        if (speed > cap)
+        {
+            const float scale = cap / speed;
+            SetLateralVelocity(NS::Core::Vector3{lateral.x * scale, 0.0f, lateral.z * scale});
+        }
+
+        if (m_stateManager != nullptr)
+        {
+            if (IsGrounded())
+            {
+                m_stateManager->Change<WalkPlayerState>();
+            }
+            else
+            {
+                m_stateManager->Change<FallPlayerState>();
+            }
+        }
         m_playerEvents.onBodySlamEnded.Invoke();
     }
 
@@ -308,8 +220,8 @@ namespace NS::Game::Player
 
     float PlayerComponent::BodySlamAimBlend01() const noexcept
     {
-        const float hold = m_stats.slamAimHoldTime;
-        const float fade = m_stats.slamAimFadeTime;
+        const float hold = m_slamAimHoldTime;
+        const float fade = m_slamAimFadeTime;
         if (m_bodySlamAimAge <= hold)
             return 1.0f;
         // 巻き戻し秒を消える秒より後ろにできる。幅が 0 以下なら割らずに切る
@@ -333,7 +245,7 @@ namespace NS::Game::Player
                                         0.0f,
                                         dir.z * (1.0f - blend) + m_bodySlamAimDir.z * blend};
                 const float mixedLength = std::sqrt(mixed.x * mixed.x + mixed.z * mixed.z);
-                // 正反対だと混ぜた長さが 0 になる。その時は濃い側をそのまま採る
+                // 正反対の向きを同じくらいの重みで混ぜると長さが 0 近くになる。その時は濃い側をそのまま採る
                 if (mixedLength >= NS::Core::k_Epsilon)
                     dir = NS::Core::Vector3{mixed.x / mixedLength, 0.0f, mixed.z / mixedLength};
                 else if (blend >= 0.5f)
@@ -348,29 +260,29 @@ namespace NS::Game::Player
         m_bodySlamCharge01 = m_bodySlamRequestCharge01;
         m_bodySlamIsTap = !(m_bodySlamRequestCharge01 > 0.0f);
         m_bodySlamTravelled = 0.0f;
-        m_bodySlamStallSteps = 0;
+        m_bodySlamJustStarted = true;
 
         if (m_bodySlamIsTap)
         {
-            m_bodySlamDistanceTarget = Stats().tapSlamDistance;
-            SetVelocity(
-                NS::Core::Vector3{dir.x * Stats().tapSlamSpeed, Stats().tapSlamUpSpeed, dir.z * Stats().tapSlamSpeed});
+            m_bodySlamDistanceTarget = m_tapSlamDistance;
+            SetVelocity(NS::Core::Vector3{dir.x * m_tapSlamSpeed, m_tapSlamUpSpeed, dir.z * m_tapSlamSpeed});
         }
         else
         {
-            m_bodySlamDistanceTarget = Stats().bodySlamDistance;
-            SetVelocity(
-                NS::Core::Vector3{dir.x * Stats().bodySlamSpeed, VerticalVelocity(), dir.z * Stats().bodySlamSpeed});
+            m_bodySlamDistanceTarget = m_bodySlamDistance;
+            SetVelocity(NS::Core::Vector3{dir.x * m_bodySlamSpeed, VerticalVelocity(), dir.z * m_bodySlamSpeed});
         }
 
-        // 距離が 0 以下だと 1 歩目で終わって発動が消えるため、出さずに通常移動のままにする
+        // 距離が 0 以下だと 1 フレーム目で終わって発動が消えるため、出さずに通常移動のままにする
         if (!(m_bodySlamDistanceTarget > 0.0f))
             return false;
 
         m_bodySlamSpent = true;
 
         if (m_stateManager != nullptr)
-            m_stateManager->ChangeByName(k_BodySlamStateName);
+        {
+            m_stateManager->Change<BodySlamPlayerState>();
+        }
         m_playerEvents.onBodySlamStarted.Invoke();
         return true;
     }
@@ -379,8 +291,8 @@ namespace NS::Game::Player
     {
         // 進み切る前に着地すると残りを地面の上で滑り、走っていないのに動いて見える。
         // 滞空秒を踏み込みの秒へ合わせ、進み切った所で足が着くようにする
-        const float airSeconds = (Stats().tapSlamSpeed > 0.0f) ? Stats().tapSlamDistance / Stats().tapSlamSpeed : 0.0f;
-        // Inspector で 0 を置くと 0 除算で位置まで NaN が伝わるため、距離か初速が 0 なら通常の重力へ戻す
+        const float airSeconds = (m_tapSlamSpeed > 0.0f) ? m_tapSlamDistance / m_tapSlamSpeed : 0.0f;
+        // Inspector で 0 を置くと 0 除算で位置まで非有限値が伝わるため、距離か初速が 0 なら通常の重力へ戻す
         if (!(airSeconds > NS::Core::k_Epsilon))
         {
             Gravity(dt);
@@ -389,7 +301,7 @@ namespace NS::Game::Player
 
         // 上下対称の弧なので、山の高さは tapSlamUpSpeed * airSeconds / 4 で決まる。
         // 高さを変えたい時に触るのは tapSlamUpSpeed で、ここは触らない
-        const float g = -2.0f * Stats().tapSlamUpSpeed / airSeconds;
+        const float g = -2.0f * m_tapSlamUpSpeed / airSeconds;
         NS::Game::Entity::EntityComponent::Gravity(g, dt);
     }
 
@@ -398,36 +310,17 @@ namespace NS::Game::Player
         // 突進中に向きを変えられると当てる間合いを詰める意味が消えるので、水平は発動時の値で書き直す
         if (!m_bodySlamIsTap)
         {
-            SetLateralVelocity(NS::Core::Vector3{
-                m_bodySlamDir.x * Stats().bodySlamSpeed, 0.0f, m_bodySlamDir.z * Stats().bodySlamSpeed});
+            SetLateralVelocity(
+                NS::Core::Vector3{m_bodySlamDir.x * m_bodySlamSpeed, 0.0f, m_bodySlamDir.z * m_bodySlamSpeed});
         }
 
         if (m_bodySlamIsTap)
-            TapSlamGravity(dt);
-        else
-            Gravity(dt);
-        const NS::Core::Vector3 before = RootTransform().Position();
-        Move(dt);
-        SyncGroundState();
-
-        // 進んだ距離は実際に動いた量から測る。突進の速さから積むと壁で止められた歩も進んだ扱いになる
-        const NS::Core::Vector3 delta = RootTransform().Position() - before;
-        const float stepDistance = std::sqrt(delta.x * delta.x + delta.z * delta.z);
-        m_bodySlamTravelled += stepDistance;
-
-        // 壁で止められると距離が減らず突進から出られなくなるため、進めない歩が続いたら打ち切る
-        if (stepDistance < k_BodySlamStallDistance)
-            ++m_bodySlamStallSteps;
-        else
-            m_bodySlamStallSteps = 0;
-
-        if (m_bodySlamTravelled >= m_bodySlamDistanceTarget || m_bodySlamStallSteps >= k_BodySlamMaxStallSteps)
         {
-            m_bodySlamTravelled = 0.0f;
-            m_bodySlamDistanceTarget = 0.0f;
-            if (m_stateManager != nullptr)
-                m_stateManager->ChangeByName(k_IdleStateName);
-            m_playerEvents.onBodySlamEnded.Invoke();
+            TapSlamGravity(dt);
+        }
+        else
+        {
+            Gravity(dt);
         }
     }
 
@@ -441,15 +334,16 @@ namespace NS::Game::Player
         m_jumpHeld = false;
         m_prevJumpHeld = false;
         m_jumpPressedThisFrame = false;
+        m_releaseLedgePressedThisFrame = false;
         m_jumpsRemaining = 1;
         m_coyoteTimer = 0.0f;
         m_bufferTimer = 0.0f;
         SetGrounded(false);
         m_ledgeTopY = 0.0f;
         m_ledgeFaceNormal = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
-        m_ledgeRegrabCooldown = 0.0f;
-        m_ledgeHangTimer = 0.0f;
         m_ledgeMantleTimer = 0.0f;
+        m_facingDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        m_lastMoveDistance = 0.0f;
         m_bodySlamBufferRemaining = 0.0f;
         m_bodySlamSpent = false;
         m_bodySlamIsTap = false;
@@ -457,7 +351,7 @@ namespace NS::Game::Player
         m_bodySlamCharge01 = 0.0f;
         m_bodySlamTravelled = 0.0f;
         m_bodySlamDistanceTarget = 0.0f;
-        m_bodySlamStallSteps = 0;
+        m_bodySlamJustStarted = false;
         m_bodySlamDir = NS::Core::Vector3{0.0f, 0.0f, 0.0f};
 
         if (m_stateManager != nullptr)
@@ -472,7 +366,6 @@ namespace NS::Game::Player
             return;
 
         m_stateManager = Owner()->FindComponent<PlayerStateManagerComponent>();
-        m_maxSpeed = m_stats.runSpeed;
     }
 
     NS::Game::Entity::EntityStateManagerComponent* PlayerComponent::States() const noexcept
@@ -482,12 +375,9 @@ namespace NS::Game::Player
 
     void PlayerComponent::TickTimers(float dt) noexcept
     {
-        if (m_ledgeRegrabCooldown > 0.0f)
-            m_ledgeRegrabCooldown -= dt;
-
         m_bufferTimer -= dt;
         if (m_jumpPressedThisFrame)
-            m_bufferTimer = Stats().jumpBufferTime;
+            m_bufferTimer = m_jumpBufferTime;
 
         const bool inAir = !IsGrounded();
         if (inAir)
@@ -496,25 +386,29 @@ namespace NS::Game::Player
 
     void PlayerComponent::AccelerateToInputDirection(float dt) noexcept
     {
-        float targetSpeed = 0.0f;
-        if (m_desiredSpeedScale >= Stats().stickDeadzone)
+        NS::Core::Vector3 direction{};
+        if (!HasMoveInput() || !NS::Core::TryNormalizeHorizontal(m_desiredDir, direction))
         {
-            if (m_desiredSpeedScale < 0.5f)
-                targetSpeed = Stats().walkSpeed;
-            else
-                targetSpeed = m_maxSpeed * m_desiredSpeedScale;
+            return;
         }
 
-        const NS::Core::Vector3 targetHoriz{m_desiredDir.x * targetSpeed, 0.0f, m_desiredDir.z * targetSpeed};
+        const float topSpeed = std::max(MaxSpeed() * m_desiredSpeedScale, m_walkSpeed);
+        float acceleration = m_airAcceleration;
+        if (IsGrounded())
+        {
+            acceleration = m_acceleration;
+        }
+        Accelerate(direction, m_turningDrag, acceleration, topSpeed, dt);
+    }
 
-        // 目標が今の速さを上回る歩だけ加速の時定数。誤差ぶんの差で加速と減速が入れ替わらないよう下駄を履かせる
-        const NS::Core::Vector3 lateral = LateralVelocity();
-        const float currHorizMag = std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z);
-        float tau = Stats().decelTau;
-        if (targetSpeed > currHorizMag + k_HorizontalSpeedEpsilon)
-            tau = Stats().accelTau;
+    void PlayerComponent::ApplyFriction(float dt) noexcept
+    {
+        Decelerate(m_friction, dt);
+    }
 
-        Accelerate(targetHoriz, tau, dt);
+    void PlayerComponent::ApplyBrake(float dt) noexcept
+    {
+        Decelerate(m_deceleration, dt);
     }
 
     void PlayerComponent::Jump(float) noexcept
@@ -523,7 +417,7 @@ namespace NS::Game::Player
         const bool wantJump = m_jumpPressedThisFrame || m_bufferTimer > 0.0f;
         if (canGroundJump && wantJump)
         {
-            SetVerticalVelocity(Stats().jumpImpulse);
+            SetVerticalVelocity(m_jumpImpulse);
             --m_jumpsRemaining;
             m_bufferTimer = 0.0f;
             m_coyoteTimer = 0.0f;
@@ -534,22 +428,72 @@ namespace NS::Game::Player
     void PlayerComponent::CutJumpRelease() noexcept
     {
         if (m_prevJumpHeld && !m_jumpHeld && VerticalVelocity() > 0.0f)
-            SetVerticalVelocity(VerticalVelocity() * Stats().jumpReleaseScale);
+            SetVerticalVelocity(VerticalVelocity() * m_jumpReleaseScale);
     }
 
     void PlayerComponent::Gravity(float dt) noexcept
     {
-        const bool apex = std::abs(VerticalVelocity()) < Stats().apexHangVy;
+        const bool apex = std::abs(VerticalVelocity()) < m_apexHangVy;
 
-        float baseG = Stats().gravityDown;
+        float baseG = m_gravityDown;
         if (VerticalVelocity() > 0.0f)
-            baseG = Stats().gravityUp;
+            baseG = m_gravityUp;
 
         float g = baseG;
         if (apex)
-            g = baseG * Stats().apexHangScale;
+            g = baseG * m_apexHangScale;
 
         NS::Game::Entity::EntityComponent::Gravity(g, dt);
+    }
+
+    void PlayerComponent::HandleMovement(float dt) noexcept
+    {
+        // 壁に当たった後の速度からは面へ向かう分が抜ける。掴む向きに使うので、抜ける前の向きを覚える
+        NS::Core::Vector3 target{};
+        if (NS::Core::TryNormalizeHorizontal(LateralVelocity(), target))
+        {
+            // 一定の速さで回す。速さの理由は m_turnSpeed の欄
+            NS::Core::Vector3 current{};
+            if (m_turnSpeed > 0.0f && NS::Core::TryNormalizeHorizontal(m_facingDir, current))
+            {
+                const float maxTurn = NS::Core::ToRadians(NS::Core::Degrees{m_turnSpeed * dt}).value;
+                m_facingDir = TurnHorizontalToward(current, target, maxTurn);
+            }
+            else
+            {
+                m_facingDir = target;
+            }
+        }
+
+        const NS::Core::Vector3 before = RootTransform().Position();
+        NS::Game::Entity::EntityComponent::Move(dt, m_maxStepHeight);
+        const NS::Core::Vector3 delta = RootTransform().Position() - before;
+        m_lastMoveDistance = delta.Length();
+        SyncGroundState();
+        AdvanceBodySlamTravel(delta);
+    }
+
+    void PlayerComponent::AdvanceBodySlamTravel(const NS::Core::Vector3& delta) noexcept
+    {
+        if (!IsBodySlamming())
+        {
+            return;
+        }
+
+        // 進んだ距離は実際に動いた量から測る。突進の速さから積むと壁で止められたフレームも進んだ扱いになる
+        const float stepDistance = std::sqrt(delta.x * delta.x + delta.z * delta.z);
+        m_bodySlamTravelled += stepDistance;
+
+        // 進めないフレームで打ち切る。壁で止められると進んだ距離が伸びず、突進から出られなくなる
+        // 発動したフレームは見ない。ここで打ち切ると発動から打ち切りまでに ImpactResolverComponent が
+        // 一度も走らず、突進を見ないまま終わる
+        const bool stalled = !m_bodySlamJustStarted && stepDistance < NS::Core::k_Epsilon;
+        m_bodySlamJustStarted = false;
+
+        if (m_bodySlamTravelled >= m_bodySlamDistanceTarget || stalled)
+        {
+            EndBodySlam();
+        }
     }
 
     void PlayerComponent::SyncGroundState() noexcept
@@ -559,49 +503,51 @@ namespace NS::Game::Player
 
         if (IsGrounded())
         {
-            m_coyoteTimer = CoyoteTime();
-            // 着地の歩だけで戻すと、接地したまま走り抜けた突進の後に次が出せない
+            m_coyoteTimer = m_coyoteTime;
+            // 着地のフレームだけで戻すと、接地したまま走り抜けた突進の後に次が出せない
             m_bodySlamSpent = false;
         }
     }
 
     bool PlayerComponent::LedgeGrab() noexcept
     {
-        // 空中で下降中、かつ前入力がある時だけ掴む。再掴み禁止の間は無効
-        if (m_ledgeRegrabCooldown > 0.0f || IsGrounded() || VerticalVelocity() > 0.0f)
+        // 空中で下降中に、向いている方の縁を掴む
+        if (IsGrounded() || VerticalVelocity() > 0.0f)
+        {
             return false;
-        if (m_desiredSpeedScale <= Stats().stickDeadzone)
-            return false;
+        }
 
-        NS::Core::Vector3 dir{m_desiredDir.x, 0.0f, m_desiredDir.z};
-        const float dirLen = std::sqrt(dir.x * dir.x + dir.z * dir.z);
-        if (dirLen < NS::Core::k_Epsilon)
+        NS::Core::Vector3 dir{};
+        if (!NS::Core::TryNormalizeHorizontal(m_facingDir, dir))
+        {
             return false;
-        dir.x /= dirLen;
-        dir.z /= dirLen;
+        }
 
-        // 手の高さ = capsule 上端。そこから前方へ伸ばした probe 点が block の XZ 内に入り、
-        // かつ block 上端が手の高さの帯に収まれば縁とみなす
+        // 手の高さ = カプセルの円柱部の上端。そこから前方へ伸ばした probe 点がブロックの XZ 内に入り、
+        // かつブロック上端が手の上下の帯に収まれば縁とみなす
         const NS::Core::Vector3 pos = RootTransform().Position();
         const float handY = pos.y + CapsuleHalfHeight();
         const NS::Core::Vector3 probe{
-            pos.x + dir.x * (CapsuleRadius() + k_LedgeReach),
+            pos.x + dir.x * (CapsuleRadius() + m_ledgeReach),
             handY,
-            pos.z + dir.z * (CapsuleRadius() + k_LedgeReach),
+            pos.z + dir.z * (CapsuleRadius() + m_ledgeReach),
         };
 
-        for (const NS::Core::AABB& box :
-             BoxesTouchingBand(ScenePhysics(), probe, k_LedgeGrabBandLow, k_LedgeGrabBandHigh))
+        // 帯の上は今フレーム動いた距離まで。速く落ちると 1 フレームで縁の上端を通り過ぎて掴み損ねる
+        const float above = m_lastMoveDistance;
+        for (const NS::Core::AABB& box : BoxesTouchingBand(ScenePhysics(), probe, m_ledgeGrabBelowHand, above))
         {
             const float top = box.Center.y + box.Extents.y;
-            if (top < handY - k_LedgeGrabBandLow || top > handY + k_LedgeGrabBandHigh)
+            if (top < handY - m_ledgeGrabBelowHand || top > handY + above)
+            {
                 continue;
+            }
             if (probe.x < box.Center.x - box.Extents.x || probe.x > box.Center.x + box.Extents.x)
                 continue;
             if (probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z)
                 continue;
 
-            // 接近軸の優勢成分で掴む手前面を決め、その外側に capsule を寄せた hang 位置を出す
+            // 接近軸の優勢成分で掴む手前面を決め、その外側にカプセルを寄せた hang 位置を出す
             NS::Core::Vector3 faceNormal{0.0f, 0.0f, 0.0f};
             NS::Core::Vector3 hang = pos;
             if (std::abs(dir.x) >= std::abs(dir.z))
@@ -626,8 +572,8 @@ namespace NS::Game::Player
             }
             hang.y = top - CapsuleHalfHeight();
 
-            // 上面手前の登り先が別 block で塞がっているなら縁ではない。掴まない
-            const float mantleStep = 2.0f * CapsuleRadius() + k_LedgeMantleInset;
+            // 上面手前の登り先が別ブロックで塞がっているなら縁ではない。掴まない
+            const float mantleStep = 2.0f * CapsuleRadius();
             const NS::Core::Vector3 mantleCheck{
                 hang.x - faceNormal.x * mantleStep,
                 top + CapsuleHalfHeight(),
@@ -649,87 +595,119 @@ namespace NS::Game::Player
             SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
             m_ledgeTopY = top;
             m_ledgeFaceNormal = faceNormal;
-            m_ledgeHangTimer = 0.0f;
             if (m_stateManager != nullptr)
-                m_stateManager->ChangeByName(k_LedgeHangingStateName);
+            {
+                m_stateManager->Change<LedgeHangingPlayerState>();
+            }
             m_playerEvents.onLedgeGrabbed.Invoke();
             return true;
         }
         return false;
     }
 
-    void PlayerComponent::HoldLedge(float dt) noexcept
+    bool PlayerComponent::HoldLedge() noexcept
     {
-        m_ledgeHangTimer += dt;
+        float top = 0.0f;
+        if (!FindLedgeTopAt(RootTransform().Position(), top))
+        {
+            DropLedge();
+            return false;
+        }
 
+        m_ledgeTopY = top;
         NS::Core::Vector3 pos = RootTransform().Position();
         pos.y = m_ledgeTopY - CapsuleHalfHeight();
         RootTransform().SetPosition(pos);
         SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
+        return true;
     }
 
     bool PlayerComponent::ShouldClimbLedge() const noexcept
     {
-        const bool autoClimb = m_climbForward > k_LedgeInputThreshold && m_ledgeHangTimer >= k_LedgeMinHangTime;
-        return m_jumpPressedThisFrame || autoClimb;
+        return m_climbForward > 0.0f;
+    }
+
+    bool PlayerComponent::LedgeJump() noexcept
+    {
+        if (!m_jumpPressedThisFrame)
+        {
+            return false;
+        }
+
+        SetVerticalVelocity(m_jumpImpulse);
+        SetGrounded(false);
+        if (m_stateManager != nullptr)
+        {
+            m_stateManager->Change<FallPlayerState>();
+        }
+        m_playerEvents.onJump.Invoke();
+        return true;
     }
 
     bool PlayerComponent::ShouldDropLedge() const noexcept
     {
-        return m_climbForward < -k_LedgeInputThreshold;
+        return m_releaseLedgePressedThisFrame;
     }
 
     void PlayerComponent::ClimbLedge() noexcept
     {
         const NS::Core::Vector3 pos = RootTransform().Position();
-        const float mantleStep = 2.0f * CapsuleRadius() + k_LedgeMantleInset;
+        // ぶら下がりの中心は面から半径ぶん外。直径ぶん奥へ進めると中心が縁から半径ぶん内側に入り、体が上面に乗る
+        const float mantleStep = 2.0f * CapsuleRadius();
         m_ledgeMantleStart = pos;
         m_ledgeMantleEnd = NS::Core::Vector3{
             pos.x - m_ledgeFaceNormal.x * mantleStep,
-            m_ledgeTopY + CapsuleHalfHeight() + CapsuleRadius() + k_LedgeMantleLift,
+            m_ledgeTopY + CapsuleHalfHeight() + CapsuleRadius(),
             pos.z - m_ledgeFaceNormal.z * mantleStep,
         };
         m_ledgeMantleTimer = 0.0f;
         if (m_stateManager != nullptr)
-            m_stateManager->ChangeByName(k_LedgeClimbingStateName);
+        {
+            m_stateManager->Change<LedgeClimbingPlayerState>();
+        }
         SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
         m_playerEvents.onLedgeClimbing.Invoke();
     }
 
     void PlayerComponent::DropLedge() noexcept
     {
-        NS::Core::Vector3 pos = RootTransform().Position();
-        pos.x += m_ledgeFaceNormal.x * k_LedgeDropOutward;
-        pos.z += m_ledgeFaceNormal.z * k_LedgeDropOutward;
-        RootTransform().SetPosition(pos);
         if (m_stateManager != nullptr)
-            m_stateManager->ChangeByName(k_IdleStateName);
-        SetVelocity(NS::Core::Vector3{
-            m_ledgeFaceNormal.x * k_LedgeDropOutwardSpeed, 0.0f, m_ledgeFaceNormal.z * k_LedgeDropOutwardSpeed});
+        {
+            m_stateManager->Change<FallPlayerState>();
+        }
+        SetVelocity(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
         SetGrounded(false);
-        m_ledgeRegrabCooldown = k_LedgeRegrabCooldownTime;
+        // 壁と逆を向いて落ちる。壁を向いたままだと、帯の上の余白に縁が入って次のフレームで掴み直す
+        m_facingDir = m_ledgeFaceNormal;
     }
 
     void PlayerComponent::Shimmy(float dt) noexcept
     {
-        if (std::abs(m_climbRight) > k_LedgeShimmyDeadzone)
+        if (m_climbRight != 0.0f)
         {
             // 面法線に水平直交する縁方向。動いても面からの距離は変わらない
             const NS::Core::Vector3 pos = RootTransform().Position();
             const NS::Core::Vector3 alongDir{-m_ledgeFaceNormal.z, 0.0f, m_ledgeFaceNormal.x};
             NS::Core::Vector3 shimmied = pos;
-            shimmied.x += alongDir.x * m_climbRight * k_LedgeShimmySpeed * dt;
-            shimmied.z += alongDir.z * m_climbRight * k_LedgeShimmySpeed * dt;
-            // 移動先にも同じ高さの縁が続いている時だけ動く。端なら止めて落とさない
-            if (CanShimmyTo(shimmied))
+            shimmied.x += alongDir.x * m_climbRight * m_ledgeShimmySpeed * dt;
+            shimmied.z += alongDir.z * m_climbRight * m_ledgeShimmySpeed * dt;
+            // 移動先にも掴める縁が続いている時だけ動く。端なら止めて落とさない
+            float top = 0.0f;
+            if (FindLedgeTopAt(shimmied, top))
+            {
                 RootTransform().SetPosition(shimmied);
+            }
         }
     }
 
     void PlayerComponent::UpdateLedgeClimb(float dt) noexcept
     {
         m_ledgeMantleTimer += dt;
-        const float t = NS::Core::Clamp(m_ledgeMantleTimer / k_LedgeMantleDuration, 0.0f, 1.0f);
+        float t = 1.0f;
+        if (m_ledgeClimbDuration > 0.0f)
+        {
+            t = NS::Core::Clamp(m_ledgeMantleTimer / m_ledgeClimbDuration, 0.0f, 1.0f);
+        }
 
         // 2 段に割るのは角への食い込みを避けるため。前半は上昇だけで前へ進まない
         NS::Core::Vector3 pos{0.0f, 0.0f, 0.0f};
@@ -754,40 +732,42 @@ namespace NS::Game::Player
         {
             RootTransform().SetPosition(m_ledgeMantleEnd);
             if (m_stateManager != nullptr)
-                m_stateManager->ChangeByName(k_IdleStateName);
+            {
+                m_stateManager->Change<IdlePlayerState>();
+            }
             SetGrounded(true);
             m_jumpsRemaining = 1;
-            m_coyoteTimer = CoyoteTime();
-            m_ledgeRegrabCooldown = k_LedgeRegrabCooldownTime;
+            m_coyoteTimer = m_coyoteTime;
         }
     }
 
-    bool PlayerComponent::CanShimmyTo(const NS::Core::Vector3& hangPos) const noexcept
+    bool PlayerComponent::FindLedgeTopAt(const NS::Core::Vector3& hangPos, float& outTop) const noexcept
     {
         const NS::Core::Vector3 inward{-m_ledgeFaceNormal.x, 0.0f, -m_ledgeFaceNormal.z};
         const float handY = hangPos.y + CapsuleHalfHeight();
         const NS::Core::Vector3 probe{
-            hangPos.x + inward.x * (CapsuleRadius() + k_LedgeReach),
+            hangPos.x + inward.x * (CapsuleRadius() + m_ledgeReach),
             handY,
-            hangPos.z + inward.z * (CapsuleRadius() + k_LedgeReach),
+            hangPos.z + inward.z * (CapsuleRadius() + m_ledgeReach),
         };
 
-        for (const NS::Core::AABB& box :
-             BoxesTouchingBand(ScenePhysics(), probe, k_LedgeContinueTopTol, k_LedgeContinueTopTol))
+        for (const NS::Core::AABB& box : BoxesTouchingBand(ScenePhysics(), probe, m_ledgeGrabBelowHand, 0.0f))
         {
             const float top = box.Center.y + box.Extents.y;
-            if (std::abs(top - m_ledgeTopY) > k_LedgeContinueTopTol)
+            if (top < handY - m_ledgeGrabBelowHand || top > handY)
+            {
                 continue;
+            }
             if (probe.x < box.Center.x - box.Extents.x || probe.x > box.Center.x + box.Extents.x)
                 continue;
             if (probe.z < box.Center.z - box.Extents.z || probe.z > box.Center.z + box.Extents.z)
                 continue;
 
-            // 乗り上がり先が別 block で塞がっていたら縁とみなさない。オーバーハングの下では掴めない
-            const float mantleStep = 2.0f * CapsuleRadius() + k_LedgeMantleInset;
+            // 乗り上がり先が別ブロックで塞がっていたら縁とみなさない。オーバーハングの下では掴めない
+            const float mantleStep = 2.0f * CapsuleRadius();
             const NS::Core::Vector3 mantleCheck{
                 hangPos.x - m_ledgeFaceNormal.x * mantleStep,
-                m_ledgeTopY + CapsuleHalfHeight(),
+                top + CapsuleHalfHeight(),
                 hangPos.z - m_ledgeFaceNormal.z * mantleStep,
             };
             bool blocked = false;
@@ -802,30 +782,50 @@ namespace NS::Game::Player
             if (blocked)
                 continue;
 
+            outTop = top;
             return true;
         }
         return false;
     }
 
-    // 綴りが状態側とずれると突進が出なくなるので、走りと落下は player_state_registration_test が
-    // 同じ名前で登録簿から作れることを見張っている
     bool PlayerComponent::IsLocomotion() const noexcept
     {
         if (m_stateManager == nullptr)
             return false;
-        return m_stateManager->IsCurrent(k_IdleStateName) || m_stateManager->IsCurrent("Walk") ||
-               m_stateManager->IsCurrent("Fall");
+        return m_stateManager->IsCurrent<IdlePlayerState>() || m_stateManager->IsCurrent<WalkPlayerState>() ||
+               m_stateManager->IsCurrent<FallPlayerState>();
     }
 
     bool PlayerComponent::ShouldWalk() const noexcept
     {
         if (!IsGrounded())
             return false;
-        if (m_desiredSpeedScale >= Stats().stickDeadzone)
+        if (m_desiredSpeedScale >= m_stickDeadzone)
             return true;
 
+        return !IsStopped();
+    }
+
+    bool PlayerComponent::ShouldBrake() const noexcept
+    {
+        NS::Core::Vector3 direction{};
+        if (!HasMoveInput() || !NS::Core::TryNormalizeHorizontal(m_desiredDir, direction))
+        {
+            return false;
+        }
         const NS::Core::Vector3 lateral = LateralVelocity();
-        return std::sqrt(lateral.x * lateral.x + lateral.z * lateral.z) > k_HorizontalSpeedEpsilon;
+        return direction.x * lateral.x + direction.z * lateral.z < m_brakeThreshold;
+    }
+
+    bool PlayerComponent::HasMoveInput() const noexcept
+    {
+        return m_desiredSpeedScale >= m_stickDeadzone;
+    }
+
+    bool PlayerComponent::IsStopped() const noexcept
+    {
+        const NS::Core::Vector3 lateral = LateralVelocity();
+        return lateral.x == 0.0f && lateral.z == 0.0f;
     }
 
     bool PlayerComponent::ShouldIdle() const noexcept
@@ -842,13 +842,13 @@ namespace NS::Game::Player
     {
         if (m_stateManager != nullptr)
         {
-            // 発動の判定が現在状態を見るので、組むのは 1 歩の頭。Step の初回に任せると
-            // 1 歩目だけ現在状態が空になり、その歩の押しが落ちる
+            // 発動の判定が現在状態を見るので、組むのは 1 フレームの頭。Step の初回に任せると
+            // 1 フレーム目だけ現在状態が空になり、そのフレームの押しが 1 フレーム遅れて出る
             m_stateManager->EnsureBuilt(*this);
 
-            // 突進の中で見ると通常移動の 1 歩を走ってから移ることになり、突進の初速がその歩に乗らない
-            // 空中の押しを捨てると連打で出ない歩ができるため、接地は求めない
-            // 突進を出すのは通常移動の歩だけ。掴まり中に出せると縁から離れる操作が 1 つ増える
+            // 突進の中で見ると通常移動の 1 フレームを走ってから移ることになり、突進の初速がそのフレームに乗らない
+            // 空中の押しを捨てると連打で出ないフレームができるため、接地は求めない
+            // 突進を出すのは通常移動のフレームだけ。掴まり中に出せると縁から離れる操作が 1 つ増える
             // 空中で 2 発目まで出せると 1 発の重みが消える。接地するまで次は出さない
             if (m_bodySlamBufferRemaining > 0.0f && !m_bodySlamSpent && IsLocomotion())
             {
@@ -859,21 +859,23 @@ namespace NS::Game::Player
             m_stateManager->Step(*this, dt);
         }
 
-        // 1 歩限りの入力は、どの状態でも通るここで落とす
+        // 1 フレーム限りの入力は、どの状態でも通るここで落とす
         m_prevJumpHeld = m_jumpHeld;
         m_jumpPressedThisFrame = false;
+        m_releaseLedgePressedThisFrame = false;
         // 突進中は期限を数えない。踏み込みが先行入力の秒より長いので、数えると明ける前に押しが消える
         if (m_bodySlamBufferRemaining > 0.0f && !IsBodySlamming())
             m_bodySlamBufferRemaining = std::max(0.0f, m_bodySlamBufferRemaining - dt);
 
-        // 発動の判定より後で数える。前だと押した歩の狙いが同じ歩で 1 歩ぶん古くなる
-        if (m_bodySlamAimAge < m_stats.slamAimFadeTime)
+        // 発動の判定より後で数える。前だと押した時の狙いが、同じフレームの中で 1 つ古い値になる
+        if (m_bodySlamAimAge < m_slamAimFadeTime)
             m_bodySlamAimAge += dt;
     }
 
     void PlayerComponent::OnStepSkipped()
     {
         m_jumpPressedThisFrame = false;
+        m_releaseLedgePressedThisFrame = false;
         m_prevJumpHeld = m_jumpHeld;
     }
 

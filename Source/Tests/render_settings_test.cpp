@@ -28,7 +28,7 @@ TEST(RenderSettings, DefaultsMatchCurrentValues)
     EXPECT_NEAR(s.exposure, 1.35f, k_Epsilon);
 }
 
-// 空側と地面側は別の色。 同じにすると影の中で面の向きが読めなくなる
+// 空側と地面側は別の色。同じにすると影の中で面の向きが読めなくなる
 TEST(RenderSettings, SkyAndGroundAmbientDiffer)
 {
     const NS::Graphics::RenderSettings s{};

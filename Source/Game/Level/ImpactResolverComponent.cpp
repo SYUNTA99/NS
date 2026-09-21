@@ -1,4 +1,4 @@
-#include "Game/Level/ImpactResolverComponent.h"
+﻿#include "Game/Level/ImpactResolverComponent.h"
 
 #include "Game/Level/BreakableComponent.h"
 #include "Game/Level/ColliderBounds.h"
@@ -16,7 +16,6 @@
 #include "Runtime/Object/Components/BoxColliderComponent.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/Components/ColliderComponent.h"
-#include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -25,29 +24,12 @@
 
 #include <algorithm>
 #include <cmath>
-#include <memory>
-#include <utility>
 #include <vector>
 
 namespace NS::Game::Level
 {
     namespace
     {
-        // 質量の下限 0.01 で割ると初速が 100 倍まで跳ねる。画面の外へ消える前に頭打ちにする
-        constexpr float k_MaxLaunchSpeed = 120.0f;
-
-        // 反発の頭打ち。既定のカーブでは威力 2.0 と質量因子 1 未満で 18 を超えないので、
-        // 基準初速に桁違いの値を入れた時に操作の成立を守る
-        constexpr float k_MaxReboundSpeed = 24.0f;
-
-        // 止める歩数の上限 12 歩 (0.2 秒)。これより長い停止は衝突の重さではなく処理落ちに見える
-        constexpr int k_MaxHitStopSteps = 12;
-
-        // 伸びから元の形へ戻す歩数。反発の滞空 0.3 秒の前半で戻し切り、着地の前に形を確定させる
-        constexpr int k_StretchRecoverSteps = 6;
-
-        constexpr NS::Core::Vector3 k_BrokenBaseColor{0.25f, 0.22f, 0.20f};
-
         // 跡の床探しで真下を見る上限。これより下に床が無ければ跡を出さない
         constexpr float k_MarkProbeDistance = 64.0f;
 
@@ -57,21 +39,9 @@ namespace NS::Game::Level
         // レイの起点を相手の底からずらす量。誤差で相手自身に当たらない最小の隙間
         constexpr float k_MarkProbeSkin = 0.01f;
 
-        // 破片 1 個の描画スケール。壊れた物より明確に小さくして、数で壊れた量を見せる
-        constexpr float k_DebrisScale = 0.25f;
-
-        // 破片の色。壊れた本体より少し明るくして欠けた中身に見せる
-        constexpr NS::Core::Vector3 k_DebrisBaseColor{0.35f, 0.32f, 0.30f};
-
-        // ピークで当てた時だけの白フラッシュ。音が無い間の唯一の瞬間報酬なので、端で当てた時と見間違えない強さにする
-        // 0.5 は一瞬白と分かる濃さ。1.0 だと衝突の絵 (食い込みと潰れ) が隠れる
-        constexpr float k_PeakFlashAlpha = 0.5f;
-        // 8 歩 (約 0.13 秒)。ヒットストップの尺に収まる一瞬で、走り出しの視界に白を残さない
-        constexpr int k_PeakFlashSteps = 8;
-
         // 相手の中心からの横ずれ 0..1。OnUpdate へ式を埋めると当たり判定の流れが読めなくなる
         // 半径は AABB を突進方向に直交する軸へ投影した半幅。球と傾いた箱は外接箱で測るので実際の縁より広く出る
-        // 水平が 0 の枝は要らない。向かっていない歩は内積の判定で先に返しており、水平が 0 の歩もそこへ入る
+        // 水平が 0 の枝は要らない。向かっていないフレームは内積の判定で先に返しており、水平が 0 のフレームもそこへ入る
         [[nodiscard]] float HitOffset01(const NS::Core::Vector3& position,
                                         const NS::Core::AABB& bounds,
                                         const NS::Core::Vector3& velocity) noexcept
@@ -88,7 +58,9 @@ namespace NS::Game::Level
             const float radius = std::abs(dirZ) * bounds.Extents.x + std::abs(dirX) * bounds.Extents.z;
             // 半幅 0 の相手では割れない。中心扱いへ倒す
             if (!(radius > 0.0f))
+            {
                 return 0.0f;
+            }
             return NS::Core::Clamp(lateral / radius, 0.0f, 1.0f);
         }
 
@@ -97,9 +69,13 @@ namespace NS::Game::Level
             // 飛んでいる間は collider の body が外れて無効になる。LaunchedBodyComponent が作った動的 body を先に見る
             if (const auto* launched = object.FindComponent<LaunchedBodyComponent>();
                 launched != nullptr && launched->IsFlying())
+            {
                 return launched->BodyId();
+            }
             if (const auto* collider = object.FindComponent<NS::Object::ColliderComponent>())
+            {
                 return collider->BodyId();
+            }
             return JPH::BodyID{};
         }
 
@@ -116,6 +92,9 @@ namespace NS::Game::Level
 
     void ImpactResolverComponent::OnStart()
     {
+        // 基底が重ね描きの登録簿へ自分を入れる
+        NS::Object::OverlayRendererComponent::OnStart();
+
         m_movement = Owner()->FindComponent<NS::Game::Player::PlayerComponent>();
         // 無ければ null のまま。ボタンを積んでいない配置物でも裁定は続ける
         m_collisionInput = Owner()->FindComponent<CollisionInputComponent>();
@@ -125,7 +104,9 @@ namespace NS::Game::Level
     {
         NS::Object::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
+        {
             return nullptr;
+        }
 
         const NS::Core::Vector3 position = Owner()->Root().Position();
         const NS::Core::Vector3 velocity = m_movement->BodySlamVelocity();
@@ -144,19 +125,27 @@ namespace NS::Game::Level
         float nearestDistanceSq = 0.0f;
         scene->Objects().ForEachComponent<BreakableComponent>([&](BreakableComponent& breakable) {
             if (!breakable.IsActive())
+            {
                 return;
+            }
 
             // トリガの箱は通り抜ける体積なのでぶつかる相手にならない
             const auto* box = breakable.Owner()->FindComponent<NS::Object::BoxColliderComponent>();
             if (box != nullptr && box->IsTrigger())
+            {
                 return;
+            }
 
             if (!IsTouching(touching, CurrentBodyOf(*breakable.Owner())))
+            {
                 return;
+            }
 
             NS::Core::AABB bounds{};
             if (!TryGetColliderBounds(*breakable.Owner(), bounds))
+            {
                 return;
+            }
 
             const float dx = bounds.Center.x - position.x;
             const float dy = bounds.Center.y - position.y;
@@ -175,13 +164,17 @@ namespace NS::Game::Level
     {
         m_didRebound = false;
         m_didBreak = false;
-        // フラッシュの減衰は早期 return より前に置く。凍結中の歩もここまでは来るので、止まっている間も白が薄れる
+        // フラッシュの減衰は早期 return より前に置く。凍結中のフレームもここまでは来るので、止まっている間も白が薄れる
         if (m_peakFlashRemaining > 0)
+        {
             --m_peakFlashRemaining;
+        }
         if (m_movement == nullptr)
+        {
             return;
+        }
 
-        // 止まっている間は新しい衝突を見ない。凍った自機は重なったままなので、見ると毎歩検知し直す
+        // 止まっている間は新しい衝突を見ない。凍った自機は重なったままなので、見ると毎フレーム検知し直す
         if (m_hitStopRemaining > 0)
         {
             --m_hitStopRemaining;
@@ -202,22 +195,30 @@ namespace NS::Game::Level
         }
 
         if (m_recoverRemaining > 0)
+        {
             RecoverScale();
+        }
 
-        // 押していない接触は物理の停止だけで済ませるため、体当たり中でない歩は裁定しない
+        // 押していない接触は物理の停止だけで済ませるため、体当たり中でないフレームは裁定しない
         if (!m_movement->IsBodySlamming())
+        {
             return;
+        }
 
         BreakableComponent* hit = FindOverlapped();
         if (hit == nullptr)
+        {
             return;
+        }
 
         NS::Core::AABB bounds{};
         if (!TryGetColliderBounds(*hit->Owner(), bounds))
+        {
             return;
+        }
 
         const NS::Core::Vector3 position = Owner()->Root().Position();
-        // 箱へ押し付けられた歩は実速度が 0 に潰されるため、突進の狙いの速度で向きと貫通後の速度を決める
+        // 箱へ押し付けられたフレームは実速度が 0 に潰されるため、突進の狙いの速度で向きと貫通後の速度を決める
         const NS::Core::Vector3 velocity = m_movement->BodySlamVelocity();
 
         // 弾かれる向きは箱と自機の並びで決まる。水平だけを見て、上向きは別の値で足す
@@ -231,15 +232,19 @@ namespace NS::Game::Level
             awayZ = -velocity.z;
             lengthSq = awayX * awayX + awayZ * awayZ;
             if (lengthSq < NS::Core::k_Epsilon * NS::Core::k_Epsilon)
+            {
                 return;
+            }
         }
         const float invLength = 1.0f / std::sqrt(lengthSq);
         awayX *= invLength;
         awayZ *= invLength;
 
-        // 箱へ向かっている歩だけ弾く。離れていく間も弾くと、重なりが解けるまで毎歩掛かり直す
+        // 箱へ向かっているフレームだけ弾く。離れていく間も弾くと、重なりが解けるまで毎フレーム掛かり直す
         if (velocity.x * awayX + velocity.z * awayZ >= 0.0f)
+        {
             return;
+        }
 
         const float charge01 = m_movement->BodySlamCharge01();
 
@@ -266,7 +271,7 @@ namespace NS::Game::Level
         float hitStopScale = 1.0f;
         if (peak)
         {
-            m_peakFlashRemaining = k_PeakFlashSteps;
+            m_peakFlashRemaining = m_peakFlashSteps;
             hitStopScale = m_peakHitStopScale;
         }
         NS_LOG_INFO(Game,
@@ -277,7 +282,7 @@ namespace NS::Game::Level
                     charge01,
                     offset01);
 
-        // 明けた歩の反発と貫通速度を通常移動に乗せるため、凍結より先に突進を打ち切る
+        // 明けたフレームの反発と貫通速度を通常移動に乗せるため、凍結より先に突進を打ち切る
         m_movement->CancelBodySlam();
 
         m_pendingTargetId = hit->Owner()->Id();
@@ -303,17 +308,19 @@ namespace NS::Game::Level
             m_pendingBreak = false;
             // 質量因子 mass/(mass+1) は質量が大きいほど 1 へ寄る。軽い物は勢いを持っていくのでほとんど返らない
             float rebound = m_reboundSpeed * power * massFactor;
-            rebound = NS::Core::Clamp(rebound, 0.0f, k_MaxReboundSpeed);
+            rebound = std::max(rebound, 0.0f);
 
             // 指数の範囲は 0〜1。負にすると重い物ほど飛ぶ逆転になる
             float massExponent = m_launchMassExponent;
             if (!std::isfinite(massExponent))
+            {
                 massExponent = 1.0f;
+            }
             massExponent = NS::Core::Clamp(massExponent, 0.0f, 1.0f);
 
             // 質量で割ると重い物ほど飛ばない
             float launch = m_launchSpeed * power / std::pow(mass, massExponent);
-            launch = NS::Core::Clamp(launch, 0.0f, k_MaxLaunchSpeed);
+            launch = NS::Core::Clamp(launch, 0.0f, std::max(m_launchMaxSpeed, 0.0f));
 
             m_pendingSelfVelocity = NS::Core::Vector3{awayX * rebound, m_reboundUpSpeed, awayZ * rebound};
             m_pendingLaunchVelocity = NS::Core::Vector3{-awayX * launch, launch * m_launchUpScale, -awayZ * launch};
@@ -334,81 +341,93 @@ namespace NS::Game::Level
             return;
         }
 
-        // 凍結は次の歩から。この歩は移動が最後の 1 歩を走り、自機が箱へ触れてから止まる
+        // 凍結は次のフレームから。今回は移動を最後まで走らせ、自機が箱へ触れてから止まる
         m_freezePendingSteps = stopSteps;
     }
 
     void ImpactResolverComponent::BeginFreeze(int stopSteps)
     {
-        // 自機を寝かせて凍らせる。ObjectList::UpdateObjects は active をその場で見るので同じ歩から効く
+        // 自機を寝かせて凍らせる。ObjectList::UpdateObjects は active をその場で見るので同じフレームから効く
         m_hitStopRemaining = stopSteps;
         m_hitStopTotal = stopSteps;
         m_movement->SetActive(false);
-        NS_LOG_INFO(Game, "ヒットストップ: {} 歩", stopSteps);
+        NS_LOG_INFO(Game, "ヒットストップ: {} フレーム", stopSteps);
 
         // 潰れは反発の前半。進行方向の厚みを潰し、代わりに高さを伸ばす
         // 戻りの最中に次の衝突が来たら、控え済みの元の形をそのまま使い続ける
         if (m_recoverRemaining == 0)
+        {
             m_scaleHome = RootTransform().Scale();
+        }
         m_recoverRemaining = 0;
         m_scaleHeld = true;
         // 貫通は押し勝っている側なので潰さない。潰れは押し返されている反発だけの絵
         if (!m_pendingBreak)
+        {
             RootTransform().SetScale(ScaledAlongImpact(m_squashThickness, m_squashHeight));
+        }
 
         NS::Object::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
+        {
             return;
+        }
 
         // 力が伝わった瞬間の絵。凍結の頭で相手を発射方向へ食い込ませて止める。当たりは動かさない
         if (NS::Object::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId))
+        {
             target->Root().SetPosition(m_pendingTargetHome + m_pendingImpactDir * m_pushInDistance);
+        }
 
         if (NS::Object::CameraBrainComponent* brain = scene->CameraBrain())
+        {
             brain->StartShake(m_pendingShakeStrength, stopSteps);
+        }
     }
 
     void ImpactResolverComponent::OnEndPlay()
     {
+        // 基底が重ね描きの登録簿から自分を外す
+        NS::Object::OverlayRendererComponent::OnEndPlay();
+
         // 凍結の途中で裁定が外れても、移動が止まったまま残らないようにする
         if (m_movement != nullptr)
+        {
             m_movement->SetActive(true);
+        }
         m_peakFlashRemaining = 0;
     }
 
     void ImpactResolverComponent::OnRenderOverlay(const NS::Graphics::RenderContext& ctx)
     {
         if (m_peakFlashRemaining <= 0)
-            return;
-        // ScreenFadeComponent は黒の固定色と暗転の段階機械で、白の瞬間減衰には流用できないためここで直接描く
-        const float decay = static_cast<float>(m_peakFlashRemaining) / static_cast<float>(k_PeakFlashSteps);
-        ctx.renderer->DrawFullscreenColor(NS::Core::Color{1.0f, 1.0f, 1.0f, k_PeakFlashAlpha * decay});
-    }
-
-    void ImpactResolverComponent::BreakTarget(NS::Object::GameObject& target)
-    {
-        // 壊れた物は ObjectList から消さない。更新の最中に消すと集めた並びに解放済みのポインタが残る
-        // 印と当たりを寝かせて探索と固形から外し、見た目の色で壊れたと分かるようにする
-        if (auto* breakable = target.FindComponent<BreakableComponent>())
-            breakable->SetActive(false);
-        if (auto* collider = target.FindComponent<NS::Object::ColliderComponent>())
         {
-            collider->SetActive(false);
-            // body はその場で外す。直後に動く移動が素通りする
-            if (NS::Object::Scene* scene = target.OwningScene())
-                collider->RemoveFromPhysics(scene->Physics());
+            return;
         }
-        if (auto* mesh = target.FindComponent<NS::Object::MeshRendererComponent>())
-            mesh->SetBaseColor(k_BrokenBaseColor);
+        // ScreenFadeComponent は黒の固定色と暗転の段階機械で、白の瞬間減衰には流用できないためここで直接描く
+        const float decay = static_cast<float>(m_peakFlashRemaining) / static_cast<float>(m_peakFlashSteps);
+        ctx.renderer->DrawFullscreenColor(NS::Core::Color{1.0f, 1.0f, 1.0f, m_peakFlashAlpha * decay});
     }
 
     int ImpactResolverComponent::SecondsToSteps(float seconds) const noexcept
     {
-        // 整数の歩へ丸めるので、同じ秒の指定は毎回同じ長さ止まる
+        // 整数のフレームへ丸めるので、同じ秒の指定は毎回同じ長さ止まる
         const float raw = seconds / NS::Core::FrameTimer::FixedDelta();
         if (!std::isfinite(raw))
+        {
             return 0;
-        return NS::Core::Clamp(static_cast<int>(std::lround(raw)), 0, k_MaxHitStopSteps);
+        }
+        return NS::Core::Clamp(static_cast<int>(std::lround(raw)), 0, MaxHitStopSteps());
+    }
+
+    int ImpactResolverComponent::MaxHitStopSteps() const noexcept
+    {
+        const float raw = m_hitStopMaxSeconds / NS::Core::FrameTimer::FixedDelta();
+        if (!std::isfinite(raw) || raw <= 0.0f)
+        {
+            return 0;
+        }
+        return static_cast<int>(std::lround(raw));
     }
 
     void ImpactResolverComponent::ReleaseHitStop()
@@ -420,7 +439,7 @@ namespace NS::Game::Level
             // 解放の伸びが衝突の後半。伸びる軸は進行の軸と同じで、高さは戻して横だけ伸ばす
             m_stretchScale = ScaledAlongImpact(m_stretchAlong, 1.0f);
             RootTransform().SetScale(m_stretchScale);
-            m_recoverRemaining = k_StretchRecoverSteps;
+            m_recoverRemaining = m_stretchRecoverSteps;
             m_scaleHeld = false;
         }
 
@@ -429,11 +448,17 @@ namespace NS::Game::Level
 
         NS::Object::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
+        {
             return;
-        // 相手は id で引き直す。止まっている数歩の間に消されていたら残りだけ諦める
+        }
+
+        // 相手は id で引き直す。止まっている数フレームの間に消されていたら残りだけ諦める
         NS::Object::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId);
         if (target == nullptr)
+        {
             return;
+        }
+
         // 食い込みと振動は絵だけ。結果の起点がずれないよう元位置へ厳密に戻してから先へ進む
         target->Root().SetPosition(m_pendingTargetHome);
 
@@ -445,7 +470,9 @@ namespace NS::Game::Level
             NS::Core::Vector3 probe = m_pendingTargetHome;
             NS::Core::AABB targetBounds{};
             if (TryGetColliderBounds(*target, targetBounds))
+            {
                 probe.y = targetBounds.Center.y - targetBounds.Extents.y - k_MarkProbeSkin;
+            }
 
             float dist = 0.0f;
             if (scene->Physics().Raycast(probe, NS::Core::Vector3{0.0f, -1.0f, 0.0f}, k_MarkProbeDistance, dist))
@@ -456,38 +483,44 @@ namespace NS::Game::Level
             }
         }
 
+        // 積み忘れた配置物でも押し飛ばしと破壊が効くよう、無ければその場で足す
+        auto* body = target->FindComponent<LaunchedBodyComponent>();
+        if (body == nullptr)
+        {
+            body = target->AddComponent<LaunchedBodyComponent>();
+        }
+
         if (wasBreak)
         {
-            // 破片の飛び方は壊れた物の質量を受け継ぐ
-            float mass = 1.0f;
-            if (auto* breakable = target->FindComponent<BreakableComponent>())
-                mass = breakable->Mass();
-            BreakTarget(*target);
-            SpawnDebris(m_pendingTargetHome, mass);
+            body->Shatter();
             if (floorFound)
+            {
                 (void)ImpactMarkComponent::SpawnAt(scene, markPosition);
+            }
             return;
         }
 
-        // 積み忘れた配置物でも押し飛ばせるよう、無ければその場で足す
-        auto* body = target->FindComponent<LaunchedBodyComponent>();
-        if (body == nullptr)
-            body = target->AddComponent<LaunchedBodyComponent>();
         body->Launch(m_pendingLaunchVelocity);
         if (floorFound)
+        {
             (void)ImpactMarkComponent::SpawnAt(scene, markPosition);
+        }
     }
 
     void ImpactResolverComponent::ApplyFreezeVibration()
     {
         NS::Object::Scene* scene = Owner()->OwningScene();
         if (scene == nullptr)
+        {
             return;
+        }
         NS::Object::GameObject* target = scene->Objects().FindByObjectId(m_pendingTargetId);
         if (target == nullptr || m_hitStopTotal <= 0)
+        {
             return;
+        }
 
-        // 歩数の偶奇で往復し、残り歩数で減衰する。乱数を使わないので同じ入力は同じ絵になる
+        // フレーム数の偶奇で往復し、残りフレーム数で減衰する。乱数を使わないので同じ入力は同じ絵になる
         const float sign = 1.0f - 2.0f * static_cast<float>(m_hitStopRemaining % 2);
         const float decay = static_cast<float>(m_hitStopRemaining) / static_cast<float>(m_hitStopTotal);
         const float along = m_pushInDistance + m_pendingShakeAmplitude * sign * decay;
@@ -503,7 +536,7 @@ namespace NS::Game::Level
             RootTransform().SetScale(m_scaleHome);
             return;
         }
-        const float t = static_cast<float>(m_recoverRemaining) / static_cast<float>(k_StretchRecoverSteps);
+        const float t = static_cast<float>(m_recoverRemaining) / static_cast<float>(m_stretchRecoverSteps);
         RootTransform().SetScale(m_scaleHome + (m_stretchScale - m_scaleHome) * t);
     }
 
@@ -517,50 +550,17 @@ namespace NS::Game::Level
                                  m_scaleHome.z * (1.0f + (along - 1.0f) * dz2)};
     }
 
-    void ImpactResolverComponent::SpawnDebris(const NS::Core::Vector3& origin, float mass)
-    {
-        NS::Object::Scene* scene = Owner()->OwningScene();
-        if (scene == nullptr || m_debrisCount <= 0)
-            return;
-        if (!std::isfinite(mass) || mass < 0.01f)
-            mass = 0.01f;
-        // 重い物ほど破片が飛ばない。押し飛ばしと同じ向きの質量感を破片でも見せる
-        const float speed = m_debrisSpeed / mass;
-        for (int i = 0; i < m_debrisCount; ++i)
-        {
-            const float angle = 2.0f * NS::Core::k_Pi * static_cast<float>(i) / static_cast<float>(m_debrisCount);
-            // 浮きは交互に変える。全部同じ高さだと 1 つの輪に見えて壊れた量が伝わらない
-            const float up = 0.5f + 0.5f * static_cast<float>(i % 2);
-            auto owned = std::make_unique<NS::Object::GameObject>();
-            owned->Root().SetPosition(origin);
-            owned->Root().SetScale(NS::Core::Vector3{k_DebrisScale, k_DebrisScale, k_DebrisScale});
-            auto* mesh = owned->AddComponent<NS::Object::MeshRendererComponent>();
-            mesh->SetMeshRef("cube");
-            mesh->SetMaterialRef("player");
-            mesh->SetBaseColor(k_DebrisBaseColor);
-            owned->AddComponent<LaunchedBodyComponent>();
-            NS::Object::GameObject* spawned = scene->SpawnTransient(std::move(owned));
-            if (spawned == nullptr)
-                continue;
-            // 所有を渡した後の元のポインタは使わない。戻り値から引き直す
-            auto* body = spawned->FindComponent<LaunchedBodyComponent>();
-            if (body == nullptr)
-                continue;
-            // 破片だけ寿命を持つ。壊すたびに増えるので、止まったら消さないと世界に積み上がり続ける
-            body->SetRestLifeSeconds(m_debrisLifeSeconds);
-            body->Launch(NS::Core::Vector3{std::cos(angle) * speed, up * speed, std::sin(angle) * speed});
-        }
-    }
-
     int ImpactResolverComponent::ComputeHitStopSteps(float power, float mass, float hitStopScale) const noexcept
     {
-        // 質量差をそのまま歩数に出すと停止が伸びすぎるので平方根で圧縮する
+        // 質量差をそのままフレーム数に出すと停止が伸びすぎるので平方根で圧縮する
         const float raw =
             m_hitStopBaseSeconds * power * std::sqrt(mass) / NS::Core::FrameTimer::FixedDelta() * hitStopScale;
         if (!std::isfinite(raw))
+        {
             return 0;
+        }
         const int steps = static_cast<int>(std::lround(raw));
-        return NS::Core::Clamp(steps, 0, k_MaxHitStopSteps);
+        return NS::Core::Clamp(steps, 0, MaxHitStopSteps());
     }
 
     NS_CLASS(ImpactResolverComponent)

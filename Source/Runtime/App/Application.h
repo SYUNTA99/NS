@@ -58,12 +58,19 @@ namespace NS::App
         //! @return 正常終了時に 0、初期化失敗またはレイヤーが空の場合は -1
         int Run();
 
+        //! 起動時に作ったウィンドウ。Shutdown で破棄するので以降は参照できない
         [[nodiscard]] NS::Platform::Window& Window() noexcept;
+        [[nodiscard]] const NS::Platform::Window& Window() const noexcept;
+        //! 起動時に作ったレンダラー。破棄の時期はウィンドウと同じ
         [[nodiscard]] NS::Graphics::Renderer& Renderer() noexcept;
+        [[nodiscard]] const NS::Graphics::Renderer& Renderer() const noexcept;
+        //! プロセス全体で共有される入力。Application は所有しない
         [[nodiscard]] NS::Platform::Input& Input() noexcept;
+        [[nodiscard]] const NS::Platform::Input& Input() const noexcept;
 
         //! アプリの寿命に紐づくアセットキャッシュ
         [[nodiscard]] NS::Object::AssetManager& Assets() noexcept;
+        [[nodiscard]] const NS::Object::AssetManager& Assets() const noexcept;
 
         //! 未構築時は nullptr を返す
         [[nodiscard]] static Application* Get() noexcept;
@@ -83,7 +90,6 @@ namespace NS::App
         //! ウィンドウが閉じられた場合は即座に終了する。終了要求は guard に諮り、拒否されたら取り下げる
         [[nodiscard]] bool WantExit() noexcept;
 
-        ApplicationDesc m_desc; //!< 構築時の設定の控え
         std::unique_ptr<NS::Platform::Window> m_window;
         std::unique_ptr<NS::Graphics::Renderer> m_renderer;
         // 下から順番に破棄されるから、アセットをRendererより先に解放させるためにここに書く

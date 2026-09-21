@@ -41,7 +41,7 @@ namespace NS::Object
         //! @details 全描画物が必ず境界を返す。常に描きたいものは全域を覆う AABB を返して自ら申告する
         [[nodiscard]] virtual NS::Core::AABB WorldBounds() const noexcept = 0;
 
-        //! 自分の描画バケット。既定は Opaque。 透明を持たない既存 Renderable は無改変で従来どおり
+        //! 自分の描画バケット。既定は Opaque。透明を持たない既存 Renderable は無改変で従来どおり
         [[nodiscard]] virtual RenderBucket Bucket() const noexcept { return RenderBucket::Opaque; }
 
         //! 半透明ソート用のワールド空間中心座標。既定は原点で Opaque は未使用

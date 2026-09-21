@@ -35,7 +35,7 @@ namespace NS::Editor
 
     void EditorCamera::ApplyPan(float panX, float panY) noexcept
     {
-        // View space の right / up 軸に沿った平行移動。 感度は distance に比例
+        // View space の right / up 軸に沿った平行移動。感度は distance に比例
         const float sinYaw = std::sin(m_yaw);
         const float cosYaw = std::cos(m_yaw);
         const NS::Core::Vector3 right{cosYaw, 0.0f, -sinYaw};
@@ -57,7 +57,7 @@ namespace NS::Editor
 
     void EditorCamera::ApplyLook(float yawDelta, float pitchDelta) noexcept
     {
-        // eye を固定して回すため、 回転前後の eye 差を center へ戻す。 これで orbit でなくその場の見回しになる
+        // eye を固定して回すため、回転前後の eye 差を center へ戻す。これで orbit でなくその場の見回しになる
         const NS::Core::Vector3 eyeBefore = ComputeCameraPosition();
         m_yaw += yawDelta;
         m_pitch = std::clamp(m_pitch + pitchDelta, k_PitchMin, k_PitchMax);
@@ -77,12 +77,12 @@ namespace NS::Editor
         const float sinPitch = std::sin(m_pitch);
         const float sinYaw = std::sin(m_yaw);
         const float cosYaw = std::cos(m_yaw);
-        // 視線方向 forward = normalize(center - eye)。 LH look-at の前方で pitch を含むので見ている方向へ進める
+        // 視線方向 forward = normalize(center - eye)。LH look-at の前方で pitch を含むので見ている方向へ進める
         const NS::Core::Vector3 forward{-cosPitch * sinYaw, -sinPitch, -cosPitch * cosYaw};
-        // 画面右 right = cross(worldUp, forward)。 LH なので yaw=0 で -X。 旧実装の +X とは逆で、 左右反転を解消する
+        // 画面右 right = cross(worldUp, forward)。LH なので yaw=0 で -X。旧実装の +X とは逆で、左右反転を解消する
         const NS::Core::Vector3 right{-cosYaw, 0.0f, sinYaw};
-        // 速さは distance 比例のままだが、 寄った時に動けなくならないよう距離に下限を置く
-        // 立方体 1 個へ注視すると distance は下限の 2m まで落ち、 比例のままでは 1.2m/s と歩くより遅い
+        // 速さは distance 比例のままだが、寄った時に動けなくならないよう距離に下限を置く
+        // 立方体 1 個へ注視すると distance は下限の 2m まで落ち、比例のままでは 1.2m/s と歩くより遅い
         const float step = m_tuning.keyMoveSpeed * std::max(m_distance, k_MinMoveDistance) * dt * speedScale;
         m_center.x += (forward.x * forwardAxis + right.x * strafeAxis) * step;
         m_center.y += (forward.y * forwardAxis + verticalAxis) * step;
@@ -127,7 +127,7 @@ namespace NS::Editor
         const float dt = NS::Core::FrameTimer::FixedDelta();
         auto& input = NS::Platform::Input::Get();
 
-        // Platform Input から 1 フレーム分の free-fly 入力を組む。 感度適用とバネは注入する側に任せる
+        // Platform Input から 1 フレーム分の free-fly 入力を組む。感度適用とバネは注入する側に任せる
         EditorCameraInput frameInput{};
         frameInput.deltaSeconds = dt;
 
@@ -136,7 +136,7 @@ namespace NS::Editor
         if (!wantMouse)
         {
             auto& mouse = input.Mouse();
-            // 右ドラッグ中はその場で見回すフライ視点。 eye 固定で回し、 WASD/QE の移動も許可する
+            // 右ドラッグ中はその場で見回すフライ視点。eye 固定で回し、WASD/QE の移動も許可する
             frameInput.flying = mouse.IsHeld(NS::Platform::MouseButton::Right);
             if (frameInput.flying)
             {
@@ -152,7 +152,7 @@ namespace NS::Editor
             frameInput.wheelNotches = static_cast<float>(mouse.GetWheelDelta()) / 120.0f;
         }
 
-        // 右ドラッグ中のみ WASD で視線方向へフライ、 Q E で world 上下する。 UI がキー入力中なら無視する
+        // 右ドラッグ中のみ WASD で視線方向へフライ、Q E で world 上下する。UI がキー入力中なら無視する
         if (frameInput.flying && !input.UiWantsKeyboard())
         {
             auto& kb = input.Keyboard();
@@ -168,14 +168,14 @@ namespace NS::Editor
                 frameInput.verticalAxis += 1.0f;
             if (kb.IsHeld(NS::Platform::Key::Q))
                 frameInput.verticalAxis -= 1.0f;
-            // Shift 押下中は 4 倍速で移動する。 通常は等倍で寄せて微調整し、 Shift で広い地形を一気に移動する
+            // Shift 押下中は 4 倍速で移動する。通常は等倍で寄せて微調整し、Shift で広い地形を一気に移動する
             if (kb.IsHeld(NS::Platform::Key::Shift))
             {
                 frameInput.speedScale = 4.0f;
             }
         }
 
-        // Gamepad は ImGui キャプチャ対象外、 常に入力する。 free-fly 入力とは別枠でその場に適用する
+        // Gamepad は ImGui キャプチャ対象外、常に入力する。free-fly 入力とは別枠でその場に適用する
         {
             auto& gp = input.Gamepad(0);
             if (gp.IsConnected())

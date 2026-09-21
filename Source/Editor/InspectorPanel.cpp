@@ -26,22 +26,24 @@ namespace NS::Editor
 #if NS_EDITOR_ENABLED
     namespace
     {
-        // 置いたばかりの配置物の姿。 ここから動かした欄だけ印を出す
+        // 置いたばかりの配置物の姿。ここから動かした欄だけ印を出す
         const NS::Core::Vector3 k_DefaultPosition{0.0f, 0.0f, 0.0f};
         const NS::Core::Vector3 k_DefaultScale{1.0f, 1.0f, 1.0f};
 
-        // data の component 1 件に対応する live を永続 id で引く
-        // live は priority 順、data は書かれた順で並びが揃わないため、位置でなく id で名指しする
-        NS::Object::Component* FindLiveComponentById(NS::Object::GameObject& go, std::uint32_t id) noexcept
+        // 添字は CaptureObjectData の並びへそのまま渡る。絞り方を変えると編集操作が隣を掴む
+        std::vector<NS::Object::Component*> ReflectedComponents(NS::Object::GameObject& go)
         {
-            if (id == 0)
-                return nullptr;
+            std::vector<NS::Object::Component*> result;
+            result.reserve(go.Components().size());
             for (NS::Object::Component* comp : go.Components())
             {
-                if (comp != nullptr && comp->Id() == id)
-                    return comp;
+                if (comp == nullptr || comp->GetReflection() == nullptr)
+                {
+                    continue;
+                }
+                result.push_back(comp);
             }
-            return nullptr;
+            return result;
         }
     } // namespace
 #endif
@@ -52,7 +54,7 @@ namespace NS::Editor
         m_nameCommitId = 0;
         if (ImGui::Begin(k_PanelInspector))
         {
-            // ObjectRef フィールドの参照先候補。 Hierarchy と同じ並びと表示名で全配置物を出す
+            // ObjectRef フィールドの参照先候補。Hierarchy と同じ並びと表示名で全配置物を出す
             std::vector<NS::Editor::ObjectRefOption> refOptions;
             refOptions.reserve(editor.Objects().ObjectCount());
             for (std::size_t i = 0; i < editor.Objects().ObjectCount(); ++i)
@@ -70,40 +72,6 @@ namespace NS::Editor
                 refOptions.push_back(NS::Editor::ObjectRefOption{candidate.Id(), label});
             }
 
-            if (editor.IsCameraSelected())
-            {
-                ImGui::Text("カメラ");
-                ImGui::Separator();
-                // ブレンド秒の Brain と、プレイ中は active な vcam をリフレクションで出す
-                // 値はライブで効き保存はしない
-                auto* brain = editor.CameraBrainObject();
-                auto* vcam = editor.ActiveVirtualCameraObject();
-                if (brain == nullptr && vcam == nullptr)
-                    ImGui::TextDisabled("(カメラなし)");
-                if (brain != nullptr)
-                    (void)NS::Editor::DrawObjectComponents(*brain, refOptions);
-                if (vcam != nullptr && vcam != brain)
-                    (void)NS::Editor::DrawObjectComponents(*vcam, refOptions);
-
-                // 編集中の自由視点は vcam ではないので、感度はここで直接編集する。ライブで効き保存はしない
-                if (editor.CurrentMode() == LevelEditorController::Mode::Edit)
-                {
-                    ImGui::SeparatorText("自由視点");
-                    auto& tuning = editor.EditorFreeCamera().Tuning();
-                    ImGui::DragFloat("ズームバネ角速度", &tuning.springOmega, 0.1f, 0.5f, 30.0f);
-                    ImGui::DragFloat("マウス見回し感度", &tuning.mouseSensOrbit, 0.0005f, 0.0005f, 0.02f, "%.4f");
-                    ImGui::DragFloat("マウス平行移動感度", &tuning.mouseSensPan, 0.001f, 0.001f, 0.2f, "%.3f");
-                    ImGui::DragFloat("マウスズーム感度", &tuning.mouseSensZoom, 0.05f, 0.1f, 5.0f);
-                    ImGui::DragFloat("パッド見回し感度", &tuning.padSensOrbit, 0.05f, 0.1f, 10.0f);
-                    ImGui::DragFloat("パッド平行移動感度", &tuning.padSensPan, 0.1f, 0.5f, 30.0f);
-                    ImGui::DragFloat("パッドズーム感度", &tuning.padSensZoom, 0.05f, 0.5f, 15.0f);
-                    ImGui::DragFloat("キー移動速度", &tuning.keyMoveSpeed, 0.02f, 0.05f, 3.0f);
-                }
-
-                ImGui::End();
-                return;
-            }
-
             if (!editor.HasInspectableSelection())
             {
                 ImGui::TextDisabled("(選択なし)");
@@ -111,29 +79,31 @@ namespace NS::Editor
                 return;
             }
 
-            const NS::Object::ObjectData obj = editor.SelectedObjectSnapshot();
+            // 直前の HasInspectableSelection が同じ id を引けているので非 null
+            NS::Object::GameObject* go = editor.SelectedObjectGameObject();
+            const std::vector<NS::Object::Component*> components = ReflectedComponents(*go);
 
-            // 名前は直接ここで書き換えられる。 選択が変わったら今の表示名を入れ直す
+            // 名前は直接ここで書き換えられる。選択が変わったら今の表示名を入れ直す
             const std::uint32_t selectedId = editor.SelectedObjectId();
             if (m_nameId != selectedId)
             {
                 m_nameId = selectedId;
-                std::snprintf(m_nameBuffer, sizeof(m_nameBuffer), "%s", NS::Editor::ObjectDisplayName(obj));
+                std::snprintf(m_nameBuffer, sizeof(m_nameBuffer), "%s", NS::Editor::ObjectDisplayName(*go));
             }
             ImGui::SetNextItemWidth(-1.0f);
             ImGui::InputText("##objectName", m_nameBuffer, sizeof(m_nameBuffer));
-            // 改名は配置物を組み直すので、 このパネルを描き終えてから流す
+            // 改名は配置物を組み直すので、このパネルを描き終えてから流す
             if (ImGui::IsItemDeactivatedAfterEdit())
                 m_nameCommitId = selectedId;
-            ImGui::Text("[%zu] %s", editor.SelectedObjectIndex(), obj.className.c_str());
+            ImGui::Text("[%zu] %s", editor.SelectedObjectIndex(), go->ClassName());
             ImGui::Separator();
 
-            // Transform は runtime が真実の源なので即反映し、 commit が undo へ確定する
+            // Transform は runtime が唯一の出所なので即反映し、commit が undo へ確定する
             ImGui::SeparatorText("Transform");
 
             if (NS::Editor::BeginFieldTable("##transform"))
             {
-                const NS::Core::Vector3 posVec = NS::Object::ObjectPosition(obj);
+                const NS::Core::Vector3 posVec = go->Root().Position();
                 float pos[3] = {posVec.x, posVec.y, posVec.z};
                 const bool posMoved = (posVec != k_DefaultPosition);
                 ImGui::PushID("position");
@@ -152,9 +122,9 @@ namespace NS::Editor
                 }
                 ImGui::PopID();
 
-                // 回転は内部 quaternion を度の Euler に直して編集し、 入力を quaternion へ戻す
-                // 滑らかに回し続けるならギズモ R が向く。 ここは角度の直接入力 / 微調整用
-                const NS::Core::Quaternion q = NS::Object::ObjectRotation(obj);
+                // 回転は内部 quaternion を度の Euler に直して編集し、入力を quaternion へ戻す
+                // 滑らかに回し続けるならギズモの回転ツールが向く。ここは角度の直接入力 / 微調整用
+                const NS::Core::Quaternion q = go->Root().Rotation();
                 const NS::Core::Vector3 euler = q.ToEuler();
                 float rot[3] = {NS::Core::RadiansToDegrees(euler.x),
                                 NS::Core::RadiansToDegrees(euler.y),
@@ -179,7 +149,7 @@ namespace NS::Editor
                 }
                 ImGui::PopID();
 
-                const NS::Core::Vector3 sclVec = NS::Object::ObjectScale(obj);
+                const NS::Core::Vector3 sclVec = go->Root().Scale();
                 float scl[3] = {sclVec.x, sclVec.y, sclVec.z};
                 const bool resized = (sclVec != k_DefaultScale);
                 ImGui::PushID("scale");
@@ -201,40 +171,37 @@ namespace NS::Editor
                 NS::Editor::EndFieldTable();
             }
 
-            // MeshRendererComponent の Material フィールドはリフレクション一覧に出る。 適用は Assets パネルのドロップ /
+            // MeshRendererComponent の Material フィールドはリフレクション一覧に出る。適用は Assets パネルのドロップ /
             // クリックから
             ImGui::Separator();
 
-            if (obj.components.empty())
+            if (components.empty())
                 ImGui::TextDisabled("コンポーネント無し。 足すと表示・当たりが付く");
 
-            // リフレクション編集は live component へ直接入る。 live は priority 順で data の並びと
-            // 揃わないので、 位置でなく永続 id で引き当てる
-            NS::Object::GameObject* go = editor.SelectedObjectGameObject();
             NS::Editor::ComponentEditResult componentEdit{};
-            for (std::size_t k = 0; k < obj.components.size(); ++k)
+            for (std::size_t k = 0; k < components.size(); ++k)
             {
-                const std::string typeName{NS::Object::ComponentEntryType(obj.components[k])};
+                const std::string typeName{components[k]->ClassName()};
                 // Transform は上の専用パネルが編集するので一覧に出さない
                 if (typeName == "TransformComponent")
                     continue;
 
                 ImGui::PushID(static_cast<int>(k));
 
-                // プレイヤーの目印になる入力 component は無効にすると player でなくなるので active を触らせない
+                // 入力 component を休止させると player が動かなくなるので active を触らせない
                 const bool lockedComponent = (typeName == "PlayerInputComponent");
-                bool enabled = NS::Object::ComponentEntryEnabled(obj.components[k]);
+                bool enabled = components[k]->IsEnabled();
                 ImGui::BeginDisabled(lockedComponent);
                 if (ImGui::Checkbox("##enabled", &enabled))
                     editor.SetComponentEnabledOnSelected(k, enabled);
                 ImGui::EndDisabled();
                 ImGui::SameLine();
 
-                // ヘッダを中身より明るくして、 どこからどこまでが 1 個か見えるようにする
+                // ヘッダを中身より明るくして、どこからどこまでが 1 個か見えるようにする
                 ImGui::PushStyleColor(ImGuiCol_Header, NS::Editor::k_ComponentHeaderColor);
                 ImGui::PushStyleColor(ImGuiCol_HeaderHovered, NS::Editor::k_ComponentHeaderHoveredColor);
                 ImGui::PushStyleColor(ImGuiCol_HeaderActive, NS::Editor::k_ComponentHeaderActiveColor);
-                // AllowOverlap 無しだとヘッダが全幅の当たりを取り、 右端に重ねた「...」がクリックを拾えない
+                // AllowOverlap 無しだとヘッダが全幅の当たりを取り、右端に重ねた「...」がクリックを拾えない
                 const bool open = ImGui::CollapsingHeader(
                     typeName.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
                 ImGui::PopStyleColor(3);
@@ -248,8 +215,8 @@ namespace NS::Editor
                 {
                     if (ImGui::MenuItem("コンポーネントをコピー"))
                         editor.CopyComponentToClipboard(k);
-                    // 最後の 1 個は消すと空構成になる。 プレイヤーの印の入力 component も消させない
-                    const bool canRemove = obj.components.size() > 1 && typeName != "PlayerInputComponent";
+                    // 最後の 1 個は消すと空構成になる。プレイヤーの印の入力 component も消させない
+                    const bool canRemove = components.size() > 1 && typeName != "PlayerInputComponent";
                     if (ImGui::MenuItem("コンポーネントを削除", nullptr, false, canRemove))
                         editor.RemoveComponentFromSelected(k);
                     ImGui::EndPopup();
@@ -257,11 +224,8 @@ namespace NS::Editor
 
                 if (open)
                 {
-                    NS::Object::Component* live = nullptr;
-                    if (go != nullptr)
-                        live = FindLiveComponentById(*go, NS::Object::ComponentEntryId(obj.components[k]));
-
-                    if (live != nullptr && live->GetReflection() != nullptr)
+                    NS::Object::Component* live = components[k];
+                    if (live->GetReflection() != nullptr)
                     {
                         const NS::Object::Component* baseline = m_defaults.Find(typeName);
                         const NS::Editor::ComponentEditResult r =
@@ -283,7 +247,7 @@ namespace NS::Editor
                 }
                 ImGui::PopID();
             }
-            // 戻すは控えを取ってから live を書く。 順を逆にすると変更後が控えになり履歴が空になる
+            // 戻すは控えを取ってから live を書く。順を逆にすると変更後が控えになり履歴が空になる
             if (componentEdit.revertTarget != nullptr && componentEdit.revertField != nullptr)
             {
                 const NS::Object::Component* baseline = m_defaults.Find(componentEdit.revertTarget->ClassName());

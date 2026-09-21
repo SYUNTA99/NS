@@ -10,7 +10,7 @@ namespace NS::Object
 {
     std::array<NS::Physics::Triangle, 8> SlopeColliderComponent::WorldTriangles() const noexcept
     {
-        // local 生成では rotation を Owner transform に載せるので yaw=0。 向き・位置は world matrix で反映
+        // local 生成では rotation を Owner transform に載せるので yaw=0。向き・位置は world matrix で反映
         auto tris = NS::Physics::BuildWedgeTriangles({0.0f, 0.0f, 0.0f}, m_halfExtents, m_angleDegrees, 0.0f);
 
         if (const GameObject* owner = Owner(); owner != nullptr)

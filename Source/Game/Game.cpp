@@ -47,13 +47,13 @@ void Game::OnAttach()
         return;
     }
 
-    // AssetManager とレンダラーを預ける。 立てるシーンがここから受け取る
+    // AssetManager とレンダラーを預ける。立てるシーンがここから受け取る
     // 編集機能は Editor がオーバーレイとして乗せる
     m_scenes.SetAssets(&app->Assets());
     m_scenes.SetRenderer(&app->Renderer());
 
-    // 同梱シーンを読む。 読めなければ何も置かない空のシーンを立てる
-    // 遊べる物を代わりに合成すると、 パッケージの取りこぼしが遊べる風の画面に隠れて気づけない
+    // 同梱シーンを読む。読めなければ何も置かない空のシーンを立てる
+    // 遊べる物を代わりに合成すると、パッケージの取りこぼしが遊べる風の画面に隠れて気づけない
     if (!LoadScene("new_scene"))
     {
         NS_LOG_ERROR(Game, "起動シーンを読めなかった。 空のシーンで立ち上げる");
@@ -67,15 +67,15 @@ void Game::OnAttach()
         return;
     }
 
-    // 走行のやり直しが読む凍結スナップショットをここで捕まえる。 世界はシーンが読み込みから回している
+    // 走行のやり直しが読む凍結スナップショットをここで捕まえる。世界はシーンが読み込みから回している
     (void)scene->BeginPlayBaseline();
 
-    // 追従カメラは生成直後は休止している。 出荷はプレイしかないので起動で有効化する
+    // 追従カメラは生成直後は休止している。出荷はプレイしかないので起動で有効化する
     scene->Objects().ForEachComponent<NS::Object::ThirdPersonFollowComponent>(
         [](NS::Object::ThirdPersonFollowComponent& follow) { follow.SetActive(true); });
 
-    // カーソルを消し、 マウスを相対モードにして視点操作をカーソル位置から切り離す
-    // Esc で出すまで非表示のまま。 出し直しは OnUpdate の Esc 処理が行う
+    // カーソルを消し、マウスを相対モードにして視点操作をカーソル位置から切り離す
+    // Esc で出すまで非表示のまま。出し直しは OnUpdate の Esc 処理が行う
     app->Window().SetCursorVisible(false);
     app->Window().SetCursorLocked(true);
     app->Input().Mouse().SetRelativeMode(true);
@@ -88,8 +88,8 @@ void Game::OnDetach()
 
 void Game::OnUpdate()
 {
-    // プレイ中の Esc は 2 段階。 1 回目で隠したカーソルを出し、 出ている状態の 2 回目で終了する
-    // カーソルの状態がそのまま段階の記録になる。 世界が止まっている編集モードの Esc はエディタが処理する
+    // プレイ中の Esc は 2 段階。1 回目で隠したカーソルを出し、出ている状態の 2 回目で終了する
+    // カーソルの状態がそのまま段階の記録になる。世界が止まっている編集モードの Esc はエディタが処理する
     const NS::Object::Scene* scene = m_scenes.Current();
     if (scene != nullptr && scene->IsSimulationEnabled())
     {
@@ -99,7 +99,7 @@ void Game::OnUpdate()
             {
                 if (!app->Window().IsCursorVisible())
                 {
-                    // カーソルを出すなら相対モードも解く。 見えるカーソルと相対モードの併存は挙動が矛盾する
+                    // カーソルを出すなら相対モードも解く。見えるカーソルと相対モードの併存は挙動が矛盾する
                     app->Window().SetCursorVisible(true);
                     app->Window().SetCursorLocked(false);
                     app->Input().Mouse().SetRelativeMode(false);
@@ -113,7 +113,7 @@ void Game::OnUpdate()
         }
     }
 
-    // 世界の駆動はシーン自身が持つ。 ここはシーン更新を呼ぶだけ
+    // 世界の駆動はシーン自身が持つ。ここはシーン更新を呼ぶだけ
     m_scenes.Update();
 }
 
@@ -141,7 +141,7 @@ bool Game::LoadScene(std::string_view sceneName)
         return false;
     }
 
-    // 欠けた物の補完はしない。 プレイヤーの居ないシーンはそのまま立て、 足りない事実を隠さない
+    // 欠けた物の補完はしない。プレイヤーの居ないシーンはそのまま立て、足りない事実を隠さない
     (void)m_scenes.LoadScene(std::move(data));
     return true;
 }

@@ -1,4 +1,4 @@
-#include "Runtime/Core/AABB.h"
+﻿#include "Runtime/Core/AABB.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 
 #include "Runtime/Graphics/Material.h"
@@ -26,8 +26,8 @@ namespace NS::Object
 
     void MeshRendererComponent::ResolveAssets(AssetManager& assets)
     {
-        // 共有 material 名 (player / water / shadow) を先に引き、 外れたら .mat 相対パスとして読む
-        // 空・トラバーサル・読込失敗は既定の共有 player material にして、 描けない状態を作らない
+        // 共有 material 名 (player / water / shadow) を先に引き、外れたら .mat 相対パスとして読む
+        // 空・トラバーサル・読込失敗は既定の共有 player material にして、描けない状態を作らない
         NS::Graphics::Material* material = assets.SharedMaterial(m_materialRef);
         if (material == nullptr)
         {
@@ -37,7 +37,9 @@ namespace NS::Object
                 if (const auto resolved = ResolveContentPath(m_materialRef))
                 {
                     if (const LoadedMaterial loaded = assets.LoadMaterial(*resolved); loaded.material != nullptr)
+                    {
                         material = loaded.material;
+                    }
                 }
             }
         }
@@ -46,7 +48,10 @@ namespace NS::Object
         // mesh は解決不可なら cube をフォールバックとする
         NS::Graphics::Mesh* resolved = ResolveMeshFromRef(assets, m_meshRef);
         if (resolved == nullptr)
+        {
             resolved = assets.Builtin("cube");
+        }
+
         SetMesh(resolved);
     }
 
@@ -54,10 +59,14 @@ namespace NS::Object
     {
         GameObject* owner = Owner();
         if (owner == nullptr)
+        {
             return;
+        }
         Scene* scene = owner->OwningScene();
         if (scene == nullptr)
+        {
             return;
+        }
         scene->RegisterRenderable(this);
     }
 
@@ -65,10 +74,15 @@ namespace NS::Object
     {
         GameObject* owner = Owner();
         if (owner == nullptr)
+        {
             return;
+        }
+
         Scene* scene = owner->OwningScene();
         if (scene == nullptr)
-            return;
+        {
+			return;
+        }
         scene->UnregisterRenderable(this);
     }
 
@@ -77,7 +91,9 @@ namespace NS::Object
     {
         GameObject* owner = Owner();
         if (!IsActive() || m_mesh == nullptr || m_material == nullptr || owner == nullptr)
+        {
             return;
+        }
 
         // context.resolvedSettings は project 既定に配置された平行光まで解決済
         const NS::Graphics::RenderSettings& settings = context.resolvedSettings;
@@ -105,9 +121,14 @@ namespace NS::Object
     RenderBucket MeshRendererComponent::Bucket() const noexcept
     {
         if (m_material == nullptr)
+        {
             return RenderBucket::Opaque;
+        }
         if (m_material->Blend() == NS::Graphics::BlendMode::Opaque)
+        {
             return RenderBucket::Opaque;
+        }
+
         return RenderBucket::Transparent;
     }
 
@@ -115,7 +136,9 @@ namespace NS::Object
     {
         const GameObject* owner = Owner();
         if (owner == nullptr)
-            return {};
+        {
+			return {};
+        }
         const NS::Core::Matrix world = owner->Root().WorldMatrix();
         return NS::Core::Vector3{world._41, world._42, world._43};
     }
@@ -123,7 +146,9 @@ namespace NS::Object
     int MeshRendererComponent::SortPriority() const noexcept
     {
         if (m_material != nullptr)
+        {
             return m_material->RenderPriority();
+        }
         return 0;
     }
 
@@ -131,13 +156,19 @@ namespace NS::Object
     {
         const GameObject* owner = Owner();
         if (m_mesh == nullptr || owner == nullptr)
+        {
             return {}; // 描くものが無い。間引かれても Collect が何も積まず結果は変わらない
+        }
         NS::Core::AABB out{};
         // skinned は現在ポーズの override を優先、無ければ mesh 固定のバインド箱
         if (m_hasLocalBoundsOverride)
+        {
             m_localBoundsOverride.Transform(out, owner->Root().WorldMatrix());
+        }
         else
+        {
             m_mesh->LocalBounds().Transform(out, owner->Root().WorldMatrix());
+        }
         return out;
     }
 

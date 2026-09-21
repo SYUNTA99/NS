@@ -20,7 +20,7 @@ TEST(EditorCameraTest, OrbitDeltaApplied)
 
     cam.ApplyOrbit(0.5f, 0.3f);
     EXPECT_FLOAT_EQ(cam.Yaw(), 0.5f);
-    // -0.5236 + 0.3 = -0.2236、 clamp 範囲内
+    // -0.5236 + 0.3 = -0.2236、clamp 範囲内
     EXPECT_NEAR(cam.Pitch(), -0.2236f, 1e-4f);
 }
 
@@ -51,7 +51,7 @@ TEST(EditorCameraTest, FlyMoveForwardFollowsLookDirection)
     cam.SetDistance(10.0f);
     cam.SetCenter(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
 
-    // yaw=0/pitch=0 で前進(W)は視線方向 -Z。 移動量は KeyMoveSpeed 0.6 × distance 10 × dt 1 = 6
+    // yaw=0/pitch=0 で前進(W)は視線方向 -Z。移動量は KeyMoveSpeed 0.6 × distance 10 × dt 1 = 6
     cam.ApplyFlyMove(1.0f, 0.0f, 0.0f, 1.0f);
     EXPECT_NEAR(cam.Center().z, -6.0f, 1e-4f);
     EXPECT_NEAR(cam.Center().x, 0.0f, 1e-4f);
@@ -59,7 +59,7 @@ TEST(EditorCameraTest, FlyMoveForwardFollowsLookDirection)
 }
 
 // 立方体 1 個へ寄せた距離でも WASD の速さが残る
-// 距離比例のままだと注視した途端に歩くより遅くなり、 別の場所へ移るのに時間がかかる
+// 距離比例のままだと注視した途端に歩くより遅くなり、別の場所へ移るのに時間がかかる
 TEST(EditorCameraTest, FlyMoveKeepsSpeedWhenZoomedIn)
 {
     EditorCamera cam;
@@ -67,7 +67,7 @@ TEST(EditorCameraTest, FlyMoveKeepsSpeedWhenZoomedIn)
     cam.SetDistance(EditorCamera::k_MinDistance);
     cam.SetCenter(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
 
-    // 下限 6 × KeyMoveSpeed 0.6 × dt 1 = 3.6。 素の距離 2 だと 1.2 しか進まない
+    // 下限 6 × KeyMoveSpeed 0.6 × dt 1 = 3.6。素の距離 2 だと 1.2 しか進まない
     cam.ApplyFlyMove(1.0f, 0.0f, 0.0f, 1.0f);
     EXPECT_NEAR(cam.Center().z, -3.6f, 1e-4f);
 }
@@ -79,7 +79,7 @@ TEST(EditorCameraTest, FlyMoveForwardIncludesPitch)
     cam.SetDistance(10.0f);
     cam.SetCenter(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
 
-    // pitch を含むので W は見上げた方向、 すなわち高さも上がる。旧 ApplyKeyMove は水平のみだった
+    // pitch を含むので W は見上げた方向、すなわち高さも上がる。旧 ApplyKeyMove は水平のみだった
     cam.ApplyFlyMove(1.0f, 0.0f, 0.0f, 1.0f);
     EXPECT_GT(cam.Center().y, 0.0f);
     EXPECT_LT(cam.Center().z, 0.0f);
@@ -92,7 +92,7 @@ TEST(EditorCameraTest, FlyMoveStrafeGoesScreenRight)
     cam.SetDistance(10.0f);
     cam.SetCenter(NS::Core::Vector3{0.0f, 0.0f, 0.0f});
 
-    // LH view では yaw=0 の画面右は -X。 D(strafe +1) はそちらへ動く。左右反転バグの回帰を防ぐ
+    // LH view では yaw=0 の画面右は -X。D(strafe +1) はそちらへ動く。左右反転バグの回帰を防ぐ
     cam.ApplyFlyMove(0.0f, 1.0f, 0.0f, 1.0f);
     EXPECT_NEAR(cam.Center().x, -6.0f, 1e-4f);
     EXPECT_NEAR(cam.Center().z, 0.0f, 1e-4f);
@@ -139,7 +139,7 @@ TEST(EditorCameraTest, ComputeCameraPositionForYawZeroPlacesCameraOnZAxis)
     cam.SetDistance(10.0f);
 
     auto pos = cam.ComputeCameraPosition();
-    // yaw 0 なので x = 0。 y = sin(-0.0873) * 10 ≒ -0.87 で少し下、 z = cos(-0.0873) * 10 ≒ 9.96
+    // yaw 0 なので x = 0。y = sin(-0.0873) * 10 ≒ -0.87 で少し下、z = cos(-0.0873) * 10 ≒ 9.96
     EXPECT_NEAR(pos.x, 0.0f, 1e-3f);
     EXPECT_NEAR(pos.z, 10.0f, 0.2f);
 }
@@ -164,7 +164,7 @@ TEST(EditorCameraTest, PanShiftsCenter)
     const auto before = cam.Center();
     cam.ApplyPan(1.0f, 0.5f);
     const auto after = cam.Center();
-    // yaw=0 で right ≒ (1,0,0)、 up = (0,1,0)、 scale = distance*0.1 = 1.5
+    // yaw=0 で right ≒ (1,0,0)、up = (0,1,0)、scale = distance*0.1 = 1.5
     EXPECT_NEAR(after.x - before.x, 1.5f, 1e-3f);
     EXPECT_NEAR(after.y - before.y, 0.75f, 1e-3f);
     EXPECT_NEAR(after.z - before.z, 0.0f, 1e-3f);

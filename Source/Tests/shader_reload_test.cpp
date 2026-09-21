@@ -100,7 +100,7 @@ TEST_F(ShaderReloadTest, ReloadFailureKeepsPreviousObject)
     Shader* before = holder.get();
     ASSERT_TRUE(holder->IsValid());
 
-    // 同じ存在しない path の Reload は実ファイル読込に失敗するので false、 旧物 (fallback) を保持する
+    // 同じ存在しない path の Reload は実ファイル読込に失敗するので false、旧物 (fallback) を保持する
     EXPECT_FALSE(holder->Reload());
     EXPECT_EQ(holder.get(), before);
     EXPECT_TRUE(holder->IsValid());

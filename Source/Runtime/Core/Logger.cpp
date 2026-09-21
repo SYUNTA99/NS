@@ -11,9 +11,7 @@
 
 #include <atomic>
 #include <cassert>
-#include <cstdio>
 #include <cstdlib>
-#include <exception>
 #include <filesystem>
 
 namespace NS::Core
@@ -129,33 +127,19 @@ namespace NS::Core
         ::SetConsoleOutputCP(CP_UTF8);
 #endif
 
-        try
-        {
-            (void)NS::Core::FileSystem::CreateDirectories(LogsDirectory());
+        (void)NS::Core::FileSystem::CreateDirectories(LogsDirectory());
 
-            auto sinks = BuildSinks();
-            auto logger = std::make_shared<spdlog::logger>(k_LoggerName, sinks.begin(), sinks.end());
+        auto sinks = BuildSinks();
+        auto logger = std::make_shared<spdlog::logger>(k_LoggerName, sinks.begin(), sinks.end());
 
-            logger->set_level(spdlog::level::trace);
-            logger->flush_on(spdlog::level::warn);
+        logger->set_level(spdlog::level::trace);
+        logger->flush_on(spdlog::level::warn);
 
-            spdlog::register_logger(logger);
-            spdlog::set_default_logger(logger);
-            spdlog::flush_every(std::chrono::seconds(3));
+        spdlog::register_logger(logger);
+        spdlog::set_default_logger(logger);
+        spdlog::flush_every(std::chrono::seconds(3));
 
-            logger->info("===== 開始 =====");
-        }
-        catch (const std::exception& e)
-        {
-            // ロガー自身の構築に失敗した箇所なので、ログ経路へは流さず標準エラー出力へ直接出す
-            std::fprintf(stderr, "Logger::Init failed: %s\n", e.what());
-            g_initialized.store(false);
-        }
-        catch (...)
-        {
-            std::fprintf(stderr, "Logger::Init failed: unknown error\n");
-            g_initialized.store(false);
-        }
+        logger->info("===== 開始 =====");
     }
 
     void Logger::Shutdown() noexcept
@@ -164,14 +148,7 @@ namespace NS::Core
         {
             return;
         }
-        try
-        {
-            spdlog::shutdown();
-        }
-        catch (...)
-        {
-            // 閉じてる最中にエラーが起きても書き出す先がないから無視する
-        }
+        spdlog::shutdown();
     }
 
     void Logger::LogImpl(

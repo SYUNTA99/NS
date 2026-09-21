@@ -1,4 +1,4 @@
-#include "Runtime/Object/GameObject.h"
+﻿#include "Runtime/Object/GameObject.h"
 
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/Components/TransformComponent.h"
@@ -19,7 +19,9 @@ namespace NS::Object
         for (GameObject* child : m_children)
         {
             if (child == nullptr)
-                continue;
+            {
+				continue;
+            }
             child->m_parent = nullptr;
             child->m_transform->SetParent(nullptr);
         }
@@ -27,11 +29,13 @@ namespace NS::Object
 
     bool GameObject::IsActiveInHierarchy() const noexcept
     {
-        // 1 つでも active が false なら効かない。 循環は SetParent が作らせないので必ず root で止まる
+        // 1 つでも active が false なら効かない。循環は SetParent が作らせないので必ず root で止まる
         for (const GameObject* node = this; node != nullptr; node = node->m_parent)
         {
             if (!node->m_activeSelf)
-                return false;
+            {
+				return false;
+            }
         }
         return true;
     }
@@ -39,30 +43,41 @@ namespace NS::Object
     void GameObject::SetParent(GameObject* parent) noexcept
     {
         if (parent == this || parent == m_parent)
+        {
             return;
+        }
+
 
         // 循環防止: parent の祖先に this がいたら拒否
         for (GameObject* p = parent; p != nullptr; p = p->m_parent)
         {
             if (p == this)
+            {
                 return;
+            }
         }
 
         DetachFromParent();
         m_parent = parent;
         if (m_parent != nullptr)
+        {
             m_parent->m_children.push_back(this);
+        }
 
         Transform* parentRoot = nullptr;
         if (parent != nullptr)
+        {
             parentRoot = parent->m_transform;
+        }
         m_transform->SetParent(parentRoot);
     }
 
     void GameObject::DetachFromParent() noexcept
     {
         if (m_parent == nullptr)
-            return;
+        {
+			return;
+        }
         auto& siblings = m_parent->m_children;
         siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
         m_parent = nullptr;
@@ -83,7 +98,9 @@ namespace NS::Object
         for (Component* comp : m_components)
         {
             if (comp != nullptr)
+            {
                 comp->OnStart();
+            }
         }
     }
 
@@ -92,7 +109,9 @@ namespace NS::Object
         for (Component* comp : m_components)
         {
             if (comp != nullptr && comp->IsActive())
+            {
                 comp->OnUpdate();
+            }
         }
     }
 
@@ -103,7 +122,9 @@ namespace NS::Object
         {
             Component* comp = *it;
             if (comp != nullptr)
+            {
                 comp->OnEndPlay();
+            }
         }
     }
 

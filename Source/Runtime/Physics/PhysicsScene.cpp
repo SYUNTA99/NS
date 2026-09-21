@@ -1,4 +1,4 @@
-#include "Runtime/Physics/PhysicsScene.h"
+﻿#include "Runtime/Physics/PhysicsScene.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Core/Sphere.h"
@@ -37,17 +37,17 @@ namespace NS::Physics
 
     } // namespace
 
-    PhysicsScene::RuntimeInitialization::RuntimeInitialization()
+    PhysicsScene::RuntimeInit::RuntimeInit()
     {
-        detail::InitializeJoltRuntime();
+        detail::InitJoltRuntime();
     }
 
-    JPH::uint PhysicsScene::BroadPhaseLayerInterface::GetNumBroadPhaseLayers() const
+    JPH::uint PhysicsScene::BPLayerInterface::GetNumBroadPhaseLayers() const
     {
         return BroadPhaseLayers::Count;
     }
 
-    JPH::BroadPhaseLayer PhysicsScene::BroadPhaseLayerInterface::GetBroadPhaseLayer(JPH::ObjectLayer layer) const
+    JPH::BroadPhaseLayer PhysicsScene::BPLayerInterface::GetBroadPhaseLayer(JPH::ObjectLayer layer) const
     {
         JPH_ASSERT(layer < ObjectLayers::Count);
         return JPH::BroadPhaseLayer{static_cast<JPH::BroadPhaseLayer::Type>(layer)};
@@ -68,7 +68,7 @@ namespace NS::Physics
     }
 #endif
 
-    bool PhysicsScene::ObjectLayerPairFilter::ShouldCollide(JPH::ObjectLayer first, JPH::ObjectLayer second) const
+    bool PhysicsScene::ObjLayerPairFilter::ShouldCollide(JPH::ObjectLayer first, JPH::ObjectLayer second) const
     {
         if (first == ObjectLayers::Terrain)
         {
@@ -86,8 +86,7 @@ namespace NS::Physics
         return false;
     }
 
-    bool PhysicsScene::ObjectVsBroadPhaseLayerFilter::ShouldCollide(JPH::ObjectLayer object,
-                                                                    JPH::BroadPhaseLayer broadPhase) const
+    bool PhysicsScene::ObjVsBPLayerFilter::ShouldCollide(JPH::ObjectLayer object, JPH::BroadPhaseLayer broadPhase) const
     {
         const auto other = static_cast<JPH::ObjectLayer>(broadPhase.GetValue());
         if (object == ObjectLayers::Terrain)
@@ -129,7 +128,9 @@ namespace NS::Physics
         for (const Record& record : m_records)
         {
             if (record.owner == id)
+            {
                 found.push_back(record.contact);
+            }
         }
         return found;
     }
@@ -167,10 +168,6 @@ namespace NS::Physics
 
         JPH::BodyCreationSettings settings{shape, ToJolt(position), ToJolt(rotation), JPH::EMotionType::Static, layer};
         settings.mIsSensor = sensor;
-        // false のまま作った body は Dynamic への SetMotionType が JPH_ASSERT で止まる
-        // 動かすかを決めるのは SetBodyDynamic を呼ぶ側で、Add 系にそれを伝える引数は無い
-        // mesh は体積を出せず質量が 0 になる。true にすると body の生成が JPH_ASSERT で止まる
-        settings.mAllowDynamicOrKinematic = !shape->MustBeStatic();
 
         return m_physicsSystem.GetBodyInterface().CreateAndAddBody(settings, JPH::EActivation::DontActivate);
     }
@@ -356,7 +353,7 @@ namespace NS::Physics
 
     void PhysicsScene::Update(float deltaTime)
     {
-        // 前の歩の接触を残すと、離れた後も当たり続けて見える
+        // 前の Update の接触を残すと、離れた後も当たり続けて見える
         m_contactRecorder.Clear();
         // NS の固定更新が 1/60 秒なので分割は 1
         m_physicsSystem.Update(deltaTime, 1, &m_tempAllocator, &m_jobSystem);
@@ -395,26 +392,6 @@ namespace NS::Physics
         }
 
         return m_contactRecorder.Of(id);
-    }
-
-    void PhysicsScene::SetBodyDynamic(JPH::BodyID id, bool dynamic)
-    {
-        if (id.IsInvalid())
-        {
-            return;
-        }
-
-        JPH::BodyInterface& bodies = m_physicsSystem.GetBodyInterface();
-        // 静的専用の形の body には MotionProperties が無く、Dynamic を渡すと Jolt の JPH_ASSERT で落ちる
-        if (dynamic && bodies.GetShape(id)->MustBeStatic())
-        {
-            NS_LOG_WARN(Physics, "静的専用の形なので動的にできない");
-            return;
-        }
-
-        bodies.SetMotionType(id,
-                             dynamic ? JPH::EMotionType::Dynamic : JPH::EMotionType::Static,
-                             dynamic ? JPH::EActivation::Activate : JPH::EActivation::DontActivate);
     }
 
     void PhysicsScene::RemoveBody(JPH::BodyID id)

@@ -1,6 +1,7 @@
 #include "Editor/LevelFilePaths.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Game/Player/PlayerStateManagerComponent.h"
+#include "Game/Player/States/IdlePlayerState.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
@@ -8,6 +9,7 @@
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Object/Scene/SceneJson.h"
+#include "tuning_field_access.h"
 
 #include <algorithm>
 #include <gtest/gtest.h>
@@ -23,8 +25,6 @@ namespace PlayerNs = NS::Game::Player;
 
 namespace
 {
-    constexpr const char* k_StateList = "Idle;Walk;Fall;LedgeHanging;LedgeClimbing;BodySlam";
-
     bool LoadShippedScene(SceneNs::SceneData& outScene, std::string_view name)
     {
         const auto path = EditorNs::BuildLevelPath(name);
@@ -67,22 +67,10 @@ TEST_P(ShippedScene, PlayerCarriesTheTwoNewComponents)
 
     EXPECT_NE(SceneNs::FindComponentEntry(*player, "PlayerComponent"), nullptr)
         << GetParam()
-        << " の自機に PlayerComponent が無い。未知の型名は黙って読み飛ばされるので、"
-           "書き換え漏れはこのテストでしか出ない";
+        << " の自機に PlayerComponent が無い。未知の型名は警告だけ残して読み飛ばされる。"
+           "型名が変わると読み込みは成功したまま保存済みの値が落ちる";
     EXPECT_NE(SceneNs::FindComponentEntry(*player, "PlayerStateManagerComponent"), nullptr)
         << GetParam() << " の自機に PlayerStateManagerComponent が無い。状態が 1 つも移らない";
-}
-
-TEST_P(ShippedScene, StateListIsTheSixStateOrderStartingAtIdle)
-{
-    SceneNs::SceneData scene;
-    ASSERT_TRUE(LoadShippedScene(scene, GetParam()));
-    const SceneNs::ObjectData* player = FindPlayerObject(scene);
-    ASSERT_NE(player, nullptr);
-
-    const nlohmann::json* entry = SceneNs::FindComponentEntry(*player, "PlayerStateManagerComponent");
-    ASSERT_NE(entry, nullptr);
-    EXPECT_EQ(SceneNs::FieldString(*entry, "状態一覧", ""), k_StateList);
 }
 
 TEST_P(ShippedScene, LoadedPlayerBuildsItsStateMachine)
@@ -103,7 +91,7 @@ TEST_P(ShippedScene, LoadedPlayerBuildsItsStateMachine)
     live->OnStart();
     states->EnsureBuilt(*player);
     EXPECT_TRUE(states->IsBuilt());
-    EXPECT_STREQ(states->CurrentName(), "Idle");
+    EXPECT_STREQ(states->CurrentName(), PlayerNs::IdlePlayerState::k_Name);
 }
 
 TEST_P(ShippedScene, EveryTuningFieldNameIsReflected)
@@ -134,7 +122,7 @@ TEST_P(ShippedScene, EveryTuningFieldNameIsReflected)
         {
             EXPECT_NE(std::find(reflected.begin(), reflected.end(), item.key()), reflected.end())
                 << GetParam() << " の " << typeName << " に欄 " << item.key()
-                << " があるが、この型は同じ名前を持たない。名前が違う欄は黙って捨てられ、値は既定のまま残る";
+                << " があるが、この型は同じ名前を持たない。名前が違う欄は警告だけ残して捨てられ、値は既定のまま残る";
         }
     }
 }
@@ -151,7 +139,8 @@ TEST_P(ShippedScene, PlayerComponentCarriesEveryTuningField)
     const auto fields = entry->find("fields");
     ASSERT_NE(fields, entry->end());
 
-    EXPECT_EQ(fields->size(), 18u) << GetParam() << " の調整値の欄が減っている。落ちた欄は既定値で動く";
+    // 22 は今の同梱シーンが持つ欄数。保存はリフレクションの欄 30 件を全部書き出すので、開いて保存し直すと増える
+    EXPECT_GE(fields->size(), 22u) << GetParam() << " の調整値の欄が減っている。落ちた欄は既定値で動く";
 }
 
 TEST_P(ShippedScene, LoadedPlayerKeepsTheTunedSlamValues)
@@ -167,10 +156,10 @@ TEST_P(ShippedScene, LoadedPlayerKeepsTheTunedSlamValues)
     ASSERT_NE(player, nullptr);
     live->OnStart();
 
-    EXPECT_FLOAT_EQ(player->Stats().bodySlamDistance, 10.0f);
-    EXPECT_FLOAT_EQ(player->Stats().tapSlamDistance, 6.25f);
-    EXPECT_FLOAT_EQ(player->Stats().jumpImpulse, 12.0f);
-    EXPECT_FLOAT_EQ(player->CoyoteTime(), 0.025f);
+    EXPECT_FLOAT_EQ(NsTest::ReadTuningField(*player, "突進距離"), 10.0f);
+    EXPECT_FLOAT_EQ(NsTest::ReadTuningField(*player, "タップ距離"), 6.25f);
+    EXPECT_FLOAT_EQ(NsTest::ReadTuningField(*player, "ジャンプ初速"), 12.0f);
+    EXPECT_FLOAT_EQ(NsTest::ReadTuningField(*player, "コヨーテ時間"), 0.025f);
 }
 
 INSTANTIATE_TEST_SUITE_P(ScenePlayerLoad,

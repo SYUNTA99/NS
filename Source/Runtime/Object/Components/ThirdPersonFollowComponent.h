@@ -72,7 +72,7 @@ namespace NS::Object
         //! alpha で補間した target を追う最終姿勢を返す。Brain が選択時に実カメラへ書く
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
-        // 追従カメラの感触を Inspector へ公開する。 毎フレーム読まれるのでライブで効く
+        // 追従カメラの感触を Inspector へ公開する。毎フレーム読まれるのでライブで効く
         // 追従対象は永続参照で、live への結線は次の rebuild すなわちプレイ突入時の OnStart で効く
         NS_REFLECT_BEGIN(ThirdPersonFollowComponent, VirtualCameraComponent)
         NS_REFLECT_FIELD(m_targetRef, "追従対象")
@@ -108,7 +108,7 @@ namespace NS::Object
         float m_yaw = 0.0f;       // 水平回転角
         float m_pitch = -0.2618f; // 仰俯角
 
-        // プレイ開始時の初期姿勢。 editor のギズモ / Inspector が書き、 OnStart で m_yaw/m_pitch へ写す
+        // プレイ開始時の初期姿勢。editor のギズモ / Inspector が書き、OnStart で m_yaw/m_pitch へ写す
         float m_initialYaw = 0.0f;
         float m_initialPitch = -0.2618f;
 

@@ -1,4 +1,4 @@
-#include "Game/Level/GoalComponent.h"
+﻿#include "Game/Level/GoalComponent.h"
 
 #include "Game/Player.h"
 #include "Runtime/Object/GameObject.h"
@@ -14,19 +14,27 @@ namespace NS::Game::Level
     void GoalComponent::OnUpdate()
     {
         if (m_reached)
+        {
             return;
+        }
 
         auto* scene = Owner()->OwningScene();
         if (scene == nullptr)
-            return;
+        {
+			return;
+        }
         auto* player = FindPlayer(scene->Objects());
         if (player == nullptr)
+        {
             return;
+        }
 
         // 中心間距離の単純比較。触れた事実はフラグとして保持し、離れても下ろさない
         const NS::Core::Vector3 toPlayer = player->Root().Position() - RootTransform().Position();
         if (toPlayer.LengthSquared() < k_GoalRadius * k_GoalRadius)
+        {
             m_reached = true;
+        }
     }
 
     bool IsGoalObject(const NS::Object::ObjectData& object) noexcept

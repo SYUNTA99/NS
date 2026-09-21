@@ -16,19 +16,19 @@ namespace NS::Editor
 {
     //! @brief 配置物の親子ツリーを出すヒエラルキーパネル
     //! @details 選択・改名・親付け替え・複製/削除・範囲選択の UI 状態を自分で持ち、
-    //! 実際の適用は controller へ流す。 world を跨ぐので要求は木を描き終えてから一括で流す
+    //! 実際の適用は controller へ流す。world を跨ぐので要求は木を描き終えてから一括で流す
     class HierarchyPanel : public NS::Core::NonCopyable
     {
     public:
-        //! ヒエラルキーを 1 枚描く。 選択・改名・付け替え・複製/削除の要求は controller へ渡す
+        //! ヒエラルキーを 1 枚描く。選択・改名・付け替え・複製/削除の要求は controller へ渡す
         void Render(LevelEditorController& editor) noexcept;
 
     private:
         //! @brief 1 行を描く
-        //! @param[in] withChildren 真なら子を再帰で下へ潜る。 検索中は一致した物だけを平らに並べるので偽で呼ぶ
+        //! @param[in] withChildren 真なら子を再帰で下へ潜る。検索中は一致した物だけを平らに並べるので偽で呼ぶ
         void RenderNode(LevelEditorController& editor, NS::Object::GameObject& object, bool withChildren) noexcept;
 
-        //! 対象を改名待ちにして、 入力欄へ現在の表示名を入れる
+        //! 対象を改名待ちにして、入力欄へ現在の表示名を入れる
         void BeginRename(NS::Object::GameObject& object) noexcept;
 
         std::uint32_t m_renamingObjectId = 0; // 改名中の配置物の永続 id、0 なら改名していない

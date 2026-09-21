@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstddef>
 #include <functional>
@@ -17,7 +17,9 @@ namespace NS::Game::Entity
         void Subscribe(std::function<void()> callback)
         {
             if (!callback)
-                return;
+            {
+				return;
+            }
             m_callbacks.push_back(std::move(callback));
         }
 
@@ -26,7 +28,9 @@ namespace NS::Game::Entity
         void Invoke() const noexcept
         {
             for (const std::function<void()>& callback : m_callbacks)
+            {
                 callback();
+            }
         }
 
         [[nodiscard]] std::size_t SubscriberCount() const noexcept { return m_callbacks.size(); }
@@ -39,7 +43,7 @@ namespace NS::Game::Entity
     //! @details 敵も同じ物を持つ。レールの乗り降りは持たない。レールが無い
     struct EntityEvents
     {
-        EntityEvent onGroundEnter; //!< 着地した歩
-        EntityEvent onGroundExit;  //!< 足場から離れた歩
+        EntityEvent onGroundEnter; //!< 着地したフレーム
+        EntityEvent onGroundExit;  //!< 足場から離れたフレーム
     };
 } // namespace NS::Game::Entity

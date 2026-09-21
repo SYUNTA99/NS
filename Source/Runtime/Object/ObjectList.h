@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Object/GameObject.h"
@@ -23,14 +23,16 @@ namespace NS::Object
     struct ObjectRefLocation;
     struct SceneData;
 
-    //! ObjectData 1 件から配置物を組むファクトリ。 組めないデータには nullptr を返し、 Rebuild が読み飛ばす
+    //! ObjectData 1 件から配置物を組むファクトリ。組めないデータには nullptr を返し、Rebuild が読み飛ばす
     using ObjectFactoryFn = std::function<std::unique_ptr<GameObject>(const ObjectData&)>;
 
     //! @brief 配置物 GameObject の単一所有リスト
-    //! @details SceneData から一括で組み直す。 runtime も editor も同じ Rebuild 経路を通る
+    //! @details SceneData から一括で組み直す。runtime も editor も同じ Rebuild 経路を通る
     //! 配置物 1 件の組み立ては呼出側のファクトリに委ね、GameObject の型選択や資産解決は持たない
     //! 機能別の型付き控えも持たず、欲しい component 型は ForEachComponent で問い合わせる
     //! 特定の 1 体は永続 id の解決で引く
+    //! const の参照で受けても中身は守れない。ObjectAt と範囲 for と ForEachComponent が渡すのは
+    //! 非 const の GameObject* と Component* で、呼び出し側はそこから書き換えられる
     //! 依存: NS::Object::GameObject / ObjectData, NS::Physics::PhysicsScene
     class ObjectList : public NS::Core::NonCopyable
     {
@@ -38,15 +40,15 @@ namespace NS::Object
         ObjectList();
         ~ObjectList();
 
-        //! data の objects から配置物を組み直す。 既存の配置物は先に空へ戻し、 一時オブジェクトだけ残す
-        //! 当たりの同期は含まない。 呼出側が続けて SyncPhysics を呼ぶ
+        //! data の objects から配置物を組み直す。既存の配置物は先に空へ戻し、一時オブジェクトだけ残す
+        //! 当たりの同期は含まない。呼出側が続けて SyncPhysics を呼ぶ
         //! factory が空の起動前 / テストでは物を組まない
         void Rebuild(const SceneData& data, Scene& scene, const ObjectFactoryFn& factory);
 
-        //! 配置物を逆順に破棄して所有物を空へ戻す。 scene の OnShutdown と Rebuild 冒頭が呼ぶ
+        //! 配置物を逆順に破棄して所有物を空へ戻す。scene の OnShutdown と Rebuild 冒頭が呼ぶ
         void Clear();
 
-        //! 型 T の配置物を作って加える。 所有は ObjectList が持ち、 呼出側へは生ポインタだけ返す
+        //! 型 T の配置物を作って加える。所有は ObjectList が持ち、呼出側へは生ポインタだけ返す
         //! scene attach と objectId の書き込みは呼出側が返り値へ済ませる
         template <class T, class... Args> T* Spawn(Args&&... args)
         {
@@ -56,34 +58,34 @@ namespace NS::Object
             return raw;
         }
 
-        //! 組み上がった配置物を 1 体加える。 scene attach と objectId の書き込みは呼出側が済ませて渡す
-        //! 型が実行時にしか決まらないファクトリ経由の組み立て用。 型が分かっているなら Spawn<T> を使う
+        //! 組み上がった配置物を 1 体加える。scene attach と objectId の書き込みは呼出側が済ませて渡す
+        //! 型が実行時にしか決まらないファクトリ経由の組み立て用。型が分かっているなら Spawn<T> を使う
         GameObject* Append(std::unique_ptr<GameObject> obj);
 
-        //! objectId 一致の配置物を破棄して所有リストから外す。 居なければ何もしない
-        //! 当たり箱もここで揃えるので、 組み直さずに 1 体だけ消せる
+        //! objectId 一致の配置物を破棄して所有リストから外す。居なければ何もしない
+        //! 当たり箱もここで揃えるので、組み直さずに 1 体だけ消せる
         //! 子は根として残る (親子の切り離しは GameObject の破棄が行う)
         //! 0 は未採番の印なので何もしない
         void RemoveByObjectId(std::uint32_t objectId);
 
-        //! objectId 一致の配置物を返す。 居なければ nullptr。 選択・編集の live 索引
+        //! objectId 一致の配置物を返す。居なければ nullptr。選択・編集の live 索引
         //! 0 は未採番の印なので常に nullptr
         [[nodiscard]] GameObject* FindByObjectId(std::uint32_t objectId) noexcept;
 
-        //! ObjectRef の指す配置物を返す。 未設定と該当なしは nullptr
-        //! 索引は所有リストそのものなので、 破棄した相手を指す参照は必ず nullptr になる
+        //! ObjectRef の指す配置物を返す。未設定と該当なしは nullptr
+        //! 索引は所有リストそのものなので、破棄した相手を指す参照は必ず nullptr になる
         [[nodiscard]] GameObject* FindObject(ObjectRef ref) noexcept;
 
         //! 稼働中の collider を PhysicsScene へ body として入れ、broadphase を張り直す
         //! 稼働していない collider は body を外す。既存 body は同じ id のまま shape と姿勢を更新する
         void SyncPhysics(NS::Physics::PhysicsScene& physics);
 
-        //! priority が [firstPriority, lastPriority) の Component を昇順で回す。 同じ priority の中は配置物の並び順
-        //! 帯の一部だけ回したい呼び出し側が使う。 一時オブジェクトも同じ帯に乗る
+        //! priority が [firstPriority, lastPriority) の Component を昇順で回す。同じ priority の中は配置物の並び順
+        //! 帯の一部だけ回したい呼び出し側が使う。一時オブジェクトも同じ帯に乗る
         void UpdateObjects(int firstPriority, int lastPriority = std::numeric_limits<int>::max());
 
-        //! 全配置物の Component を priority の昇順で一括で回し、 最後に SnapshotObjects で補間用の前回値を揃える
-        //! 並び順の一覧は別に持たない。 各 component がコンストラクタで指定する priority だけで並びが決まる
+        //! 全配置物の Component を priority の昇順で一括で回す。補間用の前回値は呼ぶ側が更新の前に SnapshotObjects
+        //! で揃える。並び順の一覧は別に持たない。各 component がコンストラクタで指定する priority だけで並びが決まる
         void UpdateAllObjects();
 
         //! 全配置物の Root を Snapshot する (previous を current へ揃える)
@@ -92,19 +94,19 @@ namespace NS::Object
         //! 永続 object id を 1 個割り当ててカウンタを進める
         [[nodiscard]] std::uint32_t AllocateObjectId() noexcept { return m_nextObjectId++; }
 
-        //! 次に割り当てる永続 id。 保存がファイルへ書き戻すために読む
+        //! 次に割り当てる永続 id。保存がファイルへ書き戻すために読む
         [[nodiscard]] std::uint32_t NextObjectId() const noexcept { return m_nextObjectId; }
 
         //! 抱えている配置物の数
         [[nodiscard]] std::size_t ObjectCount() const noexcept { return m_objects.size(); }
 
-        //! index 番目の配置物。 範囲外は nullptr。 所有は ObjectList が持ったまま外へ出さない
+        //! index 番目の配置物。範囲外は nullptr。所有は ObjectList が持ったまま外へ出さない
         [[nodiscard]] GameObject* ObjectAt(std::size_t index) const noexcept;
 
-        //! 範囲 for 用の反復子。 辿ると生ポインタが出るので、 所有の入れ物を外へ見せずに全配置物を回せる
+        //! 範囲 for 用の反復子。辿ると生ポインタが出るので、所有の入れ物を外へ見せずに全配置物を回せる
         //! 添字が要る呼び出し側は ObjectCount / ObjectAt を使う
-        //! std::vector<GameObject*> を返す関数は作らない。 毎回確保になる
-        //! 生ポインタの配列もメンバに持たない。 m_objects と食い違う
+        //! std::vector<GameObject*> を返す関数は作らない。毎回確保になる
+        //! 生ポインタの配列もメンバに持たない。m_objects と食い違う
         class Iterator
         {
         public:
@@ -125,23 +127,29 @@ namespace NS::Object
         [[nodiscard]] Iterator begin() const noexcept { return Iterator{m_objects.data()}; }
         [[nodiscard]] Iterator end() const noexcept { return Iterator{m_objects.data() + m_objects.size()}; }
 
-        //! 全配置物から型 T の component を訪ねる。 リフレクションの is-a 照合なので抽象基底型でも派生を引ける
-        //! 型付き控えの代わりの問い合わせ口で、 寿命は ObjectList が持ったまま
+        //! 全配置物から型 T の component を訪ねる。リフレクションの is-a 照合なので抽象基底型でも派生を引ける
+        //! 型付き控えの代わりの問い合わせ口で、寿命は ObjectList が持ったまま
         template <class T, class Fn> void ForEachComponent(Fn&& fn) const
         {
             for (const auto& obj : m_objects)
+            {
                 for (Component* comp : obj->Components())
+                {
                     if (auto* typed = ComponentCast<T>(comp))
+                    {
                         fn(*typed);
+                    }
+                }
+            }
         }
 
     private:
         std::vector<std::unique_ptr<GameObject>> m_objects; // 配置物の単一所有リスト
-        std::uint32_t m_nextObjectId = 1;                   // 次に割り当てる永続 id。 単調増加で欠番は再利用しない
+        std::uint32_t m_nextObjectId = 1;                   // 次に割り当てる永続 id。単調増加で欠番は再利用しない
     };
 
     //! targetId を指す ObjectRef フィールドを live の全配置物からリフレクションで集める
-    //! 削除前に何が参照しているかを調べる関数。 k_NoObjectId 相当の 0 は未設定の印なので空を返す
+    //! 削除前に何が参照しているかを調べる関数。k_NoObjectId 相当の 0 は未設定の印なので空を返す
     [[nodiscard]] std::vector<ObjectRefLocation> FindReferencesTo(const ObjectList& objects, std::uint32_t targetId);
 
 } // namespace NS::Object

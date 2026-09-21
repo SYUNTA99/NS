@@ -90,7 +90,7 @@ int Player::Health() const noexcept
     return 0;
 }
 
-Player* FindPlayer(const NS::Object::ObjectList& objects) noexcept
+Player* FindPlayer(NS::Object::ObjectList& objects) noexcept
 {
     for (NS::Object::GameObject* obj : objects)
     {

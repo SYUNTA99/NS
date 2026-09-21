@@ -27,7 +27,7 @@ namespace NS::Editor
         bool hovered = false;
         if (m_surface.BeginView(k_PanelScene, rectMin, rectMax, hovered))
         {
-            // 入力を受け持つのは編集中だけ。 プレイ中は自由視点で見回す
+            // 入力を受け持つのは編集中だけ。プレイ中は自由視点で見回す
             if (!playMode)
             {
                 m_editHovered = hovered;
@@ -42,7 +42,7 @@ namespace NS::Editor
                 m_freeViewHovered = hovered;
             }
 
-            // Assets からの持ち込み口。 メッシュは 1 体として置き、 材質は選択中へ塗る
+            // Assets からの持ち込み口。メッシュは 1 体として置き、材質は選択中へ塗る
             if (!playMode && ImGui::BeginDragDropTarget())
             {
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(k_MeshDragType))
@@ -60,7 +60,7 @@ namespace NS::Editor
         }
         m_surface.EndView();
 
-        // プレイ中の当たり表示は、 このパネルが映っているフレームだけ積ませる
+        // プレイ中の当たり表示は、このパネルが映っているフレームだけ積ませる
         editor.SetSceneViewVisible(m_surface.IsVisible());
 
         // 編集中に自分が裏なら編集オーバーレイと矩形を止める
@@ -123,7 +123,7 @@ namespace NS::Editor
     void SceneViewPanel::UpdateMouseLatch() noexcept
     {
 #if NS_EDITOR_ENABLED
-        // 全マウスボタン解放中だけ hover に追従し、 パネル発のドラッグ中は離すまで追従を維持する
+        // 全マウスボタン解放中だけ hover に追従し、パネル発のドラッグ中は離すまで追従を維持する
         if (!ImGui::IsAnyMouseDown())
             m_mouseLatch = m_editHovered;
 #endif

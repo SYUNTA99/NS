@@ -12,8 +12,8 @@
 
 namespace NsTest
 {
-    //! @brief コンストラクタで実行ファイルの隣に書き、 デストラクタで消す試し用のファイル
-    //! @details 片付けないと実行ファイルの隣に溜まり続ける。 名前を変えた試しの残骸は誰も消さない
+    //! @brief コンストラクタで実行ファイルの隣に書き、デストラクタで消す試し用のファイル
+    //! @details 片付けないと実行ファイルの隣に溜まり続ける。名前を変えた試しの残骸は誰も消さない
     class ScopedFixture
     {
     public:
@@ -36,7 +36,7 @@ namespace NsTest
 
         ~ScopedFixture()
         {
-            // 消せなくても試しの結果は変わらない。 後始末の失敗で試しを落とさない
+            // 消せなくても試しの結果は変わらない。後始末の失敗で試しを落とさない
             std::error_code ec;
             std::filesystem::remove(m_path, ec);
         }
@@ -54,7 +54,7 @@ namespace NsTest
     private:
         void Write(std::span<const std::byte> bytes)
         {
-            // ASSERT_* は void を返す関数でしか使えないので、 呼び元のコンストラクタでは書けない
+            // ASSERT_* は void を返す関数でしか使えないので、呼び元のコンストラクタでは書けない
             EXPECT_TRUE(NS::Core::FileSystem::WriteAllBytes(m_path, bytes));
         }
 

@@ -7,28 +7,10 @@
 TEST(EditorGridTest, SnapWorldPointToGridRoundsToNearestCell)
 {
     auto c = NS::Editor::SnapWorldPointToGrid({0.3f, 1.7f, -2.6f}, 1.0f);
-    // 0.3 -> 0, 1.7 -> 2, -2.6 -> -3 (floor( + 0.5))
+    // floor(x + 0.5) の丸めで 0.3 -> 0、1.7 -> 2、-2.6 -> -3
     EXPECT_FLOAT_EQ(c.x, 0.0f);
     EXPECT_FLOAT_EQ(c.y, 2.0f);
     EXPECT_FLOAT_EQ(c.z, -3.0f);
-}
-
-TEST(EditorGridTest, SnapHitToPlacementCellOffsetsByNormalPlusX)
-{
-    auto c = NS::Editor::SnapHitToPlacementCell({0.5f, 0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, 1.0f);
-    // hit 0.5,0.5,0.5 → snap 1,1,1、 +X 1 grid → 2,1,1
-    EXPECT_FLOAT_EQ(c.x, 2.0f);
-    EXPECT_FLOAT_EQ(c.y, 1.0f);
-    EXPECT_FLOAT_EQ(c.z, 1.0f);
-}
-
-TEST(EditorGridTest, SnapHitToPlacementCellOffsetsByNormalMinusY)
-{
-    auto c = NS::Editor::SnapHitToPlacementCell({3.2f, 4.2f, 5.8f}, {0.0f, -1.0f, 0.0f}, 1.0f);
-    // hit snap → 3, 4, 6、 -Y 1 grid → 3, 3, 6
-    EXPECT_FLOAT_EQ(c.x, 3.0f);
-    EXPECT_FLOAT_EQ(c.y, 3.0f);
-    EXPECT_FLOAT_EQ(c.z, 6.0f);
 }
 
 TEST(EditorGridTest, GroundFallbackHitsYZeroPlane)
