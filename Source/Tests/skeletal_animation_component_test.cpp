@@ -1,16 +1,11 @@
-#include <array>
-#include <cstdint>
-#include <filesystem>
-#include <gtest/gtest.h>
-#include <memory>
 #include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Filesystem.h>
 #include <Runtime/Core/Logger.h>
+#include <Runtime/Core/Math.h>
 #include <Runtime/Graphics/Animation.h>
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/SkeletalMesh.h>
 #include <Runtime/Graphics/Skeleton.h>
-#include <Runtime/Core/Math.h>
 #include <Runtime/Object/AssetManager.h>
 #include <Runtime/Object/Components/MeshRendererComponent.h>
 #include <Runtime/Object/Components/SkeletalAnimationComponent.h>
@@ -19,6 +14,12 @@
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
 #include <Runtime/Object/Scene/SceneData.h>
 #include <Runtime/Platform/Window.h>
+#include <array>
+#include <cstdint>
+#include <filesystem>
+#include <gtest/gtest.h>
+#include <limits>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -114,6 +115,28 @@ TEST(SkeletalAnimationComponentTest, NegativeSpeedClampsToZero)
     comp.SetSpeed(-5.0f);
     comp.OnUpdate();
     EXPECT_FLOAT_EQ(comp.Time(), 0.0f);
+}
+
+TEST(SkeletalAnimationComponentTest, InfiniteSpeedKeepsThePreviousValue)
+{
+    const std::vector<AnimationClip> clips = OneClip(10.0f);
+    SkeletalAnimationComponent comp;
+    comp.AddClips(clips);
+    comp.SetSpeed(2.0f);
+    comp.SetSpeed(std::numeric_limits<float>::infinity());
+    comp.OnUpdate();
+    EXPECT_NEAR(comp.Time(), 2.0f * NS::Core::FrameTimer::FixedDelta(), 1e-5f);
+}
+
+TEST(SkeletalAnimationComponentTest, NotANumberSpeedKeepsThePreviousValue)
+{
+    const std::vector<AnimationClip> clips = OneClip(10.0f);
+    SkeletalAnimationComponent comp;
+    comp.AddClips(clips);
+    comp.SetSpeed(2.0f);
+    comp.SetSpeed(std::numeric_limits<float>::quiet_NaN());
+    comp.OnUpdate();
+    EXPECT_NEAR(comp.Time(), 2.0f * NS::Core::FrameTimer::FixedDelta(), 1e-5f);
 }
 
 TEST(SkeletalAnimationComponentTest, StopResetsTime)

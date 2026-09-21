@@ -49,7 +49,9 @@ namespace NS::Object
         void Pause() noexcept;
         //! 再生時刻を 0 に戻して停止する
         void Stop() noexcept;
-        //! 負値は 0 にクランプする
+        //! @brief 再生速度を差し替える
+        //! @details 非有限値は無視して直前の値を残す。有限の負値は 0 にクランプする
+        //! @param[in] speed 再生速度。1.0 が等倍
         void SetSpeed(float speed) noexcept;
         void SetLooping(bool looping) noexcept;
         //! 添字でクリップを選び再生時刻を 0 へ戻す。範囲外は false で選択を変えない

@@ -1,5 +1,5 @@
-﻿#include "Runtime/Core/AABB.h"
-#include "Runtime/Object/Components/SkeletalAnimationComponent.h"
+﻿#include "Runtime/Object/Components/SkeletalAnimationComponent.h"
+#include "Runtime/Core/AABB.h"
 
 #include "Runtime/Core/Clock.h"
 #include "Runtime/Core/LogCategories.h"
@@ -85,6 +85,13 @@ namespace NS::Object
 
     void SkeletalAnimationComponent::SetSpeed(float speed) noexcept
     {
+        // 正の無限大は speed > 0.0f を通り、m_time の折り返しで std::fmod が非数を返す。非数は大小比較が
+        // 全て偽になるので以後の補正に引っかからず、速度を戻しても再生時刻が戻らない
+        // 非有限値の扱いは SetMaxSpeedScale と同じ。0 に落とすと再生が止まる
+        if (!std::isfinite(speed))
+        {
+            return;
+        }
         if (speed > 0.0f)
         {
             m_speed = speed;
@@ -130,7 +137,6 @@ namespace NS::Object
         {
             m_clips.push_back(&clip);
         }
-
     }
 
     std::size_t SkeletalAnimationComponent::ClipCount() const noexcept
@@ -169,7 +175,7 @@ namespace NS::Object
             // 結合先の骨格が無いので Clips だけあっても解決できない
             if (!m_clipsRef.empty())
             {
-				NS_LOG_WARN(Graphics, "SkeletalAnimationComponent: model 参照が空のまま Clips を結合しようとしている");
+                NS_LOG_WARN(Graphics, "SkeletalAnimationComponent: model 参照が空のまま Clips を結合しようとしている");
             }
             return;
         }
@@ -250,7 +256,7 @@ namespace NS::Object
             m_renderer->SetPerObjectVsConstant(m_bonePaletteCB.get(),
                                                &m_palette,
                                                sizeof(NS::Graphics::BonePaletteCB),
-				                               NS::Graphics::k_BonePaletteSlot);
+                                               NS::Graphics::k_BonePaletteSlot);
         }
         ApplyPose(m_time);
     }
@@ -316,7 +322,8 @@ namespace NS::Object
         // 現在ポーズの締まった境界を描画側へ差し、カリングをポーズ追従させる
         if (m_renderer != nullptr)
         {
-            const NS::Core::AABB localBounds = NS::Graphics::MergeSkinnedBounds(m_mesh->BoneSpheres(), m_palette.bones, m_mesh->BoneCount(), m_mesh->LocalBounds());
+            const NS::Core::AABB localBounds = NS::Graphics::MergeSkinnedBounds(
+                m_mesh->BoneSpheres(), m_palette.bones, m_mesh->BoneCount(), m_mesh->LocalBounds());
             m_renderer->SetLocalBoundsOverride(localBounds);
         }
     }
