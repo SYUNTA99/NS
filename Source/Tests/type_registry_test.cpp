@@ -73,6 +73,7 @@ TEST(TypeRegistryTest, CreatesEachRegisteredType)
         "PlayerComponent",
         "PlayerInputComponent",
         "PlayerStateManagerComponent",
+        "PlayerAnimatorComponent",
         "ShadowComponent",
         "SkeletalAnimationComponent",
         "DirectionalLightComponent",
@@ -140,7 +141,7 @@ TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
-    EXPECT_EQ(names.size(), 25u);
+    EXPECT_EQ(names.size(), 26u);
     EXPECT_TRUE(Contains(names, "BoxColliderComponent"));
     EXPECT_TRUE(Contains(names, "MeshRendererComponent"));
     EXPECT_TRUE(Contains(names, "PlayerComponent"));
@@ -242,6 +243,15 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "狙いの巻き戻しが消える秒"}},
         {"PlayerInputComponent", {}},
         {"PlayerStateManagerComponent", {}},
+        {"PlayerAnimatorComponent",
+         {"立ちのクリップ",
+          "歩きのクリップ",
+          "走りのクリップ",
+          "跳ぶクリップ",
+          "落ちるクリップ",
+          "ぶら下がりのクリップ",
+          "走りへ移る速さの比",
+          "再生速度の下限"}},
         {"ShadowComponent", {"基本直径", "最大投影距離", "表面オフセット", "基本不透明度"}},
         {"SkeletalAnimationComponent", {"再生速度", "ループ再生", "モデル", "クリップ"}},
         {"SlopeColliderComponent", {"角度 (度)", "半径"}},
@@ -314,6 +324,7 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
         {"PlayerComponent", {"EntityComponent"}},
         {"PlayerInputComponent", {}},
         {"PlayerStateManagerComponent", {"EntityStateManagerComponent"}},
+        {"PlayerAnimatorComponent", {}},
         {"ShadowComponent", {}},
         {"SkeletalAnimationComponent", {}},
         {"SlopeColliderComponent", {"ColliderComponent"}},
