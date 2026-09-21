@@ -236,7 +236,7 @@ project "jolt"
 --============================================================================
 
 -- 上流の include の起点は 3 つの lib のルート。 兄弟へは "../3rdParty/..." のように起点から 1 段上がって辿る。
--- Effekseer の型は Graphics の公開ヘッダ (EffectWorld.h) へ出す方針なので、 それを読む project も同じ起点を入れる
+-- Effekseer の型は Graphics の公開ヘッダ (EffectScene.h) へ出す方針なので、 それを読む project も同じ起点を入れる
 local effekseerIncludeDirs = {
     "Source/ThirdParty/Effekseer/Effekseer",
     "Source/ThirdParty/Effekseer/EffekseerRendererCommon",

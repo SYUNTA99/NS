@@ -1,7 +1,7 @@
 #include <Runtime/Core/Filesystem.h>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Graphics/Camera.h>
-#include <Runtime/Graphics/EffectWorld.h>
+#include <Runtime/Graphics/EffectScene.h>
 #include <Runtime/Graphics/GraphicObject.h>
 #include <Runtime/Graphics/RenderTarget.h>
 #include <Runtime/Graphics/Renderer.h>
@@ -20,8 +20,8 @@ namespace
     using NS::Graphics::CameraDesc;
     using NS::Graphics::EffectHandle;
     using NS::Graphics::EffectPlayDesc;
-    using NS::Graphics::EffectWorld;
-    using NS::Graphics::EffectWorldDesc;
+    using NS::Graphics::EffectScene;
+    using NS::Graphics::EffectSceneDesc;
     using NS::Graphics::Renderer;
     using NS::Graphics::RendererDesc;
     using NS::Graphics::RenderTarget;
@@ -57,9 +57,9 @@ namespace
         return d;
     }
 
-    EffectWorldDesc MakeEffectWorldDesc()
+    EffectSceneDesc MakeEffectSceneDesc()
     {
-        EffectWorldDesc d{};
+        EffectSceneDesc d{};
         d.effectRoot = NS::Core::FileSystem::ContentRoot() / "Source" / "Tests" / "data" / "effects";
         return d;
     }
@@ -79,7 +79,7 @@ namespace
         return Camera(d);
     }
 
-    void Advance(EffectWorld& world, int frames)
+    void Advance(EffectScene& world, int frames)
     {
         for (int i = 0; i < frames; ++i)
         {
@@ -157,27 +157,27 @@ namespace
     }
 } // namespace
 
-class EffectWorldTest : public ::testing::Test
+class EffectSceneTest : public ::testing::Test
 {
 protected:
     void SetUp() override { NS::Core::Logger::Init(); }
     void TearDown() override { NS::Core::Logger::Shutdown(); }
 };
 
-// EffectWorld は構築時に Gpu() の device と context を使うので、Renderer より後に作る
-class EffectWorldWithRendererTest : public EffectWorldTest
+// EffectScene は構築時に Gpu() の device と context を使うので、Renderer より後に作る
+class EffectSceneWithRendererTest : public EffectSceneTest
 {
 protected:
     void SetUp() override
     {
-        EffectWorldTest::SetUp();
-        m_window = std::make_unique<Window>(MakeWindowDesc("ns_effect_world"));
+        EffectSceneTest::SetUp();
+        m_window = std::make_unique<Window>(MakeWindowDesc("ns_effect_scene"));
         ASSERT_TRUE(m_window->IsValid());
         m_renderer = std::make_unique<Renderer>(MakeRendererDesc(), *m_window);
         ASSERT_TRUE(m_renderer->IsValid());
         m_target = RenderTarget::Create(NS::Core::Size2D{k_TargetSize, k_TargetSize});
         ASSERT_TRUE(m_target && m_target->IsValid());
-        m_world = std::make_unique<EffectWorld>(MakeEffectWorldDesc());
+        m_world = std::make_unique<EffectScene>(MakeEffectSceneDesc());
         ASSERT_TRUE(m_world->IsValid());
     }
 
@@ -192,7 +192,7 @@ protected:
         m_target.reset();
         m_renderer.reset();
         m_window.reset();
-        EffectWorldTest::TearDown();
+        EffectSceneTest::TearDown();
     }
 
     std::array<std::uint8_t, 4> DrawAndRead(const Camera& camera, PixelPosition at)
@@ -205,12 +205,12 @@ protected:
     std::unique_ptr<Window> m_window;
     std::unique_ptr<Renderer> m_renderer;
     std::unique_ptr<RenderTarget> m_target;
-    std::unique_ptr<EffectWorld> m_world;
+    std::unique_ptr<EffectScene> m_world;
 };
 
-TEST_F(EffectWorldTest, IsInvalidAndHarmlessWithoutRenderer)
+TEST_F(EffectSceneTest, IsInvalidAndHarmlessWithoutRenderer)
 {
-    EffectWorld world(MakeEffectWorldDesc());
+    EffectScene world(MakeEffectSceneDesc());
 
     EXPECT_FALSE(world.IsValid());
     EXPECT_FALSE(world.Preload("square_r"));
@@ -222,23 +222,23 @@ TEST_F(EffectWorldTest, IsInvalidAndHarmlessWithoutRenderer)
     world.StopAll();
 }
 
-TEST_F(EffectWorldWithRendererTest, IsValidWithRenderer)
+TEST_F(EffectSceneWithRendererTest, IsValidWithRenderer)
 {
     EXPECT_TRUE(m_world->IsValid());
 }
 
-TEST_F(EffectWorldWithRendererTest, PreloadReturnsFalseForMissingEffect)
+TEST_F(EffectSceneWithRendererTest, PreloadReturnsFalseForMissingEffect)
 {
     EXPECT_FALSE(m_world->Preload("no_such_effect"));
 }
 
-TEST_F(EffectWorldWithRendererTest, PlayReturnsInvalidHandleForEffectNotPreloaded)
+TEST_F(EffectSceneWithRendererTest, PlayReturnsInvalidHandleForEffectNotPreloaded)
 {
     // ファイルは在るが Preload していない名前。再生の瞬間に読み込みを走らせないため、ここでは出せない
     EXPECT_FALSE(m_world->Play(MakePlayDesc("square_r")).IsValid());
 }
 
-TEST_F(EffectWorldWithRendererTest, PlayedEffectExistsUntilItsLifeEnds)
+TEST_F(EffectSceneWithRendererTest, PlayedEffectExistsUntilItsLifeEnds)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
 
@@ -253,7 +253,7 @@ TEST_F(EffectWorldWithRendererTest, PlayedEffectExistsUntilItsLifeEnds)
     EXPECT_FALSE(m_world->Exists(handle));
 }
 
-TEST_F(EffectWorldWithRendererTest, ZeroDeltaDoesNotAdvanceEffect)
+TEST_F(EffectSceneWithRendererTest, ZeroDeltaDoesNotAdvanceEffect)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
     const EffectHandle handle = m_world->Play(MakePlayDesc("square_r"));
@@ -270,7 +270,7 @@ TEST_F(EffectWorldWithRendererTest, ZeroDeltaDoesNotAdvanceEffect)
     EXPECT_TRUE(m_world->Exists(handle));
 }
 
-TEST_F(EffectWorldWithRendererTest, NegativeDeltaIsIgnored)
+TEST_F(EffectSceneWithRendererTest, NegativeDeltaIsIgnored)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
     const EffectHandle handle = m_world->Play(MakePlayDesc("square_r"));
@@ -284,7 +284,7 @@ TEST_F(EffectWorldWithRendererTest, NegativeDeltaIsIgnored)
     EXPECT_FALSE(m_world->Exists(handle));
 }
 
-TEST_F(EffectWorldWithRendererTest, StopAndStopAllRemoveEffects)
+TEST_F(EffectSceneWithRendererTest, StopAndStopAllRemoveEffects)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
     const EffectHandle first = m_world->Play(MakePlayDesc("square_r"));
@@ -305,7 +305,7 @@ TEST_F(EffectWorldWithRendererTest, StopAndStopAllRemoveEffects)
     EXPECT_FALSE(m_world->Exists(third));
 }
 
-TEST_F(EffectWorldWithRendererTest, DrawChangesPixelsWhereEffectIsPlayed)
+TEST_F(EffectSceneWithRendererTest, DrawChangesPixelsWhereEffectIsPlayed)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
     const Camera camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
@@ -320,7 +320,7 @@ TEST_F(EffectWorldWithRendererTest, DrawChangesPixelsWhereEffectIsPlayed)
     EXPECT_GE(LargestChannelDifference(cleared, drawn), 16);
 }
 
-TEST_F(EffectWorldWithRendererTest, StoppedEffectLeavesScreenWithZeroDelta)
+TEST_F(EffectSceneWithRendererTest, StoppedEffectLeavesScreenWithZeroDelta)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
     const Camera camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
@@ -338,7 +338,7 @@ TEST_F(EffectWorldWithRendererTest, StoppedEffectLeavesScreenWithZeroDelta)
     EXPECT_LT(LargestChannelDifference(cleared, afterStop), 16);
 }
 
-TEST_F(EffectWorldWithRendererTest, EffectPlayedOffScreenLeavesCenterUnchanged)
+TEST_F(EffectSceneWithRendererTest, EffectPlayedOffScreenLeavesCenterUnchanged)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
     const Camera camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
@@ -355,7 +355,7 @@ TEST_F(EffectWorldWithRendererTest, EffectPlayedOffScreenLeavesCenterUnchanged)
     EXPECT_LT(LargestChannelDifference(cleared, drawn), 16);
 }
 
-TEST_F(EffectWorldWithRendererTest, EffectAppearsOnTheSideOfItsPlayPosition)
+TEST_F(EffectSceneWithRendererTest, EffectAppearsOnTheSideOfItsPlayPosition)
 {
     ASSERT_TRUE(m_world->Preload("marker_z_offset"));
     const Camera camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
@@ -376,7 +376,7 @@ TEST_F(EffectWorldWithRendererTest, EffectAppearsOnTheSideOfItsPlayPosition)
     EXPECT_LT(LargestChannelDifference(cleared, atMirrored), 16);
 }
 
-TEST_F(EffectWorldWithRendererTest, EffectDataIsReadAsLeftHanded)
+TEST_F(EffectSceneWithRendererTest, EffectDataIsReadAsLeftHanded)
 {
     ASSERT_TRUE(m_world->Preload("marker_z_offset"));
 
@@ -395,7 +395,7 @@ TEST_F(EffectWorldWithRendererTest, EffectDataIsReadAsLeftHanded)
     EXPECT_LT(LargestChannelDifference(cleared, atMirrored), 16);
 }
 
-TEST_F(EffectWorldWithRendererTest, EffectBeyondItsDepthClippingIsNotDrawn)
+TEST_F(EffectSceneWithRendererTest, EffectBeyondItsDepthClippingIsNotDrawn)
 {
     ASSERT_TRUE(m_world->Preload("marker_depth_clip"));
     const Camera camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
@@ -419,7 +419,7 @@ TEST_F(EffectWorldWithRendererTest, EffectBeyondItsDepthClippingIsNotDrawn)
     EXPECT_LT(LargestChannelDifference(cleared, drawnFar), 16);
 }
 
-TEST_F(EffectWorldWithRendererTest, PreloadRejectsEffectWithMissingTexture)
+TEST_F(EffectSceneWithRendererTest, PreloadRejectsEffectWithMissingTexture)
 {
     // 試験の置き場には marker_textured の画像だけを置いてある
     // marker_texture_missing は同じ作りで、画像を読み損ねる
@@ -431,7 +431,7 @@ TEST_F(EffectWorldWithRendererTest, PreloadRejectsEffectWithMissingTexture)
     EXPECT_FALSE(m_world->Play(MakePlayDesc("marker_texture_missing")).IsValid());
 }
 
-TEST_F(EffectWorldWithRendererTest, PreloadReturnsTrueForLoadedName)
+TEST_F(EffectSceneWithRendererTest, PreloadReturnsTrueForLoadedName)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
     EXPECT_TRUE(m_world->Preload("square_r"));

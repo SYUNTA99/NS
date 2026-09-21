@@ -9,7 +9,7 @@
 #include "Runtime/Graphics/CommonStates.h"
 #include "Runtime/Graphics/D3dCommon.h"
 #include "Runtime/Graphics/DebugDraw.h"
-#include "Runtime/Graphics/EffectWorld.h"
+#include "Runtime/Graphics/EffectScene.h"
 #include "Runtime/Graphics/GltfLoader.h"
 #include "Runtime/Graphics/GraphicObject.h"
 #include "Runtime/Graphics/Material.h"

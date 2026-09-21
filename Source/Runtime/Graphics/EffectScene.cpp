@@ -1,4 +1,4 @@
-#include "Runtime/Graphics/EffectWorld.h"
+#include "Runtime/Graphics/EffectScene.h"
 
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/StringUtils.h"
@@ -50,7 +50,7 @@ namespace NS::Graphics
             {
                 if (getResource(i) == nullptr)
                 {
-                    NS_LOG_ERROR(Graphics, "EffectWorld::Preload: {}を読めなかった ({})", kind, ToUtf8(getPath(i)));
+                    NS_LOG_ERROR(Graphics, "EffectScene::Preload: {}を読めなかった ({})", kind, ToUtf8(getPath(i)));
                     ++missing;
                 }
             }
@@ -95,12 +95,12 @@ namespace NS::Graphics
         }
     } // namespace
 
-    EffectWorld::EffectWorld(const EffectWorldDesc& desc) noexcept : m_effectRoot(desc.effectRoot)
+    EffectScene::EffectScene(const EffectSceneDesc& desc) noexcept : m_effectRoot(desc.effectRoot)
     {
         const GraphicObject& gpu = Gpu();
         if (gpu.device == nullptr || gpu.context == nullptr)
         {
-            NS_LOG_WARN(Graphics, "EffectWorld: Renderer が未構築のため無効のまま作る");
+            NS_LOG_WARN(Graphics, "EffectScene: Renderer が未構築のため無効のまま作る");
             return;
         }
 
@@ -108,7 +108,7 @@ namespace NS::Graphics
             EffekseerRendererDX11::CreateGraphicsDevice(gpu.device, gpu.context);
         if (graphicsDevice == nullptr)
         {
-            NS_LOG_ERROR(Graphics, "EffectWorld: Effekseer の GraphicsDevice を作れなかった");
+            NS_LOG_ERROR(Graphics, "EffectScene: Effekseer の GraphicsDevice を作れなかった");
             return;
         }
 
@@ -116,7 +116,7 @@ namespace NS::Graphics
             EffekseerRendererDX11::Renderer::Create(graphicsDevice, k_MaxSprites);
         if (renderer == nullptr)
         {
-            NS_LOG_ERROR(Graphics, "EffectWorld: Effekseer の Renderer を作れなかった (maxSprites={})", k_MaxSprites);
+            NS_LOG_ERROR(Graphics, "EffectScene: Effekseer の Renderer を作れなかった (maxSprites={})", k_MaxSprites);
             return;
         }
 
@@ -124,7 +124,7 @@ namespace NS::Graphics
         if (manager == nullptr)
         {
             NS_LOG_ERROR(
-                Graphics, "EffectWorld: Effekseer の Manager を作れなかった (maxInstances={})", k_MaxInstances);
+                Graphics, "EffectScene: Effekseer の Manager を作れなかった (maxInstances={})", k_MaxInstances);
             return;
         }
 
@@ -146,7 +146,7 @@ namespace NS::Graphics
         m_manager = manager;
     }
 
-    EffectWorld::~EffectWorld()
+    EffectScene::~EffectScene()
     {
         // Sprite・Ribbon・Ring・Track の描画は Renderer を生ポインタで持つ
         // ModelRenderer の参照で Renderer が残るのに頼らず、Manager を先に放す
@@ -155,12 +155,12 @@ namespace NS::Graphics
         m_renderer.Reset();
     }
 
-    bool EffectWorld::IsValid() const noexcept
+    bool EffectScene::IsValid() const noexcept
     {
         return m_manager != nullptr && m_renderer != nullptr;
     }
 
-    bool EffectWorld::Preload(std::string_view name) noexcept
+    bool EffectScene::Preload(std::string_view name) noexcept
     {
         if (!IsValid())
         {
@@ -181,7 +181,7 @@ namespace NS::Graphics
         if (effect == nullptr)
         {
             NS_LOG_ERROR(Graphics,
-                         "EffectWorld::Preload: エフェクトを読めなかった ({})",
+                         "EffectScene::Preload: エフェクトを読めなかった ({})",
                          NS::Core::StringUtils::Utf8FromWide(path.wstring()));
             return false;
         }
@@ -194,7 +194,7 @@ namespace NS::Graphics
         return true;
     }
 
-    EffectHandle EffectWorld::Play(const EffectPlayDesc& desc) noexcept
+    EffectHandle EffectScene::Play(const EffectPlayDesc& desc) noexcept
     {
         if (!IsValid())
         {
@@ -207,7 +207,7 @@ namespace NS::Graphics
             // 続けて呼ばれてもログを埋めないよう、警告は名前ごとに 1 回
             if (m_warnedMissing.emplace(desc.name).second)
             {
-                NS_LOG_WARN(Graphics, "EffectWorld::Play: Preload していないエフェクト ({})", desc.name);
+                NS_LOG_WARN(Graphics, "EffectScene::Play: Preload していないエフェクト ({})", desc.name);
             }
             return EffectHandle{};
         }
@@ -217,7 +217,7 @@ namespace NS::Graphics
         return EffectHandle{handle};
     }
 
-    void EffectWorld::Stop(EffectHandle handle) noexcept
+    void EffectScene::Stop(EffectHandle handle) noexcept
     {
         if (!IsValid() || !handle.IsValid())
         {
@@ -226,7 +226,7 @@ namespace NS::Graphics
         m_manager->StopEffect(handle.value);
     }
 
-    void EffectWorld::StopAll() noexcept
+    void EffectScene::StopAll() noexcept
     {
         if (!IsValid())
         {
@@ -235,7 +235,7 @@ namespace NS::Graphics
         m_manager->StopAllEffects();
     }
 
-    bool EffectWorld::Exists(EffectHandle handle) const noexcept
+    bool EffectScene::Exists(EffectHandle handle) const noexcept
     {
         if (!IsValid() || !handle.IsValid())
         {
@@ -244,7 +244,7 @@ namespace NS::Graphics
         return m_manager->Exists(handle.value);
     }
 
-    void EffectWorld::Update(float deltaSeconds) noexcept
+    void EffectScene::Update(float deltaSeconds) noexcept
     {
         if (!IsValid() || deltaSeconds < 0.0f)
         {
@@ -255,7 +255,7 @@ namespace NS::Graphics
         m_manager->Update(deltaSeconds * k_EffekseerFramesPerSecond);
     }
 
-    void EffectWorld::Draw(const Camera& camera) noexcept
+    void EffectScene::Draw(const Camera& camera) noexcept
     {
         if (!IsValid())
         {

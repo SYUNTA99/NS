@@ -19,23 +19,23 @@ namespace NS::Graphics
 {
     class Camera;
 
-    //! @brief EffectWorld の構築パラメータ
-    struct EffectWorldDesc
+    //! @brief EffectScene の構築パラメータ
+    struct EffectSceneDesc
     {
         std::filesystem::path effectRoot; //!< Preload が .efkefc を探すディレクトリ
     };
 
-    //! @brief EffectWorld::Play が返す、再生したエフェクトのハンドル
+    //! @brief EffectScene::Play が返す、再生したエフェクトのハンドル
     struct EffectHandle
     {
         std::int32_t value = -1; //!< Effekseer の Manager が返したハンドル値。既定の -1 は無効
 
-        //! @brief value が 0 以上の場合 true、それ以外の場合は false
-        //! @details エフェクトが今も残っているかは EffectWorld::Exists で見る
+        //! value が 0 以上の場合 true、それ以外の場合は false
+        //! @details エフェクトが今も残っているかは EffectScene::Exists で見る
         [[nodiscard]] bool IsValid() const noexcept { return value >= 0; }
     };
 
-    //! @brief EffectWorld::Play の再生パラメータ
+    //! @brief EffectScene::Play の再生パラメータ
     struct EffectPlayDesc
     {
         std::string_view name;                        //!< Preload に渡した名前
@@ -46,13 +46,13 @@ namespace NS::Graphics
     //! @details 構築時に Gpu() の device と context を使う。NS の Renderer が未構築なら無効な状態になる
     //! 構築に失敗した場合は例外を送出せず、無効な状態として扱う。無効な状態では各操作は何もしない
     //! エフェクトは Preload で読み込んでから Play で再生する。Play はファイルを読まない
-    class EffectWorld : public NS::Core::NonCopyable
+    class EffectScene : public NS::Core::NonCopyable
     {
     public:
         //! @brief Effekseer の Renderer と Manager を作る
         //! @param[in] desc 構築パラメータ
-        explicit EffectWorld(const EffectWorldDesc& desc) noexcept;
-        ~EffectWorld();
+        explicit EffectScene(const EffectSceneDesc& desc) noexcept;
+        ~EffectScene();
 
         //! 構築に成功した場合 true、それ以外の場合は false
         [[nodiscard]] bool IsValid() const noexcept;
