@@ -18,7 +18,7 @@ namespace
     {
         if (omega <= 0.0f || dt <= 0.0f)
         {
-			return target;
+            return target;
         }
         const float a = 1.0f - std::exp(-omega * dt);
         return curr + (target - curr) * a;
@@ -53,7 +53,7 @@ namespace NS::Object
         }
         else
         {
-			m_followHorizontalSpeed = 0.0f;
+            m_followHorizontalSpeed = 0.0f;
         }
         m_hasFollowMotion = true;
     }
@@ -110,11 +110,11 @@ namespace NS::Object
         }
         if (run > 0.0f)
         {
-			m_runDistance = run;
+            m_runDistance = run;
         }
         if (jump > 0.0f)
         {
-			m_jumpDistance = jump;
+            m_jumpDistance = jump;
         }
     }
 
@@ -173,7 +173,7 @@ namespace NS::Object
         const float dt = NS::Core::FrameTimer::FixedDelta();
         if (!IsActive() || m_target == nullptr || dt <= 0.0f)
         {
-			return;
+            return;
         }
 
         // マウスと右スティックの手動回転
@@ -182,12 +182,12 @@ namespace NS::Object
         float mxSign = 1.0f;
         if (m_invertX)
         {
-			mxSign = -1.0f;
+            mxSign = -1.0f;
         }
         float mySign = 1.0f;
         if (m_invertY)
         {
-			mySign = -1.0f;
+            mySign = -1.0f;
         }
         m_yaw += static_cast<float>(mouse.GetDeltaX()) * m_sensX * mxSign;
         m_pitch += static_cast<float>(mouse.GetDeltaY()) * m_sensY * mySign;
@@ -230,9 +230,9 @@ namespace NS::Object
     {
         if (m_target == nullptr)
         {
-            return MakePose(NS::Core::Vector3{ 0.0f, 0.0f, -5.0f },
-                            NS::Core::Vector3{ 0.0f, 0.0f, 0.0f },
-                            NS::Core::Vector3{ 0.0f, 1.0f, 0.0f });
+            return MakePose(NS::Core::Vector3{0.0f, 0.0f, -5.0f},
+                            NS::Core::Vector3{0.0f, 0.0f, 0.0f},
+                            NS::Core::Vector3{0.0f, 1.0f, 0.0f});
         }
 
         const float cy = std::cos(m_yaw);

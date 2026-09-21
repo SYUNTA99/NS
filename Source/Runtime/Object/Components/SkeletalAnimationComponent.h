@@ -18,7 +18,7 @@ namespace NS::Object
     class MeshRendererComponent;
 
     //! @brief クリップを時間再生して SkeletalMesh のボーンパレットを更新する
-    //! @details fixed step ごとに再生時刻を進める。AnimationClip をサンプリングしたポーズを
+    //! @details 毎フレーム再生時刻を進める。AnimationClip をサンプリングしたポーズを
     //! Skeleton でボーンパレット化し、SkeletalMesh に渡す。再生 / 停止 / 速度 / ループ / クリップ選択を制御できる
     //! mesh / skeleton / clips は全て非所有で、AssetManager 等の所有側が寿命を保証する。priority は Update 帯の後方
     //! (+100、移動の後に骨を追従させる)
@@ -36,7 +36,7 @@ namespace NS::Object
         //! この Component が表す skinned モデルの参照。ContentRoot 配下の glTF 相対パス
         [[nodiscard]] const std::string& ModelRef() const noexcept { return m_modelRef; }
         //! build 時にこの文字列から mesh / skeleton / clips を解決する。同じ object の MeshRendererComponent の mesh
-        //! も こちらが差すので、skinned の配置物は MeshRenderer 側の Mesh 参照を空のままにする
+        //! もこちらが差すので、skinned の配置物は MeshRenderer 側の Mesh 参照を空のままにする
         void SetModelRef(std::string ref) noexcept { m_modelRef = std::move(ref); }
 
         //! 追加で読むアニメーション glTF の参照一覧。セミコロン区切りの ContentRoot 相対パス
@@ -74,10 +74,10 @@ namespace NS::Object
         void OnUpdate() override;
 
         //! modelRef から skinned glTF を解決し mesh / skeleton / clips を差す。同じ object の MeshRendererComponent
-        //! があれば 同じ mesh を差す。空 / 解決不可はそのまま何もしない (SetMesh 等の手動配線を壊さない)
+        //! があれば同じ mesh を差す。空 / 解決不可はそのまま何もしない (SetMesh 等の手動配線を壊さない)
         void ResolveAssets(AssetManager& assets) override;
 
-        // 再生速度 / ループを Inspector へ公開する。毎ステップ読まれるのでライブで効き、負速度なら逆再生になる
+        // 再生速度 / ループを Inspector へ公開する。毎フレーム読まれるのでライブで効き、負速度なら逆再生になる
         NS_REFLECT_BEGIN(SkeletalAnimationComponent, Component)
         NS_REFLECT_FIELD(m_speed, "再生速度")
         NS_REFLECT_FIELD(m_looping, "ループ再生")

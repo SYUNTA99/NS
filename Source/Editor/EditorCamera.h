@@ -71,12 +71,12 @@ namespace NS::Editor
         void ApplyFlyMove(
             float forwardAxis, float strafeAxis, float verticalAxis, float dt, float speedScale = 1.0f) noexcept;
 
-        //! free-fly 入力を 1 フレーム分適用する。感度・ ズームバネは自分の設定値で処理する
+        //! free-fly 入力を 1 フレーム分適用する。感度・ズームバネは自分の設定値で処理する
         void ApplyInput(const EditorCameraInput& input) noexcept;
 
         // 2m 未満は block 内側へ入り描画破綻するので下限は残す。上限は広い地形を一望できるよう実質無制限まで
         // 開け、LevelEditorController が敷く far plane 5000 の内側に収めて遠景も映す。完全な無限は
-        // inf / far 越えで全消えを招く
+        // 無限大と far 越えで全消えを招く
         static constexpr float k_MinDistance = 2.0f;
         // WASD の速さを距離比例で出す時の下限。これより寄っても 3.6m/s は残り、細かく詰めるには十分遅い
         static constexpr float k_MinMoveDistance = 6.0f;
