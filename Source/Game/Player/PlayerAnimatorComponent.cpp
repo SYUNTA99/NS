@@ -29,6 +29,19 @@ namespace NS::Game::Player
         m_player = Owner()->FindComponent<PlayerComponent>();
         m_states = Owner()->FindComponent<PlayerStateManagerComponent>();
         m_animation = Owner()->FindComponent<NS::Object::SkeletalAnimationComponent>();
+
+        // 見た目は足元が原点なので、当たりの底へ下げるために子の配置物へ分けてある
+        if (m_animation == nullptr)
+        {
+            for (NS::Object::GameObject* child : Owner()->Children())
+            {
+                m_animation = child->FindComponent<NS::Object::SkeletalAnimationComponent>();
+                if (m_animation != nullptr)
+                {
+                    break;
+                }
+            }
+        }
     }
 
     void PlayerAnimatorComponent::OnUpdate()

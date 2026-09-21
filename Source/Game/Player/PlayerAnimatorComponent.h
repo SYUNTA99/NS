@@ -28,7 +28,8 @@ namespace NS::Game::Player
     public:
         PlayerAnimatorComponent() noexcept;
 
-        //! 同居する PlayerComponent / PlayerStateManagerComponent / SkeletalAnimationComponent を控える
+        //! 同居する PlayerComponent / PlayerStateManagerComponent と、SkeletalAnimationComponent を控える
+        //! @details SkeletalAnimationComponent は自分の配置物に無ければ子を 1 段だけ見る
         void OnStart() override;
         //! クリップと再生速度を選び直す。PlayerComponent か SkeletalAnimationComponent が欠けていれば何もしない
         void OnUpdate() override;
@@ -47,8 +48,8 @@ namespace NS::Game::Player
         NS_REFLECT_FIELD(m_jumpClip, "跳ぶクリップ")
         NS_REFLECT_FIELD(m_fallClip, "落ちるクリップ")
         NS_REFLECT_FIELD(m_ledgeHangClip, "ぶら下がりのクリップ")
-        NS_REFLECT_FIELD_FINITE(m_runBlendRatio, "走りへ移る速さの比")
-        NS_REFLECT_FIELD_FINITE(m_minPlaybackSpeed, "再生速度の下限")
+        NS_REFLECT_FIELD(m_runBlendRatio, "走りへ移る速さの比")
+        NS_REFLECT_FIELD(m_minPlaybackSpeed, "再生速度の下限")
         NS_REFLECT_END()
 
     private:
