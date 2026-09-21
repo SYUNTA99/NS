@@ -46,7 +46,7 @@ namespace NS::Object
     {
         m_followGrounded = grounded;
         const float horiz = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
-        // NaN を持つと走り判定の比較が常に偽になり、走っても待機時距離のまま
+        // 非数を持つと走り判定の比較が常に偽になり、走っても待機時距離のまま
         if (std::isfinite(horiz))
         {
             m_followHorizontalSpeed = horiz;

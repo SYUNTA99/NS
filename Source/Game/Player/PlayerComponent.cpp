@@ -107,7 +107,7 @@ namespace NS::Game::Player
 
     void PlayerComponent::SetMaxSpeedScale(float scale) noexcept
     {
-        // NaN を入れると MaxSpeed() との比較が偽になり、突進明けに水平の速さが切られない
+        // 非数を入れると MaxSpeed() との比較が偽になり、突進明けに水平の速さが切られない
         if (!std::isfinite(scale))
         {
             return;
@@ -119,7 +119,7 @@ namespace NS::Game::Player
     {
         // そのフレームで出せないと押しが無言で消える。ジャンプと同じ先行入力時間だけ覚える
         m_bodySlamBufferRemaining = m_jumpBufferTime;
-        // NaN は 0..1 への丸めを素通りして溜め量に残るため、入口で 0 へ倒す
+        // 非数は 0..1 への丸めを素通りして溜め量に残るため、入口で 0 へ倒す
         if (!std::isfinite(charge01))
             m_bodySlamRequestCharge01 = 0.0f;
         else
@@ -292,7 +292,7 @@ namespace NS::Game::Player
         // 進み切る前に着地すると残りを地面の上で滑り、走っていないのに動いて見える。
         // 滞空秒を踏み込みの秒へ合わせ、進み切った所で足が着くようにする
         const float airSeconds = (m_tapSlamSpeed > 0.0f) ? m_tapSlamDistance / m_tapSlamSpeed : 0.0f;
-        // Inspector で 0 を置くと 0 除算で位置まで NaN が伝わるため、距離か初速が 0 なら通常の重力へ戻す
+        // Inspector で 0 を置くと 0 除算で位置まで非有限値が伝わるため、距離か初速が 0 なら通常の重力へ戻す
         if (!(airSeconds > NS::Core::k_Epsilon))
         {
             Gravity(dt);

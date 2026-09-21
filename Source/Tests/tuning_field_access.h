@@ -10,7 +10,7 @@ namespace NsTest
     //! @details ASSERT_NE は void を返す関数でしか使えないので、欄の不在は EXPECT_NE で報告する
     //! @param[in] comp GetReflection() を持つ component
     //! @param[in] label 欄の表示名
-    //! @return 欄の値。欄が無い場合は NaN
+    //! @return 欄の値。欄が無い場合は非数
     template <class T> [[nodiscard]] inline float ReadTuningField(const T& comp, const char* label)
     {
         const NS::Object::FieldDesc* field = NS::Object::FindField(comp.GetReflection(), label);

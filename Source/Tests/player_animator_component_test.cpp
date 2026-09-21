@@ -150,7 +150,7 @@ TEST(PlayerAnimatorTest, PlaybackSpeedStopsAtTheFloor)
 }
 
 // 走行速度はリフレクションの欄なので Inspector から 0 を打てる。割り算を素通りさせると
-// 再生速度が無限大になり、長さで折り返す時に再生時刻が NaN で固まる
+// 再生速度が無限大になり、長さで折り返す時に再生時刻が非数で固まる
 TEST(PlayerAnimatorTest, ZeroRunSpeedKeepsPlaybackAtNormal)
 {
     Rig rig;

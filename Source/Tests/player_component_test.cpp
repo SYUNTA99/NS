@@ -740,7 +740,7 @@ TEST_F(PlayerComponentTest, DoesNotFireWithoutAnyDirection)
     EXPECT_FLOAT_EQ(player.BodySlamProgress01(), 0.0f);
 }
 
-// NaN は 0..1 への丸めを素通りして溜め量に残る
+// 非数は 0..1 への丸めを素通りして溜め量に残る
 TEST_F(PlayerComponentTest, NonFiniteChargeIsTreatedAsTap)
 {
     NsTest::EntityStage stage;

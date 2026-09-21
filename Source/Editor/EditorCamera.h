@@ -29,7 +29,7 @@ namespace NS::Editor
     //! 中ドラッグで Pan、ホイールで Zoom
     //! ゲームパッドは右スティックで Orbit、左スティックで Pan、LT-RT で Zoom
     //! UI がマウスを掴んでいる間は Input::UiWantsMouse で判定してマウス入力を無視する
-    //! pitch / distance は clamp で有限範囲に抑え、NaN / 巨大値での描画クラッシュを防ぐ
+    //! pitch / distance は clamp で有限範囲に抑え、巨大値での描画クラッシュを防ぐ
     class EditorCamera
     {
     public:
