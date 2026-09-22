@@ -180,7 +180,7 @@ namespace NS::Object
             return;
         }
 
-        const std::optional<std::filesystem::path> resolved = ResolveContentPath(m_modelRef);
+        const std::optional<std::string> resolved = ResolveContentPath(m_modelRef);
         if (!resolved)
         {
             NS_LOG_WARN(Graphics, "SkeletalAnimationComponent: model 参照を解決できない: {}", m_modelRef);
@@ -219,7 +219,7 @@ namespace NS::Object
         }
         for (const std::string& entry : SplitClipRefs(m_clipsRef))
         {
-            const std::optional<std::filesystem::path> resolvedClip = ResolveContentPath(entry);
+            const std::optional<std::string> resolvedClip = ResolveContentPath(entry);
             if (!resolvedClip)
             {
                 NS_LOG_WARN(Graphics, "SkeletalAnimationComponent: clip 参照を解決できない: {}", entry);

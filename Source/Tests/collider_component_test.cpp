@@ -11,7 +11,6 @@
 #include <Runtime/Physics/MeshCollision.h>
 #include <Runtime/Physics/PhysicsScene.h>
 
-#include <filesystem>
 #include <gtest/gtest.h>
 #include <memory>
 #include <vector>
@@ -126,7 +125,7 @@ TEST(ColliderJolt, MeshCreatesOneBodyForAllTriangles)
 // 2 体目は x = 5 に横 2 倍で置いたので、横に広がった x = 5.9 でも上面 (y = 0.5) に当たる
 TEST(ColliderJolt, PlacedMeshCollidersShareOneShape)
 {
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
     const NS::Physics::MeshCollision* cube = assets.GetOrLoadMeshCollision("cube");
     ASSERT_NE(cube, nullptr);
     ASSERT_NE(cube->shape, nullptr);
@@ -156,7 +155,7 @@ TEST(ColliderJolt, PlacedMeshCollidersShareOneShape)
 // x = 1.2 に当たるのは描画と同じ形の時だけ
 TEST(ColliderJolt, ShearedMeshColliderKeepsTheDrawnShape)
 {
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
     const NS::Physics::MeshCollision* cube = assets.GetOrLoadMeshCollision("cube");
     ASSERT_NE(cube, nullptr);
 

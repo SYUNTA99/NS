@@ -6,7 +6,6 @@
 #include "Editor/PanelIds.h"
 #include "Runtime/Object/Scene/Scene.h"
 
-#include <filesystem>
 #include <optional>
 
 #if NS_EDITOR_ENABLED
@@ -48,12 +47,12 @@ namespace NS::Editor
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(k_MeshDragType))
                 {
                     const char* dropped = static_cast<const char*>(payload->Data);
-                    editor.AddObjectWithMesh(std::filesystem::path(dropped));
+                    editor.AddObjectWithMesh(dropped);
                 }
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(k_MaterialDragType))
                 {
                     const char* dropped = static_cast<const char*>(payload->Data);
-                    editor.ApplyMaterialToSelected(std::filesystem::path(dropped));
+                    editor.ApplyMaterialToSelected(dropped);
                 }
                 ImGui::EndDragDropTarget();
             }

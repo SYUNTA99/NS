@@ -4,7 +4,6 @@
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
 
-#include <filesystem>
 #include <string>
 #include <string_view>
 
@@ -16,10 +15,10 @@ namespace NS::Object
     struct SceneData;
 
     //! SceneData を正準 JSON ファイルへ書く。要素数 / 出力 size が上限超過なら false + NS_LOG_ERROR
-    [[nodiscard]] bool SaveSceneToJsonFile(const SceneData& scene, const std::filesystem::path& path) noexcept;
+    [[nodiscard]] bool SaveSceneToJsonFile(const SceneData& scene, std::string_view path) noexcept;
 
     //! JSON ファイルを SceneData へ読む。失敗時 false + NS_LOG_ERROR、outScene は空 SceneData に reset される
-    [[nodiscard]] bool LoadSceneFromJsonFile(SceneData& outScene, const std::filesystem::path& path) noexcept;
+    [[nodiscard]] bool LoadSceneFromJsonFile(SceneData& outScene, std::string_view path) noexcept;
 
     //! SceneData を正準 JSON 文字列へ直列化する。テスト・基準比較に使う
     [[nodiscard]] std::string SerializeSceneToJson(const SceneData& scene);

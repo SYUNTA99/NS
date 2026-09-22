@@ -22,7 +22,6 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
-#include <filesystem>
 #include <gtest/gtest.h>
 #include <memory>
 #include <utility>
@@ -105,7 +104,7 @@ TEST(ObjectListTest, BuildFollowsWrittenSequence)
     const std::uint32_t second = level.objects[1].objectId;
 
     NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
@@ -122,7 +121,7 @@ TEST(ObjectListTest, InactiveObjectHasNoCollision)
     level.objects[0].active = false;
 
     NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
@@ -145,7 +144,7 @@ TEST(ObjectListTest, TriggerBoxHasNoSolidCollision)
     NS::Object::EnsureUniqueObjectIds(level);
 
     NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
@@ -164,7 +163,7 @@ TEST(ObjectListTest, RebuildDropsTheCollidersOfTheObjectsItReplaces)
     NS::Object::EnsureUniqueObjectIds(level);
 
     NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
@@ -194,7 +193,7 @@ TEST(ObjectListTest, RebuildBuildsPlayerAndResolvesItById)
     NS::Object::EnsureUniqueObjectIds(level);
 
     NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
@@ -222,7 +221,7 @@ TEST(ObjectListTest, RebuildBakesFollowCameraAndResolvesTarget)
             NS::Object::SetField(component, "追従対象", NS::Object::ObjectRef{level.objects[1].objectId});
 
     NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
     // 参照の解決は scene の ObjectList を引くので、組むのは scene 自身の ObjectList
     NS::Object::ObjectList& objects = scene.Objects();
     objects.Rebuild(level, scene, MakeFactory(assets, level));
@@ -277,7 +276,7 @@ TEST(ObjectListTest, ComponentIdSurvivesBuildAndCapture)
     NS::Object::EnsureUniqueObjectIds(level);
 
     NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
@@ -318,7 +317,7 @@ TEST(ObjectListTest, RemoveByObjectIdDropsIdResolution)
     const std::uint32_t victimId = level.objects[1].objectId;
 
     NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
@@ -340,7 +339,7 @@ TEST(ObjectListTest, RemoveByObjectIdDropsCollider)
     const std::uint32_t victimId = level.objects[1].objectId;
 
     NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
@@ -365,7 +364,7 @@ TEST(ObjectListTest, RebuildBakesPlacedCamerasInactive)
     level.objects.push_back(std::move(cameraObject));
 
     NS::Object::Scene scene;
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
     ObjectList objects;
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 

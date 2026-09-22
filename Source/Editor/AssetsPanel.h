@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/NonCopyable.h"
 
-#include <filesystem>
+#include <string_view>
 
 class LevelEditorController;
 
@@ -16,6 +16,6 @@ namespace NS::Editor
 
     private:
         //! dir 以下を再帰で辿って中身を出す。.mat はクリック適用 / ドラッグ、メッシュはドラッグ配置
-        void RenderTree(const std::filesystem::path& dir, LevelEditorController& editor) noexcept;
+        void RenderTree(std::string_view dir, LevelEditorController& editor) noexcept;
     };
 } // namespace NS::Editor

@@ -5,7 +5,7 @@
 #include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Graphics/D3dCommon.h"
 
-#include <filesystem>
+#include <string>
 
 namespace NS::Graphics
 {
@@ -15,7 +15,7 @@ namespace NS::Graphics
     //! ファイルからテクスチャを読み込むための初期化パラメータ
     struct TextureDesc
     {
-        std::filesystem::path path;
+        std::string path;
         bool generateMipmaps = true;
         bool sRGB = false;
     };
@@ -43,7 +43,7 @@ namespace NS::Graphics
         [[nodiscard]] static std::unique_ptr<Texture> Create(const TextureDesc& desc);
 
         //! ファイルパスを指定してテクスチャを生成する
-        [[nodiscard]] static std::unique_ptr<Texture> Create(const std::filesystem::path& path);
+        [[nodiscard]] static std::unique_ptr<Texture> Create(std::string_view path);
 
         //! パラメータを指定して空のテクスチャを生成する
         [[nodiscard]] static std::unique_ptr<Texture> Create(const TextureCreateDesc& desc);
@@ -76,7 +76,7 @@ namespace NS::Graphics
 
     private:
         explicit Texture(const TextureDesc& desc);
-        explicit Texture(const std::filesystem::path& path);
+        explicit Texture(std::string_view path);
         explicit Texture(const TextureCreateDesc& desc);
         Texture(ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
 

@@ -9,7 +9,6 @@
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 
 #include <cstdint>
-#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -169,7 +168,7 @@ public:
 
     //! @brief メッシュ資産を 1 体として編集視点の中心あたりへ置く。Undo 対応
     //! @param[in] meshPath 資産ファイルの絶対パス。参照は ContentRoot 相対へ直して持つ
-    void AddObjectWithMesh(const std::filesystem::path& meshPath);
+    void AddObjectWithMesh(std::string_view meshPath);
 
     //! 選択中の配置物に対応する runtime GameObject。未選択 / 未構築は nullptr
     [[nodiscard]] NS::Object::GameObject* SelectedObjectGameObject() noexcept;
@@ -217,7 +216,7 @@ public:
     {
         return ObjectToolActive() && m_gizmo.Selected() != nullptr;
     }
-    bool ApplyMaterialToSelected(const std::filesystem::path& matPath);
+    bool ApplyMaterialToSelected(std::string_view matPath);
 
 private:
     void TickEdit();

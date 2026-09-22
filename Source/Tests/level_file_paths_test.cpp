@@ -1,5 +1,7 @@
 #include "Editor/LevelFilePaths.h"
 
+#include "Runtime/Core/Filesystem.h"
+
 #include <gtest/gtest.h>
 #include <string>
 
@@ -71,9 +73,9 @@ TEST(LevelFilePaths, BuildLevelPathProducesExpectedShape)
 {
     auto p = EditorNs::BuildLevelPath("Scenes/MyLevel");
     ASSERT_TRUE(p.has_value());
-    EXPECT_EQ(p->extension(), ".scene");
-    EXPECT_EQ(p->stem(), "MyLevel");
-    EXPECT_EQ(p->parent_path().filename(), "Scenes");
+    EXPECT_EQ(NS::Core::FileSystem::Extension(*p), ".scene");
+    EXPECT_EQ(NS::Core::FileSystem::Stem(*p), "MyLevel");
+    EXPECT_EQ(NS::Core::FileSystem::FileName(NS::Core::FileSystem::ParentDirectory(*p)), "Scenes");
 }
 
 TEST(LevelFilePaths, SanitizeLevelPathAcceptsSubfolders)
@@ -115,8 +117,8 @@ TEST(LevelFilePaths, BuildLevelPathAcceptsSubfolder)
 {
     auto p = EditorNs::BuildLevelPath("Scenes/foo");
     ASSERT_TRUE(p.has_value());
-    EXPECT_EQ(p->stem(), "foo");
-    EXPECT_EQ(p->parent_path().filename(), "Scenes");
+    EXPECT_EQ(NS::Core::FileSystem::Stem(*p), "foo");
+    EXPECT_EQ(NS::Core::FileSystem::FileName(NS::Core::FileSystem::ParentDirectory(*p)), "Scenes");
 }
 
 TEST(LevelFilePaths, QualifyLevelPathAddsScenesOnlyToBareName)
@@ -145,7 +147,7 @@ TEST(LevelFilePaths, EnsureDirectoryCreatesAndIsIdempotent)
 
 TEST(LevelFilePaths, EnumerateReturnsSortedSafeNames)
 {
-    // 副作用: 既存 file の列挙のみ確認、新 file は作らない
+    // 既存 file の列挙のみ確認、新 file は作らない
     auto names = EditorNs::EnumerateLevelFiles();
     for (std::size_t i = 1; i < names.size(); ++i)
         EXPECT_LE(names[i - 1], names[i]);

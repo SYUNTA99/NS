@@ -8,7 +8,6 @@
 #include <Runtime/Object/Scene/SceneData.h>
 #include <Runtime/Object/Scene/SceneManager.h>
 #include <cstdint>
-#include <filesystem>
 #include <gtest/gtest.h>
 #include <memory>
 #include <utility>
@@ -129,7 +128,7 @@ TEST(NsSceneManager, SpawnTransientWithoutAssetsSkipsResolve)
 // 引き当ては OnStart より前。OnStart の中で資産を読む Component が空の参照を掴まない
 TEST(NsSceneManager, SpawnTransientResolvesAssetsBeforeStart)
 {
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
     NS::Object::Scene scene;
     scene.SetAssets(&assets);
     auto owned = std::make_unique<NS::Object::GameObject>();

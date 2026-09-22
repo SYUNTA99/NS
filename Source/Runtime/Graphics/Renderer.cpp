@@ -288,7 +288,7 @@ namespace NS::Graphics
     {
         if (m_fullscreenTried)
         {
-			return;
+            return;
         }
         m_fullscreenTried = true;
 
@@ -298,8 +298,9 @@ namespace NS::Graphics
         }
 
         const auto contentRoot = ::NS::Core::FileSystem::ContentRoot();
-        m_fullscreenVs = Shader::Create(contentRoot / "Shaders" / "fade.vs.hlsl");
-        m_fullscreenPs = Shader::Create(contentRoot / "Shaders" / "fade.ps.hlsl");
+        const std::string shaderDir = ::NS::Core::FileSystem::Combine(contentRoot, "Shaders");
+        m_fullscreenVs = Shader::Create(::NS::Core::FileSystem::Combine(shaderDir, "fade.vs.hlsl"));
+        m_fullscreenPs = Shader::Create(::NS::Core::FileSystem::Combine(shaderDir, "fade.ps.hlsl"));
         if (!m_fullscreenVs->IsValid() || !m_fullscreenPs->IsValid())
         {
             NS_LOG_ERROR(Graphics, "Renderer: 全画面塗り shader 構築失敗");
@@ -340,7 +341,7 @@ namespace NS::Graphics
         CommandList& cmd = *m_commands;
         if (cmd.Native() == nullptr)
         {
-			return;
+            return;
         }
 
         FullscreenColorCB cbData{};
@@ -372,8 +373,9 @@ namespace NS::Graphics
         }
 
         const auto contentRoot = ::NS::Core::FileSystem::ContentRoot();
-        m_screenRectVs = Shader::Create(contentRoot / "Shaders" / "ui_rect.vs.hlsl");
-        m_screenRectPs = Shader::Create(contentRoot / "Shaders" / "ui_rect.ps.hlsl");
+        const std::string shaderDir = ::NS::Core::FileSystem::Combine(contentRoot, "Shaders");
+        m_screenRectVs = Shader::Create(::NS::Core::FileSystem::Combine(shaderDir, "ui_rect.vs.hlsl"));
+        m_screenRectPs = Shader::Create(::NS::Core::FileSystem::Combine(shaderDir, "ui_rect.ps.hlsl"));
         if (!m_screenRectVs->IsValid() || !m_screenRectPs->IsValid())
         {
             NS_LOG_ERROR(Graphics, "Renderer: UI 矩形 shader 構築失敗");
@@ -408,20 +410,21 @@ namespace NS::Graphics
         EnsureScreenRectResources();
         if (!m_screenRectReady || !m_commands)
         {
-			return;
+            return;
         }
 
         CommandList& cmd = *m_commands;
         if (cmd.Native() == nullptr)
         {
-			return;
+            return;
         }
 
         const ::NS::Core::Size2D targetSize = Size();
         if (targetSize.width <= 0 || targetSize.height <= 0)
         {
-            NS_LOG_WARN(Graphics, "Renderer: DrawScreenRect 無効な描画先サイズ {}x{}", targetSize.width, targetSize.height);
-			return;
+            NS_LOG_WARN(
+                Graphics, "Renderer: DrawScreenRect 無効な描画先サイズ {}x{}", targetSize.width, targetSize.height);
+            return;
         }
         const float targetWidth = static_cast<float>(targetSize.width);
         const float targetHeight = static_cast<float>(targetSize.height);
@@ -451,14 +454,14 @@ namespace NS::Graphics
     {
         if (m_skyboxTried)
         {
-			return;
+            return;
         }
         m_skyboxTried = true;
 
         if (m_device == nullptr)
         {
             NS_LOG_WARN(Graphics, "Renderer: skybox 装置の構築失敗のため空を描かない");
-			return;
+            return;
         }
 
         auto skybox = Skybox::Create();
@@ -470,7 +473,7 @@ namespace NS::Graphics
         m_skybox = std::move(skybox);
     }
 
-    void Renderer::DrawSky(const Camera& camera, const std::filesystem::path& cubemapPath) noexcept
+    void Renderer::DrawSky(const Camera& camera, std::string_view cubemapPath) noexcept
     {
         // cubemap を指定していないシーンは空を持たない。装置の構築もしない
         if (cubemapPath.empty())
@@ -488,7 +491,9 @@ namespace NS::Graphics
                 ::NS::Core::FileSystem::ResolveUnder(::NS::Core::FileSystem::ContentRoot(), cubemapPath);
             if (!absPath.has_value())
             {
-                NS_LOG_WARN(Graphics,"Renderer: cubemap パス '{}' は ContentRoot 配下でないため読み込まない",cubemapPath.string());
+                NS_LOG_WARN(Graphics,
+                            "Renderer: cubemap パス '{}' は ContentRoot 配下でないため読み込まない",
+                            cubemapPath);
                 // 拒否はパスを直すまで変わらないので、覚えて警告の連打を止める
                 m_loadedSkyboxPath = cubemapPath;
             }
@@ -498,7 +503,7 @@ namespace NS::Graphics
             }
             else
             {
-                NS_LOG_WARN(Graphics, "Renderer: cubemap 読込失敗 ({}), 既存を維持", absPath->string());
+                NS_LOG_WARN(Graphics, "Renderer: cubemap 読込失敗 ({}), 既存を維持", *absPath);
                 // 失敗時は前回パスを更新しないので次フレームで再試行できる
             }
         }

@@ -6,7 +6,7 @@
 #include "Runtime/Graphics/RenderSettings.h"
 #include "Runtime/Platform/Window.h"
 
-#include <filesystem>
+#include <string>
 
 namespace NS::Graphics
 {
@@ -118,7 +118,7 @@ namespace NS::Graphics
         //! 装置は初回呼び出し時に一度だけ構築し、失敗時は以後何もしない。不透明の描画後・半透明の描画前に呼ぶ
         //! @param[in] camera 空を貼る視点。view の平行移動成分は使わない
         //! @param[in] cubemapPath ContentRoot 配下相対の cubemap ディレクトリまたは .dds。空パスは何も描かない
-        void DrawSky(const Camera& camera, const std::filesystem::path& cubemapPath) noexcept;
+        void DrawSky(const Camera& camera, std::string_view cubemapPath) noexcept;
 
     private:
         // 全画面塗り資源を初回だけ構築する
@@ -154,7 +154,7 @@ namespace NS::Graphics
         bool m_screenRectReady = false; // 構築成功
         // 空描画装置。初回 DrawSky で一度だけ構築する
         std::unique_ptr<Skybox> m_skybox;
-        std::filesystem::path m_loadedSkyboxPath; // 前回読み込んだ cubemap のパス。差分の時だけ読み直す
+        std::string m_loadedSkyboxPath; // 前回読み込んだ cubemap のパス。差分の時だけ読み直す
         bool m_skyboxTried = false;               // 構築を試みたか
         RenderTarget* m_sceneTarget = nullptr;    //!< 非所有のシーン描画先。null なら backbuffer へ描く
         ::NS::Platform::Window* m_window = nullptr;

@@ -910,7 +910,7 @@ namespace
 
         NS::Object::AssetManager assets{NS::Core::FileSystem::ContentRoot()};
         NS::Graphics::Mesh* soldier =
-            assets.GetOrLoadMesh(NS::Core::FileSystem::ContentRoot() / "Assets" / "Models" / "Soldier.glb");
+            assets.GetOrLoadMesh(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), "Models"), "Soldier.glb"));
         ASSERT_NE(soldier, nullptr);
 
         NS::Object::GameObject doll;

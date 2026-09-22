@@ -13,7 +13,6 @@
 #include <Runtime/Physics/MeshCollision.h>
 #include <Runtime/Physics/PhysicsScene.h>
 #include <Runtime/Platform/Window.h>
-#include <filesystem>
 #include <gtest/gtest.h>
 #include <string>
 #include <utility>
@@ -75,7 +74,7 @@ TEST(MeshRefResolution, BuiltinNameResolvesToBuiltinMesh)
 // メッシュ参照が空なら cube へフォールバックする
 TEST(MeshRefResolution, EmptyMeshRefFallsBackToCube)
 {
-    AssetManager assets{std::filesystem::path{"."}};
+    AssetManager assets{std::string{"."}};
 
     ObjectData obj;
     obj.components.push_back(MakeMeshRenderer(""));
@@ -95,7 +94,7 @@ TEST(MeshRefResolution, TraversalRefIsRejected)
 {
     EXPECT_FALSE(ResolveContentPath("../secret.gltf").has_value());
 
-    AssetManager assets{std::filesystem::path{"."}};
+    AssetManager assets{std::string{"."}};
     EXPECT_EQ(ResolveMeshFromRef(assets, "../secret.gltf"), nullptr);
 }
 
@@ -105,7 +104,7 @@ TEST(MeshRefResolution, RelativePathAttemptsContentRootLoad)
     const auto resolved = ResolveContentPath("meshes/foo.gltf");
     ASSERT_TRUE(resolved.has_value());
 
-    AssetManager assets{std::filesystem::path{"."}};
+    AssetManager assets{std::string{"."}};
     // ファイルが無いのでどちらも nullptr。GetOrLoadMesh に回っていることだけ見る
     EXPECT_EQ(ResolveMeshFromRef(assets, "meshes/foo.gltf"), assets.GetOrLoadMesh(*resolved));
 }
@@ -113,7 +112,7 @@ TEST(MeshRefResolution, RelativePathAttemptsContentRootLoad)
 // メッシュ参照が空の object も cube に解決される
 TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
 {
-    AssetManager assets{std::filesystem::path{"."}};
+    AssetManager assets{std::string{"."}};
 
     ObjectData compObj;
     compObj.components.push_back(MakeMeshRenderer(""));
@@ -132,7 +131,7 @@ TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
 // MeshColliderComponent は同じ object の MeshRendererComponent の参照から AssetManager の当たりを借りる
 TEST(MeshRefResolution, MeshColliderTakesTrianglesFromRendererMesh)
 {
-    AssetManager assets{std::filesystem::path{"."}};
+    AssetManager assets{std::string{"."}};
 
     ObjectData obj;
     obj.components.push_back(MakeMeshRenderer("wedge45"));
@@ -151,7 +150,7 @@ TEST(MeshRefResolution, MeshColliderTakesTrianglesFromRendererMesh)
 // 描画が cube へフォールバックする参照では、当たりも組み込みの cube の当たりを指す
 TEST(MeshRefResolution, MeshColliderFallsBackToCubeLikeRenderer)
 {
-    AssetManager assets{std::filesystem::path{"."}};
+    AssetManager assets{std::string{"."}};
 
     ObjectData obj;
     obj.components.push_back(MakeMeshRenderer("__ns_missing_mesh__.gltf"));
@@ -168,7 +167,7 @@ TEST(MeshRefResolution, MeshColliderFallsBackToCubeLikeRenderer)
 // MeshRendererComponent が無ければ当たり無しのまま
 TEST(MeshRefResolution, MeshColliderWithoutRendererStaysEmpty)
 {
-    AssetManager assets{std::filesystem::path{"."}};
+    AssetManager assets{std::string{"."}};
 
     ObjectData obj;
     obj.components.push_back(NS::Object::MakeComponentEntry("MeshColliderComponent"));
@@ -183,7 +182,7 @@ TEST(MeshRefResolution, MeshColliderWithoutRendererStaysEmpty)
 // 組んだ cube の当たりは body 1 個として physics に入り、下向きのレイが上面 (y = 0.5) で止まる
 TEST(MeshRefResolution, BuiltCubeMeshColliderStopsRayAtTopFace)
 {
-    AssetManager assets{std::filesystem::path{"."}};
+    AssetManager assets{std::string{"."}};
 
     ObjectData obj;
     obj.components.push_back(MakeMeshRenderer("cube"));

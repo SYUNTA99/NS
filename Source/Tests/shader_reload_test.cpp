@@ -3,7 +3,6 @@
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/Shader.h>
 #include <Runtime/Platform/Window.h>
-#include <filesystem>
 #include <gtest/gtest.h>
 #include <memory>
 
@@ -35,9 +34,10 @@ namespace
         return d;
     }
 
-    std::filesystem::path ShaderPath(const char* name)
+    std::string ShaderPath(const char* name)
     {
-        return NS::Core::FileSystem::ContentRoot() / "Shaders" / name;
+        return NS::Core::FileSystem::Combine(
+            NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Shaders"), name);
     }
 } // namespace
 

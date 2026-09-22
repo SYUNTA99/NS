@@ -3,13 +3,13 @@
 #include "Runtime/Core/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
+#include "Runtime/Core/StringUtils.h"
 #include "Runtime/Graphics/D3dCommon.h"
 #include "Runtime/Graphics/GraphicObject.h"
 #include "Runtime/Graphics/Renderer.h"
 
 #include <d3dcompiler.h>
 
-#include <filesystem>
 #include <string>
 
 namespace NS::Graphics
@@ -35,9 +35,9 @@ namespace NS::Graphics
         };
 
         // 該当するステージが無ければ nullptr
-        [[nodiscard]] const ShaderTypeInfo* DetectStage(const std::filesystem::path& path) noexcept
+        [[nodiscard]] const ShaderTypeInfo* DetectStage(std::string_view path) noexcept
         {
-            const std::string name = path.filename().string();
+            const std::string name = NS::Core::FileSystem::FileName(path);
             for (const ShaderTypeInfo& info : k_StageTable)
             {
                 if (name.find(info.infix) != std::string::npos)
@@ -124,7 +124,7 @@ namespace NS::Graphics
 
         // D3DCompile のソース名は char* のみで、非 ASCII を含むパスは #include の基準として扱えない
         // Common.hlsli が解決できずコンパイルが失敗するため、wide のまま渡せる D3DCompileFromFile を使う
-        [[nodiscard]] ComPtr<ID3DBlob> CompileStage(const std::filesystem::path& path,
+        [[nodiscard]] ComPtr<ID3DBlob> CompileStage(std::string_view path,
                                                     const char* entryPoint,
                                                     const char* target) noexcept
         {
@@ -134,10 +134,10 @@ namespace NS::Graphics
             }
             if (!::NS::Core::FileSystem::Exists(path))
             {
-                NS_LOG_ERROR(Graphics, "Shader file not found: {}", path.string());
+                NS_LOG_ERROR(Graphics, "Shader file not found: {}", path);
                 return nullptr;
             }
-            const std::wstring widePath = path.wstring();
+            const std::wstring widePath = NS::Core::StringUtils::WideFromUtf8(path);
             ComPtr<ID3DBlob> blob;
             ComPtr<ID3DBlob> errorBlob;
             const HRESULT hr = D3DCompileFromFile(widePath.c_str(),
@@ -228,19 +228,19 @@ namespace NS::Graphics
         }
     } // namespace
 
-    std::unique_ptr<Shader> Shader::Create(const std::filesystem::path& hlslPath)
+    std::unique_ptr<Shader> Shader::Create(std::string_view hlslPath)
     {
         return std::unique_ptr<Shader>(new Shader(hlslPath));
     }
 
-    Shader::Shader(const std::filesystem::path& hlslPath) : m_sourcePath(hlslPath)
+    Shader::Shader(std::string_view hlslPath) : m_sourcePath(hlslPath)
     {
         const ShaderTypeInfo* info = DetectStage(m_sourcePath);
         if (info == nullptr)
         {
             NS_LOG_ERROR(Graphics,
                          "Shader: ファイル名からステージを判定できない (.vs./.ps./.gs./.hs./.ds./.cs. を含まない): {}",
-                         m_sourcePath.string());
+                         m_sourcePath);
             return;
         }
         m_type = info->stage;
@@ -264,7 +264,7 @@ namespace NS::Graphics
         {
             return;
         }
-        NS_LOG_ERROR(Graphics, "Shader build failed, falling back to magenta: {}", m_sourcePath.string());
+        NS_LOG_ERROR(Graphics, "Shader build failed, falling back to magenta: {}", m_sourcePath);
         ComPtr<ID3DBlob> fb = CompileFallbackStage(info->entry, info->target);
         if (!fb || !CreateStageObject(device, m_type, fb, m_shader))
         {

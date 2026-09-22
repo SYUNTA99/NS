@@ -12,7 +12,6 @@
 #include <atomic>
 #include <cassert>
 #include <cstdlib>
-#include <filesystem>
 
 namespace NS::Core
 {
@@ -31,14 +30,14 @@ namespace NS::Core
         // 起動するたびにファイルを新しくするかどうか
         bool g_rotateOnOpen{false};
 
-        std::filesystem::path LogsDirectory()
+        std::string LogsDirectory()
         {
 #if defined(NS_SHIPPING)
             // 出荷版はコンソールが無くファイルが唯一の報告先。exe の隣に残す
-            return NS::Core::FileSystem::ContentRoot() / "logs";
+            return NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "logs");
 #else
             // 開発中の生成物は build/ に集約する。@cleanup.cmd の掃除にも乗る
-            return NS::Core::FileSystem::ContentRoot() / "build" / "logs";
+            return NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "build/logs");
 #endif
         }
 
@@ -73,8 +72,9 @@ namespace NS::Core
             sinks.push_back(console);
 
             const auto logsDir = LogsDirectory();
-            const std::string logFilePath = (logsDir / (g_logName + ".log")).string();
-            auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(logFilePath, k_RotatingMaxBytes, k_RotatingMaxFiles, g_rotateOnOpen);
+            const std::string logFilePath = NS::Core::FileSystem::Combine(logsDir, g_logName + ".log");
+            auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+                logFilePath, k_RotatingMaxBytes, k_RotatingMaxFiles, g_rotateOnOpen);
             file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread:%t] [%s:%#] %v");
             sinks.push_back(file);
 

@@ -16,7 +16,6 @@
 #include <Runtime/Platform/Window.h>
 #include <array>
 #include <cstdint>
-#include <filesystem>
 #include <gtest/gtest.h>
 #include <limits>
 #include <memory>
@@ -311,9 +310,9 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsDoesNothingWhenModelFileMissing)
 
 TEST_F(SkeletalAnimationMeshTest, ResolveAssetsWiresRealSkinnedModelAndSiblingMesh)
 {
-    const std::filesystem::path modelPath = NS::Core::FileSystem::ContentRoot() / "Assets" / "Models" / "CesiumMan.glb";
-    if (!std::filesystem::exists(modelPath))
-        GTEST_SKIP() << "CesiumMan.glb が無い: " << modelPath.string();
+    const std::string modelPath = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
+    if (!NS::Core::FileSystem::Exists(modelPath))
+        GTEST_SKIP() << "CesiumMan.glb が無い: " << modelPath;
 
     NS::Platform::WindowDesc wd{};
     wd.title = "ns_anim_resolve";
@@ -354,9 +353,9 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsWiresRealSkinnedModelAndSiblingMe
 // Clips 欄の自己結合で model 由来クリップが倍加し、結合後の boneIndex が骨数に収まるのを確かめる
 TEST_F(SkeletalAnimationMeshTest, ResolveAssetsAddsClipsFromClipsRef)
 {
-    const std::filesystem::path modelPath = NS::Core::FileSystem::ContentRoot() / "Assets" / "Models" / "CesiumMan.glb";
-    if (!std::filesystem::exists(modelPath))
-        GTEST_SKIP() << "CesiumMan.glb が無い: " << modelPath.string();
+    const std::string modelPath = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
+    if (!NS::Core::FileSystem::Exists(modelPath))
+        GTEST_SKIP() << "CesiumMan.glb が無い: " << modelPath;
 
     NS::Platform::WindowDesc wd{};
     wd.title = "ns_anim_clips_ref";
@@ -402,9 +401,9 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsAddsClipsFromClipsRef)
 // 解決できないエントリが混ざっても他のエントリを巻き込まない
 TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSkipsBadClipEntriesIndependently)
 {
-    const std::filesystem::path modelPath = NS::Core::FileSystem::ContentRoot() / "Assets" / "Models" / "CesiumMan.glb";
-    if (!std::filesystem::exists(modelPath))
-        GTEST_SKIP() << "CesiumMan.glb が無い: " << modelPath.string();
+    const std::string modelPath = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
+    if (!NS::Core::FileSystem::Exists(modelPath))
+        GTEST_SKIP() << "CesiumMan.glb が無い: " << modelPath;
 
     NS::Platform::WindowDesc wd{};
     wd.title = "ns_anim_clips_bad";
@@ -438,9 +437,9 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSkipsBadClipEntriesIndependently)
 // 同じ clip と model の組は結合済コピーをインスタンス間で共有する
 TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSharesBoundClipsBetweenInstances)
 {
-    const std::filesystem::path modelPath = NS::Core::FileSystem::ContentRoot() / "Assets" / "Models" / "CesiumMan.glb";
-    if (!std::filesystem::exists(modelPath))
-        GTEST_SKIP() << "CesiumMan.glb が無い: " << modelPath.string();
+    const std::string modelPath = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
+    if (!NS::Core::FileSystem::Exists(modelPath))
+        GTEST_SKIP() << "CesiumMan.glb が無い: " << modelPath;
 
     NS::Platform::WindowDesc wd{};
     wd.title = "ns_anim_clips_share";
@@ -481,9 +480,9 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSharesBoundClipsBetweenInstances)
 // 組立の全経路で cube 既定を skinned mesh が上書きする並び (MeshRenderer が先・こちらが後) を固定する
 TEST_F(SkeletalAnimationMeshTest, BuildSceneObjectOverridesMeshRendererWithSkinnedMesh)
 {
-    const std::filesystem::path modelPath = NS::Core::FileSystem::ContentRoot() / "Assets" / "Models" / "CesiumMan.glb";
-    if (!std::filesystem::exists(modelPath))
-        GTEST_SKIP() << "CesiumMan.glb が無い: " << modelPath.string();
+    const std::string modelPath = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
+    if (!NS::Core::FileSystem::Exists(modelPath))
+        GTEST_SKIP() << "CesiumMan.glb が無い: " << modelPath;
 
     NS::Platform::WindowDesc wd{};
     wd.title = "ns_anim_build_order";

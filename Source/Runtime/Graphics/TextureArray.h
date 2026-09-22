@@ -4,7 +4,7 @@
 #include "Runtime/Graphics/Buffer.h"
 #include "Runtime/Graphics/D3dCommon.h"
 
-#include <filesystem>
+#include <string>
 
 namespace NS::Graphics
 {
@@ -14,7 +14,7 @@ namespace NS::Graphics
     //! テクスチャ配列の初期化パラメータ
     struct TextureArrayDesc
     {
-        std::vector<std::filesystem::path> slicePaths;
+        std::vector<std::string> slicePaths;
         bool generateMipmaps = true;
         bool sRGB = false;
     };

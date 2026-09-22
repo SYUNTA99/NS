@@ -9,7 +9,6 @@
 #include <Runtime/Object/Scene/SceneData.h>
 #include <Runtime/Object/Scene/SceneJson.h>
 #include <cmath>
-#include <filesystem>
 #include <gtest/gtest.h>
 #include <memory>
 #include <string>
@@ -32,7 +31,7 @@ namespace
 TEST(SceneRotationDrift, RepeatedCaptureRebuildKeepsExactQuaternion)
 {
     // device 無しの AssetManager でも組み立ては落ちない。mesh も material も解決できず空のまま
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
 
     const SceneNs::ObjectData object = MakeRotatedCube(NS::Core::Vector3{89.9f, 40.0f, 20.0f});
     std::unique_ptr<NS::Object::GameObject> live = SceneNs::BuildSceneObject(object, &assets);
@@ -90,7 +89,7 @@ TEST(SceneRotationDrift, RotationFieldLoadsToExpectedQuaternion)
 TEST(SceneRotationDrift, SaveWritesRotationAsQuaternionOnly)
 {
     // 1 つ目の試しと同じく device 無し
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
 
     const SceneNs::ObjectData object = MakeRotatedCube(NS::Core::Vector3{30.0f, 45.0f, 60.0f});
     std::unique_ptr<NS::Object::GameObject> live = SceneNs::BuildSceneObject(object, &assets);

@@ -17,9 +17,9 @@ namespace NS::Graphics
     {
         constexpr std::uint8_t k_MagentaPixel[4] = {0xFF, 0x00, 0xFF, 0xFF};
 
-        [[nodiscard]] bool IsDdsExtension(const std::filesystem::path& path)
+        [[nodiscard]] bool IsDdsExtension(std::string_view path)
         {
-            std::string ext = path.extension().string();
+            std::string ext = NS::Core::FileSystem::Extension(path) ;
             std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) {
                 return static_cast<char>(std::tolower(c));
             });
@@ -29,7 +29,7 @@ namespace NS::Graphics
         // 1枚の画像を読み込む。失敗した場合はスキップして処理を続行する
         [[nodiscard]] bool TryLoadSliceResource(ID3D11Device* device,
                                                 ID3D11DeviceContext* context,
-                                                const std::filesystem::path& path,
+                                                std::string_view path,
                                                 bool sRGB,
                                                 ComPtr<ID3D11Resource>& outResource) noexcept
         {
@@ -40,7 +40,7 @@ namespace NS::Graphics
             auto bytesOpt = ::NS::Core::FileSystem::ReadAllBytes(path);
             if (!bytesOpt.has_value())
             {
-                NS_LOG_WARN(Graphics, "TextureArray slice load failed: {}", path.string());
+                NS_LOG_WARN(Graphics, "TextureArray slice load failed: {}", path);
                 return false;
             }
             const auto& bytes = bytesOpt.value();
@@ -56,7 +56,7 @@ namespace NS::Graphics
                     NS_LOG_WARN(Graphics,
                                 "TextureArray slice load failed (DDS hr=0x{:08X}): {}",
                                 static_cast<unsigned>(hr),
-                                path.string());
+                                path);
                     return false;
                 }
             }
@@ -86,7 +86,7 @@ namespace NS::Graphics
                     NS_LOG_WARN(Graphics,
                                 "TextureArray slice load failed (WIC hr=0x{:08X}): {}",
                                 static_cast<unsigned>(hr),
-                                path.string());
+                                path);
                     return false;
                 }
             }
@@ -152,7 +152,7 @@ namespace NS::Graphics
             return;
         }
 
-        std::vector<std::filesystem::path> paths = desc.slicePaths;
+        std::vector<std::string> paths = desc.slicePaths;
         if (paths.size() > static_cast<std::size_t>(k_TotalSlices))
         {
             NS_LOG_WARN(Graphics,
@@ -287,7 +287,7 @@ namespace NS::Graphics
                 NS_LOG_WARN(Graphics,
                             "TextureArray: slice {} のサイズ / フォーマットが基準と不一致 (skip): {}",
                             i,
-                            paths[i].string());
+                            paths[i] );
                 anySliceFailed = true;
                 continue;
             }

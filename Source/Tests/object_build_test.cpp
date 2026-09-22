@@ -20,7 +20,6 @@
 #include <Runtime/Object/Reflection/ReflectionJson.h>
 #include <Runtime/Object/Reflection/TypeRegistry.h>
 #include <cstdint>
-#include <filesystem>
 #include <gtest/gtest.h>
 #include <string_view>
 #include <vector>
@@ -37,7 +36,7 @@ namespace
     class ObjectBuildTest : public ::testing::Test
     {
     protected:
-        NS::Object::AssetManager m_assets{std::filesystem::path{"."}};
+        NS::Object::AssetManager m_assets{std::string{"."}};
 
         std::unique_ptr<NS::Object::GameObject> Build(const ObjectData& object)
         {

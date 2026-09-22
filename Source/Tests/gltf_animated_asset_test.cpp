@@ -4,7 +4,6 @@
 #include <Runtime/Graphics/GltfLoader.h>
 #include <Runtime/Graphics/Skeleton.h>
 #include <algorithm>
-#include <filesystem>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <span>
@@ -15,13 +14,13 @@
 // 別時刻で別ポーズになることを確認する。アセットが無ければ飛ばす
 TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
 {
-    const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / "Assets" / "Models" / "CesiumMan.glb";
-    if (!std::filesystem::exists(path))
+    const std::string path = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::GetExeDirectory(), "Assets"), "Models"), "CesiumMan.glb");
+    if (!NS::Core::FileSystem::Exists(path))
     {
-        GTEST_SKIP() << "CesiumMan.glb が無い: " << path.string();
+        GTEST_SKIP() << "CesiumMan.glb が無い: " << path;
     }
 
-    const auto data = NS::Graphics::LoadGltfSkinnedMesh(path.string());
+    const auto data = NS::Graphics::LoadGltfSkinnedMesh(path);
     ASSERT_TRUE(data.IsValid());
     EXPECT_GT(data.vertices.size(), 0u);
     EXPECT_GT(data.indices.size(), 0u);
@@ -100,13 +99,13 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
 // Xbot.glb はアーマチュア節点が 0.01 倍で骨をセンチメートルで持つ。CesiumMan にこの倍率は無い
 TEST(GltfAnimatedAssetTest, XbotStandsAtHumanScale)
 {
-    const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / "Assets" / "Models" / "Xbot.glb";
-    if (!std::filesystem::exists(path))
+    const std::string path = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::GetExeDirectory(), "Assets"), "Models"), "Xbot.glb");
+    if (!NS::Core::FileSystem::Exists(path))
     {
-        GTEST_SKIP() << "Xbot.glb が無い: " << path.string();
+        GTEST_SKIP() << "Xbot.glb が無い: " << path;
     }
 
-    const auto data = NS::Graphics::LoadGltfSkinnedMesh(path.string());
+    const auto data = NS::Graphics::LoadGltfSkinnedMesh(path);
     ASSERT_TRUE(data.IsValid());
     ASSERT_GT(data.vertices.size(), 0u);
 
@@ -133,13 +132,13 @@ TEST(GltfAnimatedAssetTest, XbotStandsAtHumanScale)
 // skin 非依存のソース読込: skin を無視して node 階層＋animation だけから骨格とクリップを取る
 TEST(GltfAnimatedAssetTest, LoadsAnimationSourceSkinIndependent)
 {
-    const std::filesystem::path path = NS::Core::FileSystem::GetExeDirectory() / "Assets" / "Models" / "CesiumMan.glb";
-    if (!std::filesystem::exists(path))
+    const std::string path = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::GetExeDirectory(), "Assets"), "Models"), "CesiumMan.glb");
+    if (!NS::Core::FileSystem::Exists(path))
     {
-        GTEST_SKIP() << "CesiumMan.glb が無い: " << path.string();
+        GTEST_SKIP() << "CesiumMan.glb が無い: " << path;
     }
 
-    const auto source = NS::Graphics::LoadGltfAnimationSource(path.string());
+    const auto source = NS::Graphics::LoadGltfAnimationSource(path);
     ASSERT_TRUE(source.IsValid());
     EXPECT_GT(source.skeleton.BoneCount(), 0u);
     EXPECT_LE(source.skeleton.BoneCount(), 128u);

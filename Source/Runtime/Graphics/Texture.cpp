@@ -16,9 +16,9 @@ namespace NS::Graphics
 
     namespace
     {
-        [[nodiscard]] bool IsDdsExtension(const std::filesystem::path& path)
+        [[nodiscard]] bool IsDdsExtension(std::string_view path)
         {
-            std::string ext = path.extension().string();
+            std::string ext = NS::Core::FileSystem::Extension(path);
             std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) {
                 return static_cast<char>(std::tolower(c));
             });
@@ -69,7 +69,8 @@ namespace NS::Graphics
                 const HRESULT hr = device->CreateShaderResourceView(tex2d, nullptr, outSrv.GetAddressOf());
                 if (FAILED(hr))
                 {
-                    NS_LOG_ERROR(Graphics, "Texture: CreateShaderResourceView 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                    NS_LOG_ERROR(
+                        Graphics, "Texture: CreateShaderResourceView 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
                 }
             }
             if (bindFlags & D3D11_BIND_RENDER_TARGET)
@@ -77,7 +78,8 @@ namespace NS::Graphics
                 const HRESULT hr = device->CreateRenderTargetView(tex2d, nullptr, outRtv.GetAddressOf());
                 if (FAILED(hr))
                 {
-                    NS_LOG_ERROR(Graphics, "Texture: CreateRenderTargetView 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                    NS_LOG_ERROR(
+                        Graphics, "Texture: CreateRenderTargetView 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
                 }
             }
             if (bindFlags & D3D11_BIND_DEPTH_STENCIL)
@@ -85,7 +87,8 @@ namespace NS::Graphics
                 const HRESULT hr = device->CreateDepthStencilView(tex2d, nullptr, outDsv.GetAddressOf());
                 if (FAILED(hr))
                 {
-                    NS_LOG_ERROR(Graphics, "Texture: CreateDepthStencilView 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
+                    NS_LOG_ERROR(
+                        Graphics, "Texture: CreateDepthStencilView 失敗 (hr=0x{:X})", static_cast<unsigned>(hr));
                 }
             }
         }
@@ -170,7 +173,7 @@ namespace NS::Graphics
             ID3D11DeviceContext* ctxForMipmap = nullptr;
             if (generateMipmaps)
             {
-				ctxForMipmap = context;
+                ctxForMipmap = context;
             }
 
             UINT mipmapBindFlag = 0u;
@@ -182,7 +185,7 @@ namespace NS::Graphics
             UINT mipmapMiscFlag = 0u;
             if (generateMipmaps)
             {
-				mipmapMiscFlag = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+                mipmapMiscFlag = D3D11_RESOURCE_MISC_GENERATE_MIPS;
             }
 
             const HRESULT hr = DirectX::CreateWICTextureFromMemoryEx(device,
@@ -212,7 +215,7 @@ namespace NS::Graphics
         return std::unique_ptr<Texture>(new Texture(desc));
     }
 
-    std::unique_ptr<Texture> Texture::Create(const std::filesystem::path& path)
+    std::unique_ptr<Texture> Texture::Create(std::string_view path)
     {
         return std::unique_ptr<Texture>(new Texture(path));
     }
@@ -254,12 +257,13 @@ namespace NS::Graphics
                 }
                 else
                 {
-                    loaded = TryLoadWic(device, context, data, bytes.size(), desc.generateMipmaps, desc.sRGB, resource, m_srv);
+                    loaded = TryLoadWic(
+                        device, context, data, bytes.size(), desc.generateMipmaps, desc.sRGB, resource, m_srv);
                 }
             }
             else
             {
-                NS_LOG_ERROR(Graphics, "Texture load failed: {}", desc.path.string());
+                NS_LOG_ERROR(Graphics, "Texture load failed: {}", desc.path);
             }
         }
 
@@ -278,7 +282,7 @@ namespace NS::Graphics
         m_fallback = true;
     }
 
-    Texture::Texture(const std::filesystem::path& path) : Texture(TextureDesc{path, true, false}) {}
+    Texture::Texture(std::string_view path) : Texture(TextureDesc{std::string(path), true, false}) {}
 
     Texture::Texture(const TextureCreateDesc& desc)
     {

@@ -68,9 +68,9 @@ namespace
             return false;
         }
 
-        const auto shaderDir = ::NS::Core::FileSystem::ContentRoot() / "Shaders";
-        b.vs = NS::Graphics::Shader::Create(shaderDir / "debug_line.vs.hlsl");
-        b.ps = NS::Graphics::Shader::Create(shaderDir / "debug_line.ps.hlsl");
+        const std::string shaderDir = ::NS::Core::FileSystem::Combine(::NS::Core::FileSystem::ContentRoot(), "Shaders");
+        b.vs = NS::Graphics::Shader::Create(::NS::Core::FileSystem::Combine(shaderDir, "debug_line.vs.hlsl"));
+        b.ps = NS::Graphics::Shader::Create(::NS::Core::FileSystem::Combine(shaderDir, "debug_line.ps.hlsl"));
         if (!b.vs->IsValid() || !b.ps->IsValid())
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: shader 構築失敗");
@@ -82,7 +82,8 @@ namespace
             {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
             {"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
         };
-        const HRESULT hr = device->CreateInputLayout(layout, 2u, bytecode.data(), bytecode.size(), b.inputLayout.GetAddressOf());
+        const HRESULT hr =
+            device->CreateInputLayout(layout, 2u, bytecode.data(), bytecode.size(), b.inputLayout.GetAddressOf());
         if (FAILED(hr))
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: CreateInputLayout 失敗 (hr=0x{:08X})", static_cast<unsigned>(hr));
@@ -256,13 +257,13 @@ namespace NS::Graphics::DebugDraw
         NS::Core::Vector3 perpA;
         if (std::abs(axisN.y) < 0.99f)
         {
-            perpA = NS::Core::Vector3{ 0.0f, 1.0f, 0.0f };
+            perpA = NS::Core::Vector3{0.0f, 1.0f, 0.0f};
         }
         else
         {
-            perpA = NS::Core::Vector3{ 1.0f, 0.0f, 0.0f };
+            perpA = NS::Core::Vector3{1.0f, 0.0f, 0.0f};
         }
- 
+
         perpA = {perpA.y * axisN.z - perpA.z * axisN.y,
                  perpA.z * axisN.x - perpA.x * axisN.z,
                  perpA.x * axisN.y - perpA.y * axisN.x};

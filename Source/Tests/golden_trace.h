@@ -7,7 +7,6 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
-#include <filesystem>
 #include <iomanip>
 #include <limits>
 #include <optional>
@@ -217,9 +216,10 @@ namespace NS::Tests
     //! @brief 基準ファイルの場所を組む
     //! @param[in] name 基準の名前
     //! @return ContentRoot 下の Source/Tests/data/golden へ name.txt を足したパス
-    [[nodiscard]] inline std::filesystem::path BaselinePath(const std::string& name)
+    [[nodiscard]] inline std::string BaselinePath(const std::string& name)
     {
-        return NS::Core::FileSystem::ContentRoot() / "Source" / "Tests" / "data" / "golden" / (name + ".txt");
+        return NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(),
+                                             "Source/Tests/data/golden/" + name + ".txt");
     }
 
     //! @brief 基準ファイルを読む
@@ -239,7 +239,7 @@ namespace NS::Tests
     //! @return 探した場所と、基準を作り直すコマンド
     [[nodiscard]] inline std::string MissingBaselineMessage(const std::string& name)
     {
-        return "基準ファイルがありません: " + BaselinePath(name).string() +
+        return "基準ファイルがありません: " + BaselinePath(name) +
                "\n生成: $env:GTEST_ALSO_RUN_DISABLED_TESTS='1'; cmd /c Tools\\@run_tests.cmd nobuild Debug "
                "*Golden.DISABLED_SaveBaselines";
     }

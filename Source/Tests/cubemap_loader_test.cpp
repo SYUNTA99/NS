@@ -8,8 +8,6 @@
 
 #include <d3d11.h>
 
-#include <filesystem>
-
 namespace
 {
     using NS::Graphics::Renderer;
@@ -53,9 +51,10 @@ TEST_F(CubemapLoaderTest, LoadKurt6FacePngSucceeds)
     std::unique_ptr<Skybox> skyboxHolder = Skybox::Create();
     Skybox& skybox = *skyboxHolder;
     const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
-    const auto kurtDir = exeDir / "Assets" / "Skybox" / "kurt";
+    const auto kurtDir = NS::Core::FileSystem::Combine(
+        NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(exeDir, "Assets"), "Skybox"), "kurt");
 
-    if (!NS::Core::FileSystem::Exists(kurtDir / "space_ft.png"))
+    if (!NS::Core::FileSystem::Exists(NS::Core::FileSystem::Combine(kurtDir, "space_ft.png")))
     {
         GTEST_SKIP() << "skybox kurt PNG 未配置 (exe 隣に Assets 未コピー)";
     }
@@ -75,7 +74,7 @@ TEST_F(CubemapLoaderTest, LoadMissingPathFallsBack)
 
     std::unique_ptr<Skybox> skyboxHolder = Skybox::Create();
     Skybox& skybox = *skyboxHolder;
-    const std::filesystem::path missing = "C:/__nonexistent_ns_skybox__";
+    const std::string missing = "C:/__nonexistent_ns_skybox__";
 
     const bool ok = skybox.LoadCubemap(missing);
     EXPECT_FALSE(ok);
@@ -94,7 +93,8 @@ TEST_F(CubemapLoaderTest, LoadDdsCubemapReturnsTextureCubeDim)
     std::unique_ptr<Skybox> skyboxHolder = Skybox::Create();
     Skybox& skybox = *skyboxHolder;
     const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
-    const auto ddsPath = exeDir / "Assets" / "Skybox" / "kurt.dds";
+    const auto ddsPath = NS::Core::FileSystem::Combine(
+        NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(exeDir, "Assets"), "Skybox"), "kurt.dds");
 
     if (!NS::Core::FileSystem::Exists(ddsPath))
     {

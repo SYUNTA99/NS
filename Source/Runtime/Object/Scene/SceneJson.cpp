@@ -241,7 +241,7 @@ namespace NS::Object
         return true;
     }
 
-    bool SaveSceneToJsonFile(const SceneData& scene, const std::filesystem::path& path) noexcept
+    bool SaveSceneToJsonFile(const SceneData& scene, std::string_view path) noexcept
     {
         // 保存前の上限ガード
         if (scene.objects.size() > k_MaxObjectCount)
@@ -264,7 +264,7 @@ namespace NS::Object
         return ::NS::Core::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size()));
     }
 
-    bool LoadSceneFromJsonFile(SceneData& outScene, const std::filesystem::path& path) noexcept
+    bool LoadSceneFromJsonFile(SceneData& outScene, std::string_view path) noexcept
     {
         outScene = SceneData{};
 
@@ -279,7 +279,7 @@ namespace NS::Object
             NS_LOG_ERROR(Scene,
                          "LoadSceneFromJsonFile: file が上限 ({} byte) を超えるので reject: {}",
                          k_MaxSceneFileBytes,
-                         path.string());
+                         path);
             return false;
         }
 

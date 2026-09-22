@@ -203,12 +203,12 @@ TEST_F(SkeletalMeshLoggerTest, SkinnedShaderCompiles)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
+    const auto shaderDir = NS::Core::FileSystem::Combine(NS::Core::FileSystem::GetExeDirectory(), "Shaders");
 
     // fallback でなければ skinned VS/PS のコンパイルは成功している
-    std::unique_ptr<NS::Graphics::Shader> vsHolder = NS::Graphics::Shader::Create(shaderDir / "skinned.vs.hlsl");
+    std::unique_ptr<NS::Graphics::Shader> vsHolder = NS::Graphics::Shader::Create(NS::Core::FileSystem::Combine(shaderDir, "skinned.vs.hlsl"));
     NS::Graphics::Shader& vs = *vsHolder;
-    std::unique_ptr<NS::Graphics::Shader> psHolder = NS::Graphics::Shader::Create(shaderDir / "player.ps.hlsl");
+    std::unique_ptr<NS::Graphics::Shader> psHolder = NS::Graphics::Shader::Create(NS::Core::FileSystem::Combine(shaderDir, "player.ps.hlsl"));
     NS::Graphics::Shader& ps = *psHolder;
     EXPECT_TRUE(vs.IsValid());
     EXPECT_TRUE(ps.IsValid());
@@ -234,8 +234,8 @@ TEST_F(SkeletalMeshLoggerTest, CreateInputLayoutSucceedsWithSkinnedShader)
     ASSERT_TRUE(mesh.IsValid());
     EXPECT_EQ(mesh.InputLayout(), nullptr);
 
-    const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
-    std::unique_ptr<NS::Graphics::Shader> shaderHolder = NS::Graphics::Shader::Create(shaderDir / "skinned.vs.hlsl");
+    const auto shaderDir = NS::Core::FileSystem::Combine(NS::Core::FileSystem::GetExeDirectory(), "Shaders");
+    std::unique_ptr<NS::Graphics::Shader> shaderHolder = NS::Graphics::Shader::Create(NS::Core::FileSystem::Combine(shaderDir, "skinned.vs.hlsl"));
     NS::Graphics::Shader& shader = *shaderHolder;
     ASSERT_TRUE(shader.IsValid());
 

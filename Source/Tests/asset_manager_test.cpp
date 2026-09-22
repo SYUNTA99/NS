@@ -12,7 +12,6 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
-#include <filesystem>
 #include <format>
 #include <gtest/gtest.h>
 #include <span>
@@ -47,19 +46,21 @@ namespace
         return d;
     }
 
-    std::filesystem::path ShaderPath(const char* name)
+    std::string ShaderPath(const char* name)
     {
-        return NS::Core::FileSystem::ContentRoot() / "Shaders" / name;
+        return NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), std::string("Shaders/") + name);
     }
 
-    std::filesystem::path TexturePath(const char* name)
+    std::string TexturePath(const char* name)
     {
-        return NS::Core::FileSystem::ContentRoot() / "Assets" / "Textures" / name;
+        return NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(),
+                                             std::string("Assets/Textures/") + name);
     }
 
-    std::filesystem::path MaterialPath(const char* name)
+    std::string MaterialPath(const char* name)
     {
-        return NS::Core::FileSystem::ContentRoot() / "Assets" / "Materials" / name;
+        return NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(),
+                                             std::string("Assets/Materials/") + name);
     }
 
     std::string EncodeBase64(std::span<const std::uint8_t> bytes)
@@ -128,12 +129,15 @@ namespace
     }
 
     // ContentRoot 相対の参照。ContentRoot の外なら空
-    std::string ContentRelativeRef(const std::filesystem::path& path)
+    std::string ContentRelativeRef(std::string_view path)
     {
-        const std::filesystem::path relative = path.lexically_relative(NS::Core::FileSystem::ContentRoot());
-        if (relative.empty() || *relative.begin() == std::filesystem::path{".."})
+        const std::string contentRootNorm = NS::Core::FileSystem::Normalize(NS::Core::FileSystem::ContentRoot());
+        const std::string pathNorm = NS::Core::FileSystem::Normalize(path);
+        if (pathNorm.size() <= contentRootNorm.size() + 1 ||
+            ::_strnicmp(pathNorm.c_str(), contentRootNorm.c_str(), contentRootNorm.size()) != 0 ||
+            pathNorm[contentRootNorm.size()] != '/')
             return {};
-        return relative.generic_string();
+        return pathNorm.substr(contentRootNorm.size() + 1);
     }
 
     NS::Core::Vector3 FaceNormal(const NS::Physics::Triangle& triangle)
@@ -194,7 +198,7 @@ TEST_F(AssetManagerTest, BuiltinReturnsSameNonNullPointer)
 TEST_F(AssetManagerTest, FailedMeshLoadIsNegativeCached)
 {
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
-    const std::filesystem::path missing = "__ns_am_missing_mesh__.gltf";
+    const std::string missing = "__ns_am_missing_mesh__.gltf";
 
     EXPECT_EQ(am.GetOrLoadMesh(missing), nullptr);
     EXPECT_EQ(am.MeshCacheSize(), 1u); // 失敗を 1 件だけ負キャッシュする
@@ -235,7 +239,7 @@ TEST_F(AssetManagerTest, GltfCollisionKeepsFrontFaceInLeftHandedSpace)
     const NsTest::ScopedFixture fixture{"ns_am_collision_triangle.gltf", SingleTriangleGltf(positions)};
     const std::string ref = ContentRelativeRef(fixture.Path());
     if (ref.empty())
-        GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << fixture.Path().string();
+        GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << fixture.Path();
 
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
     const NS::Physics::MeshCollision* collision = am.GetOrLoadMeshCollision(ref);
@@ -287,7 +291,7 @@ TEST_F(AssetManagerTest, CollisionRefSpellingsShareOneRecord)
     const NsTest::ScopedFixture fixture{"ns_am_spelling_triangle.gltf", SingleTriangleGltf(positions)};
     const std::string ref = ContentRelativeRef(fixture.Path());
     if (ref.empty())
-        GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << fixture.Path().string();
+        GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << fixture.Path();
 
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
     const NS::Physics::MeshCollision* plain = am.GetOrLoadMeshCollision(ref);
@@ -304,7 +308,7 @@ TEST_F(AssetManagerTest, MeshAndCollisionReadTheGltfOnce)
     NsTest::ScopedFixture fixture{"ns_am_read_once_triangle.gltf", SingleTriangleGltf(first)};
     const std::string ref = ContentRelativeRef(fixture.Path());
     if (ref.empty())
-        GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << fixture.Path().string();
+        GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << fixture.Path();
 
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
     static_cast<void>(am.GetOrLoadMesh(fixture.Path()));
@@ -362,11 +366,11 @@ TEST(AssetManagerParseTest, FullValidJsonParsesAllFields)
     MaterialFileDesc desc{};
     std::string err;
     ASSERT_TRUE(ParseMaterialJson(json, desc, err)) << err;
-    EXPECT_EQ(desc.vertexShader.generic_string(), "Shaders/standard.vs.hlsl");
-    EXPECT_EQ(desc.pixelShader.generic_string(), "Shaders/player.ps.hlsl");
+    EXPECT_EQ(desc.vertexShader, "Shaders/standard.vs.hlsl");
+    EXPECT_EQ(desc.pixelShader, "Shaders/player.ps.hlsl");
     ASSERT_EQ(desc.textures.size(), 2u);
-    EXPECT_EQ(desc.textures[0].generic_string(), "Assets/Textures/cube_test.png");
-    EXPECT_EQ(desc.textures[1].generic_string(), "Assets/Textures/extra.png");
+    EXPECT_EQ(desc.textures[0], "Assets/Textures/cube_test.png");
+    EXPECT_EQ(desc.textures[1], "Assets/Textures/extra.png");
     EXPECT_FLOAT_EQ(desc.baseColor.x, 0.6f);
     EXPECT_FLOAT_EQ(desc.baseColor.y, 0.5f);
     EXPECT_FLOAT_EQ(desc.baseColor.z, 0.4f);
@@ -436,8 +440,8 @@ TEST_F(AssetManagerTest, LoadMaterialDedupReturnsSamePointer)
 
     AssetManager am{NS::Core::FileSystem::ContentRoot()};
     const auto matPath = MaterialPath("flat.mat");
-    if (!std::filesystem::exists(matPath))
-        GTEST_SKIP() << "flat.mat が無い: " << matPath.string();
+    if (!NS::Core::FileSystem::Exists(matPath))
+        GTEST_SKIP() << "flat.mat が無い: " << matPath;
 
     auto first = am.LoadMaterial(matPath);
     auto second = am.LoadMaterial(matPath);

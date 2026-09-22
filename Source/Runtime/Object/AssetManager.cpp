@@ -1,4 +1,4 @@
-﻿#include "Runtime/Object/AssetManager.h"
+#include "Runtime/Object/AssetManager.h"
 
 #include "Runtime/Core/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
@@ -30,19 +30,10 @@
 
 namespace NS::Object
 {
-    std::optional<std::filesystem::path> ResolveContentPath(const std::string& relative)
+    std::optional<std::string> ResolveContentPath(const std::string& relative)
     {
-        namespace fs = std::filesystem;
-        const fs::path root = NS::Core::FileSystem::ContentRoot().lexically_normal();
-        fs::path resolved = (root / relative).lexically_normal();
-        const fs::path rel = resolved.lexically_relative(root);
-
-        // ディレクトリトラバーサルの防止
-        if (rel.empty() || *rel.begin() == fs::path{".."})
-        {
-            return std::nullopt;
-        }
-        return resolved;
+        // ディレクトリトラバーサルの防止は ResolveUnder が持つ
+        return NS::Core::FileSystem::ResolveUnder(NS::Core::FileSystem::ContentRoot(), relative);
     }
 
     NS::Graphics::Mesh* ResolveMeshFromRef(AssetManager& assets, const std::string& meshRef)
@@ -55,7 +46,7 @@ namespace NS::Object
             return builtin;
         }
 
-        const std::optional<std::filesystem::path> resolved = ResolveContentPath(meshRef);
+        const std::optional<std::string> resolved = ResolveContentPath(meshRef);
         if (!resolved)
         {
             return nullptr;
@@ -228,13 +219,13 @@ namespace NS::Object
         return true;
     }
 
-    AssetManager::AssetManager(std::filesystem::path baseDir) noexcept : m_baseDir(std::move(baseDir)) {}
+    AssetManager::AssetManager(std::string baseDir) noexcept : m_baseDir(std::move(baseDir)) {}
     AssetManager::~AssetManager() = default;
 
-    NS::Graphics::Shader* AssetManager::GetOrLoadShader(const std::filesystem::path& path)
+    NS::Graphics::Shader* AssetManager::GetOrLoadShader(std::string_view path)
     {
         // 区切り文字や . / .. の表記揺れで同一ファイルが別キー扱いにならないよう正規化してから重複をまとめる
-        const std::filesystem::path key = path.lexically_normal();
+        const std::string key = NS::Core::FileSystem::Normalize(path);
         if (const auto it = m_shaders.find(key); it != m_shaders.end())
         {
             return it->second.get();
@@ -244,15 +235,15 @@ namespace NS::Object
         NS::Graphics::Shader* raw = shader.get();
         if (raw->IsUsingFallback())
         {
-            NS_LOG_ERROR(Graphics, "AssetManager: shader の読込/コンパイル失敗、 fallback 描画: {}", key.string());
+            NS_LOG_ERROR(Graphics, "AssetManager: shader の読込/コンパイル失敗、 fallback 描画: {}", key);
         }
         m_shaders.emplace(key, std::move(shader));
         return raw;
     }
 
-    NS::Graphics::Texture* AssetManager::GetOrLoadTexture(const std::filesystem::path& path)
+    NS::Graphics::Texture* AssetManager::GetOrLoadTexture(std::string_view path)
     {
-        const std::filesystem::path key = path.lexically_normal();
+        const std::string key = NS::Core::FileSystem::Normalize(path);
         if (const auto it = m_textures.find(key); it != m_textures.end())
         {
             return it->second.get();
@@ -267,9 +258,9 @@ namespace NS::Object
         return raw;
     }
 
-    AssetManager::MeshRecord& AssetManager::LoadMeshRecord(const std::filesystem::path& path)
+    AssetManager::MeshRecord& AssetManager::LoadMeshRecord(std::string_view path)
     {
-        const std::filesystem::path key = path.lexically_normal();
+        const std::string key = NS::Core::FileSystem::Normalize(path);
         if (const auto it = m_meshes.find(key); it != m_meshes.end())
         {
             return it->second;
@@ -278,10 +269,10 @@ namespace NS::Object
         // 描画と当たりのどちらを先に頼まれても両方ここで作る
         // 当たりは MeshColliderComponent が描画と同じ参照で頼む。当たりが先でも GPU mesh は描画に使われる
         MeshRecord record;
-        const NS::Graphics::MeshGeometry geom = NS::Graphics::LoadGltfMesh(key.string());
+        const NS::Graphics::MeshGeometry geom = NS::Graphics::LoadGltfMesh(key);
         if (geom.vertices.empty() || geom.indices.empty())
         {
-            NS_LOG_WARN(Graphics, "AssetManager: mesh の読込失敗 / 空: {}", key.string());
+            NS_LOG_WARN(Graphics, "AssetManager: mesh の読込失敗 / 空: {}", key);
         }
         else
         {
@@ -291,7 +282,7 @@ namespace NS::Object
                 NS_LOG_ERROR(
                     Graphics,
                     "AssetManager: mesh の GPU 生成失敗。 描画は cube へフォールバックし、 当たりは本物の形のまま: {}",
-                    key.string());
+                    key);
             }
             else
             {
@@ -308,7 +299,7 @@ namespace NS::Object
         return m_meshes.emplace(key, std::move(record)).first->second;
     }
 
-    NS::Graphics::Mesh* AssetManager::GetOrLoadMesh(const std::filesystem::path& path)
+    NS::Graphics::Mesh* AssetManager::GetOrLoadMesh(std::string_view path)
     {
         return LoadMeshRecord(path).mesh.get();
     }
@@ -337,7 +328,7 @@ namespace NS::Object
             return WithShape(it->second.get());
         }
 
-        const std::optional<std::filesystem::path> resolved = ResolveContentPath(meshRef);
+        const std::optional<std::string> resolved = ResolveContentPath(meshRef);
         if (!resolved)
         {
             return nullptr;
@@ -345,23 +336,23 @@ namespace NS::Object
         return WithShape(LoadMeshRecord(*resolved).collision.get());
     }
 
-    LoadedSkinnedModel AssetManager::GetOrLoadSkinnedModel(const std::filesystem::path& path)
+    LoadedSkinnedModel AssetManager::GetOrLoadSkinnedModel(std::string_view path)
     {
-        const std::filesystem::path key = path.lexically_normal();
+        const std::string key = NS::Core::FileSystem::Normalize(path);
         auto it = m_skinnedModels.find(key);
         if (it == m_skinnedModels.end())
         {
             // glTF から skinned mesh を読む
-            NS::Graphics::SkinnedMeshData data = NS::Graphics::LoadGltfSkinnedMesh(key.string());
+            NS::Graphics::SkinnedMeshData data = NS::Graphics::LoadGltfSkinnedMesh(key);
             if (!data.IsValid())
             {
-                NS_LOG_ERROR(Graphics, "AssetManager: skinned glTF 読込失敗: {}", key.string());
+                NS_LOG_ERROR(Graphics, "AssetManager: skinned glTF 読込失敗: {}", key);
                 return LoadedSkinnedModel{};
             }
 
             if (data.vertices.empty())
             {
-                NS_LOG_ERROR(Graphics, "AssetManager: skinned mesh に頂点が無い: {}", key.string());
+                NS_LOG_ERROR(Graphics, "AssetManager: skinned mesh に頂点が無い: {}", key);
                 return LoadedSkinnedModel{};
             }
 
@@ -378,7 +369,7 @@ namespace NS::Object
             if (record.mesh == nullptr || !record.mesh->IsValid())
             {
                 // GPU buffer 生成に失敗。壊れた mesh をキャッシュせず無効を返し、Draw が無音で何もしないのを防ぐ
-                NS_LOG_ERROR(Graphics, "AssetManager: skinned mesh の GPU 生成失敗: {}", key.string());
+                NS_LOG_ERROR(Graphics, "AssetManager: skinned mesh の GPU 生成失敗: {}", key);
                 return LoadedSkinnedModel{};
             }
 
@@ -396,19 +387,19 @@ namespace NS::Object
         return out;
     }
 
-    const NS::Graphics::AnimationSource* AssetManager::GetOrLoadAnimationSource(const std::filesystem::path& path)
+    const NS::Graphics::AnimationSource* AssetManager::GetOrLoadAnimationSource(std::string_view path)
     {
-        const std::filesystem::path key = path.lexically_normal();
+        const std::string key = NS::Core::FileSystem::Normalize(path);
         // null エントリは負キャッシュした失敗 path を表す。get() が nullptr を返し再読込を短絡する
         if (const auto it = m_animationSources.find(key); it != m_animationSources.end())
         {
             return it->second.get();
         }
 
-        NS::Graphics::AnimationSource source = NS::Graphics::LoadGltfAnimationSource(key.string());
+        NS::Graphics::AnimationSource source = NS::Graphics::LoadGltfAnimationSource(key);
         if (!source.IsValid())
         {
-            NS_LOG_WARN(Graphics, "AssetManager: アニメーション glTF の読込失敗 / 空: {}", key.string());
+            NS_LOG_WARN(Graphics, "AssetManager: アニメーション glTF の読込失敗 / 空: {}", key);
             // 壊れた path を負キャッシュし、毎回ディスクを読むのを防ぐ。再試行は Clear() から
             m_animationSources.emplace(key, nullptr);
             return nullptr;
@@ -420,11 +411,11 @@ namespace NS::Object
         return raw;
     }
 
-    const std::vector<NS::Graphics::AnimationClip>* AssetManager::GetOrLoadBoundClips(
-        const std::filesystem::path& clipPath, const std::filesystem::path& modelPath)
+    const std::vector<NS::Graphics::AnimationClip>* AssetManager::GetOrLoadBoundClips(std::string_view clipPath,
+                                                                                      std::string_view modelPath)
     {
-        const std::pair<std::filesystem::path, std::filesystem::path> key{clipPath.lexically_normal(),
-                                                                          modelPath.lexically_normal()};
+        const std::pair<std::string, std::string> key{NS::Core::FileSystem::Normalize(clipPath),
+                                                      NS::Core::FileSystem::Normalize(modelPath)};
         if (const auto it = m_boundClips.find(key); it != m_boundClips.end())
         {
             return it->second.get();
@@ -472,9 +463,9 @@ namespace NS::Object
         return nullptr;
     }
 
-    LoadedMaterial AssetManager::LoadMaterial(const std::filesystem::path& matPath)
+    LoadedMaterial AssetManager::LoadMaterial(std::string_view matPath)
     {
-        const std::filesystem::path matKey = matPath.lexically_normal();
+        const std::string matKey = NS::Core::FileSystem::Normalize(matPath);
         if (const auto it = m_materials.find(matKey); it != m_materials.end())
         {
             return LoadedMaterial{it->second.material.get(), it->second.baseColor};
@@ -484,7 +475,7 @@ namespace NS::Object
         const auto textOpt = NS::Core::FileSystem::ReadAllText(matKey);
         if (!textOpt)
         {
-            NS_LOG_ERROR(Graphics, "AssetManager: .mat 読込失敗: {}", matKey.string());
+            NS_LOG_ERROR(Graphics, "AssetManager: .mat 読込失敗: {}", matKey);
             return LoadedMaterial{};
         }
 
@@ -493,18 +484,12 @@ namespace NS::Object
         std::string parseError;
         if (!ParseMaterialJson(*textOpt, fileDesc, parseError))
         {
-            NS_LOG_ERROR(Graphics, "AssetManager: .mat 解析失敗 ({}): {}", parseError, matKey.string());
+            NS_LOG_ERROR(Graphics, "AssetManager: .mat 解析失敗 ({}): {}", parseError, matKey);
             return LoadedMaterial{};
         }
 
-        // 相対 path は構築時の baseDir 基準で解決する
-        const auto resolve = [this](const std::filesystem::path& p) -> std::filesystem::path {
-            if (p.is_absolute())
-            {
-                return p;
-            }
-            return m_baseDir / p;
-        };
+        // 相対 path は構築時の baseDir 基準で解決する。絶対 / ドライブ相対は Combine が baseDir を捨てて通す
+        const auto resolve = [this](std::string_view p) { return NS::Core::FileSystem::Combine(m_baseDir, p); };
 
         NS::Graphics::Shader* vertexShader = GetOrLoadShader(resolve(fileDesc.vertexShader));
         NS::Graphics::Shader* pixelShader = GetOrLoadShader(resolve(fileDesc.pixelShader));
@@ -536,10 +521,14 @@ namespace NS::Object
 
     void AssetManager::RegisterSharedMaterials()
     {
-        const auto shaderPath = [this](const char* name) { return m_baseDir / "Shaders" / name; };
+        const auto shaderPath = [this](const char* name) {
+            return NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(m_baseDir, "Shaders"), name);
+        };
         NS::Graphics::Shader* standardVS = GetOrLoadShader(shaderPath("standard.vs.hlsl"));
         NS::Graphics::Shader* playerPS = GetOrLoadShader(shaderPath("player.ps.hlsl"));
-        NS::Graphics::Texture* baseTexture = GetOrLoadTexture(m_baseDir / "Assets" / "Textures" / "cube_test.png");
+        NS::Graphics::Texture* baseTexture = GetOrLoadTexture(NS::Core::FileSystem::Combine(
+            NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(m_baseDir, "Assets"), "Textures"),
+            "cube_test.png"));
 
         // CB は slot 0 で MeshRendererComponent が流す FrameCB に合わせる
         NS::Graphics::MaterialDesc base{};
@@ -582,14 +571,14 @@ namespace NS::Object
         return nullptr;
     }
 
-    bool AssetManager::Reload(const std::filesystem::path& path)
+    bool AssetManager::Reload(std::string_view path)
     {
-        const std::filesystem::path key = path.lexically_normal();
+        const std::string key = NS::Core::FileSystem::Normalize(path);
         if (const auto it = m_shaders.find(key); it != m_shaders.end())
         {
             return it->second->Reload();
         }
-        NS_LOG_WARN(Graphics, "AssetManager::Reload: 未キャッシュの path: {}", key.string());
+        NS_LOG_WARN(Graphics, "AssetManager::Reload: 未キャッシュの path: {}", key);
         return false;
     }
 

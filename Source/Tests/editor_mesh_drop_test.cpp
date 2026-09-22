@@ -28,7 +28,7 @@ TEST(EditorMeshDrop, DroppedMeshCollidesWithItsOwnTriangles)
     NS::Object::Scene scene;
     LevelEditorController editor(&scene);
 
-    editor.AddObjectWithMesh(NS::Core::FileSystem::ContentRoot() / "Assets" / "Models" / "__ns_missing_terrain__.glb");
+    editor.AddObjectWithMesh(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), "Models"), "__ns_missing_terrain__.glb"));
 
     NS::Object::GameObject* placed = FindFirstPlaced(scene.Objects());
     ASSERT_NE(placed, nullptr);

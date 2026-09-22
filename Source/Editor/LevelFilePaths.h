@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -19,7 +18,7 @@ namespace NS::Editor
     [[nodiscard]] std::string SanitizeLevelPath(std::string_view relativePath) noexcept;
 
     //! @brief レベルデータの置き場を絶対パスで取得する
-    [[nodiscard]] std::filesystem::path GetScenesDirectory() noexcept;
+    [[nodiscard]] std::string GetScenesDirectory() noexcept;
 
     //! @brief 区切りの無い素の名前を Scenes/ 配下の識別子に直す
     //! @details 保存と起動読込が同じファイルを指すよう、素の名前の置き場を Scenes/ に固定する
@@ -29,7 +28,7 @@ namespace NS::Editor
     //! @brief レベル名から Assets/<相対パス>.scene のフルパスを組む
     //! @details 区切りの無い素の名前は Scenes/ 配下として解決する
     //! @return 構築に失敗した場合は std::nullopt を返す
-    [[nodiscard]] std::optional<std::filesystem::path> BuildLevelPath(std::string_view name) noexcept;
+    [[nodiscard]] std::optional<std::string> BuildLevelPath(std::string_view name) noexcept;
 
     //! @brief レベル保存用ディレクトリが存在することを確認し、なければ作成する
     //! @return 作成に失敗した場合は false を返す

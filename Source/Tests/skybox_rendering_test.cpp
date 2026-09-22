@@ -6,7 +6,8 @@
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/Skybox.h>
 #include <Runtime/Platform/Window.h>
-#include <filesystem>
+
+#include <string>
 
 namespace
 {
@@ -105,8 +106,8 @@ TEST_F(SkyboxRenderingTest, DrawSkyWithEmptyPathDrawsNothing)
 
     // cubemap を指定していないシーンは空を描かない。装置の構築にも入らない
     NS::Graphics::Camera camera{};
-    renderer.DrawSky(camera, std::filesystem::path{});
-    renderer.DrawSky(camera, std::filesystem::path{});
+    renderer.DrawSky(camera, std::string{});
+    renderer.DrawSky(camera, std::string{});
     SUCCEED();
 }
 
@@ -119,7 +120,7 @@ TEST_F(SkyboxRenderingTest, DrawSkyIgnoresPathOutsideContentRoot)
 
     // ContentRoot の外を指すパスは読まずに拒否し、二度目は警告も出さない
     NS::Graphics::Camera camera{};
-    const std::filesystem::path outside{"../outside/sky"};
+    const std::string outside{"../outside/sky"};
     renderer.DrawSky(camera, outside);
     renderer.DrawSky(camera, outside);
     SUCCEED();

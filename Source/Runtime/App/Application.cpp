@@ -215,10 +215,9 @@ namespace NS::App
             // 1フレームの更新が多すぎる場合は警告を出す
             if (steps >= 2)
             {
-                const auto now = std::chrono::steady_clock::now();
-                const auto since =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastStutterWarnAt).count();
-                if (since >= 1000)
+                const std::int64_t now = NS::Core::Clock::Now();
+                const double since = NS::Core::Clock::SecondsBetween(m_lastStutterWarnAt, now);
+                if (since >= 1.0)
                 {
                     NS_LOG_WARN(App, "Frame drop indicator: {} fixed steps in single frame", steps);
                     m_lastStutterWarnAt = now;

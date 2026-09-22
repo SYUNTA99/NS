@@ -78,9 +78,9 @@ namespace NS::Editor
         return result;
     }
 
-    std::filesystem::path GetScenesDirectory() noexcept
+    std::string GetScenesDirectory() noexcept
     {
-        return NS::Core::FileSystem::ContentRoot() / "Assets" / "Scenes";
+        return NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets/Scenes");
     }
 
     std::string QualifyLevelPath(std::string_view sanitizedPath) noexcept
@@ -90,13 +90,14 @@ namespace NS::Editor
         return "Scenes/" + std::string{sanitizedPath};
     }
 
-    std::optional<std::filesystem::path> BuildLevelPath(std::string_view name) noexcept
+    std::optional<std::string> BuildLevelPath(std::string_view name) noexcept
     {
         const auto safe = SanitizeLevelPath(name);
         if (safe.empty())
             return std::nullopt;
-        return NS::Core::FileSystem::ResolveUnder(NS::Core::FileSystem::ContentRoot() / "Assets",
-                                                  QualifyLevelPath(safe) + ".scene");
+        return NS::Core::FileSystem::ResolveUnder(
+            NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"),
+            QualifyLevelPath(safe) + ".scene");
     }
 
     bool EnsureScenesDirectoryExists() noexcept
@@ -115,15 +116,16 @@ namespace NS::Editor
     std::vector<std::string> EnumerateLevelFiles() noexcept
     {
         std::vector<std::string> result;
-        const auto assetsDir = NS::Core::FileSystem::ContentRoot() / "Assets";
+        const std::string assetsDir = NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets");
         if (!NS::Core::FileSystem::Exists(assetsDir))
             return result;
 
-        for (const auto& path : NS::Core::FileSystem::ListFilesRecursive(assetsDir, ".scene"))
+        for (const std::string& path : NS::Core::FileSystem::ListFilesRecursive(assetsDir, ".scene"))
         {
-            auto rel = path.lexically_relative(assetsDir);
-            rel.replace_extension();
-            std::string relStr = rel.generic_string();
+            // ListFilesRecursive は assetsDir を Combine で頭に付けて返すので、先頭 + 区切り 1 文字を削ると相対になる
+            std::string relStr = path.substr(assetsDir.size() + 1);
+            const std::string extension = NS::Core::FileSystem::Extension(relStr);
+            relStr.resize(relStr.size() - extension.size());
             if (!SanitizeLevelPath(relStr).empty())
             {
                 result.push_back(std::move(relStr));

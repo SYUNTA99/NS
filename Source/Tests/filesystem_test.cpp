@@ -1,20 +1,37 @@
 #include <Runtime/Core/Filesystem.h>
 #include <Runtime/Core/Logger.h>
+#include <Runtime/Core/StringUtils.h>
+#include <array>
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
 #include <string>
 #include <vector>
 
+#include <windows.h>
+
 namespace
 {
-    //! 実時刻ナノ秒とテスト名からテスト用のユニークな一時パスを生成する
-    std::filesystem::path MakeTempPath(const std::string& suffix)
+    //! steady_clock のナノ秒と suffix から、他のテストと重複しない一時パスを作る
+    std::string MakeTempPath(const std::string& suffix)
     {
         const auto ns =
             std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch())
                 .count();
-        return std::filesystem::temp_directory_path() / ("ns_fstest_" + std::to_string(ns) + "_" + suffix);
+        std::array<wchar_t, MAX_PATH> buffer{};
+        ::GetTempPathW(static_cast<DWORD>(buffer.size()), buffer.data());
+        const std::string tempDir = NS::Core::StringUtils::Utf8FromWide(buffer.data());
+        return NS::Core::FileSystem::Combine(tempDir, "ns_fstest_" + std::to_string(ns) + "_" + suffix);
+    }
+
+    void RemoveAllForTest(const std::string& path)
+    {
+        for (const std::string& file : NS::Core::FileSystem::ListFiles(path))
+            ::DeleteFileW(NS::Core::StringUtils::WideFromUtf8(file).c_str());
+        for (const std::string& dir : NS::Core::FileSystem::ListDirectories(path))
+            RemoveAllForTest(dir);
+        ::RemoveDirectoryW(NS::Core::StringUtils::WideFromUtf8(path).c_str());
     }
 } // namespace
 
@@ -34,30 +51,30 @@ TEST(NsCoreFileSystem, ExistsReturnsFalseForMissingFile)
 TEST(NsCoreFileSystem, CreateDirectoryThenExistsReturnsTrue)
 {
     const auto root = MakeTempPath("dir");
-    const auto dir = root / "nested" / "deep";
+    const auto dir = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(root, "nested"), "deep");
     ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(dir));
     EXPECT_TRUE(NS::Core::FileSystem::Exists(dir));
-    std::filesystem::remove_all(root);
+    RemoveAllForTest(root);
 }
 
 TEST(NsCoreFileSystem, ResolveUnderReturnsAbsoluteInsideBase)
 {
-    const std::filesystem::path base = "C:/content";
+    const std::string base = "C:/content";
     const auto resolved = NS::Core::FileSystem::ResolveUnder(base, "Assets/Skybox/kurt/");
     ASSERT_TRUE(resolved.has_value());
-    EXPECT_EQ(*resolved, std::filesystem::path("C:/content/Assets/Skybox/kurt/").lexically_normal());
+    EXPECT_EQ(*resolved, "C:/content/Assets/Skybox/kurt");
 }
 
 TEST(NsCoreFileSystem, ResolveUnderRejectsAbsolutePath)
 {
-    const std::filesystem::path base = "C:/content";
+    const std::string base = "C:/content";
     EXPECT_FALSE(NS::Core::FileSystem::ResolveUnder(base, "D:/evil/path").has_value());
     EXPECT_FALSE(NS::Core::FileSystem::ResolveUnder(base, "C:/content/Assets").has_value());
 }
 
 TEST(NsCoreFileSystem, ResolveUnderRejectsEscapeAboveBase)
 {
-    const std::filesystem::path base = "C:/content";
+    const std::string base = "C:/content";
     EXPECT_FALSE(NS::Core::FileSystem::ResolveUnder(base, "../outside").has_value());
     EXPECT_FALSE(NS::Core::FileSystem::ResolveUnder(base, "a/../../outside").has_value());
     // ドライブ相対も base 配下を保証できないので拒否
@@ -66,10 +83,10 @@ TEST(NsCoreFileSystem, ResolveUnderRejectsEscapeAboveBase)
 
 TEST(NsCoreFileSystem, ResolveUnderAllowsInternalDotDot)
 {
-    const std::filesystem::path base = "C:/content";
+    const std::string base = "C:/content";
     const auto resolved = NS::Core::FileSystem::ResolveUnder(base, "a/../b");
     ASSERT_TRUE(resolved.has_value());
-    EXPECT_EQ(*resolved, std::filesystem::path("C:/content/b"));
+    EXPECT_EQ(*resolved, "C:/content/b");
 }
 
 TEST(NsCoreFileSystem, WriteAndReadAllBytesRoundTrip)
@@ -87,7 +104,7 @@ TEST(NsCoreFileSystem, WriteAndReadAllBytesRoundTrip)
     ASSERT_TRUE(read.has_value());
     EXPECT_EQ(*read, original);
 
-    std::filesystem::remove(path);
+    ::DeleteFileW(NS::Core::StringUtils::WideFromUtf8(path).c_str());
 }
 
 TEST(NsCoreFileSystem, WriteAndReadAllTextRoundTrip)
@@ -104,7 +121,7 @@ TEST(NsCoreFileSystem, WriteAndReadAllTextRoundTrip)
     ASSERT_TRUE(read.has_value());
     EXPECT_EQ(*read, original);
 
-    std::filesystem::remove(path);
+    ::DeleteFileW(NS::Core::StringUtils::WideFromUtf8(path).c_str());
 }
 
 TEST_F(FileSystemLoggerTest, ReadAllBytesReturnsNulloptForMissingFile)
@@ -119,7 +136,7 @@ TEST(NsCoreFileSystem, GetExeDirectoryReturnsExistingPath)
     const auto dir = NS::Core::FileSystem::GetExeDirectory();
     EXPECT_FALSE(dir.empty());
     EXPECT_TRUE(NS::Core::FileSystem::Exists(dir));
-    EXPECT_TRUE(dir.is_absolute());
+    EXPECT_TRUE(dir.size() >= 2 && dir[1] == ':');
 }
 
 TEST(NsCoreFileSystem, ListFilesFiltersByExtension)
@@ -128,19 +145,19 @@ TEST(NsCoreFileSystem, ListFilesFiltersByExtension)
     ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(dir));
 
     const std::vector<std::byte> data = {std::byte{0x01}};
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(dir / "a.scene", data));
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(dir / "b.scene", data));
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(dir / "c.txt", data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(NS::Core::FileSystem::Combine(dir, "a.scene"), data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(NS::Core::FileSystem::Combine(dir, "b.scene"), data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(NS::Core::FileSystem::Combine(dir, "c.txt"), data));
 
     const auto levels = NS::Core::FileSystem::ListFiles(dir, ".scene");
     EXPECT_EQ(levels.size(), 2u);
     for (const auto& p : levels)
-        EXPECT_EQ(p.extension(), ".scene");
+        EXPECT_EQ(NS::Core::FileSystem::Extension(p), ".scene");
 
     const auto all = NS::Core::FileSystem::ListFiles(dir);
     EXPECT_EQ(all.size(), 3u);
 
-    std::filesystem::remove_all(dir);
+    RemoveAllForTest(dir);
 }
 
 TEST_F(FileSystemLoggerTest, ListFilesReturnsEmptyForMissingDirectory)
@@ -157,32 +174,38 @@ TEST(NsCoreFileSystem, ListFilesMatchesExtensionCaseInsensitive)
 
     const std::vector<std::byte> data = {std::byte{0x01}};
     // Windows のファイルシステムは大文字小文字を区別しないので、列挙の絞り込みも区別しない
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(dir / "upper.SCENE", data));
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(dir / "mixed.Scene", data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(NS::Core::FileSystem::Combine(dir, "upper.SCENE"), data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(NS::Core::FileSystem::Combine(dir, "mixed.Scene"), data));
 
     EXPECT_EQ(NS::Core::FileSystem::ListFiles(dir, ".scene").size(), 2u);
     EXPECT_EQ(NS::Core::FileSystem::ListFilesRecursive(dir, ".scene").size(), 2u);
 
-    std::filesystem::remove_all(dir);
+    RemoveAllForTest(dir);
 }
 
 TEST(NsCoreFileSystem, ListFilesRecursiveFindsNestedFiles)
 {
     const auto root = MakeTempPath("recurdir");
-    ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(root / "sub" / "deep"));
+    ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(
+        NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(root, "sub"), "deep")));
 
     const std::vector<std::byte> data = {std::byte{0x01}};
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(root / "top.scene", data));
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(root / "sub" / "mid.scene", data));
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(root / "sub" / "deep" / "low.scene", data));
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(root / "sub" / "note.txt", data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(NS::Core::FileSystem::Combine(root, "top.scene"), data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(
+        NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(root, "sub"), "mid.scene"), data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(
+        NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(root, "sub"), "deep"),
+                                      "low.scene"),
+        data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(
+        NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(root, "sub"), "note.txt"), data));
 
     const auto scenes = NS::Core::FileSystem::ListFilesRecursive(root, ".scene");
     EXPECT_EQ(scenes.size(), 3u);
     for (const auto& p : scenes)
-        EXPECT_EQ(p.extension(), ".scene");
+        EXPECT_EQ(NS::Core::FileSystem::Extension(p), ".scene");
 
-    std::filesystem::remove_all(root);
+    RemoveAllForTest(root);
 }
 
 TEST_F(FileSystemLoggerTest, ListFilesRecursiveReturnsEmptyForMissingDirectory)
@@ -194,17 +217,17 @@ TEST_F(FileSystemLoggerTest, ListFilesRecursiveReturnsEmptyForMissingDirectory)
 TEST(NsCoreFileSystem, ListDirectoriesReturnsOnlySubdirectories)
 {
     const auto root = MakeTempPath("listdirs");
-    ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(root / "sub1"));
-    ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(root / "sub2"));
+    ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(NS::Core::FileSystem::Combine(root, "sub1")));
+    ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(NS::Core::FileSystem::Combine(root, "sub2")));
     const std::vector<std::byte> data = {std::byte{0x01}};
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(root / "file.txt", data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(NS::Core::FileSystem::Combine(root, "file.txt"), data));
 
     const auto dirs = NS::Core::FileSystem::ListDirectories(root);
     EXPECT_EQ(dirs.size(), 2u);
     for (const auto& p : dirs)
-        EXPECT_TRUE(std::filesystem::is_directory(p));
+        EXPECT_TRUE(NS::Core::FileSystem::IsDirectory(p));
 
-    std::filesystem::remove_all(root);
+    RemoveAllForTest(root);
 }
 
 TEST_F(FileSystemLoggerTest, ListDirectoriesReturnsEmptyForMissingDirectory)
@@ -218,12 +241,89 @@ TEST(NsCoreFileSystem, IsDirectoryDistinguishesDirectoryFromFileAndMissing)
     const auto root = MakeTempPath("isdir");
     ASSERT_TRUE(NS::Core::FileSystem::CreateDirectories(root));
     const std::vector<std::byte> data = {std::byte{0x01}};
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(root / "file.txt", data));
+    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(NS::Core::FileSystem::Combine(root, "file.txt"), data));
 
     EXPECT_TRUE(NS::Core::FileSystem::IsDirectory(root));
     // 通常ファイルと不存在はともに false。後者は Skybox がフォールバックへ落ちる経路
-    EXPECT_FALSE(NS::Core::FileSystem::IsDirectory(root / "file.txt"));
-    EXPECT_FALSE(NS::Core::FileSystem::IsDirectory(root / "missing"));
+    EXPECT_FALSE(NS::Core::FileSystem::IsDirectory(NS::Core::FileSystem::Combine(root, "file.txt")));
+    EXPECT_FALSE(NS::Core::FileSystem::IsDirectory(NS::Core::FileSystem::Combine(root, "missing")));
 
-    std::filesystem::remove_all(root);
+    RemoveAllForTest(root);
+}
+
+TEST(NsCoreFileSystemPath, CombineDoesNotDoubleTheSeparator)
+{
+    EXPECT_EQ(NS::Core::FileSystem::Combine("Assets", "a.png"), "Assets/a.png");
+    EXPECT_EQ(NS::Core::FileSystem::Combine("Assets/", "a.png"), "Assets/a.png");
+    EXPECT_EQ(NS::Core::FileSystem::Combine("Assets\\", "a.png"), "Assets\\a.png");
+    EXPECT_EQ(NS::Core::FileSystem::Combine("", "a.png"), "a.png");
+    EXPECT_EQ(NS::Core::FileSystem::Combine("Assets", ""), "Assets/");
+}
+
+TEST(NsCoreFileSystemPath, CombineTakesTheRightSideWhenItIsAbsolute)
+{
+    // 右が絶対パスの時の扱いを operator/ に合わせる
+    EXPECT_EQ(NS::Core::FileSystem::Combine("Assets", "C:/tmp/a.png"), "C:/tmp/a.png");
+    EXPECT_EQ(NS::Core::FileSystem::Combine("Assets", "/a.png"), "/a.png");
+}
+
+TEST(NsCoreFileSystemPath, CombineMatchesTheStandardOperator)
+{
+    const std::vector<std::pair<std::string, std::string>> samples = {
+        {"Assets", "a.png"},
+        {"Assets/", "a.png"},
+        {"Assets\\", "a.png"},
+        {"", "a.png"},
+        {"Assets", ""},
+        {"Assets", "sub/b.png"},
+        {"Assets", "C:/tmp/a.png"},
+        {"Assets", "/a.png"},
+        {"C:/NS", "C:x"},
+        {"C:/NS", "D:/x"},
+        {"C:/NS", "C:/NS/a"},
+    };
+
+    const auto toSlash = [](std::string text) {
+        for (char& c : text)
+        {
+            if (c == '\\')
+            {
+                c = '/';
+            }
+        }
+        return text;
+    };
+
+    for (const auto& [base, relative] : samples)
+    {
+        const std::filesystem::path expected = std::filesystem::path(base) / relative;
+        EXPECT_EQ(toSlash(NS::Core::FileSystem::Combine(base, relative)), toSlash(expected.string()))
+            << base << " + " << relative;
+    }
+}
+
+TEST(NsCoreFileSystemPath, PartsMatchTheStandardPath)
+{
+    // 標準とずれても例外は出ないので、同じ結果になることをここで試す
+    const std::vector<std::string> samples = {
+        "Assets/Models/Xbot.glb",
+        "Assets/a.tar.gz",
+        "Assets/.hidden",
+        "a.png",
+        "Assets/",
+        "C:/x/y.z",
+        "Assets/noext",
+        "C:/y.z",
+        "/a.png",
+        "Assets\\b.png",
+    };
+
+    for (const std::string& sample : samples)
+    {
+        const std::filesystem::path expected = sample;
+        EXPECT_EQ(NS::Core::FileSystem::Extension(sample), expected.extension().string()) << sample;
+        EXPECT_EQ(NS::Core::FileSystem::FileName(sample), expected.filename().string()) << sample;
+        EXPECT_EQ(NS::Core::FileSystem::Stem(sample), expected.stem().string()) << sample;
+        EXPECT_EQ(NS::Core::FileSystem::ParentDirectory(sample), expected.parent_path().string()) << sample;
+    }
 }

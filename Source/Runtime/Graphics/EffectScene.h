@@ -9,7 +9,6 @@
 #pragma warning(pop)
 
 #include <cstdint>
-#include <filesystem>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -22,7 +21,7 @@ namespace NS::Graphics
     //! @brief EffectScene の構築パラメータ
     struct EffectSceneDesc
     {
-        std::filesystem::path effectRoot; //!< Preload が .efkefc を探すディレクトリ
+        std::string effectRoot; //!< Preload が .efkefc を探すディレクトリ
     };
 
     //! @brief EffectScene::Play が返す、再生したエフェクトのハンドル
@@ -38,7 +37,7 @@ namespace NS::Graphics
     //! @brief EffectScene::Play の再生パラメータ
     struct EffectPlayDesc
     {
-        std::string_view name;                        //!< Preload に渡した名前
+        std::string name;                             //!< Preload に渡した名前
         NS::Core::Vector3 position{0.0f, 0.0f, 0.0f}; //!< 再生位置のワールド座標
     };
 
@@ -95,7 +94,7 @@ namespace NS::Graphics
         EffekseerRenderer::RendererRef m_renderer;
         std::unordered_map<std::string, Effekseer::EffectRef> m_effects;
         std::unordered_set<std::string> m_warnedMissing;
-        std::filesystem::path m_effectRoot;
+        std::string m_effectRoot;
         float m_elapsedSeconds = 0.0f;
     };
 } // namespace NS::Graphics

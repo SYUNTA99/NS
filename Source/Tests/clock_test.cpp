@@ -1,7 +1,7 @@
-﻿#include <chrono>
-#include <gtest/gtest.h>
-#include <Runtime/Core/Clock.h>
+﻿#include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Logger.h>
+#include <chrono>
+#include <gtest/gtest.h>
 #include <thread>
 
 class ClockLoggerTest : public ::testing::Test
@@ -24,6 +24,18 @@ TEST(NsCoreClock, ElapsedSecondsIsMonotonic)
     const double t2 = NS::Core::Clock::ElapsedSeconds();
     EXPECT_GE(t2, t1);
     EXPECT_GE(t1, 0.0);
+}
+
+TEST(NsCoreClock, SecondsBetweenMatchesSleepDuration)
+{
+    const std::int64_t t1 = NS::Core::Clock::Now();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    const std::int64_t t2 = NS::Core::Clock::Now();
+
+    // 見張るのは周波数の取り違えで、外れる時は桁で外れる。sleep は延びる側にぶれるため上限を広く取る
+    const double seconds = NS::Core::Clock::SecondsBetween(t1, t2);
+    EXPECT_GT(seconds, 0.03);
+    EXPECT_LT(seconds, 0.5);
 }
 
 TEST(NsCoreFrameTimer, TickAdvancesState)

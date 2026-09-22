@@ -1,5 +1,6 @@
 #include "Runtime/Graphics/EffectScene.h"
 
+#include "Runtime/Core/Filesystem.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/StringUtils.h"
 #include "Runtime/Graphics/Camera.h"
@@ -173,16 +174,16 @@ namespace NS::Graphics
             return true;
         }
 
-        std::filesystem::path path = m_effectRoot / NS::Core::StringUtils::WideFromUtf8(name);
-        path += L".efkefc";
-        const std::u16string pathU16 = path.u16string();
+        const std::string path = NS::Core::FileSystem::Combine(m_effectRoot, std::string(name) + ".efkefc");
+        const std::wstring pathWide = NS::Core::StringUtils::WideFromUtf8(path);
+        const std::u16string pathU16(pathWide.begin(), pathWide.end());
 
         Effekseer::EffectRef effect = Effekseer::Effect::Create(m_manager, pathU16.c_str());
         if (effect == nullptr)
         {
             NS_LOG_ERROR(Graphics,
                          "EffectScene::Preload: エフェクトを読めなかった ({})",
-                         NS::Core::StringUtils::Utf8FromWide(path.wstring()));
+                         NS::Core::StringUtils::Utf8FromWide(pathWide));
             return false;
         }
         if (CountMissingResources(effect) > 0)
@@ -201,7 +202,7 @@ namespace NS::Graphics
             return EffectHandle{};
         }
 
-        const auto found = m_effects.find(std::string(desc.name));
+        const auto found = m_effects.find(desc.name);
         if (found == m_effects.end())
         {
             // 続けて呼ばれてもログを埋めないよう、警告は名前ごとに 1 回

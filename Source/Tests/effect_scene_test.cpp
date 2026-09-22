@@ -60,7 +60,7 @@ namespace
     EffectSceneDesc MakeEffectSceneDesc()
     {
         EffectSceneDesc d{};
-        d.effectRoot = NS::Core::FileSystem::ContentRoot() / "Source" / "Tests" / "data" / "effects";
+        d.effectRoot = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Source"), "Tests"), "data"), "effects");
         return d;
     }
 

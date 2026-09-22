@@ -3,7 +3,7 @@
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/D3dCommon.h"
 
-#include <filesystem>
+#include <string>
 #include <span>
 
 namespace NS::Graphics
@@ -36,7 +36,7 @@ namespace NS::Graphics
     {
     public:
         //! HLSLファイルからシェーダを生成する
-        [[nodiscard]] static std::unique_ptr<Shader> Create(const std::filesystem::path& hlslPath);
+        [[nodiscard]] static std::unique_ptr<Shader> Create(std::string_view hlslPath);
 
         [[nodiscard]] bool IsValid() const noexcept;
 
@@ -57,13 +57,13 @@ namespace NS::Graphics
         [[nodiscard]] bool Reload();
 
     private:
-        explicit Shader(const std::filesystem::path& hlslPath);
+        explicit Shader(std::string_view hlslPath);
 
         //! コンパイルして、成功した時だけシェーダを作る
         [[nodiscard]] bool Compile(ComPtr<ID3D11DeviceChild>& outShader,
                                    ComPtr<ID3DBlob>& outVsBytecode) const noexcept;
 
-        std::filesystem::path m_sourcePath;
+        std::string m_sourcePath;
         ShaderType m_type = ShaderType::Unknown;
         ComPtr<ID3D11DeviceChild> m_shader;
         ComPtr<ID3DBlob> m_vsBytecode;

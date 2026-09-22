@@ -6,7 +6,7 @@
 #include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Platform/Window.h"
 
-#include <chrono>
+#include <cstdint>
 #include <functional>
 #include <memory>
 
@@ -92,7 +92,7 @@ namespace NS::App
 
         std::unique_ptr<NS::Platform::Window> m_window;
         std::unique_ptr<NS::Graphics::Renderer> m_renderer;
-        // 下から順番に破棄されるから、アセットをRendererより先に解放させるためにここに書く
+        // 下から順番に破棄されるから、アセットを Renderer より先に解放させるためにここに書く
         std::unique_ptr<NS::Object::AssetManager> m_assets;
         Layers m_layers;
         bool m_valid = false;
@@ -100,9 +100,8 @@ namespace NS::App
 
         std::function<bool()> m_quitGuard;
 
-        bool m_shutdownCalled = false; //!< 終了処理の二重呼び出しを防ぐフラグ
-        std::chrono::steady_clock::time_point
-            m_lastStutterWarnAt{}; //!< 連続して処理落ち警告を出さないための最終警告時刻
+        bool m_shutdownCalled = false;        //!< 終了処理の二重呼び出しを防ぐフラグ
+        std::int64_t m_lastStutterWarnAt = 0; //!< 連続して処理落ち警告を出さないための、最後に警告したときのカウンタ値
 
         static Application* s_instance;
     };

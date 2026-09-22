@@ -47,4 +47,3 @@
 // Game / Editor がよく使う重い標準ライブラリも足す
 #include <algorithm>
 #include <cmath>
-#include <filesystem>

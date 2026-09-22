@@ -4,7 +4,7 @@
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/D3dCommon.h"
 
-#include <filesystem>
+#include <string>
 
 namespace NS::Graphics
 {
@@ -32,7 +32,7 @@ namespace NS::Graphics
         //! @details DDS などの単一ファイルか、6 方向の画像を入れたディレクトリを指定できる
         //! @param[in] path 読み込むファイルまたはディレクトリのパス
         //! @return 成功した場合 true、それ以外の場合は false。失敗しても前の中身を保つ
-        [[nodiscard]] bool LoadCubemap(const std::filesystem::path& path);
+        [[nodiscard]] bool LoadCubemap(std::string_view path);
 
         //! 立方体メッシュ・シェーダ・定数バッファ・サンプラー・キューブマップが揃っているか
         [[nodiscard]] bool IsValid() const noexcept;

@@ -253,8 +253,8 @@ TEST_F(MeshLoggerTest, CreateInputLayoutSucceedsWithStandardShader)
     // 生成前は layout 未所有
     EXPECT_EQ(mesh.InputLayout(), nullptr);
 
-    const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
-    std::unique_ptr<NS::Graphics::Shader> shaderHolder = NS::Graphics::Shader::Create(shaderDir / "standard.vs.hlsl");
+    const auto shaderDir = NS::Core::FileSystem::Combine(NS::Core::FileSystem::GetExeDirectory(), "Shaders");
+    std::unique_ptr<NS::Graphics::Shader> shaderHolder = NS::Graphics::Shader::Create(NS::Core::FileSystem::Combine(shaderDir, "standard.vs.hlsl"));
     NS::Graphics::Shader& shader = *shaderHolder;
     ASSERT_TRUE(shader.IsValid());
 

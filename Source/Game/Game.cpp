@@ -7,7 +7,6 @@
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Platform/Input.h"
 
-#include <filesystem>
 #include <optional>
 #include <string>
 #include <utility>
@@ -16,12 +15,13 @@ namespace
 {
     //! @brief シーン名からファイルパスを組む
     //! @details Assets/Scenes 配下に収まる相対パスだけを受け、".." 等で外へ抜ける名前は ResolveUnder が弾く
-    std::optional<std::filesystem::path> BuildScenePath(std::string_view sceneName)
+    std::optional<std::string> BuildScenePath(std::string_view sceneName)
     {
         if (sceneName.empty())
             return std::nullopt;
-        return NS::Core::FileSystem::ResolveUnder(NS::Core::FileSystem::ContentRoot() / "Assets" / "Scenes",
-                                                  std::string{sceneName} + ".scene");
+        return NS::Core::FileSystem::ResolveUnder(
+            NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets/Scenes"),
+            std::string{sceneName} + ".scene");
     }
 } // namespace
 
@@ -128,7 +128,7 @@ void Game::OnRender()
 
 bool Game::LoadScene(std::string_view sceneName)
 {
-    const std::optional<std::filesystem::path> path = BuildScenePath(sceneName);
+    const std::optional<std::string> path = BuildScenePath(sceneName);
     if (!path)
     {
         NS_LOG_ERROR(Game, "LoadScene: シーン名が不正: {}", sceneName);

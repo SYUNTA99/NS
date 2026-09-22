@@ -17,7 +17,6 @@
 #include <Runtime/Object/Scene/SceneJson.h>
 #include <array>
 #include <cstddef>
-#include <filesystem>
 #include <gtest/gtest.h>
 #include <utility>
 #include <vector>
@@ -165,7 +164,7 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     ASSERT_EQ(restored.objects.size(), 2u);
     ASSERT_FALSE(restored.objects[0].components.empty()); // 往復後も components 駆動で組ませる前提
 
-    NS::Object::AssetManager assets{std::filesystem::path{"."}};
+    NS::Object::AssetManager assets{std::string{"."}};
     auto before = NS::Object::BuildSceneObject(src.objects[0], &assets);
     auto after = NS::Object::BuildSceneObject(restored.objects[0], &assets);
     ASSERT_NE(before, nullptr);

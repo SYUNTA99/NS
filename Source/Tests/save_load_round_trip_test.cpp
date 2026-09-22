@@ -30,7 +30,7 @@ namespace EditorNs = NS::Editor;
 namespace
 {
     // テストの吐くシーンは TestOutput/ 配下に隔離する。.gitignore はこの置き場だけを除外する
-    std::optional<std::filesystem::path> TestScenePath(const std::string& name)
+    std::optional<std::string> TestScenePath(const std::string& name)
     {
         return EditorNs::BuildLevelPath("TestOutput/" + name);
     }

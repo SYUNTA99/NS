@@ -9,7 +9,6 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
-#include <filesystem>
 #include <gtest/gtest.h>
 #include <span>
 #include <string>
@@ -250,7 +249,7 @@ TEST(GltfSkinLoadTest, StaticMeshWithoutSkinIsInvalid)
     const NsTest::ScopedFixture bin{"ns_skinned_fixture.bin", MakeSkinnedBufferBin()};
     const NsTest::ScopedFixture gltf{"ns_skin_noskin.gltf", NoSkinGltf()};
 
-    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltf.Path().string());
+    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltf.Path());
     EXPECT_FALSE(data.IsValid());
     EXPECT_TRUE(data.vertices.empty());
 }
@@ -261,7 +260,7 @@ TEST(GltfSkinLoadTest, LoadsSkinnedTriangleWithLeftHandedConversion)
     const NsTest::ScopedFixture bin{"ns_skinned_fixture.bin", MakeSkinnedBufferBin()};
     const NsTest::ScopedFixture gltf{"ns_skin_happy.gltf", SkinnedGltf()};
 
-    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltf.Path().string());
+    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltf.Path());
     ASSERT_TRUE(data.IsValid());
     EXPECT_EQ(data.vertices.size(), 3u);
     ASSERT_EQ(data.indices.size(), 3u);
@@ -288,7 +287,7 @@ TEST(GltfSkinLoadTest, LoadsAnimationClip)
     const NsTest::ScopedFixture bin{"ns_skinned_anim_fixture.bin", MakeAnimatedSkinnedBufferBin()};
     const NsTest::ScopedFixture gltf{"ns_skin_anim.gltf", AnimatedSkinnedGltf()};
 
-    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltf.Path().string());
+    const auto data = NS::Graphics::LoadGltfSkinnedMesh(gltf.Path());
     ASSERT_TRUE(data.IsValid());
     ASSERT_EQ(data.animations.size(), 1u);
 

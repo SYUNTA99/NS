@@ -87,8 +87,8 @@ TEST_F(ShaderLoggerTest, RealVertexShaderCompiles)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
-    std::unique_ptr<Shader> vsHolder = Shader::Create(shaderDir / "standard.vs.hlsl");
+    const auto shaderDir = NS::Core::FileSystem::Combine(NS::Core::FileSystem::GetExeDirectory(), "Shaders");
+    std::unique_ptr<Shader> vsHolder = Shader::Create(NS::Core::FileSystem::Combine(shaderDir, "standard.vs.hlsl"));
     Shader& vs = *vsHolder;
     ASSERT_TRUE(vs.IsValid());
     EXPECT_FALSE(vs.IsUsingFallback());
@@ -110,8 +110,8 @@ TEST_F(ShaderLoggerTest, RealPixelShaderCompiles)
     Renderer renderer(MakeRendererDesc(), window);
     ASSERT_TRUE(renderer.IsValid());
 
-    const auto shaderDir = NS::Core::FileSystem::GetExeDirectory() / "Shaders";
-    std::unique_ptr<Shader> psHolder = Shader::Create(shaderDir / "player.ps.hlsl");
+    const auto shaderDir = NS::Core::FileSystem::Combine(NS::Core::FileSystem::GetExeDirectory(), "Shaders");
+    std::unique_ptr<Shader> psHolder = Shader::Create(NS::Core::FileSystem::Combine(shaderDir, "player.ps.hlsl"));
     Shader& ps = *psHolder;
     ASSERT_TRUE(ps.IsValid());
     EXPECT_FALSE(ps.IsUsingFallback());

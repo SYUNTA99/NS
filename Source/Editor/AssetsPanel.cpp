@@ -32,7 +32,7 @@ namespace NS::Editor
                 const char* dropLabel = "選択してから .mat を落とす";
                 if (hasSelection)
                 {
-					dropLabel = ".mat をここへ落とすと選択中のオブジェクトへ適用";
+                    dropLabel = ".mat をここへ落とすと選択中のオブジェクトへ適用";
                 }
                 ImGui::Button(dropLabel, ImVec2(-1.0f, 32.0f));
                 if (ImGui::BeginDragDropTarget())
@@ -40,7 +40,7 @@ namespace NS::Editor
                     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(k_MaterialDragType))
                     {
                         const char* droppedPath = static_cast<const char*>(payload->Data);
-                        editor.ApplyMaterialToSelected(std::filesystem::path(droppedPath));
+                        editor.ApplyMaterialToSelected(droppedPath);
                     }
                     ImGui::EndDragDropTarget();
                 }
@@ -48,7 +48,7 @@ namespace NS::Editor
                 ImGui::Separator();
             }
 
-            RenderTree(NS::Core::FileSystem::ContentRoot() / "Assets", editor);
+            RenderTree(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), editor);
         }
         ImGui::End();
 #else
@@ -56,15 +56,15 @@ namespace NS::Editor
 #endif
     }
 
-    void AssetsPanel::RenderTree(const std::filesystem::path& dir, LevelEditorController& editor) noexcept
+    void AssetsPanel::RenderTree(std::string_view dir, LevelEditorController& editor) noexcept
     {
 #if NS_EDITOR_ENABLED
         const bool hasSelection = editor.HasGizmoSelection();
 
         // 開いた時だけ中身を走査する
-        for (const auto& sub : NS::Core::FileSystem::ListDirectories(dir))
+        for (const std::string& sub : NS::Core::FileSystem::ListDirectories(dir))
         {
-            const std::string label = sub.filename().string();
+            const std::string label = NS::Core::FileSystem::FileName(sub);
             if (ImGui::TreeNode(label.c_str()))
             {
                 RenderTree(sub, editor);
@@ -72,10 +72,10 @@ namespace NS::Editor
             }
         }
 
-        for (const auto& file : NS::Core::FileSystem::ListFiles(dir))
+        for (const std::string& file : NS::Core::FileSystem::ListFiles(dir))
         {
-            const std::string name = file.filename().string();
-            const std::filesystem::path extension = file.extension();
+            const std::string name = NS::Core::FileSystem::FileName(file);
+            const std::string extension = NS::Core::FileSystem::Extension(file);
 
             if (extension == ".gltf" || extension == ".glb")
             {
@@ -83,7 +83,7 @@ namespace NS::Editor
                 ImGui::Selectable(name.c_str());
                 if (ImGui::BeginDragDropSource())
                 {
-                    const std::string full = file.string();
+                    const std::string& full = file;
                     ImGui::SetDragDropPayload(k_MeshDragType, full.c_str(), full.size() + 1);
                     ImGui::TextUnformatted(name.c_str());
                     ImGui::EndDragDropSource();
@@ -104,7 +104,7 @@ namespace NS::Editor
                 editor.ApplyMaterialToSelected(file);
             if (ImGui::BeginDragDropSource())
             {
-                const std::string full = file.string();
+                const std::string& full = file;
                 ImGui::SetDragDropPayload(k_MaterialDragType, full.c_str(), full.size() + 1);
                 ImGui::TextUnformatted(name.c_str());
                 ImGui::EndDragDropSource();
