@@ -322,7 +322,7 @@ namespace NS::Gfx
         }
 
         // 描画済みシーンの上へ半透明で重ねる。常に最前面へ出すので深度は見ない
-        // 全画面三角形の 3 頂点はスクリーン空間で反時計回りになるため、カリングを切らないと消える
+        // 全画面三角形の 3 頂点はスクリーン空間で反時計回りになり、既定の背面カリングでは消える
         PipelineDesc pipeDesc{};
         pipeDesc.cull = CullMode::None;
         pipeDesc.blend = BlendMode::Alpha;
@@ -490,7 +490,7 @@ namespace NS::Gfx
         if (!m_skybox)
             return;
 
-        // 毎フレーム LoadCubemap するとファイル読み込みが常時走るため、前回パスと差分があるときだけ読み直す
+        // 毎フレーム LoadCubemap するとファイル読み込みが常時走る
         if (cubemapPath != m_loadedSkyboxPath)
         {
             // ユーザー編集ファイル由来のパスを ContentRoot 配下へ閉じ込める。外を指す値は読み込まない
@@ -609,6 +609,7 @@ namespace NS::Gfx
         context->ClearState();
         context->Flush();
 
+        // 第 1 引数の 0 と DXGI_FORMAT_UNKNOWN は今のバッファ数とフォーマットを保つ指定
         const HRESULT hr = m_swapchain->ResizeBuffers(
             0, static_cast<UINT>(size.width), static_cast<UINT>(size.height), DXGI_FORMAT_UNKNOWN, 0);
         if (FAILED(hr))
