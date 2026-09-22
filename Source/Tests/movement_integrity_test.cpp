@@ -1,5 +1,5 @@
 ﻿#include <Game/Player/PlayerComponent.h>
-#include <Game/Player/PlayerStateManagerComponent.h>
+#include <Game/Player/PlayerStateManager.h>
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/GameObject.h>
@@ -17,7 +17,7 @@ namespace
     using NS::Core::AABB;
     using NS::Core::Vector3;
     using NS::Game::Player::PlayerComponent;
-    using NS::Game::Player::PlayerStateManagerComponent;
+    using NS::Game::Player::PlayerStateManager;
     using NS::Obj::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
@@ -39,7 +39,7 @@ namespace
 
         NsTest::EntityStage stage;
         GameObject& owner = stage.owner;
-        auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
+        auto& manager = *owner.AddComponent<PlayerStateManager>();
         auto& movement = *owner.AddComponent<PlayerComponent>();
         owner.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
 
@@ -114,7 +114,7 @@ TEST_F(MovementIntegrity, WalkVelocityApproachesMaxSpeedBeforeJump)
 
     NsTest::EntityStage stage;
     GameObject& owner = stage.owner;
-    auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
+    auto& manager = *owner.AddComponent<PlayerStateManager>();
     auto& movement = *owner.AddComponent<PlayerComponent>();
     owner.Root().SetPosition(Vector3{0.0f, 0.5f, 0.0f}); // 床の上に直置きして接地から始める
 

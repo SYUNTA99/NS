@@ -2,22 +2,22 @@
 #include "Game/Player.h"
 #include "tuning_field_access.h"
 
-#include <Game/Level/BreakableComponent.h>
-#include <Game/Level/CollisionInputComponent.h>
+#include <Game/Level/Breakable.h>
+#include <Game/Level/CollisionInput.h>
 #include <Game/Level/ImpactInputJudge.h>
-#include <Game/Level/ImpactMarkComponent.h>
-#include <Game/Level/ImpactResolverComponent.h>
-#include <Game/Level/LaunchedBodyComponent.h>
+#include <Game/Level/ImpactMark.h>
+#include <Game/Level/ImpactResolver.h>
+#include <Game/Level/LaunchedBody.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Core/Sphere.h>
-#include <Runtime/Object/Components/BoxColliderComponent.h>
-#include <Runtime/Object/Components/CameraBrainComponent.h>
-#include <Runtime/Object/Components/MeshRendererComponent.h>
+#include <Runtime/Object/Components/BoxCollider.h>
+#include <Runtime/Object/Components/CameraBrain.h>
+#include <Runtime/Object/Components/MeshRenderer.h>
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
-#include <Runtime/Object/Components/PlayerInputComponent.h>
+#include <Runtime/Object/Components/PlayerInput.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
@@ -58,11 +58,11 @@ namespace
     struct Rig
     {
         NS::Game::Player::PlayerComponent* movement = nullptr;
-        LevelNs::ImpactResolverComponent* impact = nullptr;
-        LevelNs::CollisionInputComponent* input = nullptr;
-        SceneNs::BoxColliderComponent* targetBox = nullptr;
+        LevelNs::ImpactResolver* impact = nullptr;
+        LevelNs::CollisionInput* input = nullptr;
+        SceneNs::BoxCollider* targetBox = nullptr;
         NS::Obj::GameObject* target = nullptr;
-        LevelNs::BreakableComponent* breakable = nullptr;
+        LevelNs::Breakable* breakable = nullptr;
     };
 
     struct SlamCourse
@@ -87,9 +87,9 @@ namespace
         if (course.alongZ)
             spawn = Vector3{course.lateral, Player::k_DefaultSpawnY, course.start};
         SceneNs::ObjectData player = MakePlayerObject(spawn, NS::Core::Quaternion{});
-        player.components.push_back(SceneNs::MakeComponentEntry("ImpactResolverComponent"));
+        player.components.push_back(SceneNs::MakeComponentEntry("ImpactResolver"));
         if (course.withCollisionInput)
-            player.components.push_back(SceneNs::MakeComponentEntry("CollisionInputComponent"));
+            player.components.push_back(SceneNs::MakeComponentEntry("CollisionInput"));
         data.objects.push_back(player);
 
         // カプセル半径 0.4 の自機を横へずらすと床 1 列からはみ出すので、ずらす側にもう 1 列敷く
@@ -123,14 +123,14 @@ namespace
         {
             for (nlohmann::json& entry : target.components)
             {
-                if (SceneNs::ComponentEntryType(entry) != "BoxColliderComponent")
+                if (SceneNs::ComponentEntryType(entry) != "BoxCollider")
                     continue;
-                entry = SceneNs::MakeComponentEntry("SphereColliderComponent");
+                entry = SceneNs::MakeComponentEntry("SphereCollider");
                 SceneNs::SetField(entry, "半径", LevelNs::k_CellHalfExtents.y);
             }
         }
         if (course.withBreakable)
-            target.components.push_back(SceneNs::MakeComponentEntry("BreakableComponent"));
+            target.components.push_back(SceneNs::MakeComponentEntry("Breakable"));
         data.objects.push_back(target);
         scene.LoadFromData(std::move(data));
 
@@ -140,23 +140,23 @@ namespace
         if (live != nullptr)
         {
             rig.movement = live->FindComponent<NS::Game::Player::PlayerComponent>();
-            rig.impact = live->FindComponent<LevelNs::ImpactResolverComponent>();
-            rig.input = live->FindComponent<LevelNs::CollisionInputComponent>();
+            rig.impact = live->FindComponent<LevelNs::ImpactResolver>();
+            rig.input = live->FindComponent<LevelNs::CollisionInput>();
             // 起こしたままだと実機の入力が毎フレーム 0 を書き込むため、走行入力と向きが検証台から消える
-            if (auto* input = live->FindComponent<SceneNs::PlayerInputComponent>())
+            if (auto* input = live->FindComponent<SceneNs::PlayerInput>())
                 input->SetActive(false);
         }
-        scene.Objects().ForEachComponent<LevelNs::BreakableComponent>(
-            [&rig](LevelNs::BreakableComponent& breakable) { rig.breakable = &breakable; });
+        scene.Objects().ForEachComponent<LevelNs::Breakable>(
+            [&rig](LevelNs::Breakable& breakable) { rig.breakable = &breakable; });
         if (rig.breakable != nullptr)
         {
             rig.breakable->SetToughness(k_UnbreakableToughness);
             rig.target = rig.breakable->Owner();
-            rig.targetBox = rig.breakable->Owner()->FindComponent<SceneNs::BoxColliderComponent>();
+            rig.targetBox = rig.breakable->Owner()->FindComponent<SceneNs::BoxCollider>();
         }
         if (rig.targetBox == nullptr)
         {
-            scene.Objects().ForEachComponent<SceneNs::BoxColliderComponent>([&rig](SceneNs::BoxColliderComponent& box) {
+            scene.Objects().ForEachComponent<SceneNs::BoxCollider>([&rig](SceneNs::BoxCollider& box) {
                 if (box.Owner()->Root().Position().y > 0.9f)
                     rig.targetBox = &box;
             });
@@ -166,11 +166,11 @@ namespace
         return rig;
     }
 
-    LevelNs::LaunchedBodyComponent* HitBody(const Rig& rig)
+    LevelNs::LaunchedBody* HitBody(const Rig& rig)
     {
         if (rig.target == nullptr)
             return nullptr;
-        return rig.target->FindComponent<LevelNs::LaunchedBodyComponent>();
+        return rig.target->FindComponent<LevelNs::LaunchedBody>();
     }
 
     // 帯の範囲は半開なので Update (200) の移動は入らない。押し飛ばされた物と破片を動かさずに済む
@@ -287,8 +287,8 @@ namespace
     struct BodyRig
     {
         SceneNs::GameObject* object = nullptr;
-        LevelNs::LaunchedBodyComponent* body = nullptr;
-        SceneNs::BoxColliderComponent* box = nullptr;
+        LevelNs::LaunchedBody* body = nullptr;
+        SceneNs::BoxCollider* box = nullptr;
         JPH::uint restingBodies = 0;
     };
 
@@ -304,17 +304,17 @@ namespace
             data.objects.push_back(LevelNs::MakeCellObject(k_WallX, 1, 0));
 
         SceneNs::ObjectData target = LevelNs::MakeCellObject(0, 1, 0);
-        target.components.push_back(SceneNs::MakeComponentEntry("LaunchedBodyComponent"));
+        target.components.push_back(SceneNs::MakeComponentEntry("LaunchedBody"));
         data.objects.push_back(target);
         scene.LoadFromData(std::move(data));
 
         BodyRig rig;
-        scene.Objects().ForEachComponent<LevelNs::LaunchedBodyComponent>(
-            [&rig](LevelNs::LaunchedBodyComponent& body) { rig.body = &body; });
+        scene.Objects().ForEachComponent<LevelNs::LaunchedBody>(
+            [&rig](LevelNs::LaunchedBody& body) { rig.body = &body; });
         if (rig.body != nullptr)
         {
             rig.object = rig.body->Owner();
-            rig.box = rig.object->FindComponent<SceneNs::BoxColliderComponent>();
+            rig.box = rig.object->FindComponent<SceneNs::BoxCollider>();
         }
         rig.restingBodies = scene.Physics().BodyCount();
         return rig;
@@ -329,7 +329,7 @@ namespace
     }
 
     // 止まるまで回して掛かったフレーム数を返す。止まらなければ maxSteps を返す
-    int RunUntilRest(SceneNs::Scene& scene, LevelNs::LaunchedBodyComponent& body, int maxSteps)
+    int RunUntilRest(SceneNs::Scene& scene, LevelNs::LaunchedBody& body, int maxSteps)
     {
         for (int i = 0; i < maxSteps; ++i)
         {
@@ -341,10 +341,10 @@ namespace
     }
 
     // 一時オブジェクトとして湧いた破片だけ集める。押し飛ばされた配置物は数えない
-    std::vector<LevelNs::LaunchedBodyComponent*> DebrisBodies(SceneNs::Scene& scene)
+    std::vector<LevelNs::LaunchedBody*> DebrisBodies(SceneNs::Scene& scene)
     {
-        std::vector<LevelNs::LaunchedBodyComponent*> out;
-        scene.Objects().ForEachComponent<LevelNs::LaunchedBodyComponent>([&out](LevelNs::LaunchedBodyComponent& body) {
+        std::vector<LevelNs::LaunchedBody*> out;
+        scene.Objects().ForEachComponent<LevelNs::LaunchedBody>([&out](LevelNs::LaunchedBody& body) {
             if (body.Owner()->IsTransient())
                 out.push_back(&body);
         });
@@ -354,8 +354,8 @@ namespace
     int MarkCount(SceneNs::Scene& scene)
     {
         int count = 0;
-        scene.Objects().ForEachComponent<LevelNs::ImpactMarkComponent>(
-            [&count](LevelNs::ImpactMarkComponent&) { ++count; });
+        scene.Objects().ForEachComponent<LevelNs::ImpactMark>(
+            [&count](LevelNs::ImpactMark&) { ++count; });
         return count;
     }
 } // namespace
@@ -590,7 +590,7 @@ TEST(CollisionImpact, ReboundsOffFlyingTarget)
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     ASSERT_NE(rig.target, nullptr);
-    auto* body = rig.target->AddComponent<LevelNs::LaunchedBodyComponent>();
+    auto* body = rig.target->AddComponent<LevelNs::LaunchedBody>();
     body->Launch(Vector3{0.0f, 0.0f, 0.0f});
     ASSERT_TRUE(body->IsFlying());
     ASSERT_TRUE(rig.targetBox->BodyId().IsInvalid());
@@ -635,11 +635,11 @@ TEST(CollisionImpact, WithoutCollisionInputPowerIsRatioOnly)
 TEST(CollisionImpact, IsCreatableFromTypeName)
 {
     SceneNs::GameObject obj;
-    SceneNs::Component* comp = SceneNs::CreateComponent("ImpactResolverComponent", obj);
+    SceneNs::Component* comp = SceneNs::CreateComponent("ImpactResolver", obj);
     ASSERT_NE(comp, nullptr);
     ASSERT_NE(comp->GetReflection(), nullptr);
-    EXPECT_STREQ(comp->GetReflection()->typeName, "ImpactResolverComponent");
-    EXPECT_EQ(obj.FindComponent<LevelNs::ImpactResolverComponent>(), comp);
+    EXPECT_STREQ(comp->GetReflection()->typeName, "ImpactResolver");
+    EXPECT_EQ(obj.FindComponent<LevelNs::ImpactResolver>(), comp);
 }
 
 TEST(CollisionImpact, ReboundLaunchesHitBody)
@@ -653,7 +653,7 @@ TEST(CollisionImpact, ReboundLaunchesHitBody)
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
     ASSERT_TRUE(rig.impact->DidRebound());
-    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    LevelNs::LaunchedBody* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
     EXPECT_TRUE(body->IsFlying());
 }
@@ -682,7 +682,7 @@ TEST(CollisionImpact, LaunchesSphereTarget)
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
-    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    LevelNs::LaunchedBody* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
     EXPECT_TRUE(body->IsFlying());
     EXPECT_GT(body->Velocity().x, 0.0f);
@@ -697,7 +697,7 @@ TEST(CollisionImpact, LaunchDirectionFollowsApproach)
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
-    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    LevelNs::LaunchedBody* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
     EXPECT_GT(body->Velocity().x, 0.0f);
     EXPECT_NEAR(body->Velocity().z, 0.0f, 1.0e-4f);
@@ -712,7 +712,7 @@ TEST(CollisionImpact, LaunchLiftsHitBody)
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
-    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    LevelNs::LaunchedBody* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
     EXPECT_GT(body->Velocity().y, 0.0f);
     EXPECT_LT(body->Velocity().y, HorizontalSpeed(body->Velocity()));
@@ -734,8 +734,8 @@ TEST(CollisionImpact, HeavierBodyLaunchesSlower)
     BeginSlam(heavyScene, heavy, k_RunSpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(heavyScene, heavy, 30), 30);
 
-    LevelNs::LaunchedBodyComponent* lightBody = HitBody(light);
-    LevelNs::LaunchedBodyComponent* heavyBody = HitBody(heavy);
+    LevelNs::LaunchedBody* lightBody = HitBody(light);
+    LevelNs::LaunchedBody* heavyBody = HitBody(heavy);
     ASSERT_NE(lightBody, nullptr);
     ASSERT_NE(heavyBody, nullptr);
     EXPECT_LT(HorizontalSpeed(heavyBody->Velocity()), HorizontalSpeed(lightBody->Velocity()));
@@ -755,8 +755,8 @@ TEST(CollisionImpact, ChargedImpactLaunchesFarther)
     BeginSlam(chargedScene, charged, k_RunSpeed, 1.0f);
     ASSERT_LT(StepUntilImpact(chargedScene, charged, 30), 30);
 
-    LevelNs::LaunchedBodyComponent* plainBody = HitBody(plain);
-    LevelNs::LaunchedBodyComponent* chargedBody = HitBody(charged);
+    LevelNs::LaunchedBody* plainBody = HitBody(plain);
+    LevelNs::LaunchedBody* chargedBody = HitBody(charged);
     ASSERT_NE(plainBody, nullptr);
     ASSERT_NE(chargedBody, nullptr);
     EXPECT_GT(HorizontalSpeed(chargedBody->Velocity()), HorizontalSpeed(plainBody->Velocity()));
@@ -776,7 +776,7 @@ TEST(CollisionImpact, LaunchFieldsDriveLaunchVelocity)
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
-    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    LevelNs::LaunchedBody* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
     const float expected = 20.0f * rig.impact->LastPower() / 2.0f;
     EXPECT_FLOAT_EQ(HorizontalSpeed(body->Velocity()), expected);
@@ -802,8 +802,8 @@ TEST(CollisionImpact, LaunchMassExponentBendsMassEffect)
     BeginSlam(rootScene, root, k_RunSpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(rootScene, root, 30), 30);
 
-    LevelNs::LaunchedBodyComponent* inverseBody = HitBody(inverse);
-    LevelNs::LaunchedBodyComponent* rootBody = HitBody(root);
+    LevelNs::LaunchedBody* inverseBody = HitBody(inverse);
+    LevelNs::LaunchedBody* rootBody = HitBody(root);
     ASSERT_NE(inverseBody, nullptr);
     ASSERT_NE(rootBody, nullptr);
     EXPECT_FLOAT_EQ(HorizontalSpeed(inverseBody->Velocity()), k_LaunchBaseSpeed * inverse.impact->LastPower() / 4.0f);
@@ -823,7 +823,7 @@ TEST(CollisionImpact, TinyMassCannotBlowLaunchSpeedUp)
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
-    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    LevelNs::LaunchedBody* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
     EXPECT_FLOAT_EQ(HorizontalSpeed(body->Velocity()), k_LaunchSpeedCap);
 }
@@ -851,7 +851,7 @@ TEST(CollisionImpact, HitStopFreezesPlayerAndDefersLaunch)
     const int steps = StepsUntilMovementActive(scene, rig, 60);
     EXPECT_LT(steps, 60);
     EXPECT_LT(rig.movement->Velocity().x, 0.0f);
-    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    LevelNs::LaunchedBody* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
     EXPECT_TRUE(body->IsFlying());
 }
@@ -1012,7 +1012,7 @@ TEST(CollisionImpact, BreakIsOffByDefault)
     EXPECT_TRUE(rig.impact->DidRebound());
     EXPECT_TRUE(rig.breakable->IsActiveSelf());
     EXPECT_TRUE(DebrisBodies(scene).empty());
-    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    LevelNs::LaunchedBody* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
     EXPECT_TRUE(body->IsFlying());
 }
@@ -1187,8 +1187,8 @@ TEST(CollisionImpact, ChargeScalesPowerByCurve)
     ASSERT_LT(StepUntilImpact(halfScene, half, 30), 30);
 
     EXPECT_FLOAT_EQ(full.impact->LastPower(), half.impact->LastPower() * 2.0f / 1.5f);
-    LevelNs::LaunchedBodyComponent* fullBody = HitBody(full);
-    LevelNs::LaunchedBodyComponent* halfBody = HitBody(half);
+    LevelNs::LaunchedBody* fullBody = HitBody(full);
+    LevelNs::LaunchedBody* halfBody = HitBody(half);
     ASSERT_NE(fullBody, nullptr);
     ASSERT_NE(halfBody, nullptr);
     EXPECT_GT(HorizontalSpeed(fullBody->Velocity()), HorizontalSpeed(halfBody->Velocity()));
@@ -1346,7 +1346,7 @@ TEST(CollisionImpact, BreakDoesNotLaunchTarget)
     const int rest = StepsUntilMovementActive(scene, rig, 60);
     ASSERT_LT(rest, 60);
 
-    const LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    const LevelNs::LaunchedBody* body = HitBody(rig);
     EXPECT_TRUE(body == nullptr || !body->IsFlying());
 }
 
@@ -1449,7 +1449,7 @@ TEST(CollisionImpact, DetectsOnlyOncePerImpact)
 
     EXPECT_EQ(detections, 1);
     EXPECT_TRUE(rig.movement->IsActiveSelf());
-    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    LevelNs::LaunchedBody* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
     EXPECT_TRUE(body->IsFlying());
 }
@@ -1563,20 +1563,20 @@ TEST(CollisionImpact, ReleaseRestoresRockExactlyBeforeLaunch)
     EXPECT_FLOAT_EQ(restored.x, home.x);
     EXPECT_FLOAT_EQ(restored.y, home.y);
     EXPECT_FLOAT_EQ(restored.z, home.z);
-    LevelNs::LaunchedBodyComponent* body = HitBody(rig);
+    LevelNs::LaunchedBody* body = HitBody(rig);
     ASSERT_NE(body, nullptr);
     EXPECT_TRUE(body->IsFlying());
     EXPECT_TRUE(rig.targetBox->BodyId().IsInvalid());
 }
 
-// 凍結中だけカメラが揺れる。ImpactResolverComponent がシーンの CameraBrain へ揺れを渡す
+// 凍結中だけカメラが揺れる。ImpactResolver がシーンの CameraBrain へ揺れを渡す
 TEST(CollisionImpact, HitStopShakesCamera)
 {
     SceneNs::Scene scene;
     Rig rig = BuildSlam(scene, k_NearCourse);
     rig.breakable->SetMass(4.0f);
 
-    SceneNs::CameraBrainComponent* brain = scene.CameraBrain();
+    SceneNs::CameraBrain* brain = scene.CameraBrain();
     ASSERT_NE(brain, nullptr);
     auto* placed = brain->Owner()->AddComponent<SceneNs::PlacedVirtualCamera>();
     // 据え置きカメラは進入まで非 active が既定。検証台では手で起こす
@@ -1615,10 +1615,10 @@ TEST(CollisionImpact, BreakScattersDebrisAndLeavesMark)
     ASSERT_TRUE(rig.impact->DidBreak());
     EXPECT_EQ(scene.Objects().ObjectCount(), before + 6);
     EXPECT_EQ(MarkCount(scene), 1);
-    const std::vector<LevelNs::LaunchedBodyComponent*> debris = DebrisBodies(scene);
+    const std::vector<LevelNs::LaunchedBody*> debris = DebrisBodies(scene);
     ASSERT_EQ(debris.size(), 5u);
     const Vector3 home = rig.targetBox->Owner()->Root().Position();
-    for (LevelNs::LaunchedBodyComponent* body : debris)
+    for (LevelNs::LaunchedBody* body : debris)
     {
         EXPECT_TRUE(body->IsFlying());
         const Vector3 pos = body->Owner()->Root().Position();
@@ -1642,7 +1642,7 @@ TEST(CollisionImpact, BreakHidesTarget)
 
     ASSERT_TRUE(rig.impact->DidBreak());
     ASSERT_NE(rig.target, nullptr);
-    auto* mesh = rig.target->FindComponent<SceneNs::MeshRendererComponent>();
+    auto* mesh = rig.target->FindComponent<SceneNs::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_FALSE(mesh->IsActiveSelf());
 }
@@ -1659,9 +1659,9 @@ TEST(CollisionImpact, BreakDebrisDoNotScatterAgain)
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
-    const std::vector<LevelNs::LaunchedBodyComponent*> debris = DebrisBodies(scene);
+    const std::vector<LevelNs::LaunchedBody*> debris = DebrisBodies(scene);
     ASSERT_EQ(debris.size(), 5u);
-    for (LevelNs::LaunchedBodyComponent* body : debris)
+    for (LevelNs::LaunchedBody* body : debris)
     {
         const SceneNs::Component& comp = *body;
         const SceneNs::FieldDesc* field = SceneNs::FindField(comp.GetReflection(), "破片の数");
@@ -1684,9 +1684,9 @@ TEST(CollisionImpact, DebrisScatterDirectionsDifferButShareSpeed)
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
-    const std::vector<LevelNs::LaunchedBodyComponent*> debris = DebrisBodies(scene);
+    const std::vector<LevelNs::LaunchedBody*> debris = DebrisBodies(scene);
     ASSERT_EQ(debris.size(), 5u);
-    for (LevelNs::LaunchedBodyComponent* body : debris)
+    for (LevelNs::LaunchedBody* body : debris)
         EXPECT_NEAR(HorizontalSpeed(body->Velocity()), 6.0f, 0.001f);
     const Vector3 first = debris[0]->Velocity();
     const Vector3 second = debris[1]->Velocity();
@@ -1712,8 +1712,8 @@ TEST(CollisionImpact, DebrisScatterIsDeterministic)
     BeginSlam(secondScene, second, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(secondScene, second, 30), 30);
 
-    const std::vector<LevelNs::LaunchedBodyComponent*> firstDebris = DebrisBodies(firstScene);
-    const std::vector<LevelNs::LaunchedBodyComponent*> secondDebris = DebrisBodies(secondScene);
+    const std::vector<LevelNs::LaunchedBody*> firstDebris = DebrisBodies(firstScene);
+    const std::vector<LevelNs::LaunchedBody*> secondDebris = DebrisBodies(secondScene);
     ASSERT_EQ(firstDebris.size(), secondDebris.size());
     ASSERT_EQ(firstDebris.size(), 5u);
     for (std::size_t i = 0; i < firstDebris.size(); ++i)
@@ -1740,9 +1740,9 @@ TEST(CollisionImpact, HeavierTargetScattersSlowerDebris)
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
     ASSERT_TRUE(rig.impact->DidBreak());
-    const std::vector<LevelNs::LaunchedBodyComponent*> debris = DebrisBodies(scene);
+    const std::vector<LevelNs::LaunchedBody*> debris = DebrisBodies(scene);
     ASSERT_EQ(debris.size(), 5u);
-    for (LevelNs::LaunchedBodyComponent* body : debris)
+    for (LevelNs::LaunchedBody* body : debris)
         EXPECT_NEAR(HorizontalSpeed(body->Velocity()), 1.5f, 0.001f);
 }
 
@@ -1770,7 +1770,7 @@ TEST(CollisionImpact, ZeroDebrisCountScattersNone)
     Rig rig = BuildSlam(scene, k_NearCourse);
     EnableBreak(rig);
     ASSERT_NE(rig.target, nullptr);
-    rig.target->AddComponent<LevelNs::LaunchedBodyComponent>()->SetDebrisCount(0);
+    rig.target->AddComponent<LevelNs::LaunchedBody>()->SetDebrisCount(0);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     rig.breakable->SetToughness(1.0f);
     BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
@@ -1811,9 +1811,9 @@ TEST(CollisionImpact, DebrisLooksLikeSmallCube)
 
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
-    const std::vector<LevelNs::LaunchedBodyComponent*> debris = DebrisBodies(scene);
+    const std::vector<LevelNs::LaunchedBody*> debris = DebrisBodies(scene);
     ASSERT_EQ(debris.size(), 5u);
-    auto* mesh = debris[0]->Owner()->FindComponent<SceneNs::MeshRendererComponent>();
+    auto* mesh = debris[0]->Owner()->FindComponent<SceneNs::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_EQ(mesh->MeshRef(), "cube");
     const Vector3 scale = debris[0]->Owner()->Root().Scale();
@@ -1830,17 +1830,17 @@ TEST(CollisionImpact, DebrisRestsThenExpires)
     EnableBreak(rig);
     SetFloatField(*rig.impact, "貫通の止め秒", 0.0f);
     ASSERT_NE(rig.target, nullptr);
-    auto* targetBody = rig.target->AddComponent<LevelNs::LaunchedBodyComponent>();
+    auto* targetBody = rig.target->AddComponent<LevelNs::LaunchedBody>();
     SetFloatField(*targetBody, "破片の速さ", 1.0f);
     SetFloatField(*targetBody, "破片の寿命秒", 0.05f);
     rig.breakable->SetToughness(1.0f);
     BeginSlam(scene, rig, k_FastEntrySpeed, 0.0f);
     ASSERT_LT(StepUntilImpact(scene, rig, 30), 30);
 
-    const std::vector<LevelNs::LaunchedBodyComponent*> debris = DebrisBodies(scene);
+    const std::vector<LevelNs::LaunchedBody*> debris = DebrisBodies(scene);
     ASSERT_EQ(debris.size(), 5u);
     auto anyFlying = [&debris]() {
-        for (LevelNs::LaunchedBodyComponent* body : debris)
+        for (LevelNs::LaunchedBody* body : debris)
         {
             if (body->IsFlying())
                 return true;
@@ -1857,9 +1857,9 @@ TEST(CollisionImpact, DebrisRestsThenExpires)
 
     for (int i = 0; i < 5; ++i)
         StepBody(scene);
-    for (LevelNs::LaunchedBodyComponent* body : debris)
+    for (LevelNs::LaunchedBody* body : debris)
     {
-        auto* mesh = body->Owner()->FindComponent<SceneNs::MeshRendererComponent>();
+        auto* mesh = body->Owner()->FindComponent<SceneNs::MeshRenderer>();
         ASSERT_NE(mesh, nullptr);
         EXPECT_FALSE(mesh->IsActiveSelf());
         EXPECT_FALSE(body->IsActiveSelf());
@@ -2149,7 +2149,7 @@ TEST(LaunchedBody, RestWithZeroLifeStaysVisible)
     for (int i = 0; i < 120; ++i)
         StepBody(scene);
 
-    auto* mesh = rig.object->FindComponent<SceneNs::MeshRendererComponent>();
+    auto* mesh = rig.object->FindComponent<SceneNs::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_TRUE(mesh->IsActiveSelf());
     EXPECT_TRUE(rig.box->IsActiveSelf());
@@ -2170,7 +2170,7 @@ TEST(LaunchedBody, SetRestLifeSecondsHidesAfterRest)
     for (int i = 0; i < 5; ++i)
         StepBody(scene);
 
-    auto* mesh = rig.object->FindComponent<SceneNs::MeshRendererComponent>();
+    auto* mesh = rig.object->FindComponent<SceneNs::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_FALSE(mesh->IsActiveSelf());
     EXPECT_FALSE(rig.box->IsActiveSelf());
@@ -2193,7 +2193,7 @@ TEST(LaunchedBody, RestLifeRejectsNonFiniteAndNegative)
     for (int i = 0; i < 120; ++i)
         StepBody(scene);
 
-    auto* mesh = rig.object->FindComponent<SceneNs::MeshRendererComponent>();
+    auto* mesh = rig.object->FindComponent<SceneNs::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_TRUE(mesh->IsActiveSelf());
 }
@@ -2205,7 +2205,7 @@ TEST(ImpactMark, SpawnAtPlacesTransientMark)
     SceneNs::Scene scene;
     const std::size_t before = scene.Objects().ObjectCount();
 
-    SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{3.0f, 0.02f, 5.0f});
+    SceneNs::GameObject* mark = LevelNs::ImpactMark::SpawnAt(&scene, Vector3{3.0f, 0.02f, 5.0f});
 
     ASSERT_NE(mark, nullptr);
     EXPECT_EQ(scene.Objects().ObjectCount(), before + 1);
@@ -2214,7 +2214,7 @@ TEST(ImpactMark, SpawnAtPlacesTransientMark)
     EXPECT_FLOAT_EQ(pos.x, 3.0f);
     EXPECT_FLOAT_EQ(pos.y, 0.02f);
     EXPECT_FLOAT_EQ(pos.z, 5.0f);
-    EXPECT_EQ(LevelNs::ImpactMarkComponent::SpawnAt(nullptr, Vector3{}), nullptr);
+    EXPECT_EQ(LevelNs::ImpactMark::SpawnAt(nullptr, Vector3{}), nullptr);
 }
 
 // 跡は保存に写らない
@@ -2222,7 +2222,7 @@ TEST(ImpactMark, SkipsSaveCapture)
 {
     NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
     SceneNs::Scene scene;
-    SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
+    SceneNs::GameObject* mark = LevelNs::ImpactMark::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
     ASSERT_NE(mark, nullptr);
 
     const SceneNs::SceneData data = scene.CaptureLiveToSceneData();
@@ -2235,10 +2235,10 @@ TEST(ImpactMark, UsesShadowQuadLook)
 {
     NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
     SceneNs::Scene scene;
-    SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
+    SceneNs::GameObject* mark = LevelNs::ImpactMark::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
     ASSERT_NE(mark, nullptr);
 
-    auto* mesh = mark->FindComponent<SceneNs::MeshRendererComponent>();
+    auto* mesh = mark->FindComponent<SceneNs::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_EQ(mesh->MeshRef(), "shadowQuad");
     EXPECT_EQ(mesh->MaterialRef(), "shadow");
@@ -2249,7 +2249,7 @@ TEST(ImpactMark, StartsAtDiameter)
 {
     NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
     SceneNs::Scene scene;
-    SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
+    SceneNs::GameObject* mark = LevelNs::ImpactMark::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
     ASSERT_NE(mark, nullptr);
 
     const Vector3 scale = mark->Root().Scale();
@@ -2262,7 +2262,7 @@ TEST(ImpactMark, ShrinksToHalfAtHalfLife)
 {
     NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
     SceneNs::Scene scene;
-    SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
+    SceneNs::GameObject* mark = LevelNs::ImpactMark::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
     ASSERT_NE(mark, nullptr);
 
     for (int i = 0; i < 180; ++i)
@@ -2278,17 +2278,17 @@ TEST(ImpactMark, HidesAfterLifeWithoutDestroy)
 {
     NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
     SceneNs::Scene scene;
-    SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
+    SceneNs::GameObject* mark = LevelNs::ImpactMark::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
     ASSERT_NE(mark, nullptr);
     const std::size_t after = scene.Objects().ObjectCount();
 
     for (int i = 0; i < 370; ++i)
         StepBody(scene);
 
-    auto* mesh = mark->FindComponent<SceneNs::MeshRendererComponent>();
+    auto* mesh = mark->FindComponent<SceneNs::MeshRenderer>();
     ASSERT_NE(mesh, nullptr);
     EXPECT_FALSE(mesh->IsActiveSelf());
-    auto* comp = mark->FindComponent<LevelNs::ImpactMarkComponent>();
+    auto* comp = mark->FindComponent<LevelNs::ImpactMark>();
     ASSERT_NE(comp, nullptr);
     EXPECT_FALSE(comp->IsActiveSelf());
     EXPECT_EQ(scene.Objects().ObjectCount(), after);
@@ -2332,15 +2332,15 @@ TEST(LaunchedBody, DoesNotFlyWithoutCollider)
     SceneNs::Scene scene;
     SceneNs::SceneData data;
     SceneNs::ObjectData bare;
-    bare.components.push_back(SceneNs::MakeComponentEntry("LaunchedBodyComponent"));
+    bare.components.push_back(SceneNs::MakeComponentEntry("LaunchedBody"));
     data.objects.push_back(bare);
     scene.LoadFromData(std::move(data));
 
-    LevelNs::LaunchedBodyComponent* body = nullptr;
-    scene.Objects().ForEachComponent<LevelNs::LaunchedBodyComponent>(
-        [&body](LevelNs::LaunchedBodyComponent& found) { body = &found; });
+    LevelNs::LaunchedBody* body = nullptr;
+    scene.Objects().ForEachComponent<LevelNs::LaunchedBody>(
+        [&body](LevelNs::LaunchedBody& found) { body = &found; });
     ASSERT_NE(body, nullptr);
-    ASSERT_EQ(body->Owner()->FindComponent<SceneNs::ColliderComponent>(), nullptr);
+    ASSERT_EQ(body->Owner()->FindComponent<SceneNs::Collider>(), nullptr);
     const JPH::uint bodiesBefore = scene.Physics().BodyCount();
 
     body->Launch(Vector3{5.0f, 0.0f, 0.0f});

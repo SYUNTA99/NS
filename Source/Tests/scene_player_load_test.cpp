@@ -1,6 +1,6 @@
 #include "Editor/LevelFilePaths.h"
 #include "Game/Player/PlayerComponent.h"
-#include "Game/Player/PlayerStateManagerComponent.h"
+#include "Game/Player/PlayerStateManager.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Runtime/Object/Component.h"
 #include "Runtime/Object/GameObject.h"
@@ -69,8 +69,8 @@ TEST_P(ShippedScene, PlayerCarriesTheTwoNewComponents)
         << GetParam()
         << " の自機に PlayerComponent が無い。未知の型名は警告だけ残して読み飛ばされる。"
            "型名が変わると読み込みは成功したまま保存済みの値が落ちる";
-    EXPECT_NE(SceneNs::FindComponentEntry(*player, "PlayerStateManagerComponent"), nullptr)
-        << GetParam() << " の自機に PlayerStateManagerComponent が無い。状態が 1 つも移らない";
+    EXPECT_NE(SceneNs::FindComponentEntry(*player, "PlayerStateManager"), nullptr)
+        << GetParam() << " の自機に PlayerStateManager が無い。状態が 1 つも移らない";
 }
 
 TEST_P(ShippedScene, LoadedPlayerBuildsItsStateMachine)
@@ -84,7 +84,7 @@ TEST_P(ShippedScene, LoadedPlayerBuildsItsStateMachine)
     ASSERT_NE(live, nullptr);
 
     auto* player = live->FindComponent<PlayerNs::PlayerComponent>();
-    auto* states = live->FindComponent<PlayerNs::PlayerStateManagerComponent>();
+    auto* states = live->FindComponent<PlayerNs::PlayerStateManager>();
     ASSERT_NE(player, nullptr);
     ASSERT_NE(states, nullptr);
 
@@ -106,7 +106,7 @@ TEST_P(ShippedScene, EveryTuningFieldNameIsReflected)
 
     const std::vector<std::pair<const char*, const SceneNs::Component*>> targets{
         {"PlayerComponent", live->FindComponent<PlayerNs::PlayerComponent>()},
-        {"PlayerStateManagerComponent", live->FindComponent<PlayerNs::PlayerStateManagerComponent>()},
+        {"PlayerStateManager", live->FindComponent<PlayerNs::PlayerStateManager>()},
     };
 
     for (const auto& [typeName, comp] : targets)

@@ -3,15 +3,15 @@
 #include "Game/Level/BlockObject.h"
 #include "Game/Player.h"
 
-#include <Game/Level/BreakableComponent.h>
-#include <Game/Level/ImpactResolverComponent.h>
-#include <Game/Level/LaunchedBodyComponent.h>
+#include <Game/Level/Breakable.h>
+#include <Game/Level/ImpactResolver.h>
+#include <Game/Level/LaunchedBody.h>
 #include <Game/Player/PlayerComponent.h>
-#include <Game/Player/PlayerStateManagerComponent.h>
+#include <Game/Player/PlayerStateManager.h>
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
-#include <Runtime/Object/Components/PlayerInputComponent.h>
+#include <Runtime/Object/Components/PlayerInput.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
@@ -34,7 +34,7 @@ namespace
     using NS::Core::AABB;
     using NS::Core::Vector3;
     using NS::Game::Player::PlayerComponent;
-    using NS::Game::Player::PlayerStateManagerComponent;
+    using NS::Game::Player::PlayerStateManager;
     using NS::Obj::GameObject;
     using NS::Tests::CompareTraces;
     using NS::Tests::DescribeDiff;
@@ -58,7 +58,7 @@ namespace
     public:
         Rig()
         {
-            m_object.AddComponent<PlayerStateManagerComponent>();
+            m_object.AddComponent<PlayerStateManager>();
             m_movement = m_object.AddComponent<PlayerComponent>();
 
             // 床は走り切る z 方向だけ伸ばす
@@ -66,7 +66,7 @@ namespace
             m_physics.OptimizeBroadPhase();
             m_object.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
             m_movement->OnStart();
-            m_object.FindComponent<PlayerStateManagerComponent>()->OnStart();
+            m_object.FindComponent<PlayerStateManager>()->OnStart();
 
             // 開始位置は空中に取る
             for (int i = 0; i < 30 && !m_movement->IsGrounded(); ++i)
@@ -125,12 +125,12 @@ namespace
 
             NS::Obj::ObjectData player =
                 MakePlayerObject(Vector3{0.0f, Player::k_DefaultSpawnY, 0.0f}, NS::Core::Quaternion{});
-            player.components.push_back(NS::Obj::MakeComponentEntry("ImpactResolverComponent"));
-            player.components.push_back(NS::Obj::MakeComponentEntry("CollisionInputComponent"));
+            player.components.push_back(NS::Obj::MakeComponentEntry("ImpactResolver"));
+            player.components.push_back(NS::Obj::MakeComponentEntry("CollisionInput"));
             data.objects.push_back(player);
 
             NS::Obj::ObjectData target = NS::Game::Level::MakeCellObject(0, 1, k_ImpactTargetZ);
-            target.components.push_back(NS::Obj::MakeComponentEntry("BreakableComponent"));
+            target.components.push_back(NS::Obj::MakeComponentEntry("Breakable"));
             data.objects.push_back(target);
 
             m_scene.LoadFromData(std::move(data));
@@ -142,11 +142,11 @@ namespace
                 m_player = live;
                 m_movement = live->FindComponent<PlayerComponent>();
                 // 入力の component は EarlyUpdate で実機の入力を書き込む。起こしたままだと走行入力が毎フレーム 0 になる
-                if (auto* input = live->FindComponent<NS::Obj::PlayerInputComponent>())
+                if (auto* input = live->FindComponent<NS::Obj::PlayerInput>())
                     input->SetActive(false);
             }
-            m_scene.Objects().ForEachComponent<NS::Game::Level::BreakableComponent>(
-                [](NS::Game::Level::BreakableComponent& breakable) {
+            m_scene.Objects().ForEachComponent<NS::Game::Level::Breakable>(
+                [](NS::Game::Level::Breakable& breakable) {
                     breakable.SetMass(k_ImpactTargetMass);
                     breakable.SetToughness(k_ImpactTargetToughness);
                 });

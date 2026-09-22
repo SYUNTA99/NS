@@ -2,19 +2,19 @@
 
 #include "Game/Level/BlockObject.h"
 #include "Game/Level/FollowCameraObject.h"
-#include "Game/Level/GoalComponent.h"
-#include "Game/Level/HazardComponent.h"
-#include "Game/Level/KillZoneComponent.h"
+#include "Game/Level/Goal.h"
+#include "Game/Level/Hazard.h"
+#include "Game/Level/KillZone.h"
 #include "Game/Player.h"
 #include "Runtime/Graphics/Mesh.h"
-#include "Runtime/Object/Components/BoxColliderComponent.h"
-#include "Runtime/Object/Components/DirectionalLightComponent.h"
-#include "Runtime/Object/Components/MeshRendererComponent.h"
+#include "Runtime/Object/Components/BoxCollider.h"
+#include "Runtime/Object/Components/DirectionalLight.h"
+#include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Components/PlacedVirtualCamera.h"
-#include "Runtime/Object/Components/PlayerInputComponent.h"
-#include "Runtime/Object/Components/SlopeColliderComponent.h"
-#include "Runtime/Object/Components/SphereColliderComponent.h"
-#include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
+#include "Runtime/Object/Components/PlayerInput.h"
+#include "Runtime/Object/Components/SlopeCollider.h"
+#include "Runtime/Object/Components/SphereCollider.h"
+#include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/ObjectList.h"
@@ -45,7 +45,7 @@ namespace NS::Editor
 
         float SlopeAngleOf(const NS::Obj::ObjectData& object) noexcept
         {
-            const nlohmann::json* slope = NS::Obj::FindComponentEntry(object, "SlopeColliderComponent");
+            const nlohmann::json* slope = NS::Obj::FindComponentEntry(object, "SlopeCollider");
             if (!slope)
                 return -1.0f;
             return NS::Obj::FieldFloat(*slope, "角度 (度)", 0.0f);
@@ -53,7 +53,7 @@ namespace NS::Editor
 
         std::string MaterialRefOf(const NS::Obj::ObjectData& object)
         {
-            const nlohmann::json* renderer = NS::Obj::FindComponentEntry(object, "MeshRendererComponent");
+            const nlohmann::json* renderer = NS::Obj::FindComponentEntry(object, "MeshRenderer");
             if (!renderer)
                 return {};
             return NS::Obj::FieldString(*renderer, "マテリアル", {});
@@ -85,8 +85,8 @@ namespace NS::Editor
     bool IsCellBrushObject(NS::Obj::GameObject& object) noexcept
     {
         // 実行時の一時オブジェクトは配置物でないため対象外
-        return !object.IsTransient() && object.FindComponent<NS::Obj::PlayerInputComponent>() == nullptr &&
-               object.FindComponent<NS::Obj::ThirdPersonFollowComponent>() == nullptr &&
+        return !object.IsTransient() && object.FindComponent<NS::Obj::PlayerInput>() == nullptr &&
+               object.FindComponent<NS::Obj::ThirdPersonFollow>() == nullptr &&
                object.FindComponent<NS::Obj::PlacedVirtualCamera>() == nullptr;
     }
 
@@ -177,7 +177,7 @@ namespace NS::Editor
         else if (angleDegrees < 37.5f)
             meshName = "wedge30";
 
-        nlohmann::json slope = NS::Obj::MakeComponentEntry("SlopeColliderComponent");
+        nlohmann::json slope = NS::Obj::MakeComponentEntry("SlopeCollider");
         NS::Obj::SetField(slope, "角度 (度)", angleDegrees);
         NS::Obj::SetField(slope, "半径", NS::Game::Level::k_CellHalfExtents);
         return nlohmann::json::array(
@@ -193,7 +193,7 @@ namespace NS::Editor
             return NS::Game::Level::MakeCellCubeComponents();
         case PrimitiveKind::Sphere:
         {
-            nlohmann::json sphere = NS::Obj::MakeComponentEntry("SphereColliderComponent");
+            nlohmann::json sphere = NS::Obj::MakeComponentEntry("SphereCollider");
             NS::Obj::SetField(sphere, "半径", NS::Game::Level::k_CellHalfExtents.y);
             return nlohmann::json::array(
                 {NS::Game::Level::MakeMeshRendererEntry("sphere", "", NS::Game::Level::k_SolidBaseColor),
@@ -212,14 +212,14 @@ namespace NS::Editor
         // 視覚用マーカーとして金色のキューブを付与する
         return nlohmann::json::array(
             {NS::Game::Level::MakeMeshRendererEntry("cube", "", NS::Core::Vector3{1.0f, 0.84f, 0.0f}),
-             NS::Obj::MakeComponentEntry("GoalComponent")});
+             NS::Obj::MakeComponentEntry("Goal")});
     }
 
     bool IsSolidObject(const NS::Obj::ObjectData& object)
     {
-        const bool hasBox = HasComponentType(object, "BoxColliderComponent");
-        const bool hasSlope = HasComponentType(object, "SlopeColliderComponent");
-        const bool hasHazard = HasComponentType(object, "HazardComponent");
+        const bool hasBox = HasComponentType(object, "BoxCollider");
+        const bool hasSlope = HasComponentType(object, "SlopeCollider");
+        const bool hasHazard = HasComponentType(object, "Hazard");
         const bool hasGoal = NS::Game::Level::IsGoalObject(object);
         const bool hasKillZone = NS::Game::Level::IsKillZoneObject(object);
         return hasBox && !hasSlope && !hasHazard && !hasGoal && !hasKillZone;
@@ -236,11 +236,11 @@ namespace NS::Editor
             return object.name.c_str();
         if (IsPlayerObject(object))
             return "Player";
-        if (HasComponentType(object, "ThirdPersonFollowComponent"))
+        if (HasComponentType(object, "ThirdPersonFollow"))
             return "Follow Camera";
         if (HasComponentType(object, "PlacedVirtualCamera"))
             return "Camera";
-        if (HasComponentType(object, "DirectionalLightComponent"))
+        if (HasComponentType(object, "DirectionalLight"))
             return "Directional Light";
 
         if (NS::Game::Level::IsGoalObject(object))
@@ -260,15 +260,15 @@ namespace NS::Editor
             return "Slope";
         }
 
-        if (HasComponentType(object, "HazardComponent"))
+        if (HasComponentType(object, "Hazard"))
             return "Hazard";
         if (MaterialRefOf(object) == "water")
             return "Water";
-        if (HasComponentType(object, "SphereColliderComponent"))
+        if (HasComponentType(object, "SphereCollider"))
             return "Sphere";
-        if (HasComponentType(object, "BoxColliderComponent"))
+        if (HasComponentType(object, "BoxCollider"))
             return "Solid";
-        if (HasComponentType(object, "MeshRendererComponent"))
+        if (HasComponentType(object, "MeshRenderer"))
             return "Decoration";
         if (HasOnlyTransform(object))
             return "Empty";
@@ -280,19 +280,19 @@ namespace NS::Editor
     {
         if (!object.Name().empty())
             return object.Name().c_str();
-        if (object.FindComponent<NS::Obj::PlayerInputComponent>() != nullptr)
+        if (object.FindComponent<NS::Obj::PlayerInput>() != nullptr)
             return "Player";
-        if (object.FindComponent<NS::Obj::ThirdPersonFollowComponent>() != nullptr)
+        if (object.FindComponent<NS::Obj::ThirdPersonFollow>() != nullptr)
             return "Follow Camera";
         if (object.FindComponent<NS::Obj::PlacedVirtualCamera>() != nullptr)
             return "Camera";
-        if (object.FindComponent<NS::Obj::DirectionalLightComponent>() != nullptr)
+        if (object.FindComponent<NS::Obj::DirectionalLight>() != nullptr)
             return "Directional Light";
 
-        if (object.FindComponent<NS::Game::Level::GoalComponent>() != nullptr)
+        if (object.FindComponent<NS::Game::Level::Goal>() != nullptr)
             return "Goal";
 
-        if (auto* slope = object.FindComponent<NS::Obj::SlopeColliderComponent>())
+        if (auto* slope = object.FindComponent<NS::Obj::SlopeCollider>())
         {
             const float slopeAngle = slope->AngleDegrees();
             if (slopeAngle >= 44.0f)
@@ -306,14 +306,14 @@ namespace NS::Editor
             return "Slope";
         }
 
-        if (object.FindComponent<NS::Game::Level::HazardComponent>() != nullptr)
+        if (object.FindComponent<NS::Game::Level::Hazard>() != nullptr)
             return "Hazard";
-        auto* mesh = object.FindComponent<NS::Obj::MeshRendererComponent>();
+        auto* mesh = object.FindComponent<NS::Obj::MeshRenderer>();
         if (mesh != nullptr && mesh->MaterialRef() == "water")
             return "Water";
-        if (object.FindComponent<NS::Obj::SphereColliderComponent>() != nullptr)
+        if (object.FindComponent<NS::Obj::SphereCollider>() != nullptr)
             return "Sphere";
-        if (object.FindComponent<NS::Obj::BoxColliderComponent>() != nullptr)
+        if (object.FindComponent<NS::Obj::BoxCollider>() != nullptr)
             return "Solid";
         if (mesh != nullptr)
             return "Decoration";
@@ -326,7 +326,7 @@ namespace NS::Editor
 
     NS::Core::AABB PickLocalBounds(const NS::Obj::GameObject& object) noexcept
     {
-        const auto* renderer = object.FindComponent<NS::Obj::MeshRendererComponent>();
+        const auto* renderer = object.FindComponent<NS::Obj::MeshRenderer>();
         if (renderer != nullptr && renderer->GetMesh() != nullptr)
             return renderer->GetMesh()->LocalBounds();
         return NS::Core::AABB{NS::Core::Vector3{0.0f, 0.0f, 0.0f}, NS::Game::Level::k_CellHalfExtents};

@@ -1,5 +1,5 @@
 #include <Runtime/Graphics/RenderContext.h>
-#include <Runtime/Object/Components/OverlayRendererComponent.h>
+#include <Runtime/Object/Components/OverlayRenderer.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <gtest/gtest.h>
@@ -9,28 +9,28 @@
 namespace
 {
     // 描かれた回数を log の要素数で数える fake
-    class FakeOverlay : public NS::Obj::OverlayRendererComponent
+    class FakeOverlay : public NS::Obj::OverlayRenderer
     {
     public:
         explicit FakeOverlay(std::vector<int>* log) : m_log(log) {}
 
         void OnRenderOverlay(const NS::Gfx::RenderContext&) override { m_log->push_back(1); }
 
-        NS_REFLECT_NONE(FakeOverlay, NS::Obj::OverlayRendererComponent)
+        NS_REFLECT_NONE(FakeOverlay, NS::Obj::OverlayRenderer)
 
     private:
         std::vector<int>* m_log;
     };
 
     // OnStart を上書きする派生。基底を呼べば登録が効くことを見る
-    class OverridingOverlay : public NS::Obj::OverlayRendererComponent
+    class OverridingOverlay : public NS::Obj::OverlayRenderer
     {
     public:
         explicit OverridingOverlay(std::vector<int>* log) : m_log(log) {}
 
         void OnStart() override
         {
-            NS::Obj::OverlayRendererComponent::OnStart();
+            NS::Obj::OverlayRenderer::OnStart();
             m_started = true;
         }
 
@@ -38,7 +38,7 @@ namespace
 
         [[nodiscard]] bool Started() const noexcept { return m_started; }
 
-        NS_REFLECT_NONE(OverridingOverlay, NS::Obj::OverlayRendererComponent)
+        NS_REFLECT_NONE(OverridingOverlay, NS::Obj::OverlayRenderer)
 
     private:
         std::vector<int>* m_log;

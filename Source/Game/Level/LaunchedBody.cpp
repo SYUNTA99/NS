@@ -1,0 +1,278 @@
+#include "Game/Level/LaunchedBody.h"
+
+#include "Game/Level/Breakable.h"
+#include "Game/Level/ColliderBounds.h"
+#include "Runtime/Core/AABB.h"
+#include "Runtime/Platform/Clock.h"
+#include "Runtime/Core/Math.h"
+#include "Runtime/Core/OBB.h"
+#include "Runtime/Object/Components/BoxCollider.h"
+#include "Runtime/Object/Components/Collider.h"
+#include "Runtime/Object/Components/MeshRenderer.h"
+#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Reflection/TypeRegistry.h"
+#include "Runtime/Object/Scene/Scene.h"
+#include "Runtime/Object/Transform.h"
+#include "Runtime/Physics/JoltCharacter.h"
+#include "Runtime/Physics/PhysicsScene.h"
+
+#include <algorithm>
+#include <cmath>
+#include <memory>
+
+namespace NS::Game::Level
+{
+    namespace
+    {
+        [[nodiscard]] bool IsFinite(const NS::Core::Vector3& v) noexcept
+        {
+            return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
+        }
+    } // namespace
+
+    LaunchedBody::LaunchedBody() noexcept
+        : NS::Obj::Component(NS::Obj::TickPriority::LateUpdate)
+    {}
+
+    NS::Core::Vector3 LaunchedBody::TumbleFrom(const NS::Core::Vector3& velocity) const noexcept
+    {
+        NS::Core::Vector3 forward{};
+        if (!NS::Core::TryNormalizeHorizontal(velocity, forward))
+        {
+            return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        }
+        const float horizontal = std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+        const float rate = m_spinPerSpeed * horizontal;
+        if (!std::isfinite(rate))
+        {
+            return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        }
+
+        // 軸は上向きと進む向きの外積。正の角度で上面が進行方向へ倒れる前転になる
+        const NS::Core::Vector3 axis{forward.z, 0.0f, -forward.x};
+        return axis * rate;
+    }
+
+    NS::Core::Vector3 LaunchedBody::Velocity() const noexcept
+    {
+        NS::Phys::PhysicsScene* physics = ScenePhysics();
+        if (!m_flying || physics == nullptr)
+            return NS::Core::Vector3{0.0f, 0.0f, 0.0f};
+        return physics->BodyVelocity(m_bodyId);
+    }
+
+    void LaunchedBody::SetRestLifeSeconds(float seconds) noexcept
+    {
+        if (!std::isfinite(seconds) || seconds < 0.0f)
+            return;
+        m_restLifeSeconds = seconds;
+    }
+
+    void LaunchedBody::SetDebrisCount(int count) noexcept
+    {
+        m_debrisCount = std::max(0, count);
+    }
+
+    JPH::BodyID LaunchedBody::CreateFlyingBody(NS::Phys::PhysicsScene& physics) const
+    {
+        NS::Core::AABB bounds{};
+        if (!TryGetColliderBounds(*Owner(), bounds))
+        {
+            return JPH::BodyID{};
+        }
+
+        NS::Phys::DynamicBodyDesc desc;
+        // 破片同士は当たらないレイヤーに置く。散った破片が互いを押し合うと元の勢いが読めなくなる
+        desc.layer = Owner()->IsTransient() ? NS::Phys::ObjectLayers::Debris : NS::Phys::ObjectLayers::Rock;
+        desc.restitution = m_restitution;
+        desc.friction = m_friction;
+        if (const auto* breakable = Owner()->FindComponent<Breakable>())
+            desc.mass = breakable->Mass();
+
+        // TODO: どの形も外接箱で近似している。球の的が箱として転がるのが気になったら形ごとに分ける
+        NS::Core::OBB box;
+        box.center = bounds.Center;
+        box.halfExtentX = std::max(bounds.Extents.x, 1.0e-3f);
+        box.halfExtentY = std::max(bounds.Extents.y, 1.0e-3f);
+        box.halfExtentZ = std::max(bounds.Extents.z, 1.0e-3f);
+        return physics.AddDynamicBox(box, desc);
+    }
+
+    void LaunchedBody::RemoveFlyingBody() noexcept
+    {
+        NS::Phys::PhysicsScene* physics = ScenePhysics();
+        if (physics == nullptr)
+            return;
+
+        physics->RemoveBody(m_bodyId);
+        m_bodyId = JPH::BodyID{};
+    }
+
+    void LaunchedBody::Launch(const NS::Core::Vector3& velocity)
+    {
+        // 非有限値は位置へ流れ、配置物が二度と描かれない場所へ飛ぶ
+        if (!IsFinite(velocity) || Owner() == nullptr)
+            return;
+        NS::Obj::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+            return;
+
+        if (!m_flying)
+        {
+            // 置かれた当たりを先に外す。残すと同じ場所に静的と動的の body が二重に立つ
+            SetColliderActive(false);
+            m_bodyId = CreateFlyingBody(scene->Physics());
+            if (m_bodyId.IsInvalid())
+            {
+                SetColliderActive(true);
+                return;
+            }
+            m_flying = true;
+        }
+
+        scene->Physics().SetBodyVelocity(m_bodyId, velocity);
+        scene->Physics().SetBodyAngularVelocity(m_bodyId, TumbleFrom(velocity));
+        m_restAge = 0.0f;
+    }
+
+    void LaunchedBody::ComeToRest()
+    {
+        RemoveFlyingBody();
+        m_flying = false;
+        m_restAge = 0.0f;
+        SetColliderActive(true);
+    }
+
+    void LaunchedBody::HideAndSleep()
+    {
+        if (auto* mesh = Owner()->FindComponent<NS::Obj::MeshRenderer>())
+            mesh->SetActive(false);
+        SetColliderActive(false);
+        SetActive(false);
+    }
+
+    void LaunchedBody::Shatter()
+    {
+        if (Owner() == nullptr)
+            return;
+        NS::Obj::Scene* scene = Owner()->OwningScene();
+        if (scene == nullptr)
+            return;
+
+        const NS::Core::Vector3 origin = RootTransform().Position();
+        float mass = 1.0f;
+        auto* breakable = Owner()->FindComponent<Breakable>();
+        if (breakable != nullptr)
+        {
+            mass = breakable->Mass();
+        }
+
+        RemoveFlyingBody();
+        m_flying = false;
+
+        // 重い物ほど破片が飛ばない。押し飛ばしと同じ向きの質量感を破片でも見せる
+        const float speed = m_debrisSpeed / mass;
+        for (int i = 0; i < m_debrisCount; ++i)
+        {
+            const float angle = 2.0f * NS::Core::k_Pi * static_cast<float>(i) / static_cast<float>(m_debrisCount);
+            // 浮きは交互に変える。全部同じ高さだと 1 つの輪に見えて壊れた量が伝わらない
+            const float up = 0.5f + 0.5f * static_cast<float>(i % 2);
+            auto owned = std::make_unique<NS::Obj::GameObject>();
+            owned->Root().SetPosition(origin);
+            owned->Root().SetScale(NS::Core::Vector3{m_debrisScale, m_debrisScale, m_debrisScale});
+            auto* mesh = owned->AddComponent<NS::Obj::MeshRenderer>();
+            mesh->SetMeshRef("cube");
+            mesh->SetMaterialRef("player");
+            mesh->SetBaseColor(m_debrisBaseColor);
+            owned->AddComponent<NS::Obj::BoxCollider>();
+            owned->AddComponent<LaunchedBody>();
+            NS::Obj::GameObject* spawned = scene->SpawnTransient(std::move(owned));
+            if (spawned == nullptr)
+                continue;
+            auto* body = spawned->FindComponent<LaunchedBody>();
+            if (body == nullptr)
+                continue;
+            // 破片だけ寿命を持つ。壊すたびに増えるので、止まったら消さないと世界に積み上がり続ける
+            body->SetRestLifeSeconds(m_debrisLifeSeconds);
+            // 破片からは破片を出さない。0 にしないと破片が壁へ当たるたびに破片を撒く
+            body->SetDebrisCount(0);
+            body->Launch(NS::Core::Vector3{std::cos(angle) * speed, up * speed, std::sin(angle) * speed});
+        }
+
+        if (breakable != nullptr)
+        {
+            breakable->SetActive(false);
+        }
+        HideAndSleep();
+    }
+
+    void LaunchedBody::OnUpdate()
+    {
+        const float dt = NS::Platform::FrameTimer::FixedDelta();
+        if (!m_flying)
+        {
+            // 0 は消えない指定。押し飛ばしただけの配置物は場に残す
+            if (m_restLifeSeconds <= 0.0f)
+                return;
+            m_restAge += dt;
+            if (m_restAge < m_restLifeSeconds)
+                return;
+            HideAndSleep();
+            return;
+        }
+
+        NS::Phys::PhysicsScene* physics = ScenePhysics();
+        if (physics == nullptr)
+            return;
+
+        for (const NS::Phys::BodyContact& contact : physics->ContactsOf(m_bodyId))
+        {
+            // 歩ける面は床。着地で必ず当たる床を分けないと着地で割れる
+            if (!NS::Phys::IsWalkableNormal(contact.normal.y))
+            {
+                Shatter();
+                return;
+            }
+        }
+
+        RootTransform().SetPosition(physics->BodyPosition(m_bodyId));
+        RootTransform().SetRotation(physics->BodyRotation(m_bodyId));
+
+        // 止まったかを決めるのは Jolt の睡眠。速度のしきい値を自分で持つと 2 か所で止まりを判断することになる
+        if (!physics->IsBodyAwake(m_bodyId))
+            ComeToRest();
+    }
+
+    void LaunchedBody::OnEndPlay()
+    {
+        RemoveFlyingBody();
+        m_flying = false;
+    }
+
+    void LaunchedBody::SetColliderActive(bool active)
+    {
+        if (Owner() == nullptr)
+            return;
+        auto* collider = Owner()->FindComponent<NS::Obj::Collider>();
+        if (collider == nullptr || collider->IsActiveSelf() == active)
+            return;
+
+        collider->SetActive(active);
+        if (NS::Obj::Scene* scene = Owner()->OwningScene())
+        {
+            if (active)
+                collider->SyncToPhysics(scene->Physics());
+            else
+                collider->RemoveFromPhysics(scene->Physics());
+        }
+    }
+
+    NS::Phys::PhysicsScene* LaunchedBody::ScenePhysics() const noexcept
+    {
+        if (Owner() == nullptr || Owner()->OwningScene() == nullptr)
+            return nullptr;
+        return &Owner()->OwningScene()->Physics();
+    }
+
+    NS_CLASS(LaunchedBody)
+} // namespace NS::Game::Level

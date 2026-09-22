@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Runtime/Core/Math.h"
-#include "Runtime/Object/Components/VirtualCameraComponent.h"
+#include "Runtime/Object/Components/VirtualCamera.h"
 
 namespace NS::Editor
 {

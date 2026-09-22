@@ -39,7 +39,7 @@
             ]
           },
           "id": 5,
-          "type": "MeshRendererComponent"
+          "type": "MeshRenderer"
         },
         {
           "fields": {
@@ -61,7 +61,7 @@
             ]
           },
           "id": 6,
-          "type": "BoxColliderComponent"
+          "type": "BoxCollider"
         }
       ],
       "id": 1
@@ -72,12 +72,12 @@
         {
           "fields": {},
           "id": 10,
-          "type": "PlayerInputComponent"
+          "type": "PlayerInput"
         },
         {
           "fields": {},
           "id": 63,
-          "type": "PlayerInputRelayComponent"
+          "type": "PlayerInputRelay"
         },
         {
           "fields": {
@@ -113,7 +113,7 @@
             }
           },
           "id": 59,
-          "type": "CollisionInputComponent"
+          "type": "CollisionInput"
         },
         {
           "fields": {
@@ -135,7 +135,7 @@
             "食い込み距離": 0.05999999865889549
           },
           "id": 30,
-          "type": "ImpactResolverComponent"
+          "type": "ImpactResolver"
         },
         {
           "fields": {
@@ -170,12 +170,12 @@
             ]
           },
           "id": 8,
-          "type": "MeshRendererComponent"
+          "type": "MeshRenderer"
         },
         {
           "fields": {},
           "id": 62,
-          "type": "PlayerStateManagerComponent"
+          "type": "PlayerStateManager"
         },
         {
           "fields": {
@@ -210,7 +210,7 @@
             "体力": 8
           },
           "id": 18,
-          "type": "HealthComponent"
+          "type": "Health"
         },
         {
           "fields": {
@@ -220,7 +220,7 @@
             "表面オフセット": 0.019999999552965164
           },
           "id": 11,
-          "type": "ShadowComponent"
+          "type": "Shadow"
         },
         {
           "fields": {
@@ -238,32 +238,32 @@
             ]
           },
           "id": 60,
-          "type": "CapsuleColliderComponent"
+          "type": "CapsuleCollider"
         },
         {
           "fields": {},
           "id": 20,
-          "type": "ScreenFadeComponent"
+          "type": "ScreenFade"
         },
         {
           "fields": {},
           "id": 21,
-          "type": "RespawnerComponent"
+          "type": "Respawner"
         },
         {
           "fields": {},
           "id": 22,
-          "type": "FinisherComponent"
+          "type": "Finisher"
         },
         {
           "fields": {},
           "id": 23,
-          "type": "AreaCameraActivatorComponent"
+          "type": "AreaCameraActivator"
         },
         {
           "fields": {},
           "id": 64,
-          "type": "FollowCameraFeedComponent"
+          "type": "FollowCameraFeed"
         }
       ],
       "id": 2
@@ -317,7 +317,7 @@
             "頭の高さ": 1.2000000476837158
           },
           "id": 13,
-          "type": "ThirdPersonFollowComponent"
+          "type": "ThirdPersonFollow"
         }
       ],
       "id": 3
@@ -371,7 +371,7 @@
             "露出": 1.350000023841858
           },
           "id": 15,
-          "type": "DirectionalLightComponent"
+          "type": "DirectionalLight"
         }
       ],
       "id": 4
@@ -439,7 +439,7 @@
             ]
           },
           "id": 37,
-          "type": "MeshRendererComponent"
+          "type": "MeshRenderer"
         },
         {
           "fields": {
@@ -451,7 +451,7 @@
             "半径": 0.5
           },
           "id": 38,
-          "type": "SphereColliderComponent"
+          "type": "SphereCollider"
         },
         {
           "fields": {
@@ -459,7 +459,7 @@
             "質量": 0.5
           },
           "id": 39,
-          "type": "BreakableComponent"
+          "type": "Breakable"
         },
         {
           "fields": {
@@ -472,7 +472,7 @@
             "跳ね返り": 0.3499999940395355
           },
           "id": 40,
-          "type": "LaunchedBodyComponent"
+          "type": "LaunchedBody"
         },
         {
           "fields": {
@@ -482,7 +482,7 @@
             "表面オフセット": 0.019999999552965164
           },
           "id": 65,
-          "type": "ShadowComponent"
+          "type": "Shadow"
         }
       ],
       "id": 35
@@ -522,7 +522,7 @@
             ]
           },
           "id": 43,
-          "type": "MeshRendererComponent"
+          "type": "MeshRenderer"
         },
         {
           "fields": {
@@ -534,7 +534,7 @@
             "半径": 0.5
           },
           "id": 44,
-          "type": "SphereColliderComponent"
+          "type": "SphereCollider"
         },
         {
           "fields": {
@@ -542,7 +542,7 @@
             "質量": 1.0
           },
           "id": 45,
-          "type": "BreakableComponent"
+          "type": "Breakable"
         },
         {
           "fields": {
@@ -555,7 +555,7 @@
             "跳ね返り": 0.3499999940395355
           },
           "id": 46,
-          "type": "LaunchedBodyComponent"
+          "type": "LaunchedBody"
         },
         {
           "fields": {
@@ -565,7 +565,7 @@
             "表面オフセット": 0.019999999552965164
           },
           "id": 66,
-          "type": "ShadowComponent"
+          "type": "Shadow"
         }
       ],
       "id": 41
@@ -605,7 +605,7 @@
             ]
           },
           "id": 49,
-          "type": "MeshRendererComponent"
+          "type": "MeshRenderer"
         },
         {
           "fields": {
@@ -617,7 +617,7 @@
             "半径": 0.5
           },
           "id": 50,
-          "type": "SphereColliderComponent"
+          "type": "SphereCollider"
         },
         {
           "fields": {
@@ -625,7 +625,7 @@
             "質量": 2.0
           },
           "id": 51,
-          "type": "BreakableComponent"
+          "type": "Breakable"
         },
         {
           "fields": {
@@ -638,7 +638,7 @@
             "跳ね返り": 0.3499999940395355
           },
           "id": 52,
-          "type": "LaunchedBodyComponent"
+          "type": "LaunchedBody"
         },
         {
           "fields": {
@@ -648,7 +648,7 @@
             "表面オフセット": 0.019999999552965164
           },
           "id": 67,
-          "type": "ShadowComponent"
+          "type": "Shadow"
         }
       ],
       "id": 47
@@ -688,7 +688,7 @@
             ]
           },
           "id": 55,
-          "type": "MeshRendererComponent"
+          "type": "MeshRenderer"
         },
         {
           "fields": {
@@ -700,7 +700,7 @@
             "半径": 0.5
           },
           "id": 56,
-          "type": "SphereColliderComponent"
+          "type": "SphereCollider"
         },
         {
           "fields": {
@@ -708,7 +708,7 @@
             "質量": 8.0
           },
           "id": 57,
-          "type": "BreakableComponent"
+          "type": "Breakable"
         },
         {
           "fields": {
@@ -721,7 +721,7 @@
             "跳ね返り": 0.3499999940395355
           },
           "id": 58,
-          "type": "LaunchedBodyComponent"
+          "type": "LaunchedBody"
         },
         {
           "fields": {
@@ -731,7 +731,7 @@
             "表面オフセット": 0.019999999552965164
           },
           "id": 68,
-          "type": "ShadowComponent"
+          "type": "Shadow"
         }
       ],
       "id": 53

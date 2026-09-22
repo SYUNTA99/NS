@@ -1,15 +1,15 @@
 #include "Game/Player.h"
 
-#include <Game/Level/HazardComponent.h>
+#include <Game/Level/Hazard.h>
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Core/OBB.h>
 #include <Runtime/Core/Sphere.h>
 #include <Runtime/Object/AssetManager.h>
-#include <Runtime/Object/Components/BoxColliderComponent.h>
-#include <Runtime/Object/Components/CapsuleColliderComponent.h>
-#include <Runtime/Object/Components/SlopeColliderComponent.h>
-#include <Runtime/Object/Components/SphereColliderComponent.h>
+#include <Runtime/Object/Components/BoxCollider.h>
+#include <Runtime/Object/Components/CapsuleCollider.h>
+#include <Runtime/Object/Components/SlopeCollider.h>
+#include <Runtime/Object/Components/SphereCollider.h>
 #include <Runtime/Object/Components/TransformComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
@@ -60,18 +60,18 @@ namespace
     ColliderSignature ExtractColliderSignature(NS::Obj::GameObject& obj)
     {
         ColliderSignature sig;
-        if (auto* box = obj.FindComponent<NS::Obj::BoxColliderComponent>())
+        if (auto* box = obj.FindComponent<NS::Obj::BoxCollider>())
         {
             sig.hasBox = true;
             sig.boxAabb = box->WorldAABB();
             sig.boxObb = box->WorldOBB();
         }
-        if (auto* sphere = obj.FindComponent<NS::Obj::SphereColliderComponent>())
+        if (auto* sphere = obj.FindComponent<NS::Obj::SphereCollider>())
         {
             sig.hasSphere = true;
             sig.sphere = sphere->WorldSphere();
         }
-        if (auto* capsule = obj.FindComponent<NS::Obj::CapsuleColliderComponent>())
+        if (auto* capsule = obj.FindComponent<NS::Obj::CapsuleCollider>())
         {
             sig.hasCapsule = true;
             const NS::Phys::Capsule worldCapsule = capsule->WorldCapsule();
@@ -80,13 +80,13 @@ namespace
             sig.capsuleRadius = worldCapsule.radius;
             sig.capsuleHalfHeight = worldCapsule.halfHeight;
         }
-        if (auto* slope = obj.FindComponent<NS::Obj::SlopeColliderComponent>())
+        if (auto* slope = obj.FindComponent<NS::Obj::SlopeCollider>())
         {
             sig.hasSlope = true;
             sig.slopeAngle = slope->AngleDegrees();
             sig.slopeTriangles = slope->WorldTriangles();
         }
-        if (obj.FindComponent<NS::Game::Level::HazardComponent>())
+        if (obj.FindComponent<NS::Game::Level::Hazard>())
             sig.hasHazard = true;
         return sig;
     }
@@ -143,16 +143,16 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     SceneData src;
     ObjectData obj;
     NS::Obj::SetObjectPosition(obj, Vector3{2.0f, 1.0f, 3.0f});
-    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshRendererComponent"));
-    nlohmann::json boxEntry = NS::Obj::MakeComponentEntry("BoxColliderComponent");
+    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshRenderer"));
+    nlohmann::json boxEntry = NS::Obj::MakeComponentEntry("BoxCollider");
     NS::Obj::SetField(boxEntry, "半径", Vector3{1.0f, 2.0f, 3.0f});
     NS::Obj::SetField(boxEntry, "中心オフセット", Vector3{0.1f, 0.2f, 0.3f});
     obj.components.push_back(std::move(boxEntry));
-    nlohmann::json sphere = NS::Obj::MakeComponentEntry("SphereColliderComponent");
+    nlohmann::json sphere = NS::Obj::MakeComponentEntry("SphereCollider");
     NS::Obj::SetField(sphere, "半径", 0.7f);
     NS::Obj::SetField(sphere, "中心オフセット", Vector3{0.0f, 1.0f, 0.0f});
     obj.components.push_back(std::move(sphere));
-    nlohmann::json capsule = NS::Obj::MakeComponentEntry("CapsuleColliderComponent");
+    nlohmann::json capsule = NS::Obj::MakeComponentEntry("CapsuleCollider");
     NS::Obj::SetField(capsule, "半径", 0.4f);
     NS::Obj::SetField(capsule, "半分の高さ", 0.9f);
     obj.components.push_back(std::move(capsule));
@@ -175,7 +175,7 @@ TEST(BehaviorZero, ComponentsDrivenSurvivesJsonRoundTrip)
     ExpectSignatureEqual(beforeSig, ExtractColliderSignature(*after));
 
     // リフレクション set が効いたか box の寸法で直接確かめる
-    auto* box = before->FindComponent<NS::Obj::BoxColliderComponent>();
+    auto* box = before->FindComponent<NS::Obj::BoxCollider>();
     ASSERT_NE(box, nullptr);
     const Vector3 half = box->HalfExtents();
     EXPECT_NEAR(half.x, 1.0f, k_Tol);

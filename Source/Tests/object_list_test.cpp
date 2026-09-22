@@ -2,16 +2,16 @@
 #include "Game/Level/FollowCameraObject.h"
 #include "Game/Player.h"
 #include "Runtime/Core/Sphere.h"
-#include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
+#include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 
 #include <Runtime/Object/AssetManager.h>
-#include <Runtime/Object/Components/BoxColliderComponent.h>
-#include <Runtime/Object/Components/MeshColliderComponent.h>
+#include <Runtime/Object/Components/BoxCollider.h>
+#include <Runtime/Object/Components/MeshCollider.h>
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
-#include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
-#include <Runtime/Object/Components/VirtualCameraComponent.h>
+#include <Runtime/Object/Components/ThirdPersonFollow.h>
+#include <Runtime/Object/Components/VirtualCamera.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
@@ -137,7 +137,7 @@ TEST(ObjectListTest, TriggerBoxHasNoSolidCollision)
 {
     SceneData level;
     NS::Obj::ObjectData object{};
-    nlohmann::json box = NS::Obj::MakeComponentEntry("BoxColliderComponent");
+    nlohmann::json box = NS::Obj::MakeComponentEntry("BoxCollider");
     NS::Obj::SetField(box, "トリガー", true);
     object.components = nlohmann::json::array({std::move(box)});
     level.objects.push_back(std::move(object));
@@ -226,12 +226,12 @@ TEST(ObjectListTest, RebuildBakesFollowCameraAndResolvesTarget)
     NS::Obj::ObjectList& objects = scene.Objects();
     objects.Rebuild(level, scene, MakeFactory(assets, level));
 
-    const auto follows = Collect<NS::Obj::ThirdPersonFollowComponent>(objects);
+    const auto follows = Collect<NS::Obj::ThirdPersonFollow>(objects);
     ASSERT_EQ(follows.size(), 1u);
     auto* follow = follows[0];
     EXPECT_FALSE(follow->IsActive());
-    // CameraBrainComponent の登録が使う抽象基底の問い合わせでも同じ実体が引ける
-    const auto vcams = Collect<NS::Obj::VirtualCameraComponent>(objects);
+    // CameraBrain の登録が使う抽象基底の問い合わせでも同じ実体が引ける
+    const auto vcams = Collect<NS::Obj::VirtualCamera>(objects);
     ASSERT_EQ(vcams.size(), 1u);
     EXPECT_EQ(vcams[0], follow);
     // far plane 100 はコンストラクタの既定。データが持つのは追従対象だけ
@@ -483,8 +483,8 @@ TEST(ObjectListTest, UpdateAllObjectsFollowsOwnerActiveFlag)
 TEST(ObjectListTest, SyncPhysicsFillsPhysicsScene)
 {
     PhysicsStage stage;
-    stage.Spawn()->AddComponent<NS::Obj::BoxColliderComponent>();
-    stage.Spawn()->AddComponent<NS::Obj::SphereColliderComponent>();
+    stage.Spawn()->AddComponent<NS::Obj::BoxCollider>();
+    stage.Spawn()->AddComponent<NS::Obj::SphereCollider>();
 
     stage.objects.SyncPhysics(stage.physics);
 
@@ -494,7 +494,7 @@ TEST(ObjectListTest, SyncPhysicsFillsPhysicsScene)
 TEST(ObjectListTest, SyncPhysicsIntoPhysicsSceneTwiceKeepsTheCount)
 {
     PhysicsStage stage;
-    stage.Spawn()->AddComponent<NS::Obj::BoxColliderComponent>();
+    stage.Spawn()->AddComponent<NS::Obj::BoxCollider>();
 
     stage.objects.SyncPhysics(stage.physics);
     stage.objects.SyncPhysics(stage.physics);
@@ -507,8 +507,8 @@ TEST(ObjectListTest, SyncPhysicsIntoPhysicsSceneTwiceKeepsTheCount)
 TEST(ObjectListTest, SyncPhysicsIntoPhysicsSceneKeepsEveryBodyId)
 {
     PhysicsStage stage;
-    auto* box = stage.Spawn()->AddComponent<NS::Obj::BoxColliderComponent>();
-    auto* sphere = stage.Spawn()->AddComponent<NS::Obj::SphereColliderComponent>();
+    auto* box = stage.Spawn()->AddComponent<NS::Obj::BoxCollider>();
+    auto* sphere = stage.Spawn()->AddComponent<NS::Obj::SphereCollider>();
 
     stage.objects.SyncPhysics(stage.physics);
     const JPH::BodyID staleBox = box->BodyId();
@@ -525,8 +525,8 @@ TEST(ObjectListTest, SyncPhysicsIntoPhysicsSceneKeepsEveryBodyId)
 TEST(ObjectListTest, InactiveColliderStaysOutOfPhysicsScene)
 {
     PhysicsStage stage;
-    stage.Spawn()->AddComponent<NS::Obj::BoxColliderComponent>();
-    auto* collider = stage.Spawn()->AddComponent<NS::Obj::BoxColliderComponent>();
+    stage.Spawn()->AddComponent<NS::Obj::BoxCollider>();
+    auto* collider = stage.Spawn()->AddComponent<NS::Obj::BoxCollider>();
     collider->SetActive(false);
 
     stage.objects.SyncPhysics(stage.physics);
@@ -546,7 +546,7 @@ TEST(ObjectListTest, MeshColliderTrianglesReachPhysics)
     collision.shape = NS::Phys::CreateMeshShape(collision.triangles);
 
     PhysicsStage stage;
-    stage.Spawn()->AddComponent<NS::Obj::MeshColliderComponent>()->SetCollision(&collision);
+    stage.Spawn()->AddComponent<NS::Obj::MeshCollider>()->SetCollision(&collision);
 
     stage.objects.SyncPhysics(stage.physics);
     ASSERT_EQ(stage.physics.BodyCount(), 1u);
@@ -596,7 +596,7 @@ TEST(ObjectListTest, UpdateObjectsCostMeasurement)
 TEST(ObjectListTest, SyncPhysicsKeepsBodiesItDidNotCreate)
 {
     PhysicsStage stage;
-    stage.Spawn()->AddComponent<NS::Obj::BoxColliderComponent>();
+    stage.Spawn()->AddComponent<NS::Obj::BoxCollider>();
 
     stage.objects.SyncPhysics(stage.physics);
 
@@ -615,7 +615,7 @@ TEST(ObjectListTest, SyncPhysicsKeepsBodiesItDidNotCreate)
 TEST(ObjectListTest, SyncPhysicsDropsTheBodyOfADeactivatedCollider)
 {
     PhysicsStage stage;
-    auto* box = stage.Spawn()->AddComponent<NS::Obj::BoxColliderComponent>();
+    auto* box = stage.Spawn()->AddComponent<NS::Obj::BoxCollider>();
 
     stage.objects.SyncPhysics(stage.physics);
     ASSERT_EQ(stage.physics.BodyCount(), 1u);
@@ -632,10 +632,10 @@ TEST(ObjectListTest, ClearTakesEveryColliderBodyOutOfThePhysicsScene)
 {
     NS::Obj::Scene scene;
     auto box = std::make_unique<NS::Obj::GameObject>();
-    box->AddComponent<NS::Obj::BoxColliderComponent>();
+    box->AddComponent<NS::Obj::BoxCollider>();
     scene.SpawnTransient(std::move(box));
     auto sphere = std::make_unique<NS::Obj::GameObject>();
-    sphere->AddComponent<NS::Obj::SphereColliderComponent>();
+    sphere->AddComponent<NS::Obj::SphereCollider>();
     scene.SpawnTransient(std::move(sphere));
 
     scene.SyncPhysics();

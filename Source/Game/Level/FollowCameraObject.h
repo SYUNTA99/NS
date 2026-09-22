@@ -7,7 +7,7 @@
 
 namespace NS::Game::Level
 {
-    //! 追従カメラの配置物か。ThirdPersonFollowComponent の有無で見分ける
+    //! 追従カメラの配置物か。ThirdPersonFollow の有無で見分ける
     [[nodiscard]] bool IsFollowCameraObject(const NS::Obj::ObjectData& object) noexcept;
 
     //! objects から追従カメラを探す。最初の 1 件の添字、無ければ k_NoObjectIndex

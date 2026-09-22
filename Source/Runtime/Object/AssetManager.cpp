@@ -1,6 +1,5 @@
 #include "Runtime/Object/AssetManager.h"
 
-#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
@@ -14,8 +13,9 @@
 #include "Runtime/Graphics/SkeletalMesh.h"
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Graphics/Texture.h"
-#include "Runtime/Object/Components/MeshRendererComponent.h"
+#include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Physics/MeshCollision.h"
+#include "Runtime/Platform/Filesystem.h"
 
 #include <array>
 #include <cstdint>
@@ -267,7 +267,7 @@ namespace NS::Obj
         }
 
         // 描画と当たりのどちらを先に頼まれても両方ここで作る
-        // 当たりは MeshColliderComponent が描画と同じ参照で頼む。当たりが先でも GPU mesh は描画に使われる
+        // 当たりは MeshCollider が描画と同じ参照で頼む。当たりが先でも GPU mesh は描画に使われる
         MeshRecord record;
         const NS::Gfx::MeshGeometry geom = NS::Gfx::LoadGltfMesh(key);
         if (geom.vertices.empty() || geom.indices.empty())
@@ -342,7 +342,6 @@ namespace NS::Obj
         auto it = m_skinnedModels.find(key);
         if (it == m_skinnedModels.end())
         {
-            // glTF から skinned mesh を読む
             NS::Gfx::SkinnedMeshData data = NS::Gfx::LoadGltfSkinnedMesh(key);
             if (!data.IsValid())
             {
@@ -412,7 +411,7 @@ namespace NS::Obj
     }
 
     const std::vector<NS::Gfx::AnimationClip>* AssetManager::GetOrLoadBoundClips(std::string_view clipPath,
-                                                                                      std::string_view modelPath)
+                                                                                 std::string_view modelPath)
     {
         const std::pair<std::string, std::string> key{NS::Platform::FileSystem::Normalize(clipPath),
                                                       NS::Platform::FileSystem::Normalize(modelPath)};
@@ -471,7 +470,6 @@ namespace NS::Obj
             return LoadedMaterial{it->second.material.get(), it->second.baseColor};
         }
 
-        // .mat を読む
         const auto textOpt = NS::Platform::FileSystem::ReadAllText(matKey);
         if (!textOpt)
         {
@@ -494,7 +492,7 @@ namespace NS::Obj
         NS::Gfx::Shader* vertexShader = GetOrLoadShader(resolve(fileDesc.vertexShader));
         NS::Gfx::Shader* pixelShader = GetOrLoadShader(resolve(fileDesc.pixelShader));
 
-        // CB は slot 0 で MeshRendererComponent が流す FrameCB に合わせる
+        // CB は slot 0 で MeshRenderer が流す FrameCB に合わせる
         NS::Gfx::MaterialDesc matDesc{};
         matDesc.vertexShader = vertexShader;
         matDesc.pixelShader = pixelShader;
@@ -530,7 +528,7 @@ namespace NS::Obj
             NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(m_baseDir, "Assets"), "Textures"),
             "cube_test.png"));
 
-        // CB は slot 0 で MeshRendererComponent が流す FrameCB に合わせる
+        // CB は slot 0 で MeshRenderer が流す FrameCB に合わせる
         NS::Gfx::MaterialDesc base{};
         base.vertexShader = standardVS;
         base.pixelShader = playerPS;

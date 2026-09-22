@@ -1,5 +1,5 @@
 #include <Game/Player/PlayerComponent.h>
-#include <Game/Player/PlayerStateManagerComponent.h>
+#include <Game/Player/PlayerStateManager.h>
 #include <Game/Player/States/BodySlamPlayerState.h>
 #include <Game/Player/States/BrakePlayerState.h>
 #include <Game/Player/States/FallPlayerState.h>
@@ -10,8 +10,8 @@
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
-#include <Runtime/Object/Components/CameraBrainComponent.h>
-#include <Runtime/Object/Components/CapsuleColliderComponent.h>
+#include <Runtime/Object/Components/CameraBrain.h>
+#include <Runtime/Object/Components/CapsuleCollider.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Scene/Scene.h>
@@ -40,7 +40,7 @@ namespace
     using NS::Game::Player::LedgeClimbingPlayerState;
     using NS::Game::Player::LedgeHangingPlayerState;
     using NS::Game::Player::PlayerComponent;
-    using NS::Game::Player::PlayerStateManagerComponent;
+    using NS::Game::Player::PlayerStateManager;
     using NS::Game::Player::WalkPlayerState;
     using NS::Obj::GameObject;
 
@@ -91,7 +91,7 @@ namespace
     //! @details 積む順は Player のコンストラクタと同じ
     PlayerComponent& MakePlayer(GameObject& owner)
     {
-        auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
+        auto& manager = *owner.AddComponent<PlayerStateManager>();
         auto& player = *owner.AddComponent<PlayerComponent>();
 
         player.OnStart();
@@ -105,7 +105,7 @@ namespace
         auto& player = MakePlayer(owner);
         // 立ちは縁掴みを持たず、立ちから始めると最初のフレームに掴まない
         // 状態機械は最初のフレームまで組まれないので、先に組んでから落下へ移す
-        auto& manager = *owner.FindComponent<PlayerStateManagerComponent>();
+        auto& manager = *owner.FindComponent<PlayerStateManager>();
         manager.EnsureBuilt(player);
         manager.Change<FallPlayerState>();
         return player;
@@ -113,7 +113,7 @@ namespace
 
     [[nodiscard]] std::string_view CurrentStateName(GameObject& owner)
     {
-        return owner.FindComponent<PlayerStateManagerComponent>()->CurrentName();
+        return owner.FindComponent<PlayerStateManager>()->CurrentName();
     }
 
     //! 床 1 枚を敷いて接地させた自機を返す。壁は呼び出し側が先に足す
@@ -184,11 +184,11 @@ TEST_F(PlayerComponentTest, MaxSpeedScaleRoundsNegativeAndKeepsTheValueOnNonFini
     EXPECT_FLOAT_EQ(player.MaxSpeed(), 0.0f);
 }
 
-// 当たりの形は同居する CapsuleColliderComponent が正。移動側はコピーを持たず直接読む
+// 当たりの形は同居する CapsuleCollider が正。移動側はコピーを持たず直接読む
 TEST_F(PlayerComponentTest, AdoptsSiblingCapsuleColliderSize)
 {
     GameObject obj;
-    obj.AddComponent<NS::Obj::CapsuleColliderComponent>(0.7f, 0.9f);
+    obj.AddComponent<NS::Obj::CapsuleCollider>(0.7f, 0.9f);
     auto& player = MakePlayer(obj);
 
     player.OnUpdate();
@@ -222,7 +222,7 @@ TEST_F(PlayerComponentTest, StatesDecideTheVelocityAndTheFrameMoves)
 {
     GameObject obj;
     auto& player = MakePlayer(obj);
-    obj.FindComponent<PlayerStateManagerComponent>()->EnsureBuilt(player);
+    obj.FindComponent<PlayerStateManager>()->EnsureBuilt(player);
 
     player.SetVelocity(Vector3{6.0f, 0.0f, 0.0f});
     const float startX = obj.Root().Position().x;

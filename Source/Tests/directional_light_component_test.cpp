@@ -1,5 +1,5 @@
 #include <Runtime/Object/Component.h>
-#include <Runtime/Object/Components/DirectionalLightComponent.h>
+#include <Runtime/Object/Components/DirectionalLight.h>
 #include <Runtime/Object/GameObject.h>
 #include <gtest/gtest.h>
 
@@ -7,13 +7,13 @@ namespace
 {
     using NS::Obj::Component;
     using NS::Obj::ComponentCast;
-    using NS::Obj::DirectionalLightComponent;
+    using NS::Obj::DirectionalLight;
     using NS::Obj::GameObject;
 } // namespace
 
 TEST(DirectionalLightComponentTest, DefaultsAreNeutralSun)
 {
-    DirectionalLightComponent light;
+    DirectionalLight light;
     EXPECT_FLOAT_EQ(light.Direction().x, -0.3f);
     EXPECT_FLOAT_EQ(light.Direction().y, -1.0f);
     EXPECT_FLOAT_EQ(light.Direction().z, -0.2f);
@@ -32,21 +32,21 @@ TEST(DirectionalLightComponentTest, DefaultsAreNeutralSun)
 // 空側と地面側が同じ色だと単色の環境光に戻り、影の中で面の向きが読めなくなる
 TEST(DirectionalLightComponentTest, SkyAmbientIsBrighterThanGround)
 {
-    DirectionalLightComponent light;
+    DirectionalLight light;
     EXPECT_GT(light.Ambient().z, light.Ground().z);
 }
 
 TEST(DirectionalLightComponentTest, ClassNameIsRegistered)
 {
-    DirectionalLightComponent light;
-    EXPECT_STREQ(light.ClassName(), "DirectionalLightComponent");
+    DirectionalLight light;
+    EXPECT_STREQ(light.ClassName(), "DirectionalLight");
 }
 
 TEST(DirectionalLightComponentTest, ComponentCastFindsItThroughBase)
 {
     // ForEachComponent は ComponentCast で拾うので、基底越しに引ければ集約でも拾える
     GameObject obj;
-    Component* base = obj.AddComponent<DirectionalLightComponent>();
+    Component* base = obj.AddComponent<DirectionalLight>();
     ASSERT_NE(base, nullptr);
-    EXPECT_NE(ComponentCast<DirectionalLightComponent>(base), nullptr);
+    EXPECT_NE(ComponentCast<DirectionalLight>(base), nullptr);
 }

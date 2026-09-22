@@ -1,29 +1,29 @@
 #include <gtest/gtest.h>
 #include <Runtime/Platform/Clock.h>
-#include <Runtime/Object/Components/CameraBrainComponent.h>
+#include <Runtime/Object/Components/CameraBrain.h>
 #include <Runtime/Object/Components/CameraComponent.h>
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
-#include <Runtime/Object/Components/VirtualCameraComponent.h>
+#include <Runtime/Object/Components/VirtualCamera.h>
 #include <Runtime/Object/GameObject.h>
 
 namespace
 {
-    using NS::Obj::CameraBrainComponent;
+    using NS::Obj::CameraBrain;
     using NS::Obj::CameraComponent;
     using NS::Obj::CameraPose;
     using NS::Obj::GameObject;
     using NS::Obj::PlacedVirtualCamera;
     using NS::Obj::TickPriority;
-    using NS::Obj::VirtualCameraComponent;
+    using NS::Obj::VirtualCamera;
 
     constexpr float k_Dt = 1.0f / 60.0f;
 
     // 固定 pose を返すだけのテスト用 vcam。X 座標だけずらして補間が見えるようにする
-    class FixedVcam : public VirtualCameraComponent
+    class FixedVcam : public VirtualCamera
     {
     public:
         explicit FixedVcam(float x) noexcept
-            : VirtualCameraComponent(TickPriority::LateUpdate + 50), m_x(x)
+            : VirtualCamera(TickPriority::LateUpdate + 50), m_x(x)
         {}
         [[nodiscard]] CameraPose EvaluatePose(float) const noexcept override
         {
@@ -62,7 +62,7 @@ TEST_F(CameraBrainTest, SelectsHighestPriorityActiveVcam)
 {
     GameObject host;
     auto* cam = host.AddComponent<CameraComponent>();
-    auto* brain = host.AddComponent<CameraBrainComponent>();
+    auto* brain = host.AddComponent<CameraBrain>();
     host.OnStart();
     brain->SetBlendDuration(0.0f);
 
@@ -86,7 +86,7 @@ TEST_F(CameraBrainTest, InactiveVcamIsSkipped)
 {
     GameObject host;
     auto* cam = host.AddComponent<CameraComponent>();
-    auto* brain = host.AddComponent<CameraBrainComponent>();
+    auto* brain = host.AddComponent<CameraBrain>();
     host.OnStart();
     brain->SetBlendDuration(0.0f);
 
@@ -111,7 +111,7 @@ TEST_F(CameraBrainTest, BlendSweepsFromOldToNewOverDuration)
 {
     GameObject host;
     auto* cam = host.AddComponent<CameraComponent>();
-    auto* brain = host.AddComponent<CameraBrainComponent>();
+    auto* brain = host.AddComponent<CameraBrain>();
     host.OnStart();
     brain->SetBlendDuration(0.5f);
 
@@ -149,7 +149,7 @@ TEST_F(CameraBrainTest, ZeroBlendDurationCutsInstantly)
 {
     GameObject host;
     auto* cam = host.AddComponent<CameraComponent>();
-    auto* brain = host.AddComponent<CameraBrainComponent>();
+    auto* brain = host.AddComponent<CameraBrain>();
     host.OnStart();
     brain->SetBlendDuration(0.0f);
 
@@ -191,7 +191,7 @@ TEST_F(CameraBrainTest, ActivatingPlacedVcamBlendsTowardIt)
 {
     GameObject host;
     auto* cam = host.AddComponent<CameraComponent>();
-    auto* brain = host.AddComponent<CameraBrainComponent>();
+    auto* brain = host.AddComponent<CameraBrain>();
     host.OnStart();
     brain->SetBlendDuration(0.5f);
 

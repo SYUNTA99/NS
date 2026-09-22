@@ -2,7 +2,7 @@
 #include <Game/Entity/EntityEvents.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerEvents.h>
-#include <Game/Player/PlayerStateManagerComponent.h>
+#include <Game/Player/PlayerStateManager.h>
 #include <Game/Player/States/FallPlayerState.h>
 #include <Game/Player/States/LedgeClimbingPlayerState.h>
 #include <Game/Player/States/LedgeHangingPlayerState.h>
@@ -32,7 +32,7 @@ namespace
     using NS::Game::Player::LedgeHangingPlayerState;
     using NS::Game::Player::PlayerComponent;
     using NS::Game::Player::PlayerEvents;
-    using NS::Game::Player::PlayerStateManagerComponent;
+    using NS::Game::Player::PlayerStateManager;
     using NS::Obj::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
@@ -63,7 +63,7 @@ namespace
 
     PlayerComponent& MakeLedgeReady(GameObject& owner)
     {
-        auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
+        auto& manager = *owner.AddComponent<PlayerStateManager>();
         auto& player = *owner.AddComponent<PlayerComponent>();
 
         player.OnStart();
@@ -77,7 +77,7 @@ namespace
 
     PlayerComponent& MakeSlamReady(GameObject& owner, NS::Phys::PhysicsScene& physics)
     {
-        auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
+        auto& manager = *owner.AddComponent<PlayerStateManager>();
         auto& player = *owner.AddComponent<PlayerComponent>();
 
         AddFloor(physics);
@@ -285,7 +285,7 @@ TEST_F(EntityEventsTest, LedgeGrabbedFiresOnTheGrabbingStep)
     player.OnUpdate();
     player.OnUpdate();
 
-    ASSERT_EQ(obj.FindComponent<PlayerStateManagerComponent>()->CurrentName(), LedgeHangingPlayerState::k_Name);
+    ASSERT_EQ(obj.FindComponent<PlayerStateManager>()->CurrentName(), LedgeHangingPlayerState::k_Name);
     EXPECT_EQ(grabbed, 1);
 }
 
@@ -302,7 +302,7 @@ TEST_F(EntityEventsTest, LedgeClimbingFiresWhenTheClimbStarts)
     player.SetDesiredMove(Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.OnUpdate();
     player.OnUpdate();
-    ASSERT_EQ(obj.FindComponent<PlayerStateManagerComponent>()->CurrentName(), LedgeHangingPlayerState::k_Name);
+    ASSERT_EQ(obj.FindComponent<PlayerStateManager>()->CurrentName(), LedgeHangingPlayerState::k_Name);
 
     int climbing = 0;
     player.PlayerEventsRef().onLedgeClimbing.Subscribe([&climbing]() { ++climbing; });
@@ -311,7 +311,7 @@ TEST_F(EntityEventsTest, LedgeClimbingFiresWhenTheClimbStarts)
     player.SetClimbMove(0.0f, 1.0f);
     player.OnUpdate();
 
-    ASSERT_EQ(obj.FindComponent<PlayerStateManagerComponent>()->CurrentName(), LedgeClimbingPlayerState::k_Name);
+    ASSERT_EQ(obj.FindComponent<PlayerStateManager>()->CurrentName(), LedgeClimbingPlayerState::k_Name);
     EXPECT_EQ(climbing, 1);
 }
 

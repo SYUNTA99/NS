@@ -1,7 +1,7 @@
 ﻿#include "Game/Entity/EntityComponent.h"
 
 #include "Runtime/Platform/Clock.h"
-#include "Runtime/Object/Components/CapsuleColliderComponent.h"
+#include "Runtime/Object/Components/CapsuleCollider.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Transform.h"
@@ -79,7 +79,7 @@ namespace NS::Game::Entity
     {
         if (Owner() != nullptr)
         {
-            m_capsuleCollider = Owner()->FindComponent<NS::Obj::CapsuleColliderComponent>();
+            m_capsuleCollider = Owner()->FindComponent<NS::Obj::CapsuleCollider>();
         }
         // 自分の capsule は Move が掃引する。静的世界に居ると自分に当たって動けない
         if (m_capsuleCollider != nullptr)

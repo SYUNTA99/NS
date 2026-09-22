@@ -1,5 +1,5 @@
 #include <Game/Entity/EntityState.h>
-#include <Game/Entity/EntityStateManagerComponent.h>
+#include <Game/Entity/EntityStateManager.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/StateMachine.h>
 #include <gtest/gtest.h>
@@ -25,7 +25,7 @@ namespace
     };
 
     //! 基底だけを見るための最小の派生。派生が状態機械を持つ形をそのまま写している
-    class FakeStateManager final : public NS::Game::Entity::EntityStateManagerComponent
+    class FakeStateManager final : public NS::Game::Entity::EntityStateManager
     {
     public:
         void Build() { m_machine.Build<IdleTestState, WalkTestState>(*this); }

@@ -1,7 +1,7 @@
 #include "Game/Level/BlockObject.h"
 #include "Game/Player.h"
 
-#include <Game/Level/HealthComponent.h>
+#include <Game/Level/Health.h>
 #include <gtest/gtest.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Scene/Scene.h>
@@ -15,7 +15,7 @@ namespace SceneNs = NS::Obj;
 TEST(HealthTest, StartsFullAt8)
 {
     SceneNs::GameObject owner;
-    auto* health = owner.AddComponent<LevelNs::HealthComponent>();
+    auto* health = owner.AddComponent<LevelNs::Health>();
 
     EXPECT_EQ(health->Current(), 8);
     EXPECT_FALSE(health->IsDead());
@@ -24,7 +24,7 @@ TEST(HealthTest, StartsFullAt8)
 TEST(HealthTest, ApplyDamageDecrements)
 {
     SceneNs::GameObject owner;
-    auto* health = owner.AddComponent<LevelNs::HealthComponent>();
+    auto* health = owner.AddComponent<LevelNs::Health>();
 
     health->ApplyDamage(1);
 
@@ -35,7 +35,7 @@ TEST(HealthTest, ApplyDamageDecrements)
 TEST(HealthTest, DamageClampsAtZeroAndFlagsDead)
 {
     SceneNs::GameObject owner;
-    auto* health = owner.AddComponent<LevelNs::HealthComponent>();
+    auto* health = owner.AddComponent<LevelNs::Health>();
 
     for (int i = 0; i < 10; ++i)
         health->ApplyDamage(1);
@@ -47,7 +47,7 @@ TEST(HealthTest, DamageClampsAtZeroAndFlagsDead)
 TEST(HealthTest, KillDropsToZero)
 {
     SceneNs::GameObject owner;
-    auto* health = owner.AddComponent<LevelNs::HealthComponent>();
+    auto* health = owner.AddComponent<LevelNs::Health>();
 
     health->Kill();
 
@@ -58,7 +58,7 @@ TEST(HealthTest, KillDropsToZero)
 TEST(HealthTest, ResetRestoresFull)
 {
     SceneNs::GameObject owner;
-    auto* health = owner.AddComponent<LevelNs::HealthComponent>();
+    auto* health = owner.AddComponent<LevelNs::Health>();
 
     health->Kill();
     health->Reset();
@@ -74,7 +74,7 @@ TEST(HazardTest, DrainsPlayerHealthThroughLateUpdateBand)
     data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     // プレイヤーと同じ位置の cell に hazard の印を足すと、カプセルと箱が必ず重なる
     SceneNs::ObjectData hazard = LevelNs::MakeCellObject(0, 0, 0);
-    hazard.components.push_back(SceneNs::MakeComponentEntry("HazardComponent"));
+    hazard.components.push_back(SceneNs::MakeComponentEntry("Hazard"));
     data.objects.push_back(hazard);
     scene.LoadFromData(std::move(data));
 
@@ -94,7 +94,7 @@ TEST(HazardTest, NoOverlapNoDamage)
     SceneNs::SceneData data;
     data.objects.push_back(MakePlayerObject(NS::Core::Vector3{}, NS::Core::Quaternion{}));
     SceneNs::ObjectData hazard = LevelNs::MakeCellObject(10, 0, 0);
-    hazard.components.push_back(SceneNs::MakeComponentEntry("HazardComponent"));
+    hazard.components.push_back(SceneNs::MakeComponentEntry("Hazard"));
     data.objects.push_back(hazard);
     scene.LoadFromData(std::move(data));
 

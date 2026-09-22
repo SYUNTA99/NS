@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Runtime/Core/Math.h"
-#include "Runtime/Object/Components/VirtualCameraComponent.h"
+#include "Runtime/Object/Components/VirtualCamera.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 
 namespace NS::Obj
@@ -12,8 +12,8 @@ namespace NS::Obj
     //! UpdateActivation(playerPos) がトリガ内なら自分を active 化し、lookAtPlayer 時は注視点を
     //! プレイヤーへ向ける。SetVcamPriority を follow より高くしておけば、active な間だけ
     //! CameraBrain がこれを選んでブレンドする。EvaluatePose は alpha 無視で固定 pose を返す
-    //! 依存: NS::Core, NS::Obj::VirtualCameraComponent
-    class PlacedVirtualCamera : public VirtualCameraComponent
+    //! 依存: NS::Core, NS::Obj::VirtualCamera
+    class PlacedVirtualCamera : public VirtualCamera
     {
     public:
         PlacedVirtualCamera() noexcept;
@@ -49,7 +49,7 @@ namespace NS::Obj
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
 
         // 視点位置は owner Transform 所有なのでリフレクションしない。transform 編集の経路と二重にしない
-        NS_REFLECT_BEGIN(PlacedVirtualCamera, VirtualCameraComponent)
+        NS_REFLECT_BEGIN(PlacedVirtualCamera, VirtualCamera)
         NS_REFLECT_FIELD(m_target, "注視点")
         NS_REFLECT_FIELD(m_up, "上方向")
         NS_REFLECT_FIELD(m_triggerCenter, "トリガー中心")

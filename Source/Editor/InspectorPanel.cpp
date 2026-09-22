@@ -171,7 +171,7 @@ namespace NS::Editor
                 NS::Editor::EndFieldTable();
             }
 
-            // MeshRendererComponent の Material フィールドはリフレクション一覧に出る。適用は Assets パネルのドロップ /
+            // MeshRenderer の Material フィールドはリフレクション一覧に出る。適用は Assets パネルのドロップ /
             // クリックから
             ImGui::Separator();
 
@@ -189,7 +189,7 @@ namespace NS::Editor
                 ImGui::PushID(static_cast<int>(k));
 
                 // 入力 component を休止させると player が動かなくなるので active を触らせない
-                const bool lockedComponent = (typeName == "PlayerInputComponent");
+                const bool lockedComponent = (typeName == "PlayerInput");
                 bool enabled = components[k]->IsEnabled();
                 ImGui::BeginDisabled(lockedComponent);
                 if (ImGui::Checkbox("##enabled", &enabled))
@@ -216,7 +216,7 @@ namespace NS::Editor
                     if (ImGui::MenuItem("コンポーネントをコピー"))
                         editor.CopyComponentToClipboard(k);
                     // 最後の 1 個は消すと空構成になる。プレイヤーの印の入力 component も消させない
-                    const bool canRemove = components.size() > 1 && typeName != "PlayerInputComponent";
+                    const bool canRemove = components.size() > 1 && typeName != "PlayerInput";
                     if (ImGui::MenuItem("コンポーネントを削除", nullptr, false, canRemove))
                         editor.RemoveComponentFromSelected(k);
                     ImGui::EndPopup();
@@ -291,7 +291,7 @@ namespace NS::Editor
                 for (const std::string& name : NS::Obj::RegisteredNames())
                 {
                     // プレイヤーの印である入力 component は手で足させない
-                    if (name == "PlayerInputComponent")
+                    if (name == "PlayerInput")
                         continue;
                     if (!NameMatches(name.c_str(), m_addComponentFilter))
                         continue;

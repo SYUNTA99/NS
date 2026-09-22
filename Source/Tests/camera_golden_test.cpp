@@ -1,12 +1,12 @@
 ﻿#include <Game/Player/PlayerComponent.h>
-#include <Game/Player/PlayerStateManagerComponent.h>
+#include <Game/Player/PlayerStateManager.h>
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
-#include <Runtime/Object/Components/CameraBrainComponent.h>
+#include <Runtime/Object/Components/CameraBrain.h>
 #include <Runtime/Object/Components/CameraComponent.h>
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
-#include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
+#include <Runtime/Object/Components/ThirdPersonFollow.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/PhysicsScene.h>
@@ -24,14 +24,14 @@ namespace
 {
     using NS::Core::AABB;
     using NS::Core::Vector3;
-    using NS::Obj::CameraBrainComponent;
+    using NS::Obj::CameraBrain;
     using NS::Obj::CameraComponent;
     using NS::Obj::CameraPose;
     using NS::Game::Player::PlayerComponent;
-    using NS::Game::Player::PlayerStateManagerComponent;
+    using NS::Game::Player::PlayerStateManager;
     using NS::Obj::GameObject;
     using NS::Obj::PlacedVirtualCamera;
-    using NS::Obj::ThirdPersonFollowComponent;
+    using NS::Obj::ThirdPersonFollow;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
 
@@ -104,14 +104,14 @@ namespace
         GameObject& player = stage.owner;
         NS::Phys::PhysicsScene& physics = stage.physics;
         NsTest::AddBox(physics, AABB{Vector3{0.0f, -0.5f, 0.0f}, Vector3{64.0f, 0.5f, 8.0f}});
-        player.AddComponent<PlayerStateManagerComponent>();
+        player.AddComponent<PlayerStateManager>();
         auto& movement = *player.AddComponent<PlayerComponent>();
         player.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
         physics.OptimizeBroadPhase();
         player.OnStart();
 
         GameObject rig;
-        auto& follow = *rig.AddComponent<ThirdPersonFollowComponent>();
+        auto& follow = *rig.AddComponent<ThirdPersonFollow>();
         follow.SetTarget(&player.Root());
         // 生成直後は休止なのでテスト側で有効化する
         follow.SetActive(true);
@@ -144,7 +144,7 @@ namespace
     {
         GameObject host;
         auto* cam = host.AddComponent<CameraComponent>();
-        auto* brain = host.AddComponent<CameraBrainComponent>();
+        auto* brain = host.AddComponent<CameraBrain>();
         host.OnStart();
         brain->SetBlendDuration(0.3f);
 
@@ -152,7 +152,7 @@ namespace
         player.Root().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
 
         GameObject rig;
-        auto& follow = *rig.AddComponent<ThirdPersonFollowComponent>();
+        auto& follow = *rig.AddComponent<ThirdPersonFollow>();
         follow.SetTarget(&player.Root());
         // 生成直後は休止なのでテスト側で有効化する
         follow.SetActive(true);

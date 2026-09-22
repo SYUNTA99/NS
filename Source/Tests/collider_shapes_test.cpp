@@ -1,8 +1,8 @@
 #include <Game/Player/PlayerComponent.h>
 #include <Runtime/Core/Sphere.h>
-#include <Runtime/Object/Components/CapsuleColliderComponent.h>
-#include <Runtime/Object/Components/MeshColliderComponent.h>
-#include <Runtime/Object/Components/SphereColliderComponent.h>
+#include <Runtime/Object/Components/CapsuleCollider.h>
+#include <Runtime/Object/Components/MeshCollider.h>
+#include <Runtime/Object/Components/SphereCollider.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <Runtime/Physics/MeshCollision.h>
@@ -17,7 +17,7 @@ namespace
 
 TEST(SphereColliderTest, DefaultRadiusIsHalfMeter)
 {
-    NS::Obj::SphereColliderComponent sc;
+    NS::Obj::SphereCollider sc;
     EXPECT_FLOAT_EQ(sc.Radius(), 0.5f);
 
     const NS::Core::Sphere s = sc.WorldSphere();
@@ -30,7 +30,7 @@ TEST(SphereColliderTest, WorldSphereReflectsOwnerPositionAndScale)
     NS::Obj::GameObject obj;
     obj.Root().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
     obj.Root().SetScale(Vector3{2.0f, 2.0f, 2.0f});
-    auto& sc = *obj.AddComponent<NS::Obj::SphereColliderComponent>(0.5f);
+    auto& sc = *obj.AddComponent<NS::Obj::SphereCollider>(0.5f);
 
     const NS::Core::Sphere s = sc.WorldSphere();
     EXPECT_FLOAT_EQ(s.center.x, 1.0f);
@@ -43,7 +43,7 @@ TEST(SphereColliderTest, CenterOffsetShiftsAndScalesWithOwner)
 {
     NS::Obj::GameObject obj;
     obj.Root().SetScale(Vector3{2.0f, 2.0f, 2.0f});
-    auto& sc = *obj.AddComponent<NS::Obj::SphereColliderComponent>(0.5f);
+    auto& sc = *obj.AddComponent<NS::Obj::SphereCollider>(0.5f);
     sc.SetCenterOffset(Vector3{1.0f, 0.0f, 0.0f});
 
     const NS::Core::Sphere s = sc.WorldSphere();
@@ -52,14 +52,14 @@ TEST(SphereColliderTest, CenterOffsetShiftsAndScalesWithOwner)
 
 TEST(SphereColliderTest, NegativeRadiusClampsToZero)
 {
-    NS::Obj::SphereColliderComponent sc;
+    NS::Obj::SphereCollider sc;
     sc.SetRadius(-3.0f);
     EXPECT_FLOAT_EQ(sc.Radius(), 0.0f);
 }
 
 TEST(CapsuleColliderTest, DefaultsAreVertical)
 {
-    NS::Obj::CapsuleColliderComponent cc;
+    NS::Obj::CapsuleCollider cc;
     EXPECT_FLOAT_EQ(cc.Radius(), 0.4f);
     EXPECT_FLOAT_EQ(cc.HalfHeight(), 0.5f);
 
@@ -76,7 +76,7 @@ TEST(CapsuleColliderTest, WorldPropertiesReflectOwnerScale)
     NS::Obj::GameObject obj;
     obj.Root().SetPosition(Vector3{0.0f, 5.0f, 0.0f});
     obj.Root().SetScale(Vector3{2.0f, 3.0f, 2.0f});
-    auto& cc = *obj.AddComponent<NS::Obj::CapsuleColliderComponent>(0.4f, 0.5f);
+    auto& cc = *obj.AddComponent<NS::Obj::CapsuleCollider>(0.4f, 0.5f);
 
     const NS::Phys::Capsule capsule = cc.WorldCapsule();
     EXPECT_NEAR(capsule.center.y, 5.0f, 1e-5f);
@@ -90,7 +90,7 @@ TEST(CapsuleColliderTest, WorldPropertiesReflectOwnerScale)
 TEST(CapsuleColliderTest, SyncToPhysicsSkipsTheOwnerThatSweepsItself)
 {
     NS::Obj::GameObject obj;
-    auto& cc = *obj.AddComponent<NS::Obj::CapsuleColliderComponent>(0.4f, 0.5f);
+    auto& cc = *obj.AddComponent<NS::Obj::CapsuleCollider>(0.4f, 0.5f);
     obj.AddComponent<NS::Game::Player::PlayerComponent>();
     obj.OnStart();
 
@@ -101,7 +101,7 @@ TEST(CapsuleColliderTest, SyncToPhysicsSkipsTheOwnerThatSweepsItself)
 
 TEST(CapsuleColliderTest, RotationEulerDegreesRoundTrips)
 {
-    NS::Obj::CapsuleColliderComponent cc;
+    NS::Obj::CapsuleCollider cc;
     cc.SetRotationEulerDegrees(Vector3{0.0f, 90.0f, 0.0f});
     EXPECT_NEAR(cc.RotationEulerDegrees().y, 90.0f, 1e-3f);
 }
@@ -114,7 +114,7 @@ TEST(MeshColliderTest, WorldTrianglesTransformByOwnerPosition)
 
     NS::Obj::GameObject obj;
     obj.Root().SetPosition(Vector3{10.0f, 0.0f, 0.0f});
-    auto& cc = *obj.AddComponent<NS::Obj::MeshColliderComponent>();
+    auto& cc = *obj.AddComponent<NS::Obj::MeshCollider>();
     cc.SetCollision(&collision);
 
     const std::vector<NS::Phys::Triangle> world = cc.WorldTriangles();
@@ -130,7 +130,7 @@ TEST(MeshColliderTest, WithoutOwnerReturnsLocalUnchanged)
     const NS::Phys::MeshCollision collision{
         {NS::Phys::Triangle{Vector3{0.0f, 0.0f, 0.0f}, Vector3{1.0f, 0.0f, 0.0f}, Vector3{0.0f, 1.0f, 0.0f}}},
         nullptr};
-    NS::Obj::MeshColliderComponent cc;
+    NS::Obj::MeshCollider cc;
     cc.SetCollision(&collision);
 
     const std::vector<NS::Phys::Triangle> world = cc.WorldTriangles();

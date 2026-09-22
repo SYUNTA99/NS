@@ -62,7 +62,7 @@ namespace
     {
         ObjectData object{};
         object.components = nlohmann::json::array();
-        object.components.push_back(NS::Obj::MakeComponentEntry("MeshRendererComponent"));
+        object.components.push_back(NS::Obj::MakeComponentEntry("MeshRenderer"));
         return object;
     }
 } // namespace

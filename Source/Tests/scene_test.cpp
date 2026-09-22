@@ -1,7 +1,7 @@
 #include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Core/Sphere.h>
-#include <Runtime/Object/Components/BoxColliderComponent.h>
+#include <Runtime/Object/Components/BoxCollider.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Physics/PhysicsScene.h>
@@ -96,19 +96,19 @@ TEST(SceneTest, DestroyObjectKeepsTheSurvivingColliderBodyId)
     NS::Obj::SceneData data;
     NS::Obj::ObjectData removed;
     removed.objectId = 10;
-    removed.components.push_back(NS::Obj::MakeComponentEntry("BoxColliderComponent"));
+    removed.components.push_back(NS::Obj::MakeComponentEntry("BoxCollider"));
     data.objects.push_back(std::move(removed));
 
     NS::Obj::ObjectData survivor;
     survivor.objectId = 20;
-    survivor.components.push_back(NS::Obj::MakeComponentEntry("BoxColliderComponent"));
+    survivor.components.push_back(NS::Obj::MakeComponentEntry("BoxCollider"));
     data.objects.push_back(std::move(survivor));
 
     NS::Obj::Scene scene;
     scene.LoadFromData(std::move(data));
     NS::Obj::GameObject* survivingObject = scene.Objects().FindByObjectId(20);
     ASSERT_NE(survivingObject, nullptr);
-    auto* collider = survivingObject->FindComponent<NS::Obj::BoxColliderComponent>();
+    auto* collider = survivingObject->FindComponent<NS::Obj::BoxCollider>();
     ASSERT_NE(collider, nullptr);
     const JPH::BodyID bodyId = collider->BodyId();
 

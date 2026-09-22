@@ -210,7 +210,7 @@ namespace NS::Obj
         }
 
         // environment 欄は skybox だけを所有する。旧形式の lightDirection / lightColor / ambientColor は
-        // 照明が DirectionalLightComponent へ移ったので、キーが残っていても読み飛ばす
+        // 照明が DirectionalLight へ移ったので、キーが残っていても読み飛ばす
         const auto environmentIt = root.find("environment");
         if (environmentIt != root.end() && environmentIt->is_object())
         {

@@ -1,13 +1,13 @@
 #include "Editor/LevelFilePaths.h"
 #include "Game/Level/BlockObject.h"
-#include "Game/Level/BreakableComponent.h"
-#include "Game/Level/CollisionInputComponent.h"
+#include "Game/Level/Breakable.h"
+#include "Game/Level/CollisionInput.h"
 #include "Game/Level/FollowCameraObject.h"
-#include "Game/Level/ImpactResolverComponent.h"
-#include "Game/Level/KillZoneComponent.h"
+#include "Game/Level/ImpactResolver.h"
+#include "Game/Level/KillZone.h"
 #include "Game/Player.h"
 #include "Runtime/Platform/Filesystem.h"
-#include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
+#include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
@@ -67,7 +67,7 @@ TEST(SaveLoadRoundTrip, DisabledComponentSurvivesJsonRoundTrip)
     src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
     SceneNs::EnsureUniqueObjectIds(src);
 
-    nlohmann::json* entry = SceneNs::FindComponentEntry(src.objects[0], "MeshRendererComponent");
+    nlohmann::json* entry = SceneNs::FindComponentEntry(src.objects[0], "MeshRenderer");
     ASSERT_NE(entry, nullptr);
     SceneNs::SetComponentEntryEnabled(*entry, false);
 
@@ -75,7 +75,7 @@ TEST(SaveLoadRoundTrip, DisabledComponentSurvivesJsonRoundTrip)
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
 
     ASSERT_EQ(dst.objects.size(), 1u);
-    const nlohmann::json* reloaded = SceneNs::FindComponentEntry(dst.objects[0], "MeshRendererComponent");
+    const nlohmann::json* reloaded = SceneNs::FindComponentEntry(dst.objects[0], "MeshRenderer");
     ASSERT_NE(reloaded, nullptr);
     EXPECT_FALSE(SceneNs::ComponentEntryEnabled(*reloaded))
         << "切った component が読み直しで戻る。保存側は書き出すので、編集で切っても開くたびに復活する";
@@ -246,7 +246,7 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
     SceneNs::ObjectData freeObject{};
     SceneNs::SetObjectPosition(freeObject, NS::Core::Vector3{1.5f, 0.0f, 0.0f});
 
-    nlohmann::json comp = SceneNs::MakeComponentEntry("BoxColliderComponent");
+    nlohmann::json comp = SceneNs::MakeComponentEntry("BoxCollider");
     SceneNs::SetField(comp, "vHalf", NS::Core::Vector3{1.0f, 2.0f, 3.0f});
     SceneNs::SetField(comp, "iCount", 7);
     SceneNs::SetField(comp, "bOn", true);
@@ -268,9 +268,9 @@ TEST(SaveLoadRoundTrip, ComponentsRoundTrip)
     EXPECT_EQ(SceneNs::SerializeSceneToJson(dst), SceneNs::SerializeSceneToJson(src));
 
     ASSERT_EQ(dst.objects.size(), 3u);
-    // freeObject は BoxColliderComponent と TransformComponent の 2 つを持つ
+    // freeObject は BoxCollider と TransformComponent の 2 つを持つ
     ASSERT_EQ(dst.objects[0].components.size(), 2u);
-    const nlohmann::json* box = SceneNs::FindComponentEntry(dst.objects[0], "BoxColliderComponent");
+    const nlohmann::json* box = SceneNs::FindComponentEntry(dst.objects[0], "BoxCollider");
     ASSERT_NE(box, nullptr);
     const nlohmann::json& fields = box->at("fields");
     ASSERT_EQ(fields.size(), 5u);
@@ -414,16 +414,16 @@ TEST(EnsurePlayableObjects, SynthesizesPlayerAndFollowCamera)
     EXPECT_NE(player.objectId, 0u); // 合成後の一意化で永続 id も振られる
     EXPECT_FLOAT_EQ(SceneNs::ObjectPosition(player).y, Player::k_DefaultSpawnY);
     // 既定構成のうち 5 つ
-    EXPECT_NE(SceneNs::FindComponentEntry(player, "MeshRendererComponent"), nullptr);
+    EXPECT_NE(SceneNs::FindComponentEntry(player, "MeshRenderer"), nullptr);
     EXPECT_NE(SceneNs::FindComponentEntry(player, "PlayerComponent"), nullptr);
-    EXPECT_NE(SceneNs::FindComponentEntry(player, "PlayerInputComponent"), nullptr);
-    EXPECT_NE(SceneNs::FindComponentEntry(player, "HealthComponent"), nullptr);
-    EXPECT_NE(SceneNs::FindComponentEntry(player, "ShadowComponent"), nullptr);
+    EXPECT_NE(SceneNs::FindComponentEntry(player, "PlayerInput"), nullptr);
+    EXPECT_NE(SceneNs::FindComponentEntry(player, "Health"), nullptr);
+    EXPECT_NE(SceneNs::FindComponentEntry(player, "Shadow"), nullptr);
 
     // 追従カメラも 1 台合成され、追従対象は合成したプレイヤーを指す
     const std::size_t followIndex = NS::Game::Level::FindFollowCameraObjectIndex(level);
     ASSERT_NE(followIndex, SceneNs::k_NoObjectIndex);
-    const nlohmann::json* comp = SceneNs::FindComponentEntry(level.objects[followIndex], "ThirdPersonFollowComponent");
+    const nlohmann::json* comp = SceneNs::FindComponentEntry(level.objects[followIndex], "ThirdPersonFollow");
     ASSERT_NE(comp, nullptr);
     ASSERT_TRUE(SceneNs::HasField(*comp, "追従対象"));
     EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "追従対象").id, player.objectId);
@@ -473,14 +473,14 @@ TEST(EnsurePlayableObjects, SynthesizesFollowCameraTargetingExistingPlayer)
     const SceneNs::ObjectData& follow = dst.objects[followIndex];
     EXPECT_NE(follow.objectId, 0u); // 合成後の一意化で永続 id も振られる
 
-    const nlohmann::json* comp = SceneNs::FindComponentEntry(follow, "ThirdPersonFollowComponent");
+    const nlohmann::json* comp = SceneNs::FindComponentEntry(follow, "ThirdPersonFollow");
     ASSERT_NE(comp, nullptr);
     // 追従先はプレイヤー実体への通常の ObjectRef
     ASSERT_TRUE(SceneNs::HasField(*comp, "追従対象"));
     EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "追従対象").id, playerId);
     // データが持つのは誰を追うかだけ。遠景を抑える投影値は component のコード既定を使う
     EXPECT_FALSE(SceneNs::HasField(*comp, "ファークリップ"));
-    NS::Obj::ThirdPersonFollowComponent live;
+    NS::Obj::ThirdPersonFollow live;
     EXPECT_FLOAT_EQ(live.FarPlane(), 100.0f);
 }
 
@@ -558,7 +558,7 @@ TEST(SaveLoadRoundTrip, FollowCameraObjectRoundTrip)
     EXPECT_TRUE(dst == src);
     const std::size_t followIndex = NS::Game::Level::FindFollowCameraObjectIndex(dst);
     ASSERT_EQ(followIndex, 1u);
-    const nlohmann::json* comp = SceneNs::FindComponentEntry(dst.objects[1], "ThirdPersonFollowComponent");
+    const nlohmann::json* comp = SceneNs::FindComponentEntry(dst.objects[1], "ThirdPersonFollow");
     ASSERT_NE(comp, nullptr);
     ASSERT_TRUE(SceneNs::HasField(*comp, "追従対象"));
     EXPECT_EQ(SceneNs::FieldObjectRef(*comp, "追従対象").id, dst.objects[0].objectId);
@@ -570,7 +570,7 @@ namespace
     SceneNs::ObjectData MakeBreakableCube(int cellX, float mass, float toughness)
     {
         SceneNs::ObjectData object = LevelNs::MakeCellObject(cellX, 0, 0);
-        nlohmann::json breakable = SceneNs::MakeComponentEntry("BreakableComponent");
+        nlohmann::json breakable = SceneNs::MakeComponentEntry("Breakable");
         SceneNs::SetField(breakable, "質量", mass);
         SceneNs::SetField(breakable, "耐久", toughness);
         object.components.push_back(std::move(breakable));
@@ -581,7 +581,7 @@ namespace
     {
         for (const nlohmann::json& entry : components)
         {
-            if (entry.value("type", std::string{}) == "BreakableComponent")
+            if (entry.value("type", std::string{}) == "Breakable")
                 return &entry;
         }
         return nullptr;
@@ -591,7 +591,7 @@ namespace
     {
         for (nlohmann::json& entry : components)
         {
-            if (entry.value("type", std::string{}) == "BreakableComponent")
+            if (entry.value("type", std::string{}) == "Breakable")
                 return &entry;
         }
         return nullptr;
@@ -608,14 +608,14 @@ TEST(SaveLoadRoundTrip, BreakableValuesSurviveRoundTrip)
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(dst, SceneNs::SerializeSceneToJson(src)));
     ASSERT_EQ(dst.objects.size(), 1u);
 
-    const nlohmann::json* entry = SceneNs::FindComponentEntry(dst.objects[0], "BreakableComponent");
+    const nlohmann::json* entry = SceneNs::FindComponentEntry(dst.objects[0], "Breakable");
     ASSERT_NE(entry, nullptr);
     EXPECT_FLOAT_EQ(SceneNs::FieldFloat(*entry, "質量", -1.0f), 3.5f);
     EXPECT_FLOAT_EQ(SceneNs::FieldFloat(*entry, "耐久", -1.0f), 2.0f);
 
     const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
     ASSERT_NE(live, nullptr);
-    const LevelNs::BreakableComponent* breakable = live->FindComponent<LevelNs::BreakableComponent>();
+    const LevelNs::Breakable* breakable = live->FindComponent<LevelNs::Breakable>();
     ASSERT_NE(breakable, nullptr);
     EXPECT_FLOAT_EQ(breakable->Mass(), 3.5f);
     EXPECT_FLOAT_EQ(breakable->Toughness(), 2.0f);
@@ -638,8 +638,8 @@ TEST(SaveLoadRoundTrip, BreakableValuesStayPerObject)
     ASSERT_NE(light, nullptr);
     ASSERT_NE(heavy, nullptr);
 
-    const LevelNs::BreakableComponent* lightBreakable = light->FindComponent<LevelNs::BreakableComponent>();
-    const LevelNs::BreakableComponent* heavyBreakable = heavy->FindComponent<LevelNs::BreakableComponent>();
+    const LevelNs::Breakable* lightBreakable = light->FindComponent<LevelNs::Breakable>();
+    const LevelNs::Breakable* heavyBreakable = heavy->FindComponent<LevelNs::Breakable>();
     ASSERT_NE(lightBreakable, nullptr);
     ASSERT_NE(heavyBreakable, nullptr);
     EXPECT_FLOAT_EQ(lightBreakable->Mass(), 0.5f);
@@ -653,7 +653,7 @@ TEST(SaveLoadRoundTrip, BreakableValuesStayPerObject)
 TEST(SaveLoadRoundTrip, BreakableFieldKeysAreTheLockedLabels)
 {
     SceneNs::GameObject live;
-    LevelNs::BreakableComponent* breakable = live.AddComponent<LevelNs::BreakableComponent>();
+    LevelNs::Breakable* breakable = live.AddComponent<LevelNs::Breakable>();
     ASSERT_NE(breakable, nullptr);
     breakable->SetMass(2.0f);
     breakable->SetToughness(1.5f);
@@ -677,7 +677,7 @@ TEST(SaveLoadRoundTrip, BreakableFieldKeysAreTheLockedLabels)
 TEST(SaveLoadRoundTrip, MissingBreakableFieldFallsBackToDefault)
 {
     SceneNs::GameObject source;
-    LevelNs::BreakableComponent* authored = source.AddComponent<LevelNs::BreakableComponent>();
+    LevelNs::Breakable* authored = source.AddComponent<LevelNs::Breakable>();
     ASSERT_NE(authored, nullptr);
     authored->SetMass(3.5f);
     authored->SetToughness(2.0f);
@@ -696,7 +696,7 @@ TEST(SaveLoadRoundTrip, MissingBreakableFieldFallsBackToDefault)
 
     const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
     ASSERT_NE(live, nullptr);
-    const LevelNs::BreakableComponent* breakable = live->FindComponent<LevelNs::BreakableComponent>();
+    const LevelNs::Breakable* breakable = live->FindComponent<LevelNs::Breakable>();
     ASSERT_NE(breakable, nullptr);
     EXPECT_FLOAT_EQ(breakable->Mass(), 1.0f);
     EXPECT_FLOAT_EQ(breakable->Toughness(), 2.0f);
@@ -704,20 +704,20 @@ TEST(SaveLoadRoundTrip, MissingBreakableFieldFallsBackToDefault)
 
 namespace
 {
-    // CollisionInputComponent は調整値の公開 setter を持たないため、Inspector と同じリフレクション経路で読み書きする
+    // CollisionInput は調整値の公開 setter を持たないため、Inspector と同じリフレクション経路で読み書きする
     const SceneNs::FieldDesc* ChargeField(const char* label)
     {
-        return SceneNs::FindField(LevelNs::CollisionInputComponent::StaticReflection(), label);
+        return SceneNs::FindField(LevelNs::CollisionInput::StaticReflection(), label);
     }
 
-    template <class T> void WriteChargeField(LevelNs::CollisionInputComponent& input, const char* label, const T& value)
+    template <class T> void WriteChargeField(LevelNs::CollisionInput& input, const char* label, const T& value)
     {
         const SceneNs::FieldDesc* field = ChargeField(label);
         ASSERT_NE(field, nullptr) << label;
         field->set(&input, &value);
     }
 
-    template <class T> [[nodiscard]] T ReadChargeField(const LevelNs::CollisionInputComponent& input, const char* label)
+    template <class T> [[nodiscard]] T ReadChargeField(const LevelNs::CollisionInput& input, const char* label)
     {
         T value{};
         const SceneNs::FieldDesc* field = ChargeField(label);
@@ -734,7 +734,7 @@ namespace
     {
         for (const nlohmann::json& entry : components)
         {
-            if (entry.value("type", std::string{}) == "CollisionInputComponent")
+            if (entry.value("type", std::string{}) == "CollisionInput")
                 return &entry;
         }
         return nullptr;
@@ -754,7 +754,7 @@ namespace
 TEST(SaveLoadRoundTrip, ChargeSecondsSurviveRoundTrip)
 {
     SceneNs::GameObject source;
-    LevelNs::CollisionInputComponent* authored = source.AddComponent<LevelNs::CollisionInputComponent>();
+    LevelNs::CollisionInput* authored = source.AddComponent<LevelNs::CollisionInput>();
     ASSERT_NE(authored, nullptr);
     WriteChargeField(*authored, "チャージしきい値秒", 0.4f);
     WriteChargeField(*authored, "チャージ満タン秒", 1.8f);
@@ -768,7 +768,7 @@ TEST(SaveLoadRoundTrip, ChargeSecondsSurviveRoundTrip)
 
     const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
     ASSERT_NE(live, nullptr);
-    const LevelNs::CollisionInputComponent* input = live->FindComponent<LevelNs::CollisionInputComponent>();
+    const LevelNs::CollisionInput* input = live->FindComponent<LevelNs::CollisionInput>();
     ASSERT_NE(input, nullptr);
     EXPECT_FLOAT_EQ(ReadChargeField<float>(*input, "チャージしきい値秒"), 0.4f);
     EXPECT_FLOAT_EQ(ReadChargeField<float>(*input, "チャージ満タン秒"), 1.8f);
@@ -777,7 +777,7 @@ TEST(SaveLoadRoundTrip, ChargeSecondsSurviveRoundTrip)
 TEST(SaveLoadRoundTrip, ChargeCurveSurvivesRoundTrip)
 {
     SceneNs::GameObject source;
-    LevelNs::CollisionInputComponent* authored = source.AddComponent<LevelNs::CollisionInputComponent>();
+    LevelNs::CollisionInput* authored = source.AddComponent<LevelNs::CollisionInput>();
     ASSERT_NE(authored, nullptr);
     WriteChargeField(*authored, "チャージ倍率カーブ", ThreePointCurve());
 
@@ -790,7 +790,7 @@ TEST(SaveLoadRoundTrip, ChargeCurveSurvivesRoundTrip)
 
     const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
     ASSERT_NE(live, nullptr);
-    const LevelNs::CollisionInputComponent* input = live->FindComponent<LevelNs::CollisionInputComponent>();
+    const LevelNs::CollisionInput* input = live->FindComponent<LevelNs::CollisionInput>();
     ASSERT_NE(input, nullptr);
 
     const SceneNs::Curve loaded = ReadChargeField<SceneNs::Curve>(*input, "チャージ倍率カーブ");
@@ -806,10 +806,10 @@ TEST(SaveLoadRoundTrip, ChargeCurveSurvivesRoundTrip)
 TEST(SaveLoadRoundTrip, BreakFlagSurvivesRoundTrip)
 {
     SceneNs::GameObject source;
-    LevelNs::ImpactResolverComponent* authored = source.AddComponent<LevelNs::ImpactResolverComponent>();
+    LevelNs::ImpactResolver* authored = source.AddComponent<LevelNs::ImpactResolver>();
     ASSERT_NE(authored, nullptr);
     const SceneNs::FieldDesc* field =
-        SceneNs::FindField(LevelNs::ImpactResolverComponent::StaticReflection(), "破壊を許可");
+        SceneNs::FindField(LevelNs::ImpactResolver::StaticReflection(), "破壊を許可");
     ASSERT_NE(field, nullptr);
     const bool enabled = true;
     field->set(authored, &enabled);
@@ -823,7 +823,7 @@ TEST(SaveLoadRoundTrip, BreakFlagSurvivesRoundTrip)
 
     const std::unique_ptr<SceneNs::GameObject> live = SceneNs::BuildSceneObject(dst.objects[0], nullptr);
     ASSERT_NE(live, nullptr);
-    const LevelNs::ImpactResolverComponent* impact = live->FindComponent<LevelNs::ImpactResolverComponent>();
+    const LevelNs::ImpactResolver* impact = live->FindComponent<LevelNs::ImpactResolver>();
     ASSERT_NE(impact, nullptr);
     bool loaded = false;
     field->get(impact, &loaded);
@@ -834,7 +834,7 @@ TEST(SaveLoadRoundTrip, BreakFlagSurvivesRoundTrip)
 TEST(SaveLoadRoundTrip, ChargeFieldKeysAreTheLockedLabels)
 {
     SceneNs::GameObject live;
-    LevelNs::CollisionInputComponent* input = live.AddComponent<LevelNs::CollisionInputComponent>();
+    LevelNs::CollisionInput* input = live.AddComponent<LevelNs::CollisionInput>();
     ASSERT_NE(input, nullptr);
     WriteChargeField(*input, "チャージ倍率カーブ", ThreePointCurve());
 

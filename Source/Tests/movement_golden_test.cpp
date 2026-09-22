@@ -1,7 +1,7 @@
 ﻿#include "golden_trace.h"
 
 #include <Game/Player/PlayerComponent.h>
-#include <Game/Player/PlayerStateManagerComponent.h>
+#include <Game/Player/PlayerStateManager.h>
 #include <Game/Player/States/FallPlayerState.h>
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Platform/Clock.h>
@@ -25,7 +25,7 @@ namespace
     using NS::Core::Vector3;
     using NS::Game::Player::FallPlayerState;
     using NS::Game::Player::PlayerComponent;
-    using NS::Game::Player::PlayerStateManagerComponent;
+    using NS::Game::Player::PlayerStateManager;
     using NS::Obj::GameObject;
     using NS::Tests::CompareTraces;
     using NS::Tests::DescribeDiff;
@@ -63,7 +63,7 @@ namespace
     //! @details 開始位置は空中に取り、数フレームの自然落下で着地させる
     PlayerComponent& SetUpMovement(GameObject& owner, NS::Phys::PhysicsScene& physics, const Vector3& startPosition)
     {
-        auto& manager = *owner.AddComponent<PlayerStateManagerComponent>();
+        auto& manager = *owner.AddComponent<PlayerStateManager>();
         auto& movement = *owner.AddComponent<PlayerComponent>();
 
         owner.Root().SetPosition(startPosition);
@@ -221,7 +221,7 @@ namespace
         auto& movement = SetUpMovement(owner, physics, Vector3{-0.9f, 0.1f, 0.0f});
         // 入力は最初のフレームだけ。立ちから始めるとそのフレームに加速せず、縁を向かないまま落ちて掴まない
         // 状態機械は最初のフレームまで組まれないので、先に組んでから落下へ移す
-        auto& manager = *owner.FindComponent<PlayerStateManagerComponent>();
+        auto& manager = *owner.FindComponent<PlayerStateManager>();
         manager.EnsureBuilt(movement);
         manager.Change<FallPlayerState>();
 

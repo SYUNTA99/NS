@@ -1,6 +1,6 @@
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Graphics/RenderSettings.h>
-#include <Runtime/Object/Components/DirectionalLightComponent.h>
+#include <Runtime/Object/Components/DirectionalLight.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Scene/Scene.h>
@@ -8,7 +8,7 @@
 
 namespace
 {
-    using NS::Obj::DirectionalLightComponent;
+    using NS::Obj::DirectionalLight;
     using NS::Obj::GameObject;
     using NS::Obj::Scene;
 
@@ -25,15 +25,15 @@ namespace
     };
 
     //! リフレクションフィールド越しに平行光の値を書く。照明はデータ駆動で、公開の設定関数を持たない
-    void SetLightField(DirectionalLightComponent& light, const char* name, const NS::Core::Vector3& value)
+    void SetLightField(DirectionalLight& light, const char* name, const NS::Core::Vector3& value)
     {
-        const NS::Obj::FieldDesc* field = NS::Obj::FindField(DirectionalLightComponent::StaticReflection(), name);
+        const NS::Obj::FieldDesc* field = NS::Obj::FindField(DirectionalLight::StaticReflection(), name);
         ASSERT_NE(field, nullptr) << name;
         field->set(&light, &value);
     }
 
     //! シーンに平行光を 1 本置いて返す。登録はまだしていない
-    DirectionalLightComponent* SpawnLight(Scene& scene)
+    DirectionalLight* SpawnLight(Scene& scene)
     {
         // 後から OnStart を呼ぶ時に OwningScene が要る。ObjectList::Spawn は scene を紐付けない
         GameObject* obj = scene.SpawnTransient<GameObject>();
@@ -41,13 +41,13 @@ namespace
         {
             return nullptr;
         }
-        return obj->AddComponent<DirectionalLightComponent>();
+        return obj->AddComponent<DirectionalLight>();
     }
 
     //! OnStart を呼ばない経路を LightWithoutStartDoesNotResolve が見るので、呼ぶ側と分けてある
-    DirectionalLightComponent* SpawnStartedLight(Scene& scene)
+    DirectionalLight* SpawnStartedLight(Scene& scene)
     {
-        DirectionalLightComponent* light = SpawnLight(scene);
+        DirectionalLight* light = SpawnLight(scene);
         if (light != nullptr)
         {
             light->OnStart();
@@ -82,7 +82,7 @@ TEST_F(SceneLightResolveTest, PlacedLightOverridesResolve)
 {
     ResolveProbeScene scene;
 
-    DirectionalLightComponent* light = SpawnStartedLight(scene);
+    DirectionalLight* light = SpawnStartedLight(scene);
     ASSERT_NE(light, nullptr);
     SetLightField(*light, "方向", NS::Core::Vector3{0.0f, -1.0f, 0.5f});
     SetLightField(*light, "色", NS::Core::Vector3{0.9f, 0.8f, 0.7f});
@@ -102,7 +102,7 @@ TEST_F(SceneLightResolveTest, ZeroLightDirectionFallsToDefault)
 {
     ResolveProbeScene scene;
 
-    DirectionalLightComponent* light = SpawnStartedLight(scene);
+    DirectionalLight* light = SpawnStartedLight(scene);
     ASSERT_NE(light, nullptr);
     SetLightField(*light, "方向", NS::Core::Vector3{0.0f, 0.0f, 0.0f});
     SetLightField(*light, "色", NS::Core::Vector3{0.9f, 0.8f, 0.7f});
@@ -120,7 +120,7 @@ TEST_F(SceneLightResolveTest, LightWithoutStartDoesNotResolve)
 {
     ResolveProbeScene scene;
 
-    DirectionalLightComponent* light = SpawnLight(scene);
+    DirectionalLight* light = SpawnLight(scene);
     ASSERT_NE(light, nullptr);
     SetLightField(*light, "色", NS::Core::Vector3{0.9f, 0.8f, 0.7f});
 
@@ -135,7 +135,7 @@ TEST_F(SceneLightResolveTest, LightUnregistersOnEndPlay)
 {
     ResolveProbeScene scene;
 
-    DirectionalLightComponent* light = SpawnStartedLight(scene);
+    DirectionalLight* light = SpawnStartedLight(scene);
     ASSERT_NE(light, nullptr);
     SetLightField(*light, "色", NS::Core::Vector3{0.9f, 0.8f, 0.7f});
     light->OnEndPlay();
@@ -151,7 +151,7 @@ TEST_F(SceneLightResolveTest, DoubleStartStillUnregisters)
 {
     ResolveProbeScene scene;
 
-    DirectionalLightComponent* light = SpawnStartedLight(scene);
+    DirectionalLight* light = SpawnStartedLight(scene);
     ASSERT_NE(light, nullptr);
     light->OnStart();
     SetLightField(*light, "色", NS::Core::Vector3{0.9f, 0.8f, 0.7f});
@@ -168,11 +168,11 @@ TEST_F(SceneLightResolveTest, LastRegisteredLightWins)
 {
     ResolveProbeScene scene;
 
-    DirectionalLightComponent* first = SpawnStartedLight(scene);
+    DirectionalLight* first = SpawnStartedLight(scene);
     ASSERT_NE(first, nullptr);
     SetLightField(*first, "色", NS::Core::Vector3{0.9f, 0.0f, 0.0f});
 
-    DirectionalLightComponent* second = SpawnStartedLight(scene);
+    DirectionalLight* second = SpawnStartedLight(scene);
     ASSERT_NE(second, nullptr);
     SetLightField(*second, "色", NS::Core::Vector3{0.0f, 0.5f, 0.0f});
 

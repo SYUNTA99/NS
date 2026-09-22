@@ -1,8 +1,8 @@
-#include "Game/Level/KillZoneComponent.h"
-#include "Game/Level/RespawnerComponent.h"
-#include "Game/Level/ScreenFadeComponent.h"
+#include "Game/Level/KillZone.h"
+#include "Game/Level/Respawner.h"
+#include "Game/Level/ScreenFade.h"
 #include "Game/Player.h"
-#include "Runtime/Object/Components/PlayerInputComponent.h"
+#include "Runtime/Object/Components/PlayerInput.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -25,7 +25,7 @@ namespace
     {
         SceneNs::ObjectData object;
         SceneNs::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
-        object.components.push_back(SceneNs::MakeComponentEntry("GoalComponent"));
+        object.components.push_back(SceneNs::MakeComponentEntry("Goal"));
         return object;
     }
 
@@ -33,17 +33,17 @@ namespace
     SceneNs::ObjectData MakeTriggerHazard()
     {
         SceneNs::ObjectData object;
-        nlohmann::json box = SceneNs::MakeComponentEntry("BoxColliderComponent");
+        nlohmann::json box = SceneNs::MakeComponentEntry("BoxCollider");
         SceneNs::SetField(box, "トリガー", true);
-        object.components = nlohmann::json::array({std::move(box), SceneNs::MakeComponentEntry("HazardComponent")});
+        object.components = nlohmann::json::array({std::move(box), SceneNs::MakeComponentEntry("Hazard")});
         return object;
     }
 
     // 応答 component を載せた GameObject から暗転を引く。GameObject は無名なので component 検索で見つける
-    LevelNs::ScreenFadeComponent* FindFade(SceneNs::Scene& scene)
+    LevelNs::ScreenFade* FindFade(SceneNs::Scene& scene)
     {
-        LevelNs::ScreenFadeComponent* found = nullptr;
-        scene.Objects().ForEachComponent<LevelNs::ScreenFadeComponent>([&found](LevelNs::ScreenFadeComponent& fade) {
+        LevelNs::ScreenFade* found = nullptr;
+        scene.Objects().ForEachComponent<LevelNs::ScreenFade>([&found](LevelNs::ScreenFade& fade) {
             if (found == nullptr)
                 found = &fade;
         });
@@ -64,7 +64,7 @@ TEST(PlayerResponses, RestartRunPlacesPlayerAtBaseline)
     auto* player = FindPlayer(scene.Objects());
     ASSERT_NE(player, nullptr);
     // やり直しの手順はプレイヤーに載る respawner の持ち物
-    player->FindComponent<LevelNs::RespawnerComponent>()->RestartRun();
+    player->FindComponent<LevelNs::Respawner>()->RestartRun();
 
     EXPECT_NEAR(player->Root().Position().x, 7.0f, 1e-4f);
     EXPECT_NEAR(player->Root().Position().y, 2.0f, 1e-4f);
@@ -211,7 +211,7 @@ TEST(PlayerResponses, ClearFadesOutRestartsAtBlackThenFadesIn)
     ASSERT_TRUE(fade->IsFading());
 
     // シーケンスの間も Scene の更新は止めず入力だけ切る
-    auto* input = player->FindComponent<SceneNs::PlayerInputComponent>();
+    auto* input = player->FindComponent<SceneNs::PlayerInput>();
     ASSERT_NE(input, nullptr);
     EXPECT_FALSE(input->IsActiveSelf());
 

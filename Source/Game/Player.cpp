@@ -1,18 +1,18 @@
 #include "Game/Player.h"
 
-#include "Game/Level/AreaCameraActivatorComponent.h"
-#include "Game/Level/FinisherComponent.h"
-#include "Game/Level/FollowCameraFeedComponent.h"
-#include "Game/Level/HealthComponent.h"
-#include "Game/Level/RespawnerComponent.h"
-#include "Game/Level/ScreenFadeComponent.h"
+#include "Game/Level/AreaCameraActivator.h"
+#include "Game/Level/Finisher.h"
+#include "Game/Level/FollowCameraFeed.h"
+#include "Game/Level/Health.h"
+#include "Game/Level/Respawner.h"
+#include "Game/Level/ScreenFade.h"
 #include "Game/Player/PlayerComponent.h"
-#include "Game/Player/PlayerInputRelayComponent.h"
-#include "Game/Player/PlayerStateManagerComponent.h"
+#include "Game/Player/PlayerInputRelay.h"
+#include "Game/Player/PlayerStateManager.h"
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Object/Components/MeshRendererComponent.h"
-#include "Runtime/Object/Components/PlayerInputComponent.h"
-#include "Runtime/Object/Components/ShadowComponent.h"
+#include "Runtime/Object/Components/MeshRenderer.h"
+#include "Runtime/Object/Components/PlayerInput.h"
+#include "Runtime/Object/Components/Shadow.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
@@ -32,60 +32,60 @@ Player::Player() noexcept
 {
     // 構成と見た目のコード既定。値と追加分はファクトリが player object のデータから写す
     // 同居する部品の引き当ては OnStart なので生成順に縛りは無い
-    auto* mesh = AddComponent<NS::Obj::MeshRendererComponent>();
+    auto* mesh = AddComponent<NS::Obj::MeshRenderer>();
     // 参照はファクトリが cube mesh と共有 player 材質へ解決する
     mesh->SetMeshRef("cube");
     mesh->SetMaterialRef("player");
     mesh->SetBaseColor(k_PlayerBaseColor);
     // 2 つで 1 組。状態機械が欠けると遷移が 1 つも起きない
-    AddComponent<NS::Game::Player::PlayerStateManagerComponent>();
+    AddComponent<NS::Game::Player::PlayerStateManager>();
     AddComponent<NS::Game::Player::PlayerComponent>();
-    AddComponent<NS::Obj::PlayerInputComponent>();
+    AddComponent<NS::Obj::PlayerInput>();
     // 入力は NS::Obj に居て自機の型を名指しできないので、値の受け渡しを挟む
-    AddComponent<NS::Game::Player::PlayerInputRelayComponent>();
+    AddComponent<NS::Game::Player::PlayerInputRelay>();
     // 命は player 自身の持ち物。hazard 等のルール配置物がこれを削る
-    AddComponent<NS::Game::Level::HealthComponent>();
+    AddComponent<NS::Game::Level::Health>();
     // 接地シャドウ。mesh / material は後から注入される
-    AddComponent<NS::Obj::ShadowComponent>();
+    AddComponent<NS::Obj::Shadow>();
 
     // ルール判定への応答。死んだらやり直す・ゴールでクリアする・自分の位置を area camera へ渡す、は
     // どれもプレイヤーの振る舞いなのでここに積む。暗転はクリアシーケンスが使う部品として隣に置く
-    AddComponent<NS::Game::Level::ScreenFadeComponent>();
-    AddComponent<NS::Game::Level::RespawnerComponent>();
-    AddComponent<NS::Game::Level::FinisherComponent>();
-    AddComponent<NS::Game::Level::AreaCameraActivatorComponent>();
+    AddComponent<NS::Game::Level::ScreenFade>();
+    AddComponent<NS::Game::Level::Respawner>();
+    AddComponent<NS::Game::Level::Finisher>();
+    AddComponent<NS::Game::Level::AreaCameraActivator>();
     // 追従カメラは NS::Obj に居るので、自動ズームが要る接地と速度を値で送る
-    AddComponent<NS::Game::Level::FollowCameraFeedComponent>();
+    AddComponent<NS::Game::Level::FollowCameraFeed>();
 }
 
 void Player::ApplyDamage(int amount) noexcept
 {
-    if (auto* health = FindComponent<NS::Game::Level::HealthComponent>())
+    if (auto* health = FindComponent<NS::Game::Level::Health>())
         health->ApplyDamage(amount);
 }
 
 void Player::Kill() noexcept
 {
-    if (auto* health = FindComponent<NS::Game::Level::HealthComponent>())
+    if (auto* health = FindComponent<NS::Game::Level::Health>())
         health->Kill();
 }
 
 void Player::ResetHealth() noexcept
 {
-    if (auto* health = FindComponent<NS::Game::Level::HealthComponent>())
+    if (auto* health = FindComponent<NS::Game::Level::Health>())
         health->Reset();
 }
 
 bool Player::IsDead() const noexcept
 {
-    if (const auto* health = FindComponent<NS::Game::Level::HealthComponent>())
+    if (const auto* health = FindComponent<NS::Game::Level::Health>())
         return health->IsDead();
     return false;
 }
 
 int Player::Health() const noexcept
 {
-    if (const auto* health = FindComponent<NS::Game::Level::HealthComponent>())
+    if (const auto* health = FindComponent<NS::Game::Level::Health>())
         return health->Current();
     return 0;
 }

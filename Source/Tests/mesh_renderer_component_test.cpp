@@ -1,6 +1,6 @@
 #include <Runtime/Graphics/RenderContext.h>
 #include <Runtime/Graphics/RenderSettings.h>
-#include <Runtime/Object/Components/MeshRendererComponent.h>
+#include <Runtime/Object/Components/MeshRenderer.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/IRenderable.h>
 #include <Runtime/Object/Scene/Scene.h>
@@ -9,7 +9,7 @@
 
 namespace
 {
-    using NS::Obj::MeshRendererComponent;
+    using NS::Obj::MeshRenderer;
     using NS::Obj::GameObject;
 
     class FakeScene : public NS::Obj::Scene
@@ -26,14 +26,14 @@ namespace
 TEST(MeshRendererComponentTest, ConstructsWithNullPointersWithoutCrashing)
 {
     // null の Mesh / Material を渡しても構築で落ちないこと
-    MeshRendererComponent mc;
+    MeshRenderer mc;
     EXPECT_TRUE(mc.IsActive());
 }
 
 TEST(MeshRendererComponentTest, CollectIsNoOpWhenInactive)
 {
     GameObject obj;
-    auto& mc = *obj.AddComponent<MeshRendererComponent>();
+    auto& mc = *obj.AddComponent<MeshRenderer>();
     mc.SetActive(false);
 
     // 非アクティブなら DrawItem を積まない
@@ -46,7 +46,7 @@ TEST(MeshRendererComponentTest, CollectIsNoOpWhenInactive)
 TEST(MeshRendererComponentTest, CollectIsNoOpWhenMeshOrMaterialIsNull)
 {
     GameObject obj;
-    auto& mc = *obj.AddComponent<MeshRendererComponent>();
+    auto& mc = *obj.AddComponent<MeshRenderer>();
 
     NS::Gfx::RenderContext ctx{};
     std::vector<NS::Gfx::DrawItem> out;
@@ -56,7 +56,7 @@ TEST(MeshRendererComponentTest, CollectIsNoOpWhenMeshOrMaterialIsNull)
 
 TEST(MeshRendererComponentTest, SetBaseColorDoesNotAffectActive)
 {
-    MeshRendererComponent mc;
+    MeshRenderer mc;
     mc.SetBaseColor({0.5f, 0.5f, 0.5f});
     EXPECT_TRUE(mc.IsActive());
 }
@@ -66,7 +66,7 @@ TEST(MeshRendererComponentTest, OnStartRegistersToOwningScene)
     FakeScene scene;
     GameObject obj;
     obj.AttachScene(&scene);
-    auto& mc = *obj.AddComponent<MeshRendererComponent>();
+    auto& mc = *obj.AddComponent<MeshRenderer>();
 
     mc.OnStart();
 
@@ -79,7 +79,7 @@ TEST(MeshRendererComponentTest, OnEndPlayUnregistersFromOwningScene)
     FakeScene scene;
     GameObject obj;
     obj.AttachScene(&scene);
-    auto& mc = *obj.AddComponent<MeshRendererComponent>();
+    auto& mc = *obj.AddComponent<MeshRenderer>();
 
     mc.OnStart();
     mc.OnEndPlay();
@@ -91,7 +91,7 @@ TEST(MeshRendererComponentTest, OnEndPlayUnregistersFromOwningScene)
 TEST(MeshRendererComponentTest, OnStartIsNoOpWhenSceneIsNull)
 {
     GameObject obj;
-    auto& mc = *obj.AddComponent<MeshRendererComponent>();
+    auto& mc = *obj.AddComponent<MeshRenderer>();
     // OwningScene が nullptr のまま OnStart を呼んでも落ちないこと
     mc.OnStart();
     SUCCEED();

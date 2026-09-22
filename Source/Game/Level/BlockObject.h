@@ -16,7 +16,7 @@ namespace NS::Game::Level
     //! テクスチャ未解決時のフォールバック用基準色
     inline constexpr NS::Core::Vector3 k_SolidBaseColor{0.70f, 0.70f, 0.75f};
 
-    //! MeshRendererComponent の component entry を作る。Mesh / Material / Base Color を書き込む
+    //! MeshRenderer の component entry を作る。Mesh / Material / Base Color を書き込む
     [[nodiscard]] nlohmann::json MakeMeshRendererEntry(std::string_view meshName,
                                                        std::string_view materialName,
                                                        const NS::Core::Vector3& baseColor);

@@ -38,7 +38,7 @@ namespace
         std::vector<float> values;
         for (const SceneNs::ObjectData& object : scene.objects)
         {
-            const nlohmann::json* entry = SceneNs::FindComponentEntry(object, "BreakableComponent");
+            const nlohmann::json* entry = SceneNs::FindComponentEntry(object, "Breakable");
             if (entry == nullptr)
                 continue;
             values.push_back(SceneNs::FieldFloat(*entry, fieldName, -1.0f));

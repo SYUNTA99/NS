@@ -2,7 +2,7 @@
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
-#include <Runtime/Object/Components/CapsuleColliderComponent.h>
+#include <Runtime/Object/Components/CapsuleCollider.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <gtest/gtest.h>
@@ -91,11 +91,11 @@ TEST_F(EntityComponentTest, CapsuleSizeDefaultsWithoutCollider)
     EXPECT_FLOAT_EQ(entity.CapsuleHalfHeight(), 0.5f);
 }
 
-// 当たりの形の正は同居する CapsuleColliderComponent
+// 当たりの形の正は同居する CapsuleCollider
 TEST_F(EntityComponentTest, AdoptsSiblingCapsuleColliderSize)
 {
     GameObject obj;
-    obj.AddComponent<NS::Obj::CapsuleColliderComponent>(0.7f, 0.9f);
+    obj.AddComponent<NS::Obj::CapsuleCollider>(0.7f, 0.9f);
     auto& entity = *obj.AddComponent<BareEntity>();
 
     entity.OnStart();

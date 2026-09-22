@@ -47,7 +47,7 @@ namespace NS::Obj
     };
 
     //! シーンが所有する環境値。保存形式に入る永続データで、skybox の描画が毎フレームこのパスを読む
-    //! 照明は DirectionalLightComponent が供給するので、ここは skybox だけを持つ
+    //! 照明は DirectionalLight が供給するので、ここは skybox だけを持つ
     struct SceneEnvironment
     {
         //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空文字なら skybox を描かない

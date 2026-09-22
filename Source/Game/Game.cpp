@@ -2,7 +2,7 @@
 
 #include "Runtime/App/Application.h"
 #include "Runtime/Platform/Filesystem.h"
-#include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
+#include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
 #include "Runtime/Platform/Input.h"
@@ -71,8 +71,8 @@ void Game::OnAttach()
     (void)scene->BeginPlayBaseline();
 
     // 追従カメラは生成直後は休止している。出荷はプレイしかないので起動で有効化する
-    scene->Objects().ForEachComponent<NS::Obj::ThirdPersonFollowComponent>(
-        [](NS::Obj::ThirdPersonFollowComponent& follow) { follow.SetActive(true); });
+    scene->Objects().ForEachComponent<NS::Obj::ThirdPersonFollow>(
+        [](NS::Obj::ThirdPersonFollow& follow) { follow.SetActive(true); });
 
     // カーソルを消し、マウスを相対モードにして視点操作をカーソル位置から切り離す
     // Esc で出すまで非表示のまま。出し直しは OnUpdate の Esc 処理が行う

@@ -1,6 +1,6 @@
-#include "Game/Level/ScreenFadeComponent.h"
+#include "Game/Level/ScreenFade.h"
 #include "Runtime/Object/Component.h"
-#include "Runtime/Object/Components/OverlayRendererComponent.h"
+#include "Runtime/Object/Components/OverlayRenderer.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/ObjectList.h"
@@ -18,7 +18,7 @@ namespace
 TEST(ScreenFade, BeginOutRaisesAlphaThenHoldsBlack)
 {
     NS::Obj::GameObject obj;
-    auto& fade = *obj.AddComponent<NS::Game::Level::ScreenFadeComponent>();
+    auto& fade = *obj.AddComponent<NS::Game::Level::ScreenFade>();
     EXPECT_FALSE(fade.IsFading());
     EXPECT_FALSE(fade.IsBlack());
     EXPECT_NEAR(fade.Alpha(), 0.0f, 1e-6f);
@@ -43,7 +43,7 @@ TEST(ScreenFade, BeginOutRaisesAlphaThenHoldsBlack)
 TEST(ScreenFade, BeginInLowersAlphaToTransparent)
 {
     NS::Obj::GameObject obj;
-    auto& fade = *obj.AddComponent<NS::Game::Level::ScreenFadeComponent>();
+    auto& fade = *obj.AddComponent<NS::Game::Level::ScreenFade>();
     fade.BeginOut(k_OutSeconds);
     fade.Advance(k_OutSeconds);
     ASSERT_TRUE(fade.IsBlack());
@@ -64,7 +64,7 @@ TEST(ScreenFade, BeginInLowersAlphaToTransparent)
 TEST(ScreenFade, ReentryIsIgnoredWhileActive)
 {
     NS::Obj::GameObject obj;
-    auto& fade = *obj.AddComponent<NS::Game::Level::ScreenFadeComponent>();
+    auto& fade = *obj.AddComponent<NS::Game::Level::ScreenFade>();
     fade.BeginOut(k_OutSeconds);
     fade.Advance(k_OutSeconds * 0.5f);
     const float alphaBefore = fade.Alpha();
@@ -83,7 +83,7 @@ TEST(ScreenFade, ReentryIsIgnoredWhileActive)
 TEST(ScreenFade, CancelReturnsToTransparent)
 {
     NS::Obj::GameObject obj;
-    auto& fade = *obj.AddComponent<NS::Game::Level::ScreenFadeComponent>();
+    auto& fade = *obj.AddComponent<NS::Game::Level::ScreenFade>();
     fade.BeginOut(k_OutSeconds);
     fade.Advance(k_OutSeconds * 0.5f);
     ASSERT_TRUE(fade.IsFading());
@@ -97,7 +97,7 @@ TEST(ScreenFade, CancelReturnsToTransparent)
 TEST(ScreenFade, ZeroSecondsJumpsToEndState)
 {
     NS::Obj::GameObject obj;
-    auto& fade = *obj.AddComponent<NS::Game::Level::ScreenFadeComponent>();
+    auto& fade = *obj.AddComponent<NS::Game::Level::ScreenFade>();
     fade.BeginOut(0.0f);
     EXPECT_FALSE(fade.IsFading());
     EXPECT_TRUE(fade.IsBlack());
@@ -112,14 +112,14 @@ TEST(ScreenFade, ZeroSecondsJumpsToEndState)
 TEST(ScreenFade, OnlyOverlayRendererIsPickedUp)
 {
     NS::Obj::GameObject obj;
-    auto* fade = obj.AddComponent<NS::Game::Level::ScreenFadeComponent>();
+    auto* fade = obj.AddComponent<NS::Game::Level::ScreenFade>();
     auto* transform = obj.FindComponent<NS::Obj::TransformComponent>();
     ASSERT_NE(transform, nullptr);
 
     EXPECT_NE(
-        NS::Obj::ComponentCast<NS::Obj::OverlayRendererComponent>(static_cast<NS::Obj::Component*>(fade)),
+        NS::Obj::ComponentCast<NS::Obj::OverlayRenderer>(static_cast<NS::Obj::Component*>(fade)),
         nullptr);
-    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::OverlayRendererComponent>(
+    EXPECT_EQ(NS::Obj::ComponentCast<NS::Obj::OverlayRenderer>(
                   static_cast<NS::Obj::Component*>(transform)),
               nullptr);
 
@@ -132,12 +132,12 @@ TEST(ScreenFade, PlacedObjectFadeIsPickedUp)
 {
     NS::Obj::ObjectList objects;
     auto* obj = objects.Spawn<NS::Obj::GameObject>();
-    obj->AddComponent<NS::Game::Level::ScreenFadeComponent>();
+    obj->AddComponent<NS::Game::Level::ScreenFade>();
     ASSERT_FALSE(obj->IsTransient());
 
     int found = 0;
-    objects.ForEachComponent<NS::Obj::OverlayRendererComponent>(
-        [&found](const NS::Obj::OverlayRendererComponent&) { ++found; });
+    objects.ForEachComponent<NS::Obj::OverlayRenderer>(
+        [&found](const NS::Obj::OverlayRenderer&) { ++found; });
     EXPECT_EQ(found, 1);
 }
 
@@ -145,7 +145,7 @@ TEST(ScreenFade, PlacedObjectFadeIsPickedUp)
 TEST(ScreenFade, InactiveFadeIsSkipped)
 {
     NS::Obj::GameObject obj;
-    auto* fade = obj.AddComponent<NS::Game::Level::ScreenFadeComponent>();
+    auto* fade = obj.AddComponent<NS::Game::Level::ScreenFade>();
     fade->BeginOut(0.0f);
     ASSERT_TRUE(fade->IsBlack());
 

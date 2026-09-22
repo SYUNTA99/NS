@@ -7,8 +7,8 @@
 #include <Runtime/Graphics/SkeletalMesh.h>
 #include <Runtime/Graphics/Skeleton.h>
 #include <Runtime/Object/AssetManager.h>
-#include <Runtime/Object/Components/MeshRendererComponent.h>
-#include <Runtime/Object/Components/SkeletalAnimationComponent.h>
+#include <Runtime/Object/Components/MeshRenderer.h>
+#include <Runtime/Object/Components/SkeletalAnimation.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
 #include <Runtime/Object/Reflection/ObjectBuilder.h>
@@ -34,9 +34,9 @@ namespace
     using NS::Obj::AssetManager;
     using NS::Obj::BuildSceneObject;
     using NS::Obj::GameObject;
-    using NS::Obj::MeshRendererComponent;
+    using NS::Obj::MeshRenderer;
     using NS::Obj::ObjectData;
-    using NS::Obj::SkeletalAnimationComponent;
+    using NS::Obj::SkeletalAnimation;
 
     Quaternion RotZ(float degrees)
     {
@@ -66,7 +66,7 @@ namespace
 TEST(SkeletalAnimationComponentTest, InitialState)
 {
     const std::vector<AnimationClip> clips = OneClip(1.0f);
-    SkeletalAnimationComponent comp;
+    SkeletalAnimation comp;
     comp.AddClips(clips);
     EXPECT_EQ(comp.ClipCount(), 1u);
     EXPECT_NEAR(comp.Duration(), 1.0f, 1e-5f);
@@ -77,7 +77,7 @@ TEST(SkeletalAnimationComponentTest, InitialState)
 TEST(SkeletalAnimationComponentTest, OnUpdateAdvancesTimeByFixedDelta)
 {
     const std::vector<AnimationClip> clips = OneClip(1.0f);
-    SkeletalAnimationComponent comp;
+    SkeletalAnimation comp;
     comp.AddClips(clips);
     comp.OnUpdate();
     EXPECT_NEAR(comp.Time(), NS::Platform::FrameTimer::FixedDelta(), 1e-5f);
@@ -86,7 +86,7 @@ TEST(SkeletalAnimationComponentTest, OnUpdateAdvancesTimeByFixedDelta)
 TEST(SkeletalAnimationComponentTest, PauseHoldsTime)
 {
     const std::vector<AnimationClip> clips = OneClip(1.0f);
-    SkeletalAnimationComponent comp;
+    SkeletalAnimation comp;
     comp.AddClips(clips);
     comp.OnUpdate();
     const float held = comp.Time();
@@ -99,7 +99,7 @@ TEST(SkeletalAnimationComponentTest, PauseHoldsTime)
 TEST(SkeletalAnimationComponentTest, SetSpeedScalesAdvance)
 {
     const std::vector<AnimationClip> clips = OneClip(10.0f);
-    SkeletalAnimationComponent comp;
+    SkeletalAnimation comp;
     comp.AddClips(clips);
     comp.SetSpeed(3.0f);
     comp.OnUpdate();
@@ -109,7 +109,7 @@ TEST(SkeletalAnimationComponentTest, SetSpeedScalesAdvance)
 TEST(SkeletalAnimationComponentTest, NegativeSpeedClampsToZero)
 {
     const std::vector<AnimationClip> clips = OneClip(1.0f);
-    SkeletalAnimationComponent comp;
+    SkeletalAnimation comp;
     comp.AddClips(clips);
     comp.SetSpeed(-5.0f);
     comp.OnUpdate();
@@ -119,7 +119,7 @@ TEST(SkeletalAnimationComponentTest, NegativeSpeedClampsToZero)
 TEST(SkeletalAnimationComponentTest, InfiniteSpeedKeepsThePreviousValue)
 {
     const std::vector<AnimationClip> clips = OneClip(10.0f);
-    SkeletalAnimationComponent comp;
+    SkeletalAnimation comp;
     comp.AddClips(clips);
     comp.SetSpeed(2.0f);
     comp.SetSpeed(std::numeric_limits<float>::infinity());
@@ -130,7 +130,7 @@ TEST(SkeletalAnimationComponentTest, InfiniteSpeedKeepsThePreviousValue)
 TEST(SkeletalAnimationComponentTest, NotANumberSpeedKeepsThePreviousValue)
 {
     const std::vector<AnimationClip> clips = OneClip(10.0f);
-    SkeletalAnimationComponent comp;
+    SkeletalAnimation comp;
     comp.AddClips(clips);
     comp.SetSpeed(2.0f);
     comp.SetSpeed(std::numeric_limits<float>::quiet_NaN());
@@ -141,7 +141,7 @@ TEST(SkeletalAnimationComponentTest, NotANumberSpeedKeepsThePreviousValue)
 TEST(SkeletalAnimationComponentTest, StopResetsTime)
 {
     const std::vector<AnimationClip> clips = OneClip(1.0f);
-    SkeletalAnimationComponent comp;
+    SkeletalAnimation comp;
     comp.AddClips(clips);
     comp.OnUpdate();
     EXPECT_GT(comp.Time(), 0.0f);
@@ -153,7 +153,7 @@ TEST(SkeletalAnimationComponentTest, StopResetsTime)
 TEST(SkeletalAnimationComponentTest, LoopingWrapsTime)
 {
     const std::vector<AnimationClip> clips = OneClip(0.02f);
-    SkeletalAnimationComponent comp;
+    SkeletalAnimation comp;
     comp.AddClips(clips);
     comp.SetLooping(true);
     for (int i = 0; i < 5; ++i)
@@ -168,7 +168,7 @@ TEST(SkeletalAnimationComponentTest, LoopingWrapsTime)
 TEST(SkeletalAnimationComponentTest, NonLoopingStopsAtEnd)
 {
     const std::vector<AnimationClip> clips = OneClip(0.02f);
-    SkeletalAnimationComponent comp;
+    SkeletalAnimation comp;
     comp.AddClips(clips);
     comp.SetLooping(false);
     for (int i = 0; i < 5; ++i)
@@ -182,7 +182,7 @@ TEST(SkeletalAnimationComponentTest, NonLoopingStopsAtEnd)
 TEST(SkeletalAnimationComponentTest, SelectClip)
 {
     const std::vector<AnimationClip> clips{MakeClip("walk", 1.0f), MakeClip("run", 0.5f)};
-    SkeletalAnimationComponent comp;
+    SkeletalAnimation comp;
     comp.AddClips(clips);
     EXPECT_EQ(comp.ClipCount(), 2u);
 
@@ -206,7 +206,7 @@ TEST(SkeletalAnimationComponentTest, AddClipsAppendsAndKeepsSelection)
     std::vector<AnimationClip> more;
     more.push_back(MakeClip("run", 0.5f));
 
-    SkeletalAnimationComponent comp;
+    SkeletalAnimation comp;
     comp.AddClips(first);
     comp.OnUpdate();
     const float held = comp.Time();
@@ -268,7 +268,7 @@ TEST_F(SkeletalAnimationMeshTest, DrivesMeshPaletteWithoutCrash)
     const Skeleton skeleton(std::move(bones));
     const std::vector<AnimationClip> clips = OneClip(1.0f);
 
-    SkeletalAnimationComponent comp;
+    SkeletalAnimation comp;
     comp.SetMesh(&mesh);
     comp.SetSkeleton(&skeleton);
     comp.AddClips(clips);
@@ -281,7 +281,7 @@ TEST_F(SkeletalAnimationMeshTest, DrivesMeshPaletteWithoutCrash)
 TEST_F(SkeletalAnimationMeshTest, ResolveAssetsDoesNothingWhenModelRefEmpty)
 {
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
-    SkeletalAnimationComponent comp;
+    SkeletalAnimation comp;
     comp.ResolveAssets(am);
     EXPECT_EQ(comp.ClipCount(), 0u);
 }
@@ -289,7 +289,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsDoesNothingWhenModelRefEmpty)
 TEST_F(SkeletalAnimationMeshTest, ResolveAssetsDoesNothingWhenModelRefEscapesContentRoot)
 {
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
-    SkeletalAnimationComponent comp;
+    SkeletalAnimation comp;
     comp.SetModelRef("../outside_content_root.glb");
     comp.ResolveAssets(am);
     EXPECT_EQ(comp.ClipCount(), 0u);
@@ -299,8 +299,8 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsDoesNothingWhenModelFileMissing)
 {
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     GameObject obj;
-    auto& renderer = *obj.AddComponent<MeshRendererComponent>();
-    auto& comp = *obj.AddComponent<SkeletalAnimationComponent>();
+    auto& renderer = *obj.AddComponent<MeshRenderer>();
+    auto& comp = *obj.AddComponent<SkeletalAnimation>();
     comp.SetModelRef("__ns_sac_missing_model__.glb");
     comp.ResolveAssets(am);
     EXPECT_EQ(comp.ClipCount(), 0u);
@@ -331,8 +331,8 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsWiresRealSkinnedModelAndSiblingMe
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     GameObject obj;
-    auto& meshComp = *obj.AddComponent<MeshRendererComponent>();
-    auto& anim = *obj.AddComponent<SkeletalAnimationComponent>();
+    auto& meshComp = *obj.AddComponent<MeshRenderer>();
+    auto& anim = *obj.AddComponent<SkeletalAnimation>();
     anim.SetModelRef("Assets/Models/CesiumMan.glb");
 
     anim.ResolveAssets(am);
@@ -374,7 +374,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsAddsClipsFromClipsRef)
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     GameObject obj;
-    auto& anim = *obj.AddComponent<SkeletalAnimationComponent>();
+    auto& anim = *obj.AddComponent<SkeletalAnimation>();
     anim.SetModelRef("Assets/Models/CesiumMan.glb");
     anim.SetClipsRef("Assets/Models/CesiumMan.glb");
     anim.ResolveAssets(am);
@@ -422,7 +422,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSkipsBadClipEntriesIndependently)
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     GameObject obj;
-    auto& anim = *obj.AddComponent<SkeletalAnimationComponent>();
+    auto& anim = *obj.AddComponent<SkeletalAnimation>();
     anim.SetModelRef("Assets/Models/CesiumMan.glb");
     anim.SetClipsRef(" ;__ns_missing__.glb; Assets/Models/CesiumMan.glb ;../escape.glb");
     anim.ResolveAssets(am);
@@ -458,7 +458,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSharesBoundClipsBetweenInstances)
     AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     GameObject objA;
-    auto& animA = *objA.AddComponent<SkeletalAnimationComponent>();
+    auto& animA = *objA.AddComponent<SkeletalAnimation>();
     animA.SetModelRef("Assets/Models/CesiumMan.glb");
     animA.SetClipsRef("Assets/Models/CesiumMan.glb");
     animA.ResolveAssets(am);
@@ -466,7 +466,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSharesBoundClipsBetweenInstances)
     ASSERT_NE(boundFirst, nullptr);
 
     GameObject objB;
-    auto& animB = *objB.AddComponent<SkeletalAnimationComponent>();
+    auto& animB = *objB.AddComponent<SkeletalAnimation>();
     animB.SetModelRef("Assets/Models/CesiumMan.glb");
     animB.SetClipsRef("Assets/Models/CesiumMan.glb");
     animB.ResolveAssets(am);
@@ -502,16 +502,16 @@ TEST_F(SkeletalAnimationMeshTest, BuildSceneObjectOverridesMeshRendererWithSkinn
     am.RegisterBuiltins();
 
     ObjectData data;
-    nlohmann::json meshEntry = NS::Obj::MakeComponentEntry("MeshRendererComponent");
+    nlohmann::json meshEntry = NS::Obj::MakeComponentEntry("MeshRenderer");
     NS::Obj::SetField(meshEntry, "メッシュ", std::string("cube"));
     data.components.push_back(meshEntry);
-    nlohmann::json animEntry = NS::Obj::MakeComponentEntry("SkeletalAnimationComponent");
+    nlohmann::json animEntry = NS::Obj::MakeComponentEntry("SkeletalAnimation");
     NS::Obj::SetField(animEntry, "モデル", std::string("Assets/Models/CesiumMan.glb"));
     data.components.push_back(animEntry);
 
     auto built = BuildSceneObject(data, &am);
     ASSERT_NE(built, nullptr);
-    auto* meshComp = built->FindComponent<MeshRendererComponent>();
+    auto* meshComp = built->FindComponent<MeshRenderer>();
     ASSERT_NE(meshComp, nullptr);
 
     const NS::Obj::LoadedSkinnedModel loaded = am.GetOrLoadSkinnedModel(modelPath);

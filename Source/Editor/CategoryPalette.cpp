@@ -28,7 +28,7 @@ namespace NS::Editor
     {
         // コンポーネントからスロープ角度を読み取る。角度を持たない場合は負値を返す
         const nlohmann::json* slope =
-            NS::Obj::FindComponentEntry(PaletteTemplateSlots()[m_activeSlot].prototype, "SlopeColliderComponent");
+            NS::Obj::FindComponentEntry(PaletteTemplateSlots()[m_activeSlot].prototype, "SlopeCollider");
         if (slope == nullptr)
         {
             return -1.0f;

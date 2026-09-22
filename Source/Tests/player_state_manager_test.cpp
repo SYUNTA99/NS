@@ -1,5 +1,5 @@
 #include <Game/Player/PlayerComponent.h>
-#include <Game/Player/PlayerStateManagerComponent.h>
+#include <Game/Player/PlayerStateManager.h>
 #include <Game/Player/States/FallPlayerState.h>
 #include <Game/Player/States/IdlePlayerState.h>
 #include <Runtime/Object/GameObject.h>
@@ -10,7 +10,7 @@ namespace
     using NS::Game::Player::FallPlayerState;
     using NS::Game::Player::IdlePlayerState;
     using NS::Game::Player::PlayerComponent;
-    using NS::Game::Player::PlayerStateManagerComponent;
+    using NS::Game::Player::PlayerStateManager;
     using NS::Obj::GameObject;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
@@ -20,12 +20,12 @@ namespace
     struct Rig
     {
         GameObject owner;
-        PlayerStateManagerComponent* manager = nullptr;
+        PlayerStateManager* manager = nullptr;
         PlayerComponent* player = nullptr;
 
         Rig()
         {
-            manager = owner.AddComponent<PlayerStateManagerComponent>();
+            manager = owner.AddComponent<PlayerStateManager>();
             player = owner.AddComponent<PlayerComponent>();
             player->OnStart();
             manager->OnStart();
@@ -84,7 +84,7 @@ TEST(PlayerStateManagerTest, ResetToFirstReturnsToTheFirstState)
 TEST(PlayerStateManagerTest, ChangeFailsBeforeTheMachineIsBuilt)
 {
     GameObject owner;
-    PlayerStateManagerComponent& manager = *owner.AddComponent<PlayerStateManagerComponent>();
+    PlayerStateManager& manager = *owner.AddComponent<PlayerStateManager>();
 
     EXPECT_FALSE(manager.Change<FallPlayerState>());
     EXPECT_FALSE(manager.IsCurrent<IdlePlayerState>());

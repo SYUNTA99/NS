@@ -51,32 +51,32 @@ namespace
 TEST(TypeRegistryTest, CreatesEachRegisteredType)
 {
     const char* k_Registered[] = {
-        "BoxColliderComponent",
-        "BreakableComponent",
-        "SphereColliderComponent",
-        "CapsuleColliderComponent",
-        "SlopeColliderComponent",
-        "MeshColliderComponent",
-        "CollisionInputComponent",
-        "ImpactResolverComponent",
-        "HazardComponent",
-        "HealthComponent",
-        "ImpactMarkComponent",
-        "KillZoneComponent",
-        "LaunchedBodyComponent",
-        "MeshRendererComponent",
-        "GoalComponent",
+        "BoxCollider",
+        "Breakable",
+        "SphereCollider",
+        "CapsuleCollider",
+        "SlopeCollider",
+        "MeshCollider",
+        "CollisionInput",
+        "ImpactResolver",
+        "Hazard",
+        "Health",
+        "ImpactMark",
+        "KillZone",
+        "LaunchedBody",
+        "MeshRenderer",
+        "Goal",
         "CameraComponent",
         "PlacedVirtualCamera",
-        "CameraBrainComponent",
-        "ThirdPersonFollowComponent",
+        "CameraBrain",
+        "ThirdPersonFollow",
         "PlayerComponent",
-        "PlayerInputComponent",
-        "PlayerStateManagerComponent",
-        "PlayerAnimatorComponent",
-        "ShadowComponent",
-        "SkeletalAnimationComponent",
-        "DirectionalLightComponent",
+        "PlayerInput",
+        "PlayerStateManager",
+        "PlayerAnimator",
+        "Shadow",
+        "SkeletalAnimation",
+        "DirectionalLight",
     };
     for (const char* name : k_Registered)
     {
@@ -106,11 +106,11 @@ TEST(TypeRegistryTest, ExcludedTypesReturnNull)
     // 抽象基底と必ず持つ基盤は登録しないので、信頼できない type 名から生成できない
     GameObject obj;
     const std::size_t before = obj.Components().size();
-    EXPECT_EQ(CreateComponent("VirtualCameraComponent", obj), nullptr);
-    EXPECT_EQ(CreateComponent("ColliderComponent", obj), nullptr);
+    EXPECT_EQ(CreateComponent("VirtualCamera", obj), nullptr);
+    EXPECT_EQ(CreateComponent("Collider", obj), nullptr);
     EXPECT_EQ(CreateComponent("TransformComponent", obj), nullptr);
     EXPECT_EQ(CreateComponent("EntityComponent", obj), nullptr);
-    EXPECT_EQ(CreateComponent("EntityStateManagerComponent", obj), nullptr);
+    EXPECT_EQ(CreateComponent("EntityStateManager", obj), nullptr);
     EXPECT_EQ(obj.Components().size(), before);
 }
 
@@ -133,7 +133,7 @@ TEST(TypeRegistryTest, GameObjectClassIsNotAComponent)
 
 TEST(TypeRegistryTest, IsRegisteredMatchesRegistrationSet)
 {
-    EXPECT_TRUE(IsRegistered("BoxColliderComponent"));
+    EXPECT_TRUE(IsRegistered("BoxCollider"));
     EXPECT_TRUE(IsRegistered("PlayerComponent"));
     EXPECT_FALSE(IsRegistered("Bogus"));
 }
@@ -142,8 +142,8 @@ TEST(TypeRegistryTest, RegisteredNamesListsAllRuntimeTypes)
 {
     const std::vector<std::string>& names = RegisteredNames();
     EXPECT_EQ(names.size(), 26u);
-    EXPECT_TRUE(Contains(names, "BoxColliderComponent"));
-    EXPECT_TRUE(Contains(names, "MeshRendererComponent"));
+    EXPECT_TRUE(Contains(names, "BoxCollider"));
+    EXPECT_TRUE(Contains(names, "MeshRenderer"));
     EXPECT_TRUE(Contains(names, "PlayerComponent"));
     // パレット表示が実行ごとに揺れないよう名前順に揃えてある
     EXPECT_TRUE(std::is_sorted(names.begin(), names.end()));
@@ -155,12 +155,12 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
     // リフレクションに載ったフィールドだけが Inspector 編集とシリアライズの対象になる
     // 増減が意図か事故かをこの一覧との突き合わせで判定する。抜けは気づけない保存漏れになる
     const std::map<std::string, std::vector<std::string>> k_Ledger = {
-        {"BoxColliderComponent", {"半径", "中心オフセット", "回転 (度)", "トリガー"}},
-        {"BreakableComponent", {"質量", "耐久"}},
-        {"CameraBrainComponent", {"ブレンド秒数"}},
+        {"BoxCollider", {"半径", "中心オフセット", "回転 (度)", "トリガー"}},
+        {"Breakable", {"質量", "耐久"}},
+        {"CameraBrain", {"ブレンド秒数"}},
         {"CameraComponent", {}},
-        {"CapsuleColliderComponent", {"半径", "半分の高さ", "中心オフセット", "回転 (度)"}},
-        {"CollisionInputComponent",
+        {"CapsuleCollider", {"半径", "半分の高さ", "中心オフセット", "回転 (度)"}},
+        {"CollisionInput",
          {"チャージしきい値秒",
           "チャージ満タン秒",
           "チャージ減速率",
@@ -169,11 +169,11 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "ピークしきい値",
           "構えの縮み",
           "押しの構えの縮み"}},
-        {"DirectionalLightComponent", {"方向", "色", "環境光", "地面環境光", "露出"}},
-        {"HazardComponent", {}},
-        {"HealthComponent", {"体力"}},
-        {"ImpactMarkComponent", {"跡の直径", "跡の残る秒"}},
-        {"ImpactResolverComponent",
+        {"DirectionalLight", {"方向", "色", "環境光", "地面環境光", "露出"}},
+        {"Hazard", {}},
+        {"Health", {"体力"}},
+        {"ImpactMark", {"跡の直径", "跡の残る秒"}},
+        {"ImpactResolver",
          {"反発基準初速",
           "反発の上向き初速",
           "押し飛ばし基準初速",
@@ -195,8 +195,8 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "破壊を許可",
           "貫通時の減速倍率",
           "貫通の止め秒"}},
-        {"KillZoneComponent", {}},
-        {"LaunchedBodyComponent",
+        {"KillZone", {}},
+        {"LaunchedBody",
          {"跳ね返り",
           "摩擦",
           "回転の強さ",
@@ -206,9 +206,9 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "破片の寿命秒",
           "破片の大きさ",
           "破片の色"}},
-        {"MeshColliderComponent", {}},
-        {"MeshRendererComponent", {"基本色", "メッシュ", "マテリアル"}},
-        {"GoalComponent", {}},
+        {"MeshCollider", {}},
+        {"MeshRenderer", {"基本色", "メッシュ", "マテリアル"}},
+        {"Goal", {}},
         {"PlacedVirtualCamera", {"注視点", "上方向", "トリガー中心", "トリガー半径", "プレイヤー追視", "優先度"}},
         {"PlayerComponent",
          {"ジャンプ初速",
@@ -241,9 +241,9 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "タップ距離",
           "狙いの巻き戻し秒",
           "狙いの巻き戻しが消える秒"}},
-        {"PlayerInputComponent", {}},
-        {"PlayerStateManagerComponent", {}},
-        {"PlayerAnimatorComponent",
+        {"PlayerInput", {}},
+        {"PlayerStateManager", {}},
+        {"PlayerAnimator",
          {"立ちのクリップ",
           "歩きのクリップ",
           "走りのクリップ",
@@ -252,11 +252,11 @@ TEST(TypeRegistryTest, ReflectedFieldsMatchLedger)
           "ぶら下がりのクリップ",
           "走りへ移る速さの比",
           "再生速度の下限"}},
-        {"ShadowComponent", {"基本直径", "最大投影距離", "表面オフセット", "基本不透明度"}},
-        {"SkeletalAnimationComponent", {"再生速度", "ループ再生", "モデル", "クリップ"}},
-        {"SlopeColliderComponent", {"角度 (度)", "半径"}},
-        {"SphereColliderComponent", {"半径", "中心オフセット"}},
-        {"ThirdPersonFollowComponent",
+        {"Shadow", {"基本直径", "最大投影距離", "表面オフセット", "基本不透明度"}},
+        {"SkeletalAnimation", {"再生速度", "ループ再生", "モデル", "クリップ"}},
+        {"SlopeCollider", {"角度 (度)", "半径"}},
+        {"SphereCollider", {"半径", "中心オフセット"}},
+        {"ThirdPersonFollow",
          {"追従対象",
           "初期ヨー",
           "初期ピッチ",
@@ -304,32 +304,32 @@ TEST(TypeRegistryTest, BaseChainMatchesLedger)
     // 基底鎖の期待一覧。空は Component 直下で鎖が終端することを表す
     // 誤った基底を書いた宣言は typeName 一致では捕まらないため、期待基底を明示して突き合わせる
     const std::map<std::string, std::vector<std::string>> k_BaseLedger = {
-        {"BoxColliderComponent", {"ColliderComponent"}},
-        {"BreakableComponent", {}},
-        {"CameraBrainComponent", {}},
+        {"BoxCollider", {"Collider"}},
+        {"Breakable", {}},
+        {"CameraBrain", {}},
         {"CameraComponent", {}},
-        {"CapsuleColliderComponent", {"ColliderComponent"}},
-        {"CollisionInputComponent", {}},
-        {"DirectionalLightComponent", {}},
-        {"HazardComponent", {}},
-        {"HealthComponent", {}},
-        {"ImpactMarkComponent", {}},
-        {"ImpactResolverComponent", {"OverlayRendererComponent"}},
-        {"KillZoneComponent", {}},
-        {"LaunchedBodyComponent", {}},
-        {"MeshColliderComponent", {"ColliderComponent"}},
-        {"MeshRendererComponent", {}},
-        {"GoalComponent", {}},
-        {"PlacedVirtualCamera", {"VirtualCameraComponent"}},
+        {"CapsuleCollider", {"Collider"}},
+        {"CollisionInput", {}},
+        {"DirectionalLight", {}},
+        {"Hazard", {}},
+        {"Health", {}},
+        {"ImpactMark", {}},
+        {"ImpactResolver", {"OverlayRenderer"}},
+        {"KillZone", {}},
+        {"LaunchedBody", {}},
+        {"MeshCollider", {"Collider"}},
+        {"MeshRenderer", {}},
+        {"Goal", {}},
+        {"PlacedVirtualCamera", {"VirtualCamera"}},
         {"PlayerComponent", {"EntityComponent"}},
-        {"PlayerInputComponent", {}},
-        {"PlayerStateManagerComponent", {"EntityStateManagerComponent"}},
-        {"PlayerAnimatorComponent", {}},
-        {"ShadowComponent", {}},
-        {"SkeletalAnimationComponent", {}},
-        {"SlopeColliderComponent", {"ColliderComponent"}},
-        {"SphereColliderComponent", {"ColliderComponent"}},
-        {"ThirdPersonFollowComponent", {"VirtualCameraComponent"}},
+        {"PlayerInput", {}},
+        {"PlayerStateManager", {"EntityStateManager"}},
+        {"PlayerAnimator", {}},
+        {"Shadow", {}},
+        {"SkeletalAnimation", {}},
+        {"SlopeCollider", {"Collider"}},
+        {"SphereCollider", {"Collider"}},
+        {"ThirdPersonFollow", {"VirtualCamera"}},
     };
 
     const std::vector<std::string>& names = RegisteredNames();

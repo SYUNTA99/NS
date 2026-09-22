@@ -1,5 +1,5 @@
 #include "Game/Level/BlockObject.h"
-#include "Game/Level/LaunchedBodyComponent.h"
+#include "Game/Level/LaunchedBody.h"
 
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/TransformComponent.h>
@@ -94,7 +94,7 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
     SceneNs::SceneData level;
     SceneNs::ObjectData rock;
     SceneNs::SetObjectPosition(rock, NS::Core::Vector3{1.0f, 2.0f, 3.0f});
-    rock.components.push_back(SceneNs::MakeComponentEntry("LaunchedBodyComponent"));
+    rock.components.push_back(SceneNs::MakeComponentEntry("LaunchedBody"));
     level.objects.push_back(std::move(rock));
     SceneNs::EnsureUniqueObjectIds(level);
     const std::uint32_t rockId = level.objects[0].objectId;
@@ -103,7 +103,7 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
 
     NS::Obj::GameObject* live = scene.Objects().FindObject(NS::Obj::ObjectRef{rockId});
     ASSERT_NE(live, nullptr);
-    auto* launched = live->FindComponent<LevelNs::LaunchedBodyComponent>();
+    auto* launched = live->FindComponent<LevelNs::LaunchedBody>();
     ASSERT_NE(launched, nullptr);
 
     live->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
@@ -120,7 +120,7 @@ TEST(PlayBaselineSave, HandEditedFieldWrittenToBaselineSurvivesReload)
     scene.LoadFromData(std::move(copy));
     NS::Obj::GameObject* rebuilt = scene.Objects().FindObject(NS::Obj::ObjectRef{rockId});
     ASSERT_NE(rebuilt, nullptr);
-    auto* rebuiltLaunched = rebuilt->FindComponent<LevelNs::LaunchedBodyComponent>();
+    auto* rebuiltLaunched = rebuilt->FindComponent<LevelNs::LaunchedBody>();
     ASSERT_NE(rebuiltLaunched, nullptr);
     EXPECT_FLOAT_EQ(GetFloatField(*rebuiltLaunched, "跳ね返り"), 0.9f);
 }

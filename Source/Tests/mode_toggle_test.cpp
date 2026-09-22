@@ -2,8 +2,8 @@
 #include "Editor/EditorObjects.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
-#include "Game/Level/LaunchedBodyComponent.h"
-#include "Game/Level/ScreenFadeComponent.h"
+#include "Game/Level/LaunchedBody.h"
+#include "Game/Level/ScreenFade.h"
 #include "Game/Player.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
@@ -23,7 +23,7 @@ namespace
     {
         NS::Obj::ObjectData object;
         NS::Obj::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
-        object.components.push_back(NS::Obj::MakeComponentEntry("GoalComponent"));
+        object.components.push_back(NS::Obj::MakeComponentEntry("Goal"));
         return object;
     }
 
@@ -31,9 +31,9 @@ namespace
     NS::Obj::ObjectData MakeTriggerHazard()
     {
         NS::Obj::ObjectData object;
-        nlohmann::json box = NS::Obj::MakeComponentEntry("BoxColliderComponent");
+        nlohmann::json box = NS::Obj::MakeComponentEntry("BoxCollider");
         NS::Obj::SetField(box, "トリガー", true);
-        object.components = nlohmann::json::array({std::move(box), NS::Obj::MakeComponentEntry("HazardComponent")});
+        object.components = nlohmann::json::array({std::move(box), NS::Obj::MakeComponentEntry("Hazard")});
         return object;
     }
 
@@ -41,7 +41,7 @@ namespace
     {
         NS::Obj::ObjectData object;
         NS::Obj::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
-        object.components.push_back(NS::Obj::MakeComponentEntry("BoxColliderComponent"));
+        object.components.push_back(NS::Obj::MakeComponentEntry("BoxCollider"));
         return object;
     }
 
@@ -84,11 +84,11 @@ namespace
     }
 
     // 応答 component を載せた GameObject から暗転を引く
-    NS::Game::Level::ScreenFadeComponent* FindFade(NS::Obj::Scene& scene)
+    NS::Game::Level::ScreenFade* FindFade(NS::Obj::Scene& scene)
     {
-        NS::Game::Level::ScreenFadeComponent* found = nullptr;
-        scene.Objects().ForEachComponent<NS::Game::Level::ScreenFadeComponent>(
-            [&found](NS::Game::Level::ScreenFadeComponent& fade) {
+        NS::Game::Level::ScreenFade* found = nullptr;
+        scene.Objects().ForEachComponent<NS::Game::Level::ScreenFade>(
+            [&found](NS::Game::Level::ScreenFade& fade) {
                 if (found == nullptr)
                     found = &fade;
             });
@@ -279,7 +279,7 @@ TEST(ModeToggle, PlayInspectorEditSurvivesReturnToEdit)
     LevelEditorController editor(&scene);
     NS::Obj::SceneData data;
     NS::Obj::ObjectData rock = MakeRock(1.0f, 2.0f, 3.0f);
-    rock.components.push_back(NS::Obj::MakeComponentEntry("LaunchedBodyComponent"));
+    rock.components.push_back(NS::Obj::MakeComponentEntry("LaunchedBody"));
     data.objects.push_back(std::move(rock));
     scene.LoadFromData(std::move(data));
     editor.EnterPlay();
@@ -288,7 +288,7 @@ TEST(ModeToggle, PlayInspectorEditSurvivesReturnToEdit)
     ASSERT_NE(live, nullptr);
     const std::uint32_t rockId = live->Id();
     live->Root().SetPosition(NS::Core::Vector3{50.0f, 60.0f, 70.0f});
-    auto* launched = live->FindComponent<NS::Game::Level::LaunchedBodyComponent>();
+    auto* launched = live->FindComponent<NS::Game::Level::LaunchedBody>();
     ASSERT_NE(launched, nullptr);
     SetFloatField(*launched, "跳ね返り", 0.9f);
     editor.MirrorPlayEditToBaseline(*launched, "跳ね返り");
@@ -300,7 +300,7 @@ TEST(ModeToggle, PlayInspectorEditSurvivesReturnToEdit)
     EXPECT_NEAR(restored->Root().Position().x, 1.0f, 1e-4f);
     EXPECT_NEAR(restored->Root().Position().y, 2.0f, 1e-4f);
     EXPECT_NEAR(restored->Root().Position().z, 3.0f, 1e-4f);
-    auto* restoredLaunched = restored->FindComponent<NS::Game::Level::LaunchedBodyComponent>();
+    auto* restoredLaunched = restored->FindComponent<NS::Game::Level::LaunchedBody>();
     ASSERT_NE(restoredLaunched, nullptr);
     EXPECT_FLOAT_EQ(GetFloatField(*restoredLaunched, "跳ね返り"), 0.9f);
 }

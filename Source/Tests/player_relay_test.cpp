@@ -1,10 +1,10 @@
-#include <Game/Level/FollowCameraFeedComponent.h>
+#include <Game/Level/FollowCameraFeed.h>
 #include <Game/Player/PlayerComponent.h>
-#include <Game/Player/PlayerInputRelayComponent.h>
+#include <Game/Player/PlayerInputRelay.h>
 #include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
-#include <Runtime/Object/Components/PlayerInputComponent.h>
-#include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
+#include <Runtime/Object/Components/PlayerInput.h>
+#include <Runtime/Object/Components/ThirdPersonFollow.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Object.h>
 #include <Runtime/Object/Reflection/Reflection.h>
@@ -21,14 +21,14 @@
 namespace
 {
     using NS::Core::Vector3;
-    using NS::Game::Level::FollowCameraFeedComponent;
+    using NS::Game::Level::FollowCameraFeed;
     using NS::Game::Player::PlayerComponent;
-    using NS::Game::Player::PlayerInputRelayComponent;
+    using NS::Game::Player::PlayerInputRelay;
     using NS::Obj::GameObject;
     using NS::Obj::ObjectIdAccess;
     using NS::Obj::ObjectRef;
     using NS::Obj::Scene;
-    using NS::Obj::ThirdPersonFollowComponent;
+    using NS::Obj::ThirdPersonFollow;
     using NS::Platform::Key;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
@@ -43,20 +43,20 @@ namespace
 
     void BuildRelayRig(GameObject& owner)
     {
-        owner.AddComponent<NS::Obj::PlayerInputComponent>();
-        owner.AddComponent<PlayerInputRelayComponent>();
+        owner.AddComponent<NS::Obj::PlayerInput>();
+        owner.AddComponent<PlayerInputRelay>();
         owner.AddComponent<PlayerComponent>();
         owner.OnStart();
     }
 
-    NS::Obj::PlayerInputComponent& Input(GameObject& owner)
+    NS::Obj::PlayerInput& Input(GameObject& owner)
     {
-        return *owner.FindComponent<NS::Obj::PlayerInputComponent>();
+        return *owner.FindComponent<NS::Obj::PlayerInput>();
     }
 
-    PlayerInputRelayComponent& Relay(GameObject& owner)
+    PlayerInputRelay& Relay(GameObject& owner)
     {
-        return *owner.FindComponent<PlayerInputRelayComponent>();
+        return *owner.FindComponent<PlayerInputRelay>();
     }
 
     PlayerComponent& Player(GameObject& owner)
@@ -64,9 +64,9 @@ namespace
         return *owner.FindComponent<PlayerComponent>();
     }
 
-    FollowCameraFeedComponent& Feed(GameObject& owner)
+    FollowCameraFeed& Feed(GameObject& owner)
     {
-        return *owner.FindComponent<FollowCameraFeedComponent>();
+        return *owner.FindComponent<FollowCameraFeed>();
     }
 
     //! 追従先はリフレクション経由でしか書けない。データからの構築と同じ set を通す
@@ -86,10 +86,10 @@ namespace
     }
 
     //! 3 段の距離を既定値から離して置く。どの段に寄ったかを距離 1 つで見分けられる
-    ThirdPersonFollowComponent& AddFollowCamera(Scene& scene)
+    ThirdPersonFollow& AddFollowCamera(Scene& scene)
     {
         GameObject* rig = scene.SpawnTransient<GameObject>();
-        auto& follow = *rig->AddComponent<ThirdPersonFollowComponent>();
+        auto& follow = *rig->AddComponent<ThirdPersonFollow>();
         follow.SetActive(true);
         follow.SetAutoDistances(k_IdleDistance, k_RunDistance, k_JumpDistance);
         follow.SetRunSpeedThreshold(k_RunSpeedThreshold);
@@ -104,12 +104,12 @@ namespace
         {
             owner->AddComponent<PlayerComponent>();
         }
-        owner->AddComponent<FollowCameraFeedComponent>();
+        owner->AddComponent<FollowCameraFeed>();
         owner->OnStart();
         return *owner;
     }
 
-    void SettleZoom(ThirdPersonFollowComponent& follow)
+    void SettleZoom(ThirdPersonFollow& follow)
     {
         for (int i = 0; i < 200; ++i)
             follow.OnUpdate();
@@ -245,13 +245,13 @@ TEST_F(PlayerRelayTest, InactiveInputRelaysNothing)
 TEST_F(PlayerRelayTest, MissingSideIsHarmless)
 {
     GameObject withoutPlayer;
-    withoutPlayer.AddComponent<NS::Obj::PlayerInputComponent>();
-    withoutPlayer.AddComponent<PlayerInputRelayComponent>();
+    withoutPlayer.AddComponent<NS::Obj::PlayerInput>();
+    withoutPlayer.AddComponent<PlayerInputRelay>();
     withoutPlayer.OnStart();
     Relay(withoutPlayer).OnUpdate();
 
     GameObject withoutInput;
-    withoutInput.AddComponent<PlayerInputRelayComponent>();
+    withoutInput.AddComponent<PlayerInputRelay>();
     auto& player = *withoutInput.AddComponent<PlayerComponent>();
     withoutInput.OnStart();
 

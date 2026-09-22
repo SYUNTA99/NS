@@ -1,7 +1,7 @@
 ﻿#include "Runtime/Object/ObjectList.h"
 
 #include "Runtime/Core/Assert.h"
-#include "Runtime/Object/Components/ColliderComponent.h"
+#include "Runtime/Object/Components/Collider.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 #include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Physics/PhysicsScene.h"
@@ -179,7 +179,7 @@ namespace NS::Obj
     void ObjectList::SyncPhysics(NS::Phys::PhysicsScene& physics)
     {
         // PhysicsScene を作り直さず、collider ごとに既存 body の shape と姿勢を同期する
-        ForEachComponent<ColliderComponent>([&physics](ColliderComponent& collider) {
+        ForEachComponent<Collider>([&physics](Collider& collider) {
             if (collider.IsActive())
             {
                 collider.SyncToPhysics(physics);

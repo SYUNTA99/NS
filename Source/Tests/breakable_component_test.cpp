@@ -1,4 +1,4 @@
-#include <Game/Level/BreakableComponent.h>
+#include <Game/Level/Breakable.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Reflection/Reflection.h>
 #include <Runtime/Object/Reflection/TypeRegistry.h>
@@ -8,7 +8,7 @@
 
 namespace
 {
-    using NS::Game::Level::BreakableComponent;
+    using NS::Game::Level::Breakable;
     using NS::Obj::Component;
     using NS::Obj::FieldDesc;
     using NS::Obj::GameObject;
@@ -27,7 +27,7 @@ namespace
 TEST(BreakableComponentTest, DefaultsAreOne)
 {
     GameObject obj;
-    BreakableComponent* breakable = obj.AddComponent<BreakableComponent>();
+    Breakable* breakable = obj.AddComponent<Breakable>();
     ASSERT_NE(breakable, nullptr);
 
     EXPECT_FLOAT_EQ(breakable->Mass(), 1.0f);
@@ -37,7 +37,7 @@ TEST(BreakableComponentTest, DefaultsAreOne)
 TEST(BreakableComponentTest, SetterStoresValue)
 {
     GameObject obj;
-    BreakableComponent* breakable = obj.AddComponent<BreakableComponent>();
+    Breakable* breakable = obj.AddComponent<Breakable>();
     ASSERT_NE(breakable, nullptr);
 
     breakable->SetMass(3.0f);
@@ -50,7 +50,7 @@ TEST(BreakableComponentTest, SetterStoresValue)
 TEST(BreakableComponentTest, MassClampsToLowerBound)
 {
     GameObject obj;
-    BreakableComponent* breakable = obj.AddComponent<BreakableComponent>();
+    Breakable* breakable = obj.AddComponent<Breakable>();
     ASSERT_NE(breakable, nullptr);
 
     breakable->SetMass(-5.0f);
@@ -64,7 +64,7 @@ TEST(BreakableComponentTest, MassClampsToLowerBound)
 TEST(BreakableComponentTest, NonFiniteValuesAreIgnored)
 {
     GameObject obj;
-    BreakableComponent* breakable = obj.AddComponent<BreakableComponent>();
+    Breakable* breakable = obj.AddComponent<Breakable>();
     ASSERT_NE(breakable, nullptr);
 
     breakable->SetMass(4.0f);
@@ -83,18 +83,18 @@ TEST(BreakableComponentTest, NonFiniteValuesAreIgnored)
 TEST(BreakableComponentTest, IsCreatableFromTypeName)
 {
     GameObject obj;
-    Component* comp = NS::Obj::CreateComponent("BreakableComponent", obj);
+    Component* comp = NS::Obj::CreateComponent("Breakable", obj);
     ASSERT_NE(comp, nullptr);
     ASSERT_NE(comp->GetReflection(), nullptr);
-    EXPECT_STREQ(comp->GetReflection()->typeName, "BreakableComponent");
-    EXPECT_EQ(obj.FindComponent<BreakableComponent>(), comp);
+    EXPECT_STREQ(comp->GetReflection()->typeName, "Breakable");
+    EXPECT_EQ(obj.FindComponent<Breakable>(), comp);
 }
 
 // 欄名は .scene のキーそのもの。変えると保存済みレベルのその値だけが静かに既定へ戻る
 TEST(BreakableComponentTest, ReflectionLabelsAreMassAndToughness)
 {
     GameObject obj;
-    BreakableComponent* breakable = obj.AddComponent<BreakableComponent>();
+    Breakable* breakable = obj.AddComponent<Breakable>();
     ASSERT_NE(breakable, nullptr);
 
     const FieldDesc* mass = FindLabel(*breakable, "質量");

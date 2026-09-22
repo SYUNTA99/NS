@@ -7,7 +7,7 @@
 #include "Editor/Undo/IObjectSnapshotApplier.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
 #include "Game/Level/FollowCameraObject.h"
-#include "Game/Level/KillZoneComponent.h"
+#include "Game/Level/KillZone.h"
 #include "Game/Player.h"
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Platform/Clock.h"

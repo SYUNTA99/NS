@@ -2,8 +2,8 @@
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/StaticMesh.h>
 #include <Runtime/Object/AssetManager.h>
-#include <Runtime/Object/Components/MeshColliderComponent.h>
-#include <Runtime/Object/Components/MeshRendererComponent.h>
+#include <Runtime/Object/Components/MeshCollider.h>
+#include <Runtime/Object/Components/MeshRenderer.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/ObjectList.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
@@ -21,15 +21,15 @@ namespace
 {
     using NS::Obj::AssetManager;
     using NS::Obj::BuildSceneObject;
-    using NS::Obj::MeshRendererComponent;
+    using NS::Obj::MeshRenderer;
     using NS::Obj::ObjectData;
     using NS::Obj::ResolveContentPath;
     using NS::Obj::ResolveMeshFromRef;
 
-    // MeshRendererComponent 1 件分を作る。meshRef が空でなければ "メッシュ" フィールドに入れる
+    // MeshRenderer 1 件分を作る。meshRef が空でなければ "メッシュ" フィールドに入れる
     nlohmann::json MakeMeshRenderer(const std::string& meshRef)
     {
-        nlohmann::json c = NS::Obj::MakeComponentEntry("MeshRendererComponent");
+        nlohmann::json c = NS::Obj::MakeComponentEntry("MeshRenderer");
         if (!meshRef.empty())
             NS::Obj::SetField(c, "メッシュ", meshRef);
         return c;
@@ -81,7 +81,7 @@ TEST(MeshRefResolution, EmptyMeshRefFallsBackToCube)
 
     auto built = BuildSceneObject(obj, &assets);
     ASSERT_NE(built, nullptr);
-    auto* mr = built->FindComponent<MeshRendererComponent>();
+    auto* mr = built->FindComponent<MeshRenderer>();
     ASSERT_NE(mr, nullptr);
     // この assets は RegisterBuiltins を呼んでいないので Builtin("cube") は nullptr
     // cube 比較は両辺 nullptr で素通りし、確かめているのは空参照の nullptr だけ
@@ -120,7 +120,7 @@ TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
     auto compBuilt = BuildSceneObject(compObj, &assets);
     ASSERT_NE(compBuilt, nullptr);
 
-    auto* compMesh = compBuilt->FindComponent<MeshRendererComponent>();
+    auto* compMesh = compBuilt->FindComponent<MeshRenderer>();
     ASSERT_NE(compMesh, nullptr);
     // 上と同じく確かめているのは ResolveMeshFromRef の nullptr だけ
     // cube 比較は RegisterBuiltins を呼んだ assets でしか効かない
@@ -128,18 +128,18 @@ TEST(MeshRefResolution, ComponentsDrivenWithoutMeshRefResolvesCube)
     EXPECT_EQ(compMesh->GetMesh(), assets.Builtin("cube"));
 }
 
-// MeshColliderComponent は同じ object の MeshRendererComponent の参照から AssetManager の当たりを借りる
+// MeshCollider は同じ object の MeshRenderer の参照から AssetManager の当たりを借りる
 TEST(MeshRefResolution, MeshColliderTakesTrianglesFromRendererMesh)
 {
     AssetManager assets{std::string{"."}};
 
     ObjectData obj;
     obj.components.push_back(MakeMeshRenderer("wedge45"));
-    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshColliderComponent"));
+    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
 
     auto built = BuildSceneObject(obj, &assets);
     ASSERT_NE(built, nullptr);
-    auto* collider = built->FindComponent<NS::Obj::MeshColliderComponent>();
+    auto* collider = built->FindComponent<NS::Obj::MeshCollider>();
     ASSERT_NE(collider, nullptr);
 
     const NS::Phys::MeshCollision* wedge = assets.GetOrLoadMeshCollision("wedge45");
@@ -154,27 +154,27 @@ TEST(MeshRefResolution, MeshColliderFallsBackToCubeLikeRenderer)
 
     ObjectData obj;
     obj.components.push_back(MakeMeshRenderer("__ns_missing_mesh__.gltf"));
-    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshColliderComponent"));
+    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
 
     auto built = BuildSceneObject(obj, &assets);
     ASSERT_NE(built, nullptr);
-    auto* collider = built->FindComponent<NS::Obj::MeshColliderComponent>();
+    auto* collider = built->FindComponent<NS::Obj::MeshCollider>();
     ASSERT_NE(collider, nullptr);
     ASSERT_NE(collider->Collision(), nullptr);
     EXPECT_EQ(collider->Collision(), assets.GetOrLoadMeshCollision("cube"));
 }
 
-// MeshRendererComponent が無ければ当たり無しのまま
+// MeshRenderer が無ければ当たり無しのまま
 TEST(MeshRefResolution, MeshColliderWithoutRendererStaysEmpty)
 {
     AssetManager assets{std::string{"."}};
 
     ObjectData obj;
-    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshColliderComponent"));
+    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
 
     auto built = BuildSceneObject(obj, &assets);
     ASSERT_NE(built, nullptr);
-    auto* collider = built->FindComponent<NS::Obj::MeshColliderComponent>();
+    auto* collider = built->FindComponent<NS::Obj::MeshCollider>();
     ASSERT_NE(collider, nullptr);
     EXPECT_EQ(collider->Collision(), nullptr);
 }
@@ -186,7 +186,7 @@ TEST(MeshRefResolution, BuiltCubeMeshColliderStopsRayAtTopFace)
 
     ObjectData obj;
     obj.components.push_back(MakeMeshRenderer("cube"));
-    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshColliderComponent"));
+    obj.components.push_back(NS::Obj::MakeComponentEntry("MeshCollider"));
 
     NS::Obj::Scene scene;
     NS::Obj::ObjectList objects;

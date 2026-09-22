@@ -1,5 +1,5 @@
-#include "Game/Level/KillZoneComponent.h"
-#include "Game/Level/RespawnerComponent.h"
+#include "Game/Level/KillZone.h"
+#include "Game/Level/Respawner.h"
 #include "Game/Player.h"
 
 #include <gtest/gtest.h>
@@ -25,7 +25,7 @@ TEST(KillZoneTest, KillsPlayerInsideVolume)
     ASSERT_FALSE(player->IsDead());
 
     // 同じ帯に居る respawner を切って判定だけを見る。有効なままだと同じ LateUpdate で復活する
-    player->FindComponent<LevelNs::RespawnerComponent>()->SetActive(false);
+    player->FindComponent<LevelNs::Respawner>()->SetActive(false);
     scene.Objects().UpdateObjects(SceneNs::TickPriority::LateUpdate);
 
     EXPECT_TRUE(player->IsDead());

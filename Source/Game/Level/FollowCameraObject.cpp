@@ -13,7 +13,7 @@ namespace NS::Game::Level
 
     bool IsFollowCameraObject(const ObjectData& object) noexcept
     {
-        return NS::Obj::FindComponentEntry(object, "ThirdPersonFollowComponent") != nullptr;
+        return NS::Obj::FindComponentEntry(object, "ThirdPersonFollow") != nullptr;
     }
 
     std::size_t FindFollowCameraObjectIndex(const SceneData& scene) noexcept
@@ -31,7 +31,7 @@ namespace NS::Game::Level
     ObjectData MakeFollowCameraObject(std::uint32_t targetObjectId)
     {
         // 値はコード既定を使い、データが持つのは誰を追うかだけ
-        nlohmann::json follow = NS::Obj::MakeComponentEntry("ThirdPersonFollowComponent");
+        nlohmann::json follow = NS::Obj::MakeComponentEntry("ThirdPersonFollow");
         NS::Obj::SetField(follow, "追従対象", NS::Obj::ObjectRef{targetObjectId});
 
         ObjectData object{};

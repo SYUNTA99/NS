@@ -1,6 +1,6 @@
 #include "Game/Player.h"
 
-#include <Game/Level/GoalComponent.h>
+#include <Game/Level/Goal.h>
 #include <gtest/gtest.h>
 #include <Runtime/Object/Components/TransformComponent.h>
 #include <Runtime/Object/Reflection/ComponentEntry.h>
@@ -18,14 +18,14 @@ namespace
     {
         SceneNs::ObjectData object;
         SceneNs::SetObjectPosition(object, NS::Core::Vector3{x, y, z});
-        object.components.push_back(SceneNs::MakeComponentEntry("GoalComponent"));
+        object.components.push_back(SceneNs::MakeComponentEntry("Goal"));
         return object;
     }
 
-    LevelNs::GoalComponent* FindGoal(SceneNs::ObjectList& objects)
+    LevelNs::Goal* FindGoal(SceneNs::ObjectList& objects)
     {
-        LevelNs::GoalComponent* found = nullptr;
-        objects.ForEachComponent<LevelNs::GoalComponent>([&](LevelNs::GoalComponent& goal) { found = &goal; });
+        LevelNs::Goal* found = nullptr;
+        objects.ForEachComponent<LevelNs::Goal>([&](LevelNs::Goal& goal) { found = &goal; });
         return found;
     }
 } // namespace

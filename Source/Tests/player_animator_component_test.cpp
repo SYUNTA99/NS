@@ -1,10 +1,10 @@
-#include <Game/Player/PlayerAnimatorComponent.h>
+#include <Game/Player/PlayerAnimator.h>
 #include <Game/Player/PlayerComponent.h>
-#include <Game/Player/PlayerStateManagerComponent.h>
+#include <Game/Player/PlayerStateManager.h>
 #include <Game/Player/States/LedgeHangingPlayerState.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Graphics/Animation.h>
-#include <Runtime/Object/Components/SkeletalAnimationComponent.h>
+#include <Runtime/Object/Components/SkeletalAnimation.h>
 #include <Runtime/Object/GameObject.h>
 #include <gtest/gtest.h>
 
@@ -18,12 +18,12 @@
 namespace
 {
     using NS::Core::Vector3;
-    using NS::Game::Player::PlayerAnimatorComponent;
+    using NS::Game::Player::PlayerAnimator;
     using NS::Game::Player::PlayerComponent;
-    using NS::Game::Player::PlayerStateManagerComponent;
+    using NS::Game::Player::PlayerStateManager;
     using NS::Gfx::AnimationClip;
     using NS::Obj::GameObject;
-    using NS::Obj::SkeletalAnimationComponent;
+    using NS::Obj::SkeletalAnimation;
 
     constexpr float k_FixedDt = 1.0f / 60.0f;
 
@@ -40,15 +40,15 @@ namespace
         return clip;
     }
 
-    // クリップの実体は試し側が持つ。SkeletalAnimationComponent は番地を控えるだけ
+    // クリップの実体は試し側が持つ。SkeletalAnimation は番地を控えるだけ
     struct Rig
     {
         GameObject owner;
         std::vector<AnimationClip> clips;
         PlayerComponent* player = nullptr;
-        PlayerStateManagerComponent* states = nullptr;
-        SkeletalAnimationComponent* anim = nullptr;
-        PlayerAnimatorComponent* animator = nullptr;
+        PlayerStateManager* states = nullptr;
+        SkeletalAnimation* anim = nullptr;
+        PlayerAnimator* animator = nullptr;
 
         Rig()
         {
@@ -56,10 +56,10 @@ namespace
             clips.push_back(MakeClip("walk"));
             clips.push_back(MakeClip("run"));
 
-            states = owner.AddComponent<PlayerStateManagerComponent>();
+            states = owner.AddComponent<PlayerStateManager>();
             player = owner.AddComponent<PlayerComponent>();
-            anim = owner.AddComponent<SkeletalAnimationComponent>();
-            animator = owner.AddComponent<PlayerAnimatorComponent>();
+            anim = owner.AddComponent<SkeletalAnimation>();
+            animator = owner.AddComponent<PlayerAnimator>();
 
             anim->AddClips(clips);
             player->OnStart();
@@ -205,7 +205,7 @@ TEST(PlayerAnimatorTest, WithoutASkeletalAnimationNothingHappens)
 {
     GameObject owner;
     auto* player = owner.AddComponent<PlayerComponent>();
-    auto* animator = owner.AddComponent<PlayerAnimatorComponent>();
+    auto* animator = owner.AddComponent<PlayerAnimator>();
     player->OnStart();
     animator->OnStart();
 

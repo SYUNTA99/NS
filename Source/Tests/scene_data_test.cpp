@@ -1,4 +1,4 @@
-#include "Game/Level/GoalComponent.h"
+#include "Game/Level/Goal.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Scene/SceneData.h"
@@ -13,7 +13,7 @@ namespace
     SceneNs::ObjectData MakeGoalObject()
     {
         SceneNs::ObjectData object{};
-        object.components.push_back(SceneNs::MakeComponentEntry("GoalComponent"));
+        object.components.push_back(SceneNs::MakeComponentEntry("Goal"));
         return object;
     }
 } // namespace
@@ -24,26 +24,26 @@ TEST(SceneDataAccessors, FindComponentFieldAndGoalRule)
 {
     SceneNs::ObjectData goal = MakeGoalObject();
 
-    const nlohmann::json* entry = SceneNs::FindComponentEntry(goal, "GoalComponent");
+    const nlohmann::json* entry = SceneNs::FindComponentEntry(goal, "Goal");
     ASSERT_NE(entry, nullptr);
-    EXPECT_EQ(SceneNs::FindComponentEntry(goal, "BoxColliderComponent"), nullptr); // 不在は nullptr
+    EXPECT_EQ(SceneNs::FindComponentEntry(goal, "BoxCollider"), nullptr); // 不在は nullptr
 
-    nlohmann::json box = SceneNs::MakeComponentEntry("BoxColliderComponent");
+    nlohmann::json box = SceneNs::MakeComponentEntry("BoxCollider");
     SceneNs::SetField(box, "半径", NS::Core::Vector3{1.0f, 1.0f, 1.0f});
     EXPECT_TRUE(SceneNs::HasField(box, "半径"));
     EXPECT_FALSE(SceneNs::HasField(box, "Missing")); // 欠損 field は無し
 
     EXPECT_TRUE(LevelNs::IsGoalObject(goal));
-    EXPECT_FALSE(LevelNs::IsGoalObject(SceneNs::ObjectData{})); // GoalComponent 無し
+    EXPECT_FALSE(LevelNs::IsGoalObject(SceneNs::ObjectData{})); // Goal 無し
 }
 
 TEST(SceneDataComponents, ComponentEntryHoldsTypeAndFields)
 {
-    nlohmann::json entry = SceneNs::MakeComponentEntry("BoxColliderComponent");
+    nlohmann::json entry = SceneNs::MakeComponentEntry("BoxCollider");
     SceneNs::SetField(entry, "半径", NS::Core::Vector3{0.5f, 0.5f, 0.5f});
     SceneNs::SetField(entry, "中心オフセット", NS::Core::Vector3{0.0f, 1.0f, 0.0f});
 
-    EXPECT_EQ(SceneNs::ComponentEntryType(entry), "BoxColliderComponent");
+    EXPECT_EQ(SceneNs::ComponentEntryType(entry), "BoxCollider");
     ASSERT_EQ(entry.at("fields").size(), 2u);
     EXPECT_TRUE(SceneNs::HasField(entry, "半径"));
     EXPECT_TRUE(SceneNs::HasField(entry, "中心オフセット"));
@@ -52,7 +52,7 @@ TEST(SceneDataComponents, ComponentEntryHoldsTypeAndFields)
 TEST(SceneDataComponents, ObjectDataCopyIsDeep)
 {
     SceneNs::ObjectData a{};
-    a.components.push_back(SceneNs::MakeComponentEntry("HazardComponent"));
+    a.components.push_back(SceneNs::MakeComponentEntry("Hazard"));
 
     SceneNs::ObjectData b = a;
     b.components.clear();

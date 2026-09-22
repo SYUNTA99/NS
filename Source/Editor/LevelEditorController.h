@@ -6,7 +6,7 @@
 #include "Editor/GizmoEditor.h"
 #include "Editor/Undo/ObjectSnapshotApplier.h"
 #include "Runtime/Core/NonCopyable.h"
-#include "Runtime/Object/Components/VirtualCameraComponent.h"
+#include "Runtime/Object/Components/VirtualCamera.h"
 
 #include <cstdint>
 #include <memory>
@@ -19,11 +19,11 @@ namespace NS::Obj
 {
     class GameObject;
     class Transform;
-    class CameraBrainComponent;
+    class CameraBrain;
     class CameraComponent;
     class Component;
     class ObjectList;
-    class ThirdPersonFollowComponent;
+    class ThirdPersonFollow;
     class Scene;
     struct SceneView;
 } // namespace NS::Obj
@@ -190,14 +190,19 @@ public:
     //! @details 見た目が動かないよう、今の world 変換を新しい親空間の local へ計算し直して持ち替える
     bool SetObjectParent(std::uint32_t id, std::uint32_t parentId);
 
-    //! コンポーネントの操作関連機能
+    //! @brief 選択中の配置物へコンポーネントを 1 個追加して undo へ積む
+    //! @param[in] typeName 追加するコンポーネントの型名
     void AddComponentToSelected(std::string_view typeName);
+    //! @brief 選択中の配置物からコンポーネントを 1 個削除して undo へ積む
+    //! @details 残り 1 個になる削除・player の入力・transform は消さず何もしない
+    //! @param[in] componentIndex 削除するコンポーネントの添字
     void RemoveComponentFromSelected(std::size_t componentIndex);
 
     //! @brief 選択中の配置物のコンポーネント 1 個について、データの active を切り替える
     //! @details false は保存に残り、読み直しても false のまま。player の入力と transform は守って何もしない
     void SetComponentEnabledOnSelected(std::size_t componentIndex, bool enabled);
 
+    //! 選択中の配置物を新しい永続 id で複製して undo へ積む。プレイヤーは複製の対象から外す
     void DuplicateSelectedObject();
 
     //! @brief 選択中の配置物を子孫ごと削除して undo へ 1 単位で積む
@@ -207,15 +212,21 @@ public:
     //! 編集カメラの注視点を選択中の配置物へ寄せる。広がりに応じて距離も取り直す
     void FocusSelectedInView() noexcept;
 
+    //! @brief 選択中の配置物からコンポーネントを 1 個クリップボードへ控える
+    //! @param[in] componentIndex 控えるコンポーネントの添字
     void CopyComponentToClipboard(std::size_t componentIndex);
+    //! クリップボードのコンポーネントを選択中の配置物の末尾へ追加する。上書きはしない
     void PasteClipboardComponentToSelected();
 
+    //! クリップボードにコンポーネントが控えられているか
     [[nodiscard]] bool HasClipboardComponent() const noexcept { return m_componentClipboard.has_value(); }
 
+    //! Object ツール中にギズモが配置物を選択しているか
     [[nodiscard]] bool HasGizmoSelection() const noexcept
     {
         return ObjectToolActive() && m_gizmo.Selected() != nullptr;
     }
+    //! 選択中の配置物の MeshRenderer に材質を割り当てて undo へ積む。対象外なら false
     bool ApplyMaterialToSelected(std::string_view matPath);
 
 private:
@@ -246,15 +257,15 @@ private:
     //! 主対象がドラッグで動いた分を、控えた残りの選択へ同じだけ効かせる
     void ApplyDragToFollowers() noexcept;
 
-    [[nodiscard]] NS::Obj::ThirdPersonFollowComponent* SelectedFollowCamera() noexcept;
+    [[nodiscard]] NS::Obj::ThirdPersonFollow* SelectedFollowCamera() noexcept;
     void SyncFollowCameraPoses();
     void ApplyFollowCameraGizmoDrag();
     void CaptureSelectionFromGizmo() noexcept;
 
-    [[nodiscard]] NS::Obj::CameraBrainComponent* Brain() const noexcept;
+    [[nodiscard]] NS::Obj::CameraBrain* Brain() const noexcept;
     [[nodiscard]] NS::Obj::CameraComponent* MainCamera() const noexcept;
 
-    NS::Obj::Scene* m_scene = nullptr;        // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
+    NS::Obj::Scene* m_scene = nullptr;           // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
     NS::Editor::ObjectSnapshotApplier m_applier; // 編集を live へ写す口。undo コマンドが叩く適用先
 
     // 前面のパネルの表示矩形。未設定時は CurrentViewRect が全画面の予備矩形を返す
@@ -285,10 +296,10 @@ private:
     NS::Editor::GizmoEditor m_gizmo{}; // 変形ギズモ管理
 
     std::vector<NS::Obj::GameObject*> m_selectablePtrs; // 選択可能なオブジェクト
-    std::vector<std::uint8_t> m_selectablePickable;        // 1 は MeshRendererComponent を持つ配置物。ギズモが先に選ぶ
+    std::vector<std::uint8_t> m_selectablePickable;     // 1 は MeshRenderer を持つ配置物。ギズモが先に選ぶ
 
     std::uint32_t m_selectedObjectId = NS::Obj::k_NoObjectId; // 主対象の永続 id。選択の一次情報
-    std::vector<std::uint32_t> m_selectionIds;                   // 選択中の全配置物。主対象も含む
+    std::vector<std::uint32_t> m_selectionIds;                // 選択中の全配置物。主対象も含む
     NS::Obj::Transform* m_lastGizmoSelected = nullptr;        // 前フレームの選択対象
 
     //! ドラッグ開始時点の姿。主対象の動きを同じだけ他へ流すための控え
@@ -308,7 +319,7 @@ private:
     // 編集開始時の状態スナップショット。選択している分だけ並ぶ
     std::vector<std::pair<std::uint32_t, NS::Obj::ObjectData>> m_editBaselines;
 
-    bool m_componentEditing = false;                                    // コンポーネント編集の開始状態
+    bool m_componentEditing = false;                                 // コンポーネント編集の開始状態
     std::uint32_t m_componentEditBaselineId = NS::Obj::k_NoObjectId; // 編集開始時の対象 id
     NS::Obj::ObjectData m_componentEditBaseline{};                   // 編集開始時の状態スナップショット
 };

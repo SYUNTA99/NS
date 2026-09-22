@@ -1,16 +1,16 @@
-#include <Game/Level/AreaCameraActivatorComponent.h>
-#include <Game/Level/FinisherComponent.h>
-#include <Game/Level/FollowCameraFeedComponent.h>
-#include <Game/Level/HealthComponent.h>
-#include <Game/Level/RespawnerComponent.h>
-#include <Game/Level/ScreenFadeComponent.h>
+#include <Game/Level/AreaCameraActivator.h>
+#include <Game/Level/Finisher.h>
+#include <Game/Level/FollowCameraFeed.h>
+#include <Game/Level/Health.h>
+#include <Game/Level/Respawner.h>
+#include <Game/Level/ScreenFade.h>
 #include <Game/Player.h>
 #include <Game/Player/PlayerComponent.h>
-#include <Game/Player/PlayerInputRelayComponent.h>
-#include <Game/Player/PlayerStateManagerComponent.h>
-#include <Runtime/Object/Components/MeshRendererComponent.h>
-#include <Runtime/Object/Components/PlayerInputComponent.h>
-#include <Runtime/Object/Components/ShadowComponent.h>
+#include <Game/Player/PlayerInputRelay.h>
+#include <Game/Player/PlayerStateManager.h>
+#include <Runtime/Object/Components/MeshRenderer.h>
+#include <Runtime/Object/Components/PlayerInput.h>
+#include <Runtime/Object/Components/Shadow.h>
 #include <Runtime/Object/Components/TransformComponent.h>
 #include <Runtime/Platform/Input.h>
 #include <Runtime/Platform/Keyboard.h>
@@ -25,25 +25,25 @@ TEST(PlayerTest, ConstructsWithDefaultComposition)
 TEST(PlayerTest, DefaultComponentsResolveByType)
 {
     Player player{};
-    EXPECT_EQ(player.FindComponent<NS::Obj::PlayerInputComponent>(), player.Components()[0]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerInputRelayComponent>(), player.Components()[1]);
+    EXPECT_EQ(player.FindComponent<NS::Obj::PlayerInput>(), player.Components()[0]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerInputRelay>(), player.Components()[1]);
     EXPECT_EQ(player.FindComponent<NS::Obj::TransformComponent>(), player.Components()[2]);
-    EXPECT_EQ(player.FindComponent<NS::Obj::MeshRendererComponent>(), player.Components()[3]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerStateManagerComponent>(), player.Components()[4]);
+    EXPECT_EQ(player.FindComponent<NS::Obj::MeshRenderer>(), player.Components()[3]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerStateManager>(), player.Components()[4]);
     EXPECT_EQ(player.FindComponent<NS::Game::Player::PlayerComponent>(), player.Components()[5]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Level::HealthComponent>(), player.Components()[6]);
-    EXPECT_EQ(player.FindComponent<NS::Obj::ShadowComponent>(), player.Components()[7]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::Health>(), player.Components()[6]);
+    EXPECT_EQ(player.FindComponent<NS::Obj::Shadow>(), player.Components()[7]);
 }
 
 TEST(PlayerTest, ResponseComponentsTrailTheUpdateBand)
 {
     Player player{};
     const std::size_t count = player.Components().size();
-    EXPECT_EQ(player.FindComponent<NS::Game::Level::ScreenFadeComponent>(), player.Components()[count - 5]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Level::RespawnerComponent>(), player.Components()[count - 4]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Level::FinisherComponent>(), player.Components()[count - 3]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Level::AreaCameraActivatorComponent>(), player.Components()[count - 2]);
-    EXPECT_EQ(player.FindComponent<NS::Game::Level::FollowCameraFeedComponent>(), player.Components()[count - 1]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::ScreenFade>(), player.Components()[count - 5]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::Respawner>(), player.Components()[count - 4]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::Finisher>(), player.Components()[count - 3]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::AreaCameraActivator>(), player.Components()[count - 2]);
+    EXPECT_EQ(player.FindComponent<NS::Game::Level::FollowCameraFeed>(), player.Components()[count - 1]);
 }
 
 TEST(PlayerTest, InputRelayResolvesBothSidesOnStart)
@@ -55,8 +55,8 @@ TEST(PlayerTest, InputRelayResolvesBothSidesOnStart)
     Player player{};
     player.OnStart();
 
-    auto* input = player.FindComponent<NS::Obj::PlayerInputComponent>();
-    auto* relay = player.FindComponent<NS::Game::Player::PlayerInputRelayComponent>();
+    auto* input = player.FindComponent<NS::Obj::PlayerInput>();
+    auto* relay = player.FindComponent<NS::Game::Player::PlayerInputRelay>();
     auto* entity = player.FindComponent<NS::Game::Player::PlayerComponent>();
     ASSERT_NE(input, nullptr);
     ASSERT_NE(relay, nullptr);

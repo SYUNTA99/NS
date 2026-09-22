@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/Math.h"
 #include "Runtime/Graphics/Renderer.h"
-#include "Runtime/Object/Components/VirtualCameraComponent.h"
+#include "Runtime/Object/Components/VirtualCamera.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 
 namespace NS::Obj

@@ -1,8 +1,8 @@
 #include "Editor/LevelEditorController.h"
 #include "Runtime/Platform/Filesystem.h"
-#include "Runtime/Object/Components/BoxColliderComponent.h"
-#include "Runtime/Object/Components/MeshColliderComponent.h"
-#include "Runtime/Object/Components/MeshRendererComponent.h"
+#include "Runtime/Object/Components/BoxCollider.h"
+#include "Runtime/Object/Components/MeshCollider.h"
+#include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/Scene.h"
 
@@ -21,7 +21,7 @@ namespace
     }
 } // namespace
 
-// エディタへ落とした glTF は箱でなく、自分の三角形で当たる MeshColliderComponent を持つ
+// エディタへ落とした glTF は箱でなく、自分の三角形で当たる MeshCollider を持つ
 // 参照の実体化は AssetManager を差した Scene だけが行う。この試しは差していないので実在しない file で足りる
 TEST(EditorMeshDrop, DroppedMeshCollidesWithItsOwnTriangles)
 {
@@ -33,9 +33,9 @@ TEST(EditorMeshDrop, DroppedMeshCollidesWithItsOwnTriangles)
     NS::Obj::GameObject* placed = FindFirstPlaced(scene.Objects());
     ASSERT_NE(placed, nullptr);
 
-    const auto* renderer = placed->FindComponent<NS::Obj::MeshRendererComponent>();
+    const auto* renderer = placed->FindComponent<NS::Obj::MeshRenderer>();
     ASSERT_NE(renderer, nullptr);
     EXPECT_EQ(renderer->MeshRef(), "Assets/Models/__ns_missing_terrain__.glb");
-    EXPECT_NE(placed->FindComponent<NS::Obj::MeshColliderComponent>(), nullptr);
-    EXPECT_EQ(placed->FindComponent<NS::Obj::BoxColliderComponent>(), nullptr);
+    EXPECT_NE(placed->FindComponent<NS::Obj::MeshCollider>(), nullptr);
+    EXPECT_EQ(placed->FindComponent<NS::Obj::BoxCollider>(), nullptr);
 }

@@ -1,10 +1,10 @@
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/AssetManager.h>
-#include <Runtime/Object/Components/BoxColliderComponent.h>
-#include <Runtime/Object/Components/CapsuleColliderComponent.h>
-#include <Runtime/Object/Components/MeshColliderComponent.h>
-#include <Runtime/Object/Components/SlopeColliderComponent.h>
-#include <Runtime/Object/Components/SphereColliderComponent.h>
+#include <Runtime/Object/Components/BoxCollider.h>
+#include <Runtime/Object/Components/CapsuleCollider.h>
+#include <Runtime/Object/Components/MeshCollider.h>
+#include <Runtime/Object/Components/SlopeCollider.h>
+#include <Runtime/Object/Components/SphereCollider.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <Runtime/Object/Transform.h>
@@ -18,12 +18,12 @@
 namespace
 {
     using NS::Core::Vector3;
-    using NS::Obj::BoxColliderComponent;
-    using NS::Obj::CapsuleColliderComponent;
+    using NS::Obj::BoxCollider;
+    using NS::Obj::CapsuleCollider;
     using NS::Obj::GameObject;
-    using NS::Obj::MeshColliderComponent;
-    using NS::Obj::SlopeColliderComponent;
-    using NS::Obj::SphereColliderComponent;
+    using NS::Obj::MeshCollider;
+    using NS::Obj::SlopeCollider;
+    using NS::Obj::SphereCollider;
     using NS::Phys::PhysicsScene;
     using NS::Phys::Triangle;
 
@@ -47,7 +47,7 @@ namespace
 TEST(ColliderJolt, BoxCreatesOneBody)
 {
     ColliderStage stage;
-    auto* box = stage.owner.AddComponent<BoxColliderComponent>();
+    auto* box = stage.owner.AddComponent<BoxCollider>();
     stage.owner.Root().SetPosition(Vector3{2.0f, 3.0f, 4.0f});
 
     box->SyncToPhysics(stage.physics);
@@ -60,7 +60,7 @@ TEST(ColliderJolt, BoxCreatesOneBody)
 TEST(ColliderJolt, TriggerBoxCreatesASensorBody)
 {
     ColliderStage stage;
-    auto* box = stage.owner.AddComponent<BoxColliderComponent>();
+    auto* box = stage.owner.AddComponent<BoxCollider>();
     box->SetTrigger(true);
 
     box->SyncToPhysics(stage.physics);
@@ -72,7 +72,7 @@ TEST(ColliderJolt, TriggerBoxCreatesASensorBody)
 TEST(ColliderJolt, SphereCreatesOneBody)
 {
     ColliderStage stage;
-    auto* sphere = stage.owner.AddComponent<SphereColliderComponent>();
+    auto* sphere = stage.owner.AddComponent<SphereCollider>();
     sphere->SetRadius(0.75f);
 
     sphere->SyncToPhysics(stage.physics);
@@ -84,7 +84,7 @@ TEST(ColliderJolt, SphereCreatesOneBody)
 TEST(ColliderJolt, CapsuleCreatesOneBody)
 {
     ColliderStage stage;
-    auto* capsule = stage.owner.AddComponent<CapsuleColliderComponent>();
+    auto* capsule = stage.owner.AddComponent<CapsuleCollider>();
 
     capsule->SyncToPhysics(stage.physics);
 
@@ -96,8 +96,8 @@ TEST(ColliderJolt, CapsuleCreatesOneBody)
 TEST(ColliderJolt, ExcludedCapsuleCreatesNoBody)
 {
     ColliderStage stage;
-    auto* solid = stage.owner.AddComponent<BoxColliderComponent>();
-    auto* capsule = stage.owner.AddComponent<CapsuleColliderComponent>();
+    auto* solid = stage.owner.AddComponent<BoxCollider>();
+    auto* capsule = stage.owner.AddComponent<CapsuleCollider>();
     capsule->SetExcludedFromStaticWorld(true);
 
     solid->SyncToPhysics(stage.physics);
@@ -112,7 +112,7 @@ TEST(ColliderJolt, MeshCreatesOneBodyForAllTriangles)
     NS::Phys::MeshCollision floor{MakeFloorQuad(), nullptr};
     floor.shape = NS::Phys::CreateMeshShape(floor.triangles);
     ColliderStage stage;
-    auto* mesh = stage.owner.AddComponent<MeshColliderComponent>();
+    auto* mesh = stage.owner.AddComponent<MeshCollider>();
     mesh->SetCollision(&floor);
 
     mesh->SyncToPhysics(stage.physics);
@@ -132,12 +132,12 @@ TEST(ColliderJolt, PlacedMeshCollidersShareOneShape)
     const JPH::uint32 before = cube->shape->GetRefCount();
 
     ColliderStage stage;
-    auto* firstMesh = stage.owner.AddComponent<MeshColliderComponent>();
+    auto* firstMesh = stage.owner.AddComponent<MeshCollider>();
     firstMesh->SetCollision(cube);
     GameObject& second = *stage.scene.SpawnTransient<GameObject>();
     second.Root().SetPosition(Vector3{5.0f, 0.0f, 0.0f});
     second.Root().SetScale(Vector3{2.0f, 1.0f, 1.0f});
-    auto* secondMesh = second.AddComponent<MeshColliderComponent>();
+    auto* secondMesh = second.AddComponent<MeshCollider>();
     secondMesh->SetCollision(cube);
 
     firstMesh->SyncToPhysics(stage.physics);
@@ -166,7 +166,7 @@ TEST(ColliderJolt, ShearedMeshColliderKeepsTheDrawnShape)
     child.SetParent(&parent);
     child.Root().SetRotation(
         NS::Core::Quaternion::CreateFromAxisAngle(Vector3::UnitY, NS::Core::ToRadians(NS::Core::Degrees{45.0f}).value));
-    auto* mesh = child.AddComponent<MeshColliderComponent>();
+    auto* mesh = child.AddComponent<MeshCollider>();
     mesh->SetCollision(cube);
 
     mesh->SyncToPhysics(stage.physics);
@@ -180,8 +180,8 @@ TEST(ColliderJolt, ShearedMeshColliderKeepsTheDrawnShape)
 TEST(ColliderJolt, EmptyMeshCreatesNoBody)
 {
     ColliderStage stage;
-    auto* solid = stage.owner.AddComponent<BoxColliderComponent>();
-    auto* mesh = stage.owner.AddComponent<MeshColliderComponent>();
+    auto* solid = stage.owner.AddComponent<BoxCollider>();
+    auto* mesh = stage.owner.AddComponent<MeshCollider>();
 
     solid->SyncToPhysics(stage.physics);
     mesh->SyncToPhysics(stage.physics);
@@ -193,7 +193,7 @@ TEST(ColliderJolt, EmptyMeshCreatesNoBody)
 TEST(ColliderJolt, SlopeCreatesOneBody)
 {
     ColliderStage stage;
-    auto* slope = stage.owner.AddComponent<SlopeColliderComponent>();
+    auto* slope = stage.owner.AddComponent<SlopeCollider>();
 
     slope->SyncToPhysics(stage.physics);
 
@@ -204,7 +204,7 @@ TEST(ColliderJolt, SlopeCreatesOneBody)
 TEST(ColliderJolt, SyncingTwiceKeepsTheBodyId)
 {
     ColliderStage stage;
-    auto* box = stage.owner.AddComponent<BoxColliderComponent>();
+    auto* box = stage.owner.AddComponent<BoxCollider>();
 
     box->SyncToPhysics(stage.physics);
     const JPH::BodyID first = box->BodyId();
@@ -217,7 +217,7 @@ TEST(ColliderJolt, SyncingTwiceKeepsTheBodyId)
 TEST(ColliderJolt, SyncingMovedBoxKeepsTheBodyIdAndMovesTheJoltBody)
 {
     ColliderStage stage;
-    auto* box = stage.owner.AddComponent<BoxColliderComponent>();
+    auto* box = stage.owner.AddComponent<BoxCollider>();
 
     box->SyncToPhysics(stage.physics);
     const JPH::BodyID first = box->BodyId();
@@ -233,7 +233,7 @@ TEST(ColliderJolt, SyncingMovedBoxKeepsTheBodyIdAndMovesTheJoltBody)
 TEST(ColliderJolt, SyncingResizedBoxKeepsTheBodyIdAndUpdatesTheJoltShape)
 {
     ColliderStage stage;
-    auto* box = stage.owner.AddComponent<BoxColliderComponent>();
+    auto* box = stage.owner.AddComponent<BoxCollider>();
 
     box->SyncToPhysics(stage.physics);
     const JPH::BodyID first = box->BodyId();
@@ -252,7 +252,7 @@ TEST(ColliderJolt, EndPlayRemovesItsOwnBody)
 {
     NS::Obj::Scene scene;
     auto owned = std::make_unique<GameObject>();
-    auto* box = owned->AddComponent<BoxColliderComponent>();
+    auto* box = owned->AddComponent<BoxCollider>();
     scene.SpawnTransient(std::move(owned));
 
     box->SyncToPhysics(scene.Physics());
@@ -267,7 +267,7 @@ TEST(ColliderJolt, SyncIntoAPhysicsSceneOtherThanTheOwnersIsRefused)
 {
     NS::Obj::Scene scene;
     auto owned = std::make_unique<GameObject>();
-    auto* box = owned->AddComponent<BoxColliderComponent>();
+    auto* box = owned->AddComponent<BoxCollider>();
     scene.SpawnTransient(std::move(owned));
     PhysicsScene other;
 
@@ -282,7 +282,7 @@ TEST(ColliderJolt, RemoveFromAPhysicsSceneOtherThanTheOwnersKeepsTheBody)
 {
     NS::Obj::Scene scene;
     auto owned = std::make_unique<GameObject>();
-    auto* box = owned->AddComponent<BoxColliderComponent>();
+    auto* box = owned->AddComponent<BoxCollider>();
     scene.SpawnTransient(std::move(owned));
     box->SyncToPhysics(scene.Physics());
     PhysicsScene other;
@@ -297,7 +297,7 @@ TEST(ColliderJolt, RemoveFromAPhysicsSceneOtherThanTheOwnersKeepsTheBody)
 TEST(ColliderJolt, EndPlayWithoutABodyLeavesThePhysicsSceneAlone)
 {
     GameObject owner;
-    auto* box = owner.AddComponent<BoxColliderComponent>();
+    auto* box = owner.AddComponent<BoxCollider>();
     PhysicsScene physics;
 
     box->OnEndPlay();
@@ -311,7 +311,7 @@ TEST(ColliderJolt, EndPlayWithoutABodyLeavesThePhysicsSceneAlone)
 TEST(ColliderJolt, SyncWithoutAnOwningSceneIsRefused)
 {
     GameObject owner;
-    auto* box = owner.AddComponent<BoxColliderComponent>();
+    auto* box = owner.AddComponent<BoxCollider>();
     PhysicsScene physics;
 
     box->SyncToPhysics(physics);

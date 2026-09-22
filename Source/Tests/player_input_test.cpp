@@ -1,4 +1,4 @@
-#include <Runtime/Object/Components/PlayerInputComponent.h>
+#include <Runtime/Object/Components/PlayerInput.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Platform/Input.h>
 #include <Runtime/Platform/Keyboard.h>
@@ -7,7 +7,7 @@
 namespace
 {
     using NS::Obj::GameObject;
-    using NS::Obj::PlayerInputComponent;
+    using NS::Obj::PlayerInput;
     using NS::Platform::Key;
 
     //! 入力はプロセスに 1 個しか無い。押したキーを次のテストへ持ち越さないよう前後で払う
@@ -32,20 +32,20 @@ namespace
 
 TEST(PlayerInputTest, ConstructsActive)
 {
-    PlayerInputComponent input;
+    PlayerInput input;
     EXPECT_TRUE(input.IsActive());
 }
 
 TEST(PlayerInputTest, OnUpdateRunsWithoutAnOwner)
 {
-    PlayerInputComponent input;
+    PlayerInput input;
     input.OnUpdate();
     SUCCEED();
 }
 
 TEST(PlayerInputTest, CameraForwardSetterPersists)
 {
-    PlayerInputComponent input;
+    PlayerInput input;
     input.SetCameraForward({1.0f, 5.0f, 0.0f});
     SUCCEED();
 }
@@ -53,7 +53,7 @@ TEST(PlayerInputTest, CameraForwardSetterPersists)
 TEST_F(PlayerInputHeldValues, ForwardKeyProducesCameraRelativeDirection)
 {
     GameObject obj;
-    auto& input = *obj.AddComponent<PlayerInputComponent>();
+    auto& input = *obj.AddComponent<PlayerInput>();
     obj.OnStart();
     input.SetCameraForward({0.0f, 0.0f, 1.0f});
 
@@ -68,7 +68,7 @@ TEST_F(PlayerInputHeldValues, ForwardKeyProducesCameraRelativeDirection)
 TEST_F(PlayerInputHeldValues, NoKeyLeavesSpeedScaleAtZero)
 {
     GameObject obj;
-    auto& input = *obj.AddComponent<PlayerInputComponent>();
+    auto& input = *obj.AddComponent<PlayerInput>();
     obj.OnStart();
     input.SetCameraForward({0.0f, 0.0f, 1.0f});
 
@@ -80,7 +80,7 @@ TEST_F(PlayerInputHeldValues, NoKeyLeavesSpeedScaleAtZero)
 TEST_F(PlayerInputHeldValues, JumpPressedIsTrueOnlyForTheStepOfThePress)
 {
     GameObject obj;
-    auto& input = *obj.AddComponent<PlayerInputComponent>();
+    auto& input = *obj.AddComponent<PlayerInput>();
     obj.OnStart();
 
     NS::Platform::Input::Get().Keyboard().OnKeyDown(Key::Space);
@@ -95,7 +95,7 @@ TEST_F(PlayerInputHeldValues, JumpPressedIsTrueOnlyForTheStepOfThePress)
 TEST_F(PlayerInputHeldValues, JumpHeldFollowsTheKeyState)
 {
     GameObject obj;
-    auto& input = *obj.AddComponent<PlayerInputComponent>();
+    auto& input = *obj.AddComponent<PlayerInput>();
     obj.OnStart();
 
     auto& kb = NS::Platform::Input::Get().Keyboard();
@@ -116,7 +116,7 @@ TEST_F(PlayerInputHeldValues, JumpHeldFollowsTheKeyState)
 TEST_F(PlayerInputHeldValues, ClimbMoveKeepsRawLocalInput)
 {
     GameObject obj;
-    auto& input = *obj.AddComponent<PlayerInputComponent>();
+    auto& input = *obj.AddComponent<PlayerInput>();
     obj.OnStart();
     input.SetCameraForward({1.0f, 0.0f, 0.0f});
 
@@ -130,7 +130,7 @@ TEST_F(PlayerInputHeldValues, ClimbMoveKeepsRawLocalInput)
 TEST_F(PlayerInputHeldValues, InactiveStepKeepsThePreviousValues)
 {
     GameObject obj;
-    auto& input = *obj.AddComponent<PlayerInputComponent>();
+    auto& input = *obj.AddComponent<PlayerInput>();
     obj.OnStart();
     input.SetCameraForward({0.0f, 0.0f, 1.0f});
 

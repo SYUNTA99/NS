@@ -1,0 +1,216 @@
+﻿#include "Runtime/Object/Components/CameraBrain.h"
+
+#include "Runtime/Platform/Clock.h"
+#include "Runtime/Object/Components/CameraComponent.h"
+#include "Runtime/Object/Components/VirtualCamera.h"
+#include "Runtime/Object/GameObject.h"
+#include "Runtime/Object/Reflection/TypeRegistry.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace NS::Obj
+{
+    // vcam を供給する follow / placed が LateUpdate + 50 なので、選び直しはその後ろに置く
+    CameraBrain::CameraBrain() noexcept : Component(TickPriority::LateUpdate + 60) {}
+
+    void CameraBrain::OnStart()
+    {
+        if (Owner() != nullptr)
+        {
+            m_camera = Owner()->FindComponent<CameraComponent>();
+        }
+        else
+        {
+			m_camera = nullptr;
+        }
+    }
+
+    void CameraBrain::AddVirtualCamera(VirtualCamera* vcam)
+    {
+        if (vcam == nullptr)
+        {
+			return;
+        }
+        if (std::find(m_vcams.begin(), m_vcams.end(), vcam) != m_vcams.end())
+        {
+            return;
+        }
+        m_vcams.push_back(vcam);
+    }
+
+    void CameraBrain::RemoveVirtualCamera(VirtualCamera* vcam) noexcept
+    {
+        if (vcam == nullptr)
+        {
+			return;
+        }
+        m_vcams.erase(std::remove(m_vcams.begin(), m_vcams.end(), vcam), m_vcams.end());
+        if (m_active == vcam)
+        {
+			m_active = nullptr; // 次の OnUpdate / Evaluate で選び直す
+        }
+    }
+
+    void CameraBrain::SetBlendDuration(float seconds) noexcept
+    {
+        if (seconds > 0.0f)
+        {
+            m_blendDuration = seconds;
+        }
+        else
+        {
+            m_blendDuration = 0.0f;
+        }
+    }
+
+    void CameraBrain::StartShake(float amplitude, int steps) noexcept
+    {
+        // 壊れた振れ幅が pose へ流れると視点が消える。入口で捨てる
+        if (!std::isfinite(amplitude) || amplitude <= 0.0f || steps <= 0)
+        {
+            return;
+        }
+        m_shakeAmplitude = amplitude;
+        m_shakeTotal = steps;
+        m_shakeRemaining = steps;
+    }
+
+    void CameraBrain::BeginBlendFrom(const CameraPose& pose) noexcept
+    {
+        if (m_blendDuration <= 0.0f)
+        {
+            return;
+        }
+
+        m_lastPose = pose;
+        m_blendFrom = pose;
+        m_blendElapsed = 0.0f;
+        m_blending = true;
+    }
+
+    VirtualCamera* CameraBrain::SelectActive() const noexcept
+    {
+        VirtualCamera* best = nullptr;
+        for (auto* vcam : m_vcams)
+        {
+            if (vcam == nullptr || !vcam->IsActive())
+            {
+                continue;
+            }
+            if (best == nullptr || vcam->VcamPriority() > best->VcamPriority())
+            {
+                best = vcam;
+            }
+        }
+        return best;
+    }
+
+    std::optional<CameraPose> CameraBrain::EvaluateTopPose(float alpha) const noexcept
+    {
+        VirtualCamera* best = nullptr;
+        for (auto* vcam : m_vcams)
+        {
+            if (vcam == nullptr)
+            {
+                continue;
+            }
+            if (best == nullptr || vcam->VcamPriority() > best->VcamPriority())
+            {
+				best = vcam;
+            }
+        }
+        if (best == nullptr)
+        {
+			return std::nullopt;
+        }
+        return best->EvaluatePose(alpha);
+    }
+
+    void CameraBrain::OnUpdate()
+    {
+        VirtualCamera* next = SelectActive();
+        if (next != m_active)
+        {
+            // 直前まで写していた pose から新 vcam へ繋ぐ。旧 pose が無い初回 active 化はカットする
+            if (m_active != nullptr && m_blendDuration > 0.0f)
+            {
+                m_blendFrom = m_lastPose;
+                m_blendElapsed = 0.0f;
+                m_blending = true;
+            }
+            m_active = next;
+        }
+
+        if (m_blending)
+        {
+            m_blendElapsed += NS::Platform::FrameTimer::FixedDelta();
+            if (m_blendElapsed >= m_blendDuration)
+            {
+                m_blending = false;
+            }
+
+        }
+
+        if (m_shakeRemaining > 0)
+        {
+            --m_shakeRemaining;
+        }
+    }
+
+    void CameraBrain::Evaluate(float alpha) noexcept
+    {
+        // 非 active になった vcam の pose は書かない。編集モードのように OnUpdate が回らない間も選び直す
+        if (m_active == nullptr || !m_active->IsActive())
+        {
+            m_active = SelectActive();
+        }
+        if (m_active == nullptr || m_camera == nullptr)
+        {
+            return;
+        }
+
+        CameraPose pose = m_active->EvaluatePose(alpha);
+        if (m_blending && m_blendDuration > 0.0f)
+        {
+            const float t = NS::Core::Clamp(m_blendElapsed / m_blendDuration, 0.0f, 1.0f);
+            const float eased = t * t * (3.0f - 2.0f * t); // smoothstep で ease-in-out
+            pose = CameraPose::Lerp(m_blendFrom, pose, eased);
+        }
+
+        // 揺れは合成の最後に足す。どの vcam が選ばれていてもブレンド中でも一様に掛かる
+        // position と target を同じだけ動かす平行移動なので視線方向が回らず、
+        // ForwardHorizontal を基準にする camera 相対入力に波及しない
+        if (m_shakeRemaining > 0 && m_shakeTotal > 0)
+        {
+            const float sign = 1.0f - 2.0f * static_cast<float>(m_shakeRemaining % 2);
+            const float decay = static_cast<float>(m_shakeRemaining) / static_cast<float>(m_shakeTotal);
+            const NS::Core::Vector3 offset{0.0f, m_shakeAmplitude * sign * decay, 0.0f};
+            pose.position += offset;
+            pose.target += offset;
+        }
+
+        m_lastPose = pose;
+        m_camera->ApplyPose(pose);
+    }
+
+    NS::Core::Matrix CameraBrain::ViewProjection() const noexcept
+    {
+        if (m_camera != nullptr)
+        {
+			return m_camera->ViewProjection();
+        }
+        return NS::Core::Matrix::Identity;
+    }
+
+    NS::Core::Vector3 CameraBrain::ForwardHorizontal() const noexcept
+    {
+        if (m_camera != nullptr)
+        {
+            return m_camera->ForwardHorizontal();
+        }
+        return NS::Core::Vector3{0.0f, 0.0f, 1.0f};
+    }
+
+    NS_CLASS(CameraBrain)
+} // namespace NS::Obj

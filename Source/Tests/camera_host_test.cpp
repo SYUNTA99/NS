@@ -1,5 +1,5 @@
 #include <Runtime/Object/Component.h>
-#include <Runtime/Object/Components/CameraBrainComponent.h>
+#include <Runtime/Object/Components/CameraBrain.h>
 #include <Runtime/Object/Components/CameraComponent.h>
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
 #include <Runtime/Object/GameObject.h>
@@ -91,7 +91,7 @@ TEST(CameraHost, BrainRunsInTheLateUpdateBand)
 TEST(CameraHost, SurvivesRebuildAndRebindsVirtualCameras)
 {
     Scene scene;
-    NS::Obj::CameraBrainComponent* brainBefore = scene.CameraBrain();
+    NS::Obj::CameraBrain* brainBefore = scene.CameraBrain();
     ASSERT_NE(brainBefore, nullptr);
     const NS::Obj::GameObject* hostBefore = brainBefore->Owner();
 
@@ -130,7 +130,7 @@ TEST(CameraHost, ShakeOffsetsFinalPose)
     placed->SetView(NS::Core::Vector3{0.0f, 3.0f, -6.0f}, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
     scene.OnUpdate();
 
-    NS::Obj::CameraBrainComponent* brain = scene.CameraBrain();
+    NS::Obj::CameraBrain* brain = scene.CameraBrain();
     ASSERT_NE(brain, nullptr);
     brain->Evaluate(1.0f);
     const NS::Core::Vector3 before = brain->LastPose().position;
@@ -153,7 +153,7 @@ TEST(CameraHost, ShakeTranslatesViewWithoutTurning)
     placed->SetView(NS::Core::Vector3{0.0f, 3.0f, -6.0f}, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
     scene.OnUpdate();
 
-    NS::Obj::CameraBrainComponent* brain = scene.CameraBrain();
+    NS::Obj::CameraBrain* brain = scene.CameraBrain();
     brain->Evaluate(1.0f);
     const NS::Core::Vector3 lookBefore = brain->LastPose().target - brain->LastPose().position;
     const NS::Core::Vector3 forwardBefore = brain->ForwardHorizontal();
@@ -181,7 +181,7 @@ TEST(CameraHost, ShakeEndsWithinSteps)
     placed->SetView(NS::Core::Vector3{0.0f, 3.0f, -6.0f}, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
     scene.OnUpdate();
 
-    NS::Obj::CameraBrainComponent* brain = scene.CameraBrain();
+    NS::Obj::CameraBrain* brain = scene.CameraBrain();
     brain->Evaluate(1.0f);
     const NS::Core::Vector3 before = brain->LastPose().position;
 
@@ -207,7 +207,7 @@ TEST(CameraHost, ShakeRejectsBrokenInput)
     placed->SetView(NS::Core::Vector3{0.0f, 3.0f, -6.0f}, NS::Core::Vector3{0.0f, 1.0f, 0.0f});
     scene.OnUpdate();
 
-    NS::Obj::CameraBrainComponent* brain = scene.CameraBrain();
+    NS::Obj::CameraBrain* brain = scene.CameraBrain();
     brain->Evaluate(1.0f);
     const NS::Core::Vector3 before = brain->LastPose().position;
 

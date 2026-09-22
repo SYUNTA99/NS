@@ -1,7 +1,7 @@
 #include "Game/Player/PlayerComponent.h"
 
-#include "Game/Entity/EntityStateManagerComponent.h"
-#include "Game/Player/PlayerStateManagerComponent.h"
+#include "Game/Entity/EntityStateManager.h"
+#include "Game/Player/PlayerStateManager.h"
 #include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
@@ -9,7 +9,7 @@
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Object/Components/CameraBrainComponent.h"
+#include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -193,7 +193,7 @@ namespace NS::Game::Player
         // 反発後の滑りなど残った速度が向きに勝つと狙いと食い違う方へ飛ぶ。入力が無ければ速度よりカメラの前を先に見る
         if (length < NS::Core::k_Epsilon && Owner() != nullptr && Owner()->OwningScene() != nullptr)
         {
-            if (NS::Obj::CameraBrainComponent* brain = Owner()->OwningScene()->CameraBrain())
+            if (NS::Obj::CameraBrain* brain = Owner()->OwningScene()->CameraBrain())
             {
                 const NS::Core::Vector3 forward = brain->ForwardHorizontal();
                 dir = NS::Core::Vector3{forward.x, 0.0f, forward.z};
@@ -365,10 +365,10 @@ namespace NS::Game::Player
         if (Owner() == nullptr)
             return;
 
-        m_stateManager = Owner()->FindComponent<PlayerStateManagerComponent>();
+        m_stateManager = Owner()->FindComponent<PlayerStateManager>();
     }
 
-    NS::Game::Entity::EntityStateManagerComponent* PlayerComponent::States() const noexcept
+    NS::Game::Entity::EntityStateManager* PlayerComponent::States() const noexcept
     {
         return m_stateManager;
     }
@@ -485,7 +485,7 @@ namespace NS::Game::Player
         m_bodySlamTravelled += stepDistance;
 
         // 進めないフレームで打ち切る。壁で止められると進んだ距離が伸びず、突進から出られなくなる
-        // 発動したフレームは見ない。ここで打ち切ると発動から打ち切りまでに ImpactResolverComponent が
+        // 発動したフレームは見ない。ここで打ち切ると発動から打ち切りまでに ImpactResolver が
         // 一度も走らず、突進を見ないまま終わる
         const bool stalled = !m_bodySlamJustStarted && stepDistance < NS::Core::k_Epsilon;
         m_bodySlamJustStarted = false;

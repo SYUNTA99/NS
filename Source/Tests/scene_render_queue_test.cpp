@@ -1,6 +1,6 @@
 #include <Runtime/Core/AABB.h>
 #include <Runtime/Graphics/RenderContext.h>
-#include <Runtime/Object/Components/OverlayRendererComponent.h>
+#include <Runtime/Object/Components/OverlayRenderer.h>
 #include <Runtime/Object/IRenderable.h>
 #include <Runtime/Object/Scene/Scene.h>
 #include <gtest/gtest.h>
@@ -43,16 +43,16 @@ namespace
     };
 
     // 描かれた順に id を log へ積む fake。priority 順と IsActive の扱いだけ検証する
-    class FakeOverlay : public NS::Obj::OverlayRendererComponent
+    class FakeOverlay : public NS::Obj::OverlayRenderer
     {
     public:
         FakeOverlay(int id, int priority, std::vector<int>* log)
-            : NS::Obj::OverlayRendererComponent(priority), m_id(id), m_log(log)
+            : NS::Obj::OverlayRenderer(priority), m_id(id), m_log(log)
         {}
 
         void OnRenderOverlay(const RenderContext&) override { m_log->push_back(m_id); }
 
-        NS_REFLECT_NONE(FakeOverlay, NS::Obj::OverlayRendererComponent)
+        NS_REFLECT_NONE(FakeOverlay, NS::Obj::OverlayRenderer)
 
     private:
         int m_id;

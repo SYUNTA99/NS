@@ -1,6 +1,6 @@
 #include "Game/Player/States/FallPlayerState.h"
 
-#include "Game/Entity/EntityStateManagerComponent.h"
+#include "Game/Entity/EntityStateManager.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Game/Player/States/IdlePlayerState.h"
 

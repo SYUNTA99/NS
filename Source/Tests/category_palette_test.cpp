@@ -40,7 +40,7 @@ TEST(CategoryPalette, SlopeSlotIsRotatableWedge)
     palette.SetActiveSlot(1);
     EXPECT_STREQ(palette.CurrentTemplateName(), "Slope 45");
     EXPECT_TRUE(palette.CurrentIsRotatable());
-    // 配置プレビューのウェッジが prototype の SlopeColliderComponent と同じ 45 度になる
+    // 配置プレビューのウェッジが prototype の SlopeCollider と同じ 45 度になる
     EXPECT_NEAR(palette.CurrentSlopeAngleDegrees(), 45.0f, 1e-3f);
 }
 

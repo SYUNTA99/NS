@@ -7,18 +7,18 @@
 
 namespace NS::Game::Entity
 {
-    class EntityStateManagerComponent;
+    class EntityStateManager;
 }
 
 namespace NS::Game::Player
 {
-    class PlayerStateManagerComponent;
+    class PlayerStateManager;
 
     //! @brief 自機の能力を持つ Component
     //! @details 移動と接地は EntityComponent が持ち、ここには自機だけの能力と条件判定を置く
     //! 調整値は自分の欄として持つ。Inspector とシーン JSON はこの欄をリフレクション越しに読み書きする
     //! 状態は能力呼びの列だけにするので、状態から呼ぶ動詞は public
-    //! 依存: NS::Game::Entity::EntityComponent / EntityStateManagerComponent
+    //! 依存: NS::Game::Entity::EntityComponent / EntityStateManager
     class PlayerComponent : public NS::Game::Entity::EntityComponent
     {
     public:
@@ -60,7 +60,7 @@ namespace NS::Game::Player
         void ResetState() noexcept;
 
         //! 状態が次の状態へ移る時に呼ぶ状態管理。HandleStates はこれが無いと状態を進めないので、状態の中では非 null
-        [[nodiscard]] NS::Game::Entity::EntityStateManagerComponent* States() const noexcept;
+        [[nodiscard]] NS::Game::Entity::EntityStateManager* States() const noexcept;
 
         //! 体当たりの発動を要求する
         //! @details 溜め量 0 はタップの飛び込みで、非有限値は 0 とみなす。
@@ -230,7 +230,7 @@ namespace NS::Game::Player
         float m_coyoteTimer = 0.0f;                  // コヨーテ猶予の残り秒
         float m_bufferTimer = 0.0f;                  // 先行ジャンプ入力の残り秒
 
-        float m_maxSpeedScale = 1.0f; // 走行速度に掛ける倍率。書くのは CollisionInputComponent
+        float m_maxSpeedScale = 1.0f; // 走行速度に掛ける倍率。書くのは CollisionInput
 
         float m_bodySlamBufferRemaining = 0.0f;               // 出せないフレームの押しを覚える残り秒
         bool m_bodySlamSpent = false;                         // 発動してから接地していないか
@@ -306,7 +306,7 @@ namespace NS::Game::Player
         float m_slamAimHoldTime = 0.11f;
         float m_slamAimFadeTime = 0.19f;
 
-        PlayerStateManagerComponent* m_stateManager = nullptr; // 状態機械 (非所有)
+        PlayerStateManager* m_stateManager = nullptr; // 状態機械 (非所有)
 
         PlayerEvents m_playerEvents;
     };

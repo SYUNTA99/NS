@@ -43,7 +43,7 @@ namespace NS::Game::Level
         [[nodiscard]] float Charge01() const noexcept;
 
         // 秒でなくフレーム数で持つのは、固定ステップの整数で数えると同じ入力列が必ず同じ判定になるため
-        // 秒からの換算は CollisionInputComponent が毎ステップ入れ直すので、この既定は単体テストでだけ効く
+        // 秒からの換算は CollisionInput が毎ステップ入れ直すので、この既定は単体テストでだけ効く
         int chargeThresholdSteps = 12;
         int chargeMaxSteps = 60;
 

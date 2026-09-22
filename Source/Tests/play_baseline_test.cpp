@@ -16,7 +16,7 @@ namespace
     SceneNs::ObjectData MakeGoal()
     {
         SceneNs::ObjectData object{};
-        object.components.push_back(SceneNs::MakeComponentEntry("GoalComponent"));
+        object.components.push_back(SceneNs::MakeComponentEntry("Goal"));
         return object;
     }
 } // namespace

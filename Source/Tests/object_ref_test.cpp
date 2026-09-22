@@ -1,4 +1,4 @@
-#include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
+#include <Runtime/Object/Components/ThirdPersonFollow.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Object.h>
 #include <Runtime/Object/ObjectList.h>
@@ -67,7 +67,7 @@ TEST(ObjectRefTest, FollowResolvesTargetOnStart)
 
     GameObject rig;
     rig.AttachScene(&scene);
-    auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollowComponent>();
+    auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollow>();
     SetTargetRef(*follow, 5u);
 
     rig.OnStart();
@@ -84,7 +84,7 @@ TEST(ObjectRefTest, FollowKeepsDirectWiringWhenRefUnset)
     GameObject player;
     GameObject rig;
     rig.AttachScene(&scene);
-    auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollowComponent>();
+    auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollow>();
     follow->SetTarget(&player.Root());
 
     rig.OnStart();
@@ -101,7 +101,7 @@ TEST(ObjectRefTest, FollowKeepsWiringWhenRefDangling)
     GameObject player;
     GameObject rig;
     rig.AttachScene(&scene);
-    auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollowComponent>();
+    auto* follow = rig.AddComponent<NS::Obj::ThirdPersonFollow>();
     follow->SetTarget(&player.Root());
     SetTargetRef(*follow, 123u);
 

@@ -1,7 +1,7 @@
 #include <Game/Level/ColliderBounds.h>
 #include <Runtime/Core/AABB.h>
-#include <Runtime/Object/Components/BoxColliderComponent.h>
-#include <Runtime/Object/Components/SphereColliderComponent.h>
+#include <Runtime/Object/Components/BoxCollider.h>
+#include <Runtime/Object/Components/SphereCollider.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
 #include <gtest/gtest.h>
@@ -9,15 +9,15 @@
 namespace
 {
     using NS::Game::Level::TryGetColliderBounds;
-    using NS::Obj::BoxColliderComponent;
+    using NS::Obj::BoxCollider;
     using NS::Obj::GameObject;
-    using NS::Obj::SphereColliderComponent;
+    using NS::Obj::SphereCollider;
 } // namespace
 
 TEST(ColliderBoundsTest, BoxColliderYieldsItsWorldAABB)
 {
     GameObject obj;
-    obj.AddComponent<BoxColliderComponent>(NS::Core::Vector3{1.0f, 2.0f, 3.0f});
+    obj.AddComponent<BoxCollider>(NS::Core::Vector3{1.0f, 2.0f, 3.0f});
     obj.Root().SetPosition({10.0f, 0.0f, -4.0f});
 
     NS::Core::AABB bounds{};
@@ -31,7 +31,7 @@ TEST(ColliderBoundsTest, BoxColliderYieldsItsWorldAABB)
 TEST(ColliderBoundsTest, SphereColliderYieldsItsWorldAABB)
 {
     GameObject obj;
-    obj.AddComponent<SphereColliderComponent>(2.0f);
+    obj.AddComponent<SphereCollider>(2.0f);
     obj.Root().SetPosition({0.0f, 5.0f, 0.0f});
 
     NS::Core::AABB bounds{};
@@ -45,7 +45,7 @@ TEST(ColliderBoundsTest, SphereColliderYieldsItsWorldAABB)
 TEST(ColliderBoundsTest, SphereColliderScalesWithOwner)
 {
     GameObject obj;
-    obj.AddComponent<SphereColliderComponent>(0.5f);
+    obj.AddComponent<SphereCollider>(0.5f);
     obj.Root().SetScale({2.0f, 2.0f, 2.0f});
 
     NS::Core::AABB bounds{};

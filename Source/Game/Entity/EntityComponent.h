@@ -9,7 +9,7 @@
 
 namespace NS::Obj
 {
-    class CapsuleColliderComponent;
+    class CapsuleCollider;
 }
 
 namespace NS::Phys
@@ -28,7 +28,7 @@ namespace NS::Game::Entity
     //! JoltCharacter だけは作った時の PhysicsScene を持ち続ける。
     //! dt は NS::Platform::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
     //! 依存: NS::Core, NS::Platform::FrameTimer, NS::Phys::JoltCharacter / PhysicsScene, NS::Obj::Scene /
-    //! CapsuleColliderComponent
+    //! CapsuleCollider
     class EntityComponent : public NS::Obj::Component
     {
     public:
@@ -51,9 +51,9 @@ namespace NS::Game::Entity
         //! 掴まりのように移動を通さず位置を直に置く時、接地の控えも合わせて置く
         void SetGrounded(bool grounded) noexcept;
 
-        //! 同居する CapsuleColliderComponent の半径。無ければ 0.4
+        //! 同居する CapsuleCollider の半径。無ければ 0.4
         [[nodiscard]] float CapsuleRadius() const noexcept;
-        //! 同居する CapsuleColliderComponent の半分の高さ。無ければ 0.5
+        //! 同居する CapsuleCollider の半分の高さ。無ければ 0.5
         [[nodiscard]] float CapsuleHalfHeight() const noexcept;
 
         //! 持ち主の Scene の衝突の PhysicsScene。Scene に居なければ nullptr
@@ -88,7 +88,7 @@ namespace NS::Game::Entity
         //! 接地の通知の受け口。購読は後から足せる
         [[nodiscard]] EntityEvents& Events() noexcept { return m_events; }
 
-        //! 同居する CapsuleColliderComponent を控え、静的な当たりの世界から外す
+        //! 同居する CapsuleCollider を控え、静的な当たりの世界から外す
         void OnStart() override;
         //! 1 フレームぶん HandleStates を呼び、続けて HandleMovement で動かす
         void OnUpdate() override;
@@ -109,7 +109,7 @@ namespace NS::Game::Entity
         NS::Core::Vector3 m_velocity{0.0f, 0.0f, 0.0f};
         bool m_isGrounded = false;
         bool m_wasGrounded = false; // 直前の Move より前の接地
-        NS::Obj::CapsuleColliderComponent* m_capsuleCollider = nullptr;
+        NS::Obj::CapsuleCollider* m_capsuleCollider = nullptr;
         std::unique_ptr<NS::Phys::JoltCharacter> m_character;
         EntityEvents m_events;
     };

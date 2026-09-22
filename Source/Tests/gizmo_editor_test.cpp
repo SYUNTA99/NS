@@ -1,11 +1,11 @@
 #include "Editor/GizmoEditor.h"
-#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Graphics/Mesh.h"
 #include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/Components/MeshRendererComponent.h"
+#include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Transform.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/Window.h"
 
@@ -444,7 +444,7 @@ namespace
         EXPECT_EQ(GizmoEditor::PickNearestOBB(belowFeet, worlds, bounds), -1);
     }
 
-    // 奥の箱は 4 倍に拡大してあり、ローカルの距離で比べると奥の方が近くなる。
+    // 奥の箱は 4 倍に拡大してあり、ローカルの距離で比べると奥の方が近くなる
     // ワールドのレイの上で比べている時だけ手前を選ぶ
     TEST(GizmoEditor, PickNearestObbPrefersNearerBoxOverFartherScaledBox)
     {
@@ -909,12 +909,14 @@ namespace
             GTEST_SKIP() << "Device 確立不可 (headless)";
 
         NS::Obj::AssetManager assets{NS::Platform::FileSystem::ContentRoot()};
-        NS::Gfx::Mesh* soldier =
-            assets.GetOrLoadMesh(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Models"), "Soldier.glb"));
+        NS::Gfx::Mesh* soldier = assets.GetOrLoadMesh(NS::Platform::FileSystem::Combine(
+            NS::Platform::FileSystem::Combine(
+                NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Models"),
+            "Soldier.glb"));
         ASSERT_NE(soldier, nullptr);
 
         NS::Obj::GameObject doll;
-        doll.AddComponent<NS::Obj::MeshRendererComponent>()->SetMesh(soldier);
+        doll.AddComponent<NS::Obj::MeshRenderer>()->SetMesh(soldier);
         const std::array<NS::Obj::GameObject*, 1> objects = {&doll};
 
         const NS::Core::Vector3 chest{0.0f, 1.4f, 0.0f};

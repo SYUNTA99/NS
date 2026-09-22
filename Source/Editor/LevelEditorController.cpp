@@ -5,7 +5,7 @@
 #include "Editor/Undo/CompositeCommand.h"
 #include "Editor/Undo/ObjectSnapshotCommand.h"
 #include "Game/Level/BlockObject.h"
-#include "Game/Level/RespawnerComponent.h"
+#include "Game/Level/Respawner.h"
 #include "Game/Player.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/App/Application.h"
@@ -17,18 +17,18 @@
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/AssetManager.h"
-#include "Runtime/Object/Components/BoxColliderComponent.h"
-#include "Runtime/Object/Components/CameraBrainComponent.h"
+#include "Runtime/Object/Components/BoxCollider.h"
+#include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Components/CameraComponent.h"
-#include "Runtime/Object/Components/CapsuleColliderComponent.h"
-#include "Runtime/Object/Components/MeshRendererComponent.h"
+#include "Runtime/Object/Components/CapsuleCollider.h"
+#include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/Components/PlacedVirtualCamera.h"
-#include "Runtime/Object/Components/PlayerInputComponent.h"
-#include "Runtime/Object/Components/SlopeColliderComponent.h"
-#include "Runtime/Object/Components/SphereColliderComponent.h"
-#include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
+#include "Runtime/Object/Components/PlayerInput.h"
+#include "Runtime/Object/Components/SlopeCollider.h"
+#include "Runtime/Object/Components/SphereCollider.h"
+#include "Runtime/Object/Components/ThirdPersonFollow.h"
 #include "Runtime/Object/Components/TransformComponent.h"
-#include "Runtime/Object/Components/VirtualCameraComponent.h"
+#include "Runtime/Object/Components/VirtualCamera.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
@@ -60,22 +60,22 @@ namespace
     // 配置物 1 体の当たり形状を線で描く。Box は回転込み OBB、球とカプセルは実形状、slope は collider 由来の AABB
     void DrawColliderWireframe(NS::Obj::GameObject& object, const NS::Core::Color& color) noexcept
     {
-        if (auto* box = object.FindComponent<NS::Obj::BoxColliderComponent>())
+        if (auto* box = object.FindComponent<NS::Obj::BoxCollider>())
         {
             NS::Gfx::DebugDraw::OBB(box->WorldOBB(), color);
         }
-        else if (auto* sphere = object.FindComponent<NS::Obj::SphereColliderComponent>())
+        else if (auto* sphere = object.FindComponent<NS::Obj::SphereCollider>())
         {
             NS::Gfx::DebugDraw::Sphere(sphere->WorldSphere(), color);
         }
-        else if (auto* capsule = object.FindComponent<NS::Obj::CapsuleColliderComponent>())
+        else if (auto* capsule = object.FindComponent<NS::Obj::CapsuleCollider>())
         {
             NS::Phys::Capsule worldCapsule = capsule->WorldCapsule();
             worldCapsule.axis.Normalize();
             NS::Gfx::DebugDraw::Capsule(
                 worldCapsule.center, worldCapsule.axis * worldCapsule.halfHeight, worldCapsule.radius, color);
         }
-        else if (auto* slope = object.FindComponent<NS::Obj::SlopeColliderComponent>())
+        else if (auto* slope = object.FindComponent<NS::Obj::SlopeCollider>())
         {
             // 斜面は三角の集まりなので、包む箱を出して面の広がりを見せる
             const auto tris = slope->WorldTriangles();
@@ -213,7 +213,7 @@ const NS::Obj::ObjectList& LevelEditorController::Objects() const noexcept
     return m_scene->Objects();
 }
 
-NS::Obj::CameraBrainComponent* LevelEditorController::Brain() const noexcept
+NS::Obj::CameraBrain* LevelEditorController::Brain() const noexcept
 {
     if (m_scene == nullptr)
         return nullptr;
@@ -330,15 +330,15 @@ void LevelEditorController::EnterPlay() noexcept
         // 編集で休止させた自機と入力を起こす。休止させる側は LeavePlayForEdit
         if (auto* movement = player->FindComponent<NS::Game::Player::PlayerComponent>())
             movement->SetActive(true);
-        if (auto* input = player->FindComponent<NS::Obj::PlayerInputComponent>())
+        if (auto* input = player->FindComponent<NS::Obj::PlayerInput>())
             input->SetActive(true);
     }
     // 走行を最初から。手順は出荷と同じ respawner の持ち物
-    m_scene->Objects().ForEachComponent<NS::Game::Level::RespawnerComponent>(
-        [](NS::Game::Level::RespawnerComponent& respawner) { respawner.RestartRun(); });
+    m_scene->Objects().ForEachComponent<NS::Game::Level::Respawner>(
+        [](NS::Game::Level::Respawner& respawner) { respawner.RestartRun(); });
     // 追従カメラも配置物の 1 体。プレイの間だけ有効化する
-    m_scene->Objects().ForEachComponent<NS::Obj::ThirdPersonFollowComponent>(
-        [](NS::Obj::ThirdPersonFollowComponent& follow) { follow.SetActive(true); });
+    m_scene->Objects().ForEachComponent<NS::Obj::ThirdPersonFollow>(
+        [](NS::Obj::ThirdPersonFollow& follow) { follow.SetActive(true); });
     // 編集の自由視点からプレイ視点へ、vcam 切替と同じブレンドで繋ぐ
     if (auto* brain = Brain())
         brain->BeginBlendFrom(m_editorCamera.Pose());
@@ -412,7 +412,7 @@ void LevelEditorController::LeavePlayForEdit()
         // follow と vcam はコンストラクタが休止で作るので、ここで寝かせる行は要らない
         if (auto* movement = player->FindComponent<NS::Game::Player::PlayerComponent>())
             movement->SetActive(false);
-        if (auto* input = player->FindComponent<NS::Obj::PlayerInputComponent>())
+        if (auto* input = player->FindComponent<NS::Obj::PlayerInput>())
             input->SetActive(false);
     }
 
@@ -724,7 +724,7 @@ void LevelEditorController::RefreshGizmoSelectables()
     // 可視メッシュを持つ候補は 1、見えないカメラ等は 0。ギズモは 1 の候補を先に選ぶ
     const auto pushSelectable = [this](NS::Obj::GameObject* object) {
         m_selectablePtrs.push_back(object);
-        const bool hasVisual = object->FindComponent<NS::Obj::MeshRendererComponent>() != nullptr;
+        const bool hasVisual = object->FindComponent<NS::Obj::MeshRenderer>() != nullptr;
         std::uint8_t pickable = std::uint8_t{0};
         if (hasVisual)
             pickable = std::uint8_t{1};
@@ -742,10 +742,10 @@ void LevelEditorController::RefreshGizmoSelectables()
     m_gizmo.SetSelectableObjects(m_selectablePtrs, m_selectablePickable);
 }
 
-NS::Obj::ThirdPersonFollowComponent* LevelEditorController::SelectedFollowCamera() noexcept
+NS::Obj::ThirdPersonFollow* LevelEditorController::SelectedFollowCamera() noexcept
 {
     if (NS::Obj::GameObject* go = SelectedObjectGameObject())
-        return go->FindComponent<NS::Obj::ThirdPersonFollowComponent>();
+        return go->FindComponent<NS::Obj::ThirdPersonFollow>();
     return nullptr;
 }
 
@@ -756,7 +756,7 @@ void LevelEditorController::SyncFollowCameraPoses()
     const auto& objects = m_scene->Objects();
     for (NS::Obj::GameObject* object : objects)
     {
-        auto* follow = object->FindComponent<NS::Obj::ThirdPersonFollowComponent>();
+        auto* follow = object->FindComponent<NS::Obj::ThirdPersonFollow>();
         if (follow == nullptr)
             continue;
         if (m_gizmo.IsDragging() && object->Id() == m_selectedObjectId)
@@ -771,7 +771,7 @@ void LevelEditorController::ApplyFollowCameraGizmoDrag()
     // live component へ書き戻す。Root 位置は初期姿勢由来なので保存対象は component 側になる
     if (!m_gizmo.IsDragging())
         return;
-    NS::Obj::ThirdPersonFollowComponent* follow = SelectedFollowCamera();
+    NS::Obj::ThirdPersonFollow* follow = SelectedFollowCamera();
     if (follow == nullptr)
         return;
     NS::Obj::GameObject* go = SelectedObjectGameObject();
@@ -877,7 +877,7 @@ void LevelEditorController::RenderCameraGizmos(const NS::Core::Matrix& viewProje
     }();
     for (NS::Obj::GameObject* object : objects)
     {
-        auto* vcam = object->FindComponent<NS::Obj::VirtualCameraComponent>();
+        auto* vcam = object->FindComponent<NS::Obj::VirtualCamera>();
         if (vcam == nullptr)
             continue;
         const bool selected = (object->Id() == m_selectedObjectId);
@@ -1079,11 +1079,11 @@ void LevelEditorController::AddObjectWithMesh(std::string_view meshPath)
 
     const NS::Core::Vector3 center = m_editorCamera.Center();
 
-    // 描いた形と当たりをずらさない。MeshColliderComponent が描画と同じ三角形から当たりを作る
+    // 描いた形と当たりをずらさない。MeshCollider が描画と同じ三角形から当たりを作る
     NS::Obj::ObjectData object{};
     object.components =
         nlohmann::json::array({NS::Game::Level::MakeMeshRendererEntry(meshRef, "", NS::Game::Level::k_SolidBaseColor),
-                               NS::Obj::MakeComponentEntry("MeshColliderComponent")});
+                               NS::Obj::MakeComponentEntry("MeshCollider")});
     NS::Obj::SetObjectPosition(object, center);
     object.name = NS::Platform::FileSystem::Stem(meshPath);
 
@@ -1221,7 +1221,7 @@ void LevelEditorController::RemoveComponentFromSelected(std::size_t componentInd
         return;
     // 入力 component を消すと player を操作できなくなる。transform は root なので同様に守る
     const std::string_view typeName = NS::Obj::ComponentEntryType(components[componentIndex]);
-    if (typeName == "PlayerInputComponent" || typeName == "TransformComponent")
+    if (typeName == "PlayerInput" || typeName == "TransformComponent")
         return;
 
     NS::Obj::ObjectData after = *before;
@@ -1246,7 +1246,7 @@ void LevelEditorController::SetComponentEnabledOnSelected(std::size_t componentI
         return;
     // 入力 component を休止させると player が動かなくなる。transform は root なので同様に守る
     const std::string_view typeName = NS::Obj::ComponentEntryType(before->components[componentIndex]);
-    if (typeName == "PlayerInputComponent" || typeName == "TransformComponent")
+    if (typeName == "PlayerInput" || typeName == "TransformComponent")
         return;
 
     NS::Obj::ObjectData after = *before;
@@ -1590,7 +1590,7 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
     if (go == nullptr)
         return false;
 
-    auto* mesh = go->FindComponent<NS::Obj::MeshRendererComponent>();
+    auto* mesh = go->FindComponent<NS::Obj::MeshRenderer>();
     if (mesh == nullptr)
         return false;
 

@@ -110,7 +110,7 @@ TEST(SceneRotationDrift, SaveWritesRotationAsQuaternionOnly)
     ASSERT_TRUE(SceneNs::DeserializeSceneFromJson(reloaded, json));
     ASSERT_EQ(reloaded.objects.size(), 1u);
 
-    // BoxColliderComponent も「回転 (度)」を持つので、保存文字列全体でなく transform の項目だけを見る
+    // BoxCollider も「回転 (度)」を持つので、保存文字列全体でなく transform の項目だけを見る
     const nlohmann::json* reloadedTransform = SceneNs::FindComponentEntry(reloaded.objects[0], "TransformComponent");
     ASSERT_NE(reloadedTransform, nullptr);
     EXPECT_TRUE(SceneNs::HasField(*reloadedTransform, "回転"));

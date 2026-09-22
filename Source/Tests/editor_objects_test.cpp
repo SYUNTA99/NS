@@ -1,6 +1,6 @@
 #include "Editor/EditorObjects.h"
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Object/Components/MeshRendererComponent.h"
+#include "Runtime/Object/Components/MeshRenderer.h"
 #include "Runtime/Object/GameObject.h"
 
 #include <gtest/gtest.h>
@@ -27,6 +27,6 @@ TEST(EditorPickBounds, ObjectWithoutADrawnMeshIsPickedByTheUnitCell)
     ExpectSameBounds(NS::Editor::PickLocalBounds(camera), unitCell);
 
     NS::Obj::GameObject unresolved;
-    unresolved.AddComponent<NS::Obj::MeshRendererComponent>();
+    unresolved.AddComponent<NS::Obj::MeshRenderer>();
     ExpectSameBounds(NS::Editor::PickLocalBounds(unresolved), unitCell);
 }
