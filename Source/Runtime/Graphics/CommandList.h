@@ -9,14 +9,12 @@ namespace NS::Gfx
 {
     class Buffer;
     class Texture;
-    class TextureArray;
     class Shader;
     class Pipeline;
     enum class Topology;
 
-    //! @brief グラフィックスAPIのデバイスコンテキストを包んだラッパークラス
-    //! @details リソースの設定、画面のクリア、描画の発行といった基本操作を集約する
-    //! Renderer が 1 つだけ所有し、外部はそれを経由して使う
+    //! @brief ID3D11DeviceContext を包むラッパー
+    //! @details Renderer が 1 つだけ所有し、外は Renderer::Commands から借りて使う
     //! 変換や一括設定が要る処理だけをラップし、その他は operator-> で元の API を直接呼ぶ
     class CommandList : public NS::Core::NonCopyable
     {
@@ -72,40 +70,32 @@ namespace NS::Gfx
 
         //! @name 頂点シェーダー (VS)
         //!@{
-        //! 頂点シェーダーを設定
         void VSSetShader(const Shader& shader) noexcept;
         void VSSetShaderResource(const Texture& texture, unsigned slot) noexcept;
-        void VSSetShaderResource(const TextureArray& textureArray, unsigned slot) noexcept;
         void VSSetSampler(ID3D11SamplerState* sampler, unsigned slot) noexcept;
         void VSSetConstantBuffer(const Buffer& buffer, unsigned slot) noexcept;
         //!@}
 
         //! @name ピクセルシェーダー (PS)
         //!@{
-        //! ピクセルシェーダーを設定
         void PSSetShader(const Shader& shader) noexcept;
         void PSSetShaderResource(const Texture& texture, unsigned slot) noexcept;
-        void PSSetShaderResource(const TextureArray& textureArray, unsigned slot) noexcept;
         void PSSetSampler(ID3D11SamplerState* sampler, unsigned slot) noexcept;
         void PSSetConstantBuffer(const Buffer& buffer, unsigned slot) noexcept;
         //!@}
 
         //! @name ジオメトリシェーダー (GS)
         //!@{
-        //! ジオメトリシェーダーを設定
         void GSSetShader(const Shader& shader) noexcept;
         void GSSetShaderResource(const Texture& texture, unsigned slot) noexcept;
-        void GSSetShaderResource(const TextureArray& textureArray, unsigned slot) noexcept;
         void GSSetSampler(ID3D11SamplerState* sampler, unsigned slot) noexcept;
         void GSSetConstantBuffer(const Buffer& buffer, unsigned slot) noexcept;
         //!@}
 
         //! @name コンピュートシェーダー (CS)
         //!@{
-        //! コンピュートシェーダーを設定
         void CSSetShader(const Shader& shader) noexcept;
         void CSSetShaderResource(const Texture& texture, unsigned slot) noexcept;
-        void CSSetShaderResource(const TextureArray& textureArray, unsigned slot) noexcept;
         void CSSetSampler(ID3D11SamplerState* sampler, unsigned slot) noexcept;
         void CSSetConstantBuffer(const Buffer& buffer, unsigned slot) noexcept;
         //!@}
@@ -115,9 +105,9 @@ namespace NS::Gfx
         //--------------------------------------------------------
         //!@{
 
-        //! DrawIndexed による index 付き描画
+        //! インデックス付きの描画
         void DrawIndexed(unsigned indexCount) noexcept;
-        //! Draw による index 無し描画。line list 等 index を持たない蓄積描画に使う
+        //! インデックスを使わない描画。線分の並びなどインデックスを持たない形に使う
         void Draw(unsigned vertexCount) noexcept;
 
         //!@}
@@ -126,7 +116,7 @@ namespace NS::Gfx
         //--------------------------------------------------------
         //!@{
 
-        //! 借用している非所有の ID3D11DeviceContext。継ぎ目で生 DX11 を扱う場合に使う
+        //! 非所有の ID3D11DeviceContext。継ぎ目で生の DX11 を扱う時に使う
         [[nodiscard]] ID3D11DeviceContext* Native() const noexcept;
         //! cmd->IASetInputLayout(...) 等、ラップしていない DX11 呼び出しを生 context へそのまま流す
         //! @note context 無効時は nullptr を返すため呼び出し側で有効性を確認すること

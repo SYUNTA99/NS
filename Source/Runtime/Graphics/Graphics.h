@@ -1,10 +1,9 @@
-#pragma once
+﻿#pragma once
 
 // Graphics 層の公開ヘッダをまとめて取り込む umbrella
 
 #include "Runtime/Graphics/Animation.h"
 #include "Runtime/Graphics/Buffer.h"
-#include "Runtime/Graphics/Camera.h"
 #include "Runtime/Graphics/CommandList.h"
 #include "Runtime/Graphics/CommonStates.h"
 #include "Runtime/Graphics/D3dCommon.h"
@@ -25,4 +24,3 @@
 #include "Runtime/Graphics/Skybox.h"
 #include "Runtime/Graphics/StaticMesh.h"
 #include "Runtime/Graphics/Texture.h"
-#include "Runtime/Graphics/TextureArray.h"

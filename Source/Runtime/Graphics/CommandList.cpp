@@ -7,7 +7,6 @@
 #include "Runtime/Graphics/Pipeline.h"
 #include "Runtime/Graphics/Shader.h"
 #include "Runtime/Graphics/Texture.h"
-#include "Runtime/Graphics/TextureArray.h"
 
 namespace NS::Gfx
 {
@@ -268,17 +267,6 @@ namespace NS::Gfx
         m_context->VSSetShaderResources(slot, 1u, srvs);
     }
 
-    void CommandList::VSSetShaderResource(const TextureArray& textureArray, unsigned slot) noexcept
-    {
-        ID3D11ShaderResourceView* srv = textureArray.Srv();
-        if (m_context == nullptr || srv == nullptr)
-        {
-            return;
-        }
-        ID3D11ShaderResourceView* srvs[1] = {srv};
-        m_context->VSSetShaderResources(slot, 1u, srvs);
-    }
-
     // サンプラーは NS にラッパ型が無いため生の ID3D11SamplerState* をそのまま受ける
     void CommandList::VSSetSampler(ID3D11SamplerState* sampler, unsigned slot) noexcept
     {
@@ -323,17 +311,6 @@ namespace NS::Gfx
     void CommandList::PSSetShaderResource(const Texture& texture, unsigned slot) noexcept
     {
         ID3D11ShaderResourceView* srv = texture.Srv();
-        if (m_context == nullptr || srv == nullptr)
-        {
-            return;
-        }
-        ID3D11ShaderResourceView* srvs[1] = {srv};
-        m_context->PSSetShaderResources(slot, 1u, srvs);
-    }
-
-    void CommandList::PSSetShaderResource(const TextureArray& textureArray, unsigned slot) noexcept
-    {
-        ID3D11ShaderResourceView* srv = textureArray.Srv();
         if (m_context == nullptr || srv == nullptr)
         {
             return;
@@ -393,17 +370,6 @@ namespace NS::Gfx
         m_context->GSSetShaderResources(slot, 1u, srvs);
     }
 
-    void CommandList::GSSetShaderResource(const TextureArray& textureArray, unsigned slot) noexcept
-    {
-        ID3D11ShaderResourceView* srv = textureArray.Srv();
-        if (m_context == nullptr || srv == nullptr)
-        {
-            return;
-        }
-        ID3D11ShaderResourceView* srvs[1] = {srv};
-        m_context->GSSetShaderResources(slot, 1u, srvs);
-    }
-
     void CommandList::GSSetSampler(ID3D11SamplerState* sampler, unsigned slot) noexcept
     {
         if (m_context == nullptr || sampler == nullptr)
@@ -449,17 +415,6 @@ namespace NS::Gfx
     void CommandList::CSSetShaderResource(const Texture& texture, unsigned slot) noexcept
     {
         ID3D11ShaderResourceView* srv = texture.Srv();
-        if (m_context == nullptr || srv == nullptr)
-        {
-            return;
-        }
-        ID3D11ShaderResourceView* srvs[1] = {srv};
-        m_context->CSSetShaderResources(slot, 1u, srvs);
-    }
-
-    void CommandList::CSSetShaderResource(const TextureArray& textureArray, unsigned slot) noexcept
-    {
-        ID3D11ShaderResourceView* srv = textureArray.Srv();
         if (m_context == nullptr || srv == nullptr)
         {
             return;
