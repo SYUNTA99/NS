@@ -30,7 +30,7 @@ namespace NS::Object
     //! ライフサイクル:
     //!   - OnStart() — Scene attach 直後に 1 回
     //!   - OnUpdate() — fixed step 内で毎回。IsActive()==false なら skip する
-    //!     dt は NS::Core::FrameTimer::FixedDelta() で取得する。全て static なので Application 不要
+    //!     dt は NS::Platform::FrameTimer::FixedDelta() で取得する。全て static なので Application 不要
     //!   - OnEndPlay() — Scene 破棄 / Component 廃棄前に 1 回
     class Component : public Object
     {

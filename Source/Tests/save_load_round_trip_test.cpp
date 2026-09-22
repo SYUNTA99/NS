@@ -6,7 +6,7 @@
 #include "Game/Level/ImpactResolverComponent.h"
 #include "Game/Level/KillZoneComponent.h"
 #include "Game/Player.h"
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
 #include "Runtime/Object/Components/TransformComponent.h"
 #include "Runtime/Object/GameObject.h"
@@ -194,8 +194,8 @@ TEST(SaveLoadRoundTrip, TwoSavesAreByteIdentical)
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path1));
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path2));
 
-    auto b1 = NS::Core::FileSystem::ReadAllBytes(*path1);
-    auto b2 = NS::Core::FileSystem::ReadAllBytes(*path2);
+    auto b1 = NS::Platform::FileSystem::ReadAllBytes(*path1);
+    auto b2 = NS::Platform::FileSystem::ReadAllBytes(*path2);
     ASSERT_TRUE(b1.has_value());
     ASSERT_TRUE(b2.has_value());
     ASSERT_EQ(b1->size(), b2->size());
@@ -211,12 +211,12 @@ TEST(SaveLoadRoundTrip, LoadCorruptedFileFallsBackToEmpty)
     src.objects.push_back(LevelNs::MakeCellObject(0, 0, 0));
     ASSERT_TRUE(SceneNs::SaveSceneToJsonFile(src, *path));
 
-    auto bytes = NS::Core::FileSystem::ReadAllBytes(*path);
+    auto bytes = NS::Platform::FileSystem::ReadAllBytes(*path);
     ASSERT_TRUE(bytes.has_value());
     ASSERT_GE(bytes->size(), 1u);
     // 先頭の '{' を壊すと JSON parse が失敗し、load は false + 空 SceneData を返す
     (*bytes)[0] = std::byte{'X'};
-    ASSERT_TRUE(NS::Core::FileSystem::WriteAllBytes(*path, std::span<const std::byte>(*bytes)));
+    ASSERT_TRUE(NS::Platform::FileSystem::WriteAllBytes(*path, std::span<const std::byte>(*bytes)));
 
     SceneNs::SceneData dst;
     EXPECT_FALSE(SceneNs::LoadSceneFromJsonFile(dst, *path));

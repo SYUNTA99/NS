@@ -1,6 +1,6 @@
 ﻿#include "Editor/LevelFilePaths.h"
 
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/Logger.h"
 
 #include <algorithm>
@@ -80,7 +80,7 @@ namespace NS::Editor
 
     std::string GetScenesDirectory() noexcept
     {
-        return NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets/Scenes");
+        return NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets/Scenes");
     }
 
     std::string QualifyLevelPath(std::string_view sanitizedPath) noexcept
@@ -95,17 +95,17 @@ namespace NS::Editor
         const auto safe = SanitizeLevelPath(name);
         if (safe.empty())
             return std::nullopt;
-        return NS::Core::FileSystem::ResolveUnder(
-            NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"),
+        return NS::Platform::FileSystem::ResolveUnder(
+            NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"),
             QualifyLevelPath(safe) + ".scene");
     }
 
     bool EnsureScenesDirectoryExists() noexcept
     {
         const auto dir = GetScenesDirectory();
-        if (NS::Core::FileSystem::Exists(dir))
+        if (NS::Platform::FileSystem::Exists(dir))
             return true;
-        if (!NS::Core::FileSystem::CreateDirectories(dir))
+        if (!NS::Platform::FileSystem::CreateDirectories(dir))
         {
             NS_LOG_ERROR(App, "Scenes/ ディレクトリ作成失敗");
             return false;
@@ -116,15 +116,15 @@ namespace NS::Editor
     std::vector<std::string> EnumerateLevelFiles() noexcept
     {
         std::vector<std::string> result;
-        const std::string assetsDir = NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets");
-        if (!NS::Core::FileSystem::Exists(assetsDir))
+        const std::string assetsDir = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets");
+        if (!NS::Platform::FileSystem::Exists(assetsDir))
             return result;
 
-        for (const std::string& path : NS::Core::FileSystem::ListFilesRecursive(assetsDir, ".scene"))
+        for (const std::string& path : NS::Platform::FileSystem::ListFilesRecursive(assetsDir, ".scene"))
         {
             // ListFilesRecursive は assetsDir を Combine で頭に付けて返すので、先頭 + 区切り 1 文字を削ると相対になる
             std::string relStr = path.substr(assetsDir.size() + 1);
-            const std::string extension = NS::Core::FileSystem::Extension(relStr);
+            const std::string extension = NS::Platform::FileSystem::Extension(relStr);
             relStr.resize(relStr.size() - extension.size());
             if (!SanitizeLevelPath(relStr).empty())
             {

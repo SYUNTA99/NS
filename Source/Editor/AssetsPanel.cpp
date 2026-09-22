@@ -3,7 +3,7 @@
 #include "Editor/DragTypes.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 
 #include <string>
 
@@ -48,7 +48,7 @@ namespace NS::Editor
                 ImGui::Separator();
             }
 
-            RenderTree(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), editor);
+            RenderTree(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), editor);
         }
         ImGui::End();
 #else
@@ -62,9 +62,9 @@ namespace NS::Editor
         const bool hasSelection = editor.HasGizmoSelection();
 
         // 開いた時だけ中身を走査する
-        for (const std::string& sub : NS::Core::FileSystem::ListDirectories(dir))
+        for (const std::string& sub : NS::Platform::FileSystem::ListDirectories(dir))
         {
-            const std::string label = NS::Core::FileSystem::FileName(sub);
+            const std::string label = NS::Platform::FileSystem::FileName(sub);
             if (ImGui::TreeNode(label.c_str()))
             {
                 RenderTree(sub, editor);
@@ -72,10 +72,10 @@ namespace NS::Editor
             }
         }
 
-        for (const std::string& file : NS::Core::FileSystem::ListFiles(dir))
+        for (const std::string& file : NS::Platform::FileSystem::ListFiles(dir))
         {
-            const std::string name = NS::Core::FileSystem::FileName(file);
-            const std::string extension = NS::Core::FileSystem::Extension(file);
+            const std::string name = NS::Platform::FileSystem::FileName(file);
+            const std::string extension = NS::Platform::FileSystem::Extension(file);
 
             if (extension == ".gltf" || extension == ".glb")
             {

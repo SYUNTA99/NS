@@ -1,6 +1,6 @@
 ﻿#include "Runtime/Graphics/Shader.h"
 
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/StringUtils.h"
@@ -37,7 +37,7 @@ namespace NS::Graphics
         // 該当するステージが無ければ nullptr
         [[nodiscard]] const ShaderTypeInfo* DetectStage(std::string_view path) noexcept
         {
-            const std::string name = NS::Core::FileSystem::FileName(path);
+            const std::string name = NS::Platform::FileSystem::FileName(path);
             for (const ShaderTypeInfo& info : k_StageTable)
             {
                 if (name.find(info.infix) != std::string::npos)
@@ -132,7 +132,7 @@ namespace NS::Graphics
             {
                 return nullptr;
             }
-            if (!::NS::Core::FileSystem::Exists(path))
+            if (!::NS::Platform::FileSystem::Exists(path))
             {
                 NS_LOG_ERROR(Graphics, "Shader file not found: {}", path);
                 return nullptr;

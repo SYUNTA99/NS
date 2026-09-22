@@ -1,7 +1,7 @@
 ﻿#include "Runtime/Graphics/DebugDraw.h"
 
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/OBB.h"
@@ -68,9 +68,9 @@ namespace
             return false;
         }
 
-        const std::string shaderDir = ::NS::Core::FileSystem::Combine(::NS::Core::FileSystem::ContentRoot(), "Shaders");
-        b.vs = NS::Graphics::Shader::Create(::NS::Core::FileSystem::Combine(shaderDir, "debug_line.vs.hlsl"));
-        b.ps = NS::Graphics::Shader::Create(::NS::Core::FileSystem::Combine(shaderDir, "debug_line.ps.hlsl"));
+        const std::string shaderDir = ::NS::Platform::FileSystem::Combine(::NS::Platform::FileSystem::ContentRoot(), "Shaders");
+        b.vs = NS::Graphics::Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "debug_line.vs.hlsl"));
+        b.ps = NS::Graphics::Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "debug_line.ps.hlsl"));
         if (!b.vs->IsValid() || !b.ps->IsValid())
         {
             NS_LOG_ERROR(Graphics, "DebugDraw: shader 構築失敗");

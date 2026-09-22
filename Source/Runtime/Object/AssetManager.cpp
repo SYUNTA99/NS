@@ -1,6 +1,6 @@
 #include "Runtime/Object/AssetManager.h"
 
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
@@ -33,7 +33,7 @@ namespace NS::Object
     std::optional<std::string> ResolveContentPath(const std::string& relative)
     {
         // ディレクトリトラバーサルの防止は ResolveUnder が持つ
-        return NS::Core::FileSystem::ResolveUnder(NS::Core::FileSystem::ContentRoot(), relative);
+        return NS::Platform::FileSystem::ResolveUnder(NS::Platform::FileSystem::ContentRoot(), relative);
     }
 
     NS::Graphics::Mesh* ResolveMeshFromRef(AssetManager& assets, const std::string& meshRef)
@@ -225,7 +225,7 @@ namespace NS::Object
     NS::Graphics::Shader* AssetManager::GetOrLoadShader(std::string_view path)
     {
         // 区切り文字や . / .. の表記揺れで同一ファイルが別キー扱いにならないよう正規化してから重複をまとめる
-        const std::string key = NS::Core::FileSystem::Normalize(path);
+        const std::string key = NS::Platform::FileSystem::Normalize(path);
         if (const auto it = m_shaders.find(key); it != m_shaders.end())
         {
             return it->second.get();
@@ -243,7 +243,7 @@ namespace NS::Object
 
     NS::Graphics::Texture* AssetManager::GetOrLoadTexture(std::string_view path)
     {
-        const std::string key = NS::Core::FileSystem::Normalize(path);
+        const std::string key = NS::Platform::FileSystem::Normalize(path);
         if (const auto it = m_textures.find(key); it != m_textures.end())
         {
             return it->second.get();
@@ -260,7 +260,7 @@ namespace NS::Object
 
     AssetManager::MeshRecord& AssetManager::LoadMeshRecord(std::string_view path)
     {
-        const std::string key = NS::Core::FileSystem::Normalize(path);
+        const std::string key = NS::Platform::FileSystem::Normalize(path);
         if (const auto it = m_meshes.find(key); it != m_meshes.end())
         {
             return it->second;
@@ -338,7 +338,7 @@ namespace NS::Object
 
     LoadedSkinnedModel AssetManager::GetOrLoadSkinnedModel(std::string_view path)
     {
-        const std::string key = NS::Core::FileSystem::Normalize(path);
+        const std::string key = NS::Platform::FileSystem::Normalize(path);
         auto it = m_skinnedModels.find(key);
         if (it == m_skinnedModels.end())
         {
@@ -389,7 +389,7 @@ namespace NS::Object
 
     const NS::Graphics::AnimationSource* AssetManager::GetOrLoadAnimationSource(std::string_view path)
     {
-        const std::string key = NS::Core::FileSystem::Normalize(path);
+        const std::string key = NS::Platform::FileSystem::Normalize(path);
         // null エントリは負キャッシュした失敗 path を表す。get() が nullptr を返し再読込を短絡する
         if (const auto it = m_animationSources.find(key); it != m_animationSources.end())
         {
@@ -414,8 +414,8 @@ namespace NS::Object
     const std::vector<NS::Graphics::AnimationClip>* AssetManager::GetOrLoadBoundClips(std::string_view clipPath,
                                                                                       std::string_view modelPath)
     {
-        const std::pair<std::string, std::string> key{NS::Core::FileSystem::Normalize(clipPath),
-                                                      NS::Core::FileSystem::Normalize(modelPath)};
+        const std::pair<std::string, std::string> key{NS::Platform::FileSystem::Normalize(clipPath),
+                                                      NS::Platform::FileSystem::Normalize(modelPath)};
         if (const auto it = m_boundClips.find(key); it != m_boundClips.end())
         {
             return it->second.get();
@@ -465,14 +465,14 @@ namespace NS::Object
 
     LoadedMaterial AssetManager::LoadMaterial(std::string_view matPath)
     {
-        const std::string matKey = NS::Core::FileSystem::Normalize(matPath);
+        const std::string matKey = NS::Platform::FileSystem::Normalize(matPath);
         if (const auto it = m_materials.find(matKey); it != m_materials.end())
         {
             return LoadedMaterial{it->second.material.get(), it->second.baseColor};
         }
 
         // .mat を読む
-        const auto textOpt = NS::Core::FileSystem::ReadAllText(matKey);
+        const auto textOpt = NS::Platform::FileSystem::ReadAllText(matKey);
         if (!textOpt)
         {
             NS_LOG_ERROR(Graphics, "AssetManager: .mat 読込失敗: {}", matKey);
@@ -489,7 +489,7 @@ namespace NS::Object
         }
 
         // 相対 path は構築時の baseDir 基準で解決する。絶対 / ドライブ相対は Combine が baseDir を捨てて通す
-        const auto resolve = [this](std::string_view p) { return NS::Core::FileSystem::Combine(m_baseDir, p); };
+        const auto resolve = [this](std::string_view p) { return NS::Platform::FileSystem::Combine(m_baseDir, p); };
 
         NS::Graphics::Shader* vertexShader = GetOrLoadShader(resolve(fileDesc.vertexShader));
         NS::Graphics::Shader* pixelShader = GetOrLoadShader(resolve(fileDesc.pixelShader));
@@ -522,12 +522,12 @@ namespace NS::Object
     void AssetManager::RegisterSharedMaterials()
     {
         const auto shaderPath = [this](const char* name) {
-            return NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(m_baseDir, "Shaders"), name);
+            return NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(m_baseDir, "Shaders"), name);
         };
         NS::Graphics::Shader* standardVS = GetOrLoadShader(shaderPath("standard.vs.hlsl"));
         NS::Graphics::Shader* playerPS = GetOrLoadShader(shaderPath("player.ps.hlsl"));
-        NS::Graphics::Texture* baseTexture = GetOrLoadTexture(NS::Core::FileSystem::Combine(
-            NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(m_baseDir, "Assets"), "Textures"),
+        NS::Graphics::Texture* baseTexture = GetOrLoadTexture(NS::Platform::FileSystem::Combine(
+            NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(m_baseDir, "Assets"), "Textures"),
             "cube_test.png"));
 
         // CB は slot 0 で MeshRendererComponent が流す FrameCB に合わせる
@@ -573,7 +573,7 @@ namespace NS::Object
 
     bool AssetManager::Reload(std::string_view path)
     {
-        const std::string key = NS::Core::FileSystem::Normalize(path);
+        const std::string key = NS::Platform::FileSystem::Normalize(path);
         if (const auto it = m_shaders.find(key); it != m_shaders.end())
         {
             return it->second->Reload();

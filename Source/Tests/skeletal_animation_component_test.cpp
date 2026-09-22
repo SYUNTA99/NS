@@ -1,5 +1,5 @@
-#include <Runtime/Core/Clock.h>
-#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Platform/Clock.h>
+#include <Runtime/Platform/Filesystem.h>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Graphics/Animation.h>
@@ -80,7 +80,7 @@ TEST(SkeletalAnimationComponentTest, OnUpdateAdvancesTimeByFixedDelta)
     SkeletalAnimationComponent comp;
     comp.AddClips(clips);
     comp.OnUpdate();
-    EXPECT_NEAR(comp.Time(), NS::Core::FrameTimer::FixedDelta(), 1e-5f);
+    EXPECT_NEAR(comp.Time(), NS::Platform::FrameTimer::FixedDelta(), 1e-5f);
 }
 
 TEST(SkeletalAnimationComponentTest, PauseHoldsTime)
@@ -103,7 +103,7 @@ TEST(SkeletalAnimationComponentTest, SetSpeedScalesAdvance)
     comp.AddClips(clips);
     comp.SetSpeed(3.0f);
     comp.OnUpdate();
-    EXPECT_NEAR(comp.Time(), 3.0f * NS::Core::FrameTimer::FixedDelta(), 1e-5f);
+    EXPECT_NEAR(comp.Time(), 3.0f * NS::Platform::FrameTimer::FixedDelta(), 1e-5f);
 }
 
 TEST(SkeletalAnimationComponentTest, NegativeSpeedClampsToZero)
@@ -124,7 +124,7 @@ TEST(SkeletalAnimationComponentTest, InfiniteSpeedKeepsThePreviousValue)
     comp.SetSpeed(2.0f);
     comp.SetSpeed(std::numeric_limits<float>::infinity());
     comp.OnUpdate();
-    EXPECT_NEAR(comp.Time(), 2.0f * NS::Core::FrameTimer::FixedDelta(), 1e-5f);
+    EXPECT_NEAR(comp.Time(), 2.0f * NS::Platform::FrameTimer::FixedDelta(), 1e-5f);
 }
 
 TEST(SkeletalAnimationComponentTest, NotANumberSpeedKeepsThePreviousValue)
@@ -135,7 +135,7 @@ TEST(SkeletalAnimationComponentTest, NotANumberSpeedKeepsThePreviousValue)
     comp.SetSpeed(2.0f);
     comp.SetSpeed(std::numeric_limits<float>::quiet_NaN());
     comp.OnUpdate();
-    EXPECT_NEAR(comp.Time(), 2.0f * NS::Core::FrameTimer::FixedDelta(), 1e-5f);
+    EXPECT_NEAR(comp.Time(), 2.0f * NS::Platform::FrameTimer::FixedDelta(), 1e-5f);
 }
 
 TEST(SkeletalAnimationComponentTest, StopResetsTime)
@@ -280,7 +280,7 @@ TEST_F(SkeletalAnimationMeshTest, DrivesMeshPaletteWithoutCrash)
 
 TEST_F(SkeletalAnimationMeshTest, ResolveAssetsDoesNothingWhenModelRefEmpty)
 {
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     SkeletalAnimationComponent comp;
     comp.ResolveAssets(am);
     EXPECT_EQ(comp.ClipCount(), 0u);
@@ -288,7 +288,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsDoesNothingWhenModelRefEmpty)
 
 TEST_F(SkeletalAnimationMeshTest, ResolveAssetsDoesNothingWhenModelRefEscapesContentRoot)
 {
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     SkeletalAnimationComponent comp;
     comp.SetModelRef("../outside_content_root.glb");
     comp.ResolveAssets(am);
@@ -297,7 +297,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsDoesNothingWhenModelRefEscapesCon
 
 TEST_F(SkeletalAnimationMeshTest, ResolveAssetsDoesNothingWhenModelFileMissing)
 {
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     GameObject obj;
     auto& renderer = *obj.AddComponent<MeshRendererComponent>();
     auto& comp = *obj.AddComponent<SkeletalAnimationComponent>();
@@ -310,8 +310,8 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsDoesNothingWhenModelFileMissing)
 
 TEST_F(SkeletalAnimationMeshTest, ResolveAssetsWiresRealSkinnedModelAndSiblingMesh)
 {
-    const std::string modelPath = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
-    if (!NS::Core::FileSystem::Exists(modelPath))
+    const std::string modelPath = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
+    if (!NS::Platform::FileSystem::Exists(modelPath))
         GTEST_SKIP() << "CesiumMan.glb が無い: " << modelPath;
 
     NS::Platform::WindowDesc wd{};
@@ -328,7 +328,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsWiresRealSkinnedModelAndSiblingMe
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     GameObject obj;
     auto& meshComp = *obj.AddComponent<MeshRendererComponent>();
@@ -353,8 +353,8 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsWiresRealSkinnedModelAndSiblingMe
 // Clips 欄の自己結合で model 由来クリップが倍加し、結合後の boneIndex が骨数に収まるのを確かめる
 TEST_F(SkeletalAnimationMeshTest, ResolveAssetsAddsClipsFromClipsRef)
 {
-    const std::string modelPath = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
-    if (!NS::Core::FileSystem::Exists(modelPath))
+    const std::string modelPath = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
+    if (!NS::Platform::FileSystem::Exists(modelPath))
         GTEST_SKIP() << "CesiumMan.glb が無い: " << modelPath;
 
     NS::Platform::WindowDesc wd{};
@@ -371,7 +371,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsAddsClipsFromClipsRef)
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     GameObject obj;
     auto& anim = *obj.AddComponent<SkeletalAnimationComponent>();
@@ -401,8 +401,8 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsAddsClipsFromClipsRef)
 // 解決できないエントリが混ざっても他のエントリを巻き込まない
 TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSkipsBadClipEntriesIndependently)
 {
-    const std::string modelPath = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
-    if (!NS::Core::FileSystem::Exists(modelPath))
+    const std::string modelPath = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
+    if (!NS::Platform::FileSystem::Exists(modelPath))
         GTEST_SKIP() << "CesiumMan.glb が無い: " << modelPath;
 
     NS::Platform::WindowDesc wd{};
@@ -419,7 +419,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSkipsBadClipEntriesIndependently)
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     GameObject obj;
     auto& anim = *obj.AddComponent<SkeletalAnimationComponent>();
@@ -437,8 +437,8 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSkipsBadClipEntriesIndependently)
 // 同じ clip と model の組は結合済コピーをインスタンス間で共有する
 TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSharesBoundClipsBetweenInstances)
 {
-    const std::string modelPath = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
-    if (!NS::Core::FileSystem::Exists(modelPath))
+    const std::string modelPath = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
+    if (!NS::Platform::FileSystem::Exists(modelPath))
         GTEST_SKIP() << "CesiumMan.glb が無い: " << modelPath;
 
     NS::Platform::WindowDesc wd{};
@@ -455,7 +455,7 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSharesBoundClipsBetweenInstances)
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     GameObject objA;
     auto& animA = *objA.AddComponent<SkeletalAnimationComponent>();
@@ -480,8 +480,8 @@ TEST_F(SkeletalAnimationMeshTest, ResolveAssetsSharesBoundClipsBetweenInstances)
 // 組立の全経路で cube 既定を skinned mesh が上書きする並び (MeshRenderer が先・こちらが後) を固定する
 TEST_F(SkeletalAnimationMeshTest, BuildSceneObjectOverridesMeshRendererWithSkinnedMesh)
 {
-    const std::string modelPath = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
-    if (!NS::Core::FileSystem::Exists(modelPath))
+    const std::string modelPath = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Models"), "CesiumMan.glb");
+    if (!NS::Platform::FileSystem::Exists(modelPath))
         GTEST_SKIP() << "CesiumMan.glb が無い: " << modelPath;
 
     NS::Platform::WindowDesc wd{};
@@ -498,7 +498,7 @@ TEST_F(SkeletalAnimationMeshTest, BuildSceneObjectOverridesMeshRendererWithSkinn
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     am.RegisterBuiltins();
 
     ObjectData data;

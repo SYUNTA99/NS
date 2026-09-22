@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Runtime/Core/FileSystem.h>
 #include <Runtime/Core/Math.h>
+#include <Runtime/Platform/Filesystem.h>
 
 #include <algorithm>
 #include <bit>
@@ -218,8 +218,8 @@ namespace NS::Tests
     //! @return ContentRoot 下の Source/Tests/data/golden へ name.txt を足したパス
     [[nodiscard]] inline std::string BaselinePath(const std::string& name)
     {
-        return NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(),
-                                             "Source/Tests/data/golden/" + name + ".txt");
+        return NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(),
+                                                 "Source/Tests/data/golden/" + name + ".txt");
     }
 
     //! @brief 基準ファイルを読む
@@ -227,7 +227,7 @@ namespace NS::Tests
     //! @return 記録の並び。ファイルが無いか本文が読めなければ std::nullopt
     [[nodiscard]] inline std::optional<std::vector<StepRecord>> LoadBaseline(const std::string& name)
     {
-        const std::optional<std::string> text = NS::Core::FileSystem::ReadAllText(BaselinePath(name));
+        const std::optional<std::string> text = NS::Platform::FileSystem::ReadAllText(BaselinePath(name));
         if (!text.has_value())
             return std::nullopt;
 
@@ -253,6 +253,6 @@ namespace NS::Tests
     {
         const std::string text = FormatTrace(trace);
         const std::span<const char> chars{text.data(), text.size()};
-        return NS::Core::FileSystem::WriteAllBytes(BaselinePath(name), std::as_bytes(chars));
+        return NS::Platform::FileSystem::WriteAllBytes(BaselinePath(name), std::as_bytes(chars));
     }
 } // namespace NS::Tests

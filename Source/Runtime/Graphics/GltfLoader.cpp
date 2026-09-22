@@ -1,11 +1,11 @@
 ﻿#include "Runtime/Graphics/GltfLoader.h"
 
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Core/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Animation.h"
 #include "Runtime/Graphics/detail/GltfSkinHelpers.h"
+#include "Runtime/Platform/Filesystem.h"
 
 #include <algorithm>
 
@@ -316,11 +316,11 @@ namespace NS::Graphics
     {
         MeshGeometry geom;
 
-        // .gltf / .glb はここで読んでメモリで渡す。ファイルの読み込みは Core の FileSystem を通す決まり
+        // .gltf / .glb はここで読んでメモリで渡す。ファイルの読み込みは Platform の FileSystem を通す決まり
         // TODO: 外部 .bin の buffer は cgltf_load_buffers が cgltf 内部の fopen で読む
         // LoadGltfSkinnedMesh と LoadGltfAnimationSource も同じ。options.file.read を FileSystem 経由に
         // 差し替えれば全部の読み込みが FileSystem を通る。release は read の確保の仕方に合わせる
-        const std::optional<std::vector<std::byte>> bytes = NS::Core::FileSystem::ReadAllBytes(path);
+        const std::optional<std::vector<std::byte>> bytes = NS::Platform::FileSystem::ReadAllBytes(path);
         if (!bytes)
         {
             return geom; // ReadAllBytes 内で NS_LOG_ERROR 済
@@ -415,15 +415,16 @@ namespace NS::Graphics
             {
                 if (node.has_translation)
                 {
-                    pose.translation = NS::Core::Vector3{ node.translation[0], node.translation[1], node.translation[2] };
+                    pose.translation = NS::Core::Vector3{node.translation[0], node.translation[1], node.translation[2]};
                 }
                 if (node.has_rotation)
                 {
-                    pose.rotation = NS::Core::Quaternion{ node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3] };
+                    pose.rotation =
+                        NS::Core::Quaternion{node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]};
                 }
                 if (node.has_scale)
                 {
-                    pose.scale = NS::Core::Vector3{ node.scale[0], node.scale[1], node.scale[2] };
+                    pose.scale = NS::Core::Vector3{node.scale[0], node.scale[1], node.scale[2]};
                 }
                 pose.translation = detail::MirrorZ(pose.translation);
                 pose.rotation = detail::MirrorQuaternionZ(pose.rotation);
@@ -471,7 +472,7 @@ namespace NS::Graphics
                 const cgltf_node* parentNode = nullptr;
                 if (jointNode != nullptr)
                 {
-					parentNode = jointNode->parent;
+                    parentNode = jointNode->parent;
                 }
                 bone.parentIndex = FindJointIndex(skin, parentNode);
                 float ibm[16] = {};
@@ -541,7 +542,8 @@ namespace NS::Graphics
             std::vector<std::array<float, 3>> computedNormals;
             if (normalAcc == nullptr)
             {
-                NS_LOG_WARN(Graphics, "LoadGltfSkinnedMesh: NORMAL が無いため面法線から smooth normal を生成 (path={})", path);
+                NS_LOG_WARN(
+                    Graphics, "LoadGltfSkinnedMesh: NORMAL が無いため面法線から smooth normal を生成 (path={})", path);
                 computedNormals = ComputeSmoothNormals(prim, *posAcc, vertexCount);
             }
 
@@ -618,7 +620,8 @@ namespace NS::Graphics
                 indices.reserve(indices.size() + indexCount);
                 for (cgltf_size i = 0; i < indexCount; ++i)
                 {
-                    indices.push_back(baseVertex + static_cast<std::uint32_t>(cgltf_accessor_read_index(prim.indices, i)));
+                    indices.push_back(baseVertex +
+                                      static_cast<std::uint32_t>(cgltf_accessor_read_index(prim.indices, i)));
                 }
             }
             else
@@ -673,7 +676,7 @@ namespace NS::Graphics
                     {
                         if (tr.boneIndex == boneIndex)
                         {
-							return tr;
+                            return tr;
                         }
                     }
                     tracks.push_back(BoneTrack{});
@@ -688,13 +691,13 @@ namespace NS::Graphics
                     if (channel.target_node == nullptr || channel.sampler == nullptr)
                     {
                         NS_LOG_WARN(Graphics, "glTF animation: target node/sampler が無いため skip (path={})", path);
-						continue;
+                        continue;
                     }
                     if (channel.target_path == cgltf_animation_path_type_weights)
                     {
-						NS_LOG_WARN(Graphics, "glTF animation: target path が weights のため skip (path={})", path);
+                        NS_LOG_WARN(Graphics, "glTF animation: target path が weights のため skip (path={})", path);
                         continue; // morph target は非対応
-                    }         
+                    }
                     const int boneIndex = resolveBone(channel.target_node);
                     if (boneIndex < 0)
                     {
@@ -720,14 +723,14 @@ namespace NS::Graphics
                     const cgltf_size stride = [cubic]() -> cgltf_size {
                         if (cubic)
                         {
-							return 3;
+                            return 3;
                         }
                         return 1;
                     }();
                     const cgltf_size valueOffset = [cubic]() -> cgltf_size {
                         if (cubic)
                         {
-							return 1;
+                            return 1;
                         }
                         return 0;
                     }(); // cubic は inTangent, value, outTangent の中央
@@ -806,7 +809,6 @@ namespace NS::Graphics
                         animated.insert(anim.channels[c].target_node);
                     }
                 }
-
             }
             if (animated.empty())
             {
@@ -820,7 +822,7 @@ namespace NS::Graphics
             {
                 for (const cgltf_node* p = node; p != nullptr; p = p->parent)
                 {
-					included.insert(p);
+                    included.insert(p);
                 }
             }
 
@@ -838,12 +840,12 @@ namespace NS::Graphics
                 }
                 else
                 {
-					bone.parentIndex = -1;
+                    bone.parentIndex = -1;
                 }
                 bone.bindLocal = ReadJointLocalPose(*node);
                 if (node->name != nullptr)
                 {
-					bone.name = node->name;
+                    bone.name = node->name;
                 }
                 outBones.push_back(std::move(bone)); // inverseBind は恒等のまま、source は skinning しない
                 for (cgltf_size i = 0; i < node->children_count; ++i)
@@ -862,7 +864,7 @@ namespace NS::Graphics
                 const cgltf_node* node = &model.nodes[n];
                 if (included.count(node) == 0)
                 {
-					continue;
+                    continue;
                 }
                 const bool isRoot = (node->parent == nullptr) || (included.count(node->parent) == 0);
                 if (!isRoot)
@@ -883,7 +885,7 @@ namespace NS::Graphics
             if (outBones.empty())
             {
                 NS_LOG_ERROR(Graphics, "LoadGltfAnimationSource: animation 対象 node が無い (path={})", path);
-				return false;
+                return false;
             }
             if (outBones.size() > k_MaxBones)
             {
@@ -902,7 +904,7 @@ namespace NS::Graphics
     {
         SkinnedMeshData data;
 
-        const std::optional<std::vector<std::byte>> bytes = NS::Core::FileSystem::ReadAllBytes(path);
+        const std::optional<std::vector<std::byte>> bytes = NS::Platform::FileSystem::ReadAllBytes(path);
         if (!bytes)
         {
             return data;
@@ -913,13 +915,15 @@ namespace NS::Graphics
         cgltf_result result = cgltf_parse(&options, bytes->data(), bytes->size(), &guard.data);
         if (result != cgltf_result_success)
         {
-            NS_LOG_ERROR(Graphics, "LoadGltfSkinnedMesh: glTF parse 失敗 (path={}, code={})", path, static_cast<int>(result));
+            NS_LOG_ERROR(
+                Graphics, "LoadGltfSkinnedMesh: glTF parse 失敗 (path={}, code={})", path, static_cast<int>(result));
             return data;
         }
         result = cgltf_load_buffers(&options, guard.data, path.c_str());
         if (result != cgltf_result_success)
         {
-            NS_LOG_ERROR(Graphics, "LoadGltfSkinnedMesh: buffer 読込失敗 (path={}, code={})", path, static_cast<int>(result));
+            NS_LOG_ERROR(
+                Graphics, "LoadGltfSkinnedMesh: buffer 読込失敗 (path={}, code={})", path, static_cast<int>(result));
             return data;
         }
 
@@ -952,7 +956,7 @@ namespace NS::Graphics
         std::vector<Bone> bones;
         if (!BuildSkeletonBones(skin, path, bones))
         {
-			return data;
+            return data;
         }
 
         // 同一 skin を共有する全 mesh node を連結する。Mixamo は本体と関節マーカーが別 mesh に分かれており、
@@ -980,7 +984,8 @@ namespace NS::Graphics
                 }
                 if (prim.has_draco_mesh_compression)
                 {
-                    NS_LOG_ERROR(Graphics, "LoadGltfSkinnedMesh: Draco 圧縮 primitive は未対応のため skip (path={})", path);
+                    NS_LOG_ERROR(
+                        Graphics, "LoadGltfSkinnedMesh: Draco 圧縮 primitive は未対応のため skip (path={})", path);
                     continue;
                 }
                 if (!AppendSkinnedPrimitive(prim, skin.joints_count, path, vertices, indices))
@@ -1005,7 +1010,6 @@ namespace NS::Graphics
                 v.joints[k] = remap[v.joints[k]];
             }
         }
-  
 
         data.vertices = std::move(vertices);
         data.indices = std::move(indices);
@@ -1030,10 +1034,10 @@ namespace NS::Graphics
     {
         AnimationSource source;
 
-        const std::optional<std::vector<std::byte>> bytes = NS::Core::FileSystem::ReadAllBytes(path);
+        const std::optional<std::vector<std::byte>> bytes = NS::Platform::FileSystem::ReadAllBytes(path);
         if (!bytes)
         {
-			return source;
+            return source;
         }
 
         cgltf_options options{};
@@ -1069,7 +1073,7 @@ namespace NS::Graphics
         NS::Core::Matrix rootXf = NS::Core::Matrix::Identity;
         if (!BuildSourceSkeleton(model, path, bones, nodeToBone, rootXf))
         {
-			return source;
+            return source;
         }
 
         source.skeleton = Skeleton(std::move(bones));

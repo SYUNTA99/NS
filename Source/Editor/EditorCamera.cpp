@@ -1,6 +1,6 @@
 #include "Editor/EditorCamera.h"
 
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/Keyboard.h"
 
@@ -124,7 +124,7 @@ namespace NS::Editor
 
     void EditorCamera::Tick() noexcept
     {
-        const float dt = NS::Core::FrameTimer::FixedDelta();
+        const float dt = NS::Platform::FrameTimer::FixedDelta();
         auto& input = NS::Platform::Input::Get();
 
         // Platform Input から 1 フレーム分の free-fly 入力を組む。感度適用とバネは注入する側に任せる
@@ -168,7 +168,7 @@ namespace NS::Editor
                 frameInput.verticalAxis += 1.0f;
             if (kb.IsHeld(NS::Platform::Key::Q))
                 frameInput.verticalAxis -= 1.0f;
-            // Shift 押下中は 4 倍速で移動する。通常は等倍で寄せて微調整し、Shift で広い地形を一気に移動する
+            // 微調整と広い地形移動を両立するため、Shift 押下時だけ 4 倍速にする
             if (kb.IsHeld(NS::Platform::Key::Shift))
             {
                 frameInput.speedScale = 4.0f;

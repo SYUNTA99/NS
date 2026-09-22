@@ -1,4 +1,4 @@
-#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Platform/Filesystem.h>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/Shader.h>
@@ -36,8 +36,8 @@ namespace
 
     std::string ShaderPath(const char* name)
     {
-        return NS::Core::FileSystem::Combine(
-            NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Shaders"), name);
+        return NS::Platform::FileSystem::Combine(
+            NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Shaders"), name);
     }
 } // namespace
 

@@ -1,6 +1,6 @@
 ﻿#include "Runtime/Object/Components/CameraBrainComponent.h"
 
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Components/VirtualCameraComponent.h"
 #include "Runtime/Object/GameObject.h"
@@ -144,7 +144,7 @@ namespace NS::Object
 
         if (m_blending)
         {
-            m_blendElapsed += NS::Core::FrameTimer::FixedDelta();
+            m_blendElapsed += NS::Platform::FrameTimer::FixedDelta();
             if (m_blendElapsed >= m_blendDuration)
             {
                 m_blending = false;

@@ -1,6 +1,6 @@
 #include "Runtime/Graphics/EffectScene.h"
 
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/StringUtils.h"
 #include "Runtime/Graphics/Camera.h"
@@ -174,7 +174,7 @@ namespace NS::Graphics
             return true;
         }
 
-        const std::string path = NS::Core::FileSystem::Combine(m_effectRoot, std::string(name) + ".efkefc");
+        const std::string path = NS::Platform::FileSystem::Combine(m_effectRoot, std::string(name) + ".efkefc");
         const std::wstring pathWide = NS::Core::StringUtils::WideFromUtf8(path);
         const std::u16string pathU16(pathWide.begin(), pathWide.end());
 

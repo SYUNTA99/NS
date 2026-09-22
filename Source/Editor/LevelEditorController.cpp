@@ -10,8 +10,8 @@
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/App/Application.h"
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Core/Clock.h"
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Clock.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Core/OBB.h"
@@ -41,8 +41,8 @@ namespace
 {
     std::string RelativeToRoot(std::string_view absPath, std::string_view root)
     {
-        const std::string absNorm = NS::Core::FileSystem::Normalize(absPath);
-        const std::string rootNorm = NS::Core::FileSystem::Normalize(root);
+        const std::string absNorm = NS::Platform::FileSystem::Normalize(absPath);
+        const std::string rootNorm = NS::Platform::FileSystem::Normalize(root);
         if (absNorm.size() > rootNorm.size() + 1 &&
             ::_strnicmp(absNorm.c_str(), rootNorm.c_str(), rootNorm.size()) == 0 && absNorm[rootNorm.size()] == '/')
         {
@@ -282,7 +282,7 @@ void LevelEditorController::Setup(NS::UI::ImGuiContext* imgui)
     // 起動シーンが実在するのに読めていない時は印す。終了保存が元ファイルを潰さず退避名へ逃げる
     if (const auto bootPath = NS::Editor::BuildLevelPath("Scenes/new_scene"))
     {
-        if (NS::Core::FileSystem::Exists(*bootPath))
+        if (NS::Platform::FileSystem::Exists(*bootPath))
         {
             NS::Object::SceneData probe;
             if (!NS::Object::LoadSceneFromJsonFile(probe, *bootPath))
@@ -546,7 +546,7 @@ void LevelEditorController::TickEdit()
         NS::Object::CameraPose pose = m_editorCamera.Pose();
         if (m_editBlending)
         {
-            m_editBlendElapsed += NS::Core::FrameTimer::FixedDelta();
+            m_editBlendElapsed += NS::Platform::FrameTimer::FixedDelta();
             const float t = std::min(m_editBlendElapsed / k_EditBlendSeconds, 1.0f);
             const float eased = t * t * (3.0f - 2.0f * t); // smoothstep で ease-in-out
             pose = NS::Object::CameraPose::Lerp(m_editBlendFrom, pose, eased);
@@ -1075,7 +1075,7 @@ void LevelEditorController::AddPrimitive(NS::Editor::PrimitiveKind kind)
 void LevelEditorController::AddObjectWithMesh(std::string_view meshPath)
 {
     // 参照は ContentRoot 相対で持つ。build 時にこの文字列から実体を引く
-    const std::string meshRef = RelativeToRoot(meshPath, NS::Core::FileSystem::ContentRoot());
+    const std::string meshRef = RelativeToRoot(meshPath, NS::Platform::FileSystem::ContentRoot());
 
     const NS::Core::Vector3 center = m_editorCamera.Center();
 
@@ -1085,7 +1085,7 @@ void LevelEditorController::AddObjectWithMesh(std::string_view meshPath)
         nlohmann::json::array({NS::Game::Level::MakeMeshRendererEntry(meshRef, "", NS::Game::Level::k_SolidBaseColor),
                                NS::Object::MakeComponentEntry("MeshColliderComponent")});
     NS::Object::SetObjectPosition(object, center);
-    object.name = NS::Core::FileSystem::Stem(meshPath);
+    object.name = NS::Platform::FileSystem::Stem(meshPath);
 
     PushCreateObject(std::move(object));
 }
@@ -1599,7 +1599,7 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
         return false;
 
     // .mat パスは ContentRoot 相対で持つ。材質の正データは matRef なので live component へ書き込む
-    const std::string stored = RelativeToRoot(matPath, NS::Core::FileSystem::ContentRoot());
+    const std::string stored = RelativeToRoot(matPath, NS::Platform::FileSystem::ContentRoot());
 
     // 差替前を忠実に写す。matRef を live へ書き込み、差替後との差分を undo 履歴へ積む
     std::optional<NS::Object::ObjectData> before = m_applier.CaptureObject(m_selectedObjectId);

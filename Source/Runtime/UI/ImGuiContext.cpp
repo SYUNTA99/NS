@@ -1,6 +1,6 @@
 ﻿#include "Runtime/UI/ImGuiContext.h"
 
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/GraphicObject.h"
@@ -160,7 +160,7 @@ namespace NS::UI
             const ImWchar* ranges = s_glyphRanges.Data;
             for (const char* fontPath : k_FontCandidates)
             {
-                if (!NS::Core::FileSystem::Exists(fontPath))
+                if (!NS::Platform::FileSystem::Exists(fontPath))
                 {
                     continue;
                 }

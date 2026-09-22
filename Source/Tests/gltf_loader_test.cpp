@@ -1,6 +1,6 @@
 #include "scoped_fixture.h"
 
-#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Platform/Filesystem.h>
 #include <Runtime/Graphics/GltfLoader.h>
 #include <gtest/gtest.h>
 #include <span>

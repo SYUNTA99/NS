@@ -2,8 +2,8 @@
 
 #include "Runtime/App/Layer.h"
 #include "Runtime/Core/Assert.h"
-#include "Runtime/Core/Clock.h"
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Clock.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/AssetManager.h"
@@ -45,9 +45,9 @@ namespace NS::App
         {
             NS_LOG_WARN(
                 App, "ApplicationDesc::fixedDelta が非正値 ({}) のため default 1/60 にフォールバック", fixedDelta);
-            fixedDelta = NS::Core::FrameTimer::k_DefaultFixedDelta;
+            fixedDelta = NS::Platform::FrameTimer::k_DefaultFixedDelta;
         }
-        NS::Core::FrameTimer::SetFixedDelta(fixedDelta);
+        NS::Platform::FrameTimer::SetFixedDelta(fixedDelta);
 
         m_window = std::make_unique<NS::Platform::Window>(desc.window);
         if (!m_window->IsValid())
@@ -158,10 +158,10 @@ namespace NS::App
     void Application::Init()
     {
         DrainPendingQuit();
-        NS::Core::FrameTimer::Reset();
+        NS::Platform::FrameTimer::Reset();
 
         // アセットマネージャーを準備する
-        m_assets = std::make_unique<NS::Object::AssetManager>(NS::Core::FileSystem::ContentRoot());
+        m_assets = std::make_unique<NS::Object::AssetManager>(NS::Platform::FileSystem::ContentRoot());
         m_assets->RegisterBuiltins();
         m_assets->RegisterSharedMaterials();
 
@@ -209,9 +209,9 @@ namespace NS::App
                 break;
             }
 
-            NS::Core::FrameTimer::Tick();
+            NS::Platform::FrameTimer::Tick();
 
-            const int steps = NS::Core::FrameTimer::FixedStepsThisFrame();
+            const int steps = NS::Platform::FrameTimer::FixedStepsThisFrame();
 
             // 1フレームの更新が多すぎる場合は警告を出す
             if (steps >= 2)

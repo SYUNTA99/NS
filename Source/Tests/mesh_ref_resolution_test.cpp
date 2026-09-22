@@ -1,4 +1,4 @@
-#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Platform/Filesystem.h>
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/StaticMesh.h>
 #include <Runtime/Object/AssetManager.h>
@@ -63,7 +63,7 @@ TEST(MeshRefResolution, BuiltinNameResolvesToBuiltinMesh)
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
-    AssetManager assets{NS::Core::FileSystem::ContentRoot()};
+    AssetManager assets{NS::Platform::FileSystem::ContentRoot()};
     assets.RegisterBuiltins();
 
     ASSERT_NE(assets.Builtin("cube"), nullptr);

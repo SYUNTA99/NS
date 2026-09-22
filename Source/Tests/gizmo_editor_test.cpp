@@ -1,5 +1,5 @@
 #include "Editor/GizmoEditor.h"
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Graphics/Mesh.h"
 #include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Object/AssetManager.h"
@@ -908,9 +908,9 @@ namespace
         if (!renderer.IsValid())
             GTEST_SKIP() << "Device 確立不可 (headless)";
 
-        NS::Object::AssetManager assets{NS::Core::FileSystem::ContentRoot()};
+        NS::Object::AssetManager assets{NS::Platform::FileSystem::ContentRoot()};
         NS::Graphics::Mesh* soldier =
-            assets.GetOrLoadMesh(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), "Models"), "Soldier.glb"));
+            assets.GetOrLoadMesh(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Models"), "Soldier.glb"));
         ASSERT_NE(soldier, nullptr);
 
         NS::Object::GameObject doll;

@@ -1,11 +1,11 @@
-#include <gtest/gtest.h>
-#include <memory>
 #include <Runtime/App/Application.h>
 #include <Runtime/App/Layer.h>
-#include <Runtime/Core/Clock.h>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Graphics/Renderer.h>
+#include <Runtime/Platform/Clock.h>
 #include <Runtime/Platform/Window.h>
+#include <gtest/gtest.h>
+#include <memory>
 
 namespace
 {
@@ -31,8 +31,8 @@ namespace
         return d;
     }
 
-    //! Layer 寿命は Application::Shutdown() で reset() されるため、
-    //! 検証用カウンタは外部に置いて Layer 破棄後もアクセス可能にする
+    //! AddLayer は unique_ptr を渡すだけで Layer へのポインタを返さないため、
+    //! 検証用カウンタは外部に置いてテストからも読めるようにする
     struct LayerCounters
     {
         int attachCount = 0;
@@ -77,7 +77,7 @@ namespace
         }
         void OnRender() override
         {
-            counters->lastAlpha = NS::Core::FrameTimer::Alpha();
+            counters->lastAlpha = NS::Platform::FrameTimer::Alpha();
             ++counters->renderCount;
         }
     };

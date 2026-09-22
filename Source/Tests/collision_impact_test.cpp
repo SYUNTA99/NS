@@ -10,7 +10,7 @@
 #include <Game/Level/LaunchedBodyComponent.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Runtime/Core/AABB.h>
-#include <Runtime/Core/Clock.h>
+#include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Core/Sphere.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
@@ -80,7 +80,7 @@ namespace
 
     Rig BuildSlam(SceneNs::Scene& scene, const SlamCourse& course)
     {
-        NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+        NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
 
         SceneNs::SceneData data;
         Vector3 spawn{course.start, Player::k_DefaultSpawnY, course.lateral};
@@ -295,7 +295,7 @@ namespace
     // 床を 1 列並べ、その上へ飛ばされる物を 1 個置く検証台。自機は要らない
     BodyRig BuildBody(SceneNs::Scene& scene, bool withWall = false)
     {
-        NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+        NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
 
         SceneNs::SceneData data;
         for (std::int16_t x = k_FloorFirstX; x <= k_FloorLastX; ++x)
@@ -2201,7 +2201,7 @@ TEST(LaunchedBody, RestLifeRejectsNonFiniteAndNegative)
 // 跡は指定位置に出る一時オブジェクト。保存や凍結に写らない印が立つ
 TEST(ImpactMark, SpawnAtPlacesTransientMark)
 {
-    NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+    NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
     SceneNs::Scene scene;
     const std::size_t before = scene.Objects().ObjectCount();
 
@@ -2220,7 +2220,7 @@ TEST(ImpactMark, SpawnAtPlacesTransientMark)
 // 跡は保存に写らない
 TEST(ImpactMark, SkipsSaveCapture)
 {
-    NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+    NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
     SceneNs::Scene scene;
     SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
     ASSERT_NE(mark, nullptr);
@@ -2233,7 +2233,7 @@ TEST(ImpactMark, SkipsSaveCapture)
 // 見た目は床へ寝かせた半透明の板
 TEST(ImpactMark, UsesShadowQuadLook)
 {
-    NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+    NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
     SceneNs::Scene scene;
     SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
     ASSERT_NE(mark, nullptr);
@@ -2247,7 +2247,7 @@ TEST(ImpactMark, UsesShadowQuadLook)
 // 出た直後の水平の大きさが跡の直径
 TEST(ImpactMark, StartsAtDiameter)
 {
-    NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+    NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
     SceneNs::Scene scene;
     SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
     ASSERT_NE(mark, nullptr);
@@ -2260,7 +2260,7 @@ TEST(ImpactMark, StartsAtDiameter)
 // 寿命の半分で大きさも半分。線形に縮む
 TEST(ImpactMark, ShrinksToHalfAtHalfLife)
 {
-    NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+    NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
     SceneNs::Scene scene;
     SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
     ASSERT_NE(mark, nullptr);
@@ -2276,7 +2276,7 @@ TEST(ImpactMark, ShrinksToHalfAtHalfLife)
 // 寿命が尽きたら描画と更新を止める。配置物は破棄しない
 TEST(ImpactMark, HidesAfterLifeWithoutDestroy)
 {
-    NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+    NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
     SceneNs::Scene scene;
     SceneNs::GameObject* mark = LevelNs::ImpactMarkComponent::SpawnAt(&scene, Vector3{0.0f, 0.02f, 0.0f});
     ASSERT_NE(mark, nullptr);
@@ -2328,7 +2328,7 @@ TEST(LaunchedBody, LandingOnFloorDoesNotShatter)
 // 飛ぶ形は当たり箱から作る。当たりの無い物は飛ばず、物理の body も増えない
 TEST(LaunchedBody, DoesNotFlyWithoutCollider)
 {
-    NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+    NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
     SceneNs::Scene scene;
     SceneNs::SceneData data;
     SceneNs::ObjectData bare;

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Runtime/App/Layers.h"
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/Renderer.h"
 #include "Runtime/Platform/Window.h"
@@ -33,13 +33,13 @@ namespace NS::App
     {
         NS::Platform::WindowDesc window{};
         NS::Graphics::RendererDesc renderer{};
-        float fixedDelta = NS::Core::FrameTimer::k_DefaultFixedDelta;
+        float fixedDelta = NS::Platform::FrameTimer::k_DefaultFixedDelta;
     };
 
     //! @brief サブシステムを管理しメインループを駆動するアプリケーション
     //! @details レイヤー構成は起動時に確定させる必要があり、メインループ実行中の動的な追加・削除は禁止
     //! アプリケーションは単一インスタンスであり多重起動はできない
-    //! 時刻や補間割合が必要な場合は NS::Core::FrameTimer を直接参照する
+    //! 時刻や補間割合が必要な場合は NS::Platform::FrameTimer を直接参照する
     class Application : public NS::Core::NonCopyable
     {
     public:

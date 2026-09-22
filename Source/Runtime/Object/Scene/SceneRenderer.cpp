@@ -1,6 +1,6 @@
 #include "Runtime/Object/Scene/SceneRenderer.h"
 
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/DebugDraw.h"
@@ -260,7 +260,7 @@ namespace NS::Object
 
         NS::Graphics::RenderContext ctx{};
         ctx.renderer = m_renderer;
-        ctx.alpha = NS::Core::FrameTimer::Alpha();
+        ctx.alpha = NS::Platform::FrameTimer::Alpha();
 
         brain.Evaluate(ctx.alpha);
 

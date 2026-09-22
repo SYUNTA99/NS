@@ -1,6 +1,6 @@
 ﻿#include "Runtime/Object/Scene/Scene.h"
 
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Object/Components/CameraBrainComponent.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
@@ -211,7 +211,7 @@ namespace NS::Object
         }
         // カメラが追う前に物理を進める。自機と衝突の裁定は Update 帯までに終わっている
         m_objects.UpdateObjects(std::numeric_limits<int>::min(), TickPriority::LateUpdate);
-        m_physicsScene.Update(NS::Core::FrameTimer::FixedDelta());
+        m_physicsScene.Update(NS::Platform::FrameTimer::FixedDelta());
         m_objects.UpdateObjects(TickPriority::LateUpdate);
     }
 

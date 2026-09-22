@@ -1,6 +1,6 @@
 #include "Editor/LevelFilePaths.h"
 
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 
 #include <gtest/gtest.h>
 #include <string>
@@ -73,9 +73,9 @@ TEST(LevelFilePaths, BuildLevelPathProducesExpectedShape)
 {
     auto p = EditorNs::BuildLevelPath("Scenes/MyLevel");
     ASSERT_TRUE(p.has_value());
-    EXPECT_EQ(NS::Core::FileSystem::Extension(*p), ".scene");
-    EXPECT_EQ(NS::Core::FileSystem::Stem(*p), "MyLevel");
-    EXPECT_EQ(NS::Core::FileSystem::FileName(NS::Core::FileSystem::ParentDirectory(*p)), "Scenes");
+    EXPECT_EQ(NS::Platform::FileSystem::Extension(*p), ".scene");
+    EXPECT_EQ(NS::Platform::FileSystem::Stem(*p), "MyLevel");
+    EXPECT_EQ(NS::Platform::FileSystem::FileName(NS::Platform::FileSystem::ParentDirectory(*p)), "Scenes");
 }
 
 TEST(LevelFilePaths, SanitizeLevelPathAcceptsSubfolders)
@@ -117,8 +117,8 @@ TEST(LevelFilePaths, BuildLevelPathAcceptsSubfolder)
 {
     auto p = EditorNs::BuildLevelPath("Scenes/foo");
     ASSERT_TRUE(p.has_value());
-    EXPECT_EQ(NS::Core::FileSystem::Stem(*p), "foo");
-    EXPECT_EQ(NS::Core::FileSystem::FileName(NS::Core::FileSystem::ParentDirectory(*p)), "Scenes");
+    EXPECT_EQ(NS::Platform::FileSystem::Stem(*p), "foo");
+    EXPECT_EQ(NS::Platform::FileSystem::FileName(NS::Platform::FileSystem::ParentDirectory(*p)), "Scenes");
 }
 
 TEST(LevelFilePaths, QualifyLevelPathAddsScenesOnlyToBareName)

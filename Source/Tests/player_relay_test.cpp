@@ -1,7 +1,7 @@
 #include <Game/Level/FollowCameraFeedComponent.h>
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerInputRelayComponent.h>
-#include <Runtime/Core/Clock.h>
+#include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/PlayerInputComponent.h>
 #include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
@@ -121,7 +121,7 @@ class PlayerRelayTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        NS::Core::FrameTimer::SetFixedDelta(k_FixedDt);
+        NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt);
         ClearKeyboard();
     }
     void TearDown() override { ClearKeyboard(); }

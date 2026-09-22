@@ -1,4 +1,4 @@
-#include <Runtime/Core/Clock.h>
+#include <Runtime/Platform/Clock.h>
 #include <Runtime/Object/Components/ThirdPersonFollowComponent.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
@@ -40,7 +40,7 @@ namespace
 class ThirdPersonFollowTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_Dt); }
+    void SetUp() override { NS::Platform::FrameTimer::SetFixedDelta(k_Dt); }
 };
 
 TEST_F(ThirdPersonFollowTest, ConstructsWithNullTarget)

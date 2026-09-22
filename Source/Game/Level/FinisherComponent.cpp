@@ -3,7 +3,7 @@
 #include "Game/Level/GoalComponent.h"
 #include "Game/Level/RespawnerComponent.h"
 #include "Game/Level/ScreenFadeComponent.h"
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Object/Components/PlayerInputComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/ObjectList.h"
@@ -24,7 +24,7 @@ namespace NS::Game::Level
     {
         if (m_sequences.IsRunning())
         {
-            m_sequences.Tick(NS::Core::FrameTimer::FixedDelta());
+            m_sequences.Tick(NS::Platform::FrameTimer::FixedDelta());
             return;
         }
 

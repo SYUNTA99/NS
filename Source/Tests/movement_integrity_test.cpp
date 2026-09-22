@@ -1,7 +1,7 @@
 ﻿#include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
 #include <Runtime/Core/AABB.h>
-#include <Runtime/Core/Clock.h>
+#include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
@@ -69,7 +69,7 @@ namespace
 class MovementIntegrity : public ::testing::Test
 {
 protected:
-    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_FixedDt); }
+    void SetUp() override { NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt); }
 };
 
 //! 固定ステップ物理が可変の経過時間や乱数を使っていなければ、同条件で 2 回走らせた軌跡は一致する

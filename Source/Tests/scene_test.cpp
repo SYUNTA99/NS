@@ -1,4 +1,4 @@
-#include <Runtime/Core/Clock.h>
+#include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Core/Sphere.h>
 #include <Runtime/Object/Components/BoxColliderComponent.h>
@@ -22,7 +22,7 @@ namespace
         void OnUpdate() override
         {
             ++updateCount;
-            dtAccum += NS::Core::FrameTimer::FixedDelta();
+            dtAccum += NS::Platform::FrameTimer::FixedDelta();
         }
         void OnRenderScene() override { ++renderCount; }
         void OnShutdown() override { ++shutdownCount; }
@@ -41,9 +41,9 @@ TEST(SceneTest, DefaultCountersAreZero)
 
 TEST(SceneTest, OnUpdateAccumulatesDt)
 {
-    NS::Core::FrameTimer::SetFixedDelta(1.0f / 60.0f);
+    NS::Platform::FrameTimer::SetFixedDelta(1.0f / 60.0f);
     MockScene scene;
-    const float dt = NS::Core::FrameTimer::FixedDelta();
+    const float dt = NS::Platform::FrameTimer::FixedDelta();
     scene.OnUpdate();
     scene.OnUpdate();
     scene.OnUpdate();
@@ -134,7 +134,7 @@ namespace
 
     void RunFrames(NS::Object::Scene& scene, int frames)
     {
-        NS::Core::FrameTimer::SetFixedDelta(1.0f / 60.0f);
+        NS::Platform::FrameTimer::SetFixedDelta(1.0f / 60.0f);
         for (int i = 0; i < frames; ++i)
             scene.OnUpdate();
     }
@@ -187,7 +187,7 @@ namespace
 
 TEST(SceneTest, UpdateLeavesThePreviousStepForInterpolation)
 {
-    NS::Core::FrameTimer::SetFixedDelta(1.0f / 60.0f);
+    NS::Platform::FrameTimer::SetFixedDelta(1.0f / 60.0f);
     NS::Object::Scene scene;
     NS::Object::GameObject* obj = scene.SpawnTransient<NS::Object::GameObject>();
     ASSERT_NE(obj, nullptr);
@@ -205,7 +205,7 @@ TEST(SceneTest, UpdateLeavesThePreviousStepForInterpolation)
 
 TEST(SceneTest, PausedSceneFreezesTheInterpolation)
 {
-    NS::Core::FrameTimer::SetFixedDelta(1.0f / 60.0f);
+    NS::Platform::FrameTimer::SetFixedDelta(1.0f / 60.0f);
     NS::Object::Scene scene;
     NS::Object::GameObject* obj = scene.SpawnTransient<NS::Object::GameObject>();
     ASSERT_NE(obj, nullptr);

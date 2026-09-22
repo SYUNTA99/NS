@@ -1,6 +1,6 @@
 #include "scoped_fixture.h"
 
-#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Platform/Filesystem.h>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Graphics/Renderer.h>
@@ -48,18 +48,18 @@ namespace
 
     std::string ShaderPath(const char* name)
     {
-        return NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), std::string("Shaders/") + name);
+        return NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), std::string("Shaders/") + name);
     }
 
     std::string TexturePath(const char* name)
     {
-        return NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(),
+        return NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(),
                                              std::string("Assets/Textures/") + name);
     }
 
     std::string MaterialPath(const char* name)
     {
-        return NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(),
+        return NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(),
                                              std::string("Assets/Materials/") + name);
     }
 
@@ -131,8 +131,8 @@ namespace
     // ContentRoot 相対の参照。ContentRoot の外なら空
     std::string ContentRelativeRef(std::string_view path)
     {
-        const std::string contentRootNorm = NS::Core::FileSystem::Normalize(NS::Core::FileSystem::ContentRoot());
-        const std::string pathNorm = NS::Core::FileSystem::Normalize(path);
+        const std::string contentRootNorm = NS::Platform::FileSystem::Normalize(NS::Platform::FileSystem::ContentRoot());
+        const std::string pathNorm = NS::Platform::FileSystem::Normalize(path);
         if (pathNorm.size() <= contentRootNorm.size() + 1 ||
             ::_strnicmp(pathNorm.c_str(), contentRootNorm.c_str(), contentRootNorm.size()) != 0 ||
             pathNorm[contentRootNorm.size()] != '/')
@@ -162,7 +162,7 @@ TEST_F(AssetManagerTest, SamePathReturnsSamePointer)
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     auto* shaderA = am.GetOrLoadShader(ShaderPath("standard.vs.hlsl"));
     auto* shaderB = am.GetOrLoadShader(ShaderPath("standard.vs.hlsl"));
@@ -184,7 +184,7 @@ TEST_F(AssetManagerTest, BuiltinReturnsSameNonNullPointer)
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     am.RegisterBuiltins();
 
     EXPECT_NE(am.Builtin("cube"), nullptr);
@@ -197,7 +197,7 @@ TEST_F(AssetManagerTest, BuiltinReturnsSameNonNullPointer)
 // device 無しでも読込失敗した mesh path は負キャッシュされ、2 度目以降は再読込せず即 nullptr を返す
 TEST_F(AssetManagerTest, FailedMeshLoadIsNegativeCached)
 {
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     const std::string missing = "__ns_am_missing_mesh__.gltf";
 
     EXPECT_EQ(am.GetOrLoadMesh(missing), nullptr);
@@ -209,7 +209,7 @@ TEST_F(AssetManagerTest, FailedMeshLoadIsNegativeCached)
 // 組み込みの cube は device 無しでも三角形 12 枚と Jolt の形を持つ当たりになり、どの面の法線も外を向く
 TEST_F(AssetManagerTest, BuiltinCubeCollisionHasTwelveOutwardTriangles)
 {
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     const NS::Physics::MeshCollision* collision = am.GetOrLoadMeshCollision("cube");
     ASSERT_NE(collision, nullptr);
@@ -225,7 +225,7 @@ TEST_F(AssetManagerTest, BuiltinCubeCollisionHasTwelveOutwardTriangles)
 // 同じ参照には同じ当たりを返す。配置物ごとに読み直さない
 TEST_F(AssetManagerTest, SameMeshRefSharesCollision)
 {
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     const NS::Physics::MeshCollision* first = am.GetOrLoadMeshCollision("wedge45");
     ASSERT_NE(first, nullptr);
@@ -241,7 +241,7 @@ TEST_F(AssetManagerTest, GltfCollisionKeepsFrontFaceInLeftHandedSpace)
     if (ref.empty())
         GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << fixture.Path();
 
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     const NS::Physics::MeshCollision* collision = am.GetOrLoadMeshCollision(ref);
     ASSERT_NE(collision, nullptr);
     ASSERT_EQ(collision->triangles.size(), 1u);
@@ -276,7 +276,7 @@ TEST_F(AssetManagerTest, GltfCollisionKeepsFrontFaceInLeftHandedSpace)
 // 空文字・ContentRoot の外・存在しない file は nullptr。読めなかった参照は 2 度目も nullptr
 TEST_F(AssetManagerTest, UnresolvableMeshRefHasNoCollision)
 {
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
 
     EXPECT_EQ(am.GetOrLoadMeshCollision(""), nullptr);
     EXPECT_EQ(am.GetOrLoadMeshCollision("../secret.gltf"), nullptr);
@@ -293,7 +293,7 @@ TEST_F(AssetManagerTest, CollisionRefSpellingsShareOneRecord)
     if (ref.empty())
         GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << fixture.Path();
 
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     const NS::Physics::MeshCollision* plain = am.GetOrLoadMeshCollision(ref);
     ASSERT_NE(plain, nullptr);
     EXPECT_EQ(am.GetOrLoadMeshCollision("./" + ref), plain);
@@ -310,7 +310,7 @@ TEST_F(AssetManagerTest, MeshAndCollisionReadTheGltfOnce)
     if (ref.empty())
         GTEST_SKIP() << "実行ファイルが ContentRoot の外にある: " << fixture.Path();
 
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     static_cast<void>(am.GetOrLoadMesh(fixture.Path()));
     fixture.Rewrite(SingleTriangleGltf(rewritten));
 
@@ -331,7 +331,7 @@ TEST_F(AssetManagerTest, ReloadShaderInPlaceKeepsIdentity)
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     const auto path = ShaderPath("standard.vs.hlsl");
     auto* before = am.GetOrLoadShader(path);
     ASSERT_NE(before, nullptr);
@@ -349,7 +349,7 @@ TEST_F(AssetManagerTest, ReloadMissReturnsFalse)
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     EXPECT_FALSE(am.Reload("C:/nonexistent/__ns_am_missing.vs.hlsl"));
 }
 
@@ -438,9 +438,9 @@ TEST_F(AssetManagerTest, LoadMaterialDedupReturnsSamePointer)
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     const auto matPath = MaterialPath("flat.mat");
-    if (!NS::Core::FileSystem::Exists(matPath))
+    if (!NS::Platform::FileSystem::Exists(matPath))
         GTEST_SKIP() << "flat.mat が無い: " << matPath;
 
     auto first = am.LoadMaterial(matPath);
@@ -458,7 +458,7 @@ TEST_F(AssetManagerTest, SharedMaterialsNonNullAfterRegister)
     if (!renderer.IsValid())
         GTEST_SKIP() << "Device 確立不可 (headless)";
 
-    AssetManager am{NS::Core::FileSystem::ContentRoot()};
+    AssetManager am{NS::Platform::FileSystem::ContentRoot()};
     am.RegisterBuiltins();
     am.RegisterSharedMaterials();
 

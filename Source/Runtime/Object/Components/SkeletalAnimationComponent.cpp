@@ -1,7 +1,7 @@
 ﻿#include "Runtime/Object/Components/SkeletalAnimationComponent.h"
 #include "Runtime/Core/AABB.h"
 
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Buffer.h"
@@ -266,7 +266,7 @@ namespace NS::Object
         const float duration = Duration();
         if (m_playing && duration > 0.0f)
         {
-            m_time += NS::Core::FrameTimer::FixedDelta() * m_speed;
+            m_time += NS::Platform::FrameTimer::FixedDelta() * m_speed;
             if (m_looping)
             {
                 m_time = std::fmod(m_time, duration);

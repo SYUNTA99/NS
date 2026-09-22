@@ -1,6 +1,6 @@
 ﻿#include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
 
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -170,7 +170,7 @@ namespace NS::Object
 
     void ThirdPersonFollowComponent::OnUpdate()
     {
-        const float dt = NS::Core::FrameTimer::FixedDelta();
+        const float dt = NS::Platform::FrameTimer::FixedDelta();
         if (!IsActive() || m_target == nullptr || dt <= 0.0f)
         {
             return;

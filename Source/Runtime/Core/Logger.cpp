@@ -1,6 +1,6 @@
 ﻿#include "Runtime/Core/Logger.h"
 
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Core/StringUtils.h"
 
 #include <windows.h>
 
@@ -25,20 +25,22 @@ namespace NS::Core
         constexpr std::size_t k_RotatingMaxFiles = 2;
 
         std::atomic<bool> g_initialized{false};
-        // ログのファイル名。SetLogName で変える
-        std::string g_logName{"ns"};
-        // 起動するたびにファイルを新しくするかどうか
-        bool g_rotateOnOpen{false};
 
-        std::string LogsDirectory()
+        std::string LogsDirectory(const LoggerDesc& desc)
         {
-#if defined(NS_SHIPPING)
-            // 出荷版はコンソールが無くファイルが唯一の報告先。exe の隣に残す
-            return NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "logs");
-#else
-            // 開発中の生成物は build/ に集約する。@cleanup.cmd の掃除にも乗る
-            return NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "build/logs");
-#endif
+            std::string dir = desc.logDirectory.empty() ? "logs" : desc.logDirectory + "/logs";
+            return dir;
+        }
+
+        void CreateDirectoryRecursive(std::string_view path)
+        {
+            const std::wstring wide = StringUtils::WideFromUtf8(path);
+            for (std::size_t pos = wide.find_first_of(L"\\/", 1); pos != std::wstring::npos;
+                 pos = wide.find_first_of(L"\\/", pos + 1))
+            {
+                ::CreateDirectoryW(wide.substr(0, pos).c_str(), nullptr);
+            }
+            ::CreateDirectoryW(wide.c_str(), nullptr);
         }
 
         spdlog::level::level_enum ToSpdLevel(LogLevel level)
@@ -63,7 +65,7 @@ namespace NS::Core
             return spdlog::level::info;
         }
 
-        std::vector<spdlog::sink_ptr> BuildSinks()
+        std::vector<spdlog::sink_ptr> BuildSinks(const LoggerDesc& desc)
         {
             std::vector<spdlog::sink_ptr> sinks;
 
@@ -71,10 +73,10 @@ namespace NS::Core
             console->set_pattern("%H:%M:%S.%e [%^%l%$] [%n] %v");
             sinks.push_back(console);
 
-            const auto logsDir = LogsDirectory();
-            const std::string logFilePath = NS::Core::FileSystem::Combine(logsDir, g_logName + ".log");
+            const auto logsDir = LogsDirectory(desc);
+            const std::string logFilePath = logsDir + "/" + desc.logName + ".log";
             auto file = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
-                logFilePath, k_RotatingMaxBytes, k_RotatingMaxFiles, g_rotateOnOpen);
+                logFilePath, k_RotatingMaxBytes, k_RotatingMaxFiles, desc.rotateOnOpen);
             file->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [thread:%t] [%s:%#] %v");
             sinks.push_back(file);
 
@@ -100,22 +102,7 @@ namespace NS::Core
 
     } // namespace
 
-    void Logger::SetLogName(std::string_view name) noexcept
-    {
-        // 空文字は無視する。Init 済みの間は反映されず、Shutdown 後の Init から効く
-        if (name.empty())
-        {
-            return;
-        }
-        g_logName.assign(name);
-    }
-
-    void Logger::SetRotateOnOpen(bool rotate) noexcept
-    {
-        g_rotateOnOpen = rotate;
-    }
-
-    void Logger::Init() noexcept
+    void Logger::Init(const LoggerDesc& desc) noexcept
     {
         if (g_initialized.exchange(true))
         {
@@ -127,9 +114,9 @@ namespace NS::Core
         ::SetConsoleOutputCP(CP_UTF8);
 #endif
 
-        (void)NS::Core::FileSystem::CreateDirectories(LogsDirectory());
+        CreateDirectoryRecursive(LogsDirectory(desc));
 
-        auto sinks = BuildSinks();
+        auto sinks = BuildSinks(desc);
         auto logger = std::make_shared<spdlog::logger>(k_LoggerName, sinks.begin(), sinks.end());
 
         logger->set_level(spdlog::level::trace);

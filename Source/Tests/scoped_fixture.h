@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Platform/Filesystem.h>
 #include <Runtime/Core/StringUtils.h>
 
 #include <cstddef>
@@ -23,7 +23,7 @@ namespace NsTest
         //! @param[in] name 実行ファイルのあるディレクトリから見たファイル名
         //! @param[in] text 書き出す中身
         ScopedFixture(const char* name, std::string_view text)
-            : m_path(NS::Core::FileSystem::Combine(NS::Core::FileSystem::GetExeDirectory(), name))
+            : m_path(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::GetExeDirectory(), name))
         {
             Write(std::as_bytes(std::span<const char>{text.data(), text.size()}));
         }
@@ -32,7 +32,7 @@ namespace NsTest
         //! @param[in] name 実行ファイルのあるディレクトリから見たファイル名
         //! @param[in] bytes 書き出す中身
         ScopedFixture(const char* name, const std::vector<unsigned char>& bytes)
-            : m_path(NS::Core::FileSystem::Combine(NS::Core::FileSystem::GetExeDirectory(), name))
+            : m_path(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::GetExeDirectory(), name))
         {
             Write(std::as_bytes(std::span<const unsigned char>{bytes.data(), bytes.size()}));
         }
@@ -57,7 +57,7 @@ namespace NsTest
         void Write(std::span<const std::byte> bytes)
         {
             // ASSERT_* は void を返す関数でしか使えないので、呼び元のコンストラクタでは書けない
-            EXPECT_TRUE(NS::Core::FileSystem::WriteAllBytes(m_path, bytes));
+            EXPECT_TRUE(NS::Platform::FileSystem::WriteAllBytes(m_path, bytes));
         }
 
         std::string m_path;

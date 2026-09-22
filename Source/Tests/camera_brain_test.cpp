@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <Runtime/Core/Clock.h>
+#include <Runtime/Platform/Clock.h>
 #include <Runtime/Object/Components/CameraBrainComponent.h>
 #include <Runtime/Object/Components/CameraComponent.h>
 #include <Runtime/Object/Components/PlacedVirtualCamera.h>
@@ -38,7 +38,7 @@ namespace
 class CameraBrainTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_Dt); }
+    void SetUp() override { NS::Platform::FrameTimer::SetFixedDelta(k_Dt); }
 };
 
 TEST_F(CameraBrainTest, PoseLerpInterpolatesEachField)

@@ -1,4 +1,4 @@
-﻿#include <Runtime/Core/Clock.h>
+﻿#include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Logger.h>
 #include <chrono>
 #include <gtest/gtest.h>
@@ -13,49 +13,49 @@ protected:
 
 TEST(NsCoreClock, NowIsMonotonic)
 {
-    const auto t1 = NS::Core::Clock::Now();
-    const auto t2 = NS::Core::Clock::Now();
+    const auto t1 = NS::Platform::Clock::Now();
+    const auto t2 = NS::Platform::Clock::Now();
     EXPECT_GE(t2, t1);
 }
 
 TEST(NsCoreClock, ElapsedSecondsIsMonotonic)
 {
-    const double t1 = NS::Core::Clock::ElapsedSeconds();
-    const double t2 = NS::Core::Clock::ElapsedSeconds();
+    const double t1 = NS::Platform::Clock::ElapsedSeconds();
+    const double t2 = NS::Platform::Clock::ElapsedSeconds();
     EXPECT_GE(t2, t1);
     EXPECT_GE(t1, 0.0);
 }
 
 TEST(NsCoreFrameTimer, TickAdvancesState)
 {
-    NS::Core::FrameTimer::Reset();
+    NS::Platform::FrameTimer::Reset();
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
-    NS::Core::FrameTimer::Tick();
-    EXPECT_GT(NS::Core::FrameTimer::DeltaSeconds(), 0.0f);
-    EXPECT_EQ(NS::Core::FrameTimer::FrameNumber(), 1ULL);
+    NS::Platform::FrameTimer::Tick();
+    EXPECT_GT(NS::Platform::FrameTimer::DeltaSeconds(), 0.0f);
+    EXPECT_EQ(NS::Platform::FrameTimer::FrameNumber(), 1ULL);
 }
 
 TEST(NsCoreFrameTimer, ResetClearsState)
 {
-    NS::Core::FrameTimer::Reset();
+    NS::Platform::FrameTimer::Reset();
     for (int i = 0; i < 3; ++i)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        NS::Core::FrameTimer::Tick();
+        NS::Platform::FrameTimer::Tick();
     }
-    NS::Core::FrameTimer::Reset();
-    EXPECT_EQ(NS::Core::FrameTimer::FrameNumber(), 0ULL);
-    EXPECT_DOUBLE_EQ(NS::Core::FrameTimer::TotalSeconds(), 0.0);
-    EXPECT_FLOAT_EQ(NS::Core::FrameTimer::DeltaSeconds(), 0.0f);
+    NS::Platform::FrameTimer::Reset();
+    EXPECT_EQ(NS::Platform::FrameTimer::FrameNumber(), 0ULL);
+    EXPECT_DOUBLE_EQ(NS::Platform::FrameTimer::TotalSeconds(), 0.0);
+    EXPECT_FLOAT_EQ(NS::Platform::FrameTimer::DeltaSeconds(), 0.0f);
 }
 
 TEST(NsCoreFrameTimer, FixedStepsAccumulate)
 {
-    NS::Core::FrameTimer::Reset();
-    NS::Core::FrameTimer::SetFixedDelta(1.0f / 60.0f);
+    NS::Platform::FrameTimer::Reset();
+    NS::Platform::FrameTimer::SetFixedDelta(1.0f / 60.0f);
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
-    NS::Core::FrameTimer::Tick();
-    EXPECT_GE(NS::Core::FrameTimer::FixedStepsThisFrame(), 1);
+    NS::Platform::FrameTimer::Tick();
+    EXPECT_GE(NS::Platform::FrameTimer::FixedStepsThisFrame(), 1);
 }
 
 TEST_F(ClockLoggerTest, ScopedTimerLogsOnDestruction)

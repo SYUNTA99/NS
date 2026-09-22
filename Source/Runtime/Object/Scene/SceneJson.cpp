@@ -1,6 +1,6 @@
 ﻿#include "Runtime/Object/Scene/SceneJson.h"
 
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Object/Components/TransformComponent.h"
@@ -261,14 +261,14 @@ namespace NS::Object
         }
 
         const auto* raw = reinterpret_cast<const std::byte*>(text.data());
-        return ::NS::Core::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size()));
+        return ::NS::Platform::FileSystem::WriteAllBytes(path, std::span<const std::byte>(raw, text.size()));
     }
 
     bool LoadSceneFromJsonFile(SceneData& outScene, std::string_view path) noexcept
     {
         outScene = SceneData{};
 
-        auto textOpt = ::NS::Core::FileSystem::ReadAllText(path);
+        auto textOpt = ::NS::Platform::FileSystem::ReadAllText(path);
         if (!textOpt.has_value())
         {
             return false;

@@ -7,7 +7,7 @@
 #include "Game/Level/LaunchedBodyComponent.h"
 #include "Game/Player/PlayerComponent.h"
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/Math.h"
@@ -110,7 +110,7 @@ namespace NS::Game::Level
 
         const NS::Core::Vector3 position = Owner()->Root().Position();
         const NS::Core::Vector3 velocity = m_movement->BodySlamVelocity();
-        const float dt = NS::Core::FrameTimer::FixedDelta();
+        const float dt = NS::Platform::FrameTimer::FixedDelta();
 
         // この固定ステップで進んだ先で見る。今の位置だけでは手前で止められて重ならず、反発が起きない
         const NS::Physics::Capsule capsule{
@@ -412,7 +412,7 @@ namespace NS::Game::Level
     int ImpactResolverComponent::SecondsToSteps(float seconds) const noexcept
     {
         // 整数のフレームへ丸めるので、同じ秒の指定は毎回同じ長さ止まる
-        const float raw = seconds / NS::Core::FrameTimer::FixedDelta();
+        const float raw = seconds / NS::Platform::FrameTimer::FixedDelta();
         if (!std::isfinite(raw))
         {
             return 0;
@@ -422,7 +422,7 @@ namespace NS::Game::Level
 
     int ImpactResolverComponent::MaxHitStopSteps() const noexcept
     {
-        const float raw = m_hitStopMaxSeconds / NS::Core::FrameTimer::FixedDelta();
+        const float raw = m_hitStopMaxSeconds / NS::Platform::FrameTimer::FixedDelta();
         if (!std::isfinite(raw) || raw <= 0.0f)
         {
             return 0;
@@ -554,7 +554,7 @@ namespace NS::Game::Level
     {
         // 質量差をそのままフレーム数に出すと停止が伸びすぎるので平方根で圧縮する
         const float raw =
-            m_hitStopBaseSeconds * power * std::sqrt(mass) / NS::Core::FrameTimer::FixedDelta() * hitStopScale;
+            m_hitStopBaseSeconds * power * std::sqrt(mass) / NS::Platform::FrameTimer::FixedDelta() * hitStopScale;
         if (!std::isfinite(raw))
         {
             return 0;

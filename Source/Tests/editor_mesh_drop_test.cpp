@@ -1,5 +1,5 @@
 #include "Editor/LevelEditorController.h"
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Object/Components/BoxColliderComponent.h"
 #include "Runtime/Object/Components/MeshColliderComponent.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
@@ -28,7 +28,7 @@ TEST(EditorMeshDrop, DroppedMeshCollidesWithItsOwnTriangles)
     NS::Object::Scene scene;
     LevelEditorController editor(&scene);
 
-    editor.AddObjectWithMesh(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets"), "Models"), "__ns_missing_terrain__.glb"));
+    editor.AddObjectWithMesh(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets"), "Models"), "__ns_missing_terrain__.glb"));
 
     NS::Object::GameObject* placed = FindFirstPlaced(scene.Objects());
     ASSERT_NE(placed, nullptr);

@@ -1,6 +1,6 @@
 ﻿#include "Game/Level/ImpactMarkComponent.h"
 
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Object/Components/MeshRendererComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Reflection/TypeRegistry.h"
@@ -40,7 +40,7 @@ namespace NS::Game::Level
         {
             return;
         }
-        m_age += NS::Core::FrameTimer::FixedDelta();
+        m_age += NS::Platform::FrameTimer::FixedDelta();
         float t = 1.0f;
         if (m_lifeSeconds > 0.0f)
         {

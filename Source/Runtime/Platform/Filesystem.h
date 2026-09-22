@@ -7,7 +7,7 @@
 #include <string_view>
 #include <vector>
 
-namespace NS::Core
+namespace NS::Platform
 {
 
     //! @brief ファイル・ディレクトリ操作の最小ユーティリティ
@@ -86,4 +86,4 @@ namespace NS::Core
         [[nodiscard]] static std::string ParentDirectory(std::string_view path);
     };
 
-} // namespace NS::Core
+} // namespace NS::Platform

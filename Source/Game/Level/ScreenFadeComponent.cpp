@@ -1,6 +1,6 @@
 #include "Game/Level/ScreenFadeComponent.h"
 
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/Renderer.h"
 
@@ -15,7 +15,7 @@ namespace NS::Game::Level
 
     void ScreenFadeComponent::OnUpdate()
     {
-        Advance(NS::Core::FrameTimer::FixedDelta());
+        Advance(NS::Platform::FrameTimer::FixedDelta());
     }
 
     void ScreenFadeComponent::BeginOut(float seconds) noexcept

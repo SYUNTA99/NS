@@ -1,6 +1,6 @@
 ﻿#include "Game/Entity/EntityComponent.h"
 
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Object/Components/CapsuleColliderComponent.h"
 #include "Runtime/Object/GameObject.h"
 #include "Runtime/Object/Scene/Scene.h"
@@ -90,7 +90,7 @@ namespace NS::Game::Entity
 
     void EntityComponent::OnUpdate()
     {
-        const float dt = NS::Core::FrameTimer::FixedDelta();
+        const float dt = NS::Platform::FrameTimer::FixedDelta();
 
         if (!IsActive() || dt <= 0.0f)
         {

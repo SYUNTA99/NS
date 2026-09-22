@@ -1,6 +1,6 @@
 ﻿#include "Runtime/Graphics/TextureArray.h"
 
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/D3dCommon.h"
@@ -19,7 +19,7 @@ namespace NS::Graphics
 
         [[nodiscard]] bool IsDdsExtension(std::string_view path)
         {
-            std::string ext = NS::Core::FileSystem::Extension(path) ;
+            std::string ext = NS::Platform::FileSystem::Extension(path) ;
             std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) {
                 return static_cast<char>(std::tolower(c));
             });
@@ -37,7 +37,7 @@ namespace NS::Graphics
             {
                 return false;
             }
-            auto bytesOpt = ::NS::Core::FileSystem::ReadAllBytes(path);
+            auto bytesOpt = ::NS::Platform::FileSystem::ReadAllBytes(path);
             if (!bytesOpt.has_value())
             {
                 NS_LOG_WARN(Graphics, "TextureArray slice load failed: {}", path);

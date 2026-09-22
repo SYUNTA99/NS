@@ -4,7 +4,7 @@
 #include <Game/Player/PlayerStateManagerComponent.h>
 #include <Game/Player/States/FallPlayerState.h>
 #include <Runtime/Core/AABB.h>
-#include <Runtime/Core/Clock.h>
+#include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/GameObject.h>
 #include <Runtime/Object/Transform.h>
@@ -287,7 +287,7 @@ namespace
 class MovementGolden : public ::testing::Test
 {
 protected:
-    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_FixedDt); }
+    void SetUp() override { NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt); }
 };
 
 //! 基準の軌跡は差 0 で突き合わせる。同じビルドで 2 回走らせた結果がビット一致することが前提

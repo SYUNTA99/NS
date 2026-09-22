@@ -10,7 +10,7 @@
 #include "Game/Level/KillZoneComponent.h"
 #include "Game/Player.h"
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Graphics/DebugDraw.h"
 #include "Runtime/Object/Components/CameraComponent.h"
@@ -80,7 +80,7 @@ namespace NS::Editor
         const auto targetQuat = NS::Core::Quaternion::CreateFromAxisAngle(
             {0.0f, 1.0f, 0.0f}, static_cast<float>(m_currentRotation) * k_QuarterTurnYaw);
         constexpr float k_RotationSpringRate = 12.0f;
-        const float dt = NS::Core::FrameTimer::FixedDelta();
+        const float dt = NS::Platform::FrameTimer::FixedDelta();
         const float t = std::min(1.0f, k_RotationSpringRate * dt);
         m_displayedYawQuat = NS::Core::Quaternion::Slerp(m_displayedYawQuat, targetQuat, t);
     }
@@ -262,7 +262,7 @@ namespace NS::Editor
         // 上書き保存などモーダルを開かずに終わった操作をトーストで知らせる
         if (m_statusTimer > 0.0f)
         {
-            m_statusTimer -= NS::Core::FrameTimer::DeltaSeconds();
+            m_statusTimer -= NS::Platform::FrameTimer::DeltaSeconds();
             const auto vp = ImGui::GetMainViewport();
             if (vp != nullptr)
             {

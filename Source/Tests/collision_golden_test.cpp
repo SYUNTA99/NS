@@ -9,7 +9,7 @@
 #include <Game/Player/PlayerComponent.h>
 #include <Game/Player/PlayerStateManagerComponent.h>
 #include <Runtime/Core/AABB.h>
-#include <Runtime/Core/Clock.h>
+#include <Runtime/Platform/Clock.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Object/Components/PlayerInputComponent.h>
 #include <Runtime/Object/GameObject.h>
@@ -212,7 +212,7 @@ namespace
 class CollisionGolden : public ::testing::Test
 {
 protected:
-    void SetUp() override { NS::Core::FrameTimer::SetFixedDelta(k_FixedDt); }
+    void SetUp() override { NS::Platform::FrameTimer::SetFixedDelta(k_FixedDt); }
 };
 
 TEST_F(CollisionGolden, HashIsStableAcrossTwoRuns)

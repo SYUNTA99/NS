@@ -26,8 +26,9 @@ namespace NS::Game::Entity
     //! TypeRegistry には登録しない。実体化できるのは派生だけ。
     //! 衝突の PhysicsScene は使う時に持ち主の Scene から引く。
     //! JoltCharacter だけは作った時の PhysicsScene を持ち続ける。
-    //! dt は NS::Core::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
-    //! 依存: NS::Core, NS::Physics::JoltCharacter / PhysicsScene, NS::Object::Scene / CapsuleColliderComponent
+    //! dt は NS::Platform::FrameTimer::FixedDelta() のみで、DeltaSeconds() は使わない
+    //! 依存: NS::Core, NS::Platform::FrameTimer, NS::Physics::JoltCharacter / PhysicsScene, NS::Object::Scene /
+    //! CapsuleColliderComponent
     class EntityComponent : public NS::Object::Component
     {
     public:

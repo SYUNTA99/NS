@@ -8,9 +8,9 @@
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Core/Sphere.h"
 
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Core/EditorAccess.h"
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Core/NonCopyable.h"

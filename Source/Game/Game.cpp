@@ -1,7 +1,7 @@
 #include "Game/Game.h"
 
 #include "Runtime/App/Application.h"
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Object/Components/ThirdPersonFollowComponent.h"
 #include "Runtime/Object/Scene/Scene.h"
 #include "Runtime/Object/Scene/SceneJson.h"
@@ -19,8 +19,8 @@ namespace
     {
         if (sceneName.empty())
             return std::nullopt;
-        return NS::Core::FileSystem::ResolveUnder(
-            NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Assets/Scenes"),
+        return NS::Platform::FileSystem::ResolveUnder(
+            NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets/Scenes"),
             std::string{sceneName} + ".scene");
     }
 } // namespace

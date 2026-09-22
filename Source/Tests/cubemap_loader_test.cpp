@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Platform/Filesystem.h>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/Skybox.h>
@@ -50,11 +50,11 @@ TEST_F(CubemapLoaderTest, LoadKurt6FacePngSucceeds)
 
     std::unique_ptr<Skybox> skyboxHolder = Skybox::Create();
     Skybox& skybox = *skyboxHolder;
-    const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
-    const auto kurtDir = NS::Core::FileSystem::Combine(
-        NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(exeDir, "Assets"), "Skybox"), "kurt");
+    const auto exeDir = NS::Platform::FileSystem::GetExeDirectory();
+    const auto kurtDir = NS::Platform::FileSystem::Combine(
+        NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(exeDir, "Assets"), "Skybox"), "kurt");
 
-    if (!NS::Core::FileSystem::Exists(NS::Core::FileSystem::Combine(kurtDir, "space_ft.png")))
+    if (!NS::Platform::FileSystem::Exists(NS::Platform::FileSystem::Combine(kurtDir, "space_ft.png")))
     {
         GTEST_SKIP() << "skybox kurt PNG 未配置 (exe 隣に Assets 未コピー)";
     }
@@ -92,11 +92,11 @@ TEST_F(CubemapLoaderTest, LoadDdsCubemapReturnsTextureCubeDim)
 
     std::unique_ptr<Skybox> skyboxHolder = Skybox::Create();
     Skybox& skybox = *skyboxHolder;
-    const auto exeDir = NS::Core::FileSystem::GetExeDirectory();
-    const auto ddsPath = NS::Core::FileSystem::Combine(
-        NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(exeDir, "Assets"), "Skybox"), "kurt.dds");
+    const auto exeDir = NS::Platform::FileSystem::GetExeDirectory();
+    const auto ddsPath = NS::Platform::FileSystem::Combine(
+        NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(exeDir, "Assets"), "Skybox"), "kurt.dds");
 
-    if (!NS::Core::FileSystem::Exists(ddsPath))
+    if (!NS::Platform::FileSystem::Exists(ddsPath))
     {
         GTEST_SKIP() << "skybox .dds 未配置 (texassemble 生成は後続タスクで対応)";
     }

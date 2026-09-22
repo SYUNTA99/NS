@@ -1,4 +1,4 @@
-#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Platform/Filesystem.h>
 #include <Runtime/Core/Logger.h>
 #include <Runtime/Graphics/Camera.h>
 #include <Runtime/Graphics/EffectScene.h>
@@ -60,7 +60,7 @@ namespace
     EffectSceneDesc MakeEffectSceneDesc()
     {
         EffectSceneDesc d{};
-        d.effectRoot = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::ContentRoot(), "Source"), "Tests"), "data"), "effects");
+        d.effectRoot = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Source"), "Tests"), "data"), "effects");
         return d;
     }
 

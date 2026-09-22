@@ -1,7 +1,7 @@
 ﻿#include "Runtime/Graphics/Renderer.h"
 
 #include "Runtime/Core/Assert.h"
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Buffer.h"
@@ -297,10 +297,10 @@ namespace NS::Graphics
             return;
         }
 
-        const auto contentRoot = ::NS::Core::FileSystem::ContentRoot();
-        const std::string shaderDir = ::NS::Core::FileSystem::Combine(contentRoot, "Shaders");
-        m_fullscreenVs = Shader::Create(::NS::Core::FileSystem::Combine(shaderDir, "fade.vs.hlsl"));
-        m_fullscreenPs = Shader::Create(::NS::Core::FileSystem::Combine(shaderDir, "fade.ps.hlsl"));
+        const auto contentRoot = ::NS::Platform::FileSystem::ContentRoot();
+        const std::string shaderDir = ::NS::Platform::FileSystem::Combine(contentRoot, "Shaders");
+        m_fullscreenVs = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "fade.vs.hlsl"));
+        m_fullscreenPs = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "fade.ps.hlsl"));
         if (!m_fullscreenVs->IsValid() || !m_fullscreenPs->IsValid())
         {
             NS_LOG_ERROR(Graphics, "Renderer: 全画面塗り shader 構築失敗");
@@ -372,10 +372,10 @@ namespace NS::Graphics
             return;
         }
 
-        const auto contentRoot = ::NS::Core::FileSystem::ContentRoot();
-        const std::string shaderDir = ::NS::Core::FileSystem::Combine(contentRoot, "Shaders");
-        m_screenRectVs = Shader::Create(::NS::Core::FileSystem::Combine(shaderDir, "ui_rect.vs.hlsl"));
-        m_screenRectPs = Shader::Create(::NS::Core::FileSystem::Combine(shaderDir, "ui_rect.ps.hlsl"));
+        const auto contentRoot = ::NS::Platform::FileSystem::ContentRoot();
+        const std::string shaderDir = ::NS::Platform::FileSystem::Combine(contentRoot, "Shaders");
+        m_screenRectVs = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "ui_rect.vs.hlsl"));
+        m_screenRectPs = Shader::Create(::NS::Platform::FileSystem::Combine(shaderDir, "ui_rect.ps.hlsl"));
         if (!m_screenRectVs->IsValid() || !m_screenRectPs->IsValid())
         {
             NS_LOG_ERROR(Graphics, "Renderer: UI 矩形 shader 構築失敗");
@@ -488,7 +488,7 @@ namespace NS::Graphics
         {
             // ユーザー編集ファイル由来のパスを ContentRoot 配下へ閉じ込める。外を指す値は読み込まない
             const auto absPath =
-                ::NS::Core::FileSystem::ResolveUnder(::NS::Core::FileSystem::ContentRoot(), cubemapPath);
+                ::NS::Platform::FileSystem::ResolveUnder(::NS::Platform::FileSystem::ContentRoot(), cubemapPath);
             if (!absPath.has_value())
             {
                 NS_LOG_WARN(Graphics,

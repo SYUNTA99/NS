@@ -8,7 +8,7 @@
 #include <string>
 #include <utility>
 
-namespace NS::Core
+namespace NS::Platform
 {
 
     //! @brief アプリケーション起動時からの経過時間を計測する
@@ -70,8 +70,11 @@ namespace NS::Core
             s_fixedSteps = 0;
         }
 
+        //! 前フレームからの経過秒
         [[nodiscard]] static float DeltaSeconds() noexcept { return s_delta; }
+        //! 起動からの累計秒
         [[nodiscard]] static double TotalSeconds() noexcept { return s_total; }
+        //! 累計フレーム数
         [[nodiscard]] static std::uint64_t FrameNumber() noexcept { return s_frame; }
 
         //! デフォルトは毎秒 60 回の固定更新
@@ -85,6 +88,7 @@ namespace NS::Core
                 s_fixedDelta = fixed;
             }
         }
+        //! 固定更新の間隔（秒）
         [[nodiscard]] static float FixedDelta() noexcept { return s_fixedDelta; }
         //! このフレームで固定更新処理を実行すべき回数
         [[nodiscard]] static int FixedStepsThisFrame() noexcept { return s_fixedSteps; }
@@ -106,7 +110,7 @@ namespace NS::Core
     class ScopedTimer
     {
     public:
-        ScopedTimer(LogCategory category, std::string label)
+        ScopedTimer(::NS::Core::LogCategory category, std::string label)
             : m_category(category), m_label(std::move(label)), m_startTime(std::chrono::steady_clock::now())
         {}
 
@@ -126,12 +130,12 @@ namespace NS::Core
         ScopedTimer& operator=(const ScopedTimer&) = delete;
 
     private:
-        LogCategory m_category;
+        ::NS::Core::LogCategory m_category;
         std::string m_label;
         std::chrono::steady_clock::time_point m_startTime;
     };
 
-} // namespace NS::Core
+} // namespace NS::Platform
 
 #define NS_CLOCK_PASTE_IMPL(a, b) a##b
 #define NS_CLOCK_PASTE(a, b) NS_CLOCK_PASTE_IMPL(a, b)
@@ -140,7 +144,7 @@ namespace NS::Core
 //! @details プロファイリングが無効な環境では何も展開されず、オーバーヘッドは発生しない
 #if defined(NS_ENABLE_PROFILING)
 #define NS_SCOPED_TIMER(cat, label)                                                                                    \
-    ::NS::Core::ScopedTimer NS_CLOCK_PASTE(ns_scoped_timer_, __COUNTER__)((::NS::Core::LogCategory::cat), (label))
+    ::NS::Platform::ScopedTimer NS_CLOCK_PASTE(ns_scoped_timer_, __COUNTER__)((::NS::Core::LogCategory::cat), (label))
 #else
 #define NS_SCOPED_TIMER(cat, label) ((void)0)
 #endif

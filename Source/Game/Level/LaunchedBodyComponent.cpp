@@ -3,7 +3,7 @@
 #include "Game/Level/BreakableComponent.h"
 #include "Game/Level/ColliderBounds.h"
 #include "Runtime/Core/AABB.h"
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Core/Math.h"
 #include "Runtime/Core/OBB.h"
 #include "Runtime/Object/Components/BoxColliderComponent.h"
@@ -208,7 +208,7 @@ namespace NS::Game::Level
 
     void LaunchedBodyComponent::OnUpdate()
     {
-        const float dt = NS::Core::FrameTimer::FixedDelta();
+        const float dt = NS::Platform::FrameTimer::FixedDelta();
         if (!m_flying)
         {
             // 0 は消えない指定。押し飛ばしただけの配置物は場に残す

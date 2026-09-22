@@ -1,4 +1,5 @@
 ﻿#include "Runtime/App/Application.h"
+#include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 
@@ -12,10 +13,16 @@ namespace
     public:
         LoggerScope()
         {
-            ::NS::Core::Logger::SetLogName("game");
+            ::NS::Core::LoggerDesc desc;
+            desc.logName = "game";
             // 起動するたびに新しいログファイルを作る
-            ::NS::Core::Logger::SetRotateOnOpen(true);
-            ::NS::Core::Logger::Init();
+            desc.rotateOnOpen = true;
+#if defined(NS_SHIPPING)
+            desc.logDirectory = ::NS::Platform::FileSystem::GetExeDirectory();
+#else
+            desc.logDirectory = ::NS::Platform::FileSystem::Combine(::NS::Platform::FileSystem::ContentRoot(), "build");
+#endif
+            ::NS::Core::Logger::Init(desc);
         }
         ~LoggerScope() { ::NS::Core::Logger::Shutdown(); }
 

@@ -2,7 +2,7 @@
 
 #include "Game/Level/ImpactResolverComponent.h"
 #include "Game/Player/PlayerComponent.h"
-#include "Runtime/Core/Clock.h"
+#include "Runtime/Platform/Clock.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/DebugDraw.h"
@@ -67,7 +67,7 @@ namespace NS::Game::Level
 
     void CollisionInputComponent::OnUpdate()
     {
-        const float dt = NS::Core::FrameTimer::FixedDelta();
+        const float dt = NS::Platform::FrameTimer::FixedDelta();
         m_judge.chargeThresholdSteps = SecondsToSteps(m_chargeThresholdSeconds, dt);
         m_judge.chargeMaxSteps = SecondsToSteps(m_chargeFullSeconds, dt);
 

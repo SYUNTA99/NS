@@ -1,4 +1,4 @@
-#include <Runtime/Core/Filesystem.h>
+#include <Runtime/Platform/Filesystem.h>
 #include <Runtime/Core/Math.h>
 #include <Runtime/Graphics/Animation.h>
 #include <Runtime/Graphics/GltfLoader.h>
@@ -14,8 +14,8 @@
 // 別時刻で別ポーズになることを確認する。アセットが無ければ飛ばす
 TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
 {
-    const std::string path = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::GetExeDirectory(), "Assets"), "Models"), "CesiumMan.glb");
-    if (!NS::Core::FileSystem::Exists(path))
+    const std::string path = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::GetExeDirectory(), "Assets"), "Models"), "CesiumMan.glb");
+    if (!NS::Platform::FileSystem::Exists(path))
     {
         GTEST_SKIP() << "CesiumMan.glb が無い: " << path;
     }
@@ -99,8 +99,8 @@ TEST(GltfAnimatedAssetTest, LoadsCesiumManWithSkinAndAnimations)
 // Xbot.glb はアーマチュア節点が 0.01 倍で骨をセンチメートルで持つ。CesiumMan にこの倍率は無い
 TEST(GltfAnimatedAssetTest, XbotStandsAtHumanScale)
 {
-    const std::string path = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::GetExeDirectory(), "Assets"), "Models"), "Xbot.glb");
-    if (!NS::Core::FileSystem::Exists(path))
+    const std::string path = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::GetExeDirectory(), "Assets"), "Models"), "Xbot.glb");
+    if (!NS::Platform::FileSystem::Exists(path))
     {
         GTEST_SKIP() << "Xbot.glb が無い: " << path;
     }
@@ -132,8 +132,8 @@ TEST(GltfAnimatedAssetTest, XbotStandsAtHumanScale)
 // skin 非依存のソース読込: skin を無視して node 階層＋animation だけから骨格とクリップを取る
 TEST(GltfAnimatedAssetTest, LoadsAnimationSourceSkinIndependent)
 {
-    const std::string path = NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::Combine(NS::Core::FileSystem::GetExeDirectory(), "Assets"), "Models"), "CesiumMan.glb");
-    if (!NS::Core::FileSystem::Exists(path))
+    const std::string path = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::GetExeDirectory(), "Assets"), "Models"), "CesiumMan.glb");
+    if (!NS::Platform::FileSystem::Exists(path))
     {
         GTEST_SKIP() << "CesiumMan.glb が無い: " << path;
     }

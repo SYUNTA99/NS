@@ -1,4 +1,4 @@
-#include "Runtime/Core/Filesystem.h"
+#include "Runtime/Platform/Filesystem.h"
 
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
@@ -12,7 +12,7 @@
 
 #include <windows.h>
 
-namespace NS::Core
+namespace NS::Platform
 {
 
     namespace
@@ -85,7 +85,7 @@ namespace NS::Core
             {
                 wide.remove_suffix(1);
             }
-            const std::string text = StringUtils::Utf8FromWide(wide);
+            const std::string text = ::NS::Core::StringUtils::Utf8FromWide(wide);
             ::LocalFree(buffer);
             return std::format("{}: {}", error, text);
         }
@@ -93,7 +93,7 @@ namespace NS::Core
         // TODO: 260 文字を超えるパスは失敗する。扱うなら \\?\ プレフィックスを付ける
         [[nodiscard]] DWORD AttributesOf(std::string_view path) noexcept
         {
-            return ::GetFileAttributesW(StringUtils::WideFromUtf8(path).c_str());
+            return ::GetFileAttributesW(::NS::Core::StringUtils::WideFromUtf8(path).c_str());
         }
     } // namespace
 
@@ -114,7 +114,7 @@ namespace NS::Core
 
     std::optional<std::vector<std::byte>> FileSystem::ReadAllBytes(std::string_view path)
     {
-        const FileHandle handle(::CreateFileW(StringUtils::WideFromUtf8(path).c_str(),
+        const FileHandle handle(::CreateFileW(::NS::Core::StringUtils::WideFromUtf8(path).c_str(),
                                               GENERIC_READ,
                                               FILE_SHARE_READ,
                                               nullptr,
@@ -167,7 +167,7 @@ namespace NS::Core
             }
         }
 
-        const FileHandle handle(::CreateFileW(StringUtils::WideFromUtf8(path).c_str(),
+        const FileHandle handle(::CreateFileW(::NS::Core::StringUtils::WideFromUtf8(path).c_str(),
                                               GENERIC_WRITE,
                                               0,
                                               nullptr,
@@ -235,7 +235,7 @@ namespace NS::Core
             return false;
         }
 
-        if (::CreateDirectoryW(StringUtils::WideFromUtf8(path).c_str(), nullptr) != 0)
+        if (::CreateDirectoryW(::NS::Core::StringUtils::WideFromUtf8(path).c_str(), nullptr) != 0)
         {
             return true;
         }
@@ -284,7 +284,7 @@ namespace NS::Core
         template <typename OnEntry> void ForEachEntry(std::string_view dir, const char* callerName, OnEntry&& onEntry)
         {
             WIN32_FIND_DATAW data{};
-            const std::wstring pattern = StringUtils::WideFromUtf8(FileSystem::Combine(dir, "*"));
+            const std::wstring pattern = ::NS::Core::StringUtils::WideFromUtf8(FileSystem::Combine(dir, "*"));
             const FindHandle handle(::FindFirstFileW(pattern.c_str(), &data));
             if (!handle.IsValid())
             {
@@ -299,7 +299,7 @@ namespace NS::Core
                 {
                     continue;
                 }
-                onEntry(data.dwFileAttributes, FileSystem::Combine(dir, StringUtils::Utf8FromWide(name)));
+                onEntry(data.dwFileAttributes, FileSystem::Combine(dir, ::NS::Core::StringUtils::Utf8FromWide(name)));
             }
             while (::FindNextFileW(handle.Get(), &data) != 0);
 
@@ -376,7 +376,7 @@ namespace NS::Core
             return {};
         }
 
-        return ParentDirectory(StringUtils::Utf8FromWide(std::wstring_view(buffer.data(), len)));
+        return ParentDirectory(::NS::Core::StringUtils::Utf8FromWide(std::wstring_view(buffer.data(), len)));
     }
 
     std::string FileSystem::ContentRoot()
@@ -650,4 +650,4 @@ namespace NS::Core
         return combined;
     }
 
-} // namespace NS::Core
+} // namespace NS::Platform
