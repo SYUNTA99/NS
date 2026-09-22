@@ -1,11 +1,13 @@
-#include <Runtime/Platform/Filesystem.h>
+﻿#include "pixel_readback.h"
+#include <Runtime/Core/CameraData.h>
 #include <Runtime/Core/Logger.h>
-#include <Runtime/Graphics/Camera.h>
 #include <Runtime/Graphics/EffectScene.h>
 #include <Runtime/Graphics/GraphicObject.h>
 #include <Runtime/Graphics/RenderTarget.h>
 #include <Runtime/Graphics/Renderer.h>
 #include <Runtime/Graphics/Texture.h>
+#include <Runtime/Platform/Filesystem.h>
+
 #include <Runtime/Platform/Window.h>
 #include <gtest/gtest.h>
 
@@ -16,17 +18,17 @@
 
 namespace
 {
-    using NS::Gfx::Camera;
-    using NS::Gfx::CameraDesc;
+    using NS::Core::CameraData;
     using NS::Gfx::EffectHandle;
-    using NS::Gfx::EffectPlayDesc;
     using NS::Gfx::EffectScene;
-    using NS::Gfx::EffectSceneDesc;
     using NS::Gfx::Renderer;
     using NS::Gfx::RendererDesc;
     using NS::Gfx::RenderTarget;
     using NS::Platform::Window;
     using NS::Platform::WindowDesc;
+    using NS::Tests::LargestChannelDifference;
+    using NS::Tests::PixelPosition;
+    using NS::Tests::ReadPixel;
 
     constexpr float k_Frame = 1.0f / 60.0f;
     constexpr int k_TargetSize = 64;
@@ -57,26 +59,19 @@ namespace
         return d;
     }
 
-    EffectSceneDesc MakeEffectSceneDesc()
+    std::string TestEffectRoot()
     {
-        EffectSceneDesc d{};
-        d.effectRoot = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Source"), "Tests"), "data"), "effects");
-        return d;
+        const std::string source = NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Source");
+        const std::string tests = NS::Platform::FileSystem::Combine(source, "Tests");
+        return NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::Combine(tests, "data"), "effects");
     }
 
-    EffectPlayDesc MakePlayDesc(std::string_view name)
+    CameraData MakeCamera(const NS::Core::Vector3& position)
     {
-        EffectPlayDesc d{};
-        d.name = name;
-        return d;
-    }
-
-    Camera MakeCamera(const NS::Core::Vector3& position)
-    {
-        CameraDesc d{};
-        d.position = position;
-        d.aspectRatio = 1.0f;
-        return Camera(d);
+        CameraData camera;
+        camera.SetPosition(position);
+        camera.SetAspectRatio(1.0f);
+        return camera;
     }
 
     void Advance(EffectScene& world, int frames)
@@ -87,15 +82,9 @@ namespace
         }
     }
 
-    struct PixelPosition
-    {
-        int column = 0;
-        int row = 0;
-    };
-
     constexpr PixelPosition k_Center{k_TargetSize / 2, k_TargetSize / 2};
 
-    PixelPosition PixelOf(const Camera& camera, const NS::Core::Vector3& position)
+    PixelPosition PixelOf(const CameraData& camera, const NS::Core::Vector3& position)
     {
         const NS::Core::Vector3 ndc = NS::Core::Vector3::Transform(position, camera.ViewProjection());
         PixelPosition pixel{};
@@ -104,57 +93,6 @@ namespace
         return pixel;
     }
 
-    // 描いた結果は画素を読み戻して確かめる。行列の計算だけを見る試験は、描画を消しても通る
-    std::array<std::uint8_t, 4> ReadPixel(const RenderTarget& target, PixelPosition at)
-    {
-        ID3D11Texture2D* source = target.Color()->Native();
-        D3D11_TEXTURE2D_DESC desc{};
-        source->GetDesc(&desc);
-        desc.Usage = D3D11_USAGE_STAGING;
-        desc.BindFlags = 0;
-        desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-        desc.MiscFlags = 0;
-
-        NS::Gfx::ComPtr<ID3D11Texture2D> staging;
-        std::array<std::uint8_t, 4> pixel{};
-        if (FAILED(NS::Gfx::Gpu().device->CreateTexture2D(&desc, nullptr, &staging)))
-        {
-            ADD_FAILURE() << "読み戻し用のテクスチャを作れなかった";
-            return pixel;
-        }
-        ID3D11DeviceContext* context = NS::Gfx::Gpu().context;
-        context->CopyResource(staging.Get(), source);
-
-        D3D11_MAPPED_SUBRESOURCE mapped{};
-        if (FAILED(context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)))
-        {
-            ADD_FAILURE() << "読み戻し用のテクスチャを開けなかった";
-            return pixel;
-        }
-        const auto* bytes = static_cast<const std::uint8_t*>(mapped.pData);
-        const std::uint8_t* texel =
-            bytes + static_cast<std::size_t>(at.row) * mapped.RowPitch + static_cast<std::size_t>(at.column) * 4;
-        for (std::size_t i = 0; i < pixel.size(); ++i)
-        {
-            pixel[i] = texel[i];
-        }
-        context->Unmap(staging.Get(), 0);
-        return pixel;
-    }
-
-    int LargestChannelDifference(const std::array<std::uint8_t, 4>& a, const std::array<std::uint8_t, 4>& b)
-    {
-        int largest = 0;
-        for (std::size_t i = 0; i < 3; ++i)
-        {
-            const int diff = std::abs(static_cast<int>(a[i]) - static_cast<int>(b[i]));
-            if (diff > largest)
-            {
-                largest = diff;
-            }
-        }
-        return largest;
-    }
 } // namespace
 
 class EffectSceneTest : public ::testing::Test
@@ -177,7 +115,7 @@ protected:
         ASSERT_TRUE(m_renderer->IsValid());
         m_target = RenderTarget::Create(NS::Core::Size2D{k_TargetSize, k_TargetSize});
         ASSERT_TRUE(m_target && m_target->IsValid());
-        m_world = std::make_unique<EffectScene>(MakeEffectSceneDesc());
+        m_world = std::make_unique<EffectScene>(TestEffectRoot());
         ASSERT_TRUE(m_world->IsValid());
     }
 
@@ -195,7 +133,7 @@ protected:
         EffectSceneTest::TearDown();
     }
 
-    std::array<std::uint8_t, 4> DrawAndRead(const Camera& camera, PixelPosition at)
+    std::array<std::uint8_t, 4> DrawAndRead(const CameraData& camera, PixelPosition at)
     {
         m_renderer->BeginSceneView(m_target.get());
         m_world->Draw(camera);
@@ -210,13 +148,13 @@ protected:
 
 TEST_F(EffectSceneTest, IsInvalidAndHarmlessWithoutRenderer)
 {
-    EffectScene world(MakeEffectSceneDesc());
+    EffectScene world(TestEffectRoot());
 
     EXPECT_FALSE(world.IsValid());
     EXPECT_FALSE(world.Preload("square_r"));
-    EXPECT_FALSE(world.Play(MakePlayDesc("square_r")).IsValid());
+    EXPECT_FALSE(world.Play("square_r").IsValid());
     world.Update(k_Frame);
-    world.Draw(Camera{});
+    world.Draw(CameraData{});
     world.Stop(EffectHandle{0});
     EXPECT_FALSE(world.Exists(EffectHandle{0}));
     world.StopAll();
@@ -235,14 +173,14 @@ TEST_F(EffectSceneWithRendererTest, PreloadReturnsFalseForMissingEffect)
 TEST_F(EffectSceneWithRendererTest, PlayReturnsInvalidHandleForEffectNotPreloaded)
 {
     // ファイルは在るが Preload していない名前。再生の瞬間に読み込みを走らせないため、ここでは出せない
-    EXPECT_FALSE(m_world->Play(MakePlayDesc("square_r")).IsValid());
+    EXPECT_FALSE(m_world->Play("square_r").IsValid());
 }
 
 TEST_F(EffectSceneWithRendererTest, PlayedEffectExistsUntilItsLifeEnds)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
 
-    const EffectHandle handle = m_world->Play(MakePlayDesc("square_r"));
+    const EffectHandle handle = m_world->Play("square_r");
     ASSERT_TRUE(handle.IsValid());
     EXPECT_TRUE(m_world->Exists(handle));
 
@@ -256,7 +194,7 @@ TEST_F(EffectSceneWithRendererTest, PlayedEffectExistsUntilItsLifeEnds)
 TEST_F(EffectSceneWithRendererTest, ZeroDeltaDoesNotAdvanceEffect)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
-    const EffectHandle handle = m_world->Play(MakePlayDesc("square_r"));
+    const EffectHandle handle = m_world->Play("square_r");
     ASSERT_TRUE(handle.IsValid());
     // 寿命の手前まで進めて残りを 20 フレームにしてから 0 を渡す
     // 0 で 1 回に 1/6 フレームほど進むだけでも、120 回で寿命を越えて落ちる
@@ -273,7 +211,7 @@ TEST_F(EffectSceneWithRendererTest, ZeroDeltaDoesNotAdvanceEffect)
 TEST_F(EffectSceneWithRendererTest, NegativeDeltaIsIgnored)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
-    const EffectHandle handle = m_world->Play(MakePlayDesc("square_r"));
+    const EffectHandle handle = m_world->Play("square_r");
     ASSERT_TRUE(handle.IsValid());
 
     // Effekseer は負の経過を持ち越し、足して 0 以上になるまで進めない
@@ -287,9 +225,9 @@ TEST_F(EffectSceneWithRendererTest, NegativeDeltaIsIgnored)
 TEST_F(EffectSceneWithRendererTest, StopAndStopAllRemoveEffects)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
-    const EffectHandle first = m_world->Play(MakePlayDesc("square_r"));
-    const EffectHandle second = m_world->Play(MakePlayDesc("square_r"));
-    const EffectHandle third = m_world->Play(MakePlayDesc("square_r"));
+    const EffectHandle first = m_world->Play("square_r");
+    const EffectHandle second = m_world->Play("square_r");
+    const EffectHandle third = m_world->Play("square_r");
     ASSERT_TRUE(first.IsValid());
     ASSERT_TRUE(second.IsValid());
     ASSERT_TRUE(third.IsValid());
@@ -308,12 +246,12 @@ TEST_F(EffectSceneWithRendererTest, StopAndStopAllRemoveEffects)
 TEST_F(EffectSceneWithRendererTest, DrawChangesPixelsWhereEffectIsPlayed)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
-    const Camera camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
+    const CameraData camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
 
     // クリア色の既定値が変わっても壊れないよう、エフェクトを出す前の中央を基準にする
     const std::array<std::uint8_t, 4> cleared = DrawAndRead(camera, k_Center);
 
-    ASSERT_TRUE(m_world->Play(MakePlayDesc("square_r")).IsValid());
+    ASSERT_TRUE(m_world->Play("square_r").IsValid());
     Advance(*m_world, 5);
     const std::array<std::uint8_t, 4> drawn = DrawAndRead(camera, k_Center);
 
@@ -323,10 +261,10 @@ TEST_F(EffectSceneWithRendererTest, DrawChangesPixelsWhereEffectIsPlayed)
 TEST_F(EffectSceneWithRendererTest, StoppedEffectLeavesScreenWithZeroDelta)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
-    const Camera camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
+    const CameraData camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
 
     const std::array<std::uint8_t, 4> cleared = DrawAndRead(camera, k_Center);
-    ASSERT_TRUE(m_world->Play(MakePlayDesc("square_r")).IsValid());
+    ASSERT_TRUE(m_world->Play("square_r").IsValid());
     Advance(*m_world, 5);
     ASSERT_GE(LargestChannelDifference(cleared, DrawAndRead(camera, k_Center)), 16);
 
@@ -341,14 +279,12 @@ TEST_F(EffectSceneWithRendererTest, StoppedEffectLeavesScreenWithZeroDelta)
 TEST_F(EffectSceneWithRendererTest, EffectPlayedOffScreenLeavesCenterUnchanged)
 {
     ASSERT_TRUE(m_world->Preload("square_r"));
-    const Camera camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
+    const CameraData camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
 
     const std::array<std::uint8_t, 4> cleared = DrawAndRead(camera, k_Center);
 
     // 位置を捨てて原点に出す実装だと、中央が変わって落ちる
-    EffectPlayDesc desc = MakePlayDesc("square_r");
-    desc.position = NS::Core::Vector3{50.0f, 0.0f, 0.0f};
-    ASSERT_TRUE(m_world->Play(desc).IsValid());
+    ASSERT_TRUE(m_world->Play("square_r", NS::Core::Vector3{50.0f, 0.0f, 0.0f}).IsValid());
     Advance(*m_world, 5);
     const std::array<std::uint8_t, 4> drawn = DrawAndRead(camera, k_Center);
 
@@ -358,14 +294,12 @@ TEST_F(EffectSceneWithRendererTest, EffectPlayedOffScreenLeavesCenterUnchanged)
 TEST_F(EffectSceneWithRendererTest, EffectAppearsOnTheSideOfItsPlayPosition)
 {
     ASSERT_TRUE(m_world->Preload("marker_z_offset"));
-    const Camera camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
+    const CameraData camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
     const std::array<std::uint8_t, 4> cleared = DrawAndRead(camera, k_Center);
 
     // marker_z_offset はエフェクトのデータで z を +2 ずらした小さい板
     // 左手系で読むと z が反転し、再生位置の z - 2 に出る
-    EffectPlayDesc desc = MakePlayDesc("marker_z_offset");
-    desc.position = NS::Core::Vector3{1.0f, 0.0f, 0.0f};
-    ASSERT_TRUE(m_world->Play(desc).IsValid());
+    ASSERT_TRUE(m_world->Play("marker_z_offset", NS::Core::Vector3{1.0f, 0.0f, 0.0f}).IsValid());
     Advance(*m_world, 5);
     const NS::Core::Vector3 expected{1.0f, 0.0f, -2.0f};
     const NS::Core::Vector3 mirrored{-1.0f, 0.0f, -2.0f};
@@ -381,10 +315,10 @@ TEST_F(EffectSceneWithRendererTest, EffectDataIsReadAsLeftHanded)
     ASSERT_TRUE(m_world->Preload("marker_z_offset"));
 
     // 正面からだと z のずれは大きさにしか出ない。横から見て z の符号を画面の左右に分ける
-    const Camera camera = MakeCamera(NS::Core::Vector3{-5.0f, 0.0f, 0.0f});
+    const CameraData camera = MakeCamera(NS::Core::Vector3{-5.0f, 0.0f, 0.0f});
     const std::array<std::uint8_t, 4> cleared = DrawAndRead(camera, k_Center);
 
-    ASSERT_TRUE(m_world->Play(MakePlayDesc("marker_z_offset")).IsValid());
+    ASSERT_TRUE(m_world->Play("marker_z_offset").IsValid());
     Advance(*m_world, 5);
     const NS::Core::Vector3 expected{0.0f, 0.0f, -2.0f};
     const NS::Core::Vector3 mirrored{0.0f, 0.0f, 2.0f};
@@ -398,21 +332,17 @@ TEST_F(EffectSceneWithRendererTest, EffectDataIsReadAsLeftHanded)
 TEST_F(EffectSceneWithRendererTest, EffectBeyondItsDepthClippingIsNotDrawn)
 {
     ASSERT_TRUE(m_world->Preload("marker_depth_clip"));
-    const Camera camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
+    const CameraData camera = MakeCamera(NS::Core::Vector3{0.0f, 0.0f, -5.0f});
     const std::array<std::uint8_t, 4> cleared = DrawAndRead(camera, k_Center);
 
     // marker_depth_clip は深度クリップ 20。カメラ (z = -5) から 15 なら描き、22 なら描かない
     // 遠い方は原点からだと 17 なので、原点から測る実装だと描かれて落ちる
-    EffectPlayDesc nearDesc = MakePlayDesc("marker_depth_clip");
-    nearDesc.position = NS::Core::Vector3{0.0f, 0.0f, 10.0f};
-    ASSERT_TRUE(m_world->Play(nearDesc).IsValid());
+    ASSERT_TRUE(m_world->Play("marker_depth_clip", NS::Core::Vector3{0.0f, 0.0f, 10.0f}).IsValid());
     Advance(*m_world, 5);
     ASSERT_GE(LargestChannelDifference(cleared, DrawAndRead(camera, k_Center)), 16);
 
     m_world->StopAll();
-    EffectPlayDesc farDesc = MakePlayDesc("marker_depth_clip");
-    farDesc.position = NS::Core::Vector3{0.0f, 0.0f, 17.0f};
-    ASSERT_TRUE(m_world->Play(farDesc).IsValid());
+    ASSERT_TRUE(m_world->Play("marker_depth_clip", NS::Core::Vector3{0.0f, 0.0f, 17.0f}).IsValid());
     Advance(*m_world, 5);
     const std::array<std::uint8_t, 4> drawnFar = DrawAndRead(camera, k_Center);
 
@@ -426,9 +356,9 @@ TEST_F(EffectSceneWithRendererTest, PreloadRejectsEffectWithMissingTexture)
     EXPECT_TRUE(m_world->Preload("marker_textured"));
     EXPECT_FALSE(m_world->Preload("marker_texture_missing"));
 
-    // 読み損ねた名前を登録すると、2 回目の Preload が通って色テクスチャの無いエフェクトが白で再生される
+    // 読み損ねた名前を登録する実装だと、2 回目の Preload が通って色テクスチャの無いエフェクトが白で再生される
     EXPECT_FALSE(m_world->Preload("marker_texture_missing"));
-    EXPECT_FALSE(m_world->Play(MakePlayDesc("marker_texture_missing")).IsValid());
+    EXPECT_FALSE(m_world->Play("marker_texture_missing").IsValid());
 }
 
 TEST_F(EffectSceneWithRendererTest, PreloadReturnsTrueForLoadedName)

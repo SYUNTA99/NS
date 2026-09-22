@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Runtime/Core/Math.h"
 #include "Runtime/Core/NonCopyable.h"
@@ -14,15 +14,13 @@
 #include <unordered_map>
 #include <unordered_set>
 
+namespace NS::Core
+{
+    class CameraData;
+} // namespace NS::Core
+
 namespace NS::Gfx
 {
-    class Camera;
-
-    //! @brief EffectScene の構築パラメータ
-    struct EffectSceneDesc
-    {
-        std::string effectRoot; //!< Preload が .efkefc を探すディレクトリ
-    };
 
     //! @brief EffectScene::Play が返す、再生したエフェクトのハンドル
     struct EffectHandle
@@ -34,23 +32,16 @@ namespace NS::Gfx
         [[nodiscard]] bool IsValid() const noexcept { return value >= 0; }
     };
 
-    //! @brief EffectScene::Play の再生パラメータ
-    struct EffectPlayDesc
-    {
-        std::string name;                             //!< Preload に渡した名前
-        NS::Core::Vector3 position{0.0f, 0.0f, 0.0f}; //!< 再生位置のワールド座標
-    };
-
     //! @brief Effekseer のエフェクトを読み込み、再生して描くクラス
     //! @details 構築時に Gpu() の device と context を使う。NS の Renderer が未構築なら無効な状態になる
-    //! 構築に失敗した場合は例外を送出せず、無効な状態として扱う。無効な状態では各操作は何もしない
+    //! 無効な状態では IsValid が false を返し、各操作は何もしない
     //! エフェクトは Preload で読み込んでから Play で再生する。Play はファイルを読まない
     class EffectScene : public NS::Core::NonCopyable
     {
     public:
         //! @brief Effekseer の Renderer と Manager を作る
-        //! @param[in] desc 構築パラメータ
-        explicit EffectScene(const EffectSceneDesc& desc) noexcept;
+        //! @param[in] effectRoot Preload が .efkefc を探すディレクトリ
+        explicit EffectScene(std::string effectRoot) noexcept;
         ~EffectScene();
 
         //! 構築に成功した場合 true、それ以外の場合は false
@@ -64,10 +55,11 @@ namespace NS::Gfx
         [[nodiscard]] bool Preload(std::string_view name) noexcept;
 
         //! @brief Preload 済みのエフェクトを 1 つ再生する
-        //! @param[in] desc 再生パラメータ
+        //! @param[in] name Preload に渡した名前
+        //! @param[in] position 再生位置のワールド座標。省略すると原点
         //! @return 再生したエフェクトのハンドル。Preload していない名前なら IsValid が false のハンドル
         //! @details Preload していない名前の警告は名前ごとに 1 回だけ出す
-        [[nodiscard]] EffectHandle Play(const EffectPlayDesc& desc) noexcept;
+        [[nodiscard]] EffectHandle Play(std::string_view name, NS::Core::Vector3 position = {}) noexcept;
 
         //! @brief handle のエフェクトを止める
         //! @param[in] handle Play が返したハンドル。IsValid が false なら何もしない
@@ -87,7 +79,7 @@ namespace NS::Gfx
 
         //! @brief camera から見た全エフェクトを現在の描画先へ描く
         //! @param[in] camera ビュー行列・投影行列・位置を使う視点
-        void Draw(const Camera& camera) noexcept;
+        void Draw(const NS::Core::CameraData& camera) noexcept;
 
     private:
         Effekseer::ManagerRef m_manager;

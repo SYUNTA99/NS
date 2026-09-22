@@ -1,7 +1,7 @@
 ﻿#include "Runtime/Object/Scene/Scene.h"
 
 #include "Runtime/Platform/Clock.h"
-#include "Runtime/Object/Components/CameraBrainComponent.h"
+#include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Components/CameraComponent.h"
 #include "Runtime/Object/Reflection/ComponentEntry.h"
 #include "Runtime/Object/Reflection/ObjectBuilder.h"
@@ -19,7 +19,7 @@ namespace NS::Obj
         auto host = std::make_unique<GameObject>();
         CameraComponent* camera = host->AddComponent<CameraComponent>();
         camera->SetUp({0.0f, 1.0f, 0.0f});
-        m_brain = host->AddComponent<CameraBrainComponent>();
+        m_brain = host->AddComponent<NS::Obj::CameraBrain>();
         SpawnTransient(std::move(host));
     }
 
@@ -181,7 +181,7 @@ namespace NS::Obj
     void Scene::RebuildObjectsFrom(const SceneData& data)
     {
         // GameObject の型選択は登録一覧、参照の実体化は各 component の ResolveAssets が行う
-        // vcam の brain への付け外しは VirtualCameraComponent が OnStart / OnEndPlay で自分で行う
+        // vcam の brain への付け外しは VirtualCamera が OnStart / OnEndPlay で自分で行う
         m_objects.Rebuild(data, *this, [this](const ObjectData& entry) { return BuildSceneObject(entry, m_assets); });
         m_objects.SyncPhysics(m_physicsScene);
 
@@ -213,6 +213,8 @@ namespace NS::Obj
         m_objects.UpdateObjects(std::numeric_limits<int>::min(), TickPriority::LateUpdate);
         m_physicsScene.Update(NS::Platform::FrameTimer::FixedDelta());
         m_objects.UpdateObjects(TickPriority::LateUpdate);
+        // 時間停止中は凍らせる。停止の判定より後ろ
+        m_sceneRenderer.UpdateEffects(NS::Platform::FrameTimer::FixedDelta());
     }
 
     void Scene::OnShutdown()
@@ -244,22 +246,22 @@ namespace NS::Obj
         m_sceneRenderer.UnregisterRenderable(renderable);
     }
 
-    void Scene::RegisterOverlay(OverlayRendererComponent* overlay)
+    void Scene::RegisterOverlay(OverlayRenderer* overlay)
     {
         m_sceneRenderer.RegisterOverlay(overlay);
     }
 
-    void Scene::UnregisterOverlay(OverlayRendererComponent* overlay)
+    void Scene::UnregisterOverlay(OverlayRenderer* overlay)
     {
         m_sceneRenderer.UnregisterOverlay(overlay);
     }
 
-    void Scene::RegisterLight(DirectionalLightComponent* light)
+    void Scene::RegisterLight(DirectionalLight* light)
     {
         m_sceneRenderer.RegisterLight(light);
     }
 
-    void Scene::UnregisterLight(DirectionalLightComponent* light)
+    void Scene::UnregisterLight(DirectionalLight* light)
     {
         m_sceneRenderer.UnregisterLight(light);
     }
@@ -279,7 +281,7 @@ namespace NS::Obj
         m_sceneRenderer.DrawOverlays(context);
     }
 
-    CameraBrainComponent* Scene::CameraBrain() noexcept
+    NS::Obj::CameraBrain* Scene::CameraBrain() noexcept
     {
         return m_brain;
     }
@@ -295,7 +297,7 @@ namespace NS::Obj
 
     void Scene::OnRenderScene()
     {
-        CameraBrainComponent* brain = CameraBrain();
+        NS::Obj::CameraBrain* brain = CameraBrain();
         CameraComponent* camera = MainCamera();
         if (brain == nullptr || camera == nullptr)
         {

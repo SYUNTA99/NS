@@ -490,6 +490,9 @@ project "Object"
         "Source/ThirdParty/JoltPhysics",
     }
 
+    -- SceneRenderer が EffectScene を所有するので、 Effekseer の型が見える起点が要る
+    includedirs(effekseerIncludeDirs)
+
     applyJoltDefines()
 
     defines {

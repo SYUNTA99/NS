@@ -4,28 +4,75 @@
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/DebugDraw.h"
+#include "Runtime/Graphics/EffectScene.h"
 #include "Runtime/Graphics/RenderContext.h"
 #include "Runtime/Graphics/Renderer.h"
-#include "Runtime/Object/Components/CameraBrainComponent.h"
+#include "Runtime/Platform/Filesystem.h"
+#include "Runtime/Object/Components/CameraBrain.h"
 #include "Runtime/Object/Components/CameraComponent.h"
-#include "Runtime/Object/Components/DirectionalLightComponent.h"
-#include "Runtime/Object/Components/OverlayRendererComponent.h"
+#include "Runtime/Object/Components/DirectionalLight.h"
+#include "Runtime/Object/Components/OverlayRenderer.h"
 #include "Runtime/Object/IRenderable.h"
 
 #include <algorithm>
+#include <string>
+#include <utility>
 
 namespace NS::Obj
 {
     namespace
     {
-        // RenderScene の proxy を IRenderable::Collect へつなぐ。owner は登録元の IRenderable
+        // RenderProxyList の proxy を IRenderable::Collect へつなぐ。owner は登録元の IRenderable
         void CollectRenderable(void* owner,
                                const NS::Gfx::RenderContext& context,
                                std::vector<NS::Gfx::DrawItem>& out)
         {
             static_cast<IRenderable*>(owner)->Collect(context, out);
         }
+
+        // effectRoot が空ならここを見る
+        std::string DefaultEffectRoot()
+        {
+            const std::string assets =
+                NS::Platform::FileSystem::Combine(NS::Platform::FileSystem::ContentRoot(), "Assets");
+            return NS::Platform::FileSystem::Combine(assets, "Effects");
+        }
     } // namespace
+
+    SceneRenderer::SceneRenderer() = default;
+
+    SceneRenderer::~SceneRenderer() = default;
+
+    void SceneRenderer::SetRenderer(NS::Gfx::Renderer* renderer) noexcept
+    {
+        m_renderer = renderer;
+        if (renderer == nullptr)
+        {
+            m_effects.reset();
+            return;
+        }
+
+        std::string root = m_effectRoot;
+        if (root.empty())
+        {
+            root = DefaultEffectRoot();
+        }
+        m_effects = std::make_unique<NS::Gfx::EffectScene>(std::move(root));
+    }
+
+    void SceneRenderer::SetEffectRoot(std::string root) noexcept
+    {
+        m_effectRoot = std::move(root);
+    }
+
+    void SceneRenderer::UpdateEffects(float deltaSeconds) noexcept
+    {
+        if (m_effects == nullptr)
+        {
+            return;
+        }
+        m_effects->Update(deltaSeconds);
+    }
 
     void SceneRenderer::RegisterRenderable(IRenderable* renderable)
     {
@@ -69,13 +116,13 @@ namespace NS::Obj
         }
     }
 
-    void SceneRenderer::RegisterOverlay(OverlayRendererComponent* overlay)
+    void SceneRenderer::RegisterOverlay(OverlayRenderer* overlay)
     {
         if (overlay == nullptr)
         {
             return;
         }
-        for (const OverlayRendererComponent* entry : m_overlays)
+        for (const OverlayRenderer* entry : m_overlays)
         {
             if (entry == overlay)
             {
@@ -87,13 +134,13 @@ namespace NS::Obj
         const auto at = std::upper_bound(m_overlays.begin(),
                                          m_overlays.end(),
                                          overlay,
-                                         [](const OverlayRendererComponent* a, const OverlayRendererComponent* b) {
+                                         [](const OverlayRenderer* a, const OverlayRenderer* b) {
                                              return a->Priority() < b->Priority();
                                          });
         m_overlays.insert(at, overlay);
     }
 
-    void SceneRenderer::UnregisterOverlay(OverlayRendererComponent* overlay)
+    void SceneRenderer::UnregisterOverlay(OverlayRenderer* overlay)
     {
         if (overlay == nullptr)
         {
@@ -110,14 +157,14 @@ namespace NS::Obj
         }
     }
 
-    void SceneRenderer::RegisterLight(DirectionalLightComponent* light)
+    void SceneRenderer::RegisterLight(DirectionalLight* light)
     {
         if (light == nullptr)
         {
             return;
         }
         // 二重に積むと UnregisterLight が片方しか消さず、外したはずの光が残る
-        for (const DirectionalLightComponent* entry : m_lights)
+        for (const DirectionalLight* entry : m_lights)
         {
             if (entry == light)
             {
@@ -127,7 +174,7 @@ namespace NS::Obj
         m_lights.push_back(light);
     }
 
-    void SceneRenderer::UnregisterLight(DirectionalLightComponent* light)
+    void SceneRenderer::UnregisterLight(DirectionalLight* light)
     {
         if (light == nullptr)
         {
@@ -175,7 +222,7 @@ namespace NS::Obj
     void SceneRenderer::DrawOverlays(const NS::Gfx::RenderContext& context)
     {
         // 更新・当たりと同じ IsActive で切る。自分の値だけ見ると親を寝かせても描き続ける
-        for (OverlayRendererComponent* overlay : m_overlays)
+        for (OverlayRenderer* overlay : m_overlays)
         {
             if (overlay != nullptr && overlay->IsActive())
             {
@@ -188,7 +235,7 @@ namespace NS::Obj
         const NS::Gfx::RenderSettings& projectDefaults)
     {
         NS::Gfx::RenderSettings resolved = projectDefaults;
-        for (DirectionalLightComponent* light : m_lights)
+        for (DirectionalLight* light : m_lights)
         {
             if (!light->IsActive())
             {
@@ -213,7 +260,7 @@ namespace NS::Obj
         return resolved;
     }
 
-    void SceneRenderer::Render(CameraBrainComponent& brain,
+    void SceneRenderer::Render(CameraBrain& brain,
                                CameraComponent& camera,
                                const SceneEnvironment& environment)
     {
@@ -236,7 +283,7 @@ namespace NS::Obj
         }
     }
 
-    void SceneRenderer::RenderViewWithOverlays(CameraBrainComponent& brain,
+    void SceneRenderer::RenderViewWithOverlays(CameraBrain& brain,
                                                CameraComponent& camera,
                                                const SceneEnvironment& environment,
                                                const std::optional<CameraPose>& viewOverride)
@@ -250,7 +297,7 @@ namespace NS::Obj
         DrawOverlays(ctx);
     }
 
-    NS::Gfx::RenderContext SceneRenderer::RenderWorld(CameraBrainComponent& brain,
+    NS::Gfx::RenderContext SceneRenderer::RenderWorld(CameraBrain& brain,
                                                            CameraComponent& camera,
                                                            const SceneEnvironment& environment,
                                                            const std::optional<CameraPose>& viewOverride)
@@ -265,8 +312,8 @@ namespace NS::Obj
         brain.Evaluate(ctx.alpha);
 
         // 上書き視点は実カメラを経由せず、その場で行列を組む。実カメラの中身はゲーム視点のまま残す
-        NS::Gfx::Camera overrideCamera{};
-        const NS::Gfx::Camera* skyCamera = &camera.Camera();
+        NS::Core::CameraData overrideCamera{};
+        const NS::Core::CameraData* viewCamera = &camera.Camera();
         if (viewOverride.has_value())
         {
             overrideCamera.SetPosition(viewOverride->position);
@@ -289,7 +336,7 @@ namespace NS::Obj
 
             ctx.viewProjection = overrideCamera.ViewProjection();
             ctx.cameraPosition = viewOverride->position;
-            skyCamera = &overrideCamera;
+            viewCamera = &overrideCamera;
         }
         else
         {
@@ -299,8 +346,13 @@ namespace NS::Obj
         ctx.resolvedSettings = ResolveSceneSettings(m_renderer->Settings());
 
         DrawOpaque(ctx);
-        m_renderer->DrawSky(*skyCamera, environment.skyboxCubemapPath);
+        m_renderer->DrawSky(*viewCamera, environment.skyboxCubemapPath);
         DrawTransparent(ctx);
+        // ワールド空間の半透明物。半透明の後、デバッグ描画の前
+        if (m_effects != nullptr)
+        {
+            m_effects->Draw(*viewCamera);
+        }
         return ctx;
     }
 } // namespace NS::Obj

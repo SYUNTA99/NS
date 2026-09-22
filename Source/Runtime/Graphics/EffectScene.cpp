@@ -1,4 +1,4 @@
-#include "Runtime/Graphics/EffectScene.h"
+﻿#include "Runtime/Graphics/EffectScene.h"
 
 #include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/Logger.h"
@@ -195,26 +195,26 @@ namespace NS::Gfx
         return true;
     }
 
-    EffectHandle EffectScene::Play(const EffectPlayDesc& desc) noexcept
+    EffectHandle EffectScene::Play(std::string_view name, NS::Core::Vector3 position) noexcept
     {
         if (!IsValid())
         {
             return EffectHandle{};
         }
 
-        const auto found = m_effects.find(desc.name);
+        const std::string key(name);
+        const auto found = m_effects.find(key);
         if (found == m_effects.end())
         {
             // 続けて呼ばれてもログを埋めないよう、警告は名前ごとに 1 回
-            if (m_warnedMissing.emplace(desc.name).second)
+            if (m_warnedMissing.emplace(key).second)
             {
-                NS_LOG_WARN(Graphics, "EffectScene::Play: Preload していないエフェクト ({})", desc.name);
+                NS_LOG_WARN(Graphics, "EffectScene::Play: Preload していないエフェクト ({})", key);
             }
             return EffectHandle{};
         }
 
-        const Effekseer::Handle handle =
-            m_manager->Play(found->second, desc.position.x, desc.position.y, desc.position.z);
+        const Effekseer::Handle handle = m_manager->Play(found->second, position.x, position.y, position.z);
         return EffectHandle{handle};
     }
 

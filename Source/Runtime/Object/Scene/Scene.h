@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/NonCopyable.h"
 #include "Runtime/Graphics/RenderSettings.h"
-#include "Runtime/Object/Components/VirtualCameraComponent.h"
+#include "Runtime/Object/Components/VirtualCamera.h"
 #include "Runtime/Object/ObjectList.h"
 #include "Runtime/Object/Scene/SceneData.h"
 #include "Runtime/Object/Scene/SceneRenderer.h"
@@ -10,12 +10,14 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
 namespace NS::Gfx
 {
+    class EffectScene;
     class Renderer;
     struct RenderContext;
 } // namespace NS::Gfx
@@ -23,17 +25,17 @@ namespace NS::Gfx
 namespace NS::Obj
 {
     class AssetManager;
-    class CameraBrainComponent;
+    class CameraBrain;
     class CameraComponent;
     class Component;
-    class DirectionalLightComponent;
+    class DirectionalLight;
     class IRenderable;
-    class OverlayRendererComponent;
+    class OverlayRenderer;
 
-    //! @brief SceneData から組んだ ObjectList を運転する scene
+    //! @brief SceneData から組んだ ObjectList を駆動するシーン
     //! @details ObjectList と環境値を所有し、SceneData の読み書き・プレイの凍結・標準のシーン描画パスを受け持つ
     //! Application から OnStart / OnUpdate / OnRender / OnShutdown を順に呼び戻される
-    //! fixed timestep + variable render で駆動し、IRenderable と OverlayRendererComponent の自己登録先も兼ねる
+    //! 固定ステップの更新と可変フレームの描画で駆動し、IRenderable と OverlayRenderer の自己登録先も兼ねる
     //! live な GameObject/Component が唯一の表現で、SceneData は境界でだけ使う一時データ
     //! 配置物は TypeRegistry と ResolveAssets で自力で組む。組み直し後の参照解決だけ派生が OnObjectsRebuilt で埋める
     //! 寿命は SceneManager が unique_ptr で所有する
@@ -44,32 +46,33 @@ namespace NS::Obj
         Scene();
         virtual ~Scene();
 
-        //! SceneManager::LoadScene が scene を立てた直後に 1 回呼ぶ。Window/Renderer/Input は既に有効
+        //! SceneManager::LoadScene がシーンを立てた直後に 1 回呼ぶ。Window/Renderer/Input は既に有効
         virtual void OnStart() {}
 
         //! 可変フレーム Render の入口。描画本体は OnRenderScene に書く
         void OnRender();
 
-        //! IRenderable Component の自己登録。MeshRendererComponent 等が OnStart で呼ぶ。二重登録は無視する
+        //! IRenderable Component の自己登録。MeshRenderer 等が OnStart で呼ぶ。二重登録は無視する
         //! 登録簿は SceneRenderer が持つ。テスト等が差し替えて観測するため virtual だが、通常はオーバーライドしない
         virtual void RegisterRenderable(IRenderable* renderable);
-        //! IRenderable Component の自己解除。MeshRendererComponent 等が OnEndPlay で呼ぶ
+        //! IRenderable Component の自己解除。MeshRenderer 等が OnEndPlay で呼ぶ
         virtual void UnregisterRenderable(IRenderable* renderable);
 
-        //! OverlayRendererComponent の自己登録。基底の OnStart が呼ぶ。二重登録は無視する
+        //! OverlayRenderer の自己登録。基底の OnStart が呼ぶ。二重登録は無視する
         //! 並びは priority 昇順に保たれ、同値なら後から登録した方が後ろになる
-        virtual void RegisterOverlay(OverlayRendererComponent* overlay);
-        //! OverlayRendererComponent の自己解除。基底の OnEndPlay が呼ぶ
-        virtual void UnregisterOverlay(OverlayRendererComponent* overlay);
+        virtual void RegisterOverlay(OverlayRenderer* overlay);
+        //! OverlayRenderer の自己解除。基底の OnEndPlay が呼ぶ
+        virtual void UnregisterOverlay(OverlayRenderer* overlay);
 
-        //! 平行光の自己登録。DirectionalLightComponent が OnStart で呼ぶ。二重登録は無視する
+        //! 平行光の自己登録。DirectionalLight が OnStart で呼ぶ。二重登録は無視する
         //! 並びは登録順。ResolveSceneSettings はこの順に読む
-        virtual void RegisterLight(DirectionalLightComponent* light);
-        //! 平行光の自己解除。DirectionalLightComponent が OnEndPlay で呼ぶ
-        virtual void UnregisterLight(DirectionalLightComponent* light);
+        virtual void RegisterLight(DirectionalLight* light);
+        //! 平行光の自己解除。DirectionalLight が OnEndPlay で呼ぶ
+        virtual void UnregisterLight(DirectionalLight* light);
 
         //! シーンの描画を駆動する brain。シーンの破棄後は nullptr
-        [[nodiscard]] CameraBrainComponent* CameraBrain() noexcept;
+        // 関数名が型名 CameraBrain を隠すので修飾して書く
+        [[nodiscard]] NS::Obj::CameraBrain* CameraBrain() noexcept;
 
         //! brain が駆動する実カメラ。シーンの破棄後は nullptr
         [[nodiscard]] CameraComponent* MainCamera() noexcept;
@@ -83,6 +86,13 @@ namespace NS::Obj
 
         //! レンダラーを非所有で差す。標準の OnRenderScene が使う。未設定 (テスト等) は描かない
         void SetRenderer(NS::Gfx::Renderer* renderer) noexcept { m_sceneRenderer.SetRenderer(renderer); }
+
+        //! エフェクトを探すディレクトリを SceneRenderer へ渡す。空のままなら ContentRoot の Assets/Effects
+        //! effectRoot は EffectScene の構築時に固まる。SetRenderer より前に差す
+        void SetEffectRoot(std::string root) noexcept { m_sceneRenderer.SetEffectRoot(std::move(root)); }
+
+        //! SceneRenderer が所有する EffectScene。SetRenderer より前は nullptr
+        [[nodiscard]] NS::Gfx::EffectScene* Effects() noexcept { return m_sceneRenderer.Effects(); }
 
         //! @brief シーンの見た目を確定する環境値。実体側が唯一の出所で、保存は保存時にここから写す
         [[nodiscard]] SceneEnvironment& Environment() noexcept { return m_environment; }
@@ -155,7 +165,8 @@ namespace NS::Obj
         //! @details リフレクションで全 component の値を忠実に写す
         [[nodiscard]] SceneData CaptureLiveToSceneData() const;
 
-        //! 補間スナップショット・帯の更新・LateUpdate 帯の手前で物理の 1 フレーム。世界の駆動はここが持つ
+        //! 補間スナップショット・帯の更新・LateUpdate 帯の手前で物理の 1 フレーム・最後にエフェクトの 1 フレーム
+        //! 世界の駆動はここが持つ
         //! 読み込んだら回り続けるのが既定で、止める口は SetSimulationEnabled / SetSimulationPaused
         virtual void OnUpdate();
 
@@ -169,16 +180,15 @@ namespace NS::Obj
         //! 距離が同じなら SortPriority 昇順、それも同じなら stable_sort が元の並びを保つ
         void DrawTransparent(const NS::Gfx::RenderContext& context);
 
-        //! 登録中の OverlayRendererComponent を priority 昇順で描画する。IsActive が偽なら飛ばす
+        //! 登録中の OverlayRenderer を priority 昇順で描画する。IsActive が偽なら飛ばす
         void DrawOverlays(const NS::Gfx::RenderContext& context);
 
-        //! @brief 標準の描画。シーン描画パス→デバッグ描画の吐き出し→OverlayRendererComponent の重ね描き
+        //! @brief 標準の描画。シーン描画パス→デバッグ描画の吐き出し→OverlayRenderer の重ね描き
         virtual void OnRenderScene();
 
-        //! @brief project 既定値から scene 段の描画設定を作る。登録された平行光があれば照明を上書きする
-        //! 登録が無ければ project 既定値がそのまま残る
-        [[nodiscard]] NS::Gfx::RenderSettings ResolveSceneSettings(
-            const NS::Gfx::RenderSettings& projectDefaults);
+        //! @brief プロジェクト既定値からシーンの描画設定を作る。登録された平行光があれば照明を上書きする
+        //! 登録が無ければプロジェクト既定値がそのまま残る
+        [[nodiscard]] NS::Gfx::RenderSettings ResolveSceneSettings(const NS::Gfx::RenderSettings& projectDefaults);
 
         //! @brief 配置物の組み直し・当たりの張り直しの後に呼ばれる。派生は live への参照をここで取り直す
         virtual void OnObjectsRebuilt() {}
@@ -196,8 +206,8 @@ namespace NS::Obj
         //! m_objects より前に宣言してあるので破棄は後になり、これを借りる移動の Component より長く生きる
         NS::Phys::PhysicsScene m_physicsScene;
 
-        NS::Obj::ObjectList m_objects;        // 配置物の一覧
-        CameraBrainComponent* m_brain = nullptr; // 常駐するカメラ一時オブジェクトの brain。所有は m_objects、これは控え
+        NS::Obj::ObjectList m_objects;           // 配置物の一覧
+        NS::Obj::CameraBrain* m_brain = nullptr; // 常駐するカメラ一時オブジェクトの brain。所有は m_objects、これは控え
         SceneEnvironment m_environment;          // シーンの環境値。実体側の唯一の出所
 
         AssetManager* m_assets = nullptr; // AssetManager、非所有。未設定なら参照の実体化を跳ばす
