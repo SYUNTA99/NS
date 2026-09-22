@@ -239,7 +239,7 @@ namespace NS::Gfx
         m_resizeCallbackRegistered = true;
 
         m_valid = true;
-        // 失敗時は別途 ERROR ログ済のため成功は Debug 段のみ出力し、テスト時のログ雑音を抑える
+        // 失敗時は別途 ERROR ログ済のため成功は Debug に落とす
         NS_LOG_DEBUG(
             Graphics, "Renderer 構築完了 ({}x{}, vsync={}, debugLayer={})", w, h, desc.vsync, desc.enableDebugLayer);
     }
@@ -466,14 +466,14 @@ namespace NS::Gfx
 
         if (m_device == nullptr)
         {
-            NS_LOG_WARN(Graphics, "Renderer: skybox 装置の構築失敗のため空を描かない");
+            NS_LOG_WARN(Graphics, "Renderer: device が無いため空を描かない");
             return;
         }
 
         auto skybox = Skybox::Create();
         if (!skybox || !skybox->IsValid())
         {
-            NS_LOG_WARN(Graphics, "Renderer: skybox 装置の構築失敗のため空を描かない");
+            NS_LOG_WARN(Graphics, "Renderer: Skybox の構築失敗のため空を描かない");
             return;
         }
         m_skybox = std::move(skybox);
