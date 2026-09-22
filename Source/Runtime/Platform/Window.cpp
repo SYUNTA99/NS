@@ -2,7 +2,7 @@
 
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Core/StringUtils.h"
+#include "Runtime/Platform/StringUtils.h"
 #include "Runtime/Platform/Input.h"
 #include "Runtime/Platform/detail/InputWin32.h"
 #include "Runtime/Platform/detail/WindowWin32.h"
@@ -238,7 +238,7 @@ namespace NS::Platform
         const DWORD exStyle = 0;
         ::AdjustWindowRectEx(&rect, style, FALSE, exStyle);
 
-        const std::wstring wideTitle = ::NS::Core::StringUtils::WideFromUtf8(desc.title);
+        const std::wstring wideTitle = ::NS::Platform::StringUtils::WideFromUtf8(desc.title);
 
         m_pImpl->hwnd = ::CreateWindowExW(exStyle,
                                           m_pImpl->className.c_str(),
@@ -355,7 +355,7 @@ namespace NS::Platform
         {
             return;
         }
-        const std::wstring wide = ::NS::Core::StringUtils::WideFromUtf8(utf8Title);
+        const std::wstring wide = ::NS::Platform::StringUtils::WideFromUtf8(utf8Title);
         ::SetWindowTextW(m_pImpl->hwnd, wide.c_str());
     }
 

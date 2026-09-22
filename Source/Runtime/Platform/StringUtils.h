@@ -3,7 +3,7 @@
 #include <string>
 #include <string_view>
 
-namespace NS::Core
+namespace NS::Platform
 {
 
     //! 内部用のUTF-8と、Win32 API等のOS境界で要求されるワイド文字列(UTF-16)を相互変換する
@@ -20,4 +20,4 @@ namespace NS::Core
         [[nodiscard]] static std::string Utf8FromWide(std::wstring_view wide);
     };
 
-} // namespace NS::Core
+} // namespace NS::Platform

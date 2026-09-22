@@ -1,6 +1,6 @@
 #include <Runtime/Platform/Filesystem.h>
 #include <Runtime/Core/Logger.h>
-#include <Runtime/Core/StringUtils.h>
+#include <Runtime/Platform/StringUtils.h>
 #include <array>
 #include <chrono>
 #include <filesystem>
@@ -21,17 +21,17 @@ namespace
                 .count();
         std::array<wchar_t, MAX_PATH> buffer{};
         ::GetTempPathW(static_cast<DWORD>(buffer.size()), buffer.data());
-        const std::string tempDir = NS::Core::StringUtils::Utf8FromWide(buffer.data());
+        const std::string tempDir = NS::Platform::StringUtils::Utf8FromWide(buffer.data());
         return NS::Platform::FileSystem::Combine(tempDir, "ns_fstest_" + std::to_string(ns) + "_" + suffix);
     }
 
     void RemoveAllForTest(const std::string& path)
     {
         for (const std::string& file : NS::Platform::FileSystem::ListFiles(path))
-            ::DeleteFileW(NS::Core::StringUtils::WideFromUtf8(file).c_str());
+            ::DeleteFileW(NS::Platform::StringUtils::WideFromUtf8(file).c_str());
         for (const std::string& dir : NS::Platform::FileSystem::ListDirectories(path))
             RemoveAllForTest(dir);
-        ::RemoveDirectoryW(NS::Core::StringUtils::WideFromUtf8(path).c_str());
+        ::RemoveDirectoryW(NS::Platform::StringUtils::WideFromUtf8(path).c_str());
     }
 } // namespace
 
@@ -104,7 +104,7 @@ TEST(NsCoreFileSystem, WriteAndReadAllBytesRoundTrip)
     ASSERT_TRUE(read.has_value());
     EXPECT_EQ(*read, original);
 
-    ::DeleteFileW(NS::Core::StringUtils::WideFromUtf8(path).c_str());
+    ::DeleteFileW(NS::Platform::StringUtils::WideFromUtf8(path).c_str());
 }
 
 TEST(NsCoreFileSystem, WriteAndReadAllTextRoundTrip)
@@ -121,7 +121,7 @@ TEST(NsCoreFileSystem, WriteAndReadAllTextRoundTrip)
     ASSERT_TRUE(read.has_value());
     EXPECT_EQ(*read, original);
 
-    ::DeleteFileW(NS::Core::StringUtils::WideFromUtf8(path).c_str());
+    ::DeleteFileW(NS::Platform::StringUtils::WideFromUtf8(path).c_str());
 }
 
 TEST_F(FileSystemLoggerTest, ReadAllBytesReturnsNulloptForMissingFile)

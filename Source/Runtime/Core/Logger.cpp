@@ -1,7 +1,5 @@
 ﻿#include "Runtime/Core/Logger.h"
 
-#include "Runtime/Core/StringUtils.h"
-
 #include <windows.h>
 
 #include <spdlog/sinks/msvc_sink.h>
@@ -28,13 +26,30 @@ namespace NS::Core
 
         std::string LogsDirectory(const LoggerDesc& desc)
         {
-            std::string dir = desc.logDirectory.empty() ? "logs" : desc.logDirectory + "/logs";
-            return dir;
+            return desc.logDirectory.empty() ? "logs" : desc.logDirectory + "/logs";
+        }
+
+        // Core は Platform に依存できないので、StringUtils を使わずここで変換する
+        std::wstring WidenPath(std::string_view utf8)
+        {
+            if (utf8.empty())
+            {
+                return {};
+            }
+            const int srcLen = static_cast<int>(utf8.size());
+            const int dstLen = ::MultiByteToWideChar(CP_UTF8, 0, utf8.data(), srcLen, nullptr, 0);
+            if (dstLen <= 0)
+            {
+                return {};
+            }
+            std::wstring result(static_cast<std::size_t>(dstLen), L'\0');
+            ::MultiByteToWideChar(CP_UTF8, 0, utf8.data(), srcLen, result.data(), dstLen);
+            return result;
         }
 
         void CreateDirectoryRecursive(std::string_view path)
         {
-            const std::wstring wide = StringUtils::WideFromUtf8(path);
+            const std::wstring wide = WidenPath(path);
             for (std::size_t pos = wide.find_first_of(L"\\/", 1); pos != std::wstring::npos;
                  pos = wide.find_first_of(L"\\/", pos + 1))
             {

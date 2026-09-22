@@ -2,8 +2,8 @@
 
 #include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Core/StringUtils.h"
-#include "Runtime/Graphics/Camera.h"
+#include "Runtime/Platform/StringUtils.h"
+#include "Runtime/Core/CameraData.h"
 #include "Runtime/Graphics/GraphicObject.h"
 
 #include <EffekseerRendererDX11.h>
@@ -40,7 +40,7 @@ namespace NS::Gfx
             {
                 return std::string{};
             }
-            return NS::Core::StringUtils::Utf8FromWide(reinterpret_cast<const wchar_t*>(path));
+            return NS::Platform::StringUtils::Utf8FromWide(reinterpret_cast<const wchar_t*>(path));
         }
 
         template <typename GetResource, typename GetPath>
@@ -96,7 +96,7 @@ namespace NS::Gfx
         }
     } // namespace
 
-    EffectScene::EffectScene(const EffectSceneDesc& desc) noexcept : m_effectRoot(desc.effectRoot)
+    EffectScene::EffectScene(std::string effectRoot) noexcept : m_effectRoot(std::move(effectRoot))
     {
         const GraphicObject& gpu = Gpu();
         if (gpu.device == nullptr || gpu.context == nullptr)
@@ -175,7 +175,7 @@ namespace NS::Gfx
         }
 
         const std::string path = NS::Platform::FileSystem::Combine(m_effectRoot, std::string(name) + ".efkefc");
-        const std::wstring pathWide = NS::Core::StringUtils::WideFromUtf8(path);
+        const std::wstring pathWide = NS::Platform::StringUtils::WideFromUtf8(path);
         const std::u16string pathU16(pathWide.begin(), pathWide.end());
 
         Effekseer::EffectRef effect = Effekseer::Effect::Create(m_manager, pathU16.c_str());
@@ -183,7 +183,7 @@ namespace NS::Gfx
         {
             NS_LOG_ERROR(Graphics,
                          "EffectScene::Preload: エフェクトを読めなかった ({})",
-                         NS::Core::StringUtils::Utf8FromWide(pathWide));
+                         NS::Platform::StringUtils::Utf8FromWide(pathWide));
             return false;
         }
         if (CountMissingResources(effect) > 0)
@@ -256,7 +256,7 @@ namespace NS::Gfx
         m_manager->Update(deltaSeconds * k_EffekseerFramesPerSecond);
     }
 
-    void EffectScene::Draw(const Camera& camera) noexcept
+    void EffectScene::Draw(const NS::Core::CameraData& camera) noexcept
     {
         if (!IsValid())
         {

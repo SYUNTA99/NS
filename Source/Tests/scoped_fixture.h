@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Runtime/Platform/Filesystem.h>
-#include <Runtime/Core/StringUtils.h>
+#include <Runtime/Platform/StringUtils.h>
 
 #include <cstddef>
 #include <gtest/gtest.h>
@@ -40,7 +40,7 @@ namespace NsTest
         ~ScopedFixture()
         {
             // 消せなくても試しの結果は変わらない。後始末の失敗で試しを落とさない
-            ::DeleteFileW(NS::Core::StringUtils::WideFromUtf8(m_path).c_str());
+            ::DeleteFileW(NS::Platform::StringUtils::WideFromUtf8(m_path).c_str());
         }
 
         ScopedFixture(const ScopedFixture&) = delete;

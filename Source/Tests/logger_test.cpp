@@ -1,7 +1,7 @@
-﻿#include <gtest/gtest.h>
-#include <magic_enum/magic_enum.hpp>
-#include <Runtime/Core/LogCategories.h>
+﻿#include <Runtime/Core/LogCategories.h>
 #include <Runtime/Core/Logger.h>
+#include <gtest/gtest.h>
+#include <magic_enum/magic_enum.hpp>
 
 namespace
 {

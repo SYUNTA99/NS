@@ -1,7 +1,7 @@
 ﻿#include "Runtime/Graphics/Skybox.h"
 
 #include "Runtime/Platform/Filesystem.h"
-#include "Runtime/Core/StringUtils.h"
+#include "Runtime/Platform/StringUtils.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
 #include "Runtime/Graphics/Buffer.h"
@@ -110,7 +110,7 @@ namespace NS::Gfx
         {
             ComPtr<ID3D11Resource> resource;
             const HRESULT hr = DirectX::CreateDDSTextureFromFileEx(device,
-                                                                   NS::Core::StringUtils::WideFromUtf8(path).c_str(),
+                                                                   NS::Platform::StringUtils::WideFromUtf8(path).c_str(),
                                                                    0,
                                                                    D3D11_USAGE_IMMUTABLE,
                                                                    D3D11_BIND_SHADER_RESOURCE,

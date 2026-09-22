@@ -3,7 +3,7 @@
 #include "Runtime/Platform/Filesystem.h"
 #include "Runtime/Core/LogCategories.h"
 #include "Runtime/Core/Logger.h"
-#include "Runtime/Core/StringUtils.h"
+#include "Runtime/Platform/StringUtils.h"
 #include "Runtime/Graphics/D3dCommon.h"
 #include "Runtime/Graphics/GraphicObject.h"
 #include "Runtime/Graphics/Renderer.h"
@@ -137,7 +137,7 @@ namespace NS::Gfx
                 NS_LOG_ERROR(Graphics, "Shader file not found: {}", path);
                 return nullptr;
             }
-            const std::wstring widePath = NS::Core::StringUtils::WideFromUtf8(path);
+            const std::wstring widePath = NS::Platform::StringUtils::WideFromUtf8(path);
             ComPtr<ID3DBlob> blob;
             ComPtr<ID3DBlob> errorBlob;
             const HRESULT hr = D3DCompileFromFile(widePath.c_str(),
