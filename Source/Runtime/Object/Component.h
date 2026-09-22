@@ -3,6 +3,8 @@
 #include "Runtime/Object/Object.h"
 #include "Runtime/Object/Reflection/Reflection.h"
 
+#include <concepts>
+
 namespace NS::Obj
 {
     class AssetManager;
@@ -107,18 +109,22 @@ namespace NS::Obj
     };
 
     //! リフレクション照合で通れば static_cast、外れれば nullptr を返す。comp が nullptr でも安全
-    template <class T> [[nodiscard]] T* ComponentCast(Component* comp) noexcept
+    template <class T>
+        requires std::derived_from<T, Component>
+    [[nodiscard]] T* ComponentCast(Component* comp) noexcept
     {
         if (comp != nullptr && comp->IsA(T::StaticReflection()))
         {
-			return static_cast<T*>(comp);
+            return static_cast<T*>(comp);
         }
 
         return nullptr;
     }
 
     //! const 版。リフレクション照合で通れば static_cast、外れれば nullptr
-    template <class T> [[nodiscard]] const T* ComponentCast(const Component* comp) noexcept
+    template <class T>
+        requires std::derived_from<T, Component>
+    [[nodiscard]] const T* ComponentCast(const Component* comp) noexcept
     {
         if (comp != nullptr && comp->IsA(T::StaticReflection()))
         {

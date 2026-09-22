@@ -4,6 +4,7 @@
 #include "Runtime/Object/Object.h"
 #include "Runtime/Object/Transform.h"
 
+#include <concepts>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -51,7 +52,9 @@ namespace NS::Obj
         //! Component 列から型 T の最初の一致を返す。無ければ nullptr
         //! リフレクション鎖の照合で一致を見るため T はリフレクション宣言を持つこと。未宣言型はコンパイルエラーになる
         //! 派生型は基底型の検索にも一致する
-        template <class T> [[nodiscard]] T* FindComponent() noexcept
+        template <class T>
+            requires std::derived_from<T, Component>
+        [[nodiscard]] T* FindComponent() noexcept
         {
             const auto* target = T::StaticReflection();
             for (Component* comp : m_components)
@@ -63,7 +66,9 @@ namespace NS::Obj
             }
             return nullptr;
         }
-        template <class T> [[nodiscard]] const T* FindComponent() const noexcept
+        template <class T>
+            requires std::derived_from<T, Component>
+        [[nodiscard]] const T* FindComponent() const noexcept
         {
             const auto* target = T::StaticReflection();
             for (const Component* comp : m_components)
@@ -111,9 +116,10 @@ namespace NS::Obj
         void AttachOwnedComponent(Component* comp) noexcept;
 
         //! 型を問わず積む本体。TransformComponent を積めるのはコンストラクタだけ
-        template <class T, class... Args> T* AddComponentUnchecked(Args&&... args)
+        template <class T, class... Args>
+            requires std::derived_from<T, Component>
+        T* AddComponentUnchecked(Args&&... args)
         {
-            static_assert(std::is_base_of_v<Component, T>, "T は Component 派生でなければならない");
             auto owned = std::make_unique<T>(std::forward<Args>(args)...);
             T* raw = owned.get();
             m_ownedComponents.push_back(std::move(owned));
