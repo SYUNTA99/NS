@@ -36,7 +36,7 @@ namespace NS::Gfx
         // UI 矩形 shader (ui_rect.vs / ps) の cbuffer b0 とバイト一致させる
         struct alignas(16) ScreenRectCB
         {
-            float rect[4]; // clip 空間の左上 x, y と幅, 高さ (高さは画面下方向の量)
+            float rect[4]; // clip 空間の左上の x と y、幅と高さ。高さは画面下方向の量
             NS::Core::Color color;
         };
         static_assert(sizeof(ScreenRectCB) == 32, "ScreenRectCB は HLSL の cbuffer b0 とバイト一致が必要");
@@ -321,7 +321,8 @@ namespace NS::Gfx
             return;
         }
 
-        // 描画済みシーンの上へ半透明で重ねる。深度は無効で常に最前面、全画面三角形なのでカリングも無効
+        // 描画済みシーンの上へ半透明で重ねる。常に最前面へ出すので深度は見ない
+        // 全画面三角形の 3 頂点はスクリーン空間で反時計回りになるため、カリングを切らないと消える
         PipelineDesc pipeDesc{};
         pipeDesc.cull = CullMode::None;
         pipeDesc.blend = BlendMode::Alpha;
@@ -396,7 +397,7 @@ namespace NS::Gfx
             return;
         }
 
-        // 描画済みの絵の上へ半透明で重ねる。深度は無効で常に最前面、画面向き矩形なのでカリングも無効
+        // 描画済みの絵の上へ半透明で重ねる。常に最前面へ出すので深度は見ない
         PipelineDesc pipeDesc{};
         pipeDesc.cull = CullMode::None;
         pipeDesc.blend = BlendMode::Alpha;

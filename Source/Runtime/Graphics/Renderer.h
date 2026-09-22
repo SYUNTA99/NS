@@ -116,9 +116,11 @@ namespace NS::Gfx
         //! 半透明合成で最前面に出すため全描画の後に呼ぶ。資源は初回呼び出し時に一度だけ構築し、失敗時は以後何もしない
         void DrawScreenRect(float x, float y, float width, float height, const NS::Core::Color& color) noexcept;
 
-        //! @brief cubemap を読んで camera 中心に空を描く。パスが前回と違う時だけ読み直す
-        //! @details パスは ContentRoot 配下だけ許可し、外を指す値は読み込まない。読込失敗は直前の cubemap を描き続ける
-        //! Skybox は初回呼び出し時に一度だけ構築し、失敗時は以後何もしない。不透明の描画後・半透明の描画前に呼ぶ
+        //! @brief cubemap を読んで camera 中心に空を描く。同じパスを読み込んだ後は読み直さない
+        //! @details パスは ContentRoot 配下だけ許可し、外を指す値は読み込まない
+        //! 読込失敗は cubemap を保ち、次の呼び出しで読み直す
+        //! Skybox は空でないパスの初回の呼び出しで一度だけ構築し、失敗時は以後何もしない
+        //! 不透明の描画後・半透明の描画前に呼ぶ
         //! @param[in] camera 空を貼る視点。view の平行移動成分は使わない
         //! @param[in] cubemapPath ContentRoot 配下相対の cubemap ディレクトリまたは .dds。空パスは何も描かない
         void DrawSky(const NS::Core::CameraData& camera, std::string_view cubemapPath) noexcept;
@@ -155,10 +157,10 @@ namespace NS::Gfx
         std::unique_ptr<Pipeline> m_screenRectPipeline;
         bool m_screenRectTried = false; // 構築を試みたか
         bool m_screenRectReady = false; // 構築成功
-        // 空を描く Skybox。初回 DrawSky で一度だけ構築する
+        // 空を描く Skybox。cubemap を指定した初回の DrawSky で一度だけ構築する
         std::unique_ptr<Skybox> m_skybox;
-        std::string m_loadedSkyboxPath;        // 前回読み込んだ cubemap のパス。差分の時だけ読み直す
-        bool m_skyboxTried = false;            // 構築を試みたか
+        std::string m_loadedSkyboxPath; // 前回判定した cubemap のパス。読めた物と拒否した物が入り、差分の時だけ読み直す
+        bool m_skyboxTried = false;     // 構築を試みたか
         RenderTarget* m_sceneTarget = nullptr; //!< 非所有のシーン描画先。null なら backbuffer へ描く
         ::NS::Platform::Window* m_window = nullptr;
         RenderSettings m_settings{};

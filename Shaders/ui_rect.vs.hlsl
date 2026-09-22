@@ -3,7 +3,7 @@
 
 cbuffer UiRectCB : register(b0)
 {
-    float4 g_rect;  // clip 空間の左上 x, y と幅, 高さ (高さは画面下方向の量)
+    float4 g_rect;  // clip 空間の左上の x と y、幅と高さ。高さは画面下方向の量
     float4 g_color;
 };
 
