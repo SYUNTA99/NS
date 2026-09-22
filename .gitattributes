@@ -1,3 +1,8 @@
+# 既定の改行。 index も作業ツリーも LF に揃える
+# eol を書くと core.autocrlf を無視して属性が勝つので、環境ごとの設定差で status が汚れない
+# 属性は後勝ちなので、個別指定はこの行より後ろに置く
+* text=auto eol=lf
+
 # Windows batch files must always use CRLF line endings (cmd parser requirement)
 *.cmd text eol=crlf
 *.bat text eol=crlf
@@ -5,9 +10,12 @@
 # PowerShell scripts: prefer CRLF on Windows-only project
 *.ps1 text eol=crlf
 
-# Default text handling
-* text=auto
-
 # レベルファイルは EOL 変換禁止。 CRLF 化するとバイト数 / CRC が変わり読み込みが壊れる
-# 属性は後勝ちなので `* text=auto` より後に置く。 前に置くと text=auto に上書きされる
 *.scene binary
+
+# 上流のコードは上流の作法に任せる。 DirectXTK / DirectXTex / spdlog は自前の .gitattributes で
+# eol を決めているので、NS 側の eol=lf を被せると触っていない 1366 件が status に浮く
+Source/ThirdParty/** !eol
+
+# 外から貰った skybox 一式。 添付のライセンス文を改行の都合で書き換えない
+Assets/Skybox/kurt/** !eol
