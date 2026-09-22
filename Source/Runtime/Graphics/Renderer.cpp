@@ -125,7 +125,7 @@ namespace NS::Gfx
         }
 
         // swapchain の backbuffer を RTV Texture として包み、同サイズの depth Texture を生成する
-        // 構築 / Resize の両方から呼ぶ。いずれか失敗で false を返し out は未確定
+        // 構築 / Resize の両方から呼ぶ。失敗時は false を返し out を書き換えない
         bool BuildBackbufferTargets(IDXGISwapChain* swapchain,
                                     std::unique_ptr<Texture>& outBackbuffer,
                                     std::unique_ptr<Texture>& outDepth)
@@ -272,16 +272,22 @@ namespace NS::Gfx
 
     const Pipeline& Renderer::CommonPipeline(BlendMode blend) const noexcept
     {
+        int index = 0;
         switch (blend)
         {
         case BlendMode::Alpha:
-            return *m_commonPipelines[1];
+            index = 1;
+            break;
         case BlendMode::Additive:
-            return *m_commonPipelines[2];
+            index = 2;
+            break;
         case BlendMode::Opaque:
         default:
-            return *m_commonPipelines[0];
+            index = 0;
+            break;
         }
+        NS_ASSERT(Graphics, m_commonPipelines[index], "Renderer が無効な状態で CommonPipeline() を呼んでいる");
+        return *m_commonPipelines[index];
     }
 
     void Renderer::EnsureFullscreenResources() noexcept
