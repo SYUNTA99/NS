@@ -1,4 +1,4 @@
-﻿#include "Runtime/Graphics/RenderScene.h"
+﻿#include "Runtime/Graphics/RenderProxyList.h"
 
 #include "Runtime/Core/AABB.h"
 #include "Runtime/Core/Frustum.h"
@@ -8,7 +8,7 @@
 
 namespace NS::Gfx
 {
-    RenderHandle RenderScene::Register(const RenderProxyDesc& desc)
+    RenderHandle RenderProxyList::Register(const RenderProxyDesc& desc)
     {
         if (!m_freeSlots.empty())
         {
@@ -29,7 +29,7 @@ namespace NS::Gfx
         return RenderHandle{slot, p.generation};
     }
 
-    void RenderScene::Unregister(RenderHandle handle) noexcept
+    void RenderProxyList::Unregister(RenderHandle handle) noexcept
     {
         if (!IsLive(handle))
         {
@@ -42,11 +42,11 @@ namespace NS::Gfx
         m_freeSlots.push_back(handle.slot);
     }
 
-    void RenderScene::Update(RenderHandle handle,
-                             const NS::Core::AABB& bounds,
-                             const NS::Core::Vector3& sortCenter,
-                             int sortPriority,
-                             bool transparent) noexcept
+    void RenderProxyList::Update(RenderHandle handle,
+                                 const NS::Core::AABB& bounds,
+                                 const NS::Core::Vector3& sortCenter,
+                                 int sortPriority,
+                                 bool transparent) noexcept
     {
         if (!IsLive(handle))
         {
@@ -59,7 +59,7 @@ namespace NS::Gfx
         p.desc.transparent = transparent;
     }
 
-    void RenderScene::DrawBucket(const RenderContext& context, bool transparent)
+    void RenderProxyList::DrawBucket(const RenderContext& context, bool transparent)
     {
         const NS::Core::Frustum frustum = NS::Core::Frustum::FromViewProjection(context.viewProjection);
 
@@ -81,7 +81,7 @@ namespace NS::Gfx
         if (transparent)
         {
             const NS::Core::Vector3 camPos = context.cameraPosition;
-            // stable_sort を使う理由: 距離・優先度が同キーの場合に収集順を保つため
+            // 距離も優先度も同じ物はスロット順のまま残すため stable_sort
             std::stable_sort(m_visibleScratch.begin(),
                              m_visibleScratch.end(),
                              [this, camPos](std::uint32_t a, std::uint32_t b) noexcept {
@@ -89,7 +89,7 @@ namespace NS::Gfx
                                  const float db = (m_proxies[b].desc.sortCenter - camPos).LengthSquared();
                                  if (da != db)
                                  {
-                                     return da > db; // 半透明描画の破綻を防ぐため、遠い順ソートする
+                                     return da > db; // 遠い順に描かないと半透明の重なりが崩れる
                                  }
                                  return m_proxies[a].desc.sortPriority < m_proxies[b].desc.sortPriority;
                              });
@@ -114,7 +114,7 @@ namespace NS::Gfx
         }
     }
 
-    std::size_t RenderScene::Count() const noexcept
+    std::size_t RenderProxyList::Count() const noexcept
     {
         std::size_t n = 0;
         for (const Proxy& p : m_proxies)
@@ -127,7 +127,7 @@ namespace NS::Gfx
         return n;
     }
 
-    bool RenderScene::IsLive(RenderHandle handle) const noexcept
+    bool RenderProxyList::IsLive(RenderHandle handle) const noexcept
     {
         return handle.slot < m_proxies.size() && m_proxies[handle.slot].alive &&
                m_proxies[handle.slot].generation == handle.generation;

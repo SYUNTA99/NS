@@ -31,7 +31,7 @@ namespace NS::Gfx
         //! 深度ソート用の中心座標
         NS::Core::Vector3 sortCenter{};
 
-        //! ソート優先度。距離が同じときは小さい方から先に描く
+        //! ソート優先度。半透明の並べ替えで距離が同じときだけ効き、小さい方から先に描く
         int sortPriority = 0;
 
         //! 半透明オブジェクトとして扱う場合はtrue
@@ -40,11 +40,12 @@ namespace NS::Gfx
         //! @brief 見えると判定された時に呼ばれ、DrawItem を out へ積むコールバック
         void (*collect)(void* owner, const RenderContext& context, std::vector<DrawItem>& out) = nullptr;
 
+        //! collect の第 1 引数へそのまま渡す登録元
         void* owner = nullptr;
     };
 
-    //! @brief 描画物の一覧を持ち、視錐台カリングで絞ってから描画コマンドを集めて出す
-    class RenderScene
+    //! @brief 描画物の登録簿。視錐台で絞った物から DrawItem を集めて描く
+    class RenderProxyList
     {
     public:
         //! @brief 描画オブジェクトを登録し、識別用のハンドルを返す
